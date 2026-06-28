@@ -52,6 +52,11 @@ type VMCreateSettingsResponse struct {
 	Tags               []string                `json:"tags"`
 	CloudInitTemplate  []VMCreateCITemplate    `json:"cloudinit_templates"`
 	CloudInitAvailable bool                    `json:"cloud_init_available"`
+	// CloudInitSFTPEnabled reports whether SFTP snippet upload is configured.
+	// Custom-YAML templates can only be attached to a VM when SFTP is enabled
+	// (the Proxmox HTTP API cannot reliably write snippet files), so the UI
+	// gates the template picker on this flag.
+	CloudInitSFTPEnabled bool `json:"cloud_init_sftp_enabled"`
 	VMProfiles         []state.VMProfileConfig `json:"vm_profiles"`
 	Limits             VMCreateLimits          `json:"limits"`
 	MaxNetworkCards    int                     `json:"max_network_cards"`
@@ -229,6 +234,7 @@ func (h *VMCreateHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	resp.CloudInitTemplate = ciTemplates
 	resp.CloudInitAvailable = len(ciTemplates) > 0
+	resp.CloudInitSFTPEnabled = settings.CloudInitSFTP.Enabled
 
 	resp.RemainingVMs = -1
 	if settings.MaxVMPerUser > 0 && !isAdmin {

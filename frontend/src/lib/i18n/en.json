@@ -949,6 +949,7 @@
       "template": "Template",
       "selectTemplate": "Select a template...",
       "noTemplate": "No template (manual config)",
+      "templateSftpDisabled": "Templates require SFTP to attach their custom cloud-config, which is not configured. Ask an admin to enable SFTP in Admin > Cloud-Init. You can still set the fields below manually.",
       "user": "User",
       "userPlaceholder": "Username for the VM",
       "password": "Password",

@@ -949,6 +949,7 @@
       "template": "Modèle",
       "selectTemplate": "Sélectionner un modèle...",
       "noTemplate": "Pas de modèle (config manuelle)",
+      "templateSftpDisabled": "Les modèles nécessitent le SFTP pour attacher leur cloud-config personnalisé, qui n'est pas configuré. Demandez à un administrateur d'activer le SFTP dans Admin > Cloud-Init. Vous pouvez tout de même remplir les champs ci-dessous manuellement.",
       "user": "Utilisateur",
       "userPlaceholder": "Nom d'utilisateur pour la VM",
       "password": "Mot de passe",

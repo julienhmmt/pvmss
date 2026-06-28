@@ -15,6 +15,15 @@
 	}
 
 	let { store, settings }: Props = $props();
+
+	// Templates are delivered as cicustom snippets, which require SFTP. If SFTP
+	// is not configured, clear any selected template so we never send one the
+	// backend cannot attach (it would otherwise be silently dropped).
+	$effect(() => {
+		if (!settings.cloudInitSftpEnabled && store.form.ciTemplateID) {
+			store.form.ciTemplateID = '';
+		}
+	});
 </script>
 
 <h2 class="text-lg font-semibold">{$t('vmCreate.cloudinit.title')}</h2>
@@ -28,35 +37,41 @@
 		{#if settings.cloudinitTemplates.length > 0}
 			<div class="space-y-2 sm:col-span-2">
 				<Label>{$t('vmCreate.cloudinit.template')}</Label>
-				<Select.Root
-					type="single"
-					value={store.form.ciTemplateID}
-					onValueChange={(v) => (store.form.ciTemplateID = v)}
-				>
-					<Select.Trigger class="w-full">
-						{#if store.form.ciTemplateID}
-							{settings.cloudinitTemplates.find((t) => t.id === store.form.ciTemplateID)
-								?.name || store.form.ciTemplateID}
-						{:else}
-							{$t('vmCreate.cloudinit.noTemplate')}
-						{/if}
-					</Select.Trigger>
-					<Select.Content>
-						<Select.Item value=""
-							>{$t('vmCreate.cloudinit.noTemplate')}</Select.Item
-						>
-						{#each settings.cloudinitTemplates as tpl}
-							<Select.Item value={tpl.id}>
-								{tpl.name}
-								{#if tpl.description}
-									<span class="text-muted-foreground text-xs">
-										— {tpl.description}</span
-									>
-								{/if}
-							</Select.Item>
-						{/each}
-					</Select.Content>
-				</Select.Root>
+				{#if settings.cloudInitSftpEnabled}
+					<Select.Root
+						type="single"
+						value={store.form.ciTemplateID}
+						onValueChange={(v) => (store.form.ciTemplateID = v)}
+					>
+						<Select.Trigger class="w-full">
+							{#if store.form.ciTemplateID}
+								{settings.cloudinitTemplates.find((t) => t.id === store.form.ciTemplateID)
+									?.name || store.form.ciTemplateID}
+							{:else}
+								{$t('vmCreate.cloudinit.noTemplate')}
+							{/if}
+						</Select.Trigger>
+						<Select.Content>
+							<Select.Item value=""
+								>{$t('vmCreate.cloudinit.noTemplate')}</Select.Item
+							>
+							{#each settings.cloudinitTemplates as tpl}
+								<Select.Item value={tpl.id}>
+									{tpl.name}
+									{#if tpl.description}
+										<span class="text-muted-foreground text-xs">
+											— {tpl.description}</span
+										>
+									{/if}
+								</Select.Item>
+							{/each}
+						</Select.Content>
+					</Select.Root>
+				{:else}
+					<p class="rounded-md border border-yellow-500/30 bg-yellow-500/5 px-3 py-2 text-xs text-yellow-700 dark:text-yellow-400">
+						{$t('vmCreate.cloudinit.templateSftpDisabled')}
+					</p>
+				{/if}
 			</div>
 		{/if}
 		<div class="space-y-2">
