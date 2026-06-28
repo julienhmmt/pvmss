@@ -11,6 +11,18 @@ import (
 )
 
 // applyCloudInit applies cloud-init configuration to a newly created VM.
+// Returns a stable warning code (empty string when everything succeeded).
+//
+// Warning codes:
+//   - "upload-failed-sftp": SFTP was enabled but the snippet upload failed.
+//   - "upload-failed-api":  SFTP was disabled (or also failed) and the Proxmox
+//     HTTP API upload failed. This is the common case: the /upload endpoint
+//     returns 400 for content=snippets in many Proxmox versions and SFTP is
+//     the supported workaround.
+//   - "no-snippets-storage": no storage on the node supports the snippets
+//     content type.
+//   - "cloud-init-config-failed": applying the cloud-init config to the VM
+//     failed.
 func (h *VMCreateHandler) applyCloudInit(ctx context.Context, client *proxmox.RestyClient, node string, vmid int, storage string, ci *VMCreateCloudInit, settings *state.AppSettings) string {
 	warning := ""
 
@@ -40,21 +52,12 @@ func (h *VMCreateHandler) applyCloudInit(ctx context.Context, client *proxmox.Re
 			snippetStorage, err := h.selectSnippetStorage(ctx, client, node, template.Storage)
 			if err == nil {
 				filename := fmt.Sprintf("%s%d.yml", state.CloudInitTemplatePrefix, vmid)
-				uploaded := false
-				if settings.CloudInitSFTP.Enabled {
-					if err := proxmox.UploadSnippetFileSFTP(ctx, settings.CloudInitSFTP, filename, template.YAMLContent); err == nil {
-						uploaded = true
-					}
+				cicustom, snippetWarn := h.uploadSnippet(ctx, client, node, snippetStorage, filename, template.YAMLContent, settings)
+				if cicustom != "" {
+					ciParams.CICustom = cicustom
 				}
-				if !uploaded {
-					if err := proxmox.UploadSnippetFileResty(ctx, client, node, snippetStorage, filename, template.YAMLContent); err == nil {
-						uploaded = true
-					}
-				}
-				if uploaded {
-					ciParams.CICustom = fmt.Sprintf("user=%s:snippets/%s", snippetStorage, filename)
-				} else {
-					warning = "upload-failed"
+				if snippetWarn != "" {
+					warning = snippetWarn
 				}
 			} else {
 				warning = "no-snippets-storage"
@@ -72,6 +75,48 @@ func (h *VMCreateHandler) applyCloudInit(ctx context.Context, client *proxmox.Re
 	}
 
 	return warning
+}
+
+// uploadSnippet uploads a cloud-init snippet via SFTP (preferred) or the
+// Proxmox HTTP API (fallback). Returns the cicustom volid on success (empty
+// string on failure) and a stable warning code (empty string on success).
+//
+// The HTTP API fallback returns 400 "bad request" for content=snippets on many
+// Proxmox versions; in that case users must configure SFTP — see
+// backend/docs/cloud-init.{en,fr}.md. We therefore distinguish SFTP failures
+// from API fallback failures so the UI can guide the user.
+func (h *VMCreateHandler) uploadSnippet(ctx context.Context, client *proxmox.RestyClient, node, snippetStorage, filename, content string, settings *state.AppSettings) (string, string) {
+	sftpEnabled := settings.CloudInitSFTP.Enabled
+
+	if sftpEnabled {
+		if err := h.uploadSnippetSFTP(ctx, settings.CloudInitSFTP, filename, content); err == nil {
+			return fmt.Sprintf("user=%s:snippets/%s", snippetStorage, filename), ""
+		} else {
+			logger.Get().Warn().
+				Err(err).
+				Str("node", node).
+				Str("storage", snippetStorage).
+				Str("filename", filename).
+				Msg("api/v1: SFTP snippet upload failed, falling back to HTTP API")
+		}
+	}
+
+	if err := h.uploadSnippetAPI(ctx, client, node, snippetStorage, filename, content); err == nil {
+		return fmt.Sprintf("user=%s:snippets/%s", snippetStorage, filename), ""
+	} else {
+		logger.Get().Warn().
+			Err(err).
+			Str("node", node).
+			Str("storage", snippetStorage).
+			Str("filename", filename).
+			Bool("sftp_enabled", sftpEnabled).
+			Msg("api/v1: HTTP API snippet upload failed")
+	}
+
+	if sftpEnabled {
+		return "", "upload-failed-sftp"
+	}
+	return "", "upload-failed-api"
 }
 
 // selectSnippetStorage picks a snippets storage for the given node.

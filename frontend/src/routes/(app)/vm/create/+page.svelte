@@ -88,6 +88,14 @@
 		}
 	}
 
+	// resolveCloudInitWarning maps a stable backend warning code to a translated
+	// message, falling back to the raw code when no translation is registered.
+	function resolveCloudInitWarning(code: string): string {
+		const key = `vmCreate.toast.warning.${code}`;
+		const translated = $t(key);
+		return translated === key ? code : translated;
+	}
+
 	async function handleCreate(): Promise<void> {
 		if (!store.settings || creating) return;
 		creating = true;
@@ -118,7 +126,15 @@
 				// so it is in place if the task finishes during goto.
 				tasks.onComplete(taskId, (task) => {
 					if (task.status === 'stopped') {
-						toast.success(createdMsg);
+						if (task.cloudInitWarning) {
+							toast.warning(
+								$t('vmCreate.toast.createdWithWarning', {
+									values: { name: resp.name, warning: resolveCloudInitWarning(task.cloudInitWarning) }
+								})
+							);
+						} else {
+							toast.success(createdMsg);
+						}
 					} else {
 						toast.error($t('vmCreate.toast.failed', { values: { error: task.exitStatus } }));
 					}
@@ -132,7 +148,7 @@
 				if (resp.cloudInitWarning) {
 					toast.warning(
 						$t('vmCreate.toast.createdWithWarning', {
-							values: { name: resp.name, warning: resp.cloudInitWarning }
+							values: { name: resp.name, warning: resolveCloudInitWarning(resp.cloudInitWarning) }
 						})
 					);
 				} else {

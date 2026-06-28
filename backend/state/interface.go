@@ -49,6 +49,12 @@ type StateManager interface {
 	// Cleanup callbacks
 	SetGuestAgentCleanupFunc(cleanupFunc func())
 
+	// Cloud-init warning tracking (keyed by Proxmox UPID) so asynchronously
+	// applied cloud-init results can be surfaced via the task-status endpoint.
+	SetCloudInitWarning(upid, warning string)
+	GetCloudInitWarning(upid string) string
+	DeleteCloudInitWarning(upid string)
+
 	// DB-backed settings writers.
 	// changedBy must be the authenticated admin username (from JWT claims).
 	// All methods call reloadSettingsCache() on success so the in-memory

@@ -746,6 +746,34 @@
     "efi": "EFI",
     "tpm": "TPM",
     "openConsole": "Open console",
+    "cloudInit": {
+      "user": "Username",
+      "userPlaceholder": "Username for the VM",
+      "password": "Password",
+      "passwordPlaceholder": "Leave blank to keep current",
+      "sshKeys": "SSH Public Keys",
+      "sshKeysPlaceholder": "Paste your SSH public key(s)…",
+      "ipConfig": "IP Configuration",
+      "dhcp": "DHCP (automatic)",
+      "static": "Static IP",
+      "ip": "IP Address / CIDR",
+      "ipPlaceholder": "192.168.1.100/24",
+      "gateway": "Gateway",
+      "gatewayPlaceholder": "192.168.1.1",
+      "nameserver": "Nameserver",
+      "nameserverPlaceholder": "8.8.8.8",
+      "searchdomain": "Search domain",
+      "searchdomainPlaceholder": "example.com",
+      "gatewayOptional": "Gateway (optional)",
+      "ipRequired": "Enter at least an IP address or gateway when using static mode",
+      "saved": "Cloud-init configuration saved",
+      "rebootNotice": "Changes require a VM reboot to take effect inside the guest OS.",
+      "customYaml": "Custom cloud-config YAML",
+      "customYamlHint": "Edit the custom cloud-config snippet attached to this VM. Must start with #cloud-config. Re-upload redeploys it on the next cloud-init run (a VM reboot is required).",
+      "customYamlSftpDisabled": "Editing the custom cloud-config YAML is disabled. The Proxmox HTTP API cannot reliably read or write snippet files — ask an admin to configure SFTP in Admin > Cloud-Init.",
+      "customYamlReadOnly": "Read-only view of the effective cloud-config (rendered by Proxmox). Editing requires SFTP — ask an admin to configure it in Admin > Cloud-Init.",
+      "customYamlSaved": "Custom cloud-config YAML saved"
+    },
     "delete": "Delete VM",
     "deleteConfirmTitle": "Delete virtual machine?",
     "deleteConfirmMessage": "This will permanently delete VM {name} (ID {vmid}) and all its associated disk files. This action cannot be undone.",
@@ -1023,7 +1051,14 @@
       "creating": "Creating VM \"{name}\"…",
       "created": "VM \"{name}\" (ID: {vmid}) created successfully",
       "createdWithWarning": "VM \"{name}\" created but cloud-init had an issue: {warning}",
-      "failed": "Failed to create VM: {error}"
+      "failed": "Failed to create VM: {error}",
+      "warning": {
+        "upload-failed-api": "Custom cloud-init snippet could not be uploaded. The Proxmox HTTP API rejects snippet uploads on many versions — configure SFTP in Admin > Cloud-Init (see backend/docs/cloud-init.en.md).",
+        "upload-failed-sftp": "Custom cloud-init snippet upload failed over SFTP and the HTTP API fallback. Check the SFTP settings in Admin > Cloud-Init and the snippets directory permissions.",
+        "no-snippets-storage": "No storage on this node supports the snippets content type — cloud-init custom YAML cannot be applied.",
+        "cloud-init-config-failed": "Applying the cloud-init configuration to the VM failed.",
+        "cloud-init-result-unknown": "Cloud-init result could not be confirmed. Check the VM and server logs."
+      }
     }
   },
   "tasks": {

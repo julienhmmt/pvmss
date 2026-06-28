@@ -109,6 +109,29 @@ func GetVMCloudInitConfigResty(ctx context.Context, restyClient *RestyClient, no
 	return config, nil
 }
 
+// GetVMCloudInitDumpResty returns the rendered cloud-init configuration for a
+// VM via the Proxmox HTTP API: GET /nodes/{node}/qemu/{vmid}/cloudinit/dump.
+// The dumpType selects which document is returned ("user", "network" or
+// "meta"). Unlike snippet files, this endpoint is reliably readable over the
+// HTTP API, so it is used to present a read-only view of the effective
+// cloud-config when SFTP (required for editing snippets) is not configured.
+func GetVMCloudInitDumpResty(ctx context.Context, restyClient *RestyClient, node string, vmid int, dumpType string) (string, error) {
+	path := fmt.Sprintf("/nodes/%s/qemu/%d/cloudinit/dump?type=%s",
+		url.PathEscape(node), vmid, url.QueryEscape(dumpType))
+
+	var response struct {
+		Data string `json:"data"`
+	}
+
+	if err := restyClient.Get(ctx, path, &response); err != nil {
+		logger.Get().Warn().Err(err).Str("node", node).Int("vmid", vmid).Str("type", dumpType).
+			Msg("Failed to dump VM cloud-init config (resty)")
+		return "", fmt.Errorf("failed to dump cloud-init %s for VM %d on node %s: %w", dumpType, vmid, node, err)
+	}
+
+	return response.Data, nil
+}
+
 // UpdateVMCloudInitConfigResty updates cloud-init configuration for a VM.
 // This uses the standard VM config endpoint: PUT /nodes/{node}/qemu/{vmid}/config
 func UpdateVMCloudInitConfigResty(ctx context.Context, restyClient *RestyClient, node string, vmid int, params CloudInitParams) error {
@@ -164,6 +187,88 @@ func UpdateVMCloudInitConfigResty(ctx context.Context, restyClient *RestyClient,
 	}
 
 	logger.Get().Info().Str("node", node).Int("vmid", vmid).Msg("VM cloud-init config updated successfully (resty)")
+	return nil
+}
+
+// CloudInitUpdate carries an optional, partial cloud-init field update for an
+// existing VM. Pointer fields distinguish "leave unchanged" (nil) from "clear
+// the key in Proxmox" (non-nil empty string). Password uses a plain string
+// where the empty value means "keep current" — a cloud-init password cannot be
+// meaningfully cleared, only replaced.
+type CloudInitUpdate struct {
+	User         *string
+	Password     string // "" → keep current; non-empty → set
+	SSHKeys      *string
+	IPConfig0    *string
+	Nameserver   *string
+	Searchdomain *string
+}
+
+// SetVMCloudInitConfigResty applies a partial cloud-init config update to an
+// existing VM via POST /nodes/{node}/qemu/{vmid}/config. Nil fields are left
+// untouched; non-nil empty strings remove the corresponding key in Proxmox
+// using the official `delete` parameter. SSH keys are URL-encoded with %20 for
+// spaces, %40 for @ and %0A for newlines as Proxmox requires.
+func SetVMCloudInitConfigResty(ctx context.Context, restyClient *RestyClient, node string, vmid int, upd CloudInitUpdate) error {
+	path := fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid)
+
+	values := make(url.Values)
+	var deleteKeys []string
+
+	if upd.User != nil {
+		if *upd.User == "" {
+			deleteKeys = append(deleteKeys, "ciuser")
+		} else {
+			values.Set("ciuser", *upd.User)
+		}
+	}
+	if upd.Password != "" {
+		values.Set("cipassword", upd.Password)
+	}
+	if upd.SSHKeys != nil {
+		if *upd.SSHKeys == "" {
+			deleteKeys = append(deleteKeys, "sshkeys")
+		} else {
+			encoded := strings.ReplaceAll(url.QueryEscape(strings.TrimSpace(*upd.SSHKeys)), "+", "%20")
+			values.Set("sshkeys", encoded)
+		}
+	}
+	if upd.IPConfig0 != nil {
+		if *upd.IPConfig0 == "" {
+			deleteKeys = append(deleteKeys, "ipconfig0")
+		} else {
+			values.Set("ipconfig0", *upd.IPConfig0)
+		}
+	}
+	if upd.Nameserver != nil {
+		if *upd.Nameserver == "" {
+			deleteKeys = append(deleteKeys, "nameserver")
+		} else {
+			values.Set("nameserver", *upd.Nameserver)
+		}
+	}
+	if upd.Searchdomain != nil {
+		if *upd.Searchdomain == "" {
+			deleteKeys = append(deleteKeys, "searchdomain")
+		} else {
+			values.Set("searchdomain", *upd.Searchdomain)
+		}
+	}
+	if len(deleteKeys) > 0 {
+		values.Set("delete", strings.Join(deleteKeys, ","))
+	}
+	if len(values) == 0 {
+		return nil // Nothing to update
+	}
+
+	var response interface{}
+	if err := restyClient.Post(ctx, path, values, &response); err != nil {
+		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Msg("Failed to set VM cloud-init config (resty)")
+		return fmt.Errorf("failed to set cloud-init config for VM %d on node %s: %w", vmid, node, err)
+	}
+
+	InvalidateVMCache(node)
+	logger.Get().Info().Str("node", node).Int("vmid", vmid).Msg("VM cloud-init config set successfully (resty)")
 	return nil
 }
 
@@ -566,4 +671,69 @@ func DeleteSnippetFileSFTP(config CloudInitSFTPConfig, filename string) error {
 		Msg("Cloud-init snippet deleted successfully via SFTP")
 
 	return nil
+}
+
+// ReadSnippetFileSFTP reads the content of a snippet file via SFTP.
+// Used by the cloud-init tab to display the custom cloud-config YAML attached
+// to a VM. Returns an empty string and no error when the file does not exist
+// (e.g. snippet upload failed during creation) so the caller can present an
+// empty editor.
+func ReadSnippetFileSFTP(ctx context.Context, config CloudInitSFTPConfig, filename string) (string, error) {
+	if !config.Enabled {
+		return "", fmt.Errorf("SFTP upload is disabled in configuration")
+	}
+
+	log := logger.Get()
+	log.Debug().
+		Str("host", config.Host).
+		Str("filename", filename).
+		Msg("Reading cloud-init snippet via SFTP")
+
+	sftpClient, sshClient, err := createSFTPClient(config)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		if closeErr := sftpClient.Close(); closeErr != nil {
+			log.Warn().Err(closeErr).Msg("Failed to close SFTP client")
+		}
+		if closeErr := sshClient.Close(); closeErr != nil {
+			log.Warn().Err(closeErr).Msg("Failed to close SSH client")
+		}
+	}()
+
+	targetPath := filepath.Join(config.SnippetBaseDir, filename)
+
+	// Missing file is not an error here — the editor starts empty so the user
+	// can (re)create the snippet.
+	if _, err := sftpClient.Stat(targetPath); err != nil {
+		if os.IsNotExist(err) {
+			log.Debug().Str("path", targetPath).Msg("Snippet file does not exist, returning empty content")
+			return "", nil
+		}
+		return "", fmt.Errorf("failed to stat snippet file %s: %w", targetPath, err)
+	}
+
+	remoteFile, err := sftpClient.OpenFile(targetPath, os.O_RDONLY)
+	if err != nil {
+		return "", fmt.Errorf("failed to open remote file %s: %w", targetPath, err)
+	}
+	defer func() {
+		if closeErr := remoteFile.Close(); closeErr != nil {
+			log.Warn().Err(closeErr).Msg("Failed to close remote file")
+		}
+	}()
+
+	data, err := io.ReadAll(remoteFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to read remote file %s: %w", targetPath, err)
+	}
+
+	log.Debug().
+		Str("host", config.Host).
+		Str("path", targetPath).
+		Int("bytes", len(data)).
+		Msg("Cloud-init snippet read successfully via SFTP")
+
+	return string(data), nil
 }

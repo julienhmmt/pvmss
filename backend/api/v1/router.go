@@ -63,6 +63,9 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.POST("/api/v1/vms/:id/snapshots/:name/rollback", jwtWrap(jwtSecret, vmDetailsHandler.RollbackSnapshot))
 	router.GET("/api/v1/vms/:id/settings", jwtWrap(jwtSecret, vmDetailsHandler.GetVMSettings))
 	router.PUT("/api/v1/vms/:id/hardware", jwtWrap(jwtSecret, vmDetailsHandler.UpdateVMHardware))
+	router.PUT("/api/v1/vms/:id/cloudinit", jwtWrap(jwtSecret, vmDetailsHandler.UpdateVMCloudInit))
+	router.GET("/api/v1/vms/:id/cloudinit/snippet", jwtWrap(jwtSecret, vmDetailsHandler.GetVMCloudInitSnippet))
+	router.PUT("/api/v1/vms/:id/cloudinit/snippet", jwtWrap(jwtSecret, vmDetailsHandler.UpdateVMCloudInitSnippet))
 	router.POST("/api/v1/vms/:id/network/:iface/toggle", jwtWrap(jwtSecret, vmDetailsHandler.ToggleNIC))
 	router.DELETE("/api/v1/vms/:id", jwtWrap(jwtSecret, vmHandler.DeleteVM))
 

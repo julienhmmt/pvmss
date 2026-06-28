@@ -78,6 +78,10 @@ export interface CloudInitConfig {
   ipConfig?: string;
   /** Optional: DNS nameserver */
   nameserver?: string;
+  /** Optional: DNS search domain(s) */
+  searchdomain?: string;
+  /** Optional: Custom cloud-config volid, e.g. "user=local:snippets/pvmss-100.yml" */
+  cicustom?: string;
 }
 
 /**
@@ -125,6 +129,8 @@ export interface VM {
   networks: NetworkCard[];
   /** Optional: Cloud-Init configuration */
   cloudInit?: CloudInitConfig;
+  /** Whether SFTP snippet upload is configured (enables custom YAML editing) */
+  cloudInitSftpEnabled?: boolean;
   /** Whether VM has CD-ROM */
   hasCdrom: boolean;
   /** Optional: Current mounted ISO */

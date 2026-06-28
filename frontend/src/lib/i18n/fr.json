@@ -746,6 +746,34 @@
     "efi": "EFI",
     "tpm": "TPM",
     "openConsole": "Ouvrir la console",
+    "cloudInit": {
+      "user": "Utilisateur",
+      "userPlaceholder": "Nom d'utilisateur pour la VM",
+      "password": "Mot de passe",
+      "passwordPlaceholder": "Laisser vide pour conserver l'actuel",
+      "sshKeys": "Clés publiques SSH",
+      "sshKeysPlaceholder": "Collez vos clé(s) publique(s) SSH…",
+      "ipConfig": "Configuration IP",
+      "dhcp": "DHCP (automatique)",
+      "static": "IP statique",
+      "ip": "Adresse IP / CIDR",
+      "ipPlaceholder": "192.168.1.100/24",
+      "gateway": "Passerelle",
+      "gatewayPlaceholder": "192.168.1.1",
+      "nameserver": "Serveur DNS",
+      "nameserverPlaceholder": "8.8.8.8",
+      "searchdomain": "Domaine de recherche",
+      "searchdomainPlaceholder": "example.com",
+      "gatewayOptional": "Passerelle (optionnel)",
+      "ipRequired": "Saisissez au moins une adresse IP ou une passerelle en mode statique",
+      "saved": "Configuration cloud-init enregistrée",
+      "rebootNotice": "Les modifications nécessitent un redémarrage de la VM pour être appliquées dans le système invité.",
+      "customYaml": "YAML cloud-config personnalisé",
+      "customYamlHint": "Modifiez le snippet cloud-config personnalisé attaché à cette VM. Doit commencer par #cloud-config. Le ré-envoi le redéploie lors de la prochaine exécution de cloud-init (un redémarrage de la VM est nécessaire).",
+      "customYamlSftpDisabled": "La modification du YAML cloud-config personnalisé est désactivée. L'API HTTP de Proxmox ne peut pas lire ou écrire les fichiers de snippets de manière fiable — demandez à un administrateur de configurer SFTP dans Admin > Cloud-Init.",
+      "customYamlReadOnly": "Vue en lecture seule de la configuration cloud-init effective (générée par Proxmox). La modification nécessite le SFTP — demandez à un administrateur de le configurer dans Admin > Cloud-Init.",
+      "customYamlSaved": "YAML cloud-config personnalisé enregistré"
+    },
     "delete": "Supprimer la VM",
     "deleteConfirmTitle": "Supprimer la machine virtuelle ?",
     "deleteConfirmMessage": "Cette action supprimera définitivement la VM {name} (ID {vmid}) ainsi que tous ses fichiers disques associés. Cette opération est irréversible.",
@@ -1023,7 +1051,14 @@
       "creating": "Création de la VM « {name} »…",
       "created": "VM « {name} » (ID : {vmid}) créée avec succès",
       "createdWithWarning": "VM « {name} » créée mais cloud-init a rencontré un problème : {warning}",
-      "failed": "Échec de la création de la VM : {error}"
+      "failed": "Échec de la création de la VM : {error}",
+      "warning": {
+        "upload-failed-api": "Impossible de téléverser le snippet cloud-init personnalisé. L'API HTTP de Proxmox rejette les téléversements de snippets sur de nombreuses versions — configurez SFTP dans Admin > Cloud-Init (voir backend/docs/cloud-init.fr.md).",
+        "upload-failed-sftp": "Échec du téléversement SFTP du snippet cloud-init et du repli HTTP. Vérifiez les paramètres SFTP dans Admin > Cloud-Init et les permissions du répertoire snippets.",
+        "no-snippets-storage": "Aucun stockage sur ce nœud ne supporte le type de contenu snippets — le YAML cloud-init personnalisé ne peut pas être appliqué.",
+        "cloud-init-config-failed": "L'application de la configuration cloud-init à la VM a échoué.",
+        "cloud-init-result-unknown": "Le résultat cloud-init n'a pas pu être confirmé. Vérifiez la VM et les journaux serveur."
+      }
     }
   },
   "tasks": {
