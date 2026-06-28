@@ -117,6 +117,11 @@ type StateManager interface {
 
 	// SetSFTPConfig persists the SFTP/SSH configuration.
 	SetSFTPConfig(cfg *database.SFTPConfig, changedBy string) error
+
+	// GetSFTPConfig returns the raw persisted SFTP configuration, including the
+	// private key as stored (still encrypted at rest). Used by write paths that
+	// must preserve the key without exposing its plaintext.
+	GetSFTPConfig() (*database.SFTPConfig, error)
 }
 
 // SettingsProvider exposes read access to application settings.

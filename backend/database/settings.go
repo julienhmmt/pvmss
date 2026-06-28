@@ -18,12 +18,15 @@ type VMLimits struct {
 }
 
 // SFTPConfig holds the SSH/SFTP configuration stored in the sftp_config singleton row.
+// PrivateKey, when set, holds the SSH private key content (encrypted at rest with
+// the session secret); it takes precedence over PrivateKeyPath at connect time.
 type SFTPConfig struct {
 	Enabled        bool   `json:"enabled"`
 	Host           string `json:"host"`
 	Port           int    `json:"port"`
 	Username       string `json:"username"`
 	PrivateKeyPath string `json:"private_key_path"`
+	PrivateKey     string `json:"private_key,omitempty"`
 	RemotePath     string `json:"remote_path"`
 }
 
@@ -272,7 +275,8 @@ func (s *sqliteDB) GetSFTPConfig() (*SFTPConfig, error) {
 	row := s.db.QueryRow(`
 		SELECT enabled,
 		       COALESCE(host,''), port, COALESCE(username,''),
-		       COALESCE(private_key_path,''), COALESCE(remote_path,'')
+		       COALESCE(private_key_path,''), COALESCE(remote_path,''),
+		       COALESCE(private_key,'')
 		FROM sftp_config WHERE id = 1
 	`)
 	cfg, err := scanSFTPConfigRow(row)
@@ -293,7 +297,8 @@ func (s *sqliteDB) SetSFTPConfig(cfg *SFTPConfig, changedBy string) error {
 	row := tx.QueryRow(`
 		SELECT enabled,
 		       COALESCE(host,''), port, COALESCE(username,''),
-		       COALESCE(private_key_path,''), COALESCE(remote_path,'')
+		       COALESCE(private_key_path,''), COALESCE(remote_path,''),
+		       COALESCE(private_key,'')
 		FROM sftp_config WHERE id = 1
 	`)
 	oldCfg, err := scanSFTPConfigRow(row)
@@ -322,8 +327,8 @@ func (s *sqliteDB) SetSFTPConfig(cfg *SFTPConfig, changedBy string) error {
 func execUpsertSFTPConfig(tx *sql.Tx, c *SFTPConfig) error {
 	_, err := tx.Exec(`
 		INSERT INTO sftp_config
-		    (id, enabled, host, port, username, private_key_path, remote_path, updated_at)
-		VALUES (1, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		    (id, enabled, host, port, username, private_key_path, remote_path, private_key, updated_at)
+		VALUES (1, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
 		ON CONFLICT(id) DO UPDATE SET
 		    enabled          = excluded.enabled,
 		    host             = excluded.host,
@@ -331,8 +336,9 @@ func execUpsertSFTPConfig(tx *sql.Tx, c *SFTPConfig) error {
 		    username         = excluded.username,
 		    private_key_path = excluded.private_key_path,
 		    remote_path      = excluded.remote_path,
+		    private_key      = excluded.private_key,
 		    updated_at       = CURRENT_TIMESTAMP
-	`, boolToInt(c.Enabled), c.Host, c.Port, c.Username, c.PrivateKeyPath, c.RemotePath)
+	`, boolToInt(c.Enabled), c.Host, c.Port, c.Username, c.PrivateKeyPath, c.RemotePath, c.PrivateKey)
 	return err
 }
 
@@ -340,7 +346,7 @@ func execUpsertSFTPConfig(tx *sql.Tx, c *SFTPConfig) error {
 func scanSFTPConfigRow(row *sql.Row) (*SFTPConfig, error) {
 	var c SFTPConfig
 	var enabled int
-	if err := row.Scan(&enabled, &c.Host, &c.Port, &c.Username, &c.PrivateKeyPath, &c.RemotePath); err != nil {
+	if err := row.Scan(&enabled, &c.Host, &c.Port, &c.Username, &c.PrivateKeyPath, &c.RemotePath, &c.PrivateKey); err != nil {
 		return nil, err
 	}
 	c.Enabled = enabled != 0

@@ -650,7 +650,16 @@ func (h *AdminSettingsOverviewHandler) upsertSFTPConfig(raw json.RawMessage, cha
 		p.Port = 22
 	}
 
-	// Validate: if enabled, required fields must be non-empty
+	// Load the existing config so we preserve the stored (encrypted) private key,
+	// which this generic settings form never sends. The dedicated SFTP endpoint
+	// (PUT /admin/cloudinit-sftp) is the only place a key is set.
+	existing, err := h.state.GetSFTPConfig()
+	if err != nil {
+		return fmt.Errorf("sftp_config: read existing: %w", err)
+	}
+
+	// Validate: if enabled, required fields must be non-empty. A key can be
+	// provided either as a stored pasted key or as a key file path.
 	if p.Enabled {
 		if p.Host == "" {
 			return fmt.Errorf("sftp_config: host is required when enabled")
@@ -658,8 +667,8 @@ func (h *AdminSettingsOverviewHandler) upsertSFTPConfig(raw json.RawMessage, cha
 		if p.Username == "" {
 			return fmt.Errorf("sftp_config: username is required when enabled")
 		}
-		if p.PrivateKeyPath == "" {
-			return fmt.Errorf("sftp_config: private_key_path is required when enabled")
+		if p.PrivateKeyPath == "" && existing.PrivateKey == "" {
+			return fmt.Errorf("sftp_config: a private key or key path is required when enabled")
 		}
 		if p.RemotePath == "" {
 			return fmt.Errorf("sftp_config: remote_path is required when enabled")
@@ -687,6 +696,7 @@ func (h *AdminSettingsOverviewHandler) upsertSFTPConfig(raw json.RawMessage, cha
 		Username:       p.Username,
 		PrivateKeyPath: p.PrivateKeyPath,
 		RemotePath:     p.RemotePath,
+		PrivateKey:     existing.PrivateKey, // preserve stored (encrypted) key
 	}
 	return h.state.SetSFTPConfig(cfg, changedBy)
 }

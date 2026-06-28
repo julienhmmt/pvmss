@@ -7,6 +7,7 @@ import (
 	"pvmss/database"
 	"pvmss/logger"
 	"pvmss/proxmox"
+	"pvmss/security"
 )
 
 // ── Cache reload ──────────────────────────────────────────────────────────────
@@ -24,11 +25,35 @@ func (s *appState) reloadSettingsCache() error {
 		return fmt.Errorf("reload settings cache: %w", err)
 	}
 	fresh := mapDBToStateSettings(dbSettings)
+	s.decryptSFTPPrivateKey(fresh)
 	s.settingsMu.Lock()
 	s.settings = fresh
 	s.settingsMu.Unlock()
 	logger.Get().Debug().Msg("Settings cache reloaded from database")
 	return nil
+}
+
+// decryptSFTPPrivateKey decrypts the SFTP private key stored (encrypted) in the
+// settings into plaintext held only in memory, so the SFTP client can use it.
+// A decryption failure clears the key and logs a warning rather than failing the
+// whole settings reload — the rest of the app must still work.
+func (s *appState) decryptSFTPPrivateKey(settings *AppSettings) {
+	if settings == nil || settings.CloudInitSFTP.PrivateKey == "" {
+		return
+	}
+	s.mu.RLock()
+	env := s.envConfig
+	s.mu.RUnlock()
+	if env == nil || env.SessionSecret == "" {
+		return
+	}
+	plain, err := security.DecryptSecret(settings.CloudInitSFTP.PrivateKey, env.SessionSecret)
+	if err != nil {
+		logger.Get().Warn().Err(err).Msg("Failed to decrypt SFTP private key; clearing in-memory key")
+		settings.CloudInitSFTP.PrivateKey = ""
+		return
+	}
+	settings.CloudInitSFTP.PrivateKey = plain
 }
 
 // mapDBToStateSettings translates a database.AppSettings (assembled from DB
@@ -133,6 +158,9 @@ func mapSFTPFromDB(src database.SFTPConfig) proxmox.CloudInitSFTPConfig {
 		Username:       src.Username,
 		PrivateKeyPath: src.PrivateKeyPath,
 		SnippetBaseDir: src.RemotePath,
+		// Carries the still-encrypted key as stored in the DB; reloadSettingsCache
+		// decrypts it in place once the session secret is available.
+		PrivateKey: src.PrivateKey,
 	}
 }
 
@@ -318,6 +346,15 @@ func (s *appState) SetSFTPConfig(cfg *database.SFTPConfig, changedBy string) err
 		return fmt.Errorf("SetSFTPConfig: %w", err)
 	}
 	return s.reloadSettingsCache()
+}
+
+// GetSFTPConfig returns the raw persisted SFTP configuration (private key still
+// encrypted as stored). Returns safe defaults when no DB is configured.
+func (s *appState) GetSFTPConfig() (*database.SFTPConfig, error) {
+	if s.db == nil {
+		return &database.SFTPConfig{Port: 22}, nil
+	}
+	return s.db.GetSFTPConfig()
 }
 
 // LoadSettingsFromDB loads all settings from the database into the in-memory

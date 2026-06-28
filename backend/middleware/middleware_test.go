@@ -68,6 +68,9 @@ func (m *mockStateManager) DeleteVMProfile(id string, changedBy string) error   
 func (m *mockStateManager) SetSFTPConfig(cfg *database.SFTPConfig, changedBy string) error {
 	return nil
 }
+func (m *mockStateManager) GetSFTPConfig() (*database.SFTPConfig, error) {
+	return &database.SFTPConfig{Port: 22}, nil
+}
 func (m *mockStateManager) SetCloudInitWarning(upid, warning string) {}
 func (m *mockStateManager) GetCloudInitWarning(upid string) string   { return "" }
 func (m *mockStateManager) DeleteCloudInitWarning(upid string)       {}

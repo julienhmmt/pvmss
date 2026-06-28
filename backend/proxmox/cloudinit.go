@@ -59,9 +59,63 @@ type CloudInitSFTPConfig struct {
 	Enabled        bool   `json:"enabled"`        // Whether SFTP upload is enabled
 	Host           string `json:"host"`           // Proxmox node hostname or IP
 	Port           int    `json:"port"`           // SSH port (default: 22)
-	PrivateKeyPath string `json:"privateKeyPath"` // Path to private SSH key file
+	PrivateKeyPath string `json:"privateKeyPath"` // Path to private SSH key file (fallback when PrivateKey is empty)
 	SnippetBaseDir string `json:"snippetBaseDir"` // Base directory for snippets (e.g., /var/lib/vz/snippets)
 	Username       string `json:"username"`       // SSH username (PAM account)
+	// PrivateKey holds the SSH private key content (plaintext, in memory only).
+	// Takes precedence over PrivateKeyPath. json:"-" so it is never serialized
+	// into API responses, logs, or settings dumps.
+	PrivateKey string `json:"-"`
+}
+
+// sshSignerFromConfig builds an ssh.Signer from the configured private key,
+// preferring the in-memory key content over the on-disk key file.
+func sshSignerFromConfig(config CloudInitSFTPConfig) (ssh.Signer, error) {
+	if strings.TrimSpace(config.PrivateKey) != "" {
+		signer, err := ssh.ParsePrivateKey([]byte(config.PrivateKey))
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse configured private key: %w", err)
+		}
+		return signer, nil
+	}
+	if config.PrivateKeyPath == "" {
+		return nil, fmt.Errorf("no SSH private key configured (set a key or a key path)")
+	}
+	keyBytes, err := os.ReadFile(config.PrivateKeyPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read private key file %s: %w", config.PrivateKeyPath, err)
+	}
+	signer, err := ssh.ParsePrivateKey(keyBytes)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse private key: %w", err)
+	}
+	return signer, nil
+}
+
+// SSHKeyFingerprint parses a private key (PEM content) and returns the SHA256
+// fingerprint of its public key, e.g. "SHA256:abc…". Used to show which key is
+// configured without ever exposing the key itself.
+func SSHKeyFingerprint(privateKey string) (string, error) {
+	signer, err := ssh.ParsePrivateKey([]byte(privateKey))
+	if err != nil {
+		return "", fmt.Errorf("parse private key: %w", err)
+	}
+	return ssh.FingerprintSHA256(signer.PublicKey()), nil
+}
+
+// TestSFTPConnection dials the SFTP server with the given config and writes then
+// removes a small probe file under SnippetBaseDir to verify connectivity,
+// authentication, and write permission. Returns a descriptive error on failure.
+func TestSFTPConnection(ctx context.Context, config CloudInitSFTPConfig) error {
+	probe := fmt.Sprintf(".pvmss-sftp-test-%d", time.Now().UnixNano())
+	if err := UploadSnippetFileSFTP(ctx, config, probe, "# pvmss sftp connectivity test\n"); err != nil {
+		return err
+	}
+	if err := DeleteSnippetFileSFTP(config, probe); err != nil {
+		// Upload worked; cleanup failure is non-fatal but worth surfacing.
+		return fmt.Errorf("probe uploaded but cleanup failed: %w", err)
+	}
+	return nil
 }
 
 // GetVMCloudInitConfigResty fetches cloud-init configuration for a VM.
@@ -513,16 +567,10 @@ func GetSnippetsStoragesResty(ctx context.Context, restyClient *RestyClient) ([]
 func createSFTPClient(config CloudInitSFTPConfig) (*sftp.Client, *ssh.Client, error) {
 	log := logger.Get()
 
-	// Read private key
-	keyBytes, err := os.ReadFile(config.PrivateKeyPath)
+	// Load the signer from the configured key content (preferred) or key file.
+	signer, err := sshSignerFromConfig(config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read private key file %s: %w", config.PrivateKeyPath, err)
-	}
-
-	// Parse private key
-	signer, err := ssh.ParsePrivateKey(keyBytes)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to parse private key: %w", err)
+		return nil, nil, err
 	}
 
 	// Create SSH client config (host key verification disabled for trusted networks)

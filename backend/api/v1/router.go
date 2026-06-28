@@ -125,6 +125,8 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.DELETE("/api/v1/admin/cloudinit/:id", adminJWTWrap(jwtSecret, adminMutHandler.DeleteCloudInit))
 	router.POST("/api/v1/admin/cloudinit/:id/toggle", adminJWTWrap(jwtSecret, adminMutHandler.ToggleCloudInit))
 	router.POST("/api/v1/admin/cloudinit-sftp/toggle", adminJWTWrap(jwtSecret, adminMutHandler.ToggleSFTP))
+	router.PUT("/api/v1/admin/cloudinit-sftp", adminJWTWrap(jwtSecret, adminMutHandler.UpdateSFTPConfig))
+	router.POST("/api/v1/admin/cloudinit-sftp/test", adminJWTWrap(jwtSecret, adminMutHandler.TestSFTPConnection))
 
 	router.GET("/api/v1/admin/vm-profiles", adminJWTWrap(jwtSecret, adminMutHandler.ListVMProfiles))
 	router.POST("/api/v1/admin/vm-profiles", adminJWTWrap(jwtSecret, adminMutHandler.CreateVMProfile))
