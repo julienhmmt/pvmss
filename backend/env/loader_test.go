@@ -234,6 +234,7 @@ func TestLoadAndValidate_OfflineMode_CaseInsensitive(t *testing.T) {
 // TestLoadAndValidate_AllErrorsReportedTogether verifies that all missing required
 // variables are collected and reported in a single error (fail-fast / batch reporting).
 func TestLoadAndValidate_AllErrorsReportedTogether(t *testing.T) {
+	setEnv(t, map[string]string{})
 	_, err := env.LoadAndValidate()
 	require.Error(t, err)
 	msg := err.Error()
