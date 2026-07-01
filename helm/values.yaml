@@ -49,7 +49,8 @@ deployment:
     LOG_OUTPUT: "stdout"
     LOG_FORMAT: "json"
     PROXMOX_API_TOKEN_NAME: "changeme"
-    PROXMOX_VERIFY_SSL: "false"
+    # Set to "false" ONLY for self-signed labs; mount the Proxmox CA cert for production.
+    PROXMOX_VERIFY_SSL: "true"
     PROXMOX_URL: "https://changeme:8006/api2/json"
     PVMSS_ENV: "production"
     PVMSS_OFFLINE: "false"

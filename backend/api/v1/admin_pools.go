@@ -109,6 +109,10 @@ func (h *AdminMutationsHandler) CreatePool(w http.ResponseWriter, r *http.Reques
 		errBadRequest(w, "pool and password are required")
 		return
 	}
+	if err := validatePoolName(req.Pool); err != nil {
+		writeAppError(w, err)
+		return
+	}
 
 	cfg := h.state.GetEnvConfig()
 	restyClient, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 10*time.Second)
@@ -164,6 +168,10 @@ func (h *AdminMutationsHandler) DeletePool(w http.ResponseWriter, r *http.Reques
 	name := ps.ByName("name")
 	if name == "" {
 		errBadRequest(w, "missing pool name")
+		return
+	}
+	if err := validatePoolName(name); err != nil {
+		writeAppError(w, err)
 		return
 	}
 	cfg := h.state.GetEnvConfig()
