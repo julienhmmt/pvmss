@@ -323,7 +323,7 @@ export function createVMFormStore() {
 
   /** Returns true when a draft was found and applied. */
   function restoreDraft(): boolean {
-    let raw: string | null = null;
+    let raw: string | null;
     try {
       raw = localStorage.getItem(DRAFT_KEY);
     } catch {

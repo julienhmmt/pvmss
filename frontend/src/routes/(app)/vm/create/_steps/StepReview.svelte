@@ -125,7 +125,7 @@
 		{$t('vmCreate.review.disk')}
 	</h3>
 	<div class="bg-muted/50 grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg p-3 text-sm">
-		{#each form.disks as disk, i}
+		{#each form.disks as disk, i (i)}
 			<span class="text-muted-foreground">
 				{i === 0
 					? $t('vmCreate.disk.primaryDisk')
@@ -146,7 +146,7 @@
 		<WifiHigh class="h-4 w-4" />
 		{$t('vmCreate.review.network')}
 	</h3>
-	{#each form.networks as net, i}
+	{#each form.networks as net, i (i)}
 		<div class="bg-muted/50 grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg p-3 text-sm">
 			<span class="text-muted-foreground">
 				{$t('vmCreate.network.card', { values: { index: String(i + 1) } })}

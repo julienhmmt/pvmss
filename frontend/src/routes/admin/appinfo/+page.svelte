@@ -170,7 +170,7 @@
 							</tr>
 						</thead>
 						<tbody>
-							{#each envVarEntries as [key, value]}
+							{#each envVarEntries as [key, value], i (i)}
 								<tr class="pv-row">
 									<td><span class="pv-td-mono">{key}</span></td>
 									<td class="pv-td-muted">{value}</td>

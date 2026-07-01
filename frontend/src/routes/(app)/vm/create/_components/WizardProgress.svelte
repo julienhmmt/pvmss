@@ -23,7 +23,7 @@
 </script>
 
 <nav class="flex items-center justify-between gap-1 overflow-x-auto pb-2">
-	{#each steps as step, i}
+	{#each steps as step, i (i)}
 		{@const Icon = STEP_ICONS[step]}
 		{@const isCurrent = i === current}
 		{@const isCompleted = i < current}

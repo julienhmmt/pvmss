@@ -62,7 +62,7 @@
 					{$t('common.pagination.perPage', { values: { count: perPage } })}
 				</Select.Trigger>
 				<Select.Content>
-					{#each perPageOptions as option}
+					{#each perPageOptions as option, i (i)}
 						<Select.Item value={String(option)}>{option}</Select.Item>
 					{/each}
 				</Select.Content>

@@ -84,7 +84,7 @@
 		<p class="text-sm text-muted-foreground italic">{$t('common.noData')}</p>
 	{:else}
 		<ul class="space-y-1.5">
-			{#each items as item}
+			{#each items as item, i (i)}
 				<li class="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-3 py-2">
 					<span class="text-sm">{item}</span>
 					<button

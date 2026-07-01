@@ -69,7 +69,7 @@
 
 	function sortStorages(list: Storage[], key: SortKey, dir: SortDir): Storage[] {
 		return [...list].sort((a, b) => {
-			let cmp = 0;
+			let cmp: number;
 			if (key === 'usage') {
 				const aPct = a.total > 0 ? a.used / a.total : 0;
 				const bPct = b.total > 0 ? b.used / b.total : 0;
@@ -200,7 +200,7 @@
 				</Select.Trigger>
 				<Select.Content>
 					<Select.Item value="">{$t('admin.storage.allNodes')}</Select.Item>
-					{#each nodes as node}
+					{#each nodes as node, i (i)}
 						<Select.Item value={node}>{node}</Select.Item>
 					{/each}
 				</Select.Content>
@@ -213,7 +213,7 @@
 				</Select.Trigger>
 				<Select.Content>
 					<Select.Item value="">{$t('admin.storage.allTypes')}</Select.Item>
-					{#each storageTypes as st}
+					{#each storageTypes as st, i (i)}
 						<Select.Item value={st}>{st}</Select.Item>
 					{/each}
 				</Select.Content>
@@ -285,7 +285,7 @@
 						<!-- Content tags -->
 						<td>
 							<div class="flex flex-wrap gap-1">
-								{#each (s.content ?? '').split(',').filter(Boolean) as ct}
+								{#each (s.content ?? '').split(',').filter(Boolean) as ct, i (i)}
 									<span class="pv-action-badge pv-action-badge--vm text-[0.65rem]">{ct.trim()}</span>
 								{/each}
 							</div>

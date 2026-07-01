@@ -65,9 +65,7 @@ jobs:
       working-directory: frontend
       run: bun run check
 
-    # TODO: 170 pre-existing lint errors — non-blocking until a cleanup PR fixes them.
     - name: Lint (eslint)
-      continue-on-error: true
       working-directory: frontend
       run: bun run lint
 
