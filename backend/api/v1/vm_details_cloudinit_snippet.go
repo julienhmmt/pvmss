@@ -5,10 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"path"
-<<<<<<< HEAD
-=======
 	"regexp"
->>>>>>> 8902630 (feat(cloud-init): editable cloud-init + per-VM custom YAML with read-only fallback)
 	"strings"
 	"time"
 
@@ -99,8 +96,6 @@ func snippetFilenameForVM(vmid int) string {
 	return fmt.Sprintf("%s%d.yml", state.CloudInitTemplatePrefix, vmid)
 }
 
-<<<<<<< HEAD
-=======
 // cloudInitSecretLineRe matches YAML lines that carry a credential
 // (password, passwd, hashed_passwd, plain_text_passwd) so they can be redacted
 // before a cloud-config is shown read-only. Proxmox's rendered user-data embeds
@@ -117,7 +112,6 @@ func redactCloudInitSecrets(s string) string {
 	return cloudInitSecretLineRe.ReplaceAllString(s, "${1}<redacted>")
 }
 
->>>>>>> 8902630 (feat(cloud-init): editable cloud-init + per-VM custom YAML with read-only fallback)
 // requireSFTPEnabled writes a 400 response and returns false when SFTP snippet
 // upload is not configured. The Proxmox HTTP API cannot reliably read or write
 // snippets, so the custom cloud-config editor is gated on SFTP.
@@ -201,11 +195,6 @@ func (h *VMDetailsHandler) GetVMCloudInitSnippet(w http.ResponseWriter, r *http.
 				content = ""
 			}
 		}
-<<<<<<< HEAD
-	} else {
-		// SFTP not configured: fall back to the rendered user-data dump so the
-		// user can at least view the effective cloud-config (read-only).
-=======
 	} else if storage != "" {
 		// SFTP not configured but a custom snippet is attached (cicustom set):
 		// the Proxmox dump returns that custom user snippet verbatim, so we can
@@ -213,16 +202,12 @@ func (h *VMDetailsHandler) GetVMCloudInitSnippet(w http.ResponseWriter, r *http.
 		// cicustom — in that case the dump returns Proxmox's generated user-data
 		// (which contains the cipassword hash and is not a "custom" config), so
 		// we return empty and let the UI explain there is no custom config.
->>>>>>> 8902630 (feat(cloud-init): editable cloud-init + per-VM custom YAML with read-only fallback)
 		if content, err = proxmox.GetVMCloudInitDumpResty(ctx, client, node, vmid, "user"); err != nil {
 			logger.Get().Warn().Err(err).Int("vmid", vmid).
 				Msg("api/v1: failed to dump cloud-init user-data, returning empty content")
 			content = ""
 		}
-<<<<<<< HEAD
-=======
 		content = redactCloudInitSecrets(content)
->>>>>>> 8902630 (feat(cloud-init): editable cloud-init + per-VM custom YAML with read-only fallback)
 	}
 
 	writeJSON(w, cloudInitSnippetResponse{

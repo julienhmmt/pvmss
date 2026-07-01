@@ -784,10 +784,7 @@
       "customYamlHint": "Edit the custom cloud-config snippet attached to this VM. Must start with #cloud-config. Re-upload redeploys it on the next cloud-init run (a VM reboot is required).",
       "customYamlSftpDisabled": "Editing the custom cloud-config YAML is disabled. The Proxmox HTTP API cannot reliably read or write snippet files — ask an admin to configure SFTP in Admin > Cloud-Init.",
       "customYamlReadOnly": "Read-only view of the effective cloud-config (rendered by Proxmox). Editing requires SFTP — ask an admin to configure it in Admin > Cloud-Init.",
-<<<<<<< HEAD
-=======
       "customYamlNone": "No custom cloud-config is attached to this VM. Attaching or editing one requires SFTP — ask an admin to configure it in Admin > Cloud-Init.",
->>>>>>> 8902630 (feat(cloud-init): editable cloud-init + per-VM custom YAML with read-only fallback)
       "customYamlSaved": "Custom cloud-config YAML saved"
     },
     "delete": "Delete VM",

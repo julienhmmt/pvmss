@@ -234,8 +234,6 @@
 
 	const customYamlDirty = $derived(customYaml !== customYamlOriginal);
 
-<<<<<<< HEAD
-=======
 	// Size the textarea to the content (clamped) so all lines are visible without
 	// relying on field-sizing-content, which Safari does not support yet.
 	const customYamlRows = $derived(
@@ -247,7 +245,6 @@
 		customYaml.trim() !== '' && customYaml.trim() !== '#cloud-config',
 	);
 
->>>>>>> 8902630 (feat(cloud-init): editable cloud-init + per-VM custom YAML with read-only fallback)
 	async function loadCustomYaml() {
 		if (customYamlLoading || customYamlSaving) return;
 		customYamlLoading = true;
@@ -472,19 +469,6 @@
 					{$t('common.retry')}
 				</Button>
 			{:else if !customYamlEditable}
-<<<<<<< HEAD
-				<!-- SFTP not configured: show a read-only render of the effective
-				     cloud-config (Proxmox cloudinit dump). Editing needs SFTP. -->
-				<p class="rounded-md border border-yellow-500/30 bg-yellow-500/5 px-3 py-2 text-xs text-yellow-700 dark:text-yellow-400">
-					{$t('vm.cloudInit.customYamlReadOnly')}
-				</p>
-				<Textarea
-					value={customYaml}
-					rows={12}
-					readonly
-					class="font-mono text-xs opacity-70"
-				/>
-=======
 				<!-- SFTP not configured. When a custom snippet is attached the
 				     backend returns its content (read-only); otherwise there is no
 				     custom config to show. Editing needs SFTP either way. -->
@@ -503,20 +487,14 @@
 						{$t('vm.cloudInit.customYamlNone')}
 					</p>
 				{/if}
->>>>>>> 8902630 (feat(cloud-init): editable cloud-init + per-VM custom YAML with read-only fallback)
 			{:else}
 				<p class="text-xs text-muted-foreground">
 					{$t('vm.cloudInit.customYamlHint')}
 				</p>
 				<Textarea
 					bind:value={customYaml}
-<<<<<<< HEAD
-					rows={12}
-					class="font-mono text-xs"
-=======
 					rows={customYamlRows}
 					class="max-h-[60vh] resize-y overflow-auto font-mono text-xs"
->>>>>>> 8902630 (feat(cloud-init): editable cloud-init + per-VM custom YAML with read-only fallback)
 					placeholder="#cloud-config&#10;package_update: true&#10;packages:&#10;  - curl"
 				/>
 				<div class="flex items-center justify-end gap-2 pt-1">

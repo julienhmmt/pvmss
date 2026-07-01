@@ -13,8 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-<<<<<<< HEAD
-=======
 // --- redactCloudInitSecrets unit tests ---
 
 func TestRedactCloudInitSecrets(t *testing.T) {
@@ -47,7 +45,6 @@ func TestRedactCloudInitSecrets(t *testing.T) {
 	}
 }
 
->>>>>>> 8902630 (feat(cloud-init): editable cloud-init + per-VM custom YAML with read-only fallback)
 // --- parseCICustomUser unit tests (table-driven) ---
 
 func TestParseCICustomUser(t *testing.T) {
