@@ -37,7 +37,7 @@ const MAX_CONSECUTIVE_ERRORS = 5;
 const MAX_POLL_DURATION_MS = 10 * 60 * 1000; // matches backend finalizeAfterTask timeout
 
 function createTasksStore(): TasksStore {
-  let state = $state<TasksState>({ tasks: [] });
+  const state = $state<TasksState>({ tasks: [] });
 
   const completionCallbacks = new Map<string, (task: ActiveTask) => void>();
   const pollingIntervals = new Map<string, ReturnType<typeof setInterval>>();

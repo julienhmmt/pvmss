@@ -141,7 +141,7 @@
 		<p class="text-sm text-muted-foreground">{$t('admin.settings.overview.nodelimits.emptyHint')}</p>
 	{:else}
 		<ul class="space-y-1.5">
-			{#each items as item}
+			{#each items as item, i (i)}
 				<li class="flex items-start justify-between rounded-lg border border-border bg-muted/30 px-3 py-2 gap-3">
 					<div class="min-w-0">
 						<span class="text-sm font-medium">{item.node}</span>

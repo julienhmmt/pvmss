@@ -56,7 +56,7 @@
 		<Table.Root>
 			<Table.Header>
 				<Table.Row>
-					{#each columns as col}
+					{#each columns as col, i (i)}
 						<Table.Head>
 							{#if col.sortable}
 								<button
@@ -76,12 +76,12 @@
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
-				{#each sorted as row}
+				{#each sorted as row, i (i)}
 					<Table.Row
 						class={onRowClick ? 'cursor-pointer hover:bg-muted/50' : ''}
 						onclick={() => onRowClick?.(row)}
 					>
-						{#each columns as col}
+						{#each columns as col, i (i)}
 							<Table.Cell>
 								{#if col.render}
 									{@render col.render(row)}

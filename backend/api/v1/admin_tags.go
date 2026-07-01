@@ -116,6 +116,10 @@ func (h *AdminMutationsHandler) SetTagColor(w http.ResponseWriter, r *http.Reque
 		errBadRequest(w, "missing tag name")
 		return
 	}
+	if err := validateTagName(name); err != nil {
+		writeAppError(w, err)
+		return
+	}
 	settings := h.state.GetSettings()
 	known := false
 	for _, t := range settings.Tags {
@@ -165,6 +169,10 @@ func (h *AdminMutationsHandler) DeleteTag(w http.ResponseWriter, r *http.Request
 	name := ps.ByName("name")
 	if name == "" {
 		errBadRequest(w, "missing tag name")
+		return
+	}
+	if err := validateTagName(name); err != nil {
+		writeAppError(w, err)
 		return
 	}
 	if strings.EqualFold(name, constants.RequiredTag) {

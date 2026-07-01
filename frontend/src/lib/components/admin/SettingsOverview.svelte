@@ -121,7 +121,7 @@
 							{$t('admin.settings.overview.resources')}
 						</h3>
 						<div class="space-y-4">
-							{#each getSectionsByCategory(CATEGORY_RESOURCES) as [table, section]}
+							{#each getSectionsByCategory(CATEGORY_RESOURCES) as [table, section], i (i)}
 								{#if table === TABLE_VM_LIMITS}
 									<SettingsVMLimits meta={section} data={section.data as any} onUpdate={loadOverview} />
 								{/if}
@@ -140,7 +140,7 @@
 							{$t('admin.settings.overview.inventory')}
 						</h3>
 						<div class="space-y-4">
-							{#each getSectionsByCategory(CATEGORY_INVENTORY) as [table, section]}
+							{#each getSectionsByCategory(CATEGORY_INVENTORY) as [table, section], i (i)}
 								{#if table === TABLE_ENABLED_NODES || table === TABLE_ENABLED_STORAGES || table === TABLE_ENABLED_ISOS || table === TABLE_ENABLED_VMBRS || table === TABLE_TAGS}
 									<SettingsListSection meta={section} data={section.data as string[]} table={table} onUpdate={loadOverview} />
 								{/if}
@@ -156,7 +156,7 @@
 							{$t('admin.settings.overview.templates')}
 						</h3>
 						<div class="space-y-4">
-							{#each getSectionsByCategory(CATEGORY_TEMPLATES) as [table, section]}
+							{#each getSectionsByCategory(CATEGORY_TEMPLATES) as [table, section], i (i)}
 								{#if table === TABLE_CLOUDINIT_TEMPLATES}
 									<SettingsCloudInit meta={section} data={section.data as any} onUpdate={loadOverview} />
 								{/if}
@@ -175,7 +175,7 @@
 							{$t('admin.settings.overview.integrations')}
 						</h3>
 						<div class="space-y-4">
-							{#each getSectionsByCategory(CATEGORY_INTEGRATIONS) as [table, section]}
+							{#each getSectionsByCategory(CATEGORY_INTEGRATIONS) as [table, section], i (i)}
 								{#if table === TABLE_SFTP_CONFIG}
 									<SettingsSFTP meta={section} data={section.data as any} onUpdate={loadOverview} />
 								{/if}

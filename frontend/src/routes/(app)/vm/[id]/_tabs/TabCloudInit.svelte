@@ -96,7 +96,9 @@
 	}
 
 	// Seed from the initial config without tracking it here; the $effect below
-	// keeps `form` in sync when the config reference changes.
+	// keeps `form` in sync when the config reference changes. Kept as $state (not
+	// writable $derived) because form fields are two-way bound (bind:value).
+	// eslint-disable-next-line svelte/prefer-writable-derived
 	let form = $state<CloudInitFormState>(untrack(() => buildInitialState(config)));
 	let saving = $state(false);
 

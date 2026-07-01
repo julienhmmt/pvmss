@@ -186,7 +186,7 @@
 		{:else}
 			<!-- Step indicator -->
 			<div class="mb-6 flex items-center gap-2">
-				{#each STEPS as step, i}
+				{#each STEPS as step, i (i)}
 					<div class="flex items-center gap-2 flex-1">
 						<div class="flex flex-col items-center gap-1">
 							<div class="flex items-center justify-center h-7 w-7 rounded-full text-xs font-medium
@@ -284,7 +284,7 @@
 								</Button>
 							</div>
 							<div class="space-y-2">
-								{#each proxmoxData.nodes as node}
+								{#each proxmoxData.nodes as node, i (i)}
 									<div class="flex items-center gap-3 p-3 rounded-lg border">
 										<Checkbox
 											id="node-{node}"
@@ -324,7 +324,7 @@
 										<Button variant="ghost" size="sm" onclick={() => { selectedStorages = new Set(); }}>{$t('setup.resources.deselectAll')}</Button>
 									</div>
 									<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-										{#each proxmoxData?.storages ?? [] as item}
+										{#each proxmoxData?.storages ?? [] as item, i (i)}
 											<div class="flex items-center gap-2 p-2 rounded border text-sm">
 												<Checkbox id="storage-{item}" checked={selectedStorages.has(item)} onCheckedChange={() => { selectedStorages = toggleItem(selectedStorages, item); }} />
 												<Label for="storage-{item}" class="cursor-pointer truncate">{item}</Label>
@@ -351,7 +351,7 @@
 										<Button variant="ghost" size="sm" onclick={() => { selectedISOs = new Set(); }}>{$t('setup.resources.deselectAll')}</Button>
 									</div>
 									<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-										{#each proxmoxData?.isos ?? [] as item}
+										{#each proxmoxData?.isos ?? [] as item, i (i)}
 											<div class="flex items-center gap-2 p-2 rounded border text-sm">
 												<Checkbox id="iso-{item}" checked={selectedISOs.has(item)} onCheckedChange={() => { selectedISOs = toggleItem(selectedISOs, item); }} />
 												<Label for="iso-{item}" class="cursor-pointer truncate">{item}</Label>
@@ -378,7 +378,7 @@
 										<Button variant="ghost" size="sm" onclick={() => { selectedVMBRs = new Set(); }}>{$t('setup.resources.deselectAll')}</Button>
 									</div>
 									<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-										{#each proxmoxData?.vmbrs ?? [] as item}
+										{#each proxmoxData?.vmbrs ?? [] as item, i (i)}
 											<div class="flex items-center gap-2 p-2 rounded border text-sm">
 												<Checkbox id="vmbr-{item}" checked={selectedVMBRs.has(item)} onCheckedChange={() => { selectedVMBRs = toggleItem(selectedVMBRs, item); }} />
 												<Label for="vmbr-{item}" class="cursor-pointer truncate">{item}</Label>
@@ -399,7 +399,7 @@
 								{ key: 'maxNetworkCards', label: $t('setup.limits.maxNetworkCards') },
 								{ key: 'maxDiskPerVm', label: $t('setup.limits.maxDiskPerVM') },
 								{ key: 'maxSnapshots', label: $t('setup.limits.maxSnapshots') },
-							] as field}
+							] as field, i (i)}
 								<div class="space-y-1">
 									<Label for="limit-{field.key}">{field.label}</Label>
 									<Input
@@ -432,7 +432,7 @@
 								{ label: $t('setup.review.storages'), items: [...selectedStorages] },
 								{ label: $t('setup.review.isos'), items: [...selectedISOs] },
 								{ label: $t('setup.review.vmbrs'), items: [...selectedVMBRs] },
-							] as section}
+							] as section, i (i)}
 								<div>
 									<span class="font-medium">{section.label}:</span>
 									{#if section.items.length === 0}

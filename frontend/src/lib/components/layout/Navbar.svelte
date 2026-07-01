@@ -295,7 +295,7 @@
 						{#if notifications.notifications.length === 0}
 							<DropdownMenu.Item disabled>No notifications</DropdownMenu.Item>
 						{:else}
-							{#each notifications.notifications as notification}
+							{#each notifications.notifications as notification, i (i)}
 								<div
 									class="pv-notification-item {notification.read ? '' : 'pv-notification-item--unread'}"
 									role="button"

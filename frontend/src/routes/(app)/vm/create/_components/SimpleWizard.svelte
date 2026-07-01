@@ -78,7 +78,7 @@
 
 <!-- Simple step indicator -->
 <nav class="flex items-center gap-2">
-	{#each SIMPLE_STEPS as step, i}
+	{#each SIMPLE_STEPS as step, i (i)}
 		{@const isCurrent = i === simpleStep}
 		{@const isCompleted = i < simpleStep}
 		<div class="flex items-center gap-2">
@@ -117,7 +117,7 @@
 			<p class="text-muted-foreground text-sm mt-1">{$t('vmCreate.simple.chooseProfileHint')}</p>
 		</div>
 		<div class="grid gap-3 sm:grid-cols-2">
-			{#each settings.vmProfiles ?? [] as profile}
+			{#each settings.vmProfiles ?? [] as profile, i (i)}
 				{@const ProfileIcon = PROFILE_ICONS[profile.icon] ?? Globe}
 				{@const colors = profileColorClasses(profile.color)}
 				{@const isSelected = store.selectedProfileId === profile.id}
@@ -215,7 +215,7 @@
 							{store.form.node || $t('vmCreate.base.selectNode')}
 						</Select.Trigger>
 						<Select.Content>
-							{#each settings.nodes as node}
+							{#each settings.nodes as node, i (i)}
 								<Select.Item value={node.name} disabled={node.disabled}>
 									{node.name}
 									{#if node.disabled}
@@ -248,7 +248,7 @@
 							{store.form.storage || $t('vmCreate.base.selectStorage')}
 						</Select.Trigger>
 						<Select.Content>
-							{#each settings.storages as storage}
+							{#each settings.storages as storage, i (i)}
 								<Select.Item value={storage.name}>
 									{storage.name}
 									{#if storage.node === ''}
@@ -291,7 +291,7 @@
 						</Select.Trigger>
 						<Select.Content>
 							<Select.Item value="">{$t('vmCreate.base.noIso')}</Select.Item>
-							{#each settings.isos as iso}
+							{#each settings.isos as iso, i (i)}
 								<Select.Item value={iso.volid}>{iso.name}</Select.Item>
 							{/each}
 						</Select.Content>

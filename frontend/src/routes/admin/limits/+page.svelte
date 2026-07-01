@@ -254,7 +254,7 @@
 					{ key: 'cores',   icon: Cpu, label: $t('admin.limits.cpuCores'),   unit: '', tint: 'sky', range: limits.vm.cores,   bindMin: (v: number) => (limits!.vm.cores.min = v),   bindMax: (v: number) => (limits!.vm.cores.max = v) },
 					{ key: 'ram',     icon: Memory, label: $t('admin.limits.ramGb'),   unit: 'GB', tint: 'violet', range: limits.vm.ram,    bindMin: (v: number) => (limits!.vm.ram.min = v),     bindMax: (v: number) => (limits!.vm.ram.max = v) },
 					{ key: 'disk',    icon: Database, label: $t('admin.limits.diskGb'), unit: 'GB', tint: 'emerald', range: limits.vm.disk, bindMin: (v: number) => (limits!.vm.disk.min = v),    bindMax: (v: number) => (limits!.vm.disk.max = v) }
-				] as row}
+				] as row, i (i)}
 					<div class="flex flex-wrap items-center gap-4 px-5 py-3">
 						<div class="flex min-w-[180px] flex-1 items-center gap-3">
 							<div class="flex h-8 w-8 items-center justify-center rounded-md {tintClasses(row.tint)}">
@@ -397,7 +397,7 @@
 				</header>
 
 				<div class="divide-y divide-border">
-					{#each visibleNodes as name}
+					{#each visibleNodes as name, i (i)}
 						{@const status = nodeStatus(name)}
 						{@const nodeLimits = limits.nodes[name]}
 						{@const collapsed = isCollapsed(name)}
@@ -439,7 +439,7 @@
 										{ icon: Cpu, label: $t('admin.limits.cpuCores'),   unit: '', tint: 'sky', range: nodeLimits.cores,   bindMin: (v: number) => (nodeLimits.cores.min = v),   bindMax: (v: number) => (nodeLimits.cores.max = v) },
 										{ icon: Memory, label: $t('admin.limits.ramGb'),   unit: 'GB', tint: 'violet', range: nodeLimits.ram,  bindMin: (v: number) => (nodeLimits.ram.min = v),     bindMax: (v: number) => (nodeLimits.ram.max = v) },
 										{ icon: Database, label: $t('admin.limits.diskGb'), unit: 'GB', tint: 'emerald', range: nodeLimits.disk, bindMin: (v: number) => (nodeLimits.disk.min = v),    bindMax: (v: number) => (nodeLimits.disk.max = v) }
-									] as nrow}
+									] as nrow, i (i)}
 										<div class="flex flex-wrap items-center gap-4 px-5 py-2.5 pl-14">
 											<div class="flex min-w-[160px] flex-1 items-center gap-3">
 												<div class="flex h-7 w-7 items-center justify-center rounded-md {tintClasses(nrow.tint)}">

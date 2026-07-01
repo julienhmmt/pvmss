@@ -55,7 +55,7 @@ function createVMsStore(): VMsStore {
           node = vmConfig.node;
         } catch (error) {
           const err = error instanceof Error ? error : new Error("Failed to fetch VM config for action");
-          throw new Error(`Cannot determine node for VM ${vmid}: ${err.message}`);
+          throw new Error(`Cannot determine node for VM ${vmid}: ${err.message}`, { cause: error });
         }
       }
       if (!node) {

@@ -56,7 +56,7 @@ PVMSS runs as a stateless web application (Go backend + HTML/CSS frontend) and r
 ## Architecture at a glance
 
 - **Backend**: Go 1.25+, RESTy client for Proxmox APIs, basic HTML templates.
-- **Frontend**: Bulma-based, with custom CSS.
+- **Frontend**: SvelteKit SPA (Svelte 5 runes, TypeScript, Tailwind CSS).
 - **Authentication**: Proxmox API token for backend actions, user sessions for UI.
 
 ## Configuration
@@ -167,10 +167,11 @@ You can rely on `.env` + `env_file` or inline `environment:` entries, but **not 
 | ------------------------- | ---------------------------------------------------------------------------- | :------: | -------------------- |
 | `ADMIN_PASSWORD_HASH`     | Bcrypt hash for the admin UI login                                           |    ✅    | —                    |
 | `SESSION_SECRET`          | 32+ byte secret to encrypt sessions/cookies                                  |    ✅    | —                    |
+| `JWT_SECRET`              | HS256 signing key for `/api/v1/` JWTs (≥ 32 bytes)                           |    ✅    | —                    |
 | `PROXMOX_API_TOKEN_NAME`  | Proxmox token name (`user@pve!token`) used by the backend                    |    ✅    | —                    |
 | `PROXMOX_API_TOKEN_VALUE` | Token secret that matches the name above                                     |    ✅    | —                    |
 | `PROXMOX_URL`             | Full API URL (`https://host:8006/api2/json`)                                 |    ✅    | —                    |
-| `PROXMOX_VERIFY_SSL`      | `true` for trusted certs, `false` for self-signed labs                       |    ❌    | `false`              |
+| `PROXMOX_VERIFY_SSL`      | `true` for trusted certs, `false` for self-signed labs                       |    ❌    | `true`               |
 | `PVMSS_ENV`               | `production/prod` (secure cookies + HSTS) or `development/dev/developpement` |    ❌    | `production`         |
 | `PVMSS_OFFLINE`           | `true` disables all Proxmox calls (demo mode)                                |    ❌    | `false`              |
 | `PVMSS_DB_PATH`          | Path to SQLite database file (must be on persistent volume)                 |    ✅    | `/data/pvmss.db`     |
@@ -178,6 +179,7 @@ You can rely on `.env` + `env_file` or inline `environment:` entries, but **not 
 | `LOG_OUTPUT`              | Log destination: `stdout`, `file`, or `both`                                 |    ❌    | `stdout`             |
 | `LOG_FILE_PATH`           | File path when `LOG_OUTPUT` is `file` or `both`                              |    ❌    | —                    |
 | `LOG_FORMAT`              | `console` (human readable) or `json` (machine/SIEM)                          |    ❌    | `console`            |
+| `PORT`                    | TCP port the HTTP server listens on                                          |    ❌    | `50000`              |
 | `TZ`                      | Container timezone                                                           |    ❌    | `UTC`                |
 
 > Tip: `ADMIN_PASSWORD_HASH` can be generated locally with `htpasswd -bnBC 10 "admin" "StrongPassword" | cut -d: -f2`.

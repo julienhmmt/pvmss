@@ -46,7 +46,7 @@
 				{store.form.node || $t('vmCreate.base.selectNode')}
 			</Select.Trigger>
 			<Select.Content>
-				{#each settings.nodes as node}
+				{#each settings.nodes as node, i (i)}
 					<Select.Item value={node.name} disabled={node.disabled}>
 						{node.name}
 						{#if node.disabled}
@@ -74,7 +74,7 @@
 				{store.form.storage || $t('vmCreate.base.selectStorage')}
 			</Select.Trigger>
 			<Select.Content>
-				{#each settings.storages as storage}
+				{#each settings.storages as storage, i (i)}
 					<Select.Item value={storage.name}>
 						{storage.name}
 						{#if storage.node}
@@ -107,7 +107,7 @@
 			</Select.Trigger>
 			<Select.Content>
 				<Select.Item value="">{$t('vmCreate.base.noIso')}</Select.Item>
-				{#each settings.isos as iso}
+				{#each settings.isos as iso, i (i)}
 					<Select.Item value={iso.volid}>{iso.name}</Select.Item>
 				{/each}
 			</Select.Content>
@@ -126,7 +126,7 @@
 		<div class="space-y-2 sm:col-span-2">
 			<Label>{$t('vmCreate.base.tags')}</Label>
 			<div class="flex flex-wrap gap-2">
-				{#each settings.tags as tag}
+				{#each settings.tags as tag, i (i)}
 					<button
 						type="button"
 						onclick={() => store.toggleTag(tag)}
