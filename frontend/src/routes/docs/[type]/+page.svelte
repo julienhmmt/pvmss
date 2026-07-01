@@ -351,6 +351,7 @@
 			<LoadingSkeleton variant="card" rows={8} />
 		{:else}
 			<article class="pv-prose">
+				<!-- eslint-disable-next-line svelte/no-at-html-tags -- trusted app-owned docs HTML, not user input -->
 				{@html html}
 			</article>
 		{/if}

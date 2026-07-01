@@ -45,3 +45,55 @@ jobs:
         PROXMOX_VERIFY_SSL: false
         PVMSS_OFFLINE: true
         SESSION_SECRET: changeMeWithSomethingElseUnique
+        JWT_SECRET: changeMeWithSomethingElseUniqueAtLeast32Bytes!!
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Set up Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - name: Install dependencies
+      working-directory: frontend
+      run: bun install --frozen-lockfile
+
+    - name: Type check (svelte-check)
+      working-directory: frontend
+      run: bun run check
+
+    - name: Lint (eslint)
+      working-directory: frontend
+      run: bun run lint
+
+    - name: Test (vitest)
+      working-directory: frontend
+      run: bun run test
+
+  race:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Set up Go
+      uses: actions/setup-go@v6
+      with:
+        go-version-file: backend/go.mod
+        cache: true
+
+    - name: Race detector
+      run: make test-offline-race
+      env:
+        ADMIN_PASSWORD_HASH: $2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e
+        GO_TEST_ENVIRONMENT: 1
+        LOG_LEVEL: INFO
+        PROXMOX_API_TOKEN_NAME: tokenName@changeMe!value
+        PROXMOX_API_TOKEN_VALUE: aaaaaaaaaa-0000-44aa-1111-aaaaaaaaaaa
+        PROXMOX_URL: https://localhost:8006/api2/json
+        PROXMOX_VERIFY_SSL: false
+        PVMSS_OFFLINE: true
+        SESSION_SECRET: changeMeWithSomethingElseUnique
+        JWT_SECRET: changeMeWithSomethingElseUniqueAtLeast32Bytes!!

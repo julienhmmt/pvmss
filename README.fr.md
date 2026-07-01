@@ -56,7 +56,7 @@ PVMSS est une application stateless (backend Go + frontend HTML/CSS) qui s'appui
 ## Architecture en un coup d'œil
 
 - **Backend** : Go 1.25+, client RESTy pour les API Proxmox, templates HTML basiques.
-- **Frontend** : Basé sur Bulma avec CSS personnalisé.
+- **Frontend** : SPA SvelteKit (Svelte 5 runes, TypeScript, Tailwind CSS).
 - **Authentification** : token API Proxmox pour le backend, sessions utilisateur pour l'UI.
 
 ## Configuration
@@ -139,10 +139,11 @@ Utilisez **soit** un `.env` (via `env_file`) **soit** des variables inline, pas 
 | ------------------------- | -------------------------------------------------------------- | :----: | -------------------- |
 | `ADMIN_PASSWORD_HASH`     | Hash bcrypt pour l'admin                                       |   ✅   | —                    |
 | `SESSION_SECRET`          | Secret de 32+ octets pour sessions/cookies                     |   ✅   | —                    |
+| `JWT_SECRET`              | Clé de signature HS256 des JWT `/api/v1/` (≥ 32 octets)        |   ✅   | —                    |
 | `PROXMOX_API_TOKEN_NAME`  | Nom du token Proxmox (`user@pve!token`)                        |   ✅   | —                    |
 | `PROXMOX_API_TOKEN_VALUE` | Valeur du token ci-dessus                                      |   ✅   | —                    |
 | `PROXMOX_URL`             | URL complète de l'API (`https://host:8006/api2/json`)          |   ✅   | —                    |
-| `PROXMOX_VERIFY_SSL`      | `true` pour certificats valides, `false` sinon                 |   ❌   | `false`              |
+| `PROXMOX_VERIFY_SSL`      | `true` pour certificats valides, `false` sinon                 |   ❌   | `true`               |
 | `PVMSS_ENV`               | `production/prod` ou `development/dev/developpement`           |   ❌   | `production`         |
 | `PVMSS_OFFLINE`           | `true` pour désactiver les appels Proxmox                      |   ❌   | `false`              |
 | `PVMSS_DB_PATH`          | Chemin vers le fichier SQLite DB (volume persistant requis)    |   ✅   | `/data/pvmss.db`     |
@@ -150,6 +151,7 @@ Utilisez **soit** un `.env` (via `env_file`) **soit** des variables inline, pas 
 | `LOG_OUTPUT`              | Destination des logs : `stdout`, `file` ou `both`              |   ❌   | `stdout`             |
 | `LOG_FILE_PATH`           | Chemin du fichier log si `LOG_OUTPUT` = `file` ou `both`       |   ❌   | —                    |
 | `LOG_FORMAT`              | `console` (lisible humainement) ou `json` (pour SIEM/collecte) |   ❌   | `console`            |
+| `PORT`                    | Port TCP d'écoute du serveur HTTP                              |   ❌   | `50000`              |
 | `TZ`                      | Fuseau horaire du conteneur                                    |   ❌   | `UTC`                |
 
 > Astuce : `htpasswd -bnBC 10 "admin" "MotDePasseFort" | cut -d: -f2` permet de générer `ADMIN_PASSWORD_HASH`.

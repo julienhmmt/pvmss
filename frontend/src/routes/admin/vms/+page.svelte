@@ -261,7 +261,7 @@
 				</Select.Trigger>
 				<Select.Content>
 					<Select.Item value="">{$t('admin.vms.allNodes')}</Select.Item>
-					{#each nodeNames as nodeName}
+					{#each nodeNames as nodeName, i (i)}
 						<Select.Item value={nodeName}>{nodeName}</Select.Item>
 					{/each}
 				</Select.Content>
@@ -307,7 +307,7 @@
 				</tr>
 			</thead>
 			<tbody>
-				{#each vms as vm}
+				{#each vms as vm, i (i)}
 					{@const cpuPercent = Math.round(vm.cpu * 100)}
 					{@const ramPercent = formatPercent(vm.mem, vm.maxMem)}
 					{@const isRunning = vm.status === 'running'}
@@ -340,7 +340,7 @@
 						<!-- Tags -->
 						<td>
 							<div class="flex flex-wrap gap-1">
-								{#each parseTags(vm.tags) as tag}
+								{#each parseTags(vm.tags) as tag, i (i)}
 									<span class="pv-action-badge pv-action-badge--vm text-[0.65rem]">{tag}</span>
 								{/each}
 							</div>

@@ -77,7 +77,7 @@
 					store.form.diskBus}
 			</Select.Trigger>
 			<Select.Content>
-				{#each DISK_BUSES as bus}
+				{#each DISK_BUSES as bus, i (i)}
 					<Select.Item value={bus.value}>{$t(bus.labelKey)}</Select.Item>
 				{/each}
 			</Select.Content>

@@ -62,7 +62,7 @@
 	<SidebarContent class="px-3 py-3">
 		<div class="pv-sidebar-section-label">{$t('nav.administration')}</div>
 		<SidebarMenu class="gap-0.5">
-			{#each items as item}
+			{#each items as item, i (i)}
 				{@const active = isActive(item.href, $page.url.pathname)}
 				<SidebarMenuItem>
 					<a href={item.href} class="pv-sidebar-item {active ? 'pv-sidebar-item--active' : ''}">

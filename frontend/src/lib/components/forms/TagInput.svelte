@@ -24,7 +24,7 @@
 </script>
 
 <div class="flex flex-wrap items-center gap-2">
-	{#each tags as tag}
+	{#each tags as tag, i (i)}
 		<Badge variant="secondary" class="gap-1">
 			{tag}
 			<button class="ml-1 hover:text-destructive" onclick={() => onRemove(tag)}>

@@ -221,7 +221,7 @@
 							</tr>
 						</thead>
 						<tbody>
-							{#each nodes as node}
+							{#each nodes as node, i (i)}
 								{@const cpuPct = Math.round(node.cpu * 100)}
 								{@const ramPct = Number(formatPercent(node.memory, node.maxMemory))}
 								<tr class="pv-row">
@@ -317,7 +317,7 @@
 							</tr>
 						</thead>
 						<tbody>
-							{#each envVarEntries as [key, value]}
+							{#each envVarEntries as [key, value], i (i)}
 								<tr class="pv-row">
 									<td><span class="pv-td-mono">{key}</span></td>
 									<td class="pv-td-muted">{value}</td>

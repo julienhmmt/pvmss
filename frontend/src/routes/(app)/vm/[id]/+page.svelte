@@ -95,7 +95,7 @@
 		const keys = ['overview', 'disks', 'network', 'snapshots', 'cloudinit'] as const;
 		const idx = keys.indexOf(currentKey as (typeof keys)[number]);
 		if (idx === -1) return;
-		let next = idx;
+		let next: number;
 		if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
 			next = (idx + 1) % keys.length;
 		} else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {

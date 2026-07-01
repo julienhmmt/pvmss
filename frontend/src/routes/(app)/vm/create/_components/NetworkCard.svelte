@@ -51,7 +51,7 @@
 					{net.bridge || $t('vmCreate.network.selectBridge')}
 				</Select.Trigger>
 				<Select.Content>
-					{#each settings.bridges as bridge}
+					{#each settings.bridges as bridge, i (i)}
 						<Select.Item value={bridge.name}>
 							{bridge.name}
 							{#if bridge.description}
@@ -75,7 +75,7 @@
 					{$t(NETWORK_MODELS.find((m) => m.value === net.model)?.labelKey) || net.model}
 				</Select.Trigger>
 				<Select.Content>
-					{#each NETWORK_MODELS as model}
+					{#each NETWORK_MODELS as model, i (i)}
 						<Select.Item value={model.value}>{$t(model.labelKey)}</Select.Item>
 					{/each}
 				</Select.Content>

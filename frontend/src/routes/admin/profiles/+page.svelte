@@ -385,7 +385,7 @@
 							{form.diskBus || 'Select bus...'}
 						</Select.Trigger>
 						<Select.Content>
-							{#each ['virtio', 'scsi', 'sata', 'ide'] as bus}
+							{#each ['virtio', 'scsi', 'sata', 'ide'] as bus, i (i)}
 								<Select.Item value={bus}>{bus}</Select.Item>
 							{/each}
 						</Select.Content>
@@ -404,7 +404,7 @@
 							</Select.Trigger>
 							<Select.Content>
 								<Select.Item value="">{$t('admin.profiles.autoSelect')}</Select.Item>
-								{#each vmSettings.nodes.filter((n) => !n.disabled) as node}
+								{#each vmSettings.nodes.filter((n) => !n.disabled) as node, i (i)}
 									<Select.Item value={node.name}>{node.name}</Select.Item>
 								{/each}
 							</Select.Content>
@@ -418,7 +418,7 @@
 							</Select.Trigger>
 							<Select.Content>
 								<Select.Item value="">{$t('admin.profiles.autoSelect')}</Select.Item>
-								{#each vmSettings.storages as storage}
+								{#each vmSettings.storages as storage, i (i)}
 									<Select.Item value={storage.name}>
 										{storage.name}{storage.node === '' ? ' — shared' : ''}
 									</Select.Item>
@@ -450,7 +450,7 @@
 							{$t(`admin.profiles.iconOptions.${form.icon}`) || 'Select icon...'}
 						</Select.Trigger>
 						<Select.Content>
-							{#each ICON_OPTIONS as iconKey}
+							{#each ICON_OPTIONS as iconKey, i (i)}
 								<Select.Item value={iconKey}>
 									{$t(`admin.profiles.iconOptions.${iconKey}`)}
 								</Select.Item>
@@ -468,7 +468,7 @@
 							{$t(`admin.profiles.colorOptions.${form.color}`) || 'Select color...'}
 						</Select.Trigger>
 						<Select.Content>
-							{#each COLOR_OPTIONS as colorKey}
+							{#each COLOR_OPTIONS as colorKey, i (i)}
 								<Select.Item value={colorKey}>
 									{$t(`admin.profiles.colorOptions.${colorKey}`)}
 								</Select.Item>

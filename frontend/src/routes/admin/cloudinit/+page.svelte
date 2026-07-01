@@ -457,7 +457,7 @@
 							{form.storage || $t('admin.cloudinit.selectStorage')}
 						</Select.Trigger>
 						<Select.Content>
-							{#each snippetStorages as s}
+							{#each snippetStorages as s, i (i)}
 								<Select.Item value={s}>{s}</Select.Item>
 							{/each}
 						</Select.Content>

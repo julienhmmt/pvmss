@@ -27,7 +27,25 @@ var (
 	sshKeyPrefixRe = regexp.MustCompile(`^(ssh-rsa|ssh-ed25519|ssh-dss|ecdsa-sha2-nistp(256|384|521)|sk-ecdsa-sha2-nistp(256|384|521)|sk-ssh-ed25519) `)
 	// domainLabelRe matches a single DNS label (RFC 1035, relaxed length).
 	domainLabelRe = regexp.MustCompile(`^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$`)
+	// poolNameRegex restricts a pool name to characters safe for Proxmox
+	// pool-id concatenation and API paths (letters, digits, hyphens,
+	// underscores; 1..50 chars).
+	poolNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,50}$`)
 )
+
+// validatePoolName rejects pool names that could inject unexpected characters
+// into the Proxmox API path or pool-id concatenation. Returns a
+// *ValidationError on failure.
+func validatePoolName(name string) error {
+	if !poolNameRegex.MatchString(name) {
+		return pverrors.ValidationErr(
+			"pool",
+			name,
+			"use only letters, digits, hyphens, underscores (max 50 chars)",
+		)
+	}
+	return nil
+}
 
 // validateTagName checks that name matches the tag-name format (letters,
 // digits, hyphens, underscores; 1..50 chars). Returns a *ValidationError on

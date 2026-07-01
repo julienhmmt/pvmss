@@ -84,7 +84,7 @@
 				{TABLE_OPTIONS.find((o) => o.value === tableFilter)?.label ?? 'All tables'}
 			</Select.Trigger>
 			<Select.Content>
-				{#each TABLE_OPTIONS as opt}
+				{#each TABLE_OPTIONS as opt, i (i)}
 					<Select.Item value={opt.value}>{opt.label}</Select.Item>
 				{/each}
 			</Select.Content>

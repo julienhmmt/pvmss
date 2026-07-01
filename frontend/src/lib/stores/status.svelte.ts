@@ -19,7 +19,7 @@ interface StatusStore {
 }
 
 function createStatusStore(): StatusStore {
-  let state = $state<StatusState>({
+  const state = $state<StatusState>({
     proxmoxConnection: {
       id: "proxmox",
       name: "Proxmox",

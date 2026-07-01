@@ -169,7 +169,7 @@
 				</Select.Trigger>
 				<Select.Content>
 					<Select.Item value="">{$t('admin.vmbr.allNodes')}</Select.Item>
-					{#each nodes as node}
+					{#each nodes as node, i (i)}
 						<Select.Item value={node}>{node}</Select.Item>
 					{/each}
 				</Select.Content>
@@ -259,7 +259,7 @@
 							<td>
 								{#if v.bridgePorts?.trim()}
 									<div class="flex flex-wrap gap-1">
-										{#each v.bridgePorts.split(/\s+/).filter(Boolean) as port}
+										{#each v.bridgePorts.split(/\s+/).filter(Boolean) as port, i (i)}
 											<span class="pv-port-chip">
 												<PlugsConnectedIcon class="h-3 w-3" />
 												{port}

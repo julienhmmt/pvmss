@@ -6,7 +6,7 @@
 	<div class="space-y-3">
 		<Skeleton class="h-5 w-40" />
 		<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-			{#each Array(3) as _}
+			{#each Array(3) as _, i (i)}
 				<Skeleton class="h-32 w-full rounded-xl" />
 			{/each}
 		</div>
