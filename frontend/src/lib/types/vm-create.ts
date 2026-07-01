@@ -76,6 +76,8 @@ export interface VMCreateSettings {
   cloudinitTemplates: VMCreateCITemplate[];
   /** True when at least one cloud-init template is enabled by an admin. */
   cloudInitAvailable: boolean;
+  /** True when SFTP is configured; required to attach custom-YAML templates. */
+  cloudInitSftpEnabled: boolean;
   limits: VMCreateLimits;
   maxNetworkCards: number;
   maxDiskPerVm: number;

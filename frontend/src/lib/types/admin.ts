@@ -117,11 +117,31 @@ export interface ClusterInfo {
 export interface SFTPStatus {
   enabled: boolean;
   host?: string;
+  port?: number;
   username?: string;
+  remotePath?: string;
   keyExists: boolean;
+  keySet: boolean;
+  keyPath?: string;
+  fingerprint?: string;
   isConfigured: boolean;
   statusText: string;
   statusType: "success" | "warning" | "danger";
+}
+
+/** Payload for PUT /api/v1/admin/cloudinit-sftp. Blank privateKey keeps the stored key. */
+export interface SFTPConfigPayload {
+  host: string;
+  port: number;
+  username: string;
+  remotePath: string;
+  privateKey?: string;
+  privateKeyPath?: string;
+}
+
+export interface SFTPTestResult {
+  success: boolean;
+  message: string;
 }
 
 export interface AppInfo {

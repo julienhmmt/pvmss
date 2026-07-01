@@ -214,11 +214,28 @@ type AdminClusterInfoResponse struct {
 type AdminSFTPStatusResponse struct {
 	Enabled      bool   `json:"enabled"`
 	Host         string `json:"host,omitempty"`
+	Port         int    `json:"port,omitempty"`
 	Username     string `json:"username,omitempty"`
+	RemotePath   string `json:"remote_path,omitempty"`
 	KeyExists    bool   `json:"key_exists"`
-	IsConfigured bool   `json:"is_configured"` // true when host+username+key are set (even if disabled)
+	KeySet       bool   `json:"key_set"`               // a pasted key is stored in the DB
+	KeyPath      string `json:"key_path,omitempty"`    // configured key file path (fallback)
+	Fingerprint  string `json:"fingerprint,omitempty"` // SHA256 fingerprint of the configured key's public key
+	IsConfigured bool   `json:"is_configured"`         // true when host+username+key are set (even if disabled)
 	StatusText   string `json:"status_text"`
 	StatusType   string `json:"status_type"` // "success", "warning", "danger"
+}
+
+// AdminSFTPConfigRequest is the body for PUT /api/v1/admin/cloudinit/sftp.
+// PrivateKey is optional: when empty the stored key is preserved; when set it
+// replaces the stored key (validated and encrypted before persisting).
+type AdminSFTPConfigRequest struct {
+	Host           string `json:"host"`
+	Port           int    `json:"port"`
+	Username       string `json:"username"`
+	RemotePath     string `json:"remote_path"`
+	PrivateKey     string `json:"private_key"`
+	PrivateKeyPath string `json:"private_key_path"`
 }
 
 // AdminCloudInitListResponse wraps cloud-init templates with SFTP status.

@@ -3,6 +3,7 @@ package apiv1
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -46,6 +47,11 @@ type VMConfigResponse struct {
 	EFIEnabled  bool                       `json:"efi_enabled"`
 	TPMEnabled  bool                       `json:"tpm_enabled"`
 	CloudInit   *CloudInitInfo             `json:"cloud_init,omitempty"`
+	// CloudInitSFTPEnabled reports whether SFTP snippet upload is configured.
+	// The frontend uses this to enable/disable the custom cloud-config YAML
+	// editor in the cloud-init tab (the Proxmox HTTP API cannot reliably read
+	// or write snippets, so SFTP is required).
+	CloudInitSFTPEnabled bool `json:"cloud_init_sftp_enabled"`
 }
 
 type DiskInfo struct {
@@ -58,10 +64,12 @@ type DiskInfo struct {
 }
 
 type CloudInitInfo struct {
-	User       string `json:"user,omitempty"`
-	SSHKeys    string `json:"ssh_keys,omitempty"`
-	IPConfig   string `json:"ip_config,omitempty"`
-	Nameserver string `json:"nameserver,omitempty"`
+	User         string `json:"user,omitempty"`
+	SSHKeys      string `json:"ssh_keys,omitempty"`
+	IPConfig     string `json:"ip_config,omitempty"`
+	Nameserver   string `json:"nameserver,omitempty"`
+	Searchdomain string `json:"searchdomain,omitempty"`
+	CICustom     string `json:"cicustom,omitempty"` // e.g. "user=local:snippets/pvmss-100.yml"
 }
 
 type VMMetricsResponse struct {
@@ -239,8 +247,8 @@ func parseCloudInit(cfg map[string]interface{}) *CloudInitInfo {
 		has = true
 	}
 	if v, ok := cfg["sshkeys"].(string); ok && v != "" {
-		decoded, _ := strconv.Unquote(`"` + strings.ReplaceAll(v, `%0A`, "\n") + `"`)
-		if decoded == "" {
+		decoded, err := url.QueryUnescape(v)
+		if err != nil || decoded == "" {
 			decoded = v
 		}
 		ci.SSHKeys = decoded
@@ -252,6 +260,14 @@ func parseCloudInit(cfg map[string]interface{}) *CloudInitInfo {
 	}
 	if v, ok := cfg["nameserver"].(string); ok && v != "" {
 		ci.Nameserver = v
+		has = true
+	}
+	if v, ok := cfg["searchdomain"].(string); ok && v != "" {
+		ci.Searchdomain = v
+		has = true
+	}
+	if v, ok := cfg["cicustom"].(string); ok && v != "" {
+		ci.CICustom = v
 		has = true
 	}
 	if !has {
@@ -379,27 +395,28 @@ func (h *VMDetailsHandler) GetVMConfig(w http.ResponseWriter, r *http.Request) {
 		tags = vmSummary.Tags
 	}
 	resp := VMConfigResponse{
-		VMID:        vmid,
-		Name:        current.Name,
-		Node:        node,
-		Status:      current.Status,
-		CPU:         current.CPU,
-		CPUs:        current.CPUs,
-		Sockets:     sockets,
-		Cores:       cores,
-		MemMB:       current.Mem / mb,
-		MaxMemMB:    current.MaxMem / mb,
-		DiskMB:      diskMB,
-		Uptime:      uptime,
-		Tags:        tags,
-		Description: description,
-		Networks:    networks,
-		Disks:       disks,
-		HasCDROM:    hasCDROM,
-		CurrentISO:  currentISO,
-		EFIEnabled:  efiEnabled,
-		TPMEnabled:  tpmEnabled,
-		CloudInit:   cloudInit,
+		VMID:                 vmid,
+		Name:                 current.Name,
+		Node:                 node,
+		Status:               current.Status,
+		CPU:                  current.CPU,
+		CPUs:                 current.CPUs,
+		Sockets:              sockets,
+		Cores:                cores,
+		MemMB:                current.Mem / mb,
+		MaxMemMB:             current.MaxMem / mb,
+		DiskMB:               diskMB,
+		Uptime:               uptime,
+		Tags:                 tags,
+		Description:          description,
+		Networks:             networks,
+		Disks:                disks,
+		HasCDROM:             hasCDROM,
+		CurrentISO:           currentISO,
+		EFIEnabled:           efiEnabled,
+		TPMEnabled:           tpmEnabled,
+		CloudInit:            cloudInit,
+		CloudInitSFTPEnabled: h.state.GetSettings().CloudInitSFTP.Enabled,
 	}
 
 	writeJSON(w, resp)
@@ -595,6 +612,143 @@ func (h *VMDetailsHandler) UpdateVMCDROM(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := proxmox.UpdateVMConfigResty(ctx, client, node, vmid, params); err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, map[string]string{"status": "ok"})
+}
+
+// cloudInitUpdateRequest is the body for PUT /api/v1/vms/:id/cloudinit.
+// Pointer fields distinguish "leave unchanged" (nil) from "clear the key"
+// (non-nil empty string). Password is write-only: an empty string keeps the
+// current value (Proxmox does not expose the existing password).
+type cloudInitUpdateRequest struct {
+	User         *string `json:"user"`
+	Password     string  `json:"password"`
+	SSHKeys      *string `json:"ssh_keys"`
+	IPConfig     *string `json:"ip_config"`
+	Nameserver   *string `json:"nameserver"`
+	Searchdomain *string `json:"searchdomain"`
+}
+
+// UpdateVMCloudInit handles PUT /api/v1/vms/:id/cloudinit.
+// Updates Cloud-Init fields (user, password, ssh keys, ipconfig0, nameserver,
+// searchdomain) on an existing VM. Pool membership is enforced for non-admin
+// users (same AuthZ pattern as the other VM detail mutators). All provided
+// fields are validated server-side before the Proxmox call.
+func (h *VMDetailsHandler) UpdateVMCloudInit(w http.ResponseWriter, r *http.Request) {
+	vmid, ok := requireVMID(w, r)
+	if !ok {
+		return
+	}
+
+	var req cloudInitUpdateRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+
+	// Validate every provided field before contacting Proxmox so bad input
+	// never reaches the cluster. Empty values that mean "clear" are allowed
+	// through and handled by SetVMCloudInitConfigResty via the delete param.
+	if req.User != nil && strings.TrimSpace(*req.User) != "" {
+		if err := validateCIUser(strings.TrimSpace(*req.User)); err != nil {
+			writeAppError(w, err)
+			return
+		}
+	}
+	if req.Password != "" {
+		if err := validateCIPassword(req.Password); err != nil {
+			writeAppError(w, err)
+			return
+		}
+	}
+	if req.SSHKeys != nil && strings.TrimSpace(*req.SSHKeys) != "" {
+		if err := validateCISSHKeys(*req.SSHKeys); err != nil {
+			writeAppError(w, err)
+			return
+		}
+	}
+	if req.IPConfig != nil && strings.TrimSpace(*req.IPConfig) != "" {
+		if err := validateCIIPConfig(*req.IPConfig); err != nil {
+			writeAppError(w, err)
+			return
+		}
+	}
+	if req.Nameserver != nil && strings.TrimSpace(*req.Nameserver) != "" {
+		if err := validateCIDNSList(*req.Nameserver); err != nil {
+			writeAppError(w, err)
+			return
+		}
+	}
+	if req.Searchdomain != nil && strings.TrimSpace(*req.Searchdomain) != "" {
+		if err := validateCISearchdomain(*req.Searchdomain); err != nil {
+			writeAppError(w, err)
+			return
+		}
+	}
+
+	// Reject empty updates early so a no-op request gets a clear 400 instead
+	// of progressing to the (offline/Proxmox) gates or a silent success.
+	nothingToUpdate := req.User == nil && req.Password == "" && req.SSHKeys == nil &&
+		req.IPConfig == nil && req.Nameserver == nil && req.Searchdomain == nil
+	if nothingToUpdate {
+		errBadRequest(w, "no cloud-init fields to update")
+		return
+	}
+
+	if h.isOffline() {
+		errOffline(w)
+		return
+	}
+
+	username := usernameFromCtx(r)
+	isAdmin := isAdminFromCtx(r)
+
+	envCfg := h.state.GetEnvConfig()
+	client, err := proxmox.MakeRestyClientFromEnvConfig(envCfg, 30*time.Second)
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
+	defer cancel()
+
+	if !ownsVM(ctx, client, username, isAdmin, vmid) {
+		writeError(w, http.StatusNotFound, "not_found", "VM not found")
+		return
+	}
+
+	node, err := resolveNode(ctx, client, vmid)
+	if err != nil || node == "" {
+		writeError(w, http.StatusNotFound, "not_found", "VM not found")
+		return
+	}
+
+	// Trim provided values so leading/trailing whitespace never reaches Proxmox.
+	upd := proxmox.CloudInitUpdate{Password: req.Password}
+	if req.User != nil {
+		u := strings.TrimSpace(*req.User)
+		upd.User = &u
+	}
+	if req.SSHKeys != nil {
+		k := strings.TrimSpace(*req.SSHKeys)
+		upd.SSHKeys = &k
+	}
+	if req.IPConfig != nil {
+		ip := strings.TrimSpace(*req.IPConfig)
+		upd.IPConfig0 = &ip
+	}
+	if req.Nameserver != nil {
+		ns := strings.TrimSpace(*req.Nameserver)
+		upd.Nameserver = &ns
+	}
+	if req.Searchdomain != nil {
+		sd := strings.TrimSpace(*req.Searchdomain)
+		upd.Searchdomain = &sd
+	}
+
+	if err := proxmox.SetVMCloudInitConfigResty(ctx, client, node, vmid, upd); err != nil {
 		writeAppError(w, err)
 		return
 	}

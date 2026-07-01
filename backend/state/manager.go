@@ -64,6 +64,12 @@ type appState struct {
 	// Cleanup callbacks
 	guestAgentCleanupFunc func()
 	cleanupMu             sync.RWMutex
+
+	// Cloud-init warnings produced by finalizeAfterTask, keyed by Proxmox UPID.
+	// Lets the task-status endpoint surface snippet-upload failures to the user
+	// even though cloud-init is applied asynchronously after the creation task.
+	cloudInitWarnings   map[string]cloudInitWarningEntry
+	cloudInitWarningsMu sync.RWMutex
 }
 
 // MakeAppState creates a new StateManager without a database.
@@ -82,10 +88,12 @@ func MakeAppStateWithDB(db database.DB) StateManager {
 // newAppState is the shared constructor used by both public constructors.
 func newAppState(db database.DB) *appState {
 	s := &appState{
-		settings: &AppSettings{},
-		db:       db,
+		settings:          &AppSettings{},
+		db:                db,
+		cloudInitWarnings: make(map[string]cloudInitWarningEntry),
 	}
 	go s.cleanupGuestAgentCache()
+	go s.cleanupCloudInitWarnings()
 	return s
 }
 

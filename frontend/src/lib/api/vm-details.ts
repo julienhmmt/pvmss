@@ -110,6 +110,75 @@ export async function updateVMConfig(
   await api.patch(`/api/v1/vms/${vmid}/config`, payload);
 }
 
+/**
+ * Cloud-Init update payload for PUT /api/v1/vms/:id/cloudinit.
+ * Fields use camelCase; the client transforms them to the backend's
+ * snake_case JSON keys. An empty `password` keeps the current value
+ * (Proxmox does not expose the existing password). Empty strings for
+ * the other fields clear the corresponding key in Proxmox.
+ */
+export interface CloudInitUpdatePayload {
+  user?: string;
+  password?: string;
+  sshKeys?: string;
+  ipConfig?: string;
+  nameserver?: string;
+  searchdomain?: string;
+}
+
+export async function updateVMCloudInit(
+  vmid: number,
+  data: CloudInitUpdatePayload,
+): Promise<void> {
+  const payload = transformKeysToSnakeCase<Record<string, unknown>>(data);
+  await api.put(`/api/v1/vms/${vmid}/cloudinit`, payload);
+}
+
+/**
+ * Custom cloud-config snippet (cicustom) attached to a VM.
+ * Returned by GET /api/v1/vms/:id/cloudinit/snippet.
+ */
+export interface CloudInitSnippet {
+  /** YAML content (empty when no snippet exists yet) */
+  content: string;
+  /** Snippets storage backing the snippet (may be empty until first save) */
+  storage?: string;
+  /** Snippet filename, e.g. pvmss-100.yml */
+  filename: string;
+  /** Current cicustom volid, if any */
+  cicustom?: string;
+  /** True when SFTP is configured and the content can be saved; false → read-only view (rendered dump) */
+  editable: boolean;
+}
+
+/** Fetches the custom cloud-config YAML snippet attached to a VM. */
+export async function getVMCloudInitSnippet(
+  vmid: number,
+): Promise<CloudInitSnippet> {
+  const res = await api.get<CloudInitSnippet>(
+    `/api/v1/vms/${vmid}/cloudinit/snippet`,
+  );
+  return transformKeysToCamelCase<CloudInitSnippet>(res);
+}
+
+/**
+ * Validates and re-uploads the custom cloud-config YAML snippet for a VM via
+ * SFTP, setting cicustom on the VM when it is not already pointing at the
+ * snippet. Requires SFTP to be configured (the Proxmox HTTP API cannot reliably
+ * write snippets).
+ */
+export async function updateVMCloudInitSnippet(
+  vmid: number,
+  content: string,
+): Promise<CloudInitSnippet> {
+  const payload = transformKeysToSnakeCase<Record<string, unknown>>({ content });
+  const res = await api.put<CloudInitSnippet>(
+    `/api/v1/vms/${vmid}/cloudinit/snippet`,
+    payload,
+  );
+  return transformKeysToCamelCase<CloudInitSnippet>(res);
+}
+
 export async function updateVMCDROM(
   vmid: number,
   iso: string,
