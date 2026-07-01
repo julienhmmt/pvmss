@@ -14,6 +14,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Switch } from '$lib/components/ui/switch';
+	import { Textarea } from '$lib/components/ui/textarea';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import * as Select from '$lib/components/ui/select';
 	import {
@@ -23,6 +24,8 @@
 		deleteCloudInit,
 		toggleCloudInit,
 		toggleSFTP,
+		updateSFTPConfig,
+		testSFTPConnection,
 		getCloudInitStorages
 	} from '$lib/api/admin/cloudinit';
 	import { CloudIcon, TrashIcon, PencilIcon, CheckCircleIcon, WarningCircleIcon, XCircleIcon } from 'phosphor-svelte';
@@ -42,6 +45,12 @@
 	let togglingsftp = $state(false);
 	let saving = $state(false);
 	let form = $state({ name: '', description: '', storage: '', yamlContent: '' });
+
+	// SFTP connection settings form (private key pasted in the UI, never echoed back).
+	let sftpForm = $state({ host: '', port: 22, username: '', remotePath: '', privateKey: '' });
+	let savingSftp = $state(false);
+	let testingSftp = $state(false);
+	let sftpConfigOpen = $state(false);
 
 	let page = $state(1);
 	let perPage = $state(25);
@@ -63,6 +72,14 @@
 			templates = data.templates;
 			sftpStatus = data.sftpStatus;
 			snippetStorages = storages;
+			if (sftpStatus) {
+				// Prefill connection fields; never prefill the key (write-only).
+				sftpForm.host = sftpStatus.host ?? '';
+				sftpForm.port = sftpStatus.port ?? 22;
+				sftpForm.username = sftpStatus.username ?? '';
+				sftpForm.remotePath = sftpStatus.remotePath ?? '';
+				sftpForm.privateKey = '';
+			}
 		} catch (e) {
 			error = e as Error;
 		} finally {
@@ -130,6 +147,42 @@
 			toast.error((e as Error).message);
 		} finally {
 			togglingsftp = false;
+		}
+	}
+
+	async function handleSaveSFTP() {
+		savingSftp = true;
+		try {
+			await updateSFTPConfig({
+				host: sftpForm.host.trim(),
+				port: sftpForm.port,
+				username: sftpForm.username.trim(),
+				remotePath: sftpForm.remotePath.trim(),
+				privateKey: sftpForm.privateKey, // blank keeps the stored key
+			});
+			toast.success($t('admin.cloudinit.sftpSaved'));
+			sftpForm.privateKey = '';
+			await load();
+		} catch (e) {
+			toast.error((e as Error).message);
+		} finally {
+			savingSftp = false;
+		}
+	}
+
+	async function handleTestSFTP() {
+		testingSftp = true;
+		try {
+			const result = await testSFTPConnection();
+			if (result.success) {
+				toast.success($t('admin.cloudinit.sftpTestOk'));
+			} else {
+				toast.error($t('admin.cloudinit.sftpTestFailed', { values: { error: result.message } }));
+			}
+		} catch (e) {
+			toast.error((e as Error).message);
+		} finally {
+			testingSftp = false;
 		}
 	}
 
@@ -232,10 +285,73 @@
 								<span><span class="font-medium">{$t('admin.cloudinit.username')}:</span> {sftpStatus.username}</span>
 							{/if}
 							<span><span class="font-medium">{$t('admin.cloudinit.keyExists')}:</span> {sftpStatus.keyExists ? $t('common.yes') : $t('common.no')}</span>
+							{#if sftpStatus.fingerprint}
+								<span><span class="font-medium">{$t('admin.cloudinit.fingerprint')}:</span> <code class="text-[11px]">{sftpStatus.fingerprint}</code></span>
+							{/if}
 						</div>
 					{/if}
 				</div>
 			</div>
+		</div>
+
+		<!-- SFTP connection settings (paste the private key here — no redeploy) -->
+		<div class="mb-6 rounded-lg border border-border p-4">
+			<button
+				type="button"
+				class="flex w-full items-center justify-between text-left"
+				onclick={() => (sftpConfigOpen = !sftpConfigOpen)}
+			>
+				<span class="text-sm font-medium">{$t('admin.cloudinit.sftpConfigure')}</span>
+				<span class="text-xs text-muted-foreground">{sftpConfigOpen ? '▲' : '▼'}</span>
+			</button>
+			{#if sftpConfigOpen}
+				<div class="mt-4 grid gap-4 sm:grid-cols-2">
+					<div class="space-y-2">
+						<Label for="sftp-host">{$t('admin.cloudinit.host')}</Label>
+						<Input id="sftp-host" bind:value={sftpForm.host} placeholder="192.168.1.10" />
+					</div>
+					<div class="space-y-2">
+						<Label for="sftp-port">{$t('admin.cloudinit.port')}</Label>
+						<Input id="sftp-port" type="number" bind:value={sftpForm.port} placeholder="22" />
+					</div>
+					<div class="space-y-2">
+						<Label for="sftp-user">{$t('admin.cloudinit.username')}</Label>
+						<Input id="sftp-user" bind:value={sftpForm.username} placeholder="pvmss-snippets" />
+					</div>
+					<div class="space-y-2">
+						<Label for="sftp-remote">{$t('admin.cloudinit.remotePath')}</Label>
+						<Input id="sftp-remote" bind:value={sftpForm.remotePath} placeholder="/var/lib/vz/snippets" />
+					</div>
+					<div class="space-y-2 sm:col-span-2">
+						<Label for="sftp-key">{$t('admin.cloudinit.privateKey')}</Label>
+						<Textarea
+							id="sftp-key"
+							bind:value={sftpForm.privateKey}
+							rows={6}
+							class="font-mono text-xs"
+							placeholder={sftpStatus.keySet
+								? $t('admin.cloudinit.privateKeyKeep')
+								: '-----BEGIN OPENSSH PRIVATE KEY-----'}
+							autocomplete="off"
+							spellcheck={false}
+						/>
+						<p class="text-xs text-muted-foreground">{$t('admin.cloudinit.privateKeyHint')}</p>
+					</div>
+				</div>
+				<div class="mt-4 flex items-center justify-end gap-2">
+					<Button
+						variant="outline"
+						size="sm"
+						disabled={testingSftp || !sftpStatus.isConfigured}
+						onclick={handleTestSFTP}
+					>
+						{testingSftp ? $t('admin.cloudinit.sftpTesting') : $t('admin.cloudinit.sftpTest')}
+					</Button>
+					<Button size="sm" disabled={savingSftp} onclick={handleSaveSFTP}>
+						{savingSftp ? $t('common.saving') : $t('common.save')}
+					</Button>
+				</div>
+			{/if}
 		</div>
 	{/if}
 

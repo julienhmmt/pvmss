@@ -112,3 +112,9 @@ ALTER TABLE node_limits ADD COLUMN max_vcpus  INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE node_limits ADD COLUMN max_ram_gb INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE node_limits ADD COLUMN max_disk_gb INTEGER NOT NULL DEFAULT 0;
 `
+
+// schemaV3 adds a column to store the SFTP private key content (encrypted at
+// rest) so the key can be managed from the web UI instead of a mounted file.
+const schemaV3 = `
+ALTER TABLE sftp_config ADD COLUMN private_key TEXT;
+`

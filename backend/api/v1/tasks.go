@@ -21,10 +21,11 @@ func MakeTaskHandler(s state.StateManager) *TaskHandler {
 
 // TaskStatusResponse is the response for GET /api/v1/tasks/status
 type TaskStatusResponse struct {
-	UPID       string `json:"upid"`
-	Node       string `json:"node"`
-	Status     string `json:"status"`
-	ExitStatus string `json:"exitstatus"`
+	UPID             string `json:"upid"`
+	Node             string `json:"node"`
+	Status           string `json:"status"`
+	ExitStatus       string `json:"exitstatus"`
+	CloudInitWarning string `json:"cloud_init_warning,omitempty"`
 }
 
 // TaskLogEntryResponse is a single log line for GET /api/v1/tasks/log
@@ -63,11 +64,46 @@ func (h *TaskHandler) GetTaskStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Resolve any cloud-init warning associated with this UPID. When the
+	// sentinel is still pending, the creation task has already reported
+	// "stopped" but cloud-init is being applied asynchronously by
+	// finalizeAfterTask. Wait briefly for the real result so the frontend can
+	// surface snippet-upload failures instead of silently reporting success.
+	cloudInitWarning := h.state.GetCloudInitWarning(upid)
+
+	// Refresh while pending only when the creation task itself succeeded;
+	// otherwise cloud-init is never applied and finalizeAfterTask clears the
+	// sentinel with an empty string.
+	if cloudInitWarning == state.CloudInitPending && status.Status == "stopped" && status.ExitStatus == "OK" {
+		deadline := time.Now().Add(35 * time.Second)
+		ticker := time.NewTicker(500 * time.Millisecond)
+		for {
+			if time.Now().After(deadline) {
+				ticker.Stop()
+				cloudInitWarning = "cloud-init-result-unknown"
+				break
+			}
+			cur := h.state.GetCloudInitWarning(upid)
+			if cur != state.CloudInitPending {
+				cloudInitWarning = cur
+				ticker.Stop()
+				break
+			}
+			<-ticker.C
+		}
+	}
+
+	// Hide the internal sentinel from clients.
+	if cloudInitWarning == state.CloudInitPending {
+		cloudInitWarning = ""
+	}
+
 	writeJSON(w, TaskStatusResponse{
-		UPID:       upid,
-		Node:       node,
-		Status:     status.Status,
-		ExitStatus: status.ExitStatus,
+		UPID:             upid,
+		Node:             node,
+		Status:           status.Status,
+		ExitStatus:       status.ExitStatus,
+		CloudInitWarning: cloudInitWarning,
 	})
 }
 

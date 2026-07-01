@@ -15,6 +15,8 @@ export type ActiveTask = {
   status: "running" | "stopped" | "error";
   exitStatus: string;
   startedAt: Date;
+  /** Stable cloud-init warning code from the backend, if any. */
+  cloudInitWarning?: string | undefined;
 };
 
 interface TasksState {
@@ -100,6 +102,7 @@ function createTasksStore(): TasksStore {
           updateTask(taskId, {
             status: isError ? "error" : "stopped",
             exitStatus: result.exitStatus,
+            cloudInitWarning: result.cloudInitWarning,
           });
 
           const cb = completionCallbacks.get(taskId);

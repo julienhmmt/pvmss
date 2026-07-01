@@ -1,10 +1,49 @@
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
+import type { Plugin } from "vite";
 import path from "path";
 
+/**
+ * Rewrite Tailwind preflight's `-webkit-text-size-adjust: 100%` to `none`.
+ *
+ * Firefox (Gecko) only accepts `none`/`auto` for `-webkit-text-size-adjust`
+ * (NOT percentages) and logs a "value parse error" for the `100%` value Tailwind
+ * ships in its preflight reset. Tailwind won't change this upstream
+ * (https://github.com/tailwindlabs/tailwindcss/issues/12650).
+ *
+ * `none` is semantically equivalent to `100%` (both disable the mobile
+ * text-inflation algorithm) and is accepted by every engine. The swap is the
+ * same byte length (`100%` → `none`), so CSS source maps stay valid. Covers the
+ * production bundle (`generateBundle`) and the dev server (`transform`).
+ */
+const fixWebkitTextSizeAdjust = (): Plugin => {
+  const pattern = /-webkit-text-size-adjust:\s*100%/g;
+  const replacement = "-webkit-text-size-adjust:none";
+  const rewrite = (code: string): string =>
+    code.includes("-webkit-text-size-adjust") ? code.replace(pattern, replacement) : code;
+  return {
+    name: "pvmss:fix-webkit-text-size-adjust",
+    enforce: "post",
+    transform(code, id) {
+      if (!id.endsWith(".css")) return null;
+      const out = rewrite(code);
+      return out === code ? null : { code: out, map: null };
+    },
+    generateBundle(_options, bundle) {
+      for (const chunk of Object.values(bundle)) {
+        if (chunk.type !== "asset" || !chunk.fileName.endsWith(".css")) continue;
+        const source = chunk.source;
+        if (typeof source !== "string") continue;
+        const out = rewrite(source);
+        if (out !== source) chunk.source = out;
+      }
+    },
+  };
+};
+
 export default defineConfig({
-  plugins: [tailwindcss(), sveltekit()],
+  plugins: [tailwindcss(), sveltekit(), fixWebkitTextSizeAdjust()],
   resolve: {
     alias: {
       $lib: path.resolve("./src/lib"),
