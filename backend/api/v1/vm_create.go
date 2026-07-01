@@ -56,15 +56,15 @@ type VMCreateSettingsResponse struct {
 	// Custom-YAML templates can only be attached to a VM when SFTP is enabled
 	// (the Proxmox HTTP API cannot reliably write snippet files), so the UI
 	// gates the template picker on this flag.
-	CloudInitSFTPEnabled bool `json:"cloud_init_sftp_enabled"`
-	VMProfiles         []state.VMProfileConfig `json:"vm_profiles"`
-	Limits             VMCreateLimits          `json:"limits"`
-	MaxNetworkCards    int                     `json:"max_network_cards"`
-	MaxDiskPerVM       int                     `json:"max_disk_per_vm"`
-	MaxVMPerUser       int                     `json:"max_vm_per_user"`
-	RemainingVMs       int                     `json:"remaining_vms"`
-	ProxmoxConnected   bool                    `json:"proxmox_connected"`
-	AllowCustomYAML    bool                    `json:"allow_custom_yaml"`
+	CloudInitSFTPEnabled bool                    `json:"cloud_init_sftp_enabled"`
+	VMProfiles           []state.VMProfileConfig `json:"vm_profiles"`
+	Limits               VMCreateLimits          `json:"limits"`
+	MaxNetworkCards      int                     `json:"max_network_cards"`
+	MaxDiskPerVM         int                     `json:"max_disk_per_vm"`
+	MaxVMPerUser         int                     `json:"max_vm_per_user"`
+	RemainingVMs         int                     `json:"remaining_vms"`
+	ProxmoxConnected     bool                    `json:"proxmox_connected"`
+	AllowCustomYAML      bool                    `json:"allow_custom_yaml"`
 }
 
 // VMCreateNodeOption represents a node option for VM creation.
