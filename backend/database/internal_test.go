@@ -169,6 +169,28 @@ func TestSetSFTPConfig_ClosedDB_ReturnsError(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestRedactSFTPPrivateKeyForAudit(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   SFTPConfig
+		wantKey string
+	}{
+		{name: "key redacted to sentinel", input: SFTPConfig{PrivateKey: "encv1:secret"}, wantKey: "[set]"},
+		{name: "empty key stays empty", input: SFTPConfig{PrivateKey: ""}, wantKey: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := redactSFTPPrivateKeyForAudit(&tt.input)
+			assert.Equal(t, tt.wantKey, got.PrivateKey)
+			// Other fields must be preserved.
+			assert.Equal(t, tt.input.Host, got.Host)
+			assert.Equal(t, tt.input.Port, got.Port)
+			// The original must NOT be mutated.
+			assert.NotEqual(t, "[set]", tt.input.PrivateKey, "original must not be mutated")
+		})
+	}
+}
+
 func TestGetEnabledNodes_ClosedDB_ReturnsError(t *testing.T) {
 	s := closedDB(t)
 	_, err := s.GetEnabledNodes()

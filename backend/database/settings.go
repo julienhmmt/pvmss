@@ -289,6 +289,8 @@ func (s *sqliteDB) GetSFTPConfig() (*SFTPConfig, error) {
 // SetSFTPConfig upserts the singleton sftp_config row inside a transaction
 // that also appends an audit entry.
 // The audit action is "create" on first write and "update" thereafter.
+// The PrivateKey (encrypted at rest) is redacted from the audit snapshots so
+// the ciphertext is never duplicated into the audit_log table.
 func (s *sqliteDB) SetSFTPConfig(cfg *SFTPConfig, changedBy string) error {
 	tx, err := s.db.Begin()
 	if err != nil {
@@ -306,12 +308,12 @@ func (s *sqliteDB) SetSFTPConfig(cfg *SFTPConfig, changedBy string) error {
 	var oldJSON []byte
 	if err == nil {
 		action = "update"
-		oldJSON, _ = json.Marshal(oldCfg)
+		oldJSON, _ = json.Marshal(redactSFTPPrivateKeyForAudit(oldCfg))
 	} else if !errors.Is(err, sql.ErrNoRows) {
 		_ = tx.Rollback()
 		return fmt.Errorf("read sftp_config for audit: %w", err)
 	}
-	newJSON, _ := json.Marshal(cfg)
+	newJSON, _ := json.Marshal(redactSFTPPrivateKeyForAudit(cfg))
 	if err := execUpsertSFTPConfig(tx, cfg); err != nil {
 		_ = tx.Rollback()
 		return err
@@ -321,6 +323,18 @@ func (s *sqliteDB) SetSFTPConfig(cfg *SFTPConfig, changedBy string) error {
 		return err
 	}
 	return tx.Commit()
+}
+
+// redactSFTPPrivateKeyForAudit returns a shallow copy of cfg with PrivateKey
+// replaced by a sentinel, so the encrypted ciphertext never lands in the
+// audit_log. The sentinel preserves auditability: "[set]" when a key exists,
+// "" when none is stored.
+func redactSFTPPrivateKeyForAudit(cfg *SFTPConfig) SFTPConfig {
+	out := *cfg
+	if out.PrivateKey != "" {
+		out.PrivateKey = "[set]"
+	}
+	return out
 }
 
 // execUpsertSFTPConfig executes the sftp_config UPSERT within tx.

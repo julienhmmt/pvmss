@@ -179,6 +179,43 @@ func TestSFTPConfig_SecondSetAuditActionIsUpdate(t *testing.T) {
 	assert.Equal(t, "create", entries[1].Action)
 }
 
+// TestSFTPConfig_AuditLogRedactsPrivateKey verifies that the encrypted private
+// key never appears in the audit log JSON snapshots — only a "[set]" sentinel.
+func TestSFTPConfig_AuditLogRedactsPrivateKey(t *testing.T) {
+	db := openTestDB(t)
+	secretKey := "encv1:supersecretciphertext"
+	require.NoError(t, db.SetSFTPConfig(&database.SFTPConfig{
+		Port:       22,
+		Host:       "pve.example.com",
+		Username:   "snippets",
+		PrivateKey: secretKey,
+	}, "admin"))
+
+	entries, err := db.ListAuditLog("sftp_config", 5, 0)
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+
+	// The ciphertext must NOT appear in the audit snapshot.
+	assert.NotContains(t, entries[0].NewValue, secretKey)
+	assert.NotContains(t, entries[0].NewValue, "supersecretciphertext")
+	// The sentinel must be present so the audit trail shows a key was set.
+	assert.Contains(t, entries[0].NewValue, "[set]")
+
+	// Update the config (preserving the key) and verify the old-value snapshot
+	// also redacts the key.
+	require.NoError(t, db.SetSFTPConfig(&database.SFTPConfig{
+		Port:       2222,
+		Host:       "pve.example.com",
+		Username:   "snippets",
+		PrivateKey: secretKey,
+	}, "admin"))
+	entries, err = db.ListAuditLog("sftp_config", 5, 0)
+	require.NoError(t, err)
+	require.Len(t, entries, 2)
+	assert.NotContains(t, entries[0].OldValue, secretKey)
+	assert.Contains(t, entries[0].OldValue, "[set]")
+}
+
 // ── LoadAppSettings ───────────────────────────────────────────────────────────
 
 func TestLoadAppSettings_FreshDB(t *testing.T) {
