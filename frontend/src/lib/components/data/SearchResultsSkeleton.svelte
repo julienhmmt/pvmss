@@ -5,7 +5,7 @@
 </script>
 
 <div class="space-y-3">
-	{#each Array(rows) as _}
+	{#each Array(rows) as _, i (i)}
 		<div class="flex items-center gap-3 p-3 rounded-lg border border-border">
 			<Skeleton class="h-10 w-10 rounded-md" />
 			<div class="flex-1 space-y-2">

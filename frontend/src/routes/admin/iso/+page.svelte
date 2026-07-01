@@ -147,7 +147,7 @@
 					{nodeFilterLabel}
 				</Select.Trigger>
 				<Select.Content>
-					{#each nodes as node}
+					{#each nodes as node, i (i)}
 						<Select.Item value={node}>{node}</Select.Item>
 					{/each}
 				</Select.Content>

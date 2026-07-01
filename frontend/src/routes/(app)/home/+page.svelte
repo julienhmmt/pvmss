@@ -331,7 +331,7 @@
 		bulkLoading = true;
 
 		// Stage 3 UX: only target VMs for which the action makes sense on the current page selection.
-		let targets: VMSummary[] = [];
+		let targets: VMSummary[];
 		if (action === 'start') {
 			targets = vms.filter((v) => selected.has(v.vmid) && v.status === 'stopped');
 		} else if (action === 'shutdown' || action === 'reboot') {

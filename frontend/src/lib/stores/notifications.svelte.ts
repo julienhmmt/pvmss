@@ -16,7 +16,7 @@ interface NotificationStore {
 }
 
 function createNotificationStore(): NotificationStore {
-  let state = $state<NotificationState>({
+  const state = $state<NotificationState>({
     notifications: [],
     unreadCount: 0,
   });

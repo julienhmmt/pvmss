@@ -45,7 +45,7 @@
 						<Select.Item value=""
 							>{$t('vmCreate.cloudinit.noTemplate')}</Select.Item
 						>
-						{#each settings.cloudinitTemplates as tpl}
+						{#each settings.cloudinitTemplates as tpl, i (i)}
 							<Select.Item value={tpl.id}>
 								{tpl.name}
 								{#if tpl.description}

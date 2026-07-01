@@ -13,19 +13,19 @@
 	</div>
 
 	<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-		{#each Array(4) as _}
+		{#each Array(4) as _, i (i)}
 			<Skeleton class="h-20 w-full rounded-lg" />
 		{/each}
 	</div>
 
 	<div class="flex gap-2 border-b border-border">
-		{#each Array(5) as _}
+		{#each Array(5) as _, i (i)}
 			<Skeleton class="h-9 w-24" />
 		{/each}
 	</div>
 
 	<div class="space-y-3">
-		{#each Array(6) as _}
+		{#each Array(6) as _, i (i)}
 			<Skeleton class="h-12 w-full" />
 		{/each}
 	</div>

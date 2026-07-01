@@ -109,8 +109,9 @@ spec:
                 secretKeyRef:
                   name: pvmss-secrets
                   key: pve-api-token
+            # Set to "false" ONLY for self-signed labs; mount the Proxmox CA cert for production.
             - name: PROXMOX_VERIFY_SSL
-              value: "false"
+              value: "true"
             - name: PROXMOX_URL
               value: "https://changeme:8006/api2/json"
             - name: JWT_SECRET
@@ -129,8 +130,6 @@ spec:
               value: "false" # Set to true to disable Proxmox connection
             - name: PVMSS_DB_PATH
               value: "/data/pvmss.db"
-            - name: CSRF_TOKEN_TTL
-              value: "2h" # duration (e.g.: 10m, 4d)
             - name: TZ
               value: "Europe/Paris"
           volumeMounts:
