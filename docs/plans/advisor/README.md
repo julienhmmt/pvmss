@@ -16,7 +16,7 @@ run every verification gate, and update your row when done.
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
 | 001  | Ship security-hardening Phase A (S1/S2/S3) | P1 | M | — | DONE |
-| 002  | Fix stale/inaccurate docs (README env table, CLAUDE.md, dead CSRF var) | P1 | S | 001 (file overlap) | TODO |
+| 002  | Fix stale/inaccurate docs (README env table, CLAUDE.md, dead CSRF var) | P1 | S | 001 (file overlap) | DONE |
 | 003  | Add frontend check/lint/test + race-detector jobs to CI | P1 | S | — | TODO |
 | 004  | Auth handler table-driven tests (login/exchange/refresh/PVE-admin) | P1 | L | 003 | TODO |
 | 005  | VM create + VM details characterization tests | P2 | M | 003, 004 (scaffold) | TODO |

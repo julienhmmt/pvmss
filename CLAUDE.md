@@ -39,11 +39,12 @@ make docker-build
 
 ### Backend (`backend/`)
 
-Go stateless REST API — no database, all state from Proxmox APIs.
+Go REST API backed by Proxmox APIs plus a SQLite database for settings, limits, quotas, and audit.
 
 | Package       | Role                                                                     |
 | ------------- | ------------------------------------------------------------------------ |
 | `main.go`     | Entry point; wires all packages                                          |
+| `database/`   | SQLite persistence: approved nodes/ISOs/storages/bridges, VM limits, per-user quotas, SFTP config, audit log |
 | `api/v1/`     | RESTful JSON endpoints (`/api/v1/*`), route registration, JWT middleware |
 | `handlers/`   | HTTP handlers: SPA serving, auth forms (legacy), health, static files    |
 | `proxmox/`    | Proxmox API client (go-resty), caching, multi-node aggregation           |
