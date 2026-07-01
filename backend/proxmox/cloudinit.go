@@ -31,15 +31,6 @@ type CloudInitConfig struct {
 	CIType       string `json:"citype,omitempty"`
 }
 
-// SnippetFile represents a file in the snippets storage.
-type SnippetFile struct {
-	Volid   string `json:"volid"`
-	Content string `json:"content,omitempty"`
-	Format  string `json:"format,omitempty"`
-	Size    int64  `json:"size,omitempty"`
-	CTime   int64  `json:"ctime,omitempty"`
-}
-
 // CloudInitParams represents the parameters to set cloud-init config.
 type CloudInitParams struct {
 	CIUser       string
@@ -367,62 +358,6 @@ func EnsureCloudInitDriveResty(ctx context.Context, restyClient *RestyClient, no
 	return nil
 }
 
-// ListSnippetFilesResty lists files in a snippets storage.
-// GET /nodes/{node}/storage/{storage}/content?content=snippets
-func ListSnippetFilesResty(ctx context.Context, restyClient *RestyClient, node, storage string) ([]SnippetFile, error) {
-	path := fmt.Sprintf("/nodes/%s/storage/%s/content?content=snippets",
-		url.PathEscape(node), url.PathEscape(storage))
-
-	var response ListResponse[SnippetFile]
-	if err := restyClient.Get(ctx, path, &response); err != nil {
-		logger.Get().Error().Err(err).Str("node", node).Str("storage", storage).Msg("Failed to list snippet files (resty)")
-		return nil, fmt.Errorf("failed to list snippets in %s on node %s: %w", storage, node, err)
-	}
-
-	logger.Get().Debug().
-		Str("node", node).
-		Str("storage", storage).
-		Int("count", len(response.Data)).
-		Msg("Listed snippet files (resty)")
-
-	return response.Data, nil
-}
-
-// DownloadSnippetFileResty downloads the content of a snippet file.
-// GET /nodes/{node}/storage/{storage}/file-restore/download?volume={volid}
-// Note: This endpoint may require specific permissions. Falls back to direct file access if needed.
-func DownloadSnippetFileResty(ctx context.Context, restyClient *RestyClient, node, storage, volid string) (string, error) {
-	// For snippets, we use a different approach - direct file content via API
-	// The exact endpoint depends on Proxmox version
-	// Try the file-restore endpoint first
-	path := fmt.Sprintf("/nodes/%s/storage/%s/file-restore/download",
-		url.PathEscape(node), url.PathEscape(storage))
-
-	// Build query params
-	params := url.Values{}
-	params.Set("volume", volid)
-	params.Set("filepath", "/")
-
-	fullPath := path + "?" + params.Encode()
-
-	var response struct {
-		Data string `json:"data"`
-	}
-
-	if err := restyClient.Get(ctx, fullPath, &response); err != nil {
-		// If file-restore fails, this is expected for some storage types
-		logger.Get().Warn().
-			Err(err).
-			Str("node", node).
-			Str("storage", storage).
-			Str("volid", volid).
-			Msg("file-restore download not available, snippet content may need direct read")
-		return "", fmt.Errorf("failed to download snippet %s: %w", volid, err)
-	}
-
-	return response.Data, nil
-}
-
 // UploadSnippetFileResty uploads a new snippet file to storage.
 // POST /nodes/{node}/storage/{storage}/upload
 // For snippets, this uses the content upload endpoint with content=snippets
@@ -501,32 +436,6 @@ func UploadSnippetFileResty(ctx context.Context, restyClient *RestyClient, node,
 	return nil
 }
 
-// DeleteSnippetFileResty deletes a snippet file from storage.
-// DELETE /nodes/{node}/storage/{storage}/content/{volume}
-func DeleteSnippetFileResty(ctx context.Context, restyClient *RestyClient, node, storage, volid string) error {
-	path := fmt.Sprintf("/nodes/%s/storage/%s/content/%s",
-		url.PathEscape(node), url.PathEscape(storage), url.PathEscape(volid))
-
-	var response interface{}
-	if err := restyClient.Delete(ctx, path, &response); err != nil {
-		logger.Get().Error().
-			Err(err).
-			Str("node", node).
-			Str("storage", storage).
-			Str("volid", volid).
-			Msg("Failed to delete snippet file (resty)")
-		return fmt.Errorf("failed to delete snippet %s from %s on node %s: %w", volid, storage, node, err)
-	}
-
-	logger.Get().Info().
-		Str("node", node).
-		Str("storage", storage).
-		Str("volid", volid).
-		Msg("Snippet file deleted successfully (resty)")
-
-	return nil
-}
-
 // GetSnippetsStoragesResty returns a list of storages that support snippets content.
 func GetSnippetsStoragesResty(ctx context.Context, restyClient *RestyClient) ([]Storage, error) {
 	storages, err := GetStoragesResty(ctx, restyClient)
@@ -560,6 +469,31 @@ func GetSnippetsStoragesResty(ctx context.Context, restyClient *RestyClient) ([]
 	}
 
 	return snippetStorages, nil
+}
+
+// maxSnippetReadSize caps how many bytes ReadSnippetFileSFTP reads from a
+// snippet file. Writes are validated to 128 KB (cloudinit.MaxYAMLSize), but a
+// manually-placed or tampered file could be larger; this prevents an unbounded
+// read from consuming memory.
+const maxSnippetReadSize = 1 << 20 // 1 MB
+
+// validateSnippetFilename rejects filenames that could escape the snippets
+// directory via path traversal. A snippet filename must be a bare base name:
+// no path separators and no "." / ".." directory references. This is a
+// defense-in-depth check at the filesystem trust boundary — callers already
+// sanitize via path.Base or int formatting, but the SFTP functions are the
+// last line of defense before touching the remote filesystem.
+func validateSnippetFilename(filename string) error {
+	if filename == "" {
+		return fmt.Errorf("snippet filename must not be empty")
+	}
+	if strings.ContainsAny(filename, `/\`) {
+		return fmt.Errorf("snippet filename must not contain path separators: %q", filename)
+	}
+	if filename == "." || filename == ".." {
+		return fmt.Errorf("snippet filename must not be a directory reference: %q", filename)
+	}
+	return nil
 }
 
 // createSFTPClient creates an SFTP client connection to the configured host.
@@ -613,6 +547,9 @@ func createSFTPClient(config CloudInitSFTPConfig) (*sftp.Client, *ssh.Client, er
 func UploadSnippetFileSFTP(ctx context.Context, config CloudInitSFTPConfig, filename, content string) error {
 	if !config.Enabled {
 		return fmt.Errorf("SFTP upload is disabled in configuration")
+	}
+	if err := validateSnippetFilename(filename); err != nil {
+		return err
 	}
 
 	log := logger.Get()
@@ -683,6 +620,9 @@ func DeleteSnippetFileSFTP(config CloudInitSFTPConfig, filename string) error {
 	if !config.Enabled {
 		return fmt.Errorf("SFTP is disabled in configuration")
 	}
+	if err := validateSnippetFilename(filename); err != nil {
+		return err
+	}
 
 	log := logger.Get()
 	log.Info().
@@ -738,6 +678,9 @@ func ReadSnippetFileSFTP(ctx context.Context, config CloudInitSFTPConfig, filena
 	if !config.Enabled {
 		return "", fmt.Errorf("SFTP upload is disabled in configuration")
 	}
+	if err := validateSnippetFilename(filename); err != nil {
+		return "", err
+	}
 
 	log := logger.Get()
 	log.Debug().
@@ -780,9 +723,12 @@ func ReadSnippetFileSFTP(ctx context.Context, config CloudInitSFTPConfig, filena
 		}
 	}()
 
-	data, err := io.ReadAll(remoteFile)
+	data, err := io.ReadAll(io.LimitReader(remoteFile, maxSnippetReadSize+1))
 	if err != nil {
 		return "", fmt.Errorf("failed to read remote file %s: %w", targetPath, err)
+	}
+	if len(data) > maxSnippetReadSize {
+		return "", fmt.Errorf("snippet file %s exceeds the %d-byte read limit", targetPath, maxSnippetReadSize)
 	}
 
 	log.Debug().
