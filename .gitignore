@@ -36,6 +36,8 @@ frontend/css/css_lint.txt
 
 # Database
 pvmss.db
+pvmss.db-shm
+pvmss.db-wal
 
 # optional: commit for shared extraction speed, skip to keep repo small
 graphify-out/cache/

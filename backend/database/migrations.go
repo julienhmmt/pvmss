@@ -6,13 +6,14 @@ import (
 )
 
 // currentSchemaVersion is the highest known migration version.
-const currentSchemaVersion = 2
+const currentSchemaVersion = 3
 
 // migrations maps each schema version to its forward-only DDL.
 // Versions must be consecutive integers starting at 1.
 var migrations = map[int]string{
 	1: schemaV1,
 	2: schemaV2,
+	3: schemaV3,
 }
 
 // RunMigrations applies every pending migration to db in order.

@@ -1,14 +1,18 @@
 package apiv1
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/julienschmidt/httprouter"
 
 	"pvmss/cloudinit"
 	"pvmss/database"
+	"pvmss/proxmox"
+	"pvmss/security"
 	"pvmss/state"
 )
 
@@ -43,76 +47,175 @@ func buildSFTPStatus(settings *state.AppSettings) *AdminSFTPStatusResponse {
 		}
 	}
 	cfg := settings.CloudInitSFTP
-	isConfigured := cfg.Host != "" && cfg.Username != "" && cfg.PrivateKeyPath != ""
 
-	keyExists := false
+	// A key is available either as pasted content (in-memory plaintext after
+	// decryption) or as a readable key file on disk.
+	keySet := cfg.PrivateKey != ""
+	keyFileExists := false
 	if cfg.PrivateKeyPath != "" {
 		if _, err := os.Stat(cfg.PrivateKeyPath); err == nil {
-			keyExists = true
+			keyFileExists = true
 		}
+	}
+	keyExists := keySet || keyFileExists
+
+	fingerprint := ""
+	if keySet {
+		if fp, err := proxmox.SSHKeyFingerprint(cfg.PrivateKey); err == nil {
+			fingerprint = fp
+		}
+	}
+
+	isConfigured := cfg.Host != "" && cfg.Username != "" && keyExists
+
+	base := AdminSFTPStatusResponse{
+		Enabled:      cfg.Enabled,
+		Host:         cfg.Host,
+		Port:         cfg.Port,
+		Username:     cfg.Username,
+		RemotePath:   cfg.SnippetBaseDir,
+		KeyExists:    keyExists,
+		KeySet:       keySet,
+		KeyPath:      cfg.PrivateKeyPath,
+		Fingerprint:  fingerprint,
+		IsConfigured: isConfigured,
 	}
 
 	if !cfg.Enabled {
-		return &AdminSFTPStatusResponse{
-			Enabled:      false,
-			Host:         cfg.Host,
-			Username:     cfg.Username,
-			KeyExists:    keyExists,
-			IsConfigured: isConfigured,
-			StatusText:   "disabled",
-			StatusType:   "warning",
-		}
+		base.StatusText = "disabled"
+		base.StatusType = "warning"
+		return &base
 	}
-	status := &AdminSFTPStatusResponse{
-		Enabled:      true,
-		Host:         cfg.Host,
-		Username:     cfg.Username,
-		KeyExists:    keyExists,
-		IsConfigured: isConfigured,
+	switch {
+	case !keyExists:
+		base.StatusText = "private-key-not-found"
+		base.StatusType = "danger"
+	case cfg.Host == "":
+		base.StatusText = "host-not-configured"
+		base.StatusType = "danger"
+	default:
+		base.StatusText = "configured"
+		base.StatusType = "success"
 	}
-	if !keyExists {
-		status.StatusText = "private-key-not-found"
-		status.StatusType = "danger"
-	} else if cfg.Host == "" {
-		status.StatusText = "host-not-configured"
-		status.StatusType = "danger"
-	} else {
-		status.StatusText = "configured"
-		status.StatusType = "success"
-	}
-	return status
+	return &base
 }
 
 // ToggleSFTP handles POST /api/v1/admin/cloudinit/sftp/toggle.
+// It flips only the enabled flag, reading the raw persisted config so the stored
+// (encrypted) private key and all other fields are preserved untouched.
 func (h *AdminMutationsHandler) ToggleSFTP(w http.ResponseWriter, r *http.Request) {
-	settings := h.state.GetSettings()
-	cfg := settings.CloudInitSFTP
-	newEnabled := !cfg.Enabled
-
-	if h.state.HasDB() {
-		dbCfg := &database.SFTPConfig{
-			Enabled:        newEnabled,
-			Host:           cfg.Host,
-			Port:           cfg.Port,
-			Username:       cfg.Username,
-			PrivateKeyPath: cfg.PrivateKeyPath,
-			RemotePath:     cfg.SnippetBaseDir,
-		}
-		if err := h.state.SetSFTPConfig(dbCfg, usernameFromCtx(r)); err != nil {
-			writeAppError(w, err)
-			return
-		}
-	} else {
+	if !h.state.HasDB() {
+		settings := h.state.GetSettings()
 		newSettings := *settings
-		newSettings.CloudInitSFTP = cfg
-		newSettings.CloudInitSFTP.Enabled = newEnabled
+		newSettings.CloudInitSFTP = settings.CloudInitSFTP
+		newSettings.CloudInitSFTP.Enabled = !settings.CloudInitSFTP.Enabled
 		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
 		if err := h.state.SetSettings(&newSettings); err != nil {
 			writeAppError(w, err)
 			return
 		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	dbCfg, err := h.state.GetSFTPConfig()
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+	dbCfg.Enabled = !dbCfg.Enabled
+	if err := h.state.SetSFTPConfig(dbCfg, usernameFromCtx(r)); err != nil {
+		writeAppError(w, err)
+		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// UpdateSFTPConfig handles PUT /api/v1/admin/cloudinit/sftp.
+// Persists host/port/username/remote-path and, when a non-empty private_key is
+// supplied, validates and encrypts it before storing. A blank private_key keeps
+// the currently stored key. The enabled flag is preserved (use the toggle).
+func (h *AdminMutationsHandler) UpdateSFTPConfig(w http.ResponseWriter, r *http.Request) {
+	if !h.state.HasDB() {
+		writeError(w, http.StatusBadRequest, "no_database", "SFTP configuration requires a database")
+		return
+	}
+	var req AdminSFTPConfigRequest
+	if !decodeBody(w, r, &req) {
+		return
+	}
+
+	existing, err := h.state.GetSFTPConfig()
+	if err != nil {
+		writeAppError(w, err)
+		return
+	}
+
+	port := req.Port
+	if port == 0 {
+		port = 22
+	}
+	if port < 1 || port > 65535 {
+		errBadRequest(w, "port must be between 1 and 65535")
+		return
+	}
+
+	dbCfg := &database.SFTPConfig{
+		Enabled:        existing.Enabled,
+		Host:           strings.TrimSpace(req.Host),
+		Port:           port,
+		Username:       strings.TrimSpace(req.Username),
+		PrivateKeyPath: strings.TrimSpace(req.PrivateKeyPath),
+		RemotePath:     strings.TrimSpace(req.RemotePath),
+		PrivateKey:     existing.PrivateKey, // preserve stored (encrypted) key by default
+	}
+
+	if key := strings.TrimSpace(req.PrivateKey); key != "" {
+		// Validate the key parses before storing so we never persist garbage.
+		if _, err := proxmox.SSHKeyFingerprint(key); err != nil {
+			errBadRequest(w, "invalid private key: "+err.Error())
+			return
+		}
+		secret := h.state.GetEnvConfig().SessionSecret
+		enc, err := security.EncryptSecret(key, secret)
+		if err != nil {
+			writeAppError(w, err)
+			return
+		}
+		dbCfg.PrivateKey = enc
+	}
+
+	if err := h.state.SetSFTPConfig(dbCfg, usernameFromCtx(r)); err != nil {
+		writeAppError(w, err)
+		return
+	}
+	writeJSON(w, buildSFTPStatus(h.state.GetSettings()))
+}
+
+// TestSFTPConnection handles POST /api/v1/admin/cloudinit/sftp/test.
+// Dials the configured SFTP server and writes+removes a probe file to verify
+// connectivity, authentication, and write permission.
+func (h *AdminMutationsHandler) TestSFTPConnection(w http.ResponseWriter, r *http.Request) {
+	cfg := h.state.GetSettings().CloudInitSFTP
+	if cfg.Host == "" || cfg.Username == "" {
+		errBadRequest(w, "host and username must be set before testing")
+		return
+	}
+	if cfg.PrivateKey == "" && cfg.PrivateKeyPath == "" {
+		errBadRequest(w, "a private key must be set before testing")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	// Allow testing before the feature is toggled on.
+	cfg.Enabled = true
+	if err := proxmox.TestSFTPConnection(ctx, cfg); err != nil {
+		writeJSON(w, map[string]any{"success": false, "message": err.Error()})
+		return
+	}
+	writeJSON(w, map[string]any{"success": true, "message": "SFTP connection OK"})
 }
 
 // generateCloudInitID generates a safe ID from a template name (lowercase, alphanumeric, hyphens).

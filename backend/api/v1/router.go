@@ -63,6 +63,9 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.POST("/api/v1/vms/:id/snapshots/:name/rollback", jwtWrap(jwtSecret, vmDetailsHandler.RollbackSnapshot))
 	router.GET("/api/v1/vms/:id/settings", jwtWrap(jwtSecret, vmDetailsHandler.GetVMSettings))
 	router.PUT("/api/v1/vms/:id/hardware", jwtWrap(jwtSecret, vmDetailsHandler.UpdateVMHardware))
+	router.PUT("/api/v1/vms/:id/cloudinit", jwtWrap(jwtSecret, vmDetailsHandler.UpdateVMCloudInit))
+	router.GET("/api/v1/vms/:id/cloudinit/snippet", jwtWrap(jwtSecret, vmDetailsHandler.GetVMCloudInitSnippet))
+	router.PUT("/api/v1/vms/:id/cloudinit/snippet", jwtWrap(jwtSecret, vmDetailsHandler.UpdateVMCloudInitSnippet))
 	router.POST("/api/v1/vms/:id/network/:iface/toggle", jwtWrap(jwtSecret, vmDetailsHandler.ToggleNIC))
 	router.DELETE("/api/v1/vms/:id", jwtWrap(jwtSecret, vmHandler.DeleteVM))
 
@@ -122,6 +125,8 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.DELETE("/api/v1/admin/cloudinit/:id", adminJWTWrap(jwtSecret, adminMutHandler.DeleteCloudInit))
 	router.POST("/api/v1/admin/cloudinit/:id/toggle", adminJWTWrap(jwtSecret, adminMutHandler.ToggleCloudInit))
 	router.POST("/api/v1/admin/cloudinit-sftp/toggle", adminJWTWrap(jwtSecret, adminMutHandler.ToggleSFTP))
+	router.PUT("/api/v1/admin/cloudinit-sftp", adminJWTWrap(jwtSecret, adminMutHandler.UpdateSFTPConfig))
+	router.POST("/api/v1/admin/cloudinit-sftp/test", adminJWTWrap(jwtSecret, adminMutHandler.TestSFTPConnection))
 
 	router.GET("/api/v1/admin/vm-profiles", adminJWTWrap(jwtSecret, adminMutHandler.ListVMProfiles))
 	router.POST("/api/v1/admin/vm-profiles", adminJWTWrap(jwtSecret, adminMutHandler.CreateVMProfile))

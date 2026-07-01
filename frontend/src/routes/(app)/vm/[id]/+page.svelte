@@ -550,7 +550,7 @@
 
 			{#if activeTab === 'cloudinit'}
 				<div role="tabpanel" id="tabpanel-cloudinit" aria-labelledby="tab-cloudinit">
-					<TabCloudInit {config} />
+					<TabCloudInit {config} onSaved={load} />
 				</div>
 			{/if}
 		</div>

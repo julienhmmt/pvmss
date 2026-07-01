@@ -6,6 +6,8 @@ export interface TaskStatus {
   node: string;
   status: "running" | "stopped" | string;
   exitStatus: string;
+  /** Stable warning code from async cloud-init application, if any. */
+  cloudInitWarning?: string;
 }
 
 export interface TaskLogEntry {

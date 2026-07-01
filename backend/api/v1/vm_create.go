@@ -23,11 +23,22 @@ import (
 //   - vm_create_cloudinit.go  — cloud-init wiring + TPM compat check
 type VMCreateHandler struct {
 	state state.StateManager
+
+	// uploadSnippetSFTP and uploadSnippetAPI are the snippet-upload backends.
+	// They default to the real proxmox package functions but are overridable
+	// in tests to exercise the SFTP-vs-API decision logic and warning codes
+	// without a live Proxmox connection.
+	uploadSnippetSFTP func(ctx context.Context, config proxmox.CloudInitSFTPConfig, filename, content string) error
+	uploadSnippetAPI  func(ctx context.Context, client *proxmox.RestyClient, node, storage, filename, content string) error
 }
 
 // MakeVMCreateHandler creates a new VMCreateHandler.
 func MakeVMCreateHandler(s state.StateManager) *VMCreateHandler {
-	return &VMCreateHandler{state: s}
+	return &VMCreateHandler{
+		state:             s,
+		uploadSnippetSFTP: proxmox.UploadSnippetFileSFTP,
+		uploadSnippetAPI:  proxmox.UploadSnippetFileResty,
+	}
 }
 
 // ── Response types ────────────────────────────────────────────────────────────
@@ -41,14 +52,19 @@ type VMCreateSettingsResponse struct {
 	Tags               []string                `json:"tags"`
 	CloudInitTemplate  []VMCreateCITemplate    `json:"cloudinit_templates"`
 	CloudInitAvailable bool                    `json:"cloud_init_available"`
-	VMProfiles         []state.VMProfileConfig `json:"vm_profiles"`
-	Limits             VMCreateLimits          `json:"limits"`
-	MaxNetworkCards    int                     `json:"max_network_cards"`
-	MaxDiskPerVM       int                     `json:"max_disk_per_vm"`
-	MaxVMPerUser       int                     `json:"max_vm_per_user"`
-	RemainingVMs       int                     `json:"remaining_vms"`
-	ProxmoxConnected   bool                    `json:"proxmox_connected"`
-	AllowCustomYAML    bool                    `json:"allow_custom_yaml"`
+	// CloudInitSFTPEnabled reports whether SFTP snippet upload is configured.
+	// Custom-YAML templates can only be attached to a VM when SFTP is enabled
+	// (the Proxmox HTTP API cannot reliably write snippet files), so the UI
+	// gates the template picker on this flag.
+	CloudInitSFTPEnabled bool                    `json:"cloud_init_sftp_enabled"`
+	VMProfiles           []state.VMProfileConfig `json:"vm_profiles"`
+	Limits               VMCreateLimits          `json:"limits"`
+	MaxNetworkCards      int                     `json:"max_network_cards"`
+	MaxDiskPerVM         int                     `json:"max_disk_per_vm"`
+	MaxVMPerUser         int                     `json:"max_vm_per_user"`
+	RemainingVMs         int                     `json:"remaining_vms"`
+	ProxmoxConnected     bool                    `json:"proxmox_connected"`
+	AllowCustomYAML      bool                    `json:"allow_custom_yaml"`
 }
 
 // VMCreateNodeOption represents a node option for VM creation.
@@ -218,6 +234,7 @@ func (h *VMCreateHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	resp.CloudInitTemplate = ciTemplates
 	resp.CloudInitAvailable = len(ciTemplates) > 0
+	resp.CloudInitSFTPEnabled = settings.CloudInitSFTP.Enabled
 
 	resp.RemainingVMs = -1
 	if settings.MaxVMPerUser > 0 && !isAdmin {
@@ -680,6 +697,12 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 	h.state.RequestSnapshotRefresh()
 
 	if upid != "" {
+		// Mark cloud-init as pending so the task-status endpoint knows to wait for
+		// the asynchronous cloud-init result (see finalizeAfterTask). Only set
+		// when cloud-init was actually requested.
+		if req.CloudInit != nil {
+			h.state.SetCloudInitWarning(upid, state.CloudInitPending)
+		}
 		go h.finalizeAfterTask(client, req.Node, vmid, upid, req.StartVM, req.CloudInit, req.Storage, settings, req.Sockets, req.Cores, req.MemoryMB)
 
 		w.WriteHeader(http.StatusAccepted)
@@ -727,10 +750,16 @@ func (h *VMCreateHandler) finalizeAfterTask(client *proxmox.RestyClient, node st
 
 	if client == nil {
 		logger.Get().Error().Int("vmid", vmid).Msg("api/v1: finalizeAfterTask: resty client is nil")
+		if ci != nil {
+			h.state.SetCloudInitWarning(upid, "")
+		}
 		return
 	}
 	if settings == nil {
 		logger.Get().Error().Int("vmid", vmid).Msg("api/v1: finalizeAfterTask: settings is nil")
+		if ci != nil {
+			h.state.SetCloudInitWarning(upid, "")
+		}
 		return
 	}
 
@@ -749,6 +778,9 @@ func (h *VMCreateHandler) finalizeAfterTask(client *proxmox.RestyClient, node st
 		select {
 		case <-ctx.Done():
 			logger.Get().Warn().Int("vmid", vmid).Str("upid", upid).Msg("api/v1: finalizeAfterTask: timed out waiting for creation task")
+			if ci != nil {
+				h.state.SetCloudInitWarning(upid, "")
+			}
 			return
 		case <-ticker.C:
 		}
@@ -771,15 +803,21 @@ func (h *VMCreateHandler) finalizeAfterTask(client *proxmox.RestyClient, node st
 
 		if status.ExitStatus != "OK" {
 			logger.Get().Warn().Str("exit_status", status.ExitStatus).Int("vmid", vmid).Msg("api/v1: finalizeAfterTask: creation task did not succeed")
+			if ci != nil {
+				h.state.SetCloudInitWarning(upid, "")
+			}
 			return
 		}
 
 		if ci != nil {
 			ciCtx, ciCancel := context.WithTimeout(ctx, 30*time.Second)
-			if warn := h.applyCloudInit(ciCtx, client, node, vmid, storage, ci, settings); warn != "" {
+			warn := h.applyCloudInit(ciCtx, client, node, vmid, storage, ci, settings)
+			ciCancel()
+			// Replace the pending sentinel with the real result (empty = OK).
+			h.state.SetCloudInitWarning(upid, warn)
+			if warn != "" {
 				logger.Get().Warn().Str("warning", warn).Int("vmid", vmid).Msg("api/v1: finalizeAfterTask: cloud-init issue")
 			}
-			ciCancel()
 		}
 
 		if startVM {
