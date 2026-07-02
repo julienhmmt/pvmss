@@ -20,7 +20,7 @@ run every verification gate, and update your row when done.
 | 003  | Add frontend check/lint/test + race-detector jobs to CI | P1 | S | — | DONE (PR #98: incl. fixing 170 lint errors, lint blocking) |
 | 004  | Auth handler table-driven tests (login/exchange/refresh/PVE-admin) | P1 | L | 003 | DONE |
 | 005  | VM create + VM details characterization tests | P2 | M | 003, 004 (scaffold) | DONE |
-| 006  | Parallelize Proxmox fetches (pool N+1, VM detail waterfall) | P2 | M | 005 | TODO |
+| 006  | Parallelize Proxmox fetches (pool N+1, VM detail waterfall) | P2 | M | 005 | DONE |
 | 007  | Extract shared settings-update helper (admin handler dedup) | P3 | M | 005 | TODO |
 | 008  | Quick wins: remove unused adapter-auto, extend Dependabot | P3 | S | — | TODO |
 | 009  | Spike: bulk VM operations (design + API + open questions) | P3 | M | — | TODO |
