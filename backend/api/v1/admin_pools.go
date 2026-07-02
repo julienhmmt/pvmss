@@ -60,39 +60,61 @@ func (h *AdminMutationsHandler) ListPools(w http.ResponseWriter, r *http.Request
 		} `json:"data"`
 	}
 
-	result := make([]AdminPoolResponse, 0, len(listResp.Data))
+	// Pre-filter to pvmss-managed pools, preserving list order.
+	type poolInfo struct{ poolID, comment string }
+	filtered := make([]poolInfo, 0, len(listResp.Data))
 	for _, p := range listResp.Data {
-		if !strings.HasPrefix(p.PoolID, constants.PoolPrefix) {
-			continue
+		if strings.HasPrefix(p.PoolID, constants.PoolPrefix) {
+			filtered = append(filtered, poolInfo{p.PoolID, p.Comment})
 		}
-		var detail detailResp
-		if err := restyClient.Get(r.Context(), "/pools/"+url.PathEscape(p.PoolID), &detail); err != nil {
-			logger.Get().Warn().Err(err).Str("pool", p.PoolID).Msg("failed to fetch pool detail")
-			result = append(result, AdminPoolResponse{
-				PoolID:  p.PoolID,
-				Comment: p.Comment,
-				Members: []string{},
-				VMCount: 0,
-			})
-			continue
-		}
-		members := make([]string, 0, len(detail.Data.Members))
-		vmCount := 0
-		for _, m := range detail.Data.Members {
-			members = append(members, m.ID)
-			t := strings.ToLower(m.Type)
-			if t == "qemu" || t == "lxc" {
-				vmCount++
-			}
-		}
-		result = append(result, AdminPoolResponse{
-			PoolID:  detail.Data.PoolID,
-			Comment: detail.Data.Comment,
-			Members: members,
-			VMCount: vmCount,
-		})
 	}
-	writeJSON(w, result)
+
+	// Fetch pool details concurrently — each /pools/{id} GET is independent.
+	// A pre-sized slice indexed by position preserves list order without a
+	// post-sort. Partial failures still emit a stub (never fail the whole
+	// request). The concurrency cap matches nodes_aggregator's maxConcurrent
+	// and acts as a deliberate throttle against per-token rate limits.
+	const maxConcurrent = 8
+	results := make([]AdminPoolResponse, len(filtered))
+	sem := make(chan struct{}, maxConcurrent)
+	var wg sync.WaitGroup
+	for i, p := range filtered {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			var detail detailResp
+			if err := restyClient.Get(r.Context(), "/pools/"+url.PathEscape(p.poolID), &detail); err != nil {
+				logger.Get().Warn().Err(err).Str("pool", p.poolID).Msg("failed to fetch pool detail")
+				results[i] = AdminPoolResponse{
+					PoolID:  p.poolID,
+					Comment: p.comment,
+					Members: []string{},
+					VMCount: 0,
+				}
+				return
+			}
+			members := make([]string, 0, len(detail.Data.Members))
+			vmCount := 0
+			for _, m := range detail.Data.Members {
+				members = append(members, m.ID)
+				t := strings.ToLower(m.Type)
+				if t == "qemu" || t == "lxc" {
+					vmCount++
+				}
+			}
+			results[i] = AdminPoolResponse{
+				PoolID:  detail.Data.PoolID,
+				Comment: detail.Data.Comment,
+				Members: members,
+				VMCount: vmCount,
+			}
+		}()
+	}
+	wg.Wait()
+	writeJSON(w, results)
 }
 
 // CreatePool handles POST /api/v1/admin/userpool.
