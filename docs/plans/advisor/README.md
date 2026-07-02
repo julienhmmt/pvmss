@@ -22,7 +22,7 @@ run every verification gate, and update your row when done.
 | 005  | VM create + VM details characterization tests | P2 | M | 003, 004 (scaffold) | DONE |
 | 006  | Parallelize Proxmox fetches (pool N+1, VM detail waterfall) | P2 | M | 005 | DONE |
 | 007  | Extract shared settings-update helper (admin handler dedup) | P3 | M | 005 | DONE (helper folds admin_tags; limits/profiles left inline per STOP conditions) |
-| 008  | Quick wins: remove unused adapter-auto, extend Dependabot | P3 | S | — | TODO |
+| 008  | Quick wins: remove unused adapter-auto, extend Dependabot | P3 | S | — | DONE (lockfile is text `bun.lock` not `bun.lockb`) |
 | 009  | Spike: bulk VM operations (design + API + open questions) | P3 | M | — | TODO |
 | 010  | Spike: VM clone functionality (design + API + open questions) | P3 | M | — | TODO |
 
