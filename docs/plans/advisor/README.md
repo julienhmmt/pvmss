@@ -24,7 +24,7 @@ run every verification gate, and update your row when done.
 | 007  | Extract shared settings-update helper (admin handler dedup) | P3 | M | 005 | DONE (helper folds admin_tags; limits/profiles left inline per STOP conditions) |
 | 008  | Quick wins: remove unused adapter-auto, extend Dependabot | P3 | S | — | DONE (lockfile is text `bun.lock` not `bun.lockb`) |
 | 009  | Spike: bulk VM operations (design + API + open questions) | P3 | M | — | DONE (findings doc; recommends green-light for a build plan) |
-| 010  | Spike: VM clone functionality (design + API + open questions) | P3 | M | — | TODO |
+| 010  | Spike: VM clone functionality (design + API + open questions) | P3 | M | — | DONE (findings doc; recommends green-light; share VMID/quota helpers with 009) |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 
