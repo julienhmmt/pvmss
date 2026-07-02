@@ -10,6 +10,7 @@ import (
 
 	"pvmss/constants"
 	"pvmss/proxmox"
+	"pvmss/state"
 )
 
 var tagNameRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,50}$`)
@@ -84,19 +85,11 @@ func (h *AdminMutationsHandler) CreateTag(w http.ResponseWriter, r *http.Request
 	newTags := make([]string, len(settings.Tags), len(settings.Tags)+1)
 	copy(newTags, settings.Tags)
 	newTags = append(newTags, req.Name)
-	if h.state.HasDB() {
-		if err := h.state.SetTags(newTags, usernameFromCtx(r)); err != nil {
-			writeAppError(w, err)
-			return
-		}
-	} else {
-		newSettings := *settings
-		newSettings.Tags = newTags
-		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
-		if err := h.state.SetSettings(&newSettings); err != nil {
-			writeAppError(w, err)
-			return
-		}
+	if !h.persistSettingsChange(w, r,
+		func(changedBy string) error { return h.state.SetTags(newTags, changedBy) },
+		func(s *state.AppSettings) *state.AppSettings { ns := *s; ns.Tags = newTags; return &ns },
+	) {
+		return
 	}
 	w.WriteHeader(http.StatusCreated)
 	writeJSON(w, AdminTagResponse{Name: req.Name})
@@ -194,19 +187,11 @@ func (h *AdminMutationsHandler) DeleteTag(w http.ResponseWriter, r *http.Request
 		errBadRequest(w, "tag not found")
 		return
 	}
-	if h.state.HasDB() {
-		if err := h.state.SetTags(newTags, usernameFromCtx(r)); err != nil {
-			writeAppError(w, err)
-			return
-		}
-	} else {
-		newSettings := *settings
-		newSettings.Tags = newTags
-		newSettings.Limits.Nodes = copyNodeLimits(settings.Limits.Nodes)
-		if err := h.state.SetSettings(&newSettings); err != nil {
-			writeAppError(w, err)
-			return
-		}
+	if !h.persistSettingsChange(w, r,
+		func(changedBy string) error { return h.state.SetTags(newTags, changedBy) },
+		func(s *state.AppSettings) *state.AppSettings { ns := *s; ns.Tags = newTags; return &ns },
+	) {
+		return
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
