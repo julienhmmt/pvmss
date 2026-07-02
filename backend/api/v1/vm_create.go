@@ -495,26 +495,10 @@ func (h *VMCreateHandler) CreateVM(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	vmid := 0
-	if snapshot := h.state.GetProxmoxSnapshot(); snapshot != nil && len(snapshot.VMs) > 0 {
-		highest := 0
-		for _, svm := range snapshot.VMs {
-			if svm.VMID > highest {
-				highest = svm.VMID
-			}
-		}
-		if highest > 0 {
-			vmid = highest + 1
-		}
-	}
-	if vmid == 0 {
-		nextID, err := proxmox.GetClusterNextIDResty(ctx, client)
-		if err != nil {
-			logger.Get().Error().Err(err).Msg("api/v1: failed to get next VMID")
-			writeError(w, http.StatusInternalServerError, "vmid_error", "Failed to get next VMID")
-			return
-		}
-		vmid = nextID
+	vmid, err := allocateNextVMID(ctx, h.state, client)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "vmid_error", "Failed to get next VMID")
+		return
 	}
 
 	diskBus := req.DiskBus
