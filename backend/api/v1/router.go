@@ -67,6 +67,7 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.GET("/api/v1/vms/:id/cloudinit/snippet", jwtWrap(jwtSecret, vmDetailsHandler.GetVMCloudInitSnippet))
 	router.PUT("/api/v1/vms/:id/cloudinit/snippet", jwtWrap(jwtSecret, vmDetailsHandler.UpdateVMCloudInitSnippet))
 	router.POST("/api/v1/vms/:id/network/:iface/toggle", jwtWrap(jwtSecret, vmDetailsHandler.ToggleNIC))
+	router.POST("/api/v1/vms/:id/clone", jwtWrap(jwtSecret, vmDetailsHandler.CloneVM))
 	router.DELETE("/api/v1/vms/:id", jwtWrap(jwtSecret, vmHandler.DeleteVM))
 
 	// Disk management routes — JWT required
@@ -104,6 +105,9 @@ func RegisterRoutes(router *httprouter.Router, s state.StateManager) {
 	router.GET("/api/v1/admin/vms", adminJWTWrap(jwtSecret, adminVMsHandler.ListAllVMs))
 	router.GET("/api/v1/admin/vms/paginated", adminJWTWrap(jwtSecret, adminVMsHandler.ListAllVMsPaginated))
 	router.POST("/api/v1/admin/vms/:id/action", adminJWTWrap(jwtSecret, adminVMsHandler.VMAction))
+	// Note: mounted as a sibling of /admin/vms (not /admin/vms/bulk-action)
+	// because httprouter forbids a static segment beside the :id wildcard.
+	router.POST("/api/v1/admin/vms-bulk-action", adminJWTWrap(jwtSecret, adminVMsHandler.BulkVMAction))
 	router.DELETE("/api/v1/admin/vms/:id", adminJWTWrap(jwtSecret, adminVMsHandler.DeleteVM))
 
 	router.GET("/api/v1/admin/userpool", adminJWTWrap(jwtSecret, adminMutHandler.ListPools))
