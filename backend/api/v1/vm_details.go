@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"pvmss/constants"
 	"pvmss/proxmox"
 	"pvmss/state"
@@ -330,16 +332,25 @@ func (h *VMDetailsHandler) GetVMConfig(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Get runtime status
-	current, err := proxmox.GetVMCurrentResty(ctx, client, node, vmid)
-	if err != nil {
-		writeAppError(w, err)
-		return
-	}
-
-	// Get full config
-	cfg, err := proxmox.GetVMConfigResty(ctx, client, node, vmid)
-	if err != nil {
+	// Runtime status and full config are independent GETs against the same
+	// node — fetch them concurrently. errgroup cancels the sibling call on the
+	// first error (both must succeed, matching the previous sequential
+	// fail-fast behavior). g.Wait() provides the happens-before that makes the
+	// distinct current/cfg writes safe to read below.
+	var (
+		current *proxmox.VMCurrent
+		cfg     map[string]any
+	)
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() (err error) {
+		current, err = proxmox.GetVMCurrentResty(gctx, client, node, vmid)
+		return err
+	})
+	g.Go(func() (err error) {
+		cfg, err = proxmox.GetVMConfigResty(gctx, client, node, vmid)
+		return err
+	})
+	if err := g.Wait(); err != nil {
 		writeAppError(w, err)
 		return
 	}
