@@ -257,7 +257,7 @@ export async function resizeDisk(
     disk_id: diskId,
     add_gb: addGB,
   });
-  const res = await api.patch<VMHardwareUpdateResponse>(
+  const res = await api.put<VMHardwareUpdateResponse>(
     `/api/v1/vms/${vmid}/disks/${diskId}/resize`,
     payload,
   );
