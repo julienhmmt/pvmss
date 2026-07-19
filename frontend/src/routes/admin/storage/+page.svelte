@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { t } from 'svelte-i18n';
 	import LoadingSkeleton from '$lib/components/data/LoadingSkeleton.svelte';
 	import LoadingToast from '$lib/components/data/LoadingToast.svelte';
@@ -24,7 +25,7 @@
 	let storages = $state<Storage[]>([]);
 	let selectedNode = $state<string>('');
 	let selectedType = $state<string>('');
-	let toggling = $state<Set<string>>(new Set());
+	const toggling = new SvelteSet<string>();
 
 	type SortKey = 'name' | 'total' | 'used' | 'usage';
 	type SortDir = 'asc' | 'desc';
@@ -107,16 +108,14 @@
 
 	async function handleToggle(storage: string, node: string) {
 		const key = storageKey(storage, node);
-		toggling = new Set([...toggling, key]);
+		toggling.add(key);
 		try {
 			await toggleStorage(storage, node);
 			await load();
 		} catch (e) {
 			toast.error((e as Error).message);
 		} finally {
-			const next = new Set(toggling);
-			next.delete(key);
-			toggling = next;
+			toggling.delete(key);
 		}
 	}
 

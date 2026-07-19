@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { t } from 'svelte-i18n';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -44,10 +45,10 @@
 	let proxmoxData = $state<SetupProxmoxData | null>(null);
 	let dataLoading = $state(false);
 
-	let selectedNodes = $state<Set<string>>(new Set());
-	let selectedStorages = $state<Set<string>>(new Set());
-	let selectedISOs = $state<Set<string>>(new Set());
-	let selectedVMBRs = $state<Set<string>>(new Set());
+	const selectedNodes = new SvelteSet<string>();
+	const selectedStorages = new SvelteSet<string>();
+	const selectedISOs = new SvelteSet<string>();
+	const selectedVMBRs = new SvelteSet<string>();
 
 	let limits = $state<SetupLimits>({
 		maxVms: 20,
@@ -60,7 +61,7 @@
 
 	let completing = $state(false);
 
-	const stepIndex = $derived(STEPS.indexOf(currentStep as Step));
+	const stepIndex = $derived(STEPS.indexOf(currentStep));
 
 	onMount(async () => {
 		try {
@@ -98,10 +99,10 @@
 		dataLoading = true;
 		try {
 			proxmoxData = await getProxmoxData();
-			selectedNodes = new Set(proxmoxData.nodes);
-			selectedStorages = new Set(proxmoxData.storages);
-			selectedISOs = new Set(proxmoxData.isos);
-			selectedVMBRs = new Set(proxmoxData.vmbrs);
+			populateSet(selectedNodes, proxmoxData.nodes);
+			populateSet(selectedStorages, proxmoxData.storages);
+			populateSet(selectedISOs, proxmoxData.isos);
+			populateSet(selectedVMBRs, proxmoxData.vmbrs);
 		} catch (err: unknown) {
 			console.error('getProxmoxData failed:', err instanceof Error ? err.message : String(err));
 			proxmoxData = { nodes: [], storages: [], isos: [], vmbrs: [] };
@@ -110,11 +111,19 @@
 		}
 	}
 
-	function toggleItem(set: Set<string>, item: string): Set<string> {
-		const next = new Set(set);
-		if (next.has(item)) next.delete(item);
-		else next.add(item);
-		return next;
+	function toggleItem(set: SvelteSet<string>, item: string): void {
+		if (set.has(item)) {
+			set.delete(item);
+		} else {
+			set.add(item);
+		}
+	}
+
+	function populateSet(set: SvelteSet<string>, items: string[]): void {
+		set.clear();
+		for (const item of items) {
+			set.add(item);
+		}
 	}
 
 	async function goNext() {
@@ -276,10 +285,10 @@
 							<p class="text-sm text-muted-foreground">{$t('setup.nodes.none')}</p>
 						{:else}
 							<div class="flex gap-2 mb-2">
-								<Button variant="ghost" size="sm" onclick={() => { selectedNodes = new Set(proxmoxData!.nodes); }}>
+								<Button variant="ghost" size="sm" onclick={() => { populateSet(selectedNodes, proxmoxData!.nodes); }}>
 									{$t('setup.nodes.selectAll')}
 								</Button>
-								<Button variant="ghost" size="sm" onclick={() => { selectedNodes = new Set(); }}>
+								<Button variant="ghost" size="sm" onclick={() => { selectedNodes.clear(); }}>
 									{$t('setup.nodes.deselectAll')}
 								</Button>
 							</div>
@@ -289,7 +298,7 @@
 										<Checkbox
 											id="node-{node}"
 											checked={selectedNodes.has(node)}
-											onCheckedChange={() => { selectedNodes = toggleItem(selectedNodes, node); }}
+											onCheckedChange={() => { toggleItem(selectedNodes, node); }}
 										/>
 										<Label for="node-{node}" class="flex items-center gap-2 cursor-pointer">
 											<Desktop class="h-4 w-4 text-muted-foreground" />
@@ -320,13 +329,13 @@
 									<p class="text-sm text-muted-foreground italic">{$t('setup.resources.none')}</p>
 								{:else}
 									<div class="flex gap-2 mb-1">
-										<Button variant="ghost" size="sm" onclick={() => { selectedStorages = new Set(proxmoxData!.storages); }}>{$t('setup.resources.selectAll')}</Button>
-										<Button variant="ghost" size="sm" onclick={() => { selectedStorages = new Set(); }}>{$t('setup.resources.deselectAll')}</Button>
+										<Button variant="ghost" size="sm" onclick={() => { populateSet(selectedStorages, proxmoxData!.storages); }}>{$t('setup.resources.selectAll')}</Button>
+										<Button variant="ghost" size="sm" onclick={() => { selectedStorages.clear(); }}>{$t('setup.resources.deselectAll')}</Button>
 									</div>
 									<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
 										{#each proxmoxData?.storages ?? [] as item, i (i)}
 											<div class="flex items-center gap-2 p-2 rounded border text-sm">
-												<Checkbox id="storage-{item}" checked={selectedStorages.has(item)} onCheckedChange={() => { selectedStorages = toggleItem(selectedStorages, item); }} />
+												<Checkbox id="storage-{item}" checked={selectedStorages.has(item)} onCheckedChange={() => { toggleItem(selectedStorages, item); }} />
 												<Label for="storage-{item}" class="cursor-pointer truncate">{item}</Label>
 											</div>
 										{/each}
@@ -347,13 +356,13 @@
 									<p class="text-sm text-muted-foreground italic">{$t('setup.resources.none')}</p>
 								{:else}
 									<div class="flex gap-2 mb-1">
-										<Button variant="ghost" size="sm" onclick={() => { selectedISOs = new Set(proxmoxData!.isos); }}>{$t('setup.resources.selectAll')}</Button>
-										<Button variant="ghost" size="sm" onclick={() => { selectedISOs = new Set(); }}>{$t('setup.resources.deselectAll')}</Button>
+										<Button variant="ghost" size="sm" onclick={() => { populateSet(selectedISOs, proxmoxData!.isos); }}>{$t('setup.resources.selectAll')}</Button>
+										<Button variant="ghost" size="sm" onclick={() => { selectedISOs.clear(); }}>{$t('setup.resources.deselectAll')}</Button>
 									</div>
 									<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
 										{#each proxmoxData?.isos ?? [] as item, i (i)}
 											<div class="flex items-center gap-2 p-2 rounded border text-sm">
-												<Checkbox id="iso-{item}" checked={selectedISOs.has(item)} onCheckedChange={() => { selectedISOs = toggleItem(selectedISOs, item); }} />
+												<Checkbox id="iso-{item}" checked={selectedISOs.has(item)} onCheckedChange={() => { toggleItem(selectedISOs, item); }} />
 												<Label for="iso-{item}" class="cursor-pointer truncate">{item}</Label>
 											</div>
 										{/each}
@@ -374,13 +383,13 @@
 									<p class="text-sm text-muted-foreground italic">{$t('setup.resources.none')}</p>
 								{:else}
 									<div class="flex gap-2 mb-1">
-										<Button variant="ghost" size="sm" onclick={() => { selectedVMBRs = new Set(proxmoxData!.vmbrs); }}>{$t('setup.resources.selectAll')}</Button>
-										<Button variant="ghost" size="sm" onclick={() => { selectedVMBRs = new Set(); }}>{$t('setup.resources.deselectAll')}</Button>
+										<Button variant="ghost" size="sm" onclick={() => { populateSet(selectedVMBRs, proxmoxData!.vmbrs); }}>{$t('setup.resources.selectAll')}</Button>
+										<Button variant="ghost" size="sm" onclick={() => { selectedVMBRs.clear(); }}>{$t('setup.resources.deselectAll')}</Button>
 									</div>
 									<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
 										{#each proxmoxData?.vmbrs ?? [] as item, i (i)}
 											<div class="flex items-center gap-2 p-2 rounded border text-sm">
-												<Checkbox id="vmbr-{item}" checked={selectedVMBRs.has(item)} onCheckedChange={() => { selectedVMBRs = toggleItem(selectedVMBRs, item); }} />
+												<Checkbox id="vmbr-{item}" checked={selectedVMBRs.has(item)} onCheckedChange={() => { toggleItem(selectedVMBRs, item); }} />
 												<Label for="vmbr-{item}" class="cursor-pointer truncate">{item}</Label>
 											</div>
 										{/each}

@@ -29,7 +29,7 @@ export default [
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       // Static-adapter SPA with no base path: resolve() adds churn without value.
-      'svelte/no-navigation-without-resolve': 'warn',
+      'svelte/no-navigation-without-resolve': 'off',
       // Reactivity is driven by $state reassignment; the rule fires on non-reactive
       // local/infra collections (timers, URL builders, throwaway copies).
       'svelte/prefer-svelte-reactivity': 'warn'

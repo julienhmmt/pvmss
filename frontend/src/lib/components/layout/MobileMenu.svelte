@@ -1,28 +1,18 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { auth } from '$lib/stores/auth.svelte';
-	import { logout } from '$lib/api/auth';
 	import { t } from 'svelte-i18n';
 	import { setLocale } from '$lib/i18n';
 	import type { NavLink } from '$lib/types/navbar';
-	import {
-		HouseIcon,
-		PlusSquareIcon,
-		MagnifyingGlassIcon,
-		BookOpenIcon,
-		GearSixIcon,
-		SignInIcon,
-		SignOutIcon
-	} from 'phosphor-svelte';
+	import { GearSixIcon, SignInIcon, SignOutIcon } from 'phosphor-svelte';
 
 	interface Props {
 		navLinks: NavLink[];
-		open: boolean;
 		onClose: () => void;
 		onLogout: () => Promise<void>;
 	}
 
-	let { navLinks, open, onClose, onLogout }: Props = $props();
+	let { navLinks, onClose, onLogout }: Props = $props();
 
 	function isActive(href: string, pathname: string): boolean {
 		if (href === '/') return pathname === '/';

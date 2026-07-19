@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { t } from 'svelte-i18n';
 	import { auth } from '$lib/stores/auth.svelte';
-	import { GearSixIcon, SignOutIcon, CaretDownIcon } from 'phosphor-svelte';
+	import { GearSixIcon, SignOutIcon } from 'phosphor-svelte';
 
 	interface Props {
 		onLogout: () => Promise<void>;

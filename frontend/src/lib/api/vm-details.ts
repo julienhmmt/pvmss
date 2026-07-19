@@ -1,16 +1,8 @@
 import { api } from "./client";
-import type {
-  CloudInitInfo,
-  DiskInfo,
-  NetworkInterface,
-  SnapshotList,
-  VMConfig,
-  VMStatus,
-} from "$lib/types/vm";
+import type { SnapshotList, VMConfig, VMStatus } from "$lib/types/vm";
 import { transformKeysToCamelCase, transformKeysToSnakeCase } from "$lib/utils/transform";
 
 export type {
-  CloudInitInfo,
   DiskInfo,
   NetworkInterface,
   Snapshot,

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { SvelteURLSearchParams } from 'svelte/reactivity';
 	import { goto, replaceState } from '$app/navigation';
 	import { page } from '$app/state';
 	import { flip } from 'svelte/animate';
@@ -171,7 +172,7 @@
 	});
 
 	function pushUrlState(): void {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		if (q.trim()) params.set('q', q.trim());
 		if (filterStatus) params.set('status', filterStatus);
 		if (filterNode) params.set('node', filterNode);

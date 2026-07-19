@@ -8,7 +8,7 @@
 	import PvHeaderStat from '$lib/components/layout/PvHeaderStat.svelte';
 	import ErrorBanner from '$lib/components/feedback/ErrorBanner.svelte';
 	import { getAppInfo } from '$lib/api/admin/appinfo';
-	import { Info, CheckCircle, XCircle, HardDrives, Desktop } from 'phosphor-svelte';
+	import { CheckCircle, XCircle, HardDrives, Desktop } from 'phosphor-svelte';
 	import type { AppInfo } from '$lib/types/admin';
 
 	let loading = $state(true);

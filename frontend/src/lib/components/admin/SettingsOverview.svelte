@@ -5,6 +5,7 @@
 	import { Gear, WarningCircle, X, CaretDown } from 'phosphor-svelte';
 	import {
 		getSettingsOverview,
+		getSectionData,
 		type OverviewResponse,
 		CATEGORY_RESOURCES,
 		CATEGORY_INVENTORY,
@@ -123,10 +124,10 @@
 						<div class="space-y-4">
 							{#each getSectionsByCategory(CATEGORY_RESOURCES) as [table, section], i (i)}
 								{#if table === TABLE_VM_LIMITS}
-									<SettingsVMLimits meta={section} data={section.data as any} onUpdate={loadOverview} />
+									<SettingsVMLimits meta={section} data={getSectionData(section, TABLE_VM_LIMITS)} onUpdate={loadOverview} />
 								{/if}
 								{#if table === TABLE_NODE_LIMITS}
-									<SettingsNodeLimits meta={section} data={section.data as any} onUpdate={loadOverview} />
+									<SettingsNodeLimits meta={section} data={getSectionData(section, TABLE_NODE_LIMITS)} onUpdate={loadOverview} />
 								{/if}
 							{/each}
 						</div>
@@ -158,10 +159,10 @@
 						<div class="space-y-4">
 							{#each getSectionsByCategory(CATEGORY_TEMPLATES) as [table, section], i (i)}
 								{#if table === TABLE_CLOUDINIT_TEMPLATES}
-									<SettingsCloudInit meta={section} data={section.data as any} onUpdate={loadOverview} />
+									<SettingsCloudInit meta={section} data={getSectionData(section, TABLE_CLOUDINIT_TEMPLATES)} onUpdate={loadOverview} />
 								{/if}
 								{#if table === TABLE_VM_PROFILES}
-									<SettingsVMProfiles meta={section} data={section.data as any} onUpdate={loadOverview} />
+									<SettingsVMProfiles meta={section} data={getSectionData(section, TABLE_VM_PROFILES)} onUpdate={loadOverview} />
 								{/if}
 							{/each}
 						</div>
@@ -177,7 +178,7 @@
 						<div class="space-y-4">
 							{#each getSectionsByCategory(CATEGORY_INTEGRATIONS) as [table, section], i (i)}
 								{#if table === TABLE_SFTP_CONFIG}
-									<SettingsSFTP meta={section} data={section.data as any} onUpdate={loadOverview} />
+									<SettingsSFTP meta={section} data={getSectionData(section, TABLE_SFTP_CONFIG)} onUpdate={loadOverview} />
 								{/if}
 							{/each}
 						</div>

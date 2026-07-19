@@ -36,6 +36,89 @@ export interface UpsertResponse {
 	message: string;
 }
 
+/** VM limits singleton data. */
+export interface VMLimitsData {
+	maxVms: number;
+	maxVmPerUser: number;
+	maxNetworkCards: number;
+	maxDiskPerVm: number;
+	allowCustomYaml: boolean;
+	maxSnapshots: number;
+}
+
+/** Per-node resource limits. */
+export interface NodeLimit {
+	node: string;
+	maxVms: number;
+	maxVcpus: number;
+	maxRamGb: number;
+	maxDiskGb: number;
+}
+
+/** Cloud-init template definition. */
+export interface CloudInitTemplate {
+	id: string;
+	name: string;
+	description?: string;
+	storage: string;
+	filename: string;
+	yamlContent: string;
+	enabled: boolean;
+}
+
+/** VM profile definition. */
+export interface VMProfile {
+	id: string;
+	name: string;
+	description?: string;
+	sockets: number;
+	cores: number;
+	ramGb: number;
+	diskGb: number;
+	diskBus: string;
+	node?: string;
+	storage?: string;
+	icon: string;
+	color: string;
+	enabled: boolean;
+}
+
+/** SFTP upload configuration. */
+export interface SFTPConfig {
+	enabled: boolean;
+	host: string;
+	port: number;
+	username: string;
+	privateKeyPath: string;
+	remotePath: string;
+}
+
+/** Maps each known settings table to the shape of its `data` field. */
+export interface SectionDataMap {
+	vm_limits: VMLimitsData;
+	node_limits: NodeLimit[];
+	enabled_nodes: string[];
+	enabled_storages: string[];
+	enabled_isos: string[];
+	enabled_vmbrs: string[];
+	tags: string[];
+	cloudinit_templates: CloudInitTemplate[];
+	vm_profiles: VMProfile[];
+	sftp_config: SFTPConfig;
+}
+
+/** Safely casts an overview section's `data` to the type expected by its table.
+ *
+ * This is a type-only assertion: the backend is the source of truth for the
+ * section payload, and child components validate the fields they render.
+ */
+export function getSectionData<K extends keyof SectionDataMap>(
+	section: OverviewSection,
+	_table: K
+): SectionDataMap[K] {
+	return section.data as SectionDataMap[K];
+}
+
 // Category constants
 export const CATEGORY_RESOURCES = 'resources';
 export const CATEGORY_INVENTORY = 'inventory';
