@@ -3,12 +3,10 @@
 	import { Monitor, ArrowSquareOut } from 'phosphor-svelte';
 
 	interface Props {
-		vmid: number;
-		name: string | null;
 		onConsole: () => void;
 	}
 
-	let { vmid, name, onConsole }: Props = $props();
+	let { onConsole }: Props = $props();
 </script>
 
 <button

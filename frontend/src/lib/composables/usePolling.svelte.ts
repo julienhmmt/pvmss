@@ -217,7 +217,6 @@ export function usePolling(config: PollingConfig): PollingHandle {
 					// Calculate remaining time from pause
 					let remaining = backoffInterval;
 					if (pauseTimestamp && countdownEndTime) {
-						const elapsed = Date.now() - pauseTimestamp;
 						remaining = Math.max(0, countdownEndTime - Date.now());
 					}
 					// Schedule next with remaining time

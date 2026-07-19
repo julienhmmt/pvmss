@@ -1,5 +1,5 @@
 import { api } from "./client";
-import type { VM, VMAction, VMStatus } from "$lib/types/vm";
+import type { VM, VMAction } from "$lib/types/vm";
 import { transformKeysToCamelCase } from "$lib/utils/transform";
 
 /**

@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { t } from 'svelte-i18n';
 	import type { VMSummary } from '$lib/api/vms';
 	import type { VMAction } from '$lib/types/vm';
 	import VmStatusBadge from './VmStatusBadge.svelte';

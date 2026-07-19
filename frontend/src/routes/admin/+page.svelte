@@ -17,8 +17,6 @@
 		HardDrives,
 		Desktop,
 		Database,
-		CheckCircle,
-		XCircle,
 		GearSix,
 		Info,
 		GitBranch

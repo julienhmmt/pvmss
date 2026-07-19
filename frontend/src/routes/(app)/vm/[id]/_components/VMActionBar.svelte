@@ -3,9 +3,6 @@
 	import { Play, Stop, ArrowCounterClockwise, ArrowsClockwise, Monitor, Trash } from 'phosphor-svelte';
 
 	interface Props {
-		vmid: number;
-		name: string | null;
-		node: string | null;
 		status: string;
 		actionLoading: boolean;
 		onAction: (action: string) => void;
@@ -15,9 +12,6 @@
 	}
 
 	let {
-		vmid,
-		name,
-		node,
 		status,
 		actionLoading,
 		onAction,

@@ -431,9 +431,6 @@
 			/>
 			<div class="flex-shrink-0">
 				<VMActionBar
-					{vmid}
-					name={config.name}
-					node={config.node}
 					status={metrics?.status ?? config.status}
 					{actionLoading}
 					onAction={doAction}
@@ -459,7 +456,7 @@
 		<VMStatCards {config} {metrics} />
 
 		{#if (metrics?.status ?? config.status) === 'running'}
-			<ConsoleBanner {vmid} name={config.name} onConsole={openConsole} />
+			<ConsoleBanner onConsole={openConsole} />
 		{/if}
 
 		<EditableDescription
