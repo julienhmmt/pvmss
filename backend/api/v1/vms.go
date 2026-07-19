@@ -138,57 +138,6 @@ func (h *VMHandler) ListVMs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, paginateVMs(summaries, page, limit))
 }
 
-// GetVM handles GET /api/v1/vms/:id.
-func (h *VMHandler) GetVM(w http.ResponseWriter, r *http.Request) {
-	vmid, ok := requireVMID(w, r)
-	if !ok {
-		return
-	}
-
-	if h.isOffline() {
-		errOffline(w)
-		return
-	}
-
-	username := usernameFromCtx(r)
-	isAdmin := isAdminFromCtx(r)
-
-	cfg := h.state.GetEnvConfig()
-	client, err := proxmox.MakeRestyClientFromEnvConfig(cfg, 30*time.Second)
-	if err != nil {
-		writeAppError(w, err)
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(r.Context(), 20*time.Second)
-	defer cancel()
-
-	var poolVMIDs map[int]bool
-	if !isAdmin && username != "" {
-		poolVMIDs = fetchPoolVMIDs(ctx, client, constants.PoolPrefix+username)
-	}
-
-	allVMs, err := proxmox.GetVMsResty(ctx, client)
-	if err != nil {
-		writeAppError(w, err)
-		return
-	}
-	for _, vm := range allVMs {
-		if vm.VMID != vmid {
-			continue
-		}
-		if poolVMIDs != nil && !poolVMIDs[vm.VMID] {
-			break // VM exists but not in user's pool
-		}
-		if !hasTag(vm.Tags, constants.RequiredTag) {
-			break
-		}
-		writeJSON(w, vmToSummary(vm))
-		return
-	}
-	writeError(w, http.StatusNotFound, "not_found", "VM not found")
-}
-
 // DeleteVM handles DELETE /api/v1/vms/:id.
 // Admins may delete any pvmss-tagged VM; regular users may only delete VMs in their pool.
 func (h *VMHandler) DeleteVM(w http.ResponseWriter, r *http.Request) {
