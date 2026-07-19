@@ -1,7 +1,6 @@
 import { api } from "./client";
 import type { VM, VMAction, VMStatus } from "$lib/types/vm";
 import { transformKeysToCamelCase } from "$lib/utils/transform";
-import { validateSearchParams, type VMSearchParams as SearchParams, type SearchFilter } from "$lib/api/search";
 
 /**
  * Summary view of a VM for list displays.
@@ -41,12 +40,6 @@ export interface VMPaginationParams {
   type?: SearchType;
 }
 
-export async function getVMs(): Promise<VMSummary[]> {
-  const res = await api.get<PaginatedVMListResponse>("/api/v1/vms");
-  const transformed = transformKeysToCamelCase<PaginatedVMListResponse>(res);
-  return transformed.vms;
-}
-
 export async function vmAction(
   vmid: number,
   node: string,
@@ -83,21 +76,4 @@ export async function getVMsPaginated(params: VMPaginationParams = {}): Promise<
   return transformKeysToCamelCase<PaginatedVMListResponse>(res);
 }
 
-export type SearchType = SearchFilter;
-
-export type VMSearchParams = SearchParams;
-
-export async function searchVMs(params: VMSearchParams): Promise<VMSummary[]> {
-  validateSearchParams(params);
-  const qs = new URLSearchParams();
-  if (params.q) qs.set("q", params.q);
-  if (params.type) qs.set("type", params.type);
-  if (params.status) qs.set("status", params.status);
-  if (params.node) qs.set("node", params.node);
-  const query = qs.toString();
-  const res = await api.get<PaginatedVMListResponse>(
-    `/api/v1/vms${query ? "?" + query : ""}`,
-  );
-  const transformed = transformKeysToCamelCase<PaginatedVMListResponse>(res);
-  return transformed.vms;
-}
+export type SearchType = "vmid" | "name" | "tag";
