@@ -26,7 +26,7 @@
 </div>
 <Separator />
 <div class="space-y-4">
-	{#each store.form.networks as net, i (i)}
+	{#each store.form.networks as _net, i (i)}
 		<NetworkCard {store} {settings} index={i} />
 	{/each}
 	{#if store.form.networks.length < settings.maxNetworkCards}

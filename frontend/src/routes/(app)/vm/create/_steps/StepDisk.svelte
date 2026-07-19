@@ -36,7 +36,7 @@
 </p>
 <Separator />
 <div class="space-y-4">
-	{#each store.form.disks as disk, i (i)}
+	{#each store.form.disks as _disk, i (i)}
 		<DiskCard {store} {settings} index={i} />
 	{/each}
 	{#if store.form.disks.length < settings.maxDiskPerVm}

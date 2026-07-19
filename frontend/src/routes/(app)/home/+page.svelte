@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
 	import { t } from 'svelte-i18n';
 	import { get } from 'svelte/store';
@@ -44,7 +45,7 @@
 	let actionLoading = $state<Record<number, boolean>>({});
 	let bulkLoading = $state(false);
 
-	let selected = $state<Set<number>>(new Set());
+	const selected = new SvelteSet<number>();
 	let activityLog = $state<ActivityEntry[]>([]);
 	let activityCollapsed = $state(false);
 	let nextRefreshIn = $state(AUTO_REFRESH_INTERVAL_MS / 1000);
@@ -67,7 +68,6 @@
 
 	// Quota state (non-admin users only) – always reflects full owned count
 	let maxVmPerUser = $state(0);
-	let remainingVms = $state(0);
 	let userTotalVMs = $state(0);
 
 	// Server pagination aggregates for accurate stat cards (total/running/stopped across all pages for the current filter)
@@ -198,7 +198,9 @@
 
 			// Drop any selections that are no longer visible on this page
 			const visible = new Set(vms.map((v) => v.vmid));
-			selected = new Set([...selected].filter((id) => visible.has(id)));
+			for (const id of [...selected]) {
+				if (!visible.has(id)) selected.delete(id);
+			}
 
 			if (isRefresh) nextRefreshIn = AUTO_REFRESH_INTERVAL_MS / 1000;
 		} catch (err: unknown) {
@@ -218,7 +220,6 @@
 		try {
 			const s = await settingsStore.fetchSettings();
 			maxVmPerUser = s.maxVmPerUser;
-			remainingVms = s.remainingVms;
 		} catch {
 			// quota display is non-critical
 		}
@@ -282,20 +283,19 @@
 
 	// ── Selection ──────────────────────────────────────────────────────────
 	function toggleSelect(vmid: number): void {
-		const next = new Set(selected);
-		if (next.has(vmid)) next.delete(vmid);
-		else next.add(vmid);
-		selected = next;
+		if (selected.has(vmid)) {
+			selected.delete(vmid);
+		} else {
+			selected.add(vmid);
+		}
 	}
 
 	function toggleSelectAll(): void {
-		const next = new Set(selected);
 		if (allPageSelected) {
-			vms.forEach((v) => next.delete(v.vmid));
+			vms.forEach((v) => selected.delete(v.vmid));
 		} else {
-			vms.forEach((v) => next.add(v.vmid));
+			vms.forEach((v) => selected.add(v.vmid));
 		}
-		selected = next;
 	}
 
 	// ── Actions ────────────────────────────────────────────────────────────
@@ -309,10 +309,10 @@
 			// Background refresh will reconcile with real server state.
 			const target = vms.find((v) => v.vmid === vm.vmid);
 			if (target) {
-				const next = (action === 'start' || action === 'reboot') ? 'running' : 'stopped';
+				const next: VMStatus = (action === 'start' || action === 'reboot') ? 'running' : 'stopped';
 				if (target.status !== next) {
 					// direct mutation on $state object is reactive
-					(target as { status: string }).status = next;
+					target.status = next;
 				}
 			}
 
@@ -359,7 +359,9 @@
 
 		// Clear only the VMs we actually acted on (keep other selections if mixed state).
 		const acted = new Set(targets.map((v) => v.vmid));
-		selected = new Set([...selected].filter((id) => !acted.has(id)));
+		for (const id of [...selected]) {
+			if (acted.has(id)) selected.delete(id);
+		}
 
 		bulkLoading = false;
 		setTimeout(() => loadVMs(true), 2000);
@@ -611,7 +613,7 @@
 									{$t('vms.actions.reboot')}
 								</Button>
 							{/if}
-							<Button size="sm" variant="ghost" onclick={() => (selected = new Set())}>
+							<Button size="sm" variant="ghost" onclick={() => selected.clear()}>
 								{$t('vms.clearSelection')}
 							</Button>
 						</div>

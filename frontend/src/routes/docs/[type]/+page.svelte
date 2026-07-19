@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { SvelteMap } from 'svelte/reactivity';
 	import { goto } from '$app/navigation';
 	import { t, locale } from 'svelte-i18n';
 	import { toast } from 'svelte-sonner';
@@ -14,8 +15,6 @@
 		XIcon,
 		MagnifyingGlassIcon,
 		ArrowUpIcon,
-		LinkIcon,
-		CopyIcon,
 		ClockIcon
 	} from 'phosphor-svelte';
 
@@ -61,7 +60,7 @@
 	let toc = $state<{ id: string; text: string; level: number }[]>([]);
 	let scrollProgress = $state(0);
 	let activeSection = $state('');
-	let sectionElements = $state<Map<string, HTMLElement>>(new Map());
+	const sectionElements = new SvelteMap<string, HTMLElement>();
 	let observer: IntersectionObserver | null = null;
 	let previousDocType = $state('');
 
@@ -218,14 +217,13 @@
 	}
 
 	function cacheSectionElements() {
-		const newMap = new Map<string, HTMLElement>();
+		sectionElements.clear();
 		for (const entry of toc) {
 			const el = document.getElementById(entry.id);
 			if (el) {
-				newMap.set(entry.id, el);
+				sectionElements.set(entry.id, el);
 			}
 		}
-		sectionElements = newMap;
 	}
 
 	function setupIntersectionObserver() {
@@ -247,7 +245,7 @@
 			}
 		);
 
-		for (const [id, element] of sectionElements) {
+		for (const [, element] of sectionElements) {
 			observer.observe(element);
 		}
 	}

@@ -1,3 +1,4 @@
+import { SvelteMap } from "svelte/reactivity";
 import { getTaskStatus } from "$lib/api/tasks";
 import { ApiRequestError } from "$lib/types/api";
 
@@ -39,10 +40,10 @@ const MAX_POLL_DURATION_MS = 10 * 60 * 1000; // matches backend finalizeAfterTas
 function createTasksStore(): TasksStore {
   const state = $state<TasksState>({ tasks: [] });
 
-  const completionCallbacks = new Map<string, (task: ActiveTask) => void>();
-  const pollingIntervals = new Map<string, ReturnType<typeof setInterval>>();
-  const consecutiveErrors = new Map<string, number>();
-  const cleanupTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  const completionCallbacks = new SvelteMap<string, (task: ActiveTask) => void>();
+  const pollingIntervals = new SvelteMap<string, ReturnType<typeof setInterval>>();
+  const consecutiveErrors = new SvelteMap<string, number>();
+  const cleanupTimers = new SvelteMap<string, ReturnType<typeof setTimeout>>();
 
   function updateTask(id: string, patch: Partial<ActiveTask>) {
     const current = state.tasks.find((t) => t.id === id);
