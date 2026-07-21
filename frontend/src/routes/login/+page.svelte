@@ -195,7 +195,7 @@
 				{#if error}
 					<div class="pv-login-error" role="alert">
 						<span>{error}</span>
-						<button class="pv-login-error-close" onclick={clearError} aria-label="Dismiss">✕</button>
+						<button class="pv-login-error-close" onclick={clearError} aria-label={$t('common.dismiss')}>✕</button>
 					</div>
 				{/if}
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from "svelte-i18n";
 	import { Pagination as PaginationPrimitive } from "bits-ui";
 	import { cn } from "$lib/utils.js";
 
@@ -17,7 +18,7 @@
 	bind:ref
 	bind:page
 	role="navigation"
-	aria-label="pagination"
+	aria-label={$t('common.pagination.label')}
 	data-slot="pagination"
 	class={cn("mx-auto flex w-full justify-center", className)}
 	{count}

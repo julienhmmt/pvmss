@@ -86,7 +86,7 @@
 <PvHeader
 	eyebrow={$t('nav.administration')}
 	title={$t('admin.userpool.title')}
-	subtitle={!loading ? `${pools.length} ${$t('admin.userpool.title').toLowerCase()}` : undefined}
+	subtitle={!loading ? `${pools.length} ${$t('admin.userpool.count', { values: { count: pools.length } })}` : undefined}
 >
 	{#snippet stats()}
 		{#if !loading && pools.length > 0}

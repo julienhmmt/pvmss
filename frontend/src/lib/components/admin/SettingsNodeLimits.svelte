@@ -153,10 +153,10 @@
 								<span class="text-xs text-muted-foreground">{$t('admin.settings.overview.nodelimits.maxVcpus')}: {item.maxVcpus}</span>
 							{/if}
 							{#if item.maxRamGb > 0}
-								<span class="text-xs text-muted-foreground">{$t('admin.settings.overview.nodelimits.maxRamGb')}: {item.maxRamGb} GB</span>
+								<span class="text-xs text-muted-foreground">{$t('admin.settings.overview.nodelimits.maxRamGb')}: {item.maxRamGb} {$t('common.gb')}</span>
 							{/if}
 							{#if item.maxDiskGb > 0}
-								<span class="text-xs text-muted-foreground">{$t('admin.settings.overview.nodelimits.maxDiskGb')}: {item.maxDiskGb} GB</span>
+								<span class="text-xs text-muted-foreground">{$t('admin.settings.overview.nodelimits.maxDiskGb')}: {item.maxDiskGb} {$t('common.gb')}</span>
 							{/if}
 						</div>
 					</div>

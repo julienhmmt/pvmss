@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from 'svelte-i18n';
 	import { goto } from '$app/navigation';
 	import type { VMSummary } from '$lib/api/vms';
 	import type { VMAction } from '$lib/types/vm';
@@ -40,7 +41,7 @@
 	<td class="pv-td-mono text-sm">{vm.vmid}</td>
 	<td>
 		<div class="pv-resource-cell">
-			<div class="pv-resource-icon pv-resource-icon--vm text-[0.6rem]">VM</div>
+			<div class="pv-resource-icon pv-resource-icon--vm text-[0.6rem]">{$t('common.vm')}</div>
 			<span class="pv-resource-name">{vm.name || '—'}</span>
 		</div>
 	</td>

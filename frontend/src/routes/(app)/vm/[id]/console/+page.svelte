@@ -1,21 +1,40 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/stores';
+	import { t } from 'svelte-i18n';
 	import { buildWebSocketURL, getVNCTicket } from '$lib/api/console';
 
 	const vmid = $derived(parseInt($page.params.id ?? '', 10));
-	const vmName = $derived($page.url.searchParams.get('name') ?? `VM ${vmid}`);
+	const vmName = $derived(
+		$page.url.searchParams.get('name') ??
+			(Number.isNaN(vmid) || vmid <= 0 ? $t('common.vm') : `${$t('common.vm')} ${vmid}`)
+	);
 
 	type ConnectionStatus = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error';
 
 	let status = $state<ConnectionStatus>('idle');
-	let statusMessage = $state('');
+	let statusMessageKey = $state('');
+	let statusMessageValues = $state<Record<string, unknown>>({});
+	let statusMessageSuffix = $state('');
+	const statusMessage = $derived(
+		statusMessageKey
+			? `${$t(statusMessageKey, { values: statusMessageValues })}${statusMessageSuffix}`
+			: ''
+	);
+	let mounted = $state(false);
+
 	let rfb: unknown = null;
 	let container: HTMLDivElement | undefined = $state();
 	let scaleViewport = $state(true);
 
+	function setStatusMessage(key: string, values?: Record<string, unknown>, suffix?: string) {
+		statusMessageKey = key;
+		statusMessageValues = values ?? {};
+		statusMessageSuffix = suffix ?? '';
+	}
+
 	async function connect() {
-		if (!container || !vmid) return;
+		if (!mounted || !container || !vmid) return;
 		// Guard against concurrent/duplicate connects (e.g. a remount firing
 		// onMount again, or a Reconnect click while still connecting). Each VNC
 		// ticket spawns a distinct Proxmox VNC session; opening two for the same
@@ -28,7 +47,7 @@
 		}
 
 		status = 'connecting';
-		statusMessage = 'Requesting VNC ticket…';
+		setStatusMessage('vm.console.requestingTicket');
 
 		let ticket: string;
 		let port: number;
@@ -43,11 +62,12 @@
 			consoleToken = res.consoleToken;
 		} catch (e) {
 			status = 'error';
-			statusMessage = `Failed to get VNC ticket: ${(e as Error).message}`;
+			setStatusMessage('vm.console.failedTicket', {}, ': ' + (e as Error).message);
 			return;
 		}
 
-		statusMessage = 'Connecting to console…';
+		if (!mounted) return;
+		setStatusMessage('vm.console.connecting');
 
 		try {
 			// noVNC lives in static/ — loaded at runtime, never bundled.
@@ -59,6 +79,8 @@
 			if (!RFB) {
 				throw new Error('noVNC RFB module failed to load');
 			}
+
+			if (!mounted) return;
 
 			const wsUrl = buildWebSocketURL(vmid, ticket, port, node, consoleToken);
 
@@ -78,23 +100,23 @@
 
 			r.addEventListener('connect', () => {
 				status = 'connected';
-				statusMessage = 'Connected';
+				setStatusMessage('vm.console.connected');
 			});
 
 			r.addEventListener('disconnect', () => {
 				status = 'disconnected';
-				statusMessage = 'Disconnected';
+				setStatusMessage('vm.console.disconnected');
 				rfb = null;
 			});
 
 			r.addEventListener('securityfailure', () => {
 				status = 'error';
-				statusMessage = 'Authentication failed';
+				setStatusMessage('vm.console.authFailed');
 				rfb = null;
 			});
 		} catch (e) {
 			status = 'error';
-			statusMessage = `Failed to initialize console: ${(e as Error).message}`;
+			setStatusMessage('vm.console.failedInit', {}, ': ' + (e as Error).message);
 		}
 	}
 
@@ -118,21 +140,23 @@
 	}
 
 	onMount(() => {
+		mounted = true;
 		if (vmid > 0) {
 			connect();
 		} else {
 			status = 'error';
-			statusMessage = 'No VM ID provided';
+			setStatusMessage('vm.console.noVmid');
 		}
 	});
 
 	onDestroy(() => {
+		mounted = false;
 		disconnect();
 	});
 </script>
 
 <svelte:head>
-	<title>PVMSS — Console — {vmName}</title>
+	<title>PVMSS — {$t('vm.console.title')} — {vmName}</title>
 </svelte:head>
 
 <div class="console-root">
@@ -154,22 +178,22 @@
 
 		<div class="console-toolbar-actions">
 			{#if status === 'connected'}
-				<button class="console-btn" onclick={sendCtrlAltDel} title="Send Ctrl+Alt+Del">
-					Ctrl+Alt+Del
+				<button class="console-btn" onclick={sendCtrlAltDel} title={$t('common.sendCtrlAltDel')}>
+					{$t('common.ctrlAltDel')}
 				</button>
 				<button
 					class="console-btn {scaleViewport ? 'console-btn--active' : ''}"
 					onclick={toggleScale}
-					title="Toggle viewport scaling"
+					title={$t('common.toggleScaling')}
 				>
-					Scale
+					{$t('common.scale')}
 				</button>
 			{/if}
 			{#if status === 'disconnected' || status === 'error'}
-				<button class="console-btn" onclick={connect}>Reconnect</button>
+				<button class="console-btn" onclick={connect}>{$t('common.reconnect')}</button>
 			{/if}
 			{#if status === 'connected'}
-				<button class="console-btn console-btn--danger" onclick={disconnect}>Disconnect</button>
+				<button class="console-btn console-btn--danger" onclick={disconnect}>{$t('common.disconnect')}</button>
 			{/if}
 		</div>
 	</div>
@@ -184,7 +208,7 @@
 		{:else if status === 'error' || status === 'disconnected'}
 			<div class="console-overlay">
 				<p class="console-overlay-msg console-overlay-msg--error">{statusMessage}</p>
-				<button class="console-btn mt-3" onclick={connect}>Reconnect</button>
+				<button class="console-btn mt-3" onclick={connect}>{$t('common.reconnect')}</button>
 			</div>
 		{/if}
 		<div bind:this={container} class="console-canvas" class:console-canvas--hidden={status !== 'connected'}></div>
