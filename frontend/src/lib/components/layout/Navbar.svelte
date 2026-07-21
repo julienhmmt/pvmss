@@ -182,7 +182,7 @@
 			handleSkipToContent();
 		}}
 	>
-		Skip to content
+		{$t('common.skipToContent')}
 	</a>
 
 	<div class="pv-navbar-inner">
@@ -190,7 +190,7 @@
 		<a href="/" class="pv-navbar-brand">
 			<div class="pv-navbar-brand-text">
 				<span class="pv-navbar-brand-title">Proxmox</span>
-				<span class="pv-navbar-brand-subtitle">VM Self Service</span>
+				<span class="pv-navbar-brand-subtitle">{$t('common.vmSelfService')}</span>
 			</div>
 		</a>
 
@@ -230,7 +230,7 @@
 							<button
 								class="pv-navbar-icon-btn"
 								{...props}
-								aria-label="Language"
+								aria-label={$t('common.language')}
 								aria-haspopup="true"
 								aria-expanded={langDropdownOpen}
 							>
@@ -273,7 +273,7 @@
 							<button
 								class="pv-navbar-icon-btn pv-navbar-icon-btn--relative"
 								{...props}
-								aria-label="Notifications"
+								aria-label={$t('common.notifications')}
 								aria-haspopup="true"
 								aria-expanded={notificationOpen}
 							>
@@ -290,10 +290,10 @@
 						{/snippet}
 					</DropdownMenu.Trigger>
 					<DropdownMenu.Content align="end" class="w-80">
-						<DropdownMenu.Label>Notifications</DropdownMenu.Label>
+						<DropdownMenu.Label>{$t('common.notifications')}</DropdownMenu.Label>
 						<DropdownMenu.Separator />
 						{#if notifications.notifications.length === 0}
-							<DropdownMenu.Item disabled>No notifications</DropdownMenu.Item>
+							<DropdownMenu.Item disabled>{$t('common.noNotifications')}</DropdownMenu.Item>
 						{:else}
 							{#each notifications.notifications as notification, i (i)}
 								<div
@@ -317,7 +317,7 @@
 							{/each}
 							<DropdownMenu.Separator />
 							<DropdownMenu.Item onclick={() => notifications.markAllAsRead()}>
-								Mark all as read
+								{$t('common.markAllRead')}
 							</DropdownMenu.Item>
 						{/if}
 					</DropdownMenu.Content>
@@ -375,7 +375,7 @@
 									<button
 										class="text-muted-foreground hover:text-foreground text-xs"
 										onclick={() => tasks.remove(task.id)}
-										aria-label="Dismiss"
+										aria-label={$t('common.dismiss')}
 									>✕</button>
 								{/if}
 							</div>
@@ -403,7 +403,7 @@
 							<button
 								class="pv-navbar-user-btn"
 								{...props}
-								aria-label="User menu"
+								aria-label={$t('common.userMenu')}
 								aria-haspopup="true"
 								aria-expanded={userDropdownOpen}
 							>

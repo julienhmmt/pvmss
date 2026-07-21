@@ -1,11 +1,12 @@
 <script lang="ts">
+	import { t } from 'svelte-i18n';
 	import { page } from '$app/stores';
 	import { Button } from '$lib/components/ui/button';
 	import { WarningCircle, House } from 'phosphor-svelte';
 </script>
 
 <svelte:head>
-	<title>PVMSS — {$page.status} {$page.error?.message ?? 'Error'}</title>
+	<title>PVMSS — {$page.status} {$page.error?.message ?? $t('common.error')}</title>
 </svelte:head>
 
 <div class="error-root">
@@ -18,17 +19,17 @@
 
 		<p class="error-message">
 			{#if $page.status === 404}
-				This page does not exist.
+				{$t('common.pageNotFound')}
 			{:else if $page.status === 403}
-				You do not have permission to access this page.
+				{$t('common.forbidden')}
 			{:else}
-				{$page.error?.message ?? 'An unexpected error occurred.'}
+				{$page.error?.message ?? $t('common.error')}
 			{/if}
 		</p>
 
 		<Button href="/" variant="default">
 			<House class="mr-2 h-4 w-4" weight="fill" />
-			Back to home
+			{$t('common.backToHome')}
 		</Button>
 	</div>
 </div>

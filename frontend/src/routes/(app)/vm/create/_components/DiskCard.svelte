@@ -37,7 +37,7 @@
 				max={settings.limits.disk.max}
 				class="w-32"
 			/>
-			<span class="text-muted-foreground text-sm">GB</span>
+			<span class="text-muted-foreground text-sm">{$t('common.gb')}</span>
 			<span class="text-muted-foreground text-xs">
 				({settings.limits.disk.min} – {settings.limits.disk.max})
 			</span>

@@ -275,7 +275,7 @@
 						bind:value={memGB}
 						class="w-full rounded border border-border bg-background px-3 py-2 text-sm"
 					/>
-					<p class="mt-0.5 text-xs text-muted-foreground">{limits.minRamGb}–{limits.maxRamGb} GB</p>
+					<p class="mt-0.5 text-xs text-muted-foreground">{limits.minRamGb}–{limits.maxRamGb} {$t('common.gb')}</p>
 				</div>
 			</div>
 		{/if}

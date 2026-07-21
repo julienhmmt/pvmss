@@ -42,9 +42,9 @@
 			<div class="pv-stat-label">{$t('vms.ram')}</div>
 			<div class="pv-stat-value" transition:fade={{ duration: 120 }}>
 				{#if ramUsedGb !== null}
-					{ramUsedGb} / {ramMaxGb} <span class="text-xs font-normal text-muted-foreground">GB</span>
+					{ramUsedGb} / {ramMaxGb} <span class="text-xs font-normal text-muted-foreground">{$t('common.gib')}</span>
 				{:else}
-					{ramMaxGb} <span class="text-xs font-normal text-muted-foreground">GB</span>
+					{ramMaxGb} <span class="text-xs font-normal text-muted-foreground">{$t('common.gib')}</span>
 				{/if}
 			</div>
 		</div>
@@ -55,7 +55,7 @@
 		<div class="min-w-0">
 			<div class="pv-stat-label">{$t('common.storage')}</div>
 			<div class="pv-stat-value" transition:fade={{ duration: 120 }}>
-				{totalStorageGb} <span class="text-xs font-normal text-muted-foreground">GB</span>
+				{totalStorageGb} <span class="text-xs font-normal text-muted-foreground">{$t('common.gb')}</span>
 			</div>
 		</div>
 	</div>
@@ -65,7 +65,7 @@
 		<div class="min-w-0">
 			<div class="pv-stat-label">{$t('vm.interface')}</div>
 			<div class="pv-stat-value" transition:fade={{ duration: 120 }}>
-				{nicCount} <span class="text-xs font-normal text-muted-foreground">{$t('vm.interfaces')}</span>
+				{nicCount} <span class="text-xs font-normal text-muted-foreground">{$t('vm.interfaceCount', { values: { count: nicCount } })}</span>
 			</div>
 		</div>
 	</div>

@@ -29,7 +29,7 @@
 		<span class="text-sm font-medium">{$t('vm.tabNetwork')}</span>
 		<div class="flex items-center gap-2">
 			<span class="text-xs text-muted-foreground">
-				{config.networks.length} {$t('vm.interfaces')}
+				{config.networks.length} {$t('vm.interfaceCount', { values: { count: config.networks.length } })}
 			</span>
 			{#if onOpenHardware}
 				<button
@@ -55,8 +55,8 @@
 					<th>{$t('vm.interface')}</th>
 					<th>{$t('vm.model')}</th>
 					<th>{$t('admin.vmbr.iface')}</th>
-					<th>MAC</th>
-					<th>IP</th>
+					<th>{$t('common.mac')}</th>
+					<th>{$t('common.ip')}</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -76,7 +76,7 @@
 									<span>{net.mac}</span>
 									<button
 										class="pv-copy-btn"
-										onclick={() => copyToClipboard(net.mac, 'MAC')}
+										onclick={() => copyToClipboard(net.mac, $t('common.mac'))}
 										title={$t('common.copy')}
 										aria-label={$t('common.copy')}
 									>
@@ -93,7 +93,7 @@
 									<span>{net.ips.join(', ')}</span>
 									<button
 										class="pv-copy-btn"
-										onclick={() => copyToClipboard(net.ips!.join(', '), 'IP')}
+										onclick={() => copyToClipboard(net.ips!.join(', '), $t('common.ip'))}
 										title={$t('common.copy')}
 										aria-label={$t('common.copy')}
 									>

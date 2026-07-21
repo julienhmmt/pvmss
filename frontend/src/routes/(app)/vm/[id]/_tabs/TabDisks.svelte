@@ -111,7 +111,7 @@
 							</div>
 						</td>
 						<td class="text-sm">{disk.storage}</td>
-						<td class="text-sm">{disk.sizeGb} GB</td>
+						<td class="text-sm">{disk.sizeGb} {$t('common.gb')}</td>
 						<td>
 							<div class="flex items-center gap-1">
 								<button
@@ -140,7 +140,7 @@
 	<div class="border-t border-border px-4 py-3">
 		<div class="mb-2 flex items-center gap-2">
 			<HardDrive class="h-4 w-4 text-muted-foreground" />
-			<span class="text-sm font-medium">CD-ROM</span>
+			<span class="text-sm font-medium">{$t('common.cdrom')}</span>
 			{#if !cdromEditing}
 				<button class="ml-auto rounded border border-border bg-background px-2 py-1 text-xs hover:bg-accent" onclick={startEdit}>
 					{$t('common.edit')}

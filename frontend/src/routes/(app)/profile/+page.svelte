@@ -215,7 +215,7 @@
 								<span class="text-muted-foreground">{$t('user.profile.vmCount')}</span>
 								<span>{totalVMs}
 									{#if runningCount > 0}
-										<span class="text-success text-xs">({runningCount} running)</span>
+										<span class="text-success text-xs">({$t('common.runningCount', { values: { count: runningCount } })})</span>
 									{/if}
 								</span>
 							</div>
@@ -300,7 +300,7 @@
 				<Desktop class="h-5 w-5" />
 				<span>{$t('user.profile.myVms')}</span>
 				{#if !vmsLoading}
-					<span class="ml-auto text-xs text-muted-foreground font-normal">{totalVMs} VM{totalVMs !== 1 ? 's' : ''}</span>
+					<span class="ml-auto text-xs text-muted-foreground font-normal">{totalVMs} {$t('common.vmCount', { values: { count: totalVMs } })}</span>
 				{/if}
 			</div>
 			<div class="pv-card-body p-0">
@@ -377,7 +377,7 @@
 										<td class="pv-td-mono text-sm">{vm.vmid}</td>
 										<td>
 											<div class="pv-resource-cell">
-												<div class="pv-resource-icon pv-resource-icon--vm text-[0.6rem]">VM</div>
+												<div class="pv-resource-icon pv-resource-icon--vm text-[0.6rem]">{$t('common.vm')}</div>
 												<span class="pv-resource-name">{vm.name || '—'}</span>
 											</div>
 										</td>
@@ -447,10 +447,10 @@
 										{$t('vms.pagination.perPage', { values: { count: pageSize } })}
 									</Select.Trigger>
 									<Select.Content>
-										<Select.Item value="10">10 / page</Select.Item>
-										<Select.Item value="25">25 / page</Select.Item>
-										<Select.Item value="50">50 / page</Select.Item>
-										<Select.Item value="100">100 / page</Select.Item>
+										<Select.Item value="10">{$t('common.pagination.perPage', { values: { count: 10 } })}</Select.Item>
+										<Select.Item value="25">{$t('common.pagination.perPage', { values: { count: 25 } })}</Select.Item>
+										<Select.Item value="50">{$t('common.pagination.perPage', { values: { count: 50 } })}</Select.Item>
+										<Select.Item value="100">{$t('common.pagination.perPage', { values: { count: 100 } })}</Select.Item>
 									</Select.Content>
 								</Select.Root>
 								<div class="flex items-center gap-2">

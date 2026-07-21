@@ -45,16 +45,16 @@
 		</div>
 		<div class="pv-card-body space-y-2.5 text-sm">
 			<div class="flex items-center justify-between">
-				<span class="text-muted-foreground">VMID</span>
+				<span class="text-muted-foreground">{$t('common.vmid')}</span>
 				<span class="pv-copy-cell font-mono">
 					{config.vmid}
-					<button class="pv-copy-btn" onclick={() => copy(String(config.vmid), 'VMID')} title={$t('common.copy')}>
+					<button class="pv-copy-btn" onclick={() => copy(String(config.vmid), $t('common.vmid'))} title={$t('common.copy')}>
 						<CopySimple class="h-3 w-3" />
 					</button>
 				</span>
 			</div>
 			<div class="flex items-center justify-between">
-				<span class="text-muted-foreground">{$t('vm.node')}</span>
+				<span class="text-muted-foreground">{$t('common.node')}</span>
 				<span class="font-medium">{config.node}</span>
 			</div>
 			<div class="flex items-center justify-between">
@@ -98,22 +98,22 @@
 		</div>
 		<div class="pv-card-body space-y-2.5 text-sm">
 			<div class="flex items-center justify-between">
-				<span class="text-muted-foreground">CPU</span>
+				<span class="text-muted-foreground">{$t('common.cpu')}</span>
 				<span>
-					{config.sockets} × {config.cores} = <span class="font-semibold">{config.cpus}</span> vCPU
+					{config.sockets} × {config.cores} = <span class="font-semibold">{config.cpus}</span> {$t('common.vcpuCount', { values: { count: config.cpus } })}
 				</span>
 			</div>
 			<div class="flex items-center justify-between">
 				<span class="text-muted-foreground">{$t('vms.ram')}</span>
-				<span class="font-medium">{Math.round(config.maxMemMb / 1024)} GiB</span>
+				<span class="font-medium">{Math.round(config.maxMemMb / 1024)} {$t('common.gib')}</span>
 			</div>
 			<div class="flex items-center justify-between">
 				<span class="text-muted-foreground">{$t('common.storage')}</span>
-				<span class="font-medium">{totalStorageGb} GB <span class="text-xs text-muted-foreground">({config.disks.length} disks)</span></span>
+				<span class="font-medium">{totalStorageGb} {$t('common.gb')} <span class="text-xs text-muted-foreground">({config.disks.length} {$t('vm.diskCount', { values: { count: config.disks.length } })})</span></span>
 			</div>
 			<div class="flex items-center justify-between">
 				<span class="text-muted-foreground">{$t('vm.interface')}</span>
-				<span class="font-medium">{nicCount} {$t('vm.interfaces')}</span>
+				<span class="font-medium">{nicCount} {$t('vm.interfaceCount', { values: { count: nicCount } })}</span>
 			</div>
 		</div>
 	</div>
@@ -125,31 +125,31 @@
 			<div class="flex items-center gap-2">
 				{#if config.efiEnabled}
 					<ShieldCheck class="h-4 w-4 text-success" />
-					<span class="font-medium">EFI/UEFI</span>
+					<span class="font-medium">{$t('common.efiUefi')}</span>
 				{:else}
 					<Shield class="h-4 w-4 text-muted-foreground" />
-					<span class="text-muted-foreground">Legacy BIOS</span>
+					<span class="text-muted-foreground">{$t('common.legacyBios')}</span>
 				{/if}
 			</div>
 			<div class="flex items-center gap-2">
 				{#if config.tpmEnabled}
 					<ShieldCheck class="h-4 w-4 text-success" />
-					<span class="font-medium">TPM 2.0</span>
+					<span class="font-medium">{$t('common.tpm')}</span>
 				{:else}
 					<Shield class="h-4 w-4 text-muted-foreground" />
-					<span class="text-muted-foreground">No TPM</span>
+					<span class="text-muted-foreground">{$t('common.noTpm')}</span>
 				{/if}
 			</div>
 			<div class="flex items-center gap-2">
 				<Disc class="h-4 w-4 {config.hasCdrom ? 'text-foreground' : 'text-muted-foreground'}" />
 				<span class={config.hasCdrom ? 'font-medium' : 'text-muted-foreground'}>
-					{config.hasCdrom ? 'CD-ROM attached' : 'No CD-ROM'}
+					{config.hasCdrom ? $t('vm.cdromAttached') : $t('vm.noCdrom')}
 				</span>
 			</div>
 			<div class="flex items-center gap-2">
 				<HardDrive class="h-4 w-4 {config.currentIso ? 'text-foreground' : 'text-muted-foreground'}" />
 				<span class="truncate {config.currentIso ? 'font-medium' : 'text-muted-foreground'}">
-					{config.currentIso || 'No ISO mounted'}
+					{config.currentIso || $t('vm.noISO')}
 				</span>
 			</div>
 			<div class="col-span-2 pt-1 text-xs text-muted-foreground">

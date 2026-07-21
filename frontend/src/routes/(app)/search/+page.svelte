@@ -374,7 +374,7 @@
 						type="button"
 						class="absolute right-2 top-1/2 h-6 w-6 -translate-y-1/2 rounded-md p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
 						onclick={() => { q = ''; currentPage = 1; pushUrlState(); if (shouldSearch) void load(); else resetResults(); }}
-						aria-label="Clear search"
+						aria-label={$t('common.clearSearch')}
 					>
 						<X class="h-4 w-4" />
 					</button>
@@ -533,7 +533,7 @@
 							<td class="pv-td-mono text-sm">{vm.vmid}</td>
 							<td>
 								<div class="pv-resource-cell">
-									<div class="pv-resource-icon pv-resource-icon--vm text-[0.6rem]">VM</div>
+									<div class="pv-resource-icon pv-resource-icon--vm text-[0.6rem]">{$t('common.vm')}</div>
 									<span class="pv-resource-name">{vm.name || '—'}</span>
 								</div>
 							</td>
@@ -606,7 +606,7 @@
 				<button class="pagination-btn" onclick={() => goToPage(currentPage + 1)} disabled={!hasNext}>&rsaquo;</button>
 			</div>
 			<p class="mt-1 text-center text-xs text-muted-foreground">
-				{$t('common.pageOf', { values: { page: currentPage, total: totalPages } })} · {total} total
+				{$t('common.pageOf', { values: { page: currentPage, total: totalPages } })} · {total} {$t('common.total')}
 			</p>
 		{/if}
 	{/if}

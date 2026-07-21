@@ -239,7 +239,7 @@
 	<div class="pv-toolbar">
 		<div class="pv-toolbar-info">
 			{totalVMs}
-			{$t('admin.vms.title').toLowerCase()}
+			{$t('admin.vms.count', { values: { count: totalVMs } })}
 			{#if selectedNode}· {selectedNode}{/if}
 		</div>
 		<div class="flex items-center gap-2">
