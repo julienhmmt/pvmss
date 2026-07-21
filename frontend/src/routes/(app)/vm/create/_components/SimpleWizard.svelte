@@ -351,7 +351,7 @@
 						{/if}
 						<span class="text-muted-foreground">{$t('vmCreate.review.hardware')}</span>
 						<span>
-							{store.totalVCPUs} vCPUs · {store.form.memoryGB} GB RAM · {store.form.disks[0]?.sizeGb ?? 0} GB
+							{store.totalVCPUs} {$t('common.vcpuCount', { values: { count: store.totalVCPUs } })} · {store.form.memoryGB} {$t('common.gb')} {$t('common.ram')} · {store.form.disks[0]?.sizeGb ?? 0} {$t('common.gb')}
 						</span>
 					</div>
 				</div>

@@ -64,7 +64,7 @@
 			{#if disk}
 				<div class="rounded-md bg-muted px-3 py-2 text-sm">
 					<span class="font-medium">{$t('vm.disk.currentSize')}:</span>
-					{disk.sizeGb} GB
+					{disk.sizeGb} {$t('common.gb')}
 				</div>
 			{/if}
 
@@ -78,7 +78,7 @@
 					class="rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
 				/>
 				<p class="text-xs text-muted-foreground">
-					{$t('vm.disk.newTotal')}: {newTotal} GB {exceedsMax ? `(max: ${maxDiskGB} GB)` : ''}
+					{$t('vm.disk.newTotal')}: {newTotal} {$t('common.gb')} {exceedsMax ? `(max: ${maxDiskGB} {$t('common.gb')})` : ''}
 				</p>
 			</div>
 		</div>

@@ -3,6 +3,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { upsertSettings, TABLE_VM_PROFILES } from '$lib/api/admin/settings-overview';
 	import type { SectionMeta } from '$lib/api/admin/settings-overview';
+	import { DISK_BUSES } from '$lib/types/vm-create';
 
 	interface VMProfile {
 		id: string;
@@ -117,7 +118,7 @@
 			</p>
 			<div class="grid gap-3 sm:grid-cols-2">
 				<div class="space-y-1">
-					<label for="p_id" class="block text-xs font-medium text-muted-foreground">ID</label>
+					<label for="p_id" class="block text-xs font-medium text-muted-foreground">{$t('common.id')}</label>
 					<input id="p_id" type="text" bind:value={editForm.id} disabled={saving || editingId !== ''}
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
 				</div>
@@ -141,12 +142,12 @@
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
 				</div>
 				<div class="space-y-1">
-					<label for="p_ram" class="block text-xs font-medium text-muted-foreground">RAM (GB)</label>
+					<label for="p_ram" class="block text-xs font-medium text-muted-foreground">{$t('common.ram')} ({$t('common.gb')})</label>
 					<input id="p_ram" type="number" min="1" bind:value={editForm.ramGb} disabled={saving}
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
 				</div>
 				<div class="space-y-1">
-					<label for="p_disk" class="block text-xs font-medium text-muted-foreground">Disk (GB)</label>
+					<label for="p_disk" class="block text-xs font-medium text-muted-foreground">{$t('common.disk')} ({$t('common.gb')})</label>
 					<input id="p_disk" type="number" min="1" bind:value={editForm.diskGb} disabled={saving}
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
 				</div>
@@ -156,19 +157,19 @@
 					</label>
 					<select id="p_diskBus" bind:value={editForm.diskBus} disabled={saving}
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50">
-						<option value="virtio">VirtIO</option>
-						<option value="scsi">SCSI</option>
-						<option value="sata">SATA</option>
-						<option value="ide">IDE</option>
+						<option value="virtio">{$t('vmCreate.hardware.diskBusOptions.virtio')}</option>
+						<option value="scsi">{$t('vmCreate.hardware.diskBusOptions.scsi')}</option>
+						<option value="sata">{$t('vmCreate.hardware.diskBusOptions.sata')}</option>
+						<option value="ide">{$t('vmCreate.hardware.diskBusOptions.ide')}</option>
 					</select>
 				</div>
 				<div class="space-y-1">
-					<label for="p_node" class="block text-xs font-medium text-muted-foreground">{$t('common.node')} (optional)</label>
+					<label for="p_node" class="block text-xs font-medium text-muted-foreground">{$t('common.node')} {$t('common.optional')}</label>
 					<input id="p_node" type="text" bind:value={editForm.node} disabled={saving}
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
 				</div>
 				<div class="space-y-1">
-					<label for="p_storage" class="block text-xs font-medium text-muted-foreground">{$t('common.storage')} (optional)</label>
+					<label for="p_storage" class="block text-xs font-medium text-muted-foreground">{$t('common.storage')} {$t('common.optional')}</label>
 					<input id="p_storage" type="text" bind:value={editForm.storage} disabled={saving}
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
 				</div>
@@ -178,12 +179,12 @@
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
 				</div>
 				<div class="space-y-1">
-					<label for="p_icon" class="block text-xs font-medium text-muted-foreground">Icon</label>
+					<label for="p_icon" class="block text-xs font-medium text-muted-foreground">{$t('common.icon')}</label>
 					<input id="p_icon" type="text" bind:value={editForm.icon} disabled={saving}
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
 				</div>
 				<div class="space-y-1">
-					<label for="p_color" class="block text-xs font-medium text-muted-foreground">Color</label>
+					<label for="p_color" class="block text-xs font-medium text-muted-foreground">{$t('common.color')}</label>
 					<input id="p_color" type="text" bind:value={editForm.color} disabled={saving}
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
 				</div>
@@ -212,11 +213,12 @@
 	{:else}
 		<ul class="space-y-1.5">
 			{#each items as item, i (i)}
+				{@const diskBusEntry = DISK_BUSES.find((b) => b.value === item.diskBus)}
 				<li class="flex items-start justify-between rounded-lg border border-border bg-muted/30 px-3 py-2 gap-3">
 					<div class="space-y-0.5 min-w-0">
 						<p class="text-sm font-medium truncate">{item.name}</p>
 						<p class="text-xs text-muted-foreground">
-							{item.sockets}s · {item.cores}c · {item.ramGb}GB RAM · {item.diskGb}GB {item.diskBus}
+							{item.sockets}s · {item.cores}c · {item.ramGb}{$t('common.gb')} {$t('common.ram')} · {item.diskGb} {$t('common.gb')} {diskBusEntry ? $t(diskBusEntry.labelKey) : item.diskBus}
 						</p>
 						<span class="inline-block text-xs font-medium {item.enabled ? 'text-success' : 'text-muted-foreground'}">
 							{item.enabled ? $t('admin.settings.overview.enabled') : $t('admin.settings.overview.disabled')}

@@ -109,7 +109,7 @@
 			<!-- Size -->
 			<div class="flex flex-col gap-1">
 				<label class="text-sm font-medium" for="disk-size">
-					{$t('vm.disk.size')} ({minDisk}–{maxDisk} GB)
+					{$t('vm.disk.size')} ({minDisk}–{maxDisk} {$t('common.gb')})
 				</label>
 				<input
 					id="disk-size"

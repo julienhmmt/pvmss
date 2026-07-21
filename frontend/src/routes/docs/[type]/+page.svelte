@@ -394,7 +394,7 @@
 							</li>
 						{/each}
 						{#if searchQuery && filteredToc.length === 0}
-							<li class="px-2 py-1 text-xs text-muted-foreground">No matches</li>
+							<li class="px-2 py-1 text-xs text-muted-foreground">{$t('common.noMatches')}</li>
 						{/if}
 					</ul>
 				{/if}

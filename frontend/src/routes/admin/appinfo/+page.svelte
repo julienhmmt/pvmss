@@ -53,7 +53,7 @@
 		{#if info}
 			<PvHeaderStat label={$t('admin.appinfo.version')} value={info.version} />
 			<PvHeaderStat label={$t('admin.appinfo.totalNodes')} value={info.totalNodes} />
-			<PvHeaderStat label={$t('admin.appinfo.totalVms')} value={info.totalVms} />
+			<PvHeaderStat label={$t('admin.appinfo.totalVMs')} value={info.totalVms} />
 			<PvHeaderStat
 				label="Proxmox"
 				value={info.proxmoxConnected ? $t('admin.appinfo.connected') : $t('admin.appinfo.disconnected')}
@@ -118,7 +118,7 @@
 							</td>
 						</tr>
 						<tr class="pv-row">
-							<th>URL</th>
+							<th>{$t('common.url')}</th>
 							<td><span class="pv-td-mono">{info.proxmoxUrl}</span></td>
 						</tr>
 						<tr class="pv-row">
@@ -126,7 +126,7 @@
 							<td class="font-medium tabular-nums">{info.totalNodes}</td>
 						</tr>
 						<tr class="pv-row">
-							<th>{$t('admin.appinfo.totalVms')}</th>
+							<th>{$t('admin.appinfo.totalVMs')}</th>
 							<td class="font-medium tabular-nums">{info.totalVms}</td>
 						</tr>
 					</tbody>

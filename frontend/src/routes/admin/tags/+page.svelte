@@ -182,7 +182,7 @@
 <PvHeader
 	eyebrow={$t('nav.administration')}
 	title={$t('admin.tags.title')}
-	subtitle={!loading ? `${tags.length} ${$t('admin.tags.title').toLowerCase()}` : undefined}
+	subtitle={!loading ? `${tags.length} ${$t('admin.tags.count', { values: { count: tags.length } })}` : undefined}
 >
 	{#snippet stats()}
 		{#if !loading && tags.length > 0}

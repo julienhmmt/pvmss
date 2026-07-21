@@ -22,6 +22,7 @@
 			!store.isStepValid('network') ||
 			!store.isStepValid('cloudinit')
 	);
+	const diskBusEntry = $derived(DISK_BUSES.find((b) => b.value === form.diskBus));
 </script>
 
 <h2 class="text-lg font-semibold">{$t('vmCreate.review.title')}</h2>
@@ -106,11 +107,11 @@
 		<span class="text-muted-foreground">{$t('vmCreate.review.sockets')}</span>
 		<span>{form.sockets}</span>
 		<span class="text-muted-foreground">{$t('vmCreate.review.cores')}</span>
-		<span>{form.cores} ({store.totalVCPUs} vCPUs)</span>
+		<span>{form.cores} ({store.totalVCPUs} {$t('common.vcpuCount', { values: { count: store.totalVCPUs } })})</span>
 		<span class="text-muted-foreground">{$t('vmCreate.review.memory')}</span>
-		<span>{form.memoryGB} GB</span>
+		<span>{form.memoryGB} {$t('common.gb')}</span>
 		<span class="text-muted-foreground">{$t('vmCreate.review.diskBus')}</span>
-		<span>{$t(DISK_BUSES.find((b) => b.value === form.diskBus)?.labelKey) || form.diskBus}</span>
+		<span>{diskBusEntry ? $t(diskBusEntry.labelKey) : form.diskBus}</span>
 		<span class="text-muted-foreground">{$t('vmCreate.review.efi')}</span>
 		<span>{form.enableEFI ? $t('common.yes') : $t('common.no')}</span>
 		<span class="text-muted-foreground">{$t('vmCreate.review.tpm')}</span>
@@ -131,12 +132,12 @@
 					? $t('vmCreate.disk.primaryDisk')
 					: $t('vmCreate.disk.diskIndex', { values: { index: String(i + 1) } })}
 			</span>
-			<span>{disk.sizeGb} GB</span>
+			<span>{disk.sizeGb} {$t('common.gb')}</span>
 		{/each}
 		<span class="text-muted-foreground font-medium"
 			>{$t('vmCreate.review.totalDisk')}</span
 		>
-		<span class="font-medium">{store.totalDiskGB} GB</span>
+		<span class="font-medium">{store.totalDiskGB} {$t('common.gb')}</span>
 	</div>
 </div>
 
@@ -147,6 +148,7 @@
 		{$t('vmCreate.review.network')}
 	</h3>
 	{#each form.networks as net, i (i)}
+		{@const networkModelEntry = NETWORK_MODELS.find((m) => m.value === net.model)}
 		<div class="bg-muted/50 grid grid-cols-2 gap-x-4 gap-y-1 rounded-lg p-3 text-sm">
 			<span class="text-muted-foreground">
 				{$t('vmCreate.network.card', { values: { index: String(i + 1) } })}
@@ -166,10 +168,10 @@
 			</span>
 			<span class="text-muted-foreground">{$t('vmCreate.review.model')}</span>
 			<span>
-				{$t(NETWORK_MODELS.find((m) => m.value === net.model)?.labelKey) || net.model}
+				{networkModelEntry ? $t(networkModelEntry.labelKey) : net.model}
 			</span>
 			{#if net.vlan}
-				<span class="text-muted-foreground">VLAN</span>
+				<span class="text-muted-foreground">{$t('common.vlan')}</span>
 				<span>{net.vlan}</span>
 			{/if}
 		</div>
@@ -191,7 +193,7 @@
 			<span class="text-muted-foreground">{$t('vmCreate.cloudinit.ipConfig')}</span>
 			<span class="uppercase">{form.ciIPConfig}</span>
 			{#if form.ciIPConfig === 'static' && form.ciIP}
-				<span class="text-muted-foreground">IP</span>
+				<span class="text-muted-foreground">{$t('common.ip')}</span>
 				<span>{form.ciIP}</span>
 			{/if}
 			{#if form.ciTemplateID}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from "svelte-i18n";
 	import EllipsisIcon from "@lucide/svelte/icons/ellipsis";
 	import { cn, type WithElementRef, type WithoutChildren } from "$lib/utils.js";
 	import type { HTMLAttributes } from "svelte/elements";
@@ -18,5 +19,5 @@
 	{...restProps}
 >
 	<EllipsisIcon class="size-4" />
-	<span class="sr-only">More pages</span>
+	<span class="sr-only">{$t('common.morePages')}</span>
 </span>

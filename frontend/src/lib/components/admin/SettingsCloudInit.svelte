@@ -103,7 +103,7 @@
 			</p>
 			<div class="grid gap-3 sm:grid-cols-2">
 				<div class="space-y-1">
-					<label for="ci_id" class="block text-xs font-medium text-muted-foreground">ID</label>
+					<label for="ci_id" class="block text-xs font-medium text-muted-foreground">{$t('common.id')}</label>
 					<input id="ci_id" type="text" bind:value={editForm.id} disabled={saving || editingId !== ''}
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
 				</div>
@@ -130,7 +130,7 @@
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50" />
 				</div>
 				<div class="space-y-1 sm:col-span-2">
-					<label for="ci_yaml" class="block text-xs font-medium text-muted-foreground">YAML</label>
+					<label for="ci_yaml" class="block text-xs font-medium text-muted-foreground">{$t('common.yaml')}</label>
 					<textarea id="ci_yaml" rows="8" bind:value={editForm.yamlContent} disabled={saving}
 						class="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"></textarea>
 				</div>

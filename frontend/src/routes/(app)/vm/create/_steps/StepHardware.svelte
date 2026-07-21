@@ -57,7 +57,7 @@
 			max={settings.limits.ram.max}
 		/>
 		<p class="text-muted-foreground text-xs">
-			{settings.limits.ram.min} – {settings.limits.ram.max} GB
+			{settings.limits.ram.min} – {settings.limits.ram.max} {$t('common.gb')}
 		</p>
 	</div>
 	<div class="flex items-end pb-6">

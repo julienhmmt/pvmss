@@ -273,20 +273,20 @@
 						<p class="text-muted-foreground mt-0.5 text-xs leading-snug">{profile.description}</p>
 						<div class="mt-2.5 flex flex-wrap gap-1.5">
 							<span class="bg-muted rounded px-1.5 py-0.5 text-xs font-medium">
-								{profile.sockets * profile.cores} vCPU
+								{profile.sockets * profile.cores} {$t('common.vcpuCount', { values: { count: profile.sockets * profile.cores } })}
 							</span>
 							<span class="bg-muted rounded px-1.5 py-0.5 text-xs font-medium">
-								{profile.ramGb} GB RAM
+								{profile.ramGb} {$t('common.gb')} {$t('common.ram')}
 							</span>
 							<span class="bg-muted rounded px-1.5 py-0.5 text-xs font-medium">
-								{profile.diskGb} GB disk
+								{profile.diskGb} {$t('common.gb')} {$t('common.disk')}
 							</span>
 							<span class="bg-muted rounded px-1.5 py-0.5 text-xs font-medium">
 								{profile.diskBus}
 							</span>
 							{#if profile.enableEfi}
 								<span class="bg-info-soft text-info-soft-foreground rounded px-1.5 py-0.5 text-xs font-medium">
-									EFI
+									{$t('vm.efi')}
 								</span>
 							{/if}
 							{#if profile.node}
@@ -483,7 +483,7 @@
 				{@const PreviewIcon = ICON_COMPONENTS[form.icon] ?? Globe}
 				{@const previewColors = profileColorClasses(form.color)}
 				<div class="rounded-lg border bg-muted/30 p-3">
-					<p class="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">Preview</p>
+					<p class="text-muted-foreground mb-2 text-xs font-medium uppercase tracking-wide">{$t('common.preview')}</p>
 					<div class="flex items-center gap-3">
 						<div class="rounded-lg p-2 {previewColors.bg}">
 							<PreviewIcon class="h-5 w-5 {previewColors.icon}" />
