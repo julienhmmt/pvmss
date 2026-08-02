@@ -11,7 +11,9 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"test": "vitest run",
 		"test:watch": "vitest",
-		"test:coverage": "vitest run --coverage"
+		"test:coverage": "vitest run --coverage",
+		"test:e2e": "playwright test",
+		"test:e2e:install": "playwright install --with-deps chromium"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-static": "^3.0.10",
@@ -19,8 +21,10 @@
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@tailwindcss/vite": "^4.3.0",
 		"@types/node": "^25.9.2",
+		"@playwright/test": "^1.49.0",
 		"@vitest/coverage-v8": "^4.1.8",
 		"happy-dom": "^20.10.2",
+		"playwright": "^1.49.0",
 		"stylelint": "^17.14.1",
 		"stylelint-config-standard": "^40.0.0",
 		"svelte": "^5.56.3",
