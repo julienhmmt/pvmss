@@ -16,7 +16,8 @@ settings.dev.json
 specs/
 
 # binaries
-pvmss
+/pvmss
+pvmss/pvmss
 backend/pvmss
 
 # noVNC
