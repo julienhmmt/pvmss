@@ -1,0 +1,60 @@
+name: v0.4
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: server/go.mod
+          cache: true
+
+      - name: Verify Go dependencies
+        run: go mod verify
+        working-directory: server
+
+      - name: Build Go server
+        run: go build ./...
+        working-directory: server
+
+      - name: Run Go tests with race detector
+        run: go test -race ./...
+        working-directory: server
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.13
+
+      - name: Install web dependencies
+        run: bun install --frozen-lockfile
+        working-directory: web
+
+      - name: Type check
+        run: bun run check
+        working-directory: web
+
+      - name: Build web shell
+        run: bun run build
+        working-directory: web
+
+      - name: Run Vitest
+        run: bun run test
+        working-directory: web
