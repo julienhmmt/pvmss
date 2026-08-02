@@ -3,6 +3,8 @@
 .env
 .devin/
 .claude/
+.agents/
+skills-lock.json
 coverage.out
 node_modules/
 .pnpm-store/
