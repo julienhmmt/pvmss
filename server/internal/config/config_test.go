@@ -24,6 +24,26 @@ func TestLoad(t *testing.T) {
 				"LOG_OUTPUT":    "stdout",
 			},
 			want: config.Configuration{
+				Host:      "127.0.0.1",
+				Port:      50001,
+				DBPath:    "./tmp/pvmss.db",
+				LogLevel:  "info",
+				LogFormat: "json",
+				LogOutput: "stdout",
+			},
+		},
+		{
+			name: "explicit host",
+			env: map[string]string{
+				"PVMSS_HOST":    "0.0.0.0",
+				"PVMSS_PORT":    "50001",
+				"PVMSS_DB_PATH": "./tmp/pvmss.db",
+				"LOG_LEVEL":     "info",
+				"LOG_FORMAT":    "json",
+				"LOG_OUTPUT":    "stdout",
+			},
+			want: config.Configuration{
+				Host:      "0.0.0.0",
 				Port:      50001,
 				DBPath:    "./tmp/pvmss.db",
 				LogLevel:  "info",
@@ -145,6 +165,7 @@ func TestLoad(t *testing.T) {
 			t.Setenv("LOG_LEVEL", tt.env["LOG_LEVEL"])
 			t.Setenv("LOG_FORMAT", tt.env["LOG_FORMAT"])
 			t.Setenv("LOG_OUTPUT", tt.env["LOG_OUTPUT"])
+			t.Setenv("PVMSS_HOST", tt.env["PVMSS_HOST"])
 
 			got, err := config.Load()
 			if tt.wantErr != "" {

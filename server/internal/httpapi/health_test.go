@@ -64,12 +64,12 @@ func TestHealth(t *testing.T) {
 			r := httptest.NewRequest(c.method, "/health", nil)
 			h.ServeHTTP(w, r)
 
+			wantStatus := http.StatusOK
 			if c.wantStatus != 0 {
-				if w.Code != c.wantStatus {
-					t.Fatalf("status = %d, want %d", w.Code, c.wantStatus)
-				}
-			} else if w.Code != http.StatusOK {
-				t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+				wantStatus = c.wantStatus
+			}
+			if w.Code != wantStatus {
+				t.Fatalf("status = %d, want %d", w.Code, wantStatus)
 			}
 
 			body, _ := io.ReadAll(w.Result().Body)

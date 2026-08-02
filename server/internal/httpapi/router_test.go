@@ -37,13 +37,13 @@ func TestRouter_SPAFallback(t *testing.T) {
 		wantStatus int
 		wantBody   string
 	}{
-		{http.MethodGet, "/", http.StatusOK, "shell"},
-		{http.MethodGet, "/anything-that-does-not-exist", http.StatusOK, "shell"},
-		{http.MethodGet, "/file.txt", http.StatusOK, "real file"},
-		{http.MethodGet, "/missing.txt", http.StatusNotFound, "asset not found"},
-		{http.MethodGet, "/a-dir", http.StatusOK, "shell"},
-		{http.MethodGet, "/api/unknown", http.StatusNotFound, "unknown API path"},
-		{http.MethodPost, "/api/unknown", http.StatusNotFound, "unknown API path"},
+		{method: http.MethodGet, path: "/", wantStatus: http.StatusOK, wantBody: "shell"},
+		{method: http.MethodGet, path: "/anything-that-does-not-exist", wantStatus: http.StatusOK, wantBody: "shell"},
+		{method: http.MethodGet, path: "/file.txt", wantStatus: http.StatusOK, wantBody: "real file"},
+		{method: http.MethodGet, path: "/missing.txt", wantStatus: http.StatusNotFound, wantBody: "asset not found"},
+		{method: http.MethodGet, path: "/a-dir", wantStatus: http.StatusOK, wantBody: "shell"},
+		{method: http.MethodGet, path: "/api/unknown", wantStatus: http.StatusNotFound, wantBody: "unknown API path"},
+		{method: http.MethodPost, path: "/api/unknown", wantStatus: http.StatusNotFound, wantBody: "unknown API path"},
 	}
 
 	for _, c := range cases {

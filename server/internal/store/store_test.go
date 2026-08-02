@@ -15,9 +15,9 @@ import (
 func TestOpen_MigrationsValidationFailed(t *testing.T) {
 	original := store.Migrations
 	defer func() { store.Migrations = original }()
-	store.Migrations = map[int]string{
-		1: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`,
-		3: `CREATE TABLE t3 (id INTEGER PRIMARY KEY)`,
+	store.Migrations = []store.Migration{
+		{Version: 1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
+		{Version: 3, DDL: `CREATE TABLE t3 (id INTEGER PRIMARY KEY)`},
 	}
 
 	dir := t.TempDir()
@@ -120,7 +120,9 @@ func TestOpen(t *testing.T) {
 			defer func() { _ = db.Close() }()
 
 			var version int
-			if err := db.QueryRow(`SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1`).Scan(&version); err != nil {
+			if err := db.QueryRow(
+				`SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1`,
+			).Scan(&version); err != nil {
 				t.Fatalf("query schema_migrations: %v", err)
 			}
 			if version != 1 {

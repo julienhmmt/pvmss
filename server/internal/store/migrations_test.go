@@ -14,9 +14,9 @@ import (
 
 func TestRunMigrations_FreshDB_AppliesInOrder(t *testing.T) {
 	db := openTestDB(t)
-	migrations := map[int]string{
-		1: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`,
-		2: `ALTER TABLE t1 ADD COLUMN name TEXT`,
+	migrations := []store.Migration{
+		{Version: 1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
+		{Version: 2, DDL: `ALTER TABLE t1 ADD COLUMN name TEXT`},
 	}
 
 	if err := store.RunMigrations(db, migrations); err != nil {
@@ -24,8 +24,13 @@ func TestRunMigrations_FreshDB_AppliesInOrder(t *testing.T) {
 	}
 
 	versions := appliedVersions(t, db)
-	if len(versions) != 2 || !versions[1] || !versions[2] {
-		t.Fatalf("expected versions 1 and 2 applied, got %v", versions)
+	if len(versions) != 2 {
+		t.Fatalf("expected two applied versions, got %v", versions)
+	}
+	for _, v := range []int{1, 2} {
+		if _, ok := versions[v]; !ok {
+			t.Fatalf("expected version %d applied, got %v", v, versions)
+		}
 	}
 
 	if _, err := db.Exec(`INSERT INTO t1 (id, name) VALUES (1, 'x')`); err != nil {
@@ -35,8 +40,8 @@ func TestRunMigrations_FreshDB_AppliesInOrder(t *testing.T) {
 
 func TestRunMigrations_Rerun_IsNoOp(t *testing.T) {
 	db := openTestDB(t)
-	migrations := map[int]string{
-		1: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`,
+	migrations := []store.Migration{
+		{Version: 1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
 	}
 
 	if err := store.RunMigrations(db, migrations); err != nil {
@@ -54,43 +59,45 @@ func TestRunMigrations_Rerun_IsNoOp(t *testing.T) {
 
 func TestRunMigrations_PartiallyApplied_AppliesRemaining(t *testing.T) {
 	db := openTestDB(t)
-	migrations := map[int]string{
-		1: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`,
+	migrations := []store.Migration{
+		{Version: 1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
 	}
 	if err := store.RunMigrations(db, migrations); err != nil {
 		t.Fatalf("first RunMigrations: %v", err)
 	}
 
-	migrations[2] = `ALTER TABLE t1 ADD COLUMN name TEXT`
+	migrations = append(migrations, store.Migration{Version: 2, DDL: `ALTER TABLE t1 ADD COLUMN name TEXT`})
 	if err := store.RunMigrations(db, migrations); err != nil {
 		t.Fatalf("second RunMigrations: %v", err)
 	}
 
 	versions := appliedVersions(t, db)
-	if !versions[1] || !versions[2] {
-		t.Fatalf("expected versions 1 and 2, got %v", versions)
+	for _, v := range []int{1, 2} {
+		if _, ok := versions[v]; !ok {
+			t.Fatalf("expected version %d applied, got %v", v, versions)
+		}
 	}
 }
 
-func TestRunMigrations_EmptyMap_IsNoOp(t *testing.T) {
+func TestRunMigrations_EmptyList_ReturnsError(t *testing.T) {
 	db := openTestDB(t)
-	if err := store.RunMigrations(db, map[int]string{}); err != nil {
-		t.Fatalf("RunMigrations: %v", err)
+	if err := store.RunMigrations(db, []store.Migration{}); err == nil {
+		t.Fatalf("expected error for empty migration list, got nil")
 	}
 }
 
 func TestRunMigrations_MissingVersion_Detected(t *testing.T) {
 	db := openTestDB(t)
-	migrations := map[int]string{
-		1: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`,
-		3: `CREATE TABLE t3 (id INTEGER PRIMARY KEY)`,
+	migrations := []store.Migration{
+		{Version: 1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
+		{Version: 3, DDL: `CREATE TABLE t3 (id INTEGER PRIMARY KEY)`},
 	}
 
 	err := store.RunMigrations(db, migrations)
 	if err == nil {
 		t.Fatalf("expected error for missing version 2, got nil")
 	}
-	if err.Error() != `migration version 2 is missing from the migration map` {
+	if err.Error() != `migration version 2 is missing from the migration list` {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -100,26 +107,30 @@ func TestRunMigrations_Validate(t *testing.T) {
 
 	cases := []struct {
 		name    string
-		mig     map[int]string
+		mig     []store.Migration
 		wantErr string
 	}{
 		{
-			name:    "negative version",
-			mig:     map[int]string{-1: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
+			name: "negative version",
+			mig: []store.Migration{
+				{Version: -1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
+			},
 			wantErr: "migration version -1 is not positive",
 		},
 		{
-			name:    "empty DDL",
-			mig:     map[int]string{1: "   "},
+			name: "empty DDL",
+			mig: []store.Migration{
+				{Version: 1, DDL: "   "},
+			},
 			wantErr: "migration 1 has no DDL",
 		},
 		{
 			name: "missing version",
-			mig: map[int]string{
-				1: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`,
-				3: `CREATE TABLE t3 (id INTEGER PRIMARY KEY)`,
+			mig: []store.Migration{
+				{Version: 1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
+				{Version: 3, DDL: `CREATE TABLE t3 (id INTEGER PRIMARY KEY)`},
 			},
-			wantErr: "migration version 2 is missing from the migration map",
+			wantErr: "migration version 2 is missing from the migration list",
 		},
 	}
 
@@ -140,8 +151,8 @@ func TestRunMigrations_ClosedDB_ReturnsError(t *testing.T) {
 	db := openTestDB(t)
 	_ = db.Close()
 
-	migrations := map[int]string{
-		1: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`,
+	migrations := []store.Migration{
+		{Version: 1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
 	}
 	if err := store.RunMigrations(db, migrations); err == nil {
 		t.Fatalf("expected error for closed database, got nil")
@@ -150,8 +161,8 @@ func TestRunMigrations_ClosedDB_ReturnsError(t *testing.T) {
 
 func TestRunMigrations_RecordsAppliedAt(t *testing.T) {
 	db := openTestDB(t)
-	migrations := map[int]string{
-		1: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`,
+	migrations := []store.Migration{
+		{Version: 1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
 	}
 
 	before := time.Now().UTC()
@@ -183,28 +194,31 @@ func openTestDB(t *testing.T) *sql.DB {
 	return db
 }
 
-func appliedVersions(t *testing.T, db *sql.DB) map[int]bool {
+func appliedVersions(t *testing.T, db *sql.DB) map[int]struct{} {
 	t.Helper()
 	rows, err := db.Query(`SELECT version FROM schema_migrations`)
 	if err != nil {
 		t.Fatalf("query schema_migrations: %v", err)
 	}
 	defer func() { _ = rows.Close() }()
-	result := make(map[int]bool)
+	result := make(map[int]struct{}, 8)
 	for rows.Next() {
 		var v int
 		if err := rows.Scan(&v); err != nil {
 			t.Fatalf("scan version: %v", err)
 		}
-		result[v] = true
+		result[v] = struct{}{}
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterating schema_migrations: %v", err)
 	}
 	return result
 }
 
 func TestRunMigrations_InvalidDDL_ReturnsError(t *testing.T) {
 	db := openTestDB(t)
-	migrations := map[int]string{
-		1: `CREATE TABLE`,
+	migrations := []store.Migration{
+		{Version: 1, DDL: `CREATE TABLE`},
 	}
 
 	err := store.RunMigrations(db, migrations)
@@ -214,14 +228,16 @@ func TestRunMigrations_InvalidDDL_ReturnsError(t *testing.T) {
 }
 
 func BenchmarkRunMigrations(b *testing.B) {
-	for i := 0; i < b.N; i++ {
+	var i int
+	for b.Loop() {
+		i++
 		path := filepath.Join(b.TempDir(), fmt.Sprintf("bench-%d.db", i))
 		db, err := sql.Open("sqlite", path)
 		if err != nil {
 			b.Fatalf("open db: %v", err)
 		}
-		migrations := map[int]string{
-			1: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`,
+		migrations := []store.Migration{
+			{Version: 1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
 		}
 		if err := store.RunMigrations(db, migrations); err != nil {
 			b.Fatalf("RunMigrations: %v", err)
