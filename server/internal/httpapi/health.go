@@ -17,14 +17,18 @@ type Health struct {
 func (h *Health) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		if err := writeError(w, http.StatusMethodNotAllowed, "method not allowed"); err != nil {
+			h.log.Error("failed to write method not allowed", "component", "httpapi", "error", err)
+		}
 		return
 	}
 
 	timestamp := time.Now().UTC().Format(time.RFC3339)
+	checks := make(map[string]CheckResult, 1)
+	checks["database"] = CheckResult{Status: "healthy"}
 	resp := HealthResponse{
 		Status:    "healthy",
-		Checks:    map[string]CheckResult{"database": {Status: "healthy"}},
+		Checks:    checks,
 		Timestamp: timestamp,
 	}
 	status := http.StatusOK
@@ -36,6 +40,15 @@ func (h *Health) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		status = http.StatusServiceUnavailable
 	}
 
-	body, _ := json.Marshal(resp)
-	writeJSON(w, status, body)
+	body, err := json.Marshal(resp)
+	if err != nil {
+		h.log.Error("failed to marshal health response", "component", "httpapi", "error", err)
+		if writeErr := writeError(w, http.StatusInternalServerError, "internal server error"); writeErr != nil {
+			h.log.Error("failed to write health error response", "component", "httpapi", "error", writeErr)
+		}
+		return
+	}
+	if err := writeJSON(w, status, body); err != nil {
+		h.log.Error("failed to write health response", "component", "httpapi", "error", err)
+	}
 }

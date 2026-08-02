@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -17,6 +18,9 @@ func TestResolveWebBuildDir(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "web", "build"), 0755); err != nil {
 		t.Fatalf("create web build dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte("<!doctype html>"), 0644); err != nil {
+		t.Fatalf("write index.html: %v", err)
 	}
 
 	t.Setenv("PVMSS_WEB_DIR", dir)
@@ -46,8 +50,12 @@ func TestResolveWebBuildDir_Invalid(t *testing.T) {
 
 func TestResolveWebBuildDir_Fallback(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(dir, "web", "build"), 0755); err != nil {
+	build := filepath.Join(dir, "web", "build")
+	if err := os.MkdirAll(build, 0755); err != nil {
 		t.Fatalf("create web build dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(build, "index.html"), []byte("<!doctype html>"), 0644); err != nil {
+		t.Fatalf("write index.html: %v", err)
 	}
 
 	t.Chdir(dir)
@@ -65,6 +73,9 @@ func TestValidateWebBuildDir(t *testing.T) {
 	build := filepath.Join(dir, "build")
 	if err := os.MkdirAll(build, 0755); err != nil {
 		t.Fatalf("create build dir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(build, "index.html"), []byte("<!doctype html>"), 0644); err != nil {
+		t.Fatalf("write index.html: %v", err)
 	}
 
 	if err := validateWebBuildDir(build); err != nil {
@@ -91,7 +102,13 @@ func TestRun_InvalidConfig_ExitsWithoutListening(t *testing.T) {
 		t.Fatalf("go build: %v\n%s", err, out)
 	}
 
-	port := 52001
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("find free port: %v", err)
+	}
+	port := ln.Addr().(*net.TCPAddr).Port
+	_ = ln.Close()
+
 	dbPath := filepath.Join(t.TempDir(), "pvmss.db")
 	env := []string{
 		fmt.Sprintf("PVMSS_PORT=%d", port),
@@ -118,9 +135,8 @@ func TestRun_InvalidConfig_ExitsWithoutListening(t *testing.T) {
 		t.Fatalf("expected output to mention LOG_LEVEL, got: %s", out)
 	}
 
-	addr := fmt.Sprintf("127.0.0.1:%d", port)
-	conn, dialErr := net.DialTimeout("tcp", addr, 500*time.Millisecond)
-	if dialErr == nil {
+	addr := "127.0.0.1:" + strconv.Itoa(port)
+	if conn, err := net.DialTimeout("tcp", addr, 500*time.Millisecond); err == nil {
 		_ = conn.Close()
 		t.Fatalf("server should not have accepted a connection on %s", addr)
 	}
@@ -202,7 +218,7 @@ func TestRun(t *testing.T) {
 		t.Fatalf("write index.html: %v", err)
 	}
 
-	t.Setenv("PVMSS_PORT", fmt.Sprintf("%d", port))
+	t.Setenv("PVMSS_PORT", strconv.Itoa(port))
 	t.Setenv("PVMSS_DB_PATH", dbPath)
 	t.Setenv("PVMSS_WEB_DIR", webDir)
 	t.Setenv("LOG_LEVEL", "info")
@@ -214,7 +230,7 @@ func TestRun(t *testing.T) {
 
 	var healthOK bool
 	for start := time.Now(); time.Since(start) < 2*time.Second; time.Sleep(50 * time.Millisecond) {
-		resp, err := http.Get(fmt.Sprintf("http://127.0.0.1:%d/health", port))
+		resp, err := http.Get("http://127.0.0.1:" + strconv.Itoa(port) + "/health")
 		if err == nil {
 			_ = resp.Body.Close()
 			healthOK = resp.StatusCode == http.StatusOK

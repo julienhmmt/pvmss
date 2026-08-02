@@ -3,6 +3,7 @@ package httpapi
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -15,17 +16,11 @@ type errorResponse struct {
 	Detail string `json:"detail"`
 }
 
-// writeJSON writes a JSON response with the given status code.
-func writeJSON(w http.ResponseWriter, status int, body []byte) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_, _ = w.Write(body)
-}
-
-// writeError writes a JSON error response with the given status code and detail.
-func writeError(w http.ResponseWriter, status int, detail string) {
-	body, _ := json.Marshal(errorResponse{Detail: detail})
-	writeJSON(w, status, body)
+// spaHandler serves static assets and falls back to index.html for client-side routes.
+type spaHandler struct {
+	root  http.FileSystem
+	index string
+	log   *slog.Logger
 }
 
 // NewRouter wires the public API and the static SPA handler.
@@ -34,7 +29,9 @@ func NewRouter(health http.Handler, webBuildDir string, log *slog.Logger) *http.
 	mux.Handle("GET /health", health)
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
 		mux.Handle(method+" /api/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			writeError(w, http.StatusNotFound, "unknown API path")
+			if err := writeError(w, http.StatusNotFound, "unknown API path"); err != nil {
+				log.Error("failed to write API 404", "component", "httpapi", "error", err)
+			}
 		}))
 	}
 
@@ -50,13 +47,6 @@ func NewRouter(health http.Handler, webBuildDir string, log *slog.Logger) *http.
 	return mux
 }
 
-// spaHandler serves static assets and falls back to index.html for client-side routes.
-type spaHandler struct {
-	root  http.FileSystem
-	index string
-	log   *slog.Logger
-}
-
 func (s *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p := path.Clean(r.URL.Path)
 	if p == "." {
@@ -66,7 +56,9 @@ func (s *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Asset paths and files with an extension must exist; never fall back.
 	if strings.HasPrefix(p, "/_app/") || path.Ext(p) != "" {
 		if err := s.serveFile(w, r, p); err != nil {
-			writeError(w, http.StatusNotFound, "asset not found")
+			if writeErr := writeTextError(w, http.StatusNotFound, "asset not found"); writeErr != nil {
+				s.log.Error("failed to write asset 404", "component", "httpapi", "path", p, "error", writeErr)
+			}
 		}
 		return
 	}
@@ -76,7 +68,9 @@ func (s *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := s.serveFile(w, r, s.index); err != nil {
-		writeError(w, http.StatusNotFound, "shell not found")
+		if writeErr := writeTextError(w, http.StatusNotFound, "shell not found"); writeErr != nil {
+			s.log.Error("failed to write shell 404", "component", "httpapi", "path", p, "error", writeErr)
+		}
 	}
 }
 
@@ -96,6 +90,37 @@ func (s *spaHandler) serveFile(w http.ResponseWriter, r *http.Request, name stri
 	if st.IsDir() {
 		return fs.ErrNotExist
 	}
-	http.ServeContent(w, r, name, st.ModTime(), f)
+	http.ServeContent(
+		w,
+		r,
+		name,
+		st.ModTime(),
+		f,
+	)
 	return nil
+}
+
+// writeJSON writes a JSON response with the given status code and returns any write error.
+func writeJSON(w http.ResponseWriter, status int, body []byte) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_, err := w.Write(body)
+	return err
+}
+
+// writeError writes a JSON error response with the given status code and detail.
+func writeError(w http.ResponseWriter, status int, detail string) error {
+	body, err := json.Marshal(errorResponse{Detail: detail})
+	if err != nil {
+		return fmt.Errorf("marshal error response: %w", err)
+	}
+	return writeJSON(w, status, body)
+}
+
+// writeTextError writes a plain-text error response with the given status code and detail.
+func writeTextError(w http.ResponseWriter, status int, detail string) error {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(status)
+	_, err := w.Write([]byte(detail))
+	return err
 }

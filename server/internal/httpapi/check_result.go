@@ -1,3 +1,4 @@
+// Package httpapi provides HTTP API handlers and types.
 package httpapi
 
 // CheckResult is a single health check entry.

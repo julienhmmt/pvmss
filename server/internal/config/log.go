@@ -19,9 +19,9 @@ func NewLogger(cfg Configuration) (*slog.Logger, io.WriteCloser, error) {
 	var w io.WriteCloser
 	switch strings.ToLower(cfg.LogOutput) {
 	case "stdout":
-		w = nopWriteCloser{os.Stdout}
+		w = nopWriteCloser{Writer: os.Stdout}
 	case "stderr":
-		w = nopWriteCloser{os.Stderr}
+		w = nopWriteCloser{Writer: os.Stderr}
 	default:
 		f, err := os.OpenFile(cfg.LogOutput, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {

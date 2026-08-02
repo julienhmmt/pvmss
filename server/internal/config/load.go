@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 // Load reads and validates the runtime configuration from the environment.
@@ -11,6 +12,7 @@ import (
 func Load() (Configuration, error) {
 	var cfg Configuration
 	portStr, ok := os.LookupEnv("PVMSS_PORT")
+	portStr = strings.TrimSpace(portStr)
 	if !ok || portStr == "" {
 		return cfg, fmt.Errorf("PVMSS_PORT is required")
 	}
@@ -23,33 +25,39 @@ func Load() (Configuration, error) {
 	}
 	cfg.Port = port
 
-	cfg.DBPath, ok = os.LookupEnv("PVMSS_DB_PATH")
-	if !ok || cfg.DBPath == "" {
+	cfg.DBPath = strings.TrimSpace(os.Getenv("PVMSS_DB_PATH"))
+	if cfg.DBPath == "" {
 		return cfg, fmt.Errorf("PVMSS_DB_PATH is required")
 	}
 
-	cfg.LogLevel, ok = os.LookupEnv("LOG_LEVEL")
-	if !ok || cfg.LogLevel == "" {
+	cfg.LogLevel = strings.TrimSpace(os.Getenv("LOG_LEVEL"))
+	if cfg.LogLevel == "" {
 		return cfg, fmt.Errorf("LOG_LEVEL is required")
 	}
 	if !isValidLogLevel(cfg.LogLevel) {
 		return cfg, fmt.Errorf("LOG_LEVEL must be one of debug, info, warn, error, got %q", cfg.LogLevel)
 	}
 
-	cfg.LogFormat, ok = os.LookupEnv("LOG_FORMAT")
-	if !ok || cfg.LogFormat == "" {
+	cfg.LogFormat = strings.TrimSpace(os.Getenv("LOG_FORMAT"))
+	if cfg.LogFormat == "" {
 		return cfg, fmt.Errorf("LOG_FORMAT is required")
 	}
 	if !isValidLogFormat(cfg.LogFormat) {
 		return cfg, fmt.Errorf("LOG_FORMAT must be one of json, console, got %q", cfg.LogFormat)
 	}
 
-	cfg.LogOutput, ok = os.LookupEnv("LOG_OUTPUT")
-	if !ok || cfg.LogOutput == "" {
+	cfg.LogOutput = strings.TrimSpace(os.Getenv("LOG_OUTPUT"))
+	if cfg.LogOutput == "" {
 		return cfg, fmt.Errorf("LOG_OUTPUT is required")
 	}
 
-	cfg.WebDir, _ = os.LookupEnv("PVMSS_WEB_DIR")
+	host := strings.TrimSpace(os.Getenv("PVMSS_HOST"))
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	cfg.Host = host
+
+	cfg.WebDir = strings.TrimSpace(os.Getenv("PVMSS_WEB_DIR"))
 
 	return cfg, nil
 }

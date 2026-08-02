@@ -60,9 +60,9 @@ func TestNewLogger(t *testing.T) {
 					level     string
 					component string
 				}{
-					{"startup complete", "INFO", "config"},
-					{"approaching limit", "WARN", "store"},
-					{"database unreachable", "ERROR", "httpapi"},
+					{message: "startup complete", level: "INFO", component: "config"},
+					{message: "approaching limit", level: "WARN", component: "store"},
+					{message: "database unreachable", level: "ERROR", component: "httpapi"},
 				}
 
 				for i, want := range expected {
@@ -173,12 +173,12 @@ type logEntry struct {
 }
 
 func readLogEntries(path string) ([]logEntry, error) {
-	var entries []logEntry
+	entries := []logEntry{}
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		var e logEntry

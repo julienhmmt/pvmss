@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -45,7 +47,7 @@ func run() int {
 	}
 	defer func() { _ = logCloser.Close() }()
 
-	logger.Info("configuration loaded", "component", "main", "port", cfg.Port, "dbPath", cfg.DBPath)
+	logger.Info("configuration loaded", "component", "main", "host", cfg.Host, "port", cfg.Port, "dbPath", cfg.DBPath)
 
 	st, err := store.Open(cfg)
 	if err != nil {
@@ -53,7 +55,7 @@ func run() int {
 		return 1
 	}
 	defer func() { _ = st.Close() }()
-	logger.Info("database opened", "component", "main", "migrationsApplied", len(store.Migrations))
+	logger.Info("database opened", "component", "main", "migrationsDefined", len(store.Migrations))
 
 	webDir, err := resolveWebBuildDir(cfg.WebDir)
 	if err != nil {
@@ -66,7 +68,7 @@ func run() int {
 	router := httpapi.NewRouter(health, webDir, logger)
 
 	srv := &http.Server{
-		Addr:              fmt.Sprintf(":%d", cfg.Port),
+		Addr:              net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)),
 		Handler:           router,
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
@@ -80,7 +82,11 @@ func run() int {
 	errCh := make(chan error, 1)
 	go func() { errCh <- srv.ListenAndServe() }()
 
-	sigCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	sigCtx, stop := signal.NotifyContext(
+		context.Background(),
+		os.Interrupt,
+		syscall.SIGTERM,
+	)
 	defer stop()
 
 	select {
@@ -131,6 +137,10 @@ func validateWebBuildDir(path string) error {
 	}
 	if !fi.IsDir() {
 		return fmt.Errorf("%q is not a directory", path)
+	}
+	indexPath := filepath.Join(path, "index.html")
+	if _, err := os.Stat(indexPath); err != nil {
+		return fmt.Errorf("%q is missing index.html: %w", path, err)
 	}
 	return nil
 }
