@@ -21,6 +21,8 @@
 		"@types/node": "^25.9.2",
 		"@vitest/coverage-v8": "^4.1.8",
 		"happy-dom": "^20.10.2",
+		"stylelint": "^17.14.1",
+		"stylelint-config-standard": "^40.0.0",
 		"svelte": "^5.56.3",
 		"svelte-check": "^4.6.0",
 		"tailwindcss": "^4.3.0",
