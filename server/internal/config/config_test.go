@@ -166,6 +166,7 @@ func TestLoad(t *testing.T) {
 			t.Setenv("LOG_FORMAT", tt.env["LOG_FORMAT"])
 			t.Setenv("LOG_OUTPUT", tt.env["LOG_OUTPUT"])
 			t.Setenv("PVMSS_HOST", tt.env["PVMSS_HOST"])
+			t.Setenv("PVMSS_WEB_DIR", tt.env["PVMSS_WEB_DIR"])
 
 			got, err := config.Load()
 			if tt.wantErr != "" {
