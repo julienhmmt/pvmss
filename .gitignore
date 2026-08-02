@@ -11,6 +11,7 @@ bun.lockb
 proxmox_host_key.pub
 pvmss_snippets_ed25519
 settings.dev.json
+specs/
 
 # binaries
 pvmss
@@ -29,6 +30,3 @@ frontend/admin/
 pvmss.db
 pvmss.db-shm
 pvmss.db-wal
-
-# optional: commit for shared extraction speed, skip to keep repo small
-graphify-out/
