@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"time"
 )
 
 // currentSchemaVersion is the highest known migration version.
@@ -42,7 +43,7 @@ func RunMigrations(db *sql.DB) error {
 func ensureMigrationsTable(db *sql.DB) error {
 	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
 		version    INTEGER PRIMARY KEY,
-		applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		applied_at TEXT NOT NULL
 	)`)
 	return err
 }
@@ -80,7 +81,8 @@ func applyMigration(db *sql.DB, version int) error {
 		_ = tx.Rollback()
 		return fmt.Errorf("exec DDL: %w", err)
 	}
-	if _, err := tx.Exec(`INSERT INTO schema_migrations (version) VALUES (?)`, version); err != nil {
+	appliedAt := time.Now().UTC().Format(time.RFC3339)
+	if _, err := tx.Exec(`INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)`, version, appliedAt); err != nil {
 		_ = tx.Rollback()
 		return fmt.Errorf("record migration: %w", err)
 	}

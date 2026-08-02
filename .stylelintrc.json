@@ -24,6 +24,14 @@
     "lightness-notation": null,
     "hue-degree-notation": null,
     "import-notation": null,
+    "property-no-vendor-prefix": [
+      true,
+      {
+        "ignoreProperties": [
+          "-webkit-text-size-adjust"
+        ]
+      }
+    ],
     "declaration-empty-line-before": null,
     "rule-empty-line-before": null,
     "at-rule-empty-line-before": null
