@@ -37,3 +37,12 @@ Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 2. Use `detect_changes` for code review.
 3. Use `get_affected_flows` to understand impact.
 4. Use `query_graph` pattern="tests_for" to check coverage.
+
+## Project Conventions
+
+- Follow `.devin/rules/coding-style.md` for Go and TypeScript style.
+- Follow `.devin/rules/ui-quality.md` for admin page and form layouts.
+- Use `.devin/skills/todo-planning.md` to track multi-step work.
+- Use `.devin/skills/backend-refactor.md` when splitting monolithic backend files.
+- Admin features are a SvelteKit SPA under `frontend/src/routes/admin/` backed by REST endpoints in `backend/api/v1/admin_*.go`.
+- Admin API handlers must return complete response payloads required by the admin UI.
