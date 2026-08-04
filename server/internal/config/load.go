@@ -59,6 +59,25 @@ func Load() (Configuration, error) {
 
 	cfg.WebDir = strings.TrimSpace(os.Getenv("PVMSS_WEB_DIR"))
 
+	cfg.SessionSecret = strings.TrimSpace(os.Getenv("SESSION_SECRET"))
+	if len(cfg.SessionSecret) < 32 {
+		return cfg, fmt.Errorf("SESSION_SECRET must be at least 32 bytes")
+	}
+
+	cfg.AdminPasswordHash = strings.TrimSpace(os.Getenv("ADMIN_PASSWORD_HASH"))
+	if cfg.AdminPasswordHash != "" && !strings.HasPrefix(cfg.AdminPasswordHash, "$2") {
+		return cfg, fmt.Errorf("ADMIN_PASSWORD_HASH must be a bcrypt hash")
+	}
+
+	clusterSource := strings.TrimSpace(os.Getenv("PVMSS_CLUSTER_SOURCE"))
+	if clusterSource == "" {
+		clusterSource = "fake"
+	}
+	if !isValidClusterSource(clusterSource) {
+		return cfg, fmt.Errorf("PVMSS_CLUSTER_SOURCE must be one of fake, proxmox, got %q", clusterSource)
+	}
+	cfg.ClusterSource = clusterSource
+
 	return cfg, nil
 }
 
@@ -73,6 +92,14 @@ func isValidLogLevel(level string) bool {
 func isValidLogFormat(format string) bool {
 	switch format {
 	case "json", "console":
+		return true
+	}
+	return false
+}
+
+func isValidClusterSource(source string) bool {
+	switch source {
+	case "fake", "proxmox":
 		return true
 	}
 	return false

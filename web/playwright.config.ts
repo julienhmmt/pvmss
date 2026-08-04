@@ -24,6 +24,7 @@ export default defineConfig({
 			LOG_LEVEL: 'info',
 			LOG_FORMAT: 'json',
 			LOG_OUTPUT: 'stdout',
+			SESSION_SECRET: 'e2e-session-secret-with-at-least-thirty-two-bytes',
 		},
 		url: 'http://127.0.0.1:50001/health',
 		reuseExistingServer: !process.env.CI,

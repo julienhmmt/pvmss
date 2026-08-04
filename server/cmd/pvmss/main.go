@@ -14,6 +14,8 @@ import (
 	"syscall"
 	"time"
 
+	"pvmss/server/internal/auth"
+	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/store"
@@ -64,8 +66,26 @@ func run() int {
 	}
 	logger.Info("web build directory resolved", "component", "main", "webDir", webDir)
 
+	// This is the ONLY site that selects between cluster.Client implementations
+	// (SC-004) — no other package may branch on cfg.ClusterSource.
+	var clusterClient cluster.Client
+	switch cfg.ClusterSource {
+	case "proxmox":
+		clusterClient = cluster.Proxmox{}
+	default:
+		clusterClient = cluster.Fake{}
+	}
+	logger.Info("cluster client selected", "component", "cluster", "source", cfg.ClusterSource, "cluster", "default")
+
+	sessions, err := auth.NewSessionManager(st, cfg.SessionSecret, false)
+	if err != nil {
+		logger.Error("failed to create session manager", "component", "main", "error", err)
+		return 1
+	}
 	health := httpapi.NewHealth(st, logger)
-	router := httpapi.NewRouter(health, webDir, logger)
+	clusterNodes := httpapi.NewClusterNodes(clusterClient, logger)
+	authHandler := httpapi.NewAuth(clusterClient, sessions, cfg.AdminPasswordHash, auth.NewTokenService(st), logger)
+	router := httpapi.NewRouter(health, clusterNodes, authHandler, webDir, logger)
 
 	srv := &http.Server{
 		Addr:              net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)),
