@@ -16,6 +16,7 @@ settings.dev.json
 specs/
 */graphify-out/
 */graph-questions.txt
+tmp/
 
 # binaries
 /pvmss
