@@ -24,10 +24,18 @@ type spaHandler struct {
 }
 
 // NewRouter wires the public API and the static SPA handler.
-func NewRouter(health http.Handler, clusterNodes http.Handler, webBuildDir string, log *slog.Logger) *http.ServeMux {
+func NewRouter(health http.Handler, clusterNodes http.Handler, auth *Auth, webBuildDir string, log *slog.Logger) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("GET /health", health)
-	mux.Handle("GET /api/v1/cluster/nodes", clusterNodes)
+	mux.Handle("GET /api/v1/cluster/nodes", auth.Require(clusterNodes))
+	mux.HandleFunc("POST /api/v1/auth/login", auth.Login)
+	mux.HandleFunc("POST /api/v1/auth/admin-login", auth.AdminLogin)
+	mux.HandleFunc("GET /api/v1/auth/me", auth.Me)
+	mux.HandleFunc("POST /api/v1/auth/logout", auth.Logout)
+	mux.HandleFunc("POST /api/v1/auth/tokens", auth.CreateToken)
+	mux.HandleFunc("GET /api/v1/auth/tokens", auth.ListTokens)
+	mux.HandleFunc("DELETE /api/v1/auth/tokens/{id}", auth.RevokeToken)
+	mux.HandleFunc("POST /api/v1/auth/password", auth.ChangePassword)
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
 		mux.Handle(method+" /api/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if err := writeError(w, http.StatusNotFound, "unknown API path"); err != nil {

@@ -202,6 +202,9 @@ func TestLoad(t *testing.T) {
 			t.Setenv("PVMSS_HOST", tt.env["PVMSS_HOST"])
 			t.Setenv("PVMSS_WEB_DIR", tt.env["PVMSS_WEB_DIR"])
 			t.Setenv("PVMSS_CLUSTER_SOURCE", tt.env["PVMSS_CLUSTER_SOURCE"])
+			t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
+			want := tt.want
+			want.SessionSecret = strings.Repeat("s", 32)
 
 			got, err := config.Load()
 			if tt.wantErr != "" {
@@ -216,8 +219,8 @@ func TestLoad(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if got != tt.want {
-				t.Fatalf("config mismatch: got %+v, want %+v", got, tt.want)
+			if got != want {
+				t.Fatalf("config mismatch: got %+v, want %+v", got, want)
 			}
 		})
 	}

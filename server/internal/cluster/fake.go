@@ -1,6 +1,9 @@
 package cluster
 
-import "context"
+import (
+	"context"
+	"sync"
+)
 
 // Fake is the built-in cluster substitute (constitution XI). It requires no
 // external service and serves a stable, hand-authored dataset. Neither this
@@ -12,6 +15,43 @@ func (Fake) ListNodes(_ context.Context) ([]Node, error) {
 	nodes := make([]Node, len(fakeNodes))
 	copy(nodes, fakeNodes)
 	return nodes, nil
+}
+
+// Authenticate implements Client using demonstration-only PVE identities.
+func (Fake) Authenticate(_ context.Context, username, password string) (Identity, error) {
+	fakeIdentitiesMutex.RLock()
+	defer fakeIdentitiesMutex.RUnlock()
+	identity, ok := fakeIdentities[username]
+	if !ok || password != identity.password {
+		return Identity{}, ErrNotFound
+	}
+	return Identity{Username: username, IsAdmin: identity.isAdmin}, nil
+}
+
+// ChangePassword implements Client against the same in-memory demo table
+// Authenticate reads — the fake's own storage, analogous to a real cluster's
+// user database (constitution XI: the fake must demonstrate every feature).
+func (Fake) ChangePassword(_ context.Context, username, oldPassword, newPassword string) error {
+	fakeIdentitiesMutex.Lock()
+	defer fakeIdentitiesMutex.Unlock()
+	identity, ok := fakeIdentities[username]
+	if !ok || oldPassword != identity.password {
+		return ErrNotFound
+	}
+	fakeIdentities[username] = fakeIdentity{password: newPassword, isAdmin: identity.isAdmin}
+	return nil
+}
+
+type fakeIdentity struct {
+	password string
+	isAdmin  bool
+}
+
+var fakeIdentitiesMutex sync.RWMutex
+
+var fakeIdentities = map[string]fakeIdentity{
+	"alice@pve": {password: "pvmss-alice"},
+	"admin@pve": {password: "pvmss-admin", isAdmin: true},
 }
 
 // The dataset below is production code (constitution XI), reviewed and

@@ -125,8 +125,8 @@ func TestOpen(t *testing.T) {
 			).Scan(&version); err != nil {
 				t.Fatalf("query schema_migrations: %v", err)
 			}
-			if version != 1 {
-				t.Fatalf("expected migration version 1, got %d", version)
+			if version != len(store.Migrations) {
+				t.Fatalf("expected migration version %d, got %d", len(store.Migrations), version)
 			}
 		})
 	}
