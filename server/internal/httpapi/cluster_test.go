@@ -23,6 +23,14 @@ func (s stubClusterClient) ListNodes(_ context.Context) ([]cluster.Node, error) 
 	return s.nodes, s.err
 }
 
+func (stubClusterClient) Authenticate(_ context.Context, _, _ string) (cluster.Identity, error) {
+	return cluster.Identity{}, cluster.ErrNotImplemented
+}
+
+func (stubClusterClient) ChangePassword(_ context.Context, _, _, _ string) error {
+	return cluster.ErrNotImplemented
+}
+
 func TestClusterNodes_Success(t *testing.T) {
 	client := stubClusterClient{nodes: []cluster.Node{
 		{

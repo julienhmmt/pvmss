@@ -18,6 +18,14 @@ var (
 // must behave identically from a caller's perspective (constitution XI).
 type Client interface {
 	ListNodes(ctx context.Context) ([]Node, error)
+	Authenticate(ctx context.Context, username, password string) (Identity, error)
+	ChangePassword(ctx context.Context, username, oldPassword, newPassword string) error
+}
+
+// Identity is the principal verified by the configured cluster identity provider.
+type Identity struct {
+	Username string
+	IsAdmin  bool
 }
 
 // NodeStatus is the operational state of a cluster node.

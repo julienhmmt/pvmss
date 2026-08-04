@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
@@ -76,9 +77,15 @@ func run() int {
 	}
 	logger.Info("cluster client selected", "component", "cluster", "source", cfg.ClusterSource, "cluster", "default")
 
+	sessions, err := auth.NewSessionManager(st, cfg.SessionSecret, false)
+	if err != nil {
+		logger.Error("failed to create session manager", "component", "main", "error", err)
+		return 1
+	}
 	health := httpapi.NewHealth(st, logger)
 	clusterNodes := httpapi.NewClusterNodes(clusterClient, logger)
-	router := httpapi.NewRouter(health, clusterNodes, webDir, logger)
+	authHandler := httpapi.NewAuth(clusterClient, sessions, cfg.AdminPasswordHash, auth.NewTokenService(st), logger)
+	router := httpapi.NewRouter(health, clusterNodes, authHandler, webDir, logger)
 
 	srv := &http.Server{
 		Addr:              net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)),

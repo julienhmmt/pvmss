@@ -148,6 +148,7 @@ func TestRun_InvalidConfig_Returns1(t *testing.T) {
 	t.Setenv("LOG_LEVEL", "invalid")
 	t.Setenv("LOG_FORMAT", "json")
 	t.Setenv("LOG_OUTPUT", "stdout")
+	t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
 
 	if code := run(); code != 1 {
 		t.Fatalf("run() returned %d, want 1", code)
@@ -162,6 +163,7 @@ func TestRun_WebDirNotFound_Returns1(t *testing.T) {
 	t.Setenv("LOG_LEVEL", "info")
 	t.Setenv("LOG_FORMAT", "json")
 	t.Setenv("LOG_OUTPUT", "stdout")
+	t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
 
 	if code := run(); code != 1 {
 		t.Fatalf("run() returned %d, want 1", code)
@@ -194,6 +196,7 @@ func TestRun_DatabaseOpenFails_Returns1(t *testing.T) {
 	t.Setenv("LOG_LEVEL", "info")
 	t.Setenv("LOG_FORMAT", "json")
 	t.Setenv("LOG_OUTPUT", "stdout")
+	t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
 
 	if code := run(); code != 1 {
 		t.Fatalf("run() returned %d, want 1", code)
@@ -224,6 +227,7 @@ func TestRun(t *testing.T) {
 	t.Setenv("LOG_LEVEL", "info")
 	t.Setenv("LOG_FORMAT", "json")
 	t.Setenv("LOG_OUTPUT", "stdout")
+	t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
 
 	done := make(chan int, 1)
 	go func() { done <- run() }()
