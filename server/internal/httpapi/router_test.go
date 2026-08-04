@@ -29,7 +29,8 @@ func TestRouter_SPAFallback(t *testing.T) {
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	health := httpapi.NewHealth(fakePinger{}, logger)
-	mux := httpapi.NewRouter(health, dir, logger)
+	clusterNodes := httpapi.NewClusterNodes(stubClusterClient{}, logger)
+	mux := httpapi.NewRouter(health, clusterNodes, dir, logger)
 
 	cases := []struct {
 		method     string
@@ -66,7 +67,8 @@ func TestRouter_SPAFallback(t *testing.T) {
 func TestRouter_MissingBuildDir_HealthStillWorks(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	health := httpapi.NewHealth(fakePinger{}, logger)
-	mux := httpapi.NewRouter(health, "", logger)
+	clusterNodes := httpapi.NewClusterNodes(stubClusterClient{}, logger)
+	mux := httpapi.NewRouter(health, clusterNodes, "", logger)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/health", nil)
