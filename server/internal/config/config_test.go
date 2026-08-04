@@ -24,12 +24,13 @@ func TestLoad(t *testing.T) {
 				"LOG_OUTPUT":    "stdout",
 			},
 			want: config.Configuration{
-				Host:      "127.0.0.1",
-				Port:      50001,
-				DBPath:    "./tmp/pvmss.db",
-				LogLevel:  "info",
-				LogFormat: "json",
-				LogOutput: "stdout",
+				Host:          "127.0.0.1",
+				Port:          50001,
+				DBPath:        "./tmp/pvmss.db",
+				LogLevel:      "info",
+				LogFormat:     "json",
+				LogOutput:     "stdout",
+				ClusterSource: "fake",
 			},
 		},
 		{
@@ -43,12 +44,13 @@ func TestLoad(t *testing.T) {
 				"LOG_OUTPUT":    "stdout",
 			},
 			want: config.Configuration{
-				Host:      "0.0.0.0",
-				Port:      50001,
-				DBPath:    "./tmp/pvmss.db",
-				LogLevel:  "info",
-				LogFormat: "json",
-				LogOutput: "stdout",
+				Host:          "0.0.0.0",
+				Port:          50001,
+				DBPath:        "./tmp/pvmss.db",
+				LogLevel:      "info",
+				LogFormat:     "json",
+				LogOutput:     "stdout",
+				ClusterSource: "fake",
 			},
 		},
 		{
@@ -156,6 +158,38 @@ func TestLoad(t *testing.T) {
 			},
 			wantErr: "LOG_FORMAT must be one of",
 		},
+		{
+			name: "explicit cluster source proxmox",
+			env: map[string]string{
+				"PVMSS_PORT":           "50001",
+				"PVMSS_DB_PATH":        "./tmp/pvmss.db",
+				"LOG_LEVEL":            "info",
+				"LOG_FORMAT":           "json",
+				"LOG_OUTPUT":           "stdout",
+				"PVMSS_CLUSTER_SOURCE": "proxmox",
+			},
+			want: config.Configuration{
+				Host:          "127.0.0.1",
+				Port:          50001,
+				DBPath:        "./tmp/pvmss.db",
+				LogLevel:      "info",
+				LogFormat:     "json",
+				LogOutput:     "stdout",
+				ClusterSource: "proxmox",
+			},
+		},
+		{
+			name: "invalid cluster source",
+			env: map[string]string{
+				"PVMSS_PORT":           "50001",
+				"PVMSS_DB_PATH":        "./tmp/pvmss.db",
+				"LOG_LEVEL":            "info",
+				"LOG_FORMAT":           "json",
+				"LOG_OUTPUT":           "stdout",
+				"PVMSS_CLUSTER_SOURCE": "vmware",
+			},
+			wantErr: "PVMSS_CLUSTER_SOURCE must be one of",
+		},
 	}
 
 	for _, tt := range tests {
@@ -167,6 +201,10 @@ func TestLoad(t *testing.T) {
 			t.Setenv("LOG_OUTPUT", tt.env["LOG_OUTPUT"])
 			t.Setenv("PVMSS_HOST", tt.env["PVMSS_HOST"])
 			t.Setenv("PVMSS_WEB_DIR", tt.env["PVMSS_WEB_DIR"])
+			t.Setenv("PVMSS_CLUSTER_SOURCE", tt.env["PVMSS_CLUSTER_SOURCE"])
+			t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
+			want := tt.want
+			want.SessionSecret = strings.Repeat("s", 32)
 
 			got, err := config.Load()
 			if tt.wantErr != "" {
@@ -181,8 +219,8 @@ func TestLoad(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if got != tt.want {
-				t.Fatalf("config mismatch: got %+v, want %+v", got, tt.want)
+			if got != want {
+				t.Fatalf("config mismatch: got %+v, want %+v", got, want)
 			}
 		})
 	}

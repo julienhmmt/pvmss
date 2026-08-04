@@ -1,0 +1,78 @@
+import { getContext, setContext } from 'svelte';
+import { get, post, del, ApiRequestError } from '$lib/shared/api/client';
+
+export type TokenScope = 'read' | 'read_write';
+
+export interface ApiToken {
+	id: string;
+	label: string;
+	scope: TokenScope;
+	createdAt: string;
+	lastUsedAt?: string;
+}
+
+interface TokenListResponse {
+	tokens: ApiToken[];
+}
+
+interface CreateTokenResponse extends ApiToken {
+	value: string;
+}
+
+export class TokensStore {
+	tokens = $state.raw<ApiToken[]>([]);
+	loading = $state.raw(false);
+	error = $state.raw<string | null>(null);
+	lastCreatedValue = $state.raw<string | null>(null);
+
+	async load(): Promise<void> {
+		this.loading = true;
+		this.error = null;
+		try {
+			const response = await get<TokenListResponse>('/api/v1/auth/tokens');
+			this.tokens = response.tokens;
+		} catch (err) {
+			this.error = err instanceof ApiRequestError ? err.message : 'failed to load tokens';
+		} finally {
+			this.loading = false;
+		}
+	}
+
+	async create(label: string, scope: TokenScope): Promise<void> {
+		this.error = null;
+		try {
+			const created = await post<CreateTokenResponse>('/api/v1/auth/tokens', { label, scope });
+			this.lastCreatedValue = created.value;
+			await this.load();
+		} catch (err) {
+			this.error = err instanceof ApiRequestError ? err.message : 'failed to create token';
+		}
+	}
+
+	async revoke(id: string): Promise<void> {
+		this.error = null;
+		try {
+			await del(`/api/v1/auth/tokens/${id}`);
+			await this.load();
+		} catch (err) {
+			this.error = err instanceof ApiRequestError ? err.message : 'failed to revoke token';
+		}
+	}
+
+	dismissCreatedValue(): void {
+		this.lastCreatedValue = null;
+	}
+}
+
+const TOKENS_CONTEXT_KEY = Symbol('tokens');
+
+/** Called once, by the route that owns this state (constitution VII: no module singletons). */
+export function setTokensContext(): TokensStore {
+	const store = new TokensStore();
+	setContext(TOKENS_CONTEXT_KEY, store);
+	return store;
+}
+
+export function getTokensContext(): TokensStore {
+	return getContext<TokensStore>(TOKENS_CONTEXT_KEY);
+}
