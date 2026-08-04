@@ -24,9 +24,10 @@ type spaHandler struct {
 }
 
 // NewRouter wires the public API and the static SPA handler.
-func NewRouter(health http.Handler, webBuildDir string, log *slog.Logger) *http.ServeMux {
+func NewRouter(health http.Handler, clusterNodes http.Handler, webBuildDir string, log *slog.Logger) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("GET /health", health)
+	mux.Handle("GET /api/v1/cluster/nodes", clusterNodes)
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
 		mux.Handle(method+" /api/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if err := writeError(w, http.StatusNotFound, "unknown API path"); err != nil {

@@ -59,6 +59,15 @@ func Load() (Configuration, error) {
 
 	cfg.WebDir = strings.TrimSpace(os.Getenv("PVMSS_WEB_DIR"))
 
+	clusterSource := strings.TrimSpace(os.Getenv("PVMSS_CLUSTER_SOURCE"))
+	if clusterSource == "" {
+		clusterSource = "fake"
+	}
+	if !isValidClusterSource(clusterSource) {
+		return cfg, fmt.Errorf("PVMSS_CLUSTER_SOURCE must be one of fake, proxmox, got %q", clusterSource)
+	}
+	cfg.ClusterSource = clusterSource
+
 	return cfg, nil
 }
 
@@ -73,6 +82,14 @@ func isValidLogLevel(level string) bool {
 func isValidLogFormat(format string) bool {
 	switch format {
 	case "json", "console":
+		return true
+	}
+	return false
+}
+
+func isValidClusterSource(source string) bool {
+	switch source {
+	case "fake", "proxmox":
 		return true
 	}
 	return false
