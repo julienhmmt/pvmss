@@ -18,6 +18,16 @@ scanning cannot.
 
 Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
 
+## graphify-out (static architecture snapshot)
+
+`server/graphify-out/` and `web/graphify-out/` hold a graphify snapshot of each
+module (`GRAPH_REPORT.md`, `graph.json`, `wiki/`). Root `graphify-out/` has the
+merged server+web graph. Use these for architecture orientation ("what talks to
+what", onboarding to a module) — read `GRAPH_REPORT.md` first, then the
+relevant `wiki/*.md` article, before Grep. Unlike code-review-graph this does
+NOT auto-update; if it looks stale, run `/graphify server --update` /
+`/graphify web --update`.
+
 ## Key Tools
 
 | Tool | Use when |

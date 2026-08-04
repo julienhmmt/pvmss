@@ -14,8 +14,8 @@ proxmox_host_key.pub
 pvmss_snippets_ed25519
 settings.dev.json
 specs/
-*/graphify-out/
-*/graph-questions.txt
+graphify-out/
+graph-questions.txt
 tmp/
 
 # binaries
