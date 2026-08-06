@@ -84,7 +84,7 @@ stale.
 
 ## Batch 5 — helm
 
-- [ ] `helm/values.yaml` — drop top-level `replicaCount` (shadowed by
+- [x] `helm/values.yaml` — drop top-level `replicaCount` (shadowed by
       `deployment.replicaCount`, the one actually read) and
       `podAnnotations`/`podLabels`/`podSecurityContext`/`securityContext`
       (no template reads them; security context is hardcoded in
