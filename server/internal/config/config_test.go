@@ -3,6 +3,7 @@ package config_test
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"pvmss/server/internal/config"
 )
@@ -24,13 +25,15 @@ func TestLoad(t *testing.T) {
 				"LOG_OUTPUT":    "stdout",
 			},
 			want: config.Configuration{
-				Host:          "127.0.0.1",
-				Port:          50001,
-				DBPath:        "./tmp/pvmss.db",
-				LogLevel:      "info",
-				LogFormat:     "json",
-				LogOutput:     "stdout",
-				ClusterSource: "fake",
+				Host:                              "127.0.0.1",
+				Port:                              50001,
+				DBPath:                            "./tmp/pvmss.db",
+				LogLevel:                          "info",
+				LogFormat:                         "json",
+				LogOutput:                         "stdout",
+				ClusterSource:                     "fake",
+				InventoryRefreshInterval:          30 * time.Second,
+				InventoryManualRefreshMinInterval: 5 * time.Second,
 			},
 		},
 		{
@@ -44,13 +47,15 @@ func TestLoad(t *testing.T) {
 				"LOG_OUTPUT":    "stdout",
 			},
 			want: config.Configuration{
-				Host:          "0.0.0.0",
-				Port:          50001,
-				DBPath:        "./tmp/pvmss.db",
-				LogLevel:      "info",
-				LogFormat:     "json",
-				LogOutput:     "stdout",
-				ClusterSource: "fake",
+				Host:                              "0.0.0.0",
+				Port:                              50001,
+				DBPath:                            "./tmp/pvmss.db",
+				LogLevel:                          "info",
+				LogFormat:                         "json",
+				LogOutput:                         "stdout",
+				ClusterSource:                     "fake",
+				InventoryRefreshInterval:          30 * time.Second,
+				InventoryManualRefreshMinInterval: 5 * time.Second,
 			},
 		},
 		{
@@ -169,13 +174,15 @@ func TestLoad(t *testing.T) {
 				"PVMSS_CLUSTER_SOURCE": "proxmox",
 			},
 			want: config.Configuration{
-				Host:          "127.0.0.1",
-				Port:          50001,
-				DBPath:        "./tmp/pvmss.db",
-				LogLevel:      "info",
-				LogFormat:     "json",
-				LogOutput:     "stdout",
-				ClusterSource: "proxmox",
+				Host:                              "127.0.0.1",
+				Port:                              50001,
+				DBPath:                            "./tmp/pvmss.db",
+				LogLevel:                          "info",
+				LogFormat:                         "json",
+				LogOutput:                         "stdout",
+				ClusterSource:                     "proxmox",
+				InventoryRefreshInterval:          30 * time.Second,
+				InventoryManualRefreshMinInterval: 5 * time.Second,
 			},
 		},
 		{
@@ -190,6 +197,65 @@ func TestLoad(t *testing.T) {
 			},
 			wantErr: "PVMSS_CLUSTER_SOURCE must be one of",
 		},
+		{
+			name: "explicit inventory intervals",
+			env: map[string]string{
+				"PVMSS_PORT":                           "50001",
+				"PVMSS_DB_PATH":                        "./tmp/pvmss.db",
+				"LOG_LEVEL":                            "info",
+				"LOG_FORMAT":                           "json",
+				"LOG_OUTPUT":                           "stdout",
+				"PVMSS_V04_INVENTORY_REFRESH_INTERVAL": "10s",
+				"PVMSS_V04_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL": "2s",
+			},
+			want: config.Configuration{
+				Host:                              "127.0.0.1",
+				Port:                              50001,
+				DBPath:                            "./tmp/pvmss.db",
+				LogLevel:                          "info",
+				LogFormat:                         "json",
+				LogOutput:                         "stdout",
+				ClusterSource:                     "fake",
+				InventoryRefreshInterval:          10 * time.Second,
+				InventoryManualRefreshMinInterval: 2 * time.Second,
+			},
+		},
+		{
+			name: "invalid inventory refresh interval",
+			env: map[string]string{
+				"PVMSS_PORT":                           "50001",
+				"PVMSS_DB_PATH":                        "./tmp/pvmss.db",
+				"LOG_LEVEL":                            "info",
+				"LOG_FORMAT":                           "json",
+				"LOG_OUTPUT":                           "stdout",
+				"PVMSS_V04_INVENTORY_REFRESH_INTERVAL": "not-a-duration",
+			},
+			wantErr: "PVMSS_V04_INVENTORY_REFRESH_INTERVAL must be a duration",
+		},
+		{
+			name: "non-positive inventory refresh interval",
+			env: map[string]string{
+				"PVMSS_PORT":                           "50001",
+				"PVMSS_DB_PATH":                        "./tmp/pvmss.db",
+				"LOG_LEVEL":                            "info",
+				"LOG_FORMAT":                           "json",
+				"LOG_OUTPUT":                           "stdout",
+				"PVMSS_V04_INVENTORY_REFRESH_INTERVAL": "0s",
+			},
+			wantErr: "PVMSS_V04_INVENTORY_REFRESH_INTERVAL must be a positive duration",
+		},
+		{
+			name: "non-positive manual refresh min interval",
+			env: map[string]string{
+				"PVMSS_PORT":    "50001",
+				"PVMSS_DB_PATH": "./tmp/pvmss.db",
+				"LOG_LEVEL":     "info",
+				"LOG_FORMAT":    "json",
+				"LOG_OUTPUT":    "stdout",
+				"PVMSS_V04_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL": "-1s",
+			},
+			wantErr: "PVMSS_V04_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL must be a positive duration",
+		},
 	}
 
 	for _, tt := range tests {
@@ -202,6 +268,8 @@ func TestLoad(t *testing.T) {
 			t.Setenv("PVMSS_HOST", tt.env["PVMSS_HOST"])
 			t.Setenv("PVMSS_WEB_DIR", tt.env["PVMSS_WEB_DIR"])
 			t.Setenv("PVMSS_CLUSTER_SOURCE", tt.env["PVMSS_CLUSTER_SOURCE"])
+			t.Setenv("PVMSS_V04_INVENTORY_REFRESH_INTERVAL", tt.env["PVMSS_V04_INVENTORY_REFRESH_INTERVAL"])
+			t.Setenv("PVMSS_V04_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL", tt.env["PVMSS_V04_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL"])
 			t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
 			want := tt.want
 			want.SessionSecret = strings.Repeat("s", 32)

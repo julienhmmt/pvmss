@@ -1,17 +1,21 @@
 interface ErrorEnvelope {
 	code: string;
 	message: string;
+	retryAfterSeconds?: number;
 }
 
 export class ApiRequestError extends Error {
 	readonly status: number;
 	readonly code: string;
+	/** Present on 429 responses that carry a guard countdown (contracts/cluster-refresh.md). */
+	readonly retryAfterSeconds?: number | undefined;
 
-	constructor(status: number, code: string, message: string) {
+	constructor(status: number, code: string, message: string, retryAfterSeconds?: number) {
 		super(message);
 		this.name = 'ApiRequestError';
 		this.status = status;
 		this.code = code;
+		this.retryAfterSeconds = retryAfterSeconds;
 	}
 }
 
@@ -43,7 +47,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 		} catch {
 			// Body wasn't JSON (or was empty) — keep the generic envelope.
 		}
-		throw new ApiRequestError(response.status, envelope.code, envelope.message);
+		throw new ApiRequestError(response.status, envelope.code, envelope.message, envelope.retryAfterSeconds);
 	}
 	if (response.status === 204) return undefined as T;
 	return (await response.json()) as T;

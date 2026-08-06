@@ -7,20 +7,23 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strings"
 	"testing"
+	"time"
 
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/httpapi"
+	"pvmss/server/internal/inventory"
 )
 
 type stubClusterClient struct {
-	nodes []cluster.Node
-	err   error
+	snapshot cluster.Snapshot
+	err      error
+	calls    int
 }
 
-func (s stubClusterClient) ListNodes(_ context.Context) ([]cluster.Node, error) {
-	return s.nodes, s.err
+func (s *stubClusterClient) Snapshot(_ context.Context) (cluster.Snapshot, error) {
+	s.calls++
+	return s.snapshot, s.err
 }
 
 func (stubClusterClient) Authenticate(_ context.Context, _, _ string) (cluster.Identity, error) {
@@ -31,21 +34,42 @@ func (stubClusterClient) ChangePassword(_ context.Context, _, _, _ string) error
 	return cluster.ErrNotImplemented
 }
 
+// buildProjectionWithIndex creates a Projection and populates it with an Index
+// built from the given snapshot, stamped at the given refresh time.
+func buildProjectionWithIndex(t *testing.T, snap cluster.Snapshot, refreshedAt time.Time) *inventory.Projection {
+	t.Helper()
+	projection := inventory.NewProjection()
+	idx := inventory.BuildIndex(snap)
+	idx.RefreshedAt = refreshedAt
+	projection.Store(&idx)
+	return projection
+}
+
+// TestClusterNodes_Success — GET /cluster/nodes reads from the Index, includes
+// vmCount and refreshedAt (contracts/cluster-refresh.md, FR-008).
 func TestClusterNodes_Success(t *testing.T) {
-	client := stubClusterClient{nodes: []cluster.Node{
-		{
-			Name:         "pve-node-01",
-			Status:       cluster.NodeOnline,
-			CPUCores:     32,
-			CPUUsage:     0.42,
-			MemoryTotal:  137438953472,
-			MemoryUsed:   68719476736,
-			StorageTotal: 2199023255552,
-			StorageUsed:  879609302220,
+	snap := cluster.Snapshot{
+		Nodes: []cluster.Node{
+			{
+				Name:         "pve-node-01",
+				Status:       cluster.NodeOnline,
+				CPUCores:     32,
+				CPUUsage:     0.42,
+				MemoryTotal:  137438953472,
+				MemoryUsed:   68719476736,
+				StorageTotal: 2199023255552,
+				StorageUsed:  879609302220,
+			},
 		},
-	}}
+		VMs: []cluster.VM{
+			{VMID: 100, Name: "web-01", Node: "pve-node-01", Pool: "pool-alice"},
+			{VMID: 101, Name: "web-02", Node: "pve-node-01", Pool: "pool-alice"},
+		},
+	}
+	refreshedAt := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
+	projection := buildProjectionWithIndex(t, snap, refreshedAt)
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	h := httpapi.NewClusterNodes(client, logger)
+	h := httpapi.NewClusterNodes(projection, logger)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/api/v1/cluster/nodes", nil)
@@ -65,7 +89,9 @@ func TestClusterNodes_Success(t *testing.T) {
 			MemoryUsed   int64   `json:"memoryUsed"`
 			StorageTotal int64   `json:"storageTotal"`
 			StorageUsed  int64   `json:"storageUsed"`
+			VMCount      int     `json:"vmCount"`
 		} `json:"nodes"`
+		RefreshedAt string `json:"refreshedAt"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode response: %v", err)
@@ -79,19 +105,27 @@ func TestClusterNodes_Success(t *testing.T) {
 		n.StorageTotal != 2199023255552 || n.StorageUsed != 879609302220 {
 		t.Fatalf("unexpected node shape: %+v", n)
 	}
+	if n.VMCount != 2 {
+		t.Fatalf("vmCount = %d, want 2", n.VMCount)
+	}
+	if got.RefreshedAt != "2026-08-01T12:00:00Z" {
+		t.Fatalf("refreshedAt = %q, want 2026-08-01T12:00:00Z", got.RefreshedAt)
+	}
 }
 
-func TestClusterNodes_Unreachable(t *testing.T) {
-	client := stubClusterClient{err: cluster.ErrUnreachable}
+// TestClusterNodes_NotReady — before the first refresh, GET /cluster/nodes
+// returns 503 inventory_not_ready, distinct from an empty list (FR-009).
+func TestClusterNodes_NotReady(t *testing.T) {
+	projection := inventory.NewProjection()
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	h := httpapi.NewClusterNodes(client, logger)
+	h := httpapi.NewClusterNodes(projection, logger)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/api/v1/cluster/nodes", nil)
 	h.ServeHTTP(w, r)
 
-	if w.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, want %d", w.Code, http.StatusBadGateway)
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusServiceUnavailable)
 	}
 
 	var got struct {
@@ -101,21 +135,17 @@ func TestClusterNodes_Unreachable(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if got.Code != "cluster_unreachable" {
-		t.Fatalf("code = %q, want cluster_unreachable", got.Code)
-	}
-	forbidden := []string{"http://", "https://", "token", "password", "credential"}
-	for _, f := range forbidden {
-		if strings.Contains(got.Message, f) {
-			t.Fatalf("message leaks driver detail: %q contains %q", got.Message, f)
-		}
+	if got.Code != "inventory_not_ready" {
+		t.Fatalf("code = %q, want inventory_not_ready", got.Code)
 	}
 }
 
+// TestClusterNodes_EmptyIsOK — an empty cluster (0 nodes) with a valid
+// RefreshedAt returns 200 with an empty array, not 503.
 func TestClusterNodes_EmptyIsOK(t *testing.T) {
-	client := stubClusterClient{nodes: []cluster.Node{}}
+	projection := buildProjectionWithIndex(t, cluster.Snapshot{}, time.Now())
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	h := httpapi.NewClusterNodes(client, logger)
+	h := httpapi.NewClusterNodes(projection, logger)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/api/v1/cluster/nodes", nil)
@@ -125,12 +155,34 @@ func TestClusterNodes_EmptyIsOK(t *testing.T) {
 		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
 	}
 	var got struct {
-		Nodes []json.RawMessage `json:"nodes"`
+		Nodes       []json.RawMessage `json:"nodes"`
+		RefreshedAt string            `json:"refreshedAt"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
 	if got.Nodes == nil || len(got.Nodes) != 0 {
 		t.Fatalf("nodes = %v, want empty array not null", got.Nodes)
+	}
+	if got.RefreshedAt == "" {
+		t.Fatal("refreshedAt should not be empty for a populated projection")
+	}
+}
+
+// TestClusterNodes_MethodNotAllowed — non-GET returns 405.
+func TestClusterNodes_MethodNotAllowed(t *testing.T) {
+	projection := inventory.NewProjection()
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	h := httpapi.NewClusterNodes(projection, logger)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/nodes", nil)
+	h.ServeHTTP(w, r)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusMethodNotAllowed)
+	}
+	if w.Header().Get("Allow") != "GET" {
+		t.Fatalf("Allow header = %q, want GET", w.Header().Get("Allow"))
 	}
 }

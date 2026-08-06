@@ -5,6 +5,12 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
+)
+
+const (
+	defaultInventoryRefreshInterval          = 30 * time.Second
+	defaultInventoryManualRefreshMinInterval = 5 * time.Second
 )
 
 // Load reads and validates the runtime configuration from the environment.
@@ -78,7 +84,34 @@ func Load() (Configuration, error) {
 	}
 	cfg.ClusterSource = clusterSource
 
+	refreshInterval, err := loadPositiveDuration("PVMSS_V04_INVENTORY_REFRESH_INTERVAL", defaultInventoryRefreshInterval)
+	if err != nil {
+		return cfg, err
+	}
+	cfg.InventoryRefreshInterval = refreshInterval
+
+	manualMinInterval, err := loadPositiveDuration("PVMSS_V04_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL", defaultInventoryManualRefreshMinInterval)
+	if err != nil {
+		return cfg, err
+	}
+	cfg.InventoryManualRefreshMinInterval = manualMinInterval
+
 	return cfg, nil
+}
+
+func loadPositiveDuration(envKey string, defaultVal time.Duration) (time.Duration, error) {
+	raw := strings.TrimSpace(os.Getenv(envKey))
+	if raw == "" {
+		return defaultVal, nil
+	}
+	d, err := time.ParseDuration(raw)
+	if err != nil {
+		return 0, fmt.Errorf("%s must be a duration, got %q", envKey, raw)
+	}
+	if d <= 0 {
+		return 0, fmt.Errorf("%s must be a positive duration, got %q", envKey, raw)
+	}
+	return d, nil
 }
 
 func isValidLogLevel(level string) bool {

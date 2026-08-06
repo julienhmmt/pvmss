@@ -10,11 +10,17 @@ import (
 // type nor Proxmox reports which one it is — callers cannot tell them apart.
 type Fake struct{}
 
-// ListNodes implements Client.
-func (Fake) ListNodes(_ context.Context) ([]Node, error) {
+// Snapshot implements Client. It returns the T01/T02 dataset (3 nodes, 25
+// VMs, 4 pools, 5 storages) reshaped into one call — the same content
+// ListNodes used to surface, plus the VMs and storages later tranches need.
+func (Fake) Snapshot(_ context.Context) (Snapshot, error) {
 	nodes := make([]Node, len(fakeNodes))
 	copy(nodes, fakeNodes)
-	return nodes, nil
+	vms := make([]VM, len(fakeVMs))
+	copy(vms, fakeVMs)
+	storages := make([]Storage, len(fakeStorages))
+	copy(storages, fakeStorages)
+	return Snapshot{Nodes: nodes, VMs: vms, Storages: storages}, nil
 }
 
 // Authenticate implements Client using demonstration-only PVE identities.
