@@ -17,31 +17,31 @@ stale.
 
 ## Batch 1 — backend, isolated dead files (no cross-file risk)
 
-- [ ] `backend/utils/generics.go` + its test — Optional/Result/Cache/
+- [x] `backend/utils/generics.go` + its test — Optional/Result/Cache/
       Filter/Map/Reduce toolkit, 874 lines, zero production callers.
-- [ ] `backend/utils/errors.go` + its test — ErrorWrapper/MakeErrorWrapper/
+- [x] `backend/utils/errors.go` + its test — ErrorWrapper/MakeErrorWrapper/
       WrapSimple/Must, 253 lines, zero external callers.
-- [ ] `backend/tests/helpers.go` — hand-rolled AssertEqual/RequestBuilder/
+- [x] `backend/tests/helpers.go` — hand-rolled AssertEqual/RequestBuilder/
       MockHandler/RunTableTests, 280 lines, dupes testify (already a dep).
-- [ ] `backend/logger/middleware.go` — RequestIDMiddleware/
+- [x] `backend/logger/middleware.go` — RequestIDMiddleware/
       CorrelationIDMiddleware/LoggingMiddleware, fully dead; real router
       wiring uses `backend/middleware` instead. ~101 lines.
-- [ ] `backend/security/validation.go` — empty stub, package decl only.
+- [x] `backend/security/validation.go` — empty stub, package decl only.
 
 ## Batch 2 — backend, needs grep-before-delete (partial-use files)
 
-- [ ] `backend/logger/*` — unused exports Sampler/StackTrace/
+- [x] `backend/logger/*` — unused exports Sampler/StackTrace/
       WithRequestID/GenerateRequestID/ErrorWithStack/Sampled/AuthFailure/
       VMFailure/AdminEvent/ConsoleEvent/APIEvent/APIFailure/DatabaseEvent/
       DatabaseFailure (~261 lines). Remove only the unused symbols, keep
       the file if anything else in it is live.
-- [ ] `backend/errors/errors.go` — unused half: Wrap/VMErr/WrapVM/
+- [x] `backend/errors/errors.go` — unused half: Wrap/VMErr/WrapVM/
       ProxmoxErr/WrapProxmox/AuthErr/WrapAuth/Is/As/IsNotFound/
       IsUnauthorized/IsValidation/IsVMError/IsProxmoxError/IsAuthError
       (~120 lines). `Is`/`As` are pure pass-throughs to stdlib `errors.Is`/
       `errors.As` — replace call sites (if any survive grep) with the
       stdlib call directly, then delete the wrappers.
-- [ ] `backend/proxmox/vms.go` — dead exports GetVMCloudInitConfigResty,
+- [x] `backend/proxmox/vms.go` — dead exports GetVMCloudInitConfigResty,
       SetCookieAuth, GetTimeout, GetBaseURL, GetVMSnapshotResty,
       UpdateVMSnapshotResty, FormatSnaptime, CloseSharedTransports,
       GetAllNetworkInterfacesResty, ClearVMCache, ExtractNetworkBridges,
