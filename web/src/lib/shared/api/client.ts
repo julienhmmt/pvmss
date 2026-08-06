@@ -35,6 +35,11 @@ export async function del<T>(path: string): Promise<T> {
 	return request<T>(path, { method: 'DELETE' });
 }
 
+/** Sends a PATCH request with a JSON body through the shared API error model. */
+export async function patch<T>(path: string, body: unknown): Promise<T> {
+	return request<T>(path, { method: 'PATCH', body: JSON.stringify(body) });
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 	const response = await fetch(path, {
 		...options,

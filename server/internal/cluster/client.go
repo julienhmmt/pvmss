@@ -5,6 +5,7 @@ package cluster
 import (
 	"context"
 	"errors"
+	"time"
 )
 
 // Sentinel errors so callers can distinguish failure modes without string matching.
@@ -12,6 +13,7 @@ var (
 	ErrUnreachable    = errors.New("cluster unreachable")
 	ErrNotFound       = errors.New("not found")
 	ErrNotImplemented = errors.New("not implemented")
+	ErrInvalidAction  = errors.New("invalid action")
 )
 
 // Client is the single contract for reading cluster data. Every implementation
@@ -20,6 +22,17 @@ type Client interface {
 	Snapshot(ctx context.Context) (Snapshot, error)
 	Authenticate(ctx context.Context, username, password string) (Identity, error)
 	ChangePassword(ctx context.Context, username, oldPassword, newPassword string) error
+}
+
+// Writer is the contract for mutating a single VM. It is deliberately separate
+// from Client (constitution IV: reads and writes are separated) — a handler
+// that writes never reads the cluster directly, it reads the inventory
+// projection and writes through this interface. The node is always
+// server-resolved by Resolve() (FR-003); callers cannot supply it.
+type Writer interface {
+	Action(ctx context.Context, node string, vmid int, action string) error
+	Delete(ctx context.Context, node string, vmid int) error
+	Patch(ctx context.Context, node string, vmid int, name, description string) error
 }
 
 // Snapshot is the complete result of one cluster read — all nodes, VMs, and
@@ -82,6 +95,14 @@ type VM struct {
 	Tags        []string
 	CPUCores    int
 	MemoryTotal int64
+	// DiskTotal is the guest's total disk size in bytes (V15 detail stat card).
+	DiskTotal int64
+	// Uptime is how long the guest has been running. Zero when Status != running
+	// (contracts/vm-detail-actions.md: uptimeSeconds absent when not running).
+	Uptime time.Duration
+	// Description is the free-text note editable via PATCH (V17). Empty by
+	// default in the fake dataset.
+	Description string
 }
 
 // Storage is a storage backend attached to a node.
