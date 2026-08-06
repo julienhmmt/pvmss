@@ -107,7 +107,17 @@ func run() int {
 	clusterRefresh := httpapi.NewClusterRefresh(refresher, logger)
 	authHandler := httpapi.NewAuth(clusterClient, sessions, cfg.AdminPasswordHash, auth.NewTokenService(st), logger)
 	vms := httpapi.NewVMs(projection, authHandler, cfg.MaxListPageSize, cfg.DefaultUserQuota, logger)
-	router := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, authHandler, webDir, logger)
+	// Both cluster.Client implementations (Fake, Proxmox) also implement
+	// cluster.Writer — reads and writes are separated by interface
+	// (constitution IV), not by implementation. The assertion is safe because
+	// the switch above only selects values that satisfy both.
+	writer, ok := clusterClient.(cluster.Writer)
+	if !ok {
+		logger.Error("cluster client does not implement Writer", "component", "main")
+		return 1
+	}
+	vmDetail := httpapi.NewVmDetail(projection, authHandler, writer, st, worker, logger)
+	router := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, authHandler, webDir, logger)
 
 	srv := &http.Server{
 		Addr:              net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)),
