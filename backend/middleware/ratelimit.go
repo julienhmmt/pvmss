@@ -174,18 +174,6 @@ func (l *Limiter) cleanupStaleBuckets(interval, threshold time.Duration) {
 	}
 }
 
-// GetStats returns statistics about the current state of the rate limiter.
-// Useful for monitoring and debugging.
-func (l *Limiter) GetStats() map[string]interface{} {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
-
-	return map[string]interface{}{
-		"active_buckets": len(l.buckets),
-		"rules_count":    len(l.rules),
-	}
-}
-
 // RateLimitMiddleware returns a middleware that enforces rate limits using the provided Limiter.
 func RateLimitMiddleware(limiter *Limiter) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {

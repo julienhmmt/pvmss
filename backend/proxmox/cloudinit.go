@@ -109,51 +109,6 @@ func TestSFTPConnection(ctx context.Context, config CloudInitSFTPConfig) error {
 	return nil
 }
 
-// GetVMCloudInitConfigResty fetches cloud-init configuration for a VM.
-// GET /nodes/{node}/qemu/{vmid}/cloudinit
-func GetVMCloudInitConfigResty(ctx context.Context, restyClient *RestyClient, node string, vmid int) (*CloudInitConfig, error) {
-	path := fmt.Sprintf("/nodes/%s/qemu/%d/cloudinit", url.PathEscape(node), vmid)
-
-	var response struct {
-		Data map[string]interface{} `json:"data"`
-	}
-
-	if err := restyClient.Get(ctx, path, &response); err != nil {
-		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Msg("Failed to get VM cloud-init config (resty)")
-		return nil, fmt.Errorf("failed to get cloud-init config for VM %d on node %s: %w", vmid, node, err)
-	}
-
-	// Parse response into CloudInitConfig
-	config := &CloudInitConfig{}
-	if v, ok := response.Data["ciuser"].(string); ok {
-		config.CIUser = v
-	}
-	if v, ok := response.Data["sshkeys"].(string); ok {
-		config.SSHKeys = v
-	}
-	if v, ok := response.Data["ipconfig0"].(string); ok {
-		config.IPConfig0 = v
-	}
-	if v, ok := response.Data["ipconfig1"].(string); ok {
-		config.IPConfig1 = v
-	}
-	if v, ok := response.Data["nameserver"].(string); ok {
-		config.Nameserver = v
-	}
-	if v, ok := response.Data["searchdomain"].(string); ok {
-		config.Searchdomain = v
-	}
-	if v, ok := response.Data["cicustom"].(string); ok {
-		config.CICustom = v
-	}
-	if v, ok := response.Data["citype"].(string); ok {
-		config.CIType = v
-	}
-
-	logger.Get().Debug().Str("node", node).Int("vmid", vmid).Msg("Fetched VM cloud-init config (resty)")
-	return config, nil
-}
-
 // GetVMCloudInitDumpResty returns the rendered cloud-init configuration for a
 // VM via the Proxmox HTTP API: GET /nodes/{node}/qemu/{vmid}/cloudinit/dump.
 // The dumpType selects which document is returned ("user", "network" or

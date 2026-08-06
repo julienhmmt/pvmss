@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -163,16 +162,6 @@ func MakeRestyClientCookieAuth(apiURL string, insecureSkipVerify bool, timeout t
 	}, nil
 }
 
-// SetCookieAuth sets PVEAuthCookie and CSRFPreventionToken on the underlying resty client
-// for cookie-based authentication with the Proxmox API.
-func (rc *RestyClient) SetCookieAuth(ticket, csrfToken string) {
-	rc.client.SetCookie(&http.Cookie{
-		Name:  "PVEAuthCookie",
-		Value: ticket,
-	})
-	rc.client.SetHeader("CSRFPreventionToken", csrfToken)
-}
-
 // withRequestTimeout returns a derived context honoring the wrapper's per-caller
 // timeout. If the caller already supplied a tighter deadline the original
 // context is returned unchanged. Cancel must always be invoked.
@@ -301,16 +290,6 @@ func (rc *RestyClient) Delete(ctx context.Context, path string, target any) erro
 	}
 
 	return nil
-}
-
-// GetTimeout returns the configured timeout
-func (rc *RestyClient) GetTimeout() time.Duration {
-	return rc.timeout
-}
-
-// GetBaseURL returns the base URL
-func (rc *RestyClient) GetBaseURL() string {
-	return rc.baseURL
 }
 
 // ResetTokenClients clears the cached token clients. Intended for tests so
