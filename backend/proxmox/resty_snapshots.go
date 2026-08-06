@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"time"
 )
 
 // VMSnapshot represents a Proxmox VM snapshot
@@ -65,41 +64,6 @@ func GetVMSnapshotsResty(ctx context.Context, client *RestyClient, node, vmid st
 	return response.Data, nil
 }
 
-// GetVMSnapshotResty retrieves details of a specific snapshot
-func GetVMSnapshotResty(ctx context.Context, client *RestyClient, node, vmid, snapname string) (VMSnapshot, error) {
-	path := fmt.Sprintf("/nodes/%s/qemu/%s/snapshot/%s", node, vmid, snapname)
-
-	var response struct {
-		Data VMSnapshot `json:"data"`
-	}
-
-	err := client.Get(ctx, path, &response)
-
-	if err != nil {
-		return VMSnapshot{}, fmt.Errorf("failed to get VM snapshot details: %w", err)
-	}
-
-	return response.Data, nil
-}
-
-// UpdateVMSnapshotResty updates a snapshot's description
-func UpdateVMSnapshotResty(ctx context.Context, client *RestyClient, node, vmid, snapname, description string) error {
-	path := fmt.Sprintf("/nodes/%s/qemu/%s/snapshot/%s/config", node, vmid, snapname)
-
-	// Convert to url.Values for form-encoded request
-	values := url.Values{}
-	values.Set("description", description)
-
-	var response interface{}
-	err := client.Put(ctx, path, values, &response)
-
-	if err != nil {
-		return fmt.Errorf("failed to update VM snapshot: %w", err)
-	}
-
-	return nil
-}
-
 // DeleteVMSnapshotResty deletes a snapshot
 func DeleteVMSnapshotResty(ctx context.Context, client *RestyClient, node, vmid, snapname string) error {
 	path := fmt.Sprintf("/nodes/%s/qemu/%s/snapshot/%s", node, vmid, snapname)
@@ -127,15 +91,6 @@ func RollbackVMSnapshotResty(ctx context.Context, client *RestyClient, node, vmi
 	}
 
 	return nil
-}
-
-// FormatSnaptime formats a Unix timestamp to a human-readable string
-func FormatSnaptime(snaptime int64) string {
-	if snaptime == 0 {
-		return ""
-	}
-	t := time.Unix(snaptime, 0)
-	return t.Format("2006-01-02 15:04:05")
 }
 
 // IsValidSnapshotName validates snapshot name format (a-zA-Z0-9-_)

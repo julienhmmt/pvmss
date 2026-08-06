@@ -66,17 +66,3 @@ func ResetSharedTransports() {
 
 	sharedTransports = make(map[bool]*http.Transport, 2)
 }
-
-// CloseSharedTransports closes all idle connections in cached transports.
-// This should be called during application shutdown to gracefully terminate connections.
-// After calling this function, new transports will be created on demand.
-func CloseSharedTransports() {
-	sharedTransportMu.Lock()
-	defer sharedTransportMu.Unlock()
-
-	for _, t := range sharedTransports {
-		t.CloseIdleConnections()
-	}
-
-	sharedTransports = make(map[bool]*http.Transport, 2)
-}

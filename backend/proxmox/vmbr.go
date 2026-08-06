@@ -64,34 +64,3 @@ func GetVMBRsResty(ctx context.Context, restyClient *RestyClient, node string) (
 
 	return bridges, nil
 }
-
-// GetAllNetworkInterfacesResty fetches all network interfaces (not just bridges) from a node using resty.
-// This is useful if you need to see all interface types (bond, eth, vlan, etc.)
-func GetAllNetworkInterfacesResty(ctx context.Context, restyClient *RestyClient, node string) ([]VMBR, error) {
-	if node == "" {
-		return nil, fmt.Errorf("node name cannot be empty")
-	}
-
-	path := fmt.Sprintf("/nodes/%s/network", url.PathEscape(node))
-
-	var response ListResponse[VMBR]
-	if err := restyClient.Get(ctx, path, &response); err != nil {
-		logger.Get().Error().
-			Err(err).
-			Str("node", node).
-			Msg("Failed to get all network interfaces from Proxmox API (resty)")
-		return nil, fmt.Errorf("failed to get all network interfaces: %w", err)
-	}
-
-	logger.Get().Info().
-		Str("node", node).
-		Int("total_interfaces", len(response.Data)).
-		Msg("Successfully fetched all network interfaces (resty)")
-
-	// Sort all network interfaces alphabetically by interface name for consistent ordering
-	sort.Slice(response.Data, func(i, j int) bool {
-		return response.Data[i].Iface < response.Data[j].Iface
-	})
-
-	return response.Data, nil
-}

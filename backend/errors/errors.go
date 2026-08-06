@@ -89,45 +89,11 @@ func AppErr(code ErrorCode, message string) *AppError {
 	}
 }
 
-// Wrap wraps an existing error with additional context.
-func Wrap(err error, code ErrorCode, message string) *AppError {
-	return &AppError{
-		Code:    code,
-		Message: message,
-		Err:     err,
-	}
-}
-
 // VMError represents errors related to VM operations.
 type VMError struct {
 	AppError
 	VMID int
 	Node string
-}
-
-// VMErr creates a VM-specific error.
-func VMErr(vmid int, node string, message string) *VMError {
-	return &VMError{
-		AppError: AppError{
-			Code:    CodeVM,
-			Message: message,
-		},
-		VMID: vmid,
-		Node: node,
-	}
-}
-
-// WrapVM wraps an existing error as a VM error.
-func WrapVM(err error, vmid int, node string, message string) *VMError {
-	return &VMError{
-		AppError: AppError{
-			Code:    CodeVM,
-			Message: message,
-			Err:     err,
-		},
-		VMID: vmid,
-		Node: node,
-	}
 }
 
 // Error implements the error interface for VMError.
@@ -143,31 +109,6 @@ type ProxmoxError struct {
 	AppError
 	Endpoint   string
 	StatusCode int
-}
-
-// ProxmoxErr creates a Proxmox-specific error.
-func ProxmoxErr(endpoint string, statusCode int, message string) *ProxmoxError {
-	return &ProxmoxError{
-		AppError: AppError{
-			Code:    CodeProxmox,
-			Message: message,
-		},
-		Endpoint:   endpoint,
-		StatusCode: statusCode,
-	}
-}
-
-// WrapProxmox wraps an existing error as a Proxmox error.
-func WrapProxmox(err error, endpoint string, statusCode int, message string) *ProxmoxError {
-	return &ProxmoxError{
-		AppError: AppError{
-			Code:    CodeProxmox,
-			Message: message,
-			Err:     err,
-		},
-		Endpoint:   endpoint,
-		StatusCode: statusCode,
-	}
 }
 
 // Error implements the error interface for ProxmoxError.
@@ -209,31 +150,6 @@ type AuthError struct {
 	Action   string
 }
 
-// AuthErr creates an authentication error.
-func AuthErr(username string, action string, message string) *AuthError {
-	return &AuthError{
-		AppError: AppError{
-			Code:    CodeAuth,
-			Message: message,
-		},
-		Username: username,
-		Action:   action,
-	}
-}
-
-// WrapAuth wraps an existing error as an auth error.
-func WrapAuth(err error, username string, action string, message string) *AuthError {
-	return &AuthError{
-		AppError: AppError{
-			Code:    CodeAuth,
-			Message: message,
-			Err:     err,
-		},
-		Username: username,
-		Action:   action,
-	}
-}
-
 // Error implements the error interface for AuthError.
 func (e *AuthError) Error() string {
 	if e.Err != nil {
@@ -262,50 +178,6 @@ func ConfigErr(key string, message string) *ConfigError {
 // Error implements the error interface for ConfigError.
 func (e *ConfigError) Error() string {
 	return fmt.Sprintf("%s: config key '%s': %s", e.Code, e.Key, e.Message)
-}
-
-// Is checks if the target error matches this error's type or wrapped error.
-func Is(err, target error) bool {
-	return errors.Is(err, target)
-}
-
-// As finds the first error in err's chain that matches target.
-func As(err error, target interface{}) bool {
-	return errors.As(err, target)
-}
-
-// IsNotFound checks if the error is a not found error.
-func IsNotFound(err error) bool {
-	return errors.Is(err, ErrNotFound)
-}
-
-// IsUnauthorized checks if the error is an unauthorized error.
-func IsUnauthorized(err error) bool {
-	return errors.Is(err, ErrUnauthorized)
-}
-
-// IsValidation checks if the error is a validation error.
-func IsValidation(err error) bool {
-	var ve *ValidationError
-	return errors.As(err, &ve)
-}
-
-// IsVMError checks if the error is a VM error.
-func IsVMError(err error) bool {
-	var ve *VMError
-	return errors.As(err, &ve)
-}
-
-// IsProxmoxError checks if the error is a Proxmox error.
-func IsProxmoxError(err error) bool {
-	var pe *ProxmoxError
-	return errors.As(err, &pe)
-}
-
-// IsAuthError checks if the error is an auth error.
-func IsAuthError(err error) bool {
-	var ae *AuthError
-	return errors.As(err, &ae)
 }
 
 // GetCode extracts the error code from an AppError or returns CodeInternal.

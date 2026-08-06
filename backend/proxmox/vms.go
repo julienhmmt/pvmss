@@ -26,13 +26,6 @@ func InvalidateVMCache(nodeName string) {
 	logger.Get().Debug().Str("node", nodeName).Msg("VM cache invalidated for node")
 }
 
-// ClearVMCache clears all cached VM data
-// This is primarily intended for test isolation to prevent test interference
-func ClearVMCache() {
-	vmCache.Clear()
-	logger.Get().Debug().Msg("VM cache cleared for all nodes")
-}
-
 // VMInfo is a simplified, application-specific struct that holds curated information about a Virtual Machine.
 type VMInfo struct {
 	VMID     string `json:"vmid"`
@@ -141,46 +134,6 @@ func ExtractNetworkInterfaces(cfg map[string]interface{}) []NetworkInterface {
 	}
 
 	return interfaces
-}
-
-// ExtractNetworkBridges parses the VM config map and returns a unique, sorted list
-// of network bridge names (e.g., vmbr0) found in net* entries.
-func ExtractNetworkBridges(cfg map[string]interface{}) []string {
-	if cfg == nil {
-		return nil
-	}
-	seen := make(map[string]struct{})
-	// Iterate over keys like net0, net1, ...
-	for k, v := range cfg {
-		if !strings.HasPrefix(strings.ToLower(k), "net") {
-			continue
-		}
-		s, ok := v.(string)
-		if !ok || s == "" {
-			continue
-		}
-		// net line format example: "virtio=xx:xx:xx,bridge=vmbr0,firewall=1"
-		parts := strings.Split(s, ",")
-		for _, p := range parts {
-			p = strings.TrimSpace(p)
-			if strings.HasPrefix(p, "bridge=") {
-				br := strings.TrimPrefix(p, "bridge=")
-				if br != "" {
-					seen[br] = struct{}{}
-				}
-			}
-		}
-	}
-	if len(seen) == 0 {
-		return nil
-	}
-	out := make([]string, 0, len(seen))
-	for b := range seen {
-		out = append(out, b)
-	}
-	// Stable order for display
-	// (no sort import at top; simple insertion order is fine)
-	return out
 }
 
 // GuestAgentNetworkInterface represents a network interface from QEMU guest agent
@@ -359,18 +312,6 @@ func getVMsResty(ctx context.Context, restyClient *RestyClient, useCache bool) (
 	logEntry.Msg("Successfully fetched all VMs from online nodes (resty)")
 
 	return allVMs, nil
-}
-
-// GetVMsForNodeResty fetches all VMs located on a single, specified Proxmox node using resty.
-// It calls the `/nodes/{nodeName}/qemu` endpoint and enriches the returned VM data with the node's name.
-// Results are cached for 10 seconds to avoid hammering Proxmox on rapid successive requests.
-func GetVMsForNodeResty(ctx context.Context, restyClient *RestyClient, nodeName string) ([]VM, error) {
-	return getVMsForNodeResty(ctx, restyClient, nodeName, true)
-}
-
-// GetVMsForNodeRestyFresh fetches all VMs located on a node without using the VM cache.
-func GetVMsForNodeRestyFresh(ctx context.Context, restyClient *RestyClient, nodeName string) ([]VM, error) {
-	return getVMsForNodeResty(ctx, restyClient, nodeName, false)
 }
 
 func getVMsForNodeResty(ctx context.Context, restyClient *RestyClient, nodeName string, useCache bool) ([]VM, error) {
@@ -596,41 +537,4 @@ func ResizeVMDiskResty(ctx context.Context, restyClient *RestyClient, node strin
 
 	logger.Get().Info().Str("node", node).Int("vmid", vmid).Str("disk", disk).Str("size", size).Msg("VM disk resized successfully (resty)")
 	return nil
-}
-
-// QemuAgentCommand represents a command to execute via QEMU agent
-type QemuAgentCommand struct {
-	Command []string `json:"command"`
-}
-
-// QemuAgentExecResponse represents the response from QEMU agent exec command
-type QemuAgentExecResponse struct {
-	Data struct {
-		Pid      int    `json:"pid"`
-		Exitcode int    `json:"exitcode"`
-		OutData  string `json:"out-data"`
-		ErrData  string `json:"err-data"`
-	} `json:"data"`
-}
-
-// ExecuteQemuAgentCommandResty executes a command via QEMU agent
-// This performs a POST request to /nodes/{node}/qemu/{vmid}/agent/exec
-// Returns the PID of the executing command
-func ExecuteQemuAgentCommandResty(ctx context.Context, restyClient *RestyClient, node string, vmid int, command []string) (int, error) {
-	path := fmt.Sprintf("/nodes/%s/qemu/%d/agent/exec", url.PathEscape(node), vmid)
-
-	// Build form data for the command
-	formData := url.Values{}
-	// Convert command array to JSON string for form data
-	commandJSON := fmt.Sprintf(`["%s"]`, strings.Join(command, `","`))
-	formData.Set("command", commandJSON)
-
-	var response QemuAgentExecResponse
-	if err := restyClient.Post(ctx, path, formData, &response); err != nil {
-		logger.Get().Error().Err(err).Str("node", node).Int("vmid", vmid).Strs("command", command).Msg("QEMU agent command execution failed (resty)")
-		return 0, fmt.Errorf("failed to execute QEMU agent command for VM %d on node %s: %w", vmid, node, err)
-	}
-
-	logger.Get().Info().Str("node", node).Int("vmid", vmid).Strs("command", command).Int("pid", response.Data.Pid).Msg("QEMU agent command executed successfully (resty)")
-	return response.Data.Pid, nil
 }
