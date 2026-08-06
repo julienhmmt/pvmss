@@ -8,6 +8,10 @@
 	onMount(() => {
 		void nodesStore.load();
 	});
+
+	function handleRefresh(): void {
+		void nodesStore.refresh();
+	}
 </script>
 
 <svelte:head>
@@ -25,6 +29,13 @@
 		<div role="status" aria-live="polite" class="sr-only">
 			{nodesStore.nodes.length} nodes loaded
 		</div>
-		<NodeList nodes={nodesStore.nodes} />
+		<NodeList
+			nodes={nodesStore.nodes}
+			refreshedAt={nodesStore.refreshedAt}
+			refreshing={nodesStore.refreshing}
+			refreshDisabled={nodesStore.refreshDisabled}
+			refreshError={nodesStore.refreshError}
+			onRefresh={handleRefresh}
+		/>
 	{/if}
 </section>

@@ -10,11 +10,17 @@ import (
 // type nor Proxmox reports which one it is — callers cannot tell them apart.
 type Fake struct{}
 
-// ListNodes implements Client.
-func (Fake) ListNodes(_ context.Context) ([]Node, error) {
+// Snapshot implements Client. It returns the T01/T02 dataset (3 nodes, 25
+// VMs, 4 pools, 5 storages) reshaped into one call — the same content
+// ListNodes used to surface, plus the VMs and storages later tranches need.
+func (Fake) Snapshot(_ context.Context) (Snapshot, error) {
 	nodes := make([]Node, len(fakeNodes))
 	copy(nodes, fakeNodes)
-	return nodes, nil
+	vms := make([]VM, len(fakeVMs))
+	copy(vms, fakeVMs)
+	storages := make([]Storage, len(fakeStorages))
+	copy(storages, fakeStorages)
+	return Snapshot{Nodes: nodes, VMs: vms, Storages: storages}, nil
 }
 
 // Authenticate implements Client using demonstration-only PVE identities.
@@ -25,7 +31,7 @@ func (Fake) Authenticate(_ context.Context, username, password string) (Identity
 	if !ok || password != identity.password {
 		return Identity{}, ErrNotFound
 	}
-	return Identity{Username: username, IsAdmin: identity.isAdmin}, nil
+	return Identity{Username: username, Pool: identity.pool, IsAdmin: identity.isAdmin}, nil
 }
 
 // ChangePassword implements Client against the same in-memory demo table
@@ -38,19 +44,21 @@ func (Fake) ChangePassword(_ context.Context, username, oldPassword, newPassword
 	if !ok || oldPassword != identity.password {
 		return ErrNotFound
 	}
-	fakeIdentities[username] = fakeIdentity{password: newPassword, isAdmin: identity.isAdmin}
+	fakeIdentities[username] = fakeIdentity{password: newPassword, pool: identity.pool, isAdmin: identity.isAdmin}
 	return nil
 }
 
 type fakeIdentity struct {
 	password string
+	pool     string
 	isAdmin  bool
 }
 
 var fakeIdentitiesMutex sync.RWMutex
 
 var fakeIdentities = map[string]fakeIdentity{
-	"alice@pve": {password: "pvmss-alice"},
+	"alice@pve": {password: "pvmss-alice", pool: "pool-alice"},
+	"bob@pve":   {password: "pvmss-bob", pool: "pool-bob"},
 	"admin@pve": {password: "pvmss-admin", isAdmin: true},
 }
 

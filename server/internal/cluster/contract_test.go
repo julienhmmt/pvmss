@@ -14,7 +14,7 @@ import (
 // a real cluster is expected to do. Black-box on purpose — only the public
 // Client contract is exercised here.
 
-func TestContract_ListNodes(t *testing.T) {
+func TestContract_Snapshot(t *testing.T) {
 	impls := map[string]cluster.Client{
 		"fake":    cluster.Fake{},
 		"proxmox": cluster.Proxmox{},
@@ -22,7 +22,7 @@ func TestContract_ListNodes(t *testing.T) {
 
 	for name, impl := range impls {
 		t.Run(name, func(t *testing.T) {
-			nodes, err := impl.ListNodes(context.Background())
+			snap, err := impl.Snapshot(context.Background())
 
 			if name == "proxmox" {
 				if !errors.Is(err, cluster.ErrNotImplemented) {
@@ -34,10 +34,10 @@ func TestContract_ListNodes(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if len(nodes) == 0 {
+			if len(snap.Nodes) == 0 {
 				t.Fatal("expected at least one node")
 			}
-			for _, n := range nodes {
+			for _, n := range snap.Nodes {
 				if n.Name == "" {
 					t.Error("node with empty name")
 				}
@@ -46,6 +46,22 @@ func TestContract_ListNodes(t *testing.T) {
 				}
 				if n.StorageUsed > n.StorageTotal {
 					t.Errorf("node %q: storageUsed > storageTotal", n.Name)
+				}
+			}
+			for _, vm := range snap.VMs {
+				if vm.VMID == 0 {
+					t.Error("VM with zero VMID")
+				}
+				if vm.Node == "" {
+					t.Errorf("VM %d (%s) has empty node", vm.VMID, vm.Name)
+				}
+			}
+			for _, s := range snap.Storages {
+				if s.Name == "" || s.Node == "" {
+					t.Errorf("storage %+v has empty name or node", s)
+				}
+				if s.Used > s.Total {
+					t.Errorf("storage %q: used > total", s.Name)
 				}
 			}
 		})
@@ -122,7 +138,7 @@ func TestContract_ChangePassword(t *testing.T) {
 	}
 }
 
-func TestContract_ListNodes_StableAcrossCalls(t *testing.T) {
+func TestContract_Snapshot_StableAcrossCalls(t *testing.T) {
 	// Only implementations that can succeed at all participate — the proxmox
 	// stub always errors, so there is nothing stable to compare (FR-003).
 	impls := map[string]cluster.Client{
@@ -131,16 +147,47 @@ func TestContract_ListNodes_StableAcrossCalls(t *testing.T) {
 
 	for name, impl := range impls {
 		t.Run(name, func(t *testing.T) {
-			first, err := impl.ListNodes(context.Background())
+			first, err := impl.Snapshot(context.Background())
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			second, err := impl.ListNodes(context.Background())
+			second, err := impl.Snapshot(context.Background())
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 			if !reflect.DeepEqual(first, second) {
-				t.Fatalf("repeated ListNodes calls diverged: %+v vs %+v", first, second)
+				t.Fatalf("repeated Snapshot calls diverged: %+v vs %+v", first, second)
+			}
+		})
+	}
+}
+
+func TestContract_Snapshot_DoesNotMutateAcrossCalls(t *testing.T) {
+	// A caller holding a reference to a previous Snapshot must not see it
+	// change when a later call returns — the fake returns copies, not
+	// references to its package-level literals (data-model.md invariant 3).
+	impls := map[string]cluster.Client{
+		"fake": cluster.Fake{},
+	}
+
+	for name, impl := range impls {
+		t.Run(name, func(t *testing.T) {
+			first, err := impl.Snapshot(context.Background())
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			firstNodesBefore := append([]cluster.Node(nil), first.Nodes...)
+			if len(first.Nodes) > 0 {
+				first.Nodes[0].Name = "mutated-by-caller"
+			}
+
+			second, err := impl.Snapshot(context.Background())
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if second.Nodes[0].Name != firstNodesBefore[0].Name {
+				t.Fatalf("caller mutation of first snapshot leaked into second: %q vs %q",
+					second.Nodes[0].Name, firstNodesBefore[0].Name)
 			}
 		})
 	}

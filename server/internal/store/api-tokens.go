@@ -16,7 +16,7 @@ func (s *Store) CreateToken(ctx context.Context, token auth.TokenRecord) error {
 	if token.ExpiresAt != nil {
 		expiresAt = sql.NullString{String: token.ExpiresAt.Format(time.RFC3339), Valid: true}
 	}
-	_, err := s.db.ExecContext(ctx, `INSERT INTO api_tokens (id, token_hash, username, is_admin, scope, label, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, token.ID, token.Hash, token.Identity.Username, token.Identity.IsAdmin, token.Scope, token.Label, expiresAt, token.CreatedAt.Format(time.RFC3339))
+	_, err := s.db.ExecContext(ctx, `INSERT INTO api_tokens (id, token_hash, username, pool, is_admin, scope, label, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, token.ID, token.Hash, token.Identity.Username, token.Identity.Pool, token.Identity.IsAdmin, token.Scope, token.Label, expiresAt, token.CreatedAt.Format(time.RFC3339))
 	if err != nil {
 		return fmt.Errorf("insert API token: %w", err)
 	}
@@ -25,13 +25,13 @@ func (s *Store) CreateToken(ctx context.Context, token auth.TokenRecord) error {
 
 // FindToken resolves a token hash without ever querying by its plaintext value.
 func (s *Store) FindToken(ctx context.Context, hash []byte) (auth.TokenRecord, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT id, token_hash, username, is_admin, scope, label, expires_at, created_at, last_used_at FROM api_tokens WHERE token_hash = ?`, hash)
+	row := s.db.QueryRowContext(ctx, `SELECT id, token_hash, username, pool, is_admin, scope, label, expires_at, created_at, last_used_at FROM api_tokens WHERE token_hash = ?`, hash)
 	return scanToken(row)
 }
 
 // ListTokens returns token metadata for one identity without token hashes.
 func (s *Store) ListTokens(ctx context.Context, username string) ([]auth.TokenRecord, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, token_hash, username, is_admin, scope, label, expires_at, created_at, last_used_at FROM api_tokens WHERE username = ? ORDER BY created_at DESC`, username)
+	rows, err := s.db.QueryContext(ctx, `SELECT id, token_hash, username, pool, is_admin, scope, label, expires_at, created_at, last_used_at FROM api_tokens WHERE username = ? ORDER BY created_at DESC`, username)
 	if err != nil {
 		return nil, fmt.Errorf("list API tokens: %w", err)
 	}
@@ -86,7 +86,7 @@ func scanToken(scanner tokenScanner) (auth.TokenRecord, error) {
 	var expiresAt sql.NullString
 	var createdAt string
 	var lastUsedAt sql.NullString
-	if err := scanner.Scan(&token.ID, &token.Hash, &token.Identity.Username, &isAdmin, &token.Scope, &token.Label, &expiresAt, &createdAt, &lastUsedAt); err != nil {
+	if err := scanner.Scan(&token.ID, &token.Hash, &token.Identity.Username, &token.Identity.Pool, &isAdmin, &token.Scope, &token.Label, &expiresAt, &createdAt, &lastUsedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return auth.TokenRecord{}, sql.ErrNoRows
 		}

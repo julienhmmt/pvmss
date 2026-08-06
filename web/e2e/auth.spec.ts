@@ -10,7 +10,7 @@ test.describe('T02 authentication', () => {
 
 		const me = await page.request.get('/api/v1/auth/me');
 		expect(me.status()).toBe(200);
-		expect(await me.json()).toEqual({ username: 'alice@pve', isAdmin: false });
+		expect(await me.json()).toEqual({ username: 'alice@pve', pool: 'pool-alice', isAdmin: false });
 
 		const logout = await page.request.post('/api/v1/auth/logout');
 		expect(logout.status()).toBe(204);
