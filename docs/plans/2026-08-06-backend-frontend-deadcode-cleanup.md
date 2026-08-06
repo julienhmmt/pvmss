@@ -71,12 +71,14 @@ stale.
 
 ## Batch 4 — frontend, orphaned components
 
-- [ ] `frontend/src/lib/composables/usePolling.svelte.ts` + test — 798
+- [x] `frontend/src/lib/composables/usePolling.svelte.ts` + test — 798
       lines, zero importers.
-- [ ] `frontend/src/lib/components/vm/VmConsole.svelte` + DataTable/VmCard/
-      3 skeleton components/TagInput — 526 lines, zero importers; console
-      UI now lives in route-local `_components/ConsoleBanner.svelte`.
-- [ ] `frontend/src/lib/components/layout/AuthGuard.svelte` +
+- [x] `frontend/src/lib/components/vm/VmConsole.svelte` + DataTable/VmCard/
+      VmActionButtons/3 skeleton components/TagInput — 526 lines, zero
+      importers; console UI now lives in route-local
+      `_components/ConsoleBanner.svelte`. (LoadingSkeleton kept — still
+      used by 20+ routes.)
+- [x] `frontend/src/lib/components/layout/AuthGuard.svelte` +
       AdminGuard/UserMenu/NavLinks/MobileMenu/PageHeader — 486 lines, zero
       importers; `Navbar.svelte`/`Footer.svelte` already cover nav.
 
