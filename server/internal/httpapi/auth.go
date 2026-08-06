@@ -100,7 +100,7 @@ func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", "invalid credentials")
 		return
 	}
-	h.startSession(w, r, auth.Identity{Username: result.Username, IsAdmin: result.IsAdmin})
+	h.startSession(w, r, auth.Identity{Username: result.Username, Pool: result.Pool, IsAdmin: result.IsAdmin})
 }
 
 // AdminLogin authenticates the local emergency administrator, independent of any cluster.

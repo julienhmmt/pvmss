@@ -12,8 +12,8 @@ import (
 
 // CreateSession persists an already-hashed browser session.
 func (s *Store) CreateSession(ctx context.Context, session auth.SessionRecord) error {
-	_, err := s.db.ExecContext(ctx, `INSERT INTO sessions (token_hash, username, is_admin, expires_at, created_at) VALUES (?, ?, ?, ?, ?)`,
-		session.Hash, session.Identity.Username, session.Identity.IsAdmin, session.ExpiresAt.Format(time.RFC3339), session.CreatedAt.Format(time.RFC3339))
+	_, err := s.db.ExecContext(ctx, `INSERT INTO sessions (token_hash, username, pool, is_admin, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		session.Hash, session.Identity.Username, session.Identity.Pool, session.Identity.IsAdmin, session.ExpiresAt.Format(time.RFC3339), session.CreatedAt.Format(time.RFC3339))
 	if err != nil {
 		return fmt.Errorf("insert session: %w", err)
 	}
@@ -22,11 +22,11 @@ func (s *Store) CreateSession(ctx context.Context, session auth.SessionRecord) e
 
 // FindSession resolves a session hash without ever querying by its plaintext value.
 func (s *Store) FindSession(ctx context.Context, hash []byte) (auth.SessionRecord, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT token_hash, username, is_admin, expires_at, created_at FROM sessions WHERE token_hash = ?`, hash)
+	row := s.db.QueryRowContext(ctx, `SELECT token_hash, username, pool, is_admin, expires_at, created_at FROM sessions WHERE token_hash = ?`, hash)
 	var session auth.SessionRecord
 	var isAdmin bool
 	var expiresAt, createdAt string
-	if err := row.Scan(&session.Hash, &session.Identity.Username, &isAdmin, &expiresAt, &createdAt); err != nil {
+	if err := row.Scan(&session.Hash, &session.Identity.Username, &session.Identity.Pool, &isAdmin, &expiresAt, &createdAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return auth.SessionRecord{}, sql.ErrNoRows
 		}

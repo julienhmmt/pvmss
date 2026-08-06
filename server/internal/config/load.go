@@ -12,6 +12,8 @@ const (
 	defaultInventoryRefreshInterval          = 30 * time.Second
 	defaultInventoryManualRefreshMinInterval = 5 * time.Second
 	defaultInventoryRefreshTimeout           = 15 * time.Second
+	defaultMaxListPageSize                   = 100
+	defaultUserQuota                         = -1
 )
 
 // Load reads and validates the runtime configuration from the environment.
@@ -103,7 +105,37 @@ func Load() (Configuration, error) {
 	}
 	cfg.InventoryRefreshTimeout = refreshTimeout
 
+	maxPageSize, err := loadInt("PVMSS_V04_MAX_LIST_PAGE_SIZE", defaultMaxListPageSize)
+	if err != nil {
+		return cfg, err
+	}
+	if maxPageSize < 1 {
+		return cfg, fmt.Errorf("PVMSS_V04_MAX_LIST_PAGE_SIZE must be at least 1, got %d", maxPageSize)
+	}
+	cfg.MaxListPageSize = maxPageSize
+
+	userQuota, err := loadInt("PVMSS_V04_DEFAULT_USER_QUOTA", defaultUserQuota)
+	if err != nil {
+		return cfg, err
+	}
+	if userQuota < -1 {
+		return cfg, fmt.Errorf("PVMSS_V04_DEFAULT_USER_QUOTA must be -1 (unlimited) or greater, got %d", userQuota)
+	}
+	cfg.DefaultUserQuota = userQuota
+
 	return cfg, nil
+}
+
+func loadInt(envKey string, defaultVal int) (int, error) {
+	raw := strings.TrimSpace(os.Getenv(envKey))
+	if raw == "" {
+		return defaultVal, nil
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, fmt.Errorf("%s must be an integer, got %q", envKey, raw)
+	}
+	return value, nil
 }
 
 func loadPositiveDuration(envKey string, defaultVal time.Duration) (time.Duration, error) {

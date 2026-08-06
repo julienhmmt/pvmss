@@ -34,7 +34,10 @@ type Snapshot struct {
 // Identity is the principal verified by the configured cluster identity provider.
 type Identity struct {
 	Username string
-	IsAdmin  bool
+	// Pool is the tenancy anchor owning this user's VMs (PD00: one pool per
+	// user). Empty for a cluster administrator with no personal pool.
+	Pool    string
+	IsAdmin bool
 }
 
 // NodeStatus is the operational state of a cluster node.

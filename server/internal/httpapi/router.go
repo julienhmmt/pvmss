@@ -24,11 +24,15 @@ type spaHandler struct {
 }
 
 // NewRouter wires the public API and the static SPA handler.
-func NewRouter(health http.Handler, clusterNodes http.Handler, clusterRefresh http.Handler, auth *Auth, webBuildDir string, log *slog.Logger) *http.ServeMux {
+func NewRouter(health http.Handler, clusterNodes http.Handler, clusterRefresh http.Handler, vms http.Handler, auth *Auth, webBuildDir string, log *slog.Logger) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("GET /health", health)
 	mux.Handle("GET /api/v1/cluster/nodes", auth.Require(clusterNodes))
 	mux.Handle("POST /api/v1/cluster/refresh", auth.Require(clusterRefresh))
+	// Not wrapped in auth.Require: the handler needs the resolved Identity
+	// itself (for scope enforcement) and calls h.auth.Principal(r) directly,
+	// returning 401 on its own — wrapping would just re-run the same check.
+	mux.Handle("GET /api/v1/vms", vms)
 	mux.HandleFunc("POST /api/v1/auth/login", auth.Login)
 	mux.HandleFunc("POST /api/v1/auth/admin-login", auth.AdminLogin)
 	mux.HandleFunc("GET /api/v1/auth/me", auth.Me)

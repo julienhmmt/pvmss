@@ -39,7 +39,8 @@ func TestRouter_SPAFallback(t *testing.T) {
 		),
 		logger,
 	)
-	mux := httpapi.NewRouter(health, clusterNodes, clusterRefresh, newAuthHandler(t), dir, logger)
+	vms := httpapi.NewVMs(inventory.NewProjection(), newAuthHandler(t), 100, -1, logger)
+	mux := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, newAuthHandler(t), dir, logger)
 
 	cases := []struct {
 		method     string
@@ -84,7 +85,8 @@ func TestRouter_MissingBuildDir_HealthStillWorks(t *testing.T) {
 		),
 		logger,
 	)
-	mux := httpapi.NewRouter(health, clusterNodes, clusterRefresh, newAuthHandler(t), "", logger)
+	vms := httpapi.NewVMs(inventory.NewProjection(), newAuthHandler(t), 100, -1, logger)
+	mux := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, newAuthHandler(t), "", logger)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/health", nil)
