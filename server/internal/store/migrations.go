@@ -55,6 +55,19 @@ ALTER TABLE sessions ADD COLUMN pool TEXT NOT NULL DEFAULT '';
 ALTER TABLE api_tokens ADD COLUMN pool TEXT NOT NULL DEFAULT '';
 `
 
+// schemaV6 adds the audit_log table (T05 FR-009). Every VM write flows through
+// Resolve() and is recorded here with the real acting user — closing the
+// traceability gap S01's document names as the reason the flaw went undetected.
+// Write-only from T05's perspective; a read endpoint belongs to T14.
+const schemaV6 = `CREATE TABLE audit_log (
+	id        INTEGER PRIMARY KEY AUTOINCREMENT,
+	actor     TEXT NOT NULL,
+	cluster   TEXT NOT NULL,
+	vmid      INTEGER NOT NULL,
+	action    TEXT NOT NULL,
+	timestamp TEXT NOT NULL
+)`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -69,4 +82,5 @@ var Migrations = []Migration{
 	{Version: 3, DDL: schemaV3},
 	{Version: 4, DDL: schemaV4},
 	{Version: 5, DDL: schemaV5},
+	{Version: 6, DDL: schemaV6},
 }
