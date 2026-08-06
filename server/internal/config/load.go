@@ -11,6 +11,7 @@ import (
 const (
 	defaultInventoryRefreshInterval          = 30 * time.Second
 	defaultInventoryManualRefreshMinInterval = 5 * time.Second
+	defaultInventoryRefreshTimeout           = 15 * time.Second
 )
 
 // Load reads and validates the runtime configuration from the environment.
@@ -95,6 +96,12 @@ func Load() (Configuration, error) {
 		return cfg, err
 	}
 	cfg.InventoryManualRefreshMinInterval = manualMinInterval
+
+	refreshTimeout, err := loadPositiveDuration("PVMSS_V04_INVENTORY_REFRESH_TIMEOUT", defaultInventoryRefreshTimeout)
+	if err != nil {
+		return cfg, err
+	}
+	cfg.InventoryRefreshTimeout = refreshTimeout
 
 	return cfg, nil
 }

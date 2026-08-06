@@ -275,3 +275,70 @@ func TestWorker_ErrorWrapping(t *testing.T) {
 		t.Fatalf("expected ErrUnreachable, got %v", err)
 	}
 }
+
+// TestWorker_TimeoutCancelsHungClient — a Snapshot call that blocks forever
+// is cancelled by the worker's per-call timeout, so the singleflight lock is
+// released and a later refresh can proceed (golang-design-patterns rule 9:
+// every external call has a timeout).
+func TestWorker_TimeoutCancelsHungClient(t *testing.T) {
+	hung := &hungClient{}
+	projection := inventory.NewProjection()
+	worker := inventory.NewWorker(
+		hung,
+		projection,
+		time.Hour,
+		testLogger(),
+		inventory.WithRefreshTimeout(50*time.Millisecond),
+	)
+
+	start := time.Now()
+	_, err := worker.Refresh(context.Background())
+	elapsed := time.Since(start)
+
+	if err == nil {
+		t.Fatal("expected timeout error from hung client, got nil")
+	}
+	if elapsed > time.Second {
+		t.Fatalf("refresh took %v, should have timed out near 50ms", elapsed)
+	}
+
+	// The singleflight lock must be released — a second refresh with a
+	// working client must complete, not hang waiting for the first.
+	working := &callCountClient{snapshot: fakeSnapshot()}
+	worker2 := inventory.NewWorker(
+		working,
+		projection,
+		time.Hour,
+		testLogger(),
+		inventory.WithRefreshTimeout(2*time.Second),
+	)
+	done := make(chan struct{})
+	go func() {
+		_, _ = worker2.Refresh(context.Background())
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("second refresh hung — singleflight lock was not released after timeout")
+	}
+	if projection.Load() == nil {
+		t.Fatal("projection should be populated after the second, successful refresh")
+	}
+}
+
+// hungClient blocks on Snapshot until the context is cancelled.
+type hungClient struct{}
+
+func (hungClient) Snapshot(ctx context.Context) (cluster.Snapshot, error) {
+	<-ctx.Done()
+	return cluster.Snapshot{}, ctx.Err()
+}
+
+func (hungClient) Authenticate(_ context.Context, _, _ string) (cluster.Identity, error) {
+	return cluster.Identity{}, cluster.ErrNotImplemented
+}
+
+func (hungClient) ChangePassword(_ context.Context, _, _, _ string) error {
+	return cluster.ErrNotImplemented
+}

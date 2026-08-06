@@ -82,7 +82,13 @@ func run() int {
 	// The worker refreshes it periodically; the refresher handles manual
 	// refresh requests with a minimum-interval guard (FR-005, FR-006).
 	projection := inventory.NewProjection()
-	worker := inventory.NewWorker(clusterClient, projection, cfg.InventoryRefreshInterval, logger)
+	worker := inventory.NewWorker(
+		clusterClient,
+		projection,
+		cfg.InventoryRefreshInterval,
+		logger,
+		inventory.WithRefreshTimeout(cfg.InventoryRefreshTimeout),
+	)
 	refresher := inventory.NewRefresher(worker, cfg.InventoryManualRefreshMinInterval)
 
 	// Start the worker before the HTTP server accepts traffic (T015) so the

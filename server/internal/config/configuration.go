@@ -18,4 +18,5 @@ type Configuration struct {
 	AdminPasswordHash                 string
 	InventoryRefreshInterval          time.Duration
 	InventoryManualRefreshMinInterval time.Duration
+	InventoryRefreshTimeout           time.Duration
 }

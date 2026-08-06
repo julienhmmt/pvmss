@@ -1,9 +1,7 @@
 package httpapi_test
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -167,7 +165,3 @@ func TestClusterRefresh_MethodNotAllowed(t *testing.T) {
 		t.Fatalf("status = %d, want %d", w.Code, http.StatusMethodNotAllowed)
 	}
 }
-
-// Ensure errors.Is works for sentinel checks used by the handler.
-var _ = errors.Is
-var _ = context.Background

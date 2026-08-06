@@ -9,6 +9,12 @@ import (
 	"pvmss/server/internal/cluster"
 )
 
+// defaultRefreshTimeout caps how long a single cluster.Snapshot call may take.
+// A slow or hung upstream must not block the singleflight-serialized refresh
+// cycle indefinitely — every external call has a timeout (golang-design-patterns
+// rule 9). Override with WithRefreshTimeout.
+const defaultRefreshTimeout = 15 * time.Second
+
 // Worker owns the refresh cycle: it calls cluster.Client.Snapshot, builds an
 // Index, and atomically swaps it into the Projection on success. On failure
 // it logs and keeps the previous index (FR-004). The cycle is serialized via
@@ -18,6 +24,7 @@ type Worker struct {
 	client     cluster.Client
 	projection *Projection
 	interval   time.Duration
+	timeout    time.Duration
 	log        *slog.Logger
 
 	mu       sync.Mutex
@@ -30,19 +37,40 @@ type inFlightRefresh struct {
 	err  error
 }
 
-// NewWorker creates a worker that refreshes every interval.
-func NewWorker(client cluster.Client, projection *Projection, interval time.Duration, log *slog.Logger) *Worker {
-	return &Worker{
+// Option configures a Worker. Pass to NewWorker to override defaults.
+type Option func(*Worker)
+
+// WithRefreshTimeout sets the per-call timeout for cluster.Client.Snapshot.
+// Must be positive. When unset, defaultRefreshTimeout is used.
+func WithRefreshTimeout(d time.Duration) Option {
+	return func(w *Worker) { w.timeout = d }
+}
+
+// NewWorker creates a worker that refreshes every interval. The per-call
+// timeout defaults to defaultRefreshTimeout; override it with
+// WithRefreshTimeout.
+func NewWorker(client cluster.Client, projection *Projection, interval time.Duration, log *slog.Logger, opts ...Option) *Worker {
+	w := &Worker{
 		client:     client,
 		projection: projection,
 		interval:   interval,
+		timeout:    defaultRefreshTimeout,
 		log:        log,
 	}
+	for _, opt := range opts {
+		opt(w)
+	}
+	return w
 }
 
 // refreshCycle calls the client and swaps the index on success. It is the
-// single site that touches the cluster client during a refresh.
+// single site that touches the cluster client during a refresh. The client
+// call is bounded by the worker's timeout so a hung upstream cannot block
+// the singleflight lock indefinitely.
 func (w *Worker) refreshCycle(ctx context.Context) (time.Time, error) {
+	ctx, cancel := context.WithTimeout(ctx, w.timeout)
+	defer cancel()
+
 	snap, err := w.client.Snapshot(ctx)
 	if err != nil {
 		w.log.Error("inventory refresh failed", "component", "inventory", "error", err)
