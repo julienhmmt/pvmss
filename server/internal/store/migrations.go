@@ -48,6 +48,13 @@ INSERT INTO api_tokens (id, token_hash, username, is_admin, scope, label, expire
 DROP TABLE api_tokens_v2;
 `
 
+// schemaV5 adds the tenancy anchor (T02 data-model: one pool per user) to
+// both identity stores, so T04's scoped reads can resolve ByPool[identity.Pool].
+const schemaV5 = `
+ALTER TABLE sessions ADD COLUMN pool TEXT NOT NULL DEFAULT '';
+ALTER TABLE api_tokens ADD COLUMN pool TEXT NOT NULL DEFAULT '';
+`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -61,4 +68,5 @@ var Migrations = []Migration{
 	{Version: 2, DDL: schemaV2},
 	{Version: 3, DDL: schemaV3},
 	{Version: 4, DDL: schemaV4},
+	{Version: 5, DDL: schemaV5},
 }

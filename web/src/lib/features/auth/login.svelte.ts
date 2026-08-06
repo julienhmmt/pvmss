@@ -4,6 +4,7 @@ export type LoginProvider = 'pve' | 'local';
 
 export interface Principal {
 	username: string;
+	pool: string;
 	isAdmin: boolean;
 }
 

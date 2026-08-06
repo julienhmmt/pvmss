@@ -31,7 +31,7 @@ func (Fake) Authenticate(_ context.Context, username, password string) (Identity
 	if !ok || password != identity.password {
 		return Identity{}, ErrNotFound
 	}
-	return Identity{Username: username, IsAdmin: identity.isAdmin}, nil
+	return Identity{Username: username, Pool: identity.pool, IsAdmin: identity.isAdmin}, nil
 }
 
 // ChangePassword implements Client against the same in-memory demo table
@@ -44,19 +44,21 @@ func (Fake) ChangePassword(_ context.Context, username, oldPassword, newPassword
 	if !ok || oldPassword != identity.password {
 		return ErrNotFound
 	}
-	fakeIdentities[username] = fakeIdentity{password: newPassword, isAdmin: identity.isAdmin}
+	fakeIdentities[username] = fakeIdentity{password: newPassword, pool: identity.pool, isAdmin: identity.isAdmin}
 	return nil
 }
 
 type fakeIdentity struct {
 	password string
+	pool     string
 	isAdmin  bool
 }
 
 var fakeIdentitiesMutex sync.RWMutex
 
 var fakeIdentities = map[string]fakeIdentity{
-	"alice@pve": {password: "pvmss-alice"},
+	"alice@pve": {password: "pvmss-alice", pool: "pool-alice"},
+	"bob@pve":   {password: "pvmss-bob", pool: "pool-bob"},
 	"admin@pve": {password: "pvmss-admin", isAdmin: true},
 }
 

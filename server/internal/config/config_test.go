@@ -35,6 +35,8 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshInterval:          30 * time.Second,
 				InventoryManualRefreshMinInterval: 5 * time.Second,
 				InventoryRefreshTimeout:           15 * time.Second,
+				MaxListPageSize:                   100,
+				DefaultUserQuota:                  -1,
 			},
 		},
 		{
@@ -58,6 +60,8 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshInterval:          30 * time.Second,
 				InventoryManualRefreshMinInterval: 5 * time.Second,
 				InventoryRefreshTimeout:           15 * time.Second,
+				MaxListPageSize:                   100,
+				DefaultUserQuota:                  -1,
 			},
 		},
 		{
@@ -186,6 +190,8 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshInterval:          30 * time.Second,
 				InventoryManualRefreshMinInterval: 5 * time.Second,
 				InventoryRefreshTimeout:           15 * time.Second,
+				MaxListPageSize:                   100,
+				DefaultUserQuota:                  -1,
 			},
 		},
 		{
@@ -222,6 +228,8 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshInterval:          10 * time.Second,
 				InventoryManualRefreshMinInterval: 2 * time.Second,
 				InventoryRefreshTimeout:           15 * time.Second,
+				MaxListPageSize:                   100,
+				DefaultUserQuota:                  -1,
 			},
 		},
 		{
@@ -281,6 +289,8 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshInterval:          30 * time.Second,
 				InventoryManualRefreshMinInterval: 5 * time.Second,
 				InventoryRefreshTimeout:           45 * time.Second,
+				MaxListPageSize:                   100,
+				DefaultUserQuota:                  -1,
 			},
 		},
 		{
