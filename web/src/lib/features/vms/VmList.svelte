@@ -5,6 +5,7 @@
 		type VmSortBy,
 		type VmStatus
 	} from './list.svelte';
+	import { base } from '$app/paths';
 
 	const store = getVmListContext();
 
@@ -166,7 +167,15 @@
 			{#each store.result?.items ?? [] as machine (machine.vmid)}
 				<tr class="border-b border-border last:border-0" data-testid="vm-row">
 					<td class="px-3 py-2 text-muted-foreground">{machine.vmid}</td>
-					<td class="px-3 py-2 font-medium">{machine.name}</td>
+					<td class="px-3 py-2 font-medium">
+						<a
+							href={`${base}/vms/default/${machine.vmid}`}
+							class="hover:underline"
+							data-testid="vm-row-link"
+						>
+							{machine.name}
+						</a>
+					</td>
 					<td class="px-3 py-2 text-muted-foreground">{machine.node}</td>
 					<td class="px-3 py-2">
 						<span

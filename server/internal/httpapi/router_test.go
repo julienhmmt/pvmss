@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
 )
@@ -40,7 +41,8 @@ func TestRouter_SPAFallback(t *testing.T) {
 		logger,
 	)
 	vms := httpapi.NewVMs(inventory.NewProjection(), newAuthHandler(t), 100, -1, logger)
-	mux := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, newAuthHandler(t), dir, logger)
+	vmDetail := httpapi.NewVmDetail(inventory.NewProjection(), newAuthHandler(t), cluster.Fake{}, nil, nil, logger)
+	mux := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, newAuthHandler(t), dir, logger)
 
 	cases := []struct {
 		method     string
@@ -86,7 +88,8 @@ func TestRouter_MissingBuildDir_HealthStillWorks(t *testing.T) {
 		logger,
 	)
 	vms := httpapi.NewVMs(inventory.NewProjection(), newAuthHandler(t), 100, -1, logger)
-	mux := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, newAuthHandler(t), "", logger)
+	vmDetail := httpapi.NewVmDetail(inventory.NewProjection(), newAuthHandler(t), cluster.Fake{}, nil, nil, logger)
+	mux := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, newAuthHandler(t), "", logger)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/health", nil)

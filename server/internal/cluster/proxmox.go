@@ -3,9 +3,9 @@ package cluster
 import "context"
 
 // Proxmox is the real cluster implementation. It is a stub at T01 — it
-// satisfies Client and returns ErrNotImplemented. Filling it in belongs to
-// the tranches that actually need reachable Proxmox data; building it now
-// would be speculative work against a service nothing here can reach.
+// satisfies Client and Writer and returns ErrNotImplemented. Filling it in
+// belongs to the tranches that actually need reachable Proxmox data; building
+// it now would be speculative work against a service nothing here can reach.
 type Proxmox struct{}
 
 // Snapshot implements Client.
@@ -20,5 +20,20 @@ func (Proxmox) Authenticate(_ context.Context, _, _ string) (Identity, error) {
 
 // ChangePassword implements Client.
 func (Proxmox) ChangePassword(_ context.Context, _, _, _ string) error {
+	return ErrNotImplemented
+}
+
+// Action implements Writer.
+func (Proxmox) Action(_ context.Context, _ string, _ int, _ string) error {
+	return ErrNotImplemented
+}
+
+// Delete implements Writer.
+func (Proxmox) Delete(_ context.Context, _ string, _ int) error {
+	return ErrNotImplemented
+}
+
+// Patch implements Writer.
+func (Proxmox) Patch(_ context.Context, _ string, _ int, _, _ string) error {
 	return ErrNotImplemented
 }
