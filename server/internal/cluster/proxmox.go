@@ -8,9 +8,9 @@ import "context"
 // would be speculative work against a service nothing here can reach.
 type Proxmox struct{}
 
-// ListNodes implements Client.
-func (Proxmox) ListNodes(_ context.Context) ([]Node, error) {
-	return nil, ErrNotImplemented
+// Snapshot implements Client.
+func (Proxmox) Snapshot(_ context.Context) (Snapshot, error) {
+	return Snapshot{}, ErrNotImplemented
 }
 
 // Authenticate implements Client.

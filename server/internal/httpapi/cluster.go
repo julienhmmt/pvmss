@@ -2,24 +2,26 @@ package httpapi
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
-	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/inventory"
 )
 
-// ClusterNodes serves GET /api/v1/cluster/nodes, identically whichever
-// cluster.Client implementation is active (constitution XI).
+// ClusterNodes serves GET /api/v1/cluster/nodes, reading from the inventory
+// projection — never the cluster client directly (FR-002, SC-004). The
+// handler is the literal fix AC02 exists for: reads no longer pay a
+// per-request client call.
 type ClusterNodes struct {
-	client cluster.Client
-	log    *slog.Logger
+	projection *inventory.Projection
+	log        *slog.Logger
 }
 
-// NewClusterNodes creates the handler for the given cluster client.
-func NewClusterNodes(client cluster.Client, log *slog.Logger) *ClusterNodes {
-	return &ClusterNodes{client: client, log: log}
+// NewClusterNodes creates the handler for the given inventory projection.
+func NewClusterNodes(projection *inventory.Projection, log *slog.Logger) *ClusterNodes {
+	return &ClusterNodes{projection: projection, log: log}
 }
 
 type nodeDTO struct {
@@ -31,14 +33,16 @@ type nodeDTO struct {
 	MemoryUsed   int64   `json:"memoryUsed"`
 	StorageTotal int64   `json:"storageTotal"`
 	StorageUsed  int64   `json:"storageUsed"`
+	VMCount      int     `json:"vmCount"`
 }
 
 type clusterNodesResponse struct {
-	Nodes []nodeDTO `json:"nodes"`
+	Nodes       []nodeDTO `json:"nodes"`
+	RefreshedAt string    `json:"refreshedAt"`
 }
 
 // clusterErrorEnvelope is the {code, message} shape used by this endpoint
-// (contracts/cluster-nodes.md). message stays generic — driver detail goes
+// (contracts/cluster-refresh.md). message stays generic — driver detail goes
 // only to the structured server log (constitution XIII).
 type clusterErrorEnvelope struct {
 	Code    string `json:"code"`
@@ -54,24 +58,20 @@ func (h *ClusterNodes) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	nodes, err := h.client.ListNodes(r.Context())
-	if err != nil {
-		if errors.Is(err, cluster.ErrUnreachable) {
-			h.log.Error("cluster unreachable", "component", "httpapi", "error", err)
-			if writeErr := writeClusterError(w, http.StatusBadGateway, "cluster_unreachable", "cluster is not reachable"); writeErr != nil {
-				h.log.Error("failed to write cluster_unreachable response", "component", "httpapi", "error", writeErr)
-			}
-			return
-		}
-		h.log.Error("failed to list cluster nodes", "component", "httpapi", "error", err)
-		if writeErr := writeClusterError(w, http.StatusInternalServerError, "internal_error", "internal server error"); writeErr != nil {
-			h.log.Error("failed to write internal_error response", "component", "httpapi", "error", writeErr)
+	idx := h.projection.Load()
+	if idx == nil {
+		// FR-009: never-refreshed is distinct from an empty list.
+		if err := writeClusterError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet"); err != nil {
+			h.log.Error("failed to write inventory_not_ready response", "component", "httpapi", "error", err)
 		}
 		return
 	}
 
-	resp := clusterNodesResponse{Nodes: make([]nodeDTO, len(nodes))}
-	for i, n := range nodes {
+	resp := clusterNodesResponse{
+		Nodes:       make([]nodeDTO, len(idx.Nodes)),
+		RefreshedAt: idx.RefreshedAt.UTC().Format(time.RFC3339Nano),
+	}
+	for i, n := range idx.Nodes {
 		resp.Nodes[i] = nodeDTO{
 			Name:         n.Name,
 			Status:       string(n.Status),
@@ -81,6 +81,7 @@ func (h *ClusterNodes) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			MemoryUsed:   n.MemoryUsed,
 			StorageTotal: n.StorageTotal,
 			StorageUsed:  n.StorageUsed,
+			VMCount:      len(idx.ByNode[n.Name]),
 		}
 	}
 

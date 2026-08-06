@@ -28,7 +28,7 @@ func TestAuth_LoginPVE_StoresSession(t *testing.T) {
 	if err := json.Unmarshal(response.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if got != (auth.Identity{Username: "alice@pve"}) {
+	if got != (auth.Identity{Username: "alice@pve", Pool: "pool-alice"}) {
 		t.Fatalf("identity = %+v", got)
 	}
 }
@@ -112,7 +112,7 @@ func TestAuth_CreateToken_ResolvesBearerPrincipal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Principal: %v", err)
 	}
-	if identity != (auth.Identity{Username: "alice@pve"}) {
+	if identity != (auth.Identity{Username: "alice@pve", Pool: "pool-alice"}) {
 		t.Fatalf("identity = %+v", identity)
 	}
 }
