@@ -16,6 +16,16 @@ func NewProjection() *Projection {
 	return &Projection{}
 }
 
+// NewProjectionFromIndex creates a projection pre-populated with the given
+// index. Used by tests that need a populated projection without running a
+// full refresh cycle. Production code should use NewProjection with a Worker,
+// which calls store only on a successful refresh.
+func NewProjectionFromIndex(idx *Index) *Projection {
+	p := &Projection{}
+	p.current.Store(idx)
+	return p
+}
+
 // Load returns the current Index, or nil if no refresh has succeeded yet.
 // The returned pointer is immutable and safe to read concurrently.
 func (p *Projection) Load() *Index {
@@ -26,11 +36,4 @@ func (p *Projection) Load() *Index {
 // refresh cycle — a failed cycle never calls this (FR-004).
 func (p *Projection) store(idx *Index) {
 	p.current.Store(idx)
-}
-
-// Store replaces the current index. Exported for use by tests that need to
-// populate a projection without running a full refresh cycle. Production code
-// should use the Worker, which calls store only on success.
-func (p *Projection) Store(idx *Index) {
-	p.store(idx)
 }

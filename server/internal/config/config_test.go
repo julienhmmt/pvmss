@@ -34,6 +34,7 @@ func TestLoad(t *testing.T) {
 				ClusterSource:                     "fake",
 				InventoryRefreshInterval:          30 * time.Second,
 				InventoryManualRefreshMinInterval: 5 * time.Second,
+				InventoryRefreshTimeout:           15 * time.Second,
 			},
 		},
 		{
@@ -56,6 +57,7 @@ func TestLoad(t *testing.T) {
 				ClusterSource:                     "fake",
 				InventoryRefreshInterval:          30 * time.Second,
 				InventoryManualRefreshMinInterval: 5 * time.Second,
+				InventoryRefreshTimeout:           15 * time.Second,
 			},
 		},
 		{
@@ -183,6 +185,7 @@ func TestLoad(t *testing.T) {
 				ClusterSource:                     "proxmox",
 				InventoryRefreshInterval:          30 * time.Second,
 				InventoryManualRefreshMinInterval: 5 * time.Second,
+				InventoryRefreshTimeout:           15 * time.Second,
 			},
 		},
 		{
@@ -218,6 +221,7 @@ func TestLoad(t *testing.T) {
 				ClusterSource:                     "fake",
 				InventoryRefreshInterval:          10 * time.Second,
 				InventoryManualRefreshMinInterval: 2 * time.Second,
+				InventoryRefreshTimeout:           15 * time.Second,
 			},
 		},
 		{
@@ -256,6 +260,53 @@ func TestLoad(t *testing.T) {
 			},
 			wantErr: "PVMSS_V04_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL must be a positive duration",
 		},
+		{
+			name: "explicit inventory refresh timeout",
+			env: map[string]string{
+				"PVMSS_PORT":                          "50001",
+				"PVMSS_DB_PATH":                       "./tmp/pvmss.db",
+				"LOG_LEVEL":                           "info",
+				"LOG_FORMAT":                          "json",
+				"LOG_OUTPUT":                          "stdout",
+				"PVMSS_V04_INVENTORY_REFRESH_TIMEOUT": "45s",
+			},
+			want: config.Configuration{
+				Host:                              "127.0.0.1",
+				Port:                              50001,
+				DBPath:                            "./tmp/pvmss.db",
+				LogLevel:                          "info",
+				LogFormat:                         "json",
+				LogOutput:                         "stdout",
+				ClusterSource:                     "fake",
+				InventoryRefreshInterval:          30 * time.Second,
+				InventoryManualRefreshMinInterval: 5 * time.Second,
+				InventoryRefreshTimeout:           45 * time.Second,
+			},
+		},
+		{
+			name: "invalid inventory refresh timeout",
+			env: map[string]string{
+				"PVMSS_PORT":                          "50001",
+				"PVMSS_DB_PATH":                       "./tmp/pvmss.db",
+				"LOG_LEVEL":                           "info",
+				"LOG_FORMAT":                          "json",
+				"LOG_OUTPUT":                          "stdout",
+				"PVMSS_V04_INVENTORY_REFRESH_TIMEOUT": "not-a-duration",
+			},
+			wantErr: "PVMSS_V04_INVENTORY_REFRESH_TIMEOUT must be a duration",
+		},
+		{
+			name: "non-positive inventory refresh timeout",
+			env: map[string]string{
+				"PVMSS_PORT":                          "50001",
+				"PVMSS_DB_PATH":                       "./tmp/pvmss.db",
+				"LOG_LEVEL":                           "info",
+				"LOG_FORMAT":                          "json",
+				"LOG_OUTPUT":                          "stdout",
+				"PVMSS_V04_INVENTORY_REFRESH_TIMEOUT": "0s",
+			},
+			wantErr: "PVMSS_V04_INVENTORY_REFRESH_TIMEOUT must be a positive duration",
+		},
 	}
 
 	for _, tt := range tests {
@@ -270,6 +321,7 @@ func TestLoad(t *testing.T) {
 			t.Setenv("PVMSS_CLUSTER_SOURCE", tt.env["PVMSS_CLUSTER_SOURCE"])
 			t.Setenv("PVMSS_V04_INVENTORY_REFRESH_INTERVAL", tt.env["PVMSS_V04_INVENTORY_REFRESH_INTERVAL"])
 			t.Setenv("PVMSS_V04_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL", tt.env["PVMSS_V04_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL"])
+			t.Setenv("PVMSS_V04_INVENTORY_REFRESH_TIMEOUT", tt.env["PVMSS_V04_INVENTORY_REFRESH_TIMEOUT"])
 			t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
 			want := tt.want
 			want.SessionSecret = strings.Repeat("s", 32)

@@ -38,11 +38,9 @@ func (stubClusterClient) ChangePassword(_ context.Context, _, _, _ string) error
 // built from the given snapshot, stamped at the given refresh time.
 func buildProjectionWithIndex(t *testing.T, snap cluster.Snapshot, refreshedAt time.Time) *inventory.Projection {
 	t.Helper()
-	projection := inventory.NewProjection()
 	idx := inventory.BuildIndex(snap)
 	idx.RefreshedAt = refreshedAt
-	projection.Store(&idx)
-	return projection
+	return inventory.NewProjectionFromIndex(&idx)
 }
 
 // TestClusterNodes_Success — GET /cluster/nodes reads from the Index, includes
