@@ -25,6 +25,9 @@ export default defineConfig({
 			LOG_FORMAT: 'json',
 			LOG_OUTPUT: 'stdout',
 			SESSION_SECRET: 'e2e-session-secret-with-at-least-thirty-two-bytes',
+			// Short guard so nodes.spec.ts can exercise "wait it out, click again —
+			// it works" (quickstart.md step 6) without a multi-second sleep.
+			PVMSS_V04_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL: '2s',
 		},
 		url: 'http://127.0.0.1:50001/health',
 		reuseExistingServer: !process.env.CI,

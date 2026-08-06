@@ -17,9 +17,18 @@ var (
 // Client is the single contract for reading cluster data. Every implementation
 // must behave identically from a caller's perspective (constitution XI).
 type Client interface {
-	ListNodes(ctx context.Context) ([]Node, error)
+	Snapshot(ctx context.Context) (Snapshot, error)
 	Authenticate(ctx context.Context, username, password string) (Identity, error)
 	ChangePassword(ctx context.Context, username, oldPassword, newPassword string) error
+}
+
+// Snapshot is the complete result of one cluster read — all nodes, VMs, and
+// storages at that instant (T03, AC02). It mirrors /cluster/resources' real
+// shape: one call returns everything, instead of one call per entity type.
+type Snapshot struct {
+	Nodes    []Node
+	VMs      []VM
+	Storages []Storage
 }
 
 // Identity is the principal verified by the configured cluster identity provider.

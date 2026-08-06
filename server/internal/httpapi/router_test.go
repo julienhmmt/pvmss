@@ -10,8 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"pvmss/server/internal/httpapi"
+	"pvmss/server/internal/inventory"
 )
 
 func TestRouter_SPAFallback(t *testing.T) {
@@ -29,8 +31,15 @@ func TestRouter_SPAFallback(t *testing.T) {
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	health := httpapi.NewHealth(fakePinger{}, logger)
-	clusterNodes := httpapi.NewClusterNodes(stubClusterClient{}, logger)
-	mux := httpapi.NewRouter(health, clusterNodes, newAuthHandler(t), dir, logger)
+	clusterNodes := httpapi.NewClusterNodes(inventory.NewProjection(), logger)
+	clusterRefresh := httpapi.NewClusterRefresh(
+		inventory.NewRefresher(
+			inventory.NewWorker(&stubClusterClient{}, inventory.NewProjection(), time.Hour, logger),
+			5*time.Second,
+		),
+		logger,
+	)
+	mux := httpapi.NewRouter(health, clusterNodes, clusterRefresh, newAuthHandler(t), dir, logger)
 
 	cases := []struct {
 		method     string
@@ -67,8 +76,15 @@ func TestRouter_SPAFallback(t *testing.T) {
 func TestRouter_MissingBuildDir_HealthStillWorks(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	health := httpapi.NewHealth(fakePinger{}, logger)
-	clusterNodes := httpapi.NewClusterNodes(stubClusterClient{}, logger)
-	mux := httpapi.NewRouter(health, clusterNodes, newAuthHandler(t), "", logger)
+	clusterNodes := httpapi.NewClusterNodes(inventory.NewProjection(), logger)
+	clusterRefresh := httpapi.NewClusterRefresh(
+		inventory.NewRefresher(
+			inventory.NewWorker(&stubClusterClient{}, inventory.NewProjection(), time.Hour, logger),
+			5*time.Second,
+		),
+		logger,
+	)
+	mux := httpapi.NewRouter(health, clusterNodes, clusterRefresh, newAuthHandler(t), "", logger)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/health", nil)

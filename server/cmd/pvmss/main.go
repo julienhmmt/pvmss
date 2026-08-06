@@ -18,6 +18,7 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
+	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
 )
 
@@ -77,15 +78,29 @@ func run() int {
 	}
 	logger.Info("cluster client selected", "component", "cluster", "source", cfg.ClusterSource, "cluster", "default")
 
+	// The inventory projection owns all reads of cluster data (FR-002, SC-004).
+	// The worker refreshes it periodically; the refresher handles manual
+	// refresh requests with a minimum-interval guard (FR-005, FR-006).
+	projection := inventory.NewProjection()
+	worker := inventory.NewWorker(clusterClient, projection, cfg.InventoryRefreshInterval, logger)
+	refresher := inventory.NewRefresher(worker, cfg.InventoryManualRefreshMinInterval)
+
+	// Start the worker before the HTTP server accepts traffic (T015) so the
+	// projection is populated before the first request can arrive.
+	inventoryCtx, cancelInventory := context.WithCancel(context.Background())
+	defer cancelInventory()
+	go worker.Run(inventoryCtx)
+
 	sessions, err := auth.NewSessionManager(st, cfg.SessionSecret, false)
 	if err != nil {
 		logger.Error("failed to create session manager", "component", "main", "error", err)
 		return 1
 	}
 	health := httpapi.NewHealth(st, logger)
-	clusterNodes := httpapi.NewClusterNodes(clusterClient, logger)
+	clusterNodes := httpapi.NewClusterNodes(projection, logger)
+	clusterRefresh := httpapi.NewClusterRefresh(refresher, logger)
 	authHandler := httpapi.NewAuth(clusterClient, sessions, cfg.AdminPasswordHash, auth.NewTokenService(st), logger)
-	router := httpapi.NewRouter(health, clusterNodes, authHandler, webDir, logger)
+	router := httpapi.NewRouter(health, clusterNodes, clusterRefresh, authHandler, webDir, logger)
 
 	srv := &http.Server{
 		Addr:              net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)),
