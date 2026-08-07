@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+//nolint:funlen // comprehensive table-driven test covering all env vars
 func TestLoad(t *testing.T) {
 	tests := []struct {
 		name    string

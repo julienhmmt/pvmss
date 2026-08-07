@@ -64,17 +64,17 @@ var allowedNetworkModels = map[string]bool{
 // forge) and no mode field (the server cannot tell and does not care which
 // wizard produced it).
 type CreateRequest struct {
-	Cluster          string           `json:"cluster"`
-	Name             string           `json:"name"`
-	ProfileID        string           `json:"profileId,omitempty"`
-	Node             string           `json:"node,omitempty"`
-	Tags             []string         `json:"tags,omitempty"`
-	CPUCores         int              `json:"cpuCores,omitempty"`
-	MemoryMB         int              `json:"memoryMB,omitempty"`
+	Cluster          string         `json:"cluster"`
+	Name             string         `json:"name"`
+	ProfileID        string         `json:"profileId,omitempty"`
+	Node             string         `json:"node,omitempty"`
+	Tags             []string       `json:"tags,omitempty"`
+	CPUCores         int            `json:"cpuCores,omitempty"`
+	MemoryMB         int            `json:"memoryMB,omitempty"`
 	Disk             DiskRequest    `json:"disk"`
 	Network          NetworkRequest `json:"network"`
 	ISO              *ISORequest    `json:"iso,omitempty"`
-	StartAfterCreate bool             `json:"startAfterCreate,omitempty"`
+	StartAfterCreate bool           `json:"startAfterCreate,omitempty"`
 }
 
 // DiskRequest is the request's single initial disk.
@@ -142,78 +142,22 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 		return CreateResult{}, fmt.Errorf("read catalog: %w", err)
 	}
 
-	cpuCores, memoryMB, diskGB := req.CPUCores, req.MemoryMB, req.Disk.SizeGB
-	bus := defaultDiskBus
-
-	if req.ProfileID != "" {
-		profiles, err := catalog.Profiles(ctx, st, clusterName)
-		if err != nil {
-			return CreateResult{}, fmt.Errorf("read profiles: %w", err)
-		}
-
-		profile, err := catalog.FindProfile(profiles, req.ProfileID)
-		if err != nil {
-			return CreateResult{}, fmt.Errorf("%w: %s", ErrNotApproved, err.Error())
-		}
-		// FR-009: the profile's catalog values are authoritative — hardware
-		// fields the request also carries are ignored, never merged.
-		cpuCores, memoryMB, diskGB = profile.CPUCores, profile.MemoryMB, profile.DiskGB
-		bus = profile.Bus
+	cpuCores, memoryMB, diskGB, bus, err := resolveHardware(ctx, st, clusterName, req)
+	if err != nil {
+		return CreateResult{}, err
 	}
 
 	if err := checkTechnicalRange(cpuCores, memoryMB, diskGB); err != nil {
 		return CreateResult{}, err
 	}
 
-	node := req.Node
-	if node == "" {
-		if len(resources.Nodes) == 0 {
-			return CreateResult{}, fmt.Errorf("%w: no approved node in catalog", ErrNotApproved)
-		}
-
-		node = resources.Nodes[0].Name
+	node, storage, bridge, model, err := resolveResources(req, resources)
+	if err != nil {
+		return CreateResult{}, err
 	}
 
-	storage := req.Disk.Storage
-	if storage == "" {
-		storage = firstStorageOnNode(resources, node)
-		if storage == "" {
-			return CreateResult{}, fmt.Errorf("%w: no approved storage on node %q", ErrNotApproved, node)
-		}
-	}
-
-	bridge := req.Network.Bridge
-	if bridge == "" {
-		if len(resources.Bridges) == 0 {
-			return CreateResult{}, fmt.Errorf("%w: no approved bridge in catalog", ErrNotApproved)
-		}
-
-		bridge = resources.Bridges[0]
-	}
-
-	model := req.Network.Model
-	if model == "" {
-		model = defaultNetworkModel
-	}
-
-	if !allowedNetworkModels[model] {
-		return CreateResult{}, fmt.Errorf("%w: network model %q", ErrNotApproved, model)
-	}
-
-	if !resources.HasNode(node) {
-		return CreateResult{}, fmt.Errorf("%w: node %q", ErrNotApproved, node)
-	}
-
-	if !resources.HasStorage(storage, node) {
-		return CreateResult{}, fmt.Errorf("%w: storage %q on node %q", ErrNotApproved, storage, node)
-	}
-
-	if !resources.HasBridge(bridge) {
-		return CreateResult{}, fmt.Errorf("%w: bridge %q", ErrNotApproved, bridge)
-	}
-
-	if req.ISO != nil && !resources.HasISO(req.ISO.Storage, req.ISO.File) {
-		return CreateResult{}, fmt.Errorf("%w: iso %q on storage %q", ErrNotApproved, req.ISO.File, req.ISO.Storage)
+	if err := validateCatalog(req, resources, node, storage, bridge, model); err != nil {
+		return CreateResult{}, err
 	}
 
 	vmid, err := creator.NextVMID(ctx)
@@ -252,6 +196,94 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 	}
 
 	return CreateResult{Cluster: clusterName, VMID: vmid, Name: req.Name, Node: node, UPID: upid}, nil
+}
+
+// resolveHardware returns the effective CPU, memory, disk, and bus values,
+// applying the profile's catalog values when a profile is selected (FR-009).
+func resolveHardware(ctx context.Context, st *store.Store, clusterName string, req CreateRequest) (cpuCores, memoryMB, diskGB int, bus string, err error) {
+	cpuCores, memoryMB, diskGB = req.CPUCores, req.MemoryMB, req.Disk.SizeGB
+	bus = defaultDiskBus
+
+	if req.ProfileID == "" {
+		return cpuCores, memoryMB, diskGB, bus, nil
+	}
+
+	profiles, err := catalog.Profiles(ctx, st, clusterName)
+	if err != nil {
+		return 0, 0, 0, "", fmt.Errorf("read profiles: %w", err)
+	}
+
+	profile, err := catalog.FindProfile(profiles, req.ProfileID)
+	if err != nil {
+		return 0, 0, 0, "", fmt.Errorf("%w: %s", ErrNotApproved, err.Error())
+	}
+
+	// FR-009: the profile's catalog values are authoritative — hardware
+	// fields the request also carries are ignored, never merged.
+	return profile.CPUCores, profile.MemoryMB, profile.DiskGB, profile.Bus, nil
+}
+
+// resolveResources resolves the node, storage, bridge, and network model,
+// applying auto-selection defaults when the request omits them.
+func resolveResources(req CreateRequest, resources catalog.Resources) (node, storage, bridge, model string, err error) {
+	node = req.Node
+	if node == "" {
+		if len(resources.Nodes) == 0 {
+			return "", "", "", "", fmt.Errorf("%w: no approved node in catalog", ErrNotApproved)
+		}
+
+		node = resources.Nodes[0].Name
+	}
+
+	storage = req.Disk.Storage
+	if storage == "" {
+		storage = firstStorageOnNode(resources, node)
+		if storage == "" {
+			return "", "", "", "", fmt.Errorf("%w: no approved storage on node %q", ErrNotApproved, node)
+		}
+	}
+
+	bridge = req.Network.Bridge
+	if bridge == "" {
+		if len(resources.Bridges) == 0 {
+			return "", "", "", "", fmt.Errorf("%w: no approved bridge in catalog", ErrNotApproved)
+		}
+
+		bridge = resources.Bridges[0]
+	}
+
+	model = req.Network.Model
+	if model == "" {
+		model = defaultNetworkModel
+	}
+
+	return node, storage, bridge, model, nil
+}
+
+// validateCatalog checks that the resolved node, storage, bridge, model, and
+// optional ISO are all present in the approved catalog.
+func validateCatalog(req CreateRequest, resources catalog.Resources, node, storage, bridge, model string) error {
+	if !allowedNetworkModels[model] {
+		return fmt.Errorf("%w: network model %q", ErrNotApproved, model)
+	}
+
+	if !resources.HasNode(node) {
+		return fmt.Errorf("%w: node %q", ErrNotApproved, node)
+	}
+
+	if !resources.HasStorage(storage, node) {
+		return fmt.Errorf("%w: storage %q on node %q", ErrNotApproved, storage, node)
+	}
+
+	if !resources.HasBridge(bridge) {
+		return fmt.Errorf("%w: bridge %q", ErrNotApproved, bridge)
+	}
+
+	if req.ISO != nil && !resources.HasISO(req.ISO.Storage, req.ISO.File) {
+		return fmt.Errorf("%w: iso %q on storage %q", ErrNotApproved, req.ISO.File, req.ISO.Storage)
+	}
+
+	return nil
 }
 
 // checkTechnicalRange enforces FR-008's fixed anti-abuse bounds.

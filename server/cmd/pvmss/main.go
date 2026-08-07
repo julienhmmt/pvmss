@@ -110,31 +110,11 @@ func run() int {
 		return 1
 	}
 
-	health := httpapi.NewHealth(st, logger)
-	clusterNodes := httpapi.NewClusterNodes(projection, logger)
-	clusterRefresh := httpapi.NewClusterRefresh(refresher, logger)
-	authHandler := httpapi.NewAuth(clusterClient, sessions, cfg.AdminPasswordHash, auth.NewTokenService(st), logger)
-	vms := httpapi.NewVMs(projection, authHandler, cfg.MaxListPageSize, cfg.DefaultUserQuota, logger)
-	// Both cluster.Client implementations (Fake, Proxmox) also implement
-	// cluster.Writer — reads and writes are separated by interface
-	// (constitution IV), not by implementation. The assertion is safe because
-	// the switch above only selects values that satisfy both.
-	writer, ok := clusterClient.(cluster.Writer)
-	if !ok {
-		logger.Error("cluster client does not implement Writer", "component", "main")
+	router, err := buildRouter(cfg, clusterClient, projection, refresher, worker, sessions, st, webDir, logger)
+	if err != nil {
+		logger.Error("failed to build router", "component", "main", "error", err)
 		return 1
 	}
-
-	creator, ok := clusterClient.(cluster.Creator)
-	if !ok {
-		logger.Error("cluster client does not implement Creator", "component", "main")
-		return 1
-	}
-
-	vmDetail := httpapi.NewVMDetail(projection, authHandler, writer, st, worker, logger)
-	vmCreate := httpapi.NewVMCreate(authHandler, st, creator, logger)
-	tasks := httpapi.NewTasks(authHandler, creator, worker, logger)
-	router := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, vmCreate, tasks, authHandler, webDir, logger)
 
 	srv := &http.Server{
 		Addr:              net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)),
@@ -177,6 +157,47 @@ func run() int {
 	logger.Info("server stopped", "component", "main")
 
 	return 0
+}
+
+// buildRouter wires all HTTP handlers into the final router. It performs the
+// cluster.Writer/Creator type assertions (both Fake and Proxmox satisfy them)
+// and constructs the handler graph from the shared dependencies.
+func buildRouter(
+	cfg config.Configuration,
+	clusterClient cluster.Client,
+	projection *inventory.Projection,
+	refresher *inventory.Refresher,
+	worker *inventory.Worker,
+	sessions *auth.SessionManager,
+	st *store.Store,
+	webDir string,
+	logger *slog.Logger,
+) (*http.ServeMux, error) {
+	health := httpapi.NewHealth(st, logger)
+	clusterNodes := httpapi.NewClusterNodes(projection, logger)
+	clusterRefresh := httpapi.NewClusterRefresh(refresher, logger)
+	authHandler := httpapi.NewAuth(clusterClient, sessions, cfg.AdminPasswordHash, auth.NewTokenService(st), logger)
+	vms := httpapi.NewVMs(projection, authHandler, cfg.MaxListPageSize, cfg.DefaultUserQuota, logger)
+
+	// Both cluster.Client implementations (Fake, Proxmox) also implement
+	// cluster.Writer — reads and writes are separated by interface
+	// (constitution IV), not by implementation. The assertion is safe because
+	// the switch above only selects values that satisfy both.
+	writer, ok := clusterClient.(cluster.Writer)
+	if !ok {
+		return nil, errors.New("cluster client does not implement Writer")
+	}
+
+	creator, ok := clusterClient.(cluster.Creator)
+	if !ok {
+		return nil, errors.New("cluster client does not implement Creator")
+	}
+
+	vmDetail := httpapi.NewVMDetail(projection, authHandler, writer, st, worker, logger)
+	vmCreate := httpapi.NewVMCreate(authHandler, st, creator, logger)
+	tasks := httpapi.NewTasks(authHandler, creator, worker, logger)
+
+	return httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, vmCreate, tasks, authHandler, webDir, logger), nil
 }
 
 // resolveWebBuildDir returns the absolute path to the static web build directory.
