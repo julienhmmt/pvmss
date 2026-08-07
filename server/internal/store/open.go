@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -36,12 +37,14 @@ func Open(cfg config.Configuration) (*Store, error) {
 	db.SetMaxIdleConns(1)
 	db.SetConnMaxLifetime(0)
 
-	if _, err := db.Exec(`PRAGMA journal_mode=WAL`); err != nil {
+	ctx := context.Background()
+
+	if _, err := db.ExecContext(ctx, `PRAGMA journal_mode=WAL`); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("set WAL mode: %w", err)
 	}
 
-	if err := RunMigrations(db, Migrations); err != nil {
+	if err := RunMigrations(ctx, db, Migrations); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("run migrations: %w", err)
 	}

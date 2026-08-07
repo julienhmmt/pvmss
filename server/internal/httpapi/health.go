@@ -35,7 +35,7 @@ func (h *Health) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	status := http.StatusOK
 
-	if err := h.store.Ping(); err != nil {
+	if err := h.store.Ping(r.Context()); err != nil {
 		h.log.Error("database health check failed", "component", "httpapi", "error", err)
 
 		resp.Status = "unhealthy"

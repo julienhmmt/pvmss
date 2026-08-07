@@ -1,3 +1,4 @@
+//nolint:noctx // test scaffolding does not need real context
 package auth_test
 
 import (
