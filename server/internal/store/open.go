@@ -18,7 +18,7 @@ func Open(cfg config.Configuration) (*Store, error) {
 	}
 
 	dir := filepath.Dir(cfg.DBPath)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return nil, fmt.Errorf("create database directory %q: %w", dir, err)
 	}
 

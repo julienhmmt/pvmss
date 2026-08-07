@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"pvmss/server/internal/store"
+	"slices"
 )
 
 // Node is one approved cluster node.
@@ -71,13 +72,7 @@ func (r Resources) HasStorage(name, node string) bool {
 
 // HasBridge reports whether name is an approved bridge.
 func (r Resources) HasBridge(name string) bool {
-	for _, bridge := range r.Bridges {
-		if bridge == name {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(r.Bridges, name)
 }
 
 // HasISO reports whether (storage, file) is an approved ISO.

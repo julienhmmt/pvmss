@@ -16,11 +16,11 @@ import (
 
 func TestResolveWebBuildDir(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(dir, "web", "build"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(dir, "web", "build"), 0o750); err != nil {
 		t.Fatalf("create web build dir: %v", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte("<!doctype html>"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte("<!doctype html>"), 0o600); err != nil {
 		t.Fatalf("write index.html: %v", err)
 	}
 
@@ -40,7 +40,7 @@ func TestResolveWebBuildDir_Invalid(t *testing.T) {
 	dir := t.TempDir()
 
 	filePath := filepath.Join(dir, "not-a-dir")
-	if err := os.WriteFile(filePath, []byte("x"), 0o644); err != nil {
+	if err := os.WriteFile(filePath, []byte("x"), 0o600); err != nil {
 		t.Fatalf("write file: %v", err)
 	}
 
@@ -57,11 +57,11 @@ func TestResolveWebBuildDir_Fallback(t *testing.T) {
 	dir := t.TempDir()
 
 	build := filepath.Join(dir, "web", "build")
-	if err := os.MkdirAll(build, 0o755); err != nil {
+	if err := os.MkdirAll(build, 0o750); err != nil {
 		t.Fatalf("create web build dir: %v", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(build, "index.html"), []byte("<!doctype html>"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(build, "index.html"), []byte("<!doctype html>"), 0o600); err != nil {
 		t.Fatalf("write index.html: %v", err)
 	}
 
@@ -81,11 +81,11 @@ func TestValidateWebBuildDir(t *testing.T) {
 	dir := t.TempDir()
 
 	build := filepath.Join(dir, "build")
-	if err := os.MkdirAll(build, 0o755); err != nil {
+	if err := os.MkdirAll(build, 0o750); err != nil {
 		t.Fatalf("create build dir: %v", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(build, "index.html"), []byte("<!doctype html>"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(build, "index.html"), []byte("<!doctype html>"), 0o600); err != nil {
 		t.Fatalf("write index.html: %v", err)
 	}
 
@@ -94,7 +94,7 @@ func TestValidateWebBuildDir(t *testing.T) {
 	}
 
 	notADir := filepath.Join(dir, "not-a-dir")
-	if err := os.WriteFile(notADir, []byte("x"), 0o644); err != nil {
+	if err := os.WriteFile(notADir, []byte("x"), 0o600); err != nil {
 		t.Fatalf("write file: %v", err)
 	}
 
@@ -110,7 +110,7 @@ func TestValidateWebBuildDir(t *testing.T) {
 func TestRun_InvalidConfig_ExitsWithoutListening(t *testing.T) {
 	bin := filepath.Join(t.TempDir(), "pvmss")
 
-	build := exec.Command("go", "build", "-o", bin, ".")
+	build := exec.Command("go", "build", "-o", bin, ".") //nolint:gosec // building test binary from trusted source
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("go build: %v\n%s", err, out)
 	}
@@ -120,7 +120,12 @@ func TestRun_InvalidConfig_ExitsWithoutListening(t *testing.T) {
 		t.Fatalf("find free port: %v", err)
 	}
 
-	port := ln.Addr().(*net.TCPAddr).Port
+	tcpAddr, ok := ln.Addr().(*net.TCPAddr)
+	if !ok {
+		t.Fatalf("listener address is not *net.TCPAddr: %T", ln.Addr())
+	}
+
+	port := tcpAddr.Port
 	_ = ln.Close()
 
 	dbPath := filepath.Join(t.TempDir(), "pvmss.db")
@@ -132,7 +137,7 @@ func TestRun_InvalidConfig_ExitsWithoutListening(t *testing.T) {
 		"LOG_OUTPUT=stdout",
 	}
 
-	cmd := exec.Command(bin)
+	cmd := exec.Command(bin) //nolint:gosec // running test binary built from trusted source
 
 	cmd.Env = append(os.Environ(), env...)
 
@@ -205,7 +210,7 @@ func TestRun_DatabaseOpenFails_Returns1(t *testing.T) {
 	dir := t.TempDir()
 
 	blocked := filepath.Join(dir, "blocked")
-	if err := os.WriteFile(blocked, []byte("x"), 0o644); err != nil {
+	if err := os.WriteFile(blocked, []byte("x"), 0o600); err != nil {
 		t.Fatalf("write blocking file: %v", err)
 	}
 
@@ -228,18 +233,23 @@ func TestRun(t *testing.T) {
 		t.Fatalf("find free port: %v", err)
 	}
 
-	port := ln.Addr().(*net.TCPAddr).Port
+	tcpAddr, ok := ln.Addr().(*net.TCPAddr)
+	if !ok {
+		t.Fatalf("listener address is not *net.TCPAddr: %T", ln.Addr())
+	}
+
+	port := tcpAddr.Port
 	_ = ln.Close()
 
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "pvmss.db")
 
 	webDir := filepath.Join(dir, "web")
-	if err := os.MkdirAll(webDir, 0o755); err != nil {
+	if err := os.MkdirAll(webDir, 0o750); err != nil {
 		t.Fatalf("create web dir: %v", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(webDir, "index.html"), []byte("<!doctype html><html></html>"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(webDir, "index.html"), []byte("<!doctype html><html></html>"), 0o600); err != nil {
 		t.Fatalf("write index.html: %v", err)
 	}
 

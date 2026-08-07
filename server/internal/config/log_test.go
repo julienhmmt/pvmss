@@ -28,6 +28,8 @@ func TestNewLogger(t *testing.T) {
 				LogOutput: filepath.Join(t.TempDir(), "log.jsonl"),
 			},
 			validate: func(t *testing.T, path string) {
+				t.Helper()
+
 				logger, closer, err := config.NewLogger(config.Configuration{
 					Port:      50001,
 					DBPath:    ":memory:",
@@ -100,6 +102,8 @@ func TestNewLogger(t *testing.T) {
 				LogOutput: filepath.Join(t.TempDir(), "log.txt"),
 			},
 			validate: func(t *testing.T, path string) {
+				t.Helper()
+
 				logger, closer, err := config.NewLogger(config.Configuration{
 					Port:      50001,
 					DBPath:    ":memory:",
@@ -117,7 +121,7 @@ func TestNewLogger(t *testing.T) {
 					t.Fatalf("closer.Close: %v", err)
 				}
 
-				content, err := os.ReadFile(path)
+				content, err := os.ReadFile(path) //nolint:gosec // path is test-controlled via t.TempDir
 				if err != nil {
 					t.Fatalf("read log: %v", err)
 				}
@@ -165,6 +169,7 @@ func TestNewLogger(t *testing.T) {
 			if err != nil {
 				t.Fatalf("NewLogger: %v", err)
 			}
+
 			defer func() { _ = closer.Close() }()
 
 			if c.validate != nil {
@@ -185,7 +190,7 @@ type logEntry struct {
 func readLogEntries(path string) ([]logEntry, error) {
 	entries := []logEntry{}
 
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // path is test-controlled via t.TempDir
 	if err != nil {
 		return nil, err
 	}

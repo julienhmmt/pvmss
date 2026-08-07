@@ -123,7 +123,7 @@ func TestSessionManager_ResolveRejectsUnknownAndExpiredCookies(t *testing.T) {
 		name   string
 		cookie *http.Cookie
 	}{
-		{name: "unknown", cookie: &http.Cookie{Name: auth.SessionCookieName, Value: "unknown-session-value"}},
+		{name: "unknown", cookie: &http.Cookie{Name: auth.SessionCookieName, Value: "unknown-session-value"}}, //nolint:gosec // test fixture cookie
 		{name: "expired", cookie: expiredCookie},
 	}
 	for _, tc := range cases {
