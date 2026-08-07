@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 )
 
@@ -42,114 +43,89 @@ type CatalogProfile struct {
 	Bus      string
 }
 
-// CatalogNodes returns the approved nodes for a cluster, ordered by name so
-// simple-mode auto-selection (first approved entry, FR-010) is deterministic.
-func (s *Store) CatalogNodes(ctx context.Context, cluster string) ([]CatalogNode, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT cluster, name FROM catalog_nodes WHERE cluster = ? ORDER BY name`, cluster)
+// queryCatalog runs a parameterised catalog query and collects the rows into a
+// slice using the provided scan function. It closes the rows and surfaces
+// scan/query errors with the given label for diagnostics.
+func queryCatalog[T any](ctx context.Context, db *sql.DB, label, query string, args []any, scan func(*sql.Rows) (T, error)) ([]T, error) {
+	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("query catalog nodes: %w", err)
+		return nil, fmt.Errorf("query %s: %w", label, err)
 	}
+
 	defer func() { _ = rows.Close() }()
 
-	var out []CatalogNode
+	var out []T
 
 	for rows.Next() {
-		var n CatalogNode
-		if err := rows.Scan(&n.Cluster, &n.Name); err != nil {
-			return nil, fmt.Errorf("scan catalog node: %w", err)
+		item, err := scan(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan %s: %w", label, err)
 		}
 
-		out = append(out, n)
+		out = append(out, item)
 	}
 
 	return out, rows.Err()
+}
+
+// CatalogNodes returns the approved nodes for a cluster, ordered by name so
+// simple-mode auto-selection (first approved entry, FR-010) is deterministic.
+func (s *Store) CatalogNodes(ctx context.Context, cluster string) ([]CatalogNode, error) {
+	return queryCatalog(ctx, s.db, "catalog nodes",
+		`SELECT cluster, name FROM catalog_nodes WHERE cluster = ? ORDER BY name`,
+		[]any{cluster},
+		func(rows *sql.Rows) (CatalogNode, error) {
+			var n CatalogNode
+			return n, rows.Scan(&n.Cluster, &n.Name)
+		},
+	)
 }
 
 // CatalogStorages returns the approved storages for a cluster, ordered by
 // node then name (deterministic auto-selection, FR-010).
 func (s *Store) CatalogStorages(ctx context.Context, cluster string) ([]CatalogStorage, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT cluster, name, node FROM catalog_storages WHERE cluster = ? ORDER BY node, name`, cluster)
-	if err != nil {
-		return nil, fmt.Errorf("query catalog storages: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var out []CatalogStorage
-
-	for rows.Next() {
-		var st CatalogStorage
-		if err := rows.Scan(&st.Cluster, &st.Name, &st.Node); err != nil {
-			return nil, fmt.Errorf("scan catalog storage: %w", err)
-		}
-
-		out = append(out, st)
-	}
-
-	return out, rows.Err()
+	return queryCatalog(ctx, s.db, "catalog storages",
+		`SELECT cluster, name, node FROM catalog_storages WHERE cluster = ? ORDER BY node, name`,
+		[]any{cluster},
+		func(rows *sql.Rows) (CatalogStorage, error) {
+			var st CatalogStorage
+			return st, rows.Scan(&st.Cluster, &st.Name, &st.Node)
+		},
+	)
 }
 
 // CatalogBridges returns the approved bridges for a cluster, ordered by name.
 func (s *Store) CatalogBridges(ctx context.Context, cluster string) ([]CatalogBridge, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT cluster, name FROM catalog_bridges WHERE cluster = ? ORDER BY name`, cluster)
-	if err != nil {
-		return nil, fmt.Errorf("query catalog bridges: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var out []CatalogBridge
-
-	for rows.Next() {
-		var b CatalogBridge
-		if err := rows.Scan(&b.Cluster, &b.Name); err != nil {
-			return nil, fmt.Errorf("scan catalog bridge: %w", err)
-		}
-
-		out = append(out, b)
-	}
-
-	return out, rows.Err()
+	return queryCatalog(ctx, s.db, "catalog bridges",
+		`SELECT cluster, name FROM catalog_bridges WHERE cluster = ? ORDER BY name`,
+		[]any{cluster},
+		func(rows *sql.Rows) (CatalogBridge, error) {
+			var b CatalogBridge
+			return b, rows.Scan(&b.Cluster, &b.Name)
+		},
+	)
 }
 
 // CatalogISOs returns the approved ISO images for a cluster, ordered by file.
 func (s *Store) CatalogISOs(ctx context.Context, cluster string) ([]CatalogISO, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT cluster, storage, file FROM catalog_isos WHERE cluster = ? ORDER BY file`, cluster)
-	if err != nil {
-		return nil, fmt.Errorf("query catalog isos: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var out []CatalogISO
-
-	for rows.Next() {
-		var iso CatalogISO
-		if err := rows.Scan(&iso.Cluster, &iso.Storage, &iso.File); err != nil {
-			return nil, fmt.Errorf("scan catalog iso: %w", err)
-		}
-
-		out = append(out, iso)
-	}
-
-	return out, rows.Err()
+	return queryCatalog(ctx, s.db, "catalog isos",
+		`SELECT cluster, storage, file FROM catalog_isos WHERE cluster = ? ORDER BY file`,
+		[]any{cluster},
+		func(rows *sql.Rows) (CatalogISO, error) {
+			var iso CatalogISO
+			return iso, rows.Scan(&iso.Cluster, &iso.Storage, &iso.File)
+		},
+	)
 }
 
 // CatalogProfiles returns the VM profiles for a cluster, ordered by id.
 func (s *Store) CatalogProfiles(ctx context.Context, cluster string) ([]CatalogProfile, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT cluster, id, label, cpu_cores, memory_mb, disk_gb, bus FROM catalog_profiles WHERE cluster = ? ORDER BY id`, cluster)
-	if err != nil {
-		return nil, fmt.Errorf("query catalog profiles: %w", err)
-	}
-	defer func() { _ = rows.Close() }()
-
-	var out []CatalogProfile
-
-	for rows.Next() {
-		var p CatalogProfile
-		if err := rows.Scan(&p.Cluster, &p.ID, &p.Label, &p.CPUCores, &p.MemoryMB, &p.DiskGB, &p.Bus); err != nil {
-			return nil, fmt.Errorf("scan catalog profile: %w", err)
-		}
-
-		out = append(out, p)
-	}
-
-	return out, rows.Err()
+	return queryCatalog(ctx, s.db, "catalog profiles",
+		`SELECT cluster, id, label, cpu_cores, memory_mb, disk_gb, bus FROM catalog_profiles WHERE cluster = ? ORDER BY id`,
+		[]any{cluster},
+		func(rows *sql.Rows) (CatalogProfile, error) {
+			var p CatalogProfile
+			return p, rows.Scan(&p.Cluster, &p.ID, &p.Label, &p.CPUCores, &p.MemoryMB, &p.DiskGB, &p.Bus)
+		},
+	)
 }
