@@ -288,6 +288,8 @@ func compareVMs(a, b cluster.VM, sortBy SortBy) int {
 	switch sortBy {
 	case SortByVMID:
 		return a.VMID - b.VMID
+	case SortByName:
+		return strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name))
 	case SortByNode:
 		return strings.Compare(a.Node, b.Node)
 	case SortByStatus:
@@ -296,9 +298,9 @@ func compareVMs(a, b cluster.VM, sortBy SortBy) int {
 		return a.CPUCores - b.CPUCores
 	case SortByMemory:
 		return compareInt64(a.MemoryTotal, b.MemoryTotal)
-	default:
-		return strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name))
 	}
+
+	return 0
 }
 
 func compareInt64(a, b int64) int {

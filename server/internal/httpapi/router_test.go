@@ -20,15 +20,15 @@ func TestRouter_SPAFallback(t *testing.T) {
 	dir := t.TempDir()
 
 	html := `<!doctype html><html lang="en"><head><title>PVMSS</title></head><body>shell</body></html>`
-	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte(html), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte(html), 0o600); err != nil {
 		t.Fatalf("write index.html: %v", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(dir, "file.txt"), []byte("real file"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "file.txt"), []byte("real file"), 0o600); err != nil {
 		t.Fatalf("write file.txt: %v", err)
 	}
 
-	if err := os.Mkdir(filepath.Join(dir, "a-dir"), 0o755); err != nil {
+	if err := os.Mkdir(filepath.Join(dir, "a-dir"), 0o750); err != nil {
 		t.Fatalf("create a-dir: %v", err)
 	}
 

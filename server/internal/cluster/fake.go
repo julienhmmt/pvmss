@@ -225,7 +225,7 @@ var fakeIdentitiesMutex sync.RWMutex
 var fakeIdentities = map[string]fakeIdentity{
 	"alice@pve": {password: "pvmss-alice", pool: "pool-alice"},
 	"bob@pve":   {password: "pvmss-bob", pool: "pool-bob"},
-	"admin@pve": {password: "pvmss-admin", isAdmin: true},
+	"admin@pve": {password: "pvmss-admin", isAdmin: true}, //nolint:gosec // fixture credentials for demo mode
 }
 
 // The dataset below is production code (constitution XI), reviewed and

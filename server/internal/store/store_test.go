@@ -38,7 +38,7 @@ func TestOpen_MkdirAllFailed(t *testing.T) {
 	dir := t.TempDir()
 
 	blocked := filepath.Join(dir, "blocked")
-	if err := os.WriteFile(blocked, []byte("x"), 0o644); err != nil {
+	if err := os.WriteFile(blocked, []byte("x"), 0o600); err != nil {
 		t.Fatalf("write blocking file: %v", err)
 	}
 
@@ -108,6 +108,7 @@ func TestOpen(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Open: %v", err)
 			}
+
 			defer func() { _ = s.Close() }()
 
 			if _, err := os.Stat(cfg.DBPath); err != nil {

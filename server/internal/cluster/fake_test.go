@@ -74,6 +74,8 @@ func TestFakeDataset_MixedVMStatuses(t *testing.T) {
 			hasRunning = true
 		case VMStopped:
 			hasStopped = true
+		case VMPaused:
+			// paused VMs are not relevant to this invariant
 		}
 	}
 
