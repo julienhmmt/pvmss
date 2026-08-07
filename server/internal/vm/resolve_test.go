@@ -3,13 +3,12 @@ package vm_test
 import (
 	"context"
 	"errors"
-	"testing"
-	"time"
-
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/vm"
+	"testing"
+	"time"
 )
 
 // buildResolveIndex builds an Index from the fake dataset, so Resolve tests

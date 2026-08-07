@@ -3,10 +3,9 @@ package httpapi_test
 import (
 	"context"
 	"errors"
+	"pvmss/server/internal/auth"
 	"sync"
 	"time"
-
-	"pvmss/server/internal/auth"
 )
 
 type sessionRepository struct {

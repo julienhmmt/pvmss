@@ -3,11 +3,10 @@ package catalog_test
 import (
 	"context"
 	"path/filepath"
-	"testing"
-
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/store"
+	"testing"
 )
 
 // openCatalogStore opens a migrated store in a temp dir — the catalog fixture

@@ -5,14 +5,13 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"pvmss/server/internal/auth"
+	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/httpapi"
 	"strings"
 	"testing"
 
 	"golang.org/x/crypto/bcrypt"
-
-	"pvmss/server/internal/auth"
-	"pvmss/server/internal/cluster"
-	"pvmss/server/internal/httpapi"
 )
 
 func TestAuth_LoginPVE_StoresSession(t *testing.T) {

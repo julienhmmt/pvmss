@@ -3,10 +3,9 @@ package inventory
 import (
 	"context"
 	"log/slog"
+	"pvmss/server/internal/cluster"
 	"sync"
 	"time"
-
-	"pvmss/server/internal/cluster"
 )
 
 // defaultRefreshTimeout caps how long a single cluster.Snapshot call may take.

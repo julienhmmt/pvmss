@@ -3,10 +3,9 @@ package httpapi_test
 import (
 	"context"
 	"database/sql"
+	"pvmss/server/internal/auth"
 	"sync"
 	"time"
-
-	"pvmss/server/internal/auth"
 )
 
 type tokenRepository struct {

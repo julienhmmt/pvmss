@@ -1,12 +1,11 @@
 package inventory_test
 
 import (
+	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/inventory"
 	"reflect"
 	"slices"
 	"testing"
-
-	"pvmss/server/internal/cluster"
-	"pvmss/server/internal/inventory"
 )
 
 // fakeSnapshot returns the T01/T02 fake dataset shaped as a Snapshot — 3 nodes,
@@ -14,15 +13,21 @@ import (
 func fakeSnapshot() cluster.Snapshot {
 	return cluster.Snapshot{
 		Nodes: []cluster.Node{
-			{Name: "pve-node-01", Status: cluster.NodeOnline, CPUCores: 32, CPUUsage: 0.42,
+			{
+				Name: "pve-node-01", Status: cluster.NodeOnline, CPUCores: 32, CPUUsage: 0.42,
 				MemoryTotal: 137438953472, MemoryUsed: 68719476736,
-				StorageTotal: 2199023255552, StorageUsed: 879609302220},
-			{Name: "pve-node-02", Status: cluster.NodeOnline, CPUCores: 16, CPUUsage: 0.15,
+				StorageTotal: 2199023255552, StorageUsed: 879609302220,
+			},
+			{
+				Name: "pve-node-02", Status: cluster.NodeOnline, CPUCores: 16, CPUUsage: 0.15,
 				MemoryTotal: 68719476736, MemoryUsed: 17179869184,
-				StorageTotal: 1099511627776, StorageUsed: 219902325555},
-			{Name: "pve-node-03", Status: cluster.NodeOffline, CPUCores: 16, CPUUsage: 0,
+				StorageTotal: 1099511627776, StorageUsed: 219902325555,
+			},
+			{
+				Name: "pve-node-03", Status: cluster.NodeOffline, CPUCores: 16, CPUUsage: 0,
 				MemoryTotal: 68719476736, MemoryUsed: 0,
-				StorageTotal: 1099511627776, StorageUsed: 0},
+				StorageTotal: 1099511627776, StorageUsed: 0,
+			},
 		},
 		VMs: fakeVMs(),
 		Storages: []cluster.Storage{

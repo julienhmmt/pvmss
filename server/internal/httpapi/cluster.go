@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"time"
-
 	"pvmss/server/internal/inventory"
+	"time"
 )
 
 // ClusterNodes serves GET /api/v1/cluster/nodes, reading from the inventory

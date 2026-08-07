@@ -8,16 +8,15 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
-	"strings"
-	"testing"
-	"time"
-
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
+	"strings"
+	"testing"
+	"time"
 )
 
 // vmDetailEntity mirrors the GET /vms/:cluster/:vmid 200 contract
