@@ -67,5 +67,6 @@ func (r *Refresher) Refresh(ctx context.Context) (time.Time, error) {
 	if err != nil {
 		return time.Time{}, ErrClusterUnreachable
 	}
+
 	return at, nil
 }

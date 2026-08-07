@@ -20,11 +20,13 @@
 		"verbatimModuleSyntax": false
 	},
 	"include": [
+		".svelte-kit/ambient.d.ts",
+		".svelte-kit/non-ambient.d.ts",
+		".svelte-kit/types/**/*.d.ts",
 		"src/**/*.d.ts",
 		"src/**/*.ts",
 		"src/**/*.js",
 		"src/**/*.svelte",
-		"src/**/*.test.ts",
-		".svelte-kit/types/**/*.d.ts"
+		"src/**/*.test.ts"
 	]
 }

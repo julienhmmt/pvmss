@@ -12,6 +12,8 @@ NC    := \033[0m
 # Répertoires
 BACKEND_DIR  := backend
 FRONTEND_DIR := frontend
+SERVER_DIR   := server
+WEB_DIR      := web
 
 # Docker Compose dev (raccourci pour éviter de répéter -f ...)
 COMPOSE_DEV  := docker compose -f docker-compose.dev.yml
@@ -32,7 +34,10 @@ PVMSS_TAG ?= latest
         coverage test-unit test-integration test-offline test-offline-race test-online qualif \
         go-lint go-fmt go-update \
         buildkit-start buildkit-stop buildkit-status \
-        frontend-install frontend-build frontend-dev frontend-test frontend-check
+        frontend-install frontend-build frontend-dev frontend-test frontend-check \
+        server-lint server-fmt server-vet server-test \
+        web-install web-lint web-lint-fix web-check web-test \
+        lint
 
 # qualif doit exécuter ses prérequis séquentiellement (fmt → lint → test), jamais en parallèle
 .NOTPARALLEL: qualif
@@ -213,3 +218,63 @@ frontend-check: ## Vérifie le typage du frontend (svelte-check)
 	@echo "$(BLUE)Vérification du typage frontend (svelte-check)...$(NC)"
 	cd $(FRONTEND_DIR) && bun run check
 	@echo "$(GREEN)✓ Vérification frontend terminée$(NC)"
+
+# =============================================================================
+# Commandes Next-gen (server/ Go + web/ SvelteKit)
+# Module Go séparé `pvmss/server` et app SvelteKit `pvmss-web` (v0.4 rewrite).
+# Non connectés au Makefile principal — outillage indépendant.
+
+# --- server/ (Go backend, module pvmss/server) ---
+
+server-lint: ## Lance golangci-lint sur le next-gen server/ (config server/.golangci.yml)
+	@echo "$(BLUE)Lancement du linter Go sur $(SERVER_DIR)/...$(NC)"
+	cd $(SERVER_DIR) && golangci-lint run -v --timeout=5m ./...
+	@echo "$(GREEN)✓ Lint server terminé$(NC)"
+
+server-fmt: ## Formate le code Go du next-gen server/ (golangci-lint fmt)
+	@echo "$(BLUE)Formatage du code Go $(SERVER_DIR)/...$(NC)"
+	cd $(SERVER_DIR) && golangci-lint fmt ./...
+	@echo "$(GREEN)✓ Formatage server terminé$(NC)"
+
+server-vet: ## Lance go vet sur le next-gen server/ (vérification légère sans golangci-lint)
+	@echo "$(BLUE)go vet sur $(SERVER_DIR)/...$(NC)"
+	cd $(SERVER_DIR) && go vet ./...
+	@echo "$(GREEN)✓ go vet server terminé$(NC)"
+
+server-test: ## Lance les tests Go du next-gen server/
+	@echo "$(BLUE)Tests Go $(SERVER_DIR)/...$(NC)"
+	cd $(SERVER_DIR) && go test $(GO_TEST_FLAGS) -race -timeout=5m ./...
+	@echo "$(GREEN)✓ Tests server terminés$(NC)"
+
+# --- web/ (SvelteKit + TypeScript, app pvmss-web) ---
+
+web-install: ## Installe les dépendances bun du next-gen web/ (SvelteKit)
+	@echo "$(BLUE)Installation des dépendances $(WEB_DIR)/...$(NC)"
+	cd $(WEB_DIR) && bun install --frozen-lockfile
+	@echo "$(GREEN)✓ Dépendances web installées$(NC)"
+
+web-lint: ## Lance eslint sur le next-gen web/ (SvelteKit + TypeScript)
+	@echo "$(BLUE)Lancement d'eslint sur $(WEB_DIR)/...$(NC)"
+	cd $(WEB_DIR) && bun run lint
+	@echo "$(GREEN)✓ Lint web terminé$(NC)"
+
+web-lint-fix: ## Corige automatiquement les problèmes eslint du next-gen web/
+	@echo "$(BLUE)Correction eslint $(WEB_DIR)/...$(NC)"
+	cd $(WEB_DIR) && bun run lint:fix
+	@echo "$(GREEN)✓ Lint web corrigé$(NC)"
+
+web-check: ## Vérifie le typage du next-gen web/ (svelte-check)
+	@echo "$(BLUE)Vérification du typage $(WEB_DIR)/ (svelte-check)...$(NC)"
+	cd $(WEB_DIR) && bun run check
+	@echo "$(GREEN)✓ Vérification web terminée$(NC)"
+
+web-test: ## Lance les tests unitaires du next-gen web/ (vitest)
+	@echo "$(BLUE)Tests unitaires $(WEB_DIR)/ (vitest)...$(NC)"
+	cd $(WEB_DIR) && bun run test
+	@echo "$(GREEN)✓ Tests web terminés$(NC)"
+
+# --- Lint combiné (server + web) ---
+
+lint: server-lint web-lint ## Lance le lint sur server/ (Go) et web/ (SvelteKit)
+	@echo "$(GREEN)✓ Lint next-gen (server + web) terminé$(NC)"
+

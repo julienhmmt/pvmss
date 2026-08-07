@@ -5,13 +5,12 @@ import (
 	"errors"
 	"log/slog"
 	"os"
+	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/inventory"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"pvmss/server/internal/cluster"
-	"pvmss/server/internal/inventory"
 )
 
 // callCountClient wraps a cluster.Client and counts Snapshot calls — the
@@ -26,6 +25,7 @@ type callCountClient struct {
 
 func (c *callCountClient) Snapshot(ctx context.Context) (cluster.Snapshot, error) {
 	c.calls.Add(1)
+
 	if c.delay > 0 {
 		select {
 		case <-time.After(c.delay):
@@ -33,9 +33,11 @@ func (c *callCountClient) Snapshot(ctx context.Context) (cluster.Snapshot, error
 			return cluster.Snapshot{}, ctx.Err()
 		}
 	}
+
 	if c.err != nil {
 		return cluster.Snapshot{}, c.err
 	}
+
 	return c.snapshot, nil
 }
 
@@ -53,6 +55,8 @@ func testLogger() *slog.Logger {
 
 // TestWorker_SuccessfulCycleSwapsIndex — a successful refresh stores an Index
 // in the projection with a non-zero RefreshedAt.
+//
+//nolint:paralleltest // serial: shared inventory worker fixture
 func TestWorker_SuccessfulCycleSwapsIndex(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot()}
 	projection := inventory.NewProjection()
@@ -66,6 +70,7 @@ func TestWorker_SuccessfulCycleSwapsIndex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if at.IsZero() {
 		t.Fatal("refreshedAt should not be zero after successful refresh")
 	}
@@ -74,12 +79,15 @@ func TestWorker_SuccessfulCycleSwapsIndex(t *testing.T) {
 	if idx == nil {
 		t.Fatal("projection should be non-nil after successful refresh")
 	}
+
 	if !idx.RefreshedAt.Equal(at) {
 		t.Fatalf("projection RefreshedAt %v != returned %v", idx.RefreshedAt, at)
 	}
+
 	if len(idx.Nodes) != 3 {
 		t.Fatalf("expected 3 nodes, got %d", len(idx.Nodes))
 	}
+
 	if len(idx.ByVMID) != 25 {
 		t.Fatalf("expected 25 VMs, got %d", len(idx.ByVMID))
 	}
@@ -87,6 +95,8 @@ func TestWorker_SuccessfulCycleSwapsIndex(t *testing.T) {
 
 // TestWorker_FailingCycleLeavesPreviousIndex — FR-004: a failed refresh does
 // not clear or corrupt the existing projection.
+//
+//nolint:paralleltest // serial: shared inventory worker fixture
 func TestWorker_FailingCycleLeavesPreviousIndex(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot()}
 	projection := inventory.NewProjection()
@@ -97,6 +107,7 @@ func TestWorker_FailingCycleLeavesPreviousIndex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("first refresh: %v", err)
 	}
+
 	firstIdx := projection.Load()
 	if firstIdx == nil {
 		t.Fatal("first refresh should have stored an index")
@@ -104,6 +115,7 @@ func TestWorker_FailingCycleLeavesPreviousIndex(t *testing.T) {
 
 	// Second refresh fails — the client returns an error.
 	client.err = cluster.ErrUnreachable
+
 	_, err = worker.Refresh(context.Background())
 	if err == nil {
 		t.Fatal("expected error from failing refresh")
@@ -114,6 +126,7 @@ func TestWorker_FailingCycleLeavesPreviousIndex(t *testing.T) {
 	if secondIdx != firstIdx {
 		t.Fatal("projection pointer changed after failed refresh — FR-004 violation")
 	}
+
 	if !secondIdx.RefreshedAt.Equal(firstAt) {
 		t.Fatalf("RefreshedAt changed after failed refresh: %v vs %v", secondIdx.RefreshedAt, firstAt)
 	}
@@ -122,6 +135,8 @@ func TestWorker_FailingCycleLeavesPreviousIndex(t *testing.T) {
 // TestWorker_CallsClientOnceEvenUnderConcurrentReads — SC-001: the cluster
 // client is called at most once per refresh cycle, regardless of how many
 // concurrent readers access the projection during that cycle.
+//
+//nolint:paralleltest // serial: shared inventory worker fixture
 func TestWorker_CallsClientOnceEvenUnderConcurrentReads(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot()}
 	projection := inventory.NewProjection()
@@ -133,17 +148,20 @@ func TestWorker_CallsClientOnceEvenUnderConcurrentReads(t *testing.T) {
 
 	// Start N goroutines reading the projection concurrently with a refresh.
 	const N = 50
+
 	var wg sync.WaitGroup
 	wg.Add(N + 1)
 
 	go func() {
 		defer wg.Done()
+
 		_, _ = worker.Refresh(context.Background())
 	}()
 
-	for i := 0; i < N; i++ {
+	for range N {
 		go func() {
 			defer wg.Done()
+
 			if idx := projection.Load(); idx != nil {
 				_ = idx.Nodes
 				_ = idx.ByVMID
@@ -152,9 +170,11 @@ func TestWorker_CallsClientOnceEvenUnderConcurrentReads(t *testing.T) {
 			}
 		}()
 	}
+
 	wg.Wait()
 
 	callsAfter := client.calls.Load()
+
 	additionalCalls := callsAfter - callsBefore
 	if additionalCalls != 1 {
 		t.Fatalf("expected exactly 1 additional client call, got %d (SC-001)", additionalCalls)
@@ -164,20 +184,26 @@ func TestWorker_CallsClientOnceEvenUnderConcurrentReads(t *testing.T) {
 // TestWorker_ConcurrentRefreshesSingleFlight — multiple concurrent refresh
 // requests result in exactly one client call (in-flight dedup). The client
 // has a delay so all goroutines arrive while the first is in flight.
+//
+//nolint:paralleltest // serial: shared inventory worker fixture
 func TestWorker_ConcurrentRefreshesSingleFlight(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot(), delay: 100 * time.Millisecond}
 	projection := inventory.NewProjection()
 	worker := inventory.NewWorker(client, projection, time.Hour, testLogger())
 
 	const N = 10
+
 	var wg sync.WaitGroup
 	wg.Add(N)
-	for i := 0; i < N; i++ {
+
+	for range N {
 		go func() {
 			defer wg.Done()
+
 			_, _ = worker.Refresh(context.Background())
 		}()
 	}
+
 	wg.Wait()
 
 	if client.calls.Load() != 1 {
@@ -188,6 +214,8 @@ func TestWorker_ConcurrentRefreshesSingleFlight(t *testing.T) {
 // TestWorker_RunDoesInitialRefresh — Run performs an initial refresh before
 // starting the ticker, so the projection is populated before the HTTP server
 // accepts traffic (T015).
+//
+//nolint:paralleltest // serial: shared inventory worker fixture
 func TestWorker_RunDoesInitialRefresh(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot()}
 	projection := inventory.NewProjection()
@@ -195,6 +223,7 @@ func TestWorker_RunDoesInitialRefresh(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
+
 	go func() {
 		worker.Run(ctx)
 		close(done)
@@ -202,10 +231,8 @@ func TestWorker_RunDoesInitialRefresh(t *testing.T) {
 
 	// Wait for the initial refresh to populate the projection.
 	deadline := time.After(2 * time.Second)
-	for {
-		if projection.Load() != nil {
-			break
-		}
+
+	for projection.Load() == nil {
 		select {
 		case <-deadline:
 			t.Fatal("Run did not perform initial refresh within 2s")
@@ -221,6 +248,8 @@ func TestWorker_RunDoesInitialRefresh(t *testing.T) {
 // TestWorker_FailingFirstRefreshLeavesNil — edge case: if the very first
 // refresh fails, the projection remains nil (FR-009: never-refreshed is
 // distinct from empty).
+//
+//nolint:paralleltest // serial: shared inventory worker fixture
 func TestWorker_FailingFirstRefreshLeavesNil(t *testing.T) {
 	client := &callCountClient{err: cluster.ErrUnreachable}
 	projection := inventory.NewProjection()
@@ -230,6 +259,7 @@ func TestWorker_FailingFirstRefreshLeavesNil(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error from failing first refresh")
 	}
+
 	if projection.Load() != nil {
 		t.Fatal("projection should be nil after failed first refresh (FR-009)")
 	}
@@ -237,19 +267,22 @@ func TestWorker_FailingFirstRefreshLeavesNil(t *testing.T) {
 
 // TestWorker_ShrinkingDataset — edge case: if the dataset shrinks between
 // refreshes (a node disappears), the projection reflects the new, smaller set.
+//
+//nolint:paralleltest // serial: shared inventory worker fixture
 func TestWorker_ShrinkingDataset(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot()}
 	projection := inventory.NewProjection()
 	worker := inventory.NewWorker(client, projection, time.Hour, testLogger())
 
 	_, _ = worker.Refresh(context.Background())
+
 	if len(projection.Load().Nodes) != 3 {
 		t.Fatalf("expected 3 nodes initially, got %d", len(projection.Load().Nodes))
 	}
 
 	// Shrink the dataset to 1 node, 0 VMs, 0 storages.
 	client.snapshot = cluster.Snapshot{
-		Nodes:    []cluster.Node{{Name: "pve-node-01", Status: cluster.NodeOnline}},
+		Nodes:    []cluster.Node{{Name: cluster.FakeNode01, Status: cluster.NodeOnline}},
 		VMs:      nil,
 		Storages: nil,
 	}
@@ -259,12 +292,15 @@ func TestWorker_ShrinkingDataset(t *testing.T) {
 	if len(idx.Nodes) != 1 {
 		t.Fatalf("expected 1 node after shrink, got %d", len(idx.Nodes))
 	}
+
 	if len(idx.ByVMID) != 0 {
 		t.Fatalf("expected 0 VMs after shrink, got %d", len(idx.ByVMID))
 	}
 }
 
 // Ensure errors.Is works for common sentinel checks.
+//
+//nolint:paralleltest // serial: shared inventory worker fixture
 func TestWorker_ErrorWrapping(t *testing.T) {
 	client := &callCountClient{err: cluster.ErrUnreachable}
 	projection := inventory.NewProjection()
@@ -280,6 +316,8 @@ func TestWorker_ErrorWrapping(t *testing.T) {
 // is cancelled by the worker's per-call timeout, so the singleflight lock is
 // released and a later refresh can proceed (golang-design-patterns rule 9:
 // every external call has a timeout).
+//
+//nolint:paralleltest // serial: shared inventory worker fixture
 func TestWorker_TimeoutCancelsHungClient(t *testing.T) {
 	hung := &hungClient{}
 	projection := inventory.NewProjection()
@@ -298,6 +336,7 @@ func TestWorker_TimeoutCancelsHungClient(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected timeout error from hung client, got nil")
 	}
+
 	if elapsed > time.Second {
 		t.Fatalf("refresh took %v, should have timed out near 50ms", elapsed)
 	}
@@ -313,15 +352,19 @@ func TestWorker_TimeoutCancelsHungClient(t *testing.T) {
 		inventory.WithRefreshTimeout(2*time.Second),
 	)
 	done := make(chan struct{})
+
 	go func() {
 		_, _ = worker2.Refresh(context.Background())
+
 		close(done)
 	}()
+
 	select {
 	case <-done:
 	case <-time.After(3 * time.Second):
 		t.Fatal("second refresh hung — singleflight lock was not released after timeout")
 	}
+
 	if projection.Load() == nil {
 		t.Fatal("projection should be populated after the second, successful refresh")
 	}

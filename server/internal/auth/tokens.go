@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -46,40 +47,49 @@ func NewTokenService(repository TokenRepository) *TokenService {
 // Create generates a secret shown once to the caller and persists only its hash.
 func (s *TokenService) Create(ctx context.Context, identity Identity, label, scope string) (TokenRecord, string, error) {
 	if scope != "read" && scope != "read_write" {
-		return TokenRecord{}, "", fmt.Errorf("invalid token scope")
+		return TokenRecord{}, "", errors.New("invalid token scope")
 	}
+
 	label = strings.TrimSpace(label)
 	if label == "" {
-		return TokenRecord{}, "", fmt.Errorf("token label is required")
+		return TokenRecord{}, "", errors.New("token label is required")
 	}
+
 	id, err := randomHex(12)
 	if err != nil {
 		return TokenRecord{}, "", err
 	}
+
 	secret, err := randomHex(32)
 	if err != nil {
 		return TokenRecord{}, "", err
 	}
+
 	raw := "pvmss_" + id + "_" + secret
 	hash := sha256.Sum256([]byte(raw))
 	now := time.Now().UTC()
+
 	token := TokenRecord{ID: id, Hash: hash[:], Identity: identity, Scope: scope, Label: label, CreatedAt: now}
 	if err := s.repository.CreateToken(ctx, token); err != nil {
 		return TokenRecord{}, "", fmt.Errorf("create API token: %w", err)
 	}
+
 	return token, raw, nil
 }
 
 // Resolve validates a bearer token and records its use.
 func (s *TokenService) Resolve(ctx context.Context, raw string) (Identity, error) {
 	hash := sha256.Sum256([]byte(raw))
+
 	token, err := s.repository.FindToken(ctx, hash[:])
 	if err != nil || (token.ExpiresAt != nil && !token.ExpiresAt.After(time.Now())) {
 		return Identity{}, ErrUnauthenticated
 	}
+
 	if err := s.repository.TouchToken(ctx, token.ID, time.Now().UTC()); err != nil {
 		return Identity{}, fmt.Errorf("record API token use: %w", err)
 	}
+
 	return token.Identity, nil
 }
 
@@ -89,6 +99,7 @@ func (s *TokenService) List(ctx context.Context, username string) ([]TokenRecord
 	if err != nil {
 		return nil, fmt.Errorf("list API tokens: %w", err)
 	}
+
 	return tokens, nil
 }
 
@@ -104,5 +115,6 @@ func randomHex(size int) (string, error) {
 	if _, err := rand.Read(bytes); err != nil {
 		return "", fmt.Errorf("read token entropy: %w", err)
 	}
+
 	return hex.EncodeToString(bytes), nil
 }

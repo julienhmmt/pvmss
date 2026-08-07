@@ -37,3 +37,18 @@ func (Proxmox) Delete(_ context.Context, _ string, _ int) error {
 func (Proxmox) Patch(_ context.Context, _ string, _ int, _, _ string) error {
 	return ErrNotImplemented
 }
+
+// NextVMID implements Creator.
+func (Proxmox) NextVMID(_ context.Context) (int, error) {
+	return 0, ErrNotImplemented
+}
+
+// CreateVM implements Creator.
+func (Proxmox) CreateVM(_ context.Context, _ VMSpec) (string, error) {
+	return "", ErrNotImplemented
+}
+
+// TaskStatus implements Creator.
+func (Proxmox) TaskStatus(_ context.Context, _ string) (TaskStatus, error) {
+	return TaskStatus{}, ErrNotImplemented
+}

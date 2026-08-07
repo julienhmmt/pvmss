@@ -24,7 +24,7 @@ type spaHandler struct {
 }
 
 // NewRouter wires the public API and the static SPA handler.
-func NewRouter(health http.Handler, clusterNodes http.Handler, clusterRefresh http.Handler, vms http.Handler, vmDetail http.Handler, auth *Auth, webBuildDir string, log *slog.Logger) *http.ServeMux {
+func NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail http.Handler, vmCreate *VMCreate, tasks *Tasks, auth *Auth, webBuildDir string, log *slog.Logger) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("GET /health", health)
 	mux.Handle("GET /api/v1/cluster/nodes", auth.Require(clusterNodes))
@@ -33,6 +33,16 @@ func NewRouter(health http.Handler, clusterNodes http.Handler, clusterRefresh ht
 	// itself (for scope enforcement) and calls h.auth.Principal(r) directly,
 	// returning 401 on its own — wrapping would just re-run the same check.
 	mux.Handle("GET /api/v1/vms", vms)
+	// VM creation + catalog + task polling — same Principal pattern as above.
+	// Nil guards let router tests omit these handlers without panicking.
+	if vmCreate != nil {
+		mux.Handle("POST /api/v1/vms", vmCreate)
+		mux.Handle("GET /api/v1/vm-create/catalog", http.HandlerFunc(vmCreate.ServeCatalog))
+	}
+
+	if tasks != nil {
+		mux.Handle("GET /api/v1/tasks/{upid}", tasks)
+	}
 	// VM detail + actions + delete + patch — all gated by vm.Resolve() inside
 	// the handler. Same reason as GET /vms: not wrapped in auth.Require.
 	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}", vmDetail)
@@ -47,8 +57,9 @@ func NewRouter(health http.Handler, clusterNodes http.Handler, clusterRefresh ht
 	mux.HandleFunc("GET /api/v1/auth/tokens", auth.ListTokens)
 	mux.HandleFunc("DELETE /api/v1/auth/tokens/{id}", auth.RevokeToken)
 	mux.HandleFunc("POST /api/v1/auth/password", auth.ChangePassword)
+
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
-		mux.Handle(method+" /api/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mux.Handle(method+" /api/", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			if err := writeError(w, http.StatusNotFound, "unknown API path"); err != nil {
 				log.Error("failed to write API 404", "component", "httpapi", "error", err)
 			}
@@ -80,6 +91,7 @@ func (s *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				s.log.Error("failed to write asset 404", "component", "httpapi", "path", p, "error", writeErr)
 			}
 		}
+
 		return
 	}
 
@@ -87,6 +99,7 @@ func (s *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := s.serveFile(w, r, p); err == nil {
 		return
 	}
+
 	if err := s.serveFile(w, r, s.index); err != nil {
 		if writeErr := writeTextError(w, http.StatusNotFound, "shell not found"); writeErr != nil {
 			s.log.Error("failed to write shell 404", "component", "httpapi", "path", p, "error", writeErr)
@@ -100,16 +113,20 @@ func (s *spaHandler) serveFile(w http.ResponseWriter, r *http.Request, name stri
 		if !errors.Is(err, fs.ErrNotExist) {
 			s.log.Error("failed to open static file", "component", "httpapi", "path", name, "error", err)
 		}
+
 		return err
 	}
 	defer func() { _ = f.Close() }()
+
 	st, err := f.Stat()
 	if err != nil {
 		return err
 	}
+
 	if st.IsDir() {
 		return fs.ErrNotExist
 	}
+
 	http.ServeContent(
 		w,
 		r,
@@ -117,6 +134,7 @@ func (s *spaHandler) serveFile(w http.ResponseWriter, r *http.Request, name stri
 		st.ModTime(),
 		f,
 	)
+
 	return nil
 }
 
@@ -125,6 +143,7 @@ func writeJSON(w http.ResponseWriter, status int, body []byte) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_, err := w.Write(body)
+
 	return err
 }
 
@@ -134,6 +153,7 @@ func writeError(w http.ResponseWriter, status int, detail string) error {
 	if err != nil {
 		return fmt.Errorf("marshal error response: %w", err)
 	}
+
 	return writeJSON(w, status, body)
 }
 
@@ -142,5 +162,6 @@ func writeTextError(w http.ResponseWriter, status int, detail string) error {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(status)
 	_, err := w.Write([]byte(detail))
+
 	return err
 }

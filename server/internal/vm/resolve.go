@@ -2,12 +2,11 @@ package vm
 
 import (
 	"errors"
-	"slices"
-	"time"
-
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"slices"
+	"time"
 )
 
 // ErrNotFound is returned by Resolve when the (cluster, vmid) pair is absent
@@ -73,12 +72,15 @@ func Resolve(index *inventory.Index, actor auth.Identity, clusterName string, vm
 	if !ok {
 		return Entity{}, ErrNotFound
 	}
+
 	if !slices.Contains(machine.Tags, pvmssTag) {
 		return Entity{}, ErrNotFound
 	}
+
 	if !actor.IsAdmin && machine.Pool != actor.Pool {
 		return Entity{}, ErrForbidden
 	}
+
 	return Entity{
 		Cluster:     clusterName,
 		VMID:        machine.VMID,

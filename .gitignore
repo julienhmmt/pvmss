@@ -36,3 +36,4 @@ frontend/admin/
 pvmss.db
 pvmss.db-shm
 pvmss.db-wal
+golint.txt

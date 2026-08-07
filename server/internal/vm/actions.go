@@ -4,13 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"regexp"
-	"strings"
-	"time"
-
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"regexp"
+	"strings"
+	"time"
 )
 
 // AuditRecorder is the store dependency for recording a write. Only the method
@@ -76,6 +75,7 @@ func ValidateName(name string) error {
 	if !hostnameRe.MatchString(name) {
 		return fmt.Errorf("%w: %q", ErrInvalidName, name)
 	}
+
 	return nil
 }
 
@@ -88,17 +88,22 @@ func Action(ctx context.Context, index *inventory.Index, actor auth.Identity, cl
 	if !validActions[action] {
 		return fmt.Errorf("%w: %q", ErrActionRejected, action)
 	}
+
 	entity, err := Resolve(index, actor, clusterName, vmid)
 	if err != nil {
 		return err
 	}
+
 	if err := writer.Action(ctx, entity.Node, entity.VMID, action); err != nil {
 		return fmt.Errorf("cluster action: %w", err)
 	}
+
 	if err := audit.RecordAction(ctx, actor.Username, clusterName, vmid, action); err != nil {
 		return fmt.Errorf("record audit: %w", err)
 	}
+
 	_, _ = refresher.Refresh(ctx)
+
 	return nil
 }
 
@@ -109,13 +114,17 @@ func Delete(ctx context.Context, index *inventory.Index, actor auth.Identity, cl
 	if err != nil {
 		return err
 	}
+
 	if err := writer.Delete(ctx, entity.Node, entity.VMID); err != nil {
 		return fmt.Errorf("cluster delete: %w", err)
 	}
+
 	if err := audit.RecordAction(ctx, actor.Username, clusterName, vmid, "delete"); err != nil {
 		return fmt.Errorf("record audit: %w", err)
 	}
+
 	_, _ = refresher.Refresh(ctx)
+
 	return nil
 }
 
@@ -129,28 +138,36 @@ func Patch(ctx context.Context, index *inventory.Index, actor auth.Identity, clu
 	if name == "" && strings.TrimSpace(description) == "" {
 		return ErrEmptyPatch
 	}
+
 	if name != "" {
 		if err := ValidateName(name); err != nil {
 			return err
 		}
 	}
+
 	if len(description) > maxDescriptionLength {
 		return ErrDescriptionTooLong
 	}
+
 	entity, err := Resolve(index, actor, clusterName, vmid)
 	if err != nil {
 		return err
 	}
+
 	if err := writer.Patch(ctx, entity.Node, entity.VMID, name, description); err != nil {
 		return fmt.Errorf("cluster patch: %w", err)
 	}
+
 	auditAction := "edit_description"
 	if name != "" {
 		auditAction = "rename"
 	}
+
 	if err := audit.RecordAction(ctx, actor.Username, clusterName, vmid, auditAction); err != nil {
 		return fmt.Errorf("record audit: %w", err)
 	}
+
 	_, _ = refresher.Refresh(ctx)
+
 	return nil
 }

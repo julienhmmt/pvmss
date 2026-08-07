@@ -1,6 +1,8 @@
+//nolint:noctx // test scaffolding does not need real context
 package httpapi_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -8,13 +10,18 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"pvmss/server/internal/httpapi"
 	"strings"
 	"testing"
-
-	"pvmss/server/internal/httpapi"
 )
 
-func TestHealth(t *testing.T) {
+const (
+	healthStatusHealthy   = "healthy"
+	healthStatusUnhealthy = "unhealthy"
+)
+
+//nolint:paralleltest // serial: shared health fixture
+func TestHealth(t *testing.T) { //nolint:gocyclo // table-driven test covers all health response branches
 	leakyErr := errors.New("connection refused: /tmp/pvmss.db")
 
 	cases := []struct {
@@ -25,25 +32,25 @@ func TestHealth(t *testing.T) {
 		wantBody   httpapi.HealthResponse
 	}{
 		{
-			name:   "healthy",
+			name:   healthStatusHealthy,
 			method: http.MethodGet,
 			pinger: fakePinger{err: nil},
 			wantBody: httpapi.HealthResponse{
-				Status: "healthy",
+				Status: healthStatusHealthy,
 				Checks: map[string]httpapi.CheckResult{
-					"database": {Status: "healthy"},
+					"database": {Status: healthStatusHealthy},
 				},
 			},
 		},
 		{
-			name:       "unhealthy",
+			name:       healthStatusUnhealthy,
 			method:     http.MethodGet,
 			pinger:     fakePinger{err: leakyErr},
 			wantStatus: http.StatusServiceUnavailable,
 			wantBody: httpapi.HealthResponse{
-				Status: "unhealthy",
+				Status: healthStatusUnhealthy,
 				Checks: map[string]httpapi.CheckResult{
-					"database": {Status: "unhealthy", Detail: "database unreachable"},
+					"database": {Status: healthStatusUnhealthy, Detail: "database unreachable"},
 				},
 			},
 		},
@@ -68,6 +75,7 @@ func TestHealth(t *testing.T) {
 			if c.wantStatus != 0 {
 				wantStatus = c.wantStatus
 			}
+
 			if w.Code != wantStatus {
 				t.Fatalf("status = %d, want %d", w.Code, wantStatus)
 			}
@@ -79,6 +87,7 @@ func TestHealth(t *testing.T) {
 				if !strings.Contains(w.Header().Get("Allow"), "GET") {
 					t.Fatalf("missing Allow header for 405: %q", w.Header().Get("Allow"))
 				}
+
 				return
 			}
 
@@ -90,21 +99,27 @@ func TestHealth(t *testing.T) {
 			if resp.Status != c.wantBody.Status {
 				t.Fatalf("status = %q, want %q", resp.Status, c.wantBody.Status)
 			}
+
+			//nolint:nestif // nested validation mirrors the nested health response
 			if len(c.wantBody.Checks) > 0 {
 				gotDB := resp.Checks["database"]
+
 				wantDB := c.wantBody.Checks["database"]
 				if gotDB.Status != wantDB.Status || gotDB.Detail != wantDB.Detail {
 					t.Fatalf("database check = %+v, want %+v", gotDB, wantDB)
 				}
-				if c.name == "unhealthy" {
+
+				if c.name == healthStatusUnhealthy {
 					if strings.Contains(gotDB.Detail, c.pinger.err.Error()) {
 						t.Fatalf("detail leaks raw error: %q", gotDB.Detail)
 					}
+
 					if strings.Contains(gotDB.Detail, "/tmp/pvmss.db") {
 						t.Fatalf("detail leaks path: %q", gotDB.Detail)
 					}
 				}
 			}
+
 			if resp.Timestamp == "" {
 				t.Fatalf("timestamp is empty")
 			}
@@ -112,8 +127,10 @@ func TestHealth(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared health fixture
 func TestHealth_LogsError_WhenUnhealthy(t *testing.T) {
 	var buf strings.Builder
+
 	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelError}))
 	h := httpapi.NewHealth(fakePinger{err: errors.New("boom")}, logger)
 
@@ -129,6 +146,7 @@ func TestHealth_LogsError_WhenUnhealthy(t *testing.T) {
 	if !strings.Contains(output, "database health check failed") {
 		t.Fatalf("expected error log, got %q", output)
 	}
+
 	if !strings.Contains(output, "boom") {
 		t.Fatalf("expected raw error in server log, got %q", output)
 	}
@@ -136,10 +154,12 @@ func TestHealth_LogsError_WhenUnhealthy(t *testing.T) {
 	// The response detail must remain sanitized even though the server log
 	// contains the raw error.
 	body, _ := io.ReadAll(w.Result().Body)
+
 	var resp httpapi.HealthResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
+
 	if resp.Checks["database"].Detail != "database unreachable" {
 		t.Fatalf("response detail = %q, want %q", resp.Checks["database"].Detail, "database unreachable")
 	}
@@ -149,9 +169,10 @@ type fakePinger struct {
 	err error
 }
 
-func (f fakePinger) Ping() error {
+func (f fakePinger) Ping(_ context.Context) error {
 	if f.err != nil {
 		return f.err
 	}
+
 	return nil
 }

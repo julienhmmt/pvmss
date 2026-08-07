@@ -3,10 +3,9 @@ package inventory
 import (
 	"context"
 	"log/slog"
+	"pvmss/server/internal/cluster"
 	"sync"
 	"time"
-
-	"pvmss/server/internal/cluster"
 )
 
 // defaultRefreshTimeout caps how long a single cluster.Snapshot call may take.
@@ -60,6 +59,7 @@ func NewWorker(client cluster.Client, projection *Projection, interval time.Dura
 	for _, opt := range opts {
 		opt(w)
 	}
+
 	return w
 }
 
@@ -76,9 +76,11 @@ func (w *Worker) refreshCycle(ctx context.Context) (time.Time, error) {
 		w.log.Error("inventory refresh failed", "component", "inventory", "error", err)
 		return time.Time{}, err
 	}
+
 	idx := BuildIndex(snap)
 	idx.RefreshedAt = time.Now()
 	w.projection.store(&idx)
+
 	return idx.RefreshedAt, nil
 }
 
@@ -90,6 +92,7 @@ func (w *Worker) Refresh(ctx context.Context) (time.Time, error) {
 	if w.inFlight != nil {
 		pending := w.inFlight
 		w.mu.Unlock()
+
 		select {
 		case <-pending.done:
 			return pending.at, pending.err
@@ -97,6 +100,7 @@ func (w *Worker) Refresh(ctx context.Context) (time.Time, error) {
 			return time.Time{}, ctx.Err()
 		}
 	}
+
 	pending := &inFlightRefresh{done: make(chan struct{})}
 	w.inFlight = pending
 	w.mu.Unlock()
@@ -121,6 +125,7 @@ func (w *Worker) Run(ctx context.Context) {
 
 	ticker := time.NewTicker(w.interval)
 	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
