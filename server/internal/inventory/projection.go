@@ -23,6 +23,7 @@ func NewProjection() *Projection {
 func NewProjectionFromIndex(idx *Index) *Projection {
 	p := &Projection{}
 	p.current.Store(idx)
+
 	return p
 }
 

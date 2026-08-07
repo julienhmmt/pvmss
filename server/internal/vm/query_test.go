@@ -2,13 +2,18 @@ package vm_test
 
 import (
 	"errors"
-	"slices"
-	"testing"
-
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/vm"
+	"slices"
+	"testing"
+)
+
+const (
+	testClusterName = "default"
+	testPvmssTag    = "pvmss"
+	testWebTag      = "web"
 )
 
 // testIndex builds a small projection across two pools and two nodes —
@@ -17,18 +22,19 @@ import (
 func testIndex() *inventory.Index {
 	index := inventory.BuildIndex(cluster.Snapshot{
 		VMs: []cluster.VM{
-			{VMID: 100, Name: "web-01", Node: "pve-node-01", Status: cluster.VMRunning, Pool: "pool-alice", Tags: []string{"pvmss", "web"}, CPUCores: 2, MemoryTotal: 4294967296},
-			{VMID: 101, Name: "web-02", Node: "pve-node-01", Status: cluster.VMStopped, Pool: "pool-alice", Tags: []string{"pvmss", "web"}, CPUCores: 4, MemoryTotal: 2147483648},
-			{VMID: 102, Name: "db-01", Node: "pve-node-02", Status: cluster.VMRunning, Pool: "pool-alice", Tags: []string{"pvmss", "db"}, CPUCores: 8, MemoryTotal: 8589934592},
-			{VMID: 103, Name: "cache-01", Node: "pve-node-01", Status: cluster.VMPaused, Pool: "pool-bob", Tags: []string{"pvmss", "cache"}, CPUCores: 1, MemoryTotal: 1073741824},
-			{VMID: 104, Name: "build-01", Node: "pve-node-02", Status: cluster.VMStopped, Pool: "pool-bob", Tags: nil, CPUCores: 4, MemoryTotal: 8589934592},
+			{VMID: 100, Name: "web-01", Node: cluster.FakeNode01, Status: cluster.VMRunning, Pool: cluster.FakePoolAlice, Tags: []string{testPvmssTag, testWebTag}, CPUCores: 2, MemoryTotal: 4294967296},
+			{VMID: 101, Name: "web-02", Node: cluster.FakeNode01, Status: cluster.VMStopped, Pool: cluster.FakePoolAlice, Tags: []string{testPvmssTag, testWebTag}, CPUCores: 4, MemoryTotal: 2147483648},
+			{VMID: 102, Name: "db-01", Node: cluster.FakeNode02, Status: cluster.VMRunning, Pool: cluster.FakePoolAlice, Tags: []string{testPvmssTag, "db"}, CPUCores: 8, MemoryTotal: 8589934592},
+			{VMID: 103, Name: "cache-01", Node: cluster.FakeNode01, Status: cluster.VMPaused, Pool: cluster.FakePoolBob, Tags: []string{testPvmssTag, "cache"}, CPUCores: 1, MemoryTotal: 1073741824},
+			{VMID: 104, Name: "build-01", Node: cluster.FakeNode02, Status: cluster.VMStopped, Pool: cluster.FakePoolBob, Tags: nil, CPUCores: 4, MemoryTotal: 8589934592},
 		},
 	})
+
 	return &index
 }
 
 var (
-	alice = auth.Identity{Username: "alice@pve", Pool: "pool-alice"}
+	alice = auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}
 	admin = auth.Identity{Username: "admin", IsAdmin: true}
 )
 
@@ -37,9 +43,11 @@ func vmids(result vm.ListResult) []int {
 	for i, item := range result.Items {
 		ids[i] = item.VMID
 	}
+
 	return ids
 }
 
+//nolint:paralleltest // serial: shared in-memory fixture state
 func TestList_ScopeEnforcement(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -59,8 +67,10 @@ func TestList_ScopeEnforcement(t *testing.T) {
 			if err != nil {
 				t.Fatalf("List: %v", err)
 			}
+
 			got := vmids(result)
 			slices.Sort(got)
+
 			if !slices.Equal(got, tt.wantIDs) {
 				t.Errorf("vmids = %v, want %v", got, tt.wantIDs)
 			}
@@ -68,17 +78,18 @@ func TestList_ScopeEnforcement(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared in-memory fixture state
 func TestList_SearchClassification(t *testing.T) {
 	tests := []struct {
 		name    string
 		search  string
 		wantIDs []int
 	}{
-		{name: "name substring", search: "web", wantIDs: []int{100, 101}},
+		{name: "name substring", search: testWebTag, wantIDs: []int{100, 101}},
 		{name: "name substring case-insensitive", search: "WEB", wantIDs: []int{100, 101}},
 		{name: "tag match", search: "db", wantIDs: []int{102}},
 		{name: "numeric id", search: "101", wantIDs: []int{101}},
-		{name: "union of name and tag matches, deduplicated", search: "pvmss", wantIDs: []int{100, 101, 102}},
+		{name: "union of name and tag matches, deduplicated", search: testPvmssTag, wantIDs: []int{100, 101, 102}},
 		{name: "no match", search: "does-not-exist", wantIDs: nil},
 	}
 	for _, tt := range tests {
@@ -87,11 +98,14 @@ func TestList_SearchClassification(t *testing.T) {
 			if err != nil {
 				t.Fatalf("List: %v", err)
 			}
+
 			got := vmids(result)
 			slices.Sort(got)
+
 			if !slices.Equal(got, tt.wantIDs) {
 				t.Errorf("vmids = %v, want %v", got, tt.wantIDs)
 			}
+
 			if len(tt.wantIDs) > 1 && len(got) != len(tt.wantIDs) {
 				t.Errorf("duplicate rows: %v", got)
 			}
@@ -99,20 +113,24 @@ func TestList_SearchClassification(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared in-memory fixture state
 func TestList_SearchNeverCrossesScope(t *testing.T) {
 	// "cache-01" is bob's VM; alice's search must not surface it (SC-005).
 	result, err := vm.List(testIndex(), vm.ListQuery{Search: "cache"}, alice, -1)
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
+
 	if len(result.Items) != 0 {
 		t.Errorf("vmids = %v, want none", vmids(result))
 	}
+
 	if result.EmptyReason != vm.EmptyNoMatch {
 		t.Errorf("EmptyReason = %q, want %q", result.EmptyReason, vm.EmptyNoMatch)
 	}
 }
 
+//nolint:paralleltest // serial: shared in-memory fixture state
 func TestList_Filters(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -120,9 +138,9 @@ func TestList_Filters(t *testing.T) {
 		wantIDs []int
 	}{
 		{name: "status filter", query: vm.ListQuery{Status: cluster.VMRunning}, wantIDs: []int{100, 102}},
-		{name: "node filter", query: vm.ListQuery{Node: "pve-node-02"}, wantIDs: []int{102}},
-		{name: "status and node combined", query: vm.ListQuery{Status: cluster.VMStopped, Node: "pve-node-01"}, wantIDs: []int{101}},
-		{name: "search combined with status", query: vm.ListQuery{Search: "web", Status: cluster.VMStopped}, wantIDs: []int{101}},
+		{name: "node filter", query: vm.ListQuery{Node: cluster.FakeNode02}, wantIDs: []int{102}},
+		{name: "status and node combined", query: vm.ListQuery{Status: cluster.VMStopped, Node: cluster.FakeNode01}, wantIDs: []int{101}},
+		{name: "search combined with status", query: vm.ListQuery{Search: testWebTag, Status: cluster.VMStopped}, wantIDs: []int{101}},
 		{name: "unknown node yields zero results, not an error", query: vm.ListQuery{Node: "no-such-node"}, wantIDs: nil},
 	}
 	for _, tt := range tests {
@@ -131,8 +149,10 @@ func TestList_Filters(t *testing.T) {
 			if err != nil {
 				t.Fatalf("List: %v", err)
 			}
+
 			got := vmids(result)
 			slices.Sort(got)
+
 			if !slices.Equal(got, tt.wantIDs) {
 				t.Errorf("vmids = %v, want %v", got, tt.wantIDs)
 			}
@@ -140,19 +160,22 @@ func TestList_Filters(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared in-memory fixture state
 func TestList_NodeFacetIgnoresNodeFilter(t *testing.T) {
 	// The facet is computed before the node filter so the dropdown does not
 	// shrink to hide its own selection (data-model.md step 4).
-	result, err := vm.List(testIndex(), vm.ListQuery{Node: "pve-node-02"}, alice, -1)
+	result, err := vm.List(testIndex(), vm.ListQuery{Node: cluster.FakeNode02}, alice, -1)
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
-	want := []string{"pve-node-01", "pve-node-02"}
+
+	want := []string{cluster.FakeNode01, cluster.FakeNode02}
 	if !slices.Equal(result.AvailableNodes, want) {
 		t.Errorf("AvailableNodes = %v, want %v", result.AvailableNodes, want)
 	}
 }
 
+//nolint:paralleltest // serial: shared in-memory fixture state
 func TestList_Sort(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -175,6 +198,7 @@ func TestList_Sort(t *testing.T) {
 			if err != nil {
 				t.Fatalf("List: %v", err)
 			}
+
 			if got := vmids(result); !slices.Equal(got, tt.wantIDs) {
 				t.Errorf("vmids = %v, want %v", got, tt.wantIDs)
 			}
@@ -182,6 +206,7 @@ func TestList_Sort(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared in-memory fixture state
 func TestList_InvalidSortByRejected(t *testing.T) {
 	_, err := vm.List(testIndex(), vm.ListQuery{SortBy: "unknownColumn"}, alice, -1)
 	if !errors.Is(err, vm.ErrInvalidSortBy) {
@@ -189,6 +214,7 @@ func TestList_InvalidSortByRejected(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared in-memory fixture state
 func TestList_Pagination(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -210,12 +236,15 @@ func TestList_Pagination(t *testing.T) {
 			if err != nil {
 				t.Fatalf("List: %v", err)
 			}
+
 			if got := vmids(result); !slices.Equal(got, tt.wantIDs) {
 				t.Errorf("vmids = %v, want %v", got, tt.wantIDs)
 			}
+
 			if result.Page != tt.wantPage {
 				t.Errorf("Page = %d, want %d", result.Page, tt.wantPage)
 			}
+
 			if result.Total != tt.wantTotal {
 				t.Errorf("Total = %d, want %d", result.Total, tt.wantTotal)
 			}
@@ -223,16 +252,20 @@ func TestList_Pagination(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared in-memory fixture state
 func TestList_EmptyReasons(t *testing.T) {
 	t.Run("no VMs owned", func(t *testing.T) {
 		carol := auth.Identity{Username: "carol@pve", Pool: "pool-carol"}
+
 		result, err := vm.List(testIndex(), vm.ListQuery{}, carol, -1)
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
+
 		if len(result.Items) != 0 {
 			t.Fatalf("Items = %v, want none", vmids(result))
 		}
+
 		if result.EmptyReason != vm.EmptyNoVMsOwned {
 			t.Errorf("EmptyReason = %q, want %q", result.EmptyReason, vm.EmptyNoVMsOwned)
 		}
@@ -242,6 +275,7 @@ func TestList_EmptyReasons(t *testing.T) {
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
+
 		if result.EmptyReason != vm.EmptyNoMatch {
 			t.Errorf("EmptyReason = %q, want %q", result.EmptyReason, vm.EmptyNoMatch)
 		}
@@ -251,18 +285,21 @@ func TestList_EmptyReasons(t *testing.T) {
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
+
 		if result.EmptyReason != "" {
 			t.Errorf("EmptyReason = %q, want empty", result.EmptyReason)
 		}
 	})
 }
 
+//nolint:paralleltest // serial: shared in-memory fixture state
 func TestList_Quota(t *testing.T) {
 	t.Run("non-admin default scope reports used against allowed", func(t *testing.T) {
 		result, err := vm.List(testIndex(), vm.ListQuery{}, alice, 10)
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
+
 		if result.Quota == nil || *result.Quota != (vm.Quota{Used: 3, Allowed: 10}) {
 			t.Errorf("Quota = %+v, want {Used:3 Allowed:10}", result.Quota)
 		}
@@ -272,6 +309,7 @@ func TestList_Quota(t *testing.T) {
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
+
 		if result.Quota == nil || result.Quota.Allowed != -1 {
 			t.Errorf("Quota = %+v, want Allowed -1", result.Quota)
 		}
@@ -281,6 +319,7 @@ func TestList_Quota(t *testing.T) {
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
+
 		if result.Quota != nil {
 			t.Errorf("Quota = %+v, want nil", result.Quota)
 		}
@@ -290,6 +329,7 @@ func TestList_Quota(t *testing.T) {
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
+
 		if result.Quota == nil || result.Quota.Allowed != 10 {
 			t.Errorf("Quota = %+v, want {Used:0 Allowed:10}", result.Quota)
 		}

@@ -23,7 +23,7 @@ type Fake struct{}
 type FakeCall struct {
 	Node   string
 	VMID   int
-	Action string // "start"|"stop"|"shutdown"|"reboot"|"reset"|"delete"|"patch"
+	Action string // "start"|"stop"|"shutdown"|"reboot"|"reset"|"delete"|"patch"|"create"
 	Name   string // set only for patch
 }
 
@@ -41,17 +41,22 @@ var (
 func (Fake) Snapshot(_ context.Context) (Snapshot, error) {
 	fakeVMMutex.RLock()
 	defer fakeVMMutex.RUnlock()
+
 	nodes := make([]Node, len(fakeNodes))
 	copy(nodes, fakeNodes)
+
 	vms := make([]VM, len(fakeVMs))
 	copy(vms, fakeVMs)
+
 	for i, vm := range fakeVMs {
 		if vm.Tags != nil {
 			vms[i].Tags = append([]string(nil), vm.Tags...)
 		}
 	}
+
 	storages := make([]Storage, len(fakeStorages))
 	copy(storages, fakeStorages)
+
 	return Snapshot{Nodes: nodes, VMs: vms, Storages: storages}, nil
 }
 
@@ -59,10 +64,12 @@ func (Fake) Snapshot(_ context.Context) (Snapshot, error) {
 func (Fake) Authenticate(_ context.Context, username, password string) (Identity, error) {
 	fakeIdentitiesMutex.RLock()
 	defer fakeIdentitiesMutex.RUnlock()
+
 	identity, ok := fakeIdentities[username]
 	if !ok || password != identity.password {
 		return Identity{}, ErrNotFound
 	}
+
 	return Identity{Username: username, Pool: identity.pool, IsAdmin: identity.isAdmin}, nil
 }
 
@@ -72,11 +79,14 @@ func (Fake) Authenticate(_ context.Context, username, password string) (Identity
 func (Fake) ChangePassword(_ context.Context, username, oldPassword, newPassword string) error {
 	fakeIdentitiesMutex.Lock()
 	defer fakeIdentitiesMutex.Unlock()
+
 	identity, ok := fakeIdentities[username]
 	if !ok || oldPassword != identity.password {
 		return ErrNotFound
 	}
+
 	fakeIdentities[username] = fakeIdentity{password: newPassword, pool: identity.pool, isAdmin: identity.isAdmin}
+
 	return nil
 }
 
@@ -86,10 +96,12 @@ func (Fake) ChangePassword(_ context.Context, username, oldPassword, newPassword
 func (Fake) Action(_ context.Context, node string, vmid int, action string) error {
 	fakeVMMutex.Lock()
 	defer fakeVMMutex.Unlock()
+
 	idx := slices.IndexFunc(fakeVMs, func(v VM) bool { return v.VMID == vmid && v.Node == node })
 	if idx < 0 {
 		return ErrNotFound
 	}
+
 	switch action {
 	case "start":
 		fakeVMs[idx].Status = VMRunning
@@ -106,7 +118,9 @@ func (Fake) Action(_ context.Context, node string, vmid int, action string) erro
 	default:
 		return ErrInvalidAction
 	}
+
 	recordCall(FakeCall{Node: node, VMID: vmid, Action: action})
+
 	return nil
 }
 
@@ -115,12 +129,16 @@ func (Fake) Action(_ context.Context, node string, vmid int, action string) erro
 func (Fake) Delete(_ context.Context, node string, vmid int) error {
 	fakeVMMutex.Lock()
 	defer fakeVMMutex.Unlock()
+
 	idx := slices.IndexFunc(fakeVMs, func(v VM) bool { return v.VMID == vmid && v.Node == node })
 	if idx < 0 {
 		return ErrNotFound
 	}
+
 	fakeVMs = slices.Delete(fakeVMs, idx, idx+1)
+
 	recordCall(FakeCall{Node: node, VMID: vmid, Action: "delete"})
+
 	return nil
 }
 
@@ -129,17 +147,22 @@ func (Fake) Delete(_ context.Context, node string, vmid int) error {
 func (Fake) Patch(_ context.Context, node string, vmid int, name, description string) error {
 	fakeVMMutex.Lock()
 	defer fakeVMMutex.Unlock()
+
 	idx := slices.IndexFunc(fakeVMs, func(v VM) bool { return v.VMID == vmid && v.Node == node })
 	if idx < 0 {
 		return ErrNotFound
 	}
+
 	if name != "" {
 		fakeVMs[idx].Name = name
 	}
+
 	if description != "" {
 		fakeVMs[idx].Description = description
 	}
+
 	recordCall(FakeCall{Node: node, VMID: vmid, Action: "patch", Name: name})
+
 	return nil
 }
 
@@ -149,18 +172,21 @@ func (Fake) Patch(_ context.Context, node string, vmid int, name, description st
 func FakeCalls() []FakeCall {
 	fakeCallMu.Lock()
 	defer fakeCallMu.Unlock()
+
 	return append([]FakeCall(nil), fakeCallLog...)
 }
 
 // FakeCallsFor returns the calls recorded for one VMID.
 func FakeCallsFor(vmid int) []FakeCall {
 	all := FakeCalls()
+
 	out := make([]FakeCall, 0, len(all))
 	for _, c := range all {
 		if c.VMID == vmid {
 			out = append(out, c)
 		}
 	}
+
 	return out
 }
 
@@ -171,14 +197,19 @@ func FakeCallsFor(vmid int) []FakeCall {
 func ResetFake() {
 	fakeVMMutex.Lock()
 	defer fakeVMMutex.Unlock()
+
 	fakeCallMu.Lock()
 	defer fakeCallMu.Unlock()
+
 	fakeVMs = originalFakeVMs()
 	fakeCallLog = nil
+
+	resetFakeCreateState()
 }
 
 func recordCall(call FakeCall) {
 	fakeCallMu.Lock()
+
 	fakeCallLog = append(fakeCallLog, call)
 	fakeCallMu.Unlock()
 }
@@ -189,12 +220,28 @@ type fakeIdentity struct {
 	isAdmin  bool
 }
 
+// Fixture identifiers shared by the fake dataset and tests across packages.
+// Extracted as constants to satisfy goconst and give the magic strings a name.
+const (
+	FakeNode01     = "pve-node-01"
+	FakeNode02     = "pve-node-02"
+	FakeNode03     = "pve-node-03"
+	FakePoolAlice  = "pool-alice"
+	FakePoolBob    = "pool-bob"
+	FakePoolCarol  = "pool-carol"
+	FakePoolShared = "pool-shared"
+	FakeUserAlice  = "alice@pve"
+	FakeUserBob    = "bob@pve"
+	FakeUserAdmin  = "admin@pve"
+	FakeTagPvmss   = "pvmss"
+)
+
 var fakeIdentitiesMutex sync.RWMutex
 
 var fakeIdentities = map[string]fakeIdentity{
-	"alice@pve": {password: "pvmss-alice", pool: "pool-alice"},
-	"bob@pve":   {password: "pvmss-bob", pool: "pool-bob"},
-	"admin@pve": {password: "pvmss-admin", isAdmin: true},
+	FakeUserAlice: {password: "pvmss-alice", pool: FakePoolAlice}, //nolint:gosec // demo fixture credential
+	FakeUserBob:   {password: "pvmss-bob", pool: FakePoolBob},     //nolint:gosec // demo fixture credential
+	FakeUserAdmin: {password: "pvmss-admin", isAdmin: true},       //nolint:gosec // fixture credentials for demo mode
 }
 
 // The dataset below is production code (constitution XI), reviewed and
@@ -204,7 +251,7 @@ var fakeIdentities = map[string]fakeIdentity{
 
 var fakeNodes = []Node{
 	{
-		Name:         "pve-node-01",
+		Name:         FakeNode01,
 		Status:       NodeOnline,
 		CPUCores:     32,
 		CPUUsage:     0.42,
@@ -214,7 +261,7 @@ var fakeNodes = []Node{
 		StorageUsed:  879609302220,
 	},
 	{
-		Name:         "pve-node-02",
+		Name:         FakeNode02,
 		Status:       NodeOnline,
 		CPUCores:     16,
 		CPUUsage:     0.15,
@@ -224,7 +271,7 @@ var fakeNodes = []Node{
 		StorageUsed:  219902325555,
 	},
 	{
-		Name:         "pve-node-03",
+		Name:         FakeNode03,
 		Status:       NodeOffline,
 		CPUCores:     16,
 		CPUUsage:     0,
@@ -236,18 +283,18 @@ var fakeNodes = []Node{
 }
 
 var fakePools = []Pool{
-	{Name: "pool-alice", Comment: "Alice's personal pool"},
-	{Name: "pool-bob", Comment: "Bob's personal pool"},
-	{Name: "pool-carol", Comment: "Carol's personal pool"},
-	{Name: "pool-shared", Comment: "Shared infrastructure pool"},
+	{Name: FakePoolAlice, Comment: "Alice's personal pool"},
+	{Name: FakePoolBob, Comment: "Bob's personal pool"},
+	{Name: FakePoolCarol, Comment: "Carol's personal pool"},
+	{Name: FakePoolShared, Comment: "Shared infrastructure pool"},
 }
 
 var fakeStorages = []Storage{
-	{Name: "local", Node: "pve-node-01", Type: "dir", Total: 2199023255552, Used: 879609302220},
-	{Name: "local-lvm", Node: "pve-node-01", Type: "lvm", Total: 549755813888, Used: 219902325555},
-	{Name: "ceph-data", Node: "pve-node-02", Type: "cephfs", Total: 1099511627776, Used: 329853488332},
-	{Name: "local", Node: "pve-node-02", Type: "dir", Total: 274877906944, Used: 68719476736},
-	{Name: "backup-nfs", Node: "pve-node-03", Type: "nfs", Total: 5497558138880, Used: 1099511627776},
+	{Name: "local", Node: FakeNode01, Type: "dir", Total: 2199023255552, Used: 879609302220},
+	{Name: "local-lvm", Node: FakeNode01, Type: "lvm", Total: 549755813888, Used: 219902325555},
+	{Name: "ceph-data", Node: FakeNode02, Type: "cephfs", Total: 1099511627776, Used: 329853488332},
+	{Name: "local", Node: FakeNode02, Type: "dir", Total: 274877906944, Used: 68719476736},
+	{Name: "backup-nfs", Node: FakeNode03, Type: "nfs", Total: 5497558138880, Used: 1099511627776},
 }
 
 // fakeUptimeOnStart is the uptime the fake assigns when a stopped VM is started
@@ -264,30 +311,30 @@ var fakeVMs = originalFakeVMs()
 // ResetFake can restore a fresh copy after a test mutates the live slice.
 func originalFakeVMs() []VM {
 	return []VM{
-		{VMID: 100, Name: "web-01", Node: "pve-node-01", Status: VMRunning, Pool: "pool-alice", Tags: []string{"pvmss", "web"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 34359738368, Uptime: 86400 * time.Second, Description: "Alice's primary web server"},
-		{VMID: 101, Name: "web-02", Node: "pve-node-01", Status: VMStopped, Pool: "pool-alice", Tags: []string{"pvmss", "web"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 34359738368},
-		{VMID: 102, Name: "db-01", Node: "pve-node-01", Status: VMRunning, Pool: "pool-alice", Tags: []string{"pvmss", "db"}, CPUCores: 4, MemoryTotal: 8589934592, DiskTotal: 137438953472, Uptime: 172800 * time.Second, Description: "Primary database"},
-		{VMID: 103, Name: "cache-01", Node: "pve-node-01", Status: VMRunning, Pool: "pool-bob", Tags: []string{"pvmss", "cache"}, CPUCores: 2, MemoryTotal: 2147483648, DiskTotal: 10737418240, Uptime: 43200 * time.Second},
-		{VMID: 104, Name: "build-01", Node: "pve-node-01", Status: VMStopped, Pool: "pool-bob", Tags: []string{"pvmss", "ci"}, CPUCores: 4, MemoryTotal: 8589934592, DiskTotal: 68719476736},
-		{VMID: 105, Name: "test-01", Node: "pve-node-02", Status: VMRunning, Pool: "pool-bob", Tags: []string{"pvmss", "ci"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 21474836480, Uptime: 3600 * time.Second},
-		{VMID: 106, Name: "test-02", Node: "pve-node-02", Status: VMStopped, Pool: "pool-bob", Tags: []string{"pvmss", "ci"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 21474836480},
-		{VMID: 107, Name: "mail-01", Node: "pve-node-02", Status: VMRunning, Pool: "pool-carol", Tags: []string{"pvmss", "mail"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 42949672960, Uptime: 259200 * time.Second},
-		{VMID: 108, Name: "proxy-01", Node: "pve-node-02", Status: VMRunning, Pool: "pool-carol", Tags: []string{"pvmss", "proxy"}, CPUCores: 1, MemoryTotal: 1073741824, DiskTotal: 10737418240, Uptime: 259200 * time.Second},
-		{VMID: 109, Name: "legacy-01", Node: "pve-node-02", Status: VMStopped, Pool: "pool-carol", Tags: nil, CPUCores: 4, MemoryTotal: 8589934592, DiskTotal: 68719476736},
-		{VMID: 110, Name: "legacy-02", Node: "pve-node-02", Status: VMStopped, Pool: "pool-carol", Tags: nil, CPUCores: 4, MemoryTotal: 8589934592, DiskTotal: 68719476736},
-		{VMID: 111, Name: "backup-01", Node: "pve-node-03", Status: VMStopped, Pool: "pool-shared", Tags: []string{"pvmss", "backup"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 1099511627776},
-		{VMID: 112, Name: "monitor-01", Node: "pve-node-01", Status: VMRunning, Pool: "pool-shared", Tags: []string{"pvmss", "monitoring"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 21474836480, Uptime: 432000 * time.Second},
-		{VMID: 113, Name: "monitor-02", Node: "pve-node-01", Status: VMPaused, Pool: "pool-shared", Tags: []string{"pvmss", "monitoring"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 21474836480},
-		{VMID: 114, Name: "sandbox-01", Node: "pve-node-02", Status: VMStopped, Pool: "pool-alice", Tags: []string{"pvmss", "sandbox"}, CPUCores: 1, MemoryTotal: 1073741824, DiskTotal: 5368709120},
-		{VMID: 115, Name: "sandbox-02", Node: "pve-node-02", Status: VMStopped, Pool: "pool-alice", Tags: []string{"pvmss", "sandbox"}, CPUCores: 1, MemoryTotal: 1073741824, DiskTotal: 5368709120},
-		{VMID: 116, Name: "app-01", Node: "pve-node-01", Status: VMRunning, Pool: "pool-bob", Tags: []string{"pvmss", "app"}, CPUCores: 4, MemoryTotal: 8589934592, DiskTotal: 42949672960, Uptime: 86400 * time.Second},
-		{VMID: 117, Name: "app-02", Node: "pve-node-01", Status: VMRunning, Pool: "pool-bob", Tags: []string{"pvmss", "app"}, CPUCores: 4, MemoryTotal: 8589934592, DiskTotal: 42949672960, Uptime: 86400 * time.Second},
-		{VMID: 118, Name: "app-03", Node: "pve-node-02", Status: VMRunning, Pool: "pool-bob", Tags: []string{"pvmss", "app"}, CPUCores: 4, MemoryTotal: 8589934592, DiskTotal: 42949672960, Uptime: 86400 * time.Second},
-		{VMID: 119, Name: "queue-01", Node: "pve-node-02", Status: VMRunning, Pool: "pool-carol", Tags: []string{"pvmss", "queue"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 21474836480, Uptime: 172800 * time.Second},
-		{VMID: 120, Name: "search-01", Node: "pve-node-01", Status: VMRunning, Pool: "pool-carol", Tags: []string{"pvmss", "search"}, CPUCores: 4, MemoryTotal: 17179869184, DiskTotal: 137438953472, Uptime: 345600 * time.Second},
-		{VMID: 121, Name: "archive-01", Node: "pve-node-03", Status: VMStopped, Pool: "pool-shared", Tags: nil, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 549755813888},
-		{VMID: 122, Name: "archive-02", Node: "pve-node-03", Status: VMStopped, Pool: "pool-shared", Tags: nil, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 549755813888},
-		{VMID: 123, Name: "dev-01", Node: "pve-node-01", Status: VMRunning, Pool: "pool-alice", Tags: []string{"pvmss", "dev"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 21474836480, Uptime: 7200 * time.Second, Description: "Alice's dev box"},
-		{VMID: 124, Name: "dev-02", Node: "pve-node-01", Status: VMStopped, Pool: "pool-alice", Tags: []string{"pvmss", "dev"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 21474836480},
+		{VMID: 100, Name: "web-01", Node: FakeNode01, Status: VMRunning, Pool: FakePoolAlice, Tags: []string{FakeTagPvmss, "web"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 34359738368, Uptime: 86400 * time.Second, Description: "Alice's primary web server"},
+		{VMID: 101, Name: "web-02", Node: FakeNode01, Status: VMStopped, Pool: FakePoolAlice, Tags: []string{FakeTagPvmss, "web"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 34359738368},
+		{VMID: 102, Name: "db-01", Node: FakeNode01, Status: VMRunning, Pool: FakePoolAlice, Tags: []string{FakeTagPvmss, "db"}, CPUCores: 4, MemoryTotal: 8589934592, DiskTotal: 137438953472, Uptime: 172800 * time.Second, Description: "Primary database"},
+		{VMID: 103, Name: "cache-01", Node: FakeNode01, Status: VMRunning, Pool: FakePoolBob, Tags: []string{FakeTagPvmss, "cache"}, CPUCores: 2, MemoryTotal: 2147483648, DiskTotal: 10737418240, Uptime: 43200 * time.Second},
+		{VMID: 104, Name: "build-01", Node: FakeNode01, Status: VMStopped, Pool: FakePoolBob, Tags: []string{FakeTagPvmss, "ci"}, CPUCores: 4, MemoryTotal: 8589934592, DiskTotal: 68719476736},
+		{VMID: 105, Name: "test-01", Node: FakeNode02, Status: VMRunning, Pool: FakePoolBob, Tags: []string{FakeTagPvmss, "ci"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 21474836480, Uptime: 3600 * time.Second},
+		{VMID: 106, Name: "test-02", Node: FakeNode02, Status: VMStopped, Pool: FakePoolBob, Tags: []string{FakeTagPvmss, "ci"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 21474836480},
+		{VMID: 107, Name: "mail-01", Node: FakeNode02, Status: VMRunning, Pool: FakePoolCarol, Tags: []string{FakeTagPvmss, "mail"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 42949672960, Uptime: 259200 * time.Second},
+		{VMID: 108, Name: "proxy-01", Node: FakeNode02, Status: VMRunning, Pool: FakePoolCarol, Tags: []string{FakeTagPvmss, "proxy"}, CPUCores: 1, MemoryTotal: 1073741824, DiskTotal: 10737418240, Uptime: 259200 * time.Second},
+		{VMID: 109, Name: "legacy-01", Node: FakeNode02, Status: VMStopped, Pool: FakePoolCarol, Tags: nil, CPUCores: 4, MemoryTotal: 8589934592, DiskTotal: 68719476736},
+		{VMID: 110, Name: "legacy-02", Node: FakeNode02, Status: VMStopped, Pool: FakePoolCarol, Tags: nil, CPUCores: 4, MemoryTotal: 8589934592, DiskTotal: 68719476736},
+		{VMID: 111, Name: "backup-01", Node: FakeNode03, Status: VMStopped, Pool: FakePoolShared, Tags: []string{FakeTagPvmss, "backup"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 1099511627776},
+		{VMID: 112, Name: "monitor-01", Node: FakeNode01, Status: VMRunning, Pool: FakePoolShared, Tags: []string{FakeTagPvmss, "monitoring"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 21474836480, Uptime: 432000 * time.Second},
+		{VMID: 113, Name: "monitor-02", Node: FakeNode01, Status: VMPaused, Pool: FakePoolShared, Tags: []string{FakeTagPvmss, "monitoring"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 21474836480},
+		{VMID: 114, Name: "sandbox-01", Node: FakeNode02, Status: VMStopped, Pool: FakePoolAlice, Tags: []string{FakeTagPvmss, "sandbox"}, CPUCores: 1, MemoryTotal: 1073741824, DiskTotal: 5368709120},
+		{VMID: 115, Name: "sandbox-02", Node: FakeNode02, Status: VMStopped, Pool: FakePoolAlice, Tags: []string{FakeTagPvmss, "sandbox"}, CPUCores: 1, MemoryTotal: 1073741824, DiskTotal: 5368709120},
+		{VMID: 116, Name: "app-01", Node: FakeNode01, Status: VMRunning, Pool: FakePoolBob, Tags: []string{FakeTagPvmss, "app"}, CPUCores: 4, MemoryTotal: 8589934592, DiskTotal: 42949672960, Uptime: 86400 * time.Second},
+		{VMID: 117, Name: "app-02", Node: FakeNode01, Status: VMRunning, Pool: FakePoolBob, Tags: []string{FakeTagPvmss, "app"}, CPUCores: 4, MemoryTotal: 8589934592, DiskTotal: 42949672960, Uptime: 86400 * time.Second},
+		{VMID: 118, Name: "app-03", Node: FakeNode02, Status: VMRunning, Pool: FakePoolBob, Tags: []string{FakeTagPvmss, "app"}, CPUCores: 4, MemoryTotal: 8589934592, DiskTotal: 42949672960, Uptime: 86400 * time.Second},
+		{VMID: 119, Name: "queue-01", Node: FakeNode02, Status: VMRunning, Pool: FakePoolCarol, Tags: []string{FakeTagPvmss, "queue"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 21474836480, Uptime: 172800 * time.Second},
+		{VMID: 120, Name: "search-01", Node: FakeNode01, Status: VMRunning, Pool: FakePoolCarol, Tags: []string{FakeTagPvmss, "search"}, CPUCores: 4, MemoryTotal: 17179869184, DiskTotal: 137438953472, Uptime: 345600 * time.Second},
+		{VMID: 121, Name: "archive-01", Node: FakeNode03, Status: VMStopped, Pool: FakePoolShared, Tags: nil, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 549755813888},
+		{VMID: 122, Name: "archive-02", Node: FakeNode03, Status: VMStopped, Pool: FakePoolShared, Tags: nil, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 549755813888},
+		{VMID: 123, Name: "dev-01", Node: FakeNode01, Status: VMRunning, Pool: FakePoolAlice, Tags: []string{FakeTagPvmss, "dev"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 21474836480, Uptime: 7200 * time.Second, Description: "Alice's dev box"},
+		{VMID: 124, Name: "dev-02", Node: FakeNode01, Status: VMStopped, Pool: FakePoolAlice, Tags: []string{FakeTagPvmss, "dev"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 21474836480},
 	}
 }

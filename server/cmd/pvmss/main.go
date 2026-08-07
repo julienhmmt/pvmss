@@ -1,3 +1,6 @@
+// Command pvmss is the next-gen PVMSS server entry point: it wires the
+// config, store, cluster client, inventory projection and HTTP API together
+// and serves the SPA + REST endpoints on a single port.
 package main
 
 import (
@@ -10,16 +13,15 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strconv"
-	"syscall"
-	"time"
-
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
+	"strconv"
+	"syscall"
+	"time"
 )
 
 const (
@@ -58,6 +60,7 @@ func run() int {
 		return 1
 	}
 	defer func() { _ = st.Close() }()
+
 	logger.Info("database opened", "component", "main", "migrationsDefined", len(store.Migrations))
 
 	webDir, err := resolveWebBuildDir(cfg.WebDir)
@@ -65,17 +68,20 @@ func run() int {
 		logger.Error("web build directory not found", "component", "main", "error", err)
 		return 1
 	}
+
 	logger.Info("web build directory resolved", "component", "main", "webDir", webDir)
 
 	// This is the ONLY site that selects between cluster.Client implementations
 	// (SC-004) — no other package may branch on cfg.ClusterSource.
 	var clusterClient cluster.Client
+
 	switch cfg.ClusterSource {
 	case "proxmox":
 		clusterClient = cluster.Proxmox{}
 	default:
 		clusterClient = cluster.Fake{}
 	}
+
 	logger.Info("cluster client selected", "component", "cluster", "source", cfg.ClusterSource, "cluster", "default")
 
 	// The inventory projection owns all reads of cluster data (FR-002, SC-004).
@@ -95,6 +101,7 @@ func run() int {
 	// projection is populated before the first request can arrive.
 	inventoryCtx, cancelInventory := context.WithCancel(context.Background())
 	defer cancelInventory()
+
 	go worker.Run(inventoryCtx)
 
 	sessions, err := auth.NewSessionManager(st, cfg.SessionSecret, false)
@@ -102,22 +109,12 @@ func run() int {
 		logger.Error("failed to create session manager", "component", "main", "error", err)
 		return 1
 	}
-	health := httpapi.NewHealth(st, logger)
-	clusterNodes := httpapi.NewClusterNodes(projection, logger)
-	clusterRefresh := httpapi.NewClusterRefresh(refresher, logger)
-	authHandler := httpapi.NewAuth(clusterClient, sessions, cfg.AdminPasswordHash, auth.NewTokenService(st), logger)
-	vms := httpapi.NewVMs(projection, authHandler, cfg.MaxListPageSize, cfg.DefaultUserQuota, logger)
-	// Both cluster.Client implementations (Fake, Proxmox) also implement
-	// cluster.Writer — reads and writes are separated by interface
-	// (constitution IV), not by implementation. The assertion is safe because
-	// the switch above only selects values that satisfy both.
-	writer, ok := clusterClient.(cluster.Writer)
-	if !ok {
-		logger.Error("cluster client does not implement Writer", "component", "main")
+
+	router, err := buildRouter(cfg, clusterClient, projection, refresher, worker, sessions, st, webDir, logger)
+	if err != nil {
+		logger.Error("failed to build router", "component", "main", "error", err)
 		return 1
 	}
-	vmDetail := httpapi.NewVmDetail(projection, authHandler, writer, st, worker, logger)
-	router := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, authHandler, webDir, logger)
 
 	srv := &http.Server{
 		Addr:              net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)),
@@ -150,6 +147,7 @@ func run() int {
 	case <-sigCtx.Done():
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
+
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			logger.Error("server shutdown failed", "component", "main", "error", err)
 			return 1
@@ -157,7 +155,49 @@ func run() int {
 	}
 
 	logger.Info("server stopped", "component", "main")
+
 	return 0
+}
+
+// buildRouter wires all HTTP handlers into the final router. It performs the
+// cluster.Writer/Creator type assertions (both Fake and Proxmox satisfy them)
+// and constructs the handler graph from the shared dependencies.
+func buildRouter(
+	cfg config.Configuration,
+	clusterClient cluster.Client,
+	projection *inventory.Projection,
+	refresher *inventory.Refresher,
+	worker *inventory.Worker,
+	sessions *auth.SessionManager,
+	st *store.Store,
+	webDir string,
+	logger *slog.Logger,
+) (*http.ServeMux, error) {
+	health := httpapi.NewHealth(st, logger)
+	clusterNodes := httpapi.NewClusterNodes(projection, logger)
+	clusterRefresh := httpapi.NewClusterRefresh(refresher, logger)
+	authHandler := httpapi.NewAuth(clusterClient, sessions, cfg.AdminPasswordHash, auth.NewTokenService(st), logger)
+	vms := httpapi.NewVMs(projection, authHandler, cfg.MaxListPageSize, cfg.DefaultUserQuota, logger)
+
+	// Both cluster.Client implementations (Fake, Proxmox) also implement
+	// cluster.Writer — reads and writes are separated by interface
+	// (constitution IV), not by implementation. The assertion is safe because
+	// the switch above only selects values that satisfy both.
+	writer, ok := clusterClient.(cluster.Writer)
+	if !ok {
+		return nil, errors.New("cluster client does not implement Writer")
+	}
+
+	creator, ok := clusterClient.(cluster.Creator)
+	if !ok {
+		return nil, errors.New("cluster client does not implement Creator")
+	}
+
+	vmDetail := httpapi.NewVMDetail(projection, authHandler, writer, st, worker, logger)
+	vmCreate := httpapi.NewVMCreate(authHandler, st, creator, logger)
+	tasks := httpapi.NewTasks(authHandler, creator, worker, logger)
+
+	return httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, vmCreate, tasks, authHandler, webDir, logger), nil
 }
 
 // resolveWebBuildDir returns the absolute path to the static web build directory.
@@ -179,7 +219,7 @@ func resolveWebBuildDir(cfgWebDir string) (string, error) {
 		return "web/build", nil
 	}
 
-	return "", fmt.Errorf("set PVMSS_WEB_DIR to a web build directory")
+	return "", errors.New("set PVMSS_WEB_DIR to a web build directory")
 }
 
 func validateWebBuildDir(path string) error {
@@ -187,12 +227,15 @@ func validateWebBuildDir(path string) error {
 	if err != nil {
 		return fmt.Errorf("stat %q: %w", path, err)
 	}
+
 	if !fi.IsDir() {
 		return fmt.Errorf("%q is not a directory", path)
 	}
+
 	indexPath := filepath.Join(path, "index.html")
 	if _, err := os.Stat(indexPath); err != nil {
 		return fmt.Errorf("%q is missing index.html: %w", path, err)
 	}
+
 	return nil
 }

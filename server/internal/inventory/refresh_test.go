@@ -3,15 +3,16 @@ package inventory_test
 import (
 	"context"
 	"errors"
-	"testing"
-	"time"
-
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"testing"
+	"time"
 )
 
 // TestRefresh_OutsideGuardSucceeds — a manual refresh outside the guard
 // interval succeeds and calls the client.
+//
+//nolint:paralleltest // serial: shared refresh fixture
 func TestRefresh_OutsideGuardSucceeds(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot()}
 	projection := inventory.NewProjection()
@@ -29,9 +30,11 @@ func TestRefresh_OutsideGuardSucceeds(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if at.IsZero() {
 		t.Fatal("refreshedAt should not be zero")
 	}
+
 	if client.calls.Load() != callsBefore+1 {
 		t.Fatalf("expected 1 additional client call, got %d", client.calls.Load()-callsBefore)
 	}
@@ -40,6 +43,8 @@ func TestRefresh_OutsideGuardSucceeds(t *testing.T) {
 // TestRefresh_InsideGuardRefusedWithZeroCalls — FR-006, SC-001: a manual
 // refresh within the guard interval is refused with ErrRefreshTooSoon and
 // makes zero client calls.
+//
+//nolint:paralleltest // serial: shared refresh fixture
 func TestRefresh_InsideGuardRefusedWithZeroCalls(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot()}
 	projection := inventory.NewProjection()
@@ -51,10 +56,12 @@ func TestRefresh_InsideGuardRefusedWithZeroCalls(t *testing.T) {
 
 	// Immediately attempt a manual refresh — should be refused.
 	refresher := inventory.NewRefresher(worker, 5*time.Second)
+
 	_, err := refresher.Refresh(context.Background())
 	if !errors.Is(err, inventory.ErrRefreshTooSoon) {
 		t.Fatalf("expected ErrRefreshTooSoon, got %v", err)
 	}
+
 	if client.calls.Load() != callsBefore {
 		t.Fatalf("guard refusal should make 0 client calls, got %d additional", client.calls.Load()-callsBefore)
 	}
@@ -63,6 +70,7 @@ func TestRefresh_InsideGuardRefusedWithZeroCalls(t *testing.T) {
 	if !errors.As(err, &tooSoon) {
 		t.Fatalf("expected *TooSoonError, got %T", err)
 	}
+
 	if tooSoon.RetryAfter <= 0 || tooSoon.RetryAfter > 5*time.Second {
 		t.Fatalf("RetryAfter = %v, want (0, 5s]", tooSoon.RetryAfter)
 	}
@@ -72,6 +80,8 @@ func TestRefresh_InsideGuardRefusedWithZeroCalls(t *testing.T) {
 // reported shrinks as time passes, it is not the full guard interval on
 // every refusal (contracts/cluster-refresh.md: retryAfterSeconds is how long
 // is left, not a constant).
+//
+//nolint:paralleltest // serial: shared refresh fixture
 func TestRefresh_RetryAfterCountsDownNotFullInterval(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot()}
 	projection := inventory.NewProjection()
@@ -82,10 +92,12 @@ func TestRefresh_RetryAfterCountsDownNotFullInterval(t *testing.T) {
 	time.Sleep(150 * time.Millisecond)
 
 	_, err := refresher.Refresh(context.Background())
+
 	var tooSoon *inventory.TooSoonError
 	if !errors.As(err, &tooSoon) {
 		t.Fatalf("expected *TooSoonError, got %v", err)
 	}
+
 	if tooSoon.RetryAfter >= 100*time.Millisecond {
 		t.Fatalf("RetryAfter = %v, expected well under the full 200ms interval after waiting 150ms", tooSoon.RetryAfter)
 	}
@@ -94,19 +106,24 @@ func TestRefresh_RetryAfterCountsDownNotFullInterval(t *testing.T) {
 // TestRefresh_FirstRefreshAllowedWhenProjectionEmpty — a manual refresh before
 // the first automatic cycle is allowed (the guard only applies after a
 // successful refresh).
+//
+//nolint:paralleltest // serial: shared refresh fixture
 func TestRefresh_FirstRefreshAllowedWhenProjectionEmpty(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot()}
 	projection := inventory.NewProjection()
 	worker := inventory.NewWorker(client, projection, time.Hour, testLogger())
 
 	refresher := inventory.NewRefresher(worker, 5*time.Second)
+
 	at, err := refresher.Refresh(context.Background())
 	if err != nil {
 		t.Fatalf("first manual refresh should succeed, got %v", err)
 	}
+
 	if at.IsZero() {
 		t.Fatal("refreshedAt should not be zero")
 	}
+
 	if client.calls.Load() != 1 {
 		t.Fatalf("expected 1 client call, got %d", client.calls.Load())
 	}
@@ -115,6 +132,8 @@ func TestRefresh_FirstRefreshAllowedWhenProjectionEmpty(t *testing.T) {
 // TestRefresh_FailingClientReturnsUnreachable — a manual refresh whose client
 // call fails returns ErrClusterUnreachable; the previous projection is
 // still served (FR-004).
+//
+//nolint:paralleltest // serial: shared refresh fixture
 func TestRefresh_FailingClientReturnsUnreachable(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot()}
 	projection := inventory.NewProjection()
@@ -133,14 +152,18 @@ func TestRefresh_FailingClientReturnsUnreachable(t *testing.T) {
 	if !errors.Is(err, inventory.ErrClusterUnreachable) {
 		t.Fatalf("expected ErrClusterUnreachable, got %v", err)
 	}
+
 	if projection.Load() != before {
 		t.Fatal("projection should be unchanged after failed manual refresh (FR-004)")
 	}
 }
 
 // TestRefresh_MinInterval returns the configured guard.
+//
+//nolint:paralleltest // serial: shared refresh fixture
 func TestRefresh_MinInterval(t *testing.T) {
 	worker := inventory.NewWorker(&callCountClient{}, inventory.NewProjection(), time.Hour, testLogger())
+
 	refresher := inventory.NewRefresher(worker, 7*time.Second)
 	if got := refresher.MinInterval(); got != 7*time.Second {
 		t.Fatalf("MinInterval = %v, want 7s", got)

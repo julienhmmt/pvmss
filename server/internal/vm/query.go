@@ -7,13 +7,12 @@ package vm
 import (
 	"errors"
 	"fmt"
-	"slices"
-	"strconv"
-	"strings"
-
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"slices"
+	"strconv"
+	"strings"
 )
 
 // ErrInvalidSortBy rejects a sort column the list does not support (FR-005) —
@@ -25,6 +24,7 @@ var ErrInvalidSortBy = errors.New("invalid sort column")
 // never an error that would confirm the parameter exists to a probing caller).
 type Scope string
 
+// List scopes: "mine" limits to the caller's pool, "all" spans every pool (admin only).
 const (
 	ScopeMine Scope = "mine"
 	ScopeAll  Scope = "all"
@@ -33,6 +33,7 @@ const (
 // SortBy is a column the list can be ordered by.
 type SortBy string
 
+// Sort columns accepted by the list endpoint.
 const (
 	SortByVMID   SortBy = "vmid"
 	SortByName   SortBy = "name"
@@ -45,6 +46,7 @@ const (
 // SortDir is the ordering direction.
 type SortDir string
 
+// Sort directions for the list endpoint.
 const (
 	SortAsc  SortDir = "asc"
 	SortDesc SortDir = "desc"
@@ -54,6 +56,7 @@ const (
 // owns no VMs at all, or the current search/filters match none of them.
 type EmptyReason string
 
+// Empty reasons surfaced to the UI when a result page is empty.
 const (
 	EmptyNoVMsOwned EmptyReason = "no_vms_owned"
 	EmptyNoMatch    EmptyReason = "no_match"
@@ -125,12 +128,15 @@ func List(index *inventory.Index, query ListQuery, identity auth.Identity, allow
 	if query.Scope != ScopeAll || !identity.IsAdmin {
 		result.Quota = &Quota{Used: len(scoped), Allowed: allowedQuota}
 	}
+
 	if len(filtered) == 0 {
 		result.EmptyReason = EmptyNoMatch
 		if len(scoped) == 0 {
 			result.EmptyReason = EmptyNoVMsOwned
 		}
+
 		result.Items = []cluster.VM{}
+
 		return result, nil
 	}
 
@@ -138,9 +144,11 @@ func List(index *inventory.Index, query ListQuery, identity auth.Identity, allow
 	if result.Page > maxPage {
 		result.Page = maxPage
 	}
+
 	start := (result.Page - 1) * query.PageSize
 	end := min(start+query.PageSize, len(filtered))
 	result.Items = slices.Clone(filtered[start:end])
+
 	return result, nil
 }
 
@@ -149,15 +157,19 @@ func withDefaults(query ListQuery) ListQuery {
 	if query.Page < 1 {
 		query.Page = defaultPage
 	}
+
 	if query.PageSize < 1 {
 		query.PageSize = defaultPageSize
 	}
+
 	if query.SortBy == "" {
 		query.SortBy = SortByName
 	}
+
 	if query.SortDir == "" {
 		query.SortDir = SortAsc
 	}
+
 	return query
 }
 
@@ -166,6 +178,7 @@ func validSortBy(sortBy SortBy) bool {
 	case SortByVMID, SortByName, SortByNode, SortByStatus, SortByCPU, SortByMemory:
 		return true
 	}
+
 	return false
 }
 
@@ -178,8 +191,10 @@ func scopedVMs(index *inventory.Index, query ListQuery, identity auth.Identity) 
 		for _, machine := range index.ByVMID {
 			all = append(all, machine)
 		}
+
 		return all
 	}
+
 	return index.ByPool[identity.Pool]
 }
 
@@ -191,14 +206,17 @@ func searchVMs(vms []cluster.VM, search string) []cluster.VM {
 	if search == "" {
 		return vms
 	}
+
 	lowered := strings.ToLower(search)
 	id, numeric := parseNumericID(search)
+
 	matched := make([]cluster.VM, 0, len(vms))
 	for _, machine := range vms {
 		if strings.Contains(strings.ToLower(machine.Name), lowered) || hasMatchingTag(machine.Tags, lowered) || numeric && machine.VMID == id {
 			matched = append(matched, machine)
 		}
 	}
+
 	return matched
 }
 
@@ -218,6 +236,7 @@ func hasMatchingTag(tags []string, loweredSearch string) bool {
 // (data-model.md step 4).
 func nodeFacet(vms []cluster.VM) []string {
 	seen := make(map[string]struct{}, len(vms))
+
 	nodes := make([]string, 0, len(vms))
 	for _, machine := range vms {
 		if _, ok := seen[machine.Node]; !ok {
@@ -225,7 +244,9 @@ func nodeFacet(vms []cluster.VM) []string {
 			nodes = append(nodes, machine.Node)
 		}
 	}
+
 	slices.Sort(nodes)
+
 	return nodes
 }
 
@@ -233,16 +254,20 @@ func filterVMs(vms []cluster.VM, query ListQuery) []cluster.VM {
 	if query.Status == "" && query.Node == "" {
 		return vms
 	}
+
 	filtered := make([]cluster.VM, 0, len(vms))
 	for _, machine := range vms {
 		if query.Status != "" && machine.Status != query.Status {
 			continue
 		}
+
 		if query.Node != "" && machine.Node != query.Node {
 			continue
 		}
+
 		filtered = append(filtered, machine)
 	}
+
 	return filtered
 }
 
@@ -254,9 +279,11 @@ func sortVMs(vms []cluster.VM, sortBy SortBy, sortDir SortDir) {
 		if order == 0 {
 			order = a.VMID - b.VMID
 		}
+
 		if sortDir == SortDesc {
 			return -order
 		}
+
 		return order
 	})
 }
@@ -265,6 +292,8 @@ func compareVMs(a, b cluster.VM, sortBy SortBy) int {
 	switch sortBy {
 	case SortByVMID:
 		return a.VMID - b.VMID
+	case SortByName:
+		return strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name))
 	case SortByNode:
 		return strings.Compare(a.Node, b.Node)
 	case SortByStatus:
@@ -273,9 +302,9 @@ func compareVMs(a, b cluster.VM, sortBy SortBy) int {
 		return a.CPUCores - b.CPUCores
 	case SortByMemory:
 		return compareInt64(a.MemoryTotal, b.MemoryTotal)
-	default:
-		return strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name))
 	}
+
+	return 0
 }
 
 func compareInt64(a, b int64) int {
@@ -285,5 +314,6 @@ func compareInt64(a, b int64) int {
 	case a > b:
 		return 1
 	}
+
 	return 0
 }

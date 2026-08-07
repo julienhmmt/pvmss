@@ -6,21 +6,20 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strconv"
-	"strings"
-
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
+	"strconv"
+	"strings"
 )
 
-// VmDetail serves the four VM-detail endpoints, all gated by the same
+// VMDetail serves the four VM-detail endpoints, all gated by the same
 // vm.Resolve() (FR-001, SC-005): GET /vms/:cluster/:vmid (detail),
 // POST /vms/:cluster/:vmid/actions (power), DELETE /vms/:cluster/:vmid (delete),
 // PATCH /vms/:cluster/:vmid (rename/description). 403/404 semantics are
 // byte-identical across all four (contracts behavioural rule).
-type VmDetail struct {
+type VMDetail struct {
 	projection *inventory.Projection
 	auth       *Auth
 	writer     cluster.Writer
@@ -29,11 +28,11 @@ type VmDetail struct {
 	log        *slog.Logger
 }
 
-// NewVmDetail creates the handler. The writer is the cluster.Writer (separate
+// NewVMDetail creates the handler. The writer is the cluster.Writer (separate
 // from the read Client — constitution IV); the refresher rebuilds the Index
 // after a write (FR-010).
-func NewVmDetail(projection *inventory.Projection, authHandler *Auth, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger) *VmDetail {
-	return &VmDetail{projection: projection, auth: authHandler, writer: writer, store: st, refresher: refresher, log: log}
+func NewVMDetail(projection *inventory.Projection, authHandler *Auth, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger) *VMDetail {
+	return &VMDetail{projection: projection, auth: authHandler, writer: writer, store: st, refresher: refresher, log: log}
 }
 
 type vmDetailDTO struct {
@@ -67,7 +66,7 @@ type patchRequest struct {
 	Description string `json:"description"`
 }
 
-func (h *VmDetail) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *VMDetail) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		h.handleGet(w, r)
@@ -85,116 +84,135 @@ func (h *VmDetail) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // handleGet serves GET /vms/:cluster/:vmid — the detail view (US1). Calls
 // Resolve and encodes the Entity (FR-005).
-func (h *VmDetail) handleGet(w http.ResponseWriter, r *http.Request) {
+func (h *VMDetail) handleGet(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
 		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
 		return
 	}
+
 	clusterName, vmid, ok := h.parsePath(r)
 	if !ok {
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
 		return
 	}
+
 	index := h.projection.Load()
 	if index == nil {
 		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
 		return
 	}
+
 	entity, err := vm.Resolve(index, identity, clusterName, vmid)
 	if err != nil {
 		h.writeResolveError(w, err)
 		return
 	}
+
 	h.writeEntity(w, entity)
 }
 
 // handleAction serves POST /vms/:cluster/:vmid/actions (US2, closes S01).
 // The request body carries only {"action": Kind} — no node field exists in
 // the schema, so there is nothing to forge (S01 root cause, structurally closed).
-func (h *VmDetail) handleAction(w http.ResponseWriter, r *http.Request) {
+func (h *VMDetail) handleAction(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
 		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
 		return
 	}
+
 	clusterName, vmid, ok := h.parsePath(r)
 	if !ok {
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
 		return
 	}
+
 	var req actionRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
 		return
 	}
+
 	req.Action = strings.TrimSpace(req.Action)
 	if !vm.IsValidAction(req.Action) {
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_action", fmt.Sprintf("unknown action %q", req.Action))
 		return
 	}
+
 	index := h.projection.Load()
 	if index == nil {
 		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
 		return
 	}
+
 	if err := vm.Action(r.Context(), index, identity, clusterName, vmid, req.Action, h.writer, h.store, h.refresher); err != nil {
 		h.writeActionError(w, err)
 		return
 	}
+
 	h.writeJSONStatus(w, http.StatusOK, actionResponse{Status: "accepted"})
 }
 
 // handleDelete serves DELETE /vms/:cluster/:vmid (US3). Same Resolve() gate.
-func (h *VmDetail) handleDelete(w http.ResponseWriter, r *http.Request) {
+func (h *VMDetail) handleDelete(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
 		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
 		return
 	}
+
 	clusterName, vmid, ok := h.parsePath(r)
 	if !ok {
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
 		return
 	}
+
 	index := h.projection.Load()
 	if index == nil {
 		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
 		return
 	}
+
 	if err := vm.Delete(r.Context(), index, identity, clusterName, vmid, h.writer, h.store, h.refresher); err != nil {
 		h.writeActionError(w, err)
 		return
 	}
+
 	h.writeJSONStatus(w, http.StatusOK, deleteResponse{Status: "deleted"})
 }
 
 // handlePatch serves PATCH /vms/:cluster/:vmid (US4). Accepts name and/or
 // description; at least one must be present. Name is validated as a hostname
 // before Resolve is called (constitution XIII: malformed input rejected first).
-func (h *VmDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
+func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
 		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
 		return
 	}
+
 	clusterName, vmid, ok := h.parsePath(r)
 	if !ok {
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
 		return
 	}
+
 	var req patchRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
 		return
 	}
+
 	req.Name = strings.TrimSpace(req.Name)
 	req.Description = strings.TrimSpace(req.Description)
+
 	index := h.projection.Load()
 	if index == nil {
 		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
 		return
 	}
+
 	if err := vm.Patch(r.Context(), index, identity, clusterName, vmid, req.Name, req.Description, h.writer, h.store, h.refresher); err != nil {
 		h.writePatchError(w, err)
 		return
@@ -206,6 +224,7 @@ func (h *VmDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 		return
 	}
+
 	entity, err := vm.Resolve(refreshed, identity, clusterName, vmid)
 	if err != nil {
 		// The write succeeded but the re-resolve failed (e.g. a race deleted
@@ -213,22 +232,26 @@ func (h *VmDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 		// rather than a confusing 404 after a 200-worthy write.
 		h.log.Error("post-patch re-resolve failed", "component", "httpapi", "vmid", vmid, "error", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+
 		return
 	}
+
 	h.writeEntity(w, entity)
 }
 
 // parsePath extracts :cluster and :vmid from the route pattern
 // /api/v1/vms/{cluster}/{vmid}[...]. Returns ok=false if vmid is not a valid int.
-func (h *VmDetail) parsePath(r *http.Request) (string, int, bool) {
+func (h *VMDetail) parsePath(r *http.Request) (string, int, bool) {
 	clusterName := r.PathValue("cluster")
 	if clusterName == "" {
 		return "", 0, false
 	}
+
 	vmid, err := parseIntPathValue(r, "vmid")
 	if err != nil {
 		return "", 0, false
 	}
+
 	return clusterName, vmid, true
 }
 
@@ -238,14 +261,16 @@ func parseIntPathValue(r *http.Request, key string) (int, error) {
 	if raw == "" {
 		return 0, fmt.Errorf("missing path value %q", key)
 	}
+
 	value, err := strconv.Atoi(raw)
 	if err != nil || value < 1 {
 		return 0, fmt.Errorf("invalid path value %q: %q", key, raw)
 	}
+
 	return value, nil
 }
 
-func (h *VmDetail) writeEntity(w http.ResponseWriter, entity vm.Entity) {
+func (h *VMDetail) writeEntity(w http.ResponseWriter, entity vm.Entity) {
 	dto := vmDetailDTO{
 		VMID:        entity.VMID,
 		Name:        entity.Name,
@@ -261,16 +286,19 @@ func (h *VmDetail) writeEntity(w http.ResponseWriter, entity vm.Entity) {
 	if entity.Uptime > 0 {
 		dto.UptimeSeconds = int64(entity.Uptime.Seconds())
 	}
+
 	h.writeJSONStatus(w, http.StatusOK, dto)
 }
 
-func (h *VmDetail) writeJSONStatus(w http.ResponseWriter, status int, value any) {
+func (h *VMDetail) writeJSONStatus(w http.ResponseWriter, status int, value any) {
 	body, err := json.Marshal(value)
 	if err != nil {
 		h.log.Error("failed to marshal response", "component", "httpapi", "error", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+
 		return
 	}
+
 	if err := writeJSON(w, status, body); err != nil {
 		h.log.Error("failed to write response", "component", "httpapi", "error", err)
 	}
@@ -278,7 +306,7 @@ func (h *VmDetail) writeJSONStatus(w http.ResponseWriter, status int, value any)
 
 // writeResolveError maps vm.Resolve errors to HTTP statuses. 403 and 404 are
 // byte-identical in shape across all four endpoints (contracts).
-func (h *VmDetail) writeResolveError(w http.ResponseWriter, err error) {
+func (h *VMDetail) writeResolveError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrForbidden):
 		h.writeDetailError(w, http.StatusForbidden, "forbidden", "not your VM")
@@ -291,7 +319,7 @@ func (h *VmDetail) writeResolveError(w http.ResponseWriter, err error) {
 }
 
 // writeActionError maps vm.Action / vm.Delete errors to HTTP statuses.
-func (h *VmDetail) writeActionError(w http.ResponseWriter, err error) {
+func (h *VMDetail) writeActionError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrForbidden):
 		h.writeDetailError(w, http.StatusForbidden, "forbidden", "not your VM")
@@ -311,7 +339,7 @@ func (h *VmDetail) writeActionError(w http.ResponseWriter, err error) {
 }
 
 // writePatchError maps vm.Patch errors to HTTP statuses.
-func (h *VmDetail) writePatchError(w http.ResponseWriter, err error) {
+func (h *VMDetail) writePatchError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrForbidden):
 		h.writeDetailError(w, http.StatusForbidden, "forbidden", "not your VM")
@@ -332,7 +360,7 @@ func (h *VmDetail) writePatchError(w http.ResponseWriter, err error) {
 	}
 }
 
-func (h *VmDetail) writeDetailError(w http.ResponseWriter, status int, code, message string) {
+func (h *VMDetail) writeDetailError(w http.ResponseWriter, status int, code, message string) {
 	if err := writeClusterError(w, status, code, message); err != nil {
 		h.log.Error("failed to write error response", "component", "httpapi", "code", code, "error", err)
 	}

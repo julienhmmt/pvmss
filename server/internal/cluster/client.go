@@ -56,6 +56,7 @@ type Identity struct {
 // NodeStatus is the operational state of a cluster node.
 type NodeStatus string
 
+// Node operational states reported by the cluster client.
 const (
 	NodeOnline  NodeStatus = "online"
 	NodeOffline NodeStatus = "offline"
@@ -77,6 +78,7 @@ type Node struct {
 // VMStatus is the run state of a virtual machine.
 type VMStatus string
 
+// VM run states reported by the cluster client.
 const (
 	VMRunning VMStatus = "running"
 	VMStopped VMStatus = "stopped"
