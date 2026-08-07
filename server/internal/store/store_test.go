@@ -2,6 +2,7 @@
 package store_test
 
 import (
+	"context"
 	"database/sql"
 	"os"
 	"path/filepath"
@@ -116,7 +117,7 @@ func TestOpen(t *testing.T) {
 				t.Fatalf("database file not created: %v", err)
 			}
 
-			if err := s.Ping(); err != nil {
+			if err := s.Ping(context.Background()); err != nil {
 				t.Fatalf("Ping: %v", err)
 			}
 
@@ -127,7 +128,8 @@ func TestOpen(t *testing.T) {
 			defer func() { _ = db.Close() }()
 
 			var version int
-			if err := db.QueryRow(
+			if err := db.QueryRowContext(
+				context.Background(),
 				`SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1`,
 			).Scan(&version); err != nil {
 				t.Fatalf("query schema_migrations: %v", err)

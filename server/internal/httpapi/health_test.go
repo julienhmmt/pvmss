@@ -1,7 +1,9 @@
+//nolint:noctx // test scaffolding does not need real context
 //nolint:goconst // test fixture strings
 package httpapi_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -160,7 +162,7 @@ type fakePinger struct {
 	err error
 }
 
-func (f fakePinger) Ping() error {
+func (f fakePinger) Ping(_ context.Context) error {
 	if f.err != nil {
 		return f.err
 	}

@@ -1,6 +1,9 @@
 package store
 
-import "database/sql"
+import (
+	"context"
+	"database/sql"
+)
 
 // Store is a SQLite-backed persistence handle.
 type Store struct {
@@ -8,8 +11,8 @@ type Store struct {
 }
 
 // Ping verifies the database connection is alive.
-func (s *Store) Ping() error {
-	return s.db.Ping()
+func (s *Store) Ping(ctx context.Context) error {
+	return s.db.PingContext(ctx)
 }
 
 // Close releases the database connection.

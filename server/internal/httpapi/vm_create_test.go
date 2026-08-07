@@ -1,3 +1,4 @@
+//nolint:noctx // test scaffolding does not need real context
 //nolint:goconst // test fixture strings
 package httpapi_test
 

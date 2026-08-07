@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -10,16 +11,16 @@ import (
 
 // RunMigrations applies every pending migration in order.
 // Already-applied versions are skipped. The list must be ordered by version.
-func RunMigrations(db *sql.DB, migrations []Migration) error {
+func RunMigrations(ctx context.Context, db *sql.DB, migrations []Migration) error {
 	if err := validateMigrations(migrations); err != nil {
 		return err
 	}
 
-	if err := ensureMigrationsTable(db); err != nil {
+	if err := ensureMigrationsTable(ctx, db); err != nil {
 		return fmt.Errorf("ensure migrations table: %w", err)
 	}
 
-	applied, err := appliedVersions(db, len(migrations))
+	applied, err := appliedVersions(ctx, db, len(migrations))
 	if err != nil {
 		return fmt.Errorf("query applied migrations: %w", err)
 	}
@@ -29,7 +30,7 @@ func RunMigrations(db *sql.DB, migrations []Migration) error {
 			continue
 		}
 
-		if err := applyMigration(db, m); err != nil {
+		if err := applyMigration(ctx, db, m); err != nil {
 			return fmt.Errorf("apply migration %d: %w", m.Version, err)
 		}
 	}
@@ -73,8 +74,8 @@ func validateMigrations(migrations []Migration) error {
 	return nil
 }
 
-func ensureMigrationsTable(db *sql.DB) error {
-	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
+func ensureMigrationsTable(ctx context.Context, db *sql.DB) error {
+	_, err := db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS schema_migrations (
 		version    INTEGER PRIMARY KEY,
 		applied_at TEXT NOT NULL
 	)`)
@@ -82,11 +83,12 @@ func ensureMigrationsTable(db *sql.DB) error {
 	return err
 }
 
-func appliedVersions(db *sql.DB, hint int) (map[int]struct{}, error) {
-	rows, err := db.Query(`SELECT version FROM schema_migrations`)
+func appliedVersions(ctx context.Context, db *sql.DB, hint int) (map[int]struct{}, error) {
+	rows, err := db.QueryContext(ctx, `SELECT version FROM schema_migrations`)
 	if err != nil {
 		return nil, err
 	}
+
 	defer func() { _ = rows.Close() }()
 
 	result := make(map[int]struct{}, hint)
@@ -103,19 +105,19 @@ func appliedVersions(db *sql.DB, hint int) (map[int]struct{}, error) {
 	return result, rows.Err()
 }
 
-func applyMigration(db *sql.DB, m Migration) error {
-	tx, err := db.Begin()
+func applyMigration(ctx context.Context, db *sql.DB, m Migration) error {
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
 
-	if _, err := tx.Exec(m.DDL); err != nil {
+	if _, err := tx.ExecContext(ctx, m.DDL); err != nil {
 		_ = tx.Rollback()
 		return fmt.Errorf("exec DDL: %w", err)
 	}
 
 	appliedAt := time.Now().UTC().Format(time.RFC3339)
-	if _, err := tx.Exec(`INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)`, m.Version, appliedAt); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)`, m.Version, appliedAt); err != nil {
 		_ = tx.Rollback()
 		return fmt.Errorf("record migration: %w", err)
 	}
