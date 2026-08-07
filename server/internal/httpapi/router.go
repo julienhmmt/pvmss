@@ -24,7 +24,7 @@ type spaHandler struct {
 }
 
 // NewRouter wires the public API and the static SPA handler.
-func NewRouter(health http.Handler, clusterNodes http.Handler, clusterRefresh http.Handler, vms http.Handler, vmDetail http.Handler, auth *Auth, webBuildDir string, log *slog.Logger) *http.ServeMux {
+func NewRouter(health http.Handler, clusterNodes http.Handler, clusterRefresh http.Handler, vms http.Handler, vmDetail http.Handler, vmCreate *VmCreate, tasks *Tasks, auth *Auth, webBuildDir string, log *slog.Logger) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("GET /health", health)
 	mux.Handle("GET /api/v1/cluster/nodes", auth.Require(clusterNodes))
@@ -33,6 +33,15 @@ func NewRouter(health http.Handler, clusterNodes http.Handler, clusterRefresh ht
 	// itself (for scope enforcement) and calls h.auth.Principal(r) directly,
 	// returning 401 on its own — wrapping would just re-run the same check.
 	mux.Handle("GET /api/v1/vms", vms)
+	// VM creation + catalog + task polling — same Principal pattern as above.
+	// Nil guards let router tests omit these handlers without panicking.
+	if vmCreate != nil {
+		mux.Handle("POST /api/v1/vms", vmCreate)
+		mux.Handle("GET /api/v1/vm-create/catalog", http.HandlerFunc(vmCreate.ServeCatalog))
+	}
+	if tasks != nil {
+		mux.Handle("GET /api/v1/tasks/{upid}", tasks)
+	}
 	// VM detail + actions + delete + patch — all gated by vm.Resolve() inside
 	// the handler. Same reason as GET /vms: not wrapped in auth.Require.
 	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}", vmDetail)

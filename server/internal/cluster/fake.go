@@ -23,7 +23,7 @@ type Fake struct{}
 type FakeCall struct {
 	Node   string
 	VMID   int
-	Action string // "start"|"stop"|"shutdown"|"reboot"|"reset"|"delete"|"patch"
+	Action string // "start"|"stop"|"shutdown"|"reboot"|"reset"|"delete"|"patch"|"create"
 	Name   string // set only for patch
 }
 
@@ -175,6 +175,7 @@ func ResetFake() {
 	defer fakeCallMu.Unlock()
 	fakeVMs = originalFakeVMs()
 	fakeCallLog = nil
+	resetFakeCreateState()
 }
 
 func recordCall(call FakeCall) {
