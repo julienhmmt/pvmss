@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"sync"
 	"time"
@@ -21,10 +22,17 @@ type Fake struct{}
 
 // FakeCall is one recorded write against the fake cluster.
 type FakeCall struct {
-	Node   string
-	VMID   int
-	Action string // "start"|"stop"|"shutdown"|"reboot"|"reset"|"delete"|"patch"|"create"
-	Name   string // set only for patch
+	Node     string
+	VMID     int
+	Action   string
+	Name     string
+	DiskKey  string
+	Bus      string
+	Storage  string
+	SizeGB   int
+	Sockets  int
+	Cores    int
+	MemoryMB int
 }
 
 var (
@@ -49,8 +57,13 @@ func (Fake) Snapshot(_ context.Context) (Snapshot, error) {
 	copy(vms, fakeVMs)
 
 	for i, vm := range fakeVMs {
-		if vm.Tags != nil {
-			vms[i].Tags = append([]string(nil), vm.Tags...)
+		vms[i].Tags = append([]string(nil), vm.Tags...)
+		vms[i].BootOrder = append([]string(nil), vm.BootOrder...)
+		vms[i].Disks = append([]Disk(nil), vm.Disks...)
+
+		vms[i].NetworkInterfaces = cloneNetworkInterfaces(vm.NetworkInterfaces)
+		for diskIndex := range vms[i].Disks {
+			vms[i].Disks[diskIndex].IsBoot = false
 		}
 	}
 
@@ -166,6 +179,158 @@ func (Fake) Patch(_ context.Context, node string, vmid int, name, description st
 	return nil
 }
 
+// AddDisk implements Writer and appends a disk to the requested VM.
+func (Fake) AddDisk(_ context.Context, node string, vmid int, bus, storage string, sizeGB int) (string, error) {
+	fakeVMMutex.Lock()
+	defer fakeVMMutex.Unlock()
+
+	idx := findFakeVM(node, vmid)
+	if idx < 0 {
+		return "", ErrNotFound
+	}
+
+	busIndex := nextBusIndex(fakeVMs[idx].Disks, DiskBus(bus))
+	key := fmt.Sprintf("%s%d", bus, busIndex)
+	fakeVMs[idx].Disks = append(fakeVMs[idx].Disks, Disk{Key: key, Bus: DiskBus(bus), BusIndex: busIndex, Storage: storage, SizeGB: sizeGB})
+	fakeVMs[idx].DiskTotal += int64(sizeGB) * 1024 * 1024 * 1024
+	recordCall(FakeCall{Node: node, VMID: vmid, Action: "add_disk", DiskKey: key, Bus: bus, Storage: storage, SizeGB: sizeGB})
+
+	return key, nil
+}
+
+// ResizeDisk implements Writer and grows an existing disk in the fake dataset.
+func (Fake) ResizeDisk(_ context.Context, node string, vmid int, diskKey string, sizeGB int) error {
+	fakeVMMutex.Lock()
+	defer fakeVMMutex.Unlock()
+
+	idx := findFakeVM(node, vmid)
+	if idx < 0 {
+		return ErrNotFound
+	}
+
+	for diskIndex := range fakeVMs[idx].Disks {
+		if fakeVMs[idx].Disks[diskIndex].Key != diskKey {
+			continue
+		}
+
+		previous := fakeVMs[idx].Disks[diskIndex].SizeGB
+		fakeVMs[idx].Disks[diskIndex].SizeGB = sizeGB
+		fakeVMs[idx].DiskTotal += int64(sizeGB-previous) * 1024 * 1024 * 1024
+		recordCall(FakeCall{Node: node, VMID: vmid, Action: "resize_disk", DiskKey: diskKey, SizeGB: sizeGB})
+
+		return nil
+	}
+
+	return ErrNotFound
+}
+
+// DeleteDisk implements Writer and removes a disk from the fake dataset.
+func (Fake) DeleteDisk(_ context.Context, node string, vmid int, diskKey string) error {
+	fakeVMMutex.Lock()
+	defer fakeVMMutex.Unlock()
+
+	idx := findFakeVM(node, vmid)
+	if idx < 0 {
+		return ErrNotFound
+	}
+
+	for diskIndex, disk := range fakeVMs[idx].Disks {
+		if disk.Key != diskKey {
+			continue
+		}
+
+		fakeVMs[idx].Disks = slices.Delete(fakeVMs[idx].Disks, diskIndex, diskIndex+1)
+		fakeVMs[idx].DiskTotal -= int64(disk.SizeGB) * 1024 * 1024 * 1024
+
+		recordCall(FakeCall{Node: node, VMID: vmid, Action: "delete_disk", DiskKey: diskKey})
+
+		return nil
+	}
+
+	return ErrNotFound
+}
+
+// SetCDROM implements Writer and changes the fake VM's CD-ROM state.
+func (Fake) SetCDROM(_ context.Context, node string, vmid int, state CDROMState) error {
+	fakeVMMutex.Lock()
+	defer fakeVMMutex.Unlock()
+
+	idx := findFakeVM(node, vmid)
+	if idx < 0 {
+		return ErrNotFound
+	}
+
+	fakeVMs[idx].CDROM = state
+
+	recordCall(FakeCall{Node: node, VMID: vmid, Action: "set_cdrom"})
+
+	return nil
+}
+
+// UpdateNetwork implements Writer and replaces the fake VM's network interfaces.
+func (Fake) UpdateNetwork(_ context.Context, node string, vmid int, interfaces []NetworkInterface) error {
+	fakeVMMutex.Lock()
+	defer fakeVMMutex.Unlock()
+
+	idx := findFakeVM(node, vmid)
+	if idx < 0 {
+		return ErrNotFound
+	}
+
+	fakeVMs[idx].NetworkInterfaces = cloneNetworkInterfaces(interfaces)
+
+	recordCall(FakeCall{Node: node, VMID: vmid, Action: "update_network"})
+
+	return nil
+}
+
+// UpdateHardware implements Writer and updates the fake VM's CPU, memory, and tags.
+func (Fake) UpdateHardware(_ context.Context, node string, vmid, sockets, cores, memoryMB int, tags []string) error {
+	fakeVMMutex.Lock()
+	defer fakeVMMutex.Unlock()
+
+	idx := findFakeVM(node, vmid)
+	if idx < 0 {
+		return ErrNotFound
+	}
+
+	fakeVMs[idx].Sockets = sockets
+	fakeVMs[idx].Cores = cores
+	fakeVMs[idx].CPUCores = sockets * cores
+	fakeVMs[idx].MemoryTotal = int64(memoryMB) * 1024 * 1024
+
+	fakeVMs[idx].Tags = append([]string(nil), tags...)
+
+	recordCall(FakeCall{Node: node, VMID: vmid, Action: "update_hardware", Sockets: sockets, Cores: cores, MemoryMB: memoryMB})
+
+	return nil
+}
+
+func findFakeVM(node string, vmid int) int {
+	return slices.IndexFunc(fakeVMs, func(v VM) bool { return v.VMID == vmid && v.Node == node })
+}
+
+func nextBusIndex(disks []Disk, bus DiskBus) int {
+	index := 0
+	for _, disk := range disks {
+		if disk.Bus == bus && disk.BusIndex >= index {
+			index = disk.BusIndex + 1
+		}
+	}
+
+	return index
+}
+
+func cloneNetworkInterfaces(interfaces []NetworkInterface) []NetworkInterface {
+	cloned := make([]NetworkInterface, len(interfaces))
+	for i, iface := range interfaces {
+		cloned[i] = iface
+		cloned[i].IPAddresses = append([]string(nil), iface.IPAddresses...)
+	}
+
+	return cloned
+}
+
 // FakeCalls returns a copy of the recorded write calls since the last reset.
 // Tests assert on this to prove a forbidden request reached the cluster zero
 // times (S01 SC-001).
@@ -234,6 +399,10 @@ const (
 	FakeUserBob    = "bob@pve"
 	FakeUserAdmin  = "admin@pve"
 	FakeTagPvmss   = "pvmss"
+	// FakeStorageLocalLVM is the approved local LVM fixture.
+	FakeStorageLocalLVM = "local-lvm"
+	// FakeBridgeVMbr0 is the primary bridge fixture.
+	FakeBridgeVMbr0 = "vmbr0"
 )
 
 var fakeIdentitiesMutex sync.RWMutex
@@ -291,7 +460,7 @@ var fakePools = []Pool{
 
 var fakeStorages = []Storage{
 	{Name: "local", Node: FakeNode01, Type: "dir", Total: 2199023255552, Used: 879609302220},
-	{Name: "local-lvm", Node: FakeNode01, Type: "lvm", Total: 549755813888, Used: 219902325555},
+	{Name: FakeStorageLocalLVM, Node: FakeNode01, Type: "lvm", Total: 549755813888, Used: 219902325555},
 	{Name: "ceph-data", Node: FakeNode02, Type: "cephfs", Total: 1099511627776, Used: 329853488332},
 	{Name: "local", Node: FakeNode02, Type: "dir", Total: 274877906944, Used: 68719476736},
 	{Name: "backup-nfs", Node: FakeNode03, Type: "nfs", Total: 5497558138880, Used: 1099511627776},
@@ -310,9 +479,9 @@ var fakeVMs = originalFakeVMs()
 // originalFakeVMs returns the pristine 25-VM dataset. Kept as a function so
 // ResetFake can restore a fresh copy after a test mutates the live slice.
 func originalFakeVMs() []VM {
-	return []VM{
+	vms := []VM{
 		{VMID: 100, Name: "web-01", Node: FakeNode01, Status: VMRunning, Pool: FakePoolAlice, Tags: []string{FakeTagPvmss, "web"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 34359738368, Uptime: 86400 * time.Second, Description: "Alice's primary web server"},
-		{VMID: 101, Name: "web-02", Node: FakeNode01, Status: VMStopped, Pool: FakePoolAlice, Tags: []string{FakeTagPvmss, "web"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 34359738368},
+		{VMID: 101, Name: "web-02", Node: FakeNode01, Status: VMStopped, Pool: FakePoolAlice, Tags: []string{FakeTagPvmss, "web"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 45097156608},
 		{VMID: 102, Name: "db-01", Node: FakeNode01, Status: VMRunning, Pool: FakePoolAlice, Tags: []string{FakeTagPvmss, "db"}, CPUCores: 4, MemoryTotal: 8589934592, DiskTotal: 137438953472, Uptime: 172800 * time.Second, Description: "Primary database"},
 		{VMID: 103, Name: "cache-01", Node: FakeNode01, Status: VMRunning, Pool: FakePoolBob, Tags: []string{FakeTagPvmss, "cache"}, CPUCores: 2, MemoryTotal: 2147483648, DiskTotal: 10737418240, Uptime: 43200 * time.Second},
 		{VMID: 104, Name: "build-01", Node: FakeNode01, Status: VMStopped, Pool: FakePoolBob, Tags: []string{FakeTagPvmss, "ci"}, CPUCores: 4, MemoryTotal: 8589934592, DiskTotal: 68719476736},
@@ -336,5 +505,33 @@ func originalFakeVMs() []VM {
 		{VMID: 122, Name: "archive-02", Node: FakeNode03, Status: VMStopped, Pool: FakePoolShared, Tags: nil, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 549755813888},
 		{VMID: 123, Name: "dev-01", Node: FakeNode01, Status: VMRunning, Pool: FakePoolAlice, Tags: []string{FakeTagPvmss, "dev"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 21474836480, Uptime: 7200 * time.Second, Description: "Alice's dev box"},
 		{VMID: 124, Name: "dev-02", Node: FakeNode01, Status: VMStopped, Pool: FakePoolAlice, Tags: []string{FakeTagPvmss, "dev"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 21474836480},
+	}
+	seedFakeHardware(vms)
+
+	return vms
+}
+
+func seedFakeHardware(vms []VM) {
+	for index := range vms {
+		vms[index].Sockets = 1
+		vms[index].Cores = vms[index].CPUCores
+	}
+
+	for index := range vms {
+		if vms[index].VMID != 101 {
+			continue
+		}
+
+		vms[index].Disks = []Disk{
+			{Key: "scsi0", Bus: DiskBusSCSI, BusIndex: 0, Storage: FakeStorageLocalLVM, SizeGB: 32},
+			{Key: "scsi1", Bus: DiskBusSCSI, BusIndex: 1, Storage: FakeStorageLocalLVM, SizeGB: 10},
+		}
+		vms[index].CDROM = CDROMState{State: CDROMMounted, ISOVolID: "local:iso/debian-12-generic-amd64.iso"}
+		vms[index].NetworkInterfaces = []NetworkInterface{{
+			Index:  0,
+			Bridge: FakeBridgeVMbr0,
+			Model:  string(DiskBusVirtio),
+			MAC:    "BC:24:11:00:00:65",
+		}}
 	}
 }

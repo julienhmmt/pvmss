@@ -109,8 +109,8 @@ func TestFake_CreateVM_RecordsVMInDataset(t *testing.T) {
 		Tags:             []string{"team-web", "pvmss"},
 		CPUCores:         2,
 		MemoryMB:         4096,
-		Disk:             DiskSpec{Storage: "local-lvm", SizeGB: 40},
-		Network:          NetworkSpec{Bridge: "vmbr0", Model: "virtio"},
+		Disk:             DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 40},
+		Network:          NetworkSpec{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)},
 		StartAfterCreate: true,
 	}
 

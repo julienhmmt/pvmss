@@ -2,6 +2,10 @@
 	import { getVmDetailContext } from './detail.svelte';
 	import VmActionBar from './VmActionBar.svelte';
 	import DeleteVmDialog from './DeleteVmDialog.svelte';
+	import Tabs from '$lib/shared/ui/Tabs.svelte';
+	import VmDisksTab from './disks/VmDisksTab.svelte';
+	import VmNetworkTab from './network/VmNetworkTab.svelte';
+	import VmHardwareTab from './hardware/VmHardwareTab.svelte';
 
 	const store = getVmDetailContext();
 
@@ -10,6 +14,14 @@
 	let editingDescription = $state(false);
 	let nameDraft = $state('');
 	let descriptionDraft = $state('');
+
+	const tabs = [
+		{ id: 'overview', label: 'Overview' },
+		{ id: 'disks', label: 'Disks' },
+		{ id: 'network', label: 'Network' },
+		{ id: 'hardware', label: 'Hardware' }
+	];
+	let activeTab = $state('overview');
 
 	const statusClasses: Record<string, string> = {
 		running: 'bg-success-soft text-success-soft-foreground',
@@ -161,29 +173,47 @@
 		</div>
 	</dl>
 
-	<section class="mt-6">
-		<h2 class="mb-2 text-sm font-medium text-muted-foreground">Description</h2>
-		{#if editingDescription}
-			<textarea
-				class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-				bind:value={descriptionDraft}
-				onkeydown={handleDescriptionKeydown}
-				onblur={commitDescription}
-				rows="3"
-				data-testid="vm-description-edit"
-			></textarea>
-		{:else}
-			<button
-				type="button"
-				class="w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-left text-sm hover:cursor-text hover:bg-muted/50"
-				onclick={startEditDescription}
-				title="Click to edit"
-				data-testid="vm-description"
-			>
-				{store.entity.description || 'No description. Click to add one.'}
-			</button>
-		{/if}
-	</section>
+	<div class="mt-8">
+		<Tabs {tabs} bind:active={activeTab} />
+
+		<div id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" hidden={activeTab !== 'overview'}>
+			<section class="mt-6">
+				<h2 class="mb-2 text-sm font-medium text-muted-foreground">Description</h2>
+				{#if editingDescription}
+					<textarea
+						class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+						bind:value={descriptionDraft}
+						onkeydown={handleDescriptionKeydown}
+						onblur={commitDescription}
+						rows="3"
+						data-testid="vm-description-edit"
+					></textarea>
+				{:else}
+					<button
+						type="button"
+						class="w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-left text-sm hover:cursor-text hover:bg-muted/50"
+						onclick={startEditDescription}
+						title="Click to edit"
+						data-testid="vm-description"
+					>
+						{store.entity.description || 'No description. Click to add one.'}
+					</button>
+				{/if}
+			</section>
+		</div>
+
+		<div id="panel-disks" role="tabpanel" aria-labelledby="tab-disks" hidden={activeTab !== 'disks'} class="mt-6">
+			<VmDisksTab />
+		</div>
+
+		<div id="panel-network" role="tabpanel" aria-labelledby="tab-network" hidden={activeTab !== 'network'} class="mt-6">
+			<VmNetworkTab />
+		</div>
+
+		<div id="panel-hardware" role="tabpanel" aria-labelledby="tab-hardware" hidden={activeTab !== 'hardware'} class="mt-6">
+			<VmHardwareTab />
+		</div>
+	</div>
 
 	{#if store.patchError}
 		<p role="alert" class="mt-4 text-sm text-destructive" data-testid="vm-patch-error">
