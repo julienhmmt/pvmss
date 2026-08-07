@@ -38,6 +38,36 @@ func (Proxmox) Patch(_ context.Context, _ string, _ int, _, _ string) error {
 	return ErrNotImplemented
 }
 
+// AddDisk implements Writer.
+func (Proxmox) AddDisk(_ context.Context, _ string, _ int, _, _ string, _ int) (string, error) {
+	return "", ErrNotImplemented
+}
+
+// ResizeDisk implements Writer.
+func (Proxmox) ResizeDisk(_ context.Context, _ string, _ int, _ string, _ int) error {
+	return ErrNotImplemented
+}
+
+// DeleteDisk implements Writer.
+func (Proxmox) DeleteDisk(_ context.Context, _ string, _ int, _ string) error {
+	return ErrNotImplemented
+}
+
+// SetCDROM implements Writer.
+func (Proxmox) SetCDROM(_ context.Context, _ string, _ int, _ CDROMState) error {
+	return ErrNotImplemented
+}
+
+// UpdateNetwork implements Writer.
+func (Proxmox) UpdateNetwork(_ context.Context, _ string, _ int, _ []NetworkInterface) error {
+	return ErrNotImplemented
+}
+
+// UpdateHardware implements Writer.
+func (Proxmox) UpdateHardware(_ context.Context, _ string, _, _, _, _ int, _ []string) error {
+	return ErrNotImplemented
+}
+
 // NextVMID implements Creator.
 func (Proxmox) NextVMID(_ context.Context) (int, error) {
 	return 0, ErrNotImplemented

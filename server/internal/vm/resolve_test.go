@@ -209,3 +209,34 @@ func TestResolve_StoppedVmHasZeroUptime(t *testing.T) {
 		t.Errorf("uptime = %v, want 0 for a stopped VM", entity.Uptime)
 	}
 }
+
+//nolint:paralleltest // serial: shared fake VM fixture
+func TestResolve_EntityCarriesHardwareFields(t *testing.T) {
+	idx := buildResolveIndex(t)
+	alice := auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}
+
+	entity, err := vm.Resolve(idx, alice, testClusterName, 101)
+	if err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+
+	if entity.Sockets != 1 || entity.Cores != 2 {
+		t.Errorf("hardware = %d sockets x %d cores, want 1 x 2", entity.Sockets, entity.Cores)
+	}
+
+	if len(entity.Disks) != 2 || entity.Disks[0].Key != "scsi0" {
+		t.Errorf("disks = %+v, want scsi0 and scsi1", entity.Disks)
+	}
+
+	if !entity.Disks[0].IsBoot || entity.Disks[1].IsBoot {
+		t.Errorf("boot flags = %+v, want only scsi0 boot", entity.Disks)
+	}
+
+	if entity.CDROM.State != cluster.CDROMMounted || entity.CDROM.ISOVolID == "" {
+		t.Errorf("cdrom = %+v, want mounted media", entity.CDROM)
+	}
+
+	if len(entity.NetworkInterfaces) != 1 || entity.NetworkInterfaces[0].Bridge != testBridgeVMbr0 {
+		t.Errorf("network interfaces = %+v, want vmbr0", entity.NetworkInterfaces)
+	}
+}

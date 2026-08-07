@@ -53,6 +53,10 @@ func aliceIdentity() auth.Identity {
 	return auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}
 }
 
+func bobIdentity() auth.Identity {
+	return auth.Identity{Username: cluster.FakeUserBob, Pool: cluster.FakePoolBob}
+}
+
 // detailedRequest is a fully explicit, catalog-valid detailed-mode request.
 func detailedRequest() vm.CreateRequest {
 	return vm.CreateRequest{
@@ -61,8 +65,8 @@ func detailedRequest() vm.CreateRequest {
 		Node:     cluster.FakeNode01,
 		CPUCores: 2,
 		MemoryMB: 4096,
-		Disk:     vm.DiskRequest{Storage: "local-lvm", SizeGB: 40},
-		Network:  vm.NetworkRequest{Bridge: "vmbr0", Model: "virtio"},
+		Disk:     vm.DiskRequest{Storage: cluster.FakeStorageLocalLVM, SizeGB: 40},
+		Network:  vm.NetworkRequest{Bridge: cluster.FakeBridgeVMbr0, Model: string(cluster.DiskBusVirtio)},
 	}
 }
 
