@@ -1,3 +1,4 @@
+//nolint:goconst // test fixture strings
 package inventory_test
 
 import (
