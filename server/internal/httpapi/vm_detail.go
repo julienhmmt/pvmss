@@ -14,12 +14,12 @@ import (
 	"strings"
 )
 
-// VmDetail serves the four VM-detail endpoints, all gated by the same
+// VMDetail serves the four VM-detail endpoints, all gated by the same
 // vm.Resolve() (FR-001, SC-005): GET /vms/:cluster/:vmid (detail),
 // POST /vms/:cluster/:vmid/actions (power), DELETE /vms/:cluster/:vmid (delete),
 // PATCH /vms/:cluster/:vmid (rename/description). 403/404 semantics are
 // byte-identical across all four (contracts behavioural rule).
-type VmDetail struct {
+type VMDetail struct {
 	projection *inventory.Projection
 	auth       *Auth
 	writer     cluster.Writer
@@ -28,11 +28,11 @@ type VmDetail struct {
 	log        *slog.Logger
 }
 
-// NewVmDetail creates the handler. The writer is the cluster.Writer (separate
+// NewVMDetail creates the handler. The writer is the cluster.Writer (separate
 // from the read Client — constitution IV); the refresher rebuilds the Index
 // after a write (FR-010).
-func NewVmDetail(projection *inventory.Projection, authHandler *Auth, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger) *VmDetail {
-	return &VmDetail{projection: projection, auth: authHandler, writer: writer, store: st, refresher: refresher, log: log}
+func NewVMDetail(projection *inventory.Projection, authHandler *Auth, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger) *VMDetail {
+	return &VMDetail{projection: projection, auth: authHandler, writer: writer, store: st, refresher: refresher, log: log}
 }
 
 type vmDetailDTO struct {
@@ -66,7 +66,7 @@ type patchRequest struct {
 	Description string `json:"description"`
 }
 
-func (h *VmDetail) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *VMDetail) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		h.handleGet(w, r)
@@ -84,7 +84,7 @@ func (h *VmDetail) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // handleGet serves GET /vms/:cluster/:vmid — the detail view (US1). Calls
 // Resolve and encodes the Entity (FR-005).
-func (h *VmDetail) handleGet(w http.ResponseWriter, r *http.Request) {
+func (h *VMDetail) handleGet(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
 		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
@@ -115,7 +115,7 @@ func (h *VmDetail) handleGet(w http.ResponseWriter, r *http.Request) {
 // handleAction serves POST /vms/:cluster/:vmid/actions (US2, closes S01).
 // The request body carries only {"action": Kind} — no node field exists in
 // the schema, so there is nothing to forge (S01 root cause, structurally closed).
-func (h *VmDetail) handleAction(w http.ResponseWriter, r *http.Request) {
+func (h *VMDetail) handleAction(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
 		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
@@ -155,7 +155,7 @@ func (h *VmDetail) handleAction(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleDelete serves DELETE /vms/:cluster/:vmid (US3). Same Resolve() gate.
-func (h *VmDetail) handleDelete(w http.ResponseWriter, r *http.Request) {
+func (h *VMDetail) handleDelete(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
 		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
@@ -185,7 +185,7 @@ func (h *VmDetail) handleDelete(w http.ResponseWriter, r *http.Request) {
 // handlePatch serves PATCH /vms/:cluster/:vmid (US4). Accepts name and/or
 // description; at least one must be present. Name is validated as a hostname
 // before Resolve is called (constitution XIII: malformed input rejected first).
-func (h *VmDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
+func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
 		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
@@ -241,7 +241,7 @@ func (h *VmDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 
 // parsePath extracts :cluster and :vmid from the route pattern
 // /api/v1/vms/{cluster}/{vmid}[...]. Returns ok=false if vmid is not a valid int.
-func (h *VmDetail) parsePath(r *http.Request) (string, int, bool) {
+func (h *VMDetail) parsePath(r *http.Request) (string, int, bool) {
 	clusterName := r.PathValue("cluster")
 	if clusterName == "" {
 		return "", 0, false
@@ -270,7 +270,7 @@ func parseIntPathValue(r *http.Request, key string) (int, error) {
 	return value, nil
 }
 
-func (h *VmDetail) writeEntity(w http.ResponseWriter, entity vm.Entity) {
+func (h *VMDetail) writeEntity(w http.ResponseWriter, entity vm.Entity) {
 	dto := vmDetailDTO{
 		VMID:        entity.VMID,
 		Name:        entity.Name,
@@ -290,7 +290,7 @@ func (h *VmDetail) writeEntity(w http.ResponseWriter, entity vm.Entity) {
 	h.writeJSONStatus(w, http.StatusOK, dto)
 }
 
-func (h *VmDetail) writeJSONStatus(w http.ResponseWriter, status int, value any) {
+func (h *VMDetail) writeJSONStatus(w http.ResponseWriter, status int, value any) {
 	body, err := json.Marshal(value)
 	if err != nil {
 		h.log.Error("failed to marshal response", "component", "httpapi", "error", err)
@@ -306,7 +306,7 @@ func (h *VmDetail) writeJSONStatus(w http.ResponseWriter, status int, value any)
 
 // writeResolveError maps vm.Resolve errors to HTTP statuses. 403 and 404 are
 // byte-identical in shape across all four endpoints (contracts).
-func (h *VmDetail) writeResolveError(w http.ResponseWriter, err error) {
+func (h *VMDetail) writeResolveError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrForbidden):
 		h.writeDetailError(w, http.StatusForbidden, "forbidden", "not your VM")
@@ -319,7 +319,7 @@ func (h *VmDetail) writeResolveError(w http.ResponseWriter, err error) {
 }
 
 // writeActionError maps vm.Action / vm.Delete errors to HTTP statuses.
-func (h *VmDetail) writeActionError(w http.ResponseWriter, err error) {
+func (h *VMDetail) writeActionError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrForbidden):
 		h.writeDetailError(w, http.StatusForbidden, "forbidden", "not your VM")
@@ -339,7 +339,7 @@ func (h *VmDetail) writeActionError(w http.ResponseWriter, err error) {
 }
 
 // writePatchError maps vm.Patch errors to HTTP statuses.
-func (h *VmDetail) writePatchError(w http.ResponseWriter, err error) {
+func (h *VMDetail) writePatchError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrForbidden):
 		h.writeDetailError(w, http.StatusForbidden, "forbidden", "not your VM")
@@ -360,7 +360,7 @@ func (h *VmDetail) writePatchError(w http.ResponseWriter, err error) {
 	}
 }
 
-func (h *VmDetail) writeDetailError(w http.ResponseWriter, status int, code, message string) {
+func (h *VMDetail) writeDetailError(w http.ResponseWriter, status int, code, message string) {
 	if err := writeClusterError(w, status, code, message); err != nil {
 		h.log.Error("failed to write error response", "component", "httpapi", "code", code, "error", err)
 	}

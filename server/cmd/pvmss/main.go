@@ -1,3 +1,6 @@
+// Command pvmss is the next-gen PVMSS server entry point: it wires the
+// config, store, cluster client, inventory projection and HTTP API together
+// and serves the SPA + REST endpoints on a single port.
 package main
 
 import (
@@ -128,8 +131,8 @@ func run() int {
 		return 1
 	}
 
-	vmDetail := httpapi.NewVmDetail(projection, authHandler, writer, st, worker, logger)
-	vmCreate := httpapi.NewVmCreate(authHandler, st, creator, logger)
+	vmDetail := httpapi.NewVMDetail(projection, authHandler, writer, st, worker, logger)
+	vmCreate := httpapi.NewVMCreate(authHandler, st, creator, logger)
 	tasks := httpapi.NewTasks(authHandler, creator, worker, logger)
 	router := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, vmCreate, tasks, authHandler, webDir, logger)
 

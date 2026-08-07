@@ -59,11 +59,11 @@ var allowedNetworkModels = map[string]bool{
 	"rtl8139": true,
 }
 
-// VMCreateRequest is the single creation request shape both frontend modes
+// CreateRequest is the single creation request shape both frontend modes
 // build (FR-001). It deliberately carries no pool field (FR-004 — nothing to
 // forge) and no mode field (the server cannot tell and does not care which
 // wizard produced it).
-type VMCreateRequest struct {
+type CreateRequest struct {
 	Cluster          string           `json:"cluster"`
 	Name             string           `json:"name"`
 	ProfileID        string           `json:"profileId,omitempty"`
@@ -71,26 +71,26 @@ type VMCreateRequest struct {
 	Tags             []string         `json:"tags,omitempty"`
 	CPUCores         int              `json:"cpuCores,omitempty"`
 	MemoryMB         int              `json:"memoryMB,omitempty"`
-	Disk             VMDiskRequest    `json:"disk"`
-	Network          VMNetworkRequest `json:"network"`
-	ISO              *VMISORequest    `json:"iso,omitempty"`
+	Disk             DiskRequest    `json:"disk"`
+	Network          NetworkRequest `json:"network"`
+	ISO              *ISORequest    `json:"iso,omitempty"`
 	StartAfterCreate bool             `json:"startAfterCreate,omitempty"`
 }
 
-// VMDiskRequest is the request's single initial disk.
-type VMDiskRequest struct {
+// DiskRequest is the request's single initial disk.
+type DiskRequest struct {
 	Storage string `json:"storage,omitempty"`
 	SizeGB  int    `json:"sizeGB,omitempty"`
 }
 
-// VMNetworkRequest is the request's single initial NIC.
-type VMNetworkRequest struct {
+// NetworkRequest is the request's single initial NIC.
+type NetworkRequest struct {
 	Bridge string `json:"bridge,omitempty"`
 	Model  string `json:"model,omitempty"`
 }
 
-// VMISORequest is an optional installation ISO.
-type VMISORequest struct {
+// ISORequest is an optional installation ISO.
+type ISORequest struct {
 	Storage string `json:"storage"`
 	File    string `json:"file"`
 }
@@ -128,7 +128,7 @@ type CreateResult struct {
 // would tell the client creation failed when it did not — the same
 // log-don't-fail rule the task-status handler already applies to a failed
 // post-completion invalidation (tasks.go).
-func Create(ctx context.Context, actor auth.Identity, clusterName string, req VMCreateRequest, st *store.Store, creator cluster.Creator, audit AuditRecorder, log *slog.Logger) (CreateResult, error) {
+func Create(ctx context.Context, actor auth.Identity, clusterName string, req CreateRequest, st *store.Store, creator cluster.Creator, audit AuditRecorder, log *slog.Logger) (CreateResult, error) {
 	if actor.Pool == "" {
 		return CreateResult{}, ErrNoPool
 	}
