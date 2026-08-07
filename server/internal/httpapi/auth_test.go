@@ -1,5 +1,4 @@
 //nolint:noctx // test scaffolding does not need real context
-//nolint:goconst // test fixture strings
 package httpapi_test
 
 import (
@@ -16,6 +15,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+//nolint:paralleltest // serial: shared fake auth and session fixtures
 func TestAuth_LoginPVE_StoresSession(t *testing.T) {
 	handler := newAuthHandler(t)
 
@@ -33,11 +33,12 @@ func TestAuth_LoginPVE_StoresSession(t *testing.T) {
 		t.Fatalf("decode response: %v", err)
 	}
 
-	if got != (auth.Identity{Username: "alice@pve", Pool: "pool-alice"}) {
+	if got != (auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}) {
 		t.Fatalf("identity = %+v", got)
 	}
 }
 
+//nolint:paralleltest // serial: shared fake auth and session fixtures
 func TestAuth_AdminLogin_StoresAdminSession(t *testing.T) {
 	handler := newAuthHandler(t)
 
@@ -56,6 +57,7 @@ func TestAuth_AdminLogin_StoresAdminSession(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake auth and session fixtures
 func TestAuth_MeAndLogout_RequireAndClearSession(t *testing.T) {
 	handler := newAuthHandler(t)
 	login := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
@@ -88,6 +90,8 @@ func TestAuth_MeAndLogout_RequireAndClearSession(t *testing.T) {
 // Regresses T02's original stateless signed-cookie session, which stayed
 // valid after logout until its embedded expiry. The session must now be
 // revoked server-side, so replaying the exact same cookie after logout fails.
+//
+//nolint:paralleltest // serial: shared fake auth and session fixtures
 func TestAuth_Logout_RevokesSessionServerSide(t *testing.T) {
 	handler := newAuthHandler(t)
 	login := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
@@ -105,6 +109,7 @@ func TestAuth_Logout_RevokesSessionServerSide(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake auth and session fixtures
 func TestAuth_CreateToken_ResolvesBearerPrincipal(t *testing.T) {
 	handler := newAuthHandler(t)
 	login := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
@@ -138,6 +143,7 @@ func TestAuth_CreateToken_ResolvesBearerPrincipal(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake auth and session fixtures
 func TestAuth_ListTokens_OmitsValue(t *testing.T) {
 	handler := newAuthHandler(t)
 	login := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
@@ -182,6 +188,7 @@ func TestAuth_ListTokens_OmitsValue(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake auth and session fixtures
 func TestAuth_RevokeToken_StopsBearerAuthAndIsIdempotent(t *testing.T) {
 	handler := newAuthHandler(t)
 	login := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
@@ -231,6 +238,7 @@ func TestAuth_RevokeToken_StopsBearerAuthAndIsIdempotent(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake auth and session fixtures
 func TestAuth_ChangePassword_AllowsLoginWithNewPasswordOnly(t *testing.T) {
 	handler := newAuthHandler(t)
 	login := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
@@ -263,6 +271,7 @@ func TestAuth_ChangePassword_AllowsLoginWithNewPasswordOnly(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake auth and session fixtures
 func TestAuth_ChangePassword_RejectsShortPassword(t *testing.T) {
 	handler := newAuthHandler(t)
 	login := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
@@ -279,6 +288,7 @@ func TestAuth_ChangePassword_RejectsShortPassword(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake auth and session fixtures
 func TestAuth_LoginRejectsInvalidCredentials(t *testing.T) {
 	handler := newAuthHandler(t)
 

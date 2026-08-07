@@ -1,5 +1,4 @@
 //nolint:noctx // test scaffolding does not need real context
-//nolint:goconst // test fixture strings
 package httpapi_test
 
 import (
@@ -31,6 +30,8 @@ func getTask(t *testing.T, handler *httpapi.Tasks, upid string, cookie *http.Coo
 
 // TestTasks_PollTransitions — T012/SC-006: the fake's poll-count state machine
 // surfaces as running, then ok across three GET calls.
+//
+//nolint:paralleltest // serial: shared fake task fixture
 func TestTasks_PollTransitions(t *testing.T) {
 	handler, authHandler, projection := newTasksHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
@@ -44,10 +45,10 @@ func TestTasks_PollTransitions(t *testing.T) {
 
 	upid, err := (cluster.Fake{}).CreateVM(ctx, cluster.VMSpec{
 		VMID:     vmid,
-		Node:     "pve-node-01",
+		Node:     cluster.FakeNode01,
 		Name:     "polled-vm",
-		Pool:     "pool-alice",
-		Tags:     []string{"pvmss"},
+		Pool:     cluster.FakePoolAlice,
+		Tags:     []string{cluster.FakeTagPvmss},
 		CPUCores: 1,
 		MemoryMB: 2048,
 		Disk:     cluster.DiskSpec{Storage: "local-lvm", SizeGB: 20},
@@ -99,6 +100,8 @@ func TestTasks_PollTransitions(t *testing.T) {
 }
 
 // TestTasks_UnknownUPID — T012: an unknown upid is a 404.
+//
+//nolint:paralleltest // serial: shared fake task fixture
 func TestTasks_UnknownUPID(t *testing.T) {
 	handler, authHandler, _ := newTasksHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
@@ -113,6 +116,8 @@ func TestTasks_UnknownUPID(t *testing.T) {
 
 // TestTasks_RequiresAuth — the endpoint is authenticated (T02), like every
 // /api/v1 route.
+//
+//nolint:paralleltest // serial: shared fake task fixture
 func TestTasks_RequiresAuth(t *testing.T) {
 	handler, _, _ := newTasksHandler(t)
 

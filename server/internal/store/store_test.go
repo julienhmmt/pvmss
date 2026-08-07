@@ -1,4 +1,3 @@
-//nolint:goconst // test fixture strings
 package store_test
 
 import (
@@ -13,12 +12,13 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+//nolint:paralleltest // serial: shared database fixture
 func TestOpen_MigrationsValidationFailed(t *testing.T) {
 	original := store.Migrations
 	defer func() { store.Migrations = original }()
 
 	store.Migrations = []store.Migration{
-		{Version: 1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
+		{Version: 1, DDL: testMigrationDDL},
 		{Version: 3, DDL: `CREATE TABLE t3 (id INTEGER PRIMARY KEY)`},
 	}
 
@@ -26,9 +26,9 @@ func TestOpen_MigrationsValidationFailed(t *testing.T) {
 	cfg := config.Configuration{
 		Port:      50001,
 		DBPath:    filepath.Join(dir, "pvmss.db"),
-		LogLevel:  "info",
-		LogFormat: "json",
-		LogOutput: "stdout",
+		LogLevel:  testStoreLogLevel,
+		LogFormat: testStoreLogFormat,
+		LogOutput: testStoreLogOutput,
 	}
 
 	if _, err := store.Open(cfg); err == nil {
@@ -36,6 +36,7 @@ func TestOpen_MigrationsValidationFailed(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared database fixture
 func TestOpen_MkdirAllFailed(t *testing.T) {
 	dir := t.TempDir()
 
@@ -47,9 +48,9 @@ func TestOpen_MkdirAllFailed(t *testing.T) {
 	cfg := config.Configuration{
 		Port:      50001,
 		DBPath:    filepath.Join(blocked, "pvmss.db"),
-		LogLevel:  "info",
-		LogFormat: "json",
-		LogOutput: "stdout",
+		LogLevel:  testStoreLogLevel,
+		LogFormat: testStoreLogFormat,
+		LogOutput: testStoreLogOutput,
 	}
 
 	if _, err := store.Open(cfg); err == nil {
@@ -57,6 +58,7 @@ func TestOpen_MkdirAllFailed(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared database fixture
 func TestOpen(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -93,9 +95,9 @@ func TestOpen(t *testing.T) {
 			cfg := config.Configuration{
 				Port:      50001,
 				DBPath:    dbPath,
-				LogLevel:  "info",
-				LogFormat: "json",
-				LogOutput: "stdout",
+				LogLevel:  testStoreLogLevel,
+				LogFormat: testStoreLogFormat,
+				LogOutput: testStoreLogOutput,
 			}
 
 			s, err := store.Open(cfg)

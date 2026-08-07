@@ -1,5 +1,4 @@
 //nolint:noctx // test scaffolding does not need real context
-//nolint:goconst // test fixture strings
 package httpapi_test
 
 import (
@@ -16,7 +15,13 @@ import (
 	"testing"
 )
 
-func TestHealth(t *testing.T) {
+const (
+	healthStatusHealthy   = "healthy"
+	healthStatusUnhealthy = "unhealthy"
+)
+
+//nolint:paralleltest // serial: shared health fixture
+func TestHealth(t *testing.T) { //nolint:gocyclo // table-driven test covers all health response branches
 	leakyErr := errors.New("connection refused: /tmp/pvmss.db")
 
 	cases := []struct {
@@ -27,25 +32,25 @@ func TestHealth(t *testing.T) {
 		wantBody   httpapi.HealthResponse
 	}{
 		{
-			name:   "healthy",
+			name:   healthStatusHealthy,
 			method: http.MethodGet,
 			pinger: fakePinger{err: nil},
 			wantBody: httpapi.HealthResponse{
-				Status: "healthy",
+				Status: healthStatusHealthy,
 				Checks: map[string]httpapi.CheckResult{
-					"database": {Status: "healthy"},
+					"database": {Status: healthStatusHealthy},
 				},
 			},
 		},
 		{
-			name:       "unhealthy",
+			name:       healthStatusUnhealthy,
 			method:     http.MethodGet,
 			pinger:     fakePinger{err: leakyErr},
 			wantStatus: http.StatusServiceUnavailable,
 			wantBody: httpapi.HealthResponse{
-				Status: "unhealthy",
+				Status: healthStatusUnhealthy,
 				Checks: map[string]httpapi.CheckResult{
-					"database": {Status: "unhealthy", Detail: "database unreachable"},
+					"database": {Status: healthStatusUnhealthy, Detail: "database unreachable"},
 				},
 			},
 		},
@@ -95,6 +100,7 @@ func TestHealth(t *testing.T) {
 				t.Fatalf("status = %q, want %q", resp.Status, c.wantBody.Status)
 			}
 
+			//nolint:nestif // nested validation mirrors the nested health response
 			if len(c.wantBody.Checks) > 0 {
 				gotDB := resp.Checks["database"]
 
@@ -103,7 +109,7 @@ func TestHealth(t *testing.T) {
 					t.Fatalf("database check = %+v, want %+v", gotDB, wantDB)
 				}
 
-				if c.name == "unhealthy" {
+				if c.name == healthStatusUnhealthy {
 					if strings.Contains(gotDB.Detail, c.pinger.err.Error()) {
 						t.Fatalf("detail leaks raw error: %q", gotDB.Detail)
 					}
@@ -121,6 +127,7 @@ func TestHealth(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared health fixture
 func TestHealth_LogsError_WhenUnhealthy(t *testing.T) {
 	var buf strings.Builder
 

@@ -1,5 +1,4 @@
 //nolint:noctx // test scaffolding does not need real context
-//nolint:goconst // test fixture strings
 package httpapi_test
 
 import (
@@ -18,6 +17,7 @@ import (
 	"time"
 )
 
+//nolint:paralleltest // serial: shared router and filesystem fixtures
 func TestRouter_SPAFallback(t *testing.T) {
 	dir := t.TempDir()
 
@@ -81,6 +81,7 @@ func TestRouter_SPAFallback(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared router and filesystem fixtures
 func TestRouter_MissingBuildDir_HealthStillWorks(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	health := httpapi.NewHealth(fakePinger{}, logger)
@@ -113,7 +114,7 @@ func TestRouter_MissingBuildDir_HealthStillWorks(t *testing.T) {
 		t.Fatalf("decode health: %v", err)
 	}
 
-	if got.Status != "healthy" {
+	if got.Status != healthStatusHealthy {
 		t.Fatalf("status = %q, want healthy", got.Status)
 	}
 }

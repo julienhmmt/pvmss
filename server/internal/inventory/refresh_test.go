@@ -11,6 +11,8 @@ import (
 
 // TestRefresh_OutsideGuardSucceeds — a manual refresh outside the guard
 // interval succeeds and calls the client.
+//
+//nolint:paralleltest // serial: shared refresh fixture
 func TestRefresh_OutsideGuardSucceeds(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot()}
 	projection := inventory.NewProjection()
@@ -41,6 +43,8 @@ func TestRefresh_OutsideGuardSucceeds(t *testing.T) {
 // TestRefresh_InsideGuardRefusedWithZeroCalls — FR-006, SC-001: a manual
 // refresh within the guard interval is refused with ErrRefreshTooSoon and
 // makes zero client calls.
+//
+//nolint:paralleltest // serial: shared refresh fixture
 func TestRefresh_InsideGuardRefusedWithZeroCalls(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot()}
 	projection := inventory.NewProjection()
@@ -76,6 +80,8 @@ func TestRefresh_InsideGuardRefusedWithZeroCalls(t *testing.T) {
 // reported shrinks as time passes, it is not the full guard interval on
 // every refusal (contracts/cluster-refresh.md: retryAfterSeconds is how long
 // is left, not a constant).
+//
+//nolint:paralleltest // serial: shared refresh fixture
 func TestRefresh_RetryAfterCountsDownNotFullInterval(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot()}
 	projection := inventory.NewProjection()
@@ -100,6 +106,8 @@ func TestRefresh_RetryAfterCountsDownNotFullInterval(t *testing.T) {
 // TestRefresh_FirstRefreshAllowedWhenProjectionEmpty — a manual refresh before
 // the first automatic cycle is allowed (the guard only applies after a
 // successful refresh).
+//
+//nolint:paralleltest // serial: shared refresh fixture
 func TestRefresh_FirstRefreshAllowedWhenProjectionEmpty(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot()}
 	projection := inventory.NewProjection()
@@ -124,6 +132,8 @@ func TestRefresh_FirstRefreshAllowedWhenProjectionEmpty(t *testing.T) {
 // TestRefresh_FailingClientReturnsUnreachable — a manual refresh whose client
 // call fails returns ErrClusterUnreachable; the previous projection is
 // still served (FR-004).
+//
+//nolint:paralleltest // serial: shared refresh fixture
 func TestRefresh_FailingClientReturnsUnreachable(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot()}
 	projection := inventory.NewProjection()
@@ -149,6 +159,8 @@ func TestRefresh_FailingClientReturnsUnreachable(t *testing.T) {
 }
 
 // TestRefresh_MinInterval returns the configured guard.
+//
+//nolint:paralleltest // serial: shared refresh fixture
 func TestRefresh_MinInterval(t *testing.T) {
 	worker := inventory.NewWorker(&callCountClient{}, inventory.NewProjection(), time.Hour, testLogger())
 

@@ -1,4 +1,3 @@
-//nolint:goconst // test fixture strings
 package cluster_test
 
 import (
@@ -13,18 +12,23 @@ import (
 // are verified against the same behaviour, so the fake cannot drift from what
 // a real cluster is expected to do. Black-box on purpose — only the public
 // Client contract is exercised here.
+const (
+	fakeImplementationName    = "fake"
+	proxmoxImplementationName = "proxmox"
+)
 
-func TestContract_Snapshot(t *testing.T) {
+//nolint:paralleltest // serial: shared fake identity fixture
+func TestContract_Snapshot(t *testing.T) { //nolint:gocyclo // contract test intentionally checks every snapshot invariant
 	impls := map[string]cluster.Client{
-		"fake":    cluster.Fake{},
-		"proxmox": cluster.Proxmox{},
+		fakeImplementationName:    cluster.Fake{},
+		proxmoxImplementationName: cluster.Proxmox{},
 	}
 
 	for name, impl := range impls {
 		t.Run(name, func(t *testing.T) {
 			snap, err := impl.Snapshot(context.Background())
 
-			if name == "proxmox" {
+			if name == proxmoxImplementationName {
 				if !errors.Is(err, cluster.ErrNotImplemented) {
 					t.Fatalf("proxmox stub: err = %v, want ErrNotImplemented", err)
 				}
@@ -77,17 +81,18 @@ func TestContract_Snapshot(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake identity fixture
 func TestContract_Authenticate(t *testing.T) {
 	impls := map[string]cluster.Client{
-		"fake":    cluster.Fake{},
-		"proxmox": cluster.Proxmox{},
+		fakeImplementationName:    cluster.Fake{},
+		proxmoxImplementationName: cluster.Proxmox{},
 	}
 
 	for name, impl := range impls {
 		t.Run(name, func(t *testing.T) {
 			_, err := impl.Authenticate(context.Background(), "alice@pve", "pvmss-alice")
 
-			if name == "proxmox" {
+			if name == proxmoxImplementationName {
 				if !errors.Is(err, cluster.ErrNotImplemented) {
 					t.Fatalf("proxmox stub: err = %v, want ErrNotImplemented", err)
 				}
@@ -102,9 +107,10 @@ func TestContract_Authenticate(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake identity fixture
 func TestContract_Authenticate_RejectsWrongPassword(t *testing.T) {
 	impls := map[string]cluster.Client{
-		"fake": cluster.Fake{},
+		fakeImplementationName: cluster.Fake{},
 	}
 
 	for name, impl := range impls {
@@ -116,17 +122,18 @@ func TestContract_Authenticate_RejectsWrongPassword(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake identity fixture
 func TestContract_ChangePassword(t *testing.T) {
 	impls := map[string]cluster.Client{
-		"fake":    cluster.Fake{},
-		"proxmox": cluster.Proxmox{},
+		fakeImplementationName:    cluster.Fake{},
+		proxmoxImplementationName: cluster.Proxmox{},
 	}
 
 	for name, impl := range impls {
 		t.Run(name, func(t *testing.T) {
 			err := impl.ChangePassword(context.Background(), "alice@pve", "pvmss-alice", "temporary-new-password")
 
-			if name == "proxmox" {
+			if name == proxmoxImplementationName {
 				if !errors.Is(err, cluster.ErrNotImplemented) {
 					t.Fatalf("proxmox stub: err = %v, want ErrNotImplemented", err)
 				}
@@ -151,11 +158,12 @@ func TestContract_ChangePassword(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake identity fixture
 func TestContract_Snapshot_StableAcrossCalls(t *testing.T) {
 	// Only implementations that can succeed at all participate — the proxmox
 	// stub always errors, so there is nothing stable to compare (FR-003).
 	impls := map[string]cluster.Client{
-		"fake": cluster.Fake{},
+		fakeImplementationName: cluster.Fake{},
 	}
 
 	for name, impl := range impls {
@@ -177,12 +185,13 @@ func TestContract_Snapshot_StableAcrossCalls(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake identity fixture
 func TestContract_Snapshot_DoesNotMutateAcrossCalls(t *testing.T) {
 	// A caller holding a reference to a previous Snapshot must not see it
 	// change when a later call returns — the fake returns copies, not
 	// references to its package-level literals (data-model.md invariant 3).
 	impls := map[string]cluster.Client{
-		"fake": cluster.Fake{},
+		fakeImplementationName: cluster.Fake{},
 	}
 
 	for name, impl := range impls {

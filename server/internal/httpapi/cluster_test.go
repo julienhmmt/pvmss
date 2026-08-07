@@ -1,5 +1,4 @@
 //nolint:noctx // test scaffolding does not need real context
-//nolint:goconst // test fixture strings
 package httpapi_test
 
 import (
@@ -48,11 +47,13 @@ func buildProjectionWithIndex(t *testing.T, snap cluster.Snapshot, refreshedAt t
 
 // TestClusterNodes_Success — GET /cluster/nodes reads from the Index, includes
 // vmCount and refreshedAt (contracts/cluster-refresh.md, FR-008).
+//
+//nolint:paralleltest // serial: shared fake cluster fixture
 func TestClusterNodes_Success(t *testing.T) {
 	snap := cluster.Snapshot{
 		Nodes: []cluster.Node{
 			{
-				Name:         "pve-node-01",
+				Name:         cluster.FakeNode01,
 				Status:       cluster.NodeOnline,
 				CPUCores:     32,
 				CPUUsage:     0.42,
@@ -63,8 +64,8 @@ func TestClusterNodes_Success(t *testing.T) {
 			},
 		},
 		VMs: []cluster.VM{
-			{VMID: 100, Name: "web-01", Node: "pve-node-01", Pool: "pool-alice"},
-			{VMID: 101, Name: "web-02", Node: "pve-node-01", Pool: "pool-alice"},
+			{VMID: 100, Name: "web-01", Node: cluster.FakeNode01, Pool: cluster.FakePoolAlice},
+			{VMID: 101, Name: "web-02", Node: cluster.FakeNode01, Pool: cluster.FakePoolAlice},
 		},
 	}
 	refreshedAt := time.Date(2026, 8, 1, 12, 0, 0, 0, time.UTC)
@@ -120,6 +121,8 @@ func TestClusterNodes_Success(t *testing.T) {
 
 // TestClusterNodes_NotReady — before the first refresh, GET /cluster/nodes
 // returns 503 inventory_not_ready, distinct from an empty list (FR-009).
+//
+//nolint:paralleltest // serial: shared fake cluster fixture
 func TestClusterNodes_NotReady(t *testing.T) {
 	projection := inventory.NewProjection()
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -148,6 +151,8 @@ func TestClusterNodes_NotReady(t *testing.T) {
 
 // TestClusterNodes_EmptyIsOK — an empty cluster (0 nodes) with a valid
 // RefreshedAt returns 200 with an empty array, not 503.
+//
+//nolint:paralleltest // serial: shared fake cluster fixture
 func TestClusterNodes_EmptyIsOK(t *testing.T) {
 	projection := buildProjectionWithIndex(t, cluster.Snapshot{}, time.Now())
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -179,6 +184,8 @@ func TestClusterNodes_EmptyIsOK(t *testing.T) {
 }
 
 // TestClusterNodes_MethodNotAllowed — non-GET returns 405.
+//
+//nolint:paralleltest // serial: shared fake cluster fixture
 func TestClusterNodes_MethodNotAllowed(t *testing.T) {
 	projection := inventory.NewProjection()
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))

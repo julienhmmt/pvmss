@@ -239,9 +239,9 @@ const (
 var fakeIdentitiesMutex sync.RWMutex
 
 var fakeIdentities = map[string]fakeIdentity{
-	FakeUserAlice: {password: "pvmss-alice", pool: FakePoolAlice},
-	FakeUserBob:   {password: "pvmss-bob", pool: FakePoolBob},
-	FakeUserAdmin: {password: "pvmss-admin", isAdmin: true}, //nolint:gosec // fixture credentials for demo mode
+	FakeUserAlice: {password: "pvmss-alice", pool: FakePoolAlice}, //nolint:gosec // demo fixture credential
+	FakeUserBob:   {password: "pvmss-bob", pool: FakePoolBob},     //nolint:gosec // demo fixture credential
+	FakeUserAdmin: {password: "pvmss-admin", isAdmin: true},       //nolint:gosec // fixture credentials for demo mode
 }
 
 // The dataset below is production code (constitution XI), reviewed and

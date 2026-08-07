@@ -1,4 +1,3 @@
-//nolint:goconst // test fixture strings
 package config_test
 
 import (
@@ -12,7 +11,8 @@ import (
 	"testing"
 )
 
-func TestNewLogger(t *testing.T) {
+//nolint:paralleltest // serial: shared logger and environment fixtures
+func TestNewLogger(t *testing.T) { //nolint:gocyclo,funlen // table-driven logger test covers formats and output modes
 	cases := []struct {
 		name     string
 		cfg      config.Configuration
@@ -23,9 +23,9 @@ func TestNewLogger(t *testing.T) {
 			name: "json writes structured entries",
 			cfg: config.Configuration{
 				Port:      50001,
-				DBPath:    ":memory:",
-				LogLevel:  "info",
-				LogFormat: "json",
+				DBPath:    testMemoryDB,
+				LogLevel:  testLogLevel,
+				LogFormat: testLogFormat,
 				LogOutput: filepath.Join(t.TempDir(), "log.jsonl"),
 			},
 			validate: func(t *testing.T, path string) {
@@ -33,9 +33,9 @@ func TestNewLogger(t *testing.T) {
 
 				logger, closer, err := config.NewLogger(config.Configuration{
 					Port:      50001,
-					DBPath:    ":memory:",
-					LogLevel:  "info",
-					LogFormat: "json",
+					DBPath:    testMemoryDB,
+					LogLevel:  testLogLevel,
+					LogFormat: testLogFormat,
 					LogOutput: path,
 				})
 				if err != nil {
@@ -97,8 +97,8 @@ func TestNewLogger(t *testing.T) {
 			name: "console writes text",
 			cfg: config.Configuration{
 				Port:      50001,
-				DBPath:    ":memory:",
-				LogLevel:  "info",
+				DBPath:    testMemoryDB,
+				LogLevel:  testLogLevel,
 				LogFormat: "console",
 				LogOutput: filepath.Join(t.TempDir(), "log.txt"),
 			},
@@ -107,8 +107,8 @@ func TestNewLogger(t *testing.T) {
 
 				logger, closer, err := config.NewLogger(config.Configuration{
 					Port:      50001,
-					DBPath:    ":memory:",
-					LogLevel:  "info",
+					DBPath:    testMemoryDB,
+					LogLevel:  testLogLevel,
 					LogFormat: "console",
 					LogOutput: path,
 				})
@@ -140,17 +140,17 @@ func TestNewLogger(t *testing.T) {
 			name: "unknown level returns error",
 			cfg: config.Configuration{
 				LogLevel:  "verbose",
-				LogFormat: "json",
-				LogOutput: "stdout",
+				LogFormat: testLogFormat,
+				LogOutput: testLogOutput,
 			},
 			wantErr: true,
 		},
 		{
 			name: "unknown format returns error",
 			cfg: config.Configuration{
-				LogLevel:  "info",
+				LogLevel:  testLogLevel,
 				LogFormat: "xml",
-				LogOutput: "stdout",
+				LogOutput: testLogOutput,
 			},
 			wantErr: true,
 		},
