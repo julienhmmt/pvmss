@@ -42,6 +42,22 @@ type apiErrorEnvelope struct {
 	Message string `json:"message"`
 }
 
+// assertAPIError decodes the response body as an apiErrorEnvelope and asserts
+// the error code matches wantCode. Shared by tests across httpapi_test files
+// to avoid duplicated decode-and-check blocks (dupl).
+func assertAPIError(t *testing.T, body []byte, wantCode string) {
+	t.Helper()
+
+	var env apiErrorEnvelope
+	if err := json.Unmarshal(body, &env); err != nil {
+		t.Fatalf("decode error body: %v", err)
+	}
+
+	if env.Code != wantCode {
+		t.Fatalf("error code = %q, want %q", env.Code, wantCode)
+	}
+}
+
 // newVMDetailHandler builds the handler over the fake dataset with a real
 // audit store and a real worker (so post-write refresh rebuilds the projection
 // from the fake's mutated state). Every test that triggers a write MUST defer
@@ -523,6 +539,26 @@ func TestVmAction_IndexInvalidatedAfterWrite(t *testing.T) {
 // Phase 5 — User Story 3: DELETE /vms/:cluster/:vmid (T026–T028)
 // =============================================================================
 
+// assertDeleteSucceeded asserts the response is 200 and the fake received
+// exactly one "delete" call for the given VMID. Shared by the owner and admin
+// delete tests to avoid duplicated assertion blocks (dupl).
+func assertDeleteSucceeded(t *testing.T, rec *httptest.ResponseRecorder, vmid int) {
+	t.Helper()
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	calls := cluster.FakeCallsFor(vmid)
+	if len(calls) != 1 {
+		t.Fatalf("fake calls for %d = %d, want 1", vmid, len(calls))
+	}
+
+	if calls[0].Action != "delete" {
+		t.Errorf("action = %q, want delete", calls[0].Action)
+	}
+}
+
 // TestVmDelete_OwnerSucceeds — T026: owner deletes their VM → 200, fake client
 // receives the delete call.
 func TestVmDelete_OwnerSucceeds(t *testing.T) {
@@ -530,18 +566,7 @@ func TestVmDelete_OwnerSucceeds(t *testing.T) {
 	cookie := aliceCookie(t, authHandler)
 
 	rec, _ := serveDetailError(handler, detailRequest(http.MethodDelete, "/api/v1/vms/default/114", "", cookie))
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
-	}
-
-	calls := cluster.FakeCallsFor(114)
-	if len(calls) != 1 {
-		t.Fatalf("fake calls for 114 = %d, want 1", len(calls))
-	}
-
-	if calls[0].Action != "delete" {
-		t.Errorf("action = %q, want delete", calls[0].Action)
-	}
+	assertDeleteSucceeded(t, rec, 114)
 }
 
 // TestVmDelete_NonOwnerRejected — T027: non-owner delete attempt → 403, no
@@ -573,18 +598,7 @@ func TestVmDelete_AdminDeletesAnyTaggedVM(t *testing.T) {
 
 	// VM 106 is bob's (pool-bob), tagged pvmss.
 	rec, _ := serveDetailError(handler, detailRequest(http.MethodDelete, "/api/v1/vms/default/106", "", cookie))
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
-	}
-
-	calls := cluster.FakeCallsFor(106)
-	if len(calls) != 1 {
-		t.Fatalf("fake calls for 106 = %d, want 1", len(calls))
-	}
-
-	if calls[0].Action != "delete" {
-		t.Errorf("action = %q, want delete", calls[0].Action)
-	}
+	assertDeleteSucceeded(t, rec, 106)
 }
 
 // =============================================================================

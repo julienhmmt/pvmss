@@ -108,14 +108,7 @@ func TestTasks_UnknownUPID(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", response.Code, http.StatusNotFound, response.Body.String())
 	}
 
-	var body apiErrorEnvelope
-	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode error body: %v", err)
-	}
-
-	if body.Code != "not_found" {
-		t.Fatalf("error code = %q, want not_found", body.Code)
-	}
+	assertAPIError(t, response.Body.Bytes(), "not_found")
 }
 
 // TestTasks_RequiresAuth — the endpoint is authenticated (T02), like every

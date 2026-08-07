@@ -305,6 +305,24 @@ func sortedVMIDsOrderPreserved(list vmListResponse) []int {
 	return ids
 }
 
+// assertBadRequestCode decodes a 400 response body and asserts the error code
+// matches wantCode. Shared by the invalid-sort and page-size tests to avoid
+// duplicated decode-and-check blocks (dupl).
+func assertBadRequestCode(t *testing.T, body []byte, wantCode string) {
+	t.Helper()
+
+	var envelope struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	if envelope.Code != wantCode {
+		t.Errorf("code = %q, want %s", envelope.Code, wantCode)
+	}
+}
+
 // TestVMs_InvalidSortColumnRejected — T022: unsupported sort column → 400,
 // never silently defaulted (FR-005).
 func TestVMs_InvalidSortColumnRejected(t *testing.T) {
@@ -316,16 +334,7 @@ func TestVMs_InvalidSortColumnRejected(t *testing.T) {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusBadRequest)
 	}
 
-	var envelope struct {
-		Code string `json:"code"`
-	}
-	if err := json.Unmarshal(response.Body.Bytes(), &envelope); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-
-	if envelope.Code != "invalid_sort_column" {
-		t.Errorf("code = %q, want invalid_sort_column", envelope.Code)
-	}
+	assertBadRequestCode(t, response.Body.Bytes(), "invalid_sort_column")
 }
 
 // TestVMs_PageBeyondRangeClamps — T026: a page past the end returns the
@@ -358,16 +367,7 @@ func TestVMs_PageSizeOverMaximumRejected(t *testing.T) {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusBadRequest)
 	}
 
-	var envelope struct {
-		Code string `json:"code"`
-	}
-	if err := json.Unmarshal(response.Body.Bytes(), &envelope); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-
-	if envelope.Code != "page_size_too_large" {
-		t.Errorf("code = %q, want page_size_too_large", envelope.Code)
-	}
+	assertBadRequestCode(t, response.Body.Bytes(), "page_size_too_large")
 }
 
 // TestVMs_QuotaReported — T030: a non-admin default-scope request carries

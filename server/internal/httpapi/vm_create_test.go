@@ -345,14 +345,7 @@ func TestVMCreate_DetailedInvalidHostname(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", response.Code, http.StatusBadRequest, response.Body.String())
 	}
 
-	var body apiErrorEnvelope
-	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode error body: %v", err)
-	}
-
-	if body.Code != "invalid_name" {
-		t.Fatalf("error code = %q, want invalid_name", body.Code)
-	}
+	assertAPIError(t, response.Body.Bytes(), "invalid_name")
 }
 
 // TestVMCreate_DetailedOutOfRange — T027/FR-008: hardware values past the
