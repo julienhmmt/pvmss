@@ -116,8 +116,15 @@ func run() int {
 		logger.Error("cluster client does not implement Writer", "component", "main")
 		return 1
 	}
+	creator, ok := clusterClient.(cluster.Creator)
+	if !ok {
+		logger.Error("cluster client does not implement Creator", "component", "main")
+		return 1
+	}
 	vmDetail := httpapi.NewVmDetail(projection, authHandler, writer, st, worker, logger)
-	router := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, authHandler, webDir, logger)
+	vmCreate := httpapi.NewVmCreate(authHandler, st, creator, logger)
+	tasks := httpapi.NewTasks(authHandler, creator, worker, logger)
+	router := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, vmCreate, tasks, authHandler, webDir, logger)
 
 	srv := &http.Server{
 		Addr:              net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)),

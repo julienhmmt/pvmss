@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { base } from '$app/paths';
+	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { setVmListContext } from '$lib/features/vms/list.svelte';
+	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import VmList from '$lib/features/vms/VmList.svelte';
 
 	// Wiring only: the list state, URL sync, and rendering all live in
@@ -12,7 +13,7 @@
 		scope: 'mine',
 		initialQuery: page.url.search,
 		navigate: (queryString: string) => {
-			void goto(`${base}/vms${queryString === '' ? '' : `?${queryString}`}`, {
+			void goto(`${resolve('/vms')}${queryString === '' ? '' : `?${queryString}`}`, {
 				replaceState: true,
 				noScroll: true,
 				keepFocus: true
@@ -20,8 +21,13 @@
 		}
 	});
 
+	let offTaskOk: (() => void) | null = null;
 	onMount(() => {
 		void vmListStore.load();
+		offTaskOk = getTaskTrayContext().onTaskOk(() => void vmListStore.load());
+	});
+	onDestroy(() => {
+		offTaskOk?.();
 	});
 </script>
 
@@ -30,7 +36,15 @@
 </svelte:head>
 
 <section class="mx-auto w-full max-w-5xl px-4 py-8">
-	<h1 class="mb-4 text-2xl font-semibold tracking-tight">My VMs</h1>
+	<div class="mb-4 flex items-center justify-between">
+		<h1 class="text-2xl font-semibold tracking-tight">My VMs</h1>
+		<a
+			href={resolve('/vms/create')}
+			class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+		>
+			Create a VM
+		</a>
+	</div>
 
 	{#if vmListStore.loading && vmListStore.result === null}
 		<p role="status" aria-live="polite" class="text-muted-foreground">Loading…</p>
