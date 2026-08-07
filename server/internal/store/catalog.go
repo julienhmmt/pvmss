@@ -50,14 +50,18 @@ func (s *Store) CatalogNodes(ctx context.Context, cluster string) ([]CatalogNode
 		return nil, fmt.Errorf("query catalog nodes: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
+
 	var out []CatalogNode
+
 	for rows.Next() {
 		var n CatalogNode
 		if err := rows.Scan(&n.Cluster, &n.Name); err != nil {
 			return nil, fmt.Errorf("scan catalog node: %w", err)
 		}
+
 		out = append(out, n)
 	}
+
 	return out, rows.Err()
 }
 
@@ -69,14 +73,18 @@ func (s *Store) CatalogStorages(ctx context.Context, cluster string) ([]CatalogS
 		return nil, fmt.Errorf("query catalog storages: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
+
 	var out []CatalogStorage
+
 	for rows.Next() {
 		var st CatalogStorage
 		if err := rows.Scan(&st.Cluster, &st.Name, &st.Node); err != nil {
 			return nil, fmt.Errorf("scan catalog storage: %w", err)
 		}
+
 		out = append(out, st)
 	}
+
 	return out, rows.Err()
 }
 
@@ -87,14 +95,18 @@ func (s *Store) CatalogBridges(ctx context.Context, cluster string) ([]CatalogBr
 		return nil, fmt.Errorf("query catalog bridges: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
+
 	var out []CatalogBridge
+
 	for rows.Next() {
 		var b CatalogBridge
 		if err := rows.Scan(&b.Cluster, &b.Name); err != nil {
 			return nil, fmt.Errorf("scan catalog bridge: %w", err)
 		}
+
 		out = append(out, b)
 	}
+
 	return out, rows.Err()
 }
 
@@ -105,14 +117,18 @@ func (s *Store) CatalogISOs(ctx context.Context, cluster string) ([]CatalogISO, 
 		return nil, fmt.Errorf("query catalog isos: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
+
 	var out []CatalogISO
+
 	for rows.Next() {
 		var iso CatalogISO
 		if err := rows.Scan(&iso.Cluster, &iso.Storage, &iso.File); err != nil {
 			return nil, fmt.Errorf("scan catalog iso: %w", err)
 		}
+
 		out = append(out, iso)
 	}
+
 	return out, rows.Err()
 }
 
@@ -123,13 +139,17 @@ func (s *Store) CatalogProfiles(ctx context.Context, cluster string) ([]CatalogP
 		return nil, fmt.Errorf("query catalog profiles: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
+
 	var out []CatalogProfile
+
 	for rows.Next() {
 		var p CatalogProfile
 		if err := rows.Scan(&p.Cluster, &p.ID, &p.Label, &p.CPUCores, &p.MemoryMB, &p.DiskGB, &p.Bus); err != nil {
 			return nil, fmt.Errorf("scan catalog profile: %w", err)
 		}
+
 		out = append(out, p)
 	}
+
 	return out, rows.Err()
 }

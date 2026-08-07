@@ -41,17 +41,22 @@ var (
 func (Fake) Snapshot(_ context.Context) (Snapshot, error) {
 	fakeVMMutex.RLock()
 	defer fakeVMMutex.RUnlock()
+
 	nodes := make([]Node, len(fakeNodes))
 	copy(nodes, fakeNodes)
+
 	vms := make([]VM, len(fakeVMs))
 	copy(vms, fakeVMs)
+
 	for i, vm := range fakeVMs {
 		if vm.Tags != nil {
 			vms[i].Tags = append([]string(nil), vm.Tags...)
 		}
 	}
+
 	storages := make([]Storage, len(fakeStorages))
 	copy(storages, fakeStorages)
+
 	return Snapshot{Nodes: nodes, VMs: vms, Storages: storages}, nil
 }
 
@@ -59,10 +64,12 @@ func (Fake) Snapshot(_ context.Context) (Snapshot, error) {
 func (Fake) Authenticate(_ context.Context, username, password string) (Identity, error) {
 	fakeIdentitiesMutex.RLock()
 	defer fakeIdentitiesMutex.RUnlock()
+
 	identity, ok := fakeIdentities[username]
 	if !ok || password != identity.password {
 		return Identity{}, ErrNotFound
 	}
+
 	return Identity{Username: username, Pool: identity.pool, IsAdmin: identity.isAdmin}, nil
 }
 
@@ -72,11 +79,14 @@ func (Fake) Authenticate(_ context.Context, username, password string) (Identity
 func (Fake) ChangePassword(_ context.Context, username, oldPassword, newPassword string) error {
 	fakeIdentitiesMutex.Lock()
 	defer fakeIdentitiesMutex.Unlock()
+
 	identity, ok := fakeIdentities[username]
 	if !ok || oldPassword != identity.password {
 		return ErrNotFound
 	}
+
 	fakeIdentities[username] = fakeIdentity{password: newPassword, pool: identity.pool, isAdmin: identity.isAdmin}
+
 	return nil
 }
 
@@ -86,10 +96,12 @@ func (Fake) ChangePassword(_ context.Context, username, oldPassword, newPassword
 func (Fake) Action(_ context.Context, node string, vmid int, action string) error {
 	fakeVMMutex.Lock()
 	defer fakeVMMutex.Unlock()
+
 	idx := slices.IndexFunc(fakeVMs, func(v VM) bool { return v.VMID == vmid && v.Node == node })
 	if idx < 0 {
 		return ErrNotFound
 	}
+
 	switch action {
 	case "start":
 		fakeVMs[idx].Status = VMRunning
@@ -106,7 +118,9 @@ func (Fake) Action(_ context.Context, node string, vmid int, action string) erro
 	default:
 		return ErrInvalidAction
 	}
+
 	recordCall(FakeCall{Node: node, VMID: vmid, Action: action})
+
 	return nil
 }
 
@@ -115,12 +129,16 @@ func (Fake) Action(_ context.Context, node string, vmid int, action string) erro
 func (Fake) Delete(_ context.Context, node string, vmid int) error {
 	fakeVMMutex.Lock()
 	defer fakeVMMutex.Unlock()
+
 	idx := slices.IndexFunc(fakeVMs, func(v VM) bool { return v.VMID == vmid && v.Node == node })
 	if idx < 0 {
 		return ErrNotFound
 	}
+
 	fakeVMs = slices.Delete(fakeVMs, idx, idx+1)
+
 	recordCall(FakeCall{Node: node, VMID: vmid, Action: "delete"})
+
 	return nil
 }
 
@@ -129,17 +147,22 @@ func (Fake) Delete(_ context.Context, node string, vmid int) error {
 func (Fake) Patch(_ context.Context, node string, vmid int, name, description string) error {
 	fakeVMMutex.Lock()
 	defer fakeVMMutex.Unlock()
+
 	idx := slices.IndexFunc(fakeVMs, func(v VM) bool { return v.VMID == vmid && v.Node == node })
 	if idx < 0 {
 		return ErrNotFound
 	}
+
 	if name != "" {
 		fakeVMs[idx].Name = name
 	}
+
 	if description != "" {
 		fakeVMs[idx].Description = description
 	}
+
 	recordCall(FakeCall{Node: node, VMID: vmid, Action: "patch", Name: name})
+
 	return nil
 }
 
@@ -149,18 +172,21 @@ func (Fake) Patch(_ context.Context, node string, vmid int, name, description st
 func FakeCalls() []FakeCall {
 	fakeCallMu.Lock()
 	defer fakeCallMu.Unlock()
+
 	return append([]FakeCall(nil), fakeCallLog...)
 }
 
 // FakeCallsFor returns the calls recorded for one VMID.
 func FakeCallsFor(vmid int) []FakeCall {
 	all := FakeCalls()
+
 	out := make([]FakeCall, 0, len(all))
 	for _, c := range all {
 		if c.VMID == vmid {
 			out = append(out, c)
 		}
 	}
+
 	return out
 }
 
@@ -171,15 +197,19 @@ func FakeCallsFor(vmid int) []FakeCall {
 func ResetFake() {
 	fakeVMMutex.Lock()
 	defer fakeVMMutex.Unlock()
+
 	fakeCallMu.Lock()
 	defer fakeCallMu.Unlock()
+
 	fakeVMs = originalFakeVMs()
 	fakeCallLog = nil
+
 	resetFakeCreateState()
 }
 
 func recordCall(call FakeCall) {
 	fakeCallMu.Lock()
+
 	fakeCallLog = append(fakeCallLog, call)
 	fakeCallMu.Unlock()
 }

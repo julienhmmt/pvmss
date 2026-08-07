@@ -23,6 +23,7 @@ func testIndex() *inventory.Index {
 			{VMID: 104, Name: "build-01", Node: "pve-node-02", Status: cluster.VMStopped, Pool: "pool-bob", Tags: nil, CPUCores: 4, MemoryTotal: 8589934592},
 		},
 	})
+
 	return &index
 }
 
@@ -36,6 +37,7 @@ func vmids(result vm.ListResult) []int {
 	for i, item := range result.Items {
 		ids[i] = item.VMID
 	}
+
 	return ids
 }
 
@@ -58,8 +60,10 @@ func TestList_ScopeEnforcement(t *testing.T) {
 			if err != nil {
 				t.Fatalf("List: %v", err)
 			}
+
 			got := vmids(result)
 			slices.Sort(got)
+
 			if !slices.Equal(got, tt.wantIDs) {
 				t.Errorf("vmids = %v, want %v", got, tt.wantIDs)
 			}
@@ -86,11 +90,14 @@ func TestList_SearchClassification(t *testing.T) {
 			if err != nil {
 				t.Fatalf("List: %v", err)
 			}
+
 			got := vmids(result)
 			slices.Sort(got)
+
 			if !slices.Equal(got, tt.wantIDs) {
 				t.Errorf("vmids = %v, want %v", got, tt.wantIDs)
 			}
+
 			if len(tt.wantIDs) > 1 && len(got) != len(tt.wantIDs) {
 				t.Errorf("duplicate rows: %v", got)
 			}
@@ -104,9 +111,11 @@ func TestList_SearchNeverCrossesScope(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
+
 	if len(result.Items) != 0 {
 		t.Errorf("vmids = %v, want none", vmids(result))
 	}
+
 	if result.EmptyReason != vm.EmptyNoMatch {
 		t.Errorf("EmptyReason = %q, want %q", result.EmptyReason, vm.EmptyNoMatch)
 	}
@@ -130,8 +139,10 @@ func TestList_Filters(t *testing.T) {
 			if err != nil {
 				t.Fatalf("List: %v", err)
 			}
+
 			got := vmids(result)
 			slices.Sort(got)
+
 			if !slices.Equal(got, tt.wantIDs) {
 				t.Errorf("vmids = %v, want %v", got, tt.wantIDs)
 			}
@@ -146,6 +157,7 @@ func TestList_NodeFacetIgnoresNodeFilter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
+
 	want := []string{"pve-node-01", "pve-node-02"}
 	if !slices.Equal(result.AvailableNodes, want) {
 		t.Errorf("AvailableNodes = %v, want %v", result.AvailableNodes, want)
@@ -174,6 +186,7 @@ func TestList_Sort(t *testing.T) {
 			if err != nil {
 				t.Fatalf("List: %v", err)
 			}
+
 			if got := vmids(result); !slices.Equal(got, tt.wantIDs) {
 				t.Errorf("vmids = %v, want %v", got, tt.wantIDs)
 			}
@@ -209,12 +222,15 @@ func TestList_Pagination(t *testing.T) {
 			if err != nil {
 				t.Fatalf("List: %v", err)
 			}
+
 			if got := vmids(result); !slices.Equal(got, tt.wantIDs) {
 				t.Errorf("vmids = %v, want %v", got, tt.wantIDs)
 			}
+
 			if result.Page != tt.wantPage {
 				t.Errorf("Page = %d, want %d", result.Page, tt.wantPage)
 			}
+
 			if result.Total != tt.wantTotal {
 				t.Errorf("Total = %d, want %d", result.Total, tt.wantTotal)
 			}
@@ -225,13 +241,16 @@ func TestList_Pagination(t *testing.T) {
 func TestList_EmptyReasons(t *testing.T) {
 	t.Run("no VMs owned", func(t *testing.T) {
 		carol := auth.Identity{Username: "carol@pve", Pool: "pool-carol"}
+
 		result, err := vm.List(testIndex(), vm.ListQuery{}, carol, -1)
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
+
 		if len(result.Items) != 0 {
 			t.Fatalf("Items = %v, want none", vmids(result))
 		}
+
 		if result.EmptyReason != vm.EmptyNoVMsOwned {
 			t.Errorf("EmptyReason = %q, want %q", result.EmptyReason, vm.EmptyNoVMsOwned)
 		}
@@ -241,6 +260,7 @@ func TestList_EmptyReasons(t *testing.T) {
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
+
 		if result.EmptyReason != vm.EmptyNoMatch {
 			t.Errorf("EmptyReason = %q, want %q", result.EmptyReason, vm.EmptyNoMatch)
 		}
@@ -250,6 +270,7 @@ func TestList_EmptyReasons(t *testing.T) {
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
+
 		if result.EmptyReason != "" {
 			t.Errorf("EmptyReason = %q, want empty", result.EmptyReason)
 		}
@@ -262,6 +283,7 @@ func TestList_Quota(t *testing.T) {
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
+
 		if result.Quota == nil || *result.Quota != (vm.Quota{Used: 3, Allowed: 10}) {
 			t.Errorf("Quota = %+v, want {Used:3 Allowed:10}", result.Quota)
 		}
@@ -271,6 +293,7 @@ func TestList_Quota(t *testing.T) {
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
+
 		if result.Quota == nil || result.Quota.Allowed != -1 {
 			t.Errorf("Quota = %+v, want Allowed -1", result.Quota)
 		}
@@ -280,6 +303,7 @@ func TestList_Quota(t *testing.T) {
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
+
 		if result.Quota != nil {
 			t.Errorf("Quota = %+v, want nil", result.Quota)
 		}
@@ -289,6 +313,7 @@ func TestList_Quota(t *testing.T) {
 		if err != nil {
 			t.Fatalf("List: %v", err)
 		}
+
 		if result.Quota == nil || result.Quota.Allowed != 10 {
 			t.Errorf("Quota = %+v, want {Used:0 Allowed:10}", result.Quota)
 		}

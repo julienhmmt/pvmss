@@ -72,12 +72,15 @@ func Resolve(index *inventory.Index, actor auth.Identity, clusterName string, vm
 	if !ok {
 		return Entity{}, ErrNotFound
 	}
+
 	if !slices.Contains(machine.Tags, pvmssTag) {
 		return Entity{}, ErrNotFound
 	}
+
 	if !actor.IsAdmin && machine.Pool != actor.Pool {
 		return Entity{}, ErrForbidden
 	}
+
 	return Entity{
 		Cluster:     clusterName,
 		VMID:        machine.VMID,

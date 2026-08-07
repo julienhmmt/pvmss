@@ -90,21 +90,25 @@ func (h *VmDetail) handleGet(w http.ResponseWriter, r *http.Request) {
 		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
 		return
 	}
+
 	clusterName, vmid, ok := h.parsePath(r)
 	if !ok {
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
 		return
 	}
+
 	index := h.projection.Load()
 	if index == nil {
 		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
 		return
 	}
+
 	entity, err := vm.Resolve(index, identity, clusterName, vmid)
 	if err != nil {
 		h.writeResolveError(w, err)
 		return
 	}
+
 	h.writeEntity(w, entity)
 }
 
@@ -117,30 +121,36 @@ func (h *VmDetail) handleAction(w http.ResponseWriter, r *http.Request) {
 		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
 		return
 	}
+
 	clusterName, vmid, ok := h.parsePath(r)
 	if !ok {
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
 		return
 	}
+
 	var req actionRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
 		return
 	}
+
 	req.Action = strings.TrimSpace(req.Action)
 	if !vm.IsValidAction(req.Action) {
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_action", fmt.Sprintf("unknown action %q", req.Action))
 		return
 	}
+
 	index := h.projection.Load()
 	if index == nil {
 		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
 		return
 	}
+
 	if err := vm.Action(r.Context(), index, identity, clusterName, vmid, req.Action, h.writer, h.store, h.refresher); err != nil {
 		h.writeActionError(w, err)
 		return
 	}
+
 	h.writeJSONStatus(w, http.StatusOK, actionResponse{Status: "accepted"})
 }
 
@@ -151,20 +161,24 @@ func (h *VmDetail) handleDelete(w http.ResponseWriter, r *http.Request) {
 		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
 		return
 	}
+
 	clusterName, vmid, ok := h.parsePath(r)
 	if !ok {
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
 		return
 	}
+
 	index := h.projection.Load()
 	if index == nil {
 		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
 		return
 	}
+
 	if err := vm.Delete(r.Context(), index, identity, clusterName, vmid, h.writer, h.store, h.refresher); err != nil {
 		h.writeActionError(w, err)
 		return
 	}
+
 	h.writeJSONStatus(w, http.StatusOK, deleteResponse{Status: "deleted"})
 }
 
@@ -177,23 +191,28 @@ func (h *VmDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
 		return
 	}
+
 	clusterName, vmid, ok := h.parsePath(r)
 	if !ok {
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
 		return
 	}
+
 	var req patchRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
 		return
 	}
+
 	req.Name = strings.TrimSpace(req.Name)
 	req.Description = strings.TrimSpace(req.Description)
+
 	index := h.projection.Load()
 	if index == nil {
 		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
 		return
 	}
+
 	if err := vm.Patch(r.Context(), index, identity, clusterName, vmid, req.Name, req.Description, h.writer, h.store, h.refresher); err != nil {
 		h.writePatchError(w, err)
 		return
@@ -205,6 +224,7 @@ func (h *VmDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 		return
 	}
+
 	entity, err := vm.Resolve(refreshed, identity, clusterName, vmid)
 	if err != nil {
 		// The write succeeded but the re-resolve failed (e.g. a race deleted
@@ -212,8 +232,10 @@ func (h *VmDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 		// rather than a confusing 404 after a 200-worthy write.
 		h.log.Error("post-patch re-resolve failed", "component", "httpapi", "vmid", vmid, "error", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+
 		return
 	}
+
 	h.writeEntity(w, entity)
 }
 
@@ -224,10 +246,12 @@ func (h *VmDetail) parsePath(r *http.Request) (string, int, bool) {
 	if clusterName == "" {
 		return "", 0, false
 	}
+
 	vmid, err := parseIntPathValue(r, "vmid")
 	if err != nil {
 		return "", 0, false
 	}
+
 	return clusterName, vmid, true
 }
 
@@ -237,10 +261,12 @@ func parseIntPathValue(r *http.Request, key string) (int, error) {
 	if raw == "" {
 		return 0, fmt.Errorf("missing path value %q", key)
 	}
+
 	value, err := strconv.Atoi(raw)
 	if err != nil || value < 1 {
 		return 0, fmt.Errorf("invalid path value %q: %q", key, raw)
 	}
+
 	return value, nil
 }
 
@@ -260,6 +286,7 @@ func (h *VmDetail) writeEntity(w http.ResponseWriter, entity vm.Entity) {
 	if entity.Uptime > 0 {
 		dto.UptimeSeconds = int64(entity.Uptime.Seconds())
 	}
+
 	h.writeJSONStatus(w, http.StatusOK, dto)
 }
 
@@ -268,8 +295,10 @@ func (h *VmDetail) writeJSONStatus(w http.ResponseWriter, status int, value any)
 	if err != nil {
 		h.log.Error("failed to marshal response", "component", "httpapi", "error", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+
 		return
 	}
+
 	if err := writeJSON(w, status, body); err != nil {
 		h.log.Error("failed to write response", "component", "httpapi", "error", err)
 	}

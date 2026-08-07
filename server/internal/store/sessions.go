@@ -16,31 +16,41 @@ func (s *Store) CreateSession(ctx context.Context, session auth.SessionRecord) e
 	if err != nil {
 		return fmt.Errorf("insert session: %w", err)
 	}
+
 	return nil
 }
 
 // FindSession resolves a session hash without ever querying by its plaintext value.
 func (s *Store) FindSession(ctx context.Context, hash []byte) (auth.SessionRecord, error) {
 	row := s.db.QueryRowContext(ctx, `SELECT token_hash, username, pool, is_admin, expires_at, created_at FROM sessions WHERE token_hash = ?`, hash)
-	var session auth.SessionRecord
-	var isAdmin bool
-	var expiresAt, createdAt string
+
+	var (
+		session              auth.SessionRecord
+		isAdmin              bool
+		expiresAt, createdAt string
+	)
 	if err := row.Scan(&session.Hash, &session.Identity.Username, &session.Identity.Pool, &isAdmin, &expiresAt, &createdAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return auth.SessionRecord{}, sql.ErrNoRows
 		}
+
 		return auth.SessionRecord{}, fmt.Errorf("scan session: %w", err)
 	}
+
 	session.Identity.IsAdmin = isAdmin
+
 	var err error
+
 	session.ExpiresAt, err = time.Parse(time.RFC3339, expiresAt)
 	if err != nil {
 		return auth.SessionRecord{}, fmt.Errorf("parse session expiry: %w", err)
 	}
+
 	session.CreatedAt, err = time.Parse(time.RFC3339, createdAt)
 	if err != nil {
 		return auth.SessionRecord{}, fmt.Errorf("parse session creation: %w", err)
 	}
+
 	return session, nil
 }
 
@@ -50,6 +60,7 @@ func (s *Store) TouchSession(ctx context.Context, hash []byte, expiresAt time.Ti
 	if err != nil {
 		return fmt.Errorf("slide session expiry: %w", err)
 	}
+
 	return nil
 }
 
@@ -59,5 +70,6 @@ func (s *Store) DeleteSession(ctx context.Context, hash []byte) error {
 	if err != nil {
 		return fmt.Errorf("delete session: %w", err)
 	}
+
 	return nil
 }

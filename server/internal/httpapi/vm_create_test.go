@@ -26,6 +26,7 @@ func newVmCreateHandler(t *testing.T) (*httpapi.VmCreate, *httpapi.Auth, *store.
 	t.Cleanup(cluster.ResetFake)
 	authHandler := newAuthHandler(t)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
+
 	st, err := store.Open(config.Configuration{
 		DBPath:    filepath.Join(t.TempDir(), "vm-create.db"),
 		LogLevel:  "info",
@@ -35,19 +36,25 @@ func newVmCreateHandler(t *testing.T) (*httpapi.VmCreate, *httpapi.Auth, *store.
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
 	}
+
 	t.Cleanup(func() { _ = st.Close() })
+
 	return httpapi.NewVmCreate(authHandler, st, cluster.Fake{}, logger), authHandler, st
 }
 
 func postVMCreate(t *testing.T, handler *httpapi.VmCreate, body string, cookie *http.Cookie) *httptest.ResponseRecorder {
 	t.Helper()
+
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/vms", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+
 	if cookie != nil {
 		req.AddCookie(cookie)
 	}
+
 	recorder := httptest.NewRecorder()
 	handler.ServeHTTP(recorder, req)
+
 	return recorder
 }
 
@@ -62,6 +69,7 @@ func TestVmCreate_SimpleModeSuccess(t *testing.T) {
 	if response.Code != http.StatusAccepted {
 		t.Fatalf("status = %d, want %d: %s", response.Code, http.StatusAccepted, response.Body.String())
 	}
+
 	var result struct {
 		Cluster string `json:"cluster"`
 		VMID    int    `json:"vmid"`
@@ -72,6 +80,7 @@ func TestVmCreate_SimpleModeSuccess(t *testing.T) {
 	if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil {
 		t.Fatalf("decode 202 body: %v", err)
 	}
+
 	if result.VMID < 1 || result.UPID == "" || result.Name != "web-04" || result.Cluster != "default" {
 		t.Fatalf("unexpected result: %+v", result)
 	}
@@ -80,14 +89,17 @@ func TestVmCreate_SimpleModeSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
+
 	for _, vm := range snap.VMs {
 		if vm.VMID == result.VMID {
 			if vm.Pool != "pool-alice" {
 				t.Fatalf("created VM pool = %q, want pool-alice", vm.Pool)
 			}
+
 			return
 		}
 	}
+
 	t.Fatalf("created VM %d not in snapshot", result.VMID)
 }
 
@@ -103,13 +115,16 @@ func TestVmCreate_PoolFieldHasNoEffect(t *testing.T) {
 	if response.Code == http.StatusBadRequest {
 		return // strict decoder rejected the unknown field — equally valid (quickstart SC-003)
 	}
+
 	if response.Code != http.StatusAccepted {
 		t.Fatalf("status = %d, want 202 or 400: %s", response.Code, response.Body.String())
 	}
+
 	snap, err := (cluster.Fake{}).Snapshot(context.Background())
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
+
 	for _, vm := range snap.VMs {
 		if vm.Name == "web-05" && vm.Pool != "pool-alice" {
 			t.Fatalf("forged pool took effect: pool = %q", vm.Pool)
@@ -122,10 +137,12 @@ func TestVmCreate_PoolFieldHasNoEffect(t *testing.T) {
 // (no VMID burned — the fake's create call log stays empty).
 func TestVmCreate_NoPoolIdentityForbidden(t *testing.T) {
 	handler, authHandler, _ := newVmCreateHandler(t)
+
 	response := serveJSON(authHandler.AdminLogin, "/api/v1/auth/admin-login", `{"password":"pvmss-local-admin"}`)
 	if response.Code != http.StatusOK {
 		t.Fatalf("admin login status = %d", response.Code)
 	}
+
 	cookie := response.Result().Cookies()[0]
 
 	res := postVMCreate(t, handler,
@@ -133,13 +150,16 @@ func TestVmCreate_NoPoolIdentityForbidden(t *testing.T) {
 	if res.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d: %s", res.Code, http.StatusForbidden, res.Body.String())
 	}
+
 	var body apiErrorEnvelope
 	if err := json.Unmarshal(res.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode error body: %v", err)
 	}
+
 	if body.Code != "no_pool" {
 		t.Fatalf("error code = %q, want no_pool", body.Code)
 	}
+
 	if calls := cluster.FakeCalls(); len(calls) != 0 {
 		t.Fatalf("forbidden request reached the cluster: %+v", calls)
 	}
@@ -157,13 +177,16 @@ func TestVmCreate_CatalogViolation(t *testing.T) {
 	if response.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d: %s", response.Code, http.StatusBadRequest, response.Body.String())
 	}
+
 	var body apiErrorEnvelope
 	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode error body: %v", err)
 	}
+
 	if body.Code != "not_approved" {
 		t.Fatalf("error code = %q, want not_approved", body.Code)
 	}
+
 	if calls := cluster.FakeCalls(); len(calls) != 0 {
 		t.Fatalf("rejected request reached the cluster: %+v", calls)
 	}
@@ -177,11 +200,14 @@ func TestVmCreateCatalog_SeededShape(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/vm-create/catalog", nil)
 	req.AddCookie(cookie)
+
 	recorder := httptest.NewRecorder()
 	handler.ServeCatalog(recorder, req)
+
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d: %s", recorder.Code, http.StatusOK, recorder.Body.String())
 	}
+
 	var body struct {
 		Cluster  string   `json:"cluster"`
 		Nodes    []string `json:"nodes"`
@@ -206,12 +232,15 @@ func TestVmCreateCatalog_SeededShape(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode catalog: %v", err)
 	}
+
 	if body.Cluster != "default" {
 		t.Errorf("cluster = %q, want default", body.Cluster)
 	}
+
 	if len(body.Nodes) != 2 || len(body.Storages) != 3 || len(body.Bridges) != 2 || len(body.ISOs) != 2 || len(body.Profiles) != 3 {
 		t.Errorf("catalog size mismatch: %+v", body)
 	}
+
 	if body.Profiles[0].ID == "" || body.Profiles[0].CPUCores < 1 {
 		t.Errorf("profile row malformed: %+v", body.Profiles[0])
 	}
@@ -234,6 +263,7 @@ func TestVmCreate_DetailedModeExactSpec(t *testing.T) {
 	if response.Code != http.StatusAccepted {
 		t.Fatalf("status = %d, want %d: %s", response.Code, http.StatusAccepted, response.Body.String())
 	}
+
 	var result struct {
 		VMID int `json:"vmid"`
 	}
@@ -245,16 +275,20 @@ func TestVmCreate_DetailedModeExactSpec(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
+
 	for _, created := range snap.VMs {
 		if created.VMID != result.VMID {
 			continue
 		}
+
 		if created.Node != "pve-node-02" || created.CPUCores != 3 ||
 			created.MemoryTotal != 3072*1024*1024 || created.DiskTotal != 64*1024*1024*1024 {
 			t.Fatalf("created spec mismatch: %+v", created)
 		}
+
 		return
 	}
+
 	t.Fatalf("created VM %d not in snapshot", result.VMID)
 }
 
@@ -279,13 +313,16 @@ func TestVmCreate_DetailedCatalogViolations(t *testing.T) {
 			if response.Code != http.StatusBadRequest {
 				t.Fatalf("status = %d, want %d: %s", response.Code, http.StatusBadRequest, response.Body.String())
 			}
+
 			var body apiErrorEnvelope
 			if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
 				t.Fatalf("decode error body: %v", err)
 			}
+
 			if body.Code != "not_approved" {
 				t.Fatalf("error code = %q, want not_approved", body.Code)
 			}
+
 			if calls := cluster.FakeCalls(); len(calls) != 0 {
 				t.Fatalf("rejected request reached the cluster: %+v", calls)
 			}
@@ -305,10 +342,12 @@ func TestVmCreate_DetailedInvalidHostname(t *testing.T) {
 	if response.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d: %s", response.Code, http.StatusBadRequest, response.Body.String())
 	}
+
 	var body apiErrorEnvelope
 	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode error body: %v", err)
 	}
+
 	if body.Code != "invalid_name" {
 		t.Fatalf("error code = %q, want invalid_name", body.Code)
 	}
@@ -338,17 +377,21 @@ func TestVmCreate_DetailedOutOfRange(t *testing.T) {
 			body := fmt.Sprintf(
 				`{"cluster":"default","name":"web-11","node":"pve-node-01","cpuCores":%d,"memoryMB":%d,"disk":{"storage":"local-lvm","sizeGB":%d},"network":{"bridge":"vmbr0"}}`,
 				tc.cpu, tc.memory, tc.diskGB)
+
 			response := postVMCreate(t, handler, body, cookie)
 			if response.Code != http.StatusBadRequest {
 				t.Fatalf("status = %d, want %d: %s", response.Code, http.StatusBadRequest, response.Body.String())
 			}
+
 			var envelope apiErrorEnvelope
 			if err := json.Unmarshal(response.Body.Bytes(), &envelope); err != nil {
 				t.Fatalf("decode error body: %v", err)
 			}
+
 			if envelope.Code != "out_of_range" {
 				t.Fatalf("error code = %q, want out_of_range", envelope.Code)
 			}
+
 			if calls := cluster.FakeCalls(); len(calls) != 0 {
 				t.Fatalf("rejected request reached the cluster: %+v", calls)
 			}
@@ -362,11 +405,14 @@ func newTasksHandler(t *testing.T) (*httpapi.Tasks, *httpapi.Auth, *inventory.Pr
 	t.Cleanup(cluster.ResetFake)
 	authHandler := newAuthHandler(t)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
+
 	snap, err := (cluster.Fake{}).Snapshot(context.Background())
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
+
 	projection := buildProjectionWithIndex(t, snap, time.Now())
 	worker := inventory.NewWorker(cluster.Fake{}, projection, time.Hour, logger)
+
 	return httpapi.NewTasks(authHandler, cluster.Fake{}, worker, logger), authHandler, projection
 }

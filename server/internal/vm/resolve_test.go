@@ -15,12 +15,15 @@ import (
 // run against the same 25-VM set the handlers and E2E suite use.
 func buildResolveIndex(t *testing.T) *inventory.Index {
 	t.Helper()
+
 	snap, err := (cluster.Fake{}).Snapshot(context.Background())
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
+
 	idx := inventory.BuildIndex(snap)
 	idx.RefreshedAt = time.Now()
+
 	return &idx
 }
 
@@ -86,20 +89,26 @@ func TestResolve(t *testing.T) {
 				if !errors.Is(err, c.wantErr) {
 					t.Fatalf("err = %v, want %v", err, c.wantErr)
 				}
+
 				return
 			}
+
 			if err != nil {
 				t.Fatalf("err = %v, want nil", err)
 			}
+
 			if entity.VMID != c.vmid {
 				t.Errorf("vmid = %d, want %d", entity.VMID, c.vmid)
 			}
+
 			if entity.Node != c.wantNode {
 				t.Errorf("node = %q, want %q (FR-003: server-resolved, never client-supplied)", entity.Node, c.wantNode)
 			}
+
 			if entity.Pool != c.wantPool {
 				t.Errorf("pool = %q, want %q", entity.Pool, c.wantPool)
 			}
+
 			if entity.Cluster != "default" {
 				t.Errorf("cluster = %q, want default", entity.Cluster)
 			}
@@ -132,6 +141,7 @@ func TestResolve_NodeAlwaysFromIndex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
+
 	indexed := idx.ByVMID[102]
 	if entity.Node != indexed.Node {
 		t.Fatalf("node = %q, want %q (the Index value, nothing else)", entity.Node, indexed.Node)
@@ -148,21 +158,27 @@ func TestResolve_EntityCarriesDetailFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
+
 	if entity.CPUCores != 2 {
 		t.Errorf("cpuCores = %d, want 2", entity.CPUCores)
 	}
+
 	if entity.MemoryTotal != 4294967296 {
 		t.Errorf("memoryTotal = %d, want 4294967296", entity.MemoryTotal)
 	}
+
 	if entity.DiskTotal != 34359738368 {
 		t.Errorf("diskTotal = %d, want 34359738368", entity.DiskTotal)
 	}
+
 	if entity.Uptime <= 0 {
 		t.Errorf("uptime = %v, want > 0 for a running VM", entity.Uptime)
 	}
+
 	if entity.Name != "web-01" {
 		t.Errorf("name = %q, want web-01", entity.Name)
 	}
+
 	if entity.Status != cluster.VMRunning {
 		t.Errorf("status = %q, want running", entity.Status)
 	}
@@ -178,6 +194,7 @@ func TestResolve_StoppedVmHasZeroUptime(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
+
 	if entity.Uptime != 0 {
 		t.Errorf("uptime = %v, want 0 for a stopped VM", entity.Uptime)
 	}

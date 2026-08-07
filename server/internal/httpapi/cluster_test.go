@@ -37,8 +37,10 @@ func (stubClusterClient) ChangePassword(_ context.Context, _, _, _ string) error
 // built from the given snapshot, stamped at the given refresh time.
 func buildProjectionWithIndex(t *testing.T, snap cluster.Snapshot, refreshedAt time.Time) *inventory.Projection {
 	t.Helper()
+
 	idx := inventory.BuildIndex(snap)
 	idx.RefreshedAt = refreshedAt
+
 	return inventory.NewProjectionFromIndex(&idx)
 }
 
@@ -93,18 +95,22 @@ func TestClusterNodes_Success(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
+
 	if len(got.Nodes) != 1 {
 		t.Fatalf("nodes count = %d, want 1", len(got.Nodes))
 	}
+
 	n := got.Nodes[0]
 	if n.Name != "pve-node-01" || n.Status != "online" || n.CPUCores != 32 ||
 		n.MemoryTotal != 137438953472 || n.MemoryUsed != 68719476736 ||
 		n.StorageTotal != 2199023255552 || n.StorageUsed != 879609302220 {
 		t.Fatalf("unexpected node shape: %+v", n)
 	}
+
 	if n.VMCount != 2 {
 		t.Fatalf("vmCount = %d, want 2", n.VMCount)
 	}
+
 	if got.RefreshedAt != "2026-08-01T12:00:00Z" {
 		t.Fatalf("refreshedAt = %q, want 2026-08-01T12:00:00Z", got.RefreshedAt)
 	}
@@ -132,6 +138,7 @@ func TestClusterNodes_NotReady(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
+
 	if got.Code != "inventory_not_ready" {
 		t.Fatalf("code = %q, want inventory_not_ready", got.Code)
 	}
@@ -151,6 +158,7 @@ func TestClusterNodes_EmptyIsOK(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
 	}
+
 	var got struct {
 		Nodes       []json.RawMessage `json:"nodes"`
 		RefreshedAt string            `json:"refreshedAt"`
@@ -158,9 +166,11 @@ func TestClusterNodes_EmptyIsOK(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
+
 	if got.Nodes == nil || len(got.Nodes) != 0 {
 		t.Fatalf("nodes = %v, want empty array not null", got.Nodes)
 	}
+
 	if got.RefreshedAt == "" {
 		t.Fatal("refreshedAt should not be empty for a populated projection")
 	}
@@ -179,6 +189,7 @@ func TestClusterNodes_MethodNotAllowed(t *testing.T) {
 	if w.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("status = %d, want %d", w.Code, http.StatusMethodNotAllowed)
 	}
+
 	if w.Header().Get("Allow") != "GET" {
 		t.Fatalf("Allow header = %q, want GET", w.Header().Get("Allow"))
 	}

@@ -69,6 +69,7 @@ func NewSessionManager(repository SessionRepository, secret string, secure bool)
 	if len(secret) < minimumSecretSize {
 		return nil, fmt.Errorf("session secret must be at least %d bytes", minimumSecretSize)
 	}
+
 	return &SessionManager{repository: repository, secret: []byte(secret), secure: secure}, nil
 }
 
@@ -78,12 +79,16 @@ func (m *SessionManager) SetCookie(ctx context.Context, w http.ResponseWriter, i
 	if err != nil {
 		return fmt.Errorf("generate session token: %w", err)
 	}
+
 	expires := time.Now().Add(sessionTTL)
+
 	session := SessionRecord{Hash: m.hash(raw), Identity: identity, ExpiresAt: expires, CreatedAt: time.Now().UTC()}
 	if err := m.repository.CreateSession(ctx, session); err != nil {
 		return fmt.Errorf("create session: %w", err)
 	}
+
 	http.SetCookie(w, m.cookie(raw, expires))
+
 	return nil
 }
 
@@ -94,14 +99,18 @@ func (m *SessionManager) Resolve(ctx context.Context, r *http.Request) (Identity
 	if err != nil {
 		return Identity{}, ErrUnauthenticated
 	}
+
 	hash := m.hash(cookie.Value)
+
 	session, err := m.repository.FindSession(ctx, hash)
 	if err != nil || !session.ExpiresAt.After(time.Now()) {
 		return Identity{}, ErrUnauthenticated
 	}
+
 	if err := m.repository.TouchSession(ctx, hash, time.Now().Add(sessionTTL)); err != nil {
 		return Identity{}, fmt.Errorf("slide session expiry: %w", err)
 	}
+
 	return session.Identity, nil
 }
 
@@ -112,7 +121,9 @@ func (m *SessionManager) Logout(ctx context.Context, w http.ResponseWriter, r *h
 			return fmt.Errorf("revoke session: %w", err)
 		}
 	}
+
 	http.SetCookie(w, &http.Cookie{Name: SessionCookieName, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: m.secure, SameSite: http.SameSiteLaxMode})
+
 	return nil
 }
 
@@ -125,5 +136,6 @@ func (m *SessionManager) cookie(raw string, expires time.Time) *http.Cookie {
 func (m *SessionManager) hash(raw string) []byte {
 	mac := hmac.New(sha256.New, m.secret)
 	_, _ = mac.Write([]byte(raw))
+
 	return mac.Sum(nil)
 }

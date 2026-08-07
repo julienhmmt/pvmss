@@ -67,6 +67,7 @@ func TestHealth(t *testing.T) {
 			if c.wantStatus != 0 {
 				wantStatus = c.wantStatus
 			}
+
 			if w.Code != wantStatus {
 				t.Fatalf("status = %d, want %d", w.Code, wantStatus)
 			}
@@ -78,6 +79,7 @@ func TestHealth(t *testing.T) {
 				if !strings.Contains(w.Header().Get("Allow"), "GET") {
 					t.Fatalf("missing Allow header for 405: %q", w.Header().Get("Allow"))
 				}
+
 				return
 			}
 
@@ -89,21 +91,26 @@ func TestHealth(t *testing.T) {
 			if resp.Status != c.wantBody.Status {
 				t.Fatalf("status = %q, want %q", resp.Status, c.wantBody.Status)
 			}
+
 			if len(c.wantBody.Checks) > 0 {
 				gotDB := resp.Checks["database"]
+
 				wantDB := c.wantBody.Checks["database"]
 				if gotDB.Status != wantDB.Status || gotDB.Detail != wantDB.Detail {
 					t.Fatalf("database check = %+v, want %+v", gotDB, wantDB)
 				}
+
 				if c.name == "unhealthy" {
 					if strings.Contains(gotDB.Detail, c.pinger.err.Error()) {
 						t.Fatalf("detail leaks raw error: %q", gotDB.Detail)
 					}
+
 					if strings.Contains(gotDB.Detail, "/tmp/pvmss.db") {
 						t.Fatalf("detail leaks path: %q", gotDB.Detail)
 					}
 				}
 			}
+
 			if resp.Timestamp == "" {
 				t.Fatalf("timestamp is empty")
 			}
@@ -113,6 +120,7 @@ func TestHealth(t *testing.T) {
 
 func TestHealth_LogsError_WhenUnhealthy(t *testing.T) {
 	var buf strings.Builder
+
 	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelError}))
 	h := httpapi.NewHealth(fakePinger{err: errors.New("boom")}, logger)
 
@@ -128,6 +136,7 @@ func TestHealth_LogsError_WhenUnhealthy(t *testing.T) {
 	if !strings.Contains(output, "database health check failed") {
 		t.Fatalf("expected error log, got %q", output)
 	}
+
 	if !strings.Contains(output, "boom") {
 		t.Fatalf("expected raw error in server log, got %q", output)
 	}
@@ -135,10 +144,12 @@ func TestHealth_LogsError_WhenUnhealthy(t *testing.T) {
 	// The response detail must remain sanitized even though the server log
 	// contains the raw error.
 	body, _ := io.ReadAll(w.Result().Body)
+
 	var resp httpapi.HealthResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
+
 	if resp.Checks["database"].Detail != "database unreachable" {
 		t.Fatalf("response detail = %q, want %q", resp.Checks["database"].Detail, "database unreachable")
 	}
@@ -152,5 +163,6 @@ func (f fakePinger) Ping() error {
 	if f.err != nil {
 		return f.err
 	}
+
 	return nil
 }

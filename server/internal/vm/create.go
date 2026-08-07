@@ -132,6 +132,7 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req VM
 	if actor.Pool == "" {
 		return CreateResult{}, ErrNoPool
 	}
+
 	if err := ValidateName(req.Name); err != nil {
 		return CreateResult{}, err
 	}
@@ -143,11 +144,13 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req VM
 
 	cpuCores, memoryMB, diskGB := req.CPUCores, req.MemoryMB, req.Disk.SizeGB
 	bus := defaultDiskBus
+
 	if req.ProfileID != "" {
 		profiles, err := catalog.Profiles(ctx, st, clusterName)
 		if err != nil {
 			return CreateResult{}, fmt.Errorf("read profiles: %w", err)
 		}
+
 		profile, err := catalog.FindProfile(profiles, req.ProfileID)
 		if err != nil {
 			return CreateResult{}, fmt.Errorf("%w: %s", ErrNotApproved, err.Error())
@@ -157,6 +160,7 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req VM
 		cpuCores, memoryMB, diskGB = profile.CPUCores, profile.MemoryMB, profile.DiskGB
 		bus = profile.Bus
 	}
+
 	if err := checkTechnicalRange(cpuCores, memoryMB, diskGB); err != nil {
 		return CreateResult{}, err
 	}
@@ -166,8 +170,10 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req VM
 		if len(resources.Nodes) == 0 {
 			return CreateResult{}, fmt.Errorf("%w: no approved node in catalog", ErrNotApproved)
 		}
+
 		node = resources.Nodes[0].Name
 	}
+
 	storage := req.Disk.Storage
 	if storage == "" {
 		storage = firstStorageOnNode(resources, node)
@@ -175,17 +181,21 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req VM
 			return CreateResult{}, fmt.Errorf("%w: no approved storage on node %q", ErrNotApproved, node)
 		}
 	}
+
 	bridge := req.Network.Bridge
 	if bridge == "" {
 		if len(resources.Bridges) == 0 {
 			return CreateResult{}, fmt.Errorf("%w: no approved bridge in catalog", ErrNotApproved)
 		}
+
 		bridge = resources.Bridges[0]
 	}
+
 	model := req.Network.Model
 	if model == "" {
 		model = defaultNetworkModel
 	}
+
 	if !allowedNetworkModels[model] {
 		return CreateResult{}, fmt.Errorf("%w: network model %q", ErrNotApproved, model)
 	}
@@ -193,25 +203,29 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req VM
 	if !resources.HasNode(node) {
 		return CreateResult{}, fmt.Errorf("%w: node %q", ErrNotApproved, node)
 	}
+
 	if !resources.HasStorage(storage, node) {
 		return CreateResult{}, fmt.Errorf("%w: storage %q on node %q", ErrNotApproved, storage, node)
 	}
+
 	if !resources.HasBridge(bridge) {
 		return CreateResult{}, fmt.Errorf("%w: bridge %q", ErrNotApproved, bridge)
 	}
+
 	if req.ISO != nil && !resources.HasISO(req.ISO.Storage, req.ISO.File) {
 		return CreateResult{}, fmt.Errorf("%w: iso %q on storage %q", ErrNotApproved, req.ISO.File, req.ISO.Storage)
 	}
 
 	vmid, err := creator.NextVMID(ctx)
 	if err != nil {
-		return CreateResult{}, fmt.Errorf("%w: allocate vmid: %v", ErrClusterCreate, err)
+		return CreateResult{}, fmt.Errorf("%w: allocate vmid: %w", ErrClusterCreate, err)
 	}
 
 	tags := append([]string(nil), req.Tags...)
 	if !slices.Contains(tags, "pvmss") {
 		tags = append(tags, "pvmss")
 	}
+
 	spec := cluster.VMSpec{
 		VMID:             vmid,
 		Node:             node,
@@ -230,7 +244,7 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req VM
 
 	upid, err := creator.CreateVM(ctx, spec)
 	if err != nil {
-		return CreateResult{}, fmt.Errorf("%w: %v", ErrClusterCreate, err)
+		return CreateResult{}, fmt.Errorf("%w: %w", ErrClusterCreate, err)
 	}
 
 	if err := audit.RecordAction(ctx, actor.Username, clusterName, vmid, "vm_create"); err != nil {
@@ -250,6 +264,7 @@ func checkTechnicalRange(cpuCores, memoryMB, diskGB int) error {
 	case diskGB < MinDiskGB || diskGB > MaxDiskGB:
 		return fmt.Errorf("%w: disk sizeGB must be between %d and %d", ErrOutOfRange, MinDiskGB, MaxDiskGB)
 	}
+
 	return nil
 }
 
@@ -261,5 +276,6 @@ func firstStorageOnNode(resources catalog.Resources, node string) string {
 			return storage.Name
 		}
 	}
+
 	return ""
 }

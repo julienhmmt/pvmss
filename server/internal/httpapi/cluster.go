@@ -51,9 +51,11 @@ type clusterErrorEnvelope struct {
 func (h *ClusterNodes) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", "GET")
+
 		if err := writeClusterError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed"); err != nil {
 			h.log.Error("failed to write method not allowed", "component", "httpapi", "error", err)
 		}
+
 		return
 	}
 
@@ -63,6 +65,7 @@ func (h *ClusterNodes) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err := writeClusterError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet"); err != nil {
 			h.log.Error("failed to write inventory_not_ready response", "component", "httpapi", "error", err)
 		}
+
 		return
 	}
 
@@ -87,11 +90,14 @@ func (h *ClusterNodes) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	body, err := json.Marshal(resp)
 	if err != nil {
 		h.log.Error("failed to marshal cluster nodes response", "component", "httpapi", "error", err)
+
 		if writeErr := writeClusterError(w, http.StatusInternalServerError, "internal_error", "internal server error"); writeErr != nil {
 			h.log.Error("failed to write internal_error response", "component", "httpapi", "error", writeErr)
 		}
+
 		return
 	}
+
 	if err := writeJSON(w, http.StatusOK, body); err != nil {
 		h.log.Error("failed to write cluster nodes response", "component", "httpapi", "error", err)
 	}
@@ -102,5 +108,6 @@ func writeClusterError(w http.ResponseWriter, status int, code, message string) 
 	if err != nil {
 		return fmt.Errorf("marshal cluster error response: %w", err)
 	}
+
 	return writeJSON(w, status, body)
 }

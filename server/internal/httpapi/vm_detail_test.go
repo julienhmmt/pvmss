@@ -52,6 +52,7 @@ func newVmDetailHandler(t *testing.T) (*httpapi.VmDetail, *httpapi.Auth, *invent
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
+
 	projection := buildProjectionWithIndex(t, snap, time.Now())
 	authHandler := newAuthHandler(t)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
@@ -63,14 +64,17 @@ func newVmDetailHandler(t *testing.T) (*httpapi.VmDetail, *httpapi.Auth, *invent
 		LogFormat: "json",
 		LogOutput: "stdout",
 	}
+
 	st, err := store.Open(cfg)
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
 	}
+
 	t.Cleanup(func() { _ = st.Close() })
 
 	worker := inventory.NewWorker(cluster.Fake{}, projection, time.Hour, logger)
 	handler := httpapi.NewVmDetail(projection, authHandler, cluster.Fake{}, st, worker, logger)
+
 	return handler, authHandler, projection, st
 }
 
@@ -81,7 +85,9 @@ func detailRequest(method, path, body string, cookie *http.Cookie) *http.Request
 	} else {
 		req = httptest.NewRequest(method, path, nil)
 	}
+
 	req.Header.Set("Content-Type", "application/json")
+
 	if cookie != nil {
 		req.AddCookie(cookie)
 	}
@@ -89,6 +95,7 @@ func detailRequest(method, path, body string, cookie *http.Cookie) *http.Request
 	// patterns. Tests call the handler directly, so set them manually.
 	req.SetPathValue("cluster", "default")
 	req.SetPathValue("vmid", pathVmid(path))
+
 	return req
 }
 
@@ -100,26 +107,32 @@ func pathVmid(path string) string {
 	if len(segments) >= 5 {
 		return segments[4]
 	}
+
 	return ""
 }
 
 func serveDetail(handler *httpapi.VmDetail, req *http.Request) (*httptest.ResponseRecorder, vmDetailEntity) {
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
+
 	var entity vmDetailEntity
 	if rec.Code == http.StatusOK {
 		if err := json.Unmarshal(rec.Body.Bytes(), &entity); err != nil {
 			panic("decode entity: " + err.Error())
 		}
 	}
+
 	return rec, entity
 }
 
 func serveDetailError(handler *httpapi.VmDetail, req *http.Request) (*httptest.ResponseRecorder, apiErrorEnvelope) {
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
+
 	var env apiErrorEnvelope
+
 	_ = json.Unmarshal(rec.Body.Bytes(), &env)
+
 	return rec, env
 }
 
@@ -135,7 +148,9 @@ func bobCookie(t *testing.T, authHandler *httpapi.Auth) *http.Cookie {
 
 func adminCookie(t *testing.T, authHandler *httpapi.Auth) *http.Cookie {
 	t.Helper()
+
 	response := serveJSON(authHandler.AdminLogin, "/api/v1/auth/admin-login", `{"password":"pvmss-local-admin"}`)
+
 	return response.Result().Cookies()[0]
 }
 
@@ -153,30 +168,39 @@ func TestVmDetail_Get_OwnerSeesFullEntity(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
+
 	if entity.VMID != 100 {
 		t.Errorf("vmid = %d, want 100", entity.VMID)
 	}
+
 	if entity.Name != "web-01" {
 		t.Errorf("name = %q, want web-01", entity.Name)
 	}
+
 	if entity.Node != "pve-node-01" {
 		t.Errorf("node = %q, want pve-node-01", entity.Node)
 	}
+
 	if entity.Pool != "pool-alice" {
 		t.Errorf("pool = %q, want pool-alice", entity.Pool)
 	}
+
 	if entity.Status != "running" {
 		t.Errorf("status = %q, want running", entity.Status)
 	}
+
 	if entity.CPUCores != 2 {
 		t.Errorf("cpuCores = %d, want 2", entity.CPUCores)
 	}
+
 	if entity.MemoryTotal != 4294967296 {
 		t.Errorf("memoryTotal = %d, want 4294967296", entity.MemoryTotal)
 	}
+
 	if entity.DiskTotal != 34359738368 {
 		t.Errorf("diskTotal = %d, want 34359738368", entity.DiskTotal)
 	}
+
 	if entity.UptimeSeconds <= 0 {
 		t.Errorf("uptimeSeconds = %d, want > 0 for a running VM", entity.UptimeSeconds)
 	}
@@ -192,6 +216,7 @@ func TestVmDetail_Get_NonOwnerTaggedForbidden(t *testing.T) {
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 	}
+
 	if env.Code != "forbidden" {
 		t.Errorf("code = %q, want forbidden", env.Code)
 	}
@@ -208,6 +233,7 @@ func TestVmDetail_Get_UntaggedNotFound(t *testing.T) {
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
+
 	if env.Code != "not_found" {
 		t.Errorf("code = %q, want not_found", env.Code)
 	}
@@ -223,6 +249,7 @@ func TestVmDetail_Get_NonexistentNotFound(t *testing.T) {
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
+
 	if env.Code != "not_found" {
 		t.Errorf("code = %q, want not_found", env.Code)
 	}
@@ -239,9 +266,11 @@ func TestVmDetail_Get_AdminSeesAnyTaggedVM(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
+
 	if entity.VMID != 103 {
 		t.Errorf("vmid = %d, want 103", entity.VMID)
 	}
+
 	if entity.Pool != "pool-bob" {
 		t.Errorf("pool = %q, want pool-bob", entity.Pool)
 	}
@@ -267,9 +296,11 @@ func TestVmDetail_Get_StoppedVmOmitsUptime(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := detailRequest(http.MethodGet, "/api/v1/vms/default/101", "", cookie)
 	handler.ServeHTTP(rec, req)
+
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
 	}
+
 	if strings.Contains(rec.Body.String(), "uptimeSeconds") {
 		t.Errorf("stopped VM response includes uptimeSeconds: %s", rec.Body.String())
 	}
@@ -290,13 +321,16 @@ func TestVmAction_OwnerStartStoppedVM(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
+
 	calls := cluster.FakeCallsFor(101)
 	if len(calls) != 1 {
 		t.Fatalf("fake calls for 101 = %d, want 1", len(calls))
 	}
+
 	if calls[0].Action != "start" {
 		t.Errorf("action = %q, want start", calls[0].Action)
 	}
+
 	if calls[0].Node != "pve-node-01" {
 		t.Errorf("node = %q, want pve-node-01 (Index-resolved, FR-003)", calls[0].Node)
 	}
@@ -314,9 +348,11 @@ func TestVmAction_NonOwnerStopRejected(t *testing.T) {
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d (S01 PoC: now rejected)", rec.Code, http.StatusForbidden)
 	}
+
 	if env.Code != "forbidden" {
 		t.Errorf("code = %q, want forbidden", env.Code)
 	}
+
 	calls := cluster.FakeCallsFor(100)
 	if len(calls) != 0 {
 		t.Fatalf("fake calls for 100 = %d, want 0 (SC-001: zero calls for a forbidden request); calls=%v", len(calls), calls)
@@ -335,9 +371,11 @@ func TestVmAction_ForgedNodeFieldRejected(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d (unknown field rejected by strict decoder)", rec.Code, http.StatusBadRequest)
 	}
+
 	if env.Code != "invalid_request" {
 		t.Errorf("code = %q, want invalid_request", env.Code)
 	}
+
 	calls := cluster.FakeCallsFor(100)
 	if len(calls) != 0 {
 		t.Fatalf("fake calls for 100 = %d, want 0 (decode rejected before Resolve)", len(calls))
@@ -354,9 +392,11 @@ func TestVmAction_UntaggedVMNotFound(t *testing.T) {
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
+
 	if env.Code != "not_found" {
 		t.Errorf("code = %q, want not_found", env.Code)
 	}
+
 	calls := cluster.FakeCallsFor(109)
 	if len(calls) != 0 {
 		t.Fatalf("fake calls for 109 = %d, want 0", len(calls))
@@ -373,6 +413,7 @@ func TestVmAction_AdminActsOnAnyTaggedVM(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
+
 	calls := cluster.FakeCallsFor(105)
 	if len(calls) != 1 {
 		t.Fatalf("fake calls for 105 = %d, want 1", len(calls))
@@ -399,13 +440,16 @@ func TestVmAction_AllFiveValidActionsAccepted(t *testing.T) {
 
 	t.Run("invalid_action", func(t *testing.T) {
 		cluster.ResetFake()
+
 		rec, env := serveDetailError(handler, detailRequest(http.MethodPost, "/api/v1/vms/default/101/actions", `{"action":"foo"}`, cookie))
 		if rec.Code != http.StatusBadRequest {
 			t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 		}
+
 		if env.Code != "invalid_action" {
 			t.Errorf("code = %q, want invalid_action", env.Code)
 		}
+
 		if !strings.Contains(env.Message, "foo") {
 			t.Errorf("message = %q, want it to mention the unknown action", env.Message)
 		}
@@ -422,19 +466,24 @@ func TestVmAction_AuditRecorded(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
 	}
+
 	rows, err := st.QueryAudit(context.Background())
 	if err != nil {
 		t.Fatalf("QueryAudit: %v", err)
 	}
+
 	if len(rows) != 1 {
 		t.Fatalf("audit rows = %d, want 1", len(rows))
 	}
+
 	if rows[0].Actor != "alice@pve" {
 		t.Errorf("actor = %q, want alice@pve (real actor, never service-account)", rows[0].Actor)
 	}
+
 	if rows[0].Action != "start" {
 		t.Errorf("action = %q, want start", rows[0].Action)
 	}
+
 	if rows[0].VMID != 101 {
 		t.Errorf("vmid = %d, want 101", rows[0].VMID)
 	}
@@ -457,10 +506,12 @@ func TestVmAction_IndexInvalidatedAfterWrite(t *testing.T) {
 	if idx == nil {
 		t.Fatal("projection is nil after write")
 	}
+
 	updated, ok := idx.ByVMID[101]
 	if !ok {
 		t.Fatal("VM 101 missing from rebuilt index")
 	}
+
 	if updated.Status != cluster.VMRunning {
 		t.Errorf("after write+refresh, VM 101 status = %q, want running", updated.Status)
 	}
@@ -480,10 +531,12 @@ func TestVmDelete_OwnerSucceeds(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
+
 	calls := cluster.FakeCallsFor(114)
 	if len(calls) != 1 {
 		t.Fatalf("fake calls for 114 = %d, want 1", len(calls))
 	}
+
 	if calls[0].Action != "delete" {
 		t.Errorf("action = %q, want delete", calls[0].Action)
 	}
@@ -500,9 +553,11 @@ func TestVmDelete_NonOwnerRejected(t *testing.T) {
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 	}
+
 	if env.Code != "forbidden" {
 		t.Errorf("code = %q, want forbidden", env.Code)
 	}
+
 	calls := cluster.FakeCallsFor(100)
 	if len(calls) != 0 {
 		t.Fatalf("fake calls for 100 = %d, want 0 (same Resolve gate, not a parallel check)", len(calls))
@@ -519,10 +574,12 @@ func TestVmDelete_AdminDeletesAnyTaggedVM(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
+
 	calls := cluster.FakeCallsFor(106)
 	if len(calls) != 1 {
 		t.Fatalf("fake calls for 106 = %d, want 1", len(calls))
 	}
+
 	if calls[0].Action != "delete" {
 		t.Errorf("action = %q, want delete", calls[0].Action)
 	}
@@ -541,9 +598,11 @@ func TestVmPatch_OwnerRenames(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
+
 	if entity.Name != "web-prod-01" {
 		t.Errorf("name = %q, want web-prod-01", entity.Name)
 	}
+
 	if entity.VMID != 100 {
 		t.Errorf("vmid = %d, want 100", entity.VMID)
 	}
@@ -566,10 +625,12 @@ func TestVmPatch_InvalidHostname(t *testing.T) {
 	for _, bad := range cases {
 		t.Run(bad, func(t *testing.T) {
 			body := `{"name":"` + bad + `"}`
+
 			rec, env := serveDetailError(handler, detailRequest(http.MethodPatch, "/api/v1/vms/default/100", body, cookie))
 			if rec.Code != http.StatusBadRequest {
 				t.Fatalf("name %q: status = %d, want %d", bad, rec.Code, http.StatusBadRequest)
 			}
+
 			if env.Code != "invalid_name" {
 				t.Errorf("name %q: code = %q, want invalid_name", bad, env.Code)
 			}
@@ -586,6 +647,7 @@ func TestVmPatch_EmptyBody(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
+
 	if env.Code != "invalid_request" {
 		t.Errorf("code = %q, want invalid_request", env.Code)
 	}
@@ -602,9 +664,11 @@ func TestVmPatch_NonOwnerRejected(t *testing.T) {
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 	}
+
 	if env.Code != "forbidden" {
 		t.Errorf("code = %q, want forbidden", env.Code)
 	}
+
 	calls := cluster.FakeCallsFor(100)
 	if len(calls) != 0 {
 		t.Fatalf("fake calls for 100 = %d, want 0", len(calls))
@@ -621,6 +685,7 @@ func TestVmPatch_DescriptionOnly(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
+
 	if entity.Description != "new description text" {
 		t.Errorf("description = %q, want new description text", entity.Description)
 	}
@@ -635,9 +700,11 @@ func TestVmPatch_BothNameAndDescription(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
+
 	if entity.Name != "web-new" {
 		t.Errorf("name = %q, want web-new", entity.Name)
 	}
+
 	if entity.Description != "both at once" {
 		t.Errorf("description = %q, want both at once", entity.Description)
 	}
@@ -652,16 +719,20 @@ func TestVmPatch_AuditRecorded(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
 	}
+
 	rows, err := st.QueryAudit(context.Background())
 	if err != nil {
 		t.Fatalf("QueryAudit: %v", err)
 	}
+
 	if len(rows) != 1 {
 		t.Fatalf("audit rows = %d, want 1", len(rows))
 	}
+
 	if rows[0].Actor != "alice@pve" {
 		t.Errorf("actor = %q, want alice@pve", rows[0].Actor)
 	}
+
 	if rows[0].Action != "rename" {
 		t.Errorf("action = %q, want rename", rows[0].Action)
 	}
@@ -688,6 +759,7 @@ func TestVmDetail_ErrorShapeIdenticalAcrossEndpoints(t *testing.T) {
 			t.Fatalf("expected 403 across all endpoints, got %d", rec.Code)
 		}
 	}
+
 	for _, env := range []apiErrorEnvelope{getEnv, actionEnv, deleteEnv, patchEnv} {
 		if env.Code != "forbidden" || env.Message != "not your VM" {
 			t.Errorf("403 shape = %+v, want {forbidden not your VM}", env)
@@ -706,6 +778,7 @@ func TestVmDetail_ErrorShapeIdenticalAcrossEndpoints(t *testing.T) {
 			t.Fatalf("expected 404 across all endpoints, got %d", rec.Code)
 		}
 	}
+
 	if get404Env.Code != "not_found" || get404Env.Message != "VM not found" {
 		t.Errorf("404 shape = %+v, want {not_found VM not found}", get404Env)
 	}

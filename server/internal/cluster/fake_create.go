@@ -33,6 +33,7 @@ func fakeVMIDFloor() int {
 			floor = vm.VMID + 1
 		}
 	}
+
 	return floor
 }
 
@@ -42,14 +43,20 @@ func fakeVMIDFloor() int {
 func (Fake) NextVMID(_ context.Context) (int, error) {
 	fakeCreateMutex.Lock()
 	defer fakeCreateMutex.Unlock()
+
 	fakeVMMutex.RLock()
+
 	floor := fakeVMIDFloor()
+
 	fakeVMMutex.RUnlock()
+
 	if fakeNextVMID < floor {
 		fakeNextVMID = floor
 	}
+
 	vmid := fakeNextVMID
 	fakeNextVMID++
+
 	return vmid, nil
 }
 
@@ -59,14 +66,17 @@ func (Fake) NextVMID(_ context.Context) (int, error) {
 // returned UPID.
 func (Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 	fakeVMMutex.Lock()
+
 	status := VMStopped
 	if spec.StartAfterCreate {
 		status = VMRunning
 	}
+
 	var diskTotal int64
 	if spec.Disk.SizeGB > 0 {
 		diskTotal = int64(spec.Disk.SizeGB) * 1024 * 1024 * 1024
 	}
+
 	fakeVMs = append(fakeVMs, VM{
 		VMID:        spec.VMID,
 		Name:        spec.Name,
@@ -86,10 +96,12 @@ func (Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 	if fakeTasks == nil {
 		fakeTasks = make(map[string]*fakeTask)
 	}
+
 	fakeTasks[upid] = &fakeTask{upid: upid}
 	fakeCreateMutex.Unlock()
 
 	recordCall(FakeCall{Node: spec.Node, VMID: spec.VMID, Action: "create", Name: spec.Name})
+
 	return upid, nil
 }
 
@@ -98,14 +110,17 @@ func (Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 func (Fake) TaskStatus(_ context.Context, upid string) (TaskStatus, error) {
 	fakeCreateMutex.Lock()
 	defer fakeCreateMutex.Unlock()
+
 	task, ok := fakeTasks[upid]
 	if !ok {
 		return TaskStatus{}, ErrNotFound
 	}
+
 	task.polls++
 	if task.polls < 3 {
 		return TaskStatus{UPID: upid, State: TaskRunning, Log: []string{"allocating disk...", "starting qmcreate..."}}, nil
 	}
+
 	return TaskStatus{UPID: upid, State: TaskOK, Log: []string{"allocating disk...", "starting qmcreate...", "TASK OK"}}, nil
 }
 
@@ -113,6 +128,7 @@ func (Fake) TaskStatus(_ context.Context, upid string) (TaskStatus, error) {
 func resetFakeCreateState() {
 	fakeCreateMutex.Lock()
 	defer fakeCreateMutex.Unlock()
+
 	fakeNextVMID = 0
 	fakeTasks = nil
 }

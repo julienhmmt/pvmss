@@ -54,6 +54,7 @@ func (r Resources) HasNode(name string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -64,6 +65,7 @@ func (r Resources) HasStorage(name, node string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -74,6 +76,7 @@ func (r Resources) HasBridge(name string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -84,6 +87,7 @@ func (r Resources) HasISO(storage, file string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -94,18 +98,22 @@ func ApprovedResources(ctx context.Context, st *store.Store, cluster string) (Re
 	if err != nil {
 		return Resources{}, err
 	}
+
 	storages, err := st.CatalogStorages(ctx, cluster)
 	if err != nil {
 		return Resources{}, err
 	}
+
 	bridges, err := st.CatalogBridges(ctx, cluster)
 	if err != nil {
 		return Resources{}, err
 	}
+
 	isos, err := st.CatalogISOs(ctx, cluster)
 	if err != nil {
 		return Resources{}, err
 	}
+
 	resources := Resources{
 		Nodes:    make([]Node, 0, len(nodes)),
 		Storages: make([]Storage, 0, len(storages)),
@@ -115,15 +123,19 @@ func ApprovedResources(ctx context.Context, st *store.Store, cluster string) (Re
 	for _, node := range nodes {
 		resources.Nodes = append(resources.Nodes, Node{Name: node.Name})
 	}
+
 	for _, storage := range storages {
 		resources.Storages = append(resources.Storages, Storage{Name: storage.Name, Node: storage.Node})
 	}
+
 	for _, bridge := range bridges {
 		resources.Bridges = append(resources.Bridges, bridge.Name)
 	}
+
 	for _, iso := range isos {
 		resources.ISOs = append(resources.ISOs, ISO{Storage: iso.Storage, File: iso.File})
 	}
+
 	return resources, nil
 }
 
@@ -133,6 +145,7 @@ func Profiles(ctx context.Context, st *store.Store, cluster string) ([]Profile, 
 	if err != nil {
 		return nil, err
 	}
+
 	profiles := make([]Profile, 0, len(rows))
 	for _, row := range rows {
 		profiles = append(profiles, Profile{
@@ -144,6 +157,7 @@ func Profiles(ctx context.Context, st *store.Store, cluster string) ([]Profile, 
 			Bus:      row.Bus,
 		})
 	}
+
 	return profiles, nil
 }
 
@@ -155,5 +169,6 @@ func FindProfile(profiles []Profile, id string) (Profile, error) {
 			return profile, nil
 		}
 	}
+
 	return Profile{}, fmt.Errorf("profile %q is not approved for this cluster", id)
 }
