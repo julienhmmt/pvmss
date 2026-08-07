@@ -23,7 +23,7 @@ func NewLogger(cfg Configuration) (*slog.Logger, io.WriteCloser, error) {
 	case "stderr":
 		w = nopWriteCloser{Writer: os.Stderr}
 	default:
-		f, err := os.OpenFile(cfg.LogOutput, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		f, err := os.OpenFile(cfg.LogOutput, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 		if err != nil {
 			return nil, nil, fmt.Errorf("open log output %q: %w", cfg.LogOutput, err)
 		}

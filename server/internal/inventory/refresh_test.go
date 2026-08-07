@@ -3,11 +3,10 @@ package inventory_test
 import (
 	"context"
 	"errors"
-	"testing"
-	"time"
-
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"testing"
+	"time"
 )
 
 // TestRefresh_OutsideGuardSucceeds — a manual refresh outside the guard

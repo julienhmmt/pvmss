@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
 	"pvmss/server/internal/config"
 
 	_ "modernc.org/sqlite"
@@ -18,7 +17,7 @@ func Open(cfg config.Configuration) (*Store, error) {
 	}
 
 	dir := filepath.Dir(cfg.DBPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return nil, fmt.Errorf("create database directory %q: %w", dir, err)
 	}
 

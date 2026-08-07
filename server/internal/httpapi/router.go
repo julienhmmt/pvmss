@@ -24,7 +24,7 @@ type spaHandler struct {
 }
 
 // NewRouter wires the public API and the static SPA handler.
-func NewRouter(health http.Handler, clusterNodes http.Handler, clusterRefresh http.Handler, vms http.Handler, vmDetail http.Handler, vmCreate *VmCreate, tasks *Tasks, auth *Auth, webBuildDir string, log *slog.Logger) *http.ServeMux {
+func NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail http.Handler, vmCreate *VmCreate, tasks *Tasks, auth *Auth, webBuildDir string, log *slog.Logger) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("GET /health", health)
 	mux.Handle("GET /api/v1/cluster/nodes", auth.Require(clusterNodes))

@@ -5,10 +5,9 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"pvmss/server/internal/inventory"
 	"strconv"
 	"time"
-
-	"pvmss/server/internal/inventory"
 )
 
 // ClusterRefresh serves POST /api/v1/cluster/refresh — a manual refresh

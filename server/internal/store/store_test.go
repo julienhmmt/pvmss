@@ -4,10 +4,9 @@ import (
 	"database/sql"
 	"os"
 	"path/filepath"
-	"testing"
-
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/store"
+	"testing"
 
 	_ "modernc.org/sqlite"
 )
@@ -37,7 +36,7 @@ func TestOpen_MigrationsValidationFailed(t *testing.T) {
 func TestOpen_MkdirAllFailed(t *testing.T) {
 	dir := t.TempDir()
 	blocked := filepath.Join(dir, "blocked")
-	if err := os.WriteFile(blocked, []byte("x"), 0644); err != nil {
+	if err := os.WriteFile(blocked, []byte("x"), 0o644); err != nil {
 		t.Fatalf("write blocking file: %v", err)
 	}
 

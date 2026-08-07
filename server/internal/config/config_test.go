@@ -1,11 +1,10 @@
 package config_test
 
 import (
+	"pvmss/server/internal/config"
 	"strings"
 	"testing"
 	"time"
-
-	"pvmss/server/internal/config"
 )
 
 func TestLoad(t *testing.T) {

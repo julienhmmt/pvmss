@@ -6,11 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strconv"
-
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/vm"
+	"strconv"
 )
 
 // VMs serves GET /api/v1/vms — the ONLY VM-listing endpoint in the system

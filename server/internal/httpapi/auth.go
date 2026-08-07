@@ -7,13 +7,12 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"pvmss/server/internal/auth"
+	"pvmss/server/internal/cluster"
 	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
-
-	"pvmss/server/internal/auth"
-	"pvmss/server/internal/cluster"
 )
 
 const minPasswordLength = 8

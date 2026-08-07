@@ -5,12 +5,11 @@
 package inventory
 
 import (
+	"pvmss/server/internal/cluster"
 	"slices"
 	"sort"
 	"strings"
 	"time"
-
-	"pvmss/server/internal/cluster"
 )
 
 // Index is the in-memory projection built from one cluster.Snapshot. It is

@@ -5,9 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
-
 	"pvmss/server/internal/auth"
+	"time"
 )
 
 // CreateToken persists an already-hashed API token.

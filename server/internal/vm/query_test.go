@@ -2,13 +2,12 @@ package vm_test
 
 import (
 	"errors"
-	"slices"
-	"testing"
-
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/vm"
+	"slices"
+	"testing"
 )
 
 // testIndex builds a small projection across two pools and two nodes —

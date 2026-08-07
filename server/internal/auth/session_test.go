@@ -5,11 +5,10 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"pvmss/server/internal/auth"
 	"sync"
 	"testing"
 	"time"
-
-	"pvmss/server/internal/auth"
 )
 
 type sessionRepository struct {

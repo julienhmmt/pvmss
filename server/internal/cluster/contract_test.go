@@ -3,10 +3,9 @@ package cluster_test
 import (
 	"context"
 	"errors"
+	"pvmss/server/internal/cluster"
 	"reflect"
 	"testing"
-
-	"pvmss/server/internal/cluster"
 )
 
 // The shared expectation set (FR-010): both implementations of cluster.Client

@@ -5,13 +5,12 @@ import (
 	"errors"
 	"log/slog"
 	"os"
+	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/inventory"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"pvmss/server/internal/cluster"
-	"pvmss/server/internal/inventory"
 )
 
 // callCountClient wraps a cluster.Client and counts Snapshot calls — the
