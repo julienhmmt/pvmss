@@ -24,7 +24,7 @@ type spaHandler struct {
 }
 
 // NewRouter wires the public API and the static SPA handler.
-func NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail http.Handler, vmCreate *VmCreate, tasks *Tasks, auth *Auth, webBuildDir string, log *slog.Logger) *http.ServeMux {
+func NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail http.Handler, vmCreate *VMCreate, tasks *Tasks, auth *Auth, webBuildDir string, log *slog.Logger) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("GET /health", health)
 	mux.Handle("GET /api/v1/cluster/nodes", auth.Require(clusterNodes))
@@ -59,7 +59,7 @@ func NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail http.Handler,
 	mux.HandleFunc("POST /api/v1/auth/password", auth.ChangePassword)
 
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
-		mux.Handle(method+" /api/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mux.Handle(method+" /api/", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			if err := writeError(w, http.StatusNotFound, "unknown API path"); err != nil {
 				log.Error("failed to write API 404", "component", "httpapi", "error", err)
 			}

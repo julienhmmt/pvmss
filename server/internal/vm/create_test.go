@@ -41,7 +41,7 @@ func newCreateFixture(t *testing.T) createFixture {
 	return createFixture{store: st, fake: cluster.Fake{}}
 }
 
-func (f createFixture) create(t *testing.T, actor auth.Identity, req vm.VMCreateRequest) (vm.CreateResult, error) {
+func (f createFixture) create(t *testing.T, actor auth.Identity, req vm.CreateRequest) (vm.CreateResult, error) {
 	t.Helper()
 
 	log := slog.New(slog.DiscardHandler)
@@ -54,15 +54,15 @@ func aliceIdentity() auth.Identity {
 }
 
 // detailedRequest is a fully explicit, catalog-valid detailed-mode request.
-func detailedRequest() vm.VMCreateRequest {
-	return vm.VMCreateRequest{
+func detailedRequest() vm.CreateRequest {
+	return vm.CreateRequest{
 		Cluster:  "default",
 		Name:     "web-01",
 		Node:     "pve-node-01",
 		CPUCores: 2,
 		MemoryMB: 4096,
-		Disk:     vm.VMDiskRequest{Storage: "local-lvm", SizeGB: 40},
-		Network:  vm.VMNetworkRequest{Bridge: "vmbr0", Model: "virtio"},
+		Disk:     vm.DiskRequest{Storage: "local-lvm", SizeGB: 40},
+		Network:  vm.NetworkRequest{Bridge: "vmbr0", Model: "virtio"},
 	}
 }
 
@@ -70,75 +70,75 @@ func TestCreate_ValidationPipeline(t *testing.T) {
 	cases := []struct {
 		name    string
 		actor   auth.Identity
-		mutate  func(*vm.VMCreateRequest)
+		mutate  func(*vm.CreateRequest)
 		wantErr error
 	}{
 		{
 			name:    "identity without pool",
 			actor:   auth.Identity{Username: "admin@pve", IsAdmin: true},
-			mutate:  func(r *vm.VMCreateRequest) {},
+			mutate:  func(_ *vm.CreateRequest) {},
 			wantErr: vm.ErrNoPool,
 		},
 		{
 			name:    "invalid hostname",
 			actor:   aliceIdentity(),
-			mutate:  func(r *vm.VMCreateRequest) { r.Name = "Bad_Name!" },
+			mutate:  func(r *vm.CreateRequest) { r.Name = "Bad_Name!" },
 			wantErr: vm.ErrInvalidName,
 		},
 		{
 			name:    "cpu out of range",
 			actor:   aliceIdentity(),
-			mutate:  func(r *vm.VMCreateRequest) { r.CPUCores = 64 },
+			mutate:  func(r *vm.CreateRequest) { r.CPUCores = 64 },
 			wantErr: vm.ErrOutOfRange,
 		},
 		{
 			name:    "memory out of range",
 			actor:   aliceIdentity(),
-			mutate:  func(r *vm.VMCreateRequest) { r.MemoryMB = 0 },
+			mutate:  func(r *vm.CreateRequest) { r.MemoryMB = 0 },
 			wantErr: vm.ErrOutOfRange,
 		},
 		{
 			name:    "disk out of range",
 			actor:   aliceIdentity(),
-			mutate:  func(r *vm.VMCreateRequest) { r.Disk.SizeGB = -5 },
+			mutate:  func(r *vm.CreateRequest) { r.Disk.SizeGB = -5 },
 			wantErr: vm.ErrOutOfRange,
 		},
 		{
 			name:    "node not approved",
 			actor:   aliceIdentity(),
-			mutate:  func(r *vm.VMCreateRequest) { r.Node = "pve-node-03" },
+			mutate:  func(r *vm.CreateRequest) { r.Node = "pve-node-03" },
 			wantErr: vm.ErrNotApproved,
 		},
 		{
 			name:    "storage not approved",
 			actor:   aliceIdentity(),
-			mutate:  func(r *vm.VMCreateRequest) { r.Disk.Storage = "nas-scratch" },
+			mutate:  func(r *vm.CreateRequest) { r.Disk.Storage = "nas-scratch" },
 			wantErr: vm.ErrNotApproved,
 		},
 		{
 			name:    "storage approved but on another node",
 			actor:   aliceIdentity(),
-			mutate:  func(r *vm.VMCreateRequest) { r.Disk.Storage = "ceph-data" },
+			mutate:  func(r *vm.CreateRequest) { r.Disk.Storage = "ceph-data" },
 			wantErr: vm.ErrNotApproved,
 		},
 		{
 			name:    "bridge not approved",
 			actor:   aliceIdentity(),
-			mutate:  func(r *vm.VMCreateRequest) { r.Network.Bridge = "vmbr9" },
+			mutate:  func(r *vm.CreateRequest) { r.Network.Bridge = "vmbr9" },
 			wantErr: vm.ErrNotApproved,
 		},
 		{
 			name:  "iso not approved",
 			actor: aliceIdentity(),
-			mutate: func(r *vm.VMCreateRequest) {
-				r.ISO = &vm.VMISORequest{Storage: "local", File: "windows-11.iso"}
+			mutate: func(r *vm.CreateRequest) {
+				r.ISO = &vm.ISORequest{Storage: "local", File: "windows-11.iso"}
 			},
 			wantErr: vm.ErrNotApproved,
 		},
 		{
 			name:    "profile not approved",
 			actor:   aliceIdentity(),
-			mutate:  func(r *vm.VMCreateRequest) { r.ProfileID = "huge" },
+			mutate:  func(r *vm.CreateRequest) { r.ProfileID = "huge" },
 			wantErr: vm.ErrNotApproved,
 		},
 	}
@@ -167,13 +167,13 @@ func TestCreate_ValidationPipeline(t *testing.T) {
 // contradict the chosen profile.
 func TestCreate_ProfileResolvesHardware(t *testing.T) {
 	fixture := newCreateFixture(t)
-	req := vm.VMCreateRequest{
+	req := vm.CreateRequest{
 		Cluster:          "default",
 		Name:             "profiled-vm",
 		ProfileID:        "medium",
 		CPUCores:         32, // contradictory — must be ignored
 		MemoryMB:         65536,
-		Disk:             vm.VMDiskRequest{SizeGB: 2048},
+		Disk:             vm.DiskRequest{SizeGB: 2048},
 		StartAfterCreate: true,
 	}
 
@@ -215,7 +215,7 @@ func TestCreate_ProfileResolvesHardware(t *testing.T) {
 func TestCreate_SimpleModeAutoSelection(t *testing.T) {
 	fixture := newCreateFixture(t)
 
-	result, err := fixture.create(t, aliceIdentity(), vm.VMCreateRequest{
+	result, err := fixture.create(t, aliceIdentity(), vm.CreateRequest{
 		Cluster:   "default",
 		Name:      "auto-vm",
 		ProfileID: "small",

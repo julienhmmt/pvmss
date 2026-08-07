@@ -24,6 +24,7 @@ var ErrInvalidSortBy = errors.New("invalid sort column")
 // never an error that would confirm the parameter exists to a probing caller).
 type Scope string
 
+// List scopes: "mine" limits to the caller's pool, "all" spans every pool (admin only).
 const (
 	ScopeMine Scope = "mine"
 	ScopeAll  Scope = "all"
@@ -32,6 +33,7 @@ const (
 // SortBy is a column the list can be ordered by.
 type SortBy string
 
+// Sort columns accepted by the list endpoint.
 const (
 	SortByVMID   SortBy = "vmid"
 	SortByName   SortBy = "name"
@@ -44,6 +46,7 @@ const (
 // SortDir is the ordering direction.
 type SortDir string
 
+// Sort directions for the list endpoint.
 const (
 	SortAsc  SortDir = "asc"
 	SortDesc SortDir = "desc"
@@ -53,6 +56,7 @@ const (
 // owns no VMs at all, or the current search/filters match none of them.
 type EmptyReason string
 
+// Empty reasons surfaced to the UI when a result page is empty.
 const (
 	EmptyNoVMsOwned EmptyReason = "no_vms_owned"
 	EmptyNoMatch    EmptyReason = "no_match"

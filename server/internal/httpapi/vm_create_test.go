@@ -18,10 +18,10 @@ import (
 	"time"
 )
 
-// newVmCreateHandler builds the creation handler over the fake cluster with a
+// newVMCreateHandler builds the creation handler over the fake cluster with a
 // real seeded store (the catalog fixture comes from migration version 7).
 // Every test that creates a VM mutates the fake dataset, so cleanup resets it.
-func newVmCreateHandler(t *testing.T) (*httpapi.VmCreate, *httpapi.Auth, *store.Store) {
+func newVMCreateHandler(t *testing.T) (*httpapi.VMCreate, *httpapi.Auth, *store.Store) {
 	t.Helper()
 	t.Cleanup(cluster.ResetFake)
 	authHandler := newAuthHandler(t)
@@ -39,10 +39,10 @@ func newVmCreateHandler(t *testing.T) (*httpapi.VmCreate, *httpapi.Auth, *store.
 
 	t.Cleanup(func() { _ = st.Close() })
 
-	return httpapi.NewVmCreate(authHandler, st, cluster.Fake{}, logger), authHandler, st
+	return httpapi.NewVMCreate(authHandler, st, cluster.Fake{}, logger), authHandler, st
 }
 
-func postVMCreate(t *testing.T, handler *httpapi.VmCreate, body string, cookie *http.Cookie) *httptest.ResponseRecorder {
+func postVMCreate(t *testing.T, handler *httpapi.VMCreate, body string, cookie *http.Cookie) *httptest.ResponseRecorder {
 	t.Helper()
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/vms", strings.NewReader(body))
@@ -58,10 +58,10 @@ func postVMCreate(t *testing.T, handler *httpapi.VmCreate, body string, cookie *
 	return recorder
 }
 
-// TestVmCreate_SimpleModeSuccess — T009/US1: a simple-mode request returns
+// TestVMCreate_SimpleModeSuccess — T009/US1: a simple-mode request returns
 // 202 and the fake receives a spec whose pool is the actor's own.
-func TestVmCreate_SimpleModeSuccess(t *testing.T) {
-	handler, authHandler, _ := newVmCreateHandler(t)
+func TestVMCreate_SimpleModeSuccess(t *testing.T) {
+	handler, authHandler, _ := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 
 	response := postVMCreate(t, handler,
@@ -103,11 +103,11 @@ func TestVmCreate_SimpleModeSuccess(t *testing.T) {
 	t.Fatalf("created VM %d not in snapshot", result.VMID)
 }
 
-// TestVmCreate_PoolFieldHasNoEffect — T010/SC-003: a forged pool field in the
+// TestVMCreate_PoolFieldHasNoEffect — T010/SC-003: a forged pool field in the
 // raw body either fails strict decoding or is dropped; the created VM's pool
 // is the actor's regardless.
-func TestVmCreate_PoolFieldHasNoEffect(t *testing.T) {
-	handler, authHandler, _ := newVmCreateHandler(t)
+func TestVMCreate_PoolFieldHasNoEffect(t *testing.T) {
+	handler, authHandler, _ := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 
 	response := postVMCreate(t, handler,
@@ -132,11 +132,11 @@ func TestVmCreate_PoolFieldHasNoEffect(t *testing.T) {
 	}
 }
 
-// TestVmCreate_NoPoolIdentityForbidden — T011/FR-005: the local admin has no
+// TestVMCreate_NoPoolIdentityForbidden — T011/FR-005: the local admin has no
 // personal pool; creation is refused with 403 and NextVMID is never called
 // (no VMID burned — the fake's create call log stays empty).
-func TestVmCreate_NoPoolIdentityForbidden(t *testing.T) {
-	handler, authHandler, _ := newVmCreateHandler(t)
+func TestVMCreate_NoPoolIdentityForbidden(t *testing.T) {
+	handler, authHandler, _ := newVMCreateHandler(t)
 
 	response := serveJSON(authHandler.AdminLogin, "/api/v1/auth/admin-login", `{"password":"pvmss-local-admin"}`)
 	if response.Code != http.StatusOK {
@@ -165,10 +165,10 @@ func TestVmCreate_NoPoolIdentityForbidden(t *testing.T) {
 	}
 }
 
-// TestVmCreate_CatalogViolation — SC-004: a storage outside the seeded
+// TestVMCreate_CatalogViolation — SC-004: a storage outside the seeded
 // catalog is rejected with 400 and no task is created.
-func TestVmCreate_CatalogViolation(t *testing.T) {
-	handler, authHandler, _ := newVmCreateHandler(t)
+func TestVMCreate_CatalogViolation(t *testing.T) {
+	handler, authHandler, _ := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 
 	response := postVMCreate(t, handler,
@@ -192,10 +192,10 @@ func TestVmCreate_CatalogViolation(t *testing.T) {
 	}
 }
 
-// TestVmCreateCatalog_SeededShape — T013/FR-002: the catalog endpoint serves
+// TestVMCreateCatalog_SeededShape — T013/FR-002: the catalog endpoint serves
 // the seeded fixture (contract shape), sourced from the store.
-func TestVmCreateCatalog_SeededShape(t *testing.T) {
-	handler, authHandler, _ := newVmCreateHandler(t)
+func TestVMCreateCatalog_SeededShape(t *testing.T) {
+	handler, authHandler, _ := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/vm-create/catalog", nil)
@@ -246,10 +246,10 @@ func TestVmCreateCatalog_SeededShape(t *testing.T) {
 	}
 }
 
-// TestVmCreate_DetailedModeExactSpec — T024: every field explicit; the fake
+// TestVMCreate_DetailedModeExactSpec — T024: every field explicit; the fake
 // receives exactly those values, and no profile is involved.
-func TestVmCreate_DetailedModeExactSpec(t *testing.T) {
-	handler, authHandler, _ := newVmCreateHandler(t)
+func TestVMCreate_DetailedModeExactSpec(t *testing.T) {
+	handler, authHandler, _ := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 
 	response := postVMCreate(t, handler, `{
@@ -292,9 +292,9 @@ func TestVmCreate_DetailedModeExactSpec(t *testing.T) {
 	t.Fatalf("created VM %d not in snapshot", result.VMID)
 }
 
-// TestVmCreate_DetailedCatalogViolations — T025/SC-004: each resource kind
+// TestVMCreate_DetailedCatalogViolations — T025/SC-004: each resource kind
 // outside the seeded catalog is rejected individually, no task created.
-func TestVmCreate_DetailedCatalogViolations(t *testing.T) {
+func TestVMCreate_DetailedCatalogViolations(t *testing.T) {
 	cases := []struct {
 		name string
 		body string
@@ -306,7 +306,7 @@ func TestVmCreate_DetailedCatalogViolations(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			handler, authHandler, _ := newVmCreateHandler(t)
+			handler, authHandler, _ := newVMCreateHandler(t)
 			cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 
 			response := postVMCreate(t, handler, tc.body, cookie)
@@ -330,10 +330,10 @@ func TestVmCreate_DetailedCatalogViolations(t *testing.T) {
 	}
 }
 
-// TestVmCreate_DetailedInvalidHostname — T026: the detailed path enforces the
+// TestVMCreate_DetailedInvalidHostname — T026: the detailed path enforces the
 // same hostname rule as simple mode (FR-007).
-func TestVmCreate_DetailedInvalidHostname(t *testing.T) {
-	handler, authHandler, _ := newVmCreateHandler(t)
+func TestVMCreate_DetailedInvalidHostname(t *testing.T) {
+	handler, authHandler, _ := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 
 	response := postVMCreate(t, handler,
@@ -353,9 +353,9 @@ func TestVmCreate_DetailedInvalidHostname(t *testing.T) {
 	}
 }
 
-// TestVmCreate_DetailedOutOfRange — T027/FR-008: hardware values past the
+// TestVMCreate_DetailedOutOfRange — T027/FR-008: hardware values past the
 // fixed technical ceiling are rejected before any cluster call.
-func TestVmCreate_DetailedOutOfRange(t *testing.T) {
+func TestVMCreate_DetailedOutOfRange(t *testing.T) {
 	cases := []struct {
 		name   string
 		cpu    int
@@ -371,7 +371,7 @@ func TestVmCreate_DetailedOutOfRange(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			handler, authHandler, _ := newVmCreateHandler(t)
+			handler, authHandler, _ := newVMCreateHandler(t)
 			cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 
 			body := fmt.Sprintf(

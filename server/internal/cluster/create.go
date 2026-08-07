@@ -59,6 +59,7 @@ type ISOSpec struct {
 // TaskState is the lifecycle state of an asynchronous cluster task.
 type TaskState string
 
+// Task states reported by the cluster client during async operations.
 const (
 	TaskRunning TaskState = "running"
 	TaskOK      TaskState = "ok"

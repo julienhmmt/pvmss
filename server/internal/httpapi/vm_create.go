@@ -11,22 +11,22 @@ import (
 	"pvmss/server/internal/vm"
 )
 
-// VmCreate serves POST /api/v1/vms (the single creation endpoint for both
+// VMCreate serves POST /api/v1/vms (the single creation endpoint for both
 // simple and detailed modes — FR-001) and GET /api/v1/vm-create/catalog
 // (FR-002). All validation lives in vm.Create; this handler only decodes,
 // maps errors, and encodes.
-type VmCreate struct {
+type VMCreate struct {
 	auth    *Auth
 	store   *store.Store
 	creator cluster.Creator
 	log     *slog.Logger
 }
 
-// NewVmCreate creates the handler. The creator is the cluster client's
+// NewVMCreate creates the handler. The creator is the cluster client's
 // creation contract (allocation + async dispatch), separate from reads and
 // from existing-VM writes (constitution IV).
-func NewVmCreate(authHandler *Auth, st *store.Store, creator cluster.Creator, log *slog.Logger) *VmCreate {
-	return &VmCreate{auth: authHandler, store: st, creator: creator, log: log}
+func NewVMCreate(authHandler *Auth, st *store.Store, creator cluster.Creator, log *slog.Logger) *VMCreate {
+	return &VMCreate{auth: authHandler, store: st, creator: creator, log: log}
 }
 
 type createResultDTO struct {
@@ -67,14 +67,14 @@ type catalogDTO struct {
 
 // ServeHTTP handles POST /api/v1/vms. Creation is asynchronous (FR-013):
 // 202 means the task was accepted, not that the VM exists.
-func (h *VmCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
 		h.writeCreateError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
 		return
 	}
 
-	var req vm.VMCreateRequest
+	var req vm.CreateRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		h.writeCreateError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
 		return
@@ -98,7 +98,7 @@ func (h *VmCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // ServeCatalog handles GET /api/v1/vm-create/catalog. The catalog is the same
 // for every user of a cluster (contracts behavioural rules) — no
 // identity-specific filtering beyond requiring authentication.
-func (h *VmCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
+func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 	if _, err := h.auth.Principal(r); err != nil {
 		h.writeCreateError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
 		return
@@ -161,7 +161,7 @@ func (h *VmCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 
 // writeCreateFailure maps vm.Create's sentinel errors to the contract's
 // status codes and error codes.
-func (h *VmCreate) writeCreateFailure(w http.ResponseWriter, err error) {
+func (h *VMCreate) writeCreateFailure(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrNoPool):
 		h.writeCreateError(w, http.StatusForbidden, "no_pool", "this account cannot own VMs")
@@ -180,7 +180,7 @@ func (h *VmCreate) writeCreateFailure(w http.ResponseWriter, err error) {
 	}
 }
 
-func (h *VmCreate) writeCreateJSON(w http.ResponseWriter, status int, value any) {
+func (h *VMCreate) writeCreateJSON(w http.ResponseWriter, status int, value any) {
 	body, err := json.Marshal(value)
 	if err != nil {
 		h.log.Error("failed to marshal response", "component", "httpapi", "error", err)
@@ -194,7 +194,7 @@ func (h *VmCreate) writeCreateJSON(w http.ResponseWriter, status int, value any)
 	}
 }
 
-func (h *VmCreate) writeCreateError(w http.ResponseWriter, status int, code, message string) {
+func (h *VMCreate) writeCreateError(w http.ResponseWriter, status int, code, message string) {
 	if err := writeClusterError(w, status, code, message); err != nil {
 		h.log.Error("failed to write error response", "component", "httpapi", "code", code, "error", err)
 	}

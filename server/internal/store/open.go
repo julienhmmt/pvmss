@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"pvmss/server/internal/config"
 
-	_ "modernc.org/sqlite"
+	_ "modernc.org/sqlite" // pure-Go SQLite driver, registers "sqlite"
 )
 
 // Open opens the SQLite database, enables WAL mode, and applies pending migrations.

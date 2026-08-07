@@ -40,11 +40,11 @@ type apiErrorEnvelope struct {
 	Message string `json:"message"`
 }
 
-// newVmDetailHandler builds the handler over the fake dataset with a real
+// newVMDetailHandler builds the handler over the fake dataset with a real
 // audit store and a real worker (so post-write refresh rebuilds the projection
 // from the fake's mutated state). Every test that triggers a write MUST defer
 // cluster.ResetFake() so later tests see the full 25-VM dataset.
-func newVmDetailHandler(t *testing.T) (*httpapi.VmDetail, *httpapi.Auth, *inventory.Projection, *store.Store) {
+func newVMDetailHandler(t *testing.T) (*httpapi.VMDetail, *httpapi.Auth, *inventory.Projection, *store.Store) {
 	t.Helper()
 	t.Cleanup(cluster.ResetFake)
 
@@ -73,7 +73,7 @@ func newVmDetailHandler(t *testing.T) (*httpapi.VmDetail, *httpapi.Auth, *invent
 	t.Cleanup(func() { _ = st.Close() })
 
 	worker := inventory.NewWorker(cluster.Fake{}, projection, time.Hour, logger)
-	handler := httpapi.NewVmDetail(projection, authHandler, cluster.Fake{}, st, worker, logger)
+	handler := httpapi.NewVMDetail(projection, authHandler, cluster.Fake{}, st, worker, logger)
 
 	return handler, authHandler, projection, st
 }
@@ -111,7 +111,7 @@ func pathVmid(path string) string {
 	return ""
 }
 
-func serveDetail(handler *httpapi.VmDetail, req *http.Request) (*httptest.ResponseRecorder, vmDetailEntity) {
+func serveDetail(handler *httpapi.VMDetail, req *http.Request) (*httptest.ResponseRecorder, vmDetailEntity) {
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -125,7 +125,7 @@ func serveDetail(handler *httpapi.VmDetail, req *http.Request) (*httptest.Respon
 	return rec, entity
 }
 
-func serveDetailError(handler *httpapi.VmDetail, req *http.Request) (*httptest.ResponseRecorder, apiErrorEnvelope) {
+func serveDetailError(handler *httpapi.VMDetail, req *http.Request) (*httptest.ResponseRecorder, apiErrorEnvelope) {
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
@@ -158,10 +158,10 @@ func adminCookie(t *testing.T, authHandler *httpapi.Auth) *http.Cookie {
 // Phase 3 — User Story 1: GET /vms/:cluster/:vmid (T007–T010)
 // =============================================================================
 
-// TestVmDetail_Get_OwnerSeesFullEntity — T007: the owner gets the full Entity
+// TestVMDetail_Get_OwnerSeesFullEntity — T007: the owner gets the full Entity
 // per contracts (identity, status, metrics, uptime).
-func TestVmDetail_Get_OwnerSeesFullEntity(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+func TestVMDetail_Get_OwnerSeesFullEntity(t *testing.T) {
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
 	rec, entity := serveDetail(handler, detailRequest(http.MethodGet, "/api/v1/vms/default/100", "", cookie))
@@ -206,10 +206,10 @@ func TestVmDetail_Get_OwnerSeesFullEntity(t *testing.T) {
 	}
 }
 
-// TestVmDetail_Get_NonOwnerTaggedForbidden — T008: a non-owner requesting a
+// TestVMDetail_Get_NonOwnerTaggedForbidden — T008: a non-owner requesting a
 // tagged VM they don't own gets 403.
-func TestVmDetail_Get_NonOwnerTaggedForbidden(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+func TestVMDetail_Get_NonOwnerTaggedForbidden(t *testing.T) {
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := bobCookie(t, authHandler) // bob owns pool-bob, not pool-alice
 
 	rec, env := serveDetailError(handler, detailRequest(http.MethodGet, "/api/v1/vms/default/100", "", cookie))
@@ -222,10 +222,10 @@ func TestVmDetail_Get_NonOwnerTaggedForbidden(t *testing.T) {
 	}
 }
 
-// TestVmDetail_Get_UntaggedNotFound — T009: an untagged VM returns 404 with
+// TestVMDetail_Get_UntaggedNotFound — T009: an untagged VM returns 404 with
 // the same error shape as the 403 case (byte-identical shape, contracts).
-func TestVmDetail_Get_UntaggedNotFound(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+func TestVMDetail_Get_UntaggedNotFound(t *testing.T) {
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
 	// legacy-01 (VMID 109) is in pool-carol, untagged — 404 for any caller.
@@ -239,10 +239,10 @@ func TestVmDetail_Get_UntaggedNotFound(t *testing.T) {
 	}
 }
 
-// TestVmDetail_Get_NonexistentNotFound — a VMID that doesn't exist is also 404,
+// TestVMDetail_Get_NonexistentNotFound — a VMID that doesn't exist is also 404,
 // indistinguishable from the untagged case (FR-002).
-func TestVmDetail_Get_NonexistentNotFound(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+func TestVMDetail_Get_NonexistentNotFound(t *testing.T) {
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
 	rec, env := serveDetailError(handler, detailRequest(http.MethodGet, "/api/v1/vms/default/999", "", cookie))
@@ -255,10 +255,10 @@ func TestVmDetail_Get_NonexistentNotFound(t *testing.T) {
 	}
 }
 
-// TestVmDetail_Get_AdminSeesAnyTaggedVM — T010: an admin sees any tagged VM
+// TestVMDetail_Get_AdminSeesAnyTaggedVM — T010: an admin sees any tagged VM
 // regardless of pool.
-func TestVmDetail_Get_AdminSeesAnyTaggedVM(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+func TestVMDetail_Get_AdminSeesAnyTaggedVM(t *testing.T) {
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := adminCookie(t, authHandler)
 
 	// VM 103 is in pool-bob, tagged pvmss — admin sees it.
@@ -276,9 +276,9 @@ func TestVmDetail_Get_AdminSeesAnyTaggedVM(t *testing.T) {
 	}
 }
 
-// TestVmDetail_Get_UnauthenticatedRejected — no cookie → 401, never the entity.
-func TestVmDetail_Get_UnauthenticatedRejected(t *testing.T) {
-	handler, _, _, _ := newVmDetailHandler(t)
+// TestVMDetail_Get_UnauthenticatedRejected — no cookie → 401, never the entity.
+func TestVMDetail_Get_UnauthenticatedRejected(t *testing.T) {
+	handler, _, _, _ := newVMDetailHandler(t)
 
 	rec, _ := serveDetailError(handler, detailRequest(http.MethodGet, "/api/v1/vms/default/100", "", nil))
 	if rec.Code != http.StatusUnauthorized {
@@ -286,10 +286,10 @@ func TestVmDetail_Get_UnauthenticatedRejected(t *testing.T) {
 	}
 }
 
-// TestVmDetail_Get_StoppedVmOmitsUptime — uptimeSeconds is absent (omitempty)
+// TestVMDetail_Get_StoppedVmOmitsUptime — uptimeSeconds is absent (omitempty)
 // when the VM is not running (contracts).
-func TestVmDetail_Get_StoppedVmOmitsUptime(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+func TestVMDetail_Get_StoppedVmOmitsUptime(t *testing.T) {
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
 	// web-02 (VMID 101) is stopped.
@@ -313,7 +313,7 @@ func TestVmDetail_Get_StoppedVmOmitsUptime(t *testing.T) {
 // TestVmAction_OwnerStartStoppedVM — T016: owner triggers start on a stopped
 // VM → 200, fake client records the call on the Index-resolved node.
 func TestVmAction_OwnerStartStoppedVM(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
 	// web-02 (VMID 101) is stopped, on pve-node-01, owned by alice.
@@ -340,7 +340,7 @@ func TestVmAction_OwnerStartStoppedVM(t *testing.T) {
 // {"action":"stop"} for a VM they don't own → 403, fake client records ZERO
 // calls for that VM (SC-001).
 func TestVmAction_NonOwnerStopRejected(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := bobCookie(t, authHandler) // bob does not own pool-alice
 
 	// VM 100 is alice's (pool-alice). Bob sends stop — S01's exact PoC request.
@@ -363,7 +363,7 @@ func TestVmAction_NonOwnerStopRejected(t *testing.T) {
 // the request body → 400 (DisallowUnknownFields, T00's strict decoder). The
 // request schema has no node field — there is nothing to forge (S01 root cause).
 func TestVmAction_ForgedNodeFieldRejected(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
 	// Alice owns VM 100 legitimately, but tries to forge a node field.
@@ -384,7 +384,7 @@ func TestVmAction_ForgedNodeFieldRejected(t *testing.T) {
 
 // TestVmAction_UntaggedVMNotFound — T019: untagged VM, any caller → 404.
 func TestVmAction_UntaggedVMNotFound(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
 	// legacy-01 (109) is untagged.
@@ -405,7 +405,7 @@ func TestVmAction_UntaggedVMNotFound(t *testing.T) {
 
 // TestVmAction_AdminActsOnAnyTaggedVM — T020: admin action on any tagged VM → 200.
 func TestVmAction_AdminActsOnAnyTaggedVM(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := adminCookie(t, authHandler)
 
 	// VM 105 is bob's (pool-bob), tagged pvmss.
@@ -423,7 +423,7 @@ func TestVmAction_AdminActsOnAnyTaggedVM(t *testing.T) {
 // TestVmAction_AllFiveValidActionsAccepted — T021: all 5 valid actions
 // accepted; any other string → 400.
 func TestVmAction_AllFiveValidActionsAccepted(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
 	valid := []string{"start", "stop", "shutdown", "reboot", "reset"}
@@ -459,7 +459,7 @@ func TestVmAction_AllFiveValidActionsAccepted(t *testing.T) {
 // TestVmAction_AuditRecorded — every successful write is recorded in audit_log
 // with the real actor before the response is sent (FR-009).
 func TestVmAction_AuditRecorded(t *testing.T) {
-	handler, authHandler, _, st := newVmDetailHandler(t)
+	handler, authHandler, _, st := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
 	rec, _ := serveDetailError(handler, detailRequest(http.MethodPost, "/api/v1/vms/default/101/actions", `{"action":"start"}`, cookie))
@@ -492,7 +492,7 @@ func TestVmAction_AuditRecorded(t *testing.T) {
 // TestVmAction_IndexInvalidatedAfterWrite — FR-010: after a successful write,
 // the Index is rebuilt so the next read reflects it.
 func TestVmAction_IndexInvalidatedAfterWrite(t *testing.T) {
-	handler, authHandler, projection, _ := newVmDetailHandler(t)
+	handler, authHandler, projection, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
 	// VM 101 is stopped. Start it.
@@ -524,7 +524,7 @@ func TestVmAction_IndexInvalidatedAfterWrite(t *testing.T) {
 // TestVmDelete_OwnerSucceeds — T026: owner deletes their VM → 200, fake client
 // receives the delete call.
 func TestVmDelete_OwnerSucceeds(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
 	rec, _ := serveDetailError(handler, detailRequest(http.MethodDelete, "/api/v1/vms/default/114", "", cookie))
@@ -545,7 +545,7 @@ func TestVmDelete_OwnerSucceeds(t *testing.T) {
 // TestVmDelete_NonOwnerRejected — T027: non-owner delete attempt → 403, no
 // delete call (same Resolve() gate — not a parallel check).
 func TestVmDelete_NonOwnerRejected(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := bobCookie(t, authHandler)
 
 	// VM 100 is alice's. Bob tries to delete it.
@@ -566,7 +566,7 @@ func TestVmDelete_NonOwnerRejected(t *testing.T) {
 
 // TestVmDelete_AdminDeletesAnyTaggedVM — T028: admin deletes any tagged VM → 200.
 func TestVmDelete_AdminDeletesAnyTaggedVM(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := adminCookie(t, authHandler)
 
 	// VM 106 is bob's (pool-bob), tagged pvmss.
@@ -591,7 +591,7 @@ func TestVmDelete_AdminDeletesAnyTaggedVM(t *testing.T) {
 
 // TestVmPatch_OwnerRenames — T032: owner renames → 200, updated Entity returned.
 func TestVmPatch_OwnerRenames(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
 	rec, entity := serveDetail(handler, detailRequest(http.MethodPatch, "/api/v1/vms/default/100", `{"name":"web-prod-01"}`, cookie))
@@ -610,7 +610,7 @@ func TestVmPatch_OwnerRenames(t *testing.T) {
 
 // TestVmPatch_InvalidHostname — T033: invalid hostname → 400, specific error code.
 func TestVmPatch_InvalidHostname(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
 	cases := []string{
@@ -640,7 +640,7 @@ func TestVmPatch_InvalidHostname(t *testing.T) {
 
 // TestVmPatch_EmptyBody — T034: empty patch body → 400.
 func TestVmPatch_EmptyBody(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
 	rec, env := serveDetailError(handler, detailRequest(http.MethodPatch, "/api/v1/vms/default/100", `{}`, cookie))
@@ -656,7 +656,7 @@ func TestVmPatch_EmptyBody(t *testing.T) {
 // TestVmPatch_NonOwnerRejected — T035: non-owner patch attempt → 403 (same
 // Resolve() gate).
 func TestVmPatch_NonOwnerRejected(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := bobCookie(t, authHandler)
 
 	// VM 100 is alice's. Bob tries to rename it.
@@ -678,7 +678,7 @@ func TestVmPatch_NonOwnerRejected(t *testing.T) {
 // TestVmPatch_DescriptionOnly — updating only the description succeeds and
 // returns the updated entity.
 func TestVmPatch_DescriptionOnly(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
 	rec, entity := serveDetail(handler, detailRequest(http.MethodPatch, "/api/v1/vms/default/101", `{"description":"new description text"}`, cookie))
@@ -693,7 +693,7 @@ func TestVmPatch_DescriptionOnly(t *testing.T) {
 
 // TestVmPatch_BothNameAndDescription — updating both fields at once succeeds.
 func TestVmPatch_BothNameAndDescription(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
 	rec, entity := serveDetail(handler, detailRequest(http.MethodPatch, "/api/v1/vms/default/101", `{"name":"web-new","description":"both at once"}`, cookie))
@@ -712,7 +712,7 @@ func TestVmPatch_BothNameAndDescription(t *testing.T) {
 
 // TestVmPatch_AuditRecorded — a rename is recorded as "rename" in the audit log.
 func TestVmPatch_AuditRecorded(t *testing.T) {
-	handler, authHandler, _, st := newVmDetailHandler(t)
+	handler, authHandler, _, st := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
 	rec, _ := serveDetail(handler, detailRequest(http.MethodPatch, "/api/v1/vms/default/100", `{"name":"web-prod-01"}`, cookie))
@@ -742,10 +742,10 @@ func TestVmPatch_AuditRecorded(t *testing.T) {
 // Error-shape consistency (contracts: 403/404 byte-identical across endpoints)
 // =============================================================================
 
-// TestVmDetail_ErrorShapeIdenticalAcrossEndpoints — 403 and 404 responses are
+// TestVMDetail_ErrorShapeIdenticalAcrossEndpoints — 403 and 404 responses are
 // byte-identical in shape across all four endpoints (contracts behavioural rule).
-func TestVmDetail_ErrorShapeIdenticalAcrossEndpoints(t *testing.T) {
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+func TestVMDetail_ErrorShapeIdenticalAcrossEndpoints(t *testing.T) {
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	bobCookieVal := bobCookie(t, authHandler)
 
 	// 403: bob on alice's VM 100, across GET / actions / delete / patch.
@@ -784,14 +784,14 @@ func TestVmDetail_ErrorShapeIdenticalAcrossEndpoints(t *testing.T) {
 	}
 }
 
-// TestVmDetail_ResolveIsTheOnlyOwnershipCheck — SC-005: confirm there is
+// TestVMDetail_ResolveIsTheOnlyOwnershipCheck — SC-005: confirm there is
 // exactly one Resolve implementation and no handler re-implements the pool
 // check. This is a compile-time + grep guard; the runtime assertion is that
 // 403 and 404 come from vm.Resolve's errors, not a parallel check.
-func TestVmDetail_ResolveIsTheOnlyOwnershipCheck(t *testing.T) {
+func TestVMDetail_ResolveIsTheOnlyOwnershipCheck(t *testing.T) {
 	// The handler returns vm.ErrForbidden / vm.ErrNotFound from Resolve —
 	// verified by checking the error types match (not a separate check).
-	handler, authHandler, _, _ := newVmDetailHandler(t)
+	handler, authHandler, _, _ := newVMDetailHandler(t)
 	bobCookieVal := bobCookie(t, authHandler)
 
 	rec, _ := serveDetailError(handler, detailRequest(http.MethodPost, "/api/v1/vms/default/100/actions", `{"action":"stop"}`, bobCookieVal))
