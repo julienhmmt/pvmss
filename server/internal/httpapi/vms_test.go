@@ -1,3 +1,4 @@
+//nolint:goconst // test fixture strings
 package httpapi_test
 
 import (
