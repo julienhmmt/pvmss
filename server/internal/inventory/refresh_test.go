@@ -28,9 +28,11 @@ func TestRefresh_OutsideGuardSucceeds(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+
 	if at.IsZero() {
 		t.Fatal("refreshedAt should not be zero")
 	}
+
 	if client.calls.Load() != callsBefore+1 {
 		t.Fatalf("expected 1 additional client call, got %d", client.calls.Load()-callsBefore)
 	}
@@ -50,10 +52,12 @@ func TestRefresh_InsideGuardRefusedWithZeroCalls(t *testing.T) {
 
 	// Immediately attempt a manual refresh — should be refused.
 	refresher := inventory.NewRefresher(worker, 5*time.Second)
+
 	_, err := refresher.Refresh(context.Background())
 	if !errors.Is(err, inventory.ErrRefreshTooSoon) {
 		t.Fatalf("expected ErrRefreshTooSoon, got %v", err)
 	}
+
 	if client.calls.Load() != callsBefore {
 		t.Fatalf("guard refusal should make 0 client calls, got %d additional", client.calls.Load()-callsBefore)
 	}
@@ -62,6 +66,7 @@ func TestRefresh_InsideGuardRefusedWithZeroCalls(t *testing.T) {
 	if !errors.As(err, &tooSoon) {
 		t.Fatalf("expected *TooSoonError, got %T", err)
 	}
+
 	if tooSoon.RetryAfter <= 0 || tooSoon.RetryAfter > 5*time.Second {
 		t.Fatalf("RetryAfter = %v, want (0, 5s]", tooSoon.RetryAfter)
 	}
@@ -81,10 +86,12 @@ func TestRefresh_RetryAfterCountsDownNotFullInterval(t *testing.T) {
 	time.Sleep(150 * time.Millisecond)
 
 	_, err := refresher.Refresh(context.Background())
+
 	var tooSoon *inventory.TooSoonError
 	if !errors.As(err, &tooSoon) {
 		t.Fatalf("expected *TooSoonError, got %v", err)
 	}
+
 	if tooSoon.RetryAfter >= 100*time.Millisecond {
 		t.Fatalf("RetryAfter = %v, expected well under the full 200ms interval after waiting 150ms", tooSoon.RetryAfter)
 	}
@@ -99,13 +106,16 @@ func TestRefresh_FirstRefreshAllowedWhenProjectionEmpty(t *testing.T) {
 	worker := inventory.NewWorker(client, projection, time.Hour, testLogger())
 
 	refresher := inventory.NewRefresher(worker, 5*time.Second)
+
 	at, err := refresher.Refresh(context.Background())
 	if err != nil {
 		t.Fatalf("first manual refresh should succeed, got %v", err)
 	}
+
 	if at.IsZero() {
 		t.Fatal("refreshedAt should not be zero")
 	}
+
 	if client.calls.Load() != 1 {
 		t.Fatalf("expected 1 client call, got %d", client.calls.Load())
 	}
@@ -132,6 +142,7 @@ func TestRefresh_FailingClientReturnsUnreachable(t *testing.T) {
 	if !errors.Is(err, inventory.ErrClusterUnreachable) {
 		t.Fatalf("expected ErrClusterUnreachable, got %v", err)
 	}
+
 	if projection.Load() != before {
 		t.Fatal("projection should be unchanged after failed manual refresh (FR-004)")
 	}
@@ -140,6 +151,7 @@ func TestRefresh_FailingClientReturnsUnreachable(t *testing.T) {
 // TestRefresh_MinInterval returns the configured guard.
 func TestRefresh_MinInterval(t *testing.T) {
 	worker := inventory.NewWorker(&callCountClient{}, inventory.NewProjection(), time.Hour, testLogger())
+
 	refresher := inventory.NewRefresher(worker, 7*time.Second)
 	if got := refresher.MinInterval(); got != 7*time.Second {
 		t.Fatalf("MinInterval = %v, want 7s", got)

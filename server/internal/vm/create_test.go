@@ -3,7 +3,6 @@ package vm_test
 import (
 	"context"
 	"errors"
-	"io"
 	"log/slog"
 	"path/filepath"
 	"pvmss/server/internal/auth"
@@ -26,6 +25,7 @@ type createFixture struct {
 func newCreateFixture(t *testing.T) createFixture {
 	t.Helper()
 	t.Cleanup(cluster.ResetFake)
+
 	st, err := store.Open(config.Configuration{
 		DBPath:    filepath.Join(t.TempDir(), "vm-create.db"),
 		LogLevel:  "info",
@@ -35,13 +35,17 @@ func newCreateFixture(t *testing.T) createFixture {
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
 	}
+
 	t.Cleanup(func() { _ = st.Close() })
+
 	return createFixture{store: st, fake: cluster.Fake{}}
 }
 
 func (f createFixture) create(t *testing.T, actor auth.Identity, req vm.VMCreateRequest) (vm.CreateResult, error) {
 	t.Helper()
-	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	log := slog.New(slog.DiscardHandler)
+
 	return vm.Create(context.Background(), actor, req.Cluster, req, f.store, f.fake, f.store, log)
 }
 
@@ -144,6 +148,7 @@ func TestCreate_ValidationPipeline(t *testing.T) {
 			fixture := newCreateFixture(t)
 			req := detailedRequest()
 			tc.mutate(&req)
+
 			_, err := fixture.create(t, tc.actor, req)
 			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("error = %v, want %v", err, tc.wantErr)
@@ -171,10 +176,12 @@ func TestCreate_ProfileResolvesHardware(t *testing.T) {
 		Disk:             vm.VMDiskRequest{SizeGB: 2048},
 		StartAfterCreate: true,
 	}
+
 	result, err := fixture.create(t, aliceIdentity(), req)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
+
 	if result.VMID < 1 || result.UPID == "" {
 		t.Fatalf("unexpected result: %+v", result)
 	}
@@ -183,17 +190,21 @@ func TestCreate_ProfileResolvesHardware(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
+
 	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
 	if idx < 0 {
 		t.Fatalf("created VM not in snapshot")
 	}
+
 	created := snap.VMs[idx]
 	if created.CPUCores != 2 {
 		t.Errorf("cpuCores = %d, want 2 (medium profile, request said 32)", created.CPUCores)
 	}
+
 	if created.MemoryTotal != 4096*1024*1024 {
 		t.Errorf("memory = %d, want 4096 MB (medium profile)", created.MemoryTotal)
 	}
+
 	if created.DiskTotal != 40*1024*1024*1024 {
 		t.Errorf("disk = %d, want 40 GB (medium profile)", created.DiskTotal)
 	}
@@ -203,6 +214,7 @@ func TestCreate_ProfileResolvesHardware(t *testing.T) {
 // filled from the first approved catalog entries, deterministically.
 func TestCreate_SimpleModeAutoSelection(t *testing.T) {
 	fixture := newCreateFixture(t)
+
 	result, err := fixture.create(t, aliceIdentity(), vm.VMCreateRequest{
 		Cluster:   "default",
 		Name:      "auto-vm",
@@ -211,17 +223,21 @@ func TestCreate_SimpleModeAutoSelection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
+
 	if result.Node != "pve-node-01" {
 		t.Errorf("auto-selected node = %q, want %q", result.Node, "pve-node-01")
 	}
+
 	snap, err := fixture.fake.Snapshot(context.Background())
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
+
 	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
 	if idx < 0 {
 		t.Fatalf("created VM not in snapshot")
 	}
+
 	if snap.VMs[idx].Status != cluster.VMStopped {
 		t.Errorf("status = %q, want stopped (no startAfterCreate)", snap.VMs[idx].Status)
 	}
@@ -233,18 +249,22 @@ func TestCreate_SimpleModeAutoSelection(t *testing.T) {
 // the pool from the identity.
 func TestCreate_PoolIsAlwaysActors(t *testing.T) {
 	fixture := newCreateFixture(t)
+
 	result, err := fixture.create(t, aliceIdentity(), detailedRequest())
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
+
 	snap, err := fixture.fake.Snapshot(context.Background())
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
+
 	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
 	if idx < 0 {
 		t.Fatalf("created VM not in snapshot")
 	}
+
 	if snap.VMs[idx].Pool != "pool-alice" {
 		t.Errorf("pool = %q, want actor's pool %q", snap.VMs[idx].Pool, "pool-alice")
 	}
@@ -255,18 +275,22 @@ func TestCreate_PvmssTagAlwaysPresent(t *testing.T) {
 	fixture := newCreateFixture(t)
 	req := detailedRequest()
 	req.Tags = []string{"team-web"}
+
 	result, err := fixture.create(t, aliceIdentity(), req)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
+
 	snap, err := fixture.fake.Snapshot(context.Background())
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
+
 	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
 	if idx < 0 {
 		t.Fatalf("created VM not in snapshot")
 	}
+
 	tags := snap.VMs[idx].Tags
 	if !slices.Contains(tags, "pvmss") || !slices.Contains(tags, "team-web") {
 		t.Errorf("tags = %v, want both pvmss and team-web", tags)
@@ -277,17 +301,21 @@ func TestCreate_PvmssTagAlwaysPresent(t *testing.T) {
 // log with the real actor, the allocated VMID, and action vm_create.
 func TestCreate_RecordsAudit(t *testing.T) {
 	fixture := newCreateFixture(t)
+
 	result, err := fixture.create(t, aliceIdentity(), detailedRequest())
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
+
 	entries, err := fixture.store.QueryAudit(context.Background())
 	if err != nil {
 		t.Fatalf("QueryAudit: %v", err)
 	}
+
 	if len(entries) != 1 {
 		t.Fatalf("audit entries = %d, want 1", len(entries))
 	}
+
 	entry := entries[0]
 	if entry.Actor != "alice@pve" || entry.Cluster != "default" || entry.VMID != result.VMID || entry.Action != "vm_create" {
 		t.Errorf("audit entry = %+v", entry)
@@ -308,11 +336,13 @@ func (failingAudit) RecordAction(context.Context, string, string, int, string) e
 // its upid to poll. Regression for the T06 audit-failure-orphaned-task gap.
 func TestCreate_AuditFailureDoesNotFailCreate(t *testing.T) {
 	fixture := newCreateFixture(t)
-	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	log := slog.New(slog.DiscardHandler)
+
 	result, err := vm.Create(context.Background(), aliceIdentity(), "default", detailedRequest(), fixture.store, fixture.fake, failingAudit{}, log)
 	if err != nil {
 		t.Fatalf("Create: %v, want nil (audit failure must not fail the request)", err)
 	}
+
 	if result.VMID < 1 || result.UPID == "" {
 		t.Fatalf("unexpected result: %+v", result)
 	}

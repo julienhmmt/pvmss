@@ -17,9 +17,11 @@ type Health struct {
 func (h *Health) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		w.Header().Set("Allow", "GET, HEAD")
+
 		if err := writeError(w, http.StatusMethodNotAllowed, "method not allowed"); err != nil {
 			h.log.Error("failed to write method not allowed", "component", "httpapi", "error", err)
 		}
+
 		return
 	}
 
@@ -35,6 +37,7 @@ func (h *Health) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.store.Ping(); err != nil {
 		h.log.Error("database health check failed", "component", "httpapi", "error", err)
+
 		resp.Status = "unhealthy"
 		resp.Checks["database"] = CheckResult{Status: "unhealthy", Detail: "database unreachable"}
 		status = http.StatusServiceUnavailable
@@ -43,11 +46,14 @@ func (h *Health) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	body, err := json.Marshal(resp)
 	if err != nil {
 		h.log.Error("failed to marshal health response", "component", "httpapi", "error", err)
+
 		if writeErr := writeError(w, http.StatusInternalServerError, "internal server error"); writeErr != nil {
 			h.log.Error("failed to write health error response", "component", "httpapi", "error", writeErr)
 		}
+
 		return
 	}
+
 	if err := writeJSON(w, status, body); err != nil {
 		h.log.Error("failed to write health response", "component", "httpapi", "error", err)
 	}

@@ -51,6 +51,7 @@ func TestNewLogger(t *testing.T) {
 				if err != nil {
 					t.Fatalf("read log: %v", err)
 				}
+
 				if len(entries) != 3 {
 					t.Fatalf("expected 3 log entries, got %d", len(entries))
 				}
@@ -70,12 +71,15 @@ func TestNewLogger(t *testing.T) {
 					if got.Message != want.message {
 						t.Fatalf("entry %d: message = %q, want %q", i, got.Message, want.message)
 					}
+
 					if got.Level != want.level {
 						t.Fatalf("entry %d: level = %q, want %q", i, got.Level, want.level)
 					}
+
 					if got.Component != want.component {
 						t.Fatalf("entry %d: component = %q, want %q", i, got.Component, want.component)
 					}
+
 					if got.Timestamp == "" {
 						t.Fatalf("entry %d: timestamp is empty", i)
 					}
@@ -106,7 +110,9 @@ func TestNewLogger(t *testing.T) {
 				if err != nil {
 					t.Fatalf("NewLogger: %v", err)
 				}
+
 				logger.Info("hello console", "component", "test")
+
 				if err := closer.Close(); err != nil {
 					t.Fatalf("closer.Close: %v", err)
 				}
@@ -115,9 +121,11 @@ func TestNewLogger(t *testing.T) {
 				if err != nil {
 					t.Fatalf("read log: %v", err)
 				}
+
 				if !strings.Contains(string(content), "hello console") {
 					t.Fatalf("console log should contain message: %q", string(content))
 				}
+
 				if !strings.Contains(string(content), "test") {
 					t.Fatalf("console log should contain component: %q", string(content))
 				}
@@ -150,8 +158,10 @@ func TestNewLogger(t *testing.T) {
 				if err == nil {
 					t.Fatalf("expected error, got nil")
 				}
+
 				return
 			}
+
 			if err != nil {
 				t.Fatalf("NewLogger: %v", err)
 			}
@@ -174,18 +184,23 @@ type logEntry struct {
 
 func readLogEntries(path string) ([]logEntry, error) {
 	entries := []logEntry{}
+
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
+
 	defer func() { _ = f.Close() }()
+
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		var e logEntry
 		if err := json.Unmarshal(scanner.Bytes(), &e); err != nil {
 			return nil, err
 		}
+
 		entries = append(entries, e)
 	}
+
 	return entries, scanner.Err()
 }

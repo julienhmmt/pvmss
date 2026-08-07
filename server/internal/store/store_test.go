@@ -14,6 +14,7 @@ import (
 func TestOpen_MigrationsValidationFailed(t *testing.T) {
 	original := store.Migrations
 	defer func() { store.Migrations = original }()
+
 	store.Migrations = []store.Migration{
 		{Version: 1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
 		{Version: 3, DDL: `CREATE TABLE t3 (id INTEGER PRIMARY KEY)`},
@@ -35,6 +36,7 @@ func TestOpen_MigrationsValidationFailed(t *testing.T) {
 
 func TestOpen_MkdirAllFailed(t *testing.T) {
 	dir := t.TempDir()
+
 	blocked := filepath.Join(dir, "blocked")
 	if err := os.WriteFile(blocked, []byte("x"), 0o644); err != nil {
 		t.Fatalf("write blocking file: %v", err)
@@ -80,10 +82,12 @@ func TestOpen(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			dir := t.TempDir()
+
 			dbPath := c.dbPath
 			if !filepath.IsAbs(dbPath) {
 				dbPath = filepath.Join(dir, dbPath)
 			}
+
 			cfg := config.Configuration{
 				Port:      50001,
 				DBPath:    dbPath,
@@ -97,8 +101,10 @@ func TestOpen(t *testing.T) {
 				if err == nil {
 					t.Fatalf("expected error, got nil")
 				}
+
 				return
 			}
+
 			if err != nil {
 				t.Fatalf("Open: %v", err)
 			}
@@ -124,6 +130,7 @@ func TestOpen(t *testing.T) {
 			).Scan(&version); err != nil {
 				t.Fatalf("query schema_migrations: %v", err)
 			}
+
 			if version != len(store.Migrations) {
 				t.Fatalf("expected migration version %d, got %d", len(store.Migrations), version)
 			}

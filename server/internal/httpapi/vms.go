@@ -61,33 +61,41 @@ func (h *VMs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", "GET")
 		h.writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+
 		return
 	}
+
 	identity, err := h.auth.Principal(r)
 	if err != nil {
 		h.writeError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
 		return
 	}
+
 	query, queryErr := h.parseQuery(r)
 	if queryErr != nil {
 		h.writeError(w, http.StatusBadRequest, queryErr.code, queryErr.message)
 		return
 	}
+
 	index := h.projection.Load()
 	if index == nil {
 		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
 		return
 	}
+
 	result, err := vm.List(index, query, identity, h.quota)
 	if err != nil {
 		if errors.Is(err, vm.ErrInvalidSortBy) {
 			h.writeError(w, http.StatusBadRequest, "invalid_sort_column", fmt.Sprintf("cannot sort by %q", query.SortBy))
 			return
 		}
+
 		h.log.Error("vm list failed", "component", "httpapi", "error", err)
 		h.writeError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+
 		return
 	}
+
 	h.writeList(w, result)
 }
 
@@ -109,19 +117,25 @@ func (h *VMs) parseQuery(r *http.Request) (vm.ListQuery, *queryError) {
 		SortDir: vm.SortDir(params.Get("sortDir")),
 		Scope:   vm.Scope(params.Get("scope")),
 	}
+
 	page, err := parseOptionalInt(params.Get("page"))
 	if err != nil {
 		return query, &queryError{code: "invalid_request", message: "page must be an integer"}
 	}
+
 	query.Page = page
+
 	pageSize, err := parseOptionalInt(params.Get("pageSize"))
 	if err != nil {
 		return query, &queryError{code: "invalid_request", message: "pageSize must be an integer"}
 	}
+
 	if pageSize > h.maxPageSize {
 		return query, &queryError{code: "page_size_too_large", message: fmt.Sprintf("pageSize exceeds the maximum of %d", h.maxPageSize)}
 	}
+
 	query.PageSize = pageSize
+
 	return query, nil
 }
 
@@ -129,10 +143,12 @@ func parseOptionalInt(raw string) (int, error) {
 	if raw == "" {
 		return 0, nil
 	}
+
 	value, err := strconv.Atoi(raw)
 	if err != nil {
 		return 0, fmt.Errorf("parse %q: %w", raw, err)
 	}
+
 	return value, nil
 }
 
@@ -157,15 +173,19 @@ func (h *VMs) writeList(w http.ResponseWriter, result vm.ListResult) {
 			MemoryTotal: machine.MemoryTotal,
 		}
 	}
+
 	if result.Quota != nil {
 		response.Quota = &quotaDTO{Used: result.Quota.Used, Allowed: result.Quota.Allowed}
 	}
+
 	body, err := json.Marshal(response)
 	if err != nil {
 		h.log.Error("failed to marshal vm list response", "component", "httpapi", "error", err)
 		h.writeError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+
 		return
 	}
+
 	if err := writeJSON(w, http.StatusOK, body); err != nil {
 		h.log.Error("failed to write vm list response", "component", "httpapi", "error", err)
 	}

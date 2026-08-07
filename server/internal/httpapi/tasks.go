@@ -54,21 +54,26 @@ func (h *Tasks) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.writeTaskError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
 		return
 	}
+
 	upid := r.PathValue("upid")
 	if upid == "" {
 		h.writeTaskError(w, http.StatusBadRequest, "invalid_request", "missing task upid")
 		return
 	}
+
 	status, err := h.creator.TaskStatus(r.Context(), upid)
 	if errors.Is(err, cluster.ErrNotFound) {
 		h.writeTaskError(w, http.StatusNotFound, "not_found", "unknown task")
 		return
 	}
+
 	if err != nil {
 		h.log.Error("task status read failed", "component", "httpapi", "error", err)
 		h.writeTaskError(w, http.StatusBadGateway, "cluster_error", "cluster rejected the request")
+
 		return
 	}
+
 	if status.State == cluster.TaskOK {
 		if _, err := h.invalidator.Refresh(r.Context()); err != nil {
 			// The task genuinely succeeded; a failed invalidation only delays
@@ -77,6 +82,7 @@ func (h *Tasks) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.log.Error("post-task inventory invalidation failed", "component", "httpapi", "error", err)
 		}
 	}
+
 	h.writeTaskJSON(w, http.StatusOK, taskStatusDTO{
 		UPID:        status.UPID,
 		State:       string(status.State),
@@ -90,8 +96,10 @@ func (h *Tasks) writeTaskJSON(w http.ResponseWriter, status int, value any) {
 	if err != nil {
 		h.log.Error("failed to marshal response", "component", "httpapi", "error", err)
 		h.writeTaskError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+
 		return
 	}
+
 	if err := writeJSON(w, status, body); err != nil {
 		h.log.Error("failed to write response", "component", "httpapi", "error", err)
 	}

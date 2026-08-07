@@ -20,11 +20,14 @@ func newAuditStore(t *testing.T) *store.Store {
 		LogFormat: "json",
 		LogOutput: "stdout",
 	}
+
 	st, err := store.Open(cfg)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
+
 	t.Cleanup(func() { _ = st.Close() })
+
 	return st
 }
 
@@ -36,31 +39,39 @@ func TestRecordAction_InsertsOneRowWithRealActor(t *testing.T) {
 	ctx := context.Background()
 
 	before := time.Now()
+
 	if err := st.RecordAction(ctx, "alice@pve", "default", 101, "stop"); err != nil {
 		t.Fatalf("RecordAction: %v", err)
 	}
+
 	after := time.Now()
 
 	rows, err := st.QueryAudit(ctx)
 	if err != nil {
 		t.Fatalf("QueryAudit: %v", err)
 	}
+
 	if len(rows) != 1 {
 		t.Fatalf("audit rows = %d, want 1", len(rows))
 	}
+
 	row := rows[0]
 	if row.Actor != "alice@pve" {
 		t.Errorf("actor = %q, want alice@pve (never a service-account name)", row.Actor)
 	}
+
 	if row.Cluster != "default" {
 		t.Errorf("cluster = %q, want default", row.Cluster)
 	}
+
 	if row.VMID != 101 {
 		t.Errorf("vmid = %d, want 101", row.VMID)
 	}
+
 	if row.Action != "stop" {
 		t.Errorf("action = %q, want stop", row.Action)
 	}
+
 	if row.Timestamp.Before(before) || row.Timestamp.After(after) {
 		t.Errorf("timestamp %v outside [%v, %v]", row.Timestamp, before, after)
 	}
@@ -89,9 +100,11 @@ func TestRecordAction_AppendsDistinctRows(t *testing.T) {
 	if err != nil {
 		t.Fatalf("QueryAudit: %v", err)
 	}
+
 	if len(rows) != len(actions) {
 		t.Fatalf("rows = %d, want %d", len(rows), len(actions))
 	}
+
 	for i, want := range actions {
 		if rows[i].Actor != want.actor || rows[i].VMID != want.vmid || rows[i].Action != want.action {
 			t.Errorf("row %d = %+v, want %+v", i, rows[i], want)

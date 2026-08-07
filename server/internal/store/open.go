@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,7 +14,7 @@ import (
 // Open opens the SQLite database, enables WAL mode, and applies pending migrations.
 func Open(cfg config.Configuration) (*Store, error) {
 	if cfg.DBPath == "" {
-		return nil, fmt.Errorf("DBPath is required")
+		return nil, errors.New("DBPath is required")
 	}
 
 	dir := filepath.Dir(cfg.DBPath)
@@ -22,6 +23,7 @@ func Open(cfg config.Configuration) (*Store, error) {
 	}
 
 	dsn := fmt.Sprintf("file:%s?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)", cfg.DBPath)
+
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open database %q: %w", cfg.DBPath, err)

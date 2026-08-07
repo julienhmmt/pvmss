@@ -18,13 +18,16 @@ import (
 
 func TestRouter_SPAFallback(t *testing.T) {
 	dir := t.TempDir()
+
 	html := `<!doctype html><html lang="en"><head><title>PVMSS</title></head><body>shell</body></html>`
 	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte(html), 0o644); err != nil {
 		t.Fatalf("write index.html: %v", err)
 	}
+
 	if err := os.WriteFile(filepath.Join(dir, "file.txt"), []byte("real file"), 0o644); err != nil {
 		t.Fatalf("write file.txt: %v", err)
 	}
+
 	if err := os.Mkdir(filepath.Join(dir, "a-dir"), 0o755); err != nil {
 		t.Fatalf("create a-dir: %v", err)
 	}
@@ -67,6 +70,7 @@ func TestRouter_SPAFallback(t *testing.T) {
 			if w.Code != c.wantStatus {
 				t.Fatalf("status = %d, want %d", w.Code, c.wantStatus)
 			}
+
 			body, _ := io.ReadAll(w.Result().Body)
 			if !strings.Contains(string(body), c.wantBody) {
 				t.Fatalf("body = %q, want to contain %q", string(body), c.wantBody)
@@ -97,6 +101,7 @@ func TestRouter_MissingBuildDir_HealthStillWorks(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("health status = %d, want %d", w.Code, http.StatusOK)
 	}
+
 	var got struct {
 		Status    string                         `json:"status"`
 		Checks    map[string]httpapi.CheckResult `json:"checks"`
@@ -105,6 +110,7 @@ func TestRouter_MissingBuildDir_HealthStillWorks(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode health: %v", err)
 	}
+
 	if got.Status != "healthy" {
 		t.Fatalf("status = %q, want healthy", got.Status)
 	}

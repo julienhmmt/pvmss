@@ -32,12 +32,14 @@ func TestClusterRefresh_Success(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
 	}
+
 	var got struct {
 		RefreshedAt string `json:"refreshedAt"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
+
 	if got.RefreshedAt == "" {
 		t.Fatal("refreshedAt should not be empty")
 	}
@@ -59,6 +61,7 @@ func TestClusterRefresh_TooSoon(t *testing.T) {
 	w1 := httptest.NewRecorder()
 	r1 := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/refresh", nil)
 	h.ServeHTTP(w1, r1)
+
 	if w1.Code != http.StatusOK {
 		t.Fatalf("first refresh status = %d, want %d", w1.Code, http.StatusOK)
 	}
@@ -67,6 +70,7 @@ func TestClusterRefresh_TooSoon(t *testing.T) {
 	w2 := httptest.NewRecorder()
 	r2 := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/refresh", nil)
 	h.ServeHTTP(w2, r2)
+
 	if w2.Code != http.StatusTooManyRequests {
 		t.Fatalf("second refresh status = %d, want %d", w2.Code, http.StatusTooManyRequests)
 	}
@@ -79,12 +83,15 @@ func TestClusterRefresh_TooSoon(t *testing.T) {
 	if err := json.Unmarshal(w2.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
+
 	if got.Code != "refresh_too_soon" {
 		t.Fatalf("code = %q, want refresh_too_soon", got.Code)
 	}
+
 	if got.RetryAfterSeconds < 1 || got.RetryAfterSeconds > 5 {
 		t.Fatalf("retryAfterSeconds = %d, want in (0, 5] — the remaining guard time, not more than the full interval", got.RetryAfterSeconds)
 	}
+
 	if w2.Header().Get("Retry-After") == "" {
 		t.Fatal("Retry-After header should be set")
 	}
@@ -106,12 +113,14 @@ func TestClusterRefresh_TooSoonMakesZeroClientCalls(t *testing.T) {
 	w1 := httptest.NewRecorder()
 	r1 := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/refresh", nil)
 	h.ServeHTTP(w1, r1)
+
 	callsAfterFirst := client.calls
 
 	// Second immediate refresh — should be refused with 0 additional calls.
 	w2 := httptest.NewRecorder()
 	r2 := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/refresh", nil)
 	h.ServeHTTP(w2, r2)
+
 	if client.calls != callsAfterFirst {
 		t.Fatalf("429 refusal should make 0 client calls, got %d additional", client.calls-callsAfterFirst)
 	}
@@ -125,6 +134,7 @@ func TestClusterRefresh_Unreachable(t *testing.T) {
 	worker := inventory.NewWorker(client, projection, time.Hour, slog.New(slog.NewJSONHandler(os.Stderr, nil)))
 	refresher := inventory.NewRefresher(worker, 1*time.Millisecond)
 	time.Sleep(2 * time.Millisecond)
+
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	h := httpapi.NewClusterRefresh(refresher, logger)
 
@@ -135,6 +145,7 @@ func TestClusterRefresh_Unreachable(t *testing.T) {
 	if w.Code != http.StatusBadGateway {
 		t.Fatalf("status = %d, want %d", w.Code, http.StatusBadGateway)
 	}
+
 	var got struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
@@ -142,6 +153,7 @@ func TestClusterRefresh_Unreachable(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
+
 	if got.Code != "cluster_unreachable" {
 		t.Fatalf("code = %q, want cluster_unreachable", got.Code)
 	}

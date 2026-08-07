@@ -56,6 +56,7 @@ func BuildIndex(snap cluster.Snapshot) Index {
 		byPool[vm.Pool] = append(byPool[vm.Pool], vm)
 		byNode[vm.Node] = append(byNode[vm.Node], vm)
 	}
+
 	for _, s := range storages {
 		storagesByNode[s.Node] = append(storagesByNode[s.Node], s)
 	}
@@ -63,9 +64,11 @@ func BuildIndex(snap cluster.Snapshot) Index {
 	for _, v := range byPool {
 		sort.Slice(v, func(i, j int) bool { return v[i].VMID < v[j].VMID })
 	}
+
 	for _, v := range byNode {
 		sort.Slice(v, func(i, j int) bool { return v[i].VMID < v[j].VMID })
 	}
+
 	for _, v := range storagesByNode {
 		sort.Slice(v, func(i, j int) bool { return v[i].Name < v[j].Name })
 	}

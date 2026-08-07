@@ -332,6 +332,7 @@ func TestLoad(t *testing.T) {
 			t.Setenv("PVMSS_V04_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL", tt.env["PVMSS_V04_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL"])
 			t.Setenv("PVMSS_V04_INVENTORY_REFRESH_TIMEOUT", tt.env["PVMSS_V04_INVENTORY_REFRESH_TIMEOUT"])
 			t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
+
 			want := tt.want
 			want.SessionSecret = strings.Repeat("s", 32)
 
@@ -340,14 +341,18 @@ func TestLoad(t *testing.T) {
 				if err == nil {
 					t.Fatalf("expected error containing %q, got nil", tt.wantErr)
 				}
+
 				if !strings.Contains(err.Error(), tt.wantErr) {
 					t.Fatalf("expected error containing %q, got %q", tt.wantErr, err.Error())
 				}
+
 				return
 			}
+
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
+
 			if got != want {
 				t.Fatalf("config mismatch: got %+v, want %+v", got, want)
 			}

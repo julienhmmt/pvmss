@@ -68,6 +68,7 @@ func fakeVMs() []cluster.VM {
 		{VMID: 123, Name: "dev-01", Node: "pve-node-01", Status: cluster.VMRunning, Pool: "pool-alice", Tags: []string{"pvmss", "dev"}, CPUCores: 2, MemoryTotal: 4294967296},
 		{VMID: 124, Name: "dev-02", Node: "pve-node-01", Status: cluster.VMStopped, Pool: "pool-alice", Tags: []string{"pvmss", "dev"}, CPUCores: 2, MemoryTotal: 4294967296},
 	}
+
 	return vms
 }
 
@@ -80,9 +81,11 @@ func TestIndex_VMCountConsistency(t *testing.T) {
 	for _, vms := range idx.ByNode {
 		totalByNode += len(vms)
 	}
+
 	if totalByNode != len(idx.ByVMID) {
 		t.Fatalf("len(ByVMID)=%d != sum(len(ByNode.values()))=%d", len(idx.ByVMID), totalByNode)
 	}
+
 	if len(idx.ByVMID) != 25 {
 		t.Fatalf("expected 25 VMs, got %d", len(idx.ByVMID))
 	}
@@ -120,6 +123,7 @@ func TestIndex_SnapshotImmutability(t *testing.T) {
 	if len(idx.Nodes) > 0 {
 		idx.Nodes[0].Name = "mutated"
 	}
+
 	if snap.Nodes[0].Name == "mutated" {
 		t.Fatal("mutating Index.Nodes leaked back into Snapshot")
 	}
@@ -141,16 +145,19 @@ func TestIndex_ByPool(t *testing.T) {
 		if got != want {
 			t.Errorf("ByPool[%q]: got %d VMs, want %d", pool, got, want)
 		}
+
 		for _, vm := range idx.ByPool[pool] {
 			if vm.Pool != pool {
 				t.Errorf("ByPool[%q] contains VM %d with Pool=%q", pool, vm.VMID, vm.Pool)
 			}
 		}
 	}
+
 	total := 0
 	for _, vms := range idx.ByPool {
 		total += len(vms)
 	}
+
 	if total != 25 {
 		t.Fatalf("total VMs across pools: got %d, want 25", total)
 	}
@@ -171,6 +178,7 @@ func TestIndex_ByNode(t *testing.T) {
 		if got != want {
 			t.Errorf("ByNode[%q]: got %d VMs, want %d", node, got, want)
 		}
+
 		for _, vm := range idx.ByNode[node] {
 			if vm.Node != node {
 				t.Errorf("ByNode[%q] contains VM %d with Node=%q", node, vm.VMID, vm.Node)
@@ -236,6 +244,7 @@ func TestIndex_TagsCopied(t *testing.T) {
 func cloneSnapshot(s cluster.Snapshot) cluster.Snapshot {
 	nodes := make([]cluster.Node, len(s.Nodes))
 	copy(nodes, s.Nodes)
+
 	vms := make([]cluster.VM, len(s.VMs))
 	for i, vm := range s.VMs {
 		vms[i] = vm
@@ -243,7 +252,9 @@ func cloneSnapshot(s cluster.Snapshot) cluster.Snapshot {
 			vms[i].Tags = append([]string(nil), vm.Tags...)
 		}
 	}
+
 	storages := make([]cluster.Storage, len(s.Storages))
 	copy(storages, s.Storages)
+
 	return cluster.Snapshot{Nodes: nodes, VMs: vms, Storages: storages}
 }

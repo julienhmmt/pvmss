@@ -73,16 +73,19 @@ func (h *VmCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.writeCreateError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
 		return
 	}
+
 	var req vm.VMCreateRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		h.writeCreateError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
 		return
 	}
+
 	result, err := vm.Create(r.Context(), identity, req.Cluster, req, h.store, h.creator, h.store, h.log)
 	if err != nil {
 		h.writeCreateFailure(w, err)
 		return
 	}
+
 	h.writeCreateJSON(w, http.StatusAccepted, createResultDTO{
 		Cluster: result.Cluster,
 		VMID:    result.VMID,
@@ -100,22 +103,28 @@ func (h *VmCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 		h.writeCreateError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
 		return
 	}
+
 	clusterName := r.URL.Query().Get("cluster")
 	if clusterName == "" {
 		clusterName = "default"
 	}
+
 	resources, err := catalog.ApprovedResources(r.Context(), h.store, clusterName)
 	if err != nil {
 		h.log.Error("catalog read failed", "component", "httpapi", "error", err)
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+
 		return
 	}
+
 	profiles, err := catalog.Profiles(r.Context(), h.store, clusterName)
 	if err != nil {
 		h.log.Error("profile read failed", "component", "httpapi", "error", err)
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+
 		return
 	}
+
 	dto := catalogDTO{
 		Cluster:  clusterName,
 		Nodes:    make([]string, 0, len(resources.Nodes)),
@@ -127,12 +136,15 @@ func (h *VmCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 	for _, node := range resources.Nodes {
 		dto.Nodes = append(dto.Nodes, node.Name)
 	}
+
 	for _, storage := range resources.Storages {
 		dto.Storages = append(dto.Storages, catalogStorageDTO{Name: storage.Name, Node: storage.Node})
 	}
+
 	for _, iso := range resources.ISOs {
 		dto.ISOs = append(dto.ISOs, catalogISODTO{Storage: iso.Storage, File: iso.File})
 	}
+
 	for _, profile := range profiles {
 		dto.Profiles = append(dto.Profiles, catalogProfileDTO{
 			ID:       profile.ID,
@@ -143,6 +155,7 @@ func (h *VmCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 			Bus:      profile.Bus,
 		})
 	}
+
 	h.writeCreateJSON(w, http.StatusOK, dto)
 }
 
@@ -172,8 +185,10 @@ func (h *VmCreate) writeCreateJSON(w http.ResponseWriter, status int, value any)
 	if err != nil {
 		h.log.Error("failed to marshal response", "component", "httpapi", "error", err)
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+
 		return
 	}
+
 	if err := writeJSON(w, status, body); err != nil {
 		h.log.Error("failed to write response", "component", "httpapi", "error", err)
 	}
