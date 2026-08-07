@@ -37,6 +37,7 @@ func TestResolveWebBuildDir(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: process and listener lifecycle tests
 func TestResolveWebBuildDir_Invalid(t *testing.T) {
 	dir := t.TempDir()
 
@@ -54,6 +55,7 @@ func TestResolveWebBuildDir_Invalid(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: process and listener lifecycle tests
 func TestResolveWebBuildDir_Fallback(t *testing.T) {
 	dir := t.TempDir()
 
@@ -78,6 +80,7 @@ func TestResolveWebBuildDir_Fallback(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: process and listener lifecycle tests
 func TestValidateWebBuildDir(t *testing.T) {
 	dir := t.TempDir()
 
@@ -108,6 +111,7 @@ func TestValidateWebBuildDir(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: process and listener lifecycle tests
 func TestRun_InvalidConfig_ExitsWithoutListening(t *testing.T) {
 	bin := filepath.Join(t.TempDir(), "pvmss")
 

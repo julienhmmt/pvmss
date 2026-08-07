@@ -1,5 +1,4 @@
 //nolint:noctx // test scaffolding does not need real context
-//nolint:goconst // test fixture strings
 package httpapi_test
 
 import (
@@ -62,6 +61,8 @@ func postVMCreate(t *testing.T, handler *httpapi.VMCreate, body string, cookie *
 
 // TestVMCreate_SimpleModeSuccess — T009/US1: a simple-mode request returns
 // 202 and the fake receives a spec whose pool is the actor's own.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreate_SimpleModeSuccess(t *testing.T) {
 	handler, authHandler, _ := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
@@ -94,7 +95,7 @@ func TestVMCreate_SimpleModeSuccess(t *testing.T) {
 
 	for _, vm := range snap.VMs {
 		if vm.VMID == result.VMID {
-			if vm.Pool != "pool-alice" {
+			if vm.Pool != cluster.FakePoolAlice {
 				t.Fatalf("created VM pool = %q, want pool-alice", vm.Pool)
 			}
 
@@ -108,6 +109,8 @@ func TestVMCreate_SimpleModeSuccess(t *testing.T) {
 // TestVMCreate_PoolFieldHasNoEffect — T010/SC-003: a forged pool field in the
 // raw body either fails strict decoding or is dropped; the created VM's pool
 // is the actor's regardless.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreate_PoolFieldHasNoEffect(t *testing.T) {
 	handler, authHandler, _ := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
@@ -137,6 +140,8 @@ func TestVMCreate_PoolFieldHasNoEffect(t *testing.T) {
 // TestVMCreate_NoPoolIdentityForbidden — T011/FR-005: the local admin has no
 // personal pool; creation is refused with 403 and NextVMID is never called
 // (no VMID burned — the fake's create call log stays empty).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreate_NoPoolIdentityForbidden(t *testing.T) {
 	handler, authHandler, _ := newVMCreateHandler(t)
 
@@ -169,6 +174,8 @@ func TestVMCreate_NoPoolIdentityForbidden(t *testing.T) {
 
 // TestVMCreate_CatalogViolation — SC-004: a storage outside the seeded
 // catalog is rejected with 400 and no task is created.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreate_CatalogViolation(t *testing.T) {
 	handler, authHandler, _ := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
@@ -196,6 +203,8 @@ func TestVMCreate_CatalogViolation(t *testing.T) {
 
 // TestVMCreateCatalog_SeededShape — T013/FR-002: the catalog endpoint serves
 // the seeded fixture (contract shape), sourced from the store.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreateCatalog_SeededShape(t *testing.T) {
 	handler, authHandler, _ := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
@@ -250,6 +259,8 @@ func TestVMCreateCatalog_SeededShape(t *testing.T) {
 
 // TestVMCreate_DetailedModeExactSpec — T024: every field explicit; the fake
 // receives exactly those values, and no profile is involved.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreate_DetailedModeExactSpec(t *testing.T) {
 	handler, authHandler, _ := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
@@ -296,6 +307,8 @@ func TestVMCreate_DetailedModeExactSpec(t *testing.T) {
 
 // TestVMCreate_DetailedCatalogViolations — T025/SC-004: each resource kind
 // outside the seeded catalog is rejected individually, no task created.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreate_DetailedCatalogViolations(t *testing.T) {
 	cases := []struct {
 		name string
@@ -334,6 +347,8 @@ func TestVMCreate_DetailedCatalogViolations(t *testing.T) {
 
 // TestVMCreate_DetailedInvalidHostname — T026: the detailed path enforces the
 // same hostname rule as simple mode (FR-007).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreate_DetailedInvalidHostname(t *testing.T) {
 	handler, authHandler, _ := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
@@ -350,6 +365,8 @@ func TestVMCreate_DetailedInvalidHostname(t *testing.T) {
 
 // TestVMCreate_DetailedOutOfRange — T027/FR-008: hardware values past the
 // fixed technical ceiling are rejected before any cluster call.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreate_DetailedOutOfRange(t *testing.T) {
 	cases := []struct {
 		name   string

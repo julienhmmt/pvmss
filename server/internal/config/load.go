@@ -48,6 +48,7 @@ func Load() (Configuration, error) {
 // loadCore reads the required core settings: port, DB path, and host.
 func loadCore(cfg *Configuration) error {
 	portStr, ok := os.LookupEnv("PVMSS_PORT")
+
 	portStr = strings.TrimSpace(portStr)
 	if !ok || portStr == "" {
 		return errors.New("PVMSS_PORT is required")

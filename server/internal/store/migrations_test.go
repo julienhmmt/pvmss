@@ -1,4 +1,3 @@
-//nolint:goconst // test fixture strings
 package store_test
 
 import (
@@ -13,10 +12,11 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+//nolint:paralleltest // serial: shared database fixture
 func TestRunMigrations_FreshDB_AppliesInOrder(t *testing.T) {
 	db := openTestDB(t)
 	migrations := []store.Migration{
-		{Version: 1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
+		{Version: 1, DDL: testMigrationDDL},
 		{Version: 2, DDL: `ALTER TABLE t1 ADD COLUMN name TEXT`},
 	}
 
@@ -40,10 +40,11 @@ func TestRunMigrations_FreshDB_AppliesInOrder(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared database fixture
 func TestRunMigrations_Rerun_IsNoOp(t *testing.T) {
 	db := openTestDB(t)
 	migrations := []store.Migration{
-		{Version: 1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
+		{Version: 1, DDL: testMigrationDDL},
 	}
 
 	if err := store.RunMigrations(context.Background(), db, migrations); err != nil {
@@ -60,11 +61,12 @@ func TestRunMigrations_Rerun_IsNoOp(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared database fixture
 func TestRunMigrations_PartiallyApplied_AppliesRemaining(t *testing.T) {
 	db := openTestDB(t)
 
 	migrations := []store.Migration{
-		{Version: 1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
+		{Version: 1, DDL: testMigrationDDL},
 	}
 	if err := store.RunMigrations(context.Background(), db, migrations); err != nil {
 		t.Fatalf("first RunMigrations: %v", err)
@@ -83,6 +85,7 @@ func TestRunMigrations_PartiallyApplied_AppliesRemaining(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared database fixture
 func TestRunMigrations_EmptyList_ReturnsError(t *testing.T) {
 	db := openTestDB(t)
 	if err := store.RunMigrations(context.Background(), db, []store.Migration{}); err == nil {
@@ -90,10 +93,11 @@ func TestRunMigrations_EmptyList_ReturnsError(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared database fixture
 func TestRunMigrations_MissingVersion_Detected(t *testing.T) {
 	db := openTestDB(t)
 	migrations := []store.Migration{
-		{Version: 1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
+		{Version: 1, DDL: testMigrationDDL},
 		{Version: 3, DDL: `CREATE TABLE t3 (id INTEGER PRIMARY KEY)`},
 	}
 
@@ -107,6 +111,7 @@ func TestRunMigrations_MissingVersion_Detected(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared database fixture
 func TestRunMigrations_Validate(t *testing.T) {
 	db := openTestDB(t)
 
@@ -118,7 +123,7 @@ func TestRunMigrations_Validate(t *testing.T) {
 		{
 			name: "negative version",
 			mig: []store.Migration{
-				{Version: -1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
+				{Version: -1, DDL: testMigrationDDL},
 			},
 			wantErr: "migration version -1 is not positive",
 		},
@@ -132,7 +137,7 @@ func TestRunMigrations_Validate(t *testing.T) {
 		{
 			name: "missing version",
 			mig: []store.Migration{
-				{Version: 1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
+				{Version: 1, DDL: testMigrationDDL},
 				{Version: 3, DDL: `CREATE TABLE t3 (id INTEGER PRIMARY KEY)`},
 			},
 			wantErr: "migration version 2 is missing from the migration list",
@@ -153,22 +158,24 @@ func TestRunMigrations_Validate(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared database fixture
 func TestRunMigrations_ClosedDB_ReturnsError(t *testing.T) {
 	db := openTestDB(t)
 	_ = db.Close()
 
 	migrations := []store.Migration{
-		{Version: 1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
+		{Version: 1, DDL: testMigrationDDL},
 	}
 	if err := store.RunMigrations(context.Background(), db, migrations); err == nil {
 		t.Fatalf("expected error for closed database, got nil")
 	}
 }
 
+//nolint:paralleltest // serial: shared database fixture
 func TestRunMigrations_RecordsAppliedAt(t *testing.T) {
 	db := openTestDB(t)
 	migrations := []store.Migration{
-		{Version: 1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
+		{Version: 1, DDL: testMigrationDDL},
 	}
 
 	before := time.Now().UTC()
@@ -234,6 +241,7 @@ func appliedVersions(t *testing.T, db *sql.DB) map[int]struct{} {
 	return result
 }
 
+//nolint:paralleltest // serial: shared database fixture
 func TestRunMigrations_InvalidDDL_ReturnsError(t *testing.T) {
 	db := openTestDB(t)
 	migrations := []store.Migration{
@@ -258,7 +266,7 @@ func BenchmarkRunMigrations(b *testing.B) {
 		}
 
 		migrations := []store.Migration{
-			{Version: 1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
+			{Version: 1, DDL: testMigrationDDL},
 		}
 		if err := store.RunMigrations(context.Background(), db, migrations); err != nil {
 			b.Fatalf("RunMigrations: %v", err)

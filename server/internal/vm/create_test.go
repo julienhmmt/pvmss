@@ -1,4 +1,3 @@
-//nolint:goconst // test fixture strings
 package vm_test
 
 import (
@@ -51,15 +50,15 @@ func (f createFixture) create(t *testing.T, actor auth.Identity, req vm.CreateRe
 }
 
 func aliceIdentity() auth.Identity {
-	return auth.Identity{Username: "alice@pve", Pool: "pool-alice"}
+	return auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}
 }
 
 // detailedRequest is a fully explicit, catalog-valid detailed-mode request.
 func detailedRequest() vm.CreateRequest {
 	return vm.CreateRequest{
-		Cluster:  "default",
+		Cluster:  testClusterName,
 		Name:     "web-01",
-		Node:     "pve-node-01",
+		Node:     cluster.FakeNode01,
 		CPUCores: 2,
 		MemoryMB: 4096,
 		Disk:     vm.DiskRequest{Storage: "local-lvm", SizeGB: 40},
@@ -67,6 +66,7 @@ func detailedRequest() vm.CreateRequest {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_ValidationPipeline(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -166,10 +166,12 @@ func TestCreate_ValidationPipeline(t *testing.T) {
 // TestCreate_ProfileResolvesHardware — FR-009: a profile's catalog values win
 // over any hardware fields the request also carries; the client cannot
 // contradict the chosen profile.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_ProfileResolvesHardware(t *testing.T) {
 	fixture := newCreateFixture(t)
 	req := vm.CreateRequest{
-		Cluster:          "default",
+		Cluster:          testClusterName,
 		Name:             "profiled-vm",
 		ProfileID:        "medium",
 		CPUCores:         32, // contradictory — must be ignored
@@ -213,11 +215,13 @@ func TestCreate_ProfileResolvesHardware(t *testing.T) {
 
 // TestCreate_SimpleModeAutoSelection — FR-010: unset node/storage/bridge are
 // filled from the first approved catalog entries, deterministically.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_SimpleModeAutoSelection(t *testing.T) {
 	fixture := newCreateFixture(t)
 
 	result, err := fixture.create(t, aliceIdentity(), vm.CreateRequest{
-		Cluster:   "default",
+		Cluster:   testClusterName,
 		Name:      "auto-vm",
 		ProfileID: "small",
 	})
@@ -225,8 +229,8 @@ func TestCreate_SimpleModeAutoSelection(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	if result.Node != "pve-node-01" {
-		t.Errorf("auto-selected node = %q, want %q", result.Node, "pve-node-01")
+	if result.Node != cluster.FakeNode01 {
+		t.Errorf("auto-selected node = %q, want %q", result.Node, cluster.FakeNode01)
 	}
 
 	snap, err := fixture.fake.Snapshot(context.Background())
@@ -248,6 +252,8 @@ func TestCreate_SimpleModeAutoSelection(t *testing.T) {
 // actor's own. The request type carries no pool field, so there is nothing to
 // forge; this test pins that the spec dispatched to the cluster always takes
 // the pool from the identity.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_PoolIsAlwaysActors(t *testing.T) {
 	fixture := newCreateFixture(t)
 
@@ -266,12 +272,14 @@ func TestCreate_PoolIsAlwaysActors(t *testing.T) {
 		t.Fatalf("created VM not in snapshot")
 	}
 
-	if snap.VMs[idx].Pool != "pool-alice" {
-		t.Errorf("pool = %q, want actor's pool %q", snap.VMs[idx].Pool, "pool-alice")
+	if snap.VMs[idx].Pool != cluster.FakePoolAlice {
+		t.Errorf("pool = %q, want actor's pool %q", snap.VMs[idx].Pool, cluster.FakePoolAlice)
 	}
 }
 
 // TestCreate_PvmssTagAlwaysPresent — FR-006.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_PvmssTagAlwaysPresent(t *testing.T) {
 	fixture := newCreateFixture(t)
 	req := detailedRequest()
@@ -300,6 +308,8 @@ func TestCreate_PvmssTagAlwaysPresent(t *testing.T) {
 
 // TestCreate_RecordsAudit — FR-017: a successful creation lands in the audit
 // log with the real actor, the allocated VMID, and action vm_create.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_RecordsAudit(t *testing.T) {
 	fixture := newCreateFixture(t)
 
@@ -318,7 +328,7 @@ func TestCreate_RecordsAudit(t *testing.T) {
 	}
 
 	entry := entries[0]
-	if entry.Actor != "alice@pve" || entry.Cluster != "default" || entry.VMID != result.VMID || entry.Action != "vm_create" {
+	if entry.Actor != cluster.FakeUserAlice || entry.Cluster != testClusterName || entry.VMID != result.VMID || entry.Action != "vm_create" {
 		t.Errorf("audit entry = %+v", entry)
 	}
 }
@@ -335,11 +345,13 @@ func (failingAudit) RecordAction(context.Context, string, string, int, string) e
 // must not turn an already-dispatched creation into a client-facing error:
 // the cluster task is real by the time audit runs, so the client still needs
 // its upid to poll. Regression for the T06 audit-failure-orphaned-task gap.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_AuditFailureDoesNotFailCreate(t *testing.T) {
 	fixture := newCreateFixture(t)
 	log := slog.New(slog.DiscardHandler)
 
-	result, err := vm.Create(context.Background(), aliceIdentity(), "default", detailedRequest(), fixture.store, fixture.fake, failingAudit{}, log)
+	result, err := vm.Create(context.Background(), aliceIdentity(), testClusterName, detailedRequest(), fixture.store, fixture.fake, failingAudit{}, log)
 	if err != nil {
 		t.Fatalf("Create: %v, want nil (audit failure must not fail the request)", err)
 	}

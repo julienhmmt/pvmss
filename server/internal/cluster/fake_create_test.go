@@ -11,7 +11,8 @@ import (
 // CreateVM mutates the dataset, TaskStatus is poll-count-based. Run with
 // -race: NextVMID concurrency is the point of the first test.
 
-func TestFake_NextVMID_DistinctMonotonicConcurrent(t *testing.T) {
+//nolint:paralleltest // serial: shared mutable fake dataset
+func TestFake_NextVMID_DistinctMonotonicConcurrent(t *testing.T) { //nolint:gocyclo // concurrency test checks multiple synchronization invariants
 	defer ResetFake()
 
 	client := Fake{}
@@ -88,6 +89,7 @@ func TestFake_NextVMID_DistinctMonotonicConcurrent(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared mutable fake dataset
 func TestFake_CreateVM_RecordsVMInDataset(t *testing.T) {
 	defer ResetFake()
 
@@ -150,6 +152,7 @@ func TestFake_CreateVM_RecordsVMInDataset(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared mutable fake dataset
 func TestFake_CreateVM_NoStartLeavesVMStopped(t *testing.T) {
 	defer ResetFake()
 
@@ -193,6 +196,8 @@ func TestFake_CreateVM_NoStartLeavesVMStopped(t *testing.T) {
 
 // TestFake_TaskStatus_PollCount — SC-006: the first two queries for a upid
 // return running, the third and later return ok. No wall-clock dependency.
+//
+//nolint:paralleltest // serial: shared mutable fake dataset
 func TestFake_TaskStatus_PollCount(t *testing.T) {
 	defer ResetFake()
 
@@ -244,6 +249,7 @@ func TestFake_TaskStatus_PollCount(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared mutable fake dataset
 func TestFake_TaskStatus_UnknownUPID(t *testing.T) {
 	defer ResetFake()
 

@@ -1,5 +1,4 @@
 //nolint:noctx // test scaffolding does not need real context
-//nolint:goconst // test fixture strings
 package httpapi_test
 
 import (
@@ -41,6 +40,11 @@ type apiErrorEnvelope struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
 }
+
+const (
+	apiCodeForbidden = "forbidden"
+	apiCodeNotFound  = "not_found"
+)
 
 // assertAPIError decodes the response body as an apiErrorEnvelope and asserts
 // the error code matches wantCode. Shared by tests across httpapi_test files
@@ -178,6 +182,8 @@ func adminCookie(t *testing.T, authHandler *httpapi.Auth) *http.Cookie {
 
 // TestVMDetail_Get_OwnerSeesFullEntity — T007: the owner gets the full Entity
 // per contracts (identity, status, metrics, uptime).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Get_OwnerSeesFullEntity(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
@@ -195,11 +201,11 @@ func TestVMDetail_Get_OwnerSeesFullEntity(t *testing.T) {
 		t.Errorf("name = %q, want web-01", entity.Name)
 	}
 
-	if entity.Node != "pve-node-01" {
+	if entity.Node != cluster.FakeNode01 {
 		t.Errorf("node = %q, want pve-node-01", entity.Node)
 	}
 
-	if entity.Pool != "pool-alice" {
+	if entity.Pool != cluster.FakePoolAlice {
 		t.Errorf("pool = %q, want pool-alice", entity.Pool)
 	}
 
@@ -226,6 +232,8 @@ func TestVMDetail_Get_OwnerSeesFullEntity(t *testing.T) {
 
 // TestVMDetail_Get_NonOwnerTaggedForbidden — T008: a non-owner requesting a
 // tagged VM they don't own gets 403.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Get_NonOwnerTaggedForbidden(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := bobCookie(t, authHandler) // bob owns pool-bob, not pool-alice
@@ -235,13 +243,15 @@ func TestVMDetail_Get_NonOwnerTaggedForbidden(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 	}
 
-	if env.Code != "forbidden" {
+	if env.Code != apiCodeForbidden {
 		t.Errorf("code = %q, want forbidden", env.Code)
 	}
 }
 
 // TestVMDetail_Get_UntaggedNotFound — T009: an untagged VM returns 404 with
 // the same error shape as the 403 case (byte-identical shape, contracts).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Get_UntaggedNotFound(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
@@ -252,13 +262,15 @@ func TestVMDetail_Get_UntaggedNotFound(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
 
-	if env.Code != "not_found" {
+	if env.Code != apiCodeNotFound {
 		t.Errorf("code = %q, want not_found", env.Code)
 	}
 }
 
 // TestVMDetail_Get_NonexistentNotFound — a VMID that doesn't exist is also 404,
 // indistinguishable from the untagged case (FR-002).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Get_NonexistentNotFound(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
@@ -268,13 +280,15 @@ func TestVMDetail_Get_NonexistentNotFound(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
 
-	if env.Code != "not_found" {
+	if env.Code != apiCodeNotFound {
 		t.Errorf("code = %q, want not_found", env.Code)
 	}
 }
 
 // TestVMDetail_Get_AdminSeesAnyTaggedVM — T010: an admin sees any tagged VM
 // regardless of pool.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Get_AdminSeesAnyTaggedVM(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := adminCookie(t, authHandler)
@@ -295,6 +309,8 @@ func TestVMDetail_Get_AdminSeesAnyTaggedVM(t *testing.T) {
 }
 
 // TestVMDetail_Get_UnauthenticatedRejected — no cookie → 401, never the entity.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Get_UnauthenticatedRejected(t *testing.T) {
 	handler, _, _, _ := newVMDetailHandler(t)
 
@@ -306,6 +322,8 @@ func TestVMDetail_Get_UnauthenticatedRejected(t *testing.T) {
 
 // TestVMDetail_Get_StoppedVmOmitsUptime — uptimeSeconds is absent (omitempty)
 // when the VM is not running (contracts).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Get_StoppedVmOmitsUptime(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
@@ -330,6 +348,8 @@ func TestVMDetail_Get_StoppedVmOmitsUptime(t *testing.T) {
 
 // TestVmAction_OwnerStartStoppedVM — T016: owner triggers start on a stopped
 // VM → 200, fake client records the call on the Index-resolved node.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmAction_OwnerStartStoppedVM(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
@@ -357,6 +377,8 @@ func TestVmAction_OwnerStartStoppedVM(t *testing.T) {
 // TestVmAction_NonOwnerStopRejected — T017: S01 PoC literal — non-owner sends
 // {"action":"stop"} for a VM they don't own → 403, fake client records ZERO
 // calls for that VM (SC-001).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmAction_NonOwnerStopRejected(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := bobCookie(t, authHandler) // bob does not own pool-alice
@@ -367,7 +389,7 @@ func TestVmAction_NonOwnerStopRejected(t *testing.T) {
 		t.Fatalf("status = %d, want %d (S01 PoC: now rejected)", rec.Code, http.StatusForbidden)
 	}
 
-	if env.Code != "forbidden" {
+	if env.Code != apiCodeForbidden {
 		t.Errorf("code = %q, want forbidden", env.Code)
 	}
 
@@ -380,6 +402,8 @@ func TestVmAction_NonOwnerStopRejected(t *testing.T) {
 // TestVmAction_ForgedNodeFieldRejected — T018: a forged/extra "node" field in
 // the request body → 400 (DisallowUnknownFields, T00's strict decoder). The
 // request schema has no node field — there is nothing to forge (S01 root cause).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmAction_ForgedNodeFieldRejected(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
@@ -401,6 +425,8 @@ func TestVmAction_ForgedNodeFieldRejected(t *testing.T) {
 }
 
 // TestVmAction_UntaggedVMNotFound — T019: untagged VM, any caller → 404.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmAction_UntaggedVMNotFound(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
@@ -411,7 +437,7 @@ func TestVmAction_UntaggedVMNotFound(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
 
-	if env.Code != "not_found" {
+	if env.Code != apiCodeNotFound {
 		t.Errorf("code = %q, want not_found", env.Code)
 	}
 
@@ -422,6 +448,8 @@ func TestVmAction_UntaggedVMNotFound(t *testing.T) {
 }
 
 // TestVmAction_AdminActsOnAnyTaggedVM — T020: admin action on any tagged VM → 200.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmAction_AdminActsOnAnyTaggedVM(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := adminCookie(t, authHandler)
@@ -440,6 +468,8 @@ func TestVmAction_AdminActsOnAnyTaggedVM(t *testing.T) {
 
 // TestVmAction_AllFiveValidActionsAccepted — T021: all 5 valid actions
 // accepted; any other string → 400.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmAction_AllFiveValidActionsAccepted(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
@@ -476,6 +506,8 @@ func TestVmAction_AllFiveValidActionsAccepted(t *testing.T) {
 
 // TestVmAction_AuditRecorded — every successful write is recorded in audit_log
 // with the real actor before the response is sent (FR-009).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmAction_AuditRecorded(t *testing.T) {
 	handler, authHandler, _, st := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
@@ -509,6 +541,8 @@ func TestVmAction_AuditRecorded(t *testing.T) {
 
 // TestVmAction_IndexInvalidatedAfterWrite — FR-010: after a successful write,
 // the Index is rebuilt so the next read reflects it.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmAction_IndexInvalidatedAfterWrite(t *testing.T) {
 	handler, authHandler, projection, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
@@ -561,6 +595,8 @@ func assertDeleteSucceeded(t *testing.T, rec *httptest.ResponseRecorder, vmid in
 
 // TestVmDelete_OwnerSucceeds — T026: owner deletes their VM → 200, fake client
 // receives the delete call.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmDelete_OwnerSucceeds(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
@@ -571,6 +607,8 @@ func TestVmDelete_OwnerSucceeds(t *testing.T) {
 
 // TestVmDelete_NonOwnerRejected — T027: non-owner delete attempt → 403, no
 // delete call (same Resolve() gate — not a parallel check).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmDelete_NonOwnerRejected(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := bobCookie(t, authHandler)
@@ -581,7 +619,7 @@ func TestVmDelete_NonOwnerRejected(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 	}
 
-	if env.Code != "forbidden" {
+	if env.Code != apiCodeForbidden {
 		t.Errorf("code = %q, want forbidden", env.Code)
 	}
 
@@ -592,6 +630,8 @@ func TestVmDelete_NonOwnerRejected(t *testing.T) {
 }
 
 // TestVmDelete_AdminDeletesAnyTaggedVM — T028: admin deletes any tagged VM → 200.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmDelete_AdminDeletesAnyTaggedVM(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := adminCookie(t, authHandler)
@@ -606,6 +646,8 @@ func TestVmDelete_AdminDeletesAnyTaggedVM(t *testing.T) {
 // =============================================================================
 
 // TestVmPatch_OwnerRenames — T032: owner renames → 200, updated Entity returned.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmPatch_OwnerRenames(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
@@ -625,6 +667,8 @@ func TestVmPatch_OwnerRenames(t *testing.T) {
 }
 
 // TestVmPatch_InvalidHostname — T033: invalid hostname → 400, specific error code.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmPatch_InvalidHostname(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
@@ -655,6 +699,8 @@ func TestVmPatch_InvalidHostname(t *testing.T) {
 }
 
 // TestVmPatch_EmptyBody — T034: empty patch body → 400.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmPatch_EmptyBody(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
@@ -671,6 +717,8 @@ func TestVmPatch_EmptyBody(t *testing.T) {
 
 // TestVmPatch_NonOwnerRejected — T035: non-owner patch attempt → 403 (same
 // Resolve() gate).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmPatch_NonOwnerRejected(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := bobCookie(t, authHandler)
@@ -681,7 +729,7 @@ func TestVmPatch_NonOwnerRejected(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 	}
 
-	if env.Code != "forbidden" {
+	if env.Code != apiCodeForbidden {
 		t.Errorf("code = %q, want forbidden", env.Code)
 	}
 
@@ -693,6 +741,8 @@ func TestVmPatch_NonOwnerRejected(t *testing.T) {
 
 // TestVmPatch_DescriptionOnly — updating only the description succeeds and
 // returns the updated entity.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmPatch_DescriptionOnly(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
@@ -708,6 +758,8 @@ func TestVmPatch_DescriptionOnly(t *testing.T) {
 }
 
 // TestVmPatch_BothNameAndDescription — updating both fields at once succeeds.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmPatch_BothNameAndDescription(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
@@ -727,6 +779,8 @@ func TestVmPatch_BothNameAndDescription(t *testing.T) {
 }
 
 // TestVmPatch_AuditRecorded — a rename is recorded as "rename" in the audit log.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmPatch_AuditRecorded(t *testing.T) {
 	handler, authHandler, _, st := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
@@ -760,6 +814,8 @@ func TestVmPatch_AuditRecorded(t *testing.T) {
 
 // TestVMDetail_ErrorShapeIdenticalAcrossEndpoints — 403 and 404 responses are
 // byte-identical in shape across all four endpoints (contracts behavioural rule).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_ErrorShapeIdenticalAcrossEndpoints(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	bobCookieVal := bobCookie(t, authHandler)
@@ -804,6 +860,8 @@ func TestVMDetail_ErrorShapeIdenticalAcrossEndpoints(t *testing.T) {
 // exactly one Resolve implementation and no handler re-implements the pool
 // check. This is a compile-time + grep guard; the runtime assertion is that
 // 403 and 404 come from vm.Resolve's errors, not a parallel check.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_ResolveIsTheOnlyOwnershipCheck(t *testing.T) {
 	// The handler returns vm.ErrForbidden / vm.ErrNotFound from Resolve —
 	// verified by checking the error types match (not a separate check).

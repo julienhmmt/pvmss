@@ -32,6 +32,8 @@ func openCatalogStore(t *testing.T) *store.Store {
 // TestApprovedResources_SeedInvariants pins the fixture's cross-table
 // invariants (T06 data-model.md): every approved storage's node is itself
 // approved, and every seeded row belongs to the configured cluster.
+//
+//nolint:paralleltest // serial: shared database fixture
 func TestApprovedResources_SeedInvariants(t *testing.T) {
 	st := openCatalogStore(t)
 
@@ -62,6 +64,8 @@ func TestApprovedResources_SeedInvariants(t *testing.T) {
 
 // TestProfiles_SeedInvariants pins the profile fixture: unique IDs and rows
 // scoped to the configured cluster.
+//
+//nolint:paralleltest // serial: shared database fixture
 func TestProfiles_SeedInvariants(t *testing.T) {
 	st := openCatalogStore(t)
 
@@ -90,6 +94,8 @@ func TestProfiles_SeedInvariants(t *testing.T) {
 // TestApprovedResources_UnknownClusterReturnsEmpty — a cluster with no seeded
 // rows yields an empty catalog, not an error (membership checks then reject
 // everything, which is the correct failure mode for a misconfigured cluster).
+//
+//nolint:paralleltest // serial: shared database fixture
 func TestApprovedResources_UnknownClusterReturnsEmpty(t *testing.T) {
 	st := openCatalogStore(t)
 

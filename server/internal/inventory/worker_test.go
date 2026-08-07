@@ -1,4 +1,3 @@
-//nolint:goconst // test fixture strings
 package inventory_test
 
 import (
@@ -56,6 +55,8 @@ func testLogger() *slog.Logger {
 
 // TestWorker_SuccessfulCycleSwapsIndex — a successful refresh stores an Index
 // in the projection with a non-zero RefreshedAt.
+//
+//nolint:paralleltest // serial: shared inventory worker fixture
 func TestWorker_SuccessfulCycleSwapsIndex(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot()}
 	projection := inventory.NewProjection()
@@ -94,6 +95,8 @@ func TestWorker_SuccessfulCycleSwapsIndex(t *testing.T) {
 
 // TestWorker_FailingCycleLeavesPreviousIndex — FR-004: a failed refresh does
 // not clear or corrupt the existing projection.
+//
+//nolint:paralleltest // serial: shared inventory worker fixture
 func TestWorker_FailingCycleLeavesPreviousIndex(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot()}
 	projection := inventory.NewProjection()
@@ -132,6 +135,8 @@ func TestWorker_FailingCycleLeavesPreviousIndex(t *testing.T) {
 // TestWorker_CallsClientOnceEvenUnderConcurrentReads — SC-001: the cluster
 // client is called at most once per refresh cycle, regardless of how many
 // concurrent readers access the projection during that cycle.
+//
+//nolint:paralleltest // serial: shared inventory worker fixture
 func TestWorker_CallsClientOnceEvenUnderConcurrentReads(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot()}
 	projection := inventory.NewProjection()
@@ -179,6 +184,8 @@ func TestWorker_CallsClientOnceEvenUnderConcurrentReads(t *testing.T) {
 // TestWorker_ConcurrentRefreshesSingleFlight — multiple concurrent refresh
 // requests result in exactly one client call (in-flight dedup). The client
 // has a delay so all goroutines arrive while the first is in flight.
+//
+//nolint:paralleltest // serial: shared inventory worker fixture
 func TestWorker_ConcurrentRefreshesSingleFlight(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot(), delay: 100 * time.Millisecond}
 	projection := inventory.NewProjection()
@@ -207,6 +214,8 @@ func TestWorker_ConcurrentRefreshesSingleFlight(t *testing.T) {
 // TestWorker_RunDoesInitialRefresh — Run performs an initial refresh before
 // starting the ticker, so the projection is populated before the HTTP server
 // accepts traffic (T015).
+//
+//nolint:paralleltest // serial: shared inventory worker fixture
 func TestWorker_RunDoesInitialRefresh(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot()}
 	projection := inventory.NewProjection()
@@ -239,6 +248,8 @@ func TestWorker_RunDoesInitialRefresh(t *testing.T) {
 // TestWorker_FailingFirstRefreshLeavesNil — edge case: if the very first
 // refresh fails, the projection remains nil (FR-009: never-refreshed is
 // distinct from empty).
+//
+//nolint:paralleltest // serial: shared inventory worker fixture
 func TestWorker_FailingFirstRefreshLeavesNil(t *testing.T) {
 	client := &callCountClient{err: cluster.ErrUnreachable}
 	projection := inventory.NewProjection()
@@ -256,6 +267,8 @@ func TestWorker_FailingFirstRefreshLeavesNil(t *testing.T) {
 
 // TestWorker_ShrinkingDataset — edge case: if the dataset shrinks between
 // refreshes (a node disappears), the projection reflects the new, smaller set.
+//
+//nolint:paralleltest // serial: shared inventory worker fixture
 func TestWorker_ShrinkingDataset(t *testing.T) {
 	client := &callCountClient{snapshot: fakeSnapshot()}
 	projection := inventory.NewProjection()
@@ -269,7 +282,7 @@ func TestWorker_ShrinkingDataset(t *testing.T) {
 
 	// Shrink the dataset to 1 node, 0 VMs, 0 storages.
 	client.snapshot = cluster.Snapshot{
-		Nodes:    []cluster.Node{{Name: "pve-node-01", Status: cluster.NodeOnline}},
+		Nodes:    []cluster.Node{{Name: cluster.FakeNode01, Status: cluster.NodeOnline}},
 		VMs:      nil,
 		Storages: nil,
 	}
@@ -286,6 +299,8 @@ func TestWorker_ShrinkingDataset(t *testing.T) {
 }
 
 // Ensure errors.Is works for common sentinel checks.
+//
+//nolint:paralleltest // serial: shared inventory worker fixture
 func TestWorker_ErrorWrapping(t *testing.T) {
 	client := &callCountClient{err: cluster.ErrUnreachable}
 	projection := inventory.NewProjection()
@@ -301,6 +316,8 @@ func TestWorker_ErrorWrapping(t *testing.T) {
 // is cancelled by the worker's per-call timeout, so the singleflight lock is
 // released and a later refresh can proceed (golang-design-patterns rule 9:
 // every external call has a timeout).
+//
+//nolint:paralleltest // serial: shared inventory worker fixture
 func TestWorker_TimeoutCancelsHungClient(t *testing.T) {
 	hung := &hungClient{}
 	projection := inventory.NewProjection()

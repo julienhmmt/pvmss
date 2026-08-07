@@ -8,6 +8,7 @@ import (
 // White-box: these invariants concern the raw dataset literals, not the
 // public Client contract (that is contract_test.go's job).
 
+//nolint:paralleltest // serial: shared fake dataset
 func TestFakeDataset_NodeReferences(t *testing.T) {
 	names := nodeNames(t)
 	for _, vm := range fakeVMs {
@@ -23,6 +24,7 @@ func TestFakeDataset_NodeReferences(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake dataset
 func TestFakeDataset_PoolReferences(t *testing.T) {
 	pools := make(map[string]bool, len(fakePools))
 	for _, p := range fakePools {
@@ -36,6 +38,7 @@ func TestFakeDataset_PoolReferences(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake dataset
 func TestFakeDataset_UsageWithinTotal(t *testing.T) {
 	for _, n := range fakeNodes {
 		if n.MemoryUsed > n.MemoryTotal {
@@ -54,6 +57,7 @@ func TestFakeDataset_UsageWithinTotal(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake dataset
 func TestFakeDataset_UniqueVMIDs(t *testing.T) {
 	seen := make(map[int]bool, len(fakeVMs))
 	for _, vm := range fakeVMs {
@@ -65,6 +69,7 @@ func TestFakeDataset_UniqueVMIDs(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake dataset
 func TestFakeDataset_MixedVMStatuses(t *testing.T) {
 	var hasRunning, hasStopped bool
 
@@ -88,6 +93,7 @@ func TestFakeDataset_MixedVMStatuses(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake dataset
 func TestFakeDataset_MixedPvmssTagging(t *testing.T) {
 	var hasTagged, hasUntagged bool
 

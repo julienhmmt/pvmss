@@ -1,4 +1,3 @@
-//nolint:goconst // test fixture strings
 package store_test
 
 import (
@@ -10,6 +9,14 @@ import (
 	"time"
 )
 
+const (
+	testStoreLogLevel  = "info"
+	testStoreLogFormat = "json"
+	testStoreLogOutput = "stdout"
+	testStoreCluster   = "default"
+	testMigrationDDL   = `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`
+)
+
 // newAuditStore opens a fully-migrated Store for audit tests. The audit_log
 // table arrives in schemaV6 (T05), so a fresh Open already has it.
 func newAuditStore(t *testing.T) *store.Store {
@@ -17,9 +24,9 @@ func newAuditStore(t *testing.T) *store.Store {
 	cfg := config.Configuration{
 		Port:      50001,
 		DBPath:    filepath.Join(t.TempDir(), "audit.db"),
-		LogLevel:  "info",
-		LogFormat: "json",
-		LogOutput: "stdout",
+		LogLevel:  testStoreLogLevel,
+		LogFormat: testStoreLogFormat,
+		LogOutput: testStoreLogOutput,
 	}
 
 	st, err := store.Open(cfg)
@@ -35,13 +42,15 @@ func newAuditStore(t *testing.T) *store.Store {
 // TestRecordAction_InsertsOneRowWithRealActor — T005: RecordAction inserts
 // exactly one audit_log row carrying the real acting username, never a
 // service-account name (FR-009, closes S01's traceability gap).
+//
+//nolint:paralleltest // serial: shared database fixture
 func TestRecordAction_InsertsOneRowWithRealActor(t *testing.T) {
 	st := newAuditStore(t)
 	ctx := context.Background()
 
 	before := time.Now()
 
-	if err := st.RecordAction(ctx, "alice@pve", "default", 101, "stop"); err != nil {
+	if err := st.RecordAction(ctx, "alice@pve", testStoreCluster, 101, "stop"); err != nil {
 		t.Fatalf("RecordAction: %v", err)
 	}
 
@@ -61,7 +70,7 @@ func TestRecordAction_InsertsOneRowWithRealActor(t *testing.T) {
 		t.Errorf("actor = %q, want alice@pve (never a service-account name)", row.Actor)
 	}
 
-	if row.Cluster != "default" {
+	if row.Cluster != testStoreCluster {
 		t.Errorf("cluster = %q, want default", row.Cluster)
 	}
 
@@ -79,6 +88,8 @@ func TestRecordAction_InsertsOneRowWithRealActor(t *testing.T) {
 }
 
 // TestRecordAction_AppendsDistinctRows — each write is its own row, in order.
+//
+//nolint:paralleltest // serial: shared database fixture
 func TestRecordAction_AppendsDistinctRows(t *testing.T) {
 	st := newAuditStore(t)
 	ctx := context.Background()
@@ -87,9 +98,9 @@ func TestRecordAction_AppendsDistinctRows(t *testing.T) {
 		actor, cluster, action string
 		vmid                   int
 	}{
-		{"alice@pve", "default", "start", 100},
-		{"bob@pve", "default", "stop", 103},
-		{"admin", "default", "delete", 109},
+		{"alice@pve", testStoreCluster, "start", 100},
+		{"bob@pve", testStoreCluster, "stop", 103},
+		{"admin", testStoreCluster, "delete", 109},
 	}
 	for _, a := range actions {
 		if err := st.RecordAction(ctx, a.actor, a.cluster, a.vmid, a.action); err != nil {

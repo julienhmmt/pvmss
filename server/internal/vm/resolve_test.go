@@ -1,4 +1,3 @@
-//nolint:goconst // test fixture strings
 package vm_test
 
 import (
@@ -32,11 +31,13 @@ func buildResolveIndex(t *testing.T) *inventory.Index {
 // that prove Resolve is the single ownership gate (FR-001, FR-002, FR-004).
 // This is the most important test in T05 — it is the structural proof S01 is
 // closed (spec: "resolve_test.go + this phase's tests are the structural proof").
+//
+//nolint:paralleltest // serial: shared fake VM fixture
 func TestResolve(t *testing.T) {
 	idx := buildResolveIndex(t)
 
-	alice := auth.Identity{Username: "alice@pve", Pool: "pool-alice"}
-	bob := auth.Identity{Username: "bob@pve", Pool: "pool-bob"}
+	alice := auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}
+	bob := auth.Identity{Username: "bob@pve", Pool: cluster.FakePoolBob}
 	admin := auth.Identity{Username: "admin", IsAdmin: true}
 
 	cases := []struct {
@@ -52,8 +53,8 @@ func TestResolve(t *testing.T) {
 			actor:    alice,
 			vmid:     100,
 			wantErr:  nil,
-			wantNode: "pve-node-01",
-			wantPool: "pool-alice",
+			wantNode: cluster.FakeNode01,
+			wantPool: cluster.FakePoolAlice,
 		},
 		{
 			name:    "found + tagged + non-owner forbidden",
@@ -78,14 +79,14 @@ func TestResolve(t *testing.T) {
 			actor:    admin,
 			vmid:     103, // pool-bob, tagged pvmss
 			wantErr:  nil,
-			wantNode: "pve-node-01",
-			wantPool: "pool-bob",
+			wantNode: cluster.FakeNode01,
+			wantPool: cluster.FakePoolBob,
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			entity, err := vm.Resolve(idx, c.actor, "default", c.vmid)
+			entity, err := vm.Resolve(idx, c.actor, testClusterName, c.vmid)
 			if c.wantErr != nil {
 				if !errors.Is(err, c.wantErr) {
 					t.Fatalf("err = %v, want %v", err, c.wantErr)
@@ -110,7 +111,7 @@ func TestResolve(t *testing.T) {
 				t.Errorf("pool = %q, want %q", entity.Pool, c.wantPool)
 			}
 
-			if entity.Cluster != "default" {
+			if entity.Cluster != testClusterName {
 				t.Errorf("cluster = %q, want default", entity.Cluster)
 			}
 		})
@@ -120,11 +121,13 @@ func TestResolve(t *testing.T) {
 // TestResolve_AdminStillRequiresPvmssTag — an admin bypasses the pool check
 // but never the tag check (FR-004): an untagged VM is 404 for everyone,
 // including an admin.
+//
+//nolint:paralleltest // serial: shared fake VM fixture
 func TestResolve_AdminStillRequiresPvmssTag(t *testing.T) {
 	idx := buildResolveIndex(t)
 	admin := auth.Identity{Username: "admin", IsAdmin: true}
 
-	_, err := vm.Resolve(idx, admin, "default", 109) // legacy-01, untagged
+	_, err := vm.Resolve(idx, admin, testClusterName, 109) // legacy-01, untagged
 	if !errors.Is(err, vm.ErrNotFound) {
 		t.Fatalf("admin on untagged VM: err = %v, want ErrNotFound", err)
 	}
@@ -134,11 +137,13 @@ func TestResolve_AdminStillRequiresPvmssTag(t *testing.T) {
 // Index recorded, never re-derived from request input (FR-003, S01 root cause).
 // This is the one-line fix at the center of S01: there is no node parameter
 // to forge because Resolve does not accept one.
+//
+//nolint:paralleltest // serial: shared fake VM fixture
 func TestResolve_NodeAlwaysFromIndex(t *testing.T) {
 	idx := buildResolveIndex(t)
-	alice := auth.Identity{Username: "alice@pve", Pool: "pool-alice"}
+	alice := auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}
 
-	entity, err := vm.Resolve(idx, alice, "default", 102)
+	entity, err := vm.Resolve(idx, alice, testClusterName, 102)
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
@@ -151,11 +156,13 @@ func TestResolve_NodeAlwaysFromIndex(t *testing.T) {
 
 // TestResolve_EntityCarriesDetailFields — the Entity returned to a detail
 // request carries the metrics the V15 stat cards need (CPU, RAM, disk, uptime).
+//
+//nolint:paralleltest // serial: shared fake VM fixture
 func TestResolve_EntityCarriesDetailFields(t *testing.T) {
 	idx := buildResolveIndex(t)
-	alice := auth.Identity{Username: "alice@pve", Pool: "pool-alice"}
+	alice := auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}
 
-	entity, err := vm.Resolve(idx, alice, "default", 100) // web-01, running
+	entity, err := vm.Resolve(idx, alice, testClusterName, 100) // web-01, running
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}
@@ -187,11 +194,13 @@ func TestResolve_EntityCarriesDetailFields(t *testing.T) {
 
 // TestResolve_StoppedVmHasZeroUptime — uptime is absent (zero) when the VM is
 // not running (contracts: uptimeSeconds absent when not running).
+//
+//nolint:paralleltest // serial: shared fake VM fixture
 func TestResolve_StoppedVmHasZeroUptime(t *testing.T) {
 	idx := buildResolveIndex(t)
-	alice := auth.Identity{Username: "alice@pve", Pool: "pool-alice"}
+	alice := auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}
 
-	entity, err := vm.Resolve(idx, alice, "default", 101) // web-02, stopped
+	entity, err := vm.Resolve(idx, alice, testClusterName, 101) // web-02, stopped
 	if err != nil {
 		t.Fatalf("Resolve: %v", err)
 	}

@@ -76,6 +76,7 @@ func (r *sessionRepository) expireAll() {
 	}
 }
 
+//nolint:paralleltest // serial: shared session repository fixture
 func TestSessionManager_RoundTrip(t *testing.T) {
 	manager, err := auth.NewSessionManager(newSessionRepository(), "a-session-secret-with-at-least-thirty-two-bytes", false)
 	if err != nil {
@@ -103,6 +104,7 @@ func TestSessionManager_RoundTrip(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared session repository fixture
 func TestSessionManager_ResolveRejectsUnknownAndExpiredCookies(t *testing.T) {
 	repository := newSessionRepository()
 
@@ -143,6 +145,8 @@ func TestSessionManager_ResolveRejectsUnknownAndExpiredCookies(t *testing.T) {
 // signature-only cookie stays valid after logout until its embedded expiry.
 // A DB-backed session must reject the same raw cookie value immediately once
 // its row is deleted.
+//
+//nolint:paralleltest // serial: shared session repository fixture
 func TestSessionManager_LogoutRevokesSessionImmediately(t *testing.T) {
 	manager, err := auth.NewSessionManager(newSessionRepository(), "a-session-secret-with-at-least-thirty-two-bytes", false)
 	if err != nil {

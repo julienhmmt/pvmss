@@ -1,5 +1,4 @@
 //nolint:noctx // test scaffolding does not need real context
-//nolint:goconst // test fixture strings
 package httpapi_test
 
 import (
@@ -17,9 +16,11 @@ import (
 
 // TestClusterRefresh_Success — POST /cluster/refresh succeeds and returns
 // refreshedAt (FR-005).
+//
+//nolint:paralleltest // serial: shared inventory fixture
 func TestClusterRefresh_Success(t *testing.T) {
 	client := &stubClusterClient{snapshot: cluster.Snapshot{
-		Nodes: []cluster.Node{{Name: "pve-node-01", Status: cluster.NodeOnline}},
+		Nodes: []cluster.Node{{Name: cluster.FakeNode01, Status: cluster.NodeOnline}},
 	}}
 	projection := inventory.NewProjection()
 	worker := inventory.NewWorker(client, projection, time.Hour, slog.New(slog.NewJSONHandler(os.Stderr, nil)))
@@ -49,9 +50,11 @@ func TestClusterRefresh_Success(t *testing.T) {
 
 // TestClusterRefresh_TooSoon — a second immediate call returns 429 with
 // retryAfterSeconds (FR-006, contracts/cluster-refresh.md).
+//
+//nolint:paralleltest // serial: shared inventory fixture
 func TestClusterRefresh_TooSoon(t *testing.T) {
 	client := &stubClusterClient{snapshot: cluster.Snapshot{
-		Nodes: []cluster.Node{{Name: "pve-node-01", Status: cluster.NodeOnline}},
+		Nodes: []cluster.Node{{Name: cluster.FakeNode01, Status: cluster.NodeOnline}},
 	}}
 	projection := inventory.NewProjection()
 	worker := inventory.NewWorker(client, projection, time.Hour, slog.New(slog.NewJSONHandler(os.Stderr, nil)))
@@ -101,9 +104,11 @@ func TestClusterRefresh_TooSoon(t *testing.T) {
 
 // TestClusterRefresh_TooSoonMakesZeroClientCalls — SC-001: a 429 refusal
 // never triggers a cluster client call.
+//
+//nolint:paralleltest // serial: shared inventory fixture
 func TestClusterRefresh_TooSoonMakesZeroClientCalls(t *testing.T) {
 	client := &stubClusterClient{snapshot: cluster.Snapshot{
-		Nodes: []cluster.Node{{Name: "pve-node-01"}},
+		Nodes: []cluster.Node{{Name: cluster.FakeNode01}},
 	}}
 	projection := inventory.NewProjection()
 	worker := inventory.NewWorker(client, projection, time.Hour, slog.New(slog.NewJSONHandler(os.Stderr, nil)))
@@ -130,6 +135,8 @@ func TestClusterRefresh_TooSoonMakesZeroClientCalls(t *testing.T) {
 
 // TestClusterRefresh_Unreachable — a failed client call returns 502
 // cluster_unreachable (contracts/cluster-refresh.md).
+//
+//nolint:paralleltest // serial: shared inventory fixture
 func TestClusterRefresh_Unreachable(t *testing.T) {
 	client := &stubClusterClient{err: cluster.ErrUnreachable}
 	projection := inventory.NewProjection()
@@ -162,6 +169,8 @@ func TestClusterRefresh_Unreachable(t *testing.T) {
 }
 
 // TestClusterRefresh_MethodNotAllowed — non-POST returns 405.
+//
+//nolint:paralleltest // serial: shared inventory fixture
 func TestClusterRefresh_MethodNotAllowed(t *testing.T) {
 	client := &stubClusterClient{}
 	projection := inventory.NewProjection()
