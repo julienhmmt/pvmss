@@ -6,6 +6,7 @@
 	import VmDisksTab from './disks/VmDisksTab.svelte';
 	import VmNetworkTab from './network/VmNetworkTab.svelte';
 	import VmHardwareTab from './hardware/VmHardwareTab.svelte';
+	import CloudInitTab from './CloudInitTab.svelte';
 
 	const store = getVmDetailContext();
 
@@ -19,7 +20,8 @@
 		{ id: 'overview', label: 'Overview' },
 		{ id: 'disks', label: 'Disks' },
 		{ id: 'network', label: 'Network' },
-		{ id: 'hardware', label: 'Hardware' }
+		{ id: 'hardware', label: 'Hardware' },
+		{ id: 'cloudinit', label: 'Cloud-init' }
 	];
 	let activeTab = $state('overview');
 
@@ -212,6 +214,12 @@
 
 		<div id="panel-hardware" role="tabpanel" aria-labelledby="tab-hardware" hidden={activeTab !== 'hardware'} class="mt-6">
 			<VmHardwareTab />
+		</div>
+
+		<div id="panel-cloudinit" role="tabpanel" aria-labelledby="tab-cloudinit" hidden={activeTab !== 'cloudinit'} class="mt-6">
+			{#if activeTab === 'cloudinit'}
+				<CloudInitTab />
+			{/if}
 		</div>
 	</div>
 

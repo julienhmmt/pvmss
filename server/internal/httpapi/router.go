@@ -1,3 +1,4 @@
+//nolint:wsl_v5 // route registration groups optional handlers by feature
 package httpapi
 
 import (
@@ -24,7 +25,7 @@ type spaHandler struct {
 }
 
 // NewRouter wires the public API and the static SPA handler.
-func NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail http.Handler, vmCreate *VMCreate, tasks *Tasks, auth *Auth, webBuildDir string, log *slog.Logger) *http.ServeMux {
+func NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail http.Handler, vmCloudInit *VMCloudInit, vmCreate *VMCreate, tasks *Tasks, auth *Auth, webBuildDir string, log *slog.Logger) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("GET /health", health)
 	mux.Handle("GET /api/v1/cluster/nodes", auth.Require(clusterNodes))
@@ -56,6 +57,12 @@ func NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail http.Handler,
 	mux.Handle("PATCH /api/v1/vms/{cluster}/{vmid}/cdrom", vmDetail)
 	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/network", vmDetail)
 	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/hardware", vmDetail)
+	if vmCloudInit != nil {
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit", vmCloudInit)
+		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit", vmCloudInit)
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", vmCloudInit)
+		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", vmCloudInit)
+	}
 	mux.HandleFunc("POST /api/v1/auth/login", auth.Login)
 	mux.HandleFunc("POST /api/v1/auth/admin-login", auth.AdminLogin)
 	mux.HandleFunc("GET /api/v1/auth/me", auth.Me)

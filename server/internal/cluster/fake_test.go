@@ -1,6 +1,9 @@
+//nolint:wsl_v5 // fake tests group state setup, call assertions, and reset checks
 package cluster
 
 import (
+	"context"
+	"errors"
 	"slices"
 	"testing"
 )
@@ -111,6 +114,35 @@ func TestFakeDataset_MixedPvmssTagging(t *testing.T) {
 
 	if !hasUntagged {
 		t.Error("expected at least one VM without the pvmss tag")
+	}
+}
+
+//nolint:paralleltest // serial: shared fake cloud-init state
+func TestFakeCloudInit_CallOrderAndFailureReset(t *testing.T) {
+	ResetFake()
+	defer ResetFake()
+	config := CloudInitConfig{User: FakeCloudInitUser, IPMode: CloudInitIPModeDHCP}
+	if err := (Fake{}).SetCloudInitConfig(context.Background(), FakeNode01, 101, config); err != nil {
+		t.Fatalf("SetCloudInitConfig: %v", err)
+	}
+	if err := (Fake{}).PushCloudInitSnippet(context.Background(), FakeNode01, FakeSnippetStorage, "pvmss-101.yml", 101, "#cloud-config\n"); err != nil {
+		t.Fatalf("PushCloudInitSnippet: %v", err)
+	}
+	calls := FakeCallsFor(101)
+	if len(calls) != 3 || calls[0].Action != "ensure_cloudinit_drive" || calls[1].Action != "set_cloudinit_config" || calls[2].Action != "push_cloudinit_snippet" {
+		t.Fatalf("calls = %+v", calls)
+	}
+	pushErr := errors.New("push failed")
+	SetFakeCloudInitPushError(pushErr)
+	if err := (Fake{}).PushCloudInitSnippet(context.Background(), FakeNode01, FakeSnippetStorage, "pvmss-101.yml", 101, ""); !errors.Is(err, pushErr) {
+		t.Fatalf("push err = %v, want %v", err, pushErr)
+	}
+	ResetFake()
+	if len(FakeCalls()) != 0 {
+		t.Fatalf("calls after reset = %+v", FakeCalls())
+	}
+	if _, err := (Fake{}).GetCloudInitConfig(context.Background(), FakeNode01, 101); err != nil {
+		t.Fatalf("config after reset: %v", err)
 	}
 }
 
