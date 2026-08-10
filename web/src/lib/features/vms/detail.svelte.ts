@@ -1,5 +1,5 @@
 import { getContext, setContext } from 'svelte';
-import { get, post, del, patch, ApiRequestError } from '$lib/shared/api/client';
+import { get, post, del, patch, put, ApiRequestError } from '$lib/shared/api/client';
 import type { VmStatus } from './list.svelte';
 
 export type VmAction = 'start' | 'stop' | 'shutdown' | 'reboot' | 'reset';
@@ -16,6 +16,49 @@ export interface VmDetailEntity {
 	diskTotal: number;
 	uptimeSeconds?: number;
 	description?: string;
+	sockets?: number;
+	cores?: number;
+	disks?: VmDisk[];
+	cdrom?: VmCdrom;
+	networkInterfaces?: VmNetworkInterface[];
+}
+
+export interface VmDisk {
+	key: string;
+	bus: 'virtio' | 'scsi' | 'sata' | 'ide';
+	busIndex: number;
+	storage: string;
+	sizeGB: number;
+	isBoot: boolean;
+}
+
+export interface VmCdrom {
+	state: 'absent' | 'empty' | 'mounted';
+	isoVolId?: string;
+}
+
+export interface VmNetworkInterface {
+	index: number;
+	bridge: string;
+	model: string;
+	mac: string;
+	vlan: number | null;
+	rateMbps: number | null;
+	ipAddresses: string[];
+}
+
+export interface HardwareOptions {
+	storages: { node: string; storage: string; type: string }[];
+	bridges: { node: string; bridge: string }[];
+	isos: { volId: string; node: string; storage: string; name: string; sizeBytes: number }[];
+	limits: {
+		maxSockets: number;
+		maxCores: number;
+		maxMemoryMB: number;
+		maxDiskPerVMGB: number;
+		maxNetworkCards: number;
+		remainingBusSlots: Record<string, number>;
+	};
 }
 
 interface ActionResponse {
@@ -53,6 +96,16 @@ export class VmDetailStore {
 	patchInFlight = $state.raw(false);
 	patchError = $state.raw<string | null>(null);
 
+	hardwareOptions = $state.raw<HardwareOptions | null>(null);
+	hardwareLoading = $state.raw(false);
+	hardwareError = $state.raw<string | null>(null);
+	diskInFlight = $state.raw(false);
+	diskError = $state.raw<string | null>(null);
+	cdromInFlight = $state.raw(false);
+	networkInFlight = $state.raw(false);
+	hardwareInFlight = $state.raw(false);
+	writeError = $state.raw<string | null>(null);
+
 	/** Set after a successful delete so the page can navigate away. */
 	deleted = $state.raw(false);
 
@@ -69,10 +122,113 @@ export class VmDetailStore {
 		this.error = null;
 		try {
 			this.entity = await get<VmDetailEntity>(this.#basePath);
+			if (this.hardwareOptions === null) await this.loadHardwareOptions();
 		} catch (err) {
 			this.error = errorMessage(err, 'failed to load VM');
 		} finally {
 			this.loading = false;
+		}
+	}
+
+	async loadHardwareOptions(): Promise<void> {
+		this.hardwareLoading = true;
+		this.hardwareError = null;
+		try {
+			this.hardwareOptions = await get<HardwareOptions>(`${this.#basePath}/hardware-options`);
+		} catch (err) {
+			this.hardwareError = errorMessage(err, 'failed to load hardware options');
+		} finally {
+			this.hardwareLoading = false;
+		}
+	}
+
+	async addDisk(bus: VmDisk['bus'], storage: string, sizeGB: number): Promise<boolean> {
+		if (this.diskInFlight) return false;
+		this.diskInFlight = true;
+		this.diskError = null;
+		try {
+			await post<VmDisk>(`${this.#basePath}/disks`, { bus, storage, sizeGB });
+			await this.load();
+			return true;
+		} catch (err) {
+			this.diskError = errorMessage(err, 'failed to add disk');
+			return false;
+		} finally {
+			this.diskInFlight = false;
+		}
+	}
+
+	async resizeDisk(diskKey: string, sizeGB: number): Promise<boolean> {
+		if (this.diskInFlight) return false;
+		this.diskInFlight = true;
+		this.diskError = null;
+		try {
+			await put<VmDisk>(`${this.#basePath}/disks/${encodeURIComponent(diskKey)}/resize`, { sizeGB });
+			await this.load();
+			return true;
+		} catch (err) {
+			this.diskError = errorMessage(err, 'failed to resize disk');
+			return false;
+		} finally {
+			this.diskInFlight = false;
+		}
+	}
+
+	async deleteDisk(diskKey: string): Promise<boolean> {
+		if (this.diskInFlight) return false;
+		this.diskInFlight = true;
+		this.diskError = null;
+		try {
+			await del<DeleteResponse>(`${this.#basePath}/disks/${encodeURIComponent(diskKey)}`);
+			await this.load();
+			return true;
+		} catch (err) {
+			this.diskError = errorMessage(err, 'failed to delete disk');
+			return false;
+		} finally {
+			this.diskInFlight = false;
+		}
+	}
+
+	async setCdrom(action: 'mount' | 'disconnect' | 'remove', isoVolId?: string): Promise<void> {
+		if (this.cdromInFlight) return;
+		this.cdromInFlight = true;
+		this.writeError = null;
+		try {
+			await patch<VmCdrom>(`${this.#basePath}/cdrom`, { action, ...(isoVolId ? { isoVolId } : {}) });
+			await this.load();
+		} catch (err) {
+			this.writeError = errorMessage(err, 'failed to update CD-ROM');
+		} finally {
+			this.cdromInFlight = false;
+		}
+	}
+
+	async updateNetwork(interfaces: Omit<VmNetworkInterface, 'mac' | 'ipAddresses'>[]): Promise<void> {
+		if (this.networkInFlight) return;
+		this.networkInFlight = true;
+		this.writeError = null;
+		try {
+			await put<VmNetworkInterface[]>(`${this.#basePath}/network`, { interfaces });
+			await this.load();
+		} catch (err) {
+			this.writeError = errorMessage(err, 'failed to update network');
+		} finally {
+			this.networkInFlight = false;
+		}
+	}
+
+	async updateHardware(patch: { sockets?: number; cores?: number; memoryMB?: number; tags?: string[] }): Promise<void> {
+		if (this.hardwareInFlight) return;
+		this.hardwareInFlight = true;
+		this.writeError = null;
+		try {
+			await put<VmDetailEntity>(`${this.#basePath}/hardware`, patch);
+			await this.load();
+		} catch (err) {
+			this.writeError = errorMessage(err, 'failed to update hardware');
+		} finally {
+			this.hardwareInFlight = false;
 		}
 	}
 

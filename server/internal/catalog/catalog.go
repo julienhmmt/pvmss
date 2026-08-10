@@ -18,14 +18,14 @@ type Node struct {
 
 // Storage is one approved storage backend on a node.
 type Storage struct {
-	Name string
-	Node string
+	Name string `json:"storage"`
+	Node string `json:"node"`
 }
 
 // ISO is one approved ISO image on an approved storage.
 type ISO struct {
-	Storage string
-	File    string
+	Storage string `json:"storage"`
+	File    string `json:"file"`
 }
 
 // Profile is a fixed VM hardware preset (FR-009): when a creation request
@@ -84,6 +84,51 @@ func (r Resources) HasISO(storage, file string) bool {
 	}
 
 	return false
+}
+
+// ListStorages returns the approved storages for a cluster.
+func ListStorages(ctx context.Context, st *store.Store, cluster string) ([]Storage, error) {
+	rows, err := st.CatalogStorages(ctx, cluster)
+	if err != nil {
+		return nil, err
+	}
+
+	storages := make([]Storage, 0, len(rows))
+	for _, row := range rows {
+		storages = append(storages, Storage{Name: row.Name, Node: row.Node})
+	}
+
+	return storages, nil
+}
+
+// ListBridges returns the approved bridge names for a cluster.
+func ListBridges(ctx context.Context, st *store.Store, cluster string) ([]string, error) {
+	rows, err := st.CatalogBridges(ctx, cluster)
+	if err != nil {
+		return nil, err
+	}
+
+	bridges := make([]string, 0, len(rows))
+	for _, row := range rows {
+		bridges = append(bridges, row.Name)
+	}
+
+	return bridges, nil
+}
+
+// ListISOs returns the approved ISO images for a cluster.
+func ListISOs(ctx context.Context, st *store.Store, cluster string) ([]ISO, error) {
+	rows, err := st.CatalogISOs(ctx, cluster)
+	if err != nil {
+		return nil, err
+	}
+
+	isos := make([]ISO, 0, len(rows))
+	for _, row := range rows {
+		isos = append(isos, ISO{Storage: row.Storage, File: row.File})
+	}
+
+	return isos, nil
 }
 
 // ApprovedResources reads the full approved-resource catalog for a cluster

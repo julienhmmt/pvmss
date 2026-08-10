@@ -33,18 +33,24 @@ const pvmssTag = "pvmss"
 // S01 root cause). Carries the detail-view metrics (V15) so GET /vms/:id can
 // return it directly.
 type Entity struct {
-	Cluster     string
-	VMID        int
-	Name        string
-	Node        string
-	Pool        string
-	Status      cluster.VMStatus
-	Tags        []string
-	CPUCores    int
-	MemoryTotal int64
-	DiskTotal   int64
-	Uptime      time.Duration
-	Description string
+	Cluster           string
+	VMID              int
+	Name              string
+	Node              string
+	Pool              string
+	Status            cluster.VMStatus
+	Tags              []string
+	CPUCores          int
+	Sockets           int
+	Cores             int
+	MemoryTotal       int64
+	DiskTotal         int64
+	Uptime            time.Duration
+	Description       string
+	BootOrder         []string
+	Disks             []cluster.Disk
+	CDROM             cluster.CDROMState
+	NetworkInterfaces []cluster.NetworkInterface
 }
 
 // Resolve is the ONLY function capable of turning a (cluster, vmid) pair into
@@ -81,18 +87,54 @@ func Resolve(index *inventory.Index, actor auth.Identity, clusterName string, vm
 		return Entity{}, ErrForbidden
 	}
 
+	disks := cloneDisks(machine.Disks, machine.BootOrder)
+
 	return Entity{
-		Cluster:     clusterName,
-		VMID:        machine.VMID,
-		Name:        machine.Name,
-		Node:        machine.Node,
-		Pool:        machine.Pool,
-		Status:      machine.Status,
-		Tags:        append([]string(nil), machine.Tags...),
-		CPUCores:    machine.CPUCores,
-		MemoryTotal: machine.MemoryTotal,
-		DiskTotal:   machine.DiskTotal,
-		Uptime:      machine.Uptime,
-		Description: machine.Description,
+		Cluster:           clusterName,
+		VMID:              machine.VMID,
+		Name:              machine.Name,
+		Node:              machine.Node,
+		Pool:              machine.Pool,
+		Status:            machine.Status,
+		Tags:              append([]string(nil), machine.Tags...),
+		CPUCores:          machine.CPUCores,
+		Sockets:           machine.Sockets,
+		Cores:             machine.Cores,
+		MemoryTotal:       machine.MemoryTotal,
+		DiskTotal:         machine.DiskTotal,
+		Uptime:            machine.Uptime,
+		Description:       machine.Description,
+		BootOrder:         append([]string(nil), machine.BootOrder...),
+		Disks:             disks,
+		CDROM:             machine.CDROM,
+		NetworkInterfaces: cloneNetworkInterfaces(machine.NetworkInterfaces),
 	}, nil
+}
+
+func cloneDisks(disks []cluster.Disk, bootOrder []string) []cluster.Disk {
+	cloned := make([]cluster.Disk, len(disks))
+	for i, disk := range disks {
+		cloned[i] = disk
+		cloned[i].IsBoot = isBootDisk(disk, bootOrder)
+	}
+
+	return cloned
+}
+
+func isBootDisk(disk cluster.Disk, bootOrder []string) bool {
+	if len(bootOrder) == 0 {
+		return disk.BusIndex == 0
+	}
+
+	return slices.Contains(bootOrder, disk.Key)
+}
+
+func cloneNetworkInterfaces(interfaces []cluster.NetworkInterface) []cluster.NetworkInterface {
+	cloned := make([]cluster.NetworkInterface, len(interfaces))
+	for i, iface := range interfaces {
+		cloned[i] = iface
+		cloned[i].IPAddresses = append([]string(nil), iface.IPAddresses...)
+	}
+
+	return cloned
 }

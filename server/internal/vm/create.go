@@ -57,6 +57,7 @@ var allowedNetworkModels = map[string]bool{
 	"virtio":  true,
 	"e1000":   true,
 	"rtl8139": true,
+	"vmxnet3": true,
 }
 
 // CreateRequest is the single creation request shape both frontend modes
