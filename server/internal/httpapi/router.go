@@ -26,6 +26,16 @@ type spaHandler struct {
 
 // NewRouter wires the public API and the static SPA handler.
 func NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail http.Handler, vmCloudInit *VMCloudInit, vmCreate *VMCreate, tasks *Tasks, auth *Auth, webBuildDir string, log *slog.Logger, snapshotHandlers ...*VMSnapshots) *http.ServeMux {
+	return newRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, vmCloudInit, vmCreate, tasks, auth, webBuildDir, log, snapshotHandlers, nil)
+}
+
+// NewRouterWithConsole wires the public API, the static SPA handler, and the
+// T10 console endpoints (vnc-ticket + websocket relay).
+func NewRouterWithConsole(health, clusterNodes, clusterRefresh, vms, vmDetail http.Handler, vmCloudInit *VMCloudInit, vmCreate *VMCreate, tasks *Tasks, auth *Auth, webBuildDir string, log *slog.Logger, vmConsole *VMConsole, snapshotHandlers ...*VMSnapshots) *http.ServeMux {
+	return newRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, vmCloudInit, vmCreate, tasks, auth, webBuildDir, log, snapshotHandlers, vmConsole)
+}
+
+func newRouter(health, clusterNodes, clusterRefresh, vms, vmDetail http.Handler, vmCloudInit *VMCloudInit, vmCreate *VMCreate, tasks *Tasks, auth *Auth, webBuildDir string, log *slog.Logger, snapshotHandlers []*VMSnapshots, vmConsole *VMConsole) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("GET /health", health)
 	mux.Handle("GET /api/v1/cluster/nodes", auth.Require(clusterNodes))
@@ -69,6 +79,10 @@ func NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail http.Handler,
 		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/snapshots", snapshots)
 		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/rollback", snapshots)
 		mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/snapshots/{name}", snapshots)
+	}
+	if vmConsole != nil {
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/vnc-ticket", vmConsole)
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/console/websocket", vmConsole)
 	}
 	mux.HandleFunc("POST /api/v1/auth/login", auth.Login)
 	mux.HandleFunc("POST /api/v1/auth/admin-login", auth.AdminLogin)

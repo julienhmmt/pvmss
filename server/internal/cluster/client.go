@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"time"
 )
 
@@ -250,6 +251,33 @@ type SnapshotWriter interface {
 	CreateSnapshot(ctx context.Context, node string, vmid int, name, description string, vmstate bool) (string, error)
 	RollbackSnapshot(ctx context.Context, node string, vmid int, name string) (string, error)
 	DeleteSnapshot(ctx context.Context, node string, vmid int, name string) (string, error)
+}
+
+// VNCProxyTicket is the Proxmox-side VNC ticket, port, and node returned by
+// GetVNCTicket. The real client populates all three from Proxmox's vncproxy
+// response; the fake client returns a fixed fabricated pair. Neither value
+// ever reaches the browser — only the opaque ConsoleTicketStore token does
+// (FR-002). The relay reads them back from the ticket at upgrade time.
+type VNCProxyTicket struct {
+	Ticket string
+	Port   int
+	Node   string
+}
+
+// ConsoleRelay is the contract for relaying an already-upgraded WebSocket
+// connection to a VM's VNC server (T10). It blocks for the lifetime of the
+// console session, copying bytes both ways between the browser-side peer and
+// whatever the implementation connects to (Proxmox's own VNC WebSocket for the
+// real client, an in-process RFB 3.8 handshake for the fake client). It
+// returns when either side closes (FR-008, FR-009).
+//
+// Kept separate from Client (constitution IV: reads and writes are separated)
+// — a console relay is neither a read nor a write in the Index sense, it is a
+// long-lived byte stream, and giving it its own interface keeps the Client
+// surface focused. Both Fake and Proxmox satisfy it.
+type ConsoleRelay interface {
+	GetVNCTicket(ctx context.Context, clusterName string, vmid int, node string) (VNCProxyTicket, error)
+	RelayConsole(ctx context.Context, clusterName string, vmid int, proxy VNCProxyTicket, peer io.ReadWriteCloser) error
 }
 
 // Pool is a tenancy anchor — one pool maps to one user (PD00).
