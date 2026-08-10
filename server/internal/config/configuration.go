@@ -16,6 +16,9 @@ type Configuration struct {
 	ClusterSource                     string
 	SessionSecret                     string
 	AdminPasswordHash                 string
+	ProxmoxURL                        string
+	ProxmoxAPITokenName               string
+	ProxmoxAPITokenValue              string
 	InventoryRefreshInterval          time.Duration
 	InventoryManualRefreshMinInterval time.Duration
 	InventoryRefreshTimeout           time.Duration

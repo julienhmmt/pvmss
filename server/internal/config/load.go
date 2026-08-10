@@ -124,7 +124,7 @@ func loadSecuritySettings(cfg *Configuration) error {
 	return nil
 }
 
-// loadClusterSettings reads the cluster source selection.
+// loadClusterSettings reads the cluster source selection and Proxmox credentials.
 func loadClusterSettings(cfg *Configuration) error {
 	clusterSource := strings.TrimSpace(os.Getenv("PVMSS_CLUSTER_SOURCE"))
 	if clusterSource == "" {
@@ -136,6 +136,18 @@ func loadClusterSettings(cfg *Configuration) error {
 	}
 
 	cfg.ClusterSource = clusterSource
+	cfg.ProxmoxURL = strings.TrimSpace(os.Getenv("PROXMOX_URL"))
+	cfg.ProxmoxAPITokenName = strings.TrimSpace(os.Getenv("PROXMOX_API_TOKEN_NAME"))
+	cfg.ProxmoxAPITokenValue = strings.TrimSpace(os.Getenv("PROXMOX_API_TOKEN_VALUE"))
+
+	if cfg.ClusterSource == "proxmox" {
+		if cfg.ProxmoxURL == "" {
+			return errors.New("PROXMOX_URL is required when PVMSS_CLUSTER_SOURCE=proxmox")
+		}
+		if cfg.ProxmoxAPITokenName == "" || cfg.ProxmoxAPITokenValue == "" {
+			return errors.New("PROXMOX_API_TOKEN_NAME and PROXMOX_API_TOKEN_VALUE are required when PVMSS_CLUSTER_SOURCE=proxmox")
+		}
+	}
 
 	return nil
 }

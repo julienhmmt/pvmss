@@ -19,6 +19,7 @@ import (
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
+	"pvmss/server/internal/vm"
 	"strconv"
 	"syscall"
 	"time"
@@ -77,7 +78,11 @@ func run() int {
 
 	switch cfg.ClusterSource {
 	case "proxmox":
-		clusterClient = cluster.Proxmox{}
+		clusterClient = cluster.Proxmox{
+			BaseURL:       cfg.ProxmoxURL,
+			APITokenName:  cfg.ProxmoxAPITokenName,
+			APITokenValue: cfg.ProxmoxAPITokenValue,
+		}
 	default:
 		clusterClient = cluster.Fake{}
 	}
@@ -198,12 +203,31 @@ func buildRouter(
 		return nil, errors.New("cluster client does not implement CloudInitReader")
 	}
 
+	snapshotReader, ok := clusterClient.(cluster.SnapshotReader)
+	if !ok {
+		return nil, errors.New("cluster client does not implement SnapshotReader")
+	}
+
+	snapshotWriter, ok := clusterClient.(cluster.SnapshotWriter)
+	if !ok {
+		return nil, errors.New("cluster client does not implement SnapshotWriter")
+	}
+
+	consoleRelay, ok := clusterClient.(cluster.ConsoleRelay)
+	if !ok {
+		return nil, errors.New("cluster client does not implement ConsoleRelay")
+	}
+
+	consoleTickets := vm.NewConsoleTicketStore()
+
 	vmDetail := httpapi.NewVMDetail(projection, authHandler, writer, st, worker, logger)
 	vmCloudInit := httpapi.NewVMCloudInit(projection, authHandler, cloudInitReader, writer, st, worker, logger)
 	vmCreate := httpapi.NewVMCreate(authHandler, st, creator, logger)
 	tasks := httpapi.NewTasks(authHandler, creator, worker, logger)
+	snapshots := httpapi.NewVMSnapshots(projection, authHandler, snapshotReader, snapshotWriter, st, logger)
+	vmConsole := httpapi.NewVMConsole(projection, authHandler, consoleRelay, consoleTickets, st, logger)
 
-	return httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, vmCloudInit, vmCreate, tasks, authHandler, webDir, logger), nil
+	return httpapi.NewRouterWithConsole(health, clusterNodes, clusterRefresh, vms, vmDetail, vmCloudInit, vmCreate, tasks, authHandler, webDir, logger, vmConsole, snapshots), nil
 }
 
 // resolveWebBuildDir returns the absolute path to the static web build directory.
