@@ -25,6 +25,46 @@ type Client interface {
 	ChangePassword(ctx context.Context, username, oldPassword, newPassword string) error
 }
 
+// CloudInitReader reads per-VM cloud-init state and server-side snippet targets.
+type CloudInitReader interface {
+	GetCloudInitConfig(ctx context.Context, node string, vmid int) (CloudInitConfig, error)
+	FindSnippetStorage(ctx context.Context, node string) (string, error)
+}
+
+// CloudInitIPMode identifies the network mode used by cloud-init.
+type CloudInitIPMode string
+
+const (
+	// CloudInitIPModeDHCP requests automatic network configuration.
+	CloudInitIPModeDHCP CloudInitIPMode = "dhcp"
+	// CloudInitIPModeStatic requests explicit address and gateway values.
+	CloudInitIPModeStatic CloudInitIPMode = "static"
+)
+
+// CloudInitConfig is the live structured cloud-init configuration of a VM.
+type CloudInitConfig struct {
+	User         string
+	Password     string
+	SSHKeys      []string
+	IPMode       CloudInitIPMode
+	IPAddress    string
+	Gateway      string
+	DNSServer    string
+	SearchDomain string
+}
+
+// CloudInitUpdate is a partial cloud-init update. Nil fields remain unchanged.
+type CloudInitUpdate struct {
+	User         *string
+	Password     *string
+	SSHKeys      *[]string
+	IPMode       *CloudInitIPMode
+	IPAddress    *string
+	Gateway      *string
+	DNSServer    *string
+	SearchDomain *string
+}
+
 // Writer is the contract for mutating a single VM. It is deliberately separate
 // from Client (constitution IV: reads and writes are separated) — a handler
 // that writes never reads the cluster directly, it reads the inventory
@@ -40,6 +80,9 @@ type Writer interface {
 	SetCDROM(ctx context.Context, node string, vmid int, state CDROMState) error
 	UpdateNetwork(ctx context.Context, node string, vmid int, interfaces []NetworkInterface) error
 	UpdateHardware(ctx context.Context, node string, vmid, sockets, cores, memoryMB int, tags []string) error
+	EnsureCloudInitDrive(ctx context.Context, node string, vmid int) error
+	SetCloudInitConfig(ctx context.Context, node string, vmid int, config CloudInitConfig) error
+	PushCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int, content string) error
 }
 
 // Snapshot is the complete result of one cluster read — all nodes, VMs, and
@@ -141,10 +184,13 @@ type NetworkInterface struct {
 // unset, matching the frontend's non-nullable string[] contract.
 func (n NetworkInterface) MarshalJSON() ([]byte, error) {
 	type alias NetworkInterface
+
 	dto := alias(n)
+
 	if dto.IPAddresses == nil {
 		dto.IPAddresses = []string{}
 	}
+
 	return json.Marshal(dto)
 }
 

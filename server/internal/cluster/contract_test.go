@@ -1,3 +1,4 @@
+//nolint:wsl_v5 // contract tests group shared implementation expectations
 package cluster_test
 
 import (
@@ -155,6 +156,53 @@ func TestContract_ChangePassword(t *testing.T) {
 				t.Fatalf("authenticate with new password: %v", err)
 			}
 		})
+	}
+}
+
+//nolint:paralleltest // serial: shared fake cloud-init fixture
+func TestContract_CloudInitReaderAndWriter(t *testing.T) {
+	cluster.ResetFake()
+	config := cluster.CloudInitConfig{User: "debian", IPMode: cluster.CloudInitIPModeDHCP}
+	if err := (cluster.Fake{}).SetCloudInitConfig(context.Background(), cluster.FakeNode01, 101, config); err != nil {
+		t.Fatalf("SetCloudInitConfig: %v", err)
+	}
+
+	got, err := (cluster.Fake{}).GetCloudInitConfig(context.Background(), cluster.FakeNode01, 101)
+	if err != nil {
+		t.Fatalf("GetCloudInitConfig: %v", err)
+	}
+	if got.User != config.User || got.IPMode != config.IPMode {
+		t.Fatalf("config = %+v, want %+v", got, config)
+	}
+	if _, err := (cluster.Fake{}).FindSnippetStorage(context.Background(), cluster.FakeNode01); err != nil {
+		t.Fatalf("FindSnippetStorage: %v", err)
+	}
+	if err := (cluster.Fake{}).PushCloudInitSnippet(context.Background(), cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-101.yml", 101, "#cloud-config\n"); err != nil {
+		t.Fatalf("PushCloudInitSnippet: %v", err)
+	}
+	if calls := cluster.FakeCallsFor(101); len(calls) != 3 || calls[0].Action != "ensure_cloudinit_drive" || calls[1].Action != "set_cloudinit_config" || calls[2].Action != "push_cloudinit_snippet" {
+		t.Fatalf("calls = %+v, want ensure, set, push", calls)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake cloud-init fixture
+func TestContract_ProxmoxCloudInitStubs(t *testing.T) {
+	reader := cluster.Proxmox{}
+	if _, err := reader.GetCloudInitConfig(context.Background(), cluster.FakeNode01, 101); !errors.Is(err, cluster.ErrNotImplemented) {
+		t.Fatalf("GetCloudInitConfig err = %v, want ErrNotImplemented", err)
+	}
+	if _, err := reader.FindSnippetStorage(context.Background(), cluster.FakeNode01); !errors.Is(err, cluster.ErrNotImplemented) {
+		t.Fatalf("FindSnippetStorage err = %v, want ErrNotImplemented", err)
+	}
+	writer := cluster.Proxmox{}
+	if err := writer.EnsureCloudInitDrive(context.Background(), cluster.FakeNode01, 101); !errors.Is(err, cluster.ErrNotImplemented) {
+		t.Fatalf("EnsureCloudInitDrive err = %v, want ErrNotImplemented", err)
+	}
+	if err := writer.SetCloudInitConfig(context.Background(), cluster.FakeNode01, 101, cluster.CloudInitConfig{}); !errors.Is(err, cluster.ErrNotImplemented) {
+		t.Fatalf("SetCloudInitConfig err = %v, want ErrNotImplemented", err)
+	}
+	if err := writer.PushCloudInitSnippet(context.Background(), cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-101.yml", 101, ""); !errors.Is(err, cluster.ErrNotImplemented) {
+		t.Fatalf("PushCloudInitSnippet err = %v, want ErrNotImplemented", err)
 	}
 }
 

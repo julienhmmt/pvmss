@@ -193,11 +193,17 @@ func buildRouter(
 		return nil, errors.New("cluster client does not implement Creator")
 	}
 
+	cloudInitReader, ok := clusterClient.(cluster.CloudInitReader)
+	if !ok {
+		return nil, errors.New("cluster client does not implement CloudInitReader")
+	}
+
 	vmDetail := httpapi.NewVMDetail(projection, authHandler, writer, st, worker, logger)
+	vmCloudInit := httpapi.NewVMCloudInit(projection, authHandler, cloudInitReader, writer, st, worker, logger)
 	vmCreate := httpapi.NewVMCreate(authHandler, st, creator, logger)
 	tasks := httpapi.NewTasks(authHandler, creator, worker, logger)
 
-	return httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, vmCreate, tasks, authHandler, webDir, logger), nil
+	return httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, vmCloudInit, vmCreate, tasks, authHandler, webDir, logger), nil
 }
 
 // resolveWebBuildDir returns the absolute path to the static web build directory.

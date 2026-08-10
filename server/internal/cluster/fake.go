@@ -1,3 +1,4 @@
+//nolint:wsl_v5 // fake state methods keep mutation and call recording adjacent
 package cluster
 
 import (
@@ -22,24 +23,38 @@ type Fake struct{}
 
 // FakeCall is one recorded write against the fake cluster.
 type FakeCall struct {
-	Node     string
-	VMID     int
-	Action   string
-	Name     string
-	DiskKey  string
-	Bus      string
-	Storage  string
-	SizeGB   int
-	Sockets  int
-	Cores    int
-	MemoryMB int
+	Node          string
+	VMID          int
+	Action        string
+	Name          string
+	DiskKey       string
+	Bus           string
+	Storage       string
+	Filename      string
+	Content       string
+	SizeGB        int
+	Sockets       int
+	Cores         int
+	MemoryMB      int
+	CloudInitData CloudInitConfig
 }
 
 var (
-	fakeVMMutex sync.RWMutex
-	fakeCallMu  sync.Mutex
-	fakeCallLog []FakeCall
+	fakeVMMutex       sync.RWMutex
+	fakeCallMu        sync.Mutex
+	fakeCallLog       []FakeCall
+	fakeCloudInitPush struct {
+		sync.RWMutex
+		err error
+	}
+	fakeCloudInitConfigs = originalFakeCloudInitConfigs()
+	fakeCloudInitDrives  = make(map[fakeCloudInitKey]bool)
 )
+
+type fakeCloudInitKey struct {
+	node string
+	vmid int
+}
 
 // Snapshot implements Client. It returns the T01/T02 dataset (3 nodes, 25
 // VMs, 4 pools, 5 storages) reshaped into one call — the same content
@@ -101,6 +116,87 @@ func (Fake) ChangePassword(_ context.Context, username, oldPassword, newPassword
 	fakeIdentities[username] = fakeIdentity{password: newPassword, pool: identity.pool, isAdmin: identity.isAdmin}
 
 	return nil
+}
+
+// GetCloudInitConfig implements CloudInitReader with live per-VM fake state.
+func (Fake) GetCloudInitConfig(_ context.Context, node string, vmid int) (CloudInitConfig, error) {
+	fakeVMMutex.RLock()
+	defer fakeVMMutex.RUnlock()
+
+	if findFakeVM(node, vmid) < 0 {
+		return CloudInitConfig{}, ErrNotFound
+	}
+
+	config, ok := fakeCloudInitConfigs[fakeCloudInitKey{node: node, vmid: vmid}]
+	if !ok {
+		return CloudInitConfig{IPMode: CloudInitIPModeDHCP}, nil
+	}
+
+	return cloneCloudInitConfig(config), nil
+}
+
+// FindSnippetStorage implements CloudInitReader with deterministic fake cluster data.
+func (Fake) FindSnippetStorage(_ context.Context, node string) (string, error) {
+	fakeVMMutex.RLock()
+	defer fakeVMMutex.RUnlock()
+
+	for _, fakeNode := range fakeNodes {
+		if fakeNode.Name == node {
+			return FakeSnippetStorage, nil
+		}
+	}
+
+	return "", ErrNotFound
+}
+
+// EnsureCloudInitDrive implements Writer and records drive assurance.
+func (Fake) EnsureCloudInitDrive(_ context.Context, node string, vmid int) error {
+	fakeVMMutex.Lock()
+	defer fakeVMMutex.Unlock()
+
+	if findFakeVM(node, vmid) < 0 {
+		return ErrNotFound
+	}
+
+	fakeCloudInitDrives[fakeCloudInitKey{node: node, vmid: vmid}] = true
+	recordCall(FakeCall{Node: node, VMID: vmid, Action: "ensure_cloudinit_drive"})
+
+	return nil
+}
+
+// SetCloudInitConfig implements Writer and ensures a cloud-init drive first.
+func (Fake) SetCloudInitConfig(ctx context.Context, node string, vmid int, config CloudInitConfig) error {
+	if err := (Fake{}).EnsureCloudInitDrive(ctx, node, vmid); err != nil {
+		return err
+	}
+
+	fakeVMMutex.Lock()
+	defer fakeVMMutex.Unlock()
+	fakeCloudInitConfigs[fakeCloudInitKey{node: node, vmid: vmid}] = cloneCloudInitConfig(config)
+	recordCall(FakeCall{Node: node, VMID: vmid, Action: "set_cloudinit_config", CloudInitData: cloneCloudInitConfig(config)})
+
+	return nil
+}
+
+// PushCloudInitSnippet implements Writer and records the server-owned target and content.
+func (Fake) PushCloudInitSnippet(_ context.Context, node, storage, filename string, vmid int, content string) error {
+	fakeCloudInitPush.RLock()
+	err := fakeCloudInitPush.err
+	fakeCloudInitPush.RUnlock()
+
+	recordCall(FakeCall{Node: node, VMID: vmid, Action: "push_cloudinit_snippet", Storage: storage, Filename: filename, Content: content})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SetFakeCloudInitPushError configures the fake push failure used by tests.
+func SetFakeCloudInitPushError(err error) {
+	fakeCloudInitPush.Lock()
+	defer fakeCloudInitPush.Unlock()
+	fakeCloudInitPush.err = err
 }
 
 // Action implements Writer — a power transition on the Index-resolved node.
@@ -367,7 +463,13 @@ func ResetFake() {
 	defer fakeCallMu.Unlock()
 
 	fakeVMs = originalFakeVMs()
+	fakeCloudInitConfigs = originalFakeCloudInitConfigs()
+	fakeCloudInitDrives = make(map[fakeCloudInitKey]bool)
 	fakeCallLog = nil
+
+	fakeCloudInitPush.Lock()
+	fakeCloudInitPush.err = nil
+	fakeCloudInitPush.Unlock()
 
 	resetFakeCreateState()
 }
@@ -401,6 +503,12 @@ const (
 	FakeTagPvmss   = "pvmss"
 	// FakeStorageLocalLVM is the approved local LVM fixture.
 	FakeStorageLocalLVM = "local-lvm"
+	// FakeSnippetStorage is the deterministic snippets-capable fake storage.
+	FakeSnippetStorage = "local"
+	// FakeCloudInitUser is the demo cloud-init account.
+	FakeCloudInitUser = "debian"
+	// FakeCloudInitDNS is the demo DNS server.
+	FakeCloudInitDNS = "10.0.0.1"
 	// FakeBridgeVMbr0 is the primary bridge fixture.
 	FakeBridgeVMbr0 = "vmbr0"
 )
