@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
@@ -25,28 +27,116 @@ type VMDetail struct {
 	writer     cluster.Writer
 	store      *store.Store
 	refresher  vm.IndexRefresher
+	limits     config.VMLimits
 	log        *slog.Logger
 }
 
 // NewVMDetail creates the handler. The writer is the cluster.Writer (separate
 // from the read Client — constitution IV); the refresher rebuilds the Index
 // after a write (FR-010).
-func NewVMDetail(projection *inventory.Projection, authHandler *Auth, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger) *VMDetail {
-	return &VMDetail{projection: projection, auth: authHandler, writer: writer, store: st, refresher: refresher, log: log}
+func NewVMDetail(projection *inventory.Projection, authHandler *Auth, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger, limits ...config.VMLimits) *VMDetail {
+	configuredLimits := config.DefaultVMLimits()
+	if len(limits) > 0 {
+		configuredLimits = limits[0]
+	}
+
+	return &VMDetail{
+		projection: projection,
+		auth:       authHandler,
+		writer:     writer,
+		store:      st,
+		refresher:  refresher,
+		limits:     configuredLimits,
+		log:        log,
+	}
 }
 
 type vmDetailDTO struct {
-	VMID          int      `json:"vmid"`
-	Name          string   `json:"name"`
-	Node          string   `json:"node"`
-	Pool          string   `json:"pool"`
-	Status        string   `json:"status"`
-	Tags          []string `json:"tags"`
-	CPUCores      int      `json:"cpuCores"`
-	MemoryTotal   int64    `json:"memoryTotal"`
-	DiskTotal     int64    `json:"diskTotal"`
-	UptimeSeconds int64    `json:"uptimeSeconds,omitempty"`
-	Description   string   `json:"description,omitempty"`
+	VMID              int                        `json:"vmid"`
+	Name              string                     `json:"name"`
+	Node              string                     `json:"node"`
+	Pool              string                     `json:"pool"`
+	Status            string                     `json:"status"`
+	Tags              []string                   `json:"tags"`
+	CPUCores          int                        `json:"cpuCores"`
+	MemoryTotal       int64                      `json:"memoryTotal"`
+	DiskTotal         int64                      `json:"diskTotal"`
+	Sockets           int                        `json:"sockets"`
+	Cores             int                        `json:"cores"`
+	Disks             []cluster.Disk             `json:"disks"`
+	CDROM             cluster.CDROMState         `json:"cdrom"`
+	NetworkInterfaces []cluster.NetworkInterface `json:"networkInterfaces"`
+	UptimeSeconds     int64                      `json:"uptimeSeconds,omitempty"`
+	Description       string                     `json:"description,omitempty"`
+}
+
+type diskRequest struct {
+	Bus     string `json:"bus"`
+	Storage string `json:"storage"`
+	SizeGB  int    `json:"sizeGB"`
+}
+
+type resizeDiskRequest struct {
+	SizeGB int `json:"sizeGB"`
+}
+
+type cdromRequest struct {
+	Action   string `json:"action"`
+	ISOVolID string `json:"isoVolId,omitempty"`
+}
+
+type networkRequest struct {
+	Interfaces []networkInterfaceRequest `json:"interfaces"`
+}
+
+type networkInterfaceRequest struct {
+	Index    int    `json:"index"`
+	Bridge   string `json:"bridge"`
+	Model    string `json:"model"`
+	VLAN     *int   `json:"vlan"`
+	RateMbps *int   `json:"rateMbps"`
+}
+
+type hardwareRequest struct {
+	Sockets  *int      `json:"sockets"`
+	Cores    *int      `json:"cores"`
+	MemoryMB *int      `json:"memoryMB"`
+	Tags     *[]string `json:"tags"`
+}
+
+type hardwareOptionsDTO struct {
+	Storages []hardwareStorageDTO `json:"storages"`
+	Bridges  []hardwareBridgeDTO  `json:"bridges"`
+	ISOs     []hardwareISODTO     `json:"isos"`
+	Limits   vmLimitsDTO          `json:"limits"`
+}
+
+type hardwareStorageDTO struct {
+	Node    string `json:"node"`
+	Storage string `json:"storage"`
+	Type    string `json:"type"`
+}
+
+type hardwareBridgeDTO struct {
+	Node   string `json:"node"`
+	Bridge string `json:"bridge"`
+}
+
+type hardwareISODTO struct {
+	VolID     string `json:"volId"`
+	Node      string `json:"node"`
+	Storage   string `json:"storage"`
+	Name      string `json:"name"`
+	SizeBytes int64  `json:"sizeBytes"`
+}
+
+type vmLimitsDTO struct {
+	MaxSockets        int            `json:"maxSockets"`
+	MaxCores          int            `json:"maxCores"`
+	MaxMemoryMB       int            `json:"maxMemoryMB"`
+	MaxDiskPerVMGB    int            `json:"maxDiskPerVMGB"`
+	MaxNetworkCards   int            `json:"maxNetworkCards"`
+	RemainingBusSlots map[string]int `json:"remainingBusSlots"`
 }
 
 type actionRequest struct {
@@ -67,6 +157,31 @@ type patchRequest struct {
 }
 
 func (h *VMDetail) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if strings.HasSuffix(r.URL.Path, "/hardware-options") {
+		h.handleHardwareOptions(w, r)
+		return
+	}
+
+	if strings.HasSuffix(r.URL.Path, "/disks") || r.PathValue("diskKey") != "" {
+		h.handleDisk(w, r)
+		return
+	}
+
+	if strings.HasSuffix(r.URL.Path, "/cdrom") {
+		h.handleCDROM(w, r)
+		return
+	}
+
+	if strings.HasSuffix(r.URL.Path, "/network") {
+		h.handleNetwork(w, r)
+		return
+	}
+
+	if strings.HasSuffix(r.URL.Path, "/hardware") {
+		h.handleHardware(w, r)
+		return
+	}
+
 	switch r.Method {
 	case http.MethodGet:
 		h.handleGet(w, r)
@@ -239,6 +354,500 @@ func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 	h.writeEntity(w, entity)
 }
 
+//nolint:gocyclo // one handler owns the shared Resolve/catalog setup for three disk verbs
+func (h *VMDetail) handleDisk(w http.ResponseWriter, r *http.Request) {
+	identity, err := h.auth.Principal(r)
+	if err != nil {
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		return
+	}
+
+	clusterName, vmid, ok := h.parsePath(r)
+	if !ok {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
+		return
+	}
+
+	index := h.projection.Load()
+	if index == nil {
+		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		return
+	}
+
+	resources, err := catalog.ApprovedResources(r.Context(), h.store, clusterName)
+	if err != nil {
+		h.log.Error("read hardware catalog failed", "component", "httpapi", "error", err)
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+
+		return
+	}
+
+	deps := vm.DiskDependencies{
+		Index:       index,
+		Actor:       identity,
+		ClusterName: clusterName,
+		VMID:        vmid,
+		Writer:      h.writer,
+		Resources:   resources,
+		Limits:      h.limits,
+		Audit:       h.store,
+		Refresher:   h.refresher,
+	}
+
+	switch r.Method {
+	case http.MethodPost:
+		var request diskRequest
+		if err := decodeJSON(w, r, &request); err != nil {
+			h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+			return
+		}
+
+		disk, err := vm.AddDisk(r.Context(), deps, cluster.DiskBus(request.Bus), request.Storage, request.SizeGB)
+		if err != nil {
+			h.writeDiskError(w, err)
+			return
+		}
+
+		h.writeJSONStatus(w, http.StatusOK, disk)
+	case http.MethodPut:
+		var request resizeDiskRequest
+		if err := decodeJSON(w, r, &request); err != nil {
+			h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+			return
+		}
+
+		if err := vm.ResizeDisk(r.Context(), deps, r.PathValue("diskKey"), request.SizeGB); err != nil {
+			h.writeDiskError(w, err)
+			return
+		}
+
+		refreshed := h.projection.Load()
+		if refreshed == nil {
+			h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+			return
+		}
+
+		entity, err := vm.Resolve(refreshed, identity, clusterName, vmid)
+		if err != nil {
+			h.writeResolveError(w, err)
+			return
+		}
+
+		for _, disk := range entity.Disks {
+			if disk.Key == r.PathValue("diskKey") {
+				h.writeJSONStatus(w, http.StatusOK, disk)
+				return
+			}
+		}
+
+		h.writeDiskError(w, vm.ErrDiskNotFound)
+	case http.MethodDelete:
+		if err := vm.DeleteDisk(r.Context(), deps, r.PathValue("diskKey")); err != nil {
+			h.writeDiskError(w, err)
+			return
+		}
+
+		h.writeJSONStatus(w, http.StatusOK, deleteResponse{Status: "deleted"})
+	default:
+		w.Header().Set("Allow", "POST, PUT, DELETE")
+		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+	}
+}
+
+func (h *VMDetail) handleCDROM(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPatch {
+		w.Header().Set("Allow", "PATCH")
+		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+
+		return
+	}
+
+	identity, err := h.auth.Principal(r)
+	if err != nil {
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		return
+	}
+
+	clusterName, vmid, ok := h.parsePath(r)
+	if !ok {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
+		return
+	}
+
+	index := h.projection.Load()
+	if index == nil {
+		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		return
+	}
+
+	resources, err := catalog.ApprovedResources(r.Context(), h.store, clusterName)
+	if err != nil {
+		h.log.Error("read hardware catalog failed", "component", "httpapi", "error", err)
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+
+		return
+	}
+
+	var request cdromRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		return
+	}
+
+	state, err := vm.SetCDROM(r.Context(), vm.CDROMDependencies{
+		Index:       index,
+		Actor:       identity,
+		ClusterName: clusterName,
+		VMID:        vmid,
+		Writer:      h.writer,
+		Resources:   resources,
+		Audit:       h.store,
+		Refresher:   h.refresher,
+	}, request.Action, request.ISOVolID)
+	if err != nil {
+		h.writeCDROMError(w, err)
+		return
+	}
+
+	h.writeJSONStatus(w, http.StatusOK, state)
+}
+
+func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		w.Header().Set("Allow", "PUT")
+		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+
+		return
+	}
+
+	identity, err := h.auth.Principal(r)
+	if err != nil {
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		return
+	}
+
+	clusterName, vmid, ok := h.parsePath(r)
+	if !ok {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
+		return
+	}
+
+	index := h.projection.Load()
+	if index == nil {
+		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		return
+	}
+
+	var request hardwareRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		return
+	}
+
+	if request.Sockets == nil && request.Cores == nil && request.MemoryMB == nil && request.Tags == nil {
+		h.writeDetailError(w, http.StatusBadRequest, "empty_patch", "at least one hardware field is required")
+		return
+	}
+
+	err = vm.UpdateHardware(r.Context(), vm.HardwareDependencies{
+		Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: h.writer,
+		Limits: h.limits, Audit: h.store, Refresher: h.refresher,
+	}, vm.HardwarePatch{Sockets: request.Sockets, Cores: request.Cores, MemoryMB: request.MemoryMB, Tags: request.Tags})
+	if err != nil {
+		h.writeHardwareError(w, err)
+		return
+	}
+
+	refreshed := h.projection.Load()
+	if refreshed == nil {
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+
+	entity, err := vm.Resolve(refreshed, identity, clusterName, vmid)
+	if err != nil {
+		h.writeResolveError(w, err)
+		return
+	}
+
+	h.writeEntity(w, entity)
+}
+
+func (h *VMDetail) writeHardwareError(w http.ResponseWriter, err error) {
+	if h.writeCommonVMError(w, err) {
+		return
+	}
+
+	switch {
+	case errors.Is(err, vm.ErrEmptyHardwarePatch):
+		h.writeDetailError(w, http.StatusBadRequest, "empty_patch", err.Error())
+	case errors.Is(err, vm.ErrHardwareExceedsLimit):
+		h.writeDetailError(w, http.StatusBadRequest, "hardware_exceeds_limit", err.Error())
+	default:
+		h.writeUnhandledVMError(w, "vm hardware operation failed", err)
+	}
+}
+
+func (h *VMDetail) writeCommonVMError(w http.ResponseWriter, err error) bool {
+	switch {
+	case errors.Is(err, vm.ErrForbidden):
+		h.writeDetailError(w, http.StatusForbidden, "forbidden", "not your VM")
+	case errors.Is(err, vm.ErrNotFound):
+		h.writeDetailError(w, http.StatusNotFound, "not_found", "VM not found")
+	default:
+		return false
+	}
+
+	return true
+}
+
+func (h *VMDetail) writeUnhandledVMError(w http.ResponseWriter, message string, err error) {
+	h.log.Error(message, "component", "httpapi", "error", err)
+	h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+}
+
+func (h *VMDetail) handleNetwork(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		w.Header().Set("Allow", "PUT")
+		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+
+		return
+	}
+
+	identity, err := h.auth.Principal(r)
+	if err != nil {
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		return
+	}
+
+	clusterName, vmid, ok := h.parsePath(r)
+	if !ok {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
+		return
+	}
+
+	index := h.projection.Load()
+	if index == nil {
+		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		return
+	}
+
+	resources, err := catalog.ApprovedResources(r.Context(), h.store, clusterName)
+	if err != nil {
+		h.log.Error("read hardware catalog failed", "component", "httpapi", "error", err)
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+
+		return
+	}
+
+	var request networkRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		return
+	}
+
+	interfaces := make([]cluster.NetworkInterface, 0, len(request.Interfaces))
+	for _, iface := range request.Interfaces {
+		interfaces = append(interfaces, cluster.NetworkInterface{
+			Index: iface.Index, Bridge: iface.Bridge, Model: iface.Model, VLAN: iface.VLAN, RateMbps: iface.RateMbps,
+		})
+	}
+
+	updated, err := vm.UpdateNetwork(r.Context(), vm.NetworkDependencies{
+		Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: h.writer,
+		Resources: resources, Limits: h.limits, Audit: h.store, Refresher: h.refresher,
+	}, interfaces)
+	if err != nil {
+		h.writeNetworkError(w, err)
+		return
+	}
+
+	h.writeJSONStatus(w, http.StatusOK, updated)
+}
+
+func (h *VMDetail) writeNetworkError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, vm.ErrForbidden):
+		h.writeDetailError(w, http.StatusForbidden, "forbidden", "not your VM")
+	case errors.Is(err, vm.ErrNotFound):
+		h.writeDetailError(w, http.StatusNotFound, "not_found", "VM not found")
+	case errors.Is(err, vm.ErrBridgeNotApproved):
+		h.writeDetailError(w, http.StatusBadRequest, "bridge_not_approved", err.Error())
+	case errors.Is(err, vm.ErrNetworkCardsExceedLimit):
+		h.writeDetailError(w, http.StatusBadRequest, "network_cards_exceed_limit", err.Error())
+	case errors.Is(err, vm.ErrInvalidNetworkModel), errors.Is(err, vm.ErrDuplicateNetworkIndex):
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", err.Error())
+	default:
+		h.log.Error("vm network operation failed", "component", "httpapi", "error", err)
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+	}
+}
+
+func (h *VMDetail) writeCDROMError(w http.ResponseWriter, err error) {
+	if h.writeCommonVMError(w, err) {
+		return
+	}
+
+	switch {
+	case errors.Is(err, vm.ErrInvalidCDROMAction):
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_action", err.Error())
+	case errors.Is(err, vm.ErrISOVolumeNotApproved):
+		h.writeDetailError(w, http.StatusBadRequest, "iso_not_approved", err.Error())
+	default:
+		h.writeUnhandledVMError(w, "vm cdrom operation failed", err)
+	}
+}
+
+func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", "GET")
+		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+
+		return
+	}
+
+	identity, err := h.auth.Principal(r)
+	if err != nil {
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		return
+	}
+
+	clusterName, vmid, ok := h.parsePath(r)
+	if !ok {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
+		return
+	}
+
+	index := h.projection.Load()
+	if index == nil {
+		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		return
+	}
+
+	entity, err := vm.Resolve(index, identity, clusterName, vmid)
+	if err != nil {
+		h.writeResolveError(w, err)
+		return
+	}
+
+	resources, err := catalog.ApprovedResources(r.Context(), h.store, clusterName)
+	if err != nil {
+		h.log.Error("read hardware catalog failed", "component", "httpapi", "error", err)
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+
+		return
+	}
+
+	remaining := map[string]int{}
+
+	for bus, max := range map[cluster.DiskBus]int{
+		cluster.DiskBusVirtio: 16,
+		cluster.DiskBusSCSI:   31,
+		cluster.DiskBusSATA:   6,
+		cluster.DiskBusIDE:    3,
+	} {
+		used := 0
+
+		for _, disk := range entity.Disks {
+			if disk.Bus == bus {
+				used++
+			}
+		}
+
+		remaining[string(bus)] = max - used
+	}
+
+	h.writeJSONStatus(w, http.StatusOK, hardwareOptionsDTO{
+		Storages: hardwareStorages(resources.Storages, index),
+		Bridges:  hardwareBridges(resources.Bridges, entity.Node),
+		ISOs:     hardwareISOs(resources.ISOs, resources.Storages),
+		Limits: vmLimitsDTO{
+			MaxSockets:        h.limits.MaxSockets,
+			MaxCores:          h.limits.MaxCores,
+			MaxMemoryMB:       h.limits.MaxMemoryMB,
+			MaxDiskPerVMGB:    h.limits.MaxDiskPerVMGB,
+			MaxNetworkCards:   h.limits.MaxNetworkCards,
+			RemainingBusSlots: remaining,
+		},
+	})
+}
+
+func hardwareStorages(storages []catalog.Storage, index *inventory.Index) []hardwareStorageDTO {
+	result := make([]hardwareStorageDTO, 0, len(storages))
+	for _, storage := range storages {
+		storageType := ""
+
+		for _, available := range index.StoragesByNode[storage.Node] {
+			if available.Name == storage.Name {
+				storageType = available.Type
+				break
+			}
+		}
+
+		result = append(result, hardwareStorageDTO{Node: storage.Node, Storage: storage.Name, Type: storageType})
+	}
+
+	return result
+}
+
+func hardwareBridges(bridges []string, node string) []hardwareBridgeDTO {
+	result := make([]hardwareBridgeDTO, 0, len(bridges))
+	for _, bridge := range bridges {
+		result = append(result, hardwareBridgeDTO{Node: node, Bridge: bridge})
+	}
+
+	return result
+}
+
+func hardwareISOs(isos []catalog.ISO, storages []catalog.Storage) []hardwareISODTO {
+	result := make([]hardwareISODTO, 0, len(isos))
+	for _, iso := range isos {
+		node := ""
+
+		for _, storage := range storages {
+			if storage.Name == iso.Storage {
+				node = storage.Node
+				break
+			}
+		}
+
+		result = append(result, hardwareISODTO{
+			VolID: iso.Storage + ":iso/" + iso.File,
+			Node:  node, Storage: iso.Storage, Name: iso.File,
+		})
+	}
+
+	return result
+}
+
+func (h *VMDetail) writeDiskError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, vm.ErrForbidden):
+		h.writeDetailError(w, http.StatusForbidden, "forbidden", "not your VM")
+	case errors.Is(err, vm.ErrNotFound):
+		h.writeDetailError(w, http.StatusNotFound, "not_found", "VM not found")
+	case errors.Is(err, vm.ErrDiskNotFound):
+		h.writeDetailError(w, http.StatusNotFound, "disk_not_found", err.Error())
+	case errors.Is(err, vm.ErrBootDiskProtected):
+		h.writeDetailError(w, http.StatusBadRequest, "boot_disk_protected", "the boot disk cannot be deleted")
+	case errors.Is(err, vm.ErrVMNotStopped):
+		h.writeDetailError(w, http.StatusBadRequest, "vm_not_stopped", err.Error())
+	case errors.Is(err, vm.ErrDiskStorageNotApproved):
+		h.writeDetailError(w, http.StatusBadRequest, "storage_not_approved", err.Error())
+	case errors.Is(err, vm.ErrDiskSizeExceedsLimit):
+		h.writeDetailError(w, http.StatusBadRequest, "disk_size_exceeds_limit", err.Error())
+	case errors.Is(err, vm.ErrDiskSizeNotGreater):
+		h.writeDetailError(w, http.StatusBadRequest, "disk_size_not_greater", err.Error())
+	case errors.Is(err, vm.ErrBusFull):
+		h.writeDetailError(w, http.StatusBadRequest, "bus_full", err.Error())
+	case errors.Is(err, cluster.ErrNotFound):
+		h.writeDetailError(w, http.StatusBadGateway, "cluster_error", "cluster rejected the request")
+	default:
+		h.log.Error("vm disk operation failed", "component", "httpapi", "error", err)
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+	}
+}
+
 // parsePath extracts :cluster and :vmid from the route pattern
 // /api/v1/vms/{cluster}/{vmid}[...]. Returns ok=false if vmid is not a valid int.
 func (h *VMDetail) parsePath(r *http.Request) (string, int, bool) {
@@ -272,16 +881,21 @@ func parseIntPathValue(r *http.Request, key string) (int, error) {
 
 func (h *VMDetail) writeEntity(w http.ResponseWriter, entity vm.Entity) {
 	dto := vmDetailDTO{
-		VMID:        entity.VMID,
-		Name:        entity.Name,
-		Node:        entity.Node,
-		Pool:        entity.Pool,
-		Status:      string(entity.Status),
-		Tags:        entity.Tags,
-		CPUCores:    entity.CPUCores,
-		MemoryTotal: entity.MemoryTotal,
-		DiskTotal:   entity.DiskTotal,
-		Description: entity.Description,
+		VMID:              entity.VMID,
+		Name:              entity.Name,
+		Node:              entity.Node,
+		Pool:              entity.Pool,
+		Status:            string(entity.Status),
+		Tags:              entity.Tags,
+		CPUCores:          entity.CPUCores,
+		MemoryTotal:       entity.MemoryTotal,
+		DiskTotal:         entity.DiskTotal,
+		Sockets:           entity.Sockets,
+		Cores:             entity.Cores,
+		Disks:             entity.Disks,
+		CDROM:             entity.CDROM,
+		NetworkInterfaces: entity.NetworkInterfaces,
+		Description:       entity.Description,
 	}
 	if entity.Uptime > 0 {
 		dto.UptimeSeconds = int64(entity.Uptime.Seconds())

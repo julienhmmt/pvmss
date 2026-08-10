@@ -11,9 +11,13 @@ import (
 )
 
 const (
-	testClusterName = "default"
-	testPvmssTag    = "pvmss"
-	testWebTag      = "web"
+	testClusterName  = "default"
+	testPvmssTag     = "pvmss"
+	testWebTag       = "web"
+	testBridgeVMbr0  = "vmbr0"
+	testBridgeVMbr1  = "vmbr1"
+	testModelVirtio  = "virtio"
+	testNonOwnerCase = "reject non-owner"
 )
 
 // testIndex builds a small projection across two pools and two nodes —

@@ -46,7 +46,7 @@ func TestRouter_SPAFallback(t *testing.T) {
 	)
 	vms := httpapi.NewVMs(inventory.NewProjection(), newAuthHandler(t), 100, -1, logger)
 	vmDetail := httpapi.NewVMDetail(inventory.NewProjection(), newAuthHandler(t), cluster.Fake{}, nil, nil, logger)
-	mux := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, nil, nil, newAuthHandler(t), dir, logger)
+	mux := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, nil, nil, nil, newAuthHandler(t), dir, logger)
 
 	cases := []struct {
 		method     string
@@ -81,6 +81,34 @@ func TestRouter_SPAFallback(t *testing.T) {
 	}
 }
 
+const cloudInitRoutePath = "/api/v1/vms/default/101/cloudinit"
+
+//nolint:wsl_v5,paralleltest // route assertions use shared router fixture
+func TestRouter_CloudInitRoutesAreSpecific(t *testing.T) {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	authHandler := newAuthHandler(t)
+	projection := inventory.NewProjection()
+	health := httpapi.NewHealth(fakePinger{}, logger)
+	clusterNodes := httpapi.NewClusterNodes(projection, logger)
+	clusterRefresh := httpapi.NewClusterRefresh(inventory.NewRefresher(inventory.NewWorker(&stubClusterClient{}, projection, time.Hour, logger), 5*time.Second), logger)
+	vms := httpapi.NewVMs(projection, authHandler, 100, -1, logger)
+	vmDetail := httpapi.NewVMDetail(projection, authHandler, cluster.Fake{}, nil, nil, logger)
+	cloudInit := httpapi.NewVMCloudInit(projection, authHandler, cluster.Fake{}, cluster.Fake{}, nil, nil, logger)
+	mux := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, cloudInit, nil, nil, authHandler, "", logger)
+
+	for _, path := range []string{
+		cloudInitRoutePath,
+		"/api/v1/vms/default/101/cloudinit/snippet",
+	} {
+		recorder := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodGet, path, nil)
+		mux.ServeHTTP(recorder, request)
+		if recorder.Code != http.StatusUnauthorized {
+			t.Fatalf("GET %s status = %d, want 401 (route reached handler)", path, recorder.Code)
+		}
+	}
+}
+
 //nolint:paralleltest // serial: shared router and filesystem fixtures
 func TestRouter_MissingBuildDir_HealthStillWorks(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -95,7 +123,7 @@ func TestRouter_MissingBuildDir_HealthStillWorks(t *testing.T) {
 	)
 	vms := httpapi.NewVMs(inventory.NewProjection(), newAuthHandler(t), 100, -1, logger)
 	vmDetail := httpapi.NewVMDetail(inventory.NewProjection(), newAuthHandler(t), cluster.Fake{}, nil, nil, logger)
-	mux := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, nil, nil, newAuthHandler(t), "", logger)
+	mux := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, nil, nil, nil, newAuthHandler(t), "", logger)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/health", nil)

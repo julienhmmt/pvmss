@@ -1,3 +1,4 @@
+//nolint:wsl_v5 // existing decoder style is preserved while adding bounded trailing-value checks
 package httpapi
 
 import (
@@ -5,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"pvmss/server/internal/auth"
@@ -303,13 +305,20 @@ func (h *Auth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, dest any) error {
+	return decodeJSONLimit(w, r, dest, 4096)
+}
+
+func decodeJSONLimit(w http.ResponseWriter, r *http.Request, dest any, maxBytes int64) error {
 	defer func() { _ = r.Body.Close() }()
 
-	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096))
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBytes))
 	decoder.DisallowUnknownFields()
 
 	if err := decoder.Decode(dest); err != nil {
 		return fmt.Errorf("decode request: %w", err)
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		return errors.New("decode request: multiple JSON values")
 	}
 
 	return nil
