@@ -1,4 +1,5 @@
 import { getContext, setContext } from 'svelte';
+import { SvelteDate } from 'svelte/reactivity';
 import type { CreateMode } from './create.svelte';
 
 export const DRAFT_STORAGE_KEY = 'pvmss-vm-create-draft';
@@ -87,7 +88,7 @@ export class DraftStore {
 		const draft: StoredDraft = {
 			schemaVersion: DRAFT_SCHEMA_VERSION,
 			values,
-			savedAt: new Date().toISOString()
+			savedAt: new SvelteDate().toISOString()
 		};
 		localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
 	}

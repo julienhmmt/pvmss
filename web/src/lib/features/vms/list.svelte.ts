@@ -1,4 +1,5 @@
 import { getContext, setContext } from 'svelte';
+import { SvelteURLSearchParams } from 'svelte/reactivity';
 import { get, ApiRequestError } from '$lib/shared/api/client';
 
 export type VmStatus = 'running' | 'stopped' | 'paused';
@@ -74,7 +75,7 @@ export class VmListStore {
 	constructor(options: VmListStoreOptions) {
 		this.scope = options.scope;
 		this.#navigate = options.navigate;
-		const params = new URLSearchParams(options.initialQuery);
+		const params = new SvelteURLSearchParams(options.initialQuery);
 		this.search = params.get('search') ?? '';
 		this.status = (params.get('status') ?? '') as VmStatus | '';
 		this.node = params.get('node') ?? '';
@@ -86,7 +87,7 @@ export class VmListStore {
 
 	/** Builds the query string for the current state; only non-default values appear. */
 	queryString(): string {
-		const params = new URLSearchParams();
+		const params = new SvelteURLSearchParams();
 		if (this.search !== '') params.set('search', this.search);
 		if (this.status !== '') params.set('status', this.status);
 		if (this.node !== '') params.set('node', this.node);
