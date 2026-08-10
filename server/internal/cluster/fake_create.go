@@ -14,8 +14,10 @@ import (
 
 // fakeTask tracks one in-flight creation's poll count.
 type fakeTask struct {
-	upid  string
-	polls int
+	upid       string
+	polls      int
+	onComplete func()
+	log        []string
 }
 
 var (
@@ -97,7 +99,7 @@ func (Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 		fakeTasks = make(map[string]*fakeTask)
 	}
 
-	fakeTasks[upid] = &fakeTask{upid: upid}
+	fakeTasks[upid] = &fakeTask{upid: upid, log: []string{"allocating disk...", "starting qmcreate..."}}
 	fakeCreateMutex.Unlock()
 
 	recordCall(FakeCall{Node: spec.Node, VMID: spec.VMID, Action: "create", Name: spec.Name})
@@ -107,21 +109,32 @@ func (Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 
 // TaskStatus implements Creator. Poll-count-based: running for a UPID's first
 // two queries, ok from the third onward (SC-006 — deterministic, no sleeps).
+//
+//nolint:wsl_v5 // task completion releases the lock before invoking callbacks
 func (Fake) TaskStatus(_ context.Context, upid string) (TaskStatus, error) {
 	fakeCreateMutex.Lock()
-	defer fakeCreateMutex.Unlock()
-
 	task, ok := fakeTasks[upid]
 	if !ok {
+		fakeCreateMutex.Unlock()
 		return TaskStatus{}, ErrNotFound
 	}
 
 	task.polls++
+	log := append([]string(nil), task.log...)
 	if task.polls < 3 {
-		return TaskStatus{UPID: upid, State: TaskRunning, Log: []string{"allocating disk...", "starting qmcreate..."}}, nil
+		fakeCreateMutex.Unlock()
+		return TaskStatus{UPID: upid, State: TaskRunning, Log: log}, nil
 	}
 
-	return TaskStatus{UPID: upid, State: TaskOK, Log: []string{"allocating disk...", "starting qmcreate...", "TASK OK"}}, nil
+	onComplete := task.onComplete
+	task.onComplete = nil
+	fakeCreateMutex.Unlock()
+	if onComplete != nil {
+		onComplete()
+	}
+
+	log = append(log, "TASK OK")
+	return TaskStatus{UPID: upid, State: TaskOK, Log: log}, nil
 }
 
 // resetFakeCreateState clears Creator state. Called by ResetFake.
@@ -130,5 +143,6 @@ func resetFakeCreateState() {
 	defer fakeCreateMutex.Unlock()
 
 	fakeNextVMID = 0
+	fakeNextSnapshotTaskID = 0
 	fakeTasks = nil
 }

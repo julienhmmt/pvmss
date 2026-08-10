@@ -9,6 +9,7 @@ type VMLimits struct {
 	MaxMemoryMB     int
 	MaxDiskPerVMGB  int
 	MaxNetworkCards int
+	MaxSnapshots    int
 }
 
 // DefaultVMLimits returns the safe demonstration bounds used by T07.
@@ -19,5 +20,6 @@ func DefaultVMLimits() VMLimits {
 		MaxMemoryMB:     16384,
 		MaxDiskPerVMGB:  500,
 		MaxNetworkCards: 4,
+		MaxSnapshots:    5,
 	}
 }

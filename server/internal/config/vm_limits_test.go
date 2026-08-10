@@ -16,6 +16,7 @@ func TestDefaultVMLimits(t *testing.T) {
 		MaxMemoryMB:     16384,
 		MaxDiskPerVMGB:  500,
 		MaxNetworkCards: 4,
+		MaxSnapshots:    5,
 	}
 	if limits != want {
 		t.Fatalf("DefaultVMLimits() = %+v, want %+v", limits, want)

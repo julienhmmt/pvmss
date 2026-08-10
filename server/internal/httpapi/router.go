@@ -25,7 +25,7 @@ type spaHandler struct {
 }
 
 // NewRouter wires the public API and the static SPA handler.
-func NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail http.Handler, vmCloudInit *VMCloudInit, vmCreate *VMCreate, tasks *Tasks, auth *Auth, webBuildDir string, log *slog.Logger) *http.ServeMux {
+func NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail http.Handler, vmCloudInit *VMCloudInit, vmCreate *VMCreate, tasks *Tasks, auth *Auth, webBuildDir string, log *slog.Logger, snapshotHandlers ...*VMSnapshots) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("GET /health", health)
 	mux.Handle("GET /api/v1/cluster/nodes", auth.Require(clusterNodes))
@@ -62,6 +62,13 @@ func NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail http.Handler,
 		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit", vmCloudInit)
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", vmCloudInit)
 		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", vmCloudInit)
+	}
+	if len(snapshotHandlers) > 0 && snapshotHandlers[0] != nil {
+		snapshots := snapshotHandlers[0]
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/snapshots", snapshots)
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/snapshots", snapshots)
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/rollback", snapshots)
+		mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/snapshots/{name}", snapshots)
 	}
 	mux.HandleFunc("POST /api/v1/auth/login", auth.Login)
 	mux.HandleFunc("POST /api/v1/auth/admin-login", auth.AdminLogin)

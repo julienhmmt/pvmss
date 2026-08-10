@@ -1,7 +1,7 @@
 import { getContext, setContext } from 'svelte';
 import { get, ApiRequestError } from '$lib/shared/api/client';
 
-export type TaskKind = 'vm_create';
+export type TaskKind = 'vm_create' | 'vm_snapshot_create' | 'vm_snapshot_rollback' | 'vm_snapshot_delete';
 
 export interface TrackedTask {
 	upid: string;
@@ -93,13 +93,7 @@ export class TaskTrayStore {
 		try {
 			const status = await get<TaskStatusResponse>(`/api/v1/tasks/${encodeURIComponent(task.upid)}`);
 			if (status.state === 'running') return;
-			this.#finish(task, {
-				kind: status.state === 'ok' ? 'success' : 'error',
-				message:
-					status.state === 'ok'
-						? `VM "${task.name}" created`
-						: `VM "${task.name}" creation failed: ${status.exitMessage ?? 'unknown error'}`
-			});
+			this.#finish(task, taskToast(task, status));
 		} catch (error: unknown) {
 			// A 404 means the task is unknown/expired server-side — stop
 			// tracking it rather than polling forever (edge case: the tray is
@@ -118,6 +112,18 @@ export class TaskTrayStore {
 		}
 		if (this.tasks.length === 0) this.#stopPolling();
 	}
+}
+
+function taskToast(task: TrackedTask, status: TaskStatusResponse): TaskToast {
+	const labels: Record<TaskKind, { subject: string; success: string; failure: string }> = {
+		vm_create: { subject: 'VM', success: 'created', failure: 'creation failed' },
+		vm_snapshot_create: { subject: 'Snapshot', success: 'created', failure: 'creation failed' },
+		vm_snapshot_rollback: { subject: 'VM', success: 'rolled back', failure: 'snapshot rollback failed' },
+		vm_snapshot_delete: { subject: 'Snapshot', success: 'deleted', failure: 'snapshot deletion failed' }
+	};
+	const label = labels[task.kind];
+	if (status.state === 'ok') return { kind: 'success', message: `${label.subject} "${task.name}" ${label.success}` };
+	return { kind: 'error', message: `${label.subject} "${task.name}" ${label.failure}: ${status.exitMessage ?? 'unknown error'}` };
 }
 
 const TASK_TRAY_CONTEXT_KEY = Symbol('task-tray');
