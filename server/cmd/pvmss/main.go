@@ -198,12 +198,23 @@ func buildRouter(
 		return nil, errors.New("cluster client does not implement CloudInitReader")
 	}
 
+	snapshotReader, ok := clusterClient.(cluster.SnapshotReader)
+	if !ok {
+		return nil, errors.New("cluster client does not implement SnapshotReader")
+	}
+
+	snapshotWriter, ok := clusterClient.(cluster.SnapshotWriter)
+	if !ok {
+		return nil, errors.New("cluster client does not implement SnapshotWriter")
+	}
+
 	vmDetail := httpapi.NewVMDetail(projection, authHandler, writer, st, worker, logger)
 	vmCloudInit := httpapi.NewVMCloudInit(projection, authHandler, cloudInitReader, writer, st, worker, logger)
 	vmCreate := httpapi.NewVMCreate(authHandler, st, creator, logger)
 	tasks := httpapi.NewTasks(authHandler, creator, worker, logger)
+	snapshots := httpapi.NewVMSnapshots(projection, authHandler, snapshotReader, snapshotWriter, st, logger)
 
-	return httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, vmCloudInit, vmCreate, tasks, authHandler, webDir, logger), nil
+	return httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, vmCloudInit, vmCreate, tasks, authHandler, webDir, logger, snapshots), nil
 }
 
 // resolveWebBuildDir returns the absolute path to the static web build directory.

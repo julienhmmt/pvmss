@@ -49,6 +49,7 @@ var (
 	}
 	fakeCloudInitConfigs = originalFakeCloudInitConfigs()
 	fakeCloudInitDrives  = make(map[fakeCloudInitKey]bool)
+	fakeSnapshots        = make(map[fakeSnapshotKey][]VMSnapshot)
 )
 
 type fakeCloudInitKey struct {
@@ -465,6 +466,7 @@ func ResetFake() {
 	fakeVMs = originalFakeVMs()
 	fakeCloudInitConfigs = originalFakeCloudInitConfigs()
 	fakeCloudInitDrives = make(map[fakeCloudInitKey]bool)
+	fakeSnapshots = make(map[fakeSnapshotKey][]VMSnapshot)
 	fakeCallLog = nil
 
 	fakeCloudInitPush.Lock()
@@ -567,11 +569,11 @@ var fakePools = []Pool{
 }
 
 var fakeStorages = []Storage{
-	{Name: "local", Node: FakeNode01, Type: "dir", Total: 2199023255552, Used: 879609302220},
-	{Name: FakeStorageLocalLVM, Node: FakeNode01, Type: "lvm", Total: 549755813888, Used: 219902325555},
-	{Name: "ceph-data", Node: FakeNode02, Type: "cephfs", Total: 1099511627776, Used: 329853488332},
-	{Name: "local", Node: FakeNode02, Type: "dir", Total: 274877906944, Used: 68719476736},
-	{Name: "backup-nfs", Node: FakeNode03, Type: "nfs", Total: 5497558138880, Used: 1099511627776},
+	{Name: "local", Node: FakeNode01, Type: "dir", Total: 2199023255552, Used: 879609302220, SupportsVMState: false},
+	{Name: FakeStorageLocalLVM, Node: FakeNode01, Type: "lvm", Total: 549755813888, Used: 219902325555, SupportsVMState: true},
+	{Name: "ceph-data", Node: FakeNode02, Type: "cephfs", Total: 1099511627776, Used: 329853488332, SupportsVMState: true},
+	{Name: "local", Node: FakeNode02, Type: "dir", Total: 274877906944, Used: 68719476736, SupportsVMState: false},
+	{Name: "backup-nfs", Node: FakeNode03, Type: "nfs", Total: 5497558138880, Used: 1099511627776, SupportsVMState: false},
 }
 
 // fakeUptimeOnStart is the uptime the fake assigns when a stopped VM is started

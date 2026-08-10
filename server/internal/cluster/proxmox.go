@@ -33,6 +33,26 @@ func (Proxmox) FindSnippetStorage(_ context.Context, _ string) (string, error) {
 	return "", ErrNotImplemented
 }
 
+// ListSnapshots implements SnapshotReader.
+func (Proxmox) ListSnapshots(_ context.Context, _ string, _ int) ([]VMSnapshot, error) {
+	return nil, ErrNotImplemented
+}
+
+// CreateSnapshot implements SnapshotWriter.
+func (Proxmox) CreateSnapshot(_ context.Context, _ string, _ int, _, _ string, _ bool) (string, error) {
+	return "", ErrNotImplemented
+}
+
+// RollbackSnapshot implements SnapshotWriter.
+func (Proxmox) RollbackSnapshot(_ context.Context, _ string, _ int, _ string) (string, error) {
+	return "", ErrNotImplemented
+}
+
+// DeleteSnapshot implements SnapshotWriter.
+func (Proxmox) DeleteSnapshot(_ context.Context, _ string, _ int, _ string) (string, error) {
+	return "", ErrNotImplemented
+}
+
 // Action implements Writer.
 func (Proxmox) Action(_ context.Context, _ string, _ int, _ string) error {
 	return ErrNotImplemented

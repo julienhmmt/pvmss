@@ -224,11 +224,32 @@ type VM struct {
 
 // Storage is a storage backend attached to a node.
 type Storage struct {
-	Name  string
-	Node  string
-	Type  string
-	Total int64
-	Used  int64
+	Name            string
+	Node            string
+	Type            string
+	Total           int64
+	Used            int64
+	SupportsVMState bool
+}
+
+// VMSnapshot is a live snapshot entry returned by a cluster for one VM.
+type VMSnapshot struct {
+	Name        string
+	Description string
+	CreatedAt   time.Time
+	VMState     bool
+}
+
+// SnapshotReader reads live snapshots for a resolved VM.
+type SnapshotReader interface {
+	ListSnapshots(ctx context.Context, node string, vmid int) ([]VMSnapshot, error)
+}
+
+// SnapshotWriter dispatches asynchronous snapshot operations for a resolved VM.
+type SnapshotWriter interface {
+	CreateSnapshot(ctx context.Context, node string, vmid int, name, description string, vmstate bool) (string, error)
+	RollbackSnapshot(ctx context.Context, node string, vmid int, name string) (string, error)
+	DeleteSnapshot(ctx context.Context, node string, vmid int, name string) (string, error)
 }
 
 // Pool is a tenancy anchor — one pool maps to one user (PD00).
