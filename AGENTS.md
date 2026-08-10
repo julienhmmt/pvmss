@@ -59,9 +59,12 @@ make docker-build
 
 ## MANDATORY: Graph-First Workflow
 
-**Before creating or modifying code in ANY folder, consult the knowledge graph
-for that folder first.** Do not explore with Grep/Glob/Read alone, and never
-write new code without graph context on the surrounding architecture.
+**Grep/Glob as a first move is a workflow violation, not a shortcut.** Before
+creating or modifying code in ANY folder, consult the knowledge graph for that
+folder first. Broad, unscoped Grep/Glob sweeps to "find where X lives" or
+"understand how Y works" are exactly what the graph replaces — if you catch
+yourself about to grep the whole tree for a symbol or concept, stop and check
+the graph instead.
 
 Two complementary graphs exist:
 
@@ -70,14 +73,15 @@ Two complementary graphs exist:
 2. **graphify static snapshots** — `<folder>/graphify-out/` directories.
    Agent-crawlable, no MCP required, work with any model.
 
-### Procedure (follow in order)
+### Procedure (follow in order — do not skip to Grep)
 
 1. **Locate the graph** for the folder you are about to touch:
    - If code-review-graph MCP tools are available → use them (table below).
    - Else look for `<folder>/graphify-out/GRAPH_REPORT.md`.
-2. **If a graphify snapshot exists**: read `GRAPH_REPORT.md` first (communities,
-   god nodes = core abstractions), then the relevant `wiki/*.md` article, then
-   `graph.json` only if you need exact nodes/edges.
+2. **If a graphify snapshot exists**: start at `graphify-out/wiki/index.md`
+   (or `GRAPH_REPORT.md` if no wiki) for communities and god nodes = core
+   abstractions, then the relevant `wiki/*.md` article for the node/area in
+   question, then `graph.json` only if you need exact edge data.
 3. **If NO snapshot exists for that folder, create one before coding:**
    `/graphify <folder>`. Current coverage: `server/`, `web/`, and a merged
    server+web graph at root `graphify-out/`. **`backend/` and `frontend/` have
@@ -86,8 +90,10 @@ Two complementary graphs exist:
 4. **If the snapshot is stale** (files modified after the date in
    `GRAPH_REPORT.md`'s header): refresh with `/graphify <folder> --update`
    (incremental, only re-extracts changed files).
-5. **Only then** fall back to Grep/Glob/Read for anything the graph could not
-   answer (exact string literals, config values, generated files).
+5. **Grep/Glob/Read are last resort, scoped, and justified** — use them only
+   for what the graph cannot answer (exact string literals, config values,
+   generated files, or a specific path the graph already pointed you to).
+   Never use them as the first exploration step in a folder that has a graph.
 
 ### code-review-graph MCP tools
 
