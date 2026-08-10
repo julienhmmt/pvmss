@@ -187,12 +187,15 @@ func TestLoad(t *testing.T) {
 		{
 			name: "explicit cluster source proxmox",
 			env: map[string]string{
-				envPort:                "50001",
-				envDBPath:              testDBPath,
-				envLogLevel:            testLogLevel,
-				envLogFormat:           testLogFormat,
-				envLogOutput:           testLogOutput,
-				"PVMSS_CLUSTER_SOURCE": "proxmox",
+				envPort:                   "50001",
+				envDBPath:                 testDBPath,
+				envLogLevel:               testLogLevel,
+				envLogFormat:              testLogFormat,
+				envLogOutput:              testLogOutput,
+				"PVMSS_CLUSTER_SOURCE":    "proxmox",
+				"PROXMOX_URL":             "https://proxmox.example.com",
+				"PROXMOX_API_TOKEN_NAME":  "root@pam!pvmss",
+				"PROXMOX_API_TOKEN_VALUE": "token-value",
 			},
 			want: config.Configuration{
 				Host:                              testHost,
@@ -202,6 +205,9 @@ func TestLoad(t *testing.T) {
 				LogFormat:                         testLogFormat,
 				LogOutput:                         testLogOutput,
 				ClusterSource:                     "proxmox",
+				ProxmoxURL:                        "https://proxmox.example.com",
+				ProxmoxAPITokenName:               "root@pam!pvmss",
+				ProxmoxAPITokenValue:              "token-value",
 				InventoryRefreshInterval:          30 * time.Second,
 				InventoryManualRefreshMinInterval: 5 * time.Second,
 				InventoryRefreshTimeout:           15 * time.Second,
@@ -347,6 +353,9 @@ func TestLoad(t *testing.T) {
 			t.Setenv("PVMSS_V04_INVENTORY_REFRESH_INTERVAL", tt.env["PVMSS_V04_INVENTORY_REFRESH_INTERVAL"])
 			t.Setenv("PVMSS_V04_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL", tt.env["PVMSS_V04_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL"])
 			t.Setenv("PVMSS_V04_INVENTORY_REFRESH_TIMEOUT", tt.env["PVMSS_V04_INVENTORY_REFRESH_TIMEOUT"])
+			t.Setenv("PROXMOX_URL", tt.env["PROXMOX_URL"])
+			t.Setenv("PROXMOX_API_TOKEN_NAME", tt.env["PROXMOX_API_TOKEN_NAME"])
+			t.Setenv("PROXMOX_API_TOKEN_VALUE", tt.env["PROXMOX_API_TOKEN_VALUE"])
 			t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
 
 			want := tt.want

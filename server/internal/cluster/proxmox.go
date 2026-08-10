@@ -1,12 +1,18 @@
 package cluster
 
-import "context"
+import (
+	"context"
+)
 
 // Proxmox is the real cluster implementation. It is a stub at T01 — it
-// satisfies Client and Writer and returns ErrNotImplemented. Filling it in
-// belongs to the tranches that actually need reachable Proxmox data; building
-// it now would be speculative work against a service nothing here can reach.
-type Proxmox struct{}
+// satisfies Client and Writer and returns ErrNotImplemented for every method
+// except ConsoleRelay, which is wired in this tranche. BaseURL, APITokenName
+// and APITokenValue are configured in main.go from the environment.
+type Proxmox struct {
+	BaseURL       string
+	APITokenName  string
+	APITokenValue string
+}
 
 // Snapshot implements Client.
 func (Proxmox) Snapshot(_ context.Context) (Snapshot, error) {

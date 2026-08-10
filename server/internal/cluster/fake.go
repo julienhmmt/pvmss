@@ -4,6 +4,7 @@ package cluster
 import (
 	"context"
 	"fmt"
+	"io"
 	"slices"
 	"sync"
 	"time"
@@ -117,6 +118,24 @@ func (Fake) ChangePassword(_ context.Context, username, oldPassword, newPassword
 	fakeIdentities[username] = fakeIdentity{password: newPassword, pool: identity.pool, isAdmin: identity.isAdmin}
 
 	return nil
+}
+
+// GetVNCTicket implements ConsoleRelay with a fixed fabricated ticket and port
+// — no network call, no state beyond what the fixture already tracks for the
+// VM. The browser never sees either value; only the opaque ConsoleTicketStore
+// token does (FR-002). The fake must demonstrate the feature (constitution XI),
+// so the ticket is real enough for the relay to echo back, just not from
+// Proxmox.
+func (Fake) GetVNCTicket(_ context.Context, _ string, _ int, _ string) (VNCProxyTicket, error) {
+	return VNCProxyTicket{Ticket: "fake-vnc-ticket", Port: 5901}, nil
+}
+
+// RelayConsole implements ConsoleRelay by speaking the minimal RFB 3.8
+// handshake directly against peer — there is no second, separately-dialed
+// connection in the fake path; the "relay" IS the fake server (data-model.md).
+// Blocks until peer closes or the context is cancelled.
+func (Fake) RelayConsole(ctx context.Context, _ string, _ int, _ VNCProxyTicket, peer io.ReadWriteCloser) error {
+	return rfbFakeServe(ctx, peer)
 }
 
 // GetCloudInitConfig implements CloudInitReader with live per-VM fake state.

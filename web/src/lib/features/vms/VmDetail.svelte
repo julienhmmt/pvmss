@@ -8,6 +8,7 @@
 	import VmHardwareTab from './hardware/VmHardwareTab.svelte';
 	import CloudInitTab from './CloudInitTab.svelte';
 	import VmSnapshotsTab from './VmSnapshotsTab.svelte';
+	import ConsoleBanner from './ConsoleBanner.svelte';
 
 	const store = getVmDetailContext();
 
@@ -151,6 +152,10 @@
 	</header>
 
 	<VmActionBar onDelete={() => (deleteOpen = true)} />
+
+	<div class="mt-4">
+		<ConsoleBanner />
+	</div>
 
 	<dl class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
 		<div class="rounded-md border border-border p-4" data-testid="vm-stat-cpu">
