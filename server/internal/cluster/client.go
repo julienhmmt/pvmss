@@ -4,6 +4,7 @@ package cluster
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 )
@@ -134,6 +135,17 @@ type NetworkInterface struct {
 	VLAN        *int     `json:"vlan"`
 	RateMbps    *int     `json:"rateMbps"`
 	IPAddresses []string `json:"ipAddresses"`
+}
+
+// MarshalJSON ensures IPAddresses always encodes as [] rather than null when
+// unset, matching the frontend's non-nullable string[] contract.
+func (n NetworkInterface) MarshalJSON() ([]byte, error) {
+	type alias NetworkInterface
+	dto := alias(n)
+	if dto.IPAddresses == nil {
+		dto.IPAddresses = []string{}
+	}
+	return json.Marshal(dto)
 }
 
 // VM is a guest belonging to a node. Carried by the fake dataset from T01 so
