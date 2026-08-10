@@ -4,6 +4,7 @@ package cluster
 import (
 	"context"
 	"fmt"
+	"io"
 	"slices"
 	"sync"
 	"time"
@@ -49,6 +50,7 @@ var (
 	}
 	fakeCloudInitConfigs = originalFakeCloudInitConfigs()
 	fakeCloudInitDrives  = make(map[fakeCloudInitKey]bool)
+	fakeSnapshots        = make(map[fakeSnapshotKey][]VMSnapshot)
 )
 
 type fakeCloudInitKey struct {
@@ -116,6 +118,24 @@ func (Fake) ChangePassword(_ context.Context, username, oldPassword, newPassword
 	fakeIdentities[username] = fakeIdentity{password: newPassword, pool: identity.pool, isAdmin: identity.isAdmin}
 
 	return nil
+}
+
+// GetVNCTicket implements ConsoleRelay with a fixed fabricated ticket and port
+// — no network call, no state beyond what the fixture already tracks for the
+// VM. The browser never sees either value; only the opaque ConsoleTicketStore
+// token does (FR-002). The fake must demonstrate the feature (constitution XI),
+// so the ticket is real enough for the relay to echo back, just not from
+// Proxmox.
+func (Fake) GetVNCTicket(_ context.Context, _ string, _ int, _ string) (VNCProxyTicket, error) {
+	return VNCProxyTicket{Ticket: "fake-vnc-ticket", Port: 5901}, nil
+}
+
+// RelayConsole implements ConsoleRelay by speaking the minimal RFB 3.8
+// handshake directly against peer — there is no second, separately-dialed
+// connection in the fake path; the "relay" IS the fake server (data-model.md).
+// Blocks until peer closes or the context is cancelled.
+func (Fake) RelayConsole(ctx context.Context, _ string, _ int, _ VNCProxyTicket, peer io.ReadWriteCloser) error {
+	return rfbFakeServe(ctx, peer)
 }
 
 // GetCloudInitConfig implements CloudInitReader with live per-VM fake state.
@@ -465,6 +485,7 @@ func ResetFake() {
 	fakeVMs = originalFakeVMs()
 	fakeCloudInitConfigs = originalFakeCloudInitConfigs()
 	fakeCloudInitDrives = make(map[fakeCloudInitKey]bool)
+	fakeSnapshots = make(map[fakeSnapshotKey][]VMSnapshot)
 	fakeCallLog = nil
 
 	fakeCloudInitPush.Lock()
@@ -567,11 +588,11 @@ var fakePools = []Pool{
 }
 
 var fakeStorages = []Storage{
-	{Name: "local", Node: FakeNode01, Type: "dir", Total: 2199023255552, Used: 879609302220},
-	{Name: FakeStorageLocalLVM, Node: FakeNode01, Type: "lvm", Total: 549755813888, Used: 219902325555},
-	{Name: "ceph-data", Node: FakeNode02, Type: "cephfs", Total: 1099511627776, Used: 329853488332},
-	{Name: "local", Node: FakeNode02, Type: "dir", Total: 274877906944, Used: 68719476736},
-	{Name: "backup-nfs", Node: FakeNode03, Type: "nfs", Total: 5497558138880, Used: 1099511627776},
+	{Name: "local", Node: FakeNode01, Type: "dir", Total: 2199023255552, Used: 879609302220, SupportsVMState: false},
+	{Name: FakeStorageLocalLVM, Node: FakeNode01, Type: "lvm", Total: 549755813888, Used: 219902325555, SupportsVMState: true},
+	{Name: "ceph-data", Node: FakeNode02, Type: "cephfs", Total: 1099511627776, Used: 329853488332, SupportsVMState: true},
+	{Name: "local", Node: FakeNode02, Type: "dir", Total: 274877906944, Used: 68719476736, SupportsVMState: false},
+	{Name: "backup-nfs", Node: FakeNode03, Type: "nfs", Total: 5497558138880, Used: 1099511627776, SupportsVMState: false},
 }
 
 // fakeUptimeOnStart is the uptime the fake assigns when a stopped VM is started
