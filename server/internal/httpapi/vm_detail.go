@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
-	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"strconv"
@@ -27,28 +27,22 @@ type VMDetail struct {
 	writer     cluster.Writer
 	store      *store.Store
 	refresher  vm.IndexRefresher
-	limits     config.VMLimits
+	policy     *policy.Policy
 	log        *slog.Logger
 }
 
 // NewVMDetail creates the handler. The writer is the cluster.Writer (separate
 // from the read Client — constitution IV); the refresher rebuilds the Index
 // after a write (FR-010).
-func NewVMDetail(projection *inventory.Projection, authHandler *Auth, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger, limits ...config.VMLimits) *VMDetail {
-	configuredLimits := config.DefaultVMLimits()
-	if len(limits) > 0 {
-		configuredLimits = limits[0]
+func NewVMDetail(projection *inventory.Projection, authHandler *Auth, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger, services ...*policy.Policy) *VMDetail {
+	var policyService *policy.Policy
+	if len(services) > 0 {
+		policyService = services[0]
 	}
-
-	return &VMDetail{
-		projection: projection,
-		auth:       authHandler,
-		writer:     writer,
-		store:      st,
-		refresher:  refresher,
-		limits:     configuredLimits,
-		log:        log,
+	if policyService == nil && st != nil {
+		policyService = policy.New(st, projection, nil)
 	}
+	return &VMDetail{projection: projection, auth: authHandler, writer: writer, store: st, refresher: refresher, policy: policyService, log: log}
 }
 
 type vmDetailDTO struct {
@@ -389,7 +383,7 @@ func (h *VMDetail) handleDisk(w http.ResponseWriter, r *http.Request) {
 		VMID:        vmid,
 		Writer:      h.writer,
 		Resources:   resources,
-		Limits:      h.limits,
+		Policy:      h.policy,
 		Audit:       h.store,
 		Refresher:   h.refresher,
 	}
@@ -551,7 +545,7 @@ func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
 
 	err = vm.UpdateHardware(r.Context(), vm.HardwareDependencies{
 		Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: h.writer,
-		Limits: h.limits, Audit: h.store, Refresher: h.refresher,
+		Policy: h.policy, Audit: h.store, Refresher: h.refresher,
 	}, vm.HardwarePatch{Sockets: request.Sockets, Cores: request.Cores, MemoryMB: request.MemoryMB, Tags: request.Tags})
 	if err != nil {
 		h.writeHardwareError(w, err)
@@ -581,6 +575,10 @@ func (h *VMDetail) writeHardwareError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrEmptyHardwarePatch):
 		h.writeDetailError(w, http.StatusBadRequest, "empty_patch", err.Error())
+	case errors.Is(err, policy.ErrNodeCapacityExceeded):
+		h.writeDetailError(w, http.StatusBadRequest, "capacity_exceeded", err.Error())
+	case errors.Is(err, policy.ErrUnavailable):
+		h.writeDetailError(w, http.StatusServiceUnavailable, "policy_unavailable", "policy service is not configured")
 	case errors.Is(err, vm.ErrHardwareExceedsLimit):
 		h.writeDetailError(w, http.StatusBadRequest, "hardware_exceeds_limit", err.Error())
 	default:
@@ -655,7 +653,7 @@ func (h *VMDetail) handleNetwork(w http.ResponseWriter, r *http.Request) {
 
 	updated, err := vm.UpdateNetwork(r.Context(), vm.NetworkDependencies{
 		Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: h.writer,
-		Resources: resources, Limits: h.limits, Audit: h.store, Refresher: h.refresher,
+		Resources: resources, Policy: h.policy, Audit: h.store, Refresher: h.refresher,
 	}, interfaces)
 	if err != nil {
 		h.writeNetworkError(w, err)
@@ -675,6 +673,8 @@ func (h *VMDetail) writeNetworkError(w http.ResponseWriter, err error) {
 		h.writeDetailError(w, http.StatusBadRequest, "bridge_not_approved", err.Error())
 	case errors.Is(err, vm.ErrNetworkCardsExceedLimit):
 		h.writeDetailError(w, http.StatusBadRequest, "network_cards_exceed_limit", err.Error())
+	case errors.Is(err, policy.ErrUnavailable):
+		h.writeDetailError(w, http.StatusServiceUnavailable, "policy_unavailable", "policy service is not configured")
 	case errors.Is(err, vm.ErrInvalidNetworkModel), errors.Is(err, vm.ErrDuplicateNetworkIndex):
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", err.Error())
 	default:
@@ -738,6 +738,17 @@ func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	if h.policy == nil {
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	gabarit, err := h.policy.Gabarit(r.Context(), clusterName)
+	if err != nil {
+		h.log.Error("read gabarit failed", "component", "httpapi", "error", err)
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+
 	remaining := map[string]int{}
 
 	for bus, max := range map[cluster.DiskBus]int{
@@ -762,11 +773,11 @@ func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request)
 		Bridges:  hardwareBridges(resources.Bridges, entity.Node),
 		ISOs:     hardwareISOs(resources.ISOs, resources.Storages),
 		Limits: vmLimitsDTO{
-			MaxSockets:        h.limits.MaxSockets,
-			MaxCores:          h.limits.MaxCores,
-			MaxMemoryMB:       h.limits.MaxMemoryMB,
-			MaxDiskPerVMGB:    h.limits.MaxDiskPerVMGB,
-			MaxNetworkCards:   h.limits.MaxNetworkCards,
+			MaxSockets:        gabarit.MaxSockets,
+			MaxCores:          gabarit.MaxCores,
+			MaxMemoryMB:       gabarit.MaxMemoryMB,
+			MaxDiskPerVMGB:    gabarit.MaxDiskPerVMGB,
+			MaxNetworkCards:   gabarit.MaxNetworkCards,
 			RemainingBusSlots: remaining,
 		},
 	})
@@ -834,6 +845,8 @@ func (h *VMDetail) writeDiskError(w http.ResponseWriter, err error) {
 		h.writeDetailError(w, http.StatusBadRequest, "vm_not_stopped", err.Error())
 	case errors.Is(err, vm.ErrDiskStorageNotApproved):
 		h.writeDetailError(w, http.StatusBadRequest, "storage_not_approved", err.Error())
+	case errors.Is(err, policy.ErrUnavailable):
+		h.writeDetailError(w, http.StatusServiceUnavailable, "policy_unavailable", "policy service is not configured")
 	case errors.Is(err, vm.ErrDiskSizeExceedsLimit):
 		h.writeDetailError(w, http.StatusBadRequest, "disk_size_exceeds_limit", err.Error())
 	case errors.Is(err, vm.ErrDiskSizeNotGreater):

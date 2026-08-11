@@ -5,8 +5,8 @@ import (
 	"errors"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
-	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/vm"
 	"testing"
 	"time"
@@ -108,7 +108,7 @@ func TestCreateSnapshot_GuardsRejectBeforeClusterWrite(t *testing.T) {
 
 			baselineCalls := len(cluster.FakeCallsFor(test.vmid))
 			index := testSnapshotIndex(t, test.mutate)
-			deps := snapshotDependencies(index, test.vmid, config.DefaultVMLimits())
+			deps := snapshotDependencies(index, test.vmid, policy.DefaultGabarit())
 
 			_, err := vm.CreateSnapshot(context.Background(), deps, "existing", "", test.vmstate)
 			if !errors.Is(err, test.wantError) {
@@ -134,7 +134,7 @@ func TestCreateSnapshot_VMStateAcceptedAndAudited(t *testing.T) {
 		}
 	})
 	audit := &snapshotAudit{}
-	deps := snapshotDependenciesWithAudit(index, 101, config.DefaultVMLimits(), audit)
+	deps := snapshotDependenciesWithAudit(index, 101, policy.DefaultGabarit(), audit)
 
 	upid, err := vm.CreateSnapshot(context.Background(), deps, "with-ram", "", true)
 	if err != nil {
@@ -157,7 +157,7 @@ func TestSnapshotOperations_ResolveExistenceAndAudit(t *testing.T) {
 	seedSnapshot(t, "restore-point")
 	index := testSnapshotIndex(t, nil)
 	audit := &snapshotAudit{}
-	deps := snapshotDependenciesWithAudit(index, 101, config.DefaultVMLimits(), audit)
+	deps := snapshotDependenciesWithAudit(index, 101, policy.DefaultGabarit(), audit)
 
 	rollbackUPID, err := vm.RollbackSnapshot(context.Background(), deps, "restore-point")
 	if err != nil || rollbackUPID == "" {
@@ -184,7 +184,7 @@ func TestSnapshotOperations_NonOwnerIsRejectedBeforeWriter(t *testing.T) {
 	t.Cleanup(cluster.ResetFake)
 	seedSnapshot(t, "restore-point")
 	index := testSnapshotIndex(t, nil)
-	deps := snapshotDependencies(index, 101, config.DefaultVMLimits())
+	deps := snapshotDependencies(index, 101, policy.DefaultGabarit())
 	deps.Actor = auth.Identity{Username: cluster.FakeUserBob, Pool: cluster.FakePoolBob}
 	baselineCalls := len(cluster.FakeCallsFor(101))
 
@@ -197,14 +197,14 @@ func TestSnapshotOperations_NonOwnerIsRejectedBeforeWriter(t *testing.T) {
 	}
 }
 
-func snapshotDependencies(index *inventory.Index, vmid int, limits config.VMLimits) vm.SnapshotDependencies {
-	return snapshotDependenciesWithAudit(index, vmid, limits, &snapshotAudit{})
+func snapshotDependencies(index *inventory.Index, vmid int, gabarit policy.Gabarit) vm.SnapshotDependencies {
+	return snapshotDependenciesWithAudit(index, vmid, gabarit, &snapshotAudit{})
 }
 
-func snapshotDependenciesWithAudit(index *inventory.Index, vmid int, limits config.VMLimits, audit vm.AuditRecorder) vm.SnapshotDependencies {
+func snapshotDependenciesWithAudit(index *inventory.Index, vmid int, gabarit policy.Gabarit, audit vm.AuditRecorder) vm.SnapshotDependencies {
 	return vm.SnapshotDependencies{
 		Index: index, Actor: auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice},
-		ClusterName: "default", VMID: vmid, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Limits: limits, Audit: audit,
+		ClusterName: "default", VMID: vmid, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Gabarit: gabarit, Audit: audit,
 	}
 }
 

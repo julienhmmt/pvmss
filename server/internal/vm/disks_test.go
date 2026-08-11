@@ -6,8 +6,8 @@ import (
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
-	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/vm"
 	"testing"
 	"time"
@@ -173,7 +173,7 @@ func diskDependencies(index *inventory.Index, actor auth.Identity, vmid int) vm.
 		VMID:        vmid,
 		Writer:      cluster.Fake{},
 		Resources:   catalog.Resources{Storages: []catalog.Storage{{Name: "local-lvm", Node: cluster.FakeNode01}}},
-		Limits:      config.DefaultVMLimits(),
+		Gabarit:     policy.DefaultGabarit(),
 		Audit:       noopAudit{},
 		Refresher:   noopRefresher{},
 	}

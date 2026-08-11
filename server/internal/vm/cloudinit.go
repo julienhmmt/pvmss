@@ -9,6 +9,7 @@ import (
 	"pvmss/server/internal/cloudinit"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 )
 
@@ -19,6 +20,8 @@ var (
 	ErrInvalidCloudInitConfig = errors.New("invalid cloud-init config")
 	// ErrSnippetPushFailed reports a committed snippet that was not applied upstream.
 	ErrSnippetPushFailed = errors.New("cloud-init snippet push failed")
+	// ErrCustomYAMLDisabled reports an administrator-disabled snippet editor.
+	ErrCustomYAMLDisabled = errors.New("custom yaml disabled")
 )
 
 // GetCloudInitConfig reads live structured state after the shared ownership gate.
@@ -86,7 +89,17 @@ func GetCloudInitSnippet(ctx context.Context, index *inventory.Index, actor auth
 }
 
 // SetCloudInitSnippet validates, persists, pushes, and audits one custom snippet.
-func SetCloudInitSnippet(ctx context.Context, index *inventory.Index, actor auth.Identity, clusterName string, vmid int, content string, reader cluster.CloudInitReader, writer cluster.Writer, st *store.Store) error {
+func SetCloudInitSnippet(ctx context.Context, index *inventory.Index, actor auth.Identity, clusterName string, vmid int, content string, reader cluster.CloudInitReader, writer cluster.Writer, st *store.Store, service *policy.Policy) error {
+	if service == nil {
+		return policy.ErrUnavailable
+	}
+	gabarit, err := service.Gabarit(ctx, clusterName)
+	if err != nil {
+		return fmt.Errorf("read gabarit: %w", err)
+	}
+	if !gabarit.AllowCustomYaml {
+		return ErrCustomYAMLDisabled
+	}
 	if err := cloudinit.Validate(content); err != nil {
 		return err
 	}

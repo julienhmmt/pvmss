@@ -14,7 +14,6 @@ const (
 	defaultInventoryManualRefreshMinInterval = 5 * time.Second
 	defaultInventoryRefreshTimeout           = 15 * time.Second
 	defaultMaxListPageSize                   = 100
-	defaultUserQuota                         = -1
 )
 
 // Load reads and validates the runtime configuration from the environment.
@@ -185,17 +184,6 @@ func loadInventorySettings(cfg *Configuration) error {
 	}
 
 	cfg.MaxListPageSize = maxPageSize
-
-	userQuota, err := loadInt("PVMSS_V04_DEFAULT_USER_QUOTA", defaultUserQuota)
-	if err != nil {
-		return err
-	}
-
-	if userQuota < -1 {
-		return fmt.Errorf("PVMSS_V04_DEFAULT_USER_QUOTA must be -1 (unlimited) or greater, got %d", userQuota)
-	}
-
-	cfg.DefaultUserQuota = userQuota
 
 	return nil
 }

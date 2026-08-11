@@ -10,6 +10,7 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"testing"
@@ -122,15 +123,16 @@ func TestSetCloudInitConfig_RebootNowCallsT05Once(t *testing.T) {
 func TestSetCloudInitSnippet_PersistsTargetPushesAndPreservesClear(t *testing.T) {
 	index := cloudInitIndex(t)
 	st := cloudInitStore(t)
+	service := policy.New(st, inventory.NewProjectionFromIndex(index), cluster.Fake{})
 	content := "#cloud-config\nusers: {}\n"
-	if err := vm.SetCloudInitSnippet(context.Background(), index, cloudAliceIdentity(), "default", 101, content, cluster.Fake{}, cluster.Fake{}, st); err != nil {
+	if err := vm.SetCloudInitSnippet(context.Background(), index, cloudAliceIdentity(), "default", 101, content, cluster.Fake{}, cluster.Fake{}, st, service); err != nil {
 		t.Fatalf("SetCloudInitSnippet: %v", err)
 	}
 	calls := cluster.FakeCallsFor(101)
 	if len(calls) != 1 || calls[0].Action != "push_cloudinit_snippet" || calls[0].Storage != cluster.FakeSnippetStorage || calls[0].Filename != "pvmss-101.yml" || calls[0].Content != content {
 		t.Fatalf("calls = %+v", calls)
 	}
-	if err := vm.SetCloudInitSnippet(context.Background(), index, cloudAliceIdentity(), "default", 101, "", cluster.Fake{}, cluster.Fake{}, st); err != nil {
+	if err := vm.SetCloudInitSnippet(context.Background(), index, cloudAliceIdentity(), "default", 101, "", cluster.Fake{}, cluster.Fake{}, st, service); err != nil {
 		t.Fatalf("clear snippet: %v", err)
 	}
 	snippet, found, err := st.GetCloudInitSnippet(context.Background(), "default", 101)
@@ -143,12 +145,13 @@ func TestSetCloudInitSnippet_PersistsTargetPushesAndPreservesClear(t *testing.T)
 func TestSetCloudInitSnippet_ValidationAndPushFailure(t *testing.T) {
 	index := cloudInitIndex(t)
 	st := cloudInitStore(t)
-	if err := vm.SetCloudInitSnippet(context.Background(), index, cloudAliceIdentity(), "default", 101, "not yaml", cluster.Fake{}, cluster.Fake{}, st); !errors.Is(err, cloudinit.ErrSnippetPrefix) {
+	service := policy.New(st, inventory.NewProjectionFromIndex(index), cluster.Fake{})
+	if err := vm.SetCloudInitSnippet(context.Background(), index, cloudAliceIdentity(), "default", 101, "not yaml", cluster.Fake{}, cluster.Fake{}, st, service); !errors.Is(err, cloudinit.ErrSnippetPrefix) {
 		t.Fatalf("invalid error = %v, want ErrSnippetPrefix", err)
 	}
 	pushErr := errors.New("push unavailable")
 	cluster.SetFakeCloudInitPushError(pushErr)
-	err := vm.SetCloudInitSnippet(context.Background(), index, cloudAliceIdentity(), "default", 101, "#cloud-config\n", cluster.Fake{}, cluster.Fake{}, st)
+	err := vm.SetCloudInitSnippet(context.Background(), index, cloudAliceIdentity(), "default", 101, "#cloud-config\n", cluster.Fake{}, cluster.Fake{}, st, service)
 	if !errors.Is(err, vm.ErrSnippetPushFailed) {
 		t.Fatalf("push error = %v, want ErrSnippetPushFailed", err)
 	}

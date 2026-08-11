@@ -7,8 +7,8 @@ import (
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
-	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 )
 
 var (
@@ -30,7 +30,8 @@ type NetworkDependencies struct {
 	VMID        int
 	Writer      cluster.Writer
 	Resources   catalog.Resources
-	Limits      config.VMLimits
+	Policy      *policy.Policy
+	Gabarit     policy.Gabarit
 	Audit       AuditRecorder
 	Refresher   IndexRefresher
 }
@@ -43,7 +44,17 @@ func UpdateNetwork(ctx context.Context, deps NetworkDependencies, requested []cl
 		return nil, err
 	}
 
-	if len(requested) > deps.Limits.MaxNetworkCards {
+	gabarit := deps.Gabarit
+	if deps.Policy != nil {
+		gabarit, err = deps.Policy.Gabarit(ctx, deps.ClusterName)
+		if err != nil {
+			return nil, fmt.Errorf("read gabarit: %w", err)
+		}
+	}
+	if deps.Policy == nil && gabarit.MaxNetworkCards == 0 {
+		return nil, policy.ErrUnavailable
+	}
+	if len(requested) > gabarit.MaxNetworkCards {
 		return nil, ErrNetworkCardsExceedLimit
 	}
 

@@ -25,9 +25,9 @@ type spaHandler struct {
 }
 
 // RouterConfig configures NewRouter. VMCloudInit, VMCreate, Tasks,
-// SnapshotHandlers, VMConsole, and AdminCatalog are optional — left
-// nil/empty, their routes are simply not registered (router tests rely on
-// this to omit handlers without panicking).
+// SnapshotHandlers, VMConsole, AdminCatalog, and AdminPolicy are optional —
+// left nil/empty, their routes are simply not registered (router tests rely
+// on this to omit handlers without panicking).
 type RouterConfig struct {
 	Health           http.Handler
 	ClusterNodes     http.Handler
@@ -43,6 +43,7 @@ type RouterConfig struct {
 	SnapshotHandlers []*VMSnapshots
 	VMConsole        *VMConsole
 	AdminCatalog     *AdminCatalog
+	AdminPolicy      *AdminPolicy
 }
 
 // NewRouter wires the public API and the static SPA handler from cfg.
@@ -127,6 +128,15 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 		mux.Handle("POST /api/v1/admin/tags", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeTagCreate)))
 		mux.Handle("PUT /api/v1/admin/tags/{name}/color", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeTagColor)))
 		mux.Handle("DELETE /api/v1/admin/tags/{name}", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeTagDelete)))
+	}
+
+	// T12 admin policies — gabarits, quotas, node capacity; admin-only.
+	if cfg.AdminPolicy != nil {
+		adminGuard := cfg.Auth.RequireAdmin
+		mux.Handle("GET /api/v1/admin/policy", adminGuard(http.HandlerFunc(cfg.AdminPolicy.ServePolicy)))
+		mux.Handle("PUT /api/v1/admin/policy", adminGuard(http.HandlerFunc(cfg.AdminPolicy.ServePolicyUpdate)))
+		mux.Handle("GET /api/v1/admin/policy/nodes", adminGuard(http.HandlerFunc(cfg.AdminPolicy.ServePolicyNodes)))
+		mux.Handle("PUT /api/v1/admin/policy/nodes/{node}", adminGuard(http.HandlerFunc(cfg.AdminPolicy.ServePolicyNodeUpdate)))
 	}
 
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {

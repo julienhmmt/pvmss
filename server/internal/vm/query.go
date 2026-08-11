@@ -5,11 +5,13 @@
 package vm
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 	"slices"
 	"strconv"
 	"strings"
@@ -107,7 +109,16 @@ type ListResult struct {
 // VM allowance reported in Quota (-1 = unlimited); the quota is attached
 // whenever the caller is not an admin, or an admin listing their own pool
 // (spec Assumptions 5.3).
-func List(index *inventory.Index, query ListQuery, identity auth.Identity, allowedQuota int) (ListResult, error) {
+func List(index *inventory.Index, query ListQuery, identity auth.Identity, allowedQuota int, services ...*policy.Policy) (ListResult, error) {
+	return list(context.Background(), index, query, identity, allowedQuota, services...)
+}
+
+// ListWithContext resolves a VM list while allowing policy reads to honor request cancellation.
+func ListWithContext(ctx context.Context, index *inventory.Index, query ListQuery, identity auth.Identity, allowedQuota int, services ...*policy.Policy) (ListResult, error) {
+	return list(ctx, index, query, identity, allowedQuota, services...)
+}
+
+func list(ctx context.Context, index *inventory.Index, query ListQuery, identity auth.Identity, allowedQuota int, services ...*policy.Policy) (ListResult, error) {
 	query = withDefaults(query)
 	if !validSortBy(query.SortBy) {
 		return ListResult{}, fmt.Errorf("%w: %q", ErrInvalidSortBy, query.SortBy)
@@ -124,6 +135,13 @@ func List(index *inventory.Index, query ListQuery, identity auth.Identity, allow
 		Page:           query.Page,
 		PageSize:       query.PageSize,
 		AvailableNodes: facetedNodes,
+	}
+	if len(services) > 0 && services[0] != nil {
+		quota, err := services[0].Quota(ctx, "default", identity)
+		if err != nil {
+			return ListResult{}, fmt.Errorf("read quota: %w", err)
+		}
+		allowedQuota = quota.Allowed
 	}
 	if query.Scope != ScopeAll || !identity.IsAdmin {
 		result.Quota = &Quota{Used: len(scoped), Allowed: allowedQuota}

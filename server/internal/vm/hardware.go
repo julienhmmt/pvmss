@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
-	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 )
 
 var (
@@ -32,7 +32,8 @@ type HardwareDependencies struct {
 	ClusterName string
 	VMID        int
 	Writer      cluster.Writer
-	Limits      config.VMLimits
+	Policy      *policy.Policy
+	Gabarit     policy.Gabarit
 	Audit       AuditRecorder
 	Refresher   IndexRefresher
 }
@@ -49,9 +50,24 @@ func UpdateHardware(ctx context.Context, deps HardwareDependencies, patch Hardwa
 		return ErrEmptyHardwarePatch
 	}
 
-	sockets, cores, memoryMB, tags, err := effectiveHardware(entity, patch, deps.Limits)
+	gabarit := deps.Gabarit
+	if deps.Policy != nil {
+		gabarit, err = deps.Policy.Gabarit(ctx, deps.ClusterName)
+		if err != nil {
+			return fmt.Errorf("read gabarit: %w", err)
+		}
+	}
+	if deps.Policy == nil && gabarit.MaxSockets == 0 {
+		return policy.ErrUnavailable
+	}
+	sockets, cores, memoryMB, tags, err := effectiveHardware(entity, patch, gabarit)
 	if err != nil {
 		return err
+	}
+	if deps.Policy != nil {
+		if err := deps.Policy.CheckNodeCapacity(ctx, deps.ClusterName, entity.Node, sockets, cores, memoryMB, entity.VMID); err != nil {
+			return err
+		}
 	}
 
 	needsRestart := entity.Status == cluster.VMRunning && hardwareChanged(entity, sockets, cores, memoryMB)
@@ -100,7 +116,7 @@ func resolveHardwareTarget(deps HardwareDependencies) (Entity, error) {
 	return Resolve(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
 }
 
-func effectiveHardware(entity Entity, patch HardwarePatch, limits config.VMLimits) (int, int, int, []string, error) {
+func effectiveHardware(entity Entity, patch HardwarePatch, gabarit policy.Gabarit) (int, int, int, []string, error) {
 	sockets, cores, memoryMB := entity.Sockets, entity.Cores, int(entity.MemoryTotal/(1024*1024))
 	if patch.Sockets != nil {
 		sockets = *patch.Sockets
@@ -114,15 +130,15 @@ func effectiveHardware(entity Entity, patch HardwarePatch, limits config.VMLimit
 		memoryMB = *patch.MemoryMB
 	}
 
-	if sockets < 1 || sockets > limits.MaxSockets {
+	if sockets < 1 || sockets > gabarit.MaxSockets {
 		return 0, 0, 0, nil, fmt.Errorf("%w: sockets exceeds maxSockets", ErrHardwareExceedsLimit)
 	}
 
-	if cores < 1 || cores > limits.MaxCores {
+	if cores < 1 || cores > gabarit.MaxCores {
 		return 0, 0, 0, nil, fmt.Errorf("%w: cores exceeds maxCores", ErrHardwareExceedsLimit)
 	}
 
-	if memoryMB < 1 || memoryMB > limits.MaxMemoryMB {
+	if memoryMB < 1 || memoryMB > gabarit.MaxMemoryMB {
 		return 0, 0, 0, nil, fmt.Errorf("%w: memory exceeds maxMemoryMB", ErrHardwareExceedsLimit)
 	}
 

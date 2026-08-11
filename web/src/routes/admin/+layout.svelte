@@ -18,7 +18,9 @@
 	let checked = $state(false);
 
 	onMount(async () => {
-		await session.load();
+		if (session.principal === null) {
+			await session.load();
+		}
 		checked = true;
 		if (!session.isAdmin) {
 			await goto(resolve('/login'));

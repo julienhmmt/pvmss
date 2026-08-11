@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
-	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 	"regexp"
 )
 
@@ -41,7 +41,8 @@ type SnapshotDependencies struct {
 	VMID        int
 	Reader      cluster.SnapshotReader
 	Writer      cluster.SnapshotWriter
-	Limits      config.VMLimits
+	Policy      *policy.Policy
+	Gabarit     policy.Gabarit
 	Audit       AuditRecorder
 }
 
@@ -66,7 +67,11 @@ func ListSnapshots(ctx context.Context, deps SnapshotDependencies) ([]Snapshot, 
 		return nil, 0, fmt.Errorf("list snapshots: %w", err)
 	}
 
-	return visibleSnapshots(snapshots), effectiveMaxSnapshots(deps.Limits), nil
+	gabarit, err := deps.readGabarit(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	return visibleSnapshots(snapshots), gabarit.MaxSnapshots, nil
 }
 
 // CreateSnapshot validates and dispatches an asynchronous snapshot creation.
@@ -89,7 +94,11 @@ func CreateSnapshot(ctx context.Context, deps SnapshotDependencies, name, descri
 	if snapshotNameExists(snapshots, name) {
 		return "", fmt.Errorf("%w: a snapshot named %q already exists", ErrDuplicateSnapshotName, name)
 	}
-	maxSnapshots := effectiveMaxSnapshots(deps.Limits)
+	gabarit, err := deps.readGabarit(ctx)
+	if err != nil {
+		return "", err
+	}
+	maxSnapshots := gabarit.MaxSnapshots
 	if countRealSnapshots(snapshots) >= maxSnapshots {
 		return "", fmt.Errorf("%w: this VM already holds the maximum of %d snapshots", ErrMaxSnapshotsReached, maxSnapshots)
 	}
@@ -205,12 +214,14 @@ func storageSupportsVMState(index *inventory.Index, node, name string) bool {
 	return false
 }
 
-func effectiveMaxSnapshots(limits config.VMLimits) int {
-	if limits.MaxSnapshots > 0 {
-		return limits.MaxSnapshots
+func (deps SnapshotDependencies) readGabarit(ctx context.Context) (policy.Gabarit, error) {
+	if deps.Policy != nil {
+		return deps.Policy.Gabarit(ctx, deps.ClusterName)
 	}
-
-	return config.DefaultVMLimits().MaxSnapshots
+	if deps.Gabarit.MaxSnapshots == 0 {
+		return policy.Gabarit{}, policy.ErrUnavailable
+	}
+	return deps.Gabarit, nil
 }
 
 func visibleSnapshots(snapshots []Snapshot) []Snapshot {
