@@ -153,34 +153,34 @@ func loadClusterSettings(cfg *Configuration) error {
 
 // loadInventorySettings reads the inventory refresh and quota settings.
 func loadInventorySettings(cfg *Configuration) error {
-	refreshInterval, err := loadPositiveDuration("PVMSS_V04_INVENTORY_REFRESH_INTERVAL", defaultInventoryRefreshInterval)
+	refreshInterval, err := loadPositiveDuration("PVMSS_INVENTORY_REFRESH_INTERVAL", defaultInventoryRefreshInterval)
 	if err != nil {
 		return err
 	}
 
 	cfg.InventoryRefreshInterval = refreshInterval
 
-	manualMinInterval, err := loadPositiveDuration("PVMSS_V04_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL", defaultInventoryManualRefreshMinInterval)
+	manualMinInterval, err := loadPositiveDuration("PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL", defaultInventoryManualRefreshMinInterval)
 	if err != nil {
 		return err
 	}
 
 	cfg.InventoryManualRefreshMinInterval = manualMinInterval
 
-	refreshTimeout, err := loadPositiveDuration("PVMSS_V04_INVENTORY_REFRESH_TIMEOUT", defaultInventoryRefreshTimeout)
+	refreshTimeout, err := loadPositiveDuration("PVMSS_INVENTORY_REFRESH_TIMEOUT", defaultInventoryRefreshTimeout)
 	if err != nil {
 		return err
 	}
 
 	cfg.InventoryRefreshTimeout = refreshTimeout
 
-	maxPageSize, err := loadInt("PVMSS_V04_MAX_LIST_PAGE_SIZE", defaultMaxListPageSize)
+	maxPageSize, err := loadInt("PVMSS_MAX_LIST_PAGE_SIZE", defaultMaxListPageSize)
 	if err != nil {
 		return err
 	}
 
 	if maxPageSize < 1 {
-		return fmt.Errorf("PVMSS_V04_MAX_LIST_PAGE_SIZE must be at least 1, got %d", maxPageSize)
+		return fmt.Errorf("PVMSS_MAX_LIST_PAGE_SIZE must be at least 1, got %d", maxPageSize)
 	}
 
 	cfg.MaxListPageSize = maxPageSize
