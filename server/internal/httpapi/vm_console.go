@@ -100,6 +100,7 @@ func (h *VMConsole) handleVNCTicket(w http.ResponseWriter, r *http.Request) {
 	if ticket.Token == "" {
 		h.log.Error("console ticket has no token", "component", "httpapi", "cluster", clusterName, "vmid", vmid)
 		h.writeConsoleError(w, http.StatusInternalServerError, "internal_error", "failed to issue console ticket")
+
 		return
 	}
 
@@ -220,6 +221,7 @@ func (h *VMConsole) writeJSON(w http.ResponseWriter, status int, value any) {
 	if err != nil {
 		h.log.Error("failed to marshal response", "component", "httpapi", "error", err)
 		h.writeConsoleError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+
 		return
 	}
 

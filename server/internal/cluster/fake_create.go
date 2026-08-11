@@ -113,6 +113,7 @@ func (Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 //nolint:wsl_v5 // task completion releases the lock before invoking callbacks
 func (Fake) TaskStatus(_ context.Context, upid string) (TaskStatus, error) {
 	fakeCreateMutex.Lock()
+
 	task, ok := fakeTasks[upid]
 	if !ok {
 		fakeCreateMutex.Unlock()
@@ -120,6 +121,7 @@ func (Fake) TaskStatus(_ context.Context, upid string) (TaskStatus, error) {
 	}
 
 	task.polls++
+
 	log := append([]string(nil), task.log...)
 	if task.polls < 3 {
 		fakeCreateMutex.Unlock()
@@ -129,11 +131,13 @@ func (Fake) TaskStatus(_ context.Context, upid string) (TaskStatus, error) {
 	onComplete := task.onComplete
 	task.onComplete = nil
 	fakeCreateMutex.Unlock()
+
 	if onComplete != nil {
 		onComplete()
 	}
 
 	log = append(log, "TASK OK")
+
 	return TaskStatus{UPID: upid, State: TaskOK, Log: log}, nil
 }
 

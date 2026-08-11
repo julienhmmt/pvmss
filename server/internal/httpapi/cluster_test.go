@@ -34,6 +34,14 @@ func (stubClusterClient) ChangePassword(_ context.Context, _, _, _ string) error
 	return cluster.ErrNotImplemented
 }
 
+func (stubClusterClient) ListBridges(_ context.Context) ([]cluster.Bridge, error) {
+	return nil, cluster.ErrNotImplemented
+}
+
+func (stubClusterClient) ListISOs(_ context.Context) ([]cluster.ISOImage, error) {
+	return nil, cluster.ErrNotImplemented
+}
+
 // buildProjectionWithIndex creates a Projection and populates it with an Index
 // built from the given snapshot, stamped at the given refresh time.
 func buildProjectionWithIndex(t *testing.T, snap cluster.Snapshot, refreshedAt time.Time) *inventory.Projection {

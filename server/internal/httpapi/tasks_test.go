@@ -132,26 +132,32 @@ func TestTasks_RollbackInvalidatesIndex(t *testing.T) {
 	handler, authHandler, projection := newTasksHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 	ctx := context.Background()
+
 	createUPID, err := (cluster.Fake{}).CreateSnapshot(ctx, cluster.FakeNode01, 101, "restore-point", "", false)
 	if err != nil {
 		t.Fatalf("CreateSnapshot: %v", err)
 	}
+
 	for range 3 {
 		if _, err := (cluster.Fake{}).TaskStatus(ctx, createUPID); err != nil {
 			t.Fatalf("complete snapshot: %v", err)
 		}
 	}
+
 	rollbackUPID, err := (cluster.Fake{}).RollbackSnapshot(ctx, cluster.FakeNode01, 101, "restore-point")
 	if err != nil {
 		t.Fatalf("RollbackSnapshot: %v", err)
 	}
+
 	before := projection.Load()
+
 	for range 3 {
 		response := getTask(t, handler, rollbackUPID, cookie)
 		if response.Code != http.StatusOK {
 			t.Fatalf("rollback poll status = %d: %s", response.Code, response.Body.String())
 		}
 	}
+
 	if projection.Load() == before {
 		t.Fatal("rollback completion did not replace the inventory projection")
 	}

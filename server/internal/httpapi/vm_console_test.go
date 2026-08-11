@@ -55,6 +55,7 @@ func newVMConsoleHandler(t *testing.T) (*httpapi.VMConsole, *httpapi.Auth, *vm.C
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
 	}
+
 	t.Cleanup(func() { _ = st.Close() })
 
 	tickets := vm.NewConsoleTicketStore()
@@ -73,9 +74,11 @@ func consoleRequest(method, path, body string, cookie *http.Cookie) *http.Reques
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+
 	if cookie != nil {
 		req.AddCookie(cookie)
 	}
+
 	req.SetPathValue("cluster", "default")
 	req.SetPathValue("vmid", pathVmid(path))
 
@@ -110,6 +113,7 @@ func TestVMConsole_PostVNCTicket_OwnerGetsOpaqueToken(t *testing.T) {
 	if resp.Token == "" {
 		t.Fatalf("token is empty")
 	}
+
 	if resp.ExpiresInSeconds != 30 {
 		t.Fatalf("expiresInSeconds = %d, want 30", resp.ExpiresInSeconds)
 	}
@@ -120,6 +124,7 @@ func TestVMConsole_PostVNCTicket_OwnerGetsOpaqueToken(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
 		t.Fatalf("decode raw: %v", err)
 	}
+
 	if len(raw) != 2 {
 		t.Fatalf("response has %d keys, want exactly 2 (token, expiresInSeconds): %+v", len(raw), raw)
 	}
@@ -139,6 +144,7 @@ func TestVMConsole_PostVNCTicket_NonOwnerForbidden(t *testing.T) {
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusForbidden, rec.Body.String())
 	}
+
 	assertAPIError(t, rec.Body.Bytes(), apiCodeForbidden)
 }
 
@@ -155,6 +161,7 @@ func TestVMConsole_PostVNCTicket_NotFound(t *testing.T) {
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusNotFound, rec.Body.String())
 	}
+
 	assertAPIError(t, rec.Body.Bytes(), apiCodeNotFound)
 }
 
@@ -220,10 +227,13 @@ func TestVMConsole_WebSocket_TicketBoundToDifferentVMRejected(t *testing.T) {
 	// Issue a ticket for VM 100 via the HTTP endpoint.
 	ticketRec := httptest.NewRecorder()
 	handler.ServeHTTP(ticketRec, consoleRequest(http.MethodPost, "/api/v1/vms/default/100/vnc-ticket", "", cookie))
+
 	if ticketRec.Code != http.StatusOK {
 		t.Fatalf("ticket issuance: status = %d", ticketRec.Code)
 	}
+
 	var ticket vncTicketResponse
+
 	_ = json.Unmarshal(ticketRec.Body.Bytes(), &ticket)
 
 	// Try to use it against VM 101 — must be rejected before the upgrade.
@@ -256,10 +266,13 @@ func TestVMConsole_WebSocket_ValidTokenUpgradesAndRelaysRFBHandshake(t *testing.
 	// Issue a ticket via the HTTP endpoint.
 	ticketRec := httptest.NewRecorder()
 	handler.ServeHTTP(ticketRec, consoleRequest(http.MethodPost, "/api/v1/vms/default/100/vnc-ticket", "", cookie))
+
 	if ticketRec.Code != http.StatusOK {
 		t.Fatalf("ticket issuance: status = %d", ticketRec.Code)
 	}
+
 	var ticket vncTicketResponse
+
 	_ = json.Unmarshal(ticketRec.Body.Bytes(), &ticket)
 
 	// Start a real HTTP server with a mux that sets the path values the
@@ -269,6 +282,7 @@ func TestVMConsole_WebSocket_ValidTokenUpgradesAndRelaysRFBHandshake(t *testing.
 	mux := http.NewServeMux()
 	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/vnc-ticket", handler)
 	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/console/websocket", handler)
+
 	server := httptest.NewServer(mux)
 	defer server.Close()
 
@@ -336,6 +350,7 @@ func TestVMConsole_PostVNCTicket_ClusterUnavailableReturns502(t *testing.T) {
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
 	}
+
 	t.Cleanup(func() { _ = st.Close() })
 
 	tickets := vm.NewConsoleTicketStore()
@@ -349,7 +364,9 @@ func TestVMConsole_PostVNCTicket_ClusterUnavailableReturns502(t *testing.T) {
 	if rec.Code != http.StatusBadGateway {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusBadGateway, rec.Body.String())
 	}
+
 	var env apiErrorEnvelope
+
 	_ = json.Unmarshal(rec.Body.Bytes(), &env)
 	if env.Code != "console_unavailable" {
 		t.Fatalf("error code = %q, want %q", env.Code, "console_unavailable")

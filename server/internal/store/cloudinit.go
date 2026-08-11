@@ -55,6 +55,7 @@ func (s *Store) GetCloudInitSnippet(ctx context.Context, cluster string, vmid in
 	if errors.Is(err, sql.ErrNoRows) {
 		return CloudInitSnippet{}, false, nil
 	}
+
 	if err != nil {
 		return CloudInitSnippet{}, false, fmt.Errorf("query cloud-init snippet: %w", err)
 	}
@@ -72,6 +73,7 @@ func (s *Store) GetCloudInitSnippet(ctx context.Context, cluster string, vmid in
 //nolint:wsl_v5 // SQL arguments and upsert belong to one atomic repository operation
 func (s *Store) PutCloudInitSnippet(ctx context.Context, cluster string, vmid int, storage, filename, content, actor string) error {
 	stamp := time.Now().UTC().Format(time.RFC3339Nano)
+
 	_, err := s.db.ExecContext(ctx,
 		`INSERT INTO vm_cloudinit_snippets
 			(cluster, vmid, content, storage, filename, updated_at, updated_by)
