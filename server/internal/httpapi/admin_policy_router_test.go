@@ -46,7 +46,7 @@ func TestAdminPolicyRoutes_RequireAdminThroughProductionRouter(t *testing.T) {
 		{method: http.MethodPut, path: "/api/v1/admin/policy/nodes/pve-node-01"},
 	} {
 		t.Run(testCase.method+" "+testCase.path, func(t *testing.T) {
-			request := httptest.NewRequest(testCase.method, testCase.path, nil)
+			request := httptest.NewRequestWithContext(context.Background(), testCase.method, testCase.path, nil)
 			request.AddCookie(cookie)
 			recorder := httptest.NewRecorder()
 			mux.ServeHTTP(recorder, request)

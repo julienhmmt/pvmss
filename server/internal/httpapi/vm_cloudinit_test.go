@@ -35,7 +35,7 @@ func newVMCloudInitHandler(t *testing.T) (*httpapi.VMCloudInit, *httpapi.Auth, *
 	projection := inventory.NewProjectionFromIndex(&index)
 	authHandler := newAuthHandler(t)
 
-	st, err := store.Open(config.Configuration{DBPath: filepath.Join(t.TempDir(), "cloudinit.db"), LogLevel: "info", LogFormat: "json", LogOutput: "stdout"})
+	st, err := store.Open(config.Configuration{DBPath: filepath.Join(t.TempDir(), "cloudinit.db"), LogLevel: snapshotTestLogLevel, LogFormat: snapshotTestLogFormat, LogOutput: snapshotTestLogOutput})
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
 	}

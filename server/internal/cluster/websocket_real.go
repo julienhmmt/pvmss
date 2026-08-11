@@ -123,7 +123,7 @@ func proxmoxGetVNCTicket(ctx context.Context, c proxmoxVNCClient, node string, v
 func proxmoxRelayConsole(ctx context.Context, c proxmoxVNCClient, node string, vmid int, proxy VNCProxyTicket, peer io.ReadWriteCloser) error {
 	wsURL := buildProxmoxVNCWebSocketURL(c.baseURL, node, vmid, proxy.Port, proxy.Ticket)
 
-	proxmoxConn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{
+	proxmoxConn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{ //nolint:bodyclose // coder/websocket owns the response body lifecycle per its Dial docs
 		HTTPHeader: http.Header{
 			"Authorization": []string{fmt.Sprintf("PVEAPIToken=%s=%s", c.apiTokenName, c.apiTokenVal)},
 		},

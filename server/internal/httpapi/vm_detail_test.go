@@ -82,9 +82,9 @@ func newVMDetailHandler(t *testing.T) (*httpapi.VMDetail, *httpapi.Auth, *invent
 	cfg := config.Configuration{
 		Port:      50001,
 		DBPath:    filepath.Join(t.TempDir(), "vm-detail.db"),
-		LogLevel:  "info",
-		LogFormat: "json",
-		LogOutput: "stdout",
+		LogLevel:  snapshotTestLogLevel,
+		LogFormat: snapshotTestLogFormat,
+		LogOutput: snapshotTestLogOutput,
 	}
 
 	st, err := store.Open(cfg)

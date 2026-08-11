@@ -41,6 +41,14 @@ const (
 	defaultMaxVMPerUser    = -1
 )
 
+// Dimension identifiers used in capacity errors and guards.
+const (
+	dimensionVCPUs = "vcpus"
+	dimensionVCPU  = "vcpu"
+	dimensionVMs   = "vms"
+	dimensionRAM   = "ram"
+)
+
 // Gabarit is the administrator-editable size ceiling for one VM.
 type Gabarit struct {
 	MaxSockets      int

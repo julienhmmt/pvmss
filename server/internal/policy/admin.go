@@ -88,9 +88,12 @@ func validateGabarit(gabarit Gabarit) error {
 		name  string
 		value int
 	}{
-		{"maxSockets", gabarit.MaxSockets}, {"maxCores", gabarit.MaxCores},
-		{"maxMemoryMB", gabarit.MaxMemoryMB}, {"maxDiskPerVmGb", gabarit.MaxDiskPerVMGB},
-		{"maxNetworkCards", gabarit.MaxNetworkCards}, {"maxSnapshots", gabarit.MaxSnapshots},
+		{"maxSockets", gabarit.MaxSockets},
+		{"maxCores", gabarit.MaxCores},
+		{"maxMemoryMB", gabarit.MaxMemoryMB},
+		{"maxDiskPerVmGb", gabarit.MaxDiskPerVMGB},
+		{"maxNetworkCards", gabarit.MaxNetworkCards},
+		{"maxSnapshots", gabarit.MaxSnapshots},
 	}
 	for _, item := range values {
 		if item.value < 0 {
@@ -105,8 +108,10 @@ func validateCapacity(capacity Capacity) error {
 		name  string
 		value int
 	}{
-		{"maxVms", capacity.MaxVMs}, {"maxVcpus", capacity.MaxVCPUs},
-		{"maxRamGb", capacity.MaxRAMGB}, {"maxDiskGb", capacity.MaxDiskGB},
+		{"maxVms", capacity.MaxVMs},
+		{"maxVcpus", capacity.MaxVCPUs},
+		{"maxRamGb", capacity.MaxRAMGB},
+		{"maxDiskGb", capacity.MaxDiskGB},
 	}
 	for _, item := range values {
 		if item.value < 0 {
@@ -144,9 +149,9 @@ func checkBelowUsage(node string, requested, current Capacity) error {
 		dimension       string
 		requested, used int
 	}{
-		{"vms", requested.MaxVMs, current.UsedVMs},
-		{"vcpus", requested.MaxVCPUs, current.UsedVCPUs},
-		{"ram", requested.MaxRAMGB, current.UsedRAMGB},
+		{dimensionVMs, requested.MaxVMs, current.UsedVMs},
+		{dimensionVCPUs, requested.MaxVCPUs, current.UsedVCPUs},
+		{dimensionRAM, requested.MaxRAMGB, current.UsedRAMGB},
 	}
 	for _, item := range values {
 		if item.requested != 0 && item.requested < item.used {
@@ -161,8 +166,8 @@ func checkPhysicalCapacity(node string, requested Capacity, physical cluster.Nod
 		dimension           string
 		requested, physical int
 	}{
-		{"vcpu", requested.MaxVCPUs, physical.CPUCores},
-		{"ram", requested.MaxRAMGB, int(physical.MemoryTotal / bytesPerGB)},
+		{dimensionVCPU, requested.MaxVCPUs, physical.CPUCores},
+		{dimensionRAM, requested.MaxRAMGB, int(physical.MemoryTotal / bytesPerGB)},
 	}
 	for _, item := range values {
 		if item.requested != 0 && item.requested > item.physical {
@@ -180,8 +185,8 @@ type BelowCurrentUsageError struct {
 
 func (failure *BelowCurrentUsageError) Error() string {
 	dimension := failure.Dimension
-	if dimension == "vcpus" {
-		dimension = "vcpu"
+	if dimension == dimensionVCPUs {
+		dimension = dimensionVCPU
 	}
 	return fmt.Sprintf("%s cap (%d) is below %s's current usage (%d)", dimension, failure.Requested, failure.Node, failure.Used)
 }
@@ -195,7 +200,7 @@ type AboveNodeCapacityError struct {
 
 func (failure *AboveNodeCapacityError) Error() string {
 	unit := ""
-	if failure.Dimension == "ram" {
+	if failure.Dimension == dimensionRAM {
 		unit = " GB"
 	}
 	return fmt.Sprintf("%s cap (%d%s) exceeds %s's physical capacity (%d%s)", failure.Dimension, failure.Requested, unit, failure.Node, failure.Physical, unit)

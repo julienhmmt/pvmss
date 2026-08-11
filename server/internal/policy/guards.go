@@ -28,8 +28,10 @@ func (service *Policy) CheckGabarit(ctx context.Context, clusterName string, soc
 		field              string
 		requested, maximum int
 	}{
-		{"sockets", sockets, gabarit.MaxSockets}, {"cores", cores, gabarit.MaxCores},
-		{"memoryMB", memoryMB, gabarit.MaxMemoryMB}, {"diskGB", diskGB, gabarit.MaxDiskPerVMGB},
+		{"sockets", sockets, gabarit.MaxSockets},
+		{"cores", cores, gabarit.MaxCores},
+		{"memoryMB", memoryMB, gabarit.MaxMemoryMB},
+		{"diskGB", diskGB, gabarit.MaxDiskPerVMGB},
 		{"networkCards", networkCards, gabarit.MaxNetworkCards},
 	}
 	for _, value := range values {
@@ -59,13 +61,13 @@ func (service *Policy) CheckNodeCapacity(ctx context.Context, clusterName, node 
 	usedRAMGB := capacity.UsedRAMGB + (deltaMemoryMB+1023)/1024
 	dimensions := make([]string, 0, 3)
 	if capacity.MaxVMs > 0 && usedVMs > capacity.MaxVMs {
-		dimensions = append(dimensions, "vms")
+		dimensions = append(dimensions, dimensionVMs)
 	}
 	if capacity.MaxVCPUs > 0 && usedVCPUs > capacity.MaxVCPUs {
-		dimensions = append(dimensions, "vcpus")
+		dimensions = append(dimensions, dimensionVCPUs)
 	}
 	if capacity.MaxRAMGB > 0 && usedRAMGB > capacity.MaxRAMGB {
-		dimensions = append(dimensions, "ram")
+		dimensions = append(dimensions, dimensionRAM)
 	}
 	if len(dimensions) == 0 {
 		return nil
@@ -132,14 +134,14 @@ type NodeCapacityExceededError struct {
 func (failure *NodeCapacityExceededError) Error() string {
 	dimension := failure.Dimensions[0]
 	displayDimension := dimension
-	if dimension == "vcpus" {
-		displayDimension = "vcpu"
+	if dimension == dimensionVCPUs {
+		displayDimension = dimensionVCPU
 	}
 	maximum := failure.MaxVCPUs
-	if dimension == "vms" {
+	if dimension == dimensionVMs {
 		maximum = failure.MaxVMs
 	}
-	if dimension == "ram" {
+	if dimension == dimensionRAM {
 		maximum = failure.MaxRAMGB
 	}
 	return fmt.Sprintf("node %q %s capacity (%d) would be exceeded", failure.Node, displayDimension, maximum)

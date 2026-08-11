@@ -30,7 +30,7 @@ func TestAdminPolicy_RequiresAdminAndReturnsSeparatedShape(t *testing.T) {
 		{name: "admin", cookie: adminCookie, status: http.StatusOK},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodGet, "/api/v1/admin/policy?cluster=default", nil)
+			request := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/admin/policy?cluster=default", nil)
 			request.AddCookie(testCase.cookie)
 			recorder := httptest.NewRecorder()
 			mux.ServeHTTP(recorder, request)
@@ -64,7 +64,7 @@ func TestAdminPolicy_PutPartialUpdateAndRejectsInvalid(t *testing.T) {
 	policyHandler, authHandler := newPolicyHandler(t)
 	mux := policyMux(policyHandler, authHandler)
 	cookie := adminCookie(t, authHandler)
-	request := httptest.NewRequest(http.MethodPut, "/api/v1/admin/policy", strings.NewReader(`{"cluster":"default","gabarit":{"maxDiskPerVmGb":10},"quota":{"maxVmPerUser":1}}`))
+	request := httptest.NewRequestWithContext(context.Background(), http.MethodPut, "/api/v1/admin/policy", strings.NewReader(`{"cluster":"default","gabarit":{"maxDiskPerVmGb":10},"quota":{"maxVmPerUser":1}}`))
 	request.Header.Set("Content-Type", "application/json")
 	request.AddCookie(cookie)
 	recorder := httptest.NewRecorder()
@@ -79,7 +79,7 @@ func TestAdminPolicy_PutPartialUpdateAndRejectsInvalid(t *testing.T) {
 	if !bytes.Contains(response["gabarit"], []byte(`"maxDiskPerVmGb":10`)) || !bytes.Contains(response["quota"], []byte(`"maxVmPerUser":1`)) {
 		t.Fatalf("updated response = %s", recorder.Body.String())
 	}
-	invalid := httptest.NewRequest(http.MethodPut, "/api/v1/admin/policy", strings.NewReader(`{"cluster":"default","gabarit":{"maxCores":-1}}`))
+	invalid := httptest.NewRequestWithContext(context.Background(), http.MethodPut, "/api/v1/admin/policy", strings.NewReader(`{"cluster":"default","gabarit":{"maxCores":-1}}`))
 	invalid.Header.Set("Content-Type", "application/json")
 	invalid.AddCookie(cookie)
 	invalidRecorder := httptest.NewRecorder()
@@ -93,14 +93,14 @@ func TestAdminPolicyNodes_ListsUsageAndValidatesWrites(t *testing.T) {
 	policyHandler, authHandler := newPolicyHandler(t)
 	mux := policyMux(policyHandler, authHandler)
 	userCookie := aliceCookie(t, authHandler)
-	userRequest := httptest.NewRequest(http.MethodGet, "/api/v1/admin/policy/nodes?cluster=default", nil)
+	userRequest := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/admin/policy/nodes?cluster=default", nil)
 	userRequest.AddCookie(userCookie)
 	userRecorder := httptest.NewRecorder()
 	mux.ServeHTTP(userRecorder, userRequest)
 	if userRecorder.Code != http.StatusForbidden {
 		t.Fatalf("non-admin node list status = %d, want 403", userRecorder.Code)
 	}
-	userWrite := httptest.NewRequest(http.MethodPut, "/api/v1/admin/policy/nodes/pve-node-02", strings.NewReader(`{"cluster":"default","maxVcpus":0}`))
+	userWrite := httptest.NewRequestWithContext(context.Background(), http.MethodPut, "/api/v1/admin/policy/nodes/pve-node-02", strings.NewReader(`{"cluster":"default","maxVcpus":0}`))
 	userWrite.Header.Set("Content-Type", "application/json")
 	userWrite.AddCookie(userCookie)
 	userWriteRecorder := httptest.NewRecorder()
@@ -109,7 +109,7 @@ func TestAdminPolicyNodes_ListsUsageAndValidatesWrites(t *testing.T) {
 		t.Fatalf("non-admin node write status = %d, want 403", userWriteRecorder.Code)
 	}
 	cookie := adminCookie(t, authHandler)
-	request := httptest.NewRequest(http.MethodGet, "/api/v1/admin/policy/nodes?cluster=default", nil)
+	request := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/admin/policy/nodes?cluster=default", nil)
 	request.AddCookie(cookie)
 	recorder := httptest.NewRecorder()
 	mux.ServeHTTP(recorder, request)
@@ -134,7 +134,7 @@ func TestAdminPolicyNodes_ListsUsageAndValidatesWrites(t *testing.T) {
 	if targetNode == "" {
 		t.Fatal("pve-node-02 missing from node list")
 	}
-	below := httptest.NewRequest(http.MethodPut, "/api/v1/admin/policy/nodes/"+targetNode, strings.NewReader(`{"cluster":"default","maxVcpus":1}`))
+	below := httptest.NewRequestWithContext(context.Background(), http.MethodPut, "/api/v1/admin/policy/nodes/"+targetNode, strings.NewReader(`{"cluster":"default","maxVcpus":1}`))
 	below.Header.Set("Content-Type", "application/json")
 	below.AddCookie(cookie)
 	belowRecorder := httptest.NewRecorder()
@@ -142,7 +142,7 @@ func TestAdminPolicyNodes_ListsUsageAndValidatesWrites(t *testing.T) {
 	if usedVCPUs > 1 && belowRecorder.Code != http.StatusBadRequest {
 		t.Fatalf("below-usage status = %d, want 400", belowRecorder.Code)
 	}
-	above := httptest.NewRequest(http.MethodPut, "/api/v1/admin/policy/nodes/"+targetNode, strings.NewReader(`{"cluster":"default","maxVcpus":9999}`))
+	above := httptest.NewRequestWithContext(context.Background(), http.MethodPut, "/api/v1/admin/policy/nodes/"+targetNode, strings.NewReader(`{"cluster":"default","maxVcpus":9999}`))
 	above.Header.Set("Content-Type", "application/json")
 	above.AddCookie(cookie)
 	aboveRecorder := httptest.NewRecorder()
@@ -150,7 +150,7 @@ func TestAdminPolicyNodes_ListsUsageAndValidatesWrites(t *testing.T) {
 	if aboveRecorder.Code != http.StatusBadRequest {
 		t.Fatalf("above-physical status = %d, want 400", aboveRecorder.Code)
 	}
-	zero := httptest.NewRequest(http.MethodPut, "/api/v1/admin/policy/nodes/"+targetNode, strings.NewReader(`{"cluster":"default","maxVcpus":0}`))
+	zero := httptest.NewRequestWithContext(context.Background(), http.MethodPut, "/api/v1/admin/policy/nodes/"+targetNode, strings.NewReader(`{"cluster":"default","maxVcpus":0}`))
 	zero.Header.Set("Content-Type", "application/json")
 	zero.AddCookie(cookie)
 	zeroRecorder := httptest.NewRecorder()
