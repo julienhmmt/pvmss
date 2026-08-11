@@ -34,7 +34,7 @@
 				<a href={resolve('/vms/create')} class="text-sm text-muted-foreground hover:text-foreground">Create</a>
 				<a href={resolve('/nodes')} class="text-sm text-muted-foreground hover:text-foreground">Nodes</a>
 				{#if session.isAdmin}
-					<a href={resolve('/catalog')} class="text-sm text-muted-foreground hover:text-foreground">Admin</a>
+					<a href={resolve('/admin/nodes')} class="text-sm text-muted-foreground hover:text-foreground">Admin</a>
 				{/if}
 				<TaskTray />
 			</div>
