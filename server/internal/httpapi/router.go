@@ -24,120 +24,124 @@ type spaHandler struct {
 	log   *slog.Logger
 }
 
-// NewRouter wires the public API and the static SPA handler.
-func NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail http.Handler, vmCloudInit *VMCloudInit, vmCreate *VMCreate, tasks *Tasks, auth *Auth, webBuildDir string, log *slog.Logger, snapshotHandlers ...*VMSnapshots) *http.ServeMux {
-	return newRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, vmCloudInit, vmCreate, tasks, auth, webBuildDir, log, snapshotHandlers, nil, nil)
+// RouterConfig configures NewRouter. VMCloudInit, VMCreate, Tasks,
+// SnapshotHandlers, VMConsole, and AdminCatalog are optional — left
+// nil/empty, their routes are simply not registered (router tests rely on
+// this to omit handlers without panicking).
+type RouterConfig struct {
+	Health           http.Handler
+	ClusterNodes     http.Handler
+	ClusterRefresh   http.Handler
+	VMs              http.Handler
+	VMDetail         http.Handler
+	VMCloudInit      *VMCloudInit
+	VMCreate         *VMCreate
+	Tasks            *Tasks
+	Auth             *Auth
+	WebBuildDir      string
+	Log              *slog.Logger
+	SnapshotHandlers []*VMSnapshots
+	VMConsole        *VMConsole
+	AdminCatalog     *AdminCatalog
 }
 
-// NewRouterWithConsole wires the public API, the static SPA handler, and the
-// T10 console endpoints (vnc-ticket + websocket relay).
-func NewRouterWithConsole(health, clusterNodes, clusterRefresh, vms, vmDetail http.Handler, vmCloudInit *VMCloudInit, vmCreate *VMCreate, tasks *Tasks, auth *Auth, webBuildDir string, log *slog.Logger, vmConsole *VMConsole, snapshotHandlers ...*VMSnapshots) *http.ServeMux {
-	return newRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, vmCloudInit, vmCreate, tasks, auth, webBuildDir, log, snapshotHandlers, vmConsole, nil)
-}
-
-// NewRouterWithConsoleAndAdmin wires the public API, the static SPA handler,
-// the T10 console endpoints, and the T11 admin catalog endpoints.
-func NewRouterWithConsoleAndAdmin(health, clusterNodes, clusterRefresh, vms, vmDetail http.Handler, vmCloudInit *VMCloudInit, vmCreate *VMCreate, tasks *Tasks, auth *Auth, webBuildDir string, log *slog.Logger, vmConsole *VMConsole, adminCatalog *AdminCatalog, snapshotHandlers ...*VMSnapshots) *http.ServeMux {
-	return newRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, vmCloudInit, vmCreate, tasks, auth, webBuildDir, log, snapshotHandlers, vmConsole, adminCatalog)
-}
-
-func newRouter(health, clusterNodes, clusterRefresh, vms, vmDetail http.Handler, vmCloudInit *VMCloudInit, vmCreate *VMCreate, tasks *Tasks, auth *Auth, webBuildDir string, log *slog.Logger, snapshotHandlers []*VMSnapshots, vmConsole *VMConsole, adminCatalog *AdminCatalog) *http.ServeMux {
+// NewRouter wires the public API and the static SPA handler from cfg.
+func NewRouter(cfg RouterConfig) *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.Handle("GET /health", health)
-	mux.Handle("GET /api/v1/cluster/nodes", auth.Require(clusterNodes))
-	mux.Handle("POST /api/v1/cluster/refresh", auth.Require(clusterRefresh))
+	mux.Handle("GET /health", cfg.Health)
+	mux.Handle("GET /api/v1/cluster/nodes", cfg.Auth.Require(cfg.ClusterNodes))
+	mux.Handle("POST /api/v1/cluster/refresh", cfg.Auth.Require(cfg.ClusterRefresh))
 	// Not wrapped in auth.Require: the handler needs the resolved Identity
 	// itself (for scope enforcement) and calls h.auth.Principal(r) directly,
 	// returning 401 on its own — wrapping would just re-run the same check.
-	mux.Handle("GET /api/v1/vms", vms)
+	mux.Handle("GET /api/v1/vms", cfg.VMs)
 	// VM creation + catalog + task polling — same Principal pattern as above.
-	// Nil guards let router tests omit these handlers without panicking.
-	if vmCreate != nil {
-		mux.Handle("POST /api/v1/vms", vmCreate)
-		mux.Handle("GET /api/v1/vm-create/catalog", http.HandlerFunc(vmCreate.ServeCatalog))
+	if cfg.VMCreate != nil {
+		mux.Handle("POST /api/v1/vms", cfg.VMCreate)
+		mux.Handle("GET /api/v1/vm-create/catalog", http.HandlerFunc(cfg.VMCreate.ServeCatalog))
 	}
 
-	if tasks != nil {
-		mux.Handle("GET /api/v1/tasks/{upid}", tasks)
+	if cfg.Tasks != nil {
+		mux.Handle("GET /api/v1/tasks/{upid}", cfg.Tasks)
 	}
 	// VM detail + actions + delete + patch — all gated by vm.Resolve() inside
 	// the handler. Same reason as GET /vms: not wrapped in auth.Require.
-	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}", vmDetail)
-	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/actions", vmDetail)
-	mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}", vmDetail)
-	mux.Handle("PATCH /api/v1/vms/{cluster}/{vmid}", vmDetail)
-	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/hardware-options", vmDetail)
-	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/disks", vmDetail)
-	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/disks/{diskKey}/resize", vmDetail)
-	mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/disks/{diskKey}", vmDetail)
-	mux.Handle("PATCH /api/v1/vms/{cluster}/{vmid}/cdrom", vmDetail)
-	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/network", vmDetail)
-	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/hardware", vmDetail)
+	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}", cfg.VMDetail)
+	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/actions", cfg.VMDetail)
+	mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}", cfg.VMDetail)
+	mux.Handle("PATCH /api/v1/vms/{cluster}/{vmid}", cfg.VMDetail)
+	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/hardware-options", cfg.VMDetail)
+	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/disks", cfg.VMDetail)
+	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/disks/{diskKey}/resize", cfg.VMDetail)
+	mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/disks/{diskKey}", cfg.VMDetail)
+	mux.Handle("PATCH /api/v1/vms/{cluster}/{vmid}/cdrom", cfg.VMDetail)
+	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/network", cfg.VMDetail)
+	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/hardware", cfg.VMDetail)
 
-	if vmCloudInit != nil {
-		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit", vmCloudInit)
-		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit", vmCloudInit)
-		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", vmCloudInit)
-		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", vmCloudInit)
+	if cfg.VMCloudInit != nil {
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit", cfg.VMCloudInit)
+		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit", cfg.VMCloudInit)
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", cfg.VMCloudInit)
+		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", cfg.VMCloudInit)
 	}
 
-	if len(snapshotHandlers) > 0 && snapshotHandlers[0] != nil {
-		snapshots := snapshotHandlers[0]
+	if len(cfg.SnapshotHandlers) > 0 && cfg.SnapshotHandlers[0] != nil {
+		snapshots := cfg.SnapshotHandlers[0]
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/snapshots", snapshots)
 		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/snapshots", snapshots)
 		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/rollback", snapshots)
 		mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/snapshots/{name}", snapshots)
 	}
 
-	if vmConsole != nil {
-		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/vnc-ticket", vmConsole)
-		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/console/websocket", vmConsole)
+	if cfg.VMConsole != nil {
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/vnc-ticket", cfg.VMConsole)
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/console/websocket", cfg.VMConsole)
 	}
 
-	mux.HandleFunc("POST /api/v1/auth/login", auth.Login)
-	mux.HandleFunc("POST /api/v1/auth/admin-login", auth.AdminLogin)
-	mux.HandleFunc("GET /api/v1/auth/me", auth.Me)
-	mux.HandleFunc("POST /api/v1/auth/logout", auth.Logout)
-	mux.HandleFunc("POST /api/v1/auth/tokens", auth.CreateToken)
-	mux.HandleFunc("GET /api/v1/auth/tokens", auth.ListTokens)
-	mux.HandleFunc("DELETE /api/v1/auth/tokens/{id}", auth.RevokeToken)
-	mux.HandleFunc("POST /api/v1/auth/password", auth.ChangePassword)
+	mux.HandleFunc("POST /api/v1/auth/login", cfg.Auth.Login)
+	mux.HandleFunc("POST /api/v1/auth/admin-login", cfg.Auth.AdminLogin)
+	mux.HandleFunc("GET /api/v1/auth/me", cfg.Auth.Me)
+	mux.HandleFunc("POST /api/v1/auth/logout", cfg.Auth.Logout)
+	mux.HandleFunc("POST /api/v1/auth/tokens", cfg.Auth.CreateToken)
+	mux.HandleFunc("GET /api/v1/auth/tokens", cfg.Auth.ListTokens)
+	mux.HandleFunc("DELETE /api/v1/auth/tokens/{id}", cfg.Auth.RevokeToken)
+	mux.HandleFunc("POST /api/v1/auth/password", cfg.Auth.ChangePassword)
 
 	// T11 admin catalog — every route is admin-only (FR-008).
-	if adminCatalog != nil {
-		adminGuard := auth.RequireAdmin
-		mux.Handle("GET /api/v1/admin/nodes", adminGuard(http.HandlerFunc(adminCatalog.ServeNodes)))
-		mux.Handle("POST /api/v1/admin/nodes/toggle", adminGuard(http.HandlerFunc(adminCatalog.ServeNodeToggle)))
-		mux.Handle("GET /api/v1/admin/storages", adminGuard(http.HandlerFunc(adminCatalog.ServeStorages)))
-		mux.Handle("POST /api/v1/admin/storages/toggle", adminGuard(http.HandlerFunc(adminCatalog.ServeStorageToggle)))
-		mux.Handle("GET /api/v1/admin/bridges", adminGuard(http.HandlerFunc(adminCatalog.ServeBridges)))
-		mux.Handle("POST /api/v1/admin/bridges/toggle", adminGuard(http.HandlerFunc(adminCatalog.ServeBridgeToggle)))
-		mux.Handle("GET /api/v1/admin/isos", adminGuard(http.HandlerFunc(adminCatalog.ServeISOs)))
-		mux.Handle("POST /api/v1/admin/isos/toggle", adminGuard(http.HandlerFunc(adminCatalog.ServeISOToggle)))
-		mux.Handle("GET /api/v1/admin/profiles", adminGuard(http.HandlerFunc(adminCatalog.ServeProfiles)))
-		mux.Handle("POST /api/v1/admin/profiles", adminGuard(http.HandlerFunc(adminCatalog.ServeProfileCreate)))
-		mux.Handle("PUT /api/v1/admin/profiles/{id}", adminGuard(http.HandlerFunc(adminCatalog.ServeProfileUpdate)))
-		mux.Handle("DELETE /api/v1/admin/profiles/{id}", adminGuard(http.HandlerFunc(adminCatalog.ServeProfileDelete)))
-		mux.Handle("POST /api/v1/admin/profiles/{id}/toggle", adminGuard(http.HandlerFunc(adminCatalog.ServeProfileToggle)))
-		mux.Handle("GET /api/v1/admin/tags", adminGuard(http.HandlerFunc(adminCatalog.ServeTags)))
-		mux.Handle("POST /api/v1/admin/tags", adminGuard(http.HandlerFunc(adminCatalog.ServeTagCreate)))
-		mux.Handle("PUT /api/v1/admin/tags/{name}/color", adminGuard(http.HandlerFunc(adminCatalog.ServeTagColor)))
-		mux.Handle("DELETE /api/v1/admin/tags/{name}", adminGuard(http.HandlerFunc(adminCatalog.ServeTagDelete)))
+	if cfg.AdminCatalog != nil {
+		adminGuard := cfg.Auth.RequireAdmin
+		mux.Handle("GET /api/v1/admin/nodes", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeNodes)))
+		mux.Handle("POST /api/v1/admin/nodes/toggle", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeNodeToggle)))
+		mux.Handle("GET /api/v1/admin/storages", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeStorages)))
+		mux.Handle("POST /api/v1/admin/storages/toggle", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeStorageToggle)))
+		mux.Handle("GET /api/v1/admin/bridges", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeBridges)))
+		mux.Handle("POST /api/v1/admin/bridges/toggle", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeBridgeToggle)))
+		mux.Handle("GET /api/v1/admin/isos", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeISOs)))
+		mux.Handle("POST /api/v1/admin/isos/toggle", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeISOToggle)))
+		mux.Handle("GET /api/v1/admin/profiles", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeProfiles)))
+		mux.Handle("POST /api/v1/admin/profiles", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeProfileCreate)))
+		mux.Handle("PUT /api/v1/admin/profiles/{id}", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeProfileUpdate)))
+		mux.Handle("DELETE /api/v1/admin/profiles/{id}", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeProfileDelete)))
+		mux.Handle("POST /api/v1/admin/profiles/{id}/toggle", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeProfileToggle)))
+		mux.Handle("GET /api/v1/admin/tags", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeTags)))
+		mux.Handle("POST /api/v1/admin/tags", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeTagCreate)))
+		mux.Handle("PUT /api/v1/admin/tags/{name}/color", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeTagColor)))
+		mux.Handle("DELETE /api/v1/admin/tags/{name}", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeTagDelete)))
 	}
 
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
 		mux.Handle(method+" /api/", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			if err := writeError(w, http.StatusNotFound, "unknown API path"); err != nil {
-				log.Error("failed to write API 404", "component", "httpapi", "error", err)
+				cfg.Log.Error("failed to write API 404", "component", "httpapi", "error", err)
 			}
 		}))
 	}
 
-	if webBuildDir != "" {
+	if cfg.WebBuildDir != "" {
 		spa := &spaHandler{
-			root:  http.Dir(webBuildDir),
+			root:  http.Dir(cfg.WebBuildDir),
 			index: "/index.html",
-			log:   log,
+			log:   cfg.Log,
 		}
 		mux.Handle("GET /", spa)
 	}
