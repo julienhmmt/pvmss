@@ -1,0 +1,147 @@
+package policy
+
+import (
+	"context"
+	"fmt"
+	"pvmss/server/internal/auth"
+)
+
+// CheckQuota refuses a non-administrator whose pool has reached its allowance.
+func (service *Policy) CheckQuota(ctx context.Context, clusterName string, actor auth.Identity) error {
+	quota, err := service.Quota(ctx, clusterName, actor)
+	if err != nil {
+		return fmt.Errorf("read quota: %w", err)
+	}
+	if actor.IsAdmin || quota.Allowed == -1 || quota.Used < quota.Allowed {
+		return nil
+	}
+	return &QuotaExceededError{Username: actor.Username, Used: quota.Used, Allowed: quota.Allowed}
+}
+
+// CheckGabarit validates the resolved initial VM hardware in field order.
+func (service *Policy) CheckGabarit(ctx context.Context, clusterName string, sockets, cores, memoryMB, diskGB, networkCards int) error {
+	gabarit, err := service.Gabarit(ctx, clusterName)
+	if err != nil {
+		return fmt.Errorf("read gabarit: %w", err)
+	}
+	values := []struct {
+		field              string
+		requested, maximum int
+	}{
+		{"sockets", sockets, gabarit.MaxSockets}, {"cores", cores, gabarit.MaxCores},
+		{"memoryMB", memoryMB, gabarit.MaxMemoryMB}, {"diskGB", diskGB, gabarit.MaxDiskPerVMGB},
+		{"networkCards", networkCards, gabarit.MaxNetworkCards},
+	}
+	for _, value := range values {
+		if value.requested != 0 && value.requested > value.maximum {
+			return &GabaritExceededError{Field: value.field, Requested: value.requested, Maximum: value.maximum}
+		}
+	}
+	return nil
+}
+
+// CheckNodeCapacity validates aggregate VM count, vCPU, and RAM headroom.
+// excludeVMID removes a resizing VM's current contribution before adding the
+// requested replacement values. Node disk capacité is intentionally not used.
+func (service *Policy) CheckNodeCapacity(ctx context.Context, clusterName, node string, deltaSockets, deltaCores, deltaMemoryMB, excludeVMID int) error {
+	capacity, err := service.NodeCapacity(ctx, clusterName, node)
+	if err != nil {
+		return fmt.Errorf("read node capacity: %w", err)
+	}
+	if excludeVMID != 0 {
+		service.excludeVM(&capacity, excludeVMID)
+	}
+	usedVMs := capacity.UsedVMs
+	if excludeVMID == 0 {
+		usedVMs++
+	}
+	usedVCPUs := capacity.UsedVCPUs + deltaSockets*deltaCores
+	usedRAMGB := capacity.UsedRAMGB + (deltaMemoryMB+1023)/1024
+	dimensions := make([]string, 0, 3)
+	if capacity.MaxVMs > 0 && usedVMs > capacity.MaxVMs {
+		dimensions = append(dimensions, "vms")
+	}
+	if capacity.MaxVCPUs > 0 && usedVCPUs > capacity.MaxVCPUs {
+		dimensions = append(dimensions, "vcpus")
+	}
+	if capacity.MaxRAMGB > 0 && usedRAMGB > capacity.MaxRAMGB {
+		dimensions = append(dimensions, "ram")
+	}
+	if len(dimensions) == 0 {
+		return nil
+	}
+	return &NodeCapacityExceededError{Node: node, Dimensions: dimensions, MaxVMs: capacity.MaxVMs, MaxVCPUs: capacity.MaxVCPUs, MaxRAMGB: capacity.MaxRAMGB}
+}
+
+func (service *Policy) excludeVM(capacity *Capacity, vmid int) {
+	if service.projection == nil || service.projection.Load() == nil {
+		return
+	}
+	machine, ok := service.projection.Load().ByVMID[vmid]
+	if !ok {
+		return
+	}
+	if capacity.UsedVMs > 0 {
+		capacity.UsedVMs--
+	}
+	vcpus := vmVCPUs(machine)
+	if capacity.UsedVCPUs >= vcpus {
+		capacity.UsedVCPUs -= vcpus
+	}
+	capacity.UsedRAMGB = service.ramGBExcluding(machine.Node, vmid)
+}
+
+// QuotaExceededError carries the values needed for a safe user-facing message.
+type QuotaExceededError struct {
+	Username      string
+	Used, Allowed int
+}
+
+func (failure *QuotaExceededError) Error() string {
+	return fmt.Sprintf("%s already owns %d of %d allowed VMs", failure.Username, failure.Used, failure.Allowed)
+}
+func (failure *QuotaExceededError) Unwrap() error { return ErrQuotaExceeded }
+
+// GabaritExceededError identifies the first offending VM dimension.
+type GabaritExceededError struct {
+	Field              string
+	Requested, Maximum int
+}
+
+func (failure *GabaritExceededError) Error() string {
+	switch failure.Field {
+	case "diskGB":
+		return fmt.Sprintf("disk size (%d GB) exceeds the configured gabarit (%d GB)", failure.Requested, failure.Maximum)
+	case "memoryMB":
+		return fmt.Sprintf("memory (%d MB) exceeds the configured gabarit (%d MB)", failure.Requested, failure.Maximum)
+	case "networkCards":
+		return fmt.Sprintf("network cards (%d) exceed the configured gabarit (%d)", failure.Requested, failure.Maximum)
+	default:
+		return fmt.Sprintf("%s (%d) exceeds the configured gabarit (%d)", failure.Field, failure.Requested, failure.Maximum)
+	}
+}
+func (failure *GabaritExceededError) Unwrap() error { return ErrGabaritExceeded }
+
+// NodeCapacityExceededError identifies the node dimensions that would overflow.
+type NodeCapacityExceededError struct {
+	Node                       string
+	Dimensions                 []string
+	MaxVMs, MaxVCPUs, MaxRAMGB int
+}
+
+func (failure *NodeCapacityExceededError) Error() string {
+	dimension := failure.Dimensions[0]
+	displayDimension := dimension
+	if dimension == "vcpus" {
+		displayDimension = "vcpu"
+	}
+	maximum := failure.MaxVCPUs
+	if dimension == "vms" {
+		maximum = failure.MaxVMs
+	}
+	if dimension == "ram" {
+		maximum = failure.MaxRAMGB
+	}
+	return fmt.Sprintf("node %q %s capacity (%d) would be exceeded", failure.Node, displayDimension, maximum)
+}
+func (failure *NodeCapacityExceededError) Unwrap() error { return ErrNodeCapacityExceeded }

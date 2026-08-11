@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 )
@@ -19,14 +20,19 @@ type VMCreate struct {
 	auth    *Auth
 	store   *store.Store
 	creator cluster.Creator
+	policy  *policy.Policy
 	log     *slog.Logger
 }
 
 // NewVMCreate creates the handler. The creator is the cluster client's
 // creation contract (allocation + async dispatch), separate from reads and
 // from existing-VM writes (constitution IV).
-func NewVMCreate(authHandler *Auth, st *store.Store, creator cluster.Creator, log *slog.Logger) *VMCreate {
-	return &VMCreate{auth: authHandler, store: st, creator: creator, log: log}
+func NewVMCreate(authHandler *Auth, st *store.Store, creator cluster.Creator, log *slog.Logger, services ...*policy.Policy) *VMCreate {
+	var policyService *policy.Policy
+	if len(services) > 0 {
+		policyService = services[0]
+	}
+	return &VMCreate{auth: authHandler, store: st, creator: creator, policy: policyService, log: log}
 }
 
 type createResultDTO struct {
@@ -80,7 +86,7 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := vm.Create(r.Context(), identity, req.Cluster, req, h.store, h.creator, h.store, h.log)
+	result, err := vm.Create(r.Context(), identity, req.Cluster, req, h.store, h.creator, h.store, h.log, h.policy)
 	if err != nil {
 		h.writeCreateFailure(w, err)
 		return
@@ -165,6 +171,12 @@ func (h *VMCreate) writeCreateFailure(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrNoPool):
 		h.writeCreateError(w, http.StatusForbidden, "no_pool", "this account cannot own VMs")
+	case errors.Is(err, policy.ErrQuotaExceeded):
+		h.writeCreateError(w, http.StatusBadRequest, "quota_exceeded", err.Error())
+	case errors.Is(err, policy.ErrGabaritExceeded):
+		h.writeCreateError(w, http.StatusBadRequest, "gabarit_exceeded", err.Error())
+	case errors.Is(err, policy.ErrNodeCapacityExceeded):
+		h.writeCreateError(w, http.StatusBadRequest, "capacity_exceeded", err.Error())
 	case errors.Is(err, vm.ErrInvalidName):
 		h.writeCreateError(w, http.StatusBadRequest, "invalid_name", "name must be a valid hostname (lowercase alphanumeric and hyphen, no leading/trailing hyphen, max 63 chars)")
 	case errors.Is(err, vm.ErrOutOfRange):

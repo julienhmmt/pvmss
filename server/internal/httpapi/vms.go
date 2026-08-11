@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/vm"
 	"strconv"
 )
@@ -21,14 +22,19 @@ type VMs struct {
 	auth        *Auth
 	maxPageSize int
 	quota       int
+	policy      *policy.Policy
 	log         *slog.Logger
 }
 
 // NewVMs creates the handler for the given inventory projection. maxPageSize
 // caps an accepted pageSize (rejected, not truncated); quota is the per-user
 // allowance reported to non-admin callers (-1 = unlimited, V07).
-func NewVMs(projection *inventory.Projection, authHandler *Auth, maxPageSize, quota int, log *slog.Logger) *VMs {
-	return &VMs{projection: projection, auth: authHandler, maxPageSize: maxPageSize, quota: quota, log: log}
+func NewVMs(projection *inventory.Projection, authHandler *Auth, maxPageSize, quota int, log *slog.Logger, services ...*policy.Policy) *VMs {
+	var policyService *policy.Policy
+	if len(services) > 0 {
+		policyService = services[0]
+	}
+	return &VMs{projection: projection, auth: authHandler, maxPageSize: maxPageSize, quota: quota, policy: policyService, log: log}
 }
 
 type vmDTO struct {
@@ -83,7 +89,7 @@ func (h *VMs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := vm.List(index, query, identity, h.quota)
+	result, err := vm.ListWithContext(r.Context(), index, query, identity, h.quota, h.policy)
 	if err != nil {
 		if errors.Is(err, vm.ErrInvalidSortBy) {
 			h.writeError(w, http.StatusBadRequest, "invalid_sort_column", fmt.Sprintf("cannot sort by %q", query.SortBy))

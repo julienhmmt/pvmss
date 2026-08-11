@@ -9,6 +9,7 @@ import (
 	"pvmss/server/internal/cloudinit"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"strconv"
@@ -26,12 +27,20 @@ type VMCloudInit struct {
 	writer     cluster.Writer
 	store      *store.Store
 	refresher  vm.IndexRefresher
+	policy     *policy.Policy
 	log        *slog.Logger
 }
 
 // NewVMCloudInit creates the dedicated cloud-init handler.
-func NewVMCloudInit(projection *inventory.Projection, authHandler *Auth, reader cluster.CloudInitReader, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger) *VMCloudInit {
-	return &VMCloudInit{projection: projection, auth: authHandler, reader: reader, writer: writer, store: st, refresher: refresher, log: log}
+func NewVMCloudInit(projection *inventory.Projection, authHandler *Auth, reader cluster.CloudInitReader, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger, services ...*policy.Policy) *VMCloudInit {
+	var policyService *policy.Policy
+	if len(services) > 0 {
+		policyService = services[0]
+	}
+	if policyService == nil && st != nil {
+		policyService = policy.New(st, projection, nil)
+	}
+	return &VMCloudInit{projection: projection, auth: authHandler, reader: reader, writer: writer, store: st, refresher: refresher, policy: policyService, log: log}
 }
 
 type cloudInitConfigDTO struct {
@@ -197,18 +206,13 @@ func (h *VMCloudInit) putSnippet(w http.ResponseWriter, r *http.Request, actor a
 		return
 	}
 
-	if err := cloudinit.Validate(*request.Content); err != nil {
-		h.writeError(w, http.StatusBadRequest, "invalid_snippet", err.Error())
-		return
-	}
-
 	index := h.projection.Load()
 	if index == nil {
 		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
 		return
 	}
 
-	if err := vm.SetCloudInitSnippet(r.Context(), index, actor, clusterName, vmid, *request.Content, h.reader, h.writer, h.store); err != nil {
+	if err := vm.SetCloudInitSnippet(r.Context(), index, actor, clusterName, vmid, *request.Content, h.reader, h.writer, h.store, h.policy); err != nil {
 		h.writeDomainError(w, err)
 		return
 	}
@@ -218,6 +222,10 @@ func (h *VMCloudInit) putSnippet(w http.ResponseWriter, r *http.Request, actor a
 
 func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, vm.ErrCustomYAMLDisabled):
+		h.writeError(w, http.StatusForbidden, "custom_yaml_disabled", "the administrator has disabled custom cloud-init snippets")
+	case errors.Is(err, policy.ErrUnavailable):
+		h.writeError(w, http.StatusServiceUnavailable, "policy_unavailable", "policy service is not configured")
 	case errors.Is(err, vm.ErrForbidden):
 		h.writeError(w, http.StatusForbidden, "forbidden", "not your VM")
 	case errors.Is(err, vm.ErrNotFound):

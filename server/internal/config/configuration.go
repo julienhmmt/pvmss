@@ -25,8 +25,4 @@ type Configuration struct {
 	// MaxListPageSize is the upper bound on a VM list request's pageSize —
 	// anything larger is rejected, never silently truncated (T04 data-model).
 	MaxListPageSize int
-	// DefaultUserQuota is the per-user VM allowance reported by the list
-	// endpoint. -1 means unlimited (V07). Placeholder until T12 makes quota
-	// a real per-user, admin-set value.
-	DefaultUserQuota int
 }

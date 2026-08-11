@@ -7,8 +7,8 @@ import (
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
-	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 )
 
 var (
@@ -45,7 +45,8 @@ type DiskDependencies struct {
 	VMID        int
 	Writer      cluster.Writer
 	Resources   catalog.Resources
-	Limits      config.VMLimits
+	Policy      *policy.Policy
+	Gabarit     policy.Gabarit
 	Audit       AuditRecorder
 	Refresher   IndexRefresher
 }
@@ -69,7 +70,17 @@ func AddDisk(ctx context.Context, deps DiskDependencies, bus cluster.DiskBus, st
 		return cluster.Disk{}, ErrInvalidDiskSize
 	}
 
-	if sizeGB > deps.Limits.MaxDiskPerVMGB {
+	gabarit := deps.Gabarit
+	if deps.Policy != nil {
+		gabarit, err = deps.Policy.Gabarit(ctx, deps.ClusterName)
+		if err != nil {
+			return cluster.Disk{}, fmt.Errorf("read gabarit: %w", err)
+		}
+	}
+	if deps.Policy == nil && gabarit.MaxDiskPerVMGB == 0 {
+		return cluster.Disk{}, policy.ErrUnavailable
+	}
+	if sizeGB > gabarit.MaxDiskPerVMGB {
 		return cluster.Disk{}, ErrDiskSizeExceedsLimit
 	}
 
@@ -109,7 +120,17 @@ func ResizeDisk(ctx context.Context, deps DiskDependencies, diskKey string, size
 		return ErrDiskSizeNotGreater
 	}
 
-	if sizeGB > deps.Limits.MaxDiskPerVMGB {
+	gabarit := deps.Gabarit
+	if deps.Policy != nil {
+		gabarit, err = deps.Policy.Gabarit(ctx, deps.ClusterName)
+		if err != nil {
+			return fmt.Errorf("read gabarit: %w", err)
+		}
+	}
+	if deps.Policy == nil && gabarit.MaxDiskPerVMGB == 0 {
+		return policy.ErrUnavailable
+	}
+	if sizeGB > gabarit.MaxDiskPerVMGB {
 		return ErrDiskSizeExceedsLimit
 	}
 

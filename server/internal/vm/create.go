@@ -8,6 +8,7 @@ import (
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"slices"
 )
@@ -129,9 +130,14 @@ type CreateResult struct {
 // would tell the client creation failed when it did not — the same
 // log-don't-fail rule the task-status handler already applies to a failed
 // post-completion invalidation (tasks.go).
-func Create(ctx context.Context, actor auth.Identity, clusterName string, req CreateRequest, st *store.Store, creator cluster.Creator, audit AuditRecorder, log *slog.Logger) (CreateResult, error) {
+func Create(ctx context.Context, actor auth.Identity, clusterName string, req CreateRequest, st *store.Store, creator cluster.Creator, audit AuditRecorder, log *slog.Logger, services ...*policy.Policy) (CreateResult, error) {
+	policyService := selectPolicyService(st, services)
 	if actor.Pool == "" {
 		return CreateResult{}, ErrNoPool
+	}
+
+	if err := policyService.CheckQuota(ctx, clusterName, actor); err != nil {
+		return CreateResult{}, err
 	}
 
 	if err := ValidateName(req.Name); err != nil {
@@ -152,12 +158,20 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 		return CreateResult{}, err
 	}
 
+	if err := policyService.CheckGabarit(ctx, clusterName, 1, cpuCores, memoryMB, diskGB, 1); err != nil {
+		return CreateResult{}, err
+	}
+
 	node, storage, bridge, model, err := resolveResources(req, resources)
 	if err != nil {
 		return CreateResult{}, err
 	}
 
 	if err := validateCatalog(req, resources, node, storage, bridge, model); err != nil {
+		return CreateResult{}, err
+	}
+
+	if err := policyService.CheckNodeCapacity(ctx, clusterName, node, 1, cpuCores, memoryMB, 0); err != nil {
 		return CreateResult{}, err
 	}
 

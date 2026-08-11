@@ -18,6 +18,7 @@ import (
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"strconv"
@@ -178,11 +179,12 @@ func buildRouter(
 	webDir string,
 	logger *slog.Logger,
 ) (*http.ServeMux, error) {
+	policyService := policy.New(st, projection, clusterClient)
 	health := httpapi.NewHealth(st, logger)
 	clusterNodes := httpapi.NewClusterNodes(projection, logger)
 	clusterRefresh := httpapi.NewClusterRefresh(refresher, logger)
 	authHandler := httpapi.NewAuth(clusterClient, sessions, cfg.AdminPasswordHash, auth.NewTokenService(st), logger)
-	vms := httpapi.NewVMs(projection, authHandler, cfg.MaxListPageSize, cfg.DefaultUserQuota, logger)
+	vms := httpapi.NewVMs(projection, authHandler, cfg.MaxListPageSize, 0, logger, policyService)
 
 	// Both cluster.Client implementations (Fake, Proxmox) also implement
 	// cluster.Writer — reads and writes are separated by interface
@@ -220,13 +222,14 @@ func buildRouter(
 
 	consoleTickets := vm.NewConsoleTicketStore()
 
-	vmDetail := httpapi.NewVMDetail(projection, authHandler, writer, st, worker, logger)
-	vmCloudInit := httpapi.NewVMCloudInit(projection, authHandler, cloudInitReader, writer, st, worker, logger)
-	vmCreate := httpapi.NewVMCreate(authHandler, st, creator, logger)
+	vmDetail := httpapi.NewVMDetail(projection, authHandler, writer, st, worker, logger, policyService)
+	vmCloudInit := httpapi.NewVMCloudInit(projection, authHandler, cloudInitReader, writer, st, worker, logger, policyService)
+	vmCreate := httpapi.NewVMCreate(authHandler, st, creator, logger, policyService)
 	tasks := httpapi.NewTasks(authHandler, creator, worker, logger)
-	snapshots := httpapi.NewVMSnapshots(projection, authHandler, snapshotReader, snapshotWriter, st, logger)
+	snapshots := httpapi.NewVMSnapshots(projection, authHandler, snapshotReader, snapshotWriter, st, logger, policyService)
 	vmConsole := httpapi.NewVMConsole(projection, authHandler, consoleRelay, consoleTickets, st, logger)
 	adminCatalog := httpapi.NewAdminCatalog(authHandler, st, clusterClient, projection, logger)
+	adminPolicy := httpapi.NewAdminPolicy(authHandler, policyService, logger)
 
 	return httpapi.NewRouter(httpapi.RouterConfig{
 		Health:           health,
@@ -243,6 +246,7 @@ func buildRouter(
 		SnapshotHandlers: []*httpapi.VMSnapshots{snapshots},
 		VMConsole:        vmConsole,
 		AdminCatalog:     adminCatalog,
+		AdminPolicy:      adminPolicy,
 	}), nil
 }
 

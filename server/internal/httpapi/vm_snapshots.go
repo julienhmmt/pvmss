@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
-	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"strconv"
@@ -24,20 +24,22 @@ type VMSnapshots struct {
 	reader     cluster.SnapshotReader
 	writer     cluster.SnapshotWriter
 	store      *store.Store
-	limits     config.VMLimits
+	policy     *policy.Policy
 	log        *slog.Logger
 }
 
 // NewVMSnapshots creates the snapshot handler with the T05 Resolve projection.
 //
 //nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
-func NewVMSnapshots(projection *inventory.Projection, authHandler *Auth, reader cluster.SnapshotReader, writer cluster.SnapshotWriter, st *store.Store, log *slog.Logger, limits ...config.VMLimits) *VMSnapshots {
-	configuredLimits := config.DefaultVMLimits()
-	if len(limits) > 0 {
-		configuredLimits = limits[0]
+func NewVMSnapshots(projection *inventory.Projection, authHandler *Auth, reader cluster.SnapshotReader, writer cluster.SnapshotWriter, st *store.Store, log *slog.Logger, services ...*policy.Policy) *VMSnapshots {
+	var policyService *policy.Policy
+	if len(services) > 0 {
+		policyService = services[0]
 	}
-
-	return &VMSnapshots{projection: projection, auth: authHandler, reader: reader, writer: writer, store: st, limits: configuredLimits, log: log}
+	if policyService == nil && st != nil {
+		policyService = policy.New(st, projection, nil)
+	}
+	return &VMSnapshots{projection: projection, auth: authHandler, reader: reader, writer: writer, store: st, policy: policyService, log: log}
 }
 
 type snapshotCreateRequest struct {
@@ -186,7 +188,7 @@ func (h *VMSnapshots) requestTarget(w http.ResponseWriter, r *http.Request) (aut
 
 //nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
 func (h *VMSnapshots) dependencies(index *inventory.Index, actor auth.Identity, clusterName string, vmid int) vm.SnapshotDependencies {
-	return vm.SnapshotDependencies{Index: index, Actor: actor, ClusterName: clusterName, VMID: vmid, Reader: h.reader, Writer: h.writer, Limits: h.limits, Audit: h.store}
+	return vm.SnapshotDependencies{Index: index, Actor: actor, ClusterName: clusterName, VMID: vmid, Reader: h.reader, Writer: h.writer, Policy: h.policy, Audit: h.store}
 }
 
 //nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
@@ -213,6 +215,8 @@ func (h *VMSnapshots) writeSnapshotError(w http.ResponseWriter, err error) {
 		h.writeError(w, http.StatusBadRequest, "vmstate_unsupported_storage", err.Error())
 	case errors.Is(err, vm.ErrSnapshotNotFound):
 		h.writeError(w, http.StatusNotFound, "snapshot_not_found", err.Error())
+	case errors.Is(err, policy.ErrUnavailable):
+		h.writeError(w, http.StatusServiceUnavailable, "policy_unavailable", "policy service is not configured")
 	case errors.Is(err, cluster.ErrNotFound):
 		h.writeError(w, http.StatusBadGateway, "cluster_error", "cluster rejected the request")
 	default:
