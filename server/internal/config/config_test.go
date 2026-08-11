@@ -184,7 +184,7 @@ func TestLoad(t *testing.T) {
 		},
 		{
 			name: "explicit cluster source proxmox",
-			env: map[string]string{
+			env: map[string]string{ //nolint:gosec // test-only fake Proxmox credentials
 				envPort:                   "50001",
 				envDBPath:                 testDBPath,
 				envLogLevel:               testLogLevel,
@@ -192,10 +192,10 @@ func TestLoad(t *testing.T) {
 				envLogOutput:              testLogOutput,
 				"PVMSS_CLUSTER_SOURCE":    "proxmox",
 				"PROXMOX_URL":             "https://proxmox.example.com",
-				"PROXMOX_API_TOKEN_NAME":  "root@pam!pvmss",
-				"PROXMOX_API_TOKEN_VALUE": "token-value",
+				"PROXMOX_API_TOKEN_NAME":  "root@pam!pvmss", //nolint:gosec // test-only fake credential
+				"PROXMOX_API_TOKEN_VALUE": "token-value",    //nolint:gosec // test-only fake credential
 			},
-			want: config.Configuration{
+			want: config.Configuration{ //nolint:gosec // test-only fake Proxmox credentials
 				Host:                              testHost,
 				Port:                              50001,
 				DBPath:                            testDBPath,
@@ -204,8 +204,8 @@ func TestLoad(t *testing.T) {
 				LogOutput:                         testLogOutput,
 				ClusterSource:                     "proxmox",
 				ProxmoxURL:                        "https://proxmox.example.com",
-				ProxmoxAPITokenName:               "root@pam!pvmss",
-				ProxmoxAPITokenValue:              "token-value",
+				ProxmoxAPITokenName:               "root@pam!pvmss", //nolint:gosec // test-only fake credential
+				ProxmoxAPITokenValue:              "token-value",    //nolint:gosec // test-only fake credential
 				InventoryRefreshInterval:          30 * time.Second,
 				InventoryManualRefreshMinInterval: 5 * time.Second,
 				InventoryRefreshTimeout:           15 * time.Second,

@@ -268,7 +268,7 @@ func TestRFBFakeHandshake_AcceptsInputMessages(t *testing.T) {
 	text := "hello from client"
 	cut := make([]byte, 8+len(text))
 	cut[0] = rfbMsgClientCutText
-	binary.BigEndian.PutUint32(cut[4:8], uint32(len(text)))
+	binary.BigEndian.PutUint32(cut[4:8], uint32(len(text))) //nolint:gosec // len(text) is a fixed small test fixture
 	copy(cut[8:], text)
 
 	if _, err := client.Write(cut); err != nil {

@@ -105,7 +105,7 @@ func TestConsoleTicketStore_EvictsOldestWhenFull(t *testing.T) {
 	store := NewConsoleTicketStore()
 
 	var first VNCTicket
-	for i := 0; i < ticketStoreCapacity; i++ {
+	for i := range ticketStoreCapacity {
 		ticket := store.Issue("default", 100+i, "pve-node-01", "ticket", 5901)
 		if i == 0 {
 			first = ticket

@@ -694,6 +694,8 @@ const (
 	FakeTagPvmss   = "pvmss"
 	// FakeStorageLocalLVM is the approved local LVM fixture.
 	FakeStorageLocalLVM = "local-lvm"
+	// FakeStorageLocal is the deterministic default fake storage ("local").
+	FakeStorageLocal = "local"
 	// FakeSnippetStorage is the deterministic snippets-capable fake storage.
 	FakeSnippetStorage = "local"
 	// FakeCloudInitUser is the demo cloud-init account.
@@ -773,10 +775,10 @@ func originalFakePools() []Pool {
 }
 
 var fakeStorages = []Storage{
-	{Name: "local", Node: FakeNode01, Type: "dir", Total: 2199023255552, Used: 879609302220, SupportsVMState: false},
+	{Name: FakeStorageLocal, Node: FakeNode01, Type: "dir", Total: 2199023255552, Used: 879609302220, SupportsVMState: false},
 	{Name: FakeStorageLocalLVM, Node: FakeNode01, Type: "lvm", Total: 549755813888, Used: 219902325555, SupportsVMState: true},
 	{Name: "ceph-data", Node: FakeNode02, Type: "cephfs", Total: 1099511627776, Used: 329853488332, SupportsVMState: true},
-	{Name: "local", Node: FakeNode02, Type: "dir", Total: 274877906944, Used: 68719476736, SupportsVMState: false},
+	{Name: FakeStorageLocal, Node: FakeNode02, Type: "dir", Total: 274877906944, Used: 68719476736, SupportsVMState: false},
 	{Name: "backup-nfs", Node: FakeNode03, Type: "nfs", Total: 5497558138880, Used: 1099511627776, SupportsVMState: false},
 }
 
