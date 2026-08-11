@@ -177,6 +177,7 @@ func (h *VMCloudInit) getSnippet(w http.ResponseWriter, r *http.Request, actor a
 		h.writeDomainError(w, err)
 		return
 	}
+
 	if !found {
 		h.writeJSONStatus(w, http.StatusOK, cloudInitSnippetDTO{})
 		return
@@ -195,6 +196,7 @@ func (h *VMCloudInit) putSnippet(w http.ResponseWriter, r *http.Request, actor a
 		h.writeError(w, http.StatusBadRequest, "invalid_snippet", "content is required")
 		return
 	}
+
 	if err := cloudinit.Validate(*request.Content); err != nil {
 		h.writeError(w, http.StatusBadRequest, "invalid_snippet", err.Error())
 		return
@@ -240,8 +242,10 @@ func (h *VMCloudInit) writeJSONStatus(w http.ResponseWriter, status int, value a
 	if err != nil {
 		h.log.Error("failed to marshal cloud-init response", "component", "httpapi", "error", err)
 		h.writeError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+
 		return
 	}
+
 	if err := writeJSON(w, status, body); err != nil {
 		h.log.Error("failed to write cloud-init response", "component", "httpapi", "error", err)
 	}
@@ -257,6 +261,7 @@ func (h *VMCloudInit) writeError(w http.ResponseWriter, status int, code, messag
 		h.log.Error("failed to marshal cloud-init error", "component", "httpapi", "error", err)
 		return
 	}
+
 	if err := writeJSON(w, status, body); err != nil {
 		h.log.Error("failed to write cloud-init error", "component", "httpapi", "error", err)
 	}
@@ -266,5 +271,6 @@ func (h *VMCloudInit) writeError(w http.ResponseWriter, status int, code, messag
 func parseCloudInitPath(r *http.Request) (string, int, bool) {
 	clusterName := r.PathValue("cluster")
 	vmid, err := strconv.Atoi(r.PathValue("vmid"))
+
 	return clusterName, vmid, clusterName != "" && err == nil && vmid > 0
 }

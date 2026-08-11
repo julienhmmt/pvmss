@@ -49,6 +49,14 @@ func (c *callCountClient) ChangePassword(_ context.Context, _, _, _ string) erro
 	return cluster.ErrNotImplemented
 }
 
+func (c *callCountClient) ListBridges(_ context.Context) ([]cluster.Bridge, error) {
+	return nil, cluster.ErrNotImplemented
+}
+
+func (c *callCountClient) ListISOs(_ context.Context) ([]cluster.ISOImage, error) {
+	return nil, cluster.ErrNotImplemented
+}
+
 func testLogger() *slog.Logger {
 	return slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 }
@@ -384,4 +392,12 @@ func (hungClient) Authenticate(_ context.Context, _, _ string) (cluster.Identity
 
 func (hungClient) ChangePassword(_ context.Context, _, _, _ string) error {
 	return cluster.ErrNotImplemented
+}
+
+func (hungClient) ListBridges(_ context.Context) ([]cluster.Bridge, error) {
+	return nil, cluster.ErrNotImplemented
+}
+
+func (hungClient) ListISOs(_ context.Context) ([]cluster.ISOImage, error) {
+	return nil, cluster.ErrNotImplemented
 }

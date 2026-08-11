@@ -157,6 +157,7 @@ func rfbHandshake(peer io.ReadWriteCloser) error {
 	if err := binary.Write(peer, binary.BigEndian, &init); err != nil {
 		return err
 	}
+
 	if _, err := peer.Write([]byte(rfbFakeName)); err != nil {
 		return err
 	}
@@ -171,10 +172,13 @@ func rfbSendServerCutText(peer io.Writer, text string) error {
 	header[0] = rfbMsgServerCutText
 	// header[1:4] is padding.
 	binary.BigEndian.PutUint32(header[4:8], uint32(len(text)))
+
 	if _, err := peer.Write(header); err != nil {
 		return err
 	}
+
 	_, err := peer.Write([]byte(text))
+
 	return err
 }
 
@@ -211,6 +215,7 @@ func rfbServeMessages(ctx context.Context, peer io.ReadWriteCloser) error {
 			if _, err := io.CopyN(io.Discard, peer, 9); err != nil {
 				return err
 			}
+
 			if err := rfbSendFramebufferUpdate(peer); err != nil {
 				return err
 			}
@@ -244,6 +249,7 @@ func rfbSendFramebufferUpdate(peer io.Writer) error {
 	header[0] = rfbMsgFramebufferUpdate
 	// header[1] is padding.
 	binary.BigEndian.PutUint16(header[2:4], 1) // 1 rectangle
+
 	if _, err := peer.Write(header); err != nil {
 		return err
 	}
@@ -254,11 +260,13 @@ func rfbSendFramebufferUpdate(peer io.Writer) error {
 	binary.BigEndian.PutUint16(rect[4:6], rfbFakeWidth)
 	binary.BigEndian.PutUint16(rect[6:8], rfbFakeHeight)
 	binary.BigEndian.PutUint32(rect[8:12], rfbEncodingRaw)
+
 	if _, err := peer.Write(rect); err != nil {
 		return err
 	}
 
 	_, err := peer.Write(checkerboardPixels(rfbFakeWidth, rfbFakeHeight))
+
 	return err
 }
 
@@ -269,10 +277,12 @@ func discardEncodings(peer io.Reader) error {
 	if _, err := io.ReadFull(peer, header); err != nil {
 		return err
 	}
+
 	count := binary.BigEndian.Uint16(header[2:4])
 	if _, err := io.CopyN(io.Discard, peer, int64(count)*4); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -283,10 +293,12 @@ func discardClientCutText(peer io.Reader) error {
 	if _, err := io.ReadFull(peer, header); err != nil {
 		return err
 	}
+
 	length := binary.BigEndian.Uint32(header[3:7])
 	if _, err := io.CopyN(io.Discard, peer, int64(length)); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -308,14 +320,17 @@ func checkerboardPixels(width, height int) []byte {
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			cell := ((x/32)+(y/32))%2 == 0
+
 			color := white
 			if !cell {
 				color = black
 			}
+
 			offset := (y*width + x) * 4
 			copy(pixels[offset:offset+4], color[:])
 		}
 	}
+
 	return pixels
 }
 

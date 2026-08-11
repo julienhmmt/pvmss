@@ -169,6 +169,20 @@ func (Fake) FindSnippetStorage(_ context.Context, node string) (string, error) {
 	return "", ErrNotFound
 }
 
+// ListBridges implements Client. Returns the fake bridge dataset — a superset
+// of what T06 approved (vmbr0, vmbr1) so the admin demo has vmbr2 to discover
+// and approve (data-model.md fixture table).
+func (Fake) ListBridges(_ context.Context) ([]Bridge, error) {
+	return slices.Clone(fakeBridges), nil
+}
+
+// ListISOs implements Client. Returns the fake ISO dataset — a superset of
+// what T06 approved (debian-12, ubuntu-24, both on local) so the admin demo
+// has rocky-9 to discover and approve (data-model.md fixture table).
+func (Fake) ListISOs(_ context.Context) ([]ISOImage, error) {
+	return slices.Clone(fakeISOs), nil
+}
+
 // EnsureCloudInitDrive implements Writer and records drive assurance.
 func (Fake) EnsureCloudInitDrive(_ context.Context, node string, vmid int) error {
 	fakeVMMutex.Lock()
@@ -192,6 +206,7 @@ func (Fake) SetCloudInitConfig(ctx context.Context, node string, vmid int, confi
 
 	fakeVMMutex.Lock()
 	defer fakeVMMutex.Unlock()
+
 	fakeCloudInitConfigs[fakeCloudInitKey{node: node, vmid: vmid}] = cloneCloudInitConfig(config)
 	recordCall(FakeCall{Node: node, VMID: vmid, Action: "set_cloudinit_config", CloudInitData: cloneCloudInitConfig(config)})
 
@@ -205,6 +220,7 @@ func (Fake) PushCloudInitSnippet(_ context.Context, node, storage, filename stri
 	fakeCloudInitPush.RUnlock()
 
 	recordCall(FakeCall{Node: node, VMID: vmid, Action: "push_cloudinit_snippet", Storage: storage, Filename: filename, Content: content})
+
 	if err != nil {
 		return err
 	}
@@ -216,6 +232,7 @@ func (Fake) PushCloudInitSnippet(_ context.Context, node, storage, filename stri
 func SetFakeCloudInitPushError(err error) {
 	fakeCloudInitPush.Lock()
 	defer fakeCloudInitPush.Unlock()
+
 	fakeCloudInitPush.err = err
 }
 
@@ -593,6 +610,23 @@ var fakeStorages = []Storage{
 	{Name: "ceph-data", Node: FakeNode02, Type: "cephfs", Total: 1099511627776, Used: 329853488332, SupportsVMState: true},
 	{Name: "local", Node: FakeNode02, Type: "dir", Total: 274877906944, Used: 68719476736, SupportsVMState: false},
 	{Name: "backup-nfs", Node: FakeNode03, Type: "nfs", Total: 5497558138880, Used: 1099511627776, SupportsVMState: false},
+}
+
+// fakeBridges is the T11 bridge discovery dataset. T06 approved vmbr0 and
+// vmbr1; vmbr2 is the demo's unapproved target (data-model.md fixture table).
+var fakeBridges = []Bridge{
+	{Name: FakeBridgeVMbr0, Node: FakeNode01, Active: true, Comment: ""},
+	{Name: "vmbr1", Node: FakeNode01, Active: true, Comment: ""},
+	{Name: "vmbr2", Node: FakeNode02, Active: true, Comment: "guest VLAN"},
+}
+
+// fakeISOs is the T11 ISO discovery dataset. T06 approved debian-12 and
+// ubuntu-24 (both on local); rocky-9 is the demo's unapproved target
+// (data-model.md fixture table).
+var fakeISOs = []ISOImage{
+	{Storage: "local", Node: FakeNode01, File: "debian-12-generic-amd64.iso", SizeBytes: 691945472},
+	{Storage: "local", Node: FakeNode01, File: "ubuntu-24.04-server-amd64.iso", SizeBytes: 1258291200},
+	{Storage: "local", Node: FakeNode02, File: "rocky-9-generic-x86_64.iso", SizeBytes: 1476395008},
 }
 
 // fakeUptimeOnStart is the uptime the fake assigns when a stopped VM is started

@@ -86,10 +86,12 @@ func proxmoxGetVNCTicket(ctx context.Context, c proxmoxVNCClient, node string, v
 	endpoint := fmt.Sprintf("%s/api2/json/nodes/%s/qemu/%d/vncproxy", strings.TrimRight(c.baseURL, "/"), url.PathEscape(node), vmid)
 
 	form := url.Values{"websocket": {"1"}}.Encode()
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(form))
 	if err != nil {
 		return VNCProxyTicket{}, fmt.Errorf("build vncproxy request: %w", err)
 	}
+
 	req.Header.Set("Authorization", fmt.Sprintf("PVEAPIToken=%s=%s", c.apiTokenName, c.apiTokenVal))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
@@ -136,12 +138,14 @@ func proxmoxRelayConsole(ctx context.Context, c proxmoxVNCClient, node string, v
 	defer func() { _ = proxmoxNetConn.Close() }()
 
 	errCh := make(chan error, 2)
+
 	go func() { _, err := io.Copy(proxmoxNetConn, peer); errCh <- err }()
 	go func() { _, err := io.Copy(peer, proxmoxNetConn); errCh <- err }()
 
 	err = <-errCh
 	_ = proxmoxNetConn.Close()
 	_ = peer.Close()
+
 	return err
 }
 
@@ -152,20 +156,24 @@ func buildProxmoxVNCWebSocketURL(baseURL, node string, vmid, port int, vncticket
 	if !strings.HasPrefix(base, "http://") && !strings.HasPrefix(base, "https://") {
 		base = "https://" + base
 	}
+
 	parsed, err := url.Parse(base)
 	if err != nil {
 		return base
 	}
+
 	if parsed.Scheme == "https" {
 		parsed.Scheme = "wss"
 	} else {
 		parsed.Scheme = "ws"
 	}
+
 	parsed.Path = fmt.Sprintf("/api2/json/nodes/%s/qemu/%d/vncwebsocket", url.PathEscape(node), vmid)
 	q := parsed.Query()
 	q.Set("port", strconv.Itoa(port))
 	q.Set("vncticket", vncticket)
 	parsed.RawQuery = q.Encode()
+
 	return parsed.String()
 }
 

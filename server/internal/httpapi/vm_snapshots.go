@@ -90,6 +90,7 @@ func (h *VMSnapshots) handleList(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+
 	index := h.projection.Load()
 	if index == nil {
 		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
@@ -106,6 +107,7 @@ func (h *VMSnapshots) handleList(w http.ResponseWriter, r *http.Request) {
 	for _, snapshot := range snapshots {
 		result.Snapshots = append(result.Snapshots, snapshotDTOFromModel(snapshot))
 	}
+
 	h.writePayload(w, http.StatusOK, result)
 }
 
@@ -116,10 +118,12 @@ func (h *VMSnapshots) handleCreate(w http.ResponseWriter, r *http.Request) {
 		h.writeError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
 		return
 	}
+
 	identity, clusterName, vmid, ok := h.requestTarget(w, r)
 	if !ok {
 		return
 	}
+
 	index := h.projection.Load()
 	if index == nil {
 		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
@@ -143,12 +147,15 @@ func (h *VMSnapshots) handleNamedAction(w http.ResponseWriter, r *http.Request, 
 	if !ok {
 		return
 	}
+
 	index := h.projection.Load()
 	if index == nil {
 		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
 		return
 	}
+
 	name := r.PathValue("name")
+
 	upid, err := action(r.Context(), h.dependencies(index, identity, clusterName, vmid), name)
 	if err != nil {
 		h.writeSnapshotError(w, err)
@@ -165,7 +172,9 @@ func (h *VMSnapshots) requestTarget(w http.ResponseWriter, r *http.Request) (aut
 		h.writeError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
 		return auth.Identity{}, "", 0, false
 	}
+
 	clusterName := r.PathValue("cluster")
+
 	vmid, err := strconv.Atoi(r.PathValue("vmid"))
 	if clusterName == "" || err != nil || vmid < 1 {
 		h.writeError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
@@ -219,6 +228,7 @@ func (h *VMSnapshots) writePayload(w http.ResponseWriter, status int, value any)
 		h.writeError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 		return
 	}
+
 	if err := writeJSON(w, status, body); err != nil {
 		h.log.Error("failed to write snapshot response", "component", "httpapi", "error", err)
 	}

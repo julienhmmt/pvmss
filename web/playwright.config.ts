@@ -28,6 +28,9 @@ export default defineConfig({
 			// Short guard so nodes.spec.ts can exercise "wait it out, click again —
 			// it works" (quickstart.md step 6) without a multi-second sleep.
 			PVMSS_V04_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL: '2s',
+			// bcrypt hash of "pvmss-e2e-admin" (bcrypt.MinCost) — admin-catalog.spec.ts
+			// (T11) is the only spec that needs POST /api/v1/auth/admin-login.
+			ADMIN_PASSWORD_HASH: '$2a$04$W8Da6bYNWJPztehxCYwifOoPpt0GfHtyMKGBtgy2PWkcCI7In6nee',
 		},
 		url: 'http://127.0.0.1:50001/health',
 		reuseExistingServer: !process.env.CI,

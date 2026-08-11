@@ -72,7 +72,7 @@ func queryCatalog[T any](ctx context.Context, db *sql.DB, label, query string, a
 // simple-mode auto-selection (first approved entry, FR-010) is deterministic.
 func (s *Store) CatalogNodes(ctx context.Context, cluster string) ([]CatalogNode, error) {
 	return queryCatalog(ctx, s.db, "catalog nodes",
-		`SELECT cluster, name FROM catalog_nodes WHERE cluster = ? ORDER BY name`,
+		`SELECT cluster, name FROM catalog_nodes WHERE cluster = ? AND enabled = 1 ORDER BY name`,
 		[]any{cluster},
 		func(rows *sql.Rows) (CatalogNode, error) {
 			var n CatalogNode
@@ -85,7 +85,7 @@ func (s *Store) CatalogNodes(ctx context.Context, cluster string) ([]CatalogNode
 // node then name (deterministic auto-selection, FR-010).
 func (s *Store) CatalogStorages(ctx context.Context, cluster string) ([]CatalogStorage, error) {
 	return queryCatalog(ctx, s.db, "catalog storages",
-		`SELECT cluster, name, node FROM catalog_storages WHERE cluster = ? ORDER BY node, name`,
+		`SELECT cluster, name, node FROM catalog_storages WHERE cluster = ? AND enabled = 1 ORDER BY node, name`,
 		[]any{cluster},
 		func(rows *sql.Rows) (CatalogStorage, error) {
 			var st CatalogStorage
@@ -97,7 +97,7 @@ func (s *Store) CatalogStorages(ctx context.Context, cluster string) ([]CatalogS
 // CatalogBridges returns the approved bridges for a cluster, ordered by name.
 func (s *Store) CatalogBridges(ctx context.Context, cluster string) ([]CatalogBridge, error) {
 	return queryCatalog(ctx, s.db, "catalog bridges",
-		`SELECT cluster, name FROM catalog_bridges WHERE cluster = ? ORDER BY name`,
+		`SELECT cluster, name FROM catalog_bridges WHERE cluster = ? AND enabled = 1 ORDER BY name`,
 		[]any{cluster},
 		func(rows *sql.Rows) (CatalogBridge, error) {
 			var b CatalogBridge
@@ -109,7 +109,7 @@ func (s *Store) CatalogBridges(ctx context.Context, cluster string) ([]CatalogBr
 // CatalogISOs returns the approved ISO images for a cluster, ordered by file.
 func (s *Store) CatalogISOs(ctx context.Context, cluster string) ([]CatalogISO, error) {
 	return queryCatalog(ctx, s.db, "catalog isos",
-		`SELECT cluster, storage, file FROM catalog_isos WHERE cluster = ? ORDER BY file`,
+		`SELECT cluster, storage, file FROM catalog_isos WHERE cluster = ? AND enabled = 1 ORDER BY file`,
 		[]any{cluster},
 		func(rows *sql.Rows) (CatalogISO, error) {
 			var iso CatalogISO
@@ -121,7 +121,7 @@ func (s *Store) CatalogISOs(ctx context.Context, cluster string) ([]CatalogISO, 
 // CatalogProfiles returns the VM profiles for a cluster, ordered by id.
 func (s *Store) CatalogProfiles(ctx context.Context, cluster string) ([]CatalogProfile, error) {
 	return queryCatalog(ctx, s.db, "catalog profiles",
-		`SELECT cluster, id, label, cpu_cores, memory_mb, disk_gb, bus FROM catalog_profiles WHERE cluster = ? ORDER BY id`,
+		`SELECT cluster, id, label, cpu_cores, memory_mb, disk_gb, bus FROM catalog_profiles WHERE cluster = ? AND enabled = 1 ORDER BY id`,
 		[]any{cluster},
 		func(rows *sql.Rows) (CatalogProfile, error) {
 			var p CatalogProfile
