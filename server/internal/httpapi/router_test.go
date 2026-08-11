@@ -46,7 +46,10 @@ func TestRouter_SPAFallback(t *testing.T) {
 	)
 	vms := httpapi.NewVMs(inventory.NewProjection(), newAuthHandler(t), 100, -1, logger)
 	vmDetail := httpapi.NewVMDetail(inventory.NewProjection(), newAuthHandler(t), cluster.Fake{}, nil, nil, logger)
-	mux := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, nil, nil, nil, newAuthHandler(t), dir, logger)
+	mux := httpapi.NewRouter(httpapi.RouterConfig{
+		Health: health, ClusterNodes: clusterNodes, ClusterRefresh: clusterRefresh,
+		VMs: vms, VMDetail: vmDetail, Auth: newAuthHandler(t), WebBuildDir: dir, Log: logger,
+	})
 
 	cases := []struct {
 		method     string
@@ -94,7 +97,10 @@ func TestRouter_CloudInitRoutesAreSpecific(t *testing.T) {
 	vms := httpapi.NewVMs(projection, authHandler, 100, -1, logger)
 	vmDetail := httpapi.NewVMDetail(projection, authHandler, cluster.Fake{}, nil, nil, logger)
 	cloudInit := httpapi.NewVMCloudInit(projection, authHandler, cluster.Fake{}, cluster.Fake{}, nil, nil, logger)
-	mux := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, cloudInit, nil, nil, authHandler, "", logger)
+	mux := httpapi.NewRouter(httpapi.RouterConfig{
+		Health: health, ClusterNodes: clusterNodes, ClusterRefresh: clusterRefresh,
+		VMs: vms, VMDetail: vmDetail, VMCloudInit: cloudInit, Auth: authHandler, Log: logger,
+	})
 
 	for _, path := range []string{
 		cloudInitRoutePath,
@@ -124,7 +130,10 @@ func TestRouter_MissingBuildDir_HealthStillWorks(t *testing.T) {
 	)
 	vms := httpapi.NewVMs(inventory.NewProjection(), newAuthHandler(t), 100, -1, logger)
 	vmDetail := httpapi.NewVMDetail(inventory.NewProjection(), newAuthHandler(t), cluster.Fake{}, nil, nil, logger)
-	mux := httpapi.NewRouter(health, clusterNodes, clusterRefresh, vms, vmDetail, nil, nil, nil, newAuthHandler(t), "", logger)
+	mux := httpapi.NewRouter(httpapi.RouterConfig{
+		Health: health, ClusterNodes: clusterNodes, ClusterRefresh: clusterRefresh,
+		VMs: vms, VMDetail: vmDetail, Auth: newAuthHandler(t), Log: logger,
+	})
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/health", nil)
