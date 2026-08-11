@@ -230,6 +230,7 @@ func buildRouter(
 	vmConsole := httpapi.NewVMConsole(projection, authHandler, consoleRelay, consoleTickets, st, logger)
 	adminCatalog := httpapi.NewAdminCatalog(authHandler, st, clusterClient, projection, logger)
 	adminPolicy := httpapi.NewAdminPolicy(authHandler, policyService, logger)
+	adminPools := httpapi.NewAdminPools(authHandler, clusterClient, projection, writer, st, worker, logger)
 
 	return httpapi.NewRouter(httpapi.RouterConfig{
 		Health:           health,
@@ -247,6 +248,7 @@ func buildRouter(
 		VMConsole:        vmConsole,
 		AdminCatalog:     adminCatalog,
 		AdminPolicy:      adminPolicy,
+		AdminPools:       adminPools,
 	}), nil
 }
 

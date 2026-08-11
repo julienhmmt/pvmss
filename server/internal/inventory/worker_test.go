@@ -57,6 +57,34 @@ func (c *callCountClient) ListISOs(_ context.Context) ([]cluster.ISOImage, error
 	return nil, cluster.ErrNotImplemented
 }
 
+func (c *callCountClient) ListPools(_ context.Context) ([]cluster.Pool, error) {
+	return nil, cluster.ErrNotImplemented
+}
+
+func (c *callCountClient) EnsurePoolRole(_ context.Context) error {
+	return cluster.ErrNotImplemented
+}
+
+func (c *callCountClient) EnsurePoolUser(_ context.Context, _, _ string) (string, error) {
+	return "", cluster.ErrNotImplemented
+}
+
+func (c *callCountClient) CreatePool(_ context.Context, _, _ string) error {
+	return cluster.ErrNotImplemented
+}
+
+func (c *callCountClient) SetPoolACL(_ context.Context, _, _, _ string) error {
+	return cluster.ErrNotImplemented
+}
+
+func (c *callCountClient) DeletePool(_ context.Context, _ string) error {
+	return cluster.ErrNotImplemented
+}
+
+func (c *callCountClient) DeleteUser(_ context.Context, _ string) error {
+	return cluster.ErrNotImplemented
+}
+
 func testLogger() *slog.Logger {
 	return slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 }
@@ -400,4 +428,32 @@ func (hungClient) ListBridges(_ context.Context) ([]cluster.Bridge, error) {
 
 func (hungClient) ListISOs(_ context.Context) ([]cluster.ISOImage, error) {
 	return nil, cluster.ErrNotImplemented
+}
+
+func (hungClient) ListPools(_ context.Context) ([]cluster.Pool, error) {
+	return nil, cluster.ErrNotImplemented
+}
+
+func (hungClient) EnsurePoolRole(_ context.Context) error {
+	return cluster.ErrNotImplemented
+}
+
+func (hungClient) EnsurePoolUser(_ context.Context, _, _ string) (string, error) {
+	return "", cluster.ErrNotImplemented
+}
+
+func (hungClient) CreatePool(_ context.Context, _, _ string) error {
+	return cluster.ErrNotImplemented
+}
+
+func (hungClient) SetPoolACL(_ context.Context, _, _, _ string) error {
+	return cluster.ErrNotImplemented
+}
+
+func (hungClient) DeletePool(_ context.Context, _ string) error {
+	return cluster.ErrNotImplemented
+}
+
+func (hungClient) DeleteUser(_ context.Context, _ string) error {
+	return cluster.ErrNotImplemented
 }

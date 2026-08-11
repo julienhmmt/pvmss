@@ -40,10 +40,27 @@ type FakeCall struct {
 	CloudInitData CloudInitConfig
 }
 
+// RoleCall records an actual shared-role creation in the fake cluster.
+type RoleCall struct {
+	Privileges []string
+	At         time.Time
+}
+
+// ACLEntry records a pool ACL binding in the fake cluster.
+type ACLEntry struct {
+	Username string
+	PoolID   string
+	Role     string
+}
+
 var (
 	fakeVMMutex       sync.RWMutex
 	fakeCallMu        sync.Mutex
 	fakeCallLog       []FakeCall
+	fakeRoleState     map[string][]string
+	fakeRoleCallLog   []RoleCall
+	fakeACLs          []ACLEntry
+	errDeleteUser     error
 	fakeCloudInitPush struct {
 		sync.RWMutex
 		err error
@@ -181,6 +198,131 @@ func (Fake) ListBridges(_ context.Context) ([]Bridge, error) {
 // has rocky-9 to discover and approve (data-model.md fixture table).
 func (Fake) ListISOs(_ context.Context) ([]ISOImage, error) {
 	return slices.Clone(fakeISOs), nil
+}
+
+// ListPools implements Client and returns a defensive copy of the live pool table.
+func (Fake) ListPools(_ context.Context) ([]Pool, error) {
+	fakeVMMutex.RLock()
+	defer fakeVMMutex.RUnlock()
+
+	return slices.Clone(fakePools), nil
+}
+
+// EnsurePoolRole creates the shared PVMSSUser role once and never rewrites it.
+func (Fake) EnsurePoolRole(_ context.Context) error {
+	fakeVMMutex.Lock()
+	defer fakeVMMutex.Unlock()
+
+	if fakeRoleState == nil {
+		fakeRoleState = make(map[string][]string)
+	}
+	if _, exists := fakeRoleState[poolRoleName]; exists {
+		return nil
+	}
+
+	privileges := slices.Clone(rolePrivileges)
+	fakeRoleState[poolRoleName] = privileges
+	fakeRoleCallLog = append(fakeRoleCallLog, RoleCall{Privileges: slices.Clone(privileges), At: time.Now().UTC()})
+	recordCall(FakeCall{Action: "ensure_role", Name: poolRoleName})
+
+	return nil
+}
+
+// EnsurePoolUser creates the pool login once and returns its PVE username.
+func (Fake) EnsurePoolUser(_ context.Context, pool, password string) (string, error) {
+	fakeVMMutex.Lock()
+	defer fakeVMMutex.Unlock()
+
+	username := pool + "@pve"
+	fakeIdentitiesMutex.Lock()
+	if _, exists := fakeIdentities[username]; !exists {
+		fakeIdentities[username] = fakeIdentity{password: password, pool: pool}
+	}
+	fakeIdentitiesMutex.Unlock()
+	recordCall(FakeCall{Action: "ensure_user", Name: username})
+
+	return username, nil
+}
+
+// CreatePool inserts a pool only when its name is absent.
+func (Fake) CreatePool(_ context.Context, poolID, comment string) error {
+	fakeVMMutex.Lock()
+	defer fakeVMMutex.Unlock()
+
+	for _, pool := range fakePools {
+		if pool.Name == poolID {
+			return nil
+		}
+	}
+
+	fakePools = append(fakePools, Pool{Name: poolID, Comment: comment})
+	recordCall(FakeCall{Action: "create_pool", Name: poolID})
+
+	return nil
+}
+
+// SetPoolACL records a pool-to-role binding.
+func (Fake) SetPoolACL(_ context.Context, username, poolID, role string) error {
+	fakeVMMutex.Lock()
+	defer fakeVMMutex.Unlock()
+
+	fakeACLs = append(fakeACLs, ACLEntry{Username: username, PoolID: poolID, Role: role})
+	recordCall(FakeCall{Action: "set_acl", Name: username})
+
+	return nil
+}
+
+// DeletePool removes a pool and its ACL entries. It is idempotent for cleanup.
+func (Fake) DeletePool(_ context.Context, poolID string) error {
+	fakeVMMutex.Lock()
+	defer fakeVMMutex.Unlock()
+
+	index := slices.IndexFunc(fakePools, func(pool Pool) bool { return pool.Name == poolID })
+	if index < 0 {
+		return ErrNotFound
+	}
+	fakePools = slices.Delete(fakePools, index, index+1)
+	fakeACLs = slices.DeleteFunc(fakeACLs, func(acl ACLEntry) bool { return acl.PoolID == poolID })
+	recordCall(FakeCall{Action: "delete_pool", Name: poolID})
+
+	return nil
+}
+
+// DeleteUser removes a PVE identity. Tests can force a best-effort failure.
+func (Fake) DeleteUser(_ context.Context, username string) error {
+	fakeVMMutex.Lock()
+	defer fakeVMMutex.Unlock()
+
+	if errDeleteUser != nil {
+		return errDeleteUser
+	}
+	fakeIdentitiesMutex.Lock()
+	delete(fakeIdentities, username)
+	fakeIdentitiesMutex.Unlock()
+	recordCall(FakeCall{Action: "delete_user", Name: username})
+
+	return nil
+}
+
+// FakeRoleCalls returns a defensive copy of the role creation log.
+func FakeRoleCalls() []RoleCall {
+	fakeVMMutex.RLock()
+	defer fakeVMMutex.RUnlock()
+
+	calls := make([]RoleCall, len(fakeRoleCallLog))
+	for index, call := range fakeRoleCallLog {
+		calls[index] = RoleCall{Privileges: slices.Clone(call.Privileges), At: call.At}
+	}
+
+	return calls
+}
+
+// SetFakeDeleteUserError configures a deterministic user deletion failure.
+func SetFakeDeleteUserError(err error) {
+	fakeVMMutex.Lock()
+	defer fakeVMMutex.Unlock()
+
+	errDeleteUser = err
 }
 
 // EnsureCloudInitDrive implements Writer and records drive assurance.
@@ -500,10 +642,19 @@ func ResetFake() {
 	defer fakeCallMu.Unlock()
 
 	fakeVMs = originalFakeVMs()
+	fakePools = originalFakePools()
 	fakeCloudInitConfigs = originalFakeCloudInitConfigs()
 	fakeCloudInitDrives = make(map[fakeCloudInitKey]bool)
 	fakeSnapshots = make(map[fakeSnapshotKey][]VMSnapshot)
+	fakeRoleState = make(map[string][]string)
+	fakeRoleCallLog = nil
+	fakeACLs = nil
+	errDeleteUser = nil
 	fakeCallLog = nil
+
+	fakeIdentitiesMutex.Lock()
+	fakeIdentities = originalFakeIdentities()
+	fakeIdentitiesMutex.Unlock()
 
 	fakeCloudInitPush.Lock()
 	fakeCloudInitPush.err = nil
@@ -528,6 +679,8 @@ type fakeIdentity struct {
 // Fixture identifiers shared by the fake dataset and tests across packages.
 // Extracted as constants to satisfy goconst and give the magic strings a name.
 const (
+	poolRoleName = "PVMSSUser"
+
 	FakeNode01     = "pve-node-01"
 	FakeNode02     = "pve-node-02"
 	FakeNode03     = "pve-node-03"
@@ -553,10 +706,14 @@ const (
 
 var fakeIdentitiesMutex sync.RWMutex
 
-var fakeIdentities = map[string]fakeIdentity{
-	FakeUserAlice: {password: "pvmss-alice", pool: FakePoolAlice}, //nolint:gosec // demo fixture credential
-	FakeUserBob:   {password: "pvmss-bob", pool: FakePoolBob},     //nolint:gosec // demo fixture credential
-	FakeUserAdmin: {password: "pvmss-admin", isAdmin: true},       //nolint:gosec // fixture credentials for demo mode
+var fakeIdentities = originalFakeIdentities()
+
+func originalFakeIdentities() map[string]fakeIdentity {
+	return map[string]fakeIdentity{
+		FakeUserAlice: {password: "pvmss-alice", pool: FakePoolAlice}, //nolint:gosec // demo fixture credential
+		FakeUserBob:   {password: "pvmss-bob", pool: FakePoolBob},     //nolint:gosec // demo fixture credential
+		FakeUserAdmin: {password: "pvmss-admin", isAdmin: true},       //nolint:gosec // fixture credentials for demo mode
+	}
 }
 
 // The dataset below is production code (constitution XI), reviewed and
@@ -597,11 +754,22 @@ var fakeNodes = []Node{
 	},
 }
 
-var fakePools = []Pool{
-	{Name: FakePoolAlice, Comment: "Alice's personal pool"},
-	{Name: FakePoolBob, Comment: "Bob's personal pool"},
-	{Name: FakePoolCarol, Comment: "Carol's personal pool"},
-	{Name: FakePoolShared, Comment: "Shared infrastructure pool"},
+var rolePrivileges = []string{
+	"VM.Allocate", "VM.Audit", "VM.Console", "VM.Config.Disk",
+	"VM.Config.Network", "VM.Config.CPU", "VM.Config.Memory", "VM.Config.Options",
+	"VM.Config.Cloudinit", "VM.Config.CDROM", "VM.PowerMgmt", "VM.Snapshot",
+	"VM.Snapshot.Rollback", "Datastore.AllocateSpace", "Datastore.Audit", "SDN.Use",
+}
+
+var fakePools = originalFakePools()
+
+func originalFakePools() []Pool {
+	return []Pool{
+		{Name: FakePoolAlice, Comment: "Alice's personal pool"},
+		{Name: FakePoolBob, Comment: "Bob's personal pool"},
+		{Name: FakePoolCarol, Comment: "Carol's personal pool"},
+		{Name: FakePoolShared, Comment: "Shared infrastructure pool"},
+	}
 }
 
 var fakeStorages = []Storage{
