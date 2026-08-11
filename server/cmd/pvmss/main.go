@@ -226,8 +226,24 @@ func buildRouter(
 	tasks := httpapi.NewTasks(authHandler, creator, worker, logger)
 	snapshots := httpapi.NewVMSnapshots(projection, authHandler, snapshotReader, snapshotWriter, st, logger)
 	vmConsole := httpapi.NewVMConsole(projection, authHandler, consoleRelay, consoleTickets, st, logger)
+	adminCatalog := httpapi.NewAdminCatalog(authHandler, st, clusterClient, projection, logger)
 
-	return httpapi.NewRouterWithConsole(health, clusterNodes, clusterRefresh, vms, vmDetail, vmCloudInit, vmCreate, tasks, authHandler, webDir, logger, vmConsole, snapshots), nil
+	return httpapi.NewRouter(httpapi.RouterConfig{
+		Health:           health,
+		ClusterNodes:     clusterNodes,
+		ClusterRefresh:   clusterRefresh,
+		VMs:              vms,
+		VMDetail:         vmDetail,
+		VMCloudInit:      vmCloudInit,
+		VMCreate:         vmCreate,
+		Tasks:            tasks,
+		Auth:             authHandler,
+		WebBuildDir:      webDir,
+		Log:              logger,
+		SnapshotHandlers: []*httpapi.VMSnapshots{snapshots},
+		VMConsole:        vmConsole,
+		AdminCatalog:     adminCatalog,
+	}), nil
 }
 
 // resolveWebBuildDir returns the absolute path to the static web build directory.

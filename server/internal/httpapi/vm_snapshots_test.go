@@ -43,20 +43,25 @@ func newVMSnapshotsHandler(t *testing.T) (*httpapi.VMSnapshots, *httpapi.Auth) {
 	t.Helper()
 	cluster.ResetFake()
 	t.Cleanup(cluster.ResetFake)
+
 	snapshot, err := (cluster.Fake{}).Snapshot(context.Background())
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
+
 	index := inventory.BuildIndex(snapshot)
 	index.RefreshedAt = time.Now()
 	projection := inventory.NewProjectionFromIndex(&index)
 	authHandler := newAuthHandler(t)
+
 	st, err := store.Open(config.Configuration{DBPath: filepath.Join(t.TempDir(), "snapshots.db"), LogLevel: snapshotTestLogLevel, LogFormat: snapshotTestLogFormat, LogOutput: snapshotTestLogOutput})
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
 	}
+
 	t.Cleanup(func() { _ = st.Close() })
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
+
 	return httpapi.NewVMSnapshots(projection, authHandler, cluster.Fake{}, cluster.Fake{}, st, logger), authHandler
 }
 
@@ -64,15 +69,19 @@ func newVMSnapshotsHandler(t *testing.T) (*httpapi.VMSnapshots, *httpapi.Auth) {
 func snapshotRequest(method, path, body string, cookie *http.Cookie) *http.Request {
 	request := httptest.NewRequest(method, path, strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
+
 	if cookie != nil {
 		request.AddCookie(cookie)
 	}
+
 	request.SetPathValue("cluster", "default")
 	request.SetPathValue("vmid", pathVmid(path))
+
 	segments := strings.Split(strings.Trim(path, "/"), "/")
 	if len(segments) >= 6 {
 		request.SetPathValue("name", segments[5])
 	}
+
 	return request
 }
 

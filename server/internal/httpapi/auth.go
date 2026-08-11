@@ -164,6 +164,31 @@ func (h *Auth) Require(next http.Handler) http.Handler {
 	})
 }
 
+// RequireAdmin is the admin-only route guard (FR-008): the resolved identity
+// must authenticate (401 if not) and have IsAdmin == true (403 if not). It
+// duplicates the Principal resolution from Require rather than composing it,
+// so it can issue the role check without an extra handler hop. This is the
+// only admin-only route guard in v0.4 — T02 shipped authentication only, not
+// role enforcement. Every /api/v1/admin/* route is wrapped by this, so a
+// non-admin identity can never reach an admin handler regardless of the HTTP
+// method or path.
+func (h *Auth) RequireAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		identity, err := h.Principal(r)
+		if err != nil {
+			writeAuthError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+			return
+		}
+
+		if !identity.IsAdmin {
+			writeAuthError(w, http.StatusForbidden, "forbidden", "admin only")
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 // Principal resolves browser cookies before attempting an Authorization bearer token.
 func (h *Auth) Principal(r *http.Request) (auth.Identity, error) {
 	identity, err := h.sessions.Resolve(r.Context(), r)
@@ -317,6 +342,7 @@ func decodeJSONLimit(w http.ResponseWriter, r *http.Request, dest any, maxBytes 
 	if err := decoder.Decode(dest); err != nil {
 		return fmt.Errorf("decode request: %w", err)
 	}
+
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
 		return errors.New("decode request: multiple JSON values")
 	}

@@ -162,6 +162,7 @@ func TestContract_ChangePassword(t *testing.T) {
 //nolint:paralleltest // serial: shared fake cloud-init fixture
 func TestContract_CloudInitReaderAndWriter(t *testing.T) {
 	cluster.ResetFake()
+
 	config := cluster.CloudInitConfig{User: "debian", IPMode: cluster.CloudInitIPModeDHCP}
 	if err := (cluster.Fake{}).SetCloudInitConfig(context.Background(), cluster.FakeNode01, 101, config); err != nil {
 		t.Fatalf("SetCloudInitConfig: %v", err)
@@ -171,15 +172,19 @@ func TestContract_CloudInitReaderAndWriter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetCloudInitConfig: %v", err)
 	}
+
 	if got.User != config.User || got.IPMode != config.IPMode {
 		t.Fatalf("config = %+v, want %+v", got, config)
 	}
+
 	if _, err := (cluster.Fake{}).FindSnippetStorage(context.Background(), cluster.FakeNode01); err != nil {
 		t.Fatalf("FindSnippetStorage: %v", err)
 	}
+
 	if err := (cluster.Fake{}).PushCloudInitSnippet(context.Background(), cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-101.yml", 101, "#cloud-config\n"); err != nil {
 		t.Fatalf("PushCloudInitSnippet: %v", err)
 	}
+
 	if calls := cluster.FakeCallsFor(101); len(calls) != 3 || calls[0].Action != "ensure_cloudinit_drive" || calls[1].Action != "set_cloudinit_config" || calls[2].Action != "push_cloudinit_snippet" {
 		t.Fatalf("calls = %+v, want ensure, set, push", calls)
 	}
@@ -191,16 +196,20 @@ func TestContract_ProxmoxCloudInitStubs(t *testing.T) {
 	if _, err := reader.GetCloudInitConfig(context.Background(), cluster.FakeNode01, 101); !errors.Is(err, cluster.ErrNotImplemented) {
 		t.Fatalf("GetCloudInitConfig err = %v, want ErrNotImplemented", err)
 	}
+
 	if _, err := reader.FindSnippetStorage(context.Background(), cluster.FakeNode01); !errors.Is(err, cluster.ErrNotImplemented) {
 		t.Fatalf("FindSnippetStorage err = %v, want ErrNotImplemented", err)
 	}
+
 	writer := cluster.Proxmox{}
 	if err := writer.EnsureCloudInitDrive(context.Background(), cluster.FakeNode01, 101); !errors.Is(err, cluster.ErrNotImplemented) {
 		t.Fatalf("EnsureCloudInitDrive err = %v, want ErrNotImplemented", err)
 	}
+
 	if err := writer.SetCloudInitConfig(context.Background(), cluster.FakeNode01, 101, cluster.CloudInitConfig{}); !errors.Is(err, cluster.ErrNotImplemented) {
 		t.Fatalf("SetCloudInitConfig err = %v, want ErrNotImplemented", err)
 	}
+
 	if err := writer.PushCloudInitSnippet(context.Background(), cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-101.yml", 101, ""); !errors.Is(err, cluster.ErrNotImplemented) {
 		t.Fatalf("PushCloudInitSnippet err = %v, want ErrNotImplemented", err)
 	}
@@ -262,6 +271,78 @@ func TestContract_Snapshot_DoesNotMutateAcrossCalls(t *testing.T) {
 			if second.Nodes[0].Name != firstNodesBefore[0].Name {
 				t.Fatalf("caller mutation of first snapshot leaked into second: %q vs %q",
 					second.Nodes[0].Name, firstNodesBefore[0].Name)
+			}
+		})
+	}
+}
+
+//nolint:paralleltest // serial: shared fake identity fixture
+func TestContract_ListBridges(t *testing.T) {
+	impls := map[string]cluster.Client{
+		fakeImplementationName:    cluster.Fake{},
+		proxmoxImplementationName: cluster.Proxmox{},
+	}
+
+	for name, impl := range impls {
+		t.Run(name, func(t *testing.T) {
+			bridges, err := impl.ListBridges(context.Background())
+
+			if name == proxmoxImplementationName {
+				if !errors.Is(err, cluster.ErrNotImplemented) {
+					t.Fatalf("proxmox stub: err = %v, want ErrNotImplemented", err)
+				}
+
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if len(bridges) == 0 {
+				t.Fatal("expected at least one bridge")
+			}
+
+			for _, b := range bridges {
+				if b.Name == "" {
+					t.Error("bridge with empty name")
+				}
+			}
+		})
+	}
+}
+
+//nolint:paralleltest // serial: shared fake identity fixture
+func TestContract_ListISOs(t *testing.T) {
+	impls := map[string]cluster.Client{
+		fakeImplementationName:    cluster.Fake{},
+		proxmoxImplementationName: cluster.Proxmox{},
+	}
+
+	for name, impl := range impls {
+		t.Run(name, func(t *testing.T) {
+			isos, err := impl.ListISOs(context.Background())
+
+			if name == proxmoxImplementationName {
+				if !errors.Is(err, cluster.ErrNotImplemented) {
+					t.Fatalf("proxmox stub: err = %v, want ErrNotImplemented", err)
+				}
+
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if len(isos) == 0 {
+				t.Fatal("expected at least one ISO")
+			}
+
+			for _, i := range isos {
+				if i.Storage == "" || i.File == "" {
+					t.Errorf("ISO %+v has empty storage or file", i)
+				}
 			}
 		})
 	}

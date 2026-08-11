@@ -24,6 +24,8 @@ type Client interface {
 	Snapshot(ctx context.Context) (Snapshot, error)
 	Authenticate(ctx context.Context, username, password string) (Identity, error)
 	ChangePassword(ctx context.Context, username, oldPassword, newPassword string) error
+	ListBridges(ctx context.Context) ([]Bridge, error)
+	ListISOs(ctx context.Context) ([]ISOImage, error)
 }
 
 // CloudInitReader reads per-VM cloud-init state and server-side snippet targets.
@@ -231,6 +233,27 @@ type Storage struct {
 	Total           int64
 	Used            int64
 	SupportsVMState bool
+}
+
+// Bridge is a network bridge reported by a node. Approval (catalog_bridges) is
+// keyed by Name alone — a bridge can be present on more than one node, but the
+// approval key is cluster-wide, matching T06's existing schema (spec
+// Assumptions). Node is display-only.
+type Bridge struct {
+	Name    string
+	Node    string
+	Active  bool
+	Comment string
+}
+
+// ISOImage is one ISO file discovered on a storage backend. Approval
+// (catalog_isos) is keyed by (Storage, File); Node is display-only, matching
+// T06's existing schema.
+type ISOImage struct {
+	Storage   string
+	Node      string
+	File      string
+	SizeBytes int64
 }
 
 // VMSnapshot is a live snapshot entry returned by a cluster for one VM.

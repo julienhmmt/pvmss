@@ -29,6 +29,16 @@ func (Proxmox) ChangePassword(_ context.Context, _, _, _ string) error {
 	return ErrNotImplemented
 }
 
+// ListBridges implements Client.
+func (Proxmox) ListBridges(_ context.Context) ([]Bridge, error) {
+	return nil, ErrNotImplemented
+}
+
+// ListISOs implements Client.
+func (Proxmox) ListISOs(_ context.Context) ([]ISOImage, error) {
+	return nil, ErrNotImplemented
+}
+
 // GetCloudInitConfig implements CloudInitReader.
 func (Proxmox) GetCloudInitConfig(_ context.Context, _ string, _ int) (CloudInitConfig, error) {
 	return CloudInitConfig{}, ErrNotImplemented

@@ -26,6 +26,7 @@ func TestRFBFakeHandshake_VersionAndSecurity(t *testing.T) {
 	if _, err := io.ReadFull(client, gotVersion); err != nil {
 		t.Fatalf("read ProtocolVersion: %v", err)
 	}
+
 	if string(gotVersion) != rfbProtocolVersion {
 		t.Fatalf("ProtocolVersion = %q, want %q", gotVersion, rfbProtocolVersion)
 	}
@@ -40,13 +41,16 @@ func TestRFBFakeHandshake_VersionAndSecurity(t *testing.T) {
 	if _, err := io.ReadFull(client, count); err != nil {
 		t.Fatalf("read SecurityTypes count: %v", err)
 	}
+
 	if count[0] != 1 {
 		t.Fatalf("SecurityTypes count = %d, want 1 (None only)", count[0])
 	}
+
 	types := make([]byte, count[0])
 	if _, err := io.ReadFull(client, types); err != nil {
 		t.Fatalf("read SecurityTypes: %v", err)
 	}
+
 	if types[0] != rfbSecurityNone {
 		t.Fatalf("security type = %d, want %d (None)", types[0], rfbSecurityNone)
 	}
@@ -61,6 +65,7 @@ func TestRFBFakeHandshake_VersionAndSecurity(t *testing.T) {
 	if _, err := io.ReadFull(client, result); err != nil {
 		t.Fatalf("read SecurityResult: %v", err)
 	}
+
 	if binary.BigEndian.Uint32(result) != 0 {
 		t.Fatalf("SecurityResult = %d, want 0 (OK)", binary.BigEndian.Uint32(result))
 	}
@@ -75,22 +80,28 @@ func TestRFBFakeHandshake_VersionAndSecurity(t *testing.T) {
 	if err := binary.Read(client, binary.BigEndian, &init); err != nil {
 		t.Fatalf("read ServerInit: %v", err)
 	}
+
 	if init.Width != rfbFakeWidth || init.Height != rfbFakeHeight {
 		t.Fatalf("ServerInit resolution = %dx%d, want %dx%d", init.Width, init.Height, rfbFakeWidth, rfbFakeHeight)
 	}
+
 	if init.PixelFormat.BitsPerPixel != 32 {
 		t.Fatalf("bitsPerPixel = %d, want 32", init.PixelFormat.BitsPerPixel)
 	}
+
 	if init.PixelFormat.TrueColor != 1 {
 		t.Fatalf("trueColor = %d, want 1", init.PixelFormat.TrueColor)
 	}
+
 	if init.NameLength != uint32(len(rfbFakeName)) {
 		t.Fatalf("nameLength = %d, want %d", init.NameLength, len(rfbFakeName))
 	}
+
 	name := make([]byte, init.NameLength)
 	if _, err := io.ReadFull(client, name); err != nil {
 		t.Fatalf("read server name: %v", err)
 	}
+
 	if string(name) != rfbFakeName {
 		t.Fatalf("name = %q, want %q", name, rfbFakeName)
 	}
@@ -111,6 +122,7 @@ func TestRFBFakeHandshake_ServerCutTextAfterInit(t *testing.T) {
 	if _, err := io.ReadFull(client, header); err != nil {
 		t.Fatalf("read msg-type: %v", err)
 	}
+
 	if header[0] != rfbMsgServerCutText {
 		t.Fatalf("msg-type = %d, want %d (ServerCutText)", header[0], rfbMsgServerCutText)
 	}
@@ -120,18 +132,22 @@ func TestRFBFakeHandshake_ServerCutTextAfterInit(t *testing.T) {
 	if _, err := io.ReadFull(client, padding); err != nil {
 		t.Fatalf("read padding: %v", err)
 	}
+
 	lengthBuf := make([]byte, 4)
 	if _, err := io.ReadFull(client, lengthBuf); err != nil {
 		t.Fatalf("read length: %v", err)
 	}
+
 	length := binary.BigEndian.Uint32(lengthBuf)
 	if int(length) != len(rfbFakeClipboardText) {
 		t.Fatalf("ServerCutText length = %d, want %d", length, len(rfbFakeClipboardText))
 	}
+
 	text := make([]byte, length)
 	if _, err := io.ReadFull(client, text); err != nil {
 		t.Fatalf("read clipboard text: %v", err)
 	}
+
 	if string(text) != rfbFakeClipboardText {
 		t.Fatalf("clipboard text = %q, want %q", text, rfbFakeClipboardText)
 	}
@@ -148,6 +164,7 @@ func TestRFBFakeHandshake_FramebufferUpdateIsCheckerboard(t *testing.T) {
 
 	// Client sends SetPixelFormat (msg-type 0): 1 byte type + 3 padding + 16 bytes format.
 	pixelFormat := make([]byte, 20)
+
 	pixelFormat[0] = rfbMsgSetPixelFormat
 	if _, err := client.Write(pixelFormat); err != nil {
 		t.Fatalf("write SetPixelFormat: %v", err)
@@ -155,6 +172,7 @@ func TestRFBFakeHandshake_FramebufferUpdateIsCheckerboard(t *testing.T) {
 
 	// Client sends SetEncodings (msg-type 2): 1 type + 2 padding + 2 count(=0) = 5 bytes.
 	encodings := make([]byte, 5)
+
 	encodings[0] = rfbMsgSetEncodings
 	if _, err := client.Write(encodings); err != nil {
 		t.Fatalf("write SetEncodings: %v", err)
@@ -162,6 +180,7 @@ func TestRFBFakeHandshake_FramebufferUpdateIsCheckerboard(t *testing.T) {
 
 	// Client sends FramebufferUpdateRequest (msg-type 3): type + 1 incremental + 8 rect.
 	fbur := make([]byte, 10)
+
 	fbur[0] = rfbMsgFramebufferUpdateRequest
 	if _, err := client.Write(fbur); err != nil {
 		t.Fatalf("write FramebufferUpdateRequest: %v", err)
@@ -172,17 +191,21 @@ func TestRFBFakeHandshake_FramebufferUpdateIsCheckerboard(t *testing.T) {
 	if _, err := io.ReadFull(client, header); err != nil {
 		t.Fatalf("read FramebufferUpdate type: %v", err)
 	}
+
 	if header[0] != rfbMsgFramebufferUpdate {
 		t.Fatalf("msg-type = %d, want %d (FramebufferUpdate)", header[0], rfbMsgFramebufferUpdate)
 	}
+
 	padding := make([]byte, 1)
 	if _, err := io.ReadFull(client, padding); err != nil {
 		t.Fatalf("read padding: %v", err)
 	}
+
 	numRects := make([]byte, 2)
 	if _, err := io.ReadFull(client, numRects); err != nil {
 		t.Fatalf("read num-rectangles: %v", err)
 	}
+
 	if binary.BigEndian.Uint16(numRects) != 1 {
 		t.Fatalf("num-rectangles = %d, want 1", binary.BigEndian.Uint16(numRects))
 	}
@@ -192,12 +215,15 @@ func TestRFBFakeHandshake_FramebufferUpdateIsCheckerboard(t *testing.T) {
 	if _, err := io.ReadFull(client, rect); err != nil {
 		t.Fatalf("read rect header: %v", err)
 	}
+
 	width := binary.BigEndian.Uint16(rect[4:6])
 	height := binary.BigEndian.Uint16(rect[6:8])
 	encoding := binary.BigEndian.Uint32(rect[8:12])
+
 	if width != rfbFakeWidth || height != rfbFakeHeight {
 		t.Fatalf("rect = %dx%d, want %dx%d", width, height, rfbFakeWidth, rfbFakeHeight)
 	}
+
 	if encoding != rfbEncodingRaw {
 		t.Fatalf("encoding = %d, want %d (Raw)", encoding, rfbEncodingRaw)
 	}
@@ -207,6 +233,7 @@ func TestRFBFakeHandshake_FramebufferUpdateIsCheckerboard(t *testing.T) {
 	if _, err := io.ReadFull(client, pixelBytes); err != nil {
 		t.Fatalf("read pixel data: %v", err)
 	}
+
 	want := checkerboardPixels(int(width), int(height))
 	if !bytes.Equal(pixelBytes, want) {
 		t.Fatalf("pixel data does not match checkerboard fixture (got %d bytes, want %d)", len(pixelBytes), len(want))
@@ -223,6 +250,7 @@ func TestRFBFakeHandshake_AcceptsInputMessages(t *testing.T) {
 
 	// PointerEvent (msg-type 5): type + 1 mask + 2 x + 2 y.
 	pointer := make([]byte, 6)
+
 	pointer[0] = rfbMsgPointerEvent
 	if _, err := client.Write(pointer); err != nil {
 		t.Fatalf("write PointerEvent: %v", err)
@@ -230,6 +258,7 @@ func TestRFBFakeHandshake_AcceptsInputMessages(t *testing.T) {
 
 	// KeyEvent (msg-type 4): type + 1 down + 2 padding + 4 keysym.
 	key := make([]byte, 8)
+
 	key[0] = rfbMsgKeyEvent
 	if _, err := client.Write(key); err != nil {
 		t.Fatalf("write KeyEvent: %v", err)
@@ -241,6 +270,7 @@ func TestRFBFakeHandshake_AcceptsInputMessages(t *testing.T) {
 	cut[0] = rfbMsgClientCutText
 	binary.BigEndian.PutUint32(cut[4:8], uint32(len(text)))
 	copy(cut[8:], text)
+
 	if _, err := client.Write(cut); err != nil {
 		t.Fatalf("write ClientCutText: %v", err)
 	}
@@ -248,14 +278,17 @@ func TestRFBFakeHandshake_AcceptsInputMessages(t *testing.T) {
 	// The connection must still be alive — send a FramebufferUpdateRequest and
 	// expect a FramebufferUpdate response.
 	fbur := make([]byte, 10)
+
 	fbur[0] = rfbMsgFramebufferUpdateRequest
 	if _, err := client.Write(fbur); err != nil {
 		t.Fatalf("write FramebufferUpdateRequest: %v", err)
 	}
+
 	header := make([]byte, 1)
 	if _, err := io.ReadFull(client, header); err != nil {
 		t.Fatalf("connection died after input messages: %v", err)
 	}
+
 	if header[0] != rfbMsgFramebufferUpdate {
 		t.Fatalf("msg-type = %d, want %d (FramebufferUpdate)", header[0], rfbMsgFramebufferUpdate)
 	}
@@ -269,7 +302,9 @@ func TestRFBFakeHandshake_AcceptsInputMessages(t *testing.T) {
 // io.ReadWriteCloser the real relay hands to Serve().
 func netPipe(t *testing.T) (io.ReadWriteCloser, io.ReadWriteCloser) {
 	t.Helper()
+
 	a, b := net.Pipe()
+
 	return a, b
 }
 
@@ -278,11 +313,14 @@ func netPipe(t *testing.T) (io.ReadWriteCloser, io.ReadWriteCloser) {
 // goroutine.
 func serveFake(t *testing.T, server io.ReadWriteCloser) <-chan error {
 	t.Helper()
+
 	done := make(chan error, 1)
 	go func() {
 		done <- rfbFakeServe(context.Background(), server)
+
 		_ = server.Close()
 	}()
+
 	return done
 }
 
@@ -300,6 +338,7 @@ func connectAndCompleteHandshake(t *testing.T) io.ReadWriteCloser {
 	if _, err := io.ReadFull(client, gotVersion); err != nil {
 		t.Fatalf("read ProtocolVersion: %v", err)
 	}
+
 	if _, err := client.Write([]byte(rfbProtocolVersion)); err != nil {
 		t.Fatalf("write ProtocolVersion: %v", err)
 	}
@@ -309,10 +348,12 @@ func connectAndCompleteHandshake(t *testing.T) io.ReadWriteCloser {
 	if _, err := io.ReadFull(client, count); err != nil {
 		t.Fatalf("read SecurityTypes count: %v", err)
 	}
+
 	types := make([]byte, count[0])
 	if _, err := io.ReadFull(client, types); err != nil {
 		t.Fatalf("read SecurityTypes: %v", err)
 	}
+
 	if _, err := client.Write([]byte{rfbSecurityNone}); err != nil {
 		t.Fatalf("write security choice: %v", err)
 	}
@@ -333,12 +374,14 @@ func connectAndCompleteHandshake(t *testing.T) io.ReadWriteCloser {
 	if err := binary.Read(client, binary.BigEndian, &init); err != nil {
 		t.Fatalf("read ServerInit: %v", err)
 	}
+
 	name := make([]byte, init.NameLength)
 	if _, err := io.ReadFull(client, name); err != nil {
 		t.Fatalf("read server name: %v", err)
 	}
 
 	_ = done
+
 	return client
 }
 
@@ -347,14 +390,17 @@ func connectAndCompleteHandshake(t *testing.T) io.ReadWriteCloser {
 // client-driven message exchange.
 func skipServerCutText(t *testing.T, client io.ReadWriteCloser) {
 	t.Helper()
+
 	header := make([]byte, 4) // type + 3 padding
 	if _, err := io.ReadFull(client, header); err != nil {
 		t.Fatalf("read ServerCutText header: %v", err)
 	}
+
 	lengthBuf := make([]byte, 4)
 	if _, err := io.ReadFull(client, lengthBuf); err != nil {
 		t.Fatalf("read ServerCutText length: %v", err)
 	}
+
 	text := make([]byte, binary.BigEndian.Uint32(lengthBuf))
 	if _, err := io.ReadFull(client, text); err != nil {
 		t.Fatalf("read ServerCutText text: %v", err)
