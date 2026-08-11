@@ -172,7 +172,7 @@ func TestFake_CreateVM_NoStartLeavesVMStopped(t *testing.T) {
 		Tags:     []string{"pvmss"},
 		CPUCores: 1,
 		MemoryMB: 2048,
-		Disk:     DiskSpec{Storage: "local", SizeGB: 20},
+		Disk:     DiskSpec{Storage: FakeStorageLocal, SizeGB: 20},
 		Network:  NetworkSpec{Bridge: "vmbr0", Model: "virtio"},
 	}
 	if _, err := client.CreateVM(ctx, spec); err != nil {

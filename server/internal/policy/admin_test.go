@@ -33,9 +33,7 @@ func TestSetNodeCapacity_RejectsUsagePhysicalAndAcceptsZero(t *testing.T) {
 	}
 	below := current
 	below.MaxVCPUs = current.UsedVCPUs - 1
-	if below.MaxVCPUs < 1 {
-		below.MaxVCPUs = 1
-	}
+	below.MaxVCPUs = max(below.MaxVCPUs, 1)
 	if err := service.SetNodeCapacity(ctx, "default", cluster.FakeNode02, below); !errors.Is(err, policy.ErrBelowCurrentUsage) {
 		t.Fatalf("below-usage error = %v, want ErrBelowCurrentUsage", err)
 	}

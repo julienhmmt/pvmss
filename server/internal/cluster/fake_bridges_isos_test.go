@@ -52,8 +52,8 @@ func TestFakeListISOs_ReturnsSupersetOfApproved(t *testing.T) {
 	}
 
 	approved := []struct{ storage, file string }{
-		{"local", "debian-12-generic-amd64.iso"},
-		{"local", "ubuntu-24.04-server-amd64.iso"},
+		{FakeStorageLocal, "debian-12-generic-amd64.iso"},
+		{FakeStorageLocal, "ubuntu-24.04-server-amd64.iso"},
 	}
 
 	for _, want := range approved {

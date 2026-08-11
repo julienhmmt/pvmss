@@ -171,7 +171,7 @@ func rfbSendServerCutText(peer io.Writer, text string) error {
 	header := make([]byte, 8)
 	header[0] = rfbMsgServerCutText
 	// header[1:4] is padding.
-	binary.BigEndian.PutUint32(header[4:8], uint32(len(text)))
+	binary.BigEndian.PutUint32(header[4:8], uint32(len(text))) //nolint:gosec // len(text) is bounded by a small server-cut-text payload
 
 	if _, err := peer.Write(header); err != nil {
 		return err
@@ -317,8 +317,8 @@ func checkerboardPixels(width, height int) []byte {
 	black := [4]byte{0, 0, 0, 255}
 
 	pixels := make([]byte, width*height*4)
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
+	for y := range height {
+		for x := range width {
 			cell := ((x/32)+(y/32))%2 == 0
 
 			color := white
