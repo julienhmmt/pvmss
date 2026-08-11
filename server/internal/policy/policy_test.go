@@ -13,6 +13,8 @@ import (
 	"testing"
 )
 
+const testUserAlice = "alice"
+
 func TestPolicyReads_SeededDefaults(t *testing.T) {
 	t.Parallel()
 
@@ -37,7 +39,7 @@ func TestPolicyReads_SeededDefaults(t *testing.T) {
 		t.Fatalf("gabarit = %+v, want %+v", gabarit, want)
 	}
 
-	quota, err := service.Quota(ctx, "default", auth.Identity{Username: "alice", Pool: cluster.FakePoolAlice})
+	quota, err := service.Quota(ctx, "default", auth.Identity{Username: testUserAlice, Pool: cluster.FakePoolAlice})
 	if err != nil {
 		t.Fatalf("Quota: %v", err)
 	}

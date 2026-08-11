@@ -205,7 +205,7 @@ func GetConsoleTicket(
 
 	proxy, err := client.GetVNCTicket(ctx, clusterName, vmid, entity.Node)
 	if err != nil {
-		return VNCTicket{}, fmt.Errorf("%w: %v", ErrClusterConsoleUnavailable, err)
+		return VNCTicket{}, fmt.Errorf("%w: %w", ErrClusterConsoleUnavailable, err)
 	}
 
 	ticket := store.Issue(clusterName, vmid, entity.Node, proxy.Ticket, proxy.Port)

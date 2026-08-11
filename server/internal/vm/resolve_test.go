@@ -38,7 +38,7 @@ func TestResolve(t *testing.T) {
 
 	alice := auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}
 	bob := auth.Identity{Username: "bob@pve", Pool: cluster.FakePoolBob}
-	admin := auth.Identity{Username: "admin", IsAdmin: true}
+	admin := auth.Identity{Username: testAdminUser, IsAdmin: true}
 
 	cases := []struct {
 		name     string
@@ -125,7 +125,7 @@ func TestResolve(t *testing.T) {
 //nolint:paralleltest // serial: shared fake VM fixture
 func TestResolve_AdminStillRequiresPvmssTag(t *testing.T) {
 	idx := buildResolveIndex(t)
-	admin := auth.Identity{Username: "admin", IsAdmin: true}
+	admin := auth.Identity{Username: testAdminUser, IsAdmin: true}
 
 	_, err := vm.Resolve(idx, admin, testClusterName, 109) // legacy-01, untagged
 	if !errors.Is(err, vm.ErrNotFound) {

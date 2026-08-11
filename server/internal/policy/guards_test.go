@@ -12,7 +12,7 @@ import (
 func TestCheckQuota_UsesCurrentPoolAndAdminBypass(t *testing.T) {
 	service, projection := newPolicyService(t)
 	ctx := context.Background()
-	quota, err := service.Quota(ctx, "default", auth.Identity{Username: "alice", Pool: cluster.FakePoolAlice})
+	quota, err := service.Quota(ctx, "default", auth.Identity{Username: testUserAlice, Pool: cluster.FakePoolAlice})
 	if err != nil {
 		t.Fatalf("Quota: %v", err)
 	}
@@ -26,7 +26,7 @@ func TestCheckQuota_UsesCurrentPoolAndAdminBypass(t *testing.T) {
 	if err := service.CheckQuota(ctx, "default", auth.Identity{Username: "admin", IsAdmin: true}); err != nil {
 		t.Fatalf("admin quota check: %v", err)
 	}
-	if err := service.CheckQuota(ctx, "default", auth.Identity{Username: "alice", Pool: cluster.FakePoolAlice}); !errors.Is(err, policy.ErrQuotaExceeded) {
+	if err := service.CheckQuota(ctx, "default", auth.Identity{Username: testUserAlice, Pool: cluster.FakePoolAlice}); !errors.Is(err, policy.ErrQuotaExceeded) {
 		t.Fatalf("quota check error = %v, want ErrQuotaExceeded", err)
 	}
 	if len(projection.Load().ByPool[cluster.FakePoolAlice]) == 0 {

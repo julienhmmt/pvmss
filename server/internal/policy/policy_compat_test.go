@@ -17,7 +17,7 @@ func TestPolicyCompat_SeededValuesMatchPriorTranches(t *testing.T) {
 	if gabarit.MaxSockets != 4 || gabarit.MaxCores != 8 || gabarit.MaxMemoryMB != 16384 || gabarit.MaxDiskPerVMGB != 500 || gabarit.MaxNetworkCards != 4 || gabarit.MaxSnapshots != 5 || !gabarit.AllowCustomYaml {
 		t.Fatalf("seeded gabarit = %+v", gabarit)
 	}
-	quota, err := service.Quota(ctx, "default", auth.Identity{Username: "alice", Pool: cluster.FakePoolAlice})
+	quota, err := service.Quota(ctx, "default", auth.Identity{Username: testUserAlice, Pool: cluster.FakePoolAlice})
 	if err != nil {
 		t.Fatalf("Quota: %v", err)
 	}

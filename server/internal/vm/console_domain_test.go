@@ -132,7 +132,7 @@ func TestGetConsoleTicket_ClusterClientErrorPropagates(t *testing.T) {
 //nolint:paralleltest // serial: shared fake VM fixture
 func TestGetConsoleTicket_AdminBypassesPoolCheck(t *testing.T) {
 	idx := buildResolveIndex(t)
-	admin := auth.Identity{Username: "admin", IsAdmin: true}
+	admin := auth.Identity{Username: testAdminUser, IsAdmin: true}
 	store := vm.NewConsoleTicketStore()
 	client := &fakeConsoleClient{ticket: cluster.VNCProxyTicket{Ticket: "proxmox-ticket", Port: 5901}}
 	audit := &fakeAuditRecorder{}
