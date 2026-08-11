@@ -103,6 +103,7 @@ func TestRouter_CloudInitRoutesAreSpecific(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		request := httptest.NewRequest(http.MethodGet, path, nil)
 		mux.ServeHTTP(recorder, request)
+
 		if recorder.Code != http.StatusUnauthorized {
 			t.Fatalf("GET %s status = %d, want 401 (route reached handler)", path, recorder.Code)
 		}
