@@ -51,6 +51,9 @@ func envKeys() []string {
 		"LOG_FORMAT",
 		"TZ",
 		"PORT",
+		"PVMSS_HOST",
+		"PVMSS_COOKIE_SECURE",
+		"PVMSS_TRUSTED_PROXIES",
 	}
 }
 
@@ -157,6 +160,8 @@ func TestLoadAndValidate_DefaultValues(t *testing.T) {
 	assert.Equal(t, "json", cfg.LogFormat)
 	assert.Equal(t, "UTC", cfg.Timezone)
 	assert.Equal(t, "50000", cfg.Port)
+	assert.Equal(t, "127.0.0.1", cfg.Host)
+	assert.False(t, cfg.CookieSecure)
 	assert.True(t, cfg.ProxmoxSSLVerify)
 	assert.False(t, cfg.Offline)
 }
@@ -167,6 +172,7 @@ func TestLoadAndValidate_CustomOptionalValues(t *testing.T) {
 	vars := validBase()
 	vars["PVMSS_DB_PATH"] = "/data/pvmss.db"
 	vars["PVMSS_ENV"] = "production"
+	vars["PVMSS_HOST"] = "0.0.0.0"
 	vars["LOG_LEVEL"] = "debug"
 	vars["LOG_OUTPUT"] = "stderr"
 	vars["LOG_FORMAT"] = "pretty"
@@ -179,6 +185,8 @@ func TestLoadAndValidate_CustomOptionalValues(t *testing.T) {
 
 	assert.Equal(t, "/data/pvmss.db", cfg.DBPath)
 	assert.Equal(t, "production", cfg.Environment)
+	assert.Equal(t, "0.0.0.0", cfg.Host)
+	assert.True(t, cfg.CookieSecure)
 	assert.Equal(t, "debug", cfg.LogLevel)
 	assert.Equal(t, "stderr", cfg.LogOutput)
 	assert.Equal(t, "pretty", cfg.LogFormat)
@@ -279,4 +287,38 @@ func TestLoadAndValidate_AdminPasswordHash_AllBcryptPrefixes(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+// TestLoadAndValidate_CookieSecure_ProdDefaultTrue verifies that
+// PVMSS_COOKIE_SECURE defaults to true in production.
+func TestLoadAndValidate_CookieSecure_ProdDefaultTrue(t *testing.T) {
+	vars := validBase()
+	vars["PVMSS_ENV"] = "production"
+	setEnv(t, vars)
+	cfg, err := env.LoadAndValidate()
+	require.NoError(t, err)
+	assert.True(t, cfg.CookieSecure)
+}
+
+// TestLoadAndValidate_CookieSecure_ProdExplicitFalseRejected verifies that an
+// explicit PVMSS_COOKIE_SECURE=false is rejected when PVMSS_ENV=production.
+func TestLoadAndValidate_CookieSecure_ProdExplicitFalseRejected(t *testing.T) {
+	vars := validBase()
+	vars["PVMSS_ENV"] = "production"
+	vars["PVMSS_COOKIE_SECURE"] = "false"
+	setEnv(t, vars)
+	_, err := env.LoadAndValidate()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "PVMSS_COOKIE_SECURE cannot be false in production")
+}
+
+// TestLoadAndValidate_CookieSecure_DevDefaultFalse verifies that
+// PVMSS_COOKIE_SECURE defaults to false in development.
+func TestLoadAndValidate_CookieSecure_DevDefaultFalse(t *testing.T) {
+	vars := validBase()
+	vars["PVMSS_ENV"] = "development"
+	setEnv(t, vars)
+	cfg, err := env.LoadAndValidate()
+	require.NoError(t, err)
+	assert.False(t, cfg.CookieSecure)
 }

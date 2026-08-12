@@ -180,6 +180,8 @@ You can rely on `.env` + `env_file` or inline `environment:` entries, but **not 
 | `LOG_FILE_PATH`           | File path when `LOG_OUTPUT` is `file` or `both`                              |    ❌    | —                    |
 | `LOG_FORMAT`              | `console` (human readable) or `json` (machine/SIEM)                          |    ❌    | `console`            |
 | `PORT`                    | TCP port the HTTP server listens on                                          |    ❌    | `50000`              |
+| `PVMSS_HOST`              | Network address to bind (`0.0.0.0` for all interfaces, `127.0.0.1` for loopback) | ❌ | `127.0.0.1`        |
+| `PVMSS_COOKIE_SECURE`     | `Secure` flag on auth cookies (must be `true` in production)                 |    ❌    | `true` in prod, `false` in dev |
 | `TZ`                      | Container timezone                                                           |    ❌    | `UTC`                |
 
 > Tip: `ADMIN_PASSWORD_HASH` can be generated locally with `htpasswd -bnBC 10 "admin" "StrongPassword" | cut -d: -f2`.

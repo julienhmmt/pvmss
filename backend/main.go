@@ -108,7 +108,7 @@ func main() {
 			Str("event_category", "system").
 			Str("event_type", "server_start").
 			Str("port", port).
-			Str("address", ":"+port).
+			Str("address", net.JoinHostPort(envCfg.Host, port)).
 			Msg("HTTP server starting")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Get().Fatal().Err(err).Msg("Server failed to start")
