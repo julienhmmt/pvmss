@@ -1,4 +1,4 @@
-//nolint:paralleltest,wsl_v5,gofumpt // tests use shared fake fixtures and table assertions
+//nolint:paralleltest,wsl_v5 // tests use shared fake fixtures and table assertions
 package pools_test
 
 import (
