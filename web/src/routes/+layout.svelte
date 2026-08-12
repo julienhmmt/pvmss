@@ -4,9 +4,11 @@
 	import { resolve } from '$app/paths';
 	import '../app.css';
 	import { setTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
-	import TaskTray from '$lib/features/tasks/TaskTray.svelte';
 	import { setSessionContext } from '$lib/features/auth/session.svelte';
 	import { get } from '$lib/shared/api/client';
+	import { setLocaleContext } from '$lib/features/chrome/locale.svelte';
+	import { setThemeContext } from '$lib/features/chrome/theme.svelte';
+	import Navbar from '$lib/features/chrome/Navbar.svelte';
 
 	interface Props {
 		children: Snippet;
@@ -25,6 +27,17 @@
 	const session = setSessionContext();
 	onMount(() => session.load());
 
+	// T19: locale and theme preferences are client-side state, instantiated
+	// once here and provided via context (constitution VII — no module
+	// singletons). init() reads localStorage and applies the active value
+	// before the first interactive chrome renders.
+	const locale = setLocaleContext();
+	const theme = setThemeContext();
+	onMount(() => {
+		locale.init();
+		theme.init();
+	});
+
 	// T14: the public version string is shown in the footer for every visitor,
 	// authenticated or not (X17/FR-015). Fetched once on mount from the
 	// unauthenticated /api/v1/public/version endpoint.
@@ -40,27 +53,11 @@
 </script>
 
 <div class="flex min-h-screen flex-col bg-background text-foreground">
-	<header class="border-b border-border">
-		<nav class="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3" aria-label="Main">
-			<a href={resolve('/vms')} class="text-sm font-semibold tracking-tight">PVMSS</a>
-			<div class="flex items-center gap-4">
-				<a href={resolve('/vms')} class="text-sm text-muted-foreground hover:text-foreground">My VMs</a>
-				<a href={resolve('/vms/create')} class="text-sm text-muted-foreground hover:text-foreground">Create</a>
-				<a href={resolve('/nodes')} class="text-sm text-muted-foreground hover:text-foreground">Nodes</a>
-				{#if session.isAdmin}
-					<a href={resolve('/admin')} class="text-sm text-muted-foreground hover:text-foreground">Dashboard</a>
-					<a href={resolve('/admin/nodes')} class="text-sm text-muted-foreground hover:text-foreground">Admin</a>
-					<a href={resolve('/admin/clusters')} class="text-sm text-muted-foreground hover:text-foreground">Clusters</a>
-					<a href={resolve('/admin/policy')} class="text-sm text-muted-foreground hover:text-foreground">Policy</a>
-					<a href={resolve('/admin/policy/nodes')} class="text-sm text-muted-foreground hover:text-foreground">Node capacity</a>
-					<a href={resolve('/admin/pools')} class="text-sm text-muted-foreground hover:text-foreground">Pools</a>
-					<a href={resolve('/admin/settings')} class="text-sm text-muted-foreground hover:text-foreground">Settings</a>
-					<a href={resolve('/admin/appinfo')} class="text-sm text-muted-foreground hover:text-foreground">App Info</a>
-				{/if}
-				<TaskTray />
-			</div>
-		</nav>
-	</header>
+	<Navbar>
+		{#snippet statusBanner()}
+			<!-- StatusBanner (T027) mounts here once US3 lands. -->
+		{/snippet}
+	</Navbar>
 	<main class="flex flex-1 flex-col items-center justify-center">
 		{@render children()}
 	</main>
