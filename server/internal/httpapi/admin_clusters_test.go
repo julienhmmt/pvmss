@@ -23,7 +23,6 @@ import (
 
 const (
 	adminClusterTestSecret = "admin-cluster-test-secret-with-32-bytes"
-	adminSecondaryCluster  = "secondary"
 )
 
 type adminClusterFixture struct {
@@ -50,7 +49,7 @@ func newAdminClusterFixture(t *testing.T) adminClusterFixture {
 		t.Fatalf("NewRegistry: %v", err)
 	}
 	indexes := inventory.NewRegistry(registry, time.Hour, slog.Default())
-	for _, name := range []string{auditTestCluster, adminSecondaryCluster} {
+	for _, name := range []string{auditTestCluster, crossSecondaryCluster} {
 		if _, err := indexes.Refresh(context.Background(), name); err != nil {
 			t.Fatalf("Refresh(%s): %v", name, err)
 		}
@@ -191,10 +190,10 @@ func TestAdminClusters_NonAdminReturns403(t *testing.T) {
 	}{
 		{"list", fixture.handler.ServeList, http.MethodGet, "/api/v1/admin/clusters", "", ""},
 		{"create", fixture.handler.ServeCreate, http.MethodPost, "/api/v1/admin/clusters", "", `{"name":"tertiary","url":"https://pve-d.example.com:8006/api2/json","tokenId":"pvmss@pve!service","tokenSecret":"s"}`},
-		{"update", fixture.handler.ServeUpdate, http.MethodPut, "/api/v1/admin/clusters/secondary", "secondary", `{"url":"https://pve-b.example.com:8006/api2/json","tokenId":"pvmss@pve!service"}`},
-		{"test", fixture.handler.ServeTest, http.MethodPost, "/api/v1/admin/clusters/secondary/test", "secondary", ""},
-		{"oidc", fixture.handler.ServeOIDC, http.MethodPost, "/api/v1/admin/clusters/secondary/oidc", "secondary", `{"enabled":true}`},
-		{"delete", fixture.handler.ServeDelete, http.MethodDelete, "/api/v1/admin/clusters/secondary", "secondary", ""},
+		{"update", fixture.handler.ServeUpdate, http.MethodPut, "/api/v1/admin/clusters/secondary", crossSecondaryCluster, `{"url":"https://pve-b.example.com:8006/api2/json","tokenId":"pvmss@pve!service"}`},
+		{"test", fixture.handler.ServeTest, http.MethodPost, "/api/v1/admin/clusters/secondary/test", crossSecondaryCluster, ""},
+		{"oidc", fixture.handler.ServeOIDC, http.MethodPost, "/api/v1/admin/clusters/secondary/oidc", crossSecondaryCluster, `{"enabled":true}`},
+		{"delete", fixture.handler.ServeDelete, http.MethodDelete, "/api/v1/admin/clusters/secondary", crossSecondaryCluster, ""},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -209,7 +208,7 @@ func TestAdminClusters_NonAdminReturns403(t *testing.T) {
 			if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
 				t.Fatalf("%s decode: %v", testCase.name, err)
 			}
-			if body.Code != "forbidden" || body.Message != "admin only" {
+			if body.Code != apiCodeForbidden || body.Message != "admin only" {
 				t.Fatalf("%s error body = %+v, want {forbidden, admin only}", testCase.name, body)
 			}
 		})
@@ -221,7 +220,7 @@ func TestAdminClusters_NonAdminReturns403(t *testing.T) {
 // collision, and 201-with-reactivation (removedAt cleared, fresh token
 // required) on re-adding a previously soft-deleted name (FR-005, FR-007).
 //
-//nolint:paralleltest // HTTP fixture shares fake cluster state
+//nolint:paralleltest,gocyclo // HTTP fixture shares fake cluster state; create path covers 4 contract branches in one sequential test
 func TestAdminClusters_CreateValidatesAndReactivates(t *testing.T) {
 	fixture := newAdminClusterFixture(t)
 	cookie := adminClusterCookie(t, fixture.auth)
@@ -291,7 +290,7 @@ func TestAdminClusters_UpdateRejectsNameAnd404sOnRemoved(t *testing.T) {
 	}
 
 	// Valid update: 200, new URL reflected.
-	response := update("secondary", `{"url":"https://pve-b2.example.com:8006/api2/json","tlsInsecureSkipVerify":true,"tokenId":"pvmss@pve!service"}`)
+	response := update(crossSecondaryCluster, `{"url":"https://pve-b2.example.com:8006/api2/json","tlsInsecureSkipVerify":true,"tokenId":"pvmss@pve!service"}`)
 	if response.Code != http.StatusOK {
 		t.Fatalf("update status = %d, want 200: %s", response.Code, response.Body.String())
 	}
@@ -304,7 +303,7 @@ func TestAdminClusters_UpdateRejectsNameAnd404sOnRemoved(t *testing.T) {
 	}
 
 	// A "name" field in the PUT body is rejected outright, not silently dropped.
-	response = update("secondary", `{"name":"secondary","url":"https://pve-b3.example.com:8006/api2/json","tokenId":"pvmss@pve!service"}`)
+	response = update(crossSecondaryCluster, `{"name":"secondary","url":"https://pve-b3.example.com:8006/api2/json","tokenId":"pvmss@pve!service"}`)
 	if response.Code != http.StatusBadRequest {
 		t.Fatalf("update-with-name status = %d, want 400 (unknown field rejected): %s", response.Code, response.Body.String())
 	}
@@ -337,12 +336,12 @@ func TestAdminClusters_UpdateRejectsNameAnd404sOnRemoved(t *testing.T) {
 // rule — the subsequent GET /admin/clusters list reflects the new
 // lastTestStatus/lastTestAt.
 //
-//nolint:paralleltest // HTTP fixture shares fake cluster state
+//nolint:paralleltest,gocyclo // HTTP fixture shares fake cluster state; test+list assertion path is sequential by contract
 func TestAdminClusters_TestReachableReportsOKAndPersists(t *testing.T) {
 	fixture := newAdminClusterFixture(t)
 	cookie := adminClusterCookie(t, fixture.auth)
 
-	response := adminClusterRequest(t, fixture, cookie, fixture.handler.ServeTest, http.MethodPost, "/api/v1/admin/clusters/default/test", "default", "")
+	response := adminClusterRequest(t, fixture, cookie, fixture.handler.ServeTest, http.MethodPost, "/api/v1/admin/clusters/default/test", auditTestCluster, "")
 	if response.Code != http.StatusOK {
 		t.Fatalf("test status = %d, want 200: %s", response.Code, response.Body.String())
 	}
@@ -367,7 +366,7 @@ func TestAdminClusters_TestReachableReportsOKAndPersists(t *testing.T) {
 	}
 	found := false
 	for _, row := range rows {
-		if row.Name != "default" {
+		if row.Name != auditTestCluster {
 			continue
 		}
 		found = true
@@ -389,7 +388,7 @@ func TestAdminClusters_OIDCToggleIsolated(t *testing.T) {
 	fixture := newAdminClusterFixture(t)
 	cookie := adminClusterCookie(t, fixture.auth)
 
-	response := adminClusterRequest(t, fixture, cookie, fixture.handler.ServeOIDC, http.MethodPost, "/api/v1/admin/clusters/secondary/oidc", "secondary", `{"enabled":true}`)
+	response := adminClusterRequest(t, fixture, cookie, fixture.handler.ServeOIDC, http.MethodPost, "/api/v1/admin/clusters/secondary/oidc", crossSecondaryCluster, `{"enabled":true}`)
 	if response.Code != http.StatusOK {
 		t.Fatalf("oidc toggle status = %d, want 200: %s", response.Code, response.Body.String())
 	}
@@ -401,7 +400,7 @@ func TestAdminClusters_OIDCToggleIsolated(t *testing.T) {
 	}
 	for _, row := range rows {
 		switch row.Name {
-		case "secondary":
+		case crossSecondaryCluster:
 			if !row.OIDCEnabled {
 				t.Errorf("secondary oidcEnabled = false, want true after toggle")
 			}
@@ -438,13 +437,13 @@ func TestAdminClusters_DeleteLastClusterConflictAndReactivateRoundTrip(t *testin
 	}
 
 	// Seed is default/secondary/offline-demo. Remove down to the last one.
-	if response := del("secondary"); response.Code != http.StatusOK {
+	if response := del(crossSecondaryCluster); response.Code != http.StatusOK {
 		t.Fatalf("delete secondary status = %d: %s", response.Code, response.Body.String())
 	}
 	if response := del("offline-demo"); response.Code != http.StatusOK {
 		t.Fatalf("delete offline-demo status = %d: %s", response.Code, response.Body.String())
 	}
-	response = del("default")
+	response = del(auditTestCluster)
 	if response.Code != http.StatusConflict {
 		t.Fatalf("delete last cluster status = %d, want 409: %s", response.Code, response.Body.String())
 	}

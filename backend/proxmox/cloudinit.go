@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/pkg/sftp"
+	"github.com/skeema/knownhosts"
 	"golang.org/x/crypto/ssh"
 
 	"pvmss/logger"
@@ -53,6 +54,7 @@ type CloudInitSFTPConfig struct {
 	PrivateKeyPath string `json:"privateKeyPath"` // Path to private SSH key file (fallback when PrivateKey is empty)
 	SnippetBaseDir string `json:"snippetBaseDir"` // Base directory for snippets (e.g., /var/lib/vz/snippets)
 	Username       string `json:"username"`       // SSH username (PAM account)
+	HostKeyPath    string `json:"hostKeyPath"`    // Path to known_hosts file for host key verification (required when Enabled)
 	// PrivateKey holds the SSH private key content (plaintext, in memory only).
 	// Takes precedence over PrivateKeyPath. json:"-" so it is never serialized
 	// into API responses, logs, or settings dumps.
@@ -451,8 +453,26 @@ func validateSnippetFilename(filename string) error {
 	return nil
 }
 
+// buildHostKeyCallback returns an ssh.HostKeyCallback that verifies the
+// server's host key against the known_hosts file at hostKeyPath. If
+// hostKeyPath is empty, it returns an error — host key verification is
+// mandatory and InsecureIgnoreHostKey is never used.
+func buildHostKeyCallback(hostKeyPath string) (ssh.HostKeyCallback, error) {
+	if strings.TrimSpace(hostKeyPath) == "" {
+		return nil, fmt.Errorf("SFTP host_key_path is required — set it to a known_hosts file containing the Proxmox SSH server's host key")
+	}
+	callback, err := knownhosts.New(hostKeyPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load known_hosts file %s: %w", hostKeyPath, err)
+	}
+	return ssh.HostKeyCallback(callback), nil
+}
+
 // createSFTPClient creates an SFTP client connection to the configured host.
-// Host key verification is disabled for simplicity in trusted network environments.
+// Host key verification is mandatory: the configured HostKeyPath must point to
+// a known_hosts file containing the Proxmox SSH server's host key. Without
+// verification, an attacker on the network path could impersonate the server
+// and read or modify snippet content.
 func createSFTPClient(config CloudInitSFTPConfig) (*sftp.Client, *ssh.Client, error) {
 	log := logger.Get()
 
@@ -462,13 +482,18 @@ func createSFTPClient(config CloudInitSFTPConfig) (*sftp.Client, *ssh.Client, er
 		return nil, nil, err
 	}
 
-	// Create SSH client config (host key verification disabled for trusted networks)
+	hostKeyCallback, err := buildHostKeyCallback(config.HostKeyPath)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Create SSH client config with mandatory host key verification.
 	sshConfig := &ssh.ClientConfig{
 		User: config.Username,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), // #nosec G106 - trusted network
+		HostKeyCallback: hostKeyCallback,
 		Timeout:         30 * time.Second,
 	}
 

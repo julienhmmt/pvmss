@@ -2,11 +2,16 @@ package utils
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
-	mathrand "math/rand"
 	"regexp"
 	"strings"
 )
+
+// ErrRandomMACAddress is returned when the cryptographic random source used
+// to generate MAC addresses is unavailable. A failure of crypto/rand is a
+// system-level error and must not silently fall back to a predictable source.
+var ErrRandomMACAddress = errors.New("crypto/rand unavailable: cannot generate random MAC address")
 
 // MAC address validation functions
 var (
@@ -42,19 +47,18 @@ func NormalizeMACAddress(mac string) string {
 
 // GenerateRandomMACAddress generates a random locally-administered MAC address
 // Uses the standard format with the second bit of the first byte set to 1 (locally administered)
-func GenerateRandomMACAddress() string {
+// Returns ErrRandomMACAddress if crypto/rand is unavailable — a failure of the
+// cryptographic random source is a system-level error and must not fall back to
+// a predictable source (math/rand), which would produce guessable MACs.
+func GenerateRandomMACAddress() (string, error) {
 	// Use Proxmox-style prefix: BC:24:11 (locally administered, unicast)
 	// BC in binary is 10111100 - second bit is 1 (locally administered), first bit is 1 (unicast)
 	prefix := "BC:24:11"
 
-	// Generate 3 random bytes using crypto/rand for better randomness
 	randomBytes := make([]byte, 3)
-	_, err := rand.Read(randomBytes)
-	if err != nil {
-		// Fallback to time-based if crypto/rand fails (shouldn't happen in normal conditions)
-		return fmt.Sprintf("%s:%02X:%02X:%02X", prefix,
-			uint8(mathrand.Intn(256)), uint8(mathrand.Intn(256)), uint8(mathrand.Intn(256)))
+	if _, err := rand.Read(randomBytes); err != nil {
+		return "", fmt.Errorf("%w: %v", ErrRandomMACAddress, err)
 	}
 
-	return fmt.Sprintf("%s:%02X:%02X:%02X", prefix, randomBytes[0], randomBytes[1], randomBytes[2])
+	return fmt.Sprintf("%s:%02X:%02X:%02X", prefix, randomBytes[0], randomBytes[1], randomBytes[2]), nil
 }

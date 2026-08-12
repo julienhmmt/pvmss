@@ -16,7 +16,7 @@ var (
 	// ErrSnippetPrefix reports a non-empty document without the cloud-init marker.
 	ErrSnippetPrefix = errors.New("cloud-init snippet must start with #cloud-config")
 	// ErrSnippetInvalidUTF8 reports malformed UTF-8 content.
-	ErrSnippetInvalidUTF8 = errors.New("cloud-init snippet is not valid UTF-8")
+	ErrSnippetInvalidUTF8 = errors.New("cloud-init snippet is not valid utf-8")
 )
 
 // Validate checks the bounded marker required for a custom cloud-init document.

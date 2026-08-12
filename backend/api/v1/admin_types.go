@@ -218,10 +218,11 @@ type AdminSFTPStatusResponse struct {
 	Username     string `json:"username,omitempty"`
 	RemotePath   string `json:"remote_path,omitempty"`
 	KeyExists    bool   `json:"key_exists"`
-	KeySet       bool   `json:"key_set"`               // a pasted key is stored in the DB
-	KeyPath      string `json:"key_path,omitempty"`    // configured key file path (fallback)
-	Fingerprint  string `json:"fingerprint,omitempty"` // SHA256 fingerprint of the configured key's public key
-	IsConfigured bool   `json:"is_configured"`         // true when host+username+key are set (even if disabled)
+	KeySet       bool   `json:"key_set"`                 // a pasted key is stored in the DB
+	KeyPath      string `json:"key_path,omitempty"`      // configured key file path (fallback)
+	HostKeyPath  string `json:"host_key_path,omitempty"` // path to known_hosts file for host key verification
+	Fingerprint  string `json:"fingerprint,omitempty"`   // SHA256 fingerprint of the configured key's public key
+	IsConfigured bool   `json:"is_configured"`           // true when host+username+key are set (even if disabled)
 	StatusText   string `json:"status_text"`
 	StatusType   string `json:"status_type"` // "success", "warning", "danger"
 }
@@ -229,6 +230,8 @@ type AdminSFTPStatusResponse struct {
 // AdminSFTPConfigRequest is the body for PUT /api/v1/admin/cloudinit/sftp.
 // PrivateKey is optional: when empty the stored key is preserved; when set it
 // replaces the stored key (validated and encrypted before persisting).
+// HostKeyPath is the path to a known_hosts file used to verify the Proxmox
+// SSH server's host key; required when SFTP is enabled.
 type AdminSFTPConfigRequest struct {
 	Host           string `json:"host"`
 	Port           int    `json:"port"`
@@ -236,6 +239,7 @@ type AdminSFTPConfigRequest struct {
 	RemotePath     string `json:"remote_path"`
 	PrivateKey     string `json:"private_key"`
 	PrivateKeyPath string `json:"private_key_path"`
+	HostKeyPath    string `json:"host_key_path"`
 }
 
 // AdminCloudInitListResponse wraps cloud-init templates with SFTP status.

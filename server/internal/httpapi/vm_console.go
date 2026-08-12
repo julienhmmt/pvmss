@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
@@ -232,19 +233,23 @@ func (h *VMConsole) writeJSON(w http.ResponseWriter, status int, value any) {
 // isConsoleOriginAllowed validates the WebSocket Origin header against the
 // request's own host. Browsers always send Origin for WebSocket handshakes,
 // and a mismatch is the signal for a cross-site WebSocket hijacking attempt.
-// Missing Origin (e.g. non-browser tests) is allowed.
+// Missing Origin is rejected — browser console connections always carry it,
+// and accepting its absence would allow non-browser CSWSH attacks.
 func isConsoleOriginAllowed(r *http.Request) bool {
 	origin := r.Header.Get("Origin")
 	if origin == "" {
-		return true
+		return false
 	}
 
-	scheme := "http"
-	if r.TLS != nil {
-		scheme = "https"
+	originURL, err := url.Parse(origin)
+	if err != nil {
+		return false
 	}
 
-	return origin == scheme+"://"+r.Host
+	// Compare only the host (hostname:port) — the Origin scheme may be http(s)
+	// or ws(s) depending on the client; the host comparison is what matters for
+	// CSWSH prevention.
+	return originURL.Host == r.Host
 }
 
 func isNormalClose(err error) bool {

@@ -201,7 +201,7 @@ func buildRouter(
 	st *store.Store,
 	webDir string,
 	logger *slog.Logger,
-) (*http.ServeMux, error) {
+) (http.Handler, error) {
 	policyService := policy.New(st, projection, clusterClient)
 	health := httpapi.NewHealth(st, logger)
 	clusterNodes := httpapi.NewClusterNodes(projection, logger)

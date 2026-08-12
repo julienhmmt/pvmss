@@ -21,7 +21,7 @@ func TestSetCloudInitSnippet_DisabledBeforeValidationAndResolve(t *testing.T) {
 		t.Fatalf("Gabarit: %v", err)
 	}
 
-	gabarit.AllowCustomYaml = false
+	gabarit.AllowCustomYAML = false
 	if err := service.SetGabarit(context.Background(), testClusterName, gabarit); err != nil {
 		t.Fatalf("SetGabarit: %v", err)
 	}

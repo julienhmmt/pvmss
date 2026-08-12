@@ -17,7 +17,7 @@ type PolicyRow struct {
 	MaxNetworkCards int
 	MaxSnapshots    int
 	MaxVMPerUser    int
-	AllowCustomYaml bool
+	AllowCustomYAML bool
 }
 
 // NodePolicyRow is the persisted per-node capacité row.
@@ -40,7 +40,7 @@ func (s *Store) PolicyRow(ctx context.Context, cluster string) (PolicyRow, error
 		FROM vm_limits WHERE cluster = ?`, cluster).Scan(
 		&row.Cluster, &row.MaxSockets, &row.MaxCores, &row.MaxMemoryMB,
 		&row.MaxDiskPerVMGB, &row.MaxNetworkCards, &row.MaxSnapshots,
-		&row.MaxVMPerUser, &row.AllowCustomYaml,
+		&row.MaxVMPerUser, &row.AllowCustomYAML,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return PolicyRow{}, fmt.Errorf("policy row for cluster %q: %w", cluster, sql.ErrNoRows)
@@ -71,7 +71,7 @@ func (s *Store) UpsertPolicyRow(ctx context.Context, row PolicyRow) error {
 			allow_custom_yaml = excluded.allow_custom_yaml`,
 		row.Cluster, row.MaxSockets, row.MaxCores, row.MaxMemoryMB,
 		row.MaxDiskPerVMGB, row.MaxNetworkCards, row.MaxSnapshots,
-		row.MaxVMPerUser, row.AllowCustomYaml,
+		row.MaxVMPerUser, row.AllowCustomYAML,
 	)
 	if err != nil {
 		return fmt.Errorf("upsert policy row: %w", err)

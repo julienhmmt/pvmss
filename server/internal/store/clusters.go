@@ -202,10 +202,10 @@ func (s *Store) SetClusterTestResult(ctx context.Context, name, status, version,
 func (s *Store) SetClusterOIDC(ctx context.Context, name string, enabled bool) error {
 	result, err := s.db.ExecContext(ctx, `UPDATE clusters SET oidc_enabled = ? WHERE name = ? AND removed_at IS NULL`, enabled, name)
 	if err != nil {
-		return fmt.Errorf("update cluster OIDC: %w", err)
+		return fmt.Errorf("update cluster oidc: %w", err)
 	}
 	if affected, err := result.RowsAffected(); err != nil {
-		return fmt.Errorf("count cluster OIDC update: %w", err)
+		return fmt.Errorf("count cluster oidc update: %w", err)
 	} else if affected != 1 {
 		return sql.ErrNoRows
 	}
@@ -262,7 +262,7 @@ func validateClusterSettings(row ClusterRow, requireSecret bool) error {
 		return ErrInvalidClusterName
 	}
 	if row.URL == "" || row.TokenID == "" {
-		return errors.New("cluster URL and token ID are required")
+		return errors.New("cluster url and token id are required")
 	}
 	if requireSecret && row.TokenSecret == "" {
 		return errors.New("cluster token secret is required")
@@ -280,7 +280,7 @@ func (s *Store) encryptToken(secret string) ([]byte, error) {
 	}
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return nil, fmt.Errorf("create token GCM: %w", err)
+		return nil, fmt.Errorf("create token gcm: %w", err)
 	}
 	nonce := make([]byte, gcm.NonceSize())
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
@@ -302,7 +302,7 @@ func (s *Store) decryptToken(ciphertext []byte) (string, error) {
 	}
 	gcm, err := cipher.NewGCM(block)
 	if err != nil {
-		return "", fmt.Errorf("create token GCM: %w", err)
+		return "", fmt.Errorf("create token gcm: %w", err)
 	}
 	if len(ciphertext) < gcm.NonceSize() {
 		return "", errors.New("cluster token ciphertext is truncated")

@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-//nolint:paralleltest,goconst // VM fixtures are shared with the package suite; names prove isolation
+//nolint:paralleltest // VM fixtures are shared with the package suite; names prove isolation
 func TestResolveCrossCluster(t *testing.T) {
 	defaultIndex := indexForVM(cluster.VM{
 		VMID: 101, Name: "default-web", Node: "default-node", Pool: "default-pool", Tags: []string{"pvmss"},

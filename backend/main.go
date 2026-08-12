@@ -3,11 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -17,6 +19,7 @@ import (
 	envpkg "pvmss/env"
 	"pvmss/handlers"
 	"pvmss/logger"
+	"pvmss/middleware"
 	securityMiddleware "pvmss/security/middleware"
 	"pvmss/state"
 
@@ -57,6 +60,17 @@ func main() {
 	// Configure security middleware with the validated environment.
 	securityMiddleware.SetProductionMode(envCfg.Environment)
 
+	// Configure trusted proxies for X-Forwarded-For / X-Real-IP handling.
+	// When PVMSS_TRUSTED_PROXIES is unset (empty), no proxies are trusted and
+	// the middleware uses r.RemoteAddr directly, preventing IP spoofing.
+	if envCfg.TrustedProxies != "" {
+		cidrs := strings.Split(envCfg.TrustedProxies, ",")
+		if err := middleware.SetTrustedProxies(cidrs); err != nil {
+			logger.Get().Fatal().Err(err).Msg("Failed to parse PVMSS_TRUSTED_PROXIES")
+		}
+		logger.Get().Info().Str("trusted_proxies", envCfg.TrustedProxies).Msg("Trusted proxies configured")
+	}
+
 	logger.Get().Info().
 		Str("event_category", "system").
 		Str("event_type", "startup").
@@ -80,7 +94,7 @@ func main() {
 	apiv1.RegisterSetupRoutes(router, stateManager, db)
 
 	srv := &http.Server{
-		Addr:              ":" + port,
+		Addr:              net.JoinHostPort(envCfg.Host, port),
 		Handler:           httpHandler,
 		ReadTimeout:       constants.ServerReadTimeout,
 		WriteTimeout:      constants.ServerWriteTimeout,
@@ -94,7 +108,7 @@ func main() {
 			Str("event_category", "system").
 			Str("event_type", "server_start").
 			Str("port", port).
-			Str("address", ":"+port).
+			Str("address", net.JoinHostPort(envCfg.Host, port)).
 			Msg("HTTP server starting")
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Get().Fatal().Err(err).Msg("Server failed to start")

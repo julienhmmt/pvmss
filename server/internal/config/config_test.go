@@ -8,18 +8,19 @@ import (
 )
 
 const (
-	envPort       = "PVMSS_PORT"
-	envDBPath     = "PVMSS_DB_PATH"
-	envLogLevel   = "LOG_LEVEL"
-	envLogFormat  = "LOG_FORMAT"
-	envLogOutput  = "LOG_OUTPUT"
-	testDBPath    = "./tmp/pvmss.db"
-	testMemoryDB  = ":memory:"
-	testHost      = "127.0.0.1"
-	testLogLevel  = "info"
-	testLogFormat = "json"
-	testLogOutput = "stdout"
-	testCluster   = "fake"
+	envPort          = "PVMSS_PORT"
+	envDBPath        = "PVMSS_DB_PATH"
+	envLogLevel      = "LOG_LEVEL"
+	envLogFormat     = "LOG_FORMAT"
+	envLogOutput     = "LOG_OUTPUT"
+	envClusterSource = "PVMSS_CLUSTER_SOURCE"
+	testDBPath       = "./tmp/pvmss.db"
+	testMemoryDB     = ":memory:"
+	testHost         = "127.0.0.1"
+	testLogLevel     = "info"
+	testLogFormat    = "json"
+	testLogOutput    = "stdout"
+	testCluster      = "fake"
 )
 
 //nolint:funlen // comprehensive table-driven test covering all env vars
@@ -33,12 +34,12 @@ func TestLoad(t *testing.T) {
 		{
 			name: "valid config",
 			env: map[string]string{
-				envPort:                "50001",
-				envDBPath:              testDBPath,
-				envLogLevel:            testLogLevel,
-				envLogFormat:           testLogFormat,
-				envLogOutput:           testLogOutput,
-				"PVMSS_CLUSTER_SOURCE": testCluster,
+				envPort:          "50001",
+				envDBPath:        testDBPath,
+				envLogLevel:      testLogLevel,
+				envLogFormat:     testLogFormat,
+				envLogOutput:     testLogOutput,
+				envClusterSource: testCluster,
 			},
 			want: config.Configuration{
 				Host:                              testHost,
@@ -57,13 +58,13 @@ func TestLoad(t *testing.T) {
 		{
 			name: "explicit host",
 			env: map[string]string{
-				"PVMSS_HOST":           "0.0.0.0",
-				envPort:                "50001",
-				envDBPath:              testDBPath,
-				envLogLevel:            testLogLevel,
-				envLogFormat:           testLogFormat,
-				envLogOutput:           testLogOutput,
-				"PVMSS_CLUSTER_SOURCE": testCluster,
+				"PVMSS_HOST":     "0.0.0.0",
+				envPort:          "50001",
+				envDBPath:        testDBPath,
+				envLogLevel:      testLogLevel,
+				envLogFormat:     testLogFormat,
+				envLogOutput:     testLogOutput,
+				envClusterSource: testCluster,
 			},
 			want: config.Configuration{
 				Host:                              "0.0.0.0",
@@ -192,7 +193,7 @@ func TestLoad(t *testing.T) {
 				envLogLevel:               testLogLevel,
 				envLogFormat:              testLogFormat,
 				envLogOutput:              testLogOutput,
-				"PVMSS_CLUSTER_SOURCE":    "proxmox",
+				envClusterSource:          "proxmox",
 				"PROXMOX_URL":             "https://proxmox.example.com",
 				"PROXMOX_API_TOKEN_NAME":  "root@pam!pvmss",
 				"PROXMOX_API_TOKEN_VALUE": "token-value",
@@ -228,12 +229,12 @@ func TestLoad(t *testing.T) {
 		{
 			name: "explicit cluster source vmware",
 			env: map[string]string{
-				envPort:                "50001",
-				envDBPath:              testDBPath,
-				envLogLevel:            testLogLevel,
-				envLogFormat:           testLogFormat,
-				envLogOutput:           testLogOutput,
-				"PVMSS_CLUSTER_SOURCE": "vmware",
+				envPort:          "50001",
+				envDBPath:        testDBPath,
+				envLogLevel:      testLogLevel,
+				envLogFormat:     testLogFormat,
+				envLogOutput:     testLogOutput,
+				envClusterSource: "vmware",
 			},
 			wantErr: "PVMSS_CLUSTER_SOURCE must be one of",
 		},
@@ -245,7 +246,7 @@ func TestLoad(t *testing.T) {
 				envLogLevel:                        testLogLevel,
 				envLogFormat:                       testLogFormat,
 				envLogOutput:                       testLogOutput,
-				"PVMSS_CLUSTER_SOURCE":             testCluster,
+				envClusterSource:                   testCluster,
 				"PVMSS_INVENTORY_REFRESH_INTERVAL": "10s",
 				"PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL": "2s",
 			},
@@ -271,7 +272,7 @@ func TestLoad(t *testing.T) {
 				envLogLevel:                        testLogLevel,
 				envLogFormat:                       testLogFormat,
 				envLogOutput:                       testLogOutput,
-				"PVMSS_CLUSTER_SOURCE":             testCluster,
+				envClusterSource:                   testCluster,
 				"PVMSS_INVENTORY_REFRESH_INTERVAL": "not-a-duration",
 			},
 			wantErr: "PVMSS_INVENTORY_REFRESH_INTERVAL must be a duration",
@@ -284,7 +285,7 @@ func TestLoad(t *testing.T) {
 				envLogLevel:                        testLogLevel,
 				envLogFormat:                       testLogFormat,
 				envLogOutput:                       testLogOutput,
-				"PVMSS_CLUSTER_SOURCE":             testCluster,
+				envClusterSource:                   testCluster,
 				"PVMSS_INVENTORY_REFRESH_INTERVAL": "0s",
 			},
 			wantErr: "PVMSS_INVENTORY_REFRESH_INTERVAL must be a positive duration",
@@ -292,12 +293,12 @@ func TestLoad(t *testing.T) {
 		{
 			name: "non-positive manual refresh min interval",
 			env: map[string]string{
-				envPort:                "50001",
-				envDBPath:              testDBPath,
-				envLogLevel:            testLogLevel,
-				envLogFormat:           testLogFormat,
-				envLogOutput:           testLogOutput,
-				"PVMSS_CLUSTER_SOURCE": testCluster,
+				envPort:          "50001",
+				envDBPath:        testDBPath,
+				envLogLevel:      testLogLevel,
+				envLogFormat:     testLogFormat,
+				envLogOutput:     testLogOutput,
+				envClusterSource: testCluster,
 				"PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL": "-1s",
 			},
 			wantErr: "PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL must be a positive duration",
@@ -310,7 +311,7 @@ func TestLoad(t *testing.T) {
 				envLogLevel:                       testLogLevel,
 				envLogFormat:                      testLogFormat,
 				envLogOutput:                      testLogOutput,
-				"PVMSS_CLUSTER_SOURCE":            testCluster,
+				envClusterSource:                  testCluster,
 				"PVMSS_INVENTORY_REFRESH_TIMEOUT": "45s",
 			},
 			want: config.Configuration{
@@ -335,7 +336,7 @@ func TestLoad(t *testing.T) {
 				envLogLevel:                       testLogLevel,
 				envLogFormat:                      testLogFormat,
 				envLogOutput:                      testLogOutput,
-				"PVMSS_CLUSTER_SOURCE":            testCluster,
+				envClusterSource:                  testCluster,
 				"PVMSS_INVENTORY_REFRESH_TIMEOUT": "not-a-duration",
 			},
 			wantErr: "PVMSS_INVENTORY_REFRESH_TIMEOUT must be a duration",
@@ -348,7 +349,7 @@ func TestLoad(t *testing.T) {
 				envLogLevel:                       testLogLevel,
 				envLogFormat:                      testLogFormat,
 				envLogOutput:                      testLogOutput,
-				"PVMSS_CLUSTER_SOURCE":            testCluster,
+				envClusterSource:                  testCluster,
 				"PVMSS_INVENTORY_REFRESH_TIMEOUT": "0s",
 			},
 			wantErr: "PVMSS_INVENTORY_REFRESH_TIMEOUT must be a positive duration",
@@ -364,7 +365,7 @@ func TestLoad(t *testing.T) {
 			t.Setenv(envLogOutput, tt.env[envLogOutput])
 			t.Setenv("PVMSS_HOST", tt.env["PVMSS_HOST"])
 			t.Setenv("PVMSS_WEB_DIR", tt.env["PVMSS_WEB_DIR"])
-			t.Setenv("PVMSS_CLUSTER_SOURCE", tt.env["PVMSS_CLUSTER_SOURCE"])
+			t.Setenv(envClusterSource, tt.env[envClusterSource])
 			t.Setenv("PVMSS_INVENTORY_REFRESH_INTERVAL", tt.env["PVMSS_INVENTORY_REFRESH_INTERVAL"])
 			t.Setenv("PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL", tt.env["PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL"])
 			t.Setenv("PVMSS_INVENTORY_REFRESH_TIMEOUT", tt.env["PVMSS_INVENTORY_REFRESH_TIMEOUT"])

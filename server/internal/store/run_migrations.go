@@ -65,7 +65,7 @@ func validateMigrations(migrations []Migration) error {
 		}
 
 		if strings.TrimSpace(m.DDL) == "" {
-			return fmt.Errorf("migration %d has no DDL", m.Version)
+			return fmt.Errorf("migration %d has no ddl", m.Version)
 		}
 
 		previous = m.Version
@@ -113,7 +113,7 @@ func applyMigration(ctx context.Context, db *sql.DB, m Migration) error {
 
 	if _, err := tx.ExecContext(ctx, m.DDL); err != nil {
 		_ = tx.Rollback()
-		return fmt.Errorf("exec DDL: %w", err)
+		return fmt.Errorf("exec ddl: %w", err)
 	}
 
 	appliedAt := time.Now().UTC().Format(time.RFC3339)
