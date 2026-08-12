@@ -112,22 +112,9 @@ func SetCloudInitSnippet(ctx context.Context, index *inventory.Index, actor auth
 		return err
 	}
 
-	existing, found, err := st.GetCloudInitSnippet(ctx, clusterName, vmid)
+	storage, filename, err := resolveSnippetArtifact(ctx, st, reader, entity, clusterName, vmid)
 	if err != nil {
-		return fmt.Errorf("read existing cloud-init snippet: %w", err)
-	}
-
-	storage := existing.Storage
-	if !found {
-		storage, err = reader.FindSnippetStorage(ctx, entity.Node)
-		if err != nil {
-			return fmt.Errorf("resolve cloud-init snippet storage: %w", err)
-		}
-	}
-
-	filename := fmt.Sprintf("%s%d.yml", snippetFilenamePrefix, vmid)
-	if found && existing.Filename != "" {
-		filename = existing.Filename
+		return err
 	}
 
 	if err := st.PutCloudInitSnippet(ctx, clusterName, vmid, storage, filename, content, actor.Username); err != nil {
@@ -143,6 +130,31 @@ func SetCloudInitSnippet(ctx context.Context, index *inventory.Index, actor auth
 	}
 
 	return nil
+}
+
+// resolveSnippetArtifact returns the storage and filename for a cloud-init
+// snippet, reusing the existing record when present and discovering storage
+// from the cluster reader when creating a new one.
+func resolveSnippetArtifact(ctx context.Context, st *store.Store, reader cluster.CloudInitReader, entity Entity, clusterName string, vmid int) (storage, filename string, err error) {
+	existing, found, err := st.GetCloudInitSnippet(ctx, clusterName, vmid)
+	if err != nil {
+		return "", "", fmt.Errorf("read existing cloud-init snippet: %w", err)
+	}
+
+	storage = existing.Storage
+	if !found {
+		storage, err = reader.FindSnippetStorage(ctx, entity.Node)
+		if err != nil {
+			return "", "", fmt.Errorf("resolve cloud-init snippet storage: %w", err)
+		}
+	}
+
+	filename = fmt.Sprintf("%s%d.yml", snippetFilenamePrefix, vmid)
+	if found && existing.Filename != "" {
+		filename = existing.Filename
+	}
+
+	return storage, filename, nil
 }
 
 func resolveCloudInitTarget(index *inventory.Index, actor auth.Identity, clusterName string, vmid int) (Entity, error) {

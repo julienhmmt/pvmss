@@ -137,42 +137,8 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 		return CreateResult{}, ErrNoPool
 	}
 
-	if err := policyService.CheckQuota(ctx, clusterName, actor); err != nil {
-		return CreateResult{}, err
-	}
-
-	if err := ValidateName(req.Name); err != nil {
-		return CreateResult{}, err
-	}
-
-	resources, err := catalog.ApprovedResources(ctx, st, clusterName)
+	plan, err := planCreate(ctx, policyService, st, clusterName, actor, req)
 	if err != nil {
-		return CreateResult{}, fmt.Errorf("read catalog: %w", err)
-	}
-
-	cpuCores, memoryMB, diskGB, bus, err := resolveHardware(ctx, st, clusterName, req)
-	if err != nil {
-		return CreateResult{}, err
-	}
-
-	if err := checkTechnicalRange(cpuCores, memoryMB, diskGB); err != nil {
-		return CreateResult{}, err
-	}
-
-	if err := policyService.CheckGabarit(ctx, clusterName, 1, cpuCores, memoryMB, diskGB, 1); err != nil {
-		return CreateResult{}, err
-	}
-
-	node, storage, bridge, model, err := resolveResources(req, resources)
-	if err != nil {
-		return CreateResult{}, err
-	}
-
-	if err := validateCatalog(req, resources, node, storage, bridge, model); err != nil {
-		return CreateResult{}, err
-	}
-
-	if err := policyService.CheckNodeCapacity(ctx, clusterName, node, 1, cpuCores, memoryMB, 0); err != nil {
 		return CreateResult{}, err
 	}
 
@@ -188,14 +154,14 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 
 	spec := cluster.VMSpec{
 		VMID:             vmid,
-		Node:             node,
+		Node:             plan.node,
 		Name:             req.Name,
 		Pool:             actor.Pool,
 		Tags:             tags,
-		CPUCores:         cpuCores,
-		MemoryMB:         memoryMB,
-		Disk:             cluster.DiskSpec{Storage: storage, SizeGB: diskGB, Bus: bus},
-		Network:          cluster.NetworkSpec{Bridge: bridge, Model: model},
+		CPUCores:         plan.cpuCores,
+		MemoryMB:         plan.memoryMB,
+		Disk:             cluster.DiskSpec{Storage: plan.storage, SizeGB: plan.diskGB, Bus: plan.bus},
+		Network:          cluster.NetworkSpec{Bridge: plan.bridge, Model: plan.model},
 		StartAfterCreate: req.StartAfterCreate,
 	}
 	if req.ISO != nil {
@@ -211,7 +177,64 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 		log.Error("record audit failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
 	}
 
-	return CreateResult{Cluster: clusterName, VMID: vmid, Name: req.Name, Node: node, UPID: upid}, nil
+	return CreateResult{Cluster: clusterName, VMID: vmid, Name: req.Name, Node: plan.node, UPID: upid}, nil
+}
+
+// createPlan holds the resolved and validated values for a VM creation request.
+type createPlan struct {
+	node     string
+	storage  string
+	bridge   string
+	model    string
+	cpuCores int
+	memoryMB int
+	diskGB   int
+	bus      string
+}
+
+// planCreate runs all pre-allocation validation: quota, name, catalog,
+// hardware ranges, gabarit, resource resolution, and node capacity.
+func planCreate(ctx context.Context, policyService *policy.Policy, st *store.Store, clusterName string, actor auth.Identity, req CreateRequest) (createPlan, error) {
+	if err := policyService.CheckQuota(ctx, clusterName, actor); err != nil {
+		return createPlan{}, err
+	}
+
+	if err := ValidateName(req.Name); err != nil {
+		return createPlan{}, err
+	}
+
+	resources, err := catalog.ApprovedResources(ctx, st, clusterName)
+	if err != nil {
+		return createPlan{}, fmt.Errorf("read catalog: %w", err)
+	}
+
+	cpuCores, memoryMB, diskGB, bus, err := resolveHardware(ctx, st, clusterName, req)
+	if err != nil {
+		return createPlan{}, err
+	}
+
+	if err := checkTechnicalRange(cpuCores, memoryMB, diskGB); err != nil {
+		return createPlan{}, err
+	}
+
+	if err := policyService.CheckGabarit(ctx, clusterName, 1, cpuCores, memoryMB, diskGB, 1); err != nil {
+		return createPlan{}, err
+	}
+
+	node, storage, bridge, model, err := resolveResources(req, resources)
+	if err != nil {
+		return createPlan{}, err
+	}
+
+	if err := validateCatalog(req, resources, node, storage, bridge, model); err != nil {
+		return createPlan{}, err
+	}
+
+	if err := policyService.CheckNodeCapacity(ctx, clusterName, node, 1, cpuCores, memoryMB, 0); err != nil {
+		return createPlan{}, err
+	}
+
+	return createPlan{node: node, storage: storage, bridge: bridge, model: model, cpuCores: cpuCores, memoryMB: memoryMB, diskGB: diskGB, bus: bus}, nil
 }
 
 // resolveHardware returns the effective CPU, memory, disk, and bus values,

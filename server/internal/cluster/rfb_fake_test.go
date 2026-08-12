@@ -14,7 +14,7 @@ import (
 // then a SecurityResult of 0 (OK). A real noVNC client expects exactly this
 // sequence to complete its handshake.
 //
-//nolint:paralleltest // serial: shared fake fixture
+//nolint:paralleltest,gocyclo // serial: shared fake fixture; step-by-step handshake verification
 func TestRFBFakeHandshake_VersionAndSecurity(t *testing.T) {
 	client, server := netPipe(t)
 	defer func() { _ = client.Close(); _ = server.Close() }()
@@ -157,7 +157,7 @@ func TestRFBFakeHandshake_ServerCutTextAfterInit(t *testing.T) {
 // FramebufferUpdateRequest is answered with one Raw-encoded rectangle covering
 // the whole framebuffer, filled with the checkerboard pattern.
 //
-//nolint:paralleltest // serial: shared fake fixture
+//nolint:paralleltest,gocyclo // serial: shared fake fixture; framebuffer update verification checks each field
 func TestRFBFakeHandshake_FramebufferUpdateIsCheckerboard(t *testing.T) {
 	client := connectAndCompleteHandshake(t)
 	skipServerCutText(t, client)

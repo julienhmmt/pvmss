@@ -44,16 +44,9 @@ func UpdateNetwork(ctx context.Context, deps NetworkDependencies, requested []cl
 		return nil, err
 	}
 
-	gabarit := deps.Gabarit
-	if deps.Policy != nil {
-		gabarit, err = deps.Policy.Gabarit(ctx, deps.ClusterName)
-		if err != nil {
-			return nil, fmt.Errorf("read gabarit: %w", err)
-		}
-	}
-
-	if deps.Policy == nil && gabarit.MaxNetworkCards == 0 {
-		return nil, policy.ErrUnavailable
+	gabarit, err := resolveGabarit(ctx, deps.Policy, deps.Gabarit, deps.ClusterName, func(g policy.Gabarit) bool { return g.MaxNetworkCards > 0 })
+	if err != nil {
+		return nil, err
 	}
 
 	if len(requested) > gabarit.MaxNetworkCards {

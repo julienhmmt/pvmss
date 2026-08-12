@@ -199,45 +199,49 @@ func rfbServeMessages(ctx context.Context, peer io.ReadWriteCloser) error {
 			return err
 		}
 
-		switch msgType[0] {
-		case rfbMsgSetPixelFormat:
-			// 3 bytes padding + 16 bytes PIXEL_FORMAT.
-			if _, err := io.CopyN(io.Discard, peer, 19); err != nil {
-				return err
-			}
-		case rfbMsgSetEncodings:
-			// 2 bytes padding + 2 bytes count + count*4 bytes encodings.
-			if err := discardEncodings(peer); err != nil {
-				return err
-			}
-		case rfbMsgFramebufferUpdateRequest:
-			// 1 byte incremental + 8 bytes rect.
-			if _, err := io.CopyN(io.Discard, peer, 9); err != nil {
-				return err
-			}
-
-			if err := rfbSendFramebufferUpdate(peer); err != nil {
-				return err
-			}
-		case rfbMsgKeyEvent:
-			// 1 byte down + 2 padding + 4 keysym.
-			if _, err := io.CopyN(io.Discard, peer, 7); err != nil {
-				return err
-			}
-		case rfbMsgPointerEvent:
-			// 1 byte mask + 2 x + 2 y.
-			if _, err := io.CopyN(io.Discard, peer, 5); err != nil {
-				return err
-			}
-		case rfbMsgClientCutText:
-			// 3 padding + 4 length + length bytes.
-			if err := discardClientCutText(peer); err != nil {
-				return err
-			}
-		default:
-			// Unknown message type — the spec says close rather than guess.
-			return errUnknownRFBMessage(msgType[0])
+		if err := handleRFBMessage(peer, msgType[0]); err != nil {
+			return err
 		}
+	}
+}
+
+// handleRFBMessage dispatches a single client-to-server message by type.
+// SetPixelFormat, SetEncodings, PointerEvent, KeyEvent, and ClientCutText are
+// read and discarded without validation — there is no OS underneath for input
+// to affect (plan.md research decisions, constitution VIII).
+func handleRFBMessage(peer io.ReadWriteCloser, msgType byte) error {
+	switch msgType {
+	case rfbMsgSetPixelFormat:
+		// 3 bytes padding + 16 bytes PIXEL_FORMAT.
+		_, err := io.CopyN(io.Discard, peer, 19)
+
+		return err
+	case rfbMsgSetEncodings:
+		// 2 bytes padding + 2 bytes count + count*4 bytes encodings.
+		return discardEncodings(peer)
+	case rfbMsgFramebufferUpdateRequest:
+		// 1 byte incremental + 8 bytes rect.
+		if _, err := io.CopyN(io.Discard, peer, 9); err != nil {
+			return err
+		}
+
+		return rfbSendFramebufferUpdate(peer)
+	case rfbMsgKeyEvent:
+		// 1 byte down + 2 padding + 4 keysym.
+		_, err := io.CopyN(io.Discard, peer, 7)
+
+		return err
+	case rfbMsgPointerEvent:
+		// 1 byte mask + 2 x + 2 y.
+		_, err := io.CopyN(io.Discard, peer, 5)
+
+		return err
+	case rfbMsgClientCutText:
+		// 3 padding + 4 length + length bytes.
+		return discardClientCutText(peer)
+	default:
+		// Unknown message type — the spec says close rather than guess.
+		return errUnknownRFBMessage(msgType)
 	}
 }
 
