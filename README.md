@@ -324,6 +324,7 @@ Apply with `kubectl apply -f pvmss-deployment.yaml`. Provide your own ingress/HT
 - **Logs**: `docker logs -f pvmss` or `kubectl -n pvmss logs -f deploy/pvmss`. Switch `LOG_LEVEL=DEBUG` for verbose traces. Use `LOG_FORMAT=json` and `LOG_OUTPUT=stdout` or `file` to emit JSON logs that can be shipped to a SIEM or log aggregator.
 - **Health**: startup logs include Proxmox connectivity, offline-mode status, and runtime metrics. The admin "Application Info" page shows runtime metrics, environment variables, and Proxmox cluster status.
 - **Upgrades**: pull the desired image tag and restart the container. Configuration is stored in the SQLite database and persists automatically.
+- **Static analysis (SonarQube)**: run `make sonar` to start a local SonarQube container, provision a token, generate Go coverage, and scan the repository. Results are available at `http://localhost:9000/dashboard?id=pvmss`. Stop with `make sonar-down` and clean data with `make sonar-clean`.
 
 ## Limitations
 

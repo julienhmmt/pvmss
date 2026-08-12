@@ -55,6 +55,15 @@ make up / down / restart / logs
 # BuildKit (multi-arch: arm64 + amd64)
 make buildkit-start / buildkit-stop / buildkit-status
 make docker-build
+
+# SonarQube (local container)
+make sonar              # Full pipeline: start, token, coverage, scan
+make sonar-up           # Start the SonarQube server on http://localhost:9000
+make sonar-bootstrap    # Provision or rotate the analysis token
+make sonar-coverage     # Generate Go coverage reports for SonarQube
+make sonar-scan         # Run the SonarScanner
+make sonar-down         # Stop the server
+make sonar-clean        # Stop and remove all SonarQube data
 ```
 
 ## MANDATORY: Graph-First Workflow
