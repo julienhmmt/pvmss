@@ -19,6 +19,7 @@ export default defineConfig({
 		cwd: '.',
 		env: {
 			PVMSS_PORT: '50001',
+			PVMSS_CLUSTER_SOURCE: 'fake',
 			PVMSS_DB_PATH: '../tmp/e2e-pvmss.db',
 			PVMSS_WEB_DIR: '../web/build',
 			LOG_LEVEL: 'info',

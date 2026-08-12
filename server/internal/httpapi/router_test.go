@@ -35,7 +35,7 @@ func TestRouter_SPAFallback(t *testing.T) {
 	}
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	health := httpapi.NewHealth(fakePinger{}, logger)
+	health := httpapi.NewHealth(fakePinger{}, logger, nil, 60*time.Second)
 	clusterNodes := httpapi.NewClusterNodes(inventory.NewProjection(), logger)
 	clusterRefresh := httpapi.NewClusterRefresh(
 		inventory.NewRefresher(
@@ -94,7 +94,7 @@ func TestRouter_CloudInitRoutesAreSpecific(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	authHandler := newAuthHandler(t)
 	projection := inventory.NewProjection()
-	health := httpapi.NewHealth(fakePinger{}, logger)
+	health := httpapi.NewHealth(fakePinger{}, logger, nil, 60*time.Second)
 	clusterNodes := httpapi.NewClusterNodes(projection, logger)
 	clusterRefresh := httpapi.NewClusterRefresh(inventory.NewRefresher(inventory.NewWorker(&stubClusterClient{}, projection, time.Hour, logger), 5*time.Second), logger)
 	vms := httpapi.NewVMs(projection, authHandler, 100, -1, logger)
@@ -122,7 +122,7 @@ func TestRouter_CloudInitRoutesAreSpecific(t *testing.T) {
 //nolint:paralleltest // serial: shared router and filesystem fixtures
 func TestRouter_MissingBuildDir_HealthStillWorks(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	health := httpapi.NewHealth(fakePinger{}, logger)
+	health := httpapi.NewHealth(fakePinger{}, logger, nil, 60*time.Second)
 	clusterNodes := httpapi.NewClusterNodes(inventory.NewProjection(), logger)
 	clusterRefresh := httpapi.NewClusterRefresh(
 		inventory.NewRefresher(
