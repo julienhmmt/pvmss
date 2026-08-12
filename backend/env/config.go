@@ -69,6 +69,12 @@ type EnvConfig struct {
 	// that forwards to the container).
 	Host string
 
+	// CookieSecure controls the Secure flag on auth cookies.
+	// Source: PVMSS_COOKIE_SECURE. Defaults to true in production, false in
+	// development. In production, setting PVMSS_COOKIE_SECURE=false is rejected
+	// at startup — production cookies must be Secure.
+	CookieSecure bool
+
 	// TrustedProxies is a comma-separated list of CIDR ranges or IP addresses
 	// that are allowed to set X-Forwarded-For / X-Real-IP headers. When empty
 	// (the default), the middleware uses r.RemoteAddr directly and ignores

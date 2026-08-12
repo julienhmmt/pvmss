@@ -39,6 +39,7 @@ func LoadAndValidate() (*EnvConfig, error) {
 		Timezone:             envOrDefault("TZ", "UTC"),
 		Port:                 envOrDefault("PORT", defaultPort),
 		Host:                 envOrDefault("PVMSS_HOST", "127.0.0.1"),
+		CookieSecure:         parseCookieSecure(envOrDefault("PVMSS_ENV", "development")),
 		TrustedProxies:       strings.TrimSpace(os.Getenv("PVMSS_TRUSTED_PROXIES")),
 	}
 
@@ -97,6 +98,12 @@ func validate(cfg *EnvConfig) error {
 		}
 	}
 
+	// PVMSS_COOKIE_SECURE: in production, cookies must be Secure. Reject an
+	// explicit PVMSS_COOKIE_SECURE=false in production.
+	if isProdEnv(cfg.Environment) && !cfg.CookieSecure {
+		errs = append(errs, "PVMSS_COOKIE_SECURE cannot be false in production (auth cookies must be Secure)")
+	}
+
 	if len(errs) == 0 {
 		return nil
 	}
@@ -116,6 +123,24 @@ func validateHTTPSURL(raw string) error {
 		return fmt.Errorf("missing host in URL")
 	}
 	return nil
+}
+
+// parseCookieSecure resolves the Secure flag for auth cookies.
+// PVMSS_COOKIE_SECURE explicitly sets it (true/false). When unset, it defaults
+// to true in production and false in development. In production, an explicit
+// PVMSS_COOKIE_SECURE=false is rejected at startup.
+func parseCookieSecure(env string) bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("PVMSS_COOKIE_SECURE")))
+	if v == "" {
+		return isProdEnv(env)
+	}
+	return v == "true" || v == "1" || v == "yes"
+}
+
+// isProdEnv reports whether env is a production identifier.
+func isProdEnv(env string) bool {
+	e := strings.ToLower(strings.TrimSpace(env))
+	return e == "production" || e == "prod"
 }
 
 // envOrDefault returns the value of the named environment variable, or fallback
