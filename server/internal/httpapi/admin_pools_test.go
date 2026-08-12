@@ -1,4 +1,4 @@
-//nolint:noctx,paralleltest,wsl_v5,gofumpt // HTTP tests use shared fake and session fixtures
+//nolint:noctx,paralleltest,wsl_v5 // HTTP tests use shared fake and session fixtures
 package httpapi_test
 
 import (

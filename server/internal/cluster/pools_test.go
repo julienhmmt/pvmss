@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestFakePoolState_ListAndIdempotentProvisioning(t *testing.T) {
+func TestFakePoolState_ListAndIdempotentProvisioning(t *testing.T) { //nolint:gocyclo,paralleltest // serial: shared fake state; checks each idempotent step
 	ResetFake()
 	t.Cleanup(ResetFake)
 

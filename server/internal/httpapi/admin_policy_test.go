@@ -105,7 +105,7 @@ func TestAdminPolicy_PutPartialUpdateAndRejectsInvalid(t *testing.T) {
 	}
 }
 
-func TestAdminPolicyNodes_ListsUsageAndValidatesWrites(t *testing.T) {
+func TestAdminPolicyNodes_ListsUsageAndValidatesWrites(t *testing.T) { //nolint:gocyclo // node policy test covers permission, usage, and physical bounds in sequence
 	t.Parallel()
 	policyHandler, authHandler := newPolicyHandler(t)
 	mux := policyMux(policyHandler, authHandler)

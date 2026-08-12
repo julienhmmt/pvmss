@@ -50,16 +50,9 @@ func UpdateHardware(ctx context.Context, deps HardwareDependencies, patch Hardwa
 		return ErrEmptyHardwarePatch
 	}
 
-	gabarit := deps.Gabarit
-	if deps.Policy != nil {
-		gabarit, err = deps.Policy.Gabarit(ctx, deps.ClusterName)
-		if err != nil {
-			return fmt.Errorf("read gabarit: %w", err)
-		}
-	}
-
-	if deps.Policy == nil && gabarit.MaxSockets == 0 {
-		return policy.ErrUnavailable
+	gabarit, err := resolveGabarit(ctx, deps.Policy, deps.Gabarit, deps.ClusterName, func(g policy.Gabarit) bool { return g.MaxSockets > 0 })
+	if err != nil {
+		return err
 	}
 
 	sockets, cores, memoryMB, tags, err := effectiveHardware(entity, patch, gabarit)
@@ -78,6 +71,12 @@ func UpdateHardware(ctx context.Context, deps HardwareDependencies, patch Hardwa
 		return err
 	}
 
+	return finalizeHardwareWrite(ctx, deps)
+}
+
+// finalizeHardwareWrite records the audit entry and refreshes the inventory
+// projection after a successful hardware mutation.
+func finalizeHardwareWrite(ctx context.Context, deps HardwareDependencies) error {
 	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, "hardware_update"); err != nil {
 		return fmt.Errorf("record hardware audit: %w", err)
 	}

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestPolicyCompat_SeededValuesMatchPriorTranches(t *testing.T) {
+func TestPolicyCompat_SeededValuesMatchPriorTranches(t *testing.T) { //nolint:gocyclo,paralleltest // serial: shared SQLite fixture; checks every seeded invariant
 	service, _ := newPolicyService(t)
 	ctx := context.Background()
 
