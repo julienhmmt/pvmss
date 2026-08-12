@@ -68,10 +68,21 @@ func (s *appState) triggerSnapshotRefresh(trigger string) {
 	s.clusterSnapshotRefreshMu.Unlock()
 
 	go func() {
+		defer func() {
+			if rec := recover(); rec != nil {
+				logger.Get().Error().
+					Interface("panic", rec).
+					Str("component", "ClusterSnapshotWorker").
+					Str("trigger", trigger).
+					Msg("Panic recovered in cluster snapshot refresh")
+			}
+			// Always reset the refreshing flag, even on panic, so future
+			// refresh attempts are not permanently blocked.
+			s.clusterSnapshotRefreshMu.Lock()
+			s.clusterSnapshotRefreshing = false
+			s.clusterSnapshotRefreshMu.Unlock()
+		}()
 		s.refreshProxmoxSnapshot(trigger)
-		s.clusterSnapshotRefreshMu.Lock()
-		s.clusterSnapshotRefreshing = false
-		s.clusterSnapshotRefreshMu.Unlock()
 	}()
 }
 
