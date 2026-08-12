@@ -10,6 +10,7 @@
 	import { setThemeContext } from '$lib/features/chrome/theme.svelte';
 	import Navbar from '$lib/features/chrome/Navbar.svelte';
 	import LanguageSwitcher from '$lib/features/chrome/LanguageSwitcher.svelte';
+	import ThemeToggle from '$lib/features/chrome/ThemeToggle.svelte';
 
 	interface Props {
 		children: Snippet;
@@ -57,6 +58,9 @@
 	<Navbar>
 		{#snippet languageSwitcher()}
 			<LanguageSwitcher />
+		{/snippet}
+		{#snippet themeToggle()}
+			<ThemeToggle />
 		{/snippet}
 		{#snippet statusBanner()}
 			<!-- StatusBanner (T027) mounts here once US3 lands. -->
