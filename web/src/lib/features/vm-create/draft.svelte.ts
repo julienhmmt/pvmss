@@ -12,6 +12,7 @@ export interface DraftValues {
 	mode: CreateMode;
 	name: string;
 	profileId: string;
+	cloudInitTemplateId?: string;
 	node: string;
 	nodeAdjusted: boolean;
 	storage: string;
