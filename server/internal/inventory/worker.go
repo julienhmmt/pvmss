@@ -2,6 +2,7 @@ package inventory
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"pvmss/server/internal/cluster"
 	"sync"
@@ -92,8 +93,10 @@ func (w *Worker) refreshCycle(ctx context.Context) (time.Time, error) {
 
 // Refresh performs one refresh cycle. If a cycle is already in progress,
 // waits for it and returns its result instead of starting a second call
-// (edge case: manual vs. automatic in-flight dedup).
-func (w *Worker) Refresh(ctx context.Context) (time.Time, error) {
+// (edge case: manual vs. automatic in-flight dedup). A panic in refreshCycle
+// is recovered so the inFlight state is always cleared and future refreshes
+// are not permanently blocked.
+func (w *Worker) Refresh(ctx context.Context) (at time.Time, err error) {
 	w.mu.Lock()
 	if w.inFlight != nil {
 		pending := w.inFlight
@@ -111,22 +114,37 @@ func (w *Worker) Refresh(ctx context.Context) (time.Time, error) {
 	w.inFlight = pending
 	w.mu.Unlock()
 
-	at, err := w.refreshCycle(ctx)
+	defer func() {
+		if rec := recover(); rec != nil {
+			w.log.Error("inventory refresh panic recovered", "component", "inventory", "panic", rec)
+			err = fmt.Errorf("inventory refresh panic: %v", rec)
+		}
+		// Always clear inFlight and close the done channel, even on panic,
+		// so waiting callers and future refresh cycles are not blocked.
+		w.mu.Lock()
+		w.inFlight = nil
+		w.mu.Unlock()
+		close(pending.done)
+	}()
+
+	at, err = w.refreshCycle(ctx)
 	pending.at = at
 	pending.err = err
-
-	w.mu.Lock()
-	w.inFlight = nil
-	w.mu.Unlock()
-	close(pending.done)
-
 	return at, err
 }
 
 // Run starts the automatic ticker loop. It performs an initial refresh
 // immediately, then ticks at the configured interval. Blocks until ctx is
 // cancelled. Should be started before the HTTP server accepts traffic (T015).
+// A panic in a single refresh cycle is recovered inside Refresh; the ticker
+// loop itself also has a recovery guard so the worker never silently dies.
 func (w *Worker) Run(ctx context.Context) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			w.log.Error("inventory worker loop panic recovered", "component", "inventory", "panic", rec)
+		}
+	}()
+
 	_, _ = w.Refresh(ctx)
 
 	ticker := time.NewTicker(w.interval)
