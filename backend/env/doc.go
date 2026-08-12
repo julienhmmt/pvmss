@@ -27,5 +27,6 @@
 //	LOG_FORMAT      (default "json")         — json | pretty
 //	TZ              (default "UTC")          — IANA timezone (e.g. "Europe/Paris")
 //	PORT            (default "50000")        — TCP port the HTTP server listens on
+//	PVMSS_HOST      (default "127.0.0.1")    — network address to bind (use 0.0.0.0 for all interfaces)
 //	PVMSS_TRUSTED_PROXIES (default "")       — comma-separated CIDR/IP list allowed to set X-Forwarded-For
 package env

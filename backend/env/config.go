@@ -63,6 +63,12 @@ type EnvConfig struct {
 	// Source: PORT. Defaults to "50000".
 	Port string
 
+	// Host is the network address the HTTP server binds to.
+	// Source: PVMSS_HOST. Defaults to "127.0.0.1" (loopback only) for safety.
+	// Set to "0.0.0.0" to bind all interfaces (e.g. behind a reverse proxy
+	// that forwards to the container).
+	Host string
+
 	// TrustedProxies is a comma-separated list of CIDR ranges or IP addresses
 	// that are allowed to set X-Forwarded-For / X-Real-IP headers. When empty
 	// (the default), the middleware uses r.RemoteAddr directly and ignores

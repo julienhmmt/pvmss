@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -93,7 +94,7 @@ func main() {
 	apiv1.RegisterSetupRoutes(router, stateManager, db)
 
 	srv := &http.Server{
-		Addr:              ":" + port,
+		Addr:              net.JoinHostPort(envCfg.Host, port),
 		Handler:           httpHandler,
 		ReadTimeout:       constants.ServerReadTimeout,
 		WriteTimeout:      constants.ServerWriteTimeout,
