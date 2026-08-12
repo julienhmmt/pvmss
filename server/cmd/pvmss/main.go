@@ -32,6 +32,11 @@ const (
 	writeTimeout      = 10 * time.Second
 	idleTimeout       = 120 * time.Second
 	maxHeaderBytes    = 1 << 20 // 1 MiB
+
+	// appVersion is the version string surfaced in the dashboard, the admin
+	// app info page, and the public /api/v1/public/version endpoint (T14).
+	// It is a compile-time literal; no runtime discovery is performed.
+	appVersion = "0.4.0-dev"
 )
 
 func main() {
@@ -110,7 +115,7 @@ func run() int {
 
 	go worker.Run(inventoryCtx)
 
-	sessions, err := auth.NewSessionManager(st, cfg.SessionSecret, false)
+	sessions, err := auth.NewSessionManager(st, cfg.SessionSecret, cfg.CookieSecure)
 	if err != nil {
 		logger.Error("failed to create session manager", "component", "main", "error", err)
 		return 1
@@ -231,6 +236,7 @@ func buildRouter(
 	adminCatalog := httpapi.NewAdminCatalog(authHandler, st, clusterClient, projection, logger)
 	adminPolicy := httpapi.NewAdminPolicy(authHandler, policyService, logger)
 	adminPools := httpapi.NewAdminPools(authHandler, clusterClient, projection, writer, st, worker, logger)
+	adminOps := httpapi.NewAdminOps(authHandler, st, clusterClient, projection, appVersion, logger)
 
 	return httpapi.NewRouter(httpapi.RouterConfig{
 		Health:           health,
@@ -249,6 +255,7 @@ func buildRouter(
 		AdminCatalog:     adminCatalog,
 		AdminPolicy:      adminPolicy,
 		AdminPools:       adminPools,
+		AdminOps:         adminOps,
 	}), nil
 }
 

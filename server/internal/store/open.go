@@ -49,5 +49,5 @@ func Open(cfg config.Configuration) (*Store, error) {
 		return nil, fmt.Errorf("run migrations: %w", err)
 	}
 
-	return &Store{db: db}, nil
+	return &Store{db: db, staging: NewImportStaging()}, nil
 }
