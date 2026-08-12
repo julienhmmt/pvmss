@@ -149,7 +149,10 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setTokenCookie(w, secret, accessTokenCookie, claims.Username, claims.IsAdmin, accessTokenTTL, h.state.GetEnvConfig().Environment)
+	if err := setTokenCookie(w, secret, accessTokenCookie, claims.Username, claims.IsAdmin, accessTokenTTL, h.state.GetEnvConfig().Environment); err != nil {
+		writeAppError(w, err)
+		return
+	}
 	writeJSON(w, AuthResponse{Username: claims.Username, IsAdmin: claims.IsAdmin})
 }
 
@@ -226,13 +229,19 @@ func (h *AuthHandler) ProxmoxAdminLogin(w http.ResponseWriter, r *http.Request) 
 
 // issueTokens creates and sets both access_token and refresh_token cookies.
 func issueTokens(w http.ResponseWriter, secret, username string, isAdmin bool, env string) error {
-	setTokenCookie(w, secret, accessTokenCookie, username, isAdmin, accessTokenTTL, env)
-	setTokenCookie(w, secret, refreshTokenCookie, username, isAdmin, refreshTokenTTL, env)
+	if err := setTokenCookie(w, secret, accessTokenCookie, username, isAdmin, accessTokenTTL, env); err != nil {
+		return fmt.Errorf("sign access token: %w", err)
+	}
+	if err := setTokenCookie(w, secret, refreshTokenCookie, username, isAdmin, refreshTokenTTL, env); err != nil {
+		return fmt.Errorf("sign refresh token: %w", err)
+	}
 	return nil
 }
 
 // setTokenCookie mints a signed JWT and writes it as an HttpOnly SameSite=Strict cookie.
-func setTokenCookie(w http.ResponseWriter, secret, name, username string, isAdmin bool, ttl time.Duration, env string) {
+// Returns an error if JWT signing fails — a crypto failure must not silently
+// produce an empty cookie value.
+func setTokenCookie(w http.ResponseWriter, secret, name, username string, isAdmin bool, ttl time.Duration, env string) error {
 	claims := JWTClaims{
 		Username: username,
 		IsAdmin:  isAdmin,
@@ -242,7 +251,10 @@ func setTokenCookie(w http.ResponseWriter, secret, name, username string, isAdmi
 		},
 	}
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signed, _ := tok.SignedString([]byte(secret))
+	signed, err := tok.SignedString([]byte(secret))
+	if err != nil {
+		return fmt.Errorf("sign JWT: %w", err)
+	}
 
 	secure := utils.IsProduction(env)
 
@@ -255,6 +267,7 @@ func setTokenCookie(w http.ResponseWriter, secret, name, username string, isAdmi
 		Secure:   secure,
 		SameSite: http.SameSiteStrictMode,
 	})
+	return nil
 }
 
 // ChangePassword handles PUT /api/v1/auth/me/password. Requires JWTMiddleware upstream.
