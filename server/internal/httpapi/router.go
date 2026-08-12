@@ -145,6 +145,13 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		mux.Handle("POST /api/v1/admin/tags", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeTagCreate)))
 		mux.Handle("PUT /api/v1/admin/tags/{name}/color", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeTagColor)))
 		mux.Handle("DELETE /api/v1/admin/tags/{name}", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeTagDelete)))
+		// T18 admin cloud-init templates — full CRUD, same RequireAdmin guard
+		// as every other admin catalog route (FR-010), no new middleware.
+		mux.Handle("GET /api/v1/admin/cloudinit-templates", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeCloudInitTemplates)))
+		mux.Handle("POST /api/v1/admin/cloudinit-templates", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeCloudInitTemplateCreate)))
+		mux.Handle("PUT /api/v1/admin/cloudinit-templates/{id}", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeCloudInitTemplateUpdate)))
+		mux.Handle("DELETE /api/v1/admin/cloudinit-templates/{id}", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeCloudInitTemplateDelete)))
+		mux.Handle("POST /api/v1/admin/cloudinit-templates/{id}/toggle", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeCloudInitTemplateToggle)))
 	}
 
 	// T12 admin policies — gabarits, quotas, node capacity; admin-only.
