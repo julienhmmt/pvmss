@@ -57,7 +57,7 @@ type Gabarit struct {
 	MaxDiskPerVMGB  int
 	MaxNetworkCards int
 	MaxSnapshots    int
-	AllowCustomYaml bool
+	AllowCustomYAML bool
 }
 
 // Quota is the current VM count and per-user allowance.
@@ -100,7 +100,7 @@ func DefaultGabarit() Gabarit {
 	return Gabarit{
 		MaxSockets: defaultMaxSockets, MaxCores: defaultMaxCores, MaxMemoryMB: defaultMaxMemoryMB,
 		MaxDiskPerVMGB: defaultMaxDiskPerVMGB, MaxNetworkCards: defaultMaxNetworkCards,
-		MaxSnapshots: defaultMaxSnapshots, AllowCustomYaml: true,
+		MaxSnapshots: defaultMaxSnapshots, AllowCustomYAML: true,
 	}
 }
 
@@ -114,7 +114,7 @@ func (service *Policy) Gabarit(ctx context.Context, clusterName string) (Gabarit
 	return Gabarit{
 		MaxSockets: row.MaxSockets, MaxCores: row.MaxCores, MaxMemoryMB: row.MaxMemoryMB,
 		MaxDiskPerVMGB: row.MaxDiskPerVMGB, MaxNetworkCards: row.MaxNetworkCards,
-		MaxSnapshots: row.MaxSnapshots, AllowCustomYaml: row.AllowCustomYaml,
+		MaxSnapshots: row.MaxSnapshots, AllowCustomYAML: row.AllowCustomYAML,
 	}, nil
 }
 

@@ -99,7 +99,7 @@ func SetCloudInitSnippet(ctx context.Context, index *inventory.Index, actor auth
 		return fmt.Errorf("read gabarit: %w", err)
 	}
 
-	if !gabarit.AllowCustomYaml {
+	if !gabarit.AllowCustomYAML {
 		return ErrCustomYAMLDisabled
 	}
 
