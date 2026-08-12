@@ -50,6 +50,18 @@
 			{/each}
 		</fieldset>
 
+		{#if form.catalog.cloudInitTemplates.length > 0}
+			<label class="grid gap-1 text-sm font-medium">
+				Cloud-init template (optional)
+				<select class={inputClass} bind:value={form.cloudInitTemplateId}>
+					<option value="">None</option>
+					{#each form.catalog.cloudInitTemplates as template (template.id)}
+						<option value={template.id}>{template.label}</option>
+					{/each}
+				</select>
+			</label>
+		{/if}
+
 		<div class="grid gap-2 rounded-md border border-border p-3">
 			<div class="flex items-center justify-between">
 				<span class="text-sm font-medium">Placement</span>
