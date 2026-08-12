@@ -13,6 +13,7 @@ import (
 	"pvmss/server/internal/httpapi"
 	"strings"
 	"testing"
+	"time"
 )
 
 const (
@@ -65,7 +66,7 @@ func TestHealth(t *testing.T) { //nolint:gocyclo // table-driven test covers all
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-			h := httpapi.NewHealth(c.pinger, logger)
+			h := httpapi.NewHealth(c.pinger, logger, nil, 60*time.Second)
 
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(c.method, "/health", nil)
@@ -132,7 +133,7 @@ func TestHealth_LogsError_WhenUnhealthy(t *testing.T) {
 	var buf strings.Builder
 
 	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelError}))
-	h := httpapi.NewHealth(fakePinger{err: errors.New("boom")}, logger)
+	h := httpapi.NewHealth(fakePinger{err: errors.New("boom")}, logger, nil, 60*time.Second)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/health", nil)
@@ -175,4 +176,118 @@ func (f fakePinger) Ping(_ context.Context) error {
 	}
 
 	return nil
+}
+
+// --- T021 (US3): checks.clusters aggregate + demoMode ---
+
+// fakeFreshnessChecker implements httpapi.ClusterFreshnessChecker for tests.
+type fakeFreshnessChecker struct {
+	clusters  []httpapi.ClusterFreshness
+	demoMode  bool
+}
+
+func (f fakeFreshnessChecker) Clusters() []httpapi.ClusterFreshness {
+	return f.clusters
+}
+
+func (f fakeFreshnessChecker) DemoMode() bool {
+	return f.demoMode
+}
+
+//nolint:paralleltest // serial: shared health fixture
+func TestHealth_ClustersAggregate(t *testing.T) { //nolint:gocyclo // table-driven test covers all cluster aggregate branches
+	cases := []struct {
+		name             string
+		pinger           fakePinger
+		freshness        fakeFreshnessChecker
+		wantStatus       int
+		wantClustersStat string
+		wantClustersDtl  string
+		wantDemoMode     bool
+	}{
+		{
+			name:             "all clusters fresh + database healthy → clusters healthy, no detail",
+			pinger:           fakePinger{err: nil},
+			freshness:        fakeFreshnessChecker{clusters: []httpapi.ClusterFreshness{{Name: "a", RefreshedAt: time.Now()}, {Name: "b", RefreshedAt: time.Now()}}},
+			wantStatus:       http.StatusOK,
+			wantClustersStat: "healthy",
+			wantClustersDtl:  "",
+			wantDemoMode:     false,
+		},
+		{
+			name:             "one cluster stale → clusters unhealthy, detail is a count not a name",
+			pinger:           fakePinger{err: nil},
+			freshness:        fakeFreshnessChecker{clusters: []httpapi.ClusterFreshness{{Name: "alpha", RefreshedAt: time.Now()}, {Name: "beta", RefreshedAt: time.Now().Add(-10 * time.Minute)}}},
+			wantStatus:       http.StatusOK,
+			wantClustersStat: "unhealthy",
+			wantClustersDtl:  "1 of 2 clusters unreachable",
+			wantDemoMode:     false,
+		},
+		{
+			name:             "database unhealthy → 503, top-level unhealthy (unchanged T00 rule)",
+			pinger:           fakePinger{err: errors.New("db down")},
+			freshness:        fakeFreshnessChecker{clusters: []httpapi.ClusterFreshness{{Name: "a", RefreshedAt: time.Now()}}},
+			wantStatus:       http.StatusServiceUnavailable,
+			wantClustersStat: "healthy",
+			wantDemoMode:     false,
+		},
+		{
+			name:             "demoMode true when ClusterSource is fake",
+			pinger:           fakePinger{err: nil},
+			freshness:        fakeFreshnessChecker{clusters: []httpapi.ClusterFreshness{{Name: "demo", RefreshedAt: time.Now()}}, demoMode: true},
+			wantStatus:       http.StatusOK,
+			wantClustersStat: "healthy",
+			wantDemoMode:     true,
+		},
+		{
+			name:             "zero clusters configured → clusters healthy (no stale possible)",
+			pinger:           fakePinger{err: nil},
+			freshness:        fakeFreshnessChecker{clusters: nil},
+			wantStatus:       http.StatusOK,
+			wantClustersStat: "healthy",
+			wantDemoMode:     false,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
+			h := httpapi.NewHealth(c.pinger, logger, c.freshness, 60*time.Second)
+
+			w := httptest.NewRecorder()
+			r := httptest.NewRequest(http.MethodGet, "/health", nil)
+			h.ServeHTTP(w, r)
+
+			if w.Code != c.wantStatus {
+				t.Fatalf("status = %d, want %d", w.Code, c.wantStatus)
+			}
+
+			body, _ := io.ReadAll(w.Result().Body)
+			var resp httpapi.HealthResponse
+			if err := json.Unmarshal(body, &resp); err != nil {
+				t.Fatalf("decode response: %v", err)
+			}
+
+			if resp.DemoMode != c.wantDemoMode {
+				t.Fatalf("demoMode = %v, want %v", resp.DemoMode, c.wantDemoMode)
+			}
+
+			gotClusters := resp.Checks["clusters"]
+			if gotClusters.Status != c.wantClustersStat {
+				t.Fatalf("clusters.status = %q, want %q", gotClusters.Status, c.wantClustersStat)
+			}
+			if gotClusters.Detail != c.wantClustersDtl {
+				t.Fatalf("clusters.detail = %q, want %q", gotClusters.Detail, c.wantClustersDtl)
+			}
+
+			// The detail must never leak a cluster name (FR-012).
+			if gotClusters.Detail != "" {
+				for _, cl := range c.freshness.clusters {
+					if strings.Contains(gotClusters.Detail, cl.Name) {
+						t.Fatalf("clusters.detail %q leaks cluster name %q", gotClusters.Detail, cl.Name)
+					}
+				}
+			}
+		})
+	}
 }

@@ -1,4 +1,14 @@
-<section class="flex flex-col items-center gap-4 text-center">
-	<h1 class="text-4xl font-semibold tracking-tight">PVMSS v0.4</h1>
-	<p class="text-lg text-muted-foreground">Minimal SvelteKit web shell</p>
+<script lang="ts">
+	import HomeMarketing from '$lib/features/home/HomeMarketing.svelte';
+	import HomeCta from '$lib/features/home/HomeCta.svelte';
+	import { m } from '$lib/paraglide/messages.js';
+</script>
+
+<section class="flex flex-col items-center gap-8 py-12">
+	<div class="text-center">
+		<h1 class="text-4xl font-semibold tracking-tight">{m['shell.title']()}</h1>
+		<p class="mt-2 text-lg text-muted-foreground">{m['shell.subtitle']()}</p>
+	</div>
+	<HomeCta />
+	<HomeMarketing />
 </section>

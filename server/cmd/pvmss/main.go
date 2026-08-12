@@ -203,7 +203,7 @@ func buildRouter(
 	logger *slog.Logger,
 ) (http.Handler, error) {
 	policyService := policy.New(st, projection, clusterClient)
-	health := httpapi.NewHealth(st, logger)
+	health := httpapi.NewHealth(st, logger, inventoryFreshness{registry: inventoryRegistry, demoMode: cfg.ClusterSource == "fake"}, 2*cfg.InventoryRefreshInterval)
 	clusterNodes := httpapi.NewClusterNodes(projection, logger)
 	clusterRefresh := httpapi.NewClusterRefresh(refresher, logger)
 	authHandler := httpapi.NewAuthWithRegistry(clusterRegistry, st, sessions, cfg.AdminPasswordHash, auth.NewTokenService(st), logger)
@@ -319,4 +319,30 @@ func validateWebBuildDir(path string) error {
 	}
 
 	return nil
+}
+
+// inventoryFreshness adapts inventory.Registry to httpapi.ClusterFreshnessChecker.
+// It reads each cluster's Index.RefreshedAt (already maintained by the refresh
+// goroutines) and the demoMode flag — zero cluster.Client calls from the health
+// handler (constitution IV, FR-010).
+type inventoryFreshness struct {
+	registry *inventory.Registry
+	demoMode bool
+}
+
+func (f inventoryFreshness) Clusters() []httpapi.ClusterFreshness {
+	all := f.registry.All()
+	result := make([]httpapi.ClusterFreshness, 0, len(all))
+	for name, index := range all {
+		refreshedAt := time.Time{}
+		if index != nil {
+			refreshedAt = index.RefreshedAt
+		}
+		result = append(result, httpapi.ClusterFreshness{Name: name, RefreshedAt: refreshedAt})
+	}
+	return result
+}
+
+func (f inventoryFreshness) DemoMode() bool {
+	return f.demoMode
 }
