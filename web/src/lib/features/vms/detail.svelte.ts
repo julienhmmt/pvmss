@@ -5,6 +5,7 @@ import type { VmStatus } from './list.svelte';
 export type VmAction = 'start' | 'stop' | 'shutdown' | 'reboot' | 'reset';
 
 export interface VmDetailEntity {
+	cluster: string;
 	vmid: number;
 	name: string;
 	node: string;

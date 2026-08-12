@@ -2,6 +2,7 @@ package vm
 
 import (
 	"errors"
+	"fmt"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
@@ -26,6 +27,12 @@ var ErrForbidden = errors.New("forbidden")
 // pvmssTag is the mandatory tag that scopes a VM into PVMSS (FR-002). A VM
 // without it is invisible to every PVMSS endpoint, read or write.
 const pvmssTag = "pvmss"
+
+// FormatVMRef formats a VM reference for human-readable audit and UI output.
+// The result is presentation-only and must never be parsed back into route parts.
+func FormatVMRef(clusterName string, vmid int) string {
+	return fmt.Sprintf("%s:%d", clusterName, vmid)
+}
 
 // Entity is a single VM resolved through the ownership gate — the only value
 // a write handler may use to identify its target (FR-001). The Node field is
@@ -73,8 +80,17 @@ type Entity struct {
 // reads and writes are separated). It is re-evaluated on every single write
 // request — no request-scoped or session-scoped caching of a prior
 // authorization result (FR-011, constitution VI).
-func Resolve(index *inventory.Index, actor auth.Identity, clusterName string, vmid int) (Entity, error) {
-	machine, ok := index.ByVMID[vmid]
+//
+// T15: source widened from a concrete *inventory.Index to the one-method
+// inventory.LookupSource interface so Resolve can dispatch through whichever
+// cluster's projection clusterName names (single decode point preserved —
+// constitution III/V — rather than pushing per-cluster lookup out to every
+// caller). *inventory.Index still implements LookupSource, so this is a
+// backward-compatible widening: every pre-T15 call site keeps compiling and
+// behaving identically. actor/clusterName/vmid's order, types, and the
+// (Entity, error) return are unchanged.
+func Resolve(source inventory.LookupSource, actor auth.Identity, clusterName string, vmid int) (Entity, error) {
+	machine, ok := source.Lookup(clusterName, vmid)
 	if !ok {
 		return Entity{}, ErrNotFound
 	}

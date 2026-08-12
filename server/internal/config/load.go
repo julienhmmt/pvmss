@@ -131,10 +131,13 @@ func loadSecuritySettings(cfg *Configuration) error {
 }
 
 // loadClusterSettings reads the cluster source selection and Proxmox credentials.
+// PVMSS_CLUSTER_SOURCE is required — there is no default. The "fake" source
+// ships hardcoded demo credentials (admin@pve / pvmss-admin) and must never be
+// selected implicitly by an operator who forgot to set the variable.
 func loadClusterSettings(cfg *Configuration) error {
 	clusterSource := strings.TrimSpace(os.Getenv("PVMSS_CLUSTER_SOURCE"))
 	if clusterSource == "" {
-		clusterSource = "fake"
+		return errors.New("PVMSS_CLUSTER_SOURCE is required (set to \"fake\" for demo mode or \"proxmox\" for production)")
 	}
 
 	if !isValidClusterSource(clusterSource) {

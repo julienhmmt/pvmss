@@ -2,7 +2,7 @@ import { test, expect, type APIRequestContext } from '@playwright/test';
 
 async function signInAlice(request: APIRequestContext): Promise<void> {
 	const response = await request.post('/api/v1/auth/login', {
-		data: { username: 'alice', password: 'pvmss-alice' }
+		data: { username: 'alice', password: 'pvmss-alice', cluster: 'default' }
 	});
 	expect(response.status()).toBe(200);
 }
@@ -85,7 +85,7 @@ test.describe('T10 VM console VNC', () => {
 
 	test('SC-002: a non-owner cannot obtain a console ticket', async ({ request }) => {
 		// Bob cannot open a console for VM 100 (owned by alice).
-		await request.post('/api/v1/auth/login', { data: { username: 'bob', password: 'pvmss-bob' } });
+		await request.post('/api/v1/auth/login', { data: { username: 'bob', password: 'pvmss-bob', cluster: 'default' } });
 		const response = await request.post('/api/v1/vms/default/100/vnc-ticket');
 		expect(response.status()).toBe(403);
 		const body = await response.json();
