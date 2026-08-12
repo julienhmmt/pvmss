@@ -1,3 +1,4 @@
+//nolint:wsl_v5 // node policy handlers keep validation and cluster mapping adjacent
 package httpapi
 
 import (
@@ -35,7 +36,13 @@ func (handler *AdminPolicy) ServePolicyNodes(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	capacities, err := handler.service.NodeCapacities(r.Context(), queryCluster(r))
+	clusterName, clusterErr := ResolveClusterParam(r, handler.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
+	capacities, err := handler.service.NodeCapacities(r.Context(), clusterName)
 	if err != nil {
 		handler.writeFailure(w, "list node capacities", err)
 		return
@@ -68,7 +75,12 @@ func (handler *AdminPolicy) ServePolicyNodeUpdate(w http.ResponseWriter, r *http
 		return
 	}
 
-	clusterName := resolveCluster(request.Cluster)
+	clusterName, clusterErr := ResolveClusterValue(request.Cluster, handler.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
 
 	current, err := handler.service.NodeCapacity(r.Context(), clusterName, node)
 	if err != nil {

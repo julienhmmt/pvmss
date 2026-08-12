@@ -59,7 +59,7 @@ func TestGetConsoleTicket_ResolveThenIssueThenAudit(t *testing.T) {
 		t.Fatalf("returned ticket has empty token")
 	}
 
-	if ticket.Cluster != "default" || ticket.VMID != 100 {
+	if ticket.Cluster != testClusterName || ticket.VMID != 100 {
 		t.Fatalf("ticket bound to %+v, want default/100", ticket)
 	}
 	// FR-007: the node passed to GetVNCTicket is Resolve()'s server-resolved

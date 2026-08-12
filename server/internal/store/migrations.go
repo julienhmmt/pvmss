@@ -68,6 +68,26 @@ const schemaV6 = `CREATE TABLE audit_log (
 	timestamp TEXT NOT NULL
 )`
 
+// schemaV11 adds runtime-managed cluster records and records the cluster used
+// by browser sessions. The exact version follows T14's latest migration.
+const schemaV11 = `
+CREATE TABLE clusters (
+	name                       TEXT PRIMARY KEY,
+	url                        TEXT NOT NULL,
+	tls_insecure_skip_verify   INTEGER NOT NULL DEFAULT 0,
+	token_id                   TEXT NOT NULL,
+	token_secret_ciphertext    BLOB,
+	oidc_enabled               INTEGER NOT NULL DEFAULT 0,
+	created_at                 TEXT NOT NULL,
+	removed_at                 TEXT,
+	last_test_status           TEXT,
+	last_test_at               TEXT,
+	last_test_message          TEXT,
+	proxmox_version            TEXT
+);
+ALTER TABLE sessions ADD COLUMN cluster TEXT NOT NULL DEFAULT '';
+`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -87,4 +107,5 @@ var Migrations = []Migration{
 	{Version: 8, DDL: schemaV8},
 	{Version: 9, DDL: schemaV9},
 	{Version: 10, DDL: schemaV10},
+	{Version: 11, DDL: schemaV11},
 }

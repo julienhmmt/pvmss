@@ -1,7 +1,7 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
 
 async function signIn(request: APIRequestContext, username: string, password: string): Promise<void> {
-	const response = await request.post('/api/v1/auth/login', { data: { username, password } });
+	const response = await request.post('/api/v1/auth/login', { data: { username, password, cluster: 'default' } });
 	expect(response.status()).toBe(200);
 }
 

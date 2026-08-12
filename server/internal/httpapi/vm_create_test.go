@@ -84,7 +84,7 @@ func TestVMCreate_SimpleModeSuccess(t *testing.T) {
 		t.Fatalf("decode 202 body: %v", err)
 	}
 
-	if result.VMID < 1 || result.UPID == "" || result.Name != "web-04" || result.Cluster != "default" {
+	if result.VMID < 1 || result.UPID == "" || result.Name != "web-04" || result.Cluster != auditTestCluster {
 		t.Fatalf("unexpected result: %+v", result)
 	}
 
@@ -244,7 +244,7 @@ func TestVMCreateCatalog_SeededShape(t *testing.T) {
 		t.Fatalf("decode catalog: %v", err)
 	}
 
-	if body.Cluster != "default" {
+	if body.Cluster != auditTestCluster {
 		t.Errorf("cluster = %q, want default", body.Cluster)
 	}
 

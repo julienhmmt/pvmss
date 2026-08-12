@@ -61,7 +61,7 @@ func TestAdminPolicy_RequiresAdminAndReturnsSeparatedShape(t *testing.T) {
 				t.Fatalf("decode policy: %v", err)
 			}
 
-			if response.Cluster != "default" || response.Gabarit.MaxDiskPerVMGB != 500 || !response.Gabarit.AllowCustomYaml || response.Quota.MaxVMPerUser != -1 {
+			if response.Cluster != auditTestCluster || response.Gabarit.MaxDiskPerVMGB != 500 || !response.Gabarit.AllowCustomYaml || response.Quota.MaxVMPerUser != -1 {
 				t.Fatalf("response = %+v", response)
 			}
 		})

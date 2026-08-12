@@ -1,3 +1,4 @@
+//nolint:wsl_v5 // profile handlers keep cluster selection and catalog mapping adjacent
 package httpapi
 
 import (
@@ -57,7 +58,12 @@ const statusDeleted = "deleted"
 // including disabled ones (unlike T06's catalog.Profiles which filters by
 // enabled = 1).
 func (h *AdminCatalog) ServeProfiles(w http.ResponseWriter, r *http.Request) {
-	clusterName := queryCluster(r)
+	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
 
 	profiles, err := catalog.ListAdminProfiles(r.Context(), h.store, clusterName)
 	if err != nil {
@@ -86,7 +92,12 @@ func (h *AdminCatalog) ServeProfileCreate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	clusterName := resolveCluster(req.Cluster)
+	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
 
 	profile, err := catalog.CreateProfile(r.Context(), h.store, clusterName, req.Label, req.CPUCores, req.MemoryMB, req.DiskGB, req.Bus)
 	if errors.Is(err, catalog.ErrDuplicateProfile) {
@@ -126,7 +137,12 @@ func (h *AdminCatalog) ServeProfileUpdate(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	clusterName := resolveCluster(req.Cluster)
+	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
 
 	profile, err := catalog.UpdateProfile(r.Context(), h.store, clusterName, id, req.Label, req.CPUCores, req.MemoryMB, req.DiskGB, req.Bus)
 	if errors.Is(err, catalog.ErrProfileNotFound) {
@@ -162,7 +178,12 @@ func (h *AdminCatalog) ServeProfileDelete(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	clusterName := queryCluster(r)
+	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
 
 	err := catalog.DeleteProfile(r.Context(), h.store, clusterName, id)
 	if errors.Is(err, catalog.ErrProfileNotFound) {
@@ -194,7 +215,12 @@ func (h *AdminCatalog) ServeProfileToggle(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	clusterName := resolveCluster(req.Cluster)
+	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
 
 	err := catalog.SetProfileEnabled(r.Context(), h.store, clusterName, id, req.Enabled)
 	if errors.Is(err, catalog.ErrProfileNotFound) {

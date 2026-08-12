@@ -1,3 +1,4 @@
+//nolint:wsl_v5 // VM detail dispatch keeps shared authorization setup adjacent
 package httpapi
 
 import (
@@ -23,6 +24,7 @@ import (
 // byte-identical across all four (contracts behavioural rule).
 type VMDetail struct {
 	projection *inventory.Projection
+	source     inventory.LookupSource
 	auth       *Auth
 	writer     cluster.Writer
 	store      *store.Store
@@ -47,7 +49,16 @@ func NewVMDetail(projection *inventory.Projection, authHandler *Auth, writer clu
 	return &VMDetail{projection: projection, auth: authHandler, writer: writer, store: st, refresher: refresher, policy: policyService, log: log}
 }
 
+// NewVMDetailWithRegistry adds cluster-aware reads while retaining the legacy
+// default projection for write-domain compatibility.
+func NewVMDetailWithRegistry(source inventory.LookupSource, projection *inventory.Projection, authHandler *Auth, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger, services ...*policy.Policy) *VMDetail {
+	handler := NewVMDetail(projection, authHandler, writer, st, refresher, log, services...)
+	handler.source = source
+	return handler
+}
+
 type vmDetailDTO struct {
+	Cluster           string                     `json:"cluster"`
 	VMID              int                        `json:"vmid"`
 	Name              string                     `json:"name"`
 	Node              string                     `json:"node"`
@@ -209,12 +220,23 @@ func (h *VMDetail) handleGet(w http.ResponseWriter, r *http.Request) {
 	}
 
 	index := h.projection.Load()
+	source := inventory.LookupSource(index)
+	if h.source != nil {
+		source = h.source
+		if registry, ok := h.source.(*inventory.Registry); ok {
+			index, err = registry.Index(clusterName)
+			if err != nil {
+				h.writeDetailError(w, http.StatusNotFound, "cluster_not_found", "cluster not found")
+				return
+			}
+		}
+	}
 	if index == nil {
 		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
 		return
 	}
 
-	entity, err := vm.Resolve(index, identity, clusterName, vmid)
+	entity, err := vm.Resolve(source, identity, clusterName, vmid)
 	if err != nil {
 		h.writeResolveError(w, err)
 		return
@@ -898,6 +920,7 @@ func parseIntPathValue(r *http.Request, key string) (int, error) {
 
 func (h *VMDetail) writeEntity(w http.ResponseWriter, entity vm.Entity) {
 	dto := vmDetailDTO{
+		Cluster:           entity.Cluster,
 		VMID:              entity.VMID,
 		Name:              entity.Name,
 		Node:              entity.Node,

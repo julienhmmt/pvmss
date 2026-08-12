@@ -1,6 +1,8 @@
 // Command pvmss is the next-gen PVMSS server entry point: it wires the
 // config, store, cluster client, inventory projection and HTTP API together
 // and serves the SPA + REST endpoints on a single port.
+//
+//nolint:wsl_v5 // composition root keeps dependency wiring readable
 package main
 
 import (
@@ -43,6 +45,7 @@ func main() {
 	os.Exit(run())
 }
 
+//nolint:gocyclo,funlen // the composition root intentionally wires all runtime dependencies
 func run() int {
 	stderr := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 
@@ -78,42 +81,55 @@ func run() int {
 
 	logger.Info("web build directory resolved", "component", "main", "webDir", webDir)
 
-	// This is the ONLY site that selects between cluster.Client implementations
-	// (SC-004) — no other package may branch on cfg.ClusterSource.
-	var clusterClient cluster.Client
-
-	switch cfg.ClusterSource {
-	case "proxmox":
-		clusterClient = cluster.Proxmox{
-			BaseURL:       cfg.ProxmoxURL,
-			APITokenName:  cfg.ProxmoxAPITokenName,
-			APITokenValue: cfg.ProxmoxAPITokenValue,
-		}
-	default:
-		clusterClient = cluster.Fake{}
+	// Cluster implementation selection remains centralized in the registry wiring;
+	// runtime rows change the number of clients, never the selected source kind.
+	rows, err := st.ListClusters(context.Background())
+	if err != nil {
+		logger.Error("failed to list configured clusters", "component", "main", "error", err)
+		return 1
 	}
+	clusterRegistry, err := cluster.NewRegistry(cfg.ClusterSource, rows)
+	if err != nil {
+		logger.Error("failed to create cluster registry", "component", "main", "error", err)
+		return 1
+	}
+	clusterClient, err := clusterRegistry.Client("default")
+	if err != nil {
+		logger.Error("default cluster is unavailable", "component", "main", "error", err)
+		return 1
+	}
+	logger.Info("cluster registry initialized", "component", "cluster", "source", cfg.ClusterSource, "clusters", clusterRegistry.List())
 
-	logger.Info("cluster client selected", "component", "cluster", "source", cfg.ClusterSource, "cluster", "default")
-
-	// The inventory projection owns all reads of cluster data (FR-002, SC-004).
-	// The worker refreshes it periodically; the refresher handles manual
-	// refresh requests with a minimum-interval guard (FR-005, FR-006).
-	projection := inventory.NewProjection()
-	worker := inventory.NewWorker(
-		clusterClient,
-		projection,
+	// The inventory registry owns all reads of cluster data. Each active cluster
+	// has an independent projection and refresh worker (FR-002, AC03 §2.4).
+	inventoryRegistry := inventory.NewRegistry(
+		clusterRegistry,
 		cfg.InventoryRefreshInterval,
 		logger,
 		inventory.WithRefreshTimeout(cfg.InventoryRefreshTimeout),
 	)
-	refresher := inventory.NewRefresher(worker, cfg.InventoryManualRefreshMinInterval)
+	inventoryRegistry.SetManualRefreshMinInterval(cfg.InventoryManualRefreshMinInterval)
+	defaultProjection, err := inventoryRegistry.Projection("default")
+	if err != nil {
+		logger.Error("default inventory projection is unavailable", "component", "main", "error", err)
+		return 1
+	}
+	defaultWorker, err := inventoryRegistry.Worker("default")
+	if err != nil {
+		logger.Error("default inventory worker is unavailable", "component", "main", "error", err)
+		return 1
+	}
+	defaultRefresher, err := inventoryRegistry.Refresher("default")
+	if err != nil {
+		logger.Error("default inventory refresher is unavailable", "component", "main", "error", err)
+		return 1
+	}
 
-	// Start the worker before the HTTP server accepts traffic (T015) so the
-	// projection is populated before the first request can arrive.
+	// Start every worker before the HTTP server accepts traffic (T015) so the
+	// projections are populated before the first request can arrive.
 	inventoryCtx, cancelInventory := context.WithCancel(context.Background())
 	defer cancelInventory()
-
-	go worker.Run(inventoryCtx)
+	inventoryRegistry.Start(inventoryCtx)
 
 	sessions, err := auth.NewSessionManager(st, cfg.SessionSecret, cfg.CookieSecure)
 	if err != nil {
@@ -121,7 +137,7 @@ func run() int {
 		return 1
 	}
 
-	router, err := buildRouter(cfg, clusterClient, projection, refresher, worker, sessions, st, webDir, logger)
+	router, err := buildRouter(cfg, clusterRegistry, inventoryRegistry, clusterClient, defaultProjection, defaultRefresher, defaultWorker, sessions, st, webDir, logger)
 	if err != nil {
 		logger.Error("failed to build router", "component", "main", "error", err)
 		return 1
@@ -175,6 +191,8 @@ func run() int {
 // and constructs the handler graph from the shared dependencies.
 func buildRouter(
 	cfg config.Configuration,
+	clusterRegistry *cluster.Registry,
+	inventoryRegistry *inventory.Registry,
 	clusterClient cluster.Client,
 	projection *inventory.Projection,
 	refresher *inventory.Refresher,
@@ -188,8 +206,8 @@ func buildRouter(
 	health := httpapi.NewHealth(st, logger)
 	clusterNodes := httpapi.NewClusterNodes(projection, logger)
 	clusterRefresh := httpapi.NewClusterRefresh(refresher, logger)
-	authHandler := httpapi.NewAuth(clusterClient, sessions, cfg.AdminPasswordHash, auth.NewTokenService(st), logger)
-	vms := httpapi.NewVMs(projection, authHandler, cfg.MaxListPageSize, 0, logger, policyService)
+	authHandler := httpapi.NewAuthWithRegistry(clusterRegistry, st, sessions, cfg.AdminPasswordHash, auth.NewTokenService(st), logger)
+	vms := httpapi.NewVMsWithRegistry(inventoryRegistry, authHandler, cfg.MaxListPageSize, 0, logger, policyService)
 
 	// Both cluster.Client implementations (Fake, Proxmox) also implement
 	// cluster.Writer — reads and writes are separated by interface
@@ -227,16 +245,17 @@ func buildRouter(
 
 	consoleTickets := vm.NewConsoleTicketStore()
 
-	vmDetail := httpapi.NewVMDetail(projection, authHandler, writer, st, worker, logger, policyService)
+	vmDetail := httpapi.NewVMDetailWithRegistry(inventoryRegistry, projection, authHandler, writer, st, worker, logger, policyService)
 	vmCloudInit := httpapi.NewVMCloudInit(projection, authHandler, cloudInitReader, writer, st, worker, logger, policyService)
 	vmCreate := httpapi.NewVMCreate(authHandler, st, creator, logger, policyService)
 	tasks := httpapi.NewTasks(authHandler, creator, worker, logger)
 	snapshots := httpapi.NewVMSnapshots(projection, authHandler, snapshotReader, snapshotWriter, st, logger, policyService)
 	vmConsole := httpapi.NewVMConsole(projection, authHandler, consoleRelay, consoleTickets, st, logger)
-	adminCatalog := httpapi.NewAdminCatalog(authHandler, st, clusterClient, projection, logger)
-	adminPolicy := httpapi.NewAdminPolicy(authHandler, policyService, logger)
+	adminCatalog := httpapi.NewAdminCatalogWithRegistry(authHandler, st, clusterRegistry, projection, logger)
+	adminPolicy := httpapi.NewAdminPolicyWithRegistry(authHandler, policyService, clusterRegistry, logger)
 	adminPools := httpapi.NewAdminPools(authHandler, clusterClient, projection, writer, st, worker, logger)
 	adminOps := httpapi.NewAdminOps(authHandler, st, clusterClient, projection, appVersion, logger)
+	adminClusters := httpapi.NewAdminClusters(authHandler, st, clusterRegistry, inventoryRegistry, logger)
 
 	return httpapi.NewRouter(httpapi.RouterConfig{
 		Health:           health,
@@ -256,6 +275,7 @@ func buildRouter(
 		AdminPolicy:      adminPolicy,
 		AdminPools:       adminPools,
 		AdminOps:         adminOps,
+		AdminClusters:    adminClusters,
 	}), nil
 }
 

@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { setAdminCatalogContext } from '$lib/features/admin-catalog/admin-catalog.svelte';
 	import IsosTable from '$lib/features/admin-catalog/IsosTable.svelte';
+	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 
 	const store = setAdminCatalogContext();
 
@@ -15,7 +16,10 @@
 </svelte:head>
 
 <section class="mx-auto w-full max-w-5xl px-4 py-8">
-	<h1 class="mb-6 text-2xl font-semibold tracking-tight">ISOs</h1>
+	<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+		<h1 class="text-2xl font-semibold tracking-tight">ISOs</h1>
+		<ClusterSelector options={store.clusterOptions} value={store.cluster} onChange={(value) => store.setCluster(value)} id="isos-cluster" />
+	</div>
 
 	{#if store.loading}
 		<p role="status" aria-live="polite" class="text-muted-foreground">Loading…</p>

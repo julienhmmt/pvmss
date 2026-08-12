@@ -22,6 +22,7 @@ const defaultRefreshTimeout = 15 * time.Second
 type Worker struct {
 	client     cluster.Client
 	projection *Projection
+	cluster    string
 	interval   time.Duration
 	timeout    time.Duration
 	log        *slog.Logger
@@ -43,6 +44,11 @@ type Option func(*Worker)
 // Must be positive. When unset, defaultRefreshTimeout is used.
 func WithRefreshTimeout(d time.Duration) Option {
 	return func(w *Worker) { w.timeout = d }
+}
+
+// WithClusterName stamps refreshed VMs with their owning registry key.
+func WithClusterName(name string) Option {
+	return func(w *Worker) { w.cluster = name }
 }
 
 // NewWorker creates a worker that refreshes every interval. The per-call
@@ -77,7 +83,7 @@ func (w *Worker) refreshCycle(ctx context.Context) (time.Time, error) {
 		return time.Time{}, err
 	}
 
-	idx := BuildIndex(snap)
+	idx := BuildIndexForCluster(w.cluster, snap)
 	idx.RefreshedAt = time.Now()
 	w.projection.store(&idx)
 

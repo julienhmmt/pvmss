@@ -25,6 +25,7 @@ export default defineConfig({
 			LOG_FORMAT: 'json',
 			LOG_OUTPUT: 'stdout',
 			SESSION_SECRET: 'e2e-session-secret-with-at-least-thirty-two-bytes',
+			PVMSS_COOKIE_SECURE: 'false',
 			// Short guard so nodes.spec.ts can exercise "wait it out, click again —
 			// it works" (quickstart.md step 6) without a multi-second sleep.
 			PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL: '2s',

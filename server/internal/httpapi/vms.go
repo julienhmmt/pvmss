@@ -1,3 +1,4 @@
+//nolint:wsl_v5 // list parsing and response mapping stay in one handler flow
 package httpapi
 
 import (
@@ -19,6 +20,7 @@ import (
 // (FR-003).
 type VMs struct {
 	projection  *inventory.Projection
+	source      inventory.Source
 	auth        *Auth
 	maxPageSize int
 	quota       int
@@ -35,10 +37,20 @@ func NewVMs(projection *inventory.Projection, authHandler *Auth, maxPageSize, qu
 		policyService = services[0]
 	}
 
-	return &VMs{projection: projection, auth: authHandler, maxPageSize: maxPageSize, quota: quota, policy: policyService, log: log}
+	return &VMs{projection: projection, source: projection, auth: authHandler, maxPageSize: maxPageSize, quota: quota, policy: policyService, log: log}
+}
+
+// NewVMsWithRegistry creates the cross-cluster VM list handler.
+func NewVMsWithRegistry(registry inventory.Source, authHandler *Auth, maxPageSize, quota int, log *slog.Logger, services ...*policy.Policy) *VMs {
+	var policyService *policy.Policy
+	if len(services) > 0 {
+		policyService = services[0]
+	}
+	return &VMs{source: registry, auth: authHandler, maxPageSize: maxPageSize, quota: quota, policy: policyService, log: log}
 }
 
 type vmDTO struct {
+	Cluster     string   `json:"cluster"`
 	VMID        int      `json:"vmid"`
 	Name        string   `json:"name"`
 	Node        string   `json:"node"`
@@ -84,13 +96,12 @@ func (h *VMs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	index := h.projection.Load()
-	if index == nil {
+	if !sourceHasReadyIndex(h.source, query.Cluster) {
 		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
 		return
 	}
 
-	result, err := vm.ListWithContext(r.Context(), index, query, identity, h.quota, h.policy)
+	result, err := vm.ListWithContext(r.Context(), h.source, query, identity, h.quota, h.policy)
 	if err != nil {
 		if errors.Is(err, vm.ErrInvalidSortBy) {
 			h.writeError(w, http.StatusBadRequest, "invalid_sort_column", fmt.Sprintf("cannot sort by %q", query.SortBy))
@@ -117,6 +128,7 @@ type queryError struct {
 func (h *VMs) parseQuery(r *http.Request) (vm.ListQuery, *queryError) {
 	params := r.URL.Query()
 	query := vm.ListQuery{
+		Cluster: params.Get("cluster"),
 		Search:  params.Get("search"),
 		Status:  cluster.VMStatus(params.Get("status")),
 		Node:    params.Get("node"),
@@ -159,6 +171,31 @@ func parseOptionalInt(raw string) (int, error) {
 	return value, nil
 }
 
+func sourceHasReadyIndex(source inventory.Source, clusterName string) bool {
+	if source == nil {
+		return false
+	}
+	indexes := source.All()
+	if clusterName != "" {
+		index, ok := indexes[clusterName]
+		if ok {
+			return index != nil
+		}
+		if len(indexes) == 1 {
+			for _, index := range indexes {
+				return index != nil
+			}
+		}
+		return false
+	}
+	for _, index := range indexes {
+		if index != nil {
+			return true
+		}
+	}
+	return false
+}
+
 func (h *VMs) writeList(w http.ResponseWriter, result vm.ListResult) {
 	response := vmListResponse{
 		Items:          make([]vmDTO, len(result.Items)),
@@ -170,6 +207,7 @@ func (h *VMs) writeList(w http.ResponseWriter, result vm.ListResult) {
 	}
 	for i, machine := range result.Items {
 		response.Items[i] = vmDTO{
+			Cluster:     machine.Cluster,
 			VMID:        machine.VMID,
 			Name:        machine.Name,
 			Node:        machine.Node,

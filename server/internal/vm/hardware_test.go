@@ -34,7 +34,7 @@ func TestUpdateHardware_TagsOnlyStaysLive(t *testing.T) {
 
 	deps := hardwareDependencies(diskTestIndex(t, 101, cluster.VMRunning), aliceIdentity(), 101)
 
-	patch := vm.HardwarePatch{Tags: &[]string{"pvmss", "updated"}}
+	patch := vm.HardwarePatch{Tags: &[]string{testPvmssTag, "updated"}}
 	if err := vm.UpdateHardware(context.Background(), deps, patch); err != nil {
 		t.Fatalf("UpdateHardware: %v", err)
 	}

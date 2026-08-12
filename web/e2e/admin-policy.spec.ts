@@ -6,7 +6,7 @@ async function signInAdmin(request: APIRequestContext): Promise<void> {
 }
 
 async function signInAlice(request: APIRequestContext): Promise<void> {
-	const response = await request.post('/api/v1/auth/login', { data: { username: 'alice', password: 'pvmss-alice' } });
+	const response = await request.post('/api/v1/auth/login', { data: { username: 'alice', password: 'pvmss-alice', cluster: 'default' } });
 	expect(response.status()).toBe(200);
 }
 

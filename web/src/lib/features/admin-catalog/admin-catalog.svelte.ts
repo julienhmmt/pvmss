@@ -1,4 +1,5 @@
 import { get, post, ApiRequestError } from '$lib/shared/api/client';
+import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 import { setContext, getContext } from 'svelte';
 
 export interface AdminNode {
@@ -63,6 +64,8 @@ interface ISOToggleResponse {
  * they are API data, not form edits.
  */
 export class AdminCatalogStore {
+	clusterOptions = $state.raw<ClusterOption[]>([]);
+	cluster = $state('default');
 	nodes = $state.raw<AdminNode[]>([]);
 	storages = $state.raw<AdminStorage[]>([]);
 	bridges = $state.raw<AdminBridge[]>([]);
@@ -74,15 +77,28 @@ export class AdminCatalogStore {
 	toggling = $state.raw<string | null>(null);
 	toggleError = $state.raw<string | null>(null);
 
+	async loadClusters(): Promise<void> {
+		try {
+			this.clusterOptions = await fetchClusterOptions();
+			const first = this.clusterOptions[0];
+			if (first && (this.clusterOptions.length === 1 || !this.clusterOptions.some((option) => option.name === this.cluster))) {
+				this.cluster = first.name;
+			}
+		} catch (error: unknown) {
+			this.error = error instanceof ApiRequestError ? error.message : 'failed to load clusters';
+		}
+	}
+
 	async loadAll(): Promise<void> {
+		await this.loadClusters();
 		this.loading = true;
 		this.error = null;
 		try {
 			const [nodes, storages, bridges, isos] = await Promise.all([
-				get<AdminNode[]>('/api/v1/admin/nodes?cluster=default'),
-				get<AdminStorage[]>('/api/v1/admin/storages?cluster=default'),
-				get<AdminBridge[]>('/api/v1/admin/bridges?cluster=default'),
-				get<AdminISO[]>('/api/v1/admin/isos?cluster=default')
+				get<AdminNode[]>(`/api/v1/admin/nodes?cluster=${encodeURIComponent(this.cluster)}`),
+				get<AdminStorage[]>(`/api/v1/admin/storages?cluster=${encodeURIComponent(this.cluster)}`),
+				get<AdminBridge[]>(`/api/v1/admin/bridges?cluster=${encodeURIComponent(this.cluster)}`),
+				get<AdminISO[]>(`/api/v1/admin/isos?cluster=${encodeURIComponent(this.cluster)}`)
 			]);
 			this.nodes = nodes;
 			this.storages = storages;
@@ -95,11 +111,16 @@ export class AdminCatalogStore {
 		}
 	}
 
+	setCluster(value: string): void {
+		this.cluster = value;
+		void this.loadAll();
+	}
+
 	async toggleNode(name: string, enabled: boolean): Promise<void> {
 		this.toggling = `node:${name}`;
 		this.toggleError = null;
 		try {
-			await post<ToggleResponse>('/api/v1/admin/nodes/toggle', { cluster: 'default', name, enabled });
+			await post<ToggleResponse>('/api/v1/admin/nodes/toggle', { cluster: this.cluster, name, enabled });
 			this.nodes = this.nodes.map((n) => (n.name === name ? { ...n, enabled } : n));
 		} catch (err) {
 			this.toggleError = err instanceof ApiRequestError ? err.message : 'failed to toggle node';
@@ -114,7 +135,7 @@ export class AdminCatalogStore {
 		this.toggleError = null;
 		try {
 			await post<StorageToggleResponse>('/api/v1/admin/storages/toggle', {
-				cluster: 'default',
+				cluster: this.cluster,
 				name,
 				node,
 				enabled
@@ -134,7 +155,7 @@ export class AdminCatalogStore {
 		this.toggling = `bridge:${name}`;
 		this.toggleError = null;
 		try {
-			await post<ToggleResponse>('/api/v1/admin/bridges/toggle', { cluster: 'default', name, enabled });
+			await post<ToggleResponse>('/api/v1/admin/bridges/toggle', { cluster: this.cluster, name, enabled });
 			this.bridges = this.bridges.map((b) => (b.name === name ? { ...b, enabled } : b));
 		} catch (err) {
 			this.toggleError = err instanceof ApiRequestError ? err.message : 'failed to toggle bridge';
@@ -149,7 +170,7 @@ export class AdminCatalogStore {
 		this.toggleError = null;
 		try {
 			await post<ISOToggleResponse>('/api/v1/admin/isos/toggle', {
-				cluster: 'default',
+				cluster: this.cluster,
 				storage,
 				file,
 				enabled
