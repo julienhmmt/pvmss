@@ -30,9 +30,9 @@ type spaHandler struct {
 }
 
 // RouterConfig configures NewRouter. VMCloudInit, VMCreate, Tasks,
-// SnapshotHandlers, VMConsole, AdminCatalog, AdminPolicy, and AdminPools are
-// optional — left nil/empty, their routes are simply not registered (router
-// tests rely on this to omit handlers without panicking).
+// SnapshotHandlers, VMConsole, AdminCatalog, AdminPolicy, AdminPools, and
+// AdminOps are optional — left nil/empty, their routes are simply not
+// registered (router tests rely on this to omit handlers without panicking).
 type RouterConfig struct {
 	Health           http.Handler
 	ClusterNodes     http.Handler
@@ -50,9 +50,12 @@ type RouterConfig struct {
 	AdminCatalog     *AdminCatalog
 	AdminPolicy      *AdminPolicy
 	AdminPools       *AdminPools
+	AdminOps         *AdminOps
 }
 
 // NewRouter wires the public API and the static SPA handler from cfg.
+//
+//nolint:gocyclo,funlen // route registration is inherently a long switch on cfg fields
 func NewRouter(cfg RouterConfig) *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.Handle("GET /health", cfg.Health)
@@ -154,6 +157,20 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 		mux.Handle("GET /api/v1/admin/pools", adminGuard(http.HandlerFunc(cfg.AdminPools.ServeList)))
 		mux.Handle("POST /api/v1/admin/pools", adminGuard(http.HandlerFunc(cfg.AdminPools.ServeCreate)))
 		mux.Handle("DELETE /api/v1/admin/pools/{name}", adminGuard(http.HandlerFunc(cfg.AdminPools.ServeDelete)))
+	}
+
+	// T14 admin exploitation — audit log, dashboard, db export/import, app
+	// info; admin-only. The public version endpoint is registered outside
+	// the admin guard group (FR-015).
+	if cfg.AdminOps != nil {
+		adminGuard := cfg.Auth.RequireAdmin
+		mux.Handle("GET /api/v1/admin/audit", adminGuard(http.HandlerFunc(cfg.AdminOps.ServeAudit)))
+		mux.Handle("GET /api/v1/admin/dashboard", adminGuard(http.HandlerFunc(cfg.AdminOps.ServeDashboard)))
+		mux.Handle("GET /api/v1/admin/db/export", adminGuard(http.HandlerFunc(cfg.AdminOps.ServeDBExport)))
+		mux.Handle("POST /api/v1/admin/db/import", adminGuard(http.HandlerFunc(cfg.AdminOps.ServeDBImport)))
+		mux.Handle("POST /api/v1/admin/db/import/confirm", adminGuard(http.HandlerFunc(cfg.AdminOps.ServeDBImportConfirm)))
+		mux.Handle("GET /api/v1/admin/appinfo", adminGuard(http.HandlerFunc(cfg.AdminOps.ServeAppInfo)))
+		mux.HandleFunc("GET /api/v1/public/version", cfg.AdminOps.ServePublicVersion)
 	}
 
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {

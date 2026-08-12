@@ -334,7 +334,7 @@ func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 func queryCluster(r *http.Request) string {
 	c := r.URL.Query().Get("cluster")
 	if c == "" {
-		return "default"
+		return defaultClusterName
 	}
 
 	return c
@@ -342,7 +342,7 @@ func queryCluster(r *http.Request) string {
 
 func resolveCluster(bodyCluster string) string {
 	if bodyCluster == "" {
-		return "default"
+		return defaultClusterName
 	}
 
 	return bodyCluster
