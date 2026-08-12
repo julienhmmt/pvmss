@@ -132,7 +132,7 @@ func TestRunMigrations_Validate(t *testing.T) {
 			mig: []store.Migration{
 				{Version: 1, DDL: "   "},
 			},
-			wantErr: "migration 1 has no DDL",
+			wantErr: "migration 1 has no ddl",
 		},
 		{
 			name: "missing version",
