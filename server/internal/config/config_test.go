@@ -195,7 +195,7 @@ func TestLoad(t *testing.T) {
 				"PROXMOX_API_TOKEN_NAME":  "root@pam!pvmss",
 				"PROXMOX_API_TOKEN_VALUE": "token-value",
 			},
-			want: config.Configuration{
+			want: config.Configuration{ //nolint:gosec // test-only fake Proxmox credentials
 				Host:                              testHost,
 				Port:                              50001,
 				DBPath:                            testDBPath,
@@ -203,6 +203,9 @@ func TestLoad(t *testing.T) {
 				LogFormat:                         testLogFormat,
 				LogOutput:                         testLogOutput,
 				ClusterSource:                     "proxmox",
+				ProxmoxURL:                        "https://proxmox.example.com",
+				ProxmoxAPITokenName:               "root@pam!pvmss",
+				ProxmoxAPITokenValue:              "token-value",
 				InventoryRefreshInterval:          30 * time.Second,
 				InventoryManualRefreshMinInterval: 5 * time.Second,
 				InventoryRefreshTimeout:           15 * time.Second,
@@ -352,6 +355,7 @@ func TestLoad(t *testing.T) {
 
 			want := tt.want
 			want.SessionSecret = strings.Repeat("s", 32)
+			want.CookieSecure = true
 
 			got, err := config.Load()
 			if tt.wantErr != "" {
