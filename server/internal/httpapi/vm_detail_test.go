@@ -833,7 +833,7 @@ func TestVMDetail_ErrorShapeIdenticalAcrossEndpoints(t *testing.T) {
 	}
 
 	for _, env := range []apiErrorEnvelope{getEnv, actionEnv, deleteEnv, patchEnv} {
-		if env.Code != "forbidden" || env.Message != "not your VM" {
+		if env.Code != apiCodeForbidden || env.Message != "not your VM" {
 			t.Errorf("403 shape = %+v, want {forbidden not your VM}", env)
 		}
 	}

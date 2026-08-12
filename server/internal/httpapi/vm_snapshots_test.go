@@ -133,7 +133,7 @@ func TestVMSnapshots_CreateAuthorizationAndValidation(t *testing.T) {
 		status int
 		code   string
 	}{
-		{name: "non owner", cookie: bobCookie(t, authHandler), path: "/api/v1/vms/default/101/snapshots", body: `{"name":"x"}`, status: http.StatusForbidden, code: "forbidden"},
+		{name: "non owner", cookie: bobCookie(t, authHandler), path: "/api/v1/vms/default/101/snapshots", body: `{"name":"x"}`, status: http.StatusForbidden, code: apiCodeForbidden},
 		{name: "untagged", cookie: aliceCookie(t, authHandler), path: "/api/v1/vms/default/109/snapshots", body: `{"name":"x"}`, status: http.StatusNotFound, code: "not_found"},
 		{name: "invalid name", cookie: aliceCookie(t, authHandler), path: "/api/v1/vms/default/101/snapshots", body: `{"name":"bad name"}`, status: http.StatusBadRequest, code: "invalid_name"},
 	}

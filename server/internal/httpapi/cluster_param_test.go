@@ -16,7 +16,7 @@ func (lister clusterNameLister) List() []string {
 	return lister.names
 }
 
-//nolint:paralleltest,goconst // table cases share the lister fixture; wire values are explicit
+//nolint:paralleltest // table cases share the lister fixture; wire values are explicit
 func TestResolveClusterParam(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -25,9 +25,9 @@ func TestResolveClusterParam(t *testing.T) {
 		want      string
 		wantError bool
 	}{
-		{name: "sole cluster defaults", clusters: []string{"default"}, want: "default"},
-		{name: "multiple clusters require choice", clusters: []string{"default", "secondary"}, wantError: true},
-		{name: "explicit choice passes through", clusters: []string{"default", "secondary"}, query: "?cluster=secondary", want: "secondary"},
+		{name: "sole cluster defaults", clusters: []string{auditTestCluster}, want: auditTestCluster},
+		{name: "multiple clusters require choice", clusters: []string{auditTestCluster, crossSecondaryCluster}, wantError: true},
+		{name: "explicit choice passes through", clusters: []string{auditTestCluster, crossSecondaryCluster}, query: "?cluster=" + crossSecondaryCluster, want: crossSecondaryCluster},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

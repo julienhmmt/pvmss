@@ -36,6 +36,7 @@ func withSecurityHeaders(next http.Handler) http.Handler {
 		if isAPIPath(r.URL.Path) {
 			h.Set("Cache-Control", "no-store, no-cache, must-revalidate, private")
 		}
+
 		next.ServeHTTP(w, r)
 	})
 }

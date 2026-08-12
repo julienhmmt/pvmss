@@ -45,7 +45,7 @@ func newClusterAuthFixture(t *testing.T) (*httpapi.Auth, *store.Store) {
 	return authHandler, st
 }
 
-//nolint:paralleltest,goconst // authentication fixture shares fake identities; wire value is asserted verbatim
+//nolint:paralleltest // authentication fixture shares fake identities; wire value is asserted verbatim
 func TestAuth_LoginRequiresAndStoresClusterChoice(t *testing.T) {
 	authHandler, _ := newClusterAuthFixture(t)
 
@@ -62,7 +62,7 @@ func TestAuth_LoginRequiresAndStoresClusterChoice(t *testing.T) {
 	if err := json.Unmarshal(selected.Body.Bytes(), &identity); err != nil {
 		t.Fatalf("decode identity: %v", err)
 	}
-	if identity.Cluster != "secondary" {
+	if identity.Cluster != crossSecondaryCluster {
 		t.Fatalf("identity cluster = %q, want secondary", identity.Cluster)
 	}
 	me := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/auth/me", nil)
@@ -71,7 +71,7 @@ func TestAuth_LoginRequiresAndStoresClusterChoice(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolve persisted session: %v", err)
 	}
-	if resolved.Cluster != "secondary" {
+	if resolved.Cluster != crossSecondaryCluster {
 		t.Fatalf("persisted session cluster = %q, want secondary", resolved.Cluster)
 	}
 }
@@ -122,7 +122,7 @@ func TestAuth_OIDC(t *testing.T) {
 	})
 
 	t.Run("oidc enabled returns 501, not a broken redirect", func(t *testing.T) {
-		if err := st.SetClusterOIDC(context.Background(), "secondary", true); err != nil {
+		if err := st.SetClusterOIDC(context.Background(), crossSecondaryCluster, true); err != nil {
 			t.Fatalf("SetClusterOIDC: %v", err)
 		}
 		response := oidcRequestFor(t, authHandler, `{"cluster":"secondary"}`)
