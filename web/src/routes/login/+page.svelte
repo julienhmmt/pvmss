@@ -1,13 +1,19 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { LoginForm } from '$lib/features/auth/login.svelte';
+	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 
 	const form = new LoginForm();
+	onMount(() => {
+		void form.loadClusters();
+	});
 
 	async function submit(): Promise<void> {
 		const principal = await form.submit();
 		if (principal === null) return;
-		await goto('/nodes');
+		await goto(resolve('/nodes'));
 	}
 </script>
 
@@ -25,9 +31,24 @@
 			<label class="flex items-center gap-2 text-sm"><input type="radio" bind:group={form.provider} value="local" /> Local administrator</label>
 		</fieldset>
 		{#if form.provider === 'pve'}
+			<ClusterSelector
+				options={form.clusters}
+				value={form.cluster}
+				onChange={(value) => (form.cluster = value)}
+				id="login-cluster"
+			/>
 			<label class="grid gap-1 text-sm font-medium">Username <input class="rounded-md border border-input bg-background px-3 py-2" autocomplete="username" bind:value={form.username} required /></label>
 		{/if}
 		<label class="grid gap-1 text-sm font-medium">Password <input class="rounded-md border border-input bg-background px-3 py-2" type="password" autocomplete="current-password" bind:value={form.password} required /></label>
+		{#if form.provider === 'pve' && form.selectedCluster?.oidcEnabled}
+			<button
+				type="button"
+				class="rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-muted"
+				onclick={() => void form.signInOIDC()}
+			>
+				Sign in with OIDC
+			</button>
+		{/if}
 		{#if form.error}<p role="alert" class="text-sm text-destructive">{form.error}</p>{/if}
 		<button class="rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground disabled:opacity-50" disabled={form.loading} type="submit">{form.loading ? 'Signing in…' : 'Sign in'}</button>
 	</form>

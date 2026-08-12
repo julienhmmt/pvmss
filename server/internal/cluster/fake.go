@@ -20,7 +20,9 @@ import (
 // request). ResetFake restores the original dataset and clears the log; any
 // test that mutates MUST defer it so later tests in the same binary see the
 // full 25-VM dataset.
-type Fake struct{}
+type Fake struct {
+	ClusterName string
+}
 
 // FakeCall is one recorded write against the fake cluster.
 type FakeCall struct {
@@ -80,35 +82,33 @@ type fakeCloudInitKey struct {
 // ListNodes used to surface, plus the VMs and storages later tranches need.
 // Writes mutate the live dataset, so a Snapshot taken after a delete reflects
 // it (AC03 §3.2 write-then-invalidate).
-func (Fake) Snapshot(_ context.Context) (Snapshot, error) {
+func (fake Fake) Snapshot(_ context.Context) (Snapshot, error) {
+	if fake.unavailable() {
+		return Snapshot{}, ErrUnreachable
+	}
 	fakeVMMutex.RLock()
 	defer fakeVMMutex.RUnlock()
-
-	nodes := make([]Node, len(fakeNodes))
-	copy(nodes, fakeNodes)
-
-	vms := make([]VM, len(fakeVMs))
-	copy(vms, fakeVMs)
-
-	for i, vm := range fakeVMs {
+	nodes, sourceVMs, storages, version := fake.snapshotSources()
+	nodesCopy := slices.Clone(nodes)
+	vms := slices.Clone(sourceVMs)
+	for i, vm := range sourceVMs {
+		vms[i].Cluster = fake.ClusterName
 		vms[i].Tags = append([]string(nil), vm.Tags...)
 		vms[i].BootOrder = append([]string(nil), vm.BootOrder...)
 		vms[i].Disks = append([]Disk(nil), vm.Disks...)
-
 		vms[i].NetworkInterfaces = cloneNetworkInterfaces(vm.NetworkInterfaces)
 		for diskIndex := range vms[i].Disks {
 			vms[i].Disks[diskIndex].IsBoot = false
 		}
 	}
-
-	storages := make([]Storage, len(fakeStorages))
-	copy(storages, fakeStorages)
-
-	return Snapshot{Nodes: nodes, VMs: vms, Storages: storages}, nil
+	return Snapshot{Nodes: nodesCopy, VMs: vms, Storages: slices.Clone(storages), ProxmoxVersion: version}, nil
 }
 
 // Authenticate implements Client using demonstration-only PVE identities.
-func (Fake) Authenticate(_ context.Context, username, password string) (Identity, error) {
+func (fake Fake) Authenticate(_ context.Context, username, password string) (Identity, error) {
+	if fake.unavailable() {
+		return Identity{}, ErrUnreachable
+	}
 	fakeIdentitiesMutex.RLock()
 	defer fakeIdentitiesMutex.RUnlock()
 
@@ -123,7 +123,10 @@ func (Fake) Authenticate(_ context.Context, username, password string) (Identity
 // ChangePassword implements Client against the same in-memory demo table
 // Authenticate reads — the fake's own storage, analogous to a real cluster's
 // user database (constitution XI: the fake must demonstrate every feature).
-func (Fake) ChangePassword(_ context.Context, username, oldPassword, newPassword string) error {
+func (fake Fake) ChangePassword(_ context.Context, username, oldPassword, newPassword string) error {
+	if fake.unavailable() {
+		return ErrUnreachable
+	}
 	fakeIdentitiesMutex.Lock()
 	defer fakeIdentitiesMutex.Unlock()
 
@@ -189,19 +192,28 @@ func (Fake) FindSnippetStorage(_ context.Context, node string) (string, error) {
 // ListBridges implements Client. Returns the fake bridge dataset — a superset
 // of what T06 approved (vmbr0, vmbr1) so the admin demo has vmbr2 to discover
 // and approve (data-model.md fixture table).
-func (Fake) ListBridges(_ context.Context) ([]Bridge, error) {
+func (fake Fake) ListBridges(_ context.Context) ([]Bridge, error) {
+	if fake.unavailable() {
+		return nil, ErrUnreachable
+	}
 	return slices.Clone(fakeBridges), nil
 }
 
 // ListISOs implements Client. Returns the fake ISO dataset — a superset of
 // what T06 approved (debian-12, ubuntu-24, both on local) so the admin demo
 // has rocky-9 to discover and approve (data-model.md fixture table).
-func (Fake) ListISOs(_ context.Context) ([]ISOImage, error) {
+func (fake Fake) ListISOs(_ context.Context) ([]ISOImage, error) {
+	if fake.unavailable() {
+		return nil, ErrUnreachable
+	}
 	return slices.Clone(fakeISOs), nil
 }
 
 // ListPools implements Client and returns a defensive copy of the live pool table.
-func (Fake) ListPools(_ context.Context) ([]Pool, error) {
+func (fake Fake) ListPools(_ context.Context) ([]Pool, error) {
+	if fake.unavailable() {
+		return nil, ErrUnreachable
+	}
 	fakeVMMutex.RLock()
 	defer fakeVMMutex.RUnlock()
 
@@ -209,7 +221,10 @@ func (Fake) ListPools(_ context.Context) ([]Pool, error) {
 }
 
 // EnsurePoolRole creates the shared PVMSSUser role once and never rewrites it.
-func (Fake) EnsurePoolRole(_ context.Context) error {
+func (fake Fake) EnsurePoolRole(_ context.Context) error {
+	if fake.unavailable() {
+		return ErrUnreachable
+	}
 	fakeVMMutex.Lock()
 	defer fakeVMMutex.Unlock()
 
@@ -229,7 +244,10 @@ func (Fake) EnsurePoolRole(_ context.Context) error {
 }
 
 // EnsurePoolUser creates the pool login once and returns its PVE username.
-func (Fake) EnsurePoolUser(_ context.Context, pool, password string) (string, error) {
+func (fake Fake) EnsurePoolUser(_ context.Context, pool, password string) (string, error) {
+	if fake.unavailable() {
+		return "", ErrUnreachable
+	}
 	fakeVMMutex.Lock()
 	defer fakeVMMutex.Unlock()
 
@@ -245,7 +263,10 @@ func (Fake) EnsurePoolUser(_ context.Context, pool, password string) (string, er
 }
 
 // CreatePool inserts a pool only when its name is absent.
-func (Fake) CreatePool(_ context.Context, poolID, comment string) error {
+func (fake Fake) CreatePool(_ context.Context, poolID, comment string) error {
+	if fake.unavailable() {
+		return ErrUnreachable
+	}
 	fakeVMMutex.Lock()
 	defer fakeVMMutex.Unlock()
 
@@ -262,7 +283,10 @@ func (Fake) CreatePool(_ context.Context, poolID, comment string) error {
 }
 
 // SetPoolACL records a pool-to-role binding.
-func (Fake) SetPoolACL(_ context.Context, username, poolID, role string) error {
+func (fake Fake) SetPoolACL(_ context.Context, username, poolID, role string) error {
+	if fake.unavailable() {
+		return ErrUnreachable
+	}
 	fakeVMMutex.Lock()
 	defer fakeVMMutex.Unlock()
 
@@ -273,7 +297,10 @@ func (Fake) SetPoolACL(_ context.Context, username, poolID, role string) error {
 }
 
 // DeletePool removes a pool and its ACL entries. It is idempotent for cleanup.
-func (Fake) DeletePool(_ context.Context, poolID string) error {
+func (fake Fake) DeletePool(_ context.Context, poolID string) error {
+	if fake.unavailable() {
+		return ErrUnreachable
+	}
 	fakeVMMutex.Lock()
 	defer fakeVMMutex.Unlock()
 
@@ -289,7 +316,10 @@ func (Fake) DeletePool(_ context.Context, poolID string) error {
 }
 
 // DeleteUser removes a PVE identity. Tests can force a best-effort failure.
-func (Fake) DeleteUser(_ context.Context, username string) error {
+func (fake Fake) DeleteUser(_ context.Context, username string) error {
+	if fake.unavailable() {
+		return ErrUnreachable
+	}
 	fakeVMMutex.Lock()
 	defer fakeVMMutex.Unlock()
 

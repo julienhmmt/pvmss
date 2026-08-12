@@ -2,7 +2,7 @@ import { test, expect, type APIRequestContext } from '@playwright/test';
 
 async function signInAlice(request: APIRequestContext): Promise<void> {
 	const response = await request.post('/api/v1/auth/login', {
-		data: { username: 'alice', password: 'pvmss-alice' }
+		data: { username: 'alice', password: 'pvmss-alice', cluster: 'default' }
 	});
 	expect(response.status()).toBe(200);
 }
@@ -27,7 +27,7 @@ test.describe('T06 VM creation', () => {
 	});
 	test('simple mode: create a VM and watch the task complete in the tray', async ({ page }) => {
 		await signInAlice(page.request);
-		await page.goto('/vms');
+		await page.goto('/vms?cluster=default');
 
 		await page.getByRole('link', { name: 'Create a VM' }).click();
 		await expect(page).toHaveURL(/\/vms\/create/);

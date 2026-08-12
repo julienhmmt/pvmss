@@ -146,6 +146,7 @@
 		<caption class="sr-only">Virtual machines</caption>
 		<thead>
 			<tr class="border-b border-border">
+				<th scope="col" class="px-3 py-2 font-medium">Cluster</th>
 				{#each SORTABLE_COLUMNS as column (column)}
 					<th scope="col" class="px-3 py-2 font-medium" aria-sort={ariaSort(column)}>
 						<button
@@ -164,12 +165,13 @@
 			</tr>
 		</thead>
 		<tbody>
-			{#each store.result?.items ?? [] as machine (machine.vmid)}
+			{#each store.result?.items ?? [] as machine (`${machine.cluster}:${machine.vmid}`)}
 				<tr class="border-b border-border last:border-0" data-testid="vm-row">
+					<td class="px-3 py-2 font-mono text-muted-foreground">{machine.cluster}</td>
 					<td class="px-3 py-2 text-muted-foreground">{machine.vmid}</td>
 					<td class="px-3 py-2 font-medium">
 						<a
-							href={resolve(`/vms/default/${machine.vmid}`)}
+							href={resolve(`/vms/${encodeURIComponent(machine.cluster)}/${machine.vmid}`)}
 							class="hover:underline"
 							data-testid="vm-row-link"
 						>

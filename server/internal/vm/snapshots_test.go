@@ -204,7 +204,7 @@ func snapshotDependencies(index *inventory.Index, vmid int, gabarit policy.Gabar
 func snapshotDependenciesWithAudit(index *inventory.Index, vmid int, gabarit policy.Gabarit, audit vm.AuditRecorder) vm.SnapshotDependencies {
 	return vm.SnapshotDependencies{
 		Index: index, Actor: auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice},
-		ClusterName: "default", VMID: vmid, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Gabarit: gabarit, Audit: audit,
+		ClusterName: testClusterName, VMID: vmid, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Gabarit: gabarit, Audit: audit,
 	}
 }
 

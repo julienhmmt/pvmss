@@ -9,9 +9,10 @@ import (
 // except ConsoleRelay, which is wired in this tranche. BaseURL, APITokenName
 // and APITokenValue are configured in main.go from the environment.
 type Proxmox struct {
-	BaseURL       string
-	APITokenName  string
-	APITokenValue string
+	BaseURL               string
+	APITokenName          string
+	APITokenValue         string
+	TLSInsecureSkipVerify bool
 }
 
 // Snapshot implements Client.

@@ -2,7 +2,7 @@ import { test, expect, type APIRequestContext } from '@playwright/test';
 
 async function signIn(request: APIRequestContext, username: string, password: string): Promise<void> {
 	const response = await request.post('/api/v1/auth/login', {
-		data: { username, password }
+		data: { username, password, cluster: 'default' }
 	});
 	expect(response.status()).toBe(200);
 }
@@ -14,7 +14,7 @@ async function signInAlice(request: APIRequestContext): Promise<void> {
 test.describe('T05 VM detail & actions (closes S01)', () => {
 	test('opens a VM from the list and sees identity, status, and metrics', async ({ page }) => {
 		await signInAlice(page.request);
-		await page.goto('/vms');
+		await page.goto('/vms?cluster=default');
 
 		// Click the first VM name link (web-01, VMID 100, running).
 		await page.locator('[data-testid="vm-row-link"]').first().click();

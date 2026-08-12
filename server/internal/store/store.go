@@ -7,8 +7,9 @@ import (
 
 // Store is a SQLite-backed persistence handle.
 type Store struct {
-	db      *sql.DB
-	staging *ImportStaging
+	db            *sql.DB
+	staging       *ImportStaging
+	encryptionKey []byte
 }
 
 // NewFromDB wraps an already-open *sql.DB in a Store. Used by tests that need
@@ -17,6 +18,17 @@ type Store struct {
 // code should use Open, which runs all migrations.
 func NewFromDB(db *sql.DB) *Store {
 	return &Store{db: db, staging: NewImportStaging()}
+}
+
+// NewFromDBWithSecret wraps an open database and derives the cluster-token
+// encryption key from the supplied session secret.
+func NewFromDBWithSecret(db *sql.DB, sessionSecret string) (*Store, error) {
+	key, err := deriveEncryptionKey(sessionSecret)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Store{db: db, staging: NewImportStaging(), encryptionKey: key}, nil
 }
 
 // Ping verifies the database connection is alive.

@@ -2,6 +2,8 @@
 // List is the single read path behind GET /api/v1/vms — scope enforcement,
 // search classification, filtering, sorting, and pagination all happen here,
 // in one pure function with no I/O (T04 data-model.md).
+//
+//nolint:wsl_v5 // query stages remain adjacent to make scope enforcement visible
 package vm
 
 import (
@@ -73,6 +75,7 @@ const (
 // scope. Scope is a requested value only — List re-derives the effective
 // scope from the caller's identity and never trusts it as-is (FR-003).
 type ListQuery struct {
+	Cluster  string
 	Search   string
 	Status   cluster.VMStatus
 	Node     string
@@ -109,22 +112,22 @@ type ListResult struct {
 // VM allowance reported in Quota (-1 = unlimited); the quota is attached
 // whenever the caller is not an admin, or an admin listing their own pool
 // (spec Assumptions 5.3).
-func List(index *inventory.Index, query ListQuery, identity auth.Identity, allowedQuota int, services ...*policy.Policy) (ListResult, error) {
-	return list(context.Background(), index, query, identity, allowedQuota, services...)
+func List(source inventory.Source, query ListQuery, identity auth.Identity, allowedQuota int, services ...*policy.Policy) (ListResult, error) {
+	return list(context.Background(), source, query, identity, allowedQuota, services...)
 }
 
 // ListWithContext resolves a VM list while allowing policy reads to honor request cancellation.
-func ListWithContext(ctx context.Context, index *inventory.Index, query ListQuery, identity auth.Identity, allowedQuota int, services ...*policy.Policy) (ListResult, error) {
-	return list(ctx, index, query, identity, allowedQuota, services...)
+func ListWithContext(ctx context.Context, source inventory.Source, query ListQuery, identity auth.Identity, allowedQuota int, services ...*policy.Policy) (ListResult, error) {
+	return list(ctx, source, query, identity, allowedQuota, services...)
 }
 
-func list(ctx context.Context, index *inventory.Index, query ListQuery, identity auth.Identity, allowedQuota int, services ...*policy.Policy) (ListResult, error) {
+func list(ctx context.Context, source inventory.Source, query ListQuery, identity auth.Identity, allowedQuota int, services ...*policy.Policy) (ListResult, error) {
 	query = withDefaults(query)
 	if !validSortBy(query.SortBy) {
 		return ListResult{}, fmt.Errorf("%w: %q", ErrInvalidSortBy, query.SortBy)
 	}
 
-	scoped := scopedVMs(index, query, identity)
+	scoped := scopedVMs(source, query, identity)
 	searched := searchVMs(scoped, query.Search)
 	facetedNodes := nodeFacet(searched)
 	filtered := filterVMs(searched, query)
@@ -205,17 +208,60 @@ func validSortBy(sortBy SortBy) bool {
 // scopedVMs is the ONLY branch point for scope in the whole request path
 // (FR-003, SC-005): scope=all is honoured for an admin and silently treated
 // as mine for anyone else.
-func scopedVMs(index *inventory.Index, query ListQuery, identity auth.Identity) []cluster.VM {
-	if query.Scope == ScopeAll && identity.IsAdmin {
-		all := make([]cluster.VM, 0, len(index.ByVMID))
-		for _, machine := range index.ByVMID {
-			all = append(all, machine)
-		}
-
-		return all
+func scopedVMs(source inventory.Source, query ListQuery, identity auth.Identity) []cluster.VM {
+	indexes := source.All()
+	clusterNames := sortedClusterNames(indexes)
+	selected := selectedIndexes(clusterNames, indexes, query.Cluster)
+	pool := identity.Pool
+	adminAll := query.Scope == ScopeAll && identity.IsAdmin
+	capacity := 0
+	for _, index := range selected {
+		capacity += scopedVMCount(index, pool, adminAll)
 	}
+	result := make([]cluster.VM, 0, capacity)
+	for _, index := range selected {
+		result = appendScopedVMs(result, index, pool, adminAll)
+	}
+	return result
+}
 
-	return index.ByPool[identity.Pool]
+func sortedClusterNames(indexes map[string]*inventory.Index) []string {
+	names := make([]string, 0, len(indexes))
+	for name := range indexes {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	return names
+}
+
+func selectedIndexes(names []string, indexes map[string]*inventory.Index, filter string) []*inventory.Index {
+	selected := make([]*inventory.Index, 0, len(names))
+	for _, name := range names {
+		if filter != "" && filter != name {
+			continue
+		}
+		if index := indexes[name]; index != nil {
+			selected = append(selected, index)
+		}
+	}
+	return selected
+}
+
+func scopedVMCount(index *inventory.Index, pool string, adminAll bool) int {
+	if adminAll {
+		return len(index.ByVMID)
+	}
+	return len(index.ByPool[pool])
+}
+
+func appendScopedVMs(result []cluster.VM, index *inventory.Index, pool string, adminAll bool) []cluster.VM {
+	if adminAll {
+		for _, machine := range index.ByVMID {
+			result = append(result, machine)
+		}
+		return result
+	}
+	return append(result, index.ByPool[pool]...)
 }
 
 // searchVMs classifies the raw text server-side (research.md): numeric-only

@@ -1,3 +1,4 @@
+//nolint:wsl_v5 // parallel catalog handlers keep validation and contract mapping adjacent
 package httpapi
 
 import (
@@ -20,6 +21,8 @@ type AdminCatalog struct {
 	store      *store.Store
 	client     cluster.Client
 	projection *inventory.Projection
+	clusters   ClusterLister
+	clients    cluster.ClientProvider
 	log        *slog.Logger
 }
 
@@ -28,6 +31,11 @@ type AdminCatalog struct {
 // are not used (tests that only exercise nodes/storages/bridges/isos).
 func NewAdminCatalog(authHandler *Auth, st *store.Store, client cluster.Client, projection *inventory.Projection, log *slog.Logger) *AdminCatalog {
 	return &AdminCatalog{auth: authHandler, store: st, client: client, projection: projection, log: log}
+}
+
+// NewAdminCatalogWithRegistry creates catalog handlers with mandatory cluster selection.
+func NewAdminCatalogWithRegistry(authHandler *Auth, st *store.Store, registry cluster.ClientProvider, projection *inventory.Projection, log *slog.Logger) *AdminCatalog {
+	return &AdminCatalog{auth: authHandler, store: st, projection: projection, clusters: registry, clients: registry, log: log}
 }
 
 // --- Nodes ---
@@ -47,9 +55,19 @@ type adminNodeDTO struct {
 
 // ServeNodes handles GET /api/v1/admin/nodes.
 func (h *AdminCatalog) ServeNodes(w http.ResponseWriter, r *http.Request) {
-	clusterName := queryCluster(r)
+	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
 
-	nodes, err := catalog.AdminListNodes(r.Context(), h.store, h.client, clusterName)
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "not_found", "cluster not found")
+		return
+	}
+	nodes, err := catalog.AdminListNodes(r.Context(), h.store, client, clusterName)
 	if err != nil {
 		h.log.Error("admin list nodes failed", "component", "httpapi", "error", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
@@ -91,9 +109,19 @@ func (h *AdminCatalog) ServeNodeToggle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clusterName := resolveCluster(req.Cluster)
+	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
 
-	err := catalog.SetNodeEnabled(r.Context(), h.store, h.client, clusterName, req.Name, req.Enabled)
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "not_found", "cluster not found")
+		return
+	}
+	err = catalog.SetNodeEnabled(r.Context(), h.store, client, clusterName, req.Name, req.Enabled)
 	if errors.Is(err, cluster.ErrNotFound) {
 		writeAdminError(w, http.StatusNotFound, "not_found", nodeNotFoundMsg(req.Name))
 		return
@@ -122,9 +150,19 @@ type adminStorageDTO struct {
 
 // ServeStorages handles GET /api/v1/admin/storages.
 func (h *AdminCatalog) ServeStorages(w http.ResponseWriter, r *http.Request) {
-	clusterName := queryCluster(r)
+	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
 
-	storages, err := catalog.AdminListStorages(r.Context(), h.store, h.client, clusterName)
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "not_found", "cluster not found")
+		return
+	}
+	storages, err := catalog.AdminListStorages(r.Context(), h.store, client, clusterName)
 	if err != nil {
 		h.log.Error("admin list storages failed", "component", "httpapi", "error", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
@@ -166,9 +204,19 @@ func (h *AdminCatalog) ServeStorageToggle(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	clusterName := resolveCluster(req.Cluster)
+	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
 
-	err := catalog.SetStorageEnabled(r.Context(), h.store, h.client, clusterName, req.Name, req.Node, req.Enabled)
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "not_found", "cluster not found")
+		return
+	}
+	err = catalog.SetStorageEnabled(r.Context(), h.store, client, clusterName, req.Name, req.Node, req.Enabled)
 	if errors.Is(err, cluster.ErrNotFound) {
 		writeAdminError(w, http.StatusNotFound, "not_found", storageNotFoundMsg(req.Name, req.Node))
 		return
@@ -198,9 +246,19 @@ type adminBridgeDTO struct {
 //
 //nolint:dupl // intentionally parallel to ServeISOs (same shape, different resource)
 func (h *AdminCatalog) ServeBridges(w http.ResponseWriter, r *http.Request) {
-	clusterName := queryCluster(r)
+	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
 
-	bridges, err := catalog.AdminListBridges(r.Context(), h.store, h.client, clusterName)
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "not_found", "cluster not found")
+		return
+	}
+	bridges, err := catalog.AdminListBridges(r.Context(), h.store, client, clusterName)
 	if err != nil {
 		h.log.Error("admin list bridges failed", "component", "httpapi", "error", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
@@ -235,9 +293,19 @@ func (h *AdminCatalog) ServeBridgeToggle(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	clusterName := resolveCluster(req.Cluster)
+	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
 
-	err := catalog.SetBridgeEnabled(r.Context(), h.store, h.client, clusterName, req.Name, req.Enabled)
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "not_found", "cluster not found")
+		return
+	}
+	err = catalog.SetBridgeEnabled(r.Context(), h.store, client, clusterName, req.Name, req.Enabled)
 	if errors.Is(err, cluster.ErrNotFound) {
 		writeAdminError(w, http.StatusNotFound, "not_found", bridgeNotFoundMsg(req.Name))
 		return
@@ -267,9 +335,19 @@ type adminISODTO struct {
 //
 //nolint:dupl // intentionally parallel to ServeBridges (same shape, different resource)
 func (h *AdminCatalog) ServeISOs(w http.ResponseWriter, r *http.Request) {
-	clusterName := queryCluster(r)
+	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
 
-	isos, err := catalog.AdminListISOs(r.Context(), h.store, h.client, clusterName)
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "not_found", "cluster not found")
+		return
+	}
+	isos, err := catalog.AdminListISOs(r.Context(), h.store, client, clusterName)
 	if err != nil {
 		h.log.Error("admin list isos failed", "component", "httpapi", "error", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
@@ -311,9 +389,19 @@ func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clusterName := resolveCluster(req.Cluster)
+	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
 
-	err := catalog.SetISOEnabled(r.Context(), h.store, h.client, clusterName, req.Storage, req.File, req.Enabled)
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "not_found", "cluster not found")
+		return
+	}
+	err = catalog.SetISOEnabled(r.Context(), h.store, client, clusterName, req.Storage, req.File, req.Enabled)
 	if errors.Is(err, cluster.ErrNotFound) {
 		writeAdminError(w, http.StatusNotFound, "not_found", isoNotFoundMsg(req.Storage, req.File))
 		return
@@ -331,6 +419,16 @@ func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 
 // --- helpers ---
 
+func (h *AdminCatalog) clientFor(name string) (cluster.Client, error) {
+	if h.clients == nil {
+		if h.client == nil {
+			return nil, cluster.ErrClusterNotFound
+		}
+		return h.client, nil
+	}
+	return h.clients.Client(name)
+}
+
 func queryCluster(r *http.Request) string {
 	c := r.URL.Query().Get("cluster")
 	if c == "" {
@@ -338,14 +436,6 @@ func queryCluster(r *http.Request) string {
 	}
 
 	return c
-}
-
-func resolveCluster(bodyCluster string) string {
-	if bodyCluster == "" {
-		return defaultClusterName
-	}
-
-	return bodyCluster
 }
 
 func writeAdminJSON(w http.ResponseWriter, status int, value any) {

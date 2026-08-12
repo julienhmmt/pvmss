@@ -34,6 +34,7 @@ type Identity struct {
 	// personal pool.
 	Pool    string `json:"pool"`
 	IsAdmin bool   `json:"isAdmin"`
+	Cluster string `json:"cluster"`
 }
 
 // SessionRecord is a persisted, revocable browser session.

@@ -137,7 +137,7 @@ test.describe('T11 admin catalog', () => {
 		page
 	}) => {
 		const alice = await page.request.post('/api/v1/auth/login', {
-			data: { username: 'alice', password: 'pvmss-alice' }
+			data: { username: 'alice', password: 'pvmss-alice', cluster: 'default' }
 		});
 		expect(alice.status()).toBe(200);
 

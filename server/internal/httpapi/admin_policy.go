@@ -1,3 +1,4 @@
+//nolint:wsl_v5 // policy handlers keep cluster selection and response mapping adjacent
 package httpapi
 
 import (
@@ -12,13 +13,19 @@ import (
 // AdminPolicy serves the single global gabarit/quota surface and the dedicated
 // node-capacité surface. Router registration supplies the admin role guard.
 type AdminPolicy struct {
-	service *policy.Policy
-	log     *slog.Logger
+	service  *policy.Policy
+	clusters ClusterLister
+	log      *slog.Logger
 }
 
 // NewAdminPolicy creates the policy admin handler.
 func NewAdminPolicy(_ *Auth, service *policy.Policy, log *slog.Logger) *AdminPolicy {
 	return &AdminPolicy{service: service, log: log}
+}
+
+// NewAdminPolicyWithRegistry creates policy handlers with explicit cluster selection.
+func NewAdminPolicyWithRegistry(_ *Auth, service *policy.Policy, registry ClusterLister, log *slog.Logger) *AdminPolicy {
+	return &AdminPolicy{service: service, clusters: registry, log: log}
 }
 
 type policyResponse struct {
@@ -68,7 +75,12 @@ func (handler *AdminPolicy) ServePolicy(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	clusterName := queryCluster(r)
+	clusterName, clusterErr := ResolveClusterParam(r, handler.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
 
 	response, err := handler.readPolicy(r.Context(), clusterName)
 	if err != nil {
@@ -92,7 +104,12 @@ func (handler *AdminPolicy) ServePolicyUpdate(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	clusterName := resolveCluster(request.Cluster)
+	clusterName, clusterErr := ResolveClusterValue(request.Cluster, handler.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
 
 	current, err := handler.readPolicy(r.Context(), clusterName)
 	if err != nil {

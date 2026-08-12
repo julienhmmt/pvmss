@@ -51,6 +51,7 @@ type RouterConfig struct {
 	AdminPolicy      *AdminPolicy
 	AdminPools       *AdminPools
 	AdminOps         *AdminOps
+	AdminClusters    *AdminClusters
 }
 
 // NewRouter wires the public API and the static SPA handler from cfg.
@@ -109,11 +110,15 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 	}
 
 	// Unauthenticated credential-check endpoints get a per-IP rate limit —
-	// nothing else gates repeated guesses against them.
+	// nothing else gates repeated guesses against them. The pre-login cluster
+	// list and OIDC trigger are also unauthenticated and disclose cluster
+	// names, so they share the same limiter to bound enumeration/abuse.
 	authLimiter := newIPRateLimiter(authRateLimitMaxRequests, authRateLimitWindow)
 	mux.Handle("POST /api/v1/auth/login", authLimiter.middleware(http.HandlerFunc(cfg.Auth.Login)))
 	mux.Handle("POST /api/v1/auth/admin-login", authLimiter.middleware(http.HandlerFunc(cfg.Auth.AdminLogin)))
 	mux.HandleFunc("GET /api/v1/auth/me", cfg.Auth.Me)
+	mux.Handle("GET /api/v1/auth/clusters", authLimiter.middleware(http.HandlerFunc(cfg.Auth.ServeClusters)))
+	mux.Handle("POST /api/v1/auth/oidc", authLimiter.middleware(http.HandlerFunc(cfg.Auth.OIDC)))
 	mux.HandleFunc("POST /api/v1/auth/logout", cfg.Auth.Logout)
 	mux.HandleFunc("POST /api/v1/auth/tokens", cfg.Auth.CreateToken)
 	mux.HandleFunc("GET /api/v1/auth/tokens", cfg.Auth.ListTokens)
@@ -171,6 +176,16 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 		mux.Handle("POST /api/v1/admin/db/import/confirm", adminGuard(http.HandlerFunc(cfg.AdminOps.ServeDBImportConfirm)))
 		mux.Handle("GET /api/v1/admin/appinfo", adminGuard(http.HandlerFunc(cfg.AdminOps.ServeAppInfo)))
 		mux.HandleFunc("GET /api/v1/public/version", cfg.AdminOps.ServePublicVersion)
+	}
+
+	if cfg.AdminClusters != nil {
+		adminGuard := cfg.Auth.RequireAdmin
+		mux.Handle("GET /api/v1/admin/clusters", adminGuard(http.HandlerFunc(cfg.AdminClusters.ServeList)))
+		mux.Handle("POST /api/v1/admin/clusters", adminGuard(http.HandlerFunc(cfg.AdminClusters.ServeCreate)))
+		mux.Handle("PUT /api/v1/admin/clusters/{name}", adminGuard(http.HandlerFunc(cfg.AdminClusters.ServeUpdate)))
+		mux.Handle("POST /api/v1/admin/clusters/{name}/test", adminGuard(http.HandlerFunc(cfg.AdminClusters.ServeTest)))
+		mux.Handle("POST /api/v1/admin/clusters/{name}/oidc", adminGuard(http.HandlerFunc(cfg.AdminClusters.ServeOIDC)))
+		mux.Handle("DELETE /api/v1/admin/clusters/{name}", adminGuard(http.HandlerFunc(cfg.AdminClusters.ServeDelete)))
 	}
 
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {

@@ -99,9 +99,10 @@ type Writer interface {
 // storages at that instant (T03, AC02). It mirrors /cluster/resources' real
 // shape: one call returns everything, instead of one call per entity type.
 type Snapshot struct {
-	Nodes    []Node
-	VMs      []VM
-	Storages []Storage
+	Nodes          []Node
+	VMs            []VM
+	Storages       []Storage
+	ProxmoxVersion string
 }
 
 // Identity is the principal verified by the configured cluster identity provider.
@@ -208,6 +209,7 @@ func (n NetworkInterface) MarshalJSON() ([]byte, error) {
 // later tranches have data to work with, but not surfaced by any endpoint
 // until T04.
 type VM struct {
+	Cluster           string
 	VMID              int
 	Name              string
 	Node              string
