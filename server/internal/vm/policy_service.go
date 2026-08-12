@@ -9,5 +9,6 @@ func selectPolicyService(st *store.Store, services []*policy.Policy) *policy.Pol
 	if len(services) > 0 && services[0] != nil {
 		return services[0]
 	}
+
 	return policy.New(st, nil, nil)
 }

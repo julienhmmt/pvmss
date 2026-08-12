@@ -1,4 +1,3 @@
-//nolint:noctx // test scaffolding does not need real context
 package httpapi_test
 
 import (
@@ -86,8 +85,10 @@ func TestRouter_SPAFallback(t *testing.T) {
 
 const cloudInitRoutePath = "/api/v1/vms/default/101/cloudinit"
 
-//nolint:wsl_v5,paralleltest // route assertions use shared router fixture
+// TestRouter_CloudInitRoutesAreSpecific verifies that cloudinit routes require
+// the exact (vm, node) pair and reject near-miss paths (T008).
 func TestRouter_CloudInitRoutesAreSpecific(t *testing.T) {
+	t.Parallel()
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	authHandler := newAuthHandler(t)
 	projection := inventory.NewProjection()

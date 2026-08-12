@@ -14,6 +14,7 @@ import (
 
 func TestCreate_PolicyGuardsRejectBeforeAllocation(t *testing.T) {
 	t.Parallel()
+
 	cases := []struct {
 		name    string
 		prepare func(*policy.Policy, context.Context) error
@@ -33,7 +34,9 @@ func TestCreate_PolicyGuardsRejectBeforeAllocation(t *testing.T) {
 				if err != nil {
 					return err
 				}
+
 				gabarit.MaxDiskPerVMGB = 10
+
 				return service.SetGabarit(ctx, testClusterName, gabarit)
 			},
 			wantErr: policy.ErrGabaritExceeded,
@@ -45,7 +48,9 @@ func TestCreate_PolicyGuardsRejectBeforeAllocation(t *testing.T) {
 				if err != nil {
 					return err
 				}
+
 				capacity.MaxVCPUs = capacity.UsedVCPUs
+
 				return service.SetNodeCapacity(ctx, testClusterName, cluster.FakeNode02, capacity)
 			},
 			wantErr: policy.ErrNodeCapacityExceeded,
@@ -53,31 +58,40 @@ func TestCreate_PolicyGuardsRejectBeforeAllocation(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
 			fixture := newCreateFixture(t)
+
 			snapshot, err := fixture.fake.Snapshot(context.Background())
 			if err != nil {
 				t.Fatalf("Snapshot: %v", err)
 			}
+
 			index := inventory.BuildIndex(snapshot)
+
 			service := policy.New(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
 			if err := testCase.prepare(service, context.Background()); err != nil {
 				t.Fatalf("prepare policy: %v", err)
 			}
+
 			req := detailedRequest()
+
 			req.Name = "policy-" + strings.ReplaceAll(testCase.name, " ", "-")
 			if testCase.name == "gabarit disk" {
 				req.Disk.SizeGB = 20
 			}
+
 			if testCase.name == "node capacity" {
 				req.Node = cluster.FakeNode02
 				req.Disk.Storage = "ceph-data"
 				req.CPUCores = 1
 				req.MemoryMB = 128
 			}
+
 			_, err = vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, fixture.store, fixture.fake, fixture.store, slog.New(slog.DiscardHandler), service)
 			if !errors.Is(err, testCase.wantErr) {
 				t.Fatalf("Create error = %v, want %v", err, testCase.wantErr)
 			}
+
 			if calls := cluster.FakeCalls(); len(calls) != 0 {
 				t.Fatalf("policy rejection reached cluster: %+v", calls)
 			}

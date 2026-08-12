@@ -8,9 +8,9 @@ import (
 
 // TestConsoleTicketStore_IssueThenConsume_Succeeds — T004: a freshly issued
 // ticket is consumable exactly once for the (cluster, vmid) it was bound to.
-//
-//nolint:paralleltest // serial: shared in-memory store fixture
 func TestConsoleTicketStore_IssueThenConsume_Succeeds(t *testing.T) {
+	t.Parallel()
+
 	store := NewConsoleTicketStore()
 
 	ticket := store.Issue("default", 101, "pve-node-01", "proxmox-ticket", 5901)
@@ -18,12 +18,15 @@ func TestConsoleTicketStore_IssueThenConsume_Succeeds(t *testing.T) {
 	if ticket.Token == "" {
 		t.Fatalf("Issue returned an empty token")
 	}
+
 	if ticket.Cluster != "default" || ticket.VMID != 101 {
 		t.Fatalf("ticket bound to %+v, want default/101", ticket)
 	}
+
 	if ticket.Node != "pve-node-01" || ticket.ProxmoxTicket != "proxmox-ticket" || ticket.Port != 5901 {
 		t.Fatalf("ticket carries %+v, want node/ticket/port preserved", ticket)
 	}
+
 	if ticket.ExpiresAt.IsZero() {
 		t.Fatalf("ExpiresAt is zero, want a real timestamp")
 	}
@@ -32,6 +35,7 @@ func TestConsoleTicketStore_IssueThenConsume_Succeeds(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Consume: %v", err)
 	}
+
 	if consumed.Token != ticket.Token {
 		t.Fatalf("consumed token = %q, want %q", consumed.Token, ticket.Token)
 	}
@@ -39,9 +43,9 @@ func TestConsoleTicketStore_IssueThenConsume_Succeeds(t *testing.T) {
 
 // TestConsoleTicketStore_ConsumeTwice_FailsOnSecondCall — FR-004: a ticket is
 // single-use; the second Consume for the same token is rejected.
-//
-//nolint:paralleltest // serial: shared in-memory store fixture
 func TestConsoleTicketStore_ConsumeTwice_FailsOnSecondCall(t *testing.T) {
+	t.Parallel()
+
 	store := NewConsoleTicketStore()
 
 	ticket := store.Issue("default", 101, "pve-node-01", "proxmox-ticket", 5901)
@@ -57,9 +61,9 @@ func TestConsoleTicketStore_ConsumeTwice_FailsOnSecondCall(t *testing.T) {
 
 // TestConsoleTicketStore_ConsumeAfterExpiry_Fails — a ticket whose TTL has
 // elapsed is rejected the same way an already-consumed one is.
-//
-//nolint:paralleltest // serial: shared in-memory store fixture
 func TestConsoleTicketStore_ConsumeAfterExpiry_Fails(t *testing.T) {
+	t.Parallel()
+
 	store := NewConsoleTicketStore()
 
 	ticket := store.Issue("default", 101, "pve-node-01", "proxmox-ticket", 5901)
@@ -75,9 +79,9 @@ func TestConsoleTicketStore_ConsumeAfterExpiry_Fails(t *testing.T) {
 // TestConsoleTicketStore_ConsumeWithWrongClusterOrVMID_Fails — FR-002 defense
 // in depth: a ticket bound to (default, 101) is rejected against (default, 202)
 // or (other, 101).
-//
-//nolint:paralleltest // serial: shared in-memory store fixture
 func TestConsoleTicketStore_ConsumeWithWrongClusterOrVMID_Fails(t *testing.T) {
+	t.Parallel()
+
 	store := NewConsoleTicketStore()
 
 	ticket := store.Issue("default", 101, "pve-node-01", "proxmox-ticket", 5901)
@@ -99,12 +103,13 @@ func TestConsoleTicketStore_ConsumeWithWrongClusterOrVMID_Fails(t *testing.T) {
 
 // TestConsoleTicketStore_EvictsOldestWhenFull — capacity is 256; the 257th
 // Issue evicts the oldest entry (B11's "TTL + éviction du plus ancien").
-//
-//nolint:paralleltest // serial: shared in-memory store fixture
 func TestConsoleTicketStore_EvictsOldestWhenFull(t *testing.T) {
+	t.Parallel()
+
 	store := NewConsoleTicketStore()
 
 	var first VNCTicket
+
 	for i := range ticketStoreCapacity {
 		ticket := store.Issue("default", 100+i, "pve-node-01", "ticket", 5901)
 		if i == 0 {
@@ -121,6 +126,7 @@ func TestConsoleTicketStore_EvictsOldestWhenFull(t *testing.T) {
 	// Re-issue the consumed slot so the store is exactly full again, then
 	// issue one more — that overflow evicts the oldest remaining ticket.
 	store.Issue("default", 100, "pve-node-01", "ticket", 5901)
+
 	oldest := store.oldestTokenForTest()
 	if oldest == "" {
 		t.Fatalf("expected at least one ticket in the store before overflow")
@@ -136,6 +142,8 @@ func TestConsoleTicketStore_EvictsOldestWhenFull(t *testing.T) {
 // TestConsoleTicketStore_TTLIsThirtySeconds — the TTL is a hardcoded 30s
 // constant (plan.md Constraints), not a configuration field.
 func TestConsoleTicketStore_TTLIsThirtySeconds(t *testing.T) {
+	t.Parallel()
+
 	store := NewConsoleTicketStore()
 
 	before := time.Now()

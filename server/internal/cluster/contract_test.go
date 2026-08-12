@@ -1,4 +1,3 @@
-//nolint:wsl_v5 // contract tests group shared implementation expectations
 package cluster_test
 
 import (

@@ -141,8 +141,10 @@ func list(ctx context.Context, index *inventory.Index, query ListQuery, identity
 		if err != nil {
 			return ListResult{}, fmt.Errorf("read quota: %w", err)
 		}
+
 		allowedQuota = quota.Allowed
 	}
+
 	if query.Scope != ScopeAll || !identity.IsAdmin {
 		result.Quota = &Quota{Used: len(scoped), Allowed: allowedQuota}
 	}

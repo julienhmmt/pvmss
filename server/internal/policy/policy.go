@@ -110,6 +110,7 @@ func (service *Policy) Gabarit(ctx context.Context, clusterName string) (Gabarit
 	if err != nil {
 		return Gabarit{}, err
 	}
+
 	return Gabarit{
 		MaxSockets: row.MaxSockets, MaxCores: row.MaxCores, MaxMemoryMB: row.MaxMemoryMB,
 		MaxDiskPerVMGB: row.MaxDiskPerVMGB, MaxNetworkCards: row.MaxNetworkCards,
@@ -125,9 +126,11 @@ func (service *Policy) Quota(ctx context.Context, clusterName string, actor auth
 	if err != nil {
 		return Quota{}, err
 	}
+
 	if actor.IsAdmin {
 		return Quota{Allowed: defaultMaxVMPerUser}, nil
 	}
+
 	return Quota{Used: service.poolVMCount(actor.Pool), Allowed: row.MaxVMPerUser}, nil
 }
 
@@ -140,29 +143,39 @@ func (service *Policy) NodeCapacity(ctx context.Context, clusterName, node strin
 	} else if err != nil {
 		return Capacity{}, fmt.Errorf("read node capacity: %w", err)
 	}
+
 	capacity := Capacity{Node: node, MaxVMs: row.MaxVMs, MaxVCPUs: row.MaxVCPUs, MaxRAMGB: row.MaxRAMGB, MaxDiskGB: row.MaxDiskGB}
 	if service.projection == nil || service.projection.Load() == nil {
 		return capacity, nil
 	}
+
 	index := service.projection.Load()
+
 	var usedRAMBytes int64
+
 	for _, machine := range index.ByNode[node] {
 		if !slices.Contains(machine.Tags, "pvmss") {
 			continue
 		}
+
 		capacity.UsedVMs++
 		capacity.UsedVCPUs += vmVCPUs(machine)
 		usedRAMBytes += machine.MemoryTotal
 	}
+
 	capacity.UsedRAMGB = int(usedRAMBytes / bytesPerGB)
+
 	for _, machine := range index.Nodes {
 		if machine.Name != node {
 			continue
 		}
+
 		capacity.PhysicalVCPUs = machine.CPUCores
 		capacity.PhysicalRAMGB = int(machine.MemoryTotal / bytesPerGB)
+
 		break
 	}
+
 	return capacity, nil
 }
 
@@ -172,6 +185,7 @@ func (service *Policy) poolVMCount(pool string) int {
 	if service.projection == nil || service.projection.Load() == nil {
 		return 0
 	}
+
 	return len(service.projection.Load().ByPool[pool])
 }
 
@@ -179,5 +193,6 @@ func vmVCPUs(machine cluster.VM) int {
 	if machine.Sockets > 0 && machine.Cores > 0 {
 		return machine.Sockets * machine.Cores
 	}
+
 	return machine.CPUCores
 }

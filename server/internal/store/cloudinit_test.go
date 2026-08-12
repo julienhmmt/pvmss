@@ -1,4 +1,3 @@
-//nolint:wsl_v5 // SQLite tests group setup, mutation, reopen, and assertions
 package store_test
 
 import (

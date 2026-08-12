@@ -39,9 +39,11 @@ func NewVMDetail(projection *inventory.Projection, authHandler *Auth, writer clu
 	if len(services) > 0 {
 		policyService = services[0]
 	}
+
 	if policyService == nil && st != nil {
 		policyService = policy.New(st, projection, nil)
 	}
+
 	return &VMDetail{projection: projection, auth: authHandler, writer: writer, store: st, refresher: refresher, policy: policyService, log: log}
 }
 
@@ -742,10 +744,12 @@ func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 		return
 	}
+
 	gabarit, err := h.policy.Gabarit(r.Context(), clusterName)
 	if err != nil {
 		h.log.Error("read gabarit failed", "component", "httpapi", "error", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+
 		return
 	}
 

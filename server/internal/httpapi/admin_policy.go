@@ -67,12 +67,15 @@ func (handler *AdminPolicy) ServePolicy(w http.ResponseWriter, r *http.Request) 
 		writeAdminError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
 		return
 	}
+
 	clusterName := queryCluster(r)
+
 	response, err := handler.readPolicy(r.Context(), clusterName)
 	if err != nil {
 		handler.writeFailure(w, "read policy", err)
 		return
 	}
+
 	writeAdminJSON(w, http.StatusOK, response)
 }
 
@@ -82,30 +85,38 @@ func (handler *AdminPolicy) ServePolicyUpdate(w http.ResponseWriter, r *http.Req
 		writeAdminError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
 		return
 	}
+
 	var request policyUpdateRequest
 	if err := decodeJSON(w, r, &request); err != nil {
 		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
 		return
 	}
+
 	clusterName := resolveCluster(request.Cluster)
+
 	current, err := handler.readPolicy(r.Context(), clusterName)
 	if err != nil {
 		handler.writeFailure(w, "read policy before update", err)
 		return
 	}
+
 	gabarit := gabaritFromDTO(current.Gabarit)
 	quota := current.Quota.MaxVMPerUser
+
 	applyGabaritPatch(&gabarit, request.Gabarit)
 	applyQuotaPatch(&quota, request.Quota)
+
 	if err := handler.service.SetPolicy(r.Context(), clusterName, gabarit, quota); err != nil {
 		handler.writePolicyValidation(w, err)
 		return
 	}
+
 	updated, err := handler.readPolicy(r.Context(), clusterName)
 	if err != nil {
 		handler.writeFailure(w, "read policy after update", err)
 		return
 	}
+
 	writeAdminJSON(w, http.StatusOK, updated)
 }
 
@@ -114,10 +125,12 @@ func (handler *AdminPolicy) readPolicy(ctx context.Context, clusterName string) 
 	if err != nil {
 		return policyResponse{}, err
 	}
+
 	quota, err := handler.service.Quota(ctx, clusterName, auth.Identity{})
 	if err != nil {
 		return policyResponse{}, err
 	}
+
 	return policyResponse{Cluster: clusterName, Gabarit: policyGabaritDTOFromModel(gabarit), Quota: policyQuotaDTO{MaxVMPerUser: quota.Allowed}}, nil
 }
 
@@ -133,24 +146,31 @@ func applyGabaritPatch(gabarit *policy.Gabarit, patch *policyGabaritPatch) {
 	if patch == nil {
 		return
 	}
+
 	if patch.MaxSockets != nil {
 		gabarit.MaxSockets = *patch.MaxSockets
 	}
+
 	if patch.MaxCores != nil {
 		gabarit.MaxCores = *patch.MaxCores
 	}
+
 	if patch.MaxMemoryMB != nil {
 		gabarit.MaxMemoryMB = *patch.MaxMemoryMB
 	}
+
 	if patch.MaxDiskPerVMGB != nil {
 		gabarit.MaxDiskPerVMGB = *patch.MaxDiskPerVMGB
 	}
+
 	if patch.MaxNetworkCards != nil {
 		gabarit.MaxNetworkCards = *patch.MaxNetworkCards
 	}
+
 	if patch.MaxSnapshots != nil {
 		gabarit.MaxSnapshots = *patch.MaxSnapshots
 	}
+
 	if patch.AllowCustomYaml != nil {
 		gabarit.AllowCustomYaml = *patch.AllowCustomYaml
 	}
@@ -167,6 +187,7 @@ func (handler *AdminPolicy) writePolicyValidation(w http.ResponseWriter, err err
 		writeAdminError(w, http.StatusBadRequest, "invalid_policy", err.Error())
 		return
 	}
+
 	handler.writeFailure(w, "write policy", err)
 }
 

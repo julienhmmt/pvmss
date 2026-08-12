@@ -143,6 +143,7 @@ func loadClusterSettings(cfg *Configuration) error {
 		if cfg.ProxmoxURL == "" {
 			return errors.New("PROXMOX_URL is required when PVMSS_CLUSTER_SOURCE=proxmox")
 		}
+
 		if cfg.ProxmoxAPITokenName == "" || cfg.ProxmoxAPITokenValue == "" {
 			return errors.New("PROXMOX_API_TOKEN_NAME and PROXMOX_API_TOKEN_VALUE are required when PVMSS_CLUSTER_SOURCE=proxmox")
 		}

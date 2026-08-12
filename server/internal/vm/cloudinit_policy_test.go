@@ -11,13 +11,16 @@ import (
 )
 
 func TestSetCloudInitSnippet_DisabledBeforeValidationAndResolve(t *testing.T) {
+	t.Parallel()
 	index := cloudInitIndex(t)
 	st := cloudInitStore(t)
 	service := policy.New(st, inventory.NewProjectionFromIndex(index), cluster.Fake{})
+
 	gabarit, err := service.Gabarit(context.Background(), testClusterName)
 	if err != nil {
 		t.Fatalf("Gabarit: %v", err)
 	}
+
 	gabarit.AllowCustomYaml = false
 	if err := service.SetGabarit(context.Background(), testClusterName, gabarit); err != nil {
 		t.Fatalf("SetGabarit: %v", err)
@@ -31,11 +34,14 @@ func TestSetCloudInitSnippet_DisabledBeforeValidationAndResolve(t *testing.T) {
 		{name: "ownership index unavailable", index: nil},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
 			cluster.ResetFake()
+
 			err := vm.SetCloudInitSnippet(context.Background(), testCase.index, cloudAliceIdentity(), testClusterName, 101, "not yaml", cluster.Fake{}, cluster.Fake{}, st, service)
 			if !errors.Is(err, vm.ErrCustomYAMLDisabled) {
 				t.Fatalf("error = %v, want ErrCustomYAMLDisabled", err)
 			}
+
 			if calls := cluster.FakeCalls(); len(calls) != 0 {
 				t.Fatalf("disabled snippet reached cluster: %+v", calls)
 			}

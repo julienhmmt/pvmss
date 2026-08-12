@@ -1,4 +1,3 @@
-//nolint:wsl_v5 // console handlers keep upgrade and relay adjacent
 package httpapi
 
 import (

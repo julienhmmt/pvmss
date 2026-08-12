@@ -1,4 +1,3 @@
-//nolint:wsl_v5 // handler tests keep request, response, and state assertions grouped
 package httpapi_test
 
 import (

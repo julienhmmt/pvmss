@@ -10,15 +10,19 @@ import (
 )
 
 func TestCheckQuota_UsesCurrentPoolAndAdminBypass(t *testing.T) {
+	t.Parallel()
 	service, projection := newPolicyService(t)
 	ctx := context.Background()
+
 	quota, err := service.Quota(ctx, "default", auth.Identity{Username: testUserAlice, Pool: cluster.FakePoolAlice})
 	if err != nil {
 		t.Fatalf("Quota: %v", err)
 	}
+
 	if err := service.SetGabarit(ctx, "default", policy.Gabarit{}); err != nil {
 		t.Fatalf("SetGabarit: %v", err)
 	}
+
 	if err := service.SetQuota(ctx, "default", quota.Used); err != nil {
 		t.Fatalf("SetQuota: %v", err)
 	}
@@ -26,17 +30,21 @@ func TestCheckQuota_UsesCurrentPoolAndAdminBypass(t *testing.T) {
 	if err := service.CheckQuota(ctx, "default", auth.Identity{Username: "admin", IsAdmin: true}); err != nil {
 		t.Fatalf("admin quota check: %v", err)
 	}
+
 	if err := service.CheckQuota(ctx, "default", auth.Identity{Username: testUserAlice, Pool: cluster.FakePoolAlice}); !errors.Is(err, policy.ErrQuotaExceeded) {
 		t.Fatalf("quota check error = %v, want ErrQuotaExceeded", err)
 	}
+
 	if len(projection.Load().ByPool[cluster.FakePoolAlice]) == 0 {
 		t.Fatal("fixture must provide an owned VM")
 	}
 }
 
 func TestCheckGabarit_ReportsFirstOffendingField(t *testing.T) {
+	t.Parallel()
 	service, _ := newPolicyService(t)
 	ctx := context.Background()
+
 	cases := []struct {
 		name  string
 		value policy.Gabarit
@@ -50,9 +58,12 @@ func TestCheckGabarit_ReportsFirstOffendingField(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
 			if err := service.SetGabarit(ctx, "default", testCase.value); err != nil {
 				t.Fatalf("SetGabarit: %v", err)
 			}
+
 			if err := testCase.check(); !errors.Is(err, policy.ErrGabaritExceeded) {
 				t.Fatalf("CheckGabarit error = %v, want ErrGabaritExceeded", err)
 			}
@@ -61,24 +72,31 @@ func TestCheckGabarit_ReportsFirstOffendingField(t *testing.T) {
 }
 
 func TestCheckNodeCapacity_ExcludesVMAndRejectsAdditionalUsage(t *testing.T) {
+	t.Parallel()
 	service, projection := newPolicyService(t)
 	ctx := context.Background()
+
 	machine, ok := projection.Load().ByNode[cluster.FakeNode02][0], true
 	if !ok {
 		t.Fatal("fixture must provide a VM on the first node")
 	}
+
 	current, err := service.NodeCapacity(ctx, "default", machine.Node)
 	if err != nil {
 		t.Fatalf("NodeCapacity: %v", err)
 	}
+
 	current.MaxVCPUs = current.UsedVCPUs
+
 	current.MaxRAMGB = current.UsedRAMGB
 	if err := service.SetNodeCapacity(ctx, "default", machine.Node, current); err != nil {
 		t.Fatalf("SetNodeCapacity: %v", err)
 	}
+
 	if err := service.CheckNodeCapacity(ctx, "default", machine.Node, machine.Sockets, machine.Cores, int(machine.MemoryTotal/(1024*1024)), machine.VMID); err != nil {
 		t.Fatalf("same VM footprint should fit after exclusion: %v", err)
 	}
+
 	if err := service.CheckNodeCapacity(ctx, "default", machine.Node, 1, 1, 1, 0); !errors.Is(err, policy.ErrNodeCapacityExceeded) {
 		t.Fatalf("additional capacity error = %v, want ErrNodeCapacityExceeded", err)
 	}

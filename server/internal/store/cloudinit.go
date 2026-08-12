@@ -31,8 +31,6 @@ type CloudInitSnippet struct {
 }
 
 // GetCloudInitSnippet returns found=false when no snippet row exists.
-//
-//nolint:wsl_v5 // query and timestamp parsing form one persistence boundary
 func (s *Store) GetCloudInitSnippet(ctx context.Context, cluster string, vmid int) (CloudInitSnippet, bool, error) {
 	var (
 		snippet CloudInitSnippet
@@ -69,8 +67,6 @@ func (s *Store) GetCloudInitSnippet(ctx context.Context, cluster string, vmid in
 }
 
 // PutCloudInitSnippet upserts one snippet row. Empty content is retained to represent explicit clear.
-//
-//nolint:wsl_v5 // SQL arguments and upsert belong to one atomic repository operation
 func (s *Store) PutCloudInitSnippet(ctx context.Context, cluster string, vmid int, storage, filename, content, actor string) error {
 	stamp := time.Now().UTC().Format(time.RFC3339Nano)
 
