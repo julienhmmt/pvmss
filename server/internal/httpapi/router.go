@@ -39,6 +39,7 @@ type RouterConfig struct {
 	ClusterRefresh   http.Handler
 	VMs              http.Handler
 	VMDetail         http.Handler
+	VMBulk           *VMBulk
 	VMCloudInit      *VMCloudInit
 	VMCreate         *VMCreate
 	Tasks            *Tasks
@@ -66,6 +67,13 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	// itself (for scope enforcement) and calls h.auth.Principal(r) directly,
 	// returning 401 on its own — wrapping would just re-run the same check.
 	mux.Handle("GET /api/v1/vms", cfg.VMs)
+	// T17 bulk VM power actions — same Principal pattern as VM list/detail:
+	// the handler calls h.auth.Principal(r) directly and returns 401 on its
+	// own, so it is not wrapped in auth.Require. Registered before the
+	// {cluster}/{vmid} pattern so the literal "bulk-action" segment wins.
+	if cfg.VMBulk != nil {
+		mux.Handle("POST /api/v1/vms/bulk-action", cfg.VMBulk)
+	}
 	// VM creation + catalog + task polling — same Principal pattern as above.
 	if cfg.VMCreate != nil {
 		mux.Handle("POST /api/v1/vms", cfg.VMCreate)
