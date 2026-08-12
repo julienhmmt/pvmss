@@ -11,7 +11,8 @@ import (
 	"testing"
 )
 
-func TestNewLogger(t *testing.T) {
+//nolint:paralleltest // serial: shared logger and environment fixtures
+func TestNewLogger(t *testing.T) { //nolint:gocyclo,funlen // table-driven logger test covers formats and output modes
 	cases := []struct {
 		name     string
 		cfg      config.Configuration
@@ -22,17 +23,19 @@ func TestNewLogger(t *testing.T) {
 			name: "json writes structured entries",
 			cfg: config.Configuration{
 				Port:      50001,
-				DBPath:    ":memory:",
-				LogLevel:  "info",
-				LogFormat: "json",
+				DBPath:    testMemoryDB,
+				LogLevel:  testLogLevel,
+				LogFormat: testLogFormat,
 				LogOutput: filepath.Join(t.TempDir(), "log.jsonl"),
 			},
 			validate: func(t *testing.T, path string) {
+				t.Helper()
+
 				logger, closer, err := config.NewLogger(config.Configuration{
 					Port:      50001,
-					DBPath:    ":memory:",
-					LogLevel:  "info",
-					LogFormat: "json",
+					DBPath:    testMemoryDB,
+					LogLevel:  testLogLevel,
+					LogFormat: testLogFormat,
 					LogOutput: path,
 				})
 				if err != nil {
@@ -51,6 +54,7 @@ func TestNewLogger(t *testing.T) {
 				if err != nil {
 					t.Fatalf("read log: %v", err)
 				}
+
 				if len(entries) != 3 {
 					t.Fatalf("expected 3 log entries, got %d", len(entries))
 				}
@@ -70,12 +74,15 @@ func TestNewLogger(t *testing.T) {
 					if got.Message != want.message {
 						t.Fatalf("entry %d: message = %q, want %q", i, got.Message, want.message)
 					}
+
 					if got.Level != want.level {
 						t.Fatalf("entry %d: level = %q, want %q", i, got.Level, want.level)
 					}
+
 					if got.Component != want.component {
 						t.Fatalf("entry %d: component = %q, want %q", i, got.Component, want.component)
 					}
+
 					if got.Timestamp == "" {
 						t.Fatalf("entry %d: timestamp is empty", i)
 					}
@@ -90,34 +97,40 @@ func TestNewLogger(t *testing.T) {
 			name: "console writes text",
 			cfg: config.Configuration{
 				Port:      50001,
-				DBPath:    ":memory:",
-				LogLevel:  "info",
+				DBPath:    testMemoryDB,
+				LogLevel:  testLogLevel,
 				LogFormat: "console",
 				LogOutput: filepath.Join(t.TempDir(), "log.txt"),
 			},
 			validate: func(t *testing.T, path string) {
+				t.Helper()
+
 				logger, closer, err := config.NewLogger(config.Configuration{
 					Port:      50001,
-					DBPath:    ":memory:",
-					LogLevel:  "info",
+					DBPath:    testMemoryDB,
+					LogLevel:  testLogLevel,
 					LogFormat: "console",
 					LogOutput: path,
 				})
 				if err != nil {
 					t.Fatalf("NewLogger: %v", err)
 				}
+
 				logger.Info("hello console", "component", "test")
+
 				if err := closer.Close(); err != nil {
 					t.Fatalf("closer.Close: %v", err)
 				}
 
-				content, err := os.ReadFile(path)
+				content, err := os.ReadFile(path) //nolint:gosec // path is test-controlled via t.TempDir
 				if err != nil {
 					t.Fatalf("read log: %v", err)
 				}
+
 				if !strings.Contains(string(content), "hello console") {
 					t.Fatalf("console log should contain message: %q", string(content))
 				}
+
 				if !strings.Contains(string(content), "test") {
 					t.Fatalf("console log should contain component: %q", string(content))
 				}
@@ -127,17 +140,17 @@ func TestNewLogger(t *testing.T) {
 			name: "unknown level returns error",
 			cfg: config.Configuration{
 				LogLevel:  "verbose",
-				LogFormat: "json",
-				LogOutput: "stdout",
+				LogFormat: testLogFormat,
+				LogOutput: testLogOutput,
 			},
 			wantErr: true,
 		},
 		{
 			name: "unknown format returns error",
 			cfg: config.Configuration{
-				LogLevel:  "info",
+				LogLevel:  testLogLevel,
 				LogFormat: "xml",
-				LogOutput: "stdout",
+				LogOutput: testLogOutput,
 			},
 			wantErr: true,
 		},
@@ -150,11 +163,14 @@ func TestNewLogger(t *testing.T) {
 				if err == nil {
 					t.Fatalf("expected error, got nil")
 				}
+
 				return
 			}
+
 			if err != nil {
 				t.Fatalf("NewLogger: %v", err)
 			}
+
 			defer func() { _ = closer.Close() }()
 
 			if c.validate != nil {
@@ -174,18 +190,23 @@ type logEntry struct {
 
 func readLogEntries(path string) ([]logEntry, error) {
 	entries := []logEntry{}
-	f, err := os.Open(path)
+
+	f, err := os.Open(path) //nolint:gosec // path is test-controlled via t.TempDir
 	if err != nil {
 		return nil, err
 	}
+
 	defer func() { _ = f.Close() }()
+
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		var e logEntry
 		if err := json.Unmarshal(scanner.Bytes(), &e); err != nil {
 			return nil, err
 		}
+
 		entries = append(entries, e)
 	}
+
 	return entries, scanner.Err()
 }

@@ -22,11 +22,18 @@ services:
       ADMIN_PASSWORD_HASH: "$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
       # PVMSS settings — general
       PVMSS_DB_PATH: "/data/pvmss.db"
+      # Bind all interfaces inside the container so the host port mapping
+      # below ("50000:50000") can reach the server.
+      PVMSS_HOST: "0.0.0.0"
       LOG_LEVEL: "INFO"
       LOG_OUTPUT: "file" # stdout / file / both
       LOG_FILE_PATH: "/app/info.log" # If "file" or "both" on LOG_OUTPUT,
       LOG_FORMAT: "console" # "console" or "json". If "json", the log will be in JSON format, used for SIEM.
-      PVMSS_ENV: "prod" # Environment: production/prod or development/dev/developpement
+      # This example serves plain HTTP on port 50000 with no TLS terminator,
+      # so PVMSS_ENV is set to "development" to allow non-Secure auth cookies.
+      # For production, put PVMSS behind HTTPS and set PVMSS_ENV: "production"
+      # (PVMSS_COOKIE_SECURE then defaults to true and cannot be disabled).
+      PVMSS_ENV: "development"
       PVMSS_OFFLINE: "false"
       TZ: "Europe/Paris"
     volumes:

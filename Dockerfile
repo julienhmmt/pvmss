@@ -1,40 +1,36 @@
-# Build stage - Go
+# Build stage - Go (v0.4 server)
 FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
 
-# Install build dependencies and create necessary directories
-# Keep gcc/musl-dev present for the static build; remove later if needed.
-RUN set -eux; \
-    apk add --no-cache gcc musl-dev; \
-    mkdir -p /app/backend /app/frontend /app/backend/i18n /app/backend/docs
-
-# Copy dependency files first for better layer caching
-COPY backend/go.mod backend/go.sum ./
+# Copy server dependency files first for better layer caching.
+# The module is pvmss/server (server/go.mod), so go.mod must sit at /app/
+# and source files must live directly under /app/ (not /app/server/) for
+# import paths to resolve correctly.
+COPY server/go.mod server/go.sum ./
 
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod download
 
-# Copy backend source code
-COPY backend/ ./backend/
+# Copy server source code (module root = /app/)
+COPY server/ ./
 
-# Build the application (static, no external libc dependency)
+# Build the v0.4 server binary (static, CGO disabled — no C toolchain needed)
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
-    cd backend && \
     CGO_ENABLED=0 GOOS=linux \
-    go build -trimpath -ldflags='-w -s' -tags netgo -o ../pvmss-backend .
+    go build -trimpath -ldflags='-w -s' -tags netgo -o pvmss ./cmd/pvmss
 
-# Build SvelteKit SPA
+# Build SvelteKit SPA (v0.4 web)
 FROM oven/bun:1-alpine AS svelte-builder
-WORKDIR /app/frontend
+WORKDIR /app/web
 
-# Copy lockfile first for better layer caching (bun equivalent of npm ci)
-COPY frontend/package.json frontend/bun.lock ./
+# Copy lockfile first for better layer caching
+COPY web/package.json web/bun.lock ./
 
 RUN bun install --frozen-lockfile
 
-COPY frontend/ ./
+COPY web/ ./
 
 RUN bun run build
 
@@ -43,18 +39,24 @@ FROM gcr.io/distroless/static-debian13:nonroot
 
 WORKDIR /app
 
-# Copy Go binary
-COPY --from=builder --chown=nonroot:nonroot /app/pvmss-backend /app/pvmss-backend
-# SvelteKit build output — includes static assets (noVNC, robots.txt, etc.)
-COPY --from=svelte-builder --chown=nonroot:nonroot /app/frontend/build/ /app/frontend/build/
-COPY --from=builder --chown=nonroot:nonroot /app/backend/i18n/ /app/backend/i18n/
-COPY --from=builder --chown=nonroot:nonroot /app/backend/docs/ /app/backend/docs/
+# Copy v0.4 Go binary
+COPY --from=builder --chown=nonroot:nonroot /app/pvmss /app/pvmss
+# SvelteKit build output (v0.4 web)
+COPY --from=svelte-builder --chown=nonroot:nonroot /app/web/build/ /app/web/build/
 
 # Default database path (override at runtime with -e PVMSS_DB_PATH=...)
 ENV PVMSS_DB_PATH=/data/pvmss.db
+# Bind all interfaces inside the container; the host port mapping in
+# docker-compose / k8s controls external exposure. Override with
+# -e PVMSS_HOST=127.0.0.1 for bare-metal/loopback-only deployments.
+ENV PVMSS_HOST=0.0.0.0
+# Web build directory — the v0.4 binary resolves this via PVMSS_WEB_DIR
+# or falls back to a path relative to the executable.
+ENV PVMSS_WEB_DIR=/app/web/build
 
 # Expose the port the app runs on
 EXPOSE 50000
 
-# Default command to run the application with template path
-ENTRYPOINT ["/app/pvmss-backend","-templates","/app/frontend"]
+# v0.4 entrypoint — the server binary (no -templates flag; web dir is
+# resolved via PVMSS_WEB_DIR env var or relative to the executable).
+ENTRYPOINT ["/app/pvmss"]

@@ -2,8 +2,6 @@
 namespace: pvmss
 createNamespace: true
 
-replicaCount: 1
-
 # SERVICE ACCOUNT
 serviceAccount:
   create: true
@@ -55,6 +53,10 @@ deployment:
     PVMSS_ENV: "production"
     PVMSS_OFFLINE: "false"
     PVMSS_DB_PATH: "/data/pvmss.db"
+    # Bind all interfaces inside the container; the Service controls exposure.
+    PVMSS_HOST: "0.0.0.0"
+    # v0.4 web build directory (served by the v0.4 binary)
+    PVMSS_WEB_DIR: "/app/web/build"
     TZ: "Europe/Paris"
   secretEnv:
     ADMIN_PASSWORD_HASH: admin-password-hash
@@ -97,15 +99,3 @@ extraLabels: {}
 nodeSelector: {}
 tolerations: []
 affinity: {}
-podAnnotations: {}
-podLabels: {}
-podSecurityContext: {}
-  # fsGroup: 2000
-
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000

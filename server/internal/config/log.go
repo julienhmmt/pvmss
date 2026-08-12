@@ -17,16 +17,18 @@ func NewLogger(cfg Configuration) (*slog.Logger, io.WriteCloser, error) {
 	}
 
 	var w io.WriteCloser
+
 	switch strings.ToLower(cfg.LogOutput) {
 	case "stdout":
 		w = nopWriteCloser{Writer: os.Stdout}
 	case "stderr":
 		w = nopWriteCloser{Writer: os.Stderr}
 	default:
-		f, err := os.OpenFile(cfg.LogOutput, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		f, err := os.OpenFile(cfg.LogOutput, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 		if err != nil {
 			return nil, nil, fmt.Errorf("open log output %q: %w", cfg.LogOutput, err)
 		}
+
 		w = f
 	}
 
@@ -36,6 +38,7 @@ func NewLogger(cfg Configuration) (*slog.Logger, io.WriteCloser, error) {
 	}
 
 	var handler slog.Handler
+
 	switch strings.ToLower(cfg.LogFormat) {
 	case "json":
 		handler = slog.NewJSONHandler(w, opts)
@@ -59,6 +62,7 @@ func parseLogLevel(level string) (slog.Level, error) {
 	case "error":
 		return slog.LevelError, nil
 	}
+
 	return slog.LevelInfo, fmt.Errorf("unknown log level %q", level)
 }
 
@@ -71,6 +75,7 @@ func renameKeys(_ []string, a slog.Attr) slog.Attr {
 	case slog.MessageKey:
 		a.Key = "message"
 	}
+
 	return a
 }
 
