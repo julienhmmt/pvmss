@@ -1,3 +1,4 @@
+//nolint:wsl_v5 // startup persistence setup keeps key and seed handling adjacent
 package store
 
 import (
@@ -49,5 +50,27 @@ func Open(cfg config.Configuration) (*Store, error) {
 		return nil, fmt.Errorf("run migrations: %w", err)
 	}
 
-	return &Store{db: db, staging: NewImportStaging()}, nil
+	st := &Store{db: db, staging: NewImportStaging()}
+	if cfg.SessionSecret == "" {
+		return st, nil
+	}
+
+	key, err := deriveEncryptionKey(cfg.SessionSecret)
+	if err != nil {
+		_ = db.Close()
+		return nil, err
+	}
+	st.encryptionKey = key
+
+	// Demo cluster seeds are written only when the operator has selected the
+	// fake cluster source — i.e. a non-production deployment. A real Proxmox
+	// instance must never start with hardcoded demo credentials in its database.
+	if cfg.ClusterSource == "fake" {
+		if err := st.ensureSeedClusters(ctx); err != nil {
+			_ = db.Close()
+			return nil, fmt.Errorf("seed clusters: %w", err)
+		}
+	}
+
+	return st, nil
 }

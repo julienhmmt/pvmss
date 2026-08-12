@@ -1,3 +1,4 @@
+//nolint:wsl_v5 // tag handlers keep cluster selection and catalog mapping adjacent
 package httpapi
 
 import (
@@ -29,7 +30,12 @@ type tagColorRequest struct {
 // ServeTags handles GET /api/v1/admin/tags — lists all tags with live VM
 // counts computed from the inventory projection (FR-015).
 func (h *AdminCatalog) ServeTags(w http.ResponseWriter, r *http.Request) {
-	clusterName := queryCluster(r)
+	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
 
 	tags, err := catalog.ListTags(r.Context(), h.store, h.projection, clusterName)
 	if err != nil {
@@ -57,7 +63,12 @@ func (h *AdminCatalog) ServeTagCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clusterName := resolveCluster(req.Cluster)
+	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
 
 	tag, err := catalog.CreateTag(r.Context(), h.store, clusterName, req.Name, req.Color)
 	if errors.Is(err, catalog.ErrDuplicateTag) {
@@ -96,7 +107,12 @@ func (h *AdminCatalog) ServeTagColor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clusterName := resolveCluster(req.Cluster)
+	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
 
 	tag, err := catalog.SetTagColor(r.Context(), h.store, clusterName, name, req.Color)
 	if errors.Is(err, catalog.ErrTagNotFound) {
@@ -136,7 +152,12 @@ func (h *AdminCatalog) ServeTagDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clusterName := queryCluster(r)
+	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
 
 	err := catalog.DeleteTag(r.Context(), h.store, clusterName, name)
 	if errors.Is(err, catalog.ErrProtectedTag) {

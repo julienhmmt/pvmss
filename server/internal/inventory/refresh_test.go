@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+const (
+	retryGuardInterval    = 2 * time.Second
+	retryObservationDelay = 100 * time.Millisecond
+	retryMaximumAfterWait = 1900 * time.Millisecond
+)
+
 // TestRefresh_OutsideGuardSucceeds — a manual refresh outside the guard
 // interval succeeds and calls the client.
 //
@@ -88,8 +94,9 @@ func TestRefresh_RetryAfterCountsDownNotFullInterval(t *testing.T) {
 	worker := inventory.NewWorker(client, projection, time.Hour, testLogger())
 	_, _ = worker.Refresh(context.Background())
 
-	refresher := inventory.NewRefresher(worker, 200*time.Millisecond)
-	time.Sleep(150 * time.Millisecond)
+	refresher := inventory.NewRefresher(worker, retryGuardInterval)
+
+	time.Sleep(retryObservationDelay)
 
 	_, err := refresher.Refresh(context.Background())
 
@@ -98,8 +105,8 @@ func TestRefresh_RetryAfterCountsDownNotFullInterval(t *testing.T) {
 		t.Fatalf("expected *TooSoonError, got %v", err)
 	}
 
-	if tooSoon.RetryAfter >= 100*time.Millisecond {
-		t.Fatalf("RetryAfter = %v, expected well under the full 200ms interval after waiting 150ms", tooSoon.RetryAfter)
+	if tooSoon.RetryAfter >= retryMaximumAfterWait {
+		t.Fatalf("RetryAfter = %v, expected less than %v after the observation delay", tooSoon.RetryAfter, retryMaximumAfterWait)
 	}
 }
 

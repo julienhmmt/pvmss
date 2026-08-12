@@ -1,3 +1,4 @@
+//nolint:wsl_v5 // authentication handlers keep credential validation and response mapping adjacent
 package httpapi
 
 import (
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/store"
 	"strings"
 	"time"
 
@@ -21,6 +23,7 @@ const minPasswordLength = 8
 type loginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+	Cluster  string `json:"cluster"`
 }
 
 type adminLoginRequest struct {
@@ -64,16 +67,23 @@ type tokenListResponse struct {
 
 // Auth exposes browser login, session inspection, and logout endpoints.
 type Auth struct {
-	cluster   cluster.Client
-	sessions  *auth.SessionManager
-	adminHash string
-	tokens    *auth.TokenService
-	log       *slog.Logger
+	cluster      cluster.Client
+	clusters     cluster.ClientProvider
+	clusterStore *store.Store
+	sessions     *auth.SessionManager
+	adminHash    string
+	tokens       *auth.TokenService
+	log          *slog.Logger
 }
 
-// NewAuth creates the authentication endpoint handlers.
+// NewAuth creates the legacy single-cluster authentication endpoint handlers.
 func NewAuth(clusterClient cluster.Client, sessions *auth.SessionManager, adminHash string, tokens *auth.TokenService, log *slog.Logger) *Auth {
 	return &Auth{cluster: clusterClient, sessions: sessions, adminHash: adminHash, tokens: tokens, log: log}
+}
+
+// NewAuthWithRegistry creates authentication handlers with runtime cluster choice.
+func NewAuthWithRegistry(registry cluster.ClientProvider, st *store.Store, sessions *auth.SessionManager, adminHash string, tokens *auth.TokenService, log *slog.Logger) *Auth {
+	return &Auth{clusters: registry, clusterStore: st, sessions: sessions, adminHash: adminHash, tokens: tokens, log: log}
 }
 
 // Login authenticates a PVE cluster account. The local administrator has its
@@ -97,15 +107,28 @@ func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.cluster.Authenticate(r.Context(), normalizePVEUsername(request.Username), request.Password)
+	client, clusterName, err := h.loginClient(request.Cluster)
+	if errors.Is(err, errAuthClusterRequired) {
+		writeAuthError(w, http.StatusBadRequest, "cluster_required", "cluster is required when multiple clusters are configured")
+		return
+	}
+	if errors.Is(err, cluster.ErrClusterNotFound) {
+		writeAuthError(w, http.StatusBadRequest, "invalid_cluster", "unknown cluster")
+		return
+	}
+	if err != nil {
+		h.log.Error("select cluster for login failed", "component", "httpapi", "error", err)
+		writeAuthError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	result, err := client.Authenticate(r.Context(), normalizePVEUsername(request.Username), request.Password)
 	if err != nil {
 		h.log.Info("pve authentication failed", "component", "httpapi", "error", err)
 		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", "invalid credentials")
-
 		return
 	}
 
-	h.startSession(w, r, auth.Identity{Username: result.Username, Pool: result.Pool, IsAdmin: result.IsAdmin})
+	h.startSession(w, r, auth.Identity{Username: result.Username, Pool: result.Pool, IsAdmin: result.IsAdmin, Cluster: clusterName})
 }
 
 // AdminLogin authenticates the local emergency administrator, independent of any cluster.
@@ -318,7 +341,16 @@ func (h *Auth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.cluster.ChangePassword(r.Context(), identity.Username, request.OldPassword, request.NewPassword); err != nil {
+	client := h.cluster
+	if h.clusters != nil && identity.Cluster != "" {
+		selected, selectErr := h.clusters.Client(identity.Cluster)
+		if selectErr != nil {
+			writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", "invalid credentials")
+			return
+		}
+		client = selected
+	}
+	if err := client.ChangePassword(r.Context(), identity.Username, request.OldPassword, request.NewPassword); err != nil {
 		h.log.Info("password change failed", "component", "httpapi", "error", err)
 		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", "invalid credentials")
 
@@ -326,6 +358,75 @@ func (h *Auth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+var errAuthClusterRequired = errors.New("authentication cluster required")
+
+func (h *Auth) loginClient(name string) (cluster.Client, string, error) {
+	if h.clusters == nil {
+		return h.cluster, "", nil
+	}
+	names := h.clusters.List()
+	if name == "" {
+		if len(names) != 1 {
+			return nil, "", errAuthClusterRequired
+		}
+		name = names[0]
+	}
+	client, err := h.clusters.Client(name)
+	if err != nil {
+		return nil, "", err
+	}
+	return client, name, nil
+}
+
+type authClusterDTO struct {
+	Name        string `json:"name"`
+	OIDCEnabled bool   `json:"oidcEnabled"`
+}
+
+// ServeClusters exposes the non-secret cluster choices needed before login.
+func (h *Auth) ServeClusters(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeAuthError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+		return
+	}
+	if h.clusterStore == nil {
+		writeAuthJSON(w, http.StatusOK, []authClusterDTO{{Name: "default"}})
+		return
+	}
+	rows, err := h.clusterStore.ListClusters(r.Context())
+	if err != nil {
+		h.log.Error("list login clusters failed", "component", "httpapi", "error", err)
+		writeAuthError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+	result := make([]authClusterDTO, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, authClusterDTO{Name: row.Name, OIDCEnabled: row.OIDCEnabled})
+	}
+	writeAuthJSON(w, http.StatusOK, result)
+}
+
+type oidcRequest struct {
+	Cluster string `json:"cluster"`
+}
+
+// OIDC returns the deliberate T15 not-implemented response for enabled realms.
+func (h *Auth) OIDC(w http.ResponseWriter, r *http.Request) {
+	var request oidcRequest
+	if err := decodeJSON(w, r, &request); err != nil || request.Cluster == "" {
+		writeAuthError(w, http.StatusBadRequest, "invalid_request", "cluster is required")
+		return
+	}
+	if h.clusterStore != nil {
+		row, err := h.clusterStore.GetCluster(r.Context(), request.Cluster)
+		if err != nil || !row.OIDCEnabled {
+			writeAuthError(w, http.StatusNotFound, "not_found", "OIDC is not enabled for this cluster")
+			return
+		}
+	}
+	writeAuthError(w, http.StatusNotImplemented, "not_implemented", "OIDC sign-in is not implemented")
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, dest any) error {

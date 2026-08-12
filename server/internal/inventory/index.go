@@ -2,6 +2,8 @@
 // periodically refreshed index built from a cluster.Snapshot, indexed for
 // the lookups later tranches need (by VM ID, by pool, by node). The index
 // is never persisted (AC02: it is a cache, never a source of truth).
+//
+//nolint:wsl_v5 // index construction keeps copy and index stages adjacent
 package inventory
 
 import (
@@ -22,6 +24,7 @@ type Index struct {
 	ByPool         map[string][]cluster.VM
 	ByNode         map[string][]cluster.VM
 	StoragesByNode map[string][]cluster.Storage
+	ProxmoxVersion string
 	RefreshedAt    time.Time
 }
 
@@ -29,6 +32,11 @@ type Index struct {
 // it never mutates the input Snapshot, and the returned Index owns its own
 // copies of all slice and map data (data-model.md invariant 3).
 func BuildIndex(snap cluster.Snapshot) Index {
+	return BuildIndexForCluster("", snap)
+}
+
+// BuildIndexForCluster constructs an index and stamps every VM with its owning cluster.
+func BuildIndexForCluster(clusterName string, snap cluster.Snapshot) Index {
 	nodes := make([]cluster.Node, len(snap.Nodes))
 	copy(nodes, snap.Nodes)
 	slices.SortFunc(nodes, func(a, b cluster.Node) int {
@@ -38,6 +46,7 @@ func BuildIndex(snap cluster.Snapshot) Index {
 	vms := make([]cluster.VM, len(snap.VMs))
 	for i, vm := range snap.VMs {
 		vms[i] = vm
+		vms[i].Cluster = clusterName
 		if vm.Tags != nil {
 			vms[i].Tags = append([]string(nil), vm.Tags...)
 		}
@@ -79,5 +88,6 @@ func BuildIndex(snap cluster.Snapshot) Index {
 		ByPool:         byPool,
 		ByNode:         byNode,
 		StoragesByNode: storagesByNode,
+		ProxmoxVersion: snap.ProxmoxVersion,
 	}
 }

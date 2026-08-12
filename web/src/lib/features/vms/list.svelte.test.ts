@@ -20,6 +20,7 @@ function makeStore(initialQuery = '', scope: 'mine' | 'all' = 'mine'): {
 const oneVmResult: VmListResult = {
 	items: [
 		{
+			cluster: 'default',
 			vmid: 100,
 			name: 'web-01',
 			node: 'pve-node-01',
@@ -72,6 +73,12 @@ describe('VmListStore', () => {
 		const { store } = makeStore('', 'all');
 		store.setSort('cpu');
 		expect(store.queryString()).toBe('sortBy=cpu&scope=all');
+	});
+
+	it('parses and serializes the optional cluster filter', () => {
+		const { store } = makeStore('?cluster=secondary');
+		expect(store.cluster).toBe('secondary');
+		expect(store.queryString()).toBe('cluster=secondary');
 	});
 
 	it('loads the list through the shared API client', async () => {

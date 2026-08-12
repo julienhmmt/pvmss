@@ -9,6 +9,7 @@ export type VmSortDir = 'asc' | 'desc';
 export type VmEmptyReason = 'no_vms_owned' | 'no_match';
 
 export interface VmListItem {
+	cluster: string;
 	vmid: number;
 	name: string;
 	node: string;
@@ -61,6 +62,7 @@ export class VmListStore {
 	loading = $state.raw(false);
 	error = $state.raw<string | null>(null);
 
+	cluster = $state('');
 	search = $state('');
 	status = $state<VmStatus | ''>('');
 	node = $state('');
@@ -76,6 +78,7 @@ export class VmListStore {
 		this.scope = options.scope;
 		this.#navigate = options.navigate;
 		const params = new SvelteURLSearchParams(options.initialQuery);
+		this.cluster = params.get('cluster') ?? '';
 		this.search = params.get('search') ?? '';
 		this.status = (params.get('status') ?? '') as VmStatus | '';
 		this.node = params.get('node') ?? '';
@@ -88,6 +91,7 @@ export class VmListStore {
 	/** Builds the query string for the current state; only non-default values appear. */
 	queryString(): string {
 		const params = new SvelteURLSearchParams();
+		if (this.cluster !== '') params.set('cluster', this.cluster);
 		if (this.search !== '') params.set('search', this.search);
 		if (this.status !== '') params.set('status', this.status);
 		if (this.node !== '') params.set('node', this.node);
@@ -121,6 +125,12 @@ export class VmListStore {
 			this.page = 1;
 			this.#syncAndLoad();
 		}, SEARCH_DEBOUNCE_MS);
+	}
+
+	setCluster(value: string): void {
+		this.cluster = value;
+		this.page = 1;
+		this.#syncAndLoad();
 	}
 
 	setStatus(value: VmStatus | ''): void {
