@@ -9,6 +9,12 @@ import (
 	"net/http"
 	"path"
 	"strings"
+	"time"
+)
+
+const (
+	authRateLimitMaxRequests = 10
+	authRateLimitWindow      = time.Minute
 )
 
 // errorResponse is the public error shape for unknown API paths.
@@ -99,8 +105,11 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/console/websocket", cfg.VMConsole)
 	}
 
-	mux.HandleFunc("POST /api/v1/auth/login", cfg.Auth.Login)
-	mux.HandleFunc("POST /api/v1/auth/admin-login", cfg.Auth.AdminLogin)
+	// Unauthenticated credential-check endpoints get a per-IP rate limit —
+	// nothing else gates repeated guesses against them.
+	authLimiter := newIPRateLimiter(authRateLimitMaxRequests, authRateLimitWindow)
+	mux.Handle("POST /api/v1/auth/login", authLimiter.middleware(http.HandlerFunc(cfg.Auth.Login)))
+	mux.Handle("POST /api/v1/auth/admin-login", authLimiter.middleware(http.HandlerFunc(cfg.Auth.AdminLogin)))
 	mux.HandleFunc("GET /api/v1/auth/me", cfg.Auth.Me)
 	mux.HandleFunc("POST /api/v1/auth/logout", cfg.Auth.Logout)
 	mux.HandleFunc("POST /api/v1/auth/tokens", cfg.Auth.CreateToken)
