@@ -113,7 +113,7 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 
 	clusterName := r.URL.Query().Get("cluster")
 	if clusterName == "" {
-		clusterName = "default"
+		clusterName = defaultClusterName
 	}
 
 	resources, err := catalog.ApprovedResources(r.Context(), h.store, clusterName)
