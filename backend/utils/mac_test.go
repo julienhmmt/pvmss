@@ -237,7 +237,10 @@ func TestGenerateRandomMACAddress(t *testing.T) {
 	macs := make(map[string]bool)
 
 	for i := 0; i < 100; i++ {
-		mac := GenerateRandomMACAddress()
+		mac, err := GenerateRandomMACAddress()
+		if err != nil {
+			t.Fatalf("GenerateRandomMACAddress failed: %v", err)
+		}
 
 		// Test that generated MAC is valid
 		if !ValidateMACAddress(mac) {
@@ -297,6 +300,8 @@ func BenchmarkNormalizeMACAddress(b *testing.B) {
 func BenchmarkGenerateRandomMACAddress(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		GenerateRandomMACAddress()
+		if _, err := GenerateRandomMACAddress(); err != nil {
+			b.Fatalf("GenerateRandomMACAddress: %v", err)
+		}
 	}
 }
