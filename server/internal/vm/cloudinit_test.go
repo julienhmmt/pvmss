@@ -100,6 +100,11 @@ func TestSetCloudInitConfig_MergesDHCPAuditsAndDoesNotReboot(t *testing.T) {
 func TestSetCloudInitConfig_RebootNowCallsT05Once(t *testing.T) {
 	index := cloudInitIndex(t)
 	st := cloudInitStore(t)
+	// T001b: the fake now rejects reboot on a stopped VM. VM 101 is stopped in
+	// the pristine dataset — start it first so the reboot succeeds.
+	if err := (cluster.Fake{}).Action(context.Background(), cluster.FakeNode01, 101, "start"); err != nil {
+		t.Fatalf("start VM 101 for test setup: %v", err)
+	}
 	user := "ubuntu"
 	rebooted, err := vm.SetCloudInitConfig(context.Background(), index, cloudAliceIdentity(), "default", 101, cluster.CloudInitUpdate{User: &user}, true, cluster.Fake{}, cluster.Fake{}, st, testRefresher{})
 	if err != nil {

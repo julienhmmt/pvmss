@@ -163,3 +163,46 @@ func nodeNames(t *testing.T) map[string]bool {
 
 	return names
 }
+
+// TestFake_Action_RejectsStatusIncompatibleTransition — T001b: the fake's
+// Action method rejects a transition that makes no sense for the VM's current
+// status (start on already-running, stop on already-stopped). This behaviour
+// did not exist in T05 — this tranche's User Story 1 Acceptance Scenario 2 is
+// the first caller that needs it. Real Proxmox already rejects these natively.
+//
+//nolint:paralleltest // serial: shared fake dataset
+func TestFake_Action_RejectsStatusIncompatibleTransition(t *testing.T) {
+	tests := []struct {
+		name    string
+		vmid    int
+		action  string
+		wantErr bool
+	}{
+		{name: "start on running", vmid: 100, action: "start", wantErr: true},   // VM 100 is running
+		{name: "stop on stopped", vmid: 101, action: "stop", wantErr: true},     // VM 101 is stopped
+		{name: "shutdown on stopped", vmid: 101, action: "shutdown", wantErr: true},
+		{name: "reboot on stopped", vmid: 101, action: "reboot", wantErr: true},
+		{name: "start on stopped", vmid: 101, action: "start", wantErr: false},  // valid
+		{name: "stop on running", vmid: 100, action: "stop", wantErr: false},    // valid
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ResetFake()
+			defer ResetFake()
+
+			vms := fakeVMs
+			idx := slices.IndexFunc(vms, func(v VM) bool { return v.VMID == tt.vmid })
+			if idx < 0 {
+				t.Fatalf("VM %d not found in fake dataset", tt.vmid)
+			}
+
+			err := (Fake{}).Action(context.Background(), vms[idx].Node, tt.vmid, tt.action)
+			if tt.wantErr && err == nil {
+				t.Errorf("Action(%q on %q VM %d) = nil, want error", tt.action, vms[idx].Status, tt.vmid)
+			}
+			if !tt.wantErr && err != nil {
+				t.Errorf("Action(%q on %q VM %d) = %v, want nil", tt.action, vms[idx].Status, tt.vmid, err)
+			}
+		})
+	}
+}

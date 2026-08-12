@@ -15,6 +15,14 @@ import (
 func TestUpdateHardware_RestartsForResourceChanges(t *testing.T) {
 	cluster.ResetFake()
 
+	// T001b: the fake now rejects stop on an already-stopped VM. VM 101 is
+	// stopped in the pristine dataset, but the test exercises the restart
+	// flow for a running VM — start it first so the fake dataset matches the
+	// index's running status.
+	if err := (cluster.Fake{}).Action(context.Background(), cluster.FakeNode01, 101, "start"); err != nil {
+		t.Fatalf("start VM 101 for test setup: %v", err)
+	}
+
 	deps := hardwareDependencies(diskTestIndex(t, 101, cluster.VMRunning), aliceIdentity(), 101)
 
 	patch := vm.HardwarePatch{Cores: new(4)}
@@ -23,8 +31,9 @@ func TestUpdateHardware_RestartsForResourceChanges(t *testing.T) {
 	}
 
 	calls := cluster.FakeCallsFor(101)
-	if len(calls) != 3 || calls[0].Action != "stop" || calls[1].Action != "update_hardware" || calls[2].Action != "start" {
-		t.Fatalf("calls = %+v, want stop/update_hardware/start", calls)
+	// The setup "start" is call 0; UpdateHardware's stop/update/start are 1-3.
+	if len(calls) != 4 || calls[1].Action != "stop" || calls[2].Action != "update_hardware" || calls[3].Action != "start" {
+		t.Fatalf("calls = %+v, want setup-start/stop/update_hardware/start", calls)
 	}
 }
 
