@@ -3,7 +3,6 @@ package store_test
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"path/filepath"
 	"pvmss/server/internal/store"
 	"testing"
@@ -251,27 +250,5 @@ func TestRunMigrations_InvalidDDL_ReturnsError(t *testing.T) {
 	err := store.RunMigrations(context.Background(), db, migrations)
 	if err == nil {
 		t.Fatalf("expected error for invalid DDL, got nil")
-	}
-}
-
-func BenchmarkRunMigrations(b *testing.B) {
-	var i int
-	for b.Loop() {
-		i++
-		path := filepath.Join(b.TempDir(), fmt.Sprintf("bench-%d.db", i))
-
-		db, err := sql.Open("sqlite", path)
-		if err != nil {
-			b.Fatalf("open db: %v", err)
-		}
-
-		migrations := []store.Migration{
-			{Version: 1, DDL: testMigrationDDL},
-		}
-		if err := store.RunMigrations(context.Background(), db, migrations); err != nil {
-			b.Fatalf("RunMigrations: %v", err)
-		}
-
-		_ = db.Close()
 	}
 }
