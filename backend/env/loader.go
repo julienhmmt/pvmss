@@ -38,6 +38,7 @@ func LoadAndValidate() (*EnvConfig, error) {
 		LogFormat:            envOrDefault("LOG_FORMAT", "json"),
 		Timezone:             envOrDefault("TZ", "UTC"),
 		Port:                 envOrDefault("PORT", defaultPort),
+		TrustedProxies:       strings.TrimSpace(os.Getenv("PVMSS_TRUSTED_PROXIES")),
 	}
 
 	if err := validate(cfg); err != nil {

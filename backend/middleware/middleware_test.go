@@ -76,6 +76,14 @@ func (m *mockStateManager) GetCloudInitWarning(upid string) string   { return ""
 func (m *mockStateManager) DeleteCloudInitWarning(upid string)       {}
 
 func TestClientIP(t *testing.T) {
+	// Configure 192.0.2.1 as a trusted proxy so the XFF/XRealIP test cases
+	// honor the forwarding headers. Reset after the test so other tests use
+	// the default (no trusted proxies).
+	if err := SetTrustedProxies([]string{"192.0.2.1"}); err != nil {
+		t.Fatalf("SetTrustedProxies: %v", err)
+	}
+	t.Cleanup(func() { _ = SetTrustedProxies(nil) })
+
 	testCases := []struct {
 		name   string
 		xff    string
@@ -101,6 +109,21 @@ func TestClientIP(t *testing.T) {
 		if got != tc.want {
 			t.Fatalf("%s: clientIP()=%s, want %s", tc.name, got, tc.want)
 		}
+	}
+}
+
+// TestClientIP_UntrustedProxy verifies that forwarding headers are ignored
+// when the request comes from a non-trusted address.
+func TestClientIP_UntrustedProxy(t *testing.T) {
+	// No trusted proxies configured (default state).
+	_ = SetTrustedProxies(nil)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("X-Forwarded-For", "203.0.113.10")
+	req.RemoteAddr = "10.0.0.99:1234" // not a trusted proxy
+	got := clientIP(req)
+	if got != "10.0.0.99" {
+		t.Fatalf("clientIP()=%s, want 10.0.0.99 (forwarding header must be ignored from untrusted source)", got)
 	}
 }
 

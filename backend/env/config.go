@@ -62,4 +62,11 @@ type EnvConfig struct {
 	// Port is the TCP port the HTTP server listens on.
 	// Source: PORT. Defaults to "50000".
 	Port string
+
+	// TrustedProxies is a comma-separated list of CIDR ranges or IP addresses
+	// that are allowed to set X-Forwarded-For / X-Real-IP headers. When empty
+	// (the default), the middleware uses r.RemoteAddr directly and ignores
+	// forwarding headers, preventing IP spoofing.
+	// Source: PVMSS_TRUSTED_PROXIES. Defaults to "" (no trusted proxies).
+	TrustedProxies string
 }
