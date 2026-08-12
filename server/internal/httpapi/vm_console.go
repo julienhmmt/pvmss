@@ -1,4 +1,3 @@
-//nolint:wsl_v5 // console handlers keep upgrade and relay adjacent
 package httpapi
 
 import (
@@ -258,6 +257,14 @@ func isNormalClose(err error) bool {
 		switch ce.Code {
 		case websocket.StatusNormalClosure, websocket.StatusGoingAway:
 			return true
+		case websocket.StatusProtocolError, websocket.StatusUnsupportedData,
+			websocket.StatusNoStatusRcvd, websocket.StatusAbnormalClosure,
+			websocket.StatusInvalidFramePayloadData, websocket.StatusPolicyViolation,
+			websocket.StatusMessageTooBig, websocket.StatusMandatoryExtension,
+			websocket.StatusInternalError, websocket.StatusServiceRestart,
+			websocket.StatusTryAgainLater, websocket.StatusBadGateway,
+			websocket.StatusTLSHandshake:
+			return false
 		}
 	}
 

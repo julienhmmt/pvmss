@@ -38,7 +38,6 @@ type snapshotTaskResponse struct {
 	UPID    string `json:"upid"`
 }
 
-//nolint:wsl_v5 // handler tests keep request setup and assertions adjacent
 func newVMSnapshotsHandler(t *testing.T) (*httpapi.VMSnapshots, *httpapi.Auth) {
 	t.Helper()
 	cluster.ResetFake()
@@ -65,7 +64,6 @@ func newVMSnapshotsHandler(t *testing.T) (*httpapi.VMSnapshots, *httpapi.Auth) {
 	return httpapi.NewVMSnapshots(projection, authHandler, cluster.Fake{}, cluster.Fake{}, st, logger), authHandler
 }
 
-//nolint:wsl_v5 // handler tests keep request setup and assertions adjacent
 func snapshotRequest(method, path, body string, cookie *http.Cookie) *http.Request {
 	request := httptest.NewRequest(method, path, strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")

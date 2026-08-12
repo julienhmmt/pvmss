@@ -15,8 +15,6 @@ type fakeSnapshotKey struct {
 var fakeNextSnapshotTaskID uint64
 
 // ListSnapshots returns a defensive copy of the VM's live fake snapshots.
-//
-//nolint:wsl_v5 // fake snapshot operations keep state transitions adjacent
 func (Fake) ListSnapshots(_ context.Context, node string, vmid int) ([]VMSnapshot, error) {
 	fakeVMMutex.RLock()
 	defer fakeVMMutex.RUnlock()
@@ -29,8 +27,6 @@ func (Fake) ListSnapshots(_ context.Context, node string, vmid int) ([]VMSnapsho
 }
 
 // CreateSnapshot dispatches a fake asynchronous snapshot task.
-//
-//nolint:wsl_v5 // fake snapshot operations keep state transitions adjacent
 func (Fake) CreateSnapshot(_ context.Context, node string, vmid int, name, description string, vmstate bool) (string, error) {
 	if err := ensureFakeVM(node, vmid); err != nil {
 		return "", err
@@ -44,8 +40,6 @@ func (Fake) CreateSnapshot(_ context.Context, node string, vmid int, name, descr
 }
 
 // RollbackSnapshot dispatches a fake asynchronous rollback task.
-//
-//nolint:wsl_v5 // fake snapshot operations keep state transitions adjacent
 func (Fake) RollbackSnapshot(_ context.Context, node string, vmid int, name string) (string, error) {
 	if err := ensureFakeSnapshot(node, vmid, name); err != nil {
 		return "", err
@@ -57,9 +51,7 @@ func (Fake) RollbackSnapshot(_ context.Context, node string, vmid int, name stri
 	return upid, nil
 }
 
-// DeleteSnapshot dispatches a fake asynchronous deletion task.
-//
-//nolint:wsl_v5 // fake snapshot operations keep state transitions adjacent
+// DeleteSnapshot dispatches a fake asynchronous delete task.
 func (Fake) DeleteSnapshot(_ context.Context, node string, vmid int, name string) (string, error) {
 	if err := ensureFakeSnapshot(node, vmid, name); err != nil {
 		return "", err
@@ -71,7 +63,6 @@ func (Fake) DeleteSnapshot(_ context.Context, node string, vmid int, name string
 	return upid, nil
 }
 
-//nolint:wsl_v5 // fake snapshot operations keep state transitions adjacent
 func ensureFakeVM(node string, vmid int) error {
 	fakeVMMutex.RLock()
 	defer fakeVMMutex.RUnlock()
@@ -83,7 +74,6 @@ func ensureFakeVM(node string, vmid int) error {
 	return nil
 }
 
-//nolint:wsl_v5 // fake snapshot operations keep state transitions adjacent
 func ensureFakeSnapshot(node string, vmid int, name string) error {
 	fakeVMMutex.RLock()
 	defer fakeVMMutex.RUnlock()
@@ -99,7 +89,6 @@ func ensureFakeSnapshot(node string, vmid int, name string) error {
 	return ErrNotFound
 }
 
-//nolint:wsl_v5 // fake snapshot operations keep state transitions adjacent
 func newSnapshotTask(node string, vmid int, action string, onComplete func()) string {
 	fakeCreateMutex.Lock()
 	fakeNextSnapshotTaskID++
@@ -116,7 +105,6 @@ func newSnapshotTask(node string, vmid int, action string, onComplete func()) st
 	return upid
 }
 
-//nolint:wsl_v5 // fake snapshot operations keep state transitions adjacent
 func appendFakeSnapshot(node string, vmid int, snapshot VMSnapshot) {
 	fakeVMMutex.Lock()
 	defer fakeVMMutex.Unlock()
@@ -125,7 +113,6 @@ func appendFakeSnapshot(node string, vmid int, snapshot VMSnapshot) {
 	fakeSnapshots[key] = append(fakeSnapshots[key], snapshot)
 }
 
-//nolint:wsl_v5 // fake snapshot operations keep state transitions adjacent
 func applyFakeRollback(node string, vmid int, name string) {
 	fakeVMMutex.Lock()
 	defer fakeVMMutex.Unlock()
@@ -154,7 +141,6 @@ func applyFakeRollback(node string, vmid int, name string) {
 	}
 }
 
-//nolint:wsl_v5 // fake snapshot operations keep state transitions adjacent
 func removeFakeSnapshot(node string, vmid int, name string) {
 	fakeVMMutex.Lock()
 	defer fakeVMMutex.Unlock()

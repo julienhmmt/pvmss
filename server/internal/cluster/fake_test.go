@@ -1,4 +1,3 @@
-//nolint:wsl_v5 // fake tests group state setup, call assertions, and reset checks
 package cluster
 
 import (

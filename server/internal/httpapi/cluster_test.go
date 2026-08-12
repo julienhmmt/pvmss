@@ -42,6 +42,34 @@ func (stubClusterClient) ListISOs(_ context.Context) ([]cluster.ISOImage, error)
 	return nil, cluster.ErrNotImplemented
 }
 
+func (stubClusterClient) ListPools(_ context.Context) ([]cluster.Pool, error) {
+	return nil, cluster.ErrNotImplemented
+}
+
+func (stubClusterClient) EnsurePoolRole(_ context.Context) error {
+	return cluster.ErrNotImplemented
+}
+
+func (stubClusterClient) EnsurePoolUser(_ context.Context, _, _ string) (string, error) {
+	return "", cluster.ErrNotImplemented
+}
+
+func (stubClusterClient) CreatePool(_ context.Context, _, _ string) error {
+	return cluster.ErrNotImplemented
+}
+
+func (stubClusterClient) SetPoolACL(_ context.Context, _, _, _ string) error {
+	return cluster.ErrNotImplemented
+}
+
+func (stubClusterClient) DeletePool(_ context.Context, _ string) error {
+	return cluster.ErrNotImplemented
+}
+
+func (stubClusterClient) DeleteUser(_ context.Context, _ string) error {
+	return cluster.ErrNotImplemented
+}
+
 // buildProjectionWithIndex creates a Projection and populates it with an Index
 // built from the given snapshot, stamped at the given refresh time.
 func buildProjectionWithIndex(t *testing.T, snap cluster.Snapshot, refreshedAt time.Time) *inventory.Projection {

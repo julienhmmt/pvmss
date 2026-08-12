@@ -26,6 +26,13 @@ type Client interface {
 	ChangePassword(ctx context.Context, username, oldPassword, newPassword string) error
 	ListBridges(ctx context.Context) ([]Bridge, error)
 	ListISOs(ctx context.Context) ([]ISOImage, error)
+	ListPools(ctx context.Context) ([]Pool, error)
+	EnsurePoolRole(ctx context.Context) error
+	EnsurePoolUser(ctx context.Context, pool, password string) (string, error)
+	CreatePool(ctx context.Context, poolID, comment string) error
+	SetPoolACL(ctx context.Context, username, poolID, role string) error
+	DeletePool(ctx context.Context, poolID string) error
+	DeleteUser(ctx context.Context, username string) error
 }
 
 // CloudInitReader reads per-VM cloud-init state and server-side snippet targets.

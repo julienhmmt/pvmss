@@ -5,8 +5,8 @@ import (
 	"errors"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
-	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/vm"
 	"testing"
 )
@@ -75,6 +75,6 @@ func TestUpdateHardware_RejectsNonOwner(t *testing.T) {
 
 func hardwareDependencies(index *inventory.Index, actor auth.Identity, vmid int) vm.HardwareDependencies {
 	return vm.HardwareDependencies{
-		Index: index, Actor: actor, ClusterName: testClusterName, VMID: vmid, Writer: cluster.Fake{}, Limits: config.DefaultVMLimits(), Audit: noopAudit{}, Refresher: noopRefresher{},
+		Index: index, Actor: actor, ClusterName: testClusterName, VMID: vmid, Writer: cluster.Fake{}, Gabarit: policy.DefaultGabarit(), Audit: noopAudit{}, Refresher: noopRefresher{},
 	}
 }

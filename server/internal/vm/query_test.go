@@ -18,6 +18,7 @@ const (
 	testBridgeVMbr1  = "vmbr1"
 	testModelVirtio  = "virtio"
 	testNonOwnerCase = "reject non-owner"
+	testAdminUser    = "admin"
 )
 
 // testIndex builds a small projection across two pools and two nodes —
@@ -39,7 +40,7 @@ func testIndex() *inventory.Index {
 
 var (
 	alice = auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}
-	admin = auth.Identity{Username: "admin", IsAdmin: true}
+	admin = auth.Identity{Username: testAdminUser, IsAdmin: true}
 )
 
 func vmids(result vm.ListResult) []int {

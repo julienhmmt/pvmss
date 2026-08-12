@@ -39,6 +39,41 @@ func (Proxmox) ListISOs(_ context.Context) ([]ISOImage, error) {
 	return nil, ErrNotImplemented
 }
 
+// ListPools implements Client.
+func (Proxmox) ListPools(_ context.Context) ([]Pool, error) {
+	return nil, ErrNotImplemented
+}
+
+// EnsurePoolRole implements Client.
+func (Proxmox) EnsurePoolRole(_ context.Context) error {
+	return ErrNotImplemented
+}
+
+// EnsurePoolUser implements Client.
+func (Proxmox) EnsurePoolUser(_ context.Context, _, _ string) (string, error) {
+	return "", ErrNotImplemented
+}
+
+// CreatePool implements Client.
+func (Proxmox) CreatePool(_ context.Context, _, _ string) error {
+	return ErrNotImplemented
+}
+
+// SetPoolACL implements Client.
+func (Proxmox) SetPoolACL(_ context.Context, _, _, _ string) error {
+	return ErrNotImplemented
+}
+
+// DeletePool implements Client.
+func (Proxmox) DeletePool(_ context.Context, _ string) error {
+	return ErrNotImplemented
+}
+
+// DeleteUser implements Client.
+func (Proxmox) DeleteUser(_ context.Context, _ string) error {
+	return ErrNotImplemented
+}
+
 // GetCloudInitConfig implements CloudInitReader.
 func (Proxmox) GetCloudInitConfig(_ context.Context, _ string, _ int) (CloudInitConfig, error) {
 	return CloudInitConfig{}, ErrNotImplemented

@@ -1,7 +1,7 @@
-//nolint:noctx // test scaffolding does not need real context
 package httpapi_test
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -69,7 +69,7 @@ func TestRouter_SPAFallback(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.method+" "+c.path, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(c.method, c.path, nil)
+			r := httptest.NewRequestWithContext(context.Background(), c.method, c.path, nil)
 			mux.ServeHTTP(w, r)
 
 			if w.Code != c.wantStatus {
@@ -86,8 +86,11 @@ func TestRouter_SPAFallback(t *testing.T) {
 
 const cloudInitRoutePath = "/api/v1/vms/default/101/cloudinit"
 
-//nolint:wsl_v5,paralleltest // route assertions use shared router fixture
+// TestRouter_CloudInitRoutesAreSpecific verifies that cloudinit routes require
+// the exact (vm, node) pair and reject near-miss paths (T008).
 func TestRouter_CloudInitRoutesAreSpecific(t *testing.T) {
+	t.Parallel()
+
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	authHandler := newAuthHandler(t)
 	projection := inventory.NewProjection()
@@ -107,7 +110,7 @@ func TestRouter_CloudInitRoutesAreSpecific(t *testing.T) {
 		"/api/v1/vms/default/101/cloudinit/snippet",
 	} {
 		recorder := httptest.NewRecorder()
-		request := httptest.NewRequest(http.MethodGet, path, nil)
+		request := httptest.NewRequestWithContext(context.Background(), http.MethodGet, path, nil)
 		mux.ServeHTTP(recorder, request)
 
 		if recorder.Code != http.StatusUnauthorized {
@@ -136,7 +139,7 @@ func TestRouter_MissingBuildDir_HealthStillWorks(t *testing.T) {
 	})
 
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodGet, "/health", nil)
+	r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/health", nil)
 	mux.ServeHTTP(w, r)
 
 	if w.Code != http.StatusOK {
