@@ -486,7 +486,7 @@ func TestVmAction_AllFiveValidActionsAccepted(t *testing.T) {
 		})
 	}
 
-	t.Run("invalid_action", func(t *testing.T) {
+	t.Run("invalid action", func(t *testing.T) {
 		cluster.ResetFake()
 
 		rec, env := serveDetailError(handler, detailRequest(http.MethodPost, "/api/v1/vms/default/101/actions", `{"action":"foo"}`, cookie))
