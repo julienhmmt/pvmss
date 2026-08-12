@@ -1,4 +1,4 @@
-//nolint:paralleltest,wsl_v5,gofumpt,goconst // tests use shared fake fixtures and fixed credentials
+//nolint:paralleltest,wsl_v5,goconst // tests use shared fake fixtures and fixed credentials
 package pools_test
 
 import (

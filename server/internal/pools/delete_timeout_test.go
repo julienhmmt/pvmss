@@ -1,4 +1,4 @@
-//nolint:paralleltest,wsl_v5,gofumpt // test temporarily shortens the shared cascade bound
+//nolint:paralleltest,wsl_v5 // test temporarily shortens the shared cascade bound
 package pools
 
 import (

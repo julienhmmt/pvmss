@@ -1,4 +1,4 @@
-//nolint:paralleltest,wsl_v5,gofumpt,goconst,sloglint // tests use shared fake fixtures and audit setup
+//nolint:paralleltest,wsl_v5,goconst,sloglint // tests use shared fake fixtures and audit setup
 package pools_test
 
 import (
