@@ -24,13 +24,13 @@ type Source interface {
 
 // Registry owns one projection and refresh worker per active cluster.
 type Registry struct {
-	mu       sync.RWMutex
-	provider cluster.ClientProvider
-	entries  map[string]*registryEntry
-	interval time.Duration
-	options  []Option
-	log      *slog.Logger
-	started  bool
+	mu         sync.RWMutex
+	provider   cluster.ClientProvider
+	entries    map[string]*registryEntry
+	interval   time.Duration
+	options    []Option
+	log        *slog.Logger
+	hasStarted bool
 	// ctx is the parent lifecycle context for every worker goroutine. It is
 	// captured at Start time so that Add-after-Start can derive a child context
 	// for the new worker on the same root — late-added clusters share the
@@ -71,11 +71,11 @@ func NewRegistryFromIndexes(indexes map[string]*Index) *Registry {
 // Start launches one independent refresh loop per active cluster.
 func (registry *Registry) Start(ctx context.Context) {
 	registry.mu.Lock()
-	if registry.started {
+	if registry.hasStarted {
 		registry.mu.Unlock()
 		return
 	}
-	registry.started = true
+	registry.hasStarted = true
 	registry.ctx = ctx
 	for _, entry := range registry.entries {
 		registry.startEntryLocked(entry)
@@ -123,7 +123,7 @@ func (registry *Registry) Add(name string) error {
 		return err
 	}
 	registry.entries[name] = entry
-	if registry.started {
+	if registry.hasStarted {
 		registry.startEntryLocked(entry)
 	}
 	return nil
