@@ -5,9 +5,11 @@
 		type VmSortBy,
 		type VmStatus
 	} from './list.svelte';
+	import { getVmBulkContext } from './bulk.svelte';
 	import { resolve } from '$app/paths';
 
 	const store = getVmListContext();
+	const bulk = getVmBulkContext();
 
 	const COLUMN_LABELS: Record<VmSortBy, string> = {
 		vmid: 'ID',
@@ -70,9 +72,26 @@
 		store.setPageSize(Number((event.currentTarget as HTMLSelectElement).value));
 	}
 
+	function handleRowToggle(cluster: string, vmid: number): void {
+		bulk.toggle({ cluster, vmid });
+	}
+
+	function handleSelectAllOnPage(event: Event): void {
+		const checked = (event.currentTarget as HTMLInputElement).checked;
+		const items = store.result?.items ?? [];
+		if (checked) {
+			bulk.selectPage(items);
+		} else {
+			bulk.clearPage(items);
+		}
+	}
+
 	let pageCount = $derived(
 		store.result === null ? 1 : Math.max(1, Math.ceil(store.result.total / store.result.pageSize))
 	);
+
+	let pageItems = $derived(store.result?.items ?? []);
+	let allOnPageSelected = $derived(bulk.pageAllSelected(pageItems));
 </script>
 
 <div class="mb-4 flex flex-wrap items-center gap-3">
@@ -146,6 +165,16 @@
 		<caption class="sr-only">Virtual machines</caption>
 		<thead>
 			<tr class="border-b border-border">
+				<th scope="col" class="px-3 py-2">
+					<input
+						type="checkbox"
+						class="h-4 w-4 rounded border-border"
+						checked={allOnPageSelected}
+						onchange={handleSelectAllOnPage}
+						data-testid="vm-bulk-select-all"
+						aria-label="Select all VMs on this page"
+					/>
+				</th>
 				<th scope="col" class="px-3 py-2 font-medium">Cluster</th>
 				{#each SORTABLE_COLUMNS as column (column)}
 					<th scope="col" class="px-3 py-2 font-medium" aria-sort={ariaSort(column)}>
@@ -167,6 +196,16 @@
 		<tbody>
 			{#each store.result?.items ?? [] as machine (`${machine.cluster}:${machine.vmid}`)}
 				<tr class="border-b border-border last:border-0" data-testid="vm-row">
+					<td class="px-3 py-2">
+						<input
+							type="checkbox"
+							class="h-4 w-4 rounded border-border"
+							checked={bulk.isSelected(machine.cluster, machine.vmid)}
+							onchange={() => handleRowToggle(machine.cluster, machine.vmid)}
+							data-testid="vm-bulk-select-row"
+							aria-label="Select {machine.name}"
+						/>
+					</td>
 					<td class="px-3 py-2 font-mono text-muted-foreground">{machine.cluster}</td>
 					<td class="px-3 py-2 text-muted-foreground">{machine.vmid}</td>
 					<td class="px-3 py-2 font-medium">

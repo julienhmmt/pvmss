@@ -4,8 +4,10 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { setVmListContext } from '$lib/features/vms/list.svelte';
+	import { setVmBulkContext } from '$lib/features/vms/bulk.svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import VmList from '$lib/features/vms/VmList.svelte';
+	import VmBulkActionBar from '$lib/features/vms/VmBulkActionBar.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 
@@ -28,6 +30,7 @@
 			});
 		}
 	});
+	const vmBulk = setVmBulkContext();
 
 	let offTaskOk: (() => void) | null = null;
 
@@ -42,7 +45,10 @@
 
 	onMount(() => {
 		void loadPage();
-		offTaskOk = getTaskTrayContext().onTaskOk(() => void vmListStore.load());
+		offTaskOk = getTaskTrayContext().onTaskOk(() => {
+			void vmListStore.load();
+			vmBulk.clearResult();
+		});
 	});
 	onDestroy(() => {
 		offTaskOk?.();
@@ -68,6 +74,7 @@
 	{#if vmListStore.loading && vmListStore.result === null}
 		<p role="status" aria-live="polite" class="text-muted-foreground">Loading…</p>
 	{:else}
+		<VmBulkActionBar />
 		<VmList />
 	{/if}
 </section>
