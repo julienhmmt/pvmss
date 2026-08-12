@@ -248,7 +248,7 @@ func buildRouter(
 	vmDetail := httpapi.NewVMDetailWithRegistry(inventoryRegistry, projection, authHandler, writer, st, worker, logger, policyService)
 	vmBulk := httpapi.NewVMBulkWithRegistry(inventoryRegistry, projection, authHandler, writer, st, refresher, logger)
 	vmCloudInit := httpapi.NewVMCloudInit(projection, authHandler, cloudInitReader, writer, st, worker, logger, policyService)
-	vmCreate := httpapi.NewVMCreate(authHandler, st, creator, logger, policyService)
+	vmCreate := httpapi.NewVMCreate(authHandler, st, creator, writer, logger, policyService)
 	tasks := httpapi.NewTasks(authHandler, creator, worker, logger)
 	snapshots := httpapi.NewVMSnapshots(projection, authHandler, snapshotReader, snapshotWriter, st, logger, policyService)
 	vmConsole := httpapi.NewVMConsole(projection, authHandler, consoleRelay, consoleTickets, st, logger)

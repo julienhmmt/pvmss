@@ -66,17 +66,18 @@ var allowedNetworkModels = map[string]bool{
 // forge) and no mode field (the server cannot tell and does not care which
 // wizard produced it).
 type CreateRequest struct {
-	Cluster          string         `json:"cluster"`
-	Name             string         `json:"name"`
-	ProfileID        string         `json:"profileId,omitempty"`
-	Node             string         `json:"node,omitempty"`
-	Tags             []string       `json:"tags,omitempty"`
-	CPUCores         int            `json:"cpuCores,omitempty"`
-	MemoryMB         int            `json:"memoryMB,omitempty"`
-	Disk             DiskRequest    `json:"disk"`
-	Network          NetworkRequest `json:"network"`
-	ISO              *ISORequest    `json:"iso,omitempty"`
-	StartAfterCreate bool           `json:"startAfterCreate,omitempty"`
+	Cluster             string         `json:"cluster"`
+	Name                string         `json:"name"`
+	ProfileID           string         `json:"profileId,omitempty"`
+	CloudInitTemplateID string         `json:"cloudInitTemplateId,omitempty"`
+	Node                string         `json:"node,omitempty"`
+	Tags                []string       `json:"tags,omitempty"`
+	CPUCores            int            `json:"cpuCores,omitempty"`
+	MemoryMB            int            `json:"memoryMB,omitempty"`
+	Disk                DiskRequest    `json:"disk"`
+	Network             NetworkRequest `json:"network"`
+	ISO                 *ISORequest    `json:"iso,omitempty"`
+	StartAfterCreate    bool           `json:"startAfterCreate,omitempty"`
 }
 
 // DiskRequest is the request's single initial disk.
@@ -97,14 +98,25 @@ type ISORequest struct {
 	File    string `json:"file"`
 }
 
+// CloudInitPusher applies a cloud-init snippet to a VM's storage — T08's
+// cluster.Writer.PushCloudInitSnippet, reused verbatim by the creation-time
+// template apply step (FR-007). Defined here as a narrow consumer contract so
+// vm.Create depends only on the push method it actually calls, not the full
+// Writer surface; cluster.Fake and the real Proxmox client both satisfy it.
+type CloudInitPusher interface {
+	PushCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int, content string) error
+}
+
 // CreateResult is what a successful creation returns — the task is accepted,
 // the VM does not necessarily exist yet (FR-013).
 type CreateResult struct {
-	Cluster string
-	VMID    int
-	Name    string
-	Node    string
-	UPID    string
+	Cluster             string
+	VMID                int
+	Name                string
+	Node                string
+	UPID                string
+	CloudInitTemplateID string
+	CloudInitPushError  string
 }
 
 // Create validates a creation request and dispatches it as an asynchronous
@@ -130,7 +142,7 @@ type CreateResult struct {
 // would tell the client creation failed when it did not — the same
 // log-don't-fail rule the task-status handler already applies to a failed
 // post-completion invalidation (tasks.go).
-func Create(ctx context.Context, actor auth.Identity, clusterName string, req CreateRequest, st *store.Store, creator cluster.Creator, audit AuditRecorder, log *slog.Logger, services ...*policy.Policy) (CreateResult, error) {
+func Create(ctx context.Context, actor auth.Identity, clusterName string, req CreateRequest, st *store.Store, creator cluster.Creator, pusher CloudInitPusher, audit AuditRecorder, log *slog.Logger, services ...*policy.Policy) (CreateResult, error) {
 	policyService := selectPolicyService(st, services)
 
 	if actor.Pool == "" {
@@ -140,6 +152,18 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 	plan, err := planCreate(ctx, policyService, st, clusterName, actor, req)
 	if err != nil {
 		return CreateResult{}, err
+	}
+
+	// T18 step (FR-006): resolve a cloud-init template BEFORE NextVMID so an
+	// unknown or disabled id is rejected without burning a VMID — the same
+	// "never spend a VMID on a request that will be rejected" discipline T06
+	// applies to node/storage/bridge/ISO catalog membership.
+	var cloudTemplate catalog.CloudInitTemplate
+	if req.CloudInitTemplateID != "" {
+		cloudTemplate, err = catalog.FindCloudInitTemplate(ctx, st, clusterName, req.CloudInitTemplateID)
+		if err != nil {
+			return CreateResult{}, fmt.Errorf("%w: cloud-init template %q is not approved for this cluster", ErrNotApproved, req.CloudInitTemplateID)
+		}
 	}
 
 	vmid, err := creator.NextVMID(ctx)
@@ -173,11 +197,32 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 		return CreateResult{}, fmt.Errorf("%w: %w", ErrClusterCreate, err)
 	}
 
+	result := CreateResult{Cluster: clusterName, VMID: vmid, Name: req.Name, Node: plan.node, UPID: upid}
+
+	// T18 step (FR-007): apply the resolved template via T08's existing snippet
+	// write path — store.PutCloudInitSnippet then cluster push — reusing the
+	// same functions T08's per-VM snippet editor calls, never a second write
+	// mechanism. A failure here does NOT abort the creation (the task is
+	// already dispatched and cannot be undone): it sets CloudInitPushError
+	// (FR-008). On success, CloudInitTemplateID echoes the resolved id.
+	if cloudTemplate.ID != "" {
+		result.CloudInitTemplateID = cloudTemplate.ID
+		filename := fmt.Sprintf("%s%d.yml", snippetFilenamePrefix, vmid)
+		storage := spec.Disk.Storage
+		if err := st.PutCloudInitSnippet(ctx, clusterName, vmid, storage, filename, cloudTemplate.Content, actor.Username); err != nil {
+			log.Error("cloud-init template store failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+			result.CloudInitPushError = err.Error()
+		} else if err := pusher.PushCloudInitSnippet(ctx, spec.Node, storage, filename, vmid, cloudTemplate.Content); err != nil {
+			log.Error("cloud-init template push failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+			result.CloudInitPushError = err.Error()
+		}
+	}
+
 	if err := audit.RecordAction(ctx, actor.Username, clusterName, vmid, "vm_create"); err != nil {
 		log.Error("record audit failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
 	}
 
-	return CreateResult{Cluster: clusterName, VMID: vmid, Name: req.Name, Node: plan.node, UPID: upid}, nil
+	return result, nil
 }
 
 // createPlan holds the resolved and validated values for a VM creation request.

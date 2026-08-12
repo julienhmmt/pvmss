@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"path/filepath"
 	"pvmss/server/internal/auth"
+	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/store"
@@ -46,7 +47,7 @@ func (f createFixture) create(t *testing.T, actor auth.Identity, req vm.CreateRe
 
 	log := slog.New(slog.DiscardHandler)
 
-	return vm.Create(context.Background(), actor, req.Cluster, req, f.store, f.fake, f.store, log)
+	return vm.Create(context.Background(), actor, req.Cluster, req, f.store, f.fake, f.fake, f.store, log)
 }
 
 func aliceIdentity() auth.Identity {
@@ -355,12 +356,194 @@ func TestCreate_AuditFailureDoesNotFailCreate(t *testing.T) {
 	fixture := newCreateFixture(t)
 	log := slog.New(slog.DiscardHandler)
 
-	result, err := vm.Create(context.Background(), aliceIdentity(), testClusterName, detailedRequest(), fixture.store, fixture.fake, failingAudit{}, log)
+	result, err := vm.Create(context.Background(), aliceIdentity(), testClusterName, detailedRequest(), fixture.store, fixture.fake, fixture.fake, failingAudit{}, log)
 	if err != nil {
 		t.Fatalf("Create: %v, want nil (audit failure must not fail the request)", err)
 	}
 
 	if result.VMID < 1 || result.UPID == "" {
 		t.Fatalf("unexpected result: %+v", result)
+	}
+}
+
+// --- T18 cloud-init template application (T011) ---
+
+const testCloudInitContent = "#cloud-config\npackages:\n  - nginx\n"
+
+// createTestTemplate inserts an enabled cloud-init template into the fixture
+// store and returns its id.
+func createTestTemplate(t *testing.T, st *store.Store) string {
+	t.Helper()
+
+	tmpl, err := catalog.CreateCloudInitTemplate(context.Background(), st, testClusterName, "Web server", testCloudInitContent)
+	if err != nil {
+		t.Fatalf("CreateCloudInitTemplate: %v", err)
+	}
+
+	return tmpl.ID
+}
+
+// TestCreate_CloudInitTemplate_Applied — a valid enabled template is resolved,
+// the snippet is persisted and pushed with the exact template content, and the
+// result echoes the template id (FR-007, SC-003).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_Applied(t *testing.T) {
+	fixture := newCreateFixture(t)
+	tmplID := createTestTemplate(t, fixture.store)
+
+	req := detailedRequest()
+	req.CloudInitTemplateID = tmplID
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if result.CloudInitTemplateID != tmplID {
+		t.Errorf("result.CloudInitTemplateID = %q, want %q", result.CloudInitTemplateID, tmplID)
+	}
+
+	if result.CloudInitPushError != "" {
+		t.Errorf("result.CloudInitPushError = %q, want empty", result.CloudInitPushError)
+	}
+
+	// The snippet was persisted with the exact template content.
+	snippet, found, err := fixture.store.GetCloudInitSnippet(context.Background(), testClusterName, result.VMID)
+	if err != nil {
+		t.Fatalf("GetCloudInitSnippet: %v", err)
+	}
+
+	if !found {
+		t.Fatal("snippet not persisted")
+	}
+
+	if snippet.Content != testCloudInitContent {
+		t.Errorf("snippet content = %q, want %q", snippet.Content, testCloudInitContent)
+	}
+
+	// The push was recorded with the exact content.
+	pushed := false
+	for _, c := range cluster.FakeCallsFor(result.VMID) {
+		if c.Action == "push_cloudinit_snippet" && c.Content == testCloudInitContent {
+			pushed = true
+		}
+	}
+
+	if !pushed {
+		t.Error("PushCloudInitSnippet not recorded with the template content")
+	}
+}
+
+// TestCreate_CloudInitTemplate_Unknown_RejectedBeforeVMID — an unknown template
+// id is rejected with ErrNotApproved before NextVMID is called (FR-006, SC-004):
+// zero NextVMID/CreateVM calls for the rejected request.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_Unknown_RejectedBeforeVMID(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	req := detailedRequest()
+	req.CloudInitTemplateID = "does-not-exist"
+
+	_, err := fixture.create(t, aliceIdentity(), req)
+	if !errors.Is(err, vm.ErrNotApproved) {
+		t.Fatalf("error = %v, want ErrNotApproved", err)
+	}
+
+	if calls := cluster.FakeCalls(); len(calls) != 0 {
+		t.Fatalf("rejected request reached the cluster: %+v", calls)
+	}
+}
+
+// TestCreate_CloudInitTemplate_Disabled_RejectedBeforeVMID — a disabled template
+// id is rejected with ErrNotApproved before NextVMID is called (FR-006).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_Disabled_RejectedBeforeVMID(t *testing.T) {
+	fixture := newCreateFixture(t)
+	tmplID := createTestTemplate(t, fixture.store)
+
+	if err := catalog.SetCloudInitTemplateEnabled(context.Background(), fixture.store, testClusterName, tmplID, false); err != nil {
+		t.Fatalf("disable template: %v", err)
+	}
+
+	req := detailedRequest()
+	req.CloudInitTemplateID = tmplID
+
+	_, err := fixture.create(t, aliceIdentity(), req)
+	if !errors.Is(err, vm.ErrNotApproved) {
+		t.Fatalf("error = %v, want ErrNotApproved", err)
+	}
+
+	if calls := cluster.FakeCalls(); len(calls) != 0 {
+		t.Fatalf("rejected request reached the cluster: %+v", calls)
+	}
+}
+
+// TestCreate_CloudInitTemplate_PushFailure_SoftField — a push failure after
+// CreateVM succeeded sets CreateResult.CloudInitPushError without failing the
+// creation (FR-008): the VM still materializes.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_PushFailure_SoftField(t *testing.T) {
+	fixture := newCreateFixture(t)
+	tmplID := createTestTemplate(t, fixture.store)
+
+	cluster.SetFakeCloudInitPushError(errors.New("cluster client: push failed"))
+	t.Cleanup(func() { cluster.SetFakeCloudInitPushError(nil) })
+
+	req := detailedRequest()
+	req.CloudInitTemplateID = tmplID
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v, want nil (push failure must not fail creation)", err)
+	}
+
+	if result.VMID < 1 || result.UPID == "" {
+		t.Fatalf("creation did not succeed: %+v", result)
+	}
+
+	if result.CloudInitPushError == "" {
+		t.Error("result.CloudInitPushError should be non-empty on push failure")
+	}
+
+	if result.CloudInitTemplateID != tmplID {
+		t.Errorf("result.CloudInitTemplateID = %q, want %q (resolved even though push failed)", result.CloudInitTemplateID, tmplID)
+	}
+}
+
+// TestCreate_CloudInitTemplate_DeletedAfterUse — deleting a template after a VM
+// was created from it leaves the VM's own snippet unchanged (FR-009, SC-006).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_DeletedAfterUse(t *testing.T) {
+	fixture := newCreateFixture(t)
+	tmplID := createTestTemplate(t, fixture.store)
+
+	req := detailedRequest()
+	req.CloudInitTemplateID = tmplID
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if err := catalog.DeleteCloudInitTemplate(context.Background(), fixture.store, testClusterName, tmplID); err != nil {
+		t.Fatalf("DeleteCloudInitTemplate: %v", err)
+	}
+
+	snippet, found, err := fixture.store.GetCloudInitSnippet(context.Background(), testClusterName, result.VMID)
+	if err != nil {
+		t.Fatalf("GetCloudInitSnippet: %v", err)
+	}
+
+	if !found {
+		t.Fatal("VM snippet vanished after template deletion (no cascade expected)")
+	}
+
+	if snippet.Content != testCloudInitContent {
+		t.Errorf("snippet content = %q, want %q (unchanged)", snippet.Content, testCloudInitContent)
 	}
 }

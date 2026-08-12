@@ -4,11 +4,13 @@ package httpapi_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
@@ -40,7 +42,7 @@ func newVMCreateHandler(t *testing.T) (*httpapi.VMCreate, *httpapi.Auth, *store.
 
 	t.Cleanup(func() { _ = st.Close() })
 
-	return httpapi.NewVMCreate(authHandler, st, cluster.Fake{}, logger), authHandler, st
+	return httpapi.NewVMCreate(authHandler, st, cluster.Fake{}, cluster.Fake{}, logger), authHandler, st
 }
 
 func postVMCreate(t *testing.T, handler *httpapi.VMCreate, body string, cookie *http.Cookie) *httptest.ResponseRecorder {
@@ -408,6 +410,155 @@ func TestVMCreate_DetailedOutOfRange(t *testing.T) {
 				t.Fatalf("rejected request reached the cluster: %+v", calls)
 			}
 		})
+	}
+}
+
+// --- T18 cloud-init template additive cases (T012) ---
+
+// createCatalogTemplate inserts an enabled cloud-init template directly via the
+// catalog layer and returns its id, for vm-create handler tests.
+func createCatalogTemplate(t *testing.T, st *store.Store) string {
+	t.Helper()
+
+	tmpl, err := catalog.CreateCloudInitTemplate(context.Background(), st, auditTestCluster, "Web server", "#cloud-config\npackages:\n  - nginx\n")
+	if err != nil {
+		t.Fatalf("CreateCloudInitTemplate: %v", err)
+	}
+
+	return tmpl.ID
+}
+
+// TestVMCreateCatalog_IncludesCloudInitTemplates — GET .../catalog's response
+// includes the cloudInitTemplates field with only enabled templates (FR-005,
+// SC-002).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMCreateCatalog_IncludesCloudInitTemplates(t *testing.T) {
+	handler, authHandler, st := newVMCreateHandler(t)
+	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+	tmplID := createCatalogTemplate(t, st)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/vm-create/catalog", nil)
+	req.AddCookie(cookie)
+
+	rec := httptest.NewRecorder()
+	handler.ServeCatalog(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var body struct {
+		CloudInitTemplates []struct {
+			ID    string `json:"id"`
+			Label string `json:"label"`
+		} `json:"cloudInitTemplates"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode catalog: %v", err)
+	}
+
+	if len(body.CloudInitTemplates) != 1 || body.CloudInitTemplates[0].ID != tmplID {
+		t.Fatalf("cloudInitTemplates = %+v, want one enabled %q", body.CloudInitTemplates, tmplID)
+	}
+
+	// Disable the template and confirm it drops out of the catalog field.
+	if err := catalog.SetCloudInitTemplateEnabled(context.Background(), st, auditTestCluster, tmplID, false); err != nil {
+		t.Fatalf("disable: %v", err)
+	}
+
+	rec2 := httptest.NewRecorder()
+	handler.ServeCatalog(rec2, req)
+	if err := json.Unmarshal(rec2.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode catalog: %v", err)
+	}
+
+	if len(body.CloudInitTemplates) != 0 {
+		t.Fatalf("disabled template should be absent, got %+v", body.CloudInitTemplates)
+	}
+}
+
+// TestVMCreate_WithCloudInitTemplate_Success — POST /api/v1/vms with a valid
+// template id returns 202 and the response includes cloudInitTemplateId.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMCreate_WithCloudInitTemplate_Success(t *testing.T) {
+	handler, authHandler, st := newVMCreateHandler(t)
+	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+	tmplID := createCatalogTemplate(t, st)
+
+	rec := postVMCreate(t, handler,
+		`{"cluster":"default","name":"web-20","profileId":"medium","cloudInitTemplateId":"`+tmplID+`"}`, cookie)
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusAccepted, rec.Body.String())
+	}
+
+	var result struct {
+		VMID                int    `json:"vmid"`
+		CloudInitTemplateID string `json:"cloudInitTemplateId"`
+		CloudInitPushError  string `json:"cloudInitPushError"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
+		t.Fatalf("decode 202: %v", err)
+	}
+
+	if result.CloudInitTemplateID != tmplID {
+		t.Errorf("cloudInitTemplateId = %q, want %q", result.CloudInitTemplateID, tmplID)
+	}
+
+	if result.CloudInitPushError != "" {
+		t.Errorf("cloudInitPushError = %q, want empty", result.CloudInitPushError)
+	}
+}
+
+// TestVMCreate_WithCloudInitTemplate_PushFailure — a simulated push failure
+// still returns 202 but the response carries cloudInitPushError (FR-008).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMCreate_WithCloudInitTemplate_PushFailure(t *testing.T) {
+	handler, authHandler, st := newVMCreateHandler(t)
+	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+	tmplID := createCatalogTemplate(t, st)
+
+	cluster.SetFakeCloudInitPushError(errors.New("cluster client: push failed"))
+	t.Cleanup(func() { cluster.SetFakeCloudInitPushError(nil) })
+
+	rec := postVMCreate(t, handler,
+		`{"cluster":"default","name":"web-21","profileId":"medium","cloudInitTemplateId":"`+tmplID+`"}`, cookie)
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusAccepted, rec.Body.String())
+	}
+
+	var result struct {
+		CloudInitPushError string `json:"cloudInitPushError"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
+		t.Fatalf("decode 202: %v", err)
+	}
+
+	if result.CloudInitPushError == "" {
+		t.Error("cloudInitPushError should be non-empty on push failure")
+	}
+}
+
+// TestVMCreate_UnknownCloudInitTemplate_Returns400 — an unknown template id is
+// rejected with 400 not_approved before any VMID is allocated (FR-006, SC-004).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMCreate_UnknownCloudInitTemplate_Returns400(t *testing.T) {
+	handler, authHandler, _ := newVMCreateHandler(t)
+	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+
+	rec := postVMCreate(t, handler,
+		`{"cluster":"default","name":"web-22","profileId":"medium","cloudInitTemplateId":"does-not-exist"}`, cookie)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+
+	assertAPIError(t, rec.Body.Bytes(), "not_approved")
+
+	if calls := cluster.FakeCalls(); len(calls) != 0 {
+		t.Fatalf("rejected request reached the cluster: %+v", calls)
 	}
 }
 

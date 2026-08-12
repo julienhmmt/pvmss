@@ -35,6 +35,7 @@
 				<a href={resolve('/admin/policy')} class="text-sm text-muted-foreground hover:text-foreground">Policy</a>
 				<a href={resolve('/admin/policy/nodes')} class="text-sm text-muted-foreground hover:text-foreground">Node capacity</a>
 				<a href={resolve('/admin/pools')} class="text-sm text-muted-foreground hover:text-foreground">Pools</a>
+				<a href={resolve('/admin/cloudinit-templates')} class="text-sm text-muted-foreground hover:text-foreground">Cloud-init</a>
 				<a href={resolve('/admin/settings')} class="text-sm text-muted-foreground hover:text-foreground">Settings</a>
 				<a href={resolve('/admin/appinfo')} class="text-sm text-muted-foreground hover:text-foreground">App Info</a>
 			{/if}
