@@ -18,6 +18,13 @@ TOKEN_NAME="pvmss-local"
 TOKEN_FILE=".sonar/token"
 PASS_FILE=".sonar/admin-password"
 
+# SonarQube projects to provision (one per line, key|name format).
+# Newlines separate entries so names with spaces are preserved.
+PROJECTS="pvmss-backend|PVMSS Backend (legacy)
+pvmss-server|PVMSS Server (next-gen)
+pvmss-frontend|PVMSS Frontend (legacy)
+pvmss-web|PVMSS Web (next-gen)"
+
 mkdir -p .sonar
 
 # Resolve the admin password to use.
@@ -107,9 +114,18 @@ create_token() {
 
 provision_project() {
     current_pass=$1
-    echo "Provisioning SonarQube project..."
-    curl -s -o /dev/null -w "%{http_code}" -u "$ADMIN_USER:$current_pass" -X POST \
-        "$SONAR_URL/api/projects/create?name=PVMSS&project=pvmss" >/dev/null || true
+    echo "Provisioning SonarQube projects..."
+    echo "$PROJECTS" | while IFS='|' read -r key name; do
+        [ -z "$key" ] && continue
+        encoded_name=$(printf '%s' "$name" | python3 -c "import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read()))")
+        http_code=$(curl -s -o /dev/null -w "%{http_code}" -u "$ADMIN_USER:$current_pass" -X POST \
+            "$SONAR_URL/api/projects/create?name=${encoded_name}&project=${key}" 2>/dev/null || true)
+        if [ "$http_code" = "200" ] || [ "$http_code" = "400" ]; then
+            echo "  $key — OK"
+        else
+            echo "  $key — HTTP $http_code (may already exist)"
+        fi
+    done
 }
 
 main() {
@@ -128,7 +144,11 @@ main() {
 
     create_token "$current_pass" || exit 1
     provision_project "$current_pass"
-    echo "Bootstrap complete. Dashboard will be available at $SONAR_URL/dashboard?id=pvmss"
+    echo "Bootstrap complete. Projects:"
+    echo "$PROJECTS" | while IFS='|' read -r key name; do
+        [ -z "$key" ] && continue
+        echo "  $SONAR_URL/dashboard?id=$key"
+    done
 }
 
 main "$@"

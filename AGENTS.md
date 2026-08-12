@@ -56,12 +56,18 @@ make up / down / restart / logs
 make buildkit-start / buildkit-stop / buildkit-status
 make docker-build
 
-# SonarQube (local container)
-make sonar              # Full pipeline: start, token, coverage, scan
+# SonarQube (local container, 4 projects: backend, server, frontend, web)
+make sonar              # Full pipeline: start, token, coverage, lint, scan all
 make sonar-up           # Start the SonarQube server on http://localhost:9000
-make sonar-bootstrap    # Provision or rotate the analysis token
-make sonar-coverage     # Generate Go coverage reports for SonarQube
-make sonar-scan         # Run the SonarScanner
+make sonar-bootstrap    # Provision 4 projects + rotate the analysis token
+make sonar-coverage     # Generate Go coverage reports (backend + server)
+make sonar-lint         # Run ESLint on frontend/ + web/ (including .svelte) → SonarQube
+make sonar-scan         # Run SonarScanner for all 4 projects + print summary
+make sonar-scan-backend   # Scan only legacy backend (Go)
+make sonar-scan-server    # Scan only next-gen server (Go)
+make sonar-scan-frontend  # Scan only legacy frontend (SvelteKit + ESLint on .svelte)
+make sonar-scan-web       # Scan only next-gen web (SvelteKit + ESLint on .svelte)
+make sonar-query CMD="summary"   # Query results (also: projects, issues <key>, metrics <key>, gate <key>, file <key> <path>)
 make sonar-down         # Stop the server
 make sonar-clean        # Stop and remove all SonarQube data
 ```
