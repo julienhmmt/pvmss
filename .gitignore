@@ -22,6 +22,9 @@ tmp/
 /pvmss
 pvmss/pvmss
 backend/pvmss
+server/pvmss
+server/pvmss-checklist
+server/pvmss-recover
 
 # noVNC
 frontend/components/noVNC*
