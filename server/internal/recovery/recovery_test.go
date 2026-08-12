@@ -1,0 +1,240 @@
+// recovery_test.go is the CLI-level integration test plan.md names as this
+// tranche's E2E-equivalent gate satisfier ("Playwright exercises
+// browser-driven user journeys; this tranche has no browser-reachable
+// surface... a shell-level integration test ... builds both binaries, runs
+// them against fixtures, asserts exit codes and database contents"). It
+// builds cmd/pvmss-recover and cmd/pvmss-checklist as real binaries and
+// drives them as subprocesses, mirroring quickstart.md Steps 1 and 3.
+package recovery_test
+
+import (
+	"bytes"
+	"context"
+	"database/sql"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+// buildRecoveryBinary compiles a server/cmd/<name> binary into a temp dir
+// and returns its path.
+func buildRecoveryBinary(ctx context.Context, t *testing.T, repoRoot, cmdName string) string {
+	t.Helper()
+
+	bin := filepath.Join(t.TempDir(), cmdName)
+	cmd := exec.CommandContext(ctx, "go", "build", "-o", bin, "./cmd/"+cmdName) //nolint:gosec // test builds a known repo-local command
+	cmd.Dir = filepath.Join(repoRoot, "server")
+
+	var stderr bytes.Buffer
+
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		t.Fatalf("build %s: %v\n%s", cmdName, err, stderr.String())
+	}
+
+	return bin
+}
+
+// exitCodeOf extracts the process exit code from exec.Command.Run's error,
+// failing the test if the command could not even start.
+func exitCodeOf(t *testing.T, err error) int {
+	t.Helper()
+
+	if err == nil {
+		return 0
+	}
+
+	var exitErr *exec.ExitError
+	if ok := errorsAsExitError(err, &exitErr); ok {
+		return exitErr.ExitCode()
+	}
+
+	t.Fatalf("command did not start: %v", err)
+
+	return -1
+}
+
+func errorsAsExitError(err error, target **exec.ExitError) bool {
+	exitErr, ok := err.(*exec.ExitError) //nolint:errorlint // exec.Command errors are never wrapped
+	if !ok {
+		return false
+	}
+
+	*target = exitErr
+
+	return true
+}
+
+// TestRecoveryCLI_EndToEnd runs pvmss-checklist and pvmss-recover as real
+// subprocesses against file-backed fixtures, per quickstart.md Steps 1 and
+// 3 and contracts/cutover.md's exit-code table.
+//
+//nolint:gocyclo // integration test exercises the full CLI contract in one flow
+func TestRecoveryCLI_EndToEnd(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	repoRoot := findRepoRootForCutover(t)
+
+	recoverBin := buildRecoveryBinary(ctx, t, repoRoot, "pvmss-recover")
+	checklistBin := buildRecoveryBinary(ctx, t, repoRoot, "pvmss-checklist")
+
+	// --- pvmss-checklist: SUMMARY must match SC-004 exactly (quickstart Step 1) ---
+	checklistOut, err := exec.CommandContext(ctx, checklistBin, "--repo-root", repoRoot).CombinedOutput() //nolint:gosec // test invokes its own freshly built binary
+	if err != nil {
+		t.Fatalf("pvmss-checklist: %v\n%s", err, checklistOut)
+	}
+
+	if !strings.Contains(string(checklistOut), "58 fiches found") {
+		t.Errorf("pvmss-checklist output missing fiche count:\n%s", checklistOut)
+	}
+
+	if !strings.Contains(string(checklistOut), "SUMMARY: 47 closed, 11 open (9 real gaps, 2 deliberate design decisions)") {
+		t.Errorf("pvmss-checklist SUMMARY does not match SC-004:\n%s", checklistOut)
+	}
+
+	// --- pvmss-recover: seed a legacy fixture, run against a migrated v0.4 db ---
+	legacyPath := filepath.Join(t.TempDir(), "legacy.db")
+
+	legacyDB, err := sql.Open("sqlite", legacyPath)
+	if err != nil {
+		t.Fatalf("open legacy fixture: %v", err)
+	}
+
+	if _, err := legacyDB.ExecContext(ctx, legacySchemaDDL); err != nil {
+		t.Fatalf("create legacy schema: %v", err)
+	}
+
+	seedLegacyDB(t, legacyDB, defaultSeed())
+
+	if err := legacyDB.Close(); err != nil {
+		t.Fatalf("close legacy fixture: %v", err)
+	}
+
+	v04Path := filepath.Join(t.TempDir(), "v04.db")
+
+	v04DB, err := sql.Open("sqlite", v04Path)
+	if err != nil {
+		t.Fatalf("open v0.4 fixture: %v", err)
+	}
+
+	if err := storeRunMigrations(v04DB); err != nil {
+		t.Fatalf("migrate v0.4 fixture: %v", err)
+	}
+
+	if err := v04DB.Close(); err != nil {
+		t.Fatalf("close v0.4 fixture: %v", err)
+	}
+
+	runRecover := func() (string, int) {
+		cmd := exec.CommandContext(ctx, recoverBin, //nolint:gosec // test invokes its own freshly built binary
+			"--legacy-db", legacyPath,
+			"--v0.4-db", v04Path,
+			"--cluster-name", "test-cluster",
+			"--session-secret", "test-session-secret-at-least-32-bytes!!",
+		)
+
+		var out bytes.Buffer
+
+		cmd.Stdout = &out
+		cmd.Stderr = &out
+		runErr := cmd.Run()
+
+		return out.String(), exitCodeOf(t, runErr)
+	}
+
+	out, code := runRecover()
+	if code != 0 {
+		t.Fatalf("pvmss-recover exit=%d, want 0:\n%s", code, out)
+	}
+
+	if !strings.Contains(out, "SUMMARY: written=") {
+		t.Errorf("pvmss-recover output missing SUMMARY line:\n%s", out)
+	}
+
+	// Inspect the target database directly (quickstart.md Step 3 validate block).
+	assertRecoveredDB(ctx, t, v04Path)
+
+	// --- Idempotence (SC-003): re-running produces identical row counts ---
+	if _, code := runRecover(); code != 0 {
+		t.Fatalf("second pvmss-recover run exit=%d, want 0", code)
+	}
+
+	inspectDB2, err := sql.Open("sqlite", v04Path)
+	if err != nil {
+		t.Fatalf("reopen v0.4 db after second run: %v", err)
+	}
+	defer func() { _ = inspectDB2.Close() }()
+
+	if n := countRows(t, inspectDB2, `SELECT COUNT(*) FROM catalog_nodes WHERE cluster = ?`, "test-cluster"); n != 2 {
+		t.Errorf("catalog_nodes count after second run = %d, want 2 (no duplicates)", n)
+	}
+
+	// --- Exit code 2: invalid cluster name (contracts/cutover.md) ---
+	badNameCmd := exec.CommandContext(ctx, recoverBin, //nolint:gosec // test invokes its own freshly built binary
+		"--legacy-db", legacyPath,
+		"--v0.4-db", v04Path,
+		"--cluster-name", "Not Valid!",
+		"--session-secret", "test-session-secret-at-least-32-bytes!!",
+	)
+	if code := exitCodeOf(t, badNameCmd.Run()); code != 2 {
+		t.Errorf("pvmss-recover with invalid --cluster-name: exit=%d, want 2", code)
+	}
+
+	// --- Exit code 1: unreadable --legacy-db ---
+	badPathCmd := exec.CommandContext(ctx, recoverBin, //nolint:gosec // test invokes its own freshly built binary
+		"--legacy-db", filepath.Join(t.TempDir(), "does-not-exist.db"),
+		"--v0.4-db", v04Path,
+		"--cluster-name", "test-cluster",
+	)
+	if code := exitCodeOf(t, badPathCmd.Run()); code != 1 {
+		t.Errorf("pvmss-recover with missing --legacy-db: exit=%d, want 1", code)
+	}
+}
+
+// assertRecoveredDB checks the v0.4 database directly against
+// defaultSeed()'s known values, per quickstart.md Step 3's validate block
+// and SC-002 (the three no-legacy-source vm_limits fields must be T12's
+// shipped defaults, never anything read from the legacy row).
+func assertRecoveredDB(ctx context.Context, t *testing.T, v04Path string) {
+	t.Helper()
+
+	db, err := sql.Open("sqlite", v04Path)
+	if err != nil {
+		t.Fatalf("reopen v0.4 db: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	if n := countRows(t, db, `SELECT COUNT(*) FROM clusters WHERE name = ?`, "test-cluster"); n != 1 {
+		t.Errorf("clusters count = %d, want 1", n)
+	}
+
+	if n := countRows(t, db, `SELECT COUNT(*) FROM catalog_nodes WHERE cluster = ?`, "test-cluster"); n != 2 {
+		t.Errorf("catalog_nodes count = %d, want 2", n)
+	}
+
+	var (
+		sockets, cores, memMB, diskGB, netCards, snapshots, vmPerUser int
+		allowYAML                                                     bool
+	)
+
+	err = db.QueryRowContext(ctx, `
+		SELECT max_sockets, max_cores, max_memory_mb, max_disk_per_vm_gb,
+		       max_network_cards, max_snapshots, max_vm_per_user, allow_custom_yaml
+		FROM vm_limits WHERE cluster = ?`, "test-cluster").Scan(
+		&sockets, &cores, &memMB, &diskGB, &netCards, &snapshots, &vmPerUser, &allowYAML)
+	if err != nil {
+		t.Fatalf("query vm_limits: %v", err)
+	}
+
+	if sockets != 4 || cores != 8 || memMB != 16384 {
+		t.Errorf("vm_limits no-source fields = (%d,%d,%d), want T12 defaults (4,8,16384)", sockets, cores, memMB)
+	}
+
+	if diskGB != 20 || netCards != 3 || snapshots != 8 || vmPerUser != 5 || !allowYAML {
+		t.Errorf("vm_limits copied fields = (%d,%d,%d,%d,%v), want (20,3,8,5,true)",
+			diskGB, netCards, snapshots, vmPerUser, allowYAML)
+	}
+}
