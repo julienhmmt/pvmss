@@ -120,6 +120,13 @@ func loadSecuritySettings(cfg *Configuration) error {
 		return errors.New("ADMIN_PASSWORD_HASH must be a bcrypt hash")
 	}
 
+	cookieSecure, err := loadBool("PVMSS_COOKIE_SECURE", true)
+	if err != nil {
+		return err
+	}
+
+	cfg.CookieSecure = cookieSecure
+
 	return nil
 }
 
@@ -198,6 +205,20 @@ func loadInt(envKey string, defaultVal int) (int, error) {
 	value, err := strconv.Atoi(raw)
 	if err != nil {
 		return 0, fmt.Errorf("%s must be an integer, got %q", envKey, raw)
+	}
+
+	return value, nil
+}
+
+func loadBool(envKey string, defaultVal bool) (bool, error) {
+	raw := strings.TrimSpace(os.Getenv(envKey))
+	if raw == "" {
+		return defaultVal, nil
+	}
+
+	value, err := strconv.ParseBool(raw)
+	if err != nil {
+		return false, fmt.Errorf("%s must be a boolean, got %q", envKey, raw)
 	}
 
 	return value, nil

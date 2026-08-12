@@ -110,7 +110,7 @@ func run() int {
 
 	go worker.Run(inventoryCtx)
 
-	sessions, err := auth.NewSessionManager(st, cfg.SessionSecret, false)
+	sessions, err := auth.NewSessionManager(st, cfg.SessionSecret, cfg.CookieSecure)
 	if err != nil {
 		logger.Error("failed to create session manager", "component", "main", "error", err)
 		return 1
