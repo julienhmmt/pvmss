@@ -13,6 +13,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path/filepath"
+	"strings"
 
 	"pvmss/database"
 	"pvmss/logger"
@@ -684,12 +686,23 @@ func (h *AdminSettingsOverviewHandler) upsertSFTPConfig(raw json.RawMessage, cha
 		return fmt.Errorf("sftp_config: port must be between 1 and 65535")
 	}
 
-	// Validate: path sanitization (basic check for directory traversal)
+	// Validate: path sanitization — reject directory traversal in all configured
+	// paths. PrivateKeyPath and HostKeyPath must be absolute (admin-configured
+	// file paths on the server), and RemotePath must be an absolute path on the
+	// remote Proxmox node. None may contain ".." components.
 	if p.PrivateKeyPath != "" {
-		// Check for obvious directory traversal attempts
-		if len(p.PrivateKeyPath) > 0 && (p.PrivateKeyPath[0] == '.' || p.PrivateKeyPath[0] == '/') {
-			// Allow relative paths starting with . or absolute paths, but log a warning
-			logger.Get().Warn().Str("path", p.PrivateKeyPath).Msg("sftp_config: private_key_path uses absolute or relative path")
+		if err := validateSFTPPath(p.PrivateKeyPath, "private_key_path"); err != nil {
+			return err
+		}
+	}
+	if p.RemotePath != "" {
+		if err := validateSFTPPath(p.RemotePath, "remote_path"); err != nil {
+			return err
+		}
+	}
+	if p.HostKeyPath != "" {
+		if err := validateSFTPPath(p.HostKeyPath, "host_key_path"); err != nil {
+			return err
 		}
 	}
 
@@ -704,6 +717,30 @@ func (h *AdminSettingsOverviewHandler) upsertSFTPConfig(raw json.RawMessage, cha
 		PrivateKey:     existing.PrivateKey, // preserve stored (encrypted) key
 	}
 	return h.state.SetSFTPConfig(cfg, changedBy)
+}
+
+// validateSFTPPath validates an SFTP configuration path to prevent directory
+// traversal. Paths must be absolute (admin-configured server/remote paths),
+// must not contain ".." components, and must not contain null bytes.
+func validateSFTPPath(path, fieldName string) error {
+	if strings.Contains(path, "\x00") {
+		return fmt.Errorf("sftp_config: %s contains null bytes", fieldName)
+	}
+	if !filepath.IsAbs(path) {
+		return fmt.Errorf("sftp_config: %s must be an absolute path", fieldName)
+	}
+	cleaned := filepath.Clean(path)
+	if cleaned != path {
+		// filepath.Clean changed the path — it contained redundant separators
+		// or "."/ ".." components. Reject if ".." is still present after cleaning.
+		return fmt.Errorf("sftp_config: %s contains redundant or traversal components", fieldName)
+	}
+	for _, part := range strings.Split(filepath.ToSlash(path), "/") {
+		if part == ".." {
+			return fmt.Errorf("sftp_config: %s contains directory traversal (..)", fieldName)
+		}
+	}
+	return nil
 }
 
 // vmProfileByID locates a profile by its ID in the in-memory settings.

@@ -161,14 +161,37 @@ func (h *AdminMutationsHandler) UpdateSFTPConfig(w http.ResponseWriter, r *http.
 		return
 	}
 
+	// Validate paths to prevent directory traversal.
+	privateKeyPath := strings.TrimSpace(req.PrivateKeyPath)
+	remotePath := strings.TrimSpace(req.RemotePath)
+	hostKeyPath := strings.TrimSpace(req.HostKeyPath)
+	if privateKeyPath != "" {
+		if err := validateSFTPPath(privateKeyPath, "private_key_path"); err != nil {
+			errBadRequest(w, err.Error())
+			return
+		}
+	}
+	if remotePath != "" {
+		if err := validateSFTPPath(remotePath, "remote_path"); err != nil {
+			errBadRequest(w, err.Error())
+			return
+		}
+	}
+	if hostKeyPath != "" {
+		if err := validateSFTPPath(hostKeyPath, "host_key_path"); err != nil {
+			errBadRequest(w, err.Error())
+			return
+		}
+	}
+
 	dbCfg := &database.SFTPConfig{
 		Enabled:        existing.Enabled,
 		Host:           strings.TrimSpace(req.Host),
 		Port:           port,
 		Username:       strings.TrimSpace(req.Username),
-		PrivateKeyPath: strings.TrimSpace(req.PrivateKeyPath),
-		RemotePath:     strings.TrimSpace(req.RemotePath),
-		HostKeyPath:    strings.TrimSpace(req.HostKeyPath),
+		PrivateKeyPath: privateKeyPath,
+		RemotePath:     remotePath,
+		HostKeyPath:    hostKeyPath,
 		PrivateKey:     existing.PrivateKey, // preserve stored (encrypted) key by default
 	}
 
