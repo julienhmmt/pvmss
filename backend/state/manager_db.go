@@ -158,6 +158,7 @@ func mapSFTPFromDB(src database.SFTPConfig) proxmox.CloudInitSFTPConfig {
 		Username:       src.Username,
 		PrivateKeyPath: src.PrivateKeyPath,
 		SnippetBaseDir: src.RemotePath,
+		HostKeyPath:    src.HostKeyPath,
 		// Carries the still-encrypted key as stored in the DB; reloadSettingsCache
 		// decrypts it in place once the session secret is available.
 		PrivateKey: src.PrivateKey,
