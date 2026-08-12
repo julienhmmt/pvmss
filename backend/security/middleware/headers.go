@@ -46,9 +46,12 @@ func setSecurityHeaders(w http.ResponseWriter, r *http.Request) {
 	// Enable XSS filter in older browsers
 	w.Header().Set("X-XSS-Protection", "1; mode=block")
 
-	// Content Security Policy - balanced between security and functionality
+	// Content Security Policy — hardened: no unsafe-inline or unsafe-eval.
+	// The SvelteKit SPA does not require inline scripts or eval for its
+	// compiled bundle. Inline styles are still allowed because Svelte
+	// injects scoped styles into <style> tags at runtime.
 	csp := "default-src 'self'; " +
-		"script-src 'self' 'unsafe-inline' 'unsafe-eval'; " + // unsafe-inline/eval needed for Go templates
+		"script-src 'self'; " +
 		"style-src 'self' 'unsafe-inline'; " +
 		"img-src 'self' data: https:; " +
 		"font-src 'self' data:; " +
