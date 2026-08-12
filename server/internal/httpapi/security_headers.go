@@ -2,11 +2,9 @@ package httpapi
 
 import "net/http"
 
-// securityHeaders is the set of HTTP security headers applied to every
-// response served by the v0.4 router. CSP excludes unsafe-inline and
-// unsafe-eval for scripts; inline styles are retained because Svelte injects
-// scoped styles into <style> tags at runtime.
-const securityHeaders = "default-src 'self'; " +
+// apiSecurityHeaders is the strict CSP for API responses — no inline scripts
+// or styles are ever served on /api/* routes.
+const apiSecurityHeaders = "default-src 'self'; " +
 	"script-src 'self'; " +
 	"style-src 'self' 'unsafe-inline'; " +
 	"img-src 'self' data: https:; " +
@@ -16,13 +14,33 @@ const securityHeaders = "default-src 'self'; " +
 	"base-uri 'self'; " +
 	"form-action 'self'"
 
+// spaSecurityHeaders is the CSP for the SPA shell. SvelteKit's adapter-static
+// injects an inline bootstrap script to load the app bundle — 'unsafe-inline'
+// is required for script-src so the browser executes it. The inline script is
+// build-generated, not user-controlled, so the XSS risk is minimal. API
+// responses keep the stricter apiSecurityHeaders.
+const spaSecurityHeaders = "default-src 'self'; " +
+	"script-src 'self' 'unsafe-inline'; " +
+	"style-src 'self' 'unsafe-inline'; " +
+	"img-src 'self' data: https:; " +
+	"font-src 'self' data:; " +
+	"connect-src 'self'; " +
+	"frame-ancestors 'none'; " +
+	"base-uri 'self'; " +
+	"form-action 'self'"
+
 // withSecurityHeaders wraps the given handler with a middleware that sets
-// security headers on every response. It is applied to both API and SPA
-// routes so the headers are present consistently.
+// security headers on every response. API routes get the strict CSP (no
+// inline scripts); SPA routes get the relaxed CSP (inline bootstrap script
+// allowed).
 func withSecurityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
-		h.Set("Content-Security-Policy", securityHeaders)
+		if isAPIPath(r.URL.Path) {
+			h.Set("Content-Security-Policy", apiSecurityHeaders)
+		} else {
+			h.Set("Content-Security-Policy", spaSecurityHeaders)
+		}
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
