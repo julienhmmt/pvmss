@@ -123,7 +123,9 @@ func (h *AuthHandler) Exchange(w http.ResponseWriter, r *http.Request) {
 }
 
 // Refresh handles POST /api/v1/auth/refresh.
-// Reads the refresh_token cookie and issues a new access_token.
+// Reads the refresh_token cookie and issues a new access_token. The refresh
+// token is also rotated — a new refresh_token cookie is issued on each
+// successful refresh so a stolen token becomes single-use.
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	secret := h.jwtSecret
 	if secret == "" {
@@ -149,7 +151,15 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := setTokenCookie(w, secret, accessTokenCookie, claims.Username, claims.IsAdmin, accessTokenTTL, h.state.GetEnvConfig().Environment); err != nil {
+	env := h.state.GetEnvConfig().Environment
+	// Issue a new access token.
+	if err := setTokenCookie(w, secret, accessTokenCookie, claims.Username, claims.IsAdmin, accessTokenTTL, env); err != nil {
+		writeAppError(w, err)
+		return
+	}
+	// Rotate the refresh token — issue a new one with a fresh expiry so the
+	// old refresh token becomes stale and cannot be replayed.
+	if err := setTokenCookie(w, secret, refreshTokenCookie, claims.Username, claims.IsAdmin, refreshTokenTTL, env); err != nil {
 		writeAppError(w, err)
 		return
 	}
