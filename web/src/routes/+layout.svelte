@@ -8,9 +8,11 @@
 	import { get } from '$lib/shared/api/client';
 	import { setLocaleContext } from '$lib/features/chrome/locale.svelte';
 	import { setThemeContext } from '$lib/features/chrome/theme.svelte';
+	import { setStatusContext } from '$lib/features/chrome/status.svelte';
 	import Navbar from '$lib/features/chrome/Navbar.svelte';
 	import LanguageSwitcher from '$lib/features/chrome/LanguageSwitcher.svelte';
 	import ThemeToggle from '$lib/features/chrome/ThemeToggle.svelte';
+	import StatusBanner from '$lib/features/chrome/StatusBanner.svelte';
 
 	interface Props {
 		children: Snippet;
@@ -35,10 +37,13 @@
 	// before the first interactive chrome renders.
 	const locale = setLocaleContext();
 	const theme = setThemeContext();
+	const status = setStatusContext();
 	onMount(() => {
 		locale.init();
 		theme.init();
+		status.start();
 	});
+	onDestroy(() => status.stop());
 
 	// T14: the public version string is shown in the footer for every visitor,
 	// authenticated or not (X17/FR-015). Fetched once on mount from the
@@ -63,7 +68,7 @@
 			<ThemeToggle />
 		{/snippet}
 		{#snippet statusBanner()}
-			<!-- StatusBanner (T027) mounts here once US3 lands. -->
+			<StatusBanner />
 		{/snippet}
 	</Navbar>
 	<main class="flex flex-1 flex-col items-center justify-center">
