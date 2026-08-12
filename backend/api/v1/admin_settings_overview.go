@@ -112,6 +112,7 @@ type SFTPConfigPayload struct {
 	Username       string `json:"username"`
 	PrivateKeyPath string `json:"private_key_path"`
 	RemotePath     string `json:"remote_path"`
+	HostKeyPath    string `json:"host_key_path"`
 }
 
 // CloudInitTemplatePayload is the shape accepted by cloudinit_templates upsert.
@@ -673,6 +674,9 @@ func (h *AdminSettingsOverviewHandler) upsertSFTPConfig(raw json.RawMessage, cha
 		if p.RemotePath == "" {
 			return fmt.Errorf("sftp_config: remote_path is required when enabled")
 		}
+		if p.HostKeyPath == "" {
+			return fmt.Errorf("sftp_config: host_key_path is required when enabled (set to a known_hosts file)")
+		}
 	}
 
 	// Validate: port range
@@ -696,6 +700,7 @@ func (h *AdminSettingsOverviewHandler) upsertSFTPConfig(raw json.RawMessage, cha
 		Username:       p.Username,
 		PrivateKeyPath: p.PrivateKeyPath,
 		RemotePath:     p.RemotePath,
+		HostKeyPath:    p.HostKeyPath,
 		PrivateKey:     existing.PrivateKey, // preserve stored (encrypted) key
 	}
 	return h.state.SetSFTPConfig(cfg, changedBy)

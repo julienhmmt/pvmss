@@ -77,6 +77,7 @@ func buildSFTPStatus(settings *state.AppSettings) *AdminSFTPStatusResponse {
 		KeyExists:    keyExists,
 		KeySet:       keySet,
 		KeyPath:      cfg.PrivateKeyPath,
+		HostKeyPath:  cfg.HostKeyPath,
 		Fingerprint:  fingerprint,
 		IsConfigured: isConfigured,
 	}
@@ -167,6 +168,7 @@ func (h *AdminMutationsHandler) UpdateSFTPConfig(w http.ResponseWriter, r *http.
 		Username:       strings.TrimSpace(req.Username),
 		PrivateKeyPath: strings.TrimSpace(req.PrivateKeyPath),
 		RemotePath:     strings.TrimSpace(req.RemotePath),
+		HostKeyPath:    strings.TrimSpace(req.HostKeyPath),
 		PrivateKey:     existing.PrivateKey, // preserve stored (encrypted) key by default
 	}
 
