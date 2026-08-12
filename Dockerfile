@@ -52,6 +52,10 @@ COPY --from=builder --chown=nonroot:nonroot /app/backend/docs/ /app/backend/docs
 
 # Default database path (override at runtime with -e PVMSS_DB_PATH=...)
 ENV PVMSS_DB_PATH=/data/pvmss.db
+# Bind all interfaces inside the container; the host port mapping in
+# docker-compose / k8s controls external exposure. Override with
+# -e PVMSS_HOST=127.0.0.1 for bare-metal/loopback-only deployments.
+ENV PVMSS_HOST=0.0.0.0
 
 # Expose the port the app runs on
 EXPOSE 50000
