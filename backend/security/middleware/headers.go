@@ -72,13 +72,24 @@ func setSecurityHeaders(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-CSRF-Token")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 
-	// Set CORS origin: allow localhost (dev) and optionally a configured external origin.
-	// PVMSS_CORS_ORIGIN can be set to the public base URL of the app behind a reverse proxy,
-	// e.g. "https://pvmss.example.com". Only exact matches are allowed.
+	// Set CORS origin: in development, allow localhost origins for the dev
+	// server. In production, only allow origins explicitly configured via
+	// PVMSS_CORS_ORIGIN (comma-separated exact matches).
 	if origin := r.Header.Get("Origin"); origin != "" {
-		if strings.HasPrefix(origin, "http://localhost") || strings.HasPrefix(origin, "http://127.0.0.1") {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-		} else if allowed := os.Getenv("PVMSS_CORS_ORIGIN"); allowed != "" && origin == allowed {
+		allowed := false
+		if !isProduction {
+			allowed = strings.HasPrefix(origin, "http://localhost") || strings.HasPrefix(origin, "http://127.0.0.1")
+		}
+		if !allowed {
+			for _, cfg := range strings.Split(os.Getenv("PVMSS_CORS_ORIGIN"), ",") {
+				cfg = strings.TrimSpace(cfg)
+				if cfg != "" && origin == cfg {
+					allowed = true
+					break
+				}
+			}
+		}
+		if allowed {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 		}
 	}
