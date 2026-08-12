@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -467,21 +468,32 @@ func TestVmAction_AdminActsOnAnyTaggedVM(t *testing.T) {
 }
 
 // TestVmAction_AllFiveValidActionsAccepted — T021: all 5 valid actions
-// accepted; any other string → 400.
+// accepted; any other string → 400. Each action targets a VM in the
+// appropriate state (T001b: the fake now rejects status-incompatible
+// transitions — start needs a stopped VM, stop/shutdown/reboot/reset need a
+// running one).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmAction_AllFiveValidActionsAccepted(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
-	valid := []string{"start", "stop", "shutdown", "reboot", "reset"}
-	for _, action := range valid {
-		t.Run(action, func(t *testing.T) {
+	tests := []struct {
+		action string
+		vmid   int
+	}{
+		{action: "start", vmid: 101},   // stopped
+		{action: "stop", vmid: 100},    // running
+		{action: "shutdown", vmid: 100}, // running
+		{action: "reboot", vmid: 100},  // running
+		{action: "reset", vmid: 100},   // running
+	}
+	for _, tt := range tests {
+		t.Run(tt.action, func(t *testing.T) {
 			cluster.ResetFake()
-			// VM 101 is stopped — use start/stop/shutdown/reboot/reset all on it.
-			rec, _ := serveDetailError(handler, detailRequest(http.MethodPost, "/api/v1/vms/default/101/actions", `{"action":"`+action+`"}`, cookie))
+			rec, _ := serveDetailError(handler, detailRequest(http.MethodPost, fmt.Sprintf("/api/v1/vms/default/%d/actions", tt.vmid), `{"action":"`+tt.action+`"}`, cookie))
 			if rec.Code != http.StatusOK {
-				t.Fatalf("action %q: status = %d, want %d; body=%s", action, rec.Code, http.StatusOK, rec.Body.String())
+				t.Fatalf("action %q: status = %d, want %d; body=%s", tt.action, rec.Code, http.StatusOK, rec.Body.String())
 			}
 		})
 	}
