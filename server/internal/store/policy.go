@@ -33,6 +33,7 @@ type NodePolicyRow struct {
 // PolicyRow reads one cluster's persisted gabarit and quota values.
 func (s *Store) PolicyRow(ctx context.Context, cluster string) (PolicyRow, error) {
 	var row PolicyRow
+
 	err := s.db.QueryRowContext(ctx, `
 		SELECT cluster, max_sockets, max_cores, max_memory_mb, max_disk_per_vm_gb,
 		       max_network_cards, max_snapshots, max_vm_per_user, allow_custom_yaml
@@ -44,9 +45,11 @@ func (s *Store) PolicyRow(ctx context.Context, cluster string) (PolicyRow, error
 	if errors.Is(err, sql.ErrNoRows) {
 		return PolicyRow{}, fmt.Errorf("policy row for cluster %q: %w", cluster, sql.ErrNoRows)
 	}
+
 	if err != nil {
 		return PolicyRow{}, fmt.Errorf("query policy row: %w", err)
 	}
+
 	return row, nil
 }
 
@@ -73,6 +76,7 @@ func (s *Store) UpsertPolicyRow(ctx context.Context, row PolicyRow) error {
 	if err != nil {
 		return fmt.Errorf("upsert policy row: %w", err)
 	}
+
 	return nil
 }
 
@@ -80,6 +84,7 @@ func (s *Store) UpsertPolicyRow(ctx context.Context, row PolicyRow) error {
 // as sql.ErrNoRows so callers can apply the all-zero no-cap default.
 func (s *Store) NodePolicyRow(ctx context.Context, cluster, node string) (NodePolicyRow, error) {
 	var row NodePolicyRow
+
 	err := s.db.QueryRowContext(ctx, `
 		SELECT cluster, node, max_vms, max_vcpus, max_ram_gb, max_disk_gb
 		FROM node_limits WHERE cluster = ? AND node = ?`, cluster, node).Scan(
@@ -88,6 +93,7 @@ func (s *Store) NodePolicyRow(ctx context.Context, cluster, node string) (NodePo
 	if err != nil {
 		return NodePolicyRow{}, err
 	}
+
 	return row, nil
 }
 
@@ -102,16 +108,20 @@ func (s *Store) NodePolicyRows(ctx context.Context, cluster string) ([]NodePolic
 	defer func() { _ = rows.Close() }()
 
 	result := make([]NodePolicyRow, 0)
+
 	for rows.Next() {
 		var row NodePolicyRow
 		if err := rows.Scan(&row.Cluster, &row.Node, &row.MaxVMs, &row.MaxVCPUs, &row.MaxRAMGB, &row.MaxDiskGB); err != nil {
 			return nil, fmt.Errorf("scan node policy row: %w", err)
 		}
+
 		result = append(result, row)
 	}
+
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate node policy rows: %w", err)
 	}
+
 	return result, nil
 }
 
@@ -130,5 +140,6 @@ func (s *Store) UpsertNodePolicyRow(ctx context.Context, row NodePolicyRow) erro
 	if err != nil {
 		return fmt.Errorf("upsert node policy row: %w", err)
 	}
+
 	return nil
 }

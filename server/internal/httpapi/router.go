@@ -1,4 +1,3 @@
-//nolint:wsl_v5 // route registration groups optional handlers by feature
 package httpapi
 
 import (

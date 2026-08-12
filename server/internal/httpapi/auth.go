@@ -1,4 +1,3 @@
-//nolint:wsl_v5 // existing decoder style is preserved while adding bounded trailing-value checks
 package httpapi
 
 import (

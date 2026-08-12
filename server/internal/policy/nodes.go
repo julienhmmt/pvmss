@@ -14,17 +14,21 @@ func (service *Policy) NodeCapacities(ctx context.Context, clusterName string) (
 	if err != nil {
 		return nil, err
 	}
+
 	result := make([]Capacity, 0, len(nodes))
 	for _, node := range nodes {
 		capacity, err := service.NodeCapacity(ctx, clusterName, node.Name)
 		if err != nil {
 			return nil, err
 		}
+
 		capacity.PhysicalVCPUs = node.CPUCores
 		capacity.PhysicalRAMGB = int(node.MemoryTotal / bytesPerGB)
 		result = append(result, capacity)
 	}
+
 	slices.SortFunc(result, func(left, right Capacity) int { return compareNode(left.Node, right.Node) })
+
 	return result, nil
 }
 
@@ -34,11 +38,14 @@ func (service *Policy) discoveredNodes(ctx context.Context) ([]cluster.Node, err
 		if err != nil {
 			return nil, fmt.Errorf("discover nodes: %w", err)
 		}
+
 		return snapshot.Nodes, nil
 	}
+
 	if service.projection != nil && service.projection.Load() != nil {
 		return service.projection.Load().Nodes, nil
 	}
+
 	return nil, nil
 }
 
@@ -46,8 +53,10 @@ func compareNode(left, right string) int {
 	if left < right {
 		return -1
 	}
+
 	if left > right {
 		return 1
 	}
+
 	return 0
 }

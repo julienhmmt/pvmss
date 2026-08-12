@@ -51,9 +51,11 @@ func UpdateNetwork(ctx context.Context, deps NetworkDependencies, requested []cl
 			return nil, fmt.Errorf("read gabarit: %w", err)
 		}
 	}
+
 	if deps.Policy == nil && gabarit.MaxNetworkCards == 0 {
 		return nil, policy.ErrUnavailable
 	}
+
 	if len(requested) > gabarit.MaxNetworkCards {
 		return nil, ErrNetworkCardsExceedLimit
 	}

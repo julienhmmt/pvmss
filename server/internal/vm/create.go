@@ -132,6 +132,7 @@ type CreateResult struct {
 // post-completion invalidation (tasks.go).
 func Create(ctx context.Context, actor auth.Identity, clusterName string, req CreateRequest, st *store.Store, creator cluster.Creator, audit AuditRecorder, log *slog.Logger, services ...*policy.Policy) (CreateResult, error) {
 	policyService := selectPolicyService(st, services)
+
 	if actor.Pool == "" {
 		return CreateResult{}, ErrNoPool
 	}

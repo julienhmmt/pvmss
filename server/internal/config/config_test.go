@@ -192,10 +192,10 @@ func TestLoad(t *testing.T) {
 				envLogOutput:              testLogOutput,
 				"PVMSS_CLUSTER_SOURCE":    "proxmox",
 				"PROXMOX_URL":             "https://proxmox.example.com",
-				"PROXMOX_API_TOKEN_NAME":  "root@pam!pvmss", //nolint:gosec // test-only fake credential
-				"PROXMOX_API_TOKEN_VALUE": "token-value",    //nolint:gosec // test-only fake credential
+				"PROXMOX_API_TOKEN_NAME":  "root@pam!pvmss",
+				"PROXMOX_API_TOKEN_VALUE": "token-value",
 			},
-			want: config.Configuration{ //nolint:gosec // test-only fake Proxmox credentials
+			want: config.Configuration{
 				Host:                              testHost,
 				Port:                              50001,
 				DBPath:                            testDBPath,

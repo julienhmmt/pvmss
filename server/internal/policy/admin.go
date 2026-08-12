@@ -12,10 +12,12 @@ func (service *Policy) SetGabarit(ctx context.Context, clusterName string, gabar
 	if err := validateGabarit(gabarit); err != nil {
 		return err
 	}
+
 	row, err := service.store.PolicyRow(ctx, clusterName)
 	if err != nil {
 		return err
 	}
+
 	row.MaxSockets = gabarit.MaxSockets
 	row.MaxCores = gabarit.MaxCores
 	row.MaxMemoryMB = gabarit.MaxMemoryMB
@@ -23,6 +25,7 @@ func (service *Policy) SetGabarit(ctx context.Context, clusterName string, gabar
 	row.MaxNetworkCards = gabarit.MaxNetworkCards
 	row.MaxSnapshots = gabarit.MaxSnapshots
 	row.AllowCustomYaml = gabarit.AllowCustomYaml
+
 	return service.store.UpsertPolicyRow(ctx, row)
 }
 
@@ -31,16 +34,20 @@ func (service *Policy) SetPolicy(ctx context.Context, clusterName string, gabari
 	if err := validateGabarit(gabarit); err != nil {
 		return err
 	}
+
 	if allowed < -1 {
 		return fmt.Errorf("%w: maxVmPerUser must be -1 or greater", ErrInvalidPolicy)
 	}
+
 	row, err := service.store.PolicyRow(ctx, clusterName)
 	if err != nil {
 		return err
 	}
+
 	row.MaxSockets, row.MaxCores, row.MaxMemoryMB = gabarit.MaxSockets, gabarit.MaxCores, gabarit.MaxMemoryMB
 	row.MaxDiskPerVMGB, row.MaxNetworkCards, row.MaxSnapshots = gabarit.MaxDiskPerVMGB, gabarit.MaxNetworkCards, gabarit.MaxSnapshots
 	row.AllowCustomYaml, row.MaxVMPerUser = gabarit.AllowCustomYaml, allowed
+
 	return service.store.UpsertPolicyRow(ctx, row)
 }
 
@@ -49,11 +56,14 @@ func (service *Policy) SetQuota(ctx context.Context, clusterName string, allowed
 	if allowed < -1 {
 		return fmt.Errorf("%w: maxVmPerUser must be -1 or greater", ErrInvalidPolicy)
 	}
+
 	row, err := service.store.PolicyRow(ctx, clusterName)
 	if err != nil {
 		return err
 	}
+
 	row.MaxVMPerUser = allowed
+
 	return service.store.UpsertPolicyRow(ctx, row)
 }
 
@@ -63,20 +73,25 @@ func (service *Policy) SetNodeCapacity(ctx context.Context, clusterName, node st
 	if err := validateCapacity(requested); err != nil {
 		return err
 	}
+
 	physicalNode, err := service.discoveredNode(ctx, node)
 	if err != nil {
 		return err
 	}
+
 	current, err := service.NodeCapacity(ctx, clusterName, node)
 	if err != nil {
 		return err
 	}
+
 	if err := checkBelowUsage(node, requested, current); err != nil {
 		return err
 	}
+
 	if err := checkPhysicalCapacity(node, requested, physicalNode); err != nil {
 		return err
 	}
+
 	return service.store.UpsertNodePolicyRow(ctx, store.NodePolicyRow{
 		Cluster: clusterName, Node: node, MaxVMs: requested.MaxVMs,
 		MaxVCPUs: requested.MaxVCPUs, MaxRAMGB: requested.MaxRAMGB, MaxDiskGB: requested.MaxDiskGB,
@@ -100,6 +115,7 @@ func validateGabarit(gabarit Gabarit) error {
 			return fmt.Errorf("%w: %s must not be negative", ErrInvalidPolicy, item.name)
 		}
 	}
+
 	return nil
 }
 
@@ -118,6 +134,7 @@ func validateCapacity(capacity Capacity) error {
 			return fmt.Errorf("%w: %s must not be negative", ErrInvalidPolicy, item.name)
 		}
 	}
+
 	return nil
 }
 
@@ -127,13 +144,16 @@ func (service *Policy) discoveredNode(ctx context.Context, node string) (cluster
 		if err != nil {
 			return cluster.Node{}, fmt.Errorf("discover node: %w", err)
 		}
+
 		for _, item := range snapshot.Nodes {
 			if item.Name == node {
 				return item, nil
 			}
 		}
+
 		return cluster.Node{}, cluster.ErrNotFound
 	}
+
 	if service.projection != nil && service.projection.Load() != nil {
 		for _, item := range service.projection.Load().Nodes {
 			if item.Name == node {
@@ -141,6 +161,7 @@ func (service *Policy) discoveredNode(ctx context.Context, node string) (cluster
 			}
 		}
 	}
+
 	return cluster.Node{}, cluster.ErrNotFound
 }
 
@@ -158,6 +179,7 @@ func checkBelowUsage(node string, requested, current Capacity) error {
 			return &BelowCurrentUsageError{Node: node, Dimension: item.dimension, Requested: item.requested, Used: item.used}
 		}
 	}
+
 	return nil
 }
 
@@ -174,6 +196,7 @@ func checkPhysicalCapacity(node string, requested Capacity, physical cluster.Nod
 			return &AboveNodeCapacityError{Node: node, Dimension: item.dimension, Requested: item.requested, Physical: item.physical}
 		}
 	}
+
 	return nil
 }
 
@@ -188,6 +211,7 @@ func (failure *BelowCurrentUsageError) Error() string {
 	if dimension == dimensionVCPUs {
 		dimension = dimensionVCPU
 	}
+
 	return fmt.Sprintf("%s cap (%d) is below %s's current usage (%d)", dimension, failure.Requested, failure.Node, failure.Used)
 }
 func (failure *BelowCurrentUsageError) Unwrap() error { return ErrBelowCurrentUsage }
@@ -203,6 +227,7 @@ func (failure *AboveNodeCapacityError) Error() string {
 	if failure.Dimension == dimensionRAM {
 		unit = " GB"
 	}
+
 	return fmt.Sprintf("%s cap (%d%s) exceeds %s's physical capacity (%d%s)", failure.Dimension, failure.Requested, unit, failure.Node, failure.Physical, unit)
 }
 func (failure *AboveNodeCapacityError) Unwrap() error { return ErrAboveNodeCapacity }

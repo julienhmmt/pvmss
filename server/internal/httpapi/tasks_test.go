@@ -1,4 +1,3 @@
-//nolint:noctx,wsl_v5 // test scaffolding does not need real context
 package httpapi_test
 
 import (

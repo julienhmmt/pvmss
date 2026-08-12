@@ -12,9 +12,11 @@ func (service *Policy) CheckQuota(ctx context.Context, clusterName string, actor
 	if err != nil {
 		return fmt.Errorf("read quota: %w", err)
 	}
+
 	if actor.IsAdmin || quota.Allowed == -1 || quota.Used < quota.Allowed {
 		return nil
 	}
+
 	return &QuotaExceededError{Username: actor.Username, Used: quota.Used, Allowed: quota.Allowed}
 }
 
@@ -24,6 +26,7 @@ func (service *Policy) CheckGabarit(ctx context.Context, clusterName string, soc
 	if err != nil {
 		return fmt.Errorf("read gabarit: %w", err)
 	}
+
 	values := []struct {
 		field              string
 		requested, maximum int
@@ -39,6 +42,7 @@ func (service *Policy) CheckGabarit(ctx context.Context, clusterName string, soc
 			return &GabaritExceededError{Field: value.field, Requested: value.requested, Maximum: value.maximum}
 		}
 	}
+
 	return nil
 }
 
@@ -50,28 +54,36 @@ func (service *Policy) CheckNodeCapacity(ctx context.Context, clusterName, node 
 	if err != nil {
 		return fmt.Errorf("read node capacity: %w", err)
 	}
+
 	if excludeVMID != 0 {
 		service.excludeVM(&capacity, excludeVMID)
 	}
+
 	usedVMs := capacity.UsedVMs
 	if excludeVMID == 0 {
 		usedVMs++
 	}
+
 	usedVCPUs := capacity.UsedVCPUs + deltaSockets*deltaCores
 	usedRAMGB := capacity.UsedRAMGB + (deltaMemoryMB+1023)/1024
+
 	dimensions := make([]string, 0, 3)
 	if capacity.MaxVMs > 0 && usedVMs > capacity.MaxVMs {
 		dimensions = append(dimensions, dimensionVMs)
 	}
+
 	if capacity.MaxVCPUs > 0 && usedVCPUs > capacity.MaxVCPUs {
 		dimensions = append(dimensions, dimensionVCPUs)
 	}
+
 	if capacity.MaxRAMGB > 0 && usedRAMGB > capacity.MaxRAMGB {
 		dimensions = append(dimensions, dimensionRAM)
 	}
+
 	if len(dimensions) == 0 {
 		return nil
 	}
+
 	return &NodeCapacityExceededError{Node: node, Dimensions: dimensions, MaxVMs: capacity.MaxVMs, MaxVCPUs: capacity.MaxVCPUs, MaxRAMGB: capacity.MaxRAMGB}
 }
 
@@ -79,17 +91,21 @@ func (service *Policy) excludeVM(capacity *Capacity, vmid int) {
 	if service.projection == nil || service.projection.Load() == nil {
 		return
 	}
+
 	machine, ok := service.projection.Load().ByVMID[vmid]
 	if !ok {
 		return
 	}
+
 	if capacity.UsedVMs > 0 {
 		capacity.UsedVMs--
 	}
+
 	vcpus := vmVCPUs(machine)
 	if capacity.UsedVCPUs >= vcpus {
 		capacity.UsedVCPUs -= vcpus
 	}
+
 	capacity.UsedRAMGB = service.ramGBExcluding(machine.Node, vmid)
 }
 
@@ -133,17 +149,21 @@ type NodeCapacityExceededError struct {
 
 func (failure *NodeCapacityExceededError) Error() string {
 	dimension := failure.Dimensions[0]
+
 	displayDimension := dimension
 	if dimension == dimensionVCPUs {
 		displayDimension = dimensionVCPU
 	}
+
 	maximum := failure.MaxVCPUs
 	if dimension == dimensionVMs {
 		maximum = failure.MaxVMs
 	}
+
 	if dimension == dimensionRAM {
 		maximum = failure.MaxRAMGB
 	}
+
 	return fmt.Sprintf("node %q %s capacity (%d) would be exceeded", failure.Node, displayDimension, maximum)
 }
 func (failure *NodeCapacityExceededError) Unwrap() error { return ErrNodeCapacityExceeded }

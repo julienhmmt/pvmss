@@ -32,6 +32,7 @@ func NewVMCreate(authHandler *Auth, st *store.Store, creator cluster.Creator, lo
 	if len(services) > 0 {
 		policyService = services[0]
 	}
+
 	return &VMCreate{auth: authHandler, store: st, creator: creator, policy: policyService, log: log}
 }
 

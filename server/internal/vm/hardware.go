@@ -57,13 +57,16 @@ func UpdateHardware(ctx context.Context, deps HardwareDependencies, patch Hardwa
 			return fmt.Errorf("read gabarit: %w", err)
 		}
 	}
+
 	if deps.Policy == nil && gabarit.MaxSockets == 0 {
 		return policy.ErrUnavailable
 	}
+
 	sockets, cores, memoryMB, tags, err := effectiveHardware(entity, patch, gabarit)
 	if err != nil {
 		return err
 	}
+
 	if deps.Policy != nil {
 		if err := deps.Policy.CheckNodeCapacity(ctx, deps.ClusterName, entity.Node, sockets, cores, memoryMB, entity.VMID); err != nil {
 			return err

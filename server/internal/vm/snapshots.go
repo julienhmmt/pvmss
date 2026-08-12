@@ -71,6 +71,7 @@ func ListSnapshots(ctx context.Context, deps SnapshotDependencies) ([]Snapshot, 
 	if err != nil {
 		return nil, 0, err
 	}
+
 	return visibleSnapshots(snapshots), gabarit.MaxSnapshots, nil
 }
 
@@ -218,9 +219,11 @@ func (deps SnapshotDependencies) readGabarit(ctx context.Context) (policy.Gabari
 	if deps.Policy != nil {
 		return deps.Policy.Gabarit(ctx, deps.ClusterName)
 	}
+
 	if deps.Gabarit.MaxSnapshots == 0 {
 		return policy.Gabarit{}, policy.ErrUnavailable
 	}
+
 	return deps.Gabarit, nil
 }
 

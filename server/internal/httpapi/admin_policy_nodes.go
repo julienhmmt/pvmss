@@ -34,15 +34,18 @@ func (handler *AdminPolicy) ServePolicyNodes(w http.ResponseWriter, r *http.Requ
 		writeAdminError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
 		return
 	}
+
 	capacities, err := handler.service.NodeCapacities(r.Context(), queryCluster(r))
 	if err != nil {
 		handler.writeFailure(w, "list node capacities", err)
 		return
 	}
+
 	response := make([]nodePolicyResponse, 0, len(capacities))
 	for _, capacity := range capacities {
 		response = append(response, nodePolicyResponseFromModel(capacity))
 	}
+
 	writeAdminJSON(w, http.StatusOK, response)
 }
 
@@ -52,43 +55,53 @@ func (handler *AdminPolicy) ServePolicyNodeUpdate(w http.ResponseWriter, r *http
 		writeAdminError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
 		return
 	}
+
 	node := r.PathValue("node")
 	if node == "" {
 		writeAdminError(w, http.StatusBadRequest, "invalid_request", "node is required")
 		return
 	}
+
 	var request nodePolicyUpdateRequest
 	if err := decodeJSON(w, r, &request); err != nil {
 		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
 		return
 	}
+
 	clusterName := resolveCluster(request.Cluster)
+
 	current, err := handler.service.NodeCapacity(r.Context(), clusterName, node)
 	if err != nil {
 		handler.writeNodeFailure(w, node, err)
 		return
 	}
+
 	applyNodePolicyPatch(&current, request)
+
 	if err := handler.service.SetNodeCapacity(r.Context(), clusterName, node, current); err != nil {
 		handler.writeNodeFailure(w, node, err)
 		return
 	}
+
 	updated, err := handler.service.NodeCapacity(r.Context(), clusterName, node)
 	if err != nil {
 		handler.writeFailure(w, "read node capacity after update", err)
 		return
 	}
+
 	capacities, err := handler.service.NodeCapacities(r.Context(), clusterName)
 	if err != nil {
 		handler.writeFailure(w, "read node capacity after update", err)
 		return
 	}
+
 	for _, capacity := range capacities {
 		if capacity.Node == node {
 			updated.PhysicalVCPUs = capacity.PhysicalVCPUs
 			updated.PhysicalRAMGB = capacity.PhysicalRAMGB
 		}
 	}
+
 	writeAdminJSON(w, http.StatusOK, nodePolicyResponseFromModel(updated))
 }
 
@@ -96,12 +109,15 @@ func applyNodePolicyPatch(capacity *policy.Capacity, request nodePolicyUpdateReq
 	if request.MaxVMs != nil {
 		capacity.MaxVMs = *request.MaxVMs
 	}
+
 	if request.MaxVCPUs != nil {
 		capacity.MaxVCPUs = *request.MaxVCPUs
 	}
+
 	if request.MaxRAMGB != nil {
 		capacity.MaxRAMGB = *request.MaxRAMGB
 	}
+
 	if request.MaxDiskGB != nil {
 		capacity.MaxDiskGB = *request.MaxDiskGB
 	}

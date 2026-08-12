@@ -34,6 +34,7 @@ func NewVMs(projection *inventory.Projection, authHandler *Auth, maxPageSize, qu
 	if len(services) > 0 {
 		policyService = services[0]
 	}
+
 	return &VMs{projection: projection, auth: authHandler, maxPageSize: maxPageSize, quota: quota, policy: policyService, log: log}
 }
 

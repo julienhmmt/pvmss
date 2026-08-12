@@ -33,6 +33,7 @@ type fakeAuditRecorder struct {
 func (f *fakeAuditRecorder) RecordAction(_ context.Context, _, _ string, vmid int, action string) error {
 	f.gotAction = action
 	f.gotVMID = vmid
+
 	return f.err
 }
 
@@ -57,6 +58,7 @@ func TestGetConsoleTicket_ResolveThenIssueThenAudit(t *testing.T) {
 	if ticket.Token == "" {
 		t.Fatalf("returned ticket has empty token")
 	}
+
 	if ticket.Cluster != "default" || ticket.VMID != 100 {
 		t.Fatalf("ticket bound to %+v, want default/100", ticket)
 	}
@@ -65,12 +67,15 @@ func TestGetConsoleTicket_ResolveThenIssueThenAudit(t *testing.T) {
 	if client.gotNode != cluster.FakeNode01 {
 		t.Fatalf("GetVNCTicket called with node %q, want %q (server-resolved)", client.gotNode, cluster.FakeNode01)
 	}
+
 	if ticket.Node != cluster.FakeNode01 {
 		t.Fatalf("ticket node = %q, want %q", ticket.Node, cluster.FakeNode01)
 	}
+
 	if ticket.ProxmoxTicket != "proxmox-ticket" || ticket.Port != 5901 {
 		t.Fatalf("ticket carries proxmox %+v, want proxmox-ticket/5901", ticket)
 	}
+
 	if audit.gotAction != "console_open" || audit.gotVMID != 100 {
 		t.Fatalf("audit recorded %+v, want console_open/100", audit)
 	}
@@ -95,6 +100,7 @@ func TestGetConsoleTicket_NonOwnerForbidden(t *testing.T) {
 	if client.gotNode != "" {
 		t.Fatalf("GetVNCTicket was called despite Resolve failure")
 	}
+
 	if audit.gotAction != "" {
 		t.Fatalf("audit was recorded despite Resolve failure")
 	}
@@ -116,6 +122,7 @@ func TestGetConsoleTicket_ClusterClientErrorPropagates(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
+
 	if !errors.Is(err, vm.ErrClusterConsoleUnavailable) {
 		t.Fatalf("err = %v, want ErrClusterConsoleUnavailable", err)
 	}
@@ -142,9 +149,11 @@ func TestGetConsoleTicket_AdminBypassesPoolCheck(t *testing.T) {
 	if err != nil {
 		t.Fatalf("admin GetConsoleTicket: %v", err)
 	}
+
 	if ticket.Token == "" {
 		t.Fatalf("admin ticket has empty token")
 	}
+
 	if audit.gotAction != "console_open" {
 		t.Fatalf("audit recorded %+v, want console_open", audit)
 	}

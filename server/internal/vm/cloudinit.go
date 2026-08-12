@@ -93,13 +93,16 @@ func SetCloudInitSnippet(ctx context.Context, index *inventory.Index, actor auth
 	if service == nil {
 		return policy.ErrUnavailable
 	}
+
 	gabarit, err := service.Gabarit(ctx, clusterName)
 	if err != nil {
 		return fmt.Errorf("read gabarit: %w", err)
 	}
+
 	if !gabarit.AllowCustomYaml {
 		return ErrCustomYAMLDisabled
 	}
+
 	if err := cloudinit.Validate(content); err != nil {
 		return err
 	}

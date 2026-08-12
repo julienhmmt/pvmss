@@ -77,9 +77,11 @@ func AddDisk(ctx context.Context, deps DiskDependencies, bus cluster.DiskBus, st
 			return cluster.Disk{}, fmt.Errorf("read gabarit: %w", err)
 		}
 	}
+
 	if deps.Policy == nil && gabarit.MaxDiskPerVMGB == 0 {
 		return cluster.Disk{}, policy.ErrUnavailable
 	}
+
 	if sizeGB > gabarit.MaxDiskPerVMGB {
 		return cluster.Disk{}, ErrDiskSizeExceedsLimit
 	}
@@ -127,9 +129,11 @@ func ResizeDisk(ctx context.Context, deps DiskDependencies, diskKey string, size
 			return fmt.Errorf("read gabarit: %w", err)
 		}
 	}
+
 	if deps.Policy == nil && gabarit.MaxDiskPerVMGB == 0 {
 		return policy.ErrUnavailable
 	}
+
 	if sizeGB > gabarit.MaxDiskPerVMGB {
 		return ErrDiskSizeExceedsLimit
 	}
