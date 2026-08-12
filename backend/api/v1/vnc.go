@@ -326,20 +326,21 @@ func proxyVNCWebSocketWithToken(w http.ResponseWriter, r *http.Request, proxmoxW
 		ReadBufferSize:  4096,
 		WriteBufferSize: 4096,
 		CheckOrigin: func(r *http.Request) bool {
+			// Browser WebSocket connections always carry an Origin header.
+			// Reject missing Origin to prevent non-browser clients from
+			// bypassing the same-origin check.
 			origin := r.Header.Get("Origin")
 			if origin == "" {
-				return true // Allow direct connections (no Origin header)
+				return false
 			}
 			originURL, err := url.Parse(origin)
 			if err != nil {
 				return false
 			}
-			// Behind a reverse proxy the external hostname arrives via
-			// X-Forwarded-Host; fall back to r.Host for direct connections.
-			host := r.Header.Get("X-Forwarded-Host")
-			if host == "" {
-				host = r.Host
-			}
+			// Use r.Host directly. Do not trust X-Forwarded-Host unless a
+			// trusted proxy is configured — it is client-controlled and
+			// would allow an attacker to spoof the expected host.
+			host := r.Host
 			// Strip port from host so bare hostnames compare correctly.
 			if h, _, err := net.SplitHostPort(host); err == nil {
 				host = h
@@ -354,7 +355,10 @@ func proxyVNCWebSocketWithToken(w http.ResponseWriter, r *http.Request, proxmoxW
 	defer func() { _ = clientConn.Close() }()
 
 	dialer := websocket.Dialer{
-		TLSClientConfig:  &tls.Config{InsecureSkipVerify: insecureSkipVerify}, // #nosec G402 — controlled by PROXMOX_VERIFY_SSL
+		TLSClientConfig: &tls.Config{
+			MinVersion:         tls.VersionTLS12, // #nosec G402 — minimum TLS 1.2 enforced
+			InsecureSkipVerify: insecureSkipVerify,
+		},
 		HandshakeTimeout: 10 * time.Second,
 		ReadBufferSize:   4096,
 		WriteBufferSize:  4096,
