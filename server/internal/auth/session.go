@@ -123,13 +123,13 @@ func (m *SessionManager) Logout(ctx context.Context, w http.ResponseWriter, r *h
 		}
 	}
 
-	http.SetCookie(w, &http.Cookie{Name: SessionCookieName, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: m.isSecure, SameSite: http.SameSiteLaxMode}) //nolint:gosec // Secure is intentionally conditional for dev HTTP mode
+	http.SetCookie(w, &http.Cookie{Name: SessionCookieName, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: m.isSecure, SameSite: http.SameSiteStrictMode}) //nolint:gosec // Secure is intentionally conditional for dev HTTP mode
 
 	return nil
 }
 
 func (m *SessionManager) cookie(raw string, expires time.Time) *http.Cookie {
-	return &http.Cookie{Name: SessionCookieName, Value: raw, Path: "/", Expires: expires, HttpOnly: true, Secure: m.isSecure, SameSite: http.SameSiteLaxMode} //nolint:gosec // Secure is intentionally conditional for dev HTTP mode
+	return &http.Cookie{Name: SessionCookieName, Value: raw, Path: "/", Expires: expires, HttpOnly: true, Secure: m.isSecure, SameSite: http.SameSiteStrictMode} //nolint:gosec // Secure is intentionally conditional for dev HTTP mode
 }
 
 // hash keys the at-rest session lookup with the application secret so a
