@@ -133,6 +133,9 @@ spec:
             # Bind all interfaces inside the container; the Service controls exposure.
             - name: PVMSS_HOST
               value: "0.0.0.0"
+            # v0.4 web build directory (served by the v0.4 binary)
+            - name: PVMSS_WEB_DIR
+              value: "/app/web/build"
             - name: TZ
               value: "Europe/Paris"
           volumeMounts:
