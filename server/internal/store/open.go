@@ -42,7 +42,7 @@ func Open(cfg config.Configuration) (*Store, error) {
 
 	if _, err := db.ExecContext(ctx, `PRAGMA journal_mode=WAL`); err != nil {
 		_ = db.Close()
-		return nil, fmt.Errorf("set WAL mode: %w", err)
+		return nil, fmt.Errorf("set wal mode: %w", err)
 	}
 
 	if err := RunMigrations(ctx, db, Migrations); err != nil {
