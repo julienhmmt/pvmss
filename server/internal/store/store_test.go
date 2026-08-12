@@ -1,22 +1,24 @@
 package store_test
 
 import (
+	"context"
 	"database/sql"
 	"os"
 	"path/filepath"
-	"testing"
-
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/store"
+	"testing"
 
 	_ "modernc.org/sqlite"
 )
 
+//nolint:paralleltest // serial: shared database fixture
 func TestOpen_MigrationsValidationFailed(t *testing.T) {
 	original := store.Migrations
 	defer func() { store.Migrations = original }()
+
 	store.Migrations = []store.Migration{
-		{Version: 1, DDL: `CREATE TABLE t1 (id INTEGER PRIMARY KEY)`},
+		{Version: 1, DDL: testMigrationDDL},
 		{Version: 3, DDL: `CREATE TABLE t3 (id INTEGER PRIMARY KEY)`},
 	}
 
@@ -24,9 +26,9 @@ func TestOpen_MigrationsValidationFailed(t *testing.T) {
 	cfg := config.Configuration{
 		Port:      50001,
 		DBPath:    filepath.Join(dir, "pvmss.db"),
-		LogLevel:  "info",
-		LogFormat: "json",
-		LogOutput: "stdout",
+		LogLevel:  testStoreLogLevel,
+		LogFormat: testStoreLogFormat,
+		LogOutput: testStoreLogOutput,
 	}
 
 	if _, err := store.Open(cfg); err == nil {
@@ -34,19 +36,21 @@ func TestOpen_MigrationsValidationFailed(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared database fixture
 func TestOpen_MkdirAllFailed(t *testing.T) {
 	dir := t.TempDir()
+
 	blocked := filepath.Join(dir, "blocked")
-	if err := os.WriteFile(blocked, []byte("x"), 0644); err != nil {
+	if err := os.WriteFile(blocked, []byte("x"), 0o600); err != nil {
 		t.Fatalf("write blocking file: %v", err)
 	}
 
 	cfg := config.Configuration{
 		Port:      50001,
 		DBPath:    filepath.Join(blocked, "pvmss.db"),
-		LogLevel:  "info",
-		LogFormat: "json",
-		LogOutput: "stdout",
+		LogLevel:  testStoreLogLevel,
+		LogFormat: testStoreLogFormat,
+		LogOutput: testStoreLogOutput,
 	}
 
 	if _, err := store.Open(cfg); err == nil {
@@ -54,6 +58,7 @@ func TestOpen_MkdirAllFailed(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared database fixture
 func TestOpen(t *testing.T) {
 	cases := []struct {
 		name       string
@@ -81,16 +86,18 @@ func TestOpen(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			dir := t.TempDir()
+
 			dbPath := c.dbPath
 			if !filepath.IsAbs(dbPath) {
 				dbPath = filepath.Join(dir, dbPath)
 			}
+
 			cfg := config.Configuration{
 				Port:      50001,
 				DBPath:    dbPath,
-				LogLevel:  "info",
-				LogFormat: "json",
-				LogOutput: "stdout",
+				LogLevel:  testStoreLogLevel,
+				LogFormat: testStoreLogFormat,
+				LogOutput: testStoreLogOutput,
 			}
 
 			s, err := store.Open(cfg)
@@ -98,18 +105,21 @@ func TestOpen(t *testing.T) {
 				if err == nil {
 					t.Fatalf("expected error, got nil")
 				}
+
 				return
 			}
+
 			if err != nil {
 				t.Fatalf("Open: %v", err)
 			}
+
 			defer func() { _ = s.Close() }()
 
 			if _, err := os.Stat(cfg.DBPath); err != nil {
 				t.Fatalf("database file not created: %v", err)
 			}
 
-			if err := s.Ping(); err != nil {
+			if err := s.Ping(context.Background()); err != nil {
 				t.Fatalf("Ping: %v", err)
 			}
 
@@ -120,13 +130,15 @@ func TestOpen(t *testing.T) {
 			defer func() { _ = db.Close() }()
 
 			var version int
-			if err := db.QueryRow(
+			if err := db.QueryRowContext(
+				context.Background(),
 				`SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1`,
 			).Scan(&version); err != nil {
 				t.Fatalf("query schema_migrations: %v", err)
 			}
-			if version != 1 {
-				t.Fatalf("expected migration version 1, got %d", version)
+
+			if version != len(store.Migrations) {
+				t.Fatalf("expected migration version %d, got %d", len(store.Migrations), version)
 			}
 		})
 	}
