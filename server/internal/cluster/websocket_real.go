@@ -17,6 +17,7 @@ package cluster
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -61,7 +62,7 @@ type proxmoxVNCClient struct {
 // Proxmox is not reachable in the tranche's own demo or unit tests; this
 // method is exercised only by integration tests against a live endpoint.
 func (p Proxmox) GetVNCTicket(ctx context.Context, _ string, vmid int, node string) (VNCProxyTicket, error) {
-	c := newProxmoxVNCClient(p.BaseURL, p.APITokenName, p.APITokenValue)
+	c := newProxmoxVNCClient(p.BaseURL, p.APITokenName, p.APITokenValue, p.TLSInsecureSkipVerify)
 	return proxmoxGetVNCTicket(ctx, c, node, vmid)
 }
 
@@ -72,7 +73,7 @@ func (p Proxmox) GetVNCTicket(ctx context.Context, _ string, vmid int, node stri
 // Proxmox is not reachable in the tranche's own demo or unit tests; this
 // method is exercised only by integration tests against a live endpoint.
 func (p Proxmox) RelayConsole(ctx context.Context, _ string, vmid int, proxy VNCProxyTicket, peer io.ReadWriteCloser) error {
-	c := newProxmoxVNCClient(p.BaseURL, p.APITokenName, p.APITokenValue)
+	c := newProxmoxVNCClient(p.BaseURL, p.APITokenName, p.APITokenValue, p.TLSInsecureSkipVerify)
 	return proxmoxRelayConsole(ctx, c, proxy.Node, vmid, proxy, peer)
 }
 
@@ -178,13 +179,20 @@ func buildProxmoxVNCWebSocketURL(baseURL, node string, vmid, port int, vncticket
 }
 
 // newProxmoxVNCClient constructs the minimal REST client from configuration.
-// Called once per GetVNCTicket/RelayConsole invocation from cluster.Proxmox's
-// own fields — see the comment on proxmoxVNCClient.
-func newProxmoxVNCClient(baseURL, tokenName, tokenValue string) proxmoxVNCClient {
+// The TLS config enforces a minimum of TLS 1.2 and propagates the cluster's
+// certificate verification policy (InsecureSkipVerify is only true when the
+// operator explicitly disabled verification for that cluster).
+func newProxmoxVNCClient(baseURL, tokenName, tokenValue string, insecureSkipVerify bool) proxmoxVNCClient {
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			MinVersion:         tls.VersionTLS12, // #nosec G402 — minimum TLS 1.2 enforced
+			InsecureSkipVerify: insecureSkipVerify,
+		},
+	}
 	return proxmoxVNCClient{
 		baseURL:      baseURL,
 		apiTokenName: tokenName,
 		apiTokenVal:  tokenValue,
-		httpClient:   &http.Client{Timeout: 15 * time.Second},
+		httpClient:   &http.Client{Timeout: 15 * time.Second, Transport: transport},
 	}
 }
