@@ -118,3 +118,10 @@ ALTER TABLE node_limits ADD COLUMN max_disk_gb INTEGER NOT NULL DEFAULT 0;
 const schemaV3 = `
 ALTER TABLE sftp_config ADD COLUMN private_key TEXT;
 `
+
+// schemaV4 adds a column to store the path to a known_hosts file used to
+// verify the Proxmox SSH/SFTP server's host key. Without this, the SFTP
+// client used InsecureIgnoreHostKey, which disabled MITM protection.
+const schemaV4 = `
+ALTER TABLE sftp_config ADD COLUMN host_key_path TEXT;
+`

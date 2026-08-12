@@ -292,10 +292,12 @@ func TestVMConsole_WebSocket_ValidTokenUpgradesAndRelaysRFBHandshake(t *testing.
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Pass the session cookie in the WebSocket dial headers — the handler
-	// requires an authenticated session before it will upgrade.
+	// Pass the session cookie and Origin in the WebSocket dial headers — the
+	// handler requires an authenticated session and a valid same-origin check
+	// before it will upgrade.
 	header := http.Header{}
 	header.Set("Cookie", cookie.String())
+	header.Set("Origin", server.URL)
 
 	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: header}) //nolint:bodyclose // coder/websocket owns the response body lifecycle per its Dial docs
 	if err != nil {

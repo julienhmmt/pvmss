@@ -444,7 +444,7 @@ func decodeJSONLimit(w http.ResponseWriter, r *http.Request, dest any, maxBytes 
 	}
 
 	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		return errors.New("decode request: multiple JSON values")
+		return errors.New("decode request: multiple json values")
 	}
 
 	return nil

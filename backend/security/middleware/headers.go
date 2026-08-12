@@ -46,9 +46,12 @@ func setSecurityHeaders(w http.ResponseWriter, r *http.Request) {
 	// Enable XSS filter in older browsers
 	w.Header().Set("X-XSS-Protection", "1; mode=block")
 
-	// Content Security Policy - balanced between security and functionality
+	// Content Security Policy — hardened: no unsafe-inline or unsafe-eval.
+	// The SvelteKit SPA does not require inline scripts or eval for its
+	// compiled bundle. Inline styles are still allowed because Svelte
+	// injects scoped styles into <style> tags at runtime.
 	csp := "default-src 'self'; " +
-		"script-src 'self' 'unsafe-inline' 'unsafe-eval'; " + // unsafe-inline/eval needed for Go templates
+		"script-src 'self'; " +
 		"style-src 'self' 'unsafe-inline'; " +
 		"img-src 'self' data: https:; " +
 		"font-src 'self' data:; " +
@@ -69,13 +72,24 @@ func setSecurityHeaders(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, X-CSRF-Token")
 	w.Header().Set("Access-Control-Allow-Credentials", "true")
 
-	// Set CORS origin: allow localhost (dev) and optionally a configured external origin.
-	// PVMSS_CORS_ORIGIN can be set to the public base URL of the app behind a reverse proxy,
-	// e.g. "https://pvmss.example.com". Only exact matches are allowed.
+	// Set CORS origin: in development, allow localhost origins for the dev
+	// server. In production, only allow origins explicitly configured via
+	// PVMSS_CORS_ORIGIN (comma-separated exact matches).
 	if origin := r.Header.Get("Origin"); origin != "" {
-		if strings.HasPrefix(origin, "http://localhost") || strings.HasPrefix(origin, "http://127.0.0.1") {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-		} else if allowed := os.Getenv("PVMSS_CORS_ORIGIN"); allowed != "" && origin == allowed {
+		allowed := false
+		if !isProduction {
+			allowed = strings.HasPrefix(origin, "http://localhost") || strings.HasPrefix(origin, "http://127.0.0.1")
+		}
+		if !allowed {
+			for _, cfg := range strings.Split(os.Getenv("PVMSS_CORS_ORIGIN"), ",") {
+				cfg = strings.TrimSpace(cfg)
+				if cfg != "" && origin == cfg {
+					allowed = true
+					break
+				}
+			}
+		}
+		if allowed {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 		}
 	}

@@ -69,7 +69,7 @@ func Init(level string) {
 		if logFilePath == "" {
 			deferredWarnings = append(deferredWarnings, "LOG_OUTPUT requires a file but LOG_FILE_PATH is not set; disabling file logging")
 		} else {
-			file, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+			file, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 			if err != nil {
 				deferredWarnings = append(deferredWarnings, fmt.Sprintf("Failed to open log file '%s', disabling file logging: %v", logFilePath, err))
 			} else {

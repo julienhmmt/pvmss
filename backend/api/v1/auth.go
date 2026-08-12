@@ -16,7 +16,6 @@ import (
 	"pvmss/logger"
 	"pvmss/proxmox"
 	"pvmss/state"
-	"pvmss/utils"
 )
 
 const (
@@ -81,8 +80,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		isAdmin = false
 	}
 
-	env := h.state.GetEnvConfig().Environment
-	if err := issueTokens(w, secret, req.Username, isAdmin, env); err != nil {
+	if err := issueTokens(w, secret, req.Username, isAdmin, h.state.GetEnvConfig().CookieSecure); err != nil {
 		writeAppError(w, err)
 		return
 	}
@@ -123,7 +121,9 @@ func (h *AuthHandler) Exchange(w http.ResponseWriter, r *http.Request) {
 }
 
 // Refresh handles POST /api/v1/auth/refresh.
-// Reads the refresh_token cookie and issues a new access_token.
+// Reads the refresh_token cookie and issues a new access_token. The refresh
+// token is also rotated — a new refresh_token cookie is issued on each
+// successful refresh so a stolen token becomes single-use.
 func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 	secret := h.jwtSecret
 	if secret == "" {
@@ -149,7 +149,18 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	setTokenCookie(w, secret, accessTokenCookie, claims.Username, claims.IsAdmin, accessTokenTTL, h.state.GetEnvConfig().Environment)
+	env := h.state.GetEnvConfig()
+	// Issue a new access token.
+	if err := setTokenCookie(w, secret, accessTokenCookie, claims.Username, claims.IsAdmin, accessTokenTTL, env.CookieSecure); err != nil {
+		writeAppError(w, err)
+		return
+	}
+	// Rotate the refresh token — issue a new one with a fresh expiry so the
+	// old refresh token becomes stale and cannot be replayed.
+	if err := setTokenCookie(w, secret, refreshTokenCookie, claims.Username, claims.IsAdmin, refreshTokenTTL, env.CookieSecure); err != nil {
+		writeAppError(w, err)
+		return
+	}
 	writeJSON(w, AuthResponse{Username: claims.Username, IsAdmin: claims.IsAdmin})
 }
 
@@ -163,7 +174,7 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 
 // Logout handles POST /api/v1/auth/logout. Clears both token cookies.
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	secure := utils.IsProduction(h.state.GetEnvConfig().Environment)
+	secure := h.state.GetEnvConfig().CookieSecure
 
 	http.SetCookie(w, &http.Cookie{Name: accessTokenCookie, Value: "", MaxAge: -1, Path: "/", HttpOnly: true, Secure: secure, SameSite: http.SameSiteStrictMode})
 	http.SetCookie(w, &http.Cookie{Name: refreshTokenCookie, Value: "", MaxAge: -1, Path: "/", HttpOnly: true, Secure: secure, SameSite: http.SameSiteStrictMode})
@@ -215,7 +226,7 @@ func (h *AuthHandler) ProxmoxAdminLogin(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if err := issueTokens(w, secret, ticketResp.Username, true, h.state.GetEnvConfig().Environment); err != nil {
+	if err := issueTokens(w, secret, ticketResp.Username, true, h.state.GetEnvConfig().CookieSecure); err != nil {
 		writeAppError(w, err)
 		return
 	}
@@ -225,14 +236,20 @@ func (h *AuthHandler) ProxmoxAdminLogin(w http.ResponseWriter, r *http.Request) 
 }
 
 // issueTokens creates and sets both access_token and refresh_token cookies.
-func issueTokens(w http.ResponseWriter, secret, username string, isAdmin bool, env string) error {
-	setTokenCookie(w, secret, accessTokenCookie, username, isAdmin, accessTokenTTL, env)
-	setTokenCookie(w, secret, refreshTokenCookie, username, isAdmin, refreshTokenTTL, env)
+func issueTokens(w http.ResponseWriter, secret, username string, isAdmin bool, secure bool) error {
+	if err := setTokenCookie(w, secret, accessTokenCookie, username, isAdmin, accessTokenTTL, secure); err != nil {
+		return fmt.Errorf("sign access token: %w", err)
+	}
+	if err := setTokenCookie(w, secret, refreshTokenCookie, username, isAdmin, refreshTokenTTL, secure); err != nil {
+		return fmt.Errorf("sign refresh token: %w", err)
+	}
 	return nil
 }
 
 // setTokenCookie mints a signed JWT and writes it as an HttpOnly SameSite=Strict cookie.
-func setTokenCookie(w http.ResponseWriter, secret, name, username string, isAdmin bool, ttl time.Duration, env string) {
+// Returns an error if JWT signing fails — a crypto failure must not silently
+// produce an empty cookie value.
+func setTokenCookie(w http.ResponseWriter, secret, name, username string, isAdmin bool, ttl time.Duration, secure bool) error {
 	claims := JWTClaims{
 		Username: username,
 		IsAdmin:  isAdmin,
@@ -242,9 +259,10 @@ func setTokenCookie(w http.ResponseWriter, secret, name, username string, isAdmi
 		},
 	}
 	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signed, _ := tok.SignedString([]byte(secret))
-
-	secure := utils.IsProduction(env)
+	signed, err := tok.SignedString([]byte(secret))
+	if err != nil {
+		return fmt.Errorf("sign JWT: %w", err)
+	}
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
@@ -255,6 +273,7 @@ func setTokenCookie(w http.ResponseWriter, secret, name, username string, isAdmi
 		Secure:   secure,
 		SameSite: http.SameSiteStrictMode,
 	})
+	return nil
 }
 
 // ChangePassword handles PUT /api/v1/auth/me/password. Requires JWTMiddleware upstream.

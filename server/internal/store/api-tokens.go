@@ -18,7 +18,7 @@ func (s *Store) CreateToken(ctx context.Context, token auth.TokenRecord) error {
 
 	_, err := s.db.ExecContext(ctx, `INSERT INTO api_tokens (id, token_hash, username, pool, is_admin, scope, label, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, token.ID, token.Hash, token.Identity.Username, token.Identity.Pool, token.Identity.IsAdmin, token.Scope, token.Label, expiresAt, token.CreatedAt.Format(time.RFC3339))
 	if err != nil {
-		return fmt.Errorf("insert API token: %w", err)
+		return fmt.Errorf("insert api token: %w", err)
 	}
 
 	return nil
@@ -34,7 +34,7 @@ func (s *Store) FindToken(ctx context.Context, hash []byte) (auth.TokenRecord, e
 func (s *Store) ListTokens(ctx context.Context, username string) ([]auth.TokenRecord, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT id, token_hash, username, pool, is_admin, scope, label, expires_at, created_at, last_used_at FROM api_tokens WHERE username = ? ORDER BY created_at DESC`, username)
 	if err != nil {
-		return nil, fmt.Errorf("list API tokens: %w", err)
+		return nil, fmt.Errorf("list api tokens: %w", err)
 	}
 	defer func() { _ = rows.Close() }()
 
@@ -51,7 +51,7 @@ func (s *Store) ListTokens(ctx context.Context, username string) ([]auth.TokenRe
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate API tokens: %w", err)
+		return nil, fmt.Errorf("iterate api tokens: %w", err)
 	}
 
 	return result, nil
@@ -61,12 +61,12 @@ func (s *Store) ListTokens(ctx context.Context, username string) ([]auth.TokenRe
 func (s *Store) DeleteToken(ctx context.Context, id, username string) error {
 	result, err := s.db.ExecContext(ctx, `DELETE FROM api_tokens WHERE id = ? AND username = ?`, id, username)
 	if err != nil {
-		return fmt.Errorf("delete API token: %w", err)
+		return fmt.Errorf("delete api token: %w", err)
 	}
 
 	count, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("count deleted API tokens: %w", err)
+		return fmt.Errorf("count deleted api tokens: %w", err)
 	}
 
 	if count == 0 {
@@ -80,7 +80,7 @@ func (s *Store) DeleteToken(ctx context.Context, id, username string) error {
 func (s *Store) TouchToken(ctx context.Context, id string, usedAt time.Time) error {
 	_, err := s.db.ExecContext(ctx, `UPDATE api_tokens SET last_used_at = ? WHERE id = ?`, usedAt.Format(time.RFC3339), id)
 	if err != nil {
-		return fmt.Errorf("update API token use: %w", err)
+		return fmt.Errorf("update api token use: %w", err)
 	}
 
 	return nil
@@ -103,7 +103,7 @@ func scanToken(scanner tokenScanner) (auth.TokenRecord, error) {
 			return auth.TokenRecord{}, sql.ErrNoRows
 		}
 
-		return auth.TokenRecord{}, fmt.Errorf("scan API token: %w", err)
+		return auth.TokenRecord{}, fmt.Errorf("scan api token: %w", err)
 	}
 
 	token.Identity.IsAdmin = isAdmin

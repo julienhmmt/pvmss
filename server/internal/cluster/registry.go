@@ -136,7 +136,7 @@ func factoryForSource(source string) (ClientFactory, error) {
 		return func(row store.ClusterRow) (Client, error) {
 			parsed, err := url.ParseRequestURI(row.URL)
 			if err != nil || parsed.Scheme == "" || parsed.Host == "" {
-				return nil, errors.New("cluster URL is malformed")
+				return nil, errors.New("cluster url is malformed")
 			}
 			if row.TokenID == "" || row.TokenSecret == "" {
 				return nil, errors.New("cluster credentials are required")

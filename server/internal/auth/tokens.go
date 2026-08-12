@@ -71,7 +71,7 @@ func (s *TokenService) Create(ctx context.Context, identity Identity, label, sco
 
 	token := TokenRecord{ID: id, Hash: hash[:], Identity: identity, Scope: scope, Label: label, CreatedAt: now}
 	if err := s.repository.CreateToken(ctx, token); err != nil {
-		return TokenRecord{}, "", fmt.Errorf("create API token: %w", err)
+		return TokenRecord{}, "", fmt.Errorf("create api token: %w", err)
 	}
 
 	return token, raw, nil
@@ -87,7 +87,7 @@ func (s *TokenService) Resolve(ctx context.Context, raw string) (Identity, error
 	}
 
 	if err := s.repository.TouchToken(ctx, token.ID, time.Now().UTC()); err != nil {
-		return Identity{}, fmt.Errorf("record API token use: %w", err)
+		return Identity{}, fmt.Errorf("record api token use: %w", err)
 	}
 
 	return token.Identity, nil
@@ -97,7 +97,7 @@ func (s *TokenService) Resolve(ctx context.Context, raw string) (Identity, error
 func (s *TokenService) List(ctx context.Context, username string) ([]TokenRecord, error) {
 	tokens, err := s.repository.ListTokens(ctx, username)
 	if err != nil {
-		return nil, fmt.Errorf("list API tokens: %w", err)
+		return nil, fmt.Errorf("list api tokens: %w", err)
 	}
 
 	return tokens, nil

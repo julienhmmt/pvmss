@@ -16,7 +16,7 @@ func TestPolicyCompat_SeededValuesMatchPriorTranches(t *testing.T) { //nolint:go
 		t.Fatalf("Gabarit: %v", err)
 	}
 
-	if gabarit.MaxSockets != 4 || gabarit.MaxCores != 8 || gabarit.MaxMemoryMB != 16384 || gabarit.MaxDiskPerVMGB != 500 || gabarit.MaxNetworkCards != 4 || gabarit.MaxSnapshots != 5 || !gabarit.AllowCustomYaml {
+	if gabarit.MaxSockets != 4 || gabarit.MaxCores != 8 || gabarit.MaxMemoryMB != 16384 || gabarit.MaxDiskPerVMGB != 500 || gabarit.MaxNetworkCards != 4 || gabarit.MaxSnapshots != 5 || !gabarit.AllowCustomYAML {
 		t.Fatalf("seeded gabarit = %+v", gabarit)
 	}
 

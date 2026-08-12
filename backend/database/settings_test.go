@@ -148,6 +148,7 @@ func TestSFTPConfig_SetAndGet(t *testing.T) {
 		Username:       "snippets",
 		PrivateKeyPath: "/keys/id_ed25519",
 		RemotePath:     "/var/lib/vz/snippets",
+		HostKeyPath:    "/keys/known_hosts",
 	}
 	require.NoError(t, db.SetSFTPConfig(want, "admin"))
 

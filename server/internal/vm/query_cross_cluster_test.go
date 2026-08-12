@@ -10,37 +10,44 @@ import (
 	"testing"
 )
 
-//nolint:paralleltest,goconst // VM fixtures are shared with the package suite; names prove isolation
+const (
+	crossClusterDefaultName   = "default-web"
+	crossClusterSecondaryName = "secondary-web"
+	crossClusterSecondaryKey  = "secondary"
+	crossClusterPoolAlice     = "pool-alice"
+)
+
+//nolint:paralleltest // VM fixtures are shared with the package suite; names prove isolation
 func TestList_CrossClusterPoolMerge(t *testing.T) {
 	defaultIndex := inventory.BuildIndexForCluster("default", cluster.Snapshot{VMs: []cluster.VM{
-		{VMID: 101, Name: "default-web", Node: "node-a", Pool: "pool-alice", Tags: []string{"pvmss"}},
+		{VMID: 101, Name: crossClusterDefaultName, Node: "node-a", Pool: crossClusterPoolAlice, Tags: []string{testPvmssTag}},
 	}})
-	secondaryIndex := inventory.BuildIndexForCluster("secondary", cluster.Snapshot{VMs: []cluster.VM{
-		{VMID: 101, Name: "secondary-web", Node: "node-b", Pool: "pool-alice", Tags: []string{"pvmss"}},
+	secondaryIndex := inventory.BuildIndexForCluster(crossClusterSecondaryKey, cluster.Snapshot{VMs: []cluster.VM{
+		{VMID: 101, Name: crossClusterSecondaryName, Node: "node-b", Pool: crossClusterPoolAlice, Tags: []string{testPvmssTag}},
 	}})
 	thirdIndex := inventory.BuildIndexForCluster("third", cluster.Snapshot{VMs: []cluster.VM{
-		{VMID: 202, Name: "other-web", Node: "node-c", Pool: "pool-bob", Tags: []string{"pvmss"}},
+		{VMID: 202, Name: "other-web", Node: "node-c", Pool: "pool-bob", Tags: []string{testPvmssTag}},
 	}})
 	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{
-		"default": &defaultIndex, "secondary": &secondaryIndex, "third": &thirdIndex,
+		"default": &defaultIndex, crossClusterSecondaryKey: &secondaryIndex, "third": &thirdIndex,
 	})
 
-	result, err := vm.List(registry, vm.ListQuery{}, auth.Identity{Username: "alice", Pool: "pool-alice"}, -1)
+	result, err := vm.List(registry, vm.ListQuery{}, auth.Identity{Username: "alice", Pool: crossClusterPoolAlice}, -1)
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
-	if got := names(result); !slices.Equal(got, []string{"default-web", "secondary-web"}) {
+	if got := names(result); !slices.Equal(got, []string{crossClusterDefaultName, crossClusterSecondaryName}) {
 		t.Fatalf("merged names = %v, want both Alice VMs", got)
 	}
 	if result.Items[0].Cluster == "" || result.Items[0].Cluster == result.Items[1].Cluster {
 		t.Fatalf("cluster labels = %+v, want distinct labels", result.Items)
 	}
 
-	filtered, err := vm.List(registry, vm.ListQuery{Cluster: "secondary"}, auth.Identity{Username: "alice", Pool: "pool-alice"}, -1)
+	filtered, err := vm.List(registry, vm.ListQuery{Cluster: crossClusterSecondaryKey}, auth.Identity{Username: "alice", Pool: crossClusterPoolAlice}, -1)
 	if err != nil {
 		t.Fatalf("List(cluster): %v", err)
 	}
-	if len(filtered.Items) != 1 || filtered.Items[0].Cluster != "secondary" {
+	if len(filtered.Items) != 1 || filtered.Items[0].Cluster != crossClusterSecondaryKey {
 		t.Fatalf("filtered items = %+v, want secondary only", filtered.Items)
 	}
 }
@@ -51,19 +58,19 @@ func TestList_CrossClusterPoolMerge(t *testing.T) {
 // identity happens to match — proves the adminAll branch merges across
 // inventory.Registry.All() the same way the mine-scope branch already does.
 //
-//nolint:paralleltest,goconst // VM fixtures are shared with the package suite; names prove isolation
+//nolint:paralleltest // VM fixtures are shared with the package suite; names prove isolation
 func TestList_AdminScopeAllSpansEveryCluster(t *testing.T) {
 	defaultIndex := inventory.BuildIndexForCluster("default", cluster.Snapshot{VMs: []cluster.VM{
-		{VMID: 101, Name: "default-web", Node: "node-a", Pool: "pool-alice", Tags: []string{"pvmss"}},
+		{VMID: 101, Name: crossClusterDefaultName, Node: "node-a", Pool: crossClusterPoolAlice, Tags: []string{testPvmssTag}},
 	}})
-	secondaryIndex := inventory.BuildIndexForCluster("secondary", cluster.Snapshot{VMs: []cluster.VM{
-		{VMID: 101, Name: "secondary-web", Node: "node-b", Pool: "pool-bob", Tags: []string{"pvmss"}},
+	secondaryIndex := inventory.BuildIndexForCluster(crossClusterSecondaryKey, cluster.Snapshot{VMs: []cluster.VM{
+		{VMID: 101, Name: crossClusterSecondaryName, Node: "node-b", Pool: "pool-bob", Tags: []string{testPvmssTag}},
 	}})
 	thirdIndex := inventory.BuildIndexForCluster("third", cluster.Snapshot{VMs: []cluster.VM{
-		{VMID: 202, Name: "third-web", Node: "node-c", Pool: "pool-carol", Tags: []string{"pvmss"}},
+		{VMID: 202, Name: "third-web", Node: "node-c", Pool: "pool-carol", Tags: []string{testPvmssTag}},
 	}})
 	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{
-		"default": &defaultIndex, "secondary": &secondaryIndex, "third": &thirdIndex,
+		"default": &defaultIndex, crossClusterSecondaryKey: &secondaryIndex, "third": &thirdIndex,
 	})
 
 	// The admin's own identity matches none of these pools — scope=all must
@@ -75,14 +82,14 @@ func TestList_AdminScopeAllSpansEveryCluster(t *testing.T) {
 	if err != nil {
 		t.Fatalf("List(scope=all): %v", err)
 	}
-	if got := names(result); !slices.Equal(got, []string{"default-web", "secondary-web", "third-web"}) {
+	if got := names(result); !slices.Equal(got, []string{crossClusterDefaultName, crossClusterSecondaryName, "third-web"}) {
 		t.Fatalf("admin scope=all names = %v, want every cluster's VM", got)
 	}
 	clusters := make(map[string]bool, len(result.Items))
 	for _, item := range result.Items {
 		clusters[item.Cluster] = true
 	}
-	if len(clusters) != 3 || !clusters["default"] || !clusters["secondary"] || !clusters["third"] {
+	if len(clusters) != 3 || !clusters["default"] || !clusters[crossClusterSecondaryKey] || !clusters["third"] {
 		t.Fatalf("admin scope=all cluster labels = %v, want default+secondary+third all present", clusters)
 	}
 }

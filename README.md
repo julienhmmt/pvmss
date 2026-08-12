@@ -180,6 +180,8 @@ You can rely on `.env` + `env_file` or inline `environment:` entries, but **not 
 | `LOG_FILE_PATH`           | File path when `LOG_OUTPUT` is `file` or `both`                              |    ❌    | —                    |
 | `LOG_FORMAT`              | `console` (human readable) or `json` (machine/SIEM)                          |    ❌    | `console`            |
 | `PORT`                    | TCP port the HTTP server listens on                                          |    ❌    | `50000`              |
+| `PVMSS_HOST`              | Network address to bind (`0.0.0.0` for all interfaces, `127.0.0.1` for loopback) | ❌ | `127.0.0.1`        |
+| `PVMSS_COOKIE_SECURE`     | `Secure` flag on auth cookies (must be `true` in production)                 |    ❌    | `true` in prod, `false` in dev |
 | `TZ`                      | Container timezone                                                           |    ❌    | `UTC`                |
 
 > Tip: `ADMIN_PASSWORD_HASH` can be generated locally with `htpasswd -bnBC 10 "admin" "StrongPassword" | cut -d: -f2`.
@@ -324,6 +326,7 @@ Apply with `kubectl apply -f pvmss-deployment.yaml`. Provide your own ingress/HT
 - **Logs**: `docker logs -f pvmss` or `kubectl -n pvmss logs -f deploy/pvmss`. Switch `LOG_LEVEL=DEBUG` for verbose traces. Use `LOG_FORMAT=json` and `LOG_OUTPUT=stdout` or `file` to emit JSON logs that can be shipped to a SIEM or log aggregator.
 - **Health**: startup logs include Proxmox connectivity, offline-mode status, and runtime metrics. The admin "Application Info" page shows runtime metrics, environment variables, and Proxmox cluster status.
 - **Upgrades**: pull the desired image tag and restart the container. Configuration is stored in the SQLite database and persists automatically.
+- **Static analysis (SonarQube)**: run `make sonar` to start a local SonarQube container, provision tokens, generate Go coverage, and scan four separate projects — `pvmss-backend` (legacy Go), `pvmss-server` (next-gen Go), `pvmss-frontend` (legacy SvelteKit TS), and `pvmss-web` (next-gen SvelteKit TS). Results are at `http://localhost:9000/projects`. Stop with `make sonar-down` and clean data with `make sonar-clean`.
 
 ## Limitations
 

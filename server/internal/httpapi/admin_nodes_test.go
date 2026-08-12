@@ -1,3 +1,4 @@
+//nolint:wsl_v5 // multi-cluster fixture setup keeps sequential assignments and assertions readable
 package httpapi_test
 
 import (
@@ -154,7 +155,7 @@ func newMultiClusterAdminCatalogHandler(t *testing.T) (*httpapi.AdminCatalog, *h
 	t.Helper()
 	t.Cleanup(cluster.ResetFake)
 
-	const secret = "admin-catalog-cross-cluster-secret-32b" //nolint:gosec // deterministic test secret
+	const secret = "admin-catalog-cross-cluster-secret-32b" // deterministic test secret
 	st, err := store.Open(config.Configuration{DBPath: filepath.Join(t.TempDir(), "catalog-cross-cluster.db"), ClusterSource: "fake", SessionSecret: secret})
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
@@ -217,10 +218,10 @@ func TestAdminNodes_CrossClusterApprovalIsolation(t *testing.T) {
 
 	// Starting state, from T06's seed (default only) plus the absence of any
 	// secondary row: identical name, already-diverging approval state.
-	if !nodeEnabled("default", "pve-node-01") {
+	if !nodeEnabled(auditTestCluster, "pve-node-01") {
 		t.Fatal("default:pve-node-01 should start enabled (T06 seed)")
 	}
-	if nodeEnabled("secondary", "pve-node-01") {
+	if nodeEnabled(crossSecondaryCluster, "pve-node-01") {
 		t.Fatal("secondary:pve-node-01 should start disabled — cluster isolation, not shared with default's seed")
 	}
 
@@ -230,10 +231,10 @@ func TestAdminNodes_CrossClusterApprovalIsolation(t *testing.T) {
 	if toggle.Code != http.StatusOK {
 		t.Fatalf("toggle secondary:pve-node-01 status = %d: %s", toggle.Code, toggle.Body.String())
 	}
-	if !nodeEnabled("secondary", "pve-node-01") {
+	if !nodeEnabled(crossSecondaryCluster, "pve-node-01") {
 		t.Fatal("secondary:pve-node-01 should be enabled after its own toggle")
 	}
-	if !nodeEnabled("default", "pve-node-01") {
+	if !nodeEnabled(auditTestCluster, "pve-node-01") {
 		t.Fatal("default:pve-node-01 should remain enabled — secondary's toggle must not touch it")
 	}
 
@@ -243,10 +244,10 @@ func TestAdminNodes_CrossClusterApprovalIsolation(t *testing.T) {
 	if revoke.Code != http.StatusOK {
 		t.Fatalf("revoke default:pve-node-01 status = %d: %s", revoke.Code, revoke.Body.String())
 	}
-	if nodeEnabled("default", "pve-node-01") {
+	if nodeEnabled(auditTestCluster, "pve-node-01") {
 		t.Fatal("default:pve-node-01 should be disabled after its own revoke")
 	}
-	if !nodeEnabled("secondary", "pve-node-01") {
+	if !nodeEnabled(crossSecondaryCluster, "pve-node-01") {
 		t.Fatal("secondary:pve-node-01 should remain enabled — default's revoke must not touch it")
 	}
 }

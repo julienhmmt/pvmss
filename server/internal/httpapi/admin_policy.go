@@ -41,7 +41,7 @@ type policyGabaritDTO struct {
 	MaxDiskPerVMGB  int  `json:"maxDiskPerVmGb"`
 	MaxNetworkCards int  `json:"maxNetworkCards"`
 	MaxSnapshots    int  `json:"maxSnapshots"`
-	AllowCustomYaml bool `json:"allowCustomYaml"`
+	AllowCustomYAML bool `json:"allowCustomYaml"`
 }
 
 type policyQuotaDTO struct {
@@ -61,7 +61,7 @@ type policyGabaritPatch struct {
 	MaxDiskPerVMGB  *int  `json:"maxDiskPerVmGb"`
 	MaxNetworkCards *int  `json:"maxNetworkCards"`
 	MaxSnapshots    *int  `json:"maxSnapshots"`
-	AllowCustomYaml *bool `json:"allowCustomYaml"`
+	AllowCustomYAML *bool `json:"allowCustomYaml"`
 }
 
 type policyQuotaPatch struct {
@@ -152,11 +152,11 @@ func (handler *AdminPolicy) readPolicy(ctx context.Context, clusterName string) 
 }
 
 func gabaritFromDTO(dto policyGabaritDTO) policy.Gabarit {
-	return policy.Gabarit{MaxSockets: dto.MaxSockets, MaxCores: dto.MaxCores, MaxMemoryMB: dto.MaxMemoryMB, MaxDiskPerVMGB: dto.MaxDiskPerVMGB, MaxNetworkCards: dto.MaxNetworkCards, MaxSnapshots: dto.MaxSnapshots, AllowCustomYaml: dto.AllowCustomYaml}
+	return policy.Gabarit{MaxSockets: dto.MaxSockets, MaxCores: dto.MaxCores, MaxMemoryMB: dto.MaxMemoryMB, MaxDiskPerVMGB: dto.MaxDiskPerVMGB, MaxNetworkCards: dto.MaxNetworkCards, MaxSnapshots: dto.MaxSnapshots, AllowCustomYAML: dto.AllowCustomYAML}
 }
 
 func policyGabaritDTOFromModel(gabarit policy.Gabarit) policyGabaritDTO {
-	return policyGabaritDTO{MaxSockets: gabarit.MaxSockets, MaxCores: gabarit.MaxCores, MaxMemoryMB: gabarit.MaxMemoryMB, MaxDiskPerVMGB: gabarit.MaxDiskPerVMGB, MaxNetworkCards: gabarit.MaxNetworkCards, MaxSnapshots: gabarit.MaxSnapshots, AllowCustomYaml: gabarit.AllowCustomYaml}
+	return policyGabaritDTO{MaxSockets: gabarit.MaxSockets, MaxCores: gabarit.MaxCores, MaxMemoryMB: gabarit.MaxMemoryMB, MaxDiskPerVMGB: gabarit.MaxDiskPerVMGB, MaxNetworkCards: gabarit.MaxNetworkCards, MaxSnapshots: gabarit.MaxSnapshots, AllowCustomYAML: gabarit.AllowCustomYAML}
 }
 
 func applyGabaritPatch(gabarit *policy.Gabarit, patch *policyGabaritPatch) {
@@ -188,8 +188,8 @@ func applyGabaritPatch(gabarit *policy.Gabarit, patch *policyGabaritPatch) {
 		gabarit.MaxSnapshots = *patch.MaxSnapshots
 	}
 
-	if patch.AllowCustomYaml != nil {
-		gabarit.AllowCustomYaml = *patch.AllowCustomYaml
+	if patch.AllowCustomYAML != nil {
+		gabarit.AllowCustomYAML = *patch.AllowCustomYAML
 	}
 }
 

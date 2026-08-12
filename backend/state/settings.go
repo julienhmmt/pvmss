@@ -191,6 +191,7 @@ func defaultSettings() *AppSettings {
 			Username:       "pvmss-snippets",
 			PrivateKeyPath: "/app/pvmss_snippets_ed25519",
 			SnippetBaseDir: "/var/lib/vz/snippets",
+			HostKeyPath:    "/app/pvmss_known_hosts",
 		},
 	}
 }

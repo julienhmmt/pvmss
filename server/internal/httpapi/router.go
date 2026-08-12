@@ -57,7 +57,7 @@ type RouterConfig struct {
 // NewRouter wires the public API and the static SPA handler from cfg.
 //
 //nolint:gocyclo,funlen // route registration is inherently a long switch on cfg fields
-func NewRouter(cfg RouterConfig) *http.ServeMux {
+func NewRouter(cfg RouterConfig) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /health", cfg.Health)
 	mux.Handle("GET /api/v1/cluster/nodes", cfg.Auth.Require(cfg.ClusterNodes))
@@ -205,7 +205,10 @@ func NewRouter(cfg RouterConfig) *http.ServeMux {
 		mux.Handle("GET /", spa)
 	}
 
-	return mux
+	// Wrap the entire mux with security headers so every response (API and
+	// SPA) gets CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy,
+	// Permissions-Policy, HSTS, and cache-control for API paths.
+	return withSecurityHeaders(mux)
 }
 
 func (s *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

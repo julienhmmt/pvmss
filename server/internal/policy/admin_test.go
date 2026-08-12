@@ -13,7 +13,7 @@ func TestSetGabarit_UpsertsAllFields(t *testing.T) {
 	service, _ := newPolicyService(t)
 	ctx := context.Background()
 
-	want := policy.Gabarit{MaxSockets: 2, MaxCores: 6, MaxMemoryMB: 8192, MaxDiskPerVMGB: 80, MaxNetworkCards: 2, MaxSnapshots: 3, AllowCustomYaml: false}
+	want := policy.Gabarit{MaxSockets: 2, MaxCores: 6, MaxMemoryMB: 8192, MaxDiskPerVMGB: 80, MaxNetworkCards: 2, MaxSnapshots: 3, AllowCustomYAML: false}
 	if err := service.SetGabarit(ctx, "default", want); err != nil {
 		t.Fatalf("SetGabarit: %v", err)
 	}

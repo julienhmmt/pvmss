@@ -22,7 +22,7 @@ var (
 	// ErrMaxSnapshotsReached reports a VM at its configured snapshot gabarit.
 	ErrMaxSnapshotsReached = errors.New("maximum snapshots reached")
 	// ErrVMStateRequiresRunning reports RAM-state capture on a stopped VM.
-	ErrVMStateRequiresRunning = errors.New("vmstate requires a running VM")
+	ErrVMStateRequiresRunning = errors.New("vmstate requires a running vm")
 	// ErrVMStateUnsupportedStorage reports a disk on incompatible storage.
 	ErrVMStateUnsupportedStorage = errors.New("vmstate storage is unsupported")
 	// ErrSnapshotNotFound reports a missing snapshot on an otherwise resolved VM.
