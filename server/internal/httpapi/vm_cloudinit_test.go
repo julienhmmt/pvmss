@@ -92,7 +92,7 @@ func TestVMCloudInit_ConfigAuthorizationAndValidation(t *testing.T) {
 		status int
 		code   string
 	}{
-		{name: "non owner", cookie: bobCookie(t, authHandler), path: cloudInitConfigPath, body: `{"user":"x"}`, status: http.StatusForbidden, code: "forbidden"},
+		{name: "non owner", cookie: bobCookie(t, authHandler), path: cloudInitConfigPath, body: `{"user":"x"}`, status: http.StatusForbidden, code: apiCodeForbidden},
 		{name: "untagged", cookie: aliceCookie(t, authHandler), path: "/api/v1/vms/default/109/cloudinit", body: `{"user":"x"}`, status: http.StatusNotFound, code: "not_found"},
 		{name: "invalid static", cookie: aliceCookie(t, authHandler), path: cloudInitConfigPath, body: `{"ipMode":"invalid"}`, status: http.StatusBadRequest, code: "invalid_config"},
 		{name: "forged node", cookie: aliceCookie(t, authHandler), path: cloudInitConfigPath, body: `{"user":"x","node":"evil"}`, status: http.StatusBadRequest, code: "invalid_config"},

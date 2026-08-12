@@ -130,6 +130,7 @@ func (w *Worker) Refresh(ctx context.Context) (at time.Time, err error) {
 	at, err = w.refreshCycle(ctx)
 	pending.at = at
 	pending.err = err
+
 	return at, err
 }
 

@@ -185,10 +185,11 @@ func buildProxmoxVNCWebSocketURL(baseURL, node string, vmid, port int, vncticket
 func newProxmoxVNCClient(baseURL, tokenName, tokenValue string, insecureSkipVerify bool) proxmoxVNCClient {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
-			MinVersion:         tls.VersionTLS12, // #nosec G402 — minimum TLS 1.2 enforced
-			InsecureSkipVerify: insecureSkipVerify,
+			MinVersion:         tls.VersionTLS12,   // minimum TLS 1.2 enforced
+			InsecureSkipVerify: insecureSkipVerify, //nolint:gosec // operator-configured per cluster; defaults to false
 		},
 	}
+
 	return proxmoxVNCClient{
 		baseURL:      baseURL,
 		apiTokenName: tokenName,
