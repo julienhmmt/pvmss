@@ -1,4 +1,3 @@
-//nolint:noctx,wsl_v5 // test scaffolding does not need real context
 package httpapi_test
 
 import (
@@ -14,7 +13,7 @@ import (
 func getTask(t *testing.T, handler *httpapi.Tasks, upid string, cookie *http.Cookie) *httptest.ResponseRecorder {
 	t.Helper()
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/tasks/"+upid, nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/tasks/"+upid, nil)
 	if cookie != nil {
 		req.AddCookie(cookie)
 	}

@@ -46,9 +46,9 @@ func newVMConsoleHandler(t *testing.T) (*httpapi.VMConsole, *httpapi.Auth, *vm.C
 	cfg := config.Configuration{
 		Port:      50001,
 		DBPath:    filepath.Join(t.TempDir(), "vm-console.db"),
-		LogLevel:  "info",
-		LogFormat: "json",
-		LogOutput: "stdout",
+		LogLevel:  snapshotTestLogLevel,
+		LogFormat: snapshotTestLogFormat,
+		LogOutput: snapshotTestLogOutput,
 	}
 
 	st, err := store.Open(cfg)
@@ -297,7 +297,7 @@ func TestVMConsole_WebSocket_ValidTokenUpgradesAndRelaysRFBHandshake(t *testing.
 	header := http.Header{}
 	header.Set("Cookie", cookie.String())
 
-	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: header})
+	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{HTTPHeader: header}) //nolint:bodyclose // coder/websocket owns the response body lifecycle per its Dial docs
 	if err != nil {
 		t.Fatalf("websocket dial: %v", err)
 	}
@@ -341,9 +341,9 @@ func TestVMConsole_PostVNCTicket_ClusterUnavailableReturns502(t *testing.T) {
 	cfg := config.Configuration{
 		Port:      50001,
 		DBPath:    filepath.Join(t.TempDir(), "vm-console-502.db"),
-		LogLevel:  "info",
-		LogFormat: "json",
-		LogOutput: "stdout",
+		LogLevel:  snapshotTestLogLevel,
+		LogFormat: snapshotTestLogFormat,
+		LogOutput: snapshotTestLogOutput,
 	}
 
 	st, err := store.Open(cfg)

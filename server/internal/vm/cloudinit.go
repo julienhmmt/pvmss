@@ -9,6 +9,7 @@ import (
 	"pvmss/server/internal/cloudinit"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 )
 
@@ -19,6 +20,8 @@ var (
 	ErrInvalidCloudInitConfig = errors.New("invalid cloud-init config")
 	// ErrSnippetPushFailed reports a committed snippet that was not applied upstream.
 	ErrSnippetPushFailed = errors.New("cloud-init snippet push failed")
+	// ErrCustomYAMLDisabled reports an administrator-disabled snippet editor.
+	ErrCustomYAMLDisabled = errors.New("custom yaml disabled")
 )
 
 // GetCloudInitConfig reads live structured state after the shared ownership gate.
@@ -86,7 +89,20 @@ func GetCloudInitSnippet(ctx context.Context, index *inventory.Index, actor auth
 }
 
 // SetCloudInitSnippet validates, persists, pushes, and audits one custom snippet.
-func SetCloudInitSnippet(ctx context.Context, index *inventory.Index, actor auth.Identity, clusterName string, vmid int, content string, reader cluster.CloudInitReader, writer cluster.Writer, st *store.Store) error {
+func SetCloudInitSnippet(ctx context.Context, index *inventory.Index, actor auth.Identity, clusterName string, vmid int, content string, reader cluster.CloudInitReader, writer cluster.Writer, st *store.Store, service *policy.Policy) error {
+	if service == nil {
+		return policy.ErrUnavailable
+	}
+
+	gabarit, err := service.Gabarit(ctx, clusterName)
+	if err != nil {
+		return fmt.Errorf("read gabarit: %w", err)
+	}
+
+	if !gabarit.AllowCustomYaml {
+		return ErrCustomYAMLDisabled
+	}
+
 	if err := cloudinit.Validate(content); err != nil {
 		return err
 	}
@@ -96,22 +112,9 @@ func SetCloudInitSnippet(ctx context.Context, index *inventory.Index, actor auth
 		return err
 	}
 
-	existing, found, err := st.GetCloudInitSnippet(ctx, clusterName, vmid)
+	storage, filename, err := resolveSnippetArtifact(ctx, st, reader, entity, clusterName, vmid)
 	if err != nil {
-		return fmt.Errorf("read existing cloud-init snippet: %w", err)
-	}
-
-	storage := existing.Storage
-	if !found {
-		storage, err = reader.FindSnippetStorage(ctx, entity.Node)
-		if err != nil {
-			return fmt.Errorf("resolve cloud-init snippet storage: %w", err)
-		}
-	}
-
-	filename := fmt.Sprintf("%s%d.yml", snippetFilenamePrefix, vmid)
-	if found && existing.Filename != "" {
-		filename = existing.Filename
+		return err
 	}
 
 	if err := st.PutCloudInitSnippet(ctx, clusterName, vmid, storage, filename, content, actor.Username); err != nil {
@@ -127,6 +130,31 @@ func SetCloudInitSnippet(ctx context.Context, index *inventory.Index, actor auth
 	}
 
 	return nil
+}
+
+// resolveSnippetArtifact returns the storage and filename for a cloud-init
+// snippet, reusing the existing record when present and discovering storage
+// from the cluster reader when creating a new one.
+func resolveSnippetArtifact(ctx context.Context, st *store.Store, reader cluster.CloudInitReader, entity Entity, clusterName string, vmid int) (storage, filename string, err error) {
+	existing, found, err := st.GetCloudInitSnippet(ctx, clusterName, vmid)
+	if err != nil {
+		return "", "", fmt.Errorf("read existing cloud-init snippet: %w", err)
+	}
+
+	storage = existing.Storage
+	if !found {
+		storage, err = reader.FindSnippetStorage(ctx, entity.Node)
+		if err != nil {
+			return "", "", fmt.Errorf("resolve cloud-init snippet storage: %w", err)
+		}
+	}
+
+	filename = fmt.Sprintf("%s%d.yml", snippetFilenamePrefix, vmid)
+	if found && existing.Filename != "" {
+		filename = existing.Filename
+	}
+
+	return storage, filename, nil
 }
 
 func resolveCloudInitTarget(index *inventory.Index, actor auth.Identity, clusterName string, vmid int) (Entity, error) {

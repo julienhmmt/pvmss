@@ -14,7 +14,6 @@ const (
 	defaultInventoryManualRefreshMinInterval = 5 * time.Second
 	defaultInventoryRefreshTimeout           = 15 * time.Second
 	defaultMaxListPageSize                   = 100
-	defaultUserQuota                         = -1
 )
 
 // Load reads and validates the runtime configuration from the environment.
@@ -144,6 +143,7 @@ func loadClusterSettings(cfg *Configuration) error {
 		if cfg.ProxmoxURL == "" {
 			return errors.New("PROXMOX_URL is required when PVMSS_CLUSTER_SOURCE=proxmox")
 		}
+
 		if cfg.ProxmoxAPITokenName == "" || cfg.ProxmoxAPITokenValue == "" {
 			return errors.New("PROXMOX_API_TOKEN_NAME and PROXMOX_API_TOKEN_VALUE are required when PVMSS_CLUSTER_SOURCE=proxmox")
 		}
@@ -154,48 +154,37 @@ func loadClusterSettings(cfg *Configuration) error {
 
 // loadInventorySettings reads the inventory refresh and quota settings.
 func loadInventorySettings(cfg *Configuration) error {
-	refreshInterval, err := loadPositiveDuration("PVMSS_V04_INVENTORY_REFRESH_INTERVAL", defaultInventoryRefreshInterval)
+	refreshInterval, err := loadPositiveDuration("PVMSS_INVENTORY_REFRESH_INTERVAL", defaultInventoryRefreshInterval)
 	if err != nil {
 		return err
 	}
 
 	cfg.InventoryRefreshInterval = refreshInterval
 
-	manualMinInterval, err := loadPositiveDuration("PVMSS_V04_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL", defaultInventoryManualRefreshMinInterval)
+	manualMinInterval, err := loadPositiveDuration("PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL", defaultInventoryManualRefreshMinInterval)
 	if err != nil {
 		return err
 	}
 
 	cfg.InventoryManualRefreshMinInterval = manualMinInterval
 
-	refreshTimeout, err := loadPositiveDuration("PVMSS_V04_INVENTORY_REFRESH_TIMEOUT", defaultInventoryRefreshTimeout)
+	refreshTimeout, err := loadPositiveDuration("PVMSS_INVENTORY_REFRESH_TIMEOUT", defaultInventoryRefreshTimeout)
 	if err != nil {
 		return err
 	}
 
 	cfg.InventoryRefreshTimeout = refreshTimeout
 
-	maxPageSize, err := loadInt("PVMSS_V04_MAX_LIST_PAGE_SIZE", defaultMaxListPageSize)
+	maxPageSize, err := loadInt("PVMSS_MAX_LIST_PAGE_SIZE", defaultMaxListPageSize)
 	if err != nil {
 		return err
 	}
 
 	if maxPageSize < 1 {
-		return fmt.Errorf("PVMSS_V04_MAX_LIST_PAGE_SIZE must be at least 1, got %d", maxPageSize)
+		return fmt.Errorf("PVMSS_MAX_LIST_PAGE_SIZE must be at least 1, got %d", maxPageSize)
 	}
 
 	cfg.MaxListPageSize = maxPageSize
-
-	userQuota, err := loadInt("PVMSS_V04_DEFAULT_USER_QUOTA", defaultUserQuota)
-	if err != nil {
-		return err
-	}
-
-	if userQuota < -1 {
-		return fmt.Errorf("PVMSS_V04_DEFAULT_USER_QUOTA must be -1 (unlimited) or greater, got %d", userQuota)
-	}
-
-	cfg.DefaultUserQuota = userQuota
 
 	return nil
 }

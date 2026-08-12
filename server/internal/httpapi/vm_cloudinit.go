@@ -9,6 +9,7 @@ import (
 	"pvmss/server/internal/cloudinit"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"strconv"
@@ -26,12 +27,22 @@ type VMCloudInit struct {
 	writer     cluster.Writer
 	store      *store.Store
 	refresher  vm.IndexRefresher
+	policy     *policy.Policy
 	log        *slog.Logger
 }
 
 // NewVMCloudInit creates the dedicated cloud-init handler.
-func NewVMCloudInit(projection *inventory.Projection, authHandler *Auth, reader cluster.CloudInitReader, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger) *VMCloudInit {
-	return &VMCloudInit{projection: projection, auth: authHandler, reader: reader, writer: writer, store: st, refresher: refresher, log: log}
+func NewVMCloudInit(projection *inventory.Projection, authHandler *Auth, reader cluster.CloudInitReader, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger, services ...*policy.Policy) *VMCloudInit {
+	var policyService *policy.Policy
+	if len(services) > 0 {
+		policyService = services[0]
+	}
+
+	if policyService == nil && st != nil {
+		policyService = policy.New(st, projection, nil)
+	}
+
+	return &VMCloudInit{projection: projection, auth: authHandler, reader: reader, writer: writer, store: st, refresher: refresher, policy: policyService, log: log}
 }
 
 type cloudInitConfigDTO struct {
@@ -164,7 +175,6 @@ func (h *VMCloudInit) handleSnippet(w http.ResponseWriter, r *http.Request) {
 	h.serveRoute(w, r, h.getSnippet, h.putSnippet)
 }
 
-//nolint:wsl_v5 // response mapping keeps persistence state adjacent to DTO creation
 func (h *VMCloudInit) getSnippet(w http.ResponseWriter, r *http.Request, actor auth.Identity, clusterName string, vmid int) {
 	index := h.projection.Load()
 	if index == nil {
@@ -189,16 +199,10 @@ func (h *VMCloudInit) getSnippet(w http.ResponseWriter, r *http.Request, actor a
 	h.writeJSONStatus(w, http.StatusOK, cloudInitSnippetDTO{Content: &content, UpdatedAt: &updatedAt, UpdatedBy: &updatedBy})
 }
 
-//nolint:wsl_v5 // validation, projection, domain call, and response form one request boundary
 func (h *VMCloudInit) putSnippet(w http.ResponseWriter, r *http.Request, actor auth.Identity, clusterName string, vmid int) {
 	var request cloudInitSnippetRequest
 	if err := decodeJSONLimit(w, r, &request, maxCloudInitSnippetBody); err != nil || request.Content == nil {
 		h.writeError(w, http.StatusBadRequest, "invalid_snippet", "content is required")
-		return
-	}
-
-	if err := cloudinit.Validate(*request.Content); err != nil {
-		h.writeError(w, http.StatusBadRequest, "invalid_snippet", err.Error())
 		return
 	}
 
@@ -208,7 +212,7 @@ func (h *VMCloudInit) putSnippet(w http.ResponseWriter, r *http.Request, actor a
 		return
 	}
 
-	if err := vm.SetCloudInitSnippet(r.Context(), index, actor, clusterName, vmid, *request.Content, h.reader, h.writer, h.store); err != nil {
+	if err := vm.SetCloudInitSnippet(r.Context(), index, actor, clusterName, vmid, *request.Content, h.reader, h.writer, h.store, h.policy); err != nil {
 		h.writeDomainError(w, err)
 		return
 	}
@@ -218,6 +222,10 @@ func (h *VMCloudInit) putSnippet(w http.ResponseWriter, r *http.Request, actor a
 
 func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, vm.ErrCustomYAMLDisabled):
+		h.writeError(w, http.StatusForbidden, "custom_yaml_disabled", "the administrator has disabled custom cloud-init snippets")
+	case errors.Is(err, policy.ErrUnavailable):
+		h.writeError(w, http.StatusServiceUnavailable, "policy_unavailable", "policy service is not configured")
 	case errors.Is(err, vm.ErrForbidden):
 		h.writeError(w, http.StatusForbidden, "forbidden", "not your VM")
 	case errors.Is(err, vm.ErrNotFound):
@@ -236,7 +244,6 @@ func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 	}
 }
 
-//nolint:wsl_v5 // marshal and write errors share one response boundary
 func (h *VMCloudInit) writeJSONStatus(w http.ResponseWriter, status int, value any) {
 	body, err := json.Marshal(value)
 	if err != nil {
@@ -251,7 +258,6 @@ func (h *VMCloudInit) writeJSONStatus(w http.ResponseWriter, status int, value a
 	}
 }
 
-//nolint:wsl_v5 // marshal and write errors share one response boundary
 func (h *VMCloudInit) writeError(w http.ResponseWriter, status int, code, message string) {
 	body, err := json.Marshal(struct {
 		Code    string `json:"code"`
@@ -267,7 +273,6 @@ func (h *VMCloudInit) writeError(w http.ResponseWriter, status int, code, messag
 	}
 }
 
-//nolint:wsl_v5 // path parse returns one compact validation result
 func parseCloudInitPath(r *http.Request) (string, int, bool) {
 	clusterName := r.PathValue("cluster")
 	vmid, err := strconv.Atoi(r.PathValue("vmid"))

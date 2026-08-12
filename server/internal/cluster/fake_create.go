@@ -109,8 +109,6 @@ func (Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 
 // TaskStatus implements Creator. Poll-count-based: running for a UPID's first
 // two queries, ok from the third onward (SC-006 — deterministic, no sleeps).
-//
-//nolint:wsl_v5 // task completion releases the lock before invoking callbacks
 func (Fake) TaskStatus(_ context.Context, upid string) (TaskStatus, error) {
 	fakeCreateMutex.Lock()
 

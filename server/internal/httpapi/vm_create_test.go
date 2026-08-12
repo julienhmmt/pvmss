@@ -30,9 +30,9 @@ func newVMCreateHandler(t *testing.T) (*httpapi.VMCreate, *httpapi.Auth, *store.
 
 	st, err := store.Open(config.Configuration{
 		DBPath:    filepath.Join(t.TempDir(), "vm-create.db"),
-		LogLevel:  "info",
-		LogFormat: "json",
-		LogOutput: "stdout",
+		LogLevel:  snapshotTestLogLevel,
+		LogFormat: snapshotTestLogFormat,
+		LogOutput: snapshotTestLogOutput,
 	})
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)

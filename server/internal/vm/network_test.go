@@ -6,8 +6,8 @@ import (
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
-	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/vm"
 	"testing"
 )
@@ -66,7 +66,7 @@ func TestUpdateNetwork_RejectsTooManyCards(t *testing.T) {
 
 	deps := networkDependencies(diskTestIndex(t, 101, cluster.VMRunning), aliceIdentity(), 101)
 
-	interfaces := make([]cluster.NetworkInterface, config.DefaultVMLimits().MaxNetworkCards+1)
+	interfaces := make([]cluster.NetworkInterface, policy.DefaultGabarit().MaxNetworkCards+1)
 	for index := range interfaces {
 		interfaces[index] = cluster.NetworkInterface{Index: index, Bridge: testBridgeVMbr0, Model: testModelVirtio}
 	}
@@ -116,6 +116,6 @@ func TestUpdateNetwork_RemovesInterface(t *testing.T) {
 func networkDependencies(index *inventory.Index, actor auth.Identity, vmid int) vm.NetworkDependencies {
 	return vm.NetworkDependencies{
 		Index: index, Actor: actor, ClusterName: testClusterName, VMID: vmid, Writer: cluster.Fake{},
-		Resources: catalog.Resources{Bridges: []string{testBridgeVMbr0, testBridgeVMbr1}}, Limits: config.DefaultVMLimits(), Audit: noopAudit{}, Refresher: noopRefresher{},
+		Resources: catalog.Resources{Bridges: []string{testBridgeVMbr0, testBridgeVMbr1}}, Gabarit: policy.DefaultGabarit(), Audit: noopAudit{}, Refresher: noopRefresher{},
 	}
 }

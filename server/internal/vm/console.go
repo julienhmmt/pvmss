@@ -130,6 +130,7 @@ func (s *ConsoleTicketStore) Consume(token, clusterName string, vmid int) (VNCTi
 	if time.Now().After(ticket.ExpiresAt) {
 		s.removeOrderLocked(token)
 		delete(s.tickets, token)
+
 		return VNCTicket{}, ErrInvalidTicket
 	}
 
@@ -139,6 +140,7 @@ func (s *ConsoleTicketStore) Consume(token, clusterName string, vmid int) (VNCTi
 
 	s.removeOrderLocked(token)
 	delete(s.tickets, token)
+
 	return ticket, nil
 }
 
@@ -169,6 +171,7 @@ func generateConsoleToken() (string, error) {
 	if _, err := rand.Read(b); err != nil {
 		return "", fmt.Errorf("generate console token: %w", err)
 	}
+
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
@@ -205,7 +208,7 @@ func GetConsoleTicket(
 
 	proxy, err := client.GetVNCTicket(ctx, clusterName, vmid, entity.Node)
 	if err != nil {
-		return VNCTicket{}, fmt.Errorf("%w: %v", ErrClusterConsoleUnavailable, err)
+		return VNCTicket{}, fmt.Errorf("%w: %w", ErrClusterConsoleUnavailable, err)
 	}
 
 	ticket := store.Issue(clusterName, vmid, entity.Node, proxy.Ticket, proxy.Port)
@@ -241,5 +244,6 @@ func (s *ConsoleTicketStore) oldestTokenForTest() string {
 	if i := slices.IndexFunc(s.order, func(t string) bool { _, ok := s.tickets[t]; return ok }); i >= 0 {
 		return s.order[i]
 	}
+
 	return ""
 }

@@ -1,4 +1,3 @@
-//nolint:wsl_v5 // fake lifecycle assertions keep setup and checks adjacent
 package cluster
 
 import (
@@ -7,7 +6,6 @@ import (
 )
 
 //nolint:paralleltest // serial: shared fake snapshot registry
-//nolint:wsl_v5 // fake lifecycle assertions keep setup and checks adjacent
 func TestFakeSnapshotLifecycle_IsTaskVisibleOnlyAfterCompletion(t *testing.T) {
 	ResetFake()
 	t.Cleanup(ResetFake)
@@ -50,7 +48,6 @@ func TestFakeSnapshotLifecycle_IsTaskVisibleOnlyAfterCompletion(t *testing.T) {
 }
 
 //nolint:paralleltest // serial: shared fake snapshot registry
-//nolint:wsl_v5 // fake lifecycle assertions keep setup and checks adjacent
 func TestFakeSnapshotLifecycle_RollbackAndDeleteCompleteAsTasks(t *testing.T) {
 	ResetFake()
 	t.Cleanup(ResetFake)
@@ -89,7 +86,6 @@ func TestFakeSnapshotLifecycle_RollbackAndDeleteCompleteAsTasks(t *testing.T) {
 	}
 }
 
-//nolint:wsl_v5 // fake lifecycle assertions keep setup and checks adjacent
 func completeFakeTask(t *testing.T, client Fake, upid string) {
 	t.Helper()
 
