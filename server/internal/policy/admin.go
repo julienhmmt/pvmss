@@ -24,7 +24,7 @@ func (service *Policy) SetGabarit(ctx context.Context, clusterName string, gabar
 	row.MaxDiskPerVMGB = gabarit.MaxDiskPerVMGB
 	row.MaxNetworkCards = gabarit.MaxNetworkCards
 	row.MaxSnapshots = gabarit.MaxSnapshots
-	row.AllowCustomYaml = gabarit.AllowCustomYaml
+	row.AllowCustomYAML = gabarit.AllowCustomYAML
 
 	return service.store.UpsertPolicyRow(ctx, row)
 }
@@ -46,7 +46,7 @@ func (service *Policy) SetPolicy(ctx context.Context, clusterName string, gabari
 
 	row.MaxSockets, row.MaxCores, row.MaxMemoryMB = gabarit.MaxSockets, gabarit.MaxCores, gabarit.MaxMemoryMB
 	row.MaxDiskPerVMGB, row.MaxNetworkCards, row.MaxSnapshots = gabarit.MaxDiskPerVMGB, gabarit.MaxNetworkCards, gabarit.MaxSnapshots
-	row.AllowCustomYaml, row.MaxVMPerUser = gabarit.AllowCustomYaml, allowed
+	row.AllowCustomYAML, row.MaxVMPerUser = gabarit.AllowCustomYAML, allowed
 
 	return service.store.UpsertPolicyRow(ctx, row)
 }
