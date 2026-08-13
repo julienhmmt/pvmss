@@ -28,16 +28,6 @@ type cloudInitTemplateUpdateRequest struct {
 	Content string `json:"content"`
 }
 
-type cloudInitTemplateToggleRequest struct {
-	Cluster string `json:"cluster"`
-	Enabled bool   `json:"enabled"`
-}
-
-type cloudInitTemplateToggleResponse struct {
-	ID      string `json:"id"`
-	Enabled bool   `json:"enabled"`
-}
-
 // ServeCloudInitTemplates handles GET /api/v1/admin/cloudinit-templates — lists
 // every template including disabled ones (unlike T06's catalog reader which
 // filters by enabled = 1). Admin-only via the RequireAdmin route guard (T007).
@@ -153,68 +143,10 @@ func (h *AdminCatalog) ServeCloudInitTemplateUpdate(w http.ResponseWriter, r *ht
 // The cluster is read from the query string (?cluster=default), matching the
 // profile delete handler's convention.
 func (h *AdminCatalog) ServeCloudInitTemplateDelete(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	if id == "" {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "template id is required")
-		return
-	}
-
-	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
-	if clusterErr != nil {
-		code, message := clusterParamError(clusterErr)
-		writeAdminError(w, http.StatusBadRequest, code, message)
-		return
-	}
-
-	err := catalog.DeleteCloudInitTemplate(r.Context(), h.store, clusterName, id)
-	if errors.Is(err, catalog.ErrCloudInitTemplateNotFound) {
-		writeAdminError(w, http.StatusNotFound, "not_found", "cloud-init template \""+id+"\" not found")
-		return
-	}
-
-	if err != nil {
-		h.log.Error("admin delete cloudinit template failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
-
-		return
-	}
-
-	writeAdminJSON(w, http.StatusOK, statusResponse{Status: statusDeleted})
+	h.serveCatalogDelete(w, r, "cloud-init template", "template", catalog.DeleteCloudInitTemplate, catalog.ErrCloudInitTemplateNotFound)
 }
 
 // ServeCloudInitTemplateToggle handles POST /api/v1/admin/cloudinit-templates/{id}/toggle.
 func (h *AdminCatalog) ServeCloudInitTemplateToggle(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	if id == "" {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "template id is required")
-		return
-	}
-
-	var req cloudInitTemplateToggleRequest
-	if err := decodeJSON(w, r, &req); err != nil {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
-		return
-	}
-
-	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clusters)
-	if clusterErr != nil {
-		code, message := clusterParamError(clusterErr)
-		writeAdminError(w, http.StatusBadRequest, code, message)
-		return
-	}
-
-	err := catalog.SetCloudInitTemplateEnabled(r.Context(), h.store, clusterName, id, req.Enabled)
-	if errors.Is(err, catalog.ErrCloudInitTemplateNotFound) {
-		writeAdminError(w, http.StatusNotFound, "not_found", "cloud-init template \""+id+"\" not found")
-		return
-	}
-
-	if err != nil {
-		h.log.Error("admin toggle cloudinit template failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
-
-		return
-	}
-
-	writeAdminJSON(w, http.StatusOK, cloudInitTemplateToggleResponse{ID: id, Enabled: req.Enabled})
+	h.serveCatalogToggle(w, r, "cloud-init template", "template", catalog.SetCloudInitTemplateEnabled, catalog.ErrCloudInitTemplateNotFound)
 }
