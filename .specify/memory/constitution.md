@@ -267,8 +267,9 @@ réelles justifient pleinement l'interface au regard du principe VIII.*
 | Toute fonction | 50 lignes |
 | Imbrication | 4 niveaux |
 
-**Structure** — le code v0.4 vit dans `server/` (Go) et `web/` (SvelteKit), à côté du code
-v0.3 (`backend/`, `frontend/`) qui reste déployable jusqu'à la bascule finale.
+**Structure** — le code v0.4 vit dans `server/` (Go) et `web/` (SvelteKit). Le legacy
+v0.3 (`backend/`, `frontend/`) a été supprimé à la bascule T16 (commit `a7a26f7a`) ;
+il ne subsiste que comme référence historique dans les *rationale* ci-dessous.
 
 - Go : découpage par domaine (`inventory/`, `policy/`, `catalog/`, `vm/`, `auth/`,
   `cluster/`, `store/`, `httpapi/`), pas par couche technique.
