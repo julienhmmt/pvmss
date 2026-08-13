@@ -21,6 +21,11 @@ export interface CatalogProfile {
 	bus: string;
 }
 
+export interface CatalogCloudInitTemplate {
+	id: string;
+	label: string;
+}
+
 export interface VmCreateCatalog {
 	cluster: string;
 	nodes: string[];
@@ -28,6 +33,7 @@ export interface VmCreateCatalog {
 	bridges: string[];
 	isos: CatalogISO[];
 	profiles: CatalogProfile[];
+	cloudInitTemplates: CatalogCloudInitTemplate[];
 }
 
 /** The single request shape both modes POST (FR-001) — no pool, no mode. */
@@ -35,6 +41,7 @@ export interface VMCreateRequest {
 	cluster: string;
 	name: string;
 	profileId?: string;
+	cloudInitTemplateId?: string;
 	node?: string;
 	tags?: string[];
 	cpuCores?: number;
@@ -51,6 +58,8 @@ export interface VmCreateAccepted {
 	name: string;
 	node: string;
 	upid: string;
+	cloudInitTemplateId?: string;
+	cloudInitPushError?: string;
 }
 
 export type CreateMode = 'simple' | 'detailed';
@@ -69,6 +78,7 @@ export class VmCreateStore {
 	mode = $state<CreateMode>('simple');
 	name = $state('');
 	profileId = $state('');
+	cloudInitTemplateId = $state('');
 	node = $state('');
 	nodeAdjusted = $state(false);
 	storage = $state('');
@@ -123,6 +133,7 @@ export class VmCreateStore {
 		};
 		if (this.mode === 'simple') {
 			if (this.profileId !== '') request.profileId = this.profileId;
+			if (this.cloudInitTemplateId !== '') request.cloudInitTemplateId = this.cloudInitTemplateId;
 			if (this.nodeAdjusted && this.node !== '') request.node = this.node;
 			if (this.storageAdjusted && this.storage !== '') {
 				request.disk = { storage: this.storage };
@@ -171,6 +182,7 @@ export class VmCreateStore {
 			mode: this.mode,
 			name: this.name,
 			profileId: this.profileId,
+			cloudInitTemplateId: this.cloudInitTemplateId,
 			node: this.node,
 			nodeAdjusted: this.nodeAdjusted,
 			storage: this.storage,
@@ -193,6 +205,7 @@ export class VmCreateStore {
 		this.mode = values.mode;
 		this.name = values.name;
 		this.profileId = values.profileId;
+		this.cloudInitTemplateId = values.cloudInitTemplateId ?? '';
 		this.node = values.node;
 		this.nodeAdjusted = values.nodeAdjusted;
 		this.storage = values.storage;

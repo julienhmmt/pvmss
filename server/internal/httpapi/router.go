@@ -39,6 +39,7 @@ type RouterConfig struct {
 	ClusterRefresh   http.Handler
 	VMs              http.Handler
 	VMDetail         http.Handler
+	VMBulk           *VMBulk
 	VMCloudInit      *VMCloudInit
 	VMCreate         *VMCreate
 	Tasks            *Tasks
@@ -66,6 +67,13 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	// itself (for scope enforcement) and calls h.auth.Principal(r) directly,
 	// returning 401 on its own — wrapping would just re-run the same check.
 	mux.Handle("GET /api/v1/vms", cfg.VMs)
+	// T17 bulk VM power actions — same Principal pattern as VM list/detail:
+	// the handler calls h.auth.Principal(r) directly and returns 401 on its
+	// own, so it is not wrapped in auth.Require. Registered before the
+	// {cluster}/{vmid} pattern so the literal "bulk-action" segment wins.
+	if cfg.VMBulk != nil {
+		mux.Handle("POST /api/v1/vms/bulk-action", cfg.VMBulk)
+	}
 	// VM creation + catalog + task polling — same Principal pattern as above.
 	if cfg.VMCreate != nil {
 		mux.Handle("POST /api/v1/vms", cfg.VMCreate)
@@ -145,6 +153,13 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		mux.Handle("POST /api/v1/admin/tags", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeTagCreate)))
 		mux.Handle("PUT /api/v1/admin/tags/{name}/color", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeTagColor)))
 		mux.Handle("DELETE /api/v1/admin/tags/{name}", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeTagDelete)))
+		// T18 admin cloud-init templates — full CRUD, same RequireAdmin guard
+		// as every other admin catalog route (FR-010), no new middleware.
+		mux.Handle("GET /api/v1/admin/cloudinit-templates", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeCloudInitTemplates)))
+		mux.Handle("POST /api/v1/admin/cloudinit-templates", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeCloudInitTemplateCreate)))
+		mux.Handle("PUT /api/v1/admin/cloudinit-templates/{id}", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeCloudInitTemplateUpdate)))
+		mux.Handle("DELETE /api/v1/admin/cloudinit-templates/{id}", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeCloudInitTemplateDelete)))
+		mux.Handle("POST /api/v1/admin/cloudinit-templates/{id}/toggle", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeCloudInitTemplateToggle)))
 	}
 
 	// T12 admin policies — gabarits, quotas, node capacity; admin-only.

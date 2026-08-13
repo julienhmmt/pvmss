@@ -88,6 +88,21 @@ CREATE TABLE clusters (
 ALTER TABLE sessions ADD COLUMN cluster TEXT NOT NULL DEFAULT '';
 `
 
+// schemaV12 adds the admin-curated cloud-init template catalog (T18): a sibling
+// to T11's catalog_profiles, full CRUD with no Proxmox-side discovery source.
+// The version is provisional (plan.md Constraints) — the exact integer is fixed
+// by actual merge order, not spec-writing order.
+const schemaV12 = `CREATE TABLE catalog_cloudinit_templates (
+	cluster    TEXT NOT NULL,
+	id         TEXT NOT NULL,
+	label      TEXT NOT NULL,
+	content    TEXT NOT NULL,
+	enabled    BOOLEAN NOT NULL DEFAULT 1,
+	created_at TEXT NOT NULL,
+	updated_at TEXT NOT NULL,
+	PRIMARY KEY (cluster, id)
+)`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -108,4 +123,5 @@ var Migrations = []Migration{
 	{Version: 9, DDL: schemaV9},
 	{Version: 10, DDL: schemaV10},
 	{Version: 11, DDL: schemaV11},
+	{Version: 12, DDL: schemaV12},
 }

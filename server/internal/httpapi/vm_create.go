@@ -20,28 +20,33 @@ type VMCreate struct {
 	auth    *Auth
 	store   *store.Store
 	creator cluster.Creator
+	pusher  vm.CloudInitPusher
 	policy  *policy.Policy
 	log     *slog.Logger
 }
 
 // NewVMCreate creates the handler. The creator is the cluster client's
 // creation contract (allocation + async dispatch), separate from reads and
-// from existing-VM writes (constitution IV).
-func NewVMCreate(authHandler *Auth, st *store.Store, creator cluster.Creator, log *slog.Logger, services ...*policy.Policy) *VMCreate {
+// from existing-VM writes (constitution IV). The pusher is the same cluster
+// client's T08 cloud-init push contract, reused by vm.Create's template-apply
+// step (FR-007) — never a second write mechanism.
+func NewVMCreate(authHandler *Auth, st *store.Store, creator cluster.Creator, pusher vm.CloudInitPusher, log *slog.Logger, services ...*policy.Policy) *VMCreate {
 	var policyService *policy.Policy
 	if len(services) > 0 {
 		policyService = services[0]
 	}
 
-	return &VMCreate{auth: authHandler, store: st, creator: creator, policy: policyService, log: log}
+	return &VMCreate{auth: authHandler, store: st, creator: creator, pusher: pusher, policy: policyService, log: log}
 }
 
 type createResultDTO struct {
-	Cluster string `json:"cluster"`
-	VMID    int    `json:"vmid"`
-	Name    string `json:"name"`
-	Node    string `json:"node"`
-	UPID    string `json:"upid"`
+	Cluster             string `json:"cluster"`
+	VMID                int    `json:"vmid"`
+	Name                string `json:"name"`
+	Node                string `json:"node"`
+	UPID                string `json:"upid"`
+	CloudInitTemplateID string `json:"cloudInitTemplateId,omitempty"`
+	CloudInitPushError  string `json:"cloudInitPushError,omitempty"`
 }
 
 type catalogStorageDTO struct {
@@ -63,13 +68,19 @@ type catalogProfileDTO struct {
 	Bus      string `json:"bus"`
 }
 
+type catalogCloudInitTemplateDTO struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+}
+
 type catalogDTO struct {
-	Cluster  string              `json:"cluster"`
-	Nodes    []string            `json:"nodes"`
-	Storages []catalogStorageDTO `json:"storages"`
-	Bridges  []string            `json:"bridges"`
-	ISOs     []catalogISODTO     `json:"isos"`
-	Profiles []catalogProfileDTO `json:"profiles"`
+	Cluster            string                        `json:"cluster"`
+	Nodes              []string                      `json:"nodes"`
+	Storages           []catalogStorageDTO           `json:"storages"`
+	Bridges            []string                      `json:"bridges"`
+	ISOs               []catalogISODTO               `json:"isos"`
+	Profiles           []catalogProfileDTO           `json:"profiles"`
+	CloudInitTemplates []catalogCloudInitTemplateDTO `json:"cloudInitTemplates"`
 }
 
 // ServeHTTP handles POST /api/v1/vms. Creation is asynchronous (FR-013):
@@ -87,18 +98,20 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := vm.Create(r.Context(), identity, req.Cluster, req, h.store, h.creator, h.store, h.log, h.policy)
+	result, err := vm.Create(r.Context(), identity, req.Cluster, req, h.store, h.creator, h.pusher, h.store, h.log, h.policy)
 	if err != nil {
 		h.writeCreateFailure(w, err)
 		return
 	}
 
 	h.writeCreateJSON(w, http.StatusAccepted, createResultDTO{
-		Cluster: result.Cluster,
-		VMID:    result.VMID,
-		Name:    result.Name,
-		Node:    result.Node,
-		UPID:    result.UPID,
+		Cluster:             result.Cluster,
+		VMID:                result.VMID,
+		Name:                result.Name,
+		Node:                result.Node,
+		UPID:                result.UPID,
+		CloudInitTemplateID: result.CloudInitTemplateID,
+		CloudInitPushError:  result.CloudInitPushError,
 	})
 }
 
@@ -132,13 +145,22 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	templates, err := catalog.CloudInitTemplates(r.Context(), h.store, clusterName)
+	if err != nil {
+		h.log.Error("cloudinit templates read failed", "component", "httpapi", "error", err)
+		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+
+		return
+	}
+
 	dto := catalogDTO{
-		Cluster:  clusterName,
-		Nodes:    make([]string, 0, len(resources.Nodes)),
-		Storages: make([]catalogStorageDTO, 0, len(resources.Storages)),
-		Bridges:  resources.Bridges,
-		ISOs:     make([]catalogISODTO, 0, len(resources.ISOs)),
-		Profiles: make([]catalogProfileDTO, 0, len(profiles)),
+		Cluster:            clusterName,
+		Nodes:              make([]string, 0, len(resources.Nodes)),
+		Storages:           make([]catalogStorageDTO, 0, len(resources.Storages)),
+		Bridges:            resources.Bridges,
+		ISOs:               make([]catalogISODTO, 0, len(resources.ISOs)),
+		Profiles:           make([]catalogProfileDTO, 0, len(profiles)),
+		CloudInitTemplates: make([]catalogCloudInitTemplateDTO, 0, len(templates)),
 	}
 	for _, node := range resources.Nodes {
 		dto.Nodes = append(dto.Nodes, node.Name)
@@ -160,6 +182,13 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 			MemoryMB: profile.MemoryMB,
 			DiskGB:   profile.DiskGB,
 			Bus:      profile.Bus,
+		})
+	}
+
+	// T18: catalog exposes only id+label per spec/contracts — never content.
+	for _, tmpl := range templates {
+		dto.CloudInitTemplates = append(dto.CloudInitTemplates, catalogCloudInitTemplateDTO{
+			ID: tmpl.ID, Label: tmpl.Label,
 		})
 	}
 

@@ -411,6 +411,12 @@ func SetFakeCloudInitPushError(err error) {
 // Action implements Writer — a power transition on the Index-resolved node.
 // It mutates the VM's Status so a subsequent Snapshot reflects it (the fake
 // demonstrates the feature, constitution XI), and records the call.
+//
+// T17 (T001b): status-incompatible transitions are rejected — start on an
+// already-running VM, stop/shutdown on an already-stopped one, reboot/reset on
+// a stopped one. This mirrors what real Proxmox rejects natively; T05 never
+// built it because no single-VM caller needed it, but T17's bulk User Story 1
+// Acceptance Scenario 2 is the first caller that does.
 func (Fake) Action(_ context.Context, node string, vmid int, action string) error {
 	fakeVMMutex.Lock()
 	defer fakeVMMutex.Unlock()
@@ -418,6 +424,11 @@ func (Fake) Action(_ context.Context, node string, vmid int, action string) erro
 	idx := slices.IndexFunc(fakeVMs, func(v VM) bool { return v.VMID == vmid && v.Node == node })
 	if idx < 0 {
 		return ErrNotFound
+	}
+
+	status := fakeVMs[idx].Status
+	if err := validateTransition(action, status); err != nil {
+		return err
 	}
 
 	switch action {
@@ -438,6 +449,29 @@ func (Fake) Action(_ context.Context, node string, vmid int, action string) erro
 	}
 
 	recordCall(FakeCall{Node: node, VMID: vmid, Action: action})
+
+	return nil
+}
+
+// validateTransition rejects a power action that makes no sense for the VM's
+// current status. Real Proxmox rejects these natively; the fake mirrors that
+// so T17's bulk scenarios produce the same per-target error entries a real
+// cluster would.
+func validateTransition(action string, status VMStatus) error {
+	switch action {
+	case "start":
+		if status == VMRunning {
+			return fmt.Errorf("%w: vm already running", ErrInvalidStateTransition)
+		}
+	case "stop", "shutdown":
+		if status == VMStopped {
+			return fmt.Errorf("%w: vm already stopped", ErrInvalidStateTransition)
+		}
+	case "reboot", "reset":
+		if status == VMStopped {
+			return fmt.Errorf("%w: vm is not running", ErrInvalidStateTransition)
+		}
+	}
 
 	return nil
 }

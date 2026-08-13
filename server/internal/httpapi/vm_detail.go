@@ -986,6 +986,8 @@ func (h *VMDetail) writeActionError(w http.ResponseWriter, err error) {
 		h.writeDetailError(w, http.StatusBadGateway, "cluster_error", "cluster rejected the request")
 	case errors.Is(err, cluster.ErrUnreachable):
 		h.writeDetailError(w, http.StatusBadGateway, "cluster_unreachable", "cluster is not reachable")
+	case errors.Is(err, cluster.ErrInvalidStateTransition):
+		h.writeDetailError(w, http.StatusConflict, "invalid_state_transition", err.Error())
 	default:
 		h.log.Error("vm action failed", "component", "httpapi", "error", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
