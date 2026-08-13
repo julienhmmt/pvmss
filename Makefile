@@ -81,8 +81,6 @@ helm-upgrade: ## Met à jour l'application avec Helm
 	@echo "$(GREEN)✓ Application mise à jour$(NC)"
 
 up: ## Démarre les conteneurs dev en arrière-plan
-# touch app.log garantit un fichier (et non un dossier) pour le bind mount Docker
-	@touch app.log
 	$(COMPOSE_DEV) up -d
 
 down: ## Arrête et supprime les conteneurs dev
@@ -96,7 +94,7 @@ logs: ## Suit les logs des conteneurs dev
 clean: ## Nettoie les artéfacts de build et arrête les conteneurs dev
 	@echo "$(BLUE)Nettoyage...$(NC)"
 	-$(COMPOSE_DEV) down --remove-orphans
-	rm -f pvmss app.log
+	rm -f pvmss
 	@echo "$(GREEN)✓ Nettoyage terminé$(NC)"
 
 # =============================================================================
