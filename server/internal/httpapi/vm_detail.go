@@ -279,7 +279,12 @@ func (h *VMDetail) handleAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := vm.Action(r.Context(), index, identity, clusterName, vmid, req.Action, h.writer, h.store, h.refresher); err != nil {
+	if err := vm.Action(r.Context(), vm.BulkDeps{
+		Actor:     identity,
+		Writer:    h.writer,
+		Audit:     h.store,
+		Refresher: h.refresher,
+	}, index, clusterName, vmid, req.Action); err != nil {
 		h.writeActionError(w, err)
 		return
 	}

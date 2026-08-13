@@ -134,7 +134,13 @@ func (h *VMBulk) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	results := vm.BulkAction(r.Context(), h.resolver, identity, req.Targets, req.Action, h.writer, h.store, h.refresher)
+	results := vm.BulkAction(r.Context(), vm.BulkDeps{
+		Resolver:  h.resolver,
+		Actor:     identity,
+		Writer:    h.writer,
+		Audit:     h.store,
+		Refresher: h.refresher,
+	}, req.Targets, req.Action)
 	h.writeJSONStatus(w, http.StatusOK, bulkActionResponseDTO{Results: results})
 }
 
