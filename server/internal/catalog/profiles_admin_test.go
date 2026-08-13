@@ -474,6 +474,33 @@ func TestSetTagColor_Success(t *testing.T) {
 	}
 }
 
+// TestSetTagColor_CustomTag — updating a non-protected tag's color works and
+// the read-back reports Protected=false (complements TestSetTagColor_Success,
+// which only exercises the protected pvmss tag).
+func TestSetTagColor_CustomTag(t *testing.T) {
+	t.Parallel()
+
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	if _, err := catalog.CreateTag(ctx, st, "default", "teamweb", "#16a34a"); err != nil {
+		t.Fatalf("CreateTag: %v", err)
+	}
+
+	tag, err := catalog.SetTagColor(ctx, st, "default", "teamweb", "#9333ea")
+	if err != nil {
+		t.Fatalf("SetTagColor custom tag: %v", err)
+	}
+
+	if tag.Color != "#9333ea" {
+		t.Errorf("tag.Color = %q, want #9333ea", tag.Color)
+	}
+
+	if tag.Protected {
+		t.Error("custom tag should not be protected")
+	}
+}
+
 // TestSetTagColor_NotFound — updating a non-existent tag returns
 // ErrTagNotFound.
 func TestSetTagColor_NotFound(t *testing.T) {
