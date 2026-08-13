@@ -26,7 +26,7 @@ Version anglaise : [README.md](README.md)
 
 ## Vue d'ensemble
 
-PVMSS est une application stateless (backend Go + frontend HTML/CSS) qui s'appuie exclusivement sur les API Proxmox pour toutes les actions. Ses objectifs :
+PVMSS est une application stateless (API REST Go + SPA SvelteKit) qui s'appuie exclusivement sur les API Proxmox pour toutes les actions. Ses objectifs :
 
 - **Sécurité par défaut** : sessions par utilisateur.
 - **Simplicité d'exploitation** : image conteneur prête à l'emploi, limites de ressources configurables, sélection de stockage compatible cluster.
@@ -55,9 +55,9 @@ PVMSS est une application stateless (backend Go + frontend HTML/CSS) qui s'appui
 
 ## Architecture en un coup d'œil
 
-- **Backend** : Go 1.25+, client RESTy pour les API Proxmox, templates HTML basiques.
-- **Frontend** : SPA SvelteKit (Svelte 5 runes, TypeScript, Tailwind CSS).
-- **Authentification** : token API Proxmox pour le backend, sessions utilisateur pour l'UI.
+- **Serveur** (`server/`) : Go 1.26, routage `net/http` de la stdlib, SQLite via `modernc.org/sqlite` (sans CGO). Sert `/api/v1/*` et le SPA.
+- **Web** (`web/`) : SPA SvelteKit (Svelte 5 runes, TypeScript, Tailwind CSS v4, `adapter-static`).
+- **Authentification** : token API Proxmox pour les actions cluster, sessions utilisateur pour l'UI.
 
 ## Configuration
 
@@ -72,7 +72,6 @@ Avant d'utiliser PVMSS en production, vous **devez**:
 
 Les commandes `pveum` exactes et les privilèges requis sont documentés dans:
 
-- `backend/docs/proxmox-permissions.fr.md` (dans ce dépôt)
 - La page d'admin intégrée `/docs/proxmox-permissions` (une fois PVMSS démarré)
 
 Vous pouvez créer les rôles et les ACLs en utilisant le `pveum` en ligne de commande. Vous pouvez également les créer en utilisant l'interface web de Proxmox. En tant qu'utilisateur _root_, créez les rôles et les privilèges suivants :
@@ -98,7 +97,6 @@ pveum aclmod / -user pvmss-admin1@pve -role PVMSS_Admin -propagate 1
 
 Les commandes `pveum` et les informations relatives aux rôles et aux privilèges requis sont détaillées dans :
 
-- `backend/docs/proxmox-permissions.fr.md` (dans ce dépôt)
 - La page d'admin intégrée `/docs/proxmox-permissions` (une fois PVMSS démarré et vous êtes connecté en tant qu'administrateur)
 
 ### Créer un token API pour l'utilisateur root@pam
@@ -135,35 +133,44 @@ Le tag `pvmss` est utilisé par défaut pour les VMs créées via PVMSS, il ne p
 
 Utilisez **soit** un `.env` (via `env_file`) **soit** des variables inline, pas les deux. Variables essentielles :
 
-| Variable                  | Description                                                    | Requis | Valeur par défaut    |
-| ------------------------- | -------------------------------------------------------------- | :----: | -------------------- |
-| `ADMIN_PASSWORD_HASH`     | Hash bcrypt pour l'admin                                       |   ✅   | —                    |
-| `SESSION_SECRET`          | Secret de 32+ octets pour sessions/cookies                     |   ✅   | —                    |
-| `JWT_SECRET`              | Clé de signature HS256 des JWT `/api/v1/` (≥ 32 octets)        |   ✅   | —                    |
-| `PROXMOX_API_TOKEN_NAME`  | Nom du token Proxmox (`user@pve!token`)                        |   ✅   | —                    |
-| `PROXMOX_API_TOKEN_VALUE` | Valeur du token ci-dessus                                      |   ✅   | —                    |
-| `PROXMOX_URL`             | URL complète de l'API (`https://host:8006/api2/json`)          |   ✅   | —                    |
-| `PROXMOX_VERIFY_SSL`      | `true` pour certificats valides, `false` sinon                 |   ❌   | `true`               |
-| `PVMSS_ENV`               | `production/prod` ou `development/dev/developpement`           |   ❌   | `production`         |
-| `PVMSS_OFFLINE`           | `true` pour désactiver les appels Proxmox                      |   ❌   | `false`              |
-| `PVMSS_DB_PATH`          | Chemin vers le fichier SQLite DB (volume persistant requis)    |   ✅   | `/data/pvmss.db`     |
-| `LOG_LEVEL`               | Verbosité des logs (`debug`, `info`, `warn`, `error`)          |   ❌   | `INFO`               |
-| `LOG_OUTPUT`              | Destination des logs : `stdout`, `file` ou `both`              |   ❌   | `stdout`             |
-| `LOG_FILE_PATH`           | Chemin du fichier log si `LOG_OUTPUT` = `file` ou `both`       |   ❌   | —                    |
-| `LOG_FORMAT`              | `console` (lisible humainement) ou `json` (pour SIEM/collecte) |   ❌   | `console`            |
-| `PORT`                    | Port TCP d'écoute du serveur HTTP                              |   ❌   | `50000`              |
-| `TZ`                      | Fuseau horaire du conteneur                                    |   ❌   | `UTC`                |
+| Variable                                      | Description                                                                | Requis                | Valeur par défaut  |
+| --------------------------------------------- | -------------------------------------------------------------------------- | --------------------- | ------------------ |
+| `PVMSS_PORT`                                  | Port TCP d'écoute du serveur HTTP (1–65535)                                | ✅                    | —                  |
+| `PVMSS_DB_PATH`                               | Chemin vers le fichier SQLite (volume persistant requis)                   | ✅                    | —                  |
+| `SESSION_SECRET`                              | Secret de 32+ octets pour sessions/cookies                                 | ✅                    | —                  |
+| `PVMSS_CLUSTER_SOURCE`                        | `proxmox` pour un vrai cluster, `fake` pour la démo (aucun défaut, exprès) | ✅                    | —                  |
+| `LOG_LEVEL`                                   | `debug`, `info`, `warn`, `error` — minuscules uniquement                   | ✅                    | —                  |
+| `LOG_FORMAT`                                  | `console` (lisible humainement) ou `json` (pour SIEM/collecte)             | ✅                    | —                  |
+| `LOG_OUTPUT`                                  | `stdout`, `stderr`, ou un chemin de fichier accessible en écriture         | ✅                    | —                  |
+| `PROXMOX_URL`                                 | URL complète de l'API (`https://host:8006/api2/json`)                      | si source = `proxmox` | —                  |
+| `PROXMOX_API_TOKEN_NAME`                      | Nom du token Proxmox (`user@pve!token`)                                    | si source = `proxmox` | —                  |
+| `PROXMOX_API_TOKEN_VALUE`                     | Valeur du token ci-dessus                                                  | si source = `proxmox` | —                  |
+| `ADMIN_PASSWORD_HASH`                         | Hash bcrypt de l'admin local ; désactivé si vide                           | ❌                    | —                  |
+| `PVMSS_HOST`                                  | Adresse d'écoute (`0.0.0.0` pour toutes les interfaces)                    | ❌                    | `127.0.0.1`        |
+| `PVMSS_WEB_DIR`                               | Répertoire contenant le SPA compilé                                        | ❌                    | relatif au binaire |
+| `PVMSS_COOKIE_SECURE`                         | Drapeau `Secure` sur les cookies d'auth (garder `true` en production)      | ❌                    | `true`             |
+| `PVMSS_INVENTORY_REFRESH_INTERVAL`            | Période de rafraîchissement de l'inventaire                                | ❌                    | `30s`              |
+| `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | Délai minimum entre deux rafraîchissements manuels                         | ❌                    | `5s`               |
+| `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | Timeout d'un rafraîchissement d'inventaire                                 | ❌                    | `15s`              |
+| `PVMSS_MAX_LIST_PAGE_SIZE`                    | Taille de page maximale des endpoints de liste                             | ❌                    | `100`              |
+| `TZ`                                          | Fuseau horaire du conteneur                                                | ❌                    | `UTC`              |
+
+L'image Docker prérègle `PVMSS_DB_PATH=/data/pvmss.db`, `PVMSS_HOST=0.0.0.0` et
+`PVMSS_WEB_DIR=/app/web/build` : ces trois-là peuvent rester vides en conteneur.
 
 > Astuce : `htpasswd -bnBC 10 "admin" "MotDePasseFort" | cut -d: -f2` permet de générer `ADMIN_PASSWORD_HASH`.
 
 #### Configuration des logs
 
-PVMSS utilise des logs structurés basés sur [zerolog](https://github.com/rs/zerolog).
+PVMSS utilise des logs structurés basés sur `log/slog` de la bibliothèque
+standard. Les trois variables sont obligatoires ; `LOG_LEVEL` est comparé en
+tenant compte de la casse et n'accepte que des minuscules. `LOG_OUTPUT` accepte
+`stdout`, `stderr` ou un chemin de fichier — il n'y a pas de mode « both ».
 
 - Logs lisibles en développement :
 
   ```bash
-  LOG_LEVEL=DEBUG
+  LOG_LEVEL=debug
   LOG_OUTPUT=stdout
   LOG_FORMAT=console
   ```
@@ -171,21 +178,20 @@ PVMSS utilise des logs structurés basés sur [zerolog](https://github.com/rs/ze
 - Logs JSON sur stdout pour un collecteur de logs / SIEM :
 
   ```bash
-  LOG_LEVEL=INFO
+  LOG_LEVEL=info
   LOG_OUTPUT=stdout
   LOG_FORMAT=json
   ```
 
-- Logs JSON sur stdout **et** dans un fichier dans le conteneur :
+- Logs JSON dans un fichier à l'intérieur du conteneur :
 
   ```bash
-  LOG_LEVEL=INFO
-  LOG_OUTPUT=both
+  LOG_LEVEL=info
+  LOG_OUTPUT=/app/pvmss.log
   LOG_FORMAT=json
-  LOG_FILE_PATH=/app/pvmss.log
   ```
 
-Le format JSON est une ligne par événement, avec des champs comme `component`, `operation`, `reason` et `event_category` (auth, VM, admin, sécurité, console, Proxmox). Cela facilite l'ingestion par Fluent Bit, Filebeat ou un SIEM.
+Le format JSON est une ligne par événement, avec un champ `component` (main, cluster, inventory, ...). Cela facilite l'ingestion par Fluent Bit, Filebeat ou un SIEM.
 
 ## Options de déploiement
 
@@ -204,27 +210,25 @@ docker run -d \
   -p 50000:50000 \
   -v $(pwd)/pvmss.db:/data/pvmss.db \
   -e ADMIN_PASSWORD_HASH='$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e' \
-  -e LOG_LEVEL=INFO \
+  -e LOG_LEVEL=info \
   -e LOG_OUTPUT=stdout \
   -e LOG_FORMAT=console \
   -e PROXMOX_API_TOKEN_NAME='tokenName@changeMe!value' \
   -e PROXMOX_API_TOKEN_VALUE="aaaaaaaa-0000-44aa-1111-aaaaaaaaaaa" \
   -e PROXMOX_URL=https://ip-or-name:8006/api2/json \
-  -e PROXMOX_VERIFY_SSL=false \
-  -e PVMSS_ENV="prod" \
-  -e PVMSS_OFFLINE="false" \
+  -e PVMSS_CLUSTER_SOURCE=proxmox \
+  -e PVMSS_PORT=50000 \
   -e PVMSS_DB_PATH="/data/pvmss.db" \
   -e SESSION_SECRET="$(openssl rand -hex 32)" \
   -e TZ=Europe/Paris \
-  jhmmt/pvmss:0.3.0
+  jhmmt/pvmss:latest
 ```
 
 Pour écrire également les logs JSON dans un fichier à l'intérieur du conteneur (tout en conservant stdout), vous pouvez surcharger :
 
 ```bash
--e LOG_OUTPUT=both \
 -e LOG_FORMAT=json \
--e LOG_FILE_PATH=/app/pvmss.log \
+-e LOG_OUTPUT=/app/pvmss.log \
 -v $(pwd)/pvmss.log:/app/pvmss.log \
 ```
 
@@ -237,7 +241,7 @@ L'application sera accessible sur <http://localhost:50000>.
 ```yaml
 services:
   pvmss:
-    image: jhmmt/pvmss:0.3.0
+    image: jhmmt/pvmss:latest
     container_name: pvmss
     restart: unless-stopped
     ports:
@@ -246,14 +250,13 @@ services:
       PROXMOX_API_TOKEN_NAME: "tokenName@changeMe!value"
       PROXMOX_API_TOKEN_VALUE: "aaaaaaaa-0000-44aa-1111-aaaaaaaaaaa"
       PROXMOX_URL: "https://ip-or-name:8006/api2/json"
-      PROXMOX_VERIFY_SSL: "false"
+      PVMSS_CLUSTER_SOURCE: "proxmox"
       ADMIN_PASSWORD_HASH: "$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
-      LOG_LEVEL: "INFO" # "DEBUG", "INFO", "WARN", "ERROR"
-      LOG_OUTPUT: "stdout" # "stdout", "file", "both"
+      LOG_LEVEL: "info" # "debug", "info", "warn", "error"
+      LOG_OUTPUT: "stdout" # "stdout", "stderr", ou un chemin de fichier
       LOG_FORMAT: "console" # "console", "json"
-      SESSION_SECRET: "changeMeWithSomethingElseUnique"
-      PVMSS_ENV: "production" # "prod", "development", "dev", "developpement"
-      PVMSS_OFFLINE: "false" # "true" ou "false"
+      SESSION_SECRET: "changeMeWithSomethingElseUniqueMinimum32Chars"
+      PVMSS_PORT: "50000"
       PVMSS_DB_PATH: "/data/pvmss.db"
       TZ: "Europe/Paris"
     volumes:
@@ -269,9 +272,8 @@ services:
 Pour persister les logs dans un fichier à l'intérieur du conteneur, vous pouvez ajuster la section `environment` :
 
 ```yaml
-LOG_OUTPUT: "both"
 LOG_FORMAT: "json"
-LOG_FILE_PATH: "/app/pvmss.log"
+LOG_OUTPUT: "/app/pvmss.log"
 # Ajoutez ce volume à la section volumes
 - ./pvmss.log:/app/pvmss.log
 ```
@@ -293,7 +295,7 @@ Appliquez avec `kubectl apply -f pvmss-deployment.yaml`. Vous devez fournir votr
 
 ## Exploitation
 
-- **Logs** : `docker logs -f pvmss` ou `kubectl -n pvmss logs -f deploy/pvmss`. Passez `LOG_LEVEL=DEBUG` pour plus de verbosité. Utilisez `LOG_FORMAT=json` et `LOG_OUTPUT=stdout` ou `file` pour produire des logs JSON exploitables par un SIEM ou un collecteur de logs.
+- **Logs** : `docker logs -f pvmss` ou `kubectl -n pvmss logs -f deploy/pvmss`. Passez `LOG_LEVEL=debug` pour plus de verbosité. Utilisez `LOG_FORMAT=json` avec `LOG_OUTPUT=stdout` ou un chemin de fichier pour produire des logs JSON exploitables par un SIEM ou un collecteur de logs.
 - **Santé** : les logs de démarrage détaillent la connectivité Proxmox, l'état du mode hors-ligne et les métriques runtime. La page admin "Informations de l'application" affiche des métriques, des variables d'environnement et le statut du cluster Proxmox.
 - **Mises à jour** : récupérez l'image souhaitée (le tag) et redémarrez le conteneur. La configuration est stockée dans la base de données SQLite et persiste automatiquement.
 
