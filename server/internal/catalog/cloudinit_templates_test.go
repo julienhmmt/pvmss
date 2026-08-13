@@ -297,6 +297,51 @@ func TestDeleteCloudInitTemplate_NotFound(t *testing.T) {
 	}
 }
 
+// TestFindCloudInitTemplate_Success — an enabled template is resolved by id
+// with its full content (the path vm.Create uses before allocating a VMID).
+func TestFindCloudInitTemplate_Success(t *testing.T) {
+	t.Parallel()
+
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	tmpl, err := catalog.CreateCloudInitTemplate(ctx, st, "default", "Web server", validCloudInitContent)
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	found, err := catalog.FindCloudInitTemplate(ctx, st, "default", tmpl.ID)
+	if err != nil {
+		t.Fatalf("FindCloudInitTemplate: %v", err)
+	}
+
+	if found.ID != tmpl.ID {
+		t.Errorf("found.ID = %q, want %q", found.ID, tmpl.ID)
+	}
+
+	if found.Content != validCloudInitContent {
+		t.Errorf("found.Content = %q, want %q", found.Content, validCloudInitContent)
+	}
+
+	if !found.Enabled {
+		t.Error("found template should be enabled")
+	}
+}
+
+// TestFindCloudInitTemplate_UnknownClusterReturnsNotFound — a cluster with no
+// templates yields ErrCloudInitTemplateNotFound for any id (no error from the
+// reader itself, only the not-found sentinel).
+func TestFindCloudInitTemplate_UnknownClusterReturnsNotFound(t *testing.T) {
+	t.Parallel()
+
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	if _, err := catalog.FindCloudInitTemplate(ctx, st, "no-such-cluster", "web-server"); !errors.Is(err, catalog.ErrCloudInitTemplateNotFound) {
+		t.Fatalf("FindCloudInitTemplate unknown cluster: got %v, want ErrCloudInitTemplateNotFound", err)
+	}
+}
+
 // cloudInitTemplateListContains reports whether the list contains an entry with
 // the given id.
 func cloudInitTemplateListContains(list []catalog.CloudInitTemplate, id string) bool {

@@ -425,6 +425,37 @@ func TestCreateTag_InvalidName(t *testing.T) {
 	}
 }
 
+// TestCreateTag_DefaultColor — an empty color falls back to the indigo default
+// (#4f46e5) rather than being rejected (FR-013).
+func TestCreateTag_DefaultColor(t *testing.T) {
+	t.Parallel()
+
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	tag, err := catalog.CreateTag(ctx, st, "default", "defaultcolor", "")
+	if err != nil {
+		t.Fatalf("CreateTag empty color: %v", err)
+	}
+
+	if tag.Color != "#4f46e5" {
+		t.Errorf("default color = %q, want #4f46e5", tag.Color)
+	}
+
+	// Read it back through ListTags to confirm the persisted row carries the
+	// default, not an empty string.
+	tags, err := catalog.ListTags(ctx, st, nil, "default")
+	if err != nil {
+		t.Fatalf("ListTags: %v", err)
+	}
+
+	for _, t2 := range tags {
+		if t2.Name == "defaultcolor" && t2.Color != "#4f46e5" {
+			t.Errorf("persisted default color = %q, want #4f46e5", t2.Color)
+		}
+	}
+}
+
 // TestSetTagColor_Success — updating a tag's color works, including for pvmss.
 func TestSetTagColor_Success(t *testing.T) {
 	t.Parallel()
