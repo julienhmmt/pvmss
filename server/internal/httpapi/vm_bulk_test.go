@@ -53,6 +53,7 @@ func newVMBulkHandler(t *testing.T) (*httpapi.VMBulk, *httpapi.Auth) {
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
+
 	projection := buildProjectionWithIndex(t, snap, time.Now())
 	authHandler := newAuthHandler(t)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
@@ -64,10 +65,12 @@ func newVMBulkHandler(t *testing.T) (*httpapi.VMBulk, *httpapi.Auth) {
 		LogFormat: snapshotTestLogFormat,
 		LogOutput: snapshotTestLogOutput,
 	}
+
 	st, err := store.Open(cfg)
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
 	}
+
 	t.Cleanup(func() { _ = st.Close() })
 
 	worker := inventory.NewWorker(cluster.Fake{}, projection, time.Hour, logger)
@@ -79,9 +82,11 @@ func newVMBulkHandler(t *testing.T) (*httpapi.VMBulk, *httpapi.Auth) {
 func bulkRequest(body string, cookie *http.Cookie) *http.Request {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/vms/bulk-action", strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+
 	if cookie != nil {
 		req.AddCookie(cookie)
 	}
+
 	return req
 }
 
@@ -93,6 +98,7 @@ func serveBulk(handler *httpapi.VMBulk, req *http.Request) (*httptest.ResponseRe
 	if rec.Code == http.StatusOK {
 		_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 	}
+
 	return rec, resp
 }
 
@@ -101,15 +107,18 @@ func serveBulkError(handler *httpapi.VMBulk, req *http.Request) (*httptest.Respo
 	handler.ServeHTTP(rec, req)
 
 	var env apiErrorEnvelope
+
 	_ = json.Unmarshal(rec.Body.Bytes(), &env)
+
 	return rec, env
 }
 
 func bulkTargets(ids ...int) []bulkTargetDTO {
 	out := make([]bulkTargetDTO, len(ids))
 	for i, id := range ids {
-		out[i] = bulkTargetDTO{Cluster: "default", VMID: id}
+		out[i] = bulkTargetDTO{Cluster: auditTestCluster, VMID: id}
 	}
+
 	return out
 }
 
@@ -142,9 +151,11 @@ func TestVMBulk_AllOwnedStatusCompatible(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
+
 	if len(resp.Results) != 2 {
 		t.Fatalf("results = %d, want 2", len(resp.Results))
 	}
+
 	for i, r := range resp.Results {
 		if r.Status != "ok" {
 			t.Errorf("result[%d].Status = %q, want ok; message=%q", i, r.Status, r.Message)
@@ -163,6 +174,7 @@ func TestVMBulk_SpansTwoClusters(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
+
 	defaultIdx := inventory.BuildIndexForCluster("default", snap)
 	secondaryIdx := inventory.BuildIndexForCluster("secondary", snap)
 	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{"default": &defaultIdx, "secondary": &secondaryIdx})
@@ -176,10 +188,12 @@ func TestVMBulk_SpansTwoClusters(t *testing.T) {
 		LogFormat: snapshotTestLogFormat,
 		LogOutput: snapshotTestLogOutput,
 	}
+
 	st, err := store.Open(cfg)
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
 	}
+
 	t.Cleanup(func() { _ = st.Close() })
 
 	handler := httpapi.NewVMBulkWithRegistry(registry, projection, authHandler, cluster.Fake{}, st, bulkNoopRefresher{}, logger)
@@ -188,16 +202,20 @@ func TestVMBulk_SpansTwoClusters(t *testing.T) {
 	// VM 101 in default (stopped) and VM 124 in secondary (stopped) — both
 	// owned by alice, both start succeeds.
 	body := `{"action":"start","targets":[{"cluster":"default","vmid":101},{"cluster":"secondary","vmid":124}]}`
+
 	rec, resp := serveBulk(handler, bulkRequest(body, cookie))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
+
 	if len(resp.Results) != 2 {
 		t.Fatalf("results = %d, want 2", len(resp.Results))
 	}
+
 	if resp.Results[0].Cluster != "default" || resp.Results[0].Status != "ok" {
 		t.Errorf("result[0] = %+v, want cluster=default status=ok", resp.Results[0])
 	}
+
 	if resp.Results[1].Cluster != "secondary" || resp.Results[1].Status != "ok" {
 		t.Errorf("result[1] = %+v, want cluster=secondary status=ok", resp.Results[1])
 	}
@@ -215,12 +233,15 @@ func TestVMBulk_InvalidAction(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
+
 	if env.Code != "invalid_action" {
 		t.Errorf("code = %q, want invalid_action", env.Code)
 	}
+
 	if !strings.Contains(env.Message, "foo") {
 		t.Errorf("message = %q, want it to mention the unknown action", env.Message)
 	}
+
 	if calls := cluster.FakeCalls(); len(calls) != 0 {
 		t.Errorf("fake calls = %d, want 0 (no target processed)", len(calls))
 	}
@@ -237,6 +258,7 @@ func TestVMBulk_EmptyTargets(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
+
 	if env.Code != "empty_targets" {
 		t.Errorf("code = %q, want empty_targets", env.Code)
 	}
@@ -254,13 +276,16 @@ func TestVMBulk_TooManyTargets(t *testing.T) {
 	for i := range targets {
 		targets[i] = bulkTargetDTO{Cluster: "default", VMID: 101}
 	}
+
 	rec, env := serveBulkError(handler, bulkRequest(bulkBody("start", targets), cookie))
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
+
 	if env.Code != "too_many_targets" {
 		t.Errorf("code = %q, want too_many_targets", env.Code)
 	}
+
 	if calls := cluster.FakeCalls(); len(calls) != 0 {
 		t.Errorf("fake calls = %d, want 0 (ceiling rejected before any target runs)", len(calls))
 	}
@@ -271,6 +296,7 @@ func TestVMBulk_TooManyTargets(t *testing.T) {
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMBulk_Unauthenticated(t *testing.T) {
 	handler, _ := newVMBulkHandler(t)
+
 	rec, _ := serveBulkError(handler, bulkRequest(bulkBody("start", bulkTargets(101)), nil))
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
@@ -294,19 +320,24 @@ func TestVMBulk_MixedOwnedAndNonOwned(t *testing.T) {
 	// 124: alice's, stopped → start → ok.
 	// 103: bob's (pool-bob), running → alice tries start → error (forbidden).
 	body := `{"action":"start","targets":[{"cluster":"default","vmid":101},{"cluster":"default","vmid":124},{"cluster":"default","vmid":103}]}`
+
 	rec, resp := serveBulk(handler, bulkRequest(body, cookie))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
+
 	if len(resp.Results) != 3 {
 		t.Fatalf("results = %d, want 3", len(resp.Results))
 	}
+
 	if resp.Results[0].Status != "ok" {
 		t.Errorf("result[0] (101 alice) = %q, want ok", resp.Results[0].Status)
 	}
+
 	if resp.Results[1].Status != "ok" {
 		t.Errorf("result[1] (124 alice) = %q, want ok", resp.Results[1].Status)
 	}
+
 	if resp.Results[2].Status != "error" {
 		t.Errorf("result[2] (103 bob) = %q, want error", resp.Results[2].Status)
 	}
@@ -322,6 +353,7 @@ func TestVMBulk_NonOwnedTargetZeroClientCalls(t *testing.T) {
 	cookie := aliceCookie(t, authHandler)
 
 	body := `{"action":"start","targets":[{"cluster":"default","vmid":101},{"cluster":"default","vmid":103}]}`
+
 	rec, _ := serveBulk(handler, bulkRequest(body, cookie))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
@@ -346,13 +378,16 @@ func TestVMBulk_NonexistentVMNotFoundMessage(t *testing.T) {
 	cookie := aliceCookie(t, authHandler)
 
 	body := `{"action":"start","targets":[{"cluster":"default","vmid":101},{"cluster":"default","vmid":999}]}`
+
 	rec, resp := serveBulk(handler, bulkRequest(body, cookie))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
 	}
+
 	if len(resp.Results) != 2 {
 		t.Fatalf("results = %d, want 2", len(resp.Results))
 	}
+
 	if resp.Results[1].Status != "error" {
 		t.Errorf("result[1] (999 nonexistent) = %q, want error", resp.Results[1].Status)
 	}
@@ -386,9 +421,11 @@ func TestVMBulk_BearerTokenAuth(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
+
 	if len(resp.Results) != 1 {
 		t.Fatalf("results = %d, want 1", len(resp.Results))
 	}
+
 	if resp.Results[0].Status != "ok" {
 		t.Errorf("result[0] = %q, want ok; message=%q", resp.Results[0].Status, resp.Results[0].Message)
 	}
@@ -403,6 +440,7 @@ func createBearerToken(t *testing.T, authHandler *httpapi.Auth, username, passwo
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/tokens", strings.NewReader(`{"label":"bulk-test","scope":"read_write"}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(cookie)
+
 	rec := httptest.NewRecorder()
 	authHandler.CreateToken(rec, req)
 
@@ -416,5 +454,6 @@ func createBearerToken(t *testing.T, authHandler *httpapi.Auth, username, passwo
 	if err := json.Unmarshal(rec.Body.Bytes(), &tokenResp); err != nil {
 		t.Fatalf("decode token response: %v", err)
 	}
+
 	return tokenResp.Value
 }

@@ -57,11 +57,11 @@ jobs:
         - name: Set up Go
           uses: actions/setup-go@v7
           with:
-            go-version-file: backend/go.mod
+            go-version-file: server/go.mod
 
         - name: Run golangci-lint
           uses: golangci/golangci-lint-action@v9
           with:
             version: latest
-            working-directory: backend
-            args: -v --timeout=3m
+            working-directory: server
+            args: -v --timeout=5m

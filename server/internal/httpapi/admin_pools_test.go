@@ -91,7 +91,7 @@ func TestAdminPools_DeleteZeroVmPool(t *testing.T) {
 	}
 	status, hasStatus := result["status"].(string)
 	userDeleted, hasUserDeleted := result["userDeleted"].(bool)
-	if !hasStatus || !hasUserDeleted || status != "deleted" || !userDeleted {
+	if !hasStatus || !hasUserDeleted || status != testStatusDeleted || !userDeleted {
 		t.Fatalf("result = %+v (want exact lowercase keys status/userDeleted)", result)
 	}
 	if _, wrongCase := result["UserDeleted"]; wrongCase {
@@ -116,7 +116,7 @@ func TestAdminPools_RejectsNonAdminAndInvalidRequests(t *testing.T) {
 	}{
 		{name: "list", method: http.MethodGet, path: "/api/v1/admin/pools", want: http.StatusForbidden},
 		{name: "create", method: http.MethodPost, path: "/api/v1/admin/pools", body: `{"name":"carol","password":"S0meLongPW!"}`, want: http.StatusForbidden},
-		{name: "delete", method: http.MethodDelete, path: "/api/v1/admin/pools/carol", want: http.StatusForbidden},
+		{name: testActionDelete, method: http.MethodDelete, path: "/api/v1/admin/pools/carol", want: http.StatusForbidden},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			rec := adminPoolsRequest(t, handlerForMethod(handler, tc.method), tc.method, tc.path, alice, tc.body)

@@ -43,8 +43,10 @@ type apiErrorEnvelope struct {
 }
 
 const (
-	apiCodeForbidden = "forbidden"
-	apiCodeNotFound  = "not_found"
+	apiCodeForbidden  = "forbidden"
+	apiCodeNotFound   = "not_found"
+	testActionDelete  = "delete"
+	testStatusDeleted = "deleted"
 )
 
 // assertAPIError decodes the response body as an apiErrorEnvelope and asserts
@@ -482,15 +484,16 @@ func TestVmAction_AllFiveValidActionsAccepted(t *testing.T) {
 		action string
 		vmid   int
 	}{
-		{action: "start", vmid: 101},   // stopped
-		{action: "stop", vmid: 100},    // running
+		{action: "start", vmid: 101},    // stopped
+		{action: "stop", vmid: 100},     // running
 		{action: "shutdown", vmid: 100}, // running
-		{action: "reboot", vmid: 100},  // running
-		{action: "reset", vmid: 100},   // running
+		{action: "reboot", vmid: 100},   // running
+		{action: "reset", vmid: 100},    // running
 	}
 	for _, tt := range tests {
 		t.Run(tt.action, func(t *testing.T) {
 			cluster.ResetFake()
+
 			rec, _ := serveDetailError(handler, detailRequest(http.MethodPost, fmt.Sprintf("/api/v1/vms/default/%d/actions", tt.vmid), `{"action":"`+tt.action+`"}`, cookie))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("action %q: status = %d, want %d; body=%s", tt.action, rec.Code, http.StatusOK, rec.Body.String())
@@ -600,7 +603,7 @@ func assertDeleteSucceeded(t *testing.T, rec *httptest.ResponseRecorder, vmid in
 		t.Fatalf("fake calls for %d = %d, want 1", vmid, len(calls))
 	}
 
-	if calls[0].Action != "delete" {
+	if calls[0].Action != testActionDelete {
 		t.Errorf("action = %q, want delete", calls[0].Action)
 	}
 }

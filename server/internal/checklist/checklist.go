@@ -45,7 +45,8 @@ type FicheEntry struct {
 }
 
 // fr006Table is spec.md's FR-006 fiche→tranche mapping, hardcoded as the
-// lookup this tool joins against (T026). 47 mapped + 11 "none".
+// lookup this tool joins against (T026). 55 mapped + 6 "none"
+// (3 real gaps: X13/P01/P02; 2 deliberate: X12/X18).
 // Update this table, not the tool's logic, when a gap's disposition changes.
 var fr006Table = map[string]struct {
 	tranche  string
