@@ -5,6 +5,7 @@
 	import AuditLogPanel from '$lib/features/admin-audit/AuditLogPanel.svelte';
 	import ExportPanel from '$lib/features/admin-db/ExportPanel.svelte';
 	import ImportPanel from '$lib/features/admin-db/ImportPanel.svelte';
+	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 
 	const auditStore = setAuditLogContext();
 	setDbOpsContext();
@@ -18,7 +19,9 @@
 	<title>Admin Settings — PVMSS</title>
 </svelte:head>
 
-<section class="mx-auto w-full max-w-5xl space-y-8 px-4 py-8">
+<PageHeader title="Settings" />
+
+<section class="space-y-8">
 	<AuditLogPanel />
 	<ExportPanel />
 	<ImportPanel />
