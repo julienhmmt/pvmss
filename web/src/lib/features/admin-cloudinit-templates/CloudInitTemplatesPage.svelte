@@ -3,6 +3,7 @@
 	import CloudInitTemplateFormDialog from './CloudInitTemplateFormDialog.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import Switch from '$lib/shared/ui/Switch.svelte';
 
 	interface Props {
 		templates: AdminCloudInitTemplate[];
@@ -94,14 +95,16 @@
 						<td class="px-4 py-2 font-mono text-xs">{template.id}</td>
 						<td class="px-4 py-2">{template.label}</td>
 						<td class="px-4 py-2">
-							<Button
-								variant={template.enabled ? 'primary' : 'secondary'}
-								size="sm"
-								label={template.enabled ? `Disable ${template.label}` : `Enable ${template.label}`}
-								onclick={() => onToggle(template.id, !template.enabled)}
-							>
-								{template.enabled ? 'Enabled' : 'Disabled'}
-							</Button>
+							<span class="inline-flex items-center gap-2">
+								<Switch
+									checked={template.enabled}
+									label={template.enabled ? `Disable ${template.label}` : `Enable ${template.label}`}
+									onToggle={() => onToggle(template.id, !template.enabled)}
+								/>
+								<span class="text-xs text-muted-foreground">
+									{template.enabled ? 'Enabled' : 'Disabled'}
+								</span>
+							</span>
 						</td>
 						<td class="px-4 py-2">
 							<div class="flex gap-2">

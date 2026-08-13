@@ -2,6 +2,7 @@
 	import type { AdminProfile } from './profiles.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import Switch from '$lib/shared/ui/Switch.svelte';
 
 	interface Props {
 		profiles: AdminProfile[];
@@ -110,14 +111,16 @@
 						<td class="px-4 py-2">{profile.diskGB} GB</td>
 						<td class="px-4 py-2">{profile.bus}</td>
 						<td class="px-4 py-2">
-							<Button
-								variant={profile.enabled ? 'primary' : 'secondary'}
-								size="sm"
-								label={profile.enabled ? `Disable ${profile.label}` : `Enable ${profile.label}`}
-								onclick={() => onToggle(profile.id, !profile.enabled)}
-							>
-								{profile.enabled ? 'Enabled' : 'Disabled'}
-							</Button>
+							<span class="inline-flex items-center gap-2">
+								<Switch
+									checked={profile.enabled}
+									label={profile.enabled ? `Disable ${profile.label}` : `Enable ${profile.label}`}
+									onToggle={() => onToggle(profile.id, !profile.enabled)}
+								/>
+								<span class="text-xs text-muted-foreground">
+									{profile.enabled ? 'Enabled' : 'Disabled'}
+								</span>
+							</span>
 						</td>
 						<td class="px-4 py-2">
 							<div class="flex gap-2">
