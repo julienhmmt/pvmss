@@ -46,7 +46,7 @@ func TestGenerate_FicheCount(t *testing.T) {
 
 // T024 / SC-004: every fiche in spec.md's FR-006 "none" list is reported as
 // NONE, and every other fiche is reported with a non-empty tranche label.
-// The SUMMARY line must match "47 closed, 11 open (9 real gaps, 2 deliberate)".
+// The SUMMARY line must match "53 closed, 5 open (3 real gaps, 2 deliberate)".
 func TestGenerate_NoneFichesReportedCorrectly(t *testing.T) {
 	t.Parallel()
 
@@ -59,8 +59,9 @@ func TestGenerate_NoneFichesReportedCorrectly(t *testing.T) {
 
 	output := buf.String()
 
-	// The eleven "NONE" rows: V13, X11, X12, X13, X18, P01-P06
-	noneFiches := []string{"V13", "X11", "X12", "X13", "X18", "P01", "P02", "P03", "P04", "P05", "P06"}
+	// The five still-open "NONE" rows: X12 (deliberate), X13 (gap), X18 (deliberate), P01 (gap), P02 (gap).
+	// V13, X11, P03-P06 were closed (→ T17, T18, T19) and are no longer NONE.
+	noneFiches := []string{"X12", "X13", "X18", "P01", "P02"}
 	for _, fiche := range noneFiches {
 		if !strings.Contains(output, fiche+"  ") {
 			t.Errorf("output missing fiche %s", fiche)
@@ -76,7 +77,7 @@ func TestGenerate_NoneFichesReportedCorrectly(t *testing.T) {
 	}
 
 	// SC-004: SUMMARY line must match exactly
-	if !strings.Contains(output, "SUMMARY: 47 closed, 11 open (9 real gaps, 2 deliberate design decisions)") {
+	if !strings.Contains(output, "SUMMARY: 53 closed, 5 open (3 real gaps, 2 deliberate design decisions)") {
 		t.Errorf("output missing or incorrect SUMMARY line:\n%s", output)
 	}
 }
@@ -109,8 +110,8 @@ func TestGenerate_DeliberateVsGap(t *testing.T) {
 		}
 	}
 
-	// V13, X11, X13, P01-P06 should say "real gap"
-	gapFiches := []string{"V13", "X11", "X13", "P01", "P02", "P03", "P04", "P05", "P06"}
+	// X13, P01, P02 remain real gaps (V13, X11, P03-P06 closed via T17/T18/T19).
+	gapFiches := []string{"X13", "P01", "P02"}
 	for _, fiche := range gapFiches {
 		found := false
 
