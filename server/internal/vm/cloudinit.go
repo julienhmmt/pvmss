@@ -72,7 +72,7 @@ func SetCloudInitConfig(ctx context.Context, index *inventory.Index, actor auth.
 		return false, nil
 	}
 
-	if err := Action(ctx, index, actor, clusterName, vmid, "reboot", writer, audit, refresher); err != nil {
+	if err := Action(ctx, BulkDeps{Actor: actor, Writer: writer, Audit: audit, Refresher: refresher}, index, clusterName, vmid, "reboot"); err != nil {
 		return false, fmt.Errorf("reboot after cloud-init update: %w", err)
 	}
 

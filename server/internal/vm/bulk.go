@@ -69,6 +69,19 @@ type ClusterIndexResolver interface {
 	IndexFor(cluster string) (*inventory.Index, error)
 }
 
+// BulkDeps groups the collaborators BulkAction (and the per-target Action it
+// loops over) need beyond the per-request arguments (ctx, targets, kind).
+// Bundling them keeps BulkAction's and Action's parameter counts under
+// go:S107's ceiling without losing any dependency. Resolver is used only by
+// BulkAction; Action ignores it.
+type BulkDeps struct {
+	Resolver  ClusterIndexResolver
+	Actor     auth.Identity
+	Writer    cluster.Writer
+	Audit     AuditRecorder
+	Refresher IndexRefresher
+}
+
 // BulkAction performs one power transition on every target in targets, in
 // array order, and returns one BulkTargetResult per target. It is pure
 // orchestration — no logic of its own beyond the loop. Each iteration calls
@@ -89,19 +102,15 @@ type ClusterIndexResolver interface {
 // whole (spec FR-005).
 func BulkAction(
 	ctx context.Context,
-	resolver ClusterIndexResolver,
-	actor auth.Identity,
+	deps BulkDeps,
 	targets []BulkTarget,
 	kind string,
-	writer cluster.Writer,
-	audit AuditRecorder,
-	refresher IndexRefresher,
 ) []BulkTargetResult {
 	results := make([]BulkTargetResult, 0, len(targets))
 	for _, target := range targets {
 		result := BulkTargetResult{Cluster: target.Cluster, VMID: target.VMID}
 
-		index, err := resolver.IndexFor(target.Cluster)
+		index, err := deps.Resolver.IndexFor(target.Cluster)
 		if err != nil || index == nil {
 			result.Status = "error"
 			if err != nil {
@@ -115,7 +124,7 @@ func BulkAction(
 			continue
 		}
 
-		if err := Action(ctx, index, actor, target.Cluster, target.VMID, kind, writer, audit, refresher); err != nil {
+		if err := Action(ctx, deps, index, target.Cluster, target.VMID, kind); err != nil {
 			result.Status = "error"
 			result.Message = err.Error()
 		} else {

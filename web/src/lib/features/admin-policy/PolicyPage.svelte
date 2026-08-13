@@ -2,6 +2,8 @@
 	import PolicyForm from './PolicyForm.svelte';
 	import type { AdminPolicy, AdminPolicyPatch } from './policy.svelte';
 	import { resolveAdminPolicyCopy } from '$lib/i18n/admin-policy';
+	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 
 	interface Props {
 		policy: AdminPolicy | null;
@@ -20,18 +22,15 @@
 
 <svelte:head><title>{copy.title} — PVMSS</title></svelte:head>
 
-<section class="mx-auto w-full max-w-4xl px-4 py-8" aria-labelledby="policy-title">
-	<div class="mb-8">
-		<h1 id="policy-title" class="text-2xl font-semibold tracking-tight">{copy.title}</h1>
-		<p class="mt-2 max-w-2xl text-sm text-muted-foreground">{copy.description}</p>
-	</div>
+<PageHeader title={copy.title} description={copy.description} titleId="policy-title" />
 
+<section aria-labelledby="policy-title">
 	{#if loading}
 		<p class="text-muted-foreground" role="status" aria-live="polite">{copy.loading}</p>
 	{:else if error}
 		<div class="space-y-3" role="alert">
 			<p class="text-destructive">{error}</p>
-			<button type="button" class="rounded-md border px-3 py-2 text-sm" onclick={onLoad}>{copy.retry}</button>
+			<Button variant="secondary" onclick={onLoad}>{copy.retry}</Button>
 		</div>
 	{:else if policy !== null}
 		{#key policy}

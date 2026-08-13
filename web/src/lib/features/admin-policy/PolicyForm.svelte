@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { AdminPolicy, AdminPolicyPatch, Gabarit } from './policy.svelte';
 	import { resolveAdminPolicyCopy } from '$lib/i18n/admin-policy';
+	import Button from '$lib/shared/ui/Button.svelte';
 
 	interface Props {
 		policy: AdminPolicy;
@@ -21,6 +22,9 @@
 	let form = $state<FormState>({ gabarit: { ...policy.gabarit }, maxVmPerUser: policy.quota.maxVmPerUser });
 	const copy = resolveAdminPolicyCopy();
 
+	const inputClass =
+		'rounded-md border border-input bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+
 	function submit(): void {
 		onSave({ gabarit: { ...form.gabarit }, quota: { maxVmPerUser: form.maxVmPerUser } });
 	}
@@ -30,23 +34,23 @@
 	<fieldset class="rounded-lg border border-border p-5">
 		<legend class="px-2 text-lg font-medium">{copy.gabarit}</legend>
 		<div class="grid gap-4 sm:grid-cols-2">
-			<label class="grid gap-1 text-sm" for="policy-sockets">{copy.maxSockets}<input id="policy-sockets" type="number" min="0" bind:value={form.gabarit.maxSockets} required class="rounded-md border bg-background px-3 py-2" /></label>
-			<label class="grid gap-1 text-sm" for="policy-cores">{copy.maxCores}<input id="policy-cores" type="number" min="0" bind:value={form.gabarit.maxCores} required class="rounded-md border bg-background px-3 py-2" /></label>
-			<label class="grid gap-1 text-sm" for="policy-memory">{copy.maxMemory}<input id="policy-memory" type="number" min="0" bind:value={form.gabarit.maxMemoryMB} required class="rounded-md border bg-background px-3 py-2" /></label>
-			<label class="grid gap-1 text-sm" for="policy-disk">{copy.maxDisk}<input id="policy-disk" type="number" min="0" bind:value={form.gabarit.maxDiskPerVmGb} required class="rounded-md border bg-background px-3 py-2" /></label>
-			<label class="grid gap-1 text-sm" for="policy-network">{copy.maxNetworkCards}<input id="policy-network" type="number" min="0" bind:value={form.gabarit.maxNetworkCards} required class="rounded-md border bg-background px-3 py-2" /></label>
-			<label class="grid gap-1 text-sm" for="policy-snapshots">{copy.maxSnapshots}<input id="policy-snapshots" type="number" min="0" bind:value={form.gabarit.maxSnapshots} required class="rounded-md border bg-background px-3 py-2" /></label>
+			<label class="grid gap-1 text-sm" for="policy-sockets">{copy.maxSockets}<input id="policy-sockets" type="number" min="0" bind:value={form.gabarit.maxSockets} required class={inputClass} /></label>
+			<label class="grid gap-1 text-sm" for="policy-cores">{copy.maxCores}<input id="policy-cores" type="number" min="0" bind:value={form.gabarit.maxCores} required class={inputClass} /></label>
+			<label class="grid gap-1 text-sm" for="policy-memory">{copy.maxMemory}<input id="policy-memory" type="number" min="0" bind:value={form.gabarit.maxMemoryMB} required class={inputClass} /></label>
+			<label class="grid gap-1 text-sm" for="policy-disk">{copy.maxDisk}<input id="policy-disk" type="number" min="0" bind:value={form.gabarit.maxDiskPerVmGb} required class={inputClass} /></label>
+			<label class="grid gap-1 text-sm" for="policy-network">{copy.maxNetworkCards}<input id="policy-network" type="number" min="0" bind:value={form.gabarit.maxNetworkCards} required class={inputClass} /></label>
+			<label class="grid gap-1 text-sm" for="policy-snapshots">{copy.maxSnapshots}<input id="policy-snapshots" type="number" min="0" bind:value={form.gabarit.maxSnapshots} required class={inputClass} /></label>
 		</div>
-		<label class="mt-5 flex items-center gap-3 text-sm" for="policy-yaml"><input id="policy-yaml" type="checkbox" bind:checked={form.gabarit.allowCustomYaml} />{copy.allowCustomYaml}</label>
+		<label class="mt-5 flex items-center gap-3 text-sm" for="policy-yaml"><input id="policy-yaml" type="checkbox" bind:checked={form.gabarit.allowCustomYaml} class="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" />{copy.allowCustomYaml}</label>
 	</fieldset>
 
 	<fieldset class="rounded-lg border border-border p-5">
 		<legend class="px-2 text-lg font-medium">{copy.quota}</legend>
-		<label class="grid max-w-sm gap-1 text-sm" for="policy-quota">{copy.maxVmPerUser}<input id="policy-quota" type="number" min="-1" bind:value={form.maxVmPerUser} required aria-describedby="policy-quota-hint" class="rounded-md border bg-background px-3 py-2" /></label>
+		<label class="grid max-w-sm gap-1 text-sm" for="policy-quota">{copy.maxVmPerUser}<input id="policy-quota" type="number" min="-1" bind:value={form.maxVmPerUser} required aria-describedby="policy-quota-hint" class={inputClass} /></label>
 		<p id="policy-quota-hint" class="mt-2 text-xs text-muted-foreground">{copy.unlimitedHint}</p>
 	</fieldset>
 
 	{#if saveError}<p role="alert" class="text-sm text-destructive">{saveError}</p>{/if}
-	{#if saved}<p role="status" aria-live="polite" class="text-sm text-emerald-600">{copy.saved}</p>{/if}
-	<div class="flex justify-end"><button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90" disabled={saving}>{saving ? copy.saving : copy.save}</button></div>
+	{#if saved}<p role="status" aria-live="polite" class="text-sm text-success">{copy.saved}</p>{/if}
+	<div class="flex justify-end"><Button type="submit" disabled={saving}>{saving ? copy.saving : copy.save}</Button></div>
 </form>

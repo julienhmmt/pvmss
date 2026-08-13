@@ -84,25 +84,25 @@ func ValidateName(name string) error {
 // Resolve()'s server-resolved value — the caller cannot supply one (S01 root
 // cause, structurally closed). After the write, it records the audit entry
 // and refreshes the Index (FR-009, FR-010).
-func Action(ctx context.Context, index *inventory.Index, actor auth.Identity, clusterName string, vmid int, action string, writer cluster.Writer, audit AuditRecorder, refresher IndexRefresher) error {
+func Action(ctx context.Context, deps BulkDeps, index *inventory.Index, clusterName string, vmid int, action string) error {
 	if !validActions[action] {
 		return fmt.Errorf("%w: %q", ErrActionRejected, action)
 	}
 
-	entity, err := Resolve(index, actor, clusterName, vmid)
+	entity, err := Resolve(index, deps.Actor, clusterName, vmid)
 	if err != nil {
 		return err
 	}
 
-	if err := writer.Action(ctx, entity.Node, entity.VMID, action); err != nil {
+	if err := deps.Writer.Action(ctx, entity.Node, entity.VMID, action); err != nil {
 		return fmt.Errorf("cluster action: %w", err)
 	}
 
-	if err := audit.RecordAction(ctx, actor.Username, clusterName, vmid, action); err != nil {
+	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, clusterName, vmid, action); err != nil {
 		return fmt.Errorf("record audit: %w", err)
 	}
 
-	_, _ = refresher.Refresh(ctx)
+	_, _ = deps.Refresher.Refresh(ctx)
 
 	return nil
 }

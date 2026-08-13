@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { m } from '$lib/paraglide/messages.js';
 	import TaskTray from '$lib/features/tasks/TaskTray.svelte';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 
@@ -29,15 +28,7 @@
 			<a href={resolve('/vms/create')} class="text-sm text-muted-foreground hover:text-foreground">Create</a>
 			<a href={resolve('/nodes')} class="text-sm text-muted-foreground hover:text-foreground">Nodes</a>
 			{#if session.isAdmin}
-				<a href={resolve('/admin')} class="text-sm text-muted-foreground hover:text-foreground">Dashboard</a>
-				<a href={resolve('/admin/nodes')} class="text-sm text-muted-foreground hover:text-foreground">Admin</a>
-				<a href={resolve('/admin/clusters')} class="text-sm text-muted-foreground hover:text-foreground">Clusters</a>
-				<a href={resolve('/admin/policy')} class="text-sm text-muted-foreground hover:text-foreground">Policy</a>
-				<a href={resolve('/admin/policy/nodes')} class="text-sm text-muted-foreground hover:text-foreground">Node capacity</a>
-				<a href={resolve('/admin/pools')} class="text-sm text-muted-foreground hover:text-foreground">Pools</a>
-				<a href={resolve('/admin/cloudinit-templates')} class="text-sm text-muted-foreground hover:text-foreground">Cloud-init</a>
-				<a href={resolve('/admin/settings')} class="text-sm text-muted-foreground hover:text-foreground">Settings</a>
-				<a href={resolve('/admin/appinfo')} class="text-sm text-muted-foreground hover:text-foreground">App Info</a>
+				<a href={resolve('/admin')} class="text-sm text-muted-foreground hover:text-foreground">Admin</a>
 			{/if}
 			<TaskTray />
 			{#if languageSwitcher}{@render languageSwitcher()}{/if}

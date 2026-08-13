@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 
 	interface Props {
 		open?: boolean;
@@ -64,10 +65,10 @@
 			<p class="text-sm text-destructive" role="alert">{error}</p>
 		{/if}
 		<div class="flex justify-end gap-2 pt-2">
-			<button type="button" class="rounded-md px-4 py-2 text-sm text-muted-foreground hover:text-foreground" onclick={onClose}>Cancel</button>
-			<button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90" disabled={saving}>
+			<Button variant="ghost" onclick={onClose}>Cancel</Button>
+			<Button type="submit" disabled={saving}>
 				{saving ? 'Creating…' : 'Create pool'}
-			</button>
+			</Button>
 		</div>
 	</form>
 </Dialog>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 	import { getDbOpsContext } from './dbOps.svelte';
 
 	const store = getDbOpsContext();
@@ -46,7 +47,7 @@
 	{/if}
 
 	{#if store.confirmResult}
-		<p role="status" class="rounded-md bg-green-500/10 px-4 py-2 text-sm text-green-700">
+		<p role="status" class="rounded-md bg-success-soft px-4 py-2 text-sm text-success-soft-foreground">
 			Import successful — {store.confirmResult.tables.map((t) => t.name).join(', ')} replaced.
 		</p>
 	{/if}
@@ -97,21 +98,10 @@
 			</p>
 
 			<div class="flex gap-2">
-				<button
-					type="button"
-					class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground"
-					onclick={openConfirm}
-					disabled={store.confirming}
-				>
+				<Button variant="destructive" disabled={store.confirming} onclick={openConfirm}>
 					{store.confirming ? 'Confirming…' : 'Confirm Import'}
-				</button>
-				<button
-					type="button"
-					class="rounded-md border border-border px-4 py-2 text-sm"
-					onclick={() => store.cancelPreview()}
-				>
-					Cancel
-				</button>
+				</Button>
+				<Button variant="secondary" onclick={() => store.cancelPreview()}>Cancel</Button>
 			</div>
 		</div>
 	{/if}
@@ -123,7 +113,7 @@
 		This will <strong>delete and replace</strong> every listed table with the upload's contents. This cannot be undone. Continue?
 	</p>
 	<div class="mt-4 flex justify-end gap-2">
-		<button type="button" class="rounded-md border border-border px-4 py-2 text-sm" onclick={closeConfirm}>Cancel</button>
-		<button type="button" class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground" onclick={doConfirm}>Confirm</button>
+		<Button variant="secondary" onclick={closeConfirm}>Cancel</Button>
+		<Button variant="destructive" onclick={doConfirm}>Confirm</Button>
 	</div>
 </Dialog>

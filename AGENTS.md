@@ -63,16 +63,10 @@ make buildkit-start / buildkit-stop / buildkit-status
 make helm-package / helm-upgrade
 ```
 
-**Broken targets — do not use until the Makefile is fixed.** They `cd` into
-the deleted `backend/` or `frontend/` and fail immediately:
-`dev`, `build`, `qualif`, `clean`, `coverage`, `test-unit`, `test-integration`,
-`test-offline`, `test-offline-race`, `test-online`, `go-lint`, `go-fmt`,
-`go-update`, `frontend-install`, `frontend-build`, `frontend-dev`,
-`frontend-test`, `frontend-check`.
-
-`make up` / `down` / `restart` / `logs` drive `docker-compose.dev.yml`, whose
-`frontend-dev` service still bind-mounts the deleted `./frontend` — the
-`pvmss-dev` service itself builds fine from the v0.4 `Dockerfile`.
+`make up` / `down` / `restart` / `logs` drive `docker-compose.dev.yml`, which
+runs two services: `pvmss-dev` (the Go server, built from the v0.4 `Dockerfile`)
+and `web-dev` (the Vite dev server, bind-mounting `./web`, built from
+`Dockerfile.web-dev`). The Vite dev server proxies `/api` to the Go backend.
 
 ```bash
 # SonarQube (local container, 2 projects: pvmss-server, pvmss-web)
@@ -280,12 +274,14 @@ mode is now `PVMSS_CLUSTER_SOURCE=fake`.
 Files still pointing at the deleted `backend/` or `frontend/`. Fix them when
 you touch the surrounding area; do not treat them as documentation of reality:
 
-- `Makefile` — the broken targets listed under "Commands"
-- `docker-compose.dev.yml` + `Dockerfile.frontend-dev` — `frontend-dev` service
 - `example.env` — v0.3 variable set; missing the required `PVMSS_PORT` and
   `PVMSS_CLUSTER_SOURCE`
 - `README.md` / `README.fr.md` — link `backend/docs/proxmox-permissions.*.md`
 - `.specify/memory/constitution.md` — describes v0.3 as still deployable
+- `.gitignore` — has `backend/` and `frontend/` entries (harmless but stale)
+- `tools/superlinter.sh` — commented-out exclude regex references `frontend/`
+- `docs/plans/` — historical task plans reference v0.3 paths (read-only history)
+- `server/internal/recovery/` — comments reference `backend/` for context only
 
 ## Project Conventions
 

@@ -425,6 +425,37 @@ func TestCreateTag_InvalidName(t *testing.T) {
 	}
 }
 
+// TestCreateTag_DefaultColor — an empty color falls back to the indigo default
+// (#4f46e5) rather than being rejected (FR-013).
+func TestCreateTag_DefaultColor(t *testing.T) {
+	t.Parallel()
+
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	tag, err := catalog.CreateTag(ctx, st, "default", "defaultcolor", "")
+	if err != nil {
+		t.Fatalf("CreateTag empty color: %v", err)
+	}
+
+	if tag.Color != "#4f46e5" {
+		t.Errorf("default color = %q, want #4f46e5", tag.Color)
+	}
+
+	// Read it back through ListTags to confirm the persisted row carries the
+	// default, not an empty string.
+	tags, err := catalog.ListTags(ctx, st, nil, "default")
+	if err != nil {
+		t.Fatalf("ListTags: %v", err)
+	}
+
+	for _, t2 := range tags {
+		if t2.Name == "defaultcolor" && t2.Color != "#4f46e5" {
+			t.Errorf("persisted default color = %q, want #4f46e5", t2.Color)
+		}
+	}
+}
+
 // TestSetTagColor_Success — updating a tag's color works, including for pvmss.
 func TestSetTagColor_Success(t *testing.T) {
 	t.Parallel()
@@ -440,6 +471,33 @@ func TestSetTagColor_Success(t *testing.T) {
 
 	if tag.Color != "#dc2626" {
 		t.Errorf("tag.Color = %q, want #dc2626", tag.Color)
+	}
+}
+
+// TestSetTagColor_CustomTag — updating a non-protected tag's color works and
+// the read-back reports Protected=false (complements TestSetTagColor_Success,
+// which only exercises the protected pvmss tag).
+func TestSetTagColor_CustomTag(t *testing.T) {
+	t.Parallel()
+
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	if _, err := catalog.CreateTag(ctx, st, "default", "teamweb", "#16a34a"); err != nil {
+		t.Fatalf("CreateTag: %v", err)
+	}
+
+	tag, err := catalog.SetTagColor(ctx, st, "default", "teamweb", "#9333ea")
+	if err != nil {
+		t.Fatalf("SetTagColor custom tag: %v", err)
+	}
+
+	if tag.Color != "#9333ea" {
+		t.Errorf("tag.Color = %q, want #9333ea", tag.Color)
+	}
+
+	if tag.Protected {
+		t.Error("custom tag should not be protected")
 	}
 }
 

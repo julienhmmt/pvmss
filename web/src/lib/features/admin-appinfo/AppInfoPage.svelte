@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { getAppInfoContext } from './appinfo.svelte';
+	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import StatusDot from '$lib/shared/ui/StatusDot.svelte';
 
 	const store = getAppInfoContext();
 </script>
 
-<section class="space-y-6">
-	<h1 class="text-2xl font-semibold tracking-tight">Application Info</h1>
+<PageHeader title="Application Info" />
 
+<section class="space-y-6">
 	{#if store.loading}
 		<p role="status" aria-live="polite" class="text-muted-foreground">Loading…</p>
 	{:else if store.error}
@@ -66,17 +68,10 @@
 									{cluster.refreshedAt ? new Date(cluster.refreshedAt).toLocaleString() : 'never'}
 								</td>
 								<td class="px-4 py-2">
-									{#if cluster.lastRefreshSucceeded}
-										<span class="inline-flex items-center gap-1.5">
-											<span class="h-2 w-2 rounded-full bg-green-500"></span>
-											healthy
-										</span>
-									{:else}
-										<span class="inline-flex items-center gap-1.5">
-											<span class="h-2 w-2 rounded-full bg-red-500"></span>
-											stale
-										</span>
-									{/if}
+									<StatusDot
+										tone={cluster.lastRefreshSucceeded ? 'success' : 'destructive'}
+										label={cluster.lastRefreshSucceeded ? 'healthy' : 'stale'}
+									/>
 								</td>
 							</tr>
 						{/each}

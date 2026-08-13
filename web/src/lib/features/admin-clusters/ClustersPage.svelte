@@ -1,6 +1,9 @@
 <script lang="ts">
 	import ClusterFormDialog from './ClusterFormDialog.svelte';
 	import type { AdminCluster, AdminClustersStore, ClusterInput } from './clusters.svelte';
+	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
+	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 
 	interface Props {
 		store: AdminClustersStore;
@@ -36,19 +39,18 @@
 	}
 </script>
 
-<section class="mx-auto w-full max-w-6xl px-4 py-8">
-	<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-		<div>
-			<h1 class="text-2xl font-semibold tracking-tight">Clusters</h1>
-			<p class="mt-1 text-sm text-muted-foreground">Manage connection targets and per-cluster login options.</p>
-		</div>
-		<button type="button" class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground" onclick={addCluster}>Add cluster</button>
-	</div>
+<PageHeader title="Clusters" description="Manage connection targets and per-cluster login options.">
+	{#snippet actions()}
+		<Button onclick={addCluster}>Add cluster</Button>
+	{/snippet}
+</PageHeader>
 
+<section class="mx-auto w-full max-w-6xl">
 	{#if store.announce}<p class="sr-only" role="status" aria-live="polite">{store.announce}</p>{/if}
 	{#if store.error}<p class="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">{store.error}</p>{/if}
 	{#if store.loading}
-		<p role="status" aria-live="polite" class="text-muted-foreground">Loading clusters…</p>
+		<div role="status" aria-live="polite" class="sr-only">Loading clusters…</div>
+		<TableSkeleton columns={6} />
 	{:else}
 		<div class="overflow-x-auto rounded-lg border border-border">
 			<table class="w-full min-w-[900px] text-left text-sm">
@@ -79,10 +81,10 @@
 							<td class="px-4 py-3">{cluster.oidcEnabled ? 'Enabled' : 'Off'}</td>
 							<td class="px-4 py-3">
 								<div class="flex flex-wrap gap-2">
-									<button type="button" class="rounded-md border border-border px-2 py-1 text-xs" disabled={store.busy !== null} onclick={() => void store.test(cluster.name)}>Test</button>
-									<button type="button" class="rounded-md border border-border px-2 py-1 text-xs" disabled={store.busy !== null} onclick={() => editCluster(cluster)}>Edit</button>
-									<button type="button" class="rounded-md border border-border px-2 py-1 text-xs" disabled={store.busy !== null} onclick={() => void store.toggleOIDC(cluster.name, !cluster.oidcEnabled)}>{cluster.oidcEnabled ? 'Disable OIDC' : 'Enable OIDC'}</button>
-									<button type="button" class="rounded-md border border-destructive px-2 py-1 text-xs text-destructive" disabled={store.busy !== null} onclick={() => void store.remove(cluster.name)}>Remove</button>
+									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={`Test ${cluster.name}`} onclick={() => void store.test(cluster.name)}>Test</Button>
+									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={`Edit ${cluster.name}`} onclick={() => editCluster(cluster)}>Edit</Button>
+									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={`${cluster.oidcEnabled ? 'Disable' : 'Enable'} OIDC for ${cluster.name}`} onclick={() => void store.toggleOIDC(cluster.name, !cluster.oidcEnabled)}>{cluster.oidcEnabled ? 'Disable OIDC' : 'Enable OIDC'}</Button>
+									<Button variant="destructive" size="sm" disabled={store.busy !== null} label={`Remove ${cluster.name}`} onclick={() => void store.remove(cluster.name)}>Remove</Button>
 								</div>
 							</td>
 						</tr>

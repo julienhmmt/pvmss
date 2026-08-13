@@ -47,7 +47,13 @@ func (f createFixture) create(t *testing.T, actor auth.Identity, req vm.CreateRe
 
 	log := slog.New(slog.DiscardHandler)
 
-	return vm.Create(context.Background(), actor, req.Cluster, req, f.store, f.fake, f.fake, f.store, log)
+	return vm.Create(context.Background(), actor, req.Cluster, req, vm.CreateDeps{
+		Store:   f.store,
+		Creator: f.fake,
+		Pusher:  f.fake,
+		Audit:   f.store,
+		Log:     log,
+	})
 }
 
 func aliceIdentity() auth.Identity {
@@ -356,7 +362,13 @@ func TestCreate_AuditFailureDoesNotFailCreate(t *testing.T) {
 	fixture := newCreateFixture(t)
 	log := slog.New(slog.DiscardHandler)
 
-	result, err := vm.Create(context.Background(), aliceIdentity(), testClusterName, detailedRequest(), fixture.store, fixture.fake, fixture.fake, failingAudit{}, log)
+	result, err := vm.Create(context.Background(), aliceIdentity(), testClusterName, detailedRequest(), vm.CreateDeps{
+		Store:   fixture.store,
+		Creator: fixture.fake,
+		Pusher:  fixture.fake,
+		Audit:   failingAudit{},
+		Log:     log,
+	})
 	if err != nil {
 		t.Fatalf("Create: %v, want nil (audit failure must not fail the request)", err)
 	}
