@@ -26,7 +26,7 @@ French version: [README.fr.md](README.fr.md)
 
 ## Overview
 
-PVMSS runs as a stateless web application (Go backend + HTML/CSS frontend) and relies on Proxmox APIs for every action. It is designed to be:
+PVMSS runs as a stateless web application (Go REST API + SvelteKit SPA) and relies on Proxmox APIs for every action. It is designed to be:
 
 - **Secure by default**: per-user sessions.
 - **Operations-friendly**: ready-to-use container image, configurable resource limits, cluster-aware storage selection.
@@ -55,9 +55,9 @@ PVMSS runs as a stateless web application (Go backend + HTML/CSS frontend) and r
 
 ## Architecture at a glance
 
-- **Backend**: Go 1.25+, RESTy client for Proxmox APIs, basic HTML templates.
-- **Frontend**: SvelteKit SPA (Svelte 5 runes, TypeScript, Tailwind CSS).
-- **Authentication**: Proxmox API token for backend actions, user sessions for UI.
+- **Server** (`server/`): Go 1.26, stdlib `net/http` routing, SQLite via `modernc.org/sqlite` (CGO-free). Serves `/api/v1/*` and the SPA.
+- **Web** (`web/`): SvelteKit SPA (Svelte 5 runes, TypeScript, Tailwind CSS v4, `adapter-static`).
+- **Authentication**: Proxmox API token for cluster actions, user sessions for the UI.
 
 ## Configuration
 
@@ -95,7 +95,6 @@ pveum aclmod / -user pvmss-admin1@pve -role PVMSS_Admin -propagate 1
 
 The `pveum` commands and information related to roles and required privileges are detailed in:
 
-- `backend/docs/proxmox-permissions.en.md` (in this repository)
 - The in-app admin page `/docs/proxmox-permissions` (once PVMSS is running and you are logged in as admin)
 
 ### Create an API token for the user root@pam
@@ -163,37 +162,44 @@ Each profile includes:
 
 You can rely on `.env` + `env_file` or inline `environment:` entries, but **not both**. The needed variables are listed below:
 
-| Variable                  | Description                                                                  | Required | Default              |
-| ------------------------- | ---------------------------------------------------------------------------- | :------: | -------------------- |
-| `ADMIN_PASSWORD_HASH`     | Bcrypt hash for the admin UI login                                           |    ✅    | —                    |
-| `SESSION_SECRET`          | 32+ byte secret to encrypt sessions/cookies                                  |    ✅    | —                    |
-| `JWT_SECRET`              | HS256 signing key for `/api/v1/` JWTs (≥ 32 bytes)                           |    ✅    | —                    |
-| `PROXMOX_API_TOKEN_NAME`  | Proxmox token name (`user@pve!token`) used by the backend                    |    ✅    | —                    |
-| `PROXMOX_API_TOKEN_VALUE` | Token secret that matches the name above                                     |    ✅    | —                    |
-| `PROXMOX_URL`             | Full API URL (`https://host:8006/api2/json`)                                 |    ✅    | —                    |
-| `PROXMOX_VERIFY_SSL`      | `true` for trusted certs, `false` for self-signed labs                       |    ❌    | `true`               |
-| `PVMSS_ENV`               | `production/prod` (secure cookies + HSTS) or `development/dev/developpement` |    ❌    | `production`         |
-| `PVMSS_OFFLINE`           | `true` disables all Proxmox calls (demo mode)                                |    ❌    | `false`              |
-| `PVMSS_DB_PATH`          | Path to SQLite database file (must be on persistent volume)                 |    ✅    | `/data/pvmss.db`     |
-| `LOG_LEVEL`               | Log verbosity (`debug`, `info`, `warn`, `error`)                             |    ❌    | `INFO`               |
-| `LOG_OUTPUT`              | Log destination: `stdout`, `file`, or `both`                                 |    ❌    | `stdout`             |
-| `LOG_FILE_PATH`           | File path when `LOG_OUTPUT` is `file` or `both`                              |    ❌    | —                    |
-| `LOG_FORMAT`              | `console` (human readable) or `json` (machine/SIEM)                          |    ❌    | `console`            |
-| `PORT`                    | TCP port the HTTP server listens on                                          |    ❌    | `50000`              |
-| `PVMSS_HOST`              | Network address to bind (`0.0.0.0` for all interfaces, `127.0.0.1` for loopback) | ❌ | `127.0.0.1`        |
-| `PVMSS_COOKIE_SECURE`     | `Secure` flag on auth cookies (must be `true` in production)                 |    ❌    | `true` in prod, `false` in dev |
-| `TZ`                      | Container timezone                                                           |    ❌    | `UTC`                |
+| Variable                                      | Description                                                                | Required                 | Default                |
+| --------------------------------------------- | -------------------------------------------------------------------------- | ------------------------ | ---------------------- |
+| `PVMSS_PORT`                                  | TCP port the HTTP server listens on (1–65535)                              | ✅                       | —                      |
+| `PVMSS_DB_PATH`                               | Path to the SQLite database file (must be on a persistent volume)          | ✅                       | —                      |
+| `SESSION_SECRET`                              | 32+ byte secret to encrypt sessions/cookies                                | ✅                       | —                      |
+| `PVMSS_CLUSTER_SOURCE`                        | `proxmox` for a real cluster, `fake` for demo data (no default, on purpose) | ✅                       | —                      |
+| `LOG_LEVEL`                                   | `debug`, `info`, `warn`, `error` — lowercase only                          | ✅                       | —                      |
+| `LOG_FORMAT`                                  | `console` (human readable) or `json` (machine/SIEM)                        | ✅                       | —                      |
+| `LOG_OUTPUT`                                  | `stdout`, `stderr`, or a writable file path                                | ✅                       | —                      |
+| `PROXMOX_URL`                                 | Full API URL (`https://host:8006/api2/json`)                               | when source is `proxmox` | —                      |
+| `PROXMOX_API_TOKEN_NAME`                      | Proxmox token name (`user@pve!token`)                                      | when source is `proxmox` | —                      |
+| `PROXMOX_API_TOKEN_VALUE`                     | Token secret that matches the name above                                   | when source is `proxmox` | —                      |
+| `ADMIN_PASSWORD_HASH`                         | Bcrypt hash for the local admin login; disabled when empty                 | ❌                       | —                      |
+| `PVMSS_HOST`                                  | Address to bind (`0.0.0.0` for all interfaces)                             | ❌                       | `127.0.0.1`            |
+| `PVMSS_WEB_DIR`                               | Directory holding the built SPA                                            | ❌                       | relative to the binary |
+| `PVMSS_COOKIE_SECURE`                         | `Secure` flag on auth cookies (keep `true` in production)                  | ❌                       | `true`                 |
+| `PVMSS_INVENTORY_REFRESH_INTERVAL`            | Background inventory refresh period                                        | ❌                       | `30s`                  |
+| `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | Minimum delay between user-triggered refreshes                             | ❌                       | `5s`                   |
+| `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | Timeout for a single inventory refresh                                     | ❌                       | `15s`                  |
+| `PVMSS_MAX_LIST_PAGE_SIZE`                    | Upper bound on list endpoint page size                                     | ❌                       | `100`                  |
+| `TZ`                                          | Container timezone                                                         | ❌                       | `UTC`                  |
+
+The Docker image presets `PVMSS_DB_PATH=/data/pvmss.db`, `PVMSS_HOST=0.0.0.0`
+and `PVMSS_WEB_DIR=/app/web/build`, so those three can be left unset in a
+container deployment.
 
 > Tip: `ADMIN_PASSWORD_HASH` can be generated locally with `htpasswd -bnBC 10 "admin" "StrongPassword" | cut -d: -f2`.
 
 #### Logging configuration
 
-PVMSS uses structured logging with [zerolog](https://github.com/rs/zerolog). Typical setups:
+PVMSS uses structured logging with the standard library's `log/slog`. All three
+variables are required; `LOG_LEVEL` is matched case-sensitively and only accepts
+lowercase values. Typical setups:
 
 - Human-readable logs on stdout (development):
 
   ```bash
-  LOG_LEVEL=DEBUG
+  LOG_LEVEL=debug
   LOG_OUTPUT=stdout
   LOG_FORMAT=console
   ```
@@ -201,21 +207,23 @@ PVMSS uses structured logging with [zerolog](https://github.com/rs/zerolog). Typ
 - JSON logs on stdout for log aggregation / SIEM:
 
   ```bash
-  LOG_LEVEL=INFO
+  LOG_LEVEL=info
   LOG_OUTPUT=stdout
   LOG_FORMAT=json
   ```
 
-- JSON logs on stdout **and** in a file inside the container:
+- JSON logs into a file inside the container:
 
   ```bash
-  LOG_LEVEL=INFO
-  LOG_OUTPUT=both
+  LOG_LEVEL=info
+  LOG_OUTPUT=/app/pvmss.log
   LOG_FORMAT=json
-  LOG_FILE_PATH=/app/pvmss.log
   ```
 
-The JSON format is line-delimited and includes fields such as `component`, `operation`, `reason`, and `event_category` (for auth, VM, admin, security, console, Proxmox events), making it easy to consume with Fluent Bit, Filebeat, or any SIEM.
+`LOG_OUTPUT` takes `stdout`, `stderr`, or a writable file path — there is no
+"both" mode. The JSON format is line-delimited and includes a `component` field
+(main, cluster, inventory, ...), making it easy to consume with Fluent Bit,
+Filebeat, or any SIEM.
 
 ## Deployment options
 
@@ -234,27 +242,25 @@ docker run -d \
   -p 50000:50000 \
   -v $(pwd)/pvmss.db:/data/pvmss.db \
   -e ADMIN_PASSWORD_HASH='$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e' \
-  -e LOG_LEVEL=INFO \
+  -e LOG_LEVEL=info \
   -e LOG_OUTPUT=stdout \
   -e LOG_FORMAT=console \
   -e PROXMOX_API_TOKEN_NAME='tokenName@changeMe!value' \
   -e PROXMOX_API_TOKEN_VALUE="aaaaaaaa-0000-44aa-1111-aaaaaaaaaaa" \
   -e PROXMOX_URL=https://ip-or-name:8006/api2/json \
-  -e PROXMOX_VERIFY_SSL=false \
-  -e PVMSS_ENV="prod" \
-  -e PVMSS_OFFLINE="false" \
+  -e PVMSS_CLUSTER_SOURCE=proxmox \
+  -e PVMSS_PORT=50000 \
   -e PVMSS_DB_PATH="/data/pvmss.db" \
   -e SESSION_SECRET="$(openssl rand -hex 32)" \
   -e TZ=Europe/Paris \
-  jhmmt/pvmss:0.3.0
+  jhmmt/pvmss:latest
 ```
 
-To also write JSON logs to a file inside the container (and keep stdout), override:
+To write JSON logs to a file inside the container instead of stdout, override:
 
 ```bash
--e LOG_OUTPUT=both \
 -e LOG_FORMAT=json \
--e LOG_FILE_PATH=/app/pvmss.log \
+-e LOG_OUTPUT=/app/pvmss.log \
 -v $(pwd)/pvmss.log:/app/pvmss.log \
 ```
 
@@ -267,7 +273,7 @@ The application will be available at <http://localhost:50000>.
 ```yaml
 services:
   pvmss:
-    image: jhmmt/pvmss:0.3.0
+    image: jhmmt/pvmss:latest
     container_name: pvmss
     restart: unless-stopped
     ports:
@@ -276,14 +282,13 @@ services:
       PROXMOX_API_TOKEN_NAME: "tokenName@changeMe!value"
       PROXMOX_API_TOKEN_VALUE: "aaaaaaaa-0000-44aa-1111-aaaaaaaaaaa"
       PROXMOX_URL: "https://ip-or-name:8006/api2/json"
-      PROXMOX_VERIFY_SSL: "false"
+      PVMSS_CLUSTER_SOURCE: "proxmox"
       ADMIN_PASSWORD_HASH: "$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
-      LOG_LEVEL: "INFO"
+      LOG_LEVEL: "info"
       LOG_OUTPUT: "stdout"
       LOG_FORMAT: "console"
-      SESSION_SECRET: "changeMeWithSomethingElseUnique"
-      PVMSS_ENV: "production"
-      PVMSS_OFFLINE: "false"
+      SESSION_SECRET: "changeMeWithSomethingElseUniqueMinimum32Chars"
+      PVMSS_PORT: "50000"
       PVMSS_DB_PATH: "/data/pvmss.db"
       TZ: "Europe/Paris"
     volumes:
@@ -299,9 +304,8 @@ services:
 To persist logs to a file inside the container, you can change the environment section to use JSON + file output, for example:
 
 ```yaml
-LOG_OUTPUT: "both"
 LOG_FORMAT: "json"
-LOG_FILE_PATH: "/app/pvmss.log"
+LOG_OUTPUT: "/app/pvmss.log"
 # Add this volume to the volumes section
 - ./pvmss.log:/app/pvmss.log
 ```
@@ -323,10 +327,10 @@ Apply with `kubectl apply -f pvmss-deployment.yaml`. Provide your own ingress/HT
 
 ## Operations
 
-- **Logs**: `docker logs -f pvmss` or `kubectl -n pvmss logs -f deploy/pvmss`. Switch `LOG_LEVEL=DEBUG` for verbose traces. Use `LOG_FORMAT=json` and `LOG_OUTPUT=stdout` or `file` to emit JSON logs that can be shipped to a SIEM or log aggregator.
-- **Health**: startup logs include Proxmox connectivity, offline-mode status, and runtime metrics. The admin "Application Info" page shows runtime metrics, environment variables, and Proxmox cluster status.
+- **Logs**: `docker logs -f pvmss` or `kubectl -n pvmss logs -f deploy/pvmss`. Switch `LOG_LEVEL=debug` for verbose traces. Use `LOG_FORMAT=json` with `LOG_OUTPUT=stdout` or a file path to emit JSON logs that can be shipped to a SIEM or log aggregator.
+- **Health**: startup logs include cluster connectivity and inventory refresh status. The admin "Application Info" page shows runtime metrics, environment variables, and Proxmox cluster status.
 - **Upgrades**: pull the desired image tag and restart the container. Configuration is stored in the SQLite database and persists automatically.
-- **Static analysis (SonarQube)**: run `make sonar` to start a local SonarQube container, provision tokens, generate Go coverage, and scan four separate projects — `pvmss-backend` (legacy Go), `pvmss-server` (next-gen Go), `pvmss-frontend` (legacy SvelteKit TS), and `pvmss-web` (next-gen SvelteKit TS). Results are at `http://localhost:9000/projects`. Stop with `make sonar-down` and clean data with `make sonar-clean`.
+- **Static analysis (SonarQube)**: run `make sonar` to start a local SonarQube container, provision tokens, generate Go coverage, and scan the two projects — `pvmss-server` (Go) and `pvmss-web` (SvelteKit TS). Results are at `http://localhost:9000/projects`. Stop with `make sonar-down` and clean data with `make sonar-clean`.
 
 ## Limitations
 

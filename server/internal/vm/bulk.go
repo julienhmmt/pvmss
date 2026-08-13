@@ -1,4 +1,4 @@
-// Package vm: bulk.go implements T17 — Actions groupées. The one function of
+// Package vm implements bulk VM actions (T17 — Actions groupées). The one function of
 // substance this tranche produces is BulkAction, a loop over T05's exported
 // Action. Every later phase either wires it to HTTP/frontend (US1) or proves,
 // by test, a property it already has (US2, US3). No step here re-implements
@@ -109,7 +109,9 @@ func BulkAction(
 			} else {
 				result.Message = "inventory has not been populated yet"
 			}
+
 			results = append(results, result)
+
 			continue
 		}
 

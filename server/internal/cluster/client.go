@@ -12,10 +12,10 @@ import (
 
 // Sentinel errors so callers can distinguish failure modes without string matching.
 var (
-	ErrUnreachable           = errors.New("cluster unreachable")
-	ErrNotFound              = errors.New("not found")
-	ErrNotImplemented        = errors.New("not implemented")
-	ErrInvalidAction         = errors.New("invalid action")
+	ErrUnreachable            = errors.New("cluster unreachable")
+	ErrNotFound               = errors.New("not found")
+	ErrNotImplemented         = errors.New("not implemented")
+	ErrInvalidAction          = errors.New("invalid action")
 	ErrInvalidStateTransition = errors.New("invalid state transition")
 )
 

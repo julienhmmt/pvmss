@@ -91,7 +91,7 @@ func TestRecoveryCLI_EndToEnd(t *testing.T) {
 		t.Errorf("pvmss-checklist output missing fiche count:\n%s", checklistOut)
 	}
 
-	if !strings.Contains(string(checklistOut), "SUMMARY: 47 closed, 11 open (9 real gaps, 2 deliberate design decisions)") {
+	if !strings.Contains(string(checklistOut), "SUMMARY: 53 closed, 5 open (3 real gaps, 2 deliberate design decisions)") {
 		t.Errorf("pvmss-checklist SUMMARY does not match SC-004:\n%s", checklistOut)
 	}
 

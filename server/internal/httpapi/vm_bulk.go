@@ -3,6 +3,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -39,10 +40,10 @@ type singleClusterResolver struct {
 	projection *inventory.Projection
 }
 
-func (r singleClusterResolver) IndexFor(clusterName string) (*inventory.Index, error) {
+func (r singleClusterResolver) IndexFor(_ string) (*inventory.Index, error) {
 	idx := r.projection.Load()
 	if idx == nil {
-		return nil, fmt.Errorf("inventory has not been populated yet")
+		return nil, errors.New("inventory has not been populated yet")
 	}
 	return idx, nil
 }
@@ -88,8 +89,8 @@ func NewVMBulkWithRegistry(registry *inventory.Registry, projection *inventory.P
 
 // bulkActionRequestDTO is the POST /api/v1/vms/bulk-action body.
 type bulkActionRequestDTO struct {
-	Action  string             `json:"action"`
-	Targets []vm.BulkTarget    `json:"targets"`
+	Action  string          `json:"action"`
+	Targets []vm.BulkTarget `json:"targets"`
 }
 
 // bulkActionResponseDTO is the 200 body.

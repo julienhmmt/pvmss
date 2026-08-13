@@ -37,16 +37,6 @@ type profileUpdateRequest struct {
 	Bus      string `json:"bus"`
 }
 
-type profileToggleRequest struct {
-	Cluster string `json:"cluster"`
-	Enabled bool   `json:"enabled"`
-}
-
-type profileToggleResponse struct {
-	ID      string `json:"id"`
-	Enabled bool   `json:"enabled"`
-}
-
 type statusResponse struct {
 	Status string `json:"status"`
 }
@@ -172,68 +162,10 @@ func (h *AdminCatalog) ServeProfileUpdate(w http.ResponseWriter, r *http.Request
 // is read from the query string (?cluster=default), not the JSON body —
 // DELETE-with-body is awkward and the frontend uses the query param form.
 func (h *AdminCatalog) ServeProfileDelete(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	if id == "" {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "profile id is required")
-		return
-	}
-
-	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
-	if clusterErr != nil {
-		code, message := clusterParamError(clusterErr)
-		writeAdminError(w, http.StatusBadRequest, code, message)
-		return
-	}
-
-	err := catalog.DeleteProfile(r.Context(), h.store, clusterName, id)
-	if errors.Is(err, catalog.ErrProfileNotFound) {
-		writeAdminError(w, http.StatusNotFound, "not_found", "profile \""+id+"\" not found")
-		return
-	}
-
-	if err != nil {
-		h.log.Error("admin delete profile failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
-
-		return
-	}
-
-	writeAdminJSON(w, http.StatusOK, statusResponse{Status: statusDeleted})
+	h.serveCatalogDelete(w, r, "profile", "profile", catalog.DeleteProfile, catalog.ErrProfileNotFound)
 }
 
 // ServeProfileToggle handles POST /api/v1/admin/profiles/{id}/toggle.
 func (h *AdminCatalog) ServeProfileToggle(w http.ResponseWriter, r *http.Request) {
-	id := r.PathValue("id")
-	if id == "" {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "profile id is required")
-		return
-	}
-
-	var req profileToggleRequest
-	if err := decodeJSON(w, r, &req); err != nil {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
-		return
-	}
-
-	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clusters)
-	if clusterErr != nil {
-		code, message := clusterParamError(clusterErr)
-		writeAdminError(w, http.StatusBadRequest, code, message)
-		return
-	}
-
-	err := catalog.SetProfileEnabled(r.Context(), h.store, clusterName, id, req.Enabled)
-	if errors.Is(err, catalog.ErrProfileNotFound) {
-		writeAdminError(w, http.StatusNotFound, "not_found", "profile \""+id+"\" not found")
-		return
-	}
-
-	if err != nil {
-		h.log.Error("admin toggle profile failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
-
-		return
-	}
-
-	writeAdminJSON(w, http.StatusOK, profileToggleResponse{ID: id, Enabled: req.Enabled})
+	h.serveCatalogToggle(w, r, "profile", "profile", catalog.SetProfileEnabled, catalog.ErrProfileNotFound)
 }

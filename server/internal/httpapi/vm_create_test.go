@@ -469,6 +469,7 @@ func TestVMCreateCatalog_IncludesCloudInitTemplates(t *testing.T) {
 
 	rec2 := httptest.NewRecorder()
 	handler.ServeCatalog(rec2, req)
+
 	if err := json.Unmarshal(rec2.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode catalog: %v", err)
 	}

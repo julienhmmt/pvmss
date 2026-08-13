@@ -41,6 +41,7 @@ func withSecurityHeaders(next http.Handler) http.Handler {
 		} else {
 			h.Set("Content-Security-Policy", spaSecurityHeaders)
 		}
+
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")

@@ -52,6 +52,7 @@ func citPost(t *testing.T, handler *httpapi.AdminCatalog, auth *httpapi.Auth, co
 
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+
 	if cookie != nil {
 		req.AddCookie(cookie)
 	}
@@ -67,6 +68,7 @@ func citPut(t *testing.T, handler *httpapi.AdminCatalog, auth *httpapi.Auth, coo
 
 	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
+
 	if cookie != nil {
 		req.AddCookie(cookie)
 	}
@@ -152,7 +154,7 @@ func TestAdminCloudInitTemplates_NonAdmin_Returns403(t *testing.T) {
 		{"list", citGet(t, handler, authHandler, alice, "/api/v1/admin/cloudinit-templates?cluster=default")},
 		{"create", citPost(t, handler, authHandler, alice, "/api/v1/admin/cloudinit-templates", `{"cluster":"default","label":"x","content":"#cloud-config\n"}`)},
 		{"update", citPut(t, handler, authHandler, alice, "/api/v1/admin/cloudinit-templates/x", `{"cluster":"default","label":"x","content":"#cloud-config\n"}`)},
-		{"delete", citDelete(t, handler, authHandler, alice, "/api/v1/admin/cloudinit-templates/x?cluster=default")},
+		{testActionDelete, citDelete(t, handler, authHandler, alice, "/api/v1/admin/cloudinit-templates/x?cluster=default")},
 		{"toggle", citPost(t, handler, authHandler, alice, "/api/v1/admin/cloudinit-templates/x/toggle", `{"cluster":"default","enabled":false}`)},
 	}
 	for _, tc := range cases {
@@ -286,15 +288,18 @@ func TestAdminCloudInitTemplates_Delete(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &status); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if status.Status != "deleted" {
+
+	if status.Status != testStatusDeleted {
 		t.Errorf("status = %q, want deleted", status.Status)
 	}
 
 	list := citGet(t, handler, authHandler, cookie, "/api/v1/admin/cloudinit-templates?cluster=default")
+
 	var arr []cloudInitTemplateDTO
 	if err := json.Unmarshal(list.Body.Bytes(), &arr); err != nil {
 		t.Fatalf("decode list: %v", err)
 	}
+
 	if len(arr) != 0 {
 		t.Errorf("expected empty list after delete, got %d", len(arr))
 	}
@@ -325,6 +330,7 @@ func TestAdminCloudInitTemplates_Toggle(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
+
 	if body.ID != "web-server" || body.Enabled {
 		t.Errorf("unexpected toggle response: %+v", body)
 	}

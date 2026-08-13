@@ -193,7 +193,7 @@ func TestAdminClusters_NonAdminReturns403(t *testing.T) {
 		{"update", fixture.handler.ServeUpdate, http.MethodPut, "/api/v1/admin/clusters/secondary", crossSecondaryCluster, `{"url":"https://pve-b.example.com:8006/api2/json","tokenId":"pvmss@pve!service"}`},
 		{"test", fixture.handler.ServeTest, http.MethodPost, "/api/v1/admin/clusters/secondary/test", crossSecondaryCluster, ""},
 		{"oidc", fixture.handler.ServeOIDC, http.MethodPost, "/api/v1/admin/clusters/secondary/oidc", crossSecondaryCluster, `{"enabled":true}`},
-		{"delete", fixture.handler.ServeDelete, http.MethodDelete, "/api/v1/admin/clusters/secondary", crossSecondaryCluster, ""},
+		{testActionDelete, fixture.handler.ServeDelete, http.MethodDelete, "/api/v1/admin/clusters/secondary", crossSecondaryCluster, ""},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
