@@ -11,8 +11,8 @@ async function signInAlice(request: APIRequestContext): Promise<void> {
 	await signIn(request, 'alice', 'pvmss-alice');
 }
 
-function vmRowCheckboxes(page: Page) {
-	return page.locator('[data-testid="vm-bulk-select-row"]');
+function vmRowCheckbox(page: Page, name: string) {
+	return page.locator('tr', { hasText: name }).locator('[data-testid="vm-bulk-select-row"]');
 }
 
 function selectAllCheckbox(page: Page) {
@@ -20,6 +20,11 @@ function selectAllCheckbox(page: Page) {
 }
 
 test.describe('T17 VM bulk actions', () => {
+	// The fake cluster is shared, mutable, in-memory state across all tests in
+	// this file. Running them in parallel would race power transitions (one
+	// test starting a VM another test expects stopped). Serial execution keeps
+	// the fake state deterministic between tests.
+	test.describe.configure({ mode: 'serial' });
 	test('select several VMs and bulk-start them, showing a per-VM result', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms?cluster=default');
@@ -27,10 +32,9 @@ test.describe('T17 VM bulk actions', () => {
 		// Wait for the list to load — alice owns 7 VMs.
 		await expect(page.locator('[data-testid="vm-row"]')).toHaveCount(7);
 
-		// Select two stopped VMs (101 = web-02 stopped, 124 = dev-02 stopped).
-		const checkboxes = vmRowCheckboxes(page);
-		await checkboxes.nth(1).check();
-		await checkboxes.nth(6).check();
+		// Select two stopped VMs by name (sort-order-independent): dev-02 (124) and web-02 (101).
+		await vmRowCheckbox(page, 'dev-02').check();
+		await vmRowCheckbox(page, 'web-02').check();
 
 		// The bulk action bar appears with the selected count.
 		await expect(page.locator('[data-testid="vm-bulk-action-bar"]')).toBeVisible();
@@ -69,11 +73,12 @@ test.describe('T17 VM bulk actions', () => {
 
 		await expect(page.locator('[data-testid="vm-row"]')).toHaveCount(7);
 
-		// Select a stopped VM (101 = web-02) and a running VM (100 = web-01).
-		// Starting the running one will fail with "vm already running" (T001b).
-		const checkboxes = vmRowCheckboxes(page);
-		await checkboxes.nth(0).check(); // web-01 (running)
-		await checkboxes.nth(1).check(); // web-02 (stopped)
+		// Select a running VM (web-01) and a stopped VM (sandbox-01) by name.
+		// sandbox-01 is untouched by the earlier "select several" test (which
+		// starts dev-02 + web-02), so it stays stopped. Starting the running
+		// web-01 will fail with "vm already running" (T001b).
+		await vmRowCheckbox(page, 'web-01').check(); // running
+		await vmRowCheckbox(page, 'sandbox-01').check(); // stopped
 
 		await page.locator('[data-testid="vm-bulk-action-select"]').selectOption('start');
 		await page.locator('[data-testid="vm-bulk-action-submit"]').click();
@@ -94,7 +99,7 @@ test.describe('T17 VM bulk actions', () => {
 
 		await expect(page.locator('[data-testid="vm-row"]')).toHaveCount(7);
 
-		await vmRowCheckboxes(page).nth(0).check();
+		await vmRowCheckbox(page, 'web-01').check();
 		await expect(page.locator('[data-testid="vm-bulk-action-bar"]')).toBeVisible();
 
 		await page.locator('[data-testid="vm-bulk-clear-selection"]').click();
@@ -107,7 +112,7 @@ test.describe('T17 VM bulk actions', () => {
 
 		await expect(page.locator('[data-testid="vm-row"]')).toHaveCount(7);
 
-		await vmRowCheckboxes(page).nth(1).check();
+		await vmRowCheckbox(page, 'web-02').check();
 		await page.locator('[data-testid="vm-bulk-action-select"]').selectOption('start');
 		await page.locator('[data-testid="vm-bulk-action-submit"]').click();
 
