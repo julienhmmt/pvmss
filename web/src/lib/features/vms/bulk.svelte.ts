@@ -77,32 +77,42 @@ export class VmBulkSelection {
 		return this.#selected.has(targetKey(cluster, vmid));
 	}
 
+	// Svelte 5 $state does NOT deeply proxy a native Map: in-place
+	// .set()/.delete()/.clear() calls do not trigger reactivity. Every
+	// mutation must reassign #selected to a fresh Map so that hasSelection /
+	// selectedCount (and thus the bulk-action bar) actually update.
 	toggle(target: BulkTarget): void {
 		const key = targetKey(target.cluster, target.vmid);
-		if (this.#selected.has(key)) {
-			this.#selected.delete(key);
+		const next = new Map(this.#selected);
+		if (next.has(key)) {
+			next.delete(key);
 		} else {
-			this.#selected.set(key, target);
+			next.set(key, target);
 		}
+		this.#selected = next;
 	}
 
 	selectPage(items: VmListItem[]): void {
+		const next = new Map(this.#selected);
 		for (const item of items) {
 			const key = vmItemKey(item);
-			if (!this.#selected.has(key)) {
-				this.#selected.set(key, toItemTarget(item));
+			if (!next.has(key)) {
+				next.set(key, toItemTarget(item));
 			}
 		}
+		this.#selected = next;
 	}
 
 	clearPage(items: VmListItem[]): void {
+		const next = new Map(this.#selected);
 		for (const item of items) {
-			this.#selected.delete(vmItemKey(item));
+			next.delete(vmItemKey(item));
 		}
+		this.#selected = next;
 	}
 
 	clear(): void {
-		this.#selected.clear();
+		this.#selected = new Map();
 	}
 
 	pageAllSelected(items: VmListItem[]): boolean {
