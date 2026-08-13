@@ -11,7 +11,12 @@ import (
 	"testing"
 )
 
-const adminDocID = "admin"
+const (
+	adminDocID           = "admin"
+	docTestStamp         = "2026-01-01T00:00:00Z"
+	testDocAudienceUser  = "user"
+	testDocAudienceAdmin = "admin"
+)
 
 func openDocsStore(t *testing.T) *store.Store {
 	t.Helper()
@@ -54,10 +59,10 @@ func testDocStoreInsertAndDuplicate(ctx context.Context, t *testing.T, st *store
 		t.Fatalf("fresh store has %d pages, want 0", len(all))
 	}
 
-	stamp := "2026-01-01T00:00:00Z"
+	stamp := docTestStamp
 	page := store.DocumentationPageRow{
 		ID: "getting-started", Lang: "en", Title: "Getting started", Category: "Intro",
-		BodyMD: "# Hello", Audience: "user", Enabled: true, IsSystem: false, SortOrder: 1,
+		BodyMD: "# Hello", Audience: testDocAudienceUser, Enabled: true, IsSystem: false, SortOrder: 1,
 		CreatedAt: stamp, UpdatedAt: stamp,
 	}
 	if err := st.InsertDocumentationPage(ctx, page); err != nil {
@@ -87,7 +92,7 @@ func testDocStoreGetAndEnabledFilter(ctx context.Context, t *testing.T, st *stor
 		t.Fatalf("get en: %v", err)
 	}
 
-	if got.Title != "Getting started" || got.Audience != "user" || !got.Enabled {
+	if got.Title != "Getting started" || got.Audience != testDocAudienceUser || !got.Enabled {
 		t.Fatalf("en row = %+v", got)
 	}
 
@@ -101,7 +106,7 @@ func testDocStoreGetAndEnabledFilter(ctx context.Context, t *testing.T, st *stor
 	}
 
 	// Enabled-only reader filters disabled rows.
-	if err := st.SetDocumentationPageEnabled(ctx, "getting-started", "en", false, "2026-01-01T00:00:00Z"); err != nil {
+	if err := st.SetDocumentationPageEnabled(ctx, "getting-started", "en", false, docTestStamp); err != nil {
 		t.Fatalf("disable: %v", err)
 	}
 
@@ -129,9 +134,9 @@ func testDocStoreGetAndEnabledFilter(ctx context.Context, t *testing.T, st *stor
 func testDocStoreSystemDeleteGuard(ctx context.Context, t *testing.T, st *store.Store) {
 	t.Helper()
 
-	stamp := "2026-01-01T00:00:00Z"
+	stamp := docTestStamp
 	sys := store.DocumentationPageRow{
-		ID: adminDocID, Lang: "en", Title: "Admin", BodyMD: "# Admin", Audience: "admin",
+		ID: adminDocID, Lang: "en", Title: "Admin", BodyMD: "# Admin", Audience: testDocAudienceAdmin,
 		Enabled: true, IsSystem: true, CreatedAt: stamp, UpdatedAt: stamp,
 	}
 	if err := st.InsertDocumentationPage(ctx, sys); err != nil {
@@ -155,5 +160,107 @@ func testDocStoreSystemDeleteGuard(ctx context.Context, t *testing.T, st *store.
 
 	if exists {
 		t.Fatal("en row should be gone after delete")
+	}
+}
+
+// TestDocumentationPages_UpdateMutatesFields — UpdateDocumentationPage changes
+// the mutable columns and returns ErrNoRows for a missing (id, lang).
+//
+//nolint:paralleltest // serial: shared SQLite fixture
+func TestDocumentationPages_UpdateMutatesFields(t *testing.T) {
+	ctx := context.Background()
+	st := openDocsStore(t)
+
+	stamp := docTestStamp
+	page := store.DocumentationPageRow{
+		ID: "update-me", Lang: "en", Title: "Old", BodyMD: "# Old", Audience: testDocAudienceUser,
+		Enabled: true, CreatedAt: stamp, UpdatedAt: stamp,
+	}
+	if err := st.InsertDocumentationPage(ctx, page); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	if err := st.UpdateDocumentationPage(ctx, store.DocumentationPageUpdate{
+		ID: "update-me", Lang: "en", Title: "New", Category: "Cat", BodyMD: "# New",
+		Audience: testDocAudienceAdmin, Enabled: false, SortOrder: 7, UpdatedAt: "2026-01-02T00:00:00Z",
+	}); err != nil {
+		t.Fatalf("update: %v", err)
+	}
+
+	got, err := st.GetDocumentationPage(ctx, "update-me", "en")
+	if err != nil {
+		t.Fatalf("get after update: %v", err)
+	}
+
+	if got.Title != "New" || got.Category != "Cat" || got.BodyMD != "# New" ||
+		got.Audience != testDocAudienceAdmin || got.Enabled || got.SortOrder != 7 ||
+		got.UpdatedAt != "2026-01-02T00:00:00Z" {
+		t.Fatalf("updated row = %+v", got)
+	}
+
+	// Missing row → ErrNoRows.
+	if err := st.UpdateDocumentationPage(ctx, store.DocumentationPageUpdate{
+		ID: "nope", Lang: "en", Title: "x", BodyMD: "# x", Audience: testDocAudienceUser, UpdatedAt: stamp,
+	}); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("update missing err = %v, want sql.ErrNoRows", err)
+	}
+}
+
+// TestDocumentationPages_UpdateSystemMutatesFields — UpdateSystemDocumentationPage
+// only touches is_system=1 rows; a non-system row is left unchanged (ErrNoRows).
+//
+//nolint:paralleltest // serial: shared SQLite fixture
+func TestDocumentationPages_UpdateSystemMutatesFields(t *testing.T) {
+	ctx := context.Background()
+	st := openDocsStore(t)
+
+	stamp := docTestStamp
+	sys := store.DocumentationPageRow{
+		ID: "sys-page", Lang: "en", Title: "Sys", BodyMD: "# Sys", Audience: testDocAudienceAdmin,
+		Enabled: true, IsSystem: true, CreatedAt: stamp, UpdatedAt: stamp,
+	}
+	if err := st.InsertDocumentationPage(ctx, sys); err != nil {
+		t.Fatalf("insert system: %v", err)
+	}
+
+	if err := st.UpdateSystemDocumentationPage(ctx, store.DocumentationPageUpdate{
+		ID: "sys-page", Lang: "en", Title: "Sys edited", BodyMD: "# Sys edited",
+		Audience: testDocAudienceAdmin, Enabled: false, SortOrder: 2, UpdatedAt: "2026-01-02T00:00:00Z",
+	}); err != nil {
+		t.Fatalf("update system: %v", err)
+	}
+
+	got, err := st.GetDocumentationPage(ctx, "sys-page", "en")
+	if err != nil {
+		t.Fatalf("get after system update: %v", err)
+	}
+
+	if got.Title != "Sys edited" || !got.IsSystem || got.Enabled {
+		t.Fatalf("updated system row = %+v", got)
+	}
+
+	// UpdateSystemDocumentationPage on a non-system row → ErrNoRows (is_system=1 guard).
+	plain := store.DocumentationPageRow{
+		ID: "plain-page", Lang: "en", Title: "Plain", BodyMD: "# Plain", Audience: testDocAudienceUser,
+		Enabled: true, IsSystem: false, CreatedAt: stamp, UpdatedAt: stamp,
+	}
+	if err := st.InsertDocumentationPage(ctx, plain); err != nil {
+		t.Fatalf("insert plain: %v", err)
+	}
+
+	if err := st.UpdateSystemDocumentationPage(ctx, store.DocumentationPageUpdate{
+		ID: "plain-page", Lang: "en", Title: "Hijack", BodyMD: "# x", Audience: testDocAudienceUser, UpdatedAt: stamp,
+	}); !errors.Is(err, sql.ErrNoRows) {
+		t.Fatalf("update system on plain err = %v, want sql.ErrNoRows", err)
+	}
+
+	// Confirm the plain row was not modified.
+	unchanged, err := st.GetDocumentationPage(ctx, "plain-page", "en")
+	if err != nil {
+		t.Fatalf("get plain: %v", err)
+	}
+
+	if unchanged.Title != "Plain" {
+		t.Fatalf("plain row title = %q, want Plain (system update must not touch it)", unchanged.Title)
 	}
 }

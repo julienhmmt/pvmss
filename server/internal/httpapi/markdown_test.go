@@ -80,3 +80,129 @@ func TestRenderMarkdownToHTML_BasicElements(t *testing.T) {
 		}
 	}
 }
+
+// TestRenderMarkdownToHTML_OrderedListAndKindSwitch — ordered lists render as
+// <ol>, and switching from unordered to ordered reopens the list.
+func TestRenderMarkdownToHTML_OrderedListAndKindSwitch(t *testing.T) {
+	t.Parallel()
+	md := "- a\n- b\n1. c\n2. d"
+	got := renderMarkdownToHTML(md)
+
+	if !strings.Contains(got, "<ul>") {
+		t.Fatalf("missing <ul>: %s", got)
+	}
+
+	if !strings.Contains(got, "<ol>") {
+		t.Fatalf("missing <ol>: %s", got)
+	}
+
+	if !strings.Contains(got, "<li>c</li>") || !strings.Contains(got, "<li>d</li>") {
+		t.Fatalf("missing ordered items: %s", got)
+	}
+}
+
+// TestRenderMarkdownToHTML_StarBullet — the "* " prefix is also an unordered
+// list item.
+func TestRenderMarkdownToHTML_StarBullet(t *testing.T) {
+	t.Parallel()
+	got := renderMarkdownToHTML("* star item")
+	if !strings.Contains(got, "<ul>") || !strings.Contains(got, "<li>star item</li>") {
+		t.Fatalf("star bullet not rendered: %s", got)
+	}
+}
+
+// TestRenderMarkdownToHTML_UnterminatedCodeBlock — a fenced block without a
+// closing fence still emits its accumulated content.
+func TestRenderMarkdownToHTML_UnterminatedCodeBlock(t *testing.T) {
+	t.Parallel()
+	got := renderMarkdownToHTML("```\nunfinished code")
+	if !strings.Contains(got, "<pre><code>") || !strings.Contains(got, "unfinished code") {
+		t.Fatalf("unterminated code block not emitted: %s", got)
+	}
+}
+
+// TestRenderMarkdownToHTML_ParagraphBreaksOnSpecialLines — a paragraph stops at
+// a following heading, list item, or code fence.
+func TestRenderMarkdownToHTML_ParagraphBreaksOnSpecialLines(t *testing.T) {
+	t.Parallel()
+	md := "Intro line\n# Heading\n- item\n```\ncode\n```"
+	got := renderMarkdownToHTML(md)
+
+	if !strings.Contains(got, "<p>Intro line</p>") {
+		t.Fatalf("paragraph not isolated: %s", got)
+	}
+
+	if !strings.Contains(got, "<h1>Heading</h1>") {
+		t.Fatalf("heading after paragraph missing: %s", got)
+	}
+}
+
+// TestRenderMarkdownToHTML_EmptyAndCRLF — empty input and CRLF line endings are
+// handled without panics or stray tags.
+func TestRenderMarkdownToHTML_EmptyAndCRLF(t *testing.T) {
+	t.Parallel()
+	if got := renderMarkdownToHTML(""); got != "" {
+		t.Fatalf("empty input = %q, want empty", got)
+	}
+
+	got := renderMarkdownToHTML("line one\r\nline two\r\n")
+	if !strings.Contains(got, "<p>line one line two</p>") {
+		t.Fatalf("CRLF not normalized: %s", got)
+	}
+}
+
+// TestRenderMarkdownToHTML_MultipleInlineCodeSpans — two code spans exercise the
+// multi-index placeholder restore path in renderInline.
+func TestRenderMarkdownToHTML_MultipleInlineCodeSpans(t *testing.T) {
+	t.Parallel()
+	got := renderMarkdownToHTML("Use `foo` and `bar` together.")
+	if !strings.Contains(got, "<code>foo</code>") || !strings.Contains(got, "<code>bar</code>") {
+		t.Fatalf("code spans not restored: %s", got)
+	}
+}
+
+// TestHeadingTag_OutOfRange — levels outside 1-3 clamp to h3.
+func TestHeadingTag_OutOfRange(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		level int
+		want  string
+	}{
+		{0, "h3"},
+		{4, "h3"},
+		{1, "h1"},
+		{2, "h2"},
+		{3, "h3"},
+	}
+	for _, tc := range cases {
+		if got := headingTag(tc.level); got != tc.want {
+			t.Errorf("headingTag(%d) = %q, want %q", tc.level, got, tc.want)
+		}
+	}
+}
+
+// TestMatchOrderedItem_NoMatch — a non-list line returns no match.
+func TestMatchOrderedItem_NoMatch(t *testing.T) {
+	t.Parallel()
+	if content, ok := matchOrderedItem("not a list item"); ok || content != "" {
+		t.Fatalf("matchOrderedItem(non-list) = %q, %v, want empty false", content, ok)
+	}
+}
+
+// TestIndexPlaceholder_MultiDigit — indices above 0 exercise the base-36 loop.
+func TestIndexPlaceholder_MultiDigit(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		idx  int
+		want string
+	}{
+		{0, "0"},
+		{1, "1"},
+		{35, "Z"},
+	}
+	for _, tc := range cases {
+		if got := indexPlaceholder(tc.idx); got != tc.want {
+			t.Errorf("indexPlaceholder(%d) = %q, want %q", tc.idx, got, tc.want)
+		}
+	}
+}
