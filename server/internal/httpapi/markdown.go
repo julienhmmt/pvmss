@@ -17,52 +17,37 @@ import (
 // External links (http://, https://, //) get target="_blank" and
 // rel="noopener noreferrer"; internal destinations (anchors like "#section",
 // relative paths, or mailto) are left untouched.
-//
-//nolint:gocyclo,funlen // the line-type dispatch is inherently a branch per prefix
 func renderMarkdownToHTML(md string) string {
-	lines := strings.Split(strings.ReplaceAll(md, "\r\n", "\n"), "\n")
-	var (
-		out     strings.Builder
-		i       int
-		inList  bool
-		listOrd bool
-		inCode  bool
-		codeBuf strings.Builder
-	)
+	r := &mdRenderer{lines: strings.Split(strings.ReplaceAll(md, "\r\n", "\n"), "\n")}
+	return r.render()
+}
 
-	flushList := func() {
-		if inList {
-			out.WriteString("</ul>\n")
-			inList = false
-			listOrd = false
-		}
-	}
+// mdRenderer carries the line-by-line rendering state, distributing the
+// per-line dispatch across small helpers so each stays under the cognitive
+// complexity threshold (go:S3776).
+type mdRenderer struct {
+	out     strings.Builder
+	lines   []string
+	i       int
+	inList  bool
+	listOrd bool
+	inCode  bool
+	codeBuf strings.Builder
+}
 
-	for i < len(lines) {
-		line := lines[i]
+// render runs the line dispatch loop and flushes any trailing state.
+func (m *mdRenderer) render() string {
+	for m.i < len(m.lines) {
+		line := m.lines[m.i]
 
-		// Fenced code block toggle.
-		if strings.HasPrefix(strings.TrimSpace(line), "```") {
-			if inCode {
-				out.WriteString("<pre><code>")
-				out.WriteString(escapeHTML(codeBuf.String()))
-				out.WriteString("</code></pre>\n")
-				codeBuf.Reset()
-				inCode = false
-			} else {
-				flushList()
-				inCode = true
-			}
-
-			i++
-
+		if m.handleCodeFence(line) {
 			continue
 		}
 
-		if inCode {
-			codeBuf.WriteString(line)
-			codeBuf.WriteByte('\n')
-			i++
+		if m.inCode {
+			m.codeBuf.WriteString(line)
+			m.codeBuf.WriteByte('\n')
+			m.i++
 
 			continue
 		}
@@ -71,95 +56,161 @@ func renderMarkdownToHTML(md string) string {
 
 		// Blank line ends a paragraph/list.
 		if trimmed == "" {
-			flushList()
-			i++
+			m.flushList()
+			m.i++
 
 			continue
 		}
 
-		// Headings (h1-h3).
-		if h, level, ok := matchHeading(trimmed); ok {
-			flushList()
-			tag := headingTag(level)
-			out.WriteString("<" + tag + ">")
-			out.WriteString(renderInline(h))
-			out.WriteString("</" + tag + ">\n")
-			i++
-
+		if m.handleHeading(trimmed) {
 			continue
 		}
 
-		// Unordered list item.
-		if isUnorderedItem(trimmed) {
-			if !inList || listOrd {
-				flushList()
-				out.WriteString("<ul>\n")
-				inList = true
-				listOrd = false
-			}
-
-			out.WriteString("<li>")
-			out.WriteString(renderInline(trimmed[2:]))
-			out.WriteString("</li>\n")
-			i++
-
-			continue
-		}
-
-		// Ordered list item.
-		if content, ok := matchOrderedItem(trimmed); ok {
-			if !inList || !listOrd {
-				flushList()
-				out.WriteString("<ol>\n")
-				inList = true
-				listOrd = true
-			}
-
-			out.WriteString("<li>")
-			out.WriteString(renderInline(content))
-			out.WriteString("</li>\n")
-			i++
-
+		if m.handleListItem(trimmed) {
 			continue
 		}
 
 		// Paragraph: collect consecutive non-blank, non-special lines.
-		flushList()
-		var para strings.Builder
-		for i < len(lines) {
-			l := lines[i]
-			t := strings.TrimSpace(l)
-			if t == "" || strings.HasPrefix(t, "```") || isUnorderedItem(t) || matchOrderedItem2(t) {
-				break
-			}
+		m.collectParagraph()
+	}
 
-			if _, _, ok := matchHeading(t); ok {
-				break
-			}
+	m.flushList()
 
-			if para.Len() > 0 {
-				para.WriteByte(' ')
-			}
+	if m.inCode {
+		// Unterminated fenced block — emit what we have.
+		m.emitCodeBlock()
+	}
 
-			para.WriteString(t)
-			i++
+	return m.out.String()
+}
+
+// flushList closes an open unordered list, resetting the list state.
+func (m *mdRenderer) flushList() {
+	if m.inList {
+		m.out.WriteString("</ul>\n")
+		m.inList = false
+		m.listOrd = false
+	}
+}
+
+// handleCodeFence toggles a fenced code block on a ``` line, emitting the
+// accumulated buffer when closing. Returns true when the line was consumed.
+func (m *mdRenderer) handleCodeFence(line string) bool {
+	if !strings.HasPrefix(strings.TrimSpace(line), "```") {
+		return false
+	}
+
+	if m.inCode {
+		m.emitCodeBlock()
+		m.codeBuf.Reset()
+		m.inCode = false
+	} else {
+		m.flushList()
+		m.inCode = true
+	}
+
+	m.i++
+
+	return true
+}
+
+// emitCodeBlock writes the escaped, accumulated code buffer as a pre/code block.
+func (m *mdRenderer) emitCodeBlock() {
+	m.out.WriteString("<pre><code>")
+	m.out.WriteString(escapeHTML(m.codeBuf.String()))
+	m.out.WriteString("</code></pre>\n")
+}
+
+// handleHeading emits an h1-h3 heading when the line matches. Returns true when
+// the line was consumed.
+func (m *mdRenderer) handleHeading(trimmed string) bool {
+	h, level, ok := matchHeading(trimmed)
+	if !ok {
+		return false
+	}
+
+	m.flushList()
+	tag := headingTag(level)
+	m.out.WriteString("<" + tag + ">")
+	m.out.WriteString(renderInline(h))
+	m.out.WriteString("</" + tag + ">\n")
+	m.i++
+
+	return true
+}
+
+// handleListItem emits an unordered or ordered list item, opening the matching
+// list when the list kind changes. Returns true when the line was consumed.
+func (m *mdRenderer) handleListItem(trimmed string) bool {
+	if isUnorderedItem(trimmed) {
+		m.openList(false)
+		m.out.WriteString("<li>")
+		m.out.WriteString(renderInline(trimmed[2:]))
+		m.out.WriteString("</li>\n")
+		m.i++
+
+		return true
+	}
+
+	content, ok := matchOrderedItem(trimmed)
+	if !ok {
+		return false
+	}
+
+	m.openList(true)
+	m.out.WriteString("<li>")
+	m.out.WriteString(renderInline(content))
+	m.out.WriteString("</li>\n")
+	m.i++
+
+	return true
+}
+
+// openList starts a list of the requested kind, closing the previous list first
+// when the kind differs or no list is open.
+func (m *mdRenderer) openList(ordered bool) {
+	if m.inList && m.listOrd == ordered {
+		return
+	}
+
+	m.flushList()
+	if ordered {
+		m.out.WriteString("<ol>\n")
+	} else {
+		m.out.WriteString("<ul>\n")
+	}
+
+	m.inList = true
+	m.listOrd = ordered
+}
+
+// collectParagraph gathers consecutive non-blank, non-special lines into one
+// paragraph, joining them with single spaces.
+func (m *mdRenderer) collectParagraph() {
+	m.flushList()
+	var para strings.Builder
+	for m.i < len(m.lines) {
+		l := m.lines[m.i]
+		t := strings.TrimSpace(l)
+		if t == "" || strings.HasPrefix(t, "```") || isUnorderedItem(t) || matchOrderedItem2(t) {
+			break
 		}
 
-		out.WriteString("<p>")
-		out.WriteString(renderInline(para.String()))
-		out.WriteString("</p>\n")
+		if _, _, ok := matchHeading(t); ok {
+			break
+		}
+
+		if para.Len() > 0 {
+			para.WriteByte(' ')
+		}
+
+		para.WriteString(t)
+		m.i++
 	}
 
-	flushList()
-
-	if inCode {
-		// Unterminated fenced block — emit what we have.
-		out.WriteString("<pre><code>")
-		out.WriteString(escapeHTML(codeBuf.String()))
-		out.WriteString("</code></pre>\n")
-	}
-
-	return out.String()
+	m.out.WriteString("<p>")
+	m.out.WriteString(renderInline(para.String()))
+	m.out.WriteString("</p>\n")
 }
 
 var headingRe = regexp.MustCompile(`^(#{1,3})\s+(.+)$`)

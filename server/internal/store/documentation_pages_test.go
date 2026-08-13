@@ -30,10 +30,20 @@ func openDocsStore(t *testing.T) *store.Store {
 	return st
 }
 
-//nolint:gocyclo,paralleltest // round trip owns shared SQLite fixture and covers each boundary
+//nolint:paralleltest // round trip owns a shared SQLite fixture across ordered steps
 func TestDocumentationPages_RoundTripAndStates(t *testing.T) {
 	ctx := context.Background()
 	st := openDocsStore(t)
+
+	testDocStoreInsertAndDuplicate(ctx, t, st)
+	testDocStoreGetAndEnabledFilter(ctx, t, st)
+	testDocStoreSystemDeleteGuard(ctx, t, st)
+}
+
+// testDocStoreInsertAndDuplicate verifies the empty-store start, insert,
+// duplicate (id, lang) rejection, and same-id/different-lang coexistence.
+func testDocStoreInsertAndDuplicate(ctx context.Context, t *testing.T, st *store.Store) {
+	t.Helper()
 
 	all, err := st.DocumentationPagesAll(ctx)
 	if err != nil {
@@ -65,6 +75,12 @@ func TestDocumentationPages_RoundTripAndStates(t *testing.T) {
 	if err := st.InsertDocumentationPage(ctx, page); err != nil {
 		t.Fatalf("insert fr: %v", err)
 	}
+}
+
+// testDocStoreGetAndEnabledFilter verifies get-by-(id,lang), the missing-row
+// sql.ErrNoRows path, the enabled toggle, and the enabled-only/all readers.
+func testDocStoreGetAndEnabledFilter(ctx context.Context, t *testing.T, st *store.Store) {
+	t.Helper()
 
 	got, err := st.GetDocumentationPage(ctx, "getting-started", "en")
 	if err != nil {
@@ -85,7 +101,7 @@ func TestDocumentationPages_RoundTripAndStates(t *testing.T) {
 	}
 
 	// Enabled-only reader filters disabled rows.
-	if err := st.SetDocumentationPageEnabled(ctx, "getting-started", "en", false, stamp); err != nil {
+	if err := st.SetDocumentationPageEnabled(ctx, "getting-started", "en", false, "2026-01-01T00:00:00Z"); err != nil {
 		t.Fatalf("disable: %v", err)
 	}
 
@@ -98,7 +114,7 @@ func TestDocumentationPages_RoundTripAndStates(t *testing.T) {
 		t.Fatalf("enabled rows = %+v, want only fr", enabled)
 	}
 
-	all, err = st.DocumentationPagesAll(ctx)
+	all, err := st.DocumentationPagesAll(ctx)
 	if err != nil {
 		t.Fatalf("all after disable: %v", err)
 	}
@@ -106,8 +122,14 @@ func TestDocumentationPages_RoundTripAndStates(t *testing.T) {
 	if len(all) != 2 {
 		t.Fatalf("all rows = %d, want 2", len(all))
 	}
+}
 
-	// Delete refuses system pages at the storage layer.
+// testDocStoreSystemDeleteGuard verifies the storage-layer system-page delete
+// guard, non-system deletion, and the exists check after delete.
+func testDocStoreSystemDeleteGuard(ctx context.Context, t *testing.T, st *store.Store) {
+	t.Helper()
+
+	stamp := "2026-01-01T00:00:00Z"
 	sys := store.DocumentationPageRow{
 		ID: adminDocID, Lang: "en", Title: "Admin", BodyMD: "# Admin", Audience: "admin",
 		Enabled: true, IsSystem: true, CreatedAt: stamp, UpdatedAt: stamp,
