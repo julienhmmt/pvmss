@@ -96,36 +96,33 @@ func TestGenerate_DeliberateVsGap(t *testing.T) {
 	output := buf.String()
 
 	// X12 and X18 should say "deliberate"
-	for line := range strings.SplitSeq(output, "\n") {
-		if strings.HasPrefix(line, "X12  ") {
+	for _, fiche := range []string{"X12", "X18"} {
+		if line := findFicheLine(output, fiche); line != "" {
 			if !strings.Contains(line, "deliberate") {
-				t.Errorf("X12 should be 'deliberate': %s", line)
-			}
-		}
-
-		if strings.HasPrefix(line, "X18  ") {
-			if !strings.Contains(line, "deliberate") {
-				t.Errorf("X18 should be 'deliberate': %s", line)
+				t.Errorf("%s should be 'deliberate': %s", fiche, line)
 			}
 		}
 	}
 
 	// X13, P01, P02 remain real gaps (V13, X11, P03-P06 closed via T17/T18/T19).
-	gapFiches := []string{"X13", "P01", "P02"}
-	for _, fiche := range gapFiches {
-		found := false
-
-		for line := range strings.SplitSeq(output, "\n") {
-			if strings.HasPrefix(line, fiche+"  ") && strings.Contains(line, "real gap") {
-				found = true
-				break
-			}
-		}
-
-		if !found {
+	for _, fiche := range []string{"X13", "P01", "P02"} {
+		line := findFicheLine(output, fiche)
+		if !strings.Contains(line, "real gap") {
 			t.Errorf("fiche %s should say 'real gap'", fiche)
 		}
 	}
+}
+
+// findFicheLine returns the first line of output that starts with fiche+"  ",
+// or "" if no such line exists.
+func findFicheLine(output, fiche string) string {
+	for line := range strings.SplitSeq(output, "\n") {
+		if strings.HasPrefix(line, fiche+"  ") {
+			return line
+		}
+	}
+
+	return ""
 }
 
 // T023: fixture directory tree with missing subdirectories still works.
