@@ -2,6 +2,7 @@ package catalog_test
 
 import (
 	"context"
+	"errors"
 	"path/filepath"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
@@ -211,7 +212,7 @@ func TestSetStorageEnabled_PerPairIsolation(t *testing.T) {
 // TestAdminListBridges_IncludesSuperset verifies the admin bridge list
 // includes the fake superset (vmbr0, vmbr1 approved; vmbr2 not).
 //
-//nolint:paralleltest,dupl // serial: shared fake dataset; intentionally parallel to TestAdminListISOs_IncludesSuperset
+//nolint:paralleltest,dupl,goconst // serial: shared fake dataset; test fixtures reuse literals; intentionally parallel to TestAdminListISOs_IncludesSuperset
 func TestAdminListBridges_IncludesSuperset(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -270,7 +271,7 @@ func TestSetBridgeEnabled_ToggleIsolatesByBridgeName(t *testing.T) {
 // TestAdminListISOs_IncludesSuperset verifies the admin ISO list includes the
 // fake superset keyed by (storage, file).
 //
-//nolint:paralleltest,dupl // serial: shared fake dataset; intentionally parallel to TestAdminListBridges_IncludesSuperset
+//nolint:paralleltest,dupl,goconst // serial: shared fake dataset; test fixtures reuse literals; intentionally parallel to TestAdminListBridges_IncludesSuperset
 func TestAdminListISOs_IncludesSuperset(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -337,5 +338,230 @@ func TestSetNodeEnabled_UnknownNodeReturnsError(t *testing.T) {
 	err := catalog.SetNodeEnabled(ctx, st, cluster.Fake{}, "default", "pve-node-99", true)
 	if err == nil {
 		t.Fatal("expected error for unknown node, got nil")
+	}
+}
+
+// TestSetStorageEnabled_UnknownReturnsError — toggling a (name, node) pair not
+// in the current discovery set returns cluster.ErrNotFound (404 at the handler
+// level), mirroring SetNodeEnabled's contract.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestSetStorageEnabled_UnknownReturnsError(t *testing.T) {
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	if err := catalog.SetStorageEnabled(ctx, st, cluster.Fake{}, "default", "missing", "pve-node-01", true); !errors.Is(err, cluster.ErrNotFound) {
+		t.Fatalf("SetStorageEnabled unknown: got %v, want cluster.ErrNotFound", err)
+	}
+
+	// Right name, wrong node — still not discovered.
+	if err := catalog.SetStorageEnabled(ctx, st, cluster.Fake{}, "default", "local", "pve-node-99", true); !errors.Is(err, cluster.ErrNotFound) {
+		t.Fatalf("SetStorageEnabled wrong node: got %v, want cluster.ErrNotFound", err)
+	}
+}
+
+// TestSetBridgeEnabled_UnknownReturnsError — toggling a bridge not in the
+// current discovery set returns cluster.ErrNotFound.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestSetBridgeEnabled_UnknownReturnsError(t *testing.T) {
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	if err := catalog.SetBridgeEnabled(ctx, st, cluster.Fake{}, "default", "vmbr99", true); !errors.Is(err, cluster.ErrNotFound) {
+		t.Fatalf("SetBridgeEnabled unknown: got %v, want cluster.ErrNotFound", err)
+	}
+}
+
+// TestSetISOEnabled_UnknownReturnsError — toggling an ISO (storage, file) pair
+// not in the current discovery set returns cluster.ErrNotFound.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestSetISOEnabled_UnknownReturnsError(t *testing.T) {
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "local", "missing.iso", true); !errors.Is(err, cluster.ErrNotFound) {
+		t.Fatalf("SetISOEnabled unknown file: got %v, want cluster.ErrNotFound", err)
+	}
+
+	// Right file, wrong storage — still not discovered.
+	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "missing", "debian-12-generic-amd64.iso", true); !errors.Is(err, cluster.ErrNotFound) {
+		t.Fatalf("SetISOEnabled wrong storage: got %v, want cluster.ErrNotFound", err)
+	}
+}
+
+// TestSetStorageEnabled_TogglePersists — toggling a discovered storage off then
+// on persists the enabled state across reads (the upsert-never-deletes
+// contract), mirroring TestSetNodeEnabled_UpsertNeverDeletes.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestSetStorageEnabled_TogglePersists(t *testing.T) {
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	// local@pve-node-01 is discovered but not approved (T06 seed approves only
+	// local@pve-node-02). Toggle it on, then off, asserting each step.
+	if err := catalog.SetStorageEnabled(ctx, st, cluster.Fake{}, "default", "local", "pve-node-01", true); err != nil {
+		t.Fatalf("SetStorageEnabled on: %v", err)
+	}
+
+	after, err := catalog.AdminListStorages(ctx, st, cluster.Fake{}, "default")
+	if err != nil {
+		t.Fatalf("AdminListStorages: %v", err)
+	}
+
+	if !findApprovalStorage(t, after, "local", "pve-node-01").Enabled {
+		t.Error("local@pve-node-01 should be enabled after toggle on")
+	}
+
+	if err := catalog.SetStorageEnabled(ctx, st, cluster.Fake{}, "default", "local", "pve-node-01", false); err != nil {
+		t.Fatalf("SetStorageEnabled off: %v", err)
+	}
+
+	after, err = catalog.AdminListStorages(ctx, st, cluster.Fake{}, "default")
+	if err != nil {
+		t.Fatalf("AdminListStorages after off: %v", err)
+	}
+
+	if findApprovalStorage(t, after, "local", "pve-node-01").Enabled {
+		t.Error("local@pve-node-01 should be disabled after toggle off")
+	}
+}
+
+// TestSetBridgeEnabled_ToggleOffPersists — toggling an approved bridge off keeps
+// the row (enabled=false), then re-enabling restores it.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestSetBridgeEnabled_ToggleOffPersists(t *testing.T) {
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	if err := catalog.SetBridgeEnabled(ctx, st, cluster.Fake{}, "default", "vmbr0", false); err != nil {
+		t.Fatalf("SetBridgeEnabled off: %v", err)
+	}
+
+	bridges, err := catalog.AdminListBridges(ctx, st, cluster.Fake{}, "default")
+	if err != nil {
+		t.Fatalf("AdminListBridges: %v", err)
+	}
+
+	for _, b := range bridges {
+		if b.Name == "vmbr0" && b.Enabled {
+			t.Error("vmbr0 should be disabled after toggle off")
+		}
+	}
+
+	if err := catalog.SetBridgeEnabled(ctx, st, cluster.Fake{}, "default", "vmbr0", true); err != nil {
+		t.Fatalf("SetBridgeEnabled on: %v", err)
+	}
+
+	bridges, err = catalog.AdminListBridges(ctx, st, cluster.Fake{}, "default")
+	if err != nil {
+		t.Fatalf("AdminListBridges after on: %v", err)
+	}
+
+	for _, b := range bridges {
+		if b.Name == "vmbr0" && !b.Enabled {
+			t.Error("vmbr0 should be enabled after re-toggle on")
+		}
+	}
+}
+
+// TestSetISOEnabled_ToggleOffPersists — toggling an approved ISO off keeps the
+// row (enabled=false), then re-enabling restores it.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestSetISOEnabled_ToggleOffPersists(t *testing.T) {
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "local", "debian-12-generic-amd64.iso", false); err != nil {
+		t.Fatalf("SetISOEnabled off: %v", err)
+	}
+
+	isos, err := catalog.AdminListISOs(ctx, st, cluster.Fake{}, "default")
+	if err != nil {
+		t.Fatalf("AdminListISOs: %v", err)
+	}
+
+	for _, i := range isos {
+		if i.File == "debian-12-generic-amd64.iso" && i.Enabled {
+			t.Error("debian-12 should be disabled after toggle off")
+		}
+	}
+
+	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "local", "debian-12-generic-amd64.iso", true); err != nil {
+		t.Fatalf("SetISOEnabled on: %v", err)
+	}
+
+	isos, err = catalog.AdminListISOs(ctx, st, cluster.Fake{}, "default")
+	if err != nil {
+		t.Fatalf("AdminListISOs after on: %v", err)
+	}
+
+	for _, i := range isos {
+		if i.File == "debian-12-generic-amd64.iso" && !i.Enabled {
+			t.Error("debian-12 should be enabled after re-toggle on")
+		}
+	}
+}
+
+// TestEnsurePvmssTag_InsertsForNonDefaultCluster — the V9 migration seeds the
+// mandatory pvmss tag only for the "default" cluster. ListTags lazily inserts
+// it for any other cluster via ensurePvmssTag (FR-014), so the admin surface
+// never lists a cluster without it. Idempotent on repeat calls.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestEnsurePvmssTag_InsertsForNonDefaultCluster(t *testing.T) {
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	const otherCluster = "other-cluster"
+
+	// First call: ensurePvmssTag inserts the missing pvmss tag.
+	tags, err := catalog.ListTags(ctx, st, nil, otherCluster)
+	if err != nil {
+		t.Fatalf("ListTags first call: %v", err)
+	}
+
+	found := false
+
+	for _, tag := range tags {
+		if tag.Name == catalog.ProtectedTagName {
+			found = true
+
+			if !tag.Protected {
+				t.Error("lazily-inserted pvmss tag should be protected")
+			}
+
+			if tag.Color != "#4f46e5" {
+				t.Errorf("lazily-inserted pvmss color = %q, want #4f46e5", tag.Color)
+			}
+		}
+	}
+
+	if !found {
+		t.Fatal("ensurePvmssTag did not insert pvmss for non-default cluster")
+	}
+
+	// Second call: ensurePvmssTag's exists-early-return path — the tag is
+	// already present, so no re-insert. The list must still contain exactly one
+	// pvmss row.
+	tags, err = catalog.ListTags(ctx, st, nil, otherCluster)
+	if err != nil {
+		t.Fatalf("ListTags second call: %v", err)
+	}
+
+	count := 0
+
+	for _, tag := range tags {
+		if tag.Name == catalog.ProtectedTagName {
+			count++
+		}
+	}
+
+	if count != 1 {
+		t.Errorf("expected exactly 1 pvmss tag after repeat ListTags, got %d", count)
 	}
 }
