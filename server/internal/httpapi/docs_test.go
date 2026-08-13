@@ -2,11 +2,13 @@
 package httpapi_test
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"pvmss/server/internal/httpapi"
+	"pvmss/server/internal/store"
 	"strings"
 	"testing"
 )
@@ -73,14 +75,15 @@ type docSummaryDTO struct {
 }
 
 type adminDocDTO struct {
-	ID       string `json:"id"`
-	Lang     string `json:"lang"`
-	Title    string `json:"title"`
-	Category string `json:"category"`
-	BodyMD   string `json:"bodyMd"`
-	Audience string `json:"audience"`
-	Enabled  bool   `json:"enabled"`
-	IsSystem bool   `json:"isSystem"`
+	ID        string `json:"id"`
+	Lang      string `json:"lang"`
+	Title     string `json:"title"`
+	Category  string `json:"category"`
+	BodyMD    string `json:"bodyMd"`
+	Audience  string `json:"audience"`
+	Enabled   bool   `json:"enabled"`
+	IsSystem  bool   `json:"isSystem"`
+	SortOrder int    `json:"sortOrder"`
 }
 
 type docRenderedDTO struct {
@@ -104,6 +107,23 @@ func createDocViaAdmin(t *testing.T, docs *httpapi.DocsAPIHandler, admin *httpap
 	}
 
 	return dto
+}
+
+// assertDocNotInPublicList fetches the public docs list and fails when id is
+// still present (shared by the toggle and delete tests).
+func assertDocNotInPublicList(t *testing.T, docs *httpapi.DocsAPIHandler, admin *httpapi.AdminDocs, auth *httpapi.Auth, id string) {
+	t.Helper()
+	list := docsServe(t, docs, admin, auth, docsRequest(http.MethodGet, "/api/v1/docs", nil, ""))
+	var summaries []docSummaryDTO
+	if err := json.Unmarshal(list.Body.Bytes(), &summaries); err != nil {
+		t.Fatalf("decode list: %v", err)
+	}
+
+	for _, s := range summaries {
+		if s.ID == id {
+			t.Fatalf("page %q should not be in the public list", id)
+		}
+	}
 }
 
 // TestDocs_PublicList_HidesAdminAudienceFromNonAdmin — a user-audience page
@@ -320,17 +340,7 @@ func TestAdminDocs_ToggleFlipsEnabled(t *testing.T) {
 	}
 
 	// Disabled page disappears from the public list.
-	list := docsServe(t, docs, admin, auth, docsRequest(http.MethodGet, "/api/v1/docs", nil, ""))
-	var summaries []docSummaryDTO
-	if err := json.Unmarshal(list.Body.Bytes(), &summaries); err != nil {
-		t.Fatalf("decode list: %v", err)
-	}
-
-	for _, s := range summaries {
-		if s.ID == "toggle-me" {
-			t.Fatal("disabled page still in public list")
-		}
-	}
+	assertDocNotInPublicList(t, docs, admin, auth, "toggle-me")
 }
 
 // TestAdminDocs_SystemDeleteRefused — a system page cannot be deleted (403).
@@ -351,5 +361,301 @@ func TestAdminDocs_SystemDeleteRefused(t *testing.T) {
 	rec := docsServe(t, docs, admin, auth, docsRequest(http.MethodDelete, "/api/v1/admin/docs/nope/en", cookie, ""))
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("delete missing status = %d, want 404: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestAdminDocs_ListReturnsAllPages — the admin list returns every page
+// (enabled and disabled), with the full bodyMd field.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminDocs_ListReturnsAllPages(t *testing.T) {
+	docs, admin, auth := newDocsHandlers(t)
+	cookie := adminCookie(t, auth)
+
+	createDocViaAdmin(t, docs, admin, auth, cookie, `{"title":"Visible","lang":"en","category":"c","bodyMd":"# Hi","audience":"user"}`)
+	createDocViaAdmin(t, docs, admin, auth, cookie, `{"title":"Hidden","lang":"en","category":"c","bodyMd":"# Ho","audience":"user"}`)
+
+	// Disable "Hidden"; it must still appear in the admin list.
+	rec := docsServe(t, docs, admin, auth, docsRequest(http.MethodPost, "/api/v1/admin/docs/hidden/en/toggle", cookie, `{"enabled":false}`))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("toggle status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	rec = docsServe(t, docs, admin, auth, docsRequest(http.MethodGet, "/api/v1/admin/docs", cookie, ""))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("admin list status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var list []adminDocDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil {
+		t.Fatalf("decode admin list: %v", err)
+	}
+
+	if len(list) != 2 {
+		t.Fatalf("admin list has %d pages, want 2", len(list))
+	}
+
+	var hidden adminDocDTO
+	for _, p := range list {
+		if p.ID == "hidden" {
+			hidden = p
+		}
+	}
+
+	if hidden.ID != "hidden" {
+		t.Fatal("disabled page missing from admin list")
+	}
+
+	if hidden.Enabled {
+		t.Fatal("hidden page should be disabled in admin list")
+	}
+
+	if hidden.BodyMD != "# Ho" {
+		t.Fatalf("admin list bodyMd = %q, want full body", hidden.BodyMD)
+	}
+}
+
+// TestAdminDocs_UpdateSucceeds — PUT updates mutable fields (200), rejects
+// invalid input (400), and 404s a missing page.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminDocs_UpdateSucceeds(t *testing.T) {
+	docs, admin, auth := newDocsHandlers(t)
+	cookie := adminCookie(t, auth)
+	createDocViaAdmin(t, docs, admin, auth, cookie, `{"title":"Edit me","lang":"en","category":"c","bodyMd":"# Hi","audience":"user"}`)
+
+	// Successful update.
+	rec := docsServe(t, docs, admin, auth, docsRequest(http.MethodPut, "/api/v1/admin/docs/edit-me/en", cookie,
+		`{"title":"Edited","lang":"en","category":"cat","bodyMd":"# New","audience":"user","enabled":true,"sortOrder":3}`))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("update status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var updated adminDocDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &updated); err != nil {
+		t.Fatalf("decode updated: %v", err)
+	}
+
+	if updated.Title != "Edited" || updated.SortOrder != 3 || updated.Category != "cat" {
+		t.Fatalf("updated dto = %+v", updated)
+	}
+
+	// Invalid body (bad audience) → 400.
+	rec = docsServe(t, docs, admin, auth, docsRequest(http.MethodPut, "/api/v1/admin/docs/edit-me/en", cookie,
+		`{"title":"x","lang":"en","bodyMd":"# x","audience":"guest","enabled":true,"sortOrder":0}`))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid update status = %d, want 400: %s", rec.Code, rec.Body.String())
+	}
+
+	// Missing page → 404.
+	rec = docsServe(t, docs, admin, auth, docsRequest(http.MethodPut, "/api/v1/admin/docs/nope/en", cookie,
+		`{"title":"x","lang":"en","bodyMd":"# x","audience":"user","enabled":true,"sortOrder":0}`))
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("missing update status = %d, want 404: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestAdminDocs_DeleteSucceeds — DELETE removes a non-system page (200) and the
+// page disappears from the public list.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminDocs_DeleteSucceeds(t *testing.T) {
+	docs, admin, auth := newDocsHandlers(t)
+	cookie := adminCookie(t, auth)
+	createDocViaAdmin(t, docs, admin, auth, cookie, `{"title":"Remove me","lang":"en","category":"c","bodyMd":"# Hi","audience":"user"}`)
+
+	rec := docsServe(t, docs, admin, auth, docsRequest(http.MethodDelete, "/api/v1/admin/docs/remove-me/en", cookie, ""))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("delete status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// The page is gone from the public list.
+	assertDocNotInPublicList(t, docs, admin, auth, "remove-me")
+}
+
+// TestAdminDocs_ToggleInvalidBody — a malformed toggle body is 400.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminDocs_ToggleInvalidBody(t *testing.T) {
+	docs, admin, auth := newDocsHandlers(t)
+	cookie := adminCookie(t, auth)
+	createDocViaAdmin(t, docs, admin, auth, cookie, `{"title":"Toggle body","lang":"en","category":"c","bodyMd":"# Hi","audience":"user"}`)
+
+	rec := docsServe(t, docs, admin, auth, docsRequest(http.MethodPost, "/api/v1/admin/docs/toggle-body/en/toggle", cookie, "{not json"))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("invalid toggle body status = %d, want 400: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestDocs_GetDoc_DisabledReturns404 — a disabled page is never served to the
+// public, even when the id is known.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestDocs_GetDoc_DisabledReturns404(t *testing.T) {
+	docs, admin, auth := newDocsHandlers(t)
+	cookie := adminCookie(t, auth)
+	createDocViaAdmin(t, docs, admin, auth, cookie, `{"title":"Disable get","lang":"en","category":"c","bodyMd":"# Hi","audience":"user"}`)
+
+	// Disable it.
+	rec := docsServe(t, docs, admin, auth, docsRequest(http.MethodPost, "/api/v1/admin/docs/disable-get/en/toggle", cookie, `{"enabled":false}`))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("toggle status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// Public GET → 404.
+	rec = docsServe(t, docs, admin, auth, docsRequest(http.MethodGet, "/api/v1/docs/disable-get", nil, ""))
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("disabled get status = %d, want 404: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestDocs_GetDoc_CacheHit — fetching the same page twice returns identical
+// rendered HTML (the render cache is populated on first miss then reused).
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestDocs_GetDoc_CacheHit(t *testing.T) {
+	docs, admin, auth := newDocsHandlers(t)
+	cookie := adminCookie(t, auth)
+	createDocViaAdmin(t, docs, admin, auth, cookie, `{"title":"Cache me","lang":"en","category":"c","bodyMd":"# Cached","audience":"user"}`)
+
+	first := docsServe(t, docs, admin, auth, docsRequest(http.MethodGet, "/api/v1/docs/cache-me", nil, ""))
+	if first.Code != http.StatusOK {
+		t.Fatalf("first get status = %d: %s", first.Code, first.Body.String())
+	}
+
+	var firstDTO docRenderedDTO
+	if err := json.Unmarshal(first.Body.Bytes(), &firstDTO); err != nil {
+		t.Fatalf("decode first: %v", err)
+	}
+
+	second := docsServe(t, docs, admin, auth, docsRequest(http.MethodGet, "/api/v1/docs/cache-me", nil, ""))
+	if second.Code != http.StatusOK {
+		t.Fatalf("second get status = %d: %s", second.Code, second.Body.String())
+	}
+
+	var secondDTO docRenderedDTO
+	if err := json.Unmarshal(second.Body.Bytes(), &secondDTO); err != nil {
+		t.Fatalf("decode second: %v", err)
+	}
+
+	if firstDTO.HTML != secondDTO.HTML || firstDTO.HTML == "" {
+		t.Fatalf("cache hit HTML mismatch: %q vs %q", firstDTO.HTML, secondDTO.HTML)
+	}
+}
+
+// TestDocs_StoreError_Returns500 — once the store is closed, every docs
+// endpoint surfaces a 500 (the internal-error branches the happy-path tests
+// cannot reach). The admin guard still passes because it uses the separate
+// session store, not the docs store.
+//
+//nolint:paralleltest // serial: owns a SQLite fixture that is intentionally closed
+func TestDocs_StoreError_Returns500(t *testing.T) {
+	authHandler := newAuthHandler(t)
+	st := newAdminStore(t)
+	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
+	docs := httpapi.NewDocsAPIHandler(authHandler, st, logger)
+	admin := httpapi.NewAdminDocs(authHandler, st, docs, logger)
+	cookie := adminCookie(t, authHandler)
+
+	if err := st.Close(); err != nil {
+		t.Fatalf("close store: %v", err)
+	}
+
+	cases := []struct {
+		name string
+		req  *http.Request
+	}{
+		{"public-list", docsRequest(http.MethodGet, "/api/v1/docs", nil, "")},
+		{"public-get", docsRequest(http.MethodGet, "/api/v1/docs/anything", nil, "")},
+		{"admin-list", docsRequest(http.MethodGet, "/api/v1/admin/docs", cookie, "")},
+		{"admin-create", docsRequest(http.MethodPost, "/api/v1/admin/docs", cookie, `{"title":"x","lang":"en","bodyMd":"# x","audience":"user"}`)},
+		{"admin-update", docsRequest(http.MethodPut, "/api/v1/admin/docs/x/en", cookie, `{"title":"x","lang":"en","bodyMd":"# x","audience":"user","enabled":true,"sortOrder":0}`)},
+		{"admin-delete", docsRequest(http.MethodDelete, "/api/v1/admin/docs/x/en", cookie, "")},
+		{"admin-toggle", docsRequest(http.MethodPost, "/api/v1/admin/docs/x/en/toggle", cookie, `{"enabled":false}`)},
+	}
+
+	for _, tc := range cases {
+		rec := docsServe(t, docs, admin, authHandler, tc.req)
+		if rec.Code != http.StatusInternalServerError {
+			t.Errorf("%s: status = %d, want 500: %s", tc.name, rec.Code, rec.Body.String())
+		}
+	}
+}
+
+// TestAdminDocs_MalformedJSON — create and update endpoints reject malformed
+// JSON bodies with 400.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminDocs_MalformedJSON(t *testing.T) {
+	docs, admin, auth := newDocsHandlers(t)
+	cookie := adminCookie(t, auth)
+
+	// Malformed create body → 400.
+	rec := docsServe(t, docs, admin, auth, docsRequest(http.MethodPost, "/api/v1/admin/docs", cookie, "{not json"))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("malformed create status = %d, want 400: %s", rec.Code, rec.Body.String())
+	}
+
+	// Malformed update body → 400.
+	createDocViaAdmin(t, docs, admin, auth, cookie, `{"title":"JSON test","lang":"en","bodyMd":"# x","audience":"user"}`)
+	rec = docsServe(t, docs, admin, auth, docsRequest(http.MethodPut, "/api/v1/admin/docs/json-test/en", cookie, "{not json"))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("malformed update status = %d, want 400: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestAdminDocs_DeleteSystemPage — deleting a system page returns 403.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminDocs_DeleteSystemPage(t *testing.T) {
+	authHandler := newAuthHandler(t)
+	st := newAdminStore(t)
+	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
+	docs := httpapi.NewDocsAPIHandler(authHandler, st, logger)
+	admin := httpapi.NewAdminDocs(authHandler, st, docs, logger)
+	cookie := adminCookie(t, authHandler)
+
+	// Seed a system page directly via the store (the admin create endpoint
+	// always sets is_system=false).
+	stamp := "2026-01-01T00:00:00Z"
+	sys := store.DocumentationPageRow{
+		ID: "sys-delete-test", Lang: "en", Title: "Sys", BodyMD: "# Sys", Audience: "admin",
+		Enabled: true, IsSystem: true, CreatedAt: stamp, UpdatedAt: stamp,
+	}
+	if err := st.InsertDocumentationPage(context.Background(), sys); err != nil {
+		t.Fatalf("insert system page: %v", err)
+	}
+
+	rec := docsServe(t, docs, admin, authHandler, docsRequest(http.MethodDelete, "/api/v1/admin/docs/sys-delete-test/en", cookie, ""))
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("delete system page status = %d, want 403: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestAdminDocs_ToggleMissingPage — toggling a missing page returns 404.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminDocs_ToggleMissingPage(t *testing.T) {
+	docs, admin, auth := newDocsHandlers(t)
+	cookie := adminCookie(t, auth)
+
+	rec := docsServe(t, docs, admin, auth, docsRequest(http.MethodPost, "/api/v1/admin/docs/nope/en/toggle", cookie, `{"enabled":true}`))
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("toggle missing status = %d, want 404: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestAdminDocs_CreateDuplicate — creating a page with an existing slug/lang
+// returns 409 Conflict.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminDocs_CreateDuplicate(t *testing.T) {
+	docs, admin, auth := newDocsHandlers(t)
+	cookie := adminCookie(t, auth)
+	createDocViaAdmin(t, docs, admin, auth, cookie, `{"title":"Dup me","lang":"en","bodyMd":"# x","audience":"user"}`)
+
+	rec := docsServe(t, docs, admin, auth, docsRequest(http.MethodPost, "/api/v1/admin/docs", cookie, `{"title":"Dup me","lang":"en","bodyMd":"# x","audience":"user"}`))
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("duplicate create status = %d, want 409: %s", rec.Code, rec.Body.String())
 	}
 }
