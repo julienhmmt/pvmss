@@ -9,7 +9,7 @@ GREEN := \033[0;32m
 RED   := \033[0;31m
 NC    := \033[0m
 
-# Répertoires (v0.4 — le legacy backend/ + frontend/ a été supprimé au T16)
+# Répertoires
 SERVER_DIR   := server
 WEB_DIR      := web
 
@@ -58,7 +58,7 @@ dev-logs: up logs ## Démarre et affiche les logs
 
 build: ## Construit le binaire Go v0.4 et l'image Docker dev
 	@echo "$(BLUE)Construction du binaire Go (v0.4 server)...$(NC)"
-	go build -C $(SERVER_DIR) -o pvmss ./cmd/pvmss
+	go build -C $(SERVER_DIR) -o ../pvmss ./cmd/pvmss
 	@echo "$(GREEN)✓ Binaire construit$(NC)"
 	@echo "$(BLUE)Construction de l'image Docker dev...$(NC)"
 	$(COMPOSE_DEV) build
@@ -100,9 +100,9 @@ clean: ## Nettoie les artéfacts de build et arrête les conteneurs dev
 	@echo "$(GREEN)✓ Nettoyage terminé$(NC)"
 
 # =============================================================================
-# Commandes de test et qualification (v0.4)
+# Commandes de test et qualification
 
-qualif: server-fmt server-lint server-test ## Lance tous les contrôles qualité v0.4 (fmt → lint → tests) puis dev
+qualif: server-fmt server-lint server-test ## Lance tous les contrôles qualité (fmt → lint → tests) puis dev
 	@echo "$(GREEN)✓ Contrôles et tests réussis$(NC)"
 	@echo ""
 	@echo "$(BLUE)Démarrage de l'application...$(NC)"
@@ -144,7 +144,7 @@ buildkit-status: ## Vérifie le statut de buildkit
 
 # =============================================================================
 # Commandes Next-gen (server/ Go + web/ SvelteKit)
-# Module Go séparé `pvmss/server` et app SvelteKit `pvmss-web` (v0.4 rewrite).
+# Module Go séparé `pvmss/server` et app SvelteKit `pvmss-web`.
 # Non connectés au Makefile principal — outillage indépendant.
 
 # --- server/ (Go backend, module pvmss/server) ---
