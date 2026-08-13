@@ -64,14 +64,17 @@ func TestCreateCloudInitTemplate_Success(t *testing.T) {
 	}
 
 	found := false
+
 	for _, t2 := range adminList {
 		if t2.ID == tmpl.ID {
 			found = true
+
 			if !t2.Enabled {
 				t.Error("template should be enabled in admin list")
 			}
 		}
 	}
+
 	if !found {
 		t.Error("created template not found in admin list")
 	}
@@ -80,6 +83,7 @@ func TestCreateCloudInitTemplate_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CloudInitTemplates: %v", err)
 	}
+
 	if !cloudInitTemplateListContains(enabled, tmpl.ID) {
 		t.Error("created template not found in enabled-only catalog reader")
 	}
@@ -150,6 +154,7 @@ func TestCloudInitTemplates_EnabledOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CloudInitTemplates: %v", err)
 	}
+
 	if cloudInitTemplateListContains(enabled, tmpl.ID) {
 		t.Error("disabled template should not appear in CloudInitTemplates (enabled-only)")
 	}
@@ -162,6 +167,7 @@ func TestCloudInitTemplates_EnabledOnly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListCloudInitTemplates: %v", err)
 	}
+
 	if !cloudInitTemplateListContains(adminList, tmpl.ID) {
 		t.Error("disabled template should appear in admin list (ListCloudInitTemplates)")
 	}
@@ -192,6 +198,7 @@ func TestSetCloudInitTemplateEnabled_ToggleIsUpsert(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CloudInitTemplates: %v", err)
 	}
+
 	if !cloudInitTemplateListContains(enabled, tmpl.ID) {
 		t.Error("re-enabled template should appear in CloudInitTemplates")
 	}
@@ -271,6 +278,7 @@ func TestDeleteCloudInitTemplate_NoCascade(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListCloudInitTemplates: %v", err)
 	}
+
 	if cloudInitTemplateListContains(adminList, tmpl.ID) {
 		t.Error("deleted template still in admin list")
 	}
@@ -297,5 +305,6 @@ func cloudInitTemplateListContains(list []catalog.CloudInitTemplate, id string) 
 			return true
 		}
 	}
+
 	return false
 }
