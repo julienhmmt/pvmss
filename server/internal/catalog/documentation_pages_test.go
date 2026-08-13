@@ -35,10 +35,21 @@ func openCatalogDocsStore(t *testing.T) *store.Store {
 	return st
 }
 
-//nolint:gocyclo,paralleltest // round trip owns shared SQLite fixture and covers each boundary
+//nolint:paralleltest // round trip owns a shared SQLite fixture across ordered steps
 func TestDocumentationPages_CatalogRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	st := openCatalogDocsStore(t)
+
+	testDocCreateAndDuplicate(ctx, t, st)
+	testDocEnFallback(ctx, t, st)
+	testDocUpdate(ctx, t, st)
+	testDocToggleAndDelete(ctx, t, st)
+}
+
+// testDocCreateAndDuplicate verifies slug derivation, the enabled default, the
+// duplicate-slang rejection, and same-slug/different-lang coexistence.
+func testDocCreateAndDuplicate(ctx context.Context, t *testing.T, st *store.Store) {
+	t.Helper()
 
 	// Create derives the slug and inserts enabled.
 	page, err := catalog.CreateDocumentationPage(ctx, st, "Getting started", "en", "Intro", "# Hello", "user")
@@ -59,8 +70,13 @@ func TestDocumentationPages_CatalogRoundTrip(t *testing.T) {
 	if _, err := catalog.CreateDocumentationPage(ctx, st, "Getting started", "fr", "Intro", "# Bonjour", "user"); err != nil {
 		t.Fatalf("create fr: %v", err)
 	}
+}
 
-	// en fallback: requesting fr returns fr; requesting de falls back to en.
+// testDocEnFallback verifies lang resolution: fr returns fr, de falls back to
+// en, and an unknown id is not found.
+func testDocEnFallback(ctx context.Context, t *testing.T, st *store.Store) {
+	t.Helper()
+
 	fr, err := catalog.GetDocumentationPage(ctx, st, "getting-started", "fr")
 	if err != nil || fr.Lang != "fr" || !strings.Contains(fr.BodyMD, "Bonjour") {
 		t.Fatalf("get fr = %+v, err %v", fr, err)
@@ -75,8 +91,12 @@ func TestDocumentationPages_CatalogRoundTrip(t *testing.T) {
 	if _, err := catalog.GetDocumentationPage(ctx, st, "nope", "en"); !errors.Is(err, catalog.ErrDocumentationPageNotFound) {
 		t.Fatalf("get unknown err = %v, want ErrDocumentationPageNotFound", err)
 	}
+}
 
-	// Update changes mutable fields; id/lang immutable.
+// testDocUpdate verifies mutable-field updates and the not-found path.
+func testDocUpdate(ctx context.Context, t *testing.T, st *store.Store) {
+	t.Helper()
+
 	updated, err := catalog.UpdateDocumentationPage(ctx, st, "getting-started", "en", catalog.DocumentationPageUpdate{
 		Title: "Getting Started", Category: "Intro", BodyMD: "# Hello world", Audience: "user", Enabled: true, SortOrder: 5,
 	})
@@ -94,6 +114,12 @@ func TestDocumentationPages_CatalogRoundTrip(t *testing.T) {
 	}); !errors.Is(err, catalog.ErrDocumentationPageNotFound) {
 		t.Fatalf("update unknown err = %v, want ErrDocumentationPageNotFound", err)
 	}
+}
+
+// testDocToggleAndDelete verifies enabled toggling, the enabled-only list
+// filter, non-system deletion, and the delete not-found path.
+func testDocToggleAndDelete(ctx context.Context, t *testing.T, st *store.Store) {
+	t.Helper()
 
 	// Toggle flips enabled.
 	if err := catalog.SetDocumentationPageEnabled(ctx, st, "getting-started", "en", false); err != nil {
