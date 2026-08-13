@@ -73,7 +73,7 @@ var fr006Table = map[string]struct {
 	"V10": {"T06", "Brouillon de création de VM", ""},
 	"V11": {"T06", "Suivi des tâches", ""},
 	"V12": {"T05", "Démarrer / arrêter / redémarrer", ""},
-	"V13": {"", "Actions groupées", "gap"},
+	"V13": {"T17", "Actions groupées", ""},
 	"V14": {"T05", "Supprimer une VM", ""},
 	"V15": {"T05", "Consulter le détail d'une VM", ""},
 	"V16": {"T05", "Renommer une VM", ""},
@@ -100,7 +100,7 @@ var fr006Table = map[string]struct {
 	"X08": {"T12", "Gérer les limites VM", ""},
 	"X09": {"T12", "Gérer les limites par nœud", ""},
 	"X10": {"T11", "Gérer les profils VM", ""},
-	"X11": {"", "Modèles cloud-init", "gap"},
+	"X11": {"T18", "Modèles cloud-init", ""},
 	"X12": {"", "Configurer SFTP cloud-init", "deliberate"},
 	"X13": {"", "Administer toutes les VMs", "gap"},
 	"X14": {"T05", "Journal d'audit", ""},
@@ -113,10 +113,10 @@ var fr006Table = map[string]struct {
 	// Plateforme (P01-P06) — all none (real gaps)
 	"P01": {"", "Assistant d'installation", "gap"},
 	"P02": {"", "Consulter la documentation", "gap"},
-	"P03": {"", "Changer la langue", "gap"},
-	"P04": {"", "Changer le thème", "gap"},
-	"P05": {"", "État du service / mode hors ligne", "gap"},
-	"P06": {"", "Page d'accueil publique", "gap"},
+	"P03": {"T19", "Changer la langue", ""},
+	"P04": {"T19", "Changer le thème", ""},
+	"P05": {"T19", "État du service / mode hors ligne", ""},
+	"P06": {"T19", "Page d'accueil publique", ""},
 }
 
 // Generate walks the fiche directories under repoRoot/.claude/v0.4/ and
