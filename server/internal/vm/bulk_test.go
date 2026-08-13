@@ -80,7 +80,13 @@ func TestBulkAction_AllSuccessBatch(t *testing.T) {
 		{Cluster: testClusterName, VMID: 124},
 	}
 
-	results := vm.BulkAction(context.Background(), resolver, aliceIdentity(), targets, "start", cluster.Fake{}, noopAudit{}, noopRefresher{})
+	results := vm.BulkAction(context.Background(), vm.BulkDeps{
+		Resolver:  resolver,
+		Actor:     aliceIdentity(),
+		Writer:    cluster.Fake{},
+		Audit:     noopAudit{},
+		Refresher: noopRefresher{},
+	}, targets, "start")
 	if len(results) != 2 {
 		t.Fatalf("results = %d, want 2", len(results))
 	}
@@ -116,7 +122,13 @@ func TestBulkAction_MixedBatch(t *testing.T) {
 		{Cluster: testClusterName, VMID: 103},
 	}
 
-	results := vm.BulkAction(context.Background(), resolver, aliceIdentity(), targets, "start", cluster.Fake{}, noopAudit{}, noopRefresher{})
+	results := vm.BulkAction(context.Background(), vm.BulkDeps{
+		Resolver:  resolver,
+		Actor:     aliceIdentity(),
+		Writer:    cluster.Fake{},
+		Audit:     noopAudit{},
+		Refresher: noopRefresher{},
+	}, targets, "start")
 	if len(results) != 3 {
 		t.Fatalf("results = %d, want 3", len(results))
 	}
@@ -151,7 +163,13 @@ func TestBulkAction_DuplicateTargetProcessedTwice(t *testing.T) {
 		{Cluster: testClusterName, VMID: 101},
 	}
 
-	results := vm.BulkAction(context.Background(), resolver, aliceIdentity(), targets, "start", cluster.Fake{}, noopAudit{}, noopRefresher{})
+	results := vm.BulkAction(context.Background(), vm.BulkDeps{
+		Resolver:  resolver,
+		Actor:     aliceIdentity(),
+		Writer:    cluster.Fake{},
+		Audit:     noopAudit{},
+		Refresher: noopRefresher{},
+	}, targets, "start")
 	if len(results) != 2 {
 		t.Fatalf("results = %d, want 2", len(results))
 	}
@@ -173,7 +191,13 @@ func TestBulkAction_SingleTargetBatch(t *testing.T) {
 	resolver := bulkTestResolver(t)
 	targets := []vm.BulkTarget{{Cluster: testClusterName, VMID: 101}}
 
-	results := vm.BulkAction(context.Background(), resolver, aliceIdentity(), targets, "start", cluster.Fake{}, noopAudit{}, noopRefresher{})
+	results := vm.BulkAction(context.Background(), vm.BulkDeps{
+		Resolver:  resolver,
+		Actor:     aliceIdentity(),
+		Writer:    cluster.Fake{},
+		Audit:     noopAudit{},
+		Refresher: noopRefresher{},
+	}, targets, "start")
 	if len(results) != 1 {
 		t.Fatalf("results = %d, want 1", len(results))
 	}
@@ -196,7 +220,13 @@ func TestBulkAction_FullCeilingUnder2s(t *testing.T) {
 	}
 
 	start := time.Now()
-	results := vm.BulkAction(context.Background(), resolver, aliceIdentity(), targets, "start", cluster.Fake{}, noopAudit{}, noopRefresher{})
+	results := vm.BulkAction(context.Background(), vm.BulkDeps{
+		Resolver:  resolver,
+		Actor:     aliceIdentity(),
+		Writer:    cluster.Fake{},
+		Audit:     noopAudit{},
+		Refresher: noopRefresher{},
+	}, targets, "start")
 	elapsed := time.Since(start)
 
 	if len(results) != vm.MaxBulkTargets {
@@ -227,7 +257,13 @@ func TestBulkAction_AuditRowsMatchSuccesses(t *testing.T) {
 		{Cluster: testClusterName, VMID: 124},
 	}
 
-	results := vm.BulkAction(context.Background(), resolver, aliceIdentity(), targets, "start", cluster.Fake{}, st, noopRefresher{})
+	results := vm.BulkAction(context.Background(), vm.BulkDeps{
+		Resolver:  resolver,
+		Actor:     aliceIdentity(),
+		Writer:    cluster.Fake{},
+		Audit:     st,
+		Refresher: noopRefresher{},
+	}, targets, "start")
 	if len(results) != 3 {
 		t.Fatalf("results = %d, want 3", len(results))
 	}
@@ -262,7 +298,13 @@ func TestBulkAction_NonExistentClusterError(t *testing.T) {
 		{Cluster: "nonexistent", VMID: 200},
 	}
 
-	results := vm.BulkAction(context.Background(), resolver, aliceIdentity(), targets, "start", cluster.Fake{}, noopAudit{}, noopRefresher{})
+	results := vm.BulkAction(context.Background(), vm.BulkDeps{
+		Resolver:  resolver,
+		Actor:     aliceIdentity(),
+		Writer:    cluster.Fake{},
+		Audit:     noopAudit{},
+		Refresher: noopRefresher{},
+	}, targets, "start")
 	if len(results) != 2 {
 		t.Fatalf("results = %d, want 2", len(results))
 	}

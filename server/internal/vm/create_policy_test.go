@@ -87,7 +87,14 @@ func TestCreate_PolicyGuardsRejectBeforeAllocation(t *testing.T) {
 				req.MemoryMB = 128
 			}
 
-			_, err = vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, fixture.store, fixture.fake, fixture.fake, fixture.store, slog.New(slog.DiscardHandler), service)
+			_, err = vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{
+				Store:    fixture.store,
+				Creator:  fixture.fake,
+				Pusher:   fixture.fake,
+				Audit:    fixture.store,
+				Log:      slog.New(slog.DiscardHandler),
+				Services: []*policy.Policy{service},
+			})
 			if !errors.Is(err, testCase.wantErr) {
 				t.Fatalf("Create error = %v, want %v", err, testCase.wantErr)
 			}

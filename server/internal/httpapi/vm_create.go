@@ -98,7 +98,14 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := vm.Create(r.Context(), identity, req.Cluster, req, h.store, h.creator, h.pusher, h.store, h.log, h.policy)
+	result, err := vm.Create(r.Context(), identity, req.Cluster, req, vm.CreateDeps{
+		Store:    h.store,
+		Creator:  h.creator,
+		Pusher:   h.pusher,
+		Audit:    h.store,
+		Log:      h.log,
+		Services: []*policy.Policy{h.policy},
+	})
 	if err != nil {
 		h.writeCreateFailure(w, err)
 		return

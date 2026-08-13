@@ -119,6 +119,18 @@ type CreateResult struct {
 	CloudInitPushError  string
 }
 
+// CreateDeps groups the collaborators vm.Create needs beyond the per-request
+// arguments (ctx, actor, clusterName, req). Bundling them keeps Create's
+// parameter count under go:S107's ceiling without losing any dependency.
+type CreateDeps struct {
+	Store    *store.Store
+	Creator  cluster.Creator
+	Pusher   CloudInitPusher
+	Audit    AuditRecorder
+	Log      *slog.Logger
+	Services []*policy.Policy
+}
+
 // Create validates a creation request and dispatches it as an asynchronous
 // cluster task (T06 data-model.md, steps in order):
 //
@@ -142,14 +154,14 @@ type CreateResult struct {
 // would tell the client creation failed when it did not — the same
 // log-don't-fail rule the task-status handler already applies to a failed
 // post-completion invalidation (tasks.go).
-func Create(ctx context.Context, actor auth.Identity, clusterName string, req CreateRequest, st *store.Store, creator cluster.Creator, pusher CloudInitPusher, audit AuditRecorder, log *slog.Logger, services ...*policy.Policy) (CreateResult, error) {
-	policyService := selectPolicyService(st, services)
+func Create(ctx context.Context, actor auth.Identity, clusterName string, req CreateRequest, deps CreateDeps) (CreateResult, error) {
+	policyService := selectPolicyService(deps.Store, deps.Services)
 
 	if actor.Pool == "" {
 		return CreateResult{}, ErrNoPool
 	}
 
-	plan, err := planCreate(ctx, policyService, st, clusterName, actor, req)
+	plan, err := planCreate(ctx, policyService, deps.Store, clusterName, actor, req)
 	if err != nil {
 		return CreateResult{}, err
 	}
@@ -160,13 +172,13 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 	// applies to node/storage/bridge/ISO catalog membership.
 	var cloudTemplate catalog.CloudInitTemplate
 	if req.CloudInitTemplateID != "" {
-		cloudTemplate, err = catalog.FindCloudInitTemplate(ctx, st, clusterName, req.CloudInitTemplateID)
+		cloudTemplate, err = catalog.FindCloudInitTemplate(ctx, deps.Store, clusterName, req.CloudInitTemplateID)
 		if err != nil {
 			return CreateResult{}, fmt.Errorf("%w: cloud-init template %q is not approved for this cluster", ErrNotApproved, req.CloudInitTemplateID)
 		}
 	}
 
-	vmid, err := creator.NextVMID(ctx)
+	vmid, err := deps.Creator.NextVMID(ctx)
 	if err != nil {
 		return CreateResult{}, fmt.Errorf("%w: allocate vmid: %w", ErrClusterCreate, err)
 	}
@@ -192,7 +204,7 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 		spec.ISO = &cluster.ISOSpec{Storage: req.ISO.Storage, File: req.ISO.File}
 	}
 
-	upid, err := creator.CreateVM(ctx, spec)
+	upid, err := deps.Creator.CreateVM(ctx, spec)
 	if err != nil {
 		return CreateResult{}, fmt.Errorf("%w: %w", ErrClusterCreate, err)
 	}
@@ -210,17 +222,17 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 		filename := fmt.Sprintf("%s%d.yml", snippetFilenamePrefix, vmid)
 
 		storage := spec.Disk.Storage
-		if err := st.PutCloudInitSnippet(ctx, clusterName, vmid, storage, filename, cloudTemplate.Content, actor.Username); err != nil {
-			log.Error("cloud-init template store failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+		if err := deps.Store.PutCloudInitSnippet(ctx, clusterName, vmid, storage, filename, cloudTemplate.Content, actor.Username); err != nil {
+			deps.Log.Error("cloud-init template store failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
 			result.CloudInitPushError = err.Error()
-		} else if err := pusher.PushCloudInitSnippet(ctx, spec.Node, storage, filename, vmid, cloudTemplate.Content); err != nil {
-			log.Error("cloud-init template push failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+		} else if err := deps.Pusher.PushCloudInitSnippet(ctx, spec.Node, storage, filename, vmid, cloudTemplate.Content); err != nil {
+			deps.Log.Error("cloud-init template push failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
 			result.CloudInitPushError = err.Error()
 		}
 	}
 
-	if err := audit.RecordAction(ctx, actor.Username, clusterName, vmid, "vm_create"); err != nil {
-		log.Error("record audit failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, vmid, "vm_create"); err != nil {
+		deps.Log.Error("record audit failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
 	}
 
 	return result, nil
