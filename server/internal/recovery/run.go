@@ -76,30 +76,69 @@ func Run(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions) (Summary
 // runFull is the actual orchestration body, separated from Run's initial
 // cluster step for readability. It processes each catalog table in
 // data-model.md's sequence order and accumulates the summary.
-//
-//nolint:gocyclo,funlen // orchestration is inherently sequential
 func runFull(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum Summary) (Summary, error) {
-	// Step 2: enabled_nodes → catalog_nodes
+	if err := stepNodes(ctx, legacyDB, v04DB, opts, &sum); err != nil {
+		return sum, err
+	}
+
+	if err := stepStorages(ctx, legacyDB, v04DB, opts, &sum); err != nil {
+		return sum, err
+	}
+
+	if err := stepBridges(ctx, legacyDB, v04DB, opts, &sum); err != nil {
+		return sum, err
+	}
+
+	if err := stepISOs(ctx, legacyDB, v04DB, opts, &sum); err != nil {
+		return sum, err
+	}
+
+	if err := stepProfiles(ctx, legacyDB, v04DB, opts, &sum); err != nil {
+		return sum, err
+	}
+
+	if err := stepTags(ctx, legacyDB, v04DB, opts, &sum); err != nil {
+		return sum, err
+	}
+
+	if err := stepVMLimits(ctx, legacyDB, v04DB, opts, &sum); err != nil {
+		return sum, err
+	}
+
+	if err := stepNodeLimits(ctx, legacyDB, v04DB, opts, &sum); err != nil {
+		return sum, err
+	}
+
+	return sum, nil
+}
+
+// stepNodes maps enabled_nodes → catalog_nodes (data-model.md step 2).
+func stepNodes(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum *Summary) error {
 	nodeRows, err := mapNodes(ctx, legacyDB)
 	if err != nil {
-		return sum, err
+		return err
 	}
 
 	sum.CatalogNodes.Read = len(nodeRows)
 	for _, r := range nodeRows {
 		if !opts.DryRun {
 			if err := upsertNode(ctx, v04DB, opts.ClusterName, r); err != nil {
-				return sum, err
+				return err
 			}
 		}
 
 		sum.CatalogNodes.Written++
 	}
 
-	// Step 3: enabled_storages → catalog_storages (with live node expansion)
+	return nil
+}
+
+// stepStorages maps enabled_storages → catalog_storages with live node
+// expansion (FR-011). Skips are recorded but never abort the run.
+func stepStorages(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum *Summary) error {
 	storageRows, storageSkips, err := mapStorages(ctx, legacyDB, opts.ClusterName, opts.StorageResolver)
 	if err != nil {
-		return sum, err
+		return err
 	}
 
 	sum.CatalogStorages.Read = len(storageRows) + len(storageSkips)
@@ -113,34 +152,44 @@ func runFull(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum 
 	for _, r := range storageRows {
 		if !opts.DryRun {
 			if err := upsertStorage(ctx, v04DB, opts.ClusterName, r); err != nil {
-				return sum, err
+				return err
 			}
 		}
 
 		sum.CatalogStorages.Written++
 	}
 
-	// Step 4: enabled_vmbrs → catalog_bridges
+	return nil
+}
+
+// stepBridges maps enabled_vmbrs → catalog_bridges (data-model.md step 4).
+func stepBridges(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum *Summary) error {
 	bridgeRows, err := mapBridges(ctx, legacyDB)
 	if err != nil {
-		return sum, err
+		return err
 	}
 
 	sum.CatalogBridges.Read = len(bridgeRows)
 	for _, r := range bridgeRows {
 		if !opts.DryRun {
 			if err := upsertBridge(ctx, v04DB, opts.ClusterName, r); err != nil {
-				return sum, err
+				return err
 			}
 		}
 
 		sum.CatalogBridges.Written++
 	}
 
-	// Step 5: enabled_isos → catalog_isos (volid split)
+	return nil
+}
+
+// stepISOs maps enabled_isos → catalog_isos with volid split (step 5).
+//
+//nolint:dupl // sibling step* helpers share this exact map→skip→upsert shape by design
+func stepISOs(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum *Summary) error {
 	isoRows, isoSkips, err := mapISOs(ctx, legacyDB)
 	if err != nil {
-		return sum, err
+		return err
 	}
 
 	sum.CatalogISOs.Read = len(isoRows) + len(isoSkips)
@@ -154,17 +203,23 @@ func runFull(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum 
 	for _, r := range isoRows {
 		if !opts.DryRun {
 			if err := upsertISO(ctx, v04DB, opts.ClusterName, r); err != nil {
-				return sum, err
+				return err
 			}
 		}
 
 		sum.CatalogISOs.Written++
 	}
 
-	// Step 6: vm_profiles → catalog_profiles (JSON parse)
+	return nil
+}
+
+// stepProfiles maps vm_profiles → catalog_profiles with JSON parse (step 6).
+//
+//nolint:dupl // sibling step* helpers share this exact map→skip→upsert shape by design
+func stepProfiles(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum *Summary) error {
 	profileRows, profileSkips, err := MapProfiles(ctx, legacyDB)
 	if err != nil {
-		return sum, err
+		return err
 	}
 
 	sum.CatalogProfiles.Read = len(profileRows) + len(profileSkips)
@@ -178,34 +233,42 @@ func runFull(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum 
 	for _, r := range profileRows {
 		if !opts.DryRun {
 			if err := upsertProfile(ctx, v04DB, opts.ClusterName, r); err != nil {
-				return sum, err
+				return err
 			}
 		}
 
 		sum.CatalogProfiles.Written++
 	}
 
-	// Step 7: tags → catalog_tags (default palette)
+	return nil
+}
+
+// stepTags maps tags → catalog_tags with the default palette (step 7).
+func stepTags(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum *Summary) error {
 	tagRows, err := MapTags(ctx, legacyDB)
 	if err != nil {
-		return sum, err
+		return err
 	}
 
 	sum.CatalogTags.Read = len(tagRows)
 	for _, r := range tagRows {
 		if !opts.DryRun {
 			if err := upsertTag(ctx, v04DB, opts.ClusterName, r); err != nil {
-				return sum, err
+				return err
 			}
 		}
 
 		sum.CatalogTags.Written++
 	}
 
-	// Step 8: vm_limits → vm_limits (5 fields only, SC-002)
+	return nil
+}
+
+// stepVMLimits maps vm_limits → vm_limits (5 fields only, SC-002, step 8).
+func stepVMLimits(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum *Summary) error {
 	vmLimits, err := mapVMLimits(ctx, legacyDB)
 	if err != nil {
-		return sum, err
+		return err
 	}
 
 	sum.VMLimits.Read = 1
@@ -213,30 +276,34 @@ func runFull(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum 
 
 	if !opts.DryRun {
 		if err := upsertVMLimits(ctx, v04DB, opts.ClusterName, vmLimits); err != nil {
-			return sum, err
+			return err
 		}
 	}
 
 	sum.VMLimits.Written = 1
 
-	// Step 9: node_limits → node_limits
+	return nil
+}
+
+// stepNodeLimits maps node_limits → node_limits (data-model.md step 9).
+func stepNodeLimits(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum *Summary) error {
 	nodeLimitRows, err := mapNodeLimits(ctx, legacyDB)
 	if err != nil {
-		return sum, err
+		return err
 	}
 
 	sum.NodeLimits.Read = len(nodeLimitRows)
 	for _, r := range nodeLimitRows {
 		if !opts.DryRun {
 			if err := upsertNodeLimits(ctx, v04DB, opts.ClusterName, r); err != nil {
-				return sum, err
+				return err
 			}
 		}
 
 		sum.NodeLimits.Written++
 	}
 
-	return sum, nil
+	return nil
 }
 
 // RenderSummary produces the human-readable stdout output per

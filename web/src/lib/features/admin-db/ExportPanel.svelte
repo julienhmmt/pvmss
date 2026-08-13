@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getDbOpsContext } from './dbOps.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 
 	const store = getDbOpsContext();
 </script>
@@ -14,12 +15,7 @@
 		<p role="alert" class="rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">{store.exportError}</p>
 	{/if}
 
-	<button
-		type="button"
-		class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-		disabled={store.exporting}
-		onclick={() => void store.exportDatabase()}
-	>
+	<Button disabled={store.exporting} onclick={() => void store.exportDatabase()}>
 		{store.exporting ? 'Exporting…' : 'Export'}
-	</button>
+	</Button>
 </section>

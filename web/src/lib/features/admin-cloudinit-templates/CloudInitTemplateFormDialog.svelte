@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Button from '$lib/shared/ui/Button.svelte';
+
 	interface Props {
 		showForm: boolean;
 		editingId: string | null;
@@ -58,20 +60,10 @@
 					></textarea>
 				</div>
 				<div class="flex justify-end gap-2 pt-2">
-					<button
-						type="button"
-						class="rounded-md px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
-						onclick={onCancel}
-					>
-						Cancel
-					</button>
-					<button
-						type="submit"
-						class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-						disabled={saving}
-					>
+					<Button variant="ghost" onclick={onCancel}>Cancel</Button>
+					<Button type="submit" disabled={saving}>
 						{saving ? 'Saving…' : editingId ? 'Save' : 'Create'}
-					</button>
+					</Button>
 				</div>
 			</form>
 		</div>

@@ -11,8 +11,6 @@ services:
     ports:
       - "50000:50000/tcp"
     volumes:
-      # - ./backend/settings.dev.json:/app/settings.json
-      - ./app.log:/app/debug.log
       - ./pvmss.db:/app/pvmss.db
       - ./pvmss_snippets_ed25519:/app/pvmss_snippets_ed25519:ro
     deploy:
@@ -21,51 +19,32 @@ services:
           cpus: '1'
           memory: 256M
 
-  # pvmss-legacy:
-  #   image: jhmmt/pvmss:0.3.0
-  #   restart: unless-stopped
-  #   container_name: pvmss-legacy
-  #   env_file:
-  #     - .env
-  #   ports:
-  #     - "50001:50000/tcp"
-  #   volumes:
-  #     - ./backend/settings.dev.json:/app/settings.json
-  #     - ./app-legacy.log:/app/debug.log
-  #     - ./pvmss_snippets_ed25519:/app/pvmss_snippets_ed25519:ro
-  #   deploy:
-  #     resources:
-  #       limits:
-  #         cpus: '1'
-  #         memory: 256M
-
-  frontend-dev:
+  web-dev:
     # Bun installs deps; Node runs the Vite dev server. Bun cannot run Vite's
     # WebSocket dev-proxy (its http.request emits 'response' instead of
     # 'upgrade' for 101), which breaks the VNC console WebSocket. See
-    # Dockerfile.frontend-dev.
+    # Dockerfile.web-dev.
     build:
       context: .
-      dockerfile: Dockerfile.frontend-dev
+      dockerfile: Dockerfile.web-dev
     working_dir: /app
     restart: unless-stopped
-    container_name: frontend-dev
+    container_name: web-dev
     env_file:
       - .env
     environment:
-      PUBLIC_API_BASE_URL: ${PUBLIC_API_BASE_URL:-http://localhost:50000}
-      INTERNAL_API_BASE_URL: http://pvmss-dev:50000
+      # Vite proxy target — the Go backend on the docker network.
+      VITE_BACKEND_URL: http://pvmss-dev:50000
       # ORIGIN controls the public base for Vite asset URLs and HMR.
-      # For OrbStack TLS access via https://frontend-dev.pvmss.orb.local (standard port),
-      # set ORIGIN=https://frontend-dev.pvmss.orb.local (no port) in your local .env
+      # For OrbStack TLS access via https://web-dev.pvmss.orb.local (standard port),
+      # set ORIGIN=https://web-dev.pvmss.orb.local (no port) in your local .env
       # (or shell). This makes the HMR client connect via wss://... without :5173.
       ORIGIN: ${ORIGIN:-http://localhost:5173}
-      VITE_BACKEND_URL: http://pvmss-dev:50000
       NODE_ENV: development
     ports:
       - "5173:5173"
     volumes:
-      - ./frontend:/app
+      - ./web:/app
       - /app/node_modules
     command: sh -c "bun install && node node_modules/vite/bin/vite.js dev --host 0.0.0.0 --port 5173"
     depends_on:

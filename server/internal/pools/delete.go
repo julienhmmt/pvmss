@@ -72,7 +72,12 @@ func stopMembers(ctx context.Context, actor auth.Identity, projection *inventory
 			logCascadeError("stop", member, ErrProjectionNotReady)
 			continue
 		}
-		if err := vm.Action(ctx, index, actor, clusterName, member.VMID, "stop", writer, audit, refresher); err != nil {
+		if err := vm.Action(ctx, vm.BulkDeps{
+			Actor:     actor,
+			Writer:    writer,
+			Audit:     audit,
+			Refresher: refresher,
+		}, index, clusterName, member.VMID, "stop"); err != nil {
 			logCascadeError("stop", member, err)
 		}
 	}

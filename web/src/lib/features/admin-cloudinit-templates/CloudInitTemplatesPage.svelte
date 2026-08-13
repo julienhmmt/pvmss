@@ -1,6 +1,11 @@
 <script lang="ts">
 	import type { AdminCloudInitTemplate } from './cloudInitTemplates.svelte';
 	import CloudInitTemplateFormDialog from './CloudInitTemplateFormDialog.svelte';
+	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
+	import Switch from '$lib/shared/ui/Switch.svelte';
+	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	interface Props {
 		templates: AdminCloudInitTemplate[];
@@ -59,89 +64,80 @@
 	<title>Admin Cloud-init Templates — PVMSS</title>
 </svelte:head>
 
-<section class="mx-auto w-full max-w-4xl px-4 py-8">
-	<div class="mb-6 flex items-center justify-between">
-		<h1 class="text-2xl font-semibold tracking-tight">Cloud-init Templates</h1>
-		<button
-			type="button"
-			class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-			onclick={openCreate}
-		>
-			New template
-		</button>
-	</div>
+<PageHeader title="Cloud-init Templates">
+	{#snippet actions()}
+		<Button onclick={openCreate}>New template</Button>
+	{/snippet}
+</PageHeader>
 
-	{#if loading}
-		<p role="status" aria-live="polite" class="text-muted-foreground">Loading…</p>
-	{:else if error}
-		<p role="alert" class="text-destructive">{error}</p>
-	{:else}
-		{#if saveError}
-			<p role="alert" class="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
-				{saveError}
-			</p>
-		{/if}
-
-		<div class="overflow-x-auto rounded-lg border">
-			<table class="w-full text-sm">
-				<thead class="bg-muted/50 text-left">
-					<tr>
-						<th class="px-4 py-2 font-medium">ID</th>
-						<th class="px-4 py-2 font-medium">Label</th>
-						<th class="px-4 py-2 font-medium">Enabled</th>
-						<th class="px-4 py-2 font-medium">Actions</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each templates as template (template.id)}
-						<tr class="border-t">
-							<td class="px-4 py-2 font-mono text-xs">{template.id}</td>
-							<td class="px-4 py-2">{template.label}</td>
-							<td class="px-4 py-2">
-								<button
-									type="button"
-									class="rounded-md px-3 py-1 text-xs font-medium transition-colors {template.enabled
-										? 'bg-primary text-primary-foreground'
-										: 'bg-muted text-muted-foreground hover:bg-muted/80'}"
-									onclick={() => onToggle(template.id, !template.enabled)}
-								>
-									{template.enabled ? 'Enabled' : 'Disabled'}
-								</button>
-							</td>
-							<td class="px-4 py-2">
-								<div class="flex gap-2">
-									<button
-										type="button"
-										class="text-xs text-muted-foreground hover:text-foreground"
-										onclick={() => openEdit(template)}
-									>
-										Edit
-									</button>
-									<button
-										type="button"
-										class="text-xs text-destructive hover:text-destructive/80"
-										onclick={() => onDelete(template.id)}
-									>
-										Delete
-									</button>
-								</div>
-							</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
+{#if loading}
+	<div role="status" aria-live="polite" class="sr-only">Loading…</div>
+	<TableSkeleton columns={4} />
+{:else if error}
+	<p role="alert" class="text-destructive">{error}</p>
+{:else}
+	{#if saveError}
+		<p role="alert" class="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
+			{saveError}
+		</p>
 	{/if}
 
-	<CloudInitTemplateFormDialog
-		{showForm}
-		{editingId}
-		{label}
-		{content}
-		{saving}
-		onLabelChange={(v) => (label = v)}
-		onContentChange={(v) => (content = v)}
-		onCancel={() => (showForm = false)}
-		onSubmit={submitForm}
-	/>
-</section>
+	<div class="overflow-x-auto rounded-lg border border-border">
+		<table class="w-full text-sm">
+			<thead class="bg-muted/50 text-left">
+				<tr>
+					<th class="px-4 py-2 font-medium">ID</th>
+					<th class="px-4 py-2 font-medium">Label</th>
+					<th class="px-4 py-2 font-medium">Enabled</th>
+					<th class="px-4 py-2 font-medium">Actions</th>
+				</tr>
+			</thead>
+			<tbody>
+				{#each templates as template (template.id)}
+					<tr class="border-t border-border">
+						<td class="px-4 py-2 font-mono text-xs">{template.id}</td>
+						<td class="px-4 py-2">{template.label}</td>
+						<td class="px-4 py-2">
+							<span class="inline-flex items-center gap-2">
+								<Switch
+									checked={template.enabled}
+									label={template.enabled ? `Disable ${template.label}` : `Enable ${template.label}`}
+									onToggle={() => onToggle(template.id, !template.enabled)}
+								/>
+								<span class="text-xs text-muted-foreground">
+									{template.enabled ? 'Enabled' : 'Disabled'}
+								</span>
+							</span>
+						</td>
+						<td class="px-4 py-2">
+							<div class="flex gap-2">
+								<Button variant="ghost" size="sm" label={`Edit ${template.label}`} onclick={() => openEdit(template)}>Edit</Button>
+								<Button variant="destructive" size="sm" label={`Delete ${template.label}`} onclick={() => onDelete(template.id)}>Delete</Button>
+							</div>
+						</td>
+					</tr>
+				{:else}
+					<tr><td colspan={4} class="p-0">
+						<EmptyState title="No templates yet">
+							{#snippet actions()}
+								<Button onclick={openCreate}>New template</Button>
+							{/snippet}
+						</EmptyState>
+					</td></tr>
+				{/each}
+			</tbody>
+		</table>
+	</div>
+{/if}
+
+<CloudInitTemplateFormDialog
+	{showForm}
+	{editingId}
+	{label}
+	{content}
+	{saving}
+	onLabelChange={(v) => (label = v)}
+	onContentChange={(v) => (content = v)}
+	onCancel={() => (showForm = false)}
+	onSubmit={submitForm}
+/>

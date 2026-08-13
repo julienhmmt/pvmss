@@ -1,5 +1,7 @@
 <script lang="ts">
 	import type { AdminBridge } from './admin-catalog.svelte';
+	import Switch from '$lib/shared/ui/Switch.svelte';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	interface Props {
 		bridges: AdminBridge[];
@@ -10,7 +12,7 @@
 	let { bridges, toggling, onToggle }: Props = $props();
 </script>
 
-<div class="overflow-x-auto rounded-lg border">
+<div class="overflow-x-auto rounded-lg border border-border">
 	<table class="w-full text-sm">
 		<thead class="bg-muted/50 text-left">
 			<tr>
@@ -22,27 +24,31 @@
 		</thead>
 		<tbody>
 			{#each bridges as bridge (bridge.name + bridge.node)}
-				<tr class="border-t">
+				<tr class="border-t border-border">
 					<td class="px-4 py-2 font-mono">{bridge.name}</td>
 					<td class="px-4 py-2 font-mono">{bridge.node}</td>
 					<td class="px-4 py-2">{bridge.comment || '—'}</td>
 					<td class="px-4 py-2">
-						<button
-							type="button"
-							class="rounded-md px-3 py-1 text-xs font-medium transition-colors {bridge.enabled
-								? 'bg-primary text-primary-foreground'
-								: 'bg-muted text-muted-foreground hover:bg-muted/80'}"
-							disabled={toggling === `bridge:${bridge.name}`}
-							onclick={() => onToggle(bridge.name, !bridge.enabled)}
-						>
-							{#if toggling === `bridge:${bridge.name}`}
-								…
-							{:else}
-								{bridge.enabled ? 'Approved' : 'Approve'}
-							{/if}
-						</button>
+						<span class="inline-flex items-center gap-2" aria-busy={toggling === `bridge:${bridge.name}`}>
+							<Switch
+								checked={bridge.enabled}
+								label={bridge.enabled ? `Revoke approval for ${bridge.name}` : `Approve ${bridge.name}`}
+								onToggle={() => onToggle(bridge.name, !bridge.enabled)}
+							/>
+							<span class="text-xs text-muted-foreground">
+								{#if toggling === `bridge:${bridge.name}`}
+									…
+								{:else}
+									{bridge.enabled ? 'Approved' : 'Approve'}
+								{/if}
+							</span>
+						</span>
 					</td>
 				</tr>
+			{:else}
+				<tr><td colspan={4} class="p-0">
+					<EmptyState title="No bridges found on this cluster." />
+				</td></tr>
 			{/each}
 		</tbody>
 	</table>

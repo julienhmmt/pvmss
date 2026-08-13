@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 	import type { AdminCluster, ClusterInput } from './clusters.svelte';
 
 	interface Props {
@@ -54,8 +55,8 @@
 			<input type="checkbox" bind:checked={tlsInsecureSkipVerify} /> Skip TLS certificate verification
 		</label>
 		<div class="mt-2 flex justify-end gap-2">
-			<button type="button" class="rounded-md border border-border px-3 py-2 text-sm" onclick={onClose}>Cancel</button>
-			<button type="submit" class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground">Save</button>
+			<Button variant="secondary" onclick={onClose}>Cancel</Button>
+			<Button type="submit">Save</Button>
 		</div>
 	</form>
 </Dialog>
