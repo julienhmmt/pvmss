@@ -12,8 +12,6 @@ import (
 // T005: Run calls each per-table function in data-model.md's Sequence order
 // (clusters → nodes → storages → vmbrs → isos → profiles → tags → vm_limits → node_limits).
 // T012: idempotence — running Run twice produces identical row counts (SC-003).
-//
-//nolint:gocyclo // test verifies every table in one function
 func TestRun_FullSequence_WritesAllTables(t *testing.T) {
 	t.Parallel()
 
@@ -77,33 +75,13 @@ func TestRun_FullSequence_WritesAllTables(t *testing.T) {
 	}
 
 	// Verify database contents directly (using "test-cluster" to avoid v0.4 seed data)
-	if count := countRows(t, v04DB, `SELECT COUNT(*) FROM clusters WHERE name = ?`, "test-cluster"); count != 1 {
-		t.Errorf("clusters count = %d, want 1", count)
-	}
-
-	if count := countRows(t, v04DB, `SELECT COUNT(*) FROM catalog_nodes WHERE cluster = ?`, "test-cluster"); count != 2 {
-		t.Errorf("catalog_nodes count = %d, want 2", count)
-	}
-
-	if count := countRows(t, v04DB, `SELECT COUNT(*) FROM catalog_bridges WHERE cluster = ?`, "test-cluster"); count != 1 {
-		t.Errorf("catalog_bridges count = %d, want 1", count)
-	}
-
-	if count := countRows(t, v04DB, `SELECT COUNT(*) FROM catalog_isos WHERE cluster = ?`, "test-cluster"); count != 2 {
-		t.Errorf("catalog_isos count = %d, want 2", count)
-	}
-
-	if count := countRows(t, v04DB, `SELECT COUNT(*) FROM catalog_profiles WHERE cluster = ?`, "test-cluster"); count != 2 {
-		t.Errorf("catalog_profiles count = %d, want 2", count)
-	}
-
-	if count := countRows(t, v04DB, `SELECT COUNT(*) FROM catalog_tags WHERE cluster = ?`, "test-cluster"); count != 3 {
-		t.Errorf("catalog_tags count = %d, want 3 (pvmss + prod + dev)", count)
-	}
-
-	if count := countRows(t, v04DB, `SELECT COUNT(*) FROM node_limits WHERE cluster = ?`, "test-cluster"); count != 2 {
-		t.Errorf("node_limits count = %d, want 2", count)
-	}
+	assertRowCount(t, v04DB, `SELECT COUNT(*) FROM clusters WHERE name = ?`, 1, "test-cluster")
+	assertRowCount(t, v04DB, `SELECT COUNT(*) FROM catalog_nodes WHERE cluster = ?`, 2, "test-cluster")
+	assertRowCount(t, v04DB, `SELECT COUNT(*) FROM catalog_bridges WHERE cluster = ?`, 1, "test-cluster")
+	assertRowCount(t, v04DB, `SELECT COUNT(*) FROM catalog_isos WHERE cluster = ?`, 2, "test-cluster")
+	assertRowCount(t, v04DB, `SELECT COUNT(*) FROM catalog_profiles WHERE cluster = ?`, 2, "test-cluster")
+	assertRowCount(t, v04DB, `SELECT COUNT(*) FROM catalog_tags WHERE cluster = ?`, 3, "test-cluster")
+	assertRowCount(t, v04DB, `SELECT COUNT(*) FROM node_limits WHERE cluster = ?`, 2, "test-cluster")
 }
 
 // T012 / SC-003: idempotence — running Run twice produces identical row counts.
@@ -256,6 +234,16 @@ func TestRenderSummary_OutputShape(t *testing.T) {
 
 	if !strings.Contains(out, "clusters") {
 		t.Error("output missing clusters line")
+	}
+}
+
+// assertRowCount runs query (with args) against db and fails the test when the
+// returned count differs from want. It wraps countRows so call sites stay flat.
+func assertRowCount(t *testing.T, db *sql.DB, query string, want int, args ...any) {
+	t.Helper()
+
+	if got := countRows(t, db, query, args...); got != want {
+		t.Errorf("%s: count = %d, want %d", query, got, want)
 	}
 }
 
