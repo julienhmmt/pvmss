@@ -507,6 +507,11 @@ func TestSetISOEnabled_ToggleOffPersists(t *testing.T) {
 	}
 }
 
+// pvmssDefaultColor is the indigo hex ensurePvmssTag seeds for the mandatory
+// pvmss tag (FR-014). Centralized as a test const so repeated literals do not
+// trip goconst.
+const pvmssDefaultColor = "#4f46e5"
+
 // TestEnsurePvmssTag_InsertsForNonDefaultCluster — the V9 migration seeds the
 // mandatory pvmss tag only for the "default" cluster. ListTags lazily inserts
 // it for any other cluster via ensurePvmssTag (FR-014), so the admin surface
@@ -525,25 +530,7 @@ func TestEnsurePvmssTag_InsertsForNonDefaultCluster(t *testing.T) {
 		t.Fatalf("ListTags first call: %v", err)
 	}
 
-	found := false
-
-	for _, tag := range tags {
-		if tag.Name == catalog.ProtectedTagName {
-			found = true
-
-			if !tag.Protected {
-				t.Error("lazily-inserted pvmss tag should be protected")
-			}
-
-			if tag.Color != "#4f46e5" {
-				t.Errorf("lazily-inserted pvmss color = %q, want #4f46e5", tag.Color)
-			}
-		}
-	}
-
-	if !found {
-		t.Fatal("ensurePvmssTag did not insert pvmss for non-default cluster")
-	}
+	assertPvmssTagLazilySeeded(t, tags)
 
 	// Second call: ensurePvmssTag's exists-early-return path — the tag is
 	// already present, so no re-insert. The list must still contain exactly one
@@ -553,15 +540,47 @@ func TestEnsurePvmssTag_InsertsForNonDefaultCluster(t *testing.T) {
 		t.Fatalf("ListTags second call: %v", err)
 	}
 
+	if count := countTagsByName(tags, catalog.ProtectedTagName); count != 1 {
+		t.Errorf("expected exactly 1 pvmss tag after repeat ListTags, got %d", count)
+	}
+}
+
+// assertPvmssTagLazilySeeded fails the test unless tags contains one pvmss row that
+// is protected and carries the default indigo color — the shape ensurePvmssTag
+// inserts for a cluster the V9 seed did not cover. Extracted from
+// TestEnsurePvmssTag_InsertsForNonDefaultCluster to keep its cognitive
+// complexity under the SonarQube threshold (go:S3776).
+func assertPvmssTagLazilySeeded(t *testing.T, tags []catalog.TagWithCount) {
+	t.Helper()
+
+	for _, tag := range tags {
+		if tag.Name != catalog.ProtectedTagName {
+			continue
+		}
+
+		if !tag.Protected {
+			t.Error("lazily-inserted pvmss tag should be protected")
+		}
+
+		if tag.Color != pvmssDefaultColor {
+			t.Errorf("lazily-inserted pvmss color = %q, want %q", tag.Color, pvmssDefaultColor)
+		}
+
+		return
+	}
+
+	t.Fatal("ensurePvmssTag did not insert pvmss for non-default cluster")
+}
+
+// countTagsByName returns how many tags in the list carry the given name.
+func countTagsByName(tags []catalog.TagWithCount, name string) int {
 	count := 0
 
 	for _, tag := range tags {
-		if tag.Name == catalog.ProtectedTagName {
+		if tag.Name == name {
 			count++
 		}
 	}
 
-	if count != 1 {
-		t.Errorf("expected exactly 1 pvmss tag after repeat ListTags, got %d", count)
-	}
+	return count
 }
