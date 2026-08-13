@@ -208,6 +208,7 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 	if cloudTemplate.ID != "" {
 		result.CloudInitTemplateID = cloudTemplate.ID
 		filename := fmt.Sprintf("%s%d.yml", snippetFilenamePrefix, vmid)
+
 		storage := spec.Disk.Storage
 		if err := st.PutCloudInitSnippet(ctx, clusterName, vmid, storage, filename, cloudTemplate.Content, actor.Username); err != nil {
 			log.Error("cloud-init template store failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)

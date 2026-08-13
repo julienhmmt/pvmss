@@ -1,4 +1,3 @@
-//nolint:noctx // test scaffolding does not need real context
 package vm_test
 
 import (
@@ -15,6 +14,8 @@ import (
 	"time"
 )
 
+const bulkStatusError = "error"
+
 // testIndexResolver is a simple ClusterIndexResolver backed by a static map of
 // cluster name → Index. It stands in for the inventory Registry in unit tests
 // — no goroutines, no refresh, just the per-cluster lookup BulkAction needs.
@@ -27,6 +28,7 @@ func (r testIndexResolver) IndexFor(clusterName string) (*inventory.Index, error
 	if !ok {
 		return nil, fmt.Errorf("cluster %q not found", clusterName)
 	}
+
 	return idx, nil
 }
 
@@ -37,16 +39,20 @@ func bulkTestResolver(t *testing.T) testIndexResolver {
 	t.Helper()
 	cluster.ResetFake()
 	t.Cleanup(cluster.ResetFake)
+
 	snap, err := (cluster.Fake{}).Snapshot(context.Background())
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
+
 	idx := inventory.BuildIndex(snap)
+
 	return testIndexResolver{indexes: map[string]*inventory.Index{testClusterName: &idx}}
 }
 
 func bulkTestStore(t *testing.T) *store.Store {
 	t.Helper()
+
 	st, err := store.Open(config.Configuration{
 		DBPath:    filepath.Join(t.TempDir(), "bulk-test.db"),
 		LogLevel:  "info",
@@ -56,7 +62,9 @@ func bulkTestStore(t *testing.T) *store.Store {
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
 	}
+
 	t.Cleanup(func() { _ = st.Close() })
+
 	return st
 }
 
@@ -71,17 +79,21 @@ func TestBulkAction_AllSuccessBatch(t *testing.T) {
 		{Cluster: testClusterName, VMID: 101},
 		{Cluster: testClusterName, VMID: 124},
 	}
+
 	results := vm.BulkAction(context.Background(), resolver, aliceIdentity(), targets, "start", cluster.Fake{}, noopAudit{}, noopRefresher{})
 	if len(results) != 2 {
 		t.Fatalf("results = %d, want 2", len(results))
 	}
+
 	for i, r := range results {
 		if r.Cluster != testClusterName {
 			t.Errorf("result[%d].Cluster = %q, want %q", i, r.Cluster, testClusterName)
 		}
+
 		if r.Status != "ok" {
 			t.Errorf("result[%d].Status = %q, want ok; message=%q", i, r.Status, r.Message)
 		}
+
 		if r.VMID != targets[i].VMID {
 			t.Errorf("result[%d].VMID = %d, want %d", i, r.VMID, targets[i].VMID)
 		}
@@ -103,19 +115,24 @@ func TestBulkAction_MixedBatch(t *testing.T) {
 		{Cluster: testClusterName, VMID: 100},
 		{Cluster: testClusterName, VMID: 103},
 	}
+
 	results := vm.BulkAction(context.Background(), resolver, aliceIdentity(), targets, "start", cluster.Fake{}, noopAudit{}, noopRefresher{})
 	if len(results) != 3 {
 		t.Fatalf("results = %d, want 3", len(results))
 	}
+
 	if results[0].Status != "ok" {
 		t.Errorf("result[0] (101 stopped→start) = %q, want ok; msg=%q", results[0].Status, results[0].Message)
 	}
-	if results[1].Status != "error" {
+
+	if results[1].Status != bulkStatusError {
 		t.Errorf("result[1] (100 running→start) = %q, want error", results[1].Status)
 	}
-	if results[2].Status != "error" {
+
+	if results[2].Status != bulkStatusError {
 		t.Errorf("result[2] (103 bob's→alice start) = %q, want error", results[2].Status)
 	}
+
 	// Non-owned target: zero fake client calls for that VMID.
 	if calls := cluster.FakeCallsFor(103); len(calls) != 0 {
 		t.Errorf("fake calls for 103 (non-owned) = %d, want 0", len(calls))
@@ -133,14 +150,17 @@ func TestBulkAction_DuplicateTargetProcessedTwice(t *testing.T) {
 		{Cluster: testClusterName, VMID: 101},
 		{Cluster: testClusterName, VMID: 101},
 	}
+
 	results := vm.BulkAction(context.Background(), resolver, aliceIdentity(), targets, "start", cluster.Fake{}, noopAudit{}, noopRefresher{})
 	if len(results) != 2 {
 		t.Fatalf("results = %d, want 2", len(results))
 	}
+
 	if results[0].Status != "ok" {
 		t.Errorf("result[0] = %q, want ok; msg=%q", results[0].Status, results[0].Message)
 	}
-	if results[1].Status != "error" {
+
+	if results[1].Status != bulkStatusError {
 		t.Errorf("result[1] = %q, want error (vm already running after first start)", results[1].Status)
 	}
 }
@@ -152,10 +172,12 @@ func TestBulkAction_DuplicateTargetProcessedTwice(t *testing.T) {
 func TestBulkAction_SingleTargetBatch(t *testing.T) {
 	resolver := bulkTestResolver(t)
 	targets := []vm.BulkTarget{{Cluster: testClusterName, VMID: 101}}
+
 	results := vm.BulkAction(context.Background(), resolver, aliceIdentity(), targets, "start", cluster.Fake{}, noopAudit{}, noopRefresher{})
 	if len(results) != 1 {
 		t.Fatalf("results = %d, want 1", len(results))
 	}
+
 	if results[0].Status != "ok" {
 		t.Errorf("result[0] = %q, want ok; msg=%q", results[0].Status, results[0].Message)
 	}
@@ -167,19 +189,24 @@ func TestBulkAction_SingleTargetBatch(t *testing.T) {
 //nolint:paralleltest // serial: shared fake dataset
 func TestBulkAction_FullCeilingUnder2s(t *testing.T) {
 	resolver := bulkTestResolver(t)
+
 	targets := make([]vm.BulkTarget, vm.MaxBulkTargets)
 	for i := range targets {
 		targets[i] = vm.BulkTarget{Cluster: testClusterName, VMID: 101}
 	}
+
 	start := time.Now()
 	results := vm.BulkAction(context.Background(), resolver, aliceIdentity(), targets, "start", cluster.Fake{}, noopAudit{}, noopRefresher{})
 	elapsed := time.Since(start)
+
 	if len(results) != vm.MaxBulkTargets {
 		t.Fatalf("results = %d, want %d", len(results), vm.MaxBulkTargets)
 	}
+
 	if elapsed >= 2*time.Second {
 		t.Fatalf("100-target batch took %v, want < 2s (SC-005)", elapsed)
 	}
+
 	t.Logf("100-target batch completed in %v", elapsed)
 }
 
@@ -199,20 +226,25 @@ func TestBulkAction_AuditRowsMatchSuccesses(t *testing.T) {
 		{Cluster: testClusterName, VMID: 100},
 		{Cluster: testClusterName, VMID: 124},
 	}
+
 	results := vm.BulkAction(context.Background(), resolver, aliceIdentity(), targets, "start", cluster.Fake{}, st, noopRefresher{})
 	if len(results) != 3 {
 		t.Fatalf("results = %d, want 3", len(results))
 	}
+
 	rows, err := st.QueryAudit(context.Background())
 	if err != nil {
 		t.Fatalf("QueryAudit: %v", err)
 	}
+
 	wantRows := 0
+
 	for _, r := range results {
 		if r.Status == "ok" {
 			wantRows++
 		}
 	}
+
 	if len(rows) != wantRows {
 		t.Fatalf("audit rows = %d, want %d (one per successful target)", len(rows), wantRows)
 	}
@@ -229,14 +261,17 @@ func TestBulkAction_NonExistentClusterError(t *testing.T) {
 		{Cluster: testClusterName, VMID: 101},
 		{Cluster: "nonexistent", VMID: 200},
 	}
+
 	results := vm.BulkAction(context.Background(), resolver, aliceIdentity(), targets, "start", cluster.Fake{}, noopAudit{}, noopRefresher{})
 	if len(results) != 2 {
 		t.Fatalf("results = %d, want 2", len(results))
 	}
+
 	if results[0].Status != "ok" {
 		t.Errorf("result[0] = %q, want ok", results[0].Status)
 	}
-	if results[1].Status != "error" {
+
+	if results[1].Status != bulkStatusError {
 		t.Errorf("result[1] = %q, want error", results[1].Status)
 	}
 }

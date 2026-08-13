@@ -424,6 +424,7 @@ func TestCreate_CloudInitTemplate_Applied(t *testing.T) {
 
 	// The push was recorded with the exact content.
 	pushed := false
+
 	for _, c := range cluster.FakeCallsFor(result.VMID) {
 		if c.Action == "push_cloudinit_snippet" && c.Content == testCloudInitContent {
 			pushed = true
