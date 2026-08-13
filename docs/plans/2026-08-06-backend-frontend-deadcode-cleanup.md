@@ -1,5 +1,14 @@
 # Backend/Frontend dead code cleanup
 
+> **CLOSED 2026-08-13 — superseded by the v0.4 cutover.**
+> Batches 1, 2, 4, 5 were applied as planned. Batch 3 was resolved by
+> deletion of the entire legacy stack in commit `a7a26f7a`
+> ("merge: cutover v0.4 → main (T16) — delete legacy backend/frontend"):
+> `backend/` and `frontend/` no longer exist on `v0.4` or `main`, so
+> `state/interface.go`, `app/app.go`, `handlers/test_handlers.go` and
+> `tests/integration_test.go` are gone with them. No work remains.
+> `server/`/`web/` were already clean at audit time.
+
 Source: `/ponytail-audit` repo-wide scan, 2026-08-06. Scope: `backend/` +
 `frontend/` (old stack, still production) and `helm/`. `server/`/`web/`
 (v0.4 rewrite) came back clean — nothing to cut there.
@@ -52,14 +61,14 @@ stale.
 
 ## Batch 3 — backend, structural (touches call sites)
 
-- [ ] `backend/state/interface.go` — `StateManager` 40-method interface
+- [x] (done by stack deletion, `a7a26f7a`) `backend/state/interface.go` — `StateManager` 40-method interface
       (135 lines), one production impl (`appState`), one hand-rolled test
       mock (56 lines). Plan: replace interface type with concrete
       `*state.Manager` pointer at every consumer, delete the interface,
       delete the mock, use the real `appState` (or a lighter fake) in
       tests instead. Bigger diff — do this last, own commit, expect
       touches across `api/v1/` and `handlers/`.
-- [ ] `backend/app/app.go` + `backend/handlers/test_handlers.go` +
+- [x] (done by stack deletion, `a7a26f7a`) `backend/app/app.go` + `backend/handlers/test_handlers.go` +
       `backend/tests/integration_test.go` — fake TestApp/stub handlers
       (269 lines) exercised only by an integration test that asserts
       against hardcoded canned responses and never touches the real

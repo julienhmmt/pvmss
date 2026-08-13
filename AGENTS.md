@@ -7,67 +7,84 @@ everything here applies to every agent (Claude Code, Devin, Cursor, Codex, ...).
 ## What This Project Is
 
 **PVMSS** (Proxmox VM Self-Service) = lightweight web portal. Users manage
-Proxmox VMs without direct Proxmox UI access. Stack: Go backend + SvelteKit SPA
-(Svelte 5 runes, adapter-static). Deploy via Docker/Kubernetes/Helm.
+Proxmox VMs without direct Proxmox UI access. Stack: Go REST API (`server/`) +
+SvelteKit SPA (`web/`, Svelte 5 runes, `adapter-static`). Deploy via
+Docker/Kubernetes/Helm.
+
+The v0.4 rewrite is now the only codebase. The legacy v0.3 stack (`backend/` +
+`frontend/`) was deleted at the T16 cutover (commit `a7a26f7a`). Any doc,
+script, or CI job still pointing at `backend/` or `frontend/` is stale — see
+"Known stale references" below.
 
 ## Repository Layout
 
-| Path        | Role                                                                 |
-| ----------- | -------------------------------------------------------------------- |
-| `backend/`  | Current production Go REST API (Go module `pvmss`, own `go.mod`)     |
-| `frontend/` | Current production SvelteKit SPA                                     |
-| `server/`   | Next-gen v0.4 rewrite — separate Go module `pvmss/server` (WIP)      |
-| `web/`      | Next-gen v0.4 rewrite — `pvmss-web` SvelteKit app (WIP)              |
-| `helm/`     | Helm chart                                                           |
-| `docs/`     | Documentation (`docs/plans/` holds the v0.4 task plans)              |
-| `specs/`    | Feature specifications                                               |
-| `tools/`    | Helper scripts                                                       |
+| Path              | Role                                                            |
+| ----------------- | --------------------------------------------------------------- |
+| `server/`         | Go REST API — module `pvmss/server`, own `go.mod`               |
+| `web/`            | SvelteKit SPA — app `pvmss-web`, own `package.json` (bun)       |
+| `helm/`           | Helm chart                                                      |
+| `docs/`           | Documentation (`docs/plans/` holds task plans)                  |
+| `specs/`          | Feature specifications (speckit); gitignored but real work      |
+| `sonar-projects/` | Per-project SonarScanner `.properties` files                    |
+| `tools/`          | Helper scripts (sonar bootstrap/coverage/scan/query, superlint) |
+| `.devin/`         | Project rules + skills (see "Project Conventions")              |
 
-`server/` + `web/` are NOT wired into the root `Makefile`; they have their own
-tooling (`go test ./...` in `server/`, `bun`/`vite`/`vitest`/`playwright` in
-`web/`). Check which codebase a task targets before writing code.
+`server/` and `web/` are separate build units with separate tooling. The root
+`Makefile` exposes them via the `server-*` / `web-*` targets.
 
 ## Commands
 
+Targets:
+
 ```bash
-# Development (current app: backend/ + frontend/)
-make dev              # Build frontend + Go binary + start Docker container
-make qualif           # Full QA pipeline: fmt → lint → test → dev
-make frontend-dev     # SvelteKit dev server (port 5173, proxies /api → :50000)
-make frontend-build   # Build SvelteKit SPA → frontend/build/
-make frontend-install # Install frontend npm dependencies
+# server/ (Go)
+make server-test      # go test -race -timeout=5m ./...
+make server-lint      # golangci-lint (config server/.golangci.yml, 5m timeout)
+make server-fmt       # golangci-lint fmt
+make server-vet       # go vet (light check, no golangci-lint needed)
 
-# Testing (current app)
-make test-offline     # All offline tests (CI standard, no Proxmox needed)
-make test-unit        # Unit tests only
-make test-integration # Integration tests (-tags=integration)
-make test-online      # Requires live Proxmox connection
-make coverage         # Coverage report (backend/coverage.out)
-make test-offline-race # Offline tests with race detector
+# web/ (SvelteKit + TypeScript)
+make web-install      # bun install --frozen-lockfile
+make web-test         # vitest run
+make web-check        # svelte-check (type checking)
+make web-lint         # eslint
+make web-lint-fix     # eslint --fix
 
-# Code quality
-make go-lint          # golangci-lint (3m timeout)
-make go-fmt           # Go formatting
+# both
+make lint             # server-lint + web-lint
 
-# Docker lifecycle
-make up / down / restart / logs
+# e2e (no make target — run from web/)
+cd web && bun run test:e2e          # playwright
+cd web && bun run test:e2e:install  # install the chromium browser first
 
-# BuildKit (multi-arch: arm64 + amd64)
+# Images / deploy
+make docker-build     # multi-arch (amd64+arm64) build + push, tag via PVMSS_TAG
 make buildkit-start / buildkit-stop / buildkit-status
-make docker-build
+make helm-package / helm-upgrade
+```
 
-# SonarQube (local container, 4 projects: backend, server, frontend, web)
-make sonar              # Full pipeline: start, token, coverage, lint, scan all
-make sonar-up           # Start the SonarQube server on http://localhost:9000
-make sonar-bootstrap    # Provision 4 projects + rotate the analysis token
-make sonar-coverage     # Generate Go coverage reports (backend + server)
-make sonar-lint         # Run ESLint on frontend/ + web/ (including .svelte) → SonarQube
-make sonar-scan         # Run SonarScanner for all 4 projects + print summary
-make sonar-scan-backend   # Scan only legacy backend (Go)
-make sonar-scan-server    # Scan only next-gen server (Go)
-make sonar-scan-frontend  # Scan only legacy frontend (SvelteKit + ESLint on .svelte)
-make sonar-scan-web       # Scan only next-gen web (SvelteKit + ESLint on .svelte)
-make sonar-query CMD="summary"   # Query results (also: projects, issues <key>, metrics <key>, gate <key>, file <key> <path>)
+**Broken targets — do not use until the Makefile is fixed.** They `cd` into
+the deleted `backend/` or `frontend/` and fail immediately:
+`dev`, `build`, `qualif`, `clean`, `coverage`, `test-unit`, `test-integration`,
+`test-offline`, `test-offline-race`, `test-online`, `go-lint`, `go-fmt`,
+`go-update`, `frontend-install`, `frontend-build`, `frontend-dev`,
+`frontend-test`, `frontend-check`.
+
+`make up` / `down` / `restart` / `logs` drive `docker-compose.dev.yml`, whose
+`frontend-dev` service still bind-mounts the deleted `./frontend` — the
+`pvmss-dev` service itself builds fine from the v0.4 `Dockerfile`.
+
+```bash
+# SonarQube (local container, 2 projects: pvmss-server, pvmss-web)
+make sonar              # Full pipeline: start, token, coverage, lint, scan both
+make sonar-up           # Start the server on http://localhost:9000
+make sonar-bootstrap    # Provision both projects + rotate the analysis token
+make sonar-coverage     # Generate the Go coverage report for server/
+make sonar-lint         # Run ESLint on web/ (including .svelte) → SonarQube
+make sonar-scan         # Scan both projects + print a summary table
+make sonar-scan-server  # Scan server/ (Go) only
+make sonar-scan-web     # Scan web/ (SvelteKit + ESLint on .svelte) only
+make sonar-query CMD="summary"   # Also: projects, issues <key>, metrics <key>, gate <key>, file <key> <path>
 make sonar-down         # Stop the server
 make sonar-clean        # Stop and remove all SonarQube data
 ```
@@ -99,9 +116,7 @@ Two complementary graphs exist:
    question, then `graph.json` only if you need exact edge data.
 3. **If NO snapshot exists for that folder, create one before coding:**
    `/graphify <folder>`. Current coverage: `server/`, `web/`, and a merged
-   server+web graph at root `graphify-out/`. **`backend/` and `frontend/` have
-   no snapshots yet** — run `/graphify backend` / `/graphify frontend` (or ask
-   the user to) before working there.
+   server+web graph at root `graphify-out/`.
 4. **If the snapshot is stale** (files modified after the date in
    `GRAPH_REPORT.md`'s header): refresh with `/graphify <folder> --update`
    (incremental, only re-extracts changed files).
@@ -147,90 +162,141 @@ significant changes.
 
 ## Architecture
 
-### Backend (`backend/`)
+### Server (`server/`)
 
-Go REST API on Proxmox APIs + SQLite DB for settings, limits, quotas, audit.
+Go REST API over the Proxmox API + SQLite for persistence. Module
+`pvmss/server`, Go 1.26. Deliberately dependency-light: routing is stdlib
+`net/http`, and the only direct deps are `coder/websocket` (VNC console proxy),
+`golang.org/x/crypto` (bcrypt), and `modernc.org/sqlite` (pure-Go, CGO-free).
 
-| Package       | Role                                                                                                     |
-| ------------- | -------------------------------------------------------------------------------------------------------- |
-| `main.go`     | Entry point; wires all packages                                                                          |
-| `database/`   | SQLite persist: approved nodes/ISOs/storages/bridges, VM limits, per-user quotas, SFTP config, audit log |
-| `api/v1/`     | RESTful JSON endpoints (`/api/v1/*`), route registration, JWT middleware                                 |
-| `handlers/`   | HTTP handlers: SPA serving, auth forms (legacy), health, static files                                    |
-| `proxmox/`    | Proxmox API client (go-resty), caching, multi-node aggregation                                           |
-| `security/`   | Session management (alexedwards/scs), CSRF, input validation                                             |
-| `middleware/` | Rate limiting, Proxmox health checks                                                                     |
-| `state/`      | Central `StateManager` — shared session manager, settings, cache                                         |
-| `logger/`     | Structured logging via zerolog                                                                           |
-| `i18n/`       | EN + FR translations                                                                                     |
-| `cloudinit/`  | SFTP upload of cloud-init snippets                                                                       |
-| `tests/`      | Integration tests                                                                                        |
+Entry points under `server/cmd/`:
 
-**Dependency direction:** `api/v1` → `handlers` → `proxmox`, `security`, `state`
+| Binary            | Role                                  |
+| ----------------- | ------------------------------------- |
+| `pvmss`           | The HTTP server — the deployed binary |
+| `pvmss-recover`   | Recovery CLI                          |
+| `pvmss-checklist` | Checklist CLI                         |
 
-### Frontend (`frontend/`)
+Packages under `server/internal/`:
 
-SvelteKit SPA: Svelte 5 runes, TypeScript, Tailwind CSS, `adapter-static`. The
-Go binary serves the build output from `frontend/build/`, catch-all to
-`index.html` for client routing. Key dirs:
+| Package      | Role                                                          |
+| ------------ | ------------------------------------------------------------- |
+| `httpapi/`   | HTTP handlers + routing for `/api/v1/*`, SPA serving, VNC WS  |
+| `vm/`        | VM domain logic — resolve, query, actions, cross-cluster      |
+| `cluster/`   | Cluster clients (`proxmox` and `fake` sources), multi-cluster |
+| `store/`     | SQLite persistence (modernc.org/sqlite)                       |
+| `inventory/` | Background inventory refresh + cache                          |
+| `catalog/`   | Approved nodes/ISOs/storages/bridges, cloud-init templates    |
+| `policy/`    | Limits, quotas, authorization policy                          |
+| `pools/`     | Proxmox pool handling                                         |
+| `recovery/`  | Recovery runs and fixtures                                    |
+| `checklist/` | Operational checklist walkthroughs                            |
+| `auth/`      | Sessions, password hashing, admin auth                        |
+| `cloudinit/` | Cloud-init snippet generation                                 |
+| `config/`    | Env-based configuration, validation, slog logger, redaction   |
 
-- `src/routes/` — SvelteKit pages (`(app)/` group needs auth, `(public)/` unauthenticated)
-- `src/lib/api/` — typed API clients for `/api/v1/*`
-- `src/lib/stores/` — Svelte 5 reactive stores
-- `src/lib/components/` — reusable Svelte components
-- `src/lib/i18n/` — EN + FR translation files
-- `static/noVNC-1.6.0/` — noVNC console widget (copied into `build/` at build time)
+### Web (`web/`)
 
-### Next-gen rewrite (`server/` + `web/`)
+SvelteKit SPA: Svelte 5 runes, TypeScript, Tailwind CSS v4, `adapter-static`.
+Built with bun; the Go binary serves the build output (catch-all to
+`index.html` for client routing). Key dirs:
 
-- `server/internal/`: `auth`, `cluster`, `config`, `httpapi`, `inventory`,
-  `store` (SQLite via modernc.org/sqlite). Entry point: `server/cmd/pvmss`.
-- `web/src/`: SvelteKit app (Svelte 5), tested with vitest + playwright.
-- Architecture orientation: read `server/graphify-out/GRAPH_REPORT.md` and
-  `web/graphify-out/GRAPH_REPORT.md` first — do not scan files blindly.
+- `src/routes/` — pages: `vms/`, `nodes/`, `admin/`, `profile/`, `login/`
+- `src/lib/features/` — feature modules (stores + components per domain)
+- `src/lib/shared/` — shared API client and utilities
+- `src/lib/i18n/` + `messages/` + `project.inlang/` — i18n via Paraglide (EN + FR)
+- `src/lib/paraglide/` — generated Paraglide output
+- `src/test/` — vitest setup and helpers
+- `e2e/` — Playwright specs (auth, vms, nodes, admin, console, multi-cluster)
 
 ### Deployment
 
-- **Port**: 50000
+- **Port**: 50000 (`PVMSS_PORT`; the Dockerfile `EXPOSE`s 50000)
 - **Image**: `gcr.io/distroless/static-debian13:nonroot` (non-root uid 65532)
-- **Binary entrypoint**: `/app/pvmss-backend -templates /app/frontend`
-- **SPA**: served from `frontend/build/` (catch-all `index.html`), `/_app/` assets bypass session middleware
+- **Entrypoint**: `/app/pvmss` — no flags; the web dir comes from
+  `PVMSS_WEB_DIR` (default `/app/web/build` in the image) or a path relative
+  to the executable
+- **Build**: multi-stage — `golang:1.26-alpine` builds a static CGO-free
+  binary, `oven/bun:1-alpine` builds the SPA
 - Kubernetes manifests: `pvmss-deployment.yaml`, `pvmss-httproute.yml`
 - Helm chart: `helm/`
 
 ## Configuration
 
-**Required environment variables:**
+All configuration is environment variables, loaded and validated at startup by
+`server/internal/config/load.go`. Startup fails fast on a missing or malformed
+required value.
 
-- `ADMIN_PASSWORD_HASH` — bcrypt hash for admin login
-- `SESSION_SECRET` — 32+ byte session encryption secret
-- `PROXMOX_API_TOKEN_NAME` / `PROXMOX_API_TOKEN_VALUE` — Proxmox service account
+**Required — the server refuses to boot without them:**
+
+| Variable               | Notes                                                       |
+| ---------------------- | ----------------------------------------------------------- |
+| `PVMSS_PORT`           | Integer 1–65535                                             |
+| `PVMSS_DB_PATH`        | SQLite file path (image default `/data/pvmss.db`)           |
+| `SESSION_SECRET`       | 32+ bytes                                                   |
+| `LOG_LEVEL`            | `debug` \| `info` \| `warn` \| `error` — **lowercase only** |
+| `LOG_FORMAT`           | `json` \| `console`                                         |
+| `LOG_OUTPUT`           | `stdout` \| `stderr` \| a file path                         |
+| `PVMSS_CLUSTER_SOURCE` | `fake` \| `proxmox` — no default, on purpose (see below)     |
+
+`PVMSS_CLUSTER_SOURCE` has no default because `fake` ships hardcoded demo
+credentials (`admin@pve` / `pvmss-admin`); it must never be selected by an
+operator who simply forgot to set the variable.
+
+**Required when `PVMSS_CLUSTER_SOURCE=proxmox`:**
+
 - `PROXMOX_URL` — e.g. `https://host:8006/api2/json`
+- `PROXMOX_API_TOKEN_NAME` / `PROXMOX_API_TOKEN_VALUE`
 
-**Key optional variables:**
+**Optional:**
 
-- `PVMSS_OFFLINE=true` — demo mode, disables all Proxmox calls (used in offline tests)
-- `PVMSS_ENV` — `production` (default) or `development`
-- `PVMSS_DB_PATH` — path to SQLite database file (default `/data/pvmss.db`)
-- `LOG_LEVEL` / `LOG_FORMAT` / `LOG_OUTPUT` — logging config
+| Variable                                      | Default                            |
+| --------------------------------------------- | ---------------------------------- |
+| `PVMSS_HOST`                                  | `127.0.0.1` (image sets `0.0.0.0`) |
+| `PVMSS_WEB_DIR`                               | relative to the executable         |
+| `ADMIN_PASSWORD_HASH`                         | empty; if set, must be bcrypt (`$2…`) |
+| `PVMSS_COOKIE_SECURE`                         | `true`                             |
+| `PVMSS_INVENTORY_REFRESH_INTERVAL`            | `30s`                              |
+| `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | `5s`                               |
+| `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | `15s`                              |
+| `PVMSS_MAX_LIST_PAGE_SIZE`                    | `100`                              |
 
-**Database** stores approved nodes/ISOs/storages/bridges, VM resource limits,
-per-user VM quotas, SFTP cloud-init config. `pvmss` tag mandatory in `tags`.
+`PVMSS_OFFLINE`, `PVMSS_ENV`, `JWT_SECRET`, `PROXMOX_VERIFY_SSL` and
+`LOG_FILE_PATH` belonged to the v0.3 backend and are **no longer read**. Demo
+mode is now `PVMSS_CLUSTER_SOURCE=fake`.
 
 ## Testing Notes
 
-- Offline tests (`make test-offline`) mock all Proxmox calls via `PVMSS_OFFLINE=true` — run in CI.
-- Integration tests need `-tags=integration` + live Proxmox endpoint.
-- Race detector: `make test-offline-race`.
+- `make server-test` runs the whole Go suite with `-race`, no Proxmox needed —
+  tests use the `fake` cluster source.
+- `make web-test` runs vitest; `cd web && bun run test:coverage` for coverage.
+- Playwright e2e lives in `web/e2e/`; run `bun run test:e2e:install` once, then
+  `bun run test:e2e`.
+- There is no `-tags=integration` build tag and no separate offline/online test
+  split any more — both were v0.3 concepts.
+
+## Known stale references
+
+Files still pointing at the deleted `backend/` or `frontend/`. Fix them when
+you touch the surrounding area; do not treat them as documentation of reality:
+
+- `Makefile` — the broken targets listed under "Commands"
+- `docker-compose.dev.yml` + `Dockerfile.frontend-dev` — `frontend-dev` service
+- `example.env` — v0.3 variable set; missing the required `PVMSS_PORT` and
+  `PVMSS_CLUSTER_SOURCE`
+- `README.md` / `README.fr.md` — link `backend/docs/proxmox-permissions.*.md`
+- `.specify/memory/constitution.md` — describes v0.3 as still deployable
 
 ## Project Conventions
 
 - Follow `.devin/rules/coding-style.md` for Go and TypeScript style.
 - Follow `.devin/rules/ui-quality.md` for admin page and form layouts.
 - Use `.devin/skills/todo-planning.md` to track multi-step work.
-- Use `.devin/skills/backend-refactor.md` when splitting monolithic backend files.
 - Additional skills live in `.devin/skills/` (golang-*, svelte-code-writer,
-  tailwind-design-system, speckit.*) — check them before starting matching work.
-- Admin features are a SvelteKit SPA under `frontend/src/routes/admin/` backed by REST endpoints in `backend/api/v1/admin_*.go`.
-- Admin API handlers must return complete response payloads required by the admin UI.
+  tailwind-design-system, typescript-advanced-types, speckit.*) — check them
+  before starting matching work.
+- Admin features are SvelteKit routes under `web/src/routes/admin/`, backed by
+  the `admin_*.go` handlers in `server/internal/httpapi/`.
+- Admin API handlers must return complete response payloads required by the
+  admin UI.
 - English for all code and documentation. UI translations: EN + FR.
