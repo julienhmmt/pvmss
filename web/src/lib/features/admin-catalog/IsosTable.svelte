@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { AdminISO } from './admin-catalog.svelte';
 	import { formatBytes } from './format';
-	import Button from '$lib/shared/ui/Button.svelte';
+	import Switch from '$lib/shared/ui/Switch.svelte';
 
 	interface Props {
 		isos: AdminISO[];
@@ -31,19 +31,23 @@
 					<td class="px-4 py-2 font-mono">{iso.node}</td>
 					<td class="px-4 py-2">{formatBytes(iso.sizeBytes)}</td>
 					<td class="px-4 py-2">
-						<Button
-							variant={iso.enabled ? 'primary' : 'secondary'}
-							size="sm"
-							disabled={toggling === `iso:${iso.storage}:${iso.file}`}
-							label={iso.enabled ? `Revoke approval for ${iso.file}` : `Approve ${iso.file}`}
-							onclick={() => onToggle(iso.storage, iso.file, !iso.enabled)}
+						<span
+							class="inline-flex items-center gap-2"
+							aria-busy={toggling === `iso:${iso.storage}:${iso.file}`}
 						>
-							{#if toggling === `iso:${iso.storage}:${iso.file}`}
-								…
-							{:else}
-								{iso.enabled ? 'Approved' : 'Approve'}
-							{/if}
-						</Button>
+							<Switch
+								checked={iso.enabled}
+								label={iso.enabled ? `Revoke approval for ${iso.file}` : `Approve ${iso.file}`}
+								onToggle={() => onToggle(iso.storage, iso.file, !iso.enabled)}
+							/>
+							<span class="text-xs text-muted-foreground">
+								{#if toggling === `iso:${iso.storage}:${iso.file}`}
+									…
+								{:else}
+									{iso.enabled ? 'Approved' : 'Approve'}
+								{/if}
+							</span>
+						</span>
 					</td>
 				</tr>
 			{/each}

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { AdminBridge } from './admin-catalog.svelte';
-	import Button from '$lib/shared/ui/Button.svelte';
+	import Switch from '$lib/shared/ui/Switch.svelte';
 
 	interface Props {
 		bridges: AdminBridge[];
@@ -28,19 +28,20 @@
 					<td class="px-4 py-2 font-mono">{bridge.node}</td>
 					<td class="px-4 py-2">{bridge.comment || '—'}</td>
 					<td class="px-4 py-2">
-						<Button
-							variant={bridge.enabled ? 'primary' : 'secondary'}
-							size="sm"
-							disabled={toggling === `bridge:${bridge.name}`}
-							label={bridge.enabled ? `Revoke approval for ${bridge.name}` : `Approve ${bridge.name}`}
-							onclick={() => onToggle(bridge.name, !bridge.enabled)}
-						>
-							{#if toggling === `bridge:${bridge.name}`}
-								…
-							{:else}
-								{bridge.enabled ? 'Approved' : 'Approve'}
-							{/if}
-						</Button>
+						<span class="inline-flex items-center gap-2" aria-busy={toggling === `bridge:${bridge.name}`}>
+							<Switch
+								checked={bridge.enabled}
+								label={bridge.enabled ? `Revoke approval for ${bridge.name}` : `Approve ${bridge.name}`}
+								onToggle={() => onToggle(bridge.name, !bridge.enabled)}
+							/>
+							<span class="text-xs text-muted-foreground">
+								{#if toggling === `bridge:${bridge.name}`}
+									…
+								{:else}
+									{bridge.enabled ? 'Approved' : 'Approve'}
+								{/if}
+							</span>
+						</span>
 					</td>
 				</tr>
 			{/each}

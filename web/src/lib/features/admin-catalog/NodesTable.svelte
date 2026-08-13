@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { AdminNode } from './admin-catalog.svelte';
 	import { formatBytes } from './format';
-	import Button from '$lib/shared/ui/Button.svelte';
+	import Switch from '$lib/shared/ui/Switch.svelte';
 
 	interface Props {
 		nodes: AdminNode[];
@@ -33,19 +33,20 @@
 					<td class="px-4 py-2">{node.cpuCores} cores ({(node.cpuUsage * 100).toFixed(0)}%)</td>
 					<td class="px-4 py-2">{formatBytes(node.memoryUsed)} / {formatBytes(node.memoryTotal)}</td>
 					<td class="px-4 py-2">
-						<Button
-							variant={node.enabled ? 'primary' : 'secondary'}
-							size="sm"
-							disabled={toggling === `node:${node.name}`}
-							label={node.enabled ? `Revoke approval for ${node.name}` : `Approve ${node.name}`}
-							onclick={() => onToggle(node.name, !node.enabled)}
-						>
-							{#if toggling === `node:${node.name}`}
-								…
-							{:else}
-								{node.enabled ? 'Approved' : 'Approve'}
-							{/if}
-						</Button>
+						<span class="inline-flex items-center gap-2" aria-busy={toggling === `node:${node.name}`}>
+							<Switch
+								checked={node.enabled}
+								label={node.enabled ? `Revoke approval for ${node.name}` : `Approve ${node.name}`}
+								onToggle={() => onToggle(node.name, !node.enabled)}
+							/>
+							<span class="text-xs text-muted-foreground">
+								{#if toggling === `node:${node.name}`}
+									…
+								{:else}
+									{node.enabled ? 'Approved' : 'Approve'}
+								{/if}
+							</span>
+						</span>
 					</td>
 				</tr>
 			{/each}

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { AdminStorage } from './admin-catalog.svelte';
 	import { formatBytes } from './format';
-	import Button from '$lib/shared/ui/Button.svelte';
+	import Switch from '$lib/shared/ui/Switch.svelte';
 
 	interface Props {
 		storages: AdminStorage[];
@@ -31,19 +31,23 @@
 					<td class="px-4 py-2">{storage.type}</td>
 					<td class="px-4 py-2">{formatBytes(storage.usedBytes)} / {formatBytes(storage.totalBytes)}</td>
 					<td class="px-4 py-2">
-						<Button
-							variant={storage.enabled ? 'primary' : 'secondary'}
-							size="sm"
-							disabled={toggling === `storage:${storage.name}@${storage.node}`}
-							label={storage.enabled ? `Revoke approval for ${storage.name}` : `Approve ${storage.name}`}
-							onclick={() => onToggle(storage.name, storage.node, !storage.enabled)}
+						<span
+							class="inline-flex items-center gap-2"
+							aria-busy={toggling === `storage:${storage.name}@${storage.node}`}
 						>
-							{#if toggling === `storage:${storage.name}@${storage.node}`}
-								…
-							{:else}
-								{storage.enabled ? 'Approved' : 'Approve'}
-							{/if}
-						</Button>
+							<Switch
+								checked={storage.enabled}
+								label={storage.enabled ? `Revoke approval for ${storage.name}` : `Approve ${storage.name}`}
+								onToggle={() => onToggle(storage.name, storage.node, !storage.enabled)}
+							/>
+							<span class="text-xs text-muted-foreground">
+								{#if toggling === `storage:${storage.name}@${storage.node}`}
+									…
+								{:else}
+									{storage.enabled ? 'Approved' : 'Approve'}
+								{/if}
+							</span>
+						</span>
 					</td>
 				</tr>
 			{/each}
