@@ -178,12 +178,12 @@ func TestFake_Action_RejectsStatusIncompatibleTransition(t *testing.T) {
 		action  string
 		wantErr bool
 	}{
-		{name: "start on running", vmid: 100, action: "start", wantErr: true}, // VM 100 is running
-		{name: "stop on stopped", vmid: 101, action: "stop", wantErr: true},   // VM 101 is stopped
-		{name: "shutdown on stopped", vmid: 101, action: "shutdown", wantErr: true},
+		{name: "start on running", vmid: 100, action: actionStart, wantErr: true}, // VM 100 is running
+		{name: "stop on stopped", vmid: 101, action: actionStop, wantErr: true},   // VM 101 is stopped
+		{name: "shutdown on stopped", vmid: 101, action: actionShutdown, wantErr: true},
 		{name: "reboot on stopped", vmid: 101, action: "reboot", wantErr: true},
-		{name: "start on stopped", vmid: 101, action: "start", wantErr: false}, // valid
-		{name: "stop on running", vmid: 100, action: "stop", wantErr: false},   // valid
+		{name: "start on stopped", vmid: 101, action: actionStart, wantErr: false}, // valid
+		{name: "stop on running", vmid: 100, action: actionStop, wantErr: false},   // valid
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -191,6 +191,7 @@ func TestFake_Action_RejectsStatusIncompatibleTransition(t *testing.T) {
 			defer ResetFake()
 
 			vms := fakeVMs
+
 			idx := slices.IndexFunc(vms, func(v VM) bool { return v.VMID == tt.vmid })
 			if idx < 0 {
 				t.Fatalf("VM %d not found in fake dataset", tt.vmid)
@@ -200,6 +201,7 @@ func TestFake_Action_RejectsStatusIncompatibleTransition(t *testing.T) {
 			if tt.wantErr && err == nil {
 				t.Errorf("Action(%q on %q VM %d) = nil, want error", tt.action, vms[idx].Status, tt.vmid)
 			}
+
 			if !tt.wantErr && err != nil {
 				t.Errorf("Action(%q on %q VM %d) = %v, want nil", tt.action, vms[idx].Status, tt.vmid, err)
 			}
