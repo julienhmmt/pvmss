@@ -7,16 +7,9 @@
 set -u
 
 GO_TEST_FLAGS="${GO_TEST_FLAGS:-}"
-BACKEND_DIR="${BACKEND_DIR:-backend}"
 SERVER_DIR="${SERVER_DIR:-server}"
 
 mkdir -p .sonar
-
-echo "Generating backend coverage..."
-cd "${BACKEND_DIR}" || exit 1
-GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true go test ${GO_TEST_FLAGS} -count=1 -coverprofile=coverage.out ./...
-sed -e 's|^pvmss/|backend/|' coverage.out > "../.sonar/backend-coverage.out"
-cd .. || exit 1
 
 echo "Generating server coverage..."
 cd "${SERVER_DIR}" || exit 1

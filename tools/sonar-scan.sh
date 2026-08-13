@@ -5,9 +5,7 @@
 #
 # Usage:
 #   tools/sonar-scan.sh              # scan all projects in sonar-projects/
-#   tools/sonar-scan.sh backend      # scan one project by short name
-#   tools/sonar-scan.sh server
-#   tools/sonar-scan.sh frontend
+#   tools/sonar-scan.sh server       # scan one project by short name
 #   tools/sonar-scan.sh web
 
 set -u
@@ -19,11 +17,9 @@ PROPERTIES_DIR="sonar-projects"
 # Map short names to properties files.
 props_for() {
     case "$1" in
-        backend)  echo "$PROPERTIES_DIR/backend.properties" ;;
-        server)   echo "$PROPERTIES_DIR/server.properties" ;;
-        frontend) echo "$PROPERTIES_DIR/frontend.properties" ;;
-        web)      echo "$PROPERTIES_DIR/web.properties" ;;
-        *)        echo "" ;;
+        server) echo "$PROPERTIES_DIR/server.properties" ;;
+        web)    echo "$PROPERTIES_DIR/web.properties" ;;
+        *)      echo "" ;;
     esac
 }
 
@@ -31,7 +27,7 @@ props_for() {
 if [ $# -ge 1 ]; then
     props_file=$(props_for "$1")
     if [ -z "$props_file" ] || [ ! -f "$props_file" ]; then
-        echo "Unknown project '$1'. Use: backend, server, frontend, web" >&2
+        echo "Unknown project '$1'. Use: server, web" >&2
         exit 2
     fi
     props_files="$props_file"

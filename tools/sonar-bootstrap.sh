@@ -20,10 +20,8 @@ PASS_FILE=".sonar/admin-password"
 
 # SonarQube projects to provision (one per line, key|name format).
 # Newlines separate entries so names with spaces are preserved.
-PROJECTS="pvmss-backend|PVMSS Backend (legacy)
-pvmss-server|PVMSS Server (next-gen)
-pvmss-frontend|PVMSS Frontend (legacy)
-pvmss-web|PVMSS Web (next-gen)"
+PROJECTS="pvmss-server|PVMSS Server (Go)
+pvmss-web|PVMSS Web (SvelteKit)"
 
 mkdir -p .sonar
 

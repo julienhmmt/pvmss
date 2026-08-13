@@ -1,4 +1,4 @@
-# This workflow will build a golang project
+# CI for the v0.4 stack: Go API in server/ and SvelteKit SPA in web/.
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
 
 name: Go
@@ -13,7 +13,7 @@ on:
 
 jobs:
 
-  build:
+  server:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v7
@@ -21,33 +21,24 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v7
       with:
-        go-version-file: backend/go.mod
+        go-version-file: server/go.mod
         cache: true
+        cache-dependency-path: server/go.sum
 
     - name: Verify dependencies
       run: go mod verify
-      working-directory: backend
+      working-directory: server
 
     - name: Build
       run: go build -v ./...
-      working-directory: backend
+      working-directory: server
 
-    - name: Test
-      run: make test-offline
-      working-directory: .
-      env:
-        ADMIN_PASSWORD_HASH: $2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e
-        GO_TEST_ENVIRONMENT: 1
-        LOG_LEVEL: INFO
-        PROXMOX_API_TOKEN_NAME: tokenName@changeMe!value
-        PROXMOX_API_TOKEN_VALUE: aaaaaaaaaa-0000-44aa-1111-aaaaaaaaaaa
-        PROXMOX_URL: https://localhost:8006/api2/json
-        PROXMOX_VERIFY_SSL: false
-        PVMSS_OFFLINE: true
-        SESSION_SECRET: changeMeWithSomethingElseUnique
-        JWT_SECRET: changeMeWithSomethingElseUniqueAtLeast32Bytes!!
+    # server-test already runs with -race, so no separate race job is needed.
+    # Tests drive the "fake" cluster source and need no Proxmox credentials.
+    - name: Test (race detector)
+      run: make server-test
 
-  frontend:
+  web:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v7
@@ -58,42 +49,17 @@ jobs:
         bun-version: latest
 
     - name: Install dependencies
-      working-directory: frontend
+      working-directory: web
       run: bun install --frozen-lockfile
 
     - name: Type check (svelte-check)
-      working-directory: frontend
+      working-directory: web
       run: bun run check
 
     - name: Lint (eslint)
-      working-directory: frontend
+      working-directory: web
       run: bun run lint
 
     - name: Test (vitest)
-      working-directory: frontend
+      working-directory: web
       run: bun run test
-
-  race:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v7
-
-    - name: Set up Go
-      uses: actions/setup-go@v7
-      with:
-        go-version-file: backend/go.mod
-        cache: true
-
-    - name: Race detector
-      run: make test-offline-race
-      env:
-        ADMIN_PASSWORD_HASH: $2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e
-        GO_TEST_ENVIRONMENT: 1
-        LOG_LEVEL: INFO
-        PROXMOX_API_TOKEN_NAME: tokenName@changeMe!value
-        PROXMOX_API_TOKEN_VALUE: aaaaaaaaaa-0000-44aa-1111-aaaaaaaaaaa
-        PROXMOX_URL: https://localhost:8006/api2/json
-        PROXMOX_VERIFY_SSL: false
-        PVMSS_OFFLINE: true
-        SESSION_SECRET: changeMeWithSomethingElseUnique
-        JWT_SECRET: changeMeWithSomethingElseUniqueAtLeast32Bytes!!

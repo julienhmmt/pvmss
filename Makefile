@@ -38,7 +38,7 @@ PVMSS_TAG ?= latest
         server-lint server-fmt server-vet server-test \
         web-install web-lint web-lint-fix web-check web-test \
         lint \
-        sonar sonar-up sonar-down sonar-logs sonar-status sonar-bootstrap sonar-coverage sonar-lint sonar-scan sonar-scan-backend sonar-scan-server sonar-scan-frontend sonar-scan-web sonar-query sonar-clean
+        sonar sonar-up sonar-down sonar-logs sonar-status sonar-bootstrap sonar-coverage sonar-lint sonar-scan sonar-scan-server sonar-scan-web sonar-query sonar-clean
 
 # qualif doit exécuter ses prérequis séquentiellement (fmt → lint → test), jamais en parallèle
 .NOTPARALLEL: qualif
@@ -310,34 +310,26 @@ sonar-bootstrap: ## Provision or rotate the SonarQube analysis token
 sonar-coverage: ## Generate Go coverage reports for SonarQube
 	@echo "$(BLUE)Generating Go coverage reports...$(NC)"
 	@chmod +x tools/sonar-coverage.sh
-	@GO_TEST_FLAGS="$(GO_TEST_FLAGS)" BACKEND_DIR="$(BACKEND_DIR)" SERVER_DIR="$(SERVER_DIR)" tools/sonar-coverage.sh
+	@GO_TEST_FLAGS="$(GO_TEST_FLAGS)" SERVER_DIR="$(SERVER_DIR)" tools/sonar-coverage.sh
 	@echo "$(GREEN)✓ Coverage reports ready in .sonar/$(NC)"
 
-sonar-lint: ## Run ESLint on frontend/ and web/ (including .svelte) for SonarQube import
+sonar-lint: ## Run ESLint on web/ (including .svelte) for SonarQube import
 	@echo "$(BLUE)Running ESLint for SonarQube import...$(NC)"
 	@chmod +x tools/sonar-frontend-lint.sh
 	@tools/sonar-frontend-lint.sh
 	@echo "$(GREEN)✓ ESLint reports ready in .sonar/$(NC)"
 
-sonar-scan: sonar-coverage sonar-lint ## Run SonarScanner for all 4 projects (requires sonar-up + sonar-bootstrap)
+sonar-scan: sonar-coverage sonar-lint ## Run SonarScanner for both projects (requires sonar-up + sonar-bootstrap)
 	@echo "$(BLUE)Running SonarScanner for all projects...$(NC)"
 	@chmod +x tools/sonar-scan.sh
 	@tools/sonar-scan.sh
 	@echo "$(GREEN)✓ All scans complete. See http://localhost:9000/projects$(NC)"
 
-sonar-scan-backend: ## Scan only the legacy backend Go project
-	@chmod +x tools/sonar-scan.sh
-	@tools/sonar-scan.sh backend
-
-sonar-scan-server: ## Scan only the next-gen server Go project
+sonar-scan-server: ## Scan only the server/ Go project
 	@chmod +x tools/sonar-scan.sh
 	@tools/sonar-scan.sh server
 
-sonar-scan-frontend: sonar-lint ## Scan only the legacy frontend SvelteKit project (includes ESLint on .svelte)
-	@chmod +x tools/sonar-scan.sh
-	@tools/sonar-scan.sh frontend
-
-sonar-scan-web: sonar-lint ## Scan only the next-gen web SvelteKit project (includes ESLint on .svelte)
+sonar-scan-web: sonar-lint ## Scan only the web/ SvelteKit project (includes ESLint on .svelte)
 	@chmod +x tools/sonar-scan.sh
 	@tools/sonar-scan.sh web
 
