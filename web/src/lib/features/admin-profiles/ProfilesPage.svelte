@@ -110,32 +110,19 @@
 						<td class="px-4 py-2">{profile.diskGB} GB</td>
 						<td class="px-4 py-2">{profile.bus}</td>
 						<td class="px-4 py-2">
-							<button
-								type="button"
-								class="rounded-md px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {profile.enabled
-									? 'bg-primary text-primary-foreground'
-									: 'bg-muted text-muted-foreground hover:bg-muted/80'}"
+							<Button
+								variant={profile.enabled ? 'primary' : 'secondary'}
+								size="sm"
+								label={profile.enabled ? `Disable ${profile.label}` : `Enable ${profile.label}`}
 								onclick={() => onToggle(profile.id, !profile.enabled)}
 							>
 								{profile.enabled ? 'Enabled' : 'Disabled'}
-							</button>
+							</Button>
 						</td>
 						<td class="px-4 py-2">
 							<div class="flex gap-2">
-								<button
-									type="button"
-									class="text-xs text-muted-foreground hover:text-foreground"
-									onclick={() => openEdit(profile)}
-								>
-									Edit
-								</button>
-								<button
-									type="button"
-									class="text-xs text-destructive hover:text-destructive/80"
-									onclick={() => onDelete(profile.id)}
-								>
-									Delete
-								</button>
+								<Button variant="ghost" size="sm" label={`Edit ${profile.label}`} onclick={() => openEdit(profile)}>Edit</Button>
+								<Button variant="destructive" size="sm" label={`Delete ${profile.label}`} onclick={() => onDelete(profile.id)}>Delete</Button>
 							</div>
 						</td>
 					</tr>
@@ -205,20 +192,10 @@
 					</div>
 				</div>
 				<div class="flex justify-end gap-2 pt-2">
-					<button
-						type="button"
-						class="rounded-md px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
-						onclick={() => (showForm = false)}
-					>
-						Cancel
-					</button>
-					<button
-						type="submit"
-						class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-						disabled={saving}
-					>
+					<Button variant="ghost" onclick={() => (showForm = false)}>Cancel</Button>
+					<Button type="submit" disabled={saving}>
 						{saving ? 'Saving…' : editingId ? 'Save' : 'Create'}
-					</button>
+					</Button>
 				</div>
 			</form>
 		</div>

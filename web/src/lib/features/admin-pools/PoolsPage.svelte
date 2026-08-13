@@ -100,7 +100,7 @@
 						<td class="px-4 py-2 text-right">{pool.running}</td>
 						<td class="px-4 py-2 text-right">{pool.stopped}</td>
 						<td class="px-4 py-2 text-right">
-							<button type="button" class="text-xs text-destructive hover:text-destructive/80" onclick={() => openDelete(pool.name)}>Delete</button>
+							<Button variant="destructive" size="sm" label={`Delete pool ${pool.name}`} onclick={() => openDelete(pool.name)}>Delete</Button>
 						</td>
 					</tr>
 				{/each}

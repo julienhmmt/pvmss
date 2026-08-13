@@ -99,45 +99,21 @@
 							{#if editingTag === tag.name}
 								<div class="flex items-center gap-2">
 									<input type="color" bind:value={editColor} class="h-8 w-12 rounded border" />
-									<button
-										type="button"
-										class="text-xs font-medium text-primary hover:text-primary/80"
-										onclick={saveEdit}
-									>
-										Save
-									</button>
-									<button
-										type="button"
-										class="text-xs text-muted-foreground hover:text-foreground"
-										onclick={() => (editingTag = null)}
-									>
-										Cancel
-									</button>
+									<Button variant="ghost" size="sm" onclick={saveEdit}>Save</Button>
+									<Button variant="ghost" size="sm" onclick={() => (editingTag = null)}>Cancel</Button>
 								</div>
 							{:else}
 								<div class="flex items-center gap-2">
 									<span class="inline-block h-4 w-4 rounded-full border" style="background: {tag.color}"></span>
 									<span class="font-mono text-xs">{tag.color}</span>
-									<button
-										type="button"
-										class="text-xs text-muted-foreground hover:text-foreground"
-										onclick={() => startEdit(tag)}
-									>
-										Edit
-									</button>
+									<Button variant="ghost" size="sm" label={`Edit color for ${tag.name}`} onclick={() => startEdit(tag)}>Edit</Button>
 								</div>
 							{/if}
 						</td>
 						<td class="px-4 py-2">{tag.vmCount}</td>
 						<td class="px-4 py-2">
 							{#if !tag.protected}
-								<button
-									type="button"
-									class="text-xs text-destructive hover:text-destructive/80"
-									onclick={() => onDelete(tag.name)}
-								>
-									Delete
-								</button>
+								<Button variant="destructive" size="sm" label={`Delete ${tag.name}`} onclick={() => onDelete(tag.name)}>Delete</Button>
 							{:else}
 								<span class="text-xs text-muted-foreground">—</span>
 							{/if}
@@ -170,20 +146,10 @@
 					<input type="color" id="tag-color" bind:value={newColor} class="h-10 w-full rounded border" />
 				</div>
 				<div class="flex justify-end gap-2 pt-2">
-					<button
-						type="button"
-						class="rounded-md px-4 py-2 text-sm text-muted-foreground hover:text-foreground"
-						onclick={() => (showForm = false)}
-					>
-						Cancel
-					</button>
-					<button
-						type="submit"
-						class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-						disabled={saving}
-					>
+					<Button variant="ghost" onclick={() => (showForm = false)}>Cancel</Button>
+					<Button type="submit" disabled={saving}>
 						{saving ? 'Creating…' : 'Create'}
-					</button>
+					</Button>
 				</div>
 			</form>
 		</div>

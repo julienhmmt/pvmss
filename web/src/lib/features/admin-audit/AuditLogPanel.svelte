@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { AuditFilter } from './auditLog.svelte';
 	import { getAuditLogContext } from './auditLog.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 
 	const store = getAuditLogContext();
 
@@ -80,8 +81,8 @@
 			<span class="text-muted-foreground">To</span>
 			<input class="rounded-md border border-border bg-background px-3 py-1.5" type="datetime-local" bind:value={toFilter} />
 		</label>
-		<button type="submit" class="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground">Filter</button>
-		<button type="button" class="rounded-md border border-border px-4 py-1.5 text-sm" onclick={clearFilter}>Clear</button>
+		<Button type="submit">Filter</Button>
+		<Button variant="secondary" onclick={clearFilter}>Clear</Button>
 	</form>
 
 	{#if store.loading}
@@ -125,18 +126,8 @@
 				Page {store.page} of {Math.max(1, Math.ceil(store.total / store.pageSize))} ({store.total} total)
 			</p>
 			<div class="flex gap-2">
-				<button
-					type="button"
-					class="rounded-md border border-border px-3 py-1 text-sm disabled:opacity-50"
-					disabled={store.page <= 1}
-					onclick={() => void store.prevPage()}
-				>Previous</button>
-				<button
-					type="button"
-					class="rounded-md border border-border px-3 py-1 text-sm disabled:opacity-50"
-					disabled={store.page * store.pageSize >= store.total}
-					onclick={() => void store.nextPage()}
-				>Next</button>
+				<Button variant="secondary" size="sm" disabled={store.page <= 1} onclick={() => void store.prevPage()}>Previous</Button>
+				<Button variant="secondary" size="sm" disabled={store.page * store.pageSize >= store.total} onclick={() => void store.nextPage()}>Next</Button>
 			</div>
 		</div>
 	{/if}
