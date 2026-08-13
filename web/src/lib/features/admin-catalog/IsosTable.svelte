@@ -2,6 +2,7 @@
 	import type { AdminISO } from './admin-catalog.svelte';
 	import { formatBytes } from './format';
 	import Switch from '$lib/shared/ui/Switch.svelte';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	interface Props {
 		isos: AdminISO[];
@@ -50,6 +51,10 @@
 						</span>
 					</td>
 				</tr>
+			{:else}
+				<tr><td colspan={5} class="p-0">
+					<EmptyState title="No ISOs found on this cluster." />
+				</td></tr>
 			{/each}
 		</tbody>
 	</table>

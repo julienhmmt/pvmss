@@ -3,6 +3,7 @@
 	import type { AdminCluster, AdminClustersStore, ClusterInput } from './clusters.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 
 	interface Props {
 		store: AdminClustersStore;
@@ -48,7 +49,8 @@
 	{#if store.announce}<p class="sr-only" role="status" aria-live="polite">{store.announce}</p>{/if}
 	{#if store.error}<p class="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">{store.error}</p>{/if}
 	{#if store.loading}
-		<p role="status" aria-live="polite" class="text-muted-foreground">Loading clusters…</p>
+		<div role="status" aria-live="polite" class="sr-only">Loading clusters…</div>
+		<TableSkeleton columns={6} />
 	{:else}
 		<div class="overflow-x-auto rounded-lg border border-border">
 			<table class="w-full min-w-[900px] text-left text-sm">

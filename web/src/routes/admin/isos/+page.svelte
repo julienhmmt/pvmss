@@ -4,6 +4,7 @@
 	import IsosTable from '$lib/features/admin-catalog/IsosTable.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 
 	const store = setAdminCatalogContext();
 
@@ -23,7 +24,8 @@
 </PageHeader>
 
 {#if store.loading}
-	<p role="status" aria-live="polite" class="text-muted-foreground">Loading…</p>
+	<div role="status" aria-live="polite" class="sr-only">Loading…</div>
+	<TableSkeleton columns={5} />
 {:else if store.error}
 	<p role="alert" class="text-destructive">{store.error}</p>
 {:else}

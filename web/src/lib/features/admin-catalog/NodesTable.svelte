@@ -2,6 +2,7 @@
 	import type { AdminNode } from './admin-catalog.svelte';
 	import { formatBytes } from './format';
 	import Switch from '$lib/shared/ui/Switch.svelte';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	interface Props {
 		nodes: AdminNode[];
@@ -49,6 +50,10 @@
 						</span>
 					</td>
 				</tr>
+			{:else}
+				<tr><td colspan={6} class="p-0">
+					<EmptyState title="No nodes found on this cluster." />
+				</td></tr>
 			{/each}
 		</tbody>
 	</table>

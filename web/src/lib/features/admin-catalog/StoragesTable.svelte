@@ -2,6 +2,7 @@
 	import type { AdminStorage } from './admin-catalog.svelte';
 	import { formatBytes } from './format';
 	import Switch from '$lib/shared/ui/Switch.svelte';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	interface Props {
 		storages: AdminStorage[];
@@ -50,6 +51,10 @@
 						</span>
 					</td>
 				</tr>
+			{:else}
+				<tr><td colspan={5} class="p-0">
+					<EmptyState title="No storages found on this cluster." />
+				</td></tr>
 			{/each}
 		</tbody>
 	</table>
