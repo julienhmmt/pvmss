@@ -70,8 +70,9 @@ func errorsAsExitError(err error, target **exec.ExitError) bool {
 // TestRecoveryCLI_EndToEnd runs pvmss-checklist and pvmss-recover as real
 // subprocesses against file-backed fixtures, per quickstart.md Steps 1 and
 // 3 and contracts/cutover.md's exit-code table.
-//
-//nolint:gocyclo // integration test exercises the full CLI contract in one flow
+// TestRecoveryCLI_EndToEnd builds cmd/pvmss-recover and cmd/pvmss-checklist as
+// real binaries, drives them as subprocesses, and asserts the SC-004 golden
+// summary plus the pvmss-recover happy-path and edge-case exit codes.
 func TestRecoveryCLI_EndToEnd(t *testing.T) {
 	t.Parallel()
 
@@ -82,18 +83,7 @@ func TestRecoveryCLI_EndToEnd(t *testing.T) {
 	checklistBin := buildRecoveryBinary(ctx, t, repoRoot, "pvmss-checklist")
 
 	// --- pvmss-checklist: SUMMARY must match SC-004 exactly (quickstart Step 1) ---
-	checklistOut, err := exec.CommandContext(ctx, checklistBin, "--repo-root", repoRoot).CombinedOutput() //nolint:gosec // test invokes its own freshly built binary
-	if err != nil {
-		t.Fatalf("pvmss-checklist: %v\n%s", err, checklistOut)
-	}
-
-	if !strings.Contains(string(checklistOut), "58 fiches found") {
-		t.Errorf("pvmss-checklist output missing fiche count:\n%s", checklistOut)
-	}
-
-	if !strings.Contains(string(checklistOut), "SUMMARY: 53 closed, 5 open (3 real gaps, 2 deliberate design decisions)") {
-		t.Errorf("pvmss-checklist SUMMARY does not match SC-004:\n%s", checklistOut)
-	}
+	runChecklistGolden(ctx, t, checklistBin, repoRoot)
 
 	// --- pvmss-recover: seed a legacy fixture, run against a migrated v0.4 db ---
 	legacyPath := filepath.Join(t.TempDir(), "legacy.db")
@@ -128,24 +118,54 @@ func TestRecoveryCLI_EndToEnd(t *testing.T) {
 		t.Fatalf("close v0.4 fixture: %v", err)
 	}
 
-	runRecover := func() (string, int) {
-		cmd := exec.CommandContext(ctx, recoverBin, //nolint:gosec // test invokes its own freshly built binary
-			"--legacy-db", legacyPath,
-			"--v0.4-db", v04Path,
-			"--cluster-name", "test-cluster",
-			"--session-secret", "test-session-secret-at-least-32-bytes!!",
-		)
+	runRecoverGolden(ctx, t, recoverBin, legacyPath, v04Path)
+	assertRecoverEdgeCases(ctx, t, recoverBin, legacyPath, v04Path)
+}
 
-		var out bytes.Buffer
+// runChecklistGolden runs pvmss-checklist and asserts the SC-004 golden
+// summary (quickstart.md Step 1): "58 fiches found" and the exact SUMMARY
+// line "53 closed, 5 open (3 real gaps, 2 deliberate design decisions)".
+func runChecklistGolden(ctx context.Context, t *testing.T, bin, repoRoot string) {
+	t.Helper()
 
-		cmd.Stdout = &out
-		cmd.Stderr = &out
-		runErr := cmd.Run()
-
-		return out.String(), exitCodeOf(t, runErr)
+	checklistOut, err := exec.CommandContext(ctx, bin, "--repo-root", repoRoot).CombinedOutput() //nolint:gosec // test invokes its own freshly built binary
+	if err != nil {
+		t.Fatalf("pvmss-checklist: %v\n%s", err, checklistOut)
 	}
 
-	out, code := runRecover()
+	if !strings.Contains(string(checklistOut), "58 fiches found") {
+		t.Errorf("pvmss-checklist output missing fiche count:\n%s", checklistOut)
+	}
+
+	if !strings.Contains(string(checklistOut), "SUMMARY: 53 closed, 5 open (3 real gaps, 2 deliberate design decisions)") {
+		t.Errorf("pvmss-checklist SUMMARY does not match SC-004:\n%s", checklistOut)
+	}
+}
+
+// runRecoverCmd runs pvmss-recover against the given fixture paths and
+// returns its combined output and exit code.
+func runRecoverCmd(ctx context.Context, t *testing.T, bin, legacyPath, v04Path string) (string, int) {
+	t.Helper()
+
+	cmd := exec.CommandContext(ctx, bin, //nolint:gosec // test invokes its own freshly built binary
+		"--legacy-db", legacyPath,
+		"--v0.4-db", v04Path,
+		"--cluster-name", "test-cluster",
+		"--session-secret", "test-session-secret-at-least-32-bytes!!",
+	)
+
+	out, err := cmd.CombinedOutput()
+
+	return string(out), exitCodeOf(t, err)
+}
+
+// runRecoverGolden runs pvmss-recover once and asserts the happy path
+// (quickstart.md Step 3): exit 0, a SUMMARY line, and the recovered
+// database contents match defaultSeed()'s known values.
+func runRecoverGolden(ctx context.Context, t *testing.T, bin, legacyPath, v04Path string) {
+	t.Helper()
+
+	out, code := runRecoverCmd(ctx, t, bin, legacyPath, v04Path)
 	if code != 0 {
 		t.Fatalf("pvmss-recover exit=%d, want 0:\n%s", code, out)
 	}
@@ -156,42 +176,6 @@ func TestRecoveryCLI_EndToEnd(t *testing.T) {
 
 	// Inspect the target database directly (quickstart.md Step 3 validate block).
 	assertRecoveredDB(ctx, t, v04Path)
-
-	// --- Idempotence (SC-003): re-running produces identical row counts ---
-	if _, code := runRecover(); code != 0 {
-		t.Fatalf("second pvmss-recover run exit=%d, want 0", code)
-	}
-
-	inspectDB2, err := sql.Open("sqlite", v04Path)
-	if err != nil {
-		t.Fatalf("reopen v0.4 db after second run: %v", err)
-	}
-	defer func() { _ = inspectDB2.Close() }()
-
-	if n := countRows(t, inspectDB2, `SELECT COUNT(*) FROM catalog_nodes WHERE cluster = ?`, "test-cluster"); n != 2 {
-		t.Errorf("catalog_nodes count after second run = %d, want 2 (no duplicates)", n)
-	}
-
-	// --- Exit code 2: invalid cluster name (contracts/cutover.md) ---
-	badNameCmd := exec.CommandContext(ctx, recoverBin, //nolint:gosec // test invokes its own freshly built binary
-		"--legacy-db", legacyPath,
-		"--v0.4-db", v04Path,
-		"--cluster-name", "Not Valid!",
-		"--session-secret", "test-session-secret-at-least-32-bytes!!",
-	)
-	if code := exitCodeOf(t, badNameCmd.Run()); code != 2 {
-		t.Errorf("pvmss-recover with invalid --cluster-name: exit=%d, want 2", code)
-	}
-
-	// --- Exit code 1: unreadable --legacy-db ---
-	badPathCmd := exec.CommandContext(ctx, recoverBin, //nolint:gosec // test invokes its own freshly built binary
-		"--legacy-db", filepath.Join(t.TempDir(), "does-not-exist.db"),
-		"--v0.4-db", v04Path,
-		"--cluster-name", "test-cluster",
-	)
-	if code := exitCodeOf(t, badPathCmd.Run()); code != 1 {
-		t.Errorf("pvmss-recover with missing --legacy-db: exit=%d, want 1", code)
-	}
 }
 
 // assertRecoveredDB checks the v0.4 database directly against
@@ -236,5 +220,49 @@ func assertRecoveredDB(ctx context.Context, t *testing.T, v04Path string) {
 	if diskGB != 20 || netCards != 3 || snapshots != 8 || vmPerUser != 5 || !allowYAML {
 		t.Errorf("vm_limits copied fields = (%d,%d,%d,%d,%v), want (20,3,8,5,true)",
 			diskGB, netCards, snapshots, vmPerUser, allowYAML)
+	}
+}
+
+// assertRecoverEdgeCases exercises the pvmss-recover CLI contract beyond the
+// happy path: SC-003 idempotence (a second run produces identical row
+// counts, no duplicates) and the contracts/cutover.md exit-code table
+// (invalid cluster name -> 2, unreadable legacy db -> 1).
+func assertRecoverEdgeCases(ctx context.Context, t *testing.T, bin, legacyPath, v04Path string) {
+	t.Helper()
+
+	// --- Idempotence (SC-003): re-running produces identical row counts ---
+	if _, code := runRecoverCmd(ctx, t, bin, legacyPath, v04Path); code != 0 {
+		t.Fatalf("second pvmss-recover run exit=%d, want 0", code)
+	}
+
+	inspectDB2, err := sql.Open("sqlite", v04Path)
+	if err != nil {
+		t.Fatalf("reopen v0.4 db after second run: %v", err)
+	}
+	defer func() { _ = inspectDB2.Close() }()
+
+	if n := countRows(t, inspectDB2, `SELECT COUNT(*) FROM catalog_nodes WHERE cluster = ?`, "test-cluster"); n != 2 {
+		t.Errorf("catalog_nodes count after second run = %d, want 2 (no duplicates)", n)
+	}
+
+	// --- Exit code 2: invalid cluster name (contracts/cutover.md) ---
+	badNameCmd := exec.CommandContext(ctx, bin, //nolint:gosec // test invokes its own freshly built binary
+		"--legacy-db", legacyPath,
+		"--v0.4-db", v04Path,
+		"--cluster-name", "Not Valid!",
+		"--session-secret", "test-session-secret-at-least-32-bytes!!",
+	)
+	if code := exitCodeOf(t, badNameCmd.Run()); code != 2 {
+		t.Errorf("pvmss-recover with invalid --cluster-name: exit=%d, want 2", code)
+	}
+
+	// --- Exit code 1: unreadable --legacy-db ---
+	badPathCmd := exec.CommandContext(ctx, bin, //nolint:gosec // test invokes its own freshly built binary
+		"--legacy-db", filepath.Join(t.TempDir(), "does-not-exist.db"),
+		"--v0.4-db", v04Path,
+		"--cluster-name", "test-cluster",
+	)
+	if code := exitCodeOf(t, badPathCmd.Run()); code != 1 {
+		t.Errorf("pvmss-recover with missing --legacy-db: exit=%d, want 1", code)
 	}
 }
