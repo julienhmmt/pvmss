@@ -3,6 +3,7 @@
 	import type { NodeCapacity, NodeCapacityPatch } from './policyNodes.svelte';
 	import { resolveAdminPolicyCopy } from '$lib/i18n/admin-policy';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 
 	interface Props {
 		nodes: NodeCapacity[];
@@ -42,7 +43,7 @@
 	{#if loading}
 		<p role="status" aria-live="polite" class="text-muted-foreground">{copy.loading}</p>
 	{:else if error}
-		<div class="space-y-3" role="alert"><p class="text-destructive">{error}</p><button type="button" class="rounded-md border px-3 py-2 text-sm" onclick={onLoad}>{copy.retry}</button></div>
+		<div class="space-y-3" role="alert"><p class="text-destructive">{error}</p><Button variant="secondary" onclick={onLoad}>{copy.retry}</Button></div>
 	{:else}
 		{#if saveError}<p role="alert" class="mb-4 text-sm text-destructive">{saveError}</p>{/if}
 		<div class="overflow-x-auto rounded-lg border border-border">
@@ -56,7 +57,7 @@
 							<td class="px-4 py-3">{node.maxVms} / {node.maxVcpus} / {node.maxRamGb} / {node.maxDiskGb}</td>
 							<td class="px-4 py-3">{node.usedVms} VMs · {node.usedVcpus} vCPU · {node.usedRamGb} GB</td>
 							<td class="px-4 py-3">{node.physicalVcpus} vCPU · {node.physicalRamGb} GB</td>
-							<td class="px-4 py-3"><button type="button" class="rounded-md border px-3 py-2 text-sm hover:bg-muted" onclick={() => openEditor(node)}>{copy.edit}</button></td>
+							<td class="px-4 py-3"><Button variant="secondary" size="sm" label={`${copy.edit} ${node.node}`} onclick={() => openEditor(node)}>{copy.edit}</Button></td>
 						</tr>
 					{/each}
 				</tbody>

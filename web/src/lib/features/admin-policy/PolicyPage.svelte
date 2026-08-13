@@ -3,6 +3,7 @@
 	import type { AdminPolicy, AdminPolicyPatch } from './policy.svelte';
 	import { resolveAdminPolicyCopy } from '$lib/i18n/admin-policy';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 
 	interface Props {
 		policy: AdminPolicy | null;
@@ -29,7 +30,7 @@
 	{:else if error}
 		<div class="space-y-3" role="alert">
 			<p class="text-destructive">{error}</p>
-			<button type="button" class="rounded-md border px-3 py-2 text-sm" onclick={onLoad}>{copy.retry}</button>
+			<Button variant="secondary" onclick={onLoad}>{copy.retry}</Button>
 		</div>
 	{:else if policy !== null}
 		{#key policy}

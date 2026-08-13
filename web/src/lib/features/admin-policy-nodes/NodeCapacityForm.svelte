@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { NodeCapacity, NodeCapacityPatch } from './policyNodes.svelte';
 	import { resolveAdminPolicyCopy } from '$lib/i18n/admin-policy';
+	import Button from '$lib/shared/ui/Button.svelte';
 
 	interface Props {
 		node: NodeCapacity;
@@ -24,7 +25,7 @@
 	<label class="grid gap-1 text-sm" for="node-max-ram">{copy.maxRam}<input id="node-max-ram" type="number" min="0" bind:value={values.maxRamGb} required class="rounded-md border bg-background px-3 py-2" /></label>
 	<label class="grid gap-1 text-sm" for="node-max-disk">{copy.maxNodeDisk}<input id="node-max-disk" type="number" min="0" bind:value={values.maxDiskGb} required class="rounded-md border bg-background px-3 py-2" /></label>
 	<div class="flex justify-end gap-2 pt-2">
-		<button type="button" class="rounded-md border px-4 py-2 text-sm" onclick={onClose}>{copy.cancel}</button>
-		<button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground" disabled={saving}>{saving ? copy.saving : copy.saveCapacity}</button>
+		<Button variant="secondary" onclick={onClose}>{copy.cancel}</Button>
+		<Button type="submit" disabled={saving}>{saving ? copy.saving : copy.saveCapacity}</Button>
 	</div>
 </form>

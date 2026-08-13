@@ -94,32 +94,19 @@
 						<td class="px-4 py-2 font-mono text-xs">{template.id}</td>
 						<td class="px-4 py-2">{template.label}</td>
 						<td class="px-4 py-2">
-							<button
-								type="button"
-								class="rounded-md px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {template.enabled
-									? 'bg-primary text-primary-foreground'
-									: 'bg-muted text-muted-foreground hover:bg-muted/80'}"
+							<Button
+								variant={template.enabled ? 'primary' : 'secondary'}
+								size="sm"
+								label={template.enabled ? `Disable ${template.label}` : `Enable ${template.label}`}
 								onclick={() => onToggle(template.id, !template.enabled)}
 							>
 								{template.enabled ? 'Enabled' : 'Disabled'}
-							</button>
+							</Button>
 						</td>
 						<td class="px-4 py-2">
 							<div class="flex gap-2">
-								<button
-									type="button"
-									class="text-xs text-muted-foreground hover:text-foreground"
-									onclick={() => openEdit(template)}
-								>
-									Edit
-								</button>
-								<button
-									type="button"
-									class="text-xs text-destructive hover:text-destructive/80"
-									onclick={() => onDelete(template.id)}
-								>
-									Delete
-								</button>
+								<Button variant="ghost" size="sm" label={`Edit ${template.label}`} onclick={() => openEdit(template)}>Edit</Button>
+								<Button variant="destructive" size="sm" label={`Delete ${template.label}`} onclick={() => onDelete(template.id)}>Delete</Button>
 							</div>
 						</td>
 					</tr>

@@ -79,10 +79,10 @@
 							<td class="px-4 py-3">{cluster.oidcEnabled ? 'Enabled' : 'Off'}</td>
 							<td class="px-4 py-3">
 								<div class="flex flex-wrap gap-2">
-									<button type="button" class="rounded-md border border-border px-2 py-1 text-xs" disabled={store.busy !== null} onclick={() => void store.test(cluster.name)}>Test</button>
-									<button type="button" class="rounded-md border border-border px-2 py-1 text-xs" disabled={store.busy !== null} onclick={() => editCluster(cluster)}>Edit</button>
-									<button type="button" class="rounded-md border border-border px-2 py-1 text-xs" disabled={store.busy !== null} onclick={() => void store.toggleOIDC(cluster.name, !cluster.oidcEnabled)}>{cluster.oidcEnabled ? 'Disable OIDC' : 'Enable OIDC'}</button>
-									<button type="button" class="rounded-md border border-destructive px-2 py-1 text-xs text-destructive" disabled={store.busy !== null} onclick={() => void store.remove(cluster.name)}>Remove</button>
+									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={`Test ${cluster.name}`} onclick={() => void store.test(cluster.name)}>Test</Button>
+									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={`Edit ${cluster.name}`} onclick={() => editCluster(cluster)}>Edit</Button>
+									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={`${cluster.oidcEnabled ? 'Disable' : 'Enable'} OIDC for ${cluster.name}`} onclick={() => void store.toggleOIDC(cluster.name, !cluster.oidcEnabled)}>{cluster.oidcEnabled ? 'Disable OIDC' : 'Enable OIDC'}</Button>
+									<Button variant="destructive" size="sm" disabled={store.busy !== null} label={`Remove ${cluster.name}`} onclick={() => void store.remove(cluster.name)}>Remove</Button>
 								</div>
 							</td>
 						</tr>
