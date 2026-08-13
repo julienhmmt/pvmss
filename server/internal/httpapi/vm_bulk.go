@@ -88,8 +88,8 @@ func NewVMBulkWithRegistry(registry *inventory.Registry, projection *inventory.P
 
 // bulkActionRequestDTO is the POST /api/v1/vms/bulk-action body.
 type bulkActionRequestDTO struct {
-	Action  string             `json:"action"`
-	Targets []vm.BulkTarget    `json:"targets"`
+	Action  string          `json:"action"`
+	Targets []vm.BulkTarget `json:"targets"`
 }
 
 // bulkActionResponseDTO is the 200 body.

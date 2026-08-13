@@ -178,12 +178,12 @@ func TestFake_Action_RejectsStatusIncompatibleTransition(t *testing.T) {
 		action  string
 		wantErr bool
 	}{
-		{name: "start on running", vmid: 100, action: "start", wantErr: true},   // VM 100 is running
-		{name: "stop on stopped", vmid: 101, action: "stop", wantErr: true},     // VM 101 is stopped
+		{name: "start on running", vmid: 100, action: "start", wantErr: true}, // VM 100 is running
+		{name: "stop on stopped", vmid: 101, action: "stop", wantErr: true},   // VM 101 is stopped
 		{name: "shutdown on stopped", vmid: 101, action: "shutdown", wantErr: true},
 		{name: "reboot on stopped", vmid: 101, action: "reboot", wantErr: true},
-		{name: "start on stopped", vmid: 101, action: "start", wantErr: false},  // valid
-		{name: "stop on running", vmid: 100, action: "stop", wantErr: false},    // valid
+		{name: "start on stopped", vmid: 101, action: "start", wantErr: false}, // valid
+		{name: "stop on running", vmid: 100, action: "stop", wantErr: false},   // valid
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
