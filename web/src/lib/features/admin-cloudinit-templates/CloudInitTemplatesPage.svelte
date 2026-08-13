@@ -4,6 +4,8 @@
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Switch from '$lib/shared/ui/Switch.svelte';
+	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	interface Props {
 		templates: AdminCloudInitTemplate[];
@@ -69,7 +71,8 @@
 </PageHeader>
 
 {#if loading}
-	<p role="status" aria-live="polite" class="text-muted-foreground">Loading…</p>
+	<div role="status" aria-live="polite" class="sr-only">Loading…</div>
+	<TableSkeleton columns={4} />
 {:else if error}
 	<p role="alert" class="text-destructive">{error}</p>
 {:else}
@@ -113,6 +116,14 @@
 							</div>
 						</td>
 					</tr>
+				{:else}
+					<tr><td colspan={4} class="p-0">
+						<EmptyState title="No templates yet">
+							{#snippet actions()}
+								<Button onclick={openCreate}>New template</Button>
+							{/snippet}
+						</EmptyState>
+					</td></tr>
 				{/each}
 			</tbody>
 		</table>

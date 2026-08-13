@@ -4,6 +4,8 @@
 	import DeletePoolConfirm from './DeletePoolConfirm.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	interface Props {
 		pools: AdminPool[];
@@ -69,7 +71,8 @@
 
 <div class="sr-only" role="status" aria-live="polite">{announce ?? ''}</div>
 {#if loading}
-	<p role="status" aria-live="polite" class="text-muted-foreground">Loading…</p>
+	<div role="status" aria-live="polite" class="sr-only">Loading…</div>
+	<TableSkeleton columns={6} />
 {:else if error}
 	<p role="alert" class="text-destructive">{error}</p>
 {:else}
@@ -103,6 +106,10 @@
 							<Button variant="destructive" size="sm" label={`Delete pool ${pool.name}`} onclick={() => openDelete(pool.name)}>Delete</Button>
 						</td>
 					</tr>
+				{:else}
+					<tr><td colspan={6} class="p-0">
+						<EmptyState title={search ? 'No pools match your search' : 'No pools yet'} />
+					</td></tr>
 				{/each}
 			</tbody>
 		</table>

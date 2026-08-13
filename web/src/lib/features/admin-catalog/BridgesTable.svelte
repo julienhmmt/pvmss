@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { AdminBridge } from './admin-catalog.svelte';
 	import Switch from '$lib/shared/ui/Switch.svelte';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	interface Props {
 		bridges: AdminBridge[];
@@ -44,6 +45,10 @@
 						</span>
 					</td>
 				</tr>
+			{:else}
+				<tr><td colspan={4} class="p-0">
+					<EmptyState title="No bridges found on this cluster." />
+				</td></tr>
 			{/each}
 		</tbody>
 	</table>

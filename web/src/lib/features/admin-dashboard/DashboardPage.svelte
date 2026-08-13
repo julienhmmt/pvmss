@@ -2,6 +2,8 @@
 	import { getDashboardContext } from './dashboard.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import StatusDot from '$lib/shared/ui/StatusDot.svelte';
+	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	const store = getDashboardContext();
 
@@ -16,7 +18,8 @@
 <PageHeader title="Dashboard" />
 
 {#if store.loading}
-	<p role="status" aria-live="polite" class="text-muted-foreground">Loading…</p>
+	<div role="status" aria-live="polite" class="sr-only">Loading…</div>
+	<TableSkeleton columns={5} />
 {:else if store.error}
 	<p role="alert" class="text-destructive">{store.error}</p>
 {:else if store.summary}
@@ -60,6 +63,8 @@
 									/>
 								</td>
 							</tr>
+						{:else}
+							<tr><td colspan={2} class="p-0"><EmptyState title="No nodes found." /></td></tr>
 						{/each}
 					</tbody>
 				</table>
@@ -88,6 +93,8 @@
 								<td class="px-4 py-2">{formatBytes(storage.usedBytes)}</td>
 								<td class="px-4 py-2">{formatBytes(storage.totalBytes)}</td>
 							</tr>
+						{:else}
+							<tr><td colspan={5} class="p-0"><EmptyState title="No storages found." /></td></tr>
 						{/each}
 					</tbody>
 				</table>

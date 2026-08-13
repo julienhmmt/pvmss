@@ -2,6 +2,8 @@
 	import type { AuditFilter } from './auditLog.svelte';
 	import { getAuditLogContext } from './auditLog.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	const store = getAuditLogContext();
 
@@ -86,7 +88,8 @@
 	</form>
 
 	{#if store.loading}
-		<p role="status" aria-live="polite" class="text-muted-foreground">Loading…</p>
+		<div role="status" aria-live="polite" class="sr-only">Loading…</div>
+		<TableSkeleton columns={5} />
 	{:else if store.error}
 		<p role="alert" class="text-destructive">{store.error}</p>
 	{:else}
@@ -117,9 +120,7 @@
 			</table>
 		</div>
 
-		{#if store.entries.length === 0}
-			<p class="text-center text-muted-foreground py-4">No audit entries match the current filter.</p>
-		{/if}
+		<EmptyState title="No audit entries match the current filter." />
 
 		<div class="flex items-center justify-between">
 			<p class="text-sm text-muted-foreground">
