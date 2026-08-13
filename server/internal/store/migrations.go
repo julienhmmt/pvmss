@@ -103,6 +103,27 @@ const schemaV12 = `CREATE TABLE catalog_cloudinit_templates (
 	PRIMARY KEY (cluster, id)
 )`
 
+// schemaV13 adds admin-authored documentation pages (issue #53): Markdown
+// pages with a user/admin audience, an enabled toggle, and a built-in
+// is_system flag that protects seeded pages from delete or id/lang change.
+// The composite PK (id, lang) lets the same page exist in multiple languages;
+// the en row is the fallback when a requested lang is absent.
+const schemaV13 = `CREATE TABLE documentation_pages (
+	id         TEXT NOT NULL,
+	lang       TEXT NOT NULL DEFAULT 'en',
+	title      TEXT NOT NULL,
+	category   TEXT,
+	body_md    TEXT NOT NULL,
+	audience   TEXT NOT NULL DEFAULT 'user',
+	enabled    BOOLEAN NOT NULL DEFAULT 1,
+	is_system  BOOLEAN NOT NULL DEFAULT 0,
+	sort_order INTEGER NOT NULL DEFAULT 0,
+	created_at TEXT,
+	updated_at TEXT,
+	PRIMARY KEY (id, lang),
+	CHECK (audience IN ('user','admin'))
+)`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -124,4 +145,5 @@ var Migrations = []Migration{
 	{Version: 10, DDL: schemaV10},
 	{Version: 11, DDL: schemaV11},
 	{Version: 12, DDL: schemaV12},
+	{Version: 13, DDL: schemaV13},
 }
