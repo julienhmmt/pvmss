@@ -100,92 +100,60 @@ func openLegacyDB(t *testing.T) *sql.DB {
 	return db
 }
 
+// mustExec runs a statement against db, failing the test on error. It is the
+// shared seed helper used by seedLegacyDB to keep each table's block flat.
+func mustExec(t *testing.T, db *sql.DB, query string, args ...any) {
+	t.Helper()
+
+	if _, err := db.ExecContext(context.Background(), query, args...); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+}
+
 // seedLegacyData populates every legacy table the recovery tool reads.
-//
-//nolint:gocyclo // test fixture seeder is inherently sequential
 func seedLegacyDB(t *testing.T, db *sql.DB, seed legacySeed) {
 	t.Helper()
 
-	ctx := context.Background()
 	for _, n := range seed.Nodes {
-		if _, err := db.ExecContext(ctx,
-			`INSERT INTO enabled_nodes (name, enabled) VALUES (?, ?)`,
-			n.name, n.enabled,
-		); err != nil {
-			t.Fatalf("seed enabled_nodes: %v", err)
-		}
+		mustExec(t, db, `INSERT INTO enabled_nodes (name, enabled) VALUES (?, ?)`, n.name, n.enabled)
 	}
 
 	for _, s := range seed.Storages {
-		if _, err := db.ExecContext(ctx,
-			`INSERT INTO enabled_storages (storage_id, enabled) VALUES (?, ?)`,
-			s.name, s.enabled,
-		); err != nil {
-			t.Fatalf("seed enabled_storages: %v", err)
-		}
+		mustExec(t, db, `INSERT INTO enabled_storages (storage_id, enabled) VALUES (?, ?)`, s.name, s.enabled)
 	}
 
 	for _, b := range seed.Bridges {
-		if _, err := db.ExecContext(ctx,
-			`INSERT INTO enabled_vmbrs (name, enabled) VALUES (?, ?)`,
-			b.name, b.enabled,
-		); err != nil {
-			t.Fatalf("seed enabled_vmbrs: %v", err)
-		}
+		mustExec(t, db, `INSERT INTO enabled_vmbrs (name, enabled) VALUES (?, ?)`, b.name, b.enabled)
 	}
 
 	for _, i := range seed.ISOs {
-		if _, err := db.ExecContext(ctx,
-			`INSERT INTO enabled_isos (name, enabled) VALUES (?, ?)`,
-			i.name, i.enabled,
-		); err != nil {
-			t.Fatalf("seed enabled_isos: %v", err)
-		}
+		mustExec(t, db, `INSERT INTO enabled_isos (name, enabled) VALUES (?, ?)`, i.name, i.enabled)
 	}
 
 	for _, tg := range seed.Tags {
-		if _, err := db.ExecContext(ctx,
-			`INSERT INTO tags (name) VALUES (?)`,
-			tg,
-		); err != nil {
-			t.Fatalf("seed tags: %v", err)
-		}
+		mustExec(t, db, `INSERT INTO tags (name) VALUES (?)`, tg)
 	}
 
 	for _, p := range seed.Profiles {
-		if _, err := db.ExecContext(ctx,
-			`INSERT INTO vm_profiles (id, name, description, config, enabled) VALUES (?, ?, ?, ?, ?)`,
-			p.id, p.name, p.description, p.config, p.enabled,
-		); err != nil {
-			t.Fatalf("seed vm_profiles: %v", err)
-		}
+		mustExec(t, db, `INSERT INTO vm_profiles (id, name, description, config, enabled) VALUES (?, ?, ?, ?, ?)`,
+			p.id, p.name, p.description, p.config, p.enabled)
 	}
 
 	if seed.VMLimits != nil {
 		v := seed.VMLimits
-		if _, err := db.ExecContext(ctx,
+		mustExec(t, db,
 			`INSERT INTO vm_limits (id, max_vms, max_vm_per_user, max_network_cards, max_disk_per_vm, allow_custom_yaml, max_snapshots) VALUES (1, ?, ?, ?, ?, ?, ?)`,
-			v.maxVMS, v.maxVMPerUser, v.maxNetworkCards, v.maxDiskPerVM, v.allowCustomYAML, v.maxSnapshots,
-		); err != nil {
-			t.Fatalf("seed vm_limits: %v", err)
-		}
+			v.maxVMS, v.maxVMPerUser, v.maxNetworkCards, v.maxDiskPerVM, v.allowCustomYAML, v.maxSnapshots)
 	}
 
 	for _, n := range seed.NodeLimits {
-		if _, err := db.ExecContext(ctx,
-			`INSERT INTO node_limits (node_name, max_vms, max_vcpus, max_ram_gb, max_disk_gb) VALUES (?, ?, ?, ?, ?)`,
-			n.node, n.maxVMs, n.maxVCPUs, n.maxRAMGB, n.maxDiskGB,
-		); err != nil {
-			t.Fatalf("seed node_limits: %v", err)
-		}
+		mustExec(t, db, `INSERT INTO node_limits (node_name, max_vms, max_vcpus, max_ram_gb, max_disk_gb) VALUES (?, ?, ?, ?, ?)`,
+			n.node, n.maxVMs, n.maxVCPUs, n.maxRAMGB, n.maxDiskGB)
 	}
 
 	if seed.SFTPConfig {
-		if _, err := db.ExecContext(ctx,
-			`INSERT INTO sftp_config (id, enabled, host, port, username, private_key_path, remote_path) VALUES (1, 1, 'sftp.example.com', 22, 'user', '/key', '/snippets')`,
-		); err != nil {
-			t.Fatalf("seed sftp_config: %v", err)
-		}
+		mustExec(t, db,
+			`INSERT INTO sftp_config (id, enabled, host, port, username, private_key_path, remote_path) VALUES (1, 1, 'sftp.example.com', 22, 'user', '/key', '/snippets')`)
 	}
 }
 
