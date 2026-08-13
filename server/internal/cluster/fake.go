@@ -10,6 +10,12 @@ import (
 	"time"
 )
 
+const (
+	actionStart    = "start"
+	actionStop     = "stop"
+	actionShutdown = "shutdown"
+)
+
 // Fake is the built-in cluster substitute (constitution XI). It requires no
 // external service and serves a stable, hand-authored dataset. Neither this
 // type nor Proxmox reports which one it is — callers cannot tell them apart.
@@ -432,10 +438,10 @@ func (Fake) Action(_ context.Context, node string, vmid int, action string) erro
 	}
 
 	switch action {
-	case "start":
+	case actionStart:
 		fakeVMs[idx].Status = VMRunning
 		fakeVMs[idx].Uptime = fakeUptimeOnStart
-	case "stop", "shutdown":
+	case actionStop, actionShutdown:
 		fakeVMs[idx].Status = VMStopped
 		fakeVMs[idx].Uptime = 0
 	case "reboot":
@@ -459,11 +465,11 @@ func (Fake) Action(_ context.Context, node string, vmid int, action string) erro
 // cluster would.
 func validateTransition(action string, status VMStatus) error {
 	switch action {
-	case "start":
+	case actionStart:
 		if status == VMRunning {
 			return fmt.Errorf("%w: vm already running", ErrInvalidStateTransition)
 		}
-	case "stop", "shutdown":
+	case actionStop, actionShutdown:
 		if status == VMStopped {
 			return fmt.Errorf("%w: vm already stopped", ErrInvalidStateTransition)
 		}
