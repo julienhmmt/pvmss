@@ -3,6 +3,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -39,10 +40,10 @@ type singleClusterResolver struct {
 	projection *inventory.Projection
 }
 
-func (r singleClusterResolver) IndexFor(clusterName string) (*inventory.Index, error) {
+func (r singleClusterResolver) IndexFor(_ string) (*inventory.Index, error) {
 	idx := r.projection.Load()
 	if idx == nil {
-		return nil, fmt.Errorf("inventory has not been populated yet")
+		return nil, errors.New("inventory has not been populated yet")
 	}
 	return idx, nil
 }

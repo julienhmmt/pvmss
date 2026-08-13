@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const healthStatusHealthy = "healthy"
+
 // Health checks the runtime dependencies and writes the health contract.
 type Health struct {
 	store          Pinger
@@ -30,10 +32,10 @@ func (h *Health) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	timestamp := time.Now().UTC().Format(time.RFC3339)
 	checks := make(map[string]CheckResult, 2)
-	checks["database"] = CheckResult{Status: "healthy"}
+	checks["database"] = CheckResult{Status: healthStatusHealthy}
 	checks["clusters"] = h.clustersCheck()
 	resp := HealthResponse{
-		Status:    "healthy",
+		Status:    healthStatusHealthy,
 		Checks:    checks,
 		DemoMode:  h.demoMode(),
 		Timestamp: timestamp,
@@ -70,22 +72,27 @@ func (h *Health) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // is a count, never a cluster name (FR-012).
 func (h *Health) clustersCheck() CheckResult {
 	if h.freshness == nil {
-		return CheckResult{Status: "healthy"}
+		return CheckResult{Status: healthStatusHealthy}
 	}
+
 	clusters := h.freshness.Clusters()
 	if len(clusters) == 0 {
-		return CheckResult{Status: "healthy"}
+		return CheckResult{Status: healthStatusHealthy}
 	}
+
 	stale := 0
+
 	now := time.Now()
 	for _, c := range clusters {
 		if now.Sub(c.RefreshedAt) > h.staleThreshold {
 			stale++
 		}
 	}
+
 	if stale == 0 {
-		return CheckResult{Status: "healthy"}
+		return CheckResult{Status: healthStatusHealthy}
 	}
+
 	return CheckResult{
 		Status: "unhealthy",
 		Detail: fmt.Sprintf("%d of %d clusters unreachable", stale, len(clusters)),
@@ -97,5 +104,6 @@ func (h *Health) demoMode() bool {
 	if h.freshness == nil {
 		return false
 	}
+
 	return h.freshness.DemoMode()
 }

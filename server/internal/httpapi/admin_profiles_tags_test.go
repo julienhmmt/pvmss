@@ -199,7 +199,7 @@ func TestAdminProfiles_Delete(t *testing.T) {
 		t.Fatalf("decode status: %v", err)
 	}
 
-	if status.Status != "deleted" {
+	if status.Status != testStatusDeleted {
 		t.Errorf("status = %q, want deleted", status.Status)
 	}
 }
@@ -427,7 +427,7 @@ func TestAdminTags_DeleteSuccess(t *testing.T) {
 		t.Fatalf("decode status: %v", err)
 	}
 
-	if status.Status != "deleted" {
+	if status.Status != testStatusDeleted {
 		t.Errorf("status = %q, want deleted", status.Status)
 	}
 }
