@@ -90,15 +90,31 @@ func (s *Store) InsertDocumentationPage(ctx context.Context, p DocumentationPage
 	)
 }
 
+// DocumentationPageUpdate carries the mutable fields for a documentation page
+// update. ID and Lang identify the row; is_system is selected by which store
+// method is called (UpdateDocumentationPage vs UpdateSystemDocumentationPage).
+// CreatedAt is never changed by an update.
+type DocumentationPageUpdate struct {
+	ID        string
+	Lang      string
+	Title     string
+	Category  string
+	BodyMD    string
+	Audience  string
+	Enabled   bool
+	SortOrder int
+	UpdatedAt string
+}
+
 // UpdateDocumentationPage updates an existing page's mutable fields. The id,
 // lang, and is_system columns are never changed here — the catalog layer
 // refuses id/lang changes and is_system edits before calling this. Returns
 // sql.ErrNoRows if the row does not exist.
-func (s *Store) UpdateDocumentationPage(ctx context.Context, id, lang, title, category, bodyMD, audience string, enabled bool, sortOrder int, updatedAt string) error {
+func (s *Store) UpdateDocumentationPage(ctx context.Context, u DocumentationPageUpdate) error {
 	return execUpdateOne(ctx, s.db,
 		`UPDATE documentation_pages SET title = ?, category = ?, body_md = ?, audience = ?, enabled = ?, sort_order = ?, updated_at = ?
 		 WHERE id = ? AND lang = ? AND is_system = 0`,
-		[]any{title, category, bodyMD, audience, enabled, sortOrder, updatedAt, id, lang},
+		[]any{u.Title, u.Category, u.BodyMD, u.Audience, u.Enabled, u.SortOrder, u.UpdatedAt, u.ID, u.Lang},
 	)
 }
 
@@ -106,11 +122,11 @@ func (s *Store) UpdateDocumentationPage(ctx context.Context, id, lang, title, ca
 // fields. System pages may be edited (title/category/body/audience/enabled/
 // sort_order) but never deleted or have their id/lang changed. Returns
 // sql.ErrNoRows if the row does not exist.
-func (s *Store) UpdateSystemDocumentationPage(ctx context.Context, id, lang, title, category, bodyMD, audience string, enabled bool, sortOrder int, updatedAt string) error {
+func (s *Store) UpdateSystemDocumentationPage(ctx context.Context, u DocumentationPageUpdate) error {
 	return execUpdateOne(ctx, s.db,
 		`UPDATE documentation_pages SET title = ?, category = ?, body_md = ?, audience = ?, enabled = ?, sort_order = ?, updated_at = ?
 		 WHERE id = ? AND lang = ? AND is_system = 1`,
-		[]any{title, category, bodyMD, audience, enabled, sortOrder, updatedAt, id, lang},
+		[]any{u.Title, u.Category, u.BodyMD, u.Audience, u.Enabled, u.SortOrder, u.UpdatedAt, u.ID, u.Lang},
 	)
 }
 

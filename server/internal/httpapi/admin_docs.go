@@ -20,6 +20,27 @@ type AdminDocs struct {
 	log   *slog.Logger
 }
 
+// Admin docs error codes and messages, centralized so the duplicated literals
+// live in one place (go:S1192).
+const (
+	codeDocInvalidRequest  = "invalid_request"
+	codeDocNotFound        = "not_found"
+	codeDocDuplicatePage   = "duplicate_page"
+	codeDocInvalidPage     = "invalid_page"
+	codeDocSystemProtected = "system_protected"
+
+	msgDocInvalidRequestBody = "invalid request body"
+	msgDocIDLangRequired     = "documentation id and lang are required"
+	msgDocDuplicatePage      = "a documentation page with this title already exists for this language"
+	msgDocSystemProtected    = "built-in documentation pages cannot be deleted"
+)
+
+// docNotFoundMsg formats the not-found message for one page id, keeping the
+// duplicated string fragments in one place (go:S1192).
+func docNotFoundMsg(id string) string {
+	return "documentation page \"" + id + "\" not found"
+}
+
 // NewAdminDocs creates the admin docs handler. The DocsAPIHandler is shared so
 // admin mutations can invalidate the public render cache.
 func NewAdminDocs(authHandler *Auth, st *store.Store, docs *DocsAPIHandler, log *slog.Logger) *AdminDocs {
@@ -90,18 +111,18 @@ func (h *AdminDocs) ServeDocsList(w http.ResponseWriter, r *http.Request) {
 func (h *AdminDocs) ServeDocCreate(w http.ResponseWriter, r *http.Request) {
 	var req docCreateRequest
 	if err := decodeJSON(w, r, &req); err != nil {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		writeAdminError(w, http.StatusBadRequest, codeDocInvalidRequest, msgDocInvalidRequestBody)
 		return
 	}
 
 	page, err := catalog.CreateDocumentationPage(r.Context(), h.store, req.Title, req.Lang, req.Category, req.BodyMD, req.Audience)
 	if errors.Is(err, catalog.ErrDuplicateDocumentationPage) {
-		writeAdminError(w, http.StatusConflict, "duplicate_page", "a documentation page with this title already exists for this language")
+		writeAdminError(w, http.StatusConflict, codeDocDuplicatePage, msgDocDuplicatePage)
 		return
 	}
 
 	if errors.Is(err, catalog.ErrInvalidDocumentationPage) {
-		writeAdminError(w, http.StatusBadRequest, "invalid_page", err.Error())
+		writeAdminError(w, http.StatusBadRequest, codeDocInvalidPage, err.Error())
 		return
 	}
 
@@ -120,24 +141,27 @@ func (h *AdminDocs) ServeDocUpdate(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	lang := r.PathValue("lang")
 	if id == "" || lang == "" {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "documentation id and lang are required")
+		writeAdminError(w, http.StatusBadRequest, codeDocInvalidRequest, msgDocIDLangRequired)
 		return
 	}
 
 	var req docUpdateRequest
 	if err := decodeJSON(w, r, &req); err != nil {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		writeAdminError(w, http.StatusBadRequest, codeDocInvalidRequest, msgDocInvalidRequestBody)
 		return
 	}
 
-	page, err := catalog.UpdateDocumentationPage(r.Context(), h.store, id, lang, req.Title, req.Category, req.BodyMD, req.Audience, req.Enabled, req.SortOrder)
+	page, err := catalog.UpdateDocumentationPage(r.Context(), h.store, id, lang, catalog.DocumentationPageUpdate{
+		Title: req.Title, Category: req.Category, BodyMD: req.BodyMD,
+		Audience: req.Audience, Enabled: req.Enabled, SortOrder: req.SortOrder,
+	})
 	if errors.Is(err, catalog.ErrDocumentationPageNotFound) {
-		writeAdminError(w, http.StatusNotFound, "not_found", "documentation page \""+id+"\" not found")
+		writeAdminError(w, http.StatusNotFound, codeDocNotFound, docNotFoundMsg(id))
 		return
 	}
 
 	if errors.Is(err, catalog.ErrInvalidDocumentationPage) {
-		writeAdminError(w, http.StatusBadRequest, "invalid_page", err.Error())
+		writeAdminError(w, http.StatusBadRequest, codeDocInvalidPage, err.Error())
 		return
 	}
 
@@ -157,18 +181,18 @@ func (h *AdminDocs) ServeDocDelete(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	lang := r.PathValue("lang")
 	if id == "" || lang == "" {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "documentation id and lang are required")
+		writeAdminError(w, http.StatusBadRequest, codeDocInvalidRequest, msgDocIDLangRequired)
 		return
 	}
 
 	err := catalog.DeleteDocumentationPage(r.Context(), h.store, id, lang)
 	if errors.Is(err, catalog.ErrSystemDocumentationPage) {
-		writeAdminError(w, http.StatusForbidden, "system_protected", "built-in documentation pages cannot be deleted")
+		writeAdminError(w, http.StatusForbidden, codeDocSystemProtected, msgDocSystemProtected)
 		return
 	}
 
 	if errors.Is(err, catalog.ErrDocumentationPageNotFound) {
-		writeAdminError(w, http.StatusNotFound, "not_found", "documentation page \""+id+"\" not found")
+		writeAdminError(w, http.StatusNotFound, codeDocNotFound, docNotFoundMsg(id))
 		return
 	}
 
@@ -187,19 +211,19 @@ func (h *AdminDocs) ServeDocToggle(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	lang := r.PathValue("lang")
 	if id == "" || lang == "" {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "documentation id and lang are required")
+		writeAdminError(w, http.StatusBadRequest, codeDocInvalidRequest, msgDocIDLangRequired)
 		return
 	}
 
 	var req docToggleRequest
 	if err := decodeJSON(w, r, &req); err != nil {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		writeAdminError(w, http.StatusBadRequest, codeDocInvalidRequest, msgDocInvalidRequestBody)
 		return
 	}
 
 	err := catalog.SetDocumentationPageEnabled(r.Context(), h.store, id, lang, req.Enabled)
 	if errors.Is(err, catalog.ErrDocumentationPageNotFound) {
-		writeAdminError(w, http.StatusNotFound, "not_found", "documentation page \""+id+"\" not found")
+		writeAdminError(w, http.StatusNotFound, codeDocNotFound, docNotFoundMsg(id))
 		return
 	}
 
