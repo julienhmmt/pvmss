@@ -23,12 +23,15 @@ import (
 // ficheIDRe extracts the fiche ID (e.g. "A01", "V27") from a filename.
 var ficheIDRe = regexp.MustCompile(`^([AVXP]\d{2})-`)
 
-// ficheDirs maps each top-level directory to its fiche prefix and display name.
-var ficheDirs = []struct {
+// ficheDir maps one top-level fiche directory to its prefix and display name.
+type ficheDir struct {
 	dir     string
 	prefix  string
 	display string
-}{
+}
+
+// ficheDirs maps each top-level directory to its fiche prefix and display name.
+var ficheDirs = []ficheDir{
 	{"auth", "A", "auth"},
 	{"vm", "V", "vm"},
 	{"admin", "X", "admin"},
@@ -207,53 +210,67 @@ func walkFiches(repoRoot string) ([]FicheEntry, error) {
 	var entries []FicheEntry
 
 	for _, fd := range ficheDirs {
-		dirPath := filepath.Join(baseDir, fd.dir)
-
-		files, err := os.ReadDir(dirPath)
+		es, err := collectFicheEntries(filepath.Join(baseDir, fd.dir), fd)
 		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
-
-			return nil, fmt.Errorf("read fiche dir %q: %w", dirPath, err)
+			return nil, err
 		}
 
-		for _, f := range files {
-			if f.IsDir() || !strings.HasSuffix(f.Name(), ".md") {
-				continue
-			}
+		entries = append(entries, es...)
+	}
 
-			match := ficheIDRe.FindStringSubmatch(f.Name())
-			if match == nil {
-				continue
-			}
+	return entries, nil
+}
 
-			id := match[1]
+// collectFicheEntries reads one fiche directory, filters .md files whose name
+// starts with a fiche ID, and builds FicheEntry rows cross-referenced against
+// the FR-006 table. A missing directory (os.IsNotExist) yields nil, nil.
+func collectFicheEntries(dirPath string, _ ficheDir) ([]FicheEntry, error) {
+	files, err := os.ReadDir(dirPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
 
-			info, ok := fr006Table[id]
-			if !ok {
-				// Fiche file exists but not in FR-006 table — report as unknown
-				entries = append(entries, FicheEntry{
-					ID:    id,
-					Label: labelFromFilename(f.Name()),
-				})
+		return nil, fmt.Errorf("read fiche dir %q: %w", dirPath, err)
+	}
 
-				continue
-			}
+	var entries []FicheEntry
 
-			entry := FicheEntry{
+	for _, f := range files {
+		if f.IsDir() || !strings.HasSuffix(f.Name(), ".md") {
+			continue
+		}
+
+		match := ficheIDRe.FindStringSubmatch(f.Name())
+		if match == nil {
+			continue
+		}
+
+		id := match[1]
+
+		info, ok := fr006Table[id]
+		if !ok {
+			// Fiche file exists but not in FR-006 table — report as unknown
+			entries = append(entries, FicheEntry{
 				ID:    id,
-				Label: info.label,
-			}
-			if info.noneType != "" {
-				entry.IsNone = true
-				entry.NoneType = info.noneType
-			} else {
-				entry.Tranche = info.tranche
-			}
+				Label: labelFromFilename(f.Name()),
+			})
 
-			entries = append(entries, entry)
+			continue
 		}
+
+		entry := FicheEntry{
+			ID:    id,
+			Label: info.label,
+		}
+		if info.noneType != "" {
+			entry.IsNone = true
+			entry.NoneType = info.noneType
+		} else {
+			entry.Tranche = info.tranche
+		}
+
+		entries = append(entries, entry)
 	}
 
 	return entries, nil
