@@ -195,7 +195,7 @@ func (f fakeFreshnessChecker) DemoMode() bool {
 }
 
 //nolint:paralleltest // serial: shared health fixture
-func TestHealth_ClustersAggregate(t *testing.T) { //nolint:gocyclo // table-driven test covers all cluster aggregate branches
+func TestHealth_ClustersAggregate(t *testing.T) {
 	cases := []struct {
 		name             string
 		pinger           fakePinger
@@ -210,7 +210,7 @@ func TestHealth_ClustersAggregate(t *testing.T) { //nolint:gocyclo // table-driv
 			pinger:           fakePinger{err: nil},
 			freshness:        fakeFreshnessChecker{clusters: []httpapi.ClusterFreshness{{Name: "a", RefreshedAt: time.Now()}, {Name: "b", RefreshedAt: time.Now()}}},
 			wantStatus:       http.StatusOK,
-			wantClustersStat: "healthy",
+			wantClustersStat: healthStatusHealthy,
 			wantClustersDtl:  "",
 			wantDemoMode:     false,
 		},
@@ -228,7 +228,7 @@ func TestHealth_ClustersAggregate(t *testing.T) { //nolint:gocyclo // table-driv
 			pinger:           fakePinger{err: errors.New("db down")},
 			freshness:        fakeFreshnessChecker{clusters: []httpapi.ClusterFreshness{{Name: "a", RefreshedAt: time.Now()}}},
 			wantStatus:       http.StatusServiceUnavailable,
-			wantClustersStat: "healthy",
+			wantClustersStat: healthStatusHealthy,
 			wantDemoMode:     false,
 		},
 		{
@@ -236,7 +236,7 @@ func TestHealth_ClustersAggregate(t *testing.T) { //nolint:gocyclo // table-driv
 			pinger:           fakePinger{err: nil},
 			freshness:        fakeFreshnessChecker{clusters: []httpapi.ClusterFreshness{{Name: "demo", RefreshedAt: time.Now()}}, demoMode: true},
 			wantStatus:       http.StatusOK,
-			wantClustersStat: "healthy",
+			wantClustersStat: healthStatusHealthy,
 			wantDemoMode:     true,
 		},
 		{
@@ -244,14 +244,14 @@ func TestHealth_ClustersAggregate(t *testing.T) { //nolint:gocyclo // table-driv
 			pinger:           fakePinger{err: nil},
 			freshness:        fakeFreshnessChecker{clusters: nil},
 			wantStatus:       http.StatusOK,
-			wantClustersStat: "healthy",
+			wantClustersStat: healthStatusHealthy,
 			wantDemoMode:     false,
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
+			logger := slog.New(slog.DiscardHandler)
 			h := httpapi.NewHealth(c.pinger, logger, c.freshness, 60*time.Second)
 
 			w := httptest.NewRecorder()
@@ -263,6 +263,7 @@ func TestHealth_ClustersAggregate(t *testing.T) { //nolint:gocyclo // table-driv
 			}
 
 			body, _ := io.ReadAll(w.Result().Body)
+
 			var resp httpapi.HealthResponse
 			if err := json.Unmarshal(body, &resp); err != nil {
 				t.Fatalf("decode response: %v", err)
@@ -276,6 +277,7 @@ func TestHealth_ClustersAggregate(t *testing.T) { //nolint:gocyclo // table-driv
 			if gotClusters.Status != c.wantClustersStat {
 				t.Fatalf("clusters.status = %q, want %q", gotClusters.Status, c.wantClustersStat)
 			}
+
 			if gotClusters.Detail != c.wantClustersDtl {
 				t.Fatalf("clusters.detail = %q, want %q", gotClusters.Detail, c.wantClustersDtl)
 			}
