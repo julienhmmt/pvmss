@@ -46,6 +46,7 @@
 				{ href: resolve('/admin/isos'), label: 'ISOs' },
 				{ href: resolve('/admin/bridges'), label: 'Bridges' },
 				{ href: resolve('/admin/cloudinit-templates'), label: 'Cloud-init' },
+				{ href: resolve('/admin/docs'), label: 'Documentation' },
 				{ href: resolve('/admin/profiles'), label: 'VM Profiles' },
 				{ href: resolve('/admin/tags'), label: 'Tags' }
 			]
