@@ -482,11 +482,11 @@ func TestVmAction_AllFiveValidActionsAccepted(t *testing.T) {
 		action string
 		vmid   int
 	}{
-		{action: "start", vmid: 101},   // stopped
-		{action: "stop", vmid: 100},    // running
+		{action: "start", vmid: 101},    // stopped
+		{action: "stop", vmid: 100},     // running
 		{action: "shutdown", vmid: 100}, // running
-		{action: "reboot", vmid: 100},  // running
-		{action: "reset", vmid: 100},   // running
+		{action: "reboot", vmid: 100},   // running
+		{action: "reset", vmid: 100},    // running
 	}
 	for _, tt := range tests {
 		t.Run(tt.action, func(t *testing.T) {

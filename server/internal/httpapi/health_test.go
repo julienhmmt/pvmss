@@ -182,8 +182,8 @@ func (f fakePinger) Ping(_ context.Context) error {
 
 // fakeFreshnessChecker implements httpapi.ClusterFreshnessChecker for tests.
 type fakeFreshnessChecker struct {
-	clusters  []httpapi.ClusterFreshness
-	demoMode  bool
+	clusters []httpapi.ClusterFreshness
+	demoMode bool
 }
 
 func (f fakeFreshnessChecker) Clusters() []httpapi.ClusterFreshness {

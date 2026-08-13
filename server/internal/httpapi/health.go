@@ -10,10 +10,10 @@ import (
 
 // Health checks the runtime dependencies and writes the health contract.
 type Health struct {
-	store           Pinger
-	freshness       ClusterFreshnessChecker
-	staleThreshold  time.Duration
-	log             *slog.Logger
+	store          Pinger
+	freshness      ClusterFreshnessChecker
+	staleThreshold time.Duration
+	log            *slog.Logger
 }
 
 // ServeHTTP implements http.Handler.
