@@ -342,6 +342,102 @@ func TestFindCloudInitTemplate_UnknownClusterReturnsNotFound(t *testing.T) {
 	}
 }
 
+// TestUpdateCloudInitTemplate_EmptyLabel — an empty label is rejected with
+// ErrInvalidCloudInitTemplate before any store call (400, not 404).
+func TestUpdateCloudInitTemplate_EmptyLabel(t *testing.T) {
+	t.Parallel()
+
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	tmpl, err := catalog.CreateCloudInitTemplate(ctx, st, "default", "Web server", validCloudInitContent)
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	if _, err := catalog.UpdateCloudInitTemplate(ctx, st, "default", tmpl.ID, "   ", validCloudInitContent); !errors.Is(err, catalog.ErrInvalidCloudInitTemplate) {
+		t.Fatalf("update empty label: got %v, want ErrInvalidCloudInitTemplate", err)
+	}
+}
+
+// TestUpdateCloudInitTemplate_InvalidContent — content failing T08's
+// cloudinit.Validate is rejected with ErrInvalidCloudInitTemplate (400).
+func TestUpdateCloudInitTemplate_InvalidContent(t *testing.T) {
+	t.Parallel()
+
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	tmpl, err := catalog.CreateCloudInitTemplate(ctx, st, "default", "Web server", validCloudInitContent)
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	if _, err := catalog.UpdateCloudInitTemplate(ctx, st, "default", tmpl.ID, "New label", "packages:\n  - nginx\n"); !errors.Is(err, catalog.ErrInvalidCloudInitTemplate) {
+		t.Fatalf("update invalid content: got %v, want ErrInvalidCloudInitTemplate", err)
+	}
+}
+
+// TestCloudInitTemplates_ClosedStoreErrors — once the underlying store is
+// closed, every catalog cloud-init operation surfaces a non-sentinel error
+// (not NotFound, not Duplicate, not Invalid). This covers the store-error
+// branches that the happy-path and not-found tests cannot reach: the
+// CloudInitTemplateExists failure in Create/Update/Delete/SetEnabled and the
+// reader failure in List/CloudInitTemplates/Find.
+//
+//nolint:paralleltest // serial: owns a SQLite fixture that is intentionally closed
+func TestCloudInitTemplates_ClosedStoreErrors(t *testing.T) {
+	ctx := context.Background()
+	st := openAdminStore(t)
+
+	if err := st.Close(); err != nil {
+		t.Fatalf("close store: %v", err)
+	}
+
+	// Create reaches CloudInitTemplateExists after label/content validation
+	// (both pass with valid input), so the closed-store error surfaces.
+	_, err := catalog.CreateCloudInitTemplate(ctx, st, "default", "Web server", validCloudInitContent)
+	assertCloudInitCatalogStoreError(t, err)
+
+	// Update reaches CloudInitTemplateExists after label/content validation.
+	_, err = catalog.UpdateCloudInitTemplate(ctx, st, "default", "web-server", "Web server", validCloudInitContent)
+	assertCloudInitCatalogStoreError(t, err)
+
+	// Delete calls CloudInitTemplateExists first.
+	err = catalog.DeleteCloudInitTemplate(ctx, st, "default", "web-server")
+	assertCloudInitCatalogStoreError(t, err)
+
+	// SetCloudInitTemplateEnabled calls CloudInitTemplateExists first.
+	err = catalog.SetCloudInitTemplateEnabled(ctx, st, "default", "web-server", true)
+	assertCloudInitCatalogStoreError(t, err)
+
+	// List / CloudInitTemplates / Find hit the reader directly.
+	_, err = catalog.ListCloudInitTemplates(ctx, st, "default")
+	assertCloudInitCatalogStoreError(t, err)
+
+	_, err = catalog.CloudInitTemplates(ctx, st, "default")
+	assertCloudInitCatalogStoreError(t, err)
+
+	_, err = catalog.FindCloudInitTemplate(ctx, st, "default", "web-server")
+	assertCloudInitCatalogStoreError(t, err)
+}
+
+// assertCloudInitCatalogStoreError fails when err is nil or one of the catalog
+// sentinels — a closed store must surface a non-sentinel transport error.
+func assertCloudInitCatalogStoreError(t *testing.T, err error) {
+	t.Helper()
+
+	if err == nil {
+		t.Fatal("expected error on closed store, got nil")
+	}
+
+	if errors.Is(err, catalog.ErrCloudInitTemplateNotFound) ||
+		errors.Is(err, catalog.ErrDuplicateCloudInitTemplate) ||
+		errors.Is(err, catalog.ErrInvalidCloudInitTemplate) {
+		t.Fatalf("expected non-sentinel store error, got %v", err)
+	}
+}
+
 // cloudInitTemplateListContains reports whether the list contains an entry with
 // the given id.
 func cloudInitTemplateListContains(list []catalog.CloudInitTemplate, id string) bool {
