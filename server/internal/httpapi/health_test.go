@@ -194,17 +194,68 @@ func (f fakeFreshnessChecker) DemoMode() bool {
 	return f.demoMode
 }
 
+// clustersCase is a single row of the TestHealth_ClustersAggregate table.
+type clustersCase struct {
+	name             string
+	pinger           fakePinger
+	freshness        fakeFreshnessChecker
+	wantStatus       int
+	wantClustersStat string
+	wantClustersDtl  string
+	wantDemoMode     bool
+}
+
+// runClustersCase executes one TestHealth_ClustersAggregate row: it builds the
+// request, invokes the health handler, decodes the response, and asserts the
+// status, clusters check, and demoMode. Extracted from the table loop to keep
+// the test's Cognitive Complexity under the go:S3776 threshold.
+func runClustersCase(t *testing.T, tc clustersCase) {
+	t.Helper()
+
+	logger := slog.New(slog.DiscardHandler)
+	h := httpapi.NewHealth(tc.pinger, logger, tc.freshness, 60*time.Second)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/health", nil)
+	h.ServeHTTP(w, r)
+
+	if w.Code != tc.wantStatus {
+		t.Fatalf("status = %d, want %d", w.Code, tc.wantStatus)
+	}
+
+	body, _ := io.ReadAll(w.Result().Body)
+
+	var resp httpapi.HealthResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	if resp.DemoMode != tc.wantDemoMode {
+		t.Fatalf("demoMode = %v, want %v", resp.DemoMode, tc.wantDemoMode)
+	}
+
+	gotClusters := resp.Checks["clusters"]
+	if gotClusters.Status != tc.wantClustersStat {
+		t.Fatalf("clusters.status = %q, want %q", gotClusters.Status, tc.wantClustersStat)
+	}
+
+	if gotClusters.Detail != tc.wantClustersDtl {
+		t.Fatalf("clusters.detail = %q, want %q", gotClusters.Detail, tc.wantClustersDtl)
+	}
+
+	// The detail must never leak a cluster name (FR-012).
+	if gotClusters.Detail != "" {
+		for _, cl := range tc.freshness.clusters {
+			if strings.Contains(gotClusters.Detail, cl.Name) {
+				t.Fatalf("clusters.detail %q leaks cluster name %q", gotClusters.Detail, cl.Name)
+			}
+		}
+	}
+}
+
 //nolint:paralleltest // serial: shared health fixture
 func TestHealth_ClustersAggregate(t *testing.T) {
-	cases := []struct {
-		name             string
-		pinger           fakePinger
-		freshness        fakeFreshnessChecker
-		wantStatus       int
-		wantClustersStat string
-		wantClustersDtl  string
-		wantDemoMode     bool
-	}{
+	cases := []clustersCase{
 		{
 			name:             "all clusters fresh + database healthy → clusters healthy, no detail",
 			pinger:           fakePinger{err: nil},
@@ -249,47 +300,9 @@ func TestHealth_ClustersAggregate(t *testing.T) {
 		},
 	}
 
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			logger := slog.New(slog.DiscardHandler)
-			h := httpapi.NewHealth(c.pinger, logger, c.freshness, 60*time.Second)
-
-			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodGet, "/health", nil)
-			h.ServeHTTP(w, r)
-
-			if w.Code != c.wantStatus {
-				t.Fatalf("status = %d, want %d", w.Code, c.wantStatus)
-			}
-
-			body, _ := io.ReadAll(w.Result().Body)
-
-			var resp httpapi.HealthResponse
-			if err := json.Unmarshal(body, &resp); err != nil {
-				t.Fatalf("decode response: %v", err)
-			}
-
-			if resp.DemoMode != c.wantDemoMode {
-				t.Fatalf("demoMode = %v, want %v", resp.DemoMode, c.wantDemoMode)
-			}
-
-			gotClusters := resp.Checks["clusters"]
-			if gotClusters.Status != c.wantClustersStat {
-				t.Fatalf("clusters.status = %q, want %q", gotClusters.Status, c.wantClustersStat)
-			}
-
-			if gotClusters.Detail != c.wantClustersDtl {
-				t.Fatalf("clusters.detail = %q, want %q", gotClusters.Detail, c.wantClustersDtl)
-			}
-
-			// The detail must never leak a cluster name (FR-012).
-			if gotClusters.Detail != "" {
-				for _, cl := range c.freshness.clusters {
-					if strings.Contains(gotClusters.Detail, cl.Name) {
-						t.Fatalf("clusters.detail %q leaks cluster name %q", gotClusters.Detail, cl.Name)
-					}
-				}
-			}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			runClustersCase(t, tc)
 		})
 	}
 }
