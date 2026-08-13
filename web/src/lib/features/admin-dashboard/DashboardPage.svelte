@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { getDashboardContext } from './dashboard.svelte';
+	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import StatusDot from '$lib/shared/ui/StatusDot.svelte';
 
 	const store = getDashboardContext();
 
@@ -11,26 +13,26 @@
 	}
 </script>
 
-<section class="space-y-6">
-	<h1 class="text-2xl font-semibold tracking-tight">Dashboard</h1>
+<PageHeader title="Dashboard" />
 
-	{#if store.loading}
-		<p role="status" aria-live="polite" class="text-muted-foreground">Loading…</p>
-	{:else if store.error}
-		<p role="alert" class="text-destructive">{store.error}</p>
-	{:else if store.summary}
-		<div role="status" aria-live="polite" class="sr-only">Dashboard loaded</div>
+{#if store.loading}
+	<p role="status" aria-live="polite" class="text-muted-foreground">Loading…</p>
+{:else if store.error}
+	<p role="alert" class="text-destructive">{store.error}</p>
+{:else if store.summary}
+	<div role="status" aria-live="polite" class="sr-only">Dashboard loaded</div>
 
+	<section class="space-y-6">
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-			<div class="rounded-lg border border-border bg-background p-4">
+			<div class="rounded-lg border border-border bg-card p-4">
 				<p class="text-sm text-muted-foreground">Nodes</p>
 				<p class="text-3xl font-semibold">{store.summary.nodeCount}</p>
 			</div>
-			<div class="rounded-lg border border-border bg-background p-4">
+			<div class="rounded-lg border border-border bg-card p-4">
 				<p class="text-sm text-muted-foreground">VMs</p>
 				<p class="text-3xl font-semibold">{store.summary.vmCount}</p>
 			</div>
-			<div class="rounded-lg border border-border bg-background p-4">
+			<div class="rounded-lg border border-border bg-card p-4">
 				<p class="text-sm text-muted-foreground">Storage Used</p>
 				<p class="text-3xl font-semibold">{formatBytes(store.summary.storageUsedBytes)}</p>
 				<p class="text-sm text-muted-foreground">of {formatBytes(store.summary.storageTotalBytes)}</p>
@@ -52,10 +54,10 @@
 							<tr class="border-t border-border">
 								<td class="px-4 py-2">{node.name}</td>
 								<td class="px-4 py-2">
-									<span class="inline-flex items-center gap-1.5">
-										<span class="h-2 w-2 rounded-full {node.status === 'online' ? 'bg-green-500' : 'bg-red-500'}"></span>
-										{node.status}
-									</span>
+									<StatusDot
+										tone={node.status === 'online' ? 'success' : 'destructive'}
+										label={node.status}
+									/>
 								</td>
 							</tr>
 						{/each}
@@ -95,5 +97,5 @@
 		<p class="text-sm text-muted-foreground">
 			Version {store.summary.version} · Refreshed {new Date(store.summary.refreshedAt).toLocaleString()}
 		</p>
-	{/if}
-</section>
+	</section>
+{/if}
