@@ -66,7 +66,7 @@ func (h *DocsAPIHandler) ServeDocsList(w http.ResponseWriter, r *http.Request) {
 	pages, err := catalog.EnabledDocumentationPages(r.Context(), h.store)
 	if err != nil {
 		h.log.Error("docs list failed", "component", "httpapi", "error", err)
-		_ = writeError(w, http.StatusInternalServerError, "internal server error")
+		_ = writeError(w, http.StatusInternalServerError, msgInternalServerError)
 		return
 	}
 
@@ -110,7 +110,7 @@ func (h *DocsAPIHandler) ServeDoc(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		h.log.Error("docs get failed", "component", "httpapi", "error", err)
-		_ = writeError(w, http.StatusInternalServerError, "internal server error")
+		_ = writeError(w, http.StatusInternalServerError, msgInternalServerError)
 		return
 	}
 
@@ -177,7 +177,7 @@ func (h *DocsAPIHandler) callerIsAdmin(r *http.Request) bool {
 func writeJSON2(w http.ResponseWriter, status int, value any) {
 	body, err := json.Marshal(value)
 	if err != nil {
-		_ = writeError(w, http.StatusInternalServerError, "internal server error")
+		_ = writeError(w, http.StatusInternalServerError, msgInternalServerError)
 		return
 	}
 

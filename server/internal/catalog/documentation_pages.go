@@ -55,6 +55,30 @@ const (
 	maxDocumentationCategoryLen = 40
 )
 
+// DocumentationPageUpdate carries the mutable fields for a catalog-level page
+// update. ID and Lang identify the row (immutable) and are passed separately
+// to UpdateDocumentationPage; only the fields here may change.
+type DocumentationPageUpdate struct {
+	Title     string
+	Category  string
+	BodyMD    string
+	Audience  string
+	Enabled   bool
+	SortOrder int
+}
+
+// notFoundPageError wraps ErrDocumentationPageNotFound with the offending id,
+// keeping the "%w: %q" format literal in one place (go:S1192).
+func notFoundPageError(id string) error {
+	return fmt.Errorf("%w: %q", ErrDocumentationPageNotFound, id)
+}
+
+// systemPageError wraps ErrSystemDocumentationPage with the offending id,
+// keeping the "%w: %q" format literal in one place (go:S1192).
+func systemPageError(id string) error {
+	return fmt.Errorf("%w: %q", ErrSystemDocumentationPage, id)
+}
+
 // DeriveDocumentationPageID converts a title to a lowercase hyphenated slug,
 // mirroring DeriveCloudInitTemplateID (e.g. "Getting started" →
 // "getting-started"). The slug is the page's permanent id.
@@ -125,13 +149,13 @@ func GetDocumentationPage(ctx context.Context, st *store.Store, id, lang string)
 
 	// en fallback: only attempt when the requested lang was not already en.
 	if lang == "en" {
-		return DocumentationPage{}, fmt.Errorf("%w: %q", ErrDocumentationPageNotFound, id)
+		return DocumentationPage{}, notFoundPageError(id)
 	}
 
 	fallback, ferr := st.GetDocumentationPage(ctx, id, "en")
 	if ferr != nil {
 		if errors.Is(ferr, sql.ErrNoRows) {
-			return DocumentationPage{}, fmt.Errorf("%w: %q", ErrDocumentationPageNotFound, id)
+			return DocumentationPage{}, notFoundPageError(id)
 		}
 
 		return DocumentationPage{}, ferr
@@ -216,31 +240,37 @@ func CreateDocumentationPage(ctx context.Context, st *store.Store, title, lang, 
 // them. The id and lang are immutable; is_system pages may be edited but never
 // deleted or re-identified. Returns ErrDocumentationPageNotFound if the
 // (id, lang) does not exist (404).
-func UpdateDocumentationPage(ctx context.Context, st *store.Store, id, lang, title, category, bodyMD, audience string, enabled bool, sortOrder int) (DocumentationPage, error) {
-	title = strings.TrimSpace(title)
-	category = strings.TrimSpace(category)
-	if err := validateDocumentationPage(title, lang, category, bodyMD, audience); err != nil {
+func UpdateDocumentationPage(ctx context.Context, st *store.Store, id, lang string, u DocumentationPageUpdate) (DocumentationPage, error) {
+	u.Title = strings.TrimSpace(u.Title)
+	u.Category = strings.TrimSpace(u.Category)
+	if err := validateDocumentationPage(u.Title, lang, u.Category, u.BodyMD, u.Audience); err != nil {
 		return DocumentationPage{}, err
 	}
 
 	current, err := st.GetDocumentationPage(ctx, id, lang)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return DocumentationPage{}, fmt.Errorf("%w: %q", ErrDocumentationPageNotFound, id)
+			return DocumentationPage{}, notFoundPageError(id)
 		}
 
 		return DocumentationPage{}, err
 	}
 
 	stamp := time.Now().UTC().Format(time.RFC3339Nano)
-	updater := st.UpdateDocumentationPage
-	if current.IsSystem {
-		updater = st.UpdateSystemDocumentationPage
+	su := store.DocumentationPageUpdate{
+		ID: id, Lang: lang, Title: u.Title, Category: u.Category, BodyMD: u.BodyMD,
+		Audience: u.Audience, Enabled: u.Enabled, SortOrder: u.SortOrder, UpdatedAt: stamp,
 	}
 
-	if err := updater(ctx, id, lang, title, category, bodyMD, audience, enabled, sortOrder, stamp); err != nil {
+	if current.IsSystem {
+		err = st.UpdateSystemDocumentationPage(ctx, su)
+	} else {
+		err = st.UpdateDocumentationPage(ctx, su)
+	}
+
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return DocumentationPage{}, fmt.Errorf("%w: %q", ErrDocumentationPageNotFound, id)
+			return DocumentationPage{}, notFoundPageError(id)
 		}
 
 		return DocumentationPage{}, err
@@ -256,19 +286,19 @@ func DeleteDocumentationPage(ctx context.Context, st *store.Store, id, lang stri
 	current, err := st.GetDocumentationPage(ctx, id, lang)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("%w: %q", ErrDocumentationPageNotFound, id)
+			return notFoundPageError(id)
 		}
 
 		return err
 	}
 
 	if current.IsSystem {
-		return fmt.Errorf("%w: %q", ErrSystemDocumentationPage, id)
+		return systemPageError(id)
 	}
 
 	if err := st.DeleteDocumentationPage(ctx, id, lang); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("%w: %q", ErrDocumentationPageNotFound, id)
+			return notFoundPageError(id)
 		}
 
 		return err
@@ -287,13 +317,13 @@ func SetDocumentationPageEnabled(ctx context.Context, st *store.Store, id, lang 
 	}
 
 	if !exists {
-		return fmt.Errorf("%w: %q", ErrDocumentationPageNotFound, id)
+		return notFoundPageError(id)
 	}
 
 	stamp := time.Now().UTC().Format(time.RFC3339Nano)
 	if err := st.SetDocumentationPageEnabled(ctx, id, lang, enabled, stamp); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("%w: %q", ErrDocumentationPageNotFound, id)
+			return notFoundPageError(id)
 		}
 
 		return err
@@ -307,7 +337,7 @@ func readDocumentationPageBack(ctx context.Context, st *store.Store, id, lang st
 	row, err := st.GetDocumentationPage(ctx, id, lang)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return DocumentationPage{}, fmt.Errorf("%w: %q", ErrDocumentationPageNotFound, id)
+			return DocumentationPage{}, notFoundPageError(id)
 		}
 
 		return DocumentationPage{}, err

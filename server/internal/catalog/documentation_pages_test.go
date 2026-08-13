@@ -77,7 +77,9 @@ func TestDocumentationPages_CatalogRoundTrip(t *testing.T) {
 	}
 
 	// Update changes mutable fields; id/lang immutable.
-	updated, err := catalog.UpdateDocumentationPage(ctx, st, "getting-started", "en", "Getting Started", "Intro", "# Hello world", "user", true, 5)
+	updated, err := catalog.UpdateDocumentationPage(ctx, st, "getting-started", "en", catalog.DocumentationPageUpdate{
+		Title: "Getting Started", Category: "Intro", BodyMD: "# Hello world", Audience: "user", Enabled: true, SortOrder: 5,
+	})
 	if err != nil {
 		t.Fatalf("update: %v", err)
 	}
@@ -87,7 +89,9 @@ func TestDocumentationPages_CatalogRoundTrip(t *testing.T) {
 	}
 
 	// Update not-found.
-	if _, err := catalog.UpdateDocumentationPage(ctx, st, "nope", "en", "x", "", "# x", "user", true, 0); !errors.Is(err, catalog.ErrDocumentationPageNotFound) {
+	if _, err := catalog.UpdateDocumentationPage(ctx, st, "nope", "en", catalog.DocumentationPageUpdate{
+		Title: "x", BodyMD: "# x", Audience: "user", Enabled: true,
+	}); !errors.Is(err, catalog.ErrDocumentationPageNotFound) {
 		t.Fatalf("update unknown err = %v, want ErrDocumentationPageNotFound", err)
 	}
 
@@ -170,7 +174,9 @@ func TestDocumentationPages_SystemProtection(t *testing.T) {
 	}
 
 	// Edit a system page → allowed (content/title change).
-	edited, err := catalog.UpdateDocumentationPage(ctx, st, "admin", "en", "Admin guide", "Administration", "# Admin guide", "admin", true, 10)
+	edited, err := catalog.UpdateDocumentationPage(ctx, st, "admin", "en", catalog.DocumentationPageUpdate{
+		Title: "Admin guide", Category: "Administration", BodyMD: "# Admin guide", Audience: "admin", Enabled: true, SortOrder: 10,
+	})
 	if err != nil {
 		t.Fatalf("update system: %v", err)
 	}

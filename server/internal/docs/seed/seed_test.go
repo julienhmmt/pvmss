@@ -60,7 +60,10 @@ func TestSeedDocumentationPages_Idempotent(t *testing.T) {
 		t.Fatalf("read seeded page: %v", err)
 	}
 
-	if err := st.UpdateSystemDocumentationPage(ctx, id, lang, "Edited title", edited.Category, edited.BodyMD, edited.Audience, edited.Enabled, edited.SortOrder, "2026-01-02T00:00:00Z"); err != nil {
+	if err := st.UpdateSystemDocumentationPage(ctx, store.DocumentationPageUpdate{
+		ID: id, Lang: lang, Title: "Edited title", Category: edited.Category, BodyMD: edited.BodyMD,
+		Audience: edited.Audience, Enabled: edited.Enabled, SortOrder: edited.SortOrder, UpdatedAt: "2026-01-02T00:00:00Z",
+	}); err != nil {
 		t.Fatalf("edit seeded page: %v", err)
 	}
 
