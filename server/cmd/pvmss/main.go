@@ -18,6 +18,7 @@ import (
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
+	"pvmss/server/internal/docs/seed"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/policy"
@@ -72,6 +73,13 @@ func run() int {
 	defer func() { _ = st.Close() }()
 
 	logger.Info("database opened", "component", "main", "migrationsDefined", len(store.Migrations))
+
+	// Seed built-in documentation pages (issue #53). Idempotent: only inserts
+	// missing (id, lang) rows, so admin edits to seeded pages are never clobbered.
+	if err := seed.SeedDocumentationPages(context.Background(), st); err != nil {
+		logger.Error("failed to seed documentation pages", "component", "main", "error", err)
+		return 1
+	}
 
 	webDir, err := resolveWebBuildDir(cfg.WebDir)
 	if err != nil {
@@ -257,6 +265,8 @@ func buildRouter(
 	adminPools := httpapi.NewAdminPools(authHandler, clusterClient, projection, writer, st, worker, logger)
 	adminOps := httpapi.NewAdminOps(authHandler, st, clusterClient, projection, appVersion, logger)
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, clusterRegistry, inventoryRegistry, logger)
+	docsHandler := httpapi.NewDocsAPIHandler(authHandler, st, logger)
+	adminDocs := httpapi.NewAdminDocs(authHandler, st, docsHandler, logger)
 
 	return httpapi.NewRouter(httpapi.RouterConfig{
 		Health:           health,
@@ -278,6 +288,8 @@ func buildRouter(
 		AdminPools:       adminPools,
 		AdminOps:         adminOps,
 		AdminClusters:    adminClusters,
+		Docs:             docsHandler,
+		AdminDocs:        adminDocs,
 	}), nil
 }
 

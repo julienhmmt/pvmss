@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getVmDetailContext } from '../detail.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
 
@@ -24,16 +25,16 @@
 </script>
 
 <Dialog bind:open labelledBy="mount-iso-title" onClose={close}>
-	<h2 id="mount-iso-title" class="mb-4 text-lg font-semibold">Mount ISO</h2>
+	<h2 id="mount-iso-title" class="mb-4 text-lg font-semibold">{m['vms.disks.mountDialogTitle']()}</h2>
 	<div class="grid gap-3">
 		<label class="grid gap-1 text-sm">
-			Approved ISO
+			{m['vms.disks.mountApprovedIso']()}
 			<select
 				class="rounded-md border border-border bg-background px-2 py-2"
 				bind:value={selectedIso}
 				data-testid="mount-iso-select"
 			>
-				<option value="">Select approved ISO</option>
+				<option value="">{m['vms.disks.mountSelectIso']()}</option>
 				{#each store.hardwareOptions?.isos ?? [] as iso (iso.volId)}
 					<option value={iso.volId}>{iso.name}</option>
 				{/each}
@@ -57,7 +58,7 @@
 				onclick={submit}
 				data-testid="mount-iso-submit"
 			>
-				{store.cdromInFlight ? 'Mounting…' : 'Mount'}
+				{store.cdromInFlight ? m['common.mounting']() : m['vms.disks.mount']()}
 			</button>
 		</div>
 	</div>

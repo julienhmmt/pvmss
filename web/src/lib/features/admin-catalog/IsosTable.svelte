@@ -3,6 +3,7 @@
 	import { formatBytes } from './format';
 	import Switch from '$lib/shared/ui/Switch.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		isos: AdminISO[];
@@ -17,11 +18,11 @@
 	<table class="w-full text-sm">
 		<thead class="bg-muted/50 text-left">
 			<tr>
-				<th class="px-4 py-2 font-medium">File</th>
-				<th class="px-4 py-2 font-medium">Storage</th>
-				<th class="px-4 py-2 font-medium">Node</th>
-				<th class="px-4 py-2 font-medium">Size</th>
-				<th class="px-4 py-2 font-medium">Approved</th>
+				<th class="px-4 py-2 font-medium">{m['admin.catalog.file']()}</th>
+				<th class="px-4 py-2 font-medium">{m['common.storage']()}</th>
+				<th class="px-4 py-2 font-medium">{m['common.node']()}</th>
+				<th class="px-4 py-2 font-medium">{m['admin.catalog.size']()}</th>
+				<th class="px-4 py-2 font-medium">{m['admin.catalog.approvedStatus']()}</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -38,14 +39,14 @@
 						>
 							<Switch
 								checked={iso.enabled}
-								label={iso.enabled ? `Revoke approval for ${iso.file}` : `Approve ${iso.file}`}
+								label={iso.enabled ? m['admin.catalog.revokeApproval']({ name: iso.file }) : m['admin.catalog.approveName']({ name: iso.file })}
 								onToggle={() => onToggle(iso.storage, iso.file, !iso.enabled)}
 							/>
 							<span class="text-xs text-muted-foreground">
 								{#if toggling === `iso:${iso.storage}:${iso.file}`}
 									…
 								{:else}
-									{iso.enabled ? 'Approved' : 'Approve'}
+									{iso.enabled ? m['admin.catalog.approvedStatus']() : m['admin.catalog.approveAction']()}
 								{/if}
 							</span>
 						</span>
@@ -53,7 +54,7 @@
 				</tr>
 			{:else}
 				<tr><td colspan={5} class="p-0">
-					<EmptyState title="No ISOs found on this cluster." />
+					<EmptyState title={m['admin.catalog.noIsos']()} />
 				</td></tr>
 			{/each}
 		</tbody>

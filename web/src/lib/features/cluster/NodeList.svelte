@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { ClusterNode, NodeStatus } from './nodes.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		nodes: ClusterNode[];
@@ -35,7 +36,7 @@
 	}
 
 	function formatRefreshedAt(iso: string | null): string {
-		if (!iso) return '—';
+		if (!iso) return m['common.dash']();
 		const date = new Date(iso);
 		return date.toLocaleString();
 	}
@@ -47,13 +48,13 @@
 	};
 
 	let refreshButtonLabel = $derived(
-		refreshing ? 'Refreshing…' : refreshDisabled ? 'Refresh (wait)' : 'Refresh'
+		refreshing ? m['nodes.refreshing']() : refreshDisabled ? m['nodes.refreshWait']() : m['nodes.refresh']()
 	);
 </script>
 
 <div class="mb-4 flex items-center justify-between gap-4">
 	<p class="text-sm text-muted-foreground" data-testid="refreshed-at">
-		Last refreshed: <time datetime={refreshedAt ?? undefined}>{formatRefreshedAt(refreshedAt)}</time>
+		{m['nodes.lastRefreshed']()} <time datetime={refreshedAt ?? undefined}>{formatRefreshedAt(refreshedAt)}</time>
 	</p>
 	<button
 		type="button"
@@ -75,15 +76,15 @@
 {/if}
 
 <table class="w-full border-collapse text-left text-sm">
-	<caption class="sr-only">Cluster nodes</caption>
+	<caption class="sr-only">{m['nodes.caption']()}</caption>
 	<thead>
 		<tr class="border-b border-border">
-			<th scope="col" class="px-3 py-2 font-medium">Name</th>
-			<th scope="col" class="px-3 py-2 font-medium">Status</th>
-			<th scope="col" class="px-3 py-2 font-medium">VMs</th>
-			<th scope="col" class="px-3 py-2 font-medium">CPU</th>
-			<th scope="col" class="px-3 py-2 font-medium">Memory</th>
-			<th scope="col" class="px-3 py-2 font-medium">Storage</th>
+			<th scope="col" class="px-3 py-2 font-medium">{m['nodes.columnName']()}</th>
+			<th scope="col" class="px-3 py-2 font-medium">{m['nodes.columnStatus']()}</th>
+			<th scope="col" class="px-3 py-2 font-medium">{m['nodes.columnVms']()}</th>
+			<th scope="col" class="px-3 py-2 font-medium">{m['nodes.columnCpu']()}</th>
+			<th scope="col" class="px-3 py-2 font-medium">{m['nodes.columnMemory']()}</th>
+			<th scope="col" class="px-3 py-2 font-medium">{m['nodes.columnStorage']()}</th>
 		</tr>
 	</thead>
 	<tbody>
@@ -103,7 +104,7 @@
 					{node.vmCount}
 				</td>
 				<td class="px-3 py-2 text-muted-foreground">
-					{node.cpuCores} cores · {formatPercent(node.cpuUsage)}
+					{node.cpuCores} {m['common.cores']()} · {formatPercent(node.cpuUsage)}
 				</td>
 				<td class="px-3 py-2 text-muted-foreground">
 					{formatBytes(node.memoryUsed)} / {formatBytes(node.memoryTotal)}

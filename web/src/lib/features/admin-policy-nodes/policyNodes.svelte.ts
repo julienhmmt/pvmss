@@ -1,5 +1,6 @@
 import { get, put, ApiRequestError } from '$lib/shared/api/client';
 import { getContext, setContext } from 'svelte';
+import { m } from '$lib/paraglide/messages.js';
 
 export interface NodeCapacity {
 	node: string;
@@ -35,7 +36,7 @@ export class AdminPolicyNodesStore {
 		try {
 			this.nodes = await get<NodeCapacity[]>('/api/v1/admin/policy/nodes?cluster=default');
 		} catch (error: unknown) {
-			this.error = error instanceof ApiRequestError ? error.message : 'failed to load node capacities';
+			this.error = error instanceof ApiRequestError ? error.message : m['policy.nodesLoadError']();
 		} finally {
 			this.loading = false;
 		}
@@ -50,7 +51,7 @@ export class AdminPolicyNodesStore {
 				? this.nodes.map((item) => (item.node === node ? updated : item))
 				: [...this.nodes, updated];
 		} catch (error: unknown) {
-			this.saveError = error instanceof ApiRequestError ? error.message : 'failed to save node capacity';
+			this.saveError = error instanceof ApiRequestError ? error.message : m['policy.nodesSaveError']();
 			throw error;
 		} finally {
 			this.saving = false;

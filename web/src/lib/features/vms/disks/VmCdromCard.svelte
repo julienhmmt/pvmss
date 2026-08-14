@@ -1,15 +1,16 @@
 <script lang="ts">
 	import { getVmDetailContext } from '../detail.svelte';
 	import MountIsoDialog from './MountIsoDialog.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
 	let mountOpen = $state(false);
 </script>
 
 <div class="rounded-md border border-border p-4" data-testid="vm-cdrom">
-	<h2 class="text-lg font-semibold">CD-ROM</h2>
+	<h2 class="text-lg font-semibold">{m['vms.disks.cdromHeading']()}</h2>
 	<p class="mt-1 text-sm text-muted-foreground" data-testid="vm-cdrom-state">
-		State: {store.entity?.cdrom?.state ?? 'absent'}
+		{m['vms.disks.cdromState']()} {store.entity?.cdrom?.state ?? 'absent'}
 	</p>
 	{#if store.entity?.cdrom?.isoVolId}
 		<p class="mt-1 truncate text-xs text-muted-foreground">{store.entity.cdrom.isoVolId}</p>
@@ -22,7 +23,7 @@
 			onclick={() => (mountOpen = true)}
 			data-testid="vm-cdrom-mount-open"
 		>
-			Mount ISO
+			{m['vms.disks.mount']()}
 		</button>
 		<button
 			type="button"
@@ -31,7 +32,7 @@
 			onclick={() => store.setCdrom('disconnect')}
 			data-testid="vm-cdrom-disconnect"
 		>
-			Disconnect
+			{m['vms.disks.disconnect']()}
 		</button>
 		<button
 			type="button"
@@ -40,7 +41,7 @@
 			onclick={() => store.setCdrom('remove')}
 			data-testid="vm-cdrom-remove"
 		>
-			Remove drive
+			{m['vms.disks.removeDrive']()}
 		</button>
 	</div>
 	{#if store.writeError}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getVmDetailContext } from '../detail.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
 
@@ -26,7 +27,7 @@
 </script>
 
 <Dialog bind:open labelledBy="add-disk-title" onClose={close}>
-	<h2 id="add-disk-title" class="mb-4 text-lg font-semibold">Add disk</h2>
+	<h2 id="add-disk-title" class="mb-4 text-lg font-semibold">{m['vms.disks.addDialogTitle']()}</h2>
 	<form
 		class="grid gap-3"
 		onsubmit={(event) => {
@@ -35,7 +36,7 @@
 		}}
 	>
 		<label class="grid gap-1 text-sm">
-			Bus
+			{m['vms.disks.addBus']()}
 			<select class="rounded-md border border-border bg-background px-2 py-2" bind:value={bus}>
 				<option value="scsi">SCSI</option>
 				<option value="virtio">VirtIO</option>
@@ -44,20 +45,20 @@
 			</select>
 		</label>
 		<label class="grid gap-1 text-sm">
-			Storage
+			{m['vms.disks.addStorage']()}
 			<select
 				class="rounded-md border border-border bg-background px-2 py-2"
 				bind:value={storage}
 				data-testid="add-disk-storage"
 			>
-				<option value="" disabled>Select storage</option>
+				<option value="" disabled>{m['vms.disks.addSelectStorage']()}</option>
 				{#each store.hardwareOptions?.storages ?? [] as option (option.storage)}
 					<option value={option.storage}>{option.storage} · {option.node}</option>
 				{/each}
 			</select>
 		</label>
 		<label class="grid gap-1 text-sm">
-			Size (GB)
+			{m['vms.disks.addSize']()}
 			<input
 				class="rounded-md border border-border bg-background px-2 py-2"
 				type="number"
@@ -75,7 +76,7 @@
 				class="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted"
 				onclick={close}
 			>
-				Cancel
+				{m['common.cancel']()}
 			</button>
 			<button
 				type="submit"
@@ -83,7 +84,7 @@
 				disabled={store.diskInFlight}
 				data-testid="add-disk-submit"
 			>
-				{store.diskInFlight ? 'Adding…' : 'Add disk'}
+				{store.diskInFlight ? m['common.adding']() : m['vms.disks.addButton']()}
 			</button>
 		</div>
 	</form>

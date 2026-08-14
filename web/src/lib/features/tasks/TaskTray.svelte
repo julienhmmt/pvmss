@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getTaskTrayContext } from './tasks.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	// Navbar active-task tray (FR-015/FR-016): a counter badge while tasks are
 	// in flight, plus a polite live region announcing the single toast fired
@@ -19,7 +20,7 @@
 	{#if tray.tasks.length > 0}
 		<span
 			role="status"
-			aria-label="{tray.tasks.length} task(s) in progress"
+			aria-label={m['task.ariaLabel']({ count: tray.tasks.length })}
 			class="inline-flex items-center gap-2 rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground"
 		>
 			<span class="inline-block size-3 animate-spin rounded-full border-2 border-current border-t-transparent"></span>
@@ -41,7 +42,7 @@
 					class="ml-3 text-xs underline"
 					onclick={() => tray.clearToast()}
 				>
-					Dismiss
+					{m['common.dismiss']()}
 				</button>
 			</div>
 		{/if}

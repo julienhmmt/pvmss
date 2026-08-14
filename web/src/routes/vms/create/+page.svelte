@@ -5,6 +5,7 @@
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import SimpleWizard from '$lib/features/vm-create/SimpleWizard.svelte';
 	import DetailedWizard from '$lib/features/vm-create/DetailedWizard.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const form = setVmCreateContext();
 	const draft = setDraftContext();
@@ -28,13 +29,13 @@
 </script>
 
 <svelte:head>
-	<title>Create a VM — PVMSS</title>
+	<title>{m['vms.create.title']()}</title>
 </svelte:head>
 
 <section class="mx-auto w-full max-w-2xl px-4 py-8">
-	<h1 class="mb-4 text-2xl font-semibold tracking-tight">Create a VM</h1>
+	<h1 class="mb-4 text-2xl font-semibold tracking-tight">{m['vms.create.heading']()}</h1>
 
-	<div role="tablist" aria-label="Creation mode" class="mb-6 flex gap-2">
+	<div role="tablist" aria-label={m['vms.create.modeLabel']()} class="mb-6 flex gap-2">
 		<button
 			role="tab"
 			aria-selected={form.mode === 'simple'}
@@ -43,7 +44,7 @@
 				: 'bg-muted text-muted-foreground'}"
 			onclick={() => (form.mode = 'simple')}
 		>
-			Simple
+			{m['vms.create.simple']()}
 		</button>
 		<button
 			role="tab"
@@ -53,7 +54,7 @@
 				: 'bg-muted text-muted-foreground'}"
 			onclick={() => (form.mode = 'detailed')}
 		>
-			Detailed
+			{m['vms.create.detailed']()}
 		</button>
 	</div>
 

@@ -6,6 +6,7 @@
 	import CloudInitForm from './CloudInitForm.svelte';
 	import CloudInitSnippetEditor from './CloudInitSnippetEditor.svelte';
 	import SaveCloudInitDialog from './SaveCloudInitDialog.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const vmStore = getVmDetailContext();
 	const cloudInit = new CloudInitStore(vmStore.cluster, vmStore.vmid, () => vmStore.load());
@@ -40,10 +41,10 @@
 <section aria-labelledby="cloudinit-heading" data-testid="vm-cloudinit">
 	<div class="flex flex-wrap items-start justify-between gap-3">
 		<div>
-			<h2 id="cloudinit-heading" class="text-lg font-semibold">Cloud-init</h2>
-			<p class="mt-1 text-sm text-muted-foreground">Configure live VM cloud-init settings or custom YAML.</p>
+			<h2 id="cloudinit-heading" class="text-lg font-semibold">{m['vms.cloudinit.heading']()}</h2>
+			<p class="mt-1 text-sm text-muted-foreground">{m['vms.cloudinit.description']()}</p>
 		</div>
-		<div class="flex gap-2" role="group" aria-label="Cloud-init editor mode">
+		<div class="flex gap-2" role="group" aria-label={m['vms.cloudinit.modeLabel']()}>
 			<button
 				type="button"
 				class="rounded-md border px-3 py-2 text-sm {mode === 'structured' ? 'border-primary text-foreground' : 'border-border text-muted-foreground'}"
@@ -51,7 +52,7 @@
 				onclick={() => (mode = 'structured')}
 				data-testid="cloudinit-mode-structured"
 			>
-				Structured
+				{m['vms.cloudinit.modeStructured']()}
 			</button>
 			<button
 				type="button"
@@ -60,7 +61,7 @@
 				onclick={() => (mode = 'yaml')}
 				data-testid="cloudinit-mode-yaml"
 			>
-				YAML editor
+				{m['vms.cloudinit.modeYaml']()}
 			</button>
 		</div>
 	</div>

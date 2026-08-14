@@ -2,6 +2,7 @@
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import { getDbOpsContext } from './dbOps.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getDbOpsContext();
 
@@ -33,9 +34,9 @@
 </script>
 
 <section class="space-y-3">
-	<h2 class="text-xl font-semibold tracking-tight">Import Database</h2>
+	<h2 class="text-xl font-semibold tracking-tight">{m['admin.db.importTitle']()}</h2>
 	<p class="text-sm text-muted-foreground">
-		Upload a previously exported database file. You'll see a preview before anything is written.
+		{m['admin.db.importDescription']()}
 	</p>
 
 	{#if store.importError}
@@ -48,7 +49,7 @@
 
 	{#if store.confirmResult}
 		<p role="status" class="rounded-md bg-success-soft px-4 py-2 text-sm text-success-soft-foreground">
-			Import successful — {store.confirmResult.tables.map((t) => t.name).join(', ')} replaced.
+			{m['admin.db.importSuccess']({ tables: store.confirmResult.tables.map((t) => t.name).join(', ') })}
 		</p>
 	{/if}
 
@@ -60,20 +61,20 @@
 	/>
 
 	{#if store.importing}
-		<p role="status" aria-live="polite" class="text-muted-foreground">Uploading and validating…</p>
+		<p role="status" aria-live="polite" class="text-muted-foreground">{m['common.uploading']()}</p>
 	{/if}
 
 	{#if store.preview}
 		<div class="rounded-md border border-border p-4 space-y-3">
-			<h3 class="font-medium">Preview</h3>
+			<h3 class="font-medium">{m['admin.db.preview']()}</h3>
 			<p class="text-sm text-muted-foreground">
-				The following tables will be <strong>replaced</strong> (existing rows deleted, then reloaded from the upload):
+				{m['admin.db.previewDescription']()}
 			</p>
 			<table class="w-full text-sm">
 				<thead class="bg-muted/50 text-left">
 					<tr>
-						<th class="px-3 py-1.5 font-medium">Table</th>
-						<th class="px-3 py-1.5 font-medium">Rows</th>
+						<th class="px-3 py-1.5 font-medium">{m['admin.db.table']()}</th>
+						<th class="px-3 py-1.5 font-medium">{m['admin.db.rows']()}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -88,32 +89,32 @@
 
 			{#if store.preview.ignoredTables.length > 0}
 				<p class="text-sm text-muted-foreground">
-					Ignored tables (present in the upload but not on the allowlist):
+					{m['admin.db.ignoredTables']()}
 					<span class="font-mono">{store.preview.ignoredTables.join(', ')}</span>
 				</p>
 			{/if}
 
 			<p class="text-sm text-muted-foreground">
-				Expires at {new Date(store.preview.expiresAt).toLocaleString()}.
+				{m['admin.db.expiresAt']()} {new Date(store.preview.expiresAt).toLocaleString()}.
 			</p>
 
 			<div class="flex gap-2">
 				<Button variant="destructive" disabled={store.confirming} onclick={openConfirm}>
-					{store.confirming ? 'Confirming…' : 'Confirm Import'}
+					{store.confirming ? m['common.confirming']() : m['admin.db.confirmImport']()}
 				</Button>
-				<Button variant="secondary" onclick={() => store.cancelPreview()}>Cancel</Button>
+				<Button variant="secondary" onclick={() => store.cancelPreview()}>{m['common.cancel']()}</Button>
 			</div>
 		</div>
 	{/if}
 </section>
 
 <Dialog open={confirmOpen} labelledBy={CONFIRM_DIALOG_ID} onClose={closeConfirm}>
-	<h2 id={CONFIRM_DIALOG_ID} class="text-lg font-semibold">Confirm Import</h2>
+	<h2 id={CONFIRM_DIALOG_ID} class="text-lg font-semibold">{m['admin.db.confirmDialogTitle']()}</h2>
 	<p class="mt-2 text-sm text-muted-foreground">
-		This will <strong>delete and replace</strong> every listed table with the upload's contents. This cannot be undone. Continue?
+		{m['admin.db.confirmDialogText']()}
 	</p>
 	<div class="mt-4 flex justify-end gap-2">
-		<Button variant="secondary" onclick={closeConfirm}>Cancel</Button>
-		<Button variant="destructive" onclick={doConfirm}>Confirm</Button>
+		<Button variant="secondary" onclick={closeConfirm}>{m['common.cancel']()}</Button>
+		<Button variant="destructive" onclick={doConfirm}>{m['common.confirm']()}</Button>
 	</div>
 </Dialog>

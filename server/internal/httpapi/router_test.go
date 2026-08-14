@@ -159,3 +159,86 @@ func TestRouter_MissingBuildDir_HealthStillWorks(t *testing.T) {
 		t.Fatalf("status = %q, want healthy", got.Status)
 	}
 }
+
+// TestRouter_DocsRoutesRegistered verifies the docs and admin-docs routes are
+// wired through NewRouter when the handlers are provided (issue #53).
+//
+//nolint:paralleltest // serial: shared router and database fixtures
+func TestRouter_DocsRoutesRegistered(t *testing.T) {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	authHandler := newAuthHandler(t)
+	st := newAdminStore(t)
+	projection := inventory.NewProjection()
+	health := httpapi.NewHealth(fakePinger{}, logger, nil, 60*time.Second)
+	clusterNodes := httpapi.NewClusterNodes(projection, logger)
+	clusterRefresh := httpapi.NewClusterRefresh(inventory.NewRefresher(inventory.NewWorker(&stubClusterClient{}, projection, time.Hour, logger), 5*time.Second), logger)
+	vms := httpapi.NewVMs(projection, authHandler, 100, -1, logger)
+	vmDetail := httpapi.NewVMDetail(projection, authHandler, cluster.Fake{}, nil, nil, logger)
+	docs := httpapi.NewDocsAPIHandler(authHandler, st, logger)
+	adminDocs := httpapi.NewAdminDocs(authHandler, st, docs, logger)
+	mux := httpapi.NewRouter(httpapi.RouterConfig{
+		Health: health, ClusterNodes: clusterNodes, ClusterRefresh: clusterRefresh,
+		VMs: vms, VMDetail: vmDetail, Auth: authHandler, Log: logger,
+		Docs: docs, AdminDocs: adminDocs,
+	})
+
+	// Public docs list — reaches the handler (empty list, 200).
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/docs", nil)
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("public docs list status = %d, want 200: %s", rec.Code, rec.Body.String())
+	}
+
+	// Admin docs list without auth — reaches the RequireAdmin guard (401).
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/admin/docs", nil)
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("admin docs list without auth status = %d, want 401", rec.Code)
+	}
+
+	// Admin docs list with non-admin auth — reaches the RequireAdmin guard (403).
+	alice := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/admin/docs", nil)
+	req.AddCookie(alice)
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("admin docs list with non-admin status = %d, want 403", rec.Code)
+	}
+
+	// Admin docs list with admin auth — reaches the handler (200).
+	cookie := adminCookie(t, authHandler)
+	rec = httptest.NewRecorder()
+	req = httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/admin/docs", nil)
+	req.AddCookie(cookie)
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("admin docs list with auth status = %d, want 200: %s", rec.Code, rec.Body.String())
+	}
+
+	// Every admin docs CRUD route reaches the RequireAdmin guard (401 without
+	// auth) — this covers the route registration lines for POST/PUT/DELETE/toggle.
+	for _, tc := range []struct {
+		method string
+		path   string
+	}{
+		{http.MethodPost, "/api/v1/admin/docs"},
+		{http.MethodPut, "/api/v1/admin/docs/x/en"},
+		{http.MethodDelete, "/api/v1/admin/docs/x/en"},
+		{http.MethodPost, "/api/v1/admin/docs/x/en/toggle"},
+	} {
+		rec = httptest.NewRecorder()
+		req = httptest.NewRequestWithContext(context.Background(), tc.method, tc.path, nil)
+		mux.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("%s %s: status = %d, want 401 (route reached guard)", tc.method, tc.path, rec.Code)
+		}
+	}
+}

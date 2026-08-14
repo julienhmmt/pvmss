@@ -1,5 +1,6 @@
 import { del, get, post, ApiRequestError } from '$lib/shared/api/client';
 import { getContext, setContext } from 'svelte';
+import { m } from '$lib/paraglide/messages.js';
 
 export interface AdminPool {
 	name: string;
@@ -38,7 +39,7 @@ export class PoolsStore {
 			const query = this.searchTerm ? `&search=${encodeURIComponent(this.searchTerm)}` : '';
 			this.pools = await get<AdminPool[]>(`/api/v1/admin/pools?cluster=default${query}`);
 		} catch (error) {
-			this.error = error instanceof ApiRequestError ? error.message : 'failed to load admin pools';
+			this.error = error instanceof ApiRequestError ? error.message : m['admin.pools.loadError']();
 		} finally {
 			this.loading = false;
 		}
@@ -67,9 +68,9 @@ export class PoolsStore {
 			if (needle === '' || created.name.toLowerCase().includes(needle)) {
 				this.pools = [...this.pools, created];
 			}
-			this.announce = `Pool ${created.name} created`;
+			this.announce = m['admin.pools.created']({ name: created.name });
 		} catch (error) {
-			this.saveError = error instanceof ApiRequestError ? error.message : 'failed to create pool';
+			this.saveError = error instanceof ApiRequestError ? error.message : m['admin.pools.createError']();
 			throw error;
 		} finally {
 			this.saving = false;
@@ -84,10 +85,10 @@ export class PoolsStore {
 			const result = await del<DeletePoolResponse>(`/api/v1/admin/pools/${encodeURIComponent(name)}?cluster=default`);
 			this.pools = this.pools.filter((pool) => pool.name !== name);
 			this.announce = result.userDeleted
-				? `Pool ${name} deleted`
-				: `Pool ${name} deleted, but its user could not be deleted`;
+				? m['admin.pools.deleted']({ name })
+				: m['admin.pools.deletedUserFailed']({ name });
 		} catch (error) {
-			this.deleteError = error instanceof ApiRequestError ? error.message : 'failed to delete pool';
+			this.deleteError = error instanceof ApiRequestError ? error.message : m['admin.pools.deleteError']();
 			throw error;
 		} finally {
 			this.deleting = null;

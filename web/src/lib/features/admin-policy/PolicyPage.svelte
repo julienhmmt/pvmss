@@ -1,7 +1,7 @@
 <script lang="ts">
 	import PolicyForm from './PolicyForm.svelte';
 	import type { AdminPolicy, AdminPolicyPatch } from './policy.svelte';
-	import { resolveAdminPolicyCopy } from '$lib/i18n/admin-policy';
+	import { m } from '$lib/paraglide/messages.js';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 
@@ -17,20 +17,19 @@
 	}
 
 	let { policy, loading, error, saving, saveError, saved, onLoad, onSave }: Props = $props();
-	const copy = resolveAdminPolicyCopy();
 </script>
 
-<svelte:head><title>{copy.title} — PVMSS</title></svelte:head>
+<svelte:head><title>{m['policy.title']()} — PVMSS</title></svelte:head>
 
-<PageHeader title={copy.title} description={copy.description} titleId="policy-title" />
+<PageHeader title={m['policy.title']()} description={m['policy.description']()} titleId="policy-title" />
 
 <section aria-labelledby="policy-title">
 	{#if loading}
-		<p class="text-muted-foreground" role="status" aria-live="polite">{copy.loading}</p>
+		<p class="text-muted-foreground" role="status" aria-live="polite">{m['policy.loading']()}</p>
 	{:else if error}
 		<div class="space-y-3" role="alert">
 			<p class="text-destructive">{error}</p>
-			<Button variant="secondary" onclick={onLoad}>{copy.retry}</Button>
+			<Button variant="secondary" onclick={onLoad}>{m['policy.retry']()}</Button>
 		</div>
 	{:else if policy !== null}
 		{#key policy}

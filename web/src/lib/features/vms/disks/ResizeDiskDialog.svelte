@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getVmDetailContext, type VmDisk } from '../detail.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
 
@@ -30,7 +31,7 @@
 </script>
 
 <Dialog bind:open labelledBy="resize-disk-title" onClose={close}>
-	<h2 id="resize-disk-title" class="mb-4 text-lg font-semibold">Resize {disk?.key ?? 'disk'}</h2>
+	<h2 id="resize-disk-title" class="mb-4 text-lg font-semibold">{m['vms.disks.resizeDialogTitle']({ disk: disk?.key ?? 'disk' })}</h2>
 	<form
 		class="grid gap-3"
 		onsubmit={(event) => {
@@ -39,7 +40,7 @@
 		}}
 	>
 		<label class="grid gap-1 text-sm">
-			New size (GB)
+			{m['vms.disks.resizeNewSize']()}
 			<input
 				class="rounded-md border border-border bg-background px-2 py-2"
 				type="number"
@@ -65,7 +66,7 @@
 				disabled={store.diskInFlight}
 				data-testid="resize-disk-submit"
 			>
-				{store.diskInFlight ? 'Resizing…' : 'Resize'}
+				{store.diskInFlight ? m['common.resizing']() : m['vms.disks.resize']()}
 			</button>
 		</div>
 	</form>

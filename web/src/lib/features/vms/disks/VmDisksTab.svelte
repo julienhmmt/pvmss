@@ -4,6 +4,7 @@
 	import ResizeDiskDialog from './ResizeDiskDialog.svelte';
 	import DeleteDiskDialog from './DeleteDiskDialog.svelte';
 	import VmCdromCard from './VmCdromCard.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
 
@@ -27,9 +28,9 @@
 <section aria-labelledby="disks-heading">
 	<div class="flex flex-wrap items-baseline justify-between gap-2">
 		<div>
-			<h2 id="disks-heading" class="text-lg font-semibold">Disks</h2>
+			<h2 id="disks-heading" class="text-lg font-semibold">{m['vms.disks.heading']()}</h2>
 			<p class="text-sm text-muted-foreground">
-				Boot disks are protected. Growth is available while the VM runs.
+				{m['vms.disks.description']()}
 			</p>
 		</div>
 		<button
@@ -39,12 +40,12 @@
 			onclick={() => (addOpen = true)}
 			data-testid="vm-disk-add-open"
 		>
-			Add disk
+			{m['vms.disks.addButton']()}
 		</button>
 	</div>
 
 	{#if store.hardwareLoading}
-		<p class="mt-3 text-sm text-muted-foreground" role="status">Loading hardware options…</p>
+		<p class="mt-3 text-sm text-muted-foreground" role="status">{m['vms.disks.loading']()}</p>
 	{:else if store.hardwareError}
 		<p class="mt-3 text-sm text-destructive" role="alert">{store.hardwareError}</p>
 	{:else if store.entity?.disks?.length}
@@ -52,16 +53,16 @@
 			<table class="min-w-full text-left text-sm">
 				<thead class="bg-muted/40 text-xs text-muted-foreground">
 					<tr>
-						<th class="px-3 py-2">Disk</th>
-						<th class="px-3 py-2">Storage</th>
-						<th class="px-3 py-2">Size</th>
-						<th class="px-3 py-2">Actions</th>
+						<th class="px-3 py-2">{m['vms.disks.tableDisk']()}</th>
+						<th class="px-3 py-2">{m['vms.disks.tableStorage']()}</th>
+						<th class="px-3 py-2">{m['vms.disks.tableSize']()}</th>
+						<th class="px-3 py-2">{m['common.actions']()}</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each store.entity.disks as disk (disk.key)}
 						<tr class="border-t border-border">
-							<td class="px-3 py-2 font-medium">{disk.key}{disk.isBoot ? ' · boot' : ''}</td>
+							<td class="px-3 py-2 font-medium">{disk.key}{disk.isBoot ? ` · ${m['common.boot']()}` : ''}</td>
 							<td class="px-3 py-2 text-muted-foreground">{disk.storage}</td>
 							<td class="px-3 py-2">{disk.sizeGB} GB</td>
 							<td class="px-3 py-2">
@@ -73,7 +74,7 @@
 										onclick={() => openResize(disk)}
 										data-testid={`vm-disk-resize-open-${disk.key}`}
 									>
-										Resize
+										{m['vms.disks.resize']()}
 									</button>
 									<button
 										type="button"
@@ -82,7 +83,7 @@
 										onclick={() => openDelete(disk)}
 										data-testid={`vm-disk-delete-open-${disk.key}`}
 									>
-										{disk.isBoot ? 'Protected' : 'Delete'}
+										{disk.isBoot ? m['common.protected']() : m['common.delete']()}
 									</button>
 								</div>
 							</td>
@@ -95,7 +96,7 @@
 		<p
 			class="mt-3 rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground"
 		>
-			No disks attached.
+			{m['vms.disks.empty']()}
 		</p>
 	{/if}
 	{#if store.diskError}
@@ -103,7 +104,7 @@
 	{/if}
 </section>
 
-<section class="mt-6" aria-label="CD-ROM">
+<section class="mt-6" aria-label={m['vms.disks.cdromSection']()}>
 	<VmCdromCard />
 </section>
 

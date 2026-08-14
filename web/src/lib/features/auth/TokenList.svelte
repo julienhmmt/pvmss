@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { setTokensContext, type TokenScope } from './tokens.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = setTokensContext();
 
@@ -22,42 +23,42 @@
 </script>
 
 <section class="w-full max-w-2xl">
-	<h2 class="text-lg font-semibold tracking-tight">API tokens</h2>
+	<h2 class="text-lg font-semibold tracking-tight">{m['profile.tokens.heading']()}</h2>
 
 	<form class="mt-4 flex flex-wrap items-end gap-3" onsubmit={createToken}>
 		<label class="grid gap-1 text-sm font-medium">
-			Label
+			{m['profile.tokens.label']()}
 			<input class="rounded-md border border-input bg-background px-3 py-2" bind:value={label} required />
 		</label>
 		<label class="grid gap-1 text-sm font-medium">
-			Scope
+			{m['profile.tokens.scope']()}
 			<select class="rounded-md border border-input bg-background px-3 py-2" bind:value={scope}>
-				<option value="read">Read</option>
-				<option value="read_write">Read/write</option>
+				<option value="read">{m['profile.tokens.scopeRead']()}</option>
+				<option value="read_write">{m['profile.tokens.scopeReadWrite']()}</option>
 			</select>
 		</label>
-		<button class="rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground" type="submit">Create token</button>
+		<button class="rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground" type="submit">{m['profile.tokens.createButton']()}</button>
 	</form>
 
 	{#if store.error}<p role="alert" class="mt-3 text-sm text-destructive">{store.error}</p>{/if}
 
 	{#if store.lastCreatedValue}
 		<div role="status" class="mt-3 rounded-md border border-border bg-card p-3 text-sm">
-			<p class="font-medium">Copy this token now — it will not be shown again.</p>
+			<p class="font-medium">{m['profile.tokens.copyNow']()}</p>
 			<code class="mt-1 block break-all rounded bg-muted px-2 py-1">{store.lastCreatedValue}</code>
-			<button class="mt-2 text-sm underline" onclick={() => store.dismissCreatedValue()}>Dismiss</button>
+			<button class="mt-2 text-sm underline" onclick={() => store.dismissCreatedValue()}>{m['common.dismiss']()}</button>
 		</div>
 	{/if}
 
 	<table class="mt-4 w-full border-collapse text-left text-sm">
-		<caption class="sr-only">API tokens</caption>
+		<caption class="sr-only">{m['profile.tokens.caption']()}</caption>
 		<thead>
 			<tr class="border-b border-border">
-				<th scope="col" class="px-3 py-2 font-medium">Label</th>
-				<th scope="col" class="px-3 py-2 font-medium">Scope</th>
-				<th scope="col" class="px-3 py-2 font-medium">Created</th>
-				<th scope="col" class="px-3 py-2 font-medium">Last used</th>
-				<th scope="col" class="px-3 py-2 font-medium"><span class="sr-only">Actions</span></th>
+				<th scope="col" class="px-3 py-2 font-medium">{m['profile.tokens.columnLabel']()}</th>
+				<th scope="col" class="px-3 py-2 font-medium">{m['profile.tokens.columnScope']()}</th>
+				<th scope="col" class="px-3 py-2 font-medium">{m['profile.tokens.columnCreated']()}</th>
+				<th scope="col" class="px-3 py-2 font-medium">{m['profile.tokens.columnLastUsed']()}</th>
+				<th scope="col" class="px-3 py-2 font-medium"><span class="sr-only">{m['common.actions']()}</span></th>
 			</tr>
 		</thead>
 		<tbody>
@@ -66,9 +67,9 @@
 					<td class="px-3 py-2 font-medium">{token.label}</td>
 					<td class="px-3 py-2 text-muted-foreground">{token.scope}</td>
 					<td class="px-3 py-2 text-muted-foreground">{new Date(token.createdAt).toLocaleString()}</td>
-					<td class="px-3 py-2 text-muted-foreground">{token.lastUsedAt ? new Date(token.lastUsedAt).toLocaleString() : 'never'}</td>
+					<td class="px-3 py-2 text-muted-foreground">{token.lastUsedAt ? new Date(token.lastUsedAt).toLocaleString() : m['profile.tokens.never']()}</td>
 					<td class="px-3 py-2 text-right">
-						<button class="text-sm text-destructive underline" onclick={() => store.revoke(token.id)}>Revoke</button>
+						<button class="text-sm text-destructive underline" onclick={() => store.revoke(token.id)}>{m['profile.tokens.revoke']()}</button>
 					</td>
 				</tr>
 			{/each}

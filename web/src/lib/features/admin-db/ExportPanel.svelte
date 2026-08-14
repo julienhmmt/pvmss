@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { getDbOpsContext } from './dbOps.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getDbOpsContext();
 </script>
 
 <section class="space-y-3">
-	<h2 class="text-xl font-semibold tracking-tight">Export Database</h2>
+	<h2 class="text-xl font-semibold tracking-tight">{m['admin.db.exportTitle']()}</h2>
 	<p class="text-sm text-muted-foreground">
-		Download a consistent snapshot of the configuration database. The export does not interrupt concurrent reads or writes.
+		{m['admin.db.exportDescription']()}
 	</p>
 
 	{#if store.exportError}
@@ -16,6 +17,6 @@
 	{/if}
 
 	<Button disabled={store.exporting} onclick={() => void store.exportDatabase()}>
-		{store.exporting ? 'Exporting…' : 'Export'}
+		{store.exporting ? m['common.exporting']() : m['admin.db.export']()}
 	</Button>
 </section>

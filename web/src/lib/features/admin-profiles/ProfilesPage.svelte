@@ -5,6 +5,7 @@
 	import Switch from '$lib/shared/ui/Switch.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		profiles: AdminProfile[];
@@ -69,17 +70,17 @@
 </script>
 
 <svelte:head>
-	<title>Admin Profiles — PVMSS</title>
+	<title>{m['admin.profiles.pageTitle']()}</title>
 </svelte:head>
 
-<PageHeader title="VM Profiles">
+<PageHeader title={m['admin.profiles.title']()}>
 	{#snippet actions()}
-		<Button onclick={openCreate}>New profile</Button>
+		<Button onclick={openCreate}>{m['admin.profiles.newProfile']()}</Button>
 	{/snippet}
 </PageHeader>
 
 {#if loading}
-	<div role="status" aria-live="polite" class="sr-only">Loading…</div>
+	<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
 	<TableSkeleton columns={8} />
 {:else if error}
 	<p role="alert" class="text-destructive">{error}</p>
@@ -94,14 +95,14 @@
 		<table class="w-full text-sm">
 			<thead class="bg-muted/50 text-left">
 				<tr>
-					<th class="px-4 py-2 font-medium">ID</th>
-					<th class="px-4 py-2 font-medium">Label</th>
-					<th class="px-4 py-2 font-medium">vCPU</th>
-					<th class="px-4 py-2 font-medium">Memory</th>
-					<th class="px-4 py-2 font-medium">Disk</th>
-					<th class="px-4 py-2 font-medium">Bus</th>
-					<th class="px-4 py-2 font-medium">Enabled</th>
-					<th class="px-4 py-2 font-medium">Actions</th>
+					<th class="px-4 py-2 font-medium">{m['admin.profiles.id']()}</th>
+					<th class="px-4 py-2 font-medium">{m['admin.profiles.labelField']()}</th>
+					<th class="px-4 py-2 font-medium">{m['admin.profiles.vcpu']()}</th>
+					<th class="px-4 py-2 font-medium">{m['common.memory']()}</th>
+					<th class="px-4 py-2 font-medium">{m['admin.profiles.disk']()}</th>
+					<th class="px-4 py-2 font-medium">{m['admin.profiles.bus']()}</th>
+					<th class="px-4 py-2 font-medium">{m['admin.profiles.enabledStatus']()}</th>
+					<th class="px-4 py-2 font-medium">{m['common.actions']()}</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -117,26 +118,26 @@
 							<span class="inline-flex items-center gap-2">
 								<Switch
 									checked={profile.enabled}
-									label={profile.enabled ? `Disable ${profile.label}` : `Enable ${profile.label}`}
+									label={profile.enabled ? m['admin.profiles.disable']({ label: profile.label }) : m['admin.profiles.enable']({ label: profile.label })}
 									onToggle={() => onToggle(profile.id, !profile.enabled)}
 								/>
 								<span class="text-xs text-muted-foreground">
-									{profile.enabled ? 'Enabled' : 'Disabled'}
+									{profile.enabled ? m['admin.profiles.enabledStatus']() : m['admin.profiles.disabledStatus']()}
 								</span>
 							</span>
 						</td>
 						<td class="px-4 py-2">
 							<div class="flex gap-2">
-								<Button variant="ghost" size="sm" label={`Edit ${profile.label}`} onclick={() => openEdit(profile)}>Edit</Button>
-								<Button variant="destructive" size="sm" label={`Delete ${profile.label}`} onclick={() => onDelete(profile.id)}>Delete</Button>
+								<Button variant="ghost" size="sm" label={m['admin.profiles.editLabel']({ label: profile.label })} onclick={() => openEdit(profile)}>{m['admin.profiles.edit']()}</Button>
+								<Button variant="destructive" size="sm" label={m['admin.profiles.deleteLabel']({ label: profile.label })} onclick={() => onDelete(profile.id)}>{m['admin.profiles.delete']()}</Button>
 							</div>
 						</td>
 					</tr>
 				{:else}
 					<tr><td colspan={8} class="p-0">
-						<EmptyState title="No profiles yet">
+						<EmptyState title={m['admin.profiles.noProfiles']()}>
 							{#snippet actions()}
-								<Button onclick={openCreate}>New profile</Button>
+								<Button onclick={openCreate}>{m['admin.profiles.newProfile']()}</Button>
 							{/snippet}
 						</EmptyState>
 					</td></tr>
@@ -149,10 +150,10 @@
 {#if showForm}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true">
 		<div class="w-full max-w-md rounded-lg bg-background p-6 shadow-lg">
-			<h2 class="mb-4 text-lg font-medium">{editingId ? 'Edit profile' : 'New profile'}</h2>
+			<h2 class="mb-4 text-lg font-medium">{editingId ? m['admin.profiles.editProfile']() : m['admin.profiles.newProfileForm']()}</h2>
 			<form onsubmit={(e) => { e.preventDefault(); submitForm(); }} class="space-y-4">
 				<div>
-					<label for="profile-label" class="mb-1 block text-sm font-medium">Label</label>
+					<label for="profile-label" class="mb-1 block text-sm font-medium">{m['admin.profiles.labelField']()}</label>
 					<input
 						id="profile-label"
 						type="text"
@@ -163,7 +164,7 @@
 				</div>
 				<div class="grid grid-cols-2 gap-4">
 					<div>
-						<label for="profile-cpu" class="mb-1 block text-sm font-medium">vCPU cores</label>
+						<label for="profile-cpu" class="mb-1 block text-sm font-medium">{m['admin.profiles.vcpuCores']()}</label>
 						<input
 							id="profile-cpu"
 							type="number"
@@ -174,7 +175,7 @@
 						/>
 					</div>
 					<div>
-						<label for="profile-mem" class="mb-1 block text-sm font-medium">Memory (MB)</label>
+						<label for="profile-mem" class="mb-1 block text-sm font-medium">{m['admin.profiles.memoryMb']()}</label>
 						<input
 							id="profile-mem"
 							type="number"
@@ -185,7 +186,7 @@
 						/>
 					</div>
 					<div>
-						<label for="profile-disk" class="mb-1 block text-sm font-medium">Disk (GB)</label>
+						<label for="profile-disk" class="mb-1 block text-sm font-medium">{m['admin.profiles.diskGb']()}</label>
 						<input
 							id="profile-disk"
 							type="number"
@@ -196,7 +197,7 @@
 						/>
 					</div>
 					<div>
-						<label for="profile-bus" class="mb-1 block text-sm font-medium">Bus</label>
+						<label for="profile-bus" class="mb-1 block text-sm font-medium">{m['admin.profiles.busField']()}</label>
 						<select id="profile-bus" class="w-full rounded-md border bg-background px-3 py-2 text-sm" bind:value={bus}>
 							<option value="scsi">scsi</option>
 							<option value="virtio">virtio</option>
@@ -206,9 +207,9 @@
 					</div>
 				</div>
 				<div class="flex justify-end gap-2 pt-2">
-					<Button variant="ghost" onclick={() => (showForm = false)}>Cancel</Button>
+					<Button variant="ghost" onclick={() => (showForm = false)}>{m['common.cancel']()}</Button>
 					<Button type="submit" disabled={saving}>
-						{saving ? 'Saving…' : editingId ? 'Save' : 'Create'}
+						{saving ? m['common.saving']() : editingId ? m['common.save']() : m['common.create']()}
 					</Button>
 				</div>
 			</form>

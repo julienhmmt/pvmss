@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { getVmBulkContext } from './bulk.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const bulk = getVmBulkContext();
 
-	const ACTIONS: readonly { value: string; label: string }[] = [
-		{ value: 'start', label: 'Start' },
-		{ value: 'stop', label: 'Stop' },
-		{ value: 'shutdown', label: 'Shutdown' },
-		{ value: 'reboot', label: 'Reboot' },
-		{ value: 'reset', label: 'Reset' }
+	const ACTIONS: readonly { value: string; label: () => string }[] = [
+		{ value: 'start', label: () => m['vms.action.start']() },
+		{ value: 'stop', label: () => m['vms.action.stop']() },
+		{ value: 'shutdown', label: () => m['vms.action.shutdown']() },
+		{ value: 'reboot', label: () => m['vms.action.reboot']() },
+		{ value: 'reset', label: () => m['vms.action.reset']() }
 	] as const;
 
 	let selectedAction = $state<string>('start');
@@ -23,7 +24,7 @@
 		try {
 			await bulk.submitBulkAction(selectedAction);
 		} catch (err) {
-			submitError = err instanceof Error ? err.message : 'bulk action failed';
+			submitError = err instanceof Error ? err.message : m['vms.bulk.errorDefault']();
 		}
 	}
 
@@ -44,11 +45,11 @@
 		data-testid="vm-bulk-action-bar"
 	>
 		<span class="text-sm font-medium" data-testid="vm-bulk-selected-count">
-			{bulk.selectedCount} selected
+			{m['common.selectedCount']({ count: bulk.selectedCount })}
 		</span>
 
 		<form class="flex items-center gap-2" onsubmit={handleSubmit}>
-			<label for="vm-bulk-action" class="sr-only">Bulk action</label>
+			<label for="vm-bulk-action" class="sr-only">{m['common.bulkAction']()}</label>
 			<select
 				id="vm-bulk-action"
 				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
@@ -56,7 +57,7 @@
 				data-testid="vm-bulk-action-select"
 			>
 				{#each ACTIONS as action (action.value)}
-					<option value={action.value}>{action.label}</option>
+					<option value={action.value}>{action.label()}</option>
 				{/each}
 			</select>
 
@@ -66,7 +67,7 @@
 				disabled={bulk.submitting}
 				data-testid="vm-bulk-action-submit"
 			>
-				{bulk.submitting ? 'Applying…' : 'Apply'}
+				{bulk.submitting ? m['common.applying']() : m['common.apply']()}
 			</button>
 		</form>
 
@@ -76,7 +77,7 @@
 			onclick={handleClearSelection}
 			data-testid="vm-bulk-clear-selection"
 		>
-			Clear selection
+			{m['common.clearSelection']()}
 		</button>
 
 		{#if submitError}
@@ -88,9 +89,9 @@
 		{#if bulk.lastResult}
 			<div class="flex items-center gap-3" data-testid="vm-bulk-result-summary">
 				<span class="text-sm">
-					<span class="font-medium text-success">{summary.ok}</span> succeeded
+					<span class="font-medium text-success">{summary.ok}</span> {m['common.succeeded']()}
 					·
-					<span class="font-medium text-destructive">{summary.error}</span> failed
+					<span class="font-medium text-destructive">{summary.error}</span> {m['common.failed']()}
 				</span>
 				<button
 					type="button"
@@ -98,7 +99,7 @@
 					onclick={handleDismissResult}
 					data-testid="vm-bulk-dismiss-result"
 				>
-					Dismiss
+					{m['common.dismiss']()}
 				</button>
 			</div>
 		{/if}
@@ -108,7 +109,7 @@
 {#if bulk.lastResult}
 	<div class="mb-4 rounded-md border border-border" data-testid="vm-bulk-result-panel">
 		<h2 class="border-b border-border px-3 py-2 text-sm font-medium">
-			Bulk action results ({summary.ok} ok · {summary.error} failed)
+			{m['common.resultsTitle']({ ok: summary.ok, error: summary.error })}
 		</h2>
 		<ul class="divide-y divide-border">
 			{#each bulk.lastResult.results as result (`${result.cluster}:${result.vmid}`)}
@@ -118,11 +119,11 @@
 					</span>
 					{#if result.status === 'ok'}
 						<span class="font-medium text-success" data-testid="vm-bulk-result-ok">
-							✓ ok
+							{m['common.ok']()}
 						</span>
 					{:else}
 						<span class="font-medium text-destructive" data-testid="vm-bulk-result-error">
-							✗ {result.message ?? 'error'}
+							{m['common.error']()} {result.message ?? ''}
 						</span>
 					{/if}
 				</li>

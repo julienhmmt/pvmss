@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { m } from '$lib/paraglide/messages.js';
+
 	interface Tab {
 		id: string;
-		label: string;
+		label: () => string;
 	}
 
 	interface Props {
@@ -27,7 +29,7 @@
 	}
 </script>
 
-<div role="tablist" class="flex gap-1 border-b border-border" aria-label="VM sections">
+<div role="tablist" class="flex gap-1 border-b border-border" aria-label={m['common.tabsAriaLabel']()}>
 	{#each tabs as tab, index (tab.id)}
 		<button
 			type="button"
@@ -43,7 +45,7 @@
 			onkeydown={(event) => handleKeydown(event, index)}
 			data-testid={`vm-tab-${tab.id}`}
 		>
-			{tab.label}
+			{tab.label()}
 		</button>
 	{/each}
 </div>

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { CloudInitConfigUpdate, CloudInitIPMode, CloudInitStore } from './cloudinit.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		store: CloudInitStore;
@@ -45,14 +46,14 @@
 
 	function validateForm(): string | null {
 		if (ipMode === 'static' && (ipAddress === '' || gateway === '')) {
-			return 'Static IP mode requires an IP address and gateway.';
+			return m['vms.cloudinit.validationError']();
 		}
 		return null;
 	}
 </script>
 
 {#if store.configLoading && store.config === null}
-	<p role="status" aria-live="polite">Loading cloud-init configuration…</p>
+	<p role="status" aria-live="polite">{m['vms.cloudinit.loading']()}</p>
 {:else if store.configError && store.config === null}
 	<p role="alert" data-testid="cloudinit-config-error">{store.configError}</p>
 {:else}
@@ -65,46 +66,46 @@
 		}}
 	>
 		<p id="cloudinit-form-help" class="text-sm text-muted-foreground">
-			Changes apply after the VM reboots.
+			{m['vms.cloudinit.help']()}
 		</p>
 		<label class="grid gap-1 text-sm">
-			User
+			{m['vms.cloudinit.user']()}
 			<input class="rounded-md border border-border bg-background px-3 py-2" bind:value={user} data-testid="cloudinit-user" />
 		</label>
 		<label class="grid gap-1 text-sm">
-			Password <span class="text-xs text-muted-foreground">write-only</span>
+			{m['vms.cloudinit.password']()} <span class="text-xs text-muted-foreground">{m['common.writeOnly']()}</span>
 			<input class="rounded-md border border-border bg-background px-3 py-2" type="password" bind:value={password} data-testid="cloudinit-password" />
 		</label>
 		<label class="grid gap-1 text-sm">
-			SSH public keys
+			{m['vms.cloudinit.sshKeys']()}
 			<textarea class="min-h-24 rounded-md border border-border bg-background px-3 py-2 font-mono text-xs" bind:value={sshKeys} data-testid="cloudinit-ssh-keys"></textarea>
 		</label>
 		<label class="grid gap-1 text-sm">
-			IP mode
+			{m['vms.cloudinit.ipMode']()}
 			<select class="rounded-md border border-border bg-background px-3 py-2" bind:value={ipMode} data-testid="cloudinit-ip-mode">
-				<option value="dhcp">DHCP</option>
-				<option value="static">Static</option>
+				<option value="dhcp">{m['vms.cloudinit.dhcp']()}</option>
+				<option value="static">{m['vms.cloudinit.static']()}</option>
 			</select>
 		</label>
 		{#if ipMode === 'static'}
 			<div class="grid gap-4 sm:grid-cols-2">
 				<label class="grid gap-1 text-sm">
-					IP address (CIDR)
+					{m['vms.cloudinit.ipAddress']()}
 					<input class="rounded-md border border-border bg-background px-3 py-2" required bind:value={ipAddress} data-testid="cloudinit-ip-address" />
 				</label>
 				<label class="grid gap-1 text-sm">
-					Gateway
+					{m['vms.cloudinit.gateway']()}
 					<input class="rounded-md border border-border bg-background px-3 py-2" required bind:value={gateway} data-testid="cloudinit-gateway" />
 				</label>
 			</div>
 		{/if}
 		<div class="grid gap-4 sm:grid-cols-2">
 			<label class="grid gap-1 text-sm">
-				DNS server
+				{m['vms.cloudinit.dnsServer']()}
 				<input class="rounded-md border border-border bg-background px-3 py-2" bind:value={dnsServer} data-testid="cloudinit-dns" />
 			</label>
 			<label class="grid gap-1 text-sm">
-				Search domain
+				{m['vms.cloudinit.searchDomain']()}
 				<input class="rounded-md border border-border bg-background px-3 py-2" bind:value={searchDomain} data-testid="cloudinit-search-domain" />
 			</label>
 		</div>
@@ -114,9 +115,9 @@
 		{#if store.configError}
 			<p role="alert" data-testid="cloudinit-config-error">{store.configError}</p>
 		{/if}
-		<p class="sr-only" role="status" aria-live="polite">{store.configInFlight ? 'Saving cloud-init configuration…' : ''}</p>
+		<p class="sr-only" role="status" aria-live="polite">{store.configInFlight ? m['vms.cloudinit.saving']() : ''}</p>
 		<button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50" disabled={store.configInFlight} data-testid="cloudinit-save">
-			{store.configInFlight ? 'Saving…' : 'Save configuration'}
+			{store.configInFlight ? m['common.saving']() : m['vms.cloudinit.saveButton']()}
 		</button>
 	</form>
 {/if}

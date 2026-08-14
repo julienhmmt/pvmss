@@ -1,5 +1,6 @@
 import { get, ApiRequestError } from '$lib/shared/api/client';
 import { setContext, getContext } from 'svelte';
+import { m } from '$lib/paraglide/messages.js';
 
 export interface NodeSummary {
 	name: string;
@@ -41,7 +42,7 @@ export class DashboardStore {
 		try {
 			this.summary = await get<DashboardSummary>('/api/v1/admin/dashboard');
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : 'failed to load dashboard';
+			this.error = err instanceof ApiRequestError ? err.message : m['admin.dashboard.loadError']();
 		} finally {
 			this.loading = false;
 		}

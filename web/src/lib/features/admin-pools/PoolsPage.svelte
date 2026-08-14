@@ -6,6 +6,7 @@
 	import Button from '$lib/shared/ui/Button.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		pools: AdminPool[];
@@ -55,23 +56,23 @@
 </script>
 
 <svelte:head>
-	<title>Admin Pools — PVMSS</title>
+	<title>{m['admin.pools.pageTitle']()}</title>
 </svelte:head>
 
-<PageHeader title="Pools" description="Manage user tenancy pools and their VM memberships.">
+<PageHeader title={m['admin.pools.heading']()} description={m['admin.pools.description']()}>
 	{#snippet actions()}
-		<Button onclick={openCreate}>New pool</Button>
+		<Button onclick={openCreate}>{m['admin.pools.newPool']()}</Button>
 	{/snippet}
 </PageHeader>
 
 <div class="mb-5 max-w-sm">
-	<label for="pool-search" class="mb-1 block text-sm font-medium">Search pools</label>
+	<label for="pool-search" class="mb-1 block text-sm font-medium">{m['admin.pools.search']()}</label>
 	<input id="pool-search" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" type="search" bind:value={search} oninput={() => onSearch(search)} />
 </div>
 
 <div class="sr-only" role="status" aria-live="polite">{announce ?? ''}</div>
 {#if loading}
-	<div role="status" aria-live="polite" class="sr-only">Loading…</div>
+	<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
 	<TableSkeleton columns={6} />
 {:else if error}
 	<p role="alert" class="text-destructive">{error}</p>
@@ -86,12 +87,12 @@
 		<table class="w-full text-sm">
 			<thead class="bg-muted/50 text-left">
 				<tr>
-					<th class="px-4 py-2 font-medium">Name</th>
-					<th class="px-4 py-2 font-medium">Comment</th>
-					<th class="px-4 py-2 text-right font-medium">Total</th>
-					<th class="px-4 py-2 text-right font-medium">Running</th>
-					<th class="px-4 py-2 text-right font-medium">Stopped</th>
-					<th class="px-4 py-2 text-right font-medium">Actions</th>
+					<th class="px-4 py-2 font-medium">{m['common.name']()}</th>
+					<th class="px-4 py-2 font-medium">{m['admin.pools.comment']()}</th>
+					<th class="px-4 py-2 text-right font-medium">{m['common.total']()}</th>
+					<th class="px-4 py-2 text-right font-medium">{m['common.running']()}</th>
+					<th class="px-4 py-2 text-right font-medium">{m['common.stopped']()}</th>
+					<th class="px-4 py-2 text-right font-medium">{m['common.actions']()}</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -103,12 +104,12 @@
 						<td class="px-4 py-2 text-right">{pool.running}</td>
 						<td class="px-4 py-2 text-right">{pool.stopped}</td>
 						<td class="px-4 py-2 text-right">
-							<Button variant="destructive" size="sm" label={`Delete pool ${pool.name}`} onclick={() => openDelete(pool.name)}>Delete</Button>
+							<Button variant="destructive" size="sm" label={m['admin.pools.deletePoolLabel']({ name: pool.name })} onclick={() => openDelete(pool.name)}>{m['common.delete']()}</Button>
 						</td>
 					</tr>
 				{:else}
 					<tr><td colspan={6} class="p-0">
-						<EmptyState title={search ? 'No pools match your search' : 'No pools yet'} />
+						<EmptyState title={search ? m['admin.pools.noSearchResults']() : m['admin.pools.noPools']()} />
 					</td></tr>
 				{/each}
 			</tbody>

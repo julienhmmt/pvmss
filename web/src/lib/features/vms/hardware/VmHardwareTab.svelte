@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getVmDetailContext } from '../detail.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
 
@@ -48,10 +49,10 @@
 </script>
 
 <section aria-labelledby="hardware-heading" data-testid="vm-hardware">
-	<h2 id="hardware-heading" class="text-lg font-semibold">Hardware</h2>
+	<h2 id="hardware-heading" class="text-lg font-semibold">{m['vms.hardware.heading']()}</h2>
 	<div class="mt-4 grid gap-3 sm:grid-cols-4">
 		<label class="grid gap-1 text-sm">
-			Sockets
+			{m['vms.hardware.sockets']()}
 			<input
 				class="rounded-md border border-border bg-background px-2 py-2"
 				type="number"
@@ -61,7 +62,7 @@
 			/>
 		</label>
 		<label class="grid gap-1 text-sm">
-			Cores
+			{m['vms.hardware.cores']()}
 			<input
 				class="rounded-md border border-border bg-background px-2 py-2"
 				type="number"
@@ -71,7 +72,7 @@
 			/>
 		</label>
 		<label class="grid gap-1 text-sm">
-			Memory (MB)
+			{m['vms.hardware.memory']()}
 			<input
 				class="rounded-md border border-border bg-background px-2 py-2"
 				type="number"
@@ -81,7 +82,7 @@
 			/>
 		</label>
 		<label class="grid gap-1 text-sm">
-			Tags
+			{m['vms.hardware.tags']()}
 			<input
 				class="rounded-md border border-border bg-background px-2 py-2"
 				bind:value={tagsDraft}
@@ -91,7 +92,7 @@
 	</div>
 	{#if hardwareWillRestart}
 		<p class="mt-3 text-sm text-warning" data-testid="vm-hardware-restart-notice">
-			This VM is running — saving sockets, cores, or memory changes will stop and restart it.
+			{m['vms.hardware.restartNotice']()}
 		</p>
 	{/if}
 	<button
@@ -101,13 +102,13 @@
 		onclick={() => saveHardware()}
 		data-testid="vm-hardware-save"
 	>
-		{store.hardwareInFlight ? 'Saving…' : 'Save hardware'}
+		{store.hardwareInFlight ? m['common.saving']() : m['vms.hardware.saveButton']()}
 	</button>
 	<p class="sr-only" role="status" aria-live="polite">
 		{store.hardwareInFlight
 			? hardwareWillRestart
-				? 'Applying hardware change — VM is restarting…'
-				: 'Applying hardware change…'
+				? m['vms.hardware.applyingRestart']()
+				: m['vms.hardware.applying']()
 			: ''}
 	</p>
 	{#if store.writeError}

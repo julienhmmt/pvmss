@@ -53,6 +53,8 @@ type RouterConfig struct {
 	AdminPools       *AdminPools
 	AdminOps         *AdminOps
 	AdminClusters    *AdminClusters
+	Docs             *DocsAPIHandler
+	AdminDocs        *AdminDocs
 }
 
 // NewRouter wires the public API and the static SPA handler from cfg.
@@ -133,6 +135,15 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	mux.HandleFunc("DELETE /api/v1/auth/tokens/{id}", cfg.Auth.RevokeToken)
 	mux.HandleFunc("POST /api/v1/auth/password", cfg.Auth.ChangePassword)
 
+	// Issue #53 public documentation — audience-filtered list and rendered
+	// single-page view. Not wrapped in auth.Require: the handler resolves the
+	// caller itself (to hide admin-audience pages from non-admins) and issues
+	// its own 401/403 on admin-audience pages.
+	if cfg.Docs != nil {
+		mux.Handle("GET /api/v1/docs", http.HandlerFunc(cfg.Docs.ServeDocsList))
+		mux.Handle("GET /api/v1/docs/{id}", http.HandlerFunc(cfg.Docs.ServeDoc))
+	}
+
 	// T11 admin catalog — every route is admin-only (FR-008).
 	if cfg.AdminCatalog != nil {
 		adminGuard := cfg.Auth.RequireAdmin
@@ -201,6 +212,17 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		mux.Handle("POST /api/v1/admin/clusters/{name}/test", adminGuard(http.HandlerFunc(cfg.AdminClusters.ServeTest)))
 		mux.Handle("POST /api/v1/admin/clusters/{name}/oidc", adminGuard(http.HandlerFunc(cfg.AdminClusters.ServeOIDC)))
 		mux.Handle("DELETE /api/v1/admin/clusters/{name}", adminGuard(http.HandlerFunc(cfg.AdminClusters.ServeDelete)))
+	}
+
+	// Issue #53 admin documentation CRUD — admin-only, same RequireAdmin guard
+	// as every other admin surface (FR-008).
+	if cfg.AdminDocs != nil {
+		adminGuard := cfg.Auth.RequireAdmin
+		mux.Handle("GET /api/v1/admin/docs", adminGuard(http.HandlerFunc(cfg.AdminDocs.ServeDocsList)))
+		mux.Handle("POST /api/v1/admin/docs", adminGuard(http.HandlerFunc(cfg.AdminDocs.ServeDocCreate)))
+		mux.Handle("PUT /api/v1/admin/docs/{id}/{lang}", adminGuard(http.HandlerFunc(cfg.AdminDocs.ServeDocUpdate)))
+		mux.Handle("DELETE /api/v1/admin/docs/{id}/{lang}", adminGuard(http.HandlerFunc(cfg.AdminDocs.ServeDocDelete)))
+		mux.Handle("POST /api/v1/admin/docs/{id}/{lang}/toggle", adminGuard(http.HandlerFunc(cfg.AdminDocs.ServeDocToggle)))
 	}
 
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
