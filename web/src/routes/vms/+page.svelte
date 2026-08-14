@@ -10,6 +10,7 @@
 	import VmBulkActionBar from '$lib/features/vms/VmBulkActionBar.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
+	import { m } from '$lib/paraglide/messages.js';
 
 	// Wiring only: the list state, URL sync, and rendering all live in
 	// $lib/features/vms (FR-010) — this page just picks the scope.
@@ -56,23 +57,23 @@
 </script>
 
 <svelte:head>
-	<title>My VMs — PVMSS</title>
+	<title>{m['vms.list.title']()}</title>
 </svelte:head>
 
 <section class="mx-auto w-full max-w-5xl px-4 py-8">
 	<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-		<h1 class="text-2xl font-semibold tracking-tight">My VMs</h1>
+		<h1 class="text-2xl font-semibold tracking-tight">{m['vms.list.heading']()}</h1>
 		<ClusterSelector options={clusterOptions} value={vmListStore.cluster} onChange={(value) => vmListStore.setCluster(value)} includeAll id="vm-cluster-filter" />
 		<a
 			href={resolve('/vms/create')}
 			class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
 		>
-			Create a VM
+			{m['vms.list.create']()}
 		</a>
 	</div>
 
 	{#if vmListStore.loading && vmListStore.result === null}
-		<p role="status" aria-live="polite" class="text-muted-foreground">Loading…</p>
+		<p role="status" aria-live="polite" class="text-muted-foreground">{m['common.loading']()}</p>
 	{:else}
 		<VmBulkActionBar />
 		<VmList />

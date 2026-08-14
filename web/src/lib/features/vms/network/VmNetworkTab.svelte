@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getVmDetailContext, type VmNetworkInterface } from '../detail.svelte';
 	import EditNetworkInterfaceDialog from './EditNetworkInterfaceDialog.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
 
@@ -23,11 +24,11 @@
 </script>
 
 <section aria-labelledby="network-heading">
-	<h2 id="network-heading" class="text-lg font-semibold">Network</h2>
-	<p class="text-sm text-muted-foreground">Bridges must be from the approved catalog.</p>
+	<h2 id="network-heading" class="text-lg font-semibold">{m['vms.network.heading']()}</h2>
+	<p class="text-sm text-muted-foreground">{m['vms.network.description']()}</p>
 
 	{#if store.hardwareLoading}
-		<p class="mt-3 text-sm text-muted-foreground" role="status">Loading hardware options…</p>
+		<p class="mt-3 text-sm text-muted-foreground" role="status">{m['vms.network.loading']()}</p>
 	{:else if store.hardwareError}
 		<p class="mt-3 text-sm text-destructive" role="alert">{store.hardwareError}</p>
 	{:else if store.entity?.networkInterfaces?.length}
@@ -35,14 +36,14 @@
 			<table class="min-w-full text-left text-sm">
 				<thead class="bg-muted/40 text-xs text-muted-foreground">
 					<tr>
-						<th class="px-3 py-2">Interface</th>
-						<th class="px-3 py-2">Bridge</th>
-						<th class="px-3 py-2">Model</th>
-						<th class="px-3 py-2">MAC</th>
-						<th class="px-3 py-2">VLAN</th>
-						<th class="px-3 py-2">Rate</th>
-						<th class="px-3 py-2">IP addresses</th>
-						<th class="px-3 py-2">Actions</th>
+						<th class="px-3 py-2">{m['vms.network.columnInterface']()}</th>
+						<th class="px-3 py-2">{m['vms.network.columnBridge']()}</th>
+						<th class="px-3 py-2">{m['vms.network.columnModel']()}</th>
+						<th class="px-3 py-2">{m['vms.network.columnMac']()}</th>
+						<th class="px-3 py-2">{m['vms.network.columnVlan']()}</th>
+						<th class="px-3 py-2">{m['vms.network.columnRate']()}</th>
+						<th class="px-3 py-2">{m['vms.network.columnIps']()}</th>
+						<th class="px-3 py-2">{m['common.actions']()}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -58,12 +59,12 @@
 									onclick={() => copy(nic.mac)}
 									data-testid={`vm-nic-mac-copy-${nic.index}`}
 								>
-									{copied === nic.mac ? 'Copied' : nic.mac}
+									{copied === nic.mac ? m['common.copied']() : nic.mac}
 								</button>
 							</td>
-							<td class="px-3 py-2 text-muted-foreground">{nic.vlan ?? '—'}</td>
+							<td class="px-3 py-2 text-muted-foreground">{nic.vlan ?? m['common.dash']()}</td>
 							<td class="px-3 py-2 text-muted-foreground">
-								{nic.rateMbps ? `${nic.rateMbps} MB/s` : '—'}
+								{nic.rateMbps ? m['vms.network.rateValue']({ rate: nic.rateMbps }) : m['common.dash']()}
 							</td>
 							<td class="px-3 py-2">
 								{#if nic.ipAddresses.length}
@@ -74,12 +75,12 @@
 												class="rounded border border-border px-2 py-0.5 text-xs hover:bg-muted"
 												onclick={() => copy(ip)}
 											>
-												{copied === ip ? 'Copied' : ip}
+												{copied === ip ? m['common.copied']() : ip}
 											</button>
 										{/each}
 									</div>
 								{:else}
-									<span class="text-muted-foreground">—</span>
+									<span class="text-muted-foreground">{m['common.dash']()}</span>
 								{/if}
 							</td>
 							<td class="px-3 py-2">
@@ -90,7 +91,7 @@
 									onclick={() => openEdit(nic)}
 									data-testid={`vm-nic-edit-open-${nic.index}`}
 								>
-									Edit
+									{m['common.edit']()}
 								</button>
 							</td>
 						</tr>
@@ -102,7 +103,7 @@
 		<p
 			class="mt-3 rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground"
 		>
-			No network interfaces.
+			{m['vms.network.empty']()}
 		</p>
 	{/if}
 	{#if store.writeError}

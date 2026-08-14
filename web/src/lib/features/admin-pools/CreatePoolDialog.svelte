@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		open?: boolean;
@@ -29,10 +30,10 @@
 </script>
 
 <Dialog bind:open labelledBy="create-pool-title" {onClose}>
-	<h2 id="create-pool-title" class="mb-4 text-lg font-semibold">Create pool</h2>
+	<h2 id="create-pool-title" class="mb-4 text-lg font-semibold">{m['admin.pools.createTitle']()}</h2>
 	<form class="space-y-4" onsubmit={(event) => { event.preventDefault(); void submit(); }}>
 		<div>
-			<label for="pool-name" class="mb-1 block text-sm font-medium">Name</label>
+			<label for="pool-name" class="mb-1 block text-sm font-medium">{m['common.name']()}</label>
 			<input
 				id="pool-name"
 				class="w-full rounded-md border bg-background px-3 py-2 text-sm"
@@ -43,10 +44,10 @@
 				bind:value={name}
 				autocomplete="off"
 			/>
-			<p class="mt-1 text-xs text-muted-foreground">1–32 lowercase letters, numbers, and internal hyphens.</p>
+			<p class="mt-1 text-xs text-muted-foreground">{m['admin.pools.nameHint']()}</p>
 		</div>
 		<div>
-			<label for="pool-password" class="mb-1 block text-sm font-medium">Initial password</label>
+			<label for="pool-password" class="mb-1 block text-sm font-medium">{m['admin.pools.initialPassword']()}</label>
 			<input
 				id="pool-password"
 				class="w-full rounded-md border bg-background px-3 py-2 text-sm"
@@ -58,16 +59,16 @@
 			/>
 		</div>
 		<div>
-			<label for="pool-comment" class="mb-1 block text-sm font-medium">Comment</label>
+			<label for="pool-comment" class="mb-1 block text-sm font-medium">{m['admin.pools.comment']()}</label>
 			<input id="pool-comment" class="w-full rounded-md border bg-background px-3 py-2 text-sm" type="text" bind:value={comment} />
 		</div>
 		{#if error}
 			<p class="text-sm text-destructive" role="alert">{error}</p>
 		{/if}
 		<div class="flex justify-end gap-2 pt-2">
-			<Button variant="ghost" onclick={onClose}>Cancel</Button>
+			<Button variant="ghost" onclick={onClose}>{m['common.cancel']()}</Button>
 			<Button type="submit" disabled={saving}>
-				{saving ? 'Creating…' : 'Create pool'}
+				{saving ? m['common.creating']() : m['admin.pools.createPool']()}
 			</Button>
 		</div>
 	</form>

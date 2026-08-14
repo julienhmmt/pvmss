@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getVmDetailContext } from './detail.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
 
@@ -21,10 +22,10 @@
 
 <Dialog bind:open labelledBy="delete-vm-title" onClose={close}>
 	<h2 id="delete-vm-title" class="mb-2 text-lg font-semibold">
-		Delete VM{#if store.entity} “{store.entity.name}”{/if}?
+		{#if store.entity}{m['vms.deleteDialogTitle']({ name: store.entity.name })}{:else}{m['vms.deleteDialogTitle']({ name: '' })}{/if}
 	</h2>
 	<p class="mb-4 text-sm text-muted-foreground">
-		This permanently destroys the VM and its disks. There is no undo.
+		{m['vms.deleteDialogConfirm']()}
 	</p>
 
 	{#if store.deleteError}
@@ -40,7 +41,7 @@
 			onclick={close}
 			data-testid="vm-delete-cancel"
 		>
-			Cancel
+			{m['common.cancel']()}
 		</button>
 		<button
 			type="button"
@@ -49,7 +50,7 @@
 			onclick={confirm}
 			data-testid="vm-delete-confirm"
 		>
-			{store.deleteInFlight ? 'Deleting…' : 'Delete permanently'}
+			{store.deleteInFlight ? m['common.deleting']() : m['common.deletePermanently']()}
 		</button>
 	</div>
 </Dialog>

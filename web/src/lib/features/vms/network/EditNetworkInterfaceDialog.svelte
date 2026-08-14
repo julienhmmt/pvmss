@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getVmDetailContext, type VmNetworkInterface } from '../detail.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
 
@@ -48,7 +49,7 @@
 </script>
 
 <Dialog bind:open labelledBy="edit-nic-title" onClose={close}>
-	<h2 id="edit-nic-title" class="mb-4 text-lg font-semibold">Edit net{iface?.index ?? ''}</h2>
+	<h2 id="edit-nic-title" class="mb-4 text-lg font-semibold">{m['vms.network.editTitle']({ index: iface?.index ?? 0 })}</h2>
 	<form
 		class="grid gap-3"
 		onsubmit={(event) => {
@@ -57,20 +58,20 @@
 		}}
 	>
 		<label class="grid gap-1 text-sm">
-			Bridge
+			{m['vms.network.bridge']()}
 			<select
 				class="rounded-md border border-border bg-background px-2 py-2"
 				bind:value={bridge}
 				data-testid="edit-nic-bridge"
 			>
-				<option value="" disabled>Select approved bridge</option>
+				<option value="" disabled>{m['vms.network.selectBridge']()}</option>
 				{#each store.hardwareOptions?.bridges ?? [] as option (option.bridge)}
 					<option value={option.bridge}>{option.bridge} · {option.node}</option>
 				{/each}
 			</select>
 		</label>
 		<label class="grid gap-1 text-sm">
-			Model
+			{m['vms.network.model']()}
 			<select class="rounded-md border border-border bg-background px-2 py-2" bind:value={model}>
 				<option value="virtio">VirtIO</option>
 				<option value="e1000">E1000</option>
@@ -79,7 +80,7 @@
 			</select>
 		</label>
 		<label class="grid gap-1 text-sm">
-			VLAN (optional)
+			{m['vms.network.vlan']()} <span class="font-normal text-muted-foreground">{m['common.optional']()}</span>
 			<input
 				class="rounded-md border border-border bg-background px-2 py-2"
 				type="number"
@@ -90,7 +91,7 @@
 			/>
 		</label>
 		<label class="grid gap-1 text-sm">
-			Rate limit, MB/s (optional)
+			{m['vms.network.rateLimit']()} <span class="font-normal text-muted-foreground">{m['common.optional']()}</span>
 			<input
 				class="rounded-md border border-border bg-background px-2 py-2"
 				type="number"
@@ -108,7 +109,7 @@
 				class="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted"
 				onclick={close}
 			>
-				Cancel
+				{m['common.cancel']()}
 			</button>
 			<button
 				type="submit"
@@ -116,7 +117,7 @@
 				disabled={!bridge || store.networkInFlight}
 				data-testid="edit-nic-submit"
 			>
-				{store.networkInFlight ? 'Saving…' : 'Save'}
+				{store.networkInFlight ? m['common.saving']() : m['common.save']()}
 			</button>
 		</div>
 	</form>

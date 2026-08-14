@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { setAppInfoContext } from '$lib/features/admin-appinfo/appinfo.svelte';
 	import AppInfoPage from '$lib/features/admin-appinfo/AppInfoPage.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = setAppInfoContext();
 
@@ -11,7 +12,7 @@
 </script>
 
 <svelte:head>
-	<title>App Info — PVMSS</title>
+	<title>{m['admin.appinfo.title']()}</title>
 </svelte:head>
 
 <section class="mx-auto w-full max-w-4xl px-4 py-8">

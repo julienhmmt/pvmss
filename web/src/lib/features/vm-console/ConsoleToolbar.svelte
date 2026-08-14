@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getConsoleContext } from './console.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getConsoleContext();
 
@@ -20,7 +21,7 @@
 		onclick={() => store.toggleScale()}
 		data-testid="vm-console-scale"
 	>
-		Scale: {store.scaleViewport ? 'On' : 'Off'}
+		{m['vms.console.scale']()} {store.scaleViewport ? m['common.on']() : m['common.off']()}
 	</button>
 
 	<button
@@ -40,7 +41,7 @@
 		onclick={() => store.disconnect()}
 		data-testid="vm-console-disconnect"
 	>
-		Disconnect
+		{m['vms.console.disconnect']()}
 	</button>
 
 	<button
@@ -50,7 +51,7 @@
 		onclick={() => store.reconnect()}
 		data-testid="vm-console-reconnect-btn"
 	>
-		Reconnect
+		{m['vms.console.reconnect']()}
 	</button>
 
 	<div class="mx-2 h-5 w-px bg-border"></div>
@@ -61,9 +62,9 @@
 		disabled={store.state !== 'connected'}
 		onclick={pasteFromLocal}
 		data-testid="vm-console-paste-to-vm"
-		title="Paste from your clipboard into the VM"
+		title={m['vms.console.pasteTitle']()}
 	>
-		Paste to VM
+		{m['vms.console.pasteToVm']()}
 	</button>
 
 	<button
@@ -72,14 +73,14 @@
 		disabled={store.clipboard.fromVM === ''}
 		onclick={copyToLocal}
 		data-testid="vm-console-copy-from-vm"
-		title="Copy the VM's clipboard to your clipboard"
+		title={m['vms.console.copyTitle']()}
 	>
-		Copy from VM
+		{m['vms.console.copyFromVm']()}
 	</button>
 
 	{#if store.clipboard.fromVM}
 		<span class="text-xs text-muted-foreground" data-testid="vm-console-clipboard-preview">
-			VM clipboard: {store.clipboard.fromVM.slice(0, 50)}{store.clipboard.fromVM.length > 50 ? '…' : ''}
+			{m['vms.console.clipboardPreview']({ preview: store.clipboard.fromVM.slice(0, 50) })}{store.clipboard.fromVM.length > 50 ? '…' : ''}
 		</span>
 	{/if}
 

@@ -176,7 +176,7 @@
 					<th class="px-4 py-2 font-medium">{m['docs.audience']()}</th>
 					<th class="px-4 py-2 font-medium">{m['docs.language']()}</th>
 					<th class="px-4 py-2 font-medium">{m['docs.enabled']()}</th>
-					<th class="px-4 py-2 font-medium">Actions</th>
+					<th class="px-4 py-2 font-medium">{m['admin.docs.actions']()}</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -199,24 +199,24 @@
 							<span class="inline-flex items-center gap-2">
 								<Switch
 									checked={page.enabled}
-									label={page.enabled ? `Disable ${page.title}` : `Enable ${page.title}`}
+									label={page.enabled ? m['admin.docs.disableLabel']({ title: page.title }) : m['admin.docs.enableLabel']({ title: page.title })}
 									onToggle={() => onToggle(page.id, page.lang, !page.enabled)}
 								/>
 								<span class="text-xs text-muted-foreground">
-									{page.enabled ? m['docs.enabled']() : 'Disabled'}
+									{page.enabled ? m['docs.enabled']() : m['admin.docs.disabled']()}
 								</span>
 							</span>
 						</td>
 						<td class="px-4 py-2">
 							<div class="flex gap-2">
-								<Button variant="ghost" size="sm" label={`Edit ${page.title}`} onclick={() => openEdit(page)}>Edit</Button>
+								<Button variant="ghost" size="sm" label={m['admin.docs.editLabel']({ title: page.title })} onclick={() => openEdit(page)}>{m['admin.docs.edit']()}</Button>
 								<Button
 									variant="destructive"
 									size="sm"
-									label={`Delete ${page.title}`}
+									label={m['admin.docs.deleteLabel']({ title: page.title })}
 									disabled={page.isSystem}
 									onclick={() => confirmDelete(page)}
-								>Delete</Button>
+								>{m['admin.docs.delete']()}</Button>
 							</div>
 							{#if page.isSystem}
 								<p class="mt-1 text-xs text-muted-foreground">{m['docs.systemProtected']()}</p>

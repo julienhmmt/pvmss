@@ -1,5 +1,6 @@
 import { get, post, put, del, ApiRequestError } from '$lib/shared/api/client';
 import { setContext, getContext } from 'svelte';
+import { m } from '$lib/paraglide/messages.js';
 
 /** AdminDocPage mirrors the adminDocDTO response from GET /api/v1/admin/docs. */
 export interface AdminDocPage {
@@ -51,7 +52,7 @@ export class AdminDocsStore {
 		try {
 			this.pages = await get<AdminDocPage[]>('/api/v1/admin/docs');
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : 'failed to load documentation';
+			this.error = err instanceof ApiRequestError ? err.message : m['admin.docs.loadError']();
 		} finally {
 			this.loading = false;
 		}
@@ -65,7 +66,7 @@ export class AdminDocsStore {
 			this.pages = [...this.pages, created];
 			return created;
 		} catch (err) {
-			this.saveError = err instanceof ApiRequestError ? err.message : 'failed to create page';
+			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.docs.createError']();
 			throw err;
 		} finally {
 			this.saving = false;
@@ -80,7 +81,7 @@ export class AdminDocsStore {
 			this.pages = this.pages.map((p) => (p.id === id && p.lang === lang ? updated : p));
 			return updated;
 		} catch (err) {
-			this.saveError = err instanceof ApiRequestError ? err.message : 'failed to update page';
+			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.docs.updateError']();
 			throw err;
 		} finally {
 			this.saving = false;
@@ -93,7 +94,7 @@ export class AdminDocsStore {
 			await del<{ status: string }>(`/api/v1/admin/docs/${id}/${lang}`);
 			this.pages = this.pages.filter((p) => !(p.id === id && p.lang === lang));
 		} catch (err) {
-			this.saveError = err instanceof ApiRequestError ? err.message : 'failed to delete page';
+			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.docs.deleteError']();
 			throw err;
 		}
 	}
@@ -109,7 +110,7 @@ export class AdminDocsStore {
 				p.id === id && p.lang === lang ? { ...p, enabled } : p
 			);
 		} catch (err) {
-			this.saveError = err instanceof ApiRequestError ? err.message : 'failed to toggle page';
+			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.docs.toggleError']();
 			throw err;
 		}
 	}

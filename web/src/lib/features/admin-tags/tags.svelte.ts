@@ -1,5 +1,6 @@
 import { get, post, put, del, ApiRequestError } from '$lib/shared/api/client';
 import { setContext, getContext } from 'svelte';
+import { m } from '$lib/paraglide/messages.js';
 
 export interface AdminTag {
 	name: string;
@@ -25,7 +26,7 @@ export class AdminTagsStore {
 		try {
 			this.tags = await get<AdminTag[]>('/api/v1/admin/tags?cluster=default');
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : 'failed to load tags';
+			this.error = err instanceof ApiRequestError ? err.message : m['admin.tags.loadError']();
 		} finally {
 			this.loading = false;
 		}
@@ -40,7 +41,7 @@ export class AdminTagsStore {
 			});
 			this.tags = [...this.tags, created];
 		} catch (err) {
-			this.saveError = err instanceof ApiRequestError ? err.message : 'failed to create tag';
+			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.tags.createError']();
 			throw err;
 		} finally {
 			this.saving = false;
@@ -55,7 +56,7 @@ export class AdminTagsStore {
 			});
 			this.tags = this.tags.map((t) => (t.name === name ? { ...updated, vmCount: t.vmCount } : t));
 		} catch (err) {
-			this.saveError = err instanceof ApiRequestError ? err.message : 'failed to update tag color';
+			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.tags.updateColorError']();
 			throw err;
 		}
 	}
@@ -66,7 +67,7 @@ export class AdminTagsStore {
 			await del<{ status: string }>(`/api/v1/admin/tags/${name}?cluster=default`);
 			this.tags = this.tags.filter((t) => t.name !== name);
 		} catch (err) {
-			this.saveError = err instanceof ApiRequestError ? err.message : 'failed to delete tag';
+			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.tags.deleteError']();
 			throw err;
 		}
 	}

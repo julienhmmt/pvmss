@@ -6,6 +6,7 @@
 	import ExportPanel from '$lib/features/admin-db/ExportPanel.svelte';
 	import ImportPanel from '$lib/features/admin-db/ImportPanel.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const auditStore = setAuditLogContext();
 	setDbOpsContext();
@@ -16,10 +17,10 @@
 </script>
 
 <svelte:head>
-	<title>Admin Settings — PVMSS</title>
+	<title>{m['admin.settings.title']()}</title>
 </svelte:head>
 
-<PageHeader title="Settings" />
+<PageHeader title={m['admin.settings.heading']()} />
 
 <section class="space-y-8">
 	<AuditLogPanel />

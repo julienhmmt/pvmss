@@ -1,5 +1,6 @@
 import { get, ApiRequestError } from '$lib/shared/api/client';
 import { setContext, getContext } from 'svelte';
+import { m } from '$lib/paraglide/messages.js';
 
 export interface ConfigField {
 	name: string;
@@ -35,7 +36,7 @@ export class AppInfoStore {
 		try {
 			this.info = await get<AppInfo>('/api/v1/admin/appinfo');
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : 'failed to load app info';
+			this.error = err instanceof ApiRequestError ? err.message : m['admin.appinfo.loadError']();
 		} finally {
 			this.loading = false;
 		}

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PoolsStore } from './pools.svelte';
+import { m } from '$lib/paraglide/messages.js';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -47,6 +48,6 @@ describe('PoolsStore', () => {
 		expect(store.pools).toHaveLength(1);
 		await store.remove('carol');
 		expect(store.pools).toHaveLength(0);
-		expect(store.announce).toBe('Pool carol deleted');
+		expect(store.announce).toBe(m['admin.pools.deleted']({ name: 'carol' }));
 	});
 });

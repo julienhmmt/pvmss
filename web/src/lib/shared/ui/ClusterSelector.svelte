@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { ClusterOption } from '$lib/shared/clusters';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		options: readonly ClusterOption[];
@@ -10,7 +11,7 @@
 		includeAll?: boolean;
 	}
 
-	let { options, value, onChange, id = 'cluster-selector', label = 'Cluster', includeAll = false }: Props = $props();
+	let { options, value, onChange, id = 'cluster-selector', label = m['common.cluster'](), includeAll = false }: Props = $props();
 
 	function handleChange(event: Event): void {
 		onChange((event.currentTarget as HTMLSelectElement).value);
@@ -28,7 +29,7 @@
 			aria-label={label}
 		>
 			{#if includeAll}
-				<option value="">All clusters</option>
+				<option value="">{m['common.allClusters']()}</option>
 			{/if}
 			{#each options as option (option.name)}
 				<option value={option.name}>{option.name}</option>

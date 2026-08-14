@@ -1,4 +1,5 @@
 import { get, post, put, del, ApiRequestError } from '$lib/shared/api/client';
+import { m } from '$lib/paraglide/messages.js';
 
 export interface AdminCluster {
 	name: string;
@@ -46,7 +47,7 @@ export class AdminClustersStore {
 		try {
 			this.clusters = await get<AdminCluster[]>('/api/v1/admin/clusters');
 		} catch (error: unknown) {
-			this.error = error instanceof ApiRequestError ? error.message : 'failed to load clusters';
+			this.error = error instanceof ApiRequestError ? error.message : m['admin.clusters.loadError']();
 		} finally {
 			this.loading = false;
 		}
@@ -56,7 +57,7 @@ export class AdminClustersStore {
 		return this.run('create', async () => {
 			const created = await post<AdminCluster>('/api/v1/admin/clusters', input);
 			this.clusters = [...this.clusters.filter((cluster) => cluster.name !== created.name), created];
-			this.announce = `Cluster ${created.name} added`;
+			this.announce = m['admin.clusters.added']({ name: created.name });
 		});
 	}
 
@@ -64,7 +65,7 @@ export class AdminClustersStore {
 		return this.run(`update:${name}`, async () => {
 			const updated = await put<AdminCluster>(`/api/v1/admin/clusters/${encodeURIComponent(name)}`, input);
 			this.clusters = this.clusters.map((cluster) => (cluster.name === name ? updated : cluster));
-			this.announce = `Cluster ${name} updated`;
+			this.announce = m['admin.clusters.updated']({ name });
 		});
 	}
 
@@ -73,7 +74,7 @@ export class AdminClustersStore {
 		await this.run(`test:${name}`, async () => {
 			result = await post<ClusterTestResult>(`/api/v1/admin/clusters/${encodeURIComponent(name)}/test`);
 			await this.load();
-			this.announce = `${name}: ${result?.status ?? 'tested'}`;
+			this.announce = m['admin.clusters.tested']({ name, status: result?.status ?? 'tested' });
 		});
 		return result;
 	}
@@ -82,7 +83,7 @@ export class AdminClustersStore {
 		return this.run(`oidc:${name}`, async () => {
 			await post<{ name: string; oidcEnabled: boolean }>(`/api/v1/admin/clusters/${encodeURIComponent(name)}/oidc`, { enabled });
 			this.clusters = this.clusters.map((cluster) => (cluster.name === name ? { ...cluster, oidcEnabled: enabled } : cluster));
-			this.announce = `OIDC ${enabled ? 'enabled' : 'disabled'} for ${name}`;
+			this.announce = enabled ? m['admin.clusters.oidcEnabled']({ name }) : m['admin.clusters.oidcDisabled']({ name });
 		});
 	}
 
@@ -90,7 +91,7 @@ export class AdminClustersStore {
 		return this.run(`remove:${name}`, async () => {
 			await del<{ status: string }>(`/api/v1/admin/clusters/${encodeURIComponent(name)}`);
 			this.clusters = this.clusters.filter((cluster) => cluster.name !== name);
-			this.announce = `Cluster ${name} removed`;
+			this.announce = m['admin.clusters.removed']({ name });
 		});
 	}
 
@@ -101,7 +102,7 @@ export class AdminClustersStore {
 			await operation();
 			return true;
 		} catch (error: unknown) {
-			this.error = error instanceof ApiRequestError ? error.message : 'cluster operation failed';
+			this.error = error instanceof ApiRequestError ? error.message : m['admin.clusters.operationFailed']();
 			return false;
 		} finally {
 			this.busy = null;

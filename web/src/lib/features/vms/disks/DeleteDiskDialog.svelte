@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getVmDetailContext, type VmDisk } from '../detail.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
 
@@ -22,14 +23,14 @@
 </script>
 
 <Dialog bind:open labelledBy="delete-disk-title" onClose={close}>
-	<h2 id="delete-disk-title" class="mb-2 text-lg font-semibold">Delete {disk?.key ?? 'disk'}?</h2>
+	<h2 id="delete-disk-title" class="mb-2 text-lg font-semibold">{m['vms.disks.deleteDialogTitle']({ disk: disk?.key ?? 'disk' })}</h2>
 	{#if disk?.isBoot}
 		<p class="mb-4 text-sm text-warning" role="alert" data-testid="delete-disk-boot-warning">
-			This is the boot disk — it cannot be deleted while it boots the VM.
+			{m['vms.disks.deleteBootWarning']()}
 		</p>
 	{:else}
 		<p class="mb-4 text-sm text-muted-foreground">
-			This permanently destroys the disk. There is no undo.
+			{m['vms.disks.deleteWarning']()}
 		</p>
 	{/if}
 	{#if store.diskError}
@@ -42,7 +43,7 @@
 			onclick={close}
 			data-testid="delete-disk-cancel"
 		>
-			Cancel
+			{m['common.cancel']()}
 		</button>
 		<button
 			type="button"
@@ -51,7 +52,7 @@
 			onclick={confirm}
 			data-testid="delete-disk-confirm"
 		>
-			{store.diskInFlight ? 'Deleting…' : 'Delete permanently'}
+			{store.diskInFlight ? m['common.deleting']() : m['common.deletePermanently']()}
 		</button>
 	</div>
 </Dialog>

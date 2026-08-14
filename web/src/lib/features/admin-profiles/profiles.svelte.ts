@@ -1,5 +1,6 @@
 import { get, post, put, del, ApiRequestError } from '$lib/shared/api/client';
 import { setContext, getContext } from 'svelte';
+import { m } from '$lib/paraglide/messages.js';
 
 export interface AdminProfile {
 	id: string;
@@ -28,7 +29,7 @@ export class AdminProfilesStore {
 		try {
 			this.profiles = await get<AdminProfile[]>('/api/v1/admin/profiles?cluster=default');
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : 'failed to load profiles';
+			this.error = err instanceof ApiRequestError ? err.message : m['admin.profiles.loadError']();
 		} finally {
 			this.loading = false;
 		}
@@ -43,7 +44,7 @@ export class AdminProfilesStore {
 			});
 			this.profiles = [...this.profiles, created];
 		} catch (err) {
-			this.saveError = err instanceof ApiRequestError ? err.message : 'failed to create profile';
+			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.profiles.createError']();
 			throw err;
 		} finally {
 			this.saving = false;
@@ -59,7 +60,7 @@ export class AdminProfilesStore {
 			});
 			this.profiles = this.profiles.map((p) => (p.id === id ? updated : p));
 		} catch (err) {
-			this.saveError = err instanceof ApiRequestError ? err.message : 'failed to update profile';
+			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.profiles.updateError']();
 			throw err;
 		} finally {
 			this.saving = false;
@@ -72,7 +73,7 @@ export class AdminProfilesStore {
 			await del<{ status: string }>(`/api/v1/admin/profiles/${id}?cluster=default`);
 			this.profiles = this.profiles.filter((p) => p.id !== id);
 		} catch (err) {
-			this.saveError = err instanceof ApiRequestError ? err.message : 'failed to delete profile';
+			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.profiles.deleteError']();
 			throw err;
 		}
 	}
@@ -85,7 +86,7 @@ export class AdminProfilesStore {
 			});
 			this.profiles = this.profiles.map((p) => (p.id === id ? { ...p, enabled } : p));
 		} catch (err) {
-			this.saveError = err instanceof ApiRequestError ? err.message : 'failed to toggle profile';
+			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.profiles.toggleError']();
 			throw err;
 		}
 	}

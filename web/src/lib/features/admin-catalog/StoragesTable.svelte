@@ -3,6 +3,7 @@
 	import { formatBytes } from './format';
 	import Switch from '$lib/shared/ui/Switch.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		storages: AdminStorage[];
@@ -17,11 +18,11 @@
 	<table class="w-full text-sm">
 		<thead class="bg-muted/50 text-left">
 			<tr>
-				<th class="px-4 py-2 font-medium">Name</th>
-				<th class="px-4 py-2 font-medium">Node</th>
-				<th class="px-4 py-2 font-medium">Type</th>
-				<th class="px-4 py-2 font-medium">Usage</th>
-				<th class="px-4 py-2 font-medium">Approved</th>
+				<th class="px-4 py-2 font-medium">{m['common.name']()}</th>
+				<th class="px-4 py-2 font-medium">{m['common.node']()}</th>
+				<th class="px-4 py-2 font-medium">{m['common.type']()}</th>
+				<th class="px-4 py-2 font-medium">{m['admin.catalog.usage']()}</th>
+				<th class="px-4 py-2 font-medium">{m['admin.catalog.approvedStatus']()}</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -38,14 +39,14 @@
 						>
 							<Switch
 								checked={storage.enabled}
-								label={storage.enabled ? `Revoke approval for ${storage.name}` : `Approve ${storage.name}`}
+								label={storage.enabled ? m['admin.catalog.revokeApproval']({ name: storage.name }) : m['admin.catalog.approveName']({ name: storage.name })}
 								onToggle={() => onToggle(storage.name, storage.node, !storage.enabled)}
 							/>
 							<span class="text-xs text-muted-foreground">
 								{#if toggling === `storage:${storage.name}@${storage.node}`}
 									…
 								{:else}
-									{storage.enabled ? 'Approved' : 'Approve'}
+									{storage.enabled ? m['admin.catalog.approvedStatus']() : m['admin.catalog.approveAction']()}
 								{/if}
 							</span>
 						</span>
@@ -53,7 +54,7 @@
 				</tr>
 			{:else}
 				<tr><td colspan={5} class="p-0">
-					<EmptyState title="No storages found on this cluster." />
+					<EmptyState title={m['admin.catalog.noStorages']()} />
 				</td></tr>
 			{/each}
 		</tbody>

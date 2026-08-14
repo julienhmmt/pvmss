@@ -1,5 +1,6 @@
 import { getContext, setContext } from 'svelte';
 import { get, ApiRequestError } from '$lib/shared/api/client';
+import { m } from '$lib/paraglide/messages.js';
 
 export type TaskKind = 'vm_create' | 'vm_snapshot_create' | 'vm_snapshot_rollback' | 'vm_snapshot_delete';
 
@@ -99,7 +100,7 @@ export class TaskTrayStore {
 			// tracking it rather than polling forever (edge case: the tray is
 			// tab-local anyway, V11).
 			if (error instanceof ApiRequestError && error.status === 404) {
-				this.#finish(task, { kind: 'error', message: `Task for VM "${task.name}" is no longer known` });
+				this.#finish(task, { kind: 'error', message: m['task.taskNoLongerKnown']({ name: task.name }) });
 			}
 		}
 	}
@@ -115,15 +116,15 @@ export class TaskTrayStore {
 }
 
 function taskToast(task: TrackedTask, status: TaskStatusResponse): TaskToast {
-	const labels: Record<TaskKind, { subject: string; success: string; failure: string }> = {
-		vm_create: { subject: 'VM', success: 'created', failure: 'creation failed' },
-		vm_snapshot_create: { subject: 'Snapshot', success: 'created', failure: 'creation failed' },
-		vm_snapshot_rollback: { subject: 'VM', success: 'rolled back', failure: 'snapshot rollback failed' },
-		vm_snapshot_delete: { subject: 'Snapshot', success: 'deleted', failure: 'snapshot deletion failed' }
+	const labels: Record<TaskKind, { subject: () => string; success: () => string; failure: () => string }> = {
+		vm_create: { subject: () => m['task.subjectVm'](), success: () => m['task.successCreated'](), failure: () => m['task.failureCreationFailed']() },
+		vm_snapshot_create: { subject: () => m['task.subjectSnapshot'](), success: () => m['task.successCreated'](), failure: () => m['task.failureCreationFailed']() },
+		vm_snapshot_rollback: { subject: () => m['task.subjectVm'](), success: () => m['task.successRolledBack'](), failure: () => m['task.failureRollbackFailed']() },
+		vm_snapshot_delete: { subject: () => m['task.subjectSnapshot'](), success: () => m['task.successDeleted'](), failure: () => m['task.failureDeletionFailed']() }
 	};
 	const label = labels[task.kind];
-	if (status.state === 'ok') return { kind: 'success', message: `${label.subject} "${task.name}" ${label.success}` };
-	return { kind: 'error', message: `${label.subject} "${task.name}" ${label.failure}: ${status.exitMessage ?? 'unknown error'}` };
+	if (status.state === 'ok') return { kind: 'success', message: `${label.subject()} "${task.name}" ${label.success()}` };
+	return { kind: 'error', message: `${label.subject()} "${task.name}" ${label.failure()}: ${status.exitMessage ?? m['task.unknownError']()}` };
 }
 
 const TASK_TRAY_CONTEXT_KEY = Symbol('task-tray');

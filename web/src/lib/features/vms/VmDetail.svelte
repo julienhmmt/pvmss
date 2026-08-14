@@ -9,6 +9,7 @@
 	import CloudInitTab from './CloudInitTab.svelte';
 	import VmSnapshotsTab from './VmSnapshotsTab.svelte';
 	import ConsoleBanner from './ConsoleBanner.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
 
@@ -19,12 +20,12 @@
 	let descriptionDraft = $state('');
 
 	const tabs = [
-		{ id: 'overview', label: 'Overview' },
-		{ id: 'disks', label: 'Disks' },
-		{ id: 'network', label: 'Network' },
-		{ id: 'hardware', label: 'Hardware' },
-		{ id: 'cloudinit', label: 'Cloud-init' },
-		{ id: 'snapshots', label: 'Snapshots' }
+		{ id: 'overview', label: () => m['vms.detail.tabOverview']() },
+		{ id: 'disks', label: () => m['vms.detail.tabDisks']() },
+		{ id: 'network', label: () => m['vms.detail.tabNetwork']() },
+		{ id: 'hardware', label: () => m['vms.detail.tabHardware']() },
+		{ id: 'cloudinit', label: () => m['vms.detail.tabCloudinit']() },
+		{ id: 'snapshots', label: () => m['vms.detail.tabSnapshots']() }
 	];
 	let activeTab = $state('overview');
 
@@ -112,7 +113,7 @@
 </script>
 
 {#if store.loading && store.entity === null}
-	<p role="status" aria-live="polite" class="text-muted-foreground">Loading…</p>
+	<p role="status" aria-live="polite" class="text-muted-foreground">{m['common.loading']()}</p>
 {:else if store.error}
 	<p role="alert" class="text-destructive" data-testid="vm-detail-error">{store.error}</p>
 {:else if store.entity}
@@ -132,7 +133,7 @@
 					type="button"
 					class="text-2xl font-semibold tracking-tight hover:cursor-text hover:underline"
 					onclick={startEditName}
-					title="Click to rename"
+					title={m['vms.detail.clickToRename']()}
 					data-testid="vm-name"
 				>
 					{store.entity.name}
@@ -147,7 +148,7 @@
 			</span>
 		</div>
 		<p class="mt-1 text-sm text-muted-foreground" data-testid="vm-meta">
-			ID {store.entity.vmid} · Node {store.entity.node} · Pool {store.entity.pool}
+			{m['vms.detail.meta']({ vmid: String(store.entity.vmid), node: store.entity.node, pool: store.entity.pool })}
 		</p>
 	</header>
 
@@ -159,24 +160,24 @@
 
 	<dl class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
 		<div class="rounded-md border border-border p-4" data-testid="vm-stat-cpu">
-			<dt class="text-xs text-muted-foreground">CPU</dt>
-			<dd class="text-lg font-medium">{store.entity.cpuCores} cores</dd>
+			<dt class="text-xs text-muted-foreground">{m['vms.detail.statCpu']()}</dt>
+			<dd class="text-lg font-medium">{store.entity.cpuCores} {m['common.cores']()}</dd>
 		</div>
 		<div class="rounded-md border border-border p-4" data-testid="vm-stat-memory">
-			<dt class="text-xs text-muted-foreground">Memory</dt>
+			<dt class="text-xs text-muted-foreground">{m['vms.detail.statMemory']()}</dt>
 			<dd class="text-lg font-medium">{formatBytes(store.entity.memoryTotal)}</dd>
 		</div>
 		<div class="rounded-md border border-border p-4" data-testid="vm-stat-disk">
-			<dt class="text-xs text-muted-foreground">Disk</dt>
+			<dt class="text-xs text-muted-foreground">{m['vms.detail.statDisk']()}</dt>
 			<dd class="text-lg font-medium">{formatBytes(store.entity.diskTotal)}</dd>
 		</div>
 		<div class="rounded-md border border-border p-4" data-testid="vm-stat-uptime">
-			<dt class="text-xs text-muted-foreground">Uptime</dt>
+			<dt class="text-xs text-muted-foreground">{m['vms.detail.statUptime']()}</dt>
 			<dd class="text-lg font-medium">
 				{#if store.entity.uptimeSeconds}
 					{formatUptime(store.entity.uptimeSeconds)}
 				{:else}
-					—
+					{m['common.dash']()}
 				{/if}
 			</dd>
 		</div>
@@ -187,7 +188,7 @@
 
 		<div id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" hidden={activeTab !== 'overview'}>
 			<section class="mt-6">
-				<h2 class="mb-2 text-sm font-medium text-muted-foreground">Description</h2>
+				<h2 class="mb-2 text-sm font-medium text-muted-foreground">{m['vms.detail.descriptionLabel']()}</h2>
 				{#if editingDescription}
 					<textarea
 						class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
@@ -202,10 +203,10 @@
 						type="button"
 						class="w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-left text-sm hover:cursor-text hover:bg-muted/50"
 						onclick={startEditDescription}
-						title="Click to edit"
+						title={m['vms.detail.clickToEdit']()}
 						data-testid="vm-description"
 					>
-						{store.entity.description || 'No description. Click to add one.'}
+						{store.entity.description || m['vms.detail.noDescription']()}
 					</button>
 				{/if}
 			</section>

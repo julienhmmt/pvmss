@@ -1,5 +1,6 @@
 import { ApiRequestError } from '$lib/shared/api/client';
 import { setContext, getContext } from 'svelte';
+import { m } from '$lib/paraglide/messages.js';
 
 export interface TablePreview {
 	name: string;
@@ -55,7 +56,7 @@ export class DbOpsStore {
 			document.body.removeChild(a);
 			URL.revokeObjectURL(url);
 		} catch (err) {
-			this.exportError = err instanceof Error ? err.message : 'export failed';
+			this.exportError = err instanceof Error ? err.message : m['admin.db.exportError']();
 		} finally {
 			this.exporting = false;
 		}
@@ -74,7 +75,7 @@ export class DbOpsStore {
 				body: formData
 			});
 			if (!response.ok) {
-				let message = 'import failed';
+				let message = m['admin.db.importError']();
 				try {
 					const body = await response.json();
 					message = body.message ?? message;
@@ -83,7 +84,7 @@ export class DbOpsStore {
 			}
 			this.preview = (await response.json()) as ImportPreview;
 		} catch (err) {
-			this.importError = err instanceof Error ? err.message : 'import failed';
+			this.importError = err instanceof Error ? err.message : m['admin.db.importError']();
 		} finally {
 			this.importing = false;
 		}
@@ -100,7 +101,7 @@ export class DbOpsStore {
 				body: JSON.stringify({ stagingToken: this.preview.stagingToken })
 			});
 			if (!response.ok) {
-				let message = 'confirm failed';
+				let message = m['admin.db.confirmError']();
 				try {
 					const body = await response.json();
 					message = body.message ?? message;
@@ -110,7 +111,7 @@ export class DbOpsStore {
 			this.confirmResult = (await response.json()) as ImportResult;
 			this.preview = null;
 		} catch (err) {
-			this.confirmError = err instanceof Error ? err.message : 'confirm failed';
+			this.confirmError = err instanceof Error ? err.message : m['admin.db.confirmError']();
 		} finally {
 			this.confirming = false;
 		}

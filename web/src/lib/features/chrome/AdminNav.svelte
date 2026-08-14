@@ -15,68 +15,69 @@
 	 */
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface NavItem {
 		href: string;
-		label: string;
+		label: () => string;
 	}
 
 	interface NavGroup {
-		heading: string;
+		heading: () => string;
 		items: NavItem[];
 	}
 
 	const groups: NavGroup[] = [
 		{
-			heading: 'Overview',
-			items: [{ href: resolve('/admin'), label: 'Dashboard' }]
+			heading: () => m['chrome.adminNav.overview'](),
+			items: [{ href: resolve('/admin'), label: () => m['chrome.adminNav.dashboard']() }]
 		},
 		{
-			heading: 'Infrastructure',
+			heading: () => m['chrome.adminNav.infrastructure'](),
 			items: [
-				{ href: resolve('/admin/nodes'), label: 'Nodes' },
-				{ href: resolve('/admin/clusters'), label: 'Clusters' },
-				{ href: resolve('/admin/pools'), label: 'Pools' }
+				{ href: resolve('/admin/nodes'), label: () => m['chrome.adminNav.nodes']() },
+				{ href: resolve('/admin/clusters'), label: () => m['chrome.adminNav.clusters']() },
+				{ href: resolve('/admin/pools'), label: () => m['chrome.adminNav.pools']() }
 			]
 		},
 		{
-			heading: 'Catalog',
+			heading: () => m['chrome.adminNav.catalog'](),
 			items: [
-				{ href: resolve('/admin/storages'), label: 'Storages' },
-				{ href: resolve('/admin/isos'), label: 'ISOs' },
-				{ href: resolve('/admin/bridges'), label: 'Bridges' },
-				{ href: resolve('/admin/cloudinit-templates'), label: 'Cloud-init' },
-				{ href: resolve('/admin/docs'), label: 'Documentation' },
-				{ href: resolve('/admin/profiles'), label: 'VM Profiles' },
-				{ href: resolve('/admin/tags'), label: 'Tags' }
+				{ href: resolve('/admin/storages'), label: () => m['chrome.adminNav.storages']() },
+				{ href: resolve('/admin/isos'), label: () => m['chrome.adminNav.isos']() },
+				{ href: resolve('/admin/bridges'), label: () => m['chrome.adminNav.bridges']() },
+				{ href: resolve('/admin/cloudinit-templates'), label: () => m['chrome.adminNav.cloudinit']() },
+				{ href: resolve('/admin/docs'), label: () => m['chrome.adminNav.documentation']() },
+				{ href: resolve('/admin/profiles'), label: () => m['chrome.adminNav.profiles']() },
+				{ href: resolve('/admin/tags'), label: () => m['chrome.adminNav.tags']() }
 			]
 		},
 		{
-			heading: 'Policy',
+			heading: () => m['chrome.adminNav.policy'](),
 			items: [
-				{ href: resolve('/admin/policy'), label: 'Limits' },
-				{ href: resolve('/admin/policy/nodes'), label: 'Node capacity' }
+				{ href: resolve('/admin/policy'), label: () => m['chrome.adminNav.limits']() },
+				{ href: resolve('/admin/policy/nodes'), label: () => m['chrome.adminNav.nodeCapacity']() }
 			]
 		},
 		{
-			heading: 'System',
+			heading: () => m['chrome.adminNav.system'](),
 			items: [
-				{ href: resolve('/admin/appinfo'), label: 'App Info' },
-				{ href: resolve('/admin/settings'), label: 'Settings' }
+				{ href: resolve('/admin/appinfo'), label: () => m['chrome.adminNav.appInfo']() },
+				{ href: resolve('/admin/settings'), label: () => m['chrome.adminNav.settings']() }
 			]
 		}
 	];
 </script>
 
 <nav
-	aria-label="Admin"
+	aria-label={m['chrome.adminNav.ariaLabel']()}
 	class="w-full shrink-0 border-b border-border px-2 py-3 md:w-52 md:border-b-0 md:border-r md:px-3 md:py-6"
 >
 	<ul class="flex flex-col gap-4">
-		{#each groups as group (group.heading)}
+		{#each groups as group (group.heading())}
 			<li>
 				<p class="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-					{group.heading}
+					{group.heading()}
 				</p>
 				<ul class="flex flex-col gap-0.5">
 					{#each group.items as item (item.href)}
@@ -89,7 +90,7 @@
 									? 'bg-accent font-medium text-accent-foreground'
 									: 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'}"
 							>
-								{item.label}
+								{item.label()}
 							</a>
 						</li>
 					{/each}

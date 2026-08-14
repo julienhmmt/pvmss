@@ -1,5 +1,6 @@
 import { get, ApiRequestError } from '$lib/shared/api/client';
 import { setContext, getContext } from 'svelte';
+import { m } from '$lib/paraglide/messages.js';
 
 export interface AuditEntry {
 	id: number;
@@ -66,7 +67,7 @@ export class AuditLogStore {
 			this.page = result.page;
 			this.pageSize = result.pageSize;
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : 'failed to load audit log';
+			this.error = err instanceof ApiRequestError ? err.message : m['admin.audit.loadError']();
 		} finally {
 			this.loading = false;
 		}

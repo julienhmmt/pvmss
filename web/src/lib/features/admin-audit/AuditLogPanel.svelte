@@ -4,6 +4,7 @@
 	import Button from '$lib/shared/ui/Button.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getAuditLogContext();
 
@@ -56,54 +57,54 @@
 </script>
 
 <svelte:head>
-	<title>Audit Log — PVMSS</title>
+	<title>{m['admin.audit.pageTitle']()}</title>
 </svelte:head>
 
 <section class="space-y-4">
-	<h2 class="text-xl font-semibold tracking-tight">Audit Log</h2>
+	<h2 class="text-xl font-semibold tracking-tight">{m['admin.audit.title']()}</h2>
 
 	<form class="flex flex-wrap items-end gap-3" onsubmit={(e) => { e.preventDefault(); applyFilter(); }}>
 		<label class="flex flex-col gap-1 text-sm">
-			<span class="text-muted-foreground">Action</span>
-			<input class="rounded-md border border-border bg-background px-3 py-1.5" type="text" bind:value={actionFilter} placeholder="start, stop, vm_create…" />
+			<span class="text-muted-foreground">{m['admin.audit.action']()}</span>
+			<input class="rounded-md border border-border bg-background px-3 py-1.5" type="text" bind:value={actionFilter} placeholder={m['admin.audit.actionPlaceholder']()} />
 		</label>
 		<label class="flex flex-col gap-1 text-sm">
-			<span class="text-muted-foreground">Actor</span>
-			<input class="rounded-md border border-border bg-background px-3 py-1.5" type="text" bind:value={actorFilter} placeholder="username" />
+			<span class="text-muted-foreground">{m['admin.audit.actor']()}</span>
+			<input class="rounded-md border border-border bg-background px-3 py-1.5" type="text" bind:value={actorFilter} placeholder={m['admin.audit.actorPlaceholder']()} />
 		</label>
 		<label class="flex flex-col gap-1 text-sm">
-			<span class="text-muted-foreground">VM ID</span>
+			<span class="text-muted-foreground">{m['admin.audit.vmid']()}</span>
 			<input class="rounded-md border border-border bg-background px-3 py-1.5 w-24" type="number" bind:value={vmidFilter} placeholder="101" />
 		</label>
 		<label class="flex flex-col gap-1 text-sm">
-			<span class="text-muted-foreground">From</span>
+			<span class="text-muted-foreground">{m['admin.audit.from']()}</span>
 			<input class="rounded-md border border-border bg-background px-3 py-1.5" type="datetime-local" bind:value={fromFilter} />
 		</label>
 		<label class="flex flex-col gap-1 text-sm">
-			<span class="text-muted-foreground">To</span>
+			<span class="text-muted-foreground">{m['admin.audit.to']()}</span>
 			<input class="rounded-md border border-border bg-background px-3 py-1.5" type="datetime-local" bind:value={toFilter} />
 		</label>
-		<Button type="submit">Filter</Button>
-		<Button variant="secondary" onclick={clearFilter}>Clear</Button>
+		<Button type="submit">{m['common.filter']()}</Button>
+		<Button variant="secondary" onclick={clearFilter}>{m['admin.audit.clear']()}</Button>
 	</form>
 
 	{#if store.loading}
-		<div role="status" aria-live="polite" class="sr-only">Loading…</div>
+		<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
 		<TableSkeleton columns={5} />
 	{:else if store.error}
 		<p role="alert" class="text-destructive">{store.error}</p>
 	{:else}
-		<div role="status" aria-live="polite" class="sr-only">{store.entries.length} entries loaded, {store.total} total</div>
+		<div role="status" aria-live="polite" class="sr-only">{m['admin.audit.entriesLoaded']({ loaded: store.entries.length, total: store.total })}</div>
 
 		<div class="overflow-x-auto rounded-md border border-border">
 			<table class="w-full text-sm">
 				<thead class="bg-muted/50 text-left">
 					<tr>
-						<th class="px-4 py-2 font-medium">Time</th>
-						<th class="px-4 py-2 font-medium">Actor</th>
-						<th class="px-4 py-2 font-medium">Cluster</th>
+						<th class="px-4 py-2 font-medium">{m['admin.audit.time']()}</th>
+						<th class="px-4 py-2 font-medium">{m['admin.audit.actor']()}</th>
+						<th class="px-4 py-2 font-medium">{m['common.cluster']()}</th>
 						<th class="px-4 py-2 font-medium">VM</th>
-						<th class="px-4 py-2 font-medium">Action</th>
+						<th class="px-4 py-2 font-medium">{m['admin.audit.action']()}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -120,15 +121,15 @@
 			</table>
 		</div>
 
-		<EmptyState title="No audit entries match the current filter." />
+		<EmptyState title={m['admin.audit.empty']()} />
 
 		<div class="flex items-center justify-between">
 			<p class="text-sm text-muted-foreground">
-				Page {store.page} of {Math.max(1, Math.ceil(store.total / store.pageSize))} ({store.total} total)
+				{m['admin.audit.pageInfo']({ page: store.page, totalPages: Math.max(1, Math.ceil(store.total / store.pageSize)), total: store.total })}
 			</p>
 			<div class="flex gap-2">
-				<Button variant="secondary" size="sm" disabled={store.page <= 1} onclick={() => void store.prevPage()}>Previous</Button>
-				<Button variant="secondary" size="sm" disabled={store.page * store.pageSize >= store.total} onclick={() => void store.nextPage()}>Next</Button>
+				<Button variant="secondary" size="sm" disabled={store.page <= 1} onclick={() => void store.prevPage()}>{m['common.previous']()}</Button>
+				<Button variant="secondary" size="sm" disabled={store.page * store.pageSize >= store.total} onclick={() => void store.nextPage()}>{m['common.next']()}</Button>
 			</div>
 		</div>
 	{/if}

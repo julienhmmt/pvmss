@@ -4,6 +4,7 @@
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		store: AdminClustersStore;
@@ -39,9 +40,9 @@
 	}
 </script>
 
-<PageHeader title="Clusters" description="Manage connection targets and per-cluster login options.">
+<PageHeader title={m['admin.clusters.heading']()} description={m['admin.clusters.description']()}>
 	{#snippet actions()}
-		<Button onclick={addCluster}>Add cluster</Button>
+		<Button onclick={addCluster}>{m['admin.clusters.addCluster']()}</Button>
 	{/snippet}
 </PageHeader>
 
@@ -49,20 +50,20 @@
 	{#if store.announce}<p class="sr-only" role="status" aria-live="polite">{store.announce}</p>{/if}
 	{#if store.error}<p class="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">{store.error}</p>{/if}
 	{#if store.loading}
-		<div role="status" aria-live="polite" class="sr-only">Loading clusters…</div>
+		<div role="status" aria-live="polite" class="sr-only">{m['admin.clusters.loading']()}</div>
 		<TableSkeleton columns={6} />
 	{:else}
 		<div class="overflow-x-auto rounded-lg border border-border">
 			<table class="w-full min-w-[900px] text-left text-sm">
-				<caption class="sr-only">Configured Proxmox clusters</caption>
+				<caption class="sr-only">{m['admin.clusters.caption']()}</caption>
 				<thead class="bg-muted/50">
 					<tr>
-						<th scope="col" class="px-4 py-3 font-medium">Name</th>
-						<th scope="col" class="px-4 py-3 font-medium">Status</th>
-						<th scope="col" class="px-4 py-3 font-medium">Version</th>
-						<th scope="col" class="px-4 py-3 font-medium">Nodes / VMs</th>
-						<th scope="col" class="px-4 py-3 font-medium">OIDC</th>
-						<th scope="col" class="px-4 py-3 font-medium">Actions</th>
+						<th scope="col" class="px-4 py-3 font-medium">{m['common.name']()}</th>
+						<th scope="col" class="px-4 py-3 font-medium">{m['common.status']()}</th>
+						<th scope="col" class="px-4 py-3 font-medium">{m['admin.clusters.version']()}</th>
+						<th scope="col" class="px-4 py-3 font-medium">{m['admin.clusters.nodesVms']()}</th>
+						<th scope="col" class="px-4 py-3 font-medium">{m['admin.clusters.oidc']()}</th>
+						<th scope="col" class="px-4 py-3 font-medium">{m['common.actions']()}</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -73,18 +74,18 @@
 								<div class="max-w-xs truncate text-xs text-muted-foreground" title={cluster.url}>{cluster.url}</div>
 							</td>
 							<td class="px-4 py-3">
-								<span class="rounded-full bg-muted px-2 py-1 text-xs">{cluster.lastTestStatus ?? 'untested'}</span>
+								<span class="rounded-full bg-muted px-2 py-1 text-xs">{cluster.lastTestStatus ?? m['common.untested']()}</span>
 								{#if cluster.lastTestMessage}<div class="mt-1 text-xs text-muted-foreground">{cluster.lastTestMessage}</div>{/if}
 							</td>
 							<td class="px-4 py-3 text-muted-foreground">{cluster.proxmoxVersion ?? '—'}</td>
 							<td class="px-4 py-3">{cluster.nodeCount} / {cluster.vmCount}</td>
-							<td class="px-4 py-3">{cluster.oidcEnabled ? 'Enabled' : 'Off'}</td>
+							<td class="px-4 py-3">{cluster.oidcEnabled ? m['common.enabled']() : m['common.off']()}</td>
 							<td class="px-4 py-3">
 								<div class="flex flex-wrap gap-2">
-									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={`Test ${cluster.name}`} onclick={() => void store.test(cluster.name)}>Test</Button>
-									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={`Edit ${cluster.name}`} onclick={() => editCluster(cluster)}>Edit</Button>
-									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={`${cluster.oidcEnabled ? 'Disable' : 'Enable'} OIDC for ${cluster.name}`} onclick={() => void store.toggleOIDC(cluster.name, !cluster.oidcEnabled)}>{cluster.oidcEnabled ? 'Disable OIDC' : 'Enable OIDC'}</Button>
-									<Button variant="destructive" size="sm" disabled={store.busy !== null} label={`Remove ${cluster.name}`} onclick={() => void store.remove(cluster.name)}>Remove</Button>
+									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.testLabel']({ name: cluster.name })} onclick={() => void store.test(cluster.name)}>{m['admin.clusters.test']()}</Button>
+									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.editLabel']({ name: cluster.name })} onclick={() => editCluster(cluster)}>{m['common.edit']()}</Button>
+									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={cluster.oidcEnabled ? m['admin.clusters.disableOidcLabel']({ name: cluster.name }) : m['admin.clusters.enableOidcLabel']({ name: cluster.name })} onclick={() => void store.toggleOIDC(cluster.name, !cluster.oidcEnabled)}>{cluster.oidcEnabled ? m['admin.clusters.disableOidc']() : m['admin.clusters.enableOidc']()}</Button>
+									<Button variant="destructive" size="sm" disabled={store.busy !== null} label={m['admin.clusters.removeLabel']({ name: cluster.name })} onclick={() => void store.remove(cluster.name)}>{m['admin.clusters.remove']()}</Button>
 								</div>
 							</td>
 						</tr>
