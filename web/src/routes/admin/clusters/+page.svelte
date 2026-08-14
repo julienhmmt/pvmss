@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import ClustersPage from '$lib/features/admin-clusters/ClustersPage.svelte';
 	import { AdminClustersStore } from '$lib/features/admin-clusters/clusters.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = new AdminClustersStore();
 
@@ -11,7 +12,7 @@
 </script>
 
 <svelte:head>
-	<title>Admin — Clusters — PVMSS</title>
+	<title>{m['admin.clusters.title']()}</title>
 </svelte:head>
 
 <ClustersPage {store} />

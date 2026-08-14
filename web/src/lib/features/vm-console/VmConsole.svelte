@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { getConsoleContext } from './console.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	// Test-only: throws during component initialization to exercise the
 	// <svelte:boundary> failed snippet in +page.svelte (SC-004). Svelte 5
@@ -47,7 +48,7 @@
 			class="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground"
 			data-testid="vm-console-connecting"
 		>
-			Connecting to console…
+			{m['vms.console.connecting']()}
 		</div>
 	{/if}
 
@@ -56,14 +57,14 @@
 			class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-destructive"
 			data-testid="vm-console-error"
 		>
-			<p>{store.error ?? 'Connection failed'}</p>
+			<p>{store.error ?? m['vms.console.connectionFailed']()}</p>
 			<button
 				type="button"
 				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:bg-muted"
 				onclick={() => store.reconnect()}
 				data-testid="vm-console-retry"
 			>
-				Retry
+				{m['vms.console.retry']()}
 			</button>
 		</div>
 	{/if}
@@ -73,14 +74,14 @@
 			class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground"
 			data-testid="vm-console-disconnected"
 		>
-			<p>Disconnected</p>
+			<p>{m['vms.console.disconnected']()}</p>
 			<button
 				type="button"
 				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:bg-muted"
 				onclick={() => store.reconnect()}
 				data-testid="vm-console-reconnect"
 			>
-				Reconnect
+				{m['vms.console.reconnect']()}
 			</button>
 		</div>
 	{/if}

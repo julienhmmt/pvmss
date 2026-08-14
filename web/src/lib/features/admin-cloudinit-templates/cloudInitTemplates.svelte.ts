@@ -1,5 +1,6 @@
 import { get, post, put, del, ApiRequestError } from '$lib/shared/api/client';
 import { setContext, getContext } from 'svelte';
+import { m } from '$lib/paraglide/messages.js';
 
 export interface AdminCloudInitTemplate {
 	id: string;
@@ -27,7 +28,7 @@ export class AdminCloudInitTemplatesStore {
 				'/api/v1/admin/cloudinit-templates?cluster=default'
 			);
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : 'failed to load templates';
+			this.error = err instanceof ApiRequestError ? err.message : m['admin.cloudinit.loadError']();
 		} finally {
 			this.loading = false;
 		}
@@ -44,7 +45,7 @@ export class AdminCloudInitTemplatesStore {
 			});
 			this.templates = [...this.templates, created];
 		} catch (err) {
-			this.saveError = err instanceof ApiRequestError ? err.message : 'failed to create template';
+			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.cloudinit.createError']();
 			throw err;
 		} finally {
 			this.saving = false;
@@ -61,7 +62,7 @@ export class AdminCloudInitTemplatesStore {
 			);
 			this.templates = this.templates.map((t) => (t.id === id ? updated : t));
 		} catch (err) {
-			this.saveError = err instanceof ApiRequestError ? err.message : 'failed to update template';
+			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.cloudinit.updateError']();
 			throw err;
 		} finally {
 			this.saving = false;
@@ -74,7 +75,7 @@ export class AdminCloudInitTemplatesStore {
 			await del<{ status: string }>(`/api/v1/admin/cloudinit-templates/${id}?cluster=default`);
 			this.templates = this.templates.filter((t) => t.id !== id);
 		} catch (err) {
-			this.saveError = err instanceof ApiRequestError ? err.message : 'failed to delete template';
+			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.cloudinit.deleteError']();
 			throw err;
 		}
 	}
@@ -88,7 +89,7 @@ export class AdminCloudInitTemplatesStore {
 			);
 			this.templates = this.templates.map((t) => (t.id === id ? { ...t, enabled } : t));
 		} catch (err) {
-			this.saveError = err instanceof ApiRequestError ? err.message : 'failed to toggle template';
+			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.cloudinit.toggleError']();
 			throw err;
 		}
 	}

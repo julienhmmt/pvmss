@@ -1,5 +1,6 @@
 import { get, put, ApiRequestError } from '$lib/shared/api/client';
 import { getContext, setContext } from 'svelte';
+import { m } from '$lib/paraglide/messages.js';
 
 export interface Gabarit {
 	maxSockets: number;
@@ -51,7 +52,7 @@ export class AdminPolicyStore {
 		try {
 			this.policy = await get<AdminPolicy>('/api/v1/admin/policy?cluster=default');
 		} catch (error: unknown) {
-			this.error = error instanceof ApiRequestError ? error.message : 'failed to load policy';
+			this.error = error instanceof ApiRequestError ? error.message : m['policy.loadError']();
 		} finally {
 			this.loading = false;
 		}
@@ -65,7 +66,7 @@ export class AdminPolicyStore {
 			this.policy = await put<AdminPolicy>('/api/v1/admin/policy', { cluster: 'default', ...patch });
 			this.saved = true;
 		} catch (error: unknown) {
-			this.saveError = error instanceof ApiRequestError ? error.message : 'failed to save policy';
+			this.saveError = error instanceof ApiRequestError ? error.message : m['policy.saveError']();
 			throw error;
 		} finally {
 			this.saving = false;

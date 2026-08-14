@@ -4,6 +4,7 @@
 	import { getVmCreateContext } from './create.svelte';
 	import { getDraftContext } from './draft.svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	// Simple-mode wizard (V08): pick a profile, name the VM, and submit. Node
 	// and storage are auto-selected from the catalog's first approved entries,
@@ -25,7 +26,7 @@
 
 {#if form.catalog === null}
 	<p role="status" aria-live="polite" class="text-muted-foreground">
-		{form.catalogError ?? 'Loading catalog…'}
+		{form.catalogError ?? m['vms.create.loadingCatalog']()}
 	</p>
 {:else}
 	<form
@@ -36,12 +37,12 @@
 		}}
 	>
 		<label class="grid gap-1 text-sm font-medium">
-			Name
+			{m['vms.create.name']()}
 			<input class={inputClass} bind:value={form.name} required placeholder="web-04" />
 		</label>
 
 		<fieldset class="grid gap-2">
-			<legend class="text-sm font-medium">Profile</legend>
+			<legend class="text-sm font-medium">{m['vms.create.profile']()}</legend>
 			{#each form.catalog.profiles as profile (profile.id)}
 				<label class="flex items-center gap-2 text-sm">
 					<input type="radio" bind:group={form.profileId} value={profile.id} required />
@@ -52,9 +53,9 @@
 
 		{#if form.catalog.cloudInitTemplates.length > 0}
 			<label class="grid gap-1 text-sm font-medium">
-				Cloud-init template (optional)
+				{m['vms.create.cloudinitTemplate']()} <span class="font-normal text-muted-foreground">{m['common.optional']()}</span>
 				<select class={inputClass} bind:value={form.cloudInitTemplateId}>
-					<option value="">None</option>
+					<option value="">{m['common.none']()}</option>
 					{#each form.catalog.cloudInitTemplates as template (template.id)}
 						<option value={template.id}>{template.label}</option>
 					{/each}
@@ -64,7 +65,7 @@
 
 		<div class="grid gap-2 rounded-md border border-border p-3">
 			<div class="flex items-center justify-between">
-				<span class="text-sm font-medium">Placement</span>
+				<span class="text-sm font-medium">{m['vms.create.placement']()}</span>
 				<button
 					type="button"
 					class="text-xs underline text-muted-foreground"
@@ -73,12 +74,12 @@
 						form.storageAdjusted = form.nodeAdjusted;
 					}}
 				>
-					{form.nodeAdjusted ? 'Reset to automatic' : 'Adjust'}
+					{form.nodeAdjusted ? m['vms.create.resetAutomatic']() : m['vms.create.adjust']()}
 				</button>
 			</div>
 			{#if form.nodeAdjusted}
 				<label class="grid gap-1 text-sm font-medium">
-					Node
+					{m['vms.create.node']()}
 					<select class={inputClass} bind:value={form.node}>
 						{#each form.catalog.nodes as node (node)}
 							<option value={node}>{node}</option>
@@ -86,9 +87,9 @@
 					</select>
 				</label>
 				<label class="grid gap-1 text-sm font-medium">
-					Storage
+					{m['vms.create.storage']()}
 					<select class={inputClass} bind:value={form.storage} required>
-						<option value="" disabled>Choose a storage</option>
+						<option value="" disabled>{m['vms.create.chooseStorage']()}</option>
 						{#each form.catalog.storages.filter((s) => s.node === form.node) as storage (storage.name)}
 							<option value={storage.name}>{storage.name}</option>
 						{/each}
@@ -96,16 +97,14 @@
 				</label>
 			{:else}
 				<p class="text-sm text-muted-foreground">
-					Node <strong class="text-foreground">{form.effectiveNode()}</strong> and storage
-					<strong class="text-foreground">{form.effectiveStorage()}</strong>
-					<span class="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs">automatic</span>
+					{m['vms.create.placementAutomatic']({ node: form.effectiveNode(), storage: form.effectiveStorage() })}
 				</p>
 			{/if}
 		</div>
 
 		<label class="flex items-center gap-2 text-sm">
 			<input type="checkbox" bind:checked={form.startAfterCreate} />
-			Start after creation
+			{m['vms.create.startAfterCreate']()}
 		</label>
 
 		{#if form.submitError}<p role="alert" class="text-sm text-destructive">{form.submitError}</p>{/if}
@@ -114,7 +113,7 @@
 			disabled={form.submitting}
 			type="submit"
 		>
-			{form.submitting ? 'Creating…' : 'Create VM'}
+			{form.submitting ? m['common.creating']() : m['vms.create.submit']()}
 		</button>
 	</form>
 {/if}

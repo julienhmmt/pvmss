@@ -3,6 +3,7 @@
 	import { formatBytes } from './format';
 	import Switch from '$lib/shared/ui/Switch.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		nodes: AdminNode[];
@@ -17,12 +18,12 @@
 	<table class="w-full text-sm">
 		<thead class="bg-muted/50 text-left">
 			<tr>
-				<th class="px-4 py-2 font-medium">Name</th>
-				<th class="px-4 py-2 font-medium">Status</th>
-				<th class="px-4 py-2 font-medium">VMs</th>
-				<th class="px-4 py-2 font-medium">CPU</th>
-				<th class="px-4 py-2 font-medium">Memory</th>
-				<th class="px-4 py-2 font-medium">Approved</th>
+				<th class="px-4 py-2 font-medium">{m['common.name']()}</th>
+				<th class="px-4 py-2 font-medium">{m['common.status']()}</th>
+				<th class="px-4 py-2 font-medium">{m['common.vms']()}</th>
+				<th class="px-4 py-2 font-medium">{m['common.cpu']()}</th>
+				<th class="px-4 py-2 font-medium">{m['common.memory']()}</th>
+				<th class="px-4 py-2 font-medium">{m['admin.catalog.approvedStatus']()}</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -31,20 +32,20 @@
 					<td class="px-4 py-2 font-mono">{node.name}</td>
 					<td class="px-4 py-2">{node.status}</td>
 					<td class="px-4 py-2">{node.vmCount}</td>
-					<td class="px-4 py-2">{node.cpuCores} cores ({(node.cpuUsage * 100).toFixed(0)}%)</td>
+					<td class="px-4 py-2">{node.cpuCores} {m['common.cores']()} ({(node.cpuUsage * 100).toFixed(0)}%)</td>
 					<td class="px-4 py-2">{formatBytes(node.memoryUsed)} / {formatBytes(node.memoryTotal)}</td>
 					<td class="px-4 py-2">
 						<span class="inline-flex items-center gap-2" aria-busy={toggling === `node:${node.name}`}>
 							<Switch
 								checked={node.enabled}
-								label={node.enabled ? `Revoke approval for ${node.name}` : `Approve ${node.name}`}
+								label={node.enabled ? m['admin.catalog.revokeApproval']({ name: node.name }) : m['admin.catalog.approveName']({ name: node.name })}
 								onToggle={() => onToggle(node.name, !node.enabled)}
 							/>
 							<span class="text-xs text-muted-foreground">
 								{#if toggling === `node:${node.name}`}
 									…
 								{:else}
-									{node.enabled ? 'Approved' : 'Approve'}
+									{node.enabled ? m['admin.catalog.approvedStatus']() : m['admin.catalog.approveAction']()}
 								{/if}
 							</span>
 						</span>
@@ -52,7 +53,7 @@
 				</tr>
 			{:else}
 				<tr><td colspan={6} class="p-0">
-					<EmptyState title="No nodes found on this cluster." />
+					<EmptyState title={m['admin.catalog.noNodes']()} />
 				</td></tr>
 			{/each}
 		</tbody>

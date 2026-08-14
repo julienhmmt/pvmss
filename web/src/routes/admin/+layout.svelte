@@ -5,6 +5,7 @@
 	import { resolve } from '$app/paths';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import AdminNav from '$lib/features/chrome/AdminNav.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		children: Snippet;
@@ -37,5 +38,5 @@
 		</div>
 	</div>
 {:else if !checked}
-	<p class="px-4 py-8 text-center text-muted-foreground" role="status" aria-live="polite">Loading…</p>
+	<p class="px-4 py-8 text-center text-muted-foreground" role="status" aria-live="polite">{m['admin.layout.loading']()}</p>
 {/if}
