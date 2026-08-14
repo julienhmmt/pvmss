@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { setDashboardContext } from '$lib/features/admin-dashboard/dashboard.svelte';
 	import DashboardPage from '$lib/features/admin-dashboard/DashboardPage.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = setDashboardContext();
 
@@ -11,7 +12,7 @@
 </script>
 
 <svelte:head>
-	<title>Admin Dashboard — PVMSS</title>
+	<title>{m['admin.dashboard.pageTitle']()}</title>
 </svelte:head>
 
 <DashboardPage />

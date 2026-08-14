@@ -1,6 +1,7 @@
 import { get, post, ApiRequestError } from '$lib/shared/api/client';
 import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 import { setContext, getContext } from 'svelte';
+import { m } from '$lib/paraglide/messages.js';
 
 export interface AdminNode {
 	name: string;
@@ -85,7 +86,7 @@ export class AdminCatalogStore {
 				this.cluster = first.name;
 			}
 		} catch (error: unknown) {
-			this.error = error instanceof ApiRequestError ? error.message : 'failed to load clusters';
+			this.error = error instanceof ApiRequestError ? error.message : m['admin.catalog.loadClustersError']();
 		}
 	}
 
@@ -105,7 +106,7 @@ export class AdminCatalogStore {
 			this.bridges = bridges;
 			this.isos = isos;
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : 'failed to load admin catalog';
+			this.error = err instanceof ApiRequestError ? err.message : m['admin.catalog.loadError']();
 		} finally {
 			this.loading = false;
 		}
@@ -123,7 +124,7 @@ export class AdminCatalogStore {
 			await post<ToggleResponse>('/api/v1/admin/nodes/toggle', { cluster: this.cluster, name, enabled });
 			this.nodes = this.nodes.map((n) => (n.name === name ? { ...n, enabled } : n));
 		} catch (err) {
-			this.toggleError = err instanceof ApiRequestError ? err.message : 'failed to toggle node';
+			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.toggleNodeError']();
 			throw err;
 		} finally {
 			this.toggling = null;
@@ -144,7 +145,7 @@ export class AdminCatalogStore {
 				s.name === name && s.node === node ? { ...s, enabled } : s
 			);
 		} catch (err) {
-			this.toggleError = err instanceof ApiRequestError ? err.message : 'failed to toggle storage';
+			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.toggleStorageError']();
 			throw err;
 		} finally {
 			this.toggling = null;
@@ -158,7 +159,7 @@ export class AdminCatalogStore {
 			await post<ToggleResponse>('/api/v1/admin/bridges/toggle', { cluster: this.cluster, name, enabled });
 			this.bridges = this.bridges.map((b) => (b.name === name ? { ...b, enabled } : b));
 		} catch (err) {
-			this.toggleError = err instanceof ApiRequestError ? err.message : 'failed to toggle bridge';
+			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.toggleBridgeError']();
 			throw err;
 		} finally {
 			this.toggling = null;
@@ -179,7 +180,7 @@ export class AdminCatalogStore {
 				i.storage === storage && i.file === file ? { ...i, enabled } : i
 			);
 		} catch (err) {
-			this.toggleError = err instanceof ApiRequestError ? err.message : 'failed to toggle ISO';
+			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.toggleIsoError']();
 			throw err;
 		} finally {
 			this.toggling = null;

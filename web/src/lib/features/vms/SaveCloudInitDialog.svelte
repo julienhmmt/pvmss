@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		open?: boolean;
@@ -22,9 +23,9 @@
 </script>
 
 <Dialog bind:open labelledBy="cloudinit-save-title" onClose={close}>
-	<h2 id="cloudinit-save-title" class="mb-2 text-lg font-semibold">Save cloud-init changes?</h2>
+	<h2 id="cloudinit-save-title" class="mb-2 text-lg font-semibold">{m['vms.cloudinit.dialogTitle']()}</h2>
 	<p id="cloudinit-save-description" class="mb-4 text-sm text-muted-foreground">
-		Changes take effect on the next VM reboot. You can reboot this VM immediately after saving.
+		{m['vms.cloudinit.dialogDescription']()}
 	</p>
 	<label class="flex items-start gap-2 text-sm">
 		<input
@@ -33,11 +34,11 @@
 			bind:checked={rebootNow}
 			data-testid="cloudinit-reboot-checkbox"
 		/>
-		<span>Reboot now after saving</span>
+		<span>{m['vms.cloudinit.dialogReboot']()}</span>
 	</label>
 	<div class="mt-6 flex justify-end gap-2">
 		<button type="button" class="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted" onclick={close}>
-			Cancel
+			{m['common.cancel']()}
 		</button>
 		<button
 			type="button"
@@ -46,7 +47,7 @@
 			onclick={() => void confirm()}
 			data-testid="cloudinit-save-confirm"
 		>
-			{saving ? 'Saving…' : 'Confirm save'}
+			{saving ? m['common.saving']() : m['vms.cloudinit.dialogConfirm']()}
 		</button>
 	</div>
 </Dialog>

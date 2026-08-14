@@ -5,6 +5,7 @@
 	import { page } from '$app/state';
 	import { setVmDetailContext } from '$lib/features/vms/detail.svelte';
 	import VmDetail from '$lib/features/vms/VmDetail.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const cluster = page.params.cluster ?? 'default';
 	const vmid = Number(page.params.vmid);
@@ -23,7 +24,7 @@
 </script>
 
 <svelte:head>
-	<title>VM {vmid} — PVMSS</title>
+	<title>{m['vms.detail.title']({ vmid: String(vmid) })}</title>
 </svelte:head>
 
 <section class="mx-auto w-full max-w-4xl px-4 py-8">
@@ -31,7 +32,7 @@
 		href={resolve('/vms')}
 		class="mb-4 inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
 	>
-		← Back to VMs
+		{m['common.backToVms']()}
 	</a>
 	<VmDetail />
 </section>

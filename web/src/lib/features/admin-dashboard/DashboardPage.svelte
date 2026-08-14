@@ -4,6 +4,7 @@
 	import StatusDot from '$lib/shared/ui/StatusDot.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getDashboardContext();
 
@@ -15,41 +16,41 @@
 	}
 </script>
 
-<PageHeader title="Dashboard" />
+<PageHeader title={m['admin.dashboard.title']()} />
 
 {#if store.loading}
-	<div role="status" aria-live="polite" class="sr-only">Loading…</div>
+	<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
 	<TableSkeleton columns={5} />
 {:else if store.error}
 	<p role="alert" class="text-destructive">{store.error}</p>
 {:else if store.summary}
-	<div role="status" aria-live="polite" class="sr-only">Dashboard loaded</div>
+	<div role="status" aria-live="polite" class="sr-only">{m['admin.dashboard.loaded']()}</div>
 
 	<section class="space-y-6">
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 			<div class="rounded-lg border border-border bg-card p-4">
-				<p class="text-sm text-muted-foreground">Nodes</p>
+				<p class="text-sm text-muted-foreground">{m['admin.dashboard.nodes']()}</p>
 				<p class="text-3xl font-semibold">{store.summary.nodeCount}</p>
 			</div>
 			<div class="rounded-lg border border-border bg-card p-4">
-				<p class="text-sm text-muted-foreground">VMs</p>
+				<p class="text-sm text-muted-foreground">{m['admin.dashboard.vms']()}</p>
 				<p class="text-3xl font-semibold">{store.summary.vmCount}</p>
 			</div>
 			<div class="rounded-lg border border-border bg-card p-4">
-				<p class="text-sm text-muted-foreground">Storage Used</p>
+				<p class="text-sm text-muted-foreground">{m['admin.dashboard.storageUsed']()}</p>
 				<p class="text-3xl font-semibold">{formatBytes(store.summary.storageUsedBytes)}</p>
-				<p class="text-sm text-muted-foreground">of {formatBytes(store.summary.storageTotalBytes)}</p>
+				<p class="text-sm text-muted-foreground">{m['admin.dashboard.storageOf']()} {formatBytes(store.summary.storageTotalBytes)}</p>
 			</div>
 		</div>
 
 		<div class="space-y-2">
-			<h2 class="text-lg font-medium">Nodes</h2>
+			<h2 class="text-lg font-medium">{m['admin.dashboard.nodesHeader']()}</h2>
 			<div class="overflow-x-auto rounded-md border border-border">
 				<table class="w-full text-sm">
 					<thead class="bg-muted/50 text-left">
 						<tr>
-							<th class="px-4 py-2 font-medium">Name</th>
-							<th class="px-4 py-2 font-medium">Status</th>
+							<th class="px-4 py-2 font-medium">{m['common.name']()}</th>
+							<th class="px-4 py-2 font-medium">{m['common.status']()}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -64,7 +65,7 @@
 								</td>
 							</tr>
 						{:else}
-							<tr><td colspan={2} class="p-0"><EmptyState title="No nodes found." /></td></tr>
+							<tr><td colspan={2} class="p-0"><EmptyState title={m['admin.dashboard.noNodes']()} /></td></tr>
 						{/each}
 					</tbody>
 				</table>
@@ -72,16 +73,16 @@
 		</div>
 
 		<div class="space-y-2">
-			<h2 class="text-lg font-medium">Storage</h2>
+			<h2 class="text-lg font-medium">{m['admin.dashboard.storageHeader']()}</h2>
 			<div class="overflow-x-auto rounded-md border border-border">
 				<table class="w-full text-sm">
 					<thead class="bg-muted/50 text-left">
 						<tr>
-							<th class="px-4 py-2 font-medium">Name</th>
-							<th class="px-4 py-2 font-medium">Node</th>
-							<th class="px-4 py-2 font-medium">Type</th>
-							<th class="px-4 py-2 font-medium">Used</th>
-							<th class="px-4 py-2 font-medium">Total</th>
+							<th class="px-4 py-2 font-medium">{m['common.name']()}</th>
+							<th class="px-4 py-2 font-medium">{m['common.node']()}</th>
+							<th class="px-4 py-2 font-medium">{m['common.type']()}</th>
+							<th class="px-4 py-2 font-medium">{m['admin.dashboard.used']()}</th>
+							<th class="px-4 py-2 font-medium">{m['common.total']()}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -94,7 +95,7 @@
 								<td class="px-4 py-2">{formatBytes(storage.totalBytes)}</td>
 							</tr>
 						{:else}
-							<tr><td colspan={5} class="p-0"><EmptyState title="No storages found." /></td></tr>
+							<tr><td colspan={5} class="p-0"><EmptyState title={m['admin.dashboard.noStorages']()} /></td></tr>
 						{/each}
 					</tbody>
 				</table>
@@ -102,7 +103,7 @@
 		</div>
 
 		<p class="text-sm text-muted-foreground">
-			Version {store.summary.version} · Refreshed {new Date(store.summary.refreshedAt).toLocaleString()}
+			{m['admin.dashboard.version']()} {store.summary.version} · {m['admin.dashboard.refreshed']()} {new Date(store.summary.refreshedAt).toLocaleString()}
 		</p>
 	</section>
 {/if}

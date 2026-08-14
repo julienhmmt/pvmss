@@ -1,22 +1,23 @@
 <script lang="ts">
 	import { getVmDetailContext, type VmAction } from './detail.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
 
 	type ActionDef = {
 		kind: VmAction;
-		label: string;
+		label: () => string;
 		/** Shown when the VM is in this status — the button is disabled otherwise. */
 		applicable: import('./list.svelte').VmStatus[];
 		variant: 'primary' | 'neutral' | 'danger';
 	};
 
 	const ACTIONS: readonly ActionDef[] = [
-		{ kind: 'start', label: 'Start', applicable: ['stopped'], variant: 'primary' },
-		{ kind: 'shutdown', label: 'Shut down', applicable: ['running'], variant: 'neutral' },
-		{ kind: 'stop', label: 'Stop', applicable: ['running'], variant: 'danger' },
-		{ kind: 'reboot', label: 'Reboot', applicable: ['running'], variant: 'neutral' },
-		{ kind: 'reset', label: 'Reset', applicable: ['running', 'paused'], variant: 'danger' }
+		{ kind: 'start', label: () => m['vms.action.start'](), applicable: ['stopped'], variant: 'primary' },
+		{ kind: 'shutdown', label: () => m['vms.action.shutdown'](), applicable: ['running'], variant: 'neutral' },
+		{ kind: 'stop', label: () => m['vms.action.stop'](), applicable: ['running'], variant: 'danger' },
+		{ kind: 'reboot', label: () => m['vms.action.reboot'](), applicable: ['running'], variant: 'neutral' },
+		{ kind: 'reset', label: () => m['vms.action.reset'](), applicable: ['running', 'paused'], variant: 'danger' }
 	] as const;
 
 	interface Props {
@@ -54,7 +55,7 @@
 			onclick={() => handleAction(action.kind)}
 			data-testid="vm-action-{action.kind}"
 		>
-			{action.label}
+			{action.label()}
 		</button>
 	{/each}
 
@@ -65,7 +66,7 @@
 		onclick={onDelete}
 		data-testid="vm-action-delete"
 	>
-		Delete…
+		{m['vms.action.delete']()}
 	</button>
 </div>
 
@@ -77,6 +78,6 @@
 
 {#if store.actionInFlight && store.entity}
 	<p role="status" aria-live="polite" class="sr-only" data-testid="vm-action-aria">
-		{store.entity.name} status changed to {store.entity.status}
+		{m['vms.detail.statusChanged']({ name: store.entity.name, status: store.entity.status })}
 	</p>
 {/if}

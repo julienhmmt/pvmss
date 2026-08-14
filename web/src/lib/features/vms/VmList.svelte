@@ -7,24 +7,25 @@
 	} from './list.svelte';
 	import { getVmBulkContext } from './bulk.svelte';
 	import { resolve } from '$app/paths';
+	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmListContext();
 	const bulk = getVmBulkContext();
 
-	const COLUMN_LABELS: Record<VmSortBy, string> = {
-		vmid: 'ID',
-		name: 'Name',
-		node: 'Node',
-		status: 'Status',
-		cpu: 'CPU',
-		memory: 'Memory'
+	const COLUMN_LABELS: Record<VmSortBy, () => string> = {
+		vmid: () => m['vms.list.columnId'](),
+		name: () => m['vms.list.columnName'](),
+		node: () => m['vms.list.columnNode'](),
+		status: () => m['vms.list.columnStatus'](),
+		cpu: () => m['vms.list.columnCpu'](),
+		memory: () => m['vms.list.columnMemory']()
 	};
 
-	const STATUS_OPTIONS: readonly { value: VmStatus | ''; label: string }[] = [
-		{ value: '', label: 'All statuses' },
-		{ value: 'running', label: 'Running' },
-		{ value: 'stopped', label: 'Stopped' },
-		{ value: 'paused', label: 'Paused' }
+	const STATUS_OPTIONS: readonly { value: VmStatus | ''; label: () => string }[] = [
+		{ value: '', label: () => m['common.allStatuses']() },
+		{ value: 'running', label: () => m['common.statusRunning']() },
+		{ value: 'stopped', label: () => m['common.statusStopped']() },
+		{ value: 'paused', label: () => m['common.statusPaused']() }
 	] as const;
 
 	const PAGE_SIZE_OPTIONS: readonly number[] = [10, 25, 50] as const;
@@ -96,11 +97,11 @@
 
 <div class="mb-4 flex flex-wrap items-center gap-3">
 	<div class="flex-1">
-		<label for="vm-search" class="sr-only">Search VMs by name, tag, or ID</label>
+		<label for="vm-search" class="sr-only">{m['common.search']()}</label>
 		<input
 			id="vm-search"
 			type="search"
-			placeholder="Search by name, tag, or ID…"
+			placeholder={m['vms.list.searchPlaceholder']()}
 			class="w-full max-w-sm rounded-md border border-border bg-background px-3 py-1.5 text-sm"
 			value={store.search}
 			oninput={(event) => store.applySearch(event.currentTarget.value)}
@@ -108,7 +109,7 @@
 		/>
 	</div>
 
-	<label class="sr-only" for="vm-status-filter">Filter by status</label>
+	<label class="sr-only" for="vm-status-filter">{m['vms.list.filterStatusLabel']()}</label>
 	<select
 		id="vm-status-filter"
 		class="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
@@ -117,11 +118,11 @@
 		data-testid="vm-status-filter"
 	>
 		{#each STATUS_OPTIONS as option (option.value)}
-			<option value={option.value}>{option.label}</option>
+			<option value={option.value}>{option.label()}</option>
 		{/each}
 	</select>
 
-	<label class="sr-only" for="vm-node-filter">Filter by node</label>
+	<label class="sr-only" for="vm-node-filter">{m['vms.list.filterNodeLabel']()}</label>
 	<select
 		id="vm-node-filter"
 		class="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
@@ -129,7 +130,7 @@
 		onchange={handleNodeChange}
 		data-testid="vm-node-filter"
 	>
-		<option value="">All nodes</option>
+		<option value="">{m['common.allNodes']()}</option>
 		{#each store.result?.availableNodes ?? [] as node (node)}
 			<option value={node}>{node}</option>
 		{/each}
@@ -138,9 +139,9 @@
 	{#if store.result?.quota}
 		<p class="text-sm text-muted-foreground" data-testid="vm-quota">
 			{#if store.result.quota.allowed === -1}
-				{store.result.quota.used} VMs · unlimited quota
+				{m['vms.list.quotaUnlimited']({ used: store.result.quota.used })}
 			{:else}
-				{store.result.quota.used} / {store.result.quota.allowed} VMs
+				{m['vms.list.quotaLimited']({ used: store.result.quota.used, allowed: store.result.quota.allowed })}
 			{/if}
 		</p>
 	{/if}
@@ -153,16 +154,16 @@
 {#if store.result && store.result.items.length === 0}
 	{#if store.result.emptyReason === 'no_vms_owned'}
 		<p class="py-8 text-center text-muted-foreground" data-testid="vm-empty-owned">
-			You don't have any VMs yet.
+			{m['vms.list.emptyOwned']()}
 		</p>
 	{:else}
 		<p class="py-8 text-center text-muted-foreground" data-testid="vm-empty-match">
-			No VMs match your search or filters.
+			{m['vms.list.emptyMatch']()}
 		</p>
 	{/if}
 {:else}
 	<table class="w-full border-collapse text-left text-sm">
-		<caption class="sr-only">Virtual machines</caption>
+		<caption class="sr-only">{m['vms.list.caption']()}</caption>
 		<thead>
 			<tr class="border-b border-border">
 				<th scope="col" class="px-3 py-2">
@@ -172,10 +173,10 @@
 						checked={allOnPageSelected}
 						onchange={handleSelectAllOnPage}
 						data-testid="vm-bulk-select-all"
-						aria-label="Select all VMs on this page"
+						aria-label={m['vms.list.selectAll']()}
 					/>
 				</th>
-				<th scope="col" class="px-3 py-2 font-medium">Cluster</th>
+				<th scope="col" class="px-3 py-2 font-medium">{m['vms.list.columnCluster']()}</th>
 				{#each SORTABLE_COLUMNS as column (column)}
 					<th scope="col" class="px-3 py-2 font-medium" aria-sort={ariaSort(column)}>
 						<button
@@ -184,12 +185,12 @@
 							onclick={() => handleSort(column)}
 							data-testid="sort-{column}"
 						>
-							{COLUMN_LABELS[column]}{sortIndicator(column)}
+							{COLUMN_LABELS[column]()}{sortIndicator(column)}
 						</button>
 					</th>
 				{/each}
 				{#if store.scope === 'all'}
-					<th scope="col" class="px-3 py-2 font-medium">Pool</th>
+					<th scope="col" class="px-3 py-2 font-medium">{m['vms.list.columnPool']()}</th>
 				{/if}
 			</tr>
 		</thead>
@@ -203,7 +204,7 @@
 							checked={bulk.isSelected(machine.cluster, machine.vmid)}
 							onchange={() => handleRowToggle(machine.cluster, machine.vmid)}
 							data-testid="vm-bulk-select-row"
-							aria-label="Select {machine.name}"
+							aria-label={m['vms.list.selectRow']({ name: machine.name })}
 						/>
 					</td>
 					<td class="px-3 py-2 font-mono text-muted-foreground">{machine.cluster}</td>
@@ -227,7 +228,7 @@
 							{machine.status}
 						</span>
 					</td>
-					<td class="px-3 py-2 text-muted-foreground">{machine.cpuCores} cores</td>
+					<td class="px-3 py-2 text-muted-foreground">{machine.cpuCores} {m['common.cores']()}</td>
 					<td class="px-3 py-2 text-muted-foreground">{formatBytes(machine.memoryTotal)}</td>
 					{#if store.scope === 'all'}
 						<td class="px-3 py-2 text-muted-foreground">{machine.pool}</td>
@@ -237,9 +238,9 @@
 		</tbody>
 	</table>
 
-	<nav class="mt-4 flex flex-wrap items-center justify-between gap-3" aria-label="VM list pagination">
+	<nav class="mt-4 flex flex-wrap items-center justify-between gap-3" aria-label={m['vms.list.paginationLabel']()}>
 		<label class="flex items-center gap-2 text-sm text-muted-foreground">
-			Rows per page
+			{m['common.rowsPerPage']()}
 			<select
 				class="rounded-md border border-border bg-background px-2 py-1 text-sm"
 				value={store.pageSize}
@@ -260,10 +261,10 @@
 				onclick={() => store.setPage(store.page - 1)}
 				data-testid="vm-page-prev"
 			>
-				Previous
+				{m['common.previous']()}
 			</button>
 			<span class="text-sm text-muted-foreground" data-testid="vm-page-indicator">
-				Page {store.result?.page ?? store.page} of {pageCount}
+				{m['common.pageIndicator']({ current: store.result?.page ?? store.page, total: pageCount })}
 			</span>
 			<button
 				type="button"
@@ -272,7 +273,7 @@
 				onclick={() => store.setPage(store.page + 1)}
 				data-testid="vm-page-next"
 			>
-				Next
+				{m['common.next']()}
 			</button>
 		</div>
 	</nav>

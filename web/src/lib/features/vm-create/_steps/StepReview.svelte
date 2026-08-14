@@ -4,6 +4,7 @@
 	import { getVmCreateContext } from '../create.svelte';
 	import { getDraftContext } from '../draft.svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	// Review step (V09): shows the exact request the server will receive —
 	// there is no second, expert-only endpoint (FR-001) and no hidden fields.
@@ -23,7 +24,7 @@
 </script>
 
 <div class="grid gap-4">
-	<h2 class="text-sm font-medium">Review the request</h2>
+	<h2 class="text-sm font-medium">{m['vms.create.reviewHeading']()}</h2>
 	<pre
 		class="overflow-x-auto rounded-md border border-border bg-muted p-3 text-xs"
 		data-testid="review-request">{JSON.stringify(outgoing, null, 2)}</pre>
@@ -35,6 +36,6 @@
 		disabled={form.submitting}
 		onclick={() => void submit()}
 	>
-		{form.submitting ? 'Creating…' : 'Create VM'}
+		{form.submitting ? m['common.creating']() : m['vms.create.submit']()}
 	</button>
 </div>

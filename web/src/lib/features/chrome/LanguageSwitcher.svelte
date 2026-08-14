@@ -9,9 +9,9 @@
 	 * one more entry in this list plus one message file, never a code change
 	 * to the switcher itself (FR-003). Calls LocaleState.set() from context.
 	 */
-	const LOCALE_OPTIONS: readonly { value: Locale; label: string }[] = [
-		{ value: 'fr', label: 'Français' },
-		{ value: 'en', label: 'English' }
+	const LOCALE_OPTIONS: readonly { value: Locale; label: () => string }[] = [
+		{ value: 'fr', label: () => m['chrome.locale.french']() },
+		{ value: 'en', label: () => m['chrome.locale.english']() }
 	];
 
 	const locale = getLocaleContext();
@@ -37,7 +37,7 @@
 				class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
 			>
 				<span aria-hidden="true">{locale.current === option.value ? '✓' : ''}</span>
-				{option.label}
+				{option.label()}
 			</button>
 		{/each}
 	{/snippet}

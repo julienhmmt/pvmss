@@ -2,6 +2,7 @@
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import type { AdminCluster, ClusterInput } from './clusters.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
 		open: boolean;
@@ -33,30 +34,30 @@
 </script>
 
 <Dialog bind:open labelledBy={TITLE_ID} onClose={onClose}>
-	<h2 id={TITLE_ID} class="text-lg font-semibold">{editing ? 'Edit cluster' : 'Add cluster'}</h2>
+	<h2 id={TITLE_ID} class="text-lg font-semibold">{editing ? m['admin.clusters.editCluster']() : m['admin.clusters.addClusterForm']()}</h2>
 	<form class="mt-4 grid gap-3" onsubmit={(event) => { event.preventDefault(); submit(); }}>
 		<label class="grid gap-1 text-sm font-medium">
-			Name
+			{m['common.name']()}
 			<input class="rounded-md border border-input bg-background px-3 py-2" bind:value={name} disabled={editing !== null} pattern="[a-z0-9-]+" required />
 		</label>
 		<label class="grid gap-1 text-sm font-medium">
-			URL
+			{m['admin.clusters.url']()}
 			<input class="rounded-md border border-input bg-background px-3 py-2" type="url" bind:value={url} required />
 		</label>
 		<label class="grid gap-1 text-sm font-medium">
-			Token ID
+			{m['admin.clusters.tokenId']()}
 			<input class="rounded-md border border-input bg-background px-3 py-2" bind:value={tokenId} required />
 		</label>
 		<label class="grid gap-1 text-sm font-medium">
-			Token secret {#if editing}<span class="font-normal text-muted-foreground">(leave blank to keep it)</span>{/if}
+			{m['admin.clusters.tokenSecret']()} {#if editing}<span class="font-normal text-muted-foreground">{m['admin.clusters.tokenSecretHint']()}</span>{/if}
 			<input class="rounded-md border border-input bg-background px-3 py-2" type="password" bind:value={tokenSecret} required={editing === null} autocomplete="new-password" />
 		</label>
 		<label class="flex items-center gap-2 text-sm">
-			<input type="checkbox" bind:checked={tlsInsecureSkipVerify} /> Skip TLS certificate verification
+			<input type="checkbox" bind:checked={tlsInsecureSkipVerify} /> {m['admin.clusters.skipTls']()}
 		</label>
 		<div class="mt-2 flex justify-end gap-2">
-			<Button variant="secondary" onclick={onClose}>Cancel</Button>
-			<Button type="submit">Save</Button>
+			<Button variant="secondary" onclick={onClose}>{m['common.cancel']()}</Button>
+			<Button type="submit">{m['common.save']()}</Button>
 		</div>
 	</form>
 </Dialog>
