@@ -453,17 +453,17 @@ func writeAdminError(w http.ResponseWriter, status int, code, message string) {
 }
 
 func nodeNotFoundMsg(name string) string {
-	return "node \"" + name + "\" not reported by the cluster"
+	return "node \"" + name + "\"" + msgNotReportedByCluster
 }
 
 func storageNotFoundMsg(name, node string) string {
-	return "storage \"" + name + "\" on node \"" + node + "\" not reported by the cluster"
+	return "storage \"" + name + "\" on node \"" + node + "\"" + msgNotReportedByCluster
 }
 
 func bridgeNotFoundMsg(name string) string {
-	return "bridge \"" + name + "\" not reported by the cluster"
+	return "bridge \"" + name + "\"" + msgNotReportedByCluster
 }
 
 func isoNotFoundMsg(storage, file string) string {
-	return "iso \"" + file + "\" on storage \"" + storage + "\" not reported by the cluster"
+	return "iso \"" + file + "\" on storage \"" + storage + "\"" + msgNotReportedByCluster
 }

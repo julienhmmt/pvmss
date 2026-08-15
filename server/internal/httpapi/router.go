@@ -58,8 +58,6 @@ type RouterConfig struct {
 }
 
 // NewRouter wires the public API and the static SPA handler from cfg.
-//
-//nolint:gocyclo,funlen // route registration is inherently a long switch on cfg fields
 func NewRouter(cfg RouterConfig) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /health", cfg.Health)
@@ -144,86 +142,11 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		mux.Handle("GET /api/v1/docs/{id}", http.HandlerFunc(cfg.Docs.ServeDoc))
 	}
 
-	// T11 admin catalog — every route is admin-only (FR-008).
-	if cfg.AdminCatalog != nil {
-		adminGuard := cfg.Auth.RequireAdmin
-		mux.Handle("GET /api/v1/admin/nodes", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeNodes)))
-		mux.Handle("POST /api/v1/admin/nodes/toggle", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeNodeToggle)))
-		mux.Handle("GET /api/v1/admin/storages", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeStorages)))
-		mux.Handle("POST /api/v1/admin/storages/toggle", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeStorageToggle)))
-		mux.Handle("GET /api/v1/admin/bridges", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeBridges)))
-		mux.Handle("POST /api/v1/admin/bridges/toggle", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeBridgeToggle)))
-		mux.Handle("GET /api/v1/admin/isos", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeISOs)))
-		mux.Handle("POST /api/v1/admin/isos/toggle", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeISOToggle)))
-		mux.Handle("GET /api/v1/admin/profiles", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeProfiles)))
-		mux.Handle("POST /api/v1/admin/profiles", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeProfileCreate)))
-		mux.Handle("PUT /api/v1/admin/profiles/{id}", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeProfileUpdate)))
-		mux.Handle("DELETE /api/v1/admin/profiles/{id}", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeProfileDelete)))
-		mux.Handle("POST /api/v1/admin/profiles/{id}/toggle", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeProfileToggle)))
-		mux.Handle("GET /api/v1/admin/tags", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeTags)))
-		mux.Handle("POST /api/v1/admin/tags", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeTagCreate)))
-		mux.Handle("PUT /api/v1/admin/tags/{name}/color", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeTagColor)))
-		mux.Handle("DELETE /api/v1/admin/tags/{name}", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeTagDelete)))
-		// T18 admin cloud-init templates — full CRUD, same RequireAdmin guard
-		// as every other admin catalog route (FR-010), no new middleware.
-		mux.Handle("GET /api/v1/admin/cloudinit-templates", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeCloudInitTemplates)))
-		mux.Handle("POST /api/v1/admin/cloudinit-templates", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeCloudInitTemplateCreate)))
-		mux.Handle("PUT /api/v1/admin/cloudinit-templates/{id}", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeCloudInitTemplateUpdate)))
-		mux.Handle("DELETE /api/v1/admin/cloudinit-templates/{id}", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeCloudInitTemplateDelete)))
-		mux.Handle("POST /api/v1/admin/cloudinit-templates/{id}/toggle", adminGuard(http.HandlerFunc(cfg.AdminCatalog.ServeCloudInitTemplateToggle)))
-	}
-
-	// T12 admin policies — gabarits, quotas, node capacity; admin-only.
-	if cfg.AdminPolicy != nil {
-		adminGuard := cfg.Auth.RequireAdmin
-		mux.Handle("GET /api/v1/admin/policy", adminGuard(http.HandlerFunc(cfg.AdminPolicy.ServePolicy)))
-		mux.Handle("PUT /api/v1/admin/policy", adminGuard(http.HandlerFunc(cfg.AdminPolicy.ServePolicyUpdate)))
-		mux.Handle("GET /api/v1/admin/policy/nodes", adminGuard(http.HandlerFunc(cfg.AdminPolicy.ServePolicyNodes)))
-		mux.Handle("PUT /api/v1/admin/policy/nodes/{node}", adminGuard(http.HandlerFunc(cfg.AdminPolicy.ServePolicyNodeUpdate)))
-	}
-
-	// T13 admin pools — create, list, cascade delete; admin-only.
-	if cfg.AdminPools != nil {
-		adminGuard := cfg.Auth.RequireAdmin
-		mux.Handle("GET /api/v1/admin/pools", adminGuard(http.HandlerFunc(cfg.AdminPools.ServeList)))
-		mux.Handle("POST /api/v1/admin/pools", adminGuard(http.HandlerFunc(cfg.AdminPools.ServeCreate)))
-		mux.Handle("DELETE /api/v1/admin/pools/{name}", adminGuard(http.HandlerFunc(cfg.AdminPools.ServeDelete)))
-	}
-
-	// T14 admin exploitation — audit log, dashboard, db export/import, app
-	// info; admin-only. The public version endpoint is registered outside
-	// the admin guard group (FR-015).
-	if cfg.AdminOps != nil {
-		adminGuard := cfg.Auth.RequireAdmin
-		mux.Handle("GET /api/v1/admin/audit", adminGuard(http.HandlerFunc(cfg.AdminOps.ServeAudit)))
-		mux.Handle("GET /api/v1/admin/dashboard", adminGuard(http.HandlerFunc(cfg.AdminOps.ServeDashboard)))
-		mux.Handle("GET /api/v1/admin/db/export", adminGuard(http.HandlerFunc(cfg.AdminOps.ServeDBExport)))
-		mux.Handle("POST /api/v1/admin/db/import", adminGuard(http.HandlerFunc(cfg.AdminOps.ServeDBImport)))
-		mux.Handle("POST /api/v1/admin/db/import/confirm", adminGuard(http.HandlerFunc(cfg.AdminOps.ServeDBImportConfirm)))
-		mux.Handle("GET /api/v1/admin/appinfo", adminGuard(http.HandlerFunc(cfg.AdminOps.ServeAppInfo)))
-		mux.HandleFunc("GET /api/v1/public/version", cfg.AdminOps.ServePublicVersion)
-	}
-
-	if cfg.AdminClusters != nil {
-		adminGuard := cfg.Auth.RequireAdmin
-		mux.Handle("GET /api/v1/admin/clusters", adminGuard(http.HandlerFunc(cfg.AdminClusters.ServeList)))
-		mux.Handle("POST /api/v1/admin/clusters", adminGuard(http.HandlerFunc(cfg.AdminClusters.ServeCreate)))
-		mux.Handle("PUT /api/v1/admin/clusters/{name}", adminGuard(http.HandlerFunc(cfg.AdminClusters.ServeUpdate)))
-		mux.Handle("POST /api/v1/admin/clusters/{name}/test", adminGuard(http.HandlerFunc(cfg.AdminClusters.ServeTest)))
-		mux.Handle("POST /api/v1/admin/clusters/{name}/oidc", adminGuard(http.HandlerFunc(cfg.AdminClusters.ServeOIDC)))
-		mux.Handle("DELETE /api/v1/admin/clusters/{name}", adminGuard(http.HandlerFunc(cfg.AdminClusters.ServeDelete)))
-	}
-
-	// Issue #53 admin documentation CRUD — admin-only, same RequireAdmin guard
-	// as every other admin surface (FR-008).
-	if cfg.AdminDocs != nil {
-		adminGuard := cfg.Auth.RequireAdmin
-		mux.Handle("GET /api/v1/admin/docs", adminGuard(http.HandlerFunc(cfg.AdminDocs.ServeDocsList)))
-		mux.Handle("POST /api/v1/admin/docs", adminGuard(http.HandlerFunc(cfg.AdminDocs.ServeDocCreate)))
-		mux.Handle("PUT /api/v1/admin/docs/{id}/{lang}", adminGuard(http.HandlerFunc(cfg.AdminDocs.ServeDocUpdate)))
-		mux.Handle("DELETE /api/v1/admin/docs/{id}/{lang}", adminGuard(http.HandlerFunc(cfg.AdminDocs.ServeDocDelete)))
-		mux.Handle("POST /api/v1/admin/docs/{id}/{lang}/toggle", adminGuard(http.HandlerFunc(cfg.AdminDocs.ServeDocToggle)))
-	}
+	// Admin-only route groups (T11/T12/T13/T14/T18/issue#53). Each group is
+	// wired by its own helper behind the RequireAdmin guard (FR-008). Extracted
+	// from NewRouter to keep its Cognitive Complexity under the SonarQube
+	// go:S3776 threshold.
+	registerAdminRoutes(mux, cfg)
 
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
 		mux.Handle(method+" /api/", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {

@@ -153,30 +153,40 @@ func TestContract_ChangePassword(t *testing.T) {
 
 	for name, impl := range impls {
 		t.Run(name, func(t *testing.T) {
-			err := impl.ChangePassword(context.Background(), "alice@pve", "pvmss-alice", "temporary-new-password")
-
-			if name == proxmoxImplementationName {
-				if !errors.Is(err, cluster.ErrNotImplemented) {
-					t.Fatalf("proxmox stub: err = %v, want ErrNotImplemented", err)
-				}
-
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			t.Cleanup(func() {
-				if err := impl.ChangePassword(context.Background(), "alice@pve", "temporary-new-password", "pvmss-alice"); err != nil {
-					t.Fatalf("restore demo password: %v", err)
-				}
-			})
-
-			if _, err := impl.Authenticate(context.Background(), "alice@pve", "temporary-new-password"); err != nil {
-				t.Fatalf("authenticate with new password: %v", err)
-			}
+			runChangePasswordCase(t, name, impl)
 		})
+	}
+}
+
+// runChangePasswordCase checks ChangePassword against the contract: proxmox
+// returns ErrNotImplemented, fake changes the password and the new one
+// authenticates. Extracted from TestContract_ChangePassword to keep its
+// Cognitive Complexity under the SonarQube go:S3776 threshold.
+func runChangePasswordCase(t *testing.T, name string, impl cluster.Client) {
+	t.Helper()
+
+	err := impl.ChangePassword(context.Background(), "alice@pve", "pvmss-alice", "temporary-new-password")
+
+	if name == proxmoxImplementationName {
+		if !errors.Is(err, cluster.ErrNotImplemented) {
+			t.Fatalf("proxmox stub: err = %v, want ErrNotImplemented", err)
+		}
+
+		return
+	}
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	t.Cleanup(func() {
+		if err := impl.ChangePassword(context.Background(), "alice@pve", "temporary-new-password", "pvmss-alice"); err != nil {
+			t.Fatalf("restore demo password: %v", err)
+		}
+	})
+
+	if _, err := impl.Authenticate(context.Background(), "alice@pve", "temporary-new-password"); err != nil {
+		t.Fatalf("authenticate with new password: %v", err)
 	}
 }
 
@@ -306,30 +316,40 @@ func TestContract_ListBridges(t *testing.T) {
 
 	for name, impl := range impls {
 		t.Run(name, func(t *testing.T) {
-			bridges, err := impl.ListBridges(context.Background())
-
-			if name == proxmoxImplementationName {
-				if !errors.Is(err, cluster.ErrNotImplemented) {
-					t.Fatalf("proxmox stub: err = %v, want ErrNotImplemented", err)
-				}
-
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			if len(bridges) == 0 {
-				t.Fatal("expected at least one bridge")
-			}
-
-			for _, b := range bridges {
-				if b.Name == "" {
-					t.Error("bridge with empty name")
-				}
-			}
+			runListBridgesCase(t, name, impl)
 		})
+	}
+}
+
+// runListBridgesCase checks ListBridges against the contract: proxmox returns
+// ErrNotImplemented, fake returns at least one bridge with a non-empty name.
+// Extracted from TestContract_ListBridges to keep its Cognitive Complexity
+// under the SonarQube go:S3776 threshold.
+func runListBridgesCase(t *testing.T, name string, impl cluster.Client) {
+	t.Helper()
+
+	bridges, err := impl.ListBridges(context.Background())
+
+	if name == proxmoxImplementationName {
+		if !errors.Is(err, cluster.ErrNotImplemented) {
+			t.Fatalf("proxmox stub: err = %v, want ErrNotImplemented", err)
+		}
+
+		return
+	}
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(bridges) == 0 {
+		t.Fatal("expected at least one bridge")
+	}
+
+	for _, b := range bridges {
+		if b.Name == "" {
+			t.Error("bridge with empty name")
+		}
 	}
 }
 
@@ -342,29 +362,39 @@ func TestContract_ListISOs(t *testing.T) {
 
 	for name, impl := range impls {
 		t.Run(name, func(t *testing.T) {
-			isos, err := impl.ListISOs(context.Background())
-
-			if name == proxmoxImplementationName {
-				if !errors.Is(err, cluster.ErrNotImplemented) {
-					t.Fatalf("proxmox stub: err = %v, want ErrNotImplemented", err)
-				}
-
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			if len(isos) == 0 {
-				t.Fatal("expected at least one ISO")
-			}
-
-			for _, i := range isos {
-				if i.Storage == "" || i.File == "" {
-					t.Errorf("ISO %+v has empty storage or file", i)
-				}
-			}
+			runListISOsCase(t, name, impl)
 		})
+	}
+}
+
+// runListISOsCase checks ListISOs against the contract: proxmox returns
+// ErrNotImplemented, fake returns at least one ISO with non-empty storage and
+// file. Extracted from TestContract_ListISOs to keep its Cognitive Complexity
+// under the SonarQube go:S3776 threshold.
+func runListISOsCase(t *testing.T, name string, impl cluster.Client) {
+	t.Helper()
+
+	isos, err := impl.ListISOs(context.Background())
+
+	if name == proxmoxImplementationName {
+		if !errors.Is(err, cluster.ErrNotImplemented) {
+			t.Fatalf("proxmox stub: err = %v, want ErrNotImplemented", err)
+		}
+
+		return
+	}
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(isos) == 0 {
+		t.Fatal("expected at least one ISO")
+	}
+
+	for _, i := range isos {
+		if i.Storage == "" || i.File == "" {
+			t.Errorf("ISO %+v has empty storage or file", i)
+		}
 	}
 }

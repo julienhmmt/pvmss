@@ -46,29 +46,41 @@ func validateMigrations(migrations []Migration) error {
 	var previous int
 
 	for i, m := range migrations {
-		if m.Version < 1 {
-			return fmt.Errorf("migration version %d is not positive", m.Version)
-		}
-
-		if i > 0 {
-			if m.Version == previous {
-				return fmt.Errorf("migration version %d is duplicated", m.Version)
-			}
-
-			if m.Version < previous {
-				return fmt.Errorf("migration version %d is out of order", m.Version)
-			}
-		}
-
-		if m.Version != i+1 {
-			return fmt.Errorf("migration version %d is missing from the migration list", i+1)
-		}
-
-		if strings.TrimSpace(m.DDL) == "" {
-			return fmt.Errorf("migration %d has no ddl", m.Version)
+		if err := validateMigrationEntry(m, i, previous); err != nil {
+			return err
 		}
 
 		previous = m.Version
+	}
+
+	return nil
+}
+
+// validateMigrationEntry checks a single migration entry against its position
+// in the list and the previous migration's version. Extracted from
+// validateMigrations to keep its Cognitive Complexity under the SonarQube
+// go:S3776 threshold.
+func validateMigrationEntry(m Migration, index int, previous int) error {
+	if m.Version < 1 {
+		return fmt.Errorf("migration version %d is not positive", m.Version)
+	}
+
+	if index > 0 {
+		if m.Version == previous {
+			return fmt.Errorf("migration version %d is duplicated", m.Version)
+		}
+
+		if m.Version < previous {
+			return fmt.Errorf("migration version %d is out of order", m.Version)
+		}
+	}
+
+	if m.Version != index+1 {
+		return fmt.Errorf("migration version %d is missing from the migration list", index+1)
+	}
+
+	if strings.TrimSpace(m.DDL) == "" {
+		return fmt.Errorf("migration %d has no ddl", m.Version)
 	}
 
 	return nil

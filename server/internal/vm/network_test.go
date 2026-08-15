@@ -27,36 +27,45 @@ func TestUpdateNetwork_ValidatesBridgeAndCardCount(t *testing.T) {
 	}
 	for _, test := range tests { //nolint:paralleltest // serial: shared fake cluster dataset
 		t.Run(test.name, func(t *testing.T) {
-			cluster.ResetFake()
-
-			actor := test.actor
-			if actor.Username == "" {
-				actor = aliceIdentity()
-			}
-
-			deps := networkDependencies(diskTestIndex(t, 101, cluster.VMRunning), actor, 101)
-
-			result, err := vm.UpdateNetwork(context.Background(), deps, test.interfaces)
-			if test.wantErr != nil {
-				if !errors.Is(err, test.wantErr) {
-					t.Fatalf("err = %v, want %v", err, test.wantErr)
-				}
-
-				if calls := cluster.FakeCallsFor(101); len(calls) != 0 {
-					t.Fatalf("fake calls = %+v, want none", calls)
-				}
-
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			if len(result) != 1 || result[0].Bridge != testBridgeVMbr1 || result[0].MAC == "" {
-				t.Fatalf("result = %+v, want updated bridge with server MAC", result)
-			}
+			runNetworkCase(t, test.name, test.interfaces, test.actor, test.wantErr)
 		})
+	}
+}
+
+// runNetworkCase runs a single UpdateNetwork case: builds the deps, invokes
+// the update, and asserts the expected error or the resulting interface list.
+// Extracted from TestUpdateNetwork_ValidatesBridgeAndCardCount to keep its
+// Cognitive Complexity under the SonarQube go:S3776 threshold.
+func runNetworkCase(t *testing.T, name string, interfaces []cluster.NetworkInterface, actor auth.Identity, wantErr error) {
+	t.Helper()
+
+	cluster.ResetFake()
+
+	if actor.Username == "" {
+		actor = aliceIdentity()
+	}
+
+	deps := networkDependencies(diskTestIndex(t, 101, cluster.VMRunning), actor, 101)
+
+	result, err := vm.UpdateNetwork(context.Background(), deps, interfaces)
+	if wantErr != nil {
+		if !errors.Is(err, wantErr) {
+			t.Fatalf("err = %v, want %v", err, wantErr)
+		}
+
+		if calls := cluster.FakeCallsFor(101); len(calls) != 0 {
+			t.Fatalf("fake calls = %+v, want none", calls)
+		}
+
+		return
+	}
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(result) != 1 || result[0].Bridge != testBridgeVMbr1 || result[0].MAC == "" {
+		t.Fatalf("result = %+v, want updated bridge with server MAC", result)
 	}
 }
 

@@ -93,6 +93,15 @@ func buildCraftedDB(t *testing.T, path string, rowsByTable map[string][]string) 
 		}
 	}
 
+	insertCraftedRows(t, db, ctx, rowsByTable)
+}
+
+// insertCraftedRows inserts the row sets into the crafted DB. Extracted from
+// buildCraftedDB to keep its Cognitive Complexity under the SonarQube go:S3776
+// threshold.
+func insertCraftedRows(t *testing.T, db *sql.DB, ctx context.Context, rowsByTable map[string][]string) {
+	t.Helper()
+
 	for table, values := range rowsByTable {
 		if len(values) == 0 {
 			continue
