@@ -41,3 +41,6 @@ golint.txt
 
 # Prototype web files
 web/prototype/
+
+# Tests file for web
+web/coverage
