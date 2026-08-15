@@ -25,13 +25,7 @@ const (
 func TestHealth(t *testing.T) { //nolint:gocyclo // table-driven test covers all health response branches
 	leakyErr := errors.New("connection refused: /tmp/pvmss.db")
 
-	cases := []struct {
-		name       string
-		method     string
-		pinger     fakePinger
-		wantStatus int
-		wantBody   httpapi.HealthResponse
-	}{
+	healthCases := []healthCase{
 		{
 			name:   healthStatusHealthy,
 			method: http.MethodGet,
@@ -63,67 +57,9 @@ func TestHealth(t *testing.T) { //nolint:gocyclo // table-driven test covers all
 		},
 	}
 
-	for _, c := range cases {
+	for _, c := range healthCases {
 		t.Run(c.name, func(t *testing.T) {
-			logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-			h := httpapi.NewHealth(c.pinger, logger, nil, 60*time.Second)
-
-			w := httptest.NewRecorder()
-			r := httptest.NewRequest(c.method, "/health", nil)
-			h.ServeHTTP(w, r)
-
-			wantStatus := http.StatusOK
-			if c.wantStatus != 0 {
-				wantStatus = c.wantStatus
-			}
-
-			if w.Code != wantStatus {
-				t.Fatalf("status = %d, want %d", w.Code, wantStatus)
-			}
-
-			body, _ := io.ReadAll(w.Result().Body)
-
-			if c.method == http.MethodPost {
-				// The response must include an Allow header for 405.
-				if !strings.Contains(w.Header().Get("Allow"), "GET") {
-					t.Fatalf("missing Allow header for 405: %q", w.Header().Get("Allow"))
-				}
-
-				return
-			}
-
-			var resp httpapi.HealthResponse
-			if err := json.Unmarshal(body, &resp); err != nil {
-				t.Fatalf("decode response: %v", err)
-			}
-
-			if resp.Status != c.wantBody.Status {
-				t.Fatalf("status = %q, want %q", resp.Status, c.wantBody.Status)
-			}
-
-			//nolint:nestif // nested validation mirrors the nested health response
-			if len(c.wantBody.Checks) > 0 {
-				gotDB := resp.Checks["database"]
-
-				wantDB := c.wantBody.Checks["database"]
-				if gotDB.Status != wantDB.Status || gotDB.Detail != wantDB.Detail {
-					t.Fatalf("database check = %+v, want %+v", gotDB, wantDB)
-				}
-
-				if c.name == healthStatusUnhealthy {
-					if strings.Contains(gotDB.Detail, c.pinger.err.Error()) {
-						t.Fatalf("detail leaks raw error: %q", gotDB.Detail)
-					}
-
-					if strings.Contains(gotDB.Detail, "/tmp/pvmss.db") {
-						t.Fatalf("detail leaks path: %q", gotDB.Detail)
-					}
-				}
-			}
-
-			if resp.Timestamp == "" {
-				t.Fatalf("timestamp is empty")
-			}
+			runHealthCase(t, c)
 		})
 	}
 }
@@ -203,6 +139,82 @@ type clustersCase struct {
 	wantClustersStat string
 	wantClustersDtl  string
 	wantDemoMode     bool
+}
+
+// healthCase is a single row of the TestHealth table (basic database + method check).
+type healthCase struct {
+	name       string
+	method     string
+	pinger     fakePinger
+	wantStatus int
+	wantBody   httpapi.HealthResponse
+}
+
+// runHealthCase executes one TestHealth table row: build the request, invoke the
+// health handler, and assert the status, Allow header (for 405), and the decoded
+// body. Extracted from the table loop to keep TestHealth's Cognitive Complexity
+// under the go:S3776 threshold.
+func runHealthCase(t *testing.T, c healthCase) {
+	t.Helper()
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	h := httpapi.NewHealth(c.pinger, logger, nil, 60*time.Second)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(c.method, "/health", nil)
+	h.ServeHTTP(w, r)
+
+	wantStatus := http.StatusOK
+	if c.wantStatus != 0 {
+		wantStatus = c.wantStatus
+	}
+
+	if w.Code != wantStatus {
+		t.Fatalf("status = %d, want %d", w.Code, wantStatus)
+	}
+
+	body, _ := io.ReadAll(w.Result().Body)
+
+	if c.method == http.MethodPost {
+		// The response must include an Allow header for 405.
+		if !strings.Contains(w.Header().Get("Allow"), "GET") {
+			t.Fatalf("missing Allow header for 405: %q", w.Header().Get("Allow"))
+		}
+
+		return
+	}
+
+	var resp httpapi.HealthResponse
+	if err := json.Unmarshal(body, &resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	if resp.Status != c.wantBody.Status {
+		t.Fatalf("status = %q, want %q", resp.Status, c.wantBody.Status)
+	}
+
+	if len(c.wantBody.Checks) > 0 {
+		gotDB := resp.Checks["database"]
+
+		wantDB := c.wantBody.Checks["database"]
+		if gotDB.Status != wantDB.Status || gotDB.Detail != wantDB.Detail {
+			t.Fatalf("database check = %+v, want %+v", gotDB, wantDB)
+		}
+
+		if c.name == healthStatusUnhealthy {
+			if strings.Contains(gotDB.Detail, c.pinger.err.Error()) {
+				t.Fatalf("detail leaks raw error: %q", gotDB.Detail)
+			}
+
+			if strings.Contains(gotDB.Detail, "/tmp/pvmss.db") {
+				t.Fatalf("detail leaks path: %q", gotDB.Detail)
+			}
+		}
+	}
+
+	if resp.Timestamp == "" {
+		t.Fatalf("timestamp is empty")
+	}
 }
 
 // runClustersCase executes one TestHealth_ClustersAggregate row: it builds the
