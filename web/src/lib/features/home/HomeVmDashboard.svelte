@@ -4,11 +4,14 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import type { VmListItem } from '$lib/features/vms/list.svelte';
 	import { onMount } from 'svelte';
+	import { getSessionContext } from '$lib/features/auth/session.svelte';
 
 	type DashboardVm = VmListItem;
 
+	const session = getSessionContext();
+
 	let vms = $state<DashboardVm[]>([]);
-	let loading = $state(true);
+	let loading = $state(false);
 	let error = $state<string | null>(null);
 	let refreshCount = $state(0);
 
@@ -36,9 +39,12 @@
 	let stopped = $derived(vms.filter((v) => v.status === 'stopped').length);
 	let paused = $derived(vms.filter((v) => v.status === 'paused').length);
 
-	onMount(() => void load());
+	onMount(() => {
+		if (session.principal) void load();
+	});
 </script>
 
+{#if session.principal}
 <section class="w-full max-w-5xl rounded-xl border border-border bg-card p-5 shadow-sm" aria-labelledby="dashboard-title">
 	<div class="mb-4 flex items-center justify-between">
 		<h2 id="dashboard-title" class="text-lg font-semibold tracking-tight">{m['home.dashboard.heading']()}</h2>
@@ -111,7 +117,7 @@
 						</span>
 						<span class="font-mono text-muted-foreground">{vm.node}</span>
 						<span class="font-mono text-muted-foreground">{vm.cpuCores} {m['common.cores']()}</span>
-						<span class="font-mono text-muted-foreground">{vm.memoryTotal > 0 ? `${(vm.memoryTotal / 1048576).toFixed(1)} GiB` : '—'}</span>
+						<span class="font-mono text-muted-foreground">{vm.memoryTotal > 0 ? `${Math.round(vm.memoryTotal / 1048576 * 10) / 10} GiB` : '—'}</span>
 					</li>
 				{/each}
 			</ul>
@@ -128,3 +134,4 @@
 		</div>
 	{/if}
 </section>
+{/if}
