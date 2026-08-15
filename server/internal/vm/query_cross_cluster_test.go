@@ -19,7 +19,7 @@ const (
 
 //nolint:paralleltest // VM fixtures are shared with the package suite; names prove isolation
 func TestList_CrossClusterPoolMerge(t *testing.T) {
-	defaultIndex := inventory.BuildIndexForCluster("default", cluster.Snapshot{VMs: []cluster.VM{
+	defaultIndex := inventory.BuildIndexForCluster(testClusterName, cluster.Snapshot{VMs: []cluster.VM{
 		{VMID: 101, Name: crossClusterDefaultName, Node: "node-a", Pool: crossClusterPoolAlice, Tags: []string{testPvmssTag}},
 	}})
 	secondaryIndex := inventory.BuildIndexForCluster(crossClusterSecondaryKey, cluster.Snapshot{VMs: []cluster.VM{
@@ -29,7 +29,7 @@ func TestList_CrossClusterPoolMerge(t *testing.T) {
 		{VMID: 202, Name: "other-web", Node: "node-c", Pool: "pool-bob", Tags: []string{testPvmssTag}},
 	}})
 	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{
-		"default": &defaultIndex, crossClusterSecondaryKey: &secondaryIndex, "third": &thirdIndex,
+		testClusterName: &defaultIndex, crossClusterSecondaryKey: &secondaryIndex, "third": &thirdIndex,
 	})
 
 	result, err := vm.List(registry, vm.ListQuery{}, auth.Identity{Username: "alice", Pool: crossClusterPoolAlice}, -1)
@@ -60,7 +60,7 @@ func TestList_CrossClusterPoolMerge(t *testing.T) {
 //
 //nolint:paralleltest // VM fixtures are shared with the package suite; names prove isolation
 func TestList_AdminScopeAllSpansEveryCluster(t *testing.T) {
-	defaultIndex := inventory.BuildIndexForCluster("default", cluster.Snapshot{VMs: []cluster.VM{
+	defaultIndex := inventory.BuildIndexForCluster(testClusterName, cluster.Snapshot{VMs: []cluster.VM{
 		{VMID: 101, Name: crossClusterDefaultName, Node: "node-a", Pool: crossClusterPoolAlice, Tags: []string{testPvmssTag}},
 	}})
 	secondaryIndex := inventory.BuildIndexForCluster(crossClusterSecondaryKey, cluster.Snapshot{VMs: []cluster.VM{
@@ -70,7 +70,7 @@ func TestList_AdminScopeAllSpansEveryCluster(t *testing.T) {
 		{VMID: 202, Name: "third-web", Node: "node-c", Pool: "pool-carol", Tags: []string{testPvmssTag}},
 	}})
 	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{
-		"default": &defaultIndex, crossClusterSecondaryKey: &secondaryIndex, "third": &thirdIndex,
+		testClusterName: &defaultIndex, crossClusterSecondaryKey: &secondaryIndex, "third": &thirdIndex,
 	})
 
 	// The admin's own identity matches none of these pools — scope=all must
@@ -89,7 +89,7 @@ func TestList_AdminScopeAllSpansEveryCluster(t *testing.T) {
 	for _, item := range result.Items {
 		clusters[item.Cluster] = true
 	}
-	if len(clusters) != 3 || !clusters["default"] || !clusters[crossClusterSecondaryKey] || !clusters["third"] {
+	if len(clusters) != 3 || !clusters[testClusterName] || !clusters[crossClusterSecondaryKey] || !clusters["third"] {
 		t.Fatalf("admin scope=all cluster labels = %v, want default+secondary+third all present", clusters)
 	}
 }

@@ -18,7 +18,7 @@ const (
 )
 
 //nolint:paralleltest // serial: shared fake identity fixture
-func TestContract_Snapshot(t *testing.T) { //nolint:gocyclo // contract test intentionally checks every snapshot invariant
+func TestContract_Snapshot(t *testing.T) {
 	impls := map[string]cluster.Client{
 		fakeImplementationName:    cluster.Fake{},
 		proxmoxImplementationName: cluster.Proxmox{},

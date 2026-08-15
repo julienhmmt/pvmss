@@ -43,13 +43,13 @@ type ClusterRow struct {
 	ProxmoxVersion        string
 }
 
-// CreateCluster inserts a new cluster or reactivates a row that was soft-deleted.
-// The name is immutable: reactivation and updates write every mutable column except name.
 // serviceTokenID is the deterministic Proxmox service token used to seed the
 // demo clusters. Defined once to avoid repeating the literal in every seed row
 // (go:S1192).
-const serviceTokenID = "pvmss@pve!service"
+const serviceTokenID = "pvmss@pve!service" //nolint:gosec // false positive: deterministic demo token ID format, not a real secret
 
+// CreateCluster inserts a new cluster or reactivates a row that was soft-deleted.
+// The name is immutable: reactivation and updates write every mutable column except name.
 func (s *Store) CreateCluster(ctx context.Context, row ClusterRow) error {
 	if err := validateClusterRow(row); err != nil {
 		return err
@@ -346,9 +346,9 @@ func optionalString(value sql.NullString) *string {
 
 func (s *Store) ensureSeedClusters(ctx context.Context) error {
 	seeds := []ClusterRow{
-		{Name: "default", URL: "https://pve-a.example.com:8006/api2/json", TokenID: serviceTokenID, TokenSecret: "demo-default-service-secret"},     //nolint:gosec // deterministic fake credential is encrypted before persistence
-		{Name: "secondary", URL: "https://pve-b.example.com:8006/api2/json", TokenID: serviceTokenID, TokenSecret: "demo-secondary-service-secret"}, //nolint:gosec // deterministic fake credential is encrypted before persistence
-		{Name: "offline-demo", URL: "https://pve-c.invalid:8006/api2/json", TokenID: serviceTokenID, TokenSecret: "demo-offline-service-secret"},    //nolint:gosec // deterministic fake credential is encrypted before persistence
+		{Name: "default", URL: "https://pve-a.example.com:8006/api2/json", TokenID: serviceTokenID, TokenSecret: "demo-default-service-secret"},
+		{Name: "secondary", URL: "https://pve-b.example.com:8006/api2/json", TokenID: serviceTokenID, TokenSecret: "demo-secondary-service-secret"},
+		{Name: "offline-demo", URL: "https://pve-c.invalid:8006/api2/json", TokenID: serviceTokenID, TokenSecret: "demo-offline-service-secret"}, //nolint:gosec // deterministic fake credential is encrypted before persistence
 	}
 	for _, row := range seeds {
 		if err := s.CreateCluster(ctx, row); err != nil {

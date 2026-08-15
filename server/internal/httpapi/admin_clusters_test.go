@@ -23,6 +23,7 @@ import (
 
 const (
 	adminClusterTestSecret = "admin-cluster-test-secret-with-32-bytes"
+	adminClustersPath      = "/api/v1/admin/clusters"
 )
 
 type adminClusterFixture struct {
@@ -83,7 +84,7 @@ func adminClusterCookie(t *testing.T, authHandler *httpapi.Auth) *http.Cookie {
 func TestAdminClusters_ListNeverLeaksToken(t *testing.T) {
 	fixture := newAdminClusterFixture(t)
 	cookie := adminClusterCookie(t, fixture.auth)
-	request := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/admin/clusters", nil)
+	request := httptest.NewRequestWithContext(context.Background(), http.MethodGet, adminClustersPath, nil)
 	request.AddCookie(cookie)
 	response := httptest.NewRecorder()
 	fixture.auth.RequireAdmin(http.HandlerFunc(fixture.handler.ServeList)).ServeHTTP(response, request)
@@ -198,8 +199,8 @@ func TestAdminClusters_NonAdminReturns403(t *testing.T) {
 		pathName   string
 		body       string
 	}{
-		{"list", fixture.handler.ServeList, http.MethodGet, "/api/v1/admin/clusters", "", ""},
-		{"create", fixture.handler.ServeCreate, http.MethodPost, "/api/v1/admin/clusters", "", `{"name":"tertiary","url":"https://pve-d.example.com:8006/api2/json","tokenId":"pvmss@pve!service","tokenSecret":"s"}`},
+		{"list", fixture.handler.ServeList, http.MethodGet, adminClustersPath, "", ""},
+		{"create", fixture.handler.ServeCreate, http.MethodPost, adminClustersPath, "", `{"name":"tertiary","url":"https://pve-d.example.com:8006/api2/json","tokenId":"pvmss@pve!service","tokenSecret":"s"}`},
 		{"update", fixture.handler.ServeUpdate, http.MethodPut, "/api/v1/admin/clusters/secondary", crossSecondaryCluster, `{"url":"https://pve-b.example.com:8006/api2/json","tokenId":"pvmss@pve!service"}`},
 		{"test", fixture.handler.ServeTest, http.MethodPost, "/api/v1/admin/clusters/secondary/test", crossSecondaryCluster, ""},
 		{"oidc", fixture.handler.ServeOIDC, http.MethodPost, "/api/v1/admin/clusters/secondary/oidc", crossSecondaryCluster, `{"enabled":true}`},
@@ -236,7 +237,7 @@ func TestAdminClusters_CreateValidatesAndReactivates(t *testing.T) {
 	cookie := adminClusterCookie(t, fixture.auth)
 
 	create := func(body string) *httptest.ResponseRecorder {
-		return adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeCreate, HTTPMethod: http.MethodPost, Path: "/api/v1/admin/clusters", Name: "", Body: body})
+		return adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeCreate, HTTPMethod: http.MethodPost, Path: adminClustersPath, Name: "", Body: body})
 	}
 
 	// New cluster: 201, correct shape, untested.
@@ -326,7 +327,7 @@ func TestAdminClusters_UpdateRejectsNameAnd404sOnRemoved(t *testing.T) {
 	assertClusterErrorBody(t, response, "not_found")
 
 	// Soft-deleted cluster cannot be updated: 404.
-	createResponse := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeCreate, HTTPMethod: http.MethodPost, Path: "/api/v1/admin/clusters", Name: "", Body: `{"name":"tertiary-for-update","url":"https://pve-f.example.com:8006/api2/json","tokenId":"pvmss@pve!service","tokenSecret":"s"}`})
+	createResponse := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeCreate, HTTPMethod: http.MethodPost, Path: adminClustersPath, Name: "", Body: `{"name":"tertiary-for-update","url":"https://pve-f.example.com:8006/api2/json","tokenId":"pvmss@pve!service","tokenSecret":"s"}`})
 	if createResponse.Code != http.StatusCreated {
 		t.Fatalf("create tertiary-for-update status = %d: %s", createResponse.Code, createResponse.Body.String())
 	}
@@ -369,7 +370,7 @@ func TestAdminClusters_TestReachableReportsOKAndPersists(t *testing.T) {
 		t.Fatalf("test result = %+v, want a fully-populated ok response", result)
 	}
 
-	list := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeList, HTTPMethod: http.MethodGet, Path: "/api/v1/admin/clusters", Name: "", Body: ""})
+	list := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeList, HTTPMethod: http.MethodGet, Path: adminClustersPath, Name: "", Body: ""})
 	var rows []adminClusterDTOForTest
 	if err := json.Unmarshal(list.Body.Bytes(), &rows); err != nil {
 		t.Fatalf("decode list: %v", err)
@@ -403,7 +404,7 @@ func TestAdminClusters_OIDCToggleIsolated(t *testing.T) {
 		t.Fatalf("oidc toggle status = %d, want 200: %s", response.Code, response.Body.String())
 	}
 
-	list := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeList, HTTPMethod: http.MethodGet, Path: "/api/v1/admin/clusters", Name: "", Body: ""})
+	list := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeList, HTTPMethod: http.MethodGet, Path: adminClustersPath, Name: "", Body: ""})
 	var rows []adminClusterDTOForTest
 	if err := json.Unmarshal(list.Body.Bytes(), &rows); err != nil {
 		t.Fatalf("decode list: %v", err)

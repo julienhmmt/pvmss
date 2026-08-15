@@ -169,7 +169,7 @@ func (s *Store) SetProfileEnabled(ctx context.Context, cluster, id string, enabl
 	)
 }
 
-// profileValues is the editable field set of a catalog profile row. Grouping it
+// ProfileValues is the editable field set of a catalog profile row. Grouping it
 // collapses the five positional field parameters InsertProfile/UpdateProfile used
 // to take (SonarQube go:S107).
 type ProfileValues struct {

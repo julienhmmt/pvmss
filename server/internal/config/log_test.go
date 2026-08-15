@@ -12,7 +12,7 @@ import (
 )
 
 //nolint:paralleltest // serial: shared logger and environment fixtures
-func TestNewLogger(t *testing.T) { //nolint:gocyclo,funlen // table-driven logger test covers formats and output modes
+func TestNewLogger(t *testing.T) {
 	cases := []struct {
 		name     string
 		cfg      config.Configuration
