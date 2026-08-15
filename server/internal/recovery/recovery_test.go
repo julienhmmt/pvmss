@@ -86,40 +86,61 @@ func TestRecoveryCLI_EndToEnd(t *testing.T) {
 	runChecklistGolden(ctx, t, checklistBin, repoRoot)
 
 	// --- pvmss-recover: seed a legacy fixture, run against a migrated v0.4 db ---
-	legacyPath := filepath.Join(t.TempDir(), "legacy.db")
+	legacyPath := openAndSeedLegacyDB(t, ctx)
+	v04Path := openAndMigrateV04DB(t, ctx)
 
-	legacyDB, err := sql.Open("sqlite", legacyPath)
+	runRecoverGolden(ctx, t, recoverBin, legacyPath, v04Path)
+	assertRecoverEdgeCases(ctx, t, recoverBin, legacyPath, v04Path)
+}
+
+// openAndSeedLegacyDB creates a file-backed legacy fixture database, applies the
+// legacy schema, seeds it with the default dataset, and returns its path.
+// Extracted from TestRecoveryCLI_EndToEnd to keep that test's Cognitive
+// Complexity under the go:S3776 threshold.
+func openAndSeedLegacyDB(t *testing.T, ctx context.Context) string {
+	t.Helper()
+
+	path := filepath.Join(t.TempDir(), "legacy.db")
+
+	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		t.Fatalf("open legacy fixture: %v", err)
 	}
 
-	if _, err := legacyDB.ExecContext(ctx, legacySchemaDDL); err != nil {
+	if _, err := db.ExecContext(ctx, legacySchemaDDL); err != nil {
 		t.Fatalf("create legacy schema: %v", err)
 	}
 
-	seedLegacyDB(t, legacyDB, defaultSeed())
+	seedLegacyDB(t, db, defaultSeed())
 
-	if err := legacyDB.Close(); err != nil {
+	if err := db.Close(); err != nil {
 		t.Fatalf("close legacy fixture: %v", err)
 	}
 
-	v04Path := filepath.Join(t.TempDir(), "v04.db")
+	return path
+}
 
-	v04DB, err := sql.Open("sqlite", v04Path)
+// openAndMigrateV04DB creates a file-backed v0.4 fixture database, runs the
+// v0.4 migrations, and returns its path.
+func openAndMigrateV04DB(t *testing.T, ctx context.Context) string {
+	t.Helper()
+
+	path := filepath.Join(t.TempDir(), "v04.db")
+
+	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		t.Fatalf("open v0.4 fixture: %v", err)
 	}
 
-	if err := storeRunMigrations(v04DB); err != nil {
+	if err := storeRunMigrations(db); err != nil {
 		t.Fatalf("migrate v0.4 fixture: %v", err)
 	}
 
-	if err := v04DB.Close(); err != nil {
+	if err := db.Close(); err != nil {
 		t.Fatalf("close v0.4 fixture: %v", err)
 	}
 
-	runRecoverGolden(ctx, t, recoverBin, legacyPath, v04Path)
-	assertRecoverEdgeCases(ctx, t, recoverBin, legacyPath, v04Path)
+	return path
 }
 
 // runChecklistGolden runs pvmss-checklist and asserts the SC-004 golden
