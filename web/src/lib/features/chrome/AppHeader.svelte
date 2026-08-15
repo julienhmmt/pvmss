@@ -7,7 +7,7 @@
 	 */
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import { getChromeContext } from './chrome.svelte';
-	import LanguageSwitcher from './LanguageSwitcher.svelte';
+		import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
 	import StatusBanner from './StatusBanner.svelte';
 	import { resolve } from '$app/paths';
@@ -15,7 +15,7 @@
 
 	const tray = getTaskTrayContext();
 	const chrome = getChromeContext();
-
+	
 	let dismissTimer: ReturnType<typeof setTimeout> | null = null;
 	$effect(() => {
 		if (tray.toast !== null) {
@@ -40,7 +40,7 @@
 >
 	<button
 		type="button"
-		class="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
+		class="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
 		aria-label={m['chrome.sidebar.drawerOpen']()}
 		aria-expanded={chrome.sidebarOpen}
 		aria-controls="app-sidebar-drawer"
@@ -58,14 +58,14 @@
 
 	<a
 		href={resolve('/docs')}
-		class="rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		class="rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 	>
 		{m['chrome.header.docs']()}
 	</a>
 
 	<button
 		type="button"
-		class="relative rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		class="relative rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 		aria-label={tray.tasks.length > 0
 			? m['chrome.header.activityWithCount']({ count: tray.tasks.length })
 			: m['chrome.header.activity']()}
@@ -99,7 +99,7 @@
 	></div>
 	<div
 		id="activity-drawer"
-		class="fixed right-0 top-0 z-50 flex h-full w-80 max-w-[85vw] flex-col gap-4 border-l border-border bg-card p-5 text-card-foreground shadow-card motion-reduce:transition-none"
+		class="drawer-slide-in fixed right-0 top-0 z-50 flex h-full w-80 max-w-[85vw] flex-col gap-4 border-l border-border bg-card p-5 text-card-foreground shadow-card motion-reduce:transition-none"
 		role="dialog"
 		aria-modal="true"
 		aria-label={m['activity.ariaLabel']()}
@@ -111,7 +111,7 @@
 			<h2 class="text-sm font-semibold">{m['activity.heading']()}</h2>
 			<button
 				type="button"
-				class="rounded-lg p-1 text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				aria-label={m['common.close']()}
 				onclick={() => chrome.closeActivity()}
 			>
