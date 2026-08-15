@@ -312,7 +312,7 @@ func (h *VMDetail) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := vm.Delete(r.Context(), index, identity, clusterName, vmid, h.writer, h.store, h.refresher); err != nil {
+	if err := vm.Delete(r.Context(), vm.WriteDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: h.writer, Audit: h.store, Refresher: h.refresher}); err != nil {
 		h.writeActionError(w, err)
 		return
 	}
@@ -351,7 +351,7 @@ func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := vm.Patch(r.Context(), index, identity, clusterName, vmid, req.Name, req.Description, h.writer, h.store, h.refresher); err != nil {
+	if err := vm.Patch(r.Context(), vm.WriteDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: h.writer, Audit: h.store, Refresher: h.refresher}, req.Name, req.Description); err != nil {
 		h.writePatchError(w, err)
 		return
 	}

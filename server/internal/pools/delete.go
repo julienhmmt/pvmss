@@ -102,7 +102,7 @@ func deleteMembers(ctx context.Context, actor auth.Identity, projection *invento
 			logCascadeError("delete", member, ErrProjectionNotReady)
 			continue
 		}
-		if err := vm.Delete(ctx, index, actor, clusterName, member.VMID, writer, audit, refresher); err != nil {
+		if err := vm.Delete(ctx, vm.WriteDeps{Index: index, Actor: actor, ClusterName: clusterName, VMID: member.VMID, Writer: writer, Audit: audit, Refresher: refresher}); err != nil {
 			logCascadeError("delete", member, err)
 		}
 	}
