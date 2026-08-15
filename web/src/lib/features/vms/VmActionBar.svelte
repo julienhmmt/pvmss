@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { getVmDetailContext, type VmAction } from './detail.svelte';
+	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
+	const toast = getToastContext();
 
 	type ActionDef = {
 		kind: VmAction;
@@ -10,14 +12,16 @@
 		/** Shown when the VM is in this status — the button is disabled otherwise. */
 		applicable: import('./list.svelte').VmStatus[];
 		variant: 'primary' | 'neutral' | 'danger';
+		/** Toast message key fired on a successful action. */
+		successToast: (name: string) => string;
 	};
 
 	const ACTIONS: readonly ActionDef[] = [
-		{ kind: 'start', label: () => m['vms.action.start'](), applicable: ['stopped'], variant: 'primary' },
-		{ kind: 'shutdown', label: () => m['vms.action.shutdown'](), applicable: ['running'], variant: 'neutral' },
-		{ kind: 'stop', label: () => m['vms.action.stop'](), applicable: ['running'], variant: 'danger' },
-		{ kind: 'reboot', label: () => m['vms.action.reboot'](), applicable: ['running'], variant: 'neutral' },
-		{ kind: 'reset', label: () => m['vms.action.reset'](), applicable: ['running', 'paused'], variant: 'danger' }
+		{ kind: 'start', label: () => m['vms.action.start'](), applicable: ['stopped'], variant: 'primary', successToast: (name) => m['toast.vmStarted']({ name }) },
+		{ kind: 'shutdown', label: () => m['vms.action.shutdown'](), applicable: ['running'], variant: 'neutral', successToast: (name) => m['toast.vmShutdown']({ name }) },
+		{ kind: 'stop', label: () => m['vms.action.stop'](), applicable: ['running'], variant: 'danger', successToast: (name) => m['toast.vmStopped']({ name }) },
+		{ kind: 'reboot', label: () => m['vms.action.reboot'](), applicable: ['running'], variant: 'neutral', successToast: (name) => m['toast.vmRebooted']({ name }) },
+		{ kind: 'reset', label: () => m['vms.action.reset'](), applicable: ['running', 'paused'], variant: 'danger', successToast: (name) => m['toast.vmReset']({ name }) }
 	] as const;
 
 	interface Props {
@@ -42,7 +46,16 @@
 	}
 
 	async function handleAction(kind: VmAction): Promise<void> {
+		const actionDef = ACTIONS.find((a) => a.kind === kind);
+		const vmName = store.entity?.name ?? '';
+		const hadErrorBefore = store.actionError;
 		await store.action(kind);
+		// store.action sets actionError on failure and clears it on success.
+		if (store.actionError && store.actionError !== hadErrorBefore) {
+			toast.error(m['toast.vmActionFailed']({ error: store.actionError }));
+		} else if (actionDef && !store.actionError) {
+			toast.success(actionDef.successToast(vmName));
+		}
 	}
 </script>
 

@@ -2,14 +2,14 @@
 	import { onMount } from 'svelte';
 	import { setVmCreateContext } from '$lib/features/vm-create/create.svelte';
 	import { setDraftContext } from '$lib/features/vm-create/draft.svelte';
-	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
+	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import SimpleWizard from '$lib/features/vm-create/SimpleWizard.svelte';
 	import DetailedWizard from '$lib/features/vm-create/DetailedWizard.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const form = setVmCreateContext();
 	const draft = setDraftContext();
-	const tray = getTaskTrayContext();
+	const toast = getToastContext();
 
 	onMount(() => {
 		void form.loadCatalog();
@@ -18,7 +18,7 @@
 		if (stored !== null) {
 			form.applyDraft(stored.values);
 			if (draft.consumeRestoreToast()) {
-				tray.notify({ kind: 'success', message: `Draft restored (saved ${stored.savedAt})` });
+				toast.success(m['toast.draftRestored']({ savedAt: stored.savedAt }));
 			}
 		}
 	});
