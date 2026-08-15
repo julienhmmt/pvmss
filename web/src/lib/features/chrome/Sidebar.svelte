@@ -2,21 +2,16 @@
 	/**
 	 * Sidebar — Layer B app-shell sidebar (mockup 236px sticky column). Brand +
 	 * cluster, "New machine" CTA (hidden for admins), Home / Machines / Nodes,
-	 * quota Meter from GET /api/v1/vms, admin group only when session.isAdmin,
-	 * user chip, version. Active nav uses aria-current="page" + tint fill.
+	 * admin group only when session.isAdmin, user chip, version. Active nav uses
+	 * aria-current="page" + tint fill.
 	 *
 	 * Below 900px the same markup becomes a drawer (T035): the parent layout
 	 * mounts it inside a Dialog-style overlay driven by ChromeState.sidebarOpen.
-	 * Fetch failure on quota must not render "0 / 0" — Meter handles unavailable.
 	 */
-	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
-	import { get } from '$lib/shared/api/client';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import { ADMIN_NAV_GROUPS } from './admin-nav-items.svelte';
-	import Meter from '$lib/shared/ui/Meter.svelte';
-	import type { VmQuota, VmListResult } from '$lib/features/vms/list.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -27,17 +22,6 @@
 	let { version = null }: Props = $props();
 
 	const session = getSessionContext();
-
-	let quota = $state<VmQuota | null | undefined>(undefined);
-
-	onMount(async () => {
-		try {
-			const result = await get<VmListResult>('/api/v1/vms?pageSize=1');
-			quota = result.quota ?? null;
-		} catch {
-			quota = null;
-		}
-	});
 
 	const mainNav: { href: string; label: () => string }[] = [
 		{ href: resolve('/'), label: () => m['chrome.sidebar.navHome']() },
@@ -114,9 +98,6 @@
 	{/if}
 
 	<div class="mt-auto flex flex-col gap-3">
-		{#if session.principal}
-			<Meter {quota} heading={m['chrome.sidebar.quotaHeading']()} />
-		{/if}
 		{#if session.principal}
 			<p class="px-2 text-xs text-muted-foreground-subtle">
 				{m['chrome.sidebar.userChip']({ username: session.principal.username })}
