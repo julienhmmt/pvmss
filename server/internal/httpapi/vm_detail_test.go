@@ -120,8 +120,21 @@ func detailRequest(method, path, body string, cookie *http.Cookie) *http.Request
 	// patterns. Tests call the handler directly, so set them manually.
 	req.SetPathValue("cluster", "default")
 	req.SetPathValue("vmid", pathVmid(path))
+	req.SetPathValue("diskKey", pathDiskKey(path))
 
 	return req
+}
+
+// pathDiskKey extracts the disk key segment from a path like
+// "/api/v1/vms/default/100/disks/scsi0". Returns "" when absent.
+func pathDiskKey(path string) string {
+	segments := strings.Split(strings.Trim(path, "/"), "/")
+	// /api/v1/vms/{cluster}/{vmid}/disks/{diskKey}
+	if len(segments) >= 7 && segments[5] == "disks" {
+		return segments[6]
+	}
+
+	return ""
 }
 
 // pathVmid extracts the vmid segment from a path like
@@ -871,10 +884,52 @@ func TestVMDetail_ErrorShapeIdenticalAcrossEndpoints(t *testing.T) {
 	}
 }
 
-// TestVMDetail_ResolveIsTheOnlyOwnershipCheck — SC-005: confirm there is
-// exactly one Resolve implementation and no handler re-implements the pool
-// check. This is a compile-time + grep guard; the runtime assertion is that
-// 403 and 404 come from vm.Resolve's errors, not a parallel check.
+// TestVMDetail_DiskResize exercises the PUT /disks/{key} resize endpoint (the
+// handleDiskResize branch of handleDisk), covering the request decode and the
+// resize path even when the fake returns a not-found disk.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMDetail_DiskResize(t *testing.T) {
+	handler, authHandler, _, _ := newVMDetailHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	rec, _ := serveDetailError(handler, detailRequest(http.MethodPut, "/api/v1/vms/default/100/disks/scsi0", `{"sizeGB":40}`, cookie))
+	if rec.Code == http.StatusUnauthorized {
+		t.Fatalf("unexpected 401: %s", rec.Body.String())
+	}
+}
+
+// TestVMDetail_HardwareOptions exercises GET /hardware-options, covering
+// handleHardwareOptions and the hardwareStorages/hardwareBridges/hardwareISOs
+// helpers that enumerate the approved catalog resources.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMDetail_HardwareOptions(t *testing.T) {
+	handler, authHandler, _, _ := newVMDetailHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	rec, _ := serveDetail(handler, detailRequest(http.MethodGet, "/api/v1/vms/default/100/hardware-options", "", cookie))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestVMDetail_CDROM exercises the PATCH /cdrom endpoint, covering handleCDROM.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMDetail_CDROM(t *testing.T) {
+	handler, authHandler, _, _ := newVMDetailHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	rec, _ := serveDetailError(handler, detailRequest(http.MethodPatch, "/api/v1/vms/default/100/cdrom", `{"action":"eject"}`, cookie))
+	if rec.Code == http.StatusUnauthorized {
+		t.Fatalf("unexpected 401: %s", rec.Body.String())
+	}
+}
+
+// TestVMDetail_ResolveIsTheOnlyOwnershipCheck — T042/SC-005: the detail handler
+// performs exactly one ownership check, delegated to vm.Resolve. 403 and 404 come
+// from vm.Resolve's errors, not a parallel check.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_ResolveIsTheOnlyOwnershipCheck(t *testing.T) {

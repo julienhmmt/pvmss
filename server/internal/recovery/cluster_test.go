@@ -3,7 +3,6 @@ package recovery_test
 
 import (
 	"context"
-	"database/sql"
 	"pvmss/server/internal/recovery"
 	"testing"
 )
@@ -220,20 +219,3 @@ func TestUpsertCluster_Idempotent(t *testing.T) {
 		t.Errorf("cluster row count = %d, want 1", count)
 	}
 }
-
-// stubStorageResolver is a test StorageNodeResolver.
-type stubStorageResolver struct {
-	nodes map[string][]string
-	err   error
-}
-
-func (s stubStorageResolver) StorageNodes(_ context.Context, storageName string) ([]string, error) {
-	if s.err != nil {
-		return nil, s.err
-	}
-
-	return s.nodes[storageName], nil
-}
-
-// Ensure sql.DB is referenced for the test file's imports.
-var _ = (*sql.DB)(nil)
