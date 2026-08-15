@@ -83,6 +83,19 @@ func ValidateName(name string) error {
 	return nil
 }
 
+// WriteDeps groups the shared dependencies and resolution context for a
+// single-VM write (Delete/Patch). It collapses the seven positional parameters
+// these functions used to take (SonarQube go:S107).
+type WriteDeps struct {
+	Index       *inventory.Index
+	Actor       auth.Identity
+	ClusterName string
+	VMID        int
+	Writer      cluster.Writer
+	Audit       AuditRecorder
+	Refresher   IndexRefresher
+}
+
 // Action performs a power transition on a VM. It is the only path from an
 // HTTP action request to the cluster writer (FR-006). The node is always
 // Resolve()'s server-resolved value — the caller cannot supply one (S01 root
@@ -113,21 +126,21 @@ func Action(ctx context.Context, deps BulkDeps, index *inventory.Index, clusterN
 
 // Delete permanently removes a VM and its disks (V14: no soft-delete, no undo).
 // Same Resolve() gate as Action — not a parallel ownership check (FR-007).
-func Delete(ctx context.Context, index *inventory.Index, actor auth.Identity, clusterName string, vmid int, writer cluster.Writer, audit AuditRecorder, refresher IndexRefresher) error {
-	entity, err := Resolve(index, actor, clusterName, vmid)
+func Delete(ctx context.Context, deps WriteDeps) error {
+	entity, err := Resolve(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
 	if err != nil {
 		return err
 	}
 
-	if err := writer.Delete(ctx, entity.Node, entity.VMID); err != nil {
+	if err := deps.Writer.Delete(ctx, entity.Node, entity.VMID); err != nil {
 		return fmt.Errorf("cluster delete: %w", err)
 	}
 
-	if err := audit.RecordAction(ctx, actor.Username, clusterName, vmid, "delete"); err != nil {
+	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, "delete"); err != nil {
 		return fmt.Errorf(auditWrapFmt, err)
 	}
 
-	_, _ = refresher.Refresh(ctx)
+	_, _ = deps.Refresher.Refresh(ctx)
 
 	return nil
 }
@@ -138,7 +151,7 @@ func Delete(ctx context.Context, index *inventory.Index, actor auth.Identity, cl
 // The handler re-resolves from the refreshed projection to return the updated
 // Entity — Patch itself does not return it, keeping the domain layer free of
 // projection references.
-func Patch(ctx context.Context, index *inventory.Index, actor auth.Identity, clusterName string, vmid int, name, description string, writer cluster.Writer, audit AuditRecorder, refresher IndexRefresher) error {
+func Patch(ctx context.Context, deps WriteDeps, name, description string) error {
 	if name == "" && strings.TrimSpace(description) == "" {
 		return ErrEmptyPatch
 	}
@@ -153,12 +166,12 @@ func Patch(ctx context.Context, index *inventory.Index, actor auth.Identity, clu
 		return ErrDescriptionTooLong
 	}
 
-	entity, err := Resolve(index, actor, clusterName, vmid)
+	entity, err := Resolve(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
 	if err != nil {
 		return err
 	}
 
-	if err := writer.Patch(ctx, entity.Node, entity.VMID, name, description); err != nil {
+	if err := deps.Writer.Patch(ctx, entity.Node, entity.VMID, name, description); err != nil {
 		return fmt.Errorf("cluster patch: %w", err)
 	}
 
@@ -167,11 +180,11 @@ func Patch(ctx context.Context, index *inventory.Index, actor auth.Identity, clu
 		auditAction = "rename"
 	}
 
-	if err := audit.RecordAction(ctx, actor.Username, clusterName, vmid, auditAction); err != nil {
+	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, auditAction); err != nil {
 		return fmt.Errorf(auditWrapFmt, err)
 	}
 
-	_, _ = refresher.Refresh(ctx)
+	_, _ = deps.Refresher.Refresh(ctx)
 
 	return nil
 }
