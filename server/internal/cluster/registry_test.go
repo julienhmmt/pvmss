@@ -46,6 +46,50 @@ func TestRegistry_AddAndRemoveIsolated(t *testing.T) {
 }
 
 //nolint:paralleltest // registry tests share fake client fixture state
+func TestRegistry_FakeClustersDoNotShareMutations(t *testing.T) {
+	registry, err := cluster.NewRegistry("fake", []store.ClusterRow{
+		{Name: "default", URL: "https://default.invalid", TokenID: "id", TokenSecret: registryTestSecret},
+		{Name: "secondary", URL: "https://secondary.invalid", TokenID: "id", TokenSecret: registryTestSecret},
+	})
+	if err != nil {
+		t.Fatalf("NewRegistry: %v", err)
+	}
+	defaultClient, err := registry.Client("default")
+	if err != nil {
+		t.Fatalf("Client(default): %v", err)
+	}
+	secondaryClient, err := registry.Client("secondary")
+	if err != nil {
+		t.Fatalf("Client(secondary): %v", err)
+	}
+	writer, ok := defaultClient.(cluster.Writer)
+	if !ok {
+		t.Fatal("default fake does not implement Writer")
+	}
+	before, err := defaultClient.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("default snapshot: %v", err)
+	}
+	if err := writer.Delete(context.Background(), before.VMs[0].Node, before.VMs[0].VMID); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	afterDefault, err := defaultClient.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("default snapshot after delete: %v", err)
+	}
+	afterSecondary, err := secondaryClient.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("secondary snapshot after delete: %v", err)
+	}
+	if len(afterDefault.VMs) != len(before.VMs)-1 {
+		t.Fatalf("default VM count = %d, want %d", len(afterDefault.VMs), len(before.VMs)-1)
+	}
+	if len(afterSecondary.VMs) == len(afterDefault.VMs) {
+		t.Fatal("secondary shared default's mutated VM list")
+	}
+}
+
+//nolint:paralleltest // registry tests share fake client fixture state
 func TestRegistry_MalformedRowDoesNotBlockHealthyRows(t *testing.T) {
 	registry, err := cluster.NewRegistry("proxmox", []store.ClusterRow{
 		{Name: "healthy", URL: "https://healthy.invalid/api2/json", TokenID: "id", TokenSecret: registryTestSecret},

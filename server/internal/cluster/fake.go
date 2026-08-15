@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"slices"
-	"sync"
 	"time"
 )
 
@@ -20,14 +19,18 @@ const (
 // external service and serves a stable, hand-authored dataset. Neither this
 // type nor Proxmox reports which one it is — callers cannot tell them apart.
 //
-// Writes (Action/Delete/Patch) mutate the in-memory dataset under a mutex and
-// append to a call log so tests can assert exactly which calls reached the
-// "cluster" (S01's proof of concept, inverted: zero calls for a forbidden
-// request). ResetFake restores the original dataset and clears the log; any
-// test that mutates MUST defer it so later tests in the same binary see the
-// full 25-VM dataset.
+// Writes (Action/Delete/Patch) mutate the instance's in-memory dataset under
+// a mutex and append to a call log so tests can assert exactly which calls
+// reached the "cluster" (S01's proof of concept, inverted: zero calls for a
+// forbidden request).
+//
+// Prefer NewFake(name) so each cluster (and each test) owns its state.
+// A zero-value Fake{} still works: it shares a process-wide default dataset.
+// Tests that mutate that default MUST defer ResetFake so later tests in the
+// same binary see the full 25-VM fixture.
 type Fake struct {
 	ClusterName string
+	state       *fakeState
 }
 
 // FakeCall is one recorded write against the fake cluster.
@@ -61,23 +64,6 @@ type ACLEntry struct {
 	Role     string
 }
 
-var (
-	fakeVMMutex       sync.RWMutex
-	fakeCallMu        sync.Mutex
-	fakeCallLog       []FakeCall
-	fakeRoleState     map[string][]string
-	fakeRoleCallLog   []RoleCall
-	fakeACLs          []ACLEntry
-	errDeleteUser     error
-	fakeCloudInitPush struct {
-		sync.RWMutex
-		err error
-	}
-	fakeCloudInitConfigs = originalFakeCloudInitConfigs()
-	fakeCloudInitDrives  = make(map[fakeCloudInitKey]bool)
-	fakeSnapshots        = make(map[fakeSnapshotKey][]VMSnapshot)
-)
-
 type fakeCloudInitKey struct {
 	node string
 	vmid int
@@ -89,11 +75,12 @@ type fakeCloudInitKey struct {
 // Writes mutate the live dataset, so a Snapshot taken after a delete reflects
 // it (AC03 §3.2 write-then-invalidate).
 func (fake Fake) Snapshot(_ context.Context) (Snapshot, error) {
+	state := fake.stateOrDefault()
 	if fake.unavailable() {
 		return Snapshot{}, ErrUnreachable
 	}
-	fakeVMMutex.RLock()
-	defer fakeVMMutex.RUnlock()
+	state.vmMu.RLock()
+	defer state.vmMu.RUnlock()
 	nodes, sourceVMs, storages, version := fake.snapshotSources()
 	nodesCopy := slices.Clone(nodes)
 	vms := slices.Clone(sourceVMs)
@@ -112,13 +99,14 @@ func (fake Fake) Snapshot(_ context.Context) (Snapshot, error) {
 
 // Authenticate implements Client using demonstration-only PVE identities.
 func (fake Fake) Authenticate(_ context.Context, username, password string) (Identity, error) {
+	state := fake.stateOrDefault()
 	if fake.unavailable() {
 		return Identity{}, ErrUnreachable
 	}
-	fakeIdentitiesMutex.RLock()
-	defer fakeIdentitiesMutex.RUnlock()
+	state.identMu.RLock()
+	defer state.identMu.RUnlock()
 
-	identity, ok := fakeIdentities[username]
+	identity, ok := state.identities[username]
 	if !ok || password != identity.password {
 		return Identity{}, ErrNotFound
 	}
@@ -130,18 +118,19 @@ func (fake Fake) Authenticate(_ context.Context, username, password string) (Ide
 // Authenticate reads — the fake's own storage, analogous to a real cluster's
 // user database (constitution XI: the fake must demonstrate every feature).
 func (fake Fake) ChangePassword(_ context.Context, username, oldPassword, newPassword string) error {
+	state := fake.stateOrDefault()
 	if fake.unavailable() {
 		return ErrUnreachable
 	}
-	fakeIdentitiesMutex.Lock()
-	defer fakeIdentitiesMutex.Unlock()
+	state.identMu.Lock()
+	defer state.identMu.Unlock()
 
-	identity, ok := fakeIdentities[username]
+	identity, ok := state.identities[username]
 	if !ok || oldPassword != identity.password {
 		return ErrNotFound
 	}
 
-	fakeIdentities[username] = fakeIdentity{password: newPassword, pool: identity.pool, isAdmin: identity.isAdmin}
+	state.identities[username] = fakeIdentity{password: newPassword, pool: identity.pool, isAdmin: identity.isAdmin}
 
 	return nil
 }
@@ -165,15 +154,16 @@ func (Fake) RelayConsole(ctx context.Context, _ string, _ int, _ VNCProxyTicket,
 }
 
 // GetCloudInitConfig implements CloudInitReader with live per-VM fake state.
-func (Fake) GetCloudInitConfig(_ context.Context, node string, vmid int) (CloudInitConfig, error) {
-	fakeVMMutex.RLock()
-	defer fakeVMMutex.RUnlock()
+func (fake Fake) GetCloudInitConfig(_ context.Context, node string, vmid int) (CloudInitConfig, error) {
+	state := fake.stateOrDefault()
+	state.vmMu.RLock()
+	defer state.vmMu.RUnlock()
 
-	if findFakeVM(node, vmid) < 0 {
+	if state.findVM(node, vmid) < 0 {
 		return CloudInitConfig{}, ErrNotFound
 	}
 
-	config, ok := fakeCloudInitConfigs[fakeCloudInitKey{node: node, vmid: vmid}]
+	config, ok := state.cloudInitConfigs[fakeCloudInitKey{node: node, vmid: vmid}]
 	if !ok {
 		return CloudInitConfig{IPMode: CloudInitIPModeDHCP}, nil
 	}
@@ -182,11 +172,12 @@ func (Fake) GetCloudInitConfig(_ context.Context, node string, vmid int) (CloudI
 }
 
 // FindSnippetStorage implements CloudInitReader with deterministic fake cluster data.
-func (Fake) FindSnippetStorage(_ context.Context, node string) (string, error) {
-	fakeVMMutex.RLock()
-	defer fakeVMMutex.RUnlock()
+func (fake Fake) FindSnippetStorage(_ context.Context, node string) (string, error) {
+	state := fake.stateOrDefault()
+	state.vmMu.RLock()
+	defer state.vmMu.RUnlock()
 
-	for _, fakeNode := range fakeNodes {
+	for _, fakeNode := range state.nodes {
 		if fakeNode.Name == node {
 			return FakeSnippetStorage, nil
 		}
@@ -217,187 +208,190 @@ func (fake Fake) ListISOs(_ context.Context) ([]ISOImage, error) {
 
 // ListPools implements Client and returns a defensive copy of the live pool table.
 func (fake Fake) ListPools(_ context.Context) ([]Pool, error) {
+	state := fake.stateOrDefault()
 	if fake.unavailable() {
 		return nil, ErrUnreachable
 	}
-	fakeVMMutex.RLock()
-	defer fakeVMMutex.RUnlock()
+	state.vmMu.RLock()
+	defer state.vmMu.RUnlock()
 
-	return slices.Clone(fakePools), nil
+	return slices.Clone(state.pools), nil
 }
 
 // EnsurePoolRole creates the shared PVMSSUser role once and never rewrites it.
 func (fake Fake) EnsurePoolRole(_ context.Context) error {
+	state := fake.stateOrDefault()
 	if fake.unavailable() {
 		return ErrUnreachable
 	}
-	fakeVMMutex.Lock()
-	defer fakeVMMutex.Unlock()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
 
-	if fakeRoleState == nil {
-		fakeRoleState = make(map[string][]string)
+	if state.roleState == nil {
+		state.roleState = make(map[string][]string)
 	}
-	if _, exists := fakeRoleState[poolRoleName]; exists {
+	if _, exists := state.roleState[poolRoleName]; exists {
 		return nil
 	}
 
 	privileges := slices.Clone(rolePrivileges)
-	fakeRoleState[poolRoleName] = privileges
-	fakeRoleCallLog = append(fakeRoleCallLog, RoleCall{Privileges: slices.Clone(privileges), At: time.Now().UTC()})
-	recordCall(FakeCall{Action: "ensure_role", Name: poolRoleName})
+	state.roleState[poolRoleName] = privileges
+	state.roleCallLog = append(state.roleCallLog, RoleCall{Privileges: slices.Clone(privileges), At: time.Now().UTC()})
+	state.record(FakeCall{Action: "ensure_role", Name: poolRoleName})
 
 	return nil
 }
 
 // EnsurePoolUser creates the pool login once and returns its PVE username.
 func (fake Fake) EnsurePoolUser(_ context.Context, pool, password string) (string, error) {
+	state := fake.stateOrDefault()
 	if fake.unavailable() {
 		return "", ErrUnreachable
 	}
-	fakeVMMutex.Lock()
-	defer fakeVMMutex.Unlock()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
 
 	username := pool + "@pve"
-	fakeIdentitiesMutex.Lock()
-	if _, exists := fakeIdentities[username]; !exists {
-		fakeIdentities[username] = fakeIdentity{password: password, pool: pool}
+	state.identMu.Lock()
+	if _, exists := state.identities[username]; !exists {
+		state.identities[username] = fakeIdentity{password: password, pool: pool}
 	}
-	fakeIdentitiesMutex.Unlock()
-	recordCall(FakeCall{Action: "ensure_user", Name: username})
+	state.identMu.Unlock()
+	state.record(FakeCall{Action: "ensure_user", Name: username})
 
 	return username, nil
 }
 
 // CreatePool inserts a pool only when its name is absent.
 func (fake Fake) CreatePool(_ context.Context, poolID, comment string) error {
+	state := fake.stateOrDefault()
 	if fake.unavailable() {
 		return ErrUnreachable
 	}
-	fakeVMMutex.Lock()
-	defer fakeVMMutex.Unlock()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
 
-	for _, pool := range fakePools {
+	for _, pool := range state.pools {
 		if pool.Name == poolID {
 			return nil
 		}
 	}
 
-	fakePools = append(fakePools, Pool{Name: poolID, Comment: comment})
-	recordCall(FakeCall{Action: "create_pool", Name: poolID})
+	state.pools = append(state.pools, Pool{Name: poolID, Comment: comment})
+	state.record(FakeCall{Action: "create_pool", Name: poolID})
 
 	return nil
 }
 
 // SetPoolACL records a pool-to-role binding.
 func (fake Fake) SetPoolACL(_ context.Context, username, poolID, role string) error {
+	state := fake.stateOrDefault()
 	if fake.unavailable() {
 		return ErrUnreachable
 	}
-	fakeVMMutex.Lock()
-	defer fakeVMMutex.Unlock()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
 
-	fakeACLs = append(fakeACLs, ACLEntry{Username: username, PoolID: poolID, Role: role})
-	recordCall(FakeCall{Action: "set_acl", Name: username})
+	state.acls = append(state.acls, ACLEntry{Username: username, PoolID: poolID, Role: role})
+	state.record(FakeCall{Action: "set_acl", Name: username})
 
 	return nil
 }
 
 // DeletePool removes a pool and its ACL entries. It is idempotent for cleanup.
 func (fake Fake) DeletePool(_ context.Context, poolID string) error {
+	state := fake.stateOrDefault()
 	if fake.unavailable() {
 		return ErrUnreachable
 	}
-	fakeVMMutex.Lock()
-	defer fakeVMMutex.Unlock()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
 
-	index := slices.IndexFunc(fakePools, func(pool Pool) bool { return pool.Name == poolID })
+	index := slices.IndexFunc(state.pools, func(pool Pool) bool { return pool.Name == poolID })
 	if index < 0 {
 		return ErrNotFound
 	}
-	fakePools = slices.Delete(fakePools, index, index+1)
-	fakeACLs = slices.DeleteFunc(fakeACLs, func(acl ACLEntry) bool { return acl.PoolID == poolID })
-	recordCall(FakeCall{Action: "delete_pool", Name: poolID})
+	state.pools = slices.Delete(state.pools, index, index+1)
+	state.acls = slices.DeleteFunc(state.acls, func(acl ACLEntry) bool { return acl.PoolID == poolID })
+	state.record(FakeCall{Action: "delete_pool", Name: poolID})
 
 	return nil
 }
 
 // DeleteUser removes a PVE identity. Tests can force a best-effort failure.
 func (fake Fake) DeleteUser(_ context.Context, username string) error {
+	state := fake.stateOrDefault()
 	if fake.unavailable() {
 		return ErrUnreachable
 	}
-	fakeVMMutex.Lock()
-	defer fakeVMMutex.Unlock()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
 
-	if errDeleteUser != nil {
-		return errDeleteUser
+	if state.errDeleteUser != nil {
+		return state.errDeleteUser
 	}
-	fakeIdentitiesMutex.Lock()
-	delete(fakeIdentities, username)
-	fakeIdentitiesMutex.Unlock()
-	recordCall(FakeCall{Action: "delete_user", Name: username})
+	state.identMu.Lock()
+	delete(state.identities, username)
+	state.identMu.Unlock()
+	state.record(FakeCall{Action: "delete_user", Name: username})
 
 	return nil
 }
 
-// FakeRoleCalls returns a defensive copy of the role creation log.
+// FakeRoleCalls returns a defensive copy of the default fake's role creation log.
 func FakeRoleCalls() []RoleCall {
-	fakeVMMutex.RLock()
-	defer fakeVMMutex.RUnlock()
-
-	calls := make([]RoleCall, len(fakeRoleCallLog))
-	for index, call := range fakeRoleCallLog {
-		calls[index] = RoleCall{Privileges: slices.Clone(call.Privileges), At: call.At}
-	}
-
-	return calls
+	return defaultState().roleCalls()
 }
 
-// SetFakeDeleteUserError configures a deterministic user deletion failure.
+// SetFakeDeleteUserError configures a deterministic user deletion failure on
+// the default fake used by zero-value Fake{}.
 func SetFakeDeleteUserError(err error) {
-	fakeVMMutex.Lock()
-	defer fakeVMMutex.Unlock()
-
-	errDeleteUser = err
+	state := defaultState()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
+	state.errDeleteUser = err
 }
 
 // EnsureCloudInitDrive implements Writer and records drive assurance.
-func (Fake) EnsureCloudInitDrive(_ context.Context, node string, vmid int) error {
-	fakeVMMutex.Lock()
-	defer fakeVMMutex.Unlock()
+func (fake Fake) EnsureCloudInitDrive(_ context.Context, node string, vmid int) error {
+	state := fake.stateOrDefault()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
 
-	if findFakeVM(node, vmid) < 0 {
+	if state.findVM(node, vmid) < 0 {
 		return ErrNotFound
 	}
 
-	fakeCloudInitDrives[fakeCloudInitKey{node: node, vmid: vmid}] = true
-	recordCall(FakeCall{Node: node, VMID: vmid, Action: "ensure_cloudinit_drive"})
+	state.cloudInitDrives[fakeCloudInitKey{node: node, vmid: vmid}] = true
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "ensure_cloudinit_drive"})
 
 	return nil
 }
 
 // SetCloudInitConfig implements Writer and ensures a cloud-init drive first.
-func (Fake) SetCloudInitConfig(ctx context.Context, node string, vmid int, config CloudInitConfig) error {
-	if err := (Fake{}).EnsureCloudInitDrive(ctx, node, vmid); err != nil {
+func (fake Fake) SetCloudInitConfig(ctx context.Context, node string, vmid int, config CloudInitConfig) error {
+	state := fake.stateOrDefault()
+	if err := fake.EnsureCloudInitDrive(ctx, node, vmid); err != nil {
 		return err
 	}
 
-	fakeVMMutex.Lock()
-	defer fakeVMMutex.Unlock()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
 
-	fakeCloudInitConfigs[fakeCloudInitKey{node: node, vmid: vmid}] = cloneCloudInitConfig(config)
-	recordCall(FakeCall{Node: node, VMID: vmid, Action: "set_cloudinit_config", CloudInitData: cloneCloudInitConfig(config)})
+	state.cloudInitConfigs[fakeCloudInitKey{node: node, vmid: vmid}] = cloneCloudInitConfig(config)
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "set_cloudinit_config", CloudInitData: cloneCloudInitConfig(config)})
 
 	return nil
 }
 
 // PushCloudInitSnippet implements Writer and records the server-owned target and content.
-func (Fake) PushCloudInitSnippet(_ context.Context, node, storage, filename string, vmid int, content string) error {
-	fakeCloudInitPush.RLock()
-	err := fakeCloudInitPush.err
-	fakeCloudInitPush.RUnlock()
+func (fake Fake) PushCloudInitSnippet(_ context.Context, node, storage, filename string, vmid int, content string) error {
+	state := fake.stateOrDefault()
+	state.pushMu.RLock()
+	err := state.pushErr
+	state.pushMu.RUnlock()
 
-	recordCall(FakeCall{Node: node, VMID: vmid, Action: "push_cloudinit_snippet", Storage: storage, Filename: filename, Content: content})
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "push_cloudinit_snippet", Storage: storage, Filename: filename, Content: content})
 
 	if err != nil {
 		return err
@@ -406,12 +400,12 @@ func (Fake) PushCloudInitSnippet(_ context.Context, node, storage, filename stri
 	return nil
 }
 
-// SetFakeCloudInitPushError configures the fake push failure used by tests.
+// SetFakeCloudInitPushError configures the default fake's push failure used by tests.
 func SetFakeCloudInitPushError(err error) {
-	fakeCloudInitPush.Lock()
-	defer fakeCloudInitPush.Unlock()
-
-	fakeCloudInitPush.err = err
+	state := defaultState()
+	state.pushMu.Lock()
+	defer state.pushMu.Unlock()
+	state.pushErr = err
 }
 
 // Action implements Writer — a power transition on the Index-resolved node.
@@ -423,38 +417,39 @@ func SetFakeCloudInitPushError(err error) {
 // a stopped one. This mirrors what real Proxmox rejects natively; T05 never
 // built it because no single-VM caller needed it, but T17's bulk User Story 1
 // Acceptance Scenario 2 is the first caller that does.
-func (Fake) Action(_ context.Context, node string, vmid int, action string) error {
-	fakeVMMutex.Lock()
-	defer fakeVMMutex.Unlock()
+func (fake Fake) Action(_ context.Context, node string, vmid int, action string) error {
+	state := fake.stateOrDefault()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
 
-	idx := slices.IndexFunc(fakeVMs, func(v VM) bool { return v.VMID == vmid && v.Node == node })
+	idx := slices.IndexFunc(state.vms, func(v VM) bool { return v.VMID == vmid && v.Node == node })
 	if idx < 0 {
 		return ErrNotFound
 	}
 
-	status := fakeVMs[idx].Status
+	status := state.vms[idx].Status
 	if err := validateTransition(action, status); err != nil {
 		return err
 	}
 
 	switch action {
 	case actionStart:
-		fakeVMs[idx].Status = VMRunning
-		fakeVMs[idx].Uptime = fakeUptimeOnStart
+		state.vms[idx].Status = VMRunning
+		state.vms[idx].Uptime = fakeUptimeOnStart
 	case actionStop, actionShutdown:
-		fakeVMs[idx].Status = VMStopped
-		fakeVMs[idx].Uptime = 0
+		state.vms[idx].Status = VMStopped
+		state.vms[idx].Uptime = 0
 	case "reboot":
-		fakeVMs[idx].Status = VMRunning
-		fakeVMs[idx].Uptime = fakeUptimeOnStart
+		state.vms[idx].Status = VMRunning
+		state.vms[idx].Uptime = fakeUptimeOnStart
 	case "reset":
-		fakeVMs[idx].Status = VMRunning
-		fakeVMs[idx].Uptime = fakeUptimeOnStart
+		state.vms[idx].Status = VMRunning
+		state.vms[idx].Uptime = fakeUptimeOnStart
 	default:
 		return ErrInvalidAction
 	}
 
-	recordCall(FakeCall{Node: node, VMID: vmid, Action: action})
+	state.record(FakeCall{Node: node, VMID: vmid, Action: action})
 
 	return nil
 }
@@ -484,84 +479,88 @@ func validateTransition(action string, status VMStatus) error {
 
 // Delete implements Writer — the VM and its disks are removed from the
 // dataset. Irreversible (V14): no soft-delete, no undo.
-func (Fake) Delete(_ context.Context, node string, vmid int) error {
-	fakeVMMutex.Lock()
-	defer fakeVMMutex.Unlock()
+func (fake Fake) Delete(_ context.Context, node string, vmid int) error {
+	state := fake.stateOrDefault()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
 
-	idx := slices.IndexFunc(fakeVMs, func(v VM) bool { return v.VMID == vmid && v.Node == node })
+	idx := slices.IndexFunc(state.vms, func(v VM) bool { return v.VMID == vmid && v.Node == node })
 	if idx < 0 {
 		return ErrNotFound
 	}
 
-	fakeVMs = slices.Delete(fakeVMs, idx, idx+1)
+	state.vms = slices.Delete(state.vms, idx, idx+1)
 
-	recordCall(FakeCall{Node: node, VMID: vmid, Action: "delete"})
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "delete"})
 
 	return nil
 }
 
 // Patch implements Writer — name and/or description update. Empty arguments
 // are ignored; the caller (vm.Patch) decides which fields to send.
-func (Fake) Patch(_ context.Context, node string, vmid int, name, description string) error {
-	fakeVMMutex.Lock()
-	defer fakeVMMutex.Unlock()
+func (fake Fake) Patch(_ context.Context, node string, vmid int, name, description string) error {
+	state := fake.stateOrDefault()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
 
-	idx := slices.IndexFunc(fakeVMs, func(v VM) bool { return v.VMID == vmid && v.Node == node })
+	idx := slices.IndexFunc(state.vms, func(v VM) bool { return v.VMID == vmid && v.Node == node })
 	if idx < 0 {
 		return ErrNotFound
 	}
 
 	if name != "" {
-		fakeVMs[idx].Name = name
+		state.vms[idx].Name = name
 	}
 
 	if description != "" {
-		fakeVMs[idx].Description = description
+		state.vms[idx].Description = description
 	}
 
-	recordCall(FakeCall{Node: node, VMID: vmid, Action: "patch", Name: name})
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "patch", Name: name})
 
 	return nil
 }
 
 // AddDisk implements Writer and appends a disk to the requested VM.
-func (Fake) AddDisk(_ context.Context, node string, vmid int, bus, storage string, sizeGB int) (string, error) {
-	fakeVMMutex.Lock()
-	defer fakeVMMutex.Unlock()
+func (fake Fake) AddDisk(_ context.Context, node string, vmid int, bus, storage string, sizeGB int) (string, error) {
+	state := fake.stateOrDefault()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
 
-	idx := findFakeVM(node, vmid)
+	idx := state.findVM(node, vmid)
 	if idx < 0 {
 		return "", ErrNotFound
 	}
 
-	busIndex := nextBusIndex(fakeVMs[idx].Disks, DiskBus(bus))
+	busIndex := nextBusIndex(state.vms[idx].Disks, DiskBus(bus))
 	key := fmt.Sprintf("%s%d", bus, busIndex)
-	fakeVMs[idx].Disks = append(fakeVMs[idx].Disks, Disk{Key: key, Bus: DiskBus(bus), BusIndex: busIndex, Storage: storage, SizeGB: sizeGB})
-	fakeVMs[idx].DiskTotal += int64(sizeGB) * 1024 * 1024 * 1024
-	recordCall(FakeCall{Node: node, VMID: vmid, Action: "add_disk", DiskKey: key, Bus: bus, Storage: storage, SizeGB: sizeGB})
+	state.vms[idx].Disks = append(state.vms[idx].Disks, Disk{Key: key, Bus: DiskBus(bus), BusIndex: busIndex, Storage: storage, SizeGB: sizeGB})
+	state.vms[idx].DiskTotal += int64(sizeGB) * 1024 * 1024 * 1024
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "add_disk", DiskKey: key, Bus: bus, Storage: storage, SizeGB: sizeGB})
 
 	return key, nil
 }
 
 // ResizeDisk implements Writer and grows an existing disk in the fake dataset.
-func (Fake) ResizeDisk(_ context.Context, node string, vmid int, diskKey string, sizeGB int) error {
-	fakeVMMutex.Lock()
-	defer fakeVMMutex.Unlock()
+func (fake Fake) ResizeDisk(_ context.Context, node string, vmid int, diskKey string, sizeGB int) error {
+	state := fake.stateOrDefault()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
 
-	idx := findFakeVM(node, vmid)
+	idx := state.findVM(node, vmid)
 	if idx < 0 {
 		return ErrNotFound
 	}
 
-	for diskIndex := range fakeVMs[idx].Disks {
-		if fakeVMs[idx].Disks[diskIndex].Key != diskKey {
+	for diskIndex := range state.vms[idx].Disks {
+		if state.vms[idx].Disks[diskIndex].Key != diskKey {
 			continue
 		}
 
-		previous := fakeVMs[idx].Disks[diskIndex].SizeGB
-		fakeVMs[idx].Disks[diskIndex].SizeGB = sizeGB
-		fakeVMs[idx].DiskTotal += int64(sizeGB-previous) * 1024 * 1024 * 1024
-		recordCall(FakeCall{Node: node, VMID: vmid, Action: "resize_disk", DiskKey: diskKey, SizeGB: sizeGB})
+		previous := state.vms[idx].Disks[diskIndex].SizeGB
+		state.vms[idx].Disks[diskIndex].SizeGB = sizeGB
+		state.vms[idx].DiskTotal += int64(sizeGB-previous) * 1024 * 1024 * 1024
+		state.record(FakeCall{Node: node, VMID: vmid, Action: "resize_disk", DiskKey: diskKey, SizeGB: sizeGB})
 
 		return nil
 	}
@@ -570,24 +569,25 @@ func (Fake) ResizeDisk(_ context.Context, node string, vmid int, diskKey string,
 }
 
 // DeleteDisk implements Writer and removes a disk from the fake dataset.
-func (Fake) DeleteDisk(_ context.Context, node string, vmid int, diskKey string) error {
-	fakeVMMutex.Lock()
-	defer fakeVMMutex.Unlock()
+func (fake Fake) DeleteDisk(_ context.Context, node string, vmid int, diskKey string) error {
+	state := fake.stateOrDefault()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
 
-	idx := findFakeVM(node, vmid)
+	idx := state.findVM(node, vmid)
 	if idx < 0 {
 		return ErrNotFound
 	}
 
-	for diskIndex, disk := range fakeVMs[idx].Disks {
+	for diskIndex, disk := range state.vms[idx].Disks {
 		if disk.Key != diskKey {
 			continue
 		}
 
-		fakeVMs[idx].Disks = slices.Delete(fakeVMs[idx].Disks, diskIndex, diskIndex+1)
-		fakeVMs[idx].DiskTotal -= int64(disk.SizeGB) * 1024 * 1024 * 1024
+		state.vms[idx].Disks = slices.Delete(state.vms[idx].Disks, diskIndex, diskIndex+1)
+		state.vms[idx].DiskTotal -= int64(disk.SizeGB) * 1024 * 1024 * 1024
 
-		recordCall(FakeCall{Node: node, VMID: vmid, Action: "delete_disk", DiskKey: diskKey})
+		state.record(FakeCall{Node: node, VMID: vmid, Action: "delete_disk", DiskKey: diskKey})
 
 		return nil
 	}
@@ -596,63 +596,62 @@ func (Fake) DeleteDisk(_ context.Context, node string, vmid int, diskKey string)
 }
 
 // SetCDROM implements Writer and changes the fake VM's CD-ROM state.
-func (Fake) SetCDROM(_ context.Context, node string, vmid int, state CDROMState) error {
-	fakeVMMutex.Lock()
-	defer fakeVMMutex.Unlock()
+func (fake Fake) SetCDROM(_ context.Context, node string, vmid int, cdrom CDROMState) error {
+	state := fake.stateOrDefault()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
 
-	idx := findFakeVM(node, vmid)
+	idx := state.findVM(node, vmid)
 	if idx < 0 {
 		return ErrNotFound
 	}
 
-	fakeVMs[idx].CDROM = state
+	state.vms[idx].CDROM = cdrom
 
-	recordCall(FakeCall{Node: node, VMID: vmid, Action: "set_cdrom"})
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "set_cdrom"})
 
 	return nil
 }
 
 // UpdateNetwork implements Writer and replaces the fake VM's network interfaces.
-func (Fake) UpdateNetwork(_ context.Context, node string, vmid int, interfaces []NetworkInterface) error {
-	fakeVMMutex.Lock()
-	defer fakeVMMutex.Unlock()
+func (fake Fake) UpdateNetwork(_ context.Context, node string, vmid int, interfaces []NetworkInterface) error {
+	state := fake.stateOrDefault()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
 
-	idx := findFakeVM(node, vmid)
+	idx := state.findVM(node, vmid)
 	if idx < 0 {
 		return ErrNotFound
 	}
 
-	fakeVMs[idx].NetworkInterfaces = cloneNetworkInterfaces(interfaces)
+	state.vms[idx].NetworkInterfaces = cloneNetworkInterfaces(interfaces)
 
-	recordCall(FakeCall{Node: node, VMID: vmid, Action: "update_network"})
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "update_network"})
 
 	return nil
 }
 
 // UpdateHardware implements Writer and updates the fake VM's CPU, memory, and tags.
-func (Fake) UpdateHardware(_ context.Context, node string, vmid, sockets, cores, memoryMB int, tags []string) error {
-	fakeVMMutex.Lock()
-	defer fakeVMMutex.Unlock()
+func (fake Fake) UpdateHardware(_ context.Context, node string, vmid, sockets, cores, memoryMB int, tags []string) error {
+	state := fake.stateOrDefault()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
 
-	idx := findFakeVM(node, vmid)
+	idx := state.findVM(node, vmid)
 	if idx < 0 {
 		return ErrNotFound
 	}
 
-	fakeVMs[idx].Sockets = sockets
-	fakeVMs[idx].Cores = cores
-	fakeVMs[idx].CPUCores = sockets * cores
-	fakeVMs[idx].MemoryTotal = int64(memoryMB) * 1024 * 1024
+	state.vms[idx].Sockets = sockets
+	state.vms[idx].Cores = cores
+	state.vms[idx].CPUCores = sockets * cores
+	state.vms[idx].MemoryTotal = int64(memoryMB) * 1024 * 1024
 
-	fakeVMs[idx].Tags = append([]string(nil), tags...)
+	state.vms[idx].Tags = append([]string(nil), tags...)
 
-	recordCall(FakeCall{Node: node, VMID: vmid, Action: "update_hardware", Sockets: sockets, Cores: cores, MemoryMB: memoryMB})
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "update_hardware", Sockets: sockets, Cores: cores, MemoryMB: memoryMB})
 
 	return nil
-}
-
-func findFakeVM(node string, vmid int) int {
-	return slices.IndexFunc(fakeVMs, func(v VM) bool { return v.VMID == vmid && v.Node == node })
 }
 
 func nextBusIndex(disks []Disk, bus DiskBus) int {
@@ -680,10 +679,7 @@ func cloneNetworkInterfaces(interfaces []NetworkInterface) []NetworkInterface {
 // Tests assert on this to prove a forbidden request reached the cluster zero
 // times (S01 SC-001).
 func FakeCalls() []FakeCall {
-	fakeCallMu.Lock()
-	defer fakeCallMu.Unlock()
-
-	return append([]FakeCall(nil), fakeCallLog...)
+	return defaultState().calls()
 }
 
 // FakeCallsFor returns the calls recorded for one VMID.
@@ -700,44 +696,12 @@ func FakeCallsFor(vmid int) []FakeCall {
 	return out
 }
 
-// ResetFake restores the original 25-VM dataset and clears the call log. Any
-// test that mutates the fake MUST defer this so later tests in the same binary
-// see the full dataset (test isolation — Go runs tests in a package sequentially
-// unless t.Parallel, and no test in this repo uses t.Parallel).
+// ResetFake restores the default fake's original 25-VM dataset and clears its
+// call log. Tests that mutate a zero-value Fake{} MUST defer this so later
+// tests in the same binary see the full fixture. Instances from NewFake are
+// isolated and do not need it.
 func ResetFake() {
-	fakeVMMutex.Lock()
-	defer fakeVMMutex.Unlock()
-
-	fakeCallMu.Lock()
-	defer fakeCallMu.Unlock()
-
-	fakeVMs = originalFakeVMs()
-	fakePools = originalFakePools()
-	fakeCloudInitConfigs = originalFakeCloudInitConfigs()
-	fakeCloudInitDrives = make(map[fakeCloudInitKey]bool)
-	fakeSnapshots = make(map[fakeSnapshotKey][]VMSnapshot)
-	fakeRoleState = make(map[string][]string)
-	fakeRoleCallLog = nil
-	fakeACLs = nil
-	errDeleteUser = nil
-	fakeCallLog = nil
-
-	fakeIdentitiesMutex.Lock()
-	fakeIdentities = originalFakeIdentities()
-	fakeIdentitiesMutex.Unlock()
-
-	fakeCloudInitPush.Lock()
-	fakeCloudInitPush.err = nil
-	fakeCloudInitPush.Unlock()
-
-	resetFakeCreateState()
-}
-
-func recordCall(call FakeCall) {
-	fakeCallMu.Lock()
-
-	fakeCallLog = append(fakeCallLog, call)
-	fakeCallMu.Unlock()
+	defaultState().reset("")
 }
 
 type fakeIdentity struct {
@@ -775,10 +739,6 @@ const (
 	// FakeBridgeVMbr0 is the primary bridge fixture.
 	FakeBridgeVMbr0 = "vmbr0"
 )
-
-var fakeIdentitiesMutex sync.RWMutex
-
-var fakeIdentities = originalFakeIdentities()
 
 func originalFakeIdentities() map[string]fakeIdentity {
 	return map[string]fakeIdentity{
@@ -833,8 +793,6 @@ var rolePrivileges = []string{
 	"VM.Snapshot.Rollback", "Datastore.AllocateSpace", "Datastore.Audit", "SDN.Use",
 }
 
-var fakePools = originalFakePools()
-
 func originalFakePools() []Pool {
 	return []Pool{
 		{Name: FakePoolAlice, Comment: "Alice's personal pool"},
@@ -874,13 +832,8 @@ var fakeISOs = []ISOImage{
 // view's uptime card shows something meaningful after a power transition.
 const fakeUptimeOnStart = 60 * time.Second
 
-// fakeVMs is the live, mutable dataset. Writes (Action/Delete/Patch) mutate it
-// under fakeVMMutex; Snapshot copies it. ResetFake restores it from
-// originalFakeVMs.
-var fakeVMs = originalFakeVMs()
-
 // originalFakeVMs returns the pristine 25-VM dataset. Kept as a function so
-// ResetFake can restore a fresh copy after a test mutates the live slice.
+// ResetFake / NewFake can restore a fresh copy after a mutation.
 func originalFakeVMs() []VM {
 	vms := []VM{
 		{VMID: 100, Name: "web-01", Node: FakeNode01, Status: VMRunning, Pool: FakePoolAlice, Tags: []string{FakeTagPvmss, "web"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 34359738368, Uptime: 86400 * time.Second, Description: "Alice's primary web server"},

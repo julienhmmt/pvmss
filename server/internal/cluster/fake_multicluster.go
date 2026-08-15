@@ -21,10 +21,8 @@ func (fake Fake) unavailable() bool {
 }
 
 func (fake Fake) snapshotSources() ([]Node, []VM, []Storage, string) {
-	if fake.ClusterName != "secondary" {
-		return fakeNodes, fakeVMs, fakeStorages, fakeProxmoxVersion
-	}
-	return secondaryNodes, secondaryVMs(), secondaryStorages, fakeProxmoxVersion
+	state := fake.stateOrDefault()
+	return state.nodes, state.vms, state.storages, fakeProxmoxVersion
 }
 
 func secondaryVMs() []VM {
