@@ -159,10 +159,13 @@ func (h *VMCloudInit) putConfig(w http.ResponseWriter, r *http.Request, actor au
 		return
 	}
 
-	rebooted, err := vm.SetCloudInitConfig(r.Context(), index, actor, clusterName, vmid, cluster.CloudInitUpdate{
+	rebooted, err := vm.SetCloudInitConfig(r.Context(), vm.CloudInitConfigDeps{
+		Index: index, Actor: actor, ClusterName: clusterName, VMID: vmid,
+		Reader: h.reader, Writer: h.writer, Audit: h.store, Refresher: h.refresher,
+	}, cluster.CloudInitUpdate{
 		User: request.User, Password: request.Password, SSHKeys: request.SSHKeys, IPMode: request.IPMode,
 		IPAddress: request.IPAddress, Gateway: request.Gateway, DNSServer: request.DNSServer, SearchDomain: request.SearchDomain,
-	}, request.RebootNow, h.reader, h.writer, h.store, h.refresher)
+	}, request.RebootNow)
 	if err != nil {
 		h.writeDomainError(w, err)
 		return
@@ -212,7 +215,10 @@ func (h *VMCloudInit) putSnippet(w http.ResponseWriter, r *http.Request, actor a
 		return
 	}
 
-	if err := vm.SetCloudInitSnippet(r.Context(), index, actor, clusterName, vmid, *request.Content, h.reader, h.writer, h.store, h.policy); err != nil {
+	if err := vm.SetCloudInitSnippet(r.Context(), vm.CloudInitSnippetDeps{
+		Index: index, Actor: actor, ClusterName: clusterName, VMID: vmid,
+		Reader: h.reader, Writer: h.writer, Store: h.store, Service: h.policy,
+	}, *request.Content); err != nil {
 		h.writeDomainError(w, err)
 		return
 	}
