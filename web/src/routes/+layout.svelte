@@ -12,7 +12,9 @@
 	import Sidebar from '$lib/features/chrome/Sidebar.svelte';
 	import AppHeader from '$lib/features/chrome/AppHeader.svelte';
 	import HeaderLite from '$lib/features/chrome/HeaderLite.svelte';
-			import { trapFocus } from '$lib/shared/ui/focus-trap';
+	import Toaster from '$lib/shared/ui/Toaster.svelte';
+	import { setToastContext } from '$lib/shared/ui/toast.svelte';
+	import { trapFocus } from '$lib/shared/ui/focus-trap';
 	import { m } from '$lib/paraglide/messages.js';
 
 	let { children }: { children: Snippet } = $props();
@@ -27,7 +29,8 @@
 	const theme = setThemeContext();
 	const status = setStatusContext();
 	const chrome = setChromeContext();
-		onMount(() => {
+	setToastContext();
+	onMount(() => {
 		locale.init();
 		theme.init();
 		status.start();
@@ -120,3 +123,4 @@
 	</div>
 {/if}
 
+<Toaster />

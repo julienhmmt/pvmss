@@ -7,7 +7,8 @@
 	 */
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import { getChromeContext } from './chrome.svelte';
-		import LanguageSwitcher from './LanguageSwitcher.svelte';
+	import { getToastContext } from '$lib/shared/ui/toast.svelte';
+	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
 	import StatusBanner from './StatusBanner.svelte';
 	import { resolve } from '$app/paths';
@@ -15,12 +16,16 @@
 
 	const tray = getTaskTrayContext();
 	const chrome = getChromeContext();
-	
+	const toast = getToastContext();
+
 	let dismissTimer: ReturnType<typeof setTimeout> | null = null;
 	$effect(() => {
 		if (tray.toast !== null) {
 			if (dismissTimer !== null) clearTimeout(dismissTimer);
 			dismissTimer = setTimeout(() => tray.clearToast(), 5000);
+			// Mirror the task-tray toast into the global toast region so it
+			// surfaces outside the activity drawer too (FR-019).
+			toast.push({ variant: tray.toast.kind, message: tray.toast.message });
 		}
 	});
 
