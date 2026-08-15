@@ -1,5 +1,6 @@
 <script lang="ts">
-	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import { untrack } from 'svelte';
+import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import type { AdminCluster, ClusterInput } from './clusters.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -21,11 +22,13 @@
 
 	$effect(() => {
 		if (!open) return;
-		name = editing?.name ?? '';
-		url = editing?.url ?? '';
-		tokenId = editing?.tokenId ?? '';
-		tokenSecret = '';
-		tlsInsecureSkipVerify = editing?.tlsInsecureSkipVerify ?? false;
+		untrack(() => {
+			name = editing?.name ?? '';
+			url = editing?.url ?? '';
+			tokenId = editing?.tokenId ?? '';
+			tokenSecret = '';
+			tlsInsecureSkipVerify = editing?.tlsInsecureSkipVerify ?? false;
+		});
 	});
 
 	function submit(): void {

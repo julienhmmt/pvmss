@@ -1,5 +1,6 @@
 <script lang="ts">
-	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import { untrack } from 'svelte';
+import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -18,9 +19,11 @@
 
 	$effect(() => {
 		if (open) {
-			name = '';
-			password = '';
-			comment = '';
+			untrack(() => {
+				name = '';
+				password = '';
+				comment = '';
+			});
 		}
 	});
 
