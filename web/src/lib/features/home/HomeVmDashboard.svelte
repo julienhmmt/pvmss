@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { VmListItem } from '$lib/features/vms/list.svelte';
+	import { onMount } from 'svelte';
 
 	type DashboardVm = VmListItem;
 
@@ -34,6 +35,8 @@
 	let running = $derived(vms.filter((v) => v.status === 'running').length);
 	let stopped = $derived(vms.filter((v) => v.status === 'stopped').length);
 	let paused = $derived(vms.filter((v) => v.status === 'paused').length);
+
+	onMount(() => void load());
 </script>
 
 <section class="w-full max-w-5xl rounded-xl border border-border bg-card p-5 shadow-sm" aria-labelledby="dashboard-title">
