@@ -113,7 +113,7 @@ func run() int {
 		return 1
 	}
 
-	router, err := buildRouter(cfg, clusterRegistry, inventoryRegistry, clusterClient, defaultProjection, defaultRefresher, defaultWorker, sessions, st, webDir, logger)
+	router, err := buildRouter(routerDeps{cfg: cfg, clusterRegistry: clusterRegistry, inventoryRegistry: inventoryRegistry, clusterClient: clusterClient, projection: defaultProjection, refresher: defaultRefresher, worker: defaultWorker, sessions: sessions, st: st, webDir: webDir, logger: logger})
 	if err != nil {
 		logger.Error("failed to build router", "component", "main", "error", err)
 		return 1
@@ -259,22 +259,38 @@ func serve(router http.Handler, cfg config.Configuration, logger *slog.Logger) i
 	return 0
 }
 
+// routerDeps groups the shared dependencies for building the HTTP router.
+// It collapses the eleven positional parameters buildRouter used to take
+// (SonarQube go:S107).
+type routerDeps struct {
+	cfg             config.Configuration
+	clusterRegistry *cluster.Registry
+	inventoryRegistry *inventory.Registry
+	clusterClient   cluster.Client
+	projection      *inventory.Projection
+	refresher       *inventory.Refresher
+	worker          *inventory.Worker
+	sessions        *auth.SessionManager
+	st              *store.Store
+	webDir          string
+	logger          *slog.Logger
+}
+
 // buildRouter wires all HTTP handlers into the final router. It performs the
 // cluster.Writer/Creator type assertions (both Fake and Proxmox satisfy them)
 // and constructs the handler graph from the shared dependencies.
-func buildRouter(
-	cfg config.Configuration,
-	clusterRegistry *cluster.Registry,
-	inventoryRegistry *inventory.Registry,
-	clusterClient cluster.Client,
-	projection *inventory.Projection,
-	refresher *inventory.Refresher,
-	worker *inventory.Worker,
-	sessions *auth.SessionManager,
-	st *store.Store,
-	webDir string,
-	logger *slog.Logger,
-) (http.Handler, error) {
+func buildRouter(deps routerDeps) (http.Handler, error) {
+	cfg := deps.cfg
+	clusterRegistry := deps.clusterRegistry
+	inventoryRegistry := deps.inventoryRegistry
+	clusterClient := deps.clusterClient
+	projection := deps.projection
+	refresher := deps.refresher
+	worker := deps.worker
+	sessions := deps.sessions
+	st := deps.st
+	webDir := deps.webDir
+	logger := deps.logger
 	policyService := policy.New(st, projection, clusterClient)
 	health := httpapi.NewHealth(st, logger, inventoryFreshness{registry: inventoryRegistry, demoMode: cfg.ClusterSource == "fake"}, 2*cfg.InventoryRefreshInterval)
 	clusterNodes := httpapi.NewClusterNodes(projection, logger)
