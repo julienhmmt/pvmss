@@ -44,40 +44,62 @@ func TestContract_Snapshot(t *testing.T) { //nolint:gocyclo // contract test int
 				t.Fatal("expected at least one node")
 			}
 
-			for _, n := range snap.Nodes {
-				if n.Name == "" {
-					t.Error("node with empty name")
-				}
-
-				if n.MemoryUsed > n.MemoryTotal {
-					t.Errorf("node %q: memoryUsed > memoryTotal", n.Name)
-				}
-
-				if n.StorageUsed > n.StorageTotal {
-					t.Errorf("node %q: storageUsed > storageTotal", n.Name)
-				}
-			}
-
-			for _, vm := range snap.VMs {
-				if vm.VMID == 0 {
-					t.Error("VM with zero VMID")
-				}
-
-				if vm.Node == "" {
-					t.Errorf("VM %d (%s) has empty node", vm.VMID, vm.Name)
-				}
-			}
-
-			for _, s := range snap.Storages {
-				if s.Name == "" || s.Node == "" {
-					t.Errorf("storage %+v has empty name or node", s)
-				}
-
-				if s.Used > s.Total {
-					t.Errorf("storage %q: used > total", s.Name)
-				}
-			}
+			checkSnapshotNodes(t, snap.Nodes)
+			checkSnapshotVMs(t, snap.VMs)
+			checkSnapshotStorages(t, snap.Storages)
 		})
+	}
+}
+
+// checkSnapshotNodes validates every node in a Snapshot against the contract
+// invariants (FR-010).
+func checkSnapshotNodes(t *testing.T, nodes []cluster.Node) {
+	t.Helper()
+
+	for _, n := range nodes {
+		if n.Name == "" {
+			t.Error("node with empty name")
+		}
+
+		if n.MemoryUsed > n.MemoryTotal {
+			t.Errorf("node %q: memoryUsed > memoryTotal", n.Name)
+		}
+
+		if n.StorageUsed > n.StorageTotal {
+			t.Errorf("node %q: storageUsed > storageTotal", n.Name)
+		}
+	}
+}
+
+// checkSnapshotVMs validates every VM in a Snapshot against the contract
+// invariants (FR-010).
+func checkSnapshotVMs(t *testing.T, vms []cluster.VM) {
+	t.Helper()
+
+	for _, vm := range vms {
+		if vm.VMID == 0 {
+			t.Error("VM with zero VMID")
+		}
+
+		if vm.Node == "" {
+			t.Errorf("VM %d (%s) has empty node", vm.VMID, vm.Name)
+		}
+	}
+}
+
+// checkSnapshotStorages validates every storage in a Snapshot against the
+// contract invariants (FR-010).
+func checkSnapshotStorages(t *testing.T, storages []cluster.Storage) {
+	t.Helper()
+
+	for _, s := range storages {
+		if s.Name == "" || s.Node == "" {
+			t.Errorf("storage %+v has empty name or node", s)
+		}
+
+		if s.Used > s.Total {
+			t.Errorf("storage %q: used > total", s.Name)
+		}
 	}
 }
 
