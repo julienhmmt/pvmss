@@ -31,18 +31,30 @@ type VMCloudInit struct {
 	log        *slog.Logger
 }
 
+// VMCloudInitDeps groups the shared dependencies for constructing a VMCloudInit
+// handler. It collapses the seven positional parameters NewVMCloudInit used to
+// take (SonarQube go:S107).
+type VMCloudInitDeps struct {
+	Projection *inventory.Projection
+	Auth       *Auth
+	Reader     cluster.CloudInitReader
+	Writer     cluster.Writer
+	Store      *store.Store
+	Refresher  vm.IndexRefresher
+	Log        *slog.Logger
+}
+
 // NewVMCloudInit creates the dedicated cloud-init handler.
-func NewVMCloudInit(projection *inventory.Projection, authHandler *Auth, reader cluster.CloudInitReader, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger, services ...*policy.Policy) *VMCloudInit {
+func NewVMCloudInit(deps VMCloudInitDeps, services ...*policy.Policy) *VMCloudInit {
 	var policyService *policy.Policy
 	if len(services) > 0 {
 		policyService = services[0]
 	}
-
-	if policyService == nil && st != nil {
-		policyService = policy.New(st, projection, nil)
+	if policyService == nil && deps.Store != nil {
+		policyService = policy.New(deps.Store, deps.Projection, nil)
 	}
 
-	return &VMCloudInit{projection: projection, auth: authHandler, reader: reader, writer: writer, store: st, refresher: refresher, policy: policyService, log: log}
+	return &VMCloudInit{projection: deps.Projection, auth: deps.Auth, reader: deps.Reader, writer: deps.Writer, store: deps.Store, refresher: deps.Refresher, policy: policyService, log: deps.Log}
 }
 
 type cloudInitConfigDTO struct {

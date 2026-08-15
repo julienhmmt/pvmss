@@ -169,25 +169,36 @@ func (s *Store) SetProfileEnabled(ctx context.Context, cluster, id string, enabl
 	)
 }
 
+// profileValues is the editable field set of a catalog profile row. Grouping it
+// collapses the five positional field parameters InsertProfile/UpdateProfile used
+// to take (SonarQube go:S107).
+type ProfileValues struct {
+	Label    string
+	CPUCores int
+	MemoryMB int
+	DiskGB   int
+	Bus      string
+}
+
 // InsertProfile inserts a new profile row. Returns ErrDuplicate if the id
 // already exists for the cluster (ON CONFLICT DO NOTHING guards against a
 // concurrent insert between the catalog layer's existence check and this
 // INSERT).
-func (s *Store) InsertProfile(ctx context.Context, cluster, id, label string, cpuCores, memoryMB, diskGB int, bus string) error {
+func (s *Store) InsertProfile(ctx context.Context, cluster, id string, values ProfileValues) error {
 	return execInsertOne(ctx, s.db,
 		`INSERT INTO catalog_profiles (cluster, id, label, cpu_cores, memory_mb, disk_gb, bus, enabled) VALUES (?, ?, ?, ?, ?, ?, ?, 1)
 		 ON CONFLICT(cluster, id) DO NOTHING`,
-		[]any{cluster, id, label, cpuCores, memoryMB, diskGB, bus},
+		[]any{cluster, id, values.Label, values.CPUCores, values.MemoryMB, values.DiskGB, values.Bus},
 	)
 }
 
 // UpdateProfile updates an existing profile's values. Returns sql.ErrNoRows if
 // the profile does not exist (guards against a delete between the catalog
 // layer's existence check and this UPDATE).
-func (s *Store) UpdateProfile(ctx context.Context, cluster, id, label string, cpuCores, memoryMB, diskGB int, bus string) error {
+func (s *Store) UpdateProfile(ctx context.Context, cluster, id string, values ProfileValues) error {
 	return execUpdateOne(ctx, s.db,
 		`UPDATE catalog_profiles SET label = ?, cpu_cores = ?, memory_mb = ?, disk_gb = ?, bus = ? WHERE cluster = ? AND id = ?`,
-		[]any{label, cpuCores, memoryMB, diskGB, bus, cluster, id},
+		[]any{values.Label, values.CPUCores, values.MemoryMB, values.DiskGB, values.Bus, cluster, id},
 	)
 }
 

@@ -139,23 +139,33 @@ func TestAdminClusters_TestUnreachableIs200(t *testing.T) {
 // adminClusterRequest builds and dispatches an authenticated request against
 // one AdminClusters handler method, wrapped by the real RequireAdmin guard
 // (T026's own instrument: swap cookie for a non-admin one to prove 403).
-func adminClusterRequest(t *testing.T, fixture adminClusterFixture, cookie *http.Cookie, method http.HandlerFunc, httpMethod, path, name, body string) *httptest.ResponseRecorder {
+// clusterRequestSpec groups the request-specific parameters of adminClusterRequest.
+// It collapses the five positional parameters that helper used to take (SonarQube go:S107).
+type clusterRequestSpec struct {
+	Method     http.HandlerFunc
+	HTTPMethod string
+	Path       string
+	Name       string
+	Body       string
+}
+
+func adminClusterRequest(t *testing.T, fixture adminClusterFixture, cookie *http.Cookie, req clusterRequestSpec) *httptest.ResponseRecorder {
 	t.Helper()
 	var request *http.Request
-	if body != "" {
-		request = httptest.NewRequestWithContext(context.Background(), httpMethod, path, strings.NewReader(body))
+	if req.Body != "" {
+		request = httptest.NewRequestWithContext(context.Background(), req.HTTPMethod, req.Path, strings.NewReader(req.Body))
 		request.Header.Set("Content-Type", "application/json")
 	} else {
-		request = httptest.NewRequestWithContext(context.Background(), httpMethod, path, nil)
+		request = httptest.NewRequestWithContext(context.Background(), req.HTTPMethod, req.Path, nil)
 	}
-	if name != "" {
-		request.SetPathValue("name", name)
+	if req.Name != "" {
+		request.SetPathValue("name", req.Name)
 	}
 	if cookie != nil {
 		request.AddCookie(cookie)
 	}
 	response := httptest.NewRecorder()
-	fixture.auth.RequireAdmin(method).ServeHTTP(response, request)
+	fixture.auth.RequireAdmin(req.Method).ServeHTTP(response, request)
 	return response
 }
 
@@ -197,7 +207,7 @@ func TestAdminClusters_NonAdminReturns403(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			response := adminClusterRequest(t, fixture, cookie, testCase.method, testCase.httpMethod, testCase.path, testCase.pathName, testCase.body)
+			response := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: testCase.method, HTTPMethod: testCase.httpMethod, Path: testCase.path, Name: testCase.pathName, Body: testCase.body})
 			if response.Code != http.StatusForbidden {
 				t.Fatalf("%s status = %d, want 403: %s", testCase.name, response.Code, response.Body.String())
 			}
@@ -226,7 +236,7 @@ func TestAdminClusters_CreateValidatesAndReactivates(t *testing.T) {
 	cookie := adminClusterCookie(t, fixture.auth)
 
 	create := func(body string) *httptest.ResponseRecorder {
-		return adminClusterRequest(t, fixture, cookie, fixture.handler.ServeCreate, http.MethodPost, "/api/v1/admin/clusters", "", body)
+		return adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeCreate, HTTPMethod: http.MethodPost, Path: "/api/v1/admin/clusters", Name: "", Body: body})
 	}
 
 	// New cluster: 201, correct shape, untested.
@@ -257,7 +267,7 @@ func TestAdminClusters_CreateValidatesAndReactivates(t *testing.T) {
 	assertClusterErrorBody(t, response, "duplicate_cluster")
 
 	// Soft-delete tertiary, then re-add under the same name: 201, reactivated.
-	deleteResponse := adminClusterRequest(t, fixture, cookie, fixture.handler.ServeDelete, http.MethodDelete, "/api/v1/admin/clusters/tertiary", "tertiary", "")
+	deleteResponse := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeDelete, HTTPMethod: http.MethodDelete, Path: "/api/v1/admin/clusters/tertiary", Name: "tertiary", Body: ""})
 	if deleteResponse.Code != http.StatusOK {
 		t.Fatalf("delete tertiary status = %d: %s", deleteResponse.Code, deleteResponse.Body.String())
 	}
@@ -286,7 +296,7 @@ func TestAdminClusters_UpdateRejectsNameAnd404sOnRemoved(t *testing.T) {
 	cookie := adminClusterCookie(t, fixture.auth)
 
 	update := func(name, body string) *httptest.ResponseRecorder {
-		return adminClusterRequest(t, fixture, cookie, fixture.handler.ServeUpdate, http.MethodPut, "/api/v1/admin/clusters/"+name, name, body)
+		return adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeUpdate, HTTPMethod: http.MethodPut, Path: "/api/v1/admin/clusters/"+name, Name: name, Body: body})
 	}
 
 	// Valid update: 200, new URL reflected.
@@ -316,11 +326,11 @@ func TestAdminClusters_UpdateRejectsNameAnd404sOnRemoved(t *testing.T) {
 	assertClusterErrorBody(t, response, "not_found")
 
 	// Soft-deleted cluster cannot be updated: 404.
-	createResponse := adminClusterRequest(t, fixture, cookie, fixture.handler.ServeCreate, http.MethodPost, "/api/v1/admin/clusters", "", `{"name":"tertiary-for-update","url":"https://pve-f.example.com:8006/api2/json","tokenId":"pvmss@pve!service","tokenSecret":"s"}`)
+	createResponse := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeCreate, HTTPMethod: http.MethodPost, Path: "/api/v1/admin/clusters", Name: "", Body: `{"name":"tertiary-for-update","url":"https://pve-f.example.com:8006/api2/json","tokenId":"pvmss@pve!service","tokenSecret":"s"}`})
 	if createResponse.Code != http.StatusCreated {
 		t.Fatalf("create tertiary-for-update status = %d: %s", createResponse.Code, createResponse.Body.String())
 	}
-	deleteResponse := adminClusterRequest(t, fixture, cookie, fixture.handler.ServeDelete, http.MethodDelete, "/api/v1/admin/clusters/tertiary-for-update", "tertiary-for-update", "")
+	deleteResponse := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeDelete, HTTPMethod: http.MethodDelete, Path: "/api/v1/admin/clusters/tertiary-for-update", Name: "tertiary-for-update", Body: ""})
 	if deleteResponse.Code != http.StatusOK {
 		t.Fatalf("delete tertiary-for-update status = %d: %s", deleteResponse.Code, deleteResponse.Body.String())
 	}
@@ -341,7 +351,7 @@ func TestAdminClusters_TestReachableReportsOKAndPersists(t *testing.T) {
 	fixture := newAdminClusterFixture(t)
 	cookie := adminClusterCookie(t, fixture.auth)
 
-	response := adminClusterRequest(t, fixture, cookie, fixture.handler.ServeTest, http.MethodPost, "/api/v1/admin/clusters/default/test", auditTestCluster, "")
+	response := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeTest, HTTPMethod: http.MethodPost, Path: "/api/v1/admin/clusters/default/test", Name: auditTestCluster, Body: ""})
 	if response.Code != http.StatusOK {
 		t.Fatalf("test status = %d, want 200: %s", response.Code, response.Body.String())
 	}
@@ -359,7 +369,7 @@ func TestAdminClusters_TestReachableReportsOKAndPersists(t *testing.T) {
 		t.Fatalf("test result = %+v, want a fully-populated ok response", result)
 	}
 
-	list := adminClusterRequest(t, fixture, cookie, fixture.handler.ServeList, http.MethodGet, "/api/v1/admin/clusters", "", "")
+	list := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeList, HTTPMethod: http.MethodGet, Path: "/api/v1/admin/clusters", Name: "", Body: ""})
 	var rows []adminClusterDTOForTest
 	if err := json.Unmarshal(list.Body.Bytes(), &rows); err != nil {
 		t.Fatalf("decode list: %v", err)
@@ -388,12 +398,12 @@ func TestAdminClusters_OIDCToggleIsolated(t *testing.T) {
 	fixture := newAdminClusterFixture(t)
 	cookie := adminClusterCookie(t, fixture.auth)
 
-	response := adminClusterRequest(t, fixture, cookie, fixture.handler.ServeOIDC, http.MethodPost, "/api/v1/admin/clusters/secondary/oidc", crossSecondaryCluster, `{"enabled":true}`)
+	response := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeOIDC, HTTPMethod: http.MethodPost, Path: "/api/v1/admin/clusters/secondary/oidc", Name: crossSecondaryCluster, Body: `{"enabled":true}`})
 	if response.Code != http.StatusOK {
 		t.Fatalf("oidc toggle status = %d, want 200: %s", response.Code, response.Body.String())
 	}
 
-	list := adminClusterRequest(t, fixture, cookie, fixture.handler.ServeList, http.MethodGet, "/api/v1/admin/clusters", "", "")
+	list := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeList, HTTPMethod: http.MethodGet, Path: "/api/v1/admin/clusters", Name: "", Body: ""})
 	var rows []adminClusterDTOForTest
 	if err := json.Unmarshal(list.Body.Bytes(), &rows); err != nil {
 		t.Fatalf("decode list: %v", err)
@@ -411,7 +421,7 @@ func TestAdminClusters_OIDCToggleIsolated(t *testing.T) {
 		}
 	}
 
-	response = adminClusterRequest(t, fixture, cookie, fixture.handler.ServeOIDC, http.MethodPost, "/api/v1/admin/clusters/nonexistent/oidc", "nonexistent", `{"enabled":true}`)
+	response = adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeOIDC, HTTPMethod: http.MethodPost, Path: "/api/v1/admin/clusters/nonexistent/oidc", Name: "nonexistent", Body: `{"enabled":true}`})
 	if response.Code != http.StatusNotFound {
 		t.Fatalf("oidc toggle on unknown cluster status = %d, want 404: %s", response.Code, response.Body.String())
 	}
@@ -428,7 +438,7 @@ func TestAdminClusters_DeleteLastClusterConflictAndReactivateRoundTrip(t *testin
 	cookie := adminClusterCookie(t, fixture.auth)
 
 	del := func(name string) *httptest.ResponseRecorder {
-		return adminClusterRequest(t, fixture, cookie, fixture.handler.ServeDelete, http.MethodDelete, "/api/v1/admin/clusters/"+name, name, "")
+		return adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeDelete, HTTPMethod: http.MethodDelete, Path: "/api/v1/admin/clusters/"+name, Name: name, Body: ""})
 	}
 
 	response := del("nonexistent")

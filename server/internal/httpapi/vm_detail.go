@@ -51,9 +51,22 @@ func NewVMDetail(projection *inventory.Projection, authHandler *Auth, writer clu
 
 // NewVMDetailWithRegistry adds cluster-aware reads while retaining the legacy
 // default projection for write-domain compatibility.
-func NewVMDetailWithRegistry(source inventory.LookupSource, projection *inventory.Projection, authHandler *Auth, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger, services ...*policy.Policy) *VMDetail {
-	handler := NewVMDetail(projection, authHandler, writer, st, refresher, log, services...)
-	handler.source = source
+// VMDetailDeps groups the shared dependencies for constructing a VMDetail
+// handler. It collapses the seven positional parameters NewVMDetailWithRegistry
+// used to take (SonarQube go:S107).
+type VMDetailDeps struct {
+	Source     inventory.LookupSource
+	Projection *inventory.Projection
+	Auth       *Auth
+	Writer     cluster.Writer
+	Store      *store.Store
+	Refresher  vm.IndexRefresher
+	Log        *slog.Logger
+}
+
+func NewVMDetailWithRegistry(deps VMDetailDeps, services ...*policy.Policy) *VMDetail {
+	handler := NewVMDetail(deps.Projection, deps.Auth, deps.Writer, deps.Store, deps.Refresher, deps.Log, services...)
+	handler.source = deps.Source
 	return handler
 }
 
