@@ -50,7 +50,7 @@ func TestGetConsoleTicket_ResolveThenIssueThenAudit(t *testing.T) {
 	client := &fakeConsoleClient{ticket: cluster.VNCProxyTicket{Ticket: "proxmox-ticket", Port: 5901}}
 	audit := &fakeAuditRecorder{}
 
-	ticket, err := vm.GetConsoleTicket(context.Background(), idx, alice, "default", 100, client, store, audit)
+	ticket, err := vm.GetConsoleTicket(context.Background(), vm.ConsoleTicketDeps{Index: idx, Actor: alice, ClusterName: "default", VMID: 100, Client: client, Store: store, Audit: audit})
 	if err != nil {
 		t.Fatalf("GetConsoleTicket: %v", err)
 	}
@@ -92,7 +92,7 @@ func TestGetConsoleTicket_NonOwnerForbidden(t *testing.T) {
 	client := &fakeConsoleClient{ticket: cluster.VNCProxyTicket{Ticket: "x", Port: 5901}}
 	audit := &fakeAuditRecorder{}
 
-	_, err := vm.GetConsoleTicket(context.Background(), idx, bob, "default", 100, client, store, audit)
+	_, err := vm.GetConsoleTicket(context.Background(), vm.ConsoleTicketDeps{Index: idx, Actor: bob, ClusterName: "default", VMID: 100, Client: client, Store: store, Audit: audit})
 	if !errors.Is(err, vm.ErrForbidden) {
 		t.Fatalf("err = %v, want ErrForbidden", err)
 	}
@@ -118,7 +118,7 @@ func TestGetConsoleTicket_ClusterClientErrorPropagates(t *testing.T) {
 	client := &fakeConsoleClient{err: errors.New("proxmox unreachable")}
 	audit := &fakeAuditRecorder{}
 
-	_, err := vm.GetConsoleTicket(context.Background(), idx, alice, "default", 100, client, store, audit)
+	_, err := vm.GetConsoleTicket(context.Background(), vm.ConsoleTicketDeps{Index: idx, Actor: alice, ClusterName: "default", VMID: 100, Client: client, Store: store, Audit: audit})
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
@@ -145,7 +145,7 @@ func TestGetConsoleTicket_AdminBypassesPoolCheck(t *testing.T) {
 	audit := &fakeAuditRecorder{}
 
 	// VM 103 is in pool-bob, not pool-alice — an admin can still open it.
-	ticket, err := vm.GetConsoleTicket(context.Background(), idx, admin, "default", 103, client, store, audit)
+	ticket, err := vm.GetConsoleTicket(context.Background(), vm.ConsoleTicketDeps{Index: idx, Actor: admin, ClusterName: "default", VMID: 103, Client: client, Store: store, Audit: audit})
 	if err != nil {
 		t.Fatalf("admin GetConsoleTicket: %v", err)
 	}
