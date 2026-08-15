@@ -331,3 +331,63 @@
 		content: none;
 	}
 }
+
+/* Layer B — subtle micro-interaction animations. All durations stay at or
+   below 200ms and are zeroed out by the prefers-reduced-motion rule above. */
+.drawer-slide-in {
+	animation: drawer-slide-in 180ms ease-out;
+}
+
+@keyframes drawer-slide-in {
+	from {
+		transform: translateX(100%);
+		opacity: 0.6;
+	}
+	to {
+		transform: translateX(0);
+		opacity: 1;
+	}
+}
+
+.drawer-slide-in-left {
+	animation: drawer-slide-in-left 180ms ease-out;
+}
+
+@keyframes drawer-slide-in-left {
+	from {
+		transform: translateX(-100%);
+		opacity: 0.6;
+	}
+	to {
+		transform: translateX(0);
+		opacity: 1;
+	}
+}
+
+.dialog-fade-in {
+	animation: dialog-fade-in 160ms ease-out;
+}
+
+@keyframes dialog-fade-in {
+	from {
+		opacity: 0;
+		transform: translateY(0.5rem) scale(0.98);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+.dialog-backdrop-in {
+	animation: dialog-backdrop-in 160ms ease-out;
+}
+
+@keyframes dialog-backdrop-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}

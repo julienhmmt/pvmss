@@ -12,7 +12,7 @@
 	import Sidebar from '$lib/features/chrome/Sidebar.svelte';
 	import AppHeader from '$lib/features/chrome/AppHeader.svelte';
 	import HeaderLite from '$lib/features/chrome/HeaderLite.svelte';
-	import { trapFocus } from '$lib/shared/ui/focus-trap';
+			import { trapFocus } from '$lib/shared/ui/focus-trap';
 	import { m } from '$lib/paraglide/messages.js';
 
 	let { children }: { children: Snippet } = $props();
@@ -27,7 +27,7 @@
 	const theme = setThemeContext();
 	const status = setStatusContext();
 	const chrome = setChromeContext();
-	onMount(() => {
+		onMount(() => {
 		locale.init();
 		theme.init();
 		status.start();
@@ -88,7 +88,7 @@
 					role="dialog"
 					aria-modal="true"
 					aria-label={m['chrome.sidebar.ariaLabel']()}
-					class="fixed left-0 top-0 z-50 h-full min-[900px]:hidden motion-reduce:transition-none"
+					class="drawer-slide-in-left fixed left-0 top-0 z-50 h-full min-[900px]:hidden motion-reduce:transition-none"
 					onkeydown={closeSidebarOnEscape}
 				>
 					<Sidebar {version} />
@@ -119,3 +119,4 @@
 		</footer>
 	</div>
 {/if}
+
