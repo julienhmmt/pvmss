@@ -851,5 +851,7 @@
    "activity.empty": "No activity yet.",
  "activity.ariaLabel": "Activity drawer",
  "toast.ariaLive": "polite",
- "toast.dismiss": "Dismiss"
-}
+ "toast.dismiss": "Dismiss",
+ "auth.logout": "Sign out",
+ "auth.logout.confirm": "Sign out of PVMSS?"
+ }

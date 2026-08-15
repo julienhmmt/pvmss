@@ -1,9 +1,9 @@
 <script lang="ts">
 	/**
 	 * AppHeader — Layer B sticky translucent header. Docs link, Activity button
-	 * with a task-count badge + slide-over drawer, language switcher, theme
-	 * toggle, and the status banner above. No search field (spec forbids it,
-	 * research.md R6). A menu button opens the sidebar drawer below 900px.
+	 * with a task-count badge + slide-over drawer, logout, language switcher,
+	 * theme toggle, and the status banner above. No search field (spec forbids
+	 * it, research.md R6). A menu button opens the sidebar drawer below 900px.
 	 */
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import { getChromeContext } from './chrome.svelte';
@@ -83,9 +83,9 @@
 				{tray.tasks.length}
 			</span>
 		{/if}
-	</button>
+		</button>
 
-	<LanguageSwitcher />
+		<LanguageSwitcher />
 	<ThemeToggle />
 </header>
 

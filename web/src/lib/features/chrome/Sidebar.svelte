@@ -12,6 +12,7 @@
 	import { resolve } from '$app/paths';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import { ADMIN_NAV_GROUPS } from './admin-nav-items.svelte';
+	import { goto } from '$app/navigation';
 	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -33,6 +34,11 @@
 		const path = page.url.pathname;
 		if (href === resolve('/')) return path === resolve('/');
 		return path === href || path.startsWith(href + '/');
+	}
+
+	async function handleLogout(): Promise<void> {
+		await session.logout();
+		await goto(resolve('/login'));
 	}
 </script>
 
@@ -102,6 +108,20 @@
 			<p class="px-2 text-xs text-muted-foreground-subtle">
 				{m['chrome.sidebar.userChip']({ username: session.principal.username })}
 			</p>
+			<button
+				type="button"
+				class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				onclick={handleLogout}
+				data-testid="sidebar-logout-button"
+				aria-label={m['auth.logout']}
+			>
+				<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+					<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+					<polyline points="16 17 21 12 16 7" />
+					<line x1="21" y1="12" x2="9" y2="12" />
+				</svg>
+				{m['auth.logout']()}
+			</button>
 		{/if}
 		{#if version}
 			<p class="px-2 font-mono text-xs text-muted-foreground-subtle">
