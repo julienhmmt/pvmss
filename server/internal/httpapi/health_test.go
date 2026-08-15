@@ -194,26 +194,33 @@ func runHealthCase(t *testing.T, c healthCase) {
 	}
 
 	if len(c.wantBody.Checks) > 0 {
-		gotDB := resp.Checks["database"]
-
-		wantDB := c.wantBody.Checks["database"]
-		if gotDB.Status != wantDB.Status || gotDB.Detail != wantDB.Detail {
-			t.Fatalf("database check = %+v, want %+v", gotDB, wantDB)
-		}
-
-		if c.name == healthStatusUnhealthy {
-			if strings.Contains(gotDB.Detail, c.pinger.err.Error()) {
-				t.Fatalf("detail leaks raw error: %q", gotDB.Detail)
-			}
-
-			if strings.Contains(gotDB.Detail, "/tmp/pvmss.db") {
-				t.Fatalf("detail leaks path: %q", gotDB.Detail)
-			}
-		}
+		assertDatabaseCheck(t, resp.Checks["database"], c)
 	}
 
 	if resp.Timestamp == "" {
 		t.Fatalf("timestamp is empty")
+	}
+}
+
+// assertDatabaseCheck validates the decoded "database" health check against the
+// expected values, and (for the unhealthy case) confirms no raw error or path
+// detail leaks into the sanitized response body.
+func assertDatabaseCheck(t *testing.T, gotDB httpapi.CheckResult, c healthCase) {
+	t.Helper()
+
+	wantDB := c.wantBody.Checks["database"]
+	if gotDB.Status != wantDB.Status || gotDB.Detail != wantDB.Detail {
+		t.Fatalf("database check = %+v, want %+v", gotDB, wantDB)
+	}
+
+	if c.name == healthStatusUnhealthy {
+		if strings.Contains(gotDB.Detail, c.pinger.err.Error()) {
+			t.Fatalf("detail leaks raw error: %q", gotDB.Detail)
+		}
+
+		if strings.Contains(gotDB.Detail, "/tmp/pvmss.db") {
+			t.Fatalf("detail leaks path: %q", gotDB.Detail)
+		}
 	}
 }
 
