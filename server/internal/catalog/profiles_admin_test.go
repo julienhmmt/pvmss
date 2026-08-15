@@ -47,7 +47,7 @@ func TestCreateProfile_SlugCollision(t *testing.T) {
 	ctx := context.Background()
 
 	// "small" already exists from T06's seed.
-	_, err := catalog.CreateProfile(ctx, st, "default", "Small", 1, 2048, 20, testProfileBus)
+	_, err := catalog.CreateProfile(ctx, st, "default", catalog.ProfileSpec{Label: "Small", CPUCores: 1, MemoryMB: 2048, DiskGB: 20, Bus: testProfileBus})
 	if !errors.Is(err, catalog.ErrDuplicateProfile) {
 		t.Fatalf("CreateProfile with existing slug: got %v, want ErrDuplicateProfile", err)
 	}
@@ -75,7 +75,7 @@ func TestCreateProfile_InvalidFields(t *testing.T) {
 		{"empty bus", testProfileLabel, 1, 2048, 20, ""},
 	}
 	for _, tc := range tests {
-		_, err := catalog.CreateProfile(ctx, st, "default", tc.label, tc.cores, tc.memMB, tc.diskGB, tc.bus)
+		_, err := catalog.CreateProfile(ctx, st, "default", catalog.ProfileSpec{Label: tc.label, CPUCores: tc.cores, MemoryMB: tc.memMB, DiskGB: tc.diskGB, Bus: tc.bus})
 		if !errors.Is(err, catalog.ErrInvalidProfile) {
 			t.Errorf("CreateProfile(%s): got %v, want ErrInvalidProfile", tc.name, err)
 		}
@@ -90,7 +90,7 @@ func TestCreateProfile_Success(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
 
-	profile, err := catalog.CreateProfile(ctx, st, "default", "X-Large (8 vCPU, 16 GB, 160 GB)", 8, 16384, 160, testProfileBus)
+	profile, err := catalog.CreateProfile(ctx, st, "default", catalog.ProfileSpec{Label: "X-Large (8 vCPU, 16 GB, 160 GB)", CPUCores: 8, MemoryMB: 16384, DiskGB: 160, Bus: testProfileBus})
 	if err != nil {
 		t.Fatalf("CreateProfile: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestUpdateProfile_NotFound(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
 
-	_, err := catalog.UpdateProfile(ctx, st, "default", "nonexistent", testProfileLabel, 1, 2048, 20, testProfileBus)
+	_, err := catalog.UpdateProfile(ctx, st, "default", "nonexistent", catalog.ProfileSpec{Label: testProfileLabel, CPUCores: 1, MemoryMB: 2048, DiskGB: 20, Bus: testProfileBus})
 	if !errors.Is(err, catalog.ErrProfileNotFound) {
 		t.Fatalf("UpdateProfile nonexistent: got %v, want ErrProfileNotFound", err)
 	}
@@ -146,7 +146,7 @@ func TestUpdateProfile_Success(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
 
-	updated, err := catalog.UpdateProfile(ctx, st, "default", testProfileID, "Small (2 vCPU, 4 GB, 40 GB)", 2, 4096, 40, testProfileBus)
+	updated, err := catalog.UpdateProfile(ctx, st, "default", testProfileID, catalog.ProfileSpec{Label: "Small (2 vCPU, 4 GB, 40 GB)", CPUCores: 2, MemoryMB: 4096, DiskGB: 40, Bus: testProfileBus})
 	if err != nil {
 		t.Fatalf("UpdateProfile: %v", err)
 	}

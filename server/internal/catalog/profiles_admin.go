@@ -91,16 +91,27 @@ func ListAdminProfiles(ctx context.Context, st *store.Store, cluster string) ([]
 	return out, nil
 }
 
+// ProfileSpec is the editable field set of a VM profile, shared by
+// CreateProfile and UpdateProfile. Grouping it collapses the five positional
+// field parameters those functions used to take (SonarQube go:S107).
+type ProfileSpec struct {
+	Label    string
+	CPUCores int
+	MemoryMB int
+	DiskGB   int
+	Bus      string
+}
+
 // CreateProfile derives a slug from the label, validates the fields, rejects
 // slug collisions with ErrDuplicateProfile (409), and inserts the new row
 // (FR-009). The new profile is enabled by default.
-func CreateProfile(ctx context.Context, st *store.Store, cluster, label string, cpuCores, memoryMB, diskGB int, bus string) (AdminProfile, error) {
-	label = strings.TrimSpace(label)
+func CreateProfile(ctx context.Context, st *store.Store, cluster string, spec ProfileSpec) (AdminProfile, error) {
+	label := strings.TrimSpace(spec.Label)
 	if label == "" {
 		return AdminProfile{}, fmt.Errorf("%w: label is required", ErrInvalidProfile)
 	}
 
-	if err := validateProfileFields(cpuCores, memoryMB, diskGB, bus); err != nil {
+	if err := validateProfileFields(spec.CPUCores, spec.MemoryMB, spec.DiskGB, spec.Bus); err != nil {
 		return AdminProfile{}, err
 	}
 
@@ -115,7 +126,7 @@ func CreateProfile(ctx context.Context, st *store.Store, cluster, label string, 
 		return AdminProfile{}, ErrDuplicateProfile
 	}
 
-	if err := st.InsertProfile(ctx, cluster, id, label, cpuCores, memoryMB, diskGB, bus); err != nil {
+	if err := st.InsertProfile(ctx, cluster, id, label, spec.CPUCores, spec.MemoryMB, spec.DiskGB, spec.Bus); err != nil {
 		if errors.Is(err, store.ErrDuplicate) {
 			return AdminProfile{}, ErrDuplicateProfile
 		}
@@ -124,20 +135,20 @@ func CreateProfile(ctx context.Context, st *store.Store, cluster, label string, 
 	}
 
 	return AdminProfile{
-		ID: id, Label: label, CPUCores: cpuCores,
-		MemoryMB: memoryMB, DiskGB: diskGB, Bus: bus, Enabled: true,
+		ID: id, Label: label, CPUCores: spec.CPUCores,
+		MemoryMB: spec.MemoryMB, DiskGB: spec.DiskGB, Bus: spec.Bus, Enabled: true,
 	}, nil
 }
 
 // UpdateProfile changes an existing profile's values. Returns
 // ErrProfileNotFound if the id does not exist (404).
-func UpdateProfile(ctx context.Context, st *store.Store, cluster, id, label string, cpuCores, memoryMB, diskGB int, bus string) (AdminProfile, error) {
-	label = strings.TrimSpace(label)
+func UpdateProfile(ctx context.Context, st *store.Store, cluster, id string, spec ProfileSpec) (AdminProfile, error) {
+	label := strings.TrimSpace(spec.Label)
 	if label == "" {
 		return AdminProfile{}, fmt.Errorf("%w: label is required", ErrInvalidProfile)
 	}
 
-	if err := validateProfileFields(cpuCores, memoryMB, diskGB, bus); err != nil {
+	if err := validateProfileFields(spec.CPUCores, spec.MemoryMB, spec.DiskGB, spec.Bus); err != nil {
 		return AdminProfile{}, err
 	}
 
@@ -150,7 +161,7 @@ func UpdateProfile(ctx context.Context, st *store.Store, cluster, id, label stri
 		return AdminProfile{}, ErrProfileNotFound
 	}
 
-	if err := st.UpdateProfile(ctx, cluster, id, label, cpuCores, memoryMB, diskGB, bus); err != nil {
+	if err := st.UpdateProfile(ctx, cluster, id, label, spec.CPUCores, spec.MemoryMB, spec.DiskGB, spec.Bus); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return AdminProfile{}, ErrProfileNotFound
 		}
