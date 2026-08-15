@@ -37,6 +37,24 @@ const (
 	idleTimeout       = 120 * time.Second
 	maxHeaderBytes    = 1 << 20 // 1 MiB
 
+	// Timeout strategy (defence in depth):
+	//
+	// 1. Server-level (here): readHeader, read, write, idle bound every
+	//    request. The write timeout is the outer ceiling for any handler,
+	//    including cluster calls.
+	// 2. Handler-level: every handler that calls the cluster client passes
+	//    r.Context(), so cluster operations inherit the server's write
+	//    deadline and are cancelled when it fires.
+	// 3. Worker-level: inventory refreshCycle wraps its cluster call in
+	//    context.WithTimeout(ctx, cfg.InventoryRefreshTimeout) so a hung
+	//    upstream cannot hold the singleflight lock indefinitely.
+	//
+	// Note: InventoryRefreshTimeout (default 15s) can exceed writeTimeout
+	// (10s). With the fake cluster this is harmless (calls are instant).
+	// When a real Proxmox client is implemented, either raise writeTimeout
+	// to >= InventoryRefreshTimeout or make the manual-refresh handler
+	// asynchronous (202 Accepted + background refresh).
+
 	// appVersion is the version string surfaced in the dashboard, the admin
 	// app info page, and the public /api/v1/public/version endpoint (T14).
 	// It is a compile-time literal; no runtime discovery is performed.
