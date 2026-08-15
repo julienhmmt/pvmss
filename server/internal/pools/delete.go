@@ -28,13 +28,13 @@ type DeleteResult struct {
 // (Delete / stopMembers / deleteMembers). It collapses the eight positional
 // parameters those functions used to take (SonarQube go:S107).
 type CascadeDeps struct {
-	Actor      auth.Identity
-	Client     cluster.Client
-	Projection *inventory.Projection
+	Actor       auth.Identity
+	Client      cluster.Client
+	Projection  *inventory.Projection
 	ClusterName string
-	Writer     cluster.Writer
-	Audit      vm.AuditRecorder
-	Refresher  vm.IndexRefresher
+	Writer      cluster.Writer
+	Audit       vm.AuditRecorder
+	Refresher   vm.IndexRefresher
 }
 
 // Delete stops and purges pool members through T05's VM write paths, then

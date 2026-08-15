@@ -263,17 +263,17 @@ func serve(router http.Handler, cfg config.Configuration, logger *slog.Logger) i
 // It collapses the eleven positional parameters buildRouter used to take
 // (SonarQube go:S107).
 type routerDeps struct {
-	cfg             config.Configuration
-	clusterRegistry *cluster.Registry
+	cfg               config.Configuration
+	clusterRegistry   *cluster.Registry
 	inventoryRegistry *inventory.Registry
-	clusterClient   cluster.Client
-	projection      *inventory.Projection
-	refresher       *inventory.Refresher
-	worker          *inventory.Worker
-	sessions        *auth.SessionManager
-	st              *store.Store
-	webDir          string
-	logger          *slog.Logger
+	clusterClient     cluster.Client
+	projection        *inventory.Projection
+	refresher         *inventory.Refresher
+	worker            *inventory.Worker
+	sessions          *auth.SessionManager
+	st                *store.Store
+	webDir            string
+	logger            *slog.Logger
 }
 
 // buildRouter wires all HTTP handlers into the final router. It performs the
