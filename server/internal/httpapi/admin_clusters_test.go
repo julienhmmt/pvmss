@@ -296,7 +296,7 @@ func TestAdminClusters_UpdateRejectsNameAnd404sOnRemoved(t *testing.T) {
 	cookie := adminClusterCookie(t, fixture.auth)
 
 	update := func(name, body string) *httptest.ResponseRecorder {
-		return adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeUpdate, HTTPMethod: http.MethodPut, Path: "/api/v1/admin/clusters/"+name, Name: name, Body: body})
+		return adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeUpdate, HTTPMethod: http.MethodPut, Path: "/api/v1/admin/clusters/" + name, Name: name, Body: body})
 	}
 
 	// Valid update: 200, new URL reflected.
@@ -438,7 +438,7 @@ func TestAdminClusters_DeleteLastClusterConflictAndReactivateRoundTrip(t *testin
 	cookie := adminClusterCookie(t, fixture.auth)
 
 	del := func(name string) *httptest.ResponseRecorder {
-		return adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeDelete, HTTPMethod: http.MethodDelete, Path: "/api/v1/admin/clusters/"+name, Name: name, Body: ""})
+		return adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeDelete, HTTPMethod: http.MethodDelete, Path: "/api/v1/admin/clusters/" + name, Name: name, Body: ""})
 	}
 
 	response := del("nonexistent")
