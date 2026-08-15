@@ -6,6 +6,6 @@ describe('PVMSS web shell smoke test', () => {
 	it('renders the placeholder heading in the layout', () => {
 		mount(TestWrapper, { target: document.body });
 
-		expect(document.body.textContent ?? '').toContain('PVMSS v0.4');
+		expect(document.body.textContent ?? '').toContain('Proxmox VM Self-Service (PVMSS)');
 	});
 });

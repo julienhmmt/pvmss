@@ -17,17 +17,17 @@
 	let { title, description, icon, actions }: Props = $props();
 </script>
 
-<div class="flex flex-col items-center justify-center gap-3 px-4 py-10 text-center">
+<div class="flex flex-col items-center justify-center gap-3 px-4 py-12 text-center">
 	{#if icon}
-		<div class="text-muted-foreground">{@render icon()}</div>
+		<div class="text-muted-foreground-subtle">{@render icon()}</div>
 	{/if}
 	<div>
-		<p class="font-medium">{title}</p>
+		<p class="font-semibold">{title}</p>
 		{#if description}
 			<p class="mt-1 text-sm text-muted-foreground">{description}</p>
 		{/if}
 	</div>
 	{#if actions}
-		<div class="mt-1">{@render actions()}</div>
+		<div class="mt-2">{@render actions()}</div>
 	{/if}
 </div>

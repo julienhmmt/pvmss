@@ -39,7 +39,7 @@
 	>
 		<div
 			bind:this={dialogEl}
-			class="w-full max-w-md rounded-lg border border-border bg-background p-6 shadow-lg"
+			class="w-full max-w-md rounded-xl border border-border bg-card p-6 text-card-foreground shadow-card"
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby={labelledBy}

@@ -10,6 +10,24 @@ import { test, expect } from '@playwright/test';
 
 test.describe('T19 chrome UI', () => {
 	test.describe('US1 — language switcher', () => {
+		test('Layer B font swap: Archivo is applied and no Google Fonts request is made', async ({ page }) => {
+			const googleFontRequests: string[] = [];
+			page.on('request', (req) => {
+				if (req.url().includes('fonts.googleapis.com')) googleFontRequests.push(req.url());
+			});
+			await page.goto('/');
+			// The body font family must resolve to the self-hosted Archivo variable.
+			const family = await page.evaluate(() => {
+				const el = document.createElement('span');
+				document.body.appendChild(el);
+				const computed = getComputedStyle(el).fontFamily;
+				el.remove();
+				return computed;
+			});
+			expect(family.toLowerCase()).toContain('archivo');
+			expect(googleFontRequests).toEqual([]);
+		});
+
 		test('switching language updates visible strings and <html lang> without a reload', async ({ page }) => {
 			await page.goto('/');
 			// Default locale is French (constitution: French is the source language).

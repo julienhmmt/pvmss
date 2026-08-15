@@ -3,10 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('T00 smoke', () => {
 	test('shell renders the placeholder title', async ({ page }) => {
 		await page.goto('/');
-		// T19: the homepage now uses Paraglide messages. The default locale is
-		// French, so the title appears in French. "PVMSS v0.4" is locale-
-		// independent (a version string).
-		await expect(page.locator('text=PVMSS v0.4')).toBeVisible();
+		await expect(page.locator('text=Proxmox VM Self-Service (PVMSS)')).toBeVisible();
 	});
 
 	test('health endpoint returns healthy', async ({ request }) => {

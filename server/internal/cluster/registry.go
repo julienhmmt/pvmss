@@ -130,7 +130,7 @@ func factoryForSource(source string) (ClientFactory, error) {
 			if row.Name == "" {
 				return nil, errors.New("cluster name is required")
 			}
-			return Fake{ClusterName: row.Name}, nil
+			return NewFake(row.Name), nil
 		}, nil
 	case "proxmox":
 		return func(row store.ClusterRow) (Client, error) {
