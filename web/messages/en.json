@@ -852,6 +852,13 @@
  "activity.ariaLabel": "Activity drawer",
  "toast.ariaLive": "polite",
  "toast.dismiss": "Dismiss",
+ "login.brandTagline": "Self-service Proxmox VM management",
+ "login.brandFeature1": "Self-service",
+ "login.brandFeature1Desc": "Manage your Proxmox VMs without direct Proxmox UI access.",
+ "login.brandFeature2": "Multi-cluster",
+ "login.brandFeature2Desc": "Multiple Proxmox clusters aggregated behind a single portal.",
+ "login.brandFeature3": "Quotas & policy",
+ "login.brandFeature3Desc": "Per-user limits and policies enforced server-side.",
  "auth.logout": "Sign out",
  "auth.logout.confirm": "Sign out of PVMSS?"
  }
