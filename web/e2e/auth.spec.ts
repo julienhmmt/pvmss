@@ -3,6 +3,10 @@ import { test, expect } from '@playwright/test';
 test.describe('T02 authentication', () => {
 	test('signs in with the fake PVE account and ends the browser session', async ({ page }) => {
 		await page.goto('/login');
+		// US3: the sign-in route has no signed-in sidebar landmark.
+		await expect(page.getByRole('complementary')).toHaveCount(0);
+		await expect(page.getByTestId('app-sidebar')).toHaveCount(0);
+
 		await page.getByLabel('Username').fill('alice');
 		await page.getByLabel('Password').fill('pvmss-alice');
 		await page.locator('#login-cluster').selectOption('default');
