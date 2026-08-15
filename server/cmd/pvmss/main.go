@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -46,90 +47,39 @@ func main() {
 	os.Exit(run())
 }
 
-//nolint:gocyclo,funlen // the composition root intentionally wires all runtime dependencies
+// run is the composition root: it wires every runtime dependency in startup
+// order and drives the server lifecycle. Each phase is extracted into a named
+// function so the wiring sequence stays readable; defers for closeable
+// resources remain here so they always fire on any return path.
 func run() int {
 	stderr := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 
-	cfg, err := config.Load()
+	cfg, logger, logCloser, err := loadConfig(stderr)
 	if err != nil {
-		stderr.Error("failed to load configuration", "component", "main", "error", err)
-		return 1
-	}
-
-	logger, logCloser, err := config.NewLogger(cfg)
-	if err != nil {
-		stderr.Error("failed to create logger", "component", "main", "error", err)
 		return 1
 	}
 	defer func() { _ = logCloser.Close() }()
 
-	logger.Info("configuration loaded", "component", "main", "host", cfg.Host, "port", cfg.Port, "dbPath", cfg.DBPath)
-
-	st, err := store.Open(cfg)
+	st, err := openStore(cfg, logger)
 	if err != nil {
-		logger.Error("failed to open database", "component", "main", "error", err)
 		return 1
 	}
 	defer func() { _ = st.Close() }()
-
-	logger.Info("database opened", "component", "main", "migrationsDefined", len(store.Migrations))
-
-	// Seed built-in documentation pages (issue #53). Idempotent: only inserts
-	// missing (id, lang) rows, so admin edits to seeded pages are never clobbered.
-	if err := seed.SeedDocumentationPages(context.Background(), st); err != nil {
-		logger.Error("failed to seed documentation pages", "component", "main", "error", err)
-		return 1
-	}
 
 	webDir, err := resolveWebBuildDir(cfg.WebDir)
 	if err != nil {
 		logger.Error("web build directory not found", "component", "main", "error", err)
 		return 1
 	}
-
 	logger.Info("web build directory resolved", "component", "main", "webDir", webDir)
 
-	// Cluster implementation selection remains centralized in the registry wiring;
-	// runtime rows change the number of clients, never the selected source kind.
-	rows, err := st.ListClusters(context.Background())
+	clusterRegistry, clusterClient, err := initCluster(cfg, st, logger)
 	if err != nil {
-		logger.Error("failed to list configured clusters", "component", "main", "error", err)
 		return 1
 	}
-	clusterRegistry, err := cluster.NewRegistry(cfg.ClusterSource, rows)
-	if err != nil {
-		logger.Error("failed to create cluster registry", "component", "main", "error", err)
-		return 1
-	}
-	clusterClient, err := clusterRegistry.Client("default")
-	if err != nil {
-		logger.Error("default cluster is unavailable", "component", "main", "error", err)
-		return 1
-	}
-	logger.Info("cluster registry initialized", "component", "cluster", "source", cfg.ClusterSource, "clusters", clusterRegistry.List())
 
-	// The inventory registry owns all reads of cluster data. Each active cluster
-	// has an independent projection and refresh worker (FR-002, AC03 §2.4).
-	inventoryRegistry := inventory.NewRegistry(
-		clusterRegistry,
-		cfg.InventoryRefreshInterval,
-		logger,
-		inventory.WithRefreshTimeout(cfg.InventoryRefreshTimeout),
-	)
-	inventoryRegistry.SetManualRefreshMinInterval(cfg.InventoryManualRefreshMinInterval)
-	defaultProjection, err := inventoryRegistry.Projection("default")
+	inventoryRegistry, defaultProjection, defaultWorker, defaultRefresher, err := initInventory(cfg, clusterRegistry, logger)
 	if err != nil {
-		logger.Error("default inventory projection is unavailable", "component", "main", "error", err)
-		return 1
-	}
-	defaultWorker, err := inventoryRegistry.Worker("default")
-	if err != nil {
-		logger.Error("default inventory worker is unavailable", "component", "main", "error", err)
-		return 1
-	}
-	defaultRefresher, err := inventoryRegistry.Refresher("default")
-	if err != nil {
-		logger.Error("default inventory refresher is unavailable", "component", "main", "error", err)
 		return 1
 	}
 
@@ -151,6 +101,104 @@ func run() int {
 		return 1
 	}
 
+	return serve(router, cfg, logger)
+}
+
+// loadConfig reads and validates environment configuration, then builds the
+// structured logger. Returns a fallback stderr logger on config failure so the
+// caller can log the error before exiting.
+func loadConfig(stderr *slog.Logger) (config.Configuration, *slog.Logger, io.Closer, error) {
+	cfg, err := config.Load()
+	if err != nil {
+		stderr.Error("failed to load configuration", "component", "main", "error", err)
+		return config.Configuration{}, nil, nil, err
+	}
+
+	logger, logCloser, err := config.NewLogger(cfg)
+	if err != nil {
+		stderr.Error("failed to create logger", "component", "main", "error", err)
+		return config.Configuration{}, nil, nil, err
+	}
+
+	logger.Info("configuration loaded", "component", "main", "host", cfg.Host, "port", cfg.Port, "dbPath", cfg.DBPath)
+	return cfg, logger, logCloser, nil
+}
+
+// openStore opens the SQLite database, runs migrations, and seeds built-in
+// documentation pages (issue #53 — idempotent: only inserts missing rows).
+func openStore(cfg config.Configuration, logger *slog.Logger) (*store.Store, error) {
+	st, err := store.Open(cfg)
+	if err != nil {
+		logger.Error("failed to open database", "component", "main", "error", err)
+		return nil, err
+	}
+	logger.Info("database opened", "component", "main", "migrationsDefined", len(store.Migrations))
+
+	if err := seed.SeedDocumentationPages(context.Background(), st); err != nil {
+		logger.Error("failed to seed documentation pages", "component", "main", "error", err)
+		return nil, err
+	}
+
+	return st, nil
+}
+
+// initCluster builds the cluster registry from configured rows and resolves the
+// default cluster client. The registry owns per-cluster Client instances; the
+// default client is the one most handlers operate on.
+func initCluster(cfg config.Configuration, st *store.Store, logger *slog.Logger) (*cluster.Registry, cluster.Client, error) {
+	rows, err := st.ListClusters(context.Background())
+	if err != nil {
+		logger.Error("failed to list configured clusters", "component", "main", "error", err)
+		return nil, nil, err
+	}
+	clusterRegistry, err := cluster.NewRegistry(cfg.ClusterSource, rows)
+	if err != nil {
+		logger.Error("failed to create cluster registry", "component", "main", "error", err)
+		return nil, nil, err
+	}
+	clusterClient, err := clusterRegistry.Client("default")
+	if err != nil {
+		logger.Error("default cluster is unavailable", "component", "main", "error", err)
+		return nil, nil, err
+	}
+	logger.Info("cluster registry initialized", "component", "cluster", "source", cfg.ClusterSource, "clusters", clusterRegistry.List())
+	return clusterRegistry, clusterClient, nil
+}
+
+// initInventory builds the inventory registry and resolves the default
+// cluster's projection, worker, and refresher. Each active cluster gets an
+// independent projection and refresh worker (FR-002, AC03 §2.4).
+func initInventory(cfg config.Configuration, clusterRegistry *cluster.Registry, logger *slog.Logger) (*inventory.Registry, *inventory.Projection, *inventory.Worker, *inventory.Refresher, error) {
+	inventoryRegistry := inventory.NewRegistry(
+		clusterRegistry,
+		cfg.InventoryRefreshInterval,
+		logger,
+		inventory.WithRefreshTimeout(cfg.InventoryRefreshTimeout),
+	)
+	inventoryRegistry.SetManualRefreshMinInterval(cfg.InventoryManualRefreshMinInterval)
+
+	defaultProjection, err := inventoryRegistry.Projection("default")
+	if err != nil {
+		logger.Error("default inventory projection is unavailable", "component", "main", "error", err)
+		return nil, nil, nil, nil, err
+	}
+	defaultWorker, err := inventoryRegistry.Worker("default")
+	if err != nil {
+		logger.Error("default inventory worker is unavailable", "component", "main", "error", err)
+		return nil, nil, nil, nil, err
+	}
+	defaultRefresher, err := inventoryRegistry.Refresher("default")
+	if err != nil {
+		logger.Error("default inventory refresher is unavailable", "component", "main", "error", err)
+		return nil, nil, nil, nil, err
+	}
+
+	return inventoryRegistry, defaultProjection, defaultWorker, defaultRefresher, nil
+}
+
+// serve starts the HTTP server and blocks until it stops via error or signal.
+// On SIGINT/SIGTERM it gives the server 5 s to drain in-flight requests.
+func serve(router http.Handler, cfg config.Configuration, logger *slog.Logger) int {
 	srv := &http.Server{
 		Addr:              net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)),
 		Handler:           router,
@@ -190,7 +238,6 @@ func run() int {
 	}
 
 	logger.Info("server stopped", "component", "main")
-
 	return 0
 }
 
