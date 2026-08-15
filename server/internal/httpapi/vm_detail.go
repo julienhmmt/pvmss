@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"pvmss/server/internal/auth"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
@@ -432,62 +433,78 @@ func (h *VMDetail) handleDisk(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodPost:
-		var request diskRequest
-		if err := decodeJSON(w, r, &request); err != nil {
-			h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
-			return
-		}
-
-		disk, err := vm.AddDisk(r.Context(), deps, cluster.DiskBus(request.Bus), request.Storage, request.SizeGB)
-		if err != nil {
-			h.writeDiskError(w, err)
-			return
-		}
-
-		h.writeJSONStatus(w, http.StatusOK, disk)
+		h.handleDiskCreate(w, r, deps, vmid)
 	case http.MethodPut:
-		var request resizeDiskRequest
-		if err := decodeJSON(w, r, &request); err != nil {
-			h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
-			return
-		}
-
-		if err := vm.ResizeDisk(r.Context(), deps, r.PathValue("diskKey"), request.SizeGB); err != nil {
-			h.writeDiskError(w, err)
-			return
-		}
-
-		refreshed := h.projection.Load()
-		if refreshed == nil {
-			h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
-			return
-		}
-
-		entity, err := vm.Resolve(refreshed, identity, clusterName, vmid)
-		if err != nil {
-			h.writeResolveError(w, err)
-			return
-		}
-
-		for _, disk := range entity.Disks {
-			if disk.Key == r.PathValue("diskKey") {
-				h.writeJSONStatus(w, http.StatusOK, disk)
-				return
-			}
-		}
-
-		h.writeDiskError(w, vm.ErrDiskNotFound)
+		h.handleDiskResize(w, r, deps, identity, clusterName, vmid)
 	case http.MethodDelete:
-		if err := vm.DeleteDisk(r.Context(), deps, r.PathValue("diskKey")); err != nil {
-			h.writeDiskError(w, err)
-			return
-		}
-
-		h.writeJSONStatus(w, http.StatusOK, deleteResponse{Status: "deleted"})
+		h.handleDiskDelete(w, r, deps, r.PathValue("diskKey"))
 	default:
 		w.Header().Set("Allow", "POST, PUT, DELETE")
 		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
 	}
+}
+
+// handleDiskCreate adds a new disk to the VM from a POST body.
+func (h *VMDetail) handleDiskCreate(w http.ResponseWriter, r *http.Request, deps vm.DiskDependencies, vmid int) {
+	var request diskRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
+		return
+	}
+
+	disk, err := vm.AddDisk(r.Context(), deps, cluster.DiskBus(request.Bus), request.Storage, request.SizeGB)
+	if err != nil {
+		h.writeDiskError(w, err)
+		return
+	}
+
+	h.writeJSONStatus(w, http.StatusOK, disk)
+}
+
+// handleDiskResize grows an existing disk from a PUT body, then re-resolves the
+// VM to return the updated disk.
+func (h *VMDetail) handleDiskResize(w http.ResponseWriter, r *http.Request, deps vm.DiskDependencies, identity auth.Identity, clusterName string, vmid int) {
+	var request resizeDiskRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
+		return
+	}
+
+	if err := vm.ResizeDisk(r.Context(), deps, r.PathValue("diskKey"), request.SizeGB); err != nil {
+		h.writeDiskError(w, err)
+		return
+	}
+
+	refreshed := h.projection.Load()
+	if refreshed == nil {
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		return
+	}
+
+	entity, err := vm.Resolve(refreshed, identity, clusterName, vmid)
+	if err != nil {
+		h.writeResolveError(w, err)
+		return
+	}
+
+	for _, disk := range entity.Disks {
+		if disk.Key == r.PathValue("diskKey") {
+			h.writeJSONStatus(w, http.StatusOK, disk)
+			return
+		}
+	}
+
+	h.writeDiskError(w, vm.ErrDiskNotFound)
+}
+
+// handleDiskDelete removes a disk by key.
+func (h *VMDetail) handleDiskDelete(w http.ResponseWriter, r *http.Request, deps vm.DiskDependencies, diskKey string) {
+	if err := vm.DeleteDisk(r.Context(), deps, diskKey); err != nil {
+		h.writeDiskError(w, err)
+		return
+	}
+
+	h.writeJSONStatus(w, http.StatusOK, deleteResponse{Status: "deleted"})
 }
 
 func (h *VMDetail) handleCDROM(w http.ResponseWriter, r *http.Request) {
