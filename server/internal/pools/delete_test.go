@@ -32,7 +32,7 @@ func TestDelete_CascadeAuditTrailAndUserResult(t *testing.T) {
 	}
 	auditStore := openAuditStore(t)
 	worker := inventory.NewWorker(client, projection, time.Hour, testLogger(t))
-	result, err := pools.Delete(context.Background(), admin, client, projection, "default", "carol", client, auditStore, worker)
+	result, err := pools.Delete(context.Background(), pools.CascadeDeps{Actor: admin, Client: client, Projection: projection, ClusterName: "default", Writer: client, Audit: auditStore, Refresher: worker}, "carol")
 	if err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestDelete_CascadeAuditTrailUsesAdminActor(t *testing.T) {
 	}
 	auditStore := openAuditStore(t)
 	worker := inventory.NewWorker(client, projection, time.Hour, testLogger(t))
-	result, err := pools.Delete(context.Background(), auth.Identity{Username: "admin", IsAdmin: true}, client, projection, "default", cluster.FakePoolBob, client, auditStore, worker)
+	result, err := pools.Delete(context.Background(), pools.CascadeDeps{Actor: auth.Identity{Username: "admin", IsAdmin: true}, Client: client, Projection: projection, ClusterName: "default", Writer: client, Audit: auditStore, Refresher: worker}, cluster.FakePoolBob)
 	if err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
@@ -105,7 +105,7 @@ func TestDelete_UserDeletionFailureIsReported(t *testing.T) {
 	if err != nil {
 		t.Fatalf("projection: %v", err)
 	}
-	result, err := pools.Delete(context.Background(), admin, client, projection, "default", "carol", client, openAuditStore(t), inventory.NewWorker(client, projection, time.Hour, testLogger(t)))
+	result, err := pools.Delete(context.Background(), pools.CascadeDeps{Actor: admin, Client: client, Projection: projection, ClusterName: "default", Writer: client, Audit: openAuditStore(t), Refresher: inventory.NewWorker(client, projection, time.Hour, testLogger(t))}, "carol")
 	if err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
@@ -124,12 +124,12 @@ func TestDelete_NonexistentPoolAndNonAdminAreRejected(t *testing.T) {
 	admin := auth.Identity{Username: "admin", IsAdmin: true}
 	deps := func(t *testing.T) (pools.DeleteResult, error) {
 		t.Helper()
-		return pools.Delete(context.Background(), admin, client, projection, "default", "missing", client, openAuditStore(t), inventory.NewWorker(client, projection, time.Hour, testLogger(t)))
+		return pools.Delete(context.Background(), pools.CascadeDeps{Actor: admin, Client: client, Projection: projection, ClusterName: "default", Writer: client, Audit: openAuditStore(t), Refresher: inventory.NewWorker(client, projection, time.Hour, testLogger(t))}, "missing")
 	}
 	if _, err := deps(t); !errors.Is(err, pools.ErrNotFound) {
 		t.Fatalf("missing error = %v, want ErrNotFound", err)
 	}
-	if _, err := pools.Delete(context.Background(), auth.Identity{Username: "alice"}, client, projection, "default", "missing", client, openAuditStore(t), inventory.NewWorker(client, projection, time.Hour, testLogger(t))); !errors.Is(err, pools.ErrForbidden) {
+	if _, err := pools.Delete(context.Background(), pools.CascadeDeps{Actor: auth.Identity{Username: "alice"}, Client: client, Projection: projection, ClusterName: "default", Writer: client, Audit: openAuditStore(t), Refresher: inventory.NewWorker(client, projection, time.Hour, testLogger(t))}, "missing"); !errors.Is(err, pools.ErrForbidden) {
 		t.Fatalf("non-admin error = %v, want ErrForbidden", err)
 	}
 }

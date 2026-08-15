@@ -32,7 +32,7 @@ func TestDelete_BoundedWaitThenProceed(t *testing.T) {
 	t.Cleanup(func() { maxDeleteWait = previous })
 
 	started := time.Now()
-	result, err := Delete(context.Background(), auth.Identity{Username: "admin", IsAdmin: true}, client, projection, "default", "stuck", client, timeoutAudit{}, timeoutRefresher{})
+	result, err := Delete(context.Background(), CascadeDeps{Actor: auth.Identity{Username: "admin", IsAdmin: true}, Client: client, Projection: projection, ClusterName: "default", Writer: client, Audit: timeoutAudit{}, Refresher: timeoutRefresher{}}, "stuck")
 	if err != nil {
 		t.Fatalf("Delete: %v", err)
 	}

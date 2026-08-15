@@ -72,7 +72,7 @@ func (h *AdminPools) ServeDelete(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, http.StatusBadRequest, "invalid_pool_name", "invalid pool name")
 		return
 	}
-	result, err := pools.Delete(r.Context(), actor, h.client, h.projection, queryCluster(r), name, h.writer, h.audit, h.refresher)
+	result, err := pools.Delete(r.Context(), pools.CascadeDeps{Actor: actor, Client: h.client, Projection: h.projection, ClusterName: queryCluster(r), Writer: h.writer, Audit: h.audit, Refresher: h.refresher}, name)
 	if errors.Is(err, pools.ErrNotFound) {
 		writeAdminError(w, http.StatusNotFound, "not_found", "pool \""+name+"\" not found")
 		return
