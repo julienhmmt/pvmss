@@ -12,6 +12,10 @@ import (
 	"time"
 )
 
+// auditWrapFmt is the error wrapper used when an audit record write fails.
+// Defined once to avoid repeating the literal in every write path (go:S1192).
+const auditWrapFmt = "record audit: %w"
+
 // AuditRecorder is the store dependency for recording a write. Only the method
 // T05 needs is on the interface, so the handler test can use the real store
 // and production can use *store.Store.
@@ -99,7 +103,7 @@ func Action(ctx context.Context, deps BulkDeps, index *inventory.Index, clusterN
 	}
 
 	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, clusterName, vmid, action); err != nil {
-		return fmt.Errorf("record audit: %w", err)
+		return fmt.Errorf(auditWrapFmt, err)
 	}
 
 	_, _ = deps.Refresher.Refresh(ctx)
@@ -120,7 +124,7 @@ func Delete(ctx context.Context, index *inventory.Index, actor auth.Identity, cl
 	}
 
 	if err := audit.RecordAction(ctx, actor.Username, clusterName, vmid, "delete"); err != nil {
-		return fmt.Errorf("record audit: %w", err)
+		return fmt.Errorf(auditWrapFmt, err)
 	}
 
 	_, _ = refresher.Refresh(ctx)
@@ -164,7 +168,7 @@ func Patch(ctx context.Context, index *inventory.Index, actor auth.Identity, clu
 	}
 
 	if err := audit.RecordAction(ctx, actor.Username, clusterName, vmid, auditAction); err != nil {
-		return fmt.Errorf("record audit: %w", err)
+		return fmt.Errorf(auditWrapFmt, err)
 	}
 
 	_, _ = refresher.Refresh(ctx)
