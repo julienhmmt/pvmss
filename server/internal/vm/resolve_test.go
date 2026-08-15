@@ -87,34 +87,51 @@ func TestResolve(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			entity, err := vm.Resolve(idx, c.actor, testClusterName, c.vmid)
-			if c.wantErr != nil {
-				if !errors.Is(err, c.wantErr) {
-					t.Fatalf("err = %v, want %v", err, c.wantErr)
-				}
-
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("err = %v, want nil", err)
-			}
-
-			if entity.VMID != c.vmid {
-				t.Errorf("vmid = %d, want %d", entity.VMID, c.vmid)
-			}
-
-			if entity.Node != c.wantNode {
-				t.Errorf("node = %q, want %q (FR-003: server-resolved, never client-supplied)", entity.Node, c.wantNode)
-			}
-
-			if entity.Pool != c.wantPool {
-				t.Errorf("pool = %q, want %q", entity.Pool, c.wantPool)
-			}
-
-			if entity.Cluster != testClusterName {
-				t.Errorf("cluster = %q, want default", entity.Cluster)
-			}
+			assertResolveResult(t, c.vmid, c.wantErr, c.wantNode, c.wantPool, entity, err)
 		})
+	}
+}
+
+// assertResolveResult checks the Resolve error and the returned Entity's
+// identity fields (vmid, node, pool, cluster) against the expected values.
+// Extracted from TestResolve to keep its Cognitive Complexity under the
+// SonarQube go:S3776 threshold.
+func assertResolveResult(
+	t *testing.T,
+	vmid int,
+	wantErr error,
+	wantNode, wantPool string,
+	entity vm.Entity,
+	err error,
+) {
+	t.Helper()
+
+	if wantErr != nil {
+		if !errors.Is(err, wantErr) {
+			t.Fatalf("err = %v, want %v", err, wantErr)
+		}
+
+		return
+	}
+
+	if err != nil {
+		t.Fatalf("err = %v, want nil", err)
+	}
+
+	if entity.VMID != vmid {
+		t.Errorf("vmid = %d, want %d", entity.VMID, vmid)
+	}
+
+	if entity.Node != wantNode {
+		t.Errorf("node = %q, want %q (FR-003: server-resolved, never client-supplied)", entity.Node, wantNode)
+	}
+
+	if entity.Pool != wantPool {
+		t.Errorf("pool = %q, want %q", entity.Pool, wantPool)
+	}
+
+	if entity.Cluster != testClusterName {
+		t.Errorf("cluster = %q, want default", entity.Cluster)
 	}
 }
 

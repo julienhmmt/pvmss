@@ -300,43 +300,50 @@ func TestList_EmptyReasons(t *testing.T) {
 //nolint:paralleltest // serial: shared in-memory fixture state
 func TestList_Quota(t *testing.T) {
 	t.Run("non-admin default scope reports used against allowed", func(t *testing.T) {
-		result, err := vm.List(testIndex(), vm.ListQuery{}, alice, 10)
-		if err != nil {
-			t.Fatalf("List: %v", err)
-		}
-
-		if result.Quota == nil || *result.Quota != (vm.Quota{Used: 3, Allowed: 10}) {
-			t.Errorf("Quota = %+v, want {Used:3 Allowed:10}", result.Quota)
-		}
+		result := listQuotaResult(t, vm.ListQuery{}, alice, 10)
+		assertQuota(t, result.Quota, &vm.Quota{Used: 3, Allowed: 10})
 	})
 	t.Run("unlimited quota represented as -1", func(t *testing.T) {
-		result, err := vm.List(testIndex(), vm.ListQuery{}, alice, -1)
-		if err != nil {
-			t.Fatalf("List: %v", err)
-		}
-
+		result := listQuotaResult(t, vm.ListQuery{}, alice, -1)
 		if result.Quota == nil || result.Quota.Allowed != -1 {
 			t.Errorf("Quota = %+v, want Allowed -1", result.Quota)
 		}
 	})
 	t.Run("admin scope=all carries no quota", func(t *testing.T) {
-		result, err := vm.List(testIndex(), vm.ListQuery{Scope: vm.ScopeAll}, admin, 10)
-		if err != nil {
-			t.Fatalf("List: %v", err)
-		}
-
+		result := listQuotaResult(t, vm.ListQuery{Scope: vm.ScopeAll}, admin, 10)
 		if result.Quota != nil {
 			t.Errorf("Quota = %+v, want nil", result.Quota)
 		}
 	})
 	t.Run("admin default scope still sees own quota", func(t *testing.T) {
-		result, err := vm.List(testIndex(), vm.ListQuery{}, admin, 10)
-		if err != nil {
-			t.Fatalf("List: %v", err)
-		}
-
+		result := listQuotaResult(t, vm.ListQuery{}, admin, 10)
 		if result.Quota == nil || result.Quota.Allowed != 10 {
 			t.Errorf("Quota = %+v, want {Used:0 Allowed:10}", result.Quota)
 		}
 	})
+}
+
+// listQuotaResult calls vm.List and fails on error, returning the result for
+// quota assertion. Extracted from TestList_Quota to keep its Cognitive
+// Complexity under the SonarQube go:S3776 threshold.
+func listQuotaResult(t *testing.T, q vm.ListQuery, actor auth.Identity, allowed int) vm.ListResult {
+	t.Helper()
+
+	result, err := vm.List(testIndex(), q, actor, allowed)
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+
+	return result
+}
+
+// assertQuota checks that the result quota matches the expected value.
+// Extracted from TestList_Quota to keep its Cognitive Complexity under the
+// SonarQube go:S3776 threshold.
+func assertQuota(t *testing.T, got, want *vm.Quota) {
+	t.Helper()
+
+	if got == nil || *got != *want {
+		t.Errorf("Quota = %+v, want %+v", got, want)
+	}
 }

@@ -50,7 +50,7 @@ func (h *AdminPools) ServeCreate(w http.ResponseWriter, r *http.Request) {
 	}
 	var request createPoolRequest
 	if err := decodeJSON(w, r, &request); err != nil {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
 	created, err := pools.Create(r.Context(), actor, h.client, request.Name, request.Password, request.Comment)
@@ -72,13 +72,13 @@ func (h *AdminPools) ServeDelete(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, http.StatusBadRequest, "invalid_pool_name", "invalid pool name")
 		return
 	}
-	result, err := pools.Delete(r.Context(), actor, h.client, h.projection, queryCluster(r), name, h.writer, h.audit, h.refresher)
+	result, err := pools.Delete(r.Context(), pools.CascadeDeps{Actor: actor, Client: h.client, Projection: h.projection, ClusterName: queryCluster(r), Writer: h.writer, Audit: h.audit, Refresher: h.refresher}, name)
 	if errors.Is(err, pools.ErrNotFound) {
 		writeAdminError(w, http.StatusNotFound, "not_found", "pool \""+name+"\" not found")
 		return
 	}
 	if errors.Is(err, pools.ErrForbidden) {
-		writeAdminError(w, http.StatusForbidden, "forbidden", "admin only")
+		writeAdminError(w, http.StatusForbidden, "forbidden", msgAdminOnly)
 		return
 	}
 	if err != nil {
@@ -122,11 +122,11 @@ func poolSummaries(rows []pools.PoolSummary) poolSummaryList {
 func (h *AdminPools) adminActor(w http.ResponseWriter, r *http.Request) (auth.Identity, bool) {
 	actor, err := h.auth.Principal(r)
 	if err != nil {
-		writeAdminError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		writeAdminError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return auth.Identity{}, false
 	}
 	if !actor.IsAdmin {
-		writeAdminError(w, http.StatusForbidden, "forbidden", "admin only")
+		writeAdminError(w, http.StatusForbidden, "forbidden", msgAdminOnly)
 		return auth.Identity{}, false
 	}
 	return actor, true
@@ -141,7 +141,7 @@ func (h *AdminPools) writeCreateError(w http.ResponseWriter, err error) {
 	case errors.Is(err, pools.ErrAlreadyExists):
 		writeAdminError(w, http.StatusConflict, "duplicate_pool", err.Error())
 	case errors.Is(err, pools.ErrForbidden):
-		writeAdminError(w, http.StatusForbidden, "forbidden", "admin only")
+		writeAdminError(w, http.StatusForbidden, "forbidden", msgAdminOnly)
 	default:
 		var provisioningErr *pools.ProvisionError
 		if errors.As(err, &provisioningErr) {

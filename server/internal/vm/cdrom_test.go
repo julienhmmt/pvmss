@@ -30,34 +30,62 @@ func TestSetCDROM_StatesAndApproval(t *testing.T) {
 	}
 	for _, test := range tests { //nolint:paralleltest // serial: shared fake cluster dataset
 		t.Run(test.name, func(t *testing.T) {
-			cluster.ResetFake()
-
-			actor := aliceIdentity()
-			if test.name == testNonOwnerCase {
-				actor = bobIdentity()
-			}
-
-			deps := cdromDependencies(diskTestIndex(t, 101, cluster.VMRunning), actor, 101)
-
-			state, err := vm.SetCDROM(context.Background(), deps, test.action, test.isoVolID)
-			if test.wantErr != nil {
-				if !errors.Is(err, test.wantErr) {
-					t.Fatalf("err = %v, want %v", err, test.wantErr)
-				}
-			} else {
-				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
-				}
-
-				if state.State != test.wantState {
-					t.Fatalf("state = %q, want %q", state.State, test.wantState)
-				}
-			}
-
-			if calls := cluster.FakeCallsFor(101); len(calls) != test.wantCalls {
-				t.Fatalf("fake calls = %+v, want %d", calls, test.wantCalls)
-			}
+			runCDROMCase(t, test)
 		})
+	}
+}
+
+// runCDROMCase runs a single SetCDROM case: builds the deps, invokes the
+// action, and asserts the resulting state/error and cluster call count.
+// Extracted from TestSetCDROM_StatesAndApproval to keep its Cognitive
+// Complexity under the SonarQube go:S3776 threshold.
+func runCDROMCase(t *testing.T, test struct {
+	name      string
+	action    string
+	isoVolID  string
+	wantState string
+	wantErr   error
+	wantCalls int
+}) {
+	t.Helper()
+
+	cluster.ResetFake()
+
+	actor := aliceIdentity()
+	if test.name == testNonOwnerCase {
+		actor = bobIdentity()
+	}
+
+	deps := cdromDependencies(diskTestIndex(t, 101, cluster.VMRunning), actor, 101)
+
+	state, err := vm.SetCDROM(context.Background(), deps, test.action, test.isoVolID)
+	assertCDROMResult(t, test.wantErr, err, test.wantState, state.State)
+
+	if calls := cluster.FakeCallsFor(101); len(calls) != test.wantCalls {
+		t.Fatalf("fake calls = %+v, want %d", calls, test.wantCalls)
+	}
+}
+
+// assertCDROMResult checks the SetCDROM error/state against the expected
+// values. Extracted from runCDROMCase to keep its Cognitive Complexity under
+// the SonarQube go:S3776 threshold.
+func assertCDROMResult(t *testing.T, wantErr, err error, wantState, gotState string) {
+	t.Helper()
+
+	if wantErr != nil {
+		if !errors.Is(err, wantErr) {
+			t.Fatalf("err = %v, want %v", err, wantErr)
+		}
+
+		return
+	}
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if gotState != wantState {
+		t.Fatalf("state = %q, want %q", gotState, wantState)
 	}
 }
 

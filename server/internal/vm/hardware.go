@@ -67,7 +67,9 @@ func UpdateHardware(ctx context.Context, deps HardwareDependencies, patch Hardwa
 	}
 
 	needsRestart := entity.Status == cluster.VMRunning && hardwareChanged(entity, sockets, cores, memoryMB)
-	if err := applyHardware(ctx, deps, entity, sockets, cores, memoryMB, tags, needsRestart); err != nil {
+	if err := applyHardware(ctx, deps, entity, hardwareApply{
+		Sockets: sockets, Cores: cores, MemoryMB: memoryMB, Tags: tags, NeedsRestart: needsRestart,
+	}); err != nil {
 		return err
 	}
 
@@ -88,18 +90,29 @@ func finalizeHardwareWrite(ctx context.Context, deps HardwareDependencies) error
 	return nil
 }
 
-func applyHardware(ctx context.Context, deps HardwareDependencies, entity Entity, sockets, cores, memoryMB int, tags []string, needsRestart bool) error {
-	if needsRestart {
+// hardwareApply groups the concrete hardware values and restart flag passed to
+// applyHardware. It collapses the five positional parameters that helper used
+// to take (SonarQube go:S107).
+type hardwareApply struct {
+	Sockets      int
+	Cores        int
+	MemoryMB     int
+	Tags         []string
+	NeedsRestart bool
+}
+
+func applyHardware(ctx context.Context, deps HardwareDependencies, entity Entity, apply hardwareApply) error {
+	if apply.NeedsRestart {
 		if err := deps.Writer.Action(ctx, entity.Node, entity.VMID, "stop"); err != nil {
 			return fmt.Errorf("stop vm for hardware update: %w", err)
 		}
 	}
 
-	if err := deps.Writer.UpdateHardware(ctx, entity.Node, entity.VMID, sockets, cores, memoryMB, tags); err != nil {
+	if err := deps.Writer.UpdateHardware(ctx, entity.Node, entity.VMID, apply.Sockets, apply.Cores, apply.MemoryMB, apply.Tags); err != nil {
 		return fmt.Errorf("update hardware: %w", err)
 	}
 
-	if !needsRestart {
+	if !apply.NeedsRestart {
 		return nil
 	}
 

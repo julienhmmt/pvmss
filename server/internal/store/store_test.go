@@ -58,14 +58,80 @@ func TestOpen_MkdirAllFailed(t *testing.T) {
 	}
 }
 
+// openCase is a single row of the TestOpen table (database-open validation).
+type openCase struct {
+	name       string
+	dbPath     string
+	wantErr    bool
+	wantOpenDB bool
+}
+
+// runOpenCase executes one TestOpen table row: open the store and assert the
+// error path or the migrated-database invariants. Extracted from the table loop
+// to keep TestOpen's Cognitive Complexity under the go:S3776 threshold.
+func runOpenCase(t *testing.T, c openCase) {
+	t.Helper()
+
+	dir := t.TempDir()
+
+	dbPath := c.dbPath
+	if !filepath.IsAbs(dbPath) {
+		dbPath = filepath.Join(dir, dbPath)
+	}
+
+	cfg := config.Configuration{
+		Port:      50001,
+		DBPath:    dbPath,
+		LogLevel:  testStoreLogLevel,
+		LogFormat: testStoreLogFormat,
+		LogOutput: testStoreLogOutput,
+	}
+
+	s, err := store.Open(cfg)
+	if c.wantErr {
+		if err == nil {
+			t.Fatalf("expected error, got nil")
+		}
+
+		return
+	}
+
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+
+	defer func() { _ = s.Close() }()
+
+	if _, err := os.Stat(cfg.DBPath); err != nil {
+		t.Fatalf("database file not created: %v", err)
+	}
+
+	if err := s.Ping(context.Background()); err != nil {
+		t.Fatalf("Ping: %v", err)
+	}
+
+	db, err := sql.Open("sqlite", cfg.DBPath)
+	if err != nil {
+		t.Fatalf("open database for verification: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	var version int
+	if err := db.QueryRowContext(
+		context.Background(),
+		`SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1`,
+	).Scan(&version); err != nil {
+		t.Fatalf("query schema_migrations: %v", err)
+	}
+
+	if version != len(store.Migrations) {
+		t.Fatalf("expected migration version %d, got %d", len(store.Migrations), version)
+	}
+}
+
 //nolint:paralleltest // serial: shared database fixture
 func TestOpen(t *testing.T) {
-	cases := []struct {
-		name       string
-		dbPath     string
-		wantErr    bool
-		wantOpenDB bool
-	}{
+	cases := []openCase{
 		{
 			name:       "fresh data dir creates and migrates",
 			dbPath:     "pvmss.db",
@@ -85,61 +151,7 @@ func TestOpen(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			dir := t.TempDir()
-
-			dbPath := c.dbPath
-			if !filepath.IsAbs(dbPath) {
-				dbPath = filepath.Join(dir, dbPath)
-			}
-
-			cfg := config.Configuration{
-				Port:      50001,
-				DBPath:    dbPath,
-				LogLevel:  testStoreLogLevel,
-				LogFormat: testStoreLogFormat,
-				LogOutput: testStoreLogOutput,
-			}
-
-			s, err := store.Open(cfg)
-			if c.wantErr {
-				if err == nil {
-					t.Fatalf("expected error, got nil")
-				}
-
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("Open: %v", err)
-			}
-
-			defer func() { _ = s.Close() }()
-
-			if _, err := os.Stat(cfg.DBPath); err != nil {
-				t.Fatalf("database file not created: %v", err)
-			}
-
-			if err := s.Ping(context.Background()); err != nil {
-				t.Fatalf("Ping: %v", err)
-			}
-
-			db, err := sql.Open("sqlite", cfg.DBPath)
-			if err != nil {
-				t.Fatalf("open database for verification: %v", err)
-			}
-			defer func() { _ = db.Close() }()
-
-			var version int
-			if err := db.QueryRowContext(
-				context.Background(),
-				`SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 1`,
-			).Scan(&version); err != nil {
-				t.Fatalf("query schema_migrations: %v", err)
-			}
-
-			if version != len(store.Migrations) {
-				t.Fatalf("expected migration version %d, got %d", len(store.Migrations), version)
-			}
+			runOpenCase(t, c)
 		})
 	}
 }
