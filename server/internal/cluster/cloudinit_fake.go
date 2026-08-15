@@ -1,30 +1,37 @@
 package cluster
 
+// Demo cloud-init fixture constants, defined once to avoid repeating the
+// literals across the fake's seeded configs (go:S1192).
+const (
+	fakeSSHKey       = "ssh-ed25519 AAAA-demo-alice@laptop"
+	fakeSearchDomain = "example.internal"
+)
+
 // originalFakeCloudInitConfigs returns the initial structured state used by the fake browser demo.
 func originalFakeCloudInitConfigs() map[fakeCloudInitKey]CloudInitConfig {
 	return map[fakeCloudInitKey]CloudInitConfig{
 		{node: FakeNode01, vmid: 100}: {
 			User:         FakeCloudInitUser,
-			SSHKeys:      []string{"ssh-ed25519 AAAA-demo-alice@laptop"},
+			SSHKeys:      []string{fakeSSHKey},
 			IPMode:       CloudInitIPModeDHCP,
 			DNSServer:    FakeCloudInitDNS,
-			SearchDomain: "example.internal",
+			SearchDomain: fakeSearchDomain,
 		},
 		{node: FakeNode01, vmid: 101}: {
 			User:         FakeCloudInitUser,
-			SSHKeys:      []string{"ssh-ed25519 AAAA-demo-alice@laptop"},
+			SSHKeys:      []string{fakeSSHKey},
 			IPMode:       CloudInitIPModeStatic,
 			IPAddress:    "10.0.0.42/24",
 			Gateway:      "10.0.0.1",
 			DNSServer:    FakeCloudInitDNS,
-			SearchDomain: "example.internal",
+			SearchDomain: fakeSearchDomain,
 		},
 		{node: FakeNode01, vmid: 102}: {
 			User:         FakeCloudInitUser,
-			SSHKeys:      []string{"ssh-ed25519 AAAA-demo-alice@laptop"},
+			SSHKeys:      []string{fakeSSHKey},
 			IPMode:       CloudInitIPModeDHCP,
 			DNSServer:    FakeCloudInitDNS,
-			SearchDomain: "example.internal",
+			SearchDomain: fakeSearchDomain,
 		},
 	}
 }
