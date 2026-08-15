@@ -24,9 +24,25 @@ type DeleteResult struct {
 	UserDeleted bool
 }
 
+// CascadeDeps groups the shared dependencies and context for a pool cascade
+// (Delete / stopMembers / deleteMembers). It collapses the eight positional
+// parameters those functions used to take (SonarQube go:S107).
+type CascadeDeps struct {
+	Actor      auth.Identity
+	Client     cluster.Client
+	Projection *inventory.Projection
+	ClusterName string
+	Writer     cluster.Writer
+	Audit      vm.AuditRecorder
+	Refresher  vm.IndexRefresher
+}
+
 // Delete stops and purges pool members through T05's VM write paths, then
 // removes the pool and makes a best-effort user deletion.
-func Delete(ctx context.Context, actor auth.Identity, client cluster.Client, projection *inventory.Projection, clusterName, name string, writer cluster.Writer, audit vm.AuditRecorder, refresher vm.IndexRefresher) (DeleteResult, error) {
+func Delete(ctx context.Context, deps CascadeDeps, name string) (DeleteResult, error) {
+	actor := deps.Actor
+	client := deps.Client
+	projection := deps.Projection
 	if !actor.IsAdmin {
 		return DeleteResult{}, ErrForbidden
 	}
@@ -38,9 +54,9 @@ func Delete(ctx context.Context, actor auth.Identity, client cluster.Client, pro
 		return DeleteResult{}, ErrProjectionNotReady
 	}
 	members := append([]cluster.VM(nil), index.ByPool[name]...)
-	stopMembers(ctx, actor, projection, clusterName, members, writer, audit, refresher)
+	stopMembers(ctx, deps, members)
 	pauseCascade(ctx, len(members) > 0)
-	deleteMembers(ctx, actor, projection, clusterName, members, writer, audit, refresher)
+	deleteMembers(ctx, deps, members)
 	waitForEmpty(ctx, projection, name, len(members) > 0)
 	if err := client.DeletePool(ctx, name); err != nil {
 		return DeleteResult{}, err
@@ -62,7 +78,13 @@ func ensurePoolExists(ctx context.Context, client cluster.Client, name string) e
 	return ErrNotFound
 }
 
-func stopMembers(ctx context.Context, actor auth.Identity, projection *inventory.Projection, clusterName string, members []cluster.VM, writer cluster.Writer, audit vm.AuditRecorder, refresher vm.IndexRefresher) {
+func stopMembers(ctx context.Context, deps CascadeDeps, members []cluster.VM) {
+	actor := deps.Actor
+	projection := deps.Projection
+	clusterName := deps.ClusterName
+	writer := deps.Writer
+	audit := deps.Audit
+	refresher := deps.Refresher
 	for _, member := range members {
 		if member.Status != cluster.VMRunning {
 			continue
@@ -95,7 +117,13 @@ func pauseCascade(ctx context.Context, needed bool) {
 	}
 }
 
-func deleteMembers(ctx context.Context, actor auth.Identity, projection *inventory.Projection, clusterName string, members []cluster.VM, writer cluster.Writer, audit vm.AuditRecorder, refresher vm.IndexRefresher) {
+func deleteMembers(ctx context.Context, deps CascadeDeps, members []cluster.VM) {
+	actor := deps.Actor
+	projection := deps.Projection
+	clusterName := deps.ClusterName
+	writer := deps.Writer
+	audit := deps.Audit
+	refresher := deps.Refresher
 	for _, member := range members {
 		index := projection.Load()
 		if index == nil {
