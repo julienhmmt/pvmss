@@ -162,7 +162,7 @@
 		</p>
 	{/if}
 {:else}
-	<table class="w-full border-collapse text-left text-sm">
+	<table class="pv-responsive-table text-sm">
 		<caption class="sr-only">{m['vms.list.caption']()}</caption>
 		<thead>
 			<tr class="border-b border-border">
@@ -197,7 +197,7 @@
 		<tbody>
 			{#each store.result?.items ?? [] as machine (`${machine.cluster}:${machine.vmid}`)}
 				<tr class="border-b border-border last:border-0" data-testid="vm-row">
-					<td class="px-3 py-2">
+					<td class="px-3 py-2" data-nolabel="true">
 						<input
 							type="checkbox"
 							class="h-4 w-4 rounded border-border"
@@ -207,9 +207,9 @@
 							aria-label={m['vms.list.selectRow']({ name: machine.name })}
 						/>
 					</td>
-					<td class="px-3 py-2 font-mono text-muted-foreground">{machine.cluster}</td>
-					<td class="px-3 py-2 font-mono text-muted-foreground">{machine.vmid}</td>
-					<td class="px-3 py-2 font-medium">
+					<td class="px-3 py-2 font-mono text-muted-foreground" data-label={m['vms.list.columnCluster']()}>{machine.cluster}</td>
+					<td class="px-3 py-2 font-mono text-muted-foreground" data-label={m['vms.list.columnId']()}>{machine.vmid}</td>
+					<td class="px-3 py-2 font-medium" data-label={m['vms.list.columnName']()}>
 						<a
 							href={resolve(`/vms/${encodeURIComponent(machine.cluster)}/${machine.vmid}`)}
 							class="hover:underline"
@@ -218,8 +218,8 @@
 							{machine.name}
 						</a>
 					</td>
-					<td class="px-3 py-2 font-mono text-muted-foreground">{machine.node}</td>
-					<td class="px-3 py-2">
+					<td class="px-3 py-2 font-mono text-muted-foreground" data-label={m['vms.list.columnNode']()}>{machine.node}</td>
+					<td class="px-3 py-2" data-label={m['vms.list.columnStatus']()}>
 						<span
 							class="inline-flex items-center rounded-full px-2 py-0.5 text-xs {statusClasses[
 								machine.status
@@ -228,10 +228,10 @@
 							{machine.status}
 						</span>
 					</td>
-					<td class="px-3 py-2 font-mono text-muted-foreground">{machine.cpuCores} {m['common.cores']()}</td>
-					<td class="px-3 py-2 font-mono text-muted-foreground">{formatBytes(machine.memoryTotal)}</td>
+					<td class="px-3 py-2 font-mono text-muted-foreground" data-label={m['vms.list.columnCpu']()}>{machine.cpuCores} {m['common.cores']()}</td>
+					<td class="px-3 py-2 font-mono text-muted-foreground" data-label={m['vms.list.columnMemory']()}>{formatBytes(machine.memoryTotal)}</td>
 					{#if store.scope === 'all'}
-						<td class="px-3 py-2 text-muted-foreground">{machine.pool}</td>
+						<td class="px-3 py-2 text-muted-foreground" data-label={m['vms.list.columnPool']()}>{machine.pool}</td>
 					{/if}
 				</tr>
 			{/each}

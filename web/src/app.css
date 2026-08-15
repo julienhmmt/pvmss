@@ -264,3 +264,70 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Layer B — responsive table pattern. On viewports < 640px each row
+   collapses into a stacked card of label/value pairs driven by the
+   `data-label` attribute on each <td>. On >= 640px the element is a
+   normal table. The <thead> is hidden on mobile (labels move inline). */
+.pv-responsive-table {
+	width: 100%;
+	border-collapse: collapse;
+	text-align: left;
+}
+
+@media (max-width: 639px) {
+	.pv-responsive-table thead {
+		display: none;
+	}
+
+	.pv-responsive-table,
+	.pv-responsive-table tbody,
+	.pv-responsive-table tr,
+	.pv-responsive-table td {
+		display: block;
+		width: 100%;
+	}
+
+	.pv-responsive-table tr {
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		padding: 0.5rem 0.75rem;
+		margin-bottom: 0.75rem;
+		background: var(--card);
+		box-shadow: 0 1px 2px oklch(28% 0.01 56deg / 0.04);
+	}
+
+	.pv-responsive-table tr:last-child {
+		margin-bottom: 0;
+	}
+
+	.pv-responsive-table td {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.375rem 0;
+		border: none;
+		text-align: right;
+	}
+
+	.pv-responsive-table td::before {
+		content: attr(data-label);
+		font-weight: 500;
+		color: var(--muted-foreground);
+		text-align: left;
+		flex-shrink: 0;
+	}
+
+	/* Cells opted out of the label/value layout (checkboxes, actions). */
+	.pv-responsive-table td[data-nolabel='true'] {
+		justify-content: flex-start;
+		padding-top: 0.5rem;
+		border-bottom: 1px solid var(--border-subtle);
+		margin-bottom: 0.25rem;
+	}
+
+	.pv-responsive-table td[data-nolabel='true']::before {
+		content: none;
+	}
+}

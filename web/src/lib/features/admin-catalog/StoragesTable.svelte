@@ -15,7 +15,7 @@
 </script>
 
 <div class="overflow-x-auto rounded-lg border border-border">
-	<table class="w-full text-sm">
+	<table class="pv-responsive-table text-sm">
 		<thead class="bg-muted/50 text-left">
 			<tr>
 				<th class="px-4 py-2 font-medium">{m['common.name']()}</th>
@@ -28,11 +28,11 @@
 		<tbody>
 			{#each storages as storage (storage.name + storage.node)}
 				<tr class="border-t border-border">
-					<td class="px-4 py-2 font-mono">{storage.name}</td>
-					<td class="px-4 py-2 font-mono">{storage.node}</td>
-					<td class="px-4 py-2">{storage.type}</td>
-					<td class="px-4 py-2">{formatBytes(storage.usedBytes)} / {formatBytes(storage.totalBytes)}</td>
-					<td class="px-4 py-2">
+					<td class="px-4 py-2 font-mono" data-label={m['common.name']()}>{storage.name}</td>
+					<td class="px-4 py-2 font-mono" data-label={m['common.node']()}>{storage.node}</td>
+					<td class="px-4 py-2" data-label={m['common.type']()}>{storage.type}</td>
+					<td class="px-4 py-2" data-label={m['admin.catalog.usage']()}>{formatBytes(storage.usedBytes)} / {formatBytes(storage.totalBytes)}</td>
+					<td class="px-4 py-2" data-label={m['admin.catalog.approvedStatus']()}>
 						<span
 							class="inline-flex items-center gap-2"
 							aria-busy={toggling === `storage:${storage.name}@${storage.node}`}
