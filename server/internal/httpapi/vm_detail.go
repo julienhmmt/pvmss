@@ -50,8 +50,6 @@ func NewVMDetail(projection *inventory.Projection, authHandler *Auth, writer clu
 	return &VMDetail{projection: projection, auth: authHandler, writer: writer, store: st, refresher: refresher, policy: policyService, log: log}
 }
 
-// NewVMDetailWithRegistry adds cluster-aware reads while retaining the legacy
-// default projection for write-domain compatibility.
 // VMDetailDeps groups the shared dependencies for constructing a VMDetail
 // handler. It collapses the seven positional parameters NewVMDetailWithRegistry
 // used to take (SonarQube go:S107).
@@ -65,6 +63,8 @@ type VMDetailDeps struct {
 	Log        *slog.Logger
 }
 
+// NewVMDetailWithRegistry adds cluster-aware reads while retaining the legacy
+// default projection for write-domain compatibility.
 func NewVMDetailWithRegistry(deps VMDetailDeps, services ...*policy.Policy) *VMDetail {
 	handler := NewVMDetail(deps.Projection, deps.Auth, deps.Writer, deps.Store, deps.Refresher, deps.Log, services...)
 	handler.source = deps.Source
@@ -391,7 +391,6 @@ func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 	h.writeEntity(w, entity)
 }
 
-//nolint:gocyclo // one handler owns the shared Resolve/catalog setup for three disk verbs
 func (h *VMDetail) handleDisk(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
@@ -445,7 +444,7 @@ func (h *VMDetail) handleDisk(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleDiskCreate adds a new disk to the VM from a POST body.
-func (h *VMDetail) handleDiskCreate(w http.ResponseWriter, r *http.Request, deps vm.DiskDependencies, vmid int) {
+func (h *VMDetail) handleDiskCreate(w http.ResponseWriter, r *http.Request, deps vm.DiskDependencies, _ int) {
 	var request diskRequest
 	if err := decodeJSON(w, r, &request); err != nil {
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)

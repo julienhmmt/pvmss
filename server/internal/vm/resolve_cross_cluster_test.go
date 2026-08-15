@@ -18,12 +18,12 @@ func TestResolveCrossCluster(t *testing.T) {
 		VMID: 101, Name: "secondary-web", Node: "secondary-node", Pool: "secondary-pool", Tags: []string{"pvmss"},
 	})
 	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{
-		"default":   defaultIndex,
-		"secondary": secondaryIndex,
+		testClusterName: defaultIndex,
+		"secondary":     secondaryIndex,
 	})
 	actor := auth.Identity{Username: "admin", IsAdmin: true}
 
-	defaultEntity, err := vm.Resolve(registry, actor, "default", 101)
+	defaultEntity, err := vm.Resolve(registry, actor, testClusterName, 101)
 	if err != nil {
 		t.Fatalf("Resolve(default): %v", err)
 	}

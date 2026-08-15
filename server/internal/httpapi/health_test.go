@@ -22,7 +22,7 @@ const (
 )
 
 //nolint:paralleltest // serial: shared health fixture
-func TestHealth(t *testing.T) { //nolint:gocyclo // table-driven test covers all health response branches
+func TestHealth(t *testing.T) {
 	leakyErr := errors.New("connection refused: /tmp/pvmss.db")
 
 	healthCases := []healthCase{

@@ -21,7 +21,7 @@ const (
 	// Centralised so each literal is defined once (SonarQube go:S1192).
 	msgAuthRequired          = "authentication required"
 	msgMethodNotAllowed      = "method not allowed"
-	msgInvalidCredentials    = "invalid credentials"
+	msgInvalidCredentials    = "invalid credentials" //nolint:gosec // false positive: error message, not a credential
 	msgInvalidVMPath         = "invalid VM path"
 	msgInventoryNotReady     = "inventory has not been populated yet"
 	msgInvalidRequestBody    = "invalid request body"

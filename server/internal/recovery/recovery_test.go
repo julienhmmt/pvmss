@@ -86,8 +86,8 @@ func TestRecoveryCLI_EndToEnd(t *testing.T) {
 	runChecklistGolden(ctx, t, checklistBin, repoRoot)
 
 	// --- pvmss-recover: seed a legacy fixture, run against a migrated v0.4 db ---
-	legacyPath := openAndSeedLegacyDB(t, ctx)
-	v04Path := openAndMigrateV04DB(t, ctx)
+	legacyPath := openAndSeedLegacyDB(ctx, t)
+	v04Path := openAndMigrateV04DB(t)
 
 	runRecoverGolden(ctx, t, recoverBin, legacyPath, v04Path)
 	assertRecoverEdgeCases(ctx, t, recoverBin, legacyPath, v04Path)
@@ -97,7 +97,7 @@ func TestRecoveryCLI_EndToEnd(t *testing.T) {
 // legacy schema, seeds it with the default dataset, and returns its path.
 // Extracted from TestRecoveryCLI_EndToEnd to keep that test's Cognitive
 // Complexity under the go:S3776 threshold.
-func openAndSeedLegacyDB(t *testing.T, ctx context.Context) string {
+func openAndSeedLegacyDB(ctx context.Context, t *testing.T) string {
 	t.Helper()
 
 	path := filepath.Join(t.TempDir(), "legacy.db")
@@ -122,7 +122,7 @@ func openAndSeedLegacyDB(t *testing.T, ctx context.Context) string {
 
 // openAndMigrateV04DB creates a file-backed v0.4 fixture database, runs the
 // v0.4 migrations, and returns its path.
-func openAndMigrateV04DB(t *testing.T, ctx context.Context) string {
+func openAndMigrateV04DB(t *testing.T) string {
 	t.Helper()
 
 	path := filepath.Join(t.TempDir(), "v04.db")

@@ -50,6 +50,7 @@ func NewVMCloudInit(deps VMCloudInitDeps, services ...*policy.Policy) *VMCloudIn
 	if len(services) > 0 {
 		policyService = services[0]
 	}
+
 	if policyService == nil && deps.Store != nil {
 		policyService = policy.New(deps.Store, deps.Projection, nil)
 	}

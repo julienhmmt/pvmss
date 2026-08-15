@@ -185,12 +185,6 @@ type ConsoleClient interface {
 	GetVNCTicket(ctx context.Context, clusterName string, vmid int, node string) (cluster.VNCProxyTicket, error)
 }
 
-// GetConsoleTicket is the only path from a ticket HTTP request to a console
-// capability (FR-001). It calls Resolve() first (the same and only ownership
-// gate every other write uses), then the cluster client to obtain the
-// Proxmox-side ticket, then the in-memory store to issue the opaque capability,
-// then records the audit entry. The node is always Resolve()'s server-resolved
-// value — the caller never supplies one (FR-007).
 // ConsoleTicketDeps groups the shared dependencies and resolution context
 // for GetConsoleTicket. It collapses the eight positional parameters the
 // function used to take (SonarQube go:S107).
@@ -210,6 +204,12 @@ type ConsoleTicketDeps struct {
 // Proxmox-side ticket, then the in-memory store to issue the opaque capability,
 // then records the audit entry. The node is always Resolve()'s server-resolved
 // value — the caller never supplies one (FR-007).
+// GetConsoleTicket is the only path from a ticket HTTP request to a console
+// capability (FR-001). It calls Resolve() first (the same and only ownership
+// gate every other write uses), then the cluster client to obtain the
+// Proxmox-side ticket, then the in-memory store to issue the opaque capability,
+// then records the audit entry. The node is always Resolve()'s server-resolved
+// value — the caller never supplies one (FR-007).
 func GetConsoleTicket(ctx context.Context, deps ConsoleTicketDeps) (VNCTicket, error) {
 	index := deps.Index
 	actor := deps.Actor
@@ -218,6 +218,7 @@ func GetConsoleTicket(ctx context.Context, deps ConsoleTicketDeps) (VNCTicket, e
 	client := deps.Client
 	store := deps.Store
 	audit := deps.Audit
+
 	entity, err := Resolve(index, actor, clusterName, vmid)
 	if err != nil {
 		return VNCTicket{}, err

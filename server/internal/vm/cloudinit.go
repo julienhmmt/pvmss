@@ -63,6 +63,7 @@ func SetCloudInitConfig(ctx context.Context, deps CloudInitConfigDeps, update cl
 	writer := deps.Writer
 	audit := deps.Audit
 	refresher := deps.Refresher
+
 	if err := validateCloudInitUpdate(update); err != nil {
 		return false, err
 	}
@@ -134,6 +135,7 @@ func SetCloudInitSnippet(ctx context.Context, deps CloudInitSnippetDeps, content
 	writer := deps.Writer
 	st := deps.Store
 	service := deps.Service
+
 	if service == nil {
 		return policy.ErrUnavailable
 	}
