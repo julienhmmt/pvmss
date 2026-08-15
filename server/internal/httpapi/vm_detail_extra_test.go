@@ -127,7 +127,7 @@ func TestVMDetail_Get_RegistryClusterNotFound(t *testing.T) {
 	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{"secondary": &secondaryIdx})
 	projection := inventory.NewProjectionFromIndex(&secondaryIdx)
 	authHandler := newAuthHandler(t)
-	handler := httpapi.NewVMDetailWithRegistry(registry, projection, authHandler, cluster.Fake{}, nil, nil, slog.Default())
+	handler := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: registry, Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: nil, Refresher: nil, Log: slog.Default()})
 	cookie := aliceCookie(t, authHandler)
 
 	rec, env := serveDetailError(handler, detailRequest(http.MethodGet, "/api/v1/vms/default/101", "", cookie))

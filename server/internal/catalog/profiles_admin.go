@@ -126,7 +126,7 @@ func CreateProfile(ctx context.Context, st *store.Store, cluster string, spec Pr
 		return AdminProfile{}, ErrDuplicateProfile
 	}
 
-	if err := st.InsertProfile(ctx, cluster, id, label, spec.CPUCores, spec.MemoryMB, spec.DiskGB, spec.Bus); err != nil {
+	if err := st.InsertProfile(ctx, cluster, id, store.ProfileValues{Label: label, CPUCores: spec.CPUCores, MemoryMB: spec.MemoryMB, DiskGB: spec.DiskGB, Bus: spec.Bus}); err != nil {
 		if errors.Is(err, store.ErrDuplicate) {
 			return AdminProfile{}, ErrDuplicateProfile
 		}
@@ -161,7 +161,7 @@ func UpdateProfile(ctx context.Context, st *store.Store, cluster, id string, spe
 		return AdminProfile{}, ErrProfileNotFound
 	}
 
-	if err := st.UpdateProfile(ctx, cluster, id, label, spec.CPUCores, spec.MemoryMB, spec.DiskGB, spec.Bus); err != nil {
+	if err := st.UpdateProfile(ctx, cluster, id, store.ProfileValues{Label: label, CPUCores: spec.CPUCores, MemoryMB: spec.MemoryMB, DiskGB: spec.DiskGB, Bus: spec.Bus}); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return AdminProfile{}, ErrProfileNotFound
 		}

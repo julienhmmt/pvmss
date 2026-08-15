@@ -99,7 +99,7 @@ func TestRouter_CloudInitRoutesAreSpecific(t *testing.T) {
 	clusterRefresh := httpapi.NewClusterRefresh(inventory.NewRefresher(inventory.NewWorker(&stubClusterClient{}, projection, time.Hour, logger), 5*time.Second), logger)
 	vms := httpapi.NewVMs(projection, authHandler, 100, -1, logger)
 	vmDetail := httpapi.NewVMDetail(projection, authHandler, cluster.Fake{}, nil, nil, logger)
-	cloudInit := httpapi.NewVMCloudInit(projection, authHandler, cluster.Fake{}, cluster.Fake{}, nil, nil, logger)
+	cloudInit := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{Projection: projection, Auth: authHandler, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: nil, Refresher: nil, Log: logger})
 	mux := httpapi.NewRouter(httpapi.RouterConfig{
 		Health: health, ClusterNodes: clusterNodes, ClusterRefresh: clusterRefresh,
 		VMs: vms, VMDetail: vmDetail, VMCloudInit: cloudInit, Auth: authHandler, Log: logger,

@@ -42,7 +42,7 @@ func newVMCloudInitHandler(t *testing.T) (*httpapi.VMCloudInit, *httpapi.Auth, *
 	t.Cleanup(func() { _ = st.Close() })
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
 	worker := inventory.NewWorker(cluster.Fake{}, projection, time.Hour, logger)
-	handler := httpapi.NewVMCloudInit(projection, authHandler, cluster.Fake{}, cluster.Fake{}, st, worker, logger)
+	handler := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{Projection: projection, Auth: authHandler, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Refresher: worker, Log: logger})
 
 	return handler, authHandler, st
 }
