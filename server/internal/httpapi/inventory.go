@@ -37,7 +37,7 @@ func (h *ClusterRefresh) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", "POST")
 
-		if err := writeClusterError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed"); err != nil {
+		if err := writeClusterError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed); err != nil {
 			h.log.Error("failed to write method not allowed", "component", "httpapi", "error", err)
 		}
 
@@ -78,7 +78,7 @@ func (h *ClusterRefresh) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		default:
 			h.log.Error("manual refresh failed", "component", "httpapi", "error", err)
 
-			if writeErr := writeClusterError(w, http.StatusInternalServerError, "internal_error", "internal server error"); writeErr != nil {
+			if writeErr := writeClusterError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError); writeErr != nil {
 				h.log.Error("failed to write internal_error", "component", "httpapi", "error", writeErr)
 			}
 
@@ -92,7 +92,7 @@ func (h *ClusterRefresh) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.log.Error("failed to marshal refresh response", "component", "httpapi", "error", err)
 
-		if writeErr := writeClusterError(w, http.StatusInternalServerError, "internal_error", "internal server error"); writeErr != nil {
+		if writeErr := writeClusterError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError); writeErr != nil {
 			h.log.Error("failed to write internal_error", "component", "httpapi", "error", writeErr)
 		}
 

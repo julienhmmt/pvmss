@@ -58,7 +58,7 @@ func (h *AdminCatalog) ServeProfiles(w http.ResponseWriter, r *http.Request) {
 	profiles, err := catalog.ListAdminProfiles(r.Context(), h.store, clusterName)
 	if err != nil {
 		h.log.Error("admin list profiles failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -78,7 +78,7 @@ func (h *AdminCatalog) ServeProfiles(w http.ResponseWriter, r *http.Request) {
 func (h *AdminCatalog) ServeProfileCreate(w http.ResponseWriter, r *http.Request) {
 	var req profileCreateRequest
 	if err := decodeJSON(w, r, &req); err != nil {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
 
@@ -102,7 +102,7 @@ func (h *AdminCatalog) ServeProfileCreate(w http.ResponseWriter, r *http.Request
 
 	if err != nil {
 		h.log.Error("admin create profile failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -123,7 +123,7 @@ func (h *AdminCatalog) ServeProfileUpdate(w http.ResponseWriter, r *http.Request
 
 	var req profileUpdateRequest
 	if err := decodeJSON(w, r, &req); err != nil {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
 
@@ -147,7 +147,7 @@ func (h *AdminCatalog) ServeProfileUpdate(w http.ResponseWriter, r *http.Request
 
 	if err != nil {
 		h.log.Error("admin update profile failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}

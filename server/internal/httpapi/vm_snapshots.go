@@ -82,7 +82,7 @@ func (h *VMSnapshots) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.handleNamedAction(w, r, vm.DeleteSnapshot)
 	default:
 		w.Header().Set("Allow", "GET, POST, DELETE")
-		h.writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+		h.writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
 	}
 }
 
@@ -95,7 +95,7 @@ func (h *VMSnapshots) handleList(w http.ResponseWriter, r *http.Request) {
 
 	index := h.projection.Load()
 	if index == nil {
-		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
 		return
 	}
 
@@ -117,7 +117,7 @@ func (h *VMSnapshots) handleList(w http.ResponseWriter, r *http.Request) {
 func (h *VMSnapshots) handleCreate(w http.ResponseWriter, r *http.Request) {
 	var request snapshotCreateRequest
 	if err := decodeJSON(w, r, &request); err != nil {
-		h.writeError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		h.writeError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
 
@@ -128,7 +128,7 @@ func (h *VMSnapshots) handleCreate(w http.ResponseWriter, r *http.Request) {
 
 	index := h.projection.Load()
 	if index == nil {
-		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
 		return
 	}
 
@@ -152,7 +152,7 @@ func (h *VMSnapshots) handleNamedAction(w http.ResponseWriter, r *http.Request, 
 
 	index := h.projection.Load()
 	if index == nil {
-		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
 		return
 	}
 
@@ -171,7 +171,7 @@ func (h *VMSnapshots) handleNamedAction(w http.ResponseWriter, r *http.Request, 
 func (h *VMSnapshots) requestTarget(w http.ResponseWriter, r *http.Request) (auth.Identity, string, int, bool) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
-		h.writeError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		h.writeError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return auth.Identity{}, "", 0, false
 	}
 
@@ -179,7 +179,7 @@ func (h *VMSnapshots) requestTarget(w http.ResponseWriter, r *http.Request) (aut
 
 	vmid, err := strconv.Atoi(r.PathValue("vmid"))
 	if clusterName == "" || err != nil || vmid < 1 {
-		h.writeError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
+		h.writeError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
 		return auth.Identity{}, "", 0, false
 	}
 
@@ -200,9 +200,9 @@ func snapshotDTOFromModel(snapshot vm.Snapshot) snapshotDTO {
 func (h *VMSnapshots) writeSnapshotError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrForbidden):
-		h.writeError(w, http.StatusForbidden, "forbidden", "not your VM")
+		h.writeError(w, http.StatusForbidden, "forbidden", msgNotYourVM)
 	case errors.Is(err, vm.ErrNotFound):
-		h.writeError(w, http.StatusNotFound, "not_found", "VM not found")
+		h.writeError(w, http.StatusNotFound, "not_found", msgVMNotFound)
 	case errors.Is(err, vm.ErrInvalidSnapshotName):
 		h.writeError(w, http.StatusBadRequest, "invalid_name", err.Error())
 	case errors.Is(err, vm.ErrDuplicateSnapshotName):
@@ -216,12 +216,12 @@ func (h *VMSnapshots) writeSnapshotError(w http.ResponseWriter, err error) {
 	case errors.Is(err, vm.ErrSnapshotNotFound):
 		h.writeError(w, http.StatusNotFound, "snapshot_not_found", err.Error())
 	case errors.Is(err, policy.ErrUnavailable):
-		h.writeError(w, http.StatusServiceUnavailable, "policy_unavailable", "policy service is not configured")
+		h.writeError(w, http.StatusServiceUnavailable, "policy_unavailable", msgPolicyUnavailable)
 	case errors.Is(err, cluster.ErrNotFound):
-		h.writeError(w, http.StatusBadGateway, "cluster_error", "cluster rejected the request")
+		h.writeError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
 	default:
 		h.log.Error("vm snapshot operation failed", "component", "httpapi", "error", err)
-		h.writeError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.writeError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
 }
 
@@ -229,7 +229,7 @@ func (h *VMSnapshots) writeSnapshotError(w http.ResponseWriter, err error) {
 func (h *VMSnapshots) writePayload(w http.ResponseWriter, status int, value any) {
 	body, err := json.Marshal(value)
 	if err != nil {
-		h.writeError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.writeError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
 

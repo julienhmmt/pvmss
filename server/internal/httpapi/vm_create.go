@@ -88,13 +88,13 @@ type catalogDTO struct {
 func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
-		h.writeCreateError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		h.writeCreateError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return
 	}
 
 	var req vm.CreateRequest
 	if err := decodeJSON(w, r, &req); err != nil {
-		h.writeCreateError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		h.writeCreateError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
 
@@ -127,7 +127,7 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // identity-specific filtering beyond requiring authentication.
 func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 	if _, err := h.auth.Principal(r); err != nil {
-		h.writeCreateError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		h.writeCreateError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return
 	}
 
@@ -139,7 +139,7 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 	resources, err := catalog.ApprovedResources(r.Context(), h.store, clusterName)
 	if err != nil {
 		h.log.Error("catalog read failed", "component", "httpapi", "error", err)
-		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -147,7 +147,7 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 	profiles, err := catalog.Profiles(r.Context(), h.store, clusterName)
 	if err != nil {
 		h.log.Error("profile read failed", "component", "httpapi", "error", err)
-		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -155,7 +155,7 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 	templates, err := catalog.CloudInitTemplates(r.Context(), h.store, clusterName)
 	if err != nil {
 		h.log.Error("cloudinit templates read failed", "component", "httpapi", "error", err)
-		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -222,10 +222,10 @@ func (h *VMCreate) writeCreateFailure(w http.ResponseWriter, err error) {
 		h.writeCreateError(w, http.StatusBadRequest, "not_approved", err.Error())
 	case errors.Is(err, vm.ErrClusterCreate):
 		h.log.Error("cluster create failed", "component", "httpapi", "error", err)
-		h.writeCreateError(w, http.StatusBadGateway, "cluster_error", "cluster rejected the request")
+		h.writeCreateError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
 	default:
 		h.log.Error("vm create failed", "component", "httpapi", "error", err)
-		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
 }
 
@@ -233,7 +233,7 @@ func (h *VMCreate) writeCreateJSON(w http.ResponseWriter, status int, value any)
 	body, err := json.Marshal(value)
 	if err != nil {
 		h.log.Error("failed to marshal response", "component", "httpapi", "error", err)
-		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
