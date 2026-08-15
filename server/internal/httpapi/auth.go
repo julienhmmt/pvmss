@@ -91,7 +91,7 @@ func NewAuthWithRegistry(registry cluster.ClientProvider, st *store.Store, sessi
 // each, so neither is a branch inside the other (contracts/auth-login.md).
 func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeAuthError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+		writeAuthError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
 		return
 	}
 
@@ -118,13 +118,13 @@ func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		h.log.Error("select cluster for login failed", "component", "httpapi", "error", err)
-		writeAuthError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
 	result, err := client.Authenticate(r.Context(), normalizePVEUsername(request.Username), request.Password)
 	if err != nil {
 		h.log.Info("pve authentication failed", "component", "httpapi", "error", err)
-		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", "invalid credentials")
+		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
 		return
 	}
 
@@ -134,7 +134,7 @@ func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 // AdminLogin authenticates the local emergency administrator, independent of any cluster.
 func (h *Auth) AdminLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeAuthError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+		writeAuthError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
 		return
 	}
 
@@ -145,7 +145,7 @@ func (h *Auth) AdminLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if request.Password == "" || h.adminHash == "" || bcrypt.CompareHashAndPassword([]byte(h.adminHash), []byte(request.Password)) != nil {
-		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", "invalid credentials")
+		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
 		return
 	}
 
@@ -155,7 +155,7 @@ func (h *Auth) AdminLogin(w http.ResponseWriter, r *http.Request) {
 func (h *Auth) startSession(w http.ResponseWriter, r *http.Request, identity auth.Identity) {
 	if err := h.sessions.SetCookie(r.Context(), w, identity); err != nil {
 		h.log.Error("failed to create session", "component", "httpapi", "error", err)
-		writeAuthError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -167,7 +167,7 @@ func (h *Auth) startSession(w http.ResponseWriter, r *http.Request, identity aut
 func (h *Auth) Me(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.Principal(r)
 	if err != nil {
-		writeAuthError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		writeAuthError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return
 	}
 
@@ -178,7 +178,7 @@ func (h *Auth) Me(w http.ResponseWriter, r *http.Request) {
 func (h *Auth) Require(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, err := h.Principal(r); err != nil {
-			writeAuthError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+			writeAuthError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 			return
 		}
 
@@ -198,12 +198,12 @@ func (h *Auth) RequireAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		identity, err := h.Principal(r)
 		if err != nil {
-			writeAuthError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+			writeAuthError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 			return
 		}
 
 		if !identity.IsAdmin {
-			writeAuthError(w, http.StatusForbidden, "forbidden", "admin only")
+			writeAuthError(w, http.StatusForbidden, "forbidden", msgAdminOnly)
 			return
 		}
 
@@ -231,13 +231,13 @@ func (h *Auth) Principal(r *http.Request) (auth.Identity, error) {
 // Logout revokes the authenticated browser session.
 func (h *Auth) Logout(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		writeAuthError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+		writeAuthError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
 		return
 	}
 
 	if err := h.sessions.Logout(r.Context(), w, r); err != nil {
 		h.log.Error("failed to revoke session", "component", "httpapi", "error", err)
-		writeAuthError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -251,7 +251,7 @@ func (h *Auth) Logout(w http.ResponseWriter, r *http.Request) {
 func (h *Auth) CreateToken(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.sessions.Resolve(r.Context(), r)
 	if err != nil {
-		writeAuthError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		writeAuthError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return
 	}
 
@@ -275,14 +275,14 @@ func (h *Auth) CreateToken(w http.ResponseWriter, r *http.Request) {
 func (h *Auth) ListTokens(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.sessions.Resolve(r.Context(), r)
 	if err != nil {
-		writeAuthError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		writeAuthError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return
 	}
 
 	tokens, err := h.tokens.List(r.Context(), identity.Username)
 	if err != nil {
 		h.log.Error("failed to list tokens", "component", "httpapi", "error", err)
-		writeAuthError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -301,7 +301,7 @@ func (h *Auth) ListTokens(w http.ResponseWriter, r *http.Request) {
 func (h *Auth) RevokeToken(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.sessions.Resolve(r.Context(), r)
 	if err != nil {
-		writeAuthError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		writeAuthError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return
 	}
 
@@ -312,7 +312,7 @@ func (h *Auth) RevokeToken(w http.ResponseWriter, r *http.Request) {
 		}
 
 		h.log.Error("failed to revoke token", "component", "httpapi", "error", err)
-		writeAuthError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -326,7 +326,7 @@ func (h *Auth) RevokeToken(w http.ResponseWriter, r *http.Request) {
 func (h *Auth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.sessions.Resolve(r.Context(), r)
 	if err != nil {
-		writeAuthError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		writeAuthError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return
 	}
 
@@ -345,14 +345,14 @@ func (h *Auth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	if h.clusters != nil && identity.Cluster != "" {
 		selected, selectErr := h.clusters.Client(identity.Cluster)
 		if selectErr != nil {
-			writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", "invalid credentials")
+			writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
 			return
 		}
 		client = selected
 	}
 	if err := client.ChangePassword(r.Context(), identity.Username, request.OldPassword, request.NewPassword); err != nil {
 		h.log.Info("password change failed", "component", "httpapi", "error", err)
-		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", "invalid credentials")
+		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
 
 		return
 	}
@@ -388,7 +388,7 @@ type authClusterDTO struct {
 // ServeClusters exposes the non-secret cluster choices needed before login.
 func (h *Auth) ServeClusters(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		writeAuthError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+		writeAuthError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
 		return
 	}
 	if h.clusterStore == nil {
@@ -398,7 +398,7 @@ func (h *Auth) ServeClusters(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.clusterStore.ListClusters(r.Context())
 	if err != nil {
 		h.log.Error("list login clusters failed", "component", "httpapi", "error", err)
-		writeAuthError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
 	result := make([]authClusterDTO, 0, len(rows))
@@ -461,7 +461,7 @@ func normalizePVEUsername(username string) string {
 func writeAuthJSON(w http.ResponseWriter, status int, value any) {
 	body, err := json.Marshal(value)
 	if err != nil {
-		writeAuthError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
 

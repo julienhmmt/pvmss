@@ -64,13 +64,13 @@ func (h *AdminCatalog) ServeNodes(w http.ResponseWriter, r *http.Request) {
 
 	client, err := h.clientFor(clusterName)
 	if err != nil {
-		writeAdminError(w, http.StatusNotFound, "not_found", "cluster not found")
+		writeAdminError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
 		return
 	}
 	nodes, err := catalog.AdminListNodes(r.Context(), h.store, client, clusterName)
 	if err != nil {
 		h.log.Error("admin list nodes failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -105,7 +105,7 @@ type toggleResponse struct {
 func (h *AdminCatalog) ServeNodeToggle(w http.ResponseWriter, r *http.Request) {
 	var req nodeToggleRequest
 	if err := decodeJSON(w, r, &req); err != nil {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
 
@@ -118,7 +118,7 @@ func (h *AdminCatalog) ServeNodeToggle(w http.ResponseWriter, r *http.Request) {
 
 	client, err := h.clientFor(clusterName)
 	if err != nil {
-		writeAdminError(w, http.StatusNotFound, "not_found", "cluster not found")
+		writeAdminError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
 		return
 	}
 	err = catalog.SetNodeEnabled(r.Context(), h.store, client, clusterName, req.Name, req.Enabled)
@@ -129,7 +129,7 @@ func (h *AdminCatalog) ServeNodeToggle(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		h.log.Error("admin toggle node failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -159,13 +159,13 @@ func (h *AdminCatalog) ServeStorages(w http.ResponseWriter, r *http.Request) {
 
 	client, err := h.clientFor(clusterName)
 	if err != nil {
-		writeAdminError(w, http.StatusNotFound, "not_found", "cluster not found")
+		writeAdminError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
 		return
 	}
 	storages, err := catalog.AdminListStorages(r.Context(), h.store, client, clusterName)
 	if err != nil {
 		h.log.Error("admin list storages failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -200,7 +200,7 @@ type storageToggleResponse struct {
 func (h *AdminCatalog) ServeStorageToggle(w http.ResponseWriter, r *http.Request) {
 	var req storageToggleRequest
 	if err := decodeJSON(w, r, &req); err != nil {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
 
@@ -213,7 +213,7 @@ func (h *AdminCatalog) ServeStorageToggle(w http.ResponseWriter, r *http.Request
 
 	client, err := h.clientFor(clusterName)
 	if err != nil {
-		writeAdminError(w, http.StatusNotFound, "not_found", "cluster not found")
+		writeAdminError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
 		return
 	}
 	err = catalog.SetStorageEnabled(r.Context(), h.store, client, clusterName, req.Name, req.Node, req.Enabled)
@@ -224,7 +224,7 @@ func (h *AdminCatalog) ServeStorageToggle(w http.ResponseWriter, r *http.Request
 
 	if err != nil {
 		h.log.Error("admin toggle storage failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -255,13 +255,13 @@ func (h *AdminCatalog) ServeBridges(w http.ResponseWriter, r *http.Request) {
 
 	client, err := h.clientFor(clusterName)
 	if err != nil {
-		writeAdminError(w, http.StatusNotFound, "not_found", "cluster not found")
+		writeAdminError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
 		return
 	}
 	bridges, err := catalog.AdminListBridges(r.Context(), h.store, client, clusterName)
 	if err != nil {
 		h.log.Error("admin list bridges failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -289,7 +289,7 @@ type bridgeToggleRequest struct {
 func (h *AdminCatalog) ServeBridgeToggle(w http.ResponseWriter, r *http.Request) {
 	var req bridgeToggleRequest
 	if err := decodeJSON(w, r, &req); err != nil {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
 
@@ -302,7 +302,7 @@ func (h *AdminCatalog) ServeBridgeToggle(w http.ResponseWriter, r *http.Request)
 
 	client, err := h.clientFor(clusterName)
 	if err != nil {
-		writeAdminError(w, http.StatusNotFound, "not_found", "cluster not found")
+		writeAdminError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
 		return
 	}
 	err = catalog.SetBridgeEnabled(r.Context(), h.store, client, clusterName, req.Name, req.Enabled)
@@ -313,7 +313,7 @@ func (h *AdminCatalog) ServeBridgeToggle(w http.ResponseWriter, r *http.Request)
 
 	if err != nil {
 		h.log.Error("admin toggle bridge failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -344,13 +344,13 @@ func (h *AdminCatalog) ServeISOs(w http.ResponseWriter, r *http.Request) {
 
 	client, err := h.clientFor(clusterName)
 	if err != nil {
-		writeAdminError(w, http.StatusNotFound, "not_found", "cluster not found")
+		writeAdminError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
 		return
 	}
 	isos, err := catalog.AdminListISOs(r.Context(), h.store, client, clusterName)
 	if err != nil {
 		h.log.Error("admin list isos failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -385,7 +385,7 @@ type isoToggleResponse struct {
 func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 	var req isoToggleRequest
 	if err := decodeJSON(w, r, &req); err != nil {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
 
@@ -398,7 +398,7 @@ func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 
 	client, err := h.clientFor(clusterName)
 	if err != nil {
-		writeAdminError(w, http.StatusNotFound, "not_found", "cluster not found")
+		writeAdminError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
 		return
 	}
 	err = catalog.SetISOEnabled(r.Context(), h.store, client, clusterName, req.Storage, req.File, req.Enabled)
@@ -409,7 +409,7 @@ func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		h.log.Error("admin toggle iso failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -441,7 +441,7 @@ func queryCluster(r *http.Request) string {
 func writeAdminJSON(w http.ResponseWriter, status int, value any) {
 	body, err := json.Marshal(value)
 	if err != nil {
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
 

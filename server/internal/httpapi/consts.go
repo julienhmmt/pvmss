@@ -16,4 +16,20 @@ const (
 	// codeInternalError is the stable error code paired with
 	// msgInternalServerError in admin error responses.
 	codeInternalError = "internal_error"
+
+	// Shared human-readable error messages used across the httpapi handlers.
+	// Centralised so each literal is defined once (SonarQube go:S1192).
+	msgAuthRequired          = "authentication required"
+	msgMethodNotAllowed      = "method not allowed"
+	msgInvalidCredentials    = "invalid credentials"
+	msgInvalidVMPath         = "invalid VM path"
+	msgInventoryNotReady     = "inventory has not been populated yet"
+	msgInvalidRequestBody    = "invalid request body"
+	msgHardwareCatalogFailed = "read hardware catalog failed"
+	msgNotYourVM             = "not your VM"
+	msgVMNotFound            = "VM not found"
+	msgClusterRejected       = "cluster rejected the request"
+	msgPolicyUnavailable     = "policy service is not configured"
+	msgClusterNotFound       = "cluster not found"
+	msgAdminOnly             = "admin only"
 )
