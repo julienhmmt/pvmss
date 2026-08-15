@@ -208,7 +208,7 @@
 						/>
 					</td>
 					<td class="px-3 py-2 font-mono text-muted-foreground">{machine.cluster}</td>
-					<td class="px-3 py-2 text-muted-foreground">{machine.vmid}</td>
+					<td class="px-3 py-2 font-mono text-muted-foreground">{machine.vmid}</td>
 					<td class="px-3 py-2 font-medium">
 						<a
 							href={resolve(`/vms/${encodeURIComponent(machine.cluster)}/${machine.vmid}`)}
@@ -218,7 +218,7 @@
 							{machine.name}
 						</a>
 					</td>
-					<td class="px-3 py-2 text-muted-foreground">{machine.node}</td>
+					<td class="px-3 py-2 font-mono text-muted-foreground">{machine.node}</td>
 					<td class="px-3 py-2">
 						<span
 							class="inline-flex items-center rounded-full px-2 py-0.5 text-xs {statusClasses[
@@ -228,8 +228,8 @@
 							{machine.status}
 						</span>
 					</td>
-					<td class="px-3 py-2 text-muted-foreground">{machine.cpuCores} {m['common.cores']()}</td>
-					<td class="px-3 py-2 text-muted-foreground">{formatBytes(machine.memoryTotal)}</td>
+					<td class="px-3 py-2 font-mono text-muted-foreground">{machine.cpuCores} {m['common.cores']()}</td>
+					<td class="px-3 py-2 font-mono text-muted-foreground">{formatBytes(machine.memoryTotal)}</td>
 					{#if store.scope === 'all'}
 						<td class="px-3 py-2 text-muted-foreground">{machine.pool}</td>
 					{/if}
