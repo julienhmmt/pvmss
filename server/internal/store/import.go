@@ -297,9 +297,18 @@ func replaceTable(ctx context.Context, tx *sql.Tx, uploadDB *sql.DB, table strin
 		return fmt.Errorf("delete from %s: %w", table, err)
 	}
 
-	// Stream rows from the upload and insert into the live DB.
-	//nolint:gosec // table and column names come from sqlite_master/PRAGMA, not user input
-	selectSQL := fmt.Sprintf(`SELECT %s FROM %s`, strings.Join(quoteCols(cols), ", "), table)
+	return streamRowsIntoLive(ctx, tx, uploadDB, table, cols)
+}
+
+// streamRowsIntoLive streams every row of `table` from the upload DB into the
+// live DB (within tx), using `cols` as the column list. Extracted from
+// replaceTable to keep its Cognitive Complexity under the SonarQube go:S3776
+// threshold. Table and column names come from sqlite_master/PRAGMA, not user
+// input.
+//
+//nolint:gosec // table and column names come from sqlite_master/PRAGMA, not user input
+func streamRowsIntoLive(ctx context.Context, tx *sql.Tx, uploadDB *sql.DB, table string, cols []string) error {
+	selectSQL, insertSQL := tableSelectInsertSQL(table, cols)
 
 	rows, err := uploadDB.QueryContext(ctx, selectSQL)
 	if err != nil {
@@ -307,18 +316,6 @@ func replaceTable(ctx context.Context, tx *sql.Tx, uploadDB *sql.DB, table strin
 	}
 
 	defer func() { _ = rows.Close() }()
-
-	placeholders := make([]string, len(cols))
-	for i := range cols {
-		placeholders[i] = "?"
-	}
-
-	//nolint:gosec // table and column names come from sqlite_master/PRAGMA, not user input
-	insertSQL := fmt.Sprintf(`INSERT INTO %s (%s) VALUES (%s)`,
-		table,
-		strings.Join(quoteCols(cols), ", "),
-		strings.Join(placeholders, ", "),
-	)
 
 	// Allocate one scan destination per column. Using *any lets the driver
 	// choose the right Go type per column (string, int64, []byte, etc.) and
@@ -333,14 +330,9 @@ func replaceTable(ctx context.Context, tx *sql.Tx, uploadDB *sql.DB, table strin
 			return fmt.Errorf("scan %s: %w", table, err)
 		}
 
-		insertArgs := make([]any, len(scanArgs))
-		for i, v := range scanArgs {
-			ptr, ok := v.(*any)
-			if !ok {
-				return fmt.Errorf("scan %s: unexpected scan destination type %T", table, v)
-			}
-
-			insertArgs[i] = *ptr
+		insertArgs, err := dereferenceScanArgs(table, scanArgs)
+		if err != nil {
+			return err
 		}
 
 		if _, err := tx.ExecContext(ctx, insertSQL, insertArgs...); err != nil {
@@ -353,6 +345,45 @@ func replaceTable(ctx context.Context, tx *sql.Tx, uploadDB *sql.DB, table strin
 	}
 
 	return nil
+}
+
+// tableSelectInsertSQL builds the SELECT (against the upload DB) and INSERT
+// (against the live DB) statements for `table` with columns `cols`. Extracted
+// from replaceTable for SonarQube go:S3776.
+//
+//nolint:gosec // table and column names come from sqlite_master/PRAGMA, not user input
+func tableSelectInsertSQL(table string, cols []string) (selectSQL, insertSQL string) {
+	placeholders := make([]string, len(cols))
+	for i := range cols {
+		placeholders[i] = "?"
+	}
+
+	selectSQL = fmt.Sprintf(`SELECT %s FROM %s`, strings.Join(quoteCols(cols), ", "), table)
+	insertSQL = fmt.Sprintf(`INSERT INTO %s (%s) VALUES (%s)`,
+		table,
+		strings.Join(quoteCols(cols), ", "),
+		strings.Join(placeholders, ", "),
+	)
+
+	return selectSQL, insertSQL
+}
+
+// dereferenceScanArgs converts the []*any scan destinations back into a slice
+// of concrete values for the INSERT. Returns an error if a scan destination
+// has an unexpected type (should never happen given scanArgs is built by
+// streamRowsIntoLive, but guards against future regressions).
+func dereferenceScanArgs(table string, scanArgs []any) ([]any, error) {
+	insertArgs := make([]any, len(scanArgs))
+	for i, v := range scanArgs {
+		ptr, ok := v.(*any)
+		if !ok {
+			return nil, fmt.Errorf("scan %s: unexpected scan destination type %T", table, v)
+		}
+
+		insertArgs[i] = *ptr
+	}
+
+	return insertArgs, nil
 }
 
 // tableColumns returns the column names of `table` from db, in definition

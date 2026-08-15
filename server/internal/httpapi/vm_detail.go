@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"pvmss/server/internal/auth"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
@@ -49,11 +50,24 @@ func NewVMDetail(projection *inventory.Projection, authHandler *Auth, writer clu
 	return &VMDetail{projection: projection, auth: authHandler, writer: writer, store: st, refresher: refresher, policy: policyService, log: log}
 }
 
+// VMDetailDeps groups the shared dependencies for constructing a VMDetail
+// handler. It collapses the seven positional parameters NewVMDetailWithRegistry
+// used to take (SonarQube go:S107).
+type VMDetailDeps struct {
+	Source     inventory.LookupSource
+	Projection *inventory.Projection
+	Auth       *Auth
+	Writer     cluster.Writer
+	Store      *store.Store
+	Refresher  vm.IndexRefresher
+	Log        *slog.Logger
+}
+
 // NewVMDetailWithRegistry adds cluster-aware reads while retaining the legacy
 // default projection for write-domain compatibility.
-func NewVMDetailWithRegistry(source inventory.LookupSource, projection *inventory.Projection, authHandler *Auth, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger, services ...*policy.Policy) *VMDetail {
-	handler := NewVMDetail(projection, authHandler, writer, st, refresher, log, services...)
-	handler.source = source
+func NewVMDetailWithRegistry(deps VMDetailDeps, services ...*policy.Policy) *VMDetail {
+	handler := NewVMDetail(deps.Projection, deps.Auth, deps.Writer, deps.Store, deps.Refresher, deps.Log, services...)
+	handler.source = deps.Source
 	return handler
 }
 
@@ -200,7 +214,7 @@ func (h *VMDetail) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.handlePatch(w, r)
 	default:
 		w.Header().Set("Allow", "GET, POST, DELETE, PATCH")
-		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
 	}
 }
 
@@ -209,13 +223,13 @@ func (h *VMDetail) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (h *VMDetail) handleGet(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
-		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return
 	}
 
 	clusterName, vmid, ok := h.parsePath(r)
 	if !ok {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
 		return
 	}
 
@@ -226,13 +240,13 @@ func (h *VMDetail) handleGet(w http.ResponseWriter, r *http.Request) {
 		if registry, ok := h.source.(*inventory.Registry); ok {
 			index, err = registry.Index(clusterName)
 			if err != nil {
-				h.writeDetailError(w, http.StatusNotFound, "cluster_not_found", "cluster not found")
+				h.writeDetailError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
 				return
 			}
 		}
 	}
 	if index == nil {
-		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
 		return
 	}
 
@@ -251,19 +265,19 @@ func (h *VMDetail) handleGet(w http.ResponseWriter, r *http.Request) {
 func (h *VMDetail) handleAction(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
-		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return
 	}
 
 	clusterName, vmid, ok := h.parsePath(r)
 	if !ok {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
 		return
 	}
 
 	var req actionRequest
 	if err := decodeJSON(w, r, &req); err != nil {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
 
@@ -275,7 +289,7 @@ func (h *VMDetail) handleAction(w http.ResponseWriter, r *http.Request) {
 
 	index := h.projection.Load()
 	if index == nil {
-		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
 		return
 	}
 
@@ -296,23 +310,23 @@ func (h *VMDetail) handleAction(w http.ResponseWriter, r *http.Request) {
 func (h *VMDetail) handleDelete(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
-		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return
 	}
 
 	clusterName, vmid, ok := h.parsePath(r)
 	if !ok {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
 		return
 	}
 
 	index := h.projection.Load()
 	if index == nil {
-		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
 		return
 	}
 
-	if err := vm.Delete(r.Context(), index, identity, clusterName, vmid, h.writer, h.store, h.refresher); err != nil {
+	if err := vm.Delete(r.Context(), vm.WriteDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: h.writer, Audit: h.store, Refresher: h.refresher}); err != nil {
 		h.writeActionError(w, err)
 		return
 	}
@@ -326,19 +340,19 @@ func (h *VMDetail) handleDelete(w http.ResponseWriter, r *http.Request) {
 func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
-		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return
 	}
 
 	clusterName, vmid, ok := h.parsePath(r)
 	if !ok {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
 		return
 	}
 
 	var req patchRequest
 	if err := decodeJSON(w, r, &req); err != nil {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
 
@@ -347,11 +361,11 @@ func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 
 	index := h.projection.Load()
 	if index == nil {
-		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
 		return
 	}
 
-	if err := vm.Patch(r.Context(), index, identity, clusterName, vmid, req.Name, req.Description, h.writer, h.store, h.refresher); err != nil {
+	if err := vm.Patch(r.Context(), vm.WriteDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: h.writer, Audit: h.store, Refresher: h.refresher}, req.Name, req.Description); err != nil {
 		h.writePatchError(w, err)
 		return
 	}
@@ -359,7 +373,7 @@ func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 	// (contracts: PATCH 200 returns the updated Entity, same shape as GET).
 	refreshed := h.projection.Load()
 	if refreshed == nil {
-		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
 
@@ -369,7 +383,7 @@ func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 		// the VM between the patch and the re-read). Return a generic success
 		// rather than a confusing 404 after a 200-worthy write.
 		h.log.Error("post-patch re-resolve failed", "component", "httpapi", "vmid", vmid, "error", err)
-		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -377,30 +391,29 @@ func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 	h.writeEntity(w, entity)
 }
 
-//nolint:gocyclo // one handler owns the shared Resolve/catalog setup for three disk verbs
 func (h *VMDetail) handleDisk(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
-		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return
 	}
 
 	clusterName, vmid, ok := h.parsePath(r)
 	if !ok {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
 		return
 	}
 
 	index := h.projection.Load()
 	if index == nil {
-		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
 		return
 	}
 
 	resources, err := catalog.ApprovedResources(r.Context(), h.store, clusterName)
 	if err != nil {
-		h.log.Error("read hardware catalog failed", "component", "httpapi", "error", err)
-		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.log.Error(msgHardwareCatalogFailed, "component", "httpapi", "error", err)
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -419,101 +432,117 @@ func (h *VMDetail) handleDisk(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodPost:
-		var request diskRequest
-		if err := decodeJSON(w, r, &request); err != nil {
-			h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
-			return
-		}
-
-		disk, err := vm.AddDisk(r.Context(), deps, cluster.DiskBus(request.Bus), request.Storage, request.SizeGB)
-		if err != nil {
-			h.writeDiskError(w, err)
-			return
-		}
-
-		h.writeJSONStatus(w, http.StatusOK, disk)
+		h.handleDiskCreate(w, r, deps, vmid)
 	case http.MethodPut:
-		var request resizeDiskRequest
-		if err := decodeJSON(w, r, &request); err != nil {
-			h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
-			return
-		}
-
-		if err := vm.ResizeDisk(r.Context(), deps, r.PathValue("diskKey"), request.SizeGB); err != nil {
-			h.writeDiskError(w, err)
-			return
-		}
-
-		refreshed := h.projection.Load()
-		if refreshed == nil {
-			h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
-			return
-		}
-
-		entity, err := vm.Resolve(refreshed, identity, clusterName, vmid)
-		if err != nil {
-			h.writeResolveError(w, err)
-			return
-		}
-
-		for _, disk := range entity.Disks {
-			if disk.Key == r.PathValue("diskKey") {
-				h.writeJSONStatus(w, http.StatusOK, disk)
-				return
-			}
-		}
-
-		h.writeDiskError(w, vm.ErrDiskNotFound)
+		h.handleDiskResize(w, r, deps, identity, clusterName, vmid)
 	case http.MethodDelete:
-		if err := vm.DeleteDisk(r.Context(), deps, r.PathValue("diskKey")); err != nil {
-			h.writeDiskError(w, err)
-			return
-		}
-
-		h.writeJSONStatus(w, http.StatusOK, deleteResponse{Status: "deleted"})
+		h.handleDiskDelete(w, r, deps, r.PathValue("diskKey"))
 	default:
 		w.Header().Set("Allow", "POST, PUT, DELETE")
-		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
 	}
+}
+
+// handleDiskCreate adds a new disk to the VM from a POST body.
+func (h *VMDetail) handleDiskCreate(w http.ResponseWriter, r *http.Request, deps vm.DiskDependencies, _ int) {
+	var request diskRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
+		return
+	}
+
+	disk, err := vm.AddDisk(r.Context(), deps, cluster.DiskBus(request.Bus), request.Storage, request.SizeGB)
+	if err != nil {
+		h.writeDiskError(w, err)
+		return
+	}
+
+	h.writeJSONStatus(w, http.StatusOK, disk)
+}
+
+// handleDiskResize grows an existing disk from a PUT body, then re-resolves the
+// VM to return the updated disk.
+func (h *VMDetail) handleDiskResize(w http.ResponseWriter, r *http.Request, deps vm.DiskDependencies, identity auth.Identity, clusterName string, vmid int) {
+	var request resizeDiskRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
+		return
+	}
+
+	if err := vm.ResizeDisk(r.Context(), deps, r.PathValue("diskKey"), request.SizeGB); err != nil {
+		h.writeDiskError(w, err)
+		return
+	}
+
+	refreshed := h.projection.Load()
+	if refreshed == nil {
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		return
+	}
+
+	entity, err := vm.Resolve(refreshed, identity, clusterName, vmid)
+	if err != nil {
+		h.writeResolveError(w, err)
+		return
+	}
+
+	for _, disk := range entity.Disks {
+		if disk.Key == r.PathValue("diskKey") {
+			h.writeJSONStatus(w, http.StatusOK, disk)
+			return
+		}
+	}
+
+	h.writeDiskError(w, vm.ErrDiskNotFound)
+}
+
+// handleDiskDelete removes a disk by key.
+func (h *VMDetail) handleDiskDelete(w http.ResponseWriter, r *http.Request, deps vm.DiskDependencies, diskKey string) {
+	if err := vm.DeleteDisk(r.Context(), deps, diskKey); err != nil {
+		h.writeDiskError(w, err)
+		return
+	}
+
+	h.writeJSONStatus(w, http.StatusOK, deleteResponse{Status: "deleted"})
 }
 
 func (h *VMDetail) handleCDROM(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPatch {
 		w.Header().Set("Allow", "PATCH")
-		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
 
 		return
 	}
 
 	identity, err := h.auth.Principal(r)
 	if err != nil {
-		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return
 	}
 
 	clusterName, vmid, ok := h.parsePath(r)
 	if !ok {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
 		return
 	}
 
 	index := h.projection.Load()
 	if index == nil {
-		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
 		return
 	}
 
 	resources, err := catalog.ApprovedResources(r.Context(), h.store, clusterName)
 	if err != nil {
-		h.log.Error("read hardware catalog failed", "component", "httpapi", "error", err)
-		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.log.Error(msgHardwareCatalogFailed, "component", "httpapi", "error", err)
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
 
 	var request cdromRequest
 	if err := decodeJSON(w, r, &request); err != nil {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
 
@@ -538,32 +567,32 @@ func (h *VMDetail) handleCDROM(w http.ResponseWriter, r *http.Request) {
 func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut {
 		w.Header().Set("Allow", "PUT")
-		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
 
 		return
 	}
 
 	identity, err := h.auth.Principal(r)
 	if err != nil {
-		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return
 	}
 
 	clusterName, vmid, ok := h.parsePath(r)
 	if !ok {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
 		return
 	}
 
 	index := h.projection.Load()
 	if index == nil {
-		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
 		return
 	}
 
 	var request hardwareRequest
 	if err := decodeJSON(w, r, &request); err != nil {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
 
@@ -583,7 +612,7 @@ func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
 
 	refreshed := h.projection.Load()
 	if refreshed == nil {
-		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
 
@@ -607,7 +636,7 @@ func (h *VMDetail) writeHardwareError(w http.ResponseWriter, err error) {
 	case errors.Is(err, policy.ErrNodeCapacityExceeded):
 		h.writeDetailError(w, http.StatusBadRequest, "capacity_exceeded", err.Error())
 	case errors.Is(err, policy.ErrUnavailable):
-		h.writeDetailError(w, http.StatusServiceUnavailable, "policy_unavailable", "policy service is not configured")
+		h.writeDetailError(w, http.StatusServiceUnavailable, "policy_unavailable", msgPolicyUnavailable)
 	case errors.Is(err, vm.ErrHardwareExceedsLimit):
 		h.writeDetailError(w, http.StatusBadRequest, "hardware_exceeds_limit", err.Error())
 	default:
@@ -618,9 +647,9 @@ func (h *VMDetail) writeHardwareError(w http.ResponseWriter, err error) {
 func (h *VMDetail) writeCommonVMError(w http.ResponseWriter, err error) bool {
 	switch {
 	case errors.Is(err, vm.ErrForbidden):
-		h.writeDetailError(w, http.StatusForbidden, "forbidden", "not your VM")
+		h.writeDetailError(w, http.StatusForbidden, "forbidden", msgNotYourVM)
 	case errors.Is(err, vm.ErrNotFound):
-		h.writeDetailError(w, http.StatusNotFound, "not_found", "VM not found")
+		h.writeDetailError(w, http.StatusNotFound, "not_found", msgVMNotFound)
 	default:
 		return false
 	}
@@ -630,46 +659,46 @@ func (h *VMDetail) writeCommonVMError(w http.ResponseWriter, err error) bool {
 
 func (h *VMDetail) writeUnhandledVMError(w http.ResponseWriter, message string, err error) {
 	h.log.Error(message, "component", "httpapi", "error", err)
-	h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+	h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 }
 
 func (h *VMDetail) handleNetwork(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut {
 		w.Header().Set("Allow", "PUT")
-		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
 
 		return
 	}
 
 	identity, err := h.auth.Principal(r)
 	if err != nil {
-		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return
 	}
 
 	clusterName, vmid, ok := h.parsePath(r)
 	if !ok {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
 		return
 	}
 
 	index := h.projection.Load()
 	if index == nil {
-		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
 		return
 	}
 
 	resources, err := catalog.ApprovedResources(r.Context(), h.store, clusterName)
 	if err != nil {
-		h.log.Error("read hardware catalog failed", "component", "httpapi", "error", err)
-		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.log.Error(msgHardwareCatalogFailed, "component", "httpapi", "error", err)
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
 
 	var request networkRequest
 	if err := decodeJSON(w, r, &request); err != nil {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
 
@@ -695,20 +724,20 @@ func (h *VMDetail) handleNetwork(w http.ResponseWriter, r *http.Request) {
 func (h *VMDetail) writeNetworkError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrForbidden):
-		h.writeDetailError(w, http.StatusForbidden, "forbidden", "not your VM")
+		h.writeDetailError(w, http.StatusForbidden, "forbidden", msgNotYourVM)
 	case errors.Is(err, vm.ErrNotFound):
-		h.writeDetailError(w, http.StatusNotFound, "not_found", "VM not found")
+		h.writeDetailError(w, http.StatusNotFound, "not_found", msgVMNotFound)
 	case errors.Is(err, vm.ErrBridgeNotApproved):
 		h.writeDetailError(w, http.StatusBadRequest, "bridge_not_approved", err.Error())
 	case errors.Is(err, vm.ErrNetworkCardsExceedLimit):
 		h.writeDetailError(w, http.StatusBadRequest, "network_cards_exceed_limit", err.Error())
 	case errors.Is(err, policy.ErrUnavailable):
-		h.writeDetailError(w, http.StatusServiceUnavailable, "policy_unavailable", "policy service is not configured")
+		h.writeDetailError(w, http.StatusServiceUnavailable, "policy_unavailable", msgPolicyUnavailable)
 	case errors.Is(err, vm.ErrInvalidNetworkModel), errors.Is(err, vm.ErrDuplicateNetworkIndex):
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", err.Error())
 	default:
 		h.log.Error("vm network operation failed", "component", "httpapi", "error", err)
-		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
 }
 
@@ -730,26 +759,26 @@ func (h *VMDetail) writeCDROMError(w http.ResponseWriter, err error) {
 func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", "GET")
-		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
 
 		return
 	}
 
 	identity, err := h.auth.Principal(r)
 	if err != nil {
-		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return
 	}
 
 	clusterName, vmid, ok := h.parsePath(r)
 	if !ok {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
 		return
 	}
 
 	index := h.projection.Load()
 	if index == nil {
-		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
 		return
 	}
 
@@ -761,21 +790,21 @@ func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request)
 
 	resources, err := catalog.ApprovedResources(r.Context(), h.store, clusterName)
 	if err != nil {
-		h.log.Error("read hardware catalog failed", "component", "httpapi", "error", err)
-		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.log.Error(msgHardwareCatalogFailed, "component", "httpapi", "error", err)
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
 
 	if h.policy == nil {
-		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
 
 	gabarit, err := h.policy.Gabarit(r.Context(), clusterName)
 	if err != nil {
 		h.log.Error("read gabarit failed", "component", "httpapi", "error", err)
-		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -865,9 +894,9 @@ func hardwareISOs(isos []catalog.ISO, storages []catalog.Storage) []hardwareISOD
 func (h *VMDetail) writeDiskError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrForbidden):
-		h.writeDetailError(w, http.StatusForbidden, "forbidden", "not your VM")
+		h.writeDetailError(w, http.StatusForbidden, "forbidden", msgNotYourVM)
 	case errors.Is(err, vm.ErrNotFound):
-		h.writeDetailError(w, http.StatusNotFound, "not_found", "VM not found")
+		h.writeDetailError(w, http.StatusNotFound, "not_found", msgVMNotFound)
 	case errors.Is(err, vm.ErrDiskNotFound):
 		h.writeDetailError(w, http.StatusNotFound, "disk_not_found", err.Error())
 	case errors.Is(err, vm.ErrBootDiskProtected):
@@ -877,7 +906,7 @@ func (h *VMDetail) writeDiskError(w http.ResponseWriter, err error) {
 	case errors.Is(err, vm.ErrDiskStorageNotApproved):
 		h.writeDetailError(w, http.StatusBadRequest, "storage_not_approved", err.Error())
 	case errors.Is(err, policy.ErrUnavailable):
-		h.writeDetailError(w, http.StatusServiceUnavailable, "policy_unavailable", "policy service is not configured")
+		h.writeDetailError(w, http.StatusServiceUnavailable, "policy_unavailable", msgPolicyUnavailable)
 	case errors.Is(err, vm.ErrDiskSizeExceedsLimit):
 		h.writeDetailError(w, http.StatusBadRequest, "disk_size_exceeds_limit", err.Error())
 	case errors.Is(err, vm.ErrDiskSizeNotGreater):
@@ -885,10 +914,10 @@ func (h *VMDetail) writeDiskError(w http.ResponseWriter, err error) {
 	case errors.Is(err, vm.ErrBusFull):
 		h.writeDetailError(w, http.StatusBadRequest, "bus_full", err.Error())
 	case errors.Is(err, cluster.ErrNotFound):
-		h.writeDetailError(w, http.StatusBadGateway, "cluster_error", "cluster rejected the request")
+		h.writeDetailError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
 	default:
 		h.log.Error("vm disk operation failed", "component", "httpapi", "error", err)
-		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
 }
 
@@ -953,7 +982,7 @@ func (h *VMDetail) writeJSONStatus(w http.ResponseWriter, status int, value any)
 	body, err := json.Marshal(value)
 	if err != nil {
 		h.log.Error("failed to marshal response", "component", "httpapi", "error", err)
-		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -968,12 +997,12 @@ func (h *VMDetail) writeJSONStatus(w http.ResponseWriter, status int, value any)
 func (h *VMDetail) writeResolveError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrForbidden):
-		h.writeDetailError(w, http.StatusForbidden, "forbidden", "not your VM")
+		h.writeDetailError(w, http.StatusForbidden, "forbidden", msgNotYourVM)
 	case errors.Is(err, vm.ErrNotFound):
-		h.writeDetailError(w, http.StatusNotFound, "not_found", "VM not found")
+		h.writeDetailError(w, http.StatusNotFound, "not_found", msgVMNotFound)
 	default:
 		h.log.Error("unexpected resolve error", "component", "httpapi", "error", err)
-		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
 }
 
@@ -981,21 +1010,21 @@ func (h *VMDetail) writeResolveError(w http.ResponseWriter, err error) {
 func (h *VMDetail) writeActionError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrForbidden):
-		h.writeDetailError(w, http.StatusForbidden, "forbidden", "not your VM")
+		h.writeDetailError(w, http.StatusForbidden, "forbidden", msgNotYourVM)
 	case errors.Is(err, vm.ErrNotFound):
-		h.writeDetailError(w, http.StatusNotFound, "not_found", "VM not found")
+		h.writeDetailError(w, http.StatusNotFound, "not_found", msgVMNotFound)
 	case errors.Is(err, vm.ErrActionRejected):
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_action", err.Error())
 	case errors.Is(err, cluster.ErrNotFound):
 		h.log.Error("cluster writer: VM not found after Resolve", "component", "httpapi", "error", err)
-		h.writeDetailError(w, http.StatusBadGateway, "cluster_error", "cluster rejected the request")
+		h.writeDetailError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
 	case errors.Is(err, cluster.ErrUnreachable):
 		h.writeDetailError(w, http.StatusBadGateway, "cluster_unreachable", "cluster is not reachable")
 	case errors.Is(err, cluster.ErrInvalidStateTransition):
 		h.writeDetailError(w, http.StatusConflict, "invalid_state_transition", err.Error())
 	default:
 		h.log.Error("vm action failed", "component", "httpapi", "error", err)
-		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
 }
 
@@ -1003,9 +1032,9 @@ func (h *VMDetail) writeActionError(w http.ResponseWriter, err error) {
 func (h *VMDetail) writePatchError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrForbidden):
-		h.writeDetailError(w, http.StatusForbidden, "forbidden", "not your VM")
+		h.writeDetailError(w, http.StatusForbidden, "forbidden", msgNotYourVM)
 	case errors.Is(err, vm.ErrNotFound):
-		h.writeDetailError(w, http.StatusNotFound, "not_found", "VM not found")
+		h.writeDetailError(w, http.StatusNotFound, "not_found", msgVMNotFound)
 	case errors.Is(err, vm.ErrInvalidName):
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_name", "name must be a valid hostname (lowercase alphanumeric and hyphen, no leading/trailing hyphen, max 63 chars)")
 	case errors.Is(err, vm.ErrEmptyPatch):
@@ -1014,10 +1043,10 @@ func (h *VMDetail) writePatchError(w http.ResponseWriter, err error) {
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", fmt.Sprintf("description exceeds %d characters", vm.MaxDescriptionLength))
 	case errors.Is(err, cluster.ErrNotFound):
 		h.log.Error("cluster writer: VM not found after Resolve", "component", "httpapi", "error", err)
-		h.writeDetailError(w, http.StatusBadGateway, "cluster_error", "cluster rejected the request")
+		h.writeDetailError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
 	default:
 		h.log.Error("vm patch failed", "component", "httpapi", "error", err)
-		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
 }
 

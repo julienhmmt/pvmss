@@ -433,18 +433,12 @@ func (fake Fake) Action(_ context.Context, node string, vmid int, action string)
 	}
 
 	switch action {
-	case actionStart:
+	case actionStart, "reboot", "reset":
 		state.vms[idx].Status = VMRunning
 		state.vms[idx].Uptime = fakeUptimeOnStart
 	case actionStop, actionShutdown:
 		state.vms[idx].Status = VMStopped
 		state.vms[idx].Uptime = 0
-	case "reboot":
-		state.vms[idx].Status = VMRunning
-		state.vms[idx].Uptime = fakeUptimeOnStart
-	case "reset":
-		state.vms[idx].Status = VMRunning
-		state.vms[idx].Uptime = fakeUptimeOnStart
 	default:
 		return ErrInvalidAction
 	}

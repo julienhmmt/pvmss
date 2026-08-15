@@ -12,7 +12,7 @@ import (
 // -race: NextVMID concurrency is the point of the first test.
 
 //nolint:paralleltest // serial: shared mutable fake dataset
-func TestFake_NextVMID_DistinctMonotonicConcurrent(t *testing.T) { //nolint:gocyclo // concurrency test checks multiple synchronization invariants
+func TestFake_NextVMID_DistinctMonotonicConcurrent(t *testing.T) {
 	defer ResetFake()
 
 	client := Fake{}
@@ -51,6 +51,17 @@ func TestFake_NextVMID_DistinctMonotonicConcurrent(t *testing.T) { //nolint:gocy
 		t.Fatalf("got %d ids, want %d", len(ids), callers*perCaller)
 	}
 
+	assertNextVMIDsDistinctAndAboveExisting(t, ids)
+	assertNextVMIDMonotonicAfterBurst(t, client, ids)
+}
+
+// assertNextVMIDsDistinctAndAboveExisting checks that every allocated ID is
+// distinct and strictly above the highest existing VMID in the default
+// dataset. Extracted from TestFake_NextVMID_DistinctMonotonicConcurrent to
+// keep its Cognitive Complexity under the SonarQube go:S3776 threshold.
+func assertNextVMIDsDistinctAndAboveExisting(t *testing.T, ids []int) {
+	t.Helper()
+
 	seen := make(map[int]bool, len(ids))
 
 	maxExisting := 0
@@ -70,10 +81,18 @@ func TestFake_NextVMID_DistinctMonotonicConcurrent(t *testing.T) { //nolint:gocy
 			t.Fatalf("allocated VMID %d collides with existing dataset (max %d)", id, maxExisting)
 		}
 	}
+}
 
-	// Sequential calls after the concurrent burst must keep increasing.
+// assertNextVMIDMonotonicAfterBurst checks that a sequential NextVMID call
+// after the concurrent burst returns a value strictly greater than every
+// previously allocated ID. Extracted from
+// TestFake_NextVMID_DistinctMonotonicConcurrent to keep its Cognitive
+// Complexity under the SonarQube go:S3776 threshold.
+func assertNextVMIDMonotonicAfterBurst(t *testing.T, client Fake, ids []int) {
+	t.Helper()
+
 	previous := 0
-	for id := range seen {
+	for _, id := range ids {
 		if id > previous {
 			previous = id
 		}
@@ -127,6 +146,16 @@ func TestFake_CreateVM_RecordsVMInDataset(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
+
+	assertCreatedVM(t, snap, spec, vmid)
+}
+
+// assertCreatedVM checks that the VM created from spec is present in snap with
+// the expected identity fields, pvmss tag, running status, and a recorded
+// create call. Extracted from TestFake_CreateVM_RecordsVMInDataset to keep
+// its Cognitive Complexity under the SonarQube go:S3776 threshold.
+func assertCreatedVM(t *testing.T, snap Snapshot, spec VMSpec, vmid int) {
+	t.Helper()
 
 	idx := slices.IndexFunc(snap.VMs, func(v VM) bool { return v.VMID == vmid })
 	if idx < 0 {

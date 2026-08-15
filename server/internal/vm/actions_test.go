@@ -201,7 +201,7 @@ func TestDelete_SuccessRemovesVMAndRecordsAudit(t *testing.T) {
 	idx := buildResolveIndex(t)
 	st := bulkTestStore(t)
 
-	err := vm.Delete(context.Background(), idx, aliceIdentity(), testClusterName, 101, fake, st, noopRefresher{})
+	err := vm.Delete(context.Background(), vm.WriteDeps{Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 101, Writer: fake, Audit: st, Refresher: noopRefresher{}})
 	if err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
@@ -231,7 +231,7 @@ func TestDelete_SuccessRemovesVMAndRecordsAudit(t *testing.T) {
 func TestDelete_NonOwnerForbidden(t *testing.T) {
 	idx := buildResolveIndex(t)
 
-	err := vm.Delete(context.Background(), idx, bobIdentity(), testClusterName, 100, cluster.Fake{}, noopAudit{}, noopRefresher{})
+	err := vm.Delete(context.Background(), vm.WriteDeps{Index: idx, Actor: bobIdentity(), ClusterName: testClusterName, VMID: 100, Writer: cluster.Fake{}, Audit: noopAudit{}, Refresher: noopRefresher{}})
 	if !errors.Is(err, vm.ErrForbidden) {
 		t.Fatalf("err = %v, want ErrForbidden", err)
 	}
@@ -241,7 +241,7 @@ func TestDelete_NonOwnerForbidden(t *testing.T) {
 func TestDelete_NotFound(t *testing.T) {
 	idx := buildResolveIndex(t)
 
-	err := vm.Delete(context.Background(), idx, aliceIdentity(), testClusterName, 999, cluster.Fake{}, noopAudit{}, noopRefresher{})
+	err := vm.Delete(context.Background(), vm.WriteDeps{Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 999, Writer: cluster.Fake{}, Audit: noopAudit{}, Refresher: noopRefresher{}})
 	if !errors.Is(err, vm.ErrNotFound) {
 		t.Fatalf("err = %v, want ErrNotFound", err)
 	}
@@ -252,7 +252,7 @@ func TestDelete_ClusterWriteErrorWrapped(t *testing.T) {
 	idx := buildResolveIndex(t)
 	writeErr := errors.New("cluster delete refused")
 
-	err := vm.Delete(context.Background(), idx, aliceIdentity(), testClusterName, 101, failingWriter{deleteErr: writeErr}, noopAudit{}, noopRefresher{})
+	err := vm.Delete(context.Background(), vm.WriteDeps{Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 101, Writer: failingWriter{deleteErr: writeErr}, Audit: noopAudit{}, Refresher: noopRefresher{}})
 	if !errors.Is(err, writeErr) {
 		t.Fatalf("err = %v, want the writer error", err)
 	}
@@ -268,7 +268,7 @@ func TestDelete_AuditErrorWrapped(t *testing.T) {
 	idx := buildResolveIndex(t)
 	auditErr := errors.New("audit store down")
 
-	err := vm.Delete(context.Background(), idx, aliceIdentity(), testClusterName, 101, fake, failingAuditErr{err: auditErr}, noopRefresher{})
+	err := vm.Delete(context.Background(), vm.WriteDeps{Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 101, Writer: fake, Audit: failingAuditErr{err: auditErr}, Refresher: noopRefresher{}})
 	if !errors.Is(err, auditErr) {
 		t.Fatalf("err = %v, want the audit error", err)
 	}
@@ -294,7 +294,7 @@ func TestPatch_EmptyPatchRejected(t *testing.T) {
 		{"whitespace description", "   "},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			err := vm.Patch(context.Background(), idx, aliceIdentity(), testClusterName, 101, "", tc.description, cluster.Fake{}, noopAudit{}, noopRefresher{})
+			err := vm.Patch(context.Background(), vm.WriteDeps{Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 101, Writer: cluster.Fake{}, Audit: noopAudit{}, Refresher: noopRefresher{}}, "", tc.description)
 			if !errors.Is(err, vm.ErrEmptyPatch) {
 				t.Fatalf("err = %v, want ErrEmptyPatch", err)
 			}
@@ -306,7 +306,7 @@ func TestPatch_EmptyPatchRejected(t *testing.T) {
 func TestPatch_InvalidNameRejectedBeforeResolve(t *testing.T) {
 	idx := buildResolveIndex(t)
 
-	err := vm.Patch(context.Background(), idx, aliceIdentity(), testClusterName, 101, "Bad_Name!", "", cluster.Fake{}, noopAudit{}, noopRefresher{})
+	err := vm.Patch(context.Background(), vm.WriteDeps{Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 101, Writer: cluster.Fake{}, Audit: noopAudit{}, Refresher: noopRefresher{}}, "Bad_Name!", "")
 	if !errors.Is(err, vm.ErrInvalidName) {
 		t.Fatalf("err = %v, want ErrInvalidName", err)
 	}
@@ -316,7 +316,7 @@ func TestPatch_InvalidNameRejectedBeforeResolve(t *testing.T) {
 func TestPatch_DescriptionTooLongRejectedBeforeResolve(t *testing.T) {
 	idx := buildResolveIndex(t)
 
-	err := vm.Patch(context.Background(), idx, aliceIdentity(), testClusterName, 101, "", strings.Repeat("a", vm.MaxDescriptionLength+1), cluster.Fake{}, noopAudit{}, noopRefresher{})
+	err := vm.Patch(context.Background(), vm.WriteDeps{Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 101, Writer: cluster.Fake{}, Audit: noopAudit{}, Refresher: noopRefresher{}}, "", strings.Repeat("a", vm.MaxDescriptionLength+1))
 	if !errors.Is(err, vm.ErrDescriptionTooLong) {
 		t.Fatalf("err = %v, want ErrDescriptionTooLong", err)
 	}
@@ -340,7 +340,7 @@ func TestPatch_AuditActionRecorded(t *testing.T) {
 			idx := buildResolveIndex(t)
 			st := bulkTestStore(t)
 
-			err := vm.Patch(context.Background(), idx, aliceIdentity(), testClusterName, 101, tc.patchName, tc.description, fake, st, noopRefresher{})
+			err := vm.Patch(context.Background(), vm.WriteDeps{Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 101, Writer: fake, Audit: st, Refresher: noopRefresher{}}, tc.patchName, tc.description)
 			if err != nil {
 				t.Fatalf("Patch: %v", err)
 			}
@@ -361,7 +361,7 @@ func TestPatch_AuditActionRecorded(t *testing.T) {
 func TestPatch_NonOwnerForbidden(t *testing.T) {
 	idx := buildResolveIndex(t)
 
-	err := vm.Patch(context.Background(), idx, bobIdentity(), testClusterName, 100, "renamed", "", cluster.Fake{}, noopAudit{}, noopRefresher{})
+	err := vm.Patch(context.Background(), vm.WriteDeps{Index: idx, Actor: bobIdentity(), ClusterName: testClusterName, VMID: 100, Writer: cluster.Fake{}, Audit: noopAudit{}, Refresher: noopRefresher{}}, "renamed", "")
 	if !errors.Is(err, vm.ErrForbidden) {
 		t.Fatalf("err = %v, want ErrForbidden", err)
 	}
@@ -371,7 +371,7 @@ func TestPatch_NonOwnerForbidden(t *testing.T) {
 func TestPatch_NotFound(t *testing.T) {
 	idx := buildResolveIndex(t)
 
-	err := vm.Patch(context.Background(), idx, aliceIdentity(), testClusterName, 999, "renamed", "", cluster.Fake{}, noopAudit{}, noopRefresher{})
+	err := vm.Patch(context.Background(), vm.WriteDeps{Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 999, Writer: cluster.Fake{}, Audit: noopAudit{}, Refresher: noopRefresher{}}, "renamed", "")
 	if !errors.Is(err, vm.ErrNotFound) {
 		t.Fatalf("err = %v, want ErrNotFound", err)
 	}
@@ -382,7 +382,7 @@ func TestPatch_ClusterWriteErrorWrapped(t *testing.T) {
 	idx := buildResolveIndex(t)
 	writeErr := errors.New("cluster patch refused")
 
-	err := vm.Patch(context.Background(), idx, aliceIdentity(), testClusterName, 101, "renamed", "", failingWriter{patchErr: writeErr}, noopAudit{}, noopRefresher{})
+	err := vm.Patch(context.Background(), vm.WriteDeps{Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 101, Writer: failingWriter{patchErr: writeErr}, Audit: noopAudit{}, Refresher: noopRefresher{}}, "renamed", "")
 	if !errors.Is(err, writeErr) {
 		t.Fatalf("err = %v, want the writer error", err)
 	}
@@ -398,7 +398,7 @@ func TestPatch_AuditErrorWrapped(t *testing.T) {
 	idx := buildResolveIndex(t)
 	auditErr := errors.New("audit store down")
 
-	err := vm.Patch(context.Background(), idx, aliceIdentity(), testClusterName, 101, "renamed", "", fake, failingAuditErr{err: auditErr}, noopRefresher{})
+	err := vm.Patch(context.Background(), vm.WriteDeps{Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 101, Writer: fake, Audit: failingAuditErr{err: auditErr}, Refresher: noopRefresher{}}, "renamed", "")
 	if !errors.Is(err, auditErr) {
 		t.Fatalf("err = %v, want the audit error", err)
 	}

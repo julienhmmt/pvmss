@@ -105,115 +105,113 @@ func TestNetworkInterfaceMarshalJSON(t *testing.T) {
 	})
 }
 
-// TestProxmoxGetVNCTicket covers the vncproxy HTTP call and every error branch:
-// success, non-200 status, invalid JSON body, non-numeric port, and request
-// timeout. This is the real HTTP+JSON-parsing surface the SonarQube gate flags.
-func TestProxmoxGetVNCTicket(t *testing.T) {
+// TestProxmoxGetVNCTicket_Success parses the ticket and port from a 200 response.
+func TestProxmoxGetVNCTicket_Success(t *testing.T) {
 	t.Parallel()
 
-	t.Run("success parses ticket and port", func(t *testing.T) {
-		t.Parallel()
+	body := `{"data":{"ticket":"` + testTicket + `","port":"5901"}}`
+	srv := httptest.NewServer(vncproxyHandler(t, http.StatusOK, body))
+	t.Cleanup(srv.Close)
 
-		body := `{"data":{"ticket":"` + testTicket + `","port":"5901"}}`
-		srv := httptest.NewServer(vncproxyHandler(t, http.StatusOK, body))
-		t.Cleanup(srv.Close)
+	c := newTestVNCClient(t, srv.URL, 5*time.Second)
 
-		c := newTestVNCClient(t, srv.URL, 5*time.Second)
+	got, err := proxmoxGetVNCTicket(context.Background(), c, testNodeName, testVMID)
+	if err != nil {
+		t.Fatalf("proxmoxGetVNCTicket: %v", err)
+	}
 
-		got, err := proxmoxGetVNCTicket(context.Background(), c, testNodeName, testVMID)
-		if err != nil {
-			t.Fatalf("proxmoxGetVNCTicket: %v", err)
-		}
+	if got.Ticket != testTicket {
+		t.Errorf("ticket = %q, want %q", got.Ticket, testTicket)
+	}
 
-		if got.Ticket != testTicket {
-			t.Errorf("ticket = %q, want %q", got.Ticket, testTicket)
-		}
+	if got.Port != 5901 {
+		t.Errorf("port = %d, want 5901", got.Port)
+	}
 
-		if got.Port != 5901 {
-			t.Errorf("port = %d, want 5901", got.Port)
-		}
+	if got.Node != testNodeName {
+		t.Errorf("node = %q, want %q", got.Node, testNodeName)
+	}
+}
 
-		if got.Node != testNodeName {
-			t.Errorf("node = %q, want %q", got.Node, testNodeName)
-		}
-	})
+// TestProxmoxGetVNCTicket_Non200 returns an error mentioning the status code.
+func TestProxmoxGetVNCTicket_Non200(t *testing.T) {
+	t.Parallel()
 
-	t.Run("non-200 status returns error", func(t *testing.T) {
-		t.Parallel()
+	srv := httptest.NewServer(vncproxyHandler(t, http.StatusUnauthorized, `{"errors":[]}`))
+	t.Cleanup(srv.Close)
 
-		srv := httptest.NewServer(vncproxyHandler(t, http.StatusUnauthorized, `{"errors":[]}`))
-		t.Cleanup(srv.Close)
+	c := newTestVNCClient(t, srv.URL, 5*time.Second)
 
-		c := newTestVNCClient(t, srv.URL, 5*time.Second)
+	_, err := proxmoxGetVNCTicket(context.Background(), c, testNodeName, testVMID)
+	if err == nil {
+		t.Fatal("expected error for 401, got nil")
+	}
 
-		_, err := proxmoxGetVNCTicket(context.Background(), c, testNodeName, testVMID)
-		if err == nil {
-			t.Fatal("expected error for 401, got nil")
-		}
+	if !strings.Contains(err.Error(), "401") {
+		t.Fatalf("error %q should mention status 401", err)
+	}
+}
 
-		if !strings.Contains(err.Error(), "401") {
-			t.Fatalf("error %q should mention status 401", err)
-		}
-	})
+// TestProxmoxGetVNCTicket_InvalidJSON returns a decode error.
+func TestProxmoxGetVNCTicket_InvalidJSON(t *testing.T) {
+	t.Parallel()
 
-	t.Run("invalid JSON body returns decode error", func(t *testing.T) {
-		t.Parallel()
+	srv := httptest.NewServer(vncproxyHandler(t, http.StatusOK, `{not-json`))
+	t.Cleanup(srv.Close)
 
-		srv := httptest.NewServer(vncproxyHandler(t, http.StatusOK, `{not-json`))
-		t.Cleanup(srv.Close)
+	c := newTestVNCClient(t, srv.URL, 5*time.Second)
 
-		c := newTestVNCClient(t, srv.URL, 5*time.Second)
+	_, err := proxmoxGetVNCTicket(context.Background(), c, testNodeName, testVMID)
+	if err == nil {
+		t.Fatal("expected decode error, got nil")
+	}
 
-		_, err := proxmoxGetVNCTicket(context.Background(), c, testNodeName, testVMID)
-		if err == nil {
-			t.Fatal("expected decode error, got nil")
-		}
+	if !strings.Contains(err.Error(), "decode vncproxy response") {
+		t.Fatalf("error %q should mention decode", err)
+	}
+}
 
-		if !strings.Contains(err.Error(), "decode vncproxy response") {
-			t.Fatalf("error %q should mention decode", err)
-		}
-	})
+// TestProxmoxGetVNCTicket_NonNumericPort returns an invalid-port error.
+func TestProxmoxGetVNCTicket_NonNumericPort(t *testing.T) {
+	t.Parallel()
 
-	t.Run("non-numeric port returns error", func(t *testing.T) {
-		t.Parallel()
+	body := `{"data":{"ticket":"` + testTicket + `","port":"not-a-port"}}`
+	srv := httptest.NewServer(vncproxyHandler(t, http.StatusOK, body))
+	t.Cleanup(srv.Close)
 
-		body := `{"data":{"ticket":"` + testTicket + `","port":"not-a-port"}}`
-		srv := httptest.NewServer(vncproxyHandler(t, http.StatusOK, body))
-		t.Cleanup(srv.Close)
+	c := newTestVNCClient(t, srv.URL, 5*time.Second)
 
-		c := newTestVNCClient(t, srv.URL, 5*time.Second)
+	_, err := proxmoxGetVNCTicket(context.Background(), c, testNodeName, testVMID)
+	if err == nil {
+		t.Fatal("expected port error, got nil")
+	}
 
-		_, err := proxmoxGetVNCTicket(context.Background(), c, testNodeName, testVMID)
-		if err == nil {
-			t.Fatal("expected port error, got nil")
-		}
+	if !strings.Contains(err.Error(), "invalid vncproxy port") {
+		t.Fatalf("error %q should mention invalid port", err)
+	}
+}
 
-		if !strings.Contains(err.Error(), "invalid vncproxy port") {
-			t.Fatalf("error %q should mention invalid port", err)
-		}
-	})
+// TestProxmoxGetVNCTicket_Timeout returns a request-timeout error.
+func TestProxmoxGetVNCTicket_Timeout(t *testing.T) {
+	t.Parallel()
 
-	t.Run("request timeout returns error", func(t *testing.T) {
-		t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		time.Sleep(50 * time.Millisecond)
 
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			time.Sleep(50 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(srv.Close)
 
-			w.WriteHeader(http.StatusOK)
-		}))
-		t.Cleanup(srv.Close)
+	c := newTestVNCClient(t, srv.URL, 1*time.Millisecond)
 
-		c := newTestVNCClient(t, srv.URL, 1*time.Millisecond)
+	_, err := proxmoxGetVNCTicket(context.Background(), c, testNodeName, testVMID)
+	if err == nil {
+		t.Fatal("expected timeout error, got nil")
+	}
 
-		_, err := proxmoxGetVNCTicket(context.Background(), c, testNodeName, testVMID)
-		if err == nil {
-			t.Fatal("expected timeout error, got nil")
-		}
-
-		if !strings.Contains(err.Error(), "vncproxy request") {
-			t.Fatalf("error %q should mention vncproxy request", err)
-		}
-	})
+	if !strings.Contains(err.Error(), "vncproxy request") {
+		t.Fatalf("error %q should mention vncproxy request", err)
+	}
 }
 
 // TestProxmoxGetVNCTicket_VerifiesAuthHeader confirms the request carries the

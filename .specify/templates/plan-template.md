@@ -42,7 +42,7 @@
 *Source: `.specify/memory/constitution.md` v1.1.0. Any ✗ must be justified in Complexity Tracking or the slice is not merged.*
 
 | # | Gate | ✓/✗ | Note |
-|---|------|-----|------|
+| --- | ------ | ----- | ------ |
 | I | **Vocabulaire** — *gabarit* / *quota* / *capacité* employés correctement ; le mot « limite » seul n'apparaît nulle part | | |
 | II | **API-first** — aucun endpoint réservé à la SPA ; tout ce que fait l'UI est faisable par API (cookie ou jeton Bearer) | | |
 | III | **Resolve()** *(NON NÉGOCIABLE)* — tout accès en écriture à une VM passe par `Resolve(actor, cluster, vmid)` ; aucun `node` fourni par le client | | |
@@ -121,6 +121,6 @@ Rules that are not negotiable in this layout:
 > **Fill ONLY if Constitution Check has violations that must be justified**
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
+| ----------- | ------------ | ------------------------------------- |
 | [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
 | [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |

@@ -358,46 +358,64 @@ func TestLoad(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv(envPort, tt.env[envPort])
-			t.Setenv(envDBPath, tt.env[envDBPath])
-			t.Setenv(envLogLevel, tt.env[envLogLevel])
-			t.Setenv(envLogFormat, tt.env[envLogFormat])
-			t.Setenv(envLogOutput, tt.env[envLogOutput])
-			t.Setenv("PVMSS_HOST", tt.env["PVMSS_HOST"])
-			t.Setenv("PVMSS_WEB_DIR", tt.env["PVMSS_WEB_DIR"])
-			t.Setenv(envClusterSource, tt.env[envClusterSource])
-			t.Setenv("PVMSS_INVENTORY_REFRESH_INTERVAL", tt.env["PVMSS_INVENTORY_REFRESH_INTERVAL"])
-			t.Setenv("PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL", tt.env["PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL"])
-			t.Setenv("PVMSS_INVENTORY_REFRESH_TIMEOUT", tt.env["PVMSS_INVENTORY_REFRESH_TIMEOUT"])
-			t.Setenv("PROXMOX_URL", tt.env["PROXMOX_URL"])
-			t.Setenv("PROXMOX_API_TOKEN_NAME", tt.env["PROXMOX_API_TOKEN_NAME"])
-			t.Setenv("PROXMOX_API_TOKEN_VALUE", tt.env["PROXMOX_API_TOKEN_VALUE"])
-			t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
-
-			want := tt.want
-			want.SessionSecret = strings.Repeat("s", 32)
-			want.CookieSecure = true
-
-			got, err := config.Load()
-			if tt.wantErr != "" {
-				if err == nil {
-					t.Fatalf("expected error containing %q, got nil", tt.wantErr)
-				}
-
-				if !strings.Contains(err.Error(), tt.wantErr) {
-					t.Fatalf("expected error containing %q, got %q", tt.wantErr, err.Error())
-				}
-
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			if got != want {
-				t.Fatalf("config mismatch: got %+v, want %+v", got, want)
-			}
+			runLoadCase(t, tt.env, tt.want, tt.wantErr)
 		})
+	}
+}
+
+// configLoadCase is the named test-case struct for TestLoad, extracted so the
+// loop body can be delegated to a helper (SonarQube go:S3776).
+type configLoadCase struct {
+	name    string
+	env     map[string]string
+	wantErr string
+	want    config.Configuration
+}
+
+// runLoadCase sets up the environment for a single TestLoad case, calls
+// config.Load, and asserts the expected error or configuration. Extracted
+// from TestLoad to keep its Cognitive Complexity under the SonarQube go:S3776
+// threshold.
+func runLoadCase(t *testing.T, env map[string]string, want config.Configuration, wantErr string) {
+	t.Helper()
+
+	t.Setenv(envPort, env[envPort])
+	t.Setenv(envDBPath, env[envDBPath])
+	t.Setenv(envLogLevel, env[envLogLevel])
+	t.Setenv(envLogFormat, env[envLogFormat])
+	t.Setenv(envLogOutput, env[envLogOutput])
+	t.Setenv("PVMSS_HOST", env["PVMSS_HOST"])
+	t.Setenv("PVMSS_WEB_DIR", env["PVMSS_WEB_DIR"])
+	t.Setenv(envClusterSource, env[envClusterSource])
+	t.Setenv("PVMSS_INVENTORY_REFRESH_INTERVAL", env["PVMSS_INVENTORY_REFRESH_INTERVAL"])
+	t.Setenv("PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL", env["PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL"])
+	t.Setenv("PVMSS_INVENTORY_REFRESH_TIMEOUT", env["PVMSS_INVENTORY_REFRESH_TIMEOUT"])
+	t.Setenv("PROXMOX_URL", env["PROXMOX_URL"])
+	t.Setenv("PROXMOX_API_TOKEN_NAME", env["PROXMOX_API_TOKEN_NAME"])
+	t.Setenv("PROXMOX_API_TOKEN_VALUE", env["PROXMOX_API_TOKEN_VALUE"])
+	t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
+
+	want.SessionSecret = strings.Repeat("s", 32)
+	want.CookieSecure = true
+
+	got, err := config.Load()
+	if wantErr != "" {
+		if err == nil {
+			t.Fatalf("expected error containing %q, got nil", wantErr)
+		}
+
+		if !strings.Contains(err.Error(), wantErr) {
+			t.Fatalf("expected error containing %q, got %q", wantErr, err.Error())
+		}
+
+		return
+	}
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got != want {
+		t.Fatalf("config mismatch: got %+v, want %+v", got, want)
 	}
 }

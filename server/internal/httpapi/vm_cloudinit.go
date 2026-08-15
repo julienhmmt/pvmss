@@ -31,18 +31,31 @@ type VMCloudInit struct {
 	log        *slog.Logger
 }
 
+// VMCloudInitDeps groups the shared dependencies for constructing a VMCloudInit
+// handler. It collapses the seven positional parameters NewVMCloudInit used to
+// take (SonarQube go:S107).
+type VMCloudInitDeps struct {
+	Projection *inventory.Projection
+	Auth       *Auth
+	Reader     cluster.CloudInitReader
+	Writer     cluster.Writer
+	Store      *store.Store
+	Refresher  vm.IndexRefresher
+	Log        *slog.Logger
+}
+
 // NewVMCloudInit creates the dedicated cloud-init handler.
-func NewVMCloudInit(projection *inventory.Projection, authHandler *Auth, reader cluster.CloudInitReader, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger, services ...*policy.Policy) *VMCloudInit {
+func NewVMCloudInit(deps VMCloudInitDeps, services ...*policy.Policy) *VMCloudInit {
 	var policyService *policy.Policy
 	if len(services) > 0 {
 		policyService = services[0]
 	}
 
-	if policyService == nil && st != nil {
-		policyService = policy.New(st, projection, nil)
+	if policyService == nil && deps.Store != nil {
+		policyService = policy.New(deps.Store, deps.Projection, nil)
 	}
 
-	return &VMCloudInit{projection: projection, auth: authHandler, reader: reader, writer: writer, store: st, refresher: refresher, policy: policyService, log: log}
+	return &VMCloudInit{projection: deps.Projection, auth: deps.Auth, reader: deps.Reader, writer: deps.Writer, store: deps.Store, refresher: deps.Refresher, policy: policyService, log: deps.Log}
 }
 
 type cloudInitConfigDTO struct {
@@ -105,13 +118,13 @@ func (h *VMCloudInit) handleConfig(w http.ResponseWriter, r *http.Request) {
 func (h *VMCloudInit) serveRoute(w http.ResponseWriter, r *http.Request, getHandler, putHandler cloudInitRouteHandler) {
 	clusterName, vmid, ok := parseCloudInitPath(r)
 	if !ok {
-		h.writeError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
+		h.writeError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
 		return
 	}
 
 	identity, err := h.auth.Principal(r)
 	if err != nil {
-		h.writeError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
+		h.writeError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return
 	}
 
@@ -122,14 +135,14 @@ func (h *VMCloudInit) serveRoute(w http.ResponseWriter, r *http.Request, getHand
 		putHandler(w, r, identity, clusterName, vmid)
 	default:
 		w.Header().Set("Allow", "GET, PUT")
-		h.writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
+		h.writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
 	}
 }
 
 func (h *VMCloudInit) getConfig(w http.ResponseWriter, r *http.Request, actor auth.Identity, clusterName string, vmid int) {
 	index := h.projection.Load()
 	if index == nil {
-		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
 		return
 	}
 
@@ -149,20 +162,23 @@ func (h *VMCloudInit) getConfig(w http.ResponseWriter, r *http.Request, actor au
 func (h *VMCloudInit) putConfig(w http.ResponseWriter, r *http.Request, actor auth.Identity, clusterName string, vmid int) {
 	var request cloudInitUpdateRequest
 	if err := decodeJSON(w, r, &request); err != nil {
-		h.writeError(w, http.StatusBadRequest, "invalid_config", "invalid request body")
+		h.writeError(w, http.StatusBadRequest, "invalid_config", msgInvalidRequestBody)
 		return
 	}
 
 	index := h.projection.Load()
 	if index == nil {
-		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
 		return
 	}
 
-	rebooted, err := vm.SetCloudInitConfig(r.Context(), index, actor, clusterName, vmid, cluster.CloudInitUpdate{
+	rebooted, err := vm.SetCloudInitConfig(r.Context(), vm.CloudInitConfigDeps{
+		Index: index, Actor: actor, ClusterName: clusterName, VMID: vmid,
+		Reader: h.reader, Writer: h.writer, Audit: h.store, Refresher: h.refresher,
+	}, cluster.CloudInitUpdate{
 		User: request.User, Password: request.Password, SSHKeys: request.SSHKeys, IPMode: request.IPMode,
 		IPAddress: request.IPAddress, Gateway: request.Gateway, DNSServer: request.DNSServer, SearchDomain: request.SearchDomain,
-	}, request.RebootNow, h.reader, h.writer, h.store, h.refresher)
+	}, request.RebootNow)
 	if err != nil {
 		h.writeDomainError(w, err)
 		return
@@ -178,7 +194,7 @@ func (h *VMCloudInit) handleSnippet(w http.ResponseWriter, r *http.Request) {
 func (h *VMCloudInit) getSnippet(w http.ResponseWriter, r *http.Request, actor auth.Identity, clusterName string, vmid int) {
 	index := h.projection.Load()
 	if index == nil {
-		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
 		return
 	}
 
@@ -208,11 +224,14 @@ func (h *VMCloudInit) putSnippet(w http.ResponseWriter, r *http.Request, actor a
 
 	index := h.projection.Load()
 	if index == nil {
-		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
 		return
 	}
 
-	if err := vm.SetCloudInitSnippet(r.Context(), index, actor, clusterName, vmid, *request.Content, h.reader, h.writer, h.store, h.policy); err != nil {
+	if err := vm.SetCloudInitSnippet(r.Context(), vm.CloudInitSnippetDeps{
+		Index: index, Actor: actor, ClusterName: clusterName, VMID: vmid,
+		Reader: h.reader, Writer: h.writer, Store: h.store, Service: h.policy,
+	}, *request.Content); err != nil {
 		h.writeDomainError(w, err)
 		return
 	}
@@ -225,11 +244,11 @@ func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 	case errors.Is(err, vm.ErrCustomYAMLDisabled):
 		h.writeError(w, http.StatusForbidden, "custom_yaml_disabled", "the administrator has disabled custom cloud-init snippets")
 	case errors.Is(err, policy.ErrUnavailable):
-		h.writeError(w, http.StatusServiceUnavailable, "policy_unavailable", "policy service is not configured")
+		h.writeError(w, http.StatusServiceUnavailable, "policy_unavailable", msgPolicyUnavailable)
 	case errors.Is(err, vm.ErrForbidden):
-		h.writeError(w, http.StatusForbidden, "forbidden", "not your VM")
+		h.writeError(w, http.StatusForbidden, "forbidden", msgNotYourVM)
 	case errors.Is(err, vm.ErrNotFound):
-		h.writeError(w, http.StatusNotFound, "not_found", "VM not found")
+		h.writeError(w, http.StatusNotFound, "not_found", msgVMNotFound)
 	case errors.Is(err, vm.ErrInvalidCloudInitConfig):
 		h.writeError(w, http.StatusBadRequest, "invalid_config", err.Error())
 	case errors.Is(err, cloudinit.ErrSnippetPrefix), errors.Is(err, cloudinit.ErrSnippetTooLarge), errors.Is(err, cloudinit.ErrSnippetInvalidUTF8):
@@ -237,10 +256,10 @@ func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 	case errors.Is(err, vm.ErrSnippetPushFailed):
 		h.writeError(w, http.StatusBadGateway, "push_failed", "snippet saved, not yet applied to the VM")
 	case errors.Is(err, cluster.ErrNotImplemented), errors.Is(err, cluster.ErrUnreachable), errors.Is(err, cluster.ErrNotFound):
-		h.writeError(w, http.StatusBadGateway, "cluster_error", "cluster rejected the request")
+		h.writeError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
 	default:
 		h.log.Error("cloud-init request failed", "component", "httpapi", "error", err)
-		h.writeError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.writeError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
 }
 
@@ -248,7 +267,7 @@ func (h *VMCloudInit) writeJSONStatus(w http.ResponseWriter, status int, value a
 	body, err := json.Marshal(value)
 	if err != nil {
 		h.log.Error("failed to marshal cloud-init response", "component", "httpapi", "error", err)
-		h.writeError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.writeError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}

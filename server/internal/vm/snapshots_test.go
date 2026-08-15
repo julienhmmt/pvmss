@@ -93,32 +93,50 @@ func TestCreateSnapshot_GuardsRejectBeforeClusterWrite(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			cluster.ResetFake()
-			t.Cleanup(cluster.ResetFake)
-
-			if test.name == "duplicate" {
-				seedSnapshot(t, "existing")
-			}
-
-			if test.name == "max snapshots" {
-				for index := range 5 {
-					seedSnapshot(t, "snapshot-"+string(rune('a'+index)))
-				}
-			}
-
-			baselineCalls := len(cluster.FakeCallsFor(test.vmid))
-			index := testSnapshotIndex(t, test.mutate)
-			deps := snapshotDependencies(index, test.vmid, policy.DefaultGabarit())
-
-			_, err := vm.CreateSnapshot(context.Background(), deps, "existing", "", test.vmstate)
-			if !errors.Is(err, test.wantError) {
-				t.Fatalf("CreateSnapshot error = %v, want %v", err, test.wantError)
-			}
-
-			if calls := cluster.FakeCallsFor(test.vmid); len(calls) != baselineCalls {
-				t.Fatalf("cluster calls = %+v, want no new calls", calls)
-			}
+			runCreateSnapshotGuardCase(t, test.name, test.vmid, test.vmstate, test.mutate, test.wantError)
 		})
+	}
+}
+
+// runCreateSnapshotGuardCase runs a single CreateSnapshot guard case: seeds
+// the fake snapshot registry as needed, issues the create, and asserts the
+// expected rejection with no cluster write. Extracted from
+// TestCreateSnapshot_GuardsRejectBeforeClusterWrite to keep its Cognitive
+// Complexity under the SonarQube go:S3776 threshold.
+func runCreateSnapshotGuardCase(
+	t *testing.T,
+	name string,
+	vmid int,
+	vmstate bool,
+	mutate func(*cluster.Snapshot),
+	wantError error,
+) {
+	t.Helper()
+
+	cluster.ResetFake()
+	t.Cleanup(cluster.ResetFake)
+
+	if name == "duplicate" {
+		seedSnapshot(t, "existing")
+	}
+
+	if name == "max snapshots" {
+		for index := range 5 {
+			seedSnapshot(t, "snapshot-"+string(rune('a'+index)))
+		}
+	}
+
+	baselineCalls := len(cluster.FakeCallsFor(vmid))
+	index := testSnapshotIndex(t, mutate)
+	deps := snapshotDependencies(index, vmid, policy.DefaultGabarit())
+
+	_, err := vm.CreateSnapshot(context.Background(), deps, "existing", "", vmstate)
+	if !errors.Is(err, wantError) {
+		t.Fatalf("CreateSnapshot error = %v, want %v", err, wantError)
+	}
+
+	if calls := cluster.FakeCallsFor(vmid); len(calls) != baselineCalls {
+		t.Fatalf("cluster calls = %+v, want no new calls", calls)
 	}
 }
 

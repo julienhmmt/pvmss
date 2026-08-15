@@ -65,37 +65,46 @@ func TestNodeCapacity_AggregatesPvmssBytesAndExcludesUntagged(t *testing.T) {
 	for _, node := range []string{cluster.FakeNode01, cluster.FakeNode02} {
 		t.Run(node, func(t *testing.T) {
 			t.Parallel()
-
-			var (
-				wantVMs, wantVCPUs int
-				wantRAMBytes       int64
-			)
-
-			for _, machine := range projection.Load().ByNode[node] {
-				if !slices.Contains(machine.Tags, "pvmss") {
-					continue
-				}
-
-				wantVMs++
-
-				if machine.Sockets > 0 && machine.Cores > 0 {
-					wantVCPUs += machine.Sockets * machine.Cores
-				} else {
-					wantVCPUs += machine.CPUCores
-				}
-
-				wantRAMBytes += machine.MemoryTotal
-			}
-
-			got, err := service.NodeCapacity(context.Background(), "default", node)
-			if err != nil {
-				t.Fatalf("NodeCapacity: %v", err)
-			}
-
-			if got.UsedVMs != wantVMs || got.UsedVCPUs != wantVCPUs || got.UsedRAMGB != int(wantRAMBytes/(1024*1024*1024)) {
-				t.Fatalf("capacity = %+v, want VMs=%d vCPUs=%d RAM=%d GB", got, wantVMs, wantVCPUs, wantRAMBytes/(1024*1024*1024))
-			}
+			runNodeCapacityCase(t, service, projection, node)
 		})
+	}
+}
+
+// runNodeCapacityCase computes the expected aggregated usage from the
+// projection and asserts it matches the policy service's NodeCapacity result.
+// Extracted from TestNodeCapacity_AggregatesPvmssBytesAndExcludesUntagged to
+// keep its Cognitive Complexity under the SonarQube go:S3776 threshold.
+func runNodeCapacityCase(t *testing.T, service *policy.Policy, projection *inventory.Projection, node string) {
+	t.Helper()
+
+	var (
+		wantVMs, wantVCPUs int
+		wantRAMBytes       int64
+	)
+
+	for _, machine := range projection.Load().ByNode[node] {
+		if !slices.Contains(machine.Tags, "pvmss") {
+			continue
+		}
+
+		wantVMs++
+
+		if machine.Sockets > 0 && machine.Cores > 0 {
+			wantVCPUs += machine.Sockets * machine.Cores
+		} else {
+			wantVCPUs += machine.CPUCores
+		}
+
+		wantRAMBytes += machine.MemoryTotal
+	}
+
+	got, err := service.NodeCapacity(context.Background(), "default", node)
+	if err != nil {
+		t.Fatalf("NodeCapacity: %v", err)
+	}
+
+	if got.UsedVMs != wantVMs || got.UsedVCPUs != wantVCPUs || got.UsedRAMGB != int(wantRAMBytes/(1024*1024*1024)) {
+		t.Fatalf("capacity = %+v, want VMs=%d vCPUs=%d RAM=%d GB", got, wantVMs, wantVCPUs, wantRAMBytes/(1024*1024*1024))
 	}
 }
 

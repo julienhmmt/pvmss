@@ -91,7 +91,7 @@ func (h *VMConsole) handleVNCTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ticket, err := vm.GetConsoleTicket(r.Context(), index, identity, clusterName, vmid, h.relay, h.tickets, h.store)
+	ticket, err := vm.GetConsoleTicket(r.Context(), vm.ConsoleTicketDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Client: h.relay, Store: h.tickets, Audit: h.store})
 	if err != nil {
 		h.writeTicketError(w, err)
 		return

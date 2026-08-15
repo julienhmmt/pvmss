@@ -40,7 +40,7 @@ func (h *AdminCatalog) ServeTags(w http.ResponseWriter, r *http.Request) {
 	tags, err := catalog.ListTags(r.Context(), h.store, h.projection, clusterName)
 	if err != nil {
 		h.log.Error("admin list tags failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -59,7 +59,7 @@ func (h *AdminCatalog) ServeTags(w http.ResponseWriter, r *http.Request) {
 func (h *AdminCatalog) ServeTagCreate(w http.ResponseWriter, r *http.Request) {
 	var req tagCreateRequest
 	if err := decodeJSON(w, r, &req); err != nil {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
 
@@ -72,7 +72,7 @@ func (h *AdminCatalog) ServeTagCreate(w http.ResponseWriter, r *http.Request) {
 
 	tag, err := catalog.CreateTag(r.Context(), h.store, clusterName, req.Name, req.Color)
 	if errors.Is(err, catalog.ErrDuplicateTag) {
-		writeAdminError(w, http.StatusConflict, "duplicate_tag", "tag \""+req.Name+"\" already exists")
+		writeAdminError(w, http.StatusConflict, "duplicate_tag", tagAlreadyExistsMsg(req.Name))
 		return
 	}
 
@@ -83,7 +83,7 @@ func (h *AdminCatalog) ServeTagCreate(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		h.log.Error("admin create tag failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -103,7 +103,7 @@ func (h *AdminCatalog) ServeTagColor(w http.ResponseWriter, r *http.Request) {
 
 	var req tagColorRequest
 	if err := decodeJSON(w, r, &req); err != nil {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
 
@@ -116,7 +116,7 @@ func (h *AdminCatalog) ServeTagColor(w http.ResponseWriter, r *http.Request) {
 
 	tag, err := catalog.SetTagColor(r.Context(), h.store, clusterName, name, req.Color)
 	if errors.Is(err, catalog.ErrTagNotFound) {
-		writeAdminError(w, http.StatusNotFound, "not_found", "tag \""+name+"\" not found")
+		writeAdminError(w, http.StatusNotFound, "not_found", tagNotFoundMsg(name))
 		return
 	}
 
@@ -132,7 +132,7 @@ func (h *AdminCatalog) ServeTagColor(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		h.log.Error("admin update tag color failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -166,13 +166,13 @@ func (h *AdminCatalog) ServeTagDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if errors.Is(err, catalog.ErrTagNotFound) {
-		writeAdminError(w, http.StatusNotFound, "not_found", "tag \""+name+"\" not found")
+		writeAdminError(w, http.StatusNotFound, "not_found", tagNotFoundMsg(name))
 		return
 	}
 
 	if err != nil {
 		h.log.Error("admin delete tag failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
@@ -204,4 +204,16 @@ func (h *AdminCatalog) tagVMCount(name string) int {
 	}
 
 	return count
+}
+
+// tagAlreadyExistsMsg builds the conflict message for a duplicate tag name
+// (SonarQube go:S1192: factor the "tag \"" prefix out of every call site).
+func tagAlreadyExistsMsg(name string) string {
+	return "tag \"" + name + "\" already exists"
+}
+
+// tagNotFoundMsg builds the not-found message for a missing tag name
+// (SonarQube go:S1192: factor the "tag \"" prefix out of every call site).
+func tagNotFoundMsg(name string) string {
+	return "tag \"" + name + "\" not found"
 }

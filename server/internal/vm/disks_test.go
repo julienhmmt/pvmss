@@ -133,35 +133,65 @@ func TestDiskOperations_GuardsAndWrites(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			cluster.ResetFake()
-
-			index := diskTestIndex(t, test.vmid, test.status)
-
-			actor := auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}
-			if test.name == testNonOwnerCase {
-				actor = auth.Identity{Username: cluster.FakeUserBob, Pool: cluster.FakePoolBob}
-			}
-
-			deps := diskDependencies(index, actor, test.vmid)
-
-			err := test.operation(deps)
-			if test.wantErr != nil && !errors.Is(err, test.wantErr) {
-				t.Fatalf("err = %v, want %v", err, test.wantErr)
-			}
-
-			if test.wantErr == nil && err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			calls := cluster.FakeCallsFor(test.vmid)
-			if len(calls) != test.calls {
-				t.Fatalf("fake calls = %d, want %d: %+v", len(calls), test.calls, calls)
-			}
-
-			if test.wantAction != "" && calls[0].Action != test.wantAction {
-				t.Fatalf("action = %q, want %q", calls[0].Action, test.wantAction)
-			}
+			runDiskOperationCase(t, diskOperationCase{
+				name:       test.name,
+				operation:  test.operation,
+				wantErr:    test.wantErr,
+				wantAction: test.wantAction,
+				vmid:       test.vmid,
+				status:     test.status,
+				wantCalls:  test.calls,
+			})
 		})
+	}
+}
+
+// diskOperationCase groups the parameters for runDiskOperationCase so the
+// helper stays under the SonarQube go:S107 parameter-count threshold (7).
+type diskOperationCase struct {
+	name       string
+	operation  func(vm.DiskDependencies) error
+	wantErr    error
+	wantAction string
+	vmid       int
+	status     cluster.VMStatus
+	wantCalls  int
+}
+
+// runDiskOperationCase runs a single disk operation case: builds the deps,
+// invokes the operation, and asserts the expected error, call count, and
+// action. Extracted from TestDiskOperations_GuardsAndWrites to keep its
+// Cognitive Complexity under the SonarQube go:S3776 threshold.
+func runDiskOperationCase(t *testing.T, tc diskOperationCase) {
+	t.Helper()
+
+	cluster.ResetFake()
+
+	index := diskTestIndex(t, tc.vmid, tc.status)
+
+	actor := auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}
+	if tc.name == testNonOwnerCase {
+		actor = auth.Identity{Username: cluster.FakeUserBob, Pool: cluster.FakePoolBob}
+	}
+
+	deps := diskDependencies(index, actor, tc.vmid)
+
+	err := tc.operation(deps)
+	if tc.wantErr != nil && !errors.Is(err, tc.wantErr) {
+		t.Fatalf("err = %v, want %v", err, tc.wantErr)
+	}
+
+	if tc.wantErr == nil && err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	calls := cluster.FakeCallsFor(tc.vmid)
+	if len(calls) != tc.wantCalls {
+		t.Fatalf("fake calls = %d, want %d: %+v", len(calls), tc.wantCalls, calls)
+	}
+
+	if tc.wantAction != "" && calls[0].Action != tc.wantAction {
+		t.Fatalf("action = %q, want %q", calls[0].Action, tc.wantAction)
 	}
 }
 

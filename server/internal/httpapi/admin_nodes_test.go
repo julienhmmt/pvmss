@@ -197,11 +197,11 @@ func TestAdminNodes_CrossClusterApprovalIsolation(t *testing.T) {
 	handler, authHandler := newMultiClusterAdminCatalogHandler(t)
 	cookie := adminCookie(t, authHandler)
 
-	nodeEnabled := func(cluster, name string) bool {
+	nodeEnabled := func(clusterName, name string) bool {
 		t.Helper()
-		rec := adminGet(t, handler, authHandler, cookie, "/api/v1/admin/nodes?cluster="+cluster)
+		rec := adminGet(t, handler, authHandler, cookie, "/api/v1/admin/nodes?cluster="+clusterName)
 		if rec.Code != http.StatusOK {
-			t.Fatalf("list cluster=%s status = %d: %s", cluster, rec.Code, rec.Body.String())
+			t.Fatalf("list cluster=%s status = %d: %s", clusterName, rec.Code, rec.Body.String())
 		}
 		var nodes []adminNodeDTO
 		if err := json.Unmarshal(rec.Body.Bytes(), &nodes); err != nil {
@@ -212,7 +212,7 @@ func TestAdminNodes_CrossClusterApprovalIsolation(t *testing.T) {
 				return n.Enabled
 			}
 		}
-		t.Fatalf("node %q not reported by cluster=%s", name, cluster)
+		t.Fatalf("node %q not reported by cluster=%s", name, clusterName)
 		return false
 	}
 
@@ -224,6 +224,22 @@ func TestAdminNodes_CrossClusterApprovalIsolation(t *testing.T) {
 	if nodeEnabled(crossSecondaryCluster, "pve-node-01") {
 		t.Fatal("secondary:pve-node-01 should start disabled — cluster isolation, not shared with default's seed")
 	}
+
+	assertCrossClusterToggleIsolation(t, handler, authHandler, cookie, nodeEnabled)
+}
+
+// assertCrossClusterToggleIsolation verifies that toggling a node on one
+// cluster does not affect the same node on the other cluster, in both
+// directions. Extracted from TestAdminNodes_CrossClusterApprovalIsolation to
+// keep its Cognitive Complexity under the SonarQube go:S3776 threshold.
+func assertCrossClusterToggleIsolation(
+	t *testing.T,
+	handler *httpapi.AdminCatalog,
+	authHandler *httpapi.Auth,
+	cookie *http.Cookie,
+	nodeEnabled func(string, string) bool,
+) {
+	t.Helper()
 
 	// Explicitly approve pve-node-01 for secondary only.
 	toggle := adminPost(t, handler, authHandler, cookie, "/api/v1/admin/nodes/toggle",
