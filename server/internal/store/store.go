@@ -52,9 +52,14 @@ func (s *Store) Staging() *ImportStaging {
 	return s.staging
 }
 
-// DB returns the underlying *sql.DB. Exposed for tests that need to introspect
-// the live schema (e.g. PRAGMA database_list to find the file path). Not used
-// by production callers outside this package.
+// DB returns the underlying *sql.DB.
+//
+// Test-only. It exists so tests can introspect the live schema (e.g.
+// PRAGMA database_list to find the file path, or PRAGMA query_only to
+// freeze writes). Production callers must not call it: Store owns the
+// connection's lifecycle (Open/Close/migrations) and exposing the handle
+// bypasses that contract. Any new production need should be served by a
+// dedicated Store method instead of reaching into *sql.DB.
 func (s *Store) DB() *sql.DB {
 	return s.db
 }
