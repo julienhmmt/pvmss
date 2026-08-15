@@ -1,9 +1,8 @@
-import { get } from '$lib/shared/api/client';
+import { get, post } from '$lib/shared/api/client';
 import { setContext, getContext } from 'svelte';
 import type { Principal } from './login.svelte';
 
-/**
- * SessionStore fetches the current principal from /api/v1/auth/me and exposes
+/** SessionStore fetches the current principal from /api/v1/auth/me and exposes
  * the admin flag for the (admin) route group's layout guard. This is a frontend
  * convenience (constitution VI) — the server-side RequireAdmin middleware is
  * the real gate.
@@ -21,6 +20,20 @@ export class SessionStore {
 		} catch {
 			this.principal = null;
 		} finally {
+			this.loading = false;
+		}
+	}
+
+	/** Revokes the browser session server-side and clears local state. */
+	async logout(): Promise<void> {
+		this.loading = true;
+		this.error = null;
+		try {
+			await post<void>('/api/v1/auth/logout');
+		} catch (error: unknown) {
+			this.error = error instanceof Error ? error.message : 'logout failed';
+		} finally {
+			this.principal = null;
 			this.loading = false;
 		}
 	}

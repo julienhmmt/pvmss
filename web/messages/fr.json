@@ -851,5 +851,7 @@
    "activity.empty": "Aucune activité pour l'instant.",
  "activity.ariaLabel": "Tiroir d'activité",
  "toast.ariaLive": "polite",
- "toast.dismiss": "Ignorer"
-}
+ "toast.dismiss": "Ignorer",
+ "auth.logout": "Déconnexion",
+ "auth.logout.confirm": "Quitter PVMSS ?"
+ }
