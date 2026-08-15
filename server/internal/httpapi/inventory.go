@@ -46,44 +46,8 @@ func (h *ClusterRefresh) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	at, err := h.refresher.Refresh(r.Context())
 	if err != nil {
-		switch {
-		case errors.Is(err, inventory.ErrRefreshTooSoon):
-			retryAfter := h.computeRetryAfterSeconds(err)
-
-			body, marshalErr := json.Marshal(clusterRefreshTooSoon{
-				Code:              "refresh_too_soon",
-				Message:           "please wait before refreshing again",
-				RetryAfterSeconds: retryAfter,
-			})
-			if marshalErr != nil {
-				h.log.Error("failed to marshal refresh_too_soon", "component", "httpapi", "error", marshalErr)
-				return
-			}
-
-			w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
-
-			if writeErr := writeJSON(w, http.StatusTooManyRequests, body); writeErr != nil {
-				h.log.Error("failed to write refresh_too_soon", "component", "httpapi", "error", writeErr)
-			}
-
-			return
-		case errors.Is(err, inventory.ErrClusterUnreachable):
-			h.log.Error("manual refresh failed: cluster unreachable", "component", "httpapi", "error", err)
-
-			if writeErr := writeClusterError(w, http.StatusBadGateway, "cluster_unreachable", "refresh failed: cluster is not reachable"); writeErr != nil {
-				h.log.Error("failed to write cluster_unreachable", "component", "httpapi", "error", writeErr)
-			}
-
-			return
-		default:
-			h.log.Error("manual refresh failed", "component", "httpapi", "error", err)
-
-			if writeErr := writeClusterError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError); writeErr != nil {
-				h.log.Error("failed to write internal_error", "component", "httpapi", "error", writeErr)
-			}
-
-			return
-		}
+		h.writeRefreshError(w, err)
+		return
 	}
 
 	resp := clusterRefreshResponse{RefreshedAt: at.UTC().Format(time.RFC3339Nano)}
@@ -101,6 +65,44 @@ func (h *ClusterRefresh) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if err := writeJSON(w, http.StatusOK, body); err != nil {
 		h.log.Error("failed to write refresh response", "component", "httpapi", "error", err)
+	}
+}
+
+// writeRefreshError maps a refresher error to the correct HTTP response, including
+// the Retry-After header for ErrRefreshTooSoon. Extracted from ServeHTTP to keep
+// its Cognitive Complexity under the go:S3776 threshold.
+func (h *ClusterRefresh) writeRefreshError(w http.ResponseWriter, err error) {
+	switch {
+	case errors.Is(err, inventory.ErrRefreshTooSoon):
+		retryAfter := h.computeRetryAfterSeconds(err)
+
+		body, marshalErr := json.Marshal(clusterRefreshTooSoon{
+			Code:              "refresh_too_soon",
+			Message:           "please wait before refreshing again",
+			RetryAfterSeconds: retryAfter,
+		})
+		if marshalErr != nil {
+			h.log.Error("failed to marshal refresh_too_soon", "component", "httpapi", "error", marshalErr)
+			return
+		}
+
+		w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
+
+		if writeErr := writeJSON(w, http.StatusTooManyRequests, body); writeErr != nil {
+			h.log.Error("failed to write refresh_too_soon", "component", "httpapi", "error", writeErr)
+		}
+	case errors.Is(err, inventory.ErrClusterUnreachable):
+		h.log.Error("manual refresh failed: cluster unreachable", "component", "httpapi", "error", err)
+
+		if writeErr := writeClusterError(w, http.StatusBadGateway, "cluster_unreachable", "refresh failed: cluster is not reachable"); writeErr != nil {
+			h.log.Error("failed to write cluster_unreachable", "component", "httpapi", "error", writeErr)
+		}
+	default:
+		h.log.Error("manual refresh failed", "component", "httpapi", "error", err)
+
+		if writeErr := writeClusterError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError); writeErr != nil {
+			h.log.Error("failed to write internal_error", "component", "httpapi", "error", writeErr)
+		}
 	}
 }
 
