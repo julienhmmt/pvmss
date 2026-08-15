@@ -12,7 +12,7 @@
 	const session = getSessionContext();
 
 	function documentationHref(): string {
-		return 'https://github.com/jh/pvmss';
+		return resolve('/docs');
 	}
 </script>
 

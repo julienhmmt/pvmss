@@ -29,7 +29,7 @@
 	}
 </script>
 
-<div role="tablist" class="flex gap-1 border-b border-border" aria-label={m['common.tabsAriaLabel']()}>
+<div role="tablist" class="flex gap-1 border-b border-border-subtle" aria-label={m['common.tabsAriaLabel']()}>
 	{#each tabs as tab, index (tab.id)}
 		<button
 			type="button"
@@ -38,7 +38,7 @@
 			aria-selected={active === tab.id}
 			aria-controls={`panel-${tab.id}`}
 			tabindex={active === tab.id ? 0 : -1}
-			class="rounded-t-md px-4 py-2 text-sm font-medium {active === tab.id
+			class="rounded-t-lg px-4 py-2.5 text-sm font-medium {active === tab.id
 				? 'border-b-2 border-primary text-foreground'
 				: 'text-muted-foreground hover:text-foreground'}"
 			onclick={() => selectTab(tab.id)}

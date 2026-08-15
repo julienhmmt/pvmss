@@ -147,7 +147,7 @@
 				{store.entity.status}
 			</span>
 		</div>
-		<p class="mt-1 text-sm text-muted-foreground" data-testid="vm-meta">
+		<p class="mt-1 font-mono text-sm text-muted-foreground" data-testid="vm-meta">
 			{m['vms.detail.meta']({ vmid: String(store.entity.vmid), node: store.entity.node, pool: store.entity.pool })}
 		</p>
 	</header>
@@ -161,15 +161,15 @@
 	<dl class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
 		<div class="rounded-md border border-border p-4" data-testid="vm-stat-cpu">
 			<dt class="text-xs text-muted-foreground">{m['vms.detail.statCpu']()}</dt>
-			<dd class="text-lg font-medium">{store.entity.cpuCores} {m['common.cores']()}</dd>
+			<dd class="text-lg font-medium font-mono">{store.entity.cpuCores} {m['common.cores']()}</dd>
 		</div>
 		<div class="rounded-md border border-border p-4" data-testid="vm-stat-memory">
 			<dt class="text-xs text-muted-foreground">{m['vms.detail.statMemory']()}</dt>
-			<dd class="text-lg font-medium">{formatBytes(store.entity.memoryTotal)}</dd>
+			<dd class="text-lg font-medium font-mono">{formatBytes(store.entity.memoryTotal)}</dd>
 		</div>
 		<div class="rounded-md border border-border p-4" data-testid="vm-stat-disk">
 			<dt class="text-xs text-muted-foreground">{m['vms.detail.statDisk']()}</dt>
-			<dd class="text-lg font-medium">{formatBytes(store.entity.diskTotal)}</dd>
+			<dd class="text-lg font-medium font-mono">{formatBytes(store.entity.diskTotal)}</dd>
 		</div>
 		<div class="rounded-md border border-border p-4" data-testid="vm-stat-uptime">
 			<dt class="text-xs text-muted-foreground">{m['vms.detail.statUptime']()}</dt>
