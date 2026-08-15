@@ -72,7 +72,7 @@ func TestSetCloudInitConfig_MergesDHCPAuditsAndDoesNotReboot(t *testing.T) {
 	user := "ubuntu"
 	mode := cluster.CloudInitIPModeDHCP
 	keys := []string{"ssh-ed25519 AAAA-new"}
-	rebooted, err := vm.SetCloudInitConfig(context.Background(), index, cloudAliceIdentity(), "default", 101, cluster.CloudInitUpdate{User: &user, IPMode: &mode, SSHKeys: &keys}, false, cluster.Fake{}, cluster.Fake{}, st, testRefresher{})
+	rebooted, err := vm.SetCloudInitConfig(context.Background(), vm.CloudInitConfigDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: "default", VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st, Refresher: testRefresher{}}, cluster.CloudInitUpdate{User: &user, IPMode: &mode, SSHKeys: &keys}, false)
 	if err != nil {
 		t.Fatalf("SetCloudInitConfig: %v", err)
 	}
@@ -106,7 +106,7 @@ func TestSetCloudInitConfig_RebootNowCallsT05Once(t *testing.T) {
 		t.Fatalf("start VM 101 for test setup: %v", err)
 	}
 	user := "ubuntu"
-	rebooted, err := vm.SetCloudInitConfig(context.Background(), index, cloudAliceIdentity(), "default", 101, cluster.CloudInitUpdate{User: &user}, true, cluster.Fake{}, cluster.Fake{}, st, testRefresher{})
+	rebooted, err := vm.SetCloudInitConfig(context.Background(), vm.CloudInitConfigDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: "default", VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st, Refresher: testRefresher{}}, cluster.CloudInitUpdate{User: &user}, true)
 	if err != nil {
 		t.Fatalf("SetCloudInitConfig: %v", err)
 	}
@@ -130,14 +130,14 @@ func TestSetCloudInitSnippet_PersistsTargetPushesAndPreservesClear(t *testing.T)
 	st := cloudInitStore(t)
 	service := policy.New(st, inventory.NewProjectionFromIndex(index), cluster.Fake{})
 	content := "#cloud-config\nusers: {}\n"
-	if err := vm.SetCloudInitSnippet(context.Background(), index, cloudAliceIdentity(), "default", 101, content, cluster.Fake{}, cluster.Fake{}, st, service); err != nil {
+	if err := vm.SetCloudInitSnippet(context.Background(), vm.CloudInitSnippetDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: "default", VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Service: service}, content); err != nil {
 		t.Fatalf("SetCloudInitSnippet: %v", err)
 	}
 	calls := cluster.FakeCallsFor(101)
 	if len(calls) != 1 || calls[0].Action != "push_cloudinit_snippet" || calls[0].Storage != cluster.FakeSnippetStorage || calls[0].Filename != "pvmss-101.yml" || calls[0].Content != content {
 		t.Fatalf("calls = %+v", calls)
 	}
-	if err := vm.SetCloudInitSnippet(context.Background(), index, cloudAliceIdentity(), "default", 101, "", cluster.Fake{}, cluster.Fake{}, st, service); err != nil {
+	if err := vm.SetCloudInitSnippet(context.Background(), vm.CloudInitSnippetDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: "default", VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Service: service}, ""); err != nil {
 		t.Fatalf("clear snippet: %v", err)
 	}
 	snippet, found, err := st.GetCloudInitSnippet(context.Background(), "default", 101)
@@ -151,12 +151,12 @@ func TestSetCloudInitSnippet_ValidationAndPushFailure(t *testing.T) {
 	index := cloudInitIndex(t)
 	st := cloudInitStore(t)
 	service := policy.New(st, inventory.NewProjectionFromIndex(index), cluster.Fake{})
-	if err := vm.SetCloudInitSnippet(context.Background(), index, cloudAliceIdentity(), "default", 101, "not yaml", cluster.Fake{}, cluster.Fake{}, st, service); !errors.Is(err, cloudinit.ErrSnippetPrefix) {
+	if err := vm.SetCloudInitSnippet(context.Background(), vm.CloudInitSnippetDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: "default", VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Service: service}, "not yaml"); !errors.Is(err, cloudinit.ErrSnippetPrefix) {
 		t.Fatalf("invalid error = %v, want ErrSnippetPrefix", err)
 	}
 	pushErr := errors.New("push unavailable")
 	cluster.SetFakeCloudInitPushError(pushErr)
-	err := vm.SetCloudInitSnippet(context.Background(), index, cloudAliceIdentity(), "default", 101, "#cloud-config\n", cluster.Fake{}, cluster.Fake{}, st, service)
+	err := vm.SetCloudInitSnippet(context.Background(), vm.CloudInitSnippetDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: "default", VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Service: service}, "#cloud-config\n")
 	if !errors.Is(err, vm.ErrSnippetPushFailed) {
 		t.Fatalf("push error = %v, want ErrSnippetPushFailed", err)
 	}

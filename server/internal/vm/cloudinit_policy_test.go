@@ -37,7 +37,7 @@ func TestSetCloudInitSnippet_DisabledBeforeValidationAndResolve(t *testing.T) {
 			t.Parallel()
 			cluster.ResetFake()
 
-			err := vm.SetCloudInitSnippet(context.Background(), testCase.index, cloudAliceIdentity(), testClusterName, 101, "not yaml", cluster.Fake{}, cluster.Fake{}, st, service)
+			err := vm.SetCloudInitSnippet(context.Background(), vm.CloudInitSnippetDeps{Index: testCase.index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Service: service}, "not yaml")
 			if !errors.Is(err, vm.ErrCustomYAMLDisabled) {
 				t.Fatalf("error = %v, want ErrCustomYAMLDisabled", err)
 			}

@@ -39,8 +39,30 @@ func GetCloudInitConfig(ctx context.Context, index *inventory.Index, actor auth.
 	return config, nil
 }
 
+// CloudInitConfigDeps groups the shared dependencies and resolution context
+// for SetCloudInitConfig. It collapses the eleven positional parameters the
+// function used to take (SonarQube go:S107).
+type CloudInitConfigDeps struct {
+	Index       *inventory.Index
+	Actor       auth.Identity
+	ClusterName string
+	VMID        int
+	Reader      cluster.CloudInitReader
+	Writer      cluster.Writer
+	Audit       AuditRecorder
+	Refresher   IndexRefresher
+}
+
 // SetCloudInitConfig merges and writes a partial update, optionally using T05's reboot action.
-func SetCloudInitConfig(ctx context.Context, index *inventory.Index, actor auth.Identity, clusterName string, vmid int, update cluster.CloudInitUpdate, rebootNow bool, reader cluster.CloudInitReader, writer cluster.Writer, audit AuditRecorder, refresher IndexRefresher) (bool, error) {
+func SetCloudInitConfig(ctx context.Context, deps CloudInitConfigDeps, update cluster.CloudInitUpdate, rebootNow bool) (bool, error) {
+	index := deps.Index
+	actor := deps.Actor
+	clusterName := deps.ClusterName
+	vmid := deps.VMID
+	reader := deps.Reader
+	writer := deps.Writer
+	audit := deps.Audit
+	refresher := deps.Refresher
 	if err := validateCloudInitUpdate(update); err != nil {
 		return false, err
 	}
@@ -88,8 +110,30 @@ func GetCloudInitSnippet(ctx context.Context, index *inventory.Index, actor auth
 	return st.GetCloudInitSnippet(ctx, clusterName, vmid)
 }
 
+// CloudInitSnippetDeps groups the shared dependencies and resolution context
+// for SetCloudInitSnippet. It collapses the ten positional parameters the
+// function used to take (SonarQube go:S107).
+type CloudInitSnippetDeps struct {
+	Index       *inventory.Index
+	Actor       auth.Identity
+	ClusterName string
+	VMID        int
+	Reader      cluster.CloudInitReader
+	Writer      cluster.Writer
+	Store       *store.Store
+	Service     *policy.Policy
+}
+
 // SetCloudInitSnippet validates, persists, pushes, and audits one custom snippet.
-func SetCloudInitSnippet(ctx context.Context, index *inventory.Index, actor auth.Identity, clusterName string, vmid int, content string, reader cluster.CloudInitReader, writer cluster.Writer, st *store.Store, service *policy.Policy) error {
+func SetCloudInitSnippet(ctx context.Context, deps CloudInitSnippetDeps, content string) error {
+	index := deps.Index
+	actor := deps.Actor
+	clusterName := deps.ClusterName
+	vmid := deps.VMID
+	reader := deps.Reader
+	writer := deps.Writer
+	st := deps.Store
+	service := deps.Service
 	if service == nil {
 		return policy.ErrUnavailable
 	}
