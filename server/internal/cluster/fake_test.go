@@ -13,7 +13,7 @@ import (
 //nolint:paralleltest // serial: shared fake dataset
 func TestFakeDataset_NodeReferences(t *testing.T) {
 	names := nodeNames(t)
-	for _, vm := range fakeVMs {
+	for _, vm := range defaultState().vms {
 		if !names[vm.Node] {
 			t.Errorf("VM %d (%s) references unknown node %q", vm.VMID, vm.Name, vm.Node)
 		}
@@ -28,12 +28,12 @@ func TestFakeDataset_NodeReferences(t *testing.T) {
 
 //nolint:paralleltest // serial: shared fake dataset
 func TestFakeDataset_PoolReferences(t *testing.T) {
-	pools := make(map[string]bool, len(fakePools))
-	for _, p := range fakePools {
+	pools := make(map[string]bool, len(originalFakePools()))
+	for _, p := range originalFakePools() {
 		pools[p.Name] = true
 	}
 
-	for _, vm := range fakeVMs {
+	for _, vm := range defaultState().vms {
 		if !pools[vm.Pool] {
 			t.Errorf("VM %d (%s) references unknown pool %q", vm.VMID, vm.Name, vm.Pool)
 		}
@@ -61,8 +61,8 @@ func TestFakeDataset_UsageWithinTotal(t *testing.T) {
 
 //nolint:paralleltest // serial: shared fake dataset
 func TestFakeDataset_UniqueVMIDs(t *testing.T) {
-	seen := make(map[int]bool, len(fakeVMs))
-	for _, vm := range fakeVMs {
+	seen := make(map[int]bool, len(defaultState().vms))
+	for _, vm := range defaultState().vms {
 		if seen[vm.VMID] {
 			t.Errorf("duplicate VMID %d", vm.VMID)
 		}
@@ -75,7 +75,7 @@ func TestFakeDataset_UniqueVMIDs(t *testing.T) {
 func TestFakeDataset_MixedVMStatuses(t *testing.T) {
 	var hasRunning, hasStopped bool
 
-	for _, vm := range fakeVMs {
+	for _, vm := range defaultState().vms {
 		switch vm.Status {
 		case VMRunning:
 			hasRunning = true
@@ -99,7 +99,7 @@ func TestFakeDataset_MixedVMStatuses(t *testing.T) {
 func TestFakeDataset_MixedPvmssTagging(t *testing.T) {
 	var hasTagged, hasUntagged bool
 
-	for _, vm := range fakeVMs {
+	for _, vm := range defaultState().vms {
 		if slices.Contains(vm.Tags, "pvmss") {
 			hasTagged = true
 		} else {
@@ -190,7 +190,7 @@ func TestFake_Action_RejectsStatusIncompatibleTransition(t *testing.T) {
 			ResetFake()
 			defer ResetFake()
 
-			vms := fakeVMs
+			vms := defaultState().vms
 
 			idx := slices.IndexFunc(vms, func(v VM) bool { return v.VMID == tt.vmid })
 			if idx < 0 {

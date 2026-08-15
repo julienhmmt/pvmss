@@ -54,7 +54,7 @@ func TestFake_NextVMID_DistinctMonotonicConcurrent(t *testing.T) { //nolint:gocy
 	seen := make(map[int]bool, len(ids))
 
 	maxExisting := 0
-	for _, vm := range fakeVMs {
+	for _, vm := range defaultState().vms {
 		if vm.VMID > maxExisting {
 			maxExisting = vm.VMID
 		}

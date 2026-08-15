@@ -38,3 +38,55 @@ func TestFake_OfflineDemoRejectsEveryClientMethod(t *testing.T) {
 		})
 	}
 }
+
+// TestFake_InstancesDoNotShareMutations is the isolation guarantee NewFake
+// exists for: a delete on one cluster must not shrink another cluster's
+// snapshot, and a zero-value Fake{} must stay on the default dataset.
+//
+//nolint:paralleltest // constructs isolated NewFake instances; stays serial with other fake tests
+func TestFake_InstancesDoNotShareMutations(t *testing.T) {
+	defaultCluster := cluster.NewFake("default")
+	secondary := cluster.NewFake("secondary")
+	ctx := context.Background()
+
+	beforeDefault, err := defaultCluster.Snapshot(ctx)
+	if err != nil {
+		t.Fatalf("default snapshot: %v", err)
+	}
+	beforeSecondary, err := secondary.Snapshot(ctx)
+	if err != nil {
+		t.Fatalf("secondary snapshot: %v", err)
+	}
+	if len(beforeDefault.VMs) == 0 || len(beforeSecondary.VMs) == 0 {
+		t.Fatal("expected both clusters to have VMs")
+	}
+
+	target := beforeDefault.VMs[0]
+	if err := defaultCluster.Delete(ctx, target.Node, target.VMID); err != nil {
+		t.Fatalf("delete on default: %v", err)
+	}
+
+	afterDefault, err := defaultCluster.Snapshot(ctx)
+	if err != nil {
+		t.Fatalf("default snapshot after delete: %v", err)
+	}
+	afterSecondary, err := secondary.Snapshot(ctx)
+	if err != nil {
+		t.Fatalf("secondary snapshot after delete: %v", err)
+	}
+	if len(afterDefault.VMs) != len(beforeDefault.VMs)-1 {
+		t.Fatalf("default VM count = %d, want %d", len(afterDefault.VMs), len(beforeDefault.VMs)-1)
+	}
+	if len(afterSecondary.VMs) != len(beforeSecondary.VMs) {
+		t.Fatalf("secondary VM count changed after default delete: %d -> %d", len(beforeSecondary.VMs), len(afterSecondary.VMs))
+	}
+
+	zero := cluster.Fake{}
+	zeroSnap, err := zero.Snapshot(ctx)
+	if err != nil {
+		t.Fatalf("zero-value snapshot: %v", err)
+	}
+	if len(zeroSnap.VMs) != 25 {
+		t.Fatalf("zero-value Fake still shares state: got %d VMs, want 25", len(zeroSnap.VMs))
+	}
+}
