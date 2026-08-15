@@ -81,6 +81,18 @@ func TestRFBFakeHandshake_VersionAndSecurity(t *testing.T) {
 		t.Fatalf("read ServerInit: %v", err)
 	}
 
+	assertRFBServerInit(t, client, init)
+
+	_ = done // allow server goroutine to finish on close
+}
+
+// assertRFBServerInit validates the ServerInit message fields (resolution,
+// pixel format, name) read from the fake RFB server. Extracted from
+// TestRFBFakeHandshake_VersionAndSecurity to keep its Cognitive Complexity
+// under the SonarQube go:S3776 threshold.
+func assertRFBServerInit(t *testing.T, client io.Reader, init rfbServerInit) {
+	t.Helper()
+
 	if init.Width != rfbFakeWidth || init.Height != rfbFakeHeight {
 		t.Fatalf("ServerInit resolution = %dx%d, want %dx%d", init.Width, init.Height, rfbFakeWidth, rfbFakeHeight)
 	}
@@ -105,8 +117,6 @@ func TestRFBFakeHandshake_VersionAndSecurity(t *testing.T) {
 	if string(name) != rfbFakeName {
 		t.Fatalf("name = %q, want %q", name, rfbFakeName)
 	}
-
-	_ = done // allow server goroutine to finish on close
 }
 
 // TestRFBFakeHandshake_ServerCutTextAfterInit — T007: right after ServerInit,

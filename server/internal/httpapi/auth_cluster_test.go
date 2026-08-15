@@ -122,32 +122,46 @@ func TestAuth_OIDC(t *testing.T) {
 	})
 
 	t.Run("oidc enabled returns 501, not a broken redirect", func(t *testing.T) {
-		if err := st.SetClusterOIDC(context.Background(), crossSecondaryCluster, true); err != nil {
-			t.Fatalf("SetClusterOIDC: %v", err)
-		}
-		response := oidcRequestFor(t, authHandler, `{"cluster":"secondary"}`)
-		if response.Code != http.StatusNotImplemented {
-			t.Fatalf("status = %d, want 501: %s", response.Code, response.Body.String())
-		}
-		if location := response.Header().Get("Location"); location != "" {
-			t.Fatalf("unexpected Location header on the 501 response: %q", location)
-		}
-		var body struct {
-			Code string `json:"code"`
-		}
-		if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
-			t.Fatalf("decode response: %v", err)
-		}
-		if body.Code != "not_implemented" {
-			t.Fatalf("error code = %q, want not_implemented", body.Code)
-		}
-
-		// The 501 must be scoped to the enabled cluster only — default,
-		// never toggled, must still 404 (FR-011's isolation, checked from
-		// the login-affordance side rather than the admin-toggle side).
-		untouched := oidcRequestFor(t, authHandler, `{"cluster":"default"}`)
-		if untouched.Code != http.StatusNotFound {
-			t.Fatalf("default status after secondary's toggle = %d, want still 404: %s", untouched.Code, untouched.Body.String())
-		}
+		runOIDCEnabledCase(t, authHandler, st)
 	})
+}
+
+// runOIDCEnabledCase enables OIDC on the secondary cluster, requests it
+// (expecting 501 with no redirect), and verifies the default cluster is
+// unaffected (still 404). Extracted from TestAuth_OIDC to keep its Cognitive
+// Complexity under the SonarQube go:S3776 threshold.
+func runOIDCEnabledCase(t *testing.T, authHandler *httpapi.Auth, st *store.Store) {
+	t.Helper()
+
+	if err := st.SetClusterOIDC(context.Background(), crossSecondaryCluster, true); err != nil {
+		t.Fatalf("SetClusterOIDC: %v", err)
+	}
+
+	response := oidcRequestFor(t, authHandler, `{"cluster":"secondary"}`)
+	if response.Code != http.StatusNotImplemented {
+		t.Fatalf("status = %d, want 501: %s", response.Code, response.Body.String())
+	}
+
+	if location := response.Header().Get("Location"); location != "" {
+		t.Fatalf("unexpected Location header on the 501 response: %q", location)
+	}
+
+	var body struct {
+		Code string `json:"code"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	if body.Code != "not_implemented" {
+		t.Fatalf("error code = %q, want not_implemented", body.Code)
+	}
+
+	// The 501 must be scoped to the enabled cluster only — default,
+	// never toggled, must still 404 (FR-011's isolation, checked from
+	// the login-affordance side rather than the admin-toggle side).
+	untouched := oidcRequestFor(t, authHandler, `{"cluster":"default"}`)
+	if untouched.Code != http.StatusNotFound {
+		t.Fatalf("default status after secondary's toggle = %d, want still 404: %s", untouched.Code, untouched.Body.String())
+	}
 }
