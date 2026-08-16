@@ -524,6 +524,7 @@
  "nodes.errorLoadNodes": "échec du chargement des nœuds de cluster",
  "nodes.errorRefresh": "échec de l'actualisation",
  "profile.tokens.title": "Jetons API — PVMSS",
+"profile.tokens.empty": "Aucun jeton API pour l'instant.",
 "profile.tokens.errorLoad": "échec du chargement des jetons",
 "profile.tokens.errorCreate": "échec de la création du jeton",
 "profile.tokens.errorRevoke": "échec de la révocation du jeton",

@@ -64,7 +64,17 @@
 			title={m['vms.snapshots.empty']()}
 			dataTestid="snapshot-empty"
 			class="mt-6 rounded-md border border-dashed border-border py-6"
-		/>
+		>
+			{#snippet actions()}
+				<button
+					type="button"
+					class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+					onclick={() => (createOpen = true)}
+				>
+					{m['vms.snapshots.createButton']()}
+				</button>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<ul class="mt-6 space-y-3" aria-label={m['vms.snapshots.listLabel']()}>
 			{#each snapshots.snapshots as snapshot (snapshot.name)}
