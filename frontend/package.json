@@ -25,7 +25,7 @@
 		"@sveltejs/kit": "^2.64.0",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@tailwindcss/vite": "^4.3.0",
-		"@types/node": "^25.9.2",
+		"@types/node": "^26.2.0",
 		"@vitest/coverage-v8": "^4.1.8",
 		"bits-ui": "^2.18.1",
 		"clsx": "^2.1.1",
