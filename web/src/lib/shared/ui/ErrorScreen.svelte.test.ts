@@ -19,4 +19,10 @@ describe('ErrorScreen', () => {
 
 		expect(document.body.textContent).toContain('418');
 	});
+
+	it('uses the provided message over the default description', () => {
+		mount(ErrorScreen, { target: document.body, props: { status: 500, message: 'Database is down' } });
+
+		expect(document.body.textContent).toContain('Database is down');
+	});
 });

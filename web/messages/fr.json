@@ -887,5 +887,6 @@
  "error.serverErrorDescription": "Le service a rencontré un problème. Veuillez réessayer plus tard.",
  "error.genericTitle": "Erreur {status}",
  "error.genericDescription": "Une erreur inattendue s'est produite.",
- "error.backToHome": "Retour à l'accueil"
+ "error.backToHome": "Retour à l'accueil",
+"error.pageTitle": "Erreur {status} — PVMSS"
  }
