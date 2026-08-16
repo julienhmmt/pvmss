@@ -67,6 +67,8 @@
 			disabled={store.actionInFlight || !isApplicable(action)}
 			onclick={() => handleAction(action.kind)}
 			data-testid="vm-action-{action.kind}"
+			title={action.label()}
+			aria-label={action.label()}
 		>
 			{action.label()}
 		</button>
@@ -78,6 +80,8 @@
 		disabled={store.deleteInFlight}
 		onclick={onDelete}
 		data-testid="vm-action-delete"
+		title={m['vms.action.delete']()}
+		aria-label={m['vms.action.delete']()}
 	>
 		{m['vms.action.delete']()}
 	</button>
