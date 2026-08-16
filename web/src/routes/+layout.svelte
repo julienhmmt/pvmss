@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import { page } from '$app/state';
+	import { onNavigate } from '$app/navigation';
 	import '../app.css';
 	import { setTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import { setSessionContext } from '$lib/features/auth/session.svelte';
@@ -43,6 +44,18 @@
 		status.start();
 	});
 	onDestroy(() => status.stop());
+
+	if (typeof onNavigate === 'function') {
+		onNavigate((navigation) => {
+			if (!(typeof document !== 'undefined' && 'startViewTransition' in document)) return;
+			return new Promise((resolve) => {
+				void document.startViewTransition(async () => {
+					resolve();
+					await navigation.complete;
+				});
+			});
+		});
+	}
 
 	let version = $state<string | null>(null);
 	onMount(async () => {
