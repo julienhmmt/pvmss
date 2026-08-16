@@ -887,5 +887,6 @@
  "error.serverErrorDescription": "The service ran into a problem. Please try again later.",
  "error.genericTitle": "Error {status}",
  "error.genericDescription": "An unexpected error occurred.",
- "error.backToHome": "Back to home"
+ "error.backToHome": "Back to home",
+"error.pageTitle": "Error {status} — PVMSS"
  }

@@ -10,11 +10,12 @@
 
 	interface Props {
 		status: number;
+		message?: string | undefined;
 	}
 
-	let { status }: Props = $props();
+	let { status, message }: Props = $props();
 
-	const message = $derived(getErrorMessage(status));
+	const errorMessage = $derived(getErrorMessage(status));
 </script>
 
 <div class="grid w-full flex-1 grid-cols-1 lg:grid-cols-2">
@@ -31,8 +32,10 @@
 						<ErrorIcon class="h-6 w-6" />
 					</div>
 					<div>
-						<h1 class="text-2xl font-semibold tracking-tight">{message.title()}</h1>
-						<p class="mt-2 text-sm text-muted-foreground">{message.description()}</p>
+						<h1 class="text-2xl font-semibold tracking-tight">{errorMessage.title()}</h1>
+						<p class="mt-2 text-sm text-muted-foreground">
+							{message ?? errorMessage.description()}
+						</p>
 					</div>
 				</div>
 				<Button onclick={() => void goto(resolve('/'))}>
