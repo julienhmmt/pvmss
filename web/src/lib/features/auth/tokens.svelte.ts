@@ -41,28 +41,32 @@ export class TokensStore {
 		}
 	}
 
-	async create(label: string, scope: TokenScope): Promise<void> {
+	async create(label: string, scope: TokenScope): Promise<boolean> {
 		this.error = null;
 		this.creating = true;
 		try {
 			const created = await post<CreateTokenResponse>('/api/v1/auth/tokens', { label, scope });
 			this.lastCreatedValue = created.value;
 			await this.load();
+			return true;
 		} catch (err) {
 			this.error = err instanceof ApiRequestError ? err.message : m['profile.tokens.errorCreate']();
+			return false;
 		} finally {
 			this.creating = false;
 		}
 	}
 
-	async revoke(id: string): Promise<void> {
+	async revoke(id: string): Promise<boolean> {
 		this.error = null;
 		this.revoking[id] = true;
 		try {
 			await del(`/api/v1/auth/tokens/${id}`);
 			await this.load();
+			return true;
 		} catch (err) {
 			this.error = err instanceof ApiRequestError ? err.message : m['profile.tokens.errorRevoke']();
+			return false;
 		} finally {
 			this.revoking[id] = false;
 		}

@@ -4,8 +4,10 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 
 	const store = setTokensContext();
+	const toast = getToastContext();
 
 	let label = $state('');
 	let scope = $state<TokenScope>('read');
@@ -18,7 +20,8 @@
 		event.preventDefault();
 		const trimmed = label.trim();
 		if (!trimmed) return;
-		void store.create(trimmed, scope).then(() => {
+		void store.create(trimmed, scope).then((ok) => {
+			if (ok) toast.success(m['profile.tokens.createSuccess']());
 			label = '';
 		});
 	}
@@ -78,7 +81,10 @@
 							variant="ghost"
 							size="sm"
 							loading={store.revoking[token.id] === true}
-							onclick={() => store.revoke(token.id)}
+							onclick={() =>
+								void store.revoke(token.id).then((ok) => {
+									if (ok) toast.success(m['profile.tokens.revokeSuccess']());
+								})}
 							label={m['profile.tokens.revoke']()}
 						>
 							{m['profile.tokens.revoke']()}
