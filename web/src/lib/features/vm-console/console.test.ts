@@ -56,10 +56,10 @@ describe('buildConsoleWebSocketURL', () => {
 describe('consoleTicketErrorMessage', () => {
 	it('returns the API message for an ApiRequestError', () => {
 		const err = new ApiRequestError(403, 'forbidden', 'not your VM');
-		expect(consoleTicketErrorMessage(err, 'fallback')).toBe('not your VM');
+		expect(consoleTicketErrorMessage(err, () => 'fallback')).toBe('not your VM');
 	});
 
 	it('returns the fallback for a generic error', () => {
-		expect(consoleTicketErrorMessage(new Error('boom'), 'fallback')).toBe('fallback');
+		expect(consoleTicketErrorMessage(new Error('boom'), () => 'fallback')).toBe('fallback');
 	});
 });

@@ -1,5 +1,6 @@
 import { getContext, setContext } from 'svelte';
 import { get, post, ApiRequestError } from '$lib/shared/api/client';
+import { m } from '$lib/paraglide/messages.js';
 import type { DraftValues } from './draft.svelte';
 
 export interface CatalogStorage {
@@ -99,7 +100,7 @@ export class VmCreateStore {
 		try {
 			this.catalog = await get<VmCreateCatalog>('/api/v1/vm-create/catalog');
 		} catch (error: unknown) {
-			this.catalogError = error instanceof ApiRequestError ? error.message : 'failed to load the catalog';
+			this.catalogError = error instanceof ApiRequestError ? error.message : m['vms.create.errorCatalog']();
 		}
 	}
 

@@ -41,6 +41,6 @@ export function buildConsoleWebSocketURL(cluster: string, vmid: number, token: s
 }
 
 /** Maps an ApiRequestError to a user-facing message. */
-export function consoleTicketErrorMessage(err: unknown, fallback: string): string {
-	return err instanceof ApiRequestError ? err.message : fallback;
+export function consoleTicketErrorMessage(err: unknown, fallback: () => string): string {
+	return err instanceof ApiRequestError ? err.message : fallback();
 }

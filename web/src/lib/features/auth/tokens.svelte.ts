@@ -1,5 +1,6 @@
 import { getContext, setContext } from 'svelte';
 import { get, post, del, ApiRequestError } from '$lib/shared/api/client';
+import { m } from '$lib/paraglide/messages.js';
 
 export type TokenScope = 'read' | 'read_write';
 
@@ -32,7 +33,7 @@ export class TokensStore {
 			const response = await get<TokenListResponse>('/api/v1/auth/tokens');
 			this.tokens = response.tokens;
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : 'failed to load tokens';
+			this.error = err instanceof ApiRequestError ? err.message : m['profile.tokens.errorLoad']();
 		} finally {
 			this.loading = false;
 		}
@@ -45,7 +46,7 @@ export class TokensStore {
 			this.lastCreatedValue = created.value;
 			await this.load();
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : 'failed to create token';
+			this.error = err instanceof ApiRequestError ? err.message : m['profile.tokens.errorCreate']();
 		}
 	}
 
@@ -55,7 +56,7 @@ export class TokensStore {
 			await del(`/api/v1/auth/tokens/${id}`);
 			await this.load();
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : 'failed to revoke token';
+			this.error = err instanceof ApiRequestError ? err.message : m['profile.tokens.errorRevoke']();
 		}
 	}
 

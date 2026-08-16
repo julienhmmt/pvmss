@@ -1,4 +1,5 @@
 import { get, ApiRequestError } from '$lib/shared/api/client';
+import { m } from '$lib/paraglide/messages.js';
 
 /** DocSummary mirrors the docSummaryDTO from GET /api/v1/docs. */
 export interface DocSummary {
@@ -33,7 +34,7 @@ export class DocsBrowserStore {
 		try {
 			this.pages = await get<DocSummary[]>('/api/v1/docs');
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : 'failed to load documentation';
+			this.error = err instanceof ApiRequestError ? err.message : m['docs.failedLoad']();
 		} finally {
 			this.loading = false;
 		}
