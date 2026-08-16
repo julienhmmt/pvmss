@@ -6,6 +6,7 @@
 	 * every interactive control needs default/hover/focus/disabled states).
 	 */
 	import type { Snippet } from 'svelte';
+	import { focusOnMount } from './focus-on-mount';
 
 	type Variant = 'primary' | 'secondary' | 'ghost' | 'destructive';
 	type Size = 'sm' | 'md';
@@ -15,6 +16,7 @@
 		size?: Size;
 		type?: 'button' | 'submit';
 		disabled?: boolean;
+		focusOnMount?: boolean;
 		/** Accessible label, when the visible content is not descriptive enough. */
 		label?: string;
 		onclick?: () => void;
@@ -26,6 +28,7 @@
 		size = 'md',
 		type = 'button',
 		disabled = false,
+		focusOnMount: shouldFocusOnMount = false,
 		label,
 		onclick,
 		children
@@ -53,6 +56,7 @@
 	aria-label={label}
 	{onclick}
 	class="{base} {sizes[size]} {variants[variant]}"
+	use:focusOnMount={shouldFocusOnMount}
 >
 	{@render children()}
 </button>

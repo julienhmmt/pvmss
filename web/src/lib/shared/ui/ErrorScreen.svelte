@@ -23,25 +23,31 @@
 
 	<div class="flex flex-col items-center justify-center p-6 sm:p-10">
 		<div class="w-full max-w-sm">
-			<Card pad="lg" class="flex flex-col gap-6">
-				<div class="flex flex-col items-center gap-4 text-center">
-					<div
-						class="rounded-full bg-destructive p-3 text-destructive-foreground"
-						aria-hidden="true"
-					>
-						<ErrorIcon class="h-6 w-6" />
+			<section
+				role="alert"
+				aria-live="assertive"
+				aria-label={errorMessage.title()}
+			>
+				<Card pad="lg" class="flex flex-col gap-6">
+					<div class="flex flex-col items-center gap-4 text-center">
+						<div
+							class="rounded-full bg-destructive p-3 text-destructive-foreground"
+							aria-hidden="true"
+						>
+							<ErrorIcon class="h-6 w-6" />
+						</div>
+						<div>
+							<h1 class="text-2xl font-semibold tracking-tight">{errorMessage.title()}</h1>
+							<p class="mt-2 text-sm text-muted-foreground">
+								{message ?? errorMessage.description()}
+							</p>
+						</div>
 					</div>
-					<div>
-						<h1 class="text-2xl font-semibold tracking-tight">{errorMessage.title()}</h1>
-						<p class="mt-2 text-sm text-muted-foreground">
-							{message ?? errorMessage.description()}
-						</p>
-					</div>
-				</div>
-				<Button onclick={() => void goto(resolve('/'))}>
-					{m['error.backToHome']()}
-				</Button>
-			</Card>
+					<Button focusOnMount onclick={() => void goto(resolve('/'))}>
+						{m['error.backToHome']()}
+					</Button>
+				</Card>
+			</section>
 		</div>
 	</div>
 </div>
