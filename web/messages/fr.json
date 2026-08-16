@@ -872,5 +872,9 @@
  "login.brandFeature3": "Quotas & politiques",
  "login.brandFeature3Desc": "Limites par utilisateur et politiques appliqu\u00e9es c\u00f4t\u00e9 serveur.",
  "auth.logout": "Déconnexion",
- "auth.logout.confirm": "Quitter PVMSS ?"
+ "auth.logout.confirm": "Quitter PVMSS ?",
+ "auth.requiredTitle": "Authentification requise",
+ "auth.requiredDescription": "Veuillez vous connecter pour accéder à cette page.",
+ "auth.warningBrandTitle": "Avertissement",
+ "auth.warningBrandDescription": "Cette page requiert une authentification."
  }

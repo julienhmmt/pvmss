@@ -1,9 +1,12 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { onDestroy, onMount } from 'svelte';
+	import { page } from '$app/state';
 	import '../app.css';
 	import { setTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import { setSessionContext } from '$lib/features/auth/session.svelte';
+	import { isPublicPath } from '$lib/features/auth/public-routes';
+	import AuthRequired from '$lib/features/auth/AuthRequired.svelte';
 	import { get } from '$lib/shared/api/client';
 	import { setLocaleContext } from '$lib/features/chrome/locale.svelte';
 	import { setThemeContext } from '$lib/features/chrome/theme.svelte';
@@ -23,7 +26,11 @@
 	onDestroy(() => tray.destroy());
 
 	const session = setSessionContext();
-	onMount(() => session.load());
+	let routeChecked = $state(false);
+	onMount(async () => {
+		await session.load();
+		routeChecked = true;
+	});
 
 	const locale = setLocaleContext();
 	const theme = setThemeContext();
@@ -115,7 +122,13 @@
 	<div class="flex min-h-screen flex-col bg-background text-foreground">
 		<HeaderLite />
 		<main class="flex flex-1 flex-col items-center justify-center p-6">
-			{@render children()}
+			{#if !routeChecked && !isPublicPath(page.url.pathname)}
+				<p role="status" aria-live="polite" class="text-muted-foreground">{m['common.loading']()}</p>
+			{:else if !isPublicPath(page.url.pathname)}
+				<AuthRequired />
+			{:else}
+				{@render children()}
+			{/if}
 		</main>
 		<footer class="border-t border-border py-3 text-center text-xs text-muted-foreground-subtle">
 			{#if version}PVMSS {version}{/if}
