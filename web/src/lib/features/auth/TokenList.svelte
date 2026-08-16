@@ -3,6 +3,7 @@
 	import { setTokensContext, type TokenScope } from './tokens.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 
 	const store = setTokensContext();
 
@@ -38,7 +39,7 @@
 				<option value="read_write">{m['profile.tokens.scopeReadWrite']()}</option>
 			</select>
 		</label>
-		<button class="rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground" type="submit">{m['profile.tokens.createButton']()}</button>
+		<Button type="submit" loading={store.creating}>{m['profile.tokens.createButton']()}</Button>
 	</form>
 
 	{#if store.error}<p role="alert" class="mt-3 text-sm text-destructive">{store.error}</p>{/if}
@@ -73,7 +74,15 @@
 						<td class="px-3 py-2 text-muted-foreground">{new Date(token.createdAt).toLocaleString()}</td>
 						<td class="px-3 py-2 text-muted-foreground">{token.lastUsedAt ? new Date(token.lastUsedAt).toLocaleString() : m['profile.tokens.never']()}</td>
 						<td class="px-3 py-2 text-right">
-							<button class="text-sm text-destructive underline" onclick={() => store.revoke(token.id)}>{m['profile.tokens.revoke']()}</button>
+							<Button
+							variant="ghost"
+							size="sm"
+							loading={store.revoking[token.id] === true}
+							onclick={() => store.revoke(token.id)}
+							label={m['profile.tokens.revoke']()}
+						>
+							{m['profile.tokens.revoke']()}
+						</Button>
 						</td>
 					</tr>
 				{/each}
