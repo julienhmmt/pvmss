@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { DocsBrowserStore, type DocSummary } from '$lib/features/docs/docs.svelte';
+	import { get, ApiRequestError } from '$lib/shared/api/client';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import { getLocaleContext } from '$lib/features/chrome/locale.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Locale } from '$lib/paraglide/runtime.js';
+	import type { DocSummary } from '$lib/features/docs/docs.svelte';
 
 	interface CategoryGroup {
 		category: string;
@@ -14,13 +15,27 @@
 
 	const session = getSessionContext();
 	const locale = getLocaleContext();
-	const store = new DocsBrowserStore();
 
+	let pages = $state<DocSummary[]>([]);
+	let loading = $state(true);
+	let error = $state<string | null>(null);
 	let selectedLang = $state<Locale>('en');
+
+	async function loadDocs(): Promise<void> {
+		loading = true;
+		error = null;
+		try {
+			pages = await get<DocSummary[]>('/api/v1/docs');
+		} catch (err) {
+			error = err instanceof ApiRequestError ? err.message : m['docs.failedLoad']();
+		} finally {
+			loading = false;
+		}
+	}
 
 	onMount(() => {
 		selectedLang = locale.current;
-		void store.load();
+		void loadDocs();
 	});
 
 	function groupByCategory(pages: DocSummary[]): CategoryGroup[] {
@@ -71,12 +86,12 @@
 		</label>
 	</div>
 
-	{#if store.loading}
+	{#if loading}
 		<p role="status" aria-live="polite" class="text-muted-foreground">{m['docs.loading']()}</p>
-	{:else if store.error}
-		<p role="alert" class="text-destructive">{store.error}</p>
+	{:else if error}
+		<p role="alert" class="text-destructive">{error}</p>
 	{:else}
-		{@const grouped = groupByCategory(visiblePages(store.pages, session.isAdmin))}
+		{@const grouped = groupByCategory(visiblePages(pages, session.isAdmin))}
 		{#if grouped.length === 0}
 			<p class="text-muted-foreground">{m['docs.empty']()}</p>
 		{:else}
@@ -84,7 +99,7 @@
 				<div class="mb-8">
 					<h2 class="mb-3 text-lg font-medium">{group.category}</h2>
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-						{#each group.pages as page (page.id)}
+						{#each group.pages as page (page.id + '-' + page.lang)}
 							<a
 								href={docHref(page)}
 								class="block rounded-lg border border-border p-4 transition-colors hover:border-primary/50 hover:bg-accent/30"
