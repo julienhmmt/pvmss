@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import { m } from '$lib/paraglide/messages.js';
 import { NodesStore } from './nodes.svelte';
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -84,7 +85,7 @@ describe('NodesStore', () => {
 		await store.load();
 
 		expect(store.loading).toBe(false);
-		expect(store.error).toBe('failed to load cluster nodes');
+		expect(store.error).toBe(m['nodes.errorLoadNodes']());
 		expect(store.nodes).toEqual([]);
 	});
 

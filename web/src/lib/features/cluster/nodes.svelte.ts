@@ -1,5 +1,6 @@
 import { getContext, setContext } from 'svelte';
 import { get, post, ApiRequestError } from '$lib/shared/api/client';
+import { m } from '$lib/paraglide/messages.js';
 
 export type NodeStatus = 'online' | 'offline' | 'unknown';
 
@@ -56,7 +57,7 @@ export class NodesStore {
 				this.errorCode = err.code;
 				this.errorStatus = err.status;
 			} else {
-				this.error = 'failed to load cluster nodes';
+				this.error = m['nodes.errorLoadNodes']();
 				this.errorCode = null;
 				this.errorStatus = null;
 			}
@@ -79,7 +80,7 @@ export class NodesStore {
 				this.refreshError = err.message;
 				this.#scheduleReenable(err.retryAfterSeconds ?? 5);
 			} else {
-				this.refreshError = err instanceof ApiRequestError ? err.message : 'failed to refresh';
+				this.refreshError = err instanceof ApiRequestError ? err.message : m['nodes.errorRefresh']();
 			}
 		} finally {
 			this.refreshing = false;

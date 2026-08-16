@@ -1,4 +1,5 @@
 import { del, get, post, ApiRequestError } from '$lib/shared/api/client';
+import { m } from '$lib/paraglide/messages.js';
 import type { TaskKind, TaskTrayStore } from '$lib/features/tasks/tasks.svelte';
 
 export interface VmSnapshot {
@@ -47,7 +48,7 @@ export class VmSnapshotsStore {
 			this.snapshots = response.snapshots;
 			this.maxSnapshots = response.maxSnapshots;
 		} catch (error: unknown) {
-			this.error = errorMessage(error, 'failed to load snapshots');
+			this.error = errorMessage(error, () => m['vms.snapshots.errorLoad']());
 		} finally {
 			this.loading = false;
 		}
@@ -78,7 +79,7 @@ export class VmSnapshotsStore {
 			this.#tray.track({ upid: task.upid, kind, vmid: this.vmid, name });
 			return true;
 		} catch (error: unknown) {
-			this.error = errorMessage(error, 'snapshot operation failed');
+			this.error = errorMessage(error, () => m['vms.snapshots.errorOperation']());
 			return false;
 		} finally {
 			this.inFlight = false;
@@ -86,6 +87,6 @@ export class VmSnapshotsStore {
 	}
 }
 
-function errorMessage(error: unknown, fallback: string): string {
-	return error instanceof ApiRequestError ? error.message : fallback;
+function errorMessage(error: unknown, fallback: () => string): string {
+	return error instanceof ApiRequestError ? error.message : fallback();
 }

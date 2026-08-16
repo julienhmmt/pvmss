@@ -1,4 +1,5 @@
 import { get, put, ApiRequestError } from '$lib/shared/api/client';
+import { m } from '$lib/paraglide/messages.js';
 
 export type CloudInitIPMode = 'dhcp' | 'static';
 
@@ -68,7 +69,7 @@ export class CloudInitStore {
 		try {
 			this.config = sanitizeConfig(await get<CloudInitConfig>(this.#basePath));
 		} catch (err) {
-			this.configError = errorMessage(err, 'failed to load cloud-init configuration');
+			this.configError = errorMessage(err, () => m['vms.cloudinit.errorLoadConfig']());
 		} finally {
 			this.configLoading = false;
 		}
@@ -84,7 +85,7 @@ export class CloudInitStore {
 			await this.#reloadVm();
 			return this.configError === null;
 		} catch (err) {
-			this.configError = errorMessage(err, 'failed to save cloud-init configuration');
+			this.configError = errorMessage(err, () => m['vms.cloudinit.errorSaveConfig']());
 			return false;
 		} finally {
 			this.configInFlight = false;
@@ -98,7 +99,7 @@ export class CloudInitStore {
 		try {
 			this.snippet = await get<CloudInitSnippet>(`${this.#basePath}/snippet`);
 		} catch (err) {
-			this.snippetError = errorMessage(err, 'failed to load cloud-init snippet');
+			this.snippetError = errorMessage(err, () => m['vms.cloudinit.errorLoadSnippet']());
 		} finally {
 			this.snippetLoading = false;
 		}
@@ -115,7 +116,7 @@ export class CloudInitStore {
 			return this.snippetError === null;
 		} catch (err) {
 			this.snippetErrorCode = err instanceof ApiRequestError ? err.code : null;
-			this.snippetError = errorMessage(err, 'failed to save cloud-init snippet');
+			this.snippetError = errorMessage(err, () => m['vms.cloudinit.errorSaveSnippet']());
 			return false;
 		} finally {
 			this.snippetInFlight = false;
@@ -135,6 +136,6 @@ function sanitizeConfig(config: CloudInitConfig): CloudInitConfig {
 	};
 }
 
-function errorMessage(err: unknown, fallback: string): string {
-	return err instanceof ApiRequestError ? err.message : fallback;
+function errorMessage(err: unknown, fallback: () => string): string {
+	return err instanceof ApiRequestError ? err.message : fallback();
 }
