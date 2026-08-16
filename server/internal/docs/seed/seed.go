@@ -24,6 +24,15 @@ var cloudInitHowtoMD string
 //go:embed admin.md
 var adminMD string
 
+//go:embed getting-started.fr.md
+var gettingStartedFR string
+
+//go:embed vm-creation-guidelines.fr.md
+var vmCreationGuidelinesFR string
+
+//go:embed cloud-init-howto.fr.md
+var cloudInitHowtoFR string
+
 //go:embed recovered/admin-guide.en.md
 var adminGuideEN string
 
@@ -82,27 +91,26 @@ func SeedDocumentationPages(ctx context.Context, st *store.Store) error {
 	stamp := time.Now().UTC().Format(time.RFC3339Nano)
 
 	for _, p := range builtInPages {
-		exists, err := st.DocumentationPageExists(ctx, p.id, "en")
-		if err != nil {
-			return fmt.Errorf("check seed page %q: %w", p.id, err)
-		}
-
-		if exists {
-			continue
-		}
-
-		// The recovered v0.3 guides were reintegrated in both languages
-		// (en/fr). Seed each of those pages as two language variants; the
-		// original four built-in pages remain English-only.
-		if p.id == "admin-guide" || p.id == "user-guide" || p.id == "cloud-init-setup" || p.id == "proxmox-permissions" {
-			for _, v := range bilingualVariants(p.id) {
-				if err := insertSeedRow(ctx, st, v.id, v.lang, v.title, v.category, v.bodyMD, v.audience, v.sortOrder, stamp); err != nil {
+		// Pages that ship in both languages are seeded variant by variant.
+		// insertSeedRow is itself idempotent per (id, lang), so re-running
+		// the seed never clobbers an existing or admin-edited row.
+		if v := frenchVariants(p.id); v != nil {
+			for _, variant := range v {
+				if err := insertSeedRow(ctx, st, variant.id, variant.lang, variant.title, variant.category, variant.bodyMD, variant.audience, variant.sortOrder, stamp); err != nil {
 					return err
 				}
 			}
 			continue
 		}
 
+		// English-only pages: seed once if the (id, en) row is missing.
+		exists, err := st.DocumentationPageExists(ctx, p.id, "en")
+		if err != nil {
+			return fmt.Errorf("check seed page %q: %w", p.id, err)
+		}
+		if exists {
+			continue
+		}
 		if err := insertSeedRow(ctx, st, p.id, "en", p.title, p.category, p.bodyMD, p.audience, p.sortOrder, stamp); err != nil {
 			return err
 		}
@@ -122,9 +130,25 @@ type seedVariant struct {
 	sortOrder int
 }
 
-// bilingualVariants returns the en and fr rows for a recovered guide id.
-func bilingualVariants(id string) []seedVariant {
+// frenchVariants returns the en + fr rows for a built-in page that ships in
+// both languages. It returns nil for pages that are English-only.
+func frenchVariants(id string) []seedVariant {
 	switch id {
+	case "getting-started":
+		return []seedVariant{
+			{id: "getting-started", lang: "en", title: "Getting started", category: "Getting started", bodyMD: gettingStartedMD, audience: "user", sortOrder: 1},
+			{id: "getting-started", lang: "fr", title: "Premiers pas", category: "Premiers pas", bodyMD: gettingStartedFR, audience: "user", sortOrder: 1},
+		}
+	case "vm-creation-guidelines":
+		return []seedVariant{
+			{id: "vm-creation-guidelines", lang: "en", title: "VM creation guidelines", category: "Creating VMs", bodyMD: vmCreationGuidelinesMD, audience: "user", sortOrder: 2},
+			{id: "vm-creation-guidelines", lang: "fr", title: "Recommandations de création de VM", category: "Création de VMs", bodyMD: vmCreationGuidelinesFR, audience: "user", sortOrder: 2},
+		}
+	case "cloud-init-howto":
+		return []seedVariant{
+			{id: "cloud-init-howto", lang: "en", title: "Cloud-init how-to", category: "Creating VMs", bodyMD: cloudInitHowtoMD, audience: "user", sortOrder: 3},
+			{id: "cloud-init-howto", lang: "fr", title: "Guide cloud-init", category: "Création de VMs", bodyMD: cloudInitHowtoFR, audience: "user", sortOrder: 3},
+		}
 	case "user-guide":
 		return []seedVariant{
 			{id: "user-guide", lang: "en", title: "User guide", category: "Guides", bodyMD: userGuideEN, audience: "user", sortOrder: 4},
