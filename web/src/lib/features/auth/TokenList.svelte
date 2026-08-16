@@ -4,6 +4,7 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import CopyButton from '$lib/shared/ui/CopyButton.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 
 	const store = setTokensContext();
@@ -48,9 +49,12 @@
 	{#if store.error}<p role="alert" class="mt-3 text-sm text-destructive">{store.error}</p>{/if}
 
 	{#if store.lastCreatedValue}
-		<div role="status" class="mt-3 rounded-md border border-border bg-card p-3 text-sm">
+		<div role="status" class="mt-3 rounded-md border border-border bg-card p-3 text-sm" aria-live="polite">
 			<p class="font-medium">{m['profile.tokens.copyNow']()}</p>
-			<code class="mt-1 block break-all rounded bg-muted px-2 py-1">{store.lastCreatedValue}</code>
+			<div class="mt-1 flex flex-wrap items-center gap-2">
+				<code class="block break-all rounded bg-muted px-2 py-1">{store.lastCreatedValue}</code>
+				<CopyButton value={store.lastCreatedValue} />
+			</div>
 			<button class="mt-2 text-sm underline" onclick={() => store.dismissCreatedValue()}>{m['common.dismiss']()}</button>
 		</div>
 	{/if}
