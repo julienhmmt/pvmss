@@ -1,5 +1,6 @@
 import { getContext, setContext } from 'svelte';
 import { get, post, ApiRequestError } from '$lib/shared/api/client';
+import { m } from '$lib/paraglide/messages.js';
 
 export type NodeStatus = 'online' | 'offline' | 'unknown';
 
@@ -29,6 +30,8 @@ export class NodesStore {
 	refreshedAt = $state.raw<string | null>(null);
 	loading = $state.raw(false);
 	error = $state.raw<string | null>(null);
+	errorCode = $state.raw<string | null>(null);
+	errorStatus = $state.raw<number | null>(null);
 	refreshing = $state.raw(false);
 	refreshError = $state.raw<string | null>(null);
 	refreshDisabled = $state.raw(false);
@@ -42,12 +45,22 @@ export class NodesStore {
 	async load(): Promise<void> {
 		this.loading = true;
 		this.error = null;
+		this.errorCode = null;
+		this.errorStatus = null;
 		try {
 			const response = await get<NodesResponse>('/api/v1/cluster/nodes');
 			this.nodes = response.nodes;
 			this.refreshedAt = response.refreshedAt;
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : 'failed to load cluster nodes';
+			if (err instanceof ApiRequestError) {
+				this.error = err.message;
+				this.errorCode = err.code;
+				this.errorStatus = err.status;
+			} else {
+				this.error = m['nodes.errorLoadNodes']();
+				this.errorCode = null;
+				this.errorStatus = null;
+			}
 		} finally {
 			this.loading = false;
 		}
@@ -67,7 +80,7 @@ export class NodesStore {
 				this.refreshError = err.message;
 				this.#scheduleReenable(err.retryAfterSeconds ?? 5);
 			} else {
-				this.refreshError = err instanceof ApiRequestError ? err.message : 'failed to refresh';
+				this.refreshError = err instanceof ApiRequestError ? err.message : m['nodes.errorRefresh']();
 			}
 		} finally {
 			this.refreshing = false;

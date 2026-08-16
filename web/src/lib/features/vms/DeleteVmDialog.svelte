@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { getVmDetailContext } from './detail.svelte';
+	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
+	const toast = getToastContext();
 
 	interface Props {
 		open?: boolean;
@@ -16,7 +18,13 @@
 	}
 
 	async function confirm(): Promise<void> {
+		const vmName = store.entity?.name ?? '';
 		await store.delete();
+		if (store.deleteError) {
+			toast.error(m['toast.vmDeleteFailed']({ error: store.deleteError }));
+		} else if (store.deleted) {
+			toast.success(m['toast.vmDeleted']({ name: vmName }));
+		}
 	}
 </script>
 

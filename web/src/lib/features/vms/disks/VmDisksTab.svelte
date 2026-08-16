@@ -5,6 +5,7 @@
 	import DeleteDiskDialog from './DeleteDiskDialog.svelte';
 	import VmCdromCard from './VmCdromCard.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	const store = getVmDetailContext();
 
@@ -93,11 +94,20 @@
 			</table>
 		</div>
 	{:else}
-		<p
-			class="mt-3 rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground"
+		<EmptyState
+			title={m['vms.disks.empty']()}
+			class="mt-3 rounded-md border border-dashed border-border py-4"
 		>
-			{m['vms.disks.empty']()}
-		</p>
+			{#snippet actions()}
+				<button
+					type="button"
+					class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+					onclick={() => (addOpen = true)}
+				>
+					{m['vms.disks.addButton']()}
+				</button>
+			{/snippet}
+		</EmptyState>
 	{/if}
 	{#if store.diskError}
 		<p class="mt-2 text-sm text-destructive" role="alert">{store.diskError}</p>

@@ -15,7 +15,7 @@
 </script>
 
 <div class="overflow-x-auto rounded-lg border border-border">
-	<table class="w-full text-sm">
+	<table class="pv-responsive-table text-sm">
 		<thead class="bg-muted/50 text-left">
 			<tr>
 				<th class="px-4 py-2 font-medium">{m['common.name']()}</th>
@@ -29,12 +29,12 @@
 		<tbody>
 			{#each nodes as node (node.name)}
 				<tr class="border-t border-border">
-					<td class="px-4 py-2 font-mono">{node.name}</td>
-					<td class="px-4 py-2">{node.status}</td>
-					<td class="px-4 py-2">{node.vmCount}</td>
-					<td class="px-4 py-2">{node.cpuCores} {m['common.cores']()} ({(node.cpuUsage * 100).toFixed(0)}%)</td>
-					<td class="px-4 py-2">{formatBytes(node.memoryUsed)} / {formatBytes(node.memoryTotal)}</td>
-					<td class="px-4 py-2">
+					<td class="px-4 py-2 font-mono" data-label={m['common.name']()}>{node.name}</td>
+					<td class="px-4 py-2" data-label={m['common.status']()}>{node.status}</td>
+					<td class="px-4 py-2" data-label={m['common.vms']()}>{node.vmCount}</td>
+					<td class="px-4 py-2" data-label={m['common.cpu']()}>{node.cpuCores} {m['common.cores']()} ({(node.cpuUsage * 100).toFixed(0)}%)</td>
+					<td class="px-4 py-2" data-label={m['common.memory']()}>{formatBytes(node.memoryUsed)} / {formatBytes(node.memoryTotal)}</td>
+					<td class="px-4 py-2" data-label={m['admin.catalog.approvedStatus']()}>
 						<span class="inline-flex items-center gap-2" aria-busy={toggling === `node:${node.name}`}>
 							<Switch
 								checked={node.enabled}

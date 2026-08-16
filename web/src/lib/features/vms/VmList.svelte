@@ -8,6 +8,7 @@
 	import { getVmBulkContext } from './bulk.svelte';
 	import { resolve } from '$app/paths';
 	import { m } from '$lib/paraglide/messages.js';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	const store = getVmListContext();
 	const bulk = getVmBulkContext();
@@ -153,16 +154,21 @@
 
 {#if store.result && store.result.items.length === 0}
 	{#if store.result.emptyReason === 'no_vms_owned'}
-		<p class="py-8 text-center text-muted-foreground" data-testid="vm-empty-owned">
-			{m['vms.list.emptyOwned']()}
-		</p>
+		<EmptyState title={m['vms.list.emptyOwned']()} dataTestid="vm-empty-owned">
+			{#snippet actions()}
+				<a
+					href={resolve('/vms/create')}
+					class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+				>
+					{m['vms.list.create']()}
+				</a>
+			{/snippet}
+		</EmptyState>
 	{:else}
-		<p class="py-8 text-center text-muted-foreground" data-testid="vm-empty-match">
-			{m['vms.list.emptyMatch']()}
-		</p>
+		<EmptyState title={m['vms.list.emptyMatch']()} dataTestid="vm-empty-match" />
 	{/if}
 {:else}
-	<table class="w-full border-collapse text-left text-sm">
+	<table class="pv-responsive-table text-sm">
 		<caption class="sr-only">{m['vms.list.caption']()}</caption>
 		<thead>
 			<tr class="border-b border-border">
@@ -197,7 +203,7 @@
 		<tbody>
 			{#each store.result?.items ?? [] as machine (`${machine.cluster}:${machine.vmid}`)}
 				<tr class="border-b border-border last:border-0" data-testid="vm-row">
-					<td class="px-3 py-2">
+					<td class="px-3 py-2" data-nolabel="true">
 						<input
 							type="checkbox"
 							class="h-4 w-4 rounded border-border"
@@ -207,9 +213,9 @@
 							aria-label={m['vms.list.selectRow']({ name: machine.name })}
 						/>
 					</td>
-					<td class="px-3 py-2 font-mono text-muted-foreground">{machine.cluster}</td>
-					<td class="px-3 py-2 font-mono text-muted-foreground">{machine.vmid}</td>
-					<td class="px-3 py-2 font-medium">
+					<td class="px-3 py-2 font-mono text-muted-foreground" data-label={m['vms.list.columnCluster']()}>{machine.cluster}</td>
+					<td class="px-3 py-2 font-mono text-muted-foreground" data-label={m['vms.list.columnId']()}>{machine.vmid}</td>
+					<td class="px-3 py-2 font-medium" data-label={m['vms.list.columnName']()}>
 						<a
 							href={resolve(`/vms/${encodeURIComponent(machine.cluster)}/${machine.vmid}`)}
 							class="hover:underline"
@@ -218,8 +224,8 @@
 							{machine.name}
 						</a>
 					</td>
-					<td class="px-3 py-2 font-mono text-muted-foreground">{machine.node}</td>
-					<td class="px-3 py-2">
+					<td class="px-3 py-2 font-mono text-muted-foreground" data-label={m['vms.list.columnNode']()}>{machine.node}</td>
+					<td class="px-3 py-2" data-label={m['vms.list.columnStatus']()}>
 						<span
 							class="inline-flex items-center rounded-full px-2 py-0.5 text-xs {statusClasses[
 								machine.status
@@ -228,10 +234,10 @@
 							{machine.status}
 						</span>
 					</td>
-					<td class="px-3 py-2 font-mono text-muted-foreground">{machine.cpuCores} {m['common.cores']()}</td>
-					<td class="px-3 py-2 font-mono text-muted-foreground">{formatBytes(machine.memoryTotal)}</td>
+					<td class="px-3 py-2 font-mono text-muted-foreground" data-label={m['vms.list.columnCpu']()}>{machine.cpuCores} {m['common.cores']()}</td>
+					<td class="px-3 py-2 font-mono text-muted-foreground" data-label={m['vms.list.columnMemory']()}>{formatBytes(machine.memoryTotal)}</td>
 					{#if store.scope === 'all'}
-						<td class="px-3 py-2 text-muted-foreground">{machine.pool}</td>
+						<td class="px-3 py-2 text-muted-foreground" data-label={m['vms.list.columnPool']()}>{machine.pool}</td>
 					{/if}
 				</tr>
 			{/each}

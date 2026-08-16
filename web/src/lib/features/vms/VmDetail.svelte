@@ -159,19 +159,19 @@
 	</div>
 
 	<dl class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-		<div class="rounded-md border border-border p-4" data-testid="vm-stat-cpu">
+		<div class="rounded-md border border-border p-4 transition-shadow hover:shadow-card" data-testid="vm-stat-cpu">
 			<dt class="text-xs text-muted-foreground">{m['vms.detail.statCpu']()}</dt>
 			<dd class="text-lg font-medium font-mono">{store.entity.cpuCores} {m['common.cores']()}</dd>
 		</div>
-		<div class="rounded-md border border-border p-4" data-testid="vm-stat-memory">
+		<div class="rounded-md border border-border p-4 transition-shadow hover:shadow-card" data-testid="vm-stat-memory">
 			<dt class="text-xs text-muted-foreground">{m['vms.detail.statMemory']()}</dt>
 			<dd class="text-lg font-medium font-mono">{formatBytes(store.entity.memoryTotal)}</dd>
 		</div>
-		<div class="rounded-md border border-border p-4" data-testid="vm-stat-disk">
+		<div class="rounded-md border border-border p-4 transition-shadow hover:shadow-card" data-testid="vm-stat-disk">
 			<dt class="text-xs text-muted-foreground">{m['vms.detail.statDisk']()}</dt>
 			<dd class="text-lg font-medium font-mono">{formatBytes(store.entity.diskTotal)}</dd>
 		</div>
-		<div class="rounded-md border border-border p-4" data-testid="vm-stat-uptime">
+		<div class="rounded-md border border-border p-4 transition-shadow hover:shadow-card" data-testid="vm-stat-uptime">
 			<dt class="text-xs text-muted-foreground">{m['vms.detail.statUptime']()}</dt>
 			<dd class="text-lg font-medium">
 				{#if store.entity.uptimeSeconds}

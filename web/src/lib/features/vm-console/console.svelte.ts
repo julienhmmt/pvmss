@@ -1,6 +1,7 @@
 import { getContext, setContext } from 'svelte';
 import RFB from '@novnc/novnc';
 import { ApiRequestError } from '$lib/shared/api/client';
+import { m } from '$lib/paraglide/messages.js';
 import { buildConsoleWebSocketURL, consoleTicketErrorMessage, fetchConsoleTicket } from './console';
 
 /** Connection states the console UI reflects. */
@@ -54,7 +55,7 @@ export class ConsoleStore {
 			token = await fetchConsoleTicket(this.cluster, this.vmid);
 		} catch (err) {
 			this.state = 'error';
-			this.error = consoleTicketErrorMessage(err, 'failed to obtain console ticket');
+			this.error = consoleTicketErrorMessage(err, () => m['vms.console.errorTicket']());
 			return;
 		}
 
@@ -63,7 +64,7 @@ export class ConsoleStore {
 			this.#rfb = new RFB(container, url, { shared: true });
 		} catch (err) {
 			this.state = 'error';
-			this.error = err instanceof Error ? err.message : 'failed to create RFB connection';
+			this.error = err instanceof Error ? err.message : m['vms.console.errorConnection']();
 			return;
 		}
 

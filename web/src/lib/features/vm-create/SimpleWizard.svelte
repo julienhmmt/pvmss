@@ -4,6 +4,7 @@
 	import { getVmCreateContext } from './create.svelte';
 	import { getDraftContext } from './draft.svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
+	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	// Simple-mode wizard (V08): pick a profile, name the VM, and submit. Node
@@ -11,15 +12,20 @@
 	// visibly marked, and adjustable via the "Adjust" toggle (FR-010).
 	const form = getVmCreateContext();
 	const tray = getTaskTrayContext();
+	const toast = getToastContext();
 	const draft = getDraftContext();
 
 	const inputClass = 'rounded-md border border-input bg-background px-3 py-2';
 
 	async function submit(): Promise<void> {
 		const accepted = await form.submit();
-		if (accepted === null) return;
+		if (accepted === null) {
+			if (form.submitError) toast.error(m['toast.vmCreateFailed']({ error: form.submitError }));
+			return;
+		}
 		draft.clear();
 		tray.track({ upid: accepted.upid, kind: 'vm_create', vmid: accepted.vmid, name: accepted.name });
+		toast.info(m['toast.vmCreateQueued']());
 		await goto(resolve('/vms'));
 	}
 </script>

@@ -75,7 +75,7 @@
 	</p>
 {/if}
 
-<table class="w-full border-collapse text-left text-sm">
+<table class="pv-responsive-table text-sm">
 	<caption class="sr-only">{m['nodes.caption']()}</caption>
 	<thead>
 		<tr class="border-b border-border">
@@ -90,8 +90,8 @@
 	<tbody>
 		{#each nodes as node (node.name)}
 			<tr class="border-b border-border last:border-0">
-				<td class="px-3 py-2 font-medium">{node.name}</td>
-				<td class="px-3 py-2">
+				<td class="px-3 py-2 font-medium" data-label={m['nodes.columnName']()}>{node.name}</td>
+				<td class="px-3 py-2" data-label={m['nodes.columnStatus']()}>
 					<span
 						class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs {statusClasses[
 							node.status
@@ -100,16 +100,16 @@
 						{node.status}
 					</span>
 				</td>
-				<td class="px-3 py-2 text-muted-foreground" data-testid="vm-count">
+				<td class="px-3 py-2 text-muted-foreground" data-label={m['nodes.columnVms']()} data-testid="vm-count">
 					{node.vmCount}
 				</td>
-				<td class="px-3 py-2 text-muted-foreground">
+				<td class="px-3 py-2 text-muted-foreground" data-label={m['nodes.columnCpu']()}>
 					{node.cpuCores} {m['common.cores']()} · {formatPercent(node.cpuUsage)}
 				</td>
-				<td class="px-3 py-2 text-muted-foreground">
+				<td class="px-3 py-2 text-muted-foreground" data-label={m['nodes.columnMemory']()}>
 					{formatBytes(node.memoryUsed)} / {formatBytes(node.memoryTotal)}
 				</td>
-				<td class="px-3 py-2 text-muted-foreground">
+				<td class="px-3 py-2 text-muted-foreground" data-label={m['nodes.columnStorage']()}>
 					{formatBytes(node.storageUsed)} / {formatBytes(node.storageTotal)}
 				</td>
 			</tr>

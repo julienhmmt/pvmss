@@ -7,6 +7,7 @@
 	import RollbackSnapshotDialog from './RollbackSnapshotDialog.svelte';
 	import { VmSnapshotsStore, type VmSnapshot } from './snapshots.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	const vmStore = getVmDetailContext();
 	const tray = getTaskTrayContext();
@@ -59,7 +60,21 @@
 	{:else if snapshots.error && snapshots.snapshots.length === 0}
 		<p role="alert" class="mt-6 text-sm text-destructive" data-testid="snapshot-list-error">{snapshots.error}</p>
 	{:else if snapshots.snapshots.length === 0}
-		<p class="mt-6 rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground" data-testid="snapshot-empty">{m['vms.snapshots.empty']()}</p>
+		<EmptyState
+			title={m['vms.snapshots.empty']()}
+			dataTestid="snapshot-empty"
+			class="mt-6 rounded-md border border-dashed border-border py-6"
+		>
+			{#snippet actions()}
+				<button
+					type="button"
+					class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+					onclick={() => (createOpen = true)}
+				>
+					{m['vms.snapshots.createButton']()}
+				</button>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<ul class="mt-6 space-y-3" aria-label={m['vms.snapshots.listLabel']()}>
 			{#each snapshots.snapshots as snapshot (snapshot.name)}
@@ -73,8 +88,8 @@
 						{#if snapshot.description}<p class="mt-2 text-sm">{snapshot.description}</p>{/if}
 					</div>
 					<div class="flex shrink-0 gap-2">
-						<button type="button" class="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted" onclick={() => openRollback(snapshot)} data-testid="snapshot-rollback-open">{m['vms.snapshots.restore']()}</button>
-						<button type="button" class="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10" onclick={() => openDelete(snapshot)} data-testid="snapshot-delete-open">{m['vms.snapshots.delete']()}</button>
+						<button type="button" class="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted" onclick={() => openRollback(snapshot)} data-testid="snapshot-rollback-open" title={m['vms.snapshots.restore']()} aria-label={m['vms.snapshots.restore']()}>{m['vms.snapshots.restore']()}</button>
+						<button type="button" class="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10" onclick={() => openDelete(snapshot)} data-testid="snapshot-delete-open" title={m['vms.snapshots.delete']()} aria-label={m['vms.snapshots.delete']()}>{m['vms.snapshots.delete']()}</button>
 					</div>
 				</li>
 			{/each}
