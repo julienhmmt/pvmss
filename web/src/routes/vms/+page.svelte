@@ -77,7 +77,9 @@
 		<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
 		<TableSkeleton columns={8} />
 	{:else}
-		<VmBulkActionBar />
-		<VmList />
+		<div class="fade-in">
+			<VmBulkActionBar />
+			<VmList />
+		</div>
 	{/if}
 </section>

@@ -41,14 +41,16 @@
 			<div role="status" aria-live="polite" class="sr-only">
 				{m['nodes.nodesLoaded']({ count: nodesStore.nodes.length })}
 			</div>
-			<NodeList
-				nodes={nodesStore.nodes}
-				refreshedAt={nodesStore.refreshedAt}
-				refreshing={nodesStore.refreshing}
-				refreshDisabled={nodesStore.refreshDisabled}
-				refreshError={nodesStore.refreshError}
-				onRefresh={handleRefresh}
-			/>
+			<div class="fade-in">
+				<NodeList
+					nodes={nodesStore.nodes}
+					refreshedAt={nodesStore.refreshedAt}
+					refreshing={nodesStore.refreshing}
+					refreshDisabled={nodesStore.refreshDisabled}
+					refreshError={nodesStore.refreshError}
+					onRefresh={handleRefresh}
+				/>
+			</div>
 		{/if}
 	</section>
 {/if}
