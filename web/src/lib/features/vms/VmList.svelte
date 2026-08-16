@@ -154,7 +154,16 @@
 
 {#if store.result && store.result.items.length === 0}
 	{#if store.result.emptyReason === 'no_vms_owned'}
-		<EmptyState title={m['vms.list.emptyOwned']()} dataTestid="vm-empty-owned" />
+		<EmptyState title={m['vms.list.emptyOwned']()} dataTestid="vm-empty-owned">
+			{#snippet actions()}
+				<a
+					href={resolve('/vms/create')}
+					class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+				>
+					{m['vms.list.create']()}
+				</a>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<EmptyState title={m['vms.list.emptyMatch']()} dataTestid="vm-empty-match" />
 	{/if}

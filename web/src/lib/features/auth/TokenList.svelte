@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { setTokensContext, type TokenScope } from './tokens.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	const store = setTokensContext();
 
@@ -50,29 +51,33 @@
 		</div>
 	{/if}
 
-	<table class="mt-4 w-full border-collapse text-left text-sm">
-		<caption class="sr-only">{m['profile.tokens.caption']()}</caption>
-		<thead>
-			<tr class="border-b border-border">
-				<th scope="col" class="px-3 py-2 font-medium">{m['profile.tokens.columnLabel']()}</th>
-				<th scope="col" class="px-3 py-2 font-medium">{m['profile.tokens.columnScope']()}</th>
-				<th scope="col" class="px-3 py-2 font-medium">{m['profile.tokens.columnCreated']()}</th>
-				<th scope="col" class="px-3 py-2 font-medium">{m['profile.tokens.columnLastUsed']()}</th>
-				<th scope="col" class="px-3 py-2 font-medium"><span class="sr-only">{m['common.actions']()}</span></th>
-			</tr>
-		</thead>
-		<tbody>
-			{#each store.tokens as token (token.id)}
-				<tr class="border-b border-border last:border-0">
-					<td class="px-3 py-2 font-medium">{token.label}</td>
-					<td class="px-3 py-2 text-muted-foreground">{token.scope}</td>
-					<td class="px-3 py-2 text-muted-foreground">{new Date(token.createdAt).toLocaleString()}</td>
-					<td class="px-3 py-2 text-muted-foreground">{token.lastUsedAt ? new Date(token.lastUsedAt).toLocaleString() : m['profile.tokens.never']()}</td>
-					<td class="px-3 py-2 text-right">
-						<button class="text-sm text-destructive underline" onclick={() => store.revoke(token.id)}>{m['profile.tokens.revoke']()}</button>
-					</td>
+	{#if store.tokens.length === 0 && !store.loading}
+		<EmptyState title={m['profile.tokens.empty']()} class="mt-6" />
+	{:else}
+		<table class="mt-4 w-full border-collapse text-left text-sm">
+			<caption class="sr-only">{m['profile.tokens.caption']()}</caption>
+			<thead>
+				<tr class="border-b border-border">
+					<th scope="col" class="px-3 py-2 font-medium">{m['profile.tokens.columnLabel']()}</th>
+					<th scope="col" class="px-3 py-2 font-medium">{m['profile.tokens.columnScope']()}</th>
+					<th scope="col" class="px-3 py-2 font-medium">{m['profile.tokens.columnCreated']()}</th>
+					<th scope="col" class="px-3 py-2 font-medium">{m['profile.tokens.columnLastUsed']()}</th>
+					<th scope="col" class="px-3 py-2 font-medium"><span class="sr-only">{m['common.actions']()}</span></th>
 				</tr>
-			{/each}
-		</tbody>
-	</table>
+			</thead>
+			<tbody>
+				{#each store.tokens as token (token.id)}
+					<tr class="border-b border-border last:border-0">
+						<td class="px-3 py-2 font-medium">{token.label}</td>
+						<td class="px-3 py-2 text-muted-foreground">{token.scope}</td>
+						<td class="px-3 py-2 text-muted-foreground">{new Date(token.createdAt).toLocaleString()}</td>
+						<td class="px-3 py-2 text-muted-foreground">{token.lastUsedAt ? new Date(token.lastUsedAt).toLocaleString() : m['profile.tokens.never']()}</td>
+						<td class="px-3 py-2 text-right">
+							<button class="text-sm text-destructive underline" onclick={() => store.revoke(token.id)}>{m['profile.tokens.revoke']()}</button>
+						</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	{/if}
 </section>

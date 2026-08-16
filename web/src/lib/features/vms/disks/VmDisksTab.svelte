@@ -97,7 +97,17 @@
 		<EmptyState
 			title={m['vms.disks.empty']()}
 			class="mt-3 rounded-md border border-dashed border-border py-4"
-		/>
+		>
+			{#snippet actions()}
+				<button
+					type="button"
+					class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+					onclick={() => (addOpen = true)}
+				>
+					{m['vms.disks.addButton']()}
+				</button>
+			{/snippet}
+		</EmptyState>
 	{/if}
 	{#if store.diskError}
 		<p class="mt-2 text-sm text-destructive" role="alert">{store.diskError}</p>
