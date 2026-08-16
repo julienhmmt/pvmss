@@ -23,6 +23,8 @@ interface CreateTokenResponse extends ApiToken {
 export class TokensStore {
 	tokens = $state.raw<ApiToken[]>([]);
 	loading = $state.raw(false);
+	creating = $state.raw(false);
+	revoking = $state.raw<Record<string, boolean>>({});
 	error = $state.raw<string | null>(null);
 	lastCreatedValue = $state.raw<string | null>(null);
 
@@ -41,22 +43,28 @@ export class TokensStore {
 
 	async create(label: string, scope: TokenScope): Promise<void> {
 		this.error = null;
+		this.creating = true;
 		try {
 			const created = await post<CreateTokenResponse>('/api/v1/auth/tokens', { label, scope });
 			this.lastCreatedValue = created.value;
 			await this.load();
 		} catch (err) {
 			this.error = err instanceof ApiRequestError ? err.message : m['profile.tokens.errorCreate']();
+		} finally {
+			this.creating = false;
 		}
 	}
 
 	async revoke(id: string): Promise<void> {
 		this.error = null;
+		this.revoking[id] = true;
 		try {
 			await del(`/api/v1/auth/tokens/${id}`);
 			await this.load();
 		} catch (err) {
 			this.error = err instanceof ApiRequestError ? err.message : m['profile.tokens.errorRevoke']();
+		} finally {
+			this.revoking[id] = false;
 		}
 	}
 
