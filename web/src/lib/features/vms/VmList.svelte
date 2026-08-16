@@ -8,6 +8,7 @@
 	import { getVmBulkContext } from './bulk.svelte';
 	import { resolve } from '$app/paths';
 	import { m } from '$lib/paraglide/messages.js';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	const store = getVmListContext();
 	const bulk = getVmBulkContext();
@@ -153,13 +154,9 @@
 
 {#if store.result && store.result.items.length === 0}
 	{#if store.result.emptyReason === 'no_vms_owned'}
-		<p class="py-8 text-center text-muted-foreground" data-testid="vm-empty-owned">
-			{m['vms.list.emptyOwned']()}
-		</p>
+		<EmptyState title={m['vms.list.emptyOwned']()} dataTestid="vm-empty-owned" />
 	{:else}
-		<p class="py-8 text-center text-muted-foreground" data-testid="vm-empty-match">
-			{m['vms.list.emptyMatch']()}
-		</p>
+		<EmptyState title={m['vms.list.emptyMatch']()} dataTestid="vm-empty-match" />
 	{/if}
 {:else}
 	<table class="pv-responsive-table text-sm">
