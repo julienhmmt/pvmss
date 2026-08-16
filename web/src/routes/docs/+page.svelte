@@ -55,10 +55,6 @@
 		return pages.filter((p) => p.audience !== 'admin' || isAdmin).filter((p) => p.lang === lang);
 	}
 
-	function docHref(page: DocSummary): string {
-		return resolve(`/docs/${page.id}`);
-	}
-
 	function audienceBadgeClass(a: 'user' | 'admin'): string {
 		return a === 'admin'
 			? 'bg-destructive/10 text-destructive'
@@ -101,7 +97,7 @@
 					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 						{#each group.pages as page (page.id + '-' + page.lang)}
 							<a
-								href={docHref(page)}
+								href={resolve(`/docs/${page.id}?lang=${page.lang}`)}
 								class="block rounded-lg border border-border p-4 transition-colors hover:border-primary/50 hover:bg-accent/30"
 							>
 								<div class="mb-2 flex items-center justify-between gap-2">

@@ -33,6 +33,9 @@ var vmCreationGuidelinesFR string
 //go:embed cloud-init-howto.fr.md
 var cloudInitHowtoFR string
 
+//go:embed admin.fr.md
+var adminFR string
+
 //go:embed recovered/admin-guide.en.md
 var adminGuideEN string
 
@@ -71,6 +74,8 @@ type seedPage struct {
 // user docs are public, the admin doc is admin-only. Recovered v0.3 guides
 // (admin/user/cloud-init/permissions) were reintegrated and rewritten for the
 // v0.4 app, then seeded as system pages so they survive restarts (issue #53).
+//
+//nolint:goconst // repeated human-readable titles, categories and ids are seed data
 var builtInPages = []seedPage{
 	{id: "getting-started", title: "Getting started", category: "Getting started", bodyMD: gettingStartedMD, audience: "user", sortOrder: 1},
 	{id: "vm-creation-guidelines", title: "VM creation guidelines", category: "Creating VMs", bodyMD: vmCreationGuidelinesMD, audience: "user", sortOrder: 2},
@@ -100,6 +105,7 @@ func SeedDocumentationPages(ctx context.Context, st *store.Store) error {
 					return err
 				}
 			}
+
 			continue
 		}
 
@@ -108,9 +114,11 @@ func SeedDocumentationPages(ctx context.Context, st *store.Store) error {
 		if err != nil {
 			return fmt.Errorf("check seed page %q: %w", p.id, err)
 		}
+
 		if exists {
 			continue
 		}
+
 		if err := insertSeedRow(ctx, st, p.id, "en", p.title, p.category, p.bodyMD, p.audience, p.sortOrder, stamp); err != nil {
 			return err
 		}
@@ -132,8 +140,15 @@ type seedVariant struct {
 
 // frenchVariants returns the en + fr rows for a built-in page that ships in
 // both languages. It returns nil for pages that are English-only.
+//
+//nolint:misspell // French titles are intentional seed data
 func frenchVariants(id string) []seedVariant {
 	switch id {
+	case "admin":
+		return []seedVariant{
+			{id: "admin", lang: "en", title: "Admin guide", category: "Administration", bodyMD: adminMD, audience: "admin", sortOrder: 100},
+			{id: "admin", lang: "fr", title: "Guide de l'administration", category: "Administration", bodyMD: adminFR, audience: "admin", sortOrder: 100},
+		}
 	case "getting-started":
 		return []seedVariant{
 			{id: "getting-started", lang: "en", title: "Getting started", category: "Getting started", bodyMD: gettingStartedMD, audience: "user", sortOrder: 1},
@@ -170,6 +185,7 @@ func frenchVariants(id string) []seedVariant {
 			{id: "proxmox-permissions", lang: "fr", title: "Permissions Proxmox pour PVMSS", category: "Guides", bodyMD: proxmoxPermissionsFR, audience: "admin", sortOrder: 103},
 		}
 	}
+
 	return nil
 }
 
@@ -179,6 +195,7 @@ func insertSeedRow(ctx context.Context, st *store.Store, id, lang, title, catego
 	if err != nil {
 		return fmt.Errorf("check seed page %q/%s: %w", id, lang, err)
 	}
+
 	if exists {
 		return nil
 	}
@@ -188,8 +205,10 @@ func insertSeedRow(ctx context.Context, st *store.Store, id, lang, title, catego
 		Audience: audience, Enabled: true, IsSystem: true, SortOrder: sortOrder,
 		CreatedAt: stamp, UpdatedAt: stamp,
 	}
+
 	if err := st.InsertDocumentationPage(ctx, row); err != nil {
 		return fmt.Errorf("insert seed page %q/%s: %w", id, lang, err)
 	}
+
 	return nil
 }

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { fetchDocPage, type DocRendered } from '$lib/features/docs/docs.svelte';
@@ -16,6 +17,11 @@
 	let error = $state<string | null>(null);
 	let notFound = $state(false);
 	let selectedLang = $state<Locale>('en');
+
+	function langFromURL(): Locale {
+		const value = page.url.searchParams.get('lang');
+		return value === 'en' || value === 'fr' ? value : locale.current;
+	}
 
 	async function loadDoc(lang: Locale): Promise<void> {
 		loading = true;
@@ -35,8 +41,14 @@
 		}
 	}
 
+	function updateURLLang(lang: Locale): void {
+		const url = new URL(page.url);
+		url.searchParams.set('lang', lang);
+		void goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+	}
+
 	onMount(() => {
-		selectedLang = locale.current;
+		selectedLang = langFromURL();
 		void loadDoc(selectedLang);
 	});
 </script>
@@ -66,6 +78,7 @@
 				value={selectedLang}
 				onchange={(e) => {
 					selectedLang = e.currentTarget.value as Locale;
+					updateURLLang(selectedLang);
 					void loadDoc(selectedLang);
 				}}
 			>

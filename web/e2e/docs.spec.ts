@@ -30,20 +30,32 @@ test.describe('T53 documentation browser', () => {
 		await expect(page.locator('article')).toBeVisible();
 	});
 
+	test('documentation link preserves the selected language in the detail page', async ({ page }) => {
+		await page.goto('/docs');
+		await expect(page.getByText('Chargement…')).toHaveCount(0, { timeout: 10_000 });
+
+		// Switch to English and open a user-facing page.
+		await page.selectOption('select', 'en');
+		await page.getByRole('link', { name: 'User guide' }).click();
+
+		await expect(page).toHaveURL(/\/docs\/user-guide\?lang=en$/);
+		await expect(page.getByRole('heading', { name: 'User guide' })).toBeVisible();
+	});
+
 	test('language selector filters the list by language', async ({ page }) => {
 		await page.goto('/docs');
 		await expect(page.getByText('Chargement…')).toHaveCount(0, { timeout: 10_000 });
 
-		// Default English list shows the English seeded pages.
+		// Selecting English shows only the English user-facing pages.
 		await page.selectOption('select', 'en');
 		await expect(
 			page.getByRole('link', { name: /Getting started|User guide|VM creation guidelines/i })
-		).toBeVisible();
-		await expect(page.getByText('Guide de l’utilisateur')).toHaveCount(0);
+		).toHaveCount(3);
+		await expect(page.getByText("Guide de l'utilisateur")).toHaveCount(0);
 
 		// Switching to French shows only the French variants.
 		await page.selectOption('select', 'fr');
-		await expect(page.getByText('Guide de l’utilisateur')).toBeVisible();
+		await expect(page.getByText("Guide de l'utilisateur")).toBeVisible();
 		await expect(page.getByText('Getting started')).toHaveCount(0);
 	});
 });

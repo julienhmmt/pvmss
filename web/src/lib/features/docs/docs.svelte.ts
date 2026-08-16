@@ -19,6 +19,5 @@ export interface DocRendered {
 
 /** fetchDocPage is a one-shot helper for the viewer route (no store needed). */
 export async function fetchDocPage(id: string, lang: string): Promise<DocRendered> {
-	const params = new URLSearchParams({ lang });
-	return get<DocRendered>(`/api/v1/docs/${id}?${params.toString()}`);
+	return get<DocRendered>(`/api/v1/docs/${id}?lang=${encodeURIComponent(lang)}`);
 }
