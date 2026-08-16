@@ -38,9 +38,11 @@
 		</p>
 	{/if}
 
-	<BridgesTable
-		bridges={store.bridges}
-		toggling={store.toggling}
-		onToggle={(name, enabled) => void store.toggleBridge(name, enabled)}
-	/>
+	<div class="fade-in">
+		<BridgesTable
+			bridges={store.bridges}
+			toggling={store.toggling}
+			onToggle={(name, enabled) => void store.toggleBridge(name, enabled)}
+		/>
+	</div>
 {/if}

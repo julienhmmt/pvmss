@@ -38,9 +38,11 @@
 		</p>
 	{/if}
 
-	<IsosTable
-		isos={store.isos}
-		toggling={store.toggling}
-		onToggle={(storage, file, enabled) => void store.toggleISO(storage, file, enabled)}
-	/>
+	<div class="fade-in">
+		<IsosTable
+			isos={store.isos}
+			toggling={store.toggling}
+			onToggle={(storage, file, enabled) => void store.toggleISO(storage, file, enabled)}
+		/>
+	</div>
 {/if}

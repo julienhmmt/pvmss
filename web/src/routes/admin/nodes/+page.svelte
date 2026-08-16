@@ -38,9 +38,11 @@
 		</p>
 	{/if}
 
-	<NodesTable
-		nodes={store.nodes}
-		toggling={store.toggling}
-		onToggle={(name, enabled) => void store.toggleNode(name, enabled)}
-	/>
+	<div class="fade-in">
+		<NodesTable
+			nodes={store.nodes}
+			toggling={store.toggling}
+			onToggle={(name, enabled) => void store.toggleNode(name, enabled)}
+		/>
+	</div>
 {/if}
