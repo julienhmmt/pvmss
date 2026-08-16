@@ -5,6 +5,7 @@
 	import { page } from '$app/state';
 	import { setVmDetailContext } from '$lib/features/vms/detail.svelte';
 	import VmDetail from '$lib/features/vms/VmDetail.svelte';
+	import Breadcrumb from '$lib/shared/ui/Breadcrumb.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const cluster = page.params.cluster ?? 'default';
@@ -28,11 +29,6 @@
 </svelte:head>
 
 <section class="mx-auto w-full max-w-4xl px-4 py-8">
-	<a
-		href={resolve('/vms')}
-		class="mb-4 inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
-	>
-		{m['common.backToVms']()}
-	</a>
+	<Breadcrumb items={[{ label: m['vms.list.heading'](), href: resolve('/vms') }, { label: m['vms.detail.breadcrumb']({ vmid: String(vmid) }) }]} />
 	<VmDetail />
 </section>
