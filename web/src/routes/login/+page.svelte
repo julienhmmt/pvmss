@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import AuthBrandPanel from '$lib/features/auth/AuthBrandPanel.svelte';
 	import { LoginForm } from '$lib/features/auth/login.svelte';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
@@ -31,30 +32,7 @@
 <div class="grid w-full flex-1 grid-cols-1 lg:grid-cols-2">
 	<!-- Brand / marketing panel — desktop only (div, not aside, to avoid the
 	     implicit complementary role — auth.spec.ts asserts 0 on /login) -->
-	<div class="relative hidden flex-col justify-between overflow-hidden bg-primary p-10 text-primary-foreground lg:flex">
-		<div class="login-brand-glow absolute inset-0" aria-hidden="true"></div>
-		<div class="relative flex flex-col gap-8">
-			<a href={resolve('/')} class="text-lg font-bold tracking-tight">{m['shell.title']()}</a>
-			<div class="max-w-md">
-				<h2 class="text-3xl font-semibold leading-tight tracking-tight">{m['login.brandTagline']()}</h2>
-				<p class="mt-3 text-sm text-primary-foreground/80">{m['shell.subtitle']()}</p>
-			</div>
-		</div>
-		<ul class="relative flex flex-col gap-5">
-			<li class="flex flex-col gap-1">
-				<p class="text-sm font-semibold">{m['login.brandFeature1']()}</p>
-				<p class="text-xs text-primary-foreground/75">{m['login.brandFeature1Desc']()}</p>
-			</li>
-			<li class="flex flex-col gap-1">
-				<p class="text-sm font-semibold">{m['login.brandFeature2']()}</p>
-				<p class="text-xs text-primary-foreground/75">{m['login.brandFeature2Desc']()}</p>
-			</li>
-			<li class="flex flex-col gap-1">
-				<p class="text-sm font-semibold">{m['login.brandFeature3']()}</p>
-				<p class="text-xs text-primary-foreground/75">{m['login.brandFeature3Desc']()}</p>
-			</li>
-		</ul>
-	</div>
+	<AuthBrandPanel />
 
 	<!-- Login card panel -->
 	<div class="flex flex-col items-center justify-center p-6 sm:p-10">
@@ -128,11 +106,3 @@
 		</div>
 	</div>
 </div>
-
-<style>
-	.login-brand-glow {
-		background:
-			radial-gradient(circle at 20% 20%, oklch(72% 0.17 44deg / 0.35), transparent 55%),
-			radial-gradient(circle at 80% 75%, oklch(76% 0.16 75deg / 0.18), transparent 50%);
-	}
-</style>

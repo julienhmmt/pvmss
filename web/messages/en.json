@@ -872,5 +872,9 @@
  "login.brandFeature3": "Quotas & policy",
  "login.brandFeature3Desc": "Per-user limits and policies enforced server-side.",
  "auth.logout": "Sign out",
- "auth.logout.confirm": "Sign out of PVMSS?"
+ "auth.logout.confirm": "Sign out of PVMSS?",
+ "auth.requiredTitle": "Authentication required",
+ "auth.requiredDescription": "Please sign in to access this page.",
+ "auth.warningBrandTitle": "Warning",
+ "auth.warningBrandDescription": "This page requires authentication."
  }

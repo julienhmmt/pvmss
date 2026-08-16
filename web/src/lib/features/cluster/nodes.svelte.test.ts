@@ -56,6 +56,24 @@ describe('NodesStore', () => {
 
 		expect(store.loading).toBe(false);
 		expect(store.error).toBe('cluster is not reachable');
+		expect(store.errorCode).toBe('cluster_unreachable');
+		expect(store.errorStatus).toBe(502);
+		expect(store.nodes).toEqual([]);
+	});
+
+	it('sets an unauthenticated code on a 401 response', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue(jsonResponse(401, { code: 'unauthenticated', message: 'authentication required' }))
+		);
+
+		const store = new NodesStore();
+		await store.load();
+
+		expect(store.loading).toBe(false);
+		expect(store.error).toBe('authentication required');
+		expect(store.errorCode).toBe('unauthenticated');
+		expect(store.errorStatus).toBe(401);
 		expect(store.nodes).toEqual([]);
 	});
 
