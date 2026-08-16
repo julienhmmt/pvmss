@@ -1,5 +1,4 @@
-import { get, ApiRequestError } from '$lib/shared/api/client';
-import { m } from '$lib/paraglide/messages.js';
+import { get } from '$lib/shared/api/client';
 
 /** DocSummary mirrors the docSummaryDTO from GET /api/v1/docs. */
 export interface DocSummary {
@@ -18,36 +17,7 @@ export interface DocRendered {
 	html: string;
 }
 
-/**
- * DocsBrowserStore fetches the public, audience-filtered documentation list
- * and the rendered-HTML single-page view. Admin-audience pages are hidden by
- * the server for non-admin callers; the store simply renders what it receives.
- */
-export class DocsBrowserStore {
-	pages = $state.raw<DocSummary[]>([]);
-	loading = $state.raw(false);
-	error = $state.raw<string | null>(null);
-
-	async load(): Promise<void> {
-		this.loading = true;
-		this.error = null;
-		try {
-			this.pages = await get<DocSummary[]>('/api/v1/docs');
-		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : m['docs.failedLoad']();
-		} finally {
-			this.loading = false;
-		}
-	}
-
-	async fetchPage(id: string, lang: string): Promise<DocRendered> {
-		const params = new URLSearchParams({ lang });
-		return get<DocRendered>(`/api/v1/docs/${id}?${params.toString()}`);
-	}
-}
-
 /** fetchDocPage is a one-shot helper for the viewer route (no store needed). */
 export async function fetchDocPage(id: string, lang: string): Promise<DocRendered> {
-	const params = new URLSearchParams({ lang });
-	return get<DocRendered>(`/api/v1/docs/${id}?${params.toString()}`);
+	return get<DocRendered>(`/api/v1/docs/${id}?lang=${encodeURIComponent(lang)}`);
 }

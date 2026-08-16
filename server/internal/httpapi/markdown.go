@@ -26,13 +26,14 @@ func renderMarkdownToHTML(md string) string {
 // per-line dispatch across small helpers so each stays under the cognitive
 // complexity threshold (go:S3776).
 type mdRenderer struct {
-	out     strings.Builder
-	lines   []string
-	i       int
-	inList  bool
-	listOrd bool
-	inCode  bool
-	codeBuf strings.Builder
+	out        strings.Builder
+	lines      []string
+	i          int
+	inList     bool
+	listOrd    bool
+	inListItem bool
+	inCode     bool
+	codeBuf    strings.Builder
 }
 
 // render runs the line dispatch loop and flushes any trailing state.
@@ -70,6 +71,10 @@ func (m *mdRenderer) render() string {
 			continue
 		}
 
+		if m.continueListItem(trimmed) {
+			continue
+		}
+
 		// Paragraph: collect consecutive non-blank, non-special lines.
 		m.collectParagraph()
 	}
@@ -84,12 +89,27 @@ func (m *mdRenderer) render() string {
 	return m.out.String()
 }
 
-// flushList closes an open unordered list, resetting the list state.
+// flushList closes an open list item and its list, resetting the list state.
 func (m *mdRenderer) flushList() {
+	m.closeListItem()
+
 	if m.inList {
-		m.out.WriteString("</ul>\n")
+		if m.listOrd {
+			m.out.WriteString("</ol>\n")
+		} else {
+			m.out.WriteString("</ul>\n")
+		}
+
 		m.inList = false
 		m.listOrd = false
+	}
+}
+
+// closeListItem closes the current list item if one is open.
+func (m *mdRenderer) closeListItem() {
+	if m.inListItem {
+		m.out.WriteString("</li>\n")
+		m.inListItem = false
 	}
 }
 
@@ -140,13 +160,15 @@ func (m *mdRenderer) handleHeading(trimmed string) bool {
 }
 
 // handleListItem emits an unordered or ordered list item, opening the matching
-// list when the list kind changes. Returns true when the line was consumed.
+// list when the list kind changes. The item is left open so continuation lines
+// can be appended. Returns true when the line was consumed.
 func (m *mdRenderer) handleListItem(trimmed string) bool {
 	if isUnorderedItem(trimmed) {
+		m.closeListItem()
 		m.openList(false)
+		m.inListItem = true
 		m.out.WriteString("<li>")
 		m.out.WriteString(renderInline(trimmed[2:]))
-		m.out.WriteString("</li>\n")
 		m.i++
 
 		return true
@@ -157,10 +179,26 @@ func (m *mdRenderer) handleListItem(trimmed string) bool {
 		return false
 	}
 
+	m.closeListItem()
 	m.openList(true)
+	m.inListItem = true
 	m.out.WriteString("<li>")
 	m.out.WriteString(renderInline(content))
-	m.out.WriteString("</li>\n")
+	m.i++
+
+	return true
+}
+
+// continueListItem appends a continuation line to the open list item. It is
+// reached after code fences, blank lines, headings and list items have already
+// been handled, so the remaining lines are treated as part of the current item.
+func (m *mdRenderer) continueListItem(trimmed string) bool {
+	if !m.inListItem {
+		return false
+	}
+
+	m.out.WriteByte(' ')
+	m.out.WriteString(renderInline(trimmed))
 	m.i++
 
 	return true
