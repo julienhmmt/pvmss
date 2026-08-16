@@ -9,6 +9,7 @@
 	import VmList from '$lib/features/vms/VmList.svelte';
 	import VmBulkActionBar from '$lib/features/vms/VmBulkActionBar.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
+	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -73,7 +74,8 @@
 	</div>
 
 	{#if vmListStore.loading && vmListStore.result === null}
-		<p role="status" aria-live="polite" class="text-muted-foreground">{m['common.loading']()}</p>
+		<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
+		<TableSkeleton columns={8} />
 	{:else}
 		<VmBulkActionBar />
 		<VmList />

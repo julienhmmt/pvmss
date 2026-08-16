@@ -4,6 +4,7 @@
 	import AuthRequired from '$lib/features/auth/AuthRequired.svelte';
 	import NodeList from '$lib/features/cluster/NodeList.svelte';
 	import ErrorState from '$lib/shared/ui/ErrorState.svelte';
+	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const nodesStore = setNodesContext();
@@ -32,7 +33,8 @@
 		<h1 class="mb-4 text-2xl font-semibold tracking-tight">{m['nodes.heading']()}</h1>
 
 		{#if nodesStore.loading}
-			<p role="status" aria-live="polite" class="text-muted-foreground">{m['common.loading']()}</p>
+			<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
+			<TableSkeleton columns={6} />
 		{:else if nodesStore.error}
 			<ErrorState title={nodesStore.error} retry={handleRetry} />
 		{:else}
