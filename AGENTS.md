@@ -276,7 +276,9 @@ you touch the surrounding area; do not treat them as documentation of reality:
 
 - `example.env` — v0.3 variable set; missing the required `PVMSS_PORT` and
   `PVMSS_CLUSTER_SOURCE`
-- `README.md` / `README.fr.md` — link `backend/docs/proxmox-permissions.*.md`
+- `README.md` / `README.fr.md` — correctly link the in-app page
+  `/docs/proxmox-permissions` (seeded from `server/internal/docs/seed/recovered/`),
+  not the deleted `backend/docs/proxmox-permissions.*.md`
 - `.specify/memory/constitution.md` — describes v0.3 as still deployable
 - `.gitignore` — has `backend/` and `frontend/` entries (harmless but stale)
 - `tools/superlinter.sh` — commented-out exclude regex references `frontend/`

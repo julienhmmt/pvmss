@@ -46,7 +46,8 @@ func runCDROMCase(t *testing.T, test struct {
 	wantState string
 	wantErr   error
 	wantCalls int
-}) {
+},
+) {
 	t.Helper()
 
 	cluster.ResetFake()

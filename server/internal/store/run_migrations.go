@@ -60,7 +60,7 @@ func validateMigrations(migrations []Migration) error {
 // in the list and the previous migration's version. Extracted from
 // validateMigrations to keep its Cognitive Complexity under the SonarQube
 // go:S3776 threshold.
-func validateMigrationEntry(m Migration, index int, previous int) error {
+func validateMigrationEntry(m Migration, index, previous int) error {
 	if m.Version < 1 {
 		return fmt.Errorf("migration version %d is not positive", m.Version)
 	}
