@@ -78,11 +78,35 @@
 		mql.addEventListener('change', onViewportChange);
 	});
 	onDestroy(() => mql?.removeEventListener('change', onViewportChange));
+	onMount(() => {
+		window.addEventListener('keydown', handleGlobalShortcut);
+		return () => window.removeEventListener('keydown', handleGlobalShortcut);
+	});
 
 	function closeSidebarOnEscape(event: KeyboardEvent): void {
 		if (event.key === 'Escape' && chrome.sidebarOpen) {
 			event.preventDefault();
 			chrome.closeSidebar();
+		}
+	}
+
+	function handleGlobalShortcut(event: KeyboardEvent): void {
+		if (event.ctrlKey || event.altKey || event.metaKey) return;
+		const target = event.target as HTMLElement;
+		const isTyping =
+			target instanceof HTMLInputElement ||
+			target instanceof HTMLTextAreaElement ||
+			target instanceof HTMLSelectElement ||
+			target.isContentEditable;
+		if (isTyping) return;
+
+		if (event.key === '/') {
+			event.preventDefault();
+			const searchInput = document.querySelector<HTMLInputElement>('input[type="search"], [data-search="true"]');
+			searchInput?.focus();
+		} else if (event.key === 'r') {
+			event.preventDefault();
+			window.location.reload();
 		}
 	}
 
