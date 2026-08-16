@@ -51,8 +51,8 @@
 		}));
 	}
 
-	function visiblePages(pages: DocSummary[], isAdmin: boolean): DocSummary[] {
-		return pages.filter((p) => isAdmin || p.audience !== 'admin');
+	function visiblePages(pages: DocSummary[], isAdmin: boolean, lang: Locale): DocSummary[] {
+		return pages.filter((p) => p.audience !== 'admin' || isAdmin).filter((p) => p.lang === lang);
 	}
 
 	function docHref(page: DocSummary): string {
@@ -91,7 +91,7 @@
 	{:else if error}
 		<p role="alert" class="text-destructive">{error}</p>
 	{:else}
-		{@const grouped = groupByCategory(visiblePages(pages, session.isAdmin))}
+		{@const grouped = groupByCategory(visiblePages(pages, session.isAdmin, selectedLang))}
 		{#if grouped.length === 0}
 			<p class="text-muted-foreground">{m['docs.empty']()}</p>
 		{:else}
