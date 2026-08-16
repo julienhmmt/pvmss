@@ -528,6 +528,8 @@
 "profile.tokens.errorLoad": "failed to load tokens",
 "profile.tokens.errorCreate": "failed to create token",
 "profile.tokens.errorRevoke": "failed to revoke token",
+"profile.tokens.createSuccess": "Token created.",
+"profile.tokens.revokeSuccess": "Token revoked.",
  "admin.layout.loading": "Loading…",
  "admin.dashboard.pageTitle": "Admin Dashboard — PVMSS",
  "admin.dashboard.title": "Dashboard",

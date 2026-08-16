@@ -528,6 +528,8 @@
 "profile.tokens.errorLoad": "échec du chargement des jetons",
 "profile.tokens.errorCreate": "échec de la création du jeton",
 "profile.tokens.errorRevoke": "échec de la révocation du jeton",
+"profile.tokens.createSuccess": "Jeton créé.",
+"profile.tokens.revokeSuccess": "Jeton révoqué.",
  "admin.layout.loading": "Chargement…",
  "admin.dashboard.pageTitle": "Tableau de bord administrateur — PVMSS",
  "admin.dashboard.title": "Tableau de bord",
