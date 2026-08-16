@@ -5,6 +5,7 @@
 	import BrandPanel from './BrandPanel.svelte';
 	import Button from './Button.svelte';
 	import Card from './Card.svelte';
+	import ErrorIcon from './icons/ErrorIcon.svelte';
 	import { getErrorMessage } from '$lib/shared/error/error-messages';
 
 	interface Props {
@@ -15,14 +16,6 @@
 
 	const message = $derived(getErrorMessage(status));
 </script>
-
-{#snippet errorIcon(classes: string)}
-	<svg viewBox="0 0 24 24" class={classes} fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-		<circle cx="12" cy="12" r="10" />
-		<path d="m15 9-6 6" />
-		<path d="m9 9 6 6" />
-	</svg>
-{/snippet}
 
 <div class="grid w-full flex-1 grid-cols-1 lg:grid-cols-2">
 	<BrandPanel mode="error" />
@@ -35,7 +28,7 @@
 						class="rounded-full bg-destructive p-3 text-destructive-foreground"
 						aria-hidden="true"
 					>
-						{@render errorIcon('h-6 w-6')}
+						<ErrorIcon class="h-6 w-6" />
 					</div>
 					<div>
 						<h1 class="text-2xl font-semibold tracking-tight">{message.title()}</h1>
