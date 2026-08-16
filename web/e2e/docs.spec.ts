@@ -29,4 +29,21 @@ test.describe('T53 documentation browser', () => {
 		// The rendered body (markdown -> HTML) should be present.
 		await expect(page.locator('article')).toBeVisible();
 	});
+
+	test('language selector filters the list by language', async ({ page }) => {
+		await page.goto('/docs');
+		await expect(page.getByText('Chargement…')).toHaveCount(0, { timeout: 10_000 });
+
+		// Default English list shows the English seeded pages.
+		await page.selectOption('select', 'en');
+		await expect(
+			page.getByRole('link', { name: /Getting started|User guide|VM creation guidelines/i })
+		).toBeVisible();
+		await expect(page.getByText('Guide de l’utilisateur')).toHaveCount(0);
+
+		// Switching to French shows only the French variants.
+		await page.selectOption('select', 'fr');
+		await expect(page.getByText('Guide de l’utilisateur')).toBeVisible();
+		await expect(page.getByText('Getting started')).toHaveCount(0);
+	});
 });
