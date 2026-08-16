@@ -3,6 +3,7 @@
 	import { setNodesContext } from '$lib/features/cluster/nodes.svelte';
 	import AuthRequired from '$lib/features/auth/AuthRequired.svelte';
 	import NodeList from '$lib/features/cluster/NodeList.svelte';
+	import ErrorState from '$lib/shared/ui/ErrorState.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const nodesStore = setNodesContext();
@@ -13,6 +14,10 @@
 
 	function handleRefresh(): void {
 		void nodesStore.refresh();
+	}
+
+	function handleRetry(): void {
+		void nodesStore.load();
 	}
 </script>
 
@@ -29,7 +34,7 @@
 		{#if nodesStore.loading}
 			<p role="status" aria-live="polite" class="text-muted-foreground">{m['common.loading']()}</p>
 		{:else if nodesStore.error}
-			<p role="alert" class="text-destructive">{nodesStore.error}</p>
+			<ErrorState title={nodesStore.error} retry={handleRetry} />
 		{:else}
 			<div role="status" aria-live="polite" class="sr-only">
 				{m['nodes.nodesLoaded']({ count: nodesStore.nodes.length })}
