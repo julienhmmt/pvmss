@@ -35,6 +35,8 @@ Vous pouvez créer une VM à la fois. Lorsque vous atteignez votre quota (VM max
 
 Utilisez la recherche pour localiser une VM par nom, VMID ou tag. Les résultats affichent le VMID, le nom, le nœud hôte, les tags (hors tag interne `pvmss`), l'état, et un bouton pour ouvrir les détails.
 
+Lorsque PVMSS est connecté à plusieurs environnements Proxmox, utilisez le **sélecteur de cluster** en haut de la page Mes VMs pour limiter la liste à un cluster ou à tous. Une VM est toujours identifiée par son `cluster` et son `VMID`, donc le même VMID peut exister sur différents clusters sans conflit. Les URL de détail et de console incluent le cluster, donc les favoris restent valides par cluster.
+
 ## Gérer une machine virtuelle
 
 La page de détails de la VM vous donne le contrôle complet :
