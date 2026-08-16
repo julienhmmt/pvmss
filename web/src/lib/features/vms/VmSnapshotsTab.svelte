@@ -88,8 +88,8 @@
 						{#if snapshot.description}<p class="mt-2 text-sm">{snapshot.description}</p>{/if}
 					</div>
 					<div class="flex shrink-0 gap-2">
-						<button type="button" class="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted" onclick={() => openRollback(snapshot)} data-testid="snapshot-rollback-open">{m['vms.snapshots.restore']()}</button>
-						<button type="button" class="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10" onclick={() => openDelete(snapshot)} data-testid="snapshot-delete-open">{m['vms.snapshots.delete']()}</button>
+						<button type="button" class="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted" onclick={() => openRollback(snapshot)} data-testid="snapshot-rollback-open" title={m['vms.snapshots.restore']()} aria-label={m['vms.snapshots.restore']()}>{m['vms.snapshots.restore']()}</button>
+						<button type="button" class="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-sm text-destructive hover:bg-destructive/10" onclick={() => openDelete(snapshot)} data-testid="snapshot-delete-open" title={m['vms.snapshots.delete']()} aria-label={m['vms.snapshots.delete']()}>{m['vms.snapshots.delete']()}</button>
 					</div>
 				</li>
 			{/each}
