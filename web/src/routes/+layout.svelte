@@ -45,16 +45,15 @@
 	});
 	onDestroy(() => status.stop());
 
-	if (typeof onNavigate === 'function') {
-		onNavigate((navigation) => {
-			if (!(typeof document !== 'undefined' && 'startViewTransition' in document)) return;
-			return new Promise((resolve) => {
+	if (typeof onNavigate === 'function' && typeof document !== 'undefined' && 'startViewTransition' in document) {
+		onNavigate((navigation) =>
+			new Promise((resolve) => {
 				void document.startViewTransition(async () => {
 					resolve();
 					await navigation.complete;
 				});
-			});
-		});
+			})
+		);
 	}
 
 	let version = $state<string | null>(null);
@@ -92,7 +91,8 @@
 
 	function handleGlobalShortcut(event: KeyboardEvent): void {
 		if (event.ctrlKey || event.altKey || event.metaKey) return;
-		const target = event.target as HTMLElement;
+		const target = event.target as HTMLElement | null;
+		if (target === null) return;
 		const isTyping =
 			target instanceof HTMLInputElement ||
 			target instanceof HTMLTextAreaElement ||
@@ -100,11 +100,11 @@
 			target.isContentEditable;
 		if (isTyping) return;
 
-		if (event.key === '/') {
+		if (event.key === '/' || event.key === '?') {
 			event.preventDefault();
 			const searchInput = document.querySelector<HTMLInputElement>('input[type="search"], [data-search="true"]');
 			searchInput?.focus();
-		} else if (event.key === 'r') {
+		} else if (event.key.toLowerCase() === 'r') {
 			event.preventDefault();
 			window.location.reload();
 		}

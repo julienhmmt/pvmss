@@ -19,7 +19,10 @@
 				{#if item.href && i < items.length - 1}
 					<a href={item.href} class="hover:text-foreground hover:underline">{item.label}</a>
 				{:else}
-					<span class={i === items.length - 1 ? 'font-medium text-foreground' : ''}>{item.label}</span>
+					<span
+						class={i === items.length - 1 ? 'font-medium text-foreground' : ''}
+						aria-current={i === items.length - 1 ? 'page' : undefined}
+					>{item.label}</span>
 				{/if}
 			</li>
 		{/each}
