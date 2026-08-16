@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import { m } from '$lib/paraglide/messages.js';
 import { NodesStore } from './nodes.svelte';
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -56,6 +57,24 @@ describe('NodesStore', () => {
 
 		expect(store.loading).toBe(false);
 		expect(store.error).toBe('cluster is not reachable');
+		expect(store.errorCode).toBe('cluster_unreachable');
+		expect(store.errorStatus).toBe(502);
+		expect(store.nodes).toEqual([]);
+	});
+
+	it('sets an unauthenticated code on a 401 response', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue(jsonResponse(401, { code: 'unauthenticated', message: 'authentication required' }))
+		);
+
+		const store = new NodesStore();
+		await store.load();
+
+		expect(store.loading).toBe(false);
+		expect(store.error).toBe('authentication required');
+		expect(store.errorCode).toBe('unauthenticated');
+		expect(store.errorStatus).toBe(401);
 		expect(store.nodes).toEqual([]);
 	});
 
@@ -66,7 +85,7 @@ describe('NodesStore', () => {
 		await store.load();
 
 		expect(store.loading).toBe(false);
-		expect(store.error).toBe('failed to load cluster nodes');
+		expect(store.error).toBe(m['nodes.errorLoadNodes']());
 		expect(store.nodes).toEqual([]);
 	});
 

@@ -14,7 +14,7 @@
 </script>
 
 <div class="overflow-x-auto rounded-lg border border-border">
-	<table class="w-full text-sm">
+	<table class="pv-responsive-table text-sm">
 		<thead class="bg-muted/50 text-left">
 			<tr>
 				<th class="px-4 py-2 font-medium">{m['common.name']()}</th>
@@ -26,10 +26,10 @@
 		<tbody>
 			{#each bridges as bridge (bridge.name + bridge.node)}
 				<tr class="border-t border-border">
-					<td class="px-4 py-2 font-mono">{bridge.name}</td>
-					<td class="px-4 py-2 font-mono">{bridge.node}</td>
-					<td class="px-4 py-2">{bridge.comment || '—'}</td>
-					<td class="px-4 py-2">
+					<td class="px-4 py-2 font-mono" data-label={m['common.name']()}>{bridge.name}</td>
+					<td class="px-4 py-2 font-mono" data-label={m['common.node']()}>{bridge.node}</td>
+					<td class="px-4 py-2" data-label={m['admin.catalog.comment']()}>{bridge.comment || '—'}</td>
+					<td class="px-4 py-2" data-label={m['admin.catalog.approvedStatus']()}>
 						<span class="inline-flex items-center gap-2" aria-busy={toggling === `bridge:${bridge.name}`}>
 							<Switch
 								checked={bridge.enabled}

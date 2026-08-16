@@ -1,6 +1,7 @@
 import { getContext, setContext } from 'svelte';
 import { SvelteURLSearchParams } from 'svelte/reactivity';
 import { get, ApiRequestError } from '$lib/shared/api/client';
+import { m } from '$lib/paraglide/messages.js';
 
 export type VmStatus = 'running' | 'stopped' | 'paused';
 export type VmScope = 'mine' | 'all';
@@ -110,7 +111,7 @@ export class VmListStore {
 			const query = this.queryString();
 			this.result = await get<VmListResult>(`/api/v1/vms${query === '' ? '' : `?${query}`}`);
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : 'failed to load VMs';
+			this.error = err instanceof ApiRequestError ? err.message : m['vms.list.errorLoading']();
 		} finally {
 			this.loading = false;
 		}

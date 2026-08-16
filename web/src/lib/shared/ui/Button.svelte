@@ -6,6 +6,8 @@
 	 * every interactive control needs default/hover/focus/disabled states).
 	 */
 	import type { Snippet } from 'svelte';
+	import { focusOnMount } from './focus-on-mount';
+	import SpinnerIcon from './icons/SpinnerIcon.svelte';
 
 	type Variant = 'primary' | 'secondary' | 'ghost' | 'destructive';
 	type Size = 'sm' | 'md';
@@ -15,6 +17,8 @@
 		size?: Size;
 		type?: 'button' | 'submit';
 		disabled?: boolean;
+		loading?: boolean;
+		focusOnMount?: boolean;
 		/** Accessible label, when the visible content is not descriptive enough. */
 		label?: string;
 		onclick?: () => void;
@@ -26,6 +30,8 @@
 		size = 'md',
 		type = 'button',
 		disabled = false,
+		loading = false,
+		focusOnMount: shouldFocusOnMount = false,
 		label,
 		onclick,
 		children
@@ -49,10 +55,15 @@
 
 <button
 	{type}
-	{disabled}
+	disabled={disabled || loading}
+	aria-busy={loading ? 'true' : undefined}
 	aria-label={label}
 	{onclick}
 	class="{base} {sizes[size]} {variants[variant]}"
+	use:focusOnMount={shouldFocusOnMount}
 >
+	{#if loading}
+		<SpinnerIcon class="mr-2 h-4 w-4" />
+	{/if}
 	{@render children()}
 </button>

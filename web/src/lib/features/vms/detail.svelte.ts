@@ -1,5 +1,6 @@
 import { getContext, setContext } from 'svelte';
 import { get, post, del, patch, put, ApiRequestError } from '$lib/shared/api/client';
+import { m } from '$lib/paraglide/messages.js';
 import type { VmStatus } from './list.svelte';
 
 export type VmAction = 'start' | 'stop' | 'shutdown' | 'reboot' | 'reset';
@@ -125,7 +126,7 @@ export class VmDetailStore {
 			this.entity = await get<VmDetailEntity>(this.#basePath);
 			if (this.hardwareOptions === null) await this.loadHardwareOptions();
 		} catch (err) {
-			this.error = errorMessage(err, 'failed to load VM');
+			this.error = errorMessage(err, () => m['vms.detail.errorLoading']());
 		} finally {
 			this.loading = false;
 		}
@@ -137,7 +138,7 @@ export class VmDetailStore {
 		try {
 			this.hardwareOptions = await get<HardwareOptions>(`${this.#basePath}/hardware-options`);
 		} catch (err) {
-			this.hardwareError = errorMessage(err, 'failed to load hardware options');
+			this.hardwareError = errorMessage(err, () => m['vms.detail.errorHardwareOptions']());
 		} finally {
 			this.hardwareLoading = false;
 		}
@@ -152,7 +153,7 @@ export class VmDetailStore {
 			await this.load();
 			return true;
 		} catch (err) {
-			this.diskError = errorMessage(err, 'failed to add disk');
+			this.diskError = errorMessage(err, () => m['vms.detail.errorAddDisk']());
 			return false;
 		} finally {
 			this.diskInFlight = false;
@@ -168,7 +169,7 @@ export class VmDetailStore {
 			await this.load();
 			return true;
 		} catch (err) {
-			this.diskError = errorMessage(err, 'failed to resize disk');
+			this.diskError = errorMessage(err, () => m['vms.detail.errorResizeDisk']());
 			return false;
 		} finally {
 			this.diskInFlight = false;
@@ -184,7 +185,7 @@ export class VmDetailStore {
 			await this.load();
 			return true;
 		} catch (err) {
-			this.diskError = errorMessage(err, 'failed to delete disk');
+			this.diskError = errorMessage(err, () => m['vms.detail.errorDeleteDisk']());
 			return false;
 		} finally {
 			this.diskInFlight = false;
@@ -199,7 +200,7 @@ export class VmDetailStore {
 			await patch<VmCdrom>(`${this.#basePath}/cdrom`, { action, ...(isoVolId ? { isoVolId } : {}) });
 			await this.load();
 		} catch (err) {
-			this.writeError = errorMessage(err, 'failed to update CD-ROM');
+			this.writeError = errorMessage(err, () => m['vms.detail.errorUpdateCdrom']());
 		} finally {
 			this.cdromInFlight = false;
 		}
@@ -213,7 +214,7 @@ export class VmDetailStore {
 			await put<VmNetworkInterface[]>(`${this.#basePath}/network`, { interfaces });
 			await this.load();
 		} catch (err) {
-			this.writeError = errorMessage(err, 'failed to update network');
+			this.writeError = errorMessage(err, () => m['vms.detail.errorUpdateNetwork']());
 		} finally {
 			this.networkInFlight = false;
 		}
@@ -227,7 +228,7 @@ export class VmDetailStore {
 			await put<VmDetailEntity>(`${this.#basePath}/hardware`, patch);
 			await this.load();
 		} catch (err) {
-			this.writeError = errorMessage(err, 'failed to update hardware');
+			this.writeError = errorMessage(err, () => m['vms.detail.errorUpdateHardware']());
 		} finally {
 			this.hardwareInFlight = false;
 		}
@@ -254,7 +255,7 @@ export class VmDetailStore {
 			if (this.entity !== null) {
 				this.entity = { ...this.entity, status: previousStatus };
 			}
-			this.actionError = errorMessage(err, 'action failed');
+			this.actionError = errorMessage(err, () => m['vms.detail.errorAction']());
 		} finally {
 			this.actionInFlight = false;
 		}
@@ -269,7 +270,7 @@ export class VmDetailStore {
 			await del<DeleteResponse>(this.#basePath);
 			this.deleted = true;
 		} catch (err) {
-			this.deleteError = errorMessage(err, 'delete failed');
+			this.deleteError = errorMessage(err, () => m['vms.detail.errorDelete']());
 		} finally {
 			this.deleteInFlight = false;
 		}
@@ -291,7 +292,7 @@ export class VmDetailStore {
 			this.entity = await patch<VmDetailEntity>(this.#basePath, body);
 			return true;
 		} catch (err) {
-			this.patchError = errorMessage(err, 'update failed');
+			this.patchError = errorMessage(err, () => m['vms.detail.errorUpdate']());
 			return false;
 		} finally {
 			this.patchInFlight = false;
@@ -312,8 +313,8 @@ function optimisticStatus(kind: VmAction): VmStatus {
 	}
 }
 
-function errorMessage(err: unknown, fallback: string): string {
-	return err instanceof ApiRequestError ? err.message : fallback;
+function errorMessage(err: unknown, fallback: () => string): string {
+	return err instanceof ApiRequestError ? err.message : fallback();
 }
 
 const VM_DETAIL_CONTEXT_KEY = Symbol('vm-detail');
