@@ -67,6 +67,18 @@ For full deployment instructions (Docker, Kubernetes, Helm), see the project REA
 
 `/admin/nodes` lists every Proxmox VE host with live CPU and memory consumption, plus online/offline status. A background worker refreshes node metrics on the interval configured by `PVMSS_INVENTORY_REFRESH_INTERVAL`; the admin pages read this local cache, so navigation stays instant even on large clusters. Each node card also exposes a per-node refresh button and the last update timestamp. When Proxmox reports a node offline, PVMSS keeps showing the last known resource values while clearly marking the node as offline.
 
+## Clusters (multi-cluster)
+
+PVMSS supports connecting to more than one Proxmox environment at the same time. Each connection is a **cluster** with its own URL, API token, and optional OIDC provider.
+
+- Open **Admin > Clusters** (`/admin/clusters`) to add, edit, test, and remove cluster connections.
+- A cluster is identified by a name; VMs are always addressed by their `cluster` and `VMID`, so two clusters may reuse the same VMIDs without conflict.
+- Use the **Test** action to verify connectivity and credentials before exposing the cluster to users.
+- When a cluster's Proxmox supports OIDC, you can **enable OIDC** on that cluster so its users may sign in through the cluster's identity provider from the login screen.
+- Approved nodes, storages, ISOs, bridges, and tags are managed per cluster; the catalog surfaces let you scope what users see on each cluster.
+
+The **Application Info** page reports the connected cluster(s), name, and node count so you can confirm the expected topology.
+
 ## Catalog: resources exposed to users
 
 The **Catalog** area of the admin nav controls what VM creation may reference. Discovered resources appear here automatically; toggle the enabled switch to control what users see.

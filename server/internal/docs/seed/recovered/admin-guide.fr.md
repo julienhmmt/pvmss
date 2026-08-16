@@ -69,6 +69,18 @@ Pour les instructions de déploiement complètes (Docker, Kubernetes, Helm), con
 
 `/admin/nodes` liste chaque hôte Proxmox VE avec la consommation CPU et mémoire en direct, ainsi que l'état en ligne/hors ligne. Un worker en arrière-plan actualise les métriques des nœuds selon l'intervalle configuré par `PVMSS_INVENTORY_REFRESH_INTERVAL` ; les pages d'administration lisent ce cache local, la navigation reste donc instantanée même sur de gros clusters. Chaque carte de nœud expose aussi un bouton d'actualisation dédié et l'horodatage de la dernière mise à jour. Lorsque Proxmox signale un nœud hors ligne, PVMSS continue d'afficher les dernières valeurs connues tout en marquant clairement le nœud comme hors ligne.
 
+## Clusters (multi-cluster)
+
+PVMSS prend en charge la connexion simultanée à plusieurs environnements Proxmox. Chaque connexion est un **cluster** avec sa propre URL, son propre jeton API et éventuellement un fournisseur OIDC.
+
+- Ouvrez **Admin > Clusters** (`/admin/clusters`) pour ajouter, éditer, tester et supprimer des connexions de cluster.
+- Un cluster est identifié par un nom ; les VMs sont toujours adressées par leur `cluster` et leur `VMID`, donc deux clusters peuvent réutiliser les mêmes VMID sans conflit.
+- Utilisez l'action **Tester** pour vérifier la connectivité et les identifiants avant d'exposer le cluster aux utilisateurs.
+- Lorsque le Proxmox d'un cluster prend en charge OIDC, vous pouvez **activer OIDC** sur ce cluster afin que ses utilisateurs puissent se connecter via le fournisseur d'identité du cluster depuis l'écran de connexion.
+- Les nœuds, stockages, ISO, ponts et tags approuvés sont gérés par cluster ; les surfaces du catalogue vous permettent de limiter ce que les utilisateurs voient sur chaque cluster.
+
+La page **Informations sur l'application** indique le(s) cluster(s) connecté(s), le nom et le nombre de nœuds, ce qui permet de confirmer la topologie attendue.
+
 ## Catalogue : ressources exposées aux utilisateurs
 
 La zone **Catalogue** de la navigation administrateur contrôle ce que la création de VM peut référencer. Les ressources découvertes apparaissent automatiquement ici ; basculez l'interrupteur pour contrôler ce que les utilisateurs voient.
