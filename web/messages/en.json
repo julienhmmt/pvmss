@@ -1,5 +1,5 @@
 {
- "$schema": "https://inlang.com/schema/inlang-message-format",
+
  "common.on": "On",
  "nodes.caption": "Nodes",
  "nodes.columnCpu": "CPU",
@@ -876,5 +876,16 @@
  "auth.requiredTitle": "Authentication required",
  "auth.requiredDescription": "Please sign in to access this page.",
  "auth.warningBrandTitle": "Warning",
- "auth.warningBrandDescription": "This page requires authentication."
+ "auth.warningBrandDescription": "This page requires authentication.",
+ "error.brandTitle": "Error",
+ "error.brandDescription": "Something went wrong.",
+ "error.notFoundTitle": "Page not found",
+ "error.notFoundDescription": "The page you are looking for does not exist or has been moved.",
+ "error.forbiddenTitle": "Access denied",
+ "error.forbiddenDescription": "You do not have permission to access this page.",
+ "error.serverErrorTitle": "Server error",
+ "error.serverErrorDescription": "The service ran into a problem. Please try again later.",
+ "error.genericTitle": "Error {status}",
+ "error.genericDescription": "An unexpected error occurred.",
+ "error.backToHome": "Back to home"
  }

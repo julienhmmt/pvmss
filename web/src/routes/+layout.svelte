@@ -74,6 +74,7 @@
 	}
 
 	const signedIn = $derived(session.principal !== null);
+	const hasRouteError = $derived(page.error !== null);
 </script>
 
 {#if signedIn}
@@ -122,7 +123,9 @@
 	<div class="flex min-h-screen flex-col bg-background text-foreground">
 		<HeaderLite />
 		<main class="flex flex-1 flex-col items-center justify-center p-6">
-			{#if !routeChecked && !isPublicPath(page.url.pathname)}
+			{#if hasRouteError}
+				{@render children()}
+			{:else if !routeChecked && !isPublicPath(page.url.pathname)}
 				<p role="status" aria-live="polite" class="text-muted-foreground">{m['common.loading']()}</p>
 			{:else if !isPublicPath(page.url.pathname)}
 				<AuthRequired />

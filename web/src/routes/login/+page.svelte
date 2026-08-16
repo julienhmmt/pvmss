@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import AuthBrandPanel from '$lib/features/auth/AuthBrandPanel.svelte';
+	import BrandPanel from '$lib/shared/ui/BrandPanel.svelte';
 	import { LoginForm } from '$lib/features/auth/login.svelte';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
@@ -32,7 +32,7 @@
 <div class="grid w-full flex-1 grid-cols-1 lg:grid-cols-2">
 	<!-- Brand / marketing panel — desktop only (div, not aside, to avoid the
 	     implicit complementary role — auth.spec.ts asserts 0 on /login) -->
-	<AuthBrandPanel />
+	<BrandPanel />
 
 	<!-- Login card panel -->
 	<div class="flex flex-col items-center justify-center p-6 sm:p-10">
