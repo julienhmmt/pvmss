@@ -34,7 +34,15 @@
 	<form class="mt-4 flex flex-wrap items-end gap-3" onsubmit={createToken}>
 		<label class="grid gap-1 text-sm font-medium">
 			{m['profile.tokens.label']()}
-			<input class="rounded-md border border-input bg-background px-3 py-2" bind:value={label} required />
+			<input
+				id="token-label"
+				class="rounded-md border border-input bg-background px-3 py-2"
+				class:border-destructive={!!store.error}
+				bind:value={label}
+				required
+				aria-invalid={!!store.error}
+				aria-describedby={store.error ? 'token-error' : undefined}
+			/>
 		</label>
 		<label class="grid gap-1 text-sm font-medium">
 			{m['profile.tokens.scope']()}
@@ -46,7 +54,9 @@
 		<Button type="submit" loading={store.creating}>{m['profile.tokens.createButton']()}</Button>
 	</form>
 
-	{#if store.error}<p role="alert" class="mt-3 text-sm text-destructive">{store.error}</p>{/if}
+	{#if store.error}
+		<p id="token-error" role="alert" class="mt-3 text-sm text-destructive">{store.error}</p>
+	{/if}
 
 	{#if store.lastCreatedValue}
 		<div role="status" class="mt-3 rounded-md border border-border bg-card p-3 text-sm" aria-live="polite">
