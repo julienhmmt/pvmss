@@ -24,6 +24,30 @@ var cloudInitHowtoMD string
 //go:embed admin.md
 var adminMD string
 
+//go:embed recovered/admin-guide.en.md
+var adminGuideEN string
+
+//go:embed recovered/admin-guide.fr.md
+var adminGuideFR string
+
+//go:embed recovered/user-guide.en.md
+var userGuideEN string
+
+//go:embed recovered/user-guide.fr.md
+var userGuideFR string
+
+//go:embed recovered/cloud-init-setup.en.md
+var cloudInitSetupEN string
+
+//go:embed recovered/cloud-init-setup.fr.md
+var cloudInitSetupFR string
+
+//go:embed recovered/proxmox-permissions.en.md
+var proxmoxPermissionsEN string
+
+//go:embed recovered/proxmox-permissions.fr.md
+var proxmoxPermissionsFR string
+
 // seedPage describes one built-in page to insert.
 type seedPage struct {
 	id        string
@@ -35,12 +59,18 @@ type seedPage struct {
 }
 
 // builtInPages is the fixed set of system pages. The audience maps directly:
-// user docs are public, the admin doc is admin-only.
+// user docs are public, the admin doc is admin-only. Recovered v0.3 guides
+// (admin/user/cloud-init/permissions) were reintegrated and rewritten for the
+// v0.4 app, then seeded as system pages so they survive restarts (issue #53).
 var builtInPages = []seedPage{
 	{id: "getting-started", title: "Getting started", category: "Getting started", bodyMD: gettingStartedMD, audience: "user", sortOrder: 1},
 	{id: "vm-creation-guidelines", title: "VM creation guidelines", category: "Creating VMs", bodyMD: vmCreationGuidelinesMD, audience: "user", sortOrder: 2},
 	{id: "cloud-init-howto", title: "Cloud-init how-to", category: "Creating VMs", bodyMD: cloudInitHowtoMD, audience: "user", sortOrder: 3},
 	{id: "admin", title: "Admin guide", category: "Administration", bodyMD: adminMD, audience: "admin", sortOrder: 100},
+	{id: "user-guide", title: "User guide", category: "Guides", bodyMD: userGuideEN, audience: "user", sortOrder: 4},
+	{id: "admin-guide", title: "Administrator guide", category: "Guides", bodyMD: adminGuideEN, audience: "admin", sortOrder: 101},
+	{id: "cloud-init-setup", title: "Cloud-init setup (admin)", category: "Guides", bodyMD: cloudInitSetupEN, audience: "admin", sortOrder: 102},
+	{id: "proxmox-permissions", title: "Proxmox permissions for PVMSS", category: "Guides", bodyMD: proxmoxPermissionsEN, audience: "admin", sortOrder: 103},
 }
 
 // SeedDocumentationPages inserts every built-in page that does not already
@@ -61,15 +91,81 @@ func SeedDocumentationPages(ctx context.Context, st *store.Store) error {
 			continue
 		}
 
-		row := store.DocumentationPageRow{
-			ID: p.id, Lang: "en", Title: p.title, Category: p.category, BodyMD: p.bodyMD,
-			Audience: p.audience, Enabled: true, IsSystem: true, SortOrder: p.sortOrder,
-			CreatedAt: stamp, UpdatedAt: stamp,
+		// The recovered v0.3 guides were reintegrated in both languages
+		// (en/fr). Seed each of those pages as two language variants; the
+		// original four built-in pages remain English-only.
+		if p.id == "admin-guide" || p.id == "user-guide" || p.id == "cloud-init-setup" || p.id == "proxmox-permissions" {
+			for _, v := range bilingualVariants(p.id) {
+				if err := insertSeedRow(ctx, st, v.id, v.lang, v.title, v.category, v.bodyMD, v.audience, v.sortOrder, stamp); err != nil {
+					return err
+				}
+			}
+			continue
 		}
-		if err := st.InsertDocumentationPage(ctx, row); err != nil {
-			return fmt.Errorf("insert seed page %q: %w", p.id, err)
+
+		if err := insertSeedRow(ctx, st, p.id, "en", p.title, p.category, p.bodyMD, p.audience, p.sortOrder, stamp); err != nil {
+			return err
 		}
 	}
 
+	return nil
+}
+
+// seedVariant is one language variant of a bilingual recovered guide.
+type seedVariant struct {
+	id        string
+	lang      string
+	title     string
+	category  string
+	bodyMD    string
+	audience  string
+	sortOrder int
+}
+
+// bilingualVariants returns the en and fr rows for a recovered guide id.
+func bilingualVariants(id string) []seedVariant {
+	switch id {
+	case "user-guide":
+		return []seedVariant{
+			{id: "user-guide", lang: "en", title: "User guide", category: "Guides", bodyMD: userGuideEN, audience: "user", sortOrder: 4},
+			{id: "user-guide", lang: "fr", title: "Guide de l'utilisateur", category: "Guides", bodyMD: userGuideFR, audience: "user", sortOrder: 4},
+		}
+	case "admin-guide":
+		return []seedVariant{
+			{id: "admin-guide", lang: "en", title: "Administrator guide", category: "Guides", bodyMD: adminGuideEN, audience: "admin", sortOrder: 101},
+			{id: "admin-guide", lang: "fr", title: "Guide de l'administrateur", category: "Guides", bodyMD: adminGuideFR, audience: "admin", sortOrder: 101},
+		}
+	case "cloud-init-setup":
+		return []seedVariant{
+			{id: "cloud-init-setup", lang: "en", title: "Cloud-init setup (admin)", category: "Guides", bodyMD: cloudInitSetupEN, audience: "admin", sortOrder: 102},
+			{id: "cloud-init-setup", lang: "fr", title: "Configuration cloud-init (administrateur)", category: "Guides", bodyMD: cloudInitSetupFR, audience: "admin", sortOrder: 102},
+		}
+	case "proxmox-permissions":
+		return []seedVariant{
+			{id: "proxmox-permissions", lang: "en", title: "Proxmox permissions for PVMSS", category: "Guides", bodyMD: proxmoxPermissionsEN, audience: "admin", sortOrder: 103},
+			{id: "proxmox-permissions", lang: "fr", title: "Permissions Proxmox pour PVMSS", category: "Guides", bodyMD: proxmoxPermissionsFR, audience: "admin", sortOrder: 103},
+		}
+	}
+	return nil
+}
+
+// insertSeedRow idempotently inserts one (id, lang) system page.
+func insertSeedRow(ctx context.Context, st *store.Store, id, lang, title, category, bodyMD, audience string, sortOrder int, stamp string) error {
+	exists, err := st.DocumentationPageExists(ctx, id, lang)
+	if err != nil {
+		return fmt.Errorf("check seed page %q/%s: %w", id, lang, err)
+	}
+	if exists {
+		return nil
+	}
+
+	row := store.DocumentationPageRow{
+		ID: id, Lang: lang, Title: title, Category: category, BodyMD: bodyMD,
+		Audience: audience, Enabled: true, IsSystem: true, SortOrder: sortOrder,
+		CreatedAt: stamp, UpdatedAt: stamp,
+	}
+	if err := st.InsertDocumentationPage(ctx, row); err != nil {
+		return fmt.Errorf("insert seed page %q/%s: %w", id, lang, err)
+	}
 	return nil
 }
