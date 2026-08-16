@@ -7,6 +7,7 @@
 	import RollbackSnapshotDialog from './RollbackSnapshotDialog.svelte';
 	import { VmSnapshotsStore, type VmSnapshot } from './snapshots.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	const vmStore = getVmDetailContext();
 	const tray = getTaskTrayContext();
@@ -59,7 +60,11 @@
 	{:else if snapshots.error && snapshots.snapshots.length === 0}
 		<p role="alert" class="mt-6 text-sm text-destructive" data-testid="snapshot-list-error">{snapshots.error}</p>
 	{:else if snapshots.snapshots.length === 0}
-		<p class="mt-6 rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground" data-testid="snapshot-empty">{m['vms.snapshots.empty']()}</p>
+		<EmptyState
+			title={m['vms.snapshots.empty']()}
+			dataTestid="snapshot-empty"
+			class="mt-6 rounded-md border border-dashed border-border py-6"
+		/>
 	{:else}
 		<ul class="mt-6 space-y-3" aria-label={m['vms.snapshots.listLabel']()}>
 			{#each snapshots.snapshots as snapshot (snapshot.name)}

@@ -2,6 +2,7 @@
 	import { getVmDetailContext, type VmNetworkInterface } from '../detail.svelte';
 	import EditNetworkInterfaceDialog from './EditNetworkInterfaceDialog.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	const store = getVmDetailContext();
 
@@ -100,11 +101,10 @@
 			</table>
 		</div>
 	{:else}
-		<p
-			class="mt-3 rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground"
-		>
-			{m['vms.network.empty']()}
-		</p>
+		<EmptyState
+			title={m['vms.network.empty']()}
+			class="mt-3 rounded-md border border-dashed border-border py-4"
+		/>
 	{/if}
 	{#if store.writeError}
 		<p class="mt-2 text-sm text-destructive" role="alert">{store.writeError}</p>

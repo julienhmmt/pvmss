@@ -12,12 +12,14 @@
 		description?: string;
 		icon?: Snippet;
 		actions?: Snippet;
+		class?: string;
+		dataTestid?: string;
 	}
 
-	let { title, description, icon, actions }: Props = $props();
+	let { title, description, icon, actions, class: className = '', dataTestid }: Props = $props();
 </script>
 
-<div class="flex flex-col items-center justify-center gap-3 px-4 py-12 text-center">
+<div class="flex flex-col items-center justify-center gap-3 px-4 py-12 text-center {className}" data-testid={dataTestid}>
 	{#if icon}
 		<div class="text-muted-foreground-subtle">{@render icon()}</div>
 	{/if}
