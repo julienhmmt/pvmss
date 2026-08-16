@@ -2,13 +2,13 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { m } from '$lib/paraglide/messages.js';
-	import AuthBrandPanel from './AuthBrandPanel.svelte';
+	import BrandPanel from '$lib/shared/ui/BrandPanel.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
 </script>
 
 <div class="grid w-full flex-1 grid-cols-1 lg:grid-cols-2">
-	<AuthBrandPanel mode="warning" />
+	<BrandPanel mode="warning" />
 
 	<div class="flex flex-col items-center justify-center p-6 sm:p-10">
 		<div class="w-full max-w-sm">

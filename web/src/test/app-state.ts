@@ -2,5 +2,7 @@
 export const page = {
 	url: new URL('http://localhost/'),
 	params: {},
-	route: { id: '/' }
+	route: { id: '/' },
+	status: 200,
+	error: null
 };

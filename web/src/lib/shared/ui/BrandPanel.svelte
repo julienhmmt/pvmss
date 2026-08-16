@@ -4,7 +4,7 @@
 	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
-		mode?: 'login' | 'warning';
+		mode?: 'login' | 'warning' | 'error';
 	}
 
 	let { mode = 'login' }: Props = $props();
@@ -15,6 +15,14 @@
 		<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" />
 		<path d="M12 9v4" />
 		<path d="M12 17h.01" />
+	</svg>
+{/snippet}
+
+{#snippet errorIcon(classes: string)}
+	<svg viewBox="0 0 24 24" class={classes} fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+		<circle cx="12" cy="12" r="10" />
+		<path d="m15 9-6 6" />
+		<path d="m9 9 6 6" />
 	</svg>
 {/snippet}
 
@@ -30,6 +38,14 @@
 				<div>
 					<h2 class="text-3xl font-semibold leading-tight tracking-tight">{m['auth.warningBrandTitle']()}</h2>
 					<p class="mt-3 text-sm text-primary-foreground/80">{m['auth.warningBrandDescription']()}</p>
+				</div>
+			</div>
+		{:else if mode === 'error'}
+			<div class="flex max-w-md flex-col gap-6">
+				{@render errorIcon('h-16 w-16')}
+				<div>
+					<h2 class="text-3xl font-semibold leading-tight tracking-tight">{m['error.brandTitle']()}</h2>
+					<p class="mt-3 text-sm text-primary-foreground/80">{m['error.brandDescription']()}</p>
 				</div>
 			</div>
 		{:else}

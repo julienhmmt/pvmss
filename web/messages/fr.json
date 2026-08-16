@@ -1,5 +1,5 @@
 {
- "$schema": "https://inlang.com/schema/inlang-message-format",
+
  "common.on": "Activé",
  "nodes.caption": "Nœuds",
  "nodes.columnCpu": "CPU",
@@ -876,5 +876,16 @@
  "auth.requiredTitle": "Authentification requise",
  "auth.requiredDescription": "Veuillez vous connecter pour accéder à cette page.",
  "auth.warningBrandTitle": "Avertissement",
- "auth.warningBrandDescription": "Cette page requiert une authentification."
+ "auth.warningBrandDescription": "Cette page requiert une authentification.",
+ "error.brandTitle": "Erreur",
+ "error.brandDescription": "Quelque chose s'est mal passé.",
+ "error.notFoundTitle": "Page introuvable",
+ "error.notFoundDescription": "La page que vous cherchez n'existe pas ou a été déplacée.",
+ "error.forbiddenTitle": "Accès refusé",
+ "error.forbiddenDescription": "Vous n'avez pas les droits pour accéder à cette page.",
+ "error.serverErrorTitle": "Erreur serveur",
+ "error.serverErrorDescription": "Le service a rencontré un problème. Veuillez réessayer plus tard.",
+ "error.genericTitle": "Erreur {status}",
+ "error.genericDescription": "Une erreur inattendue s'est produite.",
+ "error.backToHome": "Retour à l'accueil"
  }
