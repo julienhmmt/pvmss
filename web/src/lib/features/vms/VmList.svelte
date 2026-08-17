@@ -58,6 +58,10 @@
 		return store.sortDir === 'asc' ? ' ↑' : ' ↓';
 	}
 
+	function sortIndicatorClass(column: VmSortBy): string {
+		return store.sortBy === column ? 'text-primary' : 'text-muted-foreground-subtle';
+	}
+
 	function handleSort(column: VmSortBy): void {
 		store.setSort(column);
 	}
@@ -90,6 +94,15 @@
 
 	let pageCount = $derived(
 		store.result === null ? 1 : Math.max(1, Math.ceil(store.result.total / store.result.pageSize))
+	);
+
+	let rangeStart = $derived(
+		store.result === null || store.result.items.length === 0
+			? 0
+			: (store.result.page - 1) * store.result.pageSize + 1
+	);
+	let rangeEnd = $derived(
+		store.result === null ? 0 : rangeStart + store.result.items.length - 1
 	);
 
 	let pageItems = $derived(store.result?.items ?? []);
@@ -191,7 +204,8 @@
 							onclick={() => handleSort(column)}
 							data-testid="sort-{column}"
 						>
-							{COLUMN_LABELS[column]()}{sortIndicator(column)}
+							{COLUMN_LABELS[column]()}
+							<span class="ml-0.5 {sortIndicatorClass(column)}" aria-hidden="true">{sortIndicator(column)}</span>
 						</button>
 					</th>
 				{/each}
@@ -272,6 +286,11 @@
 			<span class="text-sm text-muted-foreground" data-testid="vm-page-indicator">
 				{m['common.pageIndicator']({ current: store.result?.page ?? store.page, total: pageCount })}
 			</span>
+			{#if store.result}
+				<span class="text-xs text-muted-foreground-subtle" data-testid="vm-page-range">
+					{m['common.showingRange']({ start: rangeStart, end: rangeEnd, total: store.result.total })}
+				</span>
+			{/if}
 			<button
 				type="button"
 				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"

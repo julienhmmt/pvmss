@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { getDashboardContext } from './dashboard.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
+	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 	import StatusDot from '$lib/shared/ui/StatusDot.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
@@ -16,11 +18,30 @@
 	}
 </script>
 
-<PageHeader title={m['admin.dashboard.title']()} />
+<PageHeader title={m['admin.dashboard.title']()}>
+	{#snippet actions()}
+		<Button
+			variant="secondary"
+			size="sm"
+			loading={store.loading}
+			onclick={() => void store.load()}
+		>
+			{m['common.refresh']()}
+		</Button>
+	{/snippet}
+</PageHeader>
 
 {#if store.loading}
 	<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
-	<TableSkeleton columns={5} />
+	<div class="grid grid-cols-1 gap-4 sm:grid-cols-3" data-testid="dashboard-stats-skeleton">
+		<Skeleton class="h-24 w-full" />
+		<Skeleton class="h-24 w-full" />
+		<Skeleton class="h-24 w-full" />
+	</div>
+	<div class="mt-6 space-y-2">
+		<Skeleton class="h-6 w-40" />
+		<TableSkeleton columns={2} />
+	</div>
 {:else if store.error}
 	<p role="alert" class="text-destructive">{store.error}</p>
 {:else if store.summary}
