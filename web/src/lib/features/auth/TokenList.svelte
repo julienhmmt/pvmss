@@ -5,6 +5,7 @@
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import CopyButton from '$lib/shared/ui/CopyButton.svelte';
+	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 
 	const store = setTokensContext();
@@ -69,7 +70,12 @@
 		</div>
 	{/if}
 
-	{#if store.tokens.length === 0 && !store.loading}
+	{#if store.loading}
+		<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
+		<div class="mt-4">
+			<TableSkeleton columns={5} />
+		</div>
+	{:else if store.tokens.length === 0}
 		<EmptyState title={m['profile.tokens.empty']()} class="mt-6" />
 	{:else}
 		<table class="mt-4 w-full border-collapse text-left text-sm">

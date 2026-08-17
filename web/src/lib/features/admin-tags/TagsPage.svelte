@@ -4,6 +4,8 @@
 	import Button from '$lib/shared/ui/Button.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
+	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -33,6 +35,7 @@
 	let newColor = $state('#4f46e5');
 	let editingTag = $state<string | null>(null);
 	let editColor = $state('');
+	let pendingDelete = $state<AdminTag | null>(null);
 
 	function openCreate(): void {
 		newName = '';
@@ -117,7 +120,7 @@
 						<td class="px-4 py-2">{tag.vmCount}</td>
 						<td class="px-4 py-2">
 							{#if !tag.protected}
-								<Button variant="destructive" size="sm" label={m['admin.tags.deleteLabel']({ name: tag.name })} onclick={() => onDelete(tag.name)}>{m['common.delete']()}</Button>
+								<Button variant="destructive" size="sm" label={m['admin.tags.deleteLabel']({ name: tag.name })} onclick={() => (pendingDelete = tag)}>{m['common.delete']()}</Button>
 							{:else}
 								<span class="text-xs text-muted-foreground">—</span>
 							{/if}
@@ -137,33 +140,41 @@
 	</div>
 {/if}
 
-{#if showForm}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true">
-		<div class="w-full max-w-sm rounded-lg bg-background p-6 shadow-lg">
-			<h2 class="mb-4 text-lg font-medium">{m['admin.tags.newTagForm']()}</h2>
-			<form onsubmit={(e) => { e.preventDefault(); submitCreate(); }} class="space-y-4">
-				<div>
-					<label for="tag-name" class="mb-1 block text-sm font-medium">{m['admin.tags.nameField']()}</label>
-					<input
-						id="tag-name"
-						type="text"
-						pattern={'[a-zA-Z0-9]{1,50}'}
-						class="w-full rounded-md border bg-background px-3 py-2 text-sm"
-						bind:value={newName}
-						required
-					/>
-				</div>
-				<div>
-					<label for="tag-color" class="mb-1 block text-sm font-medium">{m['admin.tags.colorField']()}</label>
-					<input type="color" id="tag-color" bind:value={newColor} class="h-10 w-full rounded border" />
-				</div>
-				<div class="flex justify-end gap-2 pt-2">
-					<Button variant="ghost" onclick={() => (showForm = false)}>{m['common.cancel']()}</Button>
-					<Button type="submit" disabled={saving}>
-						{saving ? m['common.creating']() : m['common.create']()}
-					</Button>
-				</div>
-			</form>
+<Dialog bind:open={showForm} size="sm" labelledBy="tag-form-title" onClose={() => (showForm = false)}>
+	<h2 id="tag-form-title" class="mb-4 text-lg font-medium">{m['admin.tags.newTagForm']()}</h2>
+	<form onsubmit={(e) => { e.preventDefault(); submitCreate(); }} class="space-y-4">
+		<div>
+			<label for="tag-name" class="mb-1 block text-sm font-medium">{m['admin.tags.nameField']()}</label>
+			<input
+				id="tag-name"
+				type="text"
+				pattern={'[a-zA-Z0-9]{1,50}'}
+				class="pv-input"
+				bind:value={newName}
+				required
+			/>
 		</div>
-	</div>
-{/if}
+		<div>
+			<label for="tag-color" class="mb-1 block text-sm font-medium">{m['admin.tags.colorField']()}</label>
+			<input type="color" id="tag-color" bind:value={newColor} class="h-10 w-full rounded border" />
+		</div>
+		<div class="flex justify-end gap-2 pt-2">
+			<Button variant="ghost" onclick={() => (showForm = false)}>{m['common.cancel']()}</Button>
+			<Button type="submit" disabled={saving}>
+				{saving ? m['common.creating']() : m['common.create']()}
+			</Button>
+		</div>
+	</form>
+</Dialog>
+
+<ConfirmDialog
+	open={pendingDelete !== null}
+	title={m['admin.tags.deleteTitle']({ name: pendingDelete?.name ?? '' })}
+	message={m['admin.tags.deleteConfirm']()}
+	confirmLabel={m['common.deletePermanently']()}
+	cancelLabel={m['common.cancel']()}
+	confirming={saving}
+	testId="tag-delete-confirm"
+	onConfirm={() => { if (pendingDelete) { onDelete(pendingDelete.name); pendingDelete = null; } }}
+	onClose={() => (pendingDelete = null)}
+/>

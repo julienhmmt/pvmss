@@ -1,14 +1,24 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 
+	type DialogSize = 'sm' | 'md' | 'lg' | 'xl';
+
 	interface Props {
 		open?: boolean;
 		labelledBy: string;
 		onClose: () => void;
+		size?: DialogSize;
 		children: Snippet;
 	}
 
-	let { open = $bindable(false), labelledBy, onClose, children }: Props = $props();
+	let { open = $bindable(false), labelledBy, onClose, size = 'md', children }: Props = $props();
+
+	const sizeClasses: Record<DialogSize, string> = {
+		sm: 'max-w-sm',
+		md: 'max-w-md',
+		lg: 'max-w-lg',
+		xl: 'max-w-2xl'
+	};
 
 	let dialogEl = $state<HTMLDivElement | null>(null);
 	let triggerEl: Element | null = null;
@@ -39,7 +49,7 @@
 	>
 		<div
 			bind:this={dialogEl}
-			class="dialog-fade-in w-full max-w-md rounded-xl border border-border bg-card p-6 text-card-foreground shadow-card"
+			class="dialog-fade-in w-full {sizeClasses[size]} rounded-xl border border-border bg-card p-6 text-card-foreground shadow-card"
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby={labelledBy}
