@@ -7,6 +7,12 @@
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
+	import FormField from '$lib/shared/ui/FormField.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
+	import RadioGroup from '$lib/shared/ui/RadioGroup.svelte';
+	import UserIcon from '$lib/shared/ui/icons/UserIcon.svelte';
+	import LockIcon from '$lib/shared/ui/icons/LockIcon.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const form = new LoginForm();
@@ -43,17 +49,14 @@
 					<p class="mt-2 text-sm text-muted-foreground">{m['login.description']()}</p>
 				</div>
 				<form class="grid gap-4" onsubmit={(event) => { event.preventDefault(); void submit(); }}>
-					<fieldset class="grid gap-2">
-						<legend class="text-sm font-medium">{m['login.accountType']()}</legend>
-						<label class="flex items-center gap-2 text-sm">
-							<input type="radio" bind:group={form.provider} value="pve" class="accent-primary" />
-							{m['login.proxmoxUser']()}
-						</label>
-						<label class="flex items-center gap-2 text-sm">
-							<input type="radio" bind:group={form.provider} value="local" class="accent-primary" />
-							{m['login.localAdmin']()}
-						</label>
-					</fieldset>
+					<RadioGroup
+						legend={m['login.accountType']()}
+						bind:value={form.provider}
+						options={[
+							{ value: 'pve', label: m['login.proxmoxUser']() },
+							{ value: 'local', label: m['login.localAdmin']() }
+						]}
+					/>
 					{#if form.provider === 'pve'}
 						<ClusterSelector
 							options={form.clusters}
@@ -61,45 +64,52 @@
 							onChange={(value) => (form.cluster = value)}
 							id="login-cluster"
 						/>
-						<label class="grid gap-1 text-sm font-medium">
-							{m['login.username']()}
-							<input
-								class="rounded-[0.625rem] border border-input bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-								autocomplete="username"
-								bind:value={form.username}
-								required
-							/>
-						</label>
+						<FormField label={m['login.username']()} required>
+							{#snippet children({ id, describedBy, invalid })}
+								<TextField
+									{id}
+									{describedBy}
+									{invalid}
+									bind:value={form.username}
+									autocomplete="username"
+									required
+								>
+									{#snippet leading()}
+										<UserIcon />
+									{/snippet}
+								</TextField>
+							{/snippet}
+						</FormField>
 					{/if}
-					<label class="grid gap-1 text-sm font-medium">
-						{m['login.password']()}
-						<input
-							class="rounded-[0.625rem] border border-input bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							type="password"
-							autocomplete="current-password"
-							bind:value={form.password}
-							required
-						/>
-					</label>
+					<FormField label={m['login.password']()} required>
+						{#snippet children({ id, describedBy, invalid })}
+							<TextField
+								{id}
+								{describedBy}
+								{invalid}
+								type="password"
+								autocomplete="current-password"
+								bind:value={form.password}
+								reveal
+								required
+							>
+								{#snippet leading()}
+									<LockIcon />
+								{/snippet}
+							</TextField>
+						{/snippet}
+					</FormField>
 					{#if form.provider === 'pve' && form.selectedCluster?.oidcEnabled}
-						<button
-							type="button"
-							class="rounded-[0.625rem] border border-border bg-card px-3 py-2.5 text-sm font-semibold hover:bg-muted"
-							onclick={() => void form.signInOIDC()}
-						>
+						<Button variant="secondary" onclick={() => void form.signInOIDC()}>
 							{m['login.signInOidc']()}
-						</button>
+						</Button>
 					{/if}
 					{#if form.error}
 						<p role="alert" class="text-sm text-destructive">{form.error}</p>
 					{/if}
-					<button
-						class="rounded-[0.625rem] bg-primary px-3 py-2.5 font-semibold text-primary-foreground shadow-card transition-colors hover:bg-primary/90 disabled:opacity-50"
-						disabled={form.loading}
-						type="submit"
-					>
+					<Button type="submit" loading={form.loading}>
 						{form.loading ? m['login.signingIn']() : m['login.signIn']()}
-					</button>
+					</Button>
 				</form>
 				<p class="text-xs text-muted-foreground-subtle">{m['login.demoHint']()}</p>
 			</Card>

@@ -6,6 +6,7 @@
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import Button from '$lib/shared/ui/Button.svelte';
 
 	// Review step (V09): shows the exact request the server will receive —
 	// there is no second, expert-only endpoint (FR-001) and no hidden fields.
@@ -32,16 +33,11 @@
 <div class="grid gap-4">
 	<h2 class="text-sm font-medium">{m['vms.create.reviewHeading']()}</h2>
 	<pre
-		class="overflow-x-auto rounded-md border border-border bg-muted p-3 text-xs"
+		class="overflow-x-auto rounded-lg border border-border bg-muted p-4 font-mono text-xs"
 		data-testid="review-request">{JSON.stringify(outgoing, null, 2)}</pre>
 
 	{#if form.submitError}<p role="alert" class="text-sm text-destructive">{form.submitError}</p>{/if}
-	<button
-		type="button"
-		class="rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground disabled:opacity-50"
-		disabled={form.submitting}
-		onclick={() => void submit()}
-	>
+	<Button type="button" loading={form.submitting} onclick={() => void submit()}>
 		{form.submitting ? m['common.creating']() : m['vms.create.submit']()}
-	</button>
+	</Button>
 </div>

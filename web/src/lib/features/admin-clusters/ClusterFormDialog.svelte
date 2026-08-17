@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import FormField from '$lib/shared/ui/FormField.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
+	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
 	import type { AdminCluster, ClusterInput } from './clusters.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -38,26 +41,33 @@ import Dialog from '$lib/shared/ui/Dialog.svelte';
 
 <Dialog bind:open labelledBy={TITLE_ID} onClose={onClose}>
 	<h2 id={TITLE_ID} class="text-lg font-semibold">{editing ? m['admin.clusters.editCluster']() : m['admin.clusters.addClusterForm']()}</h2>
-	<form class="mt-4 grid gap-3" onsubmit={(event) => { event.preventDefault(); submit(); }}>
-		<label class="grid gap-1 text-sm font-medium">
-			{m['common.name']()}
-			<input class="rounded-md border border-input bg-background px-3 py-2" bind:value={name} disabled={editing !== null} pattern="[a-z0-9-]+" required />
-		</label>
-		<label class="grid gap-1 text-sm font-medium">
-			{m['admin.clusters.url']()}
-			<input class="rounded-md border border-input bg-background px-3 py-2" type="url" bind:value={url} required />
-		</label>
-		<label class="grid gap-1 text-sm font-medium">
-			{m['admin.clusters.tokenId']()}
-			<input class="rounded-md border border-input bg-background px-3 py-2" bind:value={tokenId} required />
-		</label>
-		<label class="grid gap-1 text-sm font-medium">
-			{m['admin.clusters.tokenSecret']()} {#if editing}<span class="font-normal text-muted-foreground">{m['admin.clusters.tokenSecretHint']()}</span>{/if}
-			<input class="rounded-md border border-input bg-background px-3 py-2" type="password" bind:value={tokenSecret} required={editing === null} autocomplete="new-password" />
-		</label>
-		<label class="flex items-center gap-2 text-sm">
-			<input type="checkbox" bind:checked={tlsInsecureSkipVerify} /> {m['admin.clusters.skipTls']()}
-		</label>
+	<form class="mt-4 grid gap-4" onsubmit={(event) => { event.preventDefault(); submit(); }}>
+		<FormField label={m['common.name']()} required>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField {id} {describedBy} {invalid} bind:value={name} disabled={editing !== null} pattern="[a-z0-9-]+" required />
+			{/snippet}
+		</FormField>
+		<FormField label={m['admin.clusters.url']()} required>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField {id} {describedBy} {invalid} type="url" bind:value={url} required />
+			{/snippet}
+		</FormField>
+		<FormField label={m['admin.clusters.tokenId']()} required>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField {id} {describedBy} {invalid} bind:value={tokenId} required />
+			{/snippet}
+		</FormField>
+		<FormField label={m['admin.clusters.tokenSecret']()} hint={editing ? m['admin.clusters.tokenSecretHint']() : undefined} required={editing === null}>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField {id} {describedBy} {invalid} type="password" bind:value={tokenSecret} reveal required={editing === null} autocomplete="new-password" />
+			{/snippet}
+		</FormField>
+		<Checkbox
+			label={m['admin.clusters.skipTls']()}
+			checked={tlsInsecureSkipVerify}
+			onToggle={(checked) => (tlsInsecureSkipVerify = checked)}
+			variant="warning"
+		/>
 		<div class="mt-2 flex justify-end gap-2">
 			<Button variant="secondary" onclick={onClose}>{m['common.cancel']()}</Button>
 			<Button type="submit">{m['common.save']()}</Button>

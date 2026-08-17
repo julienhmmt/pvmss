@@ -5,6 +5,8 @@
 	import StepDisk from './_steps/StepDisk.svelte';
 	import StepNetwork from './_steps/StepNetwork.svelte';
 	import StepReview from './_steps/StepReview.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
+	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	// Detailed-mode wizard (V09): five steps — Base, Hardware, Disk, Network,
@@ -42,21 +44,36 @@
 </script>
 
 {#if form.catalog === null}
-	<p role="status" aria-live="polite" class="text-muted-foreground">
-		{form.catalogError ?? m['vms.create.loadingCatalog']()}
-	</p>
+	<div class="grid gap-3" role="status" aria-live="polite">
+		<Skeleton class="h-8 w-full" />
+		<Skeleton class="h-4 w-24" />
+		<Skeleton class="h-10 w-full" />
+		<Skeleton class="h-4 w-20" />
+		<Skeleton class="h-10 w-full" />
+	</div>
 {:else}
 	<ol role="tablist" aria-label={m['vms.create.stepsAriaLabel']()} class="mb-6 flex flex-wrap gap-2">
-		{#each STEPS as step (step.id)}
+		{#each STEPS as step, i (step.id)}
 			<li>
 				<button
 					role="tab"
 					aria-selected={current === step.id}
-					class="rounded-md px-3 py-1.5 text-sm font-medium {current === step.id
+					class="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background {current === step.id
 						? 'bg-primary text-primary-foreground'
-						: 'bg-muted text-muted-foreground'}"
+						: stepIndex(current) > i
+							? 'bg-success-soft text-success-soft-foreground'
+							: 'bg-muted text-muted-foreground hover:bg-muted/80'}"
 					onclick={() => (current = step.id)}
 				>
+					<span class="flex h-5 w-5 items-center justify-center rounded-full text-xs {current === step.id ? 'bg-primary-foreground/20' : stepIndex(current) > i ? 'bg-success-soft-foreground/15' : 'bg-foreground/10'}">
+						{#if stepIndex(current) > i}
+							<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="h-3 w-3" aria-hidden="true">
+								<path d="M4 10l4 4 8-8" />
+							</svg>
+						{:else}
+							{i + 1}
+						{/if}
+					</span>
 					{step.label()}
 				</button>
 			</li>
@@ -78,21 +95,9 @@
 	{#if current !== 'Review'}
 		<div class="mt-6 flex gap-2">
 			{#if stepIndex(current) > 0}
-				<button
-					type="button"
-					class="rounded-md border border-border px-3 py-2 text-sm font-medium"
-					onclick={goBack}
-				>
-					{m['common.back']()}
-				</button>
+				<Button variant="secondary" onclick={goBack}>{m['common.back']()}</Button>
 			{/if}
-			<button
-				type="button"
-				class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
-				onclick={goNext}
-			>
-				{m['common.next']()}
-			</button>
+			<Button onclick={goNext}>{m['common.next']()}</Button>
 		</div>
 	{/if}
 {/if}

@@ -6,6 +6,14 @@
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import FormField from '$lib/shared/ui/FormField.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
+	import RadioGroup from '$lib/shared/ui/RadioGroup.svelte';
+	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
+	import Switch from '$lib/shared/ui/Switch.svelte';
+	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 
 	// Simple-mode wizard (V08): pick a profile, name the VM, and submit. Node
 	// and storage are auto-selected from the catalog's first approved entries,
@@ -15,7 +23,9 @@
 	const toast = getToastContext();
 	const draft = getDraftContext();
 
-	const inputClass = 'rounded-md border border-input bg-background px-3 py-2';
+	function profileDescription(profile: { cpuCores: number; memoryMB: number; diskGB: number; bus: string }): string {
+		return `${profile.cpuCores} vCPU · ${profile.memoryMB} MB · ${profile.diskGB} GB · ${profile.bus}`;
+	}
 
 	async function submit(): Promise<void> {
 		const accepted = await form.submit();
@@ -31,10 +41,16 @@
 </script>
 
 {#if form.catalog === null}
-	<p role="status" aria-live="polite" class="text-muted-foreground">
-		{form.catalogError ?? m['vms.create.loadingCatalog']()}
-	</p>
+	<div class="grid gap-3" role="status" aria-live="polite">
+		<Skeleton class="h-4 w-20" />
+		<Skeleton class="h-10 w-full" />
+		<Skeleton class="h-4 w-16" />
+		<Skeleton class="h-20 w-full" />
+		<Skeleton class="h-20 w-full" />
+		<Skeleton class="h-10 w-full" />
+	</div>
 {:else}
+	{@const cat = form.catalog}
 	<form
 		class="grid gap-4"
 		onsubmit={(event) => {
@@ -42,65 +58,80 @@
 			void submit();
 		}}
 	>
-		<label class="grid gap-1 text-sm font-medium">
-			{m['vms.create.name']()}
-			<input class={inputClass} bind:value={form.name} required placeholder="web-04" />
-		</label>
+		<FormField label={m['vms.create.name']()} required>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField {id} {describedBy} {invalid} bind:value={form.name} required placeholder="web-04" />
+			{/snippet}
+		</FormField>
 
-		<fieldset class="grid gap-2">
-			<legend class="text-sm font-medium">{m['vms.create.profile']()}</legend>
-			{#each form.catalog.profiles as profile (profile.id)}
-				<label class="flex items-center gap-2 text-sm">
-					<input type="radio" bind:group={form.profileId} value={profile.id} required />
-					{profile.label}
-				</label>
-			{/each}
-		</fieldset>
+		<RadioGroup
+			legend={m['vms.create.profile']()}
+			variant="card"
+			columns={2}
+			bind:value={form.profileId}
+			options={cat.profiles.map((profile) => ({
+				value: profile.id,
+				label: profile.label,
+				description: profileDescription(profile)
+			}))}
+		/>
 
-		{#if form.catalog.cloudInitTemplates.length > 0}
-			<label class="grid gap-1 text-sm font-medium">
-				{m['vms.create.cloudinitTemplate']()} <span class="font-normal text-muted-foreground">{m['common.optional']()}</span>
-				<select class={inputClass} bind:value={form.cloudInitTemplateId}>
-					<option value="">{m['common.none']()}</option>
-					{#each form.catalog.cloudInitTemplates as template (template.id)}
-						<option value={template.id}>{template.label}</option>
-					{/each}
-				</select>
-			</label>
+		{#if cat.cloudInitTemplates.length > 0}
+			<FormField label={m['vms.create.cloudinitTemplate']()} hint={m['common.optional']()}>
+				{#snippet children({ id, describedBy, invalid })}
+					<Select
+						{id}
+						{describedBy}
+						{invalid}
+						bind:value={form.cloudInitTemplateId}
+						placeholder={m['common.none']()}
+						options={cat.cloudInitTemplates.map((template) => ({
+							value: template.id,
+							label: template.label
+						}))}
+					/>
+				{/snippet}
+			</FormField>
 		{/if}
 
-		<div class="grid gap-2 rounded-md border border-border p-3">
+		<div class="grid gap-3 rounded-lg border border-border bg-muted/30 p-4">
 			<div class="flex items-center justify-between">
-				<span class="text-sm font-medium">{m['vms.create.placement']()}</span>
-				<button
-					type="button"
-					class="text-xs underline text-muted-foreground"
-					onclick={() => {
+				<span class="text-sm font-medium text-foreground">{m['vms.create.placement']()}</span>
+				<Switch
+					label={form.nodeAdjusted ? m['vms.create.resetAutomatic']() : m['vms.create.adjust']()}
+					checked={form.nodeAdjusted}
+					onToggle={() => {
 						form.nodeAdjusted = !form.nodeAdjusted;
 						form.storageAdjusted = form.nodeAdjusted;
 					}}
-				>
-					{form.nodeAdjusted ? m['vms.create.resetAutomatic']() : m['vms.create.adjust']()}
-				</button>
+				/>
 			</div>
 			{#if form.nodeAdjusted}
-				<label class="grid gap-1 text-sm font-medium">
-					{m['vms.create.node']()}
-					<select class={inputClass} bind:value={form.node}>
-						{#each form.catalog.nodes as node (node)}
-							<option value={node}>{node}</option>
-						{/each}
-					</select>
-				</label>
-				<label class="grid gap-1 text-sm font-medium">
-					{m['vms.create.storage']()}
-					<select class={inputClass} bind:value={form.storage} required>
-						<option value="" disabled>{m['vms.create.chooseStorage']()}</option>
-						{#each form.catalog.storages.filter((s) => s.node === form.node) as storage (storage.name)}
-							<option value={storage.name}>{storage.name}</option>
-						{/each}
-					</select>
-				</label>
+				<div class="grid gap-3 sm:grid-cols-2">
+					<FormField label={m['vms.create.node']()}>
+						{#snippet children({ id, describedBy, invalid })}
+							<Select
+								{id}
+								{describedBy}
+								{invalid}
+								bind:value={form.node}
+								options={cat.nodes}
+							/>
+						{/snippet}
+					</FormField>
+					<FormField label={m['vms.create.storage']()} required>
+						{#snippet children({ id, describedBy, invalid })}
+							<Select
+								{id}
+								{describedBy}
+								{invalid}
+								bind:value={form.storage}
+								placeholder={m['vms.create.chooseStorage']()}
+								options={cat.storages.filter((s) => s.node === form.node).map((s) => s.name)}
+							/>
+						{/snippet}
+					</FormField>
+				</div>
 			{:else}
 				<p class="text-sm text-muted-foreground">
 					{m['vms.create.placementAutomatic']({ node: form.effectiveNode(), storage: form.effectiveStorage() })}
@@ -108,18 +139,15 @@
 			{/if}
 		</div>
 
-		<label class="flex items-center gap-2 text-sm">
-			<input type="checkbox" bind:checked={form.startAfterCreate} />
-			{m['vms.create.startAfterCreate']()}
-		</label>
+		<Checkbox
+			label={m['vms.create.startAfterCreate']()}
+			checked={form.startAfterCreate}
+			onToggle={(checked) => (form.startAfterCreate = checked)}
+		/>
 
 		{#if form.submitError}<p role="alert" class="text-sm text-destructive">{form.submitError}</p>{/if}
-		<button
-			class="rounded-md bg-primary px-3 py-2 font-medium text-primary-foreground disabled:opacity-50"
-			disabled={form.submitting}
-			type="submit"
-		>
+		<Button type="submit" loading={form.submitting}>
 			{form.submitting ? m['common.creating']() : m['vms.create.submit']()}
-		</button>
+		</Button>
 	</form>
 {/if}

@@ -23,6 +23,7 @@
 		label?: string;
 		onclick?: () => void;
 		children: Snippet;
+		[key: string]: unknown;
 	}
 
 	let {
@@ -34,7 +35,8 @@
 		focusOnMount: shouldFocusOnMount = false,
 		label,
 		onclick,
-		children
+		children,
+		...rest
 	}: Props = $props();
 
 	const base =
@@ -61,6 +63,7 @@
 	{onclick}
 	class="{base} {sizes[size]} {variants[variant]}"
 	use:focusOnMount={shouldFocusOnMount}
+	{...rest}
 >
 	{#if loading}
 		<SpinnerIcon class="mr-2 h-4 w-4" />
