@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Button from '$lib/shared/ui/Button.svelte';
+	import FormField from '$lib/shared/ui/FormField.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -33,33 +34,37 @@
 		role="dialog"
 		aria-modal="true"
 	>
-		<div class="w-full max-w-lg rounded-lg bg-background p-6 shadow-lg">
-			<h2 class="mb-4 text-lg font-medium">{editingId ? m['admin.cloudinit.editTemplate']() : m['admin.cloudinit.newTemplateForm']()}</h2>
-			<form onsubmit={(e) => { e.preventDefault(); onSubmit(); }} class="space-y-4">
-				<div>
-					<label for="cit-label" class="mb-1 block text-sm font-medium">{m['admin.cloudinit.labelField']()}</label>
-					<input
-						id="cit-label"
-						type="text"
-						class="w-full rounded-md border bg-background px-3 py-2 text-sm"
-						value={label}
-						oninput={(e) => onLabelChange(e.currentTarget.value)}
-						required
-					/>
-				</div>
-				<div>
-					<label for="cit-content" class="mb-1 block text-sm font-medium">
-						{m['admin.cloudinit.contentField']()}
-					</label>
-					<textarea
-						id="cit-content"
-						class="w-full rounded-md border bg-background px-3 py-2 font-mono text-xs"
-						rows="12"
-						value={content}
-						oninput={(e) => onContentChange(e.currentTarget.value)}
-						required
-					></textarea>
-				</div>
+		<div class="w-full max-w-lg rounded-xl border border-border bg-card p-6 text-card-foreground shadow-card">
+			<h2 class="mb-4 text-lg font-semibold">{editingId ? m['admin.cloudinit.editTemplate']() : m['admin.cloudinit.newTemplateForm']()}</h2>
+			<form onsubmit={(e) => { e.preventDefault(); onSubmit(); }} class="grid gap-4">
+				<FormField label={m['admin.cloudinit.labelField']()} required>
+					{#snippet children({ id, describedBy, invalid })}
+						<input
+							{id}
+							aria-describedby={describedBy}
+							aria-invalid={invalid ? 'true' : undefined}
+							type="text"
+							class="pv-input"
+							value={label}
+							oninput={(e) => onLabelChange(e.currentTarget.value)}
+							required
+						/>
+					{/snippet}
+				</FormField>
+				<FormField label={m['admin.cloudinit.contentField']()} required>
+					{#snippet children({ id, describedBy, invalid })}
+						<textarea
+							{id}
+							aria-describedby={describedBy}
+							aria-invalid={invalid ? 'true' : undefined}
+							class="pv-input font-mono text-xs"
+							rows="12"
+							value={content}
+							oninput={(e) => onContentChange(e.currentTarget.value)}
+							required
+						></textarea>
+					{/snippet}
+				</FormField>
 				<div class="flex justify-end gap-2 pt-2">
 					<Button variant="ghost" onclick={onCancel}>{m['common.cancel']()}</Button>
 					<Button type="submit" disabled={saving}>

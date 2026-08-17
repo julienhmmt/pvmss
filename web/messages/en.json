@@ -856,6 +856,7 @@
  "vms.create.successHeading": "{name} is on its way",
  "vms.create.successDescription": "We will notify you when it is ready.",
  "vms.create.successViewMachines": "View machines",
+ "vms.create.draftSaved": "Draft saved",
  "activity.heading": "Activity",
    "home.dashboard.empty": "No VMs yet.",
    "home.dashboard.emptyAction": "Create your first VM",

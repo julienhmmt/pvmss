@@ -856,6 +856,7 @@
  "vms.create.successHeading": "{name} est en route",
  "vms.create.successDescription": "Nous vous préviendrons quand elle sera prête.",
  "vms.create.successViewMachines": "Voir les machines",
+ "vms.create.draftSaved": "Brouillon enregistré",
  "activity.heading": "Activité",
    "home.dashboard.empty": "Aucune VM pour l'instant.",
    "home.dashboard.emptyAction": "Crée ta première VM",

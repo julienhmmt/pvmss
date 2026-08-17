@@ -248,6 +248,62 @@
     0 1px 3px oklch(0% 0 0deg / 0.4);
 }
 
+/* Shared form-control base. One source of truth for input styling so every
+   form (wizard, admin dialogs, login) shares one vocabulary with the Button
+   primitive: same radius (0.625rem), same focus ring, same disabled state,
+   same invalid state. Apply via the .pv-input class on <input>, <select>,
+   and <textarea>. The focus ring mirrors Button's focus-visible:ring-2
+   ring-ring ring-offset-2 ring-offset-background. */
+.pv-input {
+  display: block;
+  width: 100%;
+  border-radius: 0.625rem;
+  border: 1px solid var(--input);
+  background: var(--background);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--foreground);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.pv-input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.pv-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pv-input:focus-visible {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+}
+
+.pv-input[aria-invalid='true'] {
+  border-color: var(--destructive);
+}
+
+.pv-input[aria-invalid='true']:focus-visible {
+  border-color: var(--destructive);
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--destructive);
+}
+
+/* Native <select> affordance: drop the UA chrome and reserve room for the
+   chevron icon rendered by Select.svelte. */
+.pv-select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 2rem;
+  cursor: pointer;
+}
+
+.pv-select:disabled {
+  cursor: not-allowed;
+}
+
 /* Offset the fixed sidebar below the navbar */
 [data-slot="sidebar-container"] {
   top: var(--navbar-height) !important;
