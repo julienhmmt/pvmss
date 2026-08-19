@@ -16,6 +16,7 @@
 	import Sidebar from '$lib/features/chrome/Sidebar.svelte';
 	import AppHeader from '$lib/features/chrome/AppHeader.svelte';
 	import HeaderLite from '$lib/features/chrome/HeaderLite.svelte';
+	import ShortcutsDialog from '$lib/features/chrome/ShortcutsDialog.svelte';
 	import Toaster from '$lib/shared/ui/Toaster.svelte';
 	import { setToastContext } from '$lib/shared/ui/toast.svelte';
 	import { trapFocus } from '$lib/shared/ui/focus-trap';
@@ -100,10 +101,13 @@
 			target.isContentEditable;
 		if (isTyping) return;
 
-		if (event.key === '/' || event.key === '?') {
+		if (event.key === '/') {
 			event.preventDefault();
 			const searchInput = document.querySelector<HTMLInputElement>('input[type="search"], [data-search="true"]');
 			searchInput?.focus();
+		} else if (event.key === '?') {
+			event.preventDefault();
+			shortcutsOpen = true;
 		} else if (event.key.toLowerCase() === 'r') {
 			event.preventDefault();
 			window.location.reload();
@@ -112,10 +116,18 @@
 
 	const signedIn = $derived(session.principal !== null);
 	const hasRouteError = $derived(page.error !== null);
+	let shortcutsOpen = $state(false);
 </script>
 
 {#if signedIn}
 	<div class="min-h-screen bg-background text-foreground">
+		<a
+			href="#main-content"
+			class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
+			data-testid="skip-to-content"
+		>
+			{m['chrome.skipToContent']()}
+		</a>
 		<div class="flex min-h-screen">
 			<div class="sticky top-0 hidden h-screen min-[900px]:flex">
 				<Sidebar {version} />
@@ -145,7 +157,7 @@
 
 			<div class="flex min-w-0 flex-1 flex-col">
 				<AppHeader />
-				<main class="flex-1 p-7">
+				<main id="main-content" class="flex-1 p-7">
 					<div class="max-w-[1180px]">
 						{@render children()}
 					</div>
@@ -174,6 +186,10 @@
 			{#if version}PVMSS {version}{/if}
 		</footer>
 	</div>
+{/if}
+
+{#if signedIn}
+	<ShortcutsDialog bind:open={shortcutsOpen} onClose={() => (shortcutsOpen = false)} />
 {/if}
 
 <Toaster />
