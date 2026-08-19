@@ -1,33 +1,41 @@
 <script lang="ts">
 	import { getVmCreateContext } from '../create.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import FormField from '$lib/shared/ui/FormField.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
 
 	// Disk step: one initial disk (multi-disk is T07) — an approved storage on
 	// the chosen node, plus a size within the technical ceiling.
 	const form = getVmCreateContext();
-	const inputClass = 'rounded-md border border-input bg-background px-3 py-2';
 
 	const storagesOnNode = $derived(
 		(form.catalog?.storages ?? []).filter((storage) => storage.node === form.node)
 	);
+	const storageError = $derived(
+		form.node !== '' && storagesOnNode.length === 0
+			? m['vms.create.noStorageOnNode']({ node: form.node })
+			: null
+	);
 </script>
 
 <div class="grid gap-4">
-	<label class="grid gap-1 text-sm font-medium">
-		{m['vms.create.storage']()}
-		<select class={inputClass} bind:value={form.diskStorage} required>
-			<option value="" disabled>{m['vms.create.chooseStorage']()}</option>
-			{#each storagesOnNode as storage (storage.name)}
-				<option value={storage.name}>{storage.name}</option>
-			{/each}
-		</select>
-		{#if form.node !== '' && storagesOnNode.length === 0}
-			<span class="text-xs text-destructive">{m['vms.create.noStorageOnNode']({ node: form.node })}</span>
-		{/if}
-	</label>
+	<FormField label={m['vms.create.storage']()} required error={storageError}>
+		{#snippet children({ id, describedBy, invalid })}
+			<Select
+				{id}
+				{describedBy}
+				{invalid}
+				bind:value={form.diskStorage}
+				placeholder={m['vms.create.chooseStorage']()}
+				options={storagesOnNode.map((storage) => storage.name)}
+			/>
+		{/snippet}
+	</FormField>
 
-	<label class="grid gap-1 text-sm font-medium">
-		{m['vms.create.size']()} <span class="text-xs font-normal text-muted-foreground">{m['vms.create.sizeRange']()}</span>
-		<input class={inputClass} type="number" min="1" max="2048" bind:value={form.diskSizeGB} required />
-	</label>
+	<FormField label={m['vms.create.size']()} hint={m['vms.create.sizeRange']()} required>
+		{#snippet children({ id, describedBy, invalid })}
+			<TextField {id} {describedBy} {invalid} type="number" min={1} max={2048} bind:value={form.diskSizeGB} required />
+		{/snippet}
+	</FormField>
 </div>

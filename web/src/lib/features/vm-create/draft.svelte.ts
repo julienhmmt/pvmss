@@ -101,6 +101,11 @@ export class DraftStore {
 		this.#saveTimer = null;
 		localStorage.removeItem(DRAFT_STORAGE_KEY);
 	}
+
+	/** True if a draft is currently stored (used by the unsaved-changes guard). */
+	hasDraft(): boolean {
+		return localStorage.getItem(DRAFT_STORAGE_KEY) !== null;
+	}
 }
 
 const DRAFT_CONTEXT_KEY = Symbol('vm-create-draft');

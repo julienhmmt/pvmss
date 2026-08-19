@@ -16,12 +16,12 @@
 		/** Accessible label for the radio — also the visible title. */
 		label: string;
 		/** Optional description shown under the title. */
-		description?: string;
+		description?: string | undefined;
 		/** Optional leading snippet (icon / glyph). */
 		media?: Snippet;
 	}
 
-	let { value, group, label, description, media }: Props = $props();
+	let { value, group = $bindable(), label, description, media }: Props = $props();
 
 	const selected = $derived(group === value);
 </script>

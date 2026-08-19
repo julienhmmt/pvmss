@@ -1,6 +1,12 @@
 <script lang="ts">
 	import type { CloudInitConfigUpdate, CloudInitIPMode, CloudInitStore } from './cloudinit.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import FormField from '$lib/shared/ui/FormField.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
+	import Textarea from '$lib/shared/ui/Textarea.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
+	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 
 	interface Props {
 		store: CloudInitStore;
@@ -17,6 +23,8 @@
 	let dnsServer = $state('');
 	let searchDomain = $state('');
 	let validationError = $state<string | null>(null);
+	let ipError = $state<string | null>(null);
+	let gatewayError = $state<string | null>(null);
 
 	$effect(() => {
 		const config = store.config;
@@ -31,8 +39,19 @@
 	});
 
 	function submit(): void {
-		validationError = validateForm();
-		if (validationError !== null) return;
+		ipError = null;
+		gatewayError = null;
+		validationError = null;
+		if (ipMode === 'static') {
+			if (ipAddress === '') {
+				ipError = m['vms.cloudinit.validationError']();
+				return;
+			}
+			if (gateway === '') {
+				gatewayError = m['vms.cloudinit.validationError']();
+				return;
+			}
+		}
 		onRequestSave({
 			user,
 			...(password === '' ? {} : { password }),
@@ -43,17 +62,17 @@
 			searchDomain
 		});
 	}
-
-	function validateForm(): string | null {
-		if (ipMode === 'static' && (ipAddress === '' || gateway === '')) {
-			return m['vms.cloudinit.validationError']();
-		}
-		return null;
-	}
 </script>
 
 {#if store.configLoading && store.config === null}
-	<p role="status" aria-live="polite">{m['vms.cloudinit.loading']()}</p>
+	<div class="grid gap-3" role="status" aria-live="polite">
+		<Skeleton class="h-4 w-24" />
+		<Skeleton class="h-10 w-full" />
+		<Skeleton class="h-4 w-32" />
+		<Skeleton class="h-10 w-full" />
+		<Skeleton class="h-4 w-20" />
+		<Skeleton class="h-24 w-full" />
+	</div>
 {:else if store.configError && store.config === null}
 	<p role="alert" data-testid="cloudinit-config-error">{store.configError}</p>
 {:else}
@@ -68,46 +87,61 @@
 		<p id="cloudinit-form-help" class="text-sm text-muted-foreground">
 			{m['vms.cloudinit.help']()}
 		</p>
-		<label class="grid gap-1 text-sm">
-			{m['vms.cloudinit.user']()}
-			<input class="rounded-md border border-border bg-background px-3 py-2" bind:value={user} data-testid="cloudinit-user" />
-		</label>
-		<label class="grid gap-1 text-sm">
-			{m['vms.cloudinit.password']()} <span class="text-xs text-muted-foreground">{m['common.writeOnly']()}</span>
-			<input class="rounded-md border border-border bg-background px-3 py-2" type="password" bind:value={password} data-testid="cloudinit-password" />
-		</label>
-		<label class="grid gap-1 text-sm">
-			{m['vms.cloudinit.sshKeys']()}
-			<textarea class="min-h-24 rounded-md border border-border bg-background px-3 py-2 font-mono text-xs" bind:value={sshKeys} data-testid="cloudinit-ssh-keys"></textarea>
-		</label>
-		<label class="grid gap-1 text-sm">
-			{m['vms.cloudinit.ipMode']()}
-			<select class="rounded-md border border-border bg-background px-3 py-2" bind:value={ipMode} data-testid="cloudinit-ip-mode">
-				<option value="dhcp">{m['vms.cloudinit.dhcp']()}</option>
-				<option value="static">{m['vms.cloudinit.static']()}</option>
-			</select>
-		</label>
+		<FormField label={m['vms.cloudinit.user']()} required>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField {id} {describedBy} {invalid} bind:value={user} data-testid="cloudinit-user" />
+			{/snippet}
+		</FormField>
+		<FormField label={m['vms.cloudinit.password']()} hint={m['common.writeOnly']()}>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField {id} {describedBy} {invalid} type="password" bind:value={password} reveal data-testid="cloudinit-password" />
+			{/snippet}
+		</FormField>
+		<FormField label={m['vms.cloudinit.sshKeys']()}>
+			{#snippet children({ id, describedBy, invalid })}
+				<Textarea {id} {describedBy} {invalid} mono rows={6} bind:value={sshKeys} onCmdEnter={submit} data-testid="cloudinit-ssh-keys" />
+			{/snippet}
+		</FormField>
+		<FormField label={m['vms.cloudinit.ipMode']()}>
+			{#snippet children({ id, describedBy, invalid })}
+				<Select
+					{id}
+					{describedBy}
+					{invalid}
+					bind:value={ipMode}
+					options={[
+						{ value: 'dhcp', label: m['vms.cloudinit.dhcp']() },
+						{ value: 'static', label: m['vms.cloudinit.static']() }
+					]}
+					data-testid="cloudinit-ip-mode"
+				/>
+			{/snippet}
+		</FormField>
 		{#if ipMode === 'static'}
 			<div class="grid gap-4 sm:grid-cols-2">
-				<label class="grid gap-1 text-sm">
-					{m['vms.cloudinit.ipAddress']()}
-					<input class="rounded-md border border-border bg-background px-3 py-2" required bind:value={ipAddress} data-testid="cloudinit-ip-address" />
-				</label>
-				<label class="grid gap-1 text-sm">
-					{m['vms.cloudinit.gateway']()}
-					<input class="rounded-md border border-border bg-background px-3 py-2" required bind:value={gateway} data-testid="cloudinit-gateway" />
-				</label>
+				<FormField label={m['vms.cloudinit.ipAddress']()} required error={ipError}>
+					{#snippet children({ id, describedBy, invalid })}
+						<TextField {id} {describedBy} {invalid} bind:value={ipAddress} required data-testid="cloudinit-ip-address" />
+					{/snippet}
+				</FormField>
+				<FormField label={m['vms.cloudinit.gateway']()} required error={gatewayError}>
+					{#snippet children({ id, describedBy, invalid })}
+						<TextField {id} {describedBy} {invalid} bind:value={gateway} required data-testid="cloudinit-gateway" />
+					{/snippet}
+				</FormField>
 			</div>
 		{/if}
 		<div class="grid gap-4 sm:grid-cols-2">
-			<label class="grid gap-1 text-sm">
-				{m['vms.cloudinit.dnsServer']()}
-				<input class="rounded-md border border-border bg-background px-3 py-2" bind:value={dnsServer} data-testid="cloudinit-dns" />
-			</label>
-			<label class="grid gap-1 text-sm">
-				{m['vms.cloudinit.searchDomain']()}
-				<input class="rounded-md border border-border bg-background px-3 py-2" bind:value={searchDomain} data-testid="cloudinit-search-domain" />
-			</label>
+			<FormField label={m['vms.cloudinit.dnsServer']()}>
+				{#snippet children({ id, describedBy, invalid })}
+					<TextField {id} {describedBy} {invalid} bind:value={dnsServer} data-testid="cloudinit-dns" />
+				{/snippet}
+			</FormField>
+			<FormField label={m['vms.cloudinit.searchDomain']()}>
+				{#snippet children({ id, describedBy, invalid })}
+					<TextField {id} {describedBy} {invalid} bind:value={searchDomain} data-testid="cloudinit-search-domain" />
+				{/snippet}
+			</FormField>
 		</div>
 		{#if validationError}
 			<p role="alert" data-testid="cloudinit-validation-error">{validationError}</p>
@@ -116,8 +150,8 @@
 			<p role="alert" data-testid="cloudinit-config-error">{store.configError}</p>
 		{/if}
 		<p class="sr-only" role="status" aria-live="polite">{store.configInFlight ? m['vms.cloudinit.saving']() : ''}</p>
-		<button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50" disabled={store.configInFlight} data-testid="cloudinit-save">
+		<Button type="submit" loading={store.configInFlight} data-testid="cloudinit-save">
 			{store.configInFlight ? m['common.saving']() : m['vms.cloudinit.saveButton']()}
-		</button>
+		</Button>
 	</form>
 {/if}

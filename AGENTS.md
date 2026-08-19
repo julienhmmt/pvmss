@@ -32,6 +32,19 @@ script, or CI job still pointing at `backend/` or `frontend/` is stale — see
 `server/` and `web/` are separate build units with separate tooling. The root
 `Makefile` exposes them via the `server-*` / `web-*` targets.
 
+Three root documents carry the product context. Read the relevant one before
+building a user-facing feature:
+
+| File           | Answers                                                       |
+| -------------- | ------------------------------------------------------------- |
+| `PRODUCT.md`   | Who the users are, why the product exists, design principles  |
+| `DESIGN.md`    | Design tokens — colors, typography, spacing                   |
+| `WORKFLOWS.md` | What a user does, end to end, per workflow                    |
+
+`WORKFLOWS.md` opens with a seven-field template (audience, entry, route, API,
+steps, states, safety nets). Adding a user-facing workflow means adding its
+entry there, filled in completely — the file is the model, not just a list.
+
 ## Commands
 
 Targets:

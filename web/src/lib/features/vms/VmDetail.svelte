@@ -3,6 +3,7 @@
 	import VmActionBar from './VmActionBar.svelte';
 	import DeleteVmDialog from './DeleteVmDialog.svelte';
 	import Tabs from '$lib/shared/ui/Tabs.svelte';
+	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 	import VmDisksTab from './disks/VmDisksTab.svelte';
 	import VmNetworkTab from './network/VmNetworkTab.svelte';
 	import VmHardwareTab from './hardware/VmHardwareTab.svelte';
@@ -100,20 +101,26 @@
 			cancelName();
 		}
 	}
-
-	function handleDescriptionKeydown(event: KeyboardEvent): void {
-		if (event.key === 'Enter') {
-			event.preventDefault();
-			void commitDescription();
-		} else if (event.key === 'Escape') {
-			event.preventDefault();
-			cancelDescription();
-		}
-	}
 </script>
 
 {#if store.loading && store.entity === null}
-	<p role="status" aria-live="polite" class="text-muted-foreground">{m['common.loading']()}</p>
+	<div role="status" aria-live="polite" class="grid gap-6" data-testid="vm-detail-skeleton">
+		<div class="grid gap-2">
+			<Skeleton class="h-8 w-48" />
+			<Skeleton class="h-4 w-64" />
+		</div>
+		<Skeleton class="h-10 w-48" />
+		<div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+			<Skeleton class="h-20 w-full" />
+			<Skeleton class="h-20 w-full" />
+			<Skeleton class="h-20 w-full" />
+			<Skeleton class="h-20 w-full" />
+		</div>
+		<div class="grid gap-2">
+			<Skeleton class="h-10 w-full" />
+			<Skeleton class="h-32 w-full" />
+		</div>
+	</div>
 {:else if store.error}
 	<p role="alert" class="text-destructive" data-testid="vm-detail-error">{store.error}</p>
 {:else if store.entity}
@@ -122,12 +129,26 @@
 			{#if editingName}
 				<input
 					type="text"
-					class="rounded-md border border-border bg-background px-2 py-1 text-2xl font-semibold tracking-tight"
+					class="rounded-md border border-border bg-background px-2 py-1 text-2xl font-semibold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
 					bind:value={nameDraft}
 					onkeydown={handleNameKeydown}
-					onblur={commitName}
 					data-testid="vm-name-edit"
 				/>
+				<button
+					type="button"
+					class="rounded-md bg-primary px-3 py-1 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+					onclick={() => void commitName()}
+					data-testid="vm-name-save"
+				>
+					{m['common.save']()}
+				</button>
+				<button
+					type="button"
+					class="rounded-md px-3 py-1 text-sm font-medium text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+					onclick={cancelName}
+				>
+					{m['common.cancel']()}
+				</button>
 			{:else}
 				<button
 					type="button"
@@ -191,13 +212,32 @@
 				<h2 class="mb-2 text-sm font-medium text-muted-foreground">{m['vms.detail.descriptionLabel']()}</h2>
 				{#if editingDescription}
 					<textarea
-						class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+						class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
 						bind:value={descriptionDraft}
-						onkeydown={handleDescriptionKeydown}
-						onblur={commitDescription}
+						onkeydown={(e) => {
+						if (e.key === 'Escape') { e.preventDefault(); cancelDescription(); }
+						if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); void commitDescription(); }
+					}}
 						rows="3"
 						data-testid="vm-description-edit"
 					></textarea>
+					<div class="mt-2 flex gap-2">
+						<button
+							type="button"
+							class="rounded-md bg-primary px-3 py-1 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+							onclick={() => void commitDescription()}
+							data-testid="vm-description-save"
+						>
+							{m['common.save']()}
+						</button>
+						<button
+							type="button"
+							class="rounded-md px-3 py-1 text-sm font-medium text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+							onclick={cancelDescription}
+						>
+							{m['common.cancel']()}
+						</button>
+					</div>
 				{:else}
 					<button
 						type="button"
