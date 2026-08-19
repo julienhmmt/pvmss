@@ -2,12 +2,25 @@ package cluster
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
 )
 
-// Proxmox is the real cluster implementation. It is a stub at T01 — it
-// satisfies Client and Writer and returns ErrNotImplemented for every method
-// except ConsoleRelay, which is wired in this tranche. BaseURL, APITokenName
-// and APITokenValue are configured in main.go from the environment.
+// Proxmox is the real cluster implementation, talking to the Proxmox VE REST
+// API (https://pve.proxmox.com/pve-docs/api-viewer/). BaseURL, APITokenName
+// and APITokenValue are configured per cluster (server/internal/store's
+// ClusterRow, wired in registry.go) or from PROXMOX_URL/PROXMOX_API_TOKEN_NAME/
+// PROXMOX_API_TOKEN_VALUE in single-cluster setups.
+//
+// Every write here uses the service account's API token — it never needs the
+// CSRF prevention token tickets require, which is exactly why Proxmox
+// recommends tokens for service accounts (proxmox-permissions.md). The two
+// exceptions are Authenticate and ChangePassword: both must act with the
+// specific end user's own privileges, so they mint a short-lived ticket for
+// that user internally (see proxmoxTicketAuth) instead of using the token.
 type Proxmox struct {
 	BaseURL               string
 	APITokenName          string
@@ -15,167 +28,427 @@ type Proxmox struct {
 	TLSInsecureSkipVerify bool
 }
 
-// Snapshot implements Client.
-func (Proxmox) Snapshot(_ context.Context) (Snapshot, error) {
-	return Snapshot{}, ErrNotImplemented
+// proxmoxResourceRow is one row of /cluster/resources?type=... — Proxmox's
+// single call for nodes, VMs, and storages together, matching what Snapshot
+// promises ("one call returns everything").
+type proxmoxResourceRow struct {
+	Type       string  `json:"type"` // "node", "qemu", "storage", ...
+	Node       string  `json:"node"`
+	Status     string  `json:"status"`
+	VMID       int     `json:"vmid"`
+	Name       string  `json:"name"`
+	Pool       string  `json:"pool"`
+	Tags       string  `json:"tags"`
+	MaxCPU     float64 `json:"maxcpu"`
+	CPU        float64 `json:"cpu"`
+	MaxMem     int64   `json:"maxmem"`
+	Mem        int64   `json:"mem"`
+	MaxDisk    int64   `json:"maxdisk"`
+	Disk       int64   `json:"disk"`
+	Storage    string  `json:"storage"`
+	PluginType string  `json:"plugintype"`
 }
 
-// Authenticate implements Client.
-func (Proxmox) Authenticate(_ context.Context, _, _ string) (Identity, error) {
-	return Identity{}, ErrNotImplemented
+// proxmoxSnapshotCapableStorage lists the Proxmox storage plugin types that
+// support internal (RAM-included) snapshots — the real capability behind
+// Storage.SupportsVMState. Not derivable from the API directly (Proxmox does
+// not expose a "supports vmstate" flag), so this mirrors PVE's own documented
+// per-plugin snapshot support.
+var proxmoxSnapshotCapableStorage = map[string]bool{
+	"zfspool": true,
+	"lvmthin": true,
+	"rbd":     true,
+	"btrfs":   true,
 }
 
-// ChangePassword implements Client.
-func (Proxmox) ChangePassword(_ context.Context, _, _, _ string) error {
-	return ErrNotImplemented
+// Snapshot implements Client: one /cluster/resources call for the node,
+// VM, and storage summary, then one /qemu/{vmid}/config (plus, for running
+// VMs, one /status/current) call per VM to hydrate what the summary omits
+// (see hydrateVM).
+func (p Proxmox) Snapshot(ctx context.Context) (Snapshot, error) {
+	rest := p.rest()
+
+	raw, err := rest.do(ctx, http.MethodGet, "/cluster/resources", nil)
+	if err != nil {
+		return Snapshot{}, err
+	}
+
+	var rows []proxmoxResourceRow
+	if err := decodeData(raw, &rows); err != nil {
+		return Snapshot{}, fmt.Errorf("decode cluster resources: %w", err)
+	}
+
+	version, err := proxmoxVersion(ctx, rest)
+	if err != nil {
+		return Snapshot{}, err
+	}
+
+	snap := Snapshot{ProxmoxVersion: version}
+
+	for _, row := range rows {
+		switch row.Type {
+		case "node":
+			snap.Nodes = append(snap.Nodes, proxmoxNodeFromRow(row))
+		case "qemu":
+			snap.VMs = append(snap.VMs, proxmoxVMFromRow(row))
+		case "storage":
+			snap.Storages = append(snap.Storages, proxmoxStorageFromRow(row))
+		}
+	}
+
+	for i := range snap.VMs {
+		if err := hydrateVM(ctx, rest, &snap.VMs[i]); err != nil {
+			return Snapshot{}, fmt.Errorf("hydrate vm %d: %w", snap.VMs[i].VMID, err)
+		}
+	}
+
+	return snap, nil
 }
 
-// ListBridges implements Client.
-func (Proxmox) ListBridges(_ context.Context) ([]Bridge, error) {
-	return nil, ErrNotImplemented
+func proxmoxNodeFromRow(row proxmoxResourceRow) Node {
+	status := NodeUnknown
+
+	switch row.Status {
+	case "online":
+		status = NodeOnline
+	case "offline":
+		status = NodeOffline
+	}
+
+	return Node{
+		Name:         row.Node,
+		Status:       status,
+		CPUCores:     int(row.MaxCPU),
+		CPUUsage:     row.CPU,
+		MemoryTotal:  row.MaxMem,
+		MemoryUsed:   row.Mem,
+		StorageTotal: row.MaxDisk,
+		StorageUsed:  row.Disk,
+	}
 }
 
-// ListISOs implements Client.
-func (Proxmox) ListISOs(_ context.Context) ([]ISOImage, error) {
-	return nil, ErrNotImplemented
+func proxmoxVMFromRow(row proxmoxResourceRow) VM {
+	status := VMStopped
+
+	switch row.Status {
+	case "running":
+		status = VMRunning
+	case "paused":
+		status = VMPaused
+	}
+
+	return VM{
+		VMID:        row.VMID,
+		Name:        row.Name,
+		Node:        row.Node,
+		Status:      status,
+		Pool:        row.Pool,
+		Tags:        splitProxmoxTags(row.Tags),
+		CPUCores:    int(row.MaxCPU),
+		MemoryTotal: row.MaxMem,
+	}
 }
 
-// ListPools implements Client.
-func (Proxmox) ListPools(_ context.Context) ([]Pool, error) {
-	return nil, ErrNotImplemented
+func proxmoxStorageFromRow(row proxmoxResourceRow) Storage {
+	return Storage{
+		Name:            row.Storage,
+		Node:            row.Node,
+		Type:            row.PluginType,
+		Total:           row.MaxDisk,
+		Used:            row.Disk,
+		SupportsVMState: proxmoxSnapshotCapableStorage[row.PluginType],
+	}
 }
 
-// EnsurePoolRole implements Client.
-func (Proxmox) EnsurePoolRole(_ context.Context) error {
-	return ErrNotImplemented
+// proxmoxVersion reads the cluster's reported PVE version string.
+func proxmoxVersion(ctx context.Context, rest proxmoxRESTClient) (string, error) {
+	raw, err := rest.do(ctx, http.MethodGet, "/version", nil)
+	if err != nil {
+		return "", err
+	}
+
+	var v struct {
+		Version string `json:"version"`
+	}
+	if err := decodeData(raw, &v); err != nil {
+		return "", fmt.Errorf("decode version: %w", err)
+	}
+
+	return v.Version, nil
 }
 
-// EnsurePoolUser implements Client.
-func (Proxmox) EnsurePoolUser(_ context.Context, _, _ string) (string, error) {
-	return "", ErrNotImplemented
+// Authenticate implements Client by exchanging username/password for a PVE
+// ticket (proving the credentials are correct — ErrNotFound on a rejection,
+// matching the fake's contract), then using that ticket, as that user, to
+// determine admin status (Permissions.Modify at "/", granted by the
+// PVMSS_Admin role per proxmox-permissions.md) and — for non-admins — the
+// personal pool PVMSS provisioned for them (EnsurePoolUser's own
+// "<pool>@pve" convention, mirrored here in reverse).
+func (p Proxmox) Authenticate(ctx context.Context, username, password string) (Identity, error) {
+	rest := p.rest()
+
+	ticket, csrf, err := proxmoxTicketAuth(ctx, rest, username, password)
+	if err != nil {
+		return Identity{}, err
+	}
+
+	userRest := rest.withTicket(ticket, csrf)
+
+	isAdmin, err := proxmoxHasPermission(ctx, userRest, "/", "Permissions.Modify")
+	if err != nil {
+		return Identity{}, err
+	}
+
+	var pool string
+
+	if !isAdmin {
+		pool, err = proxmoxOwnedPool(ctx, rest, username)
+		if err != nil {
+			return Identity{}, err
+		}
+	}
+
+	return Identity{Username: username, Pool: pool, IsAdmin: isAdmin}, nil
 }
 
-// CreatePool implements Client.
-func (Proxmox) CreatePool(_ context.Context, _, _ string) error {
-	return ErrNotImplemented
+// proxmoxTicketAuth exchanges credentials for a PVE ticket + CSRF prevention
+// token via POST /access/ticket. Deliberately does not reuse
+// proxmoxRESTClient.do: this call must not carry any prior authentication
+// (it IS the credential check), and a rejected login is a 401 that must map
+// to ErrNotFound (wrong credentials), not the generic wrapped-error path.
+func proxmoxTicketAuth(ctx context.Context, rest proxmoxRESTClient, username, password string) (ticket, csrf string, err error) {
+	form := url.Values{"username": {username}, "password": {password}}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, rest.base+"/access/ticket", strings.NewReader(form.Encode()))
+	if err != nil {
+		return "", "", fmt.Errorf("build ticket request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := rest.http.Do(req)
+	if err != nil {
+		return "", "", fmt.Errorf("%w: %w", ErrUnreachable, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return "", "", ErrNotFound
+	}
+
+	if resp.StatusCode >= http.StatusBadRequest {
+		return "", "", fmt.Errorf("proxmox ticket auth: HTTP %d", resp.StatusCode)
+	}
+
+	var envelope struct {
+		Data struct {
+			Ticket              string `json:"ticket"`
+			CSRFPreventionToken string `json:"CSRFPreventionToken"`
+		} `json:"data"`
+	}
+	if err := decodeJSONBody(resp, &envelope); err != nil {
+		return "", "", err
+	}
+
+	if envelope.Data.Ticket == "" {
+		return "", "", ErrNotFound
+	}
+
+	return envelope.Data.Ticket, envelope.Data.CSRFPreventionToken, nil
 }
 
-// SetPoolACL implements Client.
-func (Proxmox) SetPoolACL(_ context.Context, _, _, _ string) error {
-	return ErrNotImplemented
+// proxmoxHasPermission checks one privilege at one path for the ticket's own
+// user via GET /access/permissions?path=... — any authenticated user may
+// query their own effective permissions, no elevated privilege required.
+func proxmoxHasPermission(ctx context.Context, rest proxmoxRESTClient, path, privilege string) (bool, error) {
+	raw, err := rest.do(ctx, http.MethodGet, "/access/permissions", url.Values{"path": {path}})
+	if err != nil {
+		return false, err
+	}
+
+	var perms map[string]int
+	if err := decodeData(raw, &perms); err != nil {
+		return false, fmt.Errorf("decode permissions: %w", err)
+	}
+
+	return perms[privilege] == 1, nil
 }
 
-// DeletePool implements Client.
-func (Proxmox) DeletePool(_ context.Context, _ string) error {
-	return ErrNotImplemented
+// proxmoxOwnedPool derives the caller's personal pool from PVMSS's own
+// provisioning convention (pools/provision.go: EnsurePoolUser creates
+// "<pool>@pve"), verified against the live pool list with the service
+// account's Pool.Audit privilege — an end user's own PVMSSUser role does not
+// carry that privilege (fake.go's rolePrivileges), so this always uses rest,
+// not the user's ticket.
+func proxmoxOwnedPool(ctx context.Context, rest proxmoxRESTClient, username string) (string, error) {
+	candidate, ok := strings.CutSuffix(username, "@pve")
+	if !ok {
+		return "", nil
+	}
+
+	pools, err := proxmoxListPools(ctx, rest)
+	if err != nil {
+		return "", err
+	}
+
+	for _, pool := range pools {
+		if pool.Name == candidate {
+			return candidate, nil
+		}
+	}
+
+	return "", nil
 }
 
-// DeleteUser implements Client.
-func (Proxmox) DeleteUser(_ context.Context, _ string) error {
-	return ErrNotImplemented
+// ChangePassword implements Client by re-authenticating as username with
+// oldPassword (ErrNotFound if that fails, matching Authenticate's contract)
+// and then setting the new password with that same ticket — a genuine
+// self-service change, requiring no elevated privilege.
+func (p Proxmox) ChangePassword(ctx context.Context, username, oldPassword, newPassword string) error {
+	rest := p.rest()
+
+	ticket, csrf, err := proxmoxTicketAuth(ctx, rest, username, oldPassword)
+	if err != nil {
+		return err
+	}
+
+	userRest := rest.withTicket(ticket, csrf)
+
+	_, err = userRest.do(ctx, http.MethodPut, "/access/password", url.Values{
+		"userid":   {username},
+		"password": {newPassword},
+	})
+
+	return err
 }
 
-// GetCloudInitConfig implements CloudInitReader.
-func (Proxmox) GetCloudInitConfig(_ context.Context, _ string, _ int) (CloudInitConfig, error) {
-	return CloudInitConfig{}, ErrNotImplemented
+// ListBridges implements Client. Bridges are per-node network configuration
+// in Proxmox — there is no cluster-wide listing — so this enumerates nodes
+// first, then each node's /network, keeping every node's own view (including
+// duplicate bridge names across nodes, e.g. vmbr0 on every node): approval
+// (catalog_bridges) is keyed by name alone and treats Node as display-only
+// (client.go), so nothing downstream needs these deduplicated.
+func (p Proxmox) ListBridges(ctx context.Context) ([]Bridge, error) {
+	rest := p.rest()
+
+	nodes, err := proxmoxNodeNames(ctx, rest)
+	if err != nil {
+		return nil, err
+	}
+
+	var bridges []Bridge
+
+	for _, node := range nodes {
+		raw, err := rest.do(ctx, http.MethodGet, fmt.Sprintf("/nodes/%s/network", url.PathEscape(node)), nil)
+		if err != nil {
+			return nil, fmt.Errorf("list network interfaces on %q: %w", node, err)
+		}
+
+		var rows []struct {
+			Iface    string `json:"iface"`
+			Type     string `json:"type"`
+			Active   int    `json:"active"`
+			Comments string `json:"comments"`
+		}
+		if err := decodeData(raw, &rows); err != nil {
+			return nil, fmt.Errorf("decode network interfaces on %q: %w", node, err)
+		}
+
+		for _, row := range rows {
+			if row.Type != "bridge" {
+				continue
+			}
+
+			bridges = append(bridges, Bridge{Name: row.Iface, Node: node, Active: row.Active == 1, Comment: row.Comments})
+		}
+	}
+
+	return bridges, nil
 }
 
-// FindSnippetStorage implements CloudInitReader.
-func (Proxmox) FindSnippetStorage(_ context.Context, _ string) (string, error) {
-	return "", ErrNotImplemented
+// ListISOs implements Client, enumerating ISO content on every storage that
+// offers it. Node scoping matches ListBridges: one row per (node, storage)
+// pairing Proxmox itself reports, not deduplicated across nodes.
+func (p Proxmox) ListISOs(ctx context.Context) ([]ISOImage, error) {
+	rest := p.rest()
+
+	raw, err := rest.do(ctx, http.MethodGet, "/cluster/resources", url.Values{"type": {"storage"}})
+	if err != nil {
+		return nil, err
+	}
+
+	var rows []proxmoxResourceRow
+	if err := decodeData(raw, &rows); err != nil {
+		return nil, fmt.Errorf("decode storages: %w", err)
+	}
+
+	var isos []ISOImage
+
+	for _, row := range rows {
+		found, err := proxmoxListISOContent(ctx, rest, row.Node, row.Storage)
+		if err != nil {
+			return nil, fmt.Errorf("list iso content on %q/%q: %w", row.Node, row.Storage, err)
+		}
+
+		isos = append(isos, found...)
+	}
+
+	return isos, nil
 }
 
-// ListSnapshots implements SnapshotReader.
-func (Proxmox) ListSnapshots(_ context.Context, _ string, _ int) ([]VMSnapshot, error) {
-	return nil, ErrNotImplemented
+func proxmoxListISOContent(ctx context.Context, rest proxmoxRESTClient, node, storage string) ([]ISOImage, error) {
+	raw, err := rest.do(ctx, http.MethodGet,
+		fmt.Sprintf("/nodes/%s/storage/%s/content", url.PathEscape(node), url.PathEscape(storage)),
+		url.Values{"content": {"iso"}})
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	var rows []struct {
+		VolID string `json:"volid"`
+		Size  int64  `json:"size"`
+	}
+	if err := decodeData(raw, &rows); err != nil {
+		return nil, fmt.Errorf("decode iso content: %w", err)
+	}
+
+	isos := make([]ISOImage, 0, len(rows))
+
+	for _, row := range rows {
+		_, file, ok := strings.Cut(row.VolID, ":")
+		if !ok {
+			continue
+		}
+
+		file = strings.TrimPrefix(file, "iso/")
+		isos = append(isos, ISOImage{Storage: storage, Node: node, File: file, SizeBytes: row.Size})
+	}
+
+	return isos, nil
 }
 
-// CreateSnapshot implements SnapshotWriter.
-func (Proxmox) CreateSnapshot(_ context.Context, _ string, _ int, _, _ string, _ bool) (string, error) {
-	return "", ErrNotImplemented
-}
+// proxmoxNodeNames lists every node name in the cluster.
+func proxmoxNodeNames(ctx context.Context, rest proxmoxRESTClient) ([]string, error) {
+	raw, err := rest.do(ctx, http.MethodGet, "/nodes", nil)
+	if err != nil {
+		return nil, err
+	}
 
-// RollbackSnapshot implements SnapshotWriter.
-func (Proxmox) RollbackSnapshot(_ context.Context, _ string, _ int, _ string) (string, error) {
-	return "", ErrNotImplemented
-}
+	var rows []struct {
+		Node string `json:"node"`
+	}
+	if err := decodeData(raw, &rows); err != nil {
+		return nil, fmt.Errorf("decode nodes: %w", err)
+	}
 
-// DeleteSnapshot implements SnapshotWriter.
-func (Proxmox) DeleteSnapshot(_ context.Context, _ string, _ int, _ string) (string, error) {
-	return "", ErrNotImplemented
-}
+	names := make([]string, 0, len(rows))
+	for _, row := range rows {
+		names = append(names, row.Node)
+	}
 
-// Action implements Writer.
-func (Proxmox) Action(_ context.Context, _ string, _ int, _ string) error {
-	return ErrNotImplemented
-}
-
-// Delete implements Writer.
-func (Proxmox) Delete(_ context.Context, _ string, _ int) error {
-	return ErrNotImplemented
-}
-
-// Patch implements Writer.
-func (Proxmox) Patch(_ context.Context, _ string, _ int, _, _ string) error {
-	return ErrNotImplemented
-}
-
-// AddDisk implements Writer.
-func (Proxmox) AddDisk(_ context.Context, _ string, _ int, _, _ string, _ int) (string, error) {
-	return "", ErrNotImplemented
-}
-
-// ResizeDisk implements Writer.
-func (Proxmox) ResizeDisk(_ context.Context, _ string, _ int, _ string, _ int) error {
-	return ErrNotImplemented
-}
-
-// DeleteDisk implements Writer.
-func (Proxmox) DeleteDisk(_ context.Context, _ string, _ int, _ string) error {
-	return ErrNotImplemented
-}
-
-// SetCDROM implements Writer.
-func (Proxmox) SetCDROM(_ context.Context, _ string, _ int, _ CDROMState) error {
-	return ErrNotImplemented
-}
-
-// UpdateNetwork implements Writer.
-func (Proxmox) UpdateNetwork(_ context.Context, _ string, _ int, _ []NetworkInterface) error {
-	return ErrNotImplemented
-}
-
-// UpdateHardware implements Writer.
-func (Proxmox) UpdateHardware(_ context.Context, _ string, _, _, _, _ int, _ []string) error {
-	return ErrNotImplemented
-}
-
-// EnsureCloudInitDrive implements Writer.
-func (Proxmox) EnsureCloudInitDrive(_ context.Context, _ string, _ int) error {
-	return ErrNotImplemented
-}
-
-// SetCloudInitConfig implements Writer.
-func (Proxmox) SetCloudInitConfig(_ context.Context, _ string, _ int, _ CloudInitConfig) error {
-	return ErrNotImplemented
-}
-
-// PushCloudInitSnippet implements Writer.
-func (Proxmox) PushCloudInitSnippet(_ context.Context, _, _, _ string, _ int, _ string) error {
-	return ErrNotImplemented
-}
-
-// NextVMID implements Creator.
-func (Proxmox) NextVMID(_ context.Context) (int, error) {
-	return 0, ErrNotImplemented
-}
-
-// CreateVM implements Creator.
-func (Proxmox) CreateVM(_ context.Context, _ VMSpec) (string, error) {
-	return "", ErrNotImplemented
-}
-
-// TaskStatus implements Creator.
-func (Proxmox) TaskStatus(_ context.Context, _ string) (TaskStatus, error) {
-	return TaskStatus{}, ErrNotImplemented
+	return names, nil
 }

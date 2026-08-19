@@ -39,6 +39,8 @@ pveum useradd pvmss-svc@pve \
   -comment "PVMSS service account" \
   -enable 1
 
+pveum aclmod / -user pvmss-svc@pve -role PVMSS_Service -propagate 1
+
 pveum user token add pvmss-svc@pve pvmss-service-token --privsep 0
 ```
 
