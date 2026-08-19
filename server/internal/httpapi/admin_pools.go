@@ -68,7 +68,7 @@ func (h *AdminPools) ServeDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	name := r.PathValue("name")
-	if err := pools.ValidateName(name); err != nil {
+	if name == "" {
 		writeAdminError(w, http.StatusBadRequest, "invalid_pool_name", "invalid pool name")
 		return
 	}
