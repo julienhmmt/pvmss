@@ -24,19 +24,20 @@
 		formOpen = true;
 	}
 
-	function saveCluster(input: ClusterInput): void {
-		formOpen = false;
-		if (editing === null) {
-			void store.create(input);
-			return;
-		}
-		const update: Omit<ClusterInput, 'name'> = {
-			url: input.url,
-			tlsInsecureSkipVerify: input.tlsInsecureSkipVerify,
-			tokenId: input.tokenId,
-			tokenSecret: input.tokenSecret
-		};
-		void store.update(editing.name, update);
+	async function saveCluster(input: ClusterInput): Promise<void> {
+		const succeeded =
+			editing === null
+				? await store.create(input)
+				: await store.update(editing.name, {
+						url: input.url,
+						tlsInsecureSkipVerify: input.tlsInsecureSkipVerify,
+						tokenId: input.tokenId,
+						tokenSecret: input.tokenSecret
+					});
+		// Failure leaves the dialog open with store.error rendered inline
+		// (ClusterFormDialog's error prop) — closing unconditionally here hid
+		// create/update failures behind an easy-to-miss page-top banner.
+		if (succeeded) formOpen = false;
 	}
 </script>
 
@@ -96,4 +97,11 @@
 	{/if}
 </section>
 
-<ClusterFormDialog bind:open={formOpen} {editing} onClose={() => (formOpen = false)} onSubmit={saveCluster} />
+<ClusterFormDialog
+	bind:open={formOpen}
+	{editing}
+	saving={store.busy === 'create' || store.busy === `update:${editing?.name}`}
+	error={store.error}
+	onClose={() => (formOpen = false)}
+	onSubmit={saveCluster}
+/>
