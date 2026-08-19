@@ -8,34 +8,27 @@ import (
 	"testing"
 )
 
-// The shared expectation set (FR-010): both implementations of cluster.Client
-// are verified against the same behaviour, so the fake cannot drift from what
+// The shared expectation set (FR-010): every implementation of cluster.Client
+// is verified against the same behaviour, so the fake cannot drift from what
 // a real cluster is expected to do. Black-box on purpose — only the public
 // Client contract is exercised here.
-const (
-	fakeImplementationName    = "fake"
-	proxmoxImplementationName = "proxmox"
-)
+//
+// cluster.Proxmox talks to a real Proxmox VE API, so it has no fixed dataset
+// to compare against the fake's — its own coverage lives in
+// proxmox_test.go and friends, against an httptest-mocked PVE server. This
+// file's invariant checks (checkSnapshotNodes and friends) still apply to it
+// there.
+const fakeImplementationName = "fake"
 
 //nolint:paralleltest // serial: shared fake identity fixture
 func TestContract_Snapshot(t *testing.T) {
 	impls := map[string]cluster.Client{
-		fakeImplementationName:    cluster.Fake{},
-		proxmoxImplementationName: cluster.Proxmox{},
+		fakeImplementationName: cluster.Fake{},
 	}
 
 	for name, impl := range impls {
 		t.Run(name, func(t *testing.T) {
 			snap, err := impl.Snapshot(context.Background())
-
-			if name == proxmoxImplementationName {
-				if !errors.Is(err, cluster.ErrNotImplemented) {
-					t.Fatalf("proxmox stub: err = %v, want ErrNotImplemented", err)
-				}
-
-				return
-			}
-
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -106,23 +99,12 @@ func checkSnapshotStorages(t *testing.T, storages []cluster.Storage) {
 //nolint:paralleltest // serial: shared fake identity fixture
 func TestContract_Authenticate(t *testing.T) {
 	impls := map[string]cluster.Client{
-		fakeImplementationName:    cluster.Fake{},
-		proxmoxImplementationName: cluster.Proxmox{},
+		fakeImplementationName: cluster.Fake{},
 	}
 
 	for name, impl := range impls {
 		t.Run(name, func(t *testing.T) {
-			_, err := impl.Authenticate(context.Background(), "alice@pve", "pvmss-alice")
-
-			if name == proxmoxImplementationName {
-				if !errors.Is(err, cluster.ErrNotImplemented) {
-					t.Fatalf("proxmox stub: err = %v, want ErrNotImplemented", err)
-				}
-
-				return
-			}
-
-			if err != nil {
+			if _, err := impl.Authenticate(context.Background(), "alice@pve", "pvmss-alice"); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 		})
@@ -147,35 +129,24 @@ func TestContract_Authenticate_RejectsWrongPassword(t *testing.T) {
 //nolint:paralleltest // serial: shared fake identity fixture
 func TestContract_ChangePassword(t *testing.T) {
 	impls := map[string]cluster.Client{
-		fakeImplementationName:    cluster.Fake{},
-		proxmoxImplementationName: cluster.Proxmox{},
+		fakeImplementationName: cluster.Fake{},
 	}
 
 	for name, impl := range impls {
 		t.Run(name, func(t *testing.T) {
-			runChangePasswordCase(t, name, impl)
+			runChangePasswordCase(t, impl)
 		})
 	}
 }
 
-// runChangePasswordCase checks ChangePassword against the contract: proxmox
-// returns ErrNotImplemented, fake changes the password and the new one
-// authenticates. Extracted from TestContract_ChangePassword to keep its
-// Cognitive Complexity under the SonarQube go:S3776 threshold.
-func runChangePasswordCase(t *testing.T, name string, impl cluster.Client) {
+// runChangePasswordCase checks ChangePassword against the contract: it
+// changes the password and the new one authenticates. Extracted from
+// TestContract_ChangePassword to keep its Cognitive Complexity under the
+// SonarQube go:S3776 threshold.
+func runChangePasswordCase(t *testing.T, impl cluster.Client) {
 	t.Helper()
 
-	err := impl.ChangePassword(context.Background(), "alice@pve", "pvmss-alice", "temporary-new-password")
-
-	if name == proxmoxImplementationName {
-		if !errors.Is(err, cluster.ErrNotImplemented) {
-			t.Fatalf("proxmox stub: err = %v, want ErrNotImplemented", err)
-		}
-
-		return
-	}
-
-	if err != nil {
+	if err := impl.ChangePassword(context.Background(), "alice@pve", "pvmss-alice", "temporary-new-password"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -221,35 +192,8 @@ func TestContract_CloudInitReaderAndWriter(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // serial: shared fake cloud-init fixture
-func TestContract_ProxmoxCloudInitStubs(t *testing.T) {
-	reader := cluster.Proxmox{}
-	if _, err := reader.GetCloudInitConfig(context.Background(), cluster.FakeNode01, 101); !errors.Is(err, cluster.ErrNotImplemented) {
-		t.Fatalf("GetCloudInitConfig err = %v, want ErrNotImplemented", err)
-	}
-
-	if _, err := reader.FindSnippetStorage(context.Background(), cluster.FakeNode01); !errors.Is(err, cluster.ErrNotImplemented) {
-		t.Fatalf("FindSnippetStorage err = %v, want ErrNotImplemented", err)
-	}
-
-	writer := cluster.Proxmox{}
-	if err := writer.EnsureCloudInitDrive(context.Background(), cluster.FakeNode01, 101); !errors.Is(err, cluster.ErrNotImplemented) {
-		t.Fatalf("EnsureCloudInitDrive err = %v, want ErrNotImplemented", err)
-	}
-
-	if err := writer.SetCloudInitConfig(context.Background(), cluster.FakeNode01, 101, cluster.CloudInitConfig{}); !errors.Is(err, cluster.ErrNotImplemented) {
-		t.Fatalf("SetCloudInitConfig err = %v, want ErrNotImplemented", err)
-	}
-
-	if err := writer.PushCloudInitSnippet(context.Background(), cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-101.yml", 101, ""); !errors.Is(err, cluster.ErrNotImplemented) {
-		t.Fatalf("PushCloudInitSnippet err = %v, want ErrNotImplemented", err)
-	}
-}
-
 //nolint:paralleltest // serial: shared fake identity fixture
 func TestContract_Snapshot_StableAcrossCalls(t *testing.T) {
-	// Only implementations that can succeed at all participate — the proxmox
-	// stub always errors, so there is nothing stable to compare (FR-003).
 	impls := map[string]cluster.Client{
 		fakeImplementationName: cluster.Fake{},
 	}
@@ -310,34 +254,23 @@ func TestContract_Snapshot_DoesNotMutateAcrossCalls(t *testing.T) {
 //nolint:paralleltest // serial: shared fake identity fixture
 func TestContract_ListBridges(t *testing.T) {
 	impls := map[string]cluster.Client{
-		fakeImplementationName:    cluster.Fake{},
-		proxmoxImplementationName: cluster.Proxmox{},
+		fakeImplementationName: cluster.Fake{},
 	}
 
 	for name, impl := range impls {
 		t.Run(name, func(t *testing.T) {
-			runListBridgesCase(t, name, impl)
+			runListBridgesCase(t, impl)
 		})
 	}
 }
 
-// runListBridgesCase checks ListBridges against the contract: proxmox returns
-// ErrNotImplemented, fake returns at least one bridge with a non-empty name.
-// Extracted from TestContract_ListBridges to keep its Cognitive Complexity
-// under the SonarQube go:S3776 threshold.
-func runListBridgesCase(t *testing.T, name string, impl cluster.Client) {
+// runListBridgesCase checks ListBridges returns at least one bridge with a
+// non-empty name. Extracted from TestContract_ListBridges to keep its
+// Cognitive Complexity under the SonarQube go:S3776 threshold.
+func runListBridgesCase(t *testing.T, impl cluster.Client) {
 	t.Helper()
 
 	bridges, err := impl.ListBridges(context.Background())
-
-	if name == proxmoxImplementationName {
-		if !errors.Is(err, cluster.ErrNotImplemented) {
-			t.Fatalf("proxmox stub: err = %v, want ErrNotImplemented", err)
-		}
-
-		return
-	}
-
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -356,34 +289,23 @@ func runListBridgesCase(t *testing.T, name string, impl cluster.Client) {
 //nolint:paralleltest // serial: shared fake identity fixture
 func TestContract_ListISOs(t *testing.T) {
 	impls := map[string]cluster.Client{
-		fakeImplementationName:    cluster.Fake{},
-		proxmoxImplementationName: cluster.Proxmox{},
+		fakeImplementationName: cluster.Fake{},
 	}
 
 	for name, impl := range impls {
 		t.Run(name, func(t *testing.T) {
-			runListISOsCase(t, name, impl)
+			runListISOsCase(t, impl)
 		})
 	}
 }
 
-// runListISOsCase checks ListISOs against the contract: proxmox returns
-// ErrNotImplemented, fake returns at least one ISO with non-empty storage and
-// file. Extracted from TestContract_ListISOs to keep its Cognitive Complexity
-// under the SonarQube go:S3776 threshold.
-func runListISOsCase(t *testing.T, name string, impl cluster.Client) {
+// runListISOsCase checks ListISOs returns at least one ISO with non-empty
+// storage and file. Extracted from TestContract_ListISOs to keep its
+// Cognitive Complexity under the SonarQube go:S3776 threshold.
+func runListISOsCase(t *testing.T, impl cluster.Client) {
 	t.Helper()
 
 	isos, err := impl.ListISOs(context.Background())
-
-	if name == proxmoxImplementationName {
-		if !errors.Is(err, cluster.ErrNotImplemented) {
-			t.Fatalf("proxmox stub: err = %v, want ErrNotImplemented", err)
-		}
-
-		return
-	}
-
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
