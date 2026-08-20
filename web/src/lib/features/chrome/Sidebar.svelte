@@ -34,11 +34,15 @@
 		icon: SidebarIconName;
 	}
 
-	const mainNav: MainNavItem[] = [
+	// Nodes is admin-only: the admin section already has its own /admin/nodes,
+	// and regular pool users have no use for the cluster-wide node list.
+	const mainNav = $derived<MainNavItem[]>([
 		{ href: resolve('/'), label: () => m['chrome.sidebar.navHome'](), icon: 'home' },
 		{ href: resolve('/vms'), label: () => m['chrome.sidebar.navMachines'](), icon: 'vm' },
-		{ href: resolve('/nodes'), label: () => m['chrome.sidebar.navNodes'](), icon: 'nodes' }
-	];
+		...(session.isAdmin
+			? [{ href: resolve('/nodes'), label: () => m['chrome.sidebar.navNodes'](), icon: 'nodes' as SidebarIconName }]
+			: [])
+	]);
 
 	const navigation: SidebarNavigationState = new SidebarNavigationState(ADMIN_NAV_GROUPS.length);
 
