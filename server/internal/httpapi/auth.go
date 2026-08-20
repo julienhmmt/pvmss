@@ -2,6 +2,7 @@
 package httpapi
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -11,6 +12,7 @@ import (
 	"net/http"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/pools"
 	"pvmss/server/internal/store"
 	"strings"
 	"time"
@@ -121,7 +123,7 @@ func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
-	result, err := client.Authenticate(r.Context(), normalizePVEUsername(request.Username), request.Password)
+	result, err := authenticatePVE(r.Context(), client, request.Username, request.Password)
 	if err != nil {
 		h.log.Info("pve authentication failed", "component", "httpapi", "error", err)
 		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
@@ -457,12 +459,42 @@ func decodeJSONLimit(w http.ResponseWriter, r *http.Request, dest any, maxBytes 
 	return nil
 }
 
+// authenticatePVE tries the typed username, then — on a not-found rejection —
+// retries once under the "pvmss-" pool prefix. Self-service pool users are
+// provisioned as "pvmss-{pool}@{realm}" (pools.CreateManaged) but only ever
+// told their pool name, so a bare "jho" must resolve to "pvmss-jho@pve"
+// without the user needing to know the internal naming convention.
+func authenticatePVE(ctx context.Context, client cluster.Client, rawUsername, password string) (cluster.Identity, error) {
+	username := normalizePVEUsername(rawUsername)
+
+	result, err := client.Authenticate(ctx, username, password)
+	if err != nil && errors.Is(err, cluster.ErrNotFound) {
+		if poolUsername, ok := withPoolPrefix(username); ok {
+			result, err = client.Authenticate(ctx, poolUsername, password)
+		}
+	}
+
+	return result, err
+}
+
 func normalizePVEUsername(username string) string {
 	if strings.Contains(username, "@") {
 		return username
 	}
 
 	return username + "@pve"
+}
+
+// withPoolPrefix inserts pools.PoolPrefix before the realm, e.g.
+// "jho@pve" -> "pvmss-jho@pve". ok is false when the local part already
+// carries the prefix, since there is then nothing new to retry with.
+func withPoolPrefix(username string) (prefixed string, ok bool) {
+	local, realm, _ := strings.Cut(username, "@")
+	if strings.HasPrefix(local, pools.PoolPrefix) {
+		return "", false
+	}
+
+	return pools.PoolPrefix + local + "@" + realm, true
 }
 
 func writeAuthJSON(w http.ResponseWriter, status int, value any) {
