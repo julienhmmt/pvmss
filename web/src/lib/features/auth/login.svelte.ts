@@ -1,5 +1,25 @@
-import { post } from '$lib/shared/api/client';
+import { post, ApiRequestError } from '$lib/shared/api/client';
 import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
+import { m } from '$lib/paraglide/messages.js';
+
+/** Server error codes (server/internal/httpapi/auth.go) mapped to translated
+ * copy. Falls back to a generic translated message for unknown codes so the
+ * raw English server message (e.g. "invalid credentials") is never shown. */
+const KNOWN_ERROR_CODES: Partial<Record<string, () => string>> = {
+	invalid_credentials: m['login.error.invalidCredentials'],
+	invalid_request: m['login.error.invalidRequest'],
+	cluster_required: m['login.error.clusterRequired'],
+	invalid_cluster: m['login.error.invalidCluster'],
+	not_found: m['login.error.oidcNotEnabled']
+};
+
+function translateError(error: unknown, fallback: () => string): string {
+	if (error instanceof ApiRequestError) {
+		const translated = KNOWN_ERROR_CODES[error.code];
+		if (translated) return translated();
+	}
+	return fallback();
+}
 
 export type LoginProvider = 'pve' | 'local';
 
@@ -41,14 +61,15 @@ export class LoginForm {
 			if (this.provider === 'local') {
 				return await post<Principal>('/api/v1/auth/admin-login', { password: this.password });
 			}
+			const username = this.username.includes('@') ? this.username : `${this.username}@pve`;
 			const request: { username: string; password: string; cluster?: string } = {
-				username: this.username,
+				username,
 				password: this.password
 			};
 			if (this.cluster !== '') request.cluster = this.cluster;
 			return await post<Principal>('/api/v1/auth/login', request);
 		} catch (error: unknown) {
-			this.error = error instanceof Error ? error.message : 'unable to sign in';
+			this.error = translateError(error, m['login.error.generic']);
 			return null;
 		} finally {
 			this.loading = false;
@@ -57,14 +78,14 @@ export class LoginForm {
 
 	async signInOIDC(): Promise<boolean> {
 		if (this.cluster === '') {
-			this.error = 'choose a cluster before using OIDC';
+			this.error = m['login.error.clusterRequired']();
 			return false;
 		}
 		try {
 			await post<void>('/api/v1/auth/oidc', { cluster: this.cluster });
 			return true;
 		} catch (error: unknown) {
-			this.error = error instanceof Error ? error.message : 'OIDC sign-in is unavailable';
+			this.error = translateError(error, m['login.error.oidcUnavailable']);
 			return false;
 		}
 	}

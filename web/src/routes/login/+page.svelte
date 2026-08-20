@@ -10,7 +10,6 @@
 	import Button from '$lib/shared/ui/Button.svelte';
 	import FormField from '$lib/shared/ui/FormField.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
-	import RadioGroup from '$lib/shared/ui/RadioGroup.svelte';
 	import UserIcon from '$lib/shared/ui/icons/UserIcon.svelte';
 	import LockIcon from '$lib/shared/ui/icons/LockIcon.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -49,14 +48,6 @@
 					<p class="mt-2 text-sm text-muted-foreground">{m['login.description']()}</p>
 				</div>
 				<form class="grid gap-4" onsubmit={(event) => { event.preventDefault(); void submit(); }}>
-					<RadioGroup
-						legend={m['login.accountType']()}
-						bind:value={form.provider}
-						options={[
-							{ value: 'pve', label: m['login.proxmoxUser']() },
-							{ value: 'local', label: m['login.localAdmin']() }
-						]}
-					/>
 					{#if form.provider === 'pve'}
 						<ClusterSelector
 							options={form.clusters}
@@ -64,7 +55,7 @@
 							onChange={(value) => (form.cluster = value)}
 							id="login-cluster"
 						/>
-						<FormField label={m['login.username']()} required>
+						<FormField label={m['login.username']()} hint={m['login.usernameRealmHint']()} required>
 							{#snippet children({ id, describedBy, invalid })}
 								<TextField
 									{id}
@@ -111,7 +102,16 @@
 						{form.loading ? m['login.signingIn']() : m['login.signIn']()}
 					</Button>
 				</form>
-				<p class="text-xs text-muted-foreground-subtle">{m['login.demoHint']()}</p>
+				<button
+					type="button"
+					class="self-start text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+					onclick={() => {
+						form.provider = form.provider === 'pve' ? 'local' : 'pve';
+						form.error = null;
+					}}
+				>
+					{form.provider === 'pve' ? m['login.useLocalAdmin']() : m['login.backToProxmoxLogin']()}
+				</button>
 			</Card>
 		</div>
 	</div>
