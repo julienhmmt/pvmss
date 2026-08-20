@@ -6,6 +6,9 @@
 	import Button from '$lib/shared/ui/Button.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import SortableHeader from '$lib/shared/ui/SortableHeader.svelte';
+
+	type SortColumn = 'node' | 'maxVms' | 'maxVcpus' | 'maxRamGb' | 'maxDiskGb' | 'usedVms' | 'usedVcpus' | 'usedRamGb' | 'physicalVcpus' | 'physicalRamGb';
 
 	interface Props {
 		nodes: NodeCapacity[];
@@ -15,9 +18,12 @@
 		saveError: string | null;
 		onLoad: () => void;
 		onSave: (node: string, patch: NodeCapacityPatch) => void;
+		sortBy: SortColumn;
+		sortDir: 'asc' | 'desc';
+		onSort: (column: SortColumn) => void;
 	}
 
-	let { nodes, loading, error, saving, saveError, onLoad, onSave }: Props = $props();
+	let { nodes, loading, error, saving, saveError, onLoad, onSave, sortBy, sortDir, onSort }: Props = $props();
 	let selected = $state<NodeCapacity | null>(null);
 	let dialogOpen = $state(false);
 
@@ -33,6 +39,10 @@
 
 	function saveSelected(patch: NodeCapacityPatch): void {
 		if (selected !== null) onSave(selected.node, patch);
+	}
+
+	function handleSort(column: string): void {
+		onSort(column as SortColumn);
 	}
 </script>
 
@@ -51,7 +61,15 @@
 		<div class="overflow-x-auto rounded-lg border border-border">
 			<table class="w-full min-w-[760px] text-sm">
 				<caption class="sr-only">{m['policy.nodeTitle']()}</caption>
-				<thead class="bg-muted/50 text-left"><tr><th scope="col" class="px-4 py-3">{m['policy.node']()}</th><th scope="col" class="px-4 py-3">{m['policy.capacity']()}</th><th scope="col" class="px-4 py-3">{m['policy.usage']()}</th><th scope="col" class="px-4 py-3">{m['policy.physical']()}</th><th scope="col" class="px-4 py-3">{m['policy.actions']()}</th></tr></thead>
+				<thead class="bg-muted/50 text-left">
+					<tr>
+						<SortableHeader text={m['policy.node']()} column="node" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<SortableHeader text={m['policy.capacity']()} column="maxVms" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<SortableHeader text={m['policy.usage']()} column="usedVms" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<SortableHeader text={m['policy.physical']()} column="physicalVcpus" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<th scope="col" class="px-4 py-3 font-medium">{m['policy.actions']()}</th>
+					</tr>
+				</thead>
 				<tbody>
 					{#each nodes as node (node.node)}
 						<tr class="border-t border-border">
