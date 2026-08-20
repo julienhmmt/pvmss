@@ -26,7 +26,7 @@
 		// Reload the shell session so the signed-in sidebar appears without a
 		// full page reload (the root layout gates the sidebar on principal).
 		await session.load();
-		await goto(resolve(principal.isAdmin ? '/admin' : '/nodes'));
+		await goto(resolve(principal.isAdmin ? '/admin' : '/'));
 	}
 </script>
 
