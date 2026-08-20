@@ -12,6 +12,7 @@
 	import { resolve } from '$app/paths';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import { ADMIN_NAV_GROUPS, type SidebarIconName } from './admin-nav-items.svelte';
+	import { SidebarNavigationState } from './sidebar-navigation.svelte';
 	import { getChromeContext } from './chrome.svelte';
 	import { goto } from '$app/navigation';
 	import { m } from '$lib/paraglide/messages.js';
@@ -39,26 +40,26 @@
 		{ href: resolve('/nodes'), label: () => m['chrome.sidebar.navNodes'](), icon: 'nodes' }
 	];
 
-	function isActive(href: string): boolean {
-		const path = page.url.pathname;
-		if (href === resolve('/')) return path === resolve('/');
-		return path === href || path.startsWith(href + '/');
+	const navigation: SidebarNavigationState = new SidebarNavigationState(ADMIN_NAV_GROUPS.length);
+
+	function isActive(href: string, exact = false): boolean {
+		return navigation.isItemActive({ pathname: page.url.pathname, href, exact });
 	}
 
 	function isActiveGroup(group: (typeof ADMIN_NAV_GROUPS)[number]): boolean {
-		return group.items.some((item) => isActive(item.href));
+		return group.items.some((item) => isActive(item.href, true));
 	}
-
-	let groupExpanded = $state<boolean[]>(ADMIN_NAV_GROUPS.map(() => false));
 
 	function isGroupOpen(index: number): boolean {
 		const group = ADMIN_NAV_GROUPS[index];
 		if (!group) return false;
-		return groupExpanded[index] || isActiveGroup(group);
+		return navigation.isGroupOpen({ index, active: isActiveGroup(group) });
 	}
 
 	function toggleGroup(index: number): void {
-		groupExpanded[index] = !groupExpanded[index];
+		const group = ADMIN_NAV_GROUPS[index];
+		if (!group) return;
+		navigation.toggleGroup({ index, active: isActiveGroup(group) });
 	}
 
 	function closeDrawer(): void {
@@ -97,7 +98,7 @@
 	<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 py-4">
 		<nav class="flex flex-col gap-0.5" aria-label={m['chrome.navbar.ariaLabel']()}>
 			{#each mainNav as item (item.href)}
-				{@const active = isActive(item.href)}
+				{@const active = isActive(item.href, item.href === resolve('/'))}
 				<a
 					href={item.href}
 					aria-current={active ? 'page' : undefined}
@@ -146,7 +147,7 @@
 						{#if isGroupOpen(index)}
 							<ul id="admin-nav-group-{index}" class="flex flex-col gap-0.5 py-1">
 								{#each group.items as item (item.href)}
-									{@const active = isActive(item.href)}
+									{@const active = isActive(item.href, true)}
 									<li>
 										<a
 											href={item.href}
