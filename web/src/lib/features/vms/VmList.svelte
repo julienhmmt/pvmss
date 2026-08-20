@@ -7,11 +7,13 @@
 	} from './list.svelte';
 	import { getVmBulkContext } from './bulk.svelte';
 	import { resolve } from '$app/paths';
+	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	const store = getVmListContext();
 	const bulk = getVmBulkContext();
+	const session = getSessionContext();
 
 	const COLUMN_LABELS: Record<VmSortBy, () => string> = {
 		vmid: () => m['vms.list.columnId'](),
@@ -169,12 +171,14 @@
 	{#if store.result.emptyReason === 'no_vms_owned'}
 		<EmptyState title={m['vms.list.emptyOwned']()} dataTestid="vm-empty-owned">
 			{#snippet actions()}
-				<a
-					href={resolve('/vms/create')}
-					class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
-				>
-					{m['vms.list.create']()}
-				</a>
+				{#if !session.isAdmin}
+					<a
+						href={resolve('/vms/create')}
+						class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+					>
+						{m['vms.list.create']()}
+					</a>
+				{/if}
 			{/snippet}
 		</EmptyState>
 	{:else}

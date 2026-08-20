@@ -3,6 +3,7 @@
 	import { setVmCreateContext } from '$lib/features/vm-create/create.svelte';
 	import { setDraftContext } from '$lib/features/vm-create/draft.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
+	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import SimpleWizard from '$lib/features/vm-create/SimpleWizard.svelte';
 	import DetailedWizard from '$lib/features/vm-create/DetailedWizard.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -10,6 +11,7 @@
 	const form = setVmCreateContext();
 	const draft = setDraftContext();
 	const toast = getToastContext();
+	const session = getSessionContext();
 
 	onMount(() => {
 		void form.loadCatalog();
@@ -41,6 +43,11 @@
 	<title>{m['vms.create.title']()}</title>
 </svelte:head>
 
+{#if session.isAdmin}
+	<section class="mx-auto w-full max-w-2xl px-4 py-8">
+		<p role="alert" class="text-sm text-destructive">{m['vms.create.adminBlocked']()}</p>
+	</section>
+{:else}
 <section class="mx-auto w-full max-w-2xl px-4 py-8">
 	<div class="mb-4 flex items-center justify-between gap-4">
 		<h1 class="text-2xl font-semibold tracking-tight">{m['vms.create.heading']()}</h1>
@@ -83,3 +90,4 @@
 		<DetailedWizard />
 	{/if}
 </section>
+{/if}

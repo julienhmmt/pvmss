@@ -299,32 +299,18 @@ func TestCreate_PoolIsAlwaysActors(t *testing.T) {
 	}
 }
 
-// TestCreate_AdminWithoutPoolSucceeds — an admin (local or cluster) has no
-// personal pool but may still create VMs; the VM is created without a pool
-// assignment.
+// TestCreate_AdminCannotCreate — an admin (local or cluster) cannot create
+// VMs through the self-service portal. VM ownership requires a personal pool,
+// which admins do not have.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_AdminWithoutPoolSucceeds(t *testing.T) {
+func TestCreate_AdminCannotCreate(t *testing.T) {
 	fixture := newCreateFixture(t)
 	admin := auth.Identity{Username: "admin@pve", IsAdmin: true}
 
-	result, err := fixture.create(t, admin, detailedRequest())
-	if err != nil {
-		t.Fatalf("Create: %v", err)
-	}
-
-	snap, err := fixture.fake.Snapshot(context.Background())
-	if err != nil {
-		t.Fatalf("Snapshot: %v", err)
-	}
-
-	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
-	if idx < 0 {
-		t.Fatalf("created VM not in snapshot")
-	}
-
-	if snap.VMs[idx].Pool != "" {
-		t.Errorf("pool = %q, want empty (admin-created VMs are unowned)", snap.VMs[idx].Pool)
+	_, err := fixture.create(t, admin, detailedRequest())
+	if !errors.Is(err, vm.ErrAdminCannotCreate) {
+		t.Fatalf("Create: want ErrAdminCannotCreate, got %v", err)
 	}
 }
 

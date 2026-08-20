@@ -521,6 +521,7 @@
  "vms.create.reviewRequest": "Review the request",
  "vms.create.errorCatalog": "failed to load the catalog",
  "vms.create.errorCreation": "creation failed",
+ "vms.create.adminBlocked": "Administrators cannot create VMs through the self-service portal.",
  "nodes.title": "Nodes — PVMSS",
  "nodes.heading": "Cluster nodes",
  "nodes.nodesLoaded": "{count} nodes loaded",
