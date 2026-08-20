@@ -210,12 +210,12 @@ func TestVMCreate_PoolFieldHasNoEffect(t *testing.T) {
 	}
 }
 
-// TestVMCreate_NoPoolIdentityForbidden — T011/FR-005: the local admin has no
-// personal pool; creation is refused with 403 and NextVMID is never called
-// (no VMID burned — the fake's create call log stays empty).
+// TestVMCreate_AdminWithoutPoolSucceeds — an admin (local or cluster) has no
+// personal pool but may still create VMs; the VM is created without a pool
+// assignment and the response is 202 Accepted.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestVMCreate_NoPoolIdentityForbidden(t *testing.T) {
+func TestVMCreate_AdminWithoutPoolSucceeds(t *testing.T) {
 	handler, authHandler, _ := newVMCreateHandler(t)
 
 	response := serveJSON(authHandler.AdminLogin, "/api/v1/auth/admin-login", `{"password":"pvmss-local-admin"}`)
@@ -227,21 +227,20 @@ func TestVMCreate_NoPoolIdentityForbidden(t *testing.T) {
 
 	res := postVMCreate(t, handler,
 		`{"cluster":"default","name":"web-06","profileId":"small"}`, cookie)
-	if res.Code != http.StatusForbidden {
-		t.Fatalf("status = %d, want %d: %s", res.Code, http.StatusForbidden, res.Body.String())
+	if res.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, want %d: %s", res.Code, http.StatusAccepted, res.Body.String())
 	}
 
-	var body apiErrorEnvelope
+	var body struct {
+		Cluster string `json:"cluster"`
+		VMID    int    `json:"vmid"`
+		Name    string `json:"name"`
+	}
 	if err := json.Unmarshal(res.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode error body: %v", err)
+		t.Fatalf("decode response: %v", err)
 	}
-
-	if body.Code != "no_pool" {
-		t.Fatalf("error code = %q, want no_pool", body.Code)
-	}
-
-	if calls := cluster.FakeCalls(); len(calls) != 0 {
-		t.Fatalf("forbidden request reached the cluster: %+v", calls)
+	if body.Name != "web-06" || body.VMID == 0 {
+		t.Fatalf("response = %+v, want a fully-populated created VM", body)
 	}
 }
 
