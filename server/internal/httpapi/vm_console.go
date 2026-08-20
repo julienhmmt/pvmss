@@ -13,6 +13,7 @@ import (
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"strings"
+	"time"
 
 	"github.com/coder/websocket"
 )
@@ -104,6 +105,7 @@ func (h *VMConsole) handleVNCTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.log.Info("console ticket issued", "component", "httpapi", "cluster", clusterName, "vmid", vmid, "node", ticket.Node)
 	h.writeJSON(w, http.StatusOK, vncTicketResponse{Token: ticket.Token, ExpiresInSeconds: int(vm.TicketTTL.Seconds())})
 }
 
@@ -150,6 +152,19 @@ func (h *VMConsole) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The server's global WriteTimeout/ReadTimeout (main.go) bound every
+	// ordinary request's underlying connection, and that deadline survives a
+	// hijack — it silently kills a long-lived WebSocket ~WriteTimeout after
+	// the request started, regardless of how much data is still flowing.
+	// A VNC console session is exactly the kind of long-lived connection
+	// those deadlines were never meant to bound (main.go's own comment only
+	// accounts for InventoryRefreshTimeout, not this route). Clear both
+	// deadlines for this connection only — every other handler keeps the
+	// global timeouts untouched.
+	rc := http.NewResponseController(w)
+	_ = rc.SetReadDeadline(time.Time{})
+	_ = rc.SetWriteDeadline(time.Time{})
+
 	// No OriginPatterns: coder/websocket's default authenticateOrigin checks
 	// Origin against r.Host (its CSWSH guard). The custom isConsoleOriginAllowed
 	// check above returns an explicit 403 JSON error; the library's check is
@@ -162,15 +177,20 @@ func (h *VMConsole) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = conn.CloseNow() }()
 
+	h.log.Info("console websocket accepted, relaying to proxmox", "component", "httpapi", "cluster", ticket.Cluster, "vmid", ticket.VMID, "node", ticket.Node, "port", ticket.Port)
+
 	peer := websocket.NetConn(context.Background(), conn, websocket.MessageBinary)
 	defer func() { _ = peer.Close() }()
 
 	proxy := cluster.VNCProxyTicket{Ticket: ticket.ProxmoxTicket, Port: ticket.Port, Node: ticket.Node}
-	if err := h.relay.RelayConsole(r.Context(), ticket.Cluster, ticket.VMID, proxy, peer); err != nil {
-		// Normal closure or client disconnect — log at debug, not error.
-		if !isNormalClose(err) {
-			h.log.Warn("console relay ended with error", "component", "httpapi", "vmid", ticket.VMID, "error", err)
-		}
+	err = h.relay.RelayConsole(r.Context(), ticket.Cluster, ticket.VMID, proxy, peer)
+	// Always log the outcome — a normal closure needs to be as visible as an
+	// error one, otherwise "did the relay even start" is undiagnosable from
+	// the logs alone (this used to be silent on success).
+	if err == nil || isNormalClose(err) {
+		h.log.Info("console relay ended normally", "component", "httpapi", "vmid", ticket.VMID, "error", err)
+	} else {
+		h.log.Warn("console relay ended with error", "component", "httpapi", "vmid", ticket.VMID, "error", err)
 	}
 }
 
