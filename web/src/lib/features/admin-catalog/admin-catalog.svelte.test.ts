@@ -53,7 +53,7 @@ describe('AdminCatalogStore', () => {
 			store.isos = isos;
 			store.isoSearch = 'debian';
 			expect(store.filteredIsos.length).toBe(1);
-			expect(store.filteredIsos[0].file).toBe('debian-12.iso');
+			expect(store.filteredIsos[0]?.file).toBe('debian-12.iso');
 		});
 
 		it('filters by storage', () => {
@@ -61,7 +61,7 @@ describe('AdminCatalogStore', () => {
 			store.isos = isos;
 			store.isoStorageFilter = 'nfs';
 			expect(store.filteredIsos.length).toBe(1);
-			expect(store.filteredIsos[0].storage).toBe('nfs');
+			expect(store.filteredIsos[0]?.storage).toBe('nfs');
 		});
 
 		it('filters by node', () => {
@@ -69,7 +69,7 @@ describe('AdminCatalogStore', () => {
 			store.isos = isos;
 			store.isoNodeFilter = 'node-b';
 			expect(store.filteredIsos.length).toBe(1);
-			expect(store.filteredIsos[0].node).toBe('node-b');
+			expect(store.filteredIsos[0]?.node).toBe('node-b');
 		});
 
 		it('filters by enabled state', () => {
