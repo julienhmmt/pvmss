@@ -263,6 +263,19 @@ func TestRunMigrations_V14RebuildsBridgeIdentity(t *testing.T) {
 		t.Fatalf("RunMigrations: %v", err)
 	}
 
+	var legacyCount int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM catalog_bridges`).Scan(&legacyCount); err != nil {
+		t.Fatalf("count migrated bridges: %v", err)
+	}
+
+	if legacyCount != 0 {
+		t.Fatalf("ambiguous legacy bridge count = %d, want 0", legacyCount)
+	}
+
+	if _, err := db.ExecContext(ctx, `INSERT INTO catalog_bridges (cluster, node, name) VALUES ('default', NULL, 'vmbr0')`); err == nil {
+		t.Fatal("insert bridge without node succeeded, want NOT NULL failure")
+	}
+
 	if _, err := db.ExecContext(ctx, `INSERT INTO catalog_bridges (cluster, node, name) VALUES ('default', 'node-a', 'vmbr0'), ('default', 'node-b', 'vmbr0')`); err != nil {
 		t.Fatalf("insert node-scoped bridges: %v", err)
 	}
