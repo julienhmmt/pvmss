@@ -114,24 +114,23 @@ test.describe('T19 chrome UI', () => {
 			await page.getByLabel('Password').fill('pvmss-alice');
 			await page.locator('#login-cluster').selectOption('default');
 			await page.getByRole('button', { name: 'Sign in' }).click();
-			await page.waitForURL(/\/nodes/);
-			await page.goto('/');
+			await page.waitForURL(/\/$/);
 			const cta = ctaSection(page);
 			await expect(cta.getByRole('link', { name: /Mes VM|My VMs/ })).toBeVisible();
 			await expect(cta.getByRole('link', { name: /Créer une VM|Create a VM/ })).toBeVisible();
 			await expect(page.getByText(/Bon retour|Welcome back/)).toBeVisible();
 		});
 
-		test('authenticated admin sees My VMs and Documentation but no Create a VM', async ({ page }) => {
+		test('authenticated admin sees Documentation but no My VMs or Create a VM', async ({ page }) => {
 			await page.goto('/login');
-			await page.getByRole('radio', { name: 'Local administrator' }).check();
+			await page.getByRole('button', { name: /administrat/i }).click();
 			await page.getByLabel('Password').fill('pvmss-e2e-admin');
 			await page.getByRole('button', { name: 'Sign in' }).click();
-			await page.waitForURL(/\/nodes|\/admin/);
+			await page.waitForURL(/\/admin/);
 			await page.goto('/');
 			const cta = ctaSection(page);
-			await expect(cta.getByRole('link', { name: /Mes VM|My VMs/ })).toBeVisible();
 			await expect(cta.getByRole('link', { name: /Documentation/ })).toBeVisible();
+			await expect(cta.getByRole('link', { name: /Mes VM|My VMs/ })).toHaveCount(0);
 			await expect(cta.getByRole('link', { name: /Créer une VM|Create a VM/ })).toHaveCount(0);
 		});
 	});

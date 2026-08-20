@@ -39,16 +39,30 @@ describe('PoolsStore', () => {
 	it('creates and deletes through the API while exposing status', async () => {
 		const fetchMock = vi
 			.fn()
-			.mockResolvedValueOnce(jsonResponse(201, { name: 'carol', comment: '', total: 0, running: 0, stopped: 0, managed: true }))
+			.mockResolvedValueOnce(jsonResponse(201, { name: 'pvmss-carol', username: 'pvmss-carol', password: 'gen-pw-123', comment: '', managed: true }))
 			.mockResolvedValueOnce(jsonResponse(200, { status: 'deleted', userDeleted: true }));
 		vi.stubGlobal('fetch', fetchMock);
 		const store = new PoolsStore();
 
-		await store.create('carol', 'S0meLongPW!', '');
+		await store.create('carol', '');
 		expect(store.pools).toHaveLength(1);
 		expect(store.pools[0]?.managed).toBe(true);
-		await store.remove('carol');
+		expect(store.pools[0]?.name).toBe('pvmss-carol');
+		expect(store.createdCredentials).not.toBeNull();
+		expect(store.createdCredentials?.password).toBe('gen-pw-123');
+		await store.remove('pvmss-carol');
 		expect(store.pools).toHaveLength(0);
-		expect(store.announce).toBe(m['admin.pools.deleted']({ name: 'carol' }));
+		expect(store.announce).toBe(m['admin.pools.deleted']({ name: 'pvmss-carol' }));
+	});
+
+	it('dismissCredentials clears the createdCredentials state', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(
+			jsonResponse(201, { name: 'pvmss-carol', username: 'pvmss-carol', password: 'gen-pw', comment: '', managed: true })
+		));
+		const store = new PoolsStore();
+		await store.create('carol', '');
+		expect(store.createdCredentials).not.toBeNull();
+		store.dismissCredentials();
+		expect(store.createdCredentials).toBeNull();
 	});
 });

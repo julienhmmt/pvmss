@@ -16,18 +16,32 @@
 package cluster
 
 import (
+	"bytes"
 	"context"
+	"crypto/des" //nolint:gosec // required by the RFB spec's VNC Authentication type, not chosen for strength
 	"crypto/tls"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/coder/websocket"
+)
+
+// RFB protocol constants (RFC 6143) used only for the handshake this file
+// intercepts — version negotiation and the two security types Proxmox's
+// vncwebsocket endpoint can offer. Everything past SecurityResult (ClientInit
+// onward) is opaque framebuffer protocol PVMSS never needs to parse.
+const (
+	rfbClientVersion  = "RFB 003.008\n"
+	rfbSecTypeNone    = 1
+	rfbSecTypeVNCAuth = 2
 )
 
 // proxmoxVNCProxyResponse is the JSON envelope Proxmox returns from
@@ -124,11 +138,21 @@ func proxmoxGetVNCTicket(ctx context.Context, c proxmoxVNCClient, node string, v
 func proxmoxRelayConsole(ctx context.Context, c proxmoxVNCClient, node string, vmid int, proxy VNCProxyTicket, peer io.ReadWriteCloser) error {
 	wsURL := buildProxmoxVNCWebSocketURL(c.baseURL, node, vmid, proxy.Port, proxy.Ticket)
 
-	proxmoxConn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{ //nolint:bodyclose // coder/websocket owns the response body lifecycle per its Dial docs
+	// A long-lived WebSocket must never dial through an *http.Client with
+	// Timeout set — that timer bounds the whole connection lifetime, not
+	// just the handshake, and silently kills the relay ~Timeout after open
+	// (coder/websocket's own dial docs warn against this). Reuse the same
+	// transport (TLS config) but with no Timeout; ctx is what bounds this dial.
+	dialClient := &http.Client{Transport: c.httpClient.Transport}
+
+	dialCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	proxmoxConn, _, err := websocket.Dial(dialCtx, wsURL, &websocket.DialOptions{ //nolint:bodyclose // coder/websocket owns the response body lifecycle per its Dial docs
 		HTTPHeader: http.Header{
 			"Authorization": []string{fmt.Sprintf("PVEAPIToken=%s=%s", c.apiTokenName, c.apiTokenVal)},
 		},
-		HTTPClient: c.httpClient,
+		HTTPClient: dialClient,
 	})
 	if err != nil {
 		return fmt.Errorf("dial proxmox vncwebsocket: %w", err)
@@ -137,6 +161,21 @@ func proxmoxRelayConsole(ctx context.Context, c proxmoxVNCClient, node string, v
 
 	proxmoxNetConn := websocket.NetConn(ctx, proxmoxConn, websocket.MessageBinary)
 	defer func() { _ = proxmoxNetConn.Close() }()
+
+	// Proxmox's websocket=1 vncproxy mode always demands RFB "VNC
+	// Authentication" (security type 2) using the ticket itself as the DES
+	// password (RFC 6143 §7.2.2) — the URL vncticket only authorizes the
+	// WebSocket upgrade, not the RFB session riding on top of it. PVMSS
+	// deliberately never sends that ticket to the browser (opaque token
+	// only), so we complete this handshake ourselves here, then present the
+	// browser a "security type: None" facade — it never sees Proxmox's auth
+	// requirement, or the ticket, at all.
+	if err := completeProxmoxVNCAuth(proxmoxNetConn, proxy.Ticket); err != nil {
+		return fmt.Errorf("proxmox vnc authentication: %w", err)
+	}
+	if err := presentNoAuthToPeer(peer); err != nil {
+		return fmt.Errorf("present no-auth handshake to browser: %w", err)
+	}
 
 	errCh := make(chan error, 2)
 
@@ -148,6 +187,225 @@ func proxmoxRelayConsole(ctx context.Context, c proxmoxVNCClient, node string, v
 	_ = peer.Close()
 
 	return err
+}
+
+// completeProxmoxVNCAuth performs the RFB version + security handshake with
+// Proxmox on PVMSS's own behalf, leaving proxmoxNetConn positioned right
+// after SecurityResult (ready for ClientInit/ServerInit — pure byte relay
+// from there on).
+func completeProxmoxVNCAuth(conn io.ReadWriter, ticket string) error {
+	if err := rfbClientVersionHandshake(conn); err != nil {
+		return fmt.Errorf("version handshake: %w", err)
+	}
+
+	secType, err := rfbChooseSecurityType(conn)
+	if err != nil {
+		return fmt.Errorf("security type negotiation: %w", err)
+	}
+
+	if _, err := conn.Write([]byte{secType}); err != nil {
+		return fmt.Errorf("select security type %d: %w", secType, err)
+	}
+
+	if secType == rfbSecTypeVNCAuth {
+		if err := rfbAnswerVNCAuthChallenge(conn, ticket); err != nil {
+			return fmt.Errorf("vnc-auth challenge: %w", err)
+		}
+	}
+
+	return rfbReadSecurityResult(conn)
+}
+
+// presentNoAuthToPeer plays the RFB *server* role toward the browser: sends
+// the version banner, reads the browser's reply, offers exactly one security
+// type (None), reads the browser's (mandatory, even for one option)
+// selection echo, and sends an OK SecurityResult. The browser proceeds
+// straight to ClientInit believing no authentication was ever required.
+func presentNoAuthToPeer(peer io.ReadWriter) error {
+	if err := rfbServerVersionHandshake(peer); err != nil {
+		return fmt.Errorf("version handshake: %w", err)
+	}
+
+	if _, err := peer.Write([]byte{1, rfbSecTypeNone}); err != nil {
+		return fmt.Errorf("offer security type none: %w", err)
+	}
+
+	var chosen [1]byte
+	if _, err := io.ReadFull(peer, chosen[:]); err != nil {
+		return fmt.Errorf("read browser security type selection: %w", err)
+	}
+
+	if chosen[0] != rfbSecTypeNone {
+		return fmt.Errorf("browser selected unexpected security type %d", chosen[0])
+	}
+
+	if _, err := peer.Write([]byte{0, 0, 0, 0}); err != nil {
+		return fmt.Errorf("write security result: %w", err)
+	}
+
+	return nil
+}
+
+// rfbClientVersionHandshake plays the RFB *client* role: the peer (Proxmox)
+// speaks first, so this reads its version banner before replying.
+func rfbClientVersionHandshake(conn io.ReadWriter) error {
+	banner := make([]byte, 12)
+	if _, err := io.ReadFull(conn, banner); err != nil {
+		return fmt.Errorf("read version banner: %w", err)
+	}
+
+	if !bytes.HasPrefix(banner, []byte("RFB ")) {
+		return fmt.Errorf("unexpected version banner %q", banner)
+	}
+
+	if _, err := conn.Write([]byte(rfbClientVersion)); err != nil {
+		return fmt.Errorf("write version reply: %w", err)
+	}
+
+	return nil
+}
+
+// rfbServerVersionHandshake plays the RFB *server* role: PVMSS speaks first
+// to the browser, so this writes the version banner before reading the
+// browser's reply. Getting this order backwards deadlocks both sides —
+// each waiting to read a banner the other is also waiting to read first.
+func rfbServerVersionHandshake(conn io.ReadWriter) error {
+	if _, err := conn.Write([]byte(rfbClientVersion)); err != nil {
+		return fmt.Errorf("write version banner: %w", err)
+	}
+
+	reply := make([]byte, 12)
+	if _, err := io.ReadFull(conn, reply); err != nil {
+		return fmt.Errorf("read version reply: %w", err)
+	}
+
+	if !bytes.HasPrefix(reply, []byte("RFB ")) {
+		return fmt.Errorf("unexpected version reply %q", reply)
+	}
+
+	return nil
+}
+
+// rfbChooseSecurityType reads Proxmox's offered security-type list and picks
+// VNC Authentication if offered (Proxmox's websocket=1 mode always offers
+// it), falling back to None if that's all Proxmox offers.
+func rfbChooseSecurityType(conn io.ReadWriter) (byte, error) {
+	var count [1]byte
+	if _, err := io.ReadFull(conn, count[:]); err != nil {
+		return 0, fmt.Errorf("read security type count: %w", err)
+	}
+
+	if count[0] == 0 {
+		reason, _ := rfbReadReasonString(conn)
+		return 0, fmt.Errorf("server rejected connection: %s", reason)
+	}
+
+	types := make([]byte, count[0])
+	if _, err := io.ReadFull(conn, types); err != nil {
+		return 0, fmt.Errorf("read security types: %w", err)
+	}
+
+	if slices.Contains(types, byte(rfbSecTypeVNCAuth)) {
+		return rfbSecTypeVNCAuth, nil
+	}
+
+	if slices.Contains(types, byte(rfbSecTypeNone)) {
+		return rfbSecTypeNone, nil
+	}
+
+	return 0, fmt.Errorf("no supported security type in %v", types)
+}
+
+// rfbAnswerVNCAuthChallenge reads Proxmox's 16-byte DES challenge and
+// answers it using the ticket string as the VNC password (RFC 6143 §7.2.2:
+// the password is DES-encrypted, in two independent 8-byte ECB blocks, using
+// a key derived from the password's first 8 bytes with each byte's bits
+// reversed — a quirk of the original VNC protocol, not modern DES usage).
+func rfbAnswerVNCAuthChallenge(conn io.ReadWriter, password string) error {
+	challenge := make([]byte, 16)
+	if _, err := io.ReadFull(conn, challenge); err != nil {
+		return fmt.Errorf("read challenge: %w", err)
+	}
+
+	block, err := des.NewCipher(vncDESKey(password)) //nolint:gosec // RFB spec mandates DES for this legacy security type
+	if err != nil {
+		return fmt.Errorf("build des cipher: %w", err)
+	}
+
+	response := make([]byte, 16)
+	block.Encrypt(response[0:8], challenge[0:8])
+	block.Encrypt(response[8:16], challenge[8:16])
+
+	if _, err := conn.Write(response); err != nil {
+		return fmt.Errorf("write challenge response: %w", err)
+	}
+
+	return nil
+}
+
+// rfbReadSecurityResult reads the 4-byte SecurityResult and, on failure,
+// the RFB-3.8-style reason string that follows it.
+func rfbReadSecurityResult(conn io.ReadWriter) error {
+	var result [4]byte
+	if _, err := io.ReadFull(conn, result[:]); err != nil {
+		return fmt.Errorf("read security result: %w", err)
+	}
+
+	if binary.BigEndian.Uint32(result[:]) != 0 {
+		reason, _ := rfbReadReasonString(conn)
+		return fmt.Errorf("authentication failed: %s", reason)
+	}
+
+	return nil
+}
+
+// rfbReadReasonString reads an RFB-3.8-style [u32 length][bytes] failure
+// reason. Errors are ignored by callers — this only enriches an already-
+// failing error path, never the sole failure signal.
+func rfbReadReasonString(conn io.ReadWriter) (string, error) {
+	var lenBuf [4]byte
+	if _, err := io.ReadFull(conn, lenBuf[:]); err != nil {
+		return "", err
+	}
+
+	n := binary.BigEndian.Uint32(lenBuf[:])
+	const maxReasonLen = 4096 // guard against a malicious/broken length prefix
+	if n > maxReasonLen {
+		n = maxReasonLen
+	}
+
+	reason := make([]byte, n)
+	if _, err := io.ReadFull(conn, reason); err != nil {
+		return "", err
+	}
+
+	return string(reason), nil
+}
+
+// vncDESKey derives the 8-byte DES key from a VNC password: the first 8
+// bytes (null-padded if shorter), each with its bits reversed — VNC's
+// historical quirk (RFC 6143 §7.2.2), not a general DES convention.
+func vncDESKey(password string) []byte {
+	key := make([]byte, 8)
+	pw := []byte(password)
+
+	for i := range key {
+		if i < len(pw) {
+			key[i] = reverseByte(pw[i])
+		}
+	}
+
+	return key
+}
+
+func reverseByte(b byte) byte {
+	var r byte
+	for range 8 {
+		r = r<<1 | b&1
+		b >>= 1
+	}
+
+	return r
 }
 
 // buildProxmoxVNCWebSocketURL converts a Proxmox HTTP(S) base URL to the
@@ -187,6 +445,11 @@ func newProxmoxVNCClient(baseURL, tokenName, tokenValue string, insecureSkipVeri
 		TLSClientConfig: &tls.Config{
 			MinVersion:         tls.VersionTLS12,   // minimum TLS 1.2 enforced
 			InsecureSkipVerify: insecureSkipVerify, //nolint:gosec // operator-configured per cluster; defaults to false
+			// Force HTTP/1.1: Go's transport auto-negotiates h2 via ALPN once
+			// NextProtos is left empty, and Proxmox's api daemon doesn't speak
+			// the RFC 8441 extended-CONNECT upgrade h2 would require for the
+			// WebSocket handshake — it just hangs forever instead of erroring.
+			NextProtos: []string{"http/1.1"},
 		},
 	}
 

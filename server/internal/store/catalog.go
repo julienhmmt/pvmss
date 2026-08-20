@@ -29,6 +29,7 @@ type CatalogBridge struct {
 // CatalogISO is one approved ISO image (catalog_isos row).
 type CatalogISO struct {
 	Cluster string
+	Node    string
 	Storage string
 	File    string
 }
@@ -108,9 +109,11 @@ func (s *Store) CatalogBridges(ctx context.Context, cluster string) ([]CatalogBr
 }
 
 // CatalogISOs returns the approved ISO images for a cluster, ordered by file.
+// Rows are deduplicated by (storage, file) so the user-facing catalog does not
+// show the same ISO twice when it is approved on multiple nodes.
 func (s *Store) CatalogISOs(ctx context.Context, cluster string) ([]CatalogISO, error) {
 	return queryCatalog(ctx, s.db, "catalog isos",
-		`SELECT cluster, storage, file FROM catalog_isos WHERE cluster = ? AND enabled = 1 ORDER BY file`,
+		`SELECT DISTINCT cluster, storage, file FROM catalog_isos WHERE cluster = ? AND enabled = 1 ORDER BY file`,
 		[]any{cluster},
 		func(rows *sql.Rows) (CatalogISO, error) {
 			var iso CatalogISO

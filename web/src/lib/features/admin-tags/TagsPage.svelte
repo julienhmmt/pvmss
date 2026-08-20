@@ -6,14 +6,27 @@
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import TooltipHeader from '$lib/shared/ui/TooltipHeader.svelte';
+	import SortableTooltipHeader from '$lib/shared/ui/SortableTooltipHeader.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+
+	type TagSortColumn = 'name' | 'vmCount';
 
 	interface Props {
 		tags: AdminTag[];
+		filteredTags: AdminTag[];
 		loading: boolean;
 		error: string | null;
 		saving: boolean;
 		saveError: string | null;
+		search: string;
+		protectedFilter: 'all' | 'protected' | 'unprotected';
+		sortBy: TagSortColumn;
+		sortDir: 'asc' | 'desc';
+		onSearchChange: (value: string) => void;
+		onProtectedFilterChange: (value: 'all' | 'protected' | 'unprotected') => void;
+		onSort: (column: TagSortColumn) => void;
+		onResetFilters: () => void;
 		onCreate: (name: string, color: string) => void;
 		onUpdateColor: (name: string, color: string) => void;
 		onDelete: (name: string) => void;
@@ -21,14 +34,27 @@
 
 	let {
 		tags,
+		filteredTags,
 		loading,
 		error,
 		saving,
 		saveError,
+		search,
+		protectedFilter,
+		sortBy,
+		sortDir,
+		onSearchChange,
+		onProtectedFilterChange,
+		onSort,
+		onResetFilters,
 		onCreate,
 		onUpdateColor,
 		onDelete
 	}: Props = $props();
+
+	function handleSort(column: string): void {
+		onSort(column as TagSortColumn);
+	}
 
 	let showForm = $state(false);
 	let newName = $state('');
@@ -83,18 +109,41 @@
 		</p>
 	{/if}
 
+	{#if tags.length > 0}
+		<div class="mb-4 flex flex-wrap items-center gap-2">
+			<input
+				type="search"
+				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+				placeholder={m['admin.tags.searchPlaceholder']()}
+				value={search}
+				oninput={(e) => onSearchChange(e.currentTarget.value)}
+			/>
+			<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={protectedFilter} onchange={(e) => onProtectedFilterChange(e.currentTarget.value as 'all' | 'protected' | 'unprotected')}>
+				<option value="all">{m['admin.tags.filterProtected']()}</option>
+				<option value="protected">{m['admin.tags.filterProtectedOnly']()}</option>
+				<option value="unprotected">{m['admin.tags.filterUnprotectedOnly']()}</option>
+			</select>
+			<button
+				class="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
+				onclick={onResetFilters}
+			>
+				{m['admin.tags.resetFilters']()}
+			</button>
+		</div>
+	{/if}
+
 	<div class="overflow-x-auto rounded-lg border border-border">
 		<table class="w-full text-sm">
 			<thead class="bg-muted/50 text-left">
 				<tr>
-					<th class="px-4 py-2 font-medium">{m['common.name']()}</th>
-					<th class="px-4 py-2 font-medium">{m['admin.tags.color']()}</th>
-					<th class="px-4 py-2 font-medium">{m['common.vms']()}</th>
+					<SortableTooltipHeader text={m['common.name']()} tooltip={m['admin.tags.tooltip.color']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<TooltipHeader text={m['admin.tags.color']()} tooltip={m['admin.tags.tooltip.color']()} />
+					<SortableTooltipHeader text={m['common.vms']()} tooltip={m['admin.tags.tooltip.vmCount']()} column="vmCount" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 					<th class="px-4 py-2 font-medium">{m['common.actions']()}</th>
 				</tr>
 			</thead>
 			<tbody>
-				{#each tags as tag (tag.name)}
+				{#each filteredTags as tag (tag.name)}
 					<tr class="border-t border-border">
 						<td class="px-4 py-2 font-mono">
 							{tag.name}
@@ -128,11 +177,15 @@
 					</tr>
 				{:else}
 					<tr><td colspan={4} class="p-0">
-						<EmptyState title={m['admin.tags.noTags']()}>
-							{#snippet actions()}
-								<Button onclick={openCreate}>{m['admin.tags.newTag']()}</Button>
-							{/snippet}
-						</EmptyState>
+						{#if tags.length > 0}
+							<EmptyState title={m['admin.tags.noFilterMatches']()} />
+						{:else}
+							<EmptyState title={m['admin.tags.noTags']()}>
+								{#snippet actions()}
+									<Button onclick={openCreate}>{m['admin.tags.newTag']()}</Button>
+								{/snippet}
+							</EmptyState>
+						{/if}
 					</td></tr>
 				{/each}
 			</tbody>

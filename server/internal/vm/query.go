@@ -214,6 +214,13 @@ func scopedVMs(source inventory.Source, query ListQuery, identity auth.Identity)
 	selected := selectedIndexes(clusterNames, indexes, query.Cluster)
 	pool := identity.Pool
 	adminAll := query.Scope == ScopeAll && identity.IsAdmin
+	// An empty Pool means the identity owns no pool (the local admin, or a
+	// PVE account never assigned one) — never treat that as "mine": Index.ByPool
+	// also keys unpooled/orphan VMs under "", so without this guard those VMs
+	// would incorrectly appear as owned by every pool-less identity.
+	if pool == "" && !adminAll {
+		return []cluster.VM{}
+	}
 	capacity := 0
 	for _, index := range selected {
 		capacity += scopedVMCount(index, pool, adminAll)

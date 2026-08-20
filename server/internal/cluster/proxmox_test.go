@@ -192,9 +192,9 @@ func proxmoxAuthFixture(t *testing.T, isAdmin bool, username, password string) *
 			}
 
 			if isAdmin {
-				writeJSONFixture(t, w, `{"data":{"Permissions.Modify":1,"Sys.Audit":1}}`)
+				writeJSONFixture(t, w, `{"data":{"/":{"Permissions.Modify":1,"Sys.Audit":1}}}`)
 			} else {
-				writeJSONFixture(t, w, `{"data":{"Sys.Audit":1}}`)
+				writeJSONFixture(t, w, `{"data":{"/":{"Sys.Audit":1}}}`)
 			}
 		})
 		mux.HandleFunc("GET /api2/json/pools", func(w http.ResponseWriter, _ *http.Request) {

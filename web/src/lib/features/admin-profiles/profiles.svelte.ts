@@ -23,6 +23,46 @@ export class AdminProfilesStore {
 	saving = $state.raw(false);
 	saveError = $state.raw<string | null>(null);
 
+	search = $state('');
+	busFilter = $state('');
+	enabledFilter: 'all' | 'enabled' | 'disabled' = $state('all');
+	sortBy: 'id' | 'label' | 'cpuCores' | 'memoryMB' | 'diskGB' = $state('label');
+	sortDir: 'asc' | 'desc' = $state('asc');
+
+	filteredProfiles = $derived(
+		sortProfiles(
+			this.profiles.filter((p) => {
+				if (this.search) {
+					const q = this.search.toLowerCase();
+					if (!p.label.toLowerCase().includes(q) && !p.id.toLowerCase().includes(q)) return false;
+				}
+				if (this.busFilter && p.bus !== this.busFilter) return false;
+				if (this.enabledFilter === 'enabled' && !p.enabled) return false;
+				if (this.enabledFilter === 'disabled' && p.enabled) return false;
+				return true;
+			}),
+			this.sortBy,
+			this.sortDir
+		)
+	);
+
+	busOptions = $derived([...new Set(this.profiles.map((p) => p.bus))].sort());
+
+	setSort(column: 'id' | 'label' | 'cpuCores' | 'memoryMB' | 'diskGB'): void {
+		if (this.sortBy === column) {
+			this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			this.sortBy = column;
+			this.sortDir = 'asc';
+		}
+	}
+
+	resetFilters(): void {
+		this.search = '';
+		this.busFilter = '';
+		this.enabledFilter = 'all';
+	}
+
 	async load(): Promise<void> {
 		this.loading = true;
 		this.error = null;
@@ -90,6 +130,33 @@ export class AdminProfilesStore {
 			throw err;
 		}
 	}
+}
+
+type ProfileSortColumn = 'id' | 'label' | 'cpuCores' | 'memoryMB' | 'diskGB';
+
+function sortProfiles(profiles: AdminProfile[], sortBy: ProfileSortColumn, dir: 'asc' | 'desc'): AdminProfile[] {
+	const sorted = [...profiles].sort((a, b) => {
+		let cmp = 0;
+		switch (sortBy) {
+			case 'id':
+				cmp = a.id.localeCompare(b.id);
+				break;
+			case 'label':
+				cmp = a.label.localeCompare(b.label) || a.id.localeCompare(b.id);
+				break;
+			case 'cpuCores':
+				cmp = a.cpuCores - b.cpuCores || a.label.localeCompare(b.label);
+				break;
+			case 'memoryMB':
+				cmp = a.memoryMB - b.memoryMB || a.label.localeCompare(b.label);
+				break;
+			case 'diskGB':
+				cmp = a.diskGB - b.diskGB || a.label.localeCompare(b.label);
+				break;
+		}
+		return cmp;
+	});
+	return dir === 'asc' ? sorted : sorted.reverse();
 }
 
 const PROFILES_CONTEXT_KEY = Symbol('admin-profiles');

@@ -163,4 +163,77 @@ describe('AdminDocsStore', () => {
 		expect(store.saveError).toBe('a documentation page with this title already exists for this language');
 		expect(store.saving).toBe(false);
 	});
+
+	describe('filteredPages', () => {
+		const testPages = [
+			{ id: 'getting-started', lang: 'en', title: 'Getting Started', category: 'Guides', bodyMd: '', audience: 'user' as const, enabled: true, isSystem: false, sortOrder: 0 },
+			{ id: 'admin-guide', lang: 'en', title: 'Admin Guide', category: 'Admin', bodyMd: '', audience: 'admin' as const, enabled: true, isSystem: false, sortOrder: 1 },
+			{ id: 'guide-fr', lang: 'fr', title: 'Guide de démarrage', category: 'Guides', bodyMd: '', audience: 'user' as const, enabled: false, isSystem: false, sortOrder: 2 }
+		];
+
+		it('returns all pages when no filters are set', () => {
+			const store = new AdminDocsStore();
+			store.pages = testPages;
+			expect(store.filteredPages.length).toBe(3);
+		});
+
+		it('filters by search on title', () => {
+			const store = new AdminDocsStore();
+			store.pages = testPages;
+			store.search = 'admin';
+			expect(store.filteredPages.length).toBe(1);
+			expect(store.filteredPages[0]?.title).toBe('Admin Guide');
+		});
+
+		it('filters by search on slug/id', () => {
+			const store = new AdminDocsStore();
+			store.pages = testPages;
+			store.search = 'getting';
+			expect(store.filteredPages.length).toBe(1);
+			expect(store.filteredPages[0]?.id).toBe('getting-started');
+		});
+
+		it('filters by category', () => {
+			const store = new AdminDocsStore();
+			store.pages = testPages;
+			store.categoryFilter = 'Guides';
+			expect(store.filteredPages.length).toBe(2);
+		});
+
+		it('filters by language', () => {
+			const store = new AdminDocsStore();
+			store.pages = testPages;
+			store.langFilter = 'fr';
+			expect(store.filteredPages.length).toBe(1);
+			expect(store.filteredPages[0]?.lang).toBe('fr');
+		});
+
+		it('filters by audience', () => {
+			const store = new AdminDocsStore();
+			store.pages = testPages;
+			store.audienceFilter = 'admin';
+			expect(store.filteredPages.length).toBe(1);
+			expect(store.filteredPages[0]?.audience).toBe('admin');
+		});
+
+		it('sorts by title ascending then descending', () => {
+			const store = new AdminDocsStore();
+			store.pages = testPages;
+			store.sortBy = 'title';
+			store.sortDir = 'asc';
+			expect(store.filteredPages.map((p) => p.title)).toEqual(['Admin Guide', 'Getting Started', 'Guide de démarrage']);
+			store.sortDir = 'desc';
+			expect(store.filteredPages.map((p) => p.title)).toEqual(['Guide de démarrage', 'Getting Started', 'Admin Guide']);
+		});
+
+		it('resetFilters clears all filters', () => {
+			const store = new AdminDocsStore();
+			store.pages = testPages;
+			store.search = 'admin';
+			store.categoryFilter = 'Admin';
+			store.langFilter = 'en';
+			store.resetFilters();
+			expect(store.filteredPages.length).toBe(3);
+		});
+	});
 });

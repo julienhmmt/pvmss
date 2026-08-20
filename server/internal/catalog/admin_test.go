@@ -305,9 +305,9 @@ func TestSetBridgeEnabled_SameNameOnTwoNodesTogglesIndependently(t *testing.T) {
 }
 
 // TestAdminListISOs_IncludesSuperset verifies the admin ISO list includes the
-// fake superset keyed by (storage, file).
+// fake superset after the node-aware migration resets approvals.
 //
-//nolint:paralleltest,goconst // serial: shared fake dataset; test fixtures reuse literals; intentionally parallel to TestAdminListBridges_IncludesSuperset
+//nolint:paralleltest // serial: shared fake dataset
 func TestAdminListISOs_IncludesSuperset(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -322,15 +322,8 @@ func TestAdminListISOs_IncludesSuperset(t *testing.T) {
 	}
 
 	for _, i := range isos {
-		switch i.File {
-		case "debian-12-generic-amd64.iso", "ubuntu-24.04-server-amd64.iso":
-			if !i.Enabled {
-				t.Errorf("ISO %q should be enabled (T06 seed)", i.File)
-			}
-		case "rocky-9-generic-x86_64.iso":
-			if i.Enabled {
-				t.Error("rocky-9 should not be enabled")
-			}
+		if i.Enabled {
+			t.Errorf("ISO %q on %q should not be enabled", i.File, i.Node)
 		}
 	}
 }
@@ -343,7 +336,7 @@ func TestSetISOEnabled_ToggleIsolatesByStorageFile(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
 
-	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "local", "rocky-9-generic-x86_64.iso", true); err != nil {
+	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "pve-node-02", "local", "rocky-9-generic-x86_64.iso", true); err != nil {
 		t.Fatalf("SetISOEnabled rocky-9: %v", err)
 	}
 
@@ -357,8 +350,8 @@ func TestSetISOEnabled_ToggleIsolatesByStorageFile(t *testing.T) {
 			t.Error("rocky-9 should be enabled after toggle")
 		}
 
-		if i.File == "debian-12-generic-amd64.iso" && !i.Enabled {
-			t.Error("debian-12 should still be enabled (unaffected)")
+		if i.File == "debian-12-generic-amd64.iso" && i.Enabled {
+			t.Error("debian-12 should still be disabled (unaffected)")
 		}
 	}
 }
@@ -413,21 +406,26 @@ func TestSetBridgeEnabled_UnknownReturnsError(t *testing.T) {
 	}
 }
 
-// TestSetISOEnabled_UnknownReturnsError — toggling an ISO (storage, file) pair
-// not in the current discovery set returns cluster.ErrNotFound.
+// TestSetISOEnabled_UnknownReturnsError — toggling an ISO (node, storage, file)
+// triple not in the current discovery set returns cluster.ErrNotFound.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestSetISOEnabled_UnknownReturnsError(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
 
-	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "local", "missing.iso", true); !errors.Is(err, cluster.ErrNotFound) {
+	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "pve-node-01", "local", "missing.iso", true); !errors.Is(err, cluster.ErrNotFound) {
 		t.Fatalf("SetISOEnabled unknown file: got %v, want cluster.ErrNotFound", err)
 	}
 
 	// Right file, wrong storage — still not discovered.
-	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "missing", "debian-12-generic-amd64.iso", true); !errors.Is(err, cluster.ErrNotFound) {
+	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "pve-node-01", "missing", "debian-12-generic-amd64.iso", true); !errors.Is(err, cluster.ErrNotFound) {
 		t.Fatalf("SetISOEnabled wrong storage: got %v, want cluster.ErrNotFound", err)
+	}
+
+	// Right file and storage, wrong node — still not discovered.
+	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "pve-node-99", "local", "debian-12-generic-amd64.iso", true); !errors.Is(err, cluster.ErrNotFound) {
+		t.Fatalf("SetISOEnabled wrong node: got %v, want cluster.ErrNotFound", err)
 	}
 }
 
@@ -472,7 +470,7 @@ func TestSetStorageEnabled_TogglePersists(t *testing.T) {
 // TestSetBridgeEnabled_ToggleOffPersists — toggling an approved bridge off keeps
 // the row (enabled=false), then re-enabling restores it.
 //
-//nolint:paralleltest,dupl // serial: shared fixture; persistence flow parallels the ISO test
+//nolint:paralleltest // serial: shared fixture
 func TestSetBridgeEnabled_ToggleOffPersists(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -511,12 +509,12 @@ func TestSetBridgeEnabled_ToggleOffPersists(t *testing.T) {
 // TestSetISOEnabled_ToggleOffPersists — toggling an approved ISO off keeps the
 // row (enabled=false), then re-enabling restores it.
 //
-//nolint:paralleltest,dupl // serial: shared fixture; persistence flow parallels the bridge test
+//nolint:paralleltest // serial: shared fixture
 func TestSetISOEnabled_ToggleOffPersists(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
 
-	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "local", "debian-12-generic-amd64.iso", false); err != nil {
+	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "pve-node-01", "local", "debian-12-generic-amd64.iso", false); err != nil {
 		t.Fatalf("SetISOEnabled off: %v", err)
 	}
 
@@ -531,7 +529,7 @@ func TestSetISOEnabled_ToggleOffPersists(t *testing.T) {
 		}
 	}
 
-	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "local", "debian-12-generic-amd64.iso", true); err != nil {
+	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "pve-node-01", "local", "debian-12-generic-amd64.iso", true); err != nil {
 		t.Fatalf("SetISOEnabled on: %v", err)
 	}
 

@@ -40,9 +40,12 @@
 
 	<div class="fade-in">
 		<BridgesTable
-			bridges={store.bridges}
+			bridges={store.sortedBridges}
 			toggling={store.toggling}
 			onToggle={(node, name, enabled) => void store.toggleBridge(node, name, enabled)}
+			sortBy={store.bridgeSortBy}
+			sortDir={store.bridgeSortDir}
+			onSort={(column) => store.setBridgeSort(column)}
 		/>
 	</div>
 {/if}

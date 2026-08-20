@@ -24,24 +24,32 @@ type adminPoolSummary struct {
 	Managed bool   `json:"managed"`
 }
 
+type adminCreatePoolResponse struct {
+	Name     string `json:"name"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Comment  string `json:"comment"`
+	Managed  bool   `json:"managed"`
+}
+
 func TestAdminPools_CreateAndListAsAdmin(t *testing.T) {
 	handler, authHandler := newAdminPoolsHandler(t)
 	cookie := adminCookie(t, authHandler)
 
-	create := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", cookie, `{"name":"newteam","comment":"","password":"S0meLongPW!"}`)
+	create := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", cookie, `{"name":"newteam","comment":""}`)
 	if create.Code != http.StatusCreated {
 		t.Fatalf("create status = %d: %s", create.Code, create.Body.String())
 	}
 
-	var created adminPoolSummary
+	var created adminCreatePoolResponse
 	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
 		t.Fatalf("decode create: %v", err)
 	}
-	if created.Name != "newteam" || created.Total != 0 || created.Running != 0 || created.Stopped != 0 || !created.Managed {
+	if created.Name != "pvmss-newteam" || created.Username != "pvmss-newteam" || created.Password == "" || len(created.Password) < 8 || !created.Managed {
 		t.Fatalf("created = %+v", created)
 	}
 
-	list := adminPoolsRequest(t, handler.ServeList, http.MethodGet, "/api/v1/admin/pools?cluster=default&search=NEW", cookie, "")
+	list := adminPoolsRequest(t, handler.ServeList, http.MethodGet, "/api/v1/admin/pools?cluster=default&search=pvmss-new", cookie, "")
 	if list.Code != http.StatusOK {
 		t.Fatalf("list status = %d: %s", list.Code, list.Body.String())
 	}
@@ -49,7 +57,7 @@ func TestAdminPools_CreateAndListAsAdmin(t *testing.T) {
 	if err := json.Unmarshal(list.Body.Bytes(), &rows); err != nil {
 		t.Fatalf("decode list: %v", err)
 	}
-	if len(rows) != 1 || rows[0].Name != "newteam" {
+	if len(rows) != 1 || rows[0].Name != "pvmss-newteam" {
 		t.Fatalf("rows = %+v", rows)
 	}
 }
@@ -78,11 +86,11 @@ func TestAdminPools_ListCountsForEveryPool(t *testing.T) {
 func TestAdminPools_DeleteZeroVmPool(t *testing.T) {
 	handler, authHandler := newAdminPoolsHandler(t)
 	cookie := adminCookie(t, authHandler)
-	create := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", cookie, `{"name":"newteam","password":"S0meLongPW!"}`)
+	create := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", cookie, `{"name":"newteam"}`)
 	if create.Code != http.StatusCreated {
 		t.Fatalf("create status = %d: %s", create.Code, create.Body.String())
 	}
-	deleted := adminPoolsRequest(t, handler.ServeDelete, http.MethodDelete, "/api/v1/admin/pools/newteam", cookie, "")
+	deleted := adminPoolsRequest(t, handler.ServeDelete, http.MethodDelete, "/api/v1/admin/pools/pvmss-newteam", cookie, "")
 	if deleted.Code != http.StatusOK {
 		t.Fatalf("delete status = %d: %s", deleted.Code, deleted.Body.String())
 	}
@@ -98,7 +106,7 @@ func TestAdminPools_DeleteZeroVmPool(t *testing.T) {
 	if _, wrongCase := result["UserDeleted"]; wrongCase {
 		t.Fatalf("result carries uppercase UserDeleted key: %+v", result)
 	}
-	unknown := adminPoolsRequest(t, handler.ServeDelete, http.MethodDelete, "/api/v1/admin/pools/newteam", cookie, "")
+	unknown := adminPoolsRequest(t, handler.ServeDelete, http.MethodDelete, "/api/v1/admin/pools/pvmss-newteam", cookie, "")
 	if unknown.Code != http.StatusNotFound {
 		t.Fatalf("unknown status = %d, want 404", unknown.Code)
 	}
@@ -116,7 +124,7 @@ func TestAdminPools_RejectsNonAdminAndInvalidRequests(t *testing.T) {
 		want   int
 	}{
 		{name: "list", method: http.MethodGet, path: "/api/v1/admin/pools", want: http.StatusForbidden},
-		{name: "create", method: http.MethodPost, path: "/api/v1/admin/pools", body: `{"name":"carol","password":"S0meLongPW!"}`, want: http.StatusForbidden},
+		{name: "create", method: http.MethodPost, path: "/api/v1/admin/pools", body: `{"name":"carol"}`, want: http.StatusForbidden},
 		{name: testActionDelete, method: http.MethodDelete, path: "/api/v1/admin/pools/carol", want: http.StatusForbidden},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -128,13 +136,17 @@ func TestAdminPools_RejectsNonAdminAndInvalidRequests(t *testing.T) {
 	}
 
 	admin := adminCookie(t, authHandler)
-	invalid := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", admin, `{"name":"BAD_NAME","password":"S0meLongPW!"}`)
+	invalid := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", admin, `{"name":"BAD_NAME"}`)
 	if invalid.Code != http.StatusBadRequest {
 		t.Fatalf("invalid status = %d, want 400", invalid.Code)
 	}
-	duplicate := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", admin, `{"name":"pool-alice","password":"S0meLongPW!"}`)
+	first := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", admin, `{"name":"dup-pool"}`)
+	if first.Code != http.StatusCreated {
+		t.Fatalf("first create status = %d: %s", first.Code, first.Body.String())
+	}
+	duplicate := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", admin, `{"name":"dup-pool"}`)
 	if duplicate.Code != http.StatusConflict {
-		t.Fatalf("duplicate status = %d, want 409", duplicate.Code)
+		t.Fatalf("duplicate status = %d, want 409: %s", duplicate.Code, duplicate.Body.String())
 	}
 }
 
@@ -177,13 +189,13 @@ func TestAdminPools_ListExposesManagedFlag(t *testing.T) {
 	handler, authHandler := newAdminPoolsHandler(t)
 	cookie := adminCookie(t, authHandler)
 
-	if rec := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", cookie, `{"name":"team-z","password":"S0meLongPW!"}`); rec.Code != http.StatusCreated {
+	if rec := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", cookie, `{"name":"team-z"}`); rec.Code != http.StatusCreated {
 		t.Fatalf("create status = %d: %s", rec.Code, rec.Body.String())
 	}
 
-	rows := listAdminPools(t, handler, cookie, "/api/v1/admin/pools?cluster=default&search=team")
-	if len(rows) != 1 || rows[0].Name != "team-z" || !rows[0].Managed {
-		t.Fatalf("rows = %+v, want one managed team-z", rows)
+	rows := listAdminPools(t, handler, cookie, "/api/v1/admin/pools?cluster=default&search=pvmss-team")
+	if len(rows) != 1 || rows[0].Name != "pvmss-team-z" || !rows[0].Managed {
+		t.Fatalf("rows = %+v, want one managed pvmss-team-z", rows)
 	}
 
 	allRows := listAdminPools(t, handler, cookie, "/api/v1/admin/pools?cluster=default")
@@ -191,8 +203,8 @@ func TestAdminPools_ListExposesManagedFlag(t *testing.T) {
 		if row.Name == cluster.FakePoolAlice && row.Managed {
 			t.Fatalf("alice should not be managed: %+v", row)
 		}
-		if row.Name == "team-z" && !row.Managed {
-			t.Fatalf("team-z should be managed: %+v", row)
+		if row.Name == "pvmss-team-z" && !row.Managed {
+			t.Fatalf("pvmss-team-z should be managed: %+v", row)
 		}
 	}
 }
