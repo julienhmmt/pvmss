@@ -11,11 +11,14 @@
 </script>
 
 <PolicyNodesPage
-	nodes={store.nodes}
+	nodes={store.sortedNodes}
 	loading={store.loading}
 	error={store.error}
 	saving={store.saving}
 	saveError={store.saveError}
 	onLoad={() => void store.load()}
 	onSave={(node, patch) => void store.save(node, patch)}
+	sortBy={store.sortBy}
+	sortDir={store.sortDir}
+	onSort={(column) => store.setSort(column)}
 />
