@@ -1,5 +1,4 @@
 <script lang="ts">
-	import Tooltip from '$lib/shared/ui/Tooltip.svelte';
 	import InfoIcon from '$lib/shared/ui/icons/InfoIcon.svelte';
 
 	interface Props {
@@ -17,7 +16,7 @@
 	const indicator = $derived(isActive ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '');
 </script>
 
-<th class="px-4 py-2 font-medium" aria-sort={isActive ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+<th class="px-4 py-2 font-medium" aria-sort={isActive ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'} title={tooltip}>
 	<span class="inline-flex items-center gap-1">
 		<button
 			type="button"
@@ -26,8 +25,6 @@
 		>
 			{text}{indicator}
 		</button>
-		<Tooltip {text}>
-			<InfoIcon class="h-3.5 w-3.5 text-muted-foreground" />
-		</Tooltip>
+		<InfoIcon class="h-3.5 w-3.5 text-muted-foreground" />
 	</span>
 </th>
