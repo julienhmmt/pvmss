@@ -3,27 +3,36 @@
 	import { formatBytes } from './format';
 	import Switch from '$lib/shared/ui/Switch.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import TooltipHeader from '$lib/shared/ui/TooltipHeader.svelte';
+	import SortableTooltipHeader from '$lib/shared/ui/SortableTooltipHeader.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+
+	type ISOSortColumn = 'file' | 'storage' | 'node' | 'size' | 'enabled';
 
 	interface Props {
 		isos: AdminISO[];
 		toggling: string | null;
 		onToggle: (node: string, storage: string, file: string, enabled: boolean) => void;
+		sortBy: ISOSortColumn;
+		sortDir: 'asc' | 'desc';
+		onSort: (column: ISOSortColumn) => void;
 	}
 
-	let { isos, toggling, onToggle }: Props = $props();
+	let { isos, toggling, onToggle, sortBy, sortDir, onSort }: Props = $props();
+
+	function handleSort(column: string): void {
+		onSort(column as ISOSortColumn);
+	}
 </script>
 
 <div class="overflow-x-auto rounded-lg border border-border">
 	<table class="pv-responsive-table text-sm">
 		<thead class="bg-muted/50 text-left">
 			<tr>
-				<TooltipHeader text={m['admin.catalog.file']()} tooltip={m['admin.catalog.tooltip.isoFile']()} />
-				<th class="px-4 py-2 font-medium">{m['common.storage']()}</th>
-				<TooltipHeader text={m['common.node']()} tooltip={m['admin.catalog.tooltip.isoNode']()} />
-				<th class="px-4 py-2 font-medium">{m['admin.catalog.size']()}</th>
-				<TooltipHeader text={m['admin.catalog.statusColumn']()} tooltip={m['admin.catalog.tooltip.statusColumn']()} />
+				<SortableTooltipHeader text={m['admin.catalog.file']()} tooltip={m['admin.catalog.tooltip.isoFile']()} column="file" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+				<SortableTooltipHeader text={m['common.storage']()} tooltip={m['admin.catalog.tooltip.isoFile']()} column="storage" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+				<SortableTooltipHeader text={m['common.node']()} tooltip={m['admin.catalog.tooltip.isoNode']()} column="node" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+				<SortableTooltipHeader text={m['admin.catalog.size']()} tooltip={m['admin.catalog.tooltip.isoFile']()} column="size" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+				<SortableTooltipHeader text={m['admin.catalog.statusColumn']()} tooltip={m['admin.catalog.tooltip.statusColumn']()} column="enabled" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 			</tr>
 		</thead>
 		<tbody>
