@@ -6,6 +6,7 @@ import { m } from '$lib/paraglide/messages.js';
  */
 export type SidebarIconName =
 	| 'home'
+	| 'search'
 	| 'vm'
 	| 'nodes'
 	| 'dashboard'

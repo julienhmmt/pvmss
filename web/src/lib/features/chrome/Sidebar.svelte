@@ -75,6 +75,7 @@
 	// and regular pool users have no use for the cluster-wide node list.
 	const mainNav = $derived<MainNavItem[]>([
 		{ href: resolve('/'), label: () => m['chrome.sidebar.navHome'](), icon: 'home' },
+		{ href: resolve('/search'), label: () => m['chrome.sidebar.navSearch'](), icon: 'search' },
 		{ href: resolve('/vms'), label: () => m['chrome.sidebar.navMachines'](), icon: 'vm' },
 		...(session.isAdmin
 			? [{ href: resolve('/nodes'), label: () => m['chrome.sidebar.navNodes'](), icon: 'nodes' as SidebarIconName }]

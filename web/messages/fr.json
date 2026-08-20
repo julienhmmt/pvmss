@@ -1005,5 +1005,15 @@
  "shortcuts.reload": "Recharger la page",
  "shortcuts.toggleHelp": "Afficher cette aide",
  "shortcuts.closeDialog": "Fermer la fenêtre",
- "shortcuts.submitForm": "Envoyer le formulaire"
+ "shortcuts.submitForm": "Envoyer le formulaire",
+ "chrome.sidebar.navSearch": "Recherche",
+ "search.title": "Recherche — PVMSS",
+ "search.heading": "Recherche",
+ "search.placeholder": "Rechercher par nom, étiquette ou ID…",
+ "search.label": "Rechercher une VM",
+ "search.empty": "Aucune VM ne correspond à votre recherche.",
+ "search.error": "Échec du chargement des résultats.",
+ "search.loading": "Chargement des résultats…",
+ "search.resultsCaption": "Résultats de recherche",
+ "search.instructions": "Saisissez un nom, une étiquette ou un ID de VM pour rechercher."
 }

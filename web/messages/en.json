@@ -1005,5 +1005,15 @@
  "shortcuts.reload": "Reload page",
  "shortcuts.toggleHelp": "Toggle this help",
  "shortcuts.closeDialog": "Close dialog",
- "shortcuts.submitForm": "Submit form"
+ "shortcuts.submitForm": "Submit form",
+ "chrome.sidebar.navSearch": "Search",
+ "search.title": "Search — PVMSS",
+ "search.heading": "Search",
+ "search.placeholder": "Search by name, tag, or ID…",
+ "search.label": "Search for a VM",
+ "search.empty": "No VMs match your search.",
+ "search.error": "Failed to load search results.",
+ "search.loading": "Loading results…",
+ "search.resultsCaption": "Search results",
+ "search.instructions": "Type a name, tag, or VM ID to search."
 }
