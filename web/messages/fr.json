@@ -524,6 +524,7 @@
  "vms.create.adminBlocked": "Les administrateurs ne peuvent pas créer de VM via le portail libre-service.",
  "nodes.title": "Nœuds — PVMSS",
  "nodes.heading": "Nœuds de cluster",
+ "nodes.description": "Capacité et utilisation en temps réel des nœuds Proxmox soutenant ce cluster.",
  "nodes.nodesLoaded": "{count} nœuds chargés",
  "nodes.tableCaption": "Nœuds de cluster",
  "nodes.colName": "Nom",
