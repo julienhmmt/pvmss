@@ -146,6 +146,11 @@ const schemaV15 = `CREATE TABLE managed_pools (
 	PRIMARY KEY (cluster, name)
 )`
 
+// schemaV16 adds a display_name column to clusters so the UI can show the real
+// Proxmox cluster name (from /cluster/status) alongside the immutable internal
+// key. Existing rows get NULL — callers fall back to the logical name.
+const schemaV16 = `ALTER TABLE clusters ADD COLUMN display_name TEXT`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -170,4 +175,5 @@ var Migrations = []Migration{
 	{Version: 13, DDL: schemaV13},
 	{Version: 14, DDL: schemaV14},
 	{Version: 15, DDL: schemaV15},
+	{Version: 16, DDL: schemaV16},
 }

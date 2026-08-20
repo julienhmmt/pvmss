@@ -259,6 +259,12 @@ func TestRunMigrations_V14RebuildsBridgeIdentity(t *testing.T) {
 		t.Fatalf("create legacy bridge table: %v", err)
 	}
 
+	// V16 alters the clusters table; create a minimal stand-in so the ALTER
+	// succeeds without replaying every prior migration in this focused test.
+	if _, err := db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS clusters (name TEXT PRIMARY KEY)`); err != nil {
+		t.Fatalf("create clusters stand-in: %v", err)
+	}
+
 	if err := store.RunMigrations(ctx, db, store.Migrations); err != nil {
 		t.Fatalf("RunMigrations: %v", err)
 	}
@@ -300,5 +306,46 @@ func TestRunMigrations_InvalidDDL_ReturnsError(t *testing.T) {
 	err := store.RunMigrations(context.Background(), db, migrations)
 	if err == nil {
 		t.Fatalf("expected error for invalid DDL, got nil")
+	}
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestRunMigrations_V16AddsDisplayName(t *testing.T) {
+	db := openTestDB(t)
+	ctx := context.Background()
+
+	if err := store.RunMigrations(ctx, db, store.Migrations); err != nil {
+		t.Fatalf("RunMigrations: %v", err)
+	}
+
+	st, err := store.NewFromDBWithSecret(db, "test-session-secret-at-least-32-bytes-long!!")
+	if err != nil {
+		t.Fatalf("NewFromDBWithSecret: %v", err)
+	}
+	if err := st.CreateCluster(ctx, store.ClusterRow{Name: "default", URL: "https://example.com:8006", TokenID: "tok", TokenSecret: "secret"}); err != nil {
+		t.Fatalf("CreateCluster: %v", err)
+	}
+
+	if err := st.SetClusterDisplayName(ctx, "default", "prod-cluster"); err != nil {
+		t.Fatalf("SetClusterDisplayName: %v", err)
+	}
+
+	row, err := st.GetCluster(ctx, "default")
+	if err != nil {
+		t.Fatalf("GetCluster: %v", err)
+	}
+	if row.DisplayName != "prod-cluster" {
+		t.Fatalf("DisplayName = %q, want prod-cluster", row.DisplayName)
+	}
+
+	if err := st.SetClusterDisplayName(ctx, "default", ""); err != nil {
+		t.Fatalf("clear display name: %v", err)
+	}
+	row, err = st.GetCluster(ctx, "default")
+	if err != nil {
+		t.Fatalf("GetCluster after clear: %v", err)
+	}
+	if row.DisplayName != "" {
+		t.Fatalf("DisplayName = %q, want empty", row.DisplayName)
 	}
 }

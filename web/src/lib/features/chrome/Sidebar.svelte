@@ -81,7 +81,7 @@
 		<div class="flex items-baseline gap-2 px-2">
 			<span class="text-base font-bold tracking-tight">{m['chrome.sidebar.brand']()}</span>
 			{#if session.principal}
-				<span class="font-mono text-xs text-muted-foreground">{session.principal.cluster}</span>
+				<span class="font-mono text-xs text-muted-foreground">{session.principal.clusterDisplayName || session.principal.cluster}</span>
 			{/if}
 		</div>
 

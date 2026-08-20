@@ -2,6 +2,7 @@ import { get } from '$lib/shared/api/client';
 
 export interface ClusterOption {
 	name: string;
+	displayName: string;
 	oidcEnabled: boolean;
 }
 

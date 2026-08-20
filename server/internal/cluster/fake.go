@@ -97,6 +97,19 @@ func (fake Fake) Snapshot(_ context.Context) (Snapshot, error) {
 	return Snapshot{Nodes: nodesCopy, VMs: vms, Storages: slices.Clone(storages), ProxmoxVersion: version}, nil
 }
 
+// DisplayName implements Client. The fake reports a deterministic display
+// name derived from its logical name so multi-cluster tests can distinguish
+// clusters without a real /cluster/status endpoint.
+func (fake Fake) DisplayName(_ context.Context) (string, error) {
+	if fake.unavailable() {
+		return "", ErrUnreachable
+	}
+	if fake.ClusterName == "" {
+		return "fake-cluster", nil
+	}
+	return fake.ClusterName, nil
+}
+
 // Authenticate implements Client using demonstration-only PVE identities.
 func (fake Fake) Authenticate(_ context.Context, username, password string) (Identity, error) {
 	state := fake.stateOrDefault()

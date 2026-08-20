@@ -46,7 +46,7 @@ describe('PoolsStore', () => {
 
 		await store.create('carol', 'S0meLongPW!', '');
 		expect(store.pools).toHaveLength(1);
-		expect(store.pools[0].managed).toBe(true);
+		expect(store.pools[0]?.managed).toBe(true);
 		await store.remove('carol');
 		expect(store.pools).toHaveLength(0);
 		expect(store.announce).toBe(m['admin.pools.deleted']({ name: 'carol' }));

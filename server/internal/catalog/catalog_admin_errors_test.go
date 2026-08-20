@@ -67,6 +67,10 @@ func (errDiscoveryClient) DeleteUser(_ context.Context, _ string) error {
 	return cluster.ErrNotImplemented
 }
 
+func (errDiscoveryClient) DisplayName(_ context.Context) (string, error) {
+	return "", cluster.ErrNotImplemented
+}
+
 // TestSetNodeEnabled_DiscoveryErrorSurfaced — a Snapshot failure is returned
 // verbatim so the handler maps it to 5xx, not 404 (the contract documented on
 // SetNodeEnabled).

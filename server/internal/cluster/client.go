@@ -32,6 +32,7 @@ var (
 // must behave identically from a caller's perspective (constitution XI).
 type Client interface {
 	Snapshot(ctx context.Context) (Snapshot, error)
+	DisplayName(ctx context.Context) (string, error)
 	Authenticate(ctx context.Context, username, password string) (Identity, error)
 	ChangePassword(ctx context.Context, username, oldPassword, newPassword string) error
 	ListBridges(ctx context.Context) ([]Bridge, error)
