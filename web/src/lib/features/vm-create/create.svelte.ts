@@ -65,6 +65,75 @@ export interface VmCreateAccepted {
 
 export type CreateMode = 'simple' | 'detailed';
 
+/** Server error codes with fixed, non-parameterized text (server/internal/httpapi/vm_create.go). */
+const FIXED_SUBMIT_ERRORS: Partial<Record<string, () => string>> = {
+	admin_cannot_create: m['vms.create.adminBlocked'],
+	no_pool: m['vms.create.errorNoPool'],
+	invalid_name: m['vms.create.errorInvalidName'],
+	cluster_error: m['vms.create.errorClusterRejected'],
+	internal_error: m['vms.create.errorInternal']
+};
+
+/** "not_approved" messages (server/internal/vm/create.go) all share the
+ *  "not approved for this cluster: <detail>" shape — parsed here since the
+ *  server sends free text, not a structured code per resource kind. */
+const NOT_APPROVED_DETAILS: Array<{ re: RegExp; translate: (match: RegExpMatchArray) => string }> = [
+	{
+		re: /^cloud-init template "(.+)" is not approved for this cluster$/,
+		translate: (match) => m['vms.create.errorNotApprovedTemplate']({ template: match[1] ?? '' })
+	},
+	{
+		re: /^profile "(.+)" is not approved for this cluster$/,
+		translate: (match) => m['vms.create.errorNotApprovedProfile']({ profile: match[1] ?? '' })
+	},
+	{ re: /^no approved node in catalog$/, translate: () => m['vms.create.errorNoApprovedNode']() },
+	{
+		re: /^no approved storage on node "(.+)"$/,
+		translate: (match) => m['vms.create.errorNoApprovedStorageOnNode']({ node: match[1] ?? '' })
+	},
+	{
+		re: /^no approved bridge on node "(.+)"$/,
+		translate: (match) => m['vms.create.errorNoApprovedBridgeOnNode']({ node: match[1] ?? '' })
+	},
+	{
+		re: /^network model "(.+)"$/,
+		translate: (match) => m['vms.create.errorNotApprovedNetworkModel']({ model: match[1] ?? '' })
+	},
+	{
+		re: /^storage "(.+)" on node "(.+)"$/,
+		translate: (match) => m['vms.create.errorNotApprovedStorage']({ storage: match[1] ?? '', node: match[2] ?? '' })
+	},
+	{
+		re: /^bridge "(.+)" on node "(.+)"$/,
+		translate: (match) => m['vms.create.errorNotApprovedBridge']({ bridge: match[1] ?? '', node: match[2] ?? '' })
+	},
+	{
+		re: /^iso "(.+)" on storage "(.+)"$/,
+		translate: (match) => m['vms.create.errorNotApprovedIso']({ file: match[1] ?? '', storage: match[2] ?? '' })
+	},
+	{
+		re: /^node "(.+)"$/,
+		translate: (match) => m['vms.create.errorNotApprovedNode']({ node: match[1] ?? '' })
+	}
+];
+
+function translateNotApproved(message: string): string {
+	const detail = message.replace(/^not approved for this cluster: /, '');
+	for (const { re, translate } of NOT_APPROVED_DETAILS) {
+		const match = detail.match(re);
+		if (match) return translate(match);
+	}
+	return m['vms.create.errorNotApprovedGeneric']();
+}
+
+/** Translates a VM-create submit failure — never shows the server's raw
+ *  English message (constitution: UI text is always localized). */
+function translateSubmitError(error: unknown): string {
+	if (!(error instanceof ApiRequestError)) return m['vms.create.errorCreation']();
+	if (error.code === 'not_approved') return translateNotApproved(error.message);
+	return (FIXED_SUBMIT_ERRORS[error.code] ?? m['vms.create.errorCreation'])();
+}
+
 /**
  * Create-form state (V08/V09): the form's own local edits are ordinary
  * mutable $state; the fetched catalog is an API response and stays $state.raw
@@ -170,7 +239,7 @@ export class VmCreateStore {
 		try {
 			return await post<VmCreateAccepted>('/api/v1/vms', this.buildRequest());
 		} catch (error: unknown) {
-			this.submitError = error instanceof ApiRequestError ? error.message : 'creation failed';
+			this.submitError = translateSubmitError(error);
 			return null;
 		} finally {
 			this.submitting = false;
