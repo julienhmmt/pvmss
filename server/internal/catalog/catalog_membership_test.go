@@ -32,7 +32,11 @@ func sampleResources() catalog.Resources {
 			{Name: storageLocal, Node: node02}, // same name, different node
 			{Name: storageNFS, Node: node01},
 		},
-		Bridges: []string{bridgeVMbr0, bridgeVMbr1},
+		Bridges: []catalog.Bridge{
+			{Name: bridgeVMbr0, Node: node01},
+			{Name: bridgeVMbr0, Node: node02},
+			{Name: bridgeVMbr1, Node: node01},
+		},
 		ISOs: []catalog.ISO{
 			{Storage: storageLocal, File: debianISO},
 			{Storage: storageNFS, File: debianISO}, // same file, different storage
@@ -92,26 +96,28 @@ func TestResources_HasStorage(t *testing.T) {
 	}
 }
 
-// TestResources_HasBridge — HasBridge is a simple membership check.
+// TestResources_HasBridge — HasBridge matches the (name, node) pair.
 func TestResources_HasBridge(t *testing.T) {
 	t.Parallel()
 
 	resources := sampleResources()
 
 	cases := []struct {
-		name string
-		want bool
+		name, node string
+		want       bool
 	}{
-		{bridgeVMbr0, true},
-		{bridgeVMbr1, true},
-		{"vmbr2", false},
-		{"", false},
+		{bridgeVMbr0, node01, true},
+		{bridgeVMbr0, node02, true},
+		{bridgeVMbr1, node01, true},
+		{bridgeVMbr1, node02, false},
+		{"vmbr2", node01, false},
+		{"", "", false},
 	}
 
 	for _, tc := range cases {
-		got := resources.HasBridge(tc.name)
+		got := resources.HasBridge(tc.name, tc.node)
 		if got != tc.want {
-			t.Errorf("HasBridge(%q) = %v, want %v", tc.name, got, tc.want)
+			t.Errorf("HasBridge(%q, %q) = %v, want %v", tc.name, tc.node, got, tc.want)
 		}
 	}
 }

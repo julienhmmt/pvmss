@@ -41,8 +41,21 @@ func newVMCreateHandler(t *testing.T) (*httpapi.VMCreate, *httpapi.Auth, *store.
 	}
 
 	t.Cleanup(func() { _ = st.Close() })
+	seedBridgeApprovals(t, st)
 
 	return httpapi.NewVMCreate(authHandler, st, cluster.Fake{}, cluster.Fake{}, logger), authHandler, st
+}
+
+func seedBridgeApprovals(t *testing.T, st *store.Store) {
+	t.Helper()
+
+	for _, node := range []string{cluster.FakeNode01, cluster.FakeNode02} {
+		for _, name := range []string{"vmbr0", "vmbr1"} {
+			if err := st.SetBridgeEnabled(context.Background(), "default", node, name, true); err != nil {
+				t.Fatalf("seed bridge approval: %v", err)
+			}
+		}
+	}
 }
 
 func postVMCreate(t *testing.T, handler *httpapi.VMCreate, body string, cookie *http.Cookie) *httptest.ResponseRecorder {

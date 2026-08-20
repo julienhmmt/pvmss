@@ -124,6 +124,17 @@ const schemaV13 = `CREATE TABLE documentation_pages (
 	CHECK (audience IN ('user','admin'))
 )`
 
+const schemaV14 = `
+DROP TABLE catalog_bridges;
+CREATE TABLE catalog_bridges (
+	cluster TEXT NOT NULL,
+	node    TEXT NOT NULL,
+	name    TEXT NOT NULL,
+	enabled BOOLEAN NOT NULL DEFAULT 1,
+	PRIMARY KEY (cluster, node, name)
+);
+`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -146,4 +157,5 @@ var Migrations = []Migration{
 	{Version: 11, DDL: schemaV11},
 	{Version: 12, DDL: schemaV12},
 	{Version: 13, DDL: schemaV13},
+	{Version: 14, DDL: schemaV14},
 }

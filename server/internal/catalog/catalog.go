@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"pvmss/server/internal/store"
-	"slices"
 )
 
 // Node is one approved cluster node.
@@ -19,6 +18,12 @@ type Node struct {
 // Storage is one approved storage backend on a node.
 type Storage struct {
 	Name string `json:"storage"`
+	Node string `json:"node"`
+}
+
+// Bridge is one approved network bridge on a node.
+type Bridge struct {
+	Name string `json:"bridge"`
 	Node string `json:"node"`
 }
 
@@ -44,7 +49,7 @@ type Profile struct {
 type Resources struct {
 	Nodes    []Node
 	Storages []Storage
-	Bridges  []string
+	Bridges  []Bridge
 	ISOs     []ISO
 }
 
@@ -70,9 +75,15 @@ func (r Resources) HasStorage(name, node string) bool {
 	return false
 }
 
-// HasBridge reports whether name is an approved bridge.
-func (r Resources) HasBridge(name string) bool {
-	return slices.Contains(r.Bridges, name)
+// HasBridge reports whether name is an approved bridge on node.
+func (r Resources) HasBridge(name, node string) bool {
+	for _, bridge := range r.Bridges {
+		if bridge.Name == name && bridge.Node == node {
+			return true
+		}
+	}
+
+	return false
 }
 
 // HasISO reports whether (storage, file) is an approved ISO.
@@ -101,16 +112,16 @@ func ListStorages(ctx context.Context, st *store.Store, cluster string) ([]Stora
 	return storages, nil
 }
 
-// ListBridges returns the approved bridge names for a cluster.
-func ListBridges(ctx context.Context, st *store.Store, cluster string) ([]string, error) {
+// ListBridges returns the approved bridges for a cluster.
+func ListBridges(ctx context.Context, st *store.Store, cluster string) ([]Bridge, error) {
 	rows, err := st.CatalogBridges(ctx, cluster)
 	if err != nil {
 		return nil, err
 	}
 
-	bridges := make([]string, 0, len(rows))
+	bridges := make([]Bridge, 0, len(rows))
 	for _, row := range rows {
-		bridges = append(bridges, row.Name)
+		bridges = append(bridges, Bridge{Name: row.Name, Node: row.Node})
 	}
 
 	return bridges, nil
@@ -157,7 +168,7 @@ func ApprovedResources(ctx context.Context, st *store.Store, cluster string) (Re
 	resources := Resources{
 		Nodes:    make([]Node, 0, len(nodes)),
 		Storages: make([]Storage, 0, len(storages)),
-		Bridges:  make([]string, 0, len(bridges)),
+		Bridges:  make([]Bridge, 0, len(bridges)),
 		ISOs:     make([]ISO, 0, len(isos)),
 	}
 	for _, node := range nodes {
@@ -169,7 +180,7 @@ func ApprovedResources(ctx context.Context, st *store.Store, cluster string) (Re
 	}
 
 	for _, bridge := range bridges {
-		resources.Bridges = append(resources.Bridges, bridge.Name)
+		resources.Bridges = append(resources.Bridges, Bridge{Name: bridge.Name, Node: bridge.Node})
 	}
 
 	for _, iso := range isos {

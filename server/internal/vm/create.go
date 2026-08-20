@@ -342,11 +342,10 @@ func resolveResources(req CreateRequest, resources catalog.Resources) (node, sto
 
 	bridge = req.Network.Bridge
 	if bridge == "" {
-		if len(resources.Bridges) == 0 {
-			return "", "", "", "", fmt.Errorf("%w: no approved bridge in catalog", ErrNotApproved)
+		bridge = firstBridgeOnNode(resources, node)
+		if bridge == "" {
+			return "", "", "", "", fmt.Errorf("%w: no approved bridge on node %q", ErrNotApproved, node)
 		}
-
-		bridge = resources.Bridges[0]
 	}
 
 	model = req.Network.Model
@@ -372,8 +371,8 @@ func validateCatalog(req CreateRequest, resources catalog.Resources, node, stora
 		return fmt.Errorf("%w: storage %q on node %q", ErrNotApproved, storage, node)
 	}
 
-	if !resources.HasBridge(bridge) {
-		return fmt.Errorf("%w: bridge %q", ErrNotApproved, bridge)
+	if !resources.HasBridge(bridge, node) {
+		return fmt.Errorf("%w: bridge %q on node %q", ErrNotApproved, bridge, node)
 	}
 
 	if req.ISO != nil && !resources.HasISO(req.ISO.Storage, req.ISO.File) {
@@ -403,6 +402,16 @@ func firstStorageOnNode(resources catalog.Resources, node string) string {
 	for _, storage := range resources.Storages {
 		if storage.Node == node {
 			return storage.Name
+		}
+	}
+
+	return ""
+}
+
+func firstBridgeOnNode(resources catalog.Resources, node string) string {
+	for _, bridge := range resources.Bridges {
+		if bridge.Node == node {
+			return bridge.Name
 		}
 	}
 

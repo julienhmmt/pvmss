@@ -71,7 +71,7 @@ func buildCraftedDB(t *testing.T, path string, rowsByTable map[string][]string) 
 	ddls := map[string]string{
 		tblCatalogNodes:     `CREATE TABLE catalog_nodes (cluster TEXT NOT NULL, name TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, name))`,
 		"catalog_storages":  `CREATE TABLE catalog_storages (cluster TEXT NOT NULL, name TEXT NOT NULL, node TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, name, node))`,
-		"catalog_bridges":   `CREATE TABLE catalog_bridges (cluster TEXT NOT NULL, name TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, name))`,
+		"catalog_bridges":   `CREATE TABLE catalog_bridges (cluster TEXT NOT NULL, node TEXT NOT NULL, name TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, node, name))`,
 		"catalog_isos":      `CREATE TABLE catalog_isos (cluster TEXT NOT NULL, storage TEXT NOT NULL, file TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, storage, file))`,
 		"catalog_profiles":  `CREATE TABLE catalog_profiles (cluster TEXT NOT NULL, id TEXT NOT NULL, label TEXT NOT NULL, cpu_cores INTEGER NOT NULL, memory_mb INTEGER NOT NULL, disk_gb INTEGER NOT NULL, bus TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, id))`,
 		tblCatalogTags:      `CREATE TABLE catalog_tags (cluster TEXT NOT NULL, name TEXT NOT NULL, color TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY (cluster, name))`,

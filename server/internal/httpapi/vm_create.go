@@ -164,7 +164,7 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 		Cluster:            clusterName,
 		Nodes:              make([]string, 0, len(resources.Nodes)),
 		Storages:           make([]catalogStorageDTO, 0, len(resources.Storages)),
-		Bridges:            resources.Bridges,
+		Bridges:            catalogBridgeNames(resources.Bridges),
 		ISOs:               make([]catalogISODTO, 0, len(resources.ISOs)),
 		Profiles:           make([]catalogProfileDTO, 0, len(profiles)),
 		CloudInitTemplates: make([]catalogCloudInitTemplateDTO, 0, len(templates)),
@@ -200,6 +200,22 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeCreateJSON(w, http.StatusOK, dto)
+}
+
+func catalogBridgeNames(bridges []catalog.Bridge) []string {
+	names := make([]string, 0, len(bridges))
+	seen := make(map[string]struct{}, len(bridges))
+
+	for _, bridge := range bridges {
+		if _, exists := seen[bridge.Name]; exists {
+			continue
+		}
+
+		seen[bridge.Name] = struct{}{}
+		names = append(names, bridge.Name)
+	}
+
+	return names
 }
 
 // writeCreateFailure maps vm.Create's sentinel errors to the contract's

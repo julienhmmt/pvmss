@@ -93,6 +93,11 @@ type rawStorage struct {
 	Node string
 }
 
+type rawBridge struct {
+	Name string
+	Node string
+}
+
 // rawISO matches catalog.ISO.
 type rawISO struct {
 	Storage string
@@ -115,7 +120,7 @@ type rawProfile struct {
 func captureAtV7(t *testing.T, db *sql.DB) (
 	[]rawNode,
 	[]rawStorage,
-	[]string,
+	[]rawBridge,
 	[]rawISO,
 	[]rawProfile,
 ) {
@@ -135,19 +140,11 @@ func captureAtV7(t *testing.T, db *sql.DB) (
 		func(r *rawStorage, rows *sql.Rows) error { return rows.Scan(&r.Name, &r.Node) },
 	)
 
-	// Bridges are a single-column string slice — use a rawNode wrapper and
-	// project to []string.
-	bridgeWrappers := queryRows(ctx, t, db, "bridges at V7",
-		`SELECT name FROM catalog_bridges WHERE cluster = 'default' ORDER BY name`,
-		func() rawNode { return rawNode{} },
-		func(r *rawNode, rows *sql.Rows) error { return rows.Scan(&r.Name) },
+	bridges := queryRows(ctx, t, db, "bridges at V7",
+		`SELECT name, node FROM catalog_bridges WHERE cluster = 'default' ORDER BY node, name`,
+		func() rawBridge { return rawBridge{} },
+		func(r *rawBridge, rows *sql.Rows) error { return rows.Scan(&r.Name, &r.Node) },
 	)
-
-	bridges := make([]string, len(bridgeWrappers))
-
-	for i, b := range bridgeWrappers {
-		bridges[i] = b.Name
-	}
 
 	isos := queryRows(ctx, t, db, "isos at V7",
 		`SELECT storage, file FROM catalog_isos WHERE cluster = 'default' ORDER BY file`,
@@ -213,7 +210,7 @@ func queryRows[T any](
 func captureAtLatest(t *testing.T, st *store.Store) (
 	[]catalog.Node,
 	[]catalog.Storage,
-	[]string,
+	[]catalog.Bridge,
 	[]catalog.ISO,
 	[]catalog.Profile,
 ) {
@@ -267,8 +264,8 @@ func TestCatalogAdminCompat_RowSetsIdenticalBeforeAndAfterV9(t *testing.T) {
 
 	beforeNodes, beforeStorages, beforeBridges, beforeISOs, beforeProfiles := captureAtV7(t, db)
 
-	// Migrate forward to the latest version (V8 + V9).
-	runMigrationsUpTo(t, db, len(store.Migrations))
+	// Migrate forward through V9.
+	runMigrationsUpTo(t, db, 9)
 
 	assertV9EnabledColumnOnAllTables(t, db)
 	assertPvmssTagSeeded(t, db)
@@ -310,14 +307,14 @@ func assertStoragesMatch(t *testing.T, before []rawStorage, after []catalog.Stor
 	}
 }
 
-func assertBridgesMatch(t *testing.T, before, after []string) {
+func assertBridgesMatch(t *testing.T, before []rawBridge, after []catalog.Bridge) {
 	t.Helper()
 
 	assertSameLength(t, "bridges", len(before), len(after))
 
 	for i, want := range before {
-		if after[i] != want {
-			t.Fatalf("bridge[%d]: before=%q after=%q", i, want, after[i])
+		if after[i].Name != want.Name || after[i].Node != want.Node {
+			t.Fatalf("bridge[%d]: before=%+v after=%+v", i, want, after[i])
 		}
 	}
 }

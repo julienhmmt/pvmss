@@ -23,8 +23,9 @@ CREATE TABLE catalog_storages (
 );
 CREATE TABLE catalog_bridges (
 	cluster TEXT NOT NULL,
+	node    TEXT NOT NULL,
 	name    TEXT NOT NULL,
-	PRIMARY KEY (cluster, name)
+	PRIMARY KEY (cluster, node, name)
 );
 CREATE TABLE catalog_isos (
 	cluster TEXT NOT NULL,
@@ -52,9 +53,9 @@ INSERT INTO catalog_storages (cluster, name, node) VALUES
 	('default', 'local', 'pve-node-02'),
 	('default', 'ceph-data', 'pve-node-02');
 
-INSERT INTO catalog_bridges (cluster, name) VALUES
-	('default', 'vmbr0'),
-	('default', 'vmbr1');
+INSERT INTO catalog_bridges (cluster, node, name) VALUES
+	('default', 'pve-node-01', 'vmbr0'),
+	('default', 'pve-node-01', 'vmbr1');
 
 INSERT INTO catalog_isos (cluster, storage, file) VALUES
 	('default', 'local', 'debian-12-generic-amd64.iso'),

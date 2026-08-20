@@ -10,6 +10,7 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
+	"strings"
 )
 
 // AdminCatalog serves the admin catalog endpoints: the four discover-and-approve
@@ -100,8 +101,6 @@ type toggleResponse struct {
 }
 
 // ServeNodeToggle handles POST /api/v1/admin/nodes/toggle.
-//
-//nolint:dupl // intentionally parallel to ServeBridgeToggle (same shape, different resource)
 func (h *AdminCatalog) ServeNodeToggle(w http.ResponseWriter, r *http.Request) {
 	var req nodeToggleRequest
 	if err := decodeJSON(w, r, &req); err != nil {
@@ -279,16 +278,25 @@ func (h *AdminCatalog) ServeBridges(w http.ResponseWriter, r *http.Request) {
 
 type bridgeToggleRequest struct {
 	Cluster string `json:"cluster"`
+	Node    string `json:"node"`
+	Name    string `json:"name"`
+	Enabled bool   `json:"enabled"`
+}
+
+type bridgeToggleResponse struct {
+	Node    string `json:"node"`
 	Name    string `json:"name"`
 	Enabled bool   `json:"enabled"`
 }
 
 // ServeBridgeToggle handles POST /api/v1/admin/bridges/toggle.
-//
-//nolint:dupl // intentionally parallel to ServeNodeToggle (same shape, different resource)
 func (h *AdminCatalog) ServeBridgeToggle(w http.ResponseWriter, r *http.Request) {
 	var req bridgeToggleRequest
 	if err := decodeJSON(w, r, &req); err != nil {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
+		return
+	}
+	if strings.TrimSpace(req.Node) == "" {
 		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
@@ -305,9 +313,9 @@ func (h *AdminCatalog) ServeBridgeToggle(w http.ResponseWriter, r *http.Request)
 		writeAdminError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
 		return
 	}
-	err = catalog.SetBridgeEnabled(r.Context(), h.store, client, clusterName, req.Name, req.Enabled)
+	err = catalog.SetBridgeEnabled(r.Context(), h.store, client, clusterName, req.Node, req.Name, req.Enabled)
 	if errors.Is(err, cluster.ErrNotFound) {
-		writeAdminError(w, http.StatusNotFound, "not_found", bridgeNotFoundMsg(req.Name))
+		writeAdminError(w, http.StatusNotFound, "not_found", bridgeNotFoundMsg(req.Node, req.Name))
 		return
 	}
 
@@ -318,7 +326,7 @@ func (h *AdminCatalog) ServeBridgeToggle(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	writeAdminJSON(w, http.StatusOK, toggleResponse{Name: req.Name, Enabled: req.Enabled})
+	writeAdminJSON(w, http.StatusOK, bridgeToggleResponse{Node: req.Node, Name: req.Name, Enabled: req.Enabled})
 }
 
 // --- ISOs ---
@@ -460,8 +468,8 @@ func storageNotFoundMsg(name, node string) string {
 	return "storage \"" + name + "\" on node \"" + node + "\"" + msgNotReportedByCluster
 }
 
-func bridgeNotFoundMsg(name string) string {
-	return "bridge \"" + name + "\"" + msgNotReportedByCluster
+func bridgeNotFoundMsg(node, name string) string {
+	return "bridge \"" + name + "\" on node \"" + node + "\"" + msgNotReportedByCluster
 }
 
 func isoNotFoundMsg(storage, file string) string {

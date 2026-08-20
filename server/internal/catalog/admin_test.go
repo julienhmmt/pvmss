@@ -61,6 +61,20 @@ func findApprovalStorage(t *testing.T, storages []catalog.StorageApproval, name,
 	return catalog.StorageApproval{}
 }
 
+func findApprovalBridge(t *testing.T, bridges []catalog.BridgeApproval, name, node string) catalog.BridgeApproval {
+	t.Helper()
+
+	for _, bridge := range bridges {
+		if bridge.Name == name && bridge.Node == node {
+			return bridge
+		}
+	}
+
+	t.Fatalf("bridge %q on %q not found in approval list", name, node)
+
+	return catalog.BridgeApproval{}
+}
+
 // TestAdminListNodes_IncludesAllDiscoveredNodes verifies that AdminListNodes
 // returns every node from the cluster snapshot (3 fake nodes), not just the
 // approved ones — the unapproved node reports enabled=false.
@@ -210,9 +224,9 @@ func TestSetStorageEnabled_PerPairIsolation(t *testing.T) {
 }
 
 // TestAdminListBridges_IncludesSuperset verifies the admin bridge list
-// includes the fake superset (vmbr0, vmbr1 approved; vmbr2 not).
+// includes the fake superset after the node-aware migration resets approvals.
 //
-//nolint:paralleltest,dupl,goconst // serial: shared fake dataset; test fixtures reuse literals; intentionally parallel to TestAdminListISOs_IncludesSuperset
+//nolint:paralleltest // serial: shared fake dataset
 func TestAdminListBridges_IncludesSuperset(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -227,51 +241,51 @@ func TestAdminListBridges_IncludesSuperset(t *testing.T) {
 	}
 
 	for _, b := range bridges {
-		switch b.Name {
-		case "vmbr0", "vmbr1":
-			if !b.Enabled {
-				t.Errorf("bridge %q should be enabled (T06 seed)", b.Name)
-			}
-		case "vmbr2":
-			if b.Enabled {
-				t.Error("vmbr2 should not be enabled")
-			}
+		if b.Enabled {
+			t.Errorf("bridge %q on %q should not be enabled", b.Name, b.Node)
 		}
 	}
 }
 
-// TestSetBridgeEnabled_ToggleIsolatesByBridgeName verifies toggling one bridge
-// does not affect another.
-//
-//nolint:paralleltest // serial: shared fake dataset and database fixture
-func TestSetBridgeEnabled_ToggleIsolatesByBridgeName(t *testing.T) {
+type duplicateBridgeClient struct {
+	cluster.Fake
+}
+
+func (duplicateBridgeClient) ListBridges(_ context.Context) ([]cluster.Bridge, error) {
+	return []cluster.Bridge{
+		{Name: bridgeVMbr0, Node: node01, Active: true},
+		{Name: bridgeVMbr0, Node: node02, Active: true},
+	}, nil
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestSetBridgeEnabled_SameNameOnTwoNodesTogglesIndependently(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
+	client := duplicateBridgeClient{}
 
-	if err := catalog.SetBridgeEnabled(ctx, st, cluster.Fake{}, "default", "vmbr2", true); err != nil {
-		t.Fatalf("SetBridgeEnabled vmbr2: %v", err)
+	if err := catalog.SetBridgeEnabled(ctx, st, client, "default", node01, bridgeVMbr0, true); err != nil {
+		t.Fatalf("SetBridgeEnabled vmbr0: %v", err)
 	}
 
-	bridges, err := catalog.AdminListBridges(ctx, st, cluster.Fake{}, "default")
+	bridges, err := catalog.AdminListBridges(ctx, st, client, "default")
 	if err != nil {
 		t.Fatalf("AdminListBridges: %v", err)
 	}
 
-	for _, b := range bridges {
-		if b.Name == "vmbr2" && !b.Enabled {
-			t.Error("vmbr2 should be enabled after toggle")
-		}
+	if !findApprovalBridge(t, bridges, bridgeVMbr0, node01).Enabled {
+		t.Error("vmbr0 on pve-node-01 should be enabled")
+	}
 
-		if b.Name == "vmbr0" && !b.Enabled {
-			t.Error("vmbr0 should still be enabled (unaffected)")
-		}
+	if findApprovalBridge(t, bridges, bridgeVMbr0, node02).Enabled {
+		t.Error("vmbr0 on pve-node-02 should remain disabled")
 	}
 }
 
 // TestAdminListISOs_IncludesSuperset verifies the admin ISO list includes the
 // fake superset keyed by (storage, file).
 //
-//nolint:paralleltest,dupl,goconst // serial: shared fake dataset; test fixtures reuse literals; intentionally parallel to TestAdminListBridges_IncludesSuperset
+//nolint:paralleltest,goconst // serial: shared fake dataset; test fixtures reuse literals; intentionally parallel to TestAdminListBridges_IncludesSuperset
 func TestAdminListISOs_IncludesSuperset(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -368,8 +382,12 @@ func TestSetBridgeEnabled_UnknownReturnsError(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
 
-	if err := catalog.SetBridgeEnabled(ctx, st, cluster.Fake{}, "default", "vmbr99", true); !errors.Is(err, cluster.ErrNotFound) {
+	if err := catalog.SetBridgeEnabled(ctx, st, cluster.Fake{}, "default", "pve-node-01", "vmbr99", true); !errors.Is(err, cluster.ErrNotFound) {
 		t.Fatalf("SetBridgeEnabled unknown: got %v, want cluster.ErrNotFound", err)
+	}
+
+	if err := catalog.SetBridgeEnabled(ctx, st, cluster.Fake{}, "default", "pve-node-02", "vmbr0", true); !errors.Is(err, cluster.ErrNotFound) {
+		t.Fatalf("SetBridgeEnabled wrong node: got %v, want cluster.ErrNotFound", err)
 	}
 }
 
@@ -432,12 +450,12 @@ func TestSetStorageEnabled_TogglePersists(t *testing.T) {
 // TestSetBridgeEnabled_ToggleOffPersists — toggling an approved bridge off keeps
 // the row (enabled=false), then re-enabling restores it.
 //
-//nolint:paralleltest // serial: shared fake dataset and database fixture
+//nolint:paralleltest,dupl // serial: shared fixture; persistence flow parallels the ISO test
 func TestSetBridgeEnabled_ToggleOffPersists(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
 
-	if err := catalog.SetBridgeEnabled(ctx, st, cluster.Fake{}, "default", "vmbr0", false); err != nil {
+	if err := catalog.SetBridgeEnabled(ctx, st, cluster.Fake{}, "default", "pve-node-01", "vmbr0", false); err != nil {
 		t.Fatalf("SetBridgeEnabled off: %v", err)
 	}
 
@@ -452,7 +470,7 @@ func TestSetBridgeEnabled_ToggleOffPersists(t *testing.T) {
 		}
 	}
 
-	if err := catalog.SetBridgeEnabled(ctx, st, cluster.Fake{}, "default", "vmbr0", true); err != nil {
+	if err := catalog.SetBridgeEnabled(ctx, st, cluster.Fake{}, "default", "pve-node-01", "vmbr0", true); err != nil {
 		t.Fatalf("SetBridgeEnabled on: %v", err)
 	}
 
@@ -471,7 +489,7 @@ func TestSetBridgeEnabled_ToggleOffPersists(t *testing.T) {
 // TestSetISOEnabled_ToggleOffPersists — toggling an approved ISO off keeps the
 // row (enabled=false), then re-enabling restores it.
 //
-//nolint:paralleltest // serial: shared fake dataset and database fixture
+//nolint:paralleltest,dupl // serial: shared fixture; persistence flow parallels the bridge test
 func TestSetISOEnabled_ToggleOffPersists(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()

@@ -125,6 +125,6 @@ func TestUpdateNetwork_RemovesInterface(t *testing.T) {
 func networkDependencies(index *inventory.Index, actor auth.Identity, vmid int) vm.NetworkDependencies {
 	return vm.NetworkDependencies{
 		Index: index, Actor: actor, ClusterName: testClusterName, VMID: vmid, Writer: cluster.Fake{},
-		Resources: catalog.Resources{Bridges: []string{testBridgeVMbr0, testBridgeVMbr1}}, Gabarit: policy.DefaultGabarit(), Audit: noopAudit{}, Refresher: noopRefresher{},
+		Resources: catalog.Resources{Bridges: []catalog.Bridge{{Name: testBridgeVMbr0, Node: cluster.FakeNode01}, {Name: testBridgeVMbr1, Node: cluster.FakeNode01}}}, Gabarit: policy.DefaultGabarit(), Audit: noopAudit{}, Refresher: noopRefresher{},
 	}
 }

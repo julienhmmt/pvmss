@@ -7,7 +7,7 @@
 	interface Props {
 		bridges: AdminBridge[];
 		toggling: string | null;
-		onToggle: (name: string, enabled: boolean) => void;
+		onToggle: (node: string, name: string, enabled: boolean) => void;
 	}
 
 	let { bridges, toggling, onToggle }: Props = $props();
@@ -30,14 +30,14 @@
 					<td class="px-4 py-2 font-mono" data-label={m['common.node']()}>{bridge.node}</td>
 					<td class="px-4 py-2" data-label={m['admin.catalog.comment']()}>{bridge.comment || '—'}</td>
 					<td class="px-4 py-2" data-label={m['admin.catalog.statusColumn']()}>
-						<span class="inline-flex items-center gap-2" aria-busy={toggling === `bridge:${bridge.name}`}>
+						<span class="inline-flex items-center gap-2" aria-busy={toggling === `bridge:${bridge.node}/${bridge.name}`}>
 							<Switch
 								checked={bridge.enabled}
 								label={bridge.enabled ? m['admin.catalog.revokeApproval']({ name: bridge.name }) : m['admin.catalog.approveName']({ name: bridge.name })}
-								onToggle={() => onToggle(bridge.name, !bridge.enabled)}
+								onToggle={() => onToggle(bridge.node, bridge.name, !bridge.enabled)}
 							/>
 							<span class="text-xs text-muted-foreground">
-								{#if toggling === `bridge:${bridge.name}`}
+								{#if toggling === `bridge:${bridge.node}/${bridge.name}`}
 									…
 								{:else}
 									{bridge.enabled ? m['admin.catalog.approvedStatus']() : m['admin.catalog.approveAction']()}

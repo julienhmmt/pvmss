@@ -63,7 +63,7 @@ func UpdateNetwork(ctx context.Context, deps NetworkDependencies, requested []cl
 		}
 
 		seen[iface.Index] = true
-		if !deps.Resources.HasBridge(iface.Bridge) {
+		if !deps.Resources.HasBridge(iface.Bridge, entity.Node) {
 			return nil, fmt.Errorf("%w: %s", ErrBridgeNotApproved, iface.Bridge)
 		}
 
