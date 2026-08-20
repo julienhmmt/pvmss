@@ -85,6 +85,47 @@ export class AdminCatalogStore {
 	toggling = $state.raw<string | null>(null);
 	toggleError = $state.raw<string | null>(null);
 
+	isoSearch = $state('');
+	isoStorageFilter = $state('');
+	isoNodeFilter = $state('');
+	isoEnabledFilter: 'all' | 'enabled' | 'disabled' = $state('all');
+	isoSortBy: 'file' | 'storage' | 'node' | 'size' | 'enabled' = $state('file');
+	isoSortDir: 'asc' | 'desc' = $state('asc');
+
+	filteredIsos = $derived(
+		sortIsos(
+			this.isos.filter((iso) => {
+				if (this.isoSearch && !iso.file.toLowerCase().includes(this.isoSearch.toLowerCase())) return false;
+				if (this.isoStorageFilter && iso.storage !== this.isoStorageFilter) return false;
+				if (this.isoNodeFilter && iso.node !== this.isoNodeFilter) return false;
+				if (this.isoEnabledFilter === 'enabled' && !iso.enabled) return false;
+				if (this.isoEnabledFilter === 'disabled' && iso.enabled) return false;
+				return true;
+			}),
+			this.isoSortBy,
+			this.isoSortDir
+		)
+	);
+
+	isoStorageOptions = $derived([...new Set(this.isos.map((i) => i.storage))].sort());
+	isoNodeOptions = $derived([...new Set(this.isos.map((i) => i.node))].sort());
+
+	setISOSort(column: 'file' | 'storage' | 'node' | 'size' | 'enabled'): void {
+		if (this.isoSortBy === column) {
+			this.isoSortDir = this.isoSortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			this.isoSortBy = column;
+			this.isoSortDir = 'asc';
+		}
+	}
+
+	resetISOFilters(): void {
+		this.isoSearch = '';
+		this.isoStorageFilter = '';
+		this.isoNodeFilter = '';
+		this.isoEnabledFilter = 'all';
+	}
+
 	async loadClusters(): Promise<void> {
 		try {
 			this.clusterOptions = await fetchClusterOptions();
@@ -201,6 +242,33 @@ export class AdminCatalogStore {
 			this.toggling = null;
 		}
 	}
+}
+
+type ISOSortColumn = 'file' | 'storage' | 'node' | 'size' | 'enabled';
+
+function sortIsos(isos: AdminISO[], sortBy: ISOSortColumn, dir: 'asc' | 'desc'): AdminISO[] {
+	const sorted = [...isos].sort((a, b) => {
+		let cmp = 0;
+		switch (sortBy) {
+			case 'file':
+				cmp = a.file.localeCompare(b.file);
+				break;
+			case 'storage':
+				cmp = a.storage.localeCompare(b.storage) || a.file.localeCompare(b.file);
+				break;
+			case 'node':
+				cmp = a.node.localeCompare(b.node) || a.file.localeCompare(b.file);
+				break;
+			case 'size':
+				cmp = a.sizeBytes - b.sizeBytes || a.file.localeCompare(b.file);
+				break;
+			case 'enabled':
+				cmp = Number(a.enabled) - Number(b.enabled) || a.file.localeCompare(b.file);
+				break;
+		}
+		return cmp;
+	});
+	return dir === 'asc' ? sorted : sorted.reverse();
 }
 
 const ADMIN_CATALOG_CONTEXT_KEY = Symbol('admin-catalog');
