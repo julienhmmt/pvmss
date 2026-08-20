@@ -181,7 +181,7 @@ func TestFake_Action_RejectsStatusIncompatibleTransition(t *testing.T) {
 		{name: "start on running", vmid: 100, action: actionStart, wantErr: true}, // VM 100 is running
 		{name: "stop on stopped", vmid: 101, action: actionStop, wantErr: true},   // VM 101 is stopped
 		{name: "shutdown on stopped", vmid: 101, action: actionShutdown, wantErr: true},
-		{name: "reboot on stopped", vmid: 101, action: "reboot", wantErr: true},
+		{name: "reboot on stopped", vmid: 101, action: actionReboot, wantErr: true},
 		{name: "start on stopped", vmid: 101, action: actionStart, wantErr: false}, // valid
 		{name: "stop on running", vmid: 100, action: actionStop, wantErr: false},   // valid
 	}

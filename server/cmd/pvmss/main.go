@@ -337,13 +337,21 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: writer, Store: st, Refresher: worker, Log: logger}, policyService)
 	vmBulk := httpapi.NewVMBulkWithRegistry(inventoryRegistry, projection, authHandler, writer, st, refresher, logger)
 	vmCloudInit := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{Projection: projection, Auth: authHandler, Reader: cloudInitReader, Writer: writer, Store: st, Refresher: worker, Log: logger}, policyService)
-	vmCreate := httpapi.NewVMCreate(authHandler, st, creator, writer, logger, policyService)
+	vmCreate := httpapi.NewVMCreateWithRegistry(
+		authHandler,
+		st,
+		clusterRegistry,
+		creator,
+		writer,
+		logger,
+		policyService,
+	)
 	tasks := httpapi.NewTasks(authHandler, creator, worker, logger)
 	snapshots := httpapi.NewVMSnapshots(projection, authHandler, snapshotReader, snapshotWriter, st, logger, policyService)
 	vmConsole := httpapi.NewVMConsole(projection, authHandler, consoleRelay, consoleTickets, st, logger)
 	adminCatalog := httpapi.NewAdminCatalogWithRegistry(authHandler, st, clusterRegistry, projection, logger)
 	adminPolicy := httpapi.NewAdminPolicyWithRegistry(authHandler, policyService, clusterRegistry, logger)
-	adminPools := httpapi.NewAdminPools(authHandler, clusterClient, projection, writer, st, worker, logger)
+	adminPools := httpapi.NewAdminPools(authHandler, clusterClient, projection, writer, st, worker, st, logger)
 	adminOps := httpapi.NewAdminOps(authHandler, st, clusterClient, projection, appVersion, logger)
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, clusterRegistry, inventoryRegistry, logger)
 	docsHandler := httpapi.NewDocsAPIHandler(authHandler, st, logger)

@@ -21,6 +21,37 @@ import (
 	"time"
 )
 
+type vmCreateSnapshotClient struct {
+	cluster.Fake
+	snapshot cluster.Snapshot
+}
+
+func (client vmCreateSnapshotClient) Snapshot(context.Context) (cluster.Snapshot, error) {
+	return client.snapshot, nil
+}
+
+type vmCreateClientProvider struct {
+	clients map[string]cluster.Client
+}
+
+func (provider vmCreateClientProvider) Client(name string) (cluster.Client, error) {
+	client, ok := provider.clients[name]
+	if !ok {
+		return nil, cluster.ErrClusterNotFound
+	}
+
+	return client, nil
+}
+
+func (provider vmCreateClientProvider) List() []string {
+	names := make([]string, 0, len(provider.clients))
+	for name := range provider.clients {
+		names = append(names, name)
+	}
+
+	return names
+}
+
 // newVMCreateHandler builds the creation handler over the fake cluster with a
 // real seeded store (the catalog fixture comes from migration version 7).
 // Every test that creates a VM mutates the fake dataset, so cleanup resets it.
@@ -41,8 +72,48 @@ func newVMCreateHandler(t *testing.T) (*httpapi.VMCreate, *httpapi.Auth, *store.
 	}
 
 	t.Cleanup(func() { _ = st.Close() })
+	seedBridgeApprovals(t, st)
 
-	return httpapi.NewVMCreate(authHandler, st, cluster.Fake{}, cluster.Fake{}, logger), authHandler, st
+	return httpapi.NewVMCreate(
+		authHandler,
+		st,
+		cluster.Fake{},
+		cluster.Fake{},
+		cluster.Fake{},
+		logger,
+	), authHandler, st
+}
+
+func seedBridgeApprovals(t *testing.T, st *store.Store) {
+	t.Helper()
+
+	for _, node := range []string{cluster.FakeNode01, cluster.FakeNode02} {
+		for _, name := range []string{"vmbr0", "vmbr1"} {
+			if err := st.SetBridgeEnabled(context.Background(), "default", node, name, true); err != nil {
+				t.Fatalf("seed bridge approval: %v", err)
+			}
+		}
+	}
+}
+
+func seedStaleStorageApprovals(t *testing.T, st *store.Store) {
+	t.Helper()
+
+	for _, name := range []string{cluster.FakeStorageBackupNFS, cluster.FakeStoragePBS} {
+		if err := st.SetStorageEnabled(context.Background(), "default", name, cluster.FakeNode03, true); err != nil {
+			t.Fatalf("seed stale storage approval %q: %v", name, err)
+		}
+	}
+}
+
+func assertNoIneligibleStorageNames(t *testing.T, names []string) {
+	t.Helper()
+
+	for _, name := range names {
+		if name == cluster.FakeStorageBackupNFS || name == cluster.FakeStoragePBS {
+			t.Errorf("ineligible storage %q returned in options", name)
+		}
+	}
 }
 
 func postVMCreate(t *testing.T, handler *httpapi.VMCreate, body string, cookie *http.Cookie) *httptest.ResponseRecorder {
@@ -139,12 +210,12 @@ func TestVMCreate_PoolFieldHasNoEffect(t *testing.T) {
 	}
 }
 
-// TestVMCreate_NoPoolIdentityForbidden — T011/FR-005: the local admin has no
-// personal pool; creation is refused with 403 and NextVMID is never called
-// (no VMID burned — the fake's create call log stays empty).
+// TestVMCreate_AdminWithoutPoolSucceeds — an admin (local or cluster) has no
+// personal pool but may still create VMs; the VM is created without a pool
+// assignment and the response is 202 Accepted.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestVMCreate_NoPoolIdentityForbidden(t *testing.T) {
+func TestVMCreate_AdminWithoutPoolSucceeds(t *testing.T) {
 	handler, authHandler, _ := newVMCreateHandler(t)
 
 	response := serveJSON(authHandler.AdminLogin, "/api/v1/auth/admin-login", `{"password":"pvmss-local-admin"}`)
@@ -156,21 +227,21 @@ func TestVMCreate_NoPoolIdentityForbidden(t *testing.T) {
 
 	res := postVMCreate(t, handler,
 		`{"cluster":"default","name":"web-06","profileId":"small"}`, cookie)
-	if res.Code != http.StatusForbidden {
-		t.Fatalf("status = %d, want %d: %s", res.Code, http.StatusForbidden, res.Body.String())
+	if res.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, want %d: %s", res.Code, http.StatusAccepted, res.Body.String())
 	}
 
-	var body apiErrorEnvelope
+	var body struct {
+		Cluster string `json:"cluster"`
+		VMID    int    `json:"vmid"`
+		Name    string `json:"name"`
+	}
 	if err := json.Unmarshal(res.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode error body: %v", err)
+		t.Fatalf("decode response: %v", err)
 	}
 
-	if body.Code != "no_pool" {
-		t.Fatalf("error code = %q, want no_pool", body.Code)
-	}
-
-	if calls := cluster.FakeCalls(); len(calls) != 0 {
-		t.Fatalf("forbidden request reached the cluster: %+v", calls)
+	if body.Name != "web-06" || body.VMID == 0 {
+		t.Fatalf("response = %+v, want a fully-populated created VM", body)
 	}
 }
 
@@ -208,8 +279,9 @@ func TestVMCreate_CatalogViolation(t *testing.T) {
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreateCatalog_SeededShape(t *testing.T) {
-	handler, authHandler, _ := newVMCreateHandler(t)
+	handler, authHandler, st := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+	seedStaleStorageApprovals(t, st)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/vm-create/catalog", nil)
 	req.AddCookie(cookie)
@@ -254,8 +326,84 @@ func TestVMCreateCatalog_SeededShape(t *testing.T) {
 		t.Errorf("catalog size mismatch: %+v", body)
 	}
 
+	storageNames := make([]string, 0, len(body.Storages))
+	for _, storage := range body.Storages {
+		storageNames = append(storageNames, storage.Name)
+	}
+
+	assertNoIneligibleStorageNames(t, storageNames)
+
 	if body.Profiles[0].ID == "" || body.Profiles[0].CPUCores < 1 {
 		t.Errorf("profile row malformed: %+v", body.Profiles[0])
+	}
+}
+
+// TestVMCreateCatalog_SelectsStorageClientByCluster verifies catalog discovery
+// uses the requested cluster's client rather than the default client.
+//
+//nolint:paralleltest // serial: shared fake identity fixture
+func TestVMCreateCatalog_SelectsStorageClientByCluster(t *testing.T) {
+	const secondaryStorage = "secondary-images"
+
+	_, authHandler, st := newVMCreateHandler(t)
+
+	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+
+	if err := st.SetStorageEnabled(
+		context.Background(),
+		crossSecondaryCluster,
+		secondaryStorage,
+		cluster.FakeNode02,
+		true,
+	); err != nil {
+		t.Fatalf("approve secondary storage: %v", err)
+	}
+
+	provider := vmCreateClientProvider{clients: map[string]cluster.Client{
+		auditTestCluster: vmCreateSnapshotClient{snapshot: cluster.Snapshot{Storages: []cluster.Storage{{
+			Name: secondaryStorage, Node: cluster.FakeNode02, Type: "nfs", PluginType: "nfs", Content: "backup",
+		}}}},
+		crossSecondaryCluster: vmCreateSnapshotClient{snapshot: cluster.Snapshot{Storages: []cluster.Storage{{
+			Name: secondaryStorage, Node: cluster.FakeNode02, Type: "dir", PluginType: "dir", Content: "images",
+		}}}},
+	}}
+
+	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
+	handler := httpapi.NewVMCreateWithRegistry(
+		authHandler,
+		st,
+		provider,
+		cluster.Fake{},
+		cluster.Fake{},
+		logger,
+	)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/vm-create/catalog?cluster="+crossSecondaryCluster, nil)
+	req.AddCookie(cookie)
+
+	recorder := httptest.NewRecorder()
+	handler.ServeCatalog(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", recorder.Code, http.StatusOK, recorder.Body.String())
+	}
+
+	var body struct {
+		Cluster  string `json:"cluster"`
+		Storages []struct {
+			Name string `json:"name"`
+		} `json:"storages"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode catalog: %v", err)
+	}
+
+	if body.Cluster != crossSecondaryCluster {
+		t.Errorf("cluster = %q, want secondary", body.Cluster)
+	}
+
+	if len(body.Storages) != 1 || body.Storages[0].Name != secondaryStorage {
+		t.Errorf("storages = %+v, want selected cluster storage", body.Storages)
 	}
 }
 

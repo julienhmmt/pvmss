@@ -11,11 +11,13 @@
 	interface Props {
 		open: boolean;
 		editing: AdminCluster | null;
+		saving: boolean;
+		error: string | null;
 		onClose: () => void;
 		onSubmit: (input: ClusterInput) => void;
 	}
 
-	let { open = $bindable(false), editing, onClose, onSubmit }: Props = $props();
+	let { open = $bindable(false), editing, saving, error, onClose, onSubmit }: Props = $props();
 	let name = $state('');
 	let url = $state('');
 	let tokenId = $state('');
@@ -68,9 +70,12 @@
 			onToggle={(checked) => (tlsInsecureSkipVerify = checked)}
 			variant="warning"
 		/>
+		{#if error}
+			<p class="text-sm text-destructive" role="alert">{error}</p>
+		{/if}
 		<div class="mt-2 flex justify-end gap-2">
-			<Button variant="secondary" onclick={onClose}>{m['common.cancel']()}</Button>
-			<Button type="submit">{m['common.save']()}</Button>
+			<Button variant="secondary" onclick={onClose} disabled={saving}>{m['common.cancel']()}</Button>
+			<Button type="submit" disabled={saving}>{m['common.save']()}</Button>
 		</div>
 	</form>
 </Dialog>

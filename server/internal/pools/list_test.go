@@ -3,9 +3,12 @@ package pools_test
 
 import (
 	"context"
+	"path/filepath"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/pools"
+	"pvmss/server/internal/store"
 	"testing"
 )
 
@@ -35,6 +38,9 @@ func TestList_RunningStoppedBreakdown(t *testing.T) {
 	if item.Running+item.Stopped != item.Total {
 		t.Fatalf("running + stopped != total: %+v", item)
 	}
+	if item.Managed {
+		t.Fatalf("legacy List should not mark pools managed: %+v", item)
+	}
 
 	items, err = pools.List(context.Background(), client, projection, "does-not-exist")
 	if err != nil {
@@ -58,5 +64,51 @@ func TestList_EmptyPoolHasZeroCounts(t *testing.T) {
 	}
 	if len(items) != 1 || items[0].Total != 0 || items[0].Running != 0 || items[0].Stopped != 0 {
 		t.Fatalf("rows = %+v, want one zero summary", items)
+	}
+}
+
+// TestList_WithManagedCheckerFlagsManagedPools verifies the Managed flag is
+// populated from the store for managed pools and false for unmanaged ones.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestList_WithManagedCheckerFlagsManagedPools(t *testing.T) {
+	cluster.ResetFake()
+	t.Cleanup(cluster.ResetFake)
+	client := cluster.Fake{}
+	snapshot, err := client.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+	index := inventory.BuildIndex(snapshot)
+	projection := inventory.NewProjectionFromIndex(&index)
+
+	st, err := store.Open(config.Configuration{DBPath: filepath.Join(t.TempDir(), "pools-list-managed.db")})
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	if err := st.RegisterManagedPool(context.Background(), "default", cluster.FakePoolAlice); err != nil {
+		t.Fatalf("RegisterManagedPool: %v", err)
+	}
+
+	items, err := pools.ListWithManaged(context.Background(), client, projection, st, "default", "")
+	if err != nil {
+		t.Fatalf("ListWithManaged: %v", err)
+	}
+	managedCount := 0
+	for _, item := range items {
+		if item.Name == cluster.FakePoolAlice && !item.Managed {
+			t.Fatalf("alice should be managed: %+v", item)
+		}
+		if item.Name == cluster.FakePoolBob && item.Managed {
+			t.Fatalf("bob should not be managed: %+v", item)
+		}
+		if item.Managed {
+			managedCount++
+		}
+	}
+	if managedCount != 1 {
+		t.Fatalf("managed count = %d, want 1", managedCount)
 	}
 }

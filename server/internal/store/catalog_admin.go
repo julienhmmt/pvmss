@@ -28,6 +28,7 @@ type CatalogStorageEnabled struct {
 // CatalogBridgeEnabled is one catalog_bridges row with its enabled state.
 type CatalogBridgeEnabled struct {
 	Name    string
+	Node    string
 	Enabled bool
 }
 
@@ -84,14 +85,14 @@ func (s *Store) CatalogStoragesEnabled(ctx context.Context, cluster string) ([]C
 }
 
 // CatalogBridgesEnabled returns all catalog_bridges rows (including disabled)
-// with their enabled state, ordered by name.
+// with their enabled state, ordered by node then name.
 func (s *Store) CatalogBridgesEnabled(ctx context.Context, cluster string) ([]CatalogBridgeEnabled, error) {
 	return queryCatalog(ctx, s.db, "catalog bridges enabled",
-		`SELECT name, enabled FROM catalog_bridges WHERE cluster = ? ORDER BY name`,
+		`SELECT name, node, enabled FROM catalog_bridges WHERE cluster = ? ORDER BY node, name`,
 		[]any{cluster},
 		func(rows *sql.Rows) (CatalogBridgeEnabled, error) {
 			var b CatalogBridgeEnabled
-			return b, rows.Scan(&b.Name, &b.Enabled)
+			return b, rows.Scan(&b.Name, &b.Node, &b.Enabled)
 		},
 	)
 }
@@ -140,12 +141,12 @@ func (s *Store) SetStorageEnabled(ctx context.Context, cluster, name, node strin
 	)
 }
 
-// SetBridgeEnabled upserts the enabled state for one bridge.
-func (s *Store) SetBridgeEnabled(ctx context.Context, cluster, name string, enabled bool) error {
+// SetBridgeEnabled upserts the enabled state for one (node, name) pair.
+func (s *Store) SetBridgeEnabled(ctx context.Context, cluster, node, name string, enabled bool) error {
 	return execWrite(ctx, s.db,
-		`INSERT INTO catalog_bridges (cluster, name, enabled) VALUES (?, ?, ?)
-		 ON CONFLICT(cluster, name) DO UPDATE SET enabled = excluded.enabled`,
-		[]any{cluster, name, enabled},
+		`INSERT INTO catalog_bridges (cluster, node, name, enabled) VALUES (?, ?, ?, ?)
+		 ON CONFLICT(cluster, node, name) DO UPDATE SET enabled = excluded.enabled`,
+		[]any{cluster, node, name, enabled},
 	)
 }
 

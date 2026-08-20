@@ -89,6 +89,7 @@
 				<tr>
 					<th class="px-4 py-2 font-medium">{m['common.name']()}</th>
 					<th class="px-4 py-2 font-medium">{m['admin.pools.comment']()}</th>
+					<th class="px-4 py-2 font-medium">{m['admin.pools.origin']()}</th>
 					<th class="px-4 py-2 text-right font-medium">{m['common.total']()}</th>
 					<th class="px-4 py-2 text-right font-medium">{m['common.running']()}</th>
 					<th class="px-4 py-2 text-right font-medium">{m['common.stopped']()}</th>
@@ -100,15 +101,24 @@
 					<tr class="border-t border-border">
 						<td class="px-4 py-2 font-mono">{pool.name}</td>
 						<td class="px-4 py-2 text-muted-foreground">{pool.comment || '—'}</td>
+						<td class="px-4 py-2">
+							<span class="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium {pool.managed ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border bg-muted text-muted-foreground'}">
+								{pool.managed ? m['admin.pools.managedByPvmss']() : m['admin.pools.managedByProxmox']()}
+							</span>
+						</td>
 						<td class="px-4 py-2 text-right">{pool.total}</td>
 						<td class="px-4 py-2 text-right">{pool.running}</td>
 						<td class="px-4 py-2 text-right">{pool.stopped}</td>
 						<td class="px-4 py-2 text-right">
-							<Button variant="destructive" size="sm" label={m['admin.pools.deletePoolLabel']({ name: pool.name })} onclick={() => openDelete(pool.name)}>{m['common.delete']()}</Button>
+							{#if pool.managed}
+								<Button variant="destructive" size="sm" label={m['admin.pools.deletePoolLabel']({ name: pool.name })} onclick={() => openDelete(pool.name)}>{m['common.delete']()}</Button>
+							{:else}
+								<span class="text-xs text-muted-foreground">{m['admin.pools.deleteBlockedNotManaged']()}</span>
+							{/if}
 						</td>
 					</tr>
 				{:else}
-					<tr><td colspan={6} class="p-0">
+					<tr><td colspan={7} class="p-0">
 						<EmptyState title={search ? m['admin.pools.noSearchResults']() : m['admin.pools.noPools']()} />
 					</td></tr>
 				{/each}

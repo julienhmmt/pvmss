@@ -14,7 +14,7 @@ import (
 // then a SecurityResult of 0 (OK). A real noVNC client expects exactly this
 // sequence to complete its handshake.
 //
-//nolint:paralleltest,gocyclo // serial: shared fake fixture; step-by-step handshake verification
+//nolint:paralleltest // serial: shared fake fixture; step-by-step handshake verification
 func TestRFBFakeHandshake_VersionAndSecurity(t *testing.T) {
 	client, server := netPipe(t)
 	defer func() { _ = client.Close(); _ = server.Close() }()

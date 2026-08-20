@@ -35,10 +35,13 @@ type CascadeDeps struct {
 	Writer      cluster.Writer
 	Audit       vm.AuditRecorder
 	Refresher   vm.IndexRefresher
+	Managed     ManagedStore
 }
 
 // Delete stops and purges pool members through T05's VM write paths, then
-// removes the pool and makes a best-effort user deletion.
+// removes the pool and makes a best-effort user deletion. When deps.Managed is
+// non-nil, the pool must be recorded as PVMSS-managed or deletion is refused
+// with ErrNotManaged before any cluster write.
 func Delete(ctx context.Context, deps CascadeDeps, name string) (DeleteResult, error) {
 	actor := deps.Actor
 	client := deps.Client
@@ -48,6 +51,15 @@ func Delete(ctx context.Context, deps CascadeDeps, name string) (DeleteResult, e
 	}
 	if err := ensurePoolExists(ctx, client, name); err != nil {
 		return DeleteResult{}, err
+	}
+	if deps.Managed != nil && deps.ClusterName != "" {
+		managed, err := deps.Managed.IsPoolManaged(ctx, deps.ClusterName, name)
+		if err != nil {
+			return DeleteResult{}, err
+		}
+		if !managed {
+			return DeleteResult{}, ErrNotManaged
+		}
 	}
 	index := projection.Load()
 	if index == nil {
@@ -60,6 +72,11 @@ func Delete(ctx context.Context, deps CascadeDeps, name string) (DeleteResult, e
 	waitForEmpty(ctx, projection, name, len(members) > 0)
 	if err := client.DeletePool(ctx, name); err != nil {
 		return DeleteResult{}, err
+	}
+	if deps.Managed != nil && deps.ClusterName != "" {
+		if err := deps.Managed.UnregisterManagedPool(ctx, deps.ClusterName, name); err != nil {
+			slog.Default().Warn("managed pool marker removal failed", "cluster", deps.ClusterName, "pool", name, "error", err)
+		}
 	}
 	userDeleted := deletePoolUser(ctx, client, name)
 	return DeleteResult{Status: "deleted", UserDeleted: userDeleted}, nil

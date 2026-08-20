@@ -21,10 +21,18 @@ type PoolSummary struct {
 	Total   int
 	Running int
 	Stopped int
+	Managed bool
 }
 
 // List returns discovered pools joined with the current inventory breakdown.
+// When checker is non-nil, each row's Managed flag reflects the managed_pools
+// store; otherwise every row reports Managed=false (legacy callers).
 func List(ctx context.Context, client cluster.Client, projection *inventory.Projection, search string) ([]PoolSummary, error) {
+	return ListWithManaged(ctx, client, projection, nil, "", search)
+}
+
+// ListWithManaged mirrors List but populates the Managed flag from the store.
+func ListWithManaged(ctx context.Context, client cluster.Client, projection *inventory.Projection, checker ManagedChecker, clusterName, search string) ([]PoolSummary, error) {
 	pools, err := client.ListPools(ctx)
 	if err != nil {
 		return nil, err
@@ -33,19 +41,27 @@ func List(ctx context.Context, client cluster.Client, projection *inventory.Proj
 	if index == nil {
 		return nil, ErrProjectionNotReady
 	}
+	managed := map[string]struct{}{}
+	if checker != nil && clusterName != "" {
+		managed, err = checker.ManagedPoolNames(ctx, clusterName)
+		if err != nil {
+			return nil, err
+		}
+	}
 	needle := strings.ToLower(strings.TrimSpace(search))
 	rows := make([]PoolSummary, 0, len(pools))
 	for _, pool := range pools {
 		if needle != "" && !strings.Contains(strings.ToLower(pool.Name), needle) {
 			continue
 		}
-		rows = append(rows, summarize(pool, index.ByPool[pool.Name]))
+		_, isManaged := managed[pool.Name]
+		rows = append(rows, summarize(pool, index.ByPool[pool.Name], isManaged))
 	}
 	return rows, nil
 }
 
-func summarize(pool cluster.Pool, members []cluster.VM) PoolSummary {
-	row := PoolSummary{Name: pool.Name, Comment: pool.Comment, Total: len(members)}
+func summarize(pool cluster.Pool, members []cluster.VM, managed bool) PoolSummary {
+	row := PoolSummary{Name: pool.Name, Comment: pool.Comment, Total: len(members), Managed: managed}
 	for _, member := range members {
 		if member.Status == cluster.VMRunning {
 			row.Running++

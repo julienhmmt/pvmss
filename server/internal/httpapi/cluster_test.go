@@ -70,6 +70,10 @@ func (stubClusterClient) DeleteUser(_ context.Context, _ string) error {
 	return cluster.ErrNotImplemented
 }
 
+func (stubClusterClient) DisplayName(_ context.Context) (string, error) {
+	return "", cluster.ErrNotImplemented
+}
+
 // buildProjectionWithIndex creates a Projection and populates it with an Index
 // built from the given snapshot, stamped at the given refresh time.
 func buildProjectionWithIndex(t *testing.T, snap cluster.Snapshot, refreshedAt time.Time) *inventory.Projection {

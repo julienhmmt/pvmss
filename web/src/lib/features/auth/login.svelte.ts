@@ -8,6 +8,7 @@ export interface Principal {
 	pool: string;
 	isAdmin: boolean;
 	cluster: string;
+	clusterDisplayName: string;
 }
 
 export class LoginForm {

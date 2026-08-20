@@ -7,7 +7,16 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"strings"
 	"time"
+)
+
+const (
+	storagePluginCephFS  = "cephfs"
+	storagePluginDir     = "dir"
+	storagePluginLVM     = "lvm"
+	storagePluginPBS     = "pbs"
+	storageContentImages = "images"
 )
 
 // Sentinel errors so callers can distinguish failure modes without string matching.
@@ -23,6 +32,7 @@ var (
 // must behave identically from a caller's perspective (constitution XI).
 type Client interface {
 	Snapshot(ctx context.Context) (Snapshot, error)
+	DisplayName(ctx context.Context) (string, error)
 	Authenticate(ctx context.Context, username, password string) (Identity, error)
 	ChangePassword(ctx context.Context, username, oldPassword, newPassword string) error
 	ListBridges(ctx context.Context) ([]Bridge, error)
@@ -240,15 +250,32 @@ type Storage struct {
 	Name            string
 	Node            string
 	Type            string
+	PluginType      string
+	Content         string
 	Total           int64
 	Used            int64
 	SupportsVMState bool
 }
 
+// IsVMCapableStorage reports whether a storage can hold VM disk images.
+// Proxmox content capabilities are exact comma-separated tokens; PBS remains
+// ineligible even if a malformed or future response advertises images.
+func IsVMCapableStorage(storage Storage) bool {
+	if storage.PluginType == storagePluginPBS || storage.Type == storagePluginPBS {
+		return false
+	}
+
+	for capability := range strings.SplitSeq(storage.Content, ",") {
+		if capability == storageContentImages {
+			return true
+		}
+	}
+
+	return false
+}
+
 // Bridge is a network bridge reported by a node. Approval (catalog_bridges) is
-// keyed by Name alone — a bridge can be present on more than one node, but the
-// approval key is cluster-wide, matching T06's existing schema (spec
-// Assumptions). Node is display-only.
+// keyed by (cluster, node, name).
 type Bridge struct {
 	Name    string
 	Node    string

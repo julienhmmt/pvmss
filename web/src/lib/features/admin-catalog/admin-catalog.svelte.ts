@@ -52,6 +52,12 @@ interface StorageToggleResponse {
 	enabled: boolean;
 }
 
+interface BridgeToggleResponse {
+	name: string;
+	node: string;
+	enabled: boolean;
+}
+
 interface ISOToggleResponse {
 	storage: string;
 	file: string;
@@ -152,12 +158,19 @@ export class AdminCatalogStore {
 		}
 	}
 
-	async toggleBridge(name: string, enabled: boolean): Promise<void> {
-		this.toggling = `bridge:${name}`;
+	async toggleBridge(node: string, name: string, enabled: boolean): Promise<void> {
+		this.toggling = `bridge:${node}/${name}`;
 		this.toggleError = null;
 		try {
-			await post<ToggleResponse>('/api/v1/admin/bridges/toggle', { cluster: this.cluster, name, enabled });
-			this.bridges = this.bridges.map((b) => (b.name === name ? { ...b, enabled } : b));
+			await post<BridgeToggleResponse>('/api/v1/admin/bridges/toggle', {
+				cluster: this.cluster,
+				node,
+				name,
+				enabled
+			});
+			this.bridges = this.bridges.map((bridge) =>
+				bridge.node === node && bridge.name === name ? { ...bridge, enabled } : bridge
+			);
 		} catch (err) {
 			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.toggleBridgeError']();
 			throw err;

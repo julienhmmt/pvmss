@@ -4,9 +4,12 @@ package pools_test
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/config"
 	"pvmss/server/internal/pools"
+	"pvmss/server/internal/store"
 	"testing"
 )
 
@@ -95,5 +98,32 @@ func TestCreate_NonAdminIsRejectedBeforeClusterCalls(t *testing.T) {
 	}
 	if calls := cluster.FakeCalls(); len(calls) != 0 {
 		t.Fatalf("calls = %+v, want none", calls)
+	}
+}
+
+// TestCreate_WithRecorderRegistersManagedPool verifies that a successful
+// CreateWithRecorder records the pool as managed in the store.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestCreate_WithRecorderRegistersManagedPool(t *testing.T) {
+	cluster.ResetFake()
+	t.Cleanup(cluster.ResetFake)
+	admin := auth.Identity{Username: "admin", IsAdmin: true}
+	client := cluster.Fake{}
+	st, err := store.Open(config.Configuration{DBPath: filepath.Join(t.TempDir(), "pools-managed.db")})
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	if _, err := pools.CreateWithRecorder(context.Background(), admin, client, st, "default", "team-y", "S0meLongPW!"); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	managed, err := st.IsPoolManaged(context.Background(), "default", "team-y")
+	if err != nil {
+		t.Fatalf("IsPoolManaged: %v", err)
+	}
+	if !managed {
+		t.Fatal("pool not recorded as managed after CreateWithRecorder")
 	}
 }

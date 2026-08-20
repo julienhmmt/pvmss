@@ -7,10 +7,10 @@ test.describe('T02 authentication', () => {
 		await expect(page.getByRole('complementary')).toHaveCount(0);
 		await expect(page.getByTestId('app-sidebar')).toHaveCount(0);
 
-		await page.getByLabel('Username').fill('alice');
-		await page.getByLabel('Password').fill('pvmss-alice');
+		await page.locator('input[autocomplete="username"]').fill('alice');
+		await page.locator('input[autocomplete="current-password"]').fill('pvmss-alice');
 		await page.locator('#login-cluster').selectOption('default');
-		await page.getByRole('button', { name: 'Sign in' }).click();
+		await page.locator('button[type="submit"]').click();
 		await expect(page).toHaveURL(/\/nodes$/);
 
 		const me = await page.request.get('/api/v1/auth/me');
@@ -21,5 +21,13 @@ test.describe('T02 authentication', () => {
 		expect(logout.status()).toBe(204);
 		const signedOut = await page.request.get('/api/v1/auth/me');
 		expect(signedOut.status()).toBe(401);
+	});
+
+	test('redirects the local administrator to the admin dashboard', async ({ page }) => {
+		await page.goto('/login');
+		await page.locator('input[type="radio"][value="local"]').check();
+		await page.locator('input[autocomplete="current-password"]').fill('pvmss-e2e-admin');
+		await page.locator('button[type="submit"]').click();
+		await expect(page).toHaveURL(/\/admin$/);
 	});
 });

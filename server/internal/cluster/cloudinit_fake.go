@@ -22,7 +22,7 @@ func originalFakeCloudInitConfigs() map[fakeCloudInitKey]CloudInitConfig {
 			SSHKeys:      []string{fakeSSHKey},
 			IPMode:       CloudInitIPModeStatic,
 			IPAddress:    "10.0.0.42/24",
-			Gateway:      "10.0.0.1",
+			Gateway:      FakeCloudInitDNS,
 			DNSServer:    FakeCloudInitDNS,
 			SearchDomain: fakeSearchDomain,
 		},

@@ -84,7 +84,7 @@ func (p Proxmox) RelayConsole(ctx context.Context, _ string, vmid int, proxy VNC
 
 // proxmoxGetVNCTicket dials the vncproxy endpoint and returns the ticket+port.
 func proxmoxGetVNCTicket(ctx context.Context, c proxmoxVNCClient, node string, vmid int) (VNCProxyTicket, error) {
-	endpoint := fmt.Sprintf("%s/api2/json/nodes/%s/qemu/%d/vncproxy", strings.TrimRight(c.baseURL, "/"), url.PathEscape(node), vmid)
+	endpoint := fmt.Sprintf("%s/nodes/%s/qemu/%d/vncproxy", apiBase(c.baseURL), url.PathEscape(node), vmid)
 
 	form := url.Values{"websocket": {"1"}}.Encode()
 
