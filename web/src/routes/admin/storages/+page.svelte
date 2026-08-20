@@ -40,9 +40,12 @@
 
 	<div class="fade-in">
 		<StoragesTable
-			storages={store.storages}
+			storages={store.sortedStorages}
 			toggling={store.toggling}
 			onToggle={(name, node, enabled) => void store.toggleStorage(name, node, enabled)}
+			sortBy={store.storageSortBy}
+			sortDir={store.storageSortDir}
+			onSort={(column) => store.setStorageSort(column)}
 		/>
 	</div>
 {/if}
