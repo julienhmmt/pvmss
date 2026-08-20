@@ -19,7 +19,9 @@
 	deleting={store.deleting}
 	deleteError={store.deleteError}
 	announce={store.announce}
+	credentials={store.createdCredentials}
 	onSearch={(value) => store.applySearch(value)}
-	onCreate={(name, password, comment) => store.create(name, password, comment)}
+	onCreate={(name, comment) => store.create(name, comment)}
 	onDelete={(name) => store.remove(name)}
+	onDismissCredentials={() => store.dismissCredentials()}
 />

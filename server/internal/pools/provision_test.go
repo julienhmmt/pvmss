@@ -127,3 +127,65 @@ func TestCreate_WithRecorderRegistersManagedPool(t *testing.T) {
 		t.Fatal("pool not recorded as managed after CreateWithRecorder")
 	}
 }
+
+// TestCreateManaged_GeneratesPasswordAndPrefixesPool verifies that CreateManaged
+// generates a password, prefixes the pool name with pvmss-, and registers the
+// prefixed name as managed.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestCreateManaged_GeneratesPasswordAndPrefixesPool(t *testing.T) {
+	cluster.ResetFake()
+	t.Cleanup(cluster.ResetFake)
+	admin := auth.Identity{Username: "admin", IsAdmin: true}
+	client := cluster.Fake{}
+	st, err := store.Open(config.Configuration{DBPath: filepath.Join(t.TempDir(), "pools-managed-gen.db")})
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	creds, err := pools.CreateManaged(context.Background(), admin, client, st, "default", "alice", "Alice pool")
+	if err != nil {
+		t.Fatalf("CreateManaged: %v", err)
+	}
+	if creds.PoolName != "pvmss-alice" {
+		t.Errorf("PoolName = %q, want pvmss-alice", creds.PoolName)
+	}
+	if creds.Username != "pvmss-alice" {
+		t.Errorf("Username = %q, want pvmss-alice", creds.Username)
+	}
+	if len(creds.Password) < 8 {
+		t.Errorf("Password length = %d, want >= 8", len(creds.Password))
+	}
+	if creds.Comment != "Alice pool" {
+		t.Errorf("Comment = %q, want Alice pool", creds.Comment)
+	}
+	managed, err := st.IsPoolManaged(context.Background(), "default", "pvmss-alice")
+	if err != nil {
+		t.Fatalf("IsPoolManaged: %v", err)
+	}
+	if !managed {
+		t.Fatal("pvmss-alice not recorded as managed")
+	}
+}
+
+// TestCreateManaged_RejectsNonAdmin verifies that non-admins cannot create
+// managed pools.
+func TestCreateManaged_RejectsNonAdmin(t *testing.T) {
+	cluster.ResetFake()
+	t.Cleanup(cluster.ResetFake)
+	_, err := pools.CreateManaged(context.Background(), auth.Identity{IsAdmin: false}, cluster.Fake{}, nil, "default", "alice", "")
+	if !errors.Is(err, pools.ErrForbidden) {
+		t.Fatalf("err = %v, want ErrForbidden", err)
+	}
+}
+
+// TestCreateManaged_RejectsInvalidName verifies name validation still applies.
+func TestCreateManaged_RejectsInvalidName(t *testing.T) {
+	cluster.ResetFake()
+	t.Cleanup(cluster.ResetFake)
+	_, err := pools.CreateManaged(context.Background(), auth.Identity{IsAdmin: true}, cluster.Fake{}, nil, "default", "UPPER", "")
+	if !errors.Is(err, pools.ErrInvalidName) {
+		t.Fatalf("err = %v, want ErrInvalidName", err)
+	}
+}

@@ -1,11 +1,12 @@
 <script lang="ts">
-	import type { AdminPool } from './pools.svelte';
+	import type { AdminPool, CreatedPoolCredentials } from './pools.svelte';
 	import CreatePoolDialog from './CreatePoolDialog.svelte';
 	import DeletePoolConfirm from './DeletePoolConfirm.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -17,12 +18,14 @@
 		deleting: string | null;
 		deleteError: string | null;
 		announce: string | null;
+		credentials: CreatedPoolCredentials | null;
 		onSearch: (value: string) => void;
-		onCreate: (name: string, password: string, comment: string) => Promise<void>;
+		onCreate: (name: string, comment: string) => Promise<void>;
 		onDelete: (name: string) => Promise<void>;
+		onDismissCredentials: () => void;
 	}
 
-	let { pools, loading, error, saving, saveError, deleting, deleteError, announce, onSearch, onCreate, onDelete }: Props = $props();
+	let { pools, loading, error, saving, saveError, deleting, deleteError, announce, credentials, onSearch, onCreate, onDelete, onDismissCredentials }: Props = $props();
 	let search = $state('');
 	let showCreate = $state(false);
 	let deleteName = $state<string | null>(null);
@@ -127,7 +130,44 @@
 	</div>
 {/if}
 
-<CreatePoolDialog bind:open={showCreate} saving={saving} error={saveError} onClose={closeCreate} onCreate={async (name, password, comment) => { try { await onCreate(name, password, comment); closeCreate(); } catch { /* error shown via saveError */ } }} />
+<CreatePoolDialog bind:open={showCreate} saving={saving} error={saveError} onClose={closeCreate} onCreate={async (name, comment) => { try { await onCreate(name, comment); closeCreate(); } catch { /* error shown via saveError */ } }} />
 {#if deleteName}
 	<DeletePoolConfirm open={true} poolName={deleteName} deleting={deleting === deleteName} error={deleteError} onClose={closeDelete} onConfirm={confirmDelete} />
+{/if}
+
+{#if credentials}
+	<Dialog open={true} labelledBy="credentials-title" onClose={onDismissCredentials}>
+		<h2 id="credentials-title" class="mb-4 text-lg font-semibold">{m['admin.pools.credentialsTitle']()}</h2>
+		<div class="space-y-4">
+			<p class="rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">
+				{m['admin.pools.credentialsWarning']()}
+			</p>
+			<div class="space-y-2">
+				<div>
+					<span class="mb-1 block text-sm font-medium">{m['admin.pools.poolName']()}</span>
+					<div class="flex items-center gap-2">
+						<code class="flex-1 rounded-md border border-border bg-muted px-3 py-2 text-sm">{credentials.name}</code>
+						<Button variant="secondary" size="sm" onclick={() => navigator.clipboard.writeText(credentials.name)}>{m['common.copy']()}</Button>
+					</div>
+				</div>
+				<div>
+					<span class="mb-1 block text-sm font-medium">{m['admin.pools.username']()}</span>
+					<div class="flex items-center gap-2">
+						<code class="flex-1 rounded-md border border-border bg-muted px-3 py-2 text-sm">{credentials.username}@pve</code>
+						<Button variant="secondary" size="sm" onclick={() => navigator.clipboard.writeText(`${credentials.username}@pve`)}>{m['common.copy']()}</Button>
+					</div>
+				</div>
+				<div>
+					<span class="mb-1 block text-sm font-medium">{m['admin.pools.generatedPassword']()}</span>
+					<div class="flex items-center gap-2">
+						<code class="flex-1 rounded-md border border-border bg-muted px-3 py-2 text-sm font-mono">{credentials.password}</code>
+						<Button variant="secondary" size="sm" onclick={() => navigator.clipboard.writeText(credentials.password)}>{m['common.copy']()}</Button>
+					</div>
+				</div>
+			</div>
+			<div class="flex justify-end pt-2">
+				<Button onclick={onDismissCredentials}>{m['admin.pools.credentialsDismiss']()}</Button>
+			</div>
+		</div>
+	</Dialog>
 {/if}
