@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AdminCatalogStore, type AdminBridge, type AdminISO } from './admin-catalog.svelte';
+import { AdminCatalogStore, type AdminBridge, type AdminISO, type AdminStorage } from './admin-catalog.svelte';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -106,6 +106,55 @@ describe('AdminCatalogStore', () => {
 			store.isoEnabledFilter = 'enabled';
 			store.resetISOFilters();
 			expect(store.filteredIsos.length).toBe(3);
+		});
+	});
+
+	describe('sortedStorages', () => {
+		const storages: AdminStorage[] = [
+			{ name: 'nfs-share', node: 'node-b', type: 'nfs', totalBytes: 2000, usedBytes: 500, enabled: false },
+			{ name: 'local-lvm', node: 'node-a', type: 'lvm', totalBytes: 1000, usedBytes: 100, enabled: true },
+			{ name: 'local-lvm', node: 'node-b', type: 'lvm', totalBytes: 3000, usedBytes: 200, enabled: false }
+		];
+
+		it('sorts by name ascending then descending', () => {
+			const store = new AdminCatalogStore();
+			store.storages = storages;
+			store.storageSortBy = 'name';
+			store.storageSortDir = 'asc';
+			expect(store.sortedStorages.map((s) => s.name)).toEqual(['local-lvm', 'local-lvm', 'nfs-share']);
+			store.storageSortDir = 'desc';
+			expect(store.sortedStorages.map((s) => s.name)).toEqual(['nfs-share', 'local-lvm', 'local-lvm']);
+		});
+
+		it('sorts by node with name as tiebreaker', () => {
+			const store = new AdminCatalogStore();
+			store.storages = storages;
+			store.storageSortBy = 'node';
+			store.storageSortDir = 'asc';
+			expect(store.sortedStorages.map((s) => `${s.node}/${s.name}`)).toEqual([
+				'node-a/local-lvm',
+				'node-b/local-lvm',
+				'node-b/nfs-share'
+			]);
+		});
+
+		it('sorts by usage', () => {
+			const store = new AdminCatalogStore();
+			store.storages = storages;
+			store.storageSortBy = 'usage';
+			store.storageSortDir = 'asc';
+			expect(store.sortedStorages.map((s) => s.usedBytes)).toEqual([100, 200, 500]);
+		});
+
+		it('setStorageSort toggles direction on same column and resets on new column', () => {
+			const store = new AdminCatalogStore();
+			store.storageSortBy = 'name';
+			store.storageSortDir = 'asc';
+			store.setStorageSort('name');
+			expect(store.storageSortDir).toBe('desc');
+			store.setStorageSort('node');
+			expect(store.storageSortBy).toBe('node');
+			expect(store.storageSortDir).toBe('asc');
 		});
 	});
 });

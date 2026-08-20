@@ -92,6 +92,9 @@ export class AdminCatalogStore {
 	isoSortBy: 'file' | 'storage' | 'node' | 'size' | 'enabled' = $state('file');
 	isoSortDir: 'asc' | 'desc' = $state('asc');
 
+	storageSortBy: 'name' | 'node' | 'type' | 'usage' | 'enabled' = $state('name');
+	storageSortDir: 'asc' | 'desc' = $state('asc');
+
 	filteredIsos = $derived(
 		sortIsos(
 			this.isos.filter((iso) => {
@@ -109,6 +112,17 @@ export class AdminCatalogStore {
 
 	isoStorageOptions = $derived([...new Set(this.isos.map((i) => i.storage))].sort());
 	isoNodeOptions = $derived([...new Set(this.isos.map((i) => i.node))].sort());
+
+	sortedStorages = $derived(sortStorages(this.storages, this.storageSortBy, this.storageSortDir));
+
+	setStorageSort(column: 'name' | 'node' | 'type' | 'usage' | 'enabled'): void {
+		if (this.storageSortBy === column) {
+			this.storageSortDir = this.storageSortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			this.storageSortBy = column;
+			this.storageSortDir = 'asc';
+		}
+	}
 
 	setISOSort(column: 'file' | 'storage' | 'node' | 'size' | 'enabled'): void {
 		if (this.isoSortBy === column) {
@@ -245,6 +259,32 @@ export class AdminCatalogStore {
 }
 
 type ISOSortColumn = 'file' | 'storage' | 'node' | 'size' | 'enabled';
+type StorageSortColumn = 'name' | 'node' | 'type' | 'usage' | 'enabled';
+
+function sortStorages(storages: AdminStorage[], sortBy: StorageSortColumn, dir: 'asc' | 'desc'): AdminStorage[] {
+	const sorted = [...storages].sort((a, b) => {
+		let cmp = 0;
+		switch (sortBy) {
+			case 'name':
+				cmp = a.name.localeCompare(b.name) || a.node.localeCompare(b.node);
+				break;
+			case 'node':
+				cmp = a.node.localeCompare(b.node) || a.name.localeCompare(b.name);
+				break;
+			case 'type':
+				cmp = a.type.localeCompare(b.type) || a.name.localeCompare(b.name) || a.node.localeCompare(b.node);
+				break;
+			case 'usage':
+				cmp = a.usedBytes - b.usedBytes || a.name.localeCompare(b.name);
+				break;
+			case 'enabled':
+				cmp = Number(a.enabled) - Number(b.enabled) || a.name.localeCompare(b.name) || a.node.localeCompare(b.node);
+				break;
+		}
+		return cmp;
+	});
+	return dir === 'asc' ? sorted : sorted.reverse();
+}
 
 function sortIsos(isos: AdminISO[], sortBy: ISOSortColumn, dir: 'asc' | 'desc'): AdminISO[] {
 	const sorted = [...isos].sort((a, b) => {
