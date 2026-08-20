@@ -42,6 +42,7 @@
 <span
 	bind:this={triggerEl}
 	class="inline-flex"
+	role="presentation"
 	aria-describedby={tooltipId}
 	onmouseenter={show}
 	onmouseleave={hide}
