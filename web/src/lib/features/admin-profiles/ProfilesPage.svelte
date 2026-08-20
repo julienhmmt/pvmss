@@ -7,14 +7,30 @@
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import TooltipHeader from '$lib/shared/ui/TooltipHeader.svelte';
+	import SortableTooltipHeader from '$lib/shared/ui/SortableTooltipHeader.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+
+	type ProfileSortColumn = 'id' | 'label' | 'cpuCores' | 'memoryMB' | 'diskGB';
 
 	interface Props {
 		profiles: AdminProfile[];
+		filteredProfiles: AdminProfile[];
 		loading: boolean;
 		error: string | null;
 		saving: boolean;
 		saveError: string | null;
+		search: string;
+		busFilter: string;
+		enabledFilter: 'all' | 'enabled' | 'disabled';
+		busOptions: string[];
+		sortBy: ProfileSortColumn;
+		sortDir: 'asc' | 'desc';
+		onSearchChange: (value: string) => void;
+		onBusFilterChange: (value: string) => void;
+		onEnabledFilterChange: (value: 'all' | 'enabled' | 'disabled') => void;
+		onSort: (column: ProfileSortColumn) => void;
+		onResetFilters: () => void;
 		onCreate: (label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string) => void;
 		onUpdate: (id: string, label: string, cpuCores: number, memoryMB: number, diskGB: number, bus: string) => void;
 		onDelete: (id: string) => void;
@@ -23,15 +39,31 @@
 
 	let {
 		profiles,
+		filteredProfiles,
 		loading,
 		error,
 		saving,
 		saveError,
+		search,
+		busFilter,
+		enabledFilter,
+		busOptions,
+		sortBy,
+		sortDir,
+		onSearchChange,
+		onBusFilterChange,
+		onEnabledFilterChange,
+		onSort,
+		onResetFilters,
 		onCreate,
 		onUpdate,
 		onDelete,
 		onToggle
 	}: Props = $props();
+
+	function handleSort(column: string): void {
+		onSort(column as ProfileSortColumn);
+	}
 
 	let showForm = $state(false);
 	let editingId = $state<string | null>(null);
@@ -94,22 +126,51 @@
 		</p>
 	{/if}
 
+	{#if profiles.length > 0}
+		<div class="mb-4 flex flex-wrap items-center gap-2">
+			<input
+				type="search"
+				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+				placeholder={m['admin.profiles.searchPlaceholder']()}
+				value={search}
+				oninput={(e) => onSearchChange(e.currentTarget.value)}
+			/>
+			<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={busFilter} onchange={(e) => onBusFilterChange(e.currentTarget.value)}>
+				<option value="">{m['admin.profiles.filterBus']()}</option>
+				{#each busOptions as bus}
+					<option value={bus}>{bus}</option>
+				{/each}
+			</select>
+			<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={enabledFilter} onchange={(e) => onEnabledFilterChange(e.currentTarget.value as 'all' | 'enabled' | 'disabled')}>
+				<option value="all">{m['admin.profiles.filterEnabled']()}</option>
+				<option value="enabled">{m['admin.profiles.filterEnabledOnly']()}</option>
+				<option value="disabled">{m['admin.profiles.filterDisabledOnly']()}</option>
+			</select>
+			<button
+				class="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
+				onclick={onResetFilters}
+			>
+				{m['admin.profiles.resetFilters']()}
+			</button>
+		</div>
+	{/if}
+
 	<div class="overflow-x-auto rounded-lg border border-border">
 		<table class="w-full text-sm">
 			<thead class="bg-muted/50 text-left">
 				<tr>
-					<th class="px-4 py-2 font-medium">{m['admin.profiles.id']()}</th>
-					<th class="px-4 py-2 font-medium">{m['admin.profiles.labelField']()}</th>
-					<th class="px-4 py-2 font-medium">{m['admin.profiles.vcpu']()}</th>
-					<th class="px-4 py-2 font-medium">{m['common.memory']()}</th>
-					<th class="px-4 py-2 font-medium">{m['admin.profiles.disk']()}</th>
-					<th class="px-4 py-2 font-medium">{m['admin.profiles.bus']()}</th>
+					<SortableTooltipHeader text={m['admin.profiles.id']()} tooltip={m['admin.profiles.tooltip.id']()} column="id" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<SortableTooltipHeader text={m['admin.profiles.labelField']()} tooltip={m['admin.profiles.tooltip.id']()} column="label" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<SortableTooltipHeader text={m['admin.profiles.vcpu']()} tooltip={m['admin.profiles.tooltip.vcpu']()} column="cpuCores" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<SortableTooltipHeader text={m['common.memory']()} tooltip={m['admin.profiles.tooltip.memory']()} column="memoryMB" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<SortableTooltipHeader text={m['admin.profiles.disk']()} tooltip={m['admin.profiles.tooltip.disk']()} column="diskGB" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<TooltipHeader text={m['admin.profiles.bus']()} tooltip={m['admin.profiles.tooltip.bus']()} />
 					<th class="px-4 py-2 font-medium">{m['admin.profiles.enabledStatus']()}</th>
 					<th class="px-4 py-2 font-medium">{m['common.actions']()}</th>
 				</tr>
 			</thead>
 			<tbody>
-				{#each profiles as profile (profile.id)}
+				{#each filteredProfiles as profile (profile.id)}
 					<tr class="border-t border-border">
 						<td class="px-4 py-2 font-mono text-xs">{profile.id}</td>
 						<td class="px-4 py-2">{profile.label}</td>
@@ -138,11 +199,15 @@
 					</tr>
 				{:else}
 					<tr><td colspan={8} class="p-0">
-						<EmptyState title={m['admin.profiles.noProfiles']()}>
-							{#snippet actions()}
-								<Button onclick={openCreate}>{m['admin.profiles.newProfile']()}</Button>
-							{/snippet}
-						</EmptyState>
+						{#if profiles.length > 0}
+							<EmptyState title={m['admin.profiles.noFilterMatches']()} />
+						{:else}
+							<EmptyState title={m['admin.profiles.noProfiles']()}>
+								{#snippet actions()}
+									<Button onclick={openCreate}>{m['admin.profiles.newProfile']()}</Button>
+								{/snippet}
+							</EmptyState>
+						{/if}
 					</td></tr>
 				{/each}
 			</tbody>
