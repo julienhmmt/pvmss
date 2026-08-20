@@ -91,6 +91,8 @@ type BridgeRow struct {
 }
 
 // ISORow is one enabled_isos → catalog_isos mapping after volid splitting.
+// Node is empty because the legacy table did not record per-node discovery;
+// the v0.4 schema stores node="" for these legacy entries.
 type ISORow struct {
 	Storage string
 	File    string

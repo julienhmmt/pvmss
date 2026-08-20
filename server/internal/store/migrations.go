@@ -151,6 +151,24 @@ const schemaV15 = `CREATE TABLE managed_pools (
 // key. Existing rows get NULL — callers fall back to the logical name.
 const schemaV16 = `ALTER TABLE clusters ADD COLUMN display_name TEXT`
 
+// schemaV17 rebuilds catalog_isos with node in the primary key. The previous
+// schema keyed on (cluster, storage, file), which collapsed duplicate ISO files
+// discovered on the same storage name across multiple nodes — the toggle could
+// not be attributed to a single node and the UI showed duplicate Svelte keys.
+// Node is now part of the identity, mirroring catalog_bridges' (cluster, node,
+// name) key. Existing rows are dropped (they are repopulated by discovery +
+// admin approval; the recovery tool writes node="" for legacy entries).
+const schemaV17 = `
+DROP TABLE catalog_isos;
+CREATE TABLE catalog_isos (
+	cluster TEXT NOT NULL,
+	node    TEXT NOT NULL,
+	storage TEXT NOT NULL,
+	file    TEXT NOT NULL,
+	enabled BOOLEAN NOT NULL DEFAULT 1,
+	PRIMARY KEY (cluster, node, storage, file)
+);`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -176,4 +194,5 @@ var Migrations = []Migration{
 	{Version: 14, DDL: schemaV14},
 	{Version: 15, DDL: schemaV15},
 	{Version: 16, DDL: schemaV16},
+	{Version: 17, DDL: schemaV17},
 }

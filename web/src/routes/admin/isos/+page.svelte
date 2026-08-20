@@ -42,7 +42,7 @@
 		<IsosTable
 			isos={store.isos}
 			toggling={store.toggling}
-			onToggle={(storage, file, enabled) => void store.toggleISO(storage, file, enabled)}
+			onToggle={(node, storage, file, enabled) => void store.toggleISO(node, storage, file, enabled)}
 		/>
 	</div>
 {/if}

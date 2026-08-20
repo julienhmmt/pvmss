@@ -194,8 +194,6 @@ type storageToggleResponse struct {
 }
 
 // ServeStorageToggle handles POST /api/v1/admin/storages/toggle.
-//
-//nolint:dupl // intentionally parallel to ServeISOToggle (same shape, different resource)
 func (h *AdminCatalog) ServeStorageToggle(w http.ResponseWriter, r *http.Request) {
 	var req storageToggleRequest
 	if err := decodeJSON(w, r, &req); err != nil {
@@ -376,23 +374,27 @@ func (h *AdminCatalog) ServeISOs(w http.ResponseWriter, r *http.Request) {
 
 type isoToggleRequest struct {
 	Cluster string `json:"cluster"`
+	Node    string `json:"node"`
 	Storage string `json:"storage"`
 	File    string `json:"file"`
 	Enabled bool   `json:"enabled"`
 }
 
 type isoToggleResponse struct {
+	Node    string `json:"node"`
 	Storage string `json:"storage"`
 	File    string `json:"file"`
 	Enabled bool   `json:"enabled"`
 }
 
 // ServeISOToggle handles POST /api/v1/admin/isos/toggle.
-//
-//nolint:dupl // intentionally parallel to ServeStorageToggle (same shape, different resource)
 func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 	var req isoToggleRequest
 	if err := decodeJSON(w, r, &req); err != nil {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
+		return
+	}
+	if strings.TrimSpace(req.Node) == "" {
 		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
@@ -409,9 +411,9 @@ func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
 		return
 	}
-	err = catalog.SetISOEnabled(r.Context(), h.store, client, clusterName, req.Storage, req.File, req.Enabled)
+	err = catalog.SetISOEnabled(r.Context(), h.store, client, clusterName, req.Node, req.Storage, req.File, req.Enabled)
 	if errors.Is(err, cluster.ErrNotFound) {
-		writeAdminError(w, http.StatusNotFound, "not_found", isoNotFoundMsg(req.Storage, req.File))
+		writeAdminError(w, http.StatusNotFound, "not_found", isoNotFoundMsg(req.Node, req.Storage, req.File))
 		return
 	}
 
@@ -422,7 +424,7 @@ func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeAdminJSON(w, http.StatusOK, isoToggleResponse{Storage: req.Storage, File: req.File, Enabled: req.Enabled})
+	writeAdminJSON(w, http.StatusOK, isoToggleResponse{Node: req.Node, Storage: req.Storage, File: req.File, Enabled: req.Enabled})
 }
 
 // --- helpers ---
@@ -472,6 +474,6 @@ func bridgeNotFoundMsg(node, name string) string {
 	return "bridge \"" + name + "\" on node \"" + node + "\"" + msgNotReportedByCluster
 }
 
-func isoNotFoundMsg(storage, file string) string {
-	return "iso \"" + file + "\" on storage \"" + storage + "\"" + msgNotReportedByCluster
+func isoNotFoundMsg(node, storage, file string) string {
+	return "iso \"" + file + "\" on storage \"" + storage + "\" on node \"" + node + "\"" + msgNotReportedByCluster
 }

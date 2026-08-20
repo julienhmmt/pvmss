@@ -8,7 +8,7 @@
 	interface Props {
 		isos: AdminISO[];
 		toggling: string | null;
-		onToggle: (storage: string, file: string, enabled: boolean) => void;
+		onToggle: (node: string, storage: string, file: string, enabled: boolean) => void;
 	}
 
 	let { isos, toggling, onToggle }: Props = $props();
@@ -26,7 +26,7 @@
 			</tr>
 		</thead>
 		<tbody>
-			{#each isos as iso (iso.storage + iso.file)}
+			{#each isos as iso (iso.node + ':' + iso.storage + ':' + iso.file)}
 				<tr class="border-t border-border">
 					<td class="px-4 py-2 font-mono" data-label={m['admin.catalog.file']()}>{iso.file}</td>
 					<td class="px-4 py-2 font-mono" data-label={m['common.storage']()}>{iso.storage}</td>
@@ -35,15 +35,15 @@
 					<td class="px-4 py-2" data-label={m['admin.catalog.statusColumn']()}>
 						<span
 							class="inline-flex items-center gap-2"
-							aria-busy={toggling === `iso:${iso.storage}:${iso.file}`}
+							aria-busy={toggling === `iso:${iso.node}:${iso.storage}:${iso.file}`}
 						>
 							<Switch
 								checked={iso.enabled}
 								label={iso.enabled ? m['admin.catalog.revokeApproval']({ name: iso.file }) : m['admin.catalog.approveName']({ name: iso.file })}
-								onToggle={() => onToggle(iso.storage, iso.file, !iso.enabled)}
+								onToggle={() => onToggle(iso.node, iso.storage, iso.file, !iso.enabled)}
 							/>
 							<span class="text-xs text-muted-foreground">
-								{#if toggling === `iso:${iso.storage}:${iso.file}`}
+								{#if toggling === `iso:${iso.node}:${iso.storage}:${iso.file}`}
 									…
 								{:else}
 									{iso.enabled ? m['admin.catalog.approvedStatus']() : m['admin.catalog.approveAction']()}

@@ -283,9 +283,9 @@ type Bridge struct {
 	Comment string
 }
 
-// ISOImage is one ISO file discovered on a storage backend. Approval
-// (catalog_isos) is keyed by (Storage, File); Node is display-only, matching
-// T06's existing schema.
+// ISOImage is one ISO file discovered on a storage backend on a node. Approval
+// (catalog_isos) is keyed by (Node, Storage, File) so the same file on the same
+// storage name across multiple nodes can be toggled independently.
 type ISOImage struct {
 	Storage   string
 	Node      string

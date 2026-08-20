@@ -29,9 +29,10 @@ CREATE TABLE catalog_bridges (
 );
 CREATE TABLE catalog_isos (
 	cluster TEXT NOT NULL,
+	node    TEXT NOT NULL,
 	storage TEXT NOT NULL,
 	file    TEXT NOT NULL,
-	PRIMARY KEY (cluster, storage, file)
+	PRIMARY KEY (cluster, node, storage, file)
 );
 CREATE TABLE catalog_profiles (
 	cluster   TEXT NOT NULL,
@@ -57,9 +58,9 @@ INSERT INTO catalog_bridges (cluster, node, name) VALUES
 	('default', 'pve-node-01', 'vmbr0'),
 	('default', 'pve-node-01', 'vmbr1');
 
-INSERT INTO catalog_isos (cluster, storage, file) VALUES
-	('default', 'local', 'debian-12-generic-amd64.iso'),
-	('default', 'local', 'ubuntu-24.04-server-amd64.iso');
+INSERT INTO catalog_isos (cluster, node, storage, file) VALUES
+	('default', 'pve-node-01', 'local', 'debian-12-generic-amd64.iso'),
+	('default', 'pve-node-01', 'local', 'ubuntu-24.04-server-amd64.iso');
 
 INSERT INTO catalog_profiles (cluster, id, label, cpu_cores, memory_mb, disk_gb, bus) VALUES
 	('default', 'small', 'Small (1 vCPU, 2 GB, 20 GB)', 1, 2048, 20, 'scsi'),

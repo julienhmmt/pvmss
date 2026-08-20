@@ -132,8 +132,6 @@ func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Clie
 
 // AdminListBridges returns every bridge the cluster reports, unioned with its
 // stored approval state per (node, name) pair.
-//
-//nolint:dupl // Intentionally parallels AdminListISOs with a different composite identity.
 func AdminListBridges(ctx context.Context, st *store.Store, client cluster.Client, clusterName string) ([]BridgeApproval, error) {
 	discovered, err := client.ListBridges(ctx)
 	if err != nil {
@@ -165,9 +163,7 @@ func AdminListBridges(ctx context.Context, st *store.Store, client cluster.Clien
 }
 
 // AdminListISOs returns every ISO the cluster reports, unioned with its stored
-// approval state keyed by (storage, file).
-//
-//nolint:dupl // Intentionally parallels AdminListBridges with a different composite identity.
+// approval state keyed by (node, storage, file).
 func AdminListISOs(ctx context.Context, st *store.Store, client cluster.Client, clusterName string) ([]ISOApproval, error) {
 	discovered, err := client.ListISOs(ctx)
 	if err != nil {
@@ -181,7 +177,7 @@ func AdminListISOs(ctx context.Context, st *store.Store, client cluster.Client, 
 
 	enabledByKey := make(map[isoKey]bool, len(enabledRows))
 	for _, i := range enabledRows {
-		enabledByKey[isoKey{Storage: i.Storage, File: i.File}] = i.Enabled
+		enabledByKey[isoKey{Node: i.Node, Storage: i.Storage, File: i.File}] = i.Enabled
 	}
 
 	out := make([]ISOApproval, 0, len(discovered))
@@ -191,7 +187,7 @@ func AdminListISOs(ctx context.Context, st *store.Store, client cluster.Client, 
 			Node:      iso.Node,
 			File:      iso.File,
 			SizeBytes: iso.SizeBytes,
-			Enabled:   enabledByKey[isoKey{Storage: iso.Storage, File: iso.File}],
+			Enabled:   enabledByKey[isoKey{Node: iso.Node, Storage: iso.Storage, File: iso.File}],
 		})
 	}
 
@@ -246,10 +242,10 @@ func SetBridgeEnabled(ctx context.Context, st *store.Store, client cluster.Clien
 	return st.SetBridgeEnabled(ctx, clusterName, node, name, enabled)
 }
 
-// SetISOEnabled upserts the enabled state for one (storage, file) pair.
+// SetISOEnabled upserts the enabled state for one (node, storage, file) triple.
 // See SetNodeEnabled for the discovery-error contract.
-func SetISOEnabled(ctx context.Context, st *store.Store, client cluster.Client, clusterName, storage, file string, enabled bool) error {
-	discovered, err := isoDiscovered(ctx, client, storage, file)
+func SetISOEnabled(ctx context.Context, st *store.Store, client cluster.Client, clusterName, node, storage, file string, enabled bool) error {
+	discovered, err := isoDiscovered(ctx, client, node, storage, file)
 	if err != nil {
 		return err
 	}
@@ -258,7 +254,7 @@ func SetISOEnabled(ctx context.Context, st *store.Store, client cluster.Client, 
 		return cluster.ErrNotFound
 	}
 
-	return st.SetISOEnabled(ctx, clusterName, storage, file, enabled)
+	return st.SetISOEnabled(ctx, clusterName, node, storage, file, enabled)
 }
 
 // nodeDiscovered reports whether the cluster reports a node with the given
@@ -300,15 +296,15 @@ func bridgeDiscovered(ctx context.Context, client cluster.Client, node, name str
 }
 
 // isoDiscovered reports whether the cluster reports an ISO with the given
-// (storage, file) pair. See nodeDiscovered for the error contract.
-func isoDiscovered(ctx context.Context, client cluster.Client, storage, file string) (bool, error) {
+// (node, storage, file) triple. See nodeDiscovered for the error contract.
+func isoDiscovered(ctx context.Context, client cluster.Client, node, storage, file string) (bool, error) {
 	isos, err := client.ListISOs(ctx)
 	if err != nil {
 		return false, err
 	}
 
 	return slices.ContainsFunc(isos, func(i cluster.ISOImage) bool {
-		return i.Storage == storage && i.File == file
+		return i.Node == node && i.Storage == storage && i.File == file
 	}), nil
 }
 
@@ -327,6 +323,7 @@ type bridgeKey struct {
 // isoKey is a composite map key for ISOs, avoiding string-concat collisions
 // when a storage or file contains ":".
 type isoKey struct {
+	Node    string
 	Storage string
 	File    string
 }
