@@ -8,6 +8,7 @@ export interface AdminPool {
 	total: number;
 	running: number;
 	stopped: number;
+	managed: boolean;
 }
 
 interface DeletePoolResponse {

@@ -22,7 +22,8 @@ func TestDelete_CascadeAuditTrailAndUserResult(t *testing.T) {
 	t.Cleanup(cluster.ResetFake)
 	client := cluster.Fake{}
 	admin := auth.Identity{Username: "admin", IsAdmin: true}
-	if _, err := pools.Create(context.Background(), admin, client, "carol", "S0meLongPW!"); err != nil {
+	st := openAuditStore(t)
+	if _, err := pools.CreateWithRecorder(context.Background(), admin, client, st, "default", "carol", "S0meLongPW!"); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
@@ -30,9 +31,8 @@ func TestDelete_CascadeAuditTrailAndUserResult(t *testing.T) {
 	if err != nil {
 		t.Fatalf("projection: %v", err)
 	}
-	auditStore := openAuditStore(t)
 	worker := inventory.NewWorker(client, projection, time.Hour, testLogger(t))
-	result, err := pools.Delete(context.Background(), pools.CascadeDeps{Actor: admin, Client: client, Projection: projection, ClusterName: "default", Writer: client, Audit: auditStore, Refresher: worker}, "carol")
+	result, err := pools.Delete(context.Background(), pools.CascadeDeps{Actor: admin, Client: client, Projection: projection, ClusterName: "default", Writer: client, Audit: st, Refresher: worker, Managed: st}, "carol")
 	if err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
@@ -48,6 +48,13 @@ func TestDelete_CascadeAuditTrailAndUserResult(t *testing.T) {
 			t.Fatal("deleted pool remains")
 		}
 	}
+	managed, err := st.IsPoolManaged(context.Background(), "default", "carol")
+	if err != nil {
+		t.Fatalf("IsPoolManaged: %v", err)
+	}
+	if managed {
+		t.Fatal("managed marker remains after delete")
+	}
 }
 
 func TestDelete_CascadeAuditTrailUsesAdminActor(t *testing.T) {
@@ -59,8 +66,11 @@ func TestDelete_CascadeAuditTrailUsesAdminActor(t *testing.T) {
 		t.Fatalf("projection: %v", err)
 	}
 	auditStore := openAuditStore(t)
+	if err := auditStore.RegisterManagedPool(context.Background(), "default", cluster.FakePoolBob); err != nil {
+		t.Fatalf("register managed: %v", err)
+	}
 	worker := inventory.NewWorker(client, projection, time.Hour, testLogger(t))
-	result, err := pools.Delete(context.Background(), pools.CascadeDeps{Actor: auth.Identity{Username: "admin", IsAdmin: true}, Client: client, Projection: projection, ClusterName: "default", Writer: client, Audit: auditStore, Refresher: worker}, cluster.FakePoolBob)
+	result, err := pools.Delete(context.Background(), pools.CascadeDeps{Actor: auth.Identity{Username: "admin", IsAdmin: true}, Client: client, Projection: projection, ClusterName: "default", Writer: client, Audit: auditStore, Refresher: worker, Managed: auditStore}, cluster.FakePoolBob)
 	if err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
@@ -96,7 +106,8 @@ func TestDelete_UserDeletionFailureIsReported(t *testing.T) {
 	t.Cleanup(cluster.ResetFake)
 	client := cluster.Fake{}
 	admin := auth.Identity{Username: "admin", IsAdmin: true}
-	if _, err := pools.Create(context.Background(), admin, client, "carol", "S0meLongPW!"); err != nil {
+	st := openAuditStore(t)
+	if _, err := pools.CreateWithRecorder(context.Background(), admin, client, st, "default", "carol", "S0meLongPW!"); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 	cluster.SetFakeDeleteUserError(errors.New("user deletion failed"))
@@ -105,7 +116,7 @@ func TestDelete_UserDeletionFailureIsReported(t *testing.T) {
 	if err != nil {
 		t.Fatalf("projection: %v", err)
 	}
-	result, err := pools.Delete(context.Background(), pools.CascadeDeps{Actor: admin, Client: client, Projection: projection, ClusterName: "default", Writer: client, Audit: openAuditStore(t), Refresher: inventory.NewWorker(client, projection, time.Hour, testLogger(t))}, "carol")
+	result, err := pools.Delete(context.Background(), pools.CascadeDeps{Actor: admin, Client: client, Projection: projection, ClusterName: "default", Writer: client, Audit: st, Refresher: inventory.NewWorker(client, projection, time.Hour, testLogger(t)), Managed: st}, "carol")
 	if err != nil {
 		t.Fatalf("Delete: %v", err)
 	}
@@ -131,6 +142,76 @@ func TestDelete_NonexistentPoolAndNonAdminAreRejected(t *testing.T) {
 	}
 	if _, err := pools.Delete(context.Background(), pools.CascadeDeps{Actor: auth.Identity{Username: "alice"}, Client: client, Projection: projection, ClusterName: "default", Writer: client, Audit: openAuditStore(t), Refresher: inventory.NewWorker(client, projection, time.Hour, testLogger(t))}, "missing"); !errors.Is(err, pools.ErrForbidden) {
 		t.Fatalf("non-admin error = %v, want ErrForbidden", err)
+	}
+}
+
+// TestDelete_UnmanagedProxmoxPoolIsRejected verifies that an existing Proxmox
+// pool PVMSS did not provision cannot be cascade-deleted.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestDelete_UnmanagedProxmoxPoolIsRejected(t *testing.T) {
+	cluster.ResetFake()
+	t.Cleanup(cluster.ResetFake)
+	client := cluster.Fake{}
+	projection, err := projectionFromFake(t, client)
+	if err != nil {
+		t.Fatalf("projection: %v", err)
+	}
+	st := openAuditStore(t)
+	admin := auth.Identity{Username: "admin", IsAdmin: true}
+	_, err = pools.Delete(context.Background(), pools.CascadeDeps{Actor: admin, Client: client, Projection: projection, ClusterName: "default", Writer: client, Audit: st, Refresher: inventory.NewWorker(client, projection, time.Hour, testLogger(t)), Managed: st}, cluster.FakePoolAlice)
+	if !errors.Is(err, pools.ErrNotManaged) {
+		t.Fatalf("error = %v, want ErrNotManaged", err)
+	}
+	remaining, err := client.ListPools(context.Background())
+	if err != nil {
+		t.Fatalf("ListPools: %v", err)
+	}
+	for _, pool := range remaining {
+		if pool.Name == cluster.FakePoolAlice {
+			return
+		}
+	}
+	t.Fatalf("unmanaged pool was deleted: %+v", remaining)
+}
+
+// TestDelete_ManagedCascadeSucceedsAndUnregisters verifies a managed pool
+// cascade completes and the managed marker is removed.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestDelete_ManagedCascadeSucceedsAndUnregisters(t *testing.T) {
+	cluster.ResetFake()
+	t.Cleanup(cluster.ResetFake)
+	client := cluster.Fake{}
+	admin := auth.Identity{Username: "admin", IsAdmin: true}
+	st := openAuditStore(t)
+	if _, err := pools.CreateWithRecorder(context.Background(), admin, client, st, "default", "team-x", "S0meLongPW!"); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	managed, err := st.IsPoolManaged(context.Background(), "default", "team-x")
+	if err != nil {
+		t.Fatalf("IsPoolManaged: %v", err)
+	}
+	if !managed {
+		t.Fatal("pool not recorded as managed after create")
+	}
+	projection, err := projectionFromFake(t, client)
+	if err != nil {
+		t.Fatalf("projection: %v", err)
+	}
+	result, err := pools.Delete(context.Background(), pools.CascadeDeps{Actor: admin, Client: client, Projection: projection, ClusterName: "default", Writer: client, Audit: st, Refresher: inventory.NewWorker(client, projection, time.Hour, testLogger(t)), Managed: st}, "team-x")
+	if err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if result.Status != "deleted" {
+		t.Fatalf("result = %+v", result)
+	}
+	managed, err = st.IsPoolManaged(context.Background(), "default", "team-x")
+	if err != nil {
+		t.Fatalf("IsPoolManaged after delete: %v", err)
+	}
+	if managed {
+		t.Fatal("managed marker remains after successful cascade")
 	}
 }
 
