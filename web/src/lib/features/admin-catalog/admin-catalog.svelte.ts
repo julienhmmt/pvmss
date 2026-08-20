@@ -59,6 +59,7 @@ interface BridgeToggleResponse {
 }
 
 interface ISOToggleResponse {
+	node: string;
 	storage: string;
 	file: string;
 	enabled: boolean;
@@ -179,18 +180,19 @@ export class AdminCatalogStore {
 		}
 	}
 
-	async toggleISO(storage: string, file: string, enabled: boolean): Promise<void> {
-		this.toggling = `iso:${storage}:${file}`;
+	async toggleISO(node: string, storage: string, file: string, enabled: boolean): Promise<void> {
+		this.toggling = `iso:${node}:${storage}:${file}`;
 		this.toggleError = null;
 		try {
 			await post<ISOToggleResponse>('/api/v1/admin/isos/toggle', {
 				cluster: this.cluster,
+				node,
 				storage,
 				file,
 				enabled
 			});
 			this.isos = this.isos.map((i) =>
-				i.storage === storage && i.file === file ? { ...i, enabled } : i
+				i.node === node && i.storage === storage && i.file === file ? { ...i, enabled } : i
 			);
 		} catch (err) {
 			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.toggleIsoError']();

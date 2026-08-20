@@ -73,6 +73,7 @@ func newVMCreateHandler(t *testing.T) (*httpapi.VMCreate, *httpapi.Auth, *store.
 
 	t.Cleanup(func() { _ = st.Close() })
 	seedBridgeApprovals(t, st)
+	seedISOApprovals(t, st)
 
 	return httpapi.NewVMCreate(
 		authHandler,
@@ -92,6 +93,23 @@ func seedBridgeApprovals(t *testing.T, st *store.Store) {
 			if err := st.SetBridgeEnabled(context.Background(), "default", node, name, true); err != nil {
 				t.Fatalf("seed bridge approval: %v", err)
 			}
+		}
+	}
+}
+
+func seedISOApprovals(t *testing.T, st *store.Store) {
+	t.Helper()
+
+	isos := []struct {
+		node, storage, file string
+	}{
+		{cluster.FakeNode01, cluster.FakeStorageLocal, "debian-12-generic-amd64.iso"},
+		{cluster.FakeNode01, cluster.FakeStorageLocal, "ubuntu-24.04-server-amd64.iso"},
+		{cluster.FakeNode02, cluster.FakeStorageLocal, "rocky-9-generic-x86_64.iso"},
+	}
+	for _, iso := range isos {
+		if err := st.SetISOEnabled(context.Background(), "default", iso.node, iso.storage, iso.file, true); err != nil {
+			t.Fatalf("seed iso approval: %v", err)
 		}
 	}
 }
@@ -322,7 +340,7 @@ func TestVMCreateCatalog_SeededShape(t *testing.T) {
 		t.Errorf("cluster = %q, want default", body.Cluster)
 	}
 
-	if len(body.Nodes) != 2 || len(body.Storages) != 3 || len(body.Bridges) != 2 || len(body.ISOs) != 2 || len(body.Profiles) != 3 {
+	if len(body.Nodes) != 2 || len(body.Storages) != 3 || len(body.Bridges) != 2 || len(body.ISOs) != 3 || len(body.Profiles) != 3 {
 		t.Errorf("catalog size mismatch: %+v", body)
 	}
 

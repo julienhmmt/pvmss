@@ -234,9 +234,9 @@ func upsertBridge(ctx context.Context, v04DB *sql.DB, cluster string, r BridgeRo
 
 func upsertISO(ctx context.Context, v04DB *sql.DB, cluster string, r ISORow) error {
 	_, err := v04DB.ExecContext(ctx, `
-		INSERT INTO catalog_isos (cluster, storage, file, enabled) VALUES (?, ?, ?, ?)
-		ON CONFLICT(cluster, storage, file) DO UPDATE SET enabled = excluded.enabled`,
-		cluster, r.Storage, r.File, r.Enabled)
+		INSERT INTO catalog_isos (cluster, node, storage, file, enabled) VALUES (?, ?, ?, ?, ?)
+		ON CONFLICT(cluster, node, storage, file) DO UPDATE SET enabled = excluded.enabled`,
+		cluster, "", r.Storage, r.File, r.Enabled)
 	if err != nil {
 		return fmt.Errorf("upsert catalog_isos: %w", err)
 	}
