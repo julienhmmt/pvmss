@@ -32,9 +32,10 @@ type Identity struct {
 	// Pool is the tenancy anchor owning this user's VMs (PD00: one pool per
 	// user). Empty for the local admin and for a cluster admin with no
 	// personal pool.
-	Pool    string `json:"pool"`
-	IsAdmin bool   `json:"isAdmin"`
-	Cluster string `json:"cluster"`
+	Pool               string `json:"pool"`
+	IsAdmin            bool   `json:"isAdmin"`
+	Cluster            string `json:"cluster"`
+	ClusterDisplayName string `json:"clusterDisplayName"`
 }
 
 // SessionRecord is a persisted, revocable browser session.

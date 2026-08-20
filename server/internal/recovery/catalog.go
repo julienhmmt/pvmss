@@ -39,7 +39,6 @@ func MapCatalog(ctx context.Context, legacyDB *sql.DB, cluster string, resolver 
 	return nodes, storages, skips, bridges, isos, isoSkips, nil
 }
 
-//nolint:dupl // per-table mappers are intentionally separate (spec: one file per source table)
 func mapNodes(ctx context.Context, legacyDB *sql.DB) ([]NodeRow, error) {
 	rows, err := legacyDB.QueryContext(ctx,
 		`SELECT name, enabled FROM enabled_nodes ORDER BY name`)
@@ -120,10 +119,12 @@ func mapStorages(ctx context.Context, legacyDB *sql.DB, _ string, resolver Stora
 	return out, skips, rows.Err()
 }
 
-//nolint:dupl // per-table mappers are intentionally separate (spec: one file per source table)
 func mapBridges(ctx context.Context, legacyDB *sql.DB) ([]BridgeRow, error) {
-	rows, err := legacyDB.QueryContext(ctx,
-		`SELECT name, enabled FROM enabled_vmbrs ORDER BY name`)
+	rows, err := legacyDB.QueryContext(ctx, `
+		SELECT b.name, n.name, b.enabled
+		FROM enabled_vmbrs b
+		CROSS JOIN enabled_nodes n
+		ORDER BY n.name, b.name`)
 	if err != nil {
 		return nil, fmt.Errorf("query enabled_vmbrs: %w", err)
 	}
@@ -133,7 +134,7 @@ func mapBridges(ctx context.Context, legacyDB *sql.DB) ([]BridgeRow, error) {
 
 	for rows.Next() {
 		var r BridgeRow
-		if err := rows.Scan(&r.Name, &r.Enabled); err != nil {
+		if err := rows.Scan(&r.Name, &r.Node, &r.Enabled); err != nil {
 			return nil, fmt.Errorf("scan enabled_vmbrs: %w", err)
 		}
 
@@ -221,9 +222,9 @@ func upsertStorage(ctx context.Context, v04DB *sql.DB, cluster string, r Storage
 
 func upsertBridge(ctx context.Context, v04DB *sql.DB, cluster string, r BridgeRow) error {
 	_, err := v04DB.ExecContext(ctx, `
-		INSERT INTO catalog_bridges (cluster, name, enabled) VALUES (?, ?, ?)
-		ON CONFLICT(cluster, name) DO UPDATE SET enabled = excluded.enabled`,
-		cluster, r.Name, r.Enabled)
+		INSERT INTO catalog_bridges (cluster, node, name, enabled) VALUES (?, ?, ?, ?)
+		ON CONFLICT(cluster, node, name) DO UPDATE SET enabled = excluded.enabled`,
+		cluster, r.Node, r.Name, r.Enabled)
 	if err != nil {
 		return fmt.Errorf("upsert catalog_bridges: %w", err)
 	}

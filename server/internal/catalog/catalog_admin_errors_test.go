@@ -67,6 +67,10 @@ func (errDiscoveryClient) DeleteUser(_ context.Context, _ string) error {
 	return cluster.ErrNotImplemented
 }
 
+func (errDiscoveryClient) DisplayName(_ context.Context) (string, error) {
+	return "", cluster.ErrNotImplemented
+}
+
 // TestSetNodeEnabled_DiscoveryErrorSurfaced — a Snapshot failure is returned
 // verbatim so the handler maps it to 5xx, not 404 (the contract documented on
 // SetNodeEnabled).
@@ -101,7 +105,7 @@ func TestSetBridgeEnabled_DiscoveryErrorSurfaced(t *testing.T) {
 
 	st := openAdminStore(t)
 
-	err := catalog.SetBridgeEnabled(context.Background(), st, errDiscoveryClient{}, "default", "vmbr0", true)
+	err := catalog.SetBridgeEnabled(context.Background(), st, errDiscoveryClient{}, "default", "pve-node-01", "vmbr0", true)
 	if !errors.Is(err, errDiscovery) {
 		t.Fatalf("SetBridgeEnabled discovery error: got %v, want errDiscovery", err)
 	}

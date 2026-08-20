@@ -13,6 +13,8 @@ const (
 	actionStart    = "start"
 	actionStop     = "stop"
 	actionShutdown = "shutdown"
+	actionReboot   = "reboot"
+	actionReset    = "reset"
 )
 
 // Fake is the built-in cluster substitute (constitution XI). It requires no
@@ -95,6 +97,19 @@ func (fake Fake) Snapshot(_ context.Context) (Snapshot, error) {
 		}
 	}
 	return Snapshot{Nodes: nodesCopy, VMs: vms, Storages: slices.Clone(storages), ProxmoxVersion: version}, nil
+}
+
+// DisplayName implements Client. The fake reports a deterministic display
+// name derived from its logical name so multi-cluster tests can distinguish
+// clusters without a real /cluster/status endpoint.
+func (fake Fake) DisplayName(_ context.Context) (string, error) {
+	if fake.unavailable() {
+		return "", ErrUnreachable
+	}
+	if fake.ClusterName == "" {
+		return "fake-cluster", nil
+	}
+	return fake.ClusterName, nil
 }
 
 // Authenticate implements Client using demonstration-only PVE identities.
@@ -433,7 +448,7 @@ func (fake Fake) Action(_ context.Context, node string, vmid int, action string)
 	}
 
 	switch action {
-	case actionStart, "reboot", "reset":
+	case actionStart, actionReboot, actionReset:
 		state.vms[idx].Status = VMRunning
 		state.vms[idx].Uptime = fakeUptimeOnStart
 	case actionStop, actionShutdown:
@@ -462,7 +477,7 @@ func validateTransition(action string, status VMStatus) error {
 		if status == VMStopped {
 			return fmt.Errorf("%w: vm already stopped", ErrInvalidStateTransition)
 		}
-	case "reboot", "reset":
+	case actionReboot, actionReset:
 		if status == VMStopped {
 			return fmt.Errorf("%w: vm is not running", ErrInvalidStateTransition)
 		}
@@ -724,6 +739,10 @@ const (
 	FakeStorageLocalLVM = "local-lvm"
 	// FakeStorageLocal is the deterministic default fake storage ("local").
 	FakeStorageLocal = "local"
+	// FakeStorageBackupNFS is the backup-only NFS fixture.
+	FakeStorageBackupNFS = "backup-nfs"
+	// FakeStoragePBS is the Proxmox Backup Server fixture.
+	FakeStoragePBS = "pbs-backup"
 	// FakeSnippetStorage is the deterministic snippets-capable fake storage.
 	FakeSnippetStorage = "local"
 	// FakeCloudInitUser is the demo cloud-init account.
@@ -732,6 +751,10 @@ const (
 	FakeCloudInitDNS = "10.0.0.1"
 	// FakeBridgeVMbr0 is the primary bridge fixture.
 	FakeBridgeVMbr0 = "vmbr0"
+	// FakeBridgeVMbr1 is the secondary bridge fixture.
+	FakeBridgeVMbr1 = "vmbr1"
+	// FakePoolAliceShort is the short pool name used in Proxmox API fixtures.
+	FakePoolAliceShort = "alice"
 )
 
 func originalFakeIdentities() map[string]fakeIdentity {
@@ -797,18 +820,19 @@ func originalFakePools() []Pool {
 }
 
 var fakeStorages = []Storage{
-	{Name: FakeStorageLocal, Node: FakeNode01, Type: "dir", Total: 2199023255552, Used: 879609302220, SupportsVMState: false},
-	{Name: FakeStorageLocalLVM, Node: FakeNode01, Type: "lvm", Total: 549755813888, Used: 219902325555, SupportsVMState: true},
-	{Name: "ceph-data", Node: FakeNode02, Type: "cephfs", Total: 1099511627776, Used: 329853488332, SupportsVMState: true},
-	{Name: FakeStorageLocal, Node: FakeNode02, Type: "dir", Total: 274877906944, Used: 68719476736, SupportsVMState: false},
-	{Name: "backup-nfs", Node: FakeNode03, Type: "nfs", Total: 5497558138880, Used: 1099511627776, SupportsVMState: false},
+	{Name: FakeStorageLocal, Node: FakeNode01, Type: storagePluginDir, PluginType: storagePluginDir, Content: "images,iso,vztmpl,backup,snippets", Total: 2199023255552, Used: 879609302220, SupportsVMState: false},
+	{Name: FakeStorageLocalLVM, Node: FakeNode01, Type: storagePluginLVM, PluginType: storagePluginLVM, Content: "images,rootdir", Total: 549755813888, Used: 219902325555, SupportsVMState: true},
+	{Name: "ceph-data", Node: FakeNode02, Type: storagePluginCephFS, PluginType: storagePluginCephFS, Content: storageContentImages, Total: 1099511627776, Used: 329853488332, SupportsVMState: true},
+	{Name: FakeStorageLocal, Node: FakeNode02, Type: storagePluginDir, PluginType: storagePluginDir, Content: "images,iso", Total: 274877906944, Used: 68719476736, SupportsVMState: false},
+	{Name: FakeStorageBackupNFS, Node: FakeNode03, Type: "nfs", PluginType: "nfs", Content: "backup", Total: 5497558138880, Used: 1099511627776, SupportsVMState: false},
+	{Name: FakeStoragePBS, Node: FakeNode03, Type: storagePluginPBS, PluginType: storagePluginPBS, Content: "images,backup", Total: 8796093022208, Used: 2199023255552, SupportsVMState: false},
 }
 
 // fakeBridges is the T11 bridge discovery dataset. T06 approved vmbr0 and
 // vmbr1; vmbr2 is the demo's unapproved target (data-model.md fixture table).
 var fakeBridges = []Bridge{
 	{Name: FakeBridgeVMbr0, Node: FakeNode01, Active: true, Comment: ""},
-	{Name: "vmbr1", Node: FakeNode01, Active: true, Comment: ""},
+	{Name: FakeBridgeVMbr1, Node: FakeNode01, Active: true, Comment: ""},
 	{Name: "vmbr2", Node: FakeNode02, Active: true, Comment: "guest VLAN"},
 }
 
@@ -816,9 +840,9 @@ var fakeBridges = []Bridge{
 // ubuntu-24 (both on local); rocky-9 is the demo's unapproved target
 // (data-model.md fixture table).
 var fakeISOs = []ISOImage{
-	{Storage: "local", Node: FakeNode01, File: "debian-12-generic-amd64.iso", SizeBytes: 691945472},
-	{Storage: "local", Node: FakeNode01, File: "ubuntu-24.04-server-amd64.iso", SizeBytes: 1258291200},
-	{Storage: "local", Node: FakeNode02, File: "rocky-9-generic-x86_64.iso", SizeBytes: 1476395008},
+	{Storage: FakeStorageLocal, Node: FakeNode01, File: "debian-12-generic-amd64.iso", SizeBytes: 691945472},
+	{Storage: FakeStorageLocal, Node: FakeNode01, File: "ubuntu-24.04-server-amd64.iso", SizeBytes: 1258291200},
+	{Storage: FakeStorageLocal, Node: FakeNode02, File: "rocky-9-generic-x86_64.iso", SizeBytes: 1476395008},
 }
 
 // fakeUptimeOnStart is the uptime the fake assigns when a stopped VM is started
@@ -873,7 +897,7 @@ func seedFakeHardware(vms []VM) {
 		}
 
 		vms[index].Disks = []Disk{
-			{Key: "scsi0", Bus: DiskBusSCSI, BusIndex: 0, Storage: FakeStorageLocalLVM, SizeGB: 32},
+			{Key: diskKeySCSI0, Bus: DiskBusSCSI, BusIndex: 0, Storage: FakeStorageLocalLVM, SizeGB: 32},
 			{Key: "scsi1", Bus: DiskBusSCSI, BusIndex: 1, Storage: FakeStorageLocalLVM, SizeGB: 10},
 		}
 		vms[index].CDROM = CDROMState{State: CDROMMounted, ISOVolID: "local:iso/debian-12-generic-amd64.iso"}

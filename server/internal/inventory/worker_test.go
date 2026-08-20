@@ -85,6 +85,10 @@ func (c *callCountClient) DeleteUser(_ context.Context, _ string) error {
 	return cluster.ErrNotImplemented
 }
 
+func (c *callCountClient) DisplayName(_ context.Context) (string, error) {
+	return "", cluster.ErrNotImplemented
+}
+
 func testLogger() *slog.Logger {
 	return slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 }
@@ -456,4 +460,8 @@ func (hungClient) DeletePool(_ context.Context, _ string) error {
 
 func (hungClient) DeleteUser(_ context.Context, _ string) error {
 	return cluster.ErrNotImplemented
+}
+
+func (hungClient) DisplayName(_ context.Context) (string, error) {
+	return "", cluster.ErrNotImplemented
 }

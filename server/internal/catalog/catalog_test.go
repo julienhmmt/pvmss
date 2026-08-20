@@ -57,8 +57,8 @@ func TestApprovedResources_SeedInvariants(t *testing.T) {
 		}
 	}
 
-	if len(resources.Bridges) == 0 {
-		t.Errorf("seed has no approved bridges")
+	if len(resources.Bridges) != 0 {
+		t.Errorf("node-aware migration should reset ambiguous bridge approvals, got %+v", resources.Bridges)
 	}
 }
 

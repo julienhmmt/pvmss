@@ -77,7 +77,7 @@ func TestNetworkInterfaceMarshalJSON(t *testing.T) {
 	t.Run("nil IPAddresses encode as empty array", func(t *testing.T) {
 		t.Parallel()
 
-		got, err := json.Marshal(NetworkInterface{Index: 0, Bridge: "vmbr0"})
+		got, err := json.Marshal(NetworkInterface{Index: 0, Bridge: FakeBridgeVMbr0})
 		if err != nil {
 			t.Fatalf("marshal: %v", err)
 		}
@@ -92,7 +92,7 @@ func TestNetworkInterfaceMarshalJSON(t *testing.T) {
 	t.Run("populated IPAddresses encode as-is", func(t *testing.T) {
 		t.Parallel()
 
-		ni := NetworkInterface{Index: 1, Bridge: "vmbr1", IPAddresses: []string{"10.0.0.5", "fc00::5"}}
+		ni := NetworkInterface{Index: 1, Bridge: FakeBridgeVMbr1, IPAddresses: []string{"10.0.0.5", "fc00::5"}}
 
 		got, err := json.Marshal(ni)
 		if err != nil {
@@ -103,6 +103,33 @@ func TestNetworkInterfaceMarshalJSON(t *testing.T) {
 			t.Fatalf("got %s, expected populated ipAddresses", got)
 		}
 	})
+}
+
+func TestIsVMCapableStorage_ExactImagesTokenAndPBSExclusion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		storage Storage
+		want    bool
+	}{
+		{name: "images only", storage: Storage{PluginType: storagePluginDir, Content: storageContentImages}, want: true},
+		{name: "images among capabilities", storage: Storage{PluginType: "lvmthin", Content: "rootdir,images"}, want: true},
+		{name: "backup only", storage: Storage{PluginType: "nfs", Content: "backup"}, want: false},
+		{name: "substring is not a token", storage: Storage{PluginType: storagePluginDir, Content: "isoimages"}, want: false},
+		{name: "PBS rejected despite images", storage: Storage{PluginType: storagePluginPBS, Content: "images,backup"}, want: false},
+		{name: "legacy PBS type rejected", storage: Storage{Type: storagePluginPBS, Content: storageContentImages}, want: false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := IsVMCapableStorage(test.storage); got != test.want {
+				t.Errorf("IsVMCapableStorage(%+v) = %t, want %t", test.storage, got, test.want)
+			}
+		})
+	}
 }
 
 // TestProxmoxGetVNCTicket_Success parses the ticket and port from a 200 response.

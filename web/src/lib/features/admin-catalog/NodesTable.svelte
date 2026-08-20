@@ -23,7 +23,7 @@
 				<th class="px-4 py-2 font-medium">{m['common.vms']()}</th>
 				<th class="px-4 py-2 font-medium">{m['common.cpu']()}</th>
 				<th class="px-4 py-2 font-medium">{m['common.memory']()}</th>
-				<th class="px-4 py-2 font-medium">{m['admin.catalog.approvedStatus']()}</th>
+				<th class="px-4 py-2 font-medium">{m['admin.catalog.statusColumn']()}</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -34,7 +34,7 @@
 					<td class="px-4 py-2" data-label={m['common.vms']()}>{node.vmCount}</td>
 					<td class="px-4 py-2" data-label={m['common.cpu']()}>{node.cpuCores} {m['common.cores']()} ({(node.cpuUsage * 100).toFixed(0)}%)</td>
 					<td class="px-4 py-2" data-label={m['common.memory']()}>{formatBytes(node.memoryUsed)} / {formatBytes(node.memoryTotal)}</td>
-					<td class="px-4 py-2" data-label={m['admin.catalog.approvedStatus']()}>
+					<td class="px-4 py-2" data-label={m['admin.catalog.statusColumn']()}>
 						<span class="inline-flex items-center gap-2" aria-busy={toggling === `node:${node.name}`}>
 							<Switch
 								checked={node.enabled}

@@ -24,19 +24,20 @@
 		formOpen = true;
 	}
 
-	function saveCluster(input: ClusterInput): void {
-		formOpen = false;
-		if (editing === null) {
-			void store.create(input);
-			return;
-		}
-		const update: Omit<ClusterInput, 'name'> = {
-			url: input.url,
-			tlsInsecureSkipVerify: input.tlsInsecureSkipVerify,
-			tokenId: input.tokenId,
-			tokenSecret: input.tokenSecret
-		};
-		void store.update(editing.name, update);
+	async function saveCluster(input: ClusterInput): Promise<void> {
+		const succeeded =
+			editing === null
+				? await store.create(input)
+				: await store.update(editing.name, {
+						url: input.url,
+						tlsInsecureSkipVerify: input.tlsInsecureSkipVerify,
+						tokenId: input.tokenId,
+						tokenSecret: input.tokenSecret
+					});
+		// Failure leaves the dialog open with store.error rendered inline
+		// (ClusterFormDialog's error prop) — closing unconditionally here hid
+		// create/update failures behind an easy-to-miss page-top banner.
+		if (succeeded) formOpen = false;
 	}
 </script>
 
@@ -59,6 +60,7 @@
 				<thead class="bg-muted/50">
 					<tr>
 						<th scope="col" class="px-4 py-3 font-medium">{m['common.name']()}</th>
+						<th scope="col" class="px-4 py-3 font-medium">{m['admin.clusters.displayName']()}</th>
 						<th scope="col" class="px-4 py-3 font-medium">{m['common.status']()}</th>
 						<th scope="col" class="px-4 py-3 font-medium">{m['admin.clusters.version']()}</th>
 						<th scope="col" class="px-4 py-3 font-medium">{m['admin.clusters.nodesVms']()}</th>
@@ -73,6 +75,7 @@
 								<div class="font-medium">{cluster.name}</div>
 								<div class="max-w-xs truncate text-xs text-muted-foreground" title={cluster.url}>{cluster.url}</div>
 							</td>
+							<td class="px-4 py-3 text-muted-foreground">{cluster.displayName || '—'}</td>
 							<td class="px-4 py-3">
 								<span class="rounded-full bg-muted px-2 py-1 text-xs">{cluster.lastTestStatus ?? m['common.untested']()}</span>
 								{#if cluster.lastTestMessage}<div class="mt-1 text-xs text-muted-foreground">{cluster.lastTestMessage}</div>{/if}
@@ -96,4 +99,11 @@
 	{/if}
 </section>
 
-<ClusterFormDialog bind:open={formOpen} {editing} onClose={() => (formOpen = false)} onSubmit={saveCluster} />
+<ClusterFormDialog
+	bind:open={formOpen}
+	{editing}
+	saving={store.busy === 'create' || store.busy === `update:${editing?.name}`}
+	error={store.error}
+	onClose={() => (formOpen = false)}
+	onSubmit={saveCluster}
+/>

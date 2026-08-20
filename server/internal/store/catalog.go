@@ -22,6 +22,7 @@ type CatalogStorage struct {
 // CatalogBridge is one approved network bridge (catalog_bridges row).
 type CatalogBridge struct {
 	Cluster string
+	Node    string
 	Name    string
 }
 
@@ -94,14 +95,14 @@ func (s *Store) CatalogStorages(ctx context.Context, cluster string) ([]CatalogS
 	)
 }
 
-// CatalogBridges returns the approved bridges for a cluster, ordered by name.
+// CatalogBridges returns the approved bridges for a cluster, ordered by node then name.
 func (s *Store) CatalogBridges(ctx context.Context, cluster string) ([]CatalogBridge, error) {
 	return queryCatalog(ctx, s.db, "catalog bridges",
-		`SELECT cluster, name FROM catalog_bridges WHERE cluster = ? AND enabled = 1 ORDER BY name`,
+		`SELECT cluster, node, name FROM catalog_bridges WHERE cluster = ? AND enabled = 1 ORDER BY node, name`,
 		[]any{cluster},
 		func(rows *sql.Rows) (CatalogBridge, error) {
 			var b CatalogBridge
-			return b, rows.Scan(&b.Cluster, &b.Name)
+			return b, rows.Scan(&b.Cluster, &b.Node, &b.Name)
 		},
 	)
 }

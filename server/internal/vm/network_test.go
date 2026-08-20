@@ -27,7 +27,7 @@ func TestUpdateNetwork_ValidatesBridgeAndCardCount(t *testing.T) {
 	}
 	for _, test := range tests { //nolint:paralleltest // serial: shared fake cluster dataset
 		t.Run(test.name, func(t *testing.T) {
-			runNetworkCase(t, test.name, test.interfaces, test.actor, test.wantErr)
+			runNetworkCase(t, test.interfaces, test.actor, test.wantErr)
 		})
 	}
 }
@@ -36,7 +36,7 @@ func TestUpdateNetwork_ValidatesBridgeAndCardCount(t *testing.T) {
 // the update, and asserts the expected error or the resulting interface list.
 // Extracted from TestUpdateNetwork_ValidatesBridgeAndCardCount to keep its
 // Cognitive Complexity under the SonarQube go:S3776 threshold.
-func runNetworkCase(t *testing.T, name string, interfaces []cluster.NetworkInterface, actor auth.Identity, wantErr error) {
+func runNetworkCase(t *testing.T, interfaces []cluster.NetworkInterface, actor auth.Identity, wantErr error) {
 	t.Helper()
 
 	cluster.ResetFake()
@@ -125,6 +125,6 @@ func TestUpdateNetwork_RemovesInterface(t *testing.T) {
 func networkDependencies(index *inventory.Index, actor auth.Identity, vmid int) vm.NetworkDependencies {
 	return vm.NetworkDependencies{
 		Index: index, Actor: actor, ClusterName: testClusterName, VMID: vmid, Writer: cluster.Fake{},
-		Resources: catalog.Resources{Bridges: []string{testBridgeVMbr0, testBridgeVMbr1}}, Gabarit: policy.DefaultGabarit(), Audit: noopAudit{}, Refresher: noopRefresher{},
+		Resources: catalog.Resources{Bridges: []catalog.Bridge{{Name: testBridgeVMbr0, Node: cluster.FakeNode01}, {Name: testBridgeVMbr1, Node: cluster.FakeNode01}}}, Gabarit: policy.DefaultGabarit(), Audit: noopAudit{}, Refresher: noopRefresher{},
 	}
 }

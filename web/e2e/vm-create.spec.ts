@@ -135,4 +135,24 @@ test.describe('T06 VM creation', () => {
 			}
 		}
 	});
+
+	test('admin without pool can create a VM', async ({ page }) => {
+		const login = await page.request.post('/api/v1/auth/admin-login', {
+			data: { password: 'pvmss-e2e-admin' }
+		});
+		expect(login.status()).toBe(200);
+
+		const response = await page.request.post('/api/v1/vms', {
+			data: {
+				cluster: 'default',
+				name: 'web-e2e-admin-01',
+				profileId: 'small'
+			}
+		});
+		expect(response.status()).toBe(202);
+
+		const created = (await response.json()) as { vmid: number; name: string };
+		expect(created.name).toBe('web-e2e-admin-01');
+		expect(created.vmid).toBeGreaterThan(0);
+	});
 });

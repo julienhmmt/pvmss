@@ -124,6 +124,33 @@ const schemaV13 = `CREATE TABLE documentation_pages (
 	CHECK (audience IN ('user','admin'))
 )`
 
+const schemaV14 = `
+DROP TABLE catalog_bridges;
+CREATE TABLE catalog_bridges (
+	cluster TEXT NOT NULL,
+	node    TEXT NOT NULL,
+	name    TEXT NOT NULL,
+	enabled BOOLEAN NOT NULL DEFAULT 1,
+	PRIMARY KEY (cluster, node, name)
+);
+`
+
+// schemaV15 records the pools PVMSS has provisioned so deletion can be scoped
+// to managed pools only. A row is written only after pools.Create succeeds
+// end-to-end; pre-existing Proxmox pools are intentionally not adopted because
+// the legacy schema stored no reliable PVMSS-origin marker (issue #5).
+const schemaV15 = `CREATE TABLE managed_pools (
+	cluster    TEXT NOT NULL,
+	name       TEXT NOT NULL,
+	created_at TEXT NOT NULL,
+	PRIMARY KEY (cluster, name)
+)`
+
+// schemaV16 adds a display_name column to clusters so the UI can show the real
+// Proxmox cluster name (from /cluster/status) alongside the immutable internal
+// key. Existing rows get NULL — callers fall back to the logical name.
+const schemaV16 = `ALTER TABLE clusters ADD COLUMN display_name TEXT`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -146,4 +173,7 @@ var Migrations = []Migration{
 	{Version: 11, DDL: schemaV11},
 	{Version: 12, DDL: schemaV12},
 	{Version: 13, DDL: schemaV13},
+	{Version: 14, DDL: schemaV14},
+	{Version: 15, DDL: schemaV15},
+	{Version: 16, DDL: schemaV16},
 }
