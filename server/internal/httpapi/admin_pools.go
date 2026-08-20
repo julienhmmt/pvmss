@@ -57,12 +57,18 @@ func (h *AdminPools) ServeCreate(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
-	created, err := pools.CreateWithRecorder(r.Context(), actor, h.client, h.store, queryCluster(r), request.Name, request.Password, request.Comment)
+	creds, err := pools.CreateManaged(r.Context(), actor, h.client, h.store, queryCluster(r), request.Name, request.Comment)
 	if err != nil {
 		h.writeCreateError(w, err)
 		return
 	}
-	writeAdminJSON(w, http.StatusCreated, poolSummary{Name: created.Name, Comment: created.Comment, Managed: true})
+	writeAdminJSON(w, http.StatusCreated, createPoolResponse{
+		Name:     creds.PoolName,
+		Username: creds.Username,
+		Password: creds.Password,
+		Comment:  creds.Comment,
+		Managed:  true,
+	})
 }
 
 // ServeDelete handles DELETE /api/v1/admin/pools/{name}.
@@ -104,9 +110,16 @@ type deletePoolResponse struct {
 }
 
 type createPoolRequest struct {
+	Name    string `json:"name"`
+	Comment string `json:"comment"`
+}
+
+type createPoolResponse struct {
 	Name     string `json:"name"`
-	Comment  string `json:"comment"`
+	Username string `json:"username"`
 	Password string `json:"password"`
+	Comment  string `json:"comment"`
+	Managed  bool   `json:"managed"`
 }
 
 type poolSummary struct {
@@ -145,8 +158,6 @@ func (h *AdminPools) writeCreateError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, pools.ErrInvalidName):
 		writeAdminError(w, http.StatusBadRequest, "invalid_pool_name", "invalid pool name")
-	case errors.Is(err, pools.ErrWeakPassword):
-		writeAdminError(w, http.StatusBadRequest, "invalid_password", "password must contain at least 8 characters")
 	case errors.Is(err, pools.ErrAlreadyExists):
 		writeAdminError(w, http.StatusConflict, "duplicate_pool", err.Error())
 	case errors.Is(err, pools.ErrForbidden):
