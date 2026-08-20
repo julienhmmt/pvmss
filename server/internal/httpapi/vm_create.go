@@ -317,6 +317,8 @@ func catalogBridgeNames(bridges []catalog.Bridge) []string {
 // status codes and error codes.
 func (h *VMCreate) writeCreateFailure(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, vm.ErrAdminCannotCreate):
+		h.writeCreateError(w, http.StatusForbidden, "admin_cannot_create", "administrators cannot create VMs")
 	case errors.Is(err, vm.ErrNoPool):
 		h.writeCreateError(w, http.StatusForbidden, "no_pool", "this account cannot own VMs")
 	case errors.Is(err, policy.ErrQuotaExceeded):

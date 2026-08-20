@@ -66,12 +66,14 @@
 	{:else if vms.length === 0}
 		<div class="py-8 text-center">
 			<p class="text-sm text-muted-foreground">{m['home.dashboard.empty']()}</p>
-			<a
-				href={resolve('/vms/create')}
-				class="mt-3 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-			>
-				{m['home.dashboard.emptyAction']()}
-			</a>
+			{#if !session.isAdmin}
+				<a
+					href={resolve('/vms/create')}
+					class="mt-3 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+				>
+					{m['home.dashboard.emptyAction']()}
+				</a>
+			{/if}
 		</div>
 	{:else}
 		<!-- Stat cards -->

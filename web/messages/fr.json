@@ -521,6 +521,7 @@
  "vms.create.reviewRequest": "Réviser la requête",
  "vms.create.errorCatalog": "Échec du chargement du catalogue",
  "vms.create.errorCreation": "Échec de la création",
+ "vms.create.adminBlocked": "Les administrateurs ne peuvent pas créer de VM via le portail libre-service.",
  "nodes.title": "Nœuds — PVMSS",
  "nodes.heading": "Nœuds de cluster",
  "nodes.nodesLoaded": "{count} nœuds chargés",
