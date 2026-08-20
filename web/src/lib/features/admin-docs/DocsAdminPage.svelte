@@ -6,14 +6,32 @@
 	import Switch from '$lib/shared/ui/Switch.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import SortableTooltipHeader from '$lib/shared/ui/SortableTooltipHeader.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+
+	type DocSortColumn = 'title' | 'id' | 'category' | 'lang';
 
 	interface Props {
 		pages: AdminDocPage[];
+		filteredPages: AdminDocPage[];
 		loading: boolean;
 		error: string | null;
 		saving: boolean;
 		saveError: string | null;
+		search: string;
+		categoryFilter: string;
+		langFilter: string;
+		audienceFilter: 'all' | 'user' | 'admin';
+		categoryOptions: string[];
+		langOptions: string[];
+		sortBy: DocSortColumn;
+		sortDir: 'asc' | 'desc';
+		onSearchChange: (value: string) => void;
+		onCategoryFilterChange: (value: string) => void;
+		onLangFilterChange: (value: string) => void;
+		onAudienceFilterChange: (value: 'all' | 'user' | 'admin') => void;
+		onSort: (column: DocSortColumn) => void;
+		onResetFilters: () => void;
 		onCreate: (input: DocCreateInput) => Promise<AdminDocPage | null>;
 		onUpdate: (id: string, lang: string, input: DocUpdateInput) => Promise<AdminDocPage | null>;
 		onDelete: (id: string, lang: string) => void;
@@ -22,15 +40,34 @@
 
 	let {
 		pages,
+		filteredPages,
 		loading,
 		error,
 		saving,
 		saveError,
+		search,
+		categoryFilter,
+		langFilter,
+		audienceFilter,
+		categoryOptions,
+		langOptions,
+		sortBy,
+		sortDir,
+		onSearchChange,
+		onCategoryFilterChange,
+		onLangFilterChange,
+		onAudienceFilterChange,
+		onSort,
+		onResetFilters,
 		onCreate,
 		onUpdate,
 		onDelete,
 		onToggle
 	}: Props = $props();
+
+	function handleSort(column: string): void {
+		onSort(column as DocSortColumn);
+	}
 
 	let showForm = $state(false);
 	let editing = $state<AdminDocPage | null>(null);
@@ -167,20 +204,55 @@
 		</p>
 	{/if}
 
+	{#if pages.length > 0}
+		<div class="mb-4 flex flex-wrap items-center gap-2">
+			<input
+				type="search"
+				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+				placeholder={m['admin.docs.searchPlaceholder']()}
+				value={search}
+				oninput={(e) => onSearchChange(e.currentTarget.value)}
+			/>
+			<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={categoryFilter} onchange={(e) => onCategoryFilterChange(e.currentTarget.value)}>
+				<option value="">{m['admin.docs.filterCategory']()}</option>
+				{#each categoryOptions as cat}
+					<option value={cat}>{cat}</option>
+				{/each}
+			</select>
+			<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={langFilter} onchange={(e) => onLangFilterChange(e.currentTarget.value)}>
+				<option value="">{m['admin.docs.filterLang']()}</option>
+				{#each langOptions as lang}
+					<option value={lang}>{lang}</option>
+				{/each}
+			</select>
+			<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={audienceFilter} onchange={(e) => onAudienceFilterChange(e.currentTarget.value as 'all' | 'user' | 'admin')}>
+				<option value="all">{m['admin.docs.filterAudience']()}</option>
+				<option value="user">{m['docs.audienceUser']()}</option>
+				<option value="admin">{m['docs.audienceAdmin']()}</option>
+			</select>
+			<button
+				class="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
+				onclick={onResetFilters}
+			>
+				{m['admin.docs.resetFilters']()}
+			</button>
+		</div>
+	{/if}
+
 	<div class="overflow-x-auto rounded-lg border border-border">
 		<table class="w-full text-sm">
 			<thead class="bg-muted/50 text-left">
 				<tr>
-					<th class="px-4 py-2 font-medium">{m['docs.titleField']()}</th>
-					<th class="px-4 py-2 font-medium">{m['docs.category']()}</th>
+					<SortableTooltipHeader text={m['docs.titleField']()} tooltip={m['admin.docs.searchPlaceholder']()} column="title" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<SortableTooltipHeader text={m['docs.category']()} tooltip={m['admin.docs.filterCategory']()} column="category" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 					<th class="px-4 py-2 font-medium">{m['docs.audience']()}</th>
-					<th class="px-4 py-2 font-medium">{m['docs.language']()}</th>
+					<SortableTooltipHeader text={m['docs.language']()} tooltip={m['admin.docs.filterLang']()} column="lang" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 					<th class="px-4 py-2 font-medium">{m['docs.enabled']()}</th>
 					<th class="px-4 py-2 font-medium">{m['admin.docs.actions']()}</th>
 				</tr>
 			</thead>
 			<tbody>
-				{#each pages as page (`${page.id}-${page.lang}`)}
+				{#each filteredPages as page (`${page.id}-${page.lang}`)}
 					<tr class="border-t border-border">
 						<td class="px-4 py-2">
 							<div class="flex flex-col">
@@ -225,11 +297,15 @@
 					</tr>
 				{:else}
 					<tr><td colspan={6} class="p-0">
-						<EmptyState title={m['docs.empty']()}>
-							{#snippet actions()}
-								<Button onclick={openCreate}>{m['docs.newPage']()}</Button>
-							{/snippet}
-						</EmptyState>
+						{#if pages.length > 0}
+							<EmptyState title={m['admin.docs.noFilterMatches']()} />
+						{:else}
+							<EmptyState title={m['docs.empty']()}>
+								{#snippet actions()}
+									<Button onclick={openCreate}>{m['docs.newPage']()}</Button>
+								{/snippet}
+							</EmptyState>
+						{/if}
 					</td></tr>
 				{/each}
 			</tbody>
