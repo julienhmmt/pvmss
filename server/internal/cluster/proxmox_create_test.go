@@ -20,7 +20,7 @@ func TestProxmox_NextVMID(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) { //nolint:dupl // structural similarity to runDisplayNameCase is incidental (shared test-server pattern)
 			t.Parallel()
 
 			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
@@ -64,11 +64,11 @@ func TestProxmox_CreateVM(t *testing.T) {
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
 	spec := VMSpec{
-		VMID: 105, Node: "node01", Name: "web-1", Pool: "alice", Tags: []string{"pvmss"},
+		VMID: 105, Node: "node01", Name: "web-1", Pool: FakePoolAliceShort, Tags: []string{FakeTagPvmss},
 		CPUCores: 4, MemoryMB: 4096,
-		Disk:             DiskSpec{Storage: "local-lvm", SizeGB: 32, Bus: "scsi"},
-		Network:          NetworkSpec{Bridge: "vmbr0", Model: "virtio"},
-		ISO:              &ISOSpec{Storage: "local", File: "debian-12.iso"},
+		Disk:             DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 32, Bus: "scsi"},
+		Network:          NetworkSpec{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)},
+		ISO:              &ISOSpec{Storage: FakeStorageLocal, File: "debian-12.iso"},
 		StartAfterCreate: true,
 	}
 
@@ -89,20 +89,20 @@ func TestProxmox_CreateVM(t *testing.T) {
 		t.Errorf("sockets/cores/memory = %q/%q/%q", gotForm.Get("sockets"), gotForm.Get("cores"), gotForm.Get("memory"))
 	}
 
-	if gotForm.Get("pool") != "alice" || gotForm.Get("tags") != "pvmss" {
+	if gotForm.Get("pool") != FakePoolAliceShort || gotForm.Get("tags") != FakeTagPvmss {
 		t.Errorf("pool/tags = %q/%q", gotForm.Get("pool"), gotForm.Get("tags"))
 	}
 
-	if gotForm.Get("scsi0") != "local-lvm:32" || gotForm.Get("scsihw") != "virtio-scsi-pci" {
-		t.Errorf("scsi0/scsihw = %q/%q", gotForm.Get("scsi0"), gotForm.Get("scsihw"))
+	if gotForm.Get(diskKeySCSI0) != "local-lvm:32" || gotForm.Get("scsihw") != "virtio-scsi-pci" {
+		t.Errorf("scsi0/scsihw = %q/%q", gotForm.Get(diskKeySCSI0), gotForm.Get("scsihw"))
 	}
 
 	if gotForm.Get("net0") != "virtio,bridge=vmbr0" {
 		t.Errorf("net0 = %q", gotForm.Get("net0"))
 	}
 
-	if gotForm.Get("ide2") != "local:iso/debian-12.iso,media=cdrom" {
-		t.Errorf("ide2 = %q", gotForm.Get("ide2"))
+	if gotForm.Get(cdromDiskKey) != cdromMountedValue {
+		t.Errorf("ide2 = %q", gotForm.Get(cdromDiskKey))
 	}
 
 	if gotForm.Get("start") != "1" {
@@ -119,7 +119,7 @@ func TestProxmox_TaskStatus(t *testing.T) {
 		exitStatus string
 		want       TaskState
 	}{
-		{"running", "running", "", TaskRunning},
+		{"running", string(VMRunning), "", TaskRunning},
 		{"ok", "stopped", "OK", TaskOK},
 		{"error", "stopped", "job errored: disk full", TaskError},
 	}

@@ -86,11 +86,11 @@ func TestProxmox_Snapshot(t *testing.T) {
 	}
 
 	vm := snap.VMs[0]
-	if vm.VMID != 101 || vm.Status != VMRunning || vm.Pool != "alice" {
+	if vm.VMID != 101 || vm.Status != VMRunning || vm.Pool != FakePoolAliceShort {
 		t.Fatalf("vm = %+v", vm)
 	}
 
-	if len(vm.Tags) != 2 || vm.Tags[0] != "pvmss" {
+	if len(vm.Tags) != 2 || vm.Tags[0] != FakeTagPvmss {
 		t.Fatalf("vm.Tags = %v", vm.Tags)
 	}
 
@@ -98,11 +98,11 @@ func TestProxmox_Snapshot(t *testing.T) {
 		t.Fatalf("vm sockets/cores = %d/%d", vm.Sockets, vm.Cores)
 	}
 
-	if len(vm.Disks) != 1 || vm.Disks[0].Storage != "local-lvm" || vm.Disks[0].SizeGB != 32 {
+	if len(vm.Disks) != 1 || vm.Disks[0].Storage != FakeStorageLocalLVM || vm.Disks[0].SizeGB != 32 {
 		t.Fatalf("vm.Disks = %+v", vm.Disks)
 	}
 
-	if len(vm.NetworkInterfaces) != 1 || vm.NetworkInterfaces[0].Bridge != "vmbr0" {
+	if len(vm.NetworkInterfaces) != 1 || vm.NetworkInterfaces[0].Bridge != FakeBridgeVMbr0 {
 		t.Fatalf("vm.NetworkInterfaces = %+v", vm.NetworkInterfaces)
 	}
 
@@ -117,42 +117,52 @@ func TestProxmox_Snapshot(t *testing.T) {
 
 //nolint:paralleltest // serial: httptest server fixture
 func TestProxmox_DisplayName_Cluster(t *testing.T) {
-	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
-		mux.HandleFunc("GET /api2/json/cluster/status", func(w http.ResponseWriter, _ *http.Request) {
-			writeJSONFixture(t, w, `{"data":[
-				{"type":"cluster","name":"prod-pve"},
-				{"type":"node","name":"pve1"}
-			]}`)
-		})
+	runDisplayNameCase(t, displayNameCase{
+		fixture: `{"data":[
+			{"type":"cluster","name":"prod-pve"},
+			{"type":"node","name":"pve1"}
+		]}`,
+		want: "prod-pve",
 	})
-
-	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
-	name, err := p.DisplayName(context.Background())
-	if err != nil {
-		t.Fatalf("DisplayName: %v", err)
-	}
-	if name != "prod-pve" {
-		t.Fatalf("DisplayName = %q, want prod-pve", name)
-	}
 }
 
 //nolint:paralleltest // serial: httptest server fixture
 func TestProxmox_DisplayName_StandaloneNode(t *testing.T) {
+	runDisplayNameCase(t, displayNameCase{
+		fixture: `{"data":[
+			{"type":"node","name":"standalone-pve"}
+		]}`,
+		want: "standalone-pve",
+	})
+}
+
+type displayNameCase struct {
+	fixture string
+	want    string
+}
+
+// runDisplayNameCase exercises Proxmox.DisplayName against a single-shot
+// cluster/status fixture. Extracted from the two DisplayName tests to satisfy dupl.
+//
+//nolint:dupl // structural similarity to TestProxmox_NextVMID is incidental (shared test-server pattern)
+func runDisplayNameCase(t *testing.T, tc displayNameCase) {
+	t.Helper()
+
 	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
 		mux.HandleFunc("GET /api2/json/cluster/status", func(w http.ResponseWriter, _ *http.Request) {
-			writeJSONFixture(t, w, `{"data":[
-				{"type":"node","name":"standalone-pve"}
-			]}`)
+			writeJSONFixture(t, w, tc.fixture)
 		})
 	})
 
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
 	name, err := p.DisplayName(context.Background())
 	if err != nil {
 		t.Fatalf("DisplayName: %v", err)
 	}
-	if name != "standalone-pve" {
-		t.Fatalf("DisplayName = %q, want standalone-pve", name)
+
+	if name != tc.want {
+		t.Fatalf("DisplayName = %q, want %q", name, tc.want)
 	}
 }
 
@@ -212,15 +222,15 @@ func TestProxmox_Authenticate_Admin(t *testing.T) {
 func TestProxmox_Authenticate_NonAdminOwnsPool(t *testing.T) {
 	t.Parallel()
 
-	srv := proxmoxAuthFixture(t, false, "alice@pve", "pvmss-alice")
+	srv := proxmoxAuthFixture(t, false, FakeUserAlice, "pvmss-alice")
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
-	identity, err := p.Authenticate(context.Background(), "alice@pve", "pvmss-alice")
+	identity, err := p.Authenticate(context.Background(), FakeUserAlice, "pvmss-alice")
 	if err != nil {
 		t.Fatalf("Authenticate: %v", err)
 	}
 
-	if identity.IsAdmin || identity.Pool != "alice" {
+	if identity.IsAdmin || identity.Pool != FakePoolAliceShort {
 		t.Fatalf("identity = %+v, want non-admin pool=alice", identity)
 	}
 }
@@ -228,10 +238,10 @@ func TestProxmox_Authenticate_NonAdminOwnsPool(t *testing.T) {
 func TestProxmox_Authenticate_WrongPassword(t *testing.T) {
 	t.Parallel()
 
-	srv := proxmoxAuthFixture(t, false, "alice@pve", "pvmss-alice")
+	srv := proxmoxAuthFixture(t, false, FakeUserAlice, "pvmss-alice")
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
-	_, err := p.Authenticate(context.Background(), "alice@pve", "wrong-password")
+	_, err := p.Authenticate(context.Background(), FakeUserAlice, "wrong-password")
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("err = %v, want ErrNotFound", err)
 	}
@@ -248,7 +258,7 @@ func TestProxmox_ChangePassword(t *testing.T) {
 				t.Fatalf("parse form: %v", err)
 			}
 
-			if r.FormValue("username") != "alice@pve" || r.FormValue("password") != "old-pass" {
+			if r.FormValue("username") != FakeUserAlice || r.FormValue("password") != "old-pass" {
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
@@ -273,7 +283,7 @@ func TestProxmox_ChangePassword(t *testing.T) {
 
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
-	if err := p.ChangePassword(context.Background(), "alice@pve", "old-pass", "new-pass"); err != nil {
+	if err := p.ChangePassword(context.Background(), FakeUserAlice, "old-pass", "new-pass"); err != nil {
 		t.Fatalf("ChangePassword: %v", err)
 	}
 
@@ -293,7 +303,7 @@ func TestProxmox_ChangePassword_WrongOldPassword(t *testing.T) {
 
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
-	err := p.ChangePassword(context.Background(), "alice@pve", "wrong-old", "new-pass")
+	err := p.ChangePassword(context.Background(), FakeUserAlice, "wrong-old", "new-pass")
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("err = %v, want ErrNotFound", err)
 	}
@@ -330,7 +340,7 @@ func TestProxmox_ListBridges(t *testing.T) {
 		t.Errorf("bridges[0] = %+v", bridges[0])
 	}
 
-	if bridges[1].Name != "vmbr1" || bridges[1].Active || bridges[1].Comment != "guest VLAN" {
+	if bridges[1].Name != FakeBridgeVMbr1 || bridges[1].Active || bridges[1].Comment != "guest VLAN" {
 		t.Errorf("bridges[1] = %+v", bridges[1])
 	}
 }
@@ -358,7 +368,7 @@ func TestProxmox_ListISOs(t *testing.T) {
 		t.Fatalf("ListISOs: %v", err)
 	}
 
-	if len(isos) != 1 || isos[0].File != "debian-12.iso" || isos[0].Storage != "local" || isos[0].SizeBytes != 691945472 {
+	if len(isos) != 1 || isos[0].File != "debian-12.iso" || isos[0].Storage != FakeStorageLocal || isos[0].SizeBytes != 691945472 {
 		t.Fatalf("isos = %+v", isos)
 	}
 }

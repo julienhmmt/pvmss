@@ -89,16 +89,16 @@ func TestProxmox_EnsurePoolUser_CreatesWhenAbsent(t *testing.T) {
 
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
-	username, err := p.EnsurePoolUser(context.Background(), "alice", "s3cret-pass")
+	username, err := p.EnsurePoolUser(context.Background(), FakePoolAliceShort, "s3cret-pass")
 	if err != nil {
 		t.Fatalf("EnsurePoolUser: %v", err)
 	}
 
-	if username != "alice@pve" {
-		t.Errorf("username = %q, want alice@pve", username)
+	if username != FakeUserAlice {
+		t.Errorf("username = %q, want %s", username, FakeUserAlice)
 	}
 
-	if gotUserID != "alice@pve" || gotPassword != "s3cret-pass" {
+	if gotUserID != FakeUserAlice || gotPassword != "s3cret-pass" {
 		t.Errorf("sent userid=%q password=%q", gotUserID, gotPassword)
 	}
 }
@@ -117,13 +117,13 @@ func TestProxmox_EnsurePoolUser_NoOpWhenPresent(t *testing.T) {
 
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
-	username, err := p.EnsurePoolUser(context.Background(), "alice", "ignored")
+	username, err := p.EnsurePoolUser(context.Background(), FakePoolAliceShort, "ignored")
 	if err != nil {
 		t.Fatalf("EnsurePoolUser: %v", err)
 	}
 
-	if username != "alice@pve" {
-		t.Errorf("username = %q, want alice@pve", username)
+	if username != FakeUserAlice {
+		t.Errorf("username = %q, want %s", username, FakeUserAlice)
 	}
 }
 
@@ -141,7 +141,7 @@ func TestProxmox_CreatePool_Idempotent(t *testing.T) {
 
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
-	if err := p.CreatePool(context.Background(), "alice", "Alice's pool"); err != nil {
+	if err := p.CreatePool(context.Background(), FakePoolAliceShort, "Alice's pool"); err != nil {
 		t.Fatalf("CreatePool: %v", err)
 	}
 }
@@ -167,11 +167,11 @@ func TestProxmox_SetPoolACL(t *testing.T) {
 
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
-	if err := p.SetPoolACL(context.Background(), "alice@pve", "alice", "PVMSSUser"); err != nil {
+	if err := p.SetPoolACL(context.Background(), FakeUserAlice, FakePoolAliceShort, poolRoleName); err != nil {
 		t.Fatalf("SetPoolACL: %v", err)
 	}
 
-	if gotPath != "/pool/alice" || gotUsers != "alice@pve" || gotRoles != "PVMSSUser" {
+	if gotPath != "/pool/"+FakePoolAliceShort || gotUsers != FakeUserAlice || gotRoles != poolRoleName {
 		t.Errorf("path=%q users=%q roles=%q", gotPath, gotUsers, gotRoles)
 	}
 }
@@ -214,7 +214,7 @@ func TestProxmox_DeletePool_Success(t *testing.T) {
 
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
-	if err := p.DeletePool(context.Background(), "alice"); err != nil {
+	if err := p.DeletePool(context.Background(), FakePoolAliceShort); err != nil {
 		t.Fatalf("DeletePool: %v", err)
 	}
 
@@ -238,11 +238,11 @@ func TestProxmox_DeleteUser(t *testing.T) {
 
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
-	if err := p.DeleteUser(context.Background(), "alice@pve"); err != nil {
+	if err := p.DeleteUser(context.Background(), FakeUserAlice); err != nil {
 		t.Fatalf("DeleteUser: %v", err)
 	}
 
-	if gotPath != "/api2/json/access/users/alice@pve" {
+	if gotPath != "/api2/json/access/users/"+FakeUserAlice {
 		t.Errorf("path = %q", gotPath)
 	}
 }

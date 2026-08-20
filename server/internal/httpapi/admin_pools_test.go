@@ -181,26 +181,12 @@ func TestAdminPools_ListExposesManagedFlag(t *testing.T) {
 		t.Fatalf("create status = %d: %s", rec.Code, rec.Body.String())
 	}
 
-	list := adminPoolsRequest(t, handler.ServeList, http.MethodGet, "/api/v1/admin/pools?cluster=default&search=team", cookie, "")
-	if list.Code != http.StatusOK {
-		t.Fatalf("list status = %d: %s", list.Code, list.Body.String())
-	}
-	var rows []adminPoolSummary
-	if err := json.Unmarshal(list.Body.Bytes(), &rows); err != nil {
-		t.Fatalf("decode list: %v", err)
-	}
+	rows := listAdminPools(t, handler, cookie, "/api/v1/admin/pools?cluster=default&search=team")
 	if len(rows) != 1 || rows[0].Name != "team-z" || !rows[0].Managed {
 		t.Fatalf("rows = %+v, want one managed team-z", rows)
 	}
 
-	all := adminPoolsRequest(t, handler.ServeList, http.MethodGet, "/api/v1/admin/pools?cluster=default", cookie, "")
-	if all.Code != http.StatusOK {
-		t.Fatalf("list all status = %d: %s", all.Code, all.Body.String())
-	}
-	var allRows []adminPoolSummary
-	if err := json.Unmarshal(all.Body.Bytes(), &allRows); err != nil {
-		t.Fatalf("decode all: %v", err)
-	}
+	allRows := listAdminPools(t, handler, cookie, "/api/v1/admin/pools?cluster=default")
 	for _, row := range allRows {
 		if row.Name == cluster.FakePoolAlice && row.Managed {
 			t.Fatalf("alice should not be managed: %+v", row)
@@ -209,6 +195,25 @@ func TestAdminPools_ListExposesManagedFlag(t *testing.T) {
 			t.Fatalf("team-z should be managed: %+v", row)
 		}
 	}
+}
+
+// listAdminPools issues a GET to the admin pools list endpoint and decodes the
+// response. Extracted from TestAdminPools_ListExposesManagedFlag to keep its
+// cyclomatic complexity under the gocyclo threshold.
+func listAdminPools(t *testing.T, handler *httpapi.AdminPools, cookie *http.Cookie, path string) []adminPoolSummary {
+	t.Helper()
+
+	rec := adminPoolsRequest(t, handler.ServeList, http.MethodGet, path, cookie, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("list status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var rows []adminPoolSummary
+	if err := json.Unmarshal(rec.Body.Bytes(), &rows); err != nil {
+		t.Fatalf("decode list: %v", err)
+	}
+
+	return rows
 }
 
 func newAdminPoolsHandler(t *testing.T) (*httpapi.AdminPools, *httpapi.Auth) {

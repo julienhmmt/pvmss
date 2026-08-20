@@ -124,7 +124,7 @@ func (p Proxmox) TaskStatus(ctx context.Context, upid string) (TaskStatus, error
 	result := TaskStatus{UPID: upid, Log: log}
 
 	switch {
-	case status.Status == "running":
+	case status.Status == string(VMRunning):
 		result.State = TaskRunning
 	case status.ExitStatus == "OK":
 		result.State = TaskOK

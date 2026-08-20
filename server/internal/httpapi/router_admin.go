@@ -14,18 +14,23 @@ func registerAdminRoutes(mux *http.ServeMux, cfg RouterConfig) {
 	if cfg.AdminCatalog != nil {
 		registerAdminCatalogRoutes(mux, guard, cfg.AdminCatalog)
 	}
+
 	if cfg.AdminPolicy != nil {
 		registerAdminPolicyRoutes(mux, guard, cfg.AdminPolicy)
 	}
+
 	if cfg.AdminPools != nil {
 		registerAdminPoolRoutes(mux, guard, cfg.AdminPools)
 	}
+
 	if cfg.AdminOps != nil {
 		registerAdminOpsRoutes(mux, guard, cfg.AdminOps)
 	}
+
 	if cfg.AdminClusters != nil {
 		registerAdminClusterRoutes(mux, guard, cfg.AdminClusters)
 	}
+
 	if cfg.AdminDocs != nil {
 		registerAdminDocsRoutes(mux, guard, cfg.AdminDocs)
 	}

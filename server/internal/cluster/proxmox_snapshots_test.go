@@ -71,47 +71,64 @@ func TestProxmox_CreateSnapshot(t *testing.T) {
 func TestProxmox_RollbackSnapshot(t *testing.T) {
 	t.Parallel()
 
-	var gotPath string
-
-	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
-		mux.HandleFunc("POST /api2/json/nodes/node01/qemu/101/snapshot/before-upgrade/rollback", func(w http.ResponseWriter, r *http.Request) {
-			gotPath = r.URL.Path
-
-			writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmrollback:101:pvmss@pve:"}`)
-		})
+	runSnapshotMutationTest(t, snapshotMutationCase{
+		method:     http.MethodPost,
+		pathSuffix: "/rollback",
+		upidKind:   "qmrollback",
+		wantPath:   "/api2/json/nodes/node01/qemu/101/snapshot/before-upgrade/rollback",
+		call: func(p Proxmox, ctx context.Context) error {
+			_, err := p.RollbackSnapshot(ctx, testNodeName, testVMID, "before-upgrade")
+			return err
+		},
 	})
-
-	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
-
-	if _, err := p.RollbackSnapshot(context.Background(), testNodeName, testVMID, "before-upgrade"); err != nil {
-		t.Fatalf("RollbackSnapshot: %v", err)
-	}
-
-	if gotPath != "/api2/json/nodes/node01/qemu/101/snapshot/before-upgrade/rollback" {
-		t.Errorf("path = %q", gotPath)
-	}
 }
 
 func TestProxmox_DeleteSnapshot(t *testing.T) {
 	t.Parallel()
 
+	runSnapshotMutationTest(t, snapshotMutationCase{
+		method:     http.MethodDelete,
+		pathSuffix: "",
+		upidKind:   "qmdelsnapshot",
+		wantPath:   "/api2/json/nodes/node01/qemu/101/snapshot/before-upgrade",
+		call: func(p Proxmox, ctx context.Context) error {
+			_, err := p.DeleteSnapshot(ctx, testNodeName, testVMID, "before-upgrade")
+			return err
+		},
+	})
+}
+
+type snapshotMutationCase struct {
+	method     string
+	pathSuffix string
+	upidKind   string
+	wantPath   string
+	call       func(p Proxmox, ctx context.Context) error
+}
+
+// runSnapshotMutationTest exercises a snapshot mutation (rollback or delete)
+// against a single-shot Proxmox test server. Extracted from
+// TestProxmox_RollbackSnapshot and TestProxmox_DeleteSnapshot to satisfy dupl.
+func runSnapshotMutationTest(t *testing.T, tc snapshotMutationCase) {
+	t.Helper()
+
 	var gotPath string
 
 	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
-		mux.HandleFunc("DELETE /api2/json/nodes/node01/qemu/101/snapshot/before-upgrade", func(w http.ResponseWriter, r *http.Request) {
+		mux.HandleFunc(tc.method+" /api2/json/nodes/node01/qemu/101/snapshot/before-upgrade"+tc.pathSuffix, func(w http.ResponseWriter, r *http.Request) {
 			gotPath = r.URL.Path
 
-			writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmdelsnapshot:101:pvmss@pve:"}`)
+			writeJSONFixture(t, w, `{"data":"UPID:node01:...:`+tc.upidKind+`:101:pvmss@pve:"}`)
 		})
 	})
 
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
-	if _, err := p.DeleteSnapshot(context.Background(), testNodeName, testVMID, "before-upgrade"); err != nil {
-		t.Fatalf("DeleteSnapshot: %v", err)
+	if err := tc.call(p, context.Background()); err != nil {
+		t.Fatalf("snapshot mutation: %v", err)
 	}
 
-	if gotPath != "/api2/json/nodes/node01/qemu/101/snapshot/before-upgrade" {
-		t.Errorf("path = %q", gotPath)
+	if gotPath != tc.wantPath {
+		t.Errorf("path = %q, want %q", gotPath, tc.wantPath)
 	}
 }

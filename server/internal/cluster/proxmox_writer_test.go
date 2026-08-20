@@ -174,11 +174,11 @@ func TestProxmox_ResizeDisk(t *testing.T) {
 
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
-	if err := p.ResizeDisk(context.Background(), testNodeName, testVMID, "scsi0", 64); err != nil {
+	if err := p.ResizeDisk(context.Background(), testNodeName, testVMID, diskKeySCSI0, 64); err != nil {
 		t.Fatalf("ResizeDisk: %v", err)
 	}
 
-	if gotDisk != "scsi0" || gotSize != "64G" {
+	if gotDisk != diskKeySCSI0 || gotSize != "64G" {
 		t.Errorf("disk=%q size=%q", gotDisk, gotSize)
 	}
 }
@@ -221,8 +221,8 @@ func TestProxmox_SetCDROM(t *testing.T) {
 		wantKey   string
 		wantValue string
 	}{
-		{"mounted", CDROMState{State: CDROMMounted, ISOVolID: "local:iso/debian-12.iso"}, "ide2", "local:iso/debian-12.iso,media=cdrom"},
-		{"empty", CDROMState{State: CDROMEmpty}, "ide2", "none,media=cdrom"},
+		{"mounted", CDROMState{State: CDROMMounted, ISOVolID: "local:iso/debian-12.iso"}, cdromDiskKey, cdromMountedValue},
+		{"empty", CDROMState{State: CDROMEmpty}, cdromDiskKey, "none,media=cdrom"},
 	}
 
 	for _, tc := range cases {
@@ -308,7 +308,7 @@ func TestProxmox_UpdateNetwork_DeletesRemovedIndices(t *testing.T) {
 
 	// Only net0 survives in the new set — net1 must be deleted.
 	err := p.UpdateNetwork(context.Background(), testNodeName, testVMID, []NetworkInterface{
-		{Index: 0, Model: "virtio", MAC: "AA:BB", Bridge: "vmbr0"},
+		{Index: 0, Model: string(DiskBusVirtio), MAC: "AA:BB", Bridge: FakeBridgeVMbr0},
 	})
 	if err != nil {
 		t.Fatalf("UpdateNetwork: %v", err)
@@ -342,7 +342,7 @@ func TestProxmox_UpdateHardware(t *testing.T) {
 
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
-	err := p.UpdateHardware(context.Background(), testNodeName, testVMID, 2, 4, 4096, []string{"pvmss", "prod"})
+	err := p.UpdateHardware(context.Background(), testNodeName, testVMID, 2, 4, 4096, []string{FakeTagPvmss, "prod"})
 	if err != nil {
 		t.Fatalf("UpdateHardware: %v", err)
 	}

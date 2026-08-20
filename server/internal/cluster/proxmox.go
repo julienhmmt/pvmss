@@ -111,24 +111,29 @@ func (p Proxmox) Snapshot(ctx context.Context) (Snapshot, error) {
 // configured) it falls back to the first node's hostname.
 func (p Proxmox) DisplayName(ctx context.Context) (string, error) {
 	rest := p.rest()
+
 	raw, err := rest.do(ctx, http.MethodGet, "/cluster/status", nil)
 	if err != nil {
 		return "", err
 	}
+
 	var rows []proxmoxClusterStatusRow
 	if err := decodeData(raw, &rows); err != nil {
 		return "", fmt.Errorf("decode cluster status: %w", err)
 	}
+
 	for _, row := range rows {
 		if row.Type == "cluster" {
 			return row.Name, nil
 		}
 	}
+
 	for _, row := range rows {
 		if row.Type == "node" && row.Name != "" {
 			return row.Name, nil
 		}
 	}
+
 	return "", nil
 }
 
@@ -164,7 +169,7 @@ func proxmoxVMFromRow(row proxmoxResourceRow) VM {
 	status := VMStopped
 
 	switch row.Status {
-	case "running":
+	case string(VMRunning):
 		status = VMRunning
 	case "paused":
 		status = VMPaused

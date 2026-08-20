@@ -239,6 +239,7 @@ func TestVMCreate_AdminWithoutPoolSucceeds(t *testing.T) {
 	if err := json.Unmarshal(res.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
+
 	if body.Name != "web-06" || body.VMID == 0 {
 		t.Fatalf("response = %+v, want a fully-populated created VM", body)
 	}

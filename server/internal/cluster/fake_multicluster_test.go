@@ -17,8 +17,8 @@ func TestFake_OfflineDemoRejectsEveryClientMethod(t *testing.T) {
 		call func() error
 	}{
 		{name: "snapshot", call: func() error { _, err := fake.Snapshot(ctx); return err }},
-		{name: "authenticate", call: func() error { _, err := fake.Authenticate(ctx, "alice", "password"); return err }},
-		{name: "change password", call: func() error { return fake.ChangePassword(ctx, "alice", "old", "new") }},
+		{name: "authenticate", call: func() error { _, err := fake.Authenticate(ctx, cluster.FakePoolAliceShort, "password"); return err }},
+		{name: "change password", call: func() error { return fake.ChangePassword(ctx, cluster.FakePoolAliceShort, "old", "new") }},
 		{name: "bridges", call: func() error { _, err := fake.ListBridges(ctx); return err }},
 		{name: "isos", call: func() error { _, err := fake.ListISOs(ctx); return err }},
 		{name: "pools", call: func() error { _, err := fake.ListPools(ctx); return err }},

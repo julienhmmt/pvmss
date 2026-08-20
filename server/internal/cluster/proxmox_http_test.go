@@ -12,16 +12,21 @@ import (
 func TestApiBase(t *testing.T) {
 	t.Parallel()
 
+	const (
+		apiBaseHost = "https://192.168.1.1:8006"
+		apiBaseWant = "https://192.168.1.1:8006/api2/json"
+	)
+
 	cases := []struct {
 		name string
 		raw  string
 		want string
 	}{
-		{"bare host, no suffix", "https://192.168.1.1:8006", "https://192.168.1.1:8006/api2/json"},
-		{"already has suffix", "https://192.168.1.1:8006/api2/json", "https://192.168.1.1:8006/api2/json"},
-		{"trailing slash, no suffix", "https://192.168.1.1:8006/", "https://192.168.1.1:8006/api2/json"},
-		{"trailing slash, has suffix", "https://192.168.1.1:8006/api2/json/", "https://192.168.1.1:8006/api2/json"},
-		{"surrounding whitespace", "  https://192.168.1.1:8006  ", "https://192.168.1.1:8006/api2/json"},
+		{"bare host, no suffix", apiBaseHost, apiBaseWant},
+		{"already has suffix", apiBaseWant, apiBaseWant},
+		{"trailing slash, no suffix", apiBaseHost + "/", apiBaseWant},
+		{"trailing slash, has suffix", apiBaseWant + "/", apiBaseWant},
+		{"surrounding whitespace", "  " + apiBaseHost + "  ", apiBaseWant},
 	}
 
 	for _, tc := range cases {

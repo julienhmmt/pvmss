@@ -13,6 +13,8 @@ const (
 	actionStart    = "start"
 	actionStop     = "stop"
 	actionShutdown = "shutdown"
+	actionReboot   = "reboot"
+	actionReset    = "reset"
 )
 
 // Fake is the built-in cluster substitute (constitution XI). It requires no
@@ -446,7 +448,7 @@ func (fake Fake) Action(_ context.Context, node string, vmid int, action string)
 	}
 
 	switch action {
-	case actionStart, "reboot", "reset":
+	case actionStart, actionReboot, actionReset:
 		state.vms[idx].Status = VMRunning
 		state.vms[idx].Uptime = fakeUptimeOnStart
 	case actionStop, actionShutdown:
@@ -475,7 +477,7 @@ func validateTransition(action string, status VMStatus) error {
 		if status == VMStopped {
 			return fmt.Errorf("%w: vm already stopped", ErrInvalidStateTransition)
 		}
-	case "reboot", "reset":
+	case actionReboot, actionReset:
 		if status == VMStopped {
 			return fmt.Errorf("%w: vm is not running", ErrInvalidStateTransition)
 		}
@@ -749,6 +751,10 @@ const (
 	FakeCloudInitDNS = "10.0.0.1"
 	// FakeBridgeVMbr0 is the primary bridge fixture.
 	FakeBridgeVMbr0 = "vmbr0"
+	// FakeBridgeVMbr1 is the secondary bridge fixture.
+	FakeBridgeVMbr1 = "vmbr1"
+	// FakePoolAliceShort is the short pool name used in Proxmox API fixtures.
+	FakePoolAliceShort = "alice"
 )
 
 func originalFakeIdentities() map[string]fakeIdentity {
@@ -826,7 +832,7 @@ var fakeStorages = []Storage{
 // vmbr1; vmbr2 is the demo's unapproved target (data-model.md fixture table).
 var fakeBridges = []Bridge{
 	{Name: FakeBridgeVMbr0, Node: FakeNode01, Active: true, Comment: ""},
-	{Name: "vmbr1", Node: FakeNode01, Active: true, Comment: ""},
+	{Name: FakeBridgeVMbr1, Node: FakeNode01, Active: true, Comment: ""},
 	{Name: "vmbr2", Node: FakeNode02, Active: true, Comment: "guest VLAN"},
 }
 
@@ -834,9 +840,9 @@ var fakeBridges = []Bridge{
 // ubuntu-24 (both on local); rocky-9 is the demo's unapproved target
 // (data-model.md fixture table).
 var fakeISOs = []ISOImage{
-	{Storage: "local", Node: FakeNode01, File: "debian-12-generic-amd64.iso", SizeBytes: 691945472},
-	{Storage: "local", Node: FakeNode01, File: "ubuntu-24.04-server-amd64.iso", SizeBytes: 1258291200},
-	{Storage: "local", Node: FakeNode02, File: "rocky-9-generic-x86_64.iso", SizeBytes: 1476395008},
+	{Storage: FakeStorageLocal, Node: FakeNode01, File: "debian-12-generic-amd64.iso", SizeBytes: 691945472},
+	{Storage: FakeStorageLocal, Node: FakeNode01, File: "ubuntu-24.04-server-amd64.iso", SizeBytes: 1258291200},
+	{Storage: FakeStorageLocal, Node: FakeNode02, File: "rocky-9-generic-x86_64.iso", SizeBytes: 1476395008},
 }
 
 // fakeUptimeOnStart is the uptime the fake assigns when a stopped VM is started
@@ -891,7 +897,7 @@ func seedFakeHardware(vms []VM) {
 		}
 
 		vms[index].Disks = []Disk{
-			{Key: "scsi0", Bus: DiskBusSCSI, BusIndex: 0, Storage: FakeStorageLocalLVM, SizeGB: 32},
+			{Key: diskKeySCSI0, Bus: DiskBusSCSI, BusIndex: 0, Storage: FakeStorageLocalLVM, SizeGB: 32},
 			{Key: "scsi1", Bus: DiskBusSCSI, BusIndex: 1, Storage: FakeStorageLocalLVM, SizeGB: 10},
 		}
 		vms[index].CDROM = CDROMState{State: CDROMMounted, ISOVolID: "local:iso/debian-12-generic-amd64.iso"}

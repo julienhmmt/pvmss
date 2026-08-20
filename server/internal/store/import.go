@@ -306,7 +306,7 @@ func replaceTable(ctx context.Context, tx *sql.Tx, uploadDB *sql.DB, table strin
 // threshold. Table and column names come from sqlite_master/PRAGMA, not user
 // input.
 //
-//nolint:gosec // table and column names come from sqlite_master/PRAGMA, not user input
+
 func streamRowsIntoLive(ctx context.Context, tx *sql.Tx, uploadDB *sql.DB, table string, cols []string) error {
 	selectSQL, insertSQL := tableSelectInsertSQL(table, cols)
 
@@ -351,7 +351,7 @@ func streamRowsIntoLive(ctx context.Context, tx *sql.Tx, uploadDB *sql.DB, table
 // (against the live DB) statements for `table` with columns `cols`. Extracted
 // from replaceTable for SonarQube go:S3776.
 //
-//nolint:gosec // table and column names come from sqlite_master/PRAGMA, not user input
+
 func tableSelectInsertSQL(table string, cols []string) (selectSQL, insertSQL string) {
 	placeholders := make([]string, len(cols))
 	for i := range cols {

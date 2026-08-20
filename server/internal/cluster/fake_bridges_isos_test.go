@@ -18,7 +18,7 @@ func TestFakeListBridges_ReturnsSupersetOfApproved(t *testing.T) {
 		t.Fatalf("ListBridges: %v", err)
 	}
 
-	approved := []string{FakeBridgeVMbr0, "vmbr1"}
+	approved := []string{FakeBridgeVMbr0, FakeBridgeVMbr1}
 	for _, name := range approved {
 		if !slices.ContainsFunc(bridges, func(b Bridge) bool { return b.Name == name }) {
 			t.Errorf("approved bridge %q missing from ListBridges result", name)
