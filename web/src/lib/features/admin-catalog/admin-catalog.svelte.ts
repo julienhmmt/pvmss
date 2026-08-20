@@ -95,6 +95,9 @@ export class AdminCatalogStore {
 	storageSortBy: 'name' | 'node' | 'type' | 'usage' | 'enabled' = $state('name');
 	storageSortDir: 'asc' | 'desc' = $state('asc');
 
+	bridgeSortBy: 'name' | 'node' | 'comment' | 'enabled' = $state('name');
+	bridgeSortDir: 'asc' | 'desc' = $state('asc');
+
 	filteredIsos = $derived(
 		sortIsos(
 			this.isos.filter((iso) => {
@@ -115,12 +118,23 @@ export class AdminCatalogStore {
 
 	sortedStorages = $derived(sortStorages(this.storages, this.storageSortBy, this.storageSortDir));
 
+	sortedBridges = $derived(sortBridges(this.bridges, this.bridgeSortBy, this.bridgeSortDir));
+
 	setStorageSort(column: 'name' | 'node' | 'type' | 'usage' | 'enabled'): void {
 		if (this.storageSortBy === column) {
 			this.storageSortDir = this.storageSortDir === 'asc' ? 'desc' : 'asc';
 		} else {
 			this.storageSortBy = column;
 			this.storageSortDir = 'asc';
+		}
+	}
+
+	setBridgeSort(column: 'name' | 'node' | 'comment' | 'enabled'): void {
+		if (this.bridgeSortBy === column) {
+			this.bridgeSortDir = this.bridgeSortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			this.bridgeSortBy = column;
+			this.bridgeSortDir = 'asc';
 		}
 	}
 
@@ -260,6 +274,29 @@ export class AdminCatalogStore {
 
 type ISOSortColumn = 'file' | 'storage' | 'node' | 'size' | 'enabled';
 type StorageSortColumn = 'name' | 'node' | 'type' | 'usage' | 'enabled';
+type BridgeSortColumn = 'name' | 'node' | 'comment' | 'enabled';
+
+function sortBridges(bridges: AdminBridge[], sortBy: BridgeSortColumn, dir: 'asc' | 'desc'): AdminBridge[] {
+	const sorted = [...bridges].sort((a, b) => {
+		let cmp = 0;
+		switch (sortBy) {
+			case 'name':
+				cmp = a.name.localeCompare(b.name) || a.node.localeCompare(b.node);
+				break;
+			case 'node':
+				cmp = a.node.localeCompare(b.node) || a.name.localeCompare(b.name);
+				break;
+			case 'comment':
+				cmp = (a.comment || '').localeCompare(b.comment || '') || a.name.localeCompare(b.name) || a.node.localeCompare(b.node);
+				break;
+			case 'enabled':
+				cmp = Number(a.enabled) - Number(b.enabled) || a.name.localeCompare(b.name) || a.node.localeCompare(b.node);
+				break;
+		}
+		return cmp;
+	});
+	return dir === 'asc' ? sorted : sorted.reverse();
+}
 
 function sortStorages(storages: AdminStorage[], sortBy: StorageSortColumn, dir: 'asc' | 'desc'): AdminStorage[] {
 	const sorted = [...storages].sort((a, b) => {
