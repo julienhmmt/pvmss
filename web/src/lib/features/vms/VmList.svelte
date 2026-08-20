@@ -10,6 +10,7 @@
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import ChevronDownIcon from '$lib/shared/ui/icons/ChevronDownIcon.svelte';
 
 	const store = getVmListContext();
 	const bulk = getVmBulkContext();
@@ -96,15 +97,6 @@
 
 	let pageCount = $derived(
 		store.result === null ? 1 : Math.max(1, Math.ceil(store.result.total / store.result.pageSize))
-	);
-
-	let rangeStart = $derived(
-		store.result === null || store.result.items.length === 0
-			? 0
-			: (store.result.page - 1) * store.result.pageSize + 1
-	);
-	let rangeEnd = $derived(
-		store.result === null ? 0 : rangeStart + store.result.items.length - 1
 	);
 
 	let pageItems = $derived(store.result?.items ?? []);
@@ -262,8 +254,11 @@
 		</tbody>
 	</table>
 
-	<nav class="mt-4 flex flex-wrap items-center justify-between gap-3" aria-label={m['vms.list.paginationLabel']()}>
-		<label class="flex items-center gap-2 text-sm text-muted-foreground">
+	<nav
+		class="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-3"
+		aria-label={m['vms.list.paginationLabel']()}
+	>
+		<label class="flex items-center gap-2 text-xs text-muted-foreground">
 			{m['common.rowsPerPage']()}
 			<select
 				class="rounded-md border border-border bg-background px-2 py-1 text-sm"
@@ -277,32 +272,29 @@
 			</select>
 		</label>
 
-		<div class="flex items-center gap-2">
+		<div class="flex items-center gap-1 rounded-md border border-border p-1">
 			<button
 				type="button"
-				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+				class="flex h-7 w-7 items-center justify-center rounded hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
 				disabled={store.result === null || store.result.page <= 1}
 				onclick={() => store.setPage(store.page - 1)}
 				data-testid="vm-page-prev"
 			>
-				{m['common.previous']()}
+				<ChevronDownIcon class="h-4 w-4 rotate-90" />
+				<span class="sr-only">{m['common.previous']()}</span>
 			</button>
-			<span class="text-sm text-muted-foreground" data-testid="vm-page-indicator">
+			<span class="px-2 text-sm text-muted-foreground" data-testid="vm-page-indicator">
 				{m['common.pageIndicator']({ current: store.result?.page ?? store.page, total: pageCount })}
 			</span>
-			{#if store.result}
-				<span class="text-xs text-muted-foreground-subtle" data-testid="vm-page-range">
-					{m['common.showingRange']({ start: rangeStart, end: rangeEnd, total: store.result.total })}
-				</span>
-			{/if}
 			<button
 				type="button"
-				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+				class="flex h-7 w-7 items-center justify-center rounded hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
 				disabled={store.result === null || store.result.page >= pageCount}
 				onclick={() => store.setPage(store.page + 1)}
 				data-testid="vm-page-next"
 			>
-				{m['common.next']()}
+				<ChevronDownIcon class="h-4 w-4 -rotate-90" />
+				<span class="sr-only">{m['common.next']()}</span>
 			</button>
 		</div>
 	</nav>

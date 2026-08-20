@@ -1005,6 +1005,5 @@
  "shortcuts.reload": "Reload page",
  "shortcuts.toggleHelp": "Toggle this help",
  "shortcuts.closeDialog": "Close dialog",
- "shortcuts.submitForm": "Submit form",
- "common.showingRange": "{start}-{end} of {total}"
+ "shortcuts.submitForm": "Submit form"
 }

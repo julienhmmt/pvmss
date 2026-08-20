@@ -1005,6 +1005,5 @@
  "shortcuts.reload": "Recharger la page",
  "shortcuts.toggleHelp": "Afficher cette aide",
  "shortcuts.closeDialog": "Fermer la fenêtre",
- "shortcuts.submitForm": "Envoyer le formulaire",
- "common.showingRange": "{start}-{end} sur {total}"
+ "shortcuts.submitForm": "Envoyer le formulaire"
 }
