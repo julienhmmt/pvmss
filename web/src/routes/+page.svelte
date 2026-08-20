@@ -1,6 +1,7 @@
 <script lang="ts">
 	import HomeMarketing from '$lib/features/home/HomeMarketing.svelte';
 	import HomeCta from '$lib/features/home/HomeCta.svelte';
+	import HomeAdminQuickActions from '$lib/features/home/HomeAdminQuickActions.svelte';
 	import HomeVmDashboard from '$lib/features/home/HomeVmDashboard.svelte';
 	import HomeHowItWorks from '$lib/features/home/HomeHowItWorks.svelte';
 	import BrandIcon from '$lib/shared/ui/icons/BrandIcon.svelte';
@@ -17,6 +18,7 @@
 		<p class="mt-4 max-w-lg text-base text-muted-foreground">{m['home.hero.intro']()}</p>
 	</div>
 	<HomeCta />
+	<HomeAdminQuickActions />
 	<HomeHowItWorks />
 	<HomeVmDashboard />
 	<HomeMarketing />

@@ -158,7 +158,7 @@
 			<div class="flex min-w-0 flex-1 flex-col">
 				<AppHeader />
 				<main id="main-content" class="flex-1 p-7">
-					<div class="max-w-[1180px]">
+					<div class="mx-auto max-w-[1180px]">
 						{@render children()}
 					</div>
 				</main>

@@ -11,6 +11,15 @@ export interface AdminPool {
 	managed: boolean;
 }
 
+/** CreatedPoolCredentials holds the server-generated credentials returned once. */
+export interface CreatedPoolCredentials {
+	name: string;
+	username: string;
+	password: string;
+	comment: string;
+	managed: boolean;
+}
+
 interface DeletePoolResponse {
 	status: string;
 	userDeleted: boolean;
@@ -31,6 +40,7 @@ export class PoolsStore {
 	deleteError = $state.raw<string | null>(null);
 	searchTerm = $state.raw('');
 	announce = $state.raw<string | null>(null);
+	createdCredentials = $state.raw<CreatedPoolCredentials | null>(null);
 	#searchTimer: ReturnType<typeof setTimeout> | null = null;
 
 	async load(): Promise<void> {
@@ -55,20 +65,28 @@ export class PoolsStore {
 		}, SEARCH_DEBOUNCE_MS);
 	}
 
-	async create(name: string, password: string, comment: string = ''): Promise<void> {
+	async create(name: string, comment: string = ''): Promise<void> {
 		this.saving = true;
 		this.saveError = null;
 		this.announce = null;
+		this.createdCredentials = null;
 		try {
-			const created = await post<AdminPool>('/api/v1/admin/pools', {
+			const created = await post<CreatedPoolCredentials>('/api/v1/admin/pools', {
 				name,
-				comment,
-				password
+				comment
 			});
 			const needle = this.searchTerm.toLowerCase();
 			if (needle === '' || created.name.toLowerCase().includes(needle)) {
-				this.pools = [...this.pools, created];
+				this.pools = [...this.pools, {
+					name: created.name,
+					comment: created.comment,
+					total: 0,
+					running: 0,
+					stopped: 0,
+					managed: created.managed
+				}];
 			}
+			this.createdCredentials = created;
 			this.announce = m['admin.pools.created']({ name: created.name });
 		} catch (error) {
 			this.saveError = error instanceof ApiRequestError ? error.message : m['admin.pools.createError']();
@@ -76,6 +94,10 @@ export class PoolsStore {
 		} finally {
 			this.saving = false;
 		}
+	}
+
+	dismissCredentials(): void {
+		this.createdCredentials = null;
 	}
 
 	async remove(name: string): Promise<void> {

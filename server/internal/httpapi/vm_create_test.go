@@ -73,6 +73,7 @@ func newVMCreateHandler(t *testing.T) (*httpapi.VMCreate, *httpapi.Auth, *store.
 
 	t.Cleanup(func() { _ = st.Close() })
 	seedBridgeApprovals(t, st)
+	seedISOApprovals(t, st)
 
 	return httpapi.NewVMCreate(
 		authHandler,
@@ -92,6 +93,23 @@ func seedBridgeApprovals(t *testing.T, st *store.Store) {
 			if err := st.SetBridgeEnabled(context.Background(), "default", node, name, true); err != nil {
 				t.Fatalf("seed bridge approval: %v", err)
 			}
+		}
+	}
+}
+
+func seedISOApprovals(t *testing.T, st *store.Store) {
+	t.Helper()
+
+	isos := []struct {
+		node, storage, file string
+	}{
+		{cluster.FakeNode01, cluster.FakeStorageLocal, "debian-12-generic-amd64.iso"},
+		{cluster.FakeNode01, cluster.FakeStorageLocal, "ubuntu-24.04-server-amd64.iso"},
+		{cluster.FakeNode02, cluster.FakeStorageLocal, "rocky-9-generic-x86_64.iso"},
+	}
+	for _, iso := range isos {
+		if err := st.SetISOEnabled(context.Background(), "default", iso.node, iso.storage, iso.file, true); err != nil {
+			t.Fatalf("seed iso approval: %v", err)
 		}
 	}
 }
@@ -210,12 +228,12 @@ func TestVMCreate_PoolFieldHasNoEffect(t *testing.T) {
 	}
 }
 
-// TestVMCreate_AdminWithoutPoolSucceeds — an admin (local or cluster) has no
-// personal pool but may still create VMs; the VM is created without a pool
-// assignment and the response is 202 Accepted.
+// TestVMCreate_AdminCannotCreate — an admin (local or cluster) cannot create
+// VMs through the self-service portal; the response is 403 Forbidden with the
+// admin_cannot_create error code.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestVMCreate_AdminWithoutPoolSucceeds(t *testing.T) {
+func TestVMCreate_AdminCannotCreate(t *testing.T) {
 	handler, authHandler, _ := newVMCreateHandler(t)
 
 	response := serveJSON(authHandler.AdminLogin, "/api/v1/auth/admin-login", `{"password":"pvmss-local-admin"}`)
@@ -227,21 +245,12 @@ func TestVMCreate_AdminWithoutPoolSucceeds(t *testing.T) {
 
 	res := postVMCreate(t, handler,
 		`{"cluster":"default","name":"web-06","profileId":"small"}`, cookie)
-	if res.Code != http.StatusAccepted {
-		t.Fatalf("status = %d, want %d: %s", res.Code, http.StatusAccepted, res.Body.String())
+	if res.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d: %s", res.Code, http.StatusForbidden, res.Body.String())
 	}
 
-	var body struct {
-		Cluster string `json:"cluster"`
-		VMID    int    `json:"vmid"`
-		Name    string `json:"name"`
-	}
-	if err := json.Unmarshal(res.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-
-	if body.Name != "web-06" || body.VMID == 0 {
-		t.Fatalf("response = %+v, want a fully-populated created VM", body)
+	if !strings.Contains(res.Body.String(), "admin_cannot_create") {
+		t.Fatalf("response body = %s, want admin_cannot_create error code", res.Body.String())
 	}
 }
 
@@ -322,7 +331,7 @@ func TestVMCreateCatalog_SeededShape(t *testing.T) {
 		t.Errorf("cluster = %q, want default", body.Cluster)
 	}
 
-	if len(body.Nodes) != 2 || len(body.Storages) != 3 || len(body.Bridges) != 2 || len(body.ISOs) != 2 || len(body.Profiles) != 3 {
+	if len(body.Nodes) != 2 || len(body.Storages) != 3 || len(body.Bridges) != 2 || len(body.ISOs) != 3 || len(body.Profiles) != 3 {
 		t.Errorf("catalog size mismatch: %+v", body)
 	}
 

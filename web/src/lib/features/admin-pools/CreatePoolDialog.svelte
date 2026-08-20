@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -9,26 +9,24 @@ import Dialog from '$lib/shared/ui/Dialog.svelte';
 		saving: boolean;
 		error: string | null;
 		onClose: () => void;
-		onCreate: (name: string, password: string, comment: string) => Promise<void>;
+		onCreate: (name: string, comment: string) => Promise<void>;
 	}
 
 	let { open = $bindable(false), saving, error, onClose, onCreate }: Props = $props();
 	let name = $state('');
-	let password = $state('');
 	let comment = $state('');
 
 	$effect(() => {
 		if (open) {
 			untrack(() => {
 				name = '';
-				password = '';
 				comment = '';
 			});
 		}
 	});
 
 	async function submit(): Promise<void> {
-		await onCreate(name, password, comment);
+		await onCreate(name, comment);
 	}
 </script>
 
@@ -48,18 +46,6 @@ import Dialog from '$lib/shared/ui/Dialog.svelte';
 				autocomplete="off"
 			/>
 			<p class="mt-1 text-xs text-muted-foreground">{m['admin.pools.nameHint']()}</p>
-		</div>
-		<div>
-			<label for="pool-password" class="mb-1 block text-sm font-medium">{m['admin.pools.initialPassword']()}</label>
-			<input
-				id="pool-password"
-				class="w-full rounded-md border bg-background px-3 py-2 text-sm"
-				type="password"
-				minlength="8"
-				required
-				bind:value={password}
-				autocomplete="new-password"
-			/>
 		</div>
 		<div>
 			<label for="pool-comment" class="mb-1 block text-sm font-medium">{m['admin.pools.comment']()}</label>

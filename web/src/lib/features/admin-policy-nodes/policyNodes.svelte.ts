@@ -30,6 +30,20 @@ export class AdminPolicyNodesStore {
 	saving = $state.raw(false);
 	saveError = $state.raw<string | null>(null);
 
+	sortBy: 'node' | 'maxVms' | 'maxVcpus' | 'maxRamGb' | 'maxDiskGb' | 'usedVms' | 'usedVcpus' | 'usedRamGb' | 'physicalVcpus' | 'physicalRamGb' = $state('node');
+	sortDir: 'asc' | 'desc' = $state('asc');
+
+	sortedNodes = $derived(sortNodeCapacities(this.nodes, this.sortBy, this.sortDir));
+
+	setSort(column: 'node' | 'maxVms' | 'maxVcpus' | 'maxRamGb' | 'maxDiskGb' | 'usedVms' | 'usedVcpus' | 'usedRamGb' | 'physicalVcpus' | 'physicalRamGb'): void {
+		if (this.sortBy === column) {
+			this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			this.sortBy = column;
+			this.sortDir = 'asc';
+		}
+	}
+
 	async load(): Promise<void> {
 		this.loading = true;
 		this.error = null;
@@ -69,4 +83,19 @@ export function setAdminPolicyNodesContext(): AdminPolicyNodesStore {
 
 export function getAdminPolicyNodesContext(): AdminPolicyNodesStore {
 	return getContext<AdminPolicyNodesStore>(POLICY_NODES_CONTEXT_KEY);
+}
+
+type NodeCapacitySortColumn = 'node' | 'maxVms' | 'maxVcpus' | 'maxRamGb' | 'maxDiskGb' | 'usedVms' | 'usedVcpus' | 'usedRamGb' | 'physicalVcpus' | 'physicalRamGb';
+
+function sortNodeCapacities(nodes: NodeCapacity[], sortBy: NodeCapacitySortColumn, dir: 'asc' | 'desc'): NodeCapacity[] {
+	const sorted = [...nodes].sort((a, b) => {
+		let cmp = 0;
+		if (sortBy === 'node') {
+			cmp = a.node.localeCompare(b.node);
+		} else {
+			cmp = a[sortBy] - b[sortBy] || a.node.localeCompare(b.node);
+		}
+		return cmp;
+	});
+	return dir === 'asc' ? sorted : sorted.reverse();
 }

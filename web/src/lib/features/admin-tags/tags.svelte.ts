@@ -20,6 +20,38 @@ export class AdminTagsStore {
 	saving = $state.raw(false);
 	saveError = $state.raw<string | null>(null);
 
+	search = $state('');
+	protectedFilter: 'all' | 'protected' | 'unprotected' = $state('all');
+	sortBy: 'name' | 'vmCount' = $state('name');
+	sortDir: 'asc' | 'desc' = $state('asc');
+
+	filteredTags = $derived(
+		sortTags(
+			this.tags.filter((t) => {
+				if (this.search && !t.name.toLowerCase().includes(this.search.toLowerCase())) return false;
+				if (this.protectedFilter === 'protected' && !t.protected) return false;
+				if (this.protectedFilter === 'unprotected' && t.protected) return false;
+				return true;
+			}),
+			this.sortBy,
+			this.sortDir
+		)
+	);
+
+	setSort(column: 'name' | 'vmCount'): void {
+		if (this.sortBy === column) {
+			this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			this.sortBy = column;
+			this.sortDir = 'asc';
+		}
+	}
+
+	resetFilters(): void {
+		this.search = '';
+		this.protectedFilter = 'all';
+	}
+
 	async load(): Promise<void> {
 		this.loading = true;
 		this.error = null;
@@ -71,6 +103,24 @@ export class AdminTagsStore {
 			throw err;
 		}
 	}
+}
+
+type TagSortColumn = 'name' | 'vmCount';
+
+function sortTags(tags: AdminTag[], sortBy: TagSortColumn, dir: 'asc' | 'desc'): AdminTag[] {
+	const sorted = [...tags].sort((a, b) => {
+		let cmp = 0;
+		switch (sortBy) {
+			case 'name':
+				cmp = a.name.localeCompare(b.name);
+				break;
+			case 'vmCount':
+				cmp = a.vmCount - b.vmCount || a.name.localeCompare(b.name);
+				break;
+		}
+		return cmp;
+	});
+	return dir === 'asc' ? sorted : sorted.reverse();
 }
 
 const TAGS_CONTEXT_KEY = Symbol('admin-tags');

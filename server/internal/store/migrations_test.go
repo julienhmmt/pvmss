@@ -259,11 +259,7 @@ func TestRunMigrations_V14RebuildsBridgeIdentity(t *testing.T) {
 		t.Fatalf("create legacy bridge table: %v", err)
 	}
 
-	// V16 alters the clusters table; create a minimal stand-in so the ALTER
-	// succeeds without replaying every prior migration in this focused test.
-	if _, err := db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS clusters (name TEXT PRIMARY KEY)`); err != nil {
-		t.Fatalf("create clusters stand-in: %v", err)
-	}
+	createMigrationStandInTables(ctx, t, db)
 
 	if err := store.RunMigrations(ctx, db, store.Migrations); err != nil {
 		t.Fatalf("RunMigrations: %v", err)
@@ -293,6 +289,25 @@ func TestRunMigrations_V14RebuildsBridgeIdentity(t *testing.T) {
 
 	if count != 2 {
 		t.Fatalf("bridge count = %d, want 2", count)
+	}
+}
+
+// createMigrationStandInTables creates minimal stand-in tables for migrations
+// that ALTER or DROP tables created by earlier migrations, so a focused test
+// that marks versions 1-13 as applied (without replaying V7's full seed) can
+// still run the full migration list. V16 alters clusters; V17 drops
+// catalog_isos.
+func createMigrationStandInTables(ctx context.Context, t *testing.T, db *sql.DB) {
+	t.Helper()
+
+	standins := []string{
+		`CREATE TABLE IF NOT EXISTS clusters (name TEXT PRIMARY KEY)`,
+		`CREATE TABLE IF NOT EXISTS catalog_isos (cluster TEXT NOT NULL, storage TEXT NOT NULL, file TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, storage, file))`,
+	}
+	for _, ddl := range standins {
+		if _, err := db.ExecContext(ctx, ddl); err != nil {
+			t.Fatalf("create stand-in table: %v", err)
+		}
 	}
 }
 

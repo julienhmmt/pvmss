@@ -18,8 +18,13 @@ import (
 // is a 502.
 var (
 	// ErrNoPool — a non-admin actor has no personal pool, so nothing can own
-	// the VM (FR-005). Admins are exempt: they may create unowned VMs.
+	// the VM (FR-005).
 	ErrNoPool = errors.New("no personal pool")
+	// ErrAdminCannotCreate — an administrator (local or cluster) cannot create
+	// VMs through the self-service portal. VM ownership requires a personal
+	// pool, which admins do not have. Admins manage VMs through the admin
+	// pages or directly in Proxmox.
+	ErrAdminCannotCreate = errors.New("administrators cannot create VMs")
 	// ErrOutOfRange — CPU/memory/disk violate the fixed technical safety
 	// ceiling (FR-008). Deliberately never called a "gabarit" (constitution
 	// I: that word is reserved for T12's policy).
@@ -157,11 +162,14 @@ type CreateDeps struct {
 func Create(ctx context.Context, actor auth.Identity, clusterName string, req CreateRequest, deps CreateDeps) (CreateResult, error) {
 	policyService := selectPolicyService(deps.Store, deps.Services)
 
-	// FR-005: a non-admin must have a personal pool to own the VM. An admin
-	// (local or cluster) may create VMs without a pool — the VM is simply
-	// unowned, which is the correct behaviour for infrastructure boxes an
-	// admin provisions directly.
-	if actor.Pool == "" && !actor.IsAdmin {
+	// FR-005: administrators (local or cluster) cannot create VMs through the
+	// self-service portal — VM ownership requires a personal pool, which admins
+	// do not have. A non-admin must have a personal pool to own the VM.
+	if actor.IsAdmin {
+		return CreateResult{}, ErrAdminCannotCreate
+	}
+
+	if actor.Pool == "" {
 		return CreateResult{}, ErrNoPool
 	}
 

@@ -300,18 +300,22 @@ func proxmoxTicketAuth(ctx context.Context, rest proxmoxRESTClient, username, pa
 // proxmoxHasPermission checks one privilege at one path for the ticket's own
 // user via GET /access/permissions?path=... — any authenticated user may
 // query their own effective permissions, no elevated privilege required.
+// PVE always nests the response as path -> {privilege: propagate-bool}, even
+// for a single requested path (pve-access-control's AccessControl.pm
+// `permissions` method: `$res = { $path => $perms }`) — never a flat
+// privilege map.
 func proxmoxHasPermission(ctx context.Context, rest proxmoxRESTClient, path, privilege string) (bool, error) {
 	raw, err := rest.do(ctx, http.MethodGet, "/access/permissions", url.Values{"path": {path}})
 	if err != nil {
 		return false, err
 	}
 
-	var perms map[string]int
+	var perms map[string]map[string]int
 	if err := decodeData(raw, &perms); err != nil {
 		return false, fmt.Errorf("decode permissions: %w", err)
 	}
 
-	return perms[privilege] == 1, nil
+	return perms[path][privilege] == 1, nil
 }
 
 // proxmoxOwnedPool derives the caller's personal pool from PVMSS's own

@@ -3,6 +3,7 @@
 	import { formatBytes } from './format';
 	import Switch from '$lib/shared/ui/Switch.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import TooltipHeader from '$lib/shared/ui/TooltipHeader.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -19,11 +20,11 @@
 		<thead class="bg-muted/50 text-left">
 			<tr>
 				<th class="px-4 py-2 font-medium">{m['common.name']()}</th>
-				<th class="px-4 py-2 font-medium">{m['common.status']()}</th>
+				<TooltipHeader text={m['common.status']()} tooltip={m['admin.catalog.tooltip.nodeStatus']()} />
 				<th class="px-4 py-2 font-medium">{m['common.vms']()}</th>
-				<th class="px-4 py-2 font-medium">{m['common.cpu']()}</th>
-				<th class="px-4 py-2 font-medium">{m['common.memory']()}</th>
-				<th class="px-4 py-2 font-medium">{m['admin.catalog.statusColumn']()}</th>
+				<TooltipHeader text={m['common.cpu']()} tooltip={m['admin.catalog.tooltip.nodeCpu']()} />
+				<TooltipHeader text={m['common.memory']()} tooltip={m['admin.catalog.tooltip.nodeMemory']()} />
+				<TooltipHeader text={m['admin.catalog.statusColumn']()} tooltip={m['admin.catalog.tooltip.statusColumn']()} />
 			</tr>
 		</thead>
 		<tbody>

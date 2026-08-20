@@ -3,6 +3,8 @@ package pools
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -46,6 +48,31 @@ type ManagedStore interface {
 	ManagedRecorder
 	ManagedChecker
 	ManagedRemover
+}
+
+// PoolPrefix is prepended to every PVMSS-managed pool name and user.
+const PoolPrefix = "pvmss-"
+
+// GeneratedCredentials holds the server-generated credentials returned once
+// after pool creation. The password is never stored or recoverable.
+type GeneratedCredentials struct {
+	PoolName string
+	Username string
+	Password string
+	Comment  string
+}
+
+// generatedPasswordLength is the number of raw bytes before base64 encoding,
+// yielding ~32 ASCII characters — well above minPasswordLength.
+const generatedPasswordLength = 24
+
+// generatePassword returns a random base64-encoded password.
+func generatePassword() (string, error) {
+	b := make([]byte, generatedPasswordLength)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generate password: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 // ProvisionError identifies the failed cluster provisioning step for logs.
@@ -92,6 +119,38 @@ func CreateWithRecorder(ctx context.Context, actor auth.Identity, client cluster
 		}
 	}
 	return pool, nil
+}
+
+// CreateManaged provisions a PVMSS-managed pool with a server-generated
+// password. The pool name is prefixed with pvmss- and the Proxmox user becomes
+// pvmss-{name}@pve. The generated password is returned once and never stored.
+func CreateManaged(ctx context.Context, actor auth.Identity, client cluster.Client, recorder ManagedRecorder, clusterName, name, comment string) (GeneratedCredentials, error) {
+	if !actor.IsAdmin {
+		return GeneratedCredentials{}, ErrForbidden
+	}
+	if err := ValidateName(name); err != nil {
+		return GeneratedCredentials{}, err
+	}
+	password, err := generatePassword()
+	if err != nil {
+		return GeneratedCredentials{}, err
+	}
+	prefixedName := PoolPrefix + name
+	pool, err := create(ctx, client, prefixedName, password, comment)
+	if err != nil {
+		return GeneratedCredentials{}, err
+	}
+	if recorder != nil && clusterName != "" {
+		if err := recorder.RegisterManagedPool(ctx, clusterName, prefixedName); err != nil {
+			slog.Default().Error("managed pool registration failed", "cluster", clusterName, "pool", prefixedName, "error", err)
+		}
+	}
+	return GeneratedCredentials{
+		PoolName: pool.Name,
+		Username: PoolPrefix + name,
+		Password: password,
+		Comment:  pool.Comment,
+	}, nil
 }
 
 // ValidateName enforces the Proxmox poolid and PVE username boundary.

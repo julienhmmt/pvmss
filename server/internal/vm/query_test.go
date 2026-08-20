@@ -32,6 +32,7 @@ func testIndex() *inventory.Index {
 			{VMID: 102, Name: "db-01", Node: cluster.FakeNode02, Status: cluster.VMRunning, Pool: cluster.FakePoolAlice, Tags: []string{testPvmssTag, "db"}, CPUCores: 8, MemoryTotal: 8589934592},
 			{VMID: 103, Name: "cache-01", Node: cluster.FakeNode01, Status: cluster.VMPaused, Pool: cluster.FakePoolBob, Tags: []string{testPvmssTag, "cache"}, CPUCores: 1, MemoryTotal: 1073741824},
 			{VMID: 104, Name: "build-01", Node: cluster.FakeNode02, Status: cluster.VMStopped, Pool: cluster.FakePoolBob, Tags: nil, CPUCores: 4, MemoryTotal: 8589934592},
+			{VMID: 105, Name: "orphan-01", Node: cluster.FakeNode01, Status: cluster.VMRunning, Pool: "", Tags: nil, CPUCores: 1, MemoryTotal: 1073741824},
 		},
 	})
 
@@ -63,8 +64,8 @@ func TestList_ScopeEnforcement(t *testing.T) {
 		{name: "non-admin default scope sees own pool", identity: alice, scope: "", wantIDs: []int{100, 101, 102}},
 		{name: "non-admin explicit mine sees own pool", identity: alice, scope: vm.ScopeMine, wantIDs: []int{100, 101, 102}},
 		{name: "non-admin scope=all silently overridden to mine", identity: alice, scope: vm.ScopeAll, wantIDs: []int{100, 101, 102}},
-		{name: "admin scope=all sees every pool", identity: admin, scope: vm.ScopeAll, wantIDs: []int{100, 101, 102, 103, 104}},
-		{name: "admin without scope sees only own pool", identity: admin, scope: "", wantIDs: nil},
+		{name: "admin scope=all sees every pool, including unpooled VMs", identity: admin, scope: vm.ScopeAll, wantIDs: []int{100, 101, 102, 103, 104, 105}},
+		{name: "admin without scope owns no pool and sees nothing, not the unpooled VM", identity: admin, scope: "", wantIDs: nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

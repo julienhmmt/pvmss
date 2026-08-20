@@ -59,6 +59,7 @@ interface BridgeToggleResponse {
 }
 
 interface ISOToggleResponse {
+	node: string;
 	storage: string;
 	file: string;
 	enabled: boolean;
@@ -83,6 +84,75 @@ export class AdminCatalogStore {
 
 	toggling = $state.raw<string | null>(null);
 	toggleError = $state.raw<string | null>(null);
+
+	isoSearch = $state('');
+	isoStorageFilter = $state('');
+	isoNodeFilter = $state('');
+	isoEnabledFilter: 'all' | 'enabled' | 'disabled' = $state('all');
+	isoSortBy: 'file' | 'storage' | 'node' | 'size' | 'enabled' = $state('file');
+	isoSortDir: 'asc' | 'desc' = $state('asc');
+
+	storageSortBy: 'name' | 'node' | 'type' | 'usage' | 'enabled' = $state('name');
+	storageSortDir: 'asc' | 'desc' = $state('asc');
+
+	bridgeSortBy: 'name' | 'node' | 'comment' | 'enabled' = $state('name');
+	bridgeSortDir: 'asc' | 'desc' = $state('asc');
+
+	filteredIsos = $derived(
+		sortIsos(
+			this.isos.filter((iso) => {
+				if (this.isoSearch && !iso.file.toLowerCase().includes(this.isoSearch.toLowerCase())) return false;
+				if (this.isoStorageFilter && iso.storage !== this.isoStorageFilter) return false;
+				if (this.isoNodeFilter && iso.node !== this.isoNodeFilter) return false;
+				if (this.isoEnabledFilter === 'enabled' && !iso.enabled) return false;
+				if (this.isoEnabledFilter === 'disabled' && iso.enabled) return false;
+				return true;
+			}),
+			this.isoSortBy,
+			this.isoSortDir
+		)
+	);
+
+	isoStorageOptions = $derived([...new Set(this.isos.map((i) => i.storage))].sort());
+	isoNodeOptions = $derived([...new Set(this.isos.map((i) => i.node))].sort());
+
+	sortedStorages = $derived(sortStorages(this.storages, this.storageSortBy, this.storageSortDir));
+
+	sortedBridges = $derived(sortBridges(this.bridges, this.bridgeSortBy, this.bridgeSortDir));
+
+	setStorageSort(column: 'name' | 'node' | 'type' | 'usage' | 'enabled'): void {
+		if (this.storageSortBy === column) {
+			this.storageSortDir = this.storageSortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			this.storageSortBy = column;
+			this.storageSortDir = 'asc';
+		}
+	}
+
+	setBridgeSort(column: 'name' | 'node' | 'comment' | 'enabled'): void {
+		if (this.bridgeSortBy === column) {
+			this.bridgeSortDir = this.bridgeSortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			this.bridgeSortBy = column;
+			this.bridgeSortDir = 'asc';
+		}
+	}
+
+	setISOSort(column: 'file' | 'storage' | 'node' | 'size' | 'enabled'): void {
+		if (this.isoSortBy === column) {
+			this.isoSortDir = this.isoSortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			this.isoSortBy = column;
+			this.isoSortDir = 'asc';
+		}
+	}
+
+	resetISOFilters(): void {
+		this.isoSearch = '';
+		this.isoStorageFilter = '';
+		this.isoNodeFilter = '';
+		this.isoEnabledFilter = 'all';
+	}
 
 	async loadClusters(): Promise<void> {
 		try {
@@ -179,18 +249,19 @@ export class AdminCatalogStore {
 		}
 	}
 
-	async toggleISO(storage: string, file: string, enabled: boolean): Promise<void> {
-		this.toggling = `iso:${storage}:${file}`;
+	async toggleISO(node: string, storage: string, file: string, enabled: boolean): Promise<void> {
+		this.toggling = `iso:${node}:${storage}:${file}`;
 		this.toggleError = null;
 		try {
 			await post<ISOToggleResponse>('/api/v1/admin/isos/toggle', {
 				cluster: this.cluster,
+				node,
 				storage,
 				file,
 				enabled
 			});
 			this.isos = this.isos.map((i) =>
-				i.storage === storage && i.file === file ? { ...i, enabled } : i
+				i.node === node && i.storage === storage && i.file === file ? { ...i, enabled } : i
 			);
 		} catch (err) {
 			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.toggleIsoError']();
@@ -199,6 +270,82 @@ export class AdminCatalogStore {
 			this.toggling = null;
 		}
 	}
+}
+
+type ISOSortColumn = 'file' | 'storage' | 'node' | 'size' | 'enabled';
+type StorageSortColumn = 'name' | 'node' | 'type' | 'usage' | 'enabled';
+type BridgeSortColumn = 'name' | 'node' | 'comment' | 'enabled';
+
+function sortBridges(bridges: AdminBridge[], sortBy: BridgeSortColumn, dir: 'asc' | 'desc'): AdminBridge[] {
+	const sorted = [...bridges].sort((a, b) => {
+		let cmp = 0;
+		switch (sortBy) {
+			case 'name':
+				cmp = a.name.localeCompare(b.name) || a.node.localeCompare(b.node);
+				break;
+			case 'node':
+				cmp = a.node.localeCompare(b.node) || a.name.localeCompare(b.name);
+				break;
+			case 'comment':
+				cmp = (a.comment || '').localeCompare(b.comment || '') || a.name.localeCompare(b.name) || a.node.localeCompare(b.node);
+				break;
+			case 'enabled':
+				cmp = Number(a.enabled) - Number(b.enabled) || a.name.localeCompare(b.name) || a.node.localeCompare(b.node);
+				break;
+		}
+		return cmp;
+	});
+	return dir === 'asc' ? sorted : sorted.reverse();
+}
+
+function sortStorages(storages: AdminStorage[], sortBy: StorageSortColumn, dir: 'asc' | 'desc'): AdminStorage[] {
+	const sorted = [...storages].sort((a, b) => {
+		let cmp = 0;
+		switch (sortBy) {
+			case 'name':
+				cmp = a.name.localeCompare(b.name) || a.node.localeCompare(b.node);
+				break;
+			case 'node':
+				cmp = a.node.localeCompare(b.node) || a.name.localeCompare(b.name);
+				break;
+			case 'type':
+				cmp = a.type.localeCompare(b.type) || a.name.localeCompare(b.name) || a.node.localeCompare(b.node);
+				break;
+			case 'usage':
+				cmp = a.usedBytes - b.usedBytes || a.name.localeCompare(b.name);
+				break;
+			case 'enabled':
+				cmp = Number(a.enabled) - Number(b.enabled) || a.name.localeCompare(b.name) || a.node.localeCompare(b.node);
+				break;
+		}
+		return cmp;
+	});
+	return dir === 'asc' ? sorted : sorted.reverse();
+}
+
+function sortIsos(isos: AdminISO[], sortBy: ISOSortColumn, dir: 'asc' | 'desc'): AdminISO[] {
+	const sorted = [...isos].sort((a, b) => {
+		let cmp = 0;
+		switch (sortBy) {
+			case 'file':
+				cmp = a.file.localeCompare(b.file);
+				break;
+			case 'storage':
+				cmp = a.storage.localeCompare(b.storage) || a.file.localeCompare(b.file);
+				break;
+			case 'node':
+				cmp = a.node.localeCompare(b.node) || a.file.localeCompare(b.file);
+				break;
+			case 'size':
+				cmp = a.sizeBytes - b.sizeBytes || a.file.localeCompare(b.file);
+				break;
+			case 'enabled':
+				cmp = Number(a.enabled) - Number(b.enabled) || a.file.localeCompare(b.file);
+				break;
+		}
+		return cmp;
+	});
+	return dir === 'asc' ? sorted : sorted.reverse();
 }
 
 const ADMIN_CATALOG_CONTEXT_KEY = Symbol('admin-catalog');

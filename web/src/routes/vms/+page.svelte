@@ -6,6 +6,7 @@
 	import { setVmListContext } from '$lib/features/vms/list.svelte';
 	import { setVmBulkContext } from '$lib/features/vms/bulk.svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
+	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import VmList from '$lib/features/vms/VmList.svelte';
 	import VmBulkActionBar from '$lib/features/vms/VmBulkActionBar.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
@@ -16,6 +17,7 @@
 	// Wiring only: the list state, URL sync, and rendering all live in
 	// $lib/features/vms (FR-010) — this page just picks the scope.
 	let clusterOptions = $state<ClusterOption[]>([]);
+	const session = getSessionContext();
 
 	const vmListStore = setVmListContext({
 		scope: 'mine',
@@ -65,12 +67,14 @@
 	<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
 		<h1 class="text-2xl font-semibold tracking-tight">{m['vms.list.heading']()}</h1>
 		<ClusterSelector options={clusterOptions} value={vmListStore.cluster} onChange={(value) => vmListStore.setCluster(value)} includeAll id="vm-cluster-filter" />
-		<a
-			href={resolve('/vms/create')}
-			class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
-		>
-			{m['vms.list.create']()}
-		</a>
+		{#if !session.isAdmin}
+			<a
+				href={resolve('/vms/create')}
+				class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
+			>
+				{m['vms.list.create']()}
+			</a>
+		{/if}
 	</div>
 
 	{#if vmListStore.loading && vmListStore.result === null}

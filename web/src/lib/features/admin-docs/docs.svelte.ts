@@ -46,6 +46,49 @@ export class AdminDocsStore {
 	saving = $state.raw(false);
 	saveError = $state.raw<string | null>(null);
 
+	search = $state('');
+	categoryFilter = $state('');
+	langFilter = $state('');
+	audienceFilter: 'all' | 'user' | 'admin' = $state('all');
+	sortBy: 'title' | 'id' | 'category' | 'lang' = $state('title');
+	sortDir: 'asc' | 'desc' = $state('asc');
+
+	filteredPages = $derived(
+		sortDocs(
+			this.pages.filter((p) => {
+				if (this.search) {
+					const q = this.search.toLowerCase();
+					if (!p.title.toLowerCase().includes(q) && !p.id.toLowerCase().includes(q)) return false;
+				}
+				if (this.categoryFilter && p.category !== this.categoryFilter) return false;
+				if (this.langFilter && p.lang !== this.langFilter) return false;
+				if (this.audienceFilter !== 'all' && p.audience !== this.audienceFilter) return false;
+				return true;
+			}),
+			this.sortBy,
+			this.sortDir
+		)
+	);
+
+	categoryOptions = $derived([...new Set(this.pages.map((p) => p.category))].sort());
+	langOptions = $derived([...new Set(this.pages.map((p) => p.lang))].sort());
+
+	setSort(column: 'title' | 'id' | 'category' | 'lang'): void {
+		if (this.sortBy === column) {
+			this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			this.sortBy = column;
+			this.sortDir = 'asc';
+		}
+	}
+
+	resetFilters(): void {
+		this.search = '';
+		this.categoryFilter = '';
+		this.langFilter = '';
+		this.audienceFilter = 'all';
+	}
+
 	async load(): Promise<void> {
 		this.loading = true;
 		this.error = null;
@@ -114,6 +157,30 @@ export class AdminDocsStore {
 			throw err;
 		}
 	}
+}
+
+type DocSortColumn = 'title' | 'id' | 'category' | 'lang';
+
+function sortDocs(pages: AdminDocPage[], sortBy: DocSortColumn, dir: 'asc' | 'desc'): AdminDocPage[] {
+	const sorted = [...pages].sort((a, b) => {
+		let cmp = 0;
+		switch (sortBy) {
+			case 'title':
+				cmp = a.title.localeCompare(b.title) || a.id.localeCompare(b.id);
+				break;
+			case 'id':
+				cmp = a.id.localeCompare(b.id);
+				break;
+			case 'category':
+				cmp = a.category.localeCompare(b.category) || a.title.localeCompare(b.title);
+				break;
+			case 'lang':
+				cmp = a.lang.localeCompare(b.lang) || a.title.localeCompare(b.title);
+				break;
+		}
+		return cmp;
+	});
+	return dir === 'asc' ? sorted : sorted.reverse();
 }
 
 const ADMIN_DOCS_CONTEXT_KEY = Symbol('admin-docs');

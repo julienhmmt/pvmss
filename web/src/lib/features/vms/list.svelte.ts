@@ -11,6 +11,7 @@ export type VmEmptyReason = 'no_vms_owned' | 'no_match';
 
 export interface VmListItem {
 	cluster: string;
+	clusterDisplayName: string;
 	vmid: number;
 	name: string;
 	node: string;

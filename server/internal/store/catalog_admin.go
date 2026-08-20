@@ -34,6 +34,7 @@ type CatalogBridgeEnabled struct {
 
 // CatalogISOEnabled is one catalog_isos row with its enabled state.
 type CatalogISOEnabled struct {
+	Node    string
 	Storage string
 	File    string
 	Enabled bool
@@ -98,14 +99,14 @@ func (s *Store) CatalogBridgesEnabled(ctx context.Context, cluster string) ([]Ca
 }
 
 // CatalogISOsEnabled returns all catalog_isos rows (including disabled) with
-// their enabled state, ordered by file.
+// their enabled state, ordered by node then file.
 func (s *Store) CatalogISOsEnabled(ctx context.Context, cluster string) ([]CatalogISOEnabled, error) {
 	return queryCatalog(ctx, s.db, "catalog isos enabled",
-		`SELECT storage, file, enabled FROM catalog_isos WHERE cluster = ? ORDER BY file`,
+		`SELECT node, storage, file, enabled FROM catalog_isos WHERE cluster = ? ORDER BY node, file`,
 		[]any{cluster},
 		func(rows *sql.Rows) (CatalogISOEnabled, error) {
 			var iso CatalogISOEnabled
-			return iso, rows.Scan(&iso.Storage, &iso.File, &iso.Enabled)
+			return iso, rows.Scan(&iso.Node, &iso.Storage, &iso.File, &iso.Enabled)
 		},
 	)
 }
@@ -150,12 +151,12 @@ func (s *Store) SetBridgeEnabled(ctx context.Context, cluster, node, name string
 	)
 }
 
-// SetISOEnabled upserts the enabled state for one (storage, file) pair.
-func (s *Store) SetISOEnabled(ctx context.Context, cluster, storage, file string, enabled bool) error {
+// SetISOEnabled upserts the enabled state for one (node, storage, file) triple.
+func (s *Store) SetISOEnabled(ctx context.Context, cluster, node, storage, file string, enabled bool) error {
 	return execWrite(ctx, s.db,
-		`INSERT INTO catalog_isos (cluster, storage, file, enabled) VALUES (?, ?, ?, ?)
-		 ON CONFLICT(cluster, storage, file) DO UPDATE SET enabled = excluded.enabled`,
-		[]any{cluster, storage, file, enabled},
+		`INSERT INTO catalog_isos (cluster, node, storage, file, enabled) VALUES (?, ?, ?, ?, ?)
+		 ON CONFLICT(cluster, node, storage, file) DO UPDATE SET enabled = excluded.enabled`,
+		[]any{cluster, node, storage, file, enabled},
 	)
 }
 

@@ -1,5 +1,5 @@
 import { getContext, setContext } from 'svelte';
-import { get, ApiRequestError } from '$lib/shared/api/client';
+import { get, post, ApiRequestError } from '$lib/shared/api/client';
 import { m } from '$lib/paraglide/messages.js';
 
 export type TaskKind = 'vm_create' | 'vm_snapshot_create' | 'vm_snapshot_rollback' | 'vm_snapshot_delete';
@@ -37,6 +37,11 @@ export class TaskTrayStore {
 
 	#timer: ReturnType<typeof setInterval> | null = null;
 	#okListeners: (() => void)[] = [];
+	/** Guards against overlapping poll cycles — a slow task (real VM creates
+	 *  can take longer than POLL_INTERVAL_MS) must not let two intervals
+	 *  race and finish the same task twice, which used to fire a duplicate
+	 *  toast per overlap. */
+	#polling = false;
 
 	/** Registers a listener fired when any tracked task completes
 	 *  successfully — the VM list uses it to pick up creations without a
@@ -80,13 +85,19 @@ export class TaskTrayStore {
 	}
 
 	async #pollAll(): Promise<void> {
-		const pending = this.tasks;
-		if (pending.length === 0) {
-			this.#stopPolling();
-			return;
-		}
-		for (const task of pending) {
-			await this.#pollOne(task);
+		if (this.#polling) return;
+		this.#polling = true;
+		try {
+			const pending = this.tasks;
+			if (pending.length === 0) {
+				this.#stopPolling();
+				return;
+			}
+			for (const task of pending) {
+				await this.#pollOne(task);
+			}
+		} finally {
+			this.#polling = false;
 		}
 	}
 
@@ -94,6 +105,7 @@ export class TaskTrayStore {
 		try {
 			const status = await get<TaskStatusResponse>(`/api/v1/tasks/${encodeURIComponent(task.upid)}`);
 			if (status.state === 'running') return;
+			if (status.state === 'ok') await refreshInventory();
 			this.#finish(task, taskToast(task, status));
 		} catch (error: unknown) {
 			// A 404 means the task is unknown/expired server-side — stop
@@ -112,6 +124,19 @@ export class TaskTrayStore {
 			for (const listener of this.#okListeners) listener();
 		}
 		if (this.tasks.length === 0) this.#stopPolling();
+	}
+}
+
+/** Forces the inventory cache to catch up before the list reloads (FR-018) —
+ *  otherwise the periodic background refresh (PVMSS_INVENTORY_REFRESH_INTERVAL,
+ *  default 30s) can leave a just-created VM missing from /api/v1/vms for up
+ *  to 30s after its task reports "ok". Best-effort: a throttled 429 just
+ *  means a refresh already ran recently, so the list is already fresh. */
+async function refreshInventory(): Promise<void> {
+	try {
+		await post('/api/v1/cluster/refresh');
+	} catch {
+		// Best-effort — listeners still reload from whatever cache state exists.
 	}
 }
 
