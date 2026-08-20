@@ -7,6 +7,7 @@ function jsonResponse(status: number, body: unknown): Response {
 
 const cluster = {
 	name: 'secondary',
+	displayName: 'prod-pve',
 	url: 'https://secondary.invalid',
 	tlsInsecureSkipVerify: false,
 	tokenId: 'pvmss@pve!service',

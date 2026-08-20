@@ -115,6 +115,47 @@ func TestProxmox_Snapshot(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: httptest server fixture
+func TestProxmox_DisplayName_Cluster(t *testing.T) {
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/status", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[
+				{"type":"cluster","name":"prod-pve"},
+				{"type":"node","name":"pve1"}
+			]}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+	name, err := p.DisplayName(context.Background())
+	if err != nil {
+		t.Fatalf("DisplayName: %v", err)
+	}
+	if name != "prod-pve" {
+		t.Fatalf("DisplayName = %q, want prod-pve", name)
+	}
+}
+
+//nolint:paralleltest // serial: httptest server fixture
+func TestProxmox_DisplayName_StandaloneNode(t *testing.T) {
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/status", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[
+				{"type":"node","name":"standalone-pve"}
+			]}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+	name, err := p.DisplayName(context.Background())
+	if err != nil {
+		t.Fatalf("DisplayName: %v", err)
+	}
+	if name != "standalone-pve" {
+		t.Fatalf("DisplayName = %q, want standalone-pve", name)
+	}
+}
+
 // proxmoxAuthFixture wires the three calls a login exercises: the ticket
 // exchange, the caller's own permission check at "/", and (for non-admins)
 // the pool listing used to derive their personal pool.

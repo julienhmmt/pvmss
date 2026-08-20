@@ -128,7 +128,13 @@ func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.startSession(w, r, auth.Identity{Username: result.Username, Pool: result.Pool, IsAdmin: result.IsAdmin, Cluster: clusterName})
+	displayName := clusterName
+	if h.clusterStore != nil {
+		if row, err := h.clusterStore.GetCluster(r.Context(), clusterName); err == nil && row.DisplayName != "" {
+			displayName = row.DisplayName
+		}
+	}
+	h.startSession(w, r, auth.Identity{Username: result.Username, Pool: result.Pool, IsAdmin: result.IsAdmin, Cluster: clusterName, ClusterDisplayName: displayName})
 }
 
 // AdminLogin authenticates the local emergency administrator, independent of any cluster.
@@ -382,6 +388,7 @@ func (h *Auth) loginClient(name string) (cluster.Client, string, error) {
 
 type authClusterDTO struct {
 	Name        string `json:"name"`
+	DisplayName string `json:"displayName"`
 	OIDCEnabled bool   `json:"oidcEnabled"`
 }
 
@@ -403,7 +410,7 @@ func (h *Auth) ServeClusters(w http.ResponseWriter, r *http.Request) {
 	}
 	result := make([]authClusterDTO, 0, len(rows))
 	for _, row := range rows {
-		result = append(result, authClusterDTO{Name: row.Name, OIDCEnabled: row.OIDCEnabled})
+		result = append(result, authClusterDTO{Name: row.Name, DisplayName: row.DisplayName, OIDCEnabled: row.OIDCEnabled})
 	}
 	writeAuthJSON(w, http.StatusOK, result)
 }

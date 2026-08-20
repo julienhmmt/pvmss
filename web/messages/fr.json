@@ -602,6 +602,7 @@
  "admin.clusters.addCluster": "Ajouter un cluster",
  "admin.clusters.loading": "Chargement des clusters…",
  "admin.clusters.caption": "Clusters Proxmox configurés",
+ "admin.clusters.displayName": "Nom du cluster",
  "admin.clusters.version": "Version",
  "admin.clusters.nodesVms": "Nœuds / VMs",
  "admin.clusters.oidc": "OIDC",

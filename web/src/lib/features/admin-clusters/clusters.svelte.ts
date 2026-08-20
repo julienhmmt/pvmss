@@ -3,6 +3,7 @@ import { m } from '$lib/paraglide/messages.js';
 
 export interface AdminCluster {
 	name: string;
+	displayName: string;
 	url: string;
 	tlsInsecureSkipVerify: boolean;
 	tokenId: string;

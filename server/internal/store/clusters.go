@@ -30,6 +30,7 @@ var clusterNamePattern = regexp.MustCompile(`^[a-z0-9-]+$`)
 // is decrypted only inside the server process and is never an API response field.
 type ClusterRow struct {
 	Name                  string
+	DisplayName           string
 	URL                   string
 	TLSInsecureSkipVerify bool
 	TokenID               string
@@ -71,7 +72,7 @@ func (s *Store) CreateCluster(ctx context.Context, row ClusterRow) error {
 	err = tx.QueryRowContext(ctx, `SELECT removed_at FROM clusters WHERE name = ?`, row.Name).Scan(&removedAt)
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
-		_, err = tx.ExecContext(ctx, `INSERT INTO clusters (name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, oidc_enabled, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`, row.Name, row.URL, row.TLSInsecureSkipVerify, row.TokenID, ciphertext, row.OIDCEnabled, createdAt.UTC().Format(time.RFC3339Nano))
+		_, err = tx.ExecContext(ctx, `INSERT INTO clusters (name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, oidc_enabled, created_at, display_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, row.Name, row.URL, row.TLSInsecureSkipVerify, row.TokenID, ciphertext, row.OIDCEnabled, createdAt.UTC().Format(time.RFC3339Nano), nullableString(row.DisplayName))
 	case removedAt.Valid:
 		_, err = tx.ExecContext(ctx, `UPDATE clusters SET url = ?, tls_insecure_skip_verify = ?, token_id = ?, token_secret_ciphertext = ?, oidc_enabled = ?, removed_at = NULL, last_test_status = NULL, last_test_at = NULL, last_test_message = NULL, proxmox_version = NULL WHERE name = ?`, row.URL, row.TLSInsecureSkipVerify, row.TokenID, ciphertext, row.OIDCEnabled, row.Name)
 	default:
@@ -88,13 +89,13 @@ func (s *Store) CreateCluster(ctx context.Context, row ClusterRow) error {
 
 // GetCluster returns an active cluster and decrypts its service-account secret.
 func (s *Store) GetCluster(ctx context.Context, name string) (ClusterRow, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, oidc_enabled, created_at, removed_at, last_test_status, last_test_at, last_test_message, proxmox_version FROM clusters WHERE name = ? AND removed_at IS NULL`, name)
+	row := s.db.QueryRowContext(ctx, `SELECT name, display_name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, oidc_enabled, created_at, removed_at, last_test_status, last_test_at, last_test_message, proxmox_version FROM clusters WHERE name = ? AND removed_at IS NULL`, name)
 	return s.scanCluster(row)
 }
 
 // ListClusters returns every active cluster ordered by immutable logical name.
 func (s *Store) ListClusters(ctx context.Context) ([]ClusterRow, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, oidc_enabled, created_at, removed_at, last_test_status, last_test_at, last_test_message, proxmox_version FROM clusters WHERE removed_at IS NULL ORDER BY name`)
+	rows, err := s.db.QueryContext(ctx, `SELECT name, display_name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, oidc_enabled, created_at, removed_at, last_test_status, last_test_at, last_test_message, proxmox_version FROM clusters WHERE removed_at IS NULL ORDER BY name`)
 	if err != nil {
 		return nil, fmt.Errorf("list clusters: %w", err)
 	}
@@ -217,6 +218,29 @@ func (s *Store) SetClusterOIDC(ctx context.Context, name string, enabled bool) e
 	return nil
 }
 
+// SetClusterDisplayName records the real Proxmox cluster name discovered via
+// /cluster/status. An empty display name clears the column (falls back to the
+// logical name in the UI).
+func (s *Store) SetClusterDisplayName(ctx context.Context, name, displayName string) error {
+	result, err := s.db.ExecContext(ctx, `UPDATE clusters SET display_name = ? WHERE name = ? AND removed_at IS NULL`, nullableString(displayName), name)
+	if err != nil {
+		return fmt.Errorf("update cluster display name: %w", err)
+	}
+	if affected, err := result.RowsAffected(); err != nil {
+		return fmt.Errorf("count cluster display name update: %w", err)
+	} else if affected != 1 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func nullableString(value string) any {
+	if value == "" {
+		return nil
+	}
+	return value
+}
+
 type clusterScanner interface {
 	Scan(dest ...any) error
 }
@@ -226,13 +250,15 @@ func (s *Store) scanCluster(scanner clusterScanner) (ClusterRow, error) {
 		row                             ClusterRow
 		ciphertext                      []byte
 		tlsInsecure, oidcEnabled        bool
+		displayName                     sql.NullString
 		createdAt, removedAt            sql.NullString
 		lastStatus, lastAt, lastMessage sql.NullString
 		proxmoxVersion                  sql.NullString
 	)
-	if err := scanner.Scan(&row.Name, &row.URL, &tlsInsecure, &row.TokenID, &ciphertext, &oidcEnabled, &createdAt, &removedAt, &lastStatus, &lastAt, &lastMessage, &proxmoxVersion); err != nil {
+	if err := scanner.Scan(&row.Name, &displayName, &row.URL, &tlsInsecure, &row.TokenID, &ciphertext, &oidcEnabled, &createdAt, &removedAt, &lastStatus, &lastAt, &lastMessage, &proxmoxVersion); err != nil {
 		return ClusterRow{}, err
 	}
+	row.DisplayName = displayName.String
 	row.TLSInsecureSkipVerify = tlsInsecure
 	row.OIDCEnabled = oidcEnabled
 	var err error

@@ -106,6 +106,38 @@ func (p Proxmox) Snapshot(ctx context.Context) (Snapshot, error) {
 	return snap, nil
 }
 
+// DisplayName implements Client. It calls /cluster/status and returns the name
+// of the entry whose type is "cluster"; for a standalone node (no cluster
+// configured) it falls back to the first node's hostname.
+func (p Proxmox) DisplayName(ctx context.Context) (string, error) {
+	rest := p.rest()
+	raw, err := rest.do(ctx, http.MethodGet, "/cluster/status", nil)
+	if err != nil {
+		return "", err
+	}
+	var rows []proxmoxClusterStatusRow
+	if err := decodeData(raw, &rows); err != nil {
+		return "", fmt.Errorf("decode cluster status: %w", err)
+	}
+	for _, row := range rows {
+		if row.Type == "cluster" {
+			return row.Name, nil
+		}
+	}
+	for _, row := range rows {
+		if row.Type == "node" && row.Name != "" {
+			return row.Name, nil
+		}
+	}
+	return "", nil
+}
+
+// proxmoxClusterStatusRow is one row of /cluster/status.
+type proxmoxClusterStatusRow struct {
+	Type string `json:"type"`
+	Name string `json:"name"`
+}
+
 func proxmoxNodeFromRow(row proxmoxResourceRow) Node {
 	status := NodeUnknown
 

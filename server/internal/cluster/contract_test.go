@@ -324,3 +324,21 @@ func runListISOsCase(t *testing.T, impl cluster.Client) {
 		}
 	}
 }
+
+//nolint:paralleltest // serial: shared fake identity fixture
+func TestContract_DisplayName(t *testing.T) {
+	impls := map[string]cluster.Client{
+		fakeImplementationName: cluster.Fake{},
+	}
+	for name, impl := range impls {
+		t.Run(name, func(t *testing.T) {
+			display, err := impl.DisplayName(context.Background())
+			if err != nil {
+				t.Fatalf("DisplayName: %v", err)
+			}
+			if display == "" {
+				t.Fatal("DisplayName returned empty string")
+			}
+		})
+	}
+}

@@ -38,6 +38,7 @@ func NewAdminClusters(authHandler *Auth, st *store.Store, clients runtimeCluster
 
 type adminClusterDTO struct {
 	Name                  string  `json:"name"`
+	DisplayName           string  `json:"displayName"`
 	URL                   string  `json:"url"`
 	TLSInsecureSkipVerify bool    `json:"tlsInsecureSkipVerify"`
 	TokenID               string  `json:"tokenId"`
@@ -187,6 +188,13 @@ func (handler *AdminClusters) ServeTest(w http.ResponseWriter, r *http.Request) 
 		handler.writeFailure(w, err)
 		return
 	}
+	if displayName, err := client.DisplayName(r.Context()); err != nil {
+		handler.log.Warn("cluster display name discovery failed", "component", "httpapi", "cluster", name, "error", err)
+	} else if displayName != "" {
+		if err := handler.store.SetClusterDisplayName(r.Context(), name, displayName); err != nil {
+			handler.log.Warn("cluster display name persist failed", "component", "httpapi", "cluster", name, "error", err)
+		}
+	}
 	writeAdminJSON(w, http.StatusOK, testClusterResponse{Status: "ok", ProxmoxVersion: snapshot.ProxmoxVersion, NodeCount: len(snapshot.Nodes), VMCount: len(snapshot.VMs), TestedAt: testedAt.Format(time.RFC3339Nano)})
 }
 
@@ -272,7 +280,7 @@ func (handler *AdminClusters) clusterDTO(row store.ClusterRow) adminClusterDTO {
 		}
 	}
 	return adminClusterDTO{
-		Name: row.Name, URL: row.URL, TLSInsecureSkipVerify: row.TLSInsecureSkipVerify, TokenID: row.TokenID,
+		Name: row.Name, DisplayName: row.DisplayName, URL: row.URL, TLSInsecureSkipVerify: row.TLSInsecureSkipVerify, TokenID: row.TokenID,
 		TokenSet: row.TokenSecret != "", OIDCEnabled: row.OIDCEnabled, RemovedAt: formatTime(row.RemovedAt),
 		LastTestStatus: row.LastTestStatus, LastTestAt: formatTime(row.LastTestAt), LastTestMessage: row.LastTestMessage,
 		ProxmoxVersion: optionalValue(version), NodeCount: nodeCount, VMCount: vmCount,

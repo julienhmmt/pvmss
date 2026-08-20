@@ -384,6 +384,9 @@ func TestAdminClusters_TestReachableReportsOKAndPersists(t *testing.T) {
 		if row.LastTestStatus == nil || *row.LastTestStatus != "ok" || row.LastTestAt == nil {
 			t.Fatalf("default row after test = %+v, want lastTestStatus=ok lastTestAt set", row)
 		}
+		if row.DisplayName == "" {
+			t.Fatalf("default row after test has empty DisplayName: %+v", row)
+		}
 	}
 	if !found {
 		t.Fatal("default cluster missing from list after test")
@@ -463,6 +466,7 @@ func TestAdminClusters_DeleteLastClusterConflictAndReactivateRoundTrip(t *testin
 
 type adminClusterDTOForTest struct {
 	Name                  string  `json:"name"`
+	DisplayName           string  `json:"displayName"`
 	URL                   string  `json:"url"`
 	TLSInsecureSkipVerify bool    `json:"tlsInsecureSkipVerify"`
 	TokenSet              bool    `json:"tokenSet"`

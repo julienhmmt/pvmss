@@ -32,7 +32,7 @@
 				<option value="">{m['common.allClusters']()}</option>
 			{/if}
 			{#each options as option (option.name)}
-				<option value={option.name}>{option.name}</option>
+				<option value={option.name}>{option.displayName || option.name}</option>
 			{/each}
 		</select>
 	</label>
