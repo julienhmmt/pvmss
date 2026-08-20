@@ -215,13 +215,13 @@
 			/>
 			<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={categoryFilter} onchange={(e) => onCategoryFilterChange(e.currentTarget.value)}>
 				<option value="">{m['admin.docs.filterCategory']()}</option>
-				{#each categoryOptions as cat}
+				{#each categoryOptions as cat (cat)}
 					<option value={cat}>{cat}</option>
 				{/each}
 			</select>
 			<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={langFilter} onchange={(e) => onLangFilterChange(e.currentTarget.value)}>
 				<option value="">{m['admin.docs.filterLang']()}</option>
-				{#each langOptions as lang}
+				{#each langOptions as lang (lang)}
 					<option value={lang}>{lang}</option>
 				{/each}
 			</select>

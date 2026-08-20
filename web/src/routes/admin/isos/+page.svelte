@@ -48,13 +48,13 @@
 		/>
 		<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" bind:value={store.isoStorageFilter}>
 			<option value="">{m['admin.isos.filterStorage']()}</option>
-			{#each store.isoStorageOptions as storage}
+			{#each store.isoStorageOptions as storage (storage)}
 				<option value={storage}>{storage}</option>
 			{/each}
 		</select>
 		<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" bind:value={store.isoNodeFilter}>
 			<option value="">{m['admin.isos.filterNode']()}</option>
-			{#each store.isoNodeOptions as node}
+			{#each store.isoNodeOptions as node (node)}
 				<option value={node}>{node}</option>
 			{/each}
 		</select>

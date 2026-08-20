@@ -137,7 +137,7 @@
 			/>
 			<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={busFilter} onchange={(e) => onBusFilterChange(e.currentTarget.value)}>
 				<option value="">{m['admin.profiles.filterBus']()}</option>
-				{#each busOptions as bus}
+				{#each busOptions as bus (bus)}
 					<option value={bus}>{bus}</option>
 				{/each}
 			</select>
