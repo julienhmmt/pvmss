@@ -524,6 +524,7 @@
  "vms.create.adminBlocked": "Administrators cannot create VMs through the self-service portal.",
  "nodes.title": "Nodes — PVMSS",
  "nodes.heading": "Cluster nodes",
+ "nodes.description": "Live capacity and utilization of the Proxmox nodes backing this cluster.",
  "nodes.nodesLoaded": "{count} nodes loaded",
  "nodes.tableCaption": "Cluster nodes",
  "nodes.colName": "Name",

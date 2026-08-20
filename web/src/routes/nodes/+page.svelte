@@ -29,9 +29,7 @@
 {#if nodesStore.errorCode === 'unauthenticated'}
 	<AuthRequired />
 {:else}
-	<section class="mx-auto w-full max-w-4xl px-4 py-8">
-		<h1 class="mb-4 text-2xl font-semibold tracking-tight">{m['nodes.heading']()}</h1>
-
+	<section class="mx-auto w-full max-w-5xl py-2">
 		{#if nodesStore.loading}
 			<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
 			<TableSkeleton columns={6} />
