@@ -124,7 +124,7 @@ test.describe('T19 chrome UI', () => {
 
 		test('authenticated admin sees My VMs and Documentation but no Create a VM', async ({ page }) => {
 			await page.goto('/login');
-			await page.getByRole('radio', { name: 'Local administrator' }).check();
+			await page.getByRole('button', { name: /administrat/i }).click();
 			await page.getByLabel('Password').fill('pvmss-e2e-admin');
 			await page.getByRole('button', { name: 'Sign in' }).click();
 			await page.waitForURL(/\/nodes|\/admin/);

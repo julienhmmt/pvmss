@@ -25,7 +25,7 @@ test.describe('T02 authentication', () => {
 
 	test('redirects the local administrator to the admin dashboard', async ({ page }) => {
 		await page.goto('/login');
-		await page.locator('input[type="radio"][value="local"]').check();
+		await page.getByRole('button', { name: /administrat/i }).click();
 		await page.locator('input[autocomplete="current-password"]').fill('pvmss-e2e-admin');
 		await page.locator('button[type="submit"]').click();
 		await expect(page).toHaveURL(/\/admin$/);
