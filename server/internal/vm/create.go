@@ -174,12 +174,9 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 	// unknown or disabled id is rejected without burning a VMID — the same
 	// "never spend a VMID on a request that will be rejected" discipline T06
 	// applies to node/storage/bridge/ISO catalog membership.
-	var cloudTemplate catalog.CloudInitTemplate
-	if req.CloudInitTemplateID != "" {
-		cloudTemplate, err = catalog.FindCloudInitTemplate(ctx, deps.Store, clusterName, req.CloudInitTemplateID)
-		if err != nil {
-			return CreateResult{}, fmt.Errorf("%w: cloud-init template %q is not approved for this cluster", ErrNotApproved, req.CloudInitTemplateID)
-		}
+	cloudTemplate, err := resolveCloudInitTemplate(ctx, deps.Store, clusterName, req.CloudInitTemplateID)
+	if err != nil {
+		return CreateResult{}, err
 	}
 
 	vmid, err := deps.Creator.NextVMID(ctx)
@@ -187,6 +184,49 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 		return CreateResult{}, fmt.Errorf("%w: allocate vmid: %w", ErrClusterCreate, err)
 	}
 
+	spec := buildCreateSpec(actor, req, plan, vmid)
+
+	upid, err := deps.Creator.CreateVM(ctx, spec)
+	if err != nil {
+		return CreateResult{}, fmt.Errorf("%w: %w", ErrClusterCreate, err)
+	}
+
+	result := CreateResult{Cluster: clusterName, VMID: vmid, Name: req.Name, Node: plan.node, UPID: upid}
+
+	// T18 step (FR-007): apply the resolved template via T08's existing snippet
+	// write path — store.PutCloudInitSnippet then cluster push — reusing the
+	// same functions T08's per-VM snippet editor calls, never a second write
+	// mechanism. A failure here does NOT abort the creation (the task is
+	// already dispatched and cannot be undone): it sets CloudInitPushError
+	// (FR-008). On success, CloudInitTemplateID echoes the resolved id.
+	applyCloudInitTemplate(ctx, deps, clusterName, actor.Username, spec, vmid, cloudTemplate, &result)
+
+	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, vmid, "vm_create"); err != nil {
+		deps.Log.Error("record audit failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+	}
+
+	return result, nil
+}
+
+// resolveCloudInitTemplate looks up the requested cloud-init template id
+// before any VMID is allocated. An empty id means no template was requested.
+func resolveCloudInitTemplate(ctx context.Context, st *store.Store, clusterName, templateID string) (catalog.CloudInitTemplate, error) {
+	if templateID == "" {
+		return catalog.CloudInitTemplate{}, nil
+	}
+
+	tmpl, err := catalog.FindCloudInitTemplate(ctx, st, clusterName, templateID)
+	if err != nil {
+		return catalog.CloudInitTemplate{}, fmt.Errorf("%w: cloud-init template %q is not approved for this cluster", ErrNotApproved, templateID)
+	}
+
+	return tmpl, nil
+}
+
+// buildCreateSpec assembles the cluster.VMSpec from the validated plan,
+// request, actor identity, and allocated VMID. The "pvmss" tag is always
+// present (FR-004).
+func buildCreateSpec(actor auth.Identity, req CreateRequest, plan createPlan, vmid int) cluster.VMSpec {
 	tags := append([]string(nil), req.Tags...)
 	if !slices.Contains(tags, "pvmss") {
 		tags = append(tags, "pvmss")
@@ -208,38 +248,34 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 		spec.ISO = &cluster.ISOSpec{Storage: req.ISO.Storage, File: req.ISO.File}
 	}
 
-	upid, err := deps.Creator.CreateVM(ctx, spec)
-	if err != nil {
-		return CreateResult{}, fmt.Errorf("%w: %w", ErrClusterCreate, err)
+	return spec
+}
+
+// applyCloudInitTemplate writes the resolved template's snippet to the store
+// and pushes it to the cluster node. A failure does NOT abort the creation
+// (the task is already dispatched and cannot be undone): it records the error
+// message on result.CloudInitPushError (FR-008).
+func applyCloudInitTemplate(ctx context.Context, deps CreateDeps, clusterName, username string, spec cluster.VMSpec, vmid int, tmpl catalog.CloudInitTemplate, result *CreateResult) {
+	if tmpl.ID == "" {
+		return
 	}
 
-	result := CreateResult{Cluster: clusterName, VMID: vmid, Name: req.Name, Node: plan.node, UPID: upid}
+	result.CloudInitTemplateID = tmpl.ID
+	filename := fmt.Sprintf("%s%d.yml", snippetFilenamePrefix, vmid)
+	storage := spec.Disk.Storage
 
-	// T18 step (FR-007): apply the resolved template via T08's existing snippet
-	// write path — store.PutCloudInitSnippet then cluster push — reusing the
-	// same functions T08's per-VM snippet editor calls, never a second write
-	// mechanism. A failure here does NOT abort the creation (the task is
-	// already dispatched and cannot be undone): it sets CloudInitPushError
-	// (FR-008). On success, CloudInitTemplateID echoes the resolved id.
-	if cloudTemplate.ID != "" {
-		result.CloudInitTemplateID = cloudTemplate.ID
-		filename := fmt.Sprintf("%s%d.yml", snippetFilenamePrefix, vmid)
+	storeErr := deps.Store.PutCloudInitSnippet(ctx, clusterName, vmid, storage, filename, tmpl.Content, username)
+	if storeErr != nil {
+		deps.Log.Error("cloud-init template store failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", storeErr)
+		result.CloudInitPushError = storeErr.Error()
 
-		storage := spec.Disk.Storage
-		if err := deps.Store.PutCloudInitSnippet(ctx, clusterName, vmid, storage, filename, cloudTemplate.Content, actor.Username); err != nil {
-			deps.Log.Error("cloud-init template store failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
-			result.CloudInitPushError = err.Error()
-		} else if err := deps.Pusher.PushCloudInitSnippet(ctx, spec.Node, storage, filename, vmid, cloudTemplate.Content); err != nil {
-			deps.Log.Error("cloud-init template push failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
-			result.CloudInitPushError = err.Error()
-		}
+		return
 	}
 
-	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, vmid, "vm_create"); err != nil {
-		deps.Log.Error("record audit failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+	if err := deps.Pusher.PushCloudInitSnippet(ctx, spec.Node, storage, filename, vmid, tmpl.Content); err != nil {
+		deps.Log.Error("cloud-init template push failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+		result.CloudInitPushError = err.Error()
 	}
-
-	return result, nil
 }
 
 // createPlan holds the resolved and validated values for a VM creation request.

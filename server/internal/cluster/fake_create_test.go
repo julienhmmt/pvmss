@@ -125,7 +125,7 @@ func TestFake_CreateVM_RecordsVMInDataset(t *testing.T) {
 		Node:             "pve-node-01",
 		Name:             "web-test",
 		Pool:             "pool-alice",
-		Tags:             []string{"team-web", "pvmss"},
+		Tags:             []string{"team-web", FakeTagPvmss},
 		CPUCores:         2,
 		MemoryMB:         4096,
 		Disk:             DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 40},
@@ -202,7 +202,7 @@ func TestFake_CreateVM_NoStartLeavesVMStopped(t *testing.T) {
 		CPUCores: 1,
 		MemoryMB: 2048,
 		Disk:     DiskSpec{Storage: FakeStorageLocal, SizeGB: 20},
-		Network:  NetworkSpec{Bridge: "vmbr0", Model: "virtio"},
+		Network:  NetworkSpec{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)},
 	}
 	if _, err := client.CreateVM(ctx, spec); err != nil {
 		t.Fatalf("CreateVM: %v", err)
@@ -246,8 +246,8 @@ func TestFake_TaskStatus_PollCount(t *testing.T) {
 		Tags:     []string{"pvmss"},
 		CPUCores: 1,
 		MemoryMB: 2048,
-		Disk:     DiskSpec{Storage: "local-lvm", SizeGB: 20},
-		Network:  NetworkSpec{Bridge: "vmbr0", Model: "virtio"},
+		Disk:     DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 20},
+		Network:  NetworkSpec{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)},
 	})
 	if err != nil {
 		t.Fatalf("CreateVM: %v", err)

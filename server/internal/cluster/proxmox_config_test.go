@@ -11,10 +11,10 @@ func TestParseDiskValue(t *testing.T) {
 		wantStorage string
 		wantSizeGB  int
 	}{
-		{"simple", "local-lvm:vm-101-disk-0,size=32G", "local-lvm", 32},
-		{"options before size", "local-lvm:vm-101-disk-0,cache=writeback,size=64G", "local-lvm", 64},
-		{"megabytes round down", "local:vm-101-disk-1,size=512M", "local", 0},
-		{"no size option", "local:vm-101-disk-2", "local", 0},
+		{"simple", "local-lvm:vm-101-disk-0,size=32G", FakeStorageLocalLVM, 32},
+		{"options before size", "local-lvm:vm-101-disk-0,cache=writeback,size=64G", FakeStorageLocalLVM, 64},
+		{"megabytes round down", "local:vm-101-disk-1,size=512M", FakeStorageLocal, 0},
+		{"no size option", "local:vm-101-disk-2", FakeStorageLocal, 0},
 		{"malformed, no colon", "not-a-disk-value", "", 0},
 	}
 
@@ -68,8 +68,8 @@ func TestParseCDROM(t *testing.T) {
 		want CDROMState
 	}{
 		{"absent, no ide2 key", proxmoxVMConfig{}, CDROMState{State: CDROMAbsent}},
-		{"empty, none media", proxmoxVMConfig{"ide2": "none,media=cdrom"}, CDROMState{State: CDROMEmpty}},
-		{"mounted", proxmoxVMConfig{"ide2": "local:iso/debian-12.iso,media=cdrom"}, CDROMState{State: CDROMMounted, ISOVolID: "local:iso/debian-12.iso"}},
+		{"empty, none media", proxmoxVMConfig{cdromDiskKey: "none,media=cdrom"}, CDROMState{State: CDROMEmpty}},
+		{"mounted", proxmoxVMConfig{cdromDiskKey: cdromMountedValue}, CDROMState{State: CDROMMounted, ISOVolID: "local:iso/debian-12.iso"}},
 	}
 
 	for _, tc := range cases {
@@ -91,7 +91,7 @@ func TestParseNetValue(t *testing.T) {
 
 		nic := parseNetValue(0, "virtio=BC:24:11:AA:BB:CC,bridge=vmbr0,tag=100,rate=10")
 
-		if nic.Model != "virtio" || nic.MAC != "BC:24:11:AA:BB:CC" || nic.Bridge != "vmbr0" {
+		if nic.Model != string(DiskBusVirtio) || nic.MAC != "BC:24:11:AA:BB:CC" || nic.Bridge != FakeBridgeVMbr0 {
 			t.Fatalf("nic = %+v", nic)
 		}
 
@@ -109,7 +109,7 @@ func TestParseNetValue(t *testing.T) {
 
 		nic := parseNetValue(1, "virtio,bridge=vmbr1")
 
-		if nic.Model != "virtio" || nic.MAC != "" || nic.Bridge != "vmbr1" {
+		if nic.Model != "virtio" || nic.MAC != "" || nic.Bridge != FakeBridgeVMbr1 {
 			t.Fatalf("nic = %+v", nic)
 		}
 	})
@@ -123,7 +123,7 @@ func TestParseBootOrder(t *testing.T) {
 		cfg  proxmoxVMConfig
 		want []string
 	}{
-		{"modern order form", proxmoxVMConfig{"boot": "order=scsi0;ide2;net0"}, []string{"scsi0", "ide2", "net0"}},
+		{"modern order form", proxmoxVMConfig{"boot": "order=scsi0;ide2;net0"}, []string{diskKeySCSI0, cdromDiskKey, "net0"}},
 		{"no boot key", proxmoxVMConfig{}, nil},
 		{"legacy flag form, unrecognized", proxmoxVMConfig{"boot": "cdn"}, nil},
 	}
@@ -154,9 +154,9 @@ func TestSplitProxmoxTags(t *testing.T) {
 		raw  string
 		want []string
 	}{
-		{"multiple", "pvmss;prod;team-a", []string{"pvmss", "prod", "team-a"}},
+		{"multiple", "pvmss;prod;team-a", []string{FakeTagPvmss, "prod", "team-a"}},
 		{"empty", "", nil},
-		{"trims whitespace", " pvmss ; prod ", []string{"pvmss", "prod"}},
+		{"trims whitespace", " pvmss ; prod ", []string{FakeTagPvmss, "prod"}},
 	}
 
 	for _, tc := range cases {
@@ -191,7 +191,7 @@ func TestParseDisks_SkipsReservedSlots(t *testing.T) {
 		t.Fatalf("disks = %+v, want exactly one (scsi0)", disks)
 	}
 
-	if disks[0].Key != "scsi0" || disks[0].Storage != "local-lvm" || disks[0].SizeGB != 32 {
+	if disks[0].Key != diskKeySCSI0 || disks[0].Storage != FakeStorageLocalLVM || disks[0].SizeGB != 32 {
 		t.Fatalf("disks[0] = %+v", disks[0])
 	}
 
@@ -220,7 +220,7 @@ func TestEncodeNetValue(t *testing.T) {
 	t.Run("no mac, default model", func(t *testing.T) {
 		t.Parallel()
 
-		got := encodeNetValue(NetworkInterface{Bridge: "vmbr1"})
+		got := encodeNetValue(NetworkInterface{Bridge: FakeBridgeVMbr1})
 		want := "virtio,bridge=vmbr1"
 
 		if got != want {

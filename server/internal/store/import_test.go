@@ -93,13 +93,15 @@ func buildCraftedDB(t *testing.T, path string, rowsByTable map[string][]string) 
 		}
 	}
 
-	insertCraftedRows(t, db, ctx, rowsByTable)
+	insertCraftedRows(t, ctx, db, rowsByTable)
 }
 
 // insertCraftedRows inserts the row sets into the crafted DB. Extracted from
 // buildCraftedDB to keep its Cognitive Complexity under the SonarQube go:S3776
 // threshold.
-func insertCraftedRows(t *testing.T, db *sql.DB, ctx context.Context, rowsByTable map[string][]string) {
+//
+//nolint:revive // test helper: t *testing.T is conventionally the first parameter
+func insertCraftedRows(t *testing.T, ctx context.Context, db *sql.DB, rowsByTable map[string][]string) {
 	t.Helper()
 
 	for table, values := range rowsByTable {

@@ -14,7 +14,7 @@ import (
 // upstream; checked again here defensively, before any HTTP call, matching
 // the fake's own defense-in-depth.
 var proxmoxValidActions = map[string]bool{
-	"start": true, "stop": true, "shutdown": true, "reboot": true, "reset": true,
+	actionStart: true, actionStop: true, actionShutdown: true, actionReboot: true, actionReset: true,
 }
 
 // Action implements Writer via POST /nodes/{node}/qemu/{vmid}/status/{action}.

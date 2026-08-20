@@ -23,7 +23,7 @@ const (
 	testCluster      = "fake"
 )
 
-//nolint:funlen // comprehensive table-driven test covering all env vars
+//nolint:funlen,paralleltest // comprehensive table-driven test; uses t.Setenv which is incompatible with t.Parallel
 func TestLoad(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -356,20 +356,12 @@ func TestLoad(t *testing.T) {
 		},
 	}
 
+	//nolint:paralleltest // uses t.Setenv via runLoadCase, incompatible with t.Parallel
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			runLoadCase(t, tt.env, tt.want, tt.wantErr)
 		})
 	}
-}
-
-// configLoadCase is the named test-case struct for TestLoad, extracted so the
-// loop body can be delegated to a helper (SonarQube go:S3776).
-type configLoadCase struct {
-	name    string
-	env     map[string]string
-	wantErr string
-	want    config.Configuration
 }
 
 // runLoadCase sets up the environment for a single TestLoad case, calls

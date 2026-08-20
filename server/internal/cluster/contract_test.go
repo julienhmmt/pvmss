@@ -108,7 +108,7 @@ func TestContract_Authenticate(t *testing.T) {
 
 	for name, impl := range impls {
 		t.Run(name, func(t *testing.T) {
-			if _, err := impl.Authenticate(context.Background(), "alice@pve", "pvmss-alice"); err != nil {
+			if _, err := impl.Authenticate(context.Background(), cluster.FakeUserAlice, "pvmss-alice"); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 		})
@@ -123,7 +123,7 @@ func TestContract_Authenticate_RejectsWrongPassword(t *testing.T) {
 
 	for name, impl := range impls {
 		t.Run(name, func(t *testing.T) {
-			if _, err := impl.Authenticate(context.Background(), "alice@pve", "wrong-password"); !errors.Is(err, cluster.ErrNotFound) {
+			if _, err := impl.Authenticate(context.Background(), cluster.FakeUserAlice, "wrong-password"); !errors.Is(err, cluster.ErrNotFound) {
 				t.Fatalf("err = %v, want ErrNotFound", err)
 			}
 		})
@@ -150,17 +150,17 @@ func TestContract_ChangePassword(t *testing.T) {
 func runChangePasswordCase(t *testing.T, impl cluster.Client) {
 	t.Helper()
 
-	if err := impl.ChangePassword(context.Background(), "alice@pve", "pvmss-alice", "temporary-new-password"); err != nil {
+	if err := impl.ChangePassword(context.Background(), cluster.FakeUserAlice, "pvmss-alice", "temporary-new-password"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	t.Cleanup(func() {
-		if err := impl.ChangePassword(context.Background(), "alice@pve", "temporary-new-password", "pvmss-alice"); err != nil {
+		if err := impl.ChangePassword(context.Background(), cluster.FakeUserAlice, "temporary-new-password", "pvmss-alice"); err != nil {
 			t.Fatalf("restore demo password: %v", err)
 		}
 	})
 
-	if _, err := impl.Authenticate(context.Background(), "alice@pve", "temporary-new-password"); err != nil {
+	if _, err := impl.Authenticate(context.Background(), cluster.FakeUserAlice, "temporary-new-password"); err != nil {
 		t.Fatalf("authenticate with new password: %v", err)
 	}
 }
@@ -336,6 +336,7 @@ func TestContract_DisplayName(t *testing.T) {
 			if err != nil {
 				t.Fatalf("DisplayName: %v", err)
 			}
+
 			if display == "" {
 				t.Fatal("DisplayName returned empty string")
 			}

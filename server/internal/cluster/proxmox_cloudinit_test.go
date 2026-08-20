@@ -12,10 +12,10 @@ func TestParseCloudInitConfig(t *testing.T) {
 	t.Parallel()
 
 	cfg := proxmoxVMConfig{
-		"ciuser":       "debian",
+		"ciuser":       FakeCloudInitUser,
 		"sshkeys":      url.QueryEscape("ssh-ed25519 AAAA demo@laptop\nssh-ed25519 BBBB demo2@laptop"),
 		"ipconfig0":    "ip=10.0.0.42/24,gw=10.0.0.1",
-		"nameserver":   "10.0.0.1",
+		"nameserver":   FakeCloudInitDNS,
 		"searchdomain": "example.internal",
 	}
 

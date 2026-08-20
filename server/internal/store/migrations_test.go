@@ -322,29 +322,33 @@ func TestRunMigrations_V16AddsDisplayName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewFromDBWithSecret: %v", err)
 	}
-	if err := st.CreateCluster(ctx, store.ClusterRow{Name: "default", URL: "https://example.com:8006", TokenID: "tok", TokenSecret: "secret"}); err != nil {
+
+	if err := st.CreateCluster(ctx, store.ClusterRow{Name: testStoreCluster, URL: "https://example.com:8006", TokenID: "tok", TokenSecret: "secret"}); err != nil {
 		t.Fatalf("CreateCluster: %v", err)
 	}
 
-	if err := st.SetClusterDisplayName(ctx, "default", "prod-cluster"); err != nil {
+	if err := st.SetClusterDisplayName(ctx, testStoreCluster, "prod-cluster"); err != nil {
 		t.Fatalf("SetClusterDisplayName: %v", err)
 	}
 
-	row, err := st.GetCluster(ctx, "default")
+	row, err := st.GetCluster(ctx, testStoreCluster)
 	if err != nil {
 		t.Fatalf("GetCluster: %v", err)
 	}
+
 	if row.DisplayName != "prod-cluster" {
 		t.Fatalf("DisplayName = %q, want prod-cluster", row.DisplayName)
 	}
 
-	if err := st.SetClusterDisplayName(ctx, "default", ""); err != nil {
+	if err := st.SetClusterDisplayName(ctx, testStoreCluster, ""); err != nil {
 		t.Fatalf("clear display name: %v", err)
 	}
-	row, err = st.GetCluster(ctx, "default")
+
+	row, err = st.GetCluster(ctx, testStoreCluster)
 	if err != nil {
 		t.Fatalf("GetCluster after clear: %v", err)
 	}
+
 	if row.DisplayName != "" {
 		t.Fatalf("DisplayName = %q, want empty", row.DisplayName)
 	}

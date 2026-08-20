@@ -77,7 +77,7 @@ func TestNetworkInterfaceMarshalJSON(t *testing.T) {
 	t.Run("nil IPAddresses encode as empty array", func(t *testing.T) {
 		t.Parallel()
 
-		got, err := json.Marshal(NetworkInterface{Index: 0, Bridge: "vmbr0"})
+		got, err := json.Marshal(NetworkInterface{Index: 0, Bridge: FakeBridgeVMbr0})
 		if err != nil {
 			t.Fatalf("marshal: %v", err)
 		}
@@ -92,7 +92,7 @@ func TestNetworkInterfaceMarshalJSON(t *testing.T) {
 	t.Run("populated IPAddresses encode as-is", func(t *testing.T) {
 		t.Parallel()
 
-		ni := NetworkInterface{Index: 1, Bridge: "vmbr1", IPAddresses: []string{"10.0.0.5", "fc00::5"}}
+		ni := NetworkInterface{Index: 1, Bridge: FakeBridgeVMbr1, IPAddresses: []string{"10.0.0.5", "fc00::5"}}
 
 		got, err := json.Marshal(ni)
 		if err != nil {

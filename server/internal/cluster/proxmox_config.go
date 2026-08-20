@@ -77,6 +77,13 @@ var proxmoxBusRange = map[DiskBus]int{
 // (client.go: "CDROMState describes the fixed ide2 CD-ROM drive").
 const cdromDiskKey = "ide2"
 
+// diskKeySCSI0 is the first SCSI disk slot, used in fixtures and assertions.
+const diskKeySCSI0 = "scsi0"
+
+// cdromMountedValue is the Proxmox netN/ideN value form for a mounted ISO,
+// used in fixtures and assertions across config and writer tests.
+const cdromMountedValue = "local:iso/debian-12.iso,media=cdrom"
+
 // cloudInitDiskKey is the fixed slot PVMSS always uses for the cloud-init
 // drive (see EnsureCloudInitDrive in proxmox_cloudinit.go). Deliberately not
 // ide2: that slot is reserved for the CD-ROM feature above, and the two would
@@ -196,7 +203,7 @@ func parseCDROM(cfg proxmoxVMConfig) CDROMState {
 // proxmoxNICModels are the network card models Proxmox accepts as the
 // key-less first segment of a netN value.
 var proxmoxNICModels = map[string]bool{
-	"virtio": true, "e1000": true, "e1000e": true, "rtl8139": true, "vmxnet3": true,
+	string(DiskBusVirtio): true, "e1000": true, "e1000e": true, "rtl8139": true, "vmxnet3": true,
 }
 
 // parseNetworkInterfaces reads every attached NIC from cfg (net0..net31 —

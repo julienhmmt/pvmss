@@ -27,7 +27,7 @@ func TestUpdateNetwork_ValidatesBridgeAndCardCount(t *testing.T) {
 	}
 	for _, test := range tests { //nolint:paralleltest // serial: shared fake cluster dataset
 		t.Run(test.name, func(t *testing.T) {
-			runNetworkCase(t, test.name, test.interfaces, test.actor, test.wantErr)
+			runNetworkCase(t, test.interfaces, test.actor, test.wantErr)
 		})
 	}
 }
@@ -36,7 +36,7 @@ func TestUpdateNetwork_ValidatesBridgeAndCardCount(t *testing.T) {
 // the update, and asserts the expected error or the resulting interface list.
 // Extracted from TestUpdateNetwork_ValidatesBridgeAndCardCount to keep its
 // Cognitive Complexity under the SonarQube go:S3776 threshold.
-func runNetworkCase(t *testing.T, name string, interfaces []cluster.NetworkInterface, actor auth.Identity, wantErr error) {
+func runNetworkCase(t *testing.T, interfaces []cluster.NetworkInterface, actor auth.Identity, wantErr error) {
 	t.Helper()
 
 	cluster.ResetFake()

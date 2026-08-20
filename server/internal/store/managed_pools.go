@@ -36,12 +36,14 @@ func (s *Store) UnregisterManagedPool(ctx context.Context, cluster, name string)
 // IsPoolManaged reports whether PVMSS recorded the named pool on the cluster.
 func (s *Store) IsPoolManaged(ctx context.Context, cluster, name string) (bool, error) {
 	var count int
+
 	err := s.db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM managed_pools WHERE cluster = ? AND name = ?`,
 		cluster, name).Scan(&count)
 	if err != nil {
 		return false, fmt.Errorf("query managed pool: %w", err)
 	}
+
 	return count > 0, nil
 }
 
@@ -56,16 +58,20 @@ func (s *Store) ManagedPools(ctx context.Context, cluster string) ([]ManagedPool
 	defer func() { _ = rows.Close() }()
 
 	var out []ManagedPool
+
 	for rows.Next() {
 		var row ManagedPool
 		if err := rows.Scan(&row.Cluster, &row.Name, &row.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scan managed pool: %w", err)
 		}
+
 		out = append(out, row)
 	}
+
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate managed pools: %w", err)
 	}
+
 	return out, nil
 }
 
@@ -81,15 +87,19 @@ func (s *Store) ManagedPoolNames(ctx context.Context, cluster string) (map[strin
 	defer func() { _ = rows.Close() }()
 
 	names := make(map[string]struct{})
+
 	for rows.Next() {
 		var name string
 		if err := rows.Scan(&name); err != nil {
 			return nil, fmt.Errorf("scan managed pool name: %w", err)
 		}
+
 		names[name] = struct{}{}
 	}
+
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate managed pool names: %w", err)
 	}
+
 	return names, nil
 }
