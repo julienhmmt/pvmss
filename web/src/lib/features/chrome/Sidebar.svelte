@@ -8,12 +8,16 @@
 	 * Below 900px the same markup becomes a drawer (T035): the parent layout
 	 * mounts it inside a Dialog-style overlay driven by ChromeState.sidebarOpen.
 	 */
+	import { onMount } from 'svelte';
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import { ADMIN_NAV_GROUPS, type SidebarIconName } from './admin-nav-items.svelte';
 	import { SidebarNavigationState } from './sidebar-navigation.svelte';
 	import { getChromeContext } from './chrome.svelte';
+	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
+	import { get } from '$lib/shared/api/client';
+	import type { VmListItem, VmListResult } from '$lib/features/vms/list.svelte';
 	import { goto } from '$app/navigation';
 	import { m } from '$lib/paraglide/messages.js';
 	import SidebarIcon from './SidebarIcon.svelte';
@@ -27,6 +31,39 @@
 
 	const session = getSessionContext();
 	const chrome = getChromeContext();
+
+	// Machines drawer (below the "Machines" nav link): a small owned-VMs list
+	// a pool user can pop open without leaving whatever page they're on.
+	// Admins have no personal pool (never own VMs), so they get the plain link.
+	let machinesOpen = $state(false);
+	let machinesVms = $state.raw<VmListItem[]>([]);
+	let machinesLoading = $state.raw(false);
+	let machinesLoaded = $state.raw(false);
+
+	async function loadMachines(): Promise<void> {
+		machinesLoading = true;
+		try {
+			const result = await get<VmListResult>('/api/v1/vms?pageSize=8&sortBy=name');
+			machinesVms = result.items;
+			machinesLoaded = true;
+		} catch {
+			machinesVms = [];
+		} finally {
+			machinesLoading = false;
+		}
+	}
+
+	function toggleMachines(): void {
+		machinesOpen = !machinesOpen;
+		if (machinesOpen && !machinesLoaded) void loadMachines();
+	}
+
+	onMount(() =>
+		getTaskTrayContext().onTaskOk(() => {
+			if (machinesOpen) void loadMachines();
+			else machinesLoaded = false;
+		})
+	);
 
 	interface MainNavItem {
 		href: string;
@@ -103,17 +140,80 @@
 		<nav class="flex flex-col gap-0.5" aria-label={m['chrome.navbar.ariaLabel']()}>
 			{#each mainNav as item (item.href)}
 				{@const active = isActive(item.href, item.href === resolve('/'))}
-				<a
-					href={item.href}
-					aria-current={active ? 'page' : undefined}
-					class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {active
-						? 'bg-sidebar-accent text-sidebar-accent-foreground'
-						: 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'}"
-					onclick={closeDrawer}
-				>
-					<SidebarIcon name={item.icon} />
-					{item.label()}
-				</a>
+				{@const isMachines = item.href === resolve('/vms') && !session.isAdmin}
+				<div class="flex flex-col">
+					<div
+						class="flex items-center rounded-lg text-sm font-medium transition-colors {active
+							? 'bg-sidebar-accent text-sidebar-accent-foreground'
+							: 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'}"
+					>
+						<a
+							href={item.href}
+							aria-current={active ? 'page' : undefined}
+							class="flex flex-1 items-center gap-2 px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							onclick={closeDrawer}
+						>
+							<SidebarIcon name={item.icon} />
+							{item.label()}
+						</a>
+						{#if isMachines}
+							<button
+								type="button"
+								aria-expanded={machinesOpen}
+								aria-controls="sidebar-machines-drawer"
+								aria-label={m['chrome.sidebar.machinesToggle']()}
+								class="rounded-lg p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								onclick={toggleMachines}
+							>
+								<svg
+									viewBox="0 0 24 24"
+									class="h-4 w-4 transition-transform duration-200 {machinesOpen ? 'rotate-180' : ''}"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<polyline points="6 9 12 15 18 9" />
+								</svg>
+							</button>
+						{/if}
+					</div>
+					{#if isMachines && machinesOpen}
+						<ul id="sidebar-machines-drawer" class="flex flex-col gap-0.5 py-1">
+							{#if machinesLoading}
+								<li class="px-9 py-1.5 text-xs text-muted-foreground-subtle">{m['common.loading']()}</li>
+							{:else if machinesVms.length === 0}
+								<li class="px-9 py-1.5 text-xs text-muted-foreground-subtle">{m['chrome.sidebar.machinesEmpty']()}</li>
+							{:else}
+								{#each machinesVms as vm (vm.vmid + vm.cluster)}
+									{@const href = resolve('/vms/[cluster]/[vmid]', { cluster: vm.cluster, vmid: String(vm.vmid) })}
+									<li>
+										<a
+											{href}
+											aria-current={isActive(href, true) ? 'page' : undefined}
+											class="flex items-center gap-2 rounded-lg pl-9 pr-3 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {isActive(href, true)
+												? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground'
+												: 'text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground'}"
+											onclick={closeDrawer}
+										>
+											<span
+												class="inline-block size-1.5 shrink-0 rounded-full {vm.status === 'running'
+													? 'bg-success'
+													: vm.status === 'paused'
+														? 'bg-destructive'
+														: 'bg-muted-foreground-subtle'}"
+												aria-hidden="true"
+											></span>
+											<span class="truncate">{vm.name}</span>
+										</a>
+									</li>
+								{/each}
+							{/if}
+						</ul>
+					{/if}
+				</div>
 			{/each}
 		</nav>
 
