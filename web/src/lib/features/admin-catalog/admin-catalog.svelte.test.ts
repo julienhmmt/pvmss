@@ -157,4 +157,53 @@ describe('AdminCatalogStore', () => {
 			expect(store.storageSortDir).toBe('asc');
 		});
 	});
+
+	describe('sortedBridges', () => {
+		const testBridges: AdminBridge[] = [
+			{ name: 'vmbr1', node: 'node-b', active: true, comment: 'storage', enabled: false },
+			{ name: 'vmbr0', node: 'node-a', active: true, comment: '', enabled: true },
+			{ name: 'vmbr0', node: 'node-b', active: true, comment: 'wan', enabled: false }
+		];
+
+		it('sorts by name ascending then descending', () => {
+			const store = new AdminCatalogStore();
+			store.bridges = testBridges;
+			store.bridgeSortBy = 'name';
+			store.bridgeSortDir = 'asc';
+			expect(store.sortedBridges.map((b) => b.name)).toEqual(['vmbr0', 'vmbr0', 'vmbr1']);
+			store.bridgeSortDir = 'desc';
+			expect(store.sortedBridges.map((b) => b.name)).toEqual(['vmbr1', 'vmbr0', 'vmbr0']);
+		});
+
+		it('sorts by node with name as tiebreaker', () => {
+			const store = new AdminCatalogStore();
+			store.bridges = testBridges;
+			store.bridgeSortBy = 'node';
+			store.bridgeSortDir = 'asc';
+			expect(store.sortedBridges.map((b) => `${b.node}/${b.name}`)).toEqual([
+				'node-a/vmbr0',
+				'node-b/vmbr0',
+				'node-b/vmbr1'
+			]);
+		});
+
+		it('sorts by comment', () => {
+			const store = new AdminCatalogStore();
+			store.bridges = testBridges;
+			store.bridgeSortBy = 'comment';
+			store.bridgeSortDir = 'asc';
+			expect(store.sortedBridges.map((b) => b.comment || '')).toEqual(['', 'storage', 'wan']);
+		});
+
+		it('setBridgeSort toggles direction on same column and resets on new column', () => {
+			const store = new AdminCatalogStore();
+			store.bridgeSortBy = 'name';
+			store.bridgeSortDir = 'asc';
+			store.setBridgeSort('name');
+			expect(store.bridgeSortDir).toBe('desc');
+			store.setBridgeSort('node');
+			expect(store.bridgeSortBy).toBe('node');
+			expect(store.bridgeSortDir).toBe('asc');
+		});
+	});
 });
