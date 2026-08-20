@@ -19,6 +19,8 @@ import (
 type VMCreate struct {
 	auth    *Auth
 	store   *store.Store
+	client  cluster.Client
+	clients cluster.ClientProvider
 	creator cluster.Creator
 	pusher  vm.CloudInitPusher
 	policy  *policy.Policy
@@ -30,13 +32,53 @@ type VMCreate struct {
 // from existing-VM writes (constitution IV). The pusher is the same cluster
 // client's T08 cloud-init push contract, reused by vm.Create's template-apply
 // step (FR-007) — never a second write mechanism.
-func NewVMCreate(authHandler *Auth, st *store.Store, creator cluster.Creator, pusher vm.CloudInitPusher, log *slog.Logger, services ...*policy.Policy) *VMCreate {
+func NewVMCreate(
+	authHandler *Auth,
+	st *store.Store,
+	client cluster.Client,
+	creator cluster.Creator,
+	pusher vm.CloudInitPusher,
+	log *slog.Logger,
+	services ...*policy.Policy,
+) *VMCreate {
 	var policyService *policy.Policy
 	if len(services) > 0 {
 		policyService = services[0]
 	}
 
-	return &VMCreate{auth: authHandler, store: st, creator: creator, pusher: pusher, policy: policyService, log: log}
+	return &VMCreate{
+		auth:    authHandler,
+		store:   st,
+		client:  client,
+		creator: creator,
+		pusher:  pusher,
+		policy:  policyService,
+		log:     log,
+	}
+}
+
+// NewVMCreateWithRegistry creates a VM handler with cluster-aware catalog discovery.
+func NewVMCreateWithRegistry(
+	authHandler *Auth,
+	st *store.Store,
+	clients cluster.ClientProvider,
+	creator cluster.Creator,
+	pusher vm.CloudInitPusher,
+	log *slog.Logger,
+	services ...*policy.Policy,
+) *VMCreate {
+	handler := NewVMCreate(
+		authHandler,
+		st,
+		nil,
+		creator,
+		pusher,
+		log,
+		services...,
+	)
+	handler.clients = clients
+
+	return handler
 }
 
 type createResultDTO struct {
@@ -131,14 +173,22 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clusterName := r.URL.Query().Get("cluster")
-	if clusterName == "" {
-		clusterName = defaultClusterName
+	clusterName, client, ok := h.resolveCatalogClient(w, r)
+	if !ok {
+		return
 	}
 
 	resources, err := catalog.ApprovedResources(r.Context(), h.store, clusterName)
 	if err != nil {
 		h.log.Error("catalog read failed", "component", "httpapi", "error", err)
+		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return
+	}
+
+	snap, err := client.Snapshot(r.Context())
+	if err != nil {
+		h.log.Error("storage discovery failed", "component", "httpapi", "error", err)
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -174,6 +224,10 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, storage := range resources.Storages {
+		if _, ok := vmCapableStorage(storage, snap.Storages); !ok {
+			continue
+		}
+
 		dto.Storages = append(dto.Storages, catalogStorageDTO{Name: storage.Name, Node: storage.Node})
 	}
 
@@ -200,6 +254,47 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeCreateJSON(w, http.StatusOK, dto)
+}
+
+func (h *VMCreate) resolveCatalogClient(w http.ResponseWriter, r *http.Request) (string, cluster.Client, bool) {
+	clusterName, err := ResolveClusterParam(r, h.clients)
+	if err != nil {
+		code, message := clusterParamError(err)
+		h.writeCreateError(w, http.StatusBadRequest, code, message)
+
+		return "", nil, false
+	}
+
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		h.writeCreateError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
+
+		return "", nil, false
+	}
+
+	return clusterName, client, true
+}
+
+func (h *VMCreate) clientFor(clusterName string) (cluster.Client, error) {
+	if h.clients != nil {
+		return h.clients.Client(clusterName)
+	}
+
+	if h.client == nil {
+		return nil, cluster.ErrClusterNotFound
+	}
+
+	return h.client, nil
+}
+
+func vmCapableStorage(storage catalog.Storage, available []cluster.Storage) (cluster.Storage, bool) {
+	for _, candidate := range available {
+		if candidate.Name == storage.Name && candidate.Node == storage.Node && cluster.IsVMCapableStorage(candidate) {
+			return candidate, true
+		}
+	}
+
+	return cluster.Storage{}, false
 }
 
 func catalogBridgeNames(bridges []catalog.Bridge) []string {

@@ -3,6 +3,7 @@ package httpapi_test
 import (
 	"encoding/json"
 	"net/http"
+	"pvmss/server/internal/cluster"
 	"testing"
 )
 
@@ -16,7 +17,7 @@ type adminStorageDTO struct {
 }
 
 // TestAdminStorages_ListShowsAllWithCorrectEnabled — T014: GET /admin/storages
-// shows all 5 fake storages with correct per-(name,node) enabled state.
+// shows all VM-capable fake storages with correct per-(name,node) enabled state.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminStorages_ListShowsAllWithCorrectEnabled(t *testing.T) {
@@ -33,8 +34,8 @@ func TestAdminStorages_ListShowsAllWithCorrectEnabled(t *testing.T) {
 		t.Fatalf("decode storages: %v", err)
 	}
 
-	if len(storages) != 5 {
-		t.Fatalf("expected 5 storages, got %d", len(storages))
+	if len(storages) != 4 {
+		t.Fatalf("expected 4 VM-capable storages, got %d", len(storages))
 	}
 
 	enabledByKey := make(map[string]bool)
@@ -58,8 +59,10 @@ func TestAdminStorages_ListShowsAllWithCorrectEnabled(t *testing.T) {
 		t.Error("local@pve-node-01 should not be enabled")
 	}
 
-	if enabledByKey["backup-nfs@pve-node-03"] {
-		t.Error("backup-nfs@pve-node-03 should not be enabled")
+	for _, name := range []string{cluster.FakeStorageBackupNFS, cluster.FakeStoragePBS} {
+		if _, exists := enabledByKey[name+"@"+cluster.FakeNode03]; exists {
+			t.Errorf("ineligible storage %q should be absent", name)
+		}
 	}
 }
 

@@ -724,6 +724,10 @@ const (
 	FakeStorageLocalLVM = "local-lvm"
 	// FakeStorageLocal is the deterministic default fake storage ("local").
 	FakeStorageLocal = "local"
+	// FakeStorageBackupNFS is the backup-only NFS fixture.
+	FakeStorageBackupNFS = "backup-nfs"
+	// FakeStoragePBS is the Proxmox Backup Server fixture.
+	FakeStoragePBS = "pbs-backup"
 	// FakeSnippetStorage is the deterministic snippets-capable fake storage.
 	FakeSnippetStorage = "local"
 	// FakeCloudInitUser is the demo cloud-init account.
@@ -797,11 +801,12 @@ func originalFakePools() []Pool {
 }
 
 var fakeStorages = []Storage{
-	{Name: FakeStorageLocal, Node: FakeNode01, Type: "dir", Total: 2199023255552, Used: 879609302220, SupportsVMState: false},
-	{Name: FakeStorageLocalLVM, Node: FakeNode01, Type: "lvm", Total: 549755813888, Used: 219902325555, SupportsVMState: true},
-	{Name: "ceph-data", Node: FakeNode02, Type: "cephfs", Total: 1099511627776, Used: 329853488332, SupportsVMState: true},
-	{Name: FakeStorageLocal, Node: FakeNode02, Type: "dir", Total: 274877906944, Used: 68719476736, SupportsVMState: false},
-	{Name: "backup-nfs", Node: FakeNode03, Type: "nfs", Total: 5497558138880, Used: 1099511627776, SupportsVMState: false},
+	{Name: FakeStorageLocal, Node: FakeNode01, Type: storagePluginDir, PluginType: storagePluginDir, Content: "images,iso,vztmpl,backup,snippets", Total: 2199023255552, Used: 879609302220, SupportsVMState: false},
+	{Name: FakeStorageLocalLVM, Node: FakeNode01, Type: storagePluginLVM, PluginType: storagePluginLVM, Content: "images,rootdir", Total: 549755813888, Used: 219902325555, SupportsVMState: true},
+	{Name: "ceph-data", Node: FakeNode02, Type: storagePluginCephFS, PluginType: storagePluginCephFS, Content: storageContentImages, Total: 1099511627776, Used: 329853488332, SupportsVMState: true},
+	{Name: FakeStorageLocal, Node: FakeNode02, Type: storagePluginDir, PluginType: storagePluginDir, Content: "images,iso", Total: 274877906944, Used: 68719476736, SupportsVMState: false},
+	{Name: FakeStorageBackupNFS, Node: FakeNode03, Type: "nfs", PluginType: "nfs", Content: "backup", Total: 5497558138880, Used: 1099511627776, SupportsVMState: false},
+	{Name: FakeStoragePBS, Node: FakeNode03, Type: storagePluginPBS, PluginType: storagePluginPBS, Content: "images,backup", Total: 8796093022208, Used: 2199023255552, SupportsVMState: false},
 }
 
 // fakeBridges is the T11 bridge discovery dataset. T06 approved vmbr0 and

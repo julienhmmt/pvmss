@@ -105,6 +105,33 @@ func TestNetworkInterfaceMarshalJSON(t *testing.T) {
 	})
 }
 
+func TestIsVMCapableStorage_ExactImagesTokenAndPBSExclusion(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		storage Storage
+		want    bool
+	}{
+		{name: "images only", storage: Storage{PluginType: storagePluginDir, Content: storageContentImages}, want: true},
+		{name: "images among capabilities", storage: Storage{PluginType: "lvmthin", Content: "rootdir,images"}, want: true},
+		{name: "backup only", storage: Storage{PluginType: "nfs", Content: "backup"}, want: false},
+		{name: "substring is not a token", storage: Storage{PluginType: storagePluginDir, Content: "isoimages"}, want: false},
+		{name: "PBS rejected despite images", storage: Storage{PluginType: storagePluginPBS, Content: "images,backup"}, want: false},
+		{name: "legacy PBS type rejected", storage: Storage{Type: storagePluginPBS, Content: storageContentImages}, want: false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := IsVMCapableStorage(test.storage); got != test.want {
+				t.Errorf("IsVMCapableStorage(%+v) = %t, want %t", test.storage, got, test.want)
+			}
+		})
+	}
+}
+
 // TestProxmoxGetVNCTicket_Success parses the ticket and port from a 200 response.
 func TestProxmoxGetVNCTicket_Success(t *testing.T) {
 	t.Parallel()

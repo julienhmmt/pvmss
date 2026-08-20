@@ -47,6 +47,7 @@ type proxmoxResourceRow struct {
 	Disk       int64   `json:"disk"`
 	Storage    string  `json:"storage"`
 	PluginType string  `json:"plugintype"`
+	Content    string  `json:"content"`
 }
 
 // proxmoxSnapshotCapableStorage lists the Proxmox storage plugin types that
@@ -154,6 +155,8 @@ func proxmoxStorageFromRow(row proxmoxResourceRow) Storage {
 		Name:            row.Storage,
 		Node:            row.Node,
 		Type:            row.PluginType,
+		PluginType:      row.PluginType,
+		Content:         row.Content,
 		Total:           row.MaxDisk,
 		Used:            row.Disk,
 		SupportsVMState: proxmoxSnapshotCapableStorage[row.PluginType],

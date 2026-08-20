@@ -40,7 +40,7 @@ func TestProxmox_Snapshot(t *testing.T) {
 			writeJSONFixture(t, w, `{"data":[
 				{"type":"node","node":"pve1","status":"online","maxcpu":32,"cpu":0.1,"maxmem":1000,"mem":500,"maxdisk":2000,"disk":1000},
 				{"type":"qemu","node":"pve1","vmid":101,"name":"web-1","status":"running","pool":"alice","tags":"pvmss;prod","maxcpu":2,"maxmem":2147483648},
-				{"type":"storage","node":"pve1","storage":"local-lvm","plugintype":"lvmthin","maxdisk":500,"disk":100}
+				{"type":"storage","node":"pve1","storage":"local-lvm","plugintype":"lvmthin","content":"images,rootdir","maxdisk":500,"disk":100}
 			]}`)
 		})
 		mux.HandleFunc("GET /api2/json/version", func(w http.ResponseWriter, _ *http.Request) {
@@ -74,6 +74,11 @@ func TestProxmox_Snapshot(t *testing.T) {
 
 	if len(snap.Storages) != 1 || !snap.Storages[0].SupportsVMState {
 		t.Fatalf("storages = %+v, want lvmthin marked SupportsVMState", snap.Storages)
+	}
+
+	storage := snap.Storages[0]
+	if storage.PluginType != "lvmthin" || storage.Content != "images,rootdir" {
+		t.Errorf("storage capabilities = %+v, want lvmthin with images,rootdir", storage)
 	}
 
 	if len(snap.VMs) != 1 {

@@ -846,16 +846,12 @@ func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request)
 func hardwareStorages(storages []catalog.Storage, index *inventory.Index) []hardwareStorageDTO {
 	result := make([]hardwareStorageDTO, 0, len(storages))
 	for _, storage := range storages {
-		storageType := ""
-
-		for _, available := range index.StoragesByNode[storage.Node] {
-			if available.Name == storage.Name {
-				storageType = available.Type
-				break
-			}
+		available, ok := vmCapableStorage(storage, index.StoragesByNode[storage.Node])
+		if !ok {
+			continue
 		}
 
-		result = append(result, hardwareStorageDTO{Node: storage.Node, Storage: storage.Name, Type: storageType})
+		result = append(result, hardwareStorageDTO{Node: storage.Node, Storage: storage.Name, Type: available.Type})
 	}
 
 	return result

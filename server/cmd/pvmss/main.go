@@ -337,7 +337,15 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: writer, Store: st, Refresher: worker, Log: logger}, policyService)
 	vmBulk := httpapi.NewVMBulkWithRegistry(inventoryRegistry, projection, authHandler, writer, st, refresher, logger)
 	vmCloudInit := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{Projection: projection, Auth: authHandler, Reader: cloudInitReader, Writer: writer, Store: st, Refresher: worker, Log: logger}, policyService)
-	vmCreate := httpapi.NewVMCreate(authHandler, st, creator, writer, logger, policyService)
+	vmCreate := httpapi.NewVMCreateWithRegistry(
+		authHandler,
+		st,
+		clusterRegistry,
+		creator,
+		writer,
+		logger,
+		policyService,
+	)
 	tasks := httpapi.NewTasks(authHandler, creator, worker, logger)
 	snapshots := httpapi.NewVMSnapshots(projection, authHandler, snapshotReader, snapshotWriter, st, logger, policyService)
 	vmConsole := httpapi.NewVMConsole(projection, authHandler, consoleRelay, consoleTickets, st, logger)

@@ -7,7 +7,16 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"strings"
 	"time"
+)
+
+const (
+	storagePluginCephFS  = "cephfs"
+	storagePluginDir     = "dir"
+	storagePluginLVM     = "lvm"
+	storagePluginPBS     = "pbs"
+	storageContentImages = "images"
 )
 
 // Sentinel errors so callers can distinguish failure modes without string matching.
@@ -240,9 +249,28 @@ type Storage struct {
 	Name            string
 	Node            string
 	Type            string
+	PluginType      string
+	Content         string
 	Total           int64
 	Used            int64
 	SupportsVMState bool
+}
+
+// IsVMCapableStorage reports whether a storage can hold VM disk images.
+// Proxmox content capabilities are exact comma-separated tokens; PBS remains
+// ineligible even if a malformed or future response advertises images.
+func IsVMCapableStorage(storage Storage) bool {
+	if storage.PluginType == storagePluginPBS || storage.Type == storagePluginPBS {
+		return false
+	}
+
+	for capability := range strings.SplitSeq(storage.Content, ",") {
+		if capability == storageContentImages {
+			return true
+		}
+	}
+
+	return false
 }
 
 // Bridge is a network bridge reported by a node. Approval (catalog_bridges) is
