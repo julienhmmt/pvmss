@@ -209,7 +209,7 @@
 						</td>
 						<td class="px-4 py-2">
 							<div class="flex gap-2">
-								<Button variant="ghost" size="sm" label={m['admin.docs.editLabel']({ title: page.title })} onclick={() => openEdit(page)}>{m['admin.docs.edit']()}</Button>
+								<Button variant="secondary" size="sm" label={m['admin.docs.editLabel']({ title: page.title })} onclick={() => openEdit(page)}>{m['admin.docs.edit']()}</Button>
 								<Button
 									variant="destructive"
 									size="sm"

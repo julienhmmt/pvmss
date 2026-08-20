@@ -131,7 +131,7 @@
 						</td>
 						<td class="px-4 py-2">
 							<div class="flex gap-2">
-								<Button variant="ghost" size="sm" label={m['admin.profiles.editLabel']({ label: profile.label })} onclick={() => openEdit(profile)}>{m['admin.profiles.edit']()}</Button>
+								<Button variant="secondary" size="sm" label={m['admin.profiles.editLabel']({ label: profile.label })} onclick={() => openEdit(profile)}>{m['admin.profiles.edit']()}</Button>
 								<Button variant="destructive" size="sm" label={m['admin.profiles.deleteLabel']({ label: profile.label })} onclick={() => (pendingDelete = profile)}>{m['admin.profiles.delete']()}</Button>
 							</div>
 						</td>
