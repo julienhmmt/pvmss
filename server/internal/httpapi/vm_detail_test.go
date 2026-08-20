@@ -906,13 +906,30 @@ func TestVMDetail_DiskResize(t *testing.T) {
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_HardwareOptions(t *testing.T) {
-	handler, authHandler, _, _ := newVMDetailHandler(t)
+	handler, authHandler, _, st := newVMDetailHandler(t)
 	cookie := adminCookie(t, authHandler)
+	seedStaleStorageApprovals(t, st)
 
 	rec, _ := serveDetail(handler, detailRequest(http.MethodGet, "/api/v1/vms/default/100/hardware-options", "", cookie))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200; body=%s", rec.Code, rec.Body.String())
 	}
+
+	var body struct {
+		Storages []struct {
+			Storage string `json:"storage"`
+		} `json:"storages"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode hardware options: %v", err)
+	}
+
+	storageNames := make([]string, 0, len(body.Storages))
+	for _, storage := range body.Storages {
+		storageNames = append(storageNames, storage.Storage)
+	}
+
+	assertNoIneligibleStorageNames(t, storageNames)
 }
 
 // TestVMDetail_CDROM exercises the PATCH /cdrom endpoint, covering handleCDROM.

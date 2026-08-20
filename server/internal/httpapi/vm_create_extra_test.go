@@ -56,7 +56,14 @@ func newVMCreateHandlerWithCreator(t *testing.T, creator cluster.Creator) (*http
 	t.Cleanup(func() { _ = st.Close() })
 	seedBridgeApprovals(t, st)
 
-	return httpapi.NewVMCreate(authHandler, st, creator, cluster.Fake{}, logger), authHandler
+	return httpapi.NewVMCreate(
+		authHandler,
+		st,
+		cluster.Fake{},
+		creator,
+		cluster.Fake{},
+		logger,
+	), authHandler
 }
 
 // TestVMCreate_Unauthenticated — no cookie → 401, never reaches vm.Create.

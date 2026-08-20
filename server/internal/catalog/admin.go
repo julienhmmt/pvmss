@@ -113,6 +113,10 @@ func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Clie
 
 	out := make([]StorageApproval, 0, len(snap.Storages))
 	for _, storage := range snap.Storages {
+		if !cluster.IsVMCapableStorage(storage) {
+			continue
+		}
+
 		out = append(out, StorageApproval{
 			Name:    storage.Name,
 			Node:    storage.Node,
@@ -278,7 +282,7 @@ func storageDiscovered(ctx context.Context, client cluster.Client, name, node st
 	}
 
 	return slices.ContainsFunc(snap.Storages, func(s cluster.Storage) bool {
-		return s.Name == name && s.Node == node
+		return s.Name == name && s.Node == node && cluster.IsVMCapableStorage(s)
 	}), nil
 }
 

@@ -90,6 +90,10 @@ func checkSnapshotStorages(t *testing.T, storages []cluster.Storage) {
 			t.Errorf("storage %+v has empty name or node", s)
 		}
 
+		if s.PluginType == "" || s.Content == "" {
+			t.Errorf("storage %q has empty plugin type or content", s.Name)
+		}
+
 		if s.Used > s.Total {
 			t.Errorf("storage %q: used > total", s.Name)
 		}

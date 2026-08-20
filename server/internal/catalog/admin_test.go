@@ -172,6 +172,28 @@ func TestSetNodeEnabled_UpsertNeverDeletes(t *testing.T) {
 	}
 }
 
+// TestAdminListStorages_ExcludesPBSAndBackupOnly verifies non-VM storage is hidden.
+//
+//nolint:paralleltest // serial: shared fake dataset
+func TestAdminListStorages_ExcludesPBSAndBackupOnly(t *testing.T) {
+	st := openAdminStore(t)
+
+	storages, err := catalog.AdminListStorages(context.Background(), st, cluster.Fake{}, "default")
+	if err != nil {
+		t.Fatalf("AdminListStorages: %v", err)
+	}
+
+	for _, storage := range storages {
+		if storage.Name == cluster.FakeStorageBackupNFS || storage.Name == cluster.FakeStoragePBS {
+			t.Errorf("ineligible storage %q returned in admin catalog: %+v", storage.Name, storage)
+		}
+	}
+
+	if len(storages) != 4 {
+		t.Errorf("got %d VM-capable storages, want 4: %+v", len(storages), storages)
+	}
+}
+
 // TestSetStorageEnabled_PerPairIsolation verifies toggling one storage+node
 // pair does not affect a same-named pair on a different node (Acceptance
 // Scenario 1.3).
