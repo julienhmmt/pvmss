@@ -9,6 +9,7 @@ function target(cluster: string, vmid: number): BulkTarget {
 function vmItem(cluster: string, vmid: number, name: string, status: VmListItem['status']): VmListItem {
 	return {
 		cluster,
+		clusterDisplayName: cluster,
 		vmid,
 		name,
 		node: 'n1',
