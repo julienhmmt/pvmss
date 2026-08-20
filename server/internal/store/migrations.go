@@ -135,6 +135,17 @@ CREATE TABLE catalog_bridges (
 );
 `
 
+// schemaV15 records the pools PVMSS has provisioned so deletion can be scoped
+// to managed pools only. A row is written only after pools.Create succeeds
+// end-to-end; pre-existing Proxmox pools are intentionally not adopted because
+// the legacy schema stored no reliable PVMSS-origin marker (issue #5).
+const schemaV15 = `CREATE TABLE managed_pools (
+	cluster    TEXT NOT NULL,
+	name       TEXT NOT NULL,
+	created_at TEXT NOT NULL,
+	PRIMARY KEY (cluster, name)
+)`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -158,4 +169,5 @@ var Migrations = []Migration{
 	{Version: 12, DDL: schemaV12},
 	{Version: 13, DDL: schemaV13},
 	{Version: 14, DDL: schemaV14},
+	{Version: 15, DDL: schemaV15},
 }

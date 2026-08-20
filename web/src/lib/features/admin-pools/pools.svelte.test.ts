@@ -18,8 +18,8 @@ describe('PoolsStore', () => {
 
 	it('loads pools and applies case-insensitive server search', async () => {
 		const pools = [
-			{ name: 'alice', comment: '', total: 7, running: 3, stopped: 4 },
-			{ name: 'carol', comment: '', total: 0, running: 0, stopped: 0 }
+			{ name: 'alice', comment: '', total: 7, running: 3, stopped: 4, managed: false },
+			{ name: 'carol', comment: '', total: 0, running: 0, stopped: 0, managed: true }
 		];
 		const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(200, pools)).mockResolvedValueOnce(jsonResponse(200, [pools[1]]));
 		vi.stubGlobal('fetch', fetchMock);
@@ -39,13 +39,14 @@ describe('PoolsStore', () => {
 	it('creates and deletes through the API while exposing status', async () => {
 		const fetchMock = vi
 			.fn()
-			.mockResolvedValueOnce(jsonResponse(201, { name: 'carol', comment: '', total: 0, running: 0, stopped: 0 }))
+			.mockResolvedValueOnce(jsonResponse(201, { name: 'carol', comment: '', total: 0, running: 0, stopped: 0, managed: true }))
 			.mockResolvedValueOnce(jsonResponse(200, { status: 'deleted', userDeleted: true }));
 		vi.stubGlobal('fetch', fetchMock);
 		const store = new PoolsStore();
 
 		await store.create('carol', 'S0meLongPW!', '');
 		expect(store.pools).toHaveLength(1);
+		expect(store.pools[0].managed).toBe(true);
 		await store.remove('carol');
 		expect(store.pools).toHaveLength(0);
 		expect(store.announce).toBe(m['admin.pools.deleted']({ name: 'carol' }));

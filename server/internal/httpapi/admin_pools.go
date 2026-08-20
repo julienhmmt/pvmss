@@ -9,6 +9,7 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/pools"
+	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 )
 
@@ -20,12 +21,14 @@ type AdminPools struct {
 	writer     cluster.Writer
 	audit      vm.AuditRecorder
 	refresher  vm.IndexRefresher
+	store      *store.Store
 	log        *slog.Logger
 }
 
-// NewAdminPools creates the pool administration handler.
-func NewAdminPools(authHandler *Auth, client cluster.Client, projection *inventory.Projection, writer cluster.Writer, audit vm.AuditRecorder, refresher vm.IndexRefresher, log *slog.Logger) *AdminPools {
-	return &AdminPools{auth: authHandler, client: client, projection: projection, writer: writer, audit: audit, refresher: refresher, log: log}
+// NewAdminPools creates the pool administration handler. The store enables
+// managed-pool tracking: only pools PVMSS provisioned may be deleted.
+func NewAdminPools(authHandler *Auth, client cluster.Client, projection *inventory.Projection, writer cluster.Writer, audit vm.AuditRecorder, refresher vm.IndexRefresher, st *store.Store, log *slog.Logger) *AdminPools {
+	return &AdminPools{auth: authHandler, client: client, projection: projection, writer: writer, audit: audit, refresher: refresher, store: st, log: log}
 }
 
 // ServeList handles GET /api/v1/admin/pools.
@@ -33,7 +36,8 @@ func (h *AdminPools) ServeList(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.adminActor(w, r); !ok {
 		return
 	}
-	rows, err := pools.List(r.Context(), h.client, h.projection, r.URL.Query().Get("search"))
+	clusterName := queryCluster(r)
+	rows, err := pools.ListWithManaged(r.Context(), h.client, h.projection, h.store, clusterName, r.URL.Query().Get("search"))
 	if err != nil {
 		h.log.Error("admin pool list failed", "component", "httpapi", "error", err)
 		writeAdminError(w, http.StatusBadGateway, "cluster_unreachable", "failed to list pools")
@@ -53,12 +57,12 @@ func (h *AdminPools) ServeCreate(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
-	created, err := pools.Create(r.Context(), actor, h.client, request.Name, request.Password, request.Comment)
+	created, err := pools.CreateWithRecorder(r.Context(), actor, h.client, h.store, queryCluster(r), request.Name, request.Password, request.Comment)
 	if err != nil {
 		h.writeCreateError(w, err)
 		return
 	}
-	writeAdminJSON(w, http.StatusCreated, poolSummary{Name: created.Name, Comment: created.Comment})
+	writeAdminJSON(w, http.StatusCreated, poolSummary{Name: created.Name, Comment: created.Comment, Managed: true})
 }
 
 // ServeDelete handles DELETE /api/v1/admin/pools/{name}.
@@ -72,13 +76,17 @@ func (h *AdminPools) ServeDelete(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, http.StatusBadRequest, "invalid_pool_name", "invalid pool name")
 		return
 	}
-	result, err := pools.Delete(r.Context(), pools.CascadeDeps{Actor: actor, Client: h.client, Projection: h.projection, ClusterName: queryCluster(r), Writer: h.writer, Audit: h.audit, Refresher: h.refresher}, name)
+	result, err := pools.Delete(r.Context(), pools.CascadeDeps{Actor: actor, Client: h.client, Projection: h.projection, ClusterName: queryCluster(r), Writer: h.writer, Audit: h.audit, Refresher: h.refresher, Managed: h.store}, name)
 	if errors.Is(err, pools.ErrNotFound) {
 		writeAdminError(w, http.StatusNotFound, "not_found", "pool \""+name+"\" not found")
 		return
 	}
 	if errors.Is(err, pools.ErrForbidden) {
 		writeAdminError(w, http.StatusForbidden, "forbidden", msgAdminOnly)
+		return
+	}
+	if errors.Is(err, pools.ErrNotManaged) {
+		writeAdminError(w, http.StatusConflict, "not_managed", "pool \""+name+"\" is not managed by PVMSS")
 		return
 	}
 	if err != nil {
@@ -107,6 +115,7 @@ type poolSummary struct {
 	Total   int    `json:"total"`
 	Running int    `json:"running"`
 	Stopped int    `json:"stopped"`
+	Managed bool   `json:"managed"`
 }
 
 type poolSummaryList []poolSummary
@@ -114,7 +123,7 @@ type poolSummaryList []poolSummary
 func poolSummaries(rows []pools.PoolSummary) poolSummaryList {
 	result := make(poolSummaryList, len(rows))
 	for index, row := range rows {
-		result[index] = poolSummary{Name: row.Name, Comment: row.Comment, Total: row.Total, Running: row.Running, Stopped: row.Stopped}
+		result[index] = poolSummary{Name: row.Name, Comment: row.Comment, Total: row.Total, Running: row.Running, Stopped: row.Stopped, Managed: row.Managed}
 	}
 	return result
 }
