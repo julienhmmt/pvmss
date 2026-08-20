@@ -20,7 +20,7 @@
 				<th class="px-4 py-2 font-medium">{m['common.name']()}</th>
 				<th class="px-4 py-2 font-medium">{m['common.node']()}</th>
 				<th class="px-4 py-2 font-medium">{m['admin.catalog.comment']()}</th>
-				<th class="px-4 py-2 font-medium">{m['admin.catalog.approvedStatus']()}</th>
+				<th class="px-4 py-2 font-medium">{m['admin.catalog.statusColumn']()}</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -29,7 +29,7 @@
 					<td class="px-4 py-2 font-mono" data-label={m['common.name']()}>{bridge.name}</td>
 					<td class="px-4 py-2 font-mono" data-label={m['common.node']()}>{bridge.node}</td>
 					<td class="px-4 py-2" data-label={m['admin.catalog.comment']()}>{bridge.comment || '—'}</td>
-					<td class="px-4 py-2" data-label={m['admin.catalog.approvedStatus']()}>
+					<td class="px-4 py-2" data-label={m['admin.catalog.statusColumn']()}>
 						<span class="inline-flex items-center gap-2" aria-busy={toggling === `bridge:${bridge.name}`}>
 							<Switch
 								checked={bridge.enabled}

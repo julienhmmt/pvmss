@@ -22,7 +22,7 @@
 				<th class="px-4 py-2 font-medium">{m['common.storage']()}</th>
 				<th class="px-4 py-2 font-medium">{m['common.node']()}</th>
 				<th class="px-4 py-2 font-medium">{m['admin.catalog.size']()}</th>
-				<th class="px-4 py-2 font-medium">{m['admin.catalog.approvedStatus']()}</th>
+				<th class="px-4 py-2 font-medium">{m['admin.catalog.statusColumn']()}</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -32,7 +32,7 @@
 					<td class="px-4 py-2 font-mono" data-label={m['common.storage']()}>{iso.storage}</td>
 					<td class="px-4 py-2 font-mono" data-label={m['common.node']()}>{iso.node}</td>
 					<td class="px-4 py-2" data-label={m['admin.catalog.size']()}>{formatBytes(iso.sizeBytes)}</td>
-					<td class="px-4 py-2" data-label={m['admin.catalog.approvedStatus']()}>
+					<td class="px-4 py-2" data-label={m['admin.catalog.statusColumn']()}>
 						<span
 							class="inline-flex items-center gap-2"
 							aria-busy={toggling === `iso:${iso.storage}:${iso.file}`}
