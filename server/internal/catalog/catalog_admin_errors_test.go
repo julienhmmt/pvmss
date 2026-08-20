@@ -101,7 +101,7 @@ func TestSetBridgeEnabled_DiscoveryErrorSurfaced(t *testing.T) {
 
 	st := openAdminStore(t)
 
-	err := catalog.SetBridgeEnabled(context.Background(), st, errDiscoveryClient{}, "default", "vmbr0", true)
+	err := catalog.SetBridgeEnabled(context.Background(), st, errDiscoveryClient{}, "default", "pve-node-01", "vmbr0", true)
 	if !errors.Is(err, errDiscovery) {
 		t.Fatalf("SetBridgeEnabled discovery error: got %v, want errDiscovery", err)
 	}

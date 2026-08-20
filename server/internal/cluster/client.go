@@ -246,9 +246,7 @@ type Storage struct {
 }
 
 // Bridge is a network bridge reported by a node. Approval (catalog_bridges) is
-// keyed by Name alone — a bridge can be present on more than one node, but the
-// approval key is cluster-wide, matching T06's existing schema (spec
-// Assumptions). Node is display-only.
+// keyed by (cluster, node, name).
 type Bridge struct {
 	Name    string
 	Node    string

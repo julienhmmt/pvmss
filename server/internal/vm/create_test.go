@@ -39,6 +39,17 @@ func newCreateFixture(t *testing.T) createFixture {
 
 	t.Cleanup(func() { _ = st.Close() })
 
+	ctx := context.Background()
+	for _, bridge := range []catalog.Bridge{
+		{Name: "vmbr0", Node: "pve-node-01"},
+		{Name: "vmbr1", Node: "pve-node-01"},
+		{Name: "vmbr0", Node: "pve-node-02"},
+	} {
+		if err := st.SetBridgeEnabled(ctx, "default", bridge.Node, bridge.Name, true); err != nil {
+			t.Fatalf("seed bridge approval: %v", err)
+		}
+	}
+
 	return createFixture{store: st, fake: cluster.Fake{}}
 }
 

@@ -42,7 +42,7 @@
 		<BridgesTable
 			bridges={store.bridges}
 			toggling={store.toggling}
-			onToggle={(name, enabled) => void store.toggleBridge(name, enabled)}
+			onToggle={(node, name, enabled) => void store.toggleBridge(node, name, enabled)}
 		/>
 	</div>
 {/if}

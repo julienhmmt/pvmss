@@ -14,8 +14,8 @@ type adminBridgeDTO struct {
 	Enabled bool   `json:"enabled"`
 }
 
-// TestAdminBridges_ListShowsSuperset — T015: GET /admin/bridges shows the fake
-// superset with correct enabled (vmbr0/vmbr1 on, vmbr2 off).
+// TestAdminBridges_ListShowsSuperset — GET /admin/bridges shows the fake
+// superset with approvals reset by the node-aware migration.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminBridges_ListShowsSuperset(t *testing.T) {
@@ -41,16 +41,10 @@ func TestAdminBridges_ListShowsSuperset(t *testing.T) {
 		enabledByName[b.Name] = b.Enabled
 	}
 
-	if !enabledByName["vmbr0"] {
-		t.Error("vmbr0 should be enabled")
-	}
-
-	if !enabledByName["vmbr1"] {
-		t.Error("vmbr1 should be enabled")
-	}
-
-	if enabledByName["vmbr2"] {
-		t.Error("vmbr2 should not be enabled")
+	for name, enabled := range enabledByName {
+		if enabled {
+			t.Errorf("%s should not be enabled", name)
+		}
 	}
 }
 
@@ -62,7 +56,7 @@ func TestAdminBridges_Toggle(t *testing.T) {
 	cookie := adminCookie(t, authHandler)
 
 	rec := adminPost(t, handler, authHandler, cookie, "/api/v1/admin/bridges/toggle",
-		`{"cluster":"default","name":"vmbr2","enabled":true}`)
+		`{"cluster":"default","node":"pve-node-02","name":"vmbr2","enabled":true}`)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("toggle status = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -81,6 +75,18 @@ func TestAdminBridges_Toggle(t *testing.T) {
 		if b.Name == "vmbr2" && !b.Enabled {
 			t.Error("vmbr2 should be enabled after toggle")
 		}
+	}
+}
+
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestAdminBridges_ToggleRequiresNode(t *testing.T) {
+	handler, authHandler, _ := newAdminHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	rec := adminPost(t, handler, authHandler, cookie, "/api/v1/admin/bridges/toggle",
+		`{"cluster":"default","name":"vmbr0","enabled":true}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
 }
 
@@ -105,7 +111,7 @@ func TestAdminBridges_ToggleUnknownReturns404(t *testing.T) {
 	cookie := adminCookie(t, authHandler)
 
 	rec := adminPost(t, handler, authHandler, cookie, "/api/v1/admin/bridges/toggle",
-		`{"cluster":"default","name":"vmbr99","enabled":true}`)
+		`{"cluster":"default","node":"pve-node-01","name":"vmbr99","enabled":true}`)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}

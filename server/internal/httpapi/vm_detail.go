@@ -861,10 +861,12 @@ func hardwareStorages(storages []catalog.Storage, index *inventory.Index) []hard
 	return result
 }
 
-func hardwareBridges(bridges []string, node string) []hardwareBridgeDTO {
+func hardwareBridges(bridges []catalog.Bridge, node string) []hardwareBridgeDTO {
 	result := make([]hardwareBridgeDTO, 0, len(bridges))
 	for _, bridge := range bridges {
-		result = append(result, hardwareBridgeDTO{Node: node, Bridge: bridge})
+		if bridge.Node == node {
+			result = append(result, hardwareBridgeDTO{Node: bridge.Node, Bridge: bridge.Name})
+		}
 	}
 
 	return result

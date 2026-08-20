@@ -241,6 +241,43 @@ func appliedVersions(t *testing.T, db *sql.DB) map[int]struct{} {
 }
 
 //nolint:paralleltest // serial: shared database fixture
+func TestRunMigrations_V14RebuildsBridgeIdentity(t *testing.T) {
+	db := openTestDB(t)
+
+	ctx := context.Background()
+	if _, err := db.ExecContext(ctx, `CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL)`); err != nil {
+		t.Fatalf("create migrations table: %v", err)
+	}
+
+	for version := 1; version <= 13; version++ {
+		if _, err := db.ExecContext(ctx, `INSERT INTO schema_migrations (version, applied_at) VALUES (?, '2026-01-01T00:00:00Z')`, version); err != nil {
+			t.Fatalf("mark migration %d applied: %v", version, err)
+		}
+	}
+
+	if _, err := db.ExecContext(ctx, `CREATE TABLE catalog_bridges (cluster TEXT NOT NULL, name TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, name)); INSERT INTO catalog_bridges (cluster, name) VALUES ('default', 'vmbr0')`); err != nil {
+		t.Fatalf("create legacy bridge table: %v", err)
+	}
+
+	if err := store.RunMigrations(ctx, db, store.Migrations); err != nil {
+		t.Fatalf("RunMigrations: %v", err)
+	}
+
+	if _, err := db.ExecContext(ctx, `INSERT INTO catalog_bridges (cluster, node, name) VALUES ('default', 'node-a', 'vmbr0'), ('default', 'node-b', 'vmbr0')`); err != nil {
+		t.Fatalf("insert node-scoped bridges: %v", err)
+	}
+
+	var count int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM catalog_bridges WHERE cluster = 'default' AND name = 'vmbr0'`).Scan(&count); err != nil {
+		t.Fatalf("count bridges: %v", err)
+	}
+
+	if count != 2 {
+		t.Fatalf("bridge count = %d, want 2", count)
+	}
+}
+
+//nolint:paralleltest // serial: shared database fixture
 func TestRunMigrations_InvalidDDL_ReturnsError(t *testing.T) {
 	db := openTestDB(t)
 	migrations := []store.Migration{

@@ -325,9 +325,7 @@ func (p Proxmox) ChangePassword(ctx context.Context, username, oldPassword, newP
 // ListBridges implements Client. Bridges are per-node network configuration
 // in Proxmox — there is no cluster-wide listing — so this enumerates nodes
 // first, then each node's /network, keeping every node's own view (including
-// duplicate bridge names across nodes, e.g. vmbr0 on every node): approval
-// (catalog_bridges) is keyed by name alone and treats Node as display-only
-// (client.go), so nothing downstream needs these deduplicated.
+// duplicate bridge names across nodes, e.g. vmbr0 on every node).
 func (p Proxmox) ListBridges(ctx context.Context) ([]Bridge, error) {
 	rest := p.rest()
 

@@ -96,6 +96,7 @@ func newVMDetailHandler(t *testing.T) (*httpapi.VMDetail, *httpapi.Auth, *invent
 	}
 
 	t.Cleanup(func() { _ = st.Close() })
+	seedBridgeApprovals(t, st)
 
 	worker := inventory.NewWorker(cluster.Fake{}, projection, time.Hour, logger)
 	handler := httpapi.NewVMDetail(projection, authHandler, cluster.Fake{}, st, worker, logger)

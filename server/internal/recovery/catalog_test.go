@@ -75,8 +75,8 @@ func TestMapCatalog_NilResolver(t *testing.T) {
 		t.Errorf("len(skips) = %d, want 1", len(skips))
 	}
 
-	if len(bridges) != 1 || bridges[0].Name != "vmbr0" {
-		t.Errorf("bridges = %+v, want [vmbr0]", bridges)
+	if len(bridges) != 2 || bridges[0].Name != "vmbr0" || bridges[0].Node != "pve-a" || bridges[1].Node != "pve-b" {
+		t.Errorf("bridges = %+v, want vmbr0 on pve-a and pve-b", bridges)
 	}
 
 	if len(isos) != 1 || isos[0].Storage != "local" || isos[0].File != "iso/ubuntu-22.04.iso" {

@@ -86,6 +86,7 @@ type NodeRow struct {
 // BridgeRow is one enabled_vmbrs → catalog_bridges mapping.
 type BridgeRow struct {
 	Name    string
+	Node    string
 	Enabled bool
 }
 

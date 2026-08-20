@@ -127,7 +127,9 @@ func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Clie
 }
 
 // AdminListBridges returns every bridge the cluster reports, unioned with its
-// stored approval state (keyed by name alone, matching T06's schema).
+// stored approval state per (node, name) pair.
+//
+//nolint:dupl // Intentionally parallels AdminListISOs with a different composite identity.
 func AdminListBridges(ctx context.Context, st *store.Store, client cluster.Client, clusterName string) ([]BridgeApproval, error) {
 	discovered, err := client.ListBridges(ctx)
 	if err != nil {
@@ -139,9 +141,9 @@ func AdminListBridges(ctx context.Context, st *store.Store, client cluster.Clien
 		return nil, err
 	}
 
-	enabledByName := make(map[string]bool, len(enabledRows))
+	enabledByKey := make(map[bridgeKey]bool, len(enabledRows))
 	for _, b := range enabledRows {
-		enabledByName[b.Name] = b.Enabled
+		enabledByKey[bridgeKey{Name: b.Name, Node: b.Node}] = b.Enabled
 	}
 
 	out := make([]BridgeApproval, 0, len(discovered))
@@ -151,7 +153,7 @@ func AdminListBridges(ctx context.Context, st *store.Store, client cluster.Clien
 			Node:    bridge.Node,
 			Active:  bridge.Active,
 			Comment: bridge.Comment,
-			Enabled: enabledByName[bridge.Name],
+			Enabled: enabledByKey[bridgeKey{Name: bridge.Name, Node: bridge.Node}],
 		})
 	}
 
@@ -160,6 +162,8 @@ func AdminListBridges(ctx context.Context, st *store.Store, client cluster.Clien
 
 // AdminListISOs returns every ISO the cluster reports, unioned with its stored
 // approval state keyed by (storage, file).
+//
+//nolint:dupl // Intentionally parallels AdminListBridges with a different composite identity.
 func AdminListISOs(ctx context.Context, st *store.Store, client cluster.Client, clusterName string) ([]ISOApproval, error) {
 	discovered, err := client.ListISOs(ctx)
 	if err != nil {
@@ -223,10 +227,10 @@ func SetStorageEnabled(ctx context.Context, st *store.Store, client cluster.Clie
 	return st.SetStorageEnabled(ctx, clusterName, name, node, enabled)
 }
 
-// SetBridgeEnabled upserts the enabled state for one bridge.
+// SetBridgeEnabled upserts the enabled state for one (node, name) pair.
 // See SetNodeEnabled for the discovery-error contract.
-func SetBridgeEnabled(ctx context.Context, st *store.Store, client cluster.Client, clusterName, name string, enabled bool) error {
-	discovered, err := bridgeDiscovered(ctx, client, name)
+func SetBridgeEnabled(ctx context.Context, st *store.Store, client cluster.Client, clusterName, node, name string, enabled bool) error {
+	discovered, err := bridgeDiscovered(ctx, client, node, name)
 	if err != nil {
 		return err
 	}
@@ -235,7 +239,7 @@ func SetBridgeEnabled(ctx context.Context, st *store.Store, client cluster.Clien
 		return cluster.ErrNotFound
 	}
 
-	return st.SetBridgeEnabled(ctx, clusterName, name, enabled)
+	return st.SetBridgeEnabled(ctx, clusterName, node, name, enabled)
 }
 
 // SetISOEnabled upserts the enabled state for one (storage, file) pair.
@@ -279,14 +283,16 @@ func storageDiscovered(ctx context.Context, client cluster.Client, name, node st
 }
 
 // bridgeDiscovered reports whether the cluster reports a bridge with the given
-// name. See nodeDiscovered for the error contract.
-func bridgeDiscovered(ctx context.Context, client cluster.Client, name string) (bool, error) {
+// (node, name) pair. See nodeDiscovered for the error contract.
+func bridgeDiscovered(ctx context.Context, client cluster.Client, node, name string) (bool, error) {
 	bridges, err := client.ListBridges(ctx)
 	if err != nil {
 		return false, err
 	}
 
-	return slices.ContainsFunc(bridges, func(b cluster.Bridge) bool { return b.Name == name }), nil
+	return slices.ContainsFunc(bridges, func(b cluster.Bridge) bool {
+		return b.Name == name && b.Node == node
+	}), nil
 }
 
 // isoDiscovered reports whether the cluster reports an ISO with the given
@@ -305,6 +311,11 @@ func isoDiscovered(ctx context.Context, client cluster.Client, storage, file str
 // storageKey is a composite map key for storages, avoiding string-concat
 // collisions when a name contains "@".
 type storageKey struct {
+	Name string
+	Node string
+}
+
+type bridgeKey struct {
 	Name string
 	Node string
 }
