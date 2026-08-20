@@ -29,10 +29,10 @@
 	{:else}
 		<p class="text-lg text-foreground">{m['home.welcome']({ username: session.principal.username })}</p>
 		<div class="flex gap-3">
-			<a href={resolve('/vms')} class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">
-				{m['home.cta.my_vms']()}
-			</a>
 			{#if !session.principal.isAdmin}
+				<a href={resolve('/vms')} class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">
+					{m['home.cta.my_vms']()}
+				</a>
 				<a href={resolve('/vms/create')} class="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent">
 					{m['home.cta.create_vm']()}
 				</a>

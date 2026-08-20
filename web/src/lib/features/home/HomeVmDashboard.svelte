@@ -40,11 +40,11 @@
 	let paused = $derived(vms.filter((v) => v.status === 'paused').length);
 
 	onMount(() => {
-		if (session.principal) void load();
+		if (session.principal && !session.principal.isAdmin) void load();
 	});
 </script>
 
-{#if session.principal}
+{#if session.principal && !session.principal.isAdmin}
 <section class="w-full max-w-5xl rounded-xl border border-border bg-card p-5 shadow-sm" aria-labelledby="dashboard-title">
 	<div class="mb-4 flex items-center justify-between">
 		<h2 id="dashboard-title" class="text-lg font-semibold tracking-tight">{m['home.dashboard.heading']()}</h2>
