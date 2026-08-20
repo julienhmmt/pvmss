@@ -2,6 +2,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/policy"
+	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"strconv"
 )
@@ -19,13 +21,14 @@ import (
 // client (constitution IV), and enforces scope server-side via vm.List
 // (FR-003).
 type VMs struct {
-	projection  *inventory.Projection
-	source      inventory.Source
-	auth        *Auth
-	maxPageSize int
-	quota       int
-	policy      *policy.Policy
-	log         *slog.Logger
+	projection   *inventory.Projection
+	source       inventory.Source
+	auth         *Auth
+	maxPageSize  int
+	quota        int
+	policy       *policy.Policy
+	clusterStore *store.Store
+	log          *slog.Logger
 }
 
 // NewVMs creates the handler for the given inventory projection. maxPageSize
@@ -40,25 +43,28 @@ func NewVMs(projection *inventory.Projection, authHandler *Auth, maxPageSize, qu
 	return &VMs{projection: projection, source: projection, auth: authHandler, maxPageSize: maxPageSize, quota: quota, policy: policyService, log: log}
 }
 
-// NewVMsWithRegistry creates the cross-cluster VM list handler.
-func NewVMsWithRegistry(registry inventory.Source, authHandler *Auth, maxPageSize, quota int, log *slog.Logger, services ...*policy.Policy) *VMs {
+// NewVMsWithRegistry creates the cross-cluster VM list handler. clusterStore
+// resolves each cluster's real Proxmox display name (discovered via the admin
+// "test connection" flow) for the response; nil skips display-name lookup.
+func NewVMsWithRegistry(registry inventory.Source, authHandler *Auth, maxPageSize, quota int, log *slog.Logger, clusterStore *store.Store, services ...*policy.Policy) *VMs {
 	var policyService *policy.Policy
 	if len(services) > 0 {
 		policyService = services[0]
 	}
-	return &VMs{source: registry, auth: authHandler, maxPageSize: maxPageSize, quota: quota, policy: policyService, log: log}
+	return &VMs{source: registry, auth: authHandler, maxPageSize: maxPageSize, quota: quota, policy: policyService, clusterStore: clusterStore, log: log}
 }
 
 type vmDTO struct {
-	Cluster     string   `json:"cluster"`
-	VMID        int      `json:"vmid"`
-	Name        string   `json:"name"`
-	Node        string   `json:"node"`
-	Status      string   `json:"status"`
-	Pool        string   `json:"pool"`
-	Tags        []string `json:"tags"`
-	CPUCores    int      `json:"cpuCores"`
-	MemoryTotal int64    `json:"memoryTotal"`
+	Cluster            string   `json:"cluster"`
+	ClusterDisplayName string   `json:"clusterDisplayName"`
+	VMID               int      `json:"vmid"`
+	Name               string   `json:"name"`
+	Node               string   `json:"node"`
+	Status             string   `json:"status"`
+	Pool               string   `json:"pool"`
+	Tags               []string `json:"tags"`
+	CPUCores           int      `json:"cpuCores"`
+	MemoryTotal        int64    `json:"memoryTotal"`
 }
 
 type quotaDTO struct {
@@ -114,7 +120,7 @@ func (h *VMs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeList(w, result)
+	h.writeList(w, r.Context(), result)
 }
 
 type queryError struct {
@@ -196,7 +202,8 @@ func sourceHasReadyIndex(source inventory.Source, clusterName string) bool {
 	return false
 }
 
-func (h *VMs) writeList(w http.ResponseWriter, result vm.ListResult) {
+func (h *VMs) writeList(w http.ResponseWriter, ctx context.Context, result vm.ListResult) {
+	displayNames := h.clusterDisplayNames(ctx)
 	response := vmListResponse{
 		Items:          make([]vmDTO, len(result.Items)),
 		Total:          result.Total,
@@ -206,16 +213,21 @@ func (h *VMs) writeList(w http.ResponseWriter, result vm.ListResult) {
 		EmptyReason:    string(result.EmptyReason),
 	}
 	for i, machine := range result.Items {
+		displayName := displayNames[machine.Cluster]
+		if displayName == "" {
+			displayName = machine.Cluster
+		}
 		response.Items[i] = vmDTO{
-			Cluster:     machine.Cluster,
-			VMID:        machine.VMID,
-			Name:        machine.Name,
-			Node:        machine.Node,
-			Status:      string(machine.Status),
-			Pool:        machine.Pool,
-			Tags:        machine.Tags,
-			CPUCores:    machine.CPUCores,
-			MemoryTotal: machine.MemoryTotal,
+			Cluster:            machine.Cluster,
+			ClusterDisplayName: displayName,
+			VMID:               machine.VMID,
+			Name:               machine.Name,
+			Node:               machine.Node,
+			Status:             string(machine.Status),
+			Pool:               machine.Pool,
+			Tags:               machine.Tags,
+			CPUCores:           machine.CPUCores,
+			MemoryTotal:        machine.MemoryTotal,
 		}
 	}
 
@@ -234,6 +246,26 @@ func (h *VMs) writeList(w http.ResponseWriter, result vm.ListResult) {
 	if err := writeJSON(w, http.StatusOK, body); err != nil {
 		h.log.Error("failed to write vm list response", "component", "httpapi", "error", err)
 	}
+}
+
+// clusterDisplayNames maps each configured cluster's internal name to its
+// real Proxmox cluster name, discovered via the admin "test connection" flow
+// (store.SetClusterDisplayName). Empty when clusterStore is nil or a row has
+// no display name yet — callers fall back to the internal name.
+func (h *VMs) clusterDisplayNames(ctx context.Context) map[string]string {
+	if h.clusterStore == nil {
+		return nil
+	}
+	rows, err := h.clusterStore.ListClusters(ctx)
+	if err != nil {
+		h.log.Warn("list clusters for display names failed", "component", "httpapi", "error", err)
+		return nil
+	}
+	names := make(map[string]string, len(rows))
+	for _, row := range rows {
+		names[row.Name] = row.DisplayName
+	}
+	return names
 }
 
 func (h *VMs) writeError(w http.ResponseWriter, status int, code, message string) {

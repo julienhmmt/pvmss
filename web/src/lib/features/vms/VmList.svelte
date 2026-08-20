@@ -231,7 +231,7 @@
 							aria-label={m['vms.list.selectRow']({ name: machine.name })}
 						/>
 					</td>
-					<td class="px-3 py-2 font-mono text-muted-foreground" data-label={m['vms.list.columnCluster']()}>{machine.cluster}</td>
+					<td class="px-3 py-2 font-mono text-muted-foreground" data-label={m['vms.list.columnCluster']()}>{machine.clusterDisplayName}</td>
 					<td class="px-3 py-2 font-mono text-muted-foreground" data-label={m['vms.list.columnId']()}>{machine.vmid}</td>
 					<td class="px-3 py-2 font-medium" data-label={m['vms.list.columnName']()}>
 						<a

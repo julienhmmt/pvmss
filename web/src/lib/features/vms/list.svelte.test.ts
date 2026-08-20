@@ -21,6 +21,7 @@ const oneVmResult: VmListResult = {
 	items: [
 		{
 			cluster: 'default',
+			clusterDisplayName: 'default',
 			vmid: 100,
 			name: 'web-01',
 			node: 'pve-node-01',
