@@ -85,7 +85,7 @@
 			{/if}
 		</div>
 
-		{#if session.principal && !session.isAdmin}
+		{#if session.principal}
 			<a
 				href={resolve('/vms/create')}
 				class="rounded-[0.625rem] bg-primary px-3 py-2.5 text-center text-sm font-semibold text-primary-foreground shadow-card transition-colors hover:bg-primary/90"

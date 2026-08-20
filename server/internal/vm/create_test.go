@@ -97,8 +97,8 @@ func TestCreate_ValidationPipeline(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name:    "identity without pool",
-			actor:   auth.Identity{Username: "admin@pve", IsAdmin: true},
+			name:    "non-admin without pool",
+			actor:   auth.Identity{Username: "nopool@pve", IsAdmin: false},
 			mutate:  func(_ *vm.CreateRequest) {},
 			wantErr: vm.ErrNoPool,
 		},
@@ -296,6 +296,35 @@ func TestCreate_PoolIsAlwaysActors(t *testing.T) {
 
 	if snap.VMs[idx].Pool != cluster.FakePoolAlice {
 		t.Errorf("pool = %q, want actor's pool %q", snap.VMs[idx].Pool, cluster.FakePoolAlice)
+	}
+}
+
+// TestCreate_AdminWithoutPoolSucceeds — an admin (local or cluster) has no
+// personal pool but may still create VMs; the VM is created without a pool
+// assignment.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_AdminWithoutPoolSucceeds(t *testing.T) {
+	fixture := newCreateFixture(t)
+	admin := auth.Identity{Username: "admin@pve", IsAdmin: true}
+
+	result, err := fixture.create(t, admin, detailedRequest())
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM not in snapshot")
+	}
+
+	if snap.VMs[idx].Pool != "" {
+		t.Errorf("pool = %q, want empty (admin-created VMs are unowned)", snap.VMs[idx].Pool)
 	}
 }
 

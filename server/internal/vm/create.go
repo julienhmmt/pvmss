@@ -17,8 +17,8 @@ import (
 // The handler maps them to 400/403; everything else from the cluster client
 // is a 502.
 var (
-	// ErrNoPool — the actor has no personal pool, so nothing can own the VM
-	// (FR-005: local admin, or a cluster admin without a pool).
+	// ErrNoPool — a non-admin actor has no personal pool, so nothing can own
+	// the VM (FR-005). Admins are exempt: they may create unowned VMs.
 	ErrNoPool = errors.New("no personal pool")
 	// ErrOutOfRange — CPU/memory/disk violate the fixed technical safety
 	// ceiling (FR-008). Deliberately never called a "gabarit" (constitution
@@ -134,7 +134,7 @@ type CreateDeps struct {
 // Create validates a creation request and dispatches it as an asynchronous
 // cluster task (T06 data-model.md, steps in order):
 //
-//  1. the actor must have a personal pool (FR-005)
+//  1. a non-admin actor must have a personal pool (FR-005); admins are exempt
 //  2. the name must be a valid hostname (FR-007, T05's rule reused)
 //  3. a profile's catalog values override any request hardware fields (FR-009)
 //  4. CPU/memory/disk must be within the technical ceiling (FR-008)
@@ -157,7 +157,11 @@ type CreateDeps struct {
 func Create(ctx context.Context, actor auth.Identity, clusterName string, req CreateRequest, deps CreateDeps) (CreateResult, error) {
 	policyService := selectPolicyService(deps.Store, deps.Services)
 
-	if actor.Pool == "" {
+	// FR-005: a non-admin must have a personal pool to own the VM. An admin
+	// (local or cluster) may create VMs without a pool — the VM is simply
+	// unowned, which is the correct behaviour for infrastructure boxes an
+	// admin provisions directly.
+	if actor.Pool == "" && !actor.IsAdmin {
 		return CreateResult{}, ErrNoPool
 	}
 
