@@ -67,6 +67,14 @@
 	<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
 		<h1 class="text-2xl font-semibold tracking-tight">{m['vms.list.heading']()}</h1>
 		<ClusterSelector options={clusterOptions} value={vmListStore.cluster} onChange={(value) => vmListStore.setCluster(value)} includeAll id="vm-cluster-filter" />
+		<button
+			type="button"
+			class="rounded-md border px-3 py-2 text-sm font-medium disabled:opacity-50"
+			disabled={vmListStore.loading}
+			onclick={() => void vmListStore.load()}
+		>
+			{vmListStore.loading ? m['common.refreshing']() : m['common.refresh']()}
+		</button>
 		{#if !session.isAdmin}
 			<a
 				href={resolve('/vms/create')}
