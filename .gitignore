@@ -1,21 +1,22 @@
 *.log
 .DS_Store
-.env
-.devin/
-.claude/
 .agents/
-skills-lock.json
-coverage.out
-node_modules/
+.claude/
+.devin/
+.env
 .pnpm-store/
-package-lock.json
+.scratch/
+.specify/
 bun.lockb
+coverage.out
+graph-questions.txt
+graphify-out/
+node_modules/
+package-lock.json
 proxmox_host_key.pub
 pvmss_snippets_ed25519
 settings.dev.json
-specs/
-graphify-out/
-graph-questions.txt
+skills-lock.json
 tmp/
 
 # binaries
@@ -23,9 +24,6 @@ pvmss
 server/pvmss
 server/pvmss-checklist
 server/pvmss-recover
-
-# noVNC
-frontend/components/noVNC*
 
 # Git worktrees
 .worktrees/
