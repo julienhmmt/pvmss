@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { buildConsoleWebSocketURL, consoleTicketErrorMessage, fetchConsoleTicket } from './console';
+import { buildConsolePopoutURL, buildConsoleWebSocketURL, consoleTicketErrorMessage, fetchConsoleTicket, openConsolePopout } from './console';
 import { ApiRequestError } from '$lib/shared/api/client';
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -50,6 +50,34 @@ describe('buildConsoleWebSocketURL', () => {
 		vi.stubGlobal('window', { location: { protocol: 'https:', host: 'h' } });
 		const url = buildConsoleWebSocketURL('my cluster', 100, 'token with spaces');
 		expect(url).toBe('wss://h/api/v1/vms/my%20cluster/100/console/websocket?token=token%20with%20spaces');
+	});
+});
+
+describe('buildConsolePopoutURL', () => {
+	it('builds the console route path for the given cluster and vmid', () => {
+		expect(buildConsolePopoutURL('default', 100)).toBe('/vms/default/100/console');
+	});
+
+	it('encodes the cluster into the path', () => {
+		expect(buildConsolePopoutURL('my cluster', 202)).toBe('/vms/my%20cluster/202/console');
+	});
+});
+
+describe('openConsolePopout', () => {
+	it('opens the console URL in a new noopener window', () => {
+		const openMock = vi.fn();
+		vi.stubGlobal('window', { open: openMock });
+
+		openConsolePopout('default', 100);
+
+		expect(openMock).toHaveBeenCalledWith('/vms/default/100/console', '_blank', 'noopener');
+	});
+
+	it('returns the window handle from window.open', () => {
+		const fakeWindow = {} as Window;
+		vi.stubGlobal('window', { open: vi.fn().mockReturnValue(fakeWindow) });
+
+		expect(openConsolePopout('default', 100)).toBe(fakeWindow);
 	});
 });
 

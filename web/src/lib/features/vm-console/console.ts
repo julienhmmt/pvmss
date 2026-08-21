@@ -44,3 +44,24 @@ export function buildConsoleWebSocketURL(cluster: string, vmid: number, token: s
 export function consoleTicketErrorMessage(err: unknown, fallback: () => string): string {
 	return err instanceof ApiRequestError ? err.message : fallback();
 }
+
+/**
+ * Builds the same-origin path to the console route, for the pop-out window.
+ * Built manually (not via `$app/paths` `resolve`) to match this file's other
+ * URL builders and stay testable under Vitest.
+ */
+export function buildConsolePopoutURL(cluster: string, vmid: number): string {
+	return `${base}/vms/${encodeURIComponent(cluster)}/${vmid}/console`;
+}
+
+/**
+ * Opens the console route in a second, independent browser window. The new
+ * window is a fresh mount of the same route — it authenticates via the
+ * shared session cookie and fetches its own single-use VNC ticket, so it is
+ * an independent console session from the one (if any) already connected in
+ * this window. `noopener` prevents the new window from reaching back into
+ * this one via `window.opener`.
+ */
+export function openConsolePopout(cluster: string, vmid: number): Window | null {
+	return window.open(buildConsolePopoutURL(cluster, vmid), '_blank', 'noopener');
+}

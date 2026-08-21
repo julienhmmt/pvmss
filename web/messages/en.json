@@ -352,6 +352,8 @@
  "vms.console.ctrlaltdel": "Ctrl+Alt+Del",
  "vms.console.errorTicket": "failed to obtain console ticket",
  "vms.console.errorConnection": "failed to create RFB connection",
+ "vms.console.popout": "Pop out",
+ "vms.console.popoutBlocked": "Your browser blocked the pop-out window. Allow pop-ups for this site and try again.",
  "vms.cloudinit.heading": "Cloud-init",
  "vms.cloudinit.description": "Configure live VM cloud-init settings or custom YAML.",
  "vms.cloudinit.modeLabel": "Cloud-init editor mode",
