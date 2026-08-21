@@ -191,11 +191,12 @@ func initCluster(cfg config.Configuration, st *store.Store, logger *slog.Logger)
 	return clusterRegistry, clusterClient, nil
 }
 
-// discoverClusterDisplayNames populates the display_name column for clusters
-// that don't already have one. The admin cluster-test handler overwrites the
-// display name on every successful test; this function only fills gaps so a
-// fresh deployment shows a real name immediately, without waiting for an admin
-// to test each cluster.
+// discoverClusterDisplayNames populates the display_name column for Proxmox
+// clusters that don't already have one by calling Client.DisplayName() (the
+// real Proxmox cluster name from /cluster/status). Fake clusters are skipped:
+// their DisplayName() implementation just returns the internal logical name
+// ("default", "secondary"), which is the opposite of a human-readable label —
+// the fake seed already sets meaningful display names.
 func discoverClusterDisplayNames(ctx context.Context, registry *cluster.Registry, rows []store.ClusterRow, st *store.Store, logger *slog.Logger) {
 	for _, row := range rows {
 		if row.DisplayName != "" {
@@ -204,6 +205,9 @@ func discoverClusterDisplayNames(ctx context.Context, registry *cluster.Registry
 		client, err := registry.Client(row.Name)
 		if err != nil {
 			logger.Warn("display name discovery skipped: cluster not in registry", "component", "cluster", "cluster", row.Name, "error", err)
+			continue
+		}
+		if _, ok := client.(cluster.Fake); ok {
 			continue
 		}
 		displayName, err := client.DisplayName(ctx)
