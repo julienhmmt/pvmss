@@ -45,16 +45,31 @@ func NewVMSnapshots(projection *inventory.Projection, authHandler *Auth, reader 
 	return &VMSnapshots{projection: projection, resolver: singleClusterResolver{projection: projection}, auth: authHandler, reader: reader, writer: writer, store: st, policy: policyService, log: log}
 }
 
+// VMSnapshotsRegistryDeps groups the collaborators NewVMSnapshotsWithRegistry
+// needs for multi-cluster wiring. Bundling them keeps the parameter count
+// under go:S107 without losing the optional-policy-services variadic contract.
+type VMSnapshotsRegistryDeps struct {
+	Source     inventory.LookupSource
+	Projection *inventory.Projection
+	Auth       *Auth
+	Reader     cluster.SnapshotReader
+	Writer     cluster.SnapshotWriter
+	Clients    cluster.ClientProvider
+	Store      *store.Store
+	Log        *slog.Logger
+	Services   []*policy.Policy
+}
+
 // NewVMSnapshotsWithRegistry creates the snapshot handler with per-request
 // index and cluster.SnapshotReader/Writer resolution, keyed on the request's
 // own :cluster path value.
-func NewVMSnapshotsWithRegistry(source inventory.LookupSource, projection *inventory.Projection, authHandler *Auth, reader cluster.SnapshotReader, writer cluster.SnapshotWriter, clients cluster.ClientProvider, st *store.Store, log *slog.Logger, services ...*policy.Policy) *VMSnapshots {
-	handler := NewVMSnapshots(projection, authHandler, reader, writer, st, log, services...)
-	if registry, ok := source.(*inventory.Registry); ok {
+func NewVMSnapshotsWithRegistry(deps VMSnapshotsRegistryDeps) *VMSnapshots {
+	handler := NewVMSnapshots(deps.Projection, deps.Auth, deps.Reader, deps.Writer, deps.Store, deps.Log, deps.Services...)
+	if registry, ok := deps.Source.(*inventory.Registry); ok {
 		handler.resolver = registryResolver{registry: registry}
 	}
 
-	handler.clients = clients
+	handler.clients = deps.Clients
 
 	return handler
 }
