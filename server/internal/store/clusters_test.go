@@ -131,3 +131,35 @@ func TestClusters_LastActiveGuard(t *testing.T) {
 		t.Fatalf("last removal error = %v, want ErrLastActiveCluster", err)
 	}
 }
+
+// TestEnsureSeedClusters_SetsDisplayNames — the fake cluster seed now sets a
+// human-readable DisplayName for each demo cluster so the sidebar doesn't
+// show the raw internal name "default" on a fresh deployment.
+//
+//nolint:paralleltest // migration fixtures are intentionally serial
+func TestEnsureSeedClusters_SetsDisplayNames(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	rows, err := st.ListClusters(ctx)
+	if err != nil {
+		t.Fatalf("ListClusters: %v", err)
+	}
+
+	want := map[string]string{
+		testStoreCluster: "Demo Cluster Alpha",
+		"secondary":      "Demo Cluster Beta",
+		"offline-demo":   "Offline Demo",
+	}
+
+	for _, row := range rows {
+		expected, ok := want[row.Name]
+		if !ok {
+			continue
+		}
+
+		if row.DisplayName != expected {
+			t.Errorf("cluster %q DisplayName = %q, want %q", row.Name, row.DisplayName, expected)
+		}
+	}
+}

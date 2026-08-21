@@ -2,12 +2,17 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/config"
+	"pvmss/server/internal/store"
 	"strconv"
 	"strings"
 	"syscall"
@@ -302,5 +307,117 @@ func TestRun(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatalf("run() did not stop after signal")
+	}
+}
+
+// openTestStore opens a store in a temp dir with the fake cluster source so
+// ensureSeedClusters populates the demo cluster rows.
+func openTestStore(t *testing.T) *store.Store {
+	t.Helper()
+	dir := t.TempDir()
+	cfg := config.Configuration{
+		DBPath:        filepath.Join(dir, "pvmss.db"),
+		SessionSecret: strings.Repeat("s", 32),
+		ClusterSource: "fake",
+	}
+
+	st, err := store.Open(cfg)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+
+	t.Cleanup(func() { _ = st.Close() })
+
+	return st
+}
+
+// TestDiscoverClusterDisplayNames_PopulatesEmptyRows — clusters without a
+// display name get one discovered from the cluster client at startup; clusters
+// that already have a display name are left untouched (the admin's test result
+// wins).
+//
+//nolint:paralleltest // serial: shared fake cluster registry state
+func TestDiscoverClusterDisplayNames_PopulatesEmptyRows(t *testing.T) {
+	st := openTestStore(t)
+	ctx := context.Background()
+
+	rows, err := st.ListClusters(ctx)
+	if err != nil {
+		t.Fatalf("ListClusters: %v", err)
+	}
+
+	registry, err := cluster.NewRegistry("fake", rows)
+	if err != nil {
+		t.Fatalf("NewRegistry: %v", err)
+	}
+
+	// Wipe display names so discovery has work to do — the fake seed now sets
+	// them, but a database from before that change would have empty rows.
+	for _, row := range rows {
+		if err := st.SetClusterDisplayName(ctx, row.Name, ""); err != nil {
+			t.Fatalf("clear DisplayName %q: %v", row.Name, err)
+		}
+	}
+
+	// Re-fetch rows so they reflect the cleared display names — discovery
+	// checks row.DisplayName before calling the client.
+	clearedRows, err := st.ListClusters(ctx)
+	if err != nil {
+		t.Fatalf("ListClusters after clear: %v", err)
+	}
+
+	discoverClusterDisplayNames(ctx, registry, clearedRows, st, slog.Default())
+
+	refreshed, err := st.ListClusters(ctx)
+	if err != nil {
+		t.Fatalf("ListClusters after discovery: %v", err)
+	}
+
+	for _, row := range refreshed {
+		if row.Name == "offline-demo" {
+			// offline-demo is unreachable — DisplayName returns ErrUnreachable,
+			// so the display name stays empty. That's the expected best-effort
+			// behaviour.
+			continue
+		}
+
+		if row.DisplayName == "" {
+			t.Errorf("cluster %q has empty DisplayName after discovery", row.Name)
+		}
+	}
+}
+
+// TestDiscoverClusterDisplayNames_PreservesExisting — a cluster that already
+// has a display name is not overwritten by startup discovery.
+//
+//nolint:paralleltest // serial: shared fake cluster registry state
+func TestDiscoverClusterDisplayNames_PreservesExisting(t *testing.T) {
+	st := openTestStore(t)
+	ctx := context.Background()
+
+	rows, err := st.ListClusters(ctx)
+	if err != nil {
+		t.Fatalf("ListClusters: %v", err)
+	}
+
+	registry, err := cluster.NewRegistry("fake", rows)
+	if err != nil {
+		t.Fatalf("NewRegistry: %v", err)
+	}
+
+	const customName = "admin-set-name"
+	if err := st.SetClusterDisplayName(ctx, "default", customName); err != nil {
+		t.Fatalf("SetClusterDisplayName: %v", err)
+	}
+
+	discoverClusterDisplayNames(ctx, registry, rows, st, slog.Default())
+
+	row, err := st.GetCluster(ctx, "default")
+	if err != nil {
+		t.Fatalf("GetCluster: %v", err)
+	}
+
+	if row.DisplayName != customName {
+		t.Fatalf("DisplayName = %q, want %q (existing value should be preserved)", row.DisplayName, customName)
 	}
 }

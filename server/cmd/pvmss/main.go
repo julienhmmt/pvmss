@@ -163,6 +163,13 @@ func openStore(cfg config.Configuration, logger *slog.Logger) (*store.Store, err
 // initCluster builds the cluster registry from configured rows and resolves the
 // default cluster client. The registry owns per-cluster Client instances; the
 // default client is the one most handlers operate on.
+//
+// It also discovers each cluster's display name (the real Proxmox cluster name
+// from /cluster/status, or the fake's logical name) and persists it when the
+// row does not already have one — so the sidebar shows a meaningful name from
+// first boot instead of the internal "default" until an admin tests the
+// cluster. Discovery is best-effort: a failed DisplayName call logs a warning
+// and leaves the row untouched, never blocking startup.
 func initCluster(cfg config.Configuration, st *store.Store, logger *slog.Logger) (*cluster.Registry, cluster.Client, error) {
 	rows, err := st.ListClusters(context.Background())
 	if err != nil {
@@ -179,8 +186,38 @@ func initCluster(cfg config.Configuration, st *store.Store, logger *slog.Logger)
 		logger.Error("default cluster is unavailable", "component", "main", "error", err)
 		return nil, nil, err
 	}
+	discoverClusterDisplayNames(context.Background(), clusterRegistry, rows, st, logger)
 	logger.Info("cluster registry initialized", "component", "cluster", "source", cfg.ClusterSource, "clusters", clusterRegistry.List())
 	return clusterRegistry, clusterClient, nil
+}
+
+// discoverClusterDisplayNames populates the display_name column for clusters
+// that don't already have one. The admin cluster-test handler overwrites the
+// display name on every successful test; this function only fills gaps so a
+// fresh deployment shows a real name immediately, without waiting for an admin
+// to test each cluster.
+func discoverClusterDisplayNames(ctx context.Context, registry *cluster.Registry, rows []store.ClusterRow, st *store.Store, logger *slog.Logger) {
+	for _, row := range rows {
+		if row.DisplayName != "" {
+			continue
+		}
+		client, err := registry.Client(row.Name)
+		if err != nil {
+			logger.Warn("display name discovery skipped: cluster not in registry", "component", "cluster", "cluster", row.Name, "error", err)
+			continue
+		}
+		displayName, err := client.DisplayName(ctx)
+		if err != nil {
+			logger.Warn("cluster display name discovery failed", "component", "cluster", "cluster", row.Name, "error", err)
+			continue
+		}
+		if displayName == "" {
+			continue
+		}
+		if err := st.SetClusterDisplayName(ctx, row.Name, displayName); err != nil {
+			logger.Warn("cluster display name persist failed", "component", "cluster", "cluster", row.Name, "error", err)
+		}
+	}
 }
 
 // initInventory builds the inventory registry and resolves the default
