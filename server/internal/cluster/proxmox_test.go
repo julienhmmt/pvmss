@@ -31,7 +31,6 @@ func writeJSONFixture(t *testing.T, w http.ResponseWriter, body string) {
 	}
 }
 
-//nolint:gocyclo // one fixture, one snapshot, every field across nodes/vms/storages asserted together
 func TestProxmox_Snapshot(t *testing.T) {
 	t.Parallel()
 
@@ -63,6 +62,17 @@ func TestProxmox_Snapshot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
+
+	assertProxmoxSnapshot(t, snap)
+}
+
+// assertProxmoxSnapshot asserts every field of a snapshot produced by the
+// TestProxmox_Snapshot fixture. Extracted from TestProxmox_Snapshot to satisfy
+// the cognitive-complexity ceiling (go:S3776); assertion logic is unchanged.
+//
+//nolint:gocyclo // one fixture, one snapshot, every field across nodes/vms/storages asserted together
+func assertProxmoxSnapshot(t *testing.T, snap Snapshot) {
+	t.Helper()
 
 	if snap.ProxmoxVersion != "8.2.4" {
 		t.Errorf("version = %q, want 8.2.4", snap.ProxmoxVersion)

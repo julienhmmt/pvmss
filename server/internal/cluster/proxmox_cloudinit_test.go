@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strings"
@@ -184,22 +185,7 @@ func TestProxmox_PushCloudInitSnippet(t *testing.T) {
 
 			gotFilename = header.Filename
 
-			var body strings.Builder
-
-			buf := make([]byte, 512)
-
-			for {
-				n, readErr := file.Read(buf)
-				if n > 0 {
-					body.Write(buf[:n])
-				}
-
-				if readErr != nil {
-					break
-				}
-			}
-
-			gotFileBody = body.String()
+			gotFileBody = readMultipartFileBody(t, file)
 
 			writeJSONFixture(t, w, `{"data":null}`)
 		})
@@ -240,4 +226,28 @@ func TestProxmox_FindSnippetStorage_NotFound(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected an error when no snippet-capable storage exists")
 	}
+}
+
+// readMultipartFileBody reads the entire contents of a multipart file into a
+// string. Extracted from the TestProxmox_PushCloudInitSnippet handler closure
+// to satisfy the cognitive-complexity ceiling (go:S3776); read logic unchanged.
+func readMultipartFileBody(t *testing.T, file multipart.File) string {
+	t.Helper()
+
+	var body strings.Builder
+
+	buf := make([]byte, 512)
+
+	for {
+		n, readErr := file.Read(buf)
+		if n > 0 {
+			body.Write(buf[:n])
+		}
+
+		if readErr != nil {
+			break
+		}
+	}
+
+	return body.String()
 }
