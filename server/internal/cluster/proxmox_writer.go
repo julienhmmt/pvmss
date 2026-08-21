@@ -17,6 +17,12 @@ var proxmoxValidActions = map[string]bool{
 	actionStart: true, actionStop: true, actionShutdown: true, actionReboot: true, actionReset: true,
 }
 
+// vmConfigPath builds the PUT /nodes/{node}/qemu/{vmid}/config endpoint used
+// by every Writer method that mutates a VM's config.
+func vmConfigPath(node string, vmid int) string {
+	return fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid)
+}
+
 // Action implements Writer via POST /nodes/{node}/qemu/{vmid}/status/{action}.
 // Proxmox returns a task UPID; it is discarded — the Writer contract is
 // synchronous (error only), matching how the fake and every caller (vm.Action)
@@ -60,7 +66,7 @@ func (p Proxmox) Patch(ctx context.Context, node string, vmid int, name, descrip
 		return nil
 	}
 
-	_, err := p.rest().do(ctx, http.MethodPut, fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid), form)
+	_, err := p.rest().do(ctx, http.MethodPut, vmConfigPath(node, vmid), form)
 
 	return err
 }
@@ -82,7 +88,7 @@ func (p Proxmox) AddDisk(ctx context.Context, node string, vmid int, bus, storag
 		return "", err
 	}
 
-	_, err = rest.do(ctx, http.MethodPut, fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid), url.Values{
+	_, err = rest.do(ctx, http.MethodPut, vmConfigPath(node, vmid), url.Values{
 		key: {fmt.Sprintf("%s:%d", storage, sizeGB)},
 	})
 	if err != nil {
@@ -137,7 +143,7 @@ func (p Proxmox) DeleteDisk(ctx context.Context, node string, vmid int, diskKey 
 
 // SetCDROM implements Writer against the fixed ide2 slot (client.go).
 func (p Proxmox) SetCDROM(ctx context.Context, node string, vmid int, cdrom CDROMState) error {
-	path := fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid)
+	path := vmConfigPath(node, vmid)
 	rest := p.rest()
 
 	var err error
@@ -193,7 +199,7 @@ func (p Proxmox) UpdateNetwork(ctx context.Context, node string, vmid int, inter
 		form.Set("delete", strings.Join(toDelete, ","))
 	}
 
-	_, err = rest.do(ctx, http.MethodPut, fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid), form)
+	_, err = rest.do(ctx, http.MethodPut, vmConfigPath(node, vmid), form)
 
 	return err
 }
@@ -209,7 +215,7 @@ func (p Proxmox) UpdateHardware(ctx context.Context, node string, vmid, sockets,
 		"tags":    {strings.Join(tags, ";")},
 	}
 
-	_, err := p.rest().do(ctx, http.MethodPut, fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid), form)
+	_, err := p.rest().do(ctx, http.MethodPut, vmConfigPath(node, vmid), form)
 
 	return err
 }
