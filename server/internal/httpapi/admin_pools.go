@@ -49,15 +49,30 @@ func NewAdminPools(deps AdminPoolsDeps) *AdminPools {
 	return &AdminPools{auth: deps.Auth, client: deps.Client, projection: deps.Projection, writer: deps.Writer, audit: deps.Audit, refresher: deps.Refresher, store: deps.Store, log: deps.Log}
 }
 
+// AdminPoolsRegistryDeps groups the collaborators NewAdminPoolsWithRegistry
+// needs for multi-cluster wiring. Bundling them keeps the parameter count
+// under go:S107's ceiling and makes mis-ordering at call sites impossible.
+type AdminPoolsRegistryDeps struct {
+	Auth       *Auth
+	Clients    cluster.ClientProvider
+	Source     inventory.LookupSource
+	Projection *inventory.Projection
+	Writer     cluster.Writer
+	Audit      vm.AuditRecorder
+	Refresher  vm.IndexRefresher
+	Store      *store.Store
+	Log        *slog.Logger
+}
+
 // NewAdminPoolsWithRegistry creates the handler with per-request client and
 // projection resolution, keyed on the ?cluster= query parameter every
 // endpoint here already reads — without this, an admin managing pools on a
 // non-default cluster would silently operate against the default cluster's
 // Proxmox API instead.
-func NewAdminPoolsWithRegistry(authHandler *Auth, clients cluster.ClientProvider, source inventory.LookupSource, projection *inventory.Projection, writer cluster.Writer, audit vm.AuditRecorder, refresher vm.IndexRefresher, st *store.Store, log *slog.Logger) *AdminPools {
-	handler := NewAdminPools(AdminPoolsDeps{Auth: authHandler, Client: nil, Projection: projection, Writer: writer, Audit: audit, Refresher: refresher, Store: st, Log: log})
-	handler.clients = clients
-	handler.source = source
+func NewAdminPoolsWithRegistry(deps AdminPoolsRegistryDeps) *AdminPools {
+	handler := NewAdminPools(AdminPoolsDeps{Auth: deps.Auth, Client: nil, Projection: deps.Projection, Writer: deps.Writer, Audit: deps.Audit, Refresher: deps.Refresher, Store: deps.Store, Log: deps.Log})
+	handler.clients = deps.Clients
+	handler.source = deps.Source
 
 	return handler
 }
