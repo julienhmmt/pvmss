@@ -119,45 +119,54 @@ func BulkAction(
 ) []BulkTargetResult {
 	results := make([]BulkTargetResult, 0, len(targets))
 	for _, target := range targets {
-		result := BulkTargetResult{Cluster: target.Cluster, VMID: target.VMID}
-
-		index, err := deps.Resolver.IndexFor(target.Cluster)
-		if err != nil || index == nil {
-			result.Status = "error"
-			if err != nil {
-				result.Message = err.Error()
-			} else {
-				result.Message = "inventory has not been populated yet"
-			}
-
-			results = append(results, result)
-
-			continue
-		}
-
-		targetDeps := deps
-		if deps.WriterResolver != nil {
-			writer, err := deps.WriterResolver.WriterFor(target.Cluster)
-			if err != nil {
-				result.Status = "error"
-				result.Message = err.Error()
-				results = append(results, result)
-
-				continue
-			}
-
-			targetDeps.Writer = writer
-		}
-
-		if err := Action(ctx, targetDeps, index, target.Cluster, target.VMID, kind); err != nil {
-			result.Status = "error"
-			result.Message = err.Error()
-		} else {
-			result.Status = "ok"
-		}
-
-		results = append(results, result)
+		results = append(results, bulkActionResultFor(ctx, deps, target, kind))
 	}
 
 	return results
+}
+
+// bulkActionResultFor resolves and performs the action for a single target and
+// returns its result entry. Extracted from BulkAction to hold that function
+// under the cognitive-complexity ceiling; logic is identical.
+func bulkActionResultFor(
+	ctx context.Context,
+	deps BulkDeps,
+	target BulkTarget,
+	kind string,
+) BulkTargetResult {
+	result := BulkTargetResult{Cluster: target.Cluster, VMID: target.VMID}
+
+	index, err := deps.Resolver.IndexFor(target.Cluster)
+	if err != nil || index == nil {
+		result.Status = "error"
+		if err != nil {
+			result.Message = err.Error()
+		} else {
+			result.Message = "inventory has not been populated yet"
+		}
+
+		return result
+	}
+
+	targetDeps := deps
+	if deps.WriterResolver != nil {
+		writer, err := deps.WriterResolver.WriterFor(target.Cluster)
+		if err != nil {
+			result.Status = "error"
+			result.Message = err.Error()
+
+			return result
+		}
+
+		targetDeps.Writer = writer
+	}
+
+	if err := Action(ctx, targetDeps, index, target.Cluster, target.VMID, kind); err != nil {
+		result.Status = "error"
+		result.Message = err.Error()
+	} else {
+		result.Status = "ok"
+	}
+
+	return result
 }
