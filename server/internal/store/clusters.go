@@ -372,9 +372,9 @@ func optionalString(value sql.NullString) *string {
 
 func (s *Store) ensureSeedClusters(ctx context.Context) error {
 	seeds := []ClusterRow{
-		{Name: "default", URL: "https://pve-a.example.com:8006/api2/json", TokenID: serviceTokenID, TokenSecret: "demo-default-service-secret"},
-		{Name: "secondary", URL: "https://pve-b.example.com:8006/api2/json", TokenID: serviceTokenID, TokenSecret: "demo-secondary-service-secret"},
-		{Name: "offline-demo", URL: "https://pve-c.invalid:8006/api2/json", TokenID: serviceTokenID, TokenSecret: "demo-offline-service-secret"}, //nolint:gosec // deterministic fake credential is encrypted before persistence
+		{Name: "default", DisplayName: "Demo Cluster Alpha", URL: "https://pve-a.example.com:8006/api2/json", TokenID: serviceTokenID, TokenSecret: "demo-default-service-secret"},
+		{Name: "secondary", DisplayName: "Demo Cluster Beta", URL: "https://pve-b.example.com:8006/api2/json", TokenID: serviceTokenID, TokenSecret: "demo-secondary-service-secret"},
+		{Name: "offline-demo", DisplayName: "Offline Demo", URL: "https://pve-c.invalid:8006/api2/json", TokenID: serviceTokenID, TokenSecret: "demo-offline-service-secret"}, //nolint:gosec // deterministic fake credential is encrypted before persistence
 	}
 	for _, row := range seeds {
 		if err := s.CreateCluster(ctx, row); err != nil {
