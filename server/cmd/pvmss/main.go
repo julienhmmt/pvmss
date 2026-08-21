@@ -409,7 +409,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	vmMetrics := httpapi.NewVMMetricsWithRegistry(inventoryRegistry, projection, authHandler, metricsReader, metricsCurrentReader, clusterRegistry, logger)
 	adminCatalog := httpapi.NewAdminCatalogWithRegistry(authHandler, st, clusterRegistry, projection, logger)
 	adminPolicy := httpapi.NewAdminPolicyWithRegistry(authHandler, policyService, clusterRegistry, logger)
-	adminPools := httpapi.NewAdminPoolsWithRegistry(authHandler, clusterRegistry, inventoryRegistry, projection, writer, st, worker, st, logger)
+	adminPools := httpapi.NewAdminPoolsWithRegistry(httpapi.AdminPoolsRegistryDeps{Auth: authHandler, Clients: clusterRegistry, Source: inventoryRegistry, Projection: projection, Writer: writer, Audit: st, Refresher: worker, Store: st, Log: logger})
 	adminOps := httpapi.NewAdminOps(authHandler, st, clusterClient, projection, appVersion, logger)
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, clusterRegistry, inventoryRegistry, logger)
 	docsHandler := httpapi.NewDocsAPIHandler(authHandler, st, logger)
