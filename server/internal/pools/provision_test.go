@@ -116,7 +116,7 @@ func TestCreate_WithRecorderRegistersManagedPool(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = st.Close() })
 
-	if _, err := pools.CreateWithRecorder(context.Background(), admin, client, st, "default", "team-y", "S0meLongPW!"); err != nil {
+	if _, err := pools.CreateWithRecorder(context.Background(), pools.CreateParams{Actor: admin, Client: client, Recorder: st, ClusterName: "default", Name: "team-y", Password: "S0meLongPW!"}); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 	managed, err := st.IsPoolManaged(context.Background(), "default", "team-y")
