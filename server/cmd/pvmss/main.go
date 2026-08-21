@@ -380,6 +380,11 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		return nil, errors.New("cluster client does not implement MetricsHistoryReader")
 	}
 
+	metricsCurrentReader, ok := clusterClient.(cluster.MetricsCurrentReader)
+	if !ok {
+		return nil, errors.New("cluster client does not implement MetricsCurrentReader")
+	}
+
 	// Every *WithRegistry constructor below resolves its cluster.Client and
 	// inventory.Index per request from the request's own :cluster value via
 	// clusterRegistry/inventoryRegistry, instead of the single clusterClient
@@ -401,7 +406,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	tasks := httpapi.NewTasksWithRegistry(authHandler, clusterRegistry, creator, worker, logger)
 	snapshots := httpapi.NewVMSnapshotsWithRegistry(inventoryRegistry, projection, authHandler, snapshotReader, snapshotWriter, clusterRegistry, st, logger, policyService)
 	vmConsole := httpapi.NewVMConsoleWithRegistry(inventoryRegistry, projection, authHandler, consoleRelay, clusterRegistry, consoleTickets, st, logger)
-	vmMetrics := httpapi.NewVMMetricsWithRegistry(inventoryRegistry, projection, authHandler, metricsReader, clusterRegistry, logger)
+	vmMetrics := httpapi.NewVMMetricsWithRegistry(inventoryRegistry, projection, authHandler, metricsReader, metricsCurrentReader, clusterRegistry, logger)
 	adminCatalog := httpapi.NewAdminCatalogWithRegistry(authHandler, st, clusterRegistry, projection, logger)
 	adminPolicy := httpapi.NewAdminPolicyWithRegistry(authHandler, policyService, clusterRegistry, logger)
 	adminPools := httpapi.NewAdminPoolsWithRegistry(authHandler, clusterRegistry, inventoryRegistry, projection, writer, st, worker, st, logger)

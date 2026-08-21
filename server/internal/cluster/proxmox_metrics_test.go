@@ -50,6 +50,36 @@ func TestProxmox_GetMetricsHistory(t *testing.T) {
 	checkMetricsSample(t, "samples[2] (fractional mem)", samples[2], MetricsSample{CPUPercent: 10, MemoryUsed: 32111957, MemoryMax: 1073741824, DiskReadBps: 2000, DiskWriteBps: 1000, NetInBps: 1000, NetOutBps: 500})
 }
 
+func TestProxmox_GetMetricsCurrent(t *testing.T) {
+	t.Parallel()
+
+	var gotPath string
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/nodes/node01/qemu/101/status/current", func(w http.ResponseWriter, r *http.Request) {
+			gotPath = r.URL.Path
+
+			writeJSONFixture(t, w, `{"data":{
+				"cpu":0.35,"mem":1073741824,"maxmem":2147483648,
+				"netin":2000,"netout":1000,"diskread":4000,"diskwrite":2000
+			}}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	sample, err := p.GetMetricsCurrent(context.Background(), testNodeName, testVMID)
+	if err != nil {
+		t.Fatalf("GetMetricsCurrent: %v", err)
+	}
+
+	if gotPath != "/api2/json/nodes/node01/qemu/101/status/current" {
+		t.Errorf("path = %q, want /status/current", gotPath)
+	}
+
+	checkMetricsSample(t, "current", sample, MetricsSample{CPUPercent: 35, MemoryUsed: 1073741824, MemoryMax: 2147483648, DiskReadBps: 4000, DiskWriteBps: 2000, NetInBps: 2000, NetOutBps: 1000})
+}
+
 // checkMetricsSample compares the numeric fields of got against want,
 // ignoring Timestamp. Extracted from TestProxmox_GetMetricsHistory to keep
 // its cyclomatic complexity under the golangci-lint gocyclo threshold.

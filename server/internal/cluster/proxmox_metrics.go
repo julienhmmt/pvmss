@@ -61,6 +61,44 @@ func (p Proxmox) GetMetricsHistory(ctx context.Context, node string, vmid int, t
 	return samples, nil
 }
 
+// proxmoxCurrentStatusRow mirrors one Proxmox /nodes/{node}/qemu/{vmid}/status/current
+// response. Pointers are used for the same null-handling reason as proxmoxRRDRow.
+type proxmoxCurrentStatusRow struct {
+	CPU       *float64 `json:"cpu"`
+	Mem       *float64 `json:"mem"`
+	MaxMem    *float64 `json:"maxmem"`
+	NetIn     *float64 `json:"netin"`
+	NetOut    *float64 `json:"netout"`
+	DiskRead  *float64 `json:"diskread"`
+	DiskWrite *float64 `json:"diskwrite"`
+}
+
+// GetMetricsCurrent implements MetricsCurrentReader against Proxmox's live
+// status/current endpoint. Like rrddata, it reports rates and a 0..1 CPU
+// fraction; this converts them into the same MetricsSample shape as history.
+func (p Proxmox) GetMetricsCurrent(ctx context.Context, node string, vmid int) (MetricsSample, error) {
+	raw, err := p.rest().do(ctx, http.MethodGet, fmt.Sprintf("/nodes/%s/qemu/%d/status/current", url.PathEscape(node), vmid), nil)
+	if err != nil {
+		return MetricsSample{}, err
+	}
+
+	var row proxmoxCurrentStatusRow
+	if err := decodeData(raw, &row); err != nil {
+		return MetricsSample{}, fmt.Errorf("decode current status: %w", err)
+	}
+
+	return MetricsSample{
+		Timestamp:    time.Now().UTC(),
+		CPUPercent:   nilFloat(row.CPU) * 100,
+		MemoryUsed:   int64(nilFloat(row.Mem)),
+		MemoryMax:    int64(nilFloat(row.MaxMem)),
+		DiskReadBps:  nilFloat(row.DiskRead),
+		DiskWriteBps: nilFloat(row.DiskWrite),
+		NetInBps:     nilFloat(row.NetIn),
+		NetOutBps:    nilFloat(row.NetOut),
+	}, nil
+}
+
 func nilFloat(v *float64) float64 {
 	if v == nil {
 		return 0

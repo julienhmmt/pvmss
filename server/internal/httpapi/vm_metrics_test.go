@@ -10,6 +10,7 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
+	"strings"
 	"testing"
 	"time"
 )
@@ -44,7 +45,7 @@ func newVMMetricsHandler(t *testing.T) (*httpapi.VMMetrics, *httpapi.Auth) {
 	authHandler := newAuthHandler(t)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
 
-	return httpapi.NewVMMetrics(projection, authHandler, cluster.Fake{}, logger), authHandler
+	return httpapi.NewVMMetrics(projection, authHandler, cluster.Fake{}, cluster.Fake{}, logger), authHandler
 }
 
 func metricsRequest(path string, cookie *http.Cookie) *http.Request {
@@ -124,6 +125,89 @@ func TestVMMetrics_History_VMNotFound(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, metricsRequest("/api/v1/vms/default/999999/metrics/history?range=hour", cookie))
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404: %s", rec.Code, rec.Body.String())
+	}
+}
+
+//nolint:paralleltest // serial: shared fake fixtures
+func TestVMMetrics_Stream_OwnerContract(t *testing.T) {
+	handler, authHandler := newVMMetricsHandler(t)
+	cookie := aliceCookie(t, authHandler)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1500*time.Millisecond)
+	defer cancel()
+
+	req := metricsRequest("/api/v1/vms/default/100/metrics/stream", cookie).Clone(ctx)
+	rec := httptest.NewRecorder()
+
+	done := make(chan struct{})
+
+	go func() {
+		handler.ServeHTTP(rec, req)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("handler did not return after context expiry")
+	}
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200: %s", rec.Code, rec.Body.String())
+	}
+
+	contentType := rec.Header().Get("Content-Type")
+	if !strings.HasPrefix(contentType, "text/event-stream") {
+		t.Fatalf("content-type = %q, want text/event-stream", contentType)
+	}
+
+	body := rec.Body.String()
+	if !strings.Contains(body, "retry:") {
+		t.Errorf("response missing retry header")
+	}
+
+	if !strings.Contains(body, "data:") {
+		t.Errorf("response missing data event")
+	}
+}
+
+//nolint:paralleltest // serial: shared fake fixtures
+func TestVMMetrics_Stream_NonOwnerForbidden(t *testing.T) {
+	handler, authHandler := newVMMetricsHandler(t)
+	cookie := bobCookie(t, authHandler)
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, metricsRequest("/api/v1/vms/default/100/metrics/stream", cookie))
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want 403: %s", rec.Code, rec.Body.String())
+	}
+}
+
+//nolint:paralleltest // serial: shared fake fixtures
+func TestVMMetrics_Stream_StoppedVMRejected(t *testing.T) {
+	handler, authHandler := newVMMetricsHandler(t)
+	cookie := aliceCookie(t, authHandler)
+
+	// VM 101 is stopped in the default fake fixture.
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, metricsRequest("/api/v1/vms/default/101/metrics/stream", cookie))
+
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409: %s", rec.Code, rec.Body.String())
+	}
+}
+
+//nolint:paralleltest // serial: shared fake fixtures
+func TestVMMetrics_Stream_VMNotFound(t *testing.T) {
+	handler, authHandler := newVMMetricsHandler(t)
+	cookie := aliceCookie(t, authHandler)
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, metricsRequest("/api/v1/vms/default/999999/metrics/stream", cookie))
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want 404: %s", rec.Code, rec.Body.String())
