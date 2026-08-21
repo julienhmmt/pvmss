@@ -21,16 +21,39 @@ type TaskInvalidator interface {
 // Tasks serves GET /api/v1/tasks/{upid} — a live read of an asynchronous
 // cluster task (FR-014). No PVMSS-side task table exists; the state is asked
 // of the cluster client on every poll (plan.md research decisions).
+//
+// UPIDs (Proxmox task IDs) do not embed cluster identity, so a multi-cluster
+// deployment cannot tell from a UPID alone which cluster ran it. The caller
+// therefore carries the cluster via the ?cluster= query param (the same param
+// the rest of the cross-cluster-aware routes use); when clients is non-nil the
+// handler resolves that cluster's own Creator per request. Without this, a VM
+// created on a non-default cluster would return a UPID that the handler then
+// polled against the default cluster's client — silently reporting "not found"
+// or foreign state for any non-default-cluster creation.
 type Tasks struct {
 	auth        *Auth
 	creator     cluster.Creator
+	clients     cluster.ClientProvider
 	invalidator TaskInvalidator
 	log         *slog.Logger
 }
 
-// NewTasks creates the handler.
+// NewTasks creates the handler bound to a single cluster.Creator. Use
+// NewTasksWithRegistry for multi-cluster deployments so the polled Creator is
+// resolved per request from the ?cluster= query param.
 func NewTasks(authHandler *Auth, creator cluster.Creator, invalidator TaskInvalidator, log *slog.Logger) *Tasks {
 	return &Tasks{auth: authHandler, creator: creator, invalidator: invalidator, log: log}
+}
+
+// NewTasksWithRegistry creates the handler with per-request Creator resolution,
+// keyed on the request's ?cluster= query param. creator is the default
+// cluster's Creator, kept as the fallback for the single-cluster / unit-test
+// path (clients == nil), matching every other WithRegistry constructor.
+func NewTasksWithRegistry(authHandler *Auth, clients cluster.ClientProvider, creator cluster.Creator, invalidator TaskInvalidator, log *slog.Logger) *Tasks {
+	handler := NewTasks(authHandler, creator, invalidator, log)
+	handler.clients = clients
+
+	return handler
 }
 
 type taskStatusDTO struct {
@@ -61,14 +84,29 @@ func (h *Tasks) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status, err := h.creator.TaskStatus(r.Context(), upid)
+	clusterName, err := ResolveClusterParam(r, h.clients)
+	if err != nil {
+		code, message := clusterParamError(err)
+		h.writeTaskError(w, http.StatusBadRequest, code, message)
+
+		return
+	}
+
+	creator, err := resolveCapability(h.clients, h.creator, clusterName, "Creator")
+	if err != nil {
+		h.writeTaskError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+
+		return
+	}
+
+	status, err := creator.TaskStatus(r.Context(), upid)
 	if errors.Is(err, cluster.ErrNotFound) {
 		h.writeTaskError(w, http.StatusNotFound, "not_found", "unknown task")
 		return
 	}
 
 	if err != nil {
-		h.log.Error("task status read failed", "component", "httpapi", "error", err)
+		h.log.Error("task status read failed", "component", "httpapi", "cluster", clusterName, "error", err)
 		h.writeTaskError(w, http.StatusBadGateway, "cluster_error", "cluster rejected the request")
 
 		return

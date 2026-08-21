@@ -32,7 +32,7 @@ describe('VmSnapshotsStore', () => {
 		const created = await store.create('before-upgrade', 'pre-migration', false);
 
 		expect(created).toBe(true);
-		expect(tray.tasks).toEqual([{ upid: 'UPID:test', kind: 'vm_snapshot_create', vmid: 101, name: 'before-upgrade' }]);
+		expect(tray.tasks).toEqual([{ upid: 'UPID:test', kind: 'vm_snapshot_create', vmid: 101, name: 'before-upgrade', cluster: 'default' }]);
 		expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({ name: 'before-upgrade', description: 'pre-migration', vmstate: false });
 		tray.destroy();
 	});
