@@ -1,10 +1,13 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"pvmss/server/internal/auth"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/policy"
@@ -115,6 +118,46 @@ type catalogCloudInitTemplateDTO struct {
 	Label string `json:"label"`
 }
 
+type catalogTagDTO struct {
+	Name  string `json:"name"`
+	Color string `json:"color"`
+}
+
+// catalogGabaritDTO is the administrator-editable per-VM size ceiling (T12
+// gabarit) — the client uses it to validate hardware/disk fields before
+// submit and to show the user what they're allowed, not just what failed.
+type catalogGabaritDTO struct {
+	MaxSockets      int `json:"maxSockets"`
+	MaxCores        int `json:"maxCores"`
+	MaxMemoryMB     int `json:"maxMemoryMB"`
+	MaxDiskPerVMGB  int `json:"maxDiskPerVMGB"`
+	MaxNetworkCards int `json:"maxNetworkCards"`
+	MaxSnapshots    int `json:"maxSnapshots"`
+}
+
+// catalogQuotaDTO is the caller's own VM count against the cluster's
+// per-user allowance. Allowed is -1 for unlimited (policy.Quota contract).
+type catalogQuotaDTO struct {
+	Used    int `json:"used"`
+	Allowed int `json:"allowed"`
+}
+
+// catalogNodeCapacityDTO is one approved node's configured aggregate
+// capacité, live usage, and physical facts (policy.Capacity). Omitted from
+// the response for a node with no capacité configured (all-zero row).
+type catalogNodeCapacityDTO struct {
+	Node          string `json:"node"`
+	MaxVMs        int    `json:"maxVMs"`
+	MaxVCPUs      int    `json:"maxVCPUs"`
+	MaxRAMGB      int    `json:"maxRAMGB"`
+	MaxDiskGB     int    `json:"maxDiskGB"`
+	UsedVMs       int    `json:"usedVMs"`
+	UsedVCPUs     int    `json:"usedVCPUs"`
+	UsedRAMGB     int    `json:"usedRAMGB"`
+	PhysicalVCPUs int    `json:"physicalVCPUs"`
+	PhysicalRAMGB int    `json:"physicalRAMGB"`
+}
+
 type catalogDTO struct {
 	Cluster            string                        `json:"cluster"`
 	Nodes              []string                      `json:"nodes"`
@@ -123,6 +166,10 @@ type catalogDTO struct {
 	ISOs               []catalogISODTO               `json:"isos"`
 	Profiles           []catalogProfileDTO           `json:"profiles"`
 	CloudInitTemplates []catalogCloudInitTemplateDTO `json:"cloudInitTemplates"`
+	Tags               []catalogTagDTO               `json:"tags"`
+	Gabarit            *catalogGabaritDTO            `json:"gabarit,omitempty"`
+	Quota              *catalogQuotaDTO              `json:"quota,omitempty"`
+	NodeCapacities     []catalogNodeCapacityDTO      `json:"nodeCapacities,omitempty"`
 }
 
 // ServeHTTP handles POST /api/v1/vms. Creation is asynchronous (FR-013):
@@ -173,7 +220,8 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // for every user of a cluster (contracts behavioural rules) — no
 // identity-specific filtering beyond requiring authentication.
 func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
-	if _, err := h.auth.Principal(r); err != nil {
+	identity, err := h.auth.Principal(r)
+	if err != nil {
 		h.writeCreateError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return
 	}
@@ -215,6 +263,16 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Admin-created tags only (FR-014/FR-015 surface) — the mandatory pvmss
+	// tag is added server-side and never offered as a user choice here.
+	tags, err := catalog.ListTags(r.Context(), h.store, nil, clusterName)
+	if err != nil {
+		h.log.Error("tag read failed", "component", "httpapi", "error", err)
+		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return
+	}
+
 	dto := catalogDTO{
 		Cluster:            clusterName,
 		Nodes:              make([]string, 0, len(resources.Nodes)),
@@ -223,9 +281,18 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 		ISOs:               make([]catalogISODTO, 0, len(resources.ISOs)),
 		Profiles:           make([]catalogProfileDTO, 0, len(profiles)),
 		CloudInitTemplates: make([]catalogCloudInitTemplateDTO, 0, len(templates)),
+		Tags:               make([]catalogTagDTO, 0, len(tags)),
 	}
 	for _, node := range resources.Nodes {
 		dto.Nodes = append(dto.Nodes, node.Name)
+	}
+
+	for _, tag := range tags {
+		if tag.Protected {
+			continue
+		}
+
+		dto.Tags = append(dto.Tags, catalogTagDTO{Name: tag.Name, Color: tag.Color})
 	}
 
 	for _, storage := range resources.Storages {
@@ -258,7 +325,61 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	if h.policy != nil {
+		if err := h.attachLimits(r.Context(), &dto, clusterName, identity); err != nil {
+			h.log.Error("policy read failed", "component", "httpapi", "error", err)
+			h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+			return
+		}
+	}
+
 	h.writeCreateJSON(w, http.StatusOK, dto)
+}
+
+// attachLimits fills the catalog's gabarit/quota/nodeCapacities so the
+// detailed-mode wizard can show what the user is allowed and validate
+// hardware/disk fields client-side before the server re-checks them
+// (constitution VI: client bounds are a convenience only).
+func (h *VMCreate) attachLimits(ctx context.Context, dto *catalogDTO, clusterName string, identity auth.Identity) error {
+	gabarit, err := h.policy.Gabarit(ctx, clusterName)
+	if err != nil {
+		return fmt.Errorf("read gabarit: %w", err)
+	}
+
+	dto.Gabarit = &catalogGabaritDTO{
+		MaxSockets: gabarit.MaxSockets, MaxCores: gabarit.MaxCores, MaxMemoryMB: gabarit.MaxMemoryMB,
+		MaxDiskPerVMGB: gabarit.MaxDiskPerVMGB, MaxNetworkCards: gabarit.MaxNetworkCards,
+		MaxSnapshots: gabarit.MaxSnapshots,
+	}
+
+	quota, err := h.policy.Quota(ctx, clusterName, identity)
+	if err != nil {
+		return fmt.Errorf("read quota: %w", err)
+	}
+
+	dto.Quota = &catalogQuotaDTO{Used: quota.Used, Allowed: quota.Allowed}
+
+	dto.NodeCapacities = make([]catalogNodeCapacityDTO, 0, len(dto.Nodes))
+
+	for _, node := range dto.Nodes {
+		capacity, err := h.policy.NodeCapacity(ctx, clusterName, node)
+		if err != nil {
+			return fmt.Errorf("read node capacity for %q: %w", node, err)
+		}
+
+		if capacity.MaxVMs == 0 && capacity.MaxVCPUs == 0 && capacity.MaxRAMGB == 0 {
+			continue // no capacité configured for this node — nothing to show
+		}
+
+		dto.NodeCapacities = append(dto.NodeCapacities, catalogNodeCapacityDTO{
+			Node: node, MaxVMs: capacity.MaxVMs, MaxVCPUs: capacity.MaxVCPUs, MaxRAMGB: capacity.MaxRAMGB,
+			MaxDiskGB: capacity.MaxDiskGB, UsedVMs: capacity.UsedVMs, UsedVCPUs: capacity.UsedVCPUs,
+			UsedRAMGB: capacity.UsedRAMGB, PhysicalVCPUs: capacity.PhysicalVCPUs, PhysicalRAMGB: capacity.PhysicalRAMGB,
+		})
+	}
+
+	return nil
 }
 
 func (h *VMCreate) resolveCatalogClient(w http.ResponseWriter, r *http.Request) (string, cluster.Client, bool) {
