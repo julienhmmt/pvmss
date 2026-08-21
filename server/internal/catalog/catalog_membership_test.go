@@ -8,13 +8,14 @@ import (
 
 // Fixture literals reused across the membership tests below.
 const (
-	bridgeVMbr0  = "vmbr0"
-	bridgeVMbr1  = "vmbr1"
-	debianISO    = "debian-12.iso"
-	node01       = "pve-node-01"
-	node02       = "pve-node-02"
-	storageLocal = "local"
-	storageNFS   = "nfs"
+	bridgeVMbr0      = "vmbr0"
+	bridgeVMbr1      = "vmbr1"
+	debianISO        = "debian-12.iso"
+	debianGenericISO = "debian-12-generic-amd64.iso"
+	node01           = "pve-node-01"
+	node02           = "pve-node-02"
+	storageLocal     = "local"
+	storageNFS       = "nfs"
 )
 
 // sampleResources builds a Resources fixture covering every membership path:
