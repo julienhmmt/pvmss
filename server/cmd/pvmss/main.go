@@ -334,6 +334,11 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 
 	consoleTickets := vm.NewConsoleTicketStore()
 
+	metricsReader, ok := clusterClient.(cluster.MetricsHistoryReader)
+	if !ok {
+		return nil, errors.New("cluster client does not implement MetricsHistoryReader")
+	}
+
 	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: writer, Store: st, Refresher: worker, Log: logger}, policyService)
 	vmBulk := httpapi.NewVMBulkWithRegistry(inventoryRegistry, projection, authHandler, writer, st, refresher, logger)
 	vmCloudInit := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{Projection: projection, Auth: authHandler, Reader: cloudInitReader, Writer: writer, Store: st, Refresher: worker, Log: logger}, policyService)
@@ -349,6 +354,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	tasks := httpapi.NewTasks(authHandler, creator, worker, logger)
 	snapshots := httpapi.NewVMSnapshots(projection, authHandler, snapshotReader, snapshotWriter, st, logger, policyService)
 	vmConsole := httpapi.NewVMConsole(projection, authHandler, consoleRelay, consoleTickets, st, logger)
+	vmMetrics := httpapi.NewVMMetrics(projection, authHandler, metricsReader, logger)
 	adminCatalog := httpapi.NewAdminCatalogWithRegistry(authHandler, st, clusterRegistry, projection, logger)
 	adminPolicy := httpapi.NewAdminPolicyWithRegistry(authHandler, policyService, clusterRegistry, logger)
 	adminPools := httpapi.NewAdminPools(authHandler, clusterClient, projection, writer, st, worker, st, logger)
@@ -372,6 +378,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		Log:              logger,
 		SnapshotHandlers: []*httpapi.VMSnapshots{snapshots},
 		VMConsole:        vmConsole,
+		VMMetrics:        vmMetrics,
 		AdminCatalog:     adminCatalog,
 		AdminPolicy:      adminPolicy,
 		AdminPools:       adminPools,

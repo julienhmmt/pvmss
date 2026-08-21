@@ -326,6 +326,56 @@ func runListISOsCase(t *testing.T, impl cluster.Client) {
 }
 
 //nolint:paralleltest // serial: shared fake identity fixture
+func TestContract_GetMetricsHistory(t *testing.T) {
+	impls := map[string]cluster.MetricsHistoryReader{
+		fakeImplementationName: cluster.Fake{},
+	}
+
+	for name, impl := range impls {
+		t.Run(name, runMetricsHistoryCase(impl))
+	}
+}
+
+// runMetricsHistoryCase checks GetMetricsHistory against the contract: every
+// timeframe returns at least one sample, memory used never exceeds memory
+// max, and CPU never reports outside 0-100%. cluster.Proxmox has no fixed
+// dataset to compare against the fake's, so its own coverage lives in
+// proxmox_metrics_test.go against an httptest-mocked PVE server (matching
+// this file's header comment on Snapshot).
+func runMetricsHistoryCase(impl cluster.MetricsHistoryReader) func(t *testing.T) {
+	return func(t *testing.T) {
+		t.Helper()
+
+		for _, timeframe := range []cluster.MetricsTimeframe{cluster.MetricsTimeframeHour, cluster.MetricsTimeframeDay, cluster.MetricsTimeframeWeek} {
+			samples, err := impl.GetMetricsHistory(context.Background(), cluster.FakeNode01, 101, timeframe)
+			if err != nil {
+				t.Fatalf("timeframe %q: unexpected error: %v", timeframe, err)
+			}
+
+			if len(samples) == 0 {
+				t.Fatalf("timeframe %q: expected at least one sample", timeframe)
+			}
+
+			checkMetricsSamples(t, timeframe, samples)
+		}
+	}
+}
+
+func checkMetricsSamples(t *testing.T, timeframe cluster.MetricsTimeframe, samples []cluster.MetricsSample) {
+	t.Helper()
+
+	for _, s := range samples {
+		if s.MemoryUsed > s.MemoryMax {
+			t.Errorf("timeframe %q: memoryUsed %d > memoryMax %d", timeframe, s.MemoryUsed, s.MemoryMax)
+		}
+
+		if s.CPUPercent < 0 || s.CPUPercent > 100 {
+			t.Errorf("timeframe %q: cpuPercent %v out of 0-100 range", timeframe, s.CPUPercent)
+		}
+	}
+}
+
+//nolint:paralleltest // serial: shared fake identity fixture
 func TestContract_DisplayName(t *testing.T) {
 	impls := map[string]cluster.Client{
 		fakeImplementationName: cluster.Fake{},

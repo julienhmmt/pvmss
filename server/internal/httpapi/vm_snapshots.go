@@ -13,7 +13,6 @@ import (
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
-	"strconv"
 	"strings"
 )
 
@@ -169,21 +168,7 @@ func (h *VMSnapshots) handleNamedAction(w http.ResponseWriter, r *http.Request, 
 
 //nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
 func (h *VMSnapshots) requestTarget(w http.ResponseWriter, r *http.Request) (auth.Identity, string, int, bool) {
-	identity, err := h.auth.Principal(r)
-	if err != nil {
-		h.writeError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
-		return auth.Identity{}, "", 0, false
-	}
-
-	clusterName := r.PathValue("cluster")
-
-	vmid, err := strconv.Atoi(r.PathValue("vmid"))
-	if clusterName == "" || err != nil || vmid < 1 {
-		h.writeError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
-		return auth.Identity{}, "", 0, false
-	}
-
-	return identity, clusterName, vmid, true
+	return parseVMRequestTarget(h.auth, r, func(status int, code, message string) { h.writeError(w, status, code, message) })
 }
 
 //nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
