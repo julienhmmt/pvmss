@@ -27,6 +27,45 @@ export interface CatalogCloudInitTemplate {
 	label: string;
 }
 
+export interface CatalogTag {
+	name: string;
+	color: string;
+}
+
+/** The administrator-editable per-VM size ceiling (gabarit) — the same
+ *  bounds the server re-checks on submit (constitution VI). */
+export interface CatalogGabarit {
+	maxSockets: number;
+	maxCores: number;
+	maxMemoryMB: number;
+	maxDiskPerVMGB: number;
+	maxNetworkCards: number;
+	maxSnapshots: number;
+}
+
+/** The caller's own VM count against the cluster's per-user allowance.
+ *  allowed is -1 for unlimited. */
+export interface CatalogQuota {
+	used: number;
+	allowed: number;
+}
+
+/** One approved node's configured aggregate capacité, live usage, and
+ *  physical facts. Absent from `nodeCapacities` for a node with no
+ *  capacité configured. */
+export interface CatalogNodeCapacity {
+	node: string;
+	maxVMs: number;
+	maxVCPUs: number;
+	maxRAMGB: number;
+	maxDiskGB: number;
+	usedVMs: number;
+	usedVCPUs: number;
+	usedRAMGB: number;
+	physicalVCPUs: number;
+	physicalRAMGB: number;
+}
+
 export interface VmCreateCatalog {
 	cluster: string;
 	nodes: string[];
@@ -35,6 +74,10 @@ export interface VmCreateCatalog {
 	isos: CatalogISO[];
 	profiles: CatalogProfile[];
 	cloudInitTemplates: CatalogCloudInitTemplate[];
+	tags: CatalogTag[];
+	gabarit?: CatalogGabarit;
+	quota?: CatalogQuota;
+	nodeCapacities?: CatalogNodeCapacity[];
 }
 
 /** The single request shape both modes POST (FR-001) — no pool, no mode. */
@@ -191,6 +234,27 @@ export class VmCreateStore {
 	effectiveStorage(): string {
 		if (this.storageAdjusted && this.storage !== '') return this.storage;
 		return this.autoStorage(this.effectiveNode());
+	}
+
+	/** Parses tagsInput's comma-separated string into its selected tag names
+	 *  (detailed mode's tag picker — FR-014: admin-created tags only). */
+	selectedTags(): string[] {
+		return this.tagsInput
+			.split(',')
+			.map((tag) => tag.trim())
+			.filter((tag) => tag !== '');
+	}
+
+	/** Toggles one catalog tag in/out of tagsInput, preserving the others. */
+	toggleTag(name: string): void {
+		const current = this.selectedTags();
+		const next = current.includes(name) ? current.filter((tag) => tag !== name) : [...current, name];
+		this.tagsInput = next.join(', ');
+	}
+
+	/** The configured capacité for a node, if the administrator set one. */
+	nodeCapacity(node: string): CatalogNodeCapacity | undefined {
+		return this.catalog?.nodeCapacities?.find((capacity) => capacity.node === node);
 	}
 
 	/** Builds the outgoing request for simple mode: profile-driven, with the
