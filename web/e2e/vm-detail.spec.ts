@@ -27,6 +27,28 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 		await expect(page.getByTestId('vm-stat-uptime')).toBeVisible();
 	});
 
+	test('T02: metrics history row renders and the range toggle switches without error', async ({ page }) => {
+		await signInAlice(page.request);
+		await page.goto('/vms/default/100');
+
+		await expect(page.getByTestId('vm-metrics-row')).toBeVisible();
+		await expect(page.getByTestId('vm-metrics-charts')).toBeVisible({ timeout: 10000 });
+		await expect(page.getByTestId('line-chart')).toHaveCount(4);
+
+		// Default range is "hour" — pressed state reflects it.
+		await expect(page.getByTestId('vm-metrics-range-hour')).toHaveAttribute('aria-pressed', 'true');
+
+		await page.getByTestId('vm-metrics-range-day').click();
+		await expect(page.getByTestId('vm-metrics-range-day')).toHaveAttribute('aria-pressed', 'true');
+		await expect(page.getByTestId('vm-metrics-charts')).toBeVisible();
+		await expect(page.getByTestId('vm-metrics-error')).toBeHidden();
+
+		await page.getByTestId('vm-metrics-range-week').click();
+		await expect(page.getByTestId('vm-metrics-range-week')).toHaveAttribute('aria-pressed', 'true');
+		await expect(page.getByTestId('vm-metrics-charts')).toBeVisible();
+		await expect(page.getByTestId('vm-metrics-error')).toBeHidden();
+	});
+
 	test('start action on a stopped VM flips status optimistically then reconciles', async ({ page }) => {
 		await signInAlice(page.request);
 		// web-02 (VMID 101) is stopped.

@@ -48,6 +48,7 @@ type RouterConfig struct {
 	Log              *slog.Logger
 	SnapshotHandlers []*VMSnapshots
 	VMConsole        *VMConsole
+	VMMetrics        *VMMetrics
 	AdminCatalog     *AdminCatalog
 	AdminPolicy      *AdminPolicy
 	AdminPools       *AdminPools
@@ -115,6 +116,10 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	if cfg.VMConsole != nil {
 		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/vnc-ticket", cfg.VMConsole)
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/console/websocket", cfg.VMConsole)
+	}
+
+	if cfg.VMMetrics != nil {
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/metrics/history", cfg.VMMetrics)
 	}
 
 	// Unauthenticated credential-check endpoints get a per-IP rate limit —
