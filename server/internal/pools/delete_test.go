@@ -23,7 +23,7 @@ func TestDelete_CascadeAuditTrailAndUserResult(t *testing.T) {
 	client := cluster.Fake{}
 	admin := auth.Identity{Username: "admin", IsAdmin: true}
 	st := openAuditStore(t)
-	if _, err := pools.CreateWithRecorder(context.Background(), admin, client, st, "default", "carol", "S0meLongPW!"); err != nil {
+	if _, err := pools.CreateWithRecorder(context.Background(), pools.CreateParams{Actor: admin, Client: client, Recorder: st, ClusterName: "default", Name: "carol", Password: "S0meLongPW!"}); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
@@ -107,7 +107,7 @@ func TestDelete_UserDeletionFailureIsReported(t *testing.T) {
 	client := cluster.Fake{}
 	admin := auth.Identity{Username: "admin", IsAdmin: true}
 	st := openAuditStore(t)
-	if _, err := pools.CreateWithRecorder(context.Background(), admin, client, st, "default", "carol", "S0meLongPW!"); err != nil {
+	if _, err := pools.CreateWithRecorder(context.Background(), pools.CreateParams{Actor: admin, Client: client, Recorder: st, ClusterName: "default", Name: "carol", Password: "S0meLongPW!"}); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 	cluster.SetFakeDeleteUserError(errors.New("user deletion failed"))
@@ -185,7 +185,7 @@ func TestDelete_ManagedCascadeSucceedsAndUnregisters(t *testing.T) {
 	client := cluster.Fake{}
 	admin := auth.Identity{Username: "admin", IsAdmin: true}
 	st := openAuditStore(t)
-	if _, err := pools.CreateWithRecorder(context.Background(), admin, client, st, "default", "team-x", "S0meLongPW!"); err != nil {
+	if _, err := pools.CreateWithRecorder(context.Background(), pools.CreateParams{Actor: admin, Client: client, Recorder: st, ClusterName: "default", Name: "team-x", Password: "S0meLongPW!"}); err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 	managed, err := st.IsPoolManaged(context.Background(), "default", "team-x")

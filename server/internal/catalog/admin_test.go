@@ -336,7 +336,7 @@ func TestSetISOEnabled_ToggleIsolatesByStorageFile(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
 
-	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "pve-node-02", "local", "rocky-9-generic-x86_64.iso", true); err != nil {
+	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", catalog.ISORef{Node: node02, Storage: storageLocal, File: "rocky-9-generic-x86_64.iso"}, true); err != nil {
 		t.Fatalf("SetISOEnabled rocky-9: %v", err)
 	}
 
@@ -414,17 +414,17 @@ func TestSetISOEnabled_UnknownReturnsError(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
 
-	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "pve-node-01", "local", "missing.iso", true); !errors.Is(err, cluster.ErrNotFound) {
+	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", catalog.ISORef{Node: node01, Storage: storageLocal, File: "missing.iso"}, true); !errors.Is(err, cluster.ErrNotFound) {
 		t.Fatalf("SetISOEnabled unknown file: got %v, want cluster.ErrNotFound", err)
 	}
 
 	// Right file, wrong storage — still not discovered.
-	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "pve-node-01", "missing", "debian-12-generic-amd64.iso", true); !errors.Is(err, cluster.ErrNotFound) {
+	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", catalog.ISORef{Node: node01, Storage: "missing", File: debianGenericISO}, true); !errors.Is(err, cluster.ErrNotFound) {
 		t.Fatalf("SetISOEnabled wrong storage: got %v, want cluster.ErrNotFound", err)
 	}
 
 	// Right file and storage, wrong node — still not discovered.
-	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "pve-node-99", "local", "debian-12-generic-amd64.iso", true); !errors.Is(err, cluster.ErrNotFound) {
+	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", catalog.ISORef{Node: "pve-node-99", Storage: storageLocal, File: debianGenericISO}, true); !errors.Is(err, cluster.ErrNotFound) {
 		t.Fatalf("SetISOEnabled wrong node: got %v, want cluster.ErrNotFound", err)
 	}
 }
@@ -514,7 +514,7 @@ func TestSetISOEnabled_ToggleOffPersists(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
 
-	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "pve-node-01", "local", "debian-12-generic-amd64.iso", false); err != nil {
+	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", catalog.ISORef{Node: node01, Storage: storageLocal, File: debianGenericISO}, false); err != nil {
 		t.Fatalf("SetISOEnabled off: %v", err)
 	}
 
@@ -529,7 +529,7 @@ func TestSetISOEnabled_ToggleOffPersists(t *testing.T) {
 		}
 	}
 
-	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", "pve-node-01", "local", "debian-12-generic-amd64.iso", true); err != nil {
+	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", catalog.ISORef{Node: node01, Storage: storageLocal, File: debianGenericISO}, true); err != nil {
 		t.Fatalf("SetISOEnabled on: %v", err)
 	}
 

@@ -89,7 +89,7 @@ type NodeCapacitySortColumn = 'node' | 'maxVms' | 'maxVcpus' | 'maxRamGb' | 'max
 
 function sortNodeCapacities(nodes: NodeCapacity[], sortBy: NodeCapacitySortColumn, dir: 'asc' | 'desc'): NodeCapacity[] {
 	const sorted = [...nodes].sort((a, b) => {
-		let cmp = 0;
+		let cmp: number;
 		if (sortBy === 'node') {
 			cmp = a.node.localeCompare(b.node);
 		} else {

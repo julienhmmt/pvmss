@@ -10,6 +10,7 @@
 	import CloudInitTab from './CloudInitTab.svelte';
 	import VmSnapshotsTab from './VmSnapshotsTab.svelte';
 	import ConsoleBanner from './ConsoleBanner.svelte';
+	import VmMetricsRow from './VmMetricsRow.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
@@ -203,6 +204,8 @@
 			</dd>
 		</div>
 	</dl>
+
+	<VmMetricsRow />
 
 	<div class="mt-8">
 		<Tabs {tabs} bind:active={activeTab} />

@@ -16,15 +16,39 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 		await signInAlice(page.request);
 		await page.goto('/vms?cluster=default');
 
-		// Click the first VM name link (web-01, VMID 100, running).
-		await page.locator('[data-testid="vm-row-link"]').first().click();
+		// Click the web-01 row link (VMID 100, running). Default list sort is
+		// by name, so "first row" isn't deterministically web-01 — target it explicitly.
+		await page.getByTestId('vm-row-link').filter({ hasText: 'web-01' }).click();
 		await expect(page).toHaveURL(/\/vms\/default\/100$/);
 
 		await expect(page.getByTestId('vm-name')).toHaveText('web-01');
 		await expect(page.getByTestId('vm-status')).toContainText('running');
 		await expect(page.getByTestId('vm-meta')).toContainText('pve-node-01');
-		await expect(page.getByTestId('vm-stat-cpu')).toContainText('2 cores');
+		// Locale-agnostic: default locale is French ("2 cœurs"), not English.
+		await expect(page.getByTestId('vm-stat-cpu')).toContainText('2');
 		await expect(page.getByTestId('vm-stat-uptime')).toBeVisible();
+	});
+
+	test('T02: metrics history row renders and the range toggle switches without error', async ({ page }) => {
+		await signInAlice(page.request);
+		await page.goto('/vms/default/100');
+
+		await expect(page.getByTestId('vm-metrics-row')).toBeVisible();
+		await expect(page.getByTestId('vm-metrics-charts')).toBeVisible({ timeout: 10000 });
+		await expect(page.getByTestId('line-chart')).toHaveCount(4);
+
+		// Default range is "hour" — pressed state reflects it.
+		await expect(page.getByTestId('vm-metrics-range-hour')).toHaveAttribute('aria-pressed', 'true');
+
+		await page.getByTestId('vm-metrics-range-day').click();
+		await expect(page.getByTestId('vm-metrics-range-day')).toHaveAttribute('aria-pressed', 'true');
+		await expect(page.getByTestId('vm-metrics-charts')).toBeVisible();
+		await expect(page.getByTestId('vm-metrics-error')).toBeHidden();
+
+		await page.getByTestId('vm-metrics-range-week').click();
+		await expect(page.getByTestId('vm-metrics-range-week')).toHaveAttribute('aria-pressed', 'true');
+		await expect(page.getByTestId('vm-metrics-charts')).toBeVisible();
+		await expect(page.getByTestId('vm-metrics-error')).toBeHidden();
 	});
 
 	test('start action on a stopped VM flips status optimistically then reconciles', async ({ page }) => {
@@ -82,9 +106,33 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 		await expect(page.getByTestId('vm-name')).toHaveText('web-renamed');
 	});
 
-	test('a non-owner opening a VM by URL gets 403/404, no data leaks', async ({ page, request }) => {
-		// Bob opens alice's VM 100 by editing the URL.
-		await signIn(request, 'bob', 'pvmss-bob');
+	test('T03: live metrics tick updates the running VM chart', async ({ page }) => {
+		await signInAlice(page.request);
+		await page.goto('/vms/default/100');
+
+		await expect(page.getByTestId('vm-metrics-charts')).toBeVisible({ timeout: 10000 });
+		await expect(page.getByTestId('line-chart')).toHaveCount(4);
+
+		const cpuChart = page.getByTestId('line-chart').first();
+		const cpuPath = cpuChart.locator('path');
+		const initialPath = await cpuPath.getAttribute('d');
+
+		// The running VM opens an SSE stream; within a few seconds a live tick
+		// arrives and the SVG path changes.
+		await expect
+			.poll(async () => cpuChart.getAttribute('d'), {
+				timeout: 10000,
+				message: 'expected the CPU chart to receive a live tick'
+			})
+			.not.toBe(initialPath);
+	});
+
+	test('a non-owner opening a VM by URL gets 403/404, no data leaks', async ({ page }) => {
+		// Bob opens alice's VM 100 by editing the URL. Sign in via page.request
+		// (not the standalone `request` fixture) so the session cookie lands in
+		// the browser context the page itself uses — a separate APIRequestContext
+		// has its own cookie jar and never reaches the page.
+		await signIn(page.request, 'bob', 'pvmss-bob');
 		await page.goto('/vms/default/100');
 		// The detail page shows an error, never the VM's data.
 		await expect(page.getByTestId('vm-detail-error')).toBeVisible();

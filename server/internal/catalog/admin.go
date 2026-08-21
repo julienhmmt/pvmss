@@ -242,10 +242,18 @@ func SetBridgeEnabled(ctx context.Context, st *store.Store, client cluster.Clien
 	return st.SetBridgeEnabled(ctx, clusterName, node, name, enabled)
 }
 
-// SetISOEnabled upserts the enabled state for one (node, storage, file) triple.
+// ISORef identifies one discovered ISO by its (node, storage, file) triple —
+// the same key the enabled-state store and discovery check use internally.
+type ISORef struct {
+	Node    string
+	Storage string
+	File    string
+}
+
+// SetISOEnabled upserts the enabled state for one ISO identified by ref.
 // See SetNodeEnabled for the discovery-error contract.
-func SetISOEnabled(ctx context.Context, st *store.Store, client cluster.Client, clusterName, node, storage, file string, enabled bool) error {
-	discovered, err := isoDiscovered(ctx, client, node, storage, file)
+func SetISOEnabled(ctx context.Context, st *store.Store, client cluster.Client, clusterName string, ref ISORef, enabled bool) error {
+	discovered, err := isoDiscovered(ctx, client, ref.Node, ref.Storage, ref.File)
 	if err != nil {
 		return err
 	}
@@ -254,7 +262,7 @@ func SetISOEnabled(ctx context.Context, st *store.Store, client cluster.Client, 
 		return cluster.ErrNotFound
 	}
 
-	return st.SetISOEnabled(ctx, clusterName, node, storage, file, enabled)
+	return st.SetISOEnabled(ctx, clusterName, ref.Node, ref.Storage, ref.File, enabled)
 }
 
 // nodeDiscovered reports whether the cluster reports a node with the given

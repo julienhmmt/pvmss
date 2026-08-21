@@ -90,32 +90,44 @@ func (e *ProvisionError) Unwrap() error { return e.Err }
 // non-nil. The optional comment preserves the documented five-argument domain
 // API while allowing the HTTP contract to pass a comment.
 func Create(ctx context.Context, actor auth.Identity, client cluster.Client, name, password string, comments ...string) (cluster.Pool, error) {
-	return CreateWithRecorder(ctx, actor, client, nil, "", name, password, comments...)
+	return CreateWithRecorder(ctx, CreateParams{Actor: actor, Client: client, Name: name, Password: password}, comments...)
+}
+
+// CreateParams bundles the per-call inputs to CreateWithRecorder. Bundling
+// them keeps the parameter count under go:S107's ceiling without losing the
+// optional-comment variadic contract.
+type CreateParams struct {
+	Actor       auth.Identity
+	Client      cluster.Client
+	Recorder    ManagedRecorder
+	ClusterName string
+	Name        string
+	Password    string
 }
 
 // CreateWithRecorder provisions one pool and registers it as managed when the
 // recorder is non-nil. The cluster name scopes the managed marker.
-func CreateWithRecorder(ctx context.Context, actor auth.Identity, client cluster.Client, recorder ManagedRecorder, clusterName, name, password string, comments ...string) (cluster.Pool, error) {
-	if !actor.IsAdmin {
+func CreateWithRecorder(ctx context.Context, p CreateParams, comments ...string) (cluster.Pool, error) {
+	if !p.Actor.IsAdmin {
 		return cluster.Pool{}, ErrForbidden
 	}
-	if err := ValidateName(name); err != nil {
+	if err := ValidateName(p.Name); err != nil {
 		return cluster.Pool{}, err
 	}
-	if err := ValidatePassword(password); err != nil {
+	if err := ValidatePassword(p.Password); err != nil {
 		return cluster.Pool{}, err
 	}
 	comment := ""
 	if len(comments) > 0 {
 		comment = comments[0]
 	}
-	pool, err := create(ctx, client, name, password, comment)
+	pool, err := create(ctx, p.Client, p.Name, p.Password, comment)
 	if err != nil {
 		return cluster.Pool{}, err
 	}
-	if recorder != nil && clusterName != "" {
-		if err := recorder.RegisterManagedPool(ctx, clusterName, name); err != nil {
-			slog.Default().Error("managed pool registration failed", "cluster", clusterName, "pool", name, "error", err)
+	if p.Recorder != nil && p.ClusterName != "" {
+		if err := p.Recorder.RegisterManagedPool(ctx, p.ClusterName, p.Name); err != nil {
+			slog.Default().Error("managed pool registration failed", "cluster", p.ClusterName, "pool", p.Name, "error", err)
 		}
 	}
 	return pool, nil

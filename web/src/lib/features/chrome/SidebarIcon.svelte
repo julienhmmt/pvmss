@@ -26,6 +26,9 @@
 	{#if name === 'home'}
 		<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
 		<polyline points="9 22 9 12 15 12 15 22" />
+	{:else if name === 'search'}
+		<circle cx="11" cy="11" r="8" />
+		<line x1="21" y1="21" x2="16.65" y2="16.65" />
 	{:else if name === 'vm'}
 		<rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
 		<line x1="8" y1="21" x2="16" y2="21" />

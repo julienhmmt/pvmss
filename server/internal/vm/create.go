@@ -207,7 +207,10 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 	// mechanism. A failure here does NOT abort the creation (the task is
 	// already dispatched and cannot be undone): it sets CloudInitPushError
 	// (FR-008). On success, CloudInitTemplateID echoes the resolved id.
-	applyCloudInitTemplate(ctx, deps, clusterName, actor.Username, spec, vmid, cloudTemplate, &result)
+	applyCloudInitTemplate(ctx, cloudInitApplyRequest{
+		Deps: deps, ClusterName: clusterName, Username: actor.Username,
+		Spec: spec, VMID: vmid, Template: cloudTemplate,
+	}, &result)
 
 	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, vmid, "vm_create"); err != nil {
 		deps.Log.Error("record audit failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
@@ -259,29 +262,41 @@ func buildCreateSpec(actor auth.Identity, req CreateRequest, plan createPlan, vm
 	return spec
 }
 
+// cloudInitApplyRequest bundles the per-creation inputs to
+// applyCloudInitTemplate. Keeping them in a struct holds the helper under
+// go:S107's ceiling and makes the single call site self-documenting.
+type cloudInitApplyRequest struct {
+	Deps        CreateDeps
+	ClusterName string
+	Username    string
+	Spec        cluster.VMSpec
+	VMID        int
+	Template    catalog.CloudInitTemplate
+}
+
 // applyCloudInitTemplate writes the resolved template's snippet to the store
 // and pushes it to the cluster node. A failure does NOT abort the creation
 // (the task is already dispatched and cannot be undone): it records the error
 // message on result.CloudInitPushError (FR-008).
-func applyCloudInitTemplate(ctx context.Context, deps CreateDeps, clusterName, username string, spec cluster.VMSpec, vmid int, tmpl catalog.CloudInitTemplate, result *CreateResult) {
-	if tmpl.ID == "" {
+func applyCloudInitTemplate(ctx context.Context, req cloudInitApplyRequest, result *CreateResult) {
+	if req.Template.ID == "" {
 		return
 	}
 
-	result.CloudInitTemplateID = tmpl.ID
-	filename := fmt.Sprintf("%s%d.yml", snippetFilenamePrefix, vmid)
-	storage := spec.Disk.Storage
+	result.CloudInitTemplateID = req.Template.ID
+	filename := fmt.Sprintf("%s%d.yml", snippetFilenamePrefix, req.VMID)
+	storage := req.Spec.Disk.Storage
 
-	storeErr := deps.Store.PutCloudInitSnippet(ctx, clusterName, vmid, storage, filename, tmpl.Content, username)
+	storeErr := req.Deps.Store.PutCloudInitSnippet(ctx, req.ClusterName, req.VMID, storage, filename, req.Template.Content, req.Username)
 	if storeErr != nil {
-		deps.Log.Error("cloud-init template store failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", storeErr)
+		req.Deps.Log.Error("cloud-init template store failed", "component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "error", storeErr)
 		result.CloudInitPushError = storeErr.Error()
 
 		return
 	}
 
-	if err := deps.Pusher.PushCloudInitSnippet(ctx, spec.Node, storage, filename, vmid, tmpl.Content); err != nil {
-		deps.Log.Error("cloud-init template push failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+	if err := req.Deps.Pusher.PushCloudInitSnippet(ctx, req.Spec.Node, storage, filename, req.VMID, req.Template.Content); err != nil {
+		req.Deps.Log.Error("cloud-init template push failed", "component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "error", err)
 		result.CloudInitPushError = err.Error()
 	}
 }

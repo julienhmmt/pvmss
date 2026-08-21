@@ -163,6 +163,13 @@ func openStore(cfg config.Configuration, logger *slog.Logger) (*store.Store, err
 // initCluster builds the cluster registry from configured rows and resolves the
 // default cluster client. The registry owns per-cluster Client instances; the
 // default client is the one most handlers operate on.
+//
+// It also discovers each cluster's display name (the real Proxmox cluster name
+// from /cluster/status, or the fake's logical name) and persists it when the
+// row does not already have one — so the sidebar shows a meaningful name from
+// first boot instead of the internal "default" until an admin tests the
+// cluster. Discovery is best-effort: a failed DisplayName call logs a warning
+// and leaves the row untouched, never blocking startup.
 func initCluster(cfg config.Configuration, st *store.Store, logger *slog.Logger) (*cluster.Registry, cluster.Client, error) {
 	rows, err := st.ListClusters(context.Background())
 	if err != nil {
@@ -179,8 +186,42 @@ func initCluster(cfg config.Configuration, st *store.Store, logger *slog.Logger)
 		logger.Error("default cluster is unavailable", "component", "main", "error", err)
 		return nil, nil, err
 	}
+	discoverClusterDisplayNames(context.Background(), clusterRegistry, rows, st, logger)
 	logger.Info("cluster registry initialized", "component", "cluster", "source", cfg.ClusterSource, "clusters", clusterRegistry.List())
 	return clusterRegistry, clusterClient, nil
+}
+
+// discoverClusterDisplayNames populates the display_name column for Proxmox
+// clusters that don't already have one by calling Client.DisplayName() (the
+// real Proxmox cluster name from /cluster/status). Fake clusters are skipped:
+// their DisplayName() implementation just returns the internal logical name
+// ("default", "secondary"), which is the opposite of a human-readable label —
+// the fake seed already sets meaningful display names.
+func discoverClusterDisplayNames(ctx context.Context, registry *cluster.Registry, rows []store.ClusterRow, st *store.Store, logger *slog.Logger) {
+	for _, row := range rows {
+		if row.DisplayName != "" {
+			continue
+		}
+		client, err := registry.Client(row.Name)
+		if err != nil {
+			logger.Warn("display name discovery skipped: cluster not in registry", "component", "cluster", "cluster", row.Name, "error", err)
+			continue
+		}
+		if _, ok := client.(cluster.Fake); ok {
+			continue
+		}
+		displayName, err := client.DisplayName(ctx)
+		if err != nil {
+			logger.Warn("cluster display name discovery failed", "component", "cluster", "cluster", row.Name, "error", err)
+			continue
+		}
+		if displayName == "" {
+			continue
+		}
+		if err := st.SetClusterDisplayName(ctx, row.Name, displayName); err != nil {
+			logger.Warn("cluster display name persist failed", "component", "cluster", "cluster", row.Name, "error", err)
+		}
+	}
 }
 
 // initInventory builds the inventory registry and resolves the default
@@ -334,9 +375,25 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 
 	consoleTickets := vm.NewConsoleTicketStore()
 
-	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: writer, Store: st, Refresher: worker, Log: logger}, policyService)
-	vmBulk := httpapi.NewVMBulkWithRegistry(inventoryRegistry, projection, authHandler, writer, st, refresher, logger)
-	vmCloudInit := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{Projection: projection, Auth: authHandler, Reader: cloudInitReader, Writer: writer, Store: st, Refresher: worker, Log: logger}, policyService)
+	metricsReader, ok := clusterClient.(cluster.MetricsHistoryReader)
+	if !ok {
+		return nil, errors.New("cluster client does not implement MetricsHistoryReader")
+	}
+
+	metricsCurrentReader, ok := clusterClient.(cluster.MetricsCurrentReader)
+	if !ok {
+		return nil, errors.New("cluster client does not implement MetricsCurrentReader")
+	}
+
+	// Every *WithRegistry constructor below resolves its cluster.Client and
+	// inventory.Index per request from the request's own :cluster value via
+	// clusterRegistry/inventoryRegistry, instead of the single clusterClient
+	// resolved above — a request scoped to a non-default cluster must never
+	// be served from another cluster's client (cross-tenant data leak when
+	// node names or vmids collide between clusters).
+	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: writer, Clients: clusterRegistry, Store: st, Refresher: worker, Log: logger}, policyService)
+	vmBulk := httpapi.NewVMBulkWithRegistry(httpapi.VMBulkRegistryDeps{Registry: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: writer, Store: st, Refresher: refresher, Log: logger, Clients: clusterRegistry})
+	vmCloudInit := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Reader: cloudInitReader, Writer: writer, Clients: clusterRegistry, Store: st, Refresher: worker, Log: logger}, policyService)
 	vmCreate := httpapi.NewVMCreateWithRegistry(
 		authHandler,
 		st,
@@ -346,12 +403,13 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		logger,
 		policyService,
 	)
-	tasks := httpapi.NewTasks(authHandler, creator, worker, logger)
-	snapshots := httpapi.NewVMSnapshots(projection, authHandler, snapshotReader, snapshotWriter, st, logger, policyService)
-	vmConsole := httpapi.NewVMConsole(projection, authHandler, consoleRelay, consoleTickets, st, logger)
+	tasks := httpapi.NewTasksWithRegistry(authHandler, clusterRegistry, creator, worker, logger)
+	snapshots := httpapi.NewVMSnapshotsWithRegistry(httpapi.VMSnapshotsRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Reader: snapshotReader, Writer: snapshotWriter, Clients: clusterRegistry, Store: st, Log: logger, Services: []*policy.Policy{policyService}})
+	vmConsole := httpapi.NewVMConsoleWithRegistry(httpapi.VMConsoleRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Relay: consoleRelay, Clients: clusterRegistry, Tickets: consoleTickets, Store: st, Log: logger})
+	vmMetrics := httpapi.NewVMMetricsWithRegistry(inventoryRegistry, projection, authHandler, metricsReader, metricsCurrentReader, clusterRegistry, logger)
 	adminCatalog := httpapi.NewAdminCatalogWithRegistry(authHandler, st, clusterRegistry, projection, logger)
 	adminPolicy := httpapi.NewAdminPolicyWithRegistry(authHandler, policyService, clusterRegistry, logger)
-	adminPools := httpapi.NewAdminPools(authHandler, clusterClient, projection, writer, st, worker, st, logger)
+	adminPools := httpapi.NewAdminPoolsWithRegistry(httpapi.AdminPoolsRegistryDeps{Auth: authHandler, Clients: clusterRegistry, Source: inventoryRegistry, Projection: projection, Writer: writer, Audit: st, Refresher: worker, Store: st, Log: logger})
 	adminOps := httpapi.NewAdminOps(authHandler, st, clusterClient, projection, appVersion, logger)
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, clusterRegistry, inventoryRegistry, logger)
 	docsHandler := httpapi.NewDocsAPIHandler(authHandler, st, logger)
@@ -372,6 +430,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		Log:              logger,
 		SnapshotHandlers: []*httpapi.VMSnapshots{snapshots},
 		VMConsole:        vmConsole,
+		VMMetrics:        vmMetrics,
 		AdminCatalog:     adminCatalog,
 		AdminPolicy:      adminPolicy,
 		AdminPools:       adminPools,

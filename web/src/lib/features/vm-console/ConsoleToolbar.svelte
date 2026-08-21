@@ -1,8 +1,15 @@
 <script lang="ts">
 	import { getConsoleContext } from './console.svelte';
+	import { openConsolePopout } from './console';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getConsoleContext();
+
+	let popoutBlocked = $state(false);
+
+	function popout(): void {
+		popoutBlocked = openConsolePopout(store.cluster, store.vmid) === null;
+	}
 
 	async function pasteFromLocal(): Promise<void> {
 		await store.pasteFromLocalClipboard();
@@ -53,6 +60,21 @@
 	>
 		{m['vms.console.reconnect']()}
 	</button>
+
+	<button
+		type="button"
+		class="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted"
+		onclick={popout}
+		data-testid="vm-console-popout"
+	>
+		{m['vms.console.popout']()}
+	</button>
+
+	{#if popoutBlocked}
+		<span class="text-xs text-destructive" data-testid="vm-console-popout-blocked">
+			{m['vms.console.popoutBlocked']()}
+		</span>
+	{/if}
 
 	<div class="mx-2 h-5 w-px bg-border"></div>
 

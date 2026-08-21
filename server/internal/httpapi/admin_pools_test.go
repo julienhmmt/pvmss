@@ -241,7 +241,7 @@ func newAdminPoolsHandler(t *testing.T) (*httpapi.AdminPools, *httpapi.Auth) {
 	projection := inventory.NewProjectionFromIndex(&index)
 	worker := inventory.NewWorker(client, projection, time.Hour, slog.Default())
 	st := newAdminStore(t)
-	handler := httpapi.NewAdminPools(authHandler, client, projection, client, st, worker, st, slog.Default())
+	handler := httpapi.NewAdminPools(httpapi.AdminPoolsDeps{Auth: authHandler, Client: client, Projection: projection, Writer: client, Audit: st, Refresher: worker, Store: st, Log: slog.Default()})
 	return handler, authHandler
 }
 

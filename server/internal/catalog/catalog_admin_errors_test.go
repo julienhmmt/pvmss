@@ -118,7 +118,7 @@ func TestSetISOEnabled_DiscoveryErrorSurfaced(t *testing.T) {
 
 	st := openAdminStore(t)
 
-	err := catalog.SetISOEnabled(context.Background(), st, errDiscoveryClient{}, "default", "pve-node-01", "local", "debian-12.iso", true)
+	err := catalog.SetISOEnabled(context.Background(), st, errDiscoveryClient{}, "default", catalog.ISORef{Node: node01, Storage: storageLocal, File: debianISO}, true)
 	if !errors.Is(err, errDiscovery) {
 		t.Fatalf("SetISOEnabled discovery error: got %v, want errDiscovery", err)
 	}

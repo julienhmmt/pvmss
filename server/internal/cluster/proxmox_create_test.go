@@ -43,7 +43,6 @@ func TestProxmox_NextVMID(t *testing.T) {
 	}
 }
 
-//nolint:gocyclo // one fixture, one VM, every form field asserted together — splitting would hurt readability, not help it
 func TestProxmox_CreateVM(t *testing.T) {
 	t.Parallel()
 
@@ -81,32 +80,41 @@ func TestProxmox_CreateVM(t *testing.T) {
 		t.Error("expected a non-empty UPID")
 	}
 
-	if gotForm.Get("vmid") != "105" || gotForm.Get("name") != "web-1" {
-		t.Errorf("vmid/name = %q/%q", gotForm.Get("vmid"), gotForm.Get("name"))
+	assertCreateVMForm(t, gotForm)
+}
+
+// assertCreateVMForm asserts every form field captured by the
+// TestProxmox_CreateVM fixture. Extracted from TestProxmox_CreateVM to satisfy
+// the cognitive-complexity ceiling (go:S3776); assertion logic is unchanged.
+func assertCreateVMForm(t *testing.T, form url.Values) {
+	t.Helper()
+
+	if form.Get("vmid") != "105" || form.Get("name") != "web-1" {
+		t.Errorf("vmid/name = %q/%q", form.Get("vmid"), form.Get("name"))
 	}
 
-	if gotForm.Get("sockets") != "1" || gotForm.Get("cores") != "4" || gotForm.Get("memory") != "4096" {
-		t.Errorf("sockets/cores/memory = %q/%q/%q", gotForm.Get("sockets"), gotForm.Get("cores"), gotForm.Get("memory"))
+	if form.Get("sockets") != "1" || form.Get("cores") != "4" || form.Get("memory") != "4096" {
+		t.Errorf("sockets/cores/memory = %q/%q/%q", form.Get("sockets"), form.Get("cores"), form.Get("memory"))
 	}
 
-	if gotForm.Get("pool") != FakePoolAliceShort || gotForm.Get("tags") != FakeTagPvmss {
-		t.Errorf("pool/tags = %q/%q", gotForm.Get("pool"), gotForm.Get("tags"))
+	if form.Get("pool") != FakePoolAliceShort || form.Get("tags") != FakeTagPvmss {
+		t.Errorf("pool/tags = %q/%q", form.Get("pool"), form.Get("tags"))
 	}
 
-	if gotForm.Get(diskKeySCSI0) != "local-lvm:32" || gotForm.Get("scsihw") != "virtio-scsi-pci" {
-		t.Errorf("scsi0/scsihw = %q/%q", gotForm.Get(diskKeySCSI0), gotForm.Get("scsihw"))
+	if form.Get(diskKeySCSI0) != "local-lvm:32" || form.Get("scsihw") != "virtio-scsi-pci" {
+		t.Errorf("scsi0/scsihw = %q/%q", form.Get(diskKeySCSI0), form.Get("scsihw"))
 	}
 
-	if gotForm.Get("net0") != "virtio,bridge=vmbr0" {
-		t.Errorf("net0 = %q", gotForm.Get("net0"))
+	if form.Get("net0") != "virtio,bridge=vmbr0" {
+		t.Errorf("net0 = %q", form.Get("net0"))
 	}
 
-	if gotForm.Get(cdromDiskKey) != cdromMountedValue {
-		t.Errorf("ide2 = %q", gotForm.Get(cdromDiskKey))
+	if form.Get(cdromDiskKey) != cdromMountedValue {
+		t.Errorf("ide2 = %q", form.Get(cdromDiskKey))
 	}
 
-	if gotForm.Get("start") != "1" {
-		t.Errorf("start = %q, want 1", gotForm.Get("start"))
+	if form.Get("start") != "1" {
+		t.Errorf("start = %q, want 1", form.Get("start"))
 	}
 }
 

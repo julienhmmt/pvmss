@@ -33,4 +33,5 @@ const (
 	msgClusterNotFound       = "cluster not found"
 	msgAdminOnly             = "admin only"
 	msgNotReportedByCluster  = " not reported by the cluster"
+	msgOnNode                = `" on node "`
 )

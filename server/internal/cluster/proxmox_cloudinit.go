@@ -11,6 +11,12 @@ import (
 	"strings"
 )
 
+// errBuildSnippetUpload wraps multipart-builder failures while constructing a
+// snippet upload request. Each call site wraps a distinct underlying error
+// (WriteField, CreateFormFile, part.Write, writer.Close); only the literal is
+// deduplicated.
+const errBuildSnippetUpload = "build snippet upload: %w"
+
 // GetCloudInitConfig implements CloudInitReader by reading the live VM
 // config. Password is always left empty: Proxmox does not return cipassword
 // on read (write-only), matching the fake's own cloneCloudInitConfig, which
@@ -197,20 +203,20 @@ func (p Proxmox) PushCloudInitSnippet(ctx context.Context, node, storage, filena
 
 	writer := multipart.NewWriter(&body)
 	if err := writer.WriteField("content", "snippets"); err != nil {
-		return fmt.Errorf("build snippet upload: %w", err)
+		return fmt.Errorf(errBuildSnippetUpload, err)
 	}
 
 	part, err := writer.CreateFormFile("filename", filename)
 	if err != nil {
-		return fmt.Errorf("build snippet upload: %w", err)
+		return fmt.Errorf(errBuildSnippetUpload, err)
 	}
 
 	if _, err := part.Write([]byte(content)); err != nil {
-		return fmt.Errorf("build snippet upload: %w", err)
+		return fmt.Errorf(errBuildSnippetUpload, err)
 	}
 
 	if err := writer.Close(); err != nil {
-		return fmt.Errorf("build snippet upload: %w", err)
+		return fmt.Errorf(errBuildSnippetUpload, err)
 	}
 
 	path := fmt.Sprintf("/nodes/%s/storage/%s/upload", url.PathEscape(node), url.PathEscape(storage))
