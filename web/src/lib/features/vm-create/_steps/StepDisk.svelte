@@ -29,7 +29,7 @@
 <div class="grid gap-4">
 	{#if form.node !== '' && form.catalog}
 		<p class="text-sm text-muted-foreground">
-			{m['vms.create.selectedContext']({ node: form.node, cluster: form.catalog.cluster })}
+			{m['vms.create.selectedContext']({ node: form.node, cluster: form.clusterDisplayName() })}
 		</p>
 	{/if}
 
@@ -41,7 +41,10 @@
 				{invalid}
 				bind:value={form.diskStorage}
 				placeholder={m['vms.create.chooseStorage']()}
-				options={storagesOnNode.map((storage) => storage.name)}
+				options={storagesOnNode.map((storage) => ({
+					value: storage.name,
+					label: m['vms.create.optionWithLocation']({ name: storage.name, node: storage.node, cluster: form.clusterDisplayName() })
+				}))}
 			/>
 		{/snippet}
 	</FormField>

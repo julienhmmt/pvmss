@@ -99,6 +99,14 @@ type catalogStorageDTO struct {
 	Node string `json:"node"`
 }
 
+// catalogBridgeDTO is one approved bridge on one node — bridge approval is
+// per-node (like storage), so the client needs the node to both label the
+// option and filter to the VM's chosen node.
+type catalogBridgeDTO struct {
+	Name string `json:"name"`
+	Node string `json:"node"`
+}
+
 type catalogISODTO struct {
 	Storage string `json:"storage"`
 	File    string `json:"file"`
@@ -162,7 +170,7 @@ type catalogDTO struct {
 	Cluster            string                        `json:"cluster"`
 	Nodes              []string                      `json:"nodes"`
 	Storages           []catalogStorageDTO           `json:"storages"`
-	Bridges            []string                      `json:"bridges"`
+	Bridges            []catalogBridgeDTO            `json:"bridges"`
 	ISOs               []catalogISODTO               `json:"isos"`
 	Profiles           []catalogProfileDTO           `json:"profiles"`
 	CloudInitTemplates []catalogCloudInitTemplateDTO `json:"cloudInitTemplates"`
@@ -277,7 +285,7 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 		Cluster:            clusterName,
 		Nodes:              make([]string, 0, len(resources.Nodes)),
 		Storages:           make([]catalogStorageDTO, 0, len(resources.Storages)),
-		Bridges:            catalogBridgeNames(resources.Bridges),
+		Bridges:            catalogBridgeDTOs(resources.Bridges),
 		ISOs:               make([]catalogISODTO, 0, len(resources.ISOs)),
 		Profiles:           make([]catalogProfileDTO, 0, len(profiles)),
 		CloudInitTemplates: make([]catalogCloudInitTemplateDTO, 0, len(templates)),
@@ -466,20 +474,26 @@ func vmCapableStorage(storage catalog.Storage, available []cluster.Storage) (clu
 	return cluster.Storage{}, false
 }
 
-func catalogBridgeNames(bridges []catalog.Bridge) []string {
-	names := make([]string, 0, len(bridges))
-	seen := make(map[string]struct{}, len(bridges))
+// catalogBridgeDTOs dedupes by (name, node) — the same bridge name can be
+// approved on more than one node, and each is a distinct, independently
+// selectable option (bridge approval is per-node, like storage).
+func catalogBridgeDTOs(bridges []catalog.Bridge) []catalogBridgeDTO {
+	type key struct{ name, node string }
+
+	out := make([]catalogBridgeDTO, 0, len(bridges))
+	seen := make(map[key]struct{}, len(bridges))
 
 	for _, bridge := range bridges {
-		if _, exists := seen[bridge.Name]; exists {
+		k := key{bridge.Name, bridge.Node}
+		if _, exists := seen[k]; exists {
 			continue
 		}
 
-		seen[bridge.Name] = struct{}{}
-		names = append(names, bridge.Name)
+		seen[k] = struct{}{}
+		out = append(out, catalogBridgeDTO{Name: bridge.Name, Node: bridge.Node})
 	}
 
-	return names
+	return out
 }
 
 // writeCreateFailure maps vm.Create's sentinel errors to the contract's

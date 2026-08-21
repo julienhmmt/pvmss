@@ -309,7 +309,10 @@ func TestVMCreateCatalog_SeededShape(t *testing.T) {
 			Name string `json:"name"`
 			Node string `json:"node"`
 		} `json:"storages"`
-		Bridges []string `json:"bridges"`
+		Bridges []struct {
+			Name string `json:"name"`
+			Node string `json:"node"`
+		} `json:"bridges"`
 		ISOs    []struct {
 			Storage string `json:"storage"`
 			File    string `json:"file"`
@@ -331,7 +334,7 @@ func TestVMCreateCatalog_SeededShape(t *testing.T) {
 		t.Errorf("cluster = %q, want default", body.Cluster)
 	}
 
-	if len(body.Nodes) != 2 || len(body.Storages) != 3 || len(body.Bridges) != 2 || len(body.ISOs) != 3 || len(body.Profiles) != 3 {
+	if len(body.Nodes) != 2 || len(body.Storages) != 3 || len(body.Bridges) != 4 || len(body.ISOs) != 3 || len(body.Profiles) != 3 {
 		t.Errorf("catalog size mismatch: %+v", body)
 	}
 

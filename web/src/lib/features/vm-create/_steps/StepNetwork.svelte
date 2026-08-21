@@ -8,16 +8,21 @@
 	// Network step: one initial NIC (multi-NIC is T07) — an approved bridge
 	// plus a device model.
 	const form = getVmCreateContext();
+
+	const bridgesOnNode = $derived((form.catalog?.bridges ?? []).filter((bridge) => bridge.node === form.node));
+	const bridgeError = $derived(
+		form.node !== '' && bridgesOnNode.length === 0 ? m['vms.create.noBridgeOnNode']({ node: form.node }) : null
+	);
 </script>
 
 <div class="grid gap-4">
 	{#if form.node !== '' && form.catalog}
 		<p class="text-sm text-muted-foreground">
-			{m['vms.create.selectedContext']({ node: form.node, cluster: form.catalog.cluster })}
+			{m['vms.create.selectedContext']({ node: form.node, cluster: form.clusterDisplayName() })}
 		</p>
 	{/if}
 
-	<FormField label={m['vms.create.bridge']()} required>
+	<FormField label={m['vms.create.bridge']()} required error={bridgeError}>
 		{#snippet children({ id, describedBy, invalid })}
 			<Select
 				{id}
@@ -25,7 +30,10 @@
 				{invalid}
 				bind:value={form.bridge}
 				placeholder={m['vms.create.chooseBridge']()}
-				options={form.catalog?.bridges ?? []}
+				options={bridgesOnNode.map((bridge) => ({
+					value: bridge.name,
+					label: m['vms.create.optionWithLocation']({ name: bridge.name, node: bridge.node, cluster: form.clusterDisplayName() })
+				}))}
 			/>
 		{/snippet}
 	</FormField>
