@@ -87,19 +87,32 @@ func NewVMBulk(projection *inventory.Projection, authHandler *Auth, writer clust
 	}
 }
 
+// VMBulkRegistryDeps groups the collaborators NewVMBulkWithRegistry needs for
+// multi-cluster wiring. Bundling them keeps the parameter count under go:S107.
+type VMBulkRegistryDeps struct {
+	Registry   *inventory.Registry
+	Projection *inventory.Projection
+	Auth       *Auth
+	Writer     cluster.Writer
+	Store      *store.Store
+	Refresher  vm.IndexRefresher
+	Log        *slog.Logger
+	Clients    cluster.ClientProvider
+}
+
 // NewVMBulkWithRegistry creates the handler wired to a multi-cluster
 // inventory Registry. Each target's cluster name resolves to that cluster's
 // own projection via Registry.Index.
-func NewVMBulkWithRegistry(registry *inventory.Registry, projection *inventory.Projection, authHandler *Auth, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger, clients cluster.ClientProvider) *VMBulk {
+func NewVMBulkWithRegistry(deps VMBulkRegistryDeps) *VMBulk {
 	return &VMBulk{
-		resolver:       registryResolver{registry: registry},
-		writerResolver: clientWriterResolver{clients: clients, fallback: writer},
-		projection:     projection,
-		auth:           authHandler,
-		writer:         writer,
-		store:          st,
-		refresher:      refresher,
-		log:            log,
+		resolver:       registryResolver{registry: deps.Registry},
+		writerResolver: clientWriterResolver{clients: deps.Clients, fallback: deps.Writer},
+		projection:     deps.Projection,
+		auth:           deps.Auth,
+		writer:         deps.Writer,
+		store:          deps.Store,
+		refresher:      deps.Refresher,
+		log:            deps.Log,
 	}
 }
 
