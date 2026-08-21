@@ -404,8 +404,8 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		policyService,
 	)
 	tasks := httpapi.NewTasksWithRegistry(authHandler, clusterRegistry, creator, worker, logger)
-	snapshots := httpapi.NewVMSnapshotsWithRegistry(inventoryRegistry, projection, authHandler, snapshotReader, snapshotWriter, clusterRegistry, st, logger, policyService)
-	vmConsole := httpapi.NewVMConsoleWithRegistry(inventoryRegistry, projection, authHandler, consoleRelay, clusterRegistry, consoleTickets, st, logger)
+	snapshots := httpapi.NewVMSnapshotsWithRegistry(httpapi.VMSnapshotsRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Reader: snapshotReader, Writer: snapshotWriter, Clients: clusterRegistry, Store: st, Log: logger, Services: []*policy.Policy{policyService}})
+	vmConsole := httpapi.NewVMConsoleWithRegistry(httpapi.VMConsoleRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Relay: consoleRelay, Clients: clusterRegistry, Tickets: consoleTickets, Store: st, Log: logger})
 	vmMetrics := httpapi.NewVMMetricsWithRegistry(inventoryRegistry, projection, authHandler, metricsReader, metricsCurrentReader, clusterRegistry, logger)
 	adminCatalog := httpapi.NewAdminCatalogWithRegistry(authHandler, st, clusterRegistry, projection, logger)
 	adminPolicy := httpapi.NewAdminPolicyWithRegistry(authHandler, policyService, clusterRegistry, logger)
