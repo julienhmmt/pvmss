@@ -352,6 +352,8 @@
  "vms.console.ctrlaltdel": "Ctrl+Alt+Suppr",
  "vms.console.errorTicket": "échec de l'obtention du ticket de console",
  "vms.console.errorConnection": "échec de la création de la connexion RFB",
+ "vms.console.popout": "Fenêtre séparée",
+ "vms.console.popoutBlocked": "Votre navigateur a bloqué la fenêtre séparée. Autorisez les fenêtres pop-up pour ce site et réessayez.",
  "vms.cloudinit.heading": "Cloud-init",
  "vms.cloudinit.description": "Configurer les paramètres cloud-init de la VM en cours d'exécution ou du YAML personnalisé.",
  "vms.cloudinit.modeLabel": "Mode d'édition cloud-init",
