@@ -244,7 +244,7 @@ required value.
 | `LOG_LEVEL`            | `debug` \| `info` \| `warn` \| `error` — **lowercase only** |
 | `LOG_FORMAT`           | `json` \| `console`                                         |
 | `LOG_OUTPUT`           | `stdout` \| `stderr` \| a file path                         |
-| `PVMSS_CLUSTER_SOURCE` | `fake` \| `proxmox` — no default, on purpose (see below)     |
+| `PVMSS_CLUSTER_SOURCE` | `fake` \| `proxmox` — no default, on purpose (see below)    |
 
 `PVMSS_CLUSTER_SOURCE` has no default because `fake` ships hardcoded demo
 credentials (`admin@pve` / `pvmss-admin`); it must never be selected by an
@@ -261,7 +261,7 @@ operator who simply forgot to set the variable.
 | --------------------------------------------- | ---------------------------------- |
 | `PVMSS_HOST`                                  | `127.0.0.1` (image sets `0.0.0.0`) |
 | `PVMSS_WEB_DIR`                               | relative to the executable         |
-| `ADMIN_PASSWORD_HASH`                         | empty; if set, must be bcrypt (`$2…`) |
+| `ADMIN_PASSWORD_HASH`                         | empty; if set, must be `$2…`       |
 | `PVMSS_COOKIE_SECURE`                         | `true`                             |
 | `PVMSS_INVENTORY_REFRESH_INTERVAL`            | `30s`                              |
 | `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | `5s`                               |
@@ -290,8 +290,6 @@ you touch the surrounding area; do not treat them as documentation of reality:
 - `README.md` / `README.fr.md` — correctly link the in-app page
   `/docs/proxmox-permissions` (seeded from `server/internal/docs/seed/recovered/`),
   not the deleted `backend/docs/proxmox-permissions.*.md`
-- `.specify/memory/constitution.md` — describes v0.3 as still deployable
-- `.gitignore` — has `backend/` and `frontend/` entries (harmless but stale)
 - `tools/superlinter.sh` — commented-out exclude regex references `frontend/`
 - `docs/plans/` — historical task plans reference v0.3 paths (read-only history)
 - `server/internal/recovery/` — comments reference `backend/` for context only
