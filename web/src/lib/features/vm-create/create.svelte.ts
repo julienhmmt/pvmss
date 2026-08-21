@@ -1,5 +1,6 @@
 import { getContext, setContext } from 'svelte';
 import { get, post, ApiRequestError } from '$lib/shared/api/client';
+import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 import { m } from '$lib/paraglide/messages.js';
 import type { DraftValues } from './draft.svelte';
 
@@ -187,6 +188,8 @@ export class VmCreateStore {
 	catalogError = $state.raw<string | null>(null);
 	submitting = $state.raw(false);
 	submitError = $state.raw<string | null>(null);
+	clusterOptions = $state.raw<ClusterOption[]>([]);
+	cluster = $state.raw('');
 
 	mode = $state<CreateMode>('simple');
 	name = $state('');
@@ -206,11 +209,33 @@ export class VmCreateStore {
 	isoFile = $state('');
 	startAfterCreate = $state(true);
 
-	/** Fetch the approved-resource catalog for the caller's cluster (FR-002). */
+	/** Fetches the multi-cluster options and defaults to the first one, matching
+	 *  the login page's cluster picker (must run before loadCatalog when the
+	 *  deployment has more than one cluster — the catalog needs one to target). */
+	async loadClusters(): Promise<void> {
+		try {
+			this.clusterOptions = await fetchClusterOptions();
+		} catch {
+			this.clusterOptions = [];
+		}
+		const first = this.clusterOptions[0];
+		if (first && this.cluster === '') this.cluster = first.name;
+	}
+
+	setCluster(name: string): void {
+		this.cluster = name;
+		void this.loadCatalog();
+	}
+
+	/** Fetch the approved-resource catalog for the selected cluster (FR-002). */
 	async loadCatalog(): Promise<void> {
 		this.catalogError = null;
 		try {
-			this.catalog = await get<VmCreateCatalog>('/api/v1/vm-create/catalog');
+			const path =
+				this.cluster === ''
+					? '/api/v1/vm-create/catalog'
+					: `/api/v1/vm-create/catalog?cluster=${encodeURIComponent(this.cluster)}`;
+			this.catalog = await get<VmCreateCatalog>(path);
 		} catch (error: unknown) {
 			this.catalogError = error instanceof ApiRequestError ? error.message : m['vms.create.errorCatalog']();
 		}
