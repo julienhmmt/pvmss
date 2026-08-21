@@ -196,7 +196,7 @@ func TestVMBulk_SpansTwoClusters(t *testing.T) {
 
 	t.Cleanup(func() { _ = st.Close() })
 
-	handler := httpapi.NewVMBulkWithRegistry(registry, projection, authHandler, cluster.Fake{}, st, bulkNoopRefresher{}, logger, nil)
+	handler := httpapi.NewVMBulkWithRegistry(httpapi.VMBulkRegistryDeps{Registry: registry, Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: st, Refresher: bulkNoopRefresher{}, Log: logger, Clients: nil})
 	cookie := aliceCookie(t, authHandler)
 
 	// VM 101 in default (stopped) and VM 124 in secondary (stopped) — both
