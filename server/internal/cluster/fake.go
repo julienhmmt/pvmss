@@ -487,7 +487,9 @@ func validateTransition(action string, status VMStatus) error {
 }
 
 // Delete implements Writer — the VM and its disks are removed from the
-// dataset. Irreversible (V14): no soft-delete, no undo.
+// dataset. Irreversible (V14): no soft-delete, no undo. A running VM is
+// rejected with ErrVMRunning, mirroring real Proxmox (which returns HTTP 500
+// "VM X is running - destroy failed"); callers must stop it first.
 func (fake Fake) Delete(_ context.Context, node string, vmid int) error {
 	state := fake.stateOrDefault()
 	state.vmMu.Lock()
@@ -496,6 +498,10 @@ func (fake Fake) Delete(_ context.Context, node string, vmid int) error {
 	idx := slices.IndexFunc(state.vms, func(v VM) bool { return v.VMID == vmid && v.Node == node })
 	if idx < 0 {
 		return ErrNotFound
+	}
+
+	if state.vms[idx].Status == VMRunning {
+		return ErrVMRunning
 	}
 
 	state.vms = slices.Delete(state.vms, idx, idx+1)

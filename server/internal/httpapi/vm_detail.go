@@ -328,6 +328,10 @@ func (h *VMDetail) handleAction(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleDelete serves DELETE /vms/:cluster/:vmid (US3). Same Resolve() gate.
+// The optional ?force=true query parameter authorizes a force-stop of a running
+// VM before the destroy — the UI only sends it after the user has confirmed the
+// force-stop in the delete dialog. Without it, a running VM is rejected with
+// 409 (code "vm_running") so the client can prompt for confirmation.
 func (h *VMDetail) handleDelete(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
@@ -351,7 +355,7 @@ func (h *VMDetail) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := vm.Delete(r.Context(), vm.WriteDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer, Audit: h.store, Refresher: h.refresher}); err != nil {
+	if err := vm.Delete(r.Context(), vm.WriteDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer, Audit: h.store, Refresher: h.refresher, Force: r.URL.Query().Get("force") == "true"}); err != nil {
 		h.writeActionError(w, err)
 		return
 	}
@@ -1073,6 +1077,8 @@ func (h *VMDetail) writeActionError(w http.ResponseWriter, err error) {
 		h.writeDetailError(w, http.StatusBadGateway, "cluster_unreachable", "cluster is not reachable")
 	case errors.Is(err, cluster.ErrInvalidStateTransition):
 		h.writeDetailError(w, http.StatusConflict, "invalid_state_transition", err.Error())
+	case errors.Is(err, cluster.ErrVMRunning):
+		h.writeDetailError(w, http.StatusConflict, "vm_running", msgVMRunning)
 	default:
 		h.log.Error("vm action failed", "component", "httpapi", "error", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)

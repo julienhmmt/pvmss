@@ -39,6 +39,20 @@ func TestFake_OfflineDemoRejectsEveryClientMethod(t *testing.T) {
 	}
 }
 
+// firstStoppedVM returns the first stopped VM in vms, or vms[0] if none is
+// stopped. The fake's Delete rejects a running VM with ErrVMRunning (mirroring
+// real Proxmox); tests that exercise isolation, not the force-stop path, need
+// a stopped target.
+func firstStoppedVM(vms []cluster.VM) cluster.VM {
+	for _, v := range vms {
+		if v.Status == cluster.VMStopped {
+			return v
+		}
+	}
+
+	return vms[0]
+}
+
 // TestFake_InstancesDoNotShareMutations is the isolation guarantee NewFake
 // exists for: a delete on one cluster must not shrink another cluster's
 // snapshot, and a zero-value Fake{} must stay on the default dataset.
@@ -61,7 +75,7 @@ func TestFake_InstancesDoNotShareMutations(t *testing.T) {
 		t.Fatal("expected both clusters to have VMs")
 	}
 
-	target := beforeDefault.VMs[0]
+	target := firstStoppedVM(beforeDefault.VMs)
 	if err := defaultCluster.Delete(ctx, target.Node, target.VMID); err != nil {
 		t.Fatalf("delete on default: %v", err)
 	}
