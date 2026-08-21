@@ -11,6 +11,8 @@
 	import VmBulkActionBar from '$lib/features/vms/VmBulkActionBar.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
+	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 	import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -63,31 +65,34 @@
 	<title>{m['vms.list.title']()}</title>
 </svelte:head>
 
-<section class="mx-auto w-full max-w-5xl px-4 py-8">
-	<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-		<h1 class="text-2xl font-semibold tracking-tight">{m['vms.list.heading']()}</h1>
-		<ClusterSelector options={clusterOptions} value={vmListStore.cluster} onChange={(value) => vmListStore.setCluster(value)} includeAll id="vm-cluster-filter" />
-		<button
-			type="button"
-			class="rounded-md border px-3 py-2 text-sm font-medium disabled:opacity-50"
-			disabled={vmListStore.loading}
-			onclick={() => void vmListStore.load()}
-		>
-			{vmListStore.loading ? m['common.refreshing']() : m['common.refresh']()}
-		</button>
-		{#if !session.isAdmin}
-			<a
-				href={resolve('/vms/create')}
-				class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
-			>
-				{m['vms.list.create']()}
-			</a>
-		{/if}
-	</div>
+<section class="mx-auto w-full max-w-5xl py-2">
+	<PageHeader title={m['vms.list.heading']()} description={m['vms.list.description']()}>
+		{#snippet actions()}
+			<div class="flex flex-wrap items-center gap-2">
+				<ClusterSelector options={clusterOptions} value={vmListStore.cluster} onChange={(value) => vmListStore.setCluster(value)} includeAll id="vm-cluster-filter" />
+				<Button
+					variant="secondary"
+					size="sm"
+					disabled={vmListStore.loading}
+					onclick={() => void vmListStore.load()}
+				>
+					{vmListStore.loading ? m['common.refreshing']() : m['common.refresh']()}
+				</Button>
+				{#if !session.isAdmin}
+					<a
+						href={resolve('/vms/create')}
+						class="inline-flex items-center justify-center rounded-[0.625rem] bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-card transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+					>
+						{m['vms.list.create']()}
+					</a>
+				{/if}
+			</div>
+		{/snippet}
+	</PageHeader>
 
 	{#if vmListStore.loading && vmListStore.result === null}
 		<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
-		<TableSkeleton columns={8} />
+		<TableSkeleton columns={9} />
 	{:else}
 		<div class="fade-in">
 			<VmBulkActionBar />

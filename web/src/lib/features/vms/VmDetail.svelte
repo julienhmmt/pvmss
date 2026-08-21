@@ -12,6 +12,7 @@
 	import ConsoleBanner from './ConsoleBanner.svelte';
 	import VmMetricsRow from './VmMetricsRow.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import { formatBytes } from '$lib/shared/format-bytes';
 
 	const store = getVmDetailContext();
 
@@ -36,17 +37,6 @@
 		stopped: 'bg-muted text-muted-foreground border-border',
 		paused: 'bg-destructive-soft text-destructive-soft-foreground border-destructive-soft-border'
 	};
-
-	function formatBytes(bytes: number): string {
-		const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
-		let value = bytes;
-		let unitIndex = 0;
-		while (value >= 1024 && unitIndex < units.length - 1) {
-			value /= 1024;
-			unitIndex += 1;
-		}
-		return `${value.toFixed(1)} ${units[unitIndex]}`;
-	}
 
 	function formatUptime(seconds: number): string {
 		const days = Math.floor(seconds / 86400);

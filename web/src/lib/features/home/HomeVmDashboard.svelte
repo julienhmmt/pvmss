@@ -2,7 +2,8 @@
 	import { get } from '$lib/shared/api/client';
 	import { resolve } from '$app/paths';
 	import { m } from '$lib/paraglide/messages.js';
-	import type { VmListItem } from '$lib/features/vms/list.svelte';
+	import { formatBytes } from '$lib/shared/format-bytes';
+	import type { VmListItem, VmStatus } from '$lib/features/vms/list.svelte';
 	import { onMount } from 'svelte';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 
@@ -28,11 +29,17 @@
 		}
 	}
 
-	function statusClass(status: string): string {
+	function statusClass(status: VmStatus): string {
 		if (status === 'running') return 'bg-success-soft text-success-soft-foreground';
 		if (status === 'stopped') return 'bg-muted text-muted-foreground';
 		return 'bg-destructive-soft text-destructive-soft-foreground';
 	}
+
+	const statusLabels: Record<VmStatus, () => string> = {
+		running: () => m['common.statusRunning'](),
+		stopped: () => m['common.statusStopped'](),
+		paused: () => m['common.statusPaused']()
+	};
 
 	let total = $derived(vms.length);
 	let running = $derived(vms.filter((v) => v.status === 'running').length);
@@ -115,11 +122,11 @@
 							class="inline-flex items-center rounded-full px-2 py-0.5 text-xs {statusClass(vm.status)}"
 							data-testid="dashboard-vm-status"
 						>
-							{vm.status}
+							{statusLabels[vm.status]()}
 						</span>
 						<span class="font-mono text-muted-foreground">{vm.node}</span>
 						<span class="font-mono text-muted-foreground">{vm.cpuCores} {m['common.cores']()}</span>
-						<span class="font-mono text-muted-foreground">{vm.memoryTotal > 0 ? `${Math.round(vm.memoryTotal / 1048576 * 10) / 10} GiB` : '—'}</span>
+						<span class="font-mono text-muted-foreground">{vm.memoryTotal > 0 ? formatBytes(vm.memoryTotal) : '—'}</span>
 					</li>
 				{/each}
 			</ul>
