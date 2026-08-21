@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { ClusterNode, NodeStatus } from './nodes.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import { formatBytes } from '$lib/shared/format-bytes';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 
@@ -21,17 +22,6 @@
 		refreshError,
 		onRefresh
 	}: Props = $props();
-
-	function formatBytes(bytes: number): string {
-		const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
-		let value = bytes;
-		let unitIndex = 0;
-		while (value >= 1024 && unitIndex < units.length - 1) {
-			value /= 1024;
-			unitIndex += 1;
-		}
-		return `${value.toFixed(1)} ${units[unitIndex]}`;
-	}
 
 	function formatPercent(usage: number): string {
 		return `${Math.round(usage * 100)}%`;
