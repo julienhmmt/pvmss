@@ -1,4 +1,5 @@
 import { get, put, ApiRequestError } from '$lib/shared/api/client';
+import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 import { getContext, setContext } from 'svelte';
 import { m } from '$lib/paraglide/messages.js';
 
@@ -45,12 +46,35 @@ export class AdminPolicyStore {
 	saving = $state.raw(false);
 	saveError = $state.raw<string | null>(null);
 	saved = $state.raw(false);
+	clusterOptions = $state.raw<ClusterOption[]>([]);
+	cluster = $state('default');
+
+	/** Resolves the real cluster name (matches admin-catalog's pattern) so
+	 *  requests never send the literal "default" against a deployment whose
+	 *  cluster is named something else. */
+	async loadClusters(): Promise<void> {
+		try {
+			this.clusterOptions = await fetchClusterOptions();
+			const first = this.clusterOptions[0];
+			if (first && (this.clusterOptions.length === 1 || !this.clusterOptions.some((option) => option.name === this.cluster))) {
+				this.cluster = first.name;
+			}
+		} catch (error: unknown) {
+			this.error = error instanceof ApiRequestError ? error.message : m['policy.loadError']();
+		}
+	}
+
+	setCluster(value: string): void {
+		this.cluster = value;
+		void this.load();
+	}
 
 	async load(): Promise<void> {
+		await this.loadClusters();
 		this.loading = true;
 		this.error = null;
 		try {
-			this.policy = await get<AdminPolicy>('/api/v1/admin/policy?cluster=default');
+			this.policy = await get<AdminPolicy>(`/api/v1/admin/policy?cluster=${encodeURIComponent(this.cluster)}`);
 		} catch (error: unknown) {
 			this.error = error instanceof ApiRequestError ? error.message : m['policy.loadError']();
 		} finally {
@@ -63,7 +87,7 @@ export class AdminPolicyStore {
 		this.saveError = null;
 		this.saved = false;
 		try {
-			this.policy = await put<AdminPolicy>('/api/v1/admin/policy', { cluster: 'default', ...patch });
+			this.policy = await put<AdminPolicy>('/api/v1/admin/policy', { cluster: this.cluster, ...patch });
 			this.saved = true;
 		} catch (error: unknown) {
 			this.saveError = error instanceof ApiRequestError ? error.message : m['policy.saveError']();

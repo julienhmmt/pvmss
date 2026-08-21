@@ -1,4 +1,5 @@
 import { get, post, put, del, ApiRequestError } from '$lib/shared/api/client';
+import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 import { setContext, getContext } from 'svelte';
 import { m } from '$lib/paraglide/messages.js';
 
@@ -22,6 +23,8 @@ export class AdminProfilesStore {
 	error = $state.raw<string | null>(null);
 	saving = $state.raw(false);
 	saveError = $state.raw<string | null>(null);
+	clusterOptions = $state.raw<ClusterOption[]>([]);
+	cluster = $state('default');
 
 	search = $state('');
 	busFilter = $state('');
@@ -63,11 +66,32 @@ export class AdminProfilesStore {
 		this.enabledFilter = 'all';
 	}
 
+	/** Resolves the real cluster name (matches admin-catalog's pattern) so
+	 *  requests never send the literal "default" against a deployment whose
+	 *  cluster is named something else. */
+	async loadClusters(): Promise<void> {
+		try {
+			this.clusterOptions = await fetchClusterOptions();
+			const first = this.clusterOptions[0];
+			if (first && (this.clusterOptions.length === 1 || !this.clusterOptions.some((option) => option.name === this.cluster))) {
+				this.cluster = first.name;
+			}
+		} catch (err) {
+			this.error = err instanceof ApiRequestError ? err.message : m['admin.profiles.loadError']();
+		}
+	}
+
+	setCluster(value: string): void {
+		this.cluster = value;
+		void this.load();
+	}
+
 	async load(): Promise<void> {
+		await this.loadClusters();
 		this.loading = true;
 		this.error = null;
 		try {
-			this.profiles = await get<AdminProfile[]>('/api/v1/admin/profiles?cluster=default');
+			this.profiles = await get<AdminProfile[]>(`/api/v1/admin/profiles?cluster=${encodeURIComponent(this.cluster)}`);
 		} catch (err) {
 			this.error = err instanceof ApiRequestError ? err.message : m['admin.profiles.loadError']();
 		} finally {
@@ -80,7 +104,7 @@ export class AdminProfilesStore {
 		this.saveError = null;
 		try {
 			const created = await post<AdminProfile>('/api/v1/admin/profiles', {
-				cluster: 'default', label, cpuCores, memoryMB, diskGB, bus
+				cluster: this.cluster, label, cpuCores, memoryMB, diskGB, bus
 			});
 			this.profiles = [...this.profiles, created];
 		} catch (err) {
@@ -96,7 +120,7 @@ export class AdminProfilesStore {
 		this.saveError = null;
 		try {
 			const updated = await put<AdminProfile>(`/api/v1/admin/profiles/${id}`, {
-				cluster: 'default', label, cpuCores, memoryMB, diskGB, bus
+				cluster: this.cluster, label, cpuCores, memoryMB, diskGB, bus
 			});
 			this.profiles = this.profiles.map((p) => (p.id === id ? updated : p));
 		} catch (err) {
@@ -110,7 +134,7 @@ export class AdminProfilesStore {
 	async remove(id: string): Promise<void> {
 		this.saveError = null;
 		try {
-			await del<{ status: string }>(`/api/v1/admin/profiles/${id}?cluster=default`);
+			await del<{ status: string }>(`/api/v1/admin/profiles/${id}?cluster=${encodeURIComponent(this.cluster)}`);
 			this.profiles = this.profiles.filter((p) => p.id !== id);
 		} catch (err) {
 			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.profiles.deleteError']();
@@ -122,7 +146,7 @@ export class AdminProfilesStore {
 		this.saveError = null;
 		try {
 			await post<{ id: string; enabled: boolean }>(`/api/v1/admin/profiles/${id}/toggle`, {
-				cluster: 'default', enabled
+				cluster: this.cluster, enabled
 			});
 			this.profiles = this.profiles.map((p) => (p.id === id ? { ...p, enabled } : p));
 		} catch (err) {
