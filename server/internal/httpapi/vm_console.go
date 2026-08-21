@@ -31,8 +31,10 @@ import (
 // "Behavioural rules": the legacy flow will not exist).
 type VMConsole struct {
 	projection *inventory.Projection
+	resolver   vm.ClusterIndexResolver
 	auth       *Auth
 	relay      cluster.ConsoleRelay
+	clients    cluster.ClientProvider
 	tickets    *vm.ConsoleTicketStore
 	store      *store.Store
 	log        *slog.Logger
@@ -40,9 +42,26 @@ type VMConsole struct {
 
 // NewVMConsole creates the handler. The relay is the cluster.ConsoleRelay
 // (Fake or Proxmox); the tickets store is the in-memory ConsoleTicketStore
-// from main.go; the store is the real audit store.
+// from main.go; the store is the real audit store. Bound to a single
+// cluster; use NewVMConsoleWithRegistry for multi-cluster deployments.
 func NewVMConsole(projection *inventory.Projection, authHandler *Auth, relay cluster.ConsoleRelay, tickets *vm.ConsoleTicketStore, st *store.Store, log *slog.Logger) *VMConsole {
-	return &VMConsole{projection: projection, auth: authHandler, relay: relay, tickets: tickets, store: st, log: log}
+	return &VMConsole{projection: projection, resolver: singleClusterResolver{projection: projection}, auth: authHandler, relay: relay, tickets: tickets, store: st, log: log}
+}
+
+// NewVMConsoleWithRegistry creates the handler with per-request index and
+// cluster.ConsoleRelay resolution, keyed on the request's own :cluster path
+// value — without this, a console ticket for a non-default cluster would be
+// issued against the default cluster's node/port, and the relay would
+// connect to the wrong Proxmox host entirely.
+func NewVMConsoleWithRegistry(source inventory.LookupSource, projection *inventory.Projection, authHandler *Auth, relay cluster.ConsoleRelay, clients cluster.ClientProvider, tickets *vm.ConsoleTicketStore, st *store.Store, log *slog.Logger) *VMConsole {
+	handler := NewVMConsole(projection, authHandler, relay, tickets, st, log)
+	if registry, ok := source.(*inventory.Registry); ok {
+		handler.resolver = registryResolver{registry: registry}
+	}
+
+	handler.clients = clients
+
+	return handler
 }
 
 // vncTicketResponse is the JSON body for POST /vnc-ticket. Only the opaque
@@ -86,13 +105,18 @@ func (h *VMConsole) handleVNCTicket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	index := h.projection.Load()
-	if index == nil {
-		h.writeConsoleError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet")
+	index, ok := loadClusterIndex(h.resolver, clusterName, func(status int, code, message string) { h.writeConsoleError(w, status, code, message) })
+	if !ok {
 		return
 	}
 
-	ticket, err := vm.GetConsoleTicket(r.Context(), vm.ConsoleTicketDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Client: h.relay, Store: h.tickets, Audit: h.store})
+	relay, err := resolveCapability(h.clients, h.relay, clusterName, "ConsoleRelay")
+	if err != nil {
+		h.writeConsoleError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return
+	}
+
+	ticket, err := vm.GetConsoleTicket(r.Context(), vm.ConsoleTicketDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Client: relay, Store: h.tickets, Audit: h.store})
 	if err != nil {
 		h.writeTicketError(w, err)
 		return
@@ -182,8 +206,14 @@ func (h *VMConsole) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	peer := websocket.NetConn(context.Background(), conn, websocket.MessageBinary)
 	defer func() { _ = peer.Close() }()
 
+	relay, err := resolveCapability(h.clients, h.relay, ticket.Cluster, "ConsoleRelay")
+	if err != nil {
+		h.log.Error("console relay resolution failed", "component", "httpapi", "cluster", ticket.Cluster, "error", err)
+		return
+	}
+
 	proxy := cluster.VNCProxyTicket{Ticket: ticket.ProxmoxTicket, Port: ticket.Port, Node: ticket.Node}
-	err = h.relay.RelayConsole(r.Context(), ticket.Cluster, ticket.VMID, proxy, peer)
+	err = relay.RelayConsole(r.Context(), ticket.Cluster, ticket.VMID, proxy, peer)
 	// Always log the outcome — a normal closure needs to be as visible as an
 	// error one, otherwise "did the relay even start" is undiagnosable from
 	// the logs alone (this used to be silent on success).

@@ -22,9 +22,11 @@ const maxCloudInitSnippetBody = 128 * 1024
 // VMCloudInit serves the four per-VM cloud-init endpoints.
 type VMCloudInit struct {
 	projection *inventory.Projection
+	resolver   vm.ClusterIndexResolver
 	auth       *Auth
 	reader     cluster.CloudInitReader
 	writer     cluster.Writer
+	clients    cluster.ClientProvider
 	store      *store.Store
 	refresher  vm.IndexRefresher
 	policy     *policy.Policy
@@ -33,12 +35,17 @@ type VMCloudInit struct {
 
 // VMCloudInitDeps groups the shared dependencies for constructing a VMCloudInit
 // handler. It collapses the seven positional parameters NewVMCloudInit used to
-// take (SonarQube go:S107).
+// take (SonarQube go:S107). Source and Clients are optional: when set (a
+// multi-cluster deployment), every index load and cluster.Reader/Writer call
+// below resolves per-request from the request's own :cluster path value
+// instead of the single bound Projection/Reader/Writer.
 type VMCloudInitDeps struct {
+	Source     inventory.LookupSource
 	Projection *inventory.Projection
 	Auth       *Auth
 	Reader     cluster.CloudInitReader
 	Writer     cluster.Writer
+	Clients    cluster.ClientProvider
 	Store      *store.Store
 	Refresher  vm.IndexRefresher
 	Log        *slog.Logger
@@ -55,7 +62,40 @@ func NewVMCloudInit(deps VMCloudInitDeps, services ...*policy.Policy) *VMCloudIn
 		policyService = policy.New(deps.Store, deps.Projection, nil)
 	}
 
-	return &VMCloudInit{projection: deps.Projection, auth: deps.Auth, reader: deps.Reader, writer: deps.Writer, store: deps.Store, refresher: deps.Refresher, policy: policyService, log: deps.Log}
+	resolver := vm.ClusterIndexResolver(singleClusterResolver{projection: deps.Projection})
+	if registry, ok := deps.Source.(*inventory.Registry); ok {
+		resolver = registryResolver{registry: registry}
+	}
+
+	return &VMCloudInit{projection: deps.Projection, resolver: resolver, auth: deps.Auth, reader: deps.Reader, writer: deps.Writer, clients: deps.Clients, store: deps.Store, refresher: deps.Refresher, policy: policyService, log: deps.Log}
+}
+
+// index resolves the current Index for clusterName, writing the appropriate
+// error response on failure.
+func (h *VMCloudInit) index(w http.ResponseWriter, clusterName string) (*inventory.Index, bool) {
+	return loadClusterIndex(h.resolver, clusterName, func(status int, code, message string) { h.writeError(w, status, code, message) })
+}
+
+// readerFor resolves the cluster.CloudInitReader for clusterName.
+func (h *VMCloudInit) readerFor(w http.ResponseWriter, clusterName string) (cluster.CloudInitReader, bool) {
+	reader, err := resolveCapability(h.clients, h.reader, clusterName, "CloudInitReader")
+	if err != nil {
+		h.writeError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return nil, false
+	}
+
+	return reader, true
+}
+
+// writerFor resolves the cluster.Writer for clusterName.
+func (h *VMCloudInit) writerFor(w http.ResponseWriter, clusterName string) (cluster.Writer, bool) {
+	writer, err := resolveCapability(h.clients, h.writer, clusterName, "Writer")
+	if err != nil {
+		h.writeError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return nil, false
+	}
+
+	return writer, true
 }
 
 type cloudInitConfigDTO struct {
@@ -140,13 +180,17 @@ func (h *VMCloudInit) serveRoute(w http.ResponseWriter, r *http.Request, getHand
 }
 
 func (h *VMCloudInit) getConfig(w http.ResponseWriter, r *http.Request, actor auth.Identity, clusterName string, vmid int) {
-	index := h.projection.Load()
-	if index == nil {
-		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
+	index, ok := h.index(w, clusterName)
+	if !ok {
 		return
 	}
 
-	config, err := vm.GetCloudInitConfig(r.Context(), index, actor, clusterName, vmid, h.reader)
+	reader, ok := h.readerFor(w, clusterName)
+	if !ok {
+		return
+	}
+
+	config, err := vm.GetCloudInitConfig(r.Context(), index, actor, clusterName, vmid, reader)
 	if err != nil {
 		h.writeDomainError(w, err)
 		return
@@ -166,15 +210,24 @@ func (h *VMCloudInit) putConfig(w http.ResponseWriter, r *http.Request, actor au
 		return
 	}
 
-	index := h.projection.Load()
-	if index == nil {
-		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
+	index, ok := h.index(w, clusterName)
+	if !ok {
+		return
+	}
+
+	reader, ok := h.readerFor(w, clusterName)
+	if !ok {
+		return
+	}
+
+	writer, ok := h.writerFor(w, clusterName)
+	if !ok {
 		return
 	}
 
 	rebooted, err := vm.SetCloudInitConfig(r.Context(), vm.CloudInitConfigDeps{
 		Index: index, Actor: actor, ClusterName: clusterName, VMID: vmid,
-		Reader: h.reader, Writer: h.writer, Audit: h.store, Refresher: h.refresher,
+		Reader: reader, Writer: writer, Audit: h.store, Refresher: h.refresher,
 	}, cluster.CloudInitUpdate{
 		User: request.User, Password: request.Password, SSHKeys: request.SSHKeys, IPMode: request.IPMode,
 		IPAddress: request.IPAddress, Gateway: request.Gateway, DNSServer: request.DNSServer, SearchDomain: request.SearchDomain,
@@ -192,9 +245,8 @@ func (h *VMCloudInit) handleSnippet(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *VMCloudInit) getSnippet(w http.ResponseWriter, r *http.Request, actor auth.Identity, clusterName string, vmid int) {
-	index := h.projection.Load()
-	if index == nil {
-		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
+	index, ok := h.index(w, clusterName)
+	if !ok {
 		return
 	}
 
@@ -222,15 +274,24 @@ func (h *VMCloudInit) putSnippet(w http.ResponseWriter, r *http.Request, actor a
 		return
 	}
 
-	index := h.projection.Load()
-	if index == nil {
-		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
+	index, ok := h.index(w, clusterName)
+	if !ok {
+		return
+	}
+
+	reader, ok := h.readerFor(w, clusterName)
+	if !ok {
+		return
+	}
+
+	writer, ok := h.writerFor(w, clusterName)
+	if !ok {
 		return
 	}
 
 	if err := vm.SetCloudInitSnippet(r.Context(), vm.CloudInitSnippetDeps{
 		Index: index, Actor: actor, ClusterName: clusterName, VMID: vmid,
-		Reader: h.reader, Writer: h.writer, Store: h.store, Service: h.policy,
+		Reader: reader, Writer: writer, Store: h.store, Service: h.policy,
 	}, *request.Content); err != nil {
 		h.writeDomainError(w, err)
 		return

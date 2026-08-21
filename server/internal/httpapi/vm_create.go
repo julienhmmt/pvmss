@@ -140,10 +140,15 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := vm.Create(r.Context(), identity, req.Cluster, req, vm.CreateDeps{
+	clusterName, creator, pusher, ok := h.resolveCreateTarget(w, req.Cluster)
+	if !ok {
+		return
+	}
+
+	result, err := vm.Create(r.Context(), identity, clusterName, req, vm.CreateDeps{
 		Store:    h.store,
-		Creator:  h.creator,
-		Pusher:   h.pusher,
+		Creator:  creator,
+		Pusher:   pusher,
 		Audit:    h.store,
 		Log:      h.log,
 		Services: []*policy.Policy{h.policy},
@@ -273,6 +278,49 @@ func (h *VMCreate) resolveCatalogClient(w http.ResponseWriter, r *http.Request) 
 	}
 
 	return clusterName, client, true
+}
+
+// resolveCreateTarget resolves the effective cluster name from req.Cluster
+// (defaulting the same way ResolveClusterParam does for the catalog route)
+// plus that cluster's own Creator and CloudInitPusher — without this, VM
+// creation ran through the default cluster's client regardless of which
+// cluster the request named.
+func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster string) (string, cluster.Creator, vm.CloudInitPusher, bool) {
+	clusterName, err := ResolveClusterValue(requestedCluster, h.clients)
+	if err != nil {
+		code, message := clusterParamError(err)
+		h.writeCreateError(w, http.StatusBadRequest, code, message)
+
+		return "", nil, nil, false
+	}
+
+	if h.clients == nil {
+		return clusterName, h.creator, h.pusher, true
+	}
+
+	client, err := h.clients.Client(clusterName)
+	if err != nil {
+		h.writeCreateError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
+		return "", nil, nil, false
+	}
+
+	creator, ok := client.(cluster.Creator)
+	if !ok {
+		h.log.Error("cluster client does not implement Creator", "component", "httpapi", "cluster", clusterName)
+		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return "", nil, nil, false
+	}
+
+	pusher, ok := client.(vm.CloudInitPusher)
+	if !ok {
+		h.log.Error("cluster client does not implement CloudInitPusher", "component", "httpapi", "cluster", clusterName)
+		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return "", nil, nil, false
+	}
+
+	return clusterName, creator, pusher, true
 }
 
 func (h *VMCreate) clientFor(clusterName string) (cluster.Client, error) {

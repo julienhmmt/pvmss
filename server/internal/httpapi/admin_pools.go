@@ -17,6 +17,8 @@ import (
 type AdminPools struct {
 	auth       *Auth
 	client     cluster.Client
+	clients    cluster.ClientProvider
+	source     inventory.LookupSource
 	projection *inventory.Projection
 	writer     cluster.Writer
 	audit      vm.AuditRecorder
@@ -25,10 +27,50 @@ type AdminPools struct {
 	log        *slog.Logger
 }
 
-// NewAdminPools creates the pool administration handler. The store enables
-// managed-pool tracking: only pools PVMSS provisioned may be deleted.
+// NewAdminPools creates the pool administration handler, bound to a single
+// cluster. The store enables managed-pool tracking: only pools PVMSS
+// provisioned may be deleted. Use NewAdminPoolsWithRegistry for multi-cluster
+// deployments.
 func NewAdminPools(authHandler *Auth, client cluster.Client, projection *inventory.Projection, writer cluster.Writer, audit vm.AuditRecorder, refresher vm.IndexRefresher, st *store.Store, log *slog.Logger) *AdminPools {
 	return &AdminPools{auth: authHandler, client: client, projection: projection, writer: writer, audit: audit, refresher: refresher, store: st, log: log}
+}
+
+// NewAdminPoolsWithRegistry creates the handler with per-request client and
+// projection resolution, keyed on the ?cluster= query parameter every
+// endpoint here already reads — without this, an admin managing pools on a
+// non-default cluster would silently operate against the default cluster's
+// Proxmox API instead.
+func NewAdminPoolsWithRegistry(authHandler *Auth, clients cluster.ClientProvider, source inventory.LookupSource, projection *inventory.Projection, writer cluster.Writer, audit vm.AuditRecorder, refresher vm.IndexRefresher, st *store.Store, log *slog.Logger) *AdminPools {
+	handler := NewAdminPools(authHandler, nil, projection, writer, audit, refresher, st, log)
+	handler.clients = clients
+	handler.source = source
+
+	return handler
+}
+
+// clientFor resolves the cluster.Client for clusterName, falling back to the
+// single bound client when clients is nil (legacy single-cluster ctor).
+func (h *AdminPools) clientFor(clusterName string) (cluster.Client, error) {
+	if h.clients == nil {
+		if h.client == nil {
+			return nil, cluster.ErrClusterNotFound
+		}
+
+		return h.client, nil
+	}
+
+	return h.clients.Client(clusterName)
+}
+
+// projectionFor resolves the inventory.Projection for clusterName, falling
+// back to the single bound projection when source is nil.
+func (h *AdminPools) projectionFor(clusterName string) (*inventory.Projection, error) {
+	registry, ok := h.source.(*inventory.Registry)
+	if !ok {
+		return h.projection, nil
+	}
+
+	return registry.Projection(clusterName)
 }
 
 // ServeList handles GET /api/v1/admin/pools.
@@ -37,7 +79,17 @@ func (h *AdminPools) ServeList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	clusterName := queryCluster(r)
-	rows, err := pools.ListWithManaged(r.Context(), h.client, h.projection, h.store, clusterName, r.URL.Query().Get("search"))
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return
+	}
+	projection, err := h.projectionFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return
+	}
+	rows, err := pools.ListWithManaged(r.Context(), client, projection, h.store, clusterName, r.URL.Query().Get("search"))
 	if err != nil {
 		h.log.Error("admin pool list failed", "component", "httpapi", "error", err)
 		writeAdminError(w, http.StatusBadGateway, "cluster_unreachable", "failed to list pools")
@@ -57,7 +109,12 @@ func (h *AdminPools) ServeCreate(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
-	creds, err := pools.CreateManaged(r.Context(), actor, h.client, h.store, queryCluster(r), request.Name, request.Comment)
+	client, err := h.clientFor(queryCluster(r))
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return
+	}
+	creds, err := pools.CreateManaged(r.Context(), actor, client, h.store, queryCluster(r), request.Name, request.Comment)
 	if err != nil {
 		h.writeCreateError(w, err)
 		return
@@ -82,7 +139,23 @@ func (h *AdminPools) ServeDelete(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, http.StatusBadRequest, "invalid_pool_name", "invalid pool name")
 		return
 	}
-	result, err := pools.Delete(r.Context(), pools.CascadeDeps{Actor: actor, Client: h.client, Projection: h.projection, ClusterName: queryCluster(r), Writer: h.writer, Audit: h.audit, Refresher: h.refresher, Managed: h.store}, name)
+	clusterName := queryCluster(r)
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return
+	}
+	projection, err := h.projectionFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return
+	}
+	writer, err := resolveCapability(h.clients, h.writer, clusterName, "Writer")
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return
+	}
+	result, err := pools.Delete(r.Context(), pools.CascadeDeps{Actor: actor, Client: client, Projection: projection, ClusterName: clusterName, Writer: writer, Audit: h.audit, Refresher: h.refresher, Managed: h.store}, name)
 	if errors.Is(err, pools.ErrNotFound) {
 		writeAdminError(w, http.StatusNotFound, "not_found", "pool \""+name+"\" not found")
 		return

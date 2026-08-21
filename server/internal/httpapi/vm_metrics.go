@@ -17,14 +17,32 @@ import (
 // via vm.GetMetricsHistory).
 type VMMetrics struct {
 	projection *inventory.Projection
+	resolver   vm.ClusterIndexResolver
 	auth       *Auth
 	reader     cluster.MetricsHistoryReader
+	clients    cluster.ClientProvider
 	log        *slog.Logger
 }
 
-// NewVMMetrics creates the metrics handler.
+// NewVMMetrics creates the metrics handler bound to a single cluster. Use
+// NewVMMetricsWithRegistry for multi-cluster deployments.
 func NewVMMetrics(projection *inventory.Projection, authHandler *Auth, reader cluster.MetricsHistoryReader, log *slog.Logger) *VMMetrics {
-	return &VMMetrics{projection: projection, auth: authHandler, reader: reader, log: log}
+	return &VMMetrics{projection: projection, resolver: singleClusterResolver{projection: projection}, auth: authHandler, reader: reader, log: log}
+}
+
+// NewVMMetricsWithRegistry creates the metrics handler with per-request
+// index and cluster.MetricsHistoryReader resolution, keyed on the request's
+// own :cluster path value — the fix for the cross-cluster leak this
+// endpoint's single-client wiring surfaced.
+func NewVMMetricsWithRegistry(source inventory.LookupSource, projection *inventory.Projection, authHandler *Auth, reader cluster.MetricsHistoryReader, clients cluster.ClientProvider, log *slog.Logger) *VMMetrics {
+	handler := NewVMMetrics(projection, authHandler, reader, log)
+	if registry, ok := source.(*inventory.Registry); ok {
+		handler.resolver = registryResolver{registry: registry}
+	}
+
+	handler.clients = clients
+
+	return handler
 }
 
 type metricsSampleDTO struct {
@@ -60,13 +78,18 @@ func (h *VMMetrics) handleHistory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	index := h.projection.Load()
-	if index == nil {
-		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
+	index, ok := loadClusterIndex(h.resolver, clusterName, func(status int, code, message string) { h.writeError(w, status, code, message) })
+	if !ok {
 		return
 	}
 
-	samples, err := vm.GetMetricsHistory(r.Context(), vm.MetricsDependencies{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Reader: h.reader}, timeframe)
+	reader, err := resolveCapability(h.clients, h.reader, clusterName, "MetricsHistoryReader")
+	if err != nil {
+		h.writeError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return
+	}
+
+	samples, err := vm.GetMetricsHistory(r.Context(), vm.MetricsDependencies{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Reader: reader}, timeframe)
 	if err != nil {
 		h.writeMetricsError(w, err)
 		return

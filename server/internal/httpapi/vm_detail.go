@@ -1,4 +1,3 @@
-//nolint:wsl_v5 // VM detail dispatch keeps shared authorization setup adjacent
 package httpapi
 
 import (
@@ -25,9 +24,10 @@ import (
 // byte-identical across all four (contracts behavioural rule).
 type VMDetail struct {
 	projection *inventory.Projection
-	source     inventory.LookupSource
+	resolver   vm.ClusterIndexResolver
 	auth       *Auth
 	writer     cluster.Writer
+	clients    cluster.ClientProvider
 	store      *store.Store
 	refresher  vm.IndexRefresher
 	policy     *policy.Policy
@@ -36,7 +36,8 @@ type VMDetail struct {
 
 // NewVMDetail creates the handler. The writer is the cluster.Writer (separate
 // from the read Client — constitution IV); the refresher rebuilds the Index
-// after a write (FR-010).
+// after a write (FR-010). Bound to a single cluster; use
+// NewVMDetailWithRegistry for multi-cluster deployments.
 func NewVMDetail(projection *inventory.Projection, authHandler *Auth, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger, services ...*policy.Policy) *VMDetail {
 	var policyService *policy.Policy
 	if len(services) > 0 {
@@ -47,7 +48,7 @@ func NewVMDetail(projection *inventory.Projection, authHandler *Auth, writer clu
 		policyService = policy.New(st, projection, nil)
 	}
 
-	return &VMDetail{projection: projection, auth: authHandler, writer: writer, store: st, refresher: refresher, policy: policyService, log: log}
+	return &VMDetail{projection: projection, resolver: singleClusterResolver{projection: projection}, auth: authHandler, writer: writer, store: st, refresher: refresher, policy: policyService, log: log}
 }
 
 // VMDetailDeps groups the shared dependencies for constructing a VMDetail
@@ -58,17 +59,45 @@ type VMDetailDeps struct {
 	Projection *inventory.Projection
 	Auth       *Auth
 	Writer     cluster.Writer
+	Clients    cluster.ClientProvider
 	Store      *store.Store
 	Refresher  vm.IndexRefresher
 	Log        *slog.Logger
 }
 
-// NewVMDetailWithRegistry adds cluster-aware reads while retaining the legacy
-// default projection for write-domain compatibility.
+// NewVMDetailWithRegistry adds cluster-aware reads and writes: every index
+// load and cluster.Writer call below is resolved per-request from the
+// request's own :cluster path value, never from a client bound once at
+// startup (closes the same class of bug S01 fixed for a single default
+// cluster — see the metrics-history ticket that surfaced the single-client
+// wiring pattern in main.go's initCluster).
 func NewVMDetailWithRegistry(deps VMDetailDeps, services ...*policy.Policy) *VMDetail {
 	handler := NewVMDetail(deps.Projection, deps.Auth, deps.Writer, deps.Store, deps.Refresher, deps.Log, services...)
-	handler.source = deps.Source
+	if registry, ok := deps.Source.(*inventory.Registry); ok {
+		handler.resolver = registryResolver{registry: registry}
+	}
+
+	handler.clients = deps.Clients
+
 	return handler
+}
+
+// index resolves the current Index for clusterName, writing the appropriate
+// error response on failure.
+func (h *VMDetail) index(w http.ResponseWriter, clusterName string) (*inventory.Index, bool) {
+	return loadClusterIndex(h.resolver, clusterName, func(status int, code, message string) { h.writeDetailError(w, status, code, message) })
+}
+
+// writerFor resolves the cluster.Writer for clusterName, writing a 404 on an
+// unknown cluster name.
+func (h *VMDetail) writerFor(w http.ResponseWriter, clusterName string) (cluster.Writer, bool) {
+	writer, err := resolveCapability(h.clients, h.writer, clusterName, "Writer")
+	if err != nil {
+		h.writeDetailError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return nil, false
+	}
+
+	return writer, true
 }
 
 type vmDetailDTO struct {
@@ -233,24 +262,12 @@ func (h *VMDetail) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	index := h.projection.Load()
-	source := inventory.LookupSource(index)
-	if h.source != nil {
-		source = h.source
-		if registry, ok := h.source.(*inventory.Registry); ok {
-			index, err = registry.Index(clusterName)
-			if err != nil {
-				h.writeDetailError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
-				return
-			}
-		}
-	}
-	if index == nil {
-		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
+	index, ok := h.index(w, clusterName)
+	if !ok {
 		return
 	}
 
-	entity, err := vm.Resolve(source, identity, clusterName, vmid)
+	entity, err := vm.Resolve(index, identity, clusterName, vmid)
 	if err != nil {
 		h.writeResolveError(w, err)
 		return
@@ -287,15 +304,19 @@ func (h *VMDetail) handleAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	index := h.projection.Load()
-	if index == nil {
-		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
+	index, ok := h.index(w, clusterName)
+	if !ok {
+		return
+	}
+
+	writer, ok := h.writerFor(w, clusterName)
+	if !ok {
 		return
 	}
 
 	if err := vm.Action(r.Context(), vm.BulkDeps{
 		Actor:     identity,
-		Writer:    h.writer,
+		Writer:    writer,
 		Audit:     h.store,
 		Refresher: h.refresher,
 	}, index, clusterName, vmid, req.Action); err != nil {
@@ -320,13 +341,17 @@ func (h *VMDetail) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	index := h.projection.Load()
-	if index == nil {
-		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
+	index, ok := h.index(w, clusterName)
+	if !ok {
 		return
 	}
 
-	if err := vm.Delete(r.Context(), vm.WriteDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: h.writer, Audit: h.store, Refresher: h.refresher}); err != nil {
+	writer, ok := h.writerFor(w, clusterName)
+	if !ok {
+		return
+	}
+
+	if err := vm.Delete(r.Context(), vm.WriteDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer, Audit: h.store, Refresher: h.refresher}); err != nil {
 		h.writeActionError(w, err)
 		return
 	}
@@ -359,21 +384,24 @@ func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 	req.Name = strings.TrimSpace(req.Name)
 	req.Description = strings.TrimSpace(req.Description)
 
-	index := h.projection.Load()
-	if index == nil {
-		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
+	index, ok := h.index(w, clusterName)
+	if !ok {
 		return
 	}
 
-	if err := vm.Patch(r.Context(), vm.WriteDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: h.writer, Audit: h.store, Refresher: h.refresher}, req.Name, req.Description); err != nil {
+	writer, ok := h.writerFor(w, clusterName)
+	if !ok {
+		return
+	}
+
+	if err := vm.Patch(r.Context(), vm.WriteDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer, Audit: h.store, Refresher: h.refresher}, req.Name, req.Description); err != nil {
 		h.writePatchError(w, err)
 		return
 	}
 	// Re-resolve from the refreshed projection to return the updated Entity
 	// (contracts: PATCH 200 returns the updated Entity, same shape as GET).
-	refreshed := h.projection.Load()
-	if refreshed == nil {
-		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+	refreshed, ok := h.index(w, clusterName)
+	if !ok {
 		return
 	}
 
@@ -404,9 +432,13 @@ func (h *VMDetail) handleDisk(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	index := h.projection.Load()
-	if index == nil {
-		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
+	index, ok := h.index(w, clusterName)
+	if !ok {
+		return
+	}
+
+	writer, ok := h.writerFor(w, clusterName)
+	if !ok {
 		return
 	}
 
@@ -423,7 +455,7 @@ func (h *VMDetail) handleDisk(w http.ResponseWriter, r *http.Request) {
 		Actor:       identity,
 		ClusterName: clusterName,
 		VMID:        vmid,
-		Writer:      h.writer,
+		Writer:      writer,
 		Resources:   resources,
 		Policy:      h.policy,
 		Audit:       h.store,
@@ -474,9 +506,8 @@ func (h *VMDetail) handleDiskResize(w http.ResponseWriter, r *http.Request, deps
 		return
 	}
 
-	refreshed := h.projection.Load()
-	if refreshed == nil {
-		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+	refreshed, ok := h.index(w, clusterName)
+	if !ok {
 		return
 	}
 
@@ -526,9 +557,13 @@ func (h *VMDetail) handleCDROM(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	index := h.projection.Load()
-	if index == nil {
-		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
+	index, ok := h.index(w, clusterName)
+	if !ok {
+		return
+	}
+
+	writer, ok := h.writerFor(w, clusterName)
+	if !ok {
 		return
 	}
 
@@ -551,7 +586,7 @@ func (h *VMDetail) handleCDROM(w http.ResponseWriter, r *http.Request) {
 		Actor:       identity,
 		ClusterName: clusterName,
 		VMID:        vmid,
-		Writer:      h.writer,
+		Writer:      writer,
 		Resources:   resources,
 		Audit:       h.store,
 		Refresher:   h.refresher,
@@ -562,6 +597,24 @@ func (h *VMDetail) handleCDROM(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeJSONStatus(w, http.StatusOK, state)
+}
+
+// parseHardwareRequest decodes and validates the PUT .../hardware body: at
+// least one field must be present. Split out of handleHardware to keep its
+// cyclomatic complexity under the linter's ceiling.
+func (h *VMDetail) parseHardwareRequest(w http.ResponseWriter, r *http.Request) (hardwareRequest, bool) {
+	var request hardwareRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
+		return hardwareRequest{}, false
+	}
+
+	if request.Sockets == nil && request.Cores == nil && request.MemoryMB == nil && request.Tags == nil {
+		h.writeDetailError(w, http.StatusBadRequest, "empty_patch", "at least one hardware field is required")
+		return hardwareRequest{}, false
+	}
+
+	return request, true
 }
 
 func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
@@ -584,25 +637,23 @@ func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	index := h.projection.Load()
-	if index == nil {
-		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
+	index, ok := h.index(w, clusterName)
+	if !ok {
 		return
 	}
 
-	var request hardwareRequest
-	if err := decodeJSON(w, r, &request); err != nil {
-		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
+	writer, ok := h.writerFor(w, clusterName)
+	if !ok {
 		return
 	}
 
-	if request.Sockets == nil && request.Cores == nil && request.MemoryMB == nil && request.Tags == nil {
-		h.writeDetailError(w, http.StatusBadRequest, "empty_patch", "at least one hardware field is required")
+	request, ok := h.parseHardwareRequest(w, r)
+	if !ok {
 		return
 	}
 
 	err = vm.UpdateHardware(r.Context(), vm.HardwareDependencies{
-		Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: h.writer,
+		Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer,
 		Policy: h.policy, Audit: h.store, Refresher: h.refresher,
 	}, vm.HardwarePatch{Sockets: request.Sockets, Cores: request.Cores, MemoryMB: request.MemoryMB, Tags: request.Tags})
 	if err != nil {
@@ -610,9 +661,8 @@ func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	refreshed := h.projection.Load()
-	if refreshed == nil {
-		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+	refreshed, ok := h.index(w, clusterName)
+	if !ok {
 		return
 	}
 
@@ -682,9 +732,13 @@ func (h *VMDetail) handleNetwork(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	index := h.projection.Load()
-	if index == nil {
-		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
+	index, ok := h.index(w, clusterName)
+	if !ok {
+		return
+	}
+
+	writer, ok := h.writerFor(w, clusterName)
+	if !ok {
 		return
 	}
 
@@ -710,7 +764,7 @@ func (h *VMDetail) handleNetwork(w http.ResponseWriter, r *http.Request) {
 	}
 
 	updated, err := vm.UpdateNetwork(r.Context(), vm.NetworkDependencies{
-		Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: h.writer,
+		Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer,
 		Resources: resources, Policy: h.policy, Audit: h.store, Refresher: h.refresher,
 	}, interfaces)
 	if err != nil {
@@ -776,9 +830,8 @@ func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	index := h.projection.Load()
-	if index == nil {
-		h.writeDetailError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
+	index, ok := h.index(w, clusterName)
+	if !ok {
 		return
 	}
 
