@@ -20,6 +20,19 @@ import (
 	"time"
 )
 
+// displayNameFake embeds cluster.Fake but overrides DisplayName, so it is not
+// itself a cluster.Fake: the concrete type assertion in
+// discoverClusterDisplayNames sees a non-fake client and attempts discovery.
+type displayNameFake struct {
+	cluster.Fake
+	displayName string
+	err         error
+}
+
+func (f displayNameFake) DisplayName(context.Context) (string, error) {
+	return f.displayName, f.err
+}
+
 func TestResolveWebBuildDir(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, "web", "build"), 0o750); err != nil {
@@ -331,13 +344,66 @@ func openTestStore(t *testing.T) *store.Store {
 	return st
 }
 
-// TestDiscoverClusterDisplayNames_PopulatesEmptyRows — clusters without a
-// display name get one discovered from the cluster client at startup; clusters
-// that already have a display name are left untouched (the admin's test result
-// wins).
+// TestDiscoverClusterDisplayNames_PopulatesEmptyRows — a non-fake cluster
+// client that returns a display name has it persisted at startup. Fake
+// clusters are skipped: their DisplayName() would just echo the internal name.
+//
+//nolint:paralleltest // serial: shared database state
+func TestDiscoverClusterDisplayNames_PopulatesEmptyRows(t *testing.T) {
+	st := openTestStore(t)
+	ctx := context.Background()
+
+	//nolint:gosec // test fixture credential
+	//nolint:gosec // test fixture credential
+	if err := st.CreateCluster(ctx, store.ClusterRow{Name: "proxmox", URL: "https://pve.example.com:8006/api2/json", TokenID: "pve-test-token", TokenSecret: "pve-test-secret"}); err != nil {
+		t.Fatalf("CreateCluster: %v", err)
+	}
+
+	rows, err := st.ListClusters(ctx)
+	if err != nil {
+		t.Fatalf("ListClusters: %v", err)
+	}
+
+	factory := func(store.ClusterRow) (cluster.Client, error) {
+		return displayNameFake{displayName: "Production PVE"}, nil
+	}
+
+	registry, err := cluster.NewRegistryWithFactory(factory, rows)
+	if err != nil {
+		t.Fatalf("NewRegistryWithFactory: %v", err)
+	}
+
+	// Wipe display names so discovery has work to do.
+	for _, row := range rows {
+		if err := st.SetClusterDisplayName(ctx, row.Name, ""); err != nil {
+			t.Fatalf("clear DisplayName %q: %v", row.Name, err)
+		}
+	}
+
+	clearedRows, err := st.ListClusters(ctx)
+	if err != nil {
+		t.Fatalf("ListClusters after clear: %v", err)
+	}
+
+	discoverClusterDisplayNames(ctx, registry, clearedRows, st, slog.Default())
+
+	row, err := st.GetCluster(ctx, "proxmox")
+	if err != nil {
+		t.Fatalf("GetCluster: %v", err)
+	}
+
+	if row.DisplayName != "Production PVE" {
+		t.Fatalf("DisplayName = %q, want %q", row.DisplayName, "Production PVE")
+	}
+}
+
+// TestDiscoverClusterDisplayNames_SkipsFake — fake clusters are never
+// discovered: their DisplayName() just returns the logical cluster name, which
+// would re-introduce the "default" label. Fake display names come from the
+// seed instead.
 //
 //nolint:paralleltest // serial: shared fake cluster registry state
-func TestDiscoverClusterDisplayNames_PopulatesEmptyRows(t *testing.T) {
+func TestDiscoverClusterDisplayNames_SkipsFake(t *testing.T) {
 	st := openTestStore(t)
 	ctx := context.Background()
 
@@ -346,24 +412,22 @@ func TestDiscoverClusterDisplayNames_PopulatesEmptyRows(t *testing.T) {
 		t.Fatalf("ListClusters: %v", err)
 	}
 
-	registry, err := cluster.NewRegistry("fake", rows)
-	if err != nil {
-		t.Fatalf("NewRegistry: %v", err)
-	}
-
-	// Wipe display names so discovery has work to do — the fake seed now sets
-	// them, but a database from before that change would have empty rows.
+	// Wipe seeded display names to simulate a database created before the seed
+	// fix — discovery must not fill the fake rows with their internal names.
 	for _, row := range rows {
 		if err := st.SetClusterDisplayName(ctx, row.Name, ""); err != nil {
 			t.Fatalf("clear DisplayName %q: %v", row.Name, err)
 		}
 	}
 
-	// Re-fetch rows so they reflect the cleared display names — discovery
-	// checks row.DisplayName before calling the client.
 	clearedRows, err := st.ListClusters(ctx)
 	if err != nil {
 		t.Fatalf("ListClusters after clear: %v", err)
+	}
+
+	registry, err := cluster.NewRegistry("fake", clearedRows)
+	if err != nil {
+		t.Fatalf("NewRegistry: %v", err)
 	}
 
 	discoverClusterDisplayNames(ctx, registry, clearedRows, st, slog.Default())
@@ -374,15 +438,8 @@ func TestDiscoverClusterDisplayNames_PopulatesEmptyRows(t *testing.T) {
 	}
 
 	for _, row := range refreshed {
-		if row.Name == "offline-demo" {
-			// offline-demo is unreachable — DisplayName returns ErrUnreachable,
-			// so the display name stays empty. That's the expected best-effort
-			// behaviour.
-			continue
-		}
-
-		if row.DisplayName == "" {
-			t.Errorf("cluster %q has empty DisplayName after discovery", row.Name)
+		if row.DisplayName != "" {
+			t.Errorf("fake cluster %q got DisplayName %q, want empty", row.Name, row.DisplayName)
 		}
 	}
 }
@@ -390,29 +447,38 @@ func TestDiscoverClusterDisplayNames_PopulatesEmptyRows(t *testing.T) {
 // TestDiscoverClusterDisplayNames_PreservesExisting — a cluster that already
 // has a display name is not overwritten by startup discovery.
 //
-//nolint:paralleltest // serial: shared fake cluster registry state
+//nolint:paralleltest // serial: shared database state
 func TestDiscoverClusterDisplayNames_PreservesExisting(t *testing.T) {
 	st := openTestStore(t)
 	ctx := context.Background()
+
+	//nolint:gosec // test fixture credential
+	if err := st.CreateCluster(ctx, store.ClusterRow{Name: "proxmox", URL: "https://pve.example.com:8006/api2/json", TokenID: "pve-test-token", TokenSecret: "pve-test-secret"}); err != nil {
+		t.Fatalf("CreateCluster: %v", err)
+	}
+
+	const customName = "admin-set-name"
+	if err := st.SetClusterDisplayName(ctx, "proxmox", customName); err != nil {
+		t.Fatalf("SetClusterDisplayName: %v", err)
+	}
 
 	rows, err := st.ListClusters(ctx)
 	if err != nil {
 		t.Fatalf("ListClusters: %v", err)
 	}
 
-	registry, err := cluster.NewRegistry("fake", rows)
-	if err != nil {
-		t.Fatalf("NewRegistry: %v", err)
+	factory := func(store.ClusterRow) (cluster.Client, error) {
+		return displayNameFake{displayName: "Production PVE"}, nil
 	}
 
-	const customName = "admin-set-name"
-	if err := st.SetClusterDisplayName(ctx, "default", customName); err != nil {
-		t.Fatalf("SetClusterDisplayName: %v", err)
+	registry, err := cluster.NewRegistryWithFactory(factory, rows)
+	if err != nil {
+		t.Fatalf("NewRegistryWithFactory: %v", err)
 	}
 
 	discoverClusterDisplayNames(ctx, registry, rows, st, slog.Default())
 
-	row, err := st.GetCluster(ctx, "default")
+	row, err := st.GetCluster(ctx, "proxmox")
 	if err != nil {
 		t.Fatalf("GetCluster: %v", err)
 	}
