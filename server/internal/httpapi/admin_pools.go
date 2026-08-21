@@ -27,12 +27,26 @@ type AdminPools struct {
 	log        *slog.Logger
 }
 
+// AdminPoolsDeps groups the collaborators AdminPools needs. Bundling them
+// keeps NewAdminPools's parameter count under go:S107's ceiling and makes
+// mis-ordering at call sites impossible.
+type AdminPoolsDeps struct {
+	Auth       *Auth
+	Client     cluster.Client
+	Projection *inventory.Projection
+	Writer     cluster.Writer
+	Audit      vm.AuditRecorder
+	Refresher  vm.IndexRefresher
+	Store      *store.Store
+	Log        *slog.Logger
+}
+
 // NewAdminPools creates the pool administration handler, bound to a single
 // cluster. The store enables managed-pool tracking: only pools PVMSS
 // provisioned may be deleted. Use NewAdminPoolsWithRegistry for multi-cluster
 // deployments.
-func NewAdminPools(authHandler *Auth, client cluster.Client, projection *inventory.Projection, writer cluster.Writer, audit vm.AuditRecorder, refresher vm.IndexRefresher, st *store.Store, log *slog.Logger) *AdminPools {
-	return &AdminPools{auth: authHandler, client: client, projection: projection, writer: writer, audit: audit, refresher: refresher, store: st, log: log}
+func NewAdminPools(deps AdminPoolsDeps) *AdminPools {
+	return &AdminPools{auth: deps.Auth, client: deps.Client, projection: deps.Projection, writer: deps.Writer, audit: deps.Audit, refresher: deps.Refresher, store: deps.Store, log: deps.Log}
 }
 
 // NewAdminPoolsWithRegistry creates the handler with per-request client and
@@ -41,7 +55,7 @@ func NewAdminPools(authHandler *Auth, client cluster.Client, projection *invento
 // non-default cluster would silently operate against the default cluster's
 // Proxmox API instead.
 func NewAdminPoolsWithRegistry(authHandler *Auth, clients cluster.ClientProvider, source inventory.LookupSource, projection *inventory.Projection, writer cluster.Writer, audit vm.AuditRecorder, refresher vm.IndexRefresher, st *store.Store, log *slog.Logger) *AdminPools {
-	handler := NewAdminPools(authHandler, nil, projection, writer, audit, refresher, st, log)
+	handler := NewAdminPools(AdminPoolsDeps{Auth: authHandler, Client: nil, Projection: projection, Writer: writer, Audit: audit, Refresher: refresher, Store: st, Log: log})
 	handler.clients = clients
 	handler.source = source
 
