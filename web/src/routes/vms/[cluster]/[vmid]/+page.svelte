@@ -28,7 +28,7 @@
 	<title>{m['vms.detail.title']({ vmid: String(vmid) })}</title>
 </svelte:head>
 
-<section class="mx-auto w-full max-w-4xl px-4 py-8">
+<section class="mx-auto w-full max-w-5xl px-4 py-8">
 	<Breadcrumb items={[{ label: m['vms.list.heading'](), href: resolve('/vms') }, { label: m['vms.detail.breadcrumb']({ vmid: String(vmid) }) }]} />
 	<VmDetail />
 </section>

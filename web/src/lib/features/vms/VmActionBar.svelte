@@ -63,7 +63,7 @@
 	{#each ACTIONS as action (action.kind)}
 		<button
 			type="button"
-			class="rounded-md px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50 {variantClass(action.variant)}"
+			class="rounded-lg px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50 {variantClass(action.variant)}"
 			disabled={store.actionInFlight || !isApplicable(action)}
 			onclick={() => handleAction(action.kind)}
 			data-testid="vm-action-{action.kind}"
@@ -76,7 +76,7 @@
 
 	<button
 		type="button"
-		class="ml-auto rounded-md border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
+		class="ml-auto rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
 		disabled={store.deleteInFlight}
 		onclick={onDelete}
 		data-testid="vm-action-delete"
