@@ -263,6 +263,8 @@
  "vms.create.model": "Model",
  "vms.create.name": "Name",
  "vms.create.noStorageOnNode": "No storage available on this node",
+ "vms.create.noBridgeOnNode": "No bridge available on this node",
+ "vms.create.optionWithLocation": "{name} — Node {node} · Cluster {cluster}",
  "vms.create.node": "Node",
  "vms.create.placementAutomatic": "Automatic placement",
  "vms.create.profile": "Profile",

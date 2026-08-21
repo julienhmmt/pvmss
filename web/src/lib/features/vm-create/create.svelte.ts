@@ -9,6 +9,13 @@ export interface CatalogStorage {
 	node: string;
 }
 
+/** One approved bridge on one node — bridge approval is per-node, like
+ *  storage, so a bridge option only makes sense scoped to the VM's node. */
+export interface CatalogBridge {
+	name: string;
+	node: string;
+}
+
 export interface CatalogISO {
 	storage: string;
 	file: string;
@@ -71,7 +78,7 @@ export interface VmCreateCatalog {
 	cluster: string;
 	nodes: string[];
 	storages: CatalogStorage[];
-	bridges: string[];
+	bridges: CatalogBridge[];
 	isos: CatalogISO[];
 	profiles: CatalogProfile[];
 	cloudInitTemplates: CatalogCloudInitTemplate[];
@@ -227,6 +234,15 @@ export class VmCreateStore {
 		void this.loadCatalog();
 	}
 
+	/** The cluster's human-readable name for display — never the raw internal
+	 *  id (which may be an opaque string like "default" that means nothing to
+	 *  the operator; the id is only ever meaningful as an API parameter). */
+	clusterDisplayName(): string {
+		const clusterId = this.catalog?.cluster ?? this.cluster;
+		const option = this.clusterOptions.find((candidate) => candidate.name === clusterId);
+		return option?.displayName || clusterId;
+	}
+
 	/** Fetch the approved-resource catalog for the selected cluster (FR-002). */
 	async loadCatalog(): Promise<void> {
 		this.catalogError = null;
@@ -286,7 +302,7 @@ export class VmCreateStore {
 	 *  auto-selections sent explicitly when the user adjusted them (V08). */
 	buildRequest(): VMCreateRequest {
 		const request: VMCreateRequest = {
-			cluster: this.catalog?.cluster ?? 'default',
+			cluster: this.catalog?.cluster ?? this.cluster,
 			name: this.name.trim(),
 			startAfterCreate: this.startAfterCreate
 		};
