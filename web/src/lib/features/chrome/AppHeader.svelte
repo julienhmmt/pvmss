@@ -5,6 +5,7 @@
 	 * theme toggle, and the status banner above. No search field (spec forbids
 	 * it, research.md R6). A menu button opens the sidebar drawer below 900px.
 	 */
+	import { untrack } from 'svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import { getChromeContext } from './chrome.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
@@ -24,8 +25,12 @@
 			if (dismissTimer !== null) clearTimeout(dismissTimer);
 			dismissTimer = setTimeout(() => tray.clearToast(), 5000);
 			// Mirror the task-tray toast into the global toast region so it
-			// surfaces outside the activity drawer too (FR-019).
-			toast.push({ variant: tray.toast.kind, message: tray.toast.message });
+			// surfaces outside the activity drawer too (FR-019). untrack:
+			// push() reads toast.items — without untrack that read gets
+			// captured as a dependency of THIS effect, and the write inside
+			// push() re-triggers it, looping until the region's own item cap
+			// silently truncates the flood.
+			untrack(() => toast.push({ variant: tray.toast!.kind, message: tray.toast!.message }));
 		}
 	});
 
