@@ -225,6 +225,128 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// catalogData is the raw catalog payload loaded from the store and the live
+// cluster before it is shaped into the response DTO.
+type catalogData struct {
+	resources catalog.Resources
+	snap      cluster.Snapshot
+	bridges   []cluster.Bridge
+	profiles  []catalog.Profile
+	templates []catalog.CloudInitTemplate
+	tags      []catalog.TagWithCount
+}
+
+// loadCatalogData fetches every catalog slice from the store and the live
+// cluster. Errors are wrapped with the operation that failed so the handler
+// can log a single, actionable message.
+func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, clusterName string) (catalogData, error) {
+	var data catalogData
+
+	resources, err := catalog.ApprovedResources(ctx, h.store, clusterName)
+	if err != nil {
+		return catalogData{}, fmt.Errorf("approved resources: %w", err)
+	}
+
+	data.resources = resources
+
+	snap, err := client.Snapshot(ctx)
+	if err != nil {
+		return catalogData{}, fmt.Errorf("storage discovery: %w", err)
+	}
+
+	data.snap = snap
+
+	bridges, err := client.ListBridges(ctx)
+	if err != nil {
+		return catalogData{}, fmt.Errorf("bridge discovery: %w", err)
+	}
+
+	data.bridges = bridges
+
+	profiles, err := catalog.Profiles(ctx, h.store, clusterName)
+	if err != nil {
+		return catalogData{}, fmt.Errorf("profiles: %w", err)
+	}
+
+	data.profiles = profiles
+
+	templates, err := catalog.CloudInitTemplates(ctx, h.store, clusterName)
+	if err != nil {
+		return catalogData{}, fmt.Errorf("cloudinit templates: %w", err)
+	}
+
+	data.templates = templates
+
+	// Admin-created tags only (FR-014/FR-015 surface) — the mandatory pvmss
+	// tag is added server-side and never offered as a user choice here.
+	tags, err := catalog.ListTags(ctx, h.store, nil, clusterName)
+	if err != nil {
+		return catalogData{}, fmt.Errorf("tags: %w", err)
+	}
+
+	data.tags = tags
+
+	return data, nil
+}
+
+// buildCatalogDTO maps the raw catalog data into the response contract.
+func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
+	dto := catalogDTO{
+		Cluster:            clusterName,
+		Nodes:              make([]string, 0, len(data.resources.Nodes)),
+		Storages:           make([]catalogStorageDTO, 0, len(data.resources.Storages)),
+		Bridges:            catalogBridgeDTOs(data.resources.Bridges, data.bridges),
+		ISOs:               make([]catalogISODTO, 0, len(data.resources.ISOs)),
+		Profiles:           make([]catalogProfileDTO, 0, len(data.profiles)),
+		CloudInitTemplates: make([]catalogCloudInitTemplateDTO, 0, len(data.templates)),
+		Tags:               make([]catalogTagDTO, 0, len(data.tags)),
+	}
+
+	for _, node := range data.resources.Nodes {
+		dto.Nodes = append(dto.Nodes, node.Name)
+	}
+
+	for _, tag := range data.tags {
+		if tag.Protected {
+			continue
+		}
+
+		dto.Tags = append(dto.Tags, catalogTagDTO{Name: tag.Name, Color: tag.Color})
+	}
+
+	for _, storage := range data.resources.Storages {
+		if _, ok := vmCapableStorage(storage, data.snap.Storages); !ok {
+			continue
+		}
+
+		dto.Storages = append(dto.Storages, catalogStorageDTO{Name: storage.Name, Node: storage.Node})
+	}
+
+	for _, iso := range data.resources.ISOs {
+		dto.ISOs = append(dto.ISOs, catalogISODTO{Storage: iso.Storage, File: iso.File})
+	}
+
+	for _, profile := range data.profiles {
+		dto.Profiles = append(dto.Profiles, catalogProfileDTO{
+			ID:       profile.ID,
+			Label:    profile.Label,
+			CPUCores: profile.CPUCores,
+			MemoryMB: profile.MemoryMB,
+			DiskGB:   profile.DiskGB,
+			Bus:      profile.Bus,
+		})
+	}
+
+	// T18: catalog exposes only id+label per spec/contracts — never content.
+	for _, tmpl := range data.templates {
+		dto.CloudInitTemplates = append(dto.CloudInitTemplates, catalogCloudInitTemplateDTO{
+			ID: tmpl.ID, Label: tmpl.Label,
+		})
+	}
+
+	return dto
+}
+
 // ServeCatalog handles GET /api/v1/vm-create/catalog. The catalog is the same
 // for every user of a cluster (contracts behavioural rules) — no
 // identity-specific filtering beyond requiring authentication.
@@ -240,115 +362,21 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resources, err := catalog.ApprovedResources(r.Context(), h.store, clusterName)
+	data, err := h.loadCatalogData(r.Context(), client, clusterName)
 	if err != nil {
-		h.log.Error("catalog read failed", "component", "httpapi", "error", err)
+		h.log.Error("catalog data load failed", "component", "httpapi", "error", err)
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
 
-	snap, err := client.Snapshot(r.Context())
-	if err != nil {
-		h.log.Error("storage discovery failed", "component", "httpapi", "error", err)
+	dto := buildCatalogDTO(clusterName, data)
+
+	if err := h.attachLimits(r.Context(), &dto, clusterName, identity); err != nil {
+		h.log.Error("policy read failed", "component", "httpapi", "error", err)
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
-	}
-
-	liveBridges, err := client.ListBridges(r.Context())
-	if err != nil {
-		h.log.Error("bridge discovery failed", "component", "httpapi", "error", err)
-		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
-
-		return
-	}
-
-	profiles, err := catalog.Profiles(r.Context(), h.store, clusterName)
-	if err != nil {
-		h.log.Error("profile read failed", "component", "httpapi", "error", err)
-		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
-
-		return
-	}
-
-	templates, err := catalog.CloudInitTemplates(r.Context(), h.store, clusterName)
-	if err != nil {
-		h.log.Error("cloudinit templates read failed", "component", "httpapi", "error", err)
-		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
-
-		return
-	}
-
-	// Admin-created tags only (FR-014/FR-015 surface) — the mandatory pvmss
-	// tag is added server-side and never offered as a user choice here.
-	tags, err := catalog.ListTags(r.Context(), h.store, nil, clusterName)
-	if err != nil {
-		h.log.Error("tag read failed", "component", "httpapi", "error", err)
-		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
-
-		return
-	}
-
-	dto := catalogDTO{
-		Cluster:            clusterName,
-		Nodes:              make([]string, 0, len(resources.Nodes)),
-		Storages:           make([]catalogStorageDTO, 0, len(resources.Storages)),
-		Bridges:            catalogBridgeDTOs(resources.Bridges, liveBridges),
-		ISOs:               make([]catalogISODTO, 0, len(resources.ISOs)),
-		Profiles:           make([]catalogProfileDTO, 0, len(profiles)),
-		CloudInitTemplates: make([]catalogCloudInitTemplateDTO, 0, len(templates)),
-		Tags:               make([]catalogTagDTO, 0, len(tags)),
-	}
-	for _, node := range resources.Nodes {
-		dto.Nodes = append(dto.Nodes, node.Name)
-	}
-
-	for _, tag := range tags {
-		if tag.Protected {
-			continue
-		}
-
-		dto.Tags = append(dto.Tags, catalogTagDTO{Name: tag.Name, Color: tag.Color})
-	}
-
-	for _, storage := range resources.Storages {
-		if _, ok := vmCapableStorage(storage, snap.Storages); !ok {
-			continue
-		}
-
-		dto.Storages = append(dto.Storages, catalogStorageDTO{Name: storage.Name, Node: storage.Node})
-	}
-
-	for _, iso := range resources.ISOs {
-		dto.ISOs = append(dto.ISOs, catalogISODTO{Storage: iso.Storage, File: iso.File})
-	}
-
-	for _, profile := range profiles {
-		dto.Profiles = append(dto.Profiles, catalogProfileDTO{
-			ID:       profile.ID,
-			Label:    profile.Label,
-			CPUCores: profile.CPUCores,
-			MemoryMB: profile.MemoryMB,
-			DiskGB:   profile.DiskGB,
-			Bus:      profile.Bus,
-		})
-	}
-
-	// T18: catalog exposes only id+label per spec/contracts — never content.
-	for _, tmpl := range templates {
-		dto.CloudInitTemplates = append(dto.CloudInitTemplates, catalogCloudInitTemplateDTO{
-			ID: tmpl.ID, Label: tmpl.Label,
-		})
-	}
-
-	if h.policy != nil {
-		if err := h.attachLimits(r.Context(), &dto, clusterName, identity); err != nil {
-			h.log.Error("policy read failed", "component", "httpapi", "error", err)
-			h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
-
-			return
-		}
 	}
 
 	h.writeCreateJSON(w, http.StatusOK, dto)
@@ -359,6 +387,10 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 // hardware/disk fields client-side before the server re-checks them
 // (constitution VI: client bounds are a convenience only).
 func (h *VMCreate) attachLimits(ctx context.Context, dto *catalogDTO, clusterName string, identity auth.Identity) error {
+	if h.policy == nil {
+		return nil
+	}
+
 	gabarit, err := h.policy.Gabarit(ctx, clusterName)
 	if err != nil {
 		return fmt.Errorf("read gabarit: %w", err)
