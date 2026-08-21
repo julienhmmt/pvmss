@@ -16,7 +16,7 @@ describe('AdminPolicyStore', () => {
 			gabarit: { maxSockets: 4, maxCores: 8, maxMemoryMB: 16384, maxDiskPerVmGb: 500, maxNetworkCards: 4, maxSnapshots: 5, allowCustomYaml: true },
 			quota: { maxVmPerUser: -1 }
 		};
-		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, policy)));
+		vi.stubGlobal('fetch', vi.fn().mockImplementation(() => jsonResponse(200, policy)));
 		const store = new AdminPolicyStore();
 		await store.load();
 		expect(store.policy).toEqual(policy);

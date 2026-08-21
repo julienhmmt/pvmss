@@ -1,4 +1,5 @@
 import { get, post, put, del, ApiRequestError } from '$lib/shared/api/client';
+import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 import { setContext, getContext } from 'svelte';
 import { m } from '$lib/paraglide/messages.js';
 
@@ -19,6 +20,8 @@ export class AdminTagsStore {
 	error = $state.raw<string | null>(null);
 	saving = $state.raw(false);
 	saveError = $state.raw<string | null>(null);
+	clusterOptions = $state.raw<ClusterOption[]>([]);
+	cluster = $state('default');
 
 	search = $state('');
 	protectedFilter: 'all' | 'protected' | 'unprotected' = $state('all');
@@ -52,11 +55,32 @@ export class AdminTagsStore {
 		this.protectedFilter = 'all';
 	}
 
+	/** Resolves the real cluster name (matches admin-catalog's pattern) so
+	 *  requests never send the literal "default" against a deployment whose
+	 *  cluster is named something else. */
+	async loadClusters(): Promise<void> {
+		try {
+			this.clusterOptions = await fetchClusterOptions();
+			const first = this.clusterOptions[0];
+			if (first && (this.clusterOptions.length === 1 || !this.clusterOptions.some((option) => option.name === this.cluster))) {
+				this.cluster = first.name;
+			}
+		} catch (err) {
+			this.error = err instanceof ApiRequestError ? err.message : m['admin.tags.loadError']();
+		}
+	}
+
+	setCluster(value: string): void {
+		this.cluster = value;
+		void this.load();
+	}
+
 	async load(): Promise<void> {
+		await this.loadClusters();
 		this.loading = true;
 		this.error = null;
 		try {
-			this.tags = await get<AdminTag[]>('/api/v1/admin/tags?cluster=default');
+			this.tags = await get<AdminTag[]>(`/api/v1/admin/tags?cluster=${encodeURIComponent(this.cluster)}`);
 		} catch (err) {
 			this.error = err instanceof ApiRequestError ? err.message : m['admin.tags.loadError']();
 		} finally {
@@ -69,7 +93,7 @@ export class AdminTagsStore {
 		this.saveError = null;
 		try {
 			const created = await post<AdminTag>('/api/v1/admin/tags', {
-				cluster: 'default', name, color
+				cluster: this.cluster, name, color
 			});
 			this.tags = [...this.tags, created];
 		} catch (err) {
@@ -84,7 +108,7 @@ export class AdminTagsStore {
 		this.saveError = null;
 		try {
 			const updated = await put<AdminTag>(`/api/v1/admin/tags/${name}/color`, {
-				cluster: 'default', color
+				cluster: this.cluster, color
 			});
 			this.tags = this.tags.map((t) => (t.name === name ? { ...updated, vmCount: t.vmCount } : t));
 		} catch (err) {
@@ -96,7 +120,7 @@ export class AdminTagsStore {
 	async remove(name: string): Promise<void> {
 		this.saveError = null;
 		try {
-			await del<{ status: string }>(`/api/v1/admin/tags/${name}?cluster=default`);
+			await del<{ status: string }>(`/api/v1/admin/tags/${name}?cluster=${encodeURIComponent(this.cluster)}`);
 			this.tags = this.tags.filter((t) => t.name !== name);
 		} catch (err) {
 			this.saveError = err instanceof ApiRequestError ? err.message : m['admin.tags.deleteError']();

@@ -1,7 +1,9 @@
 <script lang="ts">
 	import type { AdminCloudInitTemplate } from './cloudInitTemplates.svelte';
+	import type { ClusterOption } from '$lib/shared/clusters';
 	import CloudInitTemplateFormDialog from './CloudInitTemplateFormDialog.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Switch from '$lib/shared/ui/Switch.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
@@ -14,6 +16,9 @@
 		error: string | null;
 		saving: boolean;
 		saveError: string | null;
+		clusterOptions: ClusterOption[];
+		cluster: string;
+		onClusterChange: (value: string) => void;
 		onCreate: (label: string, content: string) => void;
 		onUpdate: (id: string, label: string, content: string) => void;
 		onDelete: (id: string) => void;
@@ -26,6 +31,9 @@
 		error,
 		saving,
 		saveError,
+		clusterOptions,
+		cluster,
+		onClusterChange,
 		onCreate,
 		onUpdate,
 		onDelete,
@@ -67,6 +75,7 @@
 
 <PageHeader title={m['admin.cloudinit.header']()}>
 	{#snippet actions()}
+		<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="cloudinit-cluster" />
 		<Button onclick={openCreate}>{m['admin.cloudinit.newTemplate']()}</Button>
 	{/snippet}
 </PageHeader>

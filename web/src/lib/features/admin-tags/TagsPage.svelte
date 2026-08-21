@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { AdminTag } from './tags.svelte';
+	import type { ClusterOption } from '$lib/shared/clusters';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
@@ -19,6 +21,9 @@
 		error: string | null;
 		saving: boolean;
 		saveError: string | null;
+		clusterOptions: ClusterOption[];
+		cluster: string;
+		onClusterChange: (value: string) => void;
 		search: string;
 		protectedFilter: 'all' | 'protected' | 'unprotected';
 		sortBy: TagSortColumn;
@@ -39,6 +44,9 @@
 		error,
 		saving,
 		saveError,
+		clusterOptions,
+		cluster,
+		onClusterChange,
 		search,
 		protectedFilter,
 		sortBy,
@@ -93,6 +101,7 @@
 
 <PageHeader title={m['admin.tags.title']()}>
 	{#snippet actions()}
+		<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="tags-cluster" />
 		<Button onclick={openCreate}>{m['admin.tags.newTag']()}</Button>
 	{/snippet}
 </PageHeader>

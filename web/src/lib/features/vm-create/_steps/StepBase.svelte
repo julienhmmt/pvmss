@@ -23,7 +23,7 @@
 	<FormField
 		label={m['vms.create.node']()}
 		required
-		hint={form.catalog ? m['vms.create.nodeInCluster']({ cluster: form.catalog.cluster }) : undefined}
+		hint={form.catalog ? m['vms.create.nodeInCluster']({ cluster: form.clusterDisplayName() }) : undefined}
 	>
 		{#snippet children({ id, describedBy, invalid })}
 			<Select
