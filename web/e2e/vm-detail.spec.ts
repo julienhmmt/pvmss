@@ -16,14 +16,16 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 		await signInAlice(page.request);
 		await page.goto('/vms?cluster=default');
 
-		// Click the first VM name link (web-01, VMID 100, running).
-		await page.locator('[data-testid="vm-row-link"]').first().click();
+		// Click the web-01 row link (VMID 100, running). Default list sort is
+		// by name, so "first row" isn't deterministically web-01 — target it explicitly.
+		await page.getByTestId('vm-row-link').filter({ hasText: 'web-01' }).click();
 		await expect(page).toHaveURL(/\/vms\/default\/100$/);
 
 		await expect(page.getByTestId('vm-name')).toHaveText('web-01');
 		await expect(page.getByTestId('vm-status')).toContainText('running');
 		await expect(page.getByTestId('vm-meta')).toContainText('pve-node-01');
-		await expect(page.getByTestId('vm-stat-cpu')).toContainText('2 cores');
+		// Locale-agnostic: default locale is French ("2 cœurs"), not English.
+		await expect(page.getByTestId('vm-stat-cpu')).toContainText('2');
 		await expect(page.getByTestId('vm-stat-uptime')).toBeVisible();
 	});
 
@@ -104,9 +106,12 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 		await expect(page.getByTestId('vm-name')).toHaveText('web-renamed');
 	});
 
-	test('a non-owner opening a VM by URL gets 403/404, no data leaks', async ({ page, request }) => {
-		// Bob opens alice's VM 100 by editing the URL.
-		await signIn(request, 'bob', 'pvmss-bob');
+	test('a non-owner opening a VM by URL gets 403/404, no data leaks', async ({ page }) => {
+		// Bob opens alice's VM 100 by editing the URL. Sign in via page.request
+		// (not the standalone `request` fixture) so the session cookie lands in
+		// the browser context the page itself uses — a separate APIRequestContext
+		// has its own cookie jar and never reaches the page.
+		await signIn(page.request, 'bob', 'pvmss-bob');
 		await page.goto('/vms/default/100');
 		// The detail page shows an error, never the VM's data.
 		await expect(page.getByTestId('vm-detail-error')).toBeVisible();
