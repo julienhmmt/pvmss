@@ -69,17 +69,28 @@ type ClusterIndexResolver interface {
 	IndexFor(cluster string) (*inventory.Index, error)
 }
 
+// ClusterWriterResolver resolves the cluster.Writer for a named cluster —
+// the write-side sibling of ClusterIndexResolver. BulkAction's targets may
+// span clusters, so a single BulkDeps.Writer cannot vary per target the way
+// Resolver already does for the index; WriterResolver closes that gap.
+type ClusterWriterResolver interface {
+	WriterFor(cluster string) (cluster.Writer, error)
+}
+
 // BulkDeps groups the collaborators BulkAction (and the per-target Action it
 // loops over) need beyond the per-request arguments (ctx, targets, kind).
 // Bundling them keeps BulkAction's and Action's parameter counts under
-// go:S107's ceiling without losing any dependency. Resolver is used only by
-// BulkAction; Action ignores it.
+// go:S107's ceiling without losing any dependency. Resolver and
+// WriterResolver are used only by BulkAction, to vary the index and writer
+// per target; Action ignores them and uses Writer directly (its caller
+// already resolved the one clusterName it needs before constructing deps).
 type BulkDeps struct {
-	Resolver  ClusterIndexResolver
-	Actor     auth.Identity
-	Writer    cluster.Writer
-	Audit     AuditRecorder
-	Refresher IndexRefresher
+	Resolver       ClusterIndexResolver
+	WriterResolver ClusterWriterResolver
+	Actor          auth.Identity
+	Writer         cluster.Writer
+	Audit          AuditRecorder
+	Refresher      IndexRefresher
 }
 
 // BulkAction performs one power transition on every target in targets, in
@@ -124,7 +135,21 @@ func BulkAction(
 			continue
 		}
 
-		if err := Action(ctx, deps, index, target.Cluster, target.VMID, kind); err != nil {
+		targetDeps := deps
+		if deps.WriterResolver != nil {
+			writer, err := deps.WriterResolver.WriterFor(target.Cluster)
+			if err != nil {
+				result.Status = "error"
+				result.Message = err.Error()
+				results = append(results, result)
+
+				continue
+			}
+
+			targetDeps.Writer = writer
+		}
+
+		if err := Action(ctx, targetDeps, index, target.Cluster, target.VMID, kind); err != nil {
 			result.Status = "error"
 			result.Message = err.Error()
 		} else {

@@ -339,9 +339,15 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		return nil, errors.New("cluster client does not implement MetricsHistoryReader")
 	}
 
-	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: writer, Store: st, Refresher: worker, Log: logger}, policyService)
-	vmBulk := httpapi.NewVMBulkWithRegistry(inventoryRegistry, projection, authHandler, writer, st, refresher, logger)
-	vmCloudInit := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{Projection: projection, Auth: authHandler, Reader: cloudInitReader, Writer: writer, Store: st, Refresher: worker, Log: logger}, policyService)
+	// Every *WithRegistry constructor below resolves its cluster.Client and
+	// inventory.Index per request from the request's own :cluster value via
+	// clusterRegistry/inventoryRegistry, instead of the single clusterClient
+	// resolved above — a request scoped to a non-default cluster must never
+	// be served from another cluster's client (cross-tenant data leak when
+	// node names or vmids collide between clusters).
+	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: writer, Clients: clusterRegistry, Store: st, Refresher: worker, Log: logger}, policyService)
+	vmBulk := httpapi.NewVMBulkWithRegistry(inventoryRegistry, projection, authHandler, writer, st, refresher, logger, clusterRegistry)
+	vmCloudInit := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Reader: cloudInitReader, Writer: writer, Clients: clusterRegistry, Store: st, Refresher: worker, Log: logger}, policyService)
 	vmCreate := httpapi.NewVMCreateWithRegistry(
 		authHandler,
 		st,
@@ -352,12 +358,12 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		policyService,
 	)
 	tasks := httpapi.NewTasks(authHandler, creator, worker, logger)
-	snapshots := httpapi.NewVMSnapshots(projection, authHandler, snapshotReader, snapshotWriter, st, logger, policyService)
-	vmConsole := httpapi.NewVMConsole(projection, authHandler, consoleRelay, consoleTickets, st, logger)
-	vmMetrics := httpapi.NewVMMetrics(projection, authHandler, metricsReader, logger)
+	snapshots := httpapi.NewVMSnapshotsWithRegistry(inventoryRegistry, projection, authHandler, snapshotReader, snapshotWriter, clusterRegistry, st, logger, policyService)
+	vmConsole := httpapi.NewVMConsoleWithRegistry(inventoryRegistry, projection, authHandler, consoleRelay, clusterRegistry, consoleTickets, st, logger)
+	vmMetrics := httpapi.NewVMMetricsWithRegistry(inventoryRegistry, projection, authHandler, metricsReader, clusterRegistry, logger)
 	adminCatalog := httpapi.NewAdminCatalogWithRegistry(authHandler, st, clusterRegistry, projection, logger)
 	adminPolicy := httpapi.NewAdminPolicyWithRegistry(authHandler, policyService, clusterRegistry, logger)
-	adminPools := httpapi.NewAdminPools(authHandler, clusterClient, projection, writer, st, worker, st, logger)
+	adminPools := httpapi.NewAdminPoolsWithRegistry(authHandler, clusterRegistry, inventoryRegistry, projection, writer, st, worker, st, logger)
 	adminOps := httpapi.NewAdminOps(authHandler, st, clusterClient, projection, appVersion, logger)
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, clusterRegistry, inventoryRegistry, logger)
 	docsHandler := httpapi.NewDocsAPIHandler(authHandler, st, logger)

@@ -19,15 +19,19 @@ import (
 // VMSnapshots serves the live snapshot list and asynchronous snapshot actions.
 type VMSnapshots struct {
 	projection *inventory.Projection
+	resolver   vm.ClusterIndexResolver
 	auth       *Auth
 	reader     cluster.SnapshotReader
 	writer     cluster.SnapshotWriter
+	clients    cluster.ClientProvider
 	store      *store.Store
 	policy     *policy.Policy
 	log        *slog.Logger
 }
 
-// NewVMSnapshots creates the snapshot handler with the T05 Resolve projection.
+// NewVMSnapshots creates the snapshot handler with the T05 Resolve projection,
+// bound to a single cluster. Use NewVMSnapshotsWithRegistry for multi-cluster
+// deployments.
 //
 //nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
 func NewVMSnapshots(projection *inventory.Projection, authHandler *Auth, reader cluster.SnapshotReader, writer cluster.SnapshotWriter, st *store.Store, log *slog.Logger, services ...*policy.Policy) *VMSnapshots {
@@ -38,7 +42,21 @@ func NewVMSnapshots(projection *inventory.Projection, authHandler *Auth, reader 
 	if policyService == nil && st != nil {
 		policyService = policy.New(st, projection, nil)
 	}
-	return &VMSnapshots{projection: projection, auth: authHandler, reader: reader, writer: writer, store: st, policy: policyService, log: log}
+	return &VMSnapshots{projection: projection, resolver: singleClusterResolver{projection: projection}, auth: authHandler, reader: reader, writer: writer, store: st, policy: policyService, log: log}
+}
+
+// NewVMSnapshotsWithRegistry creates the snapshot handler with per-request
+// index and cluster.SnapshotReader/Writer resolution, keyed on the request's
+// own :cluster path value.
+func NewVMSnapshotsWithRegistry(source inventory.LookupSource, projection *inventory.Projection, authHandler *Auth, reader cluster.SnapshotReader, writer cluster.SnapshotWriter, clients cluster.ClientProvider, st *store.Store, log *slog.Logger, services ...*policy.Policy) *VMSnapshots {
+	handler := NewVMSnapshots(projection, authHandler, reader, writer, st, log, services...)
+	if registry, ok := source.(*inventory.Registry); ok {
+		handler.resolver = registryResolver{registry: registry}
+	}
+
+	handler.clients = clients
+
+	return handler
 }
 
 type snapshotCreateRequest struct {
@@ -92,13 +110,17 @@ func (h *VMSnapshots) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	index := h.projection.Load()
-	if index == nil {
-		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
+	index, ok := loadClusterIndex(h.resolver, clusterName, func(status int, code, message string) { h.writeError(w, status, code, message) })
+	if !ok {
 		return
 	}
 
-	snapshots, maxSnapshots, err := vm.ListSnapshots(r.Context(), h.dependencies(index, identity, clusterName, vmid))
+	deps, ok := h.dependencies(w, index, identity, clusterName, vmid)
+	if !ok {
+		return
+	}
+
+	snapshots, maxSnapshots, err := vm.ListSnapshots(r.Context(), deps)
 	if err != nil {
 		h.writeSnapshotError(w, err)
 		return
@@ -125,13 +147,17 @@ func (h *VMSnapshots) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	index := h.projection.Load()
-	if index == nil {
-		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
+	index, ok := loadClusterIndex(h.resolver, clusterName, func(status int, code, message string) { h.writeError(w, status, code, message) })
+	if !ok {
 		return
 	}
 
-	upid, err := vm.CreateSnapshot(r.Context(), h.dependencies(index, identity, clusterName, vmid), strings.TrimSpace(request.Name), request.Description, request.VMState)
+	deps, ok := h.dependencies(w, index, identity, clusterName, vmid)
+	if !ok {
+		return
+	}
+
+	upid, err := vm.CreateSnapshot(r.Context(), deps, strings.TrimSpace(request.Name), request.Description, request.VMState)
 	if err != nil {
 		h.writeSnapshotError(w, err)
 		return
@@ -149,15 +175,19 @@ func (h *VMSnapshots) handleNamedAction(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	index := h.projection.Load()
-	if index == nil {
-		h.writeError(w, http.StatusServiceUnavailable, "inventory_not_ready", msgInventoryNotReady)
+	index, ok := loadClusterIndex(h.resolver, clusterName, func(status int, code, message string) { h.writeError(w, status, code, message) })
+	if !ok {
 		return
 	}
 
 	name := r.PathValue("name")
 
-	upid, err := action(r.Context(), h.dependencies(index, identity, clusterName, vmid), name)
+	deps, ok := h.dependencies(w, index, identity, clusterName, vmid)
+	if !ok {
+		return
+	}
+
+	upid, err := action(r.Context(), deps, name)
 	if err != nil {
 		h.writeSnapshotError(w, err)
 		return
@@ -172,8 +202,20 @@ func (h *VMSnapshots) requestTarget(w http.ResponseWriter, r *http.Request) (aut
 }
 
 //nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
-func (h *VMSnapshots) dependencies(index *inventory.Index, actor auth.Identity, clusterName string, vmid int) vm.SnapshotDependencies {
-	return vm.SnapshotDependencies{Index: index, Actor: actor, ClusterName: clusterName, VMID: vmid, Reader: h.reader, Writer: h.writer, Policy: h.policy, Audit: h.store}
+func (h *VMSnapshots) dependencies(w http.ResponseWriter, index *inventory.Index, actor auth.Identity, clusterName string, vmid int) (vm.SnapshotDependencies, bool) {
+	reader, err := resolveCapability(h.clients, h.reader, clusterName, "SnapshotReader")
+	if err != nil {
+		h.writeError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return vm.SnapshotDependencies{}, false
+	}
+
+	writer, err := resolveCapability(h.clients, h.writer, clusterName, "SnapshotWriter")
+	if err != nil {
+		h.writeError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return vm.SnapshotDependencies{}, false
+	}
+
+	return vm.SnapshotDependencies{Index: index, Actor: actor, ClusterName: clusterName, VMID: vmid, Reader: reader, Writer: writer, Policy: h.policy, Audit: h.store}, true
 }
 
 //nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent

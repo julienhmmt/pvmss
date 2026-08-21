@@ -3,7 +3,6 @@ package httpapi
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -22,13 +21,14 @@ import (
 // cluster.Client call lives here; all of that stays inside Action(), called
 // once per target.
 type VMBulk struct {
-	resolver   vm.ClusterIndexResolver
-	projection *inventory.Projection
-	auth       *Auth
-	writer     cluster.Writer
-	store      *store.Store
-	refresher  vm.IndexRefresher
-	log        *slog.Logger
+	resolver       vm.ClusterIndexResolver
+	writerResolver vm.ClusterWriterResolver
+	projection     *inventory.Projection
+	auth           *Auth
+	writer         cluster.Writer
+	store          *store.Store
+	refresher      vm.IndexRefresher
+	log            *slog.Logger
 }
 
 // singleClusterResolver adapts a default projection to the
@@ -41,11 +41,12 @@ type singleClusterResolver struct {
 }
 
 func (r singleClusterResolver) IndexFor(_ string) (*inventory.Index, error) {
-	idx := r.projection.Load()
-	if idx == nil {
-		return nil, errors.New("inventory has not been populated yet")
-	}
-	return idx, nil
+	// A nil Index is reported via a nil error, not an error value — same
+	// contract as registryResolver.IndexFor (inventory.Registry.Index
+	// returns (nil, nil) for a known-but-not-yet-populated cluster). Callers
+	// that only distinguish "err != nil" (unknown cluster) from "index ==
+	// nil" (not ready yet), like loadClusterIndex, depend on this.
+	return r.projection.Load(), nil
 }
 
 // registryResolver adapts the inventory Registry to ClusterIndexResolver —
@@ -56,6 +57,20 @@ type registryResolver struct {
 
 func (r registryResolver) IndexFor(clusterName string) (*inventory.Index, error) {
 	return r.registry.Index(clusterName)
+}
+
+// clientWriterResolver adapts a cluster.ClientProvider to
+// vm.ClusterWriterResolver — each bulk target's cluster name resolves to
+// that cluster's own cluster.Writer, closing the gap where BulkDeps.Writer
+// alone could not vary per target. fallback is used when clients is nil
+// (single-cluster wiring), matching every other resolveCapability call site.
+type clientWriterResolver struct {
+	clients  cluster.ClientProvider
+	fallback cluster.Writer
+}
+
+func (r clientWriterResolver) WriterFor(clusterName string) (cluster.Writer, error) {
+	return resolveCapability(r.clients, r.fallback, clusterName, "Writer")
 }
 
 // NewVMBulk creates the handler wired to a single default projection. Use
@@ -75,15 +90,16 @@ func NewVMBulk(projection *inventory.Projection, authHandler *Auth, writer clust
 // NewVMBulkWithRegistry creates the handler wired to a multi-cluster
 // inventory Registry. Each target's cluster name resolves to that cluster's
 // own projection via Registry.Index.
-func NewVMBulkWithRegistry(registry *inventory.Registry, projection *inventory.Projection, authHandler *Auth, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger) *VMBulk {
+func NewVMBulkWithRegistry(registry *inventory.Registry, projection *inventory.Projection, authHandler *Auth, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger, clients cluster.ClientProvider) *VMBulk {
 	return &VMBulk{
-		resolver:   registryResolver{registry: registry},
-		projection: projection,
-		auth:       authHandler,
-		writer:     writer,
-		store:      st,
-		refresher:  refresher,
-		log:        log,
+		resolver:       registryResolver{registry: registry},
+		writerResolver: clientWriterResolver{clients: clients, fallback: writer},
+		projection:     projection,
+		auth:           authHandler,
+		writer:         writer,
+		store:          st,
+		refresher:      refresher,
+		log:            log,
 	}
 }
 
@@ -135,11 +151,12 @@ func (h *VMBulk) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	results := vm.BulkAction(r.Context(), vm.BulkDeps{
-		Resolver:  h.resolver,
-		Actor:     identity,
-		Writer:    h.writer,
-		Audit:     h.store,
-		Refresher: h.refresher,
+		Resolver:       h.resolver,
+		WriterResolver: h.writerResolver,
+		Actor:          identity,
+		Writer:         h.writer,
+		Audit:          h.store,
+		Refresher:      h.refresher,
 	}, req.Targets, req.Action)
 	h.writeJSONStatus(w, http.StatusOK, bulkActionResponseDTO{Results: results})
 }
