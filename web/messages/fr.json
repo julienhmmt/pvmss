@@ -560,6 +560,7 @@
  "vms.create.adminBlocked": "Les administrateurs ne peuvent pas créer de VM via le portail libre-service.",
  "vms.create.errorNoPool": "Ce compte ne peut pas posséder de VM.",
  "vms.create.errorInvalidName": "Le nom doit être un nom d'hôte valide (minuscules alphanumériques et tirets, sans tiret en début ou fin, 63 caractères max).",
+ "vms.create.errorNameRequired": "Le nom est requis.",
  "vms.create.errorClusterRejected": "Le cluster a rejeté la requête.",
  "vms.create.errorInternal": "Une erreur interne est survenue.",
  "vms.create.errorNotApprovedGeneric": "Une des ressources sélectionnées n'est pas approuvée pour ce cluster.",

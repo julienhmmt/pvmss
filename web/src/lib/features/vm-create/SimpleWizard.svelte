@@ -28,6 +28,10 @@
 	}
 
 	async function submit(): Promise<void> {
+		if (form.name.trim() === '') {
+			form.submitError = m['vms.create.errorNameRequired']();
+			return;
+		}
 		const accepted = await form.submit();
 		if (accepted === null) {
 			if (form.submitError) toast.error(m['toast.vmCreateFailed']({ error: form.submitError }));
@@ -53,6 +57,7 @@
 	{@const cat = form.catalog}
 	<form
 		class="grid gap-4"
+		novalidate
 		onsubmit={(event) => {
 			event.preventDefault();
 			void submit();
