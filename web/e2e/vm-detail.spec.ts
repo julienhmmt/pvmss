@@ -76,6 +76,27 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 		await expect(page).toHaveURL(/\/vms$/);
 	});
 
+	test('delete a running VM prompts for force-stop, then confirms and deletes', async ({ page }) => {
+		await signInAlice(page.request);
+		// web-01 (VMID 100) — running, owned by alice.
+		await page.goto('/vms/default/100');
+
+		await page.getByTestId('vm-action-delete').click();
+		await expect(page.getByRole('dialog')).toBeVisible();
+
+		// First confirm — the server reports the VM is running.
+		await page.getByTestId('vm-delete-confirm').click();
+
+		// The dialog switches to the force-stop warning step.
+		await expect(page.getByTestId('vm-delete-running-warning')).toBeVisible();
+
+		// Second confirm — force-stops and deletes.
+		await page.getByTestId('vm-delete-confirm').click();
+
+		// After delete, navigates back to the list.
+		await expect(page).toHaveURL(/\/vms$/);
+	});
+
 	test('S01 closure: a non-owner cannot stop a VM they do not own (SC-001)', async ({ request }) => {
 		// This is S01's exact PoC request, now expected to fail.
 		await signIn(request, 'bob', 'pvmss-bob');

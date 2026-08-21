@@ -139,8 +139,13 @@ func pathDiskKey(path string) string {
 }
 
 // pathVmid extracts the vmid segment from a path like
-// "/api/v1/vms/default/100" or "/api/v1/vms/default/101/actions".
+// "/api/v1/vms/default/100" or "/api/v1/vms/default/101/actions". A trailing
+// query string (e.g. "?force=true") is stripped first.
 func pathVmid(path string) string {
+	if i := strings.Index(path, "?"); i >= 0 {
+		path = path[:i]
+	}
+
 	segments := strings.Split(strings.Trim(path, "/"), "/")
 	// /api/v1/vms/{cluster}/{vmid}[/actions]
 	if len(segments) >= 5 {
@@ -668,6 +673,71 @@ func TestVmDelete_AdminDeletesAnyTaggedVM(t *testing.T) {
 	// VM 106 is bob's (pool-bob), tagged pvmss.
 	rec, _ := serveDetailError(handler, detailRequest(http.MethodDelete, "/api/v1/vms/default/106", "", cookie))
 	assertDeleteSucceeded(t, rec, 106)
+}
+
+// TestVmDelete_RunningVMReturns409 — deleting a running VM without ?force=true
+// returns 409 (code "vm_running") so the UI can prompt for force-stop confirmation.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVmDelete_RunningVMReturns409(t *testing.T) {
+	handler, authHandler, _, _ := newVMDetailHandler(t)
+	cookie := aliceCookie(t, authHandler)
+
+	// VM 100 (web-01) is running and owned by alice.
+	rec, env := serveDetailError(handler, detailRequest(http.MethodDelete, "/api/v1/vms/default/100", "", cookie))
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusConflict, rec.Body.String())
+	}
+
+	if env.Code != "vm_running" {
+		t.Errorf("code = %q, want vm_running", env.Code)
+	}
+
+	// The VM must not have been deleted.
+	calls := cluster.FakeCallsFor(100)
+	for _, c := range calls {
+		if c.Action == "delete" {
+			t.Errorf("unexpected delete call for running VM 100 without force: %+v", c)
+		}
+	}
+}
+
+// TestVmDelete_ForceStopsAndDeletesRunningVM — ?force=true on a running VM
+// force-stops it first, then deletes → 200.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVmDelete_ForceStopsAndDeletesRunningVM(t *testing.T) {
+	handler, authHandler, _, _ := newVMDetailHandler(t)
+	cookie := aliceCookie(t, authHandler)
+
+	// VM 100 (web-01) is running and owned by alice. ?force=true authorizes the stop.
+	rec, _ := serveDetailError(handler, detailRequest(http.MethodDelete, "/api/v1/vms/default/100?force=true", "", cookie))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	// The fake should have recorded both a stop and a delete for VM 100.
+	calls := cluster.FakeCallsFor(100)
+
+	var hasStop, hasDelete bool
+
+	for _, c := range calls {
+		if c.Action == "stop" {
+			hasStop = true
+		}
+
+		if c.Action == "delete" {
+			hasDelete = true
+		}
+	}
+
+	if !hasStop {
+		t.Errorf("force-delete did not record a stop call for VM 100: %+v", calls)
+	}
+
+	if !hasDelete {
+		t.Errorf("force-delete did not record a delete call for VM 100: %+v", calls)
+	}
 }
 
 // =============================================================================

@@ -26,6 +26,12 @@ var (
 	ErrNotImplemented         = errors.New("not implemented")
 	ErrInvalidAction          = errors.New("invalid action")
 	ErrInvalidStateTransition = errors.New("invalid state transition")
+	// ErrVMRunning is returned by Delete when the target VM is running. Real
+	// Proxmox rejects a destroy on a running VM with HTTP 500 ("VM X is running
+	// - destroy failed"); the fake mirrors this so the force-stop-then-delete
+	// path is testable without a live cluster. Callers that want to delete a
+	// running VM must stop it first (see vm.Delete's Force flag).
+	ErrVMRunning = errors.New("vm is running")
 )
 
 // Client is the single contract for reading cluster data. Every implementation

@@ -313,7 +313,7 @@ func TestVMCreateCatalog_SeededShape(t *testing.T) {
 			Name string `json:"name"`
 			Node string `json:"node"`
 		} `json:"bridges"`
-		ISOs    []struct {
+		ISOs []struct {
 			Storage string `json:"storage"`
 			File    string `json:"file"`
 		} `json:"isos"`
