@@ -48,18 +48,32 @@ func NewVMConsole(projection *inventory.Projection, authHandler *Auth, relay clu
 	return &VMConsole{projection: projection, resolver: singleClusterResolver{projection: projection}, auth: authHandler, relay: relay, tickets: tickets, store: st, log: log}
 }
 
+// VMConsoleRegistryDeps groups the collaborators NewVMConsoleWithRegistry
+// needs for multi-cluster wiring. Bundling them keeps the parameter count
+// under go:S107.
+type VMConsoleRegistryDeps struct {
+	Source     inventory.LookupSource
+	Projection *inventory.Projection
+	Auth       *Auth
+	Relay      cluster.ConsoleRelay
+	Clients    cluster.ClientProvider
+	Tickets    *vm.ConsoleTicketStore
+	Store      *store.Store
+	Log        *slog.Logger
+}
+
 // NewVMConsoleWithRegistry creates the handler with per-request index and
 // cluster.ConsoleRelay resolution, keyed on the request's own :cluster path
 // value — without this, a console ticket for a non-default cluster would be
 // issued against the default cluster's node/port, and the relay would
 // connect to the wrong Proxmox host entirely.
-func NewVMConsoleWithRegistry(source inventory.LookupSource, projection *inventory.Projection, authHandler *Auth, relay cluster.ConsoleRelay, clients cluster.ClientProvider, tickets *vm.ConsoleTicketStore, st *store.Store, log *slog.Logger) *VMConsole {
-	handler := NewVMConsole(projection, authHandler, relay, tickets, st, log)
-	if registry, ok := source.(*inventory.Registry); ok {
+func NewVMConsoleWithRegistry(deps VMConsoleRegistryDeps) *VMConsole {
+	handler := NewVMConsole(deps.Projection, deps.Auth, deps.Relay, deps.Tickets, deps.Store, deps.Log)
+	if registry, ok := deps.Source.(*inventory.Registry); ok {
 		handler.resolver = registryResolver{registry: registry}
 	}
 
-	handler.clients = clients
+	handler.clients = deps.Clients
 
 	return handler
 }
