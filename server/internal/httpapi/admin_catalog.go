@@ -411,7 +411,7 @@ func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
 		return
 	}
-	err = catalog.SetISOEnabled(r.Context(), h.store, client, clusterName, req.Node, req.Storage, req.File, req.Enabled)
+	err = catalog.SetISOEnabled(r.Context(), h.store, client, clusterName, catalog.ISORef{Node: req.Node, Storage: req.Storage, File: req.File}, req.Enabled)
 	if errors.Is(err, cluster.ErrNotFound) {
 		writeAdminError(w, http.StatusNotFound, "not_found", isoNotFoundMsg(req.Node, req.Storage, req.File))
 		return
@@ -467,13 +467,13 @@ func nodeNotFoundMsg(name string) string {
 }
 
 func storageNotFoundMsg(name, node string) string {
-	return "storage \"" + name + "\" on node \"" + node + "\"" + msgNotReportedByCluster
+	return "storage \"" + name + msgOnNode + node + "\"" + msgNotReportedByCluster
 }
 
 func bridgeNotFoundMsg(node, name string) string {
-	return "bridge \"" + name + "\" on node \"" + node + "\"" + msgNotReportedByCluster
+	return "bridge \"" + name + msgOnNode + node + "\"" + msgNotReportedByCluster
 }
 
 func isoNotFoundMsg(node, storage, file string) string {
-	return "iso \"" + file + "\" on storage \"" + storage + "\" on node \"" + node + "\"" + msgNotReportedByCluster
+	return "iso \"" + file + "\" on storage \"" + storage + msgOnNode + node + "\"" + msgNotReportedByCluster
 }
