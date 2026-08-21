@@ -103,8 +103,9 @@ type catalogStorageDTO struct {
 // per-node (like storage), so the client needs the node to both label the
 // option and filter to the VM's chosen node.
 type catalogBridgeDTO struct {
-	Name string `json:"name"`
-	Node string `json:"node"`
+	Name    string `json:"name"`
+	Node    string `json:"node"`
+	Comment string `json:"comment,omitempty"`
 }
 
 type catalogISODTO struct {
@@ -255,6 +256,14 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	liveBridges, err := client.ListBridges(r.Context())
+	if err != nil {
+		h.log.Error("bridge discovery failed", "component", "httpapi", "error", err)
+		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return
+	}
+
 	profiles, err := catalog.Profiles(r.Context(), h.store, clusterName)
 	if err != nil {
 		h.log.Error("profile read failed", "component", "httpapi", "error", err)
@@ -285,7 +294,7 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 		Cluster:            clusterName,
 		Nodes:              make([]string, 0, len(resources.Nodes)),
 		Storages:           make([]catalogStorageDTO, 0, len(resources.Storages)),
-		Bridges:            catalogBridgeDTOs(resources.Bridges),
+		Bridges:            catalogBridgeDTOs(resources.Bridges, liveBridges),
 		ISOs:               make([]catalogISODTO, 0, len(resources.ISOs)),
 		Profiles:           make([]catalogProfileDTO, 0, len(profiles)),
 		CloudInitTemplates: make([]catalogCloudInitTemplateDTO, 0, len(templates)),
@@ -476,9 +485,17 @@ func vmCapableStorage(storage catalog.Storage, available []cluster.Storage) (clu
 
 // catalogBridgeDTOs dedupes by (name, node) — the same bridge name can be
 // approved on more than one node, and each is a distinct, independently
-// selectable option (bridge approval is per-node, like storage).
-func catalogBridgeDTOs(bridges []catalog.Bridge) []catalogBridgeDTO {
+// selectable option (bridge approval is per-node, like storage). live carries
+// the cluster's current network config, which is where the description
+// (Proxmox "comments" field) actually lives — catalog_bridges only stores
+// the approval, not the comment.
+func catalogBridgeDTOs(bridges []catalog.Bridge, live []cluster.Bridge) []catalogBridgeDTO {
 	type key struct{ name, node string }
+
+	commentByKey := make(map[key]string, len(live))
+	for _, bridge := range live {
+		commentByKey[key{bridge.Name, bridge.Node}] = bridge.Comment
+	}
 
 	out := make([]catalogBridgeDTO, 0, len(bridges))
 	seen := make(map[key]struct{}, len(bridges))
@@ -490,7 +507,7 @@ func catalogBridgeDTOs(bridges []catalog.Bridge) []catalogBridgeDTO {
 		}
 
 		seen[k] = struct{}{}
-		out = append(out, catalogBridgeDTO{Name: bridge.Name, Node: bridge.Node})
+		out = append(out, catalogBridgeDTO{Name: bridge.Name, Node: bridge.Node, Comment: commentByKey[k]})
 	}
 
 	return out
