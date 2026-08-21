@@ -106,6 +106,27 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 		await expect(page.getByTestId('vm-name')).toHaveText('web-renamed');
 	});
 
+	test('T03: live metrics tick updates the running VM chart', async ({ page }) => {
+		await signInAlice(page.request);
+		await page.goto('/vms/default/100');
+
+		await expect(page.getByTestId('vm-metrics-charts')).toBeVisible({ timeout: 10000 });
+		await expect(page.getByTestId('line-chart')).toHaveCount(4);
+
+		const cpuChart = page.getByTestId('line-chart').first();
+		const cpuPath = cpuChart.locator('path');
+		const initialPath = await cpuPath.getAttribute('d');
+
+		// The running VM opens an SSE stream; within a few seconds a live tick
+		// arrives and the SVG path changes.
+		await expect
+			.poll(async () => cpuChart.getAttribute('d'), {
+				timeout: 10000,
+				message: 'expected the CPU chart to receive a live tick'
+			})
+			.not.toBe(initialPath);
+	});
+
 	test('a non-owner opening a VM by URL gets 403/404, no data leaks', async ({ page }) => {
 		// Bob opens alice's VM 100 by editing the URL. Sign in via page.request
 		// (not the standalone `request` fixture) so the session cookie lands in

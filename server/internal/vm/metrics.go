@@ -27,7 +27,7 @@ type MetricsDependencies struct {
 // GetMetricsHistory resolves ownership then reads the VM's metrics history
 // for the given timeframe.
 func GetMetricsHistory(ctx context.Context, deps MetricsDependencies, timeframe cluster.MetricsTimeframe) ([]MetricsSample, error) {
-	entity, err := resolveMetricsTarget(deps)
+	entity, err := resolveMetricsEntity(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
 	if err != nil {
 		return nil, err
 	}
@@ -40,10 +40,36 @@ func GetMetricsHistory(ctx context.Context, deps MetricsDependencies, timeframe 
 	return samples, nil
 }
 
-func resolveMetricsTarget(deps MetricsDependencies) (Entity, error) {
-	if deps.Index == nil {
+// MetricsCurrentDependencies contains the resolved read dependency for a
+// current metrics request. Like MetricsDependencies, no Writer or Audit.
+type MetricsCurrentDependencies struct {
+	Index       *inventory.Index
+	Actor       auth.Identity
+	ClusterName string
+	VMID        int
+	Reader      cluster.MetricsCurrentReader
+}
+
+// GetMetricsCurrent resolves ownership then reads one current metrics sample
+// for the resolved VM.
+func GetMetricsCurrent(ctx context.Context, deps MetricsCurrentDependencies) (MetricsSample, error) {
+	entity, err := resolveMetricsEntity(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
+	if err != nil {
+		return MetricsSample{}, err
+	}
+
+	sample, err := deps.Reader.GetMetricsCurrent(ctx, entity.Node, entity.VMID)
+	if err != nil {
+		return MetricsSample{}, fmt.Errorf("get metrics current: %w", err)
+	}
+
+	return sample, nil
+}
+
+func resolveMetricsEntity(index *inventory.Index, actor auth.Identity, clusterName string, vmid int) (Entity, error) {
+	if index == nil {
 		return Entity{}, ErrNotFound
 	}
 
-	return Resolve(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
+	return Resolve(index, actor, clusterName, vmid)
 }

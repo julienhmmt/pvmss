@@ -76,10 +76,15 @@ type MetricsSample struct {
 	NetOutBps    float64
 }
 
-// MetricsHistoryReader reads a VM's historical metrics series. Kept separate
+// MetricsHistoryReader reads a VM's historical metrics series.
+type MetricsHistoryReader interface {
+	GetMetricsHistory(ctx context.Context, node string, vmid int, timeframe MetricsTimeframe) ([]MetricsSample, error)
+}
+
+// MetricsCurrentReader reads a VM's current metrics sample. Kept separate
 // from Client (constitution IV: reads and writes are separated, and small
 // single-purpose interfaces per SnapshotReader/SnapshotWriter) — a metrics
 // read is neither a Client-level cluster read nor a Writer-level VM mutation.
-type MetricsHistoryReader interface {
-	GetMetricsHistory(ctx context.Context, node string, vmid int, timeframe MetricsTimeframe) ([]MetricsSample, error)
+type MetricsCurrentReader interface {
+	GetMetricsCurrent(ctx context.Context, node string, vmid int) (MetricsSample, error)
 }

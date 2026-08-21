@@ -120,6 +120,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 
 	if cfg.VMMetrics != nil {
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/metrics/history", cfg.VMMetrics)
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/metrics/stream", cfg.VMMetrics)
 	}
 
 	// Unauthenticated credential-check endpoints get a per-IP rate limit —

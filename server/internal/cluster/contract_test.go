@@ -376,6 +376,26 @@ func checkMetricsSamples(t *testing.T, timeframe cluster.MetricsTimeframe, sampl
 }
 
 //nolint:paralleltest // serial: shared fake identity fixture
+func TestContract_GetMetricsCurrent(t *testing.T) {
+	impls := map[string]cluster.MetricsCurrentReader{
+		fakeImplementationName: cluster.Fake{},
+	}
+
+	for name, impl := range impls {
+		t.Run(name, func(t *testing.T) {
+			t.Helper()
+
+			sample, err := impl.GetMetricsCurrent(context.Background(), cluster.FakeNode01, 101)
+			if err != nil {
+				t.Fatalf("GetMetricsCurrent: %v", err)
+			}
+
+			checkMetricsSamples(t, cluster.MetricsTimeframeHour, []cluster.MetricsSample{sample})
+		})
+	}
+}
+
+//nolint:paralleltest // serial: shared fake identity fixture
 func TestContract_DisplayName(t *testing.T) {
 	impls := map[string]cluster.Client{
 		fakeImplementationName: cluster.Fake{},
