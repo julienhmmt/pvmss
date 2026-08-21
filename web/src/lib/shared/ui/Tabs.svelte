@@ -29,7 +29,11 @@
 	}
 </script>
 
-<div role="tablist" class="flex gap-1 border-b border-border-subtle" aria-label={m['common.tabsAriaLabel']()}>
+<div
+	role="tablist"
+	class="flex flex-wrap gap-1 rounded-xl border border-border bg-muted/50 p-1"
+	aria-label={m['common.tabsAriaLabel']()}
+>
 	{#each tabs as tab, index (tab.id)}
 		<button
 			type="button"
@@ -38,9 +42,9 @@
 			aria-selected={active === tab.id}
 			aria-controls={`panel-${tab.id}`}
 			tabindex={active === tab.id ? 0 : -1}
-			class="rounded-t-lg px-4 py-2.5 text-sm font-medium {active === tab.id
-				? 'border-b-2 border-primary text-foreground'
-				: 'text-muted-foreground hover:text-foreground'}"
+			class="rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background {active === tab.id
+				? 'bg-card text-foreground shadow-card'
+				: 'text-muted-foreground hover:bg-card/60 hover:text-foreground'}"
 			onclick={() => selectTab(tab.id)}
 			onkeydown={(event) => handleKeydown(event, index)}
 			data-testid={`vm-tab-${tab.id}`}
