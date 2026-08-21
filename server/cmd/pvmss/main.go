@@ -357,7 +357,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		logger,
 		policyService,
 	)
-	tasks := httpapi.NewTasks(authHandler, creator, worker, logger)
+	tasks := httpapi.NewTasksWithRegistry(authHandler, clusterRegistry, creator, worker, logger)
 	snapshots := httpapi.NewVMSnapshotsWithRegistry(inventoryRegistry, projection, authHandler, snapshotReader, snapshotWriter, clusterRegistry, st, logger, policyService)
 	vmConsole := httpapi.NewVMConsoleWithRegistry(inventoryRegistry, projection, authHandler, consoleRelay, clusterRegistry, consoleTickets, st, logger)
 	vmMetrics := httpapi.NewVMMetricsWithRegistry(inventoryRegistry, projection, authHandler, metricsReader, clusterRegistry, logger)

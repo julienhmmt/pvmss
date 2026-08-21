@@ -24,7 +24,7 @@
 			return;
 		}
 		draft.clear();
-		tray.track({ upid: accepted.upid, kind: 'vm_create', vmid: accepted.vmid, name: accepted.name });
+		tray.track({ upid: accepted.upid, kind: 'vm_create', vmid: accepted.vmid, name: accepted.name, cluster: accepted.cluster });
 		toast.info(m['toast.vmCreateQueued']());
 		await goto(resolve('/vms'));
 	}
