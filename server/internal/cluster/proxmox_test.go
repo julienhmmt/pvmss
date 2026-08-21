@@ -69,14 +69,29 @@ func TestProxmox_Snapshot(t *testing.T) {
 // assertProxmoxSnapshot asserts every field of a snapshot produced by the
 // TestProxmox_Snapshot fixture. Extracted from TestProxmox_Snapshot to satisfy
 // the cognitive-complexity ceiling (go:S3776); assertion logic is unchanged.
-//
-//nolint:gocyclo // one fixture, one snapshot, every field across nodes/vms/storages asserted together
+// It delegates the nodes/storages and VM field assertions to sub-helpers so
+// each function stays under the cognitive-complexity ceiling.
 func assertProxmoxSnapshot(t *testing.T, snap Snapshot) {
 	t.Helper()
 
 	if snap.ProxmoxVersion != "8.2.4" {
 		t.Errorf("version = %q, want 8.2.4", snap.ProxmoxVersion)
 	}
+
+	if len(snap.VMs) != 1 {
+		t.Fatalf("vms = %+v", snap.VMs)
+	}
+
+	assertSnapshotNodesStorages(t, snap)
+	assertSnapshotVM(t, snap.VMs[0])
+}
+
+// assertSnapshotNodesStorages asserts the nodes and storages fields of a
+// snapshot produced by the TestProxmox_Snapshot fixture. Extracted from
+// assertProxmoxSnapshot to satisfy the cognitive-complexity ceiling
+// (go:S3776); assertion logic is unchanged.
+func assertSnapshotNodesStorages(t *testing.T, snap Snapshot) {
+	t.Helper()
 
 	if len(snap.Nodes) != 1 || snap.Nodes[0].Name != "pve1" || snap.Nodes[0].Status != NodeOnline {
 		t.Fatalf("nodes = %+v", snap.Nodes)
@@ -90,12 +105,27 @@ func assertProxmoxSnapshot(t *testing.T, snap Snapshot) {
 	if storage.PluginType != "lvmthin" || storage.Content != "images,rootdir" {
 		t.Errorf("storage capabilities = %+v, want lvmthin with images,rootdir", storage)
 	}
+}
 
-	if len(snap.VMs) != 1 {
-		t.Fatalf("vms = %+v", snap.VMs)
-	}
+// assertSnapshotVM asserts every field of the single VM produced by the
+// TestProxmox_Snapshot fixture. Extracted from assertProxmoxSnapshot to
+// satisfy the cognitive-complexity ceiling (go:S3776); assertion logic is
+// unchanged. It delegates the identity and hardware field assertions to
+// sub-helpers so each function stays under the cognitive-complexity ceiling.
+func assertSnapshotVM(t *testing.T, vm VM) {
+	t.Helper()
 
-	vm := snap.VMs[0]
+	assertSnapshotVMIdentity(t, vm)
+	assertSnapshotVMHardware(t, vm)
+}
+
+// assertSnapshotVMIdentity asserts the identity fields (vmid/status/pool,
+// tags, sockets/cores) of the single VM produced by the TestProxmox_Snapshot
+// fixture. Extracted from assertProxmoxSnapshot to satisfy the
+// cognitive-complexity ceiling (go:S3776); assertion logic is unchanged.
+func assertSnapshotVMIdentity(t *testing.T, vm VM) {
+	t.Helper()
+
 	if vm.VMID != 101 || vm.Status != VMRunning || vm.Pool != FakePoolAliceShort {
 		t.Fatalf("vm = %+v", vm)
 	}
@@ -107,6 +137,15 @@ func assertProxmoxSnapshot(t *testing.T, snap Snapshot) {
 	if vm.Sockets != 1 || vm.Cores != 2 {
 		t.Fatalf("vm sockets/cores = %d/%d", vm.Sockets, vm.Cores)
 	}
+}
+
+// assertSnapshotVMHardware asserts the hardware fields (disks, network
+// interfaces, description, uptime) of the single VM produced by the
+// TestProxmox_Snapshot fixture. Extracted from assertProxmoxSnapshot to
+// satisfy the cognitive-complexity ceiling (go:S3776); assertion logic is
+// unchanged.
+func assertSnapshotVMHardware(t *testing.T, vm VM) {
+	t.Helper()
 
 	if len(vm.Disks) != 1 || vm.Disks[0].Storage != FakeStorageLocalLVM || vm.Disks[0].SizeGB != 32 {
 		t.Fatalf("vm.Disks = %+v", vm.Disks)
