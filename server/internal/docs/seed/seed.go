@@ -60,6 +60,36 @@ var proxmoxPermissionsEN string
 //go:embed recovered/proxmox-permissions.fr.md
 var proxmoxPermissionsFR string
 
+// Page ids for built-in system pages. Used both as the builtInPages id field
+// and as the frenchVariants switch keys, so renaming an id is a one-line change.
+const (
+	idGettingStarted       = "getting-started"
+	idVMCreationGuidelines = "vm-creation-guidelines"
+	idCloudInitHowto       = "cloud-init-howto"
+	idAdmin                = "admin"
+	idUserGuide            = "user-guide"
+	idAdminGuide           = "admin-guide"
+	idCloudInitSetup       = "cloud-init-setup"
+	idProxmoxPermissions   = "proxmox-permissions"
+)
+
+// Audience values for built-in pages. user docs are public, admin docs are
+// admin-only. Extracted as constants so the audience strings are not repeated
+// across builtInPages and frenchVariants.
+const (
+	audienceUser  = "user"
+	audienceAdmin = "admin"
+)
+
+// Category labels for built-in pages. Only the categories that recur across
+// multiple pages are extracted; single-use categories stay inline.
+const (
+	categoryGettingStarted = "Getting started"
+	categoryCreatingVMs    = "Creating VMs"
+	categoryAdministration = "Administration"
+	categoryGuides         = "Guides"
+)
+
 // seedPage describes one built-in page to insert.
 type seedPage struct {
 	id        string
@@ -70,21 +100,34 @@ type seedPage struct {
 	sortOrder int
 }
 
+// enVariant builds the English seedVariant for this page. The EN row is stated
+// once here (in builtInPages) and reused for seeding, so it is never restated
+// in frenchVariants.
+func (p seedPage) enVariant() seedVariant {
+	return seedVariant{
+		id:        p.id,
+		lang:      "en",
+		title:     p.title,
+		category:  p.category,
+		bodyMD:    p.bodyMD,
+		audience:  p.audience,
+		sortOrder: p.sortOrder,
+	}
+}
+
 // builtInPages is the fixed set of system pages. The audience maps directly:
 // user docs are public, the admin doc is admin-only. Recovered v0.3 guides
 // (admin/user/cloud-init/permissions) were reintegrated and rewritten for the
 // v0.4 app, then seeded as system pages so they survive restarts (issue #53).
-//
-//nolint:goconst // repeated human-readable titles, categories and ids are seed data
 var builtInPages = []seedPage{
-	{id: "getting-started", title: "Getting started", category: "Getting started", bodyMD: gettingStartedMD, audience: "user", sortOrder: 1},
-	{id: "vm-creation-guidelines", title: "VM creation guidelines", category: "Creating VMs", bodyMD: vmCreationGuidelinesMD, audience: "user", sortOrder: 2},
-	{id: "cloud-init-howto", title: "Cloud-init how-to", category: "Creating VMs", bodyMD: cloudInitHowtoMD, audience: "user", sortOrder: 3},
-	{id: "admin", title: "Admin guide", category: "Administration", bodyMD: adminMD, audience: "admin", sortOrder: 100},
-	{id: "user-guide", title: "User guide", category: "Guides", bodyMD: userGuideEN, audience: "user", sortOrder: 4},
-	{id: "admin-guide", title: "Administrator guide", category: "Guides", bodyMD: adminGuideEN, audience: "admin", sortOrder: 101},
-	{id: "cloud-init-setup", title: "Cloud-init setup (admin)", category: "Guides", bodyMD: cloudInitSetupEN, audience: "admin", sortOrder: 102},
-	{id: "proxmox-permissions", title: "Proxmox permissions for PVMSS", category: "Guides", bodyMD: proxmoxPermissionsEN, audience: "admin", sortOrder: 103},
+	{id: idGettingStarted, title: "Getting started", category: categoryGettingStarted, bodyMD: gettingStartedMD, audience: audienceUser, sortOrder: 1},
+	{id: idVMCreationGuidelines, title: "VM creation guidelines", category: categoryCreatingVMs, bodyMD: vmCreationGuidelinesMD, audience: audienceUser, sortOrder: 2},
+	{id: idCloudInitHowto, title: "Cloud-init how-to", category: categoryCreatingVMs, bodyMD: cloudInitHowtoMD, audience: audienceUser, sortOrder: 3},
+	{id: idAdmin, title: "Admin guide", category: categoryAdministration, bodyMD: adminMD, audience: audienceAdmin, sortOrder: 100},
+	{id: idUserGuide, title: "User guide", category: categoryGuides, bodyMD: userGuideEN, audience: audienceUser, sortOrder: 4},
+	{id: idAdminGuide, title: "Administrator guide", category: categoryGuides, bodyMD: adminGuideEN, audience: audienceAdmin, sortOrder: 101},
+	{id: idCloudInitSetup, title: "Cloud-init setup (admin)", category: categoryGuides, bodyMD: cloudInitSetupEN, audience: audienceAdmin, sortOrder: 102},
+	{id: idProxmoxPermissions, title: "Proxmox permissions for PVMSS", category: categoryGuides, bodyMD: proxmoxPermissionsEN, audience: audienceAdmin, sortOrder: 103},
 }
 
 // SeedDocumentationPages inserts every built-in page that does not already
@@ -95,39 +138,25 @@ var builtInPages = []seedPage{
 func SeedDocumentationPages(ctx context.Context, st *store.Store) error {
 	stamp := time.Now().UTC().Format(time.RFC3339Nano)
 
+	// Every page seeds its EN row from builtInPages; bilingual pages append
+	// their FR variant when one exists. insertSeedRow is itself idempotent per
+	// (id, lang), so re-running the seed never clobbers an existing row.
 	for _, p := range builtInPages {
-		// Pages that ship in both languages are seeded variant by variant.
-		// insertSeedRow is itself idempotent per (id, lang), so re-running
-		// the seed never clobbers an existing or admin-edited row.
-		if v := frenchVariants(p.id); v != nil {
-			for _, variant := range v {
-				if err := insertSeedRow(ctx, st, variant.id, variant.lang, variant.title, variant.category, variant.bodyMD, variant.audience, variant.sortOrder, stamp); err != nil {
-					return err
-				}
-			}
-
-			continue
-		}
-
-		// English-only pages: seed once if the (id, en) row is missing.
-		exists, err := st.DocumentationPageExists(ctx, p.id, "en")
-		if err != nil {
-			return fmt.Errorf("check seed page %q: %w", p.id, err)
-		}
-
-		if exists {
-			continue
-		}
-
-		if err := insertSeedRow(ctx, st, p.id, "en", p.title, p.category, p.bodyMD, p.audience, p.sortOrder, stamp); err != nil {
+		if err := insertSeedRow(ctx, st, p.enVariant(), stamp); err != nil {
 			return err
+		}
+
+		if fr := frenchVariants(p.id); fr != nil {
+			if err := insertSeedRow(ctx, st, *fr, stamp); err != nil {
+				return err
+			}
 		}
 	}
 
 	return nil
 }
 
-// seedVariant is one language variant of a bilingual recovered guide.
+// seedVariant is one language variant of a built-in page.
 type seedVariant struct {
 	id        string
 	lang      string
@@ -138,62 +167,39 @@ type seedVariant struct {
 	sortOrder int
 }
 
-// frenchVariants returns the en + fr rows for a built-in page that ships in
-// both languages. It returns nil for pages that are English-only.
+// frenchVariants returns the French variant for a built-in page that ships in
+// both languages, or nil if the page is English-only. The English row is not
+// restated here — it comes from builtInPages via seedPage.enVariant.
 //
 //nolint:misspell // French titles are intentional seed data
-func frenchVariants(id string) []seedVariant {
+func frenchVariants(id string) *seedVariant {
 	switch id {
-	case "admin":
-		return []seedVariant{
-			{id: "admin", lang: "en", title: "Admin guide", category: "Administration", bodyMD: adminMD, audience: "admin", sortOrder: 100},
-			{id: "admin", lang: "fr", title: "Guide de l'administration", category: "Administration", bodyMD: adminFR, audience: "admin", sortOrder: 100},
-		}
-	case "getting-started":
-		return []seedVariant{
-			{id: "getting-started", lang: "en", title: "Getting started", category: "Getting started", bodyMD: gettingStartedMD, audience: "user", sortOrder: 1},
-			{id: "getting-started", lang: "fr", title: "Premiers pas", category: "Premiers pas", bodyMD: gettingStartedFR, audience: "user", sortOrder: 1},
-		}
-	case "vm-creation-guidelines":
-		return []seedVariant{
-			{id: "vm-creation-guidelines", lang: "en", title: "VM creation guidelines", category: "Creating VMs", bodyMD: vmCreationGuidelinesMD, audience: "user", sortOrder: 2},
-			{id: "vm-creation-guidelines", lang: "fr", title: "Recommandations de création de VM", category: "Création de VMs", bodyMD: vmCreationGuidelinesFR, audience: "user", sortOrder: 2},
-		}
-	case "cloud-init-howto":
-		return []seedVariant{
-			{id: "cloud-init-howto", lang: "en", title: "Cloud-init how-to", category: "Creating VMs", bodyMD: cloudInitHowtoMD, audience: "user", sortOrder: 3},
-			{id: "cloud-init-howto", lang: "fr", title: "Guide cloud-init", category: "Création de VMs", bodyMD: cloudInitHowtoFR, audience: "user", sortOrder: 3},
-		}
-	case "user-guide":
-		return []seedVariant{
-			{id: "user-guide", lang: "en", title: "User guide", category: "Guides", bodyMD: userGuideEN, audience: "user", sortOrder: 4},
-			{id: "user-guide", lang: "fr", title: "Guide de l'utilisateur", category: "Guides", bodyMD: userGuideFR, audience: "user", sortOrder: 4},
-		}
-	case "admin-guide":
-		return []seedVariant{
-			{id: "admin-guide", lang: "en", title: "Administrator guide", category: "Guides", bodyMD: adminGuideEN, audience: "admin", sortOrder: 101},
-			{id: "admin-guide", lang: "fr", title: "Guide de l'administrateur", category: "Guides", bodyMD: adminGuideFR, audience: "admin", sortOrder: 101},
-		}
-	case "cloud-init-setup":
-		return []seedVariant{
-			{id: "cloud-init-setup", lang: "en", title: "Cloud-init setup (admin)", category: "Guides", bodyMD: cloudInitSetupEN, audience: "admin", sortOrder: 102},
-			{id: "cloud-init-setup", lang: "fr", title: "Configuration cloud-init (administrateur)", category: "Guides", bodyMD: cloudInitSetupFR, audience: "admin", sortOrder: 102},
-		}
-	case "proxmox-permissions":
-		return []seedVariant{
-			{id: "proxmox-permissions", lang: "en", title: "Proxmox permissions for PVMSS", category: "Guides", bodyMD: proxmoxPermissionsEN, audience: "admin", sortOrder: 103},
-			{id: "proxmox-permissions", lang: "fr", title: "Permissions Proxmox pour PVMSS", category: "Guides", bodyMD: proxmoxPermissionsFR, audience: "admin", sortOrder: 103},
-		}
+	case idAdmin:
+		return &seedVariant{id: idAdmin, lang: "fr", title: "Guide de l'administration", category: categoryAdministration, bodyMD: adminFR, audience: audienceAdmin, sortOrder: 100}
+	case idGettingStarted:
+		return &seedVariant{id: idGettingStarted, lang: "fr", title: "Premiers pas", category: "Premiers pas", bodyMD: gettingStartedFR, audience: audienceUser, sortOrder: 1}
+	case idVMCreationGuidelines:
+		return &seedVariant{id: idVMCreationGuidelines, lang: "fr", title: "Recommandations de création de VM", category: "Création de VMs", bodyMD: vmCreationGuidelinesFR, audience: audienceUser, sortOrder: 2}
+	case idCloudInitHowto:
+		return &seedVariant{id: idCloudInitHowto, lang: "fr", title: "Guide cloud-init", category: "Création de VMs", bodyMD: cloudInitHowtoFR, audience: audienceUser, sortOrder: 3}
+	case idUserGuide:
+		return &seedVariant{id: idUserGuide, lang: "fr", title: "Guide de l'utilisateur", category: categoryGuides, bodyMD: userGuideFR, audience: audienceUser, sortOrder: 4}
+	case idAdminGuide:
+		return &seedVariant{id: idAdminGuide, lang: "fr", title: "Guide de l'administrateur", category: categoryGuides, bodyMD: adminGuideFR, audience: audienceAdmin, sortOrder: 101}
+	case idCloudInitSetup:
+		return &seedVariant{id: idCloudInitSetup, lang: "fr", title: "Configuration cloud-init (administrateur)", category: categoryGuides, bodyMD: cloudInitSetupFR, audience: audienceAdmin, sortOrder: 102}
+	case idProxmoxPermissions:
+		return &seedVariant{id: idProxmoxPermissions, lang: "fr", title: "Permissions Proxmox pour PVMSS", category: categoryGuides, bodyMD: proxmoxPermissionsFR, audience: audienceAdmin, sortOrder: 103}
 	}
 
 	return nil
 }
 
 // insertSeedRow idempotently inserts one (id, lang) system page.
-func insertSeedRow(ctx context.Context, st *store.Store, id, lang, title, category, bodyMD, audience string, sortOrder int, stamp string) error {
-	exists, err := st.DocumentationPageExists(ctx, id, lang)
+func insertSeedRow(ctx context.Context, st *store.Store, v seedVariant, stamp string) error {
+	exists, err := st.DocumentationPageExists(ctx, v.id, v.lang)
 	if err != nil {
-		return fmt.Errorf("check seed page %q/%s: %w", id, lang, err)
+		return fmt.Errorf("check seed page %q/%s: %w", v.id, v.lang, err)
 	}
 
 	if exists {
@@ -201,13 +207,13 @@ func insertSeedRow(ctx context.Context, st *store.Store, id, lang, title, catego
 	}
 
 	row := store.DocumentationPageRow{
-		ID: id, Lang: lang, Title: title, Category: category, BodyMD: bodyMD,
-		Audience: audience, Enabled: true, IsSystem: true, SortOrder: sortOrder,
+		ID: v.id, Lang: v.lang, Title: v.title, Category: v.category, BodyMD: v.bodyMD,
+		Audience: v.audience, Enabled: true, IsSystem: true, SortOrder: v.sortOrder,
 		CreatedAt: stamp, UpdatedAt: stamp,
 	}
 
 	if err := st.InsertDocumentationPage(ctx, row); err != nil {
-		return fmt.Errorf("insert seed page %q/%s: %w", id, lang, err)
+		return fmt.Errorf("insert seed page %q/%s: %w", v.id, v.lang, err)
 	}
 
 	return nil
