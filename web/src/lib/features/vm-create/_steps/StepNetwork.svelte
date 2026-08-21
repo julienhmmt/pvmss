@@ -32,7 +32,14 @@
 				placeholder={m['vms.create.chooseBridge']()}
 				options={bridgesOnNode.map((bridge) => ({
 					value: bridge.name,
-					label: m['vms.create.optionWithLocation']({ name: bridge.name, node: bridge.node, cluster: form.clusterDisplayName() })
+					label: bridge.comment
+						? m['vms.create.optionWithLocationAndComment']({
+								name: bridge.name,
+								node: bridge.node,
+								cluster: form.clusterDisplayName(),
+								comment: bridge.comment
+							})
+						: m['vms.create.optionWithLocation']({ name: bridge.name, node: bridge.node, cluster: form.clusterDisplayName() })
 				}))}
 			/>
 		{/snippet}

@@ -14,6 +14,7 @@ export interface CatalogStorage {
 export interface CatalogBridge {
 	name: string;
 	node: string;
+	comment?: string;
 }
 
 export interface CatalogISO {

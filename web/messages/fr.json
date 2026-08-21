@@ -265,6 +265,7 @@
  "vms.create.noStorageOnNode": "Aucun stockage disponible sur ce nœud",
  "vms.create.noBridgeOnNode": "Aucun pont disponible sur ce nœud",
  "vms.create.optionWithLocation": "{name} — Nœud {node} · Cluster {cluster}",
+ "vms.create.optionWithLocationAndComment": "{name} — Nœud {node} · Cluster {cluster} · {comment}",
  "vms.create.node": "Nœud",
  "vms.create.placementAutomatic": "Placement automatique",
  "vms.create.profile": "Profil",
