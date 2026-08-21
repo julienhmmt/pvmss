@@ -52,6 +52,46 @@ test.describe('T10 VM console VNC', () => {
 		await expect(page.getByTestId('vm-console-scale')).toContainText('Scale: On');
 	});
 
+	test('T01: pop-out control opens the console in a second, independent window', async ({ page, context }) => {
+		await signInAlice(page.request);
+		await page.goto('/vms/default/100/console');
+
+		await expect(page.getByTestId('vm-console-status')).toContainText('connected', { timeout: 15000 });
+		await expect(page.getByTestId('vm-console-popout')).toBeVisible();
+
+		const [popup] = await Promise.all([
+			context.waitForEvent('page'),
+			page.getByTestId('vm-console-popout').click()
+		]);
+
+		await expect(popup).toHaveURL(/\/vms\/default\/100\/console$/);
+		// Locale-agnostic: only asserts the vmid is present, not English word
+		// order — see the pre-existing locale-negotiation note above.
+		await expect(popup.getByTestId('vm-console-title')).toContainText('100');
+		await expect(popup.getByTestId('vm-console-status')).toContainText('connected', { timeout: 15000 });
+
+		// Both windows are independently connected — closing the popup does not
+		// disturb the original window's session.
+		await popup.close();
+		await expect(page.getByTestId('vm-console-status')).toContainText('connected');
+	});
+
+	test('T01: pop-out shows a message when the browser blocks the popup', async ({ page }) => {
+		await signInAlice(page.request);
+
+		// Simulate a browser/extension popup blocker: window.open returns null.
+		await page.addInitScript(() => {
+			window.open = () => null;
+		});
+		await page.goto('/vms/default/100/console');
+
+		await expect(page.getByTestId('vm-console-status')).toContainText('connected', { timeout: 15000 });
+		await expect(page.getByTestId('vm-console-popout-blocked')).toBeHidden();
+
+		await page.getByTestId('vm-console-popout').click();
+		await expect(page.getByTestId('vm-console-popout-blocked')).toBeVisible();
+	});
+
 	test('P2: disconnect and reconnect', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms/default/100/console');

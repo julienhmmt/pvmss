@@ -9,6 +9,10 @@ export interface TrackedTask {
 	kind: TaskKind;
 	vmid: number;
 	name: string;
+	/** Cluster that ran the task. UPIDs don't embed cluster identity, so the
+	 *  poll must carry the cluster explicitly via ?cluster= — otherwise a
+	 *  non-default-cluster task is polled against the wrong cluster's client. */
+	cluster: string;
 }
 
 export interface TaskStatusResponse {
@@ -103,7 +107,9 @@ export class TaskTrayStore {
 
 	async #pollOne(task: TrackedTask): Promise<void> {
 		try {
-			const status = await get<TaskStatusResponse>(`/api/v1/tasks/${encodeURIComponent(task.upid)}`);
+			const status = await get<TaskStatusResponse>(
+			`/api/v1/tasks/${encodeURIComponent(task.upid)}?cluster=${encodeURIComponent(task.cluster)}`
+		);
 			if (status.state === 'running') return;
 			if (status.state === 'ok') await refreshInventory();
 			this.#finish(task, taskToast(task, status));

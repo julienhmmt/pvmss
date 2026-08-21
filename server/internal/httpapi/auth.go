@@ -171,7 +171,9 @@ func (h *Auth) startSession(w http.ResponseWriter, r *http.Request, identity aut
 	writeAuthJSON(w, http.StatusOK, identity)
 }
 
-// Me returns the resolved browser or bearer-token identity.
+// Me returns the resolved browser or bearer-token identity. The cluster
+// display name is refreshed from the current database row so the sidebar
+// reflects an updated display name without forcing a re-login.
 func (h *Auth) Me(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.Principal(r)
 	if err != nil {
@@ -179,7 +181,29 @@ func (h *Auth) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	identity = h.refreshClusterDisplayName(r.Context(), identity)
+
 	writeAuthJSON(w, http.StatusOK, identity)
+}
+
+// refreshClusterDisplayName re-reads the cluster row's DisplayName so the
+// frontend sidebar and login choices stay up to date when an admin test or
+// seeding populates it after the session was created.
+func (h *Auth) refreshClusterDisplayName(ctx context.Context, identity auth.Identity) auth.Identity {
+	if h.clusterStore == nil || identity.Cluster == "" {
+		return identity
+	}
+
+	row, err := h.clusterStore.GetCluster(ctx, identity.Cluster)
+	if err != nil {
+		return identity
+	}
+
+	if row.DisplayName != "" {
+		identity.ClusterDisplayName = row.DisplayName
+	}
+
+	return identity
 }
 
 // Require rejects requests that do not resolve to a browser session or API token.

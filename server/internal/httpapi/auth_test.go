@@ -2,13 +2,17 @@
 package httpapi_test
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
+	"pvmss/server/internal/store"
 	"strings"
 	"testing"
 
@@ -54,6 +58,64 @@ func TestAuth_AdminLogin_StoresAdminSession(t *testing.T) {
 
 	if got != (auth.Identity{Username: "admin", IsAdmin: true}) {
 		t.Fatalf("identity = %+v", got)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake auth and session fixtures
+func TestAuth_Me_RefreshesClusterDisplayName(t *testing.T) {
+	handler, st := newAuthHandlerWithStore(t)
+
+	login := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
+	if login.Code != http.StatusOK {
+		t.Fatalf("login status = %d, want %d: %s", login.Code, http.StatusOK, login.Body.String())
+	}
+
+	// The fake seed should already have set a display name, but simulate an
+	// old session by clearing it and then updating the row after login.
+	ctx := context.Background()
+	if err := st.SetClusterDisplayName(ctx, "default", ""); err != nil {
+		t.Fatalf("clear DisplayName: %v", err)
+	}
+
+	cookie := login.Result().Cookies()[0]
+	meRequest := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	meRequest.AddCookie(cookie)
+
+	me := httptest.NewRecorder()
+	handler.Me(me, meRequest)
+
+	if me.Code != http.StatusOK {
+		t.Fatalf("me status = %d, want %d: %s", me.Code, http.StatusOK, me.Body.String())
+	}
+
+	var identity auth.Identity
+	if err := json.Unmarshal(me.Body.Bytes(), &identity); err != nil {
+		t.Fatalf("decode me: %v", err)
+	}
+
+	if identity.ClusterDisplayName == auditTestCluster {
+		t.Fatalf("ClusterDisplayName still %q, should be refreshed from empty row fallback", identity.ClusterDisplayName)
+	}
+
+	// Now update the row with a custom display name and verify the same
+	// session sees it on the next /me call, without re-login.
+	if err := st.SetClusterDisplayName(ctx, "default", "Prod PVE"); err != nil {
+		t.Fatalf("SetClusterDisplayName: %v", err)
+	}
+
+	meAgainRequest := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	meAgainRequest.AddCookie(cookie)
+
+	meAgain := httptest.NewRecorder()
+	handler.Me(meAgain, meAgainRequest)
+
+	var refreshed auth.Identity
+	if err := json.Unmarshal(meAgain.Body.Bytes(), &refreshed); err != nil {
+		t.Fatalf("decode me again: %v", err)
+	}
+
+	if refreshed.ClusterDisplayName != "Prod PVE" {
+		t.Fatalf("ClusterDisplayName = %q, want %q", refreshed.ClusterDisplayName, "Prod PVE")
 	}
 }
 
@@ -318,6 +380,40 @@ func newAuthHandler(t *testing.T) *httpapi.Auth {
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
 
 	return httpapi.NewAuth(cluster.Fake{}, sessions, string(hash), auth.NewTokenService(newTokenRepository()), logger)
+}
+
+func newAuthHandlerWithStore(t *testing.T) (*httpapi.Auth, *store.Store) {
+	t.Helper()
+
+	dbPath := filepath.Join(t.TempDir(), "auth.db")
+	//nolint:goconst // "fake" is used throughout this package; defining a constant here would not reduce occurrences.
+	cfg := config.Configuration{DBPath: dbPath, SessionSecret: "a-session-secret-with-at-least-thirty-two-bytes", ClusterSource: "fake"}
+
+	st, err := store.Open(cfg)
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+
+	t.Cleanup(func() { _ = st.Close() })
+
+	hash, err := bcrypt.GenerateFromPassword([]byte("pvmss-local-admin"), bcrypt.MinCost)
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+
+	sessions, err := auth.NewSessionManager(st, "a-session-secret-with-at-least-thirty-two-bytes", false)
+	if err != nil {
+		t.Fatalf("NewSessionManager: %v", err)
+	}
+
+	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
+
+	registry, err := cluster.NewRegistry("fake", []store.ClusterRow{{Name: auditTestCluster}})
+	if err != nil {
+		t.Fatalf("NewRegistry: %v", err)
+	}
+
+	return httpapi.NewAuthWithRegistry(registry, st, sessions, string(hash), auth.NewTokenService(newTokenRepository()), logger), st
 }
 
 func serveJSON(handler http.HandlerFunc, path, body string) *httptest.ResponseRecorder {

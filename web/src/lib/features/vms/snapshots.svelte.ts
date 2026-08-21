@@ -76,7 +76,7 @@ export class VmSnapshotsStore {
 		this.error = null;
 		try {
 			const task = await request();
-			this.#tray.track({ upid: task.upid, kind, vmid: this.vmid, name });
+			this.#tray.track({ upid: task.upid, kind, vmid: this.vmid, name, cluster: this.cluster });
 			return true;
 		} catch (error: unknown) {
 			this.error = errorMessage(error, () => m['vms.snapshots.errorOperation']());

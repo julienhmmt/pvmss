@@ -154,6 +154,18 @@ Rename validates as a hostname (lowercase, ≤63 chars, `hostnameRe` in
 | **States** | Connection failure surfaces as a console error, not a blank frame |
 | **Safety nets** | Ticket is per-VM and issued only after the ownership check; dev note — the Vite dev server must run under Node, not bun, or the WebSocket breaks with a 1006 |
 
+### View VM metrics history
+
+| | |
+| --- | --- |
+| **Audience** | end user |
+| **Entry** | `VmMetricsRow` on the VM detail page, below the Overview stat cards |
+| **Route** | `/vms/[cluster]/[vmid]` |
+| **API** | `GET /api/v1/vms/{cluster}/{vmid}/metrics/history?range=hour\|day\|week` |
+| **Steps** | 1. Row loads history for the default "hour" range on mount. 2. User toggles hour/day/week; each toggle re-fetches and re-renders only the four charts. |
+| **States** | Skeleton cards while loading; an inline error banner on fetch failure; charts render via hand-rolled SVG (`LineChart.svelte`), no charting library |
+| **Safety nets** | Resolved and ownership-checked the same way as every other VM read (`vm.Resolve()`); a stale in-flight response from a prior range switch is discarded, never overwrites the current one |
+
 ---
 
 ## 3. Cluster visibility

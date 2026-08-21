@@ -3,11 +3,14 @@ package httpapi_test
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/httpapi"
+	"pvmss/server/internal/inventory"
 	"testing"
+	"time"
 )
 
 func getTask(t *testing.T, handler *httpapi.Tasks, upid string, cookie *http.Cookie) *httptest.ResponseRecorder {
@@ -159,5 +162,182 @@ func TestTasks_RollbackInvalidatesIndex(t *testing.T) {
 
 	if projection.Load() == before {
 		t.Fatal("rollback completion did not replace the inventory projection")
+	}
+}
+
+// newTasksHandlerWithRegistry builds the task-status handler with a real worker
+// and a multi-cluster ClientProvider, so the per-request ?cluster= resolution
+// path is exercised (the cross-cluster fix). Each named cluster maps to its
+// own Fake instance so a task created on one cluster is invisible to another.
+func newTasksHandlerWithRegistry(t *testing.T, clients map[string]cluster.Client) (*httpapi.Tasks, *httpapi.Auth, *inventory.Projection) {
+	t.Helper()
+	t.Cleanup(cluster.ResetFake)
+	authHandler := newAuthHandler(t)
+	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
+
+	snap, err := (cluster.Fake{}).Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	projection := buildProjectionWithIndex(t, snap, time.Now())
+	worker := inventory.NewWorker(cluster.Fake{}, projection, time.Hour, logger)
+
+	provider := vmCreateClientProvider{clients: clients}
+
+	return httpapi.NewTasksWithRegistry(authHandler, provider, cluster.Fake{}, worker, logger), authHandler, projection
+}
+
+// getTaskWithCluster issues GET /api/v1/tasks/{upid}?cluster={cluster} against
+// the handler directly, mirroring how the frontend polls after the
+// cross-cluster fix.
+func getTaskWithCluster(t *testing.T, handler *httpapi.Tasks, upid, clusterName string, cookie *http.Cookie) *httptest.ResponseRecorder {
+	t.Helper()
+
+	target := "/api/v1/tasks/" + upid + "?cluster=" + clusterName
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, target, nil)
+
+	if cookie != nil {
+		req.AddCookie(cookie)
+	}
+
+	req.SetPathValue("upid", upid)
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, req)
+
+	return recorder
+}
+
+// TestTasks_WithRegistry_PollsNamedCluster — the registry-backed handler
+// resolves the ?cluster= param to that cluster's own Creator and polls the
+// task against it. A task created on the "secondary" cluster is observed
+// running→ok only when the poll names "secondary"; polling it through the
+// default cluster's client (the pre-fix behaviour) would 404.
+//
+//nolint:paralleltest // serial: shared fake task fixture
+func TestTasks_WithRegistry_PollsNamedCluster(t *testing.T) {
+	secondary := cluster.Fake{}
+	handler, authHandler, _ := newTasksHandlerWithRegistry(t, map[string]cluster.Client{
+		auditTestCluster:      cluster.Fake{},
+		crossSecondaryCluster: secondary,
+	})
+	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+
+	ctx := context.Background()
+
+	vmid, err := secondary.NextVMID(ctx)
+	if err != nil {
+		t.Fatalf("NextVMID: %v", err)
+	}
+
+	upid, err := secondary.CreateVM(ctx, cluster.VMSpec{
+		VMID:     vmid,
+		Node:     cluster.FakeNode01,
+		Name:     "secondary-vm",
+		Pool:     cluster.FakePoolAlice,
+		Tags:     []string{cluster.FakeTagPvmss},
+		CPUCores: 1,
+		MemoryMB: 2048,
+		Disk:     cluster.DiskSpec{Storage: "local-lvm", SizeGB: 20},
+		Network:  cluster.NetworkSpec{Bridge: "vmbr0", Model: "virtio"},
+	})
+	if err != nil {
+		t.Fatalf("CreateVM: %v", err)
+	}
+
+	for i, want := range []string{"running", "running", "ok"} {
+		response := getTaskWithCluster(t, handler, upid, crossSecondaryCluster, cookie)
+		if response.Code != http.StatusOK {
+			t.Fatalf("call %d: status = %d, want 200: %s", i+1, response.Code, response.Body.String())
+		}
+
+		var body struct {
+			UPID  string `json:"upid"`
+			State string `json:"state"`
+		}
+		if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+			t.Fatalf("call %d: decode: %v", i+1, err)
+		}
+
+		if body.State != want {
+			t.Fatalf("call %d: state = %q, want %q", i+1, body.State, want)
+		}
+
+		if body.UPID != upid {
+			t.Errorf("call %d: upid = %q, want %q", i+1, body.UPID, upid)
+		}
+	}
+}
+
+// TestTasks_WithRegistry_UnknownClusterReturns404 — a ?cluster= naming a
+// cluster the registry does not know is a 404 cluster_not_found, not a poll
+// against the default cluster's client (which would silently mislead).
+//
+//nolint:paralleltest // serial: shared fake task fixture
+func TestTasks_WithRegistry_UnknownClusterReturns404(t *testing.T) {
+	handler, authHandler, _ := newTasksHandlerWithRegistry(t, map[string]cluster.Client{
+		auditTestCluster: cluster.Fake{},
+	})
+	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+
+	response := getTaskWithCluster(t, handler, "UPID:anything", "ghost", cookie)
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d: %s", response.Code, http.StatusNotFound, response.Body.String())
+	}
+
+	assertAPIError(t, response.Body.Bytes(), "cluster_not_found")
+}
+
+// TestTasks_WithRegistry_DefaultFallback — omitting ?cluster= against a
+// single-cluster registry resolves to that one cluster (backwards compatible
+// with the existing single-cluster e2e poll that sends no query param).
+//
+//nolint:paralleltest // serial: shared fake task fixture
+func TestTasks_WithRegistry_DefaultFallback(t *testing.T) {
+	handler, authHandler, _ := newTasksHandlerWithRegistry(t, map[string]cluster.Client{
+		auditTestCluster: cluster.Fake{},
+	})
+	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+
+	ctx := context.Background()
+
+	vmid, err := (cluster.Fake{}).NextVMID(ctx)
+	if err != nil {
+		t.Fatalf("NextVMID: %v", err)
+	}
+
+	upid, err := (cluster.Fake{}).CreateVM(ctx, cluster.VMSpec{
+		VMID: vmid, Node: cluster.FakeNode01, Name: "fallback-vm", Pool: cluster.FakePoolAlice,
+		Tags: []string{cluster.FakeTagPvmss}, CPUCores: 1, MemoryMB: 2048,
+		Disk:    cluster.DiskSpec{Storage: "local-lvm", SizeGB: 20},
+		Network: cluster.NetworkSpec{Bridge: "vmbr0", Model: "virtio"},
+	})
+	if err != nil {
+		t.Fatalf("CreateVM: %v", err)
+	}
+
+	// No ?cluster= query param — single-cluster registry resolves to "default".
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/tasks/"+upid, nil)
+	req.AddCookie(cookie)
+
+	req.SetPathValue("upid", upid)
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, req)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200: %s", recorder.Code, recorder.Body.String())
+	}
+
+	var body struct {
+		State string `json:"state"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	if body.State != "running" {
+		t.Fatalf("state = %q, want running (first poll)", body.State)
 	}
 }

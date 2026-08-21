@@ -1,4 +1,4 @@
-# README-dev
+# Speckit Specify Workflow
 
 ## How to use specify (speckit) ?
 
