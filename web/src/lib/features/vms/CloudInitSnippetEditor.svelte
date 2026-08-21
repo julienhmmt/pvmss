@@ -34,19 +34,18 @@
 	}
 </script>
 
-<section aria-labelledby="cloudinit-snippet-heading" data-testid="cloudinit-snippet-editor">
-	<h3 id="cloudinit-snippet-heading" class="text-lg font-semibold">{m['vms.cloudinit.snippetHeading']()}</h3>
-	<p class="mt-1 text-sm text-muted-foreground">
+<div data-testid="cloudinit-snippet-editor">
+	<p class="text-sm text-muted-foreground">
 		{m['vms.cloudinit.snippetHelp']()}
 	</p>
 	{#if store.snippetLoading && store.snippet === null}
-		<p role="status" aria-live="polite" class="mt-4">{m['vms.cloudinit.snippetLoading']()}</p>
+		<p role="status" aria-live="polite" class="mt-4 text-sm">{m['vms.cloudinit.snippetLoading']()}</p>
 	{/if}
-	<label class="mt-4 grid gap-1 text-sm" for="cloudinit-snippet-content">
+	<label class="mt-4 grid gap-1.5 text-sm font-medium" for="cloudinit-snippet-content">
 		{m['vms.cloudinit.snippetContent']()}
 		<textarea
 			id="cloudinit-snippet-content"
-			class="min-h-72 w-full rounded-md border border-border bg-background px-3 py-2 font-mono text-xs"
+			class="pv-input min-h-72 font-mono text-xs"
 			bind:value={content}
 			data-testid="cloudinit-snippet-content"
 		></textarea>
@@ -60,11 +59,11 @@
 	{/if}
 	<p class="sr-only" role="status" aria-live="polite">{store.snippetInFlight ? m['vms.cloudinit.snippetSaving']() : ''}</p>
 	<div class="mt-4 flex flex-wrap gap-2">
-		<button type="button" class="rounded-md border border-border px-3 py-2 text-sm hover:bg-muted" onclick={() => void load()} data-testid="cloudinit-snippet-reload">
+		<button type="button" class="rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-muted" onclick={() => void load()} data-testid="cloudinit-snippet-reload">
 			{m['vms.cloudinit.snippetReload']()}
 		</button>
-		<button type="button" class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50" disabled={store.snippetInFlight} onclick={() => void save()} data-testid="cloudinit-snippet-save">
+		<button type="button" class="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50" disabled={store.snippetInFlight} onclick={() => void save()} data-testid="cloudinit-snippet-save">
 			{store.snippetInFlight ? m['common.saving']() : m['vms.cloudinit.snippetSave']()}
 		</button>
 	</div>
-</section>
+</div>

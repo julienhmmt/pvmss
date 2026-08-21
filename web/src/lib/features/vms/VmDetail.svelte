@@ -217,21 +217,27 @@
 	<div class="mt-8">
 		<Tabs {tabs} bind:active={activeTab} />
 
-		<div id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" hidden={activeTab !== 'overview'}>
-			<section class="mt-6">
-				<h2 class="mb-2 text-sm font-medium text-muted-foreground">{m['vms.detail.descriptionLabel']()}</h2>
+		<div
+			id="panel-overview"
+			role="tabpanel"
+			aria-labelledby="tab-overview"
+			hidden={activeTab !== 'overview'}
+			class="mt-4 rounded-xl border border-border bg-card p-6 shadow-card"
+		>
+			<section>
+				<h2 class="text-sm font-medium text-muted-foreground">{m['vms.detail.descriptionLabel']()}</h2>
 				{#if editingDescription}
 					<textarea
-						class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+						class="pv-input mt-3"
 						bind:value={descriptionDraft}
 						onkeydown={(e) => {
 						if (e.key === 'Escape') { e.preventDefault(); cancelDescription(); }
 						if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); void commitDescription(); }
 					}}
-						rows="3"
+						rows="4"
 						data-testid="vm-description-edit"
 					></textarea>
-					<div class="mt-2 flex gap-2">
+					<div class="mt-3 flex gap-2">
 						<button
 							type="button"
 							class="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -251,7 +257,7 @@
 				{:else}
 					<button
 						type="button"
-						class="w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-left text-sm hover:cursor-text hover:bg-muted/50"
+						class="mt-3 w-full rounded-lg border border-dashed border-border bg-muted/30 px-4 py-4 text-left text-sm leading-6 hover:cursor-text hover:bg-muted/50"
 						onclick={startEditDescription}
 						title={m['vms.detail.clickToEdit']()}
 						data-testid="vm-description"
@@ -262,25 +268,25 @@
 			</section>
 		</div>
 
-		<div id="panel-disks" role="tabpanel" aria-labelledby="tab-disks" hidden={activeTab !== 'disks'} class="mt-6">
+		<div id="panel-disks" role="tabpanel" aria-labelledby="tab-disks" hidden={activeTab !== 'disks'} class="mt-4">
 			<VmDisksTab />
 		</div>
 
-		<div id="panel-network" role="tabpanel" aria-labelledby="tab-network" hidden={activeTab !== 'network'} class="mt-6">
+		<div id="panel-network" role="tabpanel" aria-labelledby="tab-network" hidden={activeTab !== 'network'} class="mt-4">
 			<VmNetworkTab />
 		</div>
 
-		<div id="panel-hardware" role="tabpanel" aria-labelledby="tab-hardware" hidden={activeTab !== 'hardware'} class="mt-6">
+		<div id="panel-hardware" role="tabpanel" aria-labelledby="tab-hardware" hidden={activeTab !== 'hardware'} class="mt-4">
 			<VmHardwareTab />
 		</div>
 
-		<div id="panel-cloudinit" role="tabpanel" aria-labelledby="tab-cloudinit" hidden={activeTab !== 'cloudinit'} class="mt-6">
+		<div id="panel-cloudinit" role="tabpanel" aria-labelledby="tab-cloudinit" hidden={activeTab !== 'cloudinit'} class="mt-4">
 			{#if activeTab === 'cloudinit'}
 				<CloudInitTab />
 			{/if}
 		</div>
 
-		<div id="panel-snapshots" role="tabpanel" aria-labelledby="tab-snapshots" hidden={activeTab !== 'snapshots'} class="mt-6">
+		<div id="panel-snapshots" role="tabpanel" aria-labelledby="tab-snapshots" hidden={activeTab !== 'snapshots'} class="mt-4">
 			{#if activeTab === 'snapshots'}
 				<VmSnapshotsTab />
 			{/if}
