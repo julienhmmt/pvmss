@@ -234,9 +234,9 @@ Three admin workflows deserve the full template because they are the risky ones.
 | **Entry** | Any catalog page under `/admin` |
 | **Route** | `/admin/nodes`, `/admin/storages`, `/admin/isos`, `/admin/bridges` |
 | **API** | `GET /api/v1/admin/{kind}` → `POST /api/v1/admin/{kind}/toggle` |
-| **Steps** | 1. List what the cluster reports. 2. Toggle an item on or off. 3. It appears in, or disappears from, the create-VM catalog. |
-| **States** | The list is the live cluster view, so an item can exist in Proxmox and be un-approved here |
-| **Safety nets** | Toggling off does not touch existing VMs — it only removes the item from future choices |
+| **Steps** | 1. Pick a cluster from the selector. 2. Search, filter by node/state/type, and sort by the available columns. 3. Toggle an item on or off. 4. A toast confirms the change. 5. It appears in, or disappears from, the create-VM catalog. |
+| **States** | `TableSkeleton` while loading; `EmptyState` with a link to `/admin/clusters` when no items are discovered; a second `EmptyState` with a reset-filters action when filters exclude every row; sortable columns, usage bars for storages, and active-state dots for bridges. |
+| **Safety nets** | Toggling off does not touch existing VMs — it only removes the item from future choices; success and error toasts give feedback after the API call. |
 
 ### Export / import the database
 
