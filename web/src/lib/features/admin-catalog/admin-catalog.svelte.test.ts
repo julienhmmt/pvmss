@@ -137,14 +137,18 @@ describe('AdminCatalogStore', () => {
 			expect(store.filteredIsos.map((i) => i.sizeBytes)).toEqual([1000, 2000, 3000]);
 		});
 
-		it('resetISOFilters clears all filters', () => {
+		it('resetISOFilters clears all filters and sort', () => {
 			const store = new AdminCatalogStore();
 			store.isos = isos;
 			store.isoSearch = 'deb';
 			store.isoStorageFilter = 'local';
 			store.isoEnabledFilter = 'enabled';
+			store.isoSortBy = 'size';
+			store.isoSortDir = 'desc';
 			store.resetISOFilters();
 			expect(store.filteredIsos.length).toBe(3);
+			expect(store.isoSortBy).toBe('file');
+			expect(store.isoSortDir).toBe('asc');
 		});
 	});
 
@@ -195,7 +199,7 @@ describe('AdminCatalogStore', () => {
 			store.nodeSortBy = 'status';
 			store.nodeSortDir = 'asc';
 			// Lexicographic: offline < online < unknown
-		expect(store.filteredNodes.map((n) => n.name)).toEqual(['node-b', 'node-a', 'node-c']);
+			expect(store.filteredNodes.map((n) => n.name)).toEqual(['node-b', 'node-a', 'node-c']);
 		});
 
 		it('sorts by vm count', () => {
@@ -259,41 +263,87 @@ describe('AdminCatalogStore', () => {
 		});
 	});
 
-	describe('sortedStorages', () => {
-		const storages: AdminStorage[] = [
+	describe('filteredStorages', () => {
+		const testStorages: AdminStorage[] = [
 			{ name: 'nfs-share', node: 'node-b', type: 'nfs', totalBytes: 2000, usedBytes: 500, enabled: false },
 			{ name: 'local-lvm', node: 'node-a', type: 'lvm', totalBytes: 1000, usedBytes: 100, enabled: true },
 			{ name: 'local-lvm', node: 'node-b', type: 'lvm', totalBytes: 3000, usedBytes: 200, enabled: false }
 		];
 
+		it('returns all storages when no filters are set', () => {
+			const store = new AdminCatalogStore();
+			store.storages = testStorages;
+			expect(store.filteredStorages.length).toBe(3);
+		});
+
+		it('filters by search term on name, node, or type', () => {
+			const store = new AdminCatalogStore();
+			store.storages = testStorages;
+			store.storageSearch = 'node-a';
+			expect(store.filteredStorages.length).toBe(1);
+			expect(store.filteredStorages[0]?.node).toBe('node-a');
+
+			store.storageSearch = 'lvm';
+			expect(store.filteredStorages.length).toBe(2);
+		});
+
+		it('filters by node', () => {
+			const store = new AdminCatalogStore();
+			store.storages = testStorages;
+			store.storageNodeFilter = 'node-b';
+			expect(store.filteredStorages.length).toBe(2);
+			expect(store.filteredStorages.every((s) => s.node === 'node-b')).toBe(true);
+		});
+
+		it('filters by type', () => {
+			const store = new AdminCatalogStore();
+			store.storages = testStorages;
+			store.storageTypeFilter = 'nfs';
+			expect(store.filteredStorages.length).toBe(1);
+			expect(store.filteredStorages[0]?.type).toBe('nfs');
+		});
+
+		it('filters by enabled state', () => {
+			const store = new AdminCatalogStore();
+			store.storages = testStorages;
+			store.storageEnabledFilter = 'enabled';
+			expect(store.filteredStorages.length).toBe(1);
+			expect(store.filteredStorages[0]?.enabled).toBe(true);
+		});
+
 		it('sorts by name ascending then descending', () => {
 			const store = new AdminCatalogStore();
-			store.storages = storages;
+			store.storages = testStorages;
 			store.storageSortBy = 'name';
 			store.storageSortDir = 'asc';
-			expect(store.sortedStorages.map((s) => s.name)).toEqual(['local-lvm', 'local-lvm', 'nfs-share']);
+			expect(store.filteredStorages.map((s) => s.name)).toEqual(['local-lvm', 'local-lvm', 'nfs-share']);
 			store.storageSortDir = 'desc';
-			expect(store.sortedStorages.map((s) => s.name)).toEqual(['nfs-share', 'local-lvm', 'local-lvm']);
+			expect(store.filteredStorages.map((s) => s.name)).toEqual(['nfs-share', 'local-lvm', 'local-lvm']);
 		});
 
 		it('sorts by node with name as tiebreaker', () => {
 			const store = new AdminCatalogStore();
-			store.storages = storages;
+			store.storages = testStorages;
 			store.storageSortBy = 'node';
 			store.storageSortDir = 'asc';
-			expect(store.sortedStorages.map((s) => `${s.node}/${s.name}`)).toEqual([
+			expect(store.filteredStorages.map((s) => `${s.node}/${s.name}`)).toEqual([
 				'node-a/local-lvm',
 				'node-b/local-lvm',
 				'node-b/nfs-share'
 			]);
 		});
 
-		it('sorts by usage', () => {
+		it('sorts by usage percentage', () => {
 			const store = new AdminCatalogStore();
-			store.storages = storages;
+			store.storages = testStorages;
 			store.storageSortBy = 'usage';
 			store.storageSortDir = 'asc';
-			expect(store.sortedStorages.map((s) => s.usedBytes)).toEqual([100, 200, 500]);
+			// local-lvm@node-b: 6.7%, local-lvm@node-a: 10%, nfs-share: 25%
+			expect(store.filteredStorages.map((s) => `${s.name}@${s.node}`)).toEqual([
+				'local-lvm@node-b',
+				'local-lvm@node-a',
+				'nfs-share@node-b'
+			]);
 		});
 
 		it('setStorageSort toggles direction on same column and resets on new column', () => {
@@ -306,23 +356,85 @@ describe('AdminCatalogStore', () => {
 			expect(store.storageSortBy).toBe('node');
 			expect(store.storageSortDir).toBe('asc');
 		});
+
+		it('resetStorageFilters clears all filters and sort', () => {
+			const store = new AdminCatalogStore();
+			store.storages = testStorages;
+			store.storageSearch = 'local';
+			store.storageNodeFilter = 'node-a';
+			store.storageTypeFilter = 'lvm';
+			store.storageEnabledFilter = 'disabled';
+			store.storageSortBy = 'usage';
+			store.storageSortDir = 'desc';
+			store.resetStorageFilters();
+			expect(store.filteredStorages.length).toBe(3);
+			expect(store.storageSearch).toBe('');
+			expect(store.storageNodeFilter).toBe('');
+			expect(store.storageTypeFilter).toBe('');
+			expect(store.storageEnabledFilter).toBe('all');
+			expect(store.storageSortBy).toBe('name');
+			expect(store.storageSortDir).toBe('asc');
+		});
 	});
 
-	describe('sortedBridges', () => {
+	describe('filteredBridges', () => {
 		const testBridges: AdminBridge[] = [
 			{ name: 'vmbr1', node: 'node-b', active: true, comment: 'storage', enabled: false },
 			{ name: 'vmbr0', node: 'node-a', active: true, comment: '', enabled: true },
-			{ name: 'vmbr0', node: 'node-b', active: true, comment: 'wan', enabled: false }
+			{ name: 'vmbr0', node: 'node-b', active: false, comment: 'wan', enabled: false }
 		];
+
+		it('returns all bridges when no filters are set', () => {
+			const store = new AdminCatalogStore();
+			store.bridges = testBridges;
+			expect(store.filteredBridges.length).toBe(3);
+		});
+
+		it('filters by search term on name, node, or comment', () => {
+			const store = new AdminCatalogStore();
+			store.bridges = testBridges;
+			store.bridgeSearch = 'vmbr0';
+			expect(store.filteredBridges.length).toBe(2);
+
+			store.bridgeSearch = 'wan';
+			expect(store.filteredBridges.length).toBe(1);
+			expect(store.filteredBridges[0]?.comment).toBe('wan');
+		});
+
+		it('filters by node', () => {
+			const store = new AdminCatalogStore();
+			store.bridges = testBridges;
+			store.bridgeNodeFilter = 'node-a';
+			expect(store.filteredBridges.length).toBe(1);
+			expect(store.filteredBridges[0]?.node).toBe('node-a');
+		});
+
+		it('filters by active state', () => {
+			const store = new AdminCatalogStore();
+			store.bridges = testBridges;
+			store.bridgeActiveFilter = 'active';
+			expect(store.filteredBridges.length).toBe(2);
+			expect(store.filteredBridges.every((b) => b.active)).toBe(true);
+		});
+
+		it('filters by enabled state', () => {
+			const store = new AdminCatalogStore();
+			store.bridges = testBridges;
+			store.bridgeEnabledFilter = 'enabled';
+			expect(store.filteredBridges.length).toBe(1);
+			expect(store.filteredBridges[0]?.enabled).toBe(true);
+		});
 
 		it('sorts by name ascending then descending', () => {
 			const store = new AdminCatalogStore();
 			store.bridges = testBridges;
 			store.bridgeSortBy = 'name';
 			store.bridgeSortDir = 'asc';
-			expect(store.sortedBridges.map((b) => b.name)).toEqual(['vmbr0', 'vmbr0', 'vmbr1']);
-			store.bridgeSortDir = 'desc';
-			expect(store.sortedBridges.map((b) => b.name)).toEqual(['vmbr1', 'vmbr0', 'vmbr0']);
+			expect(store.filteredBridges.map((b) => `${b.name}@${b.node}`)).toEqual([
+				'vmbr0@node-a',
+				'vmbr0@node-b',
+				'vmbr1@node-b'
+			]);
 		});
 
 		it('sorts by node with name as tiebreaker', () => {
@@ -330,7 +442,7 @@ describe('AdminCatalogStore', () => {
 			store.bridges = testBridges;
 			store.bridgeSortBy = 'node';
 			store.bridgeSortDir = 'asc';
-			expect(store.sortedBridges.map((b) => `${b.node}/${b.name}`)).toEqual([
+			expect(store.filteredBridges.map((b) => `${b.node}/${b.name}`)).toEqual([
 				'node-a/vmbr0',
 				'node-b/vmbr0',
 				'node-b/vmbr1'
@@ -342,7 +454,23 @@ describe('AdminCatalogStore', () => {
 			store.bridges = testBridges;
 			store.bridgeSortBy = 'comment';
 			store.bridgeSortDir = 'asc';
-			expect(store.sortedBridges.map((b) => b.comment || '')).toEqual(['', 'storage', 'wan']);
+			expect(store.filteredBridges.map((b) => `${b.name}@${b.node}`)).toEqual([
+				'vmbr0@node-a',
+				'vmbr1@node-b',
+				'vmbr0@node-b'
+			]);
+		});
+
+		it('sorts by active state', () => {
+			const store = new AdminCatalogStore();
+			store.bridges = testBridges;
+			store.bridgeSortBy = 'active';
+			store.bridgeSortDir = 'asc';
+			expect(store.filteredBridges.map((b) => `${b.name}@${b.node}`)).toEqual([
+				'vmbr0@node-b',
+				'vmbr0@node-a',
+				'vmbr1@node-b'
+			]);
 		});
 
 		it('setBridgeSort toggles direction on same column and resets on new column', () => {
@@ -353,6 +481,25 @@ describe('AdminCatalogStore', () => {
 			expect(store.bridgeSortDir).toBe('desc');
 			store.setBridgeSort('node');
 			expect(store.bridgeSortBy).toBe('node');
+			expect(store.bridgeSortDir).toBe('asc');
+		});
+
+		it('resetBridgeFilters clears all filters and sort', () => {
+			const store = new AdminCatalogStore();
+			store.bridges = testBridges;
+			store.bridgeSearch = 'vmbr';
+			store.bridgeNodeFilter = 'node-a';
+			store.bridgeActiveFilter = 'active';
+			store.bridgeEnabledFilter = 'enabled';
+			store.bridgeSortBy = 'comment';
+			store.bridgeSortDir = 'desc';
+			store.resetBridgeFilters();
+			expect(store.filteredBridges.length).toBe(3);
+			expect(store.bridgeSearch).toBe('');
+			expect(store.bridgeNodeFilter).toBe('');
+			expect(store.bridgeActiveFilter).toBe('all');
+			expect(store.bridgeEnabledFilter).toBe('all');
+			expect(store.bridgeSortBy).toBe('name');
 			expect(store.bridgeSortDir).toBe('asc');
 		});
 	});

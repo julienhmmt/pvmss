@@ -89,13 +89,21 @@ export class AdminCatalogStore {
 	isoStorageFilter = $state('');
 	isoNodeFilter = $state('');
 	isoEnabledFilter: 'all' | 'enabled' | 'disabled' = $state('all');
-	isoSortBy: 'file' | 'storage' | 'node' | 'size' | 'enabled' = $state('file');
+	isoSortBy: ISOSortColumn = $state('file');
 	isoSortDir: 'asc' | 'desc' = $state('asc');
 
-	storageSortBy: 'name' | 'node' | 'type' | 'usage' | 'enabled' = $state('name');
+	storageSearch = $state('');
+	storageNodeFilter = $state('');
+	storageTypeFilter = $state('');
+	storageEnabledFilter: 'all' | 'enabled' | 'disabled' = $state('all');
+	storageSortBy: StorageSortColumn = $state('name');
 	storageSortDir: 'asc' | 'desc' = $state('asc');
 
-	bridgeSortBy: 'name' | 'node' | 'comment' | 'enabled' = $state('name');
+	bridgeSearch = $state('');
+	bridgeNodeFilter = $state('');
+	bridgeActiveFilter: 'all' | 'active' | 'inactive' = $state('all');
+	bridgeEnabledFilter: 'all' | 'enabled' | 'disabled' = $state('all');
+	bridgeSortBy: BridgeSortColumn = $state('name');
 	bridgeSortDir: 'asc' | 'desc' = $state('asc');
 
 	nodeSearch = $state('');
@@ -107,7 +115,8 @@ export class AdminCatalogStore {
 	filteredIsos = $derived(
 		sortIsos(
 			this.isos.filter((iso) => {
-				if (this.isoSearch && !iso.file.toLowerCase().includes(this.isoSearch.toLowerCase())) return false;
+				const search = this.isoSearch.toLowerCase();
+				if (search && !iso.file.toLowerCase().includes(search)) return false;
 				if (this.isoStorageFilter && iso.storage !== this.isoStorageFilter) return false;
 				if (this.isoNodeFilter && iso.node !== this.isoNodeFilter) return false;
 				if (this.isoEnabledFilter === 'enabled' && !iso.enabled) return false;
@@ -122,9 +131,55 @@ export class AdminCatalogStore {
 	isoStorageOptions = $derived([...new Set(this.isos.map((i) => i.storage))].sort());
 	isoNodeOptions = $derived([...new Set(this.isos.map((i) => i.node))].sort());
 
-	sortedStorages = $derived(sortStorages(this.storages, this.storageSortBy, this.storageSortDir));
+	filteredStorages = $derived(
+		sortStorages(
+			this.storages.filter((storage) => {
+				const search = this.storageSearch.toLowerCase();
+				if (search) {
+					const match =
+						storage.name.toLowerCase().includes(search) ||
+						storage.node.toLowerCase().includes(search) ||
+						storage.type.toLowerCase().includes(search);
+					if (!match) return false;
+				}
+				if (this.storageNodeFilter && storage.node !== this.storageNodeFilter) return false;
+				if (this.storageTypeFilter && storage.type !== this.storageTypeFilter) return false;
+				if (this.storageEnabledFilter === 'enabled' && !storage.enabled) return false;
+				if (this.storageEnabledFilter === 'disabled' && storage.enabled) return false;
+				return true;
+			}),
+			this.storageSortBy,
+			this.storageSortDir
+		)
+	);
 
-	sortedBridges = $derived(sortBridges(this.bridges, this.bridgeSortBy, this.bridgeSortDir));
+	storageNodeOptions = $derived([...new Set(this.storages.map((s) => s.node))].sort());
+	storageTypeOptions = $derived([...new Set(this.storages.map((s) => s.type))].sort());
+
+	filteredBridges = $derived(
+		sortBridges(
+			this.bridges.filter((bridge) => {
+				const search = this.bridgeSearch.toLowerCase();
+				if (search) {
+					const match =
+						bridge.name.toLowerCase().includes(search) ||
+						bridge.node.toLowerCase().includes(search) ||
+						(bridge.comment || '').toLowerCase().includes(search);
+					if (!match) return false;
+				}
+				if (this.bridgeNodeFilter && bridge.node !== this.bridgeNodeFilter) return false;
+				if (this.bridgeActiveFilter === 'active' && !bridge.active) return false;
+				if (this.bridgeActiveFilter === 'inactive' && bridge.active) return false;
+				if (this.bridgeEnabledFilter === 'enabled' && !bridge.enabled) return false;
+				if (this.bridgeEnabledFilter === 'disabled' && bridge.enabled) return false;
+				return true;
+			}),
+			this.bridgeSortBy,
+			this.bridgeSortDir
+		)
+	);
+
+	bridgeNodeOptions = $derived([...new Set(this.bridges.map((b) => b.node))].sort());
 
 	filteredNodes = $derived(
 		sortNodes(
@@ -142,7 +197,7 @@ export class AdminCatalogStore {
 
 	nodeStatusFilterOptions = $derived([...new Set(this.nodes.map((n) => n.status))].sort());
 
-	setStorageSort(column: 'name' | 'node' | 'type' | 'usage' | 'enabled'): void {
+	setStorageSort(column: StorageSortColumn): void {
 		if (this.storageSortBy === column) {
 			this.storageSortDir = this.storageSortDir === 'asc' ? 'desc' : 'asc';
 		} else {
@@ -151,7 +206,7 @@ export class AdminCatalogStore {
 		}
 	}
 
-	setBridgeSort(column: 'name' | 'node' | 'comment' | 'enabled'): void {
+	setBridgeSort(column: BridgeSortColumn): void {
 		if (this.bridgeSortBy === column) {
 			this.bridgeSortDir = this.bridgeSortDir === 'asc' ? 'desc' : 'asc';
 		} else {
@@ -160,20 +215,13 @@ export class AdminCatalogStore {
 		}
 	}
 
-	setISOSort(column: 'file' | 'storage' | 'node' | 'size' | 'enabled'): void {
+	setISOSort(column: ISOSortColumn): void {
 		if (this.isoSortBy === column) {
 			this.isoSortDir = this.isoSortDir === 'asc' ? 'desc' : 'asc';
 		} else {
 			this.isoSortBy = column;
 			this.isoSortDir = 'asc';
 		}
-	}
-
-	resetISOFilters(): void {
-		this.isoSearch = '';
-		this.isoStorageFilter = '';
-		this.isoNodeFilter = '';
-		this.isoEnabledFilter = 'all';
 	}
 
 	setNodeSort(column: NodeSortColumn): void {
@@ -183,6 +231,33 @@ export class AdminCatalogStore {
 			this.nodeSortBy = column;
 			this.nodeSortDir = 'asc';
 		}
+	}
+
+	resetISOFilters(): void {
+		this.isoSearch = '';
+		this.isoStorageFilter = '';
+		this.isoNodeFilter = '';
+		this.isoEnabledFilter = 'all';
+		this.isoSortBy = 'file';
+		this.isoSortDir = 'asc';
+	}
+
+	resetStorageFilters(): void {
+		this.storageSearch = '';
+		this.storageNodeFilter = '';
+		this.storageTypeFilter = '';
+		this.storageEnabledFilter = 'all';
+		this.storageSortBy = 'name';
+		this.storageSortDir = 'asc';
+	}
+
+	resetBridgeFilters(): void {
+		this.bridgeSearch = '';
+		this.bridgeNodeFilter = '';
+		this.bridgeActiveFilter = 'all';
+		this.bridgeEnabledFilter = 'all';
+		this.bridgeSortBy = 'name';
+		this.bridgeSortDir = 'asc';
 	}
 
 	resetNodeFilters(): void {
@@ -311,9 +386,9 @@ export class AdminCatalogStore {
 	}
 }
 
-type ISOSortColumn = 'file' | 'storage' | 'node' | 'size' | 'enabled';
-type StorageSortColumn = 'name' | 'node' | 'type' | 'usage' | 'enabled';
-type BridgeSortColumn = 'name' | 'node' | 'comment' | 'enabled';
+export type ISOSortColumn = 'file' | 'storage' | 'node' | 'size' | 'enabled';
+export type StorageSortColumn = 'name' | 'node' | 'type' | 'usage' | 'enabled';
+export type BridgeSortColumn = 'name' | 'node' | 'active' | 'comment' | 'enabled';
 export type NodeSortColumn = 'name' | 'status' | 'vmCount' | 'cpuUsage' | 'memoryUsage' | 'enabled';
 
 function sortBridges(bridges: AdminBridge[], sortBy: BridgeSortColumn, dir: 'asc' | 'desc'): AdminBridge[] {
@@ -325,6 +400,9 @@ function sortBridges(bridges: AdminBridge[], sortBy: BridgeSortColumn, dir: 'asc
 				break;
 			case 'node':
 				cmp = a.node.localeCompare(b.node) || a.name.localeCompare(b.name);
+				break;
+			case 'active':
+				cmp = Number(a.active) - Number(b.active) || a.name.localeCompare(b.name) || a.node.localeCompare(b.node);
 				break;
 			case 'comment':
 				cmp = (a.comment || '').localeCompare(b.comment || '') || a.name.localeCompare(b.name) || a.node.localeCompare(b.node);
@@ -351,9 +429,12 @@ function sortStorages(storages: AdminStorage[], sortBy: StorageSortColumn, dir: 
 			case 'type':
 				cmp = a.type.localeCompare(b.type) || a.name.localeCompare(b.name) || a.node.localeCompare(b.node);
 				break;
-			case 'usage':
-				cmp = a.usedBytes - b.usedBytes || a.name.localeCompare(b.name);
+			case 'usage': {
+				const aPct = a.totalBytes > 0 ? a.usedBytes / a.totalBytes : 0;
+				const bPct = b.totalBytes > 0 ? b.usedBytes / b.totalBytes : 0;
+				cmp = aPct - bPct || a.name.localeCompare(b.name) || a.node.localeCompare(b.node);
 				break;
+			}
 			case 'enabled':
 				cmp = Number(a.enabled) - Number(b.enabled) || a.name.localeCompare(b.name) || a.node.localeCompare(b.node);
 				break;
