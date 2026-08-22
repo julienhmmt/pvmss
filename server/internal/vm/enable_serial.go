@@ -3,7 +3,6 @@ package vm
 import (
 	"context"
 	"fmt"
-
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
@@ -12,13 +11,13 @@ import (
 // EnableSerialDependencies contains the resolved VM write dependencies for the
 // serial-console retrofit. Mirrors HardwareDependencies.
 type EnableSerialDependencies struct {
-	Index     *inventory.Index
-	Actor     auth.Identity
+	Index       *inventory.Index
+	Actor       auth.Identity
 	ClusterName string
-	VMID      int
-	Writer    cluster.Writer
-	Audit     AuditRecorder
-	Refresher IndexRefresher
+	VMID        int
+	Writer      cluster.Writer
+	Audit       AuditRecorder
+	Refresher   IndexRefresher
 }
 
 // EnableSerialConsole provisions a socket-backed serial port (serial0) on an

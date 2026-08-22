@@ -3,11 +3,10 @@ package vm_test
 import (
 	"context"
 	"errors"
-	"testing"
-
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/vm"
+	"testing"
 )
 
 // fakeSerialWriter embeds cluster.Fake so EnableSerialConsole's refresh of the
