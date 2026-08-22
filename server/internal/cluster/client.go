@@ -32,6 +32,9 @@ var (
 	// path is testable without a live cluster. Callers that want to delete a
 	// running VM must stop it first (see vm.Delete's Force flag).
 	ErrVMRunning = errors.New("vm is running")
+	// ErrSSHKeyUserUnknown is returned by Writer.AddSSHKey when the guest user
+	// named in the request does not exist on the guest (guest-agent exit code 3).
+	ErrSSHKeyUserUnknown = errors.New("ssh key user not found on guest")
 )
 
 // Client is the single contract for reading cluster data. Every implementation
@@ -127,6 +130,14 @@ type Writer interface {
 	// the cloud-init seed drive and cloud-init caches under /var/lib/cloud —
 	// both readable by any tenant root for the VM's lifetime (REPORT.md §1).
 	SetCloudInitPassword(ctx context.Context, node string, vmid int, password string) error
+	// AddSSHKey injects a single public key into the running guest's
+	// authorized_keys via the QEMU guest agent, without a reboot. The key is
+	// passed as a positional argv to a fixed script (no shell interpolation),
+	// so a multi-line paste cannot smuggle extra keys. The cloud-init config
+	// is synchronised best-effort so later duplicate/rebuild flows see the
+	// truthful key set, but the key is live in the guest regardless of that
+	// sync (REPORT.md §2/#2).
+	AddSSHKey(ctx context.Context, node string, vmid int, user, key string) error
 }
 
 // Snapshot is the complete result of one cluster read — all nodes, VMs, and

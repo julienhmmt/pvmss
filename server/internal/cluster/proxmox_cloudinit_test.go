@@ -2,9 +2,11 @@ package cluster
 
 import (
 	"context"
+	"errors"
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -313,6 +315,59 @@ func TestProxmox_SetCloudInitPassword_Agent(t *testing.T) {
 
 	if gotUser != "root" || gotPassword != "s3cret" {
 		t.Errorf("username/password = %q/%q, want root/s3cret", gotUser, gotPassword)
+	}
+}
+
+// TestProxmox_AddSSHKey_AgentExec verifies the key is passed as a positional
+// argv to a fixed script (no shell interpolation), so a crafted key cannot
+// break out, and that the guest's exit status is honoured (REPORT.md §2/#2).
+//
+//nolint:wsl_v5 // test keeps exec/exec-status handlers adjacent
+func TestProxmox_AddSSHKey_AgentExec(t *testing.T) {
+	t.Parallel()
+
+	var gotCommands []string
+	var gotExit int
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("POST /api2/json/nodes/node01/qemu/101/agent/exec", func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("parse form: %v", err)
+			}
+			gotCommands = r.Form["command"]
+			writeJSONFixture(t, w, `{"data":{"pid":4242}}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/node01/qemu/101/agent/exec-status", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":{"exited":true,"exitcode":`+strconv.Itoa(gotExit)+`}}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	// Success path: positional argv must be [/bin/sh, -c, <script>, user, key].
+	gotExit = 0
+	if err := p.AddSSHKey(context.Background(), testNodeName, testVMID, "debian", "ssh-ed25519 AAAA demo@laptop"); err != nil {
+		t.Fatalf("AddSSHKey: %v", err)
+	}
+	if len(gotCommands) != 5 || gotCommands[0] != "/bin/sh" || gotCommands[1] != "-c" || gotCommands[3] != "debian" || gotCommands[4] != "ssh-ed25519 AAAA demo@laptop" {
+		t.Fatalf("agent argv = %+v, want [/bin/sh -c <script> debian <key>]", gotCommands)
+	}
+	// The key must travel as a bare argv element, never interpolated into the
+	// script body (which is the constant sshKeyAddScript).
+	if strings.Contains(gotCommands[2], "demo@laptop") {
+		t.Fatal("key was interpolated into the script body instead of passed as argv")
+	}
+
+	// Exit code 3 => user not found on guest.
+	gotExit = 3
+	if err := p.AddSSHKey(context.Background(), testNodeName, testVMID, "ghost", "ssh-ed25519 AAAA x"); !errors.Is(err, ErrSSHKeyUserUnknown) {
+		t.Fatalf("err = %v, want ErrSSHKeyUserUnknown", err)
+	}
+
+	// Any other non-zero exit surfaces as a failure.
+	gotExit = 1
+	if err := p.AddSSHKey(context.Background(), testNodeName, testVMID, "debian", "ssh-ed25519 AAAA x"); err == nil {
+		t.Fatal("expected a failure for non-zero guest exit")
 	}
 }
 

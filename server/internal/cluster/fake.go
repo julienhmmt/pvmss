@@ -463,6 +463,37 @@ func SetFakeCloudInitPushError(err error) {
 	state.pushErr = err
 }
 
+// AddSSHKey implements Writer and records the agent-side key injection. It
+// never merges into the fake's cloud-init config (the guest is the source of
+// truth for an injected key); tests assert the call reached the fake.
+func (fake Fake) AddSSHKey(_ context.Context, node string, vmid int, user, key string) error {
+	state := fake.stateOrDefault()
+	state.sshMu.Lock()
+	err := state.sshErr
+	state.sshMu.Unlock()
+
+	if state.findVM(node, vmid) < 0 {
+		return ErrNotFound
+	}
+
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "add_ssh_key", Name: user, Content: key})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SetFakeSSHKeyError configures a deterministic AddSSHKey failure on the
+// default fake used by zero-value Fake{}.
+func SetFakeSSHKeyError(err error) {
+	state := defaultState()
+	state.sshMu.Lock()
+	defer state.sshMu.Unlock()
+	state.sshErr = err
+}
+
 // Action implements Writer — a power transition on the Index-resolved node.
 // It mutates the VM's Status so a subsequent Snapshot reflects it (the fake
 // demonstrates the feature, constitution XI), and records the call.

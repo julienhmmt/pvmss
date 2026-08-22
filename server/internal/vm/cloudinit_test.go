@@ -195,6 +195,67 @@ func TestSetCloudInitConfig_RejectsMalformedSSHKeys(t *testing.T) {
 }
 
 //nolint:paralleltest // serial: shared fake dataset
+func TestAddCloudInitSSHKey_ValidatesAndAudits(t *testing.T) {
+	index := cloudInitIndex(t)
+	st := cloudInitStore(t)
+
+	// A malformed key is rejected before the agent is ever called, so the
+	// injected key never reaches authorized_keys (REPORT.md §2/#3).
+	bad := "ssh-rsa AAAA-bad\ninjected"
+	if err := vm.AddCloudInitSSHKey(context.Background(), vm.AddCloudInitSSHKeyDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st}, "debian", bad); !errors.Is(err, vm.ErrSSHKeyInvalid) {
+		t.Fatalf("err = %v, want ErrSSHKeyInvalid", err)
+	}
+	if len(cluster.FakeCallsFor(101)) != 0 {
+		t.Fatalf("bad key reached the fake: %+v", cluster.FakeCallsFor(101))
+	}
+
+	// A valid key is injected and merged into the cloud-init config, and the
+	// action is audited as edit_cloudinit_sshkey.
+	key := "ssh-ed25519 AAAA-injected demo@laptop"
+	if err := vm.AddCloudInitSSHKey(context.Background(), vm.AddCloudInitSSHKeyDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st}, "debian", key); err != nil {
+		t.Fatalf("AddCloudInitSSHKey: %v", err)
+	}
+	var sawAgent, sawCfgSync bool
+	for _, c := range cluster.FakeCallsFor(101) {
+		switch c.Action {
+		case "add_ssh_key":
+			sawAgent = true
+			if c.Content != key || c.Name != "debian" {
+				t.Errorf("add_ssh_key call = %+v", c)
+			}
+		case "set_cloudinit_config":
+			sawCfgSync = true
+		}
+	}
+	if !sawAgent {
+		t.Fatal("expected an add_ssh_key agent call")
+	}
+	if !sawCfgSync {
+		t.Fatal("expected the key to be merged into the cloud-init config")
+	}
+	entries, err := st.QueryAudit(context.Background())
+	if err != nil || len(entries) != 1 || entries[0].Action != "edit_cloudinit_sshkey" {
+		t.Fatalf("audit = %+v, err %v", entries, err)
+	}
+
+	// The merged key must be readable back through GetCloudInitConfig (the
+	// agent call is best-effort; the structured config is the source of truth).
+	got, gerr := vm.GetCloudInitConfig(context.Background(), index, cloudAliceIdentity(), testClusterName, 101, cluster.Fake{})
+	if gerr != nil {
+		t.Fatalf("GetCloudInitConfig after inject: %v", gerr)
+	}
+	var found bool
+	for _, k := range got.SSHKeys {
+		if k == key {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("injected key not present in config after AddCloudInitSSHKey: %+v", got.SSHKeys)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake dataset
 func TestSetCloudInitConfig_PasswordUsesGuestAgentNotCipassword(t *testing.T) {
 	index := cloudInitIndex(t)
 	st := cloudInitStore(t)

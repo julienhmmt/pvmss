@@ -105,6 +105,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit", cfg.VMCloudInit)
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", cfg.VMCloudInit)
 		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", cfg.VMCloudInit)
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/cloudinit/ssh-keys", cfg.VMCloudInit)
 	}
 
 	if len(cfg.SnapshotHandlers) > 0 && cfg.SnapshotHandlers[0] != nil {
