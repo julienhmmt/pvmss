@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -184,7 +185,7 @@ func (p Proxmox) AttachCloudInitSnippet(ctx context.Context, node, storage, file
 	form := url.Values{}
 
 	if filename == "" {
-		form.Set("delete", "cicustom")
+		form.Set(actionDelete, "cicustom")
 	} else {
 		form.Set("cicustom", fmt.Sprintf("vendor=%s:snippets/%s", storage, filename))
 	}
@@ -286,7 +287,7 @@ func decodeAgentExecPID(raw json.RawMessage) (int, error) {
 	}
 
 	if envelope.PID == 0 {
-		return 0, fmt.Errorf("guest agent exec returned no pid")
+		return 0, errors.New("guest agent exec returned no pid")
 	}
 
 	return envelope.PID, nil

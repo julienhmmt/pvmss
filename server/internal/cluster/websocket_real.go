@@ -213,6 +213,7 @@ func proxmoxRelayConsole(ctx context.Context, c proxmoxVNCClient, node string, v
 	if err := completeProxmoxVNCAuth(proxmoxNetConn, proxy.Ticket); err != nil {
 		return fmt.Errorf("proxmox vnc authentication: %w", err)
 	}
+
 	if err := presentNoAuthToPeer(peer); err != nil {
 		return fmt.Errorf("present no-auth handshake to browser: %w", err)
 	}
@@ -501,6 +502,7 @@ func rfbReadReasonString(conn io.ReadWriter) (string, error) {
 	}
 
 	n := binary.BigEndian.Uint32(lenBuf[:])
+
 	const maxReasonLen = 4096 // guard against a malicious/broken length prefix
 	if n > maxReasonLen {
 		n = maxReasonLen

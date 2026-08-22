@@ -6,38 +6,58 @@ import (
 	"time"
 )
 
+// consoleKindCases is the table shared by every store test below — each case
+// runs the same assertions for both KindVNC and KindTerminal, proving the
+// single-use, TTL, and (kind, cluster, vmid)-binding invariants hold
+// identically for both console paths.
+var consoleKindCases = []struct {
+	name   string
+	kind   ConsoleKind
+	ticket string
+	port   int
+}{
+	{"vnc", KindVNC, "proxmox-ticket", 5901},
+	{"terminal", KindTerminal, "proxmox-term-ticket", 5902},
+}
+
 // TestConsoleTicketStore_IssueThenConsume_Succeeds — T004: a freshly issued
 // ticket is consumable exactly once for the (cluster, vmid) it was bound to.
 func TestConsoleTicketStore_IssueThenConsume_Succeeds(t *testing.T) {
 	t.Parallel()
 
-	store := NewConsoleTicketStore()
+	for _, tc := range consoleKindCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-	ticket := store.Issue("default", 101, "pve-node-01", "proxmox-ticket", 5901)
+			store := NewConsoleTicketStore()
 
-	if ticket.Token == "" {
-		t.Fatalf("Issue returned an empty token")
-	}
+			ticket := store.Issue(tc.kind, "default", 101, "pve-node-01", tc.ticket, tc.port)
 
-	if ticket.Cluster != "default" || ticket.VMID != 101 {
-		t.Fatalf("ticket bound to %+v, want default/101", ticket)
-	}
+			if ticket.Token == "" {
+				t.Fatalf("Issue returned an empty token")
+			}
 
-	if ticket.Node != "pve-node-01" || ticket.ProxmoxTicket != "proxmox-ticket" || ticket.Port != 5901 {
-		t.Fatalf("ticket carries %+v, want node/ticket/port preserved", ticket)
-	}
+			if ticket.Cluster != "default" || ticket.VMID != 101 {
+				t.Fatalf("ticket bound to %+v, want default/101", ticket)
+			}
 
-	if ticket.ExpiresAt.IsZero() {
-		t.Fatalf("ExpiresAt is zero, want a real timestamp")
-	}
+			if ticket.Node != "pve-node-01" || ticket.ProxmoxTicket != tc.ticket || ticket.Port != tc.port {
+				t.Fatalf("ticket carries %+v, want node/ticket/port preserved", ticket)
+			}
 
-	consumed, err := store.Consume(ticket.Token, "default", 101)
-	if err != nil {
-		t.Fatalf("Consume: %v", err)
-	}
+			if ticket.ExpiresAt.IsZero() {
+				t.Fatalf("ExpiresAt is zero, want a real timestamp")
+			}
 
-	if consumed.Token != ticket.Token {
-		t.Fatalf("consumed token = %q, want %q", consumed.Token, ticket.Token)
+			consumed, err := store.Consume(tc.kind, ticket.Token, "default", 101)
+			if err != nil {
+				t.Fatalf("Consume: %v", err)
+			}
+
+			if consumed.Token != ticket.Token {
+				t.Fatalf("consumed token = %q, want %q", consumed.Token, ticket.Token)
+			}
+		})
 	}
 }
 
@@ -46,16 +66,22 @@ func TestConsoleTicketStore_IssueThenConsume_Succeeds(t *testing.T) {
 func TestConsoleTicketStore_ConsumeTwice_FailsOnSecondCall(t *testing.T) {
 	t.Parallel()
 
-	store := NewConsoleTicketStore()
+	for _, tc := range consoleKindCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-	ticket := store.Issue("default", 101, "pve-node-01", "proxmox-ticket", 5901)
+			store := NewConsoleTicketStore()
 
-	if _, err := store.Consume(ticket.Token, "default", 101); err != nil {
-		t.Fatalf("first Consume: %v", err)
-	}
+			ticket := store.Issue(tc.kind, "default", 101, "pve-node-01", tc.ticket, tc.port)
 
-	if _, err := store.Consume(ticket.Token, "default", 101); !errors.Is(err, ErrInvalidTicket) {
-		t.Fatalf("second Consume err = %v, want ErrInvalidTicket", err)
+			if _, err := store.Consume(tc.kind, ticket.Token, "default", 101); err != nil {
+				t.Fatalf("first Consume: %v", err)
+			}
+
+			if _, err := store.Consume(tc.kind, ticket.Token, "default", 101); !errors.Is(err, ErrInvalidTicket) {
+				t.Fatalf("second Consume err = %v, want ErrInvalidTicket", err)
+			}
+		})
 	}
 }
 
@@ -64,15 +90,21 @@ func TestConsoleTicketStore_ConsumeTwice_FailsOnSecondCall(t *testing.T) {
 func TestConsoleTicketStore_ConsumeAfterExpiry_Fails(t *testing.T) {
 	t.Parallel()
 
-	store := NewConsoleTicketStore()
+	for _, tc := range consoleKindCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-	ticket := store.Issue("default", 101, "pve-node-01", "proxmox-ticket", 5901)
-	// Force the ticket into the past by rewriting ExpiresAt through the store
-	// map. This is a white-box hook only this test uses.
-	store.expireForTest(ticket.Token)
+			store := NewConsoleTicketStore()
 
-	if _, err := store.Consume(ticket.Token, "default", 101); !errors.Is(err, ErrInvalidTicket) {
-		t.Fatalf("expired Consume err = %v, want ErrInvalidTicket", err)
+			ticket := store.Issue(tc.kind, "default", 101, "pve-node-01", tc.ticket, tc.port)
+			// Force the ticket into the past by rewriting ExpiresAt through the store
+			// map. This is a white-box hook only this test uses.
+			store.expireForTest(ticket.Token)
+
+			if _, err := store.Consume(tc.kind, ticket.Token, "default", 101); !errors.Is(err, ErrInvalidTicket) {
+				t.Fatalf("expired Consume err = %v, want ErrInvalidTicket", err)
+			}
+		})
 	}
 }
 
@@ -82,22 +114,48 @@ func TestConsoleTicketStore_ConsumeAfterExpiry_Fails(t *testing.T) {
 func TestConsoleTicketStore_ConsumeWithWrongClusterOrVMID_Fails(t *testing.T) {
 	t.Parallel()
 
+	for _, tc := range consoleKindCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			store := NewConsoleTicketStore()
+
+			ticket := store.Issue(tc.kind, "default", 101, "pve-node-01", tc.ticket, tc.port)
+
+			if _, err := store.Consume(tc.kind, ticket.Token, "default", 202); !errors.Is(err, ErrInvalidTicket) {
+				t.Fatalf("wrong vmid Consume err = %v, want ErrInvalidTicket", err)
+			}
+			// The ticket is NOT consumed by a mismatched attempt — it remains usable
+			// for its real (cluster, vmid).
+			if _, err := store.Consume(tc.kind, ticket.Token, "default", 101); err != nil {
+				t.Fatalf("after wrong-vmid attempt, correct Consume: %v", err)
+			}
+
+			ticket2 := store.Issue(tc.kind, "default", 101, "pve-node-01", tc.ticket, tc.port)
+			if _, err := store.Consume(tc.kind, ticket2.Token, "other", 101); !errors.Is(err, ErrInvalidTicket) {
+				t.Fatalf("wrong cluster Consume err = %v, want ErrInvalidTicket", err)
+			}
+		})
+	}
+}
+
+// TestConsoleTicketStore_ConsumeWithWrongKind_Fails — a VNC ticket cannot be
+// consumed as a terminal ticket, and vice versa. The Kind field prevents
+// cross-path consumption even though both kinds share the same map.
+func TestConsoleTicketStore_ConsumeWithWrongKind_Fails(t *testing.T) {
+	t.Parallel()
+
 	store := NewConsoleTicketStore()
 
-	ticket := store.Issue("default", 101, "pve-node-01", "proxmox-ticket", 5901)
+	vnc := store.Issue(KindVNC, "default", 101, "pve-node-01", "vnc-ticket", 5901)
 
-	if _, err := store.Consume(ticket.Token, "default", 202); !errors.Is(err, ErrInvalidTicket) {
-		t.Fatalf("wrong vmid Consume err = %v, want ErrInvalidTicket", err)
-	}
-	// The ticket is NOT consumed by a mismatched attempt — it remains usable
-	// for its real (cluster, vmid).
-	if _, err := store.Consume(ticket.Token, "default", 101); err != nil {
-		t.Fatalf("after wrong-vmid attempt, correct Consume: %v", err)
+	if _, err := store.Consume(KindTerminal, vnc.Token, "default", 101); !errors.Is(err, ErrInvalidTicket) {
+		t.Fatalf("VNC ticket consumed as terminal err = %v, want ErrInvalidTicket", err)
 	}
 
-	ticket2 := store.Issue("default", 101, "pve-node-01", "proxmox-ticket", 5901)
-	if _, err := store.Consume(ticket2.Token, "other", 101); !errors.Is(err, ErrInvalidTicket) {
-		t.Fatalf("wrong cluster Consume err = %v, want ErrInvalidTicket", err)
+	// The VNC ticket is NOT consumed by the wrong-kind attempt.
+	if _, err := store.Consume(KindVNC, vnc.Token, "default", 101); err != nil {
+		t.Fatalf("VNC ticket was consumed by wrong-kind attempt: %v", err)
 	}
 }
 
@@ -108,10 +166,10 @@ func TestConsoleTicketStore_EvictsOldestWhenFull(t *testing.T) {
 
 	store := NewConsoleTicketStore()
 
-	var first VNCTicket
+	var first ConsoleTicket
 
 	for i := range ticketStoreCapacity {
-		ticket := store.Issue("default", 100+i, "pve-node-01", "ticket", 5901)
+		ticket := store.Issue(KindVNC, "default", 100+i, "pve-node-01", "ticket", 5901)
 		if i == 0 {
 			first = ticket
 		}
@@ -119,22 +177,22 @@ func TestConsoleTicketStore_EvictsOldestWhenFull(t *testing.T) {
 
 	// The first ticket is still consumable — capacity is an upper bound, not
 	// a pre-eviction trigger.
-	if _, err := store.Consume(first.Token, "default", 100); err != nil {
+	if _, err := store.Consume(KindVNC, first.Token, "default", 100); err != nil {
 		t.Fatalf("first ticket before overflow: %v", err)
 	}
 
 	// Re-issue the consumed slot so the store is exactly full again, then
 	// issue one more — that overflow evicts the oldest remaining ticket.
-	store.Issue("default", 100, "pve-node-01", "ticket", 5901)
+	store.Issue(KindVNC, "default", 100, "pve-node-01", "ticket", 5901)
 
 	oldest := store.oldestTokenForTest()
 	if oldest == "" {
 		t.Fatalf("expected at least one ticket in the store before overflow")
 	}
 
-	store.Issue("default", 999, "pve-node-01", "ticket", 5901)
+	store.Issue(KindVNC, "default", 999, "pve-node-01", "ticket", 5901)
 
-	if _, err := store.Consume(oldest, "default", 101); !errors.Is(err, ErrInvalidTicket) {
+	if _, err := store.Consume(KindVNC, oldest, "default", 101); !errors.Is(err, ErrInvalidTicket) {
 		t.Fatalf("oldest ticket after overflow err = %v, want ErrInvalidTicket (evicted)", err)
 	}
 }
@@ -147,131 +205,11 @@ func TestConsoleTicketStore_TTLIsThirtySeconds(t *testing.T) {
 	store := NewConsoleTicketStore()
 
 	before := time.Now()
-	ticket := store.Issue("default", 101, "pve-node-01", "proxmox-ticket", 5901)
+	ticket := store.Issue(KindVNC, "default", 101, "pve-node-01", "proxmox-ticket", 5901)
 	after := time.Now()
 
 	want := before.Add(TicketTTL)
 	if ticket.ExpiresAt.Before(want) || ticket.ExpiresAt.After(after.Add(TicketTTL)) {
 		t.Fatalf("ExpiresAt = %v, want ~%v (TTL=%v)", ticket.ExpiresAt, want, TicketTTL)
-	}
-}
-
-// --- Terminal ticket store tests (serial console) — mirror the VNC store
-// tests to prove the same single-use + TTL + (cluster,vmid)-binding invariants
-// hold for the parallel terminal-ticket map. ---
-
-// TestConsoleTicketStore_IssueTerminalThenConsume_Succeeds — a freshly issued
-// terminal ticket is consumable exactly once for the (cluster, vmid) it was
-// bound to.
-func TestConsoleTicketStore_IssueTerminalThenConsume_Succeeds(t *testing.T) {
-	t.Parallel()
-
-	store := NewConsoleTicketStore()
-
-	ticket := store.IssueTerminal("default", 101, "pve-node-01", "proxmox-term-ticket", 5902)
-
-	if ticket.Token == "" {
-		t.Fatalf("IssueTerminal returned an empty token")
-	}
-
-	if ticket.Cluster != "default" || ticket.VMID != 101 {
-		t.Fatalf("ticket bound to %+v, want default/101", ticket)
-	}
-
-	if ticket.Node != "pve-node-01" || ticket.ProxmoxTicket != "proxmox-term-ticket" || ticket.Port != 5902 {
-		t.Fatalf("ticket carries %+v, want node/ticket/port preserved", ticket)
-	}
-
-	consumed, err := store.ConsumeTerminal(ticket.Token, "default", 101)
-	if err != nil {
-		t.Fatalf("ConsumeTerminal: %v", err)
-	}
-
-	if consumed.Token != ticket.Token {
-		t.Fatalf("consumed token = %q, want %q", consumed.Token, ticket.Token)
-	}
-}
-
-// TestConsoleTicketStore_ConsumeTerminalTwice_FailsOnSecondCall — a terminal
-// ticket is single-use; the second ConsumeTerminal is rejected.
-func TestConsoleTicketStore_ConsumeTerminalTwice_FailsOnSecondCall(t *testing.T) {
-	t.Parallel()
-
-	store := NewConsoleTicketStore()
-
-	ticket := store.IssueTerminal("default", 101, "pve-node-01", "proxmox-term-ticket", 5902)
-
-	if _, err := store.ConsumeTerminal(ticket.Token, "default", 101); err != nil {
-		t.Fatalf("first ConsumeTerminal: %v", err)
-	}
-
-	if _, err := store.ConsumeTerminal(ticket.Token, "default", 101); !errors.Is(err, ErrInvalidTicket) {
-		t.Fatalf("second ConsumeTerminal err = %v, want ErrInvalidTicket", err)
-	}
-}
-
-// TestConsoleTicketStore_ConsumeTerminalAfterExpiry_Fails — a terminal ticket
-// whose TTL has elapsed is rejected.
-func TestConsoleTicketStore_ConsumeTerminalAfterExpiry_Fails(t *testing.T) {
-	t.Parallel()
-
-	store := NewConsoleTicketStore()
-
-	ticket := store.IssueTerminal("default", 101, "pve-node-01", "proxmox-term-ticket", 5902)
-	store.expireTerminalForTest(ticket.Token)
-
-	if _, err := store.ConsumeTerminal(ticket.Token, "default", 101); !errors.Is(err, ErrInvalidTicket) {
-		t.Fatalf("expired ConsumeTerminal err = %v, want ErrInvalidTicket", err)
-	}
-}
-
-// TestConsoleTicketStore_ConsumeTerminalWithWrongClusterOrVMID_Fails — a
-// terminal ticket bound to (default, 101) is rejected against (default, 202)
-// or (other, 101), and the mismatched attempt does NOT consume it.
-func TestConsoleTicketStore_ConsumeTerminalWithWrongClusterOrVMID_Fails(t *testing.T) {
-	t.Parallel()
-
-	store := NewConsoleTicketStore()
-
-	ticket := store.IssueTerminal("default", 101, "pve-node-01", "proxmox-term-ticket", 5902)
-
-	if _, err := store.ConsumeTerminal(ticket.Token, "default", 202); !errors.Is(err, ErrInvalidTicket) {
-		t.Fatalf("wrong vmid ConsumeTerminal err = %v, want ErrInvalidTicket", err)
-	}
-
-	if _, err := store.ConsumeTerminal(ticket.Token, "default", 101); err != nil {
-		t.Fatalf("after wrong-vmid attempt, correct ConsumeTerminal: %v", err)
-	}
-
-	ticket2 := store.IssueTerminal("default", 101, "pve-node-01", "proxmox-term-ticket", 5902)
-	if _, err := store.ConsumeTerminal(ticket2.Token, "other", 101); !errors.Is(err, ErrInvalidTicket) {
-		t.Fatalf("wrong cluster ConsumeTerminal err = %v, want ErrInvalidTicket", err)
-	}
-}
-
-// TestConsoleTicketStore_TerminalAndVNCTicketsAreIndependent — issuing and
-// consuming a terminal ticket does not affect VNC tickets in the same store,
-// and vice versa. Proves the two maps are genuinely parallel.
-func TestConsoleTicketStore_TerminalAndVNCTicketsAreIndependent(t *testing.T) {
-	t.Parallel()
-
-	store := NewConsoleTicketStore()
-
-	vnc := store.Issue("default", 101, "pve-node-01", "vnc-ticket", 5901)
-	term := store.IssueTerminal("default", 101, "pve-node-01", "term-ticket", 5902)
-
-	// Consuming the terminal ticket must not touch the VNC ticket.
-	if _, err := store.ConsumeTerminal(term.Token, "default", 101); err != nil {
-		t.Fatalf("ConsumeTerminal: %v", err)
-	}
-
-	if _, err := store.Consume(vnc.Token, "default", 101); err != nil {
-		t.Fatalf("VNC ticket was affected by terminal consume: %v", err)
-	}
-
-	// The terminal token must now be unusable, while a fresh VNC ticket still
-	// works.
-	if _, err := store.ConsumeTerminal(term.Token, "default", 101); !errors.Is(err, ErrInvalidTicket) {
-		t.Fatalf("re-consume terminal err = %v, want ErrInvalidTicket", err)
 	}
 }

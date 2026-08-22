@@ -11,6 +11,7 @@ import (
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
+	"slices"
 )
 
 const snippetFilenamePrefix = "pvmss-"
@@ -268,10 +269,8 @@ func AddCloudInitSSHKey(ctx context.Context, deps AddCloudInitSSHKeyDeps, user, 
 	// on the guest.
 	current, err := deps.Reader.GetCloudInitConfig(ctx, entity.Node, deps.VMID)
 	if err == nil {
-		for _, existing := range current.SSHKeys {
-			if existing == key {
-				return recordSSHKeyAudit(ctx, deps, user, key)
-			}
+		if slices.Contains(current.SSHKeys, key) {
+			return recordSSHKeyAudit(ctx, deps, user, key)
 		}
 
 		current.SSHKeys = append(current.SSHKeys, key)

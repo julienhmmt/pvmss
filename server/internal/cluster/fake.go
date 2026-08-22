@@ -592,7 +592,7 @@ func (fake Fake) Delete(_ context.Context, node string, vmid int) error {
 
 	state.vms = slices.Delete(state.vms, idx, idx+1)
 
-	state.record(FakeCall{Node: node, VMID: vmid, Action: "delete"})
+	state.record(FakeCall{Node: node, VMID: vmid, Action: actionDelete})
 
 	return nil
 }
@@ -833,6 +833,12 @@ type fakeIdentity struct {
 // Extracted as constants to satisfy goconst and give the magic strings a name.
 const (
 	poolRoleName = "PVMSSUser"
+
+	// actionDelete is the FakeCall.Action value recorded by the fake cluster's
+	// DeleteVM. Also reused as the Proxmox API form key for key deletion
+	// (proxmox_writer.go, proxmox_cloudinit.go, proxmox_pools.go) — same word,
+	// same intent: remove this key/VM.
+	actionDelete = "delete"
 
 	FakeNode01     = "pve-node-01"
 	FakeNode02     = "pve-node-02"

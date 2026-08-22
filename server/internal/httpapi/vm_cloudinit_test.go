@@ -130,6 +130,7 @@ func TestVMCloudInit_AddSSHKey(t *testing.T) {
 	t.Run("unauthenticated", func(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPost, path, `{"key":"ssh-ed25519 AAAA x"}`, nil))
+
 		if recorder.Code != http.StatusUnauthorized {
 			t.Fatalf("status = %d, want 401", recorder.Code)
 		}
@@ -138,6 +139,7 @@ func TestVMCloudInit_AddSSHKey(t *testing.T) {
 	t.Run("forbidden non owner", func(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPost, path, `{"key":"ssh-ed25519 AAAA x"}`, bobCookie(t, authHandler)))
+
 		if recorder.Code != http.StatusForbidden {
 			t.Fatalf("status = %d, want 403", recorder.Code)
 		}
@@ -146,10 +148,13 @@ func TestVMCloudInit_AddSSHKey(t *testing.T) {
 	t.Run("invalid key rejected before agent", func(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPost, path, `{"key":"ssh-rsa AAAA\ninjected"}`, aliceCookie(t, authHandler)))
+
 		if recorder.Code != http.StatusBadRequest {
 			t.Fatalf("status = %d, want 400", recorder.Code)
 		}
+
 		assertAPIError(t, recorder.Body.Bytes(), "invalid_key")
+
 		if len(cluster.FakeCallsFor(101)) != 0 {
 			t.Fatalf("invalid key reached fake: %+v", cluster.FakeCallsFor(101))
 		}
@@ -158,18 +163,23 @@ func TestVMCloudInit_AddSSHKey(t *testing.T) {
 	t.Run("injects valid key", func(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPost, path, `{"user":"debian","key":"ssh-ed25519 AAAA x"}`, aliceCookie(t, authHandler)))
+
 		if recorder.Code != http.StatusOK {
 			t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
 		}
+
 		var sawAgent bool
+
 		for _, c := range cluster.FakeCallsFor(101) {
 			if c.Action == "add_ssh_key" {
 				sawAgent = true
+
 				if c.Content != "ssh-ed25519 AAAA x" || c.Name != "debian" {
 					t.Errorf("add_ssh_key call = %+v", c)
 				}
 			}
 		}
+
 		if !sawAgent {
 			t.Fatal("expected an add_ssh_key agent call")
 		}
@@ -177,8 +187,10 @@ func TestVMCloudInit_AddSSHKey(t *testing.T) {
 
 	t.Run("agent failure maps to bad gateway", func(t *testing.T) {
 		cluster.SetFakeSSHKeyError(cluster.ErrUnreachable)
+
 		recorder := httptest.NewRecorder()
 		handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPost, path, `{"key":"ssh-ed25519 AAAA x"}`, aliceCookie(t, authHandler)))
+
 		if recorder.Code != http.StatusBadGateway {
 			t.Fatalf("status = %d, want 502", recorder.Code)
 		}

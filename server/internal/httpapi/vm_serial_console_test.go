@@ -9,12 +9,11 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"pvmss/server/internal/cluster"
-	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -27,44 +26,31 @@ import (
 var errFailingTerminal = errors.New("terminal unreachable")
 
 // serialTicketResponse mirrors the POST /serial-ticket 200 contract.
-type serialTicketResponse struct {
-	Token            string `json:"token"`
-	ExpiresInSeconds int    `json:"expiresInSeconds"`
-}
+type serialTicketResponse = ticketResponse
 
 // newVMSerialConsoleHandler builds the serial console handler over the fake
 // dataset with a real audit store and a fresh in-memory ticket store. Mirrors
 // newVMConsoleHandler.
+//
+//nolint:dupl // VNC and serial test handlers differ only in the handler constructor and port; the shared buildConsoleTestHelper does the heavy lifting. The remaining closure is type-specific (VMConsole vs VMSerialConsole) and cannot be unified without generics.
 func newVMSerialConsoleHandler(t *testing.T) (*httpapi.VMSerialConsole, *httpapi.Auth, *vm.ConsoleTicketStore) {
 	t.Helper()
-	t.Cleanup(cluster.ResetFake)
 
-	snap, err := (cluster.Fake{}).Snapshot(context.Background())
-	if err != nil {
-		t.Fatalf("Snapshot: %v", err)
-	}
+	var handler *httpapi.VMSerialConsole
 
-	projection := buildProjectionWithIndex(t, snap, time.Now())
-	authHandler := newAuthHandler(t)
-	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
+	var tickets *vm.ConsoleTicketStore
 
-	cfg := config.Configuration{
-		Port:      50002,
-		DBPath:    filepath.Join(t.TempDir(), "vm-serial-console.db"),
-		LogLevel:  snapshotTestLogLevel,
-		LogFormat: snapshotTestLogFormat,
-		LogOutput: snapshotTestLogOutput,
-	}
+	var authHandler *httpapi.Auth
 
-	st, err := store.Open(cfg)
-	if err != nil {
-		t.Fatalf("store.Open: %v", err)
-	}
+	_, authHandler, _ = buildConsoleTestHandler(t, 50002, "vm-serial-console.db",
+		func(snap cluster.Snapshot, auth *httpapi.Auth, tk *vm.ConsoleTicketStore, st *store.Store, logger *slog.Logger) http.Handler {
+			tickets = tk
+			projection := buildProjectionWithIndex(t, snap, time.Now())
+			handler = httpapi.NewVMSerialConsole(projection, auth, cluster.Fake{}, tk, st, logger)
 
-	t.Cleanup(func() { _ = st.Close() })
-
-	tickets := vm.NewConsoleTicketStore()
-	handler := httpapi.NewVMSerialConsole(projection, authHandler, cluster.Fake{}, tickets, st, logger)
+			return handler
+		},
+	)
 
 	return handler, authHandler, tickets
 }
@@ -97,36 +83,7 @@ func serialRequest(method, path, body string, cookie *http.Cookie) *http.Request
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMSerialConsole_PostSerialTicket_OwnerGetsOpaqueToken(t *testing.T) {
 	handler, authHandler, _ := newVMSerialConsoleHandler(t)
-	cookie := aliceCookie(t, authHandler)
-
-	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, serialRequest(http.MethodPost, "/api/v1/vms/default/100/serial-ticket", "", cookie))
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
-	}
-
-	var resp serialTicketResponse
-	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-
-	if resp.Token == "" {
-		t.Fatalf("token is empty")
-	}
-
-	if resp.ExpiresInSeconds != 30 {
-		t.Fatalf("expiresInSeconds = %d, want 30", resp.ExpiresInSeconds)
-	}
-
-	var raw map[string]any
-	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
-		t.Fatalf("decode raw: %v", err)
-	}
-
-	if len(raw) != 2 {
-		t.Fatalf("response has %d keys, want exactly 2 (token, expiresInSeconds): %+v", len(raw), raw)
-	}
+	assertOwnerGetsOpaqueToken(t, handler, serialRequest, "/api/v1/vms/default/100/serial-ticket", aliceCookie(t, authHandler))
 }
 
 // TestVMSerialConsole_PostSerialTicket_NonOwnerForbidden — a non-owner gets 403.
@@ -216,31 +173,16 @@ func TestVMSerialConsole_WebSocket_InvalidTokenReturns400(t *testing.T) {
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMSerialConsole_WebSocket_TicketBoundToDifferentVMRejected(t *testing.T) {
 	handler, authHandler, tickets := newVMSerialConsoleHandler(t)
-	cookie := aliceCookie(t, authHandler)
 
-	ticketRec := httptest.NewRecorder()
-	handler.ServeHTTP(ticketRec, serialRequest(http.MethodPost, "/api/v1/vms/default/100/serial-ticket", "", cookie))
-
-	if ticketRec.Code != http.StatusOK {
-		t.Fatalf("ticket issuance: status = %d", ticketRec.Code)
-	}
-
-	var ticket serialTicketResponse
-
-	_ = json.Unmarshal(ticketRec.Body.Bytes(), &ticket)
-
-	rec := httptest.NewRecorder()
-	req := serialRequest(http.MethodGet, "/api/v1/vms/default/101/serial/websocket?token="+ticket.Token, "", cookie)
-	handler.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d (ticket bound to different VM)", rec.Code, http.StatusBadRequest)
-	}
-
-	// The ticket is NOT consumed by the mismatched attempt.
-	if _, err := tickets.ConsumeTerminal(ticket.Token, "default", 100); err != nil {
-		t.Fatalf("ticket was consumed by the mismatched attempt: %v", err)
-	}
+	assertTicketBoundToDifferentVMRejected(t, consoleTestParams{
+		kind:       vm.KindTerminal,
+		handler:    handler,
+		tickets:    tickets,
+		cookie:     aliceCookie(t, authHandler),
+		request:    serialRequest,
+		ticketPath: func(vmid int) string { return "/api/v1/vms/default/" + strconv.Itoa(vmid) + "/serial-ticket" },
+		wsPath:     func(vmid int) string { return "/api/v1/vms/default/" + strconv.Itoa(vmid) + "/serial/websocket" },
+	})
 }
 
 // TestVMSerialConsole_WebSocket_ValidTokenUpgradesAndRelaysEcho — with a valid
@@ -317,50 +259,15 @@ func TestVMSerialConsole_WebSocket_ValidTokenUpgradesAndRelaysEcho(t *testing.T)
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMSerialConsole_PostSerialTicket_ClusterUnavailableReturns502(t *testing.T) {
-	t.Cleanup(cluster.ResetFake)
+	handler, _, cookie := buildFailingRelayHandler(t, 50003, "vm-serial-console-502.db",
+		func(snap cluster.Snapshot, authHandler *httpapi.Auth, tickets *vm.ConsoleTicketStore, st *store.Store, logger *slog.Logger) http.Handler {
+			projection := buildProjectionWithIndex(t, snap, time.Now())
 
-	snap, err := (cluster.Fake{}).Snapshot(context.Background())
-	if err != nil {
-		t.Fatalf("Snapshot: %v", err)
-	}
+			return httpapi.NewVMSerialConsole(projection, authHandler, &failingTerminalRelay{}, tickets, st, logger)
+		},
+	)
 
-	projection := buildProjectionWithIndex(t, snap, time.Now())
-	authHandler := newAuthHandler(t)
-	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
-
-	cfg := config.Configuration{
-		Port:      50003,
-		DBPath:    filepath.Join(t.TempDir(), "vm-serial-console-502.db"),
-		LogLevel:  snapshotTestLogLevel,
-		LogFormat: snapshotTestLogFormat,
-		LogOutput: snapshotTestLogOutput,
-	}
-
-	st, err := store.Open(cfg)
-	if err != nil {
-		t.Fatalf("store.Open: %v", err)
-	}
-
-	t.Cleanup(func() { _ = st.Close() })
-
-	tickets := vm.NewConsoleTicketStore()
-	failingRelay := &failingTerminalRelay{}
-	handler := httpapi.NewVMSerialConsole(projection, authHandler, failingRelay, tickets, st, logger)
-
-	cookie := aliceCookie(t, authHandler)
-	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, serialRequest(http.MethodPost, "/api/v1/vms/default/100/serial-ticket", "", cookie))
-
-	if rec.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusBadGateway, rec.Body.String())
-	}
-
-	var env apiErrorEnvelope
-
-	_ = json.Unmarshal(rec.Body.Bytes(), &env)
-	if env.Code != "console_unavailable" {
-		t.Fatalf("error code = %q, want %q", env.Code, "console_unavailable")
-	}
+	assertClusterUnavailableReturns502(t, handler, serialRequest, "/api/v1/vms/default/100/serial-ticket", cookie)
 }
 
 // failingTerminalRelay is a TerminalRelay whose GetTermProxy always fails —

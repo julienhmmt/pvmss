@@ -9,20 +9,6 @@ import (
 	"testing"
 )
 
-// fakeConsoleClient is a minimal ConsoleClient for GetConsoleTicket tests — it
-// returns a fixed VNCProxyTicket and records the node it was called with, so
-// the test can assert FR-007 (node is server-resolved, never client-supplied).
-type fakeConsoleClient struct {
-	ticket  cluster.VNCProxyTicket
-	err     error
-	gotNode string
-}
-
-func (f *fakeConsoleClient) GetVNCTicket(_ context.Context, _ string, _ int, node string) (cluster.VNCProxyTicket, error) {
-	f.gotNode = node
-	return f.ticket, f.err
-}
-
 // fakeAuditRecorder records the last audit entry. Returns nil by default.
 type fakeAuditRecorder struct {
 	gotAction string
@@ -37,76 +23,116 @@ func (f *fakeAuditRecorder) RecordAction(_ context.Context, _, _ string, vmid in
 	return f.err
 }
 
+// fakeProxyFetcher returns a vm.ProxyFetcher that records the node it was
+// called with (so tests can assert FR-007: node is server-resolved) and
+// returns the fixed ticket/port/err triple.
+func fakeProxyFetcher(ticket string, port int, err error, gotNode *string) vm.ProxyFetcher {
+	return func(_ context.Context, _ string, _ int, node string) (string, int, error) {
+		*gotNode = node
+
+		return ticket, port, err
+	}
+}
+
+// consoleKindCases is the table shared by every GetConsoleTicket domain test —
+// each case runs the same assertions for both KindVNC and KindTerminal, proving
+// the Resolve → fetch → issue → audit pipeline is identical for both paths.
+var consoleKindCases = []struct {
+	name   string
+	kind   vm.ConsoleKind
+	ticket string
+	port   int
+}{
+	{"vnc", vm.KindVNC, "proxmox-ticket", 5901},
+	{"terminal", vm.KindTerminal, "proxmox-term-ticket", 5902},
+}
+
 // TestGetConsoleTicket_ResolveThenIssueThenAudit — T012: the happy path calls
-// Resolve (ownership gate), then GetVNCTicket (with the server-resolved node),
-// then Issue (opaque token), then RecordAction("console_open"). The returned
-// ticket carries the opaque token and the server-resolved node.
+// Resolve (ownership gate), then the proxy fetcher (with the server-resolved
+// node), then Issue (opaque token), then RecordAction("console_open"). The
+// returned ticket carries the opaque token and the server-resolved node.
 //
 //nolint:paralleltest // serial: shared fake VM fixture
 func TestGetConsoleTicket_ResolveThenIssueThenAudit(t *testing.T) {
 	idx := buildResolveIndex(t)
 	alice := auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}
-	store := vm.NewConsoleTicketStore()
-	client := &fakeConsoleClient{ticket: cluster.VNCProxyTicket{Ticket: "proxmox-ticket", Port: 5901}}
-	audit := &fakeAuditRecorder{}
 
-	ticket, err := vm.GetConsoleTicket(context.Background(), vm.ConsoleTicketDeps{Index: idx, Actor: alice, ClusterName: testClusterName, VMID: 100, Client: client, Store: store, Audit: audit})
-	if err != nil {
-		t.Fatalf("GetConsoleTicket: %v", err)
-	}
+	for _, tc := range consoleKindCases {
+		t.Run(tc.name, func(t *testing.T) {
+			store := vm.NewConsoleTicketStore()
 
-	if ticket.Token == "" {
-		t.Fatalf("returned ticket has empty token")
-	}
+			var gotNode string
 
-	if ticket.Cluster != testClusterName || ticket.VMID != 100 {
-		t.Fatalf("ticket bound to %+v, want default/100", ticket)
-	}
-	// FR-007: the node passed to GetVNCTicket is Resolve()'s server-resolved
-	// value, not a client-supplied one.
-	if client.gotNode != cluster.FakeNode01 {
-		t.Fatalf("GetVNCTicket called with node %q, want %q (server-resolved)", client.gotNode, cluster.FakeNode01)
-	}
+			fetcher := fakeProxyFetcher(tc.ticket, tc.port, nil, &gotNode)
+			audit := &fakeAuditRecorder{}
 
-	if ticket.Node != cluster.FakeNode01 {
-		t.Fatalf("ticket node = %q, want %q", ticket.Node, cluster.FakeNode01)
-	}
+			ticket, err := vm.GetConsoleTicket(context.Background(), vm.ConsoleTicketDeps{Index: idx, Actor: alice, ClusterName: testClusterName, VMID: 100, Kind: tc.kind, Fetcher: fetcher, Store: store, Audit: audit})
+			if err != nil {
+				t.Fatalf("GetConsoleTicket: %v", err)
+			}
 
-	if ticket.ProxmoxTicket != "proxmox-ticket" || ticket.Port != 5901 {
-		t.Fatalf("ticket carries proxmox %+v, want proxmox-ticket/5901", ticket)
-	}
+			if ticket.Token == "" {
+				t.Fatalf("returned ticket has empty token")
+			}
 
-	if audit.gotAction != "console_open" || audit.gotVMID != 100 {
-		t.Fatalf("audit recorded %+v, want console_open/100", audit)
+			if ticket.Cluster != testClusterName || ticket.VMID != 100 {
+				t.Fatalf("ticket bound to %+v, want default/100", ticket)
+			}
+			// FR-007: the node passed to the fetcher is Resolve()'s
+			// server-resolved value, not a client-supplied one.
+			if gotNode != cluster.FakeNode01 {
+				t.Fatalf("fetcher called with node %q, want %q (server-resolved)", gotNode, cluster.FakeNode01)
+			}
+
+			if ticket.Node != cluster.FakeNode01 {
+				t.Fatalf("ticket node = %q, want %q", ticket.Node, cluster.FakeNode01)
+			}
+
+			if ticket.ProxmoxTicket != tc.ticket || ticket.Port != tc.port {
+				t.Fatalf("ticket carries proxmox %+v, want %s/%d", ticket, tc.ticket, tc.port)
+			}
+
+			if audit.gotAction != vm.AuditActionConsoleOpen || audit.gotVMID != 100 {
+				t.Fatalf("audit recorded %+v, want console_open/100", audit)
+			}
+		})
 	}
 }
 
 // TestGetConsoleTicket_NonOwnerForbidden — T012: Resolve() is the first gate;
-// a non-owner gets ErrForbidden before the cluster client or store is touched.
+// a non-owner gets ErrForbidden before the fetcher or store is touched.
 //
 //nolint:paralleltest // serial: shared fake VM fixture
 func TestGetConsoleTicket_NonOwnerForbidden(t *testing.T) {
 	idx := buildResolveIndex(t)
-	bob := auth.Identity{Username: "bob@pve", Pool: cluster.FakePoolBob}
-	store := vm.NewConsoleTicketStore()
-	client := &fakeConsoleClient{ticket: cluster.VNCProxyTicket{Ticket: "x", Port: 5901}}
-	audit := &fakeAuditRecorder{}
+	bob := auth.Identity{Username: cluster.FakeUserBob, Pool: cluster.FakePoolBob}
 
-	_, err := vm.GetConsoleTicket(context.Background(), vm.ConsoleTicketDeps{Index: idx, Actor: bob, ClusterName: testClusterName, VMID: 100, Client: client, Store: store, Audit: audit})
-	if !errors.Is(err, vm.ErrForbidden) {
-		t.Fatalf("err = %v, want ErrForbidden", err)
-	}
+	for _, tc := range consoleKindCases {
+		t.Run(tc.name, func(t *testing.T) {
+			store := vm.NewConsoleTicketStore()
 
-	if client.gotNode != "" {
-		t.Fatalf("GetVNCTicket was called despite Resolve failure")
-	}
+			var gotNode string
 
-	if audit.gotAction != "" {
-		t.Fatalf("audit was recorded despite Resolve failure")
+			fetcher := fakeProxyFetcher("x", tc.port, nil, &gotNode)
+			audit := &fakeAuditRecorder{}
+
+			_, err := vm.GetConsoleTicket(context.Background(), vm.ConsoleTicketDeps{Index: idx, Actor: bob, ClusterName: testClusterName, VMID: 100, Kind: tc.kind, Fetcher: fetcher, Store: store, Audit: audit})
+			if !errors.Is(err, vm.ErrForbidden) {
+				t.Fatalf("err = %v, want ErrForbidden", err)
+			}
+
+			if gotNode != "" {
+				t.Fatalf("fetcher was called despite Resolve failure")
+			}
+
+			if audit.gotAction != "" {
+				t.Fatalf("audit was recorded despite Resolve failure")
+			}
+		})
 	}
 }
 
-// TestGetConsoleTicket_ClusterClientErrorPropagates — T012: if GetVNCTicket
+// TestGetConsoleTicket_ClusterClientErrorPropagates — T012: if the fetcher
 // fails, the error propagates as ErrClusterConsoleUnavailable and no ticket is
 // issued.
 //
@@ -114,21 +140,29 @@ func TestGetConsoleTicket_NonOwnerForbidden(t *testing.T) {
 func TestGetConsoleTicket_ClusterClientErrorPropagates(t *testing.T) {
 	idx := buildResolveIndex(t)
 	alice := auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}
-	store := vm.NewConsoleTicketStore()
-	client := &fakeConsoleClient{err: errors.New("proxmox unreachable")}
-	audit := &fakeAuditRecorder{}
 
-	_, err := vm.GetConsoleTicket(context.Background(), vm.ConsoleTicketDeps{Index: idx, Actor: alice, ClusterName: testClusterName, VMID: 100, Client: client, Store: store, Audit: audit})
-	if err == nil {
-		t.Fatalf("expected error, got nil")
-	}
+	for _, tc := range consoleKindCases {
+		t.Run(tc.name, func(t *testing.T) {
+			store := vm.NewConsoleTicketStore()
 
-	if !errors.Is(err, vm.ErrClusterConsoleUnavailable) {
-		t.Fatalf("err = %v, want ErrClusterConsoleUnavailable", err)
-	}
+			var gotNode string
 
-	if audit.gotAction != "" {
-		t.Fatalf("audit was recorded despite cluster client failure")
+			fetcher := fakeProxyFetcher("", 0, errors.New("proxmox unreachable"), &gotNode)
+			audit := &fakeAuditRecorder{}
+
+			_, err := vm.GetConsoleTicket(context.Background(), vm.ConsoleTicketDeps{Index: idx, Actor: alice, ClusterName: testClusterName, VMID: 100, Kind: tc.kind, Fetcher: fetcher, Store: store, Audit: audit})
+			if err == nil {
+				t.Fatalf("expected error, got nil")
+			}
+
+			if !errors.Is(err, vm.ErrClusterConsoleUnavailable) {
+				t.Fatalf("err = %v, want ErrClusterConsoleUnavailable", err)
+			}
+
+			if audit.gotAction != "" {
+				t.Fatalf("audit was recorded despite cluster client failure")
+			}
+		})
 	}
 }
 
@@ -140,21 +174,29 @@ func TestGetConsoleTicket_ClusterClientErrorPropagates(t *testing.T) {
 func TestGetConsoleTicket_AdminBypassesPoolCheck(t *testing.T) {
 	idx := buildResolveIndex(t)
 	admin := auth.Identity{Username: testAdminUser, IsAdmin: true}
-	store := vm.NewConsoleTicketStore()
-	client := &fakeConsoleClient{ticket: cluster.VNCProxyTicket{Ticket: "proxmox-ticket", Port: 5901}}
-	audit := &fakeAuditRecorder{}
 
-	// VM 103 is in pool-bob, not pool-alice — an admin can still open it.
-	ticket, err := vm.GetConsoleTicket(context.Background(), vm.ConsoleTicketDeps{Index: idx, Actor: admin, ClusterName: testClusterName, VMID: 103, Client: client, Store: store, Audit: audit})
-	if err != nil {
-		t.Fatalf("admin GetConsoleTicket: %v", err)
-	}
+	for _, tc := range consoleKindCases {
+		t.Run(tc.name, func(t *testing.T) {
+			store := vm.NewConsoleTicketStore()
 
-	if ticket.Token == "" {
-		t.Fatalf("admin ticket has empty token")
-	}
+			var gotNode string
 
-	if audit.gotAction != "console_open" {
-		t.Fatalf("audit recorded %+v, want console_open", audit)
+			fetcher := fakeProxyFetcher(tc.ticket, tc.port, nil, &gotNode)
+			audit := &fakeAuditRecorder{}
+
+			// VM 103 is in pool-bob, not pool-alice — an admin can still open it.
+			ticket, err := vm.GetConsoleTicket(context.Background(), vm.ConsoleTicketDeps{Index: idx, Actor: admin, ClusterName: testClusterName, VMID: 103, Kind: tc.kind, Fetcher: fetcher, Store: store, Audit: audit})
+			if err != nil {
+				t.Fatalf("admin GetConsoleTicket: %v", err)
+			}
+
+			if ticket.Token == "" {
+				t.Fatalf("admin ticket has empty token")
+			}
+
+			if audit.gotAction != vm.AuditActionConsoleOpen {
+				t.Fatalf("audit recorded %+v, want console_open", audit)
+			}
+		})
 	}
 }

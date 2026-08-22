@@ -2,8 +2,6 @@ package httpapi
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 	"pvmss/server/internal/cluster"
@@ -11,7 +9,6 @@ import (
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"strings"
-	"time"
 
 	"github.com/coder/websocket"
 )
@@ -73,14 +70,6 @@ func NewVMSerialConsoleWithRegistry(deps VMSerialConsoleRegistryDeps) *VMSerialC
 	return handler
 }
 
-// serialTicketResponse is the JSON body for POST /serial-ticket. Only the
-// opaque token and its TTL are sent — no Proxmox ticket, node, or port. Mirrors
-// vncTicketResponse.
-type serialTicketResponse struct {
-	Token            string `json:"token"`
-	ExpiresInSeconds int    `json:"expiresInSeconds"`
-}
-
 // ServeHTTP dispatches between the serial ticket endpoint and the serial
 // WebSocket endpoint based on the path suffix.
 func (h *VMSerialConsole) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -98,47 +87,20 @@ func (h *VMSerialConsole) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleSerialTicket serves POST /api/v1/vms/:cluster/:vmid/serial-ticket.
-// Calls vm.GetTerminalTicket (Resolve → GetTermProxy → IssueTerminal → audit),
-// returns only the opaque token. Mirrors handleVNCTicket.
+// Calls vm.GetConsoleTicket with KindTerminal (Resolve → GetTermProxy → Issue
+// → audit), returns only the opaque token. Mirrors handleVNCTicket.
 func (h *VMSerialConsole) handleSerialTicket(w http.ResponseWriter, r *http.Request) {
-	identity, err := h.auth.Principal(r)
-	if err != nil {
-		h.writeSerialError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
-		return
-	}
-
-	clusterName, vmid, ok := h.parseSerialPath(r)
-	if !ok {
-		h.writeSerialError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
-		return
-	}
-
-	index, ok := loadClusterIndex(h.resolver, clusterName, func(status int, code, message string) { h.writeSerialError(w, status, code, message) })
-	if !ok {
-		return
-	}
-
-	relay, err := resolveCapability(h.clients, h.relay, clusterName, "TerminalRelay")
-	if err != nil {
-		h.writeSerialError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
-		return
-	}
-
-	ticket, err := vm.GetTerminalTicket(r.Context(), vm.TerminalTicketDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Client: relay, Store: h.tickets, Audit: h.store})
-	if err != nil {
-		h.writeTicketError(w, err)
-		return
-	}
-
-	if ticket.Token == "" {
-		h.log.Error("serial ticket has no token", "component", "httpapi", "cluster", clusterName, "vmid", vmid)
-		h.writeSerialError(w, http.StatusInternalServerError, "internal_error", "failed to issue serial ticket")
-
-		return
-	}
-
-	h.log.Info("serial ticket issued", "component", "httpapi", "cluster", clusterName, "vmid", vmid, "node", ticket.Node)
-	h.writeSerialJSON(w, http.StatusOK, serialTicketResponse{Token: ticket.Token, ExpiresInSeconds: int(vm.TicketTTL.Seconds())})
+	serveConsoleTicket(w, r, h.auth, h.resolver, h.clients, h.relay, h.tickets, h.store, h.log,
+		consoleTicketParams{
+			kind:           vm.KindTerminal,
+			capabilityName: "TerminalRelay",
+			fetcher:        terminalProxyFetcher(h.relay),
+			invalidMsg:     "serial terminal is not available for this VM",
+			noTokenMsg:     "serial ticket has no token",
+			issuedMsg:      "serial ticket issued",
+		},
+		h.parseSerialPath, h.writeSerialError,
+	)
 }
 
 // handleSerialWebSocket serves GET
@@ -146,51 +108,22 @@ func (h *VMSerialConsole) handleSerialTicket(w http.ResponseWriter, r *http.Requ
 // ticket (single-use, TTL, bound to the path's cluster+vmid), upgrades to
 // WebSocket, and relays raw bytes until either side closes. Mirrors
 // handleWebSocket.
+//
+//nolint:dupl // VNC and serial websocket handlers are intentionally parallel: different relay interfaces (ConsoleRelay vs TerminalRelay), proxy ticket types (VNCProxyTicket vs TermProxyTicket), and websocket message types (Binary vs Text). The shared setup is extracted into acceptConsoleWebSocket; the relay-specific tail cannot be unified without erasing the type safety that distinguishes the two paths.
 func (h *VMSerialConsole) handleSerialWebSocket(w http.ResponseWriter, r *http.Request) {
-	if _, err := h.auth.Principal(r); err != nil {
-		h.writeSerialError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
-		return
-	}
-
-	clusterName, vmid, ok := h.parseSerialPath(r)
+	ticket, conn, ok := acceptConsoleWebSocket(w, r, h.auth, h.tickets, h.log,
+		consoleWebSocketParams{
+			kind:             vm.KindTerminal,
+			invalidTicketMsg: "invalid or expired serial ticket",
+			wsUpgradeMsg:     "serial websocket upgrade failed",
+			acceptedMsg:      "serial websocket accepted, relaying to proxmox",
+		},
+		h.parseSerialPath, h.writeSerialError,
+	)
 	if !ok {
-		h.writeSerialError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
-		return
-	}
-
-	token := r.URL.Query().Get("token")
-	if token == "" {
-		h.writeSerialError(w, http.StatusBadRequest, "invalid_request", "missing token parameter")
-		return
-	}
-
-	ticket, err := h.tickets.ConsumeTerminal(token, clusterName, vmid)
-	if err != nil {
-		h.writeSerialError(w, http.StatusBadRequest, "invalid_ticket", "invalid or expired serial ticket")
-		return
-	}
-
-	if !isConsoleOriginAllowed(r) {
-		h.writeSerialError(w, http.StatusForbidden, "forbidden", "invalid origin")
-		return
-	}
-
-	// Same deadline-clearing rationale as handleWebSocket: the server's global
-	// WriteTimeout/ReadTimeout bound ordinary requests and survive a hijack,
-	// silently killing a long-lived WebSocket. Clear both for this connection
-	// only.
-	rc := http.NewResponseController(w)
-	_ = rc.SetReadDeadline(time.Time{})
-	_ = rc.SetWriteDeadline(time.Time{})
-
-	conn, err := websocket.Accept(w, r, nil)
-	if err != nil {
-		h.log.Error("serial websocket upgrade failed", "component", "httpapi", "error", err)
 		return
 	}
 	defer func() { _ = conn.CloseNow() }()
-
-	h.log.Info("serial websocket accepted, relaying to proxmox", "component", "httpapi", "cluster", ticket.Cluster, "vmid", ticket.VMID, "node", ticket.Node, "port", ticket.Port)
 
 	// Serial tunnels speak TEXT frames (Proxmox's "type:payload" protocol and
 	// the browser's xterm.js client both send text). VNC uses MessageBinary
@@ -208,9 +141,7 @@ func (h *VMSerialConsole) handleSerialWebSocket(w http.ResponseWriter, r *http.R
 
 	proxy := cluster.TermProxyTicket{Ticket: ticket.ProxmoxTicket, Port: ticket.Port, Node: ticket.Node}
 	err = relay.RelaySerial(r.Context(), ticket.Cluster, ticket.VMID, proxy, peer)
-	// Always log the outcome — a normal closure needs to be as visible as an
-	// error one, otherwise "did the relay even start" is undiagnosable from
-	// the logs alone (mirrors the VNC handler).
+
 	if err == nil || isNormalClose(err) {
 		h.log.Info("serial relay ended normally", "component", "httpapi", "vmid", ticket.VMID, "error", err)
 	} else {
@@ -234,38 +165,21 @@ func (h *VMSerialConsole) parseSerialPath(r *http.Request) (string, int, bool) {
 	return clusterName, vmid, true
 }
 
-// writeTicketError maps vm.GetTerminalTicket errors to HTTP responses. Same
-// 403/404/502 semantics as the VNC path (contracts).
-func (h *VMSerialConsole) writeTicketError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, vm.ErrForbidden):
-		h.writeSerialError(w, http.StatusForbidden, "forbidden", "not your VM")
-	case errors.Is(err, vm.ErrNotFound):
-		h.writeSerialError(w, http.StatusNotFound, "not_found", "VM not found")
-	case errors.Is(err, vm.ErrClusterConsoleUnavailable):
-		h.writeSerialError(w, http.StatusBadGateway, "console_unavailable", "serial terminal is not available for this VM")
-	default:
-		h.log.Error("serial ticket issuance failed", "component", "httpapi", "error", err)
-		h.writeSerialError(w, http.StatusInternalServerError, "internal_error", "internal server error")
-	}
-}
-
 func (h *VMSerialConsole) writeSerialError(w http.ResponseWriter, status int, code, message string) {
 	if err := writeClusterError(w, status, code, message); err != nil {
 		h.log.Error("failed to write serial error", "component", "httpapi", "code", code, "error", err)
 	}
 }
 
-func (h *VMSerialConsole) writeSerialJSON(w http.ResponseWriter, status int, value any) {
-	body, err := json.Marshal(value)
-	if err != nil {
-		h.log.Error("failed to marshal response", "component", "httpapi", "error", err)
-		h.writeSerialError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+// terminalProxyFetcher adapts a cluster.TerminalRelay to the vm.ProxyFetcher
+// function type, extracting just the ticket and port from the TermProxyTicket.
+func terminalProxyFetcher(relay cluster.TerminalRelay) vm.ProxyFetcher {
+	return func(ctx context.Context, clusterName string, vmid int, node string) (string, int, error) {
+		proxy, err := relay.GetTermProxy(ctx, clusterName, vmid, node)
+		if err != nil {
+			return "", 0, err
+		}
 
-		return
-	}
-
-	if err := writeJSON(w, status, body); err != nil {
-		h.log.Error("failed to write response", "component", "httpapi", "error", err)
+		return proxy.Ticket, proxy.Port, nil
 	}
 }
