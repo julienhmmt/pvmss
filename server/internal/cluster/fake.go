@@ -435,6 +435,26 @@ func (fake Fake) PushCloudInitSnippet(_ context.Context, node, storage, filename
 	return nil
 }
 
+// AttachCloudInitSnippet implements Writer and records the cicustom attach.
+func (fake Fake) AttachCloudInitSnippet(_ context.Context, node, storage, filename string, vmid int) error {
+	state := fake.stateOrDefault()
+	if state.findVM(node, vmid) < 0 {
+		return ErrNotFound
+	}
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "attach_cloudinit_snippet", Storage: storage, Filename: filename})
+	return nil
+}
+
+// SetCloudInitPassword implements Writer and records the agent password apply.
+func (fake Fake) SetCloudInitPassword(_ context.Context, node string, vmid int, _ string) error {
+	state := fake.stateOrDefault()
+	if state.findVM(node, vmid) < 0 {
+		return ErrNotFound
+	}
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "set_cloudinit_password"})
+	return nil
+}
+
 // SetFakeCloudInitPushError configures the default fake's push failure used by tests.
 func SetFakeCloudInitPushError(err error) {
 	state := defaultState()

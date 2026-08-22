@@ -87,6 +87,16 @@ func SetCloudInitConfig(ctx context.Context, deps CloudInitConfigDeps, update cl
 		return false, fmt.Errorf("write cloud-init config: %w", err)
 	}
 
+	// Apply the password via the QEMU guest agent (writes /etc/shadow only),
+	// never through cipassword (whose crypt hash lands on the seed drive and
+	// is readable by the tenant — REPORT.md §1). Requires a running guest
+	// with qemu-guest-agent; a clear error is returned if the agent is down.
+	if update.Password != nil && *update.Password != "" {
+		if err := writer.SetCloudInitPassword(ctx, entity.Node, entity.VMID, *update.Password); err != nil {
+			return false, fmt.Errorf("apply cloud-init password via guest agent: %w", err)
+		}
+	}
+
 	if err := audit.RecordAction(ctx, actor.Username, clusterName, vmid, "edit_cloudinit_config"); err != nil {
 		return false, fmt.Errorf("record cloud-init config audit: %w", err)
 	}
@@ -171,6 +181,13 @@ func SetCloudInitSnippet(ctx context.Context, deps CloudInitSnippetDeps, content
 		return fmt.Errorf("%w: %w", ErrSnippetPushFailed, err)
 	}
 
+	// Point the VM at the just-pushed snippet via the vendor-data slot. Before
+	// this step the file lived in storage but was never referenced by the VM,
+	// so the guest never received it (REPORT.md addendum: silent no-op).
+	if err := writer.AttachCloudInitSnippet(ctx, entity.Node, storage, filename, vmid); err != nil {
+		return fmt.Errorf("%w: %w", ErrSnippetPushFailed, err)
+	}
+
 	if err := st.RecordAction(ctx, actor.Username, clusterName, vmid, "edit_cloudinit_snippet"); err != nil {
 		return fmt.Errorf("record cloud-init snippet audit: %w", err)
 	}
@@ -237,9 +254,6 @@ func mergeCloudInitConfig(current cluster.CloudInitConfig, update cluster.CloudI
 	}
 	if update.User != nil {
 		current.User = *update.User
-	}
-	if update.Password != nil && *update.Password != "" {
-		current.Password = *update.Password
 	}
 	if update.SSHKeys != nil {
 		current.SSHKeys = append([]string(nil), (*update.SSHKeys)...)

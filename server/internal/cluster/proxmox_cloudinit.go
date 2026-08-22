@@ -155,10 +155,6 @@ func (p Proxmox) SetCloudInitConfig(ctx context.Context, node string, vmid int, 
 		form.Set("ciuser", config.User)
 	}
 
-	if config.Password != "" {
-		form.Set("cipassword", config.Password)
-	}
-
 	if len(config.SSHKeys) > 0 {
 		form.Set("sshkeys", url.QueryEscape(strings.Join(config.SSHKeys, "\n")))
 	}
@@ -176,6 +172,46 @@ func (p Proxmox) SetCloudInitConfig(ctx context.Context, node string, vmid int, 
 	_, err := p.rest().do(ctx, http.MethodPut, fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid), form)
 
 	return err
+}
+
+// AttachCloudInitSnippet points the VM at an already-uploaded snippet file
+// through the vendor-data slot. vendor-data MERGES with the generated
+// user-data, so ciuser/sshkeys/ipconfig0 keep applying; a user= slot would
+// replace the generated user-data and silently drop the structured config.
+// An empty filename detaches the snippet by clearing cicustom.
+func (p Proxmox) AttachCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int) error {
+	form := url.Values{}
+
+	if filename == "" {
+		form.Set("delete", "cicustom")
+	} else {
+		form.Set("cicustom", fmt.Sprintf("vendor=%s:snippets/%s", storage, filename))
+	}
+
+	_, err := p.rest().do(ctx, http.MethodPut, fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid), form)
+
+	return err
+}
+
+// SetCloudInitPassword applies the cloud-init password via the QEMU guest
+// agent so it lands only in /etc/shadow on the guest. It deliberately does NOT
+// use the cipassword config key: Proxmox writes that as a crypt hash on the
+// cloud-init seed drive (/dev/sr0) and cloud-init caches the same user-data
+// under /var/lib/cloud on the root disk — both readable by any tenant root for
+// the VM's lifetime. The agent path avoids the seed drive entirely. Requires a
+// running guest with qemu-guest-agent enabled; callers surface a clear error
+// when the agent is unavailable.
+func (p Proxmox) SetCloudInitPassword(ctx context.Context, node string, vmid int, password string) error {
+	form := url.Values{}
+	form.Set("username", "root")
+	form.Set("password", password)
+
+	_, err := p.rest().do(ctx, http.MethodPut, fmt.Sprintf("/nodes/%s/qemu/%d/agent/set-user-password", url.PathEscape(node), vmid), form)
+	if err != nil {
+		return fmt.Errorf("set user password via guest agent: %w", err)
+	}
+
+	return nil
 }
 
 func encodeIPConfig(config CloudInitConfig) string {
