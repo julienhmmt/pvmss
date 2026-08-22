@@ -168,6 +168,26 @@ func (Fake) RelayConsole(ctx context.Context, _ string, _ int, _ VNCProxyTicket,
 	return rfbFakeServe(ctx, peer)
 }
 
+// GetTermProxy implements TerminalRelay with a fixed fabricated ticket and port
+// — no network call, no state beyond what the fixture already tracks for the
+// VM. The browser never sees either value; only the opaque ConsoleTicketStore
+// token does. Mirrors GetVNCTicket's fake so the serial feature is genuinely
+// functional offline (constitution XI).
+func (Fake) GetTermProxy(_ context.Context, _ string, _ int, _ string) (TermProxyTicket, error) {
+	return TermProxyTicket{Ticket: "fake-term-ticket", Port: 5902}, nil
+}
+
+// RelaySerial implements TerminalRelay as a minimal echo/byte-pipe against
+// peer — there is no second, separately-dialed connection in the fake path.
+// It reads bytes the browser writes and echoes them back prefixed with a
+// "0:len:" data frame so an xterm.js client sees its own keystrokes render,
+// which is enough to demonstrate the serial feature offline without pretending
+// to be a real OS (constitution VIII). Blocks until peer closes or the context
+// is cancelled.
+func (Fake) RelaySerial(ctx context.Context, _ string, _ int, _ TermProxyTicket, peer io.ReadWriteCloser) error {
+	return serialFakeServe(ctx, peer)
+}
+
 // GetCloudInitConfig implements CloudInitReader with live per-VM fake state.
 func (fake Fake) GetCloudInitConfig(_ context.Context, node string, vmid int) (CloudInitConfig, error) {
 	state := fake.stateOrDefault()

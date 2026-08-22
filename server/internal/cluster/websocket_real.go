@@ -55,6 +55,17 @@ type proxmoxVNCProxyResponse struct {
 	} `json:"data"`
 }
 
+// proxmoxTermProxyResponse is the JSON envelope Proxmox returns from
+// POST /nodes/{node}/qemu/{vmid}/termproxy. It mirrors vncproxy's shape:
+// data.{ticket, port, user}. PVMSS uses Ticket and Port (carried in the
+// serial vncwebsocket URL); User is unused.
+type proxmoxTermProxyResponse struct {
+	Data struct {
+		Ticket string `json:"ticket"`
+		Port   string `json:"port"`
+	} `json:"data"`
+}
+
 // proxmoxVNCClient is the minimal REST surface GetVNCTicket and RelayConsole
 // need. Constructed per-call from cluster.Proxmox's own BaseURL/APITokenName/
 // APITokenValue fields (set in main.go from PROXMOX_URL/PROXMOX_API_TOKEN_NAME/
@@ -89,6 +100,35 @@ func (p Proxmox) GetVNCTicket(ctx context.Context, _ string, vmid int, node stri
 func (p Proxmox) RelayConsole(ctx context.Context, _ string, vmid int, proxy VNCProxyTicket, peer io.ReadWriteCloser) error {
 	c := newProxmoxVNCClient(p.BaseURL, p.APITokenName, p.APITokenValue, p.TLSInsecureSkipVerify)
 	return proxmoxRelayConsole(ctx, c, proxy.Node, vmid, proxy, peer)
+}
+
+// GetTermProxy implements TerminalRelay for the real Proxmox client. It calls
+// Proxmox's termproxy endpoint for (node, vmid) and returns the Proxmox-side
+// ticket and port. The node is always Resolve()'s server-resolved value — the
+// caller never supplies one (FR-007). Same auth-header pattern as
+// proxmoxGetVNCTicket.
+//
+// Proxmox is not reachable in the tranche's own demo or unit tests; this
+// method is exercised only by integration tests against a live endpoint.
+func (p Proxmox) GetTermProxy(ctx context.Context, _ string, vmid int, node string) (TermProxyTicket, error) {
+	c := newProxmoxVNCClient(p.BaseURL, p.APITokenName, p.APITokenValue, p.TLSInsecureSkipVerify)
+	return proxmoxGetTermProxy(ctx, c, node, vmid)
+}
+
+// RelaySerial implements TerminalRelay for the real Proxmox client. It dials
+// Proxmox's vncwebsocket endpoint (the SAME endpoint VNC uses — Proxmox
+// multiplexes serial tunnels through it via the termproxy ticket) and relays
+// raw bytes bidirectionally between the browser WebSocket (peer) and Proxmox
+// until either side closes. There is NO RFB handshake and NO DES auth for
+// serial — the vncwebsocket endpoint carries the serial tunnel as an
+// already-framed byte stream; PVMSS is a dumb byte pipe and the browser-side
+// xterm.js layer owns the "type:payload" framing.
+//
+// Proxmox is not reachable in the tranche's own demo or unit tests; this
+// method is exercised only by integration tests against a live endpoint.
+func (p Proxmox) RelaySerial(ctx context.Context, _ string, vmid int, proxy TermProxyTicket, peer io.ReadWriteCloser) error {
+	c := newProxmoxVNCClient(p.BaseURL, p.APITokenName, p.APITokenValue, p.TLSInsecureSkipVerify)
+	return proxmoxRelaySerial(ctx, c, proxy.Node, vmid, proxy, peer)
 }
 
 // --- The real flow, called directly from GetVNCTicket and RelayConsole above.
@@ -177,6 +217,92 @@ func proxmoxRelayConsole(ctx context.Context, c proxmoxVNCClient, node string, v
 		return fmt.Errorf("present no-auth handshake to browser: %w", err)
 	}
 
+	errCh := make(chan error, 2)
+
+	go func() { _, err := io.Copy(proxmoxNetConn, peer); errCh <- err }()
+	go func() { _, err := io.Copy(peer, proxmoxNetConn); errCh <- err }()
+
+	err = <-errCh
+	_ = proxmoxNetConn.Close()
+	_ = peer.Close()
+
+	return err
+}
+
+// proxmoxGetTermProxy dials the termproxy endpoint and returns the ticket+port.
+// It mirrors proxmoxGetVNCTicket but POSTs to .../termproxy and decodes a
+// proxmoxTermProxyResponse. The termproxy endpoint does not take a
+// "websocket=1" form field (vncproxy does); it returns the port directly.
+func proxmoxGetTermProxy(ctx context.Context, c proxmoxVNCClient, node string, vmid int) (TermProxyTicket, error) {
+	endpoint := fmt.Sprintf("%s/nodes/%s/qemu/%d/termproxy", apiBase(c.baseURL), url.PathEscape(node), vmid)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, strings.NewReader(""))
+	if err != nil {
+		return TermProxyTicket{}, fmt.Errorf("build termproxy request: %w", err)
+	}
+
+	req.Header.Set("Authorization", fmt.Sprintf("PVEAPIToken=%s=%s", c.apiTokenName, c.apiTokenVal))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return TermProxyTicket{}, fmt.Errorf("termproxy request: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return TermProxyTicket{}, fmt.Errorf("termproxy returned %d", resp.StatusCode)
+	}
+
+	var envelope proxmoxTermProxyResponse
+	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
+		return TermProxyTicket{}, fmt.Errorf("decode termproxy response: %w", err)
+	}
+
+	port, err := strconv.Atoi(envelope.Data.Port)
+	if err != nil {
+		return TermProxyTicket{}, fmt.Errorf("invalid termproxy port %q: %w", envelope.Data.Port, err)
+	}
+
+	return TermProxyTicket{Ticket: envelope.Data.Ticket, Port: port, Node: node}, nil
+}
+
+// proxmoxRelaySerial dials Proxmox's vncwebsocket endpoint (the same endpoint
+// VNC uses — Proxmox multiplexes serial tunnels through it via the termproxy
+// ticket) and copies raw bytes both ways between the browser peer and Proxmox
+// until either side closes. There is NO RFB handshake and NO DES auth for
+// serial — the vncwebsocket endpoint carries the serial tunnel as an
+// already-framed byte stream; PVMSS is a dumb byte pipe and the browser-side
+// xterm.js layer owns the "type:payload" framing.
+func proxmoxRelaySerial(ctx context.Context, c proxmoxVNCClient, node string, vmid int, proxy TermProxyTicket, peer io.ReadWriteCloser) error {
+	wsURL := buildProxmoxVNCWebSocketURL(c.baseURL, node, vmid, proxy.Port, proxy.Ticket)
+
+	// Same long-lived-WebSocket dial constraint as proxmoxRelayConsole: never
+	// dial through an *http.Client with Timeout set — that timer bounds the
+	// whole connection lifetime, not just the handshake. Reuse the transport
+	// (TLS config) but with no Timeout; ctx bounds this dial.
+	dialClient := &http.Client{Transport: c.httpClient.Transport}
+
+	dialCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	proxmoxConn, _, err := websocket.Dial(dialCtx, wsURL, &websocket.DialOptions{ //nolint:bodyclose // coder/websocket owns the response body lifecycle per its Dial docs
+		HTTPHeader: http.Header{
+			"Authorization": []string{fmt.Sprintf("PVEAPIToken=%s=%s", c.apiTokenName, c.apiTokenVal)},
+		},
+		HTTPClient: dialClient,
+	})
+	if err != nil {
+		return fmt.Errorf("dial proxmox vncwebsocket (serial): %w", err)
+	}
+	defer func() { _ = proxmoxConn.CloseNow() }()
+
+	proxmoxNetConn := websocket.NetConn(ctx, proxmoxConn, websocket.MessageBinary)
+	defer func() { _ = proxmoxNetConn.Close() }()
+
+	// Plain bidirectional byte pipe — no RFB handshake, no DES auth. The
+	// browser-side xterm.js layer encodes keystrokes as "0:len:data" and
+	// decodes "0:len:output"; PVMSS never inspects or terminates the framing.
 	errCh := make(chan error, 2)
 
 	go func() { _, err := io.Copy(proxmoxNetConn, peer); errCh <- err }()

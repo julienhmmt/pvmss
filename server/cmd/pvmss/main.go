@@ -373,6 +373,11 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		return nil, errors.New("cluster client does not implement ConsoleRelay")
 	}
 
+	serialRelay, ok := clusterClient.(cluster.TerminalRelay)
+	if !ok {
+		return nil, errors.New("cluster client does not implement TerminalRelay")
+	}
+
 	consoleTickets := vm.NewConsoleTicketStore()
 
 	metricsReader, ok := clusterClient.(cluster.MetricsHistoryReader)
@@ -406,6 +411,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	tasks := httpapi.NewTasksWithRegistry(authHandler, clusterRegistry, creator, worker, logger)
 	snapshots := httpapi.NewVMSnapshotsWithRegistry(httpapi.VMSnapshotsRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Reader: snapshotReader, Writer: snapshotWriter, Clients: clusterRegistry, Store: st, Log: logger, Services: []*policy.Policy{policyService}})
 	vmConsole := httpapi.NewVMConsoleWithRegistry(httpapi.VMConsoleRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Relay: consoleRelay, Clients: clusterRegistry, Tickets: consoleTickets, Store: st, Log: logger})
+	vmSerialConsole := httpapi.NewVMSerialConsoleWithRegistry(httpapi.VMSerialConsoleRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Relay: serialRelay, Clients: clusterRegistry, Tickets: consoleTickets, Store: st, Log: logger})
 	vmMetrics := httpapi.NewVMMetricsWithRegistry(inventoryRegistry, projection, authHandler, metricsReader, metricsCurrentReader, clusterRegistry, logger)
 	adminCatalog := httpapi.NewAdminCatalogWithRegistry(authHandler, st, clusterRegistry, projection, logger)
 	adminPolicy := httpapi.NewAdminPolicyWithRegistry(authHandler, policyService, clusterRegistry, logger)
@@ -430,6 +436,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		Log:              logger,
 		SnapshotHandlers: []*httpapi.VMSnapshots{snapshots},
 		VMConsole:        vmConsole,
+		VMSerialConsole:  vmSerialConsole,
 		VMMetrics:        vmMetrics,
 		AdminCatalog:     adminCatalog,
 		AdminPolicy:      adminPolicy,

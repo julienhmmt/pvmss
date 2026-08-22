@@ -3,14 +3,33 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { setConsoleContext } from '$lib/features/vm-console/console.svelte';
+	import { setSerialConsoleContext } from '$lib/features/vm-console/serial.svelte';
 	import VmConsole from '$lib/features/vm-console/VmConsole.svelte';
+	import VmSerialConsole from '$lib/features/vm-console/VmSerialConsole.svelte';
 	import ConsoleToolbar from '$lib/features/vm-console/ConsoleToolbar.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+
+	type ConsoleMode = 'graphical' | 'text';
 
 	const cluster = page.params.cluster ?? 'default';
 	const vmid = Number(page.params.vmid);
 
 	const store = setConsoleContext(cluster, vmid);
+	const serialStore = setSerialConsoleContext(cluster, vmid);
+
+	let mode = $state<ConsoleMode>('graphical');
+
+	function switchMode(next: ConsoleMode): void {
+		if (mode === next) return;
+		// Tear down the inactive session so no WebSocket leaks (the user
+		// explicitly required clean teardown on mode switch).
+		if (mode === 'graphical') {
+			store.disconnect();
+		} else {
+			serialStore.disconnect();
+		}
+		mode = next;
+	}
 
 	onMount(() => {
 		// The connect happens inside VmConsole.svelte's onMount, which runs
@@ -19,6 +38,7 @@
 
 	onDestroy(() => {
 		store.disconnect();
+		serialStore.disconnect();
 	});
 </script>
 
@@ -38,25 +58,81 @@
 			{m['vms.console.heading']({ vmid: String(vmid) })}
 		</h1>
 		<span
-			class="inline-flex items-center rounded-full px-2 py-0.5 text-xs {
-				store.state === 'connected'
+			class="inline-flex items-center rounded-full px-2 py-0.5 text-xs {mode === 'graphical'
+				? store.state === 'connected'
 					? 'bg-success-soft text-success-soft-foreground'
 					: store.state === 'error'
 						? 'bg-destructive-soft text-destructive-soft-foreground'
 						: 'bg-muted text-muted-foreground'
-			}"
+				: serialStore.state === 'connected'
+					? 'bg-success-soft text-success-soft-foreground'
+					: serialStore.state === 'error'
+						? 'bg-destructive-soft text-destructive-soft-foreground'
+						: 'bg-muted text-muted-foreground'}"
 			aria-live="polite"
 			data-testid="vm-console-status"
 		>
-			{store.state}
+			{mode === 'graphical' ? store.state : serialStore.state}
 		</span>
 	</div>
 
-	<ConsoleToolbar />
+	<div class="mb-3 flex items-center gap-2" data-testid="vm-console-mode-switcher">
+		<button
+			type="button"
+			class="rounded-md px-3 py-1.5 text-sm font-medium {mode === 'graphical'
+				? 'bg-primary text-primary-foreground'
+				: 'border border-border bg-background text-foreground hover:bg-muted'}"
+			onclick={() => switchMode('graphical')}
+			data-testid="vm-console-mode-graphical"
+			aria-pressed={mode === 'graphical'}
+		>
+			{m['vms.console.mode.graphical']()}
+		</button>
+		<button
+			type="button"
+			class="rounded-md px-3 py-1.5 text-sm font-medium {mode === 'text'
+				? 'bg-primary text-primary-foreground'
+				: 'border border-border bg-background text-foreground hover:bg-muted'}"
+			onclick={() => switchMode('text')}
+			data-testid="vm-console-mode-text"
+			aria-pressed={mode === 'text'}
+		>
+			{m['vms.console.mode.text']()}
+		</button>
+	</div>
+
+	{#if mode === 'graphical'}
+		<ConsoleToolbar />
+	{:else}
+		<div class="flex flex-wrap items-center gap-2" data-testid="vm-serial-console-toolbar">
+			<button
+				type="button"
+				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+				disabled={serialStore.state !== 'connected'}
+				onclick={() => serialStore.disconnect()}
+				data-testid="vm-serial-console-disconnect"
+			>
+				{m['vms.console.disconnect']()}
+			</button>
+			<button
+				type="button"
+				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+				disabled={serialStore.state === 'connecting' || serialStore.state === 'idle'}
+				onclick={() => serialStore.reconnect()}
+				data-testid="vm-serial-console-reconnect-btn"
+			>
+				{m['vms.console.reconnect']()}
+			</button>
+		</div>
+	{/if}
 
 	<div class="mt-3 flex-1 overflow-hidden">
 		<svelte:boundary>
-			<VmConsole />
+			{#if mode === 'graphical'}
+				<VmConsole />
+			{:else}
+				<VmSerialConsole />
+			{/if}
 			{#snippet failed(error)}
 				<div
 					class="flex h-full w-full flex-col items-center justify-center gap-2 rounded-md border border-border bg-destructive-soft p-4 text-sm text-destructive"
