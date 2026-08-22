@@ -48,6 +48,7 @@ type RouterConfig struct {
 	Log              *slog.Logger
 	SnapshotHandlers []*VMSnapshots
 	VMConsole        *VMConsole
+	VMSerialConsole  *VMSerialConsole
 	VMMetrics        *VMMetrics
 	AdminCatalog     *AdminCatalog
 	AdminPolicy      *AdminPolicy
@@ -97,12 +98,15 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	mux.Handle("PATCH /api/v1/vms/{cluster}/{vmid}/cdrom", cfg.VMDetail)
 	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/network", cfg.VMDetail)
 	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/hardware", cfg.VMDetail)
+	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/serial", cfg.VMDetail)
+	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/audit", cfg.VMDetail)
 
 	if cfg.VMCloudInit != nil {
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit", cfg.VMCloudInit)
 		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit", cfg.VMCloudInit)
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", cfg.VMCloudInit)
 		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", cfg.VMCloudInit)
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/cloudinit/ssh-keys", cfg.VMCloudInit)
 	}
 
 	if len(cfg.SnapshotHandlers) > 0 && cfg.SnapshotHandlers[0] != nil {
@@ -117,6 +121,8 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/vnc-ticket", cfg.VMConsole)
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/console/websocket", cfg.VMConsole)
 	}
+
+	registerSerialConsoleRoutes(mux, cfg.VMSerialConsole)
 
 	if cfg.VMMetrics != nil {
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/metrics/history", cfg.VMMetrics)
@@ -263,4 +269,17 @@ func writeTextError(w http.ResponseWriter, status int, detail string) error {
 	_, err := w.Write([]byte(detail))
 
 	return err
+}
+
+// registerSerialConsoleRoutes wires the serial-terminal endpoints onto mux
+// when the handler is present. Extracted from NewRouter to keep its cyclomatic
+// complexity under the gocyclo threshold (one if-block per route group adds up
+// across console, metrics, admin, tasks, ...).
+func registerSerialConsoleRoutes(mux *http.ServeMux, handler *VMSerialConsole) {
+	if handler == nil {
+		return
+	}
+
+	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/serial-ticket", handler)
+	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/serial/websocket", handler)
 }

@@ -32,6 +32,9 @@ var (
 	// path is testable without a live cluster. Callers that want to delete a
 	// running VM must stop it first (see vm.Delete's Force flag).
 	ErrVMRunning = errors.New("vm is running")
+	// ErrSSHKeyUserUnknown is returned by Writer.AddSSHKey when the guest user
+	// named in the request does not exist on the guest (guest-agent exit code 3).
+	ErrSSHKeyUserUnknown = errors.New("ssh key user not found on guest")
 )
 
 // Client is the single contract for reading cluster data. Every implementation
@@ -107,9 +110,34 @@ type Writer interface {
 	SetCDROM(ctx context.Context, node string, vmid int, state CDROMState) error
 	UpdateNetwork(ctx context.Context, node string, vmid int, interfaces []NetworkInterface) error
 	UpdateHardware(ctx context.Context, node string, vmid, sockets, cores, memoryMB int, tags []string) error
+	// EnableSerial provisions a socket-backed serial port (serial0) on an
+	// existing VM so the PVMSS Text/serial console works for VMs created
+	// before serial0 was added at create time.
+	EnableSerial(ctx context.Context, node string, vmid int) error
 	EnsureCloudInitDrive(ctx context.Context, node string, vmid int) error
 	SetCloudInitConfig(ctx context.Context, node string, vmid int, config CloudInitConfig) error
 	PushCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int, content string) error
+	// AttachCloudInitSnippet points the VM's config at an already-pushed
+	// snippet file via the vendor-data slot. vendor= MERGES the snippet with
+	// the generated cloud-init user-data (ciuser/sshkeys/ipconfig0 still
+	// apply); the user= slot would REPLACE the generated user-data entirely
+	// and silently drop the structured config. An empty filename detaches
+	// the snippet (Proxmox stores none). See REPORT.md §4 / addendum.
+	AttachCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int) error
+	// SetCloudInitPassword applies the VM's cloud-init password post-boot via
+	// the QEMU guest agent, writing it only to /etc/shadow on the guest. It
+	// never uses the cipassword config key, whose crypt hash Proxmox stores on
+	// the cloud-init seed drive and cloud-init caches under /var/lib/cloud —
+	// both readable by any tenant root for the VM's lifetime (REPORT.md §1).
+	SetCloudInitPassword(ctx context.Context, node string, vmid int, password string) error
+	// AddSSHKey injects a single public key into the running guest's
+	// authorized_keys via the QEMU guest agent, without a reboot. The key is
+	// passed as a positional argv to a fixed script (no shell interpolation),
+	// so a multi-line paste cannot smuggle extra keys. The cloud-init config
+	// is synchronised best-effort so later duplicate/rebuild flows see the
+	// truthful key set, but the key is live in the guest regardless of that
+	// sync (REPORT.md §2/#2).
+	AddSSHKey(ctx context.Context, node string, vmid int, user, key string) error
 }
 
 // Snapshot is the complete result of one cluster read — all nodes, VMs, and
@@ -249,6 +277,10 @@ type VM struct {
 	// Description is the free-text note editable via PATCH (V17). Empty by
 	// default in the fake dataset.
 	Description string
+	// HasSerial is true when the VM carries a serial port (serial0). Set by
+	// hydrateVM for the real client; the fake dataset sets it on creation
+	// (new VMs) and via EnableSerial (retrofit).
+	HasSerial bool
 }
 
 // Storage is a storage backend attached to a node.
@@ -344,6 +376,29 @@ type VNCProxyTicket struct {
 type ConsoleRelay interface {
 	GetVNCTicket(ctx context.Context, clusterName string, vmid int, node string) (VNCProxyTicket, error)
 	RelayConsole(ctx context.Context, clusterName string, vmid int, proxy VNCProxyTicket, peer io.ReadWriteCloser) error
+}
+
+// TermProxyTicket is the Proxmox-side serial terminal ticket, port, and node
+// returned by GetTermProxy. Proxmox's termproxy endpoint mirrors vncproxy's
+// shape: data.{ticket, port, user}. As with VNCProxyTicket, none of these
+// values ever reach the browser — only the opaque ConsoleTicketStore token
+// does. The relay reads them back from the ticket at upgrade time.
+type TermProxyTicket struct {
+	Ticket string
+	Port   int
+	Node   string
+}
+
+// TerminalRelay is the contract for relaying an already-upgraded WebSocket
+// connection to a VM's serial terminal. Unlike ConsoleRelay (VNC), there is no
+// RFB handshake — Proxmox's vncwebsocket endpoint carries the serial tunnel as
+// a raw, already-framed byte stream, so RelaySerial is a dumb bidirectional
+// io.Copy pipe. The browser-side xterm.js layer encodes/decodes the
+// "type:payload" framing itself; PVMSS never inspects or terminates it.
+// Kept parallel to ConsoleRelay for the same constitution-IV reason.
+type TerminalRelay interface {
+	GetTermProxy(ctx context.Context, clusterName string, vmid int, node string) (TermProxyTicket, error)
+	RelaySerial(ctx context.Context, clusterName string, vmid int, proxy TermProxyTicket, peer io.ReadWriteCloser) error
 }
 
 // Pool is a tenancy anchor — one pool maps to one user (PD00).

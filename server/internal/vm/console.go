@@ -61,18 +61,49 @@ type VNCTicket struct {
 	ExpiresAt     time.Time
 }
 
+// TerminalTicket is the serial-terminal analogue of VNCTicket: an in-memory,
+// single-use, TTL-bound capability binding an opaque token to
+// (cluster, vmid, node, ProxmoxTicket, port) for a serial terminal session.
+// The client ever sees only the Token; every other field stays server-side.
+// Never persisted, never serialized to a store (AC01). Same lifecycle as
+// VNCTicket — issued by GetTerminalTicket, consumed once by the serial
+// WebSocket handler.
+type TerminalTicket struct {
+	Token         string
+	Cluster       string
+	VMID          int
+	Node          string
+	ProxmoxTicket string
+	Port          int
+	IssuedAt      time.Time
+	ExpiresAt     time.Time
+}
+
 // ConsoleTicketStore is the in-memory ticket store (AC01). Constructed once in
 // main.go and passed into httpapi alongside every other dependency — no
 // package-level singleton, no global mutable state.
+//
+// It holds two parallel maps: VNC tickets (ConsoleRelay) and serial terminal
+// tickets (TerminalRelay). Both reuse the same TTL, capacity, and eviction
+// policy. Keeping them as separate maps (rather than a unified ticket with a
+// Mode field) means the existing VNC tests and the VNC relay path are
+// untouched — the serial path is purely additive.
 type ConsoleTicketStore struct {
-	mu      sync.Mutex
-	tickets map[string]VNCTicket
-	order   []string
+	mu          sync.Mutex
+	tickets     map[string]VNCTicket
+	order       []string
+	termTickets map[string]TerminalTicket
+	termOrder   []string
 }
 
 // NewConsoleTicketStore creates an empty store.
 func NewConsoleTicketStore() *ConsoleTicketStore {
-	return &ConsoleTicketStore{tickets: make(map[string]VNCTicket), order: make([]string, 0, ticketStoreCapacity)}
+	return &ConsoleTicketStore{
+		tickets:     make(map[string]VNCTicket),
+		order:       make([]string, 0, ticketStoreCapacity),
+		termTickets: make(map[string]TerminalTicket),
+		termOrder:   make([]string, 0, ticketStoreCapacity),
+	}
 }
 
 // Issue generates an opaque, cryptographically random token, stores the entry,
@@ -142,6 +173,94 @@ func (s *ConsoleTicketStore) Consume(token, clusterName string, vmid int) (VNCTi
 	delete(s.tickets, token)
 
 	return ticket, nil
+}
+
+// IssueTerminal is the serial-terminal analogue of Issue: generates an opaque,
+// cryptographically random token, stores the entry, appends to the terminal
+// insertion-order slice, and evicts the oldest terminal entry if the fixed
+// capacity is exceeded. Returns the new ticket. Same TTL and capacity as VNC.
+func (s *ConsoleTicketStore) IssueTerminal(clusterName string, vmid int, node, proxmoxTicket string, port int) TerminalTicket {
+	token, err := generateConsoleToken()
+	if err != nil {
+		// crypto/rand failure is a fatal environment condition — surface it as
+		// a ticket with an empty token so the caller can detect it, and let the
+		// HTTP layer turn it into a 500. Mirrors Issue's handling.
+		return TerminalTicket{Cluster: clusterName, VMID: vmid, Node: node, ProxmoxTicket: proxmoxTicket, Port: port}
+	}
+
+	now := time.Now()
+	ticket := TerminalTicket{
+		Token:         token,
+		Cluster:       clusterName,
+		VMID:          vmid,
+		Node:          node,
+		ProxmoxTicket: proxmoxTicket,
+		Port:          port,
+		IssuedAt:      now,
+		ExpiresAt:     now.Add(TicketTTL),
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.termTickets[token] = ticket
+	s.termOrder = append(s.termOrder, token)
+
+	if len(s.termTickets) > ticketStoreCapacity {
+		s.evictOldestTerminalLocked()
+	}
+
+	return ticket
+}
+
+// ConsumeTerminal is the serial-terminal analogue of Consume: looks up the
+// token, rejects missing/expired/(cluster,vmid)-mismatched entries with
+// ErrInvalidTicket, and deletes the entry BEFORE returning it on success
+// (single-use). A mismatched Consume does NOT consume the ticket.
+func (s *ConsoleTicketStore) ConsumeTerminal(token, clusterName string, vmid int) (TerminalTicket, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	ticket, ok := s.termTickets[token]
+	if !ok {
+		return TerminalTicket{}, ErrInvalidTicket
+	}
+
+	if time.Now().After(ticket.ExpiresAt) {
+		s.removeTerminalOrderLocked(token)
+		delete(s.termTickets, token)
+
+		return TerminalTicket{}, ErrInvalidTicket
+	}
+
+	if ticket.Cluster != clusterName || ticket.VMID != vmid {
+		return TerminalTicket{}, ErrInvalidTicket
+	}
+
+	s.removeTerminalOrderLocked(token)
+	delete(s.termTickets, token)
+
+	return ticket, nil
+}
+
+// evictOldestTerminalLocked removes the oldest live terminal token. Called
+// only with s.mu held.
+func (s *ConsoleTicketStore) evictOldestTerminalLocked() {
+	if len(s.termOrder) == 0 {
+		return
+	}
+
+	oldest := s.termOrder[0]
+	s.termOrder = s.termOrder[1:]
+	delete(s.termTickets, oldest)
+}
+
+// removeTerminalOrderLocked removes token from the terminal insertion-order
+// slice. Called only with s.mu held.
+func (s *ConsoleTicketStore) removeTerminalOrderLocked(token string) {
+	if i := slices.Index(s.termOrder, token); i >= 0 {
+		s.termOrder = slices.Delete(s.termOrder, i, i+1)
+	}
 }
 
 // evictOldestLocked removes the oldest live token from the map and the order
@@ -238,6 +357,65 @@ func GetConsoleTicket(ctx context.Context, deps ConsoleTicketDeps) (VNCTicket, e
 	return ticket, nil
 }
 
+// --- GetTerminalTicket: Resolve()-gated serial terminal issuance ---
+
+// TerminalClient is the cluster.Client surface GetTerminalTicket needs — just
+// the serial terminal ticket acquisition. The relay method is called by the
+// serial WebSocket handler directly against cluster.Client, not here. Kept as
+// an interface so the domain test can substitute a fake without spinning a real
+// cluster.Client. Mirrors ConsoleClient.
+type TerminalClient interface {
+	GetTermProxy(ctx context.Context, clusterName string, vmid int, node string) (cluster.TermProxyTicket, error)
+}
+
+// TerminalTicketDeps groups the shared dependencies and resolution context
+// for GetTerminalTicket. Mirrors ConsoleTicketDeps.
+type TerminalTicketDeps struct {
+	Index       *inventory.Index
+	Actor       auth.Identity
+	ClusterName string
+	VMID        int
+	Client      TerminalClient
+	Store       *ConsoleTicketStore
+	Audit       AuditRecorder
+}
+
+// GetTerminalTicket is the serial-terminal analogue of GetConsoleTicket: the
+// only path from a serial-ticket HTTP request to a terminal capability. It
+// calls Resolve() first (the same ownership gate every write uses), then the
+// cluster client to obtain the Proxmox-side termproxy ticket, then the in-memory
+// store to issue the opaque capability, then records the audit entry. The node
+// is always Resolve()'s server-resolved value — the caller never supplies one.
+// Reuses the "console_open" audit action for consistency (a serial terminal is
+// a console session, semantically).
+func GetTerminalTicket(ctx context.Context, deps TerminalTicketDeps) (TerminalTicket, error) {
+	index := deps.Index
+	actor := deps.Actor
+	clusterName := deps.ClusterName
+	vmid := deps.VMID
+	client := deps.Client
+	store := deps.Store
+	audit := deps.Audit
+
+	entity, err := Resolve(index, actor, clusterName, vmid)
+	if err != nil {
+		return TerminalTicket{}, err
+	}
+
+	proxy, err := client.GetTermProxy(ctx, clusterName, vmid, entity.Node)
+	if err != nil {
+		return TerminalTicket{}, fmt.Errorf("%w: %w", ErrClusterConsoleUnavailable, err)
+	}
+
+	ticket := store.IssueTerminal(clusterName, vmid, entity.Node, proxy.Ticket, proxy.Port)
+
+	if err := audit.RecordAction(ctx, actor.Username, clusterName, vmid, "console_open"); err != nil {
+		return TerminalTicket{}, fmt.Errorf(auditWrapFmt, err)
+	}
+
+	return ticket, nil
+}
+
 // --- test-only helpers (kept in production file so the white-box tests in
 // console_test.go can exercise eviction and expiry without duplicating the
 // store's internals). Not used by any production caller. ---
@@ -250,6 +428,18 @@ func (s *ConsoleTicketStore) expireForTest(token string) {
 	if ticket, ok := s.tickets[token]; ok {
 		ticket.ExpiresAt = time.Now().Add(-time.Second)
 		s.tickets[token] = ticket
+	}
+}
+
+// expireTerminalForTest forces a terminal ticket's ExpiresAt into the past.
+// Test-only — mirrors expireForTest for the serial path.
+func (s *ConsoleTicketStore) expireTerminalForTest(token string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if ticket, ok := s.termTickets[token]; ok {
+		ticket.ExpiresAt = time.Now().Add(-time.Second)
+		s.termTickets[token] = ticket
 	}
 }
 
