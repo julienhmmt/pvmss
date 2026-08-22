@@ -399,6 +399,7 @@
  "vms.console.serial.enabling": "Activation…",
  "vms.console.serial.enableError": "Échec de l'activation de la console série",
  "vms.console.serial.enabledHint": "Port série ajouté. Redémarrez la VM et vérifiez que l'invité affiche une invite de connexion sur le port série, puis reconnectez-vous.",
+ "vms.console.serial.hint": "La console série reflète le port série de la VM (ttyS0). Un écran vide signifie que la VM n'a pas de système d'exploitation installé ou aucune invite de connexion sur le port série — il n'y a rien à afficher.",
  "vms.cloudinit.heading": "Cloud-init",
  "vms.cloudinit.description": "Configurer les paramètres cloud-init de la VM en cours d'exécution ou du YAML personnalisé.",
  "vms.cloudinit.modeLabel": "Mode d'édition cloud-init",

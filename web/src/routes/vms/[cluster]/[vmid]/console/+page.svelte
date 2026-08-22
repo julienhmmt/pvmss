@@ -153,6 +153,9 @@
 		{:else if vmStore.serialEnableError}
 			<p class="text-destructive text-sm" data-testid="vm-serial-console-enable-error">{vmStore.serialEnableError}</p>
 		{/if}
+		<p class="text-xs text-muted-foreground" data-testid="vm-serial-console-hint">
+			{m['vms.console.serial.hint']()}
+		</p>
 	{/if}
 
 	<div class="mt-3 flex-1 overflow-hidden">
