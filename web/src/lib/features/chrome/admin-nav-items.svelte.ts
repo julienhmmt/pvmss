@@ -8,7 +8,6 @@ export type SidebarIconName =
 	| 'home'
 	| 'search'
 	| 'vm'
-	| 'nodes'
 	| 'dashboard'
 	| 'infrastructure'
 	| 'catalog'
