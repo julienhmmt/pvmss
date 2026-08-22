@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"pvmss/server/internal/cluster"
+	"slices"
 	"testing"
 )
 
@@ -22,34 +23,53 @@ func TestFake_Snapshot_DeepCopyDoesNotMutateOriginal(t *testing.T) {
 		t.Fatal("expected VMs in snapshot")
 	}
 
-	snap1.VMs[0].Name = "mutated-name"
-	if len(snap1.VMs[0].Tags) > 0 {
-		snap1.VMs[0].Tags[0] = "mutated-tag"
-	}
-	if len(snap1.VMs[0].Disks) > 0 {
-		snap1.VMs[0].Disks[0].Key = "mutated-key"
-	}
+	mutateFirstSnapshotVMFields(snap1)
 
 	snap2, err := fake.Snapshot(ctx)
 	if err != nil {
 		t.Fatalf("Snapshot second: %v", err)
 	}
 
-	for _, vm := range snap2.VMs {
-		if vm.Name == "mutated-name" {
-			t.Fatal("mutating first snapshot's VM name leaked into second snapshot")
-		}
-		for _, tag := range vm.Tags {
-			if tag == "mutated-tag" {
-				t.Fatal("mutating first snapshot's tags leaked into second snapshot")
-			}
-		}
-		for _, disk := range vm.Disks {
-			if disk.Key == "mutated-key" {
-				t.Fatal("mutating first snapshot's disk key leaked into second snapshot")
-			}
+	assertSnapshotHasNoMutatedFields(t, snap2)
+}
+
+func mutateFirstSnapshotVMFields(snap cluster.Snapshot) {
+	snap.VMs[0].Name = "mutated-name"
+	if len(snap.VMs[0].Tags) > 0 {
+		snap.VMs[0].Tags[0] = "mutated-tag"
+	}
+	if len(snap.VMs[0].Disks) > 0 {
+		snap.VMs[0].Disks[0].Key = "mutated-key"
+	}
+}
+
+func assertSnapshotHasNoMutatedFields(t *testing.T, snap cluster.Snapshot) {
+	t.Helper()
+	for _, vm := range snap.VMs {
+		assertVMHasNoMutatedFields(t, vm)
+	}
+}
+
+func assertVMHasNoMutatedFields(t *testing.T, vm cluster.VM) {
+	t.Helper()
+	if vm.Name == "mutated-name" {
+		t.Fatal("mutating first snapshot's VM name leaked into second snapshot")
+	}
+	if slices.Contains(vm.Tags, "mutated-tag") {
+		t.Fatal("mutating first snapshot's tags leaked into second snapshot")
+	}
+	if diskHasKey(vm.Disks, "mutated-key") {
+		t.Fatal("mutating first snapshot's disk key leaked into second snapshot")
+	}
+}
+
+func diskHasKey(disks []cluster.Disk, key string) bool {
+	for _, d := range disks {
+		if d.Key == key {
+			return true
 		}
 	}
+	return false
 }
 
 func TestFake_Snapshot_BootOrderAndNetworkDeepCopy(t *testing.T) {
@@ -63,6 +83,17 @@ func TestFake_Snapshot_BootOrderAndNetworkDeepCopy(t *testing.T) {
 		t.Fatalf("Snapshot: %v", err)
 	}
 
+	mutateBootOrderAndNetworkInterfaces(snap)
+
+	snap2, err := fake.Snapshot(ctx)
+	if err != nil {
+		t.Fatalf("Snapshot second: %v", err)
+	}
+
+	assertNoBootOrderOrNetworkMutationLeaked(t, snap2)
+}
+
+func mutateBootOrderAndNetworkInterfaces(snap cluster.Snapshot) {
 	for i := range snap.VMs {
 		if len(snap.VMs[i].BootOrder) > 0 {
 			snap.VMs[i].BootOrder[0] = "mutated-boot"
@@ -71,24 +102,32 @@ func TestFake_Snapshot_BootOrderAndNetworkDeepCopy(t *testing.T) {
 			snap.VMs[i].NetworkInterfaces[0].Bridge = "mutated-bridge"
 		}
 	}
+}
 
-	snap2, err := fake.Snapshot(ctx)
-	if err != nil {
-		t.Fatalf("Snapshot second: %v", err)
+func assertNoBootOrderOrNetworkMutationLeaked(t *testing.T, snap cluster.Snapshot) {
+	t.Helper()
+	for _, vm := range snap.VMs {
+		assertVMBootOrderAndNetworkNotMutated(t, vm)
 	}
+}
 
-	for _, vm := range snap2.VMs {
-		for _, b := range vm.BootOrder {
-			if b == "mutated-boot" {
-				t.Fatal("mutating BootOrder leaked into second snapshot")
-			}
-		}
-		for _, ni := range vm.NetworkInterfaces {
-			if ni.Bridge == "mutated-bridge" {
-				t.Fatal("mutating NetworkInterface Bridge leaked into second snapshot")
-			}
+func assertVMBootOrderAndNetworkNotMutated(t *testing.T, vm cluster.VM) {
+	t.Helper()
+	if slices.Contains(vm.BootOrder, "mutated-boot") {
+		t.Fatal("mutating BootOrder leaked into second snapshot")
+	}
+	if anyNICBridgeIs(vm.NetworkInterfaces, "mutated-bridge") {
+		t.Fatal("mutating NetworkInterface Bridge leaked into second snapshot")
+	}
+}
+
+func anyNICBridgeIs(nics []cluster.NetworkInterface, bridge string) bool {
+	for _, ni := range nics {
+		if ni.Bridge == bridge {
+			return true
 		}
 	}
+	return false
 }
 
 func TestFake_DisplayName_NamedAndEmpty(t *testing.T) {
@@ -525,25 +564,35 @@ func TestFake_AddDisk_Success(t *testing.T) {
 		t.Fatalf("Snapshot: %v", err)
 	}
 
+	assertAddedDiskPresent(t, snap, 100, key)
+}
+
+func assertAddedDiskPresent(t *testing.T, snap cluster.Snapshot, vmid int, key string) {
+	t.Helper()
 	for _, vm := range snap.VMs {
-		if vm.VMID == 100 {
-			var found bool
-			for _, disk := range vm.Disks {
-				if disk.Key == key {
-					found = true
-					if disk.SizeGB != 20 {
-						t.Errorf("disk SizeGB = %d, want 20", disk.SizeGB)
-					}
-					if disk.Storage != "local-lvm" {
-						t.Errorf("disk Storage = %q, want local-lvm", disk.Storage)
-					}
-				}
-			}
-			if !found {
-				t.Fatalf("added disk %q not found in snapshot", key)
-			}
+		if vm.VMID != vmid {
+			continue
 		}
+		assertDiskWithKeyPresent(t, vm.Disks, key)
+		return
 	}
+}
+
+func assertDiskWithKeyPresent(t *testing.T, disks []cluster.Disk, key string) {
+	t.Helper()
+	for _, disk := range disks {
+		if disk.Key != key {
+			continue
+		}
+		if disk.SizeGB != 20 {
+			t.Errorf("disk SizeGB = %d, want 20", disk.SizeGB)
+		}
+		if disk.Storage != "local-lvm" {
+			t.Errorf("disk Storage = %q, want local-lvm", disk.Storage)
+		}
+		return
+	}
+	t.Fatalf("added disk %q not found in snapshot", key)
 }
 
 func TestFake_ResizeDisk_NotFound(t *testing.T) {
@@ -696,21 +745,31 @@ func TestFake_UpdateHardware_Success(t *testing.T) {
 		t.Fatalf("Snapshot: %v", err)
 	}
 
+	assertHardwareFieldsUpdated(t, snap, 100)
+}
+
+func assertHardwareFieldsUpdated(t *testing.T, snap cluster.Snapshot, vmid int) {
+	t.Helper()
 	for _, vm := range snap.VMs {
-		if vm.VMID == 100 {
-			if vm.Sockets != 2 {
-				t.Errorf("Sockets = %d, want 2", vm.Sockets)
-			}
-			if vm.Cores != 4 {
-				t.Errorf("Cores = %d, want 4", vm.Cores)
-			}
-			if vm.CPUCores != 8 {
-				t.Errorf("CPUCores = %d, want 8", vm.CPUCores)
-			}
-			if vm.MemoryTotal != 8192*1024*1024 {
-				t.Errorf("MemoryTotal = %d, want %d", vm.MemoryTotal, 8192*1024*1024)
-			}
+		if vm.VMID == vmid {
+			assertVMHardwareFields(t, vm)
 		}
+	}
+}
+
+func assertVMHardwareFields(t *testing.T, vm cluster.VM) {
+	t.Helper()
+	if vm.Sockets != 2 {
+		t.Errorf("Sockets = %d, want 2", vm.Sockets)
+	}
+	if vm.Cores != 4 {
+		t.Errorf("Cores = %d, want 4", vm.Cores)
+	}
+	if vm.CPUCores != 8 {
+		t.Errorf("CPUCores = %d, want 8", vm.CPUCores)
+	}
+	if vm.MemoryTotal != 8192*1024*1024 {
+		t.Errorf("MemoryTotal = %d, want %d", vm.MemoryTotal, 8192*1024*1024)
 	}
 }
 
@@ -773,18 +832,28 @@ func TestFake_GetMetricsHistory_Success(t *testing.T) {
 				t.Fatalf("samples count = %d, want %d", len(samples), tc.wantCount)
 			}
 
-			for i, s := range samples {
-				if s.Timestamp.IsZero() {
-					t.Errorf("sample[%d] has zero timestamp", i)
-				}
-				if s.CPUPercent < 0 || s.CPUPercent > 100 {
-					t.Errorf("sample[%d] CPUPercent = %v, out of range", i, s.CPUPercent)
-				}
-				if s.MemoryMax <= 0 {
-					t.Errorf("sample[%d] MemoryMax = %d, want positive", i, s.MemoryMax)
-				}
-			}
+			assertMetricsSamplesValid(t, samples)
 		})
+	}
+}
+
+func assertMetricsSamplesValid(t *testing.T, samples []cluster.MetricsSample) {
+	t.Helper()
+	for i, s := range samples {
+		assertMetricsSampleValid(t, i, s)
+	}
+}
+
+func assertMetricsSampleValid(t *testing.T, i int, s cluster.MetricsSample) {
+	t.Helper()
+	if s.Timestamp.IsZero() {
+		t.Errorf("sample[%d] has zero timestamp", i)
+	}
+	if s.CPUPercent < 0 || s.CPUPercent > 100 {
+		t.Errorf("sample[%d] CPUPercent = %v, out of range", i, s.CPUPercent)
+	}
+	if s.MemoryMax <= 0 {
+		t.Errorf("sample[%d] MemoryMax = %d, want positive", i, s.MemoryMax)
 	}
 }
 

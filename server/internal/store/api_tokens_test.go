@@ -26,6 +26,58 @@ func sampleTokenRecord(id string, hash []byte, username string, expiresAt *time.
 	}
 }
 
+func assertTokenFields(t *testing.T, got, want auth.TokenRecord) {
+	t.Helper()
+
+	if got.ID != want.ID {
+		t.Errorf("ID = %q, want %q", got.ID, want.ID)
+	}
+
+	if got.Identity.Username != want.Identity.Username {
+		t.Errorf("Username = %q, want %q", got.Identity.Username, want.Identity.Username)
+	}
+
+	if got.Scope != want.Scope {
+		t.Errorf("Scope = %q, want %q", got.Scope, want.Scope)
+	}
+
+	if got.Label != want.Label {
+		t.Errorf("Label = %q, want %q", got.Label, want.Label)
+	}
+}
+
+func assertTokenExpiry(t *testing.T, got, want *time.Time) {
+	t.Helper()
+
+	if want == nil {
+		if got != nil {
+			t.Errorf("ExpiresAt = %v, want nil", got)
+		}
+
+		return
+	}
+
+	if got == nil {
+		t.Fatalf("ExpiresAt = nil, want %v", want)
+	}
+
+	if !got.Equal(*want) {
+		t.Errorf("ExpiresAt = %v, want %v", got, want)
+	}
+}
+
+func assertListTokenEntry(t *testing.T, tk auth.TokenRecord) {
+	t.Helper()
+
+	if tk.Hash != nil {
+		t.Errorf("token %s hash = %v, want nil in list output", tk.ID, tk.Hash)
+	}
+
+	if tk.Identity.Username != "carol" {
+		t.Errorf("username = %q, want carol", tk.Identity.Username)
+	}
+}
+
 //nolint:paralleltest // serial: shared database fixture
 func TestCreateToken_WithAndWithoutExpiry(t *testing.T) {
 	st := openClusterStore(t)
@@ -60,35 +112,8 @@ func TestCreateToken_WithAndWithoutExpiry(t *testing.T) {
 				t.Fatalf("FindToken: %v", err)
 			}
 
-			if got.ID != tc.token.ID {
-				t.Errorf("ID = %q, want %q", got.ID, tc.token.ID)
-			}
-
-			if got.Identity.Username != tc.token.Identity.Username {
-				t.Errorf("Username = %q, want %q", got.Identity.Username, tc.token.Identity.Username)
-			}
-
-			if got.Scope != tc.token.Scope {
-				t.Errorf("Scope = %q, want %q", got.Scope, tc.token.Scope)
-			}
-
-			if got.Label != tc.token.Label {
-				t.Errorf("Label = %q, want %q", got.Label, tc.token.Label)
-			}
-
-			if tc.wantExpiry == nil {
-				if got.ExpiresAt != nil {
-					t.Errorf("ExpiresAt = %v, want nil", got.ExpiresAt)
-				}
-			} else {
-				if got.ExpiresAt == nil {
-					t.Fatalf("ExpiresAt = nil, want %v", tc.wantExpiry)
-				}
-
-				if !got.ExpiresAt.Equal(*tc.wantExpiry) {
-					t.Errorf("ExpiresAt = %v, want %v", got.ExpiresAt, tc.wantExpiry)
-				}
-			}
+			assertTokenFields(t, got, tc.token)
+			assertTokenExpiry(t, got.ExpiresAt, tc.wantExpiry)
 		})
 	}
 }
@@ -132,13 +157,7 @@ func TestListTokens(t *testing.T) {
 		}
 
 		for _, tk := range got {
-			if tk.Hash != nil {
-				t.Errorf("token %s hash = %v, want nil in list output", tk.ID, tk.Hash)
-			}
-
-			if tk.Identity.Username != "carol" {
-				t.Errorf("username = %q, want carol", tk.Identity.Username)
-			}
+			assertListTokenEntry(t, tk)
 		}
 	})
 

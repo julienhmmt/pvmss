@@ -49,22 +49,27 @@ func TestRegistry_Refresh_SuccessAndError(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := registry.Refresh(context.Background(), tc.cluster)
-			if tc.wantErr != nil {
-				if !errors.Is(err, tc.wantErr) {
-					t.Fatalf("Refresh(%q) error = %v, want %v", tc.cluster, err, tc.wantErr)
-				}
-			} else if err != nil {
-				t.Fatalf("Refresh(%q): %v", tc.cluster, err)
-			}
-
-			if tc.wantIndex {
-				idx, err := registry.Index(tc.cluster)
-				if err != nil || idx == nil {
-					t.Fatalf("Index(%q) = %v, %v", tc.cluster, idx, err)
-				}
-			}
+			assertRefreshResult(t, registry, tc.cluster, tc.wantErr, tc.wantIndex)
 		})
+	}
+}
+
+func assertRefreshResult(t *testing.T, registry *inventory.Registry, clusterName string, wantErr error, wantIndex bool) {
+	t.Helper()
+	_, err := registry.Refresh(context.Background(), clusterName)
+	if wantErr != nil {
+		if !errors.Is(err, wantErr) {
+			t.Fatalf("Refresh(%q) error = %v, want %v", clusterName, err, wantErr)
+		}
+	} else if err != nil {
+		t.Fatalf("Refresh(%q): %v", clusterName, err)
+	}
+
+	if wantIndex {
+		idx, err := registry.Index(clusterName)
+		if err != nil || idx == nil {
+			t.Fatalf("Index(%q) = %v, %v", clusterName, idx, err)
+		}
 	}
 }
 

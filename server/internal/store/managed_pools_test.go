@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"pvmss/server/internal/store"
 	"testing"
 	"time"
 )
@@ -108,6 +109,42 @@ func TestIsPoolManaged(t *testing.T) {
 	}
 }
 
+func registerPools(t *testing.T, st *store.Store, ctx context.Context, names []string) {
+	t.Helper()
+
+	for _, n := range names {
+		if err := st.RegisterManagedPool(ctx, testStoreCluster, n); err != nil {
+			t.Fatalf("RegisterManagedPool %s: %v", n, err)
+		}
+	}
+}
+
+func assertManagedPoolEntry(t *testing.T, i int, pool store.ManagedPool, wantName string) {
+	t.Helper()
+
+	if pool.Name != wantName {
+		t.Errorf("pool[%d].Name = %q, want %q", i, pool.Name, wantName)
+	}
+
+	if pool.Cluster != testStoreCluster {
+		t.Errorf("pool[%d].Cluster = %q, want %q", i, pool.Cluster, testStoreCluster)
+	}
+
+	if pool.CreatedAt == "" {
+		t.Errorf("pool[%d].CreatedAt empty", i)
+	}
+}
+
+func assertPoolNamesContain(t *testing.T, got map[string]struct{}, names []string) {
+	t.Helper()
+
+	for _, n := range names {
+		if _, ok := got[n]; !ok {
+			t.Errorf("missing name %q in map", n)
+		}
+	}
+}
+
 //nolint:paralleltest // serial: shared database fixture
 func TestManagedPools(t *testing.T) {
 	st := openClusterStore(t)
@@ -115,11 +152,7 @@ func TestManagedPools(t *testing.T) {
 
 	t.Run("multiple pools ordered by name", func(t *testing.T) {
 		names := []string{"pool-zeta", "pool-alpha", "pool-mid"}
-		for _, n := range names {
-			if err := st.RegisterManagedPool(ctx, testStoreCluster, n); err != nil {
-				t.Fatalf("RegisterManagedPool %s: %v", n, err)
-			}
-		}
+		registerPools(t, st, ctx, names)
 
 		got, err := st.ManagedPools(ctx, testStoreCluster)
 		if err != nil {
@@ -132,17 +165,7 @@ func TestManagedPools(t *testing.T) {
 
 		want := []string{"pool-alpha", "pool-mid", "pool-zeta"}
 		for i, w := range want {
-			if got[i].Name != w {
-				t.Errorf("pool[%d].Name = %q, want %q", i, got[i].Name, w)
-			}
-
-			if got[i].Cluster != testStoreCluster {
-				t.Errorf("pool[%d].Cluster = %q, want %q", i, got[i].Cluster, testStoreCluster)
-			}
-
-			if got[i].CreatedAt == "" {
-				t.Errorf("pool[%d].CreatedAt empty", i)
-			}
+			assertManagedPoolEntry(t, i, got[i], w)
 		}
 	})
 
@@ -165,11 +188,7 @@ func TestManagedPoolNames(t *testing.T) {
 
 	t.Run("multiple names", func(t *testing.T) {
 		names := []string{"pool-one", "pool-two", "pool-three"}
-		for _, n := range names {
-			if err := st.RegisterManagedPool(ctx, testStoreCluster, n); err != nil {
-				t.Fatalf("RegisterManagedPool %s: %v", n, err)
-			}
-		}
+		registerPools(t, st, ctx, names)
 
 		got, err := st.ManagedPoolNames(ctx, testStoreCluster)
 		if err != nil {
@@ -180,11 +199,7 @@ func TestManagedPoolNames(t *testing.T) {
 			t.Fatalf("names = %d, want %d", len(got), len(names))
 		}
 
-		for _, n := range names {
-			if _, ok := got[n]; !ok {
-				t.Errorf("missing name %q in map", n)
-			}
-		}
+		assertPoolNamesContain(t, got, names)
 	})
 
 	t.Run("empty result", func(t *testing.T) {
