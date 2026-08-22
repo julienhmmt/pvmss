@@ -224,3 +224,15 @@ func (p Proxmox) UpdateHardware(ctx context.Context, node string, vmid, sockets,
 
 	return err
 }
+
+// EnableSerial implements Writer: provisions a socket-backed serial port
+// (serial0) on an existing VM so the PVMSS Text/serial console works for VMs
+// created before serial0 was added at create time. A socket-backed port needs
+// no host device and is safe to add to any VM unconditionally.
+func (p Proxmox) EnableSerial(ctx context.Context, node string, vmid int) error {
+	_, err := p.rest().do(ctx, http.MethodPut, vmConfigPath(node, vmid), url.Values{
+		"serial0": {"socket"},
+	})
+
+	return err
+}

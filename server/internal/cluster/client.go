@@ -107,6 +107,10 @@ type Writer interface {
 	SetCDROM(ctx context.Context, node string, vmid int, state CDROMState) error
 	UpdateNetwork(ctx context.Context, node string, vmid int, interfaces []NetworkInterface) error
 	UpdateHardware(ctx context.Context, node string, vmid, sockets, cores, memoryMB int, tags []string) error
+	// EnableSerial provisions a socket-backed serial port (serial0) on an
+	// existing VM so the PVMSS Text/serial console works for VMs created
+	// before serial0 was added at create time.
+	EnableSerial(ctx context.Context, node string, vmid int) error
 	EnsureCloudInitDrive(ctx context.Context, node string, vmid int) error
 	SetCloudInitConfig(ctx context.Context, node string, vmid int, config CloudInitConfig) error
 	PushCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int, content string) error
@@ -249,6 +253,10 @@ type VM struct {
 	// Description is the free-text note editable via PATCH (V17). Empty by
 	// default in the fake dataset.
 	Description string
+	// HasSerial is true when the VM carries a serial port (serial0). Set by
+	// hydrateVM for the real client; the fake dataset sets it on creation
+	// (new VMs) and via EnableSerial (retrofit).
+	HasSerial bool
 }
 
 // Storage is a storage backend attached to a node.

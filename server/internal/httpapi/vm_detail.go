@@ -116,6 +116,7 @@ type vmDetailDTO struct {
 	Disks             []cluster.Disk             `json:"disks"`
 	CDROM             cluster.CDROMState         `json:"cdrom"`
 	NetworkInterfaces []cluster.NetworkInterface `json:"networkInterfaces"`
+	HasSerial         bool                       `json:"hasSerial"`
 	UptimeSeconds     int64                      `json:"uptimeSeconds,omitempty"`
 	Description       string                     `json:"description,omitempty"`
 }
@@ -229,6 +230,11 @@ func (h *VMDetail) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if strings.HasSuffix(r.URL.Path, "/hardware") {
 		h.handleHardware(w, r)
+		return
+	}
+
+	if strings.HasSuffix(r.URL.Path, "/serial") {
+		h.handleEnableSerial(w, r)
 		return
 	}
 
@@ -679,6 +685,72 @@ func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
 	h.writeEntity(w, entity)
 }
 
+// handleEnableSerial serves POST /vms/:cluster/:vmid/serial — the serial-
+// console retrofit for VMs created before serial0 was added at create time.
+// Reuses vm.EnableSerialConsole (Resolve ownership gate → Writer.EnableSerial
+// → audit + inventory refresh) and returns the refreshed entity so the UI can
+// flip its "no serial" state without a poll cycle.
+func (h *VMDetail) handleEnableSerial(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", "POST")
+		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
+		return
+	}
+
+	identity, err := h.auth.Principal(r)
+	if err != nil {
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
+		return
+	}
+
+	clusterName, vmid, ok := h.parsePath(r)
+	if !ok {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
+		return
+	}
+
+	index, ok := h.index(w, clusterName)
+	if !ok {
+		return
+	}
+
+	writer, ok := h.writerFor(w, clusterName)
+	if !ok {
+		return
+	}
+
+	err = vm.EnableSerialConsole(r.Context(), vm.EnableSerialDependencies{
+		Index:       index,
+		Actor:       identity,
+		ClusterName: clusterName,
+		VMID:        vmid,
+		Writer:      writer,
+		Audit:       h.store,
+		Refresher:   h.refresher,
+	})
+	if err != nil {
+		if h.writeCommonVMError(w, err) {
+			return
+		}
+		h.log.Error("enable serial console failed", "component", "httpapi", "cluster", clusterName, "vmid", vmid, "error", err)
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		return
+	}
+
+	refreshed, ok := h.index(w, clusterName)
+	if !ok {
+		return
+	}
+
+	entity, err := vm.Resolve(refreshed, identity, clusterName, vmid)
+	if err != nil {
+		h.writeResolveError(w, err)
+		return
+	}
+
+	h.writeEntity(w, entity)
+}
+
 func (h *VMDetail) writeHardwareError(w http.ResponseWriter, err error) {
 	if h.writeCommonVMError(w, err) {
 		return
@@ -1024,6 +1096,7 @@ func (h *VMDetail) writeEntity(w http.ResponseWriter, entity vm.Entity) {
 		Disks:             entity.Disks,
 		CDROM:             entity.CDROM,
 		NetworkInterfaces: entity.NetworkInterfaces,
+		HasSerial:         entity.HasSerial,
 		Description:       entity.Description,
 	}
 	if entity.Uptime > 0 {
