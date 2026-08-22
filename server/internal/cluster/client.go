@@ -346,6 +346,29 @@ type ConsoleRelay interface {
 	RelayConsole(ctx context.Context, clusterName string, vmid int, proxy VNCProxyTicket, peer io.ReadWriteCloser) error
 }
 
+// TermProxyTicket is the Proxmox-side serial terminal ticket, port, and node
+// returned by GetTermProxy. Proxmox's termproxy endpoint mirrors vncproxy's
+// shape: data.{ticket, port, user}. As with VNCProxyTicket, none of these
+// values ever reach the browser — only the opaque ConsoleTicketStore token
+// does. The relay reads them back from the ticket at upgrade time.
+type TermProxyTicket struct {
+	Ticket string
+	Port   int
+	Node   string
+}
+
+// TerminalRelay is the contract for relaying an already-upgraded WebSocket
+// connection to a VM's serial terminal. Unlike ConsoleRelay (VNC), there is no
+// RFB handshake — Proxmox's vncwebsocket endpoint carries the serial tunnel as
+// a raw, already-framed byte stream, so RelaySerial is a dumb bidirectional
+// io.Copy pipe. The browser-side xterm.js layer encodes/decodes the
+// "type:payload" framing itself; PVMSS never inspects or terminates it.
+// Kept parallel to ConsoleRelay for the same constitution-IV reason.
+type TerminalRelay interface {
+	GetTermProxy(ctx context.Context, clusterName string, vmid int, node string) (TermProxyTicket, error)
+	RelaySerial(ctx context.Context, clusterName string, vmid int, proxy TermProxyTicket, peer io.ReadWriteCloser) error
+}
+
 // Pool is a tenancy anchor — one pool maps to one user (PD00).
 type Pool struct {
 	Name    string
