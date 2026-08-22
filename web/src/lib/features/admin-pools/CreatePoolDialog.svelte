@@ -2,6 +2,7 @@
 	import { untrack } from 'svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -35,21 +36,20 @@
 	<form class="space-y-4" onsubmit={(event) => { event.preventDefault(); void submit(); }}>
 		<div>
 			<label for="pool-name" class="mb-1 block text-sm font-medium">{m['common.name']()}</label>
-			<input
+			<TextField
 				id="pool-name"
-				class="w-full rounded-md border bg-background px-3 py-2 text-sm"
 				type="text"
 				pattern="[a-z0-9]+(-[a-z0-9]+)*"
-				maxlength="32"
+				maxLength={32}
 				required
-				bind:value={name}
 				autocomplete="off"
+				bind:value={name}
 			/>
 			<p class="mt-1 text-xs text-muted-foreground">{m['admin.pools.nameHint']()}</p>
 		</div>
 		<div>
 			<label for="pool-comment" class="mb-1 block text-sm font-medium">{m['admin.pools.comment']()}</label>
-			<input id="pool-comment" class="w-full rounded-md border bg-background px-3 py-2 text-sm" type="text" bind:value={comment} />
+			<TextField id="pool-comment" type="text" bind:value={comment} />
 		</div>
 		{#if error}
 			<p class="text-sm text-destructive" role="alert">{error}</p>
