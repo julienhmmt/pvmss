@@ -16,6 +16,9 @@
 	error={store.error}
 	saving={store.saving}
 	saveError={store.saveError}
+	clusterOptions={store.clusterOptions}
+	cluster={store.cluster}
+	onClusterChange={(v) => store.setCluster(v)}
 	onLoad={() => void store.load()}
 	onSave={(node, patch) => void store.save(node, patch)}
 	sortBy={store.sortBy}

@@ -1,11 +1,20 @@
 import { getContext, setContext } from 'svelte';
 import { get, post, ApiRequestError } from '$lib/shared/api/client';
+import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 import { m } from '$lib/paraglide/messages.js';
 import type { DraftValues } from './draft.svelte';
 
 export interface CatalogStorage {
 	name: string;
 	node: string;
+}
+
+/** One approved bridge on one node — bridge approval is per-node, like
+ *  storage, so a bridge option only makes sense scoped to the VM's node. */
+export interface CatalogBridge {
+	name: string;
+	node: string;
+	comment?: string;
 }
 
 export interface CatalogISO {
@@ -27,14 +36,57 @@ export interface CatalogCloudInitTemplate {
 	label: string;
 }
 
+export interface CatalogTag {
+	name: string;
+	color: string;
+}
+
+/** The administrator-editable per-VM size ceiling (gabarit) — the same
+ *  bounds the server re-checks on submit (constitution VI). */
+export interface CatalogGabarit {
+	maxSockets: number;
+	maxCores: number;
+	maxMemoryMB: number;
+	maxDiskPerVMGB: number;
+	maxNetworkCards: number;
+	maxSnapshots: number;
+}
+
+/** The caller's own VM count against the cluster's per-user allowance.
+ *  allowed is -1 for unlimited. */
+export interface CatalogQuota {
+	used: number;
+	allowed: number;
+}
+
+/** One approved node's configured aggregate capacité, live usage, and
+ *  physical facts. Absent from `nodeCapacities` for a node with no
+ *  capacité configured. */
+export interface CatalogNodeCapacity {
+	node: string;
+	maxVMs: number;
+	maxVCPUs: number;
+	maxRAMGB: number;
+	maxDiskGB: number;
+	usedVMs: number;
+	usedVCPUs: number;
+	usedRAMGB: number;
+	physicalVCPUs: number;
+	physicalRAMGB: number;
+}
+
 export interface VmCreateCatalog {
 	cluster: string;
 	nodes: string[];
 	storages: CatalogStorage[];
-	bridges: string[];
+	bridges: CatalogBridge[];
 	isos: CatalogISO[];
 	profiles: CatalogProfile[];
 	cloudInitTemplates: CatalogCloudInitTemplate[];
+	tags: CatalogTag[];
+	gabarit?: CatalogGabarit;
+	quota?: CatalogQuota;
+	nodeCapacities?: CatalogNodeCapacity[];
 }
 
 /** The single request shape both modes POST (FR-001) — no pool, no mode. */
@@ -144,6 +196,8 @@ export class VmCreateStore {
 	catalogError = $state.raw<string | null>(null);
 	submitting = $state.raw(false);
 	submitError = $state.raw<string | null>(null);
+	clusterOptions = $state.raw<ClusterOption[]>([]);
+	cluster = $state.raw('');
 
 	mode = $state<CreateMode>('simple');
 	name = $state('');
@@ -163,11 +217,42 @@ export class VmCreateStore {
 	isoFile = $state('');
 	startAfterCreate = $state(true);
 
-	/** Fetch the approved-resource catalog for the caller's cluster (FR-002). */
+	/** Fetches the multi-cluster options and defaults to the first one, matching
+	 *  the login page's cluster picker (must run before loadCatalog when the
+	 *  deployment has more than one cluster — the catalog needs one to target). */
+	async loadClusters(): Promise<void> {
+		try {
+			this.clusterOptions = await fetchClusterOptions();
+		} catch {
+			this.clusterOptions = [];
+		}
+		const first = this.clusterOptions[0];
+		if (first && this.cluster === '') this.cluster = first.name;
+	}
+
+	setCluster(name: string): void {
+		this.cluster = name;
+		void this.loadCatalog();
+	}
+
+	/** The cluster's human-readable name for display — never the raw internal
+	 *  id (which may be an opaque string like "default" that means nothing to
+	 *  the operator; the id is only ever meaningful as an API parameter). */
+	clusterDisplayName(): string {
+		const clusterId = this.catalog?.cluster ?? this.cluster;
+		const option = this.clusterOptions.find((candidate) => candidate.name === clusterId);
+		return option?.displayName || clusterId;
+	}
+
+	/** Fetch the approved-resource catalog for the selected cluster (FR-002). */
 	async loadCatalog(): Promise<void> {
 		this.catalogError = null;
 		try {
-			this.catalog = await get<VmCreateCatalog>('/api/v1/vm-create/catalog');
+			const path =
+				this.cluster === ''
+					? '/api/v1/vm-create/catalog'
+					: `/api/v1/vm-create/catalog?cluster=${encodeURIComponent(this.cluster)}`;
+			this.catalog = await get<VmCreateCatalog>(path);
 		} catch (error: unknown) {
 			this.catalogError = error instanceof ApiRequestError ? error.message : m['vms.create.errorCatalog']();
 		}
@@ -193,11 +278,32 @@ export class VmCreateStore {
 		return this.autoStorage(this.effectiveNode());
 	}
 
+	/** Parses tagsInput's comma-separated string into its selected tag names
+	 *  (detailed mode's tag picker — FR-014: admin-created tags only). */
+	selectedTags(): string[] {
+		return this.tagsInput
+			.split(',')
+			.map((tag) => tag.trim())
+			.filter((tag) => tag !== '');
+	}
+
+	/** Toggles one catalog tag in/out of tagsInput, preserving the others. */
+	toggleTag(name: string): void {
+		const current = this.selectedTags();
+		const next = current.includes(name) ? current.filter((tag) => tag !== name) : [...current, name];
+		this.tagsInput = next.join(', ');
+	}
+
+	/** The configured capacité for a node, if the administrator set one. */
+	nodeCapacity(node: string): CatalogNodeCapacity | undefined {
+		return this.catalog?.nodeCapacities?.find((capacity) => capacity.node === node);
+	}
+
 	/** Builds the outgoing request for simple mode: profile-driven, with the
 	 *  auto-selections sent explicitly when the user adjusted them (V08). */
 	buildRequest(): VMCreateRequest {
 		const request: VMCreateRequest = {
-			cluster: this.catalog?.cluster ?? 'default',
+			cluster: this.catalog?.cluster ?? this.cluster,
 			name: this.name.trim(),
 			startAfterCreate: this.startAfterCreate
 		};

@@ -28,6 +28,7 @@ const (
 	msgHardwareCatalogFailed = "read hardware catalog failed"
 	msgNotYourVM             = "not your VM"
 	msgVMNotFound            = "VM not found"
+	msgVMRunning             = "VM is running; confirm to force-stop and delete"
 	msgClusterRejected       = "cluster rejected the request"
 	msgPolicyUnavailable     = "policy service is not configured"
 	msgClusterNotFound       = "cluster not found"

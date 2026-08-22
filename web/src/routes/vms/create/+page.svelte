@@ -6,6 +6,7 @@
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import SimpleWizard from '$lib/features/vm-create/SimpleWizard.svelte';
 	import DetailedWizard from '$lib/features/vm-create/DetailedWizard.svelte';
+	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const form = setVmCreateContext();
@@ -14,7 +15,7 @@
 	const session = getSessionContext();
 
 	onMount(() => {
-		void form.loadCatalog();
+		void form.loadClusters().then(() => form.loadCatalog());
 
 		const stored = draft.load();
 		if (stored !== null) {
@@ -51,6 +52,7 @@
 <section class="mx-auto w-full max-w-2xl px-4 py-8">
 	<div class="mb-4 flex items-center justify-between gap-4">
 		<h1 class="text-2xl font-semibold tracking-tight">{m['vms.create.heading']()}</h1>
+		<ClusterSelector options={form.clusterOptions} value={form.cluster} onChange={(value) => form.setCluster(value)} id="vm-create-cluster" />
 		{#if draft.hasDraft()}
 			<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground" title={m['vms.create.draftSaved']()}>
 				<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5" aria-hidden="true">

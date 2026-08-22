@@ -1,10 +1,13 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"pvmss/server/internal/auth"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/policy"
@@ -96,6 +99,15 @@ type catalogStorageDTO struct {
 	Node string `json:"node"`
 }
 
+// catalogBridgeDTO is one approved bridge on one node — bridge approval is
+// per-node (like storage), so the client needs the node to both label the
+// option and filter to the VM's chosen node.
+type catalogBridgeDTO struct {
+	Name    string `json:"name"`
+	Node    string `json:"node"`
+	Comment string `json:"comment,omitempty"`
+}
+
 type catalogISODTO struct {
 	Storage string `json:"storage"`
 	File    string `json:"file"`
@@ -115,14 +127,58 @@ type catalogCloudInitTemplateDTO struct {
 	Label string `json:"label"`
 }
 
+type catalogTagDTO struct {
+	Name  string `json:"name"`
+	Color string `json:"color"`
+}
+
+// catalogGabaritDTO is the administrator-editable per-VM size ceiling (T12
+// gabarit) — the client uses it to validate hardware/disk fields before
+// submit and to show the user what they're allowed, not just what failed.
+type catalogGabaritDTO struct {
+	MaxSockets      int `json:"maxSockets"`
+	MaxCores        int `json:"maxCores"`
+	MaxMemoryMB     int `json:"maxMemoryMB"`
+	MaxDiskPerVMGB  int `json:"maxDiskPerVMGB"`
+	MaxNetworkCards int `json:"maxNetworkCards"`
+	MaxSnapshots    int `json:"maxSnapshots"`
+}
+
+// catalogQuotaDTO is the caller's own VM count against the cluster's
+// per-user allowance. Allowed is -1 for unlimited (policy.Quota contract).
+type catalogQuotaDTO struct {
+	Used    int `json:"used"`
+	Allowed int `json:"allowed"`
+}
+
+// catalogNodeCapacityDTO is one approved node's configured aggregate
+// capacité, live usage, and physical facts (policy.Capacity). Omitted from
+// the response for a node with no capacité configured (all-zero row).
+type catalogNodeCapacityDTO struct {
+	Node          string `json:"node"`
+	MaxVMs        int    `json:"maxVMs"`
+	MaxVCPUs      int    `json:"maxVCPUs"`
+	MaxRAMGB      int    `json:"maxRAMGB"`
+	MaxDiskGB     int    `json:"maxDiskGB"`
+	UsedVMs       int    `json:"usedVMs"`
+	UsedVCPUs     int    `json:"usedVCPUs"`
+	UsedRAMGB     int    `json:"usedRAMGB"`
+	PhysicalVCPUs int    `json:"physicalVCPUs"`
+	PhysicalRAMGB int    `json:"physicalRAMGB"`
+}
+
 type catalogDTO struct {
 	Cluster            string                        `json:"cluster"`
 	Nodes              []string                      `json:"nodes"`
 	Storages           []catalogStorageDTO           `json:"storages"`
-	Bridges            []string                      `json:"bridges"`
+	Bridges            []catalogBridgeDTO            `json:"bridges"`
 	ISOs               []catalogISODTO               `json:"isos"`
 	Profiles           []catalogProfileDTO           `json:"profiles"`
 	CloudInitTemplates []catalogCloudInitTemplateDTO `json:"cloudInitTemplates"`
+	Tags               []catalogTagDTO               `json:"tags"`
+	Gabarit            *catalogGabaritDTO            `json:"gabarit,omitempty"`
+	Quota              *catalogQuotaDTO              `json:"quota,omitempty"`
+	NodeCapacities     []catalogNodeCapacityDTO      `json:"nodeCapacities,omitempty"`
 }
 
 // ServeHTTP handles POST /api/v1/vms. Creation is asynchronous (FR-013):
@@ -169,78 +225,108 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ServeCatalog handles GET /api/v1/vm-create/catalog. The catalog is the same
-// for every user of a cluster (contracts behavioural rules) — no
-// identity-specific filtering beyond requiring authentication.
-func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
-	if _, err := h.auth.Principal(r); err != nil {
-		h.writeCreateError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
-		return
-	}
+// catalogData is the raw catalog payload loaded from the store and the live
+// cluster before it is shaped into the response DTO.
+type catalogData struct {
+	resources catalog.Resources
+	snap      cluster.Snapshot
+	bridges   []cluster.Bridge
+	profiles  []catalog.Profile
+	templates []catalog.CloudInitTemplate
+	tags      []catalog.TagWithCount
+}
 
-	clusterName, client, ok := h.resolveCatalogClient(w, r)
-	if !ok {
-		return
-	}
+// loadCatalogData fetches every catalog slice from the store and the live
+// cluster. Errors are wrapped with the operation that failed so the handler
+// can log a single, actionable message.
+func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, clusterName string) (catalogData, error) {
+	var data catalogData
 
-	resources, err := catalog.ApprovedResources(r.Context(), h.store, clusterName)
+	resources, err := catalog.ApprovedResources(ctx, h.store, clusterName)
 	if err != nil {
-		h.log.Error("catalog read failed", "component", "httpapi", "error", err)
-		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
-
-		return
+		return catalogData{}, fmt.Errorf("approved resources: %w", err)
 	}
 
-	snap, err := client.Snapshot(r.Context())
+	data.resources = resources
+
+	snap, err := client.Snapshot(ctx)
 	if err != nil {
-		h.log.Error("storage discovery failed", "component", "httpapi", "error", err)
-		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
-
-		return
+		return catalogData{}, fmt.Errorf("storage discovery: %w", err)
 	}
 
-	profiles, err := catalog.Profiles(r.Context(), h.store, clusterName)
+	data.snap = snap
+
+	bridges, err := client.ListBridges(ctx)
 	if err != nil {
-		h.log.Error("profile read failed", "component", "httpapi", "error", err)
-		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
-
-		return
+		return catalogData{}, fmt.Errorf("bridge discovery: %w", err)
 	}
 
-	templates, err := catalog.CloudInitTemplates(r.Context(), h.store, clusterName)
+	data.bridges = bridges
+
+	profiles, err := catalog.Profiles(ctx, h.store, clusterName)
 	if err != nil {
-		h.log.Error("cloudinit templates read failed", "component", "httpapi", "error", err)
-		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
-
-		return
+		return catalogData{}, fmt.Errorf("profiles: %w", err)
 	}
 
+	data.profiles = profiles
+
+	templates, err := catalog.CloudInitTemplates(ctx, h.store, clusterName)
+	if err != nil {
+		return catalogData{}, fmt.Errorf("cloudinit templates: %w", err)
+	}
+
+	data.templates = templates
+
+	// Admin-created tags only (FR-014/FR-015 surface) — the mandatory pvmss
+	// tag is added server-side and never offered as a user choice here.
+	tags, err := catalog.ListTags(ctx, h.store, nil, clusterName)
+	if err != nil {
+		return catalogData{}, fmt.Errorf("tags: %w", err)
+	}
+
+	data.tags = tags
+
+	return data, nil
+}
+
+// buildCatalogDTO maps the raw catalog data into the response contract.
+func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
 	dto := catalogDTO{
 		Cluster:            clusterName,
-		Nodes:              make([]string, 0, len(resources.Nodes)),
-		Storages:           make([]catalogStorageDTO, 0, len(resources.Storages)),
-		Bridges:            catalogBridgeNames(resources.Bridges),
-		ISOs:               make([]catalogISODTO, 0, len(resources.ISOs)),
-		Profiles:           make([]catalogProfileDTO, 0, len(profiles)),
-		CloudInitTemplates: make([]catalogCloudInitTemplateDTO, 0, len(templates)),
+		Nodes:              make([]string, 0, len(data.resources.Nodes)),
+		Storages:           make([]catalogStorageDTO, 0, len(data.resources.Storages)),
+		Bridges:            catalogBridgeDTOs(data.resources.Bridges, data.bridges),
+		ISOs:               make([]catalogISODTO, 0, len(data.resources.ISOs)),
+		Profiles:           make([]catalogProfileDTO, 0, len(data.profiles)),
+		CloudInitTemplates: make([]catalogCloudInitTemplateDTO, 0, len(data.templates)),
+		Tags:               make([]catalogTagDTO, 0, len(data.tags)),
 	}
-	for _, node := range resources.Nodes {
+
+	for _, node := range data.resources.Nodes {
 		dto.Nodes = append(dto.Nodes, node.Name)
 	}
 
-	for _, storage := range resources.Storages {
-		if _, ok := vmCapableStorage(storage, snap.Storages); !ok {
+	for _, tag := range data.tags {
+		if tag.Protected {
+			continue
+		}
+
+		dto.Tags = append(dto.Tags, catalogTagDTO{Name: tag.Name, Color: tag.Color})
+	}
+
+	for _, storage := range data.resources.Storages {
+		if _, ok := vmCapableStorage(storage, data.snap.Storages); !ok {
 			continue
 		}
 
 		dto.Storages = append(dto.Storages, catalogStorageDTO{Name: storage.Name, Node: storage.Node})
 	}
 
-	for _, iso := range resources.ISOs {
+	for _, iso := range data.resources.ISOs {
 		dto.ISOs = append(dto.ISOs, catalogISODTO{Storage: iso.Storage, File: iso.File})
 	}
 
-	for _, profile := range profiles {
+	for _, profile := range data.profiles {
 		dto.Profiles = append(dto.Profiles, catalogProfileDTO{
 			ID:       profile.ID,
 			Label:    profile.Label,
@@ -252,13 +338,97 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// T18: catalog exposes only id+label per spec/contracts — never content.
-	for _, tmpl := range templates {
+	for _, tmpl := range data.templates {
 		dto.CloudInitTemplates = append(dto.CloudInitTemplates, catalogCloudInitTemplateDTO{
 			ID: tmpl.ID, Label: tmpl.Label,
 		})
 	}
 
+	return dto
+}
+
+// ServeCatalog handles GET /api/v1/vm-create/catalog. The catalog is the same
+// for every user of a cluster (contracts behavioural rules) — no
+// identity-specific filtering beyond requiring authentication.
+func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
+	identity, err := h.auth.Principal(r)
+	if err != nil {
+		h.writeCreateError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
+		return
+	}
+
+	clusterName, client, ok := h.resolveCatalogClient(w, r)
+	if !ok {
+		return
+	}
+
+	data, err := h.loadCatalogData(r.Context(), client, clusterName)
+	if err != nil {
+		h.log.Error("catalog data load failed", "component", "httpapi", "error", err)
+		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return
+	}
+
+	dto := buildCatalogDTO(clusterName, data)
+
+	if err := h.attachLimits(r.Context(), &dto, clusterName, identity); err != nil {
+		h.log.Error("policy read failed", "component", "httpapi", "error", err)
+		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return
+	}
+
 	h.writeCreateJSON(w, http.StatusOK, dto)
+}
+
+// attachLimits fills the catalog's gabarit/quota/nodeCapacities so the
+// detailed-mode wizard can show what the user is allowed and validate
+// hardware/disk fields client-side before the server re-checks them
+// (constitution VI: client bounds are a convenience only).
+func (h *VMCreate) attachLimits(ctx context.Context, dto *catalogDTO, clusterName string, identity auth.Identity) error {
+	if h.policy == nil {
+		return nil
+	}
+
+	gabarit, err := h.policy.Gabarit(ctx, clusterName)
+	if err != nil {
+		return fmt.Errorf("read gabarit: %w", err)
+	}
+
+	dto.Gabarit = &catalogGabaritDTO{
+		MaxSockets: gabarit.MaxSockets, MaxCores: gabarit.MaxCores, MaxMemoryMB: gabarit.MaxMemoryMB,
+		MaxDiskPerVMGB: gabarit.MaxDiskPerVMGB, MaxNetworkCards: gabarit.MaxNetworkCards,
+		MaxSnapshots: gabarit.MaxSnapshots,
+	}
+
+	quota, err := h.policy.Quota(ctx, clusterName, identity)
+	if err != nil {
+		return fmt.Errorf("read quota: %w", err)
+	}
+
+	dto.Quota = &catalogQuotaDTO{Used: quota.Used, Allowed: quota.Allowed}
+
+	dto.NodeCapacities = make([]catalogNodeCapacityDTO, 0, len(dto.Nodes))
+
+	for _, node := range dto.Nodes {
+		capacity, err := h.policy.NodeCapacity(ctx, clusterName, node)
+		if err != nil {
+			return fmt.Errorf("read node capacity for %q: %w", node, err)
+		}
+
+		if capacity.MaxVMs == 0 && capacity.MaxVCPUs == 0 && capacity.MaxRAMGB == 0 {
+			continue // no capacité configured for this node — nothing to show
+		}
+
+		dto.NodeCapacities = append(dto.NodeCapacities, catalogNodeCapacityDTO{
+			Node: node, MaxVMs: capacity.MaxVMs, MaxVCPUs: capacity.MaxVCPUs, MaxRAMGB: capacity.MaxRAMGB,
+			MaxDiskGB: capacity.MaxDiskGB, UsedVMs: capacity.UsedVMs, UsedVCPUs: capacity.UsedVCPUs,
+			UsedRAMGB: capacity.UsedRAMGB, PhysicalVCPUs: capacity.PhysicalVCPUs, PhysicalRAMGB: capacity.PhysicalRAMGB,
+		})
+	}
+
+	return nil
 }
 
 func (h *VMCreate) resolveCatalogClient(w http.ResponseWriter, r *http.Request) (string, cluster.Client, bool) {
@@ -345,20 +515,34 @@ func vmCapableStorage(storage catalog.Storage, available []cluster.Storage) (clu
 	return cluster.Storage{}, false
 }
 
-func catalogBridgeNames(bridges []catalog.Bridge) []string {
-	names := make([]string, 0, len(bridges))
-	seen := make(map[string]struct{}, len(bridges))
+// catalogBridgeDTOs dedupes by (name, node) — the same bridge name can be
+// approved on more than one node, and each is a distinct, independently
+// selectable option (bridge approval is per-node, like storage). live carries
+// the cluster's current network config, which is where the description
+// (Proxmox "comments" field) actually lives — catalog_bridges only stores
+// the approval, not the comment.
+func catalogBridgeDTOs(bridges []catalog.Bridge, live []cluster.Bridge) []catalogBridgeDTO {
+	type key struct{ name, node string }
+
+	commentByKey := make(map[key]string, len(live))
+	for _, bridge := range live {
+		commentByKey[key{bridge.Name, bridge.Node}] = bridge.Comment
+	}
+
+	out := make([]catalogBridgeDTO, 0, len(bridges))
+	seen := make(map[key]struct{}, len(bridges))
 
 	for _, bridge := range bridges {
-		if _, exists := seen[bridge.Name]; exists {
+		k := key{bridge.Name, bridge.Node}
+		if _, exists := seen[k]; exists {
 			continue
 		}
 
-		seen[bridge.Name] = struct{}{}
-		names = append(names, bridge.Name)
+		seen[k] = struct{}{}
+		out = append(out, catalogBridgeDTO{Name: bridge.Name, Node: bridge.Node, Comment: commentByKey[k]})
 	}
 
-	return names
+	return out
 }
 
 // writeCreateFailure maps vm.Create's sentinel errors to the contract's

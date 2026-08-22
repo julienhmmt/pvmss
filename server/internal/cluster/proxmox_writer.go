@@ -41,11 +41,16 @@ func (p Proxmox) Action(ctx context.Context, node string, vmid int, action strin
 // Delete implements Writer via DELETE /nodes/{node}/qemu/{vmid}. purge=1 also
 // removes references from backup jobs and pools — matching the product's own
 // "irreversible, no soft-delete, no undo" contract (client.go: VM.Description
-// doc, V14). Proxmox rejects deleting a running VM; that error propagates as-is
-// rather than being papered over with an implicit stop here.
+// doc, V14). Proxmox rejects deleting a running VM with HTTP 500 ("VM X is
+// running - destroy failed"); that is mapped to ErrVMRunning so callers can
+// distinguish it from a genuine cluster fault and decide whether to force-stop
+// first (see vm.Delete's Force flag) rather than papering over it here.
 func (p Proxmox) Delete(ctx context.Context, node string, vmid int) error {
 	_, err := p.rest().do(ctx, http.MethodDelete,
 		fmt.Sprintf("/nodes/%s/qemu/%d", url.PathEscape(node), vmid), url.Values{"purge": {"1"}})
+	if err != nil && strings.Contains(err.Error(), "is running") {
+		return fmt.Errorf("%w: %w", ErrVMRunning, err)
+	}
 
 	return err
 }

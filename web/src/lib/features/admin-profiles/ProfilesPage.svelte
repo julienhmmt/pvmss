@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { AdminProfile } from './profiles.svelte';
+	import type { ClusterOption } from '$lib/shared/clusters';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Switch from '$lib/shared/ui/Switch.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
@@ -20,6 +22,9 @@
 		error: string | null;
 		saving: boolean;
 		saveError: string | null;
+		clusterOptions: ClusterOption[];
+		cluster: string;
+		onClusterChange: (value: string) => void;
 		search: string;
 		busFilter: string;
 		enabledFilter: 'all' | 'enabled' | 'disabled';
@@ -44,6 +49,9 @@
 		error,
 		saving,
 		saveError,
+		clusterOptions,
+		cluster,
+		onClusterChange,
 		search,
 		busFilter,
 		enabledFilter,
@@ -110,6 +118,7 @@
 
 <PageHeader title={m['admin.profiles.title']()}>
 	{#snippet actions()}
+		<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="profiles-cluster" />
 		<Button onclick={openCreate}>{m['admin.profiles.newProfile']()}</Button>
 	{/snippet}
 </PageHeader>

@@ -70,7 +70,11 @@ func TestRegistry_FakeClustersDoNotShareMutations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("default snapshot: %v", err)
 	}
-	if err := writer.Delete(context.Background(), before.VMs[0].Node, before.VMs[0].VMID); err != nil {
+	// Pick a stopped VM — the fake's Delete rejects a running VM with
+	// ErrVMRunning (mirroring real Proxmox); this test exercises registry
+	// isolation, not the force-stop path.
+	target := firstStoppedVM(before.VMs)
+	if err := writer.Delete(context.Background(), target.Node, target.VMID); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
 	afterDefault, err := defaultClient.Snapshot(context.Background())

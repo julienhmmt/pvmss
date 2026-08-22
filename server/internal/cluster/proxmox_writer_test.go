@@ -383,3 +383,21 @@ func TestProxmox_Delete(t *testing.T) {
 		t.Errorf("purge = %q, want 1", gotPurge)
 	}
 }
+
+func TestProxmox_Delete_RunningVMMappedToErrVMRunning(t *testing.T) {
+	t.Parallel()
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("DELETE /api2/json/nodes/node01/qemu/101", func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"data":null,"message":"VM 101 is running - destroy failed\n"}`))
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	err := p.Delete(context.Background(), testNodeName, testVMID)
+	if !errors.Is(err, ErrVMRunning) {
+		t.Fatalf("err = %v, want ErrVMRunning", err)
+	}
+}
