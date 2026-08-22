@@ -765,6 +765,7 @@
  "admin.pools.filterProxmoxOnly": "Proxmox only",
  "admin.pools.resetFilters": "Reset filters",
  "admin.pools.resultCount": "{count} pools",
+ "admin.pools.resultCountSingular": "{count} pool",
  "admin.pools.vmsColumn": "VMs",
  "admin.pools.vmsTooltip": "Running and stopped VMs in this pool",
  "admin.pools.vmBarLabel": "{running} running · {stopped} stopped · {total} total",
