@@ -98,6 +98,12 @@ export class AdminCatalogStore {
 	bridgeSortBy: 'name' | 'node' | 'comment' | 'enabled' = $state('name');
 	bridgeSortDir: 'asc' | 'desc' = $state('asc');
 
+	nodeSearch = $state('');
+	nodeStatusFilter = $state('');
+	nodeEnabledFilter: 'all' | 'enabled' | 'disabled' = $state('all');
+	nodeSortBy: NodeSortColumn = $state('name');
+	nodeSortDir: 'asc' | 'desc' = $state('asc');
+
 	filteredIsos = $derived(
 		sortIsos(
 			this.isos.filter((iso) => {
@@ -119,6 +125,22 @@ export class AdminCatalogStore {
 	sortedStorages = $derived(sortStorages(this.storages, this.storageSortBy, this.storageSortDir));
 
 	sortedBridges = $derived(sortBridges(this.bridges, this.bridgeSortBy, this.bridgeSortDir));
+
+	filteredNodes = $derived(
+		sortNodes(
+			this.nodes.filter((node) => {
+				if (this.nodeSearch && !node.name.toLowerCase().includes(this.nodeSearch.toLowerCase())) return false;
+				if (this.nodeStatusFilter && node.status !== this.nodeStatusFilter) return false;
+				if (this.nodeEnabledFilter === 'enabled' && !node.enabled) return false;
+				if (this.nodeEnabledFilter === 'disabled' && node.enabled) return false;
+				return true;
+			}),
+			this.nodeSortBy,
+			this.nodeSortDir
+		)
+	);
+
+	nodeStatusFilterOptions = $derived([...new Set(this.nodes.map((n) => n.status))].sort());
 
 	setStorageSort(column: 'name' | 'node' | 'type' | 'usage' | 'enabled'): void {
 		if (this.storageSortBy === column) {
@@ -152,6 +174,23 @@ export class AdminCatalogStore {
 		this.isoStorageFilter = '';
 		this.isoNodeFilter = '';
 		this.isoEnabledFilter = 'all';
+	}
+
+	setNodeSort(column: NodeSortColumn): void {
+		if (this.nodeSortBy === column) {
+			this.nodeSortDir = this.nodeSortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			this.nodeSortBy = column;
+			this.nodeSortDir = 'asc';
+		}
+	}
+
+	resetNodeFilters(): void {
+		this.nodeSearch = '';
+		this.nodeStatusFilter = '';
+		this.nodeEnabledFilter = 'all';
+		this.nodeSortBy = 'name';
+		this.nodeSortDir = 'asc';
 	}
 
 	async loadClusters(): Promise<void> {
@@ -275,6 +314,7 @@ export class AdminCatalogStore {
 type ISOSortColumn = 'file' | 'storage' | 'node' | 'size' | 'enabled';
 type StorageSortColumn = 'name' | 'node' | 'type' | 'usage' | 'enabled';
 type BridgeSortColumn = 'name' | 'node' | 'comment' | 'enabled';
+export type NodeSortColumn = 'name' | 'status' | 'vmCount' | 'cpuUsage' | 'memoryUsage' | 'enabled';
 
 function sortBridges(bridges: AdminBridge[], sortBy: BridgeSortColumn, dir: 'asc' | 'desc'): AdminBridge[] {
 	const sorted = [...bridges].sort((a, b) => {
@@ -341,6 +381,37 @@ function sortIsos(isos: AdminISO[], sortBy: ISOSortColumn, dir: 'asc' | 'desc'):
 				break;
 			case 'enabled':
 				cmp = Number(a.enabled) - Number(b.enabled) || a.file.localeCompare(b.file);
+				break;
+		}
+		return cmp;
+	});
+	return dir === 'asc' ? sorted : sorted.reverse();
+}
+
+function sortNodes(nodes: AdminNode[], sortBy: NodeSortColumn, dir: 'asc' | 'desc'): AdminNode[] {
+	const sorted = [...nodes].sort((a, b) => {
+		let cmp = 0;
+		switch (sortBy) {
+			case 'name':
+				cmp = a.name.localeCompare(b.name);
+				break;
+			case 'status':
+				cmp = a.status.localeCompare(b.status) || a.name.localeCompare(b.name);
+				break;
+			case 'vmCount':
+				cmp = a.vmCount - b.vmCount || a.name.localeCompare(b.name);
+				break;
+			case 'cpuUsage':
+				cmp = a.cpuUsage - b.cpuUsage || a.name.localeCompare(b.name);
+				break;
+			case 'memoryUsage': {
+				const aPct = a.memoryTotal > 0 ? a.memoryUsed / a.memoryTotal : 0;
+				const bPct = b.memoryTotal > 0 ? b.memoryUsed / b.memoryTotal : 0;
+				cmp = aPct - bPct || a.name.localeCompare(b.name);
+				break;
+			}
+			case 'enabled':
+				cmp = Number(a.enabled) - Number(b.enabled) || a.name.localeCompare(b.name);
 				break;
 		}
 		return cmp;

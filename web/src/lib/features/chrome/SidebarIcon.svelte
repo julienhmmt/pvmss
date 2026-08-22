@@ -33,11 +33,6 @@
 		<rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
 		<line x1="8" y1="21" x2="16" y2="21" />
 		<line x1="12" y1="17" x2="12" y2="21" />
-	{:else if name === 'nodes'}
-		<rect x="2" y="2" width="20" height="8" rx="2" />
-		<rect x="2" y="14" width="20" height="8" rx="2" />
-		<line x1="6" y1="6" x2="6.01" y2="6" />
-		<line x1="6" y1="18" x2="6.01" y2="18" />
 	{:else if name === 'dashboard'}
 		<rect x="3" y="3" width="7" height="7" />
 		<rect x="14" y="3" width="7" height="7" />
