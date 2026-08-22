@@ -5,6 +5,13 @@ async function signInAdmin(request: APIRequestContext): Promise<void> {
 	expect(response.status()).toBe(200);
 }
 
+async function signInAlice(request: APIRequestContext): Promise<void> {
+	const response = await request.post('/api/v1/auth/login', {
+		data: { username: 'alice', password: 'pvmss-alice', cluster: 'default' }
+	});
+	expect(response.status()).toBe(200);
+}
+
 // Finds the row whose first (name) cell matches `name` exactly, further
 // scoped to rows containing `context` — e.g. distinguishing "local" from
 // "local-lvm", or "local"@pve-node-01 from "local"@pve-node-02.
@@ -13,8 +20,16 @@ function exactRow(page: Page, name: string, context?: string) {
 	return context ? row.filter({ hasText: context }) : row;
 }
 
+async function forceEnglish(page: Page): Promise<void> {
+	await page.addInitScript(() => localStorage.setItem('pvmss-locale', 'en'));
+}
+
 test.describe('T11 admin catalog', () => {
 	test.describe.configure({ mode: 'serial' });
+
+	test.beforeEach(async ({ page }) => {
+		await forceEnglish(page);
+	});
 
 	test('discovers and approves a node, storage, bridge, and ISO (US1, SC-001/002/007)', async ({ page }) => {
 		await signInAdmin(page.request);
@@ -22,50 +37,77 @@ test.describe('T11 admin catalog', () => {
 		// Nodes: pve-node-03 starts unapproved.
 		await page.goto('/admin/nodes');
 		const nodeRow = exactRow(page, 'pve-node-03');
-		await expect(nodeRow.getByRole('button')).toHaveText('Approve');
-		await nodeRow.getByRole('button').click();
-		await expect(nodeRow.getByRole('button')).toHaveText('Approved');
+		const nodeSwitch = nodeRow.getByRole('switch');
+		await expect(nodeSwitch).toHaveAttribute('aria-checked', 'false');
+		await nodeSwitch.click();
+		await expect(nodeSwitch).toHaveAttribute('aria-checked', 'true');
 		await page.reload();
-		await expect(exactRow(page, 'pve-node-03').getByRole('button')).toHaveText('Approved');
+		const nodeSwitchAfter = exactRow(page, 'pve-node-03').getByRole('switch');
+		await expect(nodeSwitchAfter).toHaveAttribute('aria-checked', 'true');
 
 		// Storages: local@pve-node-01 starts unapproved; local@pve-node-02 stays
 		// approved and unaffected (FR-003 — per (name, node) pair, not by name).
 		await page.goto('/admin/storages');
 		const storageNode01 = exactRow(page, 'local', 'pve-node-01');
 		const storageNode02 = exactRow(page, 'local', 'pve-node-02');
-		await expect(storageNode01.getByRole('button')).toHaveText('Approve');
-		await expect(storageNode02.getByRole('button')).toHaveText('Approved');
-		await storageNode01.getByRole('button').click();
-		await expect(storageNode01.getByRole('button')).toHaveText('Approved');
-		await expect(storageNode02.getByRole('button')).toHaveText('Approved');
+		await expect(storageNode01.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
+		await expect(storageNode02.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
+		await storageNode01.getByRole('switch').click();
+		await expect(storageNode01.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
+		await expect(storageNode02.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
 
 		// Bridges: vmbr2 starts unapproved.
 		await page.goto('/admin/bridges');
 		const bridgeRow = exactRow(page, 'vmbr2');
-		await expect(bridgeRow.getByRole('button')).toHaveText('Approve');
-		await bridgeRow.getByRole('button').click();
-		await expect(bridgeRow.getByRole('button')).toHaveText('Approved');
+		const bridgeNode = await bridgeRow.locator('td').nth(1).textContent();
+		const bridgeSwitch = bridgeRow.getByRole('switch');
+		await expect(bridgeSwitch).toHaveAttribute('aria-checked', 'false');
+		await bridgeSwitch.click();
+		await expect(bridgeSwitch).toHaveAttribute('aria-checked', 'true');
 
 		// ISOs: rocky-9 starts unapproved.
 		await page.goto('/admin/isos');
 		const isoRow = exactRow(page, 'rocky-9-generic-x86_64.iso');
-		await expect(isoRow.getByRole('button')).toHaveText('Approve');
-		await isoRow.getByRole('button').click();
-		await expect(isoRow.getByRole('button')).toHaveText('Approved');
+		const isoSwitch = isoRow.getByRole('switch');
+		await expect(isoSwitch).toHaveAttribute('aria-checked', 'false');
+		await isoSwitch.click();
+		await expect(isoSwitch).toHaveAttribute('aria-checked', 'true');
 
 		// SC-002: the four approvals surface in T06's detailed create catalog
-		// with zero changes to T06's own code.
+		// with zero changes to T06's own code. Switch to a non-admin user because
+		// the create page is blocked for admins.
+		await signInAlice(page.request);
 		await page.goto('/vms/create');
 		await page.getByRole('tab', { name: 'Detailed' }).click();
 		await expect(page.getByLabel('Node').locator('option[value="pve-node-03"]')).toHaveCount(1);
 		await expect(page.getByLabel('ISO').locator('option', { hasText: 'rocky-9-generic-x86_64.iso' })).toHaveCount(1);
 
-		await page.getByLabel('Node').selectOption('pve-node-01');
+		// Select the node that hosts the approved bridge; pve-node-01 is used
+		// for the storage assertion and may differ from the bridge node.
+		await page.getByLabel('Node').selectOption(bridgeNode ?? 'pve-node-01');
 		await page.getByRole('tab', { name: 'Disk' }).click();
 		await expect(page.getByLabel('Storage').locator('option[value="local"]')).toHaveCount(1);
 
 		await page.getByRole('tab', { name: 'Network' }).click();
 		await expect(page.getByLabel('Bridge').locator('option[value="vmbr2"]')).toHaveCount(1);
+	});
+
+	test('disabling a node with running VMs opens a confirmation dialog (US1, SC-001)', async ({ page }) => {
+		await signInAdmin(page.request);
+
+		await page.goto('/admin/nodes');
+		const nodeRow = exactRow(page, 'pve-node-01');
+		const nodeSwitch = nodeRow.getByRole('switch');
+		await expect(nodeSwitch).toHaveAttribute('aria-checked', 'true');
+
+		await nodeSwitch.click();
+		const dialog = page.getByRole('dialog');
+		await expect(dialog).toBeVisible();
+		await expect(dialog.getByRole('heading')).toContainText('Disable pve-node-01');
+		await dialog.getByRole('button', { name: 'Disable' }).click();
+
+		await expect(nodeSwitch).toHaveAttribute('aria-checked', 'false');
+		await expect(dialog).toBeHidden();
 	});
 
 	test('creates, uses, disables, and re-enables a VM profile (US2, SC-005)', async ({ page }) => {
@@ -81,7 +123,8 @@ test.describe('T11 admin catalog', () => {
 
 		const profileRow = page.locator('tr', { hasText: 'XLarge' });
 		await expect(profileRow).toBeVisible();
-		await expect(profileRow.getByRole('button', { name: 'Enabled' })).toBeVisible();
+		const profileSwitch = profileRow.getByRole('switch');
+		await expect(profileSwitch).toHaveAttribute('aria-checked', 'true');
 
 		// Appears in T06's simple-mode picker while enabled.
 		await page.goto('/vms/create');
@@ -89,16 +132,19 @@ test.describe('T11 admin catalog', () => {
 
 		// Disabling removes it from the picker but keeps it listed (disabled) here.
 		await page.goto('/admin/profiles');
-		await page.locator('tr', { hasText: 'XLarge' }).getByRole('button', { name: 'Enabled' }).click();
-		await expect(page.locator('tr', { hasText: 'XLarge' }).getByRole('button', { name: 'Disabled' })).toBeVisible();
+		await profileRow.getByRole('switch').click();
+		await expect(profileRow.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
 
 		await page.goto('/vms/create');
 		await expect(page.getByRole('radio', { name: /XLarge/ })).toHaveCount(0);
 
 		// Re-enabling restores it (FR-011: no cascade, nothing else to verify).
 		await page.goto('/admin/profiles');
-		await page.locator('tr', { hasText: 'XLarge' }).getByRole('button', { name: 'Disabled' }).click();
-		await expect(page.locator('tr', { hasText: 'XLarge' }).getByRole('button', { name: 'Enabled' })).toBeVisible();
+		await page.locator('tr', { hasText: 'XLarge' }).getByRole('switch').click();
+		await expect(page.locator('tr', { hasText: 'XLarge' }).getByRole('switch')).toHaveAttribute(
+			'aria-checked',
+			'true'
+		);
 	});
 
 	test('creates a tag, edits its color, and refuses to delete pvmss (US3, SC-006)', async ({ page }) => {

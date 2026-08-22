@@ -6,6 +6,8 @@
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
+	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 
 	interface Props {
 		policy: AdminPolicy | null;
@@ -21,14 +23,73 @@
 		onSave: (patch: AdminPolicyPatch) => void;
 	}
 
-	let { policy, loading, error, saving, saveError, saved, clusterOptions, cluster, onClusterChange, onLoad, onSave }: Props = $props();
+	let {
+		policy,
+		loading,
+		error,
+		saving,
+		saveError,
+		saved,
+		clusterOptions,
+		cluster,
+		onClusterChange,
+		onLoad,
+		onSave
+	}: Props = $props();
+
+	const toast = getToastContext();
+
+	let dirty = $state(false);
+	let pendingCluster: string | null = $state(null);
+	let switchDialogOpen = $state(false);
+
+	function handleDirtyChange(value: boolean): void {
+		dirty = value;
+	}
+
+	// Fire a success toast when the store's `saved` flag is true. The store
+	// resets `saved` to false at the start of each save, so this effect only
+	// fires on the false→true transition.
+	$effect(() => {
+		if (saved) {
+			toast.success(m['policy.saved']());
+		}
+	});
+
+	function handleClusterChange(value: string): void {
+		if (dirty) {
+			pendingCluster = value;
+			switchDialogOpen = true;
+			return;
+		}
+		onClusterChange(value);
+	}
+
+	function confirmSwitch(): void {
+		switchDialogOpen = false;
+		if (pendingCluster !== null) {
+			const next = pendingCluster;
+			pendingCluster = null;
+			onClusterChange(next);
+		}
+	}
+
+	function closeSwitchDialog(): void {
+		switchDialogOpen = false;
+		pendingCluster = null;
+	}
 </script>
 
 <svelte:head><title>{m['policy.title']()} — PVMSS</title></svelte:head>
 
 <PageHeader title={m['policy.title']()} description={m['policy.description']()} titleId="policy-title">
 	{#snippet actions()}
-		<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="policy-cluster" />
+		<ClusterSelector
+			options={clusterOptions}
+			value={cluster}
+			onChange={handleClusterChange}
+			id="policy-cluster"
+		/>
 	{/snippet}
 </PageHeader>
 
@@ -42,7 +103,23 @@
 		</div>
 	{:else if policy !== null}
 		{#key policy}
-			<PolicyForm {policy} {saving} {saveError} {saved} {onSave} />
+			<PolicyForm
+				{policy}
+				{saving}
+				{saveError}
+				{onSave}
+				onDirtyChange={handleDirtyChange}
+			/>
 		{/key}
 	{/if}
 </section>
+
+<ConfirmDialog
+	open={switchDialogOpen}
+	title={m['policy.switchClusterConfirmTitle']()}
+	message={m['policy.switchClusterConfirmMessage']()}
+	confirmLabel={m['policy.switchClusterConfirm']()}
+	cancelLabel={m['common.cancel']()}
+	onConfirm={confirmSwitch}
+	onClose={closeSwitchDialog}
+/>
