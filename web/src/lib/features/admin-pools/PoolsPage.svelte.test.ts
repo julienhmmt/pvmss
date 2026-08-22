@@ -60,7 +60,7 @@ describe('PoolsPage', () => {
 
 		const totalButton = Array.from(document.querySelectorAll('th button')).find((button) =>
 			button.textContent?.includes('Total')
-		);
+		) as HTMLButtonElement | undefined;
 		expect(totalButton).toBeDefined();
 
 		totalButton?.click();
@@ -101,11 +101,12 @@ describe('PoolsPage', () => {
 		const input = document.querySelector('input[type="search"]') as HTMLInputElement;
 		input.value = 'prod';
 		input.dispatchEvent(new InputEvent('input', { bubbles: true, data: 'prod' }));
+		await tick();
 		expect(onSearch).toHaveBeenCalledWith('prod');
 
 		const resetButton = Array.from(document.querySelectorAll('button')).find((button) =>
 			button.textContent?.includes('Réinitialiser')
-		);
+		) as HTMLButtonElement | undefined;
 		expect(resetButton).toBeDefined();
 		resetButton?.click();
 		await tick();

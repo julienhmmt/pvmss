@@ -166,12 +166,14 @@
 					class="pv-input pl-9"
 					placeholder={m['admin.pools.searchPlaceholder']()}
 					aria-label={m['admin.pools.search']()}
-					value={search}
+					bind:value={search}
 					oninput={updateSearch}
 				/>
 			</div>
-			<Button variant="ghost" size="sm" onclick={resetFilters}>{m['admin.pools.resetFilters']()}</Button>
-			<span class="ml-auto text-sm text-muted-foreground">{m['admin.pools.resultCount']({ count: filteredPools.length })}</span>
+			{#if search !== '' || sortBy !== 'name' || sortDir !== 'asc'}
+				<Button variant="ghost" size="sm" onclick={resetFilters}>{m['admin.pools.resetFilters']()}</Button>
+			{/if}
+			<span class="ml-auto text-sm text-muted-foreground">{filteredPools.length === 1 ? m['admin.pools.resultCountSingular']({ count: 1 }) : m['admin.pools.resultCount']({ count: filteredPools.length })}</span>
 		</div>
 	{/if}
 
