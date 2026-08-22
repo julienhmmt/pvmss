@@ -297,7 +297,13 @@ func proxmoxRelaySerial(ctx context.Context, c proxmoxVNCClient, node string, vm
 	}
 	defer func() { _ = proxmoxConn.CloseNow() }()
 
-	proxmoxNetConn := websocket.NetConn(ctx, proxmoxConn, websocket.MessageBinary)
+	// Serial/termproxy tunnels speak TEXT frames (the "type:payload" protocol
+	// Proxmox uses for serial: "0:len:data", "1:cols:rows:", "2" keepalive).
+	// VNC uses binary (RFB); serial MUST use MessageText on both ends, or the
+	// relay dies on the first read with "unexpected frame type read (expected
+	// MessageBinary): MessageText". The browser peer is opened as text in the
+	// handler for the same reason.
+	proxmoxNetConn := websocket.NetConn(ctx, proxmoxConn, websocket.MessageText)
 	defer func() { _ = proxmoxNetConn.Close() }()
 
 	// Plain bidirectional byte pipe — no RFB handshake, no DES auth. The

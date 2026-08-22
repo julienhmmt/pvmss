@@ -288,8 +288,10 @@ func TestVMSerialConsole_WebSocket_ValidTokenUpgradesAndRelaysEcho(t *testing.T)
 	defer func() { _ = conn.CloseNow() }()
 
 	// Send a few keystroke bytes; the fake relay echoes them back as
-	// "0:len:data".
-	if err := conn.Write(ctx, websocket.MessageBinary, []byte("hi")); err != nil {
+	// "0:len:data". Serial tunnels speak TEXT frames (matching the browser
+	// xterm.js client and Proxmox's termproxy protocol), so the client dials
+	// with MessageText.
+	if err := conn.Write(ctx, websocket.MessageText, []byte("hi")); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 

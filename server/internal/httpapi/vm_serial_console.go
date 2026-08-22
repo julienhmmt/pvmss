@@ -192,7 +192,12 @@ func (h *VMSerialConsole) handleSerialWebSocket(w http.ResponseWriter, r *http.R
 
 	h.log.Info("serial websocket accepted, relaying to proxmox", "component", "httpapi", "cluster", ticket.Cluster, "vmid", ticket.VMID, "node", ticket.Node, "port", ticket.Port)
 
-	peer := websocket.NetConn(context.Background(), conn, websocket.MessageBinary)
+	// Serial tunnels speak TEXT frames (Proxmox's "type:payload" protocol and
+	// the browser's xterm.js client both send text). VNC uses MessageBinary
+	// (RFB); the serial path must use MessageText on both legs or the relay
+	// fails with "unexpected frame type read (expected MessageBinary):
+	// MessageText" the moment Proxmox sends its first text frame.
+	peer := websocket.NetConn(context.Background(), conn, websocket.MessageText)
 	defer func() { _ = peer.Close() }()
 
 	relay, err := resolveCapability(h.clients, h.relay, ticket.Cluster, "TerminalRelay")
