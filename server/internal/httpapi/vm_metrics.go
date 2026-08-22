@@ -151,6 +151,15 @@ func (h *VMMetrics) handleStream(w http.ResponseWriter, r *http.Request) {
 
 	rc := http.NewResponseController(w)
 
+	// The server's global WriteTimeout/ReadTimeout (main.go) bound ordinary
+	// requests and silently kill a long-lived SSE ~WriteTimeout after the
+	// request starts, regardless of how much data is still flowing. A live
+	// metrics stream is exactly the kind of long-lived connection those
+	// deadlines were never meant to bound. Clear both for this connection
+	// only, mirroring the WebSocket deadline-clearing in vm_console.go.
+	_ = rc.SetReadDeadline(time.Time{})
+	_ = rc.SetWriteDeadline(time.Time{})
+
 	// Configure the client's automatic reconnection interval.
 	if _, err := fmt.Fprintf(w, "retry: %d\n\n", metricsStreamRetryMs); err != nil {
 		h.log.Error("metrics stream: failed to write retry header", "component", "httpapi", "error", err)

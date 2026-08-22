@@ -15,6 +15,7 @@ import (
 	"pvmss/server/internal/vm"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // VMDetail serves the four VM-detail endpoints, all gated by the same
@@ -32,6 +33,58 @@ type VMDetail struct {
 	refresher  vm.IndexRefresher
 	policy     *policy.Policy
 	log        *slog.Logger
+}
+
+// ServeHTTP dispatches to the sub-handlers.
+func (h *VMDetail) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if strings.HasSuffix(r.URL.Path, "/hardware-options") {
+		h.handleHardwareOptions(w, r)
+		return
+	}
+
+	if strings.HasSuffix(r.URL.Path, "/disks") || r.PathValue("diskKey") != "" {
+		h.handleDisk(w, r)
+		return
+	}
+
+	if strings.HasSuffix(r.URL.Path, "/cdrom") {
+		h.handleCDROM(w, r)
+		return
+	}
+
+	if strings.HasSuffix(r.URL.Path, "/network") {
+		h.handleNetwork(w, r)
+		return
+	}
+
+	if strings.HasSuffix(r.URL.Path, "/hardware") {
+		h.handleHardware(w, r)
+		return
+	}
+
+	if strings.HasSuffix(r.URL.Path, "/serial") {
+		h.handleEnableSerial(w, r)
+		return
+	}
+
+	if strings.HasSuffix(r.URL.Path, "/audit") {
+		h.handleAudit(w, r)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		h.handleGet(w, r)
+	case http.MethodPost:
+		h.handleAction(w, r)
+	case http.MethodDelete:
+		h.handleDelete(w, r)
+	case http.MethodPatch:
+		h.handlePatch(w, r)
+	default:
+		w.Header().Set("Allow", "GET, POST, DELETE, PATCH")
+		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
+	}
 }
 
 // NewVMDetail creates the handler. The writer is the cluster.Writer (separate
@@ -205,52 +258,6 @@ type deleteResponse struct {
 type patchRequest struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
-}
-
-func (h *VMDetail) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if strings.HasSuffix(r.URL.Path, "/hardware-options") {
-		h.handleHardwareOptions(w, r)
-		return
-	}
-
-	if strings.HasSuffix(r.URL.Path, "/disks") || r.PathValue("diskKey") != "" {
-		h.handleDisk(w, r)
-		return
-	}
-
-	if strings.HasSuffix(r.URL.Path, "/cdrom") {
-		h.handleCDROM(w, r)
-		return
-	}
-
-	if strings.HasSuffix(r.URL.Path, "/network") {
-		h.handleNetwork(w, r)
-		return
-	}
-
-	if strings.HasSuffix(r.URL.Path, "/hardware") {
-		h.handleHardware(w, r)
-		return
-	}
-
-	if strings.HasSuffix(r.URL.Path, "/serial") {
-		h.handleEnableSerial(w, r)
-		return
-	}
-
-	switch r.Method {
-	case http.MethodGet:
-		h.handleGet(w, r)
-	case http.MethodPost:
-		h.handleAction(w, r)
-	case http.MethodDelete:
-		h.handleDelete(w, r)
-	case http.MethodPatch:
-		h.handlePatch(w, r)
-	default:
-		w.Header().Set("Allow", "GET, POST, DELETE, PATCH")
-		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
-	}
 }
 
 // handleGet serves GET /vms/:cluster/:vmid — the detail view (US1). Calls
@@ -694,6 +701,7 @@ func (h *VMDetail) handleEnableSerial(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", "POST")
 		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
+
 		return
 	}
 
@@ -732,8 +740,10 @@ func (h *VMDetail) handleEnableSerial(w http.ResponseWriter, r *http.Request) {
 		if h.writeCommonVMError(w, err) {
 			return
 		}
+
 		h.log.Error("enable serial console failed", "component", "httpapi", "cluster", clusterName, "vmid", vmid, "error", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
 		return
 	}
 
@@ -1118,6 +1128,92 @@ func (h *VMDetail) writeJSONStatus(w http.ResponseWriter, status int, value any)
 	if err := writeJSON(w, status, body); err != nil {
 		h.log.Error("failed to write response", "component", "httpapi", "error", err)
 	}
+}
+
+// handleAudit serves GET /vms/:cluster/:vmid/audit — paginated, VM-scoped audit trail.
+func (h *VMDetail) handleAudit(w http.ResponseWriter, r *http.Request) {
+	identity, err := h.auth.Principal(r)
+	if err != nil {
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
+		return
+	}
+
+	clusterName, vmid, ok := h.parsePath(r)
+	if !ok {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
+		return
+	}
+
+	// Verify ownership via Resolve (same gate as GET detail).
+	index, ok := h.index(w, clusterName)
+	if !ok {
+		return
+	}
+
+	if _, err := vm.Resolve(index, identity, clusterName, vmid); err != nil {
+		h.writeResolveError(w, err)
+		return
+	}
+
+	page, ok := h.parseAuditPage(r)
+	if !ok {
+		return
+	}
+
+	filter := store.AuditFilter{
+		Cluster:  clusterName,
+		VMID:     &vmid,
+		Page:     page,
+		PageSize: 20,
+	}
+	if actor := r.URL.Query().Get("actor"); actor != "" {
+		filter.Actor = actor
+	}
+
+	if action := r.URL.Query().Get("action"); action != "" {
+		filter.Action = action
+	}
+
+	result, err := h.store.ListAuditLog(r.Context(), filter)
+	if err != nil {
+		h.log.Error("vm audit list failed", "component", "httpapi", "error", err)
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return
+	}
+
+	items := make([]auditEntryDTO, len(result.Items))
+	for i, e := range result.Items {
+		items[i] = auditEntryDTO{
+			ID:        e.ID,
+			Actor:     e.Actor,
+			Cluster:   e.Cluster,
+			VMID:      e.VMID,
+			Action:    e.Action,
+			Timestamp: e.Timestamp.Format(time.RFC3339Nano),
+		}
+	}
+
+	h.writeJSONStatus(w, http.StatusOK, auditPageDTO{
+		Items:    items,
+		Total:    result.Total,
+		Page:     result.Page,
+		PageSize: result.PageSize,
+	})
+}
+
+func (h *VMDetail) parseAuditPage(r *http.Request) (int, bool) {
+	raw := r.URL.Query().Get("page")
+	if raw == "" {
+		return 1, true
+	}
+
+	page, err := strconv.Atoi(raw)
+	if err != nil || page < 1 {
+		return 0, false
+	}
+
+	return page, true
 }
 
 // writeResolveError maps vm.Resolve errors to HTTP statuses. 403 and 404 are

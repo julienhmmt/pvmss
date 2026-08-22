@@ -14,7 +14,9 @@ import (
 // upstream; checked again here defensively, before any HTTP call, matching
 // the fake's own defense-in-depth.
 var proxmoxValidActions = map[string]bool{
-	actionStart: true, actionStop: true, actionShutdown: true, actionReboot: true, actionReset: true,
+	actionStart: true, actionStop: true, actionShutdown: true,
+	actionReboot: true, actionReset: true,
+	actionPause: true, actionResume: true,
 }
 
 // vmConfigPath builds the PUT /nodes/{node}/qemu/{vmid}/config endpoint used

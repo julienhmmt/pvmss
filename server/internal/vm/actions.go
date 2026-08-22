@@ -43,6 +43,8 @@ var validActions = map[string]bool{
 	"shutdown": true,
 	"reboot":   true,
 	"reset":    true,
+	"pause":    true,
+	"resume":   true,
 }
 
 // hostnameRe validates a VM name as a hostname: alphanumeric and hyphen, no

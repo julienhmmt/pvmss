@@ -99,6 +99,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/network", cfg.VMDetail)
 	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/hardware", cfg.VMDetail)
 	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/serial", cfg.VMDetail)
+	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/audit", cfg.VMDetail)
 
 	if cfg.VMCloudInit != nil {
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit", cfg.VMCloudInit)

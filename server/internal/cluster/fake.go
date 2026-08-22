@@ -15,6 +15,8 @@ const (
 	actionShutdown = "shutdown"
 	actionReboot   = "reboot"
 	actionReset    = "reset"
+	actionPause    = "pause"
+	actionResume   = "resume"
 )
 
 // Fake is the built-in cluster substitute (constitution XI). It requires no
@@ -525,6 +527,11 @@ func (fake Fake) Action(_ context.Context, node string, vmid int, action string)
 	case actionStop, actionShutdown:
 		state.vms[idx].Status = VMStopped
 		state.vms[idx].Uptime = 0
+	case actionPause:
+		state.vms[idx].Status = VMPaused
+	case actionResume:
+		state.vms[idx].Status = VMRunning
+		state.vms[idx].Uptime = fakeUptimeOnStart
 	default:
 		return ErrInvalidAction
 	}
@@ -551,6 +558,14 @@ func validateTransition(action string, status VMStatus) error {
 	case actionReboot, actionReset:
 		if status == VMStopped {
 			return fmt.Errorf("%w: vm is not running", ErrInvalidStateTransition)
+		}
+	case actionPause:
+		if status != VMRunning {
+			return fmt.Errorf("%w: vm is not running", ErrInvalidStateTransition)
+		}
+	case actionResume:
+		if status != VMPaused {
+			return fmt.Errorf("%w: vm is not paused", ErrInvalidStateTransition)
 		}
 	}
 
