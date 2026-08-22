@@ -19,6 +19,10 @@ import (
 // deduplicated.
 const errBuildSnippetUpload = "build snippet upload: %w"
 
+// vmConfigEndpointFmt is the Proxmox REST path for a VM's config endpoint,
+// formatted with the URL-escaped node name and the numeric VMID.
+const vmConfigEndpointFmt = "/nodes/%s/qemu/%d/config"
+
 // GetCloudInitConfig implements CloudInitReader by reading the live VM
 // config. Password is always left empty: Proxmox does not return cipassword
 // on read (write-only), matching the fake's own cloneCloudInitConfig, which
@@ -128,7 +132,7 @@ func (p Proxmox) EnsureCloudInitDrive(ctx context.Context, node string, vmid int
 		return err
 	}
 
-	_, err = rest.do(ctx, http.MethodPut, fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid), url.Values{
+	_, err = rest.do(ctx, http.MethodPut, fmt.Sprintf(vmConfigEndpointFmt, url.PathEscape(node), vmid), url.Values{
 		cloudInitDiskKey: {storage + ":cloudinit"},
 	})
 
@@ -171,7 +175,7 @@ func (p Proxmox) SetCloudInitConfig(ctx context.Context, node string, vmid int, 
 		form.Set("searchdomain", config.SearchDomain)
 	}
 
-	_, err := p.rest().do(ctx, http.MethodPut, fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid), form)
+	_, err := p.rest().do(ctx, http.MethodPut, fmt.Sprintf(vmConfigEndpointFmt, url.PathEscape(node), vmid), form)
 
 	return err
 }
@@ -190,7 +194,7 @@ func (p Proxmox) AttachCloudInitSnippet(ctx context.Context, node, storage, file
 		form.Set("cicustom", fmt.Sprintf("vendor=%s:snippets/%s", storage, filename))
 	}
 
-	_, err := p.rest().do(ctx, http.MethodPut, fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid), form)
+	_, err := p.rest().do(ctx, http.MethodPut, fmt.Sprintf(vmConfigEndpointFmt, url.PathEscape(node), vmid), form)
 
 	return err
 }

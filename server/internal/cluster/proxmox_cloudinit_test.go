@@ -252,33 +252,44 @@ func TestProxmox_AttachCloudInitSnippet(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-
-			seen := map[string]string{}
-
-			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
-				mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, r *http.Request) {
-					if err := r.ParseForm(); err != nil {
-						t.Fatalf("parse form: %v", err)
-					}
-					for _, k := range []string{"cicustom", "delete"} {
-						if v := r.FormValue(k); v != "" {
-							seen[k] = v
-						}
-					}
-					writeJSONFixture(t, w, `{"data":null}`)
-				})
-			})
-
-			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
-
-			if err := p.AttachCloudInitSnippet(context.Background(), testNodeName, "local", tc.filename, testVMID); err != nil {
-				t.Fatalf("AttachCloudInitSnippet: %v", err)
-			}
-
-			if seen[tc.wantKey] != tc.wantVal {
-				t.Errorf("%s = %q, want %q (seen %+v)", tc.wantKey, seen[tc.wantKey], tc.wantVal, seen)
-			}
+			attachCloudInitSnippetSubtest(t, tc.filename, tc.wantKey, tc.wantVal)
 		})
+	}
+}
+
+func attachCloudInitSnippetSubtest(t *testing.T, filename, wantKey, wantVal string) {
+	t.Helper()
+
+	seen := map[string]string{}
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/config", recordCloudInitConfigForm(t, seen))
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	if err := p.AttachCloudInitSnippet(context.Background(), testNodeName, "local", filename, testVMID); err != nil {
+		t.Fatalf("AttachCloudInitSnippet: %v", err)
+	}
+
+	if seen[wantKey] != wantVal {
+		t.Errorf("%s = %q, want %q (seen %+v)", wantKey, seen[wantKey], wantVal, seen)
+	}
+}
+
+func recordCloudInitConfigForm(t *testing.T, seen map[string]string) http.HandlerFunc {
+	t.Helper()
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Fatalf("parse form: %v", err)
+		}
+		for _, k := range []string{"cicustom", "delete"} {
+			if v := r.FormValue(k); v != "" {
+				seen[k] = v
+			}
+		}
+		writeJSONFixture(t, w, `{"data":null}`)
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/vm"
 	"testing"
 )
@@ -34,15 +35,18 @@ func fakeProxyFetcher(ticket string, port int, err error, gotNode *string) vm.Pr
 	}
 }
 
-// consoleKindCases is the table shared by every GetConsoleTicket domain test —
-// each case runs the same assertions for both KindVNC and KindTerminal, proving
-// the Resolve → fetch → issue → audit pipeline is identical for both paths.
-var consoleKindCases = []struct {
+// consoleKindCase is one row of consoleKindCases.
+type consoleKindCase struct {
 	name   string
 	kind   vm.ConsoleKind
 	ticket string
 	port   int
-}{
+}
+
+// consoleKindCases is the table shared by every GetConsoleTicket domain test —
+// each case runs the same assertions for both KindVNC and KindTerminal, proving
+// the Resolve → fetch → issue → audit pipeline is identical for both paths.
+var consoleKindCases = []consoleKindCase{
 	{"vnc", vm.KindVNC, "proxmox-ticket", 5901},
 	{"terminal", vm.KindTerminal, "proxmox-term-ticket", 5902},
 }
@@ -59,43 +63,49 @@ func TestGetConsoleTicket_ResolveThenIssueThenAudit(t *testing.T) {
 
 	for _, tc := range consoleKindCases {
 		t.Run(tc.name, func(t *testing.T) {
-			store := vm.NewConsoleTicketStore()
-
-			var gotNode string
-
-			fetcher := fakeProxyFetcher(tc.ticket, tc.port, nil, &gotNode)
-			audit := &fakeAuditRecorder{}
-
-			ticket, err := vm.GetConsoleTicket(context.Background(), vm.ConsoleTicketDeps{Index: idx, Actor: alice, ClusterName: testClusterName, VMID: 100, Kind: tc.kind, Fetcher: fetcher, Store: store, Audit: audit})
-			if err != nil {
-				t.Fatalf("GetConsoleTicket: %v", err)
-			}
-
-			if ticket.Token == "" {
-				t.Fatalf("returned ticket has empty token")
-			}
-
-			if ticket.Cluster != testClusterName || ticket.VMID != 100 {
-				t.Fatalf("ticket bound to %+v, want default/100", ticket)
-			}
-			// FR-007: the node passed to the fetcher is Resolve()'s
-			// server-resolved value, not a client-supplied one.
-			if gotNode != cluster.FakeNode01 {
-				t.Fatalf("fetcher called with node %q, want %q (server-resolved)", gotNode, cluster.FakeNode01)
-			}
-
-			if ticket.Node != cluster.FakeNode01 {
-				t.Fatalf("ticket node = %q, want %q", ticket.Node, cluster.FakeNode01)
-			}
-
-			if ticket.ProxmoxTicket != tc.ticket || ticket.Port != tc.port {
-				t.Fatalf("ticket carries proxmox %+v, want %s/%d", ticket, tc.ticket, tc.port)
-			}
-
-			if audit.gotAction != vm.AuditActionConsoleOpen || audit.gotVMID != 100 {
-				t.Fatalf("audit recorded %+v, want console_open/100", audit)
-			}
+			assertConsoleTicketIssuedAndAudited(t, idx, alice, tc)
 		})
+	}
+}
+
+func assertConsoleTicketIssuedAndAudited(t *testing.T, idx *inventory.Index, actor auth.Identity, tc consoleKindCase) {
+	t.Helper()
+
+	store := vm.NewConsoleTicketStore()
+
+	var gotNode string
+
+	fetcher := fakeProxyFetcher(tc.ticket, tc.port, nil, &gotNode)
+	audit := &fakeAuditRecorder{}
+
+	ticket, err := vm.GetConsoleTicket(context.Background(), vm.ConsoleTicketDeps{Index: idx, Actor: actor, ClusterName: testClusterName, VMID: 100, Kind: tc.kind, Fetcher: fetcher, Store: store, Audit: audit})
+	if err != nil {
+		t.Fatalf("GetConsoleTicket: %v", err)
+	}
+
+	if ticket.Token == "" {
+		t.Fatalf("returned ticket has empty token")
+	}
+
+	if ticket.Cluster != testClusterName || ticket.VMID != 100 {
+		t.Fatalf("ticket bound to %+v, want default/100", ticket)
+	}
+	// FR-007: the node passed to the fetcher is Resolve()'s
+	// server-resolved value, not a client-supplied one.
+	if gotNode != cluster.FakeNode01 {
+		t.Fatalf("fetcher called with node %q, want %q (server-resolved)", gotNode, cluster.FakeNode01)
+	}
+
+	if ticket.Node != cluster.FakeNode01 {
+		t.Fatalf("ticket node = %q, want %q", ticket.Node, cluster.FakeNode01)
+	}
+
+	if ticket.ProxmoxTicket != tc.ticket || ticket.Port != tc.port {
+		t.Fatalf("ticket carries proxmox %+v, want %s/%d", ticket, tc.ticket, tc.port)
+	}
+
+	if audit.gotAction != vm.AuditActionConsoleOpen || audit.gotVMID != 100 {
+		t.Fatalf("audit recorded %+v, want console_open/100", audit)
 	}
 }
 

@@ -46,6 +46,20 @@ func NewVMConsole(projection *inventory.Projection, authHandler *Auth, relay clu
 	return &VMConsole{projection: projection, resolver: singleClusterResolver{projection: projection}, auth: authHandler, relay: relay, tickets: tickets, store: st, log: log}
 }
 
+// consoleEnv bundles this handler's shared collaborators for the shared
+// console ticket and websocket helpers.
+func (h *VMConsole) consoleEnv() consoleEnv {
+	return consoleEnv{
+		auth:     h.auth,
+		resolver: h.resolver,
+		clients:  h.clients,
+		relay:    h.relay,
+		tickets:  h.tickets,
+		store:    h.store,
+		log:      h.log,
+	}
+}
+
 // VMConsoleRegistryDeps groups the collaborators NewVMConsoleWithRegistry
 // needs for multi-cluster wiring. Bundling them keeps the parameter count
 // under go:S107.
@@ -96,7 +110,7 @@ func (h *VMConsole) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // vm.GetConsoleTicket (Resolve → GetVNCTicket → Issue → audit), returns only
 // the opaque token.
 func (h *VMConsole) handleVNCTicket(w http.ResponseWriter, r *http.Request) {
-	serveConsoleTicket(w, r, h.auth, h.resolver, h.clients, h.relay, h.tickets, h.store, h.log,
+	serveConsoleTicket(w, r, h.consoleEnv(),
 		consoleTicketParams{
 			kind:           vm.KindVNC,
 			capabilityName: "ConsoleRelay",
@@ -115,7 +129,7 @@ func (h *VMConsole) handleVNCTicket(w http.ResponseWriter, r *http.Request) {
 //
 //nolint:dupl // VNC and serial websocket handlers are intentionally parallel: different relay interfaces (ConsoleRelay vs TerminalRelay), proxy ticket types (VNCProxyTicket vs TermProxyTicket), and websocket message types (Binary vs Text). The shared setup is extracted into acceptConsoleWebSocket; the relay-specific tail cannot be unified without erasing the type safety that distinguishes the two paths.
 func (h *VMConsole) handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	ticket, conn, ok := acceptConsoleWebSocket(w, r, h.auth, h.tickets, h.log,
+	ticket, conn, ok := acceptConsoleWebSocket(w, r, h.consoleEnv(),
 		consoleWebSocketParams{
 			kind:             vm.KindVNC,
 			invalidTicketMsg: "invalid or expired console ticket",

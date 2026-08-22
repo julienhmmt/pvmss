@@ -16,6 +16,19 @@ import (
 // VMSerialConsole.writeSerialError satisfy this signature.
 type consoleErrorFn func(w http.ResponseWriter, status int, code, message string)
 
+// consoleEnv groups the shared collaborators both console ticket and websocket
+// flows need. Bundling them keeps the shared helper signatures under the
+// parameter-count limit (go:S107) without hiding individual dependencies.
+type consoleEnv struct {
+	auth     *Auth
+	resolver vm.ClusterIndexResolver
+	clients  cluster.ClientProvider
+	relay    any
+	tickets  *vm.ConsoleTicketStore
+	store    *store.Store
+	log      *slog.Logger
+}
+
 // ticketResponse is the shared JSON body for POST /vnc-ticket and POST
 // /serial-ticket. Both endpoints return the same shape: only the opaque token
 // and its TTL.
@@ -42,18 +55,12 @@ type consoleTicketParams struct {
 func serveConsoleTicket(
 	w http.ResponseWriter,
 	r *http.Request,
-	auth *Auth,
-	resolver vm.ClusterIndexResolver,
-	clients cluster.ClientProvider,
-	defaultRelay any,
-	tickets *vm.ConsoleTicketStore,
-	st *store.Store,
-	log *slog.Logger,
+	env consoleEnv,
 	params consoleTicketParams,
 	parsePath func(r *http.Request) (string, int, bool),
 	writeError consoleErrorFn,
 ) {
-	identity, err := auth.Principal(r)
+	identity, err := env.auth.Principal(r)
 	if err != nil {
 		writeError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
 		return
@@ -65,12 +72,12 @@ func serveConsoleTicket(
 		return
 	}
 
-	index, ok := loadClusterIndex(resolver, clusterName, func(status int, code, message string) { writeError(w, status, code, message) })
+	index, ok := loadClusterIndex(env.resolver, clusterName, func(status int, code, message string) { writeError(w, status, code, message) })
 	if !ok {
 		return
 	}
 
-	relay, err := resolveCapability(clients, defaultRelay, clusterName, params.capabilityName)
+	relay, err := resolveCapability(env.clients, env.relay, clusterName, params.capabilityName)
 	if err != nil {
 		writeError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
 		return
@@ -85,23 +92,23 @@ func serveConsoleTicket(
 		VMID:        vmid,
 		Kind:        params.kind,
 		Fetcher:     params.fetcher,
-		Store:       tickets,
-		Audit:       st,
+		Store:       env.tickets,
+		Audit:       env.store,
 	})
 	if err != nil {
-		writeConsoleTicketError(w, log, err, writeError, params.invalidMsg)
+		writeConsoleTicketError(w, env.log, err, writeError, params.invalidMsg)
 		return
 	}
 
 	if ticket.Token == "" {
-		log.Error(params.noTokenMsg, "component", "httpapi", "cluster", clusterName, "vmid", vmid)
+		env.log.Error(params.noTokenMsg, "component", "httpapi", "cluster", clusterName, "vmid", vmid)
 		writeError(w, http.StatusInternalServerError, "internal_error", "failed to issue console ticket")
 
 		return
 	}
 
-	log.Info(params.issuedMsg, "component", "httpapi", "cluster", clusterName, "vmid", vmid, "node", ticket.Node)
-	writeConsoleJSON(w, log, writeError, http.StatusOK, ticketResponse{Token: ticket.Token, ExpiresInSeconds: int(vm.TicketTTL.Seconds())})
+	env.log.Info(params.issuedMsg, "component", "httpapi", "cluster", clusterName, "vmid", vmid, "node", ticket.Node)
+	writeConsoleJSON(w, env.log, writeError, http.StatusOK, ticketResponse{Token: ticket.Token, ExpiresInSeconds: int(vm.TicketTTL.Seconds())})
 }
 
 // writeConsoleJSON marshals value as JSON and writes it. On marshal/write
@@ -138,14 +145,12 @@ type consoleWebSocketParams struct {
 func acceptConsoleWebSocket(
 	w http.ResponseWriter,
 	r *http.Request,
-	auth *Auth,
-	tickets *vm.ConsoleTicketStore,
-	log *slog.Logger,
+	env consoleEnv,
 	params consoleWebSocketParams,
 	parsePath func(r *http.Request) (string, int, bool),
 	writeError consoleErrorFn,
 ) (ticket vm.ConsoleTicket, conn *websocket.Conn, ok bool) {
-	if _, err := auth.Principal(r); err != nil {
+	if _, err := env.auth.Principal(r); err != nil {
 		writeError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
 		return vm.ConsoleTicket{}, nil, false
 	}
@@ -162,7 +167,7 @@ func acceptConsoleWebSocket(
 		return vm.ConsoleTicket{}, nil, false
 	}
 
-	consumed, err := tickets.Consume(params.kind, token, clusterName, vmid)
+	consumed, err := env.tickets.Consume(params.kind, token, clusterName, vmid)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid_ticket", params.invalidTicketMsg)
 		return vm.ConsoleTicket{}, nil, false
@@ -179,11 +184,11 @@ func acceptConsoleWebSocket(
 
 	wsConn, err := websocket.Accept(w, r, nil)
 	if err != nil {
-		log.Error(params.wsUpgradeMsg, "component", "httpapi", "error", err)
+		env.log.Error(params.wsUpgradeMsg, "component", "httpapi", "error", err)
 		return vm.ConsoleTicket{}, nil, false
 	}
 
-	log.Info(params.acceptedMsg, "component", "httpapi", "cluster", consumed.Cluster, "vmid", consumed.VMID, "node", consumed.Node, "port", consumed.Port)
+	env.log.Info(params.acceptedMsg, "component", "httpapi", "cluster", consumed.Cluster, "vmid", consumed.VMID, "node", consumed.Node, "port", consumed.Port)
 
 	return consumed, wsConn, true
 }

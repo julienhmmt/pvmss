@@ -16,6 +16,12 @@ import (
 
 const snippetFilenamePrefix = "pvmss-"
 
+// wrapJoin wraps two errors using the "%w: %w" verb so both are matchable via
+// errors.Is. Centralized to avoid duplicating the format literal.
+func wrapJoin(sentinel, cause error) error {
+	return fmt.Errorf("%w: %w", sentinel, cause)
+}
+
 var (
 	// ErrInvalidCloudInitConfig reports malformed effective structured state.
 	ErrInvalidCloudInitConfig = errors.New("invalid cloud-init config")
@@ -181,14 +187,14 @@ func SetCloudInitSnippet(ctx context.Context, deps CloudInitSnippetDeps, content
 	}
 
 	if err := writer.PushCloudInitSnippet(ctx, entity.Node, storage, filename, vmid, content); err != nil {
-		return fmt.Errorf("%w: %w", ErrSnippetPushFailed, err)
+		return wrapJoin(ErrSnippetPushFailed, err)
 	}
 
 	// Point the VM at the just-pushed snippet via the vendor-data slot. Before
 	// this step the file lived in storage but was never referenced by the VM,
 	// so the guest never received it (REPORT.md addendum: silent no-op).
 	if err := writer.AttachCloudInitSnippet(ctx, entity.Node, storage, filename, vmid); err != nil {
-		return fmt.Errorf("%w: %w", ErrSnippetPushFailed, err)
+		return wrapJoin(ErrSnippetPushFailed, err)
 	}
 
 	if err := st.RecordAction(ctx, actor.Username, clusterName, vmid, "edit_cloudinit_snippet"); err != nil {
@@ -251,7 +257,7 @@ type AddCloudInitSSHKeyDeps struct {
 // which is the source of truth (mirrors ProxMate's addGuestSshKey).
 func AddCloudInitSSHKey(ctx context.Context, deps AddCloudInitSSHKeyDeps, user, key string) error {
 	if err := cloudinit.ValidateSSHKey(key); err != nil {
-		return fmt.Errorf("%w: %w", ErrSSHKeyInvalid, err)
+		return wrapJoin(ErrSSHKeyInvalid, err)
 	}
 
 	entity, err := resolveCloudInitTarget(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
@@ -317,7 +323,7 @@ func validateCloudInitUpdate(update cluster.CloudInitUpdate) error {
 	// (REPORT.md §2/#3, mirrors ProxMate's isValidPublicKey guard).
 	if update.SSHKeys != nil {
 		if err := cloudinit.ValidateSSHKeys(*update.SSHKeys); err != nil {
-			return fmt.Errorf("%w: %w", ErrInvalidCloudInitConfig, err)
+			return wrapJoin(ErrInvalidCloudInitConfig, err)
 		}
 	}
 
