@@ -71,16 +71,16 @@
 		icon: SidebarIconName;
 	}
 
-	// Nodes is admin-only: the admin section already has its own /admin/nodes,
-	// and regular pool users have no use for the cluster-wide node list.
+	// Main nav: Home (or Dashboard for admins) and Search for everyone;
+	// Machines only for pool users. Admins are redirected from / to /admin,
+	// so their sidebar Home is relabeled Dashboard and points to /admin.
 	const mainNav = $derived<MainNavItem[]>([
-		{ href: resolve('/'), label: () => m['chrome.sidebar.navHome'](), icon: 'home' },
-		{ href: resolve('/search'), label: () => m['chrome.sidebar.navSearch'](), icon: 'search' },
+		...(session.isAdmin
+			? [{ href: resolve('/admin'), label: () => m['chrome.sidebar.navDashboard'](), icon: 'home' as SidebarIconName }]
+			: [{ href: resolve('/'), label: () => m['chrome.sidebar.navHome'](), icon: 'home' as SidebarIconName }]),
+		{ href: resolve('/search'), label: () => m['chrome.sidebar.navSearch'](), icon: 'search' as SidebarIconName },
 		...(!session.isAdmin
 			? [{ href: resolve('/vms'), label: () => m['chrome.sidebar.navMachines'](), icon: 'vm' as SidebarIconName }]
-			: []),
-		...(session.isAdmin
-			? [{ href: resolve('/nodes'), label: () => m['chrome.sidebar.navNodes'](), icon: 'nodes' as SidebarIconName }]
 			: [])
 	]);
 

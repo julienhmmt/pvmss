@@ -1,46 +1,75 @@
 <script lang="ts">
-	import { getDashboardContext } from './dashboard.svelte';
+	import { getDashboardContext, type NodeSummary } from './dashboard.svelte';
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
-	import StatusDot from '$lib/shared/ui/StatusDot.svelte';
-	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import { formatBytes } from '$lib/shared/format-bytes';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getDashboardContext();
 
-	function formatBytes(bytes: number): string {
-		if (bytes === 0) return '0 B';
-		const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-		const i = Math.floor(Math.log(bytes) / Math.log(1024));
-		return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
+	function usagePercent(used: number, total: number): number {
+		if (total <= 0) return 0;
+		return Math.min(100, Math.round((used / total) * 100));
 	}
+
+	function usageColor(percent: number): string {
+		if (percent >= 90) return 'bg-destructive';
+		if (percent >= 70) return 'bg-warning';
+		return 'bg-success';
+	}
+
+	function cpuPercent(node: NodeSummary): number {
+		return Math.min(100, Math.round(node.cpuUsage * 100));
+	}
+
+	function formatRefreshedAt(iso: string): string {
+		return new Date(iso).toLocaleTimeString();
+	}
+
+	function goToNodeVms(nodeName: string): void {
+		void goto(`${resolve('/vms')}?node=${encodeURIComponent(nodeName)}`);
+	}
+
+	function goToCreatePool(): void {
+		void goto(resolve('/admin/pools'));
+	}
+
+	let showVmPopover = $state(false);
 </script>
 
 <PageHeader title={m['admin.dashboard.title']()}>
 	{#snippet actions()}
-		<Button
-			variant="secondary"
-			size="sm"
-			loading={store.loading}
-			onclick={() => void store.load()}
-		>
-			{m['common.refresh']()}
-		</Button>
+		<div class="flex flex-col items-end gap-1">
+			<Button
+				variant="secondary"
+				size="sm"
+				loading={store.loading}
+				onclick={() => void store.load()}
+			>
+				{m['common.refresh']()}
+			</Button>
+			{#if store.summary}
+				<p class="text-xs text-muted-foreground" data-testid="dashboard-refreshed-at">
+					{m['admin.dashboard.refreshed']()} <time datetime={store.summary.refreshedAt}>{formatRefreshedAt(store.summary.refreshedAt)}</time>
+				</p>
+			{/if}
+		</div>
 	{/snippet}
 </PageHeader>
 
 {#if store.loading}
 	<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
-	<div class="grid grid-cols-1 gap-4 sm:grid-cols-3" data-testid="dashboard-stats-skeleton">
-		<Skeleton class="h-24 w-full" />
+	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2" data-testid="dashboard-stats-skeleton">
 		<Skeleton class="h-24 w-full" />
 		<Skeleton class="h-24 w-full" />
 	</div>
-	<div class="mt-6 space-y-2">
-		<Skeleton class="h-6 w-40" />
-		<TableSkeleton columns={2} />
+	<div class="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2" data-testid="dashboard-nodes-skeleton">
+		<Skeleton class="h-40 w-full" />
+		<Skeleton class="h-40 w-full" />
 	</div>
 {:else if store.error}
 	<p role="alert" class="text-destructive">{store.error}</p>
@@ -48,83 +77,128 @@
 	<div role="status" aria-live="polite" class="sr-only">{m['admin.dashboard.loaded']()}</div>
 
 	<section class="space-y-6">
+		<!-- Summary cards + Create pool shortcut -->
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-			<div class="rounded-lg border border-border bg-card p-4">
+			<div class="rounded-lg border border-border bg-card p-4" data-testid="dashboard-card-nodes">
 				<p class="text-sm text-muted-foreground">{m['admin.dashboard.nodes']()}</p>
 				<p class="text-3xl font-semibold">{store.summary.nodeCount}</p>
 			</div>
-			<div class="rounded-lg border border-border bg-card p-4">
+
+			<div
+				class="relative rounded-lg border border-border bg-card p-4"
+				data-testid="dashboard-card-vms"
+				role="button"
+				tabindex="0"
+				onmouseenter={() => (showVmPopover = true)}
+				onmouseleave={() => (showVmPopover = false)}
+				onfocus={() => (showVmPopover = true)}
+				onblur={() => (showVmPopover = false)}
+			>
 				<p class="text-sm text-muted-foreground">{m['admin.dashboard.vms']()}</p>
 				<p class="text-3xl font-semibold">{store.summary.vmCount}</p>
+				{#if showVmPopover}
+					<div
+						class="absolute left-1/2 top-full z-10 mt-2 -translate-x-1/2 rounded-md border border-border bg-popover p-3 text-sm shadow-md"
+						role="tooltip"
+						data-testid="dashboard-vm-popover"
+					>
+						<p class="mb-1 font-medium text-muted-foreground">{m['admin.dashboard.vmCountHover']()}</p>
+						<ul class="space-y-0.5">
+							<li class="flex items-center gap-2">
+								<span class="h-2 w-2 rounded-full bg-success"></span>
+								{m['admin.dashboard.vmRunning']()}: <span class="font-mono">{store.summary.vmStatusCounts.running}</span>
+							</li>
+							<li class="flex items-center gap-2">
+								<span class="h-2 w-2 rounded-full bg-warning"></span>
+								{m['admin.dashboard.vmPaused']()}: <span class="font-mono">{store.summary.vmStatusCounts.paused}</span>
+							</li>
+							<li class="flex items-center gap-2">
+								<span class="h-2 w-2 rounded-full bg-muted-foreground"></span>
+								{m['admin.dashboard.vmStopped']()}: <span class="font-mono">{store.summary.vmStatusCounts.stopped}</span>
+							</li>
+							<li class="flex items-center gap-2">
+								<span class="h-2 w-2 rounded-full bg-info"></span>
+								{m['admin.dashboard.vmOther']()}: <span class="font-mono">{store.summary.vmStatusCounts.other}</span>
+							</li>
+						</ul>
+					</div>
+				{/if}
 			</div>
-			<div class="rounded-lg border border-border bg-card p-4">
-				<p class="text-sm text-muted-foreground">{m['admin.dashboard.storageUsed']()}</p>
-				<p class="text-3xl font-semibold">{formatBytes(store.summary.storageUsedBytes)}</p>
-				<p class="text-sm text-muted-foreground">{m['admin.dashboard.storageOf']()} {formatBytes(store.summary.storageTotalBytes)}</p>
+
+			<div class="flex items-center justify-center rounded-lg border border-border bg-card p-4">
+				<Button variant="primary" size="md" onclick={goToCreatePool} data-testid="dashboard-create-pool">
+					{m['admin.dashboard.createPool']()}
+				</Button>
 			</div>
 		</div>
 
-		<div class="space-y-2">
-			<h2 class="text-lg font-medium">{m['admin.dashboard.nodesHeader']()}</h2>
-			<div class="overflow-x-auto rounded-md border border-border">
-				<table class="w-full text-sm">
-					<thead class="bg-muted/50 text-left">
-						<tr>
-							<th class="px-4 py-2 font-medium">{m['common.name']()}</th>
-							<th class="px-4 py-2 font-medium">{m['common.status']()}</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each store.summary.nodes as node (node.name)}
-							<tr class="border-t border-border">
-								<td class="px-4 py-2">{node.name}</td>
-								<td class="px-4 py-2">
-									<StatusDot
-										tone={node.status === 'online' ? 'success' : 'destructive'}
-										label={node.status}
-									/>
-								</td>
-							</tr>
-						{:else}
-							<tr><td colspan={2} class="p-0"><EmptyState title={m['admin.dashboard.noNodes']()} /></td></tr>
-						{/each}
-					</tbody>
-				</table>
-			</div>
-		</div>
+		<!-- Nodes used by PVMSS -->
+		{#if store.summary.nodes.length === 0}
+			<EmptyState
+				title={m['admin.dashboard.emptyTitle']()}
+				description={m['admin.dashboard.emptyBody']()}
+				dataTestid="dashboard-empty"
+			>
+				{#snippet actions()}
+					<Button variant="primary" size="md" onclick={goToCreatePool}>
+						{m['admin.dashboard.createPool']()}
+					</Button>
+				{/snippet}
+			</EmptyState>
+		{:else}
+			<div class="space-y-2">
+				<h2 class="text-lg font-medium">{m['admin.dashboard.nodesHeader']()}</h2>
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-2" data-testid="dashboard-nodes-grid">
+					{#each store.summary.nodes as node (node.name)}
+						{@const cpuPct = cpuPercent(node)}
+						{@const memPct = usagePercent(node.memoryUsedBytes, node.memoryTotalBytes)}
+						<button
+							type="button"
+							class="group flex flex-col gap-3 rounded-lg border border-border bg-card p-4 text-left transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							onclick={() => goToNodeVms(node.name)}
+							data-testid="dashboard-node-card"
+							data-node={node.name}
+						>
+							<div class="flex items-center justify-between">
+								<div class="flex items-center gap-2">
+									<span
+										class="h-2 w-2 rounded-full {node.status === 'online' ? 'bg-success' : 'bg-destructive'}"
+										aria-hidden="true"
+									></span>
+									<span class="font-mono font-medium">{node.name}</span>
+								</div>
+								<span class="text-sm text-muted-foreground">
+									{node.vmCount} {m['admin.dashboard.nodeVms']()}
+								</span>
+							</div>
 
-		<div class="space-y-2">
-			<h2 class="text-lg font-medium">{m['admin.dashboard.storageHeader']()}</h2>
-			<div class="overflow-x-auto rounded-md border border-border">
-				<table class="w-full text-sm">
-					<thead class="bg-muted/50 text-left">
-						<tr>
-							<th class="px-4 py-2 font-medium">{m['common.name']()}</th>
-							<th class="px-4 py-2 font-medium">{m['common.node']()}</th>
-							<th class="px-4 py-2 font-medium">{m['common.type']()}</th>
-							<th class="px-4 py-2 font-medium">{m['admin.dashboard.used']()}</th>
-							<th class="px-4 py-2 font-medium">{m['common.total']()}</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each store.summary.storages as storage (storage.name + storage.node)}
-							<tr class="border-t border-border">
-								<td class="px-4 py-2">{storage.name}</td>
-								<td class="px-4 py-2">{storage.node}</td>
-								<td class="px-4 py-2">{storage.type}</td>
-								<td class="px-4 py-2">{formatBytes(storage.usedBytes)}</td>
-								<td class="px-4 py-2">{formatBytes(storage.totalBytes)}</td>
-							</tr>
-						{:else}
-							<tr><td colspan={5} class="p-0"><EmptyState title={m['admin.dashboard.noStorages']()} /></td></tr>
-						{/each}
-					</tbody>
-				</table>
+							<div class="flex flex-col gap-1">
+								<div class="flex items-center justify-between text-xs text-muted-foreground">
+									<span>{m['admin.dashboard.cpu']()} · {node.cpuCores} {m['common.cores']()}</span>
+									<span class="font-mono">{cpuPct}%</span>
+								</div>
+								<div class="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+									<div class="h-full rounded-full {usageColor(cpuPct)}" style="width: {cpuPct}%"></div>
+								</div>
+							</div>
+
+							<div class="flex flex-col gap-1">
+								<div class="flex items-center justify-between text-xs text-muted-foreground">
+									<span>{m['admin.dashboard.memory']()}</span>
+									<span class="font-mono">{formatBytes(node.memoryUsedBytes)} / {formatBytes(node.memoryTotalBytes)}</span>
+								</div>
+								<div class="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+									<div class="h-full rounded-full {usageColor(memPct)}" style="width: {memPct}%"></div>
+								</div>
+							</div>
+						</button>
+					{/each}
+				</div>
 			</div>
-		</div>
+		{/if}
 
 		<p class="text-sm text-muted-foreground">
-			{m['admin.dashboard.version']()} {store.summary.version} · {m['admin.dashboard.refreshed']()} {new Date(store.summary.refreshedAt).toLocaleString()}
+			{m['admin.dashboard.version']()} {store.summary.version}
 		</p>
 	</section>
 {/if}
