@@ -179,9 +179,9 @@ func TestCreateCluster_InvalidName(t *testing.T) {
 	ctx := context.Background()
 
 	cases := []struct {
-		name  string
-		row   store.ClusterRow
-		want  error
+		name string
+		row  store.ClusterRow
+		want error
 	}{
 		{
 			name: "uppercase name",
@@ -259,11 +259,11 @@ func TestCreateCluster_WithCreatedAt(t *testing.T) {
 
 	customTime := time.Date(2020, 1, 1, 12, 0, 0, 0, time.UTC)
 	row := store.ClusterRow{
-		Name:      "custom-time",
-		URL:       "https://time.invalid",
-		TokenID:   "id",
+		Name:        "custom-time",
+		URL:         "https://time.invalid",
+		TokenID:     "id",
 		TokenSecret: "secret",
-		CreatedAt: customTime,
+		CreatedAt:   customTime,
 	}
 
 	if err := st.CreateCluster(ctx, row); err != nil {
