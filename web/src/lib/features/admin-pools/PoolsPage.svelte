@@ -6,17 +6,14 @@
 	import PoolCredentialsBanner from './PoolCredentialsBanner.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
-	import Select from '$lib/shared/ui/Select.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import SortableHeader from '$lib/shared/ui/SortableHeader.svelte';
 	import TooltipHeader from '$lib/shared/ui/TooltipHeader.svelte';
 	import SearchIcon from '$lib/shared/ui/icons/SearchIcon.svelte';
 	import TrashIcon from '$lib/shared/ui/icons/TrashIcon.svelte';
-	import LockIcon from '$lib/shared/ui/icons/LockIcon.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
-	type OriginFilter = 'all' | 'pvmss' | 'proxmox';
 	type PoolSortColumn = 'name' | 'total' | 'running' | 'stopped';
 
 	interface Props {
@@ -39,15 +36,8 @@
 	let search = $state('');
 	let showCreate = $state(false);
 	let deleteName = $state<string | null>(null);
-	let originFilter = $state<OriginFilter>('all');
 	let sortBy = $state<PoolSortColumn>('name');
 	let sortDir = $state<'asc' | 'desc'>('asc');
-
-	const originOptions = $derived([
-		{ value: 'all', label: m['admin.pools.filterAllOrigins']() },
-		{ value: 'pvmss', label: m['admin.pools.filterPvmssOnly']() },
-		{ value: 'proxmox', label: m['admin.pools.filterProxmoxOnly']() }
-	]);
 
 	function openCreate(): void {
 		showCreate = true;
@@ -113,31 +103,20 @@
 	function resetFilters(): void {
 		search = '';
 		onSearch('');
-		originFilter = 'all';
 		sortBy = 'name';
 		sortDir = 'asc';
 	}
 
 	const filteredPools = $derived(
 		sortPools(
-			pools.filter((pool) => {
-				if (originFilter === 'pvmss') return pool.managed;
-				if (originFilter === 'proxmox') return !pool.managed;
-				return true;
-			}),
+			pools.filter((pool) => pool.managed),
 			sortBy,
 			sortDir
 		)
 	);
 
 	function emptyTitle(): string {
-		if (pools.length === 0) {
-			return search !== '' ? m['admin.pools.noSearchResults']() : m['admin.pools.noPools']();
-		}
-		if (search !== '' || originFilter !== 'all') {
-			return m['admin.pools.noFilterMatches']();
-		}
-		return m['admin.pools.noPools']();
+		return search !== '' ? m['admin.pools.noSearchResults']() : m['admin.pools.noPools']();
 	}
 
 	function updateSearch(event: Event & { currentTarget: HTMLInputElement }): void {
@@ -165,7 +144,7 @@
 
 {#if loading}
 	<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
-	<TableSkeleton columns={8} />
+	<TableSkeleton columns={7} />
 {:else if error}
 	<p role="alert" class="text-destructive">{error}</p>
 {:else}
@@ -176,7 +155,7 @@
 		<p role="alert" class="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">{deleteError}</p>
 	{/if}
 
-	{#if pools.length > 0 || search !== '' || originFilter !== 'all'}
+	{#if pools.length > 0 || search !== ''}
 		<div class="mb-4 flex flex-wrap items-center gap-3">
 			<div class="relative w-full sm:w-64">
 				<span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
@@ -191,12 +170,6 @@
 					oninput={updateSearch}
 				/>
 			</div>
-			<Select
-				class="w-full sm:w-44"
-				options={originOptions}
-				bind:value={originFilter}
-				aria-label={m['admin.pools.origin']()}
-			/>
 			<Button variant="ghost" size="sm" onclick={resetFilters}>{m['admin.pools.resetFilters']()}</Button>
 			<span class="ml-auto text-sm text-muted-foreground">{m['admin.pools.resultCount']({ count: filteredPools.length })}</span>
 		</div>
@@ -209,7 +182,6 @@
 				<tr>
 					<SortableHeader text={m['common.name']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 					<th class="px-4 py-2 font-medium">{m['admin.pools.comment']()}</th>
-					<th class="px-4 py-2 font-medium">{m['admin.pools.origin']()}</th>
 					<TooltipHeader text={m['admin.pools.vmsColumn']()} tooltip={m['admin.pools.vmsTooltip']()} />
 					<SortableHeader text={m['common.total']()} column="total" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 					<SortableHeader text={m['common.running']()} column="running" activeColumn={sortBy} {sortDir} onSort={handleSort} />
@@ -228,14 +200,6 @@
 								<span class="text-muted-foreground-subtle">—</span>
 							{/if}
 						</td>
-						<td class="px-4 py-3" data-label={m['admin.pools.origin']()}>
-							<span class="inline-flex items-center gap-2">
-								<span class="h-2 w-2 rounded-full {pool.managed ? 'bg-primary' : 'bg-muted-foreground'}" aria-hidden="true"></span>
-								<span class="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium {pool.managed ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border bg-muted text-muted-foreground'}">
-									{pool.managed ? m['admin.pools.managedByPvmss']() : m['admin.pools.managedByProxmox']()}
-								</span>
-							</span>
-						</td>
 						<td class="px-4 py-3" data-label={m['admin.pools.vmsColumn']()}>
 							<PoolVmBar running={pool.running} stopped={pool.stopped} total={pool.total} />
 						</td>
@@ -243,29 +207,22 @@
 						<td class="px-4 py-3 text-right font-mono" data-label={m['common.running']()}>{pool.running}</td>
 						<td class="px-4 py-3 text-right font-mono" data-label={m['common.stopped']()}>{pool.stopped}</td>
 						<td class="px-4 py-3" data-label={m['common.actions']()} data-nolabel="true">
-							{#if pool.managed}
-								<div class="opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
-									<Button
-										variant="destructive"
-										size="sm"
-										label={m['admin.pools.deletePoolLabel']({ name: pool.name })}
-										onclick={() => openDelete(pool.name)}
-									>
-										<TrashIcon class="h-4 w-4" />
-										<span class="ml-1">{m['common.delete']()}</span>
-									</Button>
-								</div>
-							{:else}
-								<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground" title={m['admin.pools.deleteBlockedNotManaged']()}>
-									<LockIcon class="h-3.5 w-3.5" />
-									<span class="sr-only">{m['admin.pools.deleteBlockedNotManaged']()}</span>
-								</span>
-							{/if}
+							<div class="opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
+								<Button
+									variant="destructive"
+									size="sm"
+									label={m['admin.pools.deletePoolLabel']({ name: pool.name })}
+									onclick={() => openDelete(pool.name)}
+								>
+									<TrashIcon class="h-4 w-4" />
+									<span class="ml-1">{m['common.delete']()}</span>
+								</Button>
+							</div>
 						</td>
 					</tr>
 				{:else}
-					<tr><td colspan={8} class="p-0">
-						{#if pools.length === 0 && search === '' && originFilter === 'all'}
+					<tr><td colspan={7} class="p-0">
+						{#if filteredPools.length === 0 && search === ''}
 							<EmptyState title={emptyTitle()}>
 								{#snippet actions()}
 									<Button onclick={openCreate}>{m['admin.pools.newPool']()}</Button>
