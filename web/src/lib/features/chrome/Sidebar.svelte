@@ -1,9 +1,9 @@
 <script lang="ts">
 	/**
 	 * Sidebar — Layer B app-shell sidebar (236px sticky column). Brand + cluster,
-	 * "New machine" CTA (hidden for admins), Home / Machines / Nodes, admin groups
-	 * shown as collapsible sections only when session.isAdmin, user chip, version.
-	 * Active nav uses aria-current="page" + tint fill.
+	 * "New machine" CTA and Machines link (hidden for admins), Home / Nodes,
+	 * admin groups shown as collapsible sections only when session.isAdmin, user
+	 * chip, version. Active nav uses aria-current="page" + tint fill.
 	 *
 	 * Below 900px the same markup becomes a drawer (T035): the parent layout
 	 * mounts it inside a Dialog-style overlay driven by ChromeState.sidebarOpen.
@@ -34,7 +34,7 @@
 
 	// Machines drawer (below the "Machines" nav link): a small owned-VMs list
 	// a pool user can pop open without leaving whatever page they're on.
-	// Admins have no personal pool (never own VMs), so they get the plain link.
+	// Admins have no personal pool (never own VMs), so the link is hidden.
 	let machinesOpen = $state(false);
 	let machinesVms = $state.raw<VmListItem[]>([]);
 	let machinesLoading = $state.raw(false);
@@ -76,7 +76,9 @@
 	const mainNav = $derived<MainNavItem[]>([
 		{ href: resolve('/'), label: () => m['chrome.sidebar.navHome'](), icon: 'home' },
 		{ href: resolve('/search'), label: () => m['chrome.sidebar.navSearch'](), icon: 'search' },
-		{ href: resolve('/vms'), label: () => m['chrome.sidebar.navMachines'](), icon: 'vm' },
+		...(!session.isAdmin
+			? [{ href: resolve('/vms'), label: () => m['chrome.sidebar.navMachines'](), icon: 'vm' as SidebarIconName }]
+			: []),
 		...(session.isAdmin
 			? [{ href: resolve('/nodes'), label: () => m['chrome.sidebar.navNodes'](), icon: 'nodes' as SidebarIconName }]
 			: [])
@@ -141,7 +143,7 @@
 		<nav class="flex flex-col gap-0.5" aria-label={m['chrome.navbar.ariaLabel']()}>
 			{#each mainNav as item (item.href)}
 				{@const active = isActive(item.href, item.href === resolve('/'))}
-				{@const isMachines = item.href === resolve('/vms') && !session.isAdmin}
+				{@const isMachines = item.href === resolve('/vms')}
 				<div class="flex flex-col">
 					<div
 						class="flex items-center rounded-lg text-sm font-medium transition-colors {active
