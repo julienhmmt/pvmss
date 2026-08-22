@@ -169,6 +169,32 @@ func TestSetCloudInitSnippet_ValidationAndPushFailure(t *testing.T) {
 }
 
 //nolint:paralleltest // serial: shared fake dataset
+func TestSetCloudInitConfig_RejectsMalformedSSHKeys(t *testing.T) {
+	index := cloudInitIndex(t)
+	st := cloudInitStore(t)
+
+	// A pasted multi-line block must be rejected before it ever reaches
+	// Proxmox, where it would smuggle extra keys into authorized_keys
+	// (REPORT.md §2/#3). The structured config write must not happen.
+	keys := []string{"ssh-ed25519 AAAA-good\nssh-ed25519 AAAA-smuggled"}
+	_, err := vm.SetCloudInitConfig(context.Background(), vm.CloudInitConfigDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st, Refresher: testRefresher{}}, cluster.CloudInitUpdate{SSHKeys: &keys}, false)
+	if err == nil {
+		t.Fatal("SetCloudInitConfig accepted a multi-line ssh key, want rejection")
+	}
+	for _, c := range cluster.FakeCallsFor(101) {
+		if c.Action == "set_cloudinit_config" {
+			t.Fatalf("a multi-line ssh key reached the config write: %+v", c)
+		}
+	}
+
+	// A well-formed key still passes validation.
+	good := []string{"ssh-ed25519 AAAA-good-comment"}
+	if _, err := vm.SetCloudInitConfig(context.Background(), vm.CloudInitConfigDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st, Refresher: testRefresher{}}, cluster.CloudInitUpdate{SSHKeys: &good}, false); err != nil {
+		t.Fatalf("SetCloudInitConfig rejected a valid ssh key: %v", err)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake dataset
 func TestSetCloudInitConfig_PasswordUsesGuestAgentNotCipassword(t *testing.T) {
 	index := cloudInitIndex(t)
 	st := cloudInitStore(t)

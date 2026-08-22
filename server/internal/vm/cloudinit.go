@@ -244,6 +244,15 @@ func validateCloudInitUpdate(update cluster.CloudInitUpdate) error {
 		}
 	}
 
+	// Reject malformed or multi-line SSH keys before they reach Proxmox: a
+	// pasted multi-line value would smuggle extra keys into authorized_keys
+	// (REPORT.md §2/#3, mirrors ProxMate's isValidPublicKey guard).
+	if update.SSHKeys != nil {
+		if err := cloudinit.ValidateSSHKeys(*update.SSHKeys); err != nil {
+			return fmt.Errorf("%w: %w", ErrInvalidCloudInitConfig, err)
+		}
+	}
+
 	return nil
 }
 
