@@ -34,6 +34,10 @@ export class SerialConsoleStore {
 	#ws: WebSocket | null = null;
 	#container: HTMLElement | null = null;
 	#keepaliveTimer: ReturnType<typeof setInterval> | null = null;
+	// connectedAt is set on WS open so we can detect an "instant close" —
+	// Proxmox returns EOF immediately when the VM has no serial device to
+	// attach to (see #onClose).
+	#connectedAt = 0;
 
 	constructor(cluster: string, vmid: number) {
 		this.cluster = cluster;
@@ -126,6 +130,7 @@ export class SerialConsoleStore {
 	#onOpen(): void {
 		this.state = 'connected';
 		this.error = null;
+		this.#connectedAt = Date.now();
 		// Send initial resize so the remote knows our dimensions.
 		if (this.#term !== null) {
 			this.#sendResize(this.#term.cols, this.#term.rows);
@@ -170,8 +175,19 @@ export class SerialConsoleStore {
 
 	#onClose(): void {
 		this.#stopKeepalive();
-		this.state = 'disconnected';
 		this.#ws = null;
+
+		// If the tunnel closed within ~2s of connecting and we received no
+		// output, Proxmox most likely had nothing to attach to (no serial0 on
+		// the VM). Surface a clear, actionable message instead of a silent
+		// black screen. The user can still reconnect after fixing the VM.
+		if (this.#connectedAt !== 0 && Date.now() - this.#connectedAt < 2000) {
+			this.state = 'error';
+			this.error = m['vms.console.serial.noSerial']();
+			return;
+		}
+
+		this.state = 'disconnected';
 	}
 
 	#onError(): void {

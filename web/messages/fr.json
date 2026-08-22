@@ -394,6 +394,7 @@
  "vms.console.serial.connectionFailed": "Échec de la connexion série",
  "vms.console.serial.disconnected": "Terminal série déconnecté",
  "vms.console.serial.reconnect": "Reconnecter le terminal série",
+ "vms.console.serial.noSerial": "Cette VM n'a pas de console série. Dans Proxmox, ajoutez un port série (serial0) au matériel de la VM et redémarrez, puis vérifiez que l'invité affiche une invite de connexion sur le port série.",
  "vms.cloudinit.heading": "Cloud-init",
  "vms.cloudinit.description": "Configurer les paramètres cloud-init de la VM en cours d'exécution ou du YAML personnalisé.",
  "vms.cloudinit.modeLabel": "Mode d'édition cloud-init",
