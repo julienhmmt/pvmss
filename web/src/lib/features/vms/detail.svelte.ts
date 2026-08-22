@@ -3,7 +3,7 @@ import { get, post, del, patch, put, ApiRequestError } from '$lib/shared/api/cli
 import { m } from '$lib/paraglide/messages.js';
 import type { VmStatus } from './list.svelte';
 
-export type VmAction = 'start' | 'stop' | 'shutdown' | 'reboot' | 'reset';
+export type VmAction = 'start' | 'stop' | 'shutdown' | 'reboot' | 'reset' | 'pause' | 'resume';
 
 export interface VmDetailEntity {
 	cluster: string;
@@ -72,6 +72,23 @@ interface DeleteResponse {
 	status: string;
 }
 
+/** A single row from GET /api/v1/vms/:cluster/:vmid/audit. */
+export interface VmAuditEntry {
+	id: number;
+	actor: string;
+	cluster: string;
+	vmid: number;
+	action: string;
+	timestamp: string;
+}
+
+interface AuditPage {
+	items: VmAuditEntry[];
+	total: number;
+	page: number;
+	pageSize: number;
+}
+
 /**
  * State for the single-VM detail view (V15). One store instance per consuming
  * screen (constitution VII: no module singletons). The entity is `$state.raw`
@@ -115,6 +132,14 @@ export class VmDetailStore {
 	/** True while the serial-console retrofit is in flight. */
 	serialEnabling = $state.raw(false);
 	serialEnableError = $state.raw<string | null>(null);
+
+	/** Per-VM audit log (activity tab). Loaded lazily when the tab opens. */
+	auditItems = $state.raw<VmAuditEntry[] | null>(null);
+	auditLoading = $state.raw(false);
+	auditError = $state.raw<string | null>(null);
+	auditPage = $state.raw(1);
+	auditTotal = $state.raw(0);
+	auditPageSize = $state.raw(0);
 
 	/** Retrofits a serial port (serial0) onto an existing VM so the Text
 	 * console works, then reloads so the entity's hasSerial flips. */
@@ -333,6 +358,28 @@ export class VmDetailStore {
 			this.patchInFlight = false;
 		}
 	}
+
+	/**
+	 * Loads one page of the per-VM audit log (activity tab). The server enforces
+	 * the same ownership gate as the detail endpoint, so no admin scope is
+	 * needed. `page` is 1-indexed.
+	 */
+	async audit(page = 1): Promise<void> {
+		if (this.auditLoading) return;
+		this.auditLoading = true;
+		this.auditError = null;
+		try {
+			const result = await get<AuditPage>(`${this.#basePath}/audit?page=${page}`);
+			this.auditItems = result.items;
+			this.auditTotal = result.total;
+			this.auditPage = result.page;
+			this.auditPageSize = result.pageSize;
+		} catch (err) {
+			this.auditError = errorMessage(err, () => m['vm.activity.loaderror']());
+		} finally {
+			this.auditLoading = false;
+		}
+	}
 }
 
 /** optimisticStatus returns the status a VM is expected to show after kind. */
@@ -341,10 +388,13 @@ function optimisticStatus(kind: VmAction): VmStatus {
 		case 'start':
 		case 'reboot':
 		case 'reset':
+		case 'resume':
 			return 'running';
 		case 'stop':
 		case 'shutdown':
 			return 'stopped';
+		case 'pause':
+			return 'paused';
 	}
 }
 

@@ -1167,5 +1167,17 @@
   "vms.cloudinit.addSSHKeyNow": "Injecter cette clé maintenant (sans redémarrage)",
   "vms.cloudinit.errorAddSSHKey": "Échec de l'injection de la clé SSH via l'agent invité",
   "vms.cloudinit.sshKeyUser": "Utilisateur (optionnel)",
-  "vms.cloudinit.sshKeyHint": "La clé est ajoutée au guest en cours d'exécution via l'agent QEMU, sans redémarrage."
+  "vms.cloudinit.sshKeyHint": "La clé est ajoutée au guest en cours d'exécution via l'agent QEMU, sans redémarrage.",
+  "vms.action.pause": "Mettre en pause",
+  "vms.action.resume": "Reprendre",
+  "toast.vmPaused": "Machine « {name} » mise en pause",
+  "toast.vmResumed": "Machine « {name} » reprise",
+  "vm.activity.tab": "Activité",
+  "vm.activity.empty": "Aucune action enregistrée pour cette machine.",
+  "vm.activity.loaderror": "Échec du chargement de l'activité.",
+  "vm.activity.loaded": "{count} entrée(s) chargée(s)",
+  "vm.activity.actor": "Acteur",
+  "vm.activity.action": "Action",
+  "vm.activity.time": "Heure",
+  "vm.activity.pagetitle": "Page {page} sur {total}"
 }

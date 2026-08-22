@@ -9,6 +9,7 @@
 	import VmHardwareTab from './hardware/VmHardwareTab.svelte';
 	import CloudInitTab from './CloudInitTab.svelte';
 	import VmSnapshotsTab from './VmSnapshotsTab.svelte';
+	import VmActivityTab from './VmActivityTab.svelte';
 	import ConsoleBanner from './ConsoleBanner.svelte';
 	import VmMetricsRow from './VmMetricsRow.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -28,7 +29,8 @@
 		{ id: 'network', label: () => m['vms.detail.tabNetwork']() },
 		{ id: 'hardware', label: () => m['vms.detail.tabHardware']() },
 		{ id: 'cloudinit', label: () => m['vms.detail.tabCloudinit']() },
-		{ id: 'snapshots', label: () => m['vms.detail.tabSnapshots']() }
+		{ id: 'snapshots', label: () => m['vms.detail.tabSnapshots']() },
+		{ id: 'activity', label: () => m['vm.activity.tab']() }
 	];
 	let activeTab = $state('overview');
 
@@ -279,6 +281,12 @@
 		<div id="panel-snapshots" role="tabpanel" aria-labelledby="tab-snapshots" hidden={activeTab !== 'snapshots'} class="mt-4">
 			{#if activeTab === 'snapshots'}
 				<VmSnapshotsTab />
+			{/if}
+		</div>
+
+		<div id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" hidden={activeTab !== 'activity'} class="mt-4">
+			{#if activeTab === 'activity'}
+				<VmActivityTab />
 			{/if}
 		</div>
 	</div>

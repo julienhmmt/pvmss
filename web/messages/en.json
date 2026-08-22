@@ -1167,5 +1167,17 @@
   "vms.cloudinit.addSSHKeyNow": "Inject this key now (no reboot)",
   "vms.cloudinit.errorAddSSHKey": "Failed to inject the SSH key via the guest agent",
   "vms.cloudinit.sshKeyUser": "User (optional)",
-  "vms.cloudinit.sshKeyHint": "The key is added to the running guest via the QEMU agent, without a reboot."
+  "vms.cloudinit.sshKeyHint": "The key is added to the running guest via the QEMU agent, without a reboot.",
+  "vms.action.pause": "Pause",
+  "vms.action.resume": "Resume",
+  "toast.vmPaused": "VM \"{name}\" paused",
+  "toast.vmResumed": "VM \"{name}\" resumed",
+  "vm.activity.tab": "Activity",
+  "vm.activity.empty": "No actions recorded for this VM.",
+  "vm.activity.loaderror": "Failed to load activity.",
+  "vm.activity.loaded": "{count} entries loaded",
+  "vm.activity.actor": "Actor",
+  "vm.activity.action": "Action",
+  "vm.activity.time": "Time",
+  "vm.activity.pagetitle": "Page {page} of {total}"
 }
