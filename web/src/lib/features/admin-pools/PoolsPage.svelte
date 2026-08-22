@@ -2,12 +2,22 @@
 	import type { AdminPool, CreatedPoolCredentials } from './pools.svelte';
 	import CreatePoolDialog from './CreatePoolDialog.svelte';
 	import DeletePoolConfirm from './DeletePoolConfirm.svelte';
+	import PoolVmBar from './PoolVmBar.svelte';
+	import PoolCredentialsBanner from './PoolCredentialsBanner.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import SortableHeader from '$lib/shared/ui/SortableHeader.svelte';
+	import TooltipHeader from '$lib/shared/ui/TooltipHeader.svelte';
+	import SearchIcon from '$lib/shared/ui/icons/SearchIcon.svelte';
+	import TrashIcon from '$lib/shared/ui/icons/TrashIcon.svelte';
+	import LockIcon from '$lib/shared/ui/icons/LockIcon.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+
+	type OriginFilter = 'all' | 'pvmss' | 'proxmox';
+	type PoolSortColumn = 'name' | 'total' | 'running' | 'stopped';
 
 	interface Props {
 		pools: AdminPool[];
@@ -25,10 +35,19 @@
 		onDismissCredentials: () => void;
 	}
 
-	let { pools, loading, error, saving, saveError, deleting, deleteError, announce, credentials, onSearch, onCreate, onDelete, onDismissCredentials }: Props = $props();
+	let { pools, loading, error, saving, saveError, deleteError, deleting, announce, credentials, onSearch, onCreate, onDelete, onDismissCredentials }: Props = $props();
 	let search = $state('');
 	let showCreate = $state(false);
 	let deleteName = $state<string | null>(null);
+	let originFilter = $state<OriginFilter>('all');
+	let sortBy = $state<PoolSortColumn>('name');
+	let sortDir = $state<'asc' | 'desc'>('asc');
+
+	const originOptions = $derived([
+		{ value: 'all', label: m['admin.pools.filterAllOrigins']() },
+		{ value: 'pvmss', label: m['admin.pools.filterPvmssOnly']() },
+		{ value: 'proxmox', label: m['admin.pools.filterProxmoxOnly']() }
+	]);
 
 	function openCreate(): void {
 		showCreate = true;
@@ -56,6 +75,76 @@
 			}
 		}
 	}
+
+	function handleSort(column: string): void {
+		const next = column as PoolSortColumn;
+		if (sortBy === next) {
+			sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			sortBy = next;
+			sortDir = 'asc';
+		}
+	}
+
+	function sortPools(list: AdminPool[], by: PoolSortColumn, dir: 'asc' | 'desc'): AdminPool[] {
+		const sorted = [...list];
+		sorted.sort((a, b) => {
+			let cmp = 0;
+			switch (by) {
+				case 'name':
+					cmp = a.name.localeCompare(b.name);
+					break;
+				case 'total':
+					cmp = a.total - b.total;
+					break;
+				case 'running':
+					cmp = a.running - b.running;
+					break;
+				case 'stopped':
+					cmp = a.stopped - b.stopped;
+					break;
+			}
+			if (cmp !== 0) return cmp;
+			return a.name.localeCompare(b.name);
+		});
+		return dir === 'desc' ? sorted.reverse() : sorted;
+	}
+
+	function resetFilters(): void {
+		search = '';
+		onSearch('');
+		originFilter = 'all';
+		sortBy = 'name';
+		sortDir = 'asc';
+	}
+
+	const filteredPools = $derived(
+		sortPools(
+			pools.filter((pool) => {
+				if (originFilter === 'pvmss') return pool.managed;
+				if (originFilter === 'proxmox') return !pool.managed;
+				return true;
+			}),
+			sortBy,
+			sortDir
+		)
+	);
+
+	function emptyTitle(): string {
+		if (pools.length === 0) {
+			return search !== '' ? m['admin.pools.noSearchResults']() : m['admin.pools.noPools']();
+		}
+		if (search !== '' || originFilter !== 'all') {
+			return m['admin.pools.noFilterMatches']();
+		}
+		return m['admin.pools.noPools']();
+	}
+
+	function updateSearch(event: Event & { currentTarget: HTMLInputElement }): void {
+		const value = event.currentTarget.value;
+		search = value;
+		onSearch(value);
+	}
 </script>
 
 <svelte:head>
@@ -68,15 +157,15 @@
 	{/snippet}
 </PageHeader>
 
-<div class="mb-5 max-w-sm">
-	<label for="pool-search" class="mb-1 block text-sm font-medium">{m['admin.pools.search']()}</label>
-	<input id="pool-search" class="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" type="search" bind:value={search} oninput={() => onSearch(search)} />
-</div>
-
 <div class="sr-only" role="status" aria-live="polite">{announce ?? ''}</div>
+
+{#if credentials}
+	<PoolCredentialsBanner {credentials} onDismiss={onDismissCredentials} />
+{/if}
+
 {#if loading}
 	<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
-	<TableSkeleton columns={6} />
+	<TableSkeleton columns={8} />
 {:else if error}
 	<p role="alert" class="text-destructive">{error}</p>
 {:else}
@@ -86,43 +175,105 @@
 	{#if deleteError}
 		<p role="alert" class="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">{deleteError}</p>
 	{/if}
+
+	{#if pools.length > 0 || search !== '' || originFilter !== 'all'}
+		<div class="mb-4 flex flex-wrap items-center gap-3">
+			<div class="relative w-full sm:w-64">
+				<span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
+					<SearchIcon class="h-4 w-4" />
+				</span>
+				<input
+					type="search"
+					class="pv-input pl-9"
+					placeholder={m['admin.pools.searchPlaceholder']()}
+					aria-label={m['admin.pools.search']()}
+					value={search}
+					oninput={updateSearch}
+				/>
+			</div>
+			<Select
+				class="w-full sm:w-44"
+				options={originOptions}
+				bind:value={originFilter}
+				aria-label={m['admin.pools.origin']()}
+			/>
+			<Button variant="ghost" size="sm" onclick={resetFilters}>{m['admin.pools.resetFilters']()}</Button>
+			<span class="ml-auto text-sm text-muted-foreground">{m['admin.pools.resultCount']({ count: filteredPools.length })}</span>
+		</div>
+	{/if}
+
 	<div class="overflow-x-auto rounded-lg border border-border">
-		<table class="w-full text-sm">
+		<table class="pv-responsive-table text-sm">
+			<caption class="sr-only">{m['admin.pools.heading']()}</caption>
 			<thead class="bg-muted/50 text-left">
 				<tr>
-					<th class="px-4 py-2 font-medium">{m['common.name']()}</th>
+					<SortableHeader text={m['common.name']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 					<th class="px-4 py-2 font-medium">{m['admin.pools.comment']()}</th>
 					<th class="px-4 py-2 font-medium">{m['admin.pools.origin']()}</th>
-					<th class="px-4 py-2 text-right font-medium">{m['common.total']()}</th>
-					<th class="px-4 py-2 text-right font-medium">{m['common.running']()}</th>
-					<th class="px-4 py-2 text-right font-medium">{m['common.stopped']()}</th>
+					<TooltipHeader text={m['admin.pools.vmsColumn']()} tooltip={m['admin.pools.vmsTooltip']()} />
+					<SortableHeader text={m['common.total']()} column="total" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<SortableHeader text={m['common.running']()} column="running" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<SortableHeader text={m['common.stopped']()} column="stopped" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 					<th class="px-4 py-2 text-right font-medium">{m['common.actions']()}</th>
 				</tr>
 			</thead>
 			<tbody>
-				{#each pools as pool (pool.name)}
-					<tr class="border-t border-border">
-						<td class="px-4 py-2 font-mono">{pool.name}</td>
-						<td class="px-4 py-2 text-muted-foreground">{pool.comment || '—'}</td>
-						<td class="px-4 py-2">
-							<span class="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium {pool.managed ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border bg-muted text-muted-foreground'}">
-								{pool.managed ? m['admin.pools.managedByPvmss']() : m['admin.pools.managedByProxmox']()}
+				{#each filteredPools as pool (pool.name)}
+					<tr class="group border-t border-border transition-colors hover:bg-muted/40">
+						<td class="px-4 py-3 font-mono" data-label={m['common.name']()}>{pool.name}</td>
+						<td class="px-4 py-3 text-muted-foreground" data-label={m['admin.pools.comment']()}>
+							{#if pool.comment}
+								<span class="block max-w-xs truncate" title={pool.comment}>{pool.comment}</span>
+							{:else}
+								<span class="text-muted-foreground-subtle">—</span>
+							{/if}
+						</td>
+						<td class="px-4 py-3" data-label={m['admin.pools.origin']()}>
+							<span class="inline-flex items-center gap-2">
+								<span class="h-2 w-2 rounded-full {pool.managed ? 'bg-primary' : 'bg-muted-foreground'}" aria-hidden="true"></span>
+								<span class="inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium {pool.managed ? 'border-primary/30 bg-primary/10 text-primary' : 'border-border bg-muted text-muted-foreground'}">
+									{pool.managed ? m['admin.pools.managedByPvmss']() : m['admin.pools.managedByProxmox']()}
+								</span>
 							</span>
 						</td>
-						<td class="px-4 py-2 text-right">{pool.total}</td>
-						<td class="px-4 py-2 text-right">{pool.running}</td>
-						<td class="px-4 py-2 text-right">{pool.stopped}</td>
-						<td class="px-4 py-2 text-right">
+						<td class="px-4 py-3" data-label={m['admin.pools.vmsColumn']()}>
+							<PoolVmBar running={pool.running} stopped={pool.stopped} total={pool.total} />
+						</td>
+						<td class="px-4 py-3 text-right font-mono" data-label={m['common.total']()}>{pool.total}</td>
+						<td class="px-4 py-3 text-right font-mono" data-label={m['common.running']()}>{pool.running}</td>
+						<td class="px-4 py-3 text-right font-mono" data-label={m['common.stopped']()}>{pool.stopped}</td>
+						<td class="px-4 py-3" data-label={m['common.actions']()} data-nolabel="true">
 							{#if pool.managed}
-								<Button variant="destructive" size="sm" label={m['admin.pools.deletePoolLabel']({ name: pool.name })} onclick={() => openDelete(pool.name)}>{m['common.delete']()}</Button>
+								<div class="opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
+									<Button
+										variant="destructive"
+										size="sm"
+										label={m['admin.pools.deletePoolLabel']({ name: pool.name })}
+										onclick={() => openDelete(pool.name)}
+									>
+										<TrashIcon class="h-4 w-4" />
+										<span class="ml-1">{m['common.delete']()}</span>
+									</Button>
+								</div>
 							{:else}
-								<span class="text-xs text-muted-foreground">{m['admin.pools.deleteBlockedNotManaged']()}</span>
+								<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground" title={m['admin.pools.deleteBlockedNotManaged']()}>
+									<LockIcon class="h-3.5 w-3.5" />
+									<span class="sr-only">{m['admin.pools.deleteBlockedNotManaged']()}</span>
+								</span>
 							{/if}
 						</td>
 					</tr>
 				{:else}
-					<tr><td colspan={7} class="p-0">
-						<EmptyState title={search ? m['admin.pools.noSearchResults']() : m['admin.pools.noPools']()} />
+					<tr><td colspan={8} class="p-0">
+						{#if pools.length === 0 && search === '' && originFilter === 'all'}
+							<EmptyState title={emptyTitle()}>
+								{#snippet actions()}
+									<Button onclick={openCreate}>{m['admin.pools.newPool']()}</Button>
+								{/snippet}
+							</EmptyState>
+						{:else}
+							<EmptyState title={emptyTitle()} />
+						{/if}
 					</td></tr>
 				{/each}
 			</tbody>
@@ -133,41 +284,4 @@
 <CreatePoolDialog bind:open={showCreate} saving={saving} error={saveError} onClose={closeCreate} onCreate={async (name, comment) => { try { await onCreate(name, comment); closeCreate(); } catch { /* error shown via saveError */ } }} />
 {#if deleteName}
 	<DeletePoolConfirm open={true} poolName={deleteName} deleting={deleting === deleteName} error={deleteError} onClose={closeDelete} onConfirm={confirmDelete} />
-{/if}
-
-{#if credentials}
-	<Dialog open={true} labelledBy="credentials-title" onClose={onDismissCredentials}>
-		<h2 id="credentials-title" class="mb-4 text-lg font-semibold">{m['admin.pools.credentialsTitle']()}</h2>
-		<div class="space-y-4">
-			<p class="rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">
-				{m['admin.pools.credentialsWarning']()}
-			</p>
-			<div class="space-y-2">
-				<div>
-					<span class="mb-1 block text-sm font-medium">{m['admin.pools.poolName']()}</span>
-					<div class="flex items-center gap-2">
-						<code class="flex-1 rounded-md border border-border bg-muted px-3 py-2 text-sm">{credentials.name}</code>
-						<Button variant="secondary" size="sm" onclick={() => navigator.clipboard.writeText(credentials.name)}>{m['common.copy']()}</Button>
-					</div>
-				</div>
-				<div>
-					<span class="mb-1 block text-sm font-medium">{m['admin.pools.username']()}</span>
-					<div class="flex items-center gap-2">
-						<code class="flex-1 rounded-md border border-border bg-muted px-3 py-2 text-sm">{credentials.username}@pve</code>
-						<Button variant="secondary" size="sm" onclick={() => navigator.clipboard.writeText(`${credentials.username}@pve`)}>{m['common.copy']()}</Button>
-					</div>
-				</div>
-				<div>
-					<span class="mb-1 block text-sm font-medium">{m['admin.pools.generatedPassword']()}</span>
-					<div class="flex items-center gap-2">
-						<code class="flex-1 rounded-md border border-border bg-muted px-3 py-2 text-sm font-mono">{credentials.password}</code>
-						<Button variant="secondary" size="sm" onclick={() => navigator.clipboard.writeText(credentials.password)}>{m['common.copy']()}</Button>
-					</div>
-				</div>
-			</div>
-			<div class="flex justify-end pt-2">
-				<Button onclick={onDismissCredentials}>{m['admin.pools.credentialsDismiss']()}</Button>
-			</div>
-		</div>
-	</Dialog>
 {/if}
