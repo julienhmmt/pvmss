@@ -169,7 +169,7 @@ func runChangePasswordCase(t *testing.T, impl cluster.Client) {
 func TestContract_CloudInitReaderAndWriter(t *testing.T) {
 	cluster.ResetFake()
 
-	config := cluster.CloudInitConfig{User: "debian", IPMode: cluster.CloudInitIPModeDHCP}
+	config := cluster.CloudInitConfig{User: cluster.FakeCloudInitUser, IPMode: cluster.CloudInitIPModeDHCP}
 	if err := (cluster.Fake{}).SetCloudInitConfig(context.Background(), cluster.FakeNode01, 101, config); err != nil {
 		t.Fatalf("SetCloudInitConfig: %v", err)
 	}

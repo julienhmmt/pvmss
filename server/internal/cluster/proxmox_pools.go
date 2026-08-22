@@ -175,7 +175,7 @@ func (p Proxmox) DeletePool(ctx context.Context, poolID string) error {
 		return err
 	}
 
-	_, _ = rest.do(ctx, http.MethodPut, "/access/acl", url.Values{"path": {"/pool/" + poolID}, "delete": {"1"}})
+	_, _ = rest.do(ctx, http.MethodPut, "/access/acl", url.Values{"path": {"/pool/" + poolID}, actionDelete: {"1"}})
 
 	return nil
 }

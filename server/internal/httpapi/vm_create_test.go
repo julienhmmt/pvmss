@@ -89,7 +89,7 @@ func seedBridgeApprovals(t *testing.T, st *store.Store) {
 	t.Helper()
 
 	for _, node := range []string{cluster.FakeNode01, cluster.FakeNode02} {
-		for _, name := range []string{"vmbr0", "vmbr1"} {
+		for _, name := range []string{testBridgeVmbr0, "vmbr1"} {
 			if err := st.SetBridgeEnabled(context.Background(), "default", node, name, true); err != nil {
 				t.Fatalf("seed bridge approval: %v", err)
 			}

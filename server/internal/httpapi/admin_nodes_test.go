@@ -156,7 +156,7 @@ func newMultiClusterAdminCatalogHandler(t *testing.T) (*httpapi.AdminCatalog, *h
 	t.Cleanup(cluster.ResetFake)
 
 	const secret = "admin-catalog-cross-cluster-secret-32b" // deterministic test secret
-	st, err := store.Open(config.Configuration{DBPath: filepath.Join(t.TempDir(), "catalog-cross-cluster.db"), ClusterSource: "fake", SessionSecret: secret})
+	st, err := store.Open(config.Configuration{DBPath: filepath.Join(t.TempDir(), "catalog-cross-cluster.db"), ClusterSource: cluster.SourceFake, SessionSecret: secret})
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
 	}

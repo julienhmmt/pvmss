@@ -24,7 +24,7 @@ import (
 func newClusterAuthFixture(t *testing.T) (*httpapi.Auth, *store.Store) {
 	t.Helper()
 	secret := "auth-cluster-test-secret-with-32-bytes" //nolint:gosec // deterministic test secret
-	st, err := store.Open(config.Configuration{DBPath: filepath.Join(t.TempDir(), "auth-cluster.db"), ClusterSource: "fake", SessionSecret: secret})
+	st, err := store.Open(config.Configuration{DBPath: filepath.Join(t.TempDir(), "auth-cluster.db"), ClusterSource: cluster.SourceFake, SessionSecret: secret})
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
 	}

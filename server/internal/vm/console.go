@@ -1,7 +1,7 @@
 // Package vm — T10 console ticket store and Resolve()-gated ticket issuance.
 //
 // Per AC01 (see specs/011-t10-console-vnc/spec.md "Why this tranche exists"),
-// the VNC ticket store stays in process memory: a map, a mutex, a TTL, and
+// the console ticket store stays in process memory: a map, a mutex, a TTL, and
 // oldest-eviction when the fixed capacity is reached. It is never persisted
 // to SQLite or any store shared between replicas — PVMSS is single-instance
 // by design (SQLite on a ReadWriteOnce volume), so externalizing the store
@@ -15,7 +15,6 @@ import (
 	"errors"
 	"fmt"
 	"pvmss/server/internal/auth"
-	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"slices"
 	"sync"
@@ -35,40 +34,42 @@ const TicketTTL = 30 * time.Second
 const ticketStoreCapacity = 256
 
 // ErrInvalidTicket is returned by ConsoleTicketStore.Consume when the token is
-// missing, expired, already consumed, or bound to a different (cluster, vmid)
-// than the one in the WebSocket URL. The WebSocket handler maps this to a 400
-// without upgrading the connection (FR-004, FR-005).
+// missing, expired, already consumed, or bound to a different (kind, cluster,
+// vmid) than the one in the WebSocket URL. The WebSocket handler maps this to
+// a 400 without upgrading the connection (FR-004, FR-005).
 var ErrInvalidTicket = errors.New("invalid console ticket")
 
 // ErrClusterConsoleUnavailable is returned by GetConsoleTicket when the
-// cluster client's GetVNCTicket call fails — Proxmox is unreachable, the VM
+// cluster client's proxy ticket call fails — Proxmox is unreachable, the VM
 // is not running, etc. The HTTP handler maps this to 502 console_unavailable
 // (contracts/vm-console.md).
 var ErrClusterConsoleUnavailable = errors.New("console unavailable")
 
-// VNCTicket is an in-memory, single-use, TTL-bound capability binding an
-// opaque token to (cluster, vmid, node, ProxmoxTicket, port). The client ever
-// sees only the Token; every other field stays server-side (FR-002, FR-003).
-// Never persisted, never serialized to a store (AC01).
-type VNCTicket struct {
-	Token         string
-	Cluster       string
-	VMID          int
-	Node          string
-	ProxmoxTicket string
-	Port          int
-	IssuedAt      time.Time
-	ExpiresAt     time.Time
-}
+// AuditActionConsoleOpen is the audit record action for opening a console
+// (VNC or serial terminal) session. Exported so external tests can assert on
+// it without repeating the literal.
+const AuditActionConsoleOpen = "console_open"
 
-// TerminalTicket is the serial-terminal analogue of VNCTicket: an in-memory,
-// single-use, TTL-bound capability binding an opaque token to
-// (cluster, vmid, node, ProxmoxTicket, port) for a serial terminal session.
-// The client ever sees only the Token; every other field stays server-side.
-// Never persisted, never serialized to a store (AC01). Same lifecycle as
-// VNCTicket — issued by GetTerminalTicket, consumed once by the serial
-// WebSocket handler.
-type TerminalTicket struct {
+// ConsoleKind distinguishes VNC console tickets from serial terminal tickets.
+// Both share the same store, TTL, and eviction policy; the kind prevents a
+// VNC ticket from being consumed by the serial WebSocket handler (and vice
+// versa).
+type ConsoleKind int
+
+const (
+	// KindVNC marks a ticket for the VNC console WebSocket path.
+	KindVNC ConsoleKind = iota
+	// KindTerminal marks a ticket for the serial terminal WebSocket path.
+	KindTerminal
+)
+
+// ConsoleTicket is an in-memory, single-use, TTL-bound capability binding an
+// opaque token to (kind, cluster, vmid, node, ProxmoxTicket, port). The client
+// ever sees only the Token; every other field stays server-side (FR-002,
+// FR-003). Never persisted, never serialized to a store (AC01). Issued by
+// GetConsoleTicket, consumed once by the VNC or serial WebSocket handler.
+type ConsoleTicket struct {
+	Kind          ConsoleKind
 	Token         string
 	Cluster       string
 	VMID          int
@@ -81,45 +82,37 @@ type TerminalTicket struct {
 
 // ConsoleTicketStore is the in-memory ticket store (AC01). Constructed once in
 // main.go and passed into httpapi alongside every other dependency — no
-// package-level singleton, no global mutable state.
-//
-// It holds two parallel maps: VNC tickets (ConsoleRelay) and serial terminal
-// tickets (TerminalRelay). Both reuse the same TTL, capacity, and eviction
-// policy. Keeping them as separate maps (rather than a unified ticket with a
-// Mode field) means the existing VNC tests and the VNC relay path are
-// untouched — the serial path is purely additive.
+// package-level singleton, no global mutable state. A single map holds both
+// VNC and serial terminal tickets, distinguished by the Kind field.
 type ConsoleTicketStore struct {
-	mu          sync.Mutex
-	tickets     map[string]VNCTicket
-	order       []string
-	termTickets map[string]TerminalTicket
-	termOrder   []string
+	mu      sync.Mutex
+	tickets map[string]ConsoleTicket
+	order   []string
 }
 
 // NewConsoleTicketStore creates an empty store.
 func NewConsoleTicketStore() *ConsoleTicketStore {
 	return &ConsoleTicketStore{
-		tickets:     make(map[string]VNCTicket),
-		order:       make([]string, 0, ticketStoreCapacity),
-		termTickets: make(map[string]TerminalTicket),
-		termOrder:   make([]string, 0, ticketStoreCapacity),
+		tickets: make(map[string]ConsoleTicket),
+		order:   make([]string, 0, ticketStoreCapacity),
 	}
 }
 
 // Issue generates an opaque, cryptographically random token, stores the entry,
 // appends to the insertion-order slice, and evicts the oldest entry if the
 // fixed capacity is exceeded (FR-003, B11). Returns the new ticket.
-func (s *ConsoleTicketStore) Issue(clusterName string, vmid int, node, proxmoxTicket string, port int) VNCTicket {
+func (s *ConsoleTicketStore) Issue(kind ConsoleKind, clusterName string, vmid int, node, proxmoxTicket string, port int) ConsoleTicket {
 	token, err := generateConsoleToken()
 	if err != nil {
 		// crypto/rand failure is a fatal environment condition — surface it as
 		// a ticket with an empty token so the caller can detect it, and let the
 		// HTTP layer turn it into a 500. This path is not reachable in practice.
-		return VNCTicket{Cluster: clusterName, VMID: vmid, Node: node, ProxmoxTicket: proxmoxTicket, Port: port}
+		return ConsoleTicket{Kind: kind, Cluster: clusterName, VMID: vmid, Node: node, ProxmoxTicket: proxmoxTicket, Port: port}
 	}
 
 	now := time.Now()
-	ticket := VNCTicket{
+	ticket := ConsoleTicket{
+		Kind:          kind,
 		Token:         token,
 		Cluster:       clusterName,
 		VMID:          vmid,
@@ -143,124 +136,36 @@ func (s *ConsoleTicketStore) Issue(clusterName string, vmid int, node, proxmoxTi
 	return ticket
 }
 
-// Consume looks up the token. Missing, expired, or a (cluster, vmid) mismatch
-// against what was bound at issuance → ErrInvalidTicket. On success, the entry
-// is deleted from the map BEFORE returning it — a concurrent second Consume
-// for the same token cannot observe it as still present, closing the
+// Consume looks up the token. Missing, expired, or a (kind, cluster, vmid)
+// mismatch against what was bound at issuance → ErrInvalidTicket. On success,
+// the entry is deleted from the map BEFORE returning it — a concurrent second
+// Consume for the same token cannot observe it as still present, closing the
 // single-use race (FR-004). A mismatched Consume does NOT consume the ticket:
-// it remains valid for its real (cluster, vmid).
-func (s *ConsoleTicketStore) Consume(token, clusterName string, vmid int) (VNCTicket, error) {
+// it remains valid for its real (kind, cluster, vmid).
+func (s *ConsoleTicketStore) Consume(kind ConsoleKind, token, clusterName string, vmid int) (ConsoleTicket, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	ticket, ok := s.tickets[token]
 	if !ok {
-		return VNCTicket{}, ErrInvalidTicket
+		return ConsoleTicket{}, ErrInvalidTicket
 	}
 
 	if time.Now().After(ticket.ExpiresAt) {
 		s.removeOrderLocked(token)
 		delete(s.tickets, token)
 
-		return VNCTicket{}, ErrInvalidTicket
+		return ConsoleTicket{}, ErrInvalidTicket
 	}
 
-	if ticket.Cluster != clusterName || ticket.VMID != vmid {
-		return VNCTicket{}, ErrInvalidTicket
+	if ticket.Kind != kind || ticket.Cluster != clusterName || ticket.VMID != vmid {
+		return ConsoleTicket{}, ErrInvalidTicket
 	}
 
 	s.removeOrderLocked(token)
 	delete(s.tickets, token)
 
 	return ticket, nil
-}
-
-// IssueTerminal is the serial-terminal analogue of Issue: generates an opaque,
-// cryptographically random token, stores the entry, appends to the terminal
-// insertion-order slice, and evicts the oldest terminal entry if the fixed
-// capacity is exceeded. Returns the new ticket. Same TTL and capacity as VNC.
-func (s *ConsoleTicketStore) IssueTerminal(clusterName string, vmid int, node, proxmoxTicket string, port int) TerminalTicket {
-	token, err := generateConsoleToken()
-	if err != nil {
-		// crypto/rand failure is a fatal environment condition — surface it as
-		// a ticket with an empty token so the caller can detect it, and let the
-		// HTTP layer turn it into a 500. Mirrors Issue's handling.
-		return TerminalTicket{Cluster: clusterName, VMID: vmid, Node: node, ProxmoxTicket: proxmoxTicket, Port: port}
-	}
-
-	now := time.Now()
-	ticket := TerminalTicket{
-		Token:         token,
-		Cluster:       clusterName,
-		VMID:          vmid,
-		Node:          node,
-		ProxmoxTicket: proxmoxTicket,
-		Port:          port,
-		IssuedAt:      now,
-		ExpiresAt:     now.Add(TicketTTL),
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	s.termTickets[token] = ticket
-	s.termOrder = append(s.termOrder, token)
-
-	if len(s.termTickets) > ticketStoreCapacity {
-		s.evictOldestTerminalLocked()
-	}
-
-	return ticket
-}
-
-// ConsumeTerminal is the serial-terminal analogue of Consume: looks up the
-// token, rejects missing/expired/(cluster,vmid)-mismatched entries with
-// ErrInvalidTicket, and deletes the entry BEFORE returning it on success
-// (single-use). A mismatched Consume does NOT consume the ticket.
-func (s *ConsoleTicketStore) ConsumeTerminal(token, clusterName string, vmid int) (TerminalTicket, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	ticket, ok := s.termTickets[token]
-	if !ok {
-		return TerminalTicket{}, ErrInvalidTicket
-	}
-
-	if time.Now().After(ticket.ExpiresAt) {
-		s.removeTerminalOrderLocked(token)
-		delete(s.termTickets, token)
-
-		return TerminalTicket{}, ErrInvalidTicket
-	}
-
-	if ticket.Cluster != clusterName || ticket.VMID != vmid {
-		return TerminalTicket{}, ErrInvalidTicket
-	}
-
-	s.removeTerminalOrderLocked(token)
-	delete(s.termTickets, token)
-
-	return ticket, nil
-}
-
-// evictOldestTerminalLocked removes the oldest live terminal token. Called
-// only with s.mu held.
-func (s *ConsoleTicketStore) evictOldestTerminalLocked() {
-	if len(s.termOrder) == 0 {
-		return
-	}
-
-	oldest := s.termOrder[0]
-	s.termOrder = s.termOrder[1:]
-	delete(s.termTickets, oldest)
-}
-
-// removeTerminalOrderLocked removes token from the terminal insertion-order
-// slice. Called only with s.mu held.
-func (s *ConsoleTicketStore) removeTerminalOrderLocked(token string) {
-	if i := slices.Index(s.termOrder, token); i >= 0 {
-		s.termOrder = slices.Delete(s.termOrder, i, i+1)
-	}
 }
 
 // evictOldestLocked removes the oldest live token from the map and the order
@@ -296,13 +201,12 @@ func generateConsoleToken() (string, error) {
 
 // --- GetConsoleTicket: Resolve()-gated issuance (T012) ---
 
-// ConsoleClient is the cluster.Client surface GetConsoleTicket needs — just the
-// VNC ticket acquisition. The relay method is called by the WebSocket handler
-// directly against cluster.Client, not here. Kept as an interface so the
-// domain test can substitute a fake without spinning a real cluster.Client.
-type ConsoleClient interface {
-	GetVNCTicket(ctx context.Context, clusterName string, vmid int, node string) (cluster.VNCProxyTicket, error)
-}
+// ProxyFetcher fetches the Proxmox-side ticket and port for a console session.
+// The VNC path supplies a wrapper around relay.GetVNCTicket; the serial path
+// supplies one around relay.GetTermProxy. Both return (ticket, port, error).
+// Kept as a function type so the domain test can substitute a closure without
+// spinning a real cluster.Client.
+type ProxyFetcher func(ctx context.Context, clusterName string, vmid int, node string) (ticket string, port int, err error)
 
 // ConsoleTicketDeps groups the shared dependencies and resolution context
 // for GetConsoleTicket. It collapses the eight positional parameters the
@@ -312,105 +216,33 @@ type ConsoleTicketDeps struct {
 	Actor       auth.Identity
 	ClusterName string
 	VMID        int
-	Client      ConsoleClient
+	Kind        ConsoleKind
+	Fetcher     ProxyFetcher
 	Store       *ConsoleTicketStore
 	Audit       AuditRecorder
 }
 
 // GetConsoleTicket is the only path from a ticket HTTP request to a console
 // capability (FR-001). It calls Resolve() first (the same and only ownership
-// gate every other write uses), then the cluster client to obtain the
+// gate every other write uses), then the proxy fetcher to obtain the
 // Proxmox-side ticket, then the in-memory store to issue the opaque capability,
 // then records the audit entry. The node is always Resolve()'s server-resolved
 // value — the caller never supplies one (FR-007).
-// GetConsoleTicket is the only path from a ticket HTTP request to a console
-// capability (FR-001). It calls Resolve() first (the same and only ownership
-// gate every other write uses), then the cluster client to obtain the
-// Proxmox-side ticket, then the in-memory store to issue the opaque capability,
-// then records the audit entry. The node is always Resolve()'s server-resolved
-// value — the caller never supplies one (FR-007).
-func GetConsoleTicket(ctx context.Context, deps ConsoleTicketDeps) (VNCTicket, error) {
-	index := deps.Index
-	actor := deps.Actor
-	clusterName := deps.ClusterName
-	vmid := deps.VMID
-	client := deps.Client
-	store := deps.Store
-	audit := deps.Audit
-
-	entity, err := Resolve(index, actor, clusterName, vmid)
+func GetConsoleTicket(ctx context.Context, deps ConsoleTicketDeps) (ConsoleTicket, error) {
+	entity, err := Resolve(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
 	if err != nil {
-		return VNCTicket{}, err
+		return ConsoleTicket{}, err
 	}
 
-	proxy, err := client.GetVNCTicket(ctx, clusterName, vmid, entity.Node)
+	proxyTicket, port, err := deps.Fetcher(ctx, deps.ClusterName, deps.VMID, entity.Node)
 	if err != nil {
-		return VNCTicket{}, fmt.Errorf("%w: %w", ErrClusterConsoleUnavailable, err)
+		return ConsoleTicket{}, fmt.Errorf("%w: %w", ErrClusterConsoleUnavailable, err)
 	}
 
-	ticket := store.Issue(clusterName, vmid, entity.Node, proxy.Ticket, proxy.Port)
+	ticket := deps.Store.Issue(deps.Kind, deps.ClusterName, deps.VMID, entity.Node, proxyTicket, port)
 
-	if err := audit.RecordAction(ctx, actor.Username, clusterName, vmid, "console_open"); err != nil {
-		return VNCTicket{}, fmt.Errorf(auditWrapFmt, err)
-	}
-
-	return ticket, nil
-}
-
-// --- GetTerminalTicket: Resolve()-gated serial terminal issuance ---
-
-// TerminalClient is the cluster.Client surface GetTerminalTicket needs — just
-// the serial terminal ticket acquisition. The relay method is called by the
-// serial WebSocket handler directly against cluster.Client, not here. Kept as
-// an interface so the domain test can substitute a fake without spinning a real
-// cluster.Client. Mirrors ConsoleClient.
-type TerminalClient interface {
-	GetTermProxy(ctx context.Context, clusterName string, vmid int, node string) (cluster.TermProxyTicket, error)
-}
-
-// TerminalTicketDeps groups the shared dependencies and resolution context
-// for GetTerminalTicket. Mirrors ConsoleTicketDeps.
-type TerminalTicketDeps struct {
-	Index       *inventory.Index
-	Actor       auth.Identity
-	ClusterName string
-	VMID        int
-	Client      TerminalClient
-	Store       *ConsoleTicketStore
-	Audit       AuditRecorder
-}
-
-// GetTerminalTicket is the serial-terminal analogue of GetConsoleTicket: the
-// only path from a serial-ticket HTTP request to a terminal capability. It
-// calls Resolve() first (the same ownership gate every write uses), then the
-// cluster client to obtain the Proxmox-side termproxy ticket, then the in-memory
-// store to issue the opaque capability, then records the audit entry. The node
-// is always Resolve()'s server-resolved value — the caller never supplies one.
-// Reuses the "console_open" audit action for consistency (a serial terminal is
-// a console session, semantically).
-func GetTerminalTicket(ctx context.Context, deps TerminalTicketDeps) (TerminalTicket, error) {
-	index := deps.Index
-	actor := deps.Actor
-	clusterName := deps.ClusterName
-	vmid := deps.VMID
-	client := deps.Client
-	store := deps.Store
-	audit := deps.Audit
-
-	entity, err := Resolve(index, actor, clusterName, vmid)
-	if err != nil {
-		return TerminalTicket{}, err
-	}
-
-	proxy, err := client.GetTermProxy(ctx, clusterName, vmid, entity.Node)
-	if err != nil {
-		return TerminalTicket{}, fmt.Errorf("%w: %w", ErrClusterConsoleUnavailable, err)
-	}
-
-	ticket := store.IssueTerminal(clusterName, vmid, entity.Node, proxy.Ticket, proxy.Port)
-
-	if err := audit.RecordAction(ctx, actor.Username, clusterName, vmid, "console_open"); err != nil {
-		return TerminalTicket{}, fmt.Errorf(auditWrapFmt, err)
+	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, AuditActionConsoleOpen); err != nil {
+		return ConsoleTicket{}, fmt.Errorf(auditWrapFmt, err)
 	}
 
 	return ticket, nil
@@ -428,18 +260,6 @@ func (s *ConsoleTicketStore) expireForTest(token string) {
 	if ticket, ok := s.tickets[token]; ok {
 		ticket.ExpiresAt = time.Now().Add(-time.Second)
 		s.tickets[token] = ticket
-	}
-}
-
-// expireTerminalForTest forces a terminal ticket's ExpiresAt into the past.
-// Test-only — mirrors expireForTest for the serial path.
-func (s *ConsoleTicketStore) expireTerminalForTest(token string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if ticket, ok := s.termTickets[token]; ok {
-		ticket.ExpiresAt = time.Now().Add(-time.Second)
-		s.termTickets[token] = ticket
 	}
 }
 

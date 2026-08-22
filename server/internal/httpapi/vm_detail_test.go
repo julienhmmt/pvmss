@@ -47,6 +47,8 @@ const (
 	apiCodeNotFound   = "not_found"
 	testActionDelete  = "delete"
 	testStatusDeleted = "deleted"
+	testStatusRunning = "running"
+	testBridgeVmbr0   = "vmbr0"
 )
 
 // assertAPIError decodes the response body as an apiErrorEnvelope and asserts
@@ -231,7 +233,7 @@ func TestVMDetail_Get_OwnerSeesFullEntity(t *testing.T) {
 		t.Errorf("pool = %q, want pool-alice", entity.Pool)
 	}
 
-	if entity.Status != "running" {
+	if entity.Status != testStatusRunning {
 		t.Errorf("status = %q, want running", entity.Status)
 	}
 

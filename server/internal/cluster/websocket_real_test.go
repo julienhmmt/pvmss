@@ -32,6 +32,7 @@ func TestVNCDESKey(t *testing.T) {
 	// A password of exactly 8 non-zero bytes: every byte gets bit-reversed,
 	// nothing gets padded.
 	key := vncDESKey("password")
+
 	want := []byte{
 		reverseByte('p'), reverseByte('a'), reverseByte('s'), reverseByte('s'),
 		reverseByte('w'), reverseByte('o'), reverseByte('r'), reverseByte('d'),
@@ -43,6 +44,7 @@ func TestVNCDESKey(t *testing.T) {
 	// Shorter than 8 bytes: only the significant bytes are reversed, the
 	// rest stays zero-padded (VNC's password truncation rule).
 	short := vncDESKey("ab")
+
 	wantShort := []byte{reverseByte('a'), reverseByte('b'), 0, 0, 0, 0, 0, 0}
 	if !bytes.Equal(short, wantShort) {
 		t.Errorf("vncDESKey(%q) = %x, want %x", "ab", short, wantShort)
@@ -51,6 +53,7 @@ func TestVNCDESKey(t *testing.T) {
 	// Longer than 8 bytes: only the first 8 are significant (matches
 	// Proxmox's own truncation of the VNC ticket-as-password).
 	long := vncDESKey("abcdefghij")
+
 	wantLong := []byte{
 		reverseByte('a'), reverseByte('b'), reverseByte('c'), reverseByte('d'),
 		reverseByte('e'), reverseByte('f'), reverseByte('g'), reverseByte('h'),

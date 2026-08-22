@@ -120,7 +120,7 @@ func (h *VMs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeList(w, r.Context(), result)
+	h.writeList(r.Context(), w, result)
 }
 
 type queryError struct {
@@ -202,7 +202,7 @@ func sourceHasReadyIndex(source inventory.Source, clusterName string) bool {
 	return false
 }
 
-func (h *VMs) writeList(w http.ResponseWriter, ctx context.Context, result vm.ListResult) {
+func (h *VMs) writeList(ctx context.Context, w http.ResponseWriter, result vm.ListResult) {
 	displayNames := h.clusterDisplayNames(ctx)
 	response := vmListResponse{
 		Items:          make([]vmDTO, len(result.Items)),

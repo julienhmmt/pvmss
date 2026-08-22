@@ -11,14 +11,15 @@ import (
 )
 
 const (
-	testClusterName  = "default"
-	testPvmssTag     = "pvmss"
-	testWebTag       = "web"
-	testBridgeVMbr0  = "vmbr0"
-	testBridgeVMbr1  = "vmbr1"
-	testModelVirtio  = "virtio"
-	testNonOwnerCase = "reject non-owner"
-	testAdminUser    = "admin"
+	testClusterName              = "default"
+	testPvmssTag                 = "pvmss"
+	testWebTag                   = "web"
+	testBridgeVMbr0              = "vmbr0"
+	testBridgeVMbr1              = "vmbr1"
+	testModelVirtio              = "virtio"
+	testNonOwnerCase             = "reject non-owner"
+	testAdminUser                = "admin"
+	testActionSetCloudInitConfig = "set_cloudinit_config"
 )
 
 // testIndex builds a small projection across two pools and two nodes —

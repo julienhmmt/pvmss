@@ -9,12 +9,11 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"pvmss/server/internal/cluster"
-	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -23,43 +22,30 @@ import (
 )
 
 // vncTicketResponse mirrors the POST /vnc-ticket 200 contract.
-type vncTicketResponse struct {
-	Token            string `json:"token"`
-	ExpiresInSeconds int    `json:"expiresInSeconds"`
-}
+type vncTicketResponse = ticketResponse
 
 // newVMConsoleHandler builds the console handler over the fake dataset with a
 // real audit store and a fresh in-memory ticket store.
+//
+//nolint:dupl // VNC and serial test handlers differ only in the handler constructor and port; the shared buildConsoleTestHelper does the heavy lifting. The remaining closure is type-specific (VMConsole vs VMSerialConsole) and cannot be unified without generics.
 func newVMConsoleHandler(t *testing.T) (*httpapi.VMConsole, *httpapi.Auth, *vm.ConsoleTicketStore) {
 	t.Helper()
-	t.Cleanup(cluster.ResetFake)
 
-	snap, err := (cluster.Fake{}).Snapshot(context.Background())
-	if err != nil {
-		t.Fatalf("Snapshot: %v", err)
-	}
+	var handler *httpapi.VMConsole
 
-	projection := buildProjectionWithIndex(t, snap, time.Now())
-	authHandler := newAuthHandler(t)
-	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
+	var tickets *vm.ConsoleTicketStore
 
-	cfg := config.Configuration{
-		Port:      50001,
-		DBPath:    filepath.Join(t.TempDir(), "vm-console.db"),
-		LogLevel:  snapshotTestLogLevel,
-		LogFormat: snapshotTestLogFormat,
-		LogOutput: snapshotTestLogOutput,
-	}
+	var authHandler *httpapi.Auth
 
-	st, err := store.Open(cfg)
-	if err != nil {
-		t.Fatalf("store.Open: %v", err)
-	}
+	_, authHandler, _ = buildConsoleTestHandler(t, 50001, "vm-console.db",
+		func(snap cluster.Snapshot, auth *httpapi.Auth, tk *vm.ConsoleTicketStore, st *store.Store, logger *slog.Logger) http.Handler {
+			tickets = tk
+			projection := buildProjectionWithIndex(t, snap, time.Now())
+			handler = httpapi.NewVMConsole(projection, auth, cluster.Fake{}, tk, st, logger)
 
-	t.Cleanup(func() { _ = st.Close() })
-
-	tickets := vm.NewConsoleTicketStore()
-	handler := httpapi.NewVMConsole(projection, authHandler, cluster.Fake{}, tickets, st, logger)
+			return handler
+		},
+	)
 
 	return handler, authHandler, tickets
 }
@@ -96,38 +82,7 @@ func consoleRequest(method, path, body string, cookie *http.Cookie) *http.Reques
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMConsole_PostVNCTicket_OwnerGetsOpaqueToken(t *testing.T) {
 	handler, authHandler, _ := newVMConsoleHandler(t)
-	cookie := aliceCookie(t, authHandler)
-
-	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, consoleRequest(http.MethodPost, "/api/v1/vms/default/100/vnc-ticket", "", cookie))
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
-	}
-
-	var resp vncTicketResponse
-	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-
-	if resp.Token == "" {
-		t.Fatalf("token is empty")
-	}
-
-	if resp.ExpiresInSeconds != 30 {
-		t.Fatalf("expiresInSeconds = %d, want 30", resp.ExpiresInSeconds)
-	}
-
-	// FR-002: the response body must contain ONLY token and expiresInSeconds —
-	// no Proxmox ticket, node, or port.
-	var raw map[string]any
-	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
-		t.Fatalf("decode raw: %v", err)
-	}
-
-	if len(raw) != 2 {
-		t.Fatalf("response has %d keys, want exactly 2 (token, expiresInSeconds): %+v", len(raw), raw)
-	}
+	assertOwnerGetsOpaqueToken(t, handler, consoleRequest, "/api/v1/vms/default/100/vnc-ticket", aliceCookie(t, authHandler))
 }
 
 // TestVMConsole_PostVNCTicket_NonOwnerForbidden — T016: a non-owner gets 403,
@@ -222,34 +177,16 @@ func TestVMConsole_WebSocket_InvalidTokenReturns400(t *testing.T) {
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMConsole_WebSocket_TicketBoundToDifferentVMRejected(t *testing.T) {
 	handler, authHandler, tickets := newVMConsoleHandler(t)
-	cookie := aliceCookie(t, authHandler)
 
-	// Issue a ticket for VM 100 via the HTTP endpoint.
-	ticketRec := httptest.NewRecorder()
-	handler.ServeHTTP(ticketRec, consoleRequest(http.MethodPost, "/api/v1/vms/default/100/vnc-ticket", "", cookie))
-
-	if ticketRec.Code != http.StatusOK {
-		t.Fatalf("ticket issuance: status = %d", ticketRec.Code)
-	}
-
-	var ticket vncTicketResponse
-
-	_ = json.Unmarshal(ticketRec.Body.Bytes(), &ticket)
-
-	// Try to use it against VM 101 — must be rejected before the upgrade.
-	rec := httptest.NewRecorder()
-	req := consoleRequest(http.MethodGet, "/api/v1/vms/default/101/console/websocket?token="+ticket.Token, "", cookie)
-	handler.ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d (ticket bound to different VM)", rec.Code, http.StatusBadRequest)
-	}
-
-	// The ticket is NOT consumed by the mismatched attempt — it remains valid
-	// for its real (cluster, vmid). Verify by consuming it directly.
-	if _, err := tickets.Consume(ticket.Token, "default", 100); err != nil {
-		t.Fatalf("ticket was consumed by the mismatched attempt: %v", err)
-	}
+	assertTicketBoundToDifferentVMRejected(t, consoleTestParams{
+		kind:       vm.KindVNC,
+		handler:    handler,
+		tickets:    tickets,
+		cookie:     aliceCookie(t, authHandler),
+		request:    consoleRequest,
+		ticketPath: func(vmid int) string { return "/api/v1/vms/default/" + strconv.Itoa(vmid) + "/vnc-ticket" },
+		wsPath:     func(vmid int) string { return "/api/v1/vms/default/" + strconv.Itoa(vmid) + "/console/websocket" },
+	})
 }
 
 // TestVMConsole_WebSocket_ValidTokenUpgradesAndRelaysRFBHandshake — T016: with
@@ -328,51 +265,15 @@ func TestVMConsole_WebSocket_ValidTokenUpgradesAndRelaysRFBHandshake(t *testing.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMConsole_PostVNCTicket_ClusterUnavailableReturns502(t *testing.T) {
-	// Build a handler with a relay that always fails GetVNCTicket.
-	t.Cleanup(cluster.ResetFake)
+	handler, _, cookie := buildFailingRelayHandler(t, 50001, "vm-console-502.db",
+		func(snap cluster.Snapshot, authHandler *httpapi.Auth, tickets *vm.ConsoleTicketStore, st *store.Store, logger *slog.Logger) http.Handler {
+			projection := buildProjectionWithIndex(t, snap, time.Now())
 
-	snap, err := (cluster.Fake{}).Snapshot(context.Background())
-	if err != nil {
-		t.Fatalf("Snapshot: %v", err)
-	}
+			return httpapi.NewVMConsole(projection, authHandler, &failingConsoleRelay{}, tickets, st, logger)
+		},
+	)
 
-	projection := buildProjectionWithIndex(t, snap, time.Now())
-	authHandler := newAuthHandler(t)
-	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
-
-	cfg := config.Configuration{
-		Port:      50001,
-		DBPath:    filepath.Join(t.TempDir(), "vm-console-502.db"),
-		LogLevel:  snapshotTestLogLevel,
-		LogFormat: snapshotTestLogFormat,
-		LogOutput: snapshotTestLogOutput,
-	}
-
-	st, err := store.Open(cfg)
-	if err != nil {
-		t.Fatalf("store.Open: %v", err)
-	}
-
-	t.Cleanup(func() { _ = st.Close() })
-
-	tickets := vm.NewConsoleTicketStore()
-	failingRelay := &failingConsoleRelay{}
-	handler := httpapi.NewVMConsole(projection, authHandler, failingRelay, tickets, st, logger)
-
-	cookie := aliceCookie(t, authHandler)
-	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, consoleRequest(http.MethodPost, "/api/v1/vms/default/100/vnc-ticket", "", cookie))
-
-	if rec.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusBadGateway, rec.Body.String())
-	}
-
-	var env apiErrorEnvelope
-
-	_ = json.Unmarshal(rec.Body.Bytes(), &env)
-	if env.Code != "console_unavailable" {
-		t.Fatalf("error code = %q, want %q", env.Code, "console_unavailable")
-	}
+	assertClusterUnavailableReturns502(t, handler, consoleRequest, "/api/v1/vms/default/100/vnc-ticket", cookie)
 }
 
 // failingConsoleRelay is a ConsoleRelay whose GetVNCTicket always fails — used
