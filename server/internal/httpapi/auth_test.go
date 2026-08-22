@@ -386,8 +386,7 @@ func newAuthHandlerWithStore(t *testing.T) (*httpapi.Auth, *store.Store) {
 	t.Helper()
 
 	dbPath := filepath.Join(t.TempDir(), "auth.db")
-	//nolint:goconst // "fake" is used throughout this package; defining a constant here would not reduce occurrences.
-	cfg := config.Configuration{DBPath: dbPath, SessionSecret: "a-session-secret-with-at-least-thirty-two-bytes", ClusterSource: "fake"}
+	cfg := config.Configuration{DBPath: dbPath, SessionSecret: "a-session-secret-with-at-least-thirty-two-bytes", ClusterSource: cluster.SourceFake}
 
 	st, err := store.Open(cfg)
 	if err != nil {

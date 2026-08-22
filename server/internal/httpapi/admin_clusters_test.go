@@ -36,7 +36,7 @@ type adminClusterFixture struct {
 
 func newAdminClusterFixture(t *testing.T) adminClusterFixture {
 	t.Helper()
-	st, err := store.Open(config.Configuration{DBPath: filepath.Join(t.TempDir(), "clusters-http.db"), ClusterSource: "fake", SessionSecret: adminClusterTestSecret})
+	st, err := store.Open(config.Configuration{DBPath: filepath.Join(t.TempDir(), "clusters-http.db"), ClusterSource: cluster.SourceFake, SessionSecret: adminClusterTestSecret})
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
 	}

@@ -69,7 +69,7 @@ func TestEnableSerialConsole_ResolveThenWriterThenAudit(t *testing.T) {
 //nolint:paralleltest // serial: shared fake VM fixture
 func TestEnableSerialConsole_NonOwnerForbidden(t *testing.T) {
 	idx := buildResolveIndex(t)
-	bob := auth.Identity{Username: "bob@pve", Pool: cluster.FakePoolBob}
+	bob := auth.Identity{Username: cluster.FakeUserBob, Pool: cluster.FakePoolBob}
 	writer := &fakeSerialWriter{}
 	audit := &fakeAuditRecorder{}
 

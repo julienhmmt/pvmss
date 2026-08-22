@@ -54,13 +54,13 @@ func TestTasks_PollTransitions(t *testing.T) {
 		CPUCores: 1,
 		MemoryMB: 2048,
 		Disk:     cluster.DiskSpec{Storage: "local-lvm", SizeGB: 20},
-		Network:  cluster.NetworkSpec{Bridge: "vmbr0", Model: "virtio"},
+		Network:  cluster.NetworkSpec{Bridge: testBridgeVmbr0, Model: "virtio"},
 	})
 	if err != nil {
 		t.Fatalf("CreateVM: %v", err)
 	}
 
-	for i, want := range []string{"running", "running", "ok"} {
+	for i, want := range []string{testStatusRunning, testStatusRunning, "ok"} {
 		response := getTask(t, handler, upid, cookie)
 		if response.Code != http.StatusOK {
 			t.Fatalf("call %d: status = %d, want 200: %s", i+1, response.Code, response.Body.String())
@@ -240,13 +240,13 @@ func TestTasks_WithRegistry_PollsNamedCluster(t *testing.T) {
 		CPUCores: 1,
 		MemoryMB: 2048,
 		Disk:     cluster.DiskSpec{Storage: "local-lvm", SizeGB: 20},
-		Network:  cluster.NetworkSpec{Bridge: "vmbr0", Model: "virtio"},
+		Network:  cluster.NetworkSpec{Bridge: testBridgeVmbr0, Model: "virtio"},
 	})
 	if err != nil {
 		t.Fatalf("CreateVM: %v", err)
 	}
 
-	for i, want := range []string{"running", "running", "ok"} {
+	for i, want := range []string{testStatusRunning, testStatusRunning, "ok"} {
 		response := getTaskWithCluster(t, handler, upid, crossSecondaryCluster, cookie)
 		if response.Code != http.StatusOK {
 			t.Fatalf("call %d: status = %d, want 200: %s", i+1, response.Code, response.Body.String())
@@ -311,7 +311,7 @@ func TestTasks_WithRegistry_DefaultFallback(t *testing.T) {
 		VMID: vmid, Node: cluster.FakeNode01, Name: "fallback-vm", Pool: cluster.FakePoolAlice,
 		Tags: []string{cluster.FakeTagPvmss}, CPUCores: 1, MemoryMB: 2048,
 		Disk:    cluster.DiskSpec{Storage: "local-lvm", SizeGB: 20},
-		Network: cluster.NetworkSpec{Bridge: "vmbr0", Model: "virtio"},
+		Network: cluster.NetworkSpec{Bridge: testBridgeVmbr0, Model: "virtio"},
 	})
 	if err != nil {
 		t.Fatalf("CreateVM: %v", err)
@@ -337,7 +337,7 @@ func TestTasks_WithRegistry_DefaultFallback(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 
-	if body.State != "running" {
+	if body.State != testStatusRunning {
 		t.Fatalf("state = %q, want running (first poll)", body.State)
 	}
 }

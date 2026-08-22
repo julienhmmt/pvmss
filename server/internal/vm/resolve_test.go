@@ -37,7 +37,7 @@ func TestResolve(t *testing.T) {
 	idx := buildResolveIndex(t)
 
 	alice := auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}
-	bob := auth.Identity{Username: "bob@pve", Pool: cluster.FakePoolBob}
+	bob := auth.Identity{Username: cluster.FakeUserBob, Pool: cluster.FakePoolBob}
 	admin := auth.Identity{Username: testAdminUser, IsAdmin: true}
 
 	cases := []struct {

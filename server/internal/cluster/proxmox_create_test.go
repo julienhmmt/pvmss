@@ -93,9 +93,7 @@ func assertCreateVMForm(t *testing.T, form url.Values) {
 		t.Errorf("vmid/name = %q/%q", form.Get("vmid"), form.Get("name"))
 	}
 
-	if form.Get("sockets") != "1" || form.Get("cores") != "4" || form.Get("memory") != "4096" {
-		t.Errorf("sockets/cores/memory = %q/%q/%q", form.Get("sockets"), form.Get("cores"), form.Get("memory"))
-	}
+	assertCPUForm(t, form)
 
 	if form.Get("pool") != FakePoolAliceShort || form.Get("tags") != FakeTagPvmss {
 		t.Errorf("pool/tags = %q/%q", form.Get("pool"), form.Get("tags"))
@@ -119,6 +117,16 @@ func assertCreateVMForm(t *testing.T, form url.Values) {
 
 	if form.Get("serial0") != "socket" {
 		t.Errorf("serial0 = %q, want socket (serial console must be provisioned at create time)", form.Get("serial0"))
+	}
+}
+
+// assertCPUForm checks the sockets/cores/memory form fields. Extracted from
+// assertCreateVMForm to keep its cyclomatic complexity under the gocyclo limit.
+func assertCPUForm(t *testing.T, form url.Values) {
+	t.Helper()
+
+	if form.Get("sockets") != "1" || form.Get("cores") != "4" || form.Get("memory") != "4096" {
+		t.Errorf("sockets/cores/memory = %q/%q/%q", form.Get("sockets"), form.Get("cores"), form.Get("memory"))
 	}
 }
 

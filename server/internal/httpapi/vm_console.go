@@ -2,7 +2,6 @@ package httpapi
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -13,7 +12,6 @@ import (
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"strings"
-	"time"
 
 	"github.com/coder/websocket"
 )
@@ -78,15 +76,6 @@ func NewVMConsoleWithRegistry(deps VMConsoleRegistryDeps) *VMConsole {
 	return handler
 }
 
-// vncTicketResponse is the JSON body for POST /vnc-ticket. Only the opaque
-// token and its TTL are sent — no Proxmox ticket, no node, no port (FR-002,
-// FR-003). expiresInSeconds tells the client how long the token is valid
-// before the WebSocket upgrade must happen (contracts/vm-console.md).
-type vncTicketResponse struct {
-	Token            string `json:"token"`
-	ExpiresInSeconds int    `json:"expiresInSeconds"`
-}
-
 // ServeHTTP dispatches between the ticket endpoint and the WebSocket endpoint
 // based on the path suffix.
 func (h *VMConsole) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -107,116 +96,40 @@ func (h *VMConsole) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // vm.GetConsoleTicket (Resolve → GetVNCTicket → Issue → audit), returns only
 // the opaque token.
 func (h *VMConsole) handleVNCTicket(w http.ResponseWriter, r *http.Request) {
-	identity, err := h.auth.Principal(r)
-	if err != nil {
-		h.writeConsoleError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
-		return
-	}
-
-	clusterName, vmid, ok := h.parseConsolePath(r)
-	if !ok {
-		h.writeConsoleError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
-		return
-	}
-
-	index, ok := loadClusterIndex(h.resolver, clusterName, func(status int, code, message string) { h.writeConsoleError(w, status, code, message) })
-	if !ok {
-		return
-	}
-
-	relay, err := resolveCapability(h.clients, h.relay, clusterName, "ConsoleRelay")
-	if err != nil {
-		h.writeConsoleError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
-		return
-	}
-
-	ticket, err := vm.GetConsoleTicket(r.Context(), vm.ConsoleTicketDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Client: relay, Store: h.tickets, Audit: h.store})
-	if err != nil {
-		h.writeTicketError(w, err)
-		return
-	}
-
-	if ticket.Token == "" {
-		h.log.Error("console ticket has no token", "component", "httpapi", "cluster", clusterName, "vmid", vmid)
-		h.writeConsoleError(w, http.StatusInternalServerError, "internal_error", "failed to issue console ticket")
-
-		return
-	}
-
-	h.log.Info("console ticket issued", "component", "httpapi", "cluster", clusterName, "vmid", vmid, "node", ticket.Node)
-	h.writeJSON(w, http.StatusOK, vncTicketResponse{Token: ticket.Token, ExpiresInSeconds: int(vm.TicketTTL.Seconds())})
+	serveConsoleTicket(w, r, h.auth, h.resolver, h.clients, h.relay, h.tickets, h.store, h.log,
+		consoleTicketParams{
+			kind:           vm.KindVNC,
+			capabilityName: "ConsoleRelay",
+			fetcher:        vncProxyFetcher(h.relay),
+			invalidMsg:     "console is not available for this VM",
+			noTokenMsg:     "console ticket has no token",
+			issuedMsg:      "console ticket issued",
+		},
+		h.parseConsolePath, h.writeConsoleError,
+	)
 }
 
 // handleWebSocket serves GET /api/v1/vms/:cluster/:vmid/console/websocket?token=<opaque>.
 // Validates the ticket (single-use, TTL, bound to the path's cluster+vmid),
 // upgrades to WebSocket, and relays RFB frames until either side closes.
+//
+//nolint:dupl // VNC and serial websocket handlers are intentionally parallel: different relay interfaces (ConsoleRelay vs TerminalRelay), proxy ticket types (VNCProxyTicket vs TermProxyTicket), and websocket message types (Binary vs Text). The shared setup is extracted into acceptConsoleWebSocket; the relay-specific tail cannot be unified without erasing the type safety that distinguishes the two paths.
 func (h *VMConsole) handleWebSocket(w http.ResponseWriter, r *http.Request) {
-	// The session must be authenticated — the ticket is the VM-level
-	// capability, but the user must still have a valid session. The identity
-	// itself is not used for Resolve() here (the ticket already passed
-	// Resolve() at issuance time; spec edge case).
-	if _, err := h.auth.Principal(r); err != nil {
-		h.writeConsoleError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
-		return
-	}
-
-	clusterName, vmid, ok := h.parseConsolePath(r)
+	ticket, conn, ok := acceptConsoleWebSocket(w, r, h.auth, h.tickets, h.log,
+		consoleWebSocketParams{
+			kind:             vm.KindVNC,
+			invalidTicketMsg: "invalid or expired console ticket",
+			wsUpgradeMsg:     "console websocket upgrade failed",
+			acceptedMsg:      "console websocket accepted, relaying to proxmox",
+		},
+		h.parseConsolePath, h.writeConsoleError,
+	)
 	if !ok {
-		h.writeConsoleError(w, http.StatusBadRequest, "invalid_request", "invalid VM path")
-		return
-	}
-
-	token := r.URL.Query().Get("token")
-	if token == "" {
-		h.writeConsoleError(w, http.StatusBadRequest, "invalid_request", "missing token parameter")
-		return
-	}
-
-	ticket, err := h.tickets.Consume(token, clusterName, vmid)
-	if err != nil {
-		h.writeConsoleError(w, http.StatusBadRequest, "invalid_ticket", "invalid or expired console ticket")
-		return
-	}
-
-	// The ticket is the capability — Resolve() was already checked at issuance
-	// time. The WebSocket handler does NOT re-check the VM's continued existence
-	// (spec edge case: "the WebSocket handler re-checks the ticket itself, not
-	// the VM's continued existence a second time"). If the ticket is valid and
-	// unconsumed, the relay proceeds against the node it was issued for. The
-	// session-level auth check above is the only gate at this layer.
-
-	if !isConsoleOriginAllowed(r) {
-		h.writeConsoleError(w, http.StatusForbidden, "forbidden", "invalid origin")
-		return
-	}
-
-	// The server's global WriteTimeout/ReadTimeout (main.go) bound every
-	// ordinary request's underlying connection, and that deadline survives a
-	// hijack — it silently kills a long-lived WebSocket ~WriteTimeout after
-	// the request started, regardless of how much data is still flowing.
-	// A VNC console session is exactly the kind of long-lived connection
-	// those deadlines were never meant to bound (main.go's own comment only
-	// accounts for InventoryRefreshTimeout, not this route). Clear both
-	// deadlines for this connection only — every other handler keeps the
-	// global timeouts untouched.
-	rc := http.NewResponseController(w)
-	_ = rc.SetReadDeadline(time.Time{})
-	_ = rc.SetWriteDeadline(time.Time{})
-
-	// No OriginPatterns: coder/websocket's default authenticateOrigin checks
-	// Origin against r.Host (its CSWSH guard). The custom isConsoleOriginAllowed
-	// check above returns an explicit 403 JSON error; the library's check is
-	// defense-in-depth. Never pass OriginPatterns:["*"] — the library docs
-	// explicitly warn against it (it disables the CSWSH guard).
-	conn, err := websocket.Accept(w, r, nil)
-	if err != nil {
-		h.log.Error("console websocket upgrade failed", "component", "httpapi", "error", err)
 		return
 	}
 	defer func() { _ = conn.CloseNow() }()
 
-	h.log.Info("console websocket accepted, relaying to proxmox", "component", "httpapi", "cluster", ticket.Cluster, "vmid", ticket.VMID, "node", ticket.Node, "port", ticket.Port)
-
+	// VNC speaks RFB over binary frames.
 	peer := websocket.NetConn(context.Background(), conn, websocket.MessageBinary)
 	defer func() { _ = peer.Close() }()
 
@@ -228,9 +141,7 @@ func (h *VMConsole) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	proxy := cluster.VNCProxyTicket{Ticket: ticket.ProxmoxTicket, Port: ticket.Port, Node: ticket.Node}
 	err = relay.RelayConsole(r.Context(), ticket.Cluster, ticket.VMID, proxy, peer)
-	// Always log the outcome — a normal closure needs to be as visible as an
-	// error one, otherwise "did the relay even start" is undiagnosable from
-	// the logs alone (this used to be silent on success).
+
 	if err == nil || isNormalClose(err) {
 		h.log.Info("console relay ended normally", "component", "httpapi", "vmid", ticket.VMID, "error", err)
 	} else {
@@ -254,43 +165,9 @@ func (h *VMConsole) parseConsolePath(r *http.Request) (string, int, bool) {
 	return clusterName, vmid, true
 }
 
-// writeTicketError maps vm.GetConsoleTicket errors to HTTP responses.
-// 403/404 are byte-identical with the other VM endpoints (contracts). A
-// cluster-client failure (GetVNCTicket returned an error) is 502
-// console_unavailable — the Proxmox server is unreachable or the VM is not
-// running (contracts/vm-console.md).
-func (h *VMConsole) writeTicketError(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, vm.ErrForbidden):
-		h.writeConsoleError(w, http.StatusForbidden, "forbidden", "not your VM")
-	case errors.Is(err, vm.ErrNotFound):
-		h.writeConsoleError(w, http.StatusNotFound, "not_found", "VM not found")
-	case errors.Is(err, vm.ErrClusterConsoleUnavailable):
-		h.writeConsoleError(w, http.StatusBadGateway, "console_unavailable", "console is not available for this VM")
-	default:
-		h.log.Error("console ticket issuance failed", "component", "httpapi", "error", err)
-		h.writeConsoleError(w, http.StatusInternalServerError, "internal_error", "internal server error")
-	}
-}
-
 func (h *VMConsole) writeConsoleError(w http.ResponseWriter, status int, code, message string) {
 	if err := writeClusterError(w, status, code, message); err != nil {
 		h.log.Error("failed to write console error", "component", "httpapi", "code", code, "error", err)
-	}
-}
-
-// writeJSON marshals value and writes it with the given status code.
-func (h *VMConsole) writeJSON(w http.ResponseWriter, status int, value any) {
-	body, err := json.Marshal(value)
-	if err != nil {
-		h.log.Error("failed to marshal response", "component", "httpapi", "error", err)
-		h.writeConsoleError(w, http.StatusInternalServerError, "internal_error", "internal server error")
-
-		return
-	}
-
-	if err := writeJSON(w, status, body); err != nil {
-		h.log.Error("failed to write response", "component", "httpapi", "error", err)
 	}
 }
 
@@ -338,4 +215,35 @@ func isNormalClose(err error) bool {
 	}
 
 	return false
+}
+
+// writeConsoleTicketError is the shared error-mapping used by both VMConsole
+// and VMSerialConsole. The unavailableMsg differs between VNC ("console is
+// not available for this VM") and serial ("serial terminal is not available
+// for this VM"); every other status/code is byte-identical (contracts).
+func writeConsoleTicketError(w http.ResponseWriter, log *slog.Logger, err error, writeError func(http.ResponseWriter, int, string, string), unavailableMsg string) {
+	switch {
+	case errors.Is(err, vm.ErrForbidden):
+		writeError(w, http.StatusForbidden, "forbidden", "not your VM")
+	case errors.Is(err, vm.ErrNotFound):
+		writeError(w, http.StatusNotFound, "not_found", "VM not found")
+	case errors.Is(err, vm.ErrClusterConsoleUnavailable):
+		writeError(w, http.StatusBadGateway, "console_unavailable", unavailableMsg)
+	default:
+		log.Error("console ticket issuance failed", "component", "httpapi", "error", err)
+		writeError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+	}
+}
+
+// vncProxyFetcher adapts a cluster.ConsoleRelay to the vm.ProxyFetcher
+// function type, extracting just the ticket and port from the VNCProxyTicket.
+func vncProxyFetcher(relay cluster.ConsoleRelay) vm.ProxyFetcher {
+	return func(ctx context.Context, clusterName string, vmid int, node string) (string, int, error) {
+		proxy, err := relay.GetVNCTicket(ctx, clusterName, vmid, node)
+		if err != nil {
+			return "", 0, err
+		}
+
+		return proxy.Ticket, proxy.Port, nil
+	}
 }
