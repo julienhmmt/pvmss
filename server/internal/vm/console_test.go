@@ -6,16 +6,19 @@ import (
 	"time"
 )
 
-// consoleKindCases is the table shared by every store test below — each case
-// runs the same assertions for both KindVNC and KindTerminal, proving the
-// single-use, TTL, and (kind, cluster, vmid)-binding invariants hold
-// identically for both console paths.
-var consoleKindCases = []struct {
+// consoleKindCase is one row of consoleKindCases.
+type consoleKindCase struct {
 	name   string
 	kind   ConsoleKind
 	ticket string
 	port   int
-}{
+}
+
+// consoleKindCases is the table shared by every store test below — each case
+// runs the same assertions for both KindVNC and KindTerminal, proving the
+// single-use, TTL, and (kind, cluster, vmid)-binding invariants hold
+// identically for both console paths.
+var consoleKindCases = []consoleKindCase{
 	{"vnc", KindVNC, "proxmox-ticket", 5901},
 	{"terminal", KindTerminal, "proxmox-term-ticket", 5902},
 }
@@ -28,36 +31,41 @@ func TestConsoleTicketStore_IssueThenConsume_Succeeds(t *testing.T) {
 	for _, tc := range consoleKindCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-
-			store := NewConsoleTicketStore()
-
-			ticket := store.Issue(tc.kind, "default", 101, "pve-node-01", tc.ticket, tc.port)
-
-			if ticket.Token == "" {
-				t.Fatalf("Issue returned an empty token")
-			}
-
-			if ticket.Cluster != "default" || ticket.VMID != 101 {
-				t.Fatalf("ticket bound to %+v, want default/101", ticket)
-			}
-
-			if ticket.Node != "pve-node-01" || ticket.ProxmoxTicket != tc.ticket || ticket.Port != tc.port {
-				t.Fatalf("ticket carries %+v, want node/ticket/port preserved", ticket)
-			}
-
-			if ticket.ExpiresAt.IsZero() {
-				t.Fatalf("ExpiresAt is zero, want a real timestamp")
-			}
-
-			consumed, err := store.Consume(tc.kind, ticket.Token, "default", 101)
-			if err != nil {
-				t.Fatalf("Consume: %v", err)
-			}
-
-			if consumed.Token != ticket.Token {
-				t.Fatalf("consumed token = %q, want %q", consumed.Token, ticket.Token)
-			}
+			assertTicketIssuedAndConsumed(t, tc)
 		})
+	}
+}
+
+func assertTicketIssuedAndConsumed(t *testing.T, tc consoleKindCase) {
+	t.Helper()
+
+	store := NewConsoleTicketStore()
+
+	ticket := store.Issue(tc.kind, "default", 101, "pve-node-01", tc.ticket, tc.port)
+
+	if ticket.Token == "" {
+		t.Fatalf("Issue returned an empty token")
+	}
+
+	if ticket.Cluster != "default" || ticket.VMID != 101 {
+		t.Fatalf("ticket bound to %+v, want default/101", ticket)
+	}
+
+	if ticket.Node != "pve-node-01" || ticket.ProxmoxTicket != tc.ticket || ticket.Port != tc.port {
+		t.Fatalf("ticket carries %+v, want node/ticket/port preserved", ticket)
+	}
+
+	if ticket.ExpiresAt.IsZero() {
+		t.Fatalf("ExpiresAt is zero, want a real timestamp")
+	}
+
+	consumed, err := store.Consume(tc.kind, ticket.Token, "default", 101)
+	if err != nil {
+		t.Fatalf("Consume: %v", err)
+	}
+
+	if consumed.Token != ticket.Token {
+		t.Fatalf("consumed token = %q, want %q", consumed.Token, ticket.Token)
 	}
 }
 

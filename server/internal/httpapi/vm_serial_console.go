@@ -42,6 +42,20 @@ func NewVMSerialConsole(projection *inventory.Projection, authHandler *Auth, rel
 	return &VMSerialConsole{projection: projection, resolver: singleClusterResolver{projection: projection}, auth: authHandler, relay: relay, tickets: tickets, store: st, log: log}
 }
 
+// consoleEnv bundles this handler's shared collaborators for the shared
+// console ticket and websocket helpers.
+func (h *VMSerialConsole) consoleEnv() consoleEnv {
+	return consoleEnv{
+		auth:     h.auth,
+		resolver: h.resolver,
+		clients:  h.clients,
+		relay:    h.relay,
+		tickets:  h.tickets,
+		store:    h.store,
+		log:      h.log,
+	}
+}
+
 // VMSerialConsoleRegistryDeps groups the collaborators
 // NewVMSerialConsoleWithRegistry needs for multi-cluster wiring. Mirrors
 // VMConsoleRegistryDeps.
@@ -90,7 +104,7 @@ func (h *VMSerialConsole) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // Calls vm.GetConsoleTicket with KindTerminal (Resolve → GetTermProxy → Issue
 // → audit), returns only the opaque token. Mirrors handleVNCTicket.
 func (h *VMSerialConsole) handleSerialTicket(w http.ResponseWriter, r *http.Request) {
-	serveConsoleTicket(w, r, h.auth, h.resolver, h.clients, h.relay, h.tickets, h.store, h.log,
+	serveConsoleTicket(w, r, h.consoleEnv(),
 		consoleTicketParams{
 			kind:           vm.KindTerminal,
 			capabilityName: "TerminalRelay",
@@ -111,7 +125,7 @@ func (h *VMSerialConsole) handleSerialTicket(w http.ResponseWriter, r *http.Requ
 //
 //nolint:dupl // VNC and serial websocket handlers are intentionally parallel: different relay interfaces (ConsoleRelay vs TerminalRelay), proxy ticket types (VNCProxyTicket vs TermProxyTicket), and websocket message types (Binary vs Text). The shared setup is extracted into acceptConsoleWebSocket; the relay-specific tail cannot be unified without erasing the type safety that distinguishes the two paths.
 func (h *VMSerialConsole) handleSerialWebSocket(w http.ResponseWriter, r *http.Request) {
-	ticket, conn, ok := acceptConsoleWebSocket(w, r, h.auth, h.tickets, h.log,
+	ticket, conn, ok := acceptConsoleWebSocket(w, r, h.consoleEnv(),
 		consoleWebSocketParams{
 			kind:             vm.KindTerminal,
 			invalidTicketMsg: "invalid or expired serial ticket",

@@ -147,7 +147,7 @@ func proxmoxGetVNCTicket(ctx context.Context, c proxmoxVNCClient, node string, v
 		return VNCProxyTicket{}, fmt.Errorf("build vncproxy request: %w", err)
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("PVEAPIToken=%s=%s", c.apiTokenName, c.apiTokenVal))
+	req.Header.Set("Authorization", fmt.Sprintf(proxmoxAuthHeaderFmt, c.apiTokenName, c.apiTokenVal))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := c.httpClient.Do(req)
@@ -190,7 +190,7 @@ func proxmoxRelayConsole(ctx context.Context, c proxmoxVNCClient, node string, v
 
 	proxmoxConn, _, err := websocket.Dial(dialCtx, wsURL, &websocket.DialOptions{ //nolint:bodyclose // coder/websocket owns the response body lifecycle per its Dial docs
 		HTTPHeader: http.Header{
-			"Authorization": []string{fmt.Sprintf("PVEAPIToken=%s=%s", c.apiTokenName, c.apiTokenVal)},
+			"Authorization": []string{fmt.Sprintf(proxmoxAuthHeaderFmt, c.apiTokenName, c.apiTokenVal)},
 		},
 		HTTPClient: dialClient,
 	})
@@ -242,7 +242,7 @@ func proxmoxGetTermProxy(ctx context.Context, c proxmoxVNCClient, node string, v
 		return TermProxyTicket{}, fmt.Errorf("build termproxy request: %w", err)
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("PVEAPIToken=%s=%s", c.apiTokenName, c.apiTokenVal))
+	req.Header.Set("Authorization", fmt.Sprintf(proxmoxAuthHeaderFmt, c.apiTokenName, c.apiTokenVal))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := c.httpClient.Do(req)
@@ -289,7 +289,7 @@ func proxmoxRelaySerial(ctx context.Context, c proxmoxVNCClient, node string, vm
 
 	proxmoxConn, _, err := websocket.Dial(dialCtx, wsURL, &websocket.DialOptions{ //nolint:bodyclose // coder/websocket owns the response body lifecycle per its Dial docs
 		HTTPHeader: http.Header{
-			"Authorization": []string{fmt.Sprintf("PVEAPIToken=%s=%s", c.apiTokenName, c.apiTokenVal)},
+			"Authorization": []string{fmt.Sprintf(proxmoxAuthHeaderFmt, c.apiTokenName, c.apiTokenVal)},
 		},
 		HTTPClient: dialClient,
 	})

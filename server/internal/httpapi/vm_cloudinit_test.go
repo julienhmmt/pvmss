@@ -161,28 +161,7 @@ func TestVMCloudInit_AddSSHKey(t *testing.T) {
 	})
 
 	t.Run("injects valid key", func(t *testing.T) {
-		recorder := httptest.NewRecorder()
-		handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPost, path, `{"user":"debian","key":"ssh-ed25519 AAAA x"}`, aliceCookie(t, authHandler)))
-
-		if recorder.Code != http.StatusOK {
-			t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
-		}
-
-		var sawAgent bool
-
-		for _, c := range cluster.FakeCallsFor(101) {
-			if c.Action == "add_ssh_key" {
-				sawAgent = true
-
-				if c.Content != "ssh-ed25519 AAAA x" || c.Name != "debian" {
-					t.Errorf("add_ssh_key call = %+v", c)
-				}
-			}
-		}
-
-		if !sawAgent {
-			t.Fatal("expected an add_ssh_key agent call")
-		}
+		assertSSHKeyInjected(t, handler, path, authHandler)
 	})
 
 	t.Run("agent failure maps to bad gateway", func(t *testing.T) {
@@ -195,6 +174,32 @@ func TestVMCloudInit_AddSSHKey(t *testing.T) {
 			t.Fatalf("status = %d, want 502", recorder.Code)
 		}
 	})
+}
+
+func assertSSHKeyInjected(t *testing.T, handler http.Handler, path string, authHandler *httpapi.Auth) {
+	t.Helper()
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPost, path, `{"user":"debian","key":"ssh-ed25519 AAAA x"}`, aliceCookie(t, authHandler)))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", recorder.Code, recorder.Body.String())
+	}
+
+	var sawAgent bool
+
+	for _, c := range cluster.FakeCallsFor(101) {
+		if c.Action == "add_ssh_key" {
+			sawAgent = true
+			if c.Content != "ssh-ed25519 AAAA x" || c.Name != "debian" {
+				t.Errorf("add_ssh_key call = %+v", c)
+			}
+		}
+	}
+
+	if !sawAgent {
+		t.Fatal("expected an add_ssh_key agent call")
+	}
 }
 
 //nolint:paralleltest // serial: shared fake VM and SQLite fixtures
