@@ -521,7 +521,7 @@ func (fake Fake) Action(_ context.Context, node string, vmid int, action string)
 	}
 
 	switch action {
-	case actionStart, actionReboot, actionReset:
+	case actionStart, actionReboot, actionReset, actionResume:
 		state.vms[idx].Status = VMRunning
 		state.vms[idx].Uptime = fakeUptimeOnStart
 	case actionStop, actionShutdown:
@@ -529,9 +529,6 @@ func (fake Fake) Action(_ context.Context, node string, vmid int, action string)
 		state.vms[idx].Uptime = 0
 	case actionPause:
 		state.vms[idx].Status = VMPaused
-	case actionResume:
-		state.vms[idx].Status = VMRunning
-		state.vms[idx].Uptime = fakeUptimeOnStart
 	default:
 		return ErrInvalidAction
 	}
@@ -592,7 +589,7 @@ func (fake Fake) Delete(_ context.Context, node string, vmid int) error {
 
 	state.vms = slices.Delete(state.vms, idx, idx+1)
 
-	state.record(FakeCall{Node: node, VMID: vmid, Action: "delete"})
+	state.record(FakeCall{Node: node, VMID: vmid, Action: actionDelete})
 
 	return nil
 }
@@ -833,6 +830,12 @@ type fakeIdentity struct {
 // Extracted as constants to satisfy goconst and give the magic strings a name.
 const (
 	poolRoleName = "PVMSSUser"
+
+	// actionDelete is the FakeCall.Action value recorded by the fake cluster's
+	// DeleteVM. Also reused as the Proxmox API form key for key deletion
+	// (proxmox_writer.go, proxmox_cloudinit.go, proxmox_pools.go) — same word,
+	// same intent: remove this key/VM.
+	actionDelete = "delete"
 
 	FakeNode01     = "pve-node-01"
 	FakeNode02     = "pve-node-02"

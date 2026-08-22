@@ -261,6 +261,7 @@ func (h *VMCloudInit) handleSSHKey(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", "POST")
 		h.writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
+
 		return
 	}
 

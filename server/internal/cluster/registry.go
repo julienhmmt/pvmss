@@ -14,6 +14,14 @@ import (
 // ErrClusterNotFound is returned when a cluster is unknown or removed.
 var ErrClusterNotFound = errors.New("cluster not found")
 
+// SourceFake and SourceProxmox are the supported PVMSS_CLUSTER_SOURCE values.
+// Exported so tests and config validation reference a single constant instead
+// of repeating the literal.
+const (
+	SourceFake    = "fake"
+	SourceProxmox = "proxmox"
+)
+
 // ClientFactory constructs one client from one persisted cluster row.
 type ClientFactory func(row store.ClusterRow) (Client, error)
 
@@ -125,14 +133,14 @@ func (registry *Registry) List() []string {
 
 func factoryForSource(source string) (ClientFactory, error) {
 	switch source {
-	case "fake":
+	case SourceFake:
 		return func(row store.ClusterRow) (Client, error) {
 			if row.Name == "" {
 				return nil, errors.New("cluster name is required")
 			}
 			return NewFake(row.Name), nil
 		}, nil
-	case "proxmox":
+	case SourceProxmox:
 		return func(row store.ClusterRow) (Client, error) {
 			parsed, err := url.ParseRequestURI(row.URL)
 			if err != nil || parsed.Scheme == "" || parsed.Host == "" {

@@ -157,7 +157,7 @@ func (p Proxmox) SetCDROM(ctx context.Context, node string, vmid int, cdrom CDRO
 
 	switch cdrom.State {
 	case CDROMAbsent:
-		_, err = rest.do(ctx, http.MethodPut, path, url.Values{"delete": {cdromDiskKey}})
+		_, err = rest.do(ctx, http.MethodPut, path, url.Values{actionDelete: {cdromDiskKey}})
 	case CDROMEmpty:
 		_, err = rest.do(ctx, http.MethodPut, path, url.Values{cdromDiskKey: {"none,media=cdrom"}})
 	case CDROMMounted:
@@ -203,7 +203,7 @@ func (p Proxmox) UpdateNetwork(ctx context.Context, node string, vmid int, inter
 	}
 
 	if len(toDelete) > 0 {
-		form.Set("delete", strings.Join(toDelete, ","))
+		form.Set(actionDelete, strings.Join(toDelete, ","))
 	}
 
 	_, err = rest.do(ctx, http.MethodPut, vmConfigPath(node, vmid), form)

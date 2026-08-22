@@ -24,7 +24,7 @@ func TestParseCloudInitConfig(t *testing.T) {
 
 	got := parseCloudInitConfig(cfg)
 
-	if got.User != "debian" || got.Password != "" {
+	if got.User != FakeCloudInitUser || got.Password != "" {
 		t.Errorf("user/password = %q/%q", got.User, got.Password)
 	}
 
@@ -66,7 +66,7 @@ func TestProxmox_GetCloudInitConfig(t *testing.T) {
 		t.Fatalf("GetCloudInitConfig: %v", err)
 	}
 
-	if got.User != "debian" || got.IPMode != CloudInitIPModeDHCP {
+	if got.User != FakeCloudInitUser || got.IPMode != CloudInitIPModeDHCP {
 		t.Errorf("got = %+v", got)
 	}
 }
@@ -151,7 +151,7 @@ func TestProxmox_SetCloudInitConfig_EnsuresDriveThenWrites(t *testing.T) {
 
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
-	config := CloudInitConfig{User: "debian", IPMode: CloudInitIPModeStatic, IPAddress: "10.0.0.42/24", Gateway: "10.0.0.1"}
+	config := CloudInitConfig{User: FakeCloudInitUser, IPMode: CloudInitIPModeStatic, IPAddress: "10.0.0.42/24", Gateway: "10.0.0.1"}
 	if err := p.SetCloudInitConfig(context.Background(), testNodeName, testVMID, config); err != nil {
 		t.Fatalf("SetCloudInitConfig: %v", err)
 	}
@@ -235,7 +235,7 @@ func TestProxmox_FindSnippetStorage_NotFound(t *testing.T) {
 // when a filename is given, and that an empty filename clears the cicustom key
 // instead of setting it. Fixes the silent no-op reported in REPORT.md §4/addendum.
 //
-//nolint:wsl_v5,goconst // test table reuses the "delete" key string and keeps brace groups tight
+//nolint:wsl_v5 // test table keeps brace groups tight
 func TestProxmox_AttachCloudInitSnippet(t *testing.T) {
 	t.Parallel()
 
@@ -252,33 +252,44 @@ func TestProxmox_AttachCloudInitSnippet(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-
-			seen := map[string]string{}
-
-			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
-				mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, r *http.Request) {
-					if err := r.ParseForm(); err != nil {
-						t.Fatalf("parse form: %v", err)
-					}
-					for _, k := range []string{"cicustom", "delete"} {
-						if v := r.FormValue(k); v != "" {
-							seen[k] = v
-						}
-					}
-					writeJSONFixture(t, w, `{"data":null}`)
-				})
-			})
-
-			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
-
-			if err := p.AttachCloudInitSnippet(context.Background(), testNodeName, "local", tc.filename, testVMID); err != nil {
-				t.Fatalf("AttachCloudInitSnippet: %v", err)
-			}
-
-			if seen[tc.wantKey] != tc.wantVal {
-				t.Errorf("%s = %q, want %q (seen %+v)", tc.wantKey, seen[tc.wantKey], tc.wantVal, seen)
-			}
+			attachCloudInitSnippetSubtest(t, tc.filename, tc.wantKey, tc.wantVal)
 		})
+	}
+}
+
+func attachCloudInitSnippetSubtest(t *testing.T, filename, wantKey, wantVal string) {
+	t.Helper()
+
+	seen := map[string]string{}
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/config", recordCloudInitConfigForm(t, seen))
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	if err := p.AttachCloudInitSnippet(context.Background(), testNodeName, "local", filename, testVMID); err != nil {
+		t.Fatalf("AttachCloudInitSnippet: %v", err)
+	}
+
+	if seen[wantKey] != wantVal {
+		t.Errorf("%s = %q, want %q (seen %+v)", wantKey, seen[wantKey], wantVal, seen)
+	}
+}
+
+func recordCloudInitConfigForm(t *testing.T, seen map[string]string) http.HandlerFunc {
+	t.Helper()
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Fatalf("parse form: %v", err)
+		}
+		for _, k := range []string{"cicustom", "delete"} {
+			if v := r.FormValue(k); v != "" {
+				seen[k] = v
+			}
+		}
+		writeJSONFixture(t, w, `{"data":null}`)
 	}
 }
 
@@ -346,10 +357,10 @@ func TestProxmox_AddSSHKey_AgentExec(t *testing.T) {
 
 	// Success path: positional argv must be [/bin/sh, -c, <script>, user, key].
 	gotExit = 0
-	if err := p.AddSSHKey(context.Background(), testNodeName, testVMID, "debian", "ssh-ed25519 AAAA demo@laptop"); err != nil {
+	if err := p.AddSSHKey(context.Background(), testNodeName, testVMID, FakeCloudInitUser, "ssh-ed25519 AAAA demo@laptop"); err != nil {
 		t.Fatalf("AddSSHKey: %v", err)
 	}
-	if len(gotCommands) != 5 || gotCommands[0] != "/bin/sh" || gotCommands[1] != "-c" || gotCommands[3] != "debian" || gotCommands[4] != "ssh-ed25519 AAAA demo@laptop" {
+	if len(gotCommands) != 5 || gotCommands[0] != "/bin/sh" || gotCommands[1] != "-c" || gotCommands[3] != FakeCloudInitUser || gotCommands[4] != "ssh-ed25519 AAAA demo@laptop" {
 		t.Fatalf("agent argv = %+v, want [/bin/sh -c <script> debian <key>]", gotCommands)
 	}
 	// The key must travel as a bare argv element, never interpolated into the
@@ -366,7 +377,7 @@ func TestProxmox_AddSSHKey_AgentExec(t *testing.T) {
 
 	// Any other non-zero exit surfaces as a failure.
 	gotExit = 1
-	if err := p.AddSSHKey(context.Background(), testNodeName, testVMID, "debian", "ssh-ed25519 AAAA x"); err == nil {
+	if err := p.AddSSHKey(context.Background(), testNodeName, testVMID, FakeCloudInitUser, "ssh-ed25519 AAAA x"); err == nil {
 		t.Fatal("expected a failure for non-zero guest exit")
 	}
 }

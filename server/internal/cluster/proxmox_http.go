@@ -17,6 +17,10 @@ import (
 // covers that plus request/response time without hanging a handler forever.
 const proxmoxTimeout = 20 * time.Second
 
+// proxmoxAuthHeaderFmt is the Proxmox API-token Authorization header value,
+// formatted with the token name and token value.
+const proxmoxAuthHeaderFmt = "PVEAPIToken=%s=%s"
+
 // proxmoxEnvelope is the {"data": ...} wrapper every Proxmox API response
 // uses. Errors carries per-field validation messages on a 4xx response.
 type proxmoxEnvelope struct {
@@ -158,7 +162,7 @@ func (c proxmoxRESTClient) authenticate(req *http.Request) {
 		return
 	}
 
-	req.Header.Set("Authorization", fmt.Sprintf("PVEAPIToken=%s=%s", c.tokenName, c.tokenValue))
+	req.Header.Set("Authorization", fmt.Sprintf(proxmoxAuthHeaderFmt, c.tokenName, c.tokenValue))
 }
 
 // parseProxmoxResponse maps a raw HTTP response to the cluster package's
