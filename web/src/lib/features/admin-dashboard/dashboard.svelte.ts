@@ -5,23 +5,25 @@ import { m } from '$lib/paraglide/messages.js';
 export interface NodeSummary {
 	name: string;
 	status: string;
+	vmCount: number;
+	cpuCores: number;
+	cpuUsage: number;
+	memoryTotalBytes: number;
+	memoryUsedBytes: number;
 }
 
-export interface StorageSummary {
-	name: string;
-	node: string;
-	type: string;
-	totalBytes: number;
-	usedBytes: number;
+export interface VMStatusCounts {
+	running: number;
+	paused: number;
+	stopped: number;
+	other: number;
 }
 
 export interface DashboardSummary {
 	nodes: NodeSummary[];
 	nodeCount: number;
 	vmCount: number;
-	storages: StorageSummary[];
-	storageTotalBytes: number;
-	storageUsedBytes: number;
+	vmStatusCounts: VMStatusCounts;
 	version: string;
 	refreshedAt: string;
 }
