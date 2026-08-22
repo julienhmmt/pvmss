@@ -278,6 +278,83 @@ func TestDelete_AuditErrorWrapped(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake VM fixture
+func TestDelete_RunningVMRejectedWithoutForce(t *testing.T) {
+	fake := actionsIndex(t)
+	idx := buildResolveIndex(t)
+	st := bulkTestStore(t)
+
+	// VM 100 (web-01) is running and owned by alice.
+	err := vm.Delete(context.Background(), vm.WriteDeps{Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 100, Writer: fake, Audit: st, Refresher: noopRefresher{}})
+	if !errors.Is(err, cluster.ErrVMRunning) {
+		t.Fatalf("err = %v, want ErrVMRunning", err)
+	}
+
+	// The VM must still be present — no stop, no delete.
+	snap, err := fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	for _, v := range snap.VMs {
+		if v.VMID == 100 {
+			return
+		}
+	}
+
+	t.Errorf("VM 100 was removed without force")
+}
+
+//nolint:paralleltest // serial: shared fake VM fixture
+func TestDelete_ForceStopsRunningVMThenDeletes(t *testing.T) {
+	fake := actionsIndex(t)
+	idx := buildResolveIndex(t)
+	st := bulkTestStore(t)
+
+	// VM 100 (web-01) is running and owned by alice. Force=true stops it first.
+	err := vm.Delete(context.Background(), vm.WriteDeps{Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName, VMID: 100, Writer: fake, Audit: st, Refresher: noopRefresher{}, Force: true})
+	if err != nil {
+		t.Fatalf("Delete with force: %v", err)
+	}
+
+	snap, err := fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	for _, v := range snap.VMs {
+		if v.VMID == 100 {
+			t.Errorf("VM 100 still present after force-delete")
+		}
+	}
+
+	// The force-stop is recorded as its own "stop" audit entry, plus the delete.
+	rows, err := st.QueryAudit(context.Background())
+	if err != nil {
+		t.Fatalf("QueryAudit: %v", err)
+	}
+
+	var hasStop, hasDelete bool
+
+	for _, row := range rows {
+		if row.Action == "stop" && row.VMID == 100 {
+			hasStop = true
+		}
+
+		if row.Action == "delete" && row.VMID == 100 {
+			hasDelete = true
+		}
+	}
+
+	if !hasStop {
+		t.Errorf("audit rows missing force-stop entry for VM 100: %+v", rows)
+	}
+
+	if !hasDelete {
+		t.Errorf("audit rows missing delete entry for VM 100: %+v", rows)
+	}
+}
+
 // =============================================================================
 // Patch
 // =============================================================================

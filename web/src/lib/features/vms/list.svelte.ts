@@ -1,7 +1,8 @@
 import { getContext, setContext } from 'svelte';
 import { SvelteURLSearchParams } from 'svelte/reactivity';
-import { get, ApiRequestError } from '$lib/shared/api/client';
+import { get, post, ApiRequestError } from '$lib/shared/api/client';
 import { m } from '$lib/paraglide/messages.js';
+import type { VmAction } from './detail.svelte';
 
 export type VmStatus = 'running' | 'stopped' | 'paused';
 export type VmScope = 'mine' | 'all';
@@ -45,12 +46,18 @@ export interface VmListStoreOptions {
 	navigate: (queryString: string) => void;
 }
 
+/** Result of a per-row power action triggered from the list view. */
+export interface RowActionResult {
+	ok: boolean;
+	error?: string;
+}
+
 const DEFAULT_SORT_BY: VmSortBy = 'name';
 const DEFAULT_SORT_DIR: VmSortDir = 'asc';
 const DEFAULT_PAGE_SIZE = 10;
 const SEARCH_DEBOUNCE_MS = 300;
 
-export const SORTABLE_COLUMNS: readonly VmSortBy[] = ['vmid', 'name', 'node', 'status', 'cpu', 'memory'] as const;
+export const SORTABLE_COLUMNS: readonly VmSortBy[] = ['name', 'vmid', 'node', 'status', 'cpu', 'memory'] as const;
 
 /**
  * State and URL synchronization for the single VM-list view (FR-007: search,
@@ -173,6 +180,28 @@ export class VmListStore {
 	#syncAndLoad(): void {
 		this.#navigate(this.queryString());
 		void this.load();
+	}
+
+	/**
+	 * Triggers a power action on a single VM from the list view, then reloads
+	 * the list so the row reflects the authoritative status. Returns a result
+	 * object so the caller can fire the appropriate toast without coupling the
+	 * store to the toast queue.
+	 */
+	async rowAction(cluster: string, vmid: number, action: VmAction): Promise<RowActionResult> {
+		try {
+			await post<{ status: string }>(
+				`/api/v1/vms/${encodeURIComponent(cluster)}/${vmid}/actions`,
+				{ action }
+			);
+			await this.load();
+			return { ok: true };
+		} catch (err) {
+			return {
+				ok: false,
+				error: err instanceof ApiRequestError ? err.message : m['vms.detail.errorAction']()
+			};
+		}
 	}
 }
 

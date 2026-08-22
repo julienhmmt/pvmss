@@ -162,12 +162,17 @@ func waitForProjection(t *testing.T, projection *inventory.Projection, timeout t
 	}
 }
 
-// firstVMFromIndex returns an arbitrary VM from the index for mutation tests.
+// firstVMFromIndex returns a stopped VM from the index for mutation tests.
+// A stopped VM is required because the fake's Delete rejects a running VM with
+// cluster.ErrVMRunning (mirroring real Proxmox); these registry tests exercise
+// the refresh/projection wiring, not the force-stop path.
 func firstVMFromIndex(t *testing.T, index *inventory.Index) cluster.VM {
 	t.Helper()
 	for _, vm := range index.ByVMID {
-		return vm
+		if vm.Status == cluster.VMStopped {
+			return vm
+		}
 	}
-	t.Fatal("no VM found in index")
+	t.Fatal("no stopped VM found in index")
 	return cluster.VM{}
 }

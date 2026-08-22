@@ -17,6 +17,9 @@
 	error={store.error}
 	saving={store.saving}
 	saveError={store.saveError}
+	clusterOptions={store.clusterOptions}
+	cluster={store.cluster}
+	onClusterChange={(v) => store.setCluster(v)}
 	search={store.search}
 	protectedFilter={store.protectedFilter}
 	sortBy={store.sortBy}

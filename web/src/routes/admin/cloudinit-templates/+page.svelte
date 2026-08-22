@@ -16,6 +16,9 @@
 	error={store.error}
 	saving={store.saving}
 	saveError={store.saveError}
+	clusterOptions={store.clusterOptions}
+	cluster={store.cluster}
+	onClusterChange={(v) => store.setCluster(v)}
 	onCreate={(label, content) => void store.create(label, content)}
 	onUpdate={(id, label, content) => void store.update(id, label, content)}
 	onDelete={(id) => void store.remove(id)}

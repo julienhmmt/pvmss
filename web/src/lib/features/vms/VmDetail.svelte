@@ -12,6 +12,7 @@
 	import ConsoleBanner from './ConsoleBanner.svelte';
 	import VmMetricsRow from './VmMetricsRow.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import { formatBytes } from '$lib/shared/format-bytes';
 
 	const store = getVmDetailContext();
 
@@ -32,21 +33,10 @@
 	let activeTab = $state('overview');
 
 	const statusClasses: Record<string, string> = {
-		running: 'bg-success-soft text-success-soft-foreground',
-		stopped: 'bg-muted text-muted-foreground',
-		paused: 'bg-destructive-soft text-destructive-soft-foreground'
+		running: 'bg-success-soft text-success-soft-foreground border-success-soft-border',
+		stopped: 'bg-muted text-muted-foreground border-border',
+		paused: 'bg-destructive-soft text-destructive-soft-foreground border-destructive-soft-border'
 	};
-
-	function formatBytes(bytes: number): string {
-		const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
-		let value = bytes;
-		let unitIndex = 0;
-		while (value >= 1024 && unitIndex < units.length - 1) {
-			value /= 1024;
-			unitIndex += 1;
-		}
-		return `${value.toFixed(1)} ${units[unitIndex]}`;
-	}
 
 	function formatUptime(seconds: number): string {
 		const days = Math.floor(seconds / 86400);
@@ -107,7 +97,7 @@
 {#if store.loading && store.entity === null}
 	<div role="status" aria-live="polite" class="grid gap-6" data-testid="vm-detail-skeleton">
 		<div class="grid gap-2">
-			<Skeleton class="h-8 w-48" />
+			<Skeleton class="h-10 w-56" />
 			<Skeleton class="h-4 w-64" />
 		</div>
 		<Skeleton class="h-10 w-48" />
@@ -125,109 +115,122 @@
 {:else if store.error}
 	<p role="alert" class="text-destructive" data-testid="vm-detail-error">{store.error}</p>
 {:else if store.entity}
-	<header class="mb-6">
-		<div class="flex flex-wrap items-center gap-3">
-			{#if editingName}
-				<input
-					type="text"
-					class="rounded-md border border-border bg-background px-2 py-1 text-2xl font-semibold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-					bind:value={nameDraft}
-					onkeydown={handleNameKeydown}
-					data-testid="vm-name-edit"
-				/>
-				<button
-					type="button"
-					class="rounded-md bg-primary px-3 py-1 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-					onclick={() => void commitName()}
-					data-testid="vm-name-save"
+	<header class="rounded-xl border border-border bg-card p-6 shadow-card">
+		<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+			<div class="flex flex-wrap items-center gap-3">
+				{#if editingName}
+					<input
+						type="text"
+						class="rounded-md border border-border bg-background px-2 py-1 text-2xl font-semibold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+						bind:value={nameDraft}
+						onkeydown={handleNameKeydown}
+						data-testid="vm-name-edit"
+					/>
+					<button
+						type="button"
+						class="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+						onclick={() => void commitName()}
+						data-testid="vm-name-save"
+					>
+						{m['common.save']()}
+					</button>
+					<button
+						type="button"
+						class="rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+						onclick={cancelName}
+					>
+						{m['common.cancel']()}
+					</button>
+				{:else}
+					<button
+						type="button"
+						class="text-2xl font-semibold tracking-tight hover:cursor-text hover:underline"
+						onclick={startEditName}
+						title={m['vms.detail.clickToRename']()}
+						data-testid="vm-name"
+					>
+						{store.entity.name}
+					</button>
+				{/if}
+				<span
+					class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium {statusClasses[store.entity.status]}"
+					aria-live="polite"
+					data-testid="vm-status"
 				>
-					{m['common.save']()}
-				</button>
-				<button
-					type="button"
-					class="rounded-md px-3 py-1 text-sm font-medium text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-					onclick={cancelName}
-				>
-					{m['common.cancel']()}
-				</button>
-			{:else}
-				<button
-					type="button"
-					class="text-2xl font-semibold tracking-tight hover:cursor-text hover:underline"
-					onclick={startEditName}
-					title={m['vms.detail.clickToRename']()}
-					data-testid="vm-name"
-				>
-					{store.entity.name}
-				</button>
-			{/if}
-			<span
-				class="inline-flex items-center rounded-full px-2 py-0.5 text-xs {statusClasses[store.entity.status]}"
-				aria-live="polite"
-				data-testid="vm-status"
-			>
-				{store.entity.status}
-			</span>
+					<span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span>
+					{store.entity.status}
+				</span>
+			</div>
+			<div class="flex items-center gap-2">
+				<ConsoleBanner />
+			</div>
 		</div>
-		<p class="mt-1 font-mono text-sm text-muted-foreground" data-testid="vm-meta">
+
+		<p class="mt-3 font-mono text-sm text-muted-foreground" data-testid="vm-meta">
 			{m['vms.detail.meta']({ vmid: String(store.entity.vmid), node: store.entity.node, pool: store.entity.pool })}
 		</p>
+
+		<div class="mt-5">
+			<VmActionBar onDelete={() => (deleteOpen = true)} />
+		</div>
 	</header>
 
-	<VmActionBar onDelete={() => (deleteOpen = true)} />
-
-	<div class="mt-4">
-		<ConsoleBanner />
-	</div>
-
-	<dl class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-		<div class="rounded-md border border-border p-4 transition-shadow hover:shadow-card" data-testid="vm-stat-cpu">
-			<dt class="text-xs text-muted-foreground">{m['vms.detail.statCpu']()}</dt>
-			<dd class="text-lg font-medium font-mono">{store.entity.cpuCores} {m['common.cores']()}</dd>
+	<section class="mt-6 rounded-xl border border-border bg-card p-6 shadow-card">
+		<div class="grid grid-cols-2 gap-6 md:grid-cols-4">
+			<div data-testid="vm-stat-cpu">
+				<p class="text-sm text-muted-foreground">{m['vms.detail.statCpu']()}</p>
+				<p class="mt-1 text-2xl font-semibold font-mono">{store.entity.cpuCores} {m['common.cores']()}</p>
+			</div>
+			<div data-testid="vm-stat-memory">
+				<p class="text-sm text-muted-foreground">{m['vms.detail.statMemory']()}</p>
+				<p class="mt-1 text-2xl font-semibold font-mono">{formatBytes(store.entity.memoryTotal)}</p>
+			</div>
+			<div data-testid="vm-stat-disk">
+				<p class="text-sm text-muted-foreground">{m['vms.detail.statDisk']()}</p>
+				<p class="mt-1 text-2xl font-semibold font-mono">{formatBytes(store.entity.diskTotal)}</p>
+			</div>
+			<div data-testid="vm-stat-uptime">
+				<p class="text-sm text-muted-foreground">{m['vms.detail.statUptime']()}</p>
+				<p class="mt-1 text-2xl font-semibold font-mono">
+					{#if store.entity.uptimeSeconds}
+						{formatUptime(store.entity.uptimeSeconds)}
+					{:else}
+						{m['common.dash']()}
+					{/if}
+				</p>
+			</div>
 		</div>
-		<div class="rounded-md border border-border p-4 transition-shadow hover:shadow-card" data-testid="vm-stat-memory">
-			<dt class="text-xs text-muted-foreground">{m['vms.detail.statMemory']()}</dt>
-			<dd class="text-lg font-medium font-mono">{formatBytes(store.entity.memoryTotal)}</dd>
-		</div>
-		<div class="rounded-md border border-border p-4 transition-shadow hover:shadow-card" data-testid="vm-stat-disk">
-			<dt class="text-xs text-muted-foreground">{m['vms.detail.statDisk']()}</dt>
-			<dd class="text-lg font-medium font-mono">{formatBytes(store.entity.diskTotal)}</dd>
-		</div>
-		<div class="rounded-md border border-border p-4 transition-shadow hover:shadow-card" data-testid="vm-stat-uptime">
-			<dt class="text-xs text-muted-foreground">{m['vms.detail.statUptime']()}</dt>
-			<dd class="text-lg font-medium">
-				{#if store.entity.uptimeSeconds}
-					{formatUptime(store.entity.uptimeSeconds)}
-				{:else}
-					{m['common.dash']()}
-				{/if}
-			</dd>
-		</div>
-	</dl>
+	</section>
 
 	<VmMetricsRow />
 
 	<div class="mt-8">
 		<Tabs {tabs} bind:active={activeTab} />
 
-		<div id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" hidden={activeTab !== 'overview'}>
-			<section class="mt-6">
-				<h2 class="mb-2 text-sm font-medium text-muted-foreground">{m['vms.detail.descriptionLabel']()}</h2>
+		<div
+			id="panel-overview"
+			role="tabpanel"
+			aria-labelledby="tab-overview"
+			hidden={activeTab !== 'overview'}
+			class="mt-4 rounded-xl border border-border bg-card p-6 shadow-card"
+		>
+			<section>
+				<h2 class="text-sm font-medium text-muted-foreground">{m['vms.detail.descriptionLabel']()}</h2>
 				{#if editingDescription}
 					<textarea
-						class="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+						class="pv-input mt-3"
 						bind:value={descriptionDraft}
 						onkeydown={(e) => {
 						if (e.key === 'Escape') { e.preventDefault(); cancelDescription(); }
 						if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); void commitDescription(); }
 					}}
-						rows="3"
+						rows="4"
 						data-testid="vm-description-edit"
 					></textarea>
-					<div class="mt-2 flex gap-2">
+					<div class="mt-3 flex gap-2">
 						<button
 							type="button"
-							class="rounded-md bg-primary px-3 py-1 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+							class="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
 							onclick={() => void commitDescription()}
 							data-testid="vm-description-save"
 						>
@@ -235,7 +238,7 @@
 						</button>
 						<button
 							type="button"
-							class="rounded-md px-3 py-1 text-sm font-medium text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+							class="rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
 							onclick={cancelDescription}
 						>
 							{m['common.cancel']()}
@@ -244,7 +247,7 @@
 				{:else}
 					<button
 						type="button"
-						class="w-full rounded-md border border-border bg-muted/30 px-3 py-2 text-left text-sm hover:cursor-text hover:bg-muted/50"
+						class="mt-3 w-full rounded-lg border border-dashed border-border bg-muted/30 px-4 py-4 text-left text-sm leading-6 hover:cursor-text hover:bg-muted/50"
 						onclick={startEditDescription}
 						title={m['vms.detail.clickToEdit']()}
 						data-testid="vm-description"
@@ -255,25 +258,25 @@
 			</section>
 		</div>
 
-		<div id="panel-disks" role="tabpanel" aria-labelledby="tab-disks" hidden={activeTab !== 'disks'} class="mt-6">
+		<div id="panel-disks" role="tabpanel" aria-labelledby="tab-disks" hidden={activeTab !== 'disks'} class="mt-4">
 			<VmDisksTab />
 		</div>
 
-		<div id="panel-network" role="tabpanel" aria-labelledby="tab-network" hidden={activeTab !== 'network'} class="mt-6">
+		<div id="panel-network" role="tabpanel" aria-labelledby="tab-network" hidden={activeTab !== 'network'} class="mt-4">
 			<VmNetworkTab />
 		</div>
 
-		<div id="panel-hardware" role="tabpanel" aria-labelledby="tab-hardware" hidden={activeTab !== 'hardware'} class="mt-6">
+		<div id="panel-hardware" role="tabpanel" aria-labelledby="tab-hardware" hidden={activeTab !== 'hardware'} class="mt-4">
 			<VmHardwareTab />
 		</div>
 
-		<div id="panel-cloudinit" role="tabpanel" aria-labelledby="tab-cloudinit" hidden={activeTab !== 'cloudinit'} class="mt-6">
+		<div id="panel-cloudinit" role="tabpanel" aria-labelledby="tab-cloudinit" hidden={activeTab !== 'cloudinit'} class="mt-4">
 			{#if activeTab === 'cloudinit'}
 				<CloudInitTab />
 			{/if}
 		</div>
 
-		<div id="panel-snapshots" role="tabpanel" aria-labelledby="tab-snapshots" hidden={activeTab !== 'snapshots'} class="mt-6">
+		<div id="panel-snapshots" role="tabpanel" aria-labelledby="tab-snapshots" hidden={activeTab !== 'snapshots'} class="mt-4">
 			{#if activeTab === 'snapshots'}
 				<VmSnapshotsTab />
 			{/if}

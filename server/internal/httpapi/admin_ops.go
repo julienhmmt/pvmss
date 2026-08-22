@@ -161,34 +161,36 @@ func parseAuditFilter(w http.ResponseWriter, r *http.Request) (store.AuditFilter
 }
 
 type nodeSummaryDTO struct {
-	Name   string `json:"name"`
-	Status string `json:"status"`
+	Name             string  `json:"name"`
+	Status           string  `json:"status"`
+	VMCount          int     `json:"vmCount"`
+	CPUCores         int     `json:"cpuCores"`
+	CPUUsage         float64 `json:"cpuUsage"`
+	MemoryTotalBytes int64   `json:"memoryTotalBytes"`
+	MemoryUsedBytes  int64   `json:"memoryUsedBytes"`
 }
 
-type storageSummaryDTO struct {
-	Name       string `json:"name"`
-	Node       string `json:"node"`
-	Type       string `json:"type"`
-	TotalBytes int64  `json:"totalBytes"`
-	UsedBytes  int64  `json:"usedBytes"`
+type vmStatusCountsDTO struct {
+	Running int `json:"running"`
+	Paused  int `json:"paused"`
+	Stopped int `json:"stopped"`
+	Other   int `json:"other"`
 }
 
 type dashboardDTO struct {
-	Nodes             []nodeSummaryDTO    `json:"nodes"`
-	NodeCount         int                 `json:"nodeCount"`
-	VMCount           int                 `json:"vmCount"`
-	Storages          []storageSummaryDTO `json:"storages"`
-	StorageTotalBytes int64               `json:"storageTotalBytes"`
-	StorageUsedBytes  int64               `json:"storageUsedBytes"`
-	Version           string              `json:"version"`
-	RefreshedAt       string              `json:"refreshedAt"`
+	Nodes          []nodeSummaryDTO  `json:"nodes"`
+	NodeCount      int               `json:"nodeCount"`
+	VMCount        int               `json:"vmCount"`
+	VMStatusCounts vmStatusCountsDTO `json:"vmStatusCounts"`
+	Version        string            `json:"version"`
+	RefreshedAt    string            `json:"refreshedAt"`
 }
 
 // ServeDashboard handles GET /api/v1/admin/dashboard (FR-004/FR-005/FR-006).
-// Node and VM counts come from the in-memory Index (len(Index.ByVMID),
-// Index.Nodes); storage occupancy comes from Index.StoragesByNode — no
-// cluster.Client call is made, satisfying SC-003 and constitution IV without
-// the Gate IV exception the spec originally anticipated.
+// Only Proxmox nodes that host at least one PVMSS-managed VM are surfaced;
+// per-node CPU/RAM usage and VM counts come from the in-memory Index, and VM
+// status counts come from Index.ByVMID. No cluster.Client call is made,
+// satisfying SC-003 and constitution IV.
 func (h *AdminOps) ServeDashboard(w http.ResponseWriter, _ *http.Request) {
 	idx := h.projection.Load()
 	if idx == nil {
@@ -196,34 +198,63 @@ func (h *AdminOps) ServeDashboard(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 
-	nodes := make([]nodeSummaryDTO, 0, len(idx.Nodes))
-	for _, n := range idx.Nodes {
-		nodes = append(nodes, nodeSummaryDTO{Name: n.Name, Status: string(n.Status)})
+	// Build a set of node names that host at least one PVMSS-managed VM.
+	usedNodes := make(map[string]struct{}, len(idx.ByNode))
+	for name := range idx.ByNode {
+		usedNodes[name] = struct{}{}
 	}
 
-	storages := make([]storageSummaryDTO, 0)
-	var storageTotal, storageUsed int64
-	for _, ss := range idx.StoragesByNode {
-		for _, s := range ss {
-			storages = append(storages, storageSummaryDTO{
-				Name: s.Name, Node: s.Node, Type: s.Type,
-				TotalBytes: s.Total, UsedBytes: s.Used,
-			})
-			storageTotal += s.Total
-			storageUsed += s.Used
+	nodes := make([]nodeSummaryDTO, 0, len(usedNodes))
+	for _, n := range idx.Nodes {
+		if _, ok := usedNodes[n.Name]; !ok {
+			continue
+		}
+		nodes = append(nodes, nodeSummaryDTO{
+			Name:             n.Name,
+			Status:           string(n.Status),
+			VMCount:          len(idx.ByNode[n.Name]),
+			CPUCores:         n.CPUCores,
+			CPUUsage:         n.CPUUsage,
+			MemoryTotalBytes: n.MemoryTotal,
+			MemoryUsedBytes:  n.MemoryUsed,
+		})
+	}
+
+	// Stable sort by node name so the dashboard order is deterministic.
+	sortNodeSummaries(nodes)
+
+	var counts vmStatusCountsDTO
+	for _, vm := range idx.ByVMID {
+		switch vm.Status {
+		case cluster.VMRunning:
+			counts.Running++
+		case cluster.VMPaused:
+			counts.Paused++
+		case cluster.VMStopped:
+			counts.Stopped++
+		default:
+			counts.Other++
 		}
 	}
 
 	writeAdminJSON(w, http.StatusOK, dashboardDTO{
-		Nodes:             nodes,
-		NodeCount:         len(idx.Nodes),
-		VMCount:           len(idx.ByVMID),
-		Storages:          storages,
-		StorageTotalBytes: storageTotal,
-		StorageUsedBytes:  storageUsed,
-		Version:           h.version,
-		RefreshedAt:       idx.RefreshedAt.UTC().Format(time.RFC3339),
+		Nodes:          nodes,
+		NodeCount:      len(nodes),
+		VMCount:        len(idx.ByVMID),
+		VMStatusCounts: counts,
+		Version:        h.version,
+		RefreshedAt:    idx.RefreshedAt.UTC().Format(time.RFC3339),
 	})
+}
+
+// sortNodeSummaries sorts dashboard node summaries by name in place. Kept as a
+// helper so the handler body stays linear.
+func sortNodeSummaries(nodes []nodeSummaryDTO) {
+	for i := 1; i < len(nodes); i++ {
+		for j := i; j > 0 && nodes[j-1].Name > nodes[j].Name; j-- {
+			nodes[j-1], nodes[j] = nodes[j], nodes[j-1]
+		}
+	}
 }
 
 // ServeDBExport handles GET /api/v1/admin/db/export (FR-007). Streams a

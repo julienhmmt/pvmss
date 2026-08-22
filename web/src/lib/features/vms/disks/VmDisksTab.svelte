@@ -26,17 +26,17 @@
 	}
 </script>
 
-<section aria-labelledby="disks-heading">
-	<div class="flex flex-wrap items-baseline justify-between gap-2">
+<section class="rounded-xl border border-border bg-card p-6 shadow-card" aria-labelledby="disks-heading">
+	<div class="flex flex-wrap items-start justify-between gap-3">
 		<div>
 			<h2 id="disks-heading" class="text-lg font-semibold">{m['vms.disks.heading']()}</h2>
-			<p class="text-sm text-muted-foreground">
+			<p class="mt-1 text-sm text-muted-foreground">
 				{m['vms.disks.description']()}
 			</p>
 		</div>
 		<button
 			type="button"
-			class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+			class="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
 			disabled={store.diskInFlight}
 			onclick={() => (addOpen = true)}
 			data-testid="vm-disk-add-open"
@@ -46,31 +46,40 @@
 	</div>
 
 	{#if store.hardwareLoading}
-		<p class="mt-3 text-sm text-muted-foreground" role="status">{m['vms.disks.loading']()}</p>
+		<p class="mt-5 text-sm text-muted-foreground" role="status">{m['vms.disks.loading']()}</p>
 	{:else if store.hardwareError}
-		<p class="mt-3 text-sm text-destructive" role="alert">{store.hardwareError}</p>
+		<p class="mt-5 text-sm text-destructive" role="alert">{store.hardwareError}</p>
 	{:else if store.entity?.disks?.length}
-		<div class="mt-4 overflow-x-auto rounded-md border border-border">
-			<table class="min-w-full text-left text-sm">
-				<thead class="bg-muted/40 text-xs text-muted-foreground">
-					<tr>
-						<th class="px-3 py-2">{m['vms.disks.tableDisk']()}</th>
-						<th class="px-3 py-2">{m['vms.disks.tableStorage']()}</th>
-						<th class="px-3 py-2">{m['vms.disks.tableSize']()}</th>
-						<th class="px-3 py-2">{m['common.actions']()}</th>
+		<div class="mt-5 overflow-x-auto">
+			<table class="pv-responsive-table text-sm">
+				<thead>
+					<tr class="border-b border-border text-xs text-muted-foreground">
+						<th class="px-3 py-2.5 font-medium">{m['vms.disks.tableDisk']()}</th>
+						<th class="px-3 py-2.5 font-medium">{m['vms.disks.tableStorage']()}</th>
+						<th class="px-3 py-2.5 font-medium">{m['vms.disks.tableSize']()}</th>
+						<th class="px-3 py-2.5 font-medium">{m['common.actions']()}</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each store.entity.disks as disk (disk.key)}
-						<tr class="border-t border-border">
-							<td class="px-3 py-2 font-medium">{disk.key}{disk.isBoot ? ` · ${m['common.boot']()}` : ''}</td>
-							<td class="px-3 py-2 text-muted-foreground">{disk.storage}</td>
-							<td class="px-3 py-2">{disk.sizeGB} GB</td>
-							<td class="px-3 py-2">
+						<tr class="border-b border-border last:border-b-0">
+							<td class="px-3 py-3 font-medium" data-label={m['vms.disks.tableDisk']()}>
+								<span class="font-mono">{disk.key}</span>
+								{#if disk.isBoot}
+									<span class="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+										{m['common.boot']()}
+									</span>
+								{/if}
+							</td>
+							<td class="px-3 py-3 font-mono text-muted-foreground" data-label={m['vms.disks.tableStorage']()}>
+								{disk.storage}
+							</td>
+							<td class="px-3 py-3 font-mono" data-label={m['vms.disks.tableSize']()}>{disk.sizeGB} GB</td>
+							<td class="px-3 py-3" data-label={m['common.actions']()}>
 								<div class="flex flex-wrap items-center gap-2">
 									<button
 										type="button"
-										class="rounded-md border border-border px-2 py-1 text-xs hover:bg-muted disabled:opacity-50"
+										class="rounded-lg border border-border px-2.5 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50"
 										disabled={store.diskInFlight}
 										onclick={() => openResize(disk)}
 										data-testid={`vm-disk-resize-open-${disk.key}`}
@@ -79,7 +88,7 @@
 									</button>
 									<button
 										type="button"
-										class="rounded-md border border-destructive/30 px-2 py-1 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50"
+										class="rounded-lg border border-destructive/30 px-2.5 py-1 text-xs font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
 										disabled={store.diskInFlight || disk.isBoot}
 										onclick={() => openDelete(disk)}
 										data-testid={`vm-disk-delete-open-${disk.key}`}
@@ -96,12 +105,12 @@
 	{:else}
 		<EmptyState
 			title={m['vms.disks.empty']()}
-			class="mt-3 rounded-md border border-dashed border-border py-4"
+			class="mt-5 rounded-lg border border-dashed border-border py-4"
 		>
 			{#snippet actions()}
 				<button
 					type="button"
-					class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+					class="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
 					onclick={() => (addOpen = true)}
 				>
 					{m['vms.disks.addButton']()}
@@ -110,11 +119,11 @@
 		</EmptyState>
 	{/if}
 	{#if store.diskError}
-		<p class="mt-2 text-sm text-destructive" role="alert">{store.diskError}</p>
+		<p class="mt-3 text-sm text-destructive" role="alert">{store.diskError}</p>
 	{/if}
 </section>
 
-<section class="mt-6" aria-label={m['vms.disks.cdromSection']()}>
+<section class="mt-4" aria-label={m['vms.disks.cdromSection']()}>
 	<VmCdromCard />
 </section>
 

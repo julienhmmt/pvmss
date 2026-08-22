@@ -56,7 +56,7 @@
 	<div
 		id={tooltipId}
 		role="tooltip"
-		class="pointer-events-none fixed z-[9999] -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground shadow-card"
+		class="pointer-events-none fixed z-[9999] w-max max-w-xs -translate-x-1/2 rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground shadow-card"
 		style="left: {tooltipX}px; top: {tooltipY}px; transform: translate(-50%, {position === 'top' ? '-100%' : '0'});"
 	>
 		{text}

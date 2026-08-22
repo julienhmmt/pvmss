@@ -12,35 +12,72 @@ import (
 )
 
 type dashboardDTO struct {
-	Nodes             []nodeSummaryDTO    `json:"nodes"`
-	NodeCount         int                 `json:"nodeCount"`
-	VMCount           int                 `json:"vmCount"`
-	Storages          []storageSummaryDTO `json:"storages"`
-	StorageTotalBytes int64               `json:"storageTotalBytes"`
-	StorageUsedBytes  int64               `json:"storageUsedBytes"`
-	Version           string              `json:"version"`
-	RefreshedAt       string              `json:"refreshedAt"`
+	Nodes          []nodeSummaryDTO  `json:"nodes"`
+	NodeCount      int               `json:"nodeCount"`
+	VMCount        int               `json:"vmCount"`
+	VMStatusCounts vmStatusCountsDTO `json:"vmStatusCounts"`
+	Version        string            `json:"version"`
+	RefreshedAt    string            `json:"refreshedAt"`
 }
 
 type nodeSummaryDTO struct {
-	Name   string `json:"name"`
-	Status string `json:"status"`
+	Name             string  `json:"name"`
+	Status           string  `json:"status"`
+	VMCount          int     `json:"vmCount"`
+	CPUCores         int     `json:"cpuCores"`
+	CPUUsage         float64 `json:"cpuUsage"`
+	MemoryTotalBytes int64   `json:"memoryTotalBytes"`
+	MemoryUsedBytes  int64   `json:"memoryUsedBytes"`
 }
 
-type storageSummaryDTO struct {
-	Name       string `json:"name"`
-	Node       string `json:"node"`
-	Type       string `json:"type"`
-	TotalBytes int64  `json:"totalBytes"`
-	UsedBytes  int64  `json:"usedBytes"`
+type vmStatusCountsDTO struct {
+	Running int `json:"running"`
+	Paused  int `json:"paused"`
+	Stopped int `json:"stopped"`
+	Other   int `json:"other"`
 }
 
-// TestAdminDashboard_AsAdmin_ReturnsCountsAndStorages — T023: GET
-// /admin/dashboard as admin returns correct node list/count, VM count,
-// storage list/aggregate, and version.
+// countNodesHostingVMs returns the number of nodes in the index that host at
+// least one PVMSS-managed VM — the value the dashboard's NodeCount must match.
+func countNodesHostingVMs(idx inventory.Index) int {
+	count := 0
+
+	for name := range idx.ByNode {
+		if len(idx.ByNode[name]) > 0 {
+			count++
+		}
+	}
+
+	return count
+}
+
+// assertNodeSummariesValid verifies every returned node hosts at least one VM
+// and carries non-zero CPU/RAM data.
+func assertNodeSummariesValid(t *testing.T, nodes []nodeSummaryDTO) {
+	t.Helper()
+
+	for _, n := range nodes {
+		if n.VMCount < 1 {
+			t.Errorf("node %q returned with vmCount = %d, want >= 1", n.Name, n.VMCount)
+		}
+
+		if n.CPUCores == 0 {
+			t.Errorf("node %q cpuCores = 0", n.Name)
+		}
+
+		if n.MemoryTotalBytes == 0 {
+			t.Errorf("node %q memoryTotalBytes = 0", n.Name)
+		}
+	}
+}
+
+// TestAdminDashboard_AsAdmin_ReturnsPvmssNodesAndVmCounts — GET
+// /admin/dashboard as admin returns only nodes hosting PVMSS-managed VMs,
+// each with CPU/RAM usage and a VM count; the total VM count and per-status
+// counts match the in-memory Index; storage is no longer surfaced.
 //
 //nolint:paralleltest // serial: shared fake dataset
-func TestAdminDashboard_AsAdmin_ReturnsCountsAndStorages(t *testing.T) {
+func TestAdminDashboard_AsAdmin_ReturnsPvmssNodesAndVmCounts(t *testing.T) {
 	ops, auth, _ := newAdminOpsHandler(t)
 	cookie := adminCookie(t, auth)
 
@@ -54,25 +91,29 @@ func TestAdminDashboard_AsAdmin_ReturnsCountsAndStorages(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 
-	if dash.NodeCount != 3 {
-		t.Errorf("nodeCount = %d, want 3", dash.NodeCount)
-	}
-
-	if len(dash.Nodes) != 3 {
-		t.Errorf("nodes = %d, want 3", len(dash.Nodes))
-	}
-
-	// VM count must match len(Index.ByVMID) computed independently.
 	fake := cluster.Fake{}
 	snap, _ := fake.Snapshot(context.Background())
-
 	idx := inventory.BuildIndex(snap)
+
+	wantNodeCount := countNodesHostingVMs(idx)
+	if dash.NodeCount != wantNodeCount {
+		t.Errorf("nodeCount = %d, want %d (nodes hosting PVMSS VMs)", dash.NodeCount, wantNodeCount)
+	}
+
+	if len(dash.Nodes) != wantNodeCount {
+		t.Errorf("nodes = %d, want %d", len(dash.Nodes), wantNodeCount)
+	}
+
+	assertNodeSummariesValid(t, dash.Nodes)
+
 	if dash.VMCount != len(idx.ByVMID) {
 		t.Errorf("vmCount = %d, want %d (len Index.ByVMID)", dash.VMCount, len(idx.ByVMID))
 	}
 
-	if len(dash.Storages) == 0 {
-		t.Error("storages is empty — Index.StoragesByNode not read")
+	totalCounted := dash.VMStatusCounts.Running + dash.VMStatusCounts.Paused +
+		dash.VMStatusCounts.Stopped + dash.VMStatusCounts.Other
+	if totalCounted != dash.VMCount {
+		t.Errorf("vmStatusCounts sum = %d, want %d (vmCount)", totalCounted, dash.VMCount)
 	}
 
 	if dash.Version == "" {

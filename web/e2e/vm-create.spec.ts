@@ -47,6 +47,21 @@ test.describe('T06 VM creation', () => {
 		await expect(row).toContainText('running');
 	});
 
+	test('simple mode: submitting with an empty name shows an inline error instead of doing nothing', async ({ page }) => {
+		await signInAlice(page.request);
+		// Locale defaults to fr (locale.svelte.ts DEFAULT_LOCALE) unless a
+		// preference is stored — force en so the assertions below are
+		// deterministic regardless of the host's default.
+		await page.addInitScript(() => localStorage.setItem('pvmss-locale', 'en'));
+		await page.goto('/vms/create');
+
+		await page.getByRole('radio', { name: /Medium/ }).check();
+		await page.getByRole('button', { name: 'Create VM' }).click();
+
+		await expect(page.getByText('Name is required.')).toBeVisible();
+		await expect(page).toHaveURL(/\/vms\/create$/);
+	});
+
 	test('detailed mode: explicit node/storage/bridge create the exact VM', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms/create');

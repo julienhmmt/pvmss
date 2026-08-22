@@ -12,7 +12,7 @@ describe('AdminPolicyNodesStore', () => {
 
 	it('loads discovered nodes with usage, physical capacity, and configured capacity', async () => {
 		const nodes = [{ node: 'pve-node-01', maxVms: 0, maxVcpus: 0, maxRamGb: 0, maxDiskGb: 0, usedVms: 4, usedVcpus: 12, usedRamGb: 24, physicalVcpus: 32, physicalRamGb: 128 }];
-		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, nodes)));
+		vi.stubGlobal('fetch', vi.fn().mockImplementation(() => jsonResponse(200, nodes)));
 		const store = new AdminPolicyNodesStore();
 		await store.load();
 		expect(store.nodes).toEqual(nodes);

@@ -1,8 +1,10 @@
 <script lang="ts">
 	import NodeCapacityDialog from './NodeCapacityDialog.svelte';
 	import type { NodeCapacity, NodeCapacityPatch } from './policyNodes.svelte';
+	import type { ClusterOption } from '$lib/shared/clusters';
 	import { m } from '$lib/paraglide/messages.js';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
@@ -16,6 +18,9 @@
 		error: string | null;
 		saving: boolean;
 		saveError: string | null;
+		clusterOptions: ClusterOption[];
+		cluster: string;
+		onClusterChange: (value: string) => void;
 		onLoad: () => void;
 		onSave: (node: string, patch: NodeCapacityPatch) => void;
 		sortBy: SortColumn;
@@ -23,7 +28,7 @@
 		onSort: (column: SortColumn) => void;
 	}
 
-	let { nodes, loading, error, saving, saveError, onLoad, onSave, sortBy, sortDir, onSort }: Props = $props();
+	let { nodes, loading, error, saving, saveError, clusterOptions, cluster, onClusterChange, onLoad, onSave, sortBy, sortDir, onSort }: Props = $props();
 	let selected = $state<NodeCapacity | null>(null);
 	let dialogOpen = $state(false);
 
@@ -48,7 +53,11 @@
 
 <svelte:head><title>{m['policy.nodeTitle']()} — PVMSS</title></svelte:head>
 
-<PageHeader title={m['policy.nodeTitle']()} description={m['policy.nodeDescription']()} titleId="node-policy-title" />
+<PageHeader title={m['policy.nodeTitle']()} description={m['policy.nodeDescription']()} titleId="node-policy-title">
+	{#snippet actions()}
+		<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="policy-nodes-cluster" />
+	{/snippet}
+</PageHeader>
 
 <section aria-labelledby="node-policy-title">
 	{#if loading}

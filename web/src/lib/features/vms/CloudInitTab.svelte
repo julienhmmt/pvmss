@@ -38,16 +38,18 @@
 	}
 </script>
 
-<section aria-labelledby="cloudinit-heading" data-testid="vm-cloudinit">
+<section class="rounded-xl border border-border bg-card p-6 shadow-card" aria-labelledby="cloudinit-heading" data-testid="vm-cloudinit">
 	<div class="flex flex-wrap items-start justify-between gap-3">
 		<div>
 			<h2 id="cloudinit-heading" class="text-lg font-semibold">{m['vms.cloudinit.heading']()}</h2>
 			<p class="mt-1 text-sm text-muted-foreground">{m['vms.cloudinit.description']()}</p>
 		</div>
-		<div class="flex gap-2" role="group" aria-label={m['vms.cloudinit.modeLabel']()}>
+		<div class="inline-flex rounded-lg border border-border bg-muted/40 p-0.5" role="group" aria-label={m['vms.cloudinit.modeLabel']()}>
 			<button
 				type="button"
-				class="rounded-md border px-3 py-2 text-sm {mode === 'structured' ? 'border-primary text-foreground' : 'border-border text-muted-foreground'}"
+				class="rounded-md px-3 py-1.5 text-sm font-medium {mode === 'structured'
+					? 'bg-card text-foreground shadow-card'
+					: 'text-muted-foreground hover:text-foreground'}"
 				aria-pressed={mode === 'structured'}
 				onclick={() => (mode = 'structured')}
 				data-testid="cloudinit-mode-structured"
@@ -56,7 +58,9 @@
 			</button>
 			<button
 				type="button"
-				class="rounded-md border px-3 py-2 text-sm {mode === 'yaml' ? 'border-primary text-foreground' : 'border-border text-muted-foreground'}"
+				class="rounded-md px-3 py-1.5 text-sm font-medium {mode === 'yaml'
+					? 'bg-card text-foreground shadow-card'
+					: 'text-muted-foreground hover:text-foreground'}"
 				aria-pressed={mode === 'yaml'}
 				onclick={() => (mode = 'yaml')}
 				data-testid="cloudinit-mode-yaml"

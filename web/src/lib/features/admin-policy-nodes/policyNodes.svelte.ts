@@ -1,4 +1,5 @@
 import { get, put, ApiRequestError } from '$lib/shared/api/client';
+import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 import { getContext, setContext } from 'svelte';
 import { m } from '$lib/paraglide/messages.js';
 
@@ -29,6 +30,8 @@ export class AdminPolicyNodesStore {
 	error = $state.raw<string | null>(null);
 	saving = $state.raw(false);
 	saveError = $state.raw<string | null>(null);
+	clusterOptions = $state.raw<ClusterOption[]>([]);
+	cluster = $state('default');
 
 	sortBy: 'node' | 'maxVms' | 'maxVcpus' | 'maxRamGb' | 'maxDiskGb' | 'usedVms' | 'usedVcpus' | 'usedRamGb' | 'physicalVcpus' | 'physicalRamGb' = $state('node');
 	sortDir: 'asc' | 'desc' = $state('asc');
@@ -44,11 +47,32 @@ export class AdminPolicyNodesStore {
 		}
 	}
 
+	/** Resolves the real cluster name (matches admin-catalog's pattern) so
+	 *  requests never send the literal "default" against a deployment whose
+	 *  cluster is named something else. */
+	async loadClusters(): Promise<void> {
+		try {
+			this.clusterOptions = await fetchClusterOptions();
+			const first = this.clusterOptions[0];
+			if (first && (this.clusterOptions.length === 1 || !this.clusterOptions.some((option) => option.name === this.cluster))) {
+				this.cluster = first.name;
+			}
+		} catch (error: unknown) {
+			this.error = error instanceof ApiRequestError ? error.message : m['policy.nodesLoadError']();
+		}
+	}
+
+	setCluster(value: string): void {
+		this.cluster = value;
+		void this.load();
+	}
+
 	async load(): Promise<void> {
+		await this.loadClusters();
 		this.loading = true;
 		this.error = null;
 		try {
-			this.nodes = await get<NodeCapacity[]>('/api/v1/admin/policy/nodes?cluster=default');
+			this.nodes = await get<NodeCapacity[]>(`/api/v1/admin/policy/nodes?cluster=${encodeURIComponent(this.cluster)}`);
 		} catch (error: unknown) {
 			this.error = error instanceof ApiRequestError ? error.message : m['policy.nodesLoadError']();
 		} finally {
@@ -60,7 +84,7 @@ export class AdminPolicyNodesStore {
 		this.saving = true;
 		this.saveError = null;
 		try {
-			const updated = await put<NodeCapacity>(`/api/v1/admin/policy/nodes/${encodeURIComponent(node)}`, { cluster: 'default', ...patch });
+			const updated = await put<NodeCapacity>(`/api/v1/admin/policy/nodes/${encodeURIComponent(node)}`, { cluster: this.cluster, ...patch });
 			this.nodes = this.nodes.some((item) => item.node === node)
 				? this.nodes.map((item) => (item.node === node ? updated : item))
 				: [...this.nodes, updated];

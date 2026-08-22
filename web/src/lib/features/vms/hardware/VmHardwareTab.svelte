@@ -48,56 +48,56 @@
 	}
 </script>
 
-<section aria-labelledby="hardware-heading" data-testid="vm-hardware">
+<section class="rounded-xl border border-border bg-card p-6 shadow-card" aria-labelledby="hardware-heading" data-testid="vm-hardware">
 	<h2 id="hardware-heading" class="text-lg font-semibold">{m['vms.hardware.heading']()}</h2>
-	<div class="mt-4 grid gap-3 sm:grid-cols-4">
-		<label class="grid gap-1 text-sm">
+	<div class="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+		<label class="grid gap-1.5 text-sm font-medium">
 			{m['vms.hardware.sockets']()}
 			<input
-				class="rounded-md border border-border bg-background px-2 py-2"
+				class="pv-input"
 				type="number"
 				min="1"
 				bind:value={socketsDraft}
 				data-testid="vm-hardware-sockets"
 			/>
 		</label>
-		<label class="grid gap-1 text-sm">
+		<label class="grid gap-1.5 text-sm font-medium">
 			{m['vms.hardware.cores']()}
 			<input
-				class="rounded-md border border-border bg-background px-2 py-2"
+				class="pv-input"
 				type="number"
 				min="1"
 				bind:value={coresDraft}
 				data-testid="vm-hardware-cores"
 			/>
 		</label>
-		<label class="grid gap-1 text-sm">
+		<label class="grid gap-1.5 text-sm font-medium">
 			{m['vms.hardware.memory']()}
 			<input
-				class="rounded-md border border-border bg-background px-2 py-2"
+				class="pv-input"
 				type="number"
 				min="1"
 				bind:value={memoryDraft}
 				data-testid="vm-hardware-memory"
 			/>
 		</label>
-		<label class="grid gap-1 text-sm">
+		<label class="grid gap-1.5 text-sm font-medium">
 			{m['vms.hardware.tags']()}
 			<input
-				class="rounded-md border border-border bg-background px-2 py-2"
+				class="pv-input"
 				bind:value={tagsDraft}
 				data-testid="vm-hardware-tags"
 			/>
 		</label>
 	</div>
 	{#if hardwareWillRestart}
-		<p class="mt-3 text-sm text-warning" data-testid="vm-hardware-restart-notice">
+		<p class="mt-4 rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning-soft-foreground" data-testid="vm-hardware-restart-notice">
 			{m['vms.hardware.restartNotice']()}
 		</p>
 	{/if}
 	<button
 		type="button"
-		class="mt-4 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+		class="mt-5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
 		disabled={store.hardwareInFlight}
 		onclick={() => saveHardware()}
 		data-testid="vm-hardware-save"

@@ -93,6 +93,9 @@ export class VmDetailStore {
 	/** True while a delete is in flight; the UI disables the button. */
 	deleteInFlight = $state.raw(false);
 	deleteError = $state.raw<string | null>(null);
+	/** Stable error code from the last delete attempt (e.g. "vm_running") so the
+	 * dialog can branch on it without string-matching the message. */
+	deleteErrorCode = $state.raw<string | null>(null);
 
 	/** True while a patch (rename/description) is in flight. */
 	patchInFlight = $state.raw(false);
@@ -261,16 +264,25 @@ export class VmDetailStore {
 		}
 	}
 
-	/** Permanently deletes the VM (V14: no soft-delete, no undo). */
-	async delete(): Promise<void> {
+	/**
+	 * Permanently deletes the VM (V14: no soft-delete, no undo). When force is
+	 * true, the server force-stops a running VM before destroying it — the UI
+	 * only sets this after the user confirms the force-stop in the delete dialog.
+	 * A running VM without force is rejected with 409 (code "vm_running") so the
+	 * dialog can prompt for confirmation.
+	 */
+	async delete(force = false): Promise<void> {
 		if (this.deleteInFlight || this.entity === null) return;
 		this.deleteError = null;
+		this.deleteErrorCode = null;
 		this.deleteInFlight = true;
 		try {
-			await del<DeleteResponse>(this.#basePath);
+			const path = force ? `${this.#basePath}?force=true` : this.#basePath;
+			await del<DeleteResponse>(path);
 			this.deleted = true;
 		} catch (err) {
 			this.deleteError = errorMessage(err, () => m['vms.detail.errorDelete']());
+			this.deleteErrorCode = err instanceof ApiRequestError ? err.code : null;
 		} finally {
 			this.deleteInFlight = false;
 		}

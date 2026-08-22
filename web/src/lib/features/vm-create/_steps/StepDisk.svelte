@@ -17,9 +17,22 @@
 			? m['vms.create.noStorageOnNode']({ node: form.node })
 			: null
 	);
+
+	const maxDiskGB = $derived(form.catalog?.gabarit?.maxDiskPerVMGB ?? 2048);
+	const diskError = $derived(
+		Number.isInteger(form.diskSizeGB) && form.diskSizeGB >= 1 && form.diskSizeGB <= maxDiskGB
+			? null
+			: m['vms.create.diskOutOfRange']({ min: 1, max: maxDiskGB })
+	);
 </script>
 
 <div class="grid gap-4">
+	{#if form.node !== '' && form.catalog}
+		<p class="text-sm text-muted-foreground">
+			{m['vms.create.selectedContext']({ node: form.node, cluster: form.clusterDisplayName() })}
+		</p>
+	{/if}
+
 	<FormField label={m['vms.create.storage']()} required error={storageError}>
 		{#snippet children({ id, describedBy, invalid })}
 			<Select
@@ -28,14 +41,17 @@
 				{invalid}
 				bind:value={form.diskStorage}
 				placeholder={m['vms.create.chooseStorage']()}
-				options={storagesOnNode.map((storage) => storage.name)}
+				options={storagesOnNode.map((storage) => ({
+					value: storage.name,
+					label: m['vms.create.optionWithLocation']({ name: storage.name, node: storage.node, cluster: form.clusterDisplayName() })
+				}))}
 			/>
 		{/snippet}
 	</FormField>
 
-	<FormField label={m['vms.create.size']()} hint={m['vms.create.sizeRange']()} required>
+	<FormField label={m['vms.create.size']()} hint={m['vms.create.diskLimitHint']({ min: 1, max: maxDiskGB })} error={diskError} required>
 		{#snippet children({ id, describedBy, invalid })}
-			<TextField {id} {describedBy} {invalid} type="number" min={1} max={2048} bind:value={form.diskSizeGB} required />
+			<TextField {id} {describedBy} {invalid} type="number" min={1} max={maxDiskGB} bind:value={form.diskSizeGB} required />
 		{/snippet}
 	</FormField>
 </div>

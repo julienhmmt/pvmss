@@ -13,14 +13,29 @@
 
 	let { open = $bindable(false) }: Props = $props();
 
+	/** True once the server reported the VM is running and the user must
+	 * explicitly confirm a force-stop before the destroy proceeds. */
+	let needsForceStop = $state(false);
+
 	function close(): void {
 		open = false;
 	}
 
+	// Reset the force-stop step whenever the dialog closes.
+	$effect(() => {
+		if (!open) needsForceStop = false;
+	});
+
 	async function confirm(): Promise<void> {
 		const vmName = store.entity?.name ?? '';
-		await store.delete();
+		await store.delete(needsForceStop);
 		if (store.deleteError) {
+			if (store.deleteErrorCode === 'vm_running' && !needsForceStop) {
+				// The VM is running — switch to the force-stop confirmation step
+				// rather than showing a generic error toast.
+				needsForceStop = true;
+				return;
+			}
 			toast.error(m['toast.vmDeleteFailed']({ error: store.deleteError }));
 		} else if (store.deleted) {
 			toast.success(m['toast.vmDeleted']({ name: vmName }));
@@ -32,11 +47,21 @@
 	<h2 id="delete-vm-title" class="mb-2 text-lg font-semibold">
 		{#if store.entity}{m['vms.deleteDialogTitle']({ name: store.entity.name })}{:else}{m['vms.deleteDialogTitle']({ name: '' })}{/if}
 	</h2>
-	<p class="mb-4 text-sm text-muted-foreground">
-		{m['vms.deleteDialogConfirm']()}
-	</p>
 
-	{#if store.deleteError}
+	{#if needsForceStop}
+		<p class="mb-4 text-sm text-destructive" data-testid="vm-delete-running-warning">
+			{m['vms.deleteDialogRunningWarning']()}
+		</p>
+		<p class="mb-4 text-sm text-muted-foreground">
+			{m['vms.deleteDialogForceConfirm']()}
+		</p>
+	{:else}
+		<p class="mb-4 text-sm text-muted-foreground">
+			{m['vms.deleteDialogConfirm']()}
+		</p>
+	{/if}
+
+	{#if store.deleteError && !(store.deleteErrorCode === 'vm_running' && needsForceStop)}
 		<p role="alert" class="mb-4 text-sm text-destructive" data-testid="vm-delete-error">
 			{store.deleteError}
 		</p>
@@ -58,7 +83,13 @@
 			onclick={confirm}
 			data-testid="vm-delete-confirm"
 		>
-			{store.deleteInFlight ? m['common.deleting']() : m['common.deletePermanently']()}
+			{#if store.deleteInFlight}
+				{m['common.deleting']()}
+			{:else if needsForceStop}
+				{m['vms.deleteDialogForceStopAndDelete']()}
+			{:else}
+				{m['common.deletePermanently']()}
+			{/if}
 		</button>
 	</div>
 </Dialog>
