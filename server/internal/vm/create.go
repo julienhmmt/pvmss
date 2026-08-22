@@ -110,6 +110,7 @@ type ISORequest struct {
 // Writer surface; cluster.Fake and the real Proxmox client both satisfy it.
 type CloudInitPusher interface {
 	PushCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int, content string) error
+	AttachCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int) error
 }
 
 // CreateResult is what a successful creation returns — the task is accepted,
@@ -297,6 +298,15 @@ func applyCloudInitTemplate(ctx context.Context, req cloudInitApplyRequest, resu
 
 	if err := req.Deps.Pusher.PushCloudInitSnippet(ctx, req.Spec.Node, storage, filename, req.VMID, req.Template.Content); err != nil {
 		req.Deps.Log.Error("cloud-init template push failed", "component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "error", err)
+		result.CloudInitPushError = err.Error()
+
+		return
+	}
+
+	// Point the VM at the snippet through the vendor-data slot so the guest
+	// actually receives it (REPORT.md addendum: previously a silent no-op).
+	if err := req.Deps.Pusher.AttachCloudInitSnippet(ctx, req.Spec.Node, storage, filename, req.VMID); err != nil {
+		req.Deps.Log.Error("cloud-init template attach failed", "component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "error", err)
 		result.CloudInitPushError = err.Error()
 	}
 }

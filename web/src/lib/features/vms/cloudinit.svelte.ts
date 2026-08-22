@@ -1,4 +1,4 @@
-import { get, put, ApiRequestError } from '$lib/shared/api/client';
+import { get, post, put, ApiRequestError } from '$lib/shared/api/client';
 import { m } from '$lib/paraglide/messages.js';
 
 export type CloudInitIPMode = 'dhcp' | 'static';
@@ -39,6 +39,10 @@ interface CloudInitSnippetResponse {
 	status: string;
 }
 
+export interface CloudInitSSHKeyResponse {
+	status: string;
+}
+
 export class CloudInitStore {
 	readonly cluster: string;
 	readonly vmid: number;
@@ -49,9 +53,12 @@ export class CloudInitStore {
 	snippetLoading = $state.raw(false);
 	configInFlight = $state.raw(false);
 	snippetInFlight = $state.raw(false);
+	sshKeyInFlight = $state.raw(false);
 	configError = $state.raw<string | null>(null);
 	snippetError = $state.raw<string | null>(null);
 	snippetErrorCode = $state.raw<string | null>(null);
+	sshKeyError = $state.raw<string | null>(null);
+	sshKeyErrorCode = $state.raw<string | null>(null);
 
 	#basePath: string;
 	#reloadVm: () => Promise<void>;
@@ -120,6 +127,26 @@ export class CloudInitStore {
 			return false;
 		} finally {
 			this.snippetInFlight = false;
+		}
+	}
+
+	async addSSHKey(key: string, user?: string): Promise<boolean> {
+		if (this.sshKeyInFlight) return false;
+		this.sshKeyInFlight = true;
+		this.sshKeyError = null;
+		this.sshKeyErrorCode = null;
+		try {
+			const body: { key: string; user?: string } = { key };
+			if (user && user.trim() !== '') body.user = user.trim();
+			await post<CloudInitSSHKeyResponse>(`${this.#basePath}/ssh-keys`, body);
+			await this.loadConfig();
+			return this.sshKeyError === null;
+		} catch (err) {
+			this.sshKeyErrorCode = err instanceof ApiRequestError ? err.code : null;
+			this.sshKeyError = errorMessage(err, () => m['vms.cloudinit.errorAddSSHKey']());
+			return false;
+		} finally {
+			this.sshKeyInFlight = false;
 		}
 	}
 }

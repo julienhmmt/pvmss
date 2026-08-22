@@ -73,6 +73,13 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 		form.Set("net0", encodeNetValue(NetworkInterface{Model: spec.Network.Model, Bridge: spec.Network.Bridge}))
 	}
 
+	// Always provision a serial port (serial0) backed by a socket. This makes
+	// the PVMSS Text/serial console work out of the box for every VM — without
+	// it, Proxmox opens the termproxy tunnel and immediately closes it (EOF),
+	// which surfaces as a black screen in the serial console. A socket-backed
+	// serial port needs no host device and is safe to add unconditionally.
+	form.Set("serial0", "socket")
+
 	if spec.ISO != nil {
 		form.Set(cdromDiskKey, fmt.Sprintf("%s:iso/%s,media=cdrom", spec.ISO.Storage, spec.ISO.File))
 	}

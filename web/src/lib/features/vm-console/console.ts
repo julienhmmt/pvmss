@@ -7,6 +7,12 @@ export interface VncTicketResponse {
 	expiresInSeconds: number;
 }
 
+/** Serial ticket response from POST /api/v1/vms/:cluster/:vmid/serial-ticket. */
+export interface SerialTicketResponse {
+	token: string;
+	expiresInSeconds: number;
+}
+
 /**
  * Requests a single-use console ticket from the backend. The ticket is an
  * opaque token — no Proxmox ticket, node, or port leaks to the client
@@ -64,4 +70,29 @@ export function buildConsolePopoutURL(cluster: string, vmid: number): string {
  */
 export function openConsolePopout(cluster: string, vmid: number): Window | null {
 	return window.open(buildConsolePopoutURL(cluster, vmid), '_blank', 'noopener');
+}
+
+/**
+ * Requests a single-use serial terminal ticket from the backend. Mirrors
+ * fetchConsoleTicket but POSTs to the serial-ticket endpoint. The token is
+ * opaque and single-use, consumed exactly once when the serial WebSocket opens.
+ *
+ * Throws ApiRequestError on non-2xx (same semantics as fetchConsoleTicket).
+ */
+export async function fetchSerialTicket(cluster: string, vmid: number): Promise<string> {
+	const path = `${base}/api/v1/vms/${encodeURIComponent(cluster)}/${vmid}/serial-ticket`;
+	const response = await post<SerialTicketResponse>(path);
+	return response.token;
+}
+
+/**
+ * Builds the WebSocket URL for the serial terminal relay endpoint. Mirrors
+ * buildConsoleWebSocketURL but targets the serial/websocket path. Same-origin,
+ * scheme derived from the page protocol.
+ */
+export function buildSerialWebSocketURL(cluster: string, vmid: number, token: string): string {
+	const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+	const host = window.location.host;
+	const path = `${base}/api/v1/vms/${encodeURIComponent(cluster)}/${vmid}/serial/websocket`;
+	return `${protocol}//${host}${path}?token=${encodeURIComponent(token)}`;
 }

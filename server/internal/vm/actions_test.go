@@ -73,13 +73,13 @@ func actionsIndex(t *testing.T) *cluster.Fake {
 func TestIsValidAction(t *testing.T) {
 	t.Parallel()
 
-	for _, action := range []string{"start", "stop", "shutdown", "reboot", "reset"} {
+	for _, action := range []string{"start", "stop", "shutdown", "reboot", "reset", "pause", "resume"} {
 		if !vm.IsValidAction(action) {
 			t.Errorf("IsValidAction(%q) = false, want true", action)
 		}
 	}
 
-	for _, action := range []string{"", "pause", "START", "delete", "migrate", "foo"} {
+	for _, action := range []string{"", "START", "delete", "migrate", "foo"} {
 		if vm.IsValidAction(action) {
 			t.Errorf("IsValidAction(%q) = true, want false", action)
 		}

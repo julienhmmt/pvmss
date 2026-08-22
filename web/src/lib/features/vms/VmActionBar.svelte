@@ -21,7 +21,9 @@
 		{ kind: 'shutdown', label: () => m['vms.action.shutdown'](), applicable: ['running'], variant: 'neutral', successToast: (name) => m['toast.vmShutdown']({ name }) },
 		{ kind: 'stop', label: () => m['vms.action.stop'](), applicable: ['running'], variant: 'danger', successToast: (name) => m['toast.vmStopped']({ name }) },
 		{ kind: 'reboot', label: () => m['vms.action.reboot'](), applicable: ['running'], variant: 'neutral', successToast: (name) => m['toast.vmRebooted']({ name }) },
-		{ kind: 'reset', label: () => m['vms.action.reset'](), applicable: ['running', 'paused'], variant: 'danger', successToast: (name) => m['toast.vmReset']({ name }) }
+		{ kind: 'reset', label: () => m['vms.action.reset'](), applicable: ['running', 'paused'], variant: 'danger', successToast: (name) => m['toast.vmReset']({ name }) },
+		{ kind: 'pause', label: () => m['vms.action.pause'](), applicable: ['running'], variant: 'neutral', successToast: (name) => m['toast.vmPaused']({ name }) },
+		{ kind: 'resume', label: () => m['vms.action.resume'](), applicable: ['paused'], variant: 'primary', successToast: (name) => m['toast.vmResumed']({ name }) }
 	] as const;
 
 	interface Props {

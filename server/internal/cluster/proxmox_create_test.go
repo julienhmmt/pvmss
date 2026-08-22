@@ -116,6 +116,10 @@ func assertCreateVMForm(t *testing.T, form url.Values) {
 	if form.Get("start") != "1" {
 		t.Errorf("start = %q, want 1", form.Get("start"))
 	}
+
+	if form.Get("serial0") != "socket" {
+		t.Errorf("serial0 = %q, want socket (serial console must be provisioned at create time)", form.Get("serial0"))
+	}
 }
 
 func TestProxmox_TaskStatus(t *testing.T) {

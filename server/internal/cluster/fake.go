@@ -15,6 +15,8 @@ const (
 	actionShutdown = "shutdown"
 	actionReboot   = "reboot"
 	actionReset    = "reset"
+	actionPause    = "pause"
+	actionResume   = "resume"
 )
 
 // Fake is the built-in cluster substitute (constitution XI). It requires no
@@ -166,6 +168,26 @@ func (Fake) GetVNCTicket(_ context.Context, _ string, _ int, _ string) (VNCProxy
 // Blocks until peer closes or the context is cancelled.
 func (Fake) RelayConsole(ctx context.Context, _ string, _ int, _ VNCProxyTicket, peer io.ReadWriteCloser) error {
 	return rfbFakeServe(ctx, peer)
+}
+
+// GetTermProxy implements TerminalRelay with a fixed fabricated ticket and port
+// — no network call, no state beyond what the fixture already tracks for the
+// VM. The browser never sees either value; only the opaque ConsoleTicketStore
+// token does. Mirrors GetVNCTicket's fake so the serial feature is genuinely
+// functional offline (constitution XI).
+func (Fake) GetTermProxy(_ context.Context, _ string, _ int, _ string) (TermProxyTicket, error) {
+	return TermProxyTicket{Ticket: "fake-term-ticket", Port: 5902}, nil
+}
+
+// RelaySerial implements TerminalRelay as a minimal echo/byte-pipe against
+// peer — there is no second, separately-dialed connection in the fake path.
+// It reads bytes the browser writes and echoes them back prefixed with a
+// "0:len:" data frame so an xterm.js client sees its own keystrokes render,
+// which is enough to demonstrate the serial feature offline without pretending
+// to be a real OS (constitution VIII). Blocks until peer closes or the context
+// is cancelled.
+func (Fake) RelaySerial(ctx context.Context, _ string, _ int, _ TermProxyTicket, peer io.ReadWriteCloser) error {
+	return serialFakeServe(ctx, peer)
 }
 
 // GetCloudInitConfig implements CloudInitReader with live per-VM fake state.
@@ -415,12 +437,63 @@ func (fake Fake) PushCloudInitSnippet(_ context.Context, node, storage, filename
 	return nil
 }
 
+// AttachCloudInitSnippet implements Writer and records the cicustom attach.
+func (fake Fake) AttachCloudInitSnippet(_ context.Context, node, storage, filename string, vmid int) error {
+	state := fake.stateOrDefault()
+	if state.findVM(node, vmid) < 0 {
+		return ErrNotFound
+	}
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "attach_cloudinit_snippet", Storage: storage, Filename: filename})
+	return nil
+}
+
+// SetCloudInitPassword implements Writer and records the agent password apply.
+func (fake Fake) SetCloudInitPassword(_ context.Context, node string, vmid int, _ string) error {
+	state := fake.stateOrDefault()
+	if state.findVM(node, vmid) < 0 {
+		return ErrNotFound
+	}
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "set_cloudinit_password"})
+	return nil
+}
+
 // SetFakeCloudInitPushError configures the default fake's push failure used by tests.
 func SetFakeCloudInitPushError(err error) {
 	state := defaultState()
 	state.pushMu.Lock()
 	defer state.pushMu.Unlock()
 	state.pushErr = err
+}
+
+// AddSSHKey implements Writer and records the agent-side key injection. It
+// never merges into the fake's cloud-init config (the guest is the source of
+// truth for an injected key); tests assert the call reached the fake.
+func (fake Fake) AddSSHKey(_ context.Context, node string, vmid int, user, key string) error {
+	state := fake.stateOrDefault()
+	state.sshMu.Lock()
+	err := state.sshErr
+	state.sshMu.Unlock()
+
+	if state.findVM(node, vmid) < 0 {
+		return ErrNotFound
+	}
+
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "add_ssh_key", Name: user, Content: key})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// SetFakeSSHKeyError configures a deterministic AddSSHKey failure on the
+// default fake used by zero-value Fake{}.
+func SetFakeSSHKeyError(err error) {
+	state := defaultState()
+	state.sshMu.Lock()
+	defer state.sshMu.Unlock()
+	state.sshErr = err
 }
 
 // Action implements Writer — a power transition on the Index-resolved node.
@@ -454,6 +527,11 @@ func (fake Fake) Action(_ context.Context, node string, vmid int, action string)
 	case actionStop, actionShutdown:
 		state.vms[idx].Status = VMStopped
 		state.vms[idx].Uptime = 0
+	case actionPause:
+		state.vms[idx].Status = VMPaused
+	case actionResume:
+		state.vms[idx].Status = VMRunning
+		state.vms[idx].Uptime = fakeUptimeOnStart
 	default:
 		return ErrInvalidAction
 	}
@@ -480,6 +558,14 @@ func validateTransition(action string, status VMStatus) error {
 	case actionReboot, actionReset:
 		if status == VMStopped {
 			return fmt.Errorf("%w: vm is not running", ErrInvalidStateTransition)
+		}
+	case actionPause:
+		if status != VMRunning {
+			return fmt.Errorf("%w: vm is not running", ErrInvalidStateTransition)
+		}
+	case actionResume:
+		if status != VMPaused {
+			return fmt.Errorf("%w: vm is not paused", ErrInvalidStateTransition)
 		}
 	}
 
@@ -665,6 +751,24 @@ func (fake Fake) UpdateHardware(_ context.Context, node string, vmid, sockets, c
 	state.vms[idx].Tags = append([]string(nil), tags...)
 
 	state.record(FakeCall{Node: node, VMID: vmid, Action: "update_hardware", Sockets: sockets, Cores: cores, MemoryMB: memoryMB})
+
+	return nil
+}
+
+// EnableSerial implements Writer and flips the fake VM's HasSerial flag on.
+func (fake Fake) EnableSerial(_ context.Context, node string, vmid int) error {
+	state := fake.stateOrDefault()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
+
+	idx := state.findVM(node, vmid)
+	if idx < 0 {
+		return ErrNotFound
+	}
+
+	state.vms[idx].HasSerial = true
+
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "enable_serial"})
 
 	return nil
 }
@@ -860,8 +964,8 @@ const fakeUptimeOnStart = 60 * time.Second
 // ResetFake / NewFake can restore a fresh copy after a mutation.
 func originalFakeVMs() []VM {
 	vms := []VM{
-		{VMID: 100, Name: "web-01", Node: FakeNode01, Status: VMRunning, Pool: FakePoolAlice, Tags: []string{FakeTagPvmss, "web"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 34359738368, Uptime: 86400 * time.Second, Description: "Alice's primary web server"},
-		{VMID: 101, Name: "web-02", Node: FakeNode01, Status: VMStopped, Pool: FakePoolAlice, Tags: []string{FakeTagPvmss, "web"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 45097156608},
+		{VMID: 100, Name: "web-01", Node: FakeNode01, Status: VMRunning, Pool: FakePoolAlice, Tags: []string{FakeTagPvmss, "web"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 34359738368, Uptime: 86400 * time.Second, Description: "Alice's primary web server", HasSerial: true},
+		{VMID: 101, Name: "web-02", Node: FakeNode01, Status: VMStopped, Pool: FakePoolAlice, Tags: []string{FakeTagPvmss, "web"}, CPUCores: 2, MemoryTotal: 4294967296, DiskTotal: 45097156608, HasSerial: false},
 		{VMID: 102, Name: "db-01", Node: FakeNode01, Status: VMRunning, Pool: FakePoolAlice, Tags: []string{FakeTagPvmss, "db"}, CPUCores: 4, MemoryTotal: 8589934592, DiskTotal: 137438953472, Uptime: 172800 * time.Second, Description: "Primary database"},
 		{VMID: 103, Name: "cache-01", Node: FakeNode01, Status: VMRunning, Pool: FakePoolBob, Tags: []string{FakeTagPvmss, "cache"}, CPUCores: 2, MemoryTotal: 2147483648, DiskTotal: 10737418240, Uptime: 43200 * time.Second},
 		{VMID: 104, Name: "build-01", Node: FakeNode01, Status: VMStopped, Pool: FakePoolBob, Tags: []string{FakeTagPvmss, "ci"}, CPUCores: 4, MemoryTotal: 8589934592, DiskTotal: 68719476736},

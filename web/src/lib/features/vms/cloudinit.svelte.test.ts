@@ -58,4 +58,32 @@ describe('CloudInitStore', () => {
 		expect(store.snippetErrorCode).toBe('push_failed');
 		expect(store.snippetError).toContain('not yet applied');
 	});
+
+	it('injects an ssh key via POST and reloads config', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse(200, { status: 'injected' }))
+			.mockResolvedValueOnce(jsonResponse(200, { user: 'debian', sshKeys: [], ipMode: 'dhcp' }));
+		vi.stubGlobal('fetch', fetchMock);
+		const store = new CloudInitStore('default', 101);
+
+		const ok = await store.addSSHKey('ssh-ed25519 AAAA x', 'debian');
+
+		expect(ok).toBe(true);
+		const req = fetchMock.mock.calls[0];
+		expect(req?.[0]).toBe('/api/v1/vms/default/101/cloudinit/ssh-keys');
+		expect(req?.[1]?.method).toBe('POST');
+		expect(JSON.parse(req?.[1]?.body as string)).toEqual({ key: 'ssh-ed25519 AAAA x', user: 'debian' });
+	});
+
+	it('surfaces an injection failure without throwing', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(502, { code: 'invalid_key', message: 'invalid ssh public key' })));
+		const store = new CloudInitStore('default', 101);
+
+		const ok = await store.addSSHKey('not-a-key');
+
+		expect(ok).toBe(false);
+		expect(store.sshKeyErrorCode).toBe('invalid_key');
+		expect(store.sshKeyError).toContain('invalid ssh public key');
+	});
 });

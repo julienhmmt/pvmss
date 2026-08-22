@@ -14,7 +14,9 @@ import (
 // upstream; checked again here defensively, before any HTTP call, matching
 // the fake's own defense-in-depth.
 var proxmoxValidActions = map[string]bool{
-	actionStart: true, actionStop: true, actionShutdown: true, actionReboot: true, actionReset: true,
+	actionStart: true, actionStop: true, actionShutdown: true,
+	actionReboot: true, actionReset: true,
+	actionPause: true, actionResume: true,
 }
 
 // vmConfigPath builds the PUT /nodes/{node}/qemu/{vmid}/config endpoint used
@@ -221,6 +223,18 @@ func (p Proxmox) UpdateHardware(ctx context.Context, node string, vmid, sockets,
 	}
 
 	_, err := p.rest().do(ctx, http.MethodPut, vmConfigPath(node, vmid), form)
+
+	return err
+}
+
+// EnableSerial implements Writer: provisions a socket-backed serial port
+// (serial0) on an existing VM so the PVMSS Text/serial console works for VMs
+// created before serial0 was added at create time. A socket-backed port needs
+// no host device and is safe to add to any VM unconditionally.
+func (p Proxmox) EnableSerial(ctx context.Context, node string, vmid int) error {
+	_, err := p.rest().do(ctx, http.MethodPut, vmConfigPath(node, vmid), url.Values{
+		"serial0": {"socket"},
+	})
 
 	return err
 }

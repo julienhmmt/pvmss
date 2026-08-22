@@ -139,14 +139,25 @@ type cloudInitSnippetResponse struct {
 	Status string `json:"status"`
 }
 
-// ServeHTTP dispatches config and snippet routes by path suffix.
-func (h *VMCloudInit) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if strings.HasSuffix(r.URL.Path, "/cloudinit/snippet") {
-		h.handleSnippet(w, r)
-		return
-	}
+type cloudInitSSHKeyRequest struct {
+	User string `json:"user"`
+	Key  string `json:"key"`
+}
 
-	h.handleConfig(w, r)
+type cloudInitSSHKeyResponse struct {
+	Status string `json:"status"`
+}
+
+// ServeHTTP dispatches config, snippet, and ssh-key routes by path suffix.
+func (h *VMCloudInit) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch {
+	case strings.HasSuffix(r.URL.Path, "/cloudinit/snippet"):
+		h.handleSnippet(w, r)
+	case strings.HasSuffix(r.URL.Path, "/cloudinit/ssh-keys"):
+		h.handleSSHKey(w, r)
+	default:
+		h.handleConfig(w, r)
+	}
 }
 
 type cloudInitRouteHandler func(http.ResponseWriter, *http.Request, auth.Identity, string, int)
@@ -240,6 +251,73 @@ func (h *VMCloudInit) putConfig(w http.ResponseWriter, r *http.Request, actor au
 	h.writeJSONStatus(w, http.StatusOK, cloudInitUpdateResponse{Status: "updated", Rebooted: rebooted})
 }
 
+func (h *VMCloudInit) handleSSHKey(w http.ResponseWriter, r *http.Request) {
+	clusterName, vmid, ok := parseCloudInitPath(r)
+	if !ok {
+		h.writeError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", "POST")
+		h.writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
+		return
+	}
+
+	identity, err := h.auth.Principal(r)
+	if err != nil {
+		h.writeError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
+		return
+	}
+
+	var request cloudInitSSHKeyRequest
+	if err := decodeJSON(w, r, &request); err != nil {
+		h.writeError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
+		return
+	}
+
+	if strings.TrimSpace(request.Key) == "" {
+		h.writeError(w, http.StatusBadRequest, "invalid_key", "a non-empty ssh public key is required")
+		return
+	}
+
+	index, ok := h.index(w, clusterName)
+	if !ok {
+		return
+	}
+
+	reader, ok := h.readerFor(w, clusterName)
+	if !ok {
+		return
+	}
+
+	writer, ok := h.writerFor(w, clusterName)
+	if !ok {
+		return
+	}
+
+	user := request.User
+	if user == "" {
+		// Default to the cloud-init user so a bare key still lands on the
+		// guest's primary account (mirrors how ciuser seeds the VM).
+		if cfg, cfgErr := vm.GetCloudInitConfig(r.Context(), index, identity, clusterName, vmid, reader); cfgErr == nil && cfg.User != "" {
+			user = cfg.User
+		} else {
+			user = "root"
+		}
+	}
+
+	if err := vm.AddCloudInitSSHKey(r.Context(), vm.AddCloudInitSSHKeyDeps{
+		Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid,
+		Reader: reader, Writer: writer, Audit: h.store,
+	}, user, strings.TrimSpace(request.Key)); err != nil {
+		h.writeDomainError(w, err)
+		return
+	}
+
+	h.writeJSONStatus(w, http.StatusOK, cloudInitSSHKeyResponse{Status: "injected"})
+}
+
 func (h *VMCloudInit) handleSnippet(w http.ResponseWriter, r *http.Request) {
 	h.serveRoute(w, r, h.getSnippet, h.putSnippet)
 }
@@ -312,6 +390,10 @@ func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 		h.writeError(w, http.StatusNotFound, "not_found", msgVMNotFound)
 	case errors.Is(err, vm.ErrInvalidCloudInitConfig):
 		h.writeError(w, http.StatusBadRequest, "invalid_config", err.Error())
+	case errors.Is(err, vm.ErrSSHKeyInvalid):
+		h.writeError(w, http.StatusBadRequest, "invalid_key", err.Error())
+	case errors.Is(err, cluster.ErrSSHKeyUserUnknown):
+		h.writeError(w, http.StatusBadRequest, "ssh_user_unknown", "the cloud-init user does not exist on the guest")
 	case errors.Is(err, cloudinit.ErrSnippetPrefix), errors.Is(err, cloudinit.ErrSnippetTooLarge), errors.Is(err, cloudinit.ErrSnippetInvalidUTF8):
 		h.writeError(w, http.StatusBadRequest, "invalid_snippet", err.Error())
 	case errors.Is(err, vm.ErrSnippetPushFailed):

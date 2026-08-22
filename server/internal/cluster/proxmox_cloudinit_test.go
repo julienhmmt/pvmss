@@ -2,9 +2,11 @@ package cluster
 
 import (
 	"context"
+	"errors"
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -225,6 +227,147 @@ func TestProxmox_FindSnippetStorage_NotFound(t *testing.T) {
 	_, err := p.FindSnippetStorage(context.Background(), testNodeName)
 	if err == nil {
 		t.Fatal("expected an error when no snippet-capable storage exists")
+	}
+}
+
+// TestProxmox_AttachCloudInitSnippet verifies the snippet is wired to the VM
+// via cicustom=vendor= (MERGE semantics, so generated user-data is preserved)
+// when a filename is given, and that an empty filename clears the cicustom key
+// instead of setting it. Fixes the silent no-op reported in REPORT.md §4/addendum.
+//
+//nolint:wsl_v5,goconst // test table reuses the "delete" key string and keeps brace groups tight
+func TestProxmox_AttachCloudInitSnippet(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		filename string
+		wantKey  string
+		wantVal  string
+	}{
+		{name: "vendor slot merges snippet", filename: "pvmss-101.yml", wantKey: "cicustom", wantVal: "vendor=local:snippets/pvmss-101.yml"},
+		{name: "empty filename detaches", filename: "", wantKey: "delete", wantVal: "cicustom"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			seen := map[string]string{}
+
+			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+				mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, r *http.Request) {
+					if err := r.ParseForm(); err != nil {
+						t.Fatalf("parse form: %v", err)
+					}
+					for _, k := range []string{"cicustom", "delete"} {
+						if v := r.FormValue(k); v != "" {
+							seen[k] = v
+						}
+					}
+					writeJSONFixture(t, w, `{"data":null}`)
+				})
+			})
+
+			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+			if err := p.AttachCloudInitSnippet(context.Background(), testNodeName, "local", tc.filename, testVMID); err != nil {
+				t.Fatalf("AttachCloudInitSnippet: %v", err)
+			}
+
+			if seen[tc.wantKey] != tc.wantVal {
+				t.Errorf("%s = %q, want %q (seen %+v)", tc.wantKey, seen[tc.wantKey], tc.wantVal, seen)
+			}
+		})
+	}
+}
+
+// TestProxmox_SetCloudInitPassword_Agent verifies the password is applied via
+// the guest-agent endpoint (writes /etc/shadow), never cipassword (REPORT.md §1).
+func TestProxmox_SetCloudInitPassword_Agent(t *testing.T) {
+	t.Parallel()
+
+	var gotPath, gotUser, gotPassword string
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/agent/set-user-password", func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("parse form: %v", err)
+			}
+
+			gotPath = r.URL.Path
+			gotUser = r.FormValue("username")
+			gotPassword = r.FormValue("password")
+
+			writeJSONFixture(t, w, `{"data":null}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	if err := p.SetCloudInitPassword(context.Background(), testNodeName, testVMID, "s3cret"); err != nil {
+		t.Fatalf("SetCloudInitPassword: %v", err)
+	}
+
+	if gotPath != "/api2/json/nodes/node01/qemu/101/agent/set-user-password" {
+		t.Errorf("path = %q, want agent/set-user-password", gotPath)
+	}
+
+	if gotUser != "root" || gotPassword != "s3cret" {
+		t.Errorf("username/password = %q/%q, want root/s3cret", gotUser, gotPassword)
+	}
+}
+
+// TestProxmox_AddSSHKey_AgentExec verifies the key is passed as a positional
+// argv to a fixed script (no shell interpolation), so a crafted key cannot
+// break out, and that the guest's exit status is honoured (REPORT.md §2/#2).
+//
+//nolint:wsl_v5 // test keeps exec/exec-status handlers adjacent
+func TestProxmox_AddSSHKey_AgentExec(t *testing.T) {
+	t.Parallel()
+
+	var gotCommands []string
+	var gotExit int
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("POST /api2/json/nodes/node01/qemu/101/agent/exec", func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("parse form: %v", err)
+			}
+			gotCommands = r.Form["command"]
+			writeJSONFixture(t, w, `{"data":{"pid":4242}}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/node01/qemu/101/agent/exec-status", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":{"exited":true,"exitcode":`+strconv.Itoa(gotExit)+`}}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	// Success path: positional argv must be [/bin/sh, -c, <script>, user, key].
+	gotExit = 0
+	if err := p.AddSSHKey(context.Background(), testNodeName, testVMID, "debian", "ssh-ed25519 AAAA demo@laptop"); err != nil {
+		t.Fatalf("AddSSHKey: %v", err)
+	}
+	if len(gotCommands) != 5 || gotCommands[0] != "/bin/sh" || gotCommands[1] != "-c" || gotCommands[3] != "debian" || gotCommands[4] != "ssh-ed25519 AAAA demo@laptop" {
+		t.Fatalf("agent argv = %+v, want [/bin/sh -c <script> debian <key>]", gotCommands)
+	}
+	// The key must travel as a bare argv element, never interpolated into the
+	// script body (which is the constant sshKeyAddScript).
+	if strings.Contains(gotCommands[2], "demo@laptop") {
+		t.Fatal("key was interpolated into the script body instead of passed as argv")
+	}
+
+	// Exit code 3 => user not found on guest.
+	gotExit = 3
+	if err := p.AddSSHKey(context.Background(), testNodeName, testVMID, "ghost", "ssh-ed25519 AAAA x"); !errors.Is(err, ErrSSHKeyUserUnknown) {
+		t.Fatalf("err = %v, want ErrSSHKeyUserUnknown", err)
+	}
+
+	// Any other non-zero exit surfaces as a failure.
+	gotExit = 1
+	if err := p.AddSSHKey(context.Background(), testNodeName, testVMID, "debian", "ssh-ed25519 AAAA x"); err == nil {
+		t.Fatal("expected a failure for non-zero guest exit")
 	}
 }
 

@@ -16,6 +16,7 @@ type fakeState struct {
 	createMu sync.Mutex
 	identMu  sync.RWMutex
 	pushMu   sync.RWMutex
+	sshMu    sync.RWMutex
 
 	vms                []VM
 	nodes              []Node
@@ -27,6 +28,7 @@ type fakeState struct {
 	acls               []ACLEntry
 	errDeleteUser      error
 	pushErr            error
+	sshErr             error
 	cloudInitConfigs   map[fakeCloudInitKey]CloudInitConfig
 	cloudInitDrives    map[fakeCloudInitKey]bool
 	snapshots          map[fakeSnapshotKey][]VMSnapshot
