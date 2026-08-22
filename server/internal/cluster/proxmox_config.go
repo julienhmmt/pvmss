@@ -93,6 +93,18 @@ const cdromMountedValue = "local:iso/debian-12.iso,media=cdrom"
 // slot to a caller.
 const cloudInitDiskKey = "ide3"
 
+// cfgHasSerial reports whether the VM config carries a serial port (serial0,
+// serial1, …). The PVMSS Text/serial console needs at least one.
+func cfgHasSerial(cfg proxmoxVMConfig) bool {
+	for index := range 4 {
+		if _, ok := cfg[fmt.Sprintf("serial%d", index)].(string); ok {
+			return true
+		}
+	}
+
+	return false
+}
+
 // parseDisks reads every attached data disk from cfg in a deterministic
 // order (bus, then index) — map iteration order is random and callers (the
 // disk tab, the create wizard) expect a stable listing.
@@ -326,6 +338,7 @@ func hydrateVM(ctx context.Context, rest proxmoxRESTClient, vm *VM) error {
 	vm.NetworkInterfaces = parseNetworkInterfaces(cfg)
 	vm.BootOrder = parseBootOrder(cfg)
 	vm.Description = cfg.str("description")
+	vm.HasSerial = cfgHasSerial(cfg)
 
 	if len(vm.Tags) == 0 {
 		vm.Tags = splitProxmoxTags(cfg.str("tags"))

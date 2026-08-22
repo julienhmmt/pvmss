@@ -23,6 +23,7 @@ export interface VmDetailEntity {
 	disks?: VmDisk[];
 	cdrom?: VmCdrom;
 	networkInterfaces?: VmNetworkInterface[];
+	hasSerial?: boolean;
 }
 
 export interface VmDisk {
@@ -110,6 +111,28 @@ export class VmDetailStore {
 	networkInFlight = $state.raw(false);
 	hardwareInFlight = $state.raw(false);
 	writeError = $state.raw<string | null>(null);
+
+	/** True while the serial-console retrofit is in flight. */
+	serialEnabling = $state.raw(false);
+	serialEnableError = $state.raw<string | null>(null);
+
+	/** Retrofits a serial port (serial0) onto an existing VM so the Text
+	 * console works, then reloads so the entity's hasSerial flips. */
+	async enableSerialConsole(): Promise<boolean> {
+		if (this.serialEnabling || this.entity === null) return false;
+		this.serialEnabling = true;
+		this.serialEnableError = null;
+		try {
+			await post<VmDetailEntity>(`${this.#basePath}/serial`, {});
+			await this.load();
+			return true;
+		} catch (err) {
+			this.serialEnableError = errorMessage(err, () => m['vms.console.serial.enableError']());
+			return false;
+		} finally {
+			this.serialEnabling = false;
+		}
+	}
 
 	/** Set after a successful delete so the page can navigate away. */
 	deleted = $state.raw(false);

@@ -7,6 +7,7 @@
 	import VmConsole from '$lib/features/vm-console/VmConsole.svelte';
 	import VmSerialConsole from '$lib/features/vm-console/VmSerialConsole.svelte';
 	import ConsoleToolbar from '$lib/features/vm-console/ConsoleToolbar.svelte';
+	import { setVmDetailContext } from '$lib/features/vms/detail.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	type ConsoleMode = 'graphical' | 'text';
@@ -16,6 +17,7 @@
 
 	const store = setConsoleContext(cluster, vmid);
 	const serialStore = setSerialConsoleContext(cluster, vmid);
+	const vmStore = setVmDetailContext(cluster, vmid);
 
 	let mode = $state<ConsoleMode>('graphical');
 
@@ -31,7 +33,15 @@
 		mode = next;
 	}
 
+	async function handleEnableSerial(): Promise<void> {
+		const ok = await vmStore.enableSerialConsole();
+		if (ok) {
+			serialStore.reconnect();
+		}
+	}
+
 	onMount(() => {
+		void vmStore.load();
 		// The connect happens inside VmConsole.svelte's onMount, which runs
 		// after the container element is bound.
 	});
@@ -124,6 +134,25 @@
 				{m['vms.console.reconnect']()}
 			</button>
 		</div>
+		{#if vmStore.entity && vmStore.entity.hasSerial === false}
+			<div class="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/40 p-3 text-sm" data-testid="vm-serial-console-enable">
+				<p class="text-muted-foreground">{m['vms.console.serial.noSerial']()}</p>
+				<button
+					type="button"
+					class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+					disabled={vmStore.serialEnabling}
+					onclick={handleEnableSerial}
+					data-testid="vm-serial-console-enable-btn"
+				>
+					{vmStore.serialEnabling ? m['vms.console.serial.enabling']() : m['vms.console.serial.enable']()}
+				</button>
+				{#if vmStore.serialEnableError}
+					<p class="text-destructive" data-testid="vm-serial-console-enable-error">{vmStore.serialEnableError}</p>
+				{/if}
+			</div>
+		{:else if vmStore.serialEnableError}
+			<p class="text-destructive text-sm" data-testid="vm-serial-console-enable-error">{vmStore.serialEnableError}</p>
+		{/if}
 	{/if}
 
 	<div class="mt-3 flex-1 overflow-hidden">
