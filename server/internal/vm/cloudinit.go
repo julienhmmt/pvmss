@@ -18,6 +18,8 @@ const snippetFilenamePrefix = "pvmss-"
 var (
 	// ErrInvalidCloudInitConfig reports malformed effective structured state.
 	ErrInvalidCloudInitConfig = errors.New("invalid cloud-init config")
+	// ErrSSHKeyInvalid reports a public key that failed cloudinit validation.
+	ErrSSHKeyInvalid = errors.New("invalid ssh public key")
 	// ErrSnippetPushFailed reports a committed snippet that was not applied upstream.
 	ErrSnippetPushFailed = errors.New("cloud-init snippet push failed")
 	// ErrCustomYAMLDisabled reports an administrator-disabled snippet editor.
@@ -226,6 +228,73 @@ func resolveCloudInitTarget(index *inventory.Index, actor auth.Identity, cluster
 	}
 
 	return Resolve(index, actor, clusterName, vmid)
+}
+
+// AddCloudInitSSHKeyDeps groups the shared dependencies for AddCloudInitSSHKey.
+type AddCloudInitSSHKeyDeps struct {
+	Index       *inventory.Index
+	Actor       auth.Identity
+	ClusterName string
+	VMID        int
+	Reader      cluster.CloudInitReader
+	Writer      cluster.Writer
+	Audit       AuditRecorder
+}
+
+// AddCloudInitSSHKey injects a single public key into the running guest's
+// authorized_keys via the QEMU guest agent, without a reboot. The key is
+// validated first (REPORT.md §2/#3), so a malformed or multi-line value is
+// rejected before it reaches the agent. On success the key is also merged into
+// the cloud-init config best-effort so later duplicate/rebuild flows keep a
+// truthful key set; that sync failing does not roll back the live injection,
+// which is the source of truth (mirrors ProxMate's addGuestSshKey).
+func AddCloudInitSSHKey(ctx context.Context, deps AddCloudInitSSHKeyDeps, user, key string) error {
+	if err := cloudinit.ValidateSSHKey(key); err != nil {
+		return fmt.Errorf("%w: %w", ErrSSHKeyInvalid, err)
+	}
+
+	entity, err := resolveCloudInitTarget(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
+	if err != nil {
+		return err
+	}
+
+	if err := deps.Writer.AddSSHKey(ctx, entity.Node, deps.VMID, user, key); err != nil {
+		return fmt.Errorf("inject ssh key via guest agent: %w", err)
+	}
+
+	// Best-effort config sync: keep ciuser/sshkeys/ipconfig0 truthful for
+	// future duplicate/rebuild flows. A read or write failure here must not
+	// hide the successful agent injection, which is what actually put the key
+	// on the guest.
+	current, err := deps.Reader.GetCloudInitConfig(ctx, entity.Node, deps.VMID)
+	if err == nil {
+		for _, existing := range current.SSHKeys {
+			if existing == key {
+				return recordSSHKeyAudit(ctx, deps, user, key)
+			}
+		}
+
+		current.SSHKeys = append(current.SSHKeys, key)
+		if err := deps.Writer.SetCloudInitConfig(ctx, entity.Node, deps.VMID, current); err != nil {
+			// The key is already live in the guest; surface a softer note only
+			// if we can attribute it, but never fail the whole operation.
+			return recordSSHKeyAudit(ctx, deps, user, key)
+		}
+	}
+
+	return recordSSHKeyAudit(ctx, deps, user, key)
+}
+
+func recordSSHKeyAudit(ctx context.Context, deps AddCloudInitSSHKeyDeps, _ string, _ string) error {
+	if deps.Audit == nil {
+		return nil
+	}
+
+	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, "edit_cloudinit_sshkey"); err != nil {
+		return fmt.Errorf("record cloud-init ssh-key audit: %w", err)
+	}
+
+	return nil
 }
 
 //nolint:wsl_v5 // validation branches are intentionally kept adjacent by field

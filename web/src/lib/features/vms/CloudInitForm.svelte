@@ -25,6 +25,8 @@
 	let validationError = $state<string | null>(null);
 	let ipError = $state<string | null>(null);
 	let gatewayError = $state<string | null>(null);
+	let injectKey = $state('');
+	let injectUser = $state('');
 
 	$effect(() => {
 		const config = store.config;
@@ -39,28 +41,37 @@
 	});
 
 	function submit(): void {
-		ipError = null;
-		gatewayError = null;
-		validationError = null;
-		if (ipMode === 'static') {
-			if (ipAddress === '') {
-				ipError = m['vms.cloudinit.validationError']();
-				return;
-			}
-			if (gateway === '') {
-				gatewayError = m['vms.cloudinit.validationError']();
-				return;
-			}
+	ipError = null;
+	gatewayError = null;
+	validationError = null;
+	if (ipMode === 'static') {
+		if (ipAddress === '') {
+			ipError = m['vms.cloudinit.validationError']();
+			return;
 		}
-		onRequestSave({
-			user,
-			...(password === '' ? {} : { password }),
-			sshKeys: sshKeys.split('\n').map((key) => key.trim()).filter(Boolean),
-			ipMode,
-			...(ipMode === 'static' ? { ipAddress, gateway } : {}),
-			dnsServer,
-			searchDomain
-		});
+		if (gateway === '') {
+			gatewayError = m['vms.cloudinit.validationError']();
+			return;
+		}
+	}
+	onRequestSave({
+		user,
+		...(password === '' ? {} : { password }),
+		sshKeys: sshKeys.split('\n').map((key) => key.trim()).filter(Boolean),
+		ipMode,
+		...(ipMode === 'static' ? { ipAddress, gateway } : {}),
+		dnsServer,
+		searchDomain
+	});
+	}
+
+	async function injectNow(): Promise<void> {
+	const key = injectKey.trim();
+	if (key === '') return;
+	const ok = await store.addSSHKey(key, injectUser);
+	if (ok) {
+		injectKey = '';
+	}
 	}
 </script>
 
@@ -102,6 +113,22 @@
 				<Textarea {id} {describedBy} {invalid} mono rows={6} bind:value={sshKeys} onCmdEnter={submit} data-testid="cloudinit-ssh-keys" />
 			{/snippet}
 		</FormField>
+		<div class="mt-2 rounded-lg border border-border bg-muted/30 p-3">
+			<p class="text-sm font-medium">{m['vms.cloudinit.addSSHKey']()}</p>
+			<p class="mt-1 text-xs text-muted-foreground">{m['vms.cloudinit.sshKeyHint']()}</p>
+			<div class="mt-2 grid gap-2 sm:grid-cols-2">
+				<TextField bind:value={injectKey} placeholder="ssh-ed25519 AAAA…" data-testid="cloudinit-inject-key" />
+				<TextField bind:value={injectUser} placeholder={m['vms.cloudinit.sshKeyUser']()} data-testid="cloudinit-inject-user" />
+			</div>
+			<div class="mt-2 flex items-center gap-2">
+				<Button type="button" loading={store.sshKeyInFlight} onclick={injectNow} data-testid="cloudinit-inject-now">
+					{m['vms.cloudinit.addSSHKeyNow']()}
+				</Button>
+				{#if store.sshKeyError}
+					<p role="alert" class="text-sm text-destructive">{store.sshKeyError}</p>
+				{/if}
+			</div>
+		</div>
 		<FormField label={m['vms.cloudinit.ipMode']()}>
 			{#snippet children({ id, describedBy, invalid })}
 				<Select
