@@ -399,6 +399,7 @@
  "vms.console.serial.enabling": "Enabling…",
  "vms.console.serial.enableError": "Failed to enable the serial console",
  "vms.console.serial.enabledHint": "Serial port added. Reboot the VM and make sure the guest runs a login prompt on the serial port, then reconnect.",
+ "vms.console.serial.hint": "The serial console mirrors the VM's serial port (ttyS0). A blank screen means the VM has no OS installed or no login prompt on the serial port — there is nothing for the console to display.",
  "vms.cloudinit.heading": "Cloud-init",
  "vms.cloudinit.description": "Configure live VM cloud-init settings or custom YAML.",
  "vms.cloudinit.modeLabel": "Cloud-init editor mode",
