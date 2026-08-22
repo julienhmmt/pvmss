@@ -130,6 +130,27 @@ func TestNodePolicyRow_FoundAndNotFound(t *testing.T) {
 	})
 }
 
+func upsertNodePolicyRows(t *testing.T, st *store.Store, ctx context.Context, nodes []string) {
+	t.Helper()
+
+	for _, n := range nodes {
+		row := sampleNodePolicyRow(testStoreCluster, n)
+		if err := st.UpsertNodePolicyRow(ctx, row); err != nil {
+			t.Fatalf("UpsertNodePolicyRow %s: %v", n, err)
+		}
+	}
+}
+
+func assertNodePolicyOrder(t *testing.T, got []store.NodePolicyRow, want []string) {
+	t.Helper()
+
+	for i, w := range want {
+		if got[i].Node != w {
+			t.Errorf("row[%d].Node = %q, want %q", i, got[i].Node, w)
+		}
+	}
+}
+
 //nolint:paralleltest // serial: shared database fixture
 func TestNodePolicyRows(t *testing.T) {
 	st := openClusterStore(t)
@@ -137,12 +158,7 @@ func TestNodePolicyRows(t *testing.T) {
 
 	t.Run("multiple rows ordered by node", func(t *testing.T) {
 		nodes := []string{"node-zeta", "node-alpha", "node-mid"}
-		for _, n := range nodes {
-			row := sampleNodePolicyRow(testStoreCluster, n)
-			if err := st.UpsertNodePolicyRow(ctx, row); err != nil {
-				t.Fatalf("UpsertNodePolicyRow %s: %v", n, err)
-			}
-		}
+		upsertNodePolicyRows(t, st, ctx, nodes)
 
 		got, err := st.NodePolicyRows(ctx, testStoreCluster)
 		if err != nil {
@@ -154,11 +170,7 @@ func TestNodePolicyRows(t *testing.T) {
 		}
 
 		want := []string{"node-alpha", "node-mid", "node-zeta"}
-		for i, w := range want {
-			if got[i].Node != w {
-				t.Errorf("row[%d].Node = %q, want %q", i, got[i].Node, w)
-			}
-		}
+		assertNodePolicyOrder(t, got, want)
 	})
 
 	t.Run("empty result", func(t *testing.T) {

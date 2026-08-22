@@ -193,11 +193,7 @@ func TestNodeCapacity_TableDriven(t *testing.T) {
 
 	service, projection := newPolicyService(t)
 
-	snap, _ := (cluster.Fake{}).Snapshot(context.Background())
-	nodeMap := make(map[string]cluster.Node, len(snap.Nodes))
-	for _, n := range snap.Nodes {
-		nodeMap[n.Name] = n
-	}
+	nodeMap := buildNodeMapFromFakeSnapshot()
 
 	cases := []struct {
 		name string
@@ -211,51 +207,83 @@ func TestNodeCapacity_TableDriven(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-
-			cap, err := service.NodeCapacity(context.Background(), "default", tc.node)
-			if err != nil {
-				t.Fatalf("NodeCapacity: %v", err)
-			}
-
-			if cap.Node != tc.node {
-				t.Fatalf("Node = %q, want %q", cap.Node, tc.node)
-			}
-
-			var wantVMs, wantVCPUs int
-			var wantRAMBytes int64
-			for _, machine := range projection.Load().ByNode[tc.node] {
-				if !slices.Contains(machine.Tags, "pvmss") {
-					continue
-				}
-				wantVMs++
-				if machine.Sockets > 0 && machine.Cores > 0 {
-					wantVCPUs += machine.Sockets * machine.Cores
-				} else {
-					wantVCPUs += machine.CPUCores
-				}
-				wantRAMBytes += machine.MemoryTotal
-			}
-
-			if cap.UsedVMs != wantVMs {
-				t.Errorf("UsedVMs = %d, want %d", cap.UsedVMs, wantVMs)
-			}
-			if cap.UsedVCPUs != wantVCPUs {
-				t.Errorf("UsedVCPUs = %d, want %d", cap.UsedVCPUs, wantVCPUs)
-			}
-			wantRAMGB := int(wantRAMBytes / (1024 * 1024 * 1024))
-			if cap.UsedRAMGB != wantRAMGB {
-				t.Errorf("UsedRAMGB = %d, want %d", cap.UsedRAMGB, wantRAMGB)
-			}
-
-			discovered := nodeMap[tc.node]
-			if cap.PhysicalVCPUs != discovered.CPUCores {
-				t.Errorf("PhysicalVCPUs = %d, want %d", cap.PhysicalVCPUs, discovered.CPUCores)
-			}
-			wantPhysRAM := int(discovered.MemoryTotal / (1024 * 1024 * 1024))
-			if cap.PhysicalRAMGB != wantPhysRAM {
-				t.Errorf("PhysicalRAMGB = %d, want %d", cap.PhysicalRAMGB, wantPhysRAM)
-			}
+			assertNodeCapacityForNode(t, service, projection, nodeMap, tc.node)
 		})
+	}
+}
+
+func buildNodeMapFromFakeSnapshot() map[string]cluster.Node {
+	snap, _ := (cluster.Fake{}).Snapshot(context.Background())
+	nodeMap := make(map[string]cluster.Node, len(snap.Nodes))
+	for _, n := range snap.Nodes {
+		nodeMap[n.Name] = n
+	}
+	return nodeMap
+}
+
+func assertNodeCapacityForNode(t *testing.T, service *policy.Policy, projection *inventory.Projection, nodeMap map[string]cluster.Node, node string) {
+	t.Helper()
+	cap, err := service.NodeCapacity(context.Background(), "default", node)
+	if err != nil {
+		t.Fatalf("NodeCapacity: %v", err)
+	}
+	if cap.Node != node {
+		t.Fatalf("Node = %q, want %q", cap.Node, node)
+	}
+
+	want := computeExpectedNodeUsage(projection.Load().ByNode[node])
+	assertNodeUsageMatches(t, cap, want)
+	assertNodePhysicalMatches(t, cap, nodeMap[node])
+}
+
+type expectedNodeUsage struct {
+	vms      int
+	vcpus    int
+	ramBytes int64
+}
+
+func computeExpectedNodeUsage(machines []cluster.VM) expectedNodeUsage {
+	var u expectedNodeUsage
+	for _, machine := range machines {
+		if !slices.Contains(machine.Tags, "pvmss") {
+			continue
+		}
+		u.vms++
+		u.vcpus += machineVCPUs(machine)
+		u.ramBytes += machine.MemoryTotal
+	}
+	return u
+}
+
+func machineVCPUs(machine cluster.VM) int {
+	if machine.Sockets > 0 && machine.Cores > 0 {
+		return machine.Sockets * machine.Cores
+	}
+	return machine.CPUCores
+}
+
+func assertNodeUsageMatches(t *testing.T, cap policy.Capacity, want expectedNodeUsage) {
+	t.Helper()
+	if cap.UsedVMs != want.vms {
+		t.Errorf("UsedVMs = %d, want %d", cap.UsedVMs, want.vms)
+	}
+	if cap.UsedVCPUs != want.vcpus {
+		t.Errorf("UsedVCPUs = %d, want %d", cap.UsedVCPUs, want.vcpus)
+	}
+	wantRAMGB := int(want.ramBytes / (1024 * 1024 * 1024))
+	if cap.UsedRAMGB != wantRAMGB {
+		t.Errorf("UsedRAMGB = %d, want %d", cap.UsedRAMGB, wantRAMGB)
+	}
+}
+
+func assertNodePhysicalMatches(t *testing.T, cap policy.Capacity, discovered cluster.Node) {
+	t.Helper()
+	if cap.PhysicalVCPUs != discovered.CPUCores {
+		t.Errorf("PhysicalVCPUs = %d, want %d", cap.PhysicalVCPUs, discovered.CPUCores)
+	}
+	wantPhysRAM := int(discovered.MemoryTotal / (1024 * 1024 * 1024))
+	if cap.PhysicalRAMGB != wantPhysRAM {
+		t.Errorf("PhysicalRAMGB = %d, want %d", cap.PhysicalRAMGB, wantPhysRAM)
 	}
 }
 
