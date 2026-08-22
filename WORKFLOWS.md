@@ -212,7 +212,19 @@ non-admin), wired in `router_admin.go`. Nav grouping comes from
 | Policy | `/admin/policy`, `/admin/policy/nodes` | Quotas and gabarit limits; per-node capacity |
 | System | `/admin/appinfo`, `/admin/settings` | App info, audit log, DB export/import |
 
-Two admin workflows deserve the full template because they are the risky ones.
+Three admin workflows deserve the full template because they are the risky ones.
+
+### Approve or disable a node
+
+|| | |
+| --- | --- |
+| **Audience** | admin |
+| **Entry** | Sidebar → Administration → Infrastructure → Nodes |
+| **Route** | `/admin/nodes` |
+| **API** | `GET /api/v1/admin/nodes` → `POST /api/v1/admin/nodes/toggle` |
+| **Steps** | 1. Pick a cluster from the selector. 2. Search, filter by status or enabled state, and sort by name, status, usage, or VM count. 3. Toggle a node on or off. 4. If disabling a node that has running VMs, confirm the action. 5. A toast confirms the change. |
+| **States** | `TableSkeleton` while loading; `EmptyState` with a link to `/admin/clusters` when no nodes are discovered; a second `EmptyState` with a reset-filters action when filters exclude every row; `ConfirmDialog` when disabling a node with running VMs; usage bars and sortable columns in the table. |
+| **Safety nets** | Disabling a node with running VMs requires confirmation and explains that existing VMs are unaffected; success and error toasts give feedback after the API call; toggling a node off only removes it from the create-VM catalog, never from existing VMs. |
 
 ### Approve a catalog item
 
@@ -222,9 +234,9 @@ Two admin workflows deserve the full template because they are the risky ones.
 | **Entry** | Any catalog page under `/admin` |
 | **Route** | `/admin/nodes`, `/admin/storages`, `/admin/isos`, `/admin/bridges` |
 | **API** | `GET /api/v1/admin/{kind}` → `POST /api/v1/admin/{kind}/toggle` |
-| **Steps** | 1. List what the cluster reports. 2. Toggle an item on or off. 3. It appears in, or disappears from, the create-VM catalog. |
-| **States** | The list is the live cluster view, so an item can exist in Proxmox and be un-approved here |
-| **Safety nets** | Toggling off does not touch existing VMs — it only removes the item from future choices |
+| **Steps** | 1. Pick a cluster from the selector. 2. Search, filter by node/state/type, and sort by the available columns. 3. Toggle an item on or off. 4. A toast confirms the change. 5. It appears in, or disappears from, the create-VM catalog. |
+| **States** | `TableSkeleton` while loading; `EmptyState` with a link to `/admin/clusters` when no items are discovered; a second `EmptyState` with a reset-filters action when filters exclude every row; sortable columns, usage bars for storages, and active-state dots for bridges. |
+| **Safety nets** | Toggling off does not touch existing VMs — it only removes the item from future choices; success and error toasts give feedback after the API call. |
 
 ### Export / import the database
 

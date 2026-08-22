@@ -26,7 +26,7 @@
 	<div class="mt-6 flex justify-end gap-2">
 		<Button variant="ghost" onclick={onClose}>{m['common.cancel']()}</Button>
 		<Button variant="destructive" disabled={deleting} onclick={onConfirm}>
-			{deleting ? m['common.deleting']() : m['admin.pools.deletePool']()}
+			{deleting ? m['common.deleting']() : m['admin.pools.deletePoolLabel']({ name: poolName })}
 		</Button>
 	</div>
 </Dialog>

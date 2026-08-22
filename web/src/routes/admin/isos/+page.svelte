@@ -1,18 +1,46 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { setAdminCatalogContext } from '$lib/features/admin-catalog/admin-catalog.svelte';
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import {
+		setAdminCatalogContext,
+		type ISOSortColumn
+	} from '$lib/features/admin-catalog/admin-catalog.svelte';
 	import IsosTable from '$lib/features/admin-catalog/IsosTable.svelte';
+	import IsosTableToolbar from '$lib/features/admin-catalog/IsosTableToolbar.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
+	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const store = setAdminCatalogContext();
+	const toast = getToastContext();
 
 	onMount(() => {
 		void store.loadAll();
 	});
+
+	function handleToggle(node: string, storage: string, file: string, enabled: boolean): void {
+		void performToggle(node, storage, file, enabled);
+	}
+
+	async function performToggle(node: string, storage: string, file: string, enabled: boolean): Promise<void> {
+		try {
+			await store.toggleISO(node, storage, file, enabled);
+			toast.success(
+				enabled ? m['admin.isos.enabledSuccess']({ file, node }) : m['admin.isos.disabledSuccess']({ file, node })
+			);
+		} catch {
+			toast.error(m['admin.catalog.toggleIsoError']());
+		}
+	}
+
+	function handleSort(column: ISOSortColumn): void {
+		store.setISOSort(column);
+	}
 </script>
 
 <svelte:head>
@@ -21,7 +49,12 @@
 
 <PageHeader title={m['admin.isos.heading']()}>
 	{#snippet actions()}
-		<ClusterSelector options={store.clusterOptions} value={store.cluster} onChange={(value) => store.setCluster(value)} id="isos-cluster" />
+		<ClusterSelector
+			options={store.clusterOptions}
+			value={store.cluster}
+			onChange={(value) => store.setCluster(value)}
+			id="isos-cluster"
+		/>
 	{/snippet}
 </PageHeader>
 
@@ -31,7 +64,9 @@
 {:else if store.error}
 	<p role="alert" class="text-destructive">{store.error}</p>
 {:else}
-	<div role="status" aria-live="polite" class="sr-only">{m['admin.isos.isosLoaded']({ count: store.isos.length })}</div>
+	<div role="status" aria-live="polite" class="sr-only">
+		{m['admin.isos.isosLoaded']({ count: store.filteredIsos.length })}
+	</div>
 
 	{#if store.toggleError}
 		<p role="alert" class="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
@@ -39,50 +74,48 @@
 		</p>
 	{/if}
 
-	<div class="mb-4 flex flex-wrap items-center gap-2">
-		<input
-			type="search"
-			class="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-			placeholder={m['admin.isos.searchPlaceholder']()}
-			bind:value={store.isoSearch}
-		/>
-		<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" bind:value={store.isoStorageFilter}>
-			<option value="">{m['admin.isos.filterStorage']()}</option>
-			{#each store.isoStorageOptions as storage (storage)}
-				<option value={storage}>{storage}</option>
-			{/each}
-		</select>
-		<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" bind:value={store.isoNodeFilter}>
-			<option value="">{m['admin.isos.filterNode']()}</option>
-			{#each store.isoNodeOptions as node (node)}
-				<option value={node}>{node}</option>
-			{/each}
-		</select>
-		<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" bind:value={store.isoEnabledFilter}>
-			<option value="all">{m['admin.isos.filterEnabled']()}</option>
-			<option value="enabled">{m['admin.isos.filterEnabledOnly']()}</option>
-			<option value="disabled">{m['admin.isos.filterDisabledOnly']()}</option>
-		</select>
-		<button
-			class="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
-			onclick={() => store.resetISOFilters()}
-		>
-			{m['admin.isos.resetFilters']()}
-		</button>
-	</div>
+	<IsosTableToolbar {store} />
 
-	<div class="fade-in">
-		{#if store.filteredIsos.length === 0 && store.isos.length > 0}
-			<EmptyState title={m['admin.isos.noFilterMatches']()} />
-		{:else}
+	{#if store.isos.length === 0}
+		<EmptyState
+			title={m['admin.isos.emptyTitle']()}
+			description={m['admin.isos.emptyDescription']()}
+		>
+			{#snippet actions()}
+				<Button
+					variant="secondary"
+					size="sm"
+					onclick={() => goto(resolve('/admin/clusters'))}
+				>
+					{m['admin.isos.emptyAction']()}
+				</Button>
+			{/snippet}
+		</EmptyState>
+	{:else if store.filteredIsos.length === 0}
+		<EmptyState
+			title={m['admin.isos.noMatchTitle']()}
+			description={m['admin.isos.noMatchDescription']()}
+		>
+			{#snippet actions()}
+				<Button
+					variant="secondary"
+					size="sm"
+					onclick={() => store.resetISOFilters()}
+				>
+					{m['admin.isos.resetFilters']()}
+				</Button>
+			{/snippet}
+		</EmptyState>
+	{:else}
+		<div class="fade-in">
 			<IsosTable
 				isos={store.filteredIsos}
 				toggling={store.toggling}
-				onToggle={(node, storage, file, enabled) => void store.toggleISO(node, storage, file, enabled)}
+				onToggle={handleToggle}
 				sortBy={store.isoSortBy}
 				sortDir={store.isoSortDir}
-				onSort={(column: 'file' | 'storage' | 'node' | 'size' | 'enabled') => store.setISOSort(column)}
+				onSort={handleSort}
 			/>
-		{/if}
-	</div>
+		</div>
+	{/if}
 {/if}
