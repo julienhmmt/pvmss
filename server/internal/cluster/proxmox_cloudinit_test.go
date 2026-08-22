@@ -228,6 +228,94 @@ func TestProxmox_FindSnippetStorage_NotFound(t *testing.T) {
 	}
 }
 
+// TestProxmox_AttachCloudInitSnippet verifies the snippet is wired to the VM
+// via cicustom=vendor= (MERGE semantics, so generated user-data is preserved)
+// when a filename is given, and that an empty filename clears the cicustom key
+// instead of setting it. Fixes the silent no-op reported in REPORT.md §4/addendum.
+//
+//nolint:wsl_v5,goconst // test table reuses the "delete" key string and keeps brace groups tight
+func TestProxmox_AttachCloudInitSnippet(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		filename string
+		wantKey  string
+		wantVal  string
+	}{
+		{name: "vendor slot merges snippet", filename: "pvmss-101.yml", wantKey: "cicustom", wantVal: "vendor=local:snippets/pvmss-101.yml"},
+		{name: "empty filename detaches", filename: "", wantKey: "delete", wantVal: "cicustom"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			seen := map[string]string{}
+
+			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+				mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, r *http.Request) {
+					if err := r.ParseForm(); err != nil {
+						t.Fatalf("parse form: %v", err)
+					}
+					for _, k := range []string{"cicustom", "delete"} {
+						if v := r.FormValue(k); v != "" {
+							seen[k] = v
+						}
+					}
+					writeJSONFixture(t, w, `{"data":null}`)
+				})
+			})
+
+			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+			if err := p.AttachCloudInitSnippet(context.Background(), testNodeName, "local", tc.filename, testVMID); err != nil {
+				t.Fatalf("AttachCloudInitSnippet: %v", err)
+			}
+
+			if seen[tc.wantKey] != tc.wantVal {
+				t.Errorf("%s = %q, want %q (seen %+v)", tc.wantKey, seen[tc.wantKey], tc.wantVal, seen)
+			}
+		})
+	}
+}
+
+// TestProxmox_SetCloudInitPassword_Agent verifies the password is applied via
+// the guest-agent endpoint (writes /etc/shadow), never cipassword (REPORT.md §1).
+func TestProxmox_SetCloudInitPassword_Agent(t *testing.T) {
+	t.Parallel()
+
+	var gotPath, gotUser, gotPassword string
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/agent/set-user-password", func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("parse form: %v", err)
+			}
+
+			gotPath = r.URL.Path
+			gotUser = r.FormValue("username")
+			gotPassword = r.FormValue("password")
+
+			writeJSONFixture(t, w, `{"data":null}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	if err := p.SetCloudInitPassword(context.Background(), testNodeName, testVMID, "s3cret"); err != nil {
+		t.Fatalf("SetCloudInitPassword: %v", err)
+	}
+
+	if gotPath != "/api2/json/nodes/node01/qemu/101/agent/set-user-password" {
+		t.Errorf("path = %q, want agent/set-user-password", gotPath)
+	}
+
+	if gotUser != "root" || gotPassword != "s3cret" {
+		t.Errorf("username/password = %q/%q, want root/s3cret", gotUser, gotPassword)
+	}
+}
+
 // readMultipartFileBody reads the entire contents of a multipart file into a
 // string. Extracted from the TestProxmox_PushCloudInitSnippet handler closure
 // to satisfy the cognitive-complexity ceiling (go:S3776); read logic unchanged.

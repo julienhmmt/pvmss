@@ -114,6 +114,19 @@ type Writer interface {
 	EnsureCloudInitDrive(ctx context.Context, node string, vmid int) error
 	SetCloudInitConfig(ctx context.Context, node string, vmid int, config CloudInitConfig) error
 	PushCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int, content string) error
+	// AttachCloudInitSnippet points the VM's config at an already-pushed
+	// snippet file via the vendor-data slot. vendor= MERGES the snippet with
+	// the generated cloud-init user-data (ciuser/sshkeys/ipconfig0 still
+	// apply); the user= slot would REPLACE the generated user-data entirely
+	// and silently drop the structured config. An empty filename detaches
+	// the snippet (Proxmox stores none). See REPORT.md §4 / addendum.
+	AttachCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int) error
+	// SetCloudInitPassword applies the VM's cloud-init password post-boot via
+	// the QEMU guest agent, writing it only to /etc/shadow on the guest. It
+	// never uses the cipassword config key, whose crypt hash Proxmox stores on
+	// the cloud-init seed drive and cloud-init caches under /var/lib/cloud —
+	// both readable by any tenant root for the VM's lifetime (REPORT.md §1).
+	SetCloudInitPassword(ctx context.Context, node string, vmid int, password string) error
 }
 
 // Snapshot is the complete result of one cluster read — all nodes, VMs, and

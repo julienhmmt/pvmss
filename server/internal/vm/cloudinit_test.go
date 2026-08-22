@@ -124,7 +124,7 @@ func TestSetCloudInitConfig_RebootNowCallsT05Once(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // serial: shared fake dataset
+//nolint:paralleltest,gocyclo // serial: shared fake dataset; table of assertions
 func TestSetCloudInitSnippet_PersistsTargetPushesAndPreservesClear(t *testing.T) {
 	index := cloudInitIndex(t)
 	st := cloudInitStore(t)
@@ -134,8 +134,11 @@ func TestSetCloudInitSnippet_PersistsTargetPushesAndPreservesClear(t *testing.T)
 		t.Fatalf("SetCloudInitSnippet: %v", err)
 	}
 	calls := cluster.FakeCallsFor(101)
-	if len(calls) != 1 || calls[0].Action != "push_cloudinit_snippet" || calls[0].Storage != cluster.FakeSnippetStorage || calls[0].Filename != "pvmss-101.yml" || calls[0].Content != content {
+	if len(calls) != 2 || calls[0].Action != "push_cloudinit_snippet" || calls[0].Storage != cluster.FakeSnippetStorage || calls[0].Filename != "pvmss-101.yml" || calls[0].Content != content {
 		t.Fatalf("calls = %+v", calls)
+	}
+	if calls[1].Action != "attach_cloudinit_snippet" || calls[1].Storage != cluster.FakeSnippetStorage || calls[1].Filename != "pvmss-101.yml" {
+		t.Fatalf("attach call = %+v, want attach of pvmss-101.yml", calls[1])
 	}
 	if err := vm.SetCloudInitSnippet(context.Background(), vm.CloudInitSnippetDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Service: service}, ""); err != nil {
 		t.Fatalf("clear snippet: %v", err)
@@ -162,5 +165,43 @@ func TestSetCloudInitSnippet_ValidationAndPushFailure(t *testing.T) {
 	}
 	if _, found, readErr := st.GetCloudInitSnippet(context.Background(), testClusterName, 101); readErr != nil || !found {
 		t.Fatalf("snippet after push failure found %v, err %v; want committed row", found, readErr)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake dataset
+func TestSetCloudInitConfig_PasswordUsesGuestAgentNotCipassword(t *testing.T) {
+	index := cloudInitIndex(t)
+	st := cloudInitStore(t)
+	// VM 101 is stopped in the pristine dataset; the guest agent requires a
+	// running guest, so start it first so the agent path can succeed.
+	if err := (cluster.Fake{}).Action(context.Background(), cluster.FakeNode01, 101, "start"); err != nil {
+		t.Fatalf("start VM 101 for test setup: %v", err)
+	}
+	password := "hunter2-change-me"
+	rebooted, err := vm.SetCloudInitConfig(context.Background(), vm.CloudInitConfigDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st, Refresher: testRefresher{}}, cluster.CloudInitUpdate{Password: &password}, false)
+	if err != nil {
+		t.Fatalf("SetCloudInitConfig with password: %v", err)
+	}
+	if rebooted {
+		t.Fatal("rebooted = true, want false (rebootNow not requested)")
+	}
+	calls := cluster.FakeCallsFor(101)
+	var sawConfig, sawAgent bool
+	for _, c := range calls {
+		switch c.Action {
+		case "set_cloudinit_config":
+			sawConfig = true
+			if c.CloudInitData.Password != "" {
+				t.Errorf("config carried a cleartext password: %+v", c.CloudInitData)
+			}
+		case "set_cloudinit_password":
+			sawAgent = true
+		}
+	}
+	if !sawConfig {
+		t.Fatal("expected a set_cloudinit_config call")
+	}
+	if !sawAgent {
+		t.Fatal("expected the password to be applied via the guest agent (set_cloudinit_password), not cipassword")
 	}
 }
