@@ -285,7 +285,7 @@ func AddCloudInitSSHKey(ctx context.Context, deps AddCloudInitSSHKeyDeps, user, 
 	return recordSSHKeyAudit(ctx, deps, user, key)
 }
 
-func recordSSHKeyAudit(ctx context.Context, deps AddCloudInitSSHKeyDeps, _ string, _ string) error {
+func recordSSHKeyAudit(ctx context.Context, deps AddCloudInitSSHKeyDeps, _, _ string) error {
 	if deps.Audit == nil {
 		return nil
 	}
