@@ -25,6 +25,7 @@ export type LoginProvider = 'pve' | 'local';
 
 export interface Principal {
 	username: string;
+	displayName: string;
 	pool: string;
 	isAdmin: boolean;
 	cluster: string;

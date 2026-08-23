@@ -279,7 +279,7 @@
 	<div class="mt-auto flex flex-col gap-3 px-3 pb-5 pt-4">
 		{#if session.principal}
 			<p class="px-2 text-xs text-muted-foreground-subtle">
-				{m['chrome.sidebar.userChip']({ username: session.principal.username })}
+				{m['chrome.sidebar.userChip']({ username: session.principal.displayName || session.principal.username })}
 			</p>
 			<button
 				type="button"
