@@ -46,7 +46,6 @@
   "home.feature.2.description": "Plusieurs clusters Proxmox agrégés derrière un seul portail.",
   "home.feature.3.title": "Quotas et politiques",
   "home.feature.3.description": "Limites par utilisateur et politiques appliquées côté serveur.",
-  "home.hero.intro": "Un portail en libre-service qui simplifie la gestion de vos VM Proxmox.",
   "home.features.ariaLabel": "Fonctionnalités",
   "home.steps.heading": "Comment ça marche",
   "home.steps.1.title": "Se connecter",
