@@ -136,7 +136,7 @@ func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 			displayName = row.DisplayName
 		}
 	}
-	h.startSession(w, r, auth.Identity{Username: result.Username, Pool: result.Pool, IsAdmin: result.IsAdmin, Cluster: clusterName, ClusterDisplayName: displayName})
+	h.startSession(w, r, auth.Identity{Username: result.Username, DisplayName: userDisplayName(request.Username), Pool: result.Pool, IsAdmin: result.IsAdmin, Cluster: clusterName, ClusterDisplayName: displayName})
 }
 
 // AdminLogin authenticates the local emergency administrator, independent of any cluster.
@@ -157,7 +157,7 @@ func (h *Auth) AdminLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.startSession(w, r, auth.Identity{Username: "admin", IsAdmin: true})
+	h.startSession(w, r, auth.Identity{Username: "admin", DisplayName: "admin", IsAdmin: true})
 }
 
 func (h *Auth) startSession(w http.ResponseWriter, r *http.Request, identity auth.Identity) {
@@ -182,6 +182,9 @@ func (h *Auth) Me(w http.ResponseWriter, r *http.Request) {
 	}
 
 	identity = h.refreshClusterDisplayName(r.Context(), identity)
+	if identity.DisplayName == "" {
+		identity.DisplayName = userDisplayName(identity.Username)
+	}
 
 	writeAuthJSON(w, http.StatusOK, identity)
 }
@@ -533,4 +536,12 @@ func writeAuthJSON(w http.ResponseWriter, status int, value any) {
 
 func writeAuthError(w http.ResponseWriter, status int, code, message string) {
 	writeAuthJSON(w, status, authError{Code: code, Message: message})
+}
+
+// userDisplayName extracts the local part of a Proxmox username, stripping the
+// optional pvmss- pool prefix so the UI can show "jho" instead of
+// "pvmss-jho@pve".
+func userDisplayName(username string) string {
+	local, _, _ := strings.Cut(username, "@")
+	return strings.TrimPrefix(local, pools.PoolPrefix)
 }

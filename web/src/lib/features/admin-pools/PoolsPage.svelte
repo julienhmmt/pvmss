@@ -8,8 +8,7 @@
 	import Button from '$lib/shared/ui/Button.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import SortableHeader from '$lib/shared/ui/SortableHeader.svelte';
-	import TooltipHeader from '$lib/shared/ui/TooltipHeader.svelte';
+	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
 	import SearchIcon from '$lib/shared/ui/icons/SearchIcon.svelte';
 	import TrashIcon from '$lib/shared/ui/icons/TrashIcon.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -182,12 +181,12 @@
 			<caption class="sr-only">{m['admin.pools.heading']()}</caption>
 			<thead class="bg-muted/50 text-left">
 				<tr>
-					<SortableHeader text={m['common.name']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<TableHeader text={m['common.name']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 					<th class="px-4 py-2 font-medium">{m['admin.pools.comment']()}</th>
-					<TooltipHeader text={m['admin.pools.vmsColumn']()} tooltip={m['admin.pools.vmsTooltip']()} />
-					<SortableHeader text={m['common.total']()} column="total" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-					<SortableHeader text={m['common.running']()} column="running" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-					<SortableHeader text={m['common.stopped']()} column="stopped" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<TableHeader text={m['admin.pools.vmsColumn']()} tooltip={m['admin.pools.vmsTooltip']()} />
+					<TableHeader text={m['common.total']()} column="total" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<TableHeader text={m['common.running']()} column="running" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<TableHeader text={m['common.stopped']()} column="stopped" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 					<th class="px-4 py-2 text-right font-medium">{m['common.actions']()}</th>
 				</tr>
 			</thead>

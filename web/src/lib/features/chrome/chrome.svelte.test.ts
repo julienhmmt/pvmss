@@ -7,7 +7,7 @@ import { ChromeState } from './chrome.svelte';
 // Contract (data-model.md "Chrome layout"):
 //   - sidebarOpen starts false (drawer closed until the user opens it)
 //   - open/close flips it
-//   - closeSidebarOnDesktop() forces it false (viewport crossed 900px upward,
+//   - closeSidebar() forces it false (viewport crossed 900px upward,
 //     desktop cannot get stuck "closed")
 //   - activityOpen starts false and toggles independently
 
@@ -42,11 +42,11 @@ describe('ChromeState', () => {
 		expect(state.sidebarOpen).toBe(false);
 	});
 
-	it('closeSidebarOnDesktop forces the drawer closed', () => {
+	it('closeSidebar forces the drawer closed', () => {
 		const state = new ChromeState();
 		state.openSidebar();
 		expect(state.sidebarOpen).toBe(true);
-		state.closeSidebarOnDesktop();
+		state.closeSidebar();
 		expect(state.sidebarOpen).toBe(false);
 	});
 

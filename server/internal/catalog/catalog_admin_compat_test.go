@@ -223,27 +223,12 @@ func captureAtLatest(t *testing.T, st *store.Store) (
 		t.Fatalf("ApprovedResources: %v", err)
 	}
 
-	storages, err := catalog.ListStorages(ctx, st, "default")
-	if err != nil {
-		t.Fatalf("ListStorages: %v", err)
-	}
-
-	bridges, err := catalog.ListBridges(ctx, st, "default")
-	if err != nil {
-		t.Fatalf("ListBridges: %v", err)
-	}
-
-	isos, err := catalog.ListISOs(ctx, st, "default")
-	if err != nil {
-		t.Fatalf("ListISOs: %v", err)
-	}
-
 	profiles, err := catalog.Profiles(ctx, st, "default")
 	if err != nil {
 		t.Fatalf("Profiles: %v", err)
 	}
 
-	return resources.Nodes, storages, bridges, isos, profiles
+	return resources.Nodes, resources.Storages, resources.Bridges, resources.ISOs, profiles
 }
 
 // TestCatalogAdminCompat_RowSetsIdenticalBeforeAndAfterV9 is SC-003: the

@@ -97,51 +97,6 @@ func (r Resources) HasISO(storage, file string) bool {
 	return false
 }
 
-// ListStorages returns the approved storages for a cluster.
-func ListStorages(ctx context.Context, st *store.Store, cluster string) ([]Storage, error) {
-	rows, err := st.CatalogStorages(ctx, cluster)
-	if err != nil {
-		return nil, err
-	}
-
-	storages := make([]Storage, 0, len(rows))
-	for _, row := range rows {
-		storages = append(storages, Storage{Name: row.Name, Node: row.Node})
-	}
-
-	return storages, nil
-}
-
-// ListBridges returns the approved bridges for a cluster.
-func ListBridges(ctx context.Context, st *store.Store, cluster string) ([]Bridge, error) {
-	rows, err := st.CatalogBridges(ctx, cluster)
-	if err != nil {
-		return nil, err
-	}
-
-	bridges := make([]Bridge, 0, len(rows))
-	for _, row := range rows {
-		bridges = append(bridges, Bridge{Name: row.Name, Node: row.Node})
-	}
-
-	return bridges, nil
-}
-
-// ListISOs returns the approved ISO images for a cluster.
-func ListISOs(ctx context.Context, st *store.Store, cluster string) ([]ISO, error) {
-	rows, err := st.CatalogISOs(ctx, cluster)
-	if err != nil {
-		return nil, err
-	}
-
-	isos := make([]ISO, 0, len(rows))
-	for _, row := range rows {
-		isos = append(isos, ISO{Storage: row.Storage, File: row.File})
-	}
-
-	return isos, nil
-}
-
 // ApprovedResources reads the full approved-resource catalog for a cluster
 // from the store (T06: fixture rows seeded by migration version 7).
 func ApprovedResources(ctx context.Context, st *store.Store, cluster string) (Resources, error) {

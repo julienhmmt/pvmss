@@ -7,6 +7,7 @@ import (
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"time"
 )
@@ -35,7 +36,7 @@ type CascadeDeps struct {
 	Writer      cluster.Writer
 	Audit       vm.AuditRecorder
 	Refresher   vm.IndexRefresher
-	Managed     ManagedStore
+	Managed     *store.Store
 }
 
 // Delete stops and purges pool members through T05's VM write paths, then

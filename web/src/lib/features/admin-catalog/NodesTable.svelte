@@ -5,8 +5,7 @@
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import StatusDot from '$lib/shared/ui/StatusDot.svelte';
 	import NodeUsageBar from '$lib/shared/ui/NodeUsageBar.svelte';
-	import SortableHeader from '$lib/shared/ui/SortableHeader.svelte';
-	import SortableTooltipHeader from '$lib/shared/ui/SortableTooltipHeader.svelte';
+	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -68,28 +67,28 @@
 		<caption class="sr-only">{m['admin.nodes.tableCaption']()}</caption>
 		<thead class="bg-muted/50 text-left">
 			<tr>
-				<SortableHeader
+				<TableHeader
 					text={m['common.name']()}
 					column="name"
 					activeColumn={sortBy}
 					{sortDir}
 					onSort={handleSort}
 				/>
-				<SortableHeader
+				<TableHeader
 					text={m['common.status']()}
 					column="status"
 					activeColumn={sortBy}
 					{sortDir}
 					onSort={handleSort}
 				/>
-				<SortableHeader
+				<TableHeader
 					text={m['common.vms']()}
 					column="vmCount"
 					activeColumn={sortBy}
 					{sortDir}
 					onSort={handleSort}
 				/>
-				<SortableTooltipHeader
+				<TableHeader
 					text={m['common.cpu']()}
 					tooltip={m['admin.catalog.tooltip.nodeCpu']()}
 					column="cpuUsage"
@@ -97,7 +96,7 @@
 					{sortDir}
 					onSort={handleSort}
 				/>
-				<SortableTooltipHeader
+				<TableHeader
 					text={m['common.memory']()}
 					tooltip={m['admin.catalog.tooltip.nodeMemory']()}
 					column="memoryUsage"
@@ -105,7 +104,7 @@
 					{sortDir}
 					onSort={handleSort}
 				/>
-				<SortableHeader
+				<TableHeader
 					text={m['admin.catalog.statusColumn']()}
 					column="enabled"
 					activeColumn={sortBy}

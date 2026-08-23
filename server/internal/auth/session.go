@@ -29,6 +29,11 @@ var (
 // Identity is the principal resolved for an API request.
 type Identity struct {
 	Username string `json:"username"`
+	// DisplayName is the human-friendly form of Username: the local part with
+	// the optional pvmss- pool prefix and realm stripped. It is used by the UI
+	// in welcome messages and user chips; Username remains the canonical value
+	// for Proxmox API calls.
+	DisplayName string `json:"displayName"`
 	// Pool is the tenancy anchor owning this user's VMs (PD00: one pool per
 	// user). Empty for the local admin and for a cluster admin with no
 	// personal pool.

@@ -14,12 +14,13 @@
 	import { setStatusContext } from '$lib/features/chrome/status.svelte';
 	import { setChromeContext } from '$lib/features/chrome/chrome.svelte';
 	import Sidebar from '$lib/features/chrome/Sidebar.svelte';
+	import CapabilitiesPanel from '$lib/features/chrome/CapabilitiesPanel.svelte';
 	import AppHeader from '$lib/features/chrome/AppHeader.svelte';
 	import HeaderLite from '$lib/features/chrome/HeaderLite.svelte';
 	import ShortcutsDialog from '$lib/features/chrome/ShortcutsDialog.svelte';
 	import Toaster from '$lib/shared/ui/Toaster.svelte';
 	import { setToastContext } from '$lib/shared/ui/toast.svelte';
-	import { trapFocus } from '$lib/shared/ui/focus-trap';
+
 	import { m } from '$lib/paraglide/messages.js';
 
 	let { children }: { children: Snippet } = $props();
@@ -71,7 +72,7 @@
 	// upward so desktop cannot get stuck "closed" (data-model.md).
 	let mql: MediaQueryList | null = null;
 	function onViewportChange(event: MediaQueryListEvent): void {
-		if (event.matches) chrome.closeSidebarOnDesktop();
+		if (event.matches) chrome.closeSidebar();
 	}
 	onMount(() => {
 		mql = window.matchMedia('(min-width: 900px)');
@@ -82,13 +83,6 @@
 		window.addEventListener('keydown', handleGlobalShortcut);
 		return () => window.removeEventListener('keydown', handleGlobalShortcut);
 	});
-
-	function closeSidebarOnEscape(event: KeyboardEvent): void {
-		if (event.key === 'Escape' && chrome.sidebarOpen) {
-			event.preventDefault();
-			chrome.closeSidebar();
-		}
-	}
 
 	function handleGlobalShortcut(event: KeyboardEvent): void {
 		if (event.ctrlKey || event.altKey || event.metaKey) return;
@@ -116,7 +110,20 @@
 
 	const signedIn = $derived(session.principal !== null);
 	const hasRouteError = $derived(page.error !== null);
+	const isHomePage = $derived(page.route.id === '/');
+	const isAboutPage = $derived(page.route.id === '/about');
+	const showCapabilitiesPanel = $derived(signedIn && !isHomePage && !isAboutPage);
 	let shortcutsOpen = $state(false);
+
+	let sidebarDialog: HTMLDialogElement | null = $state(null);
+
+	$effect(() => {
+		if (chrome.sidebarOpen) {
+			sidebarDialog?.showModal();
+		} else {
+			sidebarDialog?.close();
+		}
+	});
 </script>
 
 {#if signedIn}
@@ -133,27 +140,15 @@
 				<Sidebar {version} />
 			</div>
 
-			{#if chrome.sidebarOpen}
-				<div
-					class="fixed inset-0 z-40 bg-black/40 min-[900px]:hidden"
-					role="presentation"
-					onclick={() => chrome.closeSidebar()}
-					onkeydown={closeSidebarOnEscape}
-					data-testid="sidebar-backdrop"
-				></div>
-				<div
-					id="app-sidebar-drawer"
-					use:trapFocus
-					tabindex="-1"
-					role="dialog"
-					aria-modal="true"
-					aria-label={m['chrome.sidebar.ariaLabel']()}
-					class="drawer-slide-in-left fixed left-0 top-0 z-50 h-full min-[900px]:hidden motion-reduce:transition-none"
-					onkeydown={closeSidebarOnEscape}
-				>
-					<Sidebar {version} />
-				</div>
-			{/if}
+			<dialog
+				bind:this={sidebarDialog}
+				id="app-sidebar-drawer"
+				onclose={() => chrome.closeSidebar()}
+				aria-label={m['chrome.sidebar.ariaLabel']()}
+				class="drawer-slide-in-left fixed left-0 top-0 m-0 h-full w-[260px] max-w-full border-0 p-0 min-[900px]:hidden"
+			>
+				<Sidebar {version} />
+			</dialog>
 
 			<div class="flex min-w-0 flex-1 flex-col">
 				<AppHeader />
@@ -162,6 +157,13 @@
 						{@render children()}
 					</div>
 				</main>
+				{#if showCapabilitiesPanel}
+					<div class="px-7 pb-4">
+						<div class="mx-auto max-w-[1180px]">
+							<CapabilitiesPanel />
+						</div>
+					</div>
+				{/if}
 				<footer class="border-t border-border px-7 py-3 text-xs text-muted-foreground-subtle">
 					{#if version}PVMSS {version}{/if}
 				</footer>
@@ -193,3 +195,9 @@
 {/if}
 
 <Toaster />
+
+<style>
+	dialog::backdrop {
+		background-color: rgba(0, 0, 0, 0.4);
+	}
+</style>

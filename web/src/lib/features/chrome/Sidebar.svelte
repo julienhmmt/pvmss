@@ -81,7 +81,8 @@
 		{ href: resolve('/search'), label: () => m['chrome.sidebar.navSearch'](), icon: 'search' as SidebarIconName },
 		...(!session.isAdmin
 			? [{ href: resolve('/vms'), label: () => m['chrome.sidebar.navMachines'](), icon: 'vm' as SidebarIconName }]
-			: [])
+			: []),
+		{ href: resolve('/about'), label: () => m['chrome.sidebar.navAbout'](), icon: 'info' as SidebarIconName }
 	]);
 
 	const navigation: SidebarNavigationState = new SidebarNavigationState(ADMIN_NAV_GROUPS.length);
@@ -279,7 +280,7 @@
 	<div class="mt-auto flex flex-col gap-3 px-3 pb-5 pt-4">
 		{#if session.principal}
 			<p class="px-2 text-xs text-muted-foreground-subtle">
-				{m['chrome.sidebar.userChip']({ username: session.principal.username })}
+				{m['chrome.sidebar.userChip']({ username: session.principal.displayName || session.principal.username })}
 			</p>
 			<button
 				type="button"

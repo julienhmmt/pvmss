@@ -8,7 +8,7 @@
 	import Button from '$lib/shared/ui/Button.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import SortableHeader from '$lib/shared/ui/SortableHeader.svelte';
+	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
 
 	type SortColumn = 'node' | 'maxVms' | 'maxVcpus' | 'maxRamGb' | 'maxDiskGb' | 'usedVms' | 'usedVcpus' | 'usedRamGb' | 'physicalVcpus' | 'physicalRamGb';
 
@@ -72,10 +72,10 @@
 				<caption class="sr-only">{m['policy.nodeTitle']()}</caption>
 				<thead class="bg-muted/50 text-left">
 					<tr>
-						<SortableHeader text={m['policy.node']()} column="node" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-						<SortableHeader text={m['policy.capacity']()} column="maxVms" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-						<SortableHeader text={m['policy.usage']()} column="usedVms" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-						<SortableHeader text={m['policy.physical']()} column="physicalVcpus" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<TableHeader text={m['policy.node']()} column="node" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<TableHeader text={m['policy.capacity']()} column="maxVms" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<TableHeader text={m['policy.usage']()} column="usedVms" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<TableHeader text={m['policy.physical']()} column="physicalVcpus" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 						<th scope="col" class="px-4 py-3 font-medium">{m['policy.actions']()}</th>
 					</tr>
 				</thead>
