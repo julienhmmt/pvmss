@@ -108,16 +108,8 @@ func create(ctx context.Context, client cluster.Client, name, password, comment 
 	if containsPool(existing, name) {
 		return cluster.Pool{}, fmt.Errorf("%w: %q", ErrAlreadyExists, name)
 	}
-	steps := []struct {
-		name string
-		call func() error
-	}{
-		{name: "role", call: func() error { return client.EnsurePoolRole(ctx) }},
-	}
-	for _, step := range steps {
-		if err := step.call(); err != nil {
-			return cluster.Pool{}, &ProvisionError{Step: step.name, Err: err}
-		}
+	if err := client.EnsurePoolRole(ctx); err != nil {
+		return cluster.Pool{}, &ProvisionError{Step: "role", Err: err}
 	}
 	username, err := client.EnsurePoolUser(ctx, name, password)
 	if err != nil {
