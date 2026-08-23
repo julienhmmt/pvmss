@@ -2,7 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { m } from '$lib/paraglide/messages.js';
 	import { CAPABILITIES } from '$lib/features/capabilities/capability-data';
-	import CapabilityCard from '$lib/features/capabilities/CapabilityCard.svelte';
+	import CapabilityIcon from '$lib/features/capabilities/CapabilityIcon.svelte';
 	import FeatureCard from '$lib/features/capabilities/FeatureCard.svelte';
 	import FeatureAdminIcon from '$lib/shared/ui/icons/FeatureAdminIcon.svelte';
 	import FeatureMultiClusterIcon from '$lib/shared/ui/icons/FeatureMultiClusterIcon.svelte';
@@ -45,7 +45,11 @@
 		</FeatureCard>
 
 		{#each coreCapabilities as capability (capability.id)}
-			<CapabilityCard {capability} headingLevel="h3" />
+			<FeatureCard title={capability.title} description={capability.description} headingLevel="h3">
+				{#snippet icon()}
+					<CapabilityIcon name={capability.id} class="h-5 w-5" />
+				{/snippet}
+			</FeatureCard>
 		{/each}
 
 		<FeatureCard
