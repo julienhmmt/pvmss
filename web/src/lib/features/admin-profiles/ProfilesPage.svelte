@@ -9,8 +9,7 @@
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
-	import TooltipHeader from '$lib/shared/ui/TooltipHeader.svelte';
-	import SortableTooltipHeader from '$lib/shared/ui/SortableTooltipHeader.svelte';
+	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	type ProfileSortColumn = 'id' | 'label' | 'cpuCores' | 'memoryMB' | 'diskGB';
@@ -168,12 +167,12 @@
 		<table class="w-full text-sm">
 			<thead class="bg-muted/50 text-left">
 				<tr>
-					<SortableTooltipHeader text={m['admin.profiles.id']()} tooltip={m['admin.profiles.tooltip.id']()} column="id" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-					<SortableTooltipHeader text={m['admin.profiles.labelField']()} tooltip={m['admin.profiles.tooltip.id']()} column="label" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-					<SortableTooltipHeader text={m['admin.profiles.vcpu']()} tooltip={m['admin.profiles.tooltip.vcpu']()} column="cpuCores" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-					<SortableTooltipHeader text={m['common.memory']()} tooltip={m['admin.profiles.tooltip.memory']()} column="memoryMB" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-					<SortableTooltipHeader text={m['admin.profiles.disk']()} tooltip={m['admin.profiles.tooltip.disk']()} column="diskGB" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-					<TooltipHeader text={m['admin.profiles.bus']()} tooltip={m['admin.profiles.tooltip.bus']()} />
+					<TableHeader text={m['admin.profiles.id']()} tooltip={m['admin.profiles.tooltip.id']()} column="id" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<TableHeader text={m['admin.profiles.labelField']()} tooltip={m['admin.profiles.tooltip.id']()} column="label" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<TableHeader text={m['admin.profiles.vcpu']()} tooltip={m['admin.profiles.tooltip.vcpu']()} column="cpuCores" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<TableHeader text={m['common.memory']()} tooltip={m['admin.profiles.tooltip.memory']()} column="memoryMB" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<TableHeader text={m['admin.profiles.disk']()} tooltip={m['admin.profiles.tooltip.disk']()} column="diskGB" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<TableHeader text={m['admin.profiles.bus']()} tooltip={m['admin.profiles.tooltip.bus']()} />
 					<th class="px-4 py-2 font-medium">{m['admin.profiles.enabledStatus']()}</th>
 					<th class="px-4 py-2 font-medium">{m['common.actions']()}</th>
 				</tr>

@@ -8,8 +8,7 @@
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
-	import TooltipHeader from '$lib/shared/ui/TooltipHeader.svelte';
-	import SortableTooltipHeader from '$lib/shared/ui/SortableTooltipHeader.svelte';
+	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	type TagSortColumn = 'name' | 'vmCount';
@@ -145,9 +144,9 @@
 		<table class="w-full text-sm">
 			<thead class="bg-muted/50 text-left">
 				<tr>
-					<SortableTooltipHeader text={m['common.name']()} tooltip={m['admin.tags.tooltip.color']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-					<TooltipHeader text={m['admin.tags.color']()} tooltip={m['admin.tags.tooltip.color']()} />
-					<SortableTooltipHeader text={m['common.vms']()} tooltip={m['admin.tags.tooltip.vmCount']()} column="vmCount" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<TableHeader text={m['common.name']()} tooltip={m['admin.tags.tooltip.color']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<TableHeader text={m['admin.tags.color']()} tooltip={m['admin.tags.tooltip.color']()} />
+					<TableHeader text={m['common.vms']()} tooltip={m['admin.tags.tooltip.vmCount']()} column="vmCount" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 					<th class="px-4 py-2 font-medium">{m['common.actions']()}</th>
 				</tr>
 			</thead>
