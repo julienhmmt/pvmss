@@ -25,14 +25,10 @@ type PoolSummary struct {
 	Managed bool
 }
 
-// List returns discovered pools joined with the current inventory breakdown.
-// When checker is non-nil, each row's Managed flag reflects the managed_pools
-// store; otherwise every row reports Managed=false (legacy callers).
-func List(ctx context.Context, client cluster.Client, projection *inventory.Projection, search string) ([]PoolSummary, error) {
-	return ListWithManaged(ctx, client, projection, nil, "", search)
-}
-
-// ListWithManaged mirrors List but populates the Managed flag from the store.
+// ListWithManaged returns discovered pools joined with the current inventory
+// breakdown. When checker is non-nil and a cluster name is provided, each row's
+// Managed flag reflects the managed_pools store; otherwise every row reports
+// Managed=false.
 func ListWithManaged(ctx context.Context, client cluster.Client, projection *inventory.Projection, checker *store.Store, clusterName, search string) ([]PoolSummary, error) {
 	pools, err := client.ListPools(ctx)
 	if err != nil {
