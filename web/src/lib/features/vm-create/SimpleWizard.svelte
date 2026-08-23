@@ -9,7 +9,7 @@
 	import FormField from '$lib/shared/ui/FormField.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
-	import RadioGroup from '$lib/shared/ui/RadioGroup.svelte';
+	import ProfilePicker from './ProfilePicker.svelte';
 	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Switch from '$lib/shared/ui/Switch.svelte';
@@ -69,13 +69,11 @@
 			{/snippet}
 		</FormField>
 
-		<RadioGroup
+		<ProfilePicker
 			legend={m['vms.create.profile']()}
-			variant="card"
-			columns={2}
 			bind:value={form.profileId}
-			options={cat.profiles.map((profile) => ({
-				value: profile.id,
+			profiles={cat.profiles.map((profile) => ({
+				id: profile.id,
 				label: profile.label,
 				description: profileDescription(profile)
 			}))}
