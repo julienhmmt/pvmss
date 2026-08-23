@@ -20,7 +20,7 @@
 	import ShortcutsDialog from '$lib/features/chrome/ShortcutsDialog.svelte';
 	import Toaster from '$lib/shared/ui/Toaster.svelte';
 	import { setToastContext } from '$lib/shared/ui/toast.svelte';
-	import { trapFocus } from '$lib/shared/ui/focus-trap';
+
 	import { m } from '$lib/paraglide/messages.js';
 
 	let { children }: { children: Snippet } = $props();
@@ -84,13 +84,6 @@
 		return () => window.removeEventListener('keydown', handleGlobalShortcut);
 	});
 
-	function closeSidebarOnEscape(event: KeyboardEvent): void {
-		if (event.key === 'Escape' && chrome.sidebarOpen) {
-			event.preventDefault();
-			chrome.closeSidebar();
-		}
-	}
-
 	function handleGlobalShortcut(event: KeyboardEvent): void {
 		if (event.ctrlKey || event.altKey || event.metaKey) return;
 		const target = event.target as HTMLElement | null;
@@ -121,6 +114,16 @@
 	const isAboutPage = $derived(page.route.id === '/about');
 	const showCapabilitiesPanel = $derived(signedIn && !isHomePage && !isAboutPage);
 	let shortcutsOpen = $state(false);
+
+	let sidebarDialog: HTMLDialogElement | null = $state(null);
+
+	$effect(() => {
+		if (chrome.sidebarOpen) {
+			sidebarDialog?.showModal();
+		} else {
+			sidebarDialog?.close();
+		}
+	});
 </script>
 
 {#if signedIn}
@@ -137,27 +140,15 @@
 				<Sidebar {version} />
 			</div>
 
-			{#if chrome.sidebarOpen}
-				<div
-					class="fixed inset-0 z-40 bg-black/40 min-[900px]:hidden"
-					role="presentation"
-					onclick={() => chrome.closeSidebar()}
-					onkeydown={closeSidebarOnEscape}
-					data-testid="sidebar-backdrop"
-				></div>
-				<div
-					id="app-sidebar-drawer"
-					use:trapFocus
-					tabindex="-1"
-					role="dialog"
-					aria-modal="true"
-					aria-label={m['chrome.sidebar.ariaLabel']()}
-					class="drawer-slide-in-left fixed left-0 top-0 z-50 h-full min-[900px]:hidden motion-reduce:transition-none"
-					onkeydown={closeSidebarOnEscape}
-				>
-					<Sidebar {version} />
-				</div>
-			{/if}
+			<dialog
+				bind:this={sidebarDialog}
+				id="app-sidebar-drawer"
+				onclose={() => chrome.closeSidebar()}
+				aria-label={m['chrome.sidebar.ariaLabel']()}
+				class="drawer-slide-in-left fixed left-0 top-0 m-0 h-full w-[260px] max-w-full border-0 p-0 min-[900px]:hidden"
+			>
+				<Sidebar {version} />
+			</dialog>
 
 			<div class="flex min-w-0 flex-1 flex-col">
 				<AppHeader />
@@ -204,3 +195,9 @@
 {/if}
 
 <Toaster />
+
+<style>
+	dialog::backdrop {
+		background-color: rgba(0, 0, 0, 0.4);
+	}
+</style>
