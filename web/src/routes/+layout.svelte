@@ -172,8 +172,15 @@
 	</div>
 {:else}
 	<div class="flex min-h-screen flex-col bg-background text-foreground">
+		<a
+			href="#main-content"
+			class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
+			data-testid="skip-to-content"
+		>
+			{m['chrome.skipToContent']()}
+		</a>
 		<HeaderLite />
-		<main class="flex flex-1 flex-col items-center justify-center p-6">
+		<main id="main-content" class="flex flex-1 flex-col items-center justify-center p-6">
 			{#if hasRouteError}
 				{@render children()}
 			{:else if !routeChecked && !isPublicPath(page.url.pathname)}
