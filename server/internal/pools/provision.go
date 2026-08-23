@@ -10,45 +10,19 @@ import (
 	"log/slog"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/store"
 	"regexp"
 )
 
 // Provisioning errors are stable for HTTP mapping and tests.
 var (
-	ErrForbidden      = errors.New("forbidden")
-	ErrNotFound       = errors.New("pool not found")
-	ErrNotManaged     = errors.New("pool not managed by PVMSS")
-	ErrInvalidName    = errors.New("invalid pool name")
-	ErrWeakPassword   = errors.New("invalid password")
-	ErrAlreadyExists  = errors.New("pool already exists")
-	poolNamePattern   = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
-	minPasswordLength = 8
+	ErrForbidden     = errors.New("forbidden")
+	ErrNotFound      = errors.New("pool not found")
+	ErrNotManaged    = errors.New("pool not managed by PVMSS")
+	ErrInvalidName   = errors.New("invalid pool name")
+	ErrAlreadyExists = errors.New("pool already exists")
+	poolNamePattern  = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 )
-
-// ManagedRecorder records that PVMSS created a pool so deletion can be scoped.
-// The store implementation is idempotent; re-registering refreshes created_at.
-type ManagedRecorder interface {
-	RegisterManagedPool(ctx context.Context, cluster, name string) error
-}
-
-// ManagedChecker reports whether PVMSS recorded the named pool on the cluster.
-type ManagedChecker interface {
-	IsPoolManaged(ctx context.Context, cluster, name string) (bool, error)
-	ManagedPoolNames(ctx context.Context, cluster string) (map[string]struct{}, error)
-}
-
-// ManagedRemover removes the managed marker after a successful cascade.
-type ManagedRemover interface {
-	UnregisterManagedPool(ctx context.Context, cluster, name string) error
-}
-
-// ManagedStore combines the managed-pool persistence operations used by Create
-// and Delete. Pass nil to opt out of managed tracking (legacy tests only).
-type ManagedStore interface {
-	ManagedRecorder
-	ManagedChecker
-	ManagedRemover
-}
 
 // PoolPrefix is prepended to every PVMSS-managed pool name and user.
 const PoolPrefix = "pvmss-"
@@ -86,57 +60,10 @@ func (e *ProvisionError) Error() string {
 }
 func (e *ProvisionError) Unwrap() error { return e.Err }
 
-// Create provisions one pool and records it as PVMSS-managed when recorder is
-// non-nil. The optional comment preserves the documented five-argument domain
-// API while allowing the HTTP contract to pass a comment.
-func Create(ctx context.Context, actor auth.Identity, client cluster.Client, name, password string, comments ...string) (cluster.Pool, error) {
-	return CreateWithRecorder(ctx, CreateParams{Actor: actor, Client: client, Name: name, Password: password}, comments...)
-}
-
-// CreateParams bundles the per-call inputs to CreateWithRecorder. Bundling
-// them keeps the parameter count under go:S107's ceiling without losing the
-// optional-comment variadic contract.
-type CreateParams struct {
-	Actor       auth.Identity
-	Client      cluster.Client
-	Recorder    ManagedRecorder
-	ClusterName string
-	Name        string
-	Password    string
-}
-
-// CreateWithRecorder provisions one pool and registers it as managed when the
-// recorder is non-nil. The cluster name scopes the managed marker.
-func CreateWithRecorder(ctx context.Context, p CreateParams, comments ...string) (cluster.Pool, error) {
-	if !p.Actor.IsAdmin {
-		return cluster.Pool{}, ErrForbidden
-	}
-	if err := ValidateName(p.Name); err != nil {
-		return cluster.Pool{}, err
-	}
-	if err := ValidatePassword(p.Password); err != nil {
-		return cluster.Pool{}, err
-	}
-	comment := ""
-	if len(comments) > 0 {
-		comment = comments[0]
-	}
-	pool, err := create(ctx, p.Client, p.Name, p.Password, comment)
-	if err != nil {
-		return cluster.Pool{}, err
-	}
-	if p.Recorder != nil && p.ClusterName != "" {
-		if err := p.Recorder.RegisterManagedPool(ctx, p.ClusterName, p.Name); err != nil {
-			slog.Default().Error("managed pool registration failed", "cluster", p.ClusterName, "pool", p.Name, "error", err)
-		}
-	}
-	return pool, nil
-}
-
 // CreateManaged provisions a PVMSS-managed pool with a server-generated
 // password. The pool name is prefixed with pvmss- and the Proxmox user becomes
 // pvmss-{name}@pve. The generated password is returned once and never stored.
-func CreateManaged(ctx context.Context, actor auth.Identity, client cluster.Client, recorder ManagedRecorder, clusterName, name, comment string) (GeneratedCredentials, error) {
+func CreateManaged(ctx context.Context, actor auth.Identity, client cluster.Client, recorder *store.Store, clusterName, name, comment string) (GeneratedCredentials, error) {
 	if !actor.IsAdmin {
 		return GeneratedCredentials{}, ErrForbidden
 	}
@@ -173,15 +100,6 @@ func ValidateName(name string) error {
 	return nil
 }
 
-// ValidatePassword enforces the minimum credential length without inventing a
-// password-strength policy beyond the feature contract.
-func ValidatePassword(password string) error {
-	if len(password) < minPasswordLength {
-		return fmt.Errorf("%w: password must contain at least 8 characters", ErrWeakPassword)
-	}
-	return nil
-}
-
 func create(ctx context.Context, client cluster.Client, name, password, comment string) (cluster.Pool, error) {
 	existing, err := client.ListPools(ctx)
 	if err != nil {
@@ -190,16 +108,8 @@ func create(ctx context.Context, client cluster.Client, name, password, comment 
 	if containsPool(existing, name) {
 		return cluster.Pool{}, fmt.Errorf("%w: %q", ErrAlreadyExists, name)
 	}
-	steps := []struct {
-		name string
-		call func() error
-	}{
-		{name: "role", call: func() error { return client.EnsurePoolRole(ctx) }},
-	}
-	for _, step := range steps {
-		if err := step.call(); err != nil {
-			return cluster.Pool{}, &ProvisionError{Step: step.name, Err: err}
-		}
+	if err := client.EnsurePoolRole(ctx); err != nil {
+		return cluster.Pool{}, &ProvisionError{Step: "role", Err: err}
 	}
 	username, err := client.EnsurePoolUser(ctx, name, password)
 	if err != nil {

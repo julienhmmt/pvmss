@@ -4,8 +4,7 @@
 	import Switch from '$lib/shared/ui/Switch.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import NodeUsageBar from '$lib/shared/ui/NodeUsageBar.svelte';
-	import SortableHeader from '$lib/shared/ui/SortableHeader.svelte';
-	import SortableTooltipHeader from '$lib/shared/ui/SortableTooltipHeader.svelte';
+	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	type StorageSortColumn = 'name' | 'node' | 'type' | 'usage' | 'enabled';
@@ -36,9 +35,9 @@
 		<caption class="sr-only">{m['admin.storages.heading']()}</caption>
 		<thead class="bg-muted/50 text-left">
 			<tr>
-				<SortableHeader text={m['common.name']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-				<SortableHeader text={m['common.node']()} column="node" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-				<SortableTooltipHeader
+				<TableHeader text={m['common.name']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+				<TableHeader text={m['common.node']()} column="node" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+				<TableHeader
 					text={m['common.type']()}
 					tooltip={m['admin.catalog.tooltip.storageType']()}
 					column="type"
@@ -46,7 +45,7 @@
 					{sortDir}
 					onSort={handleSort}
 				/>
-				<SortableTooltipHeader
+				<TableHeader
 					text={m['admin.catalog.usage']()}
 					tooltip={m['admin.catalog.tooltip.storageUsage']()}
 					column="usage"
@@ -54,7 +53,7 @@
 					{sortDir}
 					onSort={handleSort}
 				/>
-				<SortableTooltipHeader
+				<TableHeader
 					text={m['admin.catalog.statusColumn']()}
 					tooltip={m['admin.catalog.tooltip.statusColumn']()}
 					column="enabled"

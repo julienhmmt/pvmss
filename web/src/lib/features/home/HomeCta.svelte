@@ -27,7 +27,7 @@
 			</a>
 		</div>
 	{:else}
-		<p class="text-lg text-foreground">{m['home.welcome']({ username: session.principal.username })}</p>
+		<p class="text-lg text-foreground">{m['home.welcome']({ username: session.principal.displayName || session.principal.username })}</p>
 		<div class="flex gap-3">
 			{#if !session.principal.isAdmin}
 				<a href={resolve('/vms')} class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">

@@ -3,8 +3,7 @@
 	import Switch from '$lib/shared/ui/Switch.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import StatusDot from '$lib/shared/ui/StatusDot.svelte';
-	import SortableHeader from '$lib/shared/ui/SortableHeader.svelte';
-	import SortableTooltipHeader from '$lib/shared/ui/SortableTooltipHeader.svelte';
+	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	type BridgeSortColumn = 'name' | 'node' | 'active' | 'comment' | 'enabled';
@@ -40,9 +39,9 @@
 		<caption class="sr-only">{m['admin.bridges.heading']()}</caption>
 		<thead class="bg-muted/50 text-left">
 			<tr>
-				<SortableHeader text={m['common.name']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-				<SortableHeader text={m['common.node']()} column="node" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-				<SortableTooltipHeader
+				<TableHeader text={m['common.name']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+				<TableHeader text={m['common.node']()} column="node" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+				<TableHeader
 					text={m['common.active']()}
 					tooltip={m['admin.catalog.tooltip.bridgeActive']()}
 					column="active"
@@ -50,14 +49,14 @@
 					{sortDir}
 					onSort={handleSort}
 				/>
-				<SortableHeader
+				<TableHeader
 					text={m['admin.catalog.comment']()}
 					column="comment"
 					activeColumn={sortBy}
 					{sortDir}
 					onSort={handleSort}
 				/>
-				<SortableTooltipHeader
+				<TableHeader
 					text={m['admin.catalog.statusColumn']()}
 					tooltip={m['admin.catalog.tooltip.statusColumn']()}
 					column="enabled"
