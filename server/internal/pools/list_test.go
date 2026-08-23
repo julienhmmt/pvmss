@@ -21,7 +21,7 @@ func TestList_RunningStoppedBreakdown(t *testing.T) {
 	index := inventory.BuildIndex(snapshot)
 	projection := inventory.NewProjectionFromIndex(&index)
 
-	items, err := pools.List(context.Background(), client, projection, "ALICE")
+	items, err := pools.ListWithManaged(context.Background(), client, projection, nil, "", "ALICE")
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
@@ -42,7 +42,7 @@ func TestList_RunningStoppedBreakdown(t *testing.T) {
 		t.Fatalf("legacy List should not mark pools managed: %+v", item)
 	}
 
-	items, err = pools.List(context.Background(), client, projection, "does-not-exist")
+	items, err = pools.ListWithManaged(context.Background(), client, projection, nil, "", "does-not-exist")
 	if err != nil {
 		t.Fatalf("List no match: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestList_EmptyPoolHasZeroCounts(t *testing.T) {
 	}
 	projection := inventory.NewProjectionFromIndex(&inventory.Index{ByPool: map[string][]cluster.VM{}})
 
-	items, err := pools.List(context.Background(), client, projection, "empty")
+	items, err := pools.ListWithManaged(context.Background(), client, projection, nil, "", "empty")
 	if err != nil {
 		t.Fatalf("List: %v", err)
 	}
