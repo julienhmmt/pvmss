@@ -37,7 +37,7 @@ func TestAuth_LoginPVE_StoresSession(t *testing.T) {
 		t.Fatalf("decode response: %v", err)
 	}
 
-	if got != (auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}) {
+	if got != (auth.Identity{Username: cluster.FakeUserAlice, DisplayName: "alice", Pool: cluster.FakePoolAlice}) {
 		t.Fatalf("identity = %+v", got)
 	}
 }
@@ -56,7 +56,7 @@ func TestAuth_AdminLogin_StoresAdminSession(t *testing.T) {
 		t.Fatalf("decode response: %v", err)
 	}
 
-	if got != (auth.Identity{Username: "admin", IsAdmin: true}) {
+	if got != (auth.Identity{Username: "admin", DisplayName: "admin", IsAdmin: true}) {
 		t.Fatalf("identity = %+v", got)
 	}
 }
@@ -200,7 +200,7 @@ func TestAuth_CreateToken_ResolvesBearerPrincipal(t *testing.T) {
 		t.Fatalf("Principal: %v", err)
 	}
 
-	if identity != (auth.Identity{Username: "alice@pve", Pool: "pool-alice"}) {
+	if identity != (auth.Identity{Username: "alice@pve", DisplayName: "alice", Pool: "pool-alice"}) {
 		t.Fatalf("identity = %+v", identity)
 	}
 }
