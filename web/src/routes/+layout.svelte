@@ -14,6 +14,7 @@
 	import { setStatusContext } from '$lib/features/chrome/status.svelte';
 	import { setChromeContext } from '$lib/features/chrome/chrome.svelte';
 	import Sidebar from '$lib/features/chrome/Sidebar.svelte';
+	import CapabilitiesPanel from '$lib/features/chrome/CapabilitiesPanel.svelte';
 	import AppHeader from '$lib/features/chrome/AppHeader.svelte';
 	import HeaderLite from '$lib/features/chrome/HeaderLite.svelte';
 	import ShortcutsDialog from '$lib/features/chrome/ShortcutsDialog.svelte';
@@ -116,6 +117,9 @@
 
 	const signedIn = $derived(session.principal !== null);
 	const hasRouteError = $derived(page.error !== null);
+	const isHomePage = $derived(page.route.id === '/');
+	const isAboutPage = $derived(page.route.id === '/about');
+	const showCapabilitiesPanel = $derived(signedIn && !isHomePage && !isAboutPage);
 	let shortcutsOpen = $state(false);
 </script>
 
@@ -162,6 +166,13 @@
 						{@render children()}
 					</div>
 				</main>
+				{#if showCapabilitiesPanel}
+					<div class="px-7 pb-4">
+						<div class="mx-auto max-w-[1180px]">
+							<CapabilitiesPanel />
+						</div>
+					</div>
+				{/if}
 				<footer class="border-t border-border px-7 py-3 text-xs text-muted-foreground-subtle">
 					{#if version}PVMSS {version}{/if}
 				</footer>

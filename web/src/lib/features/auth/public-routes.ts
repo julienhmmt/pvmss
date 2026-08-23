@@ -1,8 +1,8 @@
 /** Public paths that do not require an authenticated session. */
 const PUBLIC_PATHS: readonly string[] = ['/', '/login'];
 
-/** Public path prefixes (e.g. documentation). */
-const PUBLIC_PREFIXES: readonly string[] = ['/docs'];
+/** Public path prefixes (e.g. documentation, about). */
+const PUBLIC_PREFIXES: readonly string[] = ['/docs', '/about'];
 
 /** Returns whether the given pathname is a public (unauthenticated) route. */
 export function isPublicPath(path: string): boolean {

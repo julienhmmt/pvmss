@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import HomeMarketing from '$lib/features/home/HomeMarketing.svelte';
+	import HomeCapabilities from '$lib/features/home/HomeCapabilities.svelte';
 	import HomeCta from '$lib/features/home/HomeCta.svelte';
 	import HomeVmDashboard from '$lib/features/home/HomeVmDashboard.svelte';
 	import HomeHowItWorks from '$lib/features/home/HomeHowItWorks.svelte';
@@ -31,6 +31,6 @@
 		<HomeCta />
 		<HomeHowItWorks />
 		<HomeVmDashboard />
-		<HomeMarketing />
+		<HomeCapabilities />
 	</section>
 {/if}

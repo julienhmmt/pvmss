@@ -81,7 +81,8 @@
 		{ href: resolve('/search'), label: () => m['chrome.sidebar.navSearch'](), icon: 'search' as SidebarIconName },
 		...(!session.isAdmin
 			? [{ href: resolve('/vms'), label: () => m['chrome.sidebar.navMachines'](), icon: 'vm' as SidebarIconName }]
-			: [])
+			: []),
+		{ href: resolve('/about'), label: () => m['chrome.sidebar.navAbout'](), icon: 'info' as SidebarIconName }
 	]);
 
 	const navigation: SidebarNavigationState = new SidebarNavigationState(ADMIN_NAV_GROUPS.length);
