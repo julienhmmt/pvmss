@@ -46,7 +46,6 @@
   "home.feature.2.description": "Multiple Proxmox clusters aggregated behind a single portal.",
   "home.feature.3.title": "Quotas and policy",
   "home.feature.3.description": "Per-user limits and policies enforced server-side.",
-  "home.hero.intro": "A self-service portal that makes Proxmox VM management simple.",
   "home.features.ariaLabel": "Features",
   "home.steps.heading": "How it works",
   "home.steps.1.title": "Sign in",

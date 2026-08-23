@@ -27,7 +27,6 @@
 			</div>
 			<h1 class="text-4xl font-semibold tracking-tight">{m['shell.title']()}</h1>
 			<p class="mt-2 text-lg text-muted-foreground">{m['shell.subtitle']()}</p>
-			<p class="mt-4 max-w-lg text-base text-muted-foreground">{m['home.hero.intro']()}</p>
 		</div>
 		<HomeCta />
 		<HomeHowItWorks />
