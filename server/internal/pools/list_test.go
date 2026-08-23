@@ -67,7 +67,7 @@ func TestList_EmptyPoolHasZeroCounts(t *testing.T) {
 	}
 }
 
-// TestList_WithManagedCheckerFlagsManagedPools verifies the Managed flag is
+// TestList_WithManagedStoreFlagsManagedPools verifies the Managed flag is
 // populated from the store for managed pools and false for unmanaged ones.
 //
 //nolint:paralleltest // serial: shared fake fixtures

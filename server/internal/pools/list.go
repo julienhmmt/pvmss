@@ -8,6 +8,7 @@ import (
 	"errors"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/store"
 	"strings"
 )
 
@@ -32,7 +33,7 @@ func List(ctx context.Context, client cluster.Client, projection *inventory.Proj
 }
 
 // ListWithManaged mirrors List but populates the Managed flag from the store.
-func ListWithManaged(ctx context.Context, client cluster.Client, projection *inventory.Projection, checker ManagedChecker, clusterName, search string) ([]PoolSummary, error) {
+func ListWithManaged(ctx context.Context, client cluster.Client, projection *inventory.Projection, checker *store.Store, clusterName, search string) ([]PoolSummary, error) {
 	pools, err := client.ListPools(ctx)
 	if err != nil {
 		return nil, err

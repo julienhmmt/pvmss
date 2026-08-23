@@ -10,45 +10,19 @@ import (
 	"log/slog"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/store"
 	"regexp"
 )
 
 // Provisioning errors are stable for HTTP mapping and tests.
 var (
-	ErrForbidden      = errors.New("forbidden")
-	ErrNotFound       = errors.New("pool not found")
-	ErrNotManaged     = errors.New("pool not managed by PVMSS")
-	ErrInvalidName    = errors.New("invalid pool name")
-	ErrWeakPassword   = errors.New("invalid password")
-	ErrAlreadyExists  = errors.New("pool already exists")
-	poolNamePattern   = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
-	minPasswordLength = 8
+	ErrForbidden     = errors.New("forbidden")
+	ErrNotFound      = errors.New("pool not found")
+	ErrNotManaged    = errors.New("pool not managed by PVMSS")
+	ErrInvalidName   = errors.New("invalid pool name")
+	ErrAlreadyExists = errors.New("pool already exists")
+	poolNamePattern  = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 )
-
-// ManagedRecorder records that PVMSS created a pool so deletion can be scoped.
-// The store implementation is idempotent; re-registering refreshes created_at.
-type ManagedRecorder interface {
-	RegisterManagedPool(ctx context.Context, cluster, name string) error
-}
-
-// ManagedChecker reports whether PVMSS recorded the named pool on the cluster.
-type ManagedChecker interface {
-	IsPoolManaged(ctx context.Context, cluster, name string) (bool, error)
-	ManagedPoolNames(ctx context.Context, cluster string) (map[string]struct{}, error)
-}
-
-// ManagedRemover removes the managed marker after a successful cascade.
-type ManagedRemover interface {
-	UnregisterManagedPool(ctx context.Context, cluster, name string) error
-}
-
-// ManagedStore combines the managed-pool persistence operations used by Create
-// and Delete. Pass nil to opt out of managed tracking (legacy tests only).
-type ManagedStore interface {
-	ManagedRecorder
-	ManagedChecker
-	ManagedRemover
-}
 
 // PoolPrefix is prepended to every PVMSS-managed pool name and user.
 const PoolPrefix = "pvmss-"
@@ -89,7 +63,7 @@ func (e *ProvisionError) Unwrap() error { return e.Err }
 // CreateManaged provisions a PVMSS-managed pool with a server-generated
 // password. The pool name is prefixed with pvmss- and the Proxmox user becomes
 // pvmss-{name}@pve. The generated password is returned once and never stored.
-func CreateManaged(ctx context.Context, actor auth.Identity, client cluster.Client, recorder ManagedRecorder, clusterName, name, comment string) (GeneratedCredentials, error) {
+func CreateManaged(ctx context.Context, actor auth.Identity, client cluster.Client, recorder *store.Store, clusterName, name, comment string) (GeneratedCredentials, error) {
 	if !actor.IsAdmin {
 		return GeneratedCredentials{}, ErrForbidden
 	}
@@ -122,15 +96,6 @@ func CreateManaged(ctx context.Context, actor auth.Identity, client cluster.Clie
 func ValidateName(name string) error {
 	if len(name) < 1 || len(name) > 32 || !poolNamePattern.MatchString(name) {
 		return fmt.Errorf("%w: pool name must be 1-32 lowercase alphanumeric characters with internal hyphens", ErrInvalidName)
-	}
-	return nil
-}
-
-// ValidatePassword enforces the minimum credential length without inventing a
-// password-strength policy beyond the feature contract.
-func ValidatePassword(password string) error {
-	if len(password) < minPasswordLength {
-		return fmt.Errorf("%w: password must contain at least 8 characters", ErrWeakPassword)
 	}
 	return nil
 }
