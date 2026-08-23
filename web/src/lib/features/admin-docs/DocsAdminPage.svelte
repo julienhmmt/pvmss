@@ -6,7 +6,7 @@
 	import Switch from '$lib/shared/ui/Switch.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import SortableTooltipHeader from '$lib/shared/ui/SortableTooltipHeader.svelte';
+	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	type DocSortColumn = 'title' | 'id' | 'category' | 'lang';
@@ -243,10 +243,10 @@
 		<table class="w-full text-sm">
 			<thead class="bg-muted/50 text-left">
 				<tr>
-					<SortableTooltipHeader text={m['docs.titleField']()} tooltip={m['admin.docs.searchPlaceholder']()} column="title" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-					<SortableTooltipHeader text={m['docs.category']()} tooltip={m['admin.docs.filterCategory']()} column="category" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<TableHeader text={m['docs.titleField']()} tooltip={m['admin.docs.searchPlaceholder']()} column="title" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<TableHeader text={m['docs.category']()} tooltip={m['admin.docs.filterCategory']()} column="category" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 					<th class="px-4 py-2 font-medium">{m['docs.audience']()}</th>
-					<SortableTooltipHeader text={m['docs.language']()} tooltip={m['admin.docs.filterLang']()} column="lang" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<TableHeader text={m['docs.language']()} tooltip={m['admin.docs.filterLang']()} column="lang" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 					<th class="px-4 py-2 font-medium">{m['docs.enabled']()}</th>
 					<th class="px-4 py-2 font-medium">{m['admin.docs.actions']()}</th>
 				</tr>
