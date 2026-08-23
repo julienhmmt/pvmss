@@ -1,5 +1,4 @@
 <script lang="ts">
-	import Dropdown from '$lib/shared/ui/Dropdown.svelte';
 	import { getLocaleContext } from './locale.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Locale } from '$lib/paraglide/runtime.js';
@@ -15,30 +14,24 @@
 	];
 
 	const locale = getLocaleContext();
-
-	function choose(value: Locale, close: () => void): void {
-		locale.set(value);
-		close();
-	}
 </script>
 
-<Dropdown label={m['nav.language']()}>
-	{#snippet trigger()}
-		<span aria-hidden="true">🌐</span>
-		<span>{m['nav.language']()}</span>
-	{/snippet}
-	{#snippet options(close)}
-		{#each LOCALE_OPTIONS as option (option.value)}
-			<button
-				type="button"
-				role="menuitemradio"
-				aria-checked={locale.current === option.value}
-				onclick={() => choose(option.value, close)}
-				class="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-			>
-				<span aria-hidden="true">{locale.current === option.value ? '✓' : ''}</span>
-				{option.label()}
-			</button>
-		{/each}
-	{/snippet}
-</Dropdown>
+<div
+	class="inline-flex items-center gap-1 text-sm"
+	role="group"
+	aria-label={m['nav.language']()}
+>
+	<span aria-hidden="true" class="text-muted-foreground">🌐</span>
+	{#each LOCALE_OPTIONS as option (option.value)}
+		<button
+			type="button"
+			aria-pressed={locale.current === option.value}
+			onclick={() => locale.set(option.value)}
+			class="rounded-md px-2 py-1 transition-colors {locale.current === option.value
+				? 'font-medium text-foreground'
+				: 'text-muted-foreground hover:text-foreground'}"
+		>
+			{option.label()}
+		</button>
+	{/each}
+</div>
