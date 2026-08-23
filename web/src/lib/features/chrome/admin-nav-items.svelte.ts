@@ -12,7 +12,8 @@ export type SidebarIconName =
 	| 'infrastructure'
 	| 'catalog'
 	| 'policy'
-	| 'system';
+	| 'system'
+	| 'info';
 
 interface AdminNavItem {
 	href: string;
