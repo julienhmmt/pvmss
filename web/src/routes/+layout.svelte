@@ -72,7 +72,7 @@
 	// upward so desktop cannot get stuck "closed" (data-model.md).
 	let mql: MediaQueryList | null = null;
 	function onViewportChange(event: MediaQueryListEvent): void {
-		if (event.matches) chrome.closeSidebarOnDesktop();
+		if (event.matches) chrome.closeSidebar();
 	}
 	onMount(() => {
 		mql = window.matchMedia('(min-width: 900px)');

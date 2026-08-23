@@ -19,11 +19,6 @@ export class ChromeState {
 		this.sidebarOpen = false;
 	}
 
-	/** Forces the drawer closed — called when the viewport crosses 900px upward. */
-	closeSidebarOnDesktop(): void {
-		this.sidebarOpen = false;
-	}
-
 	openActivity(): void {
 		this.activityOpen = true;
 	}
