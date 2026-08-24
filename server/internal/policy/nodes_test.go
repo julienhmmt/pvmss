@@ -27,10 +27,12 @@ func newPolicyServiceWithClient(t *testing.T, client cluster.Client) (*policy.Po
 	if err == nil {
 		index := inventory.BuildIndex(snapshot)
 		projection := inventory.NewProjectionFromIndex(&index)
+
 		return policy.New(st, projection, client), projection
 	}
 
 	projection := inventory.NewProjection()
+
 	return policy.New(st, projection, client), projection
 }
 
@@ -59,7 +61,7 @@ func TestNodeCapacities_ReturnsAllDiscoveredNodesSorted(t *testing.T) {
 
 	wantNodes := []string{cluster.FakeNode01, cluster.FakeNode02, cluster.FakeNode03}
 	if len(caps) != len(wantNodes) {
-		t.Fatalf("capacity count = %d, want %d", len(caps), len(wantNodes))
+		t.Fatalf("capacityacity count = %d, want %d", len(caps), len(wantNodes))
 	}
 
 	for i, want := range wantNodes {
@@ -106,20 +108,20 @@ func TestNodeCapacities_PhysicalFieldsFromDiscovery(t *testing.T) {
 		nodeMap[n.Name] = n
 	}
 
-	for _, cap := range caps {
-		discovered, ok := nodeMap[cap.Node]
+	for _, capacity := range caps {
+		discovered, ok := nodeMap[capacity.Node]
 		if !ok {
-			t.Fatalf("node %q not in snapshot", cap.Node)
+			t.Fatalf("node %q not in snapshot", capacity.Node)
 		}
 
 		wantVCPUs := discovered.CPUCores
-		if cap.PhysicalVCPUs != wantVCPUs {
-			t.Errorf("node %q PhysicalVCPUs = %d, want %d", cap.Node, cap.PhysicalVCPUs, wantVCPUs)
+		if capacity.PhysicalVCPUs != wantVCPUs {
+			t.Errorf("node %q PhysicalVCPUs = %d, want %d", capacity.Node, capacity.PhysicalVCPUs, wantVCPUs)
 		}
 
 		wantRAM := int(discovered.MemoryTotal / (1024 * 1024 * 1024))
-		if cap.PhysicalRAMGB != wantRAM {
-			t.Errorf("node %q PhysicalRAMGB = %d, want %d", cap.Node, cap.PhysicalRAMGB, wantRAM)
+		if capacity.PhysicalRAMGB != wantRAM {
+			t.Errorf("node %q PhysicalRAMGB = %d, want %d", capacity.Node, capacity.PhysicalRAMGB, wantRAM)
 		}
 	}
 }
@@ -134,22 +136,22 @@ func TestNodeCapacities_UsageMatchesNodeCapacity(t *testing.T) {
 		t.Fatalf("NodeCapacities: %v", err)
 	}
 
-	for _, cap := range caps {
-		single, err := service.NodeCapacity(context.Background(), "default", cap.Node)
+	for _, capacity := range caps {
+		single, err := service.NodeCapacity(context.Background(), "default", capacity.Node)
 		if err != nil {
-			t.Fatalf("NodeCapacity(%q): %v", cap.Node, err)
+			t.Fatalf("NodeCapacity(%q): %v", capacity.Node, err)
 		}
 
-		if cap.UsedVMs != single.UsedVMs {
-			t.Errorf("node %q UsedVMs: NodeCapacities=%d, NodeCapacity=%d", cap.Node, cap.UsedVMs, single.UsedVMs)
+		if capacity.UsedVMs != single.UsedVMs {
+			t.Errorf("node %q UsedVMs: NodeCapacities=%d, NodeCapacity=%d", capacity.Node, capacity.UsedVMs, single.UsedVMs)
 		}
 
-		if cap.UsedVCPUs != single.UsedVCPUs {
-			t.Errorf("node %q UsedVCPUs: NodeCapacities=%d, NodeCapacity=%d", cap.Node, cap.UsedVCPUs, single.UsedVCPUs)
+		if capacity.UsedVCPUs != single.UsedVCPUs {
+			t.Errorf("node %q UsedVCPUs: NodeCapacities=%d, NodeCapacity=%d", capacity.Node, capacity.UsedVCPUs, single.UsedVCPUs)
 		}
 
-		if cap.UsedRAMGB != single.UsedRAMGB {
-			t.Errorf("node %q UsedRAMGB: NodeCapacities=%d, NodeCapacity=%d", cap.Node, cap.UsedRAMGB, single.UsedRAMGB)
+		if capacity.UsedRAMGB != single.UsedRAMGB {
+			t.Errorf("node %q UsedRAMGB: NodeCapacities=%d, NodeCapacity=%d", capacity.Node, capacity.UsedRAMGB, single.UsedRAMGB)
 		}
 	}
 }
@@ -184,7 +186,7 @@ func TestNodeCapacities_NilClientAndNilProjectionReturnsEmpty(t *testing.T) {
 	}
 
 	if len(caps) != 0 {
-		t.Fatalf("capacity count = %d, want 0", len(caps))
+		t.Fatalf("capacityacity count = %d, want 0", len(caps))
 	}
 }
 
@@ -214,26 +216,30 @@ func TestNodeCapacity_TableDriven(t *testing.T) {
 
 func buildNodeMapFromFakeSnapshot() map[string]cluster.Node {
 	snap, _ := (cluster.Fake{}).Snapshot(context.Background())
+
 	nodeMap := make(map[string]cluster.Node, len(snap.Nodes))
 	for _, n := range snap.Nodes {
 		nodeMap[n.Name] = n
 	}
+
 	return nodeMap
 }
 
 func assertNodeCapacityForNode(t *testing.T, service *policy.Policy, projection *inventory.Projection, nodeMap map[string]cluster.Node, node string) {
 	t.Helper()
-	cap, err := service.NodeCapacity(context.Background(), "default", node)
+
+	capacity, err := service.NodeCapacity(context.Background(), "default", node)
 	if err != nil {
 		t.Fatalf("NodeCapacity: %v", err)
 	}
-	if cap.Node != node {
-		t.Fatalf("Node = %q, want %q", cap.Node, node)
+
+	if capacity.Node != node {
+		t.Fatalf("Node = %q, want %q", capacity.Node, node)
 	}
 
 	want := computeExpectedNodeUsage(projection.Load().ByNode[node])
-	assertNodeUsageMatches(t, cap, want)
-	assertNodePhysicalMatches(t, cap, nodeMap[node])
+	assertNodeUsageMatches(t, capacity, want)
+	assertNodePhysicalMatches(t, capacity, nodeMap[node])
 }
 
 type expectedNodeUsage struct {
@@ -244,14 +250,17 @@ type expectedNodeUsage struct {
 
 func computeExpectedNodeUsage(machines []cluster.VM) expectedNodeUsage {
 	var u expectedNodeUsage
+
 	for _, machine := range machines {
 		if !slices.Contains(machine.Tags, "pvmss") {
 			continue
 		}
+
 		u.vms++
 		u.vcpus += machineVCPUs(machine)
 		u.ramBytes += machine.MemoryTotal
 	}
+
 	return u
 }
 
@@ -259,31 +268,37 @@ func machineVCPUs(machine cluster.VM) int {
 	if machine.Sockets > 0 && machine.Cores > 0 {
 		return machine.Sockets * machine.Cores
 	}
+
 	return machine.CPUCores
 }
 
-func assertNodeUsageMatches(t *testing.T, cap policy.Capacity, want expectedNodeUsage) {
+func assertNodeUsageMatches(t *testing.T, capacity policy.Capacity, want expectedNodeUsage) {
 	t.Helper()
-	if cap.UsedVMs != want.vms {
-		t.Errorf("UsedVMs = %d, want %d", cap.UsedVMs, want.vms)
+
+	if capacity.UsedVMs != want.vms {
+		t.Errorf("UsedVMs = %d, want %d", capacity.UsedVMs, want.vms)
 	}
-	if cap.UsedVCPUs != want.vcpus {
-		t.Errorf("UsedVCPUs = %d, want %d", cap.UsedVCPUs, want.vcpus)
+
+	if capacity.UsedVCPUs != want.vcpus {
+		t.Errorf("UsedVCPUs = %d, want %d", capacity.UsedVCPUs, want.vcpus)
 	}
+
 	wantRAMGB := int(want.ramBytes / (1024 * 1024 * 1024))
-	if cap.UsedRAMGB != wantRAMGB {
-		t.Errorf("UsedRAMGB = %d, want %d", cap.UsedRAMGB, wantRAMGB)
+	if capacity.UsedRAMGB != wantRAMGB {
+		t.Errorf("UsedRAMGB = %d, want %d", capacity.UsedRAMGB, wantRAMGB)
 	}
 }
 
-func assertNodePhysicalMatches(t *testing.T, cap policy.Capacity, discovered cluster.Node) {
+func assertNodePhysicalMatches(t *testing.T, capacity policy.Capacity, discovered cluster.Node) {
 	t.Helper()
-	if cap.PhysicalVCPUs != discovered.CPUCores {
-		t.Errorf("PhysicalVCPUs = %d, want %d", cap.PhysicalVCPUs, discovered.CPUCores)
+
+	if capacity.PhysicalVCPUs != discovered.CPUCores {
+		t.Errorf("PhysicalVCPUs = %d, want %d", capacity.PhysicalVCPUs, discovered.CPUCores)
 	}
+
 	wantPhysRAM := int(discovered.MemoryTotal / (1024 * 1024 * 1024))
-	if cap.PhysicalRAMGB != wantPhysRAM {
-		t.Errorf("PhysicalRAMGB = %d, want %d", cap.PhysicalRAMGB, wantPhysRAM)
+	if capacity.PhysicalRAMGB != wantPhysRAM {
+		t.Errorf("PhysicalRAMGB = %d, want %d", capacity.PhysicalRAMGB, wantPhysRAM)
 	}
 }
 
@@ -292,16 +307,16 @@ func TestNodeCapacity_UnknownNodeReturnsZeroUsage(t *testing.T) {
 
 	service, _ := newPolicyService(t)
 
-	cap, err := service.NodeCapacity(context.Background(), "default", "nonexistent-node")
+	capacity, err := service.NodeCapacity(context.Background(), "default", "nonexistent-node")
 	if err != nil {
 		t.Fatalf("NodeCapacity: %v", err)
 	}
 
-	if cap.UsedVMs != 0 || cap.UsedVCPUs != 0 || cap.UsedRAMGB != 0 {
-		t.Fatalf("usage for unknown node = %+v, want all zero", cap)
+	if capacity.UsedVMs != 0 || capacity.UsedVCPUs != 0 || capacity.UsedRAMGB != 0 {
+		t.Fatalf("usage for unknown node = %+v, want all zero", capacity)
 	}
 
-	if cap.PhysicalVCPUs != 0 || cap.PhysicalRAMGB != 0 {
-		t.Fatalf("physical for unknown node = %+v, want all zero", cap)
+	if capacity.PhysicalVCPUs != 0 || capacity.PhysicalRAMGB != 0 {
+		t.Fatalf("physical for unknown node = %+v, want all zero", capacity)
 	}
 }

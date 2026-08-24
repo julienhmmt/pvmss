@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -20,7 +21,7 @@ func TestRegisterAdminRoutes_AllGroupsRegistered(t *testing.T) {
 		AdminDocs:     &AdminDocs{},
 	}
 
-	registerAdminRoutes(mux, cfg)
+	registerAdminRoutes(mux, cfg, func(_ string, next http.Handler) http.Handler { return next })
 
 	wantRoutes := []string{
 		"GET /api/v1/admin/nodes",
@@ -73,7 +74,8 @@ func TestRegisterAdminRoutes_AllGroupsRegistered(t *testing.T) {
 	}
 
 	for _, pattern := range wantRoutes {
-		req := httptest.NewRequest(methodFromPattern(pattern), pathFromPattern(pattern), nil)
+		req := httptest.NewRequestWithContext(context.Background(), methodFromPattern(pattern), pathFromPattern(pattern), nil)
+
 		_, pattern2 := mux.Handler(req)
 		if pattern2 != pattern {
 			t.Errorf("route %q not registered (got pattern %q)", pattern, pattern2)
@@ -87,9 +89,10 @@ func TestRegisterAdminRoutes_NilGroupsSkipped(t *testing.T) {
 	mux := http.NewServeMux()
 	cfg := RouterConfig{Auth: &Auth{}}
 
-	registerAdminRoutes(mux, cfg)
+	registerAdminRoutes(mux, cfg, func(_ string, next http.Handler) http.Handler { return next })
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/nodes", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/admin/nodes", nil)
+
 	_, pattern := mux.Handler(req)
 	if pattern != "" {
 		t.Errorf("expected no route for /api/v1/admin/nodes when AdminCatalog is nil, got %q", pattern)
@@ -101,9 +104,11 @@ func methodFromPattern(pattern string) string {
 	for idx < len(pattern) && pattern[idx] != ' ' {
 		idx++
 	}
+
 	if idx == len(pattern) {
 		return http.MethodGet
 	}
+
 	return pattern[:idx]
 }
 
@@ -112,30 +117,40 @@ func pathFromPattern(pattern string) string {
 	for idx < len(pattern) && pattern[idx] != ' ' {
 		idx++
 	}
+
 	if idx == len(pattern) {
 		return pattern
 	}
+
 	path := pattern[idx+1:]
 	path = substitutePathParams(path)
+
 	return path
 }
 
 func substitutePathParams(path string) string {
 	result := []byte{}
 	inParam := false
+
 	for _, c := range path {
 		if c == '{' {
 			inParam = true
+
 			result = append(result, 'x')
+
 			continue
 		}
+
 		if c == '}' {
 			inParam = false
 			continue
 		}
+
 		if !inParam {
+			//nolint:gosec // G115: test helper converts small ASCII runes to bytes
 			result = append(result, byte(c))
 		}
 	}
+
 	return string(result)
 }

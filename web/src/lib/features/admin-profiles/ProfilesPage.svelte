@@ -9,6 +9,9 @@
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import FormField from '$lib/shared/ui/FormField.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
 	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -136,30 +139,39 @@
 
 	{#if profiles.length > 0}
 		<div class="mb-4 flex flex-wrap items-center gap-2">
-			<input
+			<TextField
 				type="search"
-				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
 				placeholder={m['admin.profiles.searchPlaceholder']()}
 				value={search}
-				oninput={(e) => onSearchChange(e.currentTarget.value)}
+				oninput={(e: Event & { currentTarget: HTMLInputElement }) => onSearchChange(e.currentTarget.value)}
+				class="w-full sm:w-48"
 			/>
-			<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={busFilter} onchange={(e) => onBusFilterChange(e.currentTarget.value)}>
-				<option value="">{m['admin.profiles.filterBus']()}</option>
-				{#each busOptions as bus (bus)}
-					<option value={bus}>{bus}</option>
-				{/each}
-			</select>
-			<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={enabledFilter} onchange={(e) => onEnabledFilterChange(e.currentTarget.value as 'all' | 'enabled' | 'disabled')}>
-				<option value="all">{m['admin.profiles.filterEnabled']()}</option>
-				<option value="enabled">{m['admin.profiles.filterEnabledOnly']()}</option>
-				<option value="disabled">{m['admin.profiles.filterDisabledOnly']()}</option>
-			</select>
-			<button
-				class="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
+			<Select
+				value={busFilter}
+				onchange={(e: Event & { currentTarget: HTMLSelectElement }) => onBusFilterChange(e.currentTarget.value)}
+				options={[
+					{ value: '', label: m['admin.profiles.filterBus']() },
+					...busOptions.map((bus) => ({ value: bus, label: bus }))
+				]}
+				class="w-full sm:w-44"
+			/>
+			<Select
+				value={enabledFilter}
+				onchange={(e: Event & { currentTarget: HTMLSelectElement }) => onEnabledFilterChange(e.currentTarget.value as 'all' | 'enabled' | 'disabled')}
+				options={[
+					{ value: 'all', label: m['admin.profiles.filterEnabled']() },
+					{ value: 'enabled', label: m['admin.profiles.filterEnabledOnly']() },
+					{ value: 'disabled', label: m['admin.profiles.filterDisabledOnly']() }
+				]}
+				class="w-full sm:w-44"
+			/>
+			<Button
+				variant="secondary"
+				size="sm"
 				onclick={onResetFilters}
 			>
 				{m['admin.profiles.resetFilters']()}
-			</button>
+			</Button>
 		</div>
 	{/if}
 
@@ -226,59 +238,39 @@
 <Dialog bind:open={showForm} size="lg" labelledBy="profile-form-title" onClose={() => (showForm = false)}>
 	<h2 id="profile-form-title" class="mb-4 text-lg font-medium">{editingId ? m['admin.profiles.editProfile']() : m['admin.profiles.newProfileForm']()}</h2>
 	<form onsubmit={(e) => { e.preventDefault(); submitForm(); }} class="space-y-4">
-		<div>
-			<label for="profile-label" class="mb-1 block text-sm font-medium">{m['admin.profiles.labelField']()}</label>
-			<input
-				id="profile-label"
-				type="text"
-				class="pv-input"
-				bind:value={label}
-				required
-			/>
-		</div>
+		<FormField label={m['admin.profiles.labelField']()} required>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField {id} {describedBy} {invalid} bind:value={label} required />
+			{/snippet}
+		</FormField>
 		<div class="grid grid-cols-2 gap-4">
-			<div>
-				<label for="profile-cpu" class="mb-1 block text-sm font-medium">{m['admin.profiles.vcpuCores']()}</label>
-				<input
-					id="profile-cpu"
-					type="number"
-					min="1"
-					class="pv-input"
-					bind:value={cpuCores}
-					required
-				/>
-			</div>
-			<div>
-				<label for="profile-mem" class="mb-1 block text-sm font-medium">{m['admin.profiles.memoryMb']()}</label>
-				<input
-					id="profile-mem"
-					type="number"
-					min="128"
-					class="pv-input"
-					bind:value={memoryMB}
-					required
-				/>
-			</div>
-			<div>
-				<label for="profile-disk" class="mb-1 block text-sm font-medium">{m['admin.profiles.diskGb']()}</label>
-				<input
-					id="profile-disk"
-					type="number"
-					min="1"
-					class="pv-input"
-					bind:value={diskGB}
-					required
-				/>
-			</div>
-			<div>
-				<label for="profile-bus" class="mb-1 block text-sm font-medium">{m['admin.profiles.busField']()}</label>
-				<select id="profile-bus" class="pv-input pv-select" bind:value={bus}>
-					<option value="scsi">scsi</option>
-					<option value="virtio">virtio</option>
-					<option value="sata">sata</option>
-					<option value="ide">ide</option>
-				</select>
-			</div>
+			<FormField label={m['admin.profiles.vcpuCores']()} required>
+				{#snippet children({ id, describedBy, invalid })}
+					<TextField {id} {describedBy} {invalid} type="number" min={1} bind:value={cpuCores} required />
+				{/snippet}
+			</FormField>
+			<FormField label={m['admin.profiles.memoryMb']()} required>
+				{#snippet children({ id, describedBy, invalid })}
+					<TextField {id} {describedBy} {invalid} type="number" min={128} bind:value={memoryMB} required />
+				{/snippet}
+			</FormField>
+			<FormField label={m['admin.profiles.diskGb']()} required>
+				{#snippet children({ id, describedBy, invalid })}
+					<TextField {id} {describedBy} {invalid} type="number" min={1} bind:value={diskGB} required />
+				{/snippet}
+			</FormField>
+			<FormField label={m['admin.profiles.busField']()} required>
+				{#snippet children({ id, describedBy, invalid })}
+					<Select
+						{id}
+						{describedBy}
+						{invalid}
+						bind:value={bus}
+						options={['scsi', 'virtio', 'sata', 'ide']}
+						required
+					/>
+				{/snippet}
+			</FormField>
 		</div>
 		<div class="flex justify-end gap-2 pt-2">
 			<Button variant="ghost" onclick={() => (showForm = false)}>{m['common.cancel']()}</Button>

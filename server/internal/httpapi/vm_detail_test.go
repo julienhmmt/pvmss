@@ -121,7 +121,7 @@ func detailRequest(method, path, body string, cookie *http.Cookie) *http.Request
 	}
 	// Path values are only populated by a ServeMux with {cluster}/{vmid}
 	// patterns. Tests call the handler directly, so set them manually.
-	req.SetPathValue("cluster", "default")
+	req.SetPathValue("cluster", auditTestCluster)
 	req.SetPathValue("vmid", pathVmid(path))
 	req.SetPathValue("diskKey", pathDiskKey(path))
 
@@ -389,11 +389,11 @@ func TestVmAction_OwnerStartStoppedVM(t *testing.T) {
 		t.Fatalf("fake calls for 101 = %d, want 1", len(calls))
 	}
 
-	if calls[0].Action != "start" {
+	if calls[0].Action != auditTestAction {
 		t.Errorf("action = %q, want start", calls[0].Action)
 	}
 
-	if calls[0].Node != "pve-node-01" {
+	if calls[0].Node != testNodePVE01 {
 		t.Errorf("node = %q, want pve-node-01 (Index-resolved, FR-003)", calls[0].Node)
 	}
 }
@@ -438,7 +438,7 @@ func TestVmAction_ForgedNodeFieldRejected(t *testing.T) {
 		t.Fatalf("status = %d, want %d (unknown field rejected by strict decoder)", rec.Code, http.StatusBadRequest)
 	}
 
-	if env.Code != "invalid_request" {
+	if env.Code != apiCodeInvalidRequest {
 		t.Errorf("code = %q, want invalid_request", env.Code)
 	}
 
@@ -505,11 +505,11 @@ func TestVmAction_AllFiveValidActionsAccepted(t *testing.T) {
 		action string
 		vmid   int
 	}{
-		{action: "start", vmid: 101},    // stopped
-		{action: "stop", vmid: 100},     // running
-		{action: "shutdown", vmid: 100}, // running
-		{action: "reboot", vmid: 100},   // running
-		{action: "reset", vmid: 100},    // running
+		{action: auditTestAction, vmid: 101}, // stopped
+		{action: "stop", vmid: 100},          // running
+		{action: "shutdown", vmid: 100},      // running
+		{action: "reboot", vmid: 100},        // running
+		{action: "reset", vmid: 100},         // running
 	}
 	for _, tt := range tests {
 		t.Run(tt.action, func(t *testing.T) {
@@ -562,11 +562,11 @@ func TestVmAction_AuditRecorded(t *testing.T) {
 		t.Fatalf("audit rows = %d, want 1", len(rows))
 	}
 
-	if rows[0].Actor != "alice@pve" {
+	if rows[0].Actor != auditTestActor {
 		t.Errorf("actor = %q, want alice@pve (real actor, never service-account)", rows[0].Actor)
 	}
 
-	if rows[0].Action != "start" {
+	if rows[0].Action != auditTestAction {
 		t.Errorf("action = %q, want start", rows[0].Action)
 	}
 
@@ -698,7 +698,7 @@ func TestVmDelete_RunningVMReturns409(t *testing.T) {
 	// The VM must not have been deleted.
 	calls := cluster.FakeCallsFor(100)
 	for _, c := range calls {
-		if c.Action == "delete" {
+		if c.Action == testActionDelete {
 			t.Errorf("unexpected delete call for running VM 100 without force: %+v", c)
 		}
 	}
@@ -728,7 +728,7 @@ func TestVmDelete_ForceStopsAndDeletesRunningVM(t *testing.T) {
 			hasStop = true
 		}
 
-		if c.Action == "delete" {
+		if c.Action == testActionDelete {
 			hasDelete = true
 		}
 	}
@@ -811,7 +811,7 @@ func TestVmPatch_EmptyBody(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
 
-	if env.Code != "invalid_request" {
+	if env.Code != apiCodeInvalidRequest {
 		t.Errorf("code = %q, want invalid_request", env.Code)
 	}
 }
@@ -900,7 +900,7 @@ func TestVmPatch_AuditRecorded(t *testing.T) {
 		t.Fatalf("audit rows = %d, want 1", len(rows))
 	}
 
-	if rows[0].Actor != "alice@pve" {
+	if rows[0].Actor != auditTestActor {
 		t.Errorf("actor = %q, want alice@pve", rows[0].Actor)
 	}
 
@@ -952,7 +952,7 @@ func TestVMDetail_ErrorShapeIdenticalAcrossEndpoints(t *testing.T) {
 		}
 	}
 
-	if get404Env.Code != "not_found" || get404Env.Message != "VM not found" {
+	if get404Env.Code != apiCodeNotFound || get404Env.Message != "VM not found" {
 		t.Errorf("404 shape = %+v, want {not_found VM not found}", get404Env)
 	}
 }

@@ -2,6 +2,9 @@
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import FormField from '$lib/shared/ui/FormField.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
+	import Textarea from '$lib/shared/ui/Textarea.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
 	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { AdminDocPage } from './docs.svelte';
@@ -51,6 +54,21 @@
 		onSave,
 		onSaveAndView
 	}: Props = $props();
+
+	// Match server/internal/httpapi/admin_docs.go's maxDocBody (4 KiB - 256 bytes headroom).
+	const MAX_DOC_BODY = 4 * 1024 - 256;
+
+	const bodyOverLimit = $derived(bodyMd.length > MAX_DOC_BODY);
+	const bodyError = $derived(
+		bodyOverLimit ? m['docs.bodyTooLong']({ max: String(MAX_DOC_BODY) }) : null
+	);
+	const canSubmit = $derived(
+		title.trim() !== '' &&
+			slug.trim() !== '' &&
+			category.trim() !== '' &&
+			bodyMd.trim() !== '' &&
+			!bodyOverLimit
+	);
 </script>
 
 <Dialog open={showForm} size="xl" labelledBy="docs-form-title" onClose={onCancel}>
@@ -61,29 +79,26 @@
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 			<FormField label={m['docs.titleField']()} required>
 				{#snippet children({ id, describedBy, invalid })}
-					<input
+					<TextField
 						{id}
-						aria-describedby={describedBy}
-						aria-invalid={invalid ? 'true' : undefined}
-						type="text"
-						class="pv-input"
+						{describedBy}
+						{invalid}
 						value={title}
-						oninput={(e) => onTitleChange(e.currentTarget.value)}
+						oninput={(e: Event & { currentTarget: HTMLInputElement | HTMLTextAreaElement }) => onTitleChange(e.currentTarget.value)}
 						required
 					/>
 				{/snippet}
 			</FormField>
 			<FormField label={m['docs.slug']()} hint={editing?.isSystem ? m['docs.systemProtected']() : undefined}>
 				{#snippet children({ id, describedBy, invalid })}
-					<input
+					<TextField
 						{id}
-						aria-describedby={describedBy}
-						aria-invalid={invalid ? 'true' : undefined}
-						type="text"
-						class="pv-input font-mono text-xs"
+						{describedBy}
+						{invalid}
 						value={slug}
-						oninput={(e) => onSlugChange(e.currentTarget.value)}
+						oninput={(e: Event & { currentTarget: HTMLInputElement | HTMLTextAreaElement }) => onSlugChange(e.currentTarget.value)}
 						disabled={editing?.isSystem ?? false}
+						class="font-mono text-xs"
 					/>
 				{/snippet}
 			</FormField>
@@ -91,47 +106,45 @@
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 			<FormField label={m['docs.language']()}>
 				{#snippet children({ id, describedBy, invalid })}
-					<select
+					<Select
 						{id}
-						aria-describedby={describedBy}
-						aria-invalid={invalid ? 'true' : undefined}
-						class="pv-input pv-select"
+						{describedBy}
+						{invalid}
 						value={lang}
-						onchange={(e) => onLangChange(e.currentTarget.value)}
+						onchange={(e: Event & { currentTarget: HTMLSelectElement }) => onLangChange(e.currentTarget.value)}
 						disabled={editing?.isSystem ?? false}
-					>
-						<option value="en">en</option>
-						<option value="fr">fr</option>
-					</select>
+						options={[
+							{ value: 'en', label: 'en' },
+							{ value: 'fr', label: 'fr' }
+						]}
+					/>
 				{/snippet}
 			</FormField>
 			<FormField label={m['docs.category']()} required>
 				{#snippet children({ id, describedBy, invalid })}
-					<input
+					<TextField
 						{id}
-						aria-describedby={describedBy}
-						aria-invalid={invalid ? 'true' : undefined}
-						type="text"
-						class="pv-input"
+						{describedBy}
+						{invalid}
 						value={category}
-						oninput={(e) => onCategoryChange(e.currentTarget.value)}
+						oninput={(e: Event & { currentTarget: HTMLInputElement | HTMLTextAreaElement }) => onCategoryChange(e.currentTarget.value)}
 						required
 					/>
 				{/snippet}
 			</FormField>
 			<FormField label={m['docs.audience']()}>
 				{#snippet children({ id, describedBy, invalid })}
-					<select
+					<Select
 						{id}
-						aria-describedby={describedBy}
-						aria-invalid={invalid ? 'true' : undefined}
-						class="pv-input pv-select"
+						{describedBy}
+						{invalid}
 						value={audience}
-						onchange={(e) => onAudienceChange(e.currentTarget.value as 'user' | 'admin')}
-					>
-						<option value="user">{m['docs.audienceUser']()}</option>
-						<option value="admin">{m['docs.audienceAdmin']()}</option>
-					</select>
+						onchange={(e: Event & { currentTarget: HTMLSelectElement }) => onAudienceChange(e.currentTarget.value as 'user' | 'admin')}
+						options={[
+							{ value: 'user', label: m['docs.audienceUser']() },
+							{ value: 'admin', label: m['docs.audienceAdmin']() }
+						]}
+					/>
 				{/snippet}
 			</FormField>
 		</div>
@@ -140,27 +153,30 @@
 			checked={enabled}
 			onToggle={(checked) => onEnabledChange(checked)}
 		/>
-		<FormField label={m['docs.body']()} required>
+		<FormField label={m['docs.body']()} required error={bodyError}>
 			{#snippet children({ id, describedBy, invalid })}
-				<textarea
+				<Textarea
 					{id}
-					aria-describedby={describedBy}
-					aria-invalid={invalid ? 'true' : undefined}
-					class="pv-input font-mono text-xs"
-					rows="14"
+					{describedBy}
+					{invalid}
 					value={bodyMd}
-					oninput={(e) => onBodyChange(e.currentTarget.value)}
+					oninput={(e: Event & { currentTarget: HTMLInputElement | HTMLTextAreaElement }) => onBodyChange(e.currentTarget.value)}
+					rows={14}
 					required
-				></textarea>
+					mono
+				/>
 			{/snippet}
 		</FormField>
+		<p class="text-right text-xs text-muted-foreground-subtle" class:text-destructive={bodyOverLimit}>
+			{m['docs.bodyLength']({ count: String(bodyMd.length), max: String(MAX_DOC_BODY) })}
+		</p>
 		<div class="flex justify-end gap-2 pt-2">
 			<Button variant="ghost" onclick={onCancel}>{m['docs.cancel']()}</Button>
-			<Button type="submit" disabled={saving}>
+			<Button type="submit" disabled={saving || !canSubmit}>
 				{saving ? `${m['docs.save']()}…` : editing ? m['docs.save']() : m['docs.create']()}
 			</Button>
 			{#if editing}
-				<Button variant="secondary" onclick={onSaveAndView} disabled={saving}>
+				<Button variant="secondary" onclick={onSaveAndView} disabled={saving || !canSubmit}>
 					{m['docs.saveAndView']()}
 				</Button>
 			{/if}

@@ -283,7 +283,7 @@ func TestAdminTags_ListAsAdmin(t *testing.T) {
 	found := false
 
 	for _, tag := range tags {
-		if tag.Name == "pvmss" {
+		if tag.Name == extraPvmssTag {
 			found = true
 
 			if !tag.Protected {

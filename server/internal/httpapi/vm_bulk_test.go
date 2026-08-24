@@ -175,9 +175,9 @@ func TestVMBulk_SpansTwoClusters(t *testing.T) {
 		t.Fatalf("Snapshot: %v", err)
 	}
 
-	defaultIdx := inventory.BuildIndexForCluster("default", snap)
-	secondaryIdx := inventory.BuildIndexForCluster("secondary", snap)
-	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{"default": &defaultIdx, "secondary": &secondaryIdx})
+	defaultIdx := inventory.BuildIndexForCluster(auditTestCluster, snap)
+	secondaryIdx := inventory.BuildIndexForCluster(crossSecondaryCluster, snap)
+	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{auditTestCluster: &defaultIdx, crossSecondaryCluster: &secondaryIdx})
 	projection := inventory.NewProjectionFromIndex(&defaultIdx)
 	authHandler := newAuthHandler(t)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))

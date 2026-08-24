@@ -303,6 +303,7 @@ func createMigrationStandInTables(ctx context.Context, t *testing.T, db *sql.DB)
 	standins := []string{
 		`CREATE TABLE IF NOT EXISTS clusters (name TEXT PRIMARY KEY)`,
 		`CREATE TABLE IF NOT EXISTS catalog_isos (cluster TEXT NOT NULL, storage TEXT NOT NULL, file TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, storage, file))`,
+		`CREATE TABLE IF NOT EXISTS sessions (token_hash BLOB PRIMARY KEY)`,
 	}
 	for _, ddl := range standins {
 		if _, err := db.ExecContext(ctx, ddl); err != nil {
@@ -338,7 +339,7 @@ func TestRunMigrations_V16AddsDisplayName(t *testing.T) {
 		t.Fatalf("NewFromDBWithSecret: %v", err)
 	}
 
-	if err := st.CreateCluster(ctx, store.ClusterRow{Name: testStoreCluster, URL: "https://example.com:8006", TokenID: "tok", TokenSecret: "secret"}); err != nil {
+	if err := st.CreateCluster(ctx, store.ClusterRow{Name: testStoreCluster, URL: "https://example.com:8006", TokenID: "tok", TokenSecret: testClusterTokenSecret}); err != nil {
 		t.Fatalf("CreateCluster: %v", err)
 	}
 

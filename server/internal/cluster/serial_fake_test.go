@@ -33,16 +33,27 @@ func TestSerialFakeServe_EchoesInputAsFramedData(t *testing.T) {
 	}
 
 	buf := make([]byte, 64)
-	remote.SetReadDeadline(time.Now().Add(time.Second))
+
+	if err := remote.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Fatalf("set read deadline: %v", err)
+	}
+
 	n, err := remote.Read(buf)
 	if err != nil {
 		t.Fatalf("remote read: %v", err)
 	}
-	remote.SetReadDeadline(time.Time{})
+
+	if err := remote.SetReadDeadline(time.Time{}); err != nil {
+		t.Fatalf("set read deadline: %v", err)
+	}
 
 	want := "0:5:hello"
 	if got := string(buf[:n]); got != want {
 		t.Fatalf("echo = %q, want %q", got, want)
+	}
+
+	if err := remote.SetReadDeadline(time.Time{}); err != nil {
+		t.Fatalf("set read deadline: %v", err)
 	}
 
 	if err := remote.Close(); err != nil {
@@ -71,6 +82,7 @@ func TestSerialFakeServe_MultipleReadsEchoEachAsFrame(t *testing.T) {
 	go func() { done <- serialFakeServe(ctx, local) }()
 
 	chunks := []string{"ab", "cde", "f"}
+
 	var got strings.Builder
 
 	for _, chunk := range chunks {
@@ -78,13 +90,21 @@ func TestSerialFakeServe_MultipleReadsEchoEachAsFrame(t *testing.T) {
 			t.Fatalf("remote write %q: %v", chunk, err)
 		}
 
-		remote.SetReadDeadline(time.Now().Add(time.Second))
+		if err := remote.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+			t.Fatalf("set read deadline: %v", err)
+		}
+
 		frameBuf := make([]byte, 64)
+
 		n, err := remote.Read(frameBuf)
 		if err != nil {
 			t.Fatalf("remote read after %q: %v", chunk, err)
 		}
-		remote.SetReadDeadline(time.Time{})
+
+		if err := remote.SetReadDeadline(time.Time{}); err != nil {
+			t.Fatalf("set read deadline: %v", err)
+		}
+
 		got.Write(frameBuf[:n])
 	}
 
@@ -108,6 +128,7 @@ func TestSerialFakeServe_ReturnsContextErrOnCancel(t *testing.T) {
 	t.Parallel()
 
 	local, remote := newPipePeers()
+
 	t.Cleanup(func() { _ = remote.Close() })
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -131,6 +152,7 @@ func TestSerialFakeServe_ClosesPeerOnExit(t *testing.T) {
 	t.Parallel()
 
 	local, remote := newPipePeers()
+
 	t.Cleanup(func() { _ = remote.Close() })
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -189,6 +211,7 @@ func (b *bufferPeer) Read(p []byte) (int, error) {
 	if err == io.EOF && n == 0 {
 		return 0, io.EOF
 	}
+
 	return n, err
 }
 

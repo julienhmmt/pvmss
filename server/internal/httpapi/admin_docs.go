@@ -33,6 +33,10 @@ const (
 	msgDocIDLangRequired     = "documentation id and lang are required"
 	msgDocDuplicatePage      = "a documentation page with this title already exists for this language"
 	msgDocSystemProtected    = "built-in documentation pages cannot be deleted"
+
+	// maxDocBody reserves 256 bytes of headroom for JSON overhead around a 4 KiB request.
+	maxDocBody        = 4*1024 - 256
+	msgDocBodyTooLong = "body exceeds the maximum length of 3840 characters"
 )
 
 // docNotFoundMsg formats the not-found message for one page id, keeping the
@@ -115,6 +119,11 @@ func (h *AdminDocs) ServeDocCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(req.BodyMD) > maxDocBody {
+		writeAdminError(w, http.StatusBadRequest, codeDocInvalidRequest, msgDocBodyTooLong)
+		return
+	}
+
 	page, err := catalog.CreateDocumentationPage(r.Context(), h.store, req.Title, req.Lang, req.Category, req.BodyMD, req.Audience)
 	if errors.Is(err, catalog.ErrDuplicateDocumentationPage) {
 		writeAdminError(w, http.StatusConflict, codeDocDuplicatePage, msgDocDuplicatePage)
@@ -148,6 +157,11 @@ func (h *AdminDocs) ServeDocUpdate(w http.ResponseWriter, r *http.Request) {
 	var req docUpdateRequest
 	if err := decodeJSON(w, r, &req); err != nil {
 		writeAdminError(w, http.StatusBadRequest, codeDocInvalidRequest, msgDocInvalidRequestBody)
+		return
+	}
+
+	if len(req.BodyMD) > maxDocBody {
+		writeAdminError(w, http.StatusBadRequest, codeDocInvalidRequest, msgDocBodyTooLong)
 		return
 	}
 

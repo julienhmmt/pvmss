@@ -22,6 +22,18 @@ func wrapJoin(sentinel, cause error) error {
 	return fmt.Errorf("%w: %w", sentinel, cause)
 }
 
+// isIPv4Prefix reports whether s is a valid IPv4 CIDR prefix.
+func isIPv4Prefix(s string) bool {
+	prefix, err := netip.ParsePrefix(s)
+	return err == nil && prefix.Addr().Is4()
+}
+
+// isIPv4Address reports whether s is a valid IPv4 host address.
+func isIPv4Address(s string) bool {
+	addr, err := netip.ParseAddr(s)
+	return err == nil && addr.Is4()
+}
+
 var (
 	// ErrInvalidCloudInitConfig reports malformed effective structured state.
 	ErrInvalidCloudInitConfig = errors.New("invalid cloud-init config")
@@ -307,15 +319,11 @@ func validateCloudInitUpdate(update cluster.CloudInitUpdate) error {
 	if update.IPMode != nil && *update.IPMode != cluster.CloudInitIPModeDHCP && *update.IPMode != cluster.CloudInitIPModeStatic {
 		return fmt.Errorf("%w: ipMode must be dhcp or static", ErrInvalidCloudInitConfig)
 	}
-	if update.IPAddress != nil && *update.IPAddress != "" {
-		if _, err := netip.ParsePrefix(*update.IPAddress); err != nil {
-			return fmt.Errorf("%w: invalid ipAddress", ErrInvalidCloudInitConfig)
-		}
+	if update.IPAddress != nil && *update.IPAddress != "" && !isIPv4Prefix(*update.IPAddress) {
+		return fmt.Errorf("%w: invalid ipAddress", ErrInvalidCloudInitConfig)
 	}
-	if update.Gateway != nil && *update.Gateway != "" {
-		if _, err := netip.ParseAddr(*update.Gateway); err != nil {
-			return fmt.Errorf("%w: invalid gateway", ErrInvalidCloudInitConfig)
-		}
+	if update.Gateway != nil && *update.Gateway != "" && !isIPv4Address(*update.Gateway) {
+		return fmt.Errorf("%w: invalid gateway", ErrInvalidCloudInitConfig)
 	}
 
 	// Reject malformed or multi-line SSH keys before they reach Proxmox: a
@@ -379,10 +387,10 @@ func validateCloudInitConfig(config cluster.CloudInitConfig) error {
 	if config.IPAddress == "" || config.Gateway == "" {
 		return fmt.Errorf("%w: static mode requires ipAddress and gateway", ErrInvalidCloudInitConfig)
 	}
-	if _, err := netip.ParsePrefix(config.IPAddress); err != nil {
+	if !isIPv4Prefix(config.IPAddress) {
 		return fmt.Errorf("%w: invalid ipAddress", ErrInvalidCloudInitConfig)
 	}
-	if _, err := netip.ParseAddr(config.Gateway); err != nil {
+	if !isIPv4Address(config.Gateway) {
 		return fmt.Errorf("%w: invalid gateway", ErrInvalidCloudInitConfig)
 	}
 

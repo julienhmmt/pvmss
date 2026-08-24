@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { getVmDetailContext, type VmDisk } from '../detail.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import FormField from '$lib/shared/ui/FormField.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
@@ -39,35 +42,30 @@
 			void submit();
 		}}
 	>
-		<label class="grid gap-1 text-sm">
-			{m['vms.disks.resizeNewSize']()}
-			<input
-				class="rounded-md border border-border bg-background px-2 py-2"
-				type="number"
-				min={(disk?.sizeGB ?? 0) + 1}
-				bind:value={sizeGB}
-				data-testid="resize-disk-size"
-			/>
-		</label>
-		{#if store.diskError}
-			<p role="alert" class="text-sm text-destructive">{store.diskError}</p>
-		{/if}
+		<FormField label={m['vms.disks.resizeNewSize']()} required error={store.diskError}>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField
+					{id}
+					{describedBy}
+					{invalid}
+					type="number"
+					min={(disk?.sizeGB ?? 0) + 1}
+					value={sizeGB}
+					oninput={(e: Event & { currentTarget: HTMLInputElement }) => (sizeGB = e.currentTarget.value)}
+					required
+					data-testid="resize-disk-size"
+				/>
+			{/snippet}
+		</FormField>
 		<div class="mt-2 flex justify-end gap-2">
-			<button
-				type="button"
-				class="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted"
-				onclick={close}
-			>
-				Cancel
-			</button>
-			<button
+			<Button type="button" variant="ghost" onclick={close}>{m['common.cancel']()}</Button>
+			<Button
 				type="submit"
-				class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-				disabled={store.diskInFlight}
+				loading={store.diskInFlight}
 				data-testid="resize-disk-submit"
 			>
 				{store.diskInFlight ? m['common.resizing']() : m['vms.disks.resize']()}
-			</button>
+			</Button>
 		</div>
 	</form>
 </Dialog>

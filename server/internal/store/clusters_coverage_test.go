@@ -18,6 +18,7 @@ func TestListClusters_MultipleAndEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListClusters: %v", err)
 	}
+
 	if len(rows) < 3 {
 		t.Fatalf("seeded clusters = %d, want at least 3", len(rows))
 	}
@@ -26,9 +27,11 @@ func TestListClusters_MultipleAndEmpty(t *testing.T) {
 		if r.Name == "" {
 			t.Error("cluster row has empty name")
 		}
+
 		if r.URL == "" {
 			t.Errorf("cluster %q has empty URL", r.Name)
 		}
+
 		if r.TokenID == "" {
 			t.Errorf("cluster %q has empty TokenID", r.Name)
 		}
@@ -55,6 +58,7 @@ func TestListClusters_EmptyAfterSoftDeleteAllButOne(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListClusters after deletes: %v", err)
 	}
+
 	if len(remaining) != 1 {
 		t.Fatalf("remaining clusters = %d, want 1", len(remaining))
 	}
@@ -65,15 +69,15 @@ func TestUpdateCluster_ExistingWithNewSecret(t *testing.T) {
 	st := openClusterStore(t)
 	ctx := context.Background()
 
-	original, err := st.GetCluster(ctx, "default")
+	original, err := st.GetCluster(ctx, testStoreCluster)
 	if err != nil {
 		t.Fatalf("GetCluster: %v", err)
 	}
 
 	updated := store.ClusterRow{
-		Name:        "default",
-		URL:         "https://updated.example.invalid/api2/json",
-		TokenID:     "pvmss@pve!updated",
+		Name:        testStoreCluster,
+		URL:         testUpdateClusterURL,
+		TokenID:     testUpdatedTokenID,
 		TokenSecret: "new-secret-value",
 	}
 
@@ -81,19 +85,23 @@ func TestUpdateCluster_ExistingWithNewSecret(t *testing.T) {
 		t.Fatalf("UpdateCluster: %v", err)
 	}
 
-	stored, err := st.GetCluster(ctx, "default")
+	stored, err := st.GetCluster(ctx, testStoreCluster)
 	if err != nil {
 		t.Fatalf("GetCluster after update: %v", err)
 	}
+
 	if stored.URL != updated.URL {
 		t.Errorf("URL = %q, want %q", stored.URL, updated.URL)
 	}
+
 	if stored.TokenID != updated.TokenID {
 		t.Errorf("TokenID = %q, want %q", stored.TokenID, updated.TokenID)
 	}
+
 	if stored.TokenSecret != updated.TokenSecret {
 		t.Errorf("TokenSecret = %q, want %q", stored.TokenSecret, updated.TokenSecret)
 	}
+
 	if stored.CreatedAt != original.CreatedAt {
 		t.Errorf("CreatedAt changed: %v -> %v", original.CreatedAt, stored.CreatedAt)
 	}
@@ -104,15 +112,15 @@ func TestUpdateCluster_PreserveSecretWhenEmpty(t *testing.T) {
 	st := openClusterStore(t)
 	ctx := context.Background()
 
-	original, err := st.GetCluster(ctx, "default")
+	original, err := st.GetCluster(ctx, testStoreCluster)
 	if err != nil {
 		t.Fatalf("GetCluster: %v", err)
 	}
 
 	updated := store.ClusterRow{
-		Name:        "default",
-		URL:         "https://preserve-secret.invalid/api2/json",
-		TokenID:     "pvmss@pve!preserve",
+		Name:        testStoreCluster,
+		URL:         testPreserveSecretClusterURL,
+		TokenID:     testPreserveTokenID,
 		TokenSecret: "",
 	}
 
@@ -120,10 +128,11 @@ func TestUpdateCluster_PreserveSecretWhenEmpty(t *testing.T) {
 		t.Fatalf("UpdateCluster: %v", err)
 	}
 
-	stored, err := st.GetCluster(ctx, "default")
+	stored, err := st.GetCluster(ctx, testStoreCluster)
 	if err != nil {
 		t.Fatalf("GetCluster after update: %v", err)
 	}
+
 	if stored.TokenSecret != original.TokenSecret {
 		t.Errorf("TokenSecret = %q, want preserved %q", stored.TokenSecret, original.TokenSecret)
 	}
@@ -138,7 +147,7 @@ func TestUpdateCluster_NotFound(t *testing.T) {
 		Name:        "nonexistent-cluster",
 		URL:         "https://nonexistent.invalid",
 		TokenID:     "id",
-		TokenSecret: "secret",
+		TokenSecret: testClusterTokenSecret,
 	}
 
 	if err := st.UpdateCluster(ctx, missing); !errors.Is(err, sql.ErrNoRows) {
@@ -155,7 +164,7 @@ func TestUpdateCluster_InvalidName(t *testing.T) {
 		Name:        "INVALID NAME",
 		URL:         "https://invalid.invalid",
 		TokenID:     "id",
-		TokenSecret: "secret",
+		TokenSecret: testClusterTokenSecret,
 	}
 
 	if err := st.UpdateCluster(ctx, invalid); !errors.Is(err, store.ErrInvalidClusterName) {
@@ -185,27 +194,27 @@ func TestCreateCluster_InvalidName(t *testing.T) {
 	}{
 		{
 			name: "uppercase name",
-			row:  store.ClusterRow{Name: "InvalidName", URL: "https://x.invalid", TokenID: "id", TokenSecret: "secret"},
+			row:  store.ClusterRow{Name: "InvalidName", URL: testInvalidClusterURL, TokenID: testClusterTokenID, TokenSecret: testClusterTokenSecret},
 			want: store.ErrInvalidClusterName,
 		},
 		{
 			name: "spaces in name",
-			row:  store.ClusterRow{Name: "has spaces", URL: "https://x.invalid", TokenID: "id", TokenSecret: "secret"},
+			row:  store.ClusterRow{Name: "has spaces", URL: testInvalidClusterURL, TokenID: testClusterTokenID, TokenSecret: testClusterTokenSecret},
 			want: store.ErrInvalidClusterName,
 		},
 		{
 			name: "empty URL",
-			row:  store.ClusterRow{Name: "valid-name", URL: "", TokenID: "id", TokenSecret: "secret"},
+			row:  store.ClusterRow{Name: "valid-name", URL: "", TokenID: testClusterTokenID, TokenSecret: testClusterTokenSecret},
 			want: nil,
 		},
 		{
 			name: "empty token ID",
-			row:  store.ClusterRow{Name: "valid-name-2", URL: "https://x.invalid", TokenID: "", TokenSecret: "secret"},
+			row:  store.ClusterRow{Name: "valid-name-2", URL: testInvalidClusterURL, TokenID: "", TokenSecret: testClusterTokenSecret},
 			want: nil,
 		},
 		{
 			name: "empty token secret on create",
-			row:  store.ClusterRow{Name: "valid-name-3", URL: "https://x.invalid", TokenID: "id", TokenSecret: ""},
+			row:  store.ClusterRow{Name: "valid-name-3", URL: testInvalidClusterURL, TokenID: testClusterTokenID, TokenSecret: ""},
 			want: nil,
 		},
 	}
@@ -234,9 +243,9 @@ func TestCreateCluster_WithDisplayName(t *testing.T) {
 	row := store.ClusterRow{
 		Name:        "display-test",
 		DisplayName: "My Display Name",
-		URL:         "https://display.invalid",
-		TokenID:     "id",
-		TokenSecret: "secret",
+		URL:         testDisplayClusterURL,
+		TokenID:     testClusterTokenID,
+		TokenSecret: testClusterTokenSecret,
 	}
 
 	if err := st.CreateCluster(ctx, row); err != nil {
@@ -247,6 +256,7 @@ func TestCreateCluster_WithDisplayName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetCluster: %v", err)
 	}
+
 	if stored.DisplayName != row.DisplayName {
 		t.Errorf("DisplayName = %q, want %q", stored.DisplayName, row.DisplayName)
 	}
@@ -262,7 +272,7 @@ func TestCreateCluster_WithCreatedAt(t *testing.T) {
 		Name:        "custom-time",
 		URL:         "https://time.invalid",
 		TokenID:     "id",
-		TokenSecret: "secret",
+		TokenSecret: testClusterTokenSecret,
 		CreatedAt:   customTime,
 	}
 
@@ -274,6 +284,7 @@ func TestCreateCluster_WithCreatedAt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetCluster: %v", err)
 	}
+
 	if !stored.CreatedAt.Equal(customTime) {
 		t.Errorf("CreatedAt = %v, want %v", stored.CreatedAt, customTime)
 	}
@@ -285,20 +296,23 @@ func TestSetClusterTestResult_Success(t *testing.T) {
 	ctx := context.Background()
 
 	testedAt := time.Now().UTC()
-	if err := st.SetClusterTestResult(ctx, "default", "ok", "8.2.4", "all good", testedAt); err != nil {
+	if err := st.SetClusterTestResult(ctx, testStoreCluster, "ok", "8.2.4", "all good", testedAt); err != nil {
 		t.Fatalf("SetClusterTestResult: %v", err)
 	}
 
-	stored, err := st.GetCluster(ctx, "default")
+	stored, err := st.GetCluster(ctx, testStoreCluster)
 	if err != nil {
 		t.Fatalf("GetCluster: %v", err)
 	}
+
 	if stored.LastTestStatus == nil || *stored.LastTestStatus != "ok" {
 		t.Errorf("LastTestStatus = %v, want \"ok\"", stored.LastTestStatus)
 	}
+
 	if stored.ProxmoxVersion != "8.2.4" {
 		t.Errorf("ProxmoxVersion = %q, want \"8.2.4\"", stored.ProxmoxVersion)
 	}
+
 	if stored.LastTestMessage == nil || *stored.LastTestMessage != "all good" {
 		t.Errorf("LastTestMessage = %v, want \"all good\"", stored.LastTestMessage)
 	}
@@ -319,26 +333,28 @@ func TestSetClusterOIDC_SuccessAndNotFound(t *testing.T) {
 	st := openClusterStore(t)
 	ctx := context.Background()
 
-	if err := st.SetClusterOIDC(ctx, "default", true); err != nil {
+	if err := st.SetClusterOIDC(ctx, testStoreCluster, true); err != nil {
 		t.Fatalf("SetClusterOIDC(true): %v", err)
 	}
 
-	stored, err := st.GetCluster(ctx, "default")
+	stored, err := st.GetCluster(ctx, testStoreCluster)
 	if err != nil {
 		t.Fatalf("GetCluster: %v", err)
 	}
+
 	if !stored.OIDCEnabled {
 		t.Error("OIDCEnabled = false, want true")
 	}
 
-	if err := st.SetClusterOIDC(ctx, "default", false); err != nil {
+	if err := st.SetClusterOIDC(ctx, testStoreCluster, false); err != nil {
 		t.Fatalf("SetClusterOIDC(false): %v", err)
 	}
 
-	stored, err = st.GetCluster(ctx, "default")
+	stored, err = st.GetCluster(ctx, testStoreCluster)
 	if err != nil {
 		t.Fatalf("GetCluster after disable: %v", err)
 	}
+
 	if stored.OIDCEnabled {
 		t.Error("OIDCEnabled = true, want false")
 	}
@@ -353,26 +369,28 @@ func TestSetClusterDisplayName_SuccessAndClearAndNotFound(t *testing.T) {
 	st := openClusterStore(t)
 	ctx := context.Background()
 
-	if err := st.SetClusterDisplayName(ctx, "default", "Production Cluster"); err != nil {
+	if err := st.SetClusterDisplayName(ctx, testStoreCluster, "Production Cluster"); err != nil {
 		t.Fatalf("SetClusterDisplayName: %v", err)
 	}
 
-	stored, err := st.GetCluster(ctx, "default")
+	stored, err := st.GetCluster(ctx, testStoreCluster)
 	if err != nil {
 		t.Fatalf("GetCluster: %v", err)
 	}
+
 	if stored.DisplayName != "Production Cluster" {
 		t.Errorf("DisplayName = %q, want \"Production Cluster\"", stored.DisplayName)
 	}
 
-	if err := st.SetClusterDisplayName(ctx, "default", ""); err != nil {
+	if err := st.SetClusterDisplayName(ctx, testStoreCluster, ""); err != nil {
 		t.Fatalf("SetClusterDisplayName(clear): %v", err)
 	}
 
-	stored, err = st.GetCluster(ctx, "default")
+	stored, err = st.GetCluster(ctx, testStoreCluster)
 	if err != nil {
 		t.Fatalf("GetCluster after clear: %v", err)
 	}
+
 	if stored.DisplayName != "" {
 		t.Errorf("DisplayName = %q, want empty", stored.DisplayName)
 	}
@@ -398,11 +416,12 @@ func TestSoftDeleteCluster_RestoresAndClearsTestResults(t *testing.T) {
 	ctx := context.Background()
 
 	row := store.ClusterRow{
-		Name: "restore-test", URL: "https://restore.invalid", TokenID: "id", TokenSecret: "secret",
+		Name: "restore-test", URL: testRestoreClusterURL, TokenID: testClusterTokenID, TokenSecret: testClusterTokenSecret,
 	}
 	if err := st.CreateCluster(ctx, row); err != nil {
 		t.Fatalf("CreateCluster: %v", err)
 	}
+
 	if err := st.SetClusterTestResult(ctx, row.Name, "ok", "8.0", "msg", time.Now().UTC()); err != nil {
 		t.Fatalf("SetClusterTestResult: %v", err)
 	}
@@ -420,12 +439,15 @@ func TestSoftDeleteCluster_RestoresAndClearsTestResults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetCluster after reactivation: %v", err)
 	}
+
 	if stored.LastTestStatus != nil {
 		t.Errorf("LastTestStatus = %v, want nil after reactivation", stored.LastTestStatus)
 	}
+
 	if stored.ProxmoxVersion != "" {
 		t.Errorf("ProxmoxVersion = %q, want empty after reactivation", stored.ProxmoxVersion)
 	}
+
 	if stored.TokenSecret != "reactivated-secret" {
 		t.Errorf("TokenSecret = %q, want reactivated-secret", stored.TokenSecret)
 	}
