@@ -7,6 +7,11 @@ import (
 	"pvmss/server/internal/catalog"
 )
 
+// maxCloudInitTemplateBody is the explicit server-side content cap for an
+// admin cloud-init template. It matches cloudinit.MaxSnippetSize so admin
+// templates and VM snippets share the same boundary.
+const maxCloudInitTemplateBody = 16 * 1024
+
 // --- Cloud-init template DTOs (T18) ---
 
 type adminCloudInitTemplateDTO struct {
@@ -60,8 +65,13 @@ func (h *AdminCatalog) ServeCloudInitTemplates(w http.ResponseWriter, r *http.Re
 // ServeCloudInitTemplateCreate handles POST /api/v1/admin/cloudinit-templates.
 func (h *AdminCatalog) ServeCloudInitTemplateCreate(w http.ResponseWriter, r *http.Request) {
 	var req cloudInitTemplateCreateRequest
-	if err := decodeJSON(w, r, &req); err != nil {
+	if err := decodeJSONLimit(w, r, &req, maxCloudInitTemplateBody+4*1024); err != nil {
 		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		return
+	}
+
+	if len(req.Content) > maxCloudInitTemplateBody {
+		writeAdminError(w, http.StatusBadRequest, "invalid_content", "content exceeds the maximum size of 16 KiB")
 		return
 	}
 
@@ -104,8 +114,13 @@ func (h *AdminCatalog) ServeCloudInitTemplateUpdate(w http.ResponseWriter, r *ht
 	}
 
 	var req cloudInitTemplateUpdateRequest
-	if err := decodeJSON(w, r, &req); err != nil {
+	if err := decodeJSONLimit(w, r, &req, maxCloudInitTemplateBody+4*1024); err != nil {
 		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		return
+	}
+
+	if len(req.Content) > maxCloudInitTemplateBody {
+		writeAdminError(w, http.StatusBadRequest, "invalid_content", "content exceeds the maximum size of 16 KiB")
 		return
 	}
 

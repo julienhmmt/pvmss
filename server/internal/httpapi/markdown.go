@@ -3,6 +3,7 @@ package httpapi
 
 import (
 	"html"
+	"net/url"
 	"regexp"
 	"strings"
 )
@@ -306,10 +307,7 @@ func renderInline(text string) string {
 	})
 
 	// Links: [text](dest) — text and dest are already HTML-escaped.
-	protected = linkRe.ReplaceAllStringFunc(protected, func(match string) string {
-		m := linkRe.FindStringSubmatch(match)
-		return renderLink(m[1], m[2])
-	})
+	protected = renderLinks(protected)
 
 	// Bold **x** then italic *x* / _x_. The italic patterns capture the inner
 	// text only (delimiters excluded) so the replacement does not re-emit them.
@@ -327,27 +325,135 @@ func renderInline(text string) string {
 
 var (
 	inlineCodeRe       = regexp.MustCompile("`[^`]+`")
-	linkRe             = regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
 	boldRe             = regexp.MustCompile(`\*\*([^*]+)\*\*`)
 	italicStarRe       = regexp.MustCompile(`\*([^*]+)\*`)
 	italicUnderscoreRe = regexp.MustCompile(`_([^_]+)_`)
 )
 
-// renderLink emits an <a> tag, adding target/rel only for external destinations.
+// renderLink emits an <a> tag for allowed URL schemes. External http(s) links
+// get target="_blank" and rel="noopener noreferrer"; mailto and relative paths
+// do not. Dangerous schemes (javascript:, data:, vbscript:, etc.) and
+// protocol-relative references are rendered as plain text so they cannot be
+// activated.
+//
 // Both text and dest are already HTML-escaped by renderInline, so they are
-// inserted verbatim.
+// inserted verbatim when a link is emitted.
 func renderLink(text, dest string) string {
-	if isExternalLink(dest) {
+	safe, external := safeURL(dest)
+	if !safe {
+		return text
+	}
+
+	if external {
 		return "<a href=\"" + dest + "\" target=\"_blank\" rel=\"noopener noreferrer\">" + text + "</a>"
 	}
 
 	return "<a href=\"" + dest + "\">" + text + "</a>"
 }
 
-// isExternalLink reports whether dest is an absolute http(s) or protocol-relative URL.
-func isExternalLink(dest string) bool {
-	lower := strings.ToLower(dest)
-	return strings.HasPrefix(lower, "http://") || strings.HasPrefix(lower, "https://") || strings.HasPrefix(lower, "//")
+// safeURL parses a link destination and classifies it as safe or unsafe. It
+// returns safe=true for http:, https:, mailto:, and relative paths; it rejects
+// javascript:, data:, vbscript:, and mixed-case/whitespace variants.
+// external is true only for http and https destinations.
+func safeURL(dest string) (safe, external bool) {
+	u, err := url.Parse(strings.TrimSpace(dest))
+	if err != nil || u == nil {
+		return false, false
+	}
+
+	if u.Scheme == "" {
+		// Reject protocol-relative references like //example.com because the
+		// browser resolves them against the current scheme and they are not
+		// relative paths.
+		if u.Host != "" {
+			return false, false
+		}
+
+		return true, false
+	}
+
+	switch strings.ToLower(u.Scheme) {
+	case "http", "https":
+		return true, true
+	case "mailto":
+		return true, false
+	default:
+		return false, false
+	}
+}
+
+// renderLinks scans s for [text](dest) links and emits them through renderLink.
+// It handles URLs that contain their own parentheses by tracking the paren
+// balance, so [click](javascript:alert(1)) is parsed as a single link.
+func renderLinks(s string) string {
+	var out strings.Builder
+	for i := 0; i < len(s); {
+		if s[i] != '[' {
+			out.WriteByte(s[i])
+			i++
+
+			continue
+		}
+
+		next, text, dest, ok := extractLink(s, i)
+		if !ok {
+			out.WriteByte(s[i])
+			i++
+
+			continue
+		}
+
+		out.WriteString(renderLink(text, dest))
+		i = next
+	}
+
+	return out.String()
+}
+
+// extractLink attempts to parse a Markdown link starting at s[start] where
+// s[start] == '['. It returns the index just after the closing ')', the link
+// text, the destination, and ok=true on success.
+func extractLink(s string, start int) (next int, text, dest string, ok bool) {
+	if s[start] != '[' {
+		return 0, "", "", false
+	}
+
+	// Find the closing ']' for the link text.
+	closeBracket := strings.IndexByte(s[start+1:], ']')
+	if closeBracket == -1 {
+		return 0, "", "", false
+	}
+
+	textEnd := start + 1 + closeBracket
+	if textEnd+1 >= len(s) || s[textEnd+1] != '(' {
+		return 0, "", "", false
+	}
+
+	destStart := textEnd + 2
+	parenCount := 0
+	for j := destStart; j < len(s); j++ {
+		c := s[j]
+		if c == '(' {
+			parenCount++
+
+			continue
+		}
+
+		if c == ')' {
+			if parenCount > 0 {
+				parenCount--
+
+				continue
+			}
+
+			text = s[start+1 : textEnd]
+			dest = s[destStart:j]
+
+			return j + 1, text, dest, true
+		}
+	}
+
+	return 0, "", "", false
 }
 
 func escapeHTML(s string) string {
