@@ -97,7 +97,7 @@ func TestAdminStorages_ToggleOnePairLeavesSameNamedPairUntouched(t *testing.T) {
 			t.Error("local@pve-node-02 should be disabled after toggle")
 		}
 
-		if s.Name == "local" && s.Node == "pve-node-01" && s.Enabled {
+		if s.Name == "local" && s.Node == testNodePVE01 && s.Enabled {
 			t.Error("local@pve-node-01 should still be disabled (unaffected)")
 		}
 	}

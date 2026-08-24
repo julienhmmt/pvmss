@@ -13,6 +13,15 @@ import (
 	_ "modernc.org/sqlite" // pure-Go SQLite driver
 )
 
+const (
+	recoverCmd      = "pvmss-recover"
+	legacyDBFlag    = "--legacy-db"
+	v04DBFlag       = "--v0.4-db"
+	clusterNameFlag = "--cluster-name"
+	dryRunFlag      = "--dry-run"
+	testClusterName = "test-cluster"
+)
+
 // legacySchemaDDL is the v0.3 schema the recovery tool reads, transcribed
 // from internal/recovery/fixture_test.go so this white-box cmd test can
 // build a legacy fixture without importing the recovery_test package.
@@ -86,6 +95,7 @@ func buildLegacyFixture(t *testing.T) string {
 	t.Helper()
 
 	path := filepath.Join(t.TempDir(), "legacy.db")
+
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		t.Fatalf("open legacy fixture: %v", err)
@@ -98,6 +108,7 @@ func buildLegacyFixture(t *testing.T) string {
 
 	exec := func(q string, args ...any) {
 		t.Helper()
+
 		if _, err := db.ExecContext(ctx, q, args...); err != nil {
 			t.Fatalf("seed %q: %v", q, err)
 		}
@@ -138,6 +149,7 @@ func resetFlags(t *testing.T, args []string) (restore func(), stdout func() stri
 	if err != nil {
 		t.Fatalf("create stdout pipe: %v", err)
 	}
+
 	os.Stdout = w
 
 	return func() {
@@ -148,6 +160,7 @@ func resetFlags(t *testing.T, args []string) (restore func(), stdout func() stri
 		}, func() string {
 			out, _ := io.ReadAll(r)
 			_ = r.Close()
+
 			return string(out)
 		}
 }
@@ -173,6 +186,7 @@ func TestOpenSQLite_ReadWrite_CreatesNew(t *testing.T) {
 	t.Parallel()
 
 	path := filepath.Join(t.TempDir(), "fresh.db")
+
 	db, err := openSQLite(path, false)
 	if err != nil {
 		t.Fatalf("openSQLite read-write: %v", err)
@@ -191,13 +205,16 @@ func TestOpenSQLite_ReadOnly_Existing(t *testing.T) {
 	t.Parallel()
 
 	path := filepath.Join(t.TempDir(), "existing.db")
+
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		t.Fatalf("create db: %v", err)
 	}
+
 	if _, err := db.ExecContext(context.Background(), `CREATE TABLE t (c INTEGER)`); err != nil {
 		t.Fatalf("seed table: %v", err)
 	}
+
 	if err := db.Close(); err != nil {
 		t.Fatalf("close: %v", err)
 	}
@@ -214,8 +231,9 @@ func TestOpenSQLite_ReadOnly_Existing(t *testing.T) {
 	_ = ro.Close()
 }
 
+//nolint:paralleltest // serial: mutates global flag.CommandLine, os.Args and os.Stdout
 func TestRun_MissingFlags_Returns1(t *testing.T) {
-	restore, _ := resetFlags(t, []string{"pvmss-recover"})
+	restore, _ := resetFlags(t, []string{recoverCmd})
 	defer restore()
 
 	if code := run(); code != 1 {
@@ -223,15 +241,16 @@ func TestRun_MissingFlags_Returns1(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: mutates global flag.CommandLine, os.Args and os.Stdout
 func TestRun_InvalidClusterName_Returns2(t *testing.T) {
 	legacyPath := buildLegacyFixture(t)
 	v04Path := filepath.Join(t.TempDir(), "v04.db")
 
 	restore, _ := resetFlags(t, []string{
-		"pvmss-recover",
-		"--legacy-db", legacyPath,
-		"--v0.4-db", v04Path,
-		"--cluster-name", "Not Valid!",
+		recoverCmd,
+		legacyDBFlag, legacyPath,
+		v04DBFlag, v04Path,
+		clusterNameFlag, "Not Valid!",
 	})
 	defer restore()
 
@@ -240,15 +259,16 @@ func TestRun_InvalidClusterName_Returns2(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: mutates global flag.CommandLine, os.Args and os.Stdout
 func TestRun_LegacyDBNotFound_Returns1(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "missing.db")
 	v04Path := filepath.Join(t.TempDir(), "v04.db")
 
 	restore, _ := resetFlags(t, []string{
-		"pvmss-recover",
-		"--legacy-db", missing,
-		"--v0.4-db", v04Path,
-		"--cluster-name", "test-cluster",
+		recoverCmd,
+		legacyDBFlag, missing,
+		v04DBFlag, v04Path,
+		clusterNameFlag, testClusterName,
 	})
 	defer restore()
 
@@ -257,17 +277,18 @@ func TestRun_LegacyDBNotFound_Returns1(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: mutates global flag.CommandLine, os.Args and os.Stdout
 func TestRun_DryRun_Success(t *testing.T) {
 	legacyPath := buildLegacyFixture(t)
 	v04Path := filepath.Join(t.TempDir(), "v04.db")
 
 	restore, _ := resetFlags(t, []string{
-		"pvmss-recover",
-		"--legacy-db", legacyPath,
-		"--v0.4-db", v04Path,
-		"--cluster-name", "test-cluster",
+		recoverCmd,
+		legacyDBFlag, legacyPath,
+		v04DBFlag, v04Path,
+		clusterNameFlag, testClusterName,
 		"--session-secret", "test-session-secret-at-least-32-bytes!!",
-		"--dry-run",
+		dryRunFlag,
 	})
 	defer restore()
 
@@ -277,21 +298,24 @@ func TestRun_DryRun_Success(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: mutates global flag.CommandLine, os.Args and os.Stdout
 func TestRun_DryRun_StorageSkippedWithoutCreds(t *testing.T) {
 	legacyPath := buildLegacyFixture(t)
 	v04Path := filepath.Join(t.TempDir(), "v04.db")
 
 	restore, stdout := resetFlags(t, []string{
-		"pvmss-recover",
-		"--legacy-db", legacyPath,
-		"--v0.4-db", v04Path,
-		"--cluster-name", "test-cluster",
+		recoverCmd,
+		legacyDBFlag, legacyPath,
+		v04DBFlag, v04Path,
+		clusterNameFlag, testClusterName,
 		"--session-secret", "test-session-secret-at-least-32-bytes!!",
-		"--dry-run",
+		dryRunFlag,
 	})
 
 	code := run()
+
 	restore()
+
 	output := stdout()
 
 	if code != 0 {
@@ -314,11 +338,11 @@ func TestRun_SessionSecretFromEnv(t *testing.T) {
 	t.Setenv("SESSION_SECRET", "env-session-secret-at-least-32-bytes!!")
 
 	restore, _ := resetFlags(t, []string{
-		"pvmss-recover",
-		"--legacy-db", legacyPath,
-		"--v0.4-db", v04Path,
-		"--cluster-name", "test-cluster",
-		"--dry-run",
+		recoverCmd,
+		legacyDBFlag, legacyPath,
+		v04DBFlag, v04Path,
+		clusterNameFlag, testClusterName,
+		dryRunFlag,
 	})
 	defer restore()
 
@@ -327,23 +351,26 @@ func TestRun_SessionSecretFromEnv(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: mutates global flag.CommandLine, os.Args and os.Stdout
 func TestRun_ProxmoxCredsFromFlags(t *testing.T) {
 	legacyPath := buildLegacyFixture(t)
 	v04Path := filepath.Join(t.TempDir(), "v04.db")
 
 	restore, stdout := resetFlags(t, []string{
-		"pvmss-recover",
-		"--legacy-db", legacyPath,
-		"--v0.4-db", v04Path,
-		"--cluster-name", "test-cluster",
+		recoverCmd,
+		legacyDBFlag, legacyPath,
+		v04DBFlag, v04Path,
+		clusterNameFlag, testClusterName,
 		"--session-secret", "test-session-secret-at-least-32-bytes!!",
 		"--proxmox-url", "https://pve.example.com:8006/api2/json",
 		"--proxmox-token-id", "pve-test-token",
-		"--dry-run",
+		dryRunFlag,
 	})
 
 	code := run()
+
 	restore()
+
 	output := stdout()
 
 	if code != 0 {

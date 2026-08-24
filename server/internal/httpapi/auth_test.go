@@ -73,7 +73,7 @@ func TestAuth_Me_RefreshesClusterDisplayName(t *testing.T) {
 	// The fake seed should already have set a display name, but simulate an
 	// old session by clearing it and then updating the row after login.
 	ctx := context.Background()
-	if err := st.SetClusterDisplayName(ctx, "default", ""); err != nil {
+	if err := st.SetClusterDisplayName(ctx, auditTestCluster, ""); err != nil {
 		t.Fatalf("clear DisplayName: %v", err)
 	}
 
@@ -99,7 +99,7 @@ func TestAuth_Me_RefreshesClusterDisplayName(t *testing.T) {
 
 	// Now update the row with a custom display name and verify the same
 	// session sees it on the next /me call, without re-login.
-	if err := st.SetClusterDisplayName(ctx, "default", "Prod PVE"); err != nil {
+	if err := st.SetClusterDisplayName(ctx, auditTestCluster, "Prod PVE"); err != nil {
 		t.Fatalf("SetClusterDisplayName: %v", err)
 	}
 
@@ -200,7 +200,7 @@ func TestAuth_CreateToken_ResolvesBearerPrincipal(t *testing.T) {
 		t.Fatalf("Principal: %v", err)
 	}
 
-	if identity != (auth.Identity{Username: "alice@pve", DisplayName: "alice", Pool: "pool-alice"}) {
+	if identity != (auth.Identity{Username: auditTestActor, DisplayName: "alice", Pool: "pool-alice"}) {
 		t.Fatalf("identity = %+v", identity)
 	}
 }

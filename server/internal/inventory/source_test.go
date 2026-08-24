@@ -56,6 +56,7 @@ func TestIndex_Lookup_FoundAndNotFound(t *testing.T) {
 				if got.VMID != tc.wantVM.VMID {
 					t.Errorf("VMID = %d, want %d", got.VMID, tc.wantVM.VMID)
 				}
+
 				if got.Name != tc.wantVM.Name {
 					t.Errorf("Name = %q, want %q", got.Name, tc.wantVM.Name)
 				}
@@ -128,7 +129,7 @@ func TestRegistry_Lookup_FoundAndNotFound(t *testing.T) {
 	t.Parallel()
 
 	idx := inventory.BuildIndex(fakeSnapshot())
-	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{"default": &idx})
+	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{inventoryTestCluster: &idx})
 
 	cases := []struct {
 		name        string
@@ -136,8 +137,8 @@ func TestRegistry_Lookup_FoundAndNotFound(t *testing.T) {
 		vmid        int
 		wantOK      bool
 	}{
-		{"found default vmid 100", "default", 100, true},
-		{"not found default vmid 999", "default", 999, false},
+		{"found default vmid 100", inventoryTestCluster, 100, true},
+		{"not found default vmid 999", inventoryTestCluster, 999, false},
 		{"unknown cluster", "nonexistent", 100, false},
 	}
 
@@ -161,16 +162,16 @@ func TestRegistry_All_ReturnsClusterIndexes(t *testing.T) {
 	t.Parallel()
 
 	idx := inventory.BuildIndex(fakeSnapshot())
-	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{"default": &idx})
+	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{inventoryTestCluster: &idx})
 
 	all := registry.All()
 	if len(all) != 1 {
 		t.Fatalf("len(All) = %d, want 1", len(all))
 	}
 
-	got, ok := all["default"]
+	got, ok := all[inventoryTestCluster]
 	if !ok {
-		t.Fatal(`missing "default" key in Registry.All() result`)
+		t.Fatal(`missing inventoryTestCluster key in Registry.All() result`)
 	}
 
 	if got == nil {

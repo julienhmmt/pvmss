@@ -288,7 +288,7 @@ func TestAdminNodes_ClusterRequiredOnceMultipleConfigured(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode error body: %v", err)
 	}
-	if body.Code != "cluster_required" {
+	if body.Code != apiCodeClusterRequired {
 		t.Fatalf("error code = %q, want cluster_required", body.Code)
 	}
 }

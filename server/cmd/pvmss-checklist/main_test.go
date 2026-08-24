@@ -43,6 +43,7 @@ func buildChecklistBinary(ctx context.Context, t *testing.T, repoRoot string) st
 	cmd.Dir = filepath.Join(repoRoot, "server")
 
 	var stderr bytes.Buffer
+
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
@@ -125,7 +126,9 @@ func TestChecklistCLI_MissingFicheDirs_ExitZero(t *testing.T) {
 	bin := buildChecklistBinary(ctx, t, repoRoot)
 
 	emptyRoot := t.TempDir()
+
 	out, err := exec.CommandContext(ctx, bin, "--repo-root", emptyRoot).CombinedOutput() //nolint:gosec // test invokes its own freshly built binary
+
 	if code := exitCodeOf(t, err); code != 0 {
 		t.Fatalf("pvmss-checklist with empty repo-root exit=%d, want 0:\n%s", code, out)
 	}
@@ -150,7 +153,8 @@ func TestChecklistCLI_UnreadableDir_ExitOne(t *testing.T) {
 	if err := os.Chmod(filepath.Join(unreadable, ".claude", "v0.4", "auth"), 0o000); err != nil {
 		t.Fatalf("chmod unreadable: %v", err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(filepath.Join(unreadable, ".claude", "v0.4", "auth"), 0o750) })
+
+	t.Cleanup(func() { _ = os.Chmod(filepath.Join(unreadable, ".claude", "v0.4", "auth"), 0o750) }) //nolint:gosec // G302: restores temp dir perms for cleanup
 
 	if code := exitCodeOf(t, exec.CommandContext(ctx, bin, "--repo-root", unreadable).Run()); code != 1 { //nolint:gosec // test invokes its own freshly built binary
 		t.Fatalf("pvmss-checklist with unreadable dir exit=%d, want 1", code)

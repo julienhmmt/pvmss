@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"pvmss/server/internal/httpapi"
 	"strings"
 	"testing"
 	"time"
@@ -16,10 +17,12 @@ func TestVMMetricsCoverage_History_Unauthenticated(t *testing.T) {
 	handler, _ := newVMMetricsHandler(t)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, metricsRequest("/api/v1/vms/default/100/metrics/history?range=hour", nil))
+
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
 	}
-	assertAPIError(t, rec.Body.Bytes(), "unauthenticated")
+
+	assertAPIError(t, rec.Body.Bytes(), apiCodeUnauthenticated)
 }
 
 //nolint:paralleltest // serial: shared fake fixtures
@@ -28,46 +31,48 @@ func TestVMMetricsCoverage_History_InvalidRange(t *testing.T) {
 	cookie := aliceCookie(t, authHandler)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, metricsRequest("/api/v1/vms/default/100/metrics/history?range=bad", cookie))
+
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
-	assertAPIError(t, rec.Body.Bytes(), "invalid_range")
+
+	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidRange)
 }
 
-//nolint:paralleltest // serial: shared fake fixtures
+func assertMetricsHistoryRange(t *testing.T, handler *httpapi.VMMetrics, cookie *http.Cookie, want string) {
+	t.Helper()
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, metricsRequest("/api/v1/vms/default/100/metrics/history?range="+want, cookie))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var body metricsHistoryResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	if body.Range != want {
+		t.Errorf("range = %q, want %q", body.Range, want)
+	}
+}
+
 func TestVMMetricsCoverage_History_DayRange(t *testing.T) {
+	t.Parallel()
+
 	handler, authHandler := newVMMetricsHandler(t)
 	cookie := aliceCookie(t, authHandler)
-	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, metricsRequest("/api/v1/vms/default/100/metrics/history?range=day", cookie))
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
-	}
-	var body metricsHistoryResponse
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	if body.Range != "day" {
-		t.Errorf("range = %q, want day", body.Range)
-	}
+	assertMetricsHistoryRange(t, handler, cookie, "day")
 }
 
-//nolint:paralleltest // serial: shared fake fixtures
 func TestVMMetricsCoverage_History_WeekRange(t *testing.T) {
+	t.Parallel()
+
 	handler, authHandler := newVMMetricsHandler(t)
 	cookie := aliceCookie(t, authHandler)
-	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, metricsRequest("/api/v1/vms/default/100/metrics/history?range=week", cookie))
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
-	}
-	var body metricsHistoryResponse
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	if body.Range != "week" {
-		t.Errorf("range = %q, want week", body.Range)
-	}
+	assertMetricsHistoryRange(t, handler, cookie, "week")
 }
 
 //nolint:paralleltest // serial: shared fake fixtures
@@ -76,10 +81,12 @@ func TestVMMetricsCoverage_History_UntaggedNotFound(t *testing.T) {
 	cookie := aliceCookie(t, authHandler)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, metricsRequest("/api/v1/vms/default/109/metrics/history?range=hour", cookie))
+
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusNotFound, rec.Body.String())
 	}
-	assertAPIError(t, rec.Body.Bytes(), "not_found")
+
+	assertAPIError(t, rec.Body.Bytes(), apiCodeNotFound)
 }
 
 //nolint:paralleltest // serial: shared fake fixtures
@@ -88,6 +95,7 @@ func TestVMMetricsCoverage_History_AdminSeesAnyTaggedVM(t *testing.T) {
 	cookie := adminCookie(t, authHandler)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, metricsRequest("/api/v1/vms/default/103/metrics/history?range=hour", cookie))
+
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
 	}
@@ -98,10 +106,12 @@ func TestVMMetricsCoverage_Stream_Unauthenticated(t *testing.T) {
 	handler, _ := newVMMetricsHandler(t)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, metricsRequest("/api/v1/vms/default/100/metrics/stream", nil))
+
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
 	}
-	assertAPIError(t, rec.Body.Bytes(), "unauthenticated")
+
+	assertAPIError(t, rec.Body.Bytes(), apiCodeUnauthenticated)
 }
 
 //nolint:paralleltest // serial: shared fake fixtures
@@ -110,6 +120,7 @@ func TestVMMetricsCoverage_Stream_NonOwnerForbidden(t *testing.T) {
 	cookie := bobCookie(t, authHandler)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, metricsRequest("/api/v1/vms/default/100/metrics/stream", cookie))
+
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusForbidden, rec.Body.String())
 	}
@@ -121,6 +132,7 @@ func TestVMMetricsCoverage_Stream_UntaggedNotFound(t *testing.T) {
 	cookie := aliceCookie(t, authHandler)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, metricsRequest("/api/v1/vms/default/109/metrics/stream", cookie))
+
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusNotFound, rec.Body.String())
 	}
@@ -138,6 +150,7 @@ func TestVMMetricsCoverage_Stream_AdminSeesAnyTaggedVM(t *testing.T) {
 	rec := httptest.NewRecorder()
 
 	done := make(chan struct{})
+
 	go func() {
 		handler.ServeHTTP(rec, req)
 		close(done)
@@ -160,16 +173,18 @@ func TestVMMetricsCoverage_History_InvalidVMPath(t *testing.T) {
 	cookie := aliceCookie(t, authHandler)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/vms/default/abc/metrics/history?range=hour", nil)
-	req.SetPathValue("cluster", "default")
+	req.SetPathValue("cluster", auditTestCluster)
 	req.SetPathValue("vmid", "abc")
 	req.AddCookie(cookie)
 
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
+
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
-	assertAPIError(t, rec.Body.Bytes(), "invalid_request")
+
+	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidRequest)
 }
 
 //nolint:paralleltest // serial: shared fake fixtures
@@ -178,16 +193,18 @@ func TestVMMetricsCoverage_History_NegativeVMID(t *testing.T) {
 	cookie := aliceCookie(t, authHandler)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/vms/default/-1/metrics/history?range=hour", nil)
-	req.SetPathValue("cluster", "default")
+	req.SetPathValue("cluster", auditTestCluster)
 	req.SetPathValue("vmid", "-1")
 	req.AddCookie(cookie)
 
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
+
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
-	assertAPIError(t, rec.Body.Bytes(), "invalid_request")
+
+	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidRequest)
 }
 
 //nolint:paralleltest // serial: shared fake fixtures
@@ -197,6 +214,7 @@ func TestVMMetricsCoverage_Stream_PausedVMRejected(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, metricsRequest("/api/v1/vms/default/113/metrics/stream", cookie))
+
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusConflict, rec.Body.String())
 	}
@@ -214,6 +232,7 @@ func TestVMMetricsCoverage_Stream_ContentTypeAndRetryHeader(t *testing.T) {
 	rec := httptest.NewRecorder()
 
 	done := make(chan struct{})
+
 	go func() {
 		handler.ServeHTTP(rec, req)
 		close(done)

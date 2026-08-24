@@ -1,4 +1,3 @@
-//nolint:noctx // test scaffolding does not need real context
 package httpapi_test
 
 import (
@@ -66,6 +65,7 @@ func TestVmPatch_Unauthenticated(t *testing.T) {
 func detailInvalidPathRequest(method, path, body string, cookie *http.Cookie) *http.Request {
 	req := detailRequest(method, path, body, cookie)
 	req.SetPathValue("vmid", "abc")
+
 	return req
 }
 
@@ -81,7 +81,7 @@ func TestVmAction_InvalidPath(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
 
-	if env.Code != "invalid_request" {
+	if env.Code != apiCodeInvalidRequest {
 		t.Errorf("code = %q, want invalid_request", env.Code)
 	}
 }
@@ -98,7 +98,7 @@ func TestVmDelete_InvalidPath(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
 
-	if env.Code != "invalid_request" {
+	if env.Code != apiCodeInvalidRequest {
 		t.Errorf("code = %q, want invalid_request", env.Code)
 	}
 }
@@ -115,7 +115,7 @@ func TestVmPatch_InvalidPath(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
 
-	if env.Code != "invalid_request" {
+	if env.Code != apiCodeInvalidRequest {
 		t.Errorf("code = %q, want invalid_request", env.Code)
 	}
 }
@@ -132,7 +132,7 @@ func TestVMDetail_Disk_InvalidPath(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
 
-	if env.Code != "invalid_request" {
+	if env.Code != apiCodeInvalidRequest {
 		t.Errorf("code = %q, want invalid_request", env.Code)
 	}
 }
@@ -149,7 +149,7 @@ func TestVMDetail_CDROM_InvalidPath(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
 
-	if env.Code != "invalid_request" {
+	if env.Code != apiCodeInvalidRequest {
 		t.Errorf("code = %q, want invalid_request", env.Code)
 	}
 }
@@ -166,7 +166,7 @@ func TestVMDetail_Hardware_InvalidPath(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
 
-	if env.Code != "invalid_request" {
+	if env.Code != apiCodeInvalidRequest {
 		t.Errorf("code = %q, want invalid_request", env.Code)
 	}
 }
@@ -183,7 +183,7 @@ func TestVMDetail_EnableSerial_InvalidPath(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
 
-	if env.Code != "invalid_request" {
+	if env.Code != apiCodeInvalidRequest {
 		t.Errorf("code = %q, want invalid_request", env.Code)
 	}
 }
@@ -200,7 +200,7 @@ func TestVMDetail_Network_InvalidPath(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
 
-	if env.Code != "invalid_request" {
+	if env.Code != apiCodeInvalidRequest {
 		t.Errorf("code = %q, want invalid_request", env.Code)
 	}
 }
@@ -217,7 +217,7 @@ func TestVMDetail_Audit_InvalidPath(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
 
-	if env.Code != "invalid_request" {
+	if env.Code != apiCodeInvalidRequest {
 		t.Errorf("code = %q, want invalid_request", env.Code)
 	}
 }
@@ -234,7 +234,7 @@ func TestVMDetail_HardwareOptions_InvalidPath(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
 
-	if env.Code != "invalid_request" {
+	if env.Code != apiCodeInvalidRequest {
 		t.Errorf("code = %q, want invalid_request", env.Code)
 	}
 }
@@ -380,7 +380,7 @@ func TestVMDetail_Audit_ActorFilter(t *testing.T) {
 	}
 
 	for _, item := range page.Items {
-		if item.Actor != "alice@pve" {
+		if item.Actor != auditTestActor {
 			t.Errorf("actor = %q, want alice@pve (filtered)", item.Actor)
 		}
 	}
@@ -423,13 +423,14 @@ func TestVMDetail_Audit_Pagination(t *testing.T) {
 	cookie := adminCookie(t, authHandler)
 
 	// Seed 25 entries so page 1 has 20 and page 2 has 5.
-	for i := 0; i < 25; i++ {
+	for range 25 {
 		seedAuditEntry(t, st, "admin@pve", "default", 100, "start")
 	}
 
 	// Page 1
 	rec1 := httptest.NewRecorder()
 	handler.ServeHTTP(rec1, detailRequest(http.MethodGet, "/api/v1/vms/default/100/audit?page=1", "", cookie))
+
 	if rec1.Code != http.StatusOK {
 		t.Fatalf("page 1 status = %d, want 200: %s", rec1.Code, rec1.Body.String())
 	}
@@ -455,6 +456,7 @@ func TestVMDetail_Audit_Pagination(t *testing.T) {
 	// Page 2
 	rec2 := httptest.NewRecorder()
 	handler.ServeHTTP(rec2, detailRequest(http.MethodGet, "/api/v1/vms/default/100/audit?page=2", "", cookie))
+
 	if rec2.Code != http.StatusOK {
 		t.Fatalf("page 2 status = %d, want 200: %s", rec2.Code, rec2.Body.String())
 	}
@@ -531,7 +533,7 @@ func TestVMDetail_DiskResize_InvalidBody(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
 
-	if env.Code != "invalid_request" {
+	if env.Code != apiCodeInvalidRequest {
 		t.Errorf("code = %q, want invalid_request", env.Code)
 	}
 }
@@ -564,12 +566,15 @@ func TestVMDetail_DiskDelete_OwnerSuccess_Scsi1(t *testing.T) {
 	}
 
 	calls := cluster.FakeCallsFor(101)
+
 	var hasDelete bool
+
 	for _, c := range calls {
 		if c.Action == "delete_disk" && c.DiskKey == "scsi1" {
 			hasDelete = true
 		}
 	}
+
 	if !hasDelete {
 		t.Errorf("fake did not record a delete_disk call for scsi1: %+v", calls)
 	}
@@ -773,6 +778,7 @@ func TestVMDetail_DiskDelete_RunningVMRejected(t *testing.T) {
 	// VM 101 is stopped with disks scsi0 and scsi1. Start it first.
 	startRec := httptest.NewRecorder()
 	handler.ServeHTTP(startRec, detailRequest(http.MethodPost, "/api/v1/vms/default/101/actions", `{"action":"start"}`, cookie))
+
 	if startRec.Code != http.StatusOK {
 		t.Fatalf("start VM: status = %d, want 200: %s", startRec.Code, startRec.Body.String())
 	}

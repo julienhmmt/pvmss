@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -73,7 +74,7 @@ func TestRegisterAdminRoutes_AllGroupsRegistered(t *testing.T) {
 	}
 
 	for _, pattern := range wantRoutes {
-		req := httptest.NewRequest(methodFromPattern(pattern), pathFromPattern(pattern), nil)
+		req := httptest.NewRequestWithContext(context.Background(), methodFromPattern(pattern), pathFromPattern(pattern), nil)
 
 		_, pattern2 := mux.Handler(req)
 		if pattern2 != pattern {
@@ -90,7 +91,7 @@ func TestRegisterAdminRoutes_NilGroupsSkipped(t *testing.T) {
 
 	registerAdminRoutes(mux, cfg, func(_ string, next http.Handler) http.Handler { return next })
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/nodes", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/admin/nodes", nil)
 
 	_, pattern := mux.Handler(req)
 	if pattern != "" {
@@ -146,6 +147,7 @@ func substitutePathParams(path string) string {
 		}
 
 		if !inParam {
+			//nolint:gosec // G115: test helper converts small ASCII runes to bytes
 			result = append(result, byte(c))
 		}
 	}
