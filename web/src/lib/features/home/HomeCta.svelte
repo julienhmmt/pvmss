@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
 
 	/**
 	 * HomeCta — reads T02's session store (initialized/username/isAdmin) and
@@ -19,27 +20,27 @@
 <section class="flex flex-col items-center gap-4">
 	{#if !session.principal}
 		<div class="flex gap-3">
-			<a href={resolve('/login')} class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">
+			<ButtonLink href={resolve('/login')}>
 				{m['home.cta.login']()}
-			</a>
-			<a href={documentationHref()} class="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent">
+			</ButtonLink>
+			<ButtonLink href={documentationHref()} variant="secondary">
 				{m['home.cta.documentation']()}
-			</a>
+			</ButtonLink>
 		</div>
 	{:else}
 		<p class="text-lg text-foreground">{m['home.welcome']({ username: session.principal.displayName || session.principal.username })}</p>
 		<div class="flex gap-3">
 			{#if !session.principal.isAdmin}
-				<a href={resolve('/vms')} class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">
+				<ButtonLink href={resolve('/vms')}>
 					{m['home.cta.my_vms']()}
-				</a>
-				<a href={resolve('/vms/create')} class="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent">
+				</ButtonLink>
+				<ButtonLink href={resolve('/vms/create')} variant="secondary">
 					{m['home.cta.create_vm']()}
-				</a>
+				</ButtonLink>
 			{/if}
-			<a href={documentationHref()} class="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-accent">
+			<ButtonLink href={documentationHref()} variant="secondary">
 				{m['home.cta.documentation']()}
-			</a>
+			</ButtonLink>
 		</div>
 	{/if}
 </section>

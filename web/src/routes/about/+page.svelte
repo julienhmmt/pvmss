@@ -7,6 +7,7 @@
 	import FeatureAdminIcon from '$lib/shared/ui/icons/FeatureAdminIcon.svelte';
 	import FeatureSelfServiceIcon from '$lib/shared/ui/icons/FeatureSelfServiceIcon.svelte';
 	import StepNumberIcon from '$lib/shared/ui/icons/StepNumberIcon.svelte';
+	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
 
 	/**
 	 * /about — public product overview page. No auth required.
@@ -154,61 +155,40 @@
 
 		<div class="mt-4 flex flex-wrap gap-3" data-testid="about-cta-actions">
 			{#if !session.principal}
-				<a
-					href={resolve('/login')}
-					class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-				>
+				<ButtonLink href={resolve('/login')}>
 					{m['home.cta.login']()}
-				</a>
-				<a
-					href={resolve('/docs')}
-					class="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-				>
+				</ButtonLink>
+				<ButtonLink href={resolve('/docs')} variant="secondary">
 					{m['home.cta.documentation']()}
-				</a>
+				</ButtonLink>
 			{:else if session.principal.isAdmin}
-				<a
-					href={resolve('/admin')}
-					class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-				>
+				<ButtonLink href={resolve('/admin')}>
 					{m['chrome.sidebar.navAdmin']()}
-				</a>
-				<a
-					href={resolve('/docs')}
-					class="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-				>
+				</ButtonLink>
+				<ButtonLink href={resolve('/docs')} variant="secondary">
 					{m['home.cta.documentation']()}
-				</a>
+				</ButtonLink>
 			{:else}
-				<a
-					href={resolve('/vms')}
-					class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-				>
+				<ButtonLink href={resolve('/vms')}>
 					{m['home.cta.my_vms']()}
-				</a>
-				<a
-					href={resolve('/vms/create')}
-					class="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-				>
+				</ButtonLink>
+				<ButtonLink href={resolve('/vms/create')} variant="secondary">
 					{m['home.cta.create_vm']()}
-				</a>
-				<a
-					href={resolve('/docs')}
-					class="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-				>
+				</ButtonLink>
+				<ButtonLink href={resolve('/docs')} variant="secondary">
 					{m['home.cta.documentation']()}
-				</a>
+				</ButtonLink>
 			{/if}
 		</div>
 	</section>
 
 	<div class="mt-10">
-		<a
+		<ButtonLink
 			href={resolve('/')}
-			class="rounded-md border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+			variant="secondary"
 			data-testid="about-back-home"
 		>
 			{m['common.back']()}
-		</a>
+		</ButtonLink>
 	</div>
 </article>
