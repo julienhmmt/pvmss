@@ -733,6 +733,7 @@
   "admin.cloudinit.newTemplateForm": "New template",
   "admin.cloudinit.labelField": "Label",
   "admin.cloudinit.contentField": "Content (must start with #cloud-config)",
+  "admin.cloudinit.contentCounter": "{used} / {max} characters",
   "admin.cloudinit.loadError": "failed to load templates",
   "admin.cloudinit.createError": "failed to create template",
   "admin.cloudinit.updateError": "failed to update template",
