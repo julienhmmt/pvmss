@@ -51,6 +51,21 @@
 		onSave,
 		onSaveAndView
 	}: Props = $props();
+
+	// Match server/internal/httpapi/admin_docs.go's maxDocBody (4 KiB - 256 bytes headroom).
+	const MAX_DOC_BODY = 4 * 1024 - 256;
+
+	const bodyOverLimit = $derived(bodyMd.length > MAX_DOC_BODY);
+	const bodyError = $derived(
+		bodyOverLimit ? m['docs.bodyTooLong']({ max: String(MAX_DOC_BODY) }) : null
+	);
+	const canSubmit = $derived(
+		title.trim() !== '' &&
+			slug.trim() !== '' &&
+			category.trim() !== '' &&
+			bodyMd.trim() !== '' &&
+			!bodyOverLimit
+	);
 </script>
 
 <Dialog open={showForm} size="xl" labelledBy="docs-form-title" onClose={onCancel}>
@@ -140,7 +155,7 @@
 			checked={enabled}
 			onToggle={(checked) => onEnabledChange(checked)}
 		/>
-		<FormField label={m['docs.body']()} required>
+		<FormField label={m['docs.body']()} required error={bodyError}>
 			{#snippet children({ id, describedBy, invalid })}
 				<textarea
 					{id}
@@ -154,13 +169,16 @@
 				></textarea>
 			{/snippet}
 		</FormField>
+		<p class="text-right text-xs text-muted-foreground-subtle" class:text-destructive={bodyOverLimit}>
+			{m['docs.bodyLength']({ count: String(bodyMd.length), max: String(MAX_DOC_BODY) })}
+		</p>
 		<div class="flex justify-end gap-2 pt-2">
 			<Button variant="ghost" onclick={onCancel}>{m['docs.cancel']()}</Button>
-			<Button type="submit" disabled={saving}>
+			<Button type="submit" disabled={saving || !canSubmit}>
 				{saving ? `${m['docs.save']()}…` : editing ? m['docs.save']() : m['docs.create']()}
 			</Button>
 			{#if editing}
-				<Button variant="secondary" onclick={onSaveAndView} disabled={saving}>
+				<Button variant="secondary" onclick={onSaveAndView} disabled={saving || !canSubmit}>
 					{m['docs.saveAndView']()}
 				</Button>
 			{/if}
