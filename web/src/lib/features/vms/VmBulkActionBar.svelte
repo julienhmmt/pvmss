@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { getVmBulkContext } from './bulk.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const bulk = getVmBulkContext();
@@ -50,35 +52,34 @@
 
 		<form class="flex items-center gap-2" onsubmit={handleSubmit}>
 			<label for="vm-bulk-action" class="sr-only">{m['common.bulkAction']()}</label>
-			<select
+			<Select
 				id="vm-bulk-action"
-				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
 				bind:value={selectedAction}
+				options={ACTIONS.map((action) => ({ value: action.value, label: action.label() }))}
+				class="w-44"
 				data-testid="vm-bulk-action-select"
-			>
-				{#each ACTIONS as action (action.value)}
-					<option value={action.value}>{action.label()}</option>
-				{/each}
-			</select>
+			/>
 
-			<button
+			<Button
 				type="submit"
-				class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-				disabled={bulk.submitting}
+				loading={bulk.submitting}
+				disabled={!bulk.hasSelection}
+				size="sm"
 				data-testid="vm-bulk-action-submit"
 			>
 				{bulk.submitting ? m['common.applying']() : m['common.apply']()}
-			</button>
+			</Button>
 		</form>
 
-		<button
+		<Button
 			type="button"
-			class="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted"
+			variant="secondary"
+			size="sm"
 			onclick={handleClearSelection}
 			data-testid="vm-bulk-clear-selection"
 		>
 			{m['common.clearSelection']()}
-		</button>
+		</Button>
 
 		{#if submitError}
 			<p role="alert" class="text-sm text-destructive" data-testid="vm-bulk-submit-error">
@@ -93,14 +94,15 @@
 					·
 					<span class="font-medium text-destructive">{summary.error}</span> {m['common.failed']()}
 				</span>
-				<button
+				<Button
 					type="button"
-					class="text-sm text-muted-foreground hover:underline"
+					variant="ghost"
+					size="sm"
 					onclick={handleDismissResult}
 					data-testid="vm-bulk-dismiss-result"
 				>
 					{m['common.dismiss']()}
-				</button>
+				</Button>
 			</div>
 		{/if}
 	</div>
