@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { focusTrap } from './focus-trap';
 
 	type DialogSize = 'sm' | 'md' | 'lg' | 'xl';
 
@@ -20,18 +21,6 @@
 		xl: 'max-w-2xl'
 	};
 
-	let dialogEl = $state<HTMLDivElement | null>(null);
-	let triggerEl: Element | null = null;
-
-	$effect(() => {
-		if (open) {
-			triggerEl = document.activeElement;
-			dialogEl?.focus();
-		} else if (triggerEl instanceof HTMLElement) {
-			triggerEl.focus();
-		}
-	});
-
 	function handleKeydown(event: KeyboardEvent): void {
 		if (event.key === 'Escape') {
 			event.preventDefault();
@@ -48,7 +37,6 @@
 		onkeydown={handleKeydown}
 	>
 		<div
-			bind:this={dialogEl}
 			class="dialog-fade-in w-full {sizeClasses[size]} rounded-xl border border-border bg-card p-6 text-card-foreground shadow-card"
 			role="dialog"
 			aria-modal="true"
@@ -56,6 +44,7 @@
 			tabindex="-1"
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={handleKeydown}
+			use:focusTrap
 		>
 			{@render children()}
 		</div>
