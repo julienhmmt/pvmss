@@ -303,6 +303,7 @@ func createMigrationStandInTables(ctx context.Context, t *testing.T, db *sql.DB)
 	standins := []string{
 		`CREATE TABLE IF NOT EXISTS clusters (name TEXT PRIMARY KEY)`,
 		`CREATE TABLE IF NOT EXISTS catalog_isos (cluster TEXT NOT NULL, storage TEXT NOT NULL, file TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, storage, file))`,
+		`CREATE TABLE IF NOT EXISTS sessions (token_hash BLOB PRIMARY KEY)`,
 	}
 	for _, ddl := range standins {
 		if _, err := db.ExecContext(ctx, ddl); err != nil {
