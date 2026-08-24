@@ -27,6 +27,8 @@
 		onCancel,
 		onSubmit
 	}: Props = $props();
+
+	const MAX_CONTENT_LENGTH = 16384;
 </script>
 
 <Dialog open={showForm} size="lg" labelledBy="cloudinit-template-form-title" onClose={onCancel}>
@@ -54,10 +56,14 @@
 					aria-invalid={invalid ? 'true' : undefined}
 					class="pv-input font-mono text-xs"
 					rows="12"
+					maxlength={MAX_CONTENT_LENGTH}
 					value={content}
 					oninput={(e) => onContentChange(e.currentTarget.value)}
 					required
 				></textarea>
+				<p class="text-right text-xs text-muted-foreground">
+					{m['admin.cloudinit.contentCounter']({ used: content.length, max: MAX_CONTENT_LENGTH })}
+				</p>
 			{/snippet}
 		</FormField>
 		<div class="flex justify-end gap-2 pt-2">

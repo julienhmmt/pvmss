@@ -206,3 +206,74 @@ func TestIndexPlaceholder_MultiDigit(t *testing.T) {
 		}
 	}
 }
+
+// TestRenderMarkdownToHTML_DangerousURLSchemesRejected — the renderer escapes
+// or drops dangerous URLs while keeping http(s) links safe.
+func TestRenderMarkdownToHTML_DangerousURLSchemesRejected(t *testing.T) {
+	t.Parallel()
+
+	const noAnchor = "<a href"
+
+	cases := []struct {
+		name    string
+		md      string
+		want    string
+		notWant string
+	}{
+		{
+			name:    "javascript scheme rejected",
+			md:      "[click](javascript:alert(1))",
+			want:    "<p>click</p>",
+			notWant: noAnchor,
+		},
+		{
+			name:    "mixed-case javascript scheme rejected",
+			md:      "[click](JavaScript:alert(1))",
+			want:    "<p>click</p>",
+			notWant: noAnchor,
+		},
+		{
+			name:    "raw javascript not rendered as a link",
+			md:      "javascript:alert(1)",
+			notWant: noAnchor,
+		},
+		{
+			name:    "data scheme rejected",
+			md:      "[open](data:text/html,<script>alert(1)</script>)",
+			want:    "<p>open</p>",
+			notWant: noAnchor,
+		},
+		{
+			name:    "vbscript scheme rejected",
+			md:      "[run](vbscript:msgbox(1))",
+			want:    "<p>run</p>",
+			notWant: noAnchor,
+		},
+		{
+			name:    "raw img tag escaped",
+			md:      `<img src=x onerror=alert(1)>`,
+			want:    "&lt;img",
+			notWant: `<img`,
+		},
+		{
+			name: "valid https link gets target and rel",
+			md:   "[docs](https://example.com)",
+			want: `<a href="https://example.com" target="_blank" rel="noopener noreferrer">docs</a>`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := renderMarkdownToHTML(tc.md)
+
+			if tc.want != "" && !strings.Contains(got, tc.want) {
+				t.Fatalf("output %q missing %q", got, tc.want)
+			}
+
+			if tc.notWant != "" && strings.Contains(got, tc.notWant) {
+				t.Fatalf("output %q should not contain %q", got, tc.notWant)
+			}
+		})
+	}
+}
