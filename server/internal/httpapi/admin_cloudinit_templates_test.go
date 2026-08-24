@@ -3,6 +3,7 @@ package httpapi_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"pvmss/server/internal/httpapi"
@@ -218,6 +219,25 @@ func TestAdminCloudInitTemplates_CreateInvalidContent_Returns400(t *testing.T) {
 
 	rec := citPost(t, handler, authHandler, cookie, "/api/v1/admin/cloudinit-templates",
 		`{"cluster":"default","label":"Bad","content":"packages:\n  - nginx\n"}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+
+	assertAPIError(t, rec.Body.Bytes(), "invalid_content")
+}
+
+// TestAdminCloudInitTemplates_CreateOversized_Returns400 — content over the
+// 16 KiB cap is rejected before the catalog sees it.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestAdminCloudInitTemplates_CreateOversized_Returns400(t *testing.T) {
+	handler, authHandler, _ := newAdminHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	oversized := "#cloud-config\n" + strings.Repeat("x", 16*1024)
+	body := fmt.Sprintf(`{"cluster":"default","label":"Big","content":%q}`, oversized)
+
+	rec := citPost(t, handler, authHandler, cookie, "/api/v1/admin/cloudinit-templates", body)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}

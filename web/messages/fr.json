@@ -724,6 +724,7 @@
   "admin.cloudinit.newTemplateForm": "Nouveau modèle",
   "admin.cloudinit.labelField": "Libellé",
   "admin.cloudinit.contentField": "Contenu (doit commencer par #cloud-config)",
+  "admin.cloudinit.contentCounter": "{used} / {max} caractères",
   "admin.cloudinit.loadError": "échec du chargement des modèles",
   "admin.cloudinit.createError": "échec de la création du modèle",
   "admin.cloudinit.updateError": "échec de la mise à jour du modèle",
