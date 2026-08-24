@@ -19,7 +19,7 @@ type fakeClusterListerProvider struct {
 }
 
 func (f fakeClusterListerProvider) List() []string { return f.names }
-func (f fakeClusterListerProvider) Client(name string) (cluster.Client, error) {
+func (f fakeClusterListerProvider) Client(_ string) (cluster.Client, error) {
 	return cluster.Fake{}, nil
 }
 
@@ -33,7 +33,7 @@ func newAdminTagsMultiClusterHandler(t *testing.T) (*httpapi.AdminCatalog, *http
 	snap, _ := fake.Snapshot(context.Background())
 	idx := inventory.BuildIndex(snap)
 	projection := inventory.NewProjectionFromIndex(&idx)
-	registry := fakeClusterListerProvider{names: []string{"default", "secondary"}}
+	registry := fakeClusterListerProvider{names: []string{auditTestCluster, crossSecondaryCluster}}
 	adminCatalog := httpapi.NewAdminCatalogWithRegistry(authHandler, st, registry, projection, testLogger(t))
 
 	return adminCatalog, authHandler
@@ -101,7 +101,7 @@ func TestAdminTags_ListClusterRequired_Returns400(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 
-	if code := decodeAdminErrorCode(t, rec.Body.Bytes()); code != "cluster_required" {
+	if code := decodeAdminErrorCode(t, rec.Body.Bytes()); code != apiCodeClusterRequired {
 		t.Errorf("code = %q, want cluster_required", code)
 	}
 }
@@ -118,7 +118,7 @@ func TestAdminTags_CreateInvalidBody_Returns400(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
 
-	if code := decodeAdminErrorCode(t, rec.Body.Bytes()); code != "invalid_request" {
+	if code := decodeAdminErrorCode(t, rec.Body.Bytes()); code != apiCodeInvalidRequest {
 		t.Errorf("code = %q, want invalid_request", code)
 	}
 }
@@ -135,7 +135,7 @@ func TestAdminTags_CreateClusterRequired_Returns400(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 
-	if code := decodeAdminErrorCode(t, rec.Body.Bytes()); code != "cluster_required" {
+	if code := decodeAdminErrorCode(t, rec.Body.Bytes()); code != apiCodeClusterRequired {
 		t.Errorf("code = %q, want cluster_required", code)
 	}
 }
@@ -152,7 +152,7 @@ func TestAdminTags_ColorNotFound_Returns404(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusNotFound, rec.Body.String())
 	}
 
-	if code := decodeAdminErrorCode(t, rec.Body.Bytes()); code != "not_found" {
+	if code := decodeAdminErrorCode(t, rec.Body.Bytes()); code != apiCodeNotFound {
 		t.Errorf("code = %q, want not_found", code)
 	}
 }
@@ -189,7 +189,7 @@ func TestAdminTags_ColorInvalidBody_Returns400(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
 
-	if code := decodeAdminErrorCode(t, rec.Body.Bytes()); code != "invalid_request" {
+	if code := decodeAdminErrorCode(t, rec.Body.Bytes()); code != apiCodeInvalidRequest {
 		t.Errorf("code = %q, want invalid_request", code)
 	}
 }
@@ -206,7 +206,7 @@ func TestAdminTags_ColorClusterRequired_Returns400(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 
-	if code := decodeAdminErrorCode(t, rec.Body.Bytes()); code != "cluster_required" {
+	if code := decodeAdminErrorCode(t, rec.Body.Bytes()); code != apiCodeClusterRequired {
 		t.Errorf("code = %q, want cluster_required", code)
 	}
 }
@@ -223,7 +223,7 @@ func TestAdminTags_DeleteNotFound_Returns404(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusNotFound, rec.Body.String())
 	}
 
-	if code := decodeAdminErrorCode(t, rec.Body.Bytes()); code != "not_found" {
+	if code := decodeAdminErrorCode(t, rec.Body.Bytes()); code != apiCodeNotFound {
 		t.Errorf("code = %q, want not_found", code)
 	}
 }
@@ -240,7 +240,7 @@ func TestAdminTags_DeleteClusterRequired_Returns400(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 
-	if code := decodeAdminErrorCode(t, rec.Body.Bytes()); code != "cluster_required" {
+	if code := decodeAdminErrorCode(t, rec.Body.Bytes()); code != apiCodeClusterRequired {
 		t.Errorf("code = %q, want cluster_required", code)
 	}
 }
@@ -263,11 +263,13 @@ func TestAdminTags_ListWithExplicitCluster_ReturnsTags(t *testing.T) {
 	}
 
 	found := false
+
 	for _, tag := range tags {
-		if tag.Name == "pvmss" {
+		if tag.Name == extraPvmssTag {
 			found = true
 		}
 	}
+
 	if !found {
 		t.Error("pvmss tag not found in multi-cluster list")
 	}

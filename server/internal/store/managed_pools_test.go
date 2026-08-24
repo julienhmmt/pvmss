@@ -109,7 +109,7 @@ func TestIsPoolManaged(t *testing.T) {
 	}
 }
 
-func registerPools(t *testing.T, st *store.Store, ctx context.Context, names []string) {
+func registerPools(ctx context.Context, t *testing.T, st *store.Store, names []string) {
 	t.Helper()
 
 	for _, n := range names {
@@ -152,7 +152,7 @@ func TestManagedPools(t *testing.T) {
 
 	t.Run("multiple pools ordered by name", func(t *testing.T) {
 		names := []string{"pool-zeta", "pool-alpha", "pool-mid"}
-		registerPools(t, st, ctx, names)
+		registerPools(ctx, t, st, names)
 
 		got, err := st.ManagedPools(ctx, testStoreCluster)
 		if err != nil {
@@ -188,7 +188,7 @@ func TestManagedPoolNames(t *testing.T) {
 
 	t.Run("multiple names", func(t *testing.T) {
 		names := []string{"pool-one", "pool-two", "pool-three"}
-		registerPools(t, st, ctx, names)
+		registerPools(ctx, t, st, names)
 
 		got, err := st.ManagedPoolNames(ctx, testStoreCluster)
 		if err != nil {

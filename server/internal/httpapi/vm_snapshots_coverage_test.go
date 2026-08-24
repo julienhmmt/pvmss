@@ -15,6 +15,7 @@ import (
 // snapshot creation completes and the snapshot becomes visible in ListSnapshots.
 func completeSnapshotTask(t *testing.T, upid string) {
 	t.Helper()
+
 	for range 3 {
 		if _, err := (cluster.Fake{}).TaskStatus(context.Background(), upid); err != nil {
 			t.Fatalf("TaskStatus(%q): %v", upid, err)
@@ -28,6 +29,7 @@ func completeSnapshotTask(t *testing.T, upid string) {
 func snapshotNameRequest(method, path, name, body string, cookie *http.Cookie) *http.Request {
 	req := snapshotRequest(method, path, body, cookie)
 	req.SetPathValue("name", name)
+
 	return req
 }
 
@@ -35,15 +37,19 @@ func snapshotNameRequest(method, path, name, body string, cookie *http.Cookie) *
 // snapshot is immediately visible in subsequent List/Delete/Rollback calls.
 func createSnapshotAndWait(t *testing.T, handler *httpapi.VMSnapshots, cookie *http.Cookie, path, body string) {
 	t.Helper()
+
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, snapshotRequest(http.MethodPost, path, body, cookie))
+
 	if rec.Code != http.StatusAccepted {
 		t.Fatalf("create status = %d, want %d: %s", rec.Code, http.StatusAccepted, rec.Body.String())
 	}
+
 	var task snapshotTaskResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &task); err != nil {
 		t.Fatalf("decode task: %v", err)
 	}
+
 	completeSnapshotTask(t, task.UPID)
 }
 
@@ -52,9 +58,11 @@ func TestVMSnapshotsCoverage_List_Unauthenticated(t *testing.T) {
 	handler, _ := newVMSnapshotsHandler(t)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, snapshotRequest(http.MethodGet, "/api/v1/vms/default/101/snapshots", "", nil))
+
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
 	}
+
 	assertAPIError(t, rec.Body.Bytes(), "unauthenticated")
 }
 
@@ -64,9 +72,11 @@ func TestVMSnapshotsCoverage_List_NonOwnerForbidden(t *testing.T) {
 	cookie := bobCookie(t, authHandler)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, snapshotRequest(http.MethodGet, "/api/v1/vms/default/101/snapshots", "", cookie))
+
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 	}
+
 	assertAPIError(t, rec.Body.Bytes(), apiCodeForbidden)
 }
 
@@ -76,9 +86,11 @@ func TestVMSnapshotsCoverage_List_UntaggedNotFound(t *testing.T) {
 	cookie := aliceCookie(t, authHandler)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, snapshotRequest(http.MethodGet, "/api/v1/vms/default/109/snapshots", "", cookie))
+
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
+
 	assertAPIError(t, rec.Body.Bytes(), "not_found")
 }
 
@@ -88,9 +100,11 @@ func TestVMSnapshotsCoverage_List_NonexistentVM(t *testing.T) {
 	cookie := aliceCookie(t, authHandler)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, snapshotRequest(http.MethodGet, "/api/v1/vms/default/999/snapshots", "", cookie))
+
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
+
 	assertAPIError(t, rec.Body.Bytes(), "not_found")
 }
 
@@ -100,6 +114,7 @@ func TestVMSnapshotsCoverage_List_AdminSeesAnyTaggedVM(t *testing.T) {
 	cookie := adminCookie(t, authHandler)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, snapshotRequest(http.MethodGet, "/api/v1/vms/default/103/snapshots", "", cookie))
+
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
 	}
@@ -110,9 +125,11 @@ func TestVMSnapshotsCoverage_Create_Unauthenticated(t *testing.T) {
 	handler, _ := newVMSnapshotsHandler(t)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, snapshotRequest(http.MethodPost, "/api/v1/vms/default/101/snapshots", `{"name":"snap1"}`, nil))
+
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
 	}
+
 	assertAPIError(t, rec.Body.Bytes(), "unauthenticated")
 }
 
@@ -122,9 +139,11 @@ func TestVMSnapshotsCoverage_Create_InvalidJSON(t *testing.T) {
 	cookie := aliceCookie(t, authHandler)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, snapshotRequest(http.MethodPost, "/api/v1/vms/default/101/snapshots", "{bad json", cookie))
+
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
+
 	assertAPIError(t, rec.Body.Bytes(), "invalid_request")
 }
 
@@ -134,9 +153,11 @@ func TestVMSnapshotsCoverage_Create_EmptyName(t *testing.T) {
 	cookie := aliceCookie(t, authHandler)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, snapshotRequest(http.MethodPost, "/api/v1/vms/default/101/snapshots", `{"name":""}`, cookie))
+
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
+
 	assertAPIError(t, rec.Body.Bytes(), "invalid_name")
 }
 
@@ -146,9 +167,11 @@ func TestVMSnapshotsCoverage_Create_ReservedNameCurrent(t *testing.T) {
 	cookie := aliceCookie(t, authHandler)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, snapshotRequest(http.MethodPost, "/api/v1/vms/default/101/snapshots", `{"name":"current"}`, cookie))
+
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
+
 	assertAPIError(t, rec.Body.Bytes(), "invalid_name")
 }
 
@@ -161,9 +184,11 @@ func TestVMSnapshotsCoverage_Create_DuplicateName(t *testing.T) {
 
 	create2 := httptest.NewRecorder()
 	handler.ServeHTTP(create2, snapshotRequest(http.MethodPost, "/api/v1/vms/default/101/snapshots", `{"name":"dup-snap"}`, cookie))
+
 	if create2.Code != http.StatusBadRequest {
 		t.Fatalf("second create status = %d, want %d: %s", create2.Code, http.StatusBadRequest, create2.Body.String())
 	}
+
 	assertAPIError(t, create2.Body.Bytes(), "duplicate_name")
 }
 
@@ -174,9 +199,11 @@ func TestVMSnapshotsCoverage_Create_VMStateOnStoppedVM(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, snapshotRequest(http.MethodPost, "/api/v1/vms/default/101/snapshots", `{"name":"with-ram","vmstate":true}`, cookie))
+
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
+
 	assertAPIError(t, rec.Body.Bytes(), "vmstate_requires_running")
 }
 
@@ -187,6 +214,7 @@ func TestVMSnapshotsCoverage_Create_AdminOnAnyTaggedVM(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, snapshotRequest(http.MethodPost, "/api/v1/vms/default/103/snapshots", `{"name":"admin-snap"}`, cookie))
+
 	if rec.Code != http.StatusAccepted {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusAccepted, rec.Body.String())
 	}
@@ -197,9 +225,11 @@ func TestVMSnapshotsCoverage_Delete_Unauthenticated(t *testing.T) {
 	handler, _ := newVMSnapshotsHandler(t)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, snapshotRequest(http.MethodDelete, "/api/v1/vms/default/101/snapshots/missing", "", nil))
+
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
 	}
+
 	assertAPIError(t, rec.Body.Bytes(), "unauthenticated")
 }
 
@@ -209,9 +239,11 @@ func TestVMSnapshotsCoverage_Delete_NonOwnerForbidden(t *testing.T) {
 	cookie := bobCookie(t, authHandler)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, snapshotRequest(http.MethodDelete, "/api/v1/vms/default/101/snapshots/missing", "", cookie))
+
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 	}
+
 	assertAPIError(t, rec.Body.Bytes(), apiCodeForbidden)
 }
 
@@ -221,9 +253,11 @@ func TestVMSnapshotsCoverage_Delete_UntaggedNotFound(t *testing.T) {
 	cookie := aliceCookie(t, authHandler)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, snapshotRequest(http.MethodDelete, "/api/v1/vms/default/109/snapshots/missing", "", cookie))
+
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
+
 	assertAPIError(t, rec.Body.Bytes(), "not_found")
 }
 
@@ -232,9 +266,11 @@ func TestVMSnapshotsCoverage_Rollback_Unauthenticated(t *testing.T) {
 	handler, _ := newVMSnapshotsHandler(t)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, snapshotRequest(http.MethodPost, "/api/v1/vms/default/101/snapshots/missing/rollback", "", nil))
+
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
 	}
+
 	assertAPIError(t, rec.Body.Bytes(), "unauthenticated")
 }
 
@@ -244,9 +280,11 @@ func TestVMSnapshotsCoverage_Rollback_NonOwnerForbidden(t *testing.T) {
 	cookie := bobCookie(t, authHandler)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, snapshotRequest(http.MethodPost, "/api/v1/vms/default/101/snapshots/missing/rollback", "", cookie))
+
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 	}
+
 	assertAPIError(t, rec.Body.Bytes(), apiCodeForbidden)
 }
 
@@ -256,9 +294,11 @@ func TestVMSnapshotsCoverage_Rollback_UntaggedNotFound(t *testing.T) {
 	cookie := aliceCookie(t, authHandler)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, snapshotRequest(http.MethodPost, "/api/v1/vms/default/109/snapshots/missing/rollback", "", cookie))
+
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
+
 	assertAPIError(t, rec.Body.Bytes(), "not_found")
 }
 
@@ -268,6 +308,7 @@ func TestVMSnapshotsCoverage_MethodNotAllowed(t *testing.T) {
 	cookie := aliceCookie(t, authHandler)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, snapshotRequest(http.MethodPut, "/api/v1/vms/default/101/snapshots", "", cookie))
+
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
 	}
@@ -282,6 +323,7 @@ func TestVMSnapshotsCoverage_Create_ThenDelete_Success(t *testing.T) {
 
 	deleteRec := httptest.NewRecorder()
 	handler.ServeHTTP(deleteRec, snapshotNameRequest(http.MethodDelete, "/api/v1/vms/default/101/snapshots/to-delete", "to-delete", "", cookie))
+
 	if deleteRec.Code != http.StatusAccepted {
 		t.Fatalf("delete status = %d, want %d: %s", deleteRec.Code, http.StatusAccepted, deleteRec.Body.String())
 	}
@@ -296,6 +338,7 @@ func TestVMSnapshotsCoverage_Create_ThenRollback_Success(t *testing.T) {
 
 	rollbackRec := httptest.NewRecorder()
 	handler.ServeHTTP(rollbackRec, snapshotNameRequest(http.MethodPost, "/api/v1/vms/default/101/snapshots/to-rollback/rollback", "to-rollback", "", cookie))
+
 	if rollbackRec.Code != http.StatusAccepted {
 		t.Fatalf("rollback status = %d, want %d: %s", rollbackRec.Code, http.StatusAccepted, rollbackRec.Body.String())
 	}
@@ -310,6 +353,7 @@ func TestVMSnapshotsCoverage_List_AfterCreateShowsSnapshot(t *testing.T) {
 
 	listRec := httptest.NewRecorder()
 	handler.ServeHTTP(listRec, snapshotRequest(http.MethodGet, "/api/v1/vms/default/101/snapshots", "", cookie))
+
 	if listRec.Code != http.StatusOK {
 		t.Fatalf("list status = %d: %s", listRec.Code, listRec.Body.String())
 	}
@@ -318,12 +362,15 @@ func TestVMSnapshotsCoverage_List_AfterCreateShowsSnapshot(t *testing.T) {
 	if err := json.Unmarshal(listRec.Body.Bytes(), &list); err != nil {
 		t.Fatalf("decode list: %v", err)
 	}
+
 	found := false
+
 	for _, s := range list.Snapshots {
 		if s.Name == "visible-snap" {
 			found = true
 		}
 	}
+
 	if !found {
 		t.Errorf("snapshot 'visible-snap' not found in list: %+v", list.Snapshots)
 	}
@@ -341,9 +388,11 @@ func TestVMSnapshotsCoverage_Create_InvalidVMPath(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
+
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
 	}
+
 	assertAPIError(t, rec.Body.Bytes(), "invalid_request")
 }
 
@@ -354,6 +403,7 @@ func TestVMSnapshotsCoverage_Create_WithDescriptionAndVMState(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, snapshotRequest(http.MethodPost, "/api/v1/vms/default/100/snapshots", `{"name":"running-ram-snap","description":"with RAM","vmstate":true}`, cookie))
+
 	if rec.Code != http.StatusAccepted {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusAccepted, rec.Body.String())
 	}
@@ -368,6 +418,7 @@ func TestVMSnapshotsCoverage_Delete_AdminOnAnyTaggedVM(t *testing.T) {
 
 	deleteRec := httptest.NewRecorder()
 	handler.ServeHTTP(deleteRec, snapshotNameRequest(http.MethodDelete, "/api/v1/vms/default/103/snapshots/admin-del", "admin-del", "", cookie))
+
 	if deleteRec.Code != http.StatusAccepted {
 		t.Fatalf("delete status = %d, want %d: %s", deleteRec.Code, http.StatusAccepted, deleteRec.Body.String())
 	}

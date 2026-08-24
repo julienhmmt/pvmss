@@ -17,8 +17,8 @@ const crossSecondaryCluster = "secondary"
 
 //nolint:paralleltest // detail fixture shares fake authentication state
 func TestVMDetail_CrossClusterVMIDReturnsDistinctEntities(t *testing.T) {
-	defaultIndex := inventory.BuildIndexForCluster(auditTestCluster, cluster.Snapshot{VMs: []cluster.VM{{VMID: 101, Name: "default-web", Node: "default-node", Pool: cluster.FakePoolAlice, Tags: []string{"pvmss"}}}})
-	secondaryIndex := inventory.BuildIndexForCluster(crossSecondaryCluster, cluster.Snapshot{VMs: []cluster.VM{{VMID: 101, Name: "secondary-web", Node: "secondary-node", Pool: cluster.FakePoolAlice, Tags: []string{"pvmss"}}}})
+	defaultIndex := inventory.BuildIndexForCluster(auditTestCluster, cluster.Snapshot{VMs: []cluster.VM{{VMID: 101, Name: "default-web", Node: "default-node", Pool: cluster.FakePoolAlice, Tags: []string{extraPvmssTag}}}})
+	secondaryIndex := inventory.BuildIndexForCluster(crossSecondaryCluster, cluster.Snapshot{VMs: []cluster.VM{{VMID: 101, Name: "secondary-web", Node: "secondary-node", Pool: cluster.FakePoolAlice, Tags: []string{extraPvmssTag}}}})
 	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{auditTestCluster: &defaultIndex, crossSecondaryCluster: &secondaryIndex})
 	projection := inventory.NewProjectionFromIndex(&defaultIndex)
 	authHandler := newAuthHandler(t)

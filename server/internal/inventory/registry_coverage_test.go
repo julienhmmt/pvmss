@@ -14,27 +14,31 @@ import (
 func newTestRegistry(t *testing.T, names ...string) *inventory.Registry {
 	t.Helper()
 	clusters := newTestClusterRegistry(t, names...)
+
 	return inventory.NewRegistry(clusters, time.Hour, slog.Default())
 }
 
 func newTestClusterRegistry(t *testing.T, names ...string) *cluster.Registry {
 	t.Helper()
+
 	rows := make([]store.ClusterRow, 0, len(names))
 	for _, name := range names {
 		rows = append(rows, store.ClusterRow{
 			Name: name, URL: "https://" + name + ".invalid", TokenID: "id", TokenSecret: "secret",
 		})
 	}
+
 	clusters, err := cluster.NewRegistry("fake", rows)
 	if err != nil {
 		t.Fatalf("NewRegistry: %v", err)
 	}
+
 	return clusters
 }
 
 //nolint:paralleltest // registry tests share fake client fixture state
 func TestRegistry_Refresh_SuccessAndError(t *testing.T) {
-	registry := newTestRegistry(t, "default", "offline-demo")
+	registry := newTestRegistry(t, inventoryTestCluster, "offline-demo")
 
 	cases := []struct {
 		name      string
@@ -42,7 +46,7 @@ func TestRegistry_Refresh_SuccessAndError(t *testing.T) {
 		wantErr   error
 		wantIndex bool
 	}{
-		{name: "default succeeds", cluster: "default", wantErr: nil, wantIndex: true},
+		{name: "default succeeds", cluster: inventoryTestCluster, wantErr: nil, wantIndex: true},
 		{name: "offline-demo unreachable", cluster: "offline-demo", wantErr: cluster.ErrUnreachable, wantIndex: false},
 		{name: "unknown cluster", cluster: "nonexistent", wantErr: inventory.ErrClusterNotFound, wantIndex: false},
 	}
@@ -56,6 +60,7 @@ func TestRegistry_Refresh_SuccessAndError(t *testing.T) {
 
 func assertRefreshResult(t *testing.T, registry *inventory.Registry, clusterName string, wantErr error, wantIndex bool) {
 	t.Helper()
+
 	_, err := registry.Refresh(context.Background(), clusterName)
 	if wantErr != nil {
 		if !errors.Is(err, wantErr) {
@@ -75,11 +80,12 @@ func assertRefreshResult(t *testing.T, registry *inventory.Registry, clusterName
 
 //nolint:paralleltest // registry tests share fake client fixture state
 func TestRegistry_All_MultipleClusters(t *testing.T) {
-	registry := newTestRegistry(t, "default", "secondary", "offline-demo")
+	registry := newTestRegistry(t, inventoryTestCluster, "secondary", "offline-demo")
 
-	if _, err := registry.Refresh(context.Background(), "default"); err != nil {
+	if _, err := registry.Refresh(context.Background(), inventoryTestCluster); err != nil {
 		t.Fatalf("Refresh(default): %v", err)
 	}
+
 	if _, err := registry.Refresh(context.Background(), "secondary"); err != nil {
 		t.Fatalf("Refresh(secondary): %v", err)
 	}
@@ -89,12 +95,14 @@ func TestRegistry_All_MultipleClusters(t *testing.T) {
 		t.Fatalf("All() length = %d, want 3", len(all))
 	}
 
-	if all["default"] == nil {
+	if all[inventoryTestCluster] == nil {
 		t.Fatal("All()[\"default\"] is nil after successful refresh")
 	}
+
 	if all["secondary"] == nil {
 		t.Fatal("All()[\"secondary\"] is nil after successful refresh")
 	}
+
 	if all["offline-demo"] != nil {
 		t.Fatal("All()[\"offline-demo\"] should be nil after failed refresh")
 	}
@@ -112,8 +120,8 @@ func TestRegistry_All_EmptyRegistry(t *testing.T) {
 
 //nolint:paralleltest // registry tests share fake client fixture state
 func TestRegistry_Lookup_WithRefreshedCluster(t *testing.T) {
-	registry := newTestRegistry(t, "default")
-	if _, err := registry.Refresh(context.Background(), "default"); err != nil {
+	registry := newTestRegistry(t, inventoryTestCluster)
+	if _, err := registry.Refresh(context.Background(), inventoryTestCluster); err != nil {
 		t.Fatalf("Refresh(default): %v", err)
 	}
 
@@ -123,8 +131,8 @@ func TestRegistry_Lookup_WithRefreshedCluster(t *testing.T) {
 		vmid        int
 		wantOK      bool
 	}{
-		{name: "found", clusterName: "default", vmid: 100, wantOK: true},
-		{name: "not found vmid", clusterName: "default", vmid: 99999, wantOK: false},
+		{name: "found", clusterName: inventoryTestCluster, vmid: 100, wantOK: true},
+		{name: "not found vmid", clusterName: inventoryTestCluster, vmid: 99999, wantOK: false},
 		{name: "unknown cluster", clusterName: "nonexistent", vmid: 100, wantOK: false},
 	}
 
@@ -134,6 +142,7 @@ func TestRegistry_Lookup_WithRefreshedCluster(t *testing.T) {
 			if ok != tc.wantOK {
 				t.Fatalf("Lookup ok = %v, want %v", ok, tc.wantOK)
 			}
+
 			if tc.wantOK && vm.VMID != tc.vmid {
 				t.Errorf("VMID = %d, want %d", vm.VMID, tc.vmid)
 			}
@@ -143,12 +152,13 @@ func TestRegistry_Lookup_WithRefreshedCluster(t *testing.T) {
 
 //nolint:paralleltest // registry tests share fake client fixture state
 func TestRegistry_Projection_FoundAndNotFound(t *testing.T) {
-	registry := newTestRegistry(t, "default")
+	registry := newTestRegistry(t, inventoryTestCluster)
 
-	proj, err := registry.Projection("default")
+	proj, err := registry.Projection(inventoryTestCluster)
 	if err != nil {
 		t.Fatalf("Projection(default): %v", err)
 	}
+
 	if proj == nil {
 		t.Fatal("Projection(default) is nil")
 	}
@@ -160,16 +170,17 @@ func TestRegistry_Projection_FoundAndNotFound(t *testing.T) {
 
 //nolint:paralleltest // registry tests share fake client fixture state
 func TestRegistry_Refresher_FoundAndNotFound(t *testing.T) {
-	registry := newTestRegistry(t, "default")
+	registry := newTestRegistry(t, inventoryTestCluster)
 
 	if _, err := registry.Refresher("nonexistent"); !errors.Is(err, inventory.ErrClusterNotFound) {
 		t.Fatalf("Refresher(nonexistent) error = %v, want ErrClusterNotFound", err)
 	}
 
-	refresher, err := registry.Refresher("default")
+	refresher, err := registry.Refresher(inventoryTestCluster)
 	if err != nil {
 		t.Fatalf("Refresher(default): %v", err)
 	}
+
 	if refresher == nil {
 		t.Fatal("Refresher(default) is nil")
 	}
@@ -177,12 +188,13 @@ func TestRegistry_Refresher_FoundAndNotFound(t *testing.T) {
 
 //nolint:paralleltest // registry tests share fake client fixture state
 func TestRegistry_Worker_FoundAndNotFound(t *testing.T) {
-	registry := newTestRegistry(t, "default")
+	registry := newTestRegistry(t, inventoryTestCluster)
 
-	worker, err := registry.Worker("default")
+	worker, err := registry.Worker(inventoryTestCluster)
 	if err != nil {
 		t.Fatalf("Worker(default): %v", err)
 	}
+
 	if worker == nil {
 		t.Fatal("Worker(default) is nil")
 	}
@@ -194,7 +206,7 @@ func TestRegistry_Worker_FoundAndNotFound(t *testing.T) {
 
 //nolint:paralleltest // registry tests share fake client fixture state
 func TestRegistry_AddAndRemove(t *testing.T) {
-	clusters := newTestClusterRegistry(t, "default")
+	clusters := newTestClusterRegistry(t, inventoryTestCluster)
 	registry := inventory.NewRegistry(clusters, time.Hour, slog.Default())
 
 	if err := clusters.Add(context.Background(), store.ClusterRow{
@@ -207,7 +219,7 @@ func TestRegistry_AddAndRemove(t *testing.T) {
 		t.Fatalf("Add(secondary): %v", err)
 	}
 
-	if err := registry.Add("default"); !errors.Is(err, inventory.ErrDuplicateCluster) {
+	if err := registry.Add(inventoryTestCluster); !errors.Is(err, inventory.ErrDuplicateCluster) {
 		t.Fatalf("Add(default) error = %v, want ErrDuplicateCluster", err)
 	}
 
@@ -217,10 +229,12 @@ func TestRegistry_AddAndRemove(t *testing.T) {
 	}
 
 	registry.Remove("secondary")
+
 	all = registry.All()
 	if len(all) != 1 {
 		t.Fatalf("All() after Remove = %d, want 1", len(all))
 	}
+
 	if _, ok := all["secondary"]; ok {
 		t.Fatal("secondary still present after Remove")
 	}
@@ -228,21 +242,22 @@ func TestRegistry_AddAndRemove(t *testing.T) {
 
 //nolint:paralleltest // registry tests share fake client fixture state
 func TestRegistry_StoreSnapshot(t *testing.T) {
-	registry := newTestRegistry(t, "default")
+	registry := newTestRegistry(t, inventoryTestCluster)
 
-	snap, err := cluster.NewFake("default").Snapshot(context.Background())
+	snap, err := cluster.NewFake(inventoryTestCluster).Snapshot(context.Background())
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
 
-	if err := registry.StoreSnapshot("default", snap); err != nil {
+	if err := registry.StoreSnapshot(inventoryTestCluster, snap); err != nil {
 		t.Fatalf("StoreSnapshot: %v", err)
 	}
 
-	idx, err := registry.Index("default")
+	idx, err := registry.Index(inventoryTestCluster)
 	if err != nil || idx == nil {
 		t.Fatalf("Index(default) = %v, %v", idx, err)
 	}
+
 	if len(idx.ByVMID) != len(snap.VMs) {
 		t.Fatalf("Index ByVMID count = %d, want %d", len(idx.ByVMID), len(snap.VMs))
 	}
@@ -254,14 +269,15 @@ func TestRegistry_StoreSnapshot(t *testing.T) {
 
 //nolint:paralleltest // registry tests share fake client fixture state
 func TestRegistry_SetManualRefreshMinInterval(t *testing.T) {
-	registry := newTestRegistry(t, "default")
+	registry := newTestRegistry(t, inventoryTestCluster)
 
 	registry.SetManualRefreshMinInterval(500 * time.Millisecond)
 
-	refresher, err := registry.Refresher("default")
+	refresher, err := registry.Refresher(inventoryTestCluster)
 	if err != nil {
 		t.Fatalf("Refresher(default): %v", err)
 	}
+
 	if got := refresher.MinInterval(); got != 500*time.Millisecond {
 		t.Fatalf("MinInterval = %v, want 500ms", got)
 	}
@@ -286,6 +302,7 @@ func TestProjection_Load_PrePopulatedReturnsIndex(t *testing.T) {
 	if loaded == nil {
 		t.Fatal("Load() should return the pre-populated index")
 	}
+
 	if loaded.ByVMID[100].VMID != 100 {
 		t.Errorf("Load() ByVMID[100].VMID = %d, want 100", loaded.ByVMID[100].VMID)
 	}
@@ -293,7 +310,7 @@ func TestProjection_Load_PrePopulatedReturnsIndex(t *testing.T) {
 
 //nolint:paralleltest // registry tests share fake client fixture state
 func TestRegistry_Start_Idempotent(t *testing.T) {
-	registry := newTestRegistry(t, "default")
+	registry := newTestRegistry(t, inventoryTestCluster)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -306,7 +323,7 @@ func TestRegistry_Start_Idempotent(t *testing.T) {
 
 //nolint:paralleltest // registry tests share fake client fixture state
 func TestRegistry_Add_AfterStart(t *testing.T) {
-	clusters := newTestClusterRegistry(t, "default")
+	clusters := newTestClusterRegistry(t, inventoryTestCluster)
 	registry := inventory.NewRegistry(clusters, time.Hour, slog.Default())
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -335,9 +352,9 @@ func TestRegistry_Add_AfterStart(t *testing.T) {
 //nolint:paralleltest // registry tests share fake client fixture state
 func TestRegistry_Refresh_NoWorkerReturnsNotFound(t *testing.T) {
 	idx := inventory.BuildIndex(fakeSnapshot())
-	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{"default": &idx})
+	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{inventoryTestCluster: &idx})
 
-	if _, err := registry.Refresh(context.Background(), "default"); !errors.Is(err, inventory.ErrClusterNotFound) {
+	if _, err := registry.Refresh(context.Background(), inventoryTestCluster); !errors.Is(err, inventory.ErrClusterNotFound) {
 		t.Fatalf("Refresh on registry without worker error = %v, want ErrClusterNotFound", err)
 	}
 }

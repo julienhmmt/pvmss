@@ -152,8 +152,8 @@ func TestAdminCloudInitTemplates_NonAdmin_Returns403(t *testing.T) {
 		name string
 		rec  *httptest.ResponseRecorder
 	}{
-		{"list", citGet(t, handler, authHandler, alice, "/api/v1/admin/cloudinit-templates?cluster=default")},
-		{"create", citPost(t, handler, authHandler, alice, "/api/v1/admin/cloudinit-templates", `{"cluster":"default","label":"x","content":"#cloud-config\n"}`)},
+		{testOpList, citGet(t, handler, authHandler, alice, "/api/v1/admin/cloudinit-templates?cluster=default")},
+		{testOpCreate, citPost(t, handler, authHandler, alice, "/api/v1/admin/cloudinit-templates", `{"cluster":"default","label":"x","content":"#cloud-config\n"}`)},
 		{"update", citPut(t, handler, authHandler, alice, "/api/v1/admin/cloudinit-templates/x", `{"cluster":"default","label":"x","content":"#cloud-config\n"}`)},
 		{testActionDelete, citDelete(t, handler, authHandler, alice, "/api/v1/admin/cloudinit-templates/x?cluster=default")},
 		{"toggle", citPost(t, handler, authHandler, alice, "/api/v1/admin/cloudinit-templates/x/toggle", `{"cluster":"default","enabled":false}`)},

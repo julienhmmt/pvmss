@@ -144,7 +144,7 @@ func TestClusterNodes_Success(t *testing.T) {
 	}
 
 	n := got.Nodes[0]
-	if n.Name != "pve-node-01" || n.Status != "online" || n.CPUCores != 32 ||
+	if n.Name != testNodePVE01 || n.Status != "online" || n.CPUCores != 32 ||
 		n.MemoryTotal != 137438953472 || n.MemoryUsed != 68719476736 ||
 		n.StorageTotal != 2199023255552 || n.StorageUsed != 879609302220 {
 		t.Fatalf("unexpected node shape: %+v", n)

@@ -40,6 +40,7 @@ func TestRun_WriteClusterError_ReturnsWrappedError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open bad db: %v", err)
 	}
+
 	t.Cleanup(func() { _ = badDB.Close() })
 
 	_, runErr := recovery.Run(ctx, legacyDB, badDB, recovery.RunOptions{
@@ -50,6 +51,7 @@ func TestRun_WriteClusterError_ReturnsWrappedError(t *testing.T) {
 	if runErr == nil {
 		t.Fatal("expected write cluster error, got nil")
 	}
+
 	if !strings.Contains(runErr.Error(), "write cluster") {
 		t.Errorf("error = %v, want it to contain 'write cluster'", runErr)
 	}
@@ -67,6 +69,7 @@ func TestRun_StepNodesError_BadLegacyDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open bad legacy db: %v", err)
 	}
+
 	t.Cleanup(func() { _ = badLegacy.Close() })
 
 	v04DB := openV04DB(t)
@@ -160,6 +163,7 @@ func TestRun_LiveStorageResolverWired_WhenCredsAvailable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run with live resolver should not abort: %v", err)
 	}
+
 	if sum.CatalogStorages.Skipped == 0 {
 		t.Error("expected at least one skipped storage from failed live discovery")
 	}
@@ -190,6 +194,7 @@ func TestRun_CustomEnvironUsed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run with custom environ: %v", err)
 	}
+
 	if sum.Cluster.Written != 1 {
 		t.Errorf("cluster written = %d, want 1", sum.Cluster.Written)
 	}
@@ -217,21 +222,27 @@ func TestRun_WritePath_AllTablesPopulated(t *testing.T) {
 	if sum.CatalogNodes.Written == 0 {
 		t.Error("expected catalog_nodes written > 0")
 	}
+
 	if sum.CatalogBridges.Written == 0 {
 		t.Error("expected catalog_bridges written > 0")
 	}
+
 	if sum.CatalogISOs.Written == 0 {
 		t.Error("expected catalog_isos written > 0")
 	}
+
 	if sum.CatalogProfiles.Written == 0 {
 		t.Error("expected catalog_profiles written > 0")
 	}
+
 	if sum.CatalogTags.Written == 0 {
 		t.Error("expected catalog_tags written > 0")
 	}
+
 	if sum.VMLimits.Written != 1 {
 		t.Errorf("vm_limits written = %d, want 1", sum.VMLimits.Written)
 	}
+
 	if sum.NodeLimits.Written == 0 {
 		t.Error("expected node_limits written > 0")
 	}
@@ -266,6 +277,7 @@ func TestRun_StepStoragesWithResolver_ExpandsNodes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run with resolver: %v", err)
 	}
+
 	if sum.CatalogStorages.Written == 0 {
 		t.Error("expected storages written > 0 with resolver")
 	}
@@ -298,6 +310,7 @@ func TestRun_StepISOsWithSkips_RecordsSkipReasons(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run with iso skips: %v", err)
 	}
+
 	if sum.CatalogISOs.Skipped == 0 {
 		t.Error("expected at least one skipped ISO")
 	}
@@ -327,6 +340,7 @@ func TestRun_StepProfilesWithSkips_RecordsSkipReasons(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run with profile skips: %v", err)
 	}
+
 	if sum.CatalogProfiles.Skipped == 0 {
 		t.Error("expected at least one skipped profile")
 	}
@@ -359,21 +373,27 @@ func TestRenderSummary_FullOutputWithSkipsAndNote(t *testing.T) {
 	if out == "" {
 		t.Fatal("RenderSummary returned empty output")
 	}
+
 	if !strings.Contains(out, "pvmss-recover:") {
 		t.Errorf("output missing header: %q", out)
 	}
+
 	if !strings.Contains(out, "clusters        1 written") {
 		t.Errorf("output missing clusters line: %q", out)
 	}
+
 	if !strings.Contains(out, `storage "bad": no nodes`) {
 		t.Errorf("output missing storage skip reason: %q", out)
 	}
+
 	if !strings.Contains(out, `row "bad": invalid volid`) {
 		t.Errorf("output missing iso skip reason: %q", out)
 	}
+
 	if !strings.Contains(out, "vm_limits       1 row updated") {
 		t.Errorf("output missing vm_limits note line: %q", out)
 	}
+
 	if !strings.Contains(out, "SUMMARY: written=") {
 		t.Errorf("output missing SUMMARY line: %q", out)
 	}
@@ -418,6 +438,7 @@ func TestRenderSummary_EmptySummary_DoesNotPanic(t *testing.T) {
 	if out == "" {
 		t.Fatal("RenderSummary returned empty output for empty summary")
 	}
+
 	if !strings.Contains(out, "SUMMARY: written=0 skipped=0 errors=0") {
 		t.Errorf("output missing zero SUMMARY line: %q", out)
 	}
@@ -645,6 +666,7 @@ func TestRun_StepStoragesMapError_BadLegacyDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open bad legacy db: %v", err)
 	}
+
 	t.Cleanup(func() { _ = badLegacy.Close() })
 
 	// Create only the enabled_nodes table so stepNodes succeeds, but not
@@ -677,6 +699,7 @@ func TestRun_StepBridgesMapError_BadLegacyDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open bad legacy db: %v", err)
 	}
+
 	t.Cleanup(func() { _ = badLegacy.Close() })
 
 	// Create nodes and storages tables so those steps pass, but not bridges.
@@ -712,6 +735,7 @@ func TestRun_StepISOsMapError_BadLegacyDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open bad legacy db: %v", err)
 	}
+
 	t.Cleanup(func() { _ = badLegacy.Close() })
 
 	for _, ddl := range []string{
@@ -747,6 +771,7 @@ func TestRun_StepProfilesMapError_BadLegacyDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open bad legacy db: %v", err)
 	}
+
 	t.Cleanup(func() { _ = badLegacy.Close() })
 
 	for _, ddl := range []string{
@@ -783,6 +808,7 @@ func TestRun_StepTagsMapError_BadLegacyDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open bad legacy db: %v", err)
 	}
+
 	t.Cleanup(func() { _ = badLegacy.Close() })
 
 	for _, ddl := range []string{
@@ -820,6 +846,7 @@ func TestRun_StepVMLimitsMapError_BadLegacyDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open bad legacy db: %v", err)
 	}
+
 	t.Cleanup(func() { _ = badLegacy.Close() })
 
 	for _, ddl := range []string{
@@ -858,6 +885,7 @@ func TestRun_StepNodeLimitsMapError_BadLegacyDB(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open bad legacy db: %v", err)
 	}
+
 	t.Cleanup(func() { _ = badLegacy.Close() })
 
 	for _, ddl := range []string{

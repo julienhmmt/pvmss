@@ -36,6 +36,11 @@ const (
 	apiCodeClusterUnreachable     = "cluster_unreachable"
 	apiCodeInvalidStateTransition = "invalid_state_transition"
 	apiCodeInternalError          = "internal_error"
+	apiCodeClusterRequired        = "cluster_required"
+	apiCodeInvalidUpload          = "invalid_upload"
+	apiCodeInvalidPoolName        = "invalid_pool_name"
+	apiCodeInvalidRange           = "invalid_range"
+	apiCodePageSizeTooLarge       = "page_size_too_large"
 	extraPvmssTag                 = "pvmss"
 )
 
@@ -121,10 +126,10 @@ func newVMDetailHandlerWithWriter(t *testing.T, writer cluster.Writer) (*httpapi
 //nolint:paralleltest // serial: shared fake authentication state
 func TestVMDetail_Get_RegistryClusterNotFound(t *testing.T) {
 	// A registry that knows "secondary" but not "default".
-	secondaryIdx := inventory.BuildIndexForCluster("secondary", cluster.Snapshot{
+	secondaryIdx := inventory.BuildIndexForCluster(crossSecondaryCluster, cluster.Snapshot{
 		VMs: []cluster.VM{{VMID: 101, Name: "secondary-web", Node: "secondary-node", Pool: cluster.FakePoolAlice, Tags: []string{extraPvmssTag}}},
 	})
-	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{"secondary": &secondaryIdx})
+	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{crossSecondaryCluster: &secondaryIdx})
 	projection := inventory.NewProjectionFromIndex(&secondaryIdx)
 	authHandler := newAuthHandler(t)
 	handler := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: registry, Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: nil, Refresher: nil, Log: slog.Default()})

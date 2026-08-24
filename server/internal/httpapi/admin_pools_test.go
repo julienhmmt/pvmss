@@ -123,9 +123,9 @@ func TestAdminPools_RejectsNonAdminAndInvalidRequests(t *testing.T) {
 		body   string
 		want   int
 	}{
-		{name: "list", method: http.MethodGet, path: "/api/v1/admin/pools", want: http.StatusForbidden},
-		{name: "create", method: http.MethodPost, path: "/api/v1/admin/pools", body: `{"name":"carol"}`, want: http.StatusForbidden},
-		{name: testActionDelete, method: http.MethodDelete, path: "/api/v1/admin/pools/carol", want: http.StatusForbidden},
+		{name: testOpList, method: http.MethodGet, path: adminPoolsPath, want: http.StatusForbidden},
+		{name: testOpCreate, method: http.MethodPost, path: adminPoolsPath, body: `{"name":"carol"}`, want: http.StatusForbidden},
+		{name: testActionDelete, method: http.MethodDelete, path: adminPoolsPath + "/carol", want: http.StatusForbidden},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			rec := adminPoolsRequest(t, handlerForMethod(handler, tc.method), tc.method, tc.path, alice, tc.body)

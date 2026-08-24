@@ -339,7 +339,7 @@ func TestRunMigrations_V16AddsDisplayName(t *testing.T) {
 		t.Fatalf("NewFromDBWithSecret: %v", err)
 	}
 
-	if err := st.CreateCluster(ctx, store.ClusterRow{Name: testStoreCluster, URL: "https://example.com:8006", TokenID: "tok", TokenSecret: "secret"}); err != nil {
+	if err := st.CreateCluster(ctx, store.ClusterRow{Name: testStoreCluster, URL: "https://example.com:8006", TokenID: "tok", TokenSecret: testClusterTokenSecret}); err != nil {
 		t.Fatalf("CreateCluster: %v", err)
 	}
 

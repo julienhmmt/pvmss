@@ -111,6 +111,7 @@ linters:
       - third_party$
       - testutils$
       - examples$
+      - \.worktrees
 
   settings:
     dupl:

@@ -71,6 +71,7 @@ func TestUpsertPolicyRow_InsertThenUpdate(t *testing.T) {
 	}
 
 	row.MaxVMPerUser = 20
+
 	row.AllowCustomYAML = false
 	if err := st.UpsertPolicyRow(ctx, row); err != nil {
 		t.Fatalf("UpsertPolicyRow update: %v", err)
@@ -130,7 +131,7 @@ func TestNodePolicyRow_FoundAndNotFound(t *testing.T) {
 	})
 }
 
-func upsertNodePolicyRows(t *testing.T, st *store.Store, ctx context.Context, nodes []string) {
+func upsertNodePolicyRows(ctx context.Context, t *testing.T, st *store.Store, nodes []string) {
 	t.Helper()
 
 	for _, n := range nodes {
@@ -157,8 +158,8 @@ func TestNodePolicyRows(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("multiple rows ordered by node", func(t *testing.T) {
-		nodes := []string{"node-zeta", "node-alpha", "node-mid"}
-		upsertNodePolicyRows(t, st, ctx, nodes)
+		nodes := []string{catalogTestNodeZeta, catalogTestNodeAlpha, catalogTestNodeMid}
+		upsertNodePolicyRows(ctx, t, st, nodes)
 
 		got, err := st.NodePolicyRows(ctx, testStoreCluster)
 		if err != nil {
@@ -169,7 +170,7 @@ func TestNodePolicyRows(t *testing.T) {
 			t.Fatalf("rows = %d, want %d", len(got), len(nodes))
 		}
 
-		want := []string{"node-alpha", "node-mid", "node-zeta"}
+		want := []string{catalogTestNodeAlpha, catalogTestNodeMid, catalogTestNodeZeta}
 		assertNodePolicyOrder(t, got, want)
 	})
 
@@ -205,6 +206,7 @@ func TestUpsertNodePolicyRow_InsertThenUpdate(t *testing.T) {
 	}
 
 	row.MaxVMs = 100
+
 	row.MaxDiskGB = 8192
 	if err := st.UpsertNodePolicyRow(ctx, row); err != nil {
 		t.Fatalf("UpsertNodePolicyRow update: %v", err)
