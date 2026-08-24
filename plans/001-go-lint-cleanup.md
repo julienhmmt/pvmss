@@ -54,11 +54,13 @@ preserving the existing test coverage and `//nolint` conventions.
 
 ## Commands you will need
 
+Run the `golangci-lint` commands from the `server/` directory.
+
 | Purpose | Command | Expected on success |
-|---|---|---|
+| --- | --- | --- |
 | Baseline | `make server-lint` | shows current issue count |
 | Worktree-free baseline | `make server-lint` | no `../.worktrees/` paths |
-| Single linter | `cd server && golangci-lint run --timeout=5m -E wsl_v5 ./...` | exit 0 |
+| Single linter | `golangci-lint run -E wsl_v5 ./...` | exit 0 |
 | Tests | `make server-test` | exit 0 |
 
 ## Suggested executor toolkit
@@ -116,10 +118,10 @@ that the exclusion regex matches the actual path format and report.
    `wsl_v5.allow-first-in-block: true`).
 3. Work in small batches (one package or one `_coverage_test.go` file at a time).
    After each batch, run
-   `cd server && golangci-lint run --timeout=5m -E wsl_v5 ./...`.
+   `golangci-lint run -E wsl_v5 ./...`.
 4. Preserve logic and order; only add or remove blank lines.
 
-**Verify**: `cd server && golangci-lint run --timeout=5m -E wsl_v5 ./...` exits 0.
+**Verify**: `golangci-lint run -E wsl_v5 ./...` exits 0.
 
 ### Step 3: Fix `dupl` duplication in tests
 
@@ -136,7 +138,7 @@ that the exclusion regex matches the actual path format and report.
    method-not-allowed / invalid-JSON pairs in `admin_ops_coverage_test.go` and
    `vm_metrics_coverage_test.go`).
 
-**Verify**: `cd server && golangci-lint run --timeout=5m -E dupl ./...` exits 0.
+**Verify**: `golangci-lint run -E dupl ./...` exits 0.
 
 ### Step 4: Fix `goconst`
 
@@ -150,7 +152,7 @@ that the exclusion regex matches the actual path format and report.
    `"secret"`, `"pvmss"`, `"alice@pve"`, `"list"`, `"create"`, `"delete"`,
    `"start"`, etc.
 
-**Verify**: `cd server && golangci-lint run --timeout=5m -E goconst ./...` exits 0.
+**Verify**: `golangci-lint run -E goconst ./...` exits 0.
 
 ### Step 5: Fix `paralleltest`
 
@@ -161,7 +163,7 @@ that the exclusion regex matches the actual path format and report.
 2. For subtests using `t.Run`, add `t.Parallel()` inside the subtest body when
    safe.
 
-**Verify**: `cd server && golangci-lint run --timeout=5m -E paralleltest ./...` exits 0.
+**Verify**: `golangci-lint run -E paralleltest ./...` exits 0.
 
 ### Step 6: Fix `nolintlint`
 
@@ -173,7 +175,7 @@ that the exclusion regex matches the actual path format and report.
 2. If a file-level `//nolint` is no longer needed, remove it. If it is still
    needed, make it specific and add an explanation.
 
-**Verify**: `cd server && golangci-lint run --timeout=5m -E nolintlint ./...` exits 0.
+**Verify**: `golangci-lint run -E nolintlint ./...` exits 0.
 
 ### Step 7: Fix the remaining linter issues
 
@@ -195,7 +197,7 @@ that the exclusion regex matches the actual path format and report.
 
 Work one linter at a time. After each:
 
-**Verify**: `cd server && golangci-lint run --timeout=5m -E <linter> ./...` exits 0.
+**Verify**: `golangci-lint run -E <linter> ./...` exits 0.
 
 Finally:
 
