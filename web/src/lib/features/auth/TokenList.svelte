@@ -6,6 +6,9 @@
 	import Button from '$lib/shared/ui/Button.svelte';
 	import CopyButton from '$lib/shared/ui/CopyButton.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
+	import FormField from '$lib/shared/ui/FormField.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 
 	const store = setTokensContext();
@@ -33,31 +36,33 @@
 	<h2 class="text-lg font-semibold tracking-tight">{m['profile.tokens.heading']()}</h2>
 
 	<form class="mt-4 flex flex-wrap items-end gap-3" onsubmit={createToken}>
-		<label class="grid gap-1 text-sm font-medium">
-			{m['profile.tokens.label']()}
-			<input
-				id="token-label"
-				class="rounded-md border border-input bg-background px-3 py-2"
-				class:border-destructive={!!store.error}
-				bind:value={label}
-				required
-				aria-invalid={!!store.error}
-				aria-describedby={store.error ? 'token-error' : undefined}
-			/>
-		</label>
-		<label class="grid gap-1 text-sm font-medium">
-			{m['profile.tokens.scope']()}
-			<select class="rounded-md border border-input bg-background px-3 py-2" bind:value={scope}>
-				<option value="read">{m['profile.tokens.scopeRead']()}</option>
-				<option value="read_write">{m['profile.tokens.scopeReadWrite']()}</option>
-			</select>
-		</label>
+		<FormField
+			label={m['profile.tokens.label']()}
+			required
+			error={store.error}
+			class="min-w-0 flex-1"
+		>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField {id} {describedBy} {invalid} bind:value={label} required />
+			{/snippet}
+		</FormField>
+		<FormField label={m['profile.tokens.scope']()} class="w-44">
+			{#snippet children({ id, describedBy, invalid })}
+				<Select
+					{id}
+					{describedBy}
+					{invalid}
+					value={scope}
+					onchange={(e: Event & { currentTarget: HTMLSelectElement }) => (scope = e.currentTarget.value as TokenScope)}
+					options={[
+						{ value: 'read', label: m['profile.tokens.scopeRead']() },
+						{ value: 'read_write', label: m['profile.tokens.scopeReadWrite']() }
+					]}
+				/>
+			{/snippet}
+		</FormField>
 		<Button type="submit" loading={store.creating}>{m['profile.tokens.createButton']()}</Button>
 	</form>
-
-	{#if store.error}
-		<p id="token-error" role="alert" class="mt-3 text-sm text-destructive">{store.error}</p>
-	{/if}
 
 	{#if store.lastCreatedValue}
 		<div role="status" class="mt-3 rounded-md border border-border bg-card p-3 text-sm" aria-live="polite">
@@ -66,7 +71,11 @@
 				<code class="block break-all rounded bg-muted px-2 py-1">{store.lastCreatedValue}</code>
 				<CopyButton value={store.lastCreatedValue} />
 			</div>
-			<button class="mt-2 text-sm underline" onclick={() => store.dismissCreatedValue()}>{m['common.dismiss']()}</button>
+			<div class="mt-2">
+				<Button variant="ghost" size="sm" onclick={() => store.dismissCreatedValue()}>
+					{m['common.dismiss']()}
+				</Button>
+			</div>
 		</div>
 	{/if}
 

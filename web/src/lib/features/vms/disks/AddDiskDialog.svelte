@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { getVmDetailContext } from '../detail.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import FormField from '$lib/shared/ui/FormField.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
@@ -35,57 +39,65 @@
 			void submit();
 		}}
 	>
-		<label class="grid gap-1 text-sm">
-			{m['vms.disks.addBus']()}
-			<select class="rounded-md border border-border bg-background px-2 py-2" bind:value={bus}>
-				<option value="scsi">SCSI</option>
-				<option value="virtio">VirtIO</option>
-				<option value="sata">SATA</option>
-				<option value="ide">IDE</option>
-			</select>
-		</label>
-		<label class="grid gap-1 text-sm">
-			{m['vms.disks.addStorage']()}
-			<select
-				class="rounded-md border border-border bg-background px-2 py-2"
-				bind:value={storage}
-				data-testid="add-disk-storage"
-			>
-				<option value="" disabled>{m['vms.disks.addSelectStorage']()}</option>
-				{#each store.hardwareOptions?.storages ?? [] as option (option.storage)}
-					<option value={option.storage}>{option.storage} · {option.node}</option>
-				{/each}
-			</select>
-		</label>
-		<label class="grid gap-1 text-sm">
-			{m['vms.disks.addSize']()}
-			<input
-				class="rounded-md border border-border bg-background px-2 py-2"
-				type="number"
-				min="1"
-				bind:value={sizeGB}
-				data-testid="add-disk-size"
-			/>
-		</label>
-		{#if store.diskError}
-			<p role="alert" class="text-sm text-destructive">{store.diskError}</p>
-		{/if}
+		<FormField label={m['vms.disks.addBus']()} required>
+			{#snippet children({ id, describedBy, invalid })}
+				<Select
+					{id}
+					{describedBy}
+					{invalid}
+					value={bus}
+					onchange={(e: Event & { currentTarget: HTMLSelectElement }) => (bus = e.currentTarget.value as typeof bus)}
+					options={[
+						{ value: 'scsi', label: 'SCSI' },
+						{ value: 'virtio', label: 'VirtIO' },
+						{ value: 'sata', label: 'SATA' },
+						{ value: 'ide', label: 'IDE' }
+					]}
+					required
+				/>
+			{/snippet}
+		</FormField>
+		<FormField label={m['vms.disks.addStorage']()} required error={store.diskError}>
+			{#snippet children({ id, describedBy, invalid })}
+				<Select
+					{id}
+					{describedBy}
+					{invalid}
+					bind:value={storage}
+					placeholder={m['vms.disks.addSelectStorage']()}
+					options={(store.hardwareOptions?.storages ?? []).map((option) => ({
+						value: option.storage,
+						label: `${option.storage} · ${option.node}`
+					}))}
+					required
+					data-testid="add-disk-storage"
+				/>
+			{/snippet}
+		</FormField>
+		<FormField label={m['vms.disks.addSize']()} required>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField
+					{id}
+					{describedBy}
+					{invalid}
+					type="number"
+					min={1}
+					value={sizeGB}
+					oninput={(e: Event & { currentTarget: HTMLInputElement }) => (sizeGB = e.currentTarget.value)}
+					required
+					data-testid="add-disk-size"
+				/>
+			{/snippet}
+		</FormField>
 		<div class="mt-2 flex justify-end gap-2">
-			<button
-				type="button"
-				class="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted"
-				onclick={close}
-			>
-				{m['common.cancel']()}
-			</button>
-			<button
+			<Button type="button" variant="ghost" onclick={close}>{m['common.cancel']()}</Button>
+			<Button
 				type="submit"
-				class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-				disabled={store.diskInFlight}
+				loading={store.diskInFlight}
 				data-testid="add-disk-submit"
 			>
 				{store.diskInFlight ? m['common.adding']() : m['vms.disks.addButton']()}
-			</button>
+			</Button>
 		</div>
 	</form>
 </Dialog>

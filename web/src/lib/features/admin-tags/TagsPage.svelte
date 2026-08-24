@@ -8,6 +8,10 @@
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import FormField from '$lib/shared/ui/FormField.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
+	import ColorPicker from '$lib/shared/ui/ColorPicker.svelte';
 	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -119,24 +123,30 @@
 
 	{#if tags.length > 0}
 		<div class="mb-4 flex flex-wrap items-center gap-2">
-			<input
+			<TextField
 				type="search"
-				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
 				placeholder={m['admin.tags.searchPlaceholder']()}
 				value={search}
-				oninput={(e) => onSearchChange(e.currentTarget.value)}
+				oninput={(e: Event & { currentTarget: HTMLInputElement }) => onSearchChange(e.currentTarget.value)}
+				class="w-full sm:w-48"
 			/>
-			<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={protectedFilter} onchange={(e) => onProtectedFilterChange(e.currentTarget.value as 'all' | 'protected' | 'unprotected')}>
-				<option value="all">{m['admin.tags.filterProtected']()}</option>
-				<option value="protected">{m['admin.tags.filterProtectedOnly']()}</option>
-				<option value="unprotected">{m['admin.tags.filterUnprotectedOnly']()}</option>
-			</select>
-			<button
-				class="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
+			<Select
+				value={protectedFilter}
+				onchange={(e: Event & { currentTarget: HTMLSelectElement }) => onProtectedFilterChange(e.currentTarget.value as 'all' | 'protected' | 'unprotected')}
+				options={[
+					{ value: 'all', label: m['admin.tags.filterProtected']() },
+					{ value: 'protected', label: m['admin.tags.filterProtectedOnly']() },
+					{ value: 'unprotected', label: m['admin.tags.filterUnprotectedOnly']() }
+				]}
+				class="w-full sm:w-44"
+			/>
+			<Button
+				variant="secondary"
+				size="sm"
 				onclick={onResetFilters}
 			>
 				{m['admin.tags.resetFilters']()}
-			</button>
+			</Button>
 		</div>
 	{/if}
 
@@ -162,7 +172,7 @@
 						<td class="px-4 py-2">
 							{#if editingTag === tag.name}
 								<div class="flex items-center gap-2">
-									<input type="color" bind:value={editColor} class="h-8 w-12 rounded border" />
+									<ColorPicker bind:value={editColor} class="h-8 w-12 p-1" />
 									<Button variant="ghost" size="sm" onclick={saveEdit}>{m['common.save']()}</Button>
 									<Button variant="ghost" size="sm" onclick={() => (editingTag = null)}>{m['common.cancel']()}</Button>
 								</div>
@@ -204,21 +214,24 @@
 <Dialog bind:open={showForm} size="sm" labelledBy="tag-form-title" onClose={() => (showForm = false)}>
 	<h2 id="tag-form-title" class="mb-4 text-lg font-medium">{m['admin.tags.newTagForm']()}</h2>
 	<form onsubmit={(e) => { e.preventDefault(); submitCreate(); }} class="space-y-4">
-		<div>
-			<label for="tag-name" class="mb-1 block text-sm font-medium">{m['admin.tags.nameField']()}</label>
-			<input
-				id="tag-name"
-				type="text"
-				pattern={'[a-zA-Z0-9]{1,50}'}
-				class="pv-input"
-				bind:value={newName}
-				required
-			/>
-		</div>
-		<div>
-			<label for="tag-color" class="mb-1 block text-sm font-medium">{m['admin.tags.colorField']()}</label>
-			<input type="color" id="tag-color" bind:value={newColor} class="h-10 w-full rounded border" />
-		</div>
+		<FormField label={m['admin.tags.nameField']()} required>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField
+					{id}
+					{describedBy}
+					{invalid}
+					type="text"
+					pattern={'[a-zA-Z0-9]{1,50}'}
+					bind:value={newName}
+					required
+				/>
+			{/snippet}
+		</FormField>
+		<FormField label={m['admin.tags.colorField']()} required>
+			{#snippet children({ id, describedBy, invalid })}
+				<ColorPicker {id} {describedBy} {invalid} bind:value={newColor} class="h-10 w-full" required />
+			{/snippet}
+		</FormField>
 		<div class="flex justify-end gap-2 pt-2">
 			<Button variant="ghost" onclick={() => (showForm = false)}>{m['common.cancel']()}</Button>
 			<Button type="submit" disabled={saving}>
