@@ -2,6 +2,7 @@
 	import { untrack } from 'svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import FormField from '$lib/shared/ui/FormField.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -34,26 +35,31 @@
 <Dialog bind:open labelledBy="create-pool-title" {onClose}>
 	<h2 id="create-pool-title" class="mb-4 text-lg font-semibold">{m['admin.pools.createTitle']()}</h2>
 	<form class="space-y-4" onsubmit={(event) => { event.preventDefault(); void submit(); }}>
-		<div>
-			<label for="pool-name" class="mb-1 block text-sm font-medium">{m['common.name']()}</label>
-			<TextField
-				id="pool-name"
-				type="text"
-				pattern="[a-z0-9]+(-[a-z0-9]+)*"
-				maxLength={32}
-				required
-				autocomplete="off"
-				bind:value={name}
-			/>
-			<p class="mt-1 text-xs text-muted-foreground">{m['admin.pools.nameHint']()}</p>
-		</div>
-		<div>
-			<label for="pool-comment" class="mb-1 block text-sm font-medium">{m['admin.pools.comment']()}</label>
-			<TextField id="pool-comment" type="text" bind:value={comment} />
-		</div>
-		{#if error}
-			<p class="text-sm text-destructive" role="alert">{error}</p>
-		{/if}
+		<FormField
+			label={m['common.name']()}
+			required
+			hint={m['admin.pools.nameHint']()}
+			error={error}
+		>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField
+					{id}
+					{describedBy}
+					{invalid}
+					type="text"
+					pattern="[a-z0-9]+(-[a-z0-9]+)*"
+					maxLength={32}
+					required
+					autocomplete="off"
+					bind:value={name}
+				/>
+			{/snippet}
+		</FormField>
+		<FormField label={m['admin.pools.comment']()}>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField {id} {describedBy} {invalid} type="text" bind:value={comment} />
+			{/snippet}
+		</FormField>
 		<div class="flex justify-end gap-2 pt-2">
 			<Button variant="ghost" onclick={onClose}>{m['common.cancel']()}</Button>
 			<Button type="submit" disabled={saving}>
