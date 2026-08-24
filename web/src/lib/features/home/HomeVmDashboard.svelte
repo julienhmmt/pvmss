@@ -6,6 +6,8 @@
 	import type { VmListItem, VmStatus } from '$lib/features/vms/list.svelte';
 	import { onMount } from 'svelte';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
+	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
 
 	type DashboardVm = VmListItem;
 
@@ -55,15 +57,15 @@
 <section class="w-full max-w-5xl rounded-xl border border-border bg-card p-5 shadow-sm" aria-labelledby="dashboard-title">
 	<div class="mb-4 flex items-center justify-between">
 		<h2 id="dashboard-title" class="text-lg font-semibold tracking-tight">{m['home.dashboard.heading']()}</h2>
-		<button
-			type="button"
-			class="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted"
+		<Button
+			variant="secondary"
+			size="sm"
+			loading={loading}
 			onclick={() => { refreshCount = refreshCount + 1; void load(); }}
-			disabled={loading}
 			data-testid="dashboard-refresh"
 		>
 			{m['home.dashboard.refresh']()}
-		</button>
+		</Button>
 	</div>
 
 	{#if loading && vms.length === 0}
@@ -74,12 +76,9 @@
 		<div class="py-8 text-center">
 			<p class="text-sm text-muted-foreground">{m['home.dashboard.empty']()}</p>
 			{#if !session.isAdmin}
-				<a
-					href={resolve('/vms/create')}
-					class="mt-3 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-				>
+				<ButtonLink href={resolve('/vms/create')} class="mt-3">
 					{m['home.dashboard.emptyAction']()}
-				</a>
+				</ButtonLink>
 			{/if}
 		</div>
 	{:else}
@@ -133,13 +132,14 @@
 		</div>
 
 		<div class="mt-4">
-			<a
+			<ButtonLink
 				href={resolve('/vms')}
-				class="inline-block rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted"
+				variant="secondary"
+				size="sm"
 				data-testid="dashboard-view-all"
 			>
 				{m['home.dashboard.viewAll']()}
-			</a>
+			</ButtonLink>
 		</div>
 	{/if}
 </section>
