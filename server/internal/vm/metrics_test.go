@@ -63,19 +63,17 @@ func TestGetMetricsHistory_HappyPath(t *testing.T) {
 	}
 }
 
-func TestGetMetricsHistory_NonOwnerForbidden(t *testing.T) {
-	t.Parallel()
+func assertGetMetricsHistoryError(t *testing.T, actor auth.Identity, vmid int, tf cluster.MetricsTimeframe, wantErr error) {
+	t.Helper()
 
 	idx := buildResolveIndex(t)
-	bob := auth.Identity{Username: cluster.FakeUserBob, Pool: cluster.FakePoolBob}
-
 	reader := &fakeMetricsHistoryReader{samples: []cluster.MetricsSample{{}}}
 
 	_, err := vm.GetMetricsHistory(context.Background(), vm.MetricsDependencies{
-		Index: idx, Actor: bob, ClusterName: testClusterName, VMID: 100, Reader: reader,
-	}, cluster.MetricsTimeframeHour)
-	if !errors.Is(err, vm.ErrForbidden) {
-		t.Fatalf("err = %v, want ErrForbidden", err)
+		Index: idx, Actor: actor, ClusterName: testClusterName, VMID: vmid, Reader: reader,
+	}, tf)
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("err = %v, want %v", err, wantErr)
 	}
 
 	if reader.gotNode != "" || reader.gotVMID != 0 {
@@ -83,24 +81,18 @@ func TestGetMetricsHistory_NonOwnerForbidden(t *testing.T) {
 	}
 }
 
+func TestGetMetricsHistory_NonOwnerForbidden(t *testing.T) {
+	t.Parallel()
+
+	bob := auth.Identity{Username: cluster.FakeUserBob, Pool: cluster.FakePoolBob}
+	assertGetMetricsHistoryError(t, bob, 100, cluster.MetricsTimeframeHour, vm.ErrForbidden)
+}
+
 func TestGetMetricsHistory_VMNotFound(t *testing.T) {
 	t.Parallel()
 
-	idx := buildResolveIndex(t)
 	alice := auth.Identity{Username: cluster.FakeUserAlice, Pool: cluster.FakePoolAlice}
-
-	reader := &fakeMetricsHistoryReader{samples: []cluster.MetricsSample{{}}}
-
-	_, err := vm.GetMetricsHistory(context.Background(), vm.MetricsDependencies{
-		Index: idx, Actor: alice, ClusterName: testClusterName, VMID: 999, Reader: reader,
-	}, cluster.MetricsTimeframeDay)
-	if !errors.Is(err, vm.ErrNotFound) {
-		t.Fatalf("err = %v, want ErrNotFound", err)
-	}
-
-	if reader.gotNode != "" || reader.gotVMID != 0 {
-		t.Fatalf("reader was called despite Resolve failure: %+v", reader)
-	}
+	assertGetMetricsHistoryError(t, alice, 999, cluster.MetricsTimeframeDay, vm.ErrNotFound)
 }
 
 func TestGetMetricsHistory_NilIndexReturnsNotFound(t *testing.T) {
@@ -175,6 +167,7 @@ func TestGetMetricsHistory_TableDriven(t *testing.T) {
 				if !errors.Is(err, tc.wantErr) {
 					t.Fatalf("err = %v, want %v", err, tc.wantErr)
 				}
+
 				return
 			}
 

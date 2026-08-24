@@ -93,7 +93,7 @@ func TestVMCloudInit_ConfigAuthorizationAndValidation(t *testing.T) {
 		code   string
 	}{
 		{name: "non owner", cookie: bobCookie(t, authHandler), path: cloudInitConfigPath, body: `{"user":"x"}`, status: http.StatusForbidden, code: apiCodeForbidden},
-		{name: "untagged", cookie: aliceCookie(t, authHandler), path: "/api/v1/vms/default/109/cloudinit", body: `{"user":"x"}`, status: http.StatusNotFound, code: "not_found"},
+		{name: "untagged", cookie: aliceCookie(t, authHandler), path: "/api/v1/vms/default/109/cloudinit", body: `{"user":"x"}`, status: http.StatusNotFound, code: apiCodeNotFound},
 		{name: "invalid static", cookie: aliceCookie(t, authHandler), path: cloudInitConfigPath, body: `{"ipMode":"invalid"}`, status: http.StatusBadRequest, code: "invalid_config"},
 		{name: "forged node", cookie: aliceCookie(t, authHandler), path: cloudInitConfigPath, body: `{"user":"x","node":"evil"}`, status: http.StatusBadRequest, code: "invalid_config"},
 	}
@@ -191,6 +191,7 @@ func assertSSHKeyInjected(t *testing.T, handler http.Handler, path string, authH
 	for _, c := range cluster.FakeCallsFor(101) {
 		if c.Action == "add_ssh_key" {
 			sawAgent = true
+
 			if c.Content != "ssh-ed25519 AAAA x" || c.Name != "debian" {
 				t.Errorf("add_ssh_key call = %+v", c)
 			}

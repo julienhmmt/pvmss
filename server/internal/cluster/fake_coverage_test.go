@@ -38,6 +38,7 @@ func mutateFirstSnapshotVMFields(snap cluster.Snapshot) {
 	if len(snap.VMs[0].Tags) > 0 {
 		snap.VMs[0].Tags[0] = "mutated-tag"
 	}
+
 	if len(snap.VMs[0].Disks) > 0 {
 		snap.VMs[0].Disks[0].Key = "mutated-key"
 	}
@@ -45,6 +46,7 @@ func mutateFirstSnapshotVMFields(snap cluster.Snapshot) {
 
 func assertSnapshotHasNoMutatedFields(t *testing.T, snap cluster.Snapshot) {
 	t.Helper()
+
 	for _, vm := range snap.VMs {
 		assertVMHasNoMutatedFields(t, vm)
 	}
@@ -52,12 +54,15 @@ func assertSnapshotHasNoMutatedFields(t *testing.T, snap cluster.Snapshot) {
 
 func assertVMHasNoMutatedFields(t *testing.T, vm cluster.VM) {
 	t.Helper()
+
 	if vm.Name == "mutated-name" {
 		t.Fatal("mutating first snapshot's VM name leaked into second snapshot")
 	}
+
 	if slices.Contains(vm.Tags, "mutated-tag") {
 		t.Fatal("mutating first snapshot's tags leaked into second snapshot")
 	}
+
 	if diskHasKey(vm.Disks, "mutated-key") {
 		t.Fatal("mutating first snapshot's disk key leaked into second snapshot")
 	}
@@ -69,6 +74,7 @@ func diskHasKey(disks []cluster.Disk, key string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -98,6 +104,7 @@ func mutateBootOrderAndNetworkInterfaces(snap cluster.Snapshot) {
 		if len(snap.VMs[i].BootOrder) > 0 {
 			snap.VMs[i].BootOrder[0] = "mutated-boot"
 		}
+
 		if len(snap.VMs[i].NetworkInterfaces) > 0 {
 			snap.VMs[i].NetworkInterfaces[0].Bridge = "mutated-bridge"
 		}
@@ -106,6 +113,7 @@ func mutateBootOrderAndNetworkInterfaces(snap cluster.Snapshot) {
 
 func assertNoBootOrderOrNetworkMutationLeaked(t *testing.T, snap cluster.Snapshot) {
 	t.Helper()
+
 	for _, vm := range snap.VMs {
 		assertVMBootOrderAndNetworkNotMutated(t, vm)
 	}
@@ -113,9 +121,11 @@ func assertNoBootOrderOrNetworkMutationLeaked(t *testing.T, snap cluster.Snapsho
 
 func assertVMBootOrderAndNetworkNotMutated(t *testing.T, vm cluster.VM) {
 	t.Helper()
+
 	if slices.Contains(vm.BootOrder, "mutated-boot") {
 		t.Fatal("mutating BootOrder leaked into second snapshot")
 	}
+
 	if anyNICBridgeIs(vm.NetworkInterfaces, "mutated-bridge") {
 		t.Fatal("mutating NetworkInterface Bridge leaked into second snapshot")
 	}
@@ -127,6 +137,7 @@ func anyNICBridgeIs(nics []cluster.NetworkInterface, bridge string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -136,19 +147,23 @@ func TestFake_DisplayName_NamedAndEmpty(t *testing.T) {
 	ctx := context.Background()
 
 	named := cluster.NewFake("my-cluster")
+
 	name, err := named.DisplayName(ctx)
 	if err != nil {
 		t.Fatalf("DisplayName(named): %v", err)
 	}
+
 	if name != "my-cluster" {
 		t.Errorf("DisplayName = %q, want my-cluster", name)
 	}
 
 	empty := cluster.NewFake("")
+
 	name, err = empty.DisplayName(ctx)
 	if err != nil {
 		t.Fatalf("DisplayName(empty): %v", err)
 	}
+
 	if name != "fake-cluster" {
 		t.Errorf("DisplayName = %q, want fake-cluster", name)
 	}
@@ -176,10 +191,12 @@ func TestFake_Snapshot_ProxmoxVersion(t *testing.T) {
 	t.Parallel()
 
 	fake := cluster.NewFake("test-version")
+
 	snap, err := fake.Snapshot(context.Background())
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
+
 	if snap.ProxmoxVersion == "" {
 		t.Error("ProxmoxVersion is empty, expected a non-empty version")
 	}
@@ -204,9 +221,11 @@ func TestFake_Authenticate_AdminIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Authenticate(admin): %v", err)
 	}
+
 	if !id.IsAdmin {
 		t.Error("IsAdmin = false, want true for admin@pve")
 	}
+
 	if id.Pool != "" {
 		t.Errorf("Pool = %q, want empty for admin", id.Pool)
 	}
@@ -222,9 +241,11 @@ func TestFake_Authenticate_PoolUserIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Authenticate(alice): %v", err)
 	}
+
 	if id.IsAdmin {
 		t.Error("IsAdmin = true, want false for pool user")
 	}
+
 	if id.Pool != cluster.FakePoolAlice {
 		t.Errorf("Pool = %q, want %q", id.Pool, cluster.FakePoolAlice)
 	}
@@ -290,6 +311,7 @@ func TestFake_AddSSHKey_ForcedError(t *testing.T) {
 	defer cluster.ResetFake()
 
 	forcedErr := errors.New("ssh injection failed")
+
 	cluster.SetFakeSSHKeyError(forcedErr)
 	defer cluster.SetFakeSSHKeyError(nil)
 
@@ -304,6 +326,7 @@ func TestFake_PushCloudInitSnippet_ForcedError(t *testing.T) {
 	defer cluster.ResetFake()
 
 	forcedErr := errors.New("push failed")
+
 	cluster.SetFakeCloudInitPushError(forcedErr)
 	defer cluster.SetFakeCloudInitPushError(nil)
 
@@ -346,11 +369,13 @@ func TestFake_Action_PauseAndResume(t *testing.T) {
 	}
 
 	var found bool
+
 	for _, vm := range snap.VMs {
 		if vm.VMID == 100 && vm.Status == cluster.VMPaused {
 			found = true
 		}
 	}
+
 	if !found {
 		t.Fatal("VM 100 not paused after pause action")
 	}
@@ -489,6 +514,7 @@ func TestFake_Patch_UpdatesNameAndDescription(t *testing.T) {
 			if vm.Name != "renamed-vm" {
 				t.Errorf("Name = %q, want renamed-vm", vm.Name)
 			}
+
 			if vm.Description != "new description" {
 				t.Errorf("Description = %q, want \"new description\"", vm.Description)
 			}
@@ -508,6 +534,7 @@ func TestFake_Patch_EmptyArgsIgnored(t *testing.T) {
 	}
 
 	var originalName, originalDesc string
+
 	for _, vm := range original.VMs {
 		if vm.VMID == 100 {
 			originalName = vm.Name
@@ -529,6 +556,7 @@ func TestFake_Patch_EmptyArgsIgnored(t *testing.T) {
 			if vm.Name != originalName {
 				t.Errorf("Name = %q, want %q (should be unchanged)", vm.Name, originalName)
 			}
+
 			if vm.Description != originalDesc {
 				t.Errorf("Description = %q, want %q (should be unchanged)", vm.Description, originalDesc)
 			}
@@ -555,6 +583,7 @@ func TestFake_AddDisk_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AddDisk: %v", err)
 	}
+
 	if key == "" {
 		t.Fatal("AddDisk returned empty key")
 	}
@@ -569,29 +598,37 @@ func TestFake_AddDisk_Success(t *testing.T) {
 
 func assertAddedDiskPresent(t *testing.T, snap cluster.Snapshot, vmid int, key string) {
 	t.Helper()
+
 	for _, vm := range snap.VMs {
 		if vm.VMID != vmid {
 			continue
 		}
+
 		assertDiskWithKeyPresent(t, vm.Disks, key)
+
 		return
 	}
 }
 
 func assertDiskWithKeyPresent(t *testing.T, disks []cluster.Disk, key string) {
 	t.Helper()
+
 	for _, disk := range disks {
 		if disk.Key != key {
 			continue
 		}
+
 		if disk.SizeGB != 20 {
 			t.Errorf("disk SizeGB = %d, want 20", disk.SizeGB)
 		}
+
 		if disk.Storage != "local-lvm" {
 			t.Errorf("disk Storage = %q, want local-lvm", disk.Storage)
 		}
+
 		return
 	}
+
 	t.Fatalf("added disk %q not found in snapshot", key)
 }
 
@@ -705,6 +742,7 @@ func TestFake_SetCDROM_Success(t *testing.T) {
 			if vm.CDROM.State != cluster.CDROMMounted {
 				t.Errorf("CDROM State = %q, want mounted", vm.CDROM.State)
 			}
+
 			if vm.CDROM.ISOVolID != "local:iso/test.iso" {
 				t.Errorf("CDROM ISOVolID = %q, want local:iso/test.iso", vm.CDROM.ISOVolID)
 			}
@@ -750,6 +788,7 @@ func TestFake_UpdateHardware_Success(t *testing.T) {
 
 func assertHardwareFieldsUpdated(t *testing.T, snap cluster.Snapshot, vmid int) {
 	t.Helper()
+
 	for _, vm := range snap.VMs {
 		if vm.VMID == vmid {
 			assertVMHardwareFields(t, vm)
@@ -759,15 +798,19 @@ func assertHardwareFieldsUpdated(t *testing.T, snap cluster.Snapshot, vmid int) 
 
 func assertVMHardwareFields(t *testing.T, vm cluster.VM) {
 	t.Helper()
+
 	if vm.Sockets != 2 {
 		t.Errorf("Sockets = %d, want 2", vm.Sockets)
 	}
+
 	if vm.Cores != 4 {
 		t.Errorf("Cores = %d, want 4", vm.Cores)
 	}
+
 	if vm.CPUCores != 8 {
 		t.Errorf("CPUCores = %d, want 8", vm.CPUCores)
 	}
+
 	if vm.MemoryTotal != 8192*1024*1024 {
 		t.Errorf("MemoryTotal = %d, want %d", vm.MemoryTotal, 8192*1024*1024)
 	}
@@ -828,6 +871,7 @@ func TestFake_GetMetricsHistory_Success(t *testing.T) {
 			if err != nil {
 				t.Fatalf("GetMetricsHistory(%s): %v", tc.name, err)
 			}
+
 			if len(samples) != tc.wantCount {
 				t.Fatalf("samples count = %d, want %d", len(samples), tc.wantCount)
 			}
@@ -839,6 +883,7 @@ func TestFake_GetMetricsHistory_Success(t *testing.T) {
 
 func assertMetricsSamplesValid(t *testing.T, samples []cluster.MetricsSample) {
 	t.Helper()
+
 	for i, s := range samples {
 		assertMetricsSampleValid(t, i, s)
 	}
@@ -846,12 +891,15 @@ func assertMetricsSamplesValid(t *testing.T, samples []cluster.MetricsSample) {
 
 func assertMetricsSampleValid(t *testing.T, i int, s cluster.MetricsSample) {
 	t.Helper()
+
 	if s.Timestamp.IsZero() {
 		t.Errorf("sample[%d] has zero timestamp", i)
 	}
+
 	if s.CPUPercent < 0 || s.CPUPercent > 100 {
 		t.Errorf("sample[%d] CPUPercent = %v, out of range", i, s.CPUPercent)
 	}
+
 	if s.MemoryMax <= 0 {
 		t.Errorf("sample[%d] MemoryMax = %d, want positive", i, s.MemoryMax)
 	}
@@ -867,9 +915,11 @@ func TestFake_GetMetricsCurrent_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetMetricsCurrent: %v", err)
 	}
+
 	if sample.Timestamp.IsZero() {
 		t.Error("Timestamp is zero")
 	}
+
 	if sample.MemoryMax <= 0 {
 		t.Errorf("MemoryMax = %d, want positive", sample.MemoryMax)
 	}
@@ -945,6 +995,7 @@ func TestFake_Snapshot_RollbackWithVMState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateSnapshot: %v", err)
 	}
+
 	completeFakeTaskExternal(t, fake, upid)
 
 	if err := fake.Action(ctx, cluster.FakeNode01, 101, "start"); err != nil {
@@ -955,6 +1006,7 @@ func TestFake_Snapshot_RollbackWithVMState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RollbackSnapshot: %v", err)
 	}
+
 	completeFakeTaskExternal(t, fake, rollbackUPID)
 
 	snap, err := fake.Snapshot(ctx)
@@ -979,12 +1031,14 @@ func TestFake_Snapshot_RollbackWithoutVMState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateSnapshot: %v", err)
 	}
+
 	completeFakeTaskExternal(t, fake, upid)
 
 	rollbackUPID, err := fake.RollbackSnapshot(ctx, cluster.FakeNode01, 100, "no-state-snap")
 	if err != nil {
 		t.Fatalf("RollbackSnapshot: %v", err)
 	}
+
 	completeFakeTaskExternal(t, fake, rollbackUPID)
 
 	snap, err := fake.Snapshot(ctx)
@@ -1003,13 +1057,16 @@ func TestFake_GetVNCTicket_ReturnsFixedTicket(t *testing.T) {
 	t.Parallel()
 
 	fake := cluster.NewFake("test-vnc-ticket")
+
 	ticket, err := fake.GetVNCTicket(context.Background(), cluster.FakeNode01, 100, "test")
 	if err != nil {
 		t.Fatalf("GetVNCTicket: %v", err)
 	}
+
 	if ticket.Ticket == "" {
 		t.Error("Ticket is empty")
 	}
+
 	if ticket.Port == 0 {
 		t.Error("Port is zero")
 	}
@@ -1019,13 +1076,16 @@ func TestFake_GetTermProxy_ReturnsFixedTicket(t *testing.T) {
 	t.Parallel()
 
 	fake := cluster.NewFake("test-term-proxy")
+
 	ticket, err := fake.GetTermProxy(context.Background(), cluster.FakeNode01, 100, "test")
 	if err != nil {
 		t.Fatalf("GetTermProxy: %v", err)
 	}
+
 	if ticket.Ticket == "" {
 		t.Error("Ticket is empty")
 	}
+
 	if ticket.Port == 0 {
 		t.Error("Port is zero")
 	}
@@ -1041,10 +1101,12 @@ func TestFake_NextVMID_Monotonic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NextVMID first: %v", err)
 	}
+
 	second, err := fake.NextVMID(ctx)
 	if err != nil {
 		t.Fatalf("NextVMID second: %v", err)
 	}
+
 	if second <= first {
 		t.Fatalf("second VMID %d not greater than first %d", second, first)
 	}
@@ -1079,6 +1141,7 @@ func TestFake_CreateVM_WithISO(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateVM: %v", err)
 	}
+
 	if upid == "" {
 		t.Fatal("CreateVM returned empty upid")
 	}
@@ -1089,17 +1152,21 @@ func TestFake_CreateVM_WithISO(t *testing.T) {
 	}
 
 	var found bool
+
 	for _, vm := range snap.VMs {
 		if vm.VMID == vmid {
 			found = true
+
 			if vm.Name != "iso-vm" {
 				t.Errorf("Name = %q, want iso-vm", vm.Name)
 			}
+
 			if vm.Status != cluster.VMStopped {
 				t.Errorf("Status = %q, want stopped (no StartAfterCreate)", vm.Status)
 			}
 		}
 	}
+
 	if !found {
 		t.Fatalf("created VM %d not in snapshot", vmid)
 	}
@@ -1107,6 +1174,7 @@ func TestFake_CreateVM_WithISO(t *testing.T) {
 
 func completeFakeTaskExternal(t *testing.T, fake cluster.Fake, upid string) {
 	t.Helper()
+
 	for range 3 {
 		if _, err := fake.TaskStatus(context.Background(), upid); err != nil {
 			t.Fatalf("TaskStatus: %v", err)

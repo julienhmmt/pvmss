@@ -23,8 +23,6 @@
 	let dnsServer = $state('');
 	let searchDomain = $state('');
 	let validationError = $state<string | null>(null);
-	let ipError = $state<string | null>(null);
-	let gatewayError = $state<string | null>(null);
 	let injectKey = $state('');
 	let injectUser = $state('');
 
@@ -40,38 +38,64 @@
 		searchDomain = config.searchDomain ?? '';
 	});
 
-	function submit(): void {
-	ipError = null;
-	gatewayError = null;
-	validationError = null;
-	if (ipMode === 'static') {
-		if (ipAddress === '') {
-			ipError = m['vms.cloudinit.validationError']();
-			return;
-		}
-		if (gateway === '') {
-			gatewayError = m['vms.cloudinit.validationError']();
-			return;
-		}
+	const IPV4_OCTET = '(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)';
+	const IPV4_PATTERN = new RegExp(`^${IPV4_OCTET}(\\.${IPV4_OCTET}){3}$`);
+	const IPV4_CIDR_PATTERN = new RegExp(`^${IPV4_OCTET}(\\.${IPV4_OCTET}){3}/([1-9]|[12]\\d|3[0-2])$`);
+
+	function isIPv4(value: string): boolean {
+		return IPV4_PATTERN.test(value.trim());
 	}
-	onRequestSave({
-		user,
-		...(password === '' ? {} : { password }),
-		sshKeys: sshKeys.split('\n').map((key) => key.trim()).filter(Boolean),
-		ipMode,
-		...(ipMode === 'static' ? { ipAddress, gateway } : {}),
-		dnsServer,
-		searchDomain
-	});
+
+	function isIPv4CIDR(value: string): boolean {
+		return IPV4_CIDR_PATTERN.test(value.trim());
+	}
+
+	const ipError = $derived(
+		ipMode === 'static' && ipAddress.trim() !== '' && !isIPv4CIDR(ipAddress)
+			? m['vms.cloudinit.ipInvalid']()
+			: null
+	);
+
+	const gatewayError = $derived(
+		ipMode === 'static' && gateway.trim() !== '' && !isIPv4(gateway)
+			? m['vms.cloudinit.gatewayInvalid']()
+			: null
+	);
+
+	const canSubmit = $derived(
+		user.trim() !== '' &&
+			(ipMode !== 'static' || (ipAddress.trim() !== '' && gateway.trim() !== '' && !ipError && !gatewayError))
+	);
+
+	function submit(): void {
+		validationError = null;
+		if (ipMode === 'static') {
+			if (ipAddress.trim() === '' || gateway.trim() === '') {
+				validationError = m['vms.cloudinit.validationError']();
+				return;
+			}
+			if (ipError || gatewayError) {
+				return;
+			}
+		}
+		onRequestSave({
+			user,
+			...(password === '' ? {} : { password }),
+			sshKeys: sshKeys.split('\n').map((key) => key.trim()).filter(Boolean),
+			ipMode,
+			...(ipMode === 'static' ? { ipAddress, gateway } : {}),
+			dnsServer,
+			searchDomain
+		});
 	}
 
 	async function injectNow(): Promise<void> {
-	const key = injectKey.trim();
-	if (key === '') return;
-	const ok = await store.addSSHKey(key, injectUser);
-	if (ok) {
-		injectKey = '';
-	}
+		const key = injectKey.trim();
+		if (key === '') return;
+		const ok = await store.addSSHKey(key, injectUser);
+		if (ok) {
+			injectKey = '';
+		}
 	}
 </script>
 
@@ -90,6 +114,7 @@
 	<form
 		class="grid gap-4"
 		aria-describedby="cloudinit-form-help"
+		novalidate
 		onsubmit={(event) => {
 			event.preventDefault();
 			submit();
@@ -177,7 +202,7 @@
 			<p role="alert" data-testid="cloudinit-config-error">{store.configError}</p>
 		{/if}
 		<p class="sr-only" role="status" aria-live="polite">{store.configInFlight ? m['vms.cloudinit.saving']() : ''}</p>
-		<Button type="submit" loading={store.configInFlight} data-testid="cloudinit-save">
+		<Button type="submit" loading={store.configInFlight} disabled={!canSubmit} data-testid="cloudinit-save">
 			{store.configInFlight ? m['common.saving']() : m['vms.cloudinit.saveButton']()}
 		</Button>
 	</form>

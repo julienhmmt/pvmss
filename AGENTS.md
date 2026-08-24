@@ -287,12 +287,16 @@ mode is now `PVMSS_CLUSTER_SOURCE=fake`.
 Files still pointing at the deleted `backend/` or `frontend/`. Fix them when
 you touch the surrounding area; do not treat them as documentation of reality:
 
-- `README.md` / `README.fr.md` — correctly link the in-app page
-  `/docs/proxmox-permissions` (seeded from `server/internal/docs/seed/recovered/`),
-  not the deleted `backend/docs/proxmox-permissions.*.md`
-- `tools/superlinter.sh` — commented-out exclude regex references `frontend/`
 - `docs/plans/` — historical task plans reference v0.3 paths (read-only history)
 - `server/internal/recovery/` — comments reference `backend/` for context only
+
+Stale references already cleaned up:
+
+- `README.md` / `README.fr.md` — already link the in-app page `/docs/proxmox-permissions`
+  (seeded from `server/internal/docs/seed/recovered/`), not the deleted
+  `backend/docs/proxmox-permissions.*.md`.
+- `tools/superlinter.sh` — the stale `frontend/` exclude regex and broken volume
+  mount (`$(pwd)../.`) have been fixed.
 
 ## Project Conventions
 

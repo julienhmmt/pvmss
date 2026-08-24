@@ -51,6 +51,7 @@ func TestSetPolicy_ValidGabaritAndQuota_PersistsAllFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Gabarit: %v", err)
 	}
+
 	if got != gabarit {
 		t.Fatalf("gabarit = %+v, want %+v", got, gabarit)
 	}
@@ -59,6 +60,7 @@ func TestSetPolicy_ValidGabaritAndQuota_PersistsAllFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Quota: %v", err)
 	}
+
 	if quota.Allowed != 7 {
 		t.Fatalf("quota.Allowed = %d, want 7", quota.Allowed)
 	}
@@ -79,6 +81,7 @@ func TestSetPolicy_UnlimitedQuota_Persists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Quota: %v", err)
 	}
+
 	if quota.Allowed != -1 {
 		t.Fatalf("quota.Allowed = %d, want -1", quota.Allowed)
 	}
@@ -142,6 +145,7 @@ func TestSetQuota_ValidValue_Persists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Quota: %v", err)
 	}
+
 	if quota.Allowed != 10 {
 		t.Fatalf("quota.Allowed = %d, want 10", quota.Allowed)
 	}
@@ -161,6 +165,7 @@ func TestSetQuota_Unlimited_Persists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Quota: %v", err)
 	}
+
 	if quota.Allowed != -1 {
 		t.Fatalf("quota.Allowed = %d, want -1", quota.Allowed)
 	}
@@ -232,6 +237,7 @@ func TestSetNodeCapacity_BelowVMUsage_ReturnsErrBelowCurrentUsage(t *testing.T) 
 	}
 
 	below := policy.Capacity{MaxVMs: max(current.UsedVMs-1, 1)}
+
 	err = service.SetNodeCapacity(ctx, "default", cluster.FakeNode01, below)
 	if !errors.Is(err, policy.ErrBelowCurrentUsage) {
 		t.Fatalf("error = %v, want ErrBelowCurrentUsage", err)
@@ -250,6 +256,7 @@ func TestSetNodeCapacity_BelowRAMUsage_ReturnsErrBelowCurrentUsage(t *testing.T)
 	}
 
 	below := policy.Capacity{MaxRAMGB: max(current.UsedRAMGB-1, 1)}
+
 	err = service.SetNodeCapacity(ctx, "default", cluster.FakeNode01, below)
 	if !errors.Is(err, policy.ErrBelowCurrentUsage) {
 		t.Fatalf("error = %v, want ErrBelowCurrentUsage", err)
@@ -268,6 +275,7 @@ func TestSetNodeCapacity_AbovePhysicalRAM_ReturnsErrAboveNodeCapacity(t *testing
 	}
 
 	above := policy.Capacity{MaxRAMGB: current.PhysicalRAMGB + 1}
+
 	err = service.SetNodeCapacity(ctx, "default", cluster.FakeNode01, above)
 	if !errors.Is(err, policy.ErrAboveNodeCapacity) {
 		t.Fatalf("error = %v, want ErrAboveNodeCapacity", err)
@@ -283,8 +291,8 @@ func TestSetNodeCapacity_ValidCapacity_Persists(t *testing.T) {
 	// FakeNode03 is offline with zero pvmss-tagged VMs, so any non-negative
 	// capacity passes the below-usage check. Its physical limits are 16
 	// vCPUs and 64 GB RAM, so we stay within them.
-	cap := policy.Capacity{MaxVMs: 10, MaxVCPUs: 16, MaxRAMGB: 64, MaxDiskGB: 500}
-	if err := service.SetNodeCapacity(ctx, "default", cluster.FakeNode03, cap); err != nil {
+	capacity := policy.Capacity{MaxVMs: 10, MaxVCPUs: 16, MaxRAMGB: 64, MaxDiskGB: 500}
+	if err := service.SetNodeCapacity(ctx, "default", cluster.FakeNode03, capacity); err != nil {
 		t.Fatalf("SetNodeCapacity: %v", err)
 	}
 
@@ -292,8 +300,9 @@ func TestSetNodeCapacity_ValidCapacity_Persists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NodeCapacity: %v", err)
 	}
+
 	if got.MaxVMs != 10 || got.MaxVCPUs != 16 || got.MaxRAMGB != 64 || got.MaxDiskGB != 500 {
-		t.Fatalf("capacity = %+v, want %+v", got, cap)
+		t.Fatalf("capacity = %+v, want %+v", got, capacity)
 	}
 }
 
@@ -340,8 +349,8 @@ func TestSetNodeCapacity_ProjectionOnly_FindsNode(t *testing.T) {
 
 	// FakeNode03 is offline with zero usage, so any capacity within its
 	// physical limits (16 vCPUs, 64 GB RAM) passes both checks.
-	cap := policy.Capacity{MaxVMs: 5, MaxVCPUs: 8, MaxRAMGB: 32}
-	if err := serviceProjOnly.SetNodeCapacity(ctx, "default", cluster.FakeNode03, cap); err != nil {
+	capacity := policy.Capacity{MaxVMs: 5, MaxVCPUs: 8, MaxRAMGB: 32}
+	if err := serviceProjOnly.SetNodeCapacity(ctx, "default", cluster.FakeNode03, capacity); err != nil {
 		t.Fatalf("SetNodeCapacity via projection: %v", err)
 	}
 }
@@ -382,6 +391,7 @@ func TestBelowCurrentUsageError_Error_VCPUsDimension(t *testing.T) {
 	err := &policy.BelowCurrentUsageError{
 		Node: "pve-node-01", Dimension: "vcpus", Requested: 4, Used: 8,
 	}
+
 	msg := err.Error()
 	if msg == "" {
 		t.Fatal("Error() returned empty string")
@@ -398,10 +408,12 @@ func TestBelowCurrentUsageError_Error_VMsDimension(t *testing.T) {
 	err := &policy.BelowCurrentUsageError{
 		Node: "pve-node-02", Dimension: "vms", Requested: 2, Used: 5,
 	}
+
 	msg := err.Error()
 	if msg == "" {
 		t.Fatal("Error() returned empty string")
 	}
+
 	if !strings.Contains(msg, "vms") {
 		t.Errorf("Error() = %q, want it to contain 'vms'", msg)
 	}
@@ -422,6 +434,7 @@ func TestAboveNodeCapacityError_Error_VCPUDimension(t *testing.T) {
 	err := &policy.AboveNodeCapacityError{
 		Node: "pve-node-01", Dimension: "vcpu", Requested: 64, Physical: 32,
 	}
+
 	msg := err.Error()
 	if msg == "" {
 		t.Fatal("Error() returned empty string")
@@ -438,6 +451,7 @@ func TestAboveNodeCapacityError_Error_RAMDimension(t *testing.T) {
 	err := &policy.AboveNodeCapacityError{
 		Node: "pve-node-01", Dimension: "ram", Requested: 128, Physical: 64,
 	}
+
 	msg := err.Error()
 	if msg == "" {
 		t.Fatal("Error() returned empty string")

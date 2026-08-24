@@ -235,7 +235,7 @@ func TestProxmox_FindSnippetStorage_NotFound(t *testing.T) {
 // when a filename is given, and that an empty filename clears the cicustom key
 // instead of setting it. Fixes the silent no-op reported in REPORT.md §4/addendum.
 //
-//nolint:wsl_v5 // test table keeps brace groups tight
+
 func TestProxmox_AttachCloudInitSnippet(t *testing.T) {
 	t.Parallel()
 
@@ -284,11 +284,13 @@ func recordCloudInitConfigForm(t *testing.T, seen map[string]string) http.Handle
 		if err := r.ParseForm(); err != nil {
 			t.Fatalf("parse form: %v", err)
 		}
+
 		for _, k := range []string{"cicustom", "delete"} {
 			if v := r.FormValue(k); v != "" {
 				seen[k] = v
 			}
 		}
+
 		writeJSONFixture(t, w, `{"data":null}`)
 	}
 }

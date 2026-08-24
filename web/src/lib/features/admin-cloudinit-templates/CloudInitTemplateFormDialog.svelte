@@ -2,6 +2,8 @@
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import FormField from '$lib/shared/ui/FormField.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
+	import Textarea from '$lib/shared/ui/Textarea.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -27,6 +29,8 @@
 		onCancel,
 		onSubmit
 	}: Props = $props();
+
+	const MAX_CONTENT_LENGTH = 16384;
 </script>
 
 <Dialog open={showForm} size="lg" labelledBy="cloudinit-template-form-title" onClose={onCancel}>
@@ -34,30 +38,32 @@
 	<form onsubmit={(e) => { e.preventDefault(); onSubmit(); }} class="grid gap-4">
 		<FormField label={m['admin.cloudinit.labelField']()} required>
 			{#snippet children({ id, describedBy, invalid })}
-				<input
+				<TextField
 					{id}
-					aria-describedby={describedBy}
-					aria-invalid={invalid ? 'true' : undefined}
-					type="text"
-					class="pv-input"
+					{describedBy}
+					{invalid}
 					value={label}
-					oninput={(e) => onLabelChange(e.currentTarget.value)}
+					oninput={(e: Event & { currentTarget: HTMLInputElement | HTMLTextAreaElement }) => onLabelChange(e.currentTarget.value)}
 					required
 				/>
 			{/snippet}
 		</FormField>
 		<FormField label={m['admin.cloudinit.contentField']()} required>
 			{#snippet children({ id, describedBy, invalid })}
-				<textarea
+				<Textarea
 					{id}
-					aria-describedby={describedBy}
-					aria-invalid={invalid ? 'true' : undefined}
-					class="pv-input font-mono text-xs"
-					rows="12"
+					{describedBy}
+					{invalid}
 					value={content}
-					oninput={(e) => onContentChange(e.currentTarget.value)}
+					oninput={(e: Event & { currentTarget: HTMLInputElement | HTMLTextAreaElement }) => onContentChange(e.currentTarget.value)}
+					rows={12}
 					required
-				></textarea>
+					mono
+					maxLength={MAX_CONTENT_LENGTH}
+				/>
+				<p class="text-right text-xs text-muted-foreground">
+					{m['admin.cloudinit.contentCounter']({ used: content.length, max: MAX_CONTENT_LENGTH })}
+				</p>
 			{/snippet}
 		</FormField>
 		<div class="flex justify-end gap-2 pt-2">

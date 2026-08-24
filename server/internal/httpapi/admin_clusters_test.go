@@ -24,6 +24,7 @@ import (
 const (
 	adminClusterTestSecret = "admin-cluster-test-secret-with-32-bytes"
 	adminClustersPath      = "/api/v1/admin/clusters"
+	oidcEnabledBody        = `{"enabled":true}`
 )
 
 type adminClusterFixture struct {
@@ -199,11 +200,11 @@ func TestAdminClusters_NonAdminReturns403(t *testing.T) {
 		pathName   string
 		body       string
 	}{
-		{"list", fixture.handler.ServeList, http.MethodGet, adminClustersPath, "", ""},
-		{"create", fixture.handler.ServeCreate, http.MethodPost, adminClustersPath, "", `{"name":"tertiary","url":"https://pve-d.example.com:8006/api2/json","tokenId":"pvmss@pve!service","tokenSecret":"s"}`},
-		{"update", fixture.handler.ServeUpdate, http.MethodPut, "/api/v1/admin/clusters/secondary", crossSecondaryCluster, `{"url":"https://pve-b.example.com:8006/api2/json","tokenId":"pvmss@pve!service"}`},
-		{"test", fixture.handler.ServeTest, http.MethodPost, "/api/v1/admin/clusters/secondary/test", crossSecondaryCluster, ""},
-		{"oidc", fixture.handler.ServeOIDC, http.MethodPost, "/api/v1/admin/clusters/secondary/oidc", crossSecondaryCluster, `{"enabled":true}`},
+		{testOpList, fixture.handler.ServeList, http.MethodGet, adminClustersPath, "", ""},
+		{testOpCreate, fixture.handler.ServeCreate, http.MethodPost, adminClustersPath, "", `{"name":"tertiary","url":"https://pve-d.example.com:8006/api2/json","tokenId":"pvmss@pve!service","tokenSecret":"s"}`},
+		{testOpUpdate, fixture.handler.ServeUpdate, http.MethodPut, adminClustersSecondaryPath, crossSecondaryCluster, `{"url":"https://pve-b.example.com:8006/api2/json","tokenId":"pvmss@pve!service"}`},
+		{testOpTest, fixture.handler.ServeTest, http.MethodPost, adminClustersSecondaryPath + "/test", crossSecondaryCluster, ""},
+		{testOpOIDC, fixture.handler.ServeOIDC, http.MethodPost, adminClustersOIDCPath, crossSecondaryCluster, oidcEnabledBody},
 		{testActionDelete, fixture.handler.ServeDelete, http.MethodDelete, "/api/v1/admin/clusters/secondary", crossSecondaryCluster, ""},
 	}
 	for _, testCase := range cases {
@@ -402,7 +403,7 @@ func TestAdminClusters_OIDCToggleIsolated(t *testing.T) {
 	fixture := newAdminClusterFixture(t)
 	cookie := adminClusterCookie(t, fixture.auth)
 
-	response := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeOIDC, HTTPMethod: http.MethodPost, Path: "/api/v1/admin/clusters/secondary/oidc", Name: crossSecondaryCluster, Body: `{"enabled":true}`})
+	response := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeOIDC, HTTPMethod: http.MethodPost, Path: "/api/v1/admin/clusters/secondary/oidc", Name: crossSecondaryCluster, Body: oidcEnabledBody})
 	if response.Code != http.StatusOK {
 		t.Fatalf("oidc toggle status = %d, want 200: %s", response.Code, response.Body.String())
 	}
@@ -425,7 +426,7 @@ func TestAdminClusters_OIDCToggleIsolated(t *testing.T) {
 		}
 	}
 
-	response = adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeOIDC, HTTPMethod: http.MethodPost, Path: "/api/v1/admin/clusters/nonexistent/oidc", Name: "nonexistent", Body: `{"enabled":true}`})
+	response = adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeOIDC, HTTPMethod: http.MethodPost, Path: "/api/v1/admin/clusters/nonexistent/oidc", Name: "nonexistent", Body: oidcEnabledBody})
 	if response.Code != http.StatusNotFound {
 		t.Fatalf("oidc toggle on unknown cluster status = %d, want 404: %s", response.Code, response.Body.String())
 	}

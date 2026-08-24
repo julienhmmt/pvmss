@@ -11,7 +11,7 @@
 	let { title, description, icon, headingLevel = 'h3' }: Props = $props();
 </script>
 
-<div class="rounded-lg border border-border bg-card p-5 text-card-foreground">
+<div class="rounded-lg border border-border bg-card p-6 text-card-foreground">
 	<div class="mb-3 inline-flex rounded-xl bg-primary/10 p-2.5 text-primary">
 		{@render icon()}
 	</div>

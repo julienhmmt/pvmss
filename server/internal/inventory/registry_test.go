@@ -12,12 +12,20 @@ import (
 	"time"
 )
 
-const registryTestSecret = "secret"
+const (
+	registryTestSecret        = "secret"
+	inventoryTestCluster      = "default"
+	inventorySecondaryCluster = "secondary"
+	inventoryOfflineCluster   = "offline-demo"
+	inventoryDefaultURL       = "https://default.invalid"
+	inventorySecondaryURL     = "https://secondary.invalid"
+	inventoryOfflineURL       = "https://offline.invalid"
+)
 
 //nolint:paralleltest // registry tests share fake client fixture state
 func TestRegistry_RefreshKeepsClustersIndependent(t *testing.T) {
 	clusters, err := cluster.NewRegistry("fake", []store.ClusterRow{
-		{Name: "default", URL: "https://default.invalid", TokenID: "id", TokenSecret: registryTestSecret},
+		{Name: inventoryTestCluster, URL: "https://default.invalid", TokenID: "id", TokenSecret: registryTestSecret},
 		{Name: "secondary", URL: "https://secondary.invalid", TokenID: "id", TokenSecret: registryTestSecret},
 		{Name: "offline-demo", URL: "https://offline.invalid", TokenID: "id", TokenSecret: registryTestSecret},
 	})
@@ -26,17 +34,17 @@ func TestRegistry_RefreshKeepsClustersIndependent(t *testing.T) {
 	}
 	registry := inventory.NewRegistry(clusters, time.Hour, slog.Default())
 
-	if _, err := registry.Refresh(context.Background(), "default"); err != nil {
+	if _, err := registry.Refresh(context.Background(), inventoryTestCluster); err != nil {
 		t.Fatalf("Refresh(default): %v", err)
 	}
-	defaultIndex, err := registry.Index("default")
+	defaultIndex, err := registry.Index(inventoryTestCluster)
 	if err != nil || defaultIndex == nil {
 		t.Fatalf("Index(default) = %v, %v", defaultIndex, err)
 	}
 	if _, err := registry.Refresh(context.Background(), "offline-demo"); !errors.Is(err, cluster.ErrUnreachable) {
 		t.Fatalf("Refresh(offline-demo) error = %v, want ErrUnreachable", err)
 	}
-	stillDefault, err := registry.Index("default")
+	stillDefault, err := registry.Index(inventoryTestCluster)
 	if err != nil || stillDefault != defaultIndex {
 		t.Fatalf("default index changed after offline refresh: %p -> %p", defaultIndex, stillDefault)
 	}
@@ -45,7 +53,7 @@ func TestRegistry_RefreshKeepsClustersIndependent(t *testing.T) {
 	if len(all) != 3 {
 		t.Fatalf("All() length = %d, want 3 active clusters", len(all))
 	}
-	if all["default"] != defaultIndex {
+	if all[inventoryTestCluster] != defaultIndex {
 		t.Fatal("All() returned a different default index")
 	}
 }
@@ -67,12 +75,12 @@ func TestRegistry_UnknownCluster(t *testing.T) {
 //nolint:paralleltest,gocyclo // registry tests share fake fixture; integration test has per-phase assertions
 func TestRegistry_StartRefreshMutateRefreshCycle(t *testing.T) {
 	clusterRegistry, err := cluster.NewRegistry("fake", []store.ClusterRow{
-		{Name: "default", URL: "https://default.invalid", TokenID: "id", TokenSecret: registryTestSecret},
+		{Name: inventoryTestCluster, URL: "https://default.invalid", TokenID: "id", TokenSecret: registryTestSecret},
 	})
 	if err != nil {
 		t.Fatalf("NewRegistry: %v", err)
 	}
-	fakeClient, err := clusterRegistry.Client("default")
+	fakeClient, err := clusterRegistry.Client(inventoryTestCluster)
 	if err != nil {
 		t.Fatalf("Client(default): %v", err)
 	}
@@ -84,7 +92,7 @@ func TestRegistry_StartRefreshMutateRefreshCycle(t *testing.T) {
 	registry := inventory.NewRegistry(clusterRegistry, 50*time.Millisecond, slog.Default())
 	registry.SetManualRefreshMinInterval(1 * time.Millisecond)
 
-	projection, err := registry.Projection("default")
+	projection, err := registry.Projection(inventoryTestCluster)
 	if err != nil {
 		t.Fatalf("Projection: %v", err)
 	}
@@ -118,7 +126,7 @@ func TestRegistry_StartRefreshMutateRefreshCycle(t *testing.T) {
 	if err := writer.Delete(context.Background(), firstVM.Node, firstVM.VMID); err != nil {
 		t.Fatalf("delete VM: %v", err)
 	}
-	refresher, err := registry.Refresher("default")
+	refresher, err := registry.Refresher(inventoryTestCluster)
 	if err != nil {
 		t.Fatalf("Refresher: %v", err)
 	}

@@ -12,7 +12,22 @@ import (
 	"testing"
 )
 
-const clusterTestSecret = "cluster-test-session-secret-with-32-bytes"
+const (
+	clusterTestSecret      = "cluster-test-session-secret-with-32-bytes"
+	testClusterTokenID     = "id"
+	testClusterTokenSecret = "secret"
+	testInvalidClusterURL  = "https://x.invalid"
+	testPreserveClusterURL = "https://preserve.invalid"
+	//nolint:gosec // G101: intentionally fake test cluster URL containing the word "secret"
+	testPreserveSecretClusterURL = "https://preserve-secret.invalid/api2/json"
+	testRestoreClusterURL        = "https://restore.invalid"
+	testDisplayClusterURL        = "https://display.invalid"
+	testUpdateClusterURL         = "https://updated.example.invalid/api2/json"
+	//nolint:gosec // G101: intentionally fake Proxmox token ID fixture
+	testUpdatedTokenID = "pvmss@pve!updated"
+	//nolint:gosec // G101: intentionally fake Proxmox token ID fixture
+	testPreserveTokenID = "pvmss@pve!preserve"
+)
 
 func openClusterStore(t *testing.T) *store.Store {
 	t.Helper()
@@ -90,7 +105,7 @@ func TestClusters_CRUDAndReactivation(t *testing.T) {
 func TestClusters_SoftDeletePreservesCatalogRows(t *testing.T) {
 	st := openClusterStore(t)
 	ctx := context.Background()
-	row := store.ClusterRow{Name: "preserve-cluster", URL: "https://preserve.invalid", TokenID: "id", TokenSecret: "secret"}
+	row := store.ClusterRow{Name: "preserve-cluster", URL: testPreserveClusterURL, TokenID: testClusterTokenID, TokenSecret: testClusterTokenSecret}
 	if err := st.CreateCluster(ctx, row); err != nil {
 		t.Fatalf("CreateCluster: %v", err)
 	}

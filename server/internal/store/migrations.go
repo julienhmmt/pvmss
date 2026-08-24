@@ -169,6 +169,11 @@ CREATE TABLE catalog_isos (
 	PRIMARY KEY (cluster, node, storage, file)
 );`
 
+// schemaV18 adds a server-side CSRF token to each session. The cookie value
+// is duplicated in the row so the middleware can validate the X-CSRF-Token
+// header against both the cookie and the persisted session state.
+const schemaV18 = `ALTER TABLE sessions ADD COLUMN csrf_token TEXT NOT NULL DEFAULT ''`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -195,4 +200,5 @@ var Migrations = []Migration{
 	{Version: 15, DDL: schemaV15},
 	{Version: 16, DDL: schemaV16},
 	{Version: 17, DDL: schemaV17},
+	{Version: 18, DDL: schemaV18},
 }

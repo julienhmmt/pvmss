@@ -47,14 +47,7 @@ func TestAdminOpsCoverage_Audit_InvalidVMID_Returns400(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 
-	var body map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-
-	if body["code"] != "invalid_request" {
-		t.Errorf("code = %q, want invalid_request", body["code"])
-	}
+	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidRequest)
 }
 
 // TestAdminOpsCoverage_Audit_InvalidFrom_Returns400 covers the parseAuditFilter
@@ -126,19 +119,13 @@ func TestAdminOpsCoverage_Dashboard_InventoryNotReady_Returns503(t *testing.T) {
 	ops := httpapi.NewAdminOps(authHandler, st, cluster.Fake{}, emptyProjection, "0.4.0-test", logger)
 
 	cookie := adminCookie(t, authHandler)
+
 	rec := opsGet(t, ops, authHandler, cookie, "/api/v1/admin/dashboard")
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusServiceUnavailable, rec.Body.String())
 	}
 
-	var body map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-
-	if body["code"] != "inventory_not_ready" {
-		t.Errorf("code = %q, want inventory_not_ready", body["code"])
-	}
+	assertAPIError(t, rec.Body.Bytes(), apiCodeInventoryNotReady)
 }
 
 // TestAdminOpsCoverage_DBExport_Unauthenticated_Returns401 exercises the
@@ -180,14 +167,7 @@ func TestAdminOpsCoverage_DBImport_NonMultipartBody_Returns400(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 
-	var body map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-
-	if body["code"] != "invalid_upload" {
-		t.Errorf("code = %q, want invalid_upload", body["code"])
-	}
+	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidUpload)
 }
 
 // TestAdminOpsCoverage_DBImport_MissingFileField_Returns400 covers the
@@ -212,14 +192,7 @@ func TestAdminOpsCoverage_DBImport_MissingFileField_Returns400(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 
-	var errBody map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &errBody); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-
-	if errBody["code"] != "invalid_upload" {
-		t.Errorf("code = %q, want invalid_upload", errBody["code"])
-	}
+	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidUpload)
 }
 
 // TestAdminOpsCoverage_DBImportConfirm_Unauthenticated_Returns401 exercises
@@ -244,14 +217,7 @@ func TestAdminOpsCoverage_DBImportConfirm_InvalidJSON_Returns400(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 
-	var body map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-
-	if body["code"] != "invalid_request" {
-		t.Errorf("code = %q, want invalid_request", body["code"])
-	}
+	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidRequest)
 }
 
 // TestAdminOpsCoverage_DBImportConfirm_EmptyToken_Returns400 covers the
@@ -265,14 +231,7 @@ func TestAdminOpsCoverage_DBImportConfirm_EmptyToken_Returns400(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 
-	var body map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-
-	if body["code"] != "invalid_request" {
-		t.Errorf("code = %q, want invalid_request", body["code"])
-	}
+	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidRequest)
 }
 
 // TestAdminOpsCoverage_AppInfo_Unauthenticated_Returns401 exercises the
@@ -299,6 +258,7 @@ func TestAdminOpsCoverage_AppInfo_NoProjection_ReturnsEmptyClusters(t *testing.T
 	ops := httpapi.NewAdminOps(authHandler, st, cluster.Fake{}, emptyProjection, "0.4.0-test", logger)
 
 	cookie := adminCookie(t, authHandler)
+
 	rec := opsGet(t, ops, authHandler, cookie, "/api/v1/admin/appinfo")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
@@ -333,12 +293,12 @@ func TestAdminClustersCoverage_Unauthenticated_Returns401(t *testing.T) {
 		pathName   string
 		body       string
 	}{
-		{"list", fixture.handler.ServeList, http.MethodGet, adminClustersPath, "", ""},
-		{"create", fixture.handler.ServeCreate, http.MethodPost, adminClustersPath, "", `{"name":"x","url":"u","tokenId":"t","tokenSecret":"s"}`},
-		{"update", fixture.handler.ServeUpdate, http.MethodPut, "/api/v1/admin/clusters/secondary", crossSecondaryCluster, `{"url":"u","tokenId":"t"}`},
-		{"test", fixture.handler.ServeTest, http.MethodPost, "/api/v1/admin/clusters/secondary/test", crossSecondaryCluster, ""},
-		{"oidc", fixture.handler.ServeOIDC, http.MethodPost, "/api/v1/admin/clusters/secondary/oidc", crossSecondaryCluster, `{"enabled":true}`},
-		{"delete", fixture.handler.ServeDelete, http.MethodDelete, "/api/v1/admin/clusters/secondary", crossSecondaryCluster, ""},
+		{testOpList, fixture.handler.ServeList, http.MethodGet, adminClustersPath, "", ""},
+		{testOpCreate, fixture.handler.ServeCreate, http.MethodPost, adminClustersPath, "", `{"name":"x","url":"u","tokenId":"t","tokenSecret":"s"}`},
+		{testOpUpdate, fixture.handler.ServeUpdate, http.MethodPut, adminClustersSecondaryPath, crossSecondaryCluster, `{"url":"u","tokenId":"t"}`},
+		{testOpTest, fixture.handler.ServeTest, http.MethodPost, adminClustersSecondaryPath + "/test", crossSecondaryCluster, ""},
+		{testOpOIDC, fixture.handler.ServeOIDC, http.MethodPost, adminClustersOIDCPath, crossSecondaryCluster, oidcEnabledBody},
+		{testActionDelete, fixture.handler.ServeDelete, http.MethodDelete, adminClustersSecondaryPath, crossSecondaryCluster, ""},
 	}
 
 	for _, tc := range cases {
@@ -366,14 +326,7 @@ func TestAdminClustersCoverage_ListMethodNotAllowed_Returns405(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusMethodNotAllowed, rec.Body.String())
 	}
 
-	var body map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-
-	if body["code"] != "method_not_allowed" {
-		t.Errorf("code = %q, want method_not_allowed", body["code"])
-	}
+	assertAPIError(t, rec.Body.Bytes(), apiCodeMethodNotAllowed)
 }
 
 // TestAdminClustersCoverage_CreateInvalidJSON_Returns400 covers the ServeCreate
@@ -389,14 +342,7 @@ func TestAdminClustersCoverage_CreateInvalidJSON_Returns400(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 
-	var body map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-
-	if body["code"] != "invalid_request" {
-		t.Errorf("code = %q, want invalid_request", body["code"])
-	}
+	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidRequest)
 }
 
 // TestAdminClustersCoverage_UpdateInvalidJSON_Returns400 covers the ServeUpdate
@@ -407,20 +353,13 @@ func TestAdminClustersCoverage_UpdateInvalidJSON_Returns400(t *testing.T) {
 
 	rec := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{
 		Method: fixture.handler.ServeUpdate, HTTPMethod: http.MethodPut,
-		Path: "/api/v1/admin/clusters/secondary", Name: crossSecondaryCluster, Body: "{bad json",
+		Path: adminClustersSecondaryPath, Name: crossSecondaryCluster, Body: "{bad json",
 	})
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 
-	var body map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-
-	if body["code"] != "invalid_request" {
-		t.Errorf("code = %q, want invalid_request", body["code"])
-	}
+	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidRequest)
 }
 
 // TestAdminClustersCoverage_OIDCInvalidJSON_Returns400 covers the ServeOIDC
@@ -431,20 +370,13 @@ func TestAdminClustersCoverage_OIDCInvalidJSON_Returns400(t *testing.T) {
 
 	rec := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{
 		Method: fixture.handler.ServeOIDC, HTTPMethod: http.MethodPost,
-		Path: "/api/v1/admin/clusters/secondary/oidc", Name: crossSecondaryCluster, Body: "{bad json",
+		Path: adminClustersOIDCPath, Name: crossSecondaryCluster, Body: "{bad json",
 	})
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 
-	var body map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-
-	if body["code"] != "invalid_request" {
-		t.Errorf("code = %q, want invalid_request", body["code"])
-	}
+	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidRequest)
 }
 
 // TestAdminClustersCoverage_TestUnknownCluster_Returns404 covers the ServeTest
@@ -491,9 +423,9 @@ func TestAdminPoolsCoverage_Unauthenticated_Returns401(t *testing.T) {
 		path   string
 		body   string
 	}{
-		{"list", http.MethodGet, "/api/v1/admin/pools", ""},
-		{"create", http.MethodPost, "/api/v1/admin/pools", `{"name":"x"}`},
-		{"delete", http.MethodDelete, "/api/v1/admin/pools/x", ""},
+		{testOpList, http.MethodGet, adminPoolsPath, ""},
+		{testOpCreate, http.MethodPost, adminPoolsPath, `{"name":"x"}`},
+		{testActionDelete, http.MethodDelete, adminPoolsPath + "/x", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			rec := adminPoolsRequest(t, handlerForMethod(handler, tc.method), tc.method, tc.path, nil, tc.body)
@@ -501,14 +433,7 @@ func TestAdminPoolsCoverage_Unauthenticated_Returns401(t *testing.T) {
 				t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusUnauthorized, rec.Body.String())
 			}
 
-			var body map[string]string
-			if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-				t.Fatalf("decode: %v", err)
-			}
-
-			if body["code"] != "unauthenticated" {
-				t.Errorf("code = %q, want unauthenticated", body["code"])
-			}
+			assertAPIError(t, rec.Body.Bytes(), apiCodeUnauthenticated)
 		})
 	}
 }
@@ -519,19 +444,12 @@ func TestAdminPoolsCoverage_CreateInvalidJSON_Returns400(t *testing.T) {
 	handler, authHandler := newAdminPoolsHandler(t)
 	cookie := adminCookie(t, authHandler)
 
-	rec := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", cookie, "{bad json")
+	rec := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, adminPoolsPath, cookie, "{bad json")
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 
-	var body map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-
-	if body["code"] != "invalid_request" {
-		t.Errorf("code = %q, want invalid_request", body["code"])
-	}
+	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidRequest)
 }
 
 // TestAdminPoolsCoverage_DeleteEmptyName_Returns400 covers the ServeDelete
@@ -540,7 +458,7 @@ func TestAdminPoolsCoverage_DeleteEmptyName_Returns400(t *testing.T) {
 	handler, authHandler := newAdminPoolsHandler(t)
 	cookie := adminCookie(t, authHandler)
 
-	req := httptest.NewRequest(http.MethodDelete, "/api/v1/admin/pools/", nil)
+	req := httptest.NewRequest(http.MethodDelete, adminPoolsPath+"/", nil)
 	req.AddCookie(cookie)
 
 	rec := httptest.NewRecorder()
@@ -550,14 +468,7 @@ func TestAdminPoolsCoverage_DeleteEmptyName_Returns400(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 
-	var body map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-
-	if body["code"] != "invalid_pool_name" {
-		t.Errorf("code = %q, want invalid_pool_name", body["code"])
-	}
+	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidPoolName)
 }
 
 // TestAdminPoolsCoverage_CreateUnknownCluster_Returns404 covers the ServeCreate
@@ -568,19 +479,12 @@ func TestAdminPoolsCoverage_CreateUnknownCluster_Returns404(t *testing.T) {
 	cookie := adminClusterCookie(t, authHandler)
 
 	rec := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost,
-		"/api/v1/admin/pools?cluster=nonexistent", cookie, `{"name":"newteam"}`)
+		adminPoolsPath+"?cluster=nonexistent", cookie, `{"name":"newteam"}`)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusNotFound, rec.Body.String())
 	}
 
-	var body map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-
-	if body["code"] != "cluster_not_found" {
-		t.Errorf("code = %q, want cluster_not_found", body["code"])
-	}
+	assertAPIError(t, rec.Body.Bytes(), apiCodeClusterNotFound)
 }
 
 // TestAdminPoolsCoverage_ListUnknownCluster_Returns404 covers the ServeList
@@ -590,7 +494,7 @@ func TestAdminPoolsCoverage_ListUnknownCluster_Returns404(t *testing.T) {
 	cookie := adminClusterCookie(t, authHandler)
 
 	rec := adminPoolsRequest(t, handler.ServeList, http.MethodGet,
-		"/api/v1/admin/pools?cluster=nonexistent", cookie, "")
+		adminPoolsPath+"?cluster=nonexistent", cookie, "")
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusNotFound, rec.Body.String())
 	}
@@ -603,7 +507,7 @@ func TestAdminPoolsCoverage_DeleteUnknownCluster_Returns404(t *testing.T) {
 	cookie := adminClusterCookie(t, authHandler)
 
 	rec := adminPoolsRequest(t, handler.ServeDelete, http.MethodDelete,
-		"/api/v1/admin/pools/pvmss-x?cluster=nonexistent", cookie, "")
+		adminPoolsPath+"/pvmss-x?cluster=nonexistent", cookie, "")
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusNotFound, rec.Body.String())
 	}
@@ -617,6 +521,7 @@ func newAdminPoolsRegistryHandler(t *testing.T) (*httpapi.AdminPools, *httpapi.A
 	t.Cleanup(cluster.ResetFake)
 
 	const secret = "pools-registry-test-secret-32-bytes!!"
+
 	st, err := store.Open(config.Configuration{
 		DBPath:        filepath.Join(t.TempDir(), "pools-registry.db"),
 		ClusterSource: cluster.SourceFake,
@@ -628,32 +533,39 @@ func newAdminPoolsRegistryHandler(t *testing.T) (*httpapi.AdminPools, *httpapi.A
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
 	}
+
 	t.Cleanup(func() { _ = st.Close() })
 
 	rows, err := st.ListClusters(context.Background())
 	if err != nil {
 		t.Fatalf("ListClusters: %v", err)
 	}
+
 	registry, err := cluster.NewRegistry("fake", rows)
 	if err != nil {
 		t.Fatalf("NewRegistry: %v", err)
 	}
+
 	sessions, err := auth.NewSessionManager(st, secret, false)
 	if err != nil {
 		t.Fatalf("NewSessionManager: %v", err)
 	}
+
 	hash, err := bcrypt.GenerateFromPassword([]byte("admin-password"), bcrypt.MinCost)
 	if err != nil {
 		t.Fatalf("GenerateFromPassword: %v", err)
 	}
+
 	logger := slog.New(slog.DiscardHandler)
 	authHandler := httpapi.NewAuthWithRegistry(registry, st, sessions, string(hash), auth.NewTokenService(st), logger)
 
 	fake := cluster.Fake{}
+
 	snapshot, err := fake.Snapshot(context.Background())
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
+
 	index := inventory.BuildIndex(snapshot)
 	projection := inventory.NewProjectionFromIndex(&index)
 	worker := inventory.NewWorker(fake, projection, 0, logger)
@@ -701,56 +613,46 @@ func TestAdminPolicyCoverage_Unauthenticated_Returns401(t *testing.T) {
 	}
 }
 
-// TestAdminPolicyCoverage_GetMethodNotAllowed_Returns405 covers the ServePolicy
-// branch that rejects non-GET methods. The handler is invoked directly (not via
-// a method-prefixed mux route) so the handler's own method check is exercised.
-func TestAdminPolicyCoverage_GetMethodNotAllowed_Returns405(t *testing.T) {
+// assertAdminPolicyMethodNotAllowed checks a policy handler rejects the given
+// HTTP method with a 405 method_not_allowed response. Shared by the GET and PUT
+// policy coverage tests to avoid duplicated request setup (dupl).
+func assertAdminPolicyMethodNotAllowed(t *testing.T, method, path string, serve func(*httpapi.AdminPolicy, http.ResponseWriter, *http.Request)) {
+	t.Helper()
+
 	policyHandler, authHandler := newPolicyHandler(t)
 	cookie := adminCookie(t, authHandler)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/policy?cluster=default", nil)
+	req := httptest.NewRequest(method, path, nil)
 	req.AddCookie(cookie)
+
 	rec := httptest.NewRecorder()
-	authHandler.RequireAdmin(http.HandlerFunc(policyHandler.ServePolicy)).ServeHTTP(rec, req)
+	authHandler.RequireAdmin(http.HandlerFunc(func(rec http.ResponseWriter, req *http.Request) {
+		serve(policyHandler, rec, req)
+	})).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusMethodNotAllowed {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusMethodNotAllowed, rec.Body.String())
 	}
 
-	var body map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
+	assertAPIError(t, rec.Body.Bytes(), apiCodeMethodNotAllowed)
+}
 
-	if body["code"] != "method_not_allowed" {
-		t.Errorf("code = %q, want method_not_allowed", body["code"])
-	}
+// TestAdminPolicyCoverage_GetMethodNotAllowed_Returns405 covers the ServePolicy
+// branch that rejects non-GET methods. The handler is invoked directly (not via
+// a method-prefixed mux route) so the handler's own method check is exercised.
+func TestAdminPolicyCoverage_GetMethodNotAllowed_Returns405(t *testing.T) {
+	assertAdminPolicyMethodNotAllowed(t, http.MethodPost, "/api/v1/admin/policy?cluster=default", func(h *httpapi.AdminPolicy, rec http.ResponseWriter, req *http.Request) {
+		h.ServePolicy(rec, req)
+	})
 }
 
 // TestAdminPolicyCoverage_PutMethodNotAllowed_Returns405 covers the
 // ServePolicyUpdate branch that rejects non-PUT methods. The handler is
 // invoked directly so the handler's own method check is exercised.
 func TestAdminPolicyCoverage_PutMethodNotAllowed_Returns405(t *testing.T) {
-	policyHandler, authHandler := newPolicyHandler(t)
-	cookie := adminCookie(t, authHandler)
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/policy", nil)
-	req.AddCookie(cookie)
-	rec := httptest.NewRecorder()
-	authHandler.RequireAdmin(http.HandlerFunc(policyHandler.ServePolicyUpdate)).ServeHTTP(rec, req)
-
-	if rec.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusMethodNotAllowed, rec.Body.String())
-	}
-
-	var body map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-
-	if body["code"] != "method_not_allowed" {
-		t.Errorf("code = %q, want method_not_allowed", body["code"])
-	}
+	assertAdminPolicyMethodNotAllowed(t, http.MethodGet, "/api/v1/admin/policy", func(h *httpapi.AdminPolicy, rec http.ResponseWriter, req *http.Request) {
+		h.ServePolicyUpdate(rec, req)
+	})
 }
 
 // TestAdminPolicyCoverage_PutInvalidJSON_Returns400 covers the ServePolicyUpdate
@@ -763,6 +665,7 @@ func TestAdminPolicyCoverage_PutInvalidJSON_Returns400(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/admin/policy", strings.NewReader("{bad json"))
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(cookie)
+
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -770,14 +673,7 @@ func TestAdminPolicyCoverage_PutInvalidJSON_Returns400(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 
-	var body map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-
-	if body["code"] != "invalid_request" {
-		t.Errorf("code = %q, want invalid_request", body["code"])
-	}
+	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidRequest)
 }
 
 // TestAdminPolicyCoverage_PutClusterRequired_Returns400 covers the
@@ -788,13 +684,15 @@ func TestAdminPolicyCoverage_PutClusterRequired_Returns400(t *testing.T) {
 	st := newAdminStore(t)
 	authHandler := newAuthHandler(t)
 	fake := cluster.Fake{}
+
 	snapshot, err := fake.Snapshot(context.Background())
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
+
 	index := inventory.BuildIndex(snapshot)
 	service := policy.New(st, inventory.NewProjectionFromIndex(&index), fake)
-	lister := fakeClusterListerProvider{names: []string{"default", "secondary"}}
+	lister := fakeClusterListerProvider{names: []string{auditTestCluster, crossSecondaryCluster}}
 	policyHandler := httpapi.NewAdminPolicyWithRegistry(authHandler, service, lister, slog.New(slog.DiscardHandler))
 
 	mux := http.NewServeMux()
@@ -804,6 +702,7 @@ func TestAdminPolicyCoverage_PutClusterRequired_Returns400(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/admin/policy", strings.NewReader(`{"gabarit":{"maxCores":4}}`))
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(cookie)
+
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -811,14 +710,7 @@ func TestAdminPolicyCoverage_PutClusterRequired_Returns400(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 
-	var body map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-
-	if body["code"] != "cluster_required" {
-		t.Errorf("code = %q, want cluster_required", body["code"])
-	}
+	assertAPIError(t, rec.Body.Bytes(), apiCodeClusterRequired)
 }
 
 // TestAdminPolicyCoverage_GetClusterRequired_Returns400 covers the ServePolicy
@@ -828,13 +720,15 @@ func TestAdminPolicyCoverage_GetClusterRequired_Returns400(t *testing.T) {
 	st := newAdminStore(t)
 	authHandler := newAuthHandler(t)
 	fake := cluster.Fake{}
+
 	snapshot, err := fake.Snapshot(context.Background())
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
 	}
+
 	index := inventory.BuildIndex(snapshot)
 	service := policy.New(st, inventory.NewProjectionFromIndex(&index), fake)
-	lister := fakeClusterListerProvider{names: []string{"default", "secondary"}}
+	lister := fakeClusterListerProvider{names: []string{auditTestCluster, crossSecondaryCluster}}
 	policyHandler := httpapi.NewAdminPolicyWithRegistry(authHandler, service, lister, slog.New(slog.DiscardHandler))
 
 	mux := http.NewServeMux()
@@ -843,6 +737,7 @@ func TestAdminPolicyCoverage_GetClusterRequired_Returns400(t *testing.T) {
 	cookie := adminCookie(t, authHandler)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/policy", nil)
 	req.AddCookie(cookie)
+
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
@@ -850,12 +745,5 @@ func TestAdminPolicyCoverage_GetClusterRequired_Returns400(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 
-	var body map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-
-	if body["code"] != "cluster_required" {
-		t.Errorf("code = %q, want cluster_required", body["code"])
-	}
+	assertAPIError(t, rec.Body.Bytes(), apiCodeClusterRequired)
 }

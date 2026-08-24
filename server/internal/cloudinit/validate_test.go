@@ -17,11 +17,17 @@ func TestValidate(t *testing.T) {
 	}{
 		{name: "empty clears", content: ""},
 		{name: "valid marker", content: "#cloud-config\nusers: {}"},
+		{name: "valid users list", content: "#cloud-config\nusers:\n  - name: alice"},
 		{name: "leading whitespace allowed", content: " \n\t#cloud-config\n"},
 		{name: "wrong marker", content: "users: {}", wantErr: cloudinit.ErrSnippetPrefix},
-		{name: "exact size", content: "#cloud-config\n" + strings.Repeat("x", cloudinit.MaxSnippetSize-len("#cloud-config\n"))},
+		{
+			name:    "exact size",
+			content: "#cloud-config\nkey: " + strings.Repeat("x", cloudinit.MaxSnippetSize-len("#cloud-config\nkey: ")),
+		},
 		{name: "too large", content: strings.Repeat("x", cloudinit.MaxSnippetSize+1), wantErr: cloudinit.ErrSnippetTooLarge},
 		{name: "invalid UTF-8", content: "#cloud-config\n\xff", wantErr: cloudinit.ErrSnippetInvalidUTF8},
+		{name: "malformed yaml", content: "#cloud-config\ninvalid: [", wantErr: cloudinit.ErrSnippetInvalidYAML},
+		{name: "scalar root", content: "#cloud-config\nhello", wantErr: cloudinit.ErrSnippetInvalidYAML},
 	}
 
 	for _, tt := range tests {

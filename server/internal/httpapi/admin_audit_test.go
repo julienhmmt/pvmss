@@ -20,9 +20,18 @@ import (
 // Test fixture constants — centralizing them keeps goconst below threshold
 // across the httpapi test package.
 const (
-	auditTestActor   = "alice@pve"
-	auditTestAction  = "start"
-	auditTestCluster = "default"
+	auditTestActor             = "alice@pve"
+	auditTestAction            = "start"
+	auditTestCluster           = "default"
+	testNodePVE01              = "pve-node-01"
+	adminPoolsPath             = "/api/v1/admin/pools"
+	adminClustersSecondaryPath = "/api/v1/admin/clusters/secondary"
+	adminClustersOIDCPath      = "/api/v1/admin/clusters/secondary/oidc"
+	testOpList                 = "list"
+	testOpCreate               = "create"
+	testOpUpdate               = "update"
+	testOpTest                 = "test"
+	testOpOIDC                 = "oidc"
 )
 
 // auditAdminStore opens a fully-migrated store and seeds it with two audit
@@ -226,12 +235,5 @@ func TestAdminAudit_PageSizeOverMaximum_Returns400(t *testing.T) {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
 
-	var body map[string]string
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode error: %v", err)
-	}
-
-	if body["code"] != "page_size_too_large" {
-		t.Errorf("error code = %q, want page_size_too_large", body["code"])
-	}
+	assertAPIError(t, rec.Body.Bytes(), apiCodePageSizeTooLarge)
 }

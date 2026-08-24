@@ -1,4 +1,3 @@
-//nolint:noctx // test scaffolding does not need real context
 package httpapi_test
 
 import (
@@ -70,6 +69,7 @@ func TestVMDetail_Audit_PageParam(t *testing.T) {
 			if tc.pageParam != "" {
 				path += "?page=" + tc.pageParam
 			}
+
 			rec := httptest.NewRecorder()
 			handler.ServeHTTP(rec, detailRequest(http.MethodGet, path, "", cookie))
 
@@ -137,7 +137,7 @@ func TestVMDetail_Audit_ActorActionFilters(t *testing.T) {
 	}
 
 	for _, item := range page.Items {
-		if item.Action != "start" {
+		if item.Action != auditTestAction {
 			t.Errorf("expected only start actions, got %q", item.Action)
 		}
 	}

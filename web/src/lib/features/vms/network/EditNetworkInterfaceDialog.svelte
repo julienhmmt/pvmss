@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { getVmDetailContext, type VmNetworkInterface } from '../detail.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import FormField from '$lib/shared/ui/FormField.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
@@ -57,68 +61,79 @@
 			void submit();
 		}}
 	>
-		<label class="grid gap-1 text-sm">
-			{m['vms.network.bridge']()}
-			<select
-				class="rounded-md border border-border bg-background px-2 py-2"
-				bind:value={bridge}
-				data-testid="edit-nic-bridge"
-			>
-				<option value="" disabled>{m['vms.network.selectBridge']()}</option>
-				{#each store.hardwareOptions?.bridges ?? [] as option (option.bridge)}
-					<option value={option.bridge}>{option.bridge} · {option.node}</option>
-				{/each}
-			</select>
-		</label>
-		<label class="grid gap-1 text-sm">
-			{m['vms.network.model']()}
-			<select class="rounded-md border border-border bg-background px-2 py-2" bind:value={model}>
-				<option value="virtio">VirtIO</option>
-				<option value="e1000">E1000</option>
-				<option value="rtl8139">RTL8139</option>
-				<option value="vmxnet3">VMXNET3</option>
-			</select>
-		</label>
-		<label class="grid gap-1 text-sm">
-			{m['vms.network.vlan']()} <span class="font-normal text-muted-foreground">{m['common.optional']()}</span>
-			<input
-				class="rounded-md border border-border bg-background px-2 py-2"
-				type="number"
-				min="1"
-				max="4094"
-				bind:value={vlan}
-				data-testid="edit-nic-vlan"
-			/>
-		</label>
-		<label class="grid gap-1 text-sm">
-			{m['vms.network.rateLimit']()} <span class="font-normal text-muted-foreground">{m['common.optional']()}</span>
-			<input
-				class="rounded-md border border-border bg-background px-2 py-2"
-				type="number"
-				min="1"
-				bind:value={rateMbps}
-				data-testid="edit-nic-rate"
-			/>
-		</label>
-		{#if store.writeError}
-			<p role="alert" class="text-sm text-destructive">{store.writeError}</p>
-		{/if}
+		<FormField label={m['vms.network.bridge']()} required error={store.writeError}>
+			{#snippet children({ id, describedBy, invalid })}
+				<Select
+					{id}
+					{describedBy}
+					{invalid}
+					bind:value={bridge}
+					placeholder={m['vms.network.selectBridge']()}
+					options={(store.hardwareOptions?.bridges ?? []).map((option) => ({
+						value: option.bridge,
+						label: `${option.bridge} · ${option.node}`
+					}))}
+					required
+					data-testid="edit-nic-bridge"
+				/>
+			{/snippet}
+		</FormField>
+		<FormField label={m['vms.network.model']()} required>
+			{#snippet children({ id, describedBy, invalid })}
+				<Select
+					{id}
+					{describedBy}
+					{invalid}
+					bind:value={model}
+					options={[
+						{ value: 'virtio', label: 'VirtIO' },
+						{ value: 'e1000', label: 'E1000' },
+						{ value: 'rtl8139', label: 'RTL8139' },
+						{ value: 'vmxnet3', label: 'VMXNET3' }
+					]}
+					required
+				/>
+			{/snippet}
+		</FormField>
+		<FormField label={m['vms.network.vlan']()} hint={m['common.optional']()}>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField
+					{id}
+					{describedBy}
+					{invalid}
+					type="number"
+					min={1}
+					max={4094}
+					value={vlan}
+					oninput={(e: Event & { currentTarget: HTMLInputElement }) => (vlan = e.currentTarget.value)}
+					data-testid="edit-nic-vlan"
+				/>
+			{/snippet}
+		</FormField>
+		<FormField label={m['vms.network.rateLimit']()} hint={m['common.optional']()}>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField
+					{id}
+					{describedBy}
+					{invalid}
+					type="number"
+					min={1}
+					value={rateMbps}
+					oninput={(e: Event & { currentTarget: HTMLInputElement }) => (rateMbps = e.currentTarget.value)}
+					data-testid="edit-nic-rate"
+				/>
+			{/snippet}
+		</FormField>
 		<div class="mt-2 flex justify-end gap-2">
-			<button
-				type="button"
-				class="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted"
-				onclick={close}
-			>
-				{m['common.cancel']()}
-			</button>
-			<button
+			<Button type="button" variant="ghost" onclick={close}>{m['common.cancel']()}</Button>
+			<Button
 				type="submit"
-				class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-				disabled={!bridge || store.networkInFlight}
+				loading={store.networkInFlight}
+				disabled={!bridge}
 				data-testid="edit-nic-submit"
 			>
 				{store.networkInFlight ? m['common.saving']() : m['common.save']()}
-			</button>
+			</Button>
 		</div>
 	</form>
 </Dialog>
