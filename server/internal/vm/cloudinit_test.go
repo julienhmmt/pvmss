@@ -313,3 +313,37 @@ func TestSetCloudInitConfig_PasswordUsesGuestAgentNotCipassword(t *testing.T) {
 		t.Fatal("expected the password to be applied via the guest agent (set_cloudinit_password), not cipassword")
 	}
 }
+
+// TestSetCloudInitConfig_RejectsNonIPv4StaticAddresses.
+//
+//nolint:paralleltest // serial: shared fake dataset
+func TestSetCloudInitConfig_RejectsNonIPv4StaticAddresses(t *testing.T) {
+	index := cloudInitIndex(t)
+	st := cloudInitStore(t)
+
+	cases := []struct {
+		name      string
+		ipAddress string
+		gateway   string
+	}{
+		{"IPv6 address", "2001:db8::1/64", "2001:db8::1"},
+		{"gateway as IPv6", "10.0.0.1/24", "2001:db8::1"},
+		{"missing CIDR prefix", "10.0.0.1", "10.0.0.254"},
+		{"out of range octet", "10.0.0.256/24", "10.0.0.254"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			mode := cluster.CloudInitIPModeStatic
+			_, err := vm.SetCloudInitConfig(context.Background(), vm.CloudInitConfigDeps{
+				Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101,
+				Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st, Refresher: testRefresher{},
+			}, cluster.CloudInitUpdate{
+				IPAddress: &tc.ipAddress, Gateway: &tc.gateway, IPMode: &mode,
+			}, false)
+			if !errors.Is(err, vm.ErrInvalidCloudInitConfig) {
+				t.Fatalf("error = %v, want ErrInvalidCloudInitConfig", err)
+			}
+		})
+	}
+}

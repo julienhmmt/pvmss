@@ -4,6 +4,7 @@ package httpapi_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -12,6 +13,8 @@ import (
 	"strings"
 	"testing"
 )
+
+const audienceAdmin = "admin"
 
 // docsMux wires the public docs routes and the admin docs routes through their
 // real guards (public = no guard; admin = RequireAdmin).
@@ -64,6 +67,10 @@ func docsServe(t *testing.T, docs *httpapi.DocsAPIHandler, admin *httpapi.AdminD
 	rec := httptest.NewRecorder()
 	docsMux(docs, admin, auth).ServeHTTP(rec, req)
 	return rec
+}
+
+func newAdminDocJSON(title, body string) string {
+	return fmt.Sprintf(`{"title":%q,"lang":"en","category":"x","bodyMd":%q,"audience":"%s"}`, title, body, audienceAdmin)
 }
 
 type docSummaryDTO struct {
@@ -135,7 +142,7 @@ func TestDocs_PublicList_HidesAdminAudienceFromNonAdmin(t *testing.T) {
 	cookie := adminCookie(t, auth)
 
 	createDocViaAdmin(t, docs, admin, auth, cookie, `{"title":"User guide","lang":"en","category":"x","bodyMd":"# Hi","audience":"user"}`)
-	createDocViaAdmin(t, docs, admin, auth, cookie, `{"title":"Admin guide","lang":"en","category":"x","bodyMd":"# Hi","audience":"admin"}`)
+	createDocViaAdmin(t, docs, admin, auth, cookie, newAdminDocJSON("Admin guide", "# Hi"))
 
 	// Admin sees both.
 	rec := docsServe(t, docs, admin, auth, docsRequest(http.MethodGet, "/api/v1/docs", cookie, ""))
@@ -202,7 +209,7 @@ func TestDocs_GetDoc_404UnknownID(t *testing.T) {
 func TestDocs_GetDoc_AdminAudienceGating(t *testing.T) {
 	docs, admin, auth := newDocsHandlers(t)
 	cookie := adminCookie(t, auth)
-	createDocViaAdmin(t, docs, admin, auth, cookie, `{"title":"Admin only","lang":"en","category":"x","bodyMd":"# Secret","audience":"admin"}`)
+	createDocViaAdmin(t, docs, admin, auth, cookie, newAdminDocJSON("Admin only", "# Secret"))
 
 	// Anonymous → 401.
 	rec := docsServe(t, docs, admin, auth, docsRequest(http.MethodGet, "/api/v1/docs/admin-only", nil, ""))
@@ -308,6 +315,45 @@ func TestAdminDocs_CreateValidation(t *testing.T) {
 				t.Fatalf("status = %d, want 400: %s", rec.Code, rec.Body.String())
 			}
 		})
+	}
+}
+
+// TestAdminDocs_CreateOversizedBody_Returns400.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminDocs_CreateOversizedBody_Returns400(t *testing.T) {
+	docs, admin, auth := newDocsHandlers(t)
+	cookie := adminCookie(t, auth)
+
+	bodyMd := make([]byte, 3841)
+	for i := range bodyMd {
+		bodyMd[i] = 'x'
+	}
+	payload := fmt.Sprintf(`{"title":"Oversized","lang":"en","bodyMd":"%s","audience":"user"}`, bodyMd)
+
+	rec := docsServe(t, docs, admin, auth, docsRequest(http.MethodPost, "/api/v1/admin/docs", cookie, payload))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400: %s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestAdminDocs_UpdateOversizedBody_Returns400.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminDocs_UpdateOversizedBody_Returns400(t *testing.T) {
+	docs, admin, auth := newDocsHandlers(t)
+	cookie := adminCookie(t, auth)
+	createDocViaAdmin(t, docs, admin, auth, cookie, `{"title":"Update me","lang":"en","category":"c","bodyMd":"# Hi","audience":"user"}`)
+
+	bodyMd := make([]byte, 3841)
+	for i := range bodyMd {
+		bodyMd[i] = 'x'
+	}
+	payload := fmt.Sprintf(`{"title":"Update me","lang":"en","category":"c","bodyMd":"%s","audience":"user","enabled":true,"sortOrder":0}`, bodyMd)
+
+	rec := docsServe(t, docs, admin, auth, docsRequest(http.MethodPut, "/api/v1/admin/docs/update-me/en", cookie, payload))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400: %s", rec.Code, rec.Body.String())
 	}
 }
 
@@ -619,7 +665,7 @@ func TestAdminDocs_DeleteSystemPage(t *testing.T) {
 	// always sets is_system=false).
 	stamp := "2026-01-01T00:00:00Z"
 	sys := store.DocumentationPageRow{
-		ID: "sys-delete-test", Lang: "en", Title: "Sys", BodyMD: "# Sys", Audience: "admin",
+		ID: "sys-delete-test", Lang: "en", Title: "Sys", BodyMD: "# Sys", Audience: audienceAdmin,
 		Enabled: true, IsSystem: true, CreatedAt: stamp, UpdatedAt: stamp,
 	}
 	if err := st.InsertDocumentationPage(context.Background(), sys); err != nil {
