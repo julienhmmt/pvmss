@@ -38,8 +38,9 @@ type changePasswordRequest struct {
 }
 
 type authError struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
+	Code              string `json:"code"`
+	Message           string `json:"message"`
+	RetryAfterSeconds int    `json:"retryAfterSeconds,omitempty"`
 }
 
 type tokenRequest struct {
@@ -244,6 +245,12 @@ func (h *Auth) RequireAdmin(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// CSRFToken returns the persisted CSRF token for the request's session, or an
+// error if the session cookie is missing, unknown, or expired.
+func (h *Auth) CSRFToken(r *http.Request) (string, error) {
+	return h.sessions.CSRFToken(r.Context(), r)
 }
 
 // Principal resolves browser cookies before attempting an Authorization bearer token.
