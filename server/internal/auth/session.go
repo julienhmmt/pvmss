@@ -14,9 +14,12 @@ import (
 const (
 	// SessionCookieName is the HttpOnly browser session cookie.
 	SessionCookieName = "pvmss_session"
+	// CSRFCookieName is the non-HttpOnly CSRF token cookie sent with every session.
+	CSRFCookieName    = "pvmss_csrf"
 	sessionTTL        = 8 * time.Hour
 	minimumSecretSize = 32
 	sessionTokenBytes = 32
+	csrfTokenBytes    = 32
 )
 
 var (
@@ -47,6 +50,7 @@ type Identity struct {
 type SessionRecord struct {
 	Hash      []byte
 	Identity  Identity
+	CSRFToken string
 	ExpiresAt time.Time
 	CreatedAt time.Time
 }
@@ -80,21 +84,28 @@ func NewSessionManager(repository SessionRepository, secret string, secure bool)
 	return &SessionManager{repository: repository, secret: []byte(secret), isSecure: secure}, nil
 }
 
-// SetCookie issues a new revocable session for identity and writes its cookie.
+// SetCookie issues a new revocable session for identity and writes both the
+// HttpOnly session cookie and the readable CSRF token cookie.
 func (m *SessionManager) SetCookie(ctx context.Context, w http.ResponseWriter, identity Identity) error {
 	raw, err := randomHex(sessionTokenBytes)
 	if err != nil {
 		return fmt.Errorf("generate session token: %w", err)
 	}
 
+	csrfToken, err := randomHex(csrfTokenBytes)
+	if err != nil {
+		return fmt.Errorf("generate csrf token: %w", err)
+	}
+
 	expires := time.Now().Add(sessionTTL)
 
-	session := SessionRecord{Hash: m.hash(raw), Identity: identity, ExpiresAt: expires, CreatedAt: time.Now().UTC()}
+	session := SessionRecord{Hash: m.hash(raw), Identity: identity, CSRFToken: csrfToken, ExpiresAt: expires, CreatedAt: time.Now().UTC()}
 	if err := m.repository.CreateSession(ctx, session); err != nil {
 		return fmt.Errorf("create session: %w", err)
 	}
 
 	http.SetCookie(w, m.cookie(raw, expires))
+	http.SetCookie(w, m.csrfCookie(csrfToken, expires))
 
 	return nil
 }
@@ -130,12 +141,37 @@ func (m *SessionManager) Logout(ctx context.Context, w http.ResponseWriter, r *h
 	}
 
 	http.SetCookie(w, &http.Cookie{Name: SessionCookieName, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, Secure: m.isSecure, SameSite: http.SameSiteStrictMode}) //nolint:gosec // Secure is intentionally conditional for dev HTTP mode
+	//nolint:gosec // CSRF cookie must remain readable by the client, so it is not HttpOnly; Secure and SameSite match the session cookie.
+	http.SetCookie(w, &http.Cookie{Name: CSRFCookieName, Value: "", Path: "/", MaxAge: -1, Secure: m.isSecure, SameSite: http.SameSiteStrictMode})
 
 	return nil
 }
 
 func (m *SessionManager) cookie(raw string, expires time.Time) *http.Cookie {
 	return &http.Cookie{Name: SessionCookieName, Value: raw, Path: "/", Expires: expires, HttpOnly: true, Secure: m.isSecure, SameSite: http.SameSiteStrictMode} //nolint:gosec // Secure is intentionally conditional for dev HTTP mode
+}
+
+func (m *SessionManager) csrfCookie(value string, expires time.Time) *http.Cookie {
+	return &http.Cookie{Name: CSRFCookieName, Value: value, Path: "/", Expires: expires, Secure: m.isSecure, SameSite: http.SameSiteStrictMode} //nolint:gosec // Secure is intentionally conditional for dev HTTP mode
+}
+
+// CSRFToken returns the persisted token for the request's session cookie.
+// It is used by CSRF middleware to validate the X-CSRF-Token header against
+// the server-side session state.
+func (m *SessionManager) CSRFToken(ctx context.Context, r *http.Request) (string, error) {
+	cookie, err := r.Cookie(SessionCookieName)
+	if err != nil {
+		return "", ErrUnauthenticated
+	}
+
+	hash := m.hash(cookie.Value)
+
+	session, err := m.repository.FindSession(ctx, hash)
+	if err != nil || !session.ExpiresAt.After(time.Now()) {
+		return "", ErrUnauthenticated
+	}
+
+	return session.CSRFToken, nil
 }
 
 // hash keys the at-rest session lookup with the application secret so a

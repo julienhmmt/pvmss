@@ -28,8 +28,8 @@ func TestAuth_LoginPVE_StoresSession(t *testing.T) {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusOK)
 	}
 
-	if len(response.Result().Cookies()) != 1 {
-		t.Fatal("expected one session cookie")
+	if len(response.Result().Cookies()) != 2 {
+		t.Fatal("expected session and csrf cookies")
 	}
 
 	var got auth.Identity
