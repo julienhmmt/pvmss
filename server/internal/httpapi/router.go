@@ -13,8 +13,16 @@ import (
 )
 
 const (
-	authRateLimitMaxRequests = 10
-	authRateLimitWindow      = time.Minute
+	authRateLimitMaxRequests        = 10
+	authRateLimitWindow             = time.Minute
+	vmWriteRateLimitMaxRequests     = 30
+	vmWriteRateLimitWindow          = time.Minute
+	clusterTestRateLimitMaxRequests = 10
+	clusterTestRateLimitWindow      = time.Minute
+	adminWriteRateLimitMaxRequests  = 30
+	adminWriteRateLimitWindow       = time.Minute
+	authWriteRateLimitMaxRequests   = 30
+	authWriteRateLimitWindow        = time.Minute
 )
 
 // errorResponse is the public error shape for unknown API paths.
@@ -60,11 +68,34 @@ type RouterConfig struct {
 }
 
 // NewRouter wires the public API and the static SPA handler from cfg.
+//
+//nolint:gocyclo // NewRouter is a flat route table; admin and serial-console route groups are already delegated to helpers.
 func NewRouter(cfg RouterConfig) http.Handler {
 	mux := http.NewServeMux()
+
+	csrf := newCSRFMiddleware(cfg.Auth)
+	vmWriteLimiter := newUserRateLimiter(vmWriteRateLimitMaxRequests, vmWriteRateLimitWindow)
+	clusterTestLimiter := newUserRateLimiter(clusterTestRateLimitMaxRequests, clusterTestRateLimitWindow)
+	adminWriteLimiter := newUserRateLimiter(adminWriteRateLimitMaxRequests, adminWriteRateLimitWindow)
+	authWriteLimiter := newUserRateLimiter(authWriteRateLimitMaxRequests, authWriteRateLimitWindow)
+
+	// protect combines per-user rate limiting (outer) and CSRF validation (inner)
+	// for state-changing browser requests.
+	protect := func(next http.Handler, limiter *userRateLimiter) http.Handler {
+		return limiter.middleware(cfg.Auth, csrf(next))
+	}
+
+	adminProtect := func(method string, next http.Handler) http.Handler {
+		if method == http.MethodGet {
+			return cfg.Auth.RequireAdmin(next)
+		}
+
+		return cfg.Auth.RequireAdmin(adminWriteLimiter.middleware(cfg.Auth, csrf(next)))
+	}
+
 	mux.Handle("GET /health", cfg.Health)
 	mux.Handle("GET /api/v1/cluster/nodes", cfg.Auth.Require(cfg.ClusterNodes))
-	mux.Handle("POST /api/v1/cluster/refresh", cfg.Auth.Require(cfg.ClusterRefresh))
+	mux.Handle("POST /api/v1/cluster/refresh", protect(cfg.Auth.Require(cfg.ClusterRefresh), clusterTestLimiter))
 	// Not wrapped in auth.Require: the handler needs the resolved Identity
 	// itself (for scope enforcement) and calls h.auth.Principal(r) directly,
 	// returning 401 on its own — wrapping would just re-run the same check.
@@ -74,11 +105,11 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	// own, so it is not wrapped in auth.Require. Registered before the
 	// {cluster}/{vmid} pattern so the literal "bulk-action" segment wins.
 	if cfg.VMBulk != nil {
-		mux.Handle("POST /api/v1/vms/bulk-action", cfg.VMBulk)
+		mux.Handle("POST /api/v1/vms/bulk-action", protect(cfg.VMBulk, vmWriteLimiter))
 	}
 	// VM creation + catalog + task polling — same Principal pattern as above.
 	if cfg.VMCreate != nil {
-		mux.Handle("POST /api/v1/vms", cfg.VMCreate)
+		mux.Handle("POST /api/v1/vms", protect(cfg.VMCreate, vmWriteLimiter))
 		mux.Handle("GET /api/v1/vm-create/catalog", http.HandlerFunc(cfg.VMCreate.ServeCatalog))
 	}
 
@@ -88,41 +119,41 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	// VM detail + actions + delete + patch — all gated by vm.Resolve() inside
 	// the handler. Same reason as GET /vms: not wrapped in auth.Require.
 	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}", cfg.VMDetail)
-	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/actions", cfg.VMDetail)
-	mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}", cfg.VMDetail)
-	mux.Handle("PATCH /api/v1/vms/{cluster}/{vmid}", cfg.VMDetail)
+	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/actions", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("PATCH /api/v1/vms/{cluster}/{vmid}", protect(cfg.VMDetail, vmWriteLimiter))
 	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/hardware-options", cfg.VMDetail)
-	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/disks", cfg.VMDetail)
-	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/disks/{diskKey}/resize", cfg.VMDetail)
-	mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/disks/{diskKey}", cfg.VMDetail)
-	mux.Handle("PATCH /api/v1/vms/{cluster}/{vmid}/cdrom", cfg.VMDetail)
-	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/network", cfg.VMDetail)
-	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/hardware", cfg.VMDetail)
-	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/serial", cfg.VMDetail)
+	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/disks", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/disks/{diskKey}/resize", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/disks/{diskKey}", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("PATCH /api/v1/vms/{cluster}/{vmid}/cdrom", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/network", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/hardware", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/serial", protect(cfg.VMDetail, vmWriteLimiter))
 	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/audit", cfg.VMDetail)
 
 	if cfg.VMCloudInit != nil {
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit", cfg.VMCloudInit)
-		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit", cfg.VMCloudInit)
+		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit", protect(cfg.VMCloudInit, vmWriteLimiter))
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", cfg.VMCloudInit)
-		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", cfg.VMCloudInit)
-		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/cloudinit/ssh-keys", cfg.VMCloudInit)
+		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", protect(cfg.VMCloudInit, vmWriteLimiter))
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/cloudinit/ssh-keys", protect(cfg.VMCloudInit, vmWriteLimiter))
 	}
 
 	if len(cfg.SnapshotHandlers) > 0 && cfg.SnapshotHandlers[0] != nil {
 		snapshots := cfg.SnapshotHandlers[0]
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/snapshots", snapshots)
-		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/snapshots", snapshots)
-		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/rollback", snapshots)
-		mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/snapshots/{name}", snapshots)
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/snapshots", protect(snapshots, vmWriteLimiter))
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/rollback", protect(snapshots, vmWriteLimiter))
+		mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/snapshots/{name}", protect(snapshots, vmWriteLimiter))
 	}
 
 	if cfg.VMConsole != nil {
-		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/vnc-ticket", cfg.VMConsole)
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/vnc-ticket", protect(cfg.VMConsole, vmWriteLimiter))
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/console/websocket", cfg.VMConsole)
 	}
 
-	registerSerialConsoleRoutes(mux, cfg.VMSerialConsole)
+	registerSerialConsoleRoutes(mux, cfg.VMSerialConsole, protect, vmWriteLimiter)
 
 	if cfg.VMMetrics != nil {
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/metrics/history", cfg.VMMetrics)
@@ -139,11 +170,11 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	mux.HandleFunc("GET /api/v1/auth/me", cfg.Auth.Me)
 	mux.Handle("GET /api/v1/auth/clusters", authLimiter.middleware(http.HandlerFunc(cfg.Auth.ServeClusters)))
 	mux.Handle("POST /api/v1/auth/oidc", authLimiter.middleware(http.HandlerFunc(cfg.Auth.OIDC)))
-	mux.HandleFunc("POST /api/v1/auth/logout", cfg.Auth.Logout)
-	mux.HandleFunc("POST /api/v1/auth/tokens", cfg.Auth.CreateToken)
+	mux.Handle("POST /api/v1/auth/logout", protect(http.HandlerFunc(cfg.Auth.Logout), authWriteLimiter))
+	mux.Handle("POST /api/v1/auth/tokens", protect(http.HandlerFunc(cfg.Auth.CreateToken), authWriteLimiter))
 	mux.HandleFunc("GET /api/v1/auth/tokens", cfg.Auth.ListTokens)
-	mux.HandleFunc("DELETE /api/v1/auth/tokens/{id}", cfg.Auth.RevokeToken)
-	mux.HandleFunc("POST /api/v1/auth/password", cfg.Auth.ChangePassword)
+	mux.Handle("DELETE /api/v1/auth/tokens/{id}", protect(http.HandlerFunc(cfg.Auth.RevokeToken), authWriteLimiter))
+	mux.Handle("POST /api/v1/auth/password", protect(http.HandlerFunc(cfg.Auth.ChangePassword), authWriteLimiter))
 
 	// Issue #53 public documentation — audience-filtered list and rendered
 	// single-page view. Not wrapped in auth.Require: the handler resolves the
@@ -158,7 +189,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	// wired by its own helper behind the RequireAdmin guard (FR-008). Extracted
 	// from NewRouter to keep its Cognitive Complexity under the SonarQube
 	// go:S3776 threshold.
-	registerAdminRoutes(mux, cfg)
+	registerAdminRoutes(mux, cfg, adminProtect)
 
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
 		mux.Handle(method+" /api/", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -275,11 +306,11 @@ func writeTextError(w http.ResponseWriter, status int, detail string) error {
 // when the handler is present. Extracted from NewRouter to keep its cyclomatic
 // complexity under the gocyclo threshold (one if-block per route group adds up
 // across console, metrics, admin, tasks, ...).
-func registerSerialConsoleRoutes(mux *http.ServeMux, handler *VMSerialConsole) {
+func registerSerialConsoleRoutes(mux *http.ServeMux, handler *VMSerialConsole, protect func(http.Handler, *userRateLimiter) http.Handler, limiter *userRateLimiter) {
 	if handler == nil {
 		return
 	}
 
-	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/serial-ticket", handler)
+	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/serial-ticket", protect(handler, limiter))
 	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/serial/websocket", handler)
 }
