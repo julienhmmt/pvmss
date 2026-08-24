@@ -7,6 +7,18 @@ import (
 	"pvmss/server/internal/store"
 )
 
+// Upper sanity bounds for editable policy values. These are safety rails, not
+// Proxmox hard limits — they prevent fat-fingered values from being persisted.
+const (
+	maxSocketsLimit      = 16
+	maxCoresLimit        = 128
+	maxMemoryMBLimit     = 1048576
+	maxDiskPerVMGBLimit  = 1048576
+	maxNetworkCardsLimit = 32
+	maxSnapshotsLimit    = 1000
+	maxVMPerUserLimit    = 100000
+)
+
 // SetGabarit replaces the cluster gabarit while preserving its quota.
 func (service *Policy) SetGabarit(ctx context.Context, clusterName string, gabarit Gabarit) error {
 	if err := validateGabarit(gabarit); err != nil {
@@ -35,8 +47,8 @@ func (service *Policy) SetPolicy(ctx context.Context, clusterName string, gabari
 		return err
 	}
 
-	if allowed < -1 {
-		return fmt.Errorf("%w: maxVmPerUser must be -1 or greater", ErrInvalidPolicy)
+	if allowed < -1 || allowed > maxVMPerUserLimit {
+		return fmt.Errorf("%w: maxVmPerUser must be between -1 and %d", ErrInvalidPolicy, maxVMPerUserLimit)
 	}
 
 	row, err := service.store.PolicyRow(ctx, clusterName)
@@ -53,8 +65,8 @@ func (service *Policy) SetPolicy(ctx context.Context, clusterName string, gabari
 
 // SetQuota replaces the per-user cluster quota. -1 means unlimited.
 func (service *Policy) SetQuota(ctx context.Context, clusterName string, allowed int) error {
-	if allowed < -1 {
-		return fmt.Errorf("%w: maxVmPerUser must be -1 or greater", ErrInvalidPolicy)
+	if allowed < -1 || allowed > maxVMPerUserLimit {
+		return fmt.Errorf("%w: maxVmPerUser must be between -1 and %d", ErrInvalidPolicy, maxVMPerUserLimit)
 	}
 
 	row, err := service.store.PolicyRow(ctx, clusterName)
@@ -102,17 +114,22 @@ func validateGabarit(gabarit Gabarit) error {
 	values := []struct {
 		name  string
 		value int
+		max   int
 	}{
-		{"maxSockets", gabarit.MaxSockets},
-		{"maxCores", gabarit.MaxCores},
-		{"maxMemoryMB", gabarit.MaxMemoryMB},
-		{"maxDiskPerVmGb", gabarit.MaxDiskPerVMGB},
-		{"maxNetworkCards", gabarit.MaxNetworkCards},
-		{"maxSnapshots", gabarit.MaxSnapshots},
+		{"maxSockets", gabarit.MaxSockets, maxSocketsLimit},
+		{"maxCores", gabarit.MaxCores, maxCoresLimit},
+		{"maxMemoryMB", gabarit.MaxMemoryMB, maxMemoryMBLimit},
+		{"maxDiskPerVmGb", gabarit.MaxDiskPerVMGB, maxDiskPerVMGBLimit},
+		{"maxNetworkCards", gabarit.MaxNetworkCards, maxNetworkCardsLimit},
+		{"maxSnapshots", gabarit.MaxSnapshots, maxSnapshotsLimit},
 	}
 	for _, item := range values {
 		if item.value < 0 {
 			return fmt.Errorf("%w: %s must not be negative", ErrInvalidPolicy, item.name)
+		}
+
+		if item.value > item.max {
+			return fmt.Errorf("%w: %s exceeds the upper limit of %d", ErrInvalidPolicy, item.name, item.max)
 		}
 	}
 

@@ -27,11 +27,59 @@
 		return `${profile.cpuCores} vCPU · ${profile.memoryMB} MB · ${profile.diskGB} GB · ${profile.bus}`;
 	}
 
+	const HOSTNAME_PATTERN = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
+
+	const nameError = $derived(
+		form.name.trim() === ''
+			? m['vms.create.errorNameRequired']()
+			: HOSTNAME_PATTERN.test(form.name.trim())
+				? null
+				: m['vms.create.errorInvalidName']()
+	);
+
+	const profileError = $derived(
+		form.catalog && form.profileId !== '' && form.catalog.profiles.some((profile) => profile.id === form.profileId)
+			? null
+			: form.catalog === null
+				? null
+				: m['vms.create.errorProfileRequired']()
+	);
+
+	const cloudInitTemplateError = $derived(
+		form.catalog && form.cloudInitTemplateId !== '' && !form.catalog.cloudInitTemplates.some((template) => template.id === form.cloudInitTemplateId)
+			? m['vms.create.errorCloudinitTemplateInvalid']()
+			: null
+	);
+
+	const nodeError = $derived(
+		form.nodeAdjusted && form.catalog
+			? form.node !== '' && form.catalog.nodes.includes(form.node)
+				? null
+				: m['vms.create.errorNodeRequired']()
+			: null
+	);
+
+	const storageError = $derived(
+		form.storageAdjusted && form.catalog
+			? form.storage !== '' &&
+			  form.catalog.storages.some((storage) => storage.node === form.node && storage.name === form.storage)
+				? null
+				: m['vms.create.errorStorageRequired']()
+			: null
+	);
+
+	const canSubmit = $derived(
+		form.catalog !== null &&
+			!form.submitting &&
+			!nameError &&
+			!profileError &&
+			!cloudInitTemplateError &&
+			!nodeError &&
+			!storageError
+	);
+
 	async function submit(): Promise<void> {
-		if (form.name.trim() === '') {
-			form.submitError = m['vms.create.errorNameRequired']();
-			return;
-		}
+		if (!canSubmit) return;
 		const accepted = await form.submit();
 		if (accepted === null) {
 			if (form.submitError) toast.error(m['toast.vmCreateFailed']({ error: form.submitError }));
@@ -58,12 +106,15 @@
 	<form
 		class="grid gap-4"
 		novalidate
+		aria-label={m['vms.create.heading']()}
+		aria-describedby="simple-wizard-help"
 		onsubmit={(event) => {
 			event.preventDefault();
 			void submit();
 		}}
 	>
-		<FormField label={m['vms.create.name']()} required>
+		<p id="simple-wizard-help" class="sr-only">{m['vms.create.reviewRequest']()}</p>
+		<FormField label={m['vms.create.name']()} required error={nameError}>
 			{#snippet children({ id, describedBy, invalid })}
 				<TextField {id} {describedBy} {invalid} bind:value={form.name} required placeholder="web-04" />
 			{/snippet}
@@ -78,9 +129,12 @@
 				description: profileDescription(profile)
 			}))}
 		/>
+		{#if profileError}
+			<p role="alert" class="text-xs font-medium text-destructive">{profileError}</p>
+		{/if}
 
 		{#if cat.cloudInitTemplates.length > 0}
-			<FormField label={m['vms.create.cloudinitTemplate']()} hint={m['common.optional']()}>
+			<FormField label={m['vms.create.cloudinitTemplate']()} hint={m['common.optional']()} error={cloudInitTemplateError}>
 				{#snippet children({ id, describedBy, invalid })}
 					<Select
 						{id}
@@ -111,7 +165,7 @@
 			</div>
 			{#if form.nodeAdjusted}
 				<div class="grid gap-3 sm:grid-cols-2">
-					<FormField label={m['vms.create.node']()}>
+					<FormField label={m['vms.create.node']()} error={nodeError}>
 						{#snippet children({ id, describedBy, invalid })}
 							<Select
 								{id}
@@ -122,7 +176,7 @@
 							/>
 						{/snippet}
 					</FormField>
-					<FormField label={m['vms.create.storage']()} required>
+					<FormField label={m['vms.create.storage']()} required error={storageError}>
 						{#snippet children({ id, describedBy, invalid })}
 							<Select
 								{id}
@@ -149,7 +203,7 @@
 		/>
 
 		{#if form.submitError}<p role="alert" class="text-sm text-destructive">{form.submitError}</p>{/if}
-		<Button type="submit" loading={form.submitting}>
+		<Button type="submit" loading={form.submitting} disabled={!canSubmit}>
 			{form.submitting ? m['common.creating']() : m['vms.create.submit']()}
 		</Button>
 	</form>
