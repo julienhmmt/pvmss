@@ -23,6 +23,8 @@ COMPOSE_DEV  := docker compose -f docker-compose.dev.yml
 GO_TEST_ENV     := GO_TEST_ENVIRONMENT=1 PVMSS_OFFLINE=true
 GO_TEST_TIMEOUT := -timeout=5m
 GO_TEST_FLAGS   ?=
+GO_UPDATE_FLAGS ?= -u=patch
+GO_VERSION      ?= latest
 
 # Tag Docker par défaut pour docker-build (surcharge: make docker-build PVMSS_TAG=v1.2.3)
 PVMSS_TAG ?= latest
@@ -31,7 +33,8 @@ PVMSS_TAG ?= latest
         up down restart logs clean \
         qualif \
         buildkit-start buildkit-stop buildkit-status \
-        server-lint server-fmt server-vet server-test \
+        server-lint server-fmt server-vet server-test server-go-update \
+        server-deps-update server-update \
         web-install web-lint web-lint-fix web-check web-test \
         lint \
         sonar sonar-up sonar-down sonar-logs sonar-status sonar-bootstrap sonar-coverage sonar-lint sonar-scan sonar-scan-server sonar-scan-web sonar-query sonar-clean
@@ -166,6 +169,21 @@ server-test: ## Lance les tests Go du next-gen server/
 	@echo "$(BLUE)Tests Go $(SERVER_DIR)/...$(NC)"
 	cd $(SERVER_DIR) && go test $(GO_TEST_FLAGS) -race -timeout=5m ./...
 	@echo "$(GREEN)✓ Tests server terminés$(NC)"
+
+server-go-update: ## Update the Go version used by the server module (GO_VERSION=latest)
+	@echo "$(BLUE)Updating Go version in $(SERVER_DIR)/...$(NC)"
+	cd $(SERVER_DIR) && go get go@$(GO_VERSION) && go mod tidy
+	@echo "$(GREEN)✓ Go version updated$(NC)"
+
+server-deps-update: ## Update Go module dependencies (patch releases by default)
+	@echo "$(BLUE)Updating Go dependencies in $(SERVER_DIR)/...$(NC)"
+	cd $(SERVER_DIR) && go get $(GO_UPDATE_FLAGS) ./... && go mod tidy
+	@echo "$(GREEN)✓ Go dependencies updated$(NC)"
+
+server-update: ## Update the Go version and module dependencies
+	@echo "$(BLUE)Updating Go and dependencies in $(SERVER_DIR)/...$(NC)"
+	cd $(SERVER_DIR) && go get go@$(GO_VERSION) && go get $(GO_UPDATE_FLAGS) ./... && go mod tidy
+	@echo "$(GREEN)✓ Go and dependencies updated$(NC)"
 
 # --- web/ (SvelteKit + TypeScript, app pvmss-web) ---
 
