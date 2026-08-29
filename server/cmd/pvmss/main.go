@@ -107,6 +107,12 @@ func run() int {
 	defer cancelInventory()
 	inventoryRegistry.Start(inventoryCtx)
 
+	// Daily audit prune tick (issue #02): deletes audit_log rows older than
+	// the configured retention. Runs in its own goroutine so it does not
+	// couple to the inventory worker's refresh cycle. A prune runs once at
+	// startup, then every 24h.
+	go runAuditPrune(inventoryCtx, st, logger)
+
 	sessions, err := auth.NewSessionManager(st, cfg.SessionSecret, cfg.CookieSecure)
 	if err != nil {
 		logger.Error("failed to create session manager", "component", "main", "error", err)
@@ -525,4 +531,45 @@ func (f inventoryFreshness) Clusters() []httpapi.ClusterFreshness {
 
 func (f inventoryFreshness) DemoMode() bool {
 	return f.demoMode
+}
+
+// auditPruneInterval is how often the daily prune tick fires.
+const auditPruneInterval = 24 * time.Hour
+
+// runAuditPrune deletes audit_log rows older than the configured retention,
+// once at startup then every auditPruneInterval. It logs the deleted count at
+// info level so retention activity is visible in aggregated logs. A prune
+// failure is logged but never stops the tick — the next tick retries.
+func runAuditPrune(ctx context.Context, st *store.Store, log *slog.Logger) {
+	prune := func() {
+		cfg, err := st.GetAuditConfig(ctx)
+		if err != nil {
+			log.Error("audit prune: get config failed", "component", "audit", "error", err)
+			return
+		}
+
+		n, err := st.PruneAuditLog(ctx, cfg.RetentionDays)
+		if err != nil {
+			log.Error("audit prune failed", "component", "audit", "error", err)
+			return
+		}
+
+		if n > 0 {
+			log.Info("audit prune completed", "component", "audit", "deleted", n, "retentionDays", cfg.RetentionDays)
+		}
+	}
+
+	prune()
+
+	ticker := time.NewTicker(auditPruneInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			prune()
+		}
+	}
 }

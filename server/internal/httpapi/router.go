@@ -20,7 +20,7 @@ const (
 	vmWriteRateLimitWindow          = time.Minute
 	clusterTestRateLimitMaxRequests = 10
 	clusterTestRateLimitWindow      = time.Minute
-	adminWriteRateLimitMaxRequests  = 30
+	adminWriteRateLimitMaxRequests  = 60
 	adminWriteRateLimitWindow       = time.Minute
 	authWriteRateLimitMaxRequests   = 30
 	authWriteRateLimitWindow        = time.Minute

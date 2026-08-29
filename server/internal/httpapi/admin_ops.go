@@ -132,6 +132,89 @@ func (h *AdminOps) ServeAudit(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// auditConfigDTO is the response body for GET /admin/audit/config.
+type auditConfigDTO struct {
+	RetentionDays int `json:"retentionDays"`
+}
+
+// ServeAuditConfig handles GET /api/v1/admin/audit/config (issue #02). Returns
+// the current audit retention in days.
+func (h *AdminOps) ServeAuditConfig(w http.ResponseWriter, r *http.Request) {
+	cfg, err := h.store.GetAuditConfig(r.Context())
+	if err != nil {
+		h.log.Error("admin audit config get failed", "component", "httpapi", "error", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+
+	writeAdminJSON(w, http.StatusOK, auditConfigDTO{RetentionDays: cfg.RetentionDays})
+}
+
+// auditConfigRequest is the body for PUT /api/v1/admin/audit/config.
+type auditConfigRequest struct {
+	RetentionDays int `json:"retentionDays"`
+}
+
+// ServeAuditConfigUpdate handles PUT /api/v1/admin/audit/config (issue #02).
+// Rejects retention below 30 days with 400. The actual prune of now-expired
+// rows is left to the daily tick — this endpoint only changes the setting.
+func (h *AdminOps) ServeAuditConfigUpdate(w http.ResponseWriter, r *http.Request) {
+	var req auditConfigRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		return
+	}
+
+	if req.RetentionDays < 30 {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", "retention_days must be at least 30")
+		return
+	}
+
+	if err := h.store.SetAuditConfig(r.Context(), req.RetentionDays); err != nil {
+		h.log.Error("admin audit config set failed", "component", "httpapi", "error", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+
+	actor, ip := h.actorAndIP(r)
+	_ = h.store.RecordAdminAction(r.Context(), actor.Username, "admin.audit_config.update", "audit_config", "",
+		detailJSON(fmt.Sprintf("retention set to %d days", req.RetentionDays), nil), ip)
+
+	writeAdminJSON(w, http.StatusOK, auditConfigDTO{RetentionDays: req.RetentionDays})
+}
+
+// prunePreviewDTO is the response body for GET /admin/audit/prune-preview.
+type prunePreviewDTO struct {
+	RetentionDays int   `json:"retentionDays"`
+	RowsToDelete  int64 `json:"rowsToDelete"`
+}
+
+// ServeAuditPrunePreview handles GET /api/v1/admin/audit/prune-preview
+// (issue #02). Returns the count of rows that would be deleted at the given
+// retention, without deleting them. Used by the UI confirmation flow.
+func (h *AdminOps) ServeAuditPrunePreview(w http.ResponseWriter, r *http.Request) {
+	daysStr := r.URL.Query().Get("retention_days")
+	if daysStr == "" {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", "retention_days query parameter is required")
+		return
+	}
+
+	days, err := strconv.Atoi(daysStr)
+	if err != nil || days < 1 {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", "retention_days must be a positive integer")
+		return
+	}
+
+	count, err := h.store.CountAuditPrunePreview(r.Context(), days)
+	if err != nil {
+		h.log.Error("admin audit prune preview failed", "component", "httpapi", "error", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		return
+	}
+
+	writeAdminJSON(w, http.StatusOK, prunePreviewDTO{RetentionDays: days, RowsToDelete: count})
+}
+
 // parseAuditFilter extracts the AuditFilter from query parameters. It returns
 // ok=false if the page size exceeds the maximum (the error response is already
 // written in that case).
