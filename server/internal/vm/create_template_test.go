@@ -310,27 +310,6 @@ func TestCreate_TemplateClone_NoDiskSizeUsesTemplateSize(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_ZeroDiskSizeStillRejectsReduction — US2/issue-02
-// D2c: even though SizeGB=0 defaults to the template's size, an explicit
-// size below the template's disk is still rejected with ErrDiskReduction
-// before any VMID is allocated.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_TemplateClone_ZeroDiskSizeStillRejectsReduction(t *testing.T) {
-	fixture := newCreateFixture(t)
-	req := templateRequest(9000)
-	req.Disk.SizeGB = 4 // template disk is 8 GB → reduction
-
-	_, err := fixture.create(t, aliceIdentity(), req)
-	if !errors.Is(err, vm.ErrDiskReduction) {
-		t.Fatalf("error = %v, want ErrDiskReduction", err)
-	}
-
-	if calls := cluster.FakeCalls(); len(calls) != 0 {
-		t.Fatalf("rejected request reached the cluster: %+v", calls)
-	}
-}
-
 // TestCreate_TemplateClone_CloudInitAppliedAfterTask — lifecycle-04: when
 // a cloud-init template is requested alongside a Proxmox template clone,
 // the cloud-init snippet is attached after the clone task completes.

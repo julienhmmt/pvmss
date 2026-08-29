@@ -216,24 +216,42 @@ func TestProxmox_ListTemplates(t *testing.T) {
 		t.Fatalf("expected 2 templates, got %d: %+v", len(templates), templates)
 	}
 
-	assertTemplateEquals(t, templates[0], cloneTestVMID9000, "pve-node-02", "debian-12-cloud", "local-lvm", 8, "scsi", true)
-	assertTemplateEquals(t, templates[1], cloneTestVMID9001, "pve-node-02", "alpine-appliance", FakeStorageLocal, 2, "virtio", false)
+	assertTemplateEquals(t, templates[0], templateExpectation{
+		VMID: cloneTestVMID9000, Node: "pve-node-02", Name: "debian-12-cloud",
+		Storage: "local-lvm", SizeGB: 8, Bus: string(DiskBusSCSI), CloudInitCapable: true,
+	})
+	assertTemplateEquals(t, templates[1], templateExpectation{
+		VMID: cloneTestVMID9001, Node: "pve-node-02", Name: "alpine-appliance",
+		Storage: FakeStorageLocal, SizeGB: 2, Bus: string(DiskBusVirtio), CloudInitCapable: false,
+	})
+}
+
+// templateExpectation groups the expected fields of a discovered template,
+// keeping assertTemplateEquals under the parameter-count ceiling.
+type templateExpectation struct {
+	VMID             int
+	Node             string
+	Name             string
+	Storage          string
+	SizeGB           int
+	Bus              string
+	CloudInitCapable bool
 }
 
 // assertTemplateEquals checks the key fields of a discovered template.
-func assertTemplateEquals(t *testing.T, tmpl TemplateVM, vmid int, node, name, storage string, sizeGB int, bus string, cloudInitCapable bool) {
+func assertTemplateEquals(t *testing.T, tmpl TemplateVM, want templateExpectation) {
 	t.Helper()
 
-	if tmpl.VMID != vmid || tmpl.Node != node || tmpl.Name != name {
-		t.Errorf("template = %+v, want vmid=%d node=%s name=%s", tmpl, vmid, node, name)
+	if tmpl.VMID != want.VMID || tmpl.Node != want.Node || tmpl.Name != want.Name {
+		t.Errorf("template = %+v, want vmid=%d node=%s name=%s", tmpl, want.VMID, want.Node, want.Name)
 	}
 
-	if tmpl.DiskStorage != storage || tmpl.DiskSizeGB != sizeGB || tmpl.DiskBus != bus {
-		t.Errorf("template disk = %+v, want storage=%s size=%d bus=%s", tmpl, storage, sizeGB, bus)
+	if tmpl.DiskStorage != want.Storage || tmpl.DiskSizeGB != want.SizeGB || tmpl.DiskBus != want.Bus {
+		t.Errorf("template disk = %+v, want storage=%s size=%d bus=%s", tmpl, want.Storage, want.SizeGB, want.Bus)
 	}
 
-	if tmpl.CloudInitCapable != cloudInitCapable {
-		t.Errorf("template %d cloudInitCapable = %v, want %v", tmpl.VMID, tmpl.CloudInitCapable, cloudInitCapable)
+	if tmpl.CloudInitCapable != want.CloudInitCapable {
+		t.Errorf("template %d cloudInitCapable = %v, want %v", tmpl.VMID, tmpl.CloudInitCapable, want.CloudInitCapable)
 	}
 }
 
@@ -291,7 +309,10 @@ func TestProxmox_ListTemplates_DiskOptionsBeforeSize(t *testing.T) {
 		t.Fatalf("expected 1 template, got %d", len(templates))
 	}
 
-	assertTemplateEquals(t, templates[0], 9100, "pve-node-01", "big-template", "local-lvm", 64, "scsi", false)
+	assertTemplateEquals(t, templates[0], templateExpectation{
+		VMID: 9100, Node: "pve-node-01", Name: "big-template",
+		Storage: "local-lvm", SizeGB: 64, Bus: string(DiskBusSCSI), CloudInitCapable: false,
+	})
 }
 
 // TestProxmox_CloneVM_URLEncoding verifies that the source node is properly

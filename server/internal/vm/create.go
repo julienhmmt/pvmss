@@ -62,6 +62,10 @@ const defaultNetworkModel = "virtio"
 // override this with their own bus value (FR-009).
 const defaultDiskBus = "scsi"
 
+// auditLogMsg is the slog message used when RecordAction fails — the audit
+// trail is best-effort and never blocks a successful create/clone.
+const auditLogMsg = "record audit failed"
+
 // allowedNetworkModels is the fixed whitelist of NIC models the server
 // accepts (FR-003 spirit: the catalog constrains bridges, this constrains
 // the model — a forged request with an arbitrary string is rejected).
@@ -278,7 +282,7 @@ func createFromISO(ctx context.Context, policyService *policy.Policy, deps Creat
 	}
 
 	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, vmid, "vm_create"); err != nil {
-		deps.Log.Error("record audit failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+		deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
 	}
 
 	return result, nil
@@ -398,7 +402,7 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 		result.CloudInitPushError = waitErr.Error()
 
 		if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, vmid, "vm_create"); err != nil {
-			deps.Log.Error("record audit failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+			deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
 		}
 
 		return result, nil
@@ -412,7 +416,7 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 	}, &result)
 
 	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, vmid, "vm_create"); err != nil {
-		deps.Log.Error("record audit failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+		deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
 	}
 
 	return result, nil
