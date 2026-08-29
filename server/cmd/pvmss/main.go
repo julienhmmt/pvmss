@@ -445,6 +445,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		AdminClusters:    adminClusters,
 		Docs:             docsHandler,
 		AdminDocs:        adminDocs,
+		TrustedProxyHops: cfg.TrustedProxyHops,
 	}), nil
 }
 

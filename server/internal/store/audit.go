@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 )
@@ -20,18 +21,95 @@ type AuditEntry struct {
 	Timestamp time.Time
 }
 
+// schemaV19 rebuilds audit_log to support admin-action auditing (issue #01).
+// The original schema (V6) had only VM-scoped columns and a NOT NULL vmid,
+// which made it impossible to record admin mutations (cluster credentials,
+// policy, catalog toggles, db import/export) that have no vmid. The rebuild
+// makes vmid nullable and adds target_type, target_id, detail (JSON),
+// ip_address, and severity (derived from the action verb, default 'info').
+// Existing rows keep their vmid and receive severity='info'. SQLite cannot
+// drop a NOT NULL constraint in place, so the table is rebuilt like schemaV4.
+const schemaV19 = `
+ALTER TABLE audit_log RENAME TO audit_log_v18;
+CREATE TABLE audit_log (
+	id         INTEGER PRIMARY KEY AUTOINCREMENT,
+	actor      TEXT NOT NULL,
+	cluster    TEXT NOT NULL,
+	vmid       INTEGER,
+	action     TEXT NOT NULL,
+	timestamp  TEXT NOT NULL,
+	target_type TEXT,
+	target_id   TEXT,
+	detail      TEXT,
+	ip_address  TEXT,
+	severity    TEXT NOT NULL DEFAULT 'info'
+);
+INSERT INTO audit_log (id, actor, cluster, vmid, action, timestamp, severity)
+	SELECT id, actor, cluster, vmid, action, timestamp, 'info' FROM audit_log_v18;
+DROP TABLE audit_log_v18;
+`
+
 // RecordAction inserts one audit_log row carrying the real acting username —
 // never a service-account name (FR-009, closes S01's traceability gap). The
-// timestamp is server-side; a caller cannot supply it.
+// timestamp is server-side; a caller cannot supply it. The 15 existing VM
+// callers are unchanged; new columns receive empty defaults and the severity
+// is derived from the action verb. An audit write failure is logged and
+// swallowed so it can never prevent the action it records (spec decision:
+// "l'audit ne peut pas casser l'action qu'il enregistre").
 func (s *Store) RecordAction(ctx context.Context, actor, cluster string, vmid int, action string) error {
+	return s.insertAuditRow(ctx, actor, cluster, &vmid, action, "", "", "", "", deriveSeverity(action))
+}
+
+// RecordAdminAction inserts one audit_log row for an admin mutation that has
+// no VM scope (cluster="", vmid=nil). The detail string must be structured
+// JSON: {"summary": "...", "changes": [...]}. Like RecordAction, an insert
+// failure is logged and never returned, so auditing cannot break the mutation.
+func (s *Store) RecordAdminAction(ctx context.Context, actor, action, targetType, targetID, detail, ip string) error {
+	return s.insertAuditRow(ctx, actor, "", nil, action, targetType, targetID, detail, ip, deriveSeverity(action))
+}
+
+// insertAuditRow writes one audit_log row with all columns. It never returns
+// an error that breaks the caller: on insert failure it logs the error via
+// the package-level slog default and returns nil. The rule lives here, not in
+// each caller, so no audit site can accidentally let a DB error propagate into
+// the request path.
+//
+//nolint:gosec // table/column names are hardcoded literals, not user input
+func (s *Store) insertAuditRow(ctx context.Context, actor, cluster string, vmid *int, action, targetType, targetID, detail, ipAddress, severity string) error {
 	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO audit_log (actor, cluster, vmid, action, timestamp) VALUES (?, ?, ?, ?, ?)`,
-		actor, cluster, vmid, action, time.Now().UTC().Format(time.RFC3339Nano))
+		`INSERT INTO audit_log (actor, cluster, vmid, action, timestamp, target_type, target_id, detail, ip_address, severity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		actor, cluster, vmid, action, time.Now().UTC().Format(time.RFC3339Nano), targetType, targetID, detail, ipAddress, severity)
 	if err != nil {
-		return fmt.Errorf("insert audit log: %w", err)
+		slog.Error("audit log insert failed", "component", "store", "actor", actor, "action", action, "error", err)
+		return nil
 	}
 
 	return nil
+}
+
+// deriveSeverity maps an action string to one of three severity levels based
+// on its verb (spec decision: 3 levels, hardcoded, not configurable). The
+// matching is substring-based to cover both dotted (admin.db_import.rejected)
+// and underscored (auth.login_failed) action vocabularies, matching pegaprox's
+// approach.
+//   - critical: contains fail, denied, rejected (e.g. auth.login_failed,
+//     admin.db_import.rejected, auth.csrf_rejected)
+//   - warning:  contains delete, remove, destroy, revoke (e.g. admin.tags.delete)
+//   - info:     everything else (e.g. admin.clusters.create, vm.power_on)
+func deriveSeverity(action string) string {
+	switch {
+	case strings.Contains(action, "fail"),
+		strings.Contains(action, "denied"),
+		strings.Contains(action, "rejected"):
+		return "critical"
+	case strings.Contains(action, "delete"),
+		strings.Contains(action, "remove"),
+		strings.Contains(action, "destroy"),
+		strings.Contains(action, "revoke"):
+		return "warning"
+	default:
+		return "info"
+	}
 }
 
 // QueryAudit returns every audit_log row in insertion order. Test-only at this

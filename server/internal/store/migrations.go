@@ -201,4 +201,5 @@ var Migrations = []Migration{
 	{Version: 16, DDL: schemaV16},
 	{Version: 17, DDL: schemaV17},
 	{Version: 18, DDL: schemaV18},
+	{Version: 19, DDL: schemaV19},
 }
