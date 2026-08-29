@@ -7,6 +7,15 @@ import (
 	"testing"
 )
 
+// US6/issue-06: UEFI/TPM test fixtures — repeated Proxmox form values
+// centralized for goconst and readability.
+const (
+	testBIOSOVMF     = "ovmf"
+	testMachineQ35   = "q35"
+	testEFIDiskValue = "local-lvm:1,efitype=4m,pre-enrolled-keys=1"
+	testTPMDiskValue = "local-lvm:1,version=v2.0"
+)
+
 func TestProxmox_NextVMID(t *testing.T) {
 	t.Parallel()
 
@@ -63,9 +72,9 @@ func TestProxmox_CreateVM(t *testing.T) {
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
 	spec := VMSpec{
-		VMID: 105, Node: "node01", Name: "web-1", Pool: FakePoolAliceShort, Tags: []string{FakeTagPvmss},
+		VMID: 105, Node: testNodeName, Name: "web-1", Pool: FakePoolAliceShort, Tags: []string{FakeTagPvmss},
 		Sockets: 1, CPUCores: 4, MemoryMB: 4096,
-		Disk:             DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 32, Bus: "scsi"},
+		Disk:             DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 32, Bus: string(DiskBusSCSI)},
 		Network:          NetworkSpec{{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)}},
 		ISO:              &ISOSpec{Storage: FakeStorageLocal, File: "debian-12.iso"},
 		StartAfterCreate: true,
@@ -99,11 +108,11 @@ func assertCreateVMForm(t *testing.T, form url.Values) {
 		t.Errorf("pool/tags = %q/%q", form.Get("pool"), form.Get("tags"))
 	}
 
-	if form.Get(diskKeySCSI0) != "local-lvm:32" || form.Get("scsihw") != "virtio-scsi-pci" {
+	if form.Get(diskKeySCSI0) != "local-lvm:32,discard=on,iothread=1" || form.Get("scsihw") != "virtio-scsi-pci" {
 		t.Errorf("scsi0/scsihw = %q/%q", form.Get(diskKeySCSI0), form.Get("scsihw"))
 	}
 
-	if form.Get("net0") != "virtio,bridge=vmbr0" {
+	if form.Get("net0") != "virtio,bridge=vmbr0,firewall=1" {
 		t.Errorf("net0 = %q", form.Get("net0"))
 	}
 
@@ -221,11 +230,11 @@ func TestProxmox_CreateVM_SocketsAndMultiNIC(t *testing.T) {
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
 	spec := VMSpec{
-		VMID: 106, Node: "node01", Name: "web-2", Pool: FakePoolAliceShort, Tags: []string{FakeTagPvmss},
+		VMID: 106, Node: testNodeName, Name: "web-2", Pool: FakePoolAliceShort, Tags: []string{FakeTagPvmss},
 		Sockets: 2, CPUCores: 4, MemoryMB: 8192,
-		Disk: DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 32, Bus: "scsi"},
+		Disk: DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 32, Bus: string(DiskBusSCSI)},
 		Network: NetworkSpec{
-			{Bridge: FakeBridgeVMbr0, Model: "virtio"},
+			{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)},
 			{Bridge: FakeBridgeVMbr1, Model: "e1000"},
 		},
 	}
@@ -242,11 +251,211 @@ func TestProxmox_CreateVM_SocketsAndMultiNIC(t *testing.T) {
 		t.Errorf("cores = %q, want 4", gotForm.Get("cores"))
 	}
 
-	if gotForm.Get("net0") != "virtio,bridge=vmbr0" {
-		t.Errorf("net0 = %q, want virtio,bridge=vmbr0", gotForm.Get("net0"))
+	if gotForm.Get("net0") != "virtio,bridge=vmbr0,firewall=1" {
+		t.Errorf("net0 = %q, want virtio,bridge=vmbr0,firewall=1", gotForm.Get("net0"))
 	}
 
-	if gotForm.Get("net1") != "e1000,bridge=vmbr1" {
-		t.Errorf("net1 = %q, want e1000,bridge=vmbr1", gotForm.Get("net1"))
+	if gotForm.Get("net1") != "e1000,bridge=vmbr1,firewall=1" {
+		t.Errorf("net1 = %q, want e1000,bridge=vmbr1,firewall=1", gotForm.Get("net1"))
+	}
+}
+
+// TestProxmox_CreateVM_DiskDefaults asserts the US6/issue-06 D6a disk
+// defaults: discard=on always, iothread=1 only on SCSI bus.
+func TestProxmox_CreateVM_DiskDefaults(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name       string
+		bus        string
+		wantDisk   string
+		wantSCSIHW string
+	}{
+		{"scsi bus gets discard and iothread", string(DiskBusSCSI), "local-lvm:20,discard=on,iothread=1", "virtio-scsi-pci"},
+		{"virtio bus gets discard only", string(DiskBusVirtio), "local-lvm:20,discard=on", ""},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var gotForm url.Values
+
+			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+				mux.HandleFunc("POST /api2/json/nodes/node01/qemu", func(w http.ResponseWriter, r *http.Request) {
+					if err := r.ParseForm(); err != nil {
+						t.Fatalf("parse form: %v", err)
+					}
+
+					gotForm = r.Form
+
+					writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmcreate:107:pvmss@pve:"}`)
+				})
+			})
+
+			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+			spec := VMSpec{
+				VMID: 107, Node: testNodeName, Name: "disk-test", Pool: FakePoolAliceShort,
+				Sockets: 1, CPUCores: 2, MemoryMB: 2048,
+				Disk:    DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 20, Bus: tc.bus},
+				Network: NetworkSpec{{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)}},
+			}
+
+			if _, err := p.CreateVM(context.Background(), spec); err != nil {
+				t.Fatalf("CreateVM: %v", err)
+			}
+
+			diskKey := tc.bus + "0"
+			if gotForm.Get(diskKey) != tc.wantDisk {
+				t.Errorf("%s = %q, want %q", diskKey, gotForm.Get(diskKey), tc.wantDisk)
+			}
+
+			if tc.wantSCSIHW != "" {
+				if gotForm.Get("scsihw") != tc.wantSCSIHW {
+					t.Errorf("scsihw = %q, want %q", gotForm.Get("scsihw"), tc.wantSCSIHW)
+				}
+			}
+		})
+	}
+}
+
+// TestProxmox_CreateVM_UEFI asserts the US6/issue-06 UEFI/TPM emission:
+// bios=ovmf forces machine=q35, provisions efidisk0, and tpmstate0 when TPM
+// is set. EFI/TPM storage falls back to the disk's storage.
+func TestProxmox_CreateVM_UEFI(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name        string
+		bios        string
+		machine     string
+		tpm         bool
+		wantMachine string
+		wantEFI     string
+		wantTPM     string
+	}{
+		{
+			name:        "ovmf without machine forces q35",
+			bios:        testBIOSOVMF,
+			machine:     "",
+			wantMachine: testMachineQ35,
+			wantEFI:     testEFIDiskValue,
+			wantTPM:     "",
+		},
+		{
+			name:        "ovmf with i440fx forces q35",
+			bios:        testBIOSOVMF,
+			machine:     "i440fx",
+			wantMachine: testMachineQ35,
+			wantEFI:     testEFIDiskValue,
+			wantTPM:     "",
+		},
+		{
+			name:        "ovmf with q35 stays q35",
+			bios:        testBIOSOVMF,
+			machine:     testMachineQ35,
+			wantMachine: testMachineQ35,
+			wantEFI:     testEFIDiskValue,
+			wantTPM:     "",
+		},
+		{
+			name:        "ovmf with tpm provisions tpmstate0",
+			bios:        testBIOSOVMF,
+			machine:     "",
+			tpm:         true,
+			wantMachine: testMachineQ35,
+			wantEFI:     testEFIDiskValue,
+			wantTPM:     testTPMDiskValue,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var gotForm url.Values
+
+			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+				mux.HandleFunc("POST /api2/json/nodes/node01/qemu", func(w http.ResponseWriter, r *http.Request) {
+					if err := r.ParseForm(); err != nil {
+						t.Fatalf("parse form: %v", err)
+					}
+
+					gotForm = r.Form
+
+					writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmcreate:108:pvmss@pve:"}`)
+				})
+			})
+
+			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+			spec := VMSpec{
+				VMID: 108, Node: testNodeName, Name: "uefi-test", Pool: FakePoolAliceShort,
+				Sockets: 1, CPUCores: 2, MemoryMB: 4096,
+				Disk:    DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 32, Bus: string(DiskBusSCSI)},
+				Network: NetworkSpec{{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)}},
+				BIOS:    tc.bios, Machine: tc.machine, TPM: tc.tpm,
+			}
+
+			if _, err := p.CreateVM(context.Background(), spec); err != nil {
+				t.Fatalf("CreateVM: %v", err)
+			}
+
+			if gotForm.Get("bios") != testBIOSOVMF {
+				t.Errorf("bios = %q, want ovmf", gotForm.Get("bios"))
+			}
+
+			if gotForm.Get("machine") != tc.wantMachine {
+				t.Errorf("machine = %q, want %q", gotForm.Get("machine"), tc.wantMachine)
+			}
+
+			if gotForm.Get("efidisk0") != tc.wantEFI {
+				t.Errorf("efidisk0 = %q, want %q", gotForm.Get("efidisk0"), tc.wantEFI)
+			}
+
+			if gotForm.Get("tpmstate0") != tc.wantTPM {
+				t.Errorf("tpmstate0 = %q, want %q", gotForm.Get("tpmstate0"), tc.wantTPM)
+			}
+		})
+	}
+}
+
+// TestProxmox_CreateVM_NoUEFI asserts seabios/default emits no bios/machine/
+// efidisk0/tpmstate0 keys.
+func TestProxmox_CreateVM_NoUEFI(t *testing.T) {
+	t.Parallel()
+
+	var gotForm url.Values
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("POST /api2/json/nodes/node01/qemu", func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("parse form: %v", err)
+			}
+
+			gotForm = r.Form
+
+			writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmcreate:109:pvmss@pve:"}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	spec := VMSpec{
+		VMID: 109, Node: testNodeName, Name: "seabios-test", Pool: FakePoolAliceShort,
+		Sockets: 1, CPUCores: 2, MemoryMB: 4096,
+		Disk:    DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 32, Bus: string(DiskBusSCSI)},
+		Network: NetworkSpec{{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)}},
+	}
+
+	if _, err := p.CreateVM(context.Background(), spec); err != nil {
+		t.Fatalf("CreateVM: %v", err)
+	}
+
+	for _, key := range []string{"bios", "machine", "efidisk0", "tpmstate0"} {
+		if gotForm.Get(key) != "" {
+			t.Errorf("%s = %q, want empty (seabios default)", key, gotForm.Get(key))
+		}
 	}
 }

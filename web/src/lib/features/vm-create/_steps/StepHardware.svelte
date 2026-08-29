@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getVmCreateContext } from '../create.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
 	import FormField from '$lib/shared/ui/FormField.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
 
@@ -85,4 +86,26 @@
 			<TextField {id} {describedBy} {invalid} type="number" min={128} max={maxMemoryMB} step={128} bind:value={form.memoryMB} required />
 		{/snippet}
 	</FormField>
+
+	{#if form.mode === 'detailed'}
+		<div class="grid gap-2 rounded-lg border border-border p-4">
+			<p class="text-sm font-medium text-foreground">{m['vms.create.firmwareGroup']()}</p>
+			<Checkbox
+				label={m['vms.create.uefi']()}
+				hint={m['vms.create.uefiHint']()}
+				checked={form.uefi}
+				onToggle={(checked) => {
+					form.uefi = checked;
+					if (!checked) form.tpm = false;
+				}}
+			/>
+			<Checkbox
+				label={m['vms.create.tpm']()}
+				hint={m['vms.create.tpmHint']()}
+				checked={form.tpm}
+				onToggle={(checked) => { form.tpm = checked; }}
+				disabled={!form.uefi}
+			/>
+		</div>
+	{/if}
 </div>

@@ -216,6 +216,12 @@ INSERT INTO catalog_templates (cluster, node, vmid, name, cloud_init_capable, di
 	('default', 'pve-node-02', 9000, 'debian-12-cloud', 1, 'local-lvm', 8, 'scsi'),
 	('default', 'pve-node-02', 9001, 'alpine-appliance', 0, 'local', 2, 'scsi');`
 
+// schemaV23 adds an optional per-cluster isolation VLAN tag to vm_limits
+// (US6/issue-06 D6b + Q18: one VLAN per cluster, imposed — the admin sets it
+// alongside the gabarit; empty/0 = no tag imposed). Tenants never choose the
+// segmentation; the create path stamps the tag on every NIC.
+const schemaV23 = `ALTER TABLE vm_limits ADD COLUMN isolation_vlan_tag INTEGER NOT NULL DEFAULT 0`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -247,4 +253,5 @@ var Migrations = []Migration{
 	{Version: 20, DDL: schemaV20},
 	{Version: 21, DDL: schemaV21},
 	{Version: 22, DDL: schemaV22},
+	{Version: 23, DDL: schemaV23},
 }

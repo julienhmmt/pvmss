@@ -51,14 +51,17 @@ const (
 )
 
 // Gabarit is the administrator-editable size ceiling for one VM.
+// IsolationVLANTag is the per-cluster imposed VLAN (US6/issue-06 D6b + Q18):
+// 0 means no tag imposed; a positive value is stamped on every created NIC.
 type Gabarit struct {
-	MaxSockets      int
-	MaxCores        int
-	MaxMemoryMB     int
-	MaxDiskPerVMGB  int
-	MaxNetworkCards int
-	MaxSnapshots    int
-	AllowCustomYAML bool
+	MaxSockets       int
+	MaxCores         int
+	MaxMemoryMB      int
+	MaxDiskPerVMGB   int
+	MaxNetworkCards  int
+	MaxSnapshots     int
+	AllowCustomYAML  bool
+	IsolationVLANTag int
 }
 
 // Quota is the current VM count and per-user allowance.
@@ -130,6 +133,7 @@ func (service *Policy) Gabarit(ctx context.Context, clusterName string) (Gabarit
 		MaxSockets: row.MaxSockets, MaxCores: row.MaxCores, MaxMemoryMB: row.MaxMemoryMB,
 		MaxDiskPerVMGB: row.MaxDiskPerVMGB, MaxNetworkCards: row.MaxNetworkCards,
 		MaxSnapshots: row.MaxSnapshots, AllowCustomYAML: row.AllowCustomYAML,
+		IsolationVLANTag: row.IsolationVLANTag,
 	}, nil
 }
 

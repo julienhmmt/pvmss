@@ -50,6 +50,11 @@ type CloneSpec struct {
 // VMSpec is the fully-resolved specification of a VM to create (T06
 // data-model.md). Every field is already validated and resolved server-side —
 // the pool is the actor's own, never client-supplied (FR-004).
+//
+// BIOS, Machine, and TPM carry the UEFI/TPM 2.0 options (US6/issue-06 D6a).
+// BIOS defaults to "seabios"; Machine defaults to "i440fx". When BIOS is
+// "ovmf", the create path forces Machine to "q35" (pegaprox rule: UEFI
+// requires q35) and emits efidisk0 (+ tpmstate0 when TPM is set).
 type VMSpec struct {
 	VMID             int
 	Node             string
@@ -62,6 +67,9 @@ type VMSpec struct {
 	Disk             DiskSpec
 	Network          NetworkSpec
 	ISO              *ISOSpec
+	BIOS             string
+	Machine          string
+	TPM              bool
 	StartAfterCreate bool
 }
 
@@ -72,10 +80,18 @@ type DiskSpec struct {
 	Bus     string
 }
 
-// NICSpec is one network interface card to attach at creation.
+// NICSpec is one network interface card to attach at creation. VLAN is the
+// imposed isolation tag (US6/issue-06 D6b: per-cluster, admin-configured —
+// never client-chosen). Firewall is always true on PVMSS-created VMs (D6a:
+// the Proxmox per-VM firewall is armed by default, not user-exposed). MAC and
+// RateMbps pass through to the encoder when set.
 type NICSpec struct {
-	Bridge string
-	Model  string
+	Bridge   string
+	Model    string
+	VLAN     *int
+	Firewall bool
+	MAC      string
+	RateMbps *int
 }
 
 // NetworkSpec is the VM's initial set of NICs (US2/D3a: multi-NIC). A

@@ -243,6 +243,8 @@ type NetworkInterface struct {
 	MAC         string   `json:"mac"`
 	VLAN        *int     `json:"vlan"`
 	RateMbps    *int     `json:"rateMbps"`
+	Firewall    bool     `json:"firewall"`
+	MTU         int      `json:"mtu"`
 	IPAddresses []string `json:"ipAddresses"`
 }
 

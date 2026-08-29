@@ -3,7 +3,7 @@ import { SvelteDate } from 'svelte/reactivity';
 import type { CreateMode, VmSource } from './create.svelte';
 
 export const DRAFT_STORAGE_KEY = 'pvmss-vm-create-draft';
-export const DRAFT_SCHEMA_VERSION = 3;
+export const DRAFT_SCHEMA_VERSION = 4;
 
 const SAVE_DEBOUNCE_MS = 400;
 
@@ -34,6 +34,8 @@ export interface DraftValues {
 	sourceType?: VmSource;
 	templateId?: number;
 	startAfterCreate: boolean;
+	uefi?: boolean;
+	tpm?: boolean;
 }
 
 export interface StoredDraft {

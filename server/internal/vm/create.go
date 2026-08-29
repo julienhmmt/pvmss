@@ -38,6 +38,9 @@ var (
 	// ErrInvalidSource — the request carries both an ISO and a template
 	// source, or neither (US2/issue-02 D2a). Mapped to 400 by the handler.
 	ErrInvalidSource = errors.New("invalid vm source")
+	// ErrInvalidRequest — the request carries an impossible combination of
+	// options (US6/issue-06: TPM without UEFI). Mapped to 400 by the handler.
+	ErrInvalidRequest = errors.New("invalid request")
 	// ErrDiskReduction — the requested disk size is smaller than the
 	// template's disk (US2/issue-02 D2c: Proxmox does not reduce disks).
 	ErrDiskReduction = errors.New("disk size below template")
@@ -114,7 +117,12 @@ type CreateRequest struct {
 	Network             NetworkRequest `json:"network"`
 	ISO                 *ISORequest    `json:"iso,omitempty"`
 	TemplateID          int            `json:"templateId,omitempty"`
-	StartAfterCreate    bool           `json:"startAfterCreate,omitempty"`
+	// UEFI requests bios=ovmf + machine=q35 + efidisk0 (US6/issue-06 D6a).
+	// TPM requests tpmstate0 alongside the EFI disk; ignored when UEFI is
+	// false — TPM 2.0 requires UEFI.
+	UEFI             bool `json:"uefi,omitempty"`
+	TPM              bool `json:"tpm,omitempty"`
+	StartAfterCreate bool `json:"startAfterCreate,omitempty"`
 }
 
 // DiskRequest is the request's single initial disk.
@@ -622,9 +630,27 @@ func buildCreateSpec(actor auth.Identity, req CreateRequest, plan createPlan, vm
 		tags = append(tags, "pvmss")
 	}
 
+	// US6/issue-06 D6b: stamp the admin-imposed isolation VLAN on every NIC.
+	// The tag comes from the per-cluster gabarit (Q18); tenants never choose
+	// it. Firewall is always true (D6a — the Proxmox per-VM firewall is
+	// armed by default, not user-exposed).
 	nics := make([]cluster.NICSpec, 0, len(plan.nics))
 	for _, nic := range plan.nics {
-		nics = append(nics, cluster.NICSpec{Bridge: nic.bridge, Model: nic.model})
+		spec := cluster.NICSpec{Bridge: nic.bridge, Model: nic.model, Firewall: true}
+
+		if plan.isolationVLANTag > 0 {
+			tag := plan.isolationVLANTag
+			spec.VLAN = &tag
+		}
+
+		nics = append(nics, spec)
+	}
+
+	// US6/issue-06 D6a: UEFI maps to bios=ovmf; the cluster create path
+	// forces machine=q35 and provisions efidisk0 (+ tpmstate0 when TPM).
+	bios := ""
+	if plan.uefi {
+		bios = "ovmf"
 	}
 
 	spec := cluster.VMSpec{
@@ -638,6 +664,8 @@ func buildCreateSpec(actor auth.Identity, req CreateRequest, plan createPlan, vm
 		MemoryMB:         plan.memoryMB,
 		Disk:             cluster.DiskSpec{Storage: plan.storage, SizeGB: plan.diskGB, Bus: plan.bus},
 		Network:          cluster.NetworkSpec(nics),
+		BIOS:             bios,
+		TPM:              plan.tpm,
 		StartAfterCreate: req.StartAfterCreate,
 	}
 	if req.ISO != nil {
@@ -779,14 +807,17 @@ func primaryDiskKey(bus string) string {
 
 // createPlan holds the resolved and validated values for a VM creation request.
 type createPlan struct {
-	node     string
-	storage  string
-	sockets  int
-	cpuCores int
-	memoryMB int
-	diskGB   int
-	bus      string
-	nics     []nicPlan
+	node             string
+	storage          string
+	sockets          int
+	cpuCores         int
+	memoryMB         int
+	diskGB           int
+	bus              string
+	nics             []nicPlan
+	isolationVLANTag int
+	uefi             bool
+	tpm              bool
 }
 
 // nicPlan is one resolved and validated NIC.
@@ -815,6 +846,17 @@ func checkName(policyService *policy.Policy, pool, name string) error {
 	return nil
 }
 
+// checkUEFICompat rejects the impossible TPM-without-UEFI combination early
+// (US6/issue-06 D6a: TPM 2.0 requires UEFI). Extracted from planCreate to
+// keep its cyclomatic complexity under gocyclo's ceiling.
+func checkUEFICompat(req CreateRequest) error {
+	if req.TPM && !req.UEFI {
+		return fmt.Errorf("%w: tpm requires uefi", ErrInvalidRequest)
+	}
+
+	return nil
+}
+
 // planCreate runs all pre-allocation validation: quota, name, catalog,
 // hardware ranges, gabarit, resource resolution, node capacity, and live
 // disk-space check (US3/issue-04). Name uniqueness by pool (US5/issue-05 D5b)
@@ -826,6 +868,12 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 	}
 
 	if err := checkName(policyService, actor.Pool, req.Name); err != nil {
+		return createPlan{}, err
+	}
+
+	// US6/issue-06 D6a: TPM 2.0 requires UEFI — reject the impossible
+	// combination early, before any VMID or catalog work.
+	if err := checkUEFICompat(req); err != nil {
 		return createPlan{}, err
 	}
 
@@ -857,16 +905,12 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 		return createPlan{}, err
 	}
 
-	if err := policyService.CheckGabarit(ctx, clusterName, sockets, cpuCores, memoryMB, diskGB, len(nics)); err != nil {
+	if err := checkGabaritAndCapacity(ctx, policyService, clusterName, node, sockets, cpuCores, memoryMB, diskGB, len(nics)); err != nil {
 		return createPlan{}, err
 	}
 
-	if err := policyService.CheckNodeCapacity(ctx, clusterName, node, policy.CapacityDelta{Sockets: sockets, Cores: cpuCores, MemoryMB: memoryMB, DiskGB: diskGB}); err != nil {
-		return createPlan{}, err
-	}
-
-	// US3/issue-04 D4b: live disk-space check before VMID consumption.
-	if err := checkLiveDiskSpace(ctx, deps.FreeSpace, node, storage, diskGB); err != nil {
+	vlanTag, err := finalizePlanChecks(ctx, deps, policyService, clusterName, node, storage, diskGB)
+	if err != nil {
 		return createPlan{}, err
 	}
 
@@ -875,7 +919,39 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 		logPlacement(deps.Log, node, resources.Nodes, capacities, req)
 	}
 
-	return createPlan{node: node, storage: storage, sockets: sockets, cpuCores: cpuCores, memoryMB: memoryMB, diskGB: diskGB, bus: bus, nics: nics}, nil
+	return createPlan{
+		node: node, storage: storage, sockets: sockets, cpuCores: cpuCores,
+		memoryMB: memoryMB, diskGB: diskGB, bus: bus, nics: nics,
+		isolationVLANTag: vlanTag, uefi: req.UEFI, tpm: req.TPM,
+	}, nil
+}
+
+// checkGabaritAndCapacity runs the gabarit ceiling check and the node-capacity
+// check together (US2/D3a + US3/issue-04). Extracted from planCreate to keep
+// its cyclomatic complexity under gocyclo's ceiling.
+func checkGabaritAndCapacity(ctx context.Context, policyService *policy.Policy, clusterName, node string, sockets, cpuCores, memoryMB, diskGB, nicCount int) error {
+	if err := policyService.CheckGabarit(ctx, clusterName, sockets, cpuCores, memoryMB, diskGB, nicCount); err != nil {
+		return err
+	}
+
+	return policyService.CheckNodeCapacity(ctx, clusterName, node, policy.CapacityDelta{Sockets: sockets, Cores: cpuCores, MemoryMB: memoryMB, DiskGB: diskGB})
+}
+
+// finalizePlanChecks runs the post-capacity checks: the live disk-space
+// check (US3/issue-04 D4b) and the gabarit VLAN read (US6/issue-06 D6b).
+// Returns the per-cluster isolation VLAN tag (0 = none imposed). Extracted
+// from planCreate to keep its cyclomatic complexity under gocyclo's ceiling.
+func finalizePlanChecks(ctx context.Context, deps CreateDeps, policyService *policy.Policy, clusterName, node, storage string, diskGB int) (int, error) {
+	if err := checkLiveDiskSpace(ctx, deps.FreeSpace, node, storage, diskGB); err != nil {
+		return 0, err
+	}
+
+	gabarit, err := policyService.Gabarit(ctx, clusterName)
+	if err != nil {
+		return 0, fmt.Errorf("read gabarit for vlan: %w", err)
+	}
+
+	return gabarit.IsolationVLANTag, nil
 }
 
 // checkLiveDiskSpace verifies the target storage has enough free space for the
