@@ -13,6 +13,7 @@ import (
 	"database/sql"
 	"os/exec"
 	"path/filepath"
+	"pvmss/server/internal/testfixture"
 	"strings"
 	"testing"
 )
@@ -83,7 +84,7 @@ func TestRecoveryCLI_EndToEnd(t *testing.T) {
 	checklistBin := buildRecoveryBinary(ctx, t, repoRoot, "pvmss-checklist")
 
 	// --- pvmss-checklist: SUMMARY must match SC-004 exactly (quickstart Step 1) ---
-	runChecklistGolden(ctx, t, checklistBin, repoRoot)
+	runChecklistGolden(ctx, t, checklistBin, testfixture.ChecklistFiches(t))
 
 	// --- pvmss-recover: seed a legacy fixture, run against a migrated v0.4 db ---
 	legacyPath := openAndSeedLegacyDB(ctx, t)
