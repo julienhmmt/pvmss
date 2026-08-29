@@ -1,7 +1,11 @@
 package httpapi
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"pvmss/server/internal/store"
 	"strconv"
 	"sync"
 	"time"
@@ -16,6 +20,7 @@ type ipRateLimiter struct {
 	max              int
 	window           time.Duration
 	trustedProxyHops int
+	store            *store.Store
 }
 
 // userRateLimiter is a per-user fixed-window request limiter for authenticated
@@ -27,10 +32,11 @@ type userRateLimiter struct {
 	max              int
 	window           time.Duration
 	trustedProxyHops int
+	store            *store.Store
 }
 
-func newIPRateLimiter(maxRequests int, window time.Duration, trustedProxyHops int) *ipRateLimiter {
-	return &ipRateLimiter{hits: make(map[string][]time.Time), max: maxRequests, window: window, trustedProxyHops: trustedProxyHops}
+func newIPRateLimiter(maxRequests int, window time.Duration, trustedProxyHops int, st *store.Store) *ipRateLimiter {
+	return &ipRateLimiter{hits: make(map[string][]time.Time), max: maxRequests, window: window, trustedProxyHops: trustedProxyHops, store: st}
 }
 
 // allow reports whether ip may make another request now, recording the hit
@@ -64,7 +70,9 @@ func (l *ipRateLimiter) allow(ip string, now time.Time) bool {
 // middleware wraps next, rejecting requests over the limit with 429.
 func (l *ipRateLimiter) middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !l.allow(clientIP(r, l.trustedProxyHops), time.Now()) {
+		ip := clientIP(r, l.trustedProxyHops)
+		if !l.allow(ip, time.Now()) {
+			l.recordRateLimited(r.Context(), r, ip, "ip")
 			writeAuthError(w, http.StatusTooManyRequests, "rate_limited", "too many requests, try again later")
 			return
 		}
@@ -73,8 +81,8 @@ func (l *ipRateLimiter) middleware(next http.Handler) http.Handler {
 	})
 }
 
-func newUserRateLimiter(maxRequests int, window time.Duration, trustedProxyHops int) *userRateLimiter {
-	return &userRateLimiter{hits: make(map[string][]time.Time), max: maxRequests, window: window, trustedProxyHops: trustedProxyHops}
+func newUserRateLimiter(maxRequests int, window time.Duration, trustedProxyHops int, st *store.Store) *userRateLimiter {
+	return &userRateLimiter{hits: make(map[string][]time.Time), max: maxRequests, window: window, trustedProxyHops: trustedProxyHops, store: st}
 }
 
 // allow reports whether key may make another request now and, if not, how long
@@ -124,14 +132,17 @@ func (l *userRateLimiter) allow(key string, now time.Time) (bool, time.Duration)
 func (l *userRateLimiter) middleware(authHandler *Auth, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := clientIP(r, l.trustedProxyHops)
+		actor := ""
 
 		identity, err := authHandler.Principal(r)
 		if err == nil {
 			key = identity.Username
+			actor = identity.Username
 		}
 
 		allowed, retryAfter := l.allow(key, time.Now())
 		if !allowed {
+			l.recordRateLimited(r.Context(), r, actor, "user")
 			writeRateLimitError(w, retryAfter)
 
 			return
@@ -139,6 +150,30 @@ func (l *userRateLimiter) middleware(authHandler *Auth, next http.Handler) http.
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func (l *userRateLimiter) recordRateLimited(ctx context.Context, r *http.Request, actor, keyType string) {
+	if l.store == nil {
+		return
+	}
+
+	body, _ := json.Marshal(map[string]any{
+		"summary": fmt.Sprintf("rate limited on %s key", keyType),
+		"changes": []any{map[string]any{"keyType": keyType, "actor": actor}},
+	})
+	_ = l.store.RecordAdminAction(ctx, actor, "auth.rate_limited", "auth", actor, string(body), clientIP(r, l.trustedProxyHops))
+}
+
+func (l *ipRateLimiter) recordRateLimited(ctx context.Context, r *http.Request, actor, keyType string) {
+	if l.store == nil {
+		return
+	}
+
+	body, _ := json.Marshal(map[string]any{
+		"summary": fmt.Sprintf("rate limited on %s key", keyType),
+		"changes": []any{map[string]any{"keyType": keyType, "actor": actor}},
+	})
+	_ = l.store.RecordAdminAction(ctx, actor, "auth.rate_limited", "auth", actor, string(body), clientIP(r, l.trustedProxyHops))
 }
 
 // writeRateLimitError writes a 429 response with a Retry-After header and a

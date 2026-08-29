@@ -20,14 +20,15 @@ import (
 // (FR-002). All validation lives in vm.Create; this handler only decodes,
 // maps errors, and encodes.
 type VMCreate struct {
-	auth    *Auth
-	store   *store.Store
-	client  cluster.Client
-	clients cluster.ClientProvider
-	creator cluster.Creator
-	pusher  vm.CloudInitPusher
-	policy  *policy.Policy
-	log     *slog.Logger
+	auth             *Auth
+	store            *store.Store
+	client           cluster.Client
+	clients          cluster.ClientProvider
+	creator          cluster.Creator
+	pusher           vm.CloudInitPusher
+	policy           *policy.Policy
+	log              *slog.Logger
+	trustedProxyHops int
 }
 
 // NewVMCreate creates the handler. The creator is the cluster client's
@@ -82,6 +83,12 @@ func NewVMCreateWithRegistry(
 	handler.clients = clients
 
 	return handler
+}
+
+// SetTrustedProxyHops configures how many X-Forwarded-For hops to trust for
+// client IP extraction used in audit log entries.
+func (h *VMCreate) SetTrustedProxyHops(n int) {
+	h.trustedProxyHops = n
 }
 
 type createResultDTO struct {
@@ -201,7 +208,8 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := vm.Create(r.Context(), identity, clusterName, req, vm.CreateDeps{
+	ctx := policy.ContextWithAuditIP(r.Context(), clientIP(r, h.trustedProxyHops))
+	result, err := vm.Create(ctx, identity, clusterName, req, vm.CreateDeps{
 		Store:    h.store,
 		Creator:  creator,
 		Pusher:   pusher,

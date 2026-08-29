@@ -4,6 +4,7 @@ package httpapi
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"pvmss/server/internal/catalog"
@@ -18,13 +19,14 @@ import (
 // (CRUD with protected pvmss). Every route is wrapped by Auth.RequireAdmin
 // (FR-008).
 type AdminCatalog struct {
-	auth       *Auth
-	store      *store.Store
-	client     cluster.Client
-	projection *inventory.Projection
-	clusters   ClusterLister
-	clients    cluster.ClientProvider
-	log        *slog.Logger
+	auth             *Auth
+	store            *store.Store
+	client           cluster.Client
+	projection       *inventory.Projection
+	clusters         ClusterLister
+	clients          cluster.ClientProvider
+	log              *slog.Logger
+	trustedProxyHops int
 }
 
 // NewAdminCatalog creates the handler for all admin catalog endpoints. The
@@ -133,6 +135,9 @@ func (h *AdminCatalog) ServeNodeToggle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.recordAdminAction(r, "admin.nodes.toggle", "node", req.Name,
+		fmt.Sprintf("node %s on cluster %s set enabled=%v", req.Name, clusterName, req.Enabled),
+		[]any{map[string]any{"cluster": clusterName, "name": req.Name, "enabled": req.Enabled}})
 	writeAdminJSON(w, http.StatusOK, toggleResponse{Name: req.Name, Enabled: req.Enabled})
 }
 
@@ -226,6 +231,9 @@ func (h *AdminCatalog) ServeStorageToggle(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	h.recordAdminAction(r, "admin.storages.toggle", "storage", req.Name,
+		fmt.Sprintf("storage %s on node %s cluster %s set enabled=%v", req.Name, req.Node, clusterName, req.Enabled),
+		[]any{map[string]any{"cluster": clusterName, "name": req.Name, "node": req.Node, "enabled": req.Enabled}})
 	writeAdminJSON(w, http.StatusOK, storageToggleResponse{Name: req.Name, Node: req.Node, Enabled: req.Enabled})
 }
 
@@ -324,6 +332,9 @@ func (h *AdminCatalog) ServeBridgeToggle(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	h.recordAdminAction(r, "admin.bridges.toggle", "bridge", req.Name,
+		fmt.Sprintf("bridge %s on node %s cluster %s set enabled=%v", req.Name, req.Node, clusterName, req.Enabled),
+		[]any{map[string]any{"cluster": clusterName, "name": req.Name, "node": req.Node, "enabled": req.Enabled}})
 	writeAdminJSON(w, http.StatusOK, bridgeToggleResponse{Node: req.Node, Name: req.Name, Enabled: req.Enabled})
 }
 
@@ -424,6 +435,9 @@ func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.recordAdminAction(r, "admin.isos.toggle", "iso", req.File,
+		fmt.Sprintf("iso %s on storage %s node %s cluster %s set enabled=%v", req.File, req.Storage, req.Node, clusterName, req.Enabled),
+		[]any{map[string]any{"cluster": clusterName, "node": req.Node, "storage": req.Storage, "file": req.File, "enabled": req.Enabled}})
 	writeAdminJSON(w, http.StatusOK, isoToggleResponse{Node: req.Node, Storage: req.Storage, File: req.File, Enabled: req.Enabled})
 }
 
@@ -437,6 +451,23 @@ func (h *AdminCatalog) clientFor(name string) (cluster.Client, error) {
 		return h.client, nil
 	}
 	return h.clients.Client(name)
+}
+
+// SetTrustedProxyHops configures how many X-Forwarded-For hops are trusted
+// when extracting the client IP for audit entries.
+func (h *AdminCatalog) SetTrustedProxyHops(n int) {
+	h.trustedProxyHops = n
+}
+
+// recordAdminAction writes one admin audit row for a catalog mutation. It
+// never fails the request — a failed audit write is logged and ignored.
+func (h *AdminCatalog) recordAdminAction(r *http.Request, action, targetType, targetID, summary string, changes []any) {
+	actor, err := h.auth.Principal(r)
+	if err != nil {
+		return
+	}
+
+	_ = h.store.RecordAdminAction(r.Context(), actor.Username, action, targetType, targetID, detailJSON(summary, changes), clientIP(r, h.trustedProxyHops))
 }
 
 func queryCluster(r *http.Request) string {

@@ -1,6 +1,7 @@
 package vm
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"pvmss/server/internal/auth"
@@ -32,6 +33,30 @@ const pvmssTag = "pvmss"
 // The result is presentation-only and must never be parsed back into route parts.
 func FormatVMRef(clusterName string, vmid int) string {
 	return fmt.Sprintf("%s:%d", clusterName, vmid)
+}
+
+// adminActionRecorder is the subset of the store needed to record resolve
+// failures. It avoids a direct store import by a name that would be circular.
+type adminActionRecorder interface {
+	RecordAdminAction(ctx context.Context, actor, action, targetType, targetID, detail, ip string) error
+}
+
+var resolveAuditor adminActionRecorder
+
+// SetResolveAuditor wires the audit recorder used by Resolve for NotFound and
+// Forbidden paths. It is set from the main composition root.
+func SetResolveAuditor(recorder adminActionRecorder) {
+	resolveAuditor = recorder
+}
+
+func recordResolveFailed(actor auth.Identity, clusterName string, vmid int, reason string) {
+	if resolveAuditor == nil {
+		return
+	}
+
+	targetID := FormatVMRef(clusterName, vmid)
+	detail := fmt.Sprintf(`{"summary":"%s","changes":[]}`, reason)
+	_ = resolveAuditor.RecordAdminAction(context.Background(), actor.Username, "vm.resolve_failed", "vm", targetID, detail, "")
 }
 
 // Entity is a single VM resolved through the ownership gate — the only value
@@ -95,14 +120,17 @@ type Entity struct {
 func Resolve(source inventory.LookupSource, actor auth.Identity, clusterName string, vmid int) (Entity, error) {
 	machine, ok := source.Lookup(clusterName, vmid)
 	if !ok {
+		recordResolveFailed(actor, clusterName, vmid, "vm not found or not in PVMSS scope")
 		return Entity{}, ErrNotFound
 	}
 
 	if !slices.Contains(machine.Tags, pvmssTag) {
+		recordResolveFailed(actor, clusterName, vmid, "vm not in PVMSS scope")
 		return Entity{}, ErrNotFound
 	}
 
 	if !actor.IsAdmin && machine.Pool != actor.Pool {
+		recordResolveFailed(actor, clusterName, vmid, "cross-pool access denied")
 		return Entity{}, ErrForbidden
 	}
 

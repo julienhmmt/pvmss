@@ -365,7 +365,7 @@ func TestCreate_RecordsAudit(t *testing.T) {
 	}
 
 	entry := entries[0]
-	if entry.Actor != cluster.FakeUserAlice || entry.Cluster != testClusterName || entry.VMID != result.VMID || entry.Action != "vm_create" {
+	if entry.Actor != cluster.FakeUserAlice || entry.Cluster != testClusterName || *entry.VMID != result.VMID || entry.Action != "vm_create" {
 		t.Errorf("audit entry = %+v", entry)
 	}
 }

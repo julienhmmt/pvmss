@@ -1,14 +1,25 @@
 package httpapi
 
 import (
+	"context"
 	"crypto/subtle"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"pvmss/server/internal/auth"
+	"pvmss/server/internal/store"
 	"strings"
 )
 
 //nolint:gosec // G101: this is a public HTTP header name, not a credential.
 const csrfTokenHeader = "X-CSRF-Token"
+
+// csrfMiddleware holds the CSRF enforcer and the audit dependency.
+type csrfMiddleware struct {
+	auth             *Auth
+	store            *store.Store
+	trustedProxyHops int
+}
 
 // newCSRFMiddleware returns a middleware that enforces the CSRF token for
 // state-changing requests under /api/v1/. Browser sessions must present the
@@ -18,7 +29,9 @@ const csrfTokenHeader = "X-CSRF-Token"
 // Public unauthenticated routes (login, admin-login, clusters, OIDC) and
 // requests authenticated by an Authorization bearer token are not subject to
 // the cookie-based check.
-func newCSRFMiddleware(authHandler *Auth) func(http.Handler) http.Handler {
+func newCSRFMiddleware(authHandler *Auth, st *store.Store, trustedProxyHops int) func(http.Handler) http.Handler {
+	m := &csrfMiddleware{auth: authHandler, store: st, trustedProxyHops: trustedProxyHops}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !csrfRequired(r) {
@@ -45,6 +58,7 @@ func newCSRFMiddleware(authHandler *Auth) func(http.Handler) http.Handler {
 
 			serverToken, err := authHandler.CSRFToken(r)
 			if err != nil {
+				m.recordCSRFRejected(r.Context(), r, "missing or invalid CSRF token")
 				writeAuthError(w, http.StatusForbidden, "invalid_csrf_token", "invalid or missing csrf token")
 
 				return
@@ -57,6 +71,7 @@ func newCSRFMiddleware(authHandler *Auth) func(http.Handler) http.Handler {
 
 			cookie, err := r.Cookie(auth.CSRFCookieName)
 			if err != nil || !constantTimeEqual(serverToken, header) || !constantTimeEqual(serverToken, cookie.Value) {
+				m.recordCSRFRejected(r.Context(), r, "CSRF token mismatch")
 				writeAuthError(w, http.StatusForbidden, "invalid_csrf_token", "invalid or missing csrf token")
 
 				return
@@ -65,6 +80,20 @@ func newCSRFMiddleware(authHandler *Auth) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func (m *csrfMiddleware) recordCSRFRejected(ctx context.Context, r *http.Request, summary string) {
+	if m.store == nil {
+		return
+	}
+
+	actor := ""
+	if identity, err := m.auth.Principal(r); err == nil {
+		actor = identity.Username
+	}
+
+	body, _ := json.Marshal(map[string]any{"summary": fmt.Sprintf("CSRF rejected: %s", summary), "changes": []any{}})
+	_ = m.store.RecordAdminAction(ctx, actor, "auth.csrf_rejected", "auth", actor, string(body), clientIP(r, m.trustedProxyHops))
 }
 
 // csrfRequired reports whether the request is a state-changing API call that

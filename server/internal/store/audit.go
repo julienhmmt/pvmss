@@ -2,23 +2,27 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"strings"
 	"time"
 )
 
-// AuditEntry is one recorded VM write (T05 data-model.md). Write-only from
-// this tranche's perspective — no read endpoint is in scope here (that's an
-// admin-facing concern, T14); QueryAudit exists only so tests can assert what
-// was recorded.
+// AuditEntry is one recorded row in the audit_log table. It now supports both
+// VM-scoped writes and admin mutations (target_type/target_id/detail/ip/severity).
 type AuditEntry struct {
-	ID        int64
-	Actor     string
-	Cluster   string
-	VMID      int
-	Action    string
-	Timestamp time.Time
+	ID         int64
+	Actor      string
+	Cluster    string
+	VMID       *int
+	Action     string
+	Timestamp  time.Time
+	TargetType string
+	TargetID   string
+	Detail     string
+	IPAddress  string
+	Severity   string
 }
 
 // schemaV19 rebuilds audit_log to support admin-action auditing (issue #01).
@@ -116,7 +120,7 @@ func deriveSeverity(action string) string {
 // tranche — production reads belong to T14's admin audit view.
 func (s *Store) QueryAudit(ctx context.Context) ([]AuditEntry, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, actor, cluster, vmid, action, timestamp FROM audit_log ORDER BY id`)
+		`SELECT id, actor, cluster, vmid, action, timestamp, target_type, target_id, detail, ip_address, severity FROM audit_log ORDER BY id`)
 	if err != nil {
 		return nil, fmt.Errorf("query audit log: %w", err)
 	}
@@ -128,9 +132,16 @@ func (s *Store) QueryAudit(ctx context.Context) ([]AuditEntry, error) {
 		var (
 			entry AuditEntry
 			ts    string
+			vmid  sql.NullInt64
 		)
-		if err := rows.Scan(&entry.ID, &entry.Actor, &entry.Cluster, &entry.VMID, &entry.Action, &ts); err != nil {
+		if err := rows.Scan(&entry.ID, &entry.Actor, &entry.Cluster, &vmid, &entry.Action, &ts,
+			&entry.TargetType, &entry.TargetID, &entry.Detail, &entry.IPAddress, &entry.Severity); err != nil {
 			return nil, fmt.Errorf("scan audit log: %w", err)
+		}
+
+		if vmid.Valid {
+			v := int(vmid.Int64)
+			entry.VMID = &v
 		}
 
 		entry.Timestamp, err = time.Parse(time.RFC3339Nano, ts)
@@ -154,6 +165,7 @@ type AuditFilter struct {
 	Actor    string
 	Action   string
 	From, To *time.Time
+	Severity *string
 	Page     int
 	PageSize int
 }
@@ -195,7 +207,7 @@ func (s *Store) ListAuditLog(ctx context.Context, f AuditFilter) (AuditPage, err
 	offset := (page - 1) * pageSize
 
 	//nolint:gosec // whereClause is built from hardcoded literals, not user input
-	listSQL := "SELECT id, actor, cluster, vmid, action, timestamp FROM audit_log " +
+	listSQL := "SELECT id, actor, cluster, vmid, action, timestamp, target_type, target_id, detail, ip_address, severity FROM audit_log " +
 		whereClause + " ORDER BY timestamp DESC, id DESC LIMIT ? OFFSET ?"
 
 	listArgs := make([]any, 0, len(args)+2)
@@ -214,9 +226,16 @@ func (s *Store) ListAuditLog(ctx context.Context, f AuditFilter) (AuditPage, err
 		var (
 			entry AuditEntry
 			ts    string
+			vmid  sql.NullInt64
 		)
-		if err := rows.Scan(&entry.ID, &entry.Actor, &entry.Cluster, &entry.VMID, &entry.Action, &ts); err != nil {
+		if err := rows.Scan(&entry.ID, &entry.Actor, &entry.Cluster, &vmid, &entry.Action, &ts,
+			&entry.TargetType, &entry.TargetID, &entry.Detail, &entry.IPAddress, &entry.Severity); err != nil {
 			return AuditPage{}, fmt.Errorf("scan audit log: %w", err)
+		}
+
+		if vmid.Valid {
+			v := int(vmid.Int64)
+			entry.VMID = &v
 		}
 
 		entry.Timestamp, err = time.Parse(time.RFC3339Nano, ts)
@@ -270,6 +289,11 @@ func buildAuditWhere(f AuditFilter) (string, []any) {
 	if f.To != nil {
 		clauses = append(clauses, "timestamp <= ?")
 		args = append(args, f.To.UTC().Format(time.RFC3339Nano))
+	}
+
+	if f.Severity != nil && *f.Severity != "" {
+		clauses = append(clauses, "severity = ?")
+		args = append(args, *f.Severity)
 	}
 
 	if len(clauses) == 0 {

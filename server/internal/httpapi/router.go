@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"path"
+	"pvmss/server/internal/store"
 	"strings"
 	"time"
 )
@@ -65,6 +66,7 @@ type RouterConfig struct {
 	AdminClusters    *AdminClusters
 	Docs             *DocsAPIHandler
 	AdminDocs        *AdminDocs
+	Store            *store.Store
 	// TrustedProxyHops is forwarded to the rate limiters so clientIP resolves
 	// the real user IP behind a Kubernetes ingress via X-Forwarded-For.
 	// Defaults to 0 (use RemoteAddr directly) when not set by the caller.
@@ -77,12 +79,12 @@ type RouterConfig struct {
 func NewRouter(cfg RouterConfig) http.Handler {
 	mux := http.NewServeMux()
 
-	csrf := newCSRFMiddleware(cfg.Auth)
 	hops := cfg.TrustedProxyHops
-	vmWriteLimiter := newUserRateLimiter(vmWriteRateLimitMaxRequests, vmWriteRateLimitWindow, hops)
-	clusterTestLimiter := newUserRateLimiter(clusterTestRateLimitMaxRequests, clusterTestRateLimitWindow, hops)
-	adminWriteLimiter := newUserRateLimiter(adminWriteRateLimitMaxRequests, adminWriteRateLimitWindow, hops)
-	authWriteLimiter := newUserRateLimiter(authWriteRateLimitMaxRequests, authWriteRateLimitWindow, hops)
+	csrf := newCSRFMiddleware(cfg.Auth, cfg.Store, hops)
+	vmWriteLimiter := newUserRateLimiter(vmWriteRateLimitMaxRequests, vmWriteRateLimitWindow, hops, cfg.Store)
+	clusterTestLimiter := newUserRateLimiter(clusterTestRateLimitMaxRequests, clusterTestRateLimitWindow, hops, cfg.Store)
+	adminWriteLimiter := newUserRateLimiter(adminWriteRateLimitMaxRequests, adminWriteRateLimitWindow, hops, cfg.Store)
+	authWriteLimiter := newUserRateLimiter(authWriteRateLimitMaxRequests, authWriteRateLimitWindow, hops, cfg.Store)
 
 	// protect combines per-user rate limiting (outer) and CSRF validation (inner)
 	// for state-changing browser requests.
@@ -91,11 +93,26 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	}
 
 	adminProtect := func(method string, next http.Handler) http.Handler {
-		if method == http.MethodGet {
-			return cfg.Auth.RequireAdmin(next)
-		}
-
-		return cfg.Auth.RequireAdmin(adminWriteLimiter.middleware(cfg.Auth, csrf(next)))
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			identity, err := cfg.Auth.Principal(r)
+			if err != nil {
+				writeAuthError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
+				return
+			}
+			if !identity.IsAdmin {
+				if cfg.Store != nil {
+					_ = cfg.Store.RecordAdminAction(r.Context(), identity.Username, "auth.admin_denied", "auth", identity.Username,
+						`{"summary":"admin route denied to non-admin user","changes":[]}`, clientIP(r, hops))
+				}
+				writeAuthError(w, http.StatusForbidden, "forbidden", msgAdminOnly)
+				return
+			}
+			if method == http.MethodGet {
+				next.ServeHTTP(w, r)
+				return
+			}
+			adminWriteLimiter.middleware(cfg.Auth, csrf(next)).ServeHTTP(w, r)
+		})
 	}
 
 	mux.Handle("GET /health", cfg.Health)
@@ -169,7 +186,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	// nothing else gates repeated guesses against them. The pre-login cluster
 	// list and OIDC trigger are also unauthenticated and disclose cluster
 	// names, so they share the same limiter to bound enumeration/abuse.
-	authLimiter := newIPRateLimiter(authRateLimitMaxRequests, authRateLimitWindow, hops)
+	authLimiter := newIPRateLimiter(authRateLimitMaxRequests, authRateLimitWindow, hops, cfg.Store)
 	mux.Handle("POST /api/v1/auth/login", authLimiter.middleware(http.HandlerFunc(cfg.Auth.Login)))
 	mux.Handle("POST /api/v1/auth/admin-login", authLimiter.middleware(http.HandlerFunc(cfg.Auth.AdminLogin)))
 	mux.HandleFunc("GET /api/v1/auth/me", cfg.Auth.Me)

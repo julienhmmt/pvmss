@@ -6,9 +6,14 @@ export interface AuditEntry {
 	id: number;
 	actor: string;
 	cluster: string;
-	vmid: number;
+	vmid: number | null;
 	action: string;
 	timestamp: string;
+	targetType: string;
+	targetId: string;
+	detail: string;
+	ipAddress: string;
+	severity: string;
 }
 
 export interface AuditPage {
@@ -25,6 +30,7 @@ export interface AuditFilter {
 	action?: string;
 	from?: string;
 	to?: string;
+	severity?: string;
 	page?: number;
 	pageSize?: number;
 }
@@ -58,6 +64,7 @@ export class AuditLogStore {
 			if (this.filter.action) params.set('action', this.filter.action);
 			if (this.filter.from) params.set('from', this.filter.from);
 			if (this.filter.to) params.set('to', this.filter.to);
+			if (this.filter.severity) params.set('severity', this.filter.severity);
 			params.set('page', String(this.filter.page ?? 1));
 			params.set('pageSize', String(this.filter.pageSize ?? 20));
 

@@ -3,6 +3,7 @@ package httpapi
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"pvmss/server/internal/catalog"
 )
@@ -88,6 +89,9 @@ func (h *AdminCatalog) ServeTagCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.recordAdminAction(r, "admin.tags.create", "tag", tag.Name,
+		fmt.Sprintf("created tag %s on cluster %s", tag.Name, clusterName),
+		[]any{map[string]any{"cluster": clusterName, "name": tag.Name, "color": tag.Color, "protected": tag.Protected}})
 	writeAdminJSON(w, http.StatusCreated, adminTagDTO{
 		Name: tag.Name, Color: tag.Color, VMCount: h.tagVMCount(tag.Name), Protected: tag.Protected,
 	})
@@ -137,6 +141,9 @@ func (h *AdminCatalog) ServeTagColor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.recordAdminAction(r, "admin.tags.color", "tag", name,
+		fmt.Sprintf("updated tag %s color to %s on cluster %s", name, tag.Color, clusterName),
+		[]any{map[string]any{"cluster": clusterName, "name": tag.Name, "color": tag.Color, "protected": tag.Protected}})
 	writeAdminJSON(w, http.StatusOK, adminTagDTO{
 		Name: tag.Name, Color: tag.Color, VMCount: h.tagVMCount(tag.Name), Protected: tag.Protected,
 	})
@@ -177,6 +184,9 @@ func (h *AdminCatalog) ServeTagDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.recordAdminAction(r, "admin.tags.delete", "tag", name,
+		fmt.Sprintf("deleted tag %s on cluster %s", name, clusterName),
+		[]any{map[string]any{"cluster": clusterName, "name": name}})
 	writeAdminJSON(w, http.StatusOK, statusResponse{Status: statusDeleted})
 }
 

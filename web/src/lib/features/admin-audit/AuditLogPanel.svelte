@@ -13,6 +13,8 @@
 	let vmidFilter = $state('');
 	let fromFilter = $state('');
 	let toFilter = $state('');
+	let severityFilter = $state('');
+	let selectedDetail = $state<number | null>(null);
 
 	function applyFilter(): void {
 		const filter: AuditFilter = {};
@@ -29,6 +31,9 @@
 			if (!isNaN(fromDate.getTime())) {
 				filter.from = fromDate.toISOString();
 			}
+		}
+		if (severityFilter) {
+			filter.severity = severityFilter;
 		}
 		if (toFilter) {
 			// eslint-disable-next-line svelte/prefer-svelte-reactivity -- local parse scratch var, not $state
@@ -48,7 +53,17 @@
 		vmidFilter = '';
 		fromFilter = '';
 		toFilter = '';
+		severityFilter = '';
 		store.clearFilter();
+	}
+
+	function detailSummary(entry: { detail: string }): string {
+		try {
+			const parsed = JSON.parse(entry.detail) as { summary?: string };
+			return parsed.summary ?? entry.detail;
+		} catch {
+			return entry.detail;
+		}
 	}
 
 	function formatTimestamp(ts: string): string {
@@ -84,6 +99,15 @@
 			<span class="text-muted-foreground">{m['admin.audit.to']()}</span>
 			<input class="rounded-md border border-border bg-background px-3 py-1.5" type="datetime-local" bind:value={toFilter} />
 		</label>
+		<label class="flex flex-col gap-1 text-sm">
+			<span class="text-muted-foreground">Severity</span>
+			<select class="rounded-md border border-border bg-background px-3 py-1.5" bind:value={severityFilter}>
+				<option value="">all</option>
+				<option value="critical">critical</option>
+				<option value="warning">warning</option>
+				<option value="info">info</option>
+			</select>
+		</label>
 		<Button type="submit">{m['common.filter']()}</Button>
 		<Button variant="secondary" onclick={clearFilter}>{m['admin.audit.clear']()}</Button>
 	</form>
@@ -105,16 +129,30 @@
 						<th class="px-4 py-2 font-medium">{m['common.cluster']()}</th>
 						<th class="px-4 py-2 font-medium">VM</th>
 						<th class="px-4 py-2 font-medium">{m['admin.audit.action']()}</th>
+						<th class="px-4 py-2 font-medium">Target</th>
+						<th class="px-4 py-2 font-medium">Severity</th>
+						<th class="px-4 py-2 font-medium">Detail</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each store.entries as entry (entry.id)}
+						{@const summary = detailSummary(entry)}
 						<tr class="border-t border-border">
 							<td class="px-4 py-2 text-muted-foreground">{formatTimestamp(entry.timestamp)}</td>
 							<td class="px-4 py-2">{entry.actor}</td>
 							<td class="px-4 py-2">{entry.cluster}</td>
-							<td class="px-4 py-2">{entry.vmid}</td>
+							<td class="px-4 py-2">{entry.vmid ?? ''}</td>
 							<td class="px-4 py-2 font-mono">{entry.action}</td>
+							<td class="px-4 py-2">{entry.targetType ? `${entry.targetType}:${entry.targetId}` : ''}</td>
+							<td class="px-4 py-2">{entry.severity}</td>
+							<td class="px-4 py-2">
+								<button type="button" class="text-left hover:underline" onclick={() => selectedDetail = selectedDetail === entry.id ? null : entry.id}>
+									{summary}
+								</button>
+								{#if selectedDetail === entry.id}
+									<pre class="mt-1 max-w-xs whitespace-pre-wrap break-all rounded bg-muted p-1 text-xs">{entry.detail}</pre>
+								{/if}
+							</td>
 						</tr>
 					{/each}
 				</tbody>

@@ -70,13 +70,14 @@ type tokenListResponse struct {
 
 // Auth exposes browser login, session inspection, and logout endpoints.
 type Auth struct {
-	cluster      cluster.Client
-	clusters     cluster.ClientProvider
-	clusterStore *store.Store
-	sessions     *auth.SessionManager
-	adminHash    string
-	tokens       *auth.TokenService
-	log          *slog.Logger
+	cluster          cluster.Client
+	clusters         cluster.ClientProvider
+	clusterStore     *store.Store
+	sessions         *auth.SessionManager
+	adminHash        string
+	tokens           *auth.TokenService
+	log              *slog.Logger
+	trustedProxyHops int
 }
 
 // NewAuth creates the legacy single-cluster authentication endpoint handlers.
@@ -87,6 +88,12 @@ func NewAuth(clusterClient cluster.Client, sessions *auth.SessionManager, adminH
 // NewAuthWithRegistry creates authentication handlers with runtime cluster choice.
 func NewAuthWithRegistry(registry cluster.ClientProvider, st *store.Store, sessions *auth.SessionManager, adminHash string, tokens *auth.TokenService, log *slog.Logger) *Auth {
 	return &Auth{clusters: registry, clusterStore: st, sessions: sessions, adminHash: adminHash, tokens: tokens, log: log}
+}
+
+// SetTrustedProxyHops configures how many X-Forwarded-For hops are trusted
+// when extracting the client IP for audit entries.
+func (h *Auth) SetTrustedProxyHops(n int) {
+	h.trustedProxyHops = n
 }
 
 // Login authenticates a PVE cluster account. The local administrator has its
@@ -127,6 +134,7 @@ func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 	result, err := authenticatePVE(r.Context(), client, request.Username, request.Password)
 	if err != nil {
 		h.log.Info("pve authentication failed", "component", "httpapi", "error", err)
+		h.recordLoginFailed(r.Context(), request.Username, clientIP(r, h.trustedProxyHops))
 		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
 		return
 	}
@@ -551,4 +559,22 @@ func writeAuthError(w http.ResponseWriter, status int, code, message string) {
 func userDisplayName(username string) string {
 	local, _, _ := strings.Cut(username, "@")
 	return strings.TrimPrefix(local, pools.PoolPrefix)
+}
+
+func (h *Auth) recordLoginFailed(ctx context.Context, username, ip string) {
+	if h.clusterStore == nil {
+		return
+	}
+
+	detail := loginFailedDetail(username)
+	_ = h.clusterStore.RecordAdminAction(ctx, username, "auth.login_failed", "auth", username, detail, ip)
+}
+
+func loginFailedDetail(username string) string {
+	body, err := json.Marshal(map[string]any{"summary": fmt.Sprintf("login failed for user %q", username), "changes": []any{}})
+	if err != nil {
+		return `{"summary":"login failed","changes":[]}`
+	}
+
+	return string(body)
 }
