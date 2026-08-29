@@ -63,6 +63,10 @@ var proxmoxSnapshotCapableStorage = map[string]bool{
 	"btrfs":   true,
 }
 
+// proxmoxClusterResourcesPath is the /cluster/resources endpoint, used by
+// Snapshot, ListStorages and ListTemplates.
+const proxmoxClusterResourcesPath = "/cluster/resources"
+
 // Snapshot implements Client: one /cluster/resources call for the node,
 // VM, and storage summary, then one /qemu/{vmid}/config (plus, for running
 // VMs, one /status/current) call per VM to hydrate what the summary omits
@@ -70,7 +74,7 @@ var proxmoxSnapshotCapableStorage = map[string]bool{
 func (p Proxmox) Snapshot(ctx context.Context) (Snapshot, error) {
 	rest := p.rest()
 
-	raw, err := rest.do(ctx, http.MethodGet, "/cluster/resources", nil)
+	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, nil)
 	if err != nil {
 		return Snapshot{}, err
 	}
@@ -415,7 +419,7 @@ func (p Proxmox) ListBridges(ctx context.Context) ([]Bridge, error) {
 func (p Proxmox) ListISOs(ctx context.Context) ([]ISOImage, error) {
 	rest := p.rest()
 
-	raw, err := rest.do(ctx, http.MethodGet, "/cluster/resources", url.Values{"type": {"storage"}})
+	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{"type": {"storage"}})
 	if err != nil {
 		return nil, err
 	}
@@ -485,7 +489,7 @@ func proxmoxListISOContent(ctx context.Context, rest proxmoxRESTClient, node, st
 func (p Proxmox) ListTemplates(ctx context.Context) ([]TemplateVM, error) {
 	rest := p.rest()
 
-	raw, err := rest.do(ctx, http.MethodGet, "/cluster/resources", url.Values{"type": {"vm"}})
+	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{"type": {"vm"}})
 	if err != nil {
 		return nil, err
 	}

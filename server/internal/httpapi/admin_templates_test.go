@@ -179,23 +179,32 @@ func TestAdminTemplates_ListPrefersStoredValues(t *testing.T) {
 
 	for _, tmpl := range templates {
 		if tmpl.VMID == 9000 {
-			if tmpl.DiskStorage != "overridden-storage" {
-				t.Errorf("template 9000 diskStorage = %q, want %q (stored value must override discovery)", tmpl.DiskStorage, "overridden-storage")
-			}
-
-			if tmpl.DiskSizeGB != 99 {
-				t.Errorf("template 9000 diskSizeGB = %d, want 99 (stored value)", tmpl.DiskSizeGB)
-			}
-
-			if tmpl.DiskBus != string(cluster.DiskBusVirtio) {
-				t.Errorf("template 9000 diskBus = %q, want %s (stored value)", tmpl.DiskBus, cluster.DiskBusVirtio)
-			}
-
+			assertStoredTemplateOverridden(t, tmpl)
 			return
 		}
 	}
 
 	t.Fatal("template 9000 not in list")
+}
+
+// assertStoredTemplateOverridden verifies that template 9000's stored row
+// fields override the discovered values. Extracted from
+// TestAdminTemplates_ListPrefersStoredValues to keep cognitive complexity
+// under the SonarQube ceiling.
+func assertStoredTemplateOverridden(t *testing.T, tmpl adminTemplateDTO) {
+	t.Helper()
+
+	if tmpl.DiskStorage != "overridden-storage" {
+		t.Errorf("template 9000 diskStorage = %q, want %q (stored value must override discovery)", tmpl.DiskStorage, "overridden-storage")
+	}
+
+	if tmpl.DiskSizeGB != 99 {
+		t.Errorf("template 9000 diskSizeGB = %d, want 99 (stored value)", tmpl.DiskSizeGB)
+	}
+
+	if tmpl.DiskBus != string(cluster.DiskBusVirtio) {
+		t.Errorf("template 9000 diskBus = %q, want %s (stored value)", tmpl.DiskBus, cluster.DiskBusVirtio)
+	}
 }
 
 // TestAdminTemplates_NonAdminReturns403 — non-admin gets 403.
