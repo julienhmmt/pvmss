@@ -65,8 +65,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 			// Body wasn't JSON (or was empty) — keep the generic envelope.
 		}
 
-		if (response.status === 403 && envelope.code === 'invalid_csrf_token' && typeof window !== 'undefined') {
-			window.location.reload();
+		if (response.status === 403 && envelope.code === 'invalid_csrf_token' && typeof globalThis !== 'undefined') {
+			globalThis.location.reload();
 		}
 
 		throw new ApiRequestError(response.status, envelope.code, envelope.message, envelope.retryAfterSeconds);
@@ -81,8 +81,8 @@ function getCookie(name: string): string {
 		return '';
 	}
 
-	const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'));
-	return match && match[1] ? decodeURIComponent(match[1]) : '';
+	const match = new RegExp(String.raw`(?:^|;\s*)${name}=([^;]*)`).exec(document.cookie);
+	return match?.[1] ? decodeURIComponent(match[1]) : '';
 }
 
 /** Adds the X-CSRF-Token header to mutating requests. */
