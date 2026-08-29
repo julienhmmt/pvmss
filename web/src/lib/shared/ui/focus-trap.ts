@@ -15,7 +15,7 @@ const FOCUSABLE_SELECTORS =
 function isVisible(element: HTMLElement): boolean {
 	if (element.hidden) return false;
 	if (element.getAttribute('aria-hidden') === 'true') return false;
-	const style = window.getComputedStyle(element);
+	const style = globalThis.getComputedStyle(element);
 	return style.display !== 'none' && style.visibility !== 'hidden';
 }
 
@@ -25,7 +25,7 @@ function isVisible(element: HTMLElement): boolean {
  */
 function getFocusableElements(node: HTMLElement): HTMLElement[] {
 	const elements = Array.from(node.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTORS));
-	if (typeof window === 'undefined') return elements;
+	if (typeof globalThis === 'undefined') return elements;
 	return elements.filter(isVisible);
 }
 
@@ -54,12 +54,8 @@ export const focusTrap: Action<HTMLElement> = (node) => {
 		const currentIndex = current ? focusable.indexOf(current) : -1;
 
 		const nextIndex = event.shiftKey
-			? currentIndex <= 0
-				? focusable.length - 1
-				: currentIndex - 1
-			: currentIndex === -1 || currentIndex === focusable.length - 1
-				? 0
-				: currentIndex + 1;
+			? prevTabIndex(currentIndex, focusable.length)
+			: nextTabIndex(currentIndex, focusable.length);
 
 		event.preventDefault();
 		focusable[nextIndex]!.focus();
@@ -85,3 +81,15 @@ export const focusTrap: Action<HTMLElement> = (node) => {
 		}
 	};
 };
+
+/** Computes the tab index to focus when Shift+Tab wraps past the start. */
+function prevTabIndex(currentIndex: number, length: number): number {
+	if (currentIndex <= 0) return length - 1;
+	return currentIndex - 1;
+}
+
+/** Computes the tab index to focus when Tab wraps past the end. */
+function nextTabIndex(currentIndex: number, length: number): number {
+	if (currentIndex === -1 || currentIndex === length - 1) return 0;
+	return currentIndex + 1;
+}

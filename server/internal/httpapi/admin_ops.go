@@ -103,7 +103,7 @@ func (h *AdminOps) ServeAudit(w http.ResponseWriter, r *http.Request) {
 	result, err := h.store.ListAuditLog(r.Context(), filter)
 	if err != nil {
 		h.log.Error("admin audit list failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
 
@@ -143,7 +143,7 @@ func (h *AdminOps) ServeAuditConfig(w http.ResponseWriter, r *http.Request) {
 	cfg, err := h.store.GetAuditConfig(r.Context())
 	if err != nil {
 		h.log.Error("admin audit config get failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
 
@@ -172,7 +172,7 @@ func (h *AdminOps) ServeAuditConfigUpdate(w http.ResponseWriter, r *http.Request
 
 	if err := h.store.SetAuditConfig(r.Context(), req.RetentionDays); err != nil {
 		h.log.Error("admin audit config set failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
 
@@ -208,7 +208,7 @@ func (h *AdminOps) ServeAuditPrunePreview(w http.ResponseWriter, r *http.Request
 	count, err := h.store.CountAuditPrunePreview(r.Context(), days)
 	if err != nil {
 		h.log.Error("admin audit prune preview failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
 
@@ -450,7 +450,7 @@ func (h *AdminOps) ServeDBImport(w http.ResponseWriter, r *http.Request) {
 		}
 		h.log.Error("admin db import validate failed", "component", "httpapi", "error", err)
 		h.recordImportRejected(r.Context(), actor, ip, "validation failed: "+err.Error())
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
 

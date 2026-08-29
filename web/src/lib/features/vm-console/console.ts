@@ -1,5 +1,6 @@
-import { base } from '$app/paths';
+import { resolve } from '$app/paths';
 import { post, ApiRequestError } from '$lib/shared/api/client';
+import { apiPath } from '$lib/shared/api/paths';
 
 /** VNC ticket response from POST /api/v1/vms/:cluster/:vmid/vnc-ticket. */
 export interface VncTicketResponse {
@@ -23,7 +24,7 @@ export interface SerialTicketResponse {
  * 401 for unauthenticated, 503 if the inventory is not ready).
  */
 export async function fetchConsoleTicket(cluster: string, vmid: number): Promise<string> {
-	const path = `${base}/api/v1/vms/${encodeURIComponent(cluster)}/${vmid}/vnc-ticket`;
+	const path = apiPath(`/api/v1/vms/${encodeURIComponent(cluster)}/${vmid}/vnc-ticket`);
 	const response = await post<VncTicketResponse>(path);
 	return response.token;
 }
@@ -40,9 +41,9 @@ export async function fetchConsoleTicket(cluster: string, vmid: number): Promise
  * VITE_BACKEND_HOST / VITE_BACKEND_PROTOCOL overrides — same-origin only.
  */
 export function buildConsoleWebSocketURL(cluster: string, vmid: number, token: string): string {
-	const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-	const host = window.location.host;
-	const path = `${base}/api/v1/vms/${encodeURIComponent(cluster)}/${vmid}/console/websocket`;
+	const protocol = globalThis.location.protocol === 'https:' ? 'wss:' : 'ws:';
+	const host = globalThis.location.host;
+	const path = apiPath(`/api/v1/vms/${encodeURIComponent(cluster)}/${vmid}/console/websocket`);
 	return `${protocol}//${host}${path}?token=${encodeURIComponent(token)}`;
 }
 
@@ -53,11 +54,9 @@ export function consoleTicketErrorMessage(err: unknown, fallback: () => string):
 
 /**
  * Builds the same-origin path to the console route, for the pop-out window.
- * Built manually (not via `$app/paths` `resolve`) to match this file's other
- * URL builders and stay testable under Vitest.
  */
 export function buildConsolePopoutURL(cluster: string, vmid: number): string {
-	return `${base}/vms/${encodeURIComponent(cluster)}/${vmid}/console`;
+	return resolve(`/vms/${encodeURIComponent(cluster)}/${vmid}/console`);
 }
 
 /**
@@ -69,7 +68,7 @@ export function buildConsolePopoutURL(cluster: string, vmid: number): string {
  * this one via `window.opener`.
  */
 export function openConsolePopout(cluster: string, vmid: number): Window | null {
-	return window.open(buildConsolePopoutURL(cluster, vmid), '_blank', 'noopener');
+	return globalThis.open(buildConsolePopoutURL(cluster, vmid), '_blank', 'noopener');
 }
 
 /**
@@ -80,7 +79,7 @@ export function openConsolePopout(cluster: string, vmid: number): Window | null 
  * Throws ApiRequestError on non-2xx (same semantics as fetchConsoleTicket).
  */
 export async function fetchSerialTicket(cluster: string, vmid: number): Promise<string> {
-	const path = `${base}/api/v1/vms/${encodeURIComponent(cluster)}/${vmid}/serial-ticket`;
+	const path = apiPath(`/api/v1/vms/${encodeURIComponent(cluster)}/${vmid}/serial-ticket`);
 	const response = await post<SerialTicketResponse>(path);
 	return response.token;
 }
@@ -91,8 +90,8 @@ export async function fetchSerialTicket(cluster: string, vmid: number): Promise<
  * scheme derived from the page protocol.
  */
 export function buildSerialWebSocketURL(cluster: string, vmid: number, token: string): string {
-	const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-	const host = window.location.host;
-	const path = `${base}/api/v1/vms/${encodeURIComponent(cluster)}/${vmid}/serial/websocket`;
+	const protocol = globalThis.location.protocol === 'https:' ? 'wss:' : 'ws:';
+	const host = globalThis.location.host;
+	const path = apiPath(`/api/v1/vms/${encodeURIComponent(cluster)}/${vmid}/serial/websocket`);
 	return `${protocol}//${host}${path}?token=${encodeURIComponent(token)}`;
 }

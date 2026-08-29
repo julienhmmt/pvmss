@@ -33,52 +33,65 @@ func newCSRFMiddleware(authHandler *Auth, st *store.Store, trustedProxyHops int)
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if !csrfRequired(r) {
-				next.ServeHTTP(w, r)
-
-				return
-			}
-
-			// Bearer-token clients (automation scripts) are not browser
-			// sessions, so the cookie-based CSRF check does not apply.
-			if strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
-				next.ServeHTTP(w, r)
-
-				return
-			}
-
-			// No session cookie means the request cannot be a forged browser
-			// session; the downstream handler is responsible for 401.
-			if _, err := r.Cookie(auth.SessionCookieName); err != nil {
-				next.ServeHTTP(w, r)
-
-				return
-			}
-
-			serverToken, err := authHandler.CSRFToken(r)
-			if err != nil {
-				m.recordCSRFRejected(r.Context(), r, "missing or invalid CSRF token")
-				writeAuthError(w, http.StatusForbidden, "invalid_csrf_token", "invalid or missing csrf token")
-
-				return
-			}
-
-			header := r.Header.Get(csrfTokenHeader)
-			if header == "" {
-				header = r.PostFormValue("csrf_token")
-			}
-
-			cookie, err := r.Cookie(auth.CSRFCookieName)
-			if err != nil || !constantTimeEqual(serverToken, header) || !constantTimeEqual(serverToken, cookie.Value) {
-				m.recordCSRFRejected(r.Context(), r, "CSRF token mismatch")
-				writeAuthError(w, http.StatusForbidden, "invalid_csrf_token", "invalid or missing csrf token")
-
-				return
-			}
-
-			next.ServeHTTP(w, r)
+			m.enforce(next, w, r)
 		})
 	}
+}
+
+// enforce applies the CSRF check for a single request. Extracted from the
+// middleware closure to keep cognitive complexity below the go:S3776 limit.
+func (m *csrfMiddleware) enforce(next http.Handler, w http.ResponseWriter, r *http.Request) {
+	if m.skipCSRF(r) {
+		next.ServeHTTP(w, r)
+
+		return
+	}
+
+	serverToken, err := m.auth.CSRFToken(r)
+	if err != nil {
+		m.recordCSRFRejected(r.Context(), r, "missing or invalid CSRF token")
+		writeAuthError(w, http.StatusForbidden, "invalid_csrf_token", "invalid or missing csrf token")
+
+		return
+	}
+
+	header := r.Header.Get(csrfTokenHeader)
+	if header == "" {
+		header = r.PostFormValue("csrf_token")
+	}
+
+	cookie, err := r.Cookie(auth.CSRFCookieName)
+	if err != nil || !constantTimeEqual(serverToken, header) || !constantTimeEqual(serverToken, cookie.Value) {
+		m.recordCSRFRejected(r.Context(), r, "CSRF token mismatch")
+		writeAuthError(w, http.StatusForbidden, "invalid_csrf_token", "invalid or missing csrf token")
+
+		return
+	}
+
+	next.ServeHTTP(w, r)
+}
+
+// skipCSRF reports whether the cookie-based CSRF check does not apply to this
+// request: non-state-changing methods, bearer-token clients (automation), or
+// requests with no session cookie (the downstream handler returns 401).
+func (m *csrfMiddleware) skipCSRF(r *http.Request) bool {
+	if !csrfRequired(r) {
+		return true
+	}
+
+	// Bearer-token clients (automation scripts) are not browser sessions, so
+	// the cookie-based CSRF check does not apply.
+	if strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
+		return true
+	}
+
+	// No session cookie means the request cannot be a forged browser session;
+	// the downstream handler is responsible for 401.
+	if _, err := r.Cookie(auth.SessionCookieName); err != nil {
+		return true
+	}
+
+	return false
 }
 
 func (m *csrfMiddleware) recordCSRFRejected(ctx context.Context, r *http.Request, summary string) {

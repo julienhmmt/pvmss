@@ -196,45 +196,51 @@ func TestAdminProtect_FailClosed(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			called := false
-			next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-				called = true
-
-				w.WriteHeader(http.StatusOK)
-			})
-
-			guarded := authHandler.RequireAdmin(next)
-
-			req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/nodes", nil)
-			if c.cookie != nil {
-				req.AddCookie(c.cookie)
-			}
-
-			rec := httptest.NewRecorder()
-			guarded.ServeHTTP(rec, req)
-
-			if c.wantPass {
-				if !called {
-					t.Fatalf("wrapped handler should have been called")
-				}
-
-				if rec.Code != http.StatusOK {
-					t.Fatalf("status = %d, want 200", rec.Code)
-				}
-
-				return
-			}
-
-			if called {
-				t.Fatalf("wrapped handler should not be called for %s", c.name)
-			}
-
-			found := slices.Contains(c.wantCodes, rec.Code)
-
-			if !found {
-				t.Fatalf("status = %d, want one of %v", rec.Code, c.wantCodes)
-			}
+			runAdminProtectCase(t, authHandler, c.cookie, c.wantPass, c.wantCodes)
 		})
+	}
+}
+
+// runAdminProtectCase exercises one adminProtect scenario. Extracted from
+// TestAdminProtect_FailClosed to keep cognitive complexity below go:S3776.
+func runAdminProtectCase(t *testing.T, authHandler *httpapi.Auth, cookie *http.Cookie, wantPass bool, wantCodes []int) {
+	t.Helper()
+
+	called := false
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		called = true
+
+		w.WriteHeader(http.StatusOK)
+	})
+
+	guarded := authHandler.RequireAdmin(next)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/nodes", nil)
+	if cookie != nil {
+		req.AddCookie(cookie)
+	}
+
+	rec := httptest.NewRecorder()
+	guarded.ServeHTTP(rec, req)
+
+	if wantPass {
+		if !called {
+			t.Fatalf("wrapped handler should have been called")
+		}
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, want 200", rec.Code)
+		}
+
+		return
+	}
+
+	if called {
+		t.Fatalf("wrapped handler should not be called")
+	}
+
+	if !slices.Contains(wantCodes, rec.Code) {
+		t.Fatalf("status = %d, want one of %v", rec.Code, wantCodes)
 	}
 }
 
@@ -365,25 +371,34 @@ func TestResolveContract_PerVMRoutes(t *testing.T) {
 		}
 
 		t.Run(r.Pattern, func(t *testing.T) {
-			if reason, ok := resolveExemptRoutes[r.Pattern]; ok {
-				// Exemptions are intentional and must be justified in writing.
-				// Removing this check forces the next reader to re-justify it.
-				if !strings.Contains(reason, "resolves") && !strings.Contains(reason, "ticket") {
-					t.Fatalf("exemption %q has no written justification", r.Pattern)
-				}
-
-				return
-			}
-
-			src, ok := handlerArgToSource(r.HandlerArg)
-			if !ok {
-				t.Fatalf("no handler source mapped for %s using arg %q", r.Pattern, r.HandlerArg)
-			}
-
-			if !strings.Contains(src, "vm.Resolve(") {
-				t.Fatalf("handler for %s does not reference vm.Resolve()", r.Pattern)
-			}
+			runResolveContractCase(t, r)
 		})
+	}
+}
+
+// runResolveContractCase checks one per-VM route's handler references
+// vm.Resolve() (or carries a written exemption). Extracted from
+// TestResolveContract_PerVMRoutes to keep cognitive complexity below go:S3776.
+func runResolveContractCase(t *testing.T, r extractedRoute) {
+	t.Helper()
+
+	if reason, ok := resolveExemptRoutes[r.Pattern]; ok {
+		// Exemptions are intentional and must be justified in writing.
+		// Removing this check forces the next reader to re-justify it.
+		if !strings.Contains(reason, "resolves") && !strings.Contains(reason, "ticket") {
+			t.Fatalf("exemption %q has no written justification", r.Pattern)
+		}
+
+		return
+	}
+
+	src, ok := handlerArgToSource(r.HandlerArg)
+	if !ok {
+		t.Fatalf("no handler source mapped for %s using arg %q", r.Pattern, r.HandlerArg)
+	}
+
+	if !strings.Contains(src, "vm.Resolve(") {
+		t.Fatalf("handler for %s does not reference vm.Resolve()", r.Pattern)
 	}
 }
 
@@ -427,45 +442,54 @@ func TestIDORContract_PerVMRoutes(t *testing.T) {
 		}
 
 		t.Run(r.Pattern, func(t *testing.T) {
-			path := fillPath(r.Path)
-			body := vmRequestBodies[r.Pattern]
-
-			var bodyReader io.Reader
-			if body != "" {
-				bodyReader = strings.NewReader(body)
-			}
-
-			req := httptest.NewRequest(r.Method, path, bodyReader)
-			if body != "" {
-				req.Header.Set("Content-Type", "application/json")
-			}
-
-			if r.Pattern == "GET /api/v1/vms/{cluster}/{vmid}/metrics/history" {
-				req.URL.RawQuery = "range=hour"
-			}
-
-			req.AddCookie(bobSession)
-
-			if r.Method != http.MethodGet {
-				req.AddCookie(bobCSRF)
-				req.Header.Set("X-CSRF-Token", bobCSRF.Value)
-			}
-
-			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, req)
-
-			if reason, ok := idorNonForbiddenRoutes[r.Pattern]; ok {
-				if rec.Code == http.StatusOK || rec.Code >= http.StatusInternalServerError {
-					t.Fatalf("%s %s: status = %d, want any non-2xx, non-5xx (exemption: %s)", r.Method, path, rec.Code, reason)
-				}
-
-				return
-			}
-
-			if rec.Code != http.StatusForbidden {
-				t.Fatalf("%s %s: status = %d, want 403 (IDOR)", r.Method, path, rec.Code)
-			}
+			runIDORContractCase(t, mux, r, bobSession, bobCSRF)
 		})
+	}
+}
+
+// runIDORContractCase verifies one per-VM route rejects a non-owner session.
+// Extracted from TestIDORContract_PerVMRoutes to keep cognitive complexity
+// below go:S3776.
+func runIDORContractCase(t *testing.T, mux http.Handler, r extractedRoute, bobSession, bobCSRF *http.Cookie) {
+	t.Helper()
+
+	path := fillPath(r.Path)
+	body := vmRequestBodies[r.Pattern]
+
+	var bodyReader io.Reader
+	if body != "" {
+		bodyReader = strings.NewReader(body)
+	}
+
+	req := httptest.NewRequest(r.Method, path, bodyReader)
+	if body != "" {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	if r.Pattern == "GET /api/v1/vms/{cluster}/{vmid}/metrics/history" {
+		req.URL.RawQuery = "range=hour"
+	}
+
+	req.AddCookie(bobSession)
+
+	if r.Method != http.MethodGet {
+		req.AddCookie(bobCSRF)
+		req.Header.Set("X-CSRF-Token", bobCSRF.Value)
+	}
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if reason, ok := idorNonForbiddenRoutes[r.Pattern]; ok {
+		if rec.Code == http.StatusOK || rec.Code >= http.StatusInternalServerError {
+			t.Fatalf("%s %s: status = %d, want any non-2xx, non-5xx (exemption: %s)", r.Method, path, rec.Code, reason)
+		}
+
+		return
+	}
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("%s %s: status = %d, want 403 (IDOR)", r.Method, path, rec.Code)
 	}
 }
 

@@ -61,7 +61,13 @@ DROP TABLE audit_log_v18;
 // swallowed so it can never prevent the action it records (spec decision:
 // "l'audit ne peut pas casser l'action qu'il enregistre").
 func (s *Store) RecordAction(ctx context.Context, actor, cluster string, vmid int, action string) error {
-	return s.insertAuditRow(ctx, actor, cluster, &vmid, action, "", "", "", "", deriveSeverity(action))
+	return s.insertAuditRow(ctx, auditRow{
+		Actor:    actor,
+		Cluster:  cluster,
+		VMID:     &vmid,
+		Action:   action,
+		Severity: deriveSeverity(action),
+	})
 }
 
 // RecordAdminAction inserts one audit_log row for an admin mutation that has
@@ -69,7 +75,29 @@ func (s *Store) RecordAction(ctx context.Context, actor, cluster string, vmid in
 // JSON: {"summary": "...", "changes": [...]}. Like RecordAction, an insert
 // failure is logged and never returned, so auditing cannot break the mutation.
 func (s *Store) RecordAdminAction(ctx context.Context, actor, action, targetType, targetID, detail, ip string) error {
-	return s.insertAuditRow(ctx, actor, "", nil, action, targetType, targetID, detail, ip, deriveSeverity(action))
+	return s.insertAuditRow(ctx, auditRow{
+		Actor:      actor,
+		Action:     action,
+		TargetType: targetType,
+		TargetID:   targetID,
+		Detail:     detail,
+		IPAddress:  ip,
+		Severity:   deriveSeverity(action),
+	})
+}
+
+// auditRow groups the columns written to audit_log so insertAuditRow stays
+// under the go:S107 parameter-count limit.
+type auditRow struct {
+	Actor      string
+	Cluster    string
+	VMID       *int
+	Action     string
+	TargetType string
+	TargetID   string
+	Detail     string
+	IPAddress  string
+	Severity   string
 }
 
 // insertAuditRow writes one audit_log row with all columns. It never returns
@@ -77,14 +105,13 @@ func (s *Store) RecordAdminAction(ctx context.Context, actor, action, targetType
 // the package-level slog default and returns nil. The rule lives here, not in
 // each caller, so no audit site can accidentally let a DB error propagate into
 // the request path.
-//
-
-func (s *Store) insertAuditRow(ctx context.Context, actor, cluster string, vmid *int, action, targetType, targetID, detail, ipAddress, severity string) error {
+func (s *Store) insertAuditRow(ctx context.Context, row auditRow) error {
 	_, err := s.db.ExecContext(ctx,
 		`INSERT INTO audit_log (actor, cluster, vmid, action, timestamp, target_type, target_id, detail, ip_address, severity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		actor, cluster, vmid, action, time.Now().UTC().Format(time.RFC3339Nano), targetType, targetID, detail, ipAddress, severity)
+		row.Actor, row.Cluster, row.VMID, row.Action, time.Now().UTC().Format(time.RFC3339Nano),
+		row.TargetType, row.TargetID, row.Detail, row.IPAddress, row.Severity)
 	if err != nil {
-		slog.Error("audit log insert failed", "component", "store", "actor", actor, "action", action, "error", err)
+		slog.Error("audit log insert failed", "component", "store", "actor", row.Actor, "action", row.Action, "error", err)
 		return nil
 	}
 
