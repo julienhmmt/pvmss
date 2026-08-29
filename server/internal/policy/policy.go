@@ -209,6 +209,26 @@ func (service *Policy) poolVMCount(pool string) int {
 	return len(service.projection.Load().ByPool[pool])
 }
 
+// PoolHasName reports whether any VM in the given pool already carries name
+// (US5/issue-05 D5b: per-pool name uniqueness). The check is case-sensitive —
+// ValidateName already enforces lowercase hostname form, so "Web" and "web"
+// cannot both pass validation. Returns false when no projection is wired
+// (unit tests that don't need the check); callers that need a hard check
+// must ensure a projection is configured.
+func (service *Policy) PoolHasName(pool, name string) bool {
+	if service.projection == nil || service.projection.Load() == nil {
+		return false
+	}
+
+	for _, machine := range service.projection.Load().ByPool[pool] {
+		if machine.Name == name {
+			return true
+		}
+	}
+
+	return false
+}
+
 func vmVCPUs(machine cluster.VM) int {
 	if machine.Sockets > 0 && machine.Cores > 0 {
 		return machine.Sockets * machine.Cores

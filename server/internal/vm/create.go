@@ -45,6 +45,11 @@ var (
 	// free space for the requested disk (US3/issue-04 D4b: hard refusal
 	// before VMID consumption).
 	ErrInsufficientDiskSpace = errors.New("insufficient disk space")
+	// ErrNameTaken — the actor already has a VM with the requested name in
+	// their personal pool (US5/issue-05 D5b: per-pool uniqueness so two VMs
+	// in a user's list are never indistinguishable). Mapped to 400 by the
+	// handler with the code "name_taken".
+	ErrNameTaken = errors.New("name already taken")
 )
 
 // Fixed technical safety ceilings (FR-008) — hardcoded anti-abuse bounds,
@@ -65,6 +70,12 @@ const defaultNetworkModel = "virtio"
 // defaultDiskBus is applied when no profile is used (detailed mode). Profiles
 // override this with their own bus value (FR-009).
 const defaultDiskBus = "scsi"
+
+// maxVMIDRetries is the maximum number of VMID collision retries after the
+// first attempt (US5/issue-05 D5c: max 3 attempts total). GET /cluster/nextid
+// returns the smallest free ID without reserving it, so two concurrent
+// creations can collide; retrying with a fresh VMID is not a mutation replay.
+const maxVMIDRetries = 2 // 1 initial + 2 retries = 3 attempts
 
 // auditLogMsg is the slog message used when RecordAction fails — the audit
 // trail is best-effort and never blocks a successful create/clone.
@@ -142,14 +153,16 @@ type CloudInitPusher interface {
 // HardwareUpdater is the post-clone mutation contract (US2/issue-02 +
 // lifecycle-04). After the clone task completes, the caller applies hardware
 // overrides (cores/memory/sockets), resizes the disk if enlargement is
-// requested, and starts the VM if StartAfterCreate is set. Defined as a
-// narrow interface so vm.Create depends only on the methods it calls, not
-// the full Writer surface; cluster.Fake and the real Proxmox client both
-// satisfy it.
+// requested, and starts the VM if StartAfterCreate is set. Delete is included
+// for the rollback path (US5/issue-05 D5a: purge a half-made VM after a failed
+// create/clone task). Defined as a narrow interface so vm.Create depends only
+// on the methods it calls, not the full Writer surface; cluster.Fake and the
+// real Proxmox client both satisfy it.
 type HardwareUpdater interface {
 	UpdateHardware(ctx context.Context, node string, vmid, sockets, cores, memoryMB int, tags []string) error
 	ResizeDisk(ctx context.Context, node string, vmid int, diskKey string, sizeGB int) error
 	Action(ctx context.Context, node string, vmid int, action string) error
+	Delete(ctx context.Context, node string, vmid int) error
 }
 
 // FreeSpaceChecker reads live free space from a storage backend (US3/issue-04
@@ -275,12 +288,13 @@ func createFromISO(ctx context.Context, policyService *policy.Policy, deps Creat
 
 	spec := buildCreateSpec(actor, req, plan, vmid)
 
-	upid, err := deps.Creator.CreateVM(ctx, spec)
+	finalVMID, upid, err := dispatchCreateWithRetry(ctx, deps, spec)
 	if err != nil {
-		return CreateResult{}, fmt.Errorf("%w: %w", ErrClusterCreate, err)
+		return CreateResult{}, err
 	}
 
-	result := CreateResult{Cluster: clusterName, VMID: vmid, Name: req.Name, Node: plan.node, UPID: upid}
+	spec.VMID = finalVMID
+	result := CreateResult{Cluster: clusterName, VMID: finalVMID, Name: req.Name, Node: plan.node, UPID: upid}
 
 	// lifecycle-04: wait for the create task to finish before attaching
 	// cloud-init. Without this, the PUT /nodes/{node}/qemu/{vmid}/config
@@ -289,14 +303,14 @@ func createFromISO(ctx context.Context, policyService *policy.Policy, deps Creat
 	// post-processing must not become a long HTTP request.
 	if cloudTemplate.ID != "" {
 		applyCloudInitAfterWait(ctx, cloudInitWaitRequest{
-			Deps: deps, ClusterName: clusterName, Username: actor.Username,
-			Spec: spec, VMID: vmid, Template: cloudTemplate, UPID: upid,
+			Deps: deps, Actor: actor, ClusterName: clusterName, Username: actor.Username,
+			Spec: spec, VMID: finalVMID, Template: cloudTemplate, UPID: upid,
 			StartAfterCreate: startAfterCreate,
 		}, &result)
 	}
 
-	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, vmid, "vm_create"); err != nil {
-		deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, finalVMID, "vm_create"); err != nil {
+		deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
 	}
 
 	return result, nil
@@ -307,6 +321,7 @@ func createFromISO(ctx context.Context, policyService *policy.Policy, deps Creat
 // nestif's ceiling.
 type cloudInitWaitRequest struct {
 	Deps             CreateDeps
+	Actor            auth.Identity
 	ClusterName      string
 	Username         string
 	Spec             cluster.VMSpec
@@ -317,13 +332,19 @@ type cloudInitWaitRequest struct {
 }
 
 // applyCloudInitAfterWait waits for the create task, then attaches the
-// cloud-init snippet and starts the VM if requested. A wait failure or attach
+// cloud-init snippet and starts the VM if requested. A wait failure is
+// treated as a failed create task (US5/issue-05 D5a): the half-made VM is
+// purged best-effort so it does not consume the user's quota. An attach
 // failure is recorded on result.CloudInitPushError but does not abort — the
-// task is already dispatched and real (lifecycle-04).
+// task succeeded and the VM exists (lifecycle-04).
 func applyCloudInitAfterWait(ctx context.Context, req cloudInitWaitRequest, result *CreateResult) {
 	if waitErr := waitCreateTask(ctx, req.Deps.Creator, req.UPID); waitErr != nil {
 		req.Deps.Log.Error("create task wait failed", "component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "error", waitErr)
 		result.CloudInitPushError = waitErr.Error()
+
+		// US5/issue-05 D5a: the create task failed, so the VM is half-made.
+		// Purge it best-effort so it does not eat the user's quota.
+		rollbackFailedCreate(ctx, req.Deps, req.Actor, req.ClusterName, req.VMID, req.Spec.Node, "create task failed")
 
 		return
 	}
@@ -402,21 +423,26 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 
 	cloneSpec := buildCloneSpec(tmpl, plan, req, vmid, actor.Pool)
 
-	upid, err := deps.Creator.CloneVM(ctx, cloneSpec)
+	finalVMID, upid, err := dispatchCloneWithRetry(ctx, deps, cloneSpec)
 	if err != nil {
-		return CreateResult{}, fmt.Errorf("%w: clone: %w", ErrClusterCreate, err)
+		return CreateResult{}, err
 	}
 
-	result := CreateResult{Cluster: clusterName, VMID: vmid, Name: req.Name, Node: tmpl.Node, UPID: upid}
+	cloneSpec.NewVMID = finalVMID
+	result := CreateResult{Cluster: clusterName, VMID: finalVMID, Name: req.Name, Node: tmpl.Node, UPID: upid}
 
 	// lifecycle-04: wait for the clone task to finish before any post-clone
 	// configuration. The VM does not exist until the task completes.
+	// US5/issue-05 D5a: if the task fails, the half-made VM is purged
+	// (best-effort) so it does not consume the user's quota.
 	if waitErr := waitCreateTask(ctx, deps.Creator, upid); waitErr != nil {
-		deps.Log.Error("clone task wait failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", waitErr)
+		deps.Log.Error("clone task wait failed", "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", waitErr)
 		result.CloudInitPushError = waitErr.Error()
 
-		if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, vmid, "vm_create"); err != nil {
-			deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+		rollbackFailedCreate(ctx, deps, actor, clusterName, finalVMID, tmpl.Node, "clone task failed")
+
+		if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, finalVMID, "vm_create"); err != nil {
+			deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
 		}
 
 		return result, nil
@@ -424,16 +450,96 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 
 	applyPostCloneConfig(ctx, postCloneConfig{
 		Deps: deps, ClusterName: clusterName, Username: actor.Username,
-		VMID: vmid, Node: tmpl.Node, Plan: plan, Template: tmpl,
+		VMID: finalVMID, Node: tmpl.Node, Plan: plan, Template: tmpl,
 		CloudTemplate: cloudTemplate, StartAfterCreate: startAfterCreate,
 		Tags: buildTags(req), DiskKey: primaryDiskKey(tmpl.DiskBus),
 	}, &result)
 
-	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, vmid, "vm_create"); err != nil {
-		deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, finalVMID, "vm_create"); err != nil {
+		deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
 	}
 
 	return result, nil
+}
+
+// dispatchCreateWithRetry dispatches a CreateVM call, retrying with a fresh
+// VMID when Proxmox reports a collision (US5/issue-05 D5c: max 3 attempts).
+// A retry with a new VMID is not a mutation replay — the original create never
+// succeeded, so ProxMate's idempotency concern does not apply. Returns the
+// final VMID (which may differ from spec.VMID after a retry) and the UPID.
+func dispatchCreateWithRetry(ctx context.Context, deps CreateDeps, spec cluster.VMSpec) (int, string, error) {
+	return retryWithFreshVMID(ctx, deps, spec.VMID, "create", func(vmid int) (string, error) {
+		spec.VMID = vmid
+
+		return deps.Creator.CreateVM(ctx, spec)
+	})
+}
+
+// dispatchCloneWithRetry dispatches a CloneVM call with the same VMID collision
+// retry as dispatchCreateWithRetry (US5/issue-05 D5c). Returns the final
+// NewVMID (which may differ after a retry) and the UPID.
+func dispatchCloneWithRetry(ctx context.Context, deps CreateDeps, spec cluster.CloneSpec) (int, string, error) {
+	return retryWithFreshVMID(ctx, deps, spec.NewVMID, "clone", func(vmid int) (string, error) {
+		spec.NewVMID = vmid
+
+		return deps.Creator.CloneVM(ctx, spec)
+	})
+}
+
+// retryWithFreshVMID is the shared VMID-collision retry loop (US5/issue-05
+// D5c). dispatch is called with the current VMID; on ErrVMIDTaken it allocates
+// a fresh VMID and retries, up to maxVMIDRetries times. label is "create" or
+// "clone" for the error message and log.
+func retryWithFreshVMID(ctx context.Context, deps CreateDeps, initialVMID int, label string, dispatch func(vmid int) (string, error)) (int, string, error) {
+	vmid := initialVMID
+
+	for attempt := 0; ; attempt++ {
+		upid, err := dispatch(vmid)
+		if err == nil {
+			return vmid, upid, nil
+		}
+
+		if !errors.Is(err, cluster.ErrVMIDTaken) || attempt >= maxVMIDRetries {
+			return 0, "", fmt.Errorf("%w: %s: %w", ErrClusterCreate, label, err)
+		}
+
+		deps.Log.Info("vmid collision, retrying", "component", "vm", "vmid", vmid, "attempt", attempt+1)
+
+		newVMID, err := deps.Creator.NextVMID(ctx)
+		if err != nil {
+			return 0, "", fmt.Errorf("%w: allocate vmid on retry: %w", ErrClusterCreate, err)
+		}
+
+		vmid = newVMID
+	}
+}
+
+// rollbackFailedCreate purges a half-made VM after a failed create or clone
+// task (US5/issue-05 D5a). The cleanup is best-effort: a failure is logged and
+// does not mask the original error. An audit entry is recorded so the orphan
+// is traceable — ProxMate deliberately kept half-made VMs, but in a self-
+// service portal an orphan consuming the user's quota is indefensible.
+// The Writer interface is used (not Creator) because Delete is a Writer
+// method; when no Writer is wired (unit tests without the live path), the
+// rollback is skipped.
+func rollbackFailedCreate(ctx context.Context, deps CreateDeps, actor auth.Identity, clusterName string, vmid int, node, reason string) {
+	if deps.Writer == nil {
+		return
+	}
+
+	if err := deps.Writer.Delete(ctx, node, vmid); err != nil {
+		// Best-effort: log and move on. The original error is what the
+		// caller reports; a failed cleanup must not mask it.
+		deps.Log.Error("rollback: failed to purge half-made vm", "component", "vm", "cluster", clusterName, "vmid", vmid, "node", node, "reason", reason, "error", err)
+
+		return
+	}
+
+	deps.Log.Info("rollback: purged half-made vm", "component", "vm", "cluster", clusterName, "vmid", vmid, "node", node, "reason", reason)
+
+	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, vmid, "vm_create_rollback"); err != nil {
+		deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+	}
 }
 
 // resolveTemplate looks up the approved Proxmox template before any VMID is
@@ -689,15 +795,37 @@ type nicPlan struct {
 	model  string
 }
 
+// checkName validates the hostname form (FR-008) then checks per-pool name
+// uniqueness (US5/issue-05 D5b). A malformed name reports ErrInvalidName
+// before the duplicate check runs. Extracted from planCreate to keep its
+// cyclomatic complexity under gocyclo's ceiling.
+func checkName(policyService *policy.Policy, pool, name string) error {
+	if err := ValidateName(name); err != nil {
+		return err
+	}
+
+	// US5/issue-05 D5b: per-pool name uniqueness. The name is the only
+	// identifier the user manipulates in the portal; two VMs with the same
+	// name in one user's list are indistinguishable. Checked before any
+	// VMID is consumed, like every other rejection.
+	if policyService.PoolHasName(pool, name) {
+		return fmt.Errorf("%w: %q is already used by a VM in your pool", ErrNameTaken, name)
+	}
+
+	return nil
+}
+
 // planCreate runs all pre-allocation validation: quota, name, catalog,
 // hardware ranges, gabarit, resource resolution, node capacity, and live
-// disk-space check (US3/issue-04).
+// disk-space check (US3/issue-04). Name uniqueness by pool (US5/issue-05 D5b)
+// is checked after ValidateName so a malformed name reports ErrInvalidName
+// before the duplicate check runs.
 func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDeps, clusterName string, actor auth.Identity, req CreateRequest) (createPlan, error) {
 	if err := policyService.CheckQuota(ctx, clusterName, actor); err != nil {
 		return createPlan{}, err
 	}
 
-	if err := ValidateName(req.Name); err != nil {
+	if err := checkName(policyService, actor.Pool, req.Name); err != nil {
 		return createPlan{}, err
 	}
 

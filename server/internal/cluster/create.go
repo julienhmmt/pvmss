@@ -8,8 +8,11 @@ import "context"
 // caller must then poll.
 type Creator interface {
 	// NextVMID allocates the next free VMID. It is the single allocation
-	// point (FR-012): distinct and monotonically increasing even under
-	// concurrent calls, so two simultaneous creations never collide.
+	// point (FR-012), delegated to Proxmox's GET /cluster/nextid. That
+	// endpoint returns the smallest free ID at call time without reserving
+	// it, so two concurrent creations can receive the same integer — the
+	// caller must handle ErrVMIDTaken by retrying with a fresh VMID
+	// (US5/issue-05 D5c: max 3 attempts).
 	NextVMID(ctx context.Context) (int, error)
 	// CreateVM dispatches creation of spec and returns the task's UPID.
 	// The VM materializes as the task progresses; a successful return means

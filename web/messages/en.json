@@ -641,6 +641,7 @@
   "vms.create.adminBlocked": "Administrators cannot create VMs through the self-service portal.",
   "vms.create.errorNoPool": "This account cannot own VMs.",
   "vms.create.errorInvalidName": "Name must be a valid hostname (lowercase alphanumeric and hyphens, no leading or trailing hyphen, max 63 characters).",
+  "vms.create.errorNameTaken": "You already have a VM with this name. Choose a different name.",
   "vms.create.errorNameRequired": "Name is required.",
   "vms.create.errorClusterRejected": "The cluster rejected the request.",
   "vms.create.errorInternal": "An internal error occurred.",

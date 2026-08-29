@@ -18,17 +18,29 @@ type fakeState struct {
 	pushMu   sync.RWMutex
 	sshMu    sync.RWMutex
 
-	vms                []VM
-	nodes              []Node
-	storages           []Storage
-	pools              []Pool
-	callLog            []FakeCall
-	roleState          map[string][]string
-	roleCallLog        []RoleCall
-	acls               []ACLEntry
-	errDeleteUser      error
-	pushErr            error
-	sshErr             error
+	vms           []VM
+	nodes         []Node
+	storages      []Storage
+	pools         []Pool
+	callLog       []FakeCall
+	roleState     map[string][]string
+	roleCallLog   []RoleCall
+	acls          []ACLEntry
+	errDeleteUser error
+	pushErr       error
+	sshErr        error
+	// createErr, when set, is returned by the next CreateVM call instead of
+	// dispatching (US5/issue-05: tests inject cluster.ErrVMIDTaken to exercise
+	// the retry loop, or a generic error to exercise the failure path).
+	createErr error
+	// createErrCount limits how many consecutive CreateVM calls return
+	// createErr before clearing it (0 = unlimited). Used to simulate a
+	// transient collision that succeeds on retry.
+	createErrCount int
+	// taskErr, when set, makes the next registered task report TaskError on
+	// its first TaskStatus poll instead of TaskRunning (US5/issue-05: tests
+	// inject a task error to exercise the rollback path).
+	taskErr            string
 	cloudInitConfigs   map[fakeCloudInitKey]CloudInitConfig
 	cloudInitDrives    map[fakeCloudInitKey]bool
 	snapshots          map[fakeSnapshotKey][]VMSnapshot
@@ -110,6 +122,9 @@ func (s *fakeState) reset(clusterName string) {
 	s.nextVMID = 0
 	s.nextSnapshotTaskID = 0
 	s.tasks = nil
+	s.createErr = nil
+	s.createErrCount = 0
+	s.taskErr = ""
 
 	s.identMu.Lock()
 	s.identities = fresh.identities
