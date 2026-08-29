@@ -302,3 +302,84 @@ func buildAuditWhere(f AuditFilter) (string, []any) {
 
 	return "WHERE " + strings.Join(clauses, " AND "), args
 }
+
+// minAuditRetentionDays is the floor below which retention cannot be set.
+// Enforced by SetAuditConfig so a UI bug or bad API call cannot silently
+// erase the audit trail by setting retention to 0 or 1 day.
+const minAuditRetentionDays = 30
+
+// AuditConfig is the single-row audit retention configuration (issue #02).
+type AuditConfig struct {
+	RetentionDays int
+}
+
+// GetAuditConfig returns the current audit retention in days. The audit_config
+// table is seeded by schemaV20 with 365 days, so this always returns a value
+// after migrations have run.
+func (s *Store) GetAuditConfig(ctx context.Context) (AuditConfig, error) {
+	var days int
+	err := s.db.QueryRowContext(ctx,
+		`SELECT retention_days FROM audit_config WHERE id = 1`,
+	).Scan(&days)
+	if err != nil {
+		return AuditConfig{}, fmt.Errorf("get audit config: %w", err)
+	}
+
+	return AuditConfig{RetentionDays: days}, nil
+}
+
+// SetAuditConfig updates the audit retention in days. It rejects values below
+// minAuditRetentionDays (30) so a caller cannot shrink the window enough to
+// erase the trail before an incident review can happen.
+func (s *Store) SetAuditConfig(ctx context.Context, retentionDays int) error {
+	if retentionDays < minAuditRetentionDays {
+		return fmt.Errorf("retention_days must be at least %d, got %d", minAuditRetentionDays, retentionDays)
+	}
+
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE audit_config SET retention_days = ? WHERE id = 1`, retentionDays)
+	if err != nil {
+		return fmt.Errorf("set audit config: %w", err)
+	}
+
+	return nil
+}
+
+// PruneAuditLog deletes audit_log rows older than retentionDays and returns the
+// number of rows deleted. A retention of 30 deletes rows whose timestamp is
+// older than 30 days from now (UTC). Safe to run concurrently with reads and
+// inserts — SQLite serializes writers, and the DELETE is a single statement.
+func (s *Store) PruneAuditLog(ctx context.Context, retentionDays int) (int64, error) {
+	cutoff := time.Now().UTC().Add(-time.Duration(retentionDays) * 24 * time.Hour).Format(time.RFC3339Nano)
+
+	//nolint:gosec // table/column names are hardcoded literals, not user input
+	res, err := s.db.ExecContext(ctx,
+		`DELETE FROM audit_log WHERE timestamp < ?`, cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("prune audit log: %w", err)
+	}
+
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("prune audit log rows affected: %w", err)
+	}
+
+	return n, nil
+}
+
+// CountAuditPrunePreview returns the number of audit_log rows older than
+// retentionDays, without deleting them. Used by the UI confirmation flow so
+// the admin sees the impact before confirming a retention change.
+func (s *Store) CountAuditPrunePreview(ctx context.Context, retentionDays int) (int64, error) {
+	cutoff := time.Now().UTC().Add(-time.Duration(retentionDays) * 24 * time.Hour).Format(time.RFC3339Nano)
+
+	var n int64
+	err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM audit_log WHERE timestamp < ?`, cutoff,
+	).Scan(&n)
+	if err != nil {
+		return 0, fmt.Errorf("count audit prune preview: %w", err)
+	}
+
+	return n, nil
+}

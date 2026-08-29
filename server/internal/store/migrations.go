@@ -174,6 +174,16 @@ CREATE TABLE catalog_isos (
 // header against both the cookie and the persisted session state.
 const schemaV18 = `ALTER TABLE sessions ADD COLUMN csrf_token TEXT NOT NULL DEFAULT ''`
 
+// schemaV20 adds the audit retention configuration (issue #02). A single-row
+// table seeded with the default 365-day retention; the floor of 30 days is
+// enforced by SetAuditConfig, not by the schema, so a future floor change is
+// a code edit rather than a migration.
+const schemaV20 = `CREATE TABLE audit_config (
+	id             INTEGER PRIMARY KEY CHECK (id = 1),
+	retention_days INTEGER NOT NULL
+);
+INSERT INTO audit_config (id, retention_days) VALUES (1, 365);`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -202,4 +212,5 @@ var Migrations = []Migration{
 	{Version: 17, DDL: schemaV17},
 	{Version: 18, DDL: schemaV18},
 	{Version: 19, DDL: schemaV19},
+	{Version: 20, DDL: schemaV20},
 }

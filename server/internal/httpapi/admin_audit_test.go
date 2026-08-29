@@ -15,6 +15,7 @@ import (
 	"pvmss/server/internal/store"
 	"strings"
 	"testing"
+	"time"
 )
 
 // Test fixture constants — centralizing them keeps goconst below threshold
@@ -91,6 +92,9 @@ func opsMux(ops *httpapi.AdminOps, auth *httpapi.Auth) *http.ServeMux {
 	mux := http.NewServeMux()
 	guard := auth.RequireAdmin
 	mux.Handle("GET /api/v1/admin/audit", guard(http.HandlerFunc(ops.ServeAudit)))
+	mux.Handle("GET /api/v1/admin/audit/config", guard(http.HandlerFunc(ops.ServeAuditConfig)))
+	mux.Handle("PUT /api/v1/admin/audit/config", guard(http.HandlerFunc(ops.ServeAuditConfigUpdate)))
+	mux.Handle("GET /api/v1/admin/audit/prune-preview", guard(http.HandlerFunc(ops.ServeAuditPrunePreview)))
 	mux.Handle("GET /api/v1/admin/dashboard", guard(http.HandlerFunc(ops.ServeDashboard)))
 	mux.Handle("GET /api/v1/admin/db/export", guard(http.HandlerFunc(ops.ServeDBExport)))
 	mux.Handle("POST /api/v1/admin/db/import", guard(http.HandlerFunc(ops.ServeDBImport)))
@@ -119,6 +123,22 @@ func opsPost(t *testing.T, ops *httpapi.AdminOps, auth *httpapi.Auth, cookie *ht
 	t.Helper()
 
 	req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	if cookie != nil {
+		req.AddCookie(cookie)
+	}
+
+	rec := httptest.NewRecorder()
+	opsMux(ops, auth).ServeHTTP(rec, req)
+
+	return rec
+}
+
+func opsPut(t *testing.T, ops *httpapi.AdminOps, auth *httpapi.Auth, cookie *http.Cookie, path, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	req := httptest.NewRequest(http.MethodPut, path, strings.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 
 	if cookie != nil {
@@ -236,4 +256,171 @@ func TestAdminAudit_PageSizeOverMaximum_Returns400(t *testing.T) {
 	}
 
 	assertAPIError(t, rec.Body.Bytes(), apiCodePageSizeTooLarge)
+}
+
+// --- retention handler tests (issue #02 / Phase 4) ---
+
+type auditConfigDTO struct {
+	RetentionDays int `json:"retentionDays"`
+}
+
+type prunePreviewDTO struct {
+	RetentionDays int   `json:"retentionDays"`
+	RowsToDelete  int64 `json:"rowsToDelete"`
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminAuditConfig_GetReturnsDefault365(t *testing.T) {
+	ops, auth, _ := newAdminOpsHandler(t)
+	cookie := adminCookie(t, auth)
+
+	rec := opsGet(t, ops, auth, cookie, "/api/v1/admin/audit/config")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var cfg auditConfigDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &cfg); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	if cfg.RetentionDays != 365 {
+		t.Errorf("retention = %d, want 365", cfg.RetentionDays)
+	}
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminAuditConfig_PutBelowFloorReturns400(t *testing.T) {
+	ops, auth, _ := newAdminOpsHandler(t)
+	cookie := adminCookie(t, auth)
+
+	rec := opsPut(t, ops, auth, cookie, "/api/v1/admin/audit/config", `{"retentionDays":29}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+
+	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidRequest)
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminAuditConfig_PutInvalidJSONReturns400(t *testing.T) {
+	ops, auth, _ := newAdminOpsHandler(t)
+	cookie := adminCookie(t, auth)
+
+	rec := opsPut(t, ops, auth, cookie, "/api/v1/admin/audit/config", "{bad json")
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+
+	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidRequest)
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminAuditConfig_PutUpdatesAndAudits(t *testing.T) {
+	ops, auth, st := newAdminOpsHandler(t)
+	cookie := adminCookie(t, auth)
+
+	rec := opsPut(t, ops, auth, cookie, "/api/v1/admin/audit/config", `{"retentionDays":60}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var cfg auditConfigDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &cfg); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	if cfg.RetentionDays != 60 {
+		t.Errorf("retention = %d, want 60", cfg.RetentionDays)
+	}
+
+	// The PUT must leave an audit row.
+	var action string
+	if err := st.DB().QueryRowContext(context.Background(),
+		`SELECT action FROM audit_log WHERE action = 'admin.audit_config.update' ORDER BY id DESC LIMIT 1`,
+	).Scan(&action); err != nil {
+		t.Fatalf("audit row missing: %v", err)
+	}
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminAuditPrunePreview_ReturnsCountWithoutDeleting(t *testing.T) {
+	ops, auth, st := newAdminOpsHandler(t)
+	cookie := adminCookie(t, auth)
+
+	// Insert one old row directly (the seed rows are fresh).
+	now := time.Now().UTC()
+	if _, err := st.DB().ExecContext(context.Background(),
+		`INSERT INTO audit_log (actor, cluster, vmid, action, timestamp, target_type, target_id, detail, ip_address, severity) VALUES (?, ?, ?, ?, ?, '', '', '', '', 'info')`,
+		"alice@pve", "default", 999, "start", now.Add(-100*24*time.Hour).Format(time.RFC3339Nano),
+	); err != nil {
+		t.Fatalf("insert old row: %v", err)
+	}
+
+	rec := opsGet(t, ops, auth, cookie, "/api/v1/admin/audit/prune-preview?retention_days=30")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var prev prunePreviewDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &prev); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	if prev.RetentionDays != 30 {
+		t.Errorf("retentionDays = %d, want 30", prev.RetentionDays)
+	}
+
+	if prev.RowsToDelete != 1 {
+		t.Errorf("rowsToDelete = %d, want 1", prev.RowsToDelete)
+	}
+
+	// Verify nothing was actually deleted.
+	var total int
+	if err := st.DB().QueryRowContext(context.Background(),
+		`SELECT COUNT(*) FROM audit_log`,
+	).Scan(&total); err != nil {
+		t.Fatalf("count: %v", err)
+	}
+
+	if total != 3 { // 2 seed rows + 1 old row
+		t.Errorf("total rows after preview = %d, want 3 (preview must not delete)", total)
+	}
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminAuditPrunePreview_MissingParamReturns400(t *testing.T) {
+	ops, auth, _ := newAdminOpsHandler(t)
+	cookie := adminCookie(t, auth)
+
+	rec := opsGet(t, ops, auth, cookie, "/api/v1/admin/audit/prune-preview")
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+
+	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidRequest)
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminAuditPrunePreview_InvalidParamReturns400(t *testing.T) {
+	ops, auth, _ := newAdminOpsHandler(t)
+	cookie := adminCookie(t, auth)
+
+	rec := opsGet(t, ops, auth, cookie, "/api/v1/admin/audit/prune-preview?retention_days=abc")
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+
+	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidRequest)
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestAdminAuditConfig_NonAdminReturns403(t *testing.T) {
+	ops, auth, _ := newAdminOpsHandler(t)
+	aliceCookie := loginCookie(t, auth, `{"username":"alice","password":"pvmss-alice"}`)
+
+	rec := opsGet(t, ops, auth, aliceCookie, "/api/v1/admin/audit/config")
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
 }
