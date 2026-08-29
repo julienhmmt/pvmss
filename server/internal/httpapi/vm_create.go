@@ -620,36 +620,63 @@ func catalogBridgeDTOs(bridges []catalog.Bridge, live []cluster.Bridge) []catalo
 // writeCreateFailure maps vm.Create's sentinel errors to the contract's
 // status codes and error codes.
 func (h *VMCreate) writeCreateFailure(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, vm.ErrAdminCannotCreate):
-		h.writeCreateError(w, http.StatusForbidden, "admin_cannot_create", "administrators cannot create VMs")
-	case errors.Is(err, vm.ErrNoPool):
-		h.writeCreateError(w, http.StatusForbidden, "no_pool", "this account cannot own VMs")
-	case errors.Is(err, policy.ErrQuotaExceeded):
-		h.writeCreateError(w, http.StatusBadRequest, "quota_exceeded", err.Error())
-	case errors.Is(err, policy.ErrGabaritExceeded):
-		h.writeCreateError(w, http.StatusBadRequest, "gabarit_exceeded", err.Error())
-	case errors.Is(err, policy.ErrNodeCapacityExceeded):
-		h.writeCreateError(w, http.StatusBadRequest, "capacity_exceeded", err.Error())
-	case errors.Is(err, vm.ErrInvalidName):
-		h.writeCreateError(w, http.StatusBadRequest, "invalid_name", "name must be a valid hostname (lowercase alphanumeric and hyphen, no leading/trailing hyphen, max 63 chars)")
-	case errors.Is(err, vm.ErrOutOfRange):
-		h.writeCreateError(w, http.StatusBadRequest, "out_of_range", err.Error())
-	case errors.Is(err, vm.ErrNotApproved):
-		h.writeCreateError(w, http.StatusBadRequest, "not_approved", err.Error())
-	case errors.Is(err, vm.ErrInvalidSource):
-		h.writeCreateError(w, http.StatusBadRequest, "invalid_source", err.Error())
-	case errors.Is(err, vm.ErrDiskReduction):
-		h.writeCreateError(w, http.StatusBadRequest, "disk_reduction", err.Error())
-	case errors.Is(err, vm.ErrInsufficientDiskSpace):
-		h.writeCreateError(w, http.StatusBadRequest, "insufficient_disk_space", err.Error())
-	case errors.Is(err, vm.ErrClusterCreate):
-		h.log.Error("cluster create failed", "component", "httpapi", "error", err)
-		h.writeCreateError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
-	default:
-		h.log.Error("vm create failed", "component", "httpapi", "error", err)
-		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+	if status, code, message, ok := mapCreateError(err); ok {
+		if code == "cluster_error" {
+			h.log.Error("cluster create failed", "component", "httpapi", "error", err)
+		}
+
+		h.writeCreateError(w, status, code, message)
+
+		return
 	}
+
+	h.log.Error("vm create failed", "component", "httpapi", "error", err)
+	h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+}
+
+// createErrorMapping pairs a sentinel error with its HTTP status, error code,
+// and message. A nil message means "use err.Error()" (the sentinel carries a
+// dynamic detail string).
+type createErrorMapping struct {
+	err     error
+	status  int
+	code    string
+	message string // empty → err.Error()
+}
+
+// createErrorMappings is the table writeCreateFailure consults. Order matters
+// only for errors.Is precedence, which is identity-based here.
+var createErrorMappings = []createErrorMapping{
+	{vm.ErrAdminCannotCreate, http.StatusForbidden, "admin_cannot_create", "administrators cannot create VMs"},
+	{vm.ErrNoPool, http.StatusForbidden, "no_pool", "this account cannot own VMs"},
+	{policy.ErrQuotaExceeded, http.StatusBadRequest, "quota_exceeded", ""},
+	{policy.ErrGabaritExceeded, http.StatusBadRequest, "gabarit_exceeded", ""},
+	{policy.ErrNodeCapacityExceeded, http.StatusBadRequest, "capacity_exceeded", ""},
+	{vm.ErrInvalidName, http.StatusBadRequest, "invalid_name", "name must be a valid hostname (lowercase alphanumeric and hyphen, no leading/trailing hyphen, max 63 chars)"},
+	{vm.ErrNameTaken, http.StatusBadRequest, "name_taken", ""},
+	{vm.ErrOutOfRange, http.StatusBadRequest, "out_of_range", ""},
+	{vm.ErrNotApproved, http.StatusBadRequest, "not_approved", ""},
+	{vm.ErrInvalidSource, http.StatusBadRequest, "invalid_source", ""},
+	{vm.ErrDiskReduction, http.StatusBadRequest, "disk_reduction", ""},
+	{vm.ErrInsufficientDiskSpace, http.StatusBadRequest, "insufficient_disk_space", ""},
+	{vm.ErrClusterCreate, http.StatusBadGateway, "cluster_error", msgClusterRejected},
+}
+
+// mapCreateError returns the HTTP status, code, and message for a known
+// sentinel error, or (0, "", "", false) for an unrecognized error.
+func mapCreateError(err error) (int, string, string, bool) {
+	for _, m := range createErrorMappings {
+		if errors.Is(err, m.err) {
+			msg := m.message
+			if msg == "" {
+				msg = err.Error()
+			}
+
+			return m.status, m.code, msg, true
+		}
+	}
+
+	return 0, "", "", false
 }
 
 func (h *VMCreate) writeCreateJSON(w http.ResponseWriter, status int, value any) {

@@ -30,7 +30,7 @@ func (p Proxmox) CloneVM(ctx context.Context, spec CloneSpec) (string, error) {
 	raw, err := p.rest().do(ctx, http.MethodPost,
 		fmt.Sprintf("/nodes/%s/qemu/%d/clone", url.PathEscape(spec.SourceNode), spec.SourceVMID), form)
 	if err != nil {
-		return "", err
+		return "", wrapVMIDCollision(err)
 	}
 
 	var upid string

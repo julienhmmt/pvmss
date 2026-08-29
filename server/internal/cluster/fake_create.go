@@ -49,6 +49,23 @@ func (fake Fake) NextVMID(_ context.Context) (int, error) {
 // returned UPID.
 func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 	state := fake.stateOrDefault()
+
+	// US5/issue-05: inject a CreateVM error when configured by the test.
+	state.createMu.Lock()
+	if state.createErr != nil {
+		err := state.createErr
+		if state.createErrCount > 0 {
+			state.createErrCount--
+			if state.createErrCount == 0 {
+				state.createErr = nil
+			}
+		}
+		state.createMu.Unlock()
+
+		return "", err
+	}
+	state.createMu.Unlock()
+
 	state.vmMu.Lock()
 
 	status := VMStopped
@@ -99,6 +116,8 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 
 // TaskStatus implements Creator. Poll-count-based: running for a UPID's first
 // two queries, ok from the third onward (SC-006 — deterministic, no sleeps).
+// US5/issue-05: when SetFakeTaskError was called, the next registered task
+// reports TaskError on its first poll instead of running.
 func (fake Fake) TaskStatus(_ context.Context, upid string) (TaskStatus, error) {
 	state := fake.stateOrDefault()
 	state.createMu.Lock()
@@ -107,6 +126,21 @@ func (fake Fake) TaskStatus(_ context.Context, upid string) (TaskStatus, error) 
 	if !ok {
 		state.createMu.Unlock()
 		return TaskStatus{}, ErrNotFound
+	}
+
+	// US5/issue-05: inject a task error on the first poll when configured.
+	if state.taskErr != "" && task.polls == 0 {
+		task.polls++
+
+		exitMsg := state.taskErr
+		state.taskErr = ""
+
+		log := append([]string(nil), task.log...)
+		log = append(log, "TASK ERROR: "+exitMsg)
+
+		state.createMu.Unlock()
+
+		return TaskStatus{UPID: upid, State: TaskError, ExitMessage: exitMsg, Log: log}, nil
 	}
 
 	task.polls++

@@ -10,8 +10,10 @@ import (
 )
 
 // NextVMID implements Creator via GET /cluster/nextid — the single
-// allocation point (FR-012), delegated entirely to Proxmox's own cluster-wide
-// counter rather than reimplemented client-side.
+// allocation point (FR-012), delegated to Proxmox's own cluster-wide counter
+// rather than reimplemented client-side. The endpoint returns the smallest
+// free ID at call time without reserving it, so two concurrent creations can
+// collide; the caller handles ErrVMIDTaken by retrying (US5/issue-05 D5c).
 func (p Proxmox) NextVMID(ctx context.Context) (int, error) {
 	raw, err := p.rest().do(ctx, http.MethodGet, "/cluster/nextid", nil)
 	if err != nil {
@@ -94,7 +96,7 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 
 	raw, err := p.rest().do(ctx, http.MethodPost, fmt.Sprintf("/nodes/%s/qemu", url.PathEscape(spec.Node)), form)
 	if err != nil {
-		return "", err
+		return "", wrapVMIDCollision(err)
 	}
 
 	var upid string
@@ -103,6 +105,24 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 	}
 
 	return upid, nil
+}
+
+// wrapVMIDCollision inspects a Proxmox error for a VMID-already-exists
+// rejection and wraps it with ErrVMIDTaken so the caller can retry with a
+// fresh VMID (US5/issue-05 D5c). Proxmox returns HTTP 500 with a body like
+// {"errors":{"vmid":"VMID '100' already exists"}}; the low-level client
+// flattens that into a single error string, so a substring match is the
+// only detection available without re-parsing the raw body.
+func wrapVMIDCollision(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	if strings.Contains(err.Error(), "already exists") {
+		return fmt.Errorf("%w: %w", ErrVMIDTaken, err)
+	}
+
+	return err
 }
 
 // TaskStatus implements Creator. The node a task ran on is embedded in its

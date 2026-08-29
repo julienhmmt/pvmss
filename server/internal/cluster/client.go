@@ -35,6 +35,11 @@ var (
 	// ErrSSHKeyUserUnknown is returned by Writer.AddSSHKey when the guest user
 	// named in the request does not exist on the guest (guest-agent exit code 3).
 	ErrSSHKeyUserUnknown = errors.New("ssh key user not found on guest")
+	// ErrVMIDTaken is returned by CreateVM/CloneVM when Proxmox rejects the
+	// VMID because it already exists (US5/issue-05). GET /cluster/nextid
+	// returns the smallest free ID at call time without reserving it, so two
+	// concurrent creations can collide; the caller retries with a fresh VMID.
+	ErrVMIDTaken = errors.New("vmid already taken")
 )
 
 // Client is the single contract for reading cluster data. Every implementation

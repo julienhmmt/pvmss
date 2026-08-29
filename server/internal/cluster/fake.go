@@ -494,6 +494,27 @@ func SetFakeCloudInitPushError(err error) {
 	state.pushErr = err
 }
 
+// SetFakeCreateError configures the default fake's CreateVM error for the
+// next count calls (US5/issue-05: tests inject cluster.ErrVMIDTaken to
+// exercise the retry loop). count=0 means unlimited until cleared by reset.
+func SetFakeCreateError(err error, count int) {
+	state := defaultState()
+	state.createMu.Lock()
+	defer state.createMu.Unlock()
+	state.createErr = err
+	state.createErrCount = count
+}
+
+// SetFakeTaskError configures the default fake so the next registered task
+// reports TaskError with the given exit message on its first TaskStatus poll
+// (US5/issue-05: tests inject a task error to exercise the rollback path).
+func SetFakeTaskError(exitMessage string) {
+	state := defaultState()
+	state.createMu.Lock()
+	defer state.createMu.Unlock()
+	state.taskErr = exitMessage
+}
+
 // AddSSHKey implements Writer and records the agent-side key injection. It
 // never merges into the fake's cloud-init config (the guest is the source of
 // truth for an injected key); tests assert the call reached the fake.
