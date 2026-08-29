@@ -29,4 +29,10 @@ type Configuration struct {
 	// MaxListPageSize is the upper bound on a VM list request's pageSize —
 	// anything larger is rejected, never silently truncated (T04 data-model).
 	MaxListPageSize int
+	// TrustedProxyHops is the number of trusted reverse-proxy hops in front
+	// of the server. It controls X-Forwarded-For parsing in the shared
+	// clientIP helper: with N hops, the IP at position len(xff)-N is selected
+	// (the first untrusted hop from the right). 0 means no proxy is trusted
+	// and RemoteAddr is used directly. Defaults to 1 (a single ingress).
+	TrustedProxyHops int
 }

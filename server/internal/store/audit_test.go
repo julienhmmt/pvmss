@@ -3,6 +3,7 @@ package store_test
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/store"
@@ -391,4 +392,86 @@ func equalIntSlices(a, b []int) bool {
 	}
 
 	return true
+}
+
+// TestRecordAdminAction_InsertsRowWithAdminFields — admin mutations write a
+// row with cluster="" and vmid=nil, plus the new target/detail/IP/severity
+// columns. Verified via a direct SELECT since QueryAudit only reads the
+// original six columns.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestRecordAdminAction_InsertsRowWithAdminFields(t *testing.T) {
+	st := newAuditStore(t)
+	ctx := context.Background()
+
+	if err := st.RecordAdminAction(ctx, "admin", "admin.clusters.create", "cluster", "prod", `{"summary":"cluster=prod created"}`, "203.0.113.5"); err != nil {
+		t.Fatalf("RecordAdminAction: %v", err)
+	}
+
+	var (
+		cluster, action, targetType, targetID, detail, ip, severity string
+		vmid                                                        sql.NullInt64
+	)
+	err := st.DB().QueryRowContext(ctx,
+		`SELECT cluster, action, vmid, target_type, target_id, detail, ip_address, severity FROM audit_log ORDER BY id DESC LIMIT 1`,
+	).Scan(&cluster, &action, &vmid, &targetType, &targetID, &detail, &ip, &severity)
+	if err != nil {
+		t.Fatalf("query audit row: %v", err)
+	}
+
+	if cluster != "" {
+		t.Errorf("cluster = %q, want empty", cluster)
+	}
+
+	if action != "admin.clusters.create" {
+		t.Errorf("action = %q, want admin.clusters.create", action)
+	}
+
+	if vmid.Valid {
+		t.Errorf("vmid = %d, want NULL", vmid.Int64)
+	}
+
+	if targetType != "cluster" {
+		t.Errorf("target_type = %q, want cluster", targetType)
+	}
+
+	if targetID != "prod" {
+		t.Errorf("target_id = %q, want prod", targetID)
+	}
+
+	if detail != `{"summary":"cluster=prod created"}` {
+		t.Errorf("detail = %q, want JSON summary", detail)
+	}
+
+	if ip != "203.0.113.5" {
+		t.Errorf("ip_address = %q, want 203.0.113.5", ip)
+	}
+
+	if severity != "info" {
+		t.Errorf("severity = %q, want info", severity)
+	}
+}
+
+// TestRecordAction_StillWritesSeverity — the 15 existing VM callers are
+// unchanged in signature but the row now carries a derived severity.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestRecordAction_StillWritesSeverity(t *testing.T) {
+	st := newAuditStore(t)
+	ctx := context.Background()
+
+	if err := st.RecordAction(ctx, testAuditActor, testStoreCluster, 101, "vm.destroy"); err != nil {
+		t.Fatalf("RecordAction: %v", err)
+	}
+
+	var severity string
+	if err := st.DB().QueryRowContext(ctx,
+		`SELECT severity FROM audit_log ORDER BY id DESC LIMIT 1`,
+	).Scan(&severity); err != nil {
+		t.Fatalf("query severity: %v", err)
+	}
+
+	if severity != "warning" {
+		t.Errorf("severity = %q, want warning (contains 'destroy')", severity)
+	}
 }

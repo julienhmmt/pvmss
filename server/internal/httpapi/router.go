@@ -65,6 +65,10 @@ type RouterConfig struct {
 	AdminClusters    *AdminClusters
 	Docs             *DocsAPIHandler
 	AdminDocs        *AdminDocs
+	// TrustedProxyHops is forwarded to the rate limiters so clientIP resolves
+	// the real user IP behind a Kubernetes ingress via X-Forwarded-For.
+	// Defaults to 0 (use RemoteAddr directly) when not set by the caller.
+	TrustedProxyHops int
 }
 
 // NewRouter wires the public API and the static SPA handler from cfg.
@@ -74,10 +78,11 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	mux := http.NewServeMux()
 
 	csrf := newCSRFMiddleware(cfg.Auth)
-	vmWriteLimiter := newUserRateLimiter(vmWriteRateLimitMaxRequests, vmWriteRateLimitWindow)
-	clusterTestLimiter := newUserRateLimiter(clusterTestRateLimitMaxRequests, clusterTestRateLimitWindow)
-	adminWriteLimiter := newUserRateLimiter(adminWriteRateLimitMaxRequests, adminWriteRateLimitWindow)
-	authWriteLimiter := newUserRateLimiter(authWriteRateLimitMaxRequests, authWriteRateLimitWindow)
+	hops := cfg.TrustedProxyHops
+	vmWriteLimiter := newUserRateLimiter(vmWriteRateLimitMaxRequests, vmWriteRateLimitWindow, hops)
+	clusterTestLimiter := newUserRateLimiter(clusterTestRateLimitMaxRequests, clusterTestRateLimitWindow, hops)
+	adminWriteLimiter := newUserRateLimiter(adminWriteRateLimitMaxRequests, adminWriteRateLimitWindow, hops)
+	authWriteLimiter := newUserRateLimiter(authWriteRateLimitMaxRequests, authWriteRateLimitWindow, hops)
 
 	// protect combines per-user rate limiting (outer) and CSRF validation (inner)
 	// for state-changing browser requests.
@@ -164,7 +169,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	// nothing else gates repeated guesses against them. The pre-login cluster
 	// list and OIDC trigger are also unauthenticated and disclose cluster
 	// names, so they share the same limiter to bound enumeration/abuse.
-	authLimiter := newIPRateLimiter(authRateLimitMaxRequests, authRateLimitWindow)
+	authLimiter := newIPRateLimiter(authRateLimitMaxRequests, authRateLimitWindow, hops)
 	mux.Handle("POST /api/v1/auth/login", authLimiter.middleware(http.HandlerFunc(cfg.Auth.Login)))
 	mux.Handle("POST /api/v1/auth/admin-login", authLimiter.middleware(http.HandlerFunc(cfg.Auth.AdminLogin)))
 	mux.HandleFunc("GET /api/v1/auth/me", cfg.Auth.Me)

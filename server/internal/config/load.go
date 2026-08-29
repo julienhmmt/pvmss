@@ -41,6 +41,10 @@ func Load() (Configuration, error) {
 		return cfg, err
 	}
 
+	if err := loadProxySettings(&cfg); err != nil {
+		return cfg, err
+	}
+
 	return cfg, nil
 }
 
@@ -195,6 +199,25 @@ func loadInventorySettings(cfg *Configuration) error {
 	}
 
 	cfg.MaxListPageSize = maxPageSize
+
+	return nil
+}
+
+// loadProxySettings reads the trusted-proxy-hop count used by the shared
+// clientIP helper for X-Forwarded-For parsing (audit IP recording and rate
+// limiting). Defaults to 1 (a single Kubernetes ingress in front of the
+// server). 0 disables XFF parsing entirely and falls back to RemoteAddr.
+func loadProxySettings(cfg *Configuration) error {
+	hops, err := loadInt("PVMSS_TRUSTED_PROXY_HOPS", 1)
+	if err != nil {
+		return err
+	}
+
+	if hops < 0 {
+		return fmt.Errorf("PVMSS_TRUSTED_PROXY_HOPS must be >= 0, got %d", hops)
+	}
+
+	cfg.TrustedProxyHops = hops
 
 	return nil
 }

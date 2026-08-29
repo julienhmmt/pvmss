@@ -53,6 +53,7 @@ func TestLoad(t *testing.T) {
 				InventoryManualRefreshMinInterval: 5 * time.Second,
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
+				TrustedProxyHops:                  1,
 			},
 		},
 		{
@@ -78,6 +79,7 @@ func TestLoad(t *testing.T) {
 				InventoryManualRefreshMinInterval: 5 * time.Second,
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
+				TrustedProxyHops:                  1,
 			},
 		},
 		{
@@ -213,6 +215,7 @@ func TestLoad(t *testing.T) {
 				InventoryManualRefreshMinInterval: 5 * time.Second,
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
+				TrustedProxyHops:                  1,
 			},
 		},
 		{
@@ -262,6 +265,7 @@ func TestLoad(t *testing.T) {
 				InventoryManualRefreshMinInterval: 2 * time.Second,
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
+				TrustedProxyHops:                  1,
 			},
 		},
 		{
@@ -326,6 +330,7 @@ func TestLoad(t *testing.T) {
 				InventoryManualRefreshMinInterval: 5 * time.Second,
 				InventoryRefreshTimeout:           45 * time.Second,
 				MaxListPageSize:                   100,
+				TrustedProxyHops:                  1,
 			},
 		},
 		{
@@ -353,6 +358,84 @@ func TestLoad(t *testing.T) {
 				"PVMSS_INVENTORY_REFRESH_TIMEOUT": "0s",
 			},
 			wantErr: "PVMSS_INVENTORY_REFRESH_TIMEOUT must be a positive duration",
+		},
+		{
+			name: "explicit trusted proxy hops",
+			env: map[string]string{
+				envPort:                    "50001",
+				envDBPath:                  testDBPath,
+				envLogLevel:                testLogLevel,
+				envLogFormat:               testLogFormat,
+				envLogOutput:               testLogOutput,
+				envClusterSource:           testCluster,
+				"PVMSS_TRUSTED_PROXY_HOPS": "2",
+			},
+			want: config.Configuration{
+				Host:                              testHost,
+				Port:                              50001,
+				DBPath:                            testDBPath,
+				LogLevel:                          testLogLevel,
+				LogFormat:                         testLogFormat,
+				LogOutput:                         testLogOutput,
+				ClusterSource:                     testCluster,
+				InventoryRefreshInterval:          30 * time.Second,
+				InventoryManualRefreshMinInterval: 5 * time.Second,
+				InventoryRefreshTimeout:           15 * time.Second,
+				MaxListPageSize:                   100,
+				TrustedProxyHops:                  2,
+			},
+		},
+		{
+			name: "trusted proxy hops zero disables xff",
+			env: map[string]string{
+				envPort:                    "50001",
+				envDBPath:                  testDBPath,
+				envLogLevel:                testLogLevel,
+				envLogFormat:               testLogFormat,
+				envLogOutput:               testLogOutput,
+				envClusterSource:           testCluster,
+				"PVMSS_TRUSTED_PROXY_HOPS": "0",
+			},
+			want: config.Configuration{
+				Host:                              testHost,
+				Port:                              50001,
+				DBPath:                            testDBPath,
+				LogLevel:                          testLogLevel,
+				LogFormat:                         testLogFormat,
+				LogOutput:                         testLogOutput,
+				ClusterSource:                     testCluster,
+				InventoryRefreshInterval:          30 * time.Second,
+				InventoryManualRefreshMinInterval: 5 * time.Second,
+				InventoryRefreshTimeout:           15 * time.Second,
+				MaxListPageSize:                   100,
+				TrustedProxyHops:                  0,
+			},
+		},
+		{
+			name: "negative trusted proxy hops rejected",
+			env: map[string]string{
+				envPort:                    "50001",
+				envDBPath:                  testDBPath,
+				envLogLevel:                testLogLevel,
+				envLogFormat:               testLogFormat,
+				envLogOutput:               testLogOutput,
+				envClusterSource:           testCluster,
+				"PVMSS_TRUSTED_PROXY_HOPS": "-1",
+			},
+			wantErr: "PVMSS_TRUSTED_PROXY_HOPS must be >= 0",
+		},
+		{
+			name: "non-integer trusted proxy hops rejected",
+			env: map[string]string{
+				envPort:                    "50001",
+				envDBPath:                  testDBPath,
+				envLogLevel:                testLogLevel,
+				envLogFormat:               testLogFormat,
+				envLogOutput:               testLogOutput,
+				envClusterSource:           testCluster,
+				"PVMSS_TRUSTED_PROXY_HOPS": "abc",
+			},
+			wantErr: "PVMSS_TRUSTED_PROXY_HOPS must be an integer",
 		},
 	}
 
@@ -382,6 +465,7 @@ func runLoadCase(t *testing.T, env map[string]string, want config.Configuration,
 	t.Setenv("PVMSS_INVENTORY_REFRESH_INTERVAL", env["PVMSS_INVENTORY_REFRESH_INTERVAL"])
 	t.Setenv("PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL", env["PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL"])
 	t.Setenv("PVMSS_INVENTORY_REFRESH_TIMEOUT", env["PVMSS_INVENTORY_REFRESH_TIMEOUT"])
+	t.Setenv("PVMSS_TRUSTED_PROXY_HOPS", env["PVMSS_TRUSTED_PROXY_HOPS"])
 	t.Setenv("PROXMOX_URL", env["PROXMOX_URL"])
 	t.Setenv("PROXMOX_API_TOKEN_NAME", env["PROXMOX_API_TOKEN_NAME"])
 	t.Setenv("PROXMOX_API_TOKEN_VALUE", env["PROXMOX_API_TOKEN_VALUE"])
