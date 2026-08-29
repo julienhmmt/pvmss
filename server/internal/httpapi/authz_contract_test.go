@@ -1,10 +1,10 @@
-//nolint:noctx // test scaffolding does not need real context
+//nolint:noctx,goconst // test scaffolding does not need real context; snapshot body literal reused across contract tests
 package httpapi_test
 
 import (
 	"context"
 	_ "embed"
-	"fmt"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -15,6 +15,7 @@ import (
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/vm"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -68,10 +69,12 @@ func extractRoutePatterns(t *testing.T) []extractedRoute {
 		matches := routePatternRe.FindAllStringSubmatch(src, -1)
 		for _, m := range matches {
 			pattern := m[1]
+
 			parts := strings.SplitN(pattern, " ", 2)
 			if len(parts) != 2 {
 				t.Fatalf("route pattern %q did not contain a method", pattern)
 			}
+
 			method := parts[0]
 			path := parts[1]
 
@@ -115,9 +118,8 @@ func fillPath(path string) string {
 // T045: admin black-box contract
 // -----------------------------------------------------------------------------
 
+//nolint:paralleltest // serial: shared router and database fixtures
 func TestAdminAuthorization_BlackBox(t *testing.T) {
-	//nolint:paralleltest // serial: shared router and database fixtures
-
 	routes := extractRoutePatterns(t)
 	adminRoutes := filterAdminRoutes(routes)
 
@@ -160,9 +162,8 @@ func filterAdminRoutes(routes []extractedRoute) []extractedRoute {
 // T046: adminProtect fail-closed boundary test
 // -----------------------------------------------------------------------------
 
+//nolint:paralleltest // serial: shared auth and session fixtures
 func TestAdminProtect_FailClosed(t *testing.T) {
-	//nolint:paralleltest // serial: shared auth and session fixtures
-
 	_, authHandler := newAuthzContractRouter(t)
 	adminCookie := adminCookie(t, authHandler)
 	bobCookie := bobCookie(t, authHandler)
@@ -198,10 +199,12 @@ func TestAdminProtect_FailClosed(t *testing.T) {
 			called := false
 			next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				called = true
+
 				w.WriteHeader(http.StatusOK)
 			})
 
 			guarded := authHandler.RequireAdmin(next)
+
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/admin/nodes", nil)
 			if c.cookie != nil {
 				req.AddCookie(c.cookie)
@@ -214,9 +217,11 @@ func TestAdminProtect_FailClosed(t *testing.T) {
 				if !called {
 					t.Fatalf("wrapped handler should have been called")
 				}
+
 				if rec.Code != http.StatusOK {
 					t.Fatalf("status = %d, want 200", rec.Code)
 				}
+
 				return
 			}
 
@@ -224,13 +229,8 @@ func TestAdminProtect_FailClosed(t *testing.T) {
 				t.Fatalf("wrapped handler should not be called for %s", c.name)
 			}
 
-			found := false
-			for _, want := range c.wantCodes {
-				if rec.Code == want {
-					found = true
-					break
-				}
-			}
+			found := slices.Contains(c.wantCodes, rec.Code)
+
 			if !found {
 				t.Fatalf("status = %d, want one of %v", rec.Code, c.wantCodes)
 			}
@@ -254,9 +254,8 @@ func csrfExemptRoutes() map[string]string {
 	}
 }
 
+//nolint:paralleltest // serial: shared router and session fixtures
 func TestCSRFContract_NonGETRoutesRejected(t *testing.T) {
-	//nolint:paralleltest // serial: shared router and session fixtures
-
 	routes := extractRoutePatterns(t)
 	mux, authHandler := newAuthzContractRouter(t)
 	bob := bobCookie(t, authHandler)
@@ -270,9 +269,10 @@ func TestCSRFContract_NonGETRoutesRejected(t *testing.T) {
 		}
 
 		if reason, ok := exempt[r.Pattern]; ok {
-			t.Run("exempt "+r.Pattern, func(t *testing.T) {
+			t.Run("exempt "+r.Pattern, func(_ *testing.T) {
 				_ = reason
 			})
+
 			continue
 		}
 
@@ -342,8 +342,8 @@ func handlerArgToSource(arg string) (string, bool) {
 	// handler variable (e.g. cfg.VMDetail, snapshots, handler).
 	arg = strings.TrimSpace(arg)
 	for _, prefix := range []string{"protect(", "adminProtect("} {
-		if strings.HasPrefix(arg, prefix) {
-			arg = strings.TrimPrefix(arg, prefix)
+		if rest, ok := strings.CutPrefix(arg, prefix); ok {
+			arg = rest
 			if i := strings.Index(arg, ","); i >= 0 {
 				arg = strings.TrimSpace(arg[:i])
 			}
@@ -351,12 +351,12 @@ func handlerArgToSource(arg string) (string, bool) {
 	}
 
 	src, ok := handlerSourceMap[arg]
+
 	return src, ok
 }
 
+//nolint:paralleltest // serial: test data is shared
 func TestResolveContract_PerVMRoutes(t *testing.T) {
-	//nolint:paralleltest // serial: test data is shared
-
 	routes := extractRoutePatterns(t)
 
 	for _, r := range routes {
@@ -371,6 +371,7 @@ func TestResolveContract_PerVMRoutes(t *testing.T) {
 				if !strings.Contains(reason, "resolves") && !strings.Contains(reason, "ticket") {
 					t.Fatalf("exemption %q has no written justification", r.Pattern)
 				}
+
 				return
 			}
 
@@ -414,9 +415,8 @@ var idorNonForbiddenRoutes = map[string]string{
 	"GET /api/v1/vms/{cluster}/{vmid}/serial/websocket":  "websocket requires a pre-issued ticket",
 }
 
+//nolint:paralleltest // serial: shared fake cluster and router fixtures
 func TestIDORContract_PerVMRoutes(t *testing.T) {
-	//nolint:paralleltest // serial: shared fake cluster and router fixtures
-
 	routes := extractRoutePatterns(t)
 	mux, authHandler := newAuthzContractRouter(t)
 	bobSession, bobCSRF := loginCSRF(t, authHandler, `{"username":"bob","password":"pvmss-bob"}`)
@@ -439,9 +439,11 @@ func TestIDORContract_PerVMRoutes(t *testing.T) {
 			if body != "" {
 				req.Header.Set("Content-Type", "application/json")
 			}
+
 			if r.Pattern == "GET /api/v1/vms/{cluster}/{vmid}/metrics/history" {
 				req.URL.RawQuery = "range=hour"
 			}
+
 			req.AddCookie(bobSession)
 
 			if r.Method != http.MethodGet {
@@ -456,6 +458,7 @@ func TestIDORContract_PerVMRoutes(t *testing.T) {
 				if rec.Code == http.StatusOK || rec.Code >= http.StatusInternalServerError {
 					t.Fatalf("%s %s: status = %d, want any non-2xx, non-5xx (exemption: %s)", r.Method, path, rec.Code, reason)
 				}
+
 				return
 			}
 
@@ -473,21 +476,21 @@ func TestIDORContract_PerVMRoutes(t *testing.T) {
 type consoleRelayStub struct{}
 
 func (consoleRelayStub) GetVNCTicket(_ context.Context, _ string, _ int, _ string) (cluster.VNCProxyTicket, error) {
-	return cluster.VNCProxyTicket{}, fmt.Errorf("stub")
+	return cluster.VNCProxyTicket{}, errors.New("stub")
 }
 
 func (consoleRelayStub) RelayConsole(_ context.Context, _ string, _ int, _ cluster.VNCProxyTicket, _ io.ReadWriteCloser) error {
-	return fmt.Errorf("stub")
+	return errors.New("stub")
 }
 
 type terminalRelayStub struct{}
 
 func (terminalRelayStub) GetTermProxy(_ context.Context, _ string, _ int, _ string) (cluster.TermProxyTicket, error) {
-	return cluster.TermProxyTicket{}, fmt.Errorf("stub")
+	return cluster.TermProxyTicket{}, errors.New("stub")
 }
 
 func (terminalRelayStub) RelaySerial(_ context.Context, _ string, _ int, _ cluster.TermProxyTicket, _ io.ReadWriteCloser) error {
-	return fmt.Errorf("stub")
+	return errors.New("stub")
 }
 
 func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {

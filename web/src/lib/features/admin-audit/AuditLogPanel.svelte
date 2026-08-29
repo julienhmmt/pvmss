@@ -100,12 +100,12 @@
 			<input class="rounded-md border border-border bg-background px-3 py-1.5" type="datetime-local" bind:value={toFilter} />
 		</label>
 		<label class="flex flex-col gap-1 text-sm">
-			<span class="text-muted-foreground">Severity</span>
+			<span class="text-muted-foreground">{m['admin.audit.severity']()}</span>
 			<select class="rounded-md border border-border bg-background px-3 py-1.5" bind:value={severityFilter}>
-				<option value="">all</option>
-				<option value="critical">critical</option>
-				<option value="warning">warning</option>
-				<option value="info">info</option>
+				<option value="">{m['admin.audit.severityAll']()}</option>
+				<option value="critical">{m['admin.audit.severityCritical']()}</option>
+				<option value="warning">{m['admin.audit.severityWarning']()}</option>
+				<option value="info">{m['admin.audit.severityInfo']()}</option>
 			</select>
 		</label>
 		<Button type="submit">{m['common.filter']()}</Button>
@@ -127,11 +127,11 @@
 						<th class="px-4 py-2 font-medium">{m['admin.audit.time']()}</th>
 						<th class="px-4 py-2 font-medium">{m['admin.audit.actor']()}</th>
 						<th class="px-4 py-2 font-medium">{m['common.cluster']()}</th>
-						<th class="px-4 py-2 font-medium">VM</th>
+						<th class="px-4 py-2 font-medium">{m['admin.audit.columnVm']()}</th>
 						<th class="px-4 py-2 font-medium">{m['admin.audit.action']()}</th>
-						<th class="px-4 py-2 font-medium">Target</th>
-						<th class="px-4 py-2 font-medium">Severity</th>
-						<th class="px-4 py-2 font-medium">Detail</th>
+						<th class="px-4 py-2 font-medium">{m['admin.audit.target']()}</th>
+						<th class="px-4 py-2 font-medium">{m['admin.audit.severity']()}</th>
+						<th class="px-4 py-2 font-medium">{m['admin.audit.detail']()}</th>
 					</tr>
 				</thead>
 				<tbody>

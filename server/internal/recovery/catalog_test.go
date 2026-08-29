@@ -58,7 +58,8 @@ func TestMapCatalog_NilResolver(t *testing.T) {
 	})
 
 	nodes, storages, skips, bridges, isos, isoSkips, err := recovery.MapCatalog(
-		context.Background(), legacyDB, "default", nil)
+		context.Background(), legacyDB, "default", nil,
+	)
 	if err != nil {
 		t.Fatalf("MapCatalog: %v", err)
 	}
@@ -113,7 +114,8 @@ func TestMapCatalog_WithResolver(t *testing.T) {
 	resolver := mockStorageResolver{nodes: []string{"pve-a", "pve-b"}}
 
 	_, storages, skips, _, _, _, err := recovery.MapCatalog(
-		context.Background(), legacyDB, "default", resolver)
+		context.Background(), legacyDB, "default", resolver,
+	)
 	if err != nil {
 		t.Fatalf("MapCatalog: %v", err)
 	}
@@ -155,7 +157,8 @@ func TestMapCatalog_ResolverError(t *testing.T) {
 	resolver := mockStorageResolver{err: context.Canceled}
 
 	_, storages, skips, _, _, _, err := recovery.MapCatalog(
-		context.Background(), legacyDB, "default", resolver)
+		context.Background(), legacyDB, "default", resolver,
+	)
 	if err != nil {
 		t.Fatalf("MapCatalog: %v", err)
 	}

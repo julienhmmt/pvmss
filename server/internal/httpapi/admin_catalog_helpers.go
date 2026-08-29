@@ -65,7 +65,7 @@ func (h *AdminCatalog) serveCatalogDelete(w http.ResponseWriter, r *http.Request
 
 	h.recordAdminAction(r, catalogActionSlug(kind)+".delete", catalogTargetType(kind), id,
 		fmt.Sprintf("deleted %s %s on cluster %s", kind, id, clusterName),
-		[]any{map[string]any{"cluster": clusterName, "id": id}})
+		[]any{map[string]any{auditKeyCluster: clusterName, "id": id}})
 	writeAdminJSON(w, http.StatusOK, statusResponse{Status: statusDeleted})
 }
 
@@ -113,7 +113,7 @@ func (h *AdminCatalog) serveCatalogToggle(w http.ResponseWriter, r *http.Request
 
 	h.recordAdminAction(r, catalogActionSlug(kind)+".toggle", catalogTargetType(kind), id,
 		fmt.Sprintf("toggled %s %s on cluster %s to enabled=%v", kind, id, clusterName, req.Enabled),
-		[]any{map[string]any{"cluster": clusterName, "id": id, "enabled": req.Enabled}})
+		[]any{map[string]any{auditKeyCluster: clusterName, "id": id, auditKeyEnabled: req.Enabled}})
 	writeAdminJSON(w, http.StatusOK, catalogToggleResponse{ID: id, Enabled: req.Enabled})
 }
 

@@ -78,7 +78,7 @@ func (s *Store) RecordAdminAction(ctx context.Context, actor, action, targetType
 // each caller, so no audit site can accidentally let a DB error propagate into
 // the request path.
 //
-//nolint:gosec // table/column names are hardcoded literals, not user input
+
 func (s *Store) insertAuditRow(ctx context.Context, actor, cluster string, vmid *int, action, targetType, targetID, detail, ipAddress, severity string) error {
 	_, err := s.db.ExecContext(ctx,
 		`INSERT INTO audit_log (actor, cluster, vmid, action, timestamp, target_type, target_id, detail, ip_address, severity) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -318,6 +318,7 @@ type AuditConfig struct {
 // after migrations have run.
 func (s *Store) GetAuditConfig(ctx context.Context) (AuditConfig, error) {
 	var days int
+
 	err := s.db.QueryRowContext(ctx,
 		`SELECT retention_days FROM audit_config WHERE id = 1`,
 	).Scan(&days)
@@ -352,7 +353,6 @@ func (s *Store) SetAuditConfig(ctx context.Context, retentionDays int) error {
 func (s *Store) PruneAuditLog(ctx context.Context, retentionDays int) (int64, error) {
 	cutoff := time.Now().UTC().Add(-time.Duration(retentionDays) * 24 * time.Hour).Format(time.RFC3339Nano)
 
-	//nolint:gosec // table/column names are hardcoded literals, not user input
 	res, err := s.db.ExecContext(ctx,
 		`DELETE FROM audit_log WHERE timestamp < ?`, cutoff)
 	if err != nil {
@@ -374,6 +374,7 @@ func (s *Store) CountAuditPrunePreview(ctx context.Context, retentionDays int) (
 	cutoff := time.Now().UTC().Add(-time.Duration(retentionDays) * 24 * time.Hour).Format(time.RFC3339Nano)
 
 	var n int64
+
 	err := s.db.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM audit_log WHERE timestamp < ?`, cutoff,
 	).Scan(&n)

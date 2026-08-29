@@ -110,7 +110,7 @@ func (h *AdminCatalog) ServeProfileCreate(w http.ResponseWriter, r *http.Request
 
 	h.recordAdminAction(r, "admin.profiles.create", "profile", profile.ID,
 		fmt.Sprintf("created profile %s (%s) on cluster %s", profile.Label, profile.ID, clusterName),
-		[]any{map[string]any{"cluster": clusterName, "label": profile.Label, "cpuCores": profile.CPUCores, "memoryMB": profile.MemoryMB, "diskGB": profile.DiskGB, "bus": profile.Bus, "enabled": profile.Enabled}})
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyLabel: profile.Label, "cpuCores": profile.CPUCores, "memoryMB": profile.MemoryMB, "diskGB": profile.DiskGB, "bus": profile.Bus, auditKeyEnabled: profile.Enabled}})
 	writeAdminJSON(w, http.StatusCreated, adminProfileDTO{
 		ID: profile.ID, Label: profile.Label, CPUCores: profile.CPUCores,
 		MemoryMB: profile.MemoryMB, DiskGB: profile.DiskGB, Bus: profile.Bus, Enabled: profile.Enabled,
@@ -158,7 +158,7 @@ func (h *AdminCatalog) ServeProfileUpdate(w http.ResponseWriter, r *http.Request
 
 	h.recordAdminAction(r, "admin.profiles.update", "profile", id,
 		fmt.Sprintf("updated profile %s (%s) on cluster %s", profile.Label, id, clusterName),
-		[]any{map[string]any{"cluster": clusterName, "id": id, "label": profile.Label, "cpuCores": profile.CPUCores, "memoryMB": profile.MemoryMB, "diskGB": profile.DiskGB, "bus": profile.Bus, "enabled": profile.Enabled}})
+		[]any{map[string]any{auditKeyCluster: clusterName, "id": id, auditKeyLabel: profile.Label, "cpuCores": profile.CPUCores, "memoryMB": profile.MemoryMB, "diskGB": profile.DiskGB, "bus": profile.Bus, auditKeyEnabled: profile.Enabled}})
 	writeAdminJSON(w, http.StatusOK, adminProfileDTO{
 		ID: profile.ID, Label: profile.Label, CPUCores: profile.CPUCores,
 		MemoryMB: profile.MemoryMB, DiskGB: profile.DiskGB, Bus: profile.Bus, Enabled: profile.Enabled,

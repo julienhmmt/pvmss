@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/subtle"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/store"
@@ -92,7 +91,7 @@ func (m *csrfMiddleware) recordCSRFRejected(ctx context.Context, r *http.Request
 		actor = identity.Username
 	}
 
-	body, _ := json.Marshal(map[string]any{"summary": fmt.Sprintf("CSRF rejected: %s", summary), "changes": []any{}})
+	body, _ := json.Marshal(map[string]any{auditKeySummary: "CSRF rejected: " + summary, auditKeyChanges: []any{}})
 	_ = m.store.RecordAdminAction(ctx, actor, "auth.csrf_rejected", "auth", actor, string(body), clientIP(r, m.trustedProxyHops))
 }
 

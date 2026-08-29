@@ -74,6 +74,7 @@ func (l *ipRateLimiter) middleware(next http.Handler) http.Handler {
 		if !l.allow(ip, time.Now()) {
 			l.recordRateLimited(r.Context(), r, ip, "ip")
 			writeAuthError(w, http.StatusTooManyRequests, "rate_limited", "too many requests, try again later")
+
 			return
 		}
 
@@ -158,8 +159,8 @@ func (l *userRateLimiter) recordRateLimited(ctx context.Context, r *http.Request
 	}
 
 	body, _ := json.Marshal(map[string]any{
-		"summary": fmt.Sprintf("rate limited on %s key", keyType),
-		"changes": []any{map[string]any{"keyType": keyType, "actor": actor}},
+		auditKeySummary: fmt.Sprintf("rate limited on %s key", keyType),
+		auditKeyChanges: []any{map[string]any{"keyType": keyType, "actor": actor}},
 	})
 	_ = l.store.RecordAdminAction(ctx, actor, "auth.rate_limited", "auth", actor, string(body), clientIP(r, l.trustedProxyHops))
 }
@@ -170,8 +171,8 @@ func (l *ipRateLimiter) recordRateLimited(ctx context.Context, r *http.Request, 
 	}
 
 	body, _ := json.Marshal(map[string]any{
-		"summary": fmt.Sprintf("rate limited on %s key", keyType),
-		"changes": []any{map[string]any{"keyType": keyType, "actor": actor}},
+		auditKeySummary: fmt.Sprintf("rate limited on %s key", keyType),
+		auditKeyChanges: []any{map[string]any{"keyType": keyType, "actor": actor}},
 	})
 	_ = l.store.RecordAdminAction(ctx, actor, "auth.rate_limited", "auth", actor, string(body), clientIP(r, l.trustedProxyHops))
 }

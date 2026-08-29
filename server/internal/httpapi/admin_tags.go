@@ -91,7 +91,7 @@ func (h *AdminCatalog) ServeTagCreate(w http.ResponseWriter, r *http.Request) {
 
 	h.recordAdminAction(r, "admin.tags.create", "tag", tag.Name,
 		fmt.Sprintf("created tag %s on cluster %s", tag.Name, clusterName),
-		[]any{map[string]any{"cluster": clusterName, "name": tag.Name, "color": tag.Color, "protected": tag.Protected}})
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: tag.Name, "color": tag.Color, "protected": tag.Protected}})
 	writeAdminJSON(w, http.StatusCreated, adminTagDTO{
 		Name: tag.Name, Color: tag.Color, VMCount: h.tagVMCount(tag.Name), Protected: tag.Protected,
 	})
@@ -143,7 +143,7 @@ func (h *AdminCatalog) ServeTagColor(w http.ResponseWriter, r *http.Request) {
 
 	h.recordAdminAction(r, "admin.tags.color", "tag", name,
 		fmt.Sprintf("updated tag %s color to %s on cluster %s", name, tag.Color, clusterName),
-		[]any{map[string]any{"cluster": clusterName, "name": tag.Name, "color": tag.Color, "protected": tag.Protected}})
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: tag.Name, "color": tag.Color, "protected": tag.Protected}})
 	writeAdminJSON(w, http.StatusOK, adminTagDTO{
 		Name: tag.Name, Color: tag.Color, VMCount: h.tagVMCount(tag.Name), Protected: tag.Protected,
 	})
@@ -186,7 +186,7 @@ func (h *AdminCatalog) ServeTagDelete(w http.ResponseWriter, r *http.Request) {
 
 	h.recordAdminAction(r, "admin.tags.delete", "tag", name,
 		fmt.Sprintf("deleted tag %s on cluster %s", name, clusterName),
-		[]any{map[string]any{"cluster": clusterName, "name": name}})
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: name}})
 	writeAdminJSON(w, http.StatusOK, statusResponse{Status: statusDeleted})
 }
 

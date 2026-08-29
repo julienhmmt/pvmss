@@ -113,8 +113,7 @@ func (h *ClusterRefresh) writeRefreshError(w http.ResponseWriter, err error) {
 // wait, not the whole interval again. Falls back to the full interval only
 // if the error doesn't carry a remaining time.
 func (h *ClusterRefresh) computeRetryAfterSeconds(err error) int {
-	var tooSoon *inventory.TooSoonError
-	if errors.As(err, &tooSoon) {
+	if tooSoon, ok := errors.AsType[*inventory.TooSoonError](err); ok {
 		seconds := int(tooSoon.RetryAfter / time.Second)
 		if tooSoon.RetryAfter%time.Second != 0 {
 			seconds++
