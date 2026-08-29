@@ -3,9 +3,7 @@ package httpapi
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"pvmss/server/internal/auth"
@@ -151,34 +149,41 @@ func (handler *AdminPolicy) ServePolicyUpdate(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	changes := policyChangeDiff(current, updated)
+	handler.recordAdminAction(r, "admin.policy.update", "policy", clusterName,
+		"updated policy for cluster "+clusterName, changes)
+	writeAdminJSON(w, http.StatusOK, updated)
+}
+
+// policyChangeDiff compares the before/after policy snapshots and returns a
+// list of change entries for the audit detail payload.
+func policyChangeDiff(current, updated policyResponse) []any {
 	changes := []any{}
 	if current.Quota.MaxVMPerUser != updated.Quota.MaxVMPerUser {
-		changes = append(changes, map[string]any{"field": "quota.maxVmPerUser", "old": current.Quota.MaxVMPerUser, "new": updated.Quota.MaxVMPerUser})
+		changes = append(changes, map[string]any{auditKeyField: "quota.maxVmPerUser", auditKeyOld: current.Quota.MaxVMPerUser, auditKeyNew: updated.Quota.MaxVMPerUser})
 	}
 	if current.Gabarit.MaxSockets != updated.Gabarit.MaxSockets {
-		changes = append(changes, map[string]any{"field": "gabarit.maxSockets", "old": current.Gabarit.MaxSockets, "new": updated.Gabarit.MaxSockets})
+		changes = append(changes, map[string]any{auditKeyField: "gabarit.maxSockets", auditKeyOld: current.Gabarit.MaxSockets, auditKeyNew: updated.Gabarit.MaxSockets})
 	}
 	if current.Gabarit.MaxCores != updated.Gabarit.MaxCores {
-		changes = append(changes, map[string]any{"field": "gabarit.maxCores", "old": current.Gabarit.MaxCores, "new": updated.Gabarit.MaxCores})
+		changes = append(changes, map[string]any{auditKeyField: "gabarit.maxCores", auditKeyOld: current.Gabarit.MaxCores, auditKeyNew: updated.Gabarit.MaxCores})
 	}
 	if current.Gabarit.MaxMemoryMB != updated.Gabarit.MaxMemoryMB {
-		changes = append(changes, map[string]any{"field": "gabarit.maxMemoryMB", "old": current.Gabarit.MaxMemoryMB, "new": updated.Gabarit.MaxMemoryMB})
+		changes = append(changes, map[string]any{auditKeyField: "gabarit.maxMemoryMB", auditKeyOld: current.Gabarit.MaxMemoryMB, auditKeyNew: updated.Gabarit.MaxMemoryMB})
 	}
 	if current.Gabarit.MaxDiskPerVMGB != updated.Gabarit.MaxDiskPerVMGB {
-		changes = append(changes, map[string]any{"field": "gabarit.maxDiskPerVmGb", "old": current.Gabarit.MaxDiskPerVMGB, "new": updated.Gabarit.MaxDiskPerVMGB})
+		changes = append(changes, map[string]any{auditKeyField: "gabarit.maxDiskPerVmGb", auditKeyOld: current.Gabarit.MaxDiskPerVMGB, auditKeyNew: updated.Gabarit.MaxDiskPerVMGB})
 	}
 	if current.Gabarit.MaxNetworkCards != updated.Gabarit.MaxNetworkCards {
-		changes = append(changes, map[string]any{"field": "gabarit.maxNetworkCards", "old": current.Gabarit.MaxNetworkCards, "new": updated.Gabarit.MaxNetworkCards})
+		changes = append(changes, map[string]any{auditKeyField: "gabarit.maxNetworkCards", auditKeyOld: current.Gabarit.MaxNetworkCards, auditKeyNew: updated.Gabarit.MaxNetworkCards})
 	}
 	if current.Gabarit.MaxSnapshots != updated.Gabarit.MaxSnapshots {
-		changes = append(changes, map[string]any{"field": "gabarit.maxSnapshots", "old": current.Gabarit.MaxSnapshots, "new": updated.Gabarit.MaxSnapshots})
+		changes = append(changes, map[string]any{auditKeyField: "gabarit.maxSnapshots", auditKeyOld: current.Gabarit.MaxSnapshots, auditKeyNew: updated.Gabarit.MaxSnapshots})
 	}
 	if current.Gabarit.AllowCustomYAML != updated.Gabarit.AllowCustomYAML {
-		changes = append(changes, map[string]any{"field": "gabarit.allowCustomYaml", "old": current.Gabarit.AllowCustomYAML, "new": updated.Gabarit.AllowCustomYAML})
+		changes = append(changes, map[string]any{auditKeyField: "gabarit.allowCustomYaml", auditKeyOld: current.Gabarit.AllowCustomYAML, auditKeyNew: updated.Gabarit.AllowCustomYAML})
 	}
-	handler.recordAdminAction(r, "admin.policy.update", "policy", clusterName,
-		fmt.Sprintf("updated policy for cluster %s", clusterName), changes)
-	writeAdminJSON(w, http.StatusOK, updated)
+	return changes
 }
 
 func (handler *AdminPolicy) readPolicy(ctx context.Context, clusterName string) (policyResponse, error) {
@@ -263,9 +268,7 @@ func (handler *AdminPolicy) recordAdminAction(r *http.Request, action, targetTyp
 	}
 
 	actor, _ := handler.auth.Principal(r)
-	detail := map[string]any{"summary": summary, "changes": changes}
-	detailJSON, _ := json.Marshal(detail)
-	if err := handler.store.RecordAdminAction(r.Context(), actor.Username, action, targetType, targetID, string(detailJSON), clientIP(r, handler.trustedProxyHops)); err != nil {
+	if err := handler.store.RecordAdminAction(r.Context(), actor.Username, action, targetType, targetID, detailJSON(summary, changes), clientIP(r, handler.trustedProxyHops)); err != nil {
 		handler.log.Error("failed to record admin action", "component", "httpapi", "action", action, "error", err)
 	}
 }

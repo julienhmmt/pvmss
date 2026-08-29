@@ -180,7 +180,7 @@ func (h *AdminOps) ServeAuditConfigUpdate(w http.ResponseWriter, r *http.Request
 	_ = h.store.RecordAdminAction(r.Context(), actor.Username, "admin.audit_config.update", "audit_config", "",
 		detailJSON(fmt.Sprintf("retention set to %d days", req.RetentionDays), nil), ip)
 
-	writeAdminJSON(w, http.StatusOK, auditConfigDTO{RetentionDays: req.RetentionDays})
+	writeAdminJSON(w, http.StatusOK, auditConfigDTO(req))
 }
 
 // prunePreviewDTO is the response body for GET /admin/audit/prune-preview.
@@ -509,7 +509,7 @@ func (h *AdminOps) ServeDBImportConfirm(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *AdminOps) recordImportRejected(ctx context.Context, actor auth.Identity, ip, reason string) {
-	detail := detailJSON(fmt.Sprintf("database import rejected: %s", reason), nil)
+	detail := detailJSON("database import rejected: "+reason, nil)
 	_ = h.store.RecordAdminAction(ctx, actor.Username, "admin.db_import.rejected", "db", "", detail, ip)
 }
 
@@ -587,8 +587,25 @@ func (h *AdminOps) ServePublicVersion(w http.ResponseWriter, _ *http.Request) {
 	_ = writeJSON(w, http.StatusOK, body)
 }
 
+// Audit detail JSON map keys. Declared as constants to satisfy goconst and
+// keep the audit payload schema documented in one place.
+const (
+	auditKeySummary = "summary"
+	auditKeyChanges = "changes"
+	auditKeyCluster = "cluster"
+	auditKeyName    = "name"
+	auditKeyField   = "field"
+	auditKeyEnabled = "enabled"
+	auditKeyOld     = "old"
+	auditKeyNew     = "new"
+	auditKeyID      = "id"
+	auditKeyLabel   = "label"
+	auditKeyActor   = "actor"
+	auditKeyType    = "keyType"
+)
+
 func detailJSON(summary string, changes []any) string {
-	body, err := json.Marshal(map[string]any{"summary": summary, "changes": changes})
+	body, err := json.Marshal(map[string]any{auditKeySummary: summary, auditKeyChanges: changes})
 	if err != nil {
 		return `{"summary":"` + summary + `","changes":[]}`
 	}

@@ -412,6 +412,7 @@ func TestRecordAdminAction_InsertsRowWithAdminFields(t *testing.T) {
 		cluster, action, targetType, targetID, detail, ip, severity string
 		vmid                                                        sql.NullInt64
 	)
+
 	err := st.DB().QueryRowContext(ctx,
 		`SELECT cluster, action, vmid, target_type, target_id, detail, ip_address, severity FROM audit_log ORDER BY id DESC LIMIT 1`,
 	).Scan(&cluster, &action, &vmid, &targetType, &targetID, &detail, &ip, &severity)
@@ -484,7 +485,9 @@ func TestRecordAction_StillWritesSeverity(t *testing.T) {
 // strings, matching what RecordAction writes in production.
 func insertAuditRowAtTimestamp(t *testing.T, st *store.Store, ts time.Time) {
 	t.Helper()
+
 	ctx := context.Background()
+
 	_, err := st.DB().ExecContext(ctx,
 		`INSERT INTO audit_log (actor, cluster, vmid, action, timestamp, target_type, target_id, detail, ip_address, severity) VALUES (?, ?, ?, ?, ?, '', '', '', '', 'info')`,
 		"alice@pve", "default", 101, "start", ts.UTC().Format(time.RFC3339Nano))
@@ -650,6 +653,7 @@ func TestPruneAuditLog_DoesNotBlockConcurrentQuery(t *testing.T) {
 	// Concurrent query while pruning. SQLite serializes writers, but reads
 	// via QueryContext must not be blocked by the DELETE.
 	done := make(chan error, 1)
+
 	go func() {
 		_, err := st.QueryAudit(ctx)
 		done <- err

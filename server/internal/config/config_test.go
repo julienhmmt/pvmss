@@ -1,3 +1,4 @@
+//nolint:goconst // env var names are repeated across table-driven config test cases
 package config_test
 
 import (

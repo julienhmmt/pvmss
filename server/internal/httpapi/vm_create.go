@@ -209,6 +209,7 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := policy.ContextWithAuditIP(r.Context(), clientIP(r, h.trustedProxyHops))
+
 	result, err := vm.Create(ctx, identity, clusterName, req, vm.CreateDeps{
 		Store:    h.store,
 		Creator:  creator,

@@ -571,7 +571,7 @@ func (h *Auth) recordLoginFailed(ctx context.Context, username, ip string) {
 }
 
 func loginFailedDetail(username string) string {
-	body, err := json.Marshal(map[string]any{"summary": fmt.Sprintf("login failed for user %q", username), "changes": []any{}})
+	body, err := json.Marshal(map[string]any{auditKeySummary: fmt.Sprintf("login failed for user %q", username), auditKeyChanges: []any{}})
 	if err != nil {
 		return `{"summary":"login failed","changes":[]}`
 	}

@@ -550,7 +550,8 @@ func TestVMCreate_DetailedOutOfRange(t *testing.T) {
 
 			body := fmt.Sprintf(
 				`{"cluster":"default","name":"web-11","node":"pve-node-01","cpuCores":%d,"memoryMB":%d,"disk":{"storage":"local-lvm","sizeGB":%d},"network":{"bridge":"vmbr0"}}`,
-				tc.cpu, tc.memory, tc.diskGB)
+				tc.cpu, tc.memory, tc.diskGB,
+			)
 
 			response := postVMCreate(t, handler, body, cookie)
 			if response.Code != http.StatusBadRequest {

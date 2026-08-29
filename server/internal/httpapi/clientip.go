@@ -29,10 +29,7 @@ func clientIP(r *http.Request, trustedProxyHops int) string {
 				hops[i] = strings.TrimSpace(hops[i])
 			}
 
-			idx := len(hops) - trustedProxyHops
-			if idx < 0 {
-				idx = 0
-			}
+			idx := max(len(hops)-trustedProxyHops, 0)
 
 			if idx < len(hops) && hops[idx] != "" {
 				return hops[idx]

@@ -137,7 +137,7 @@ func (h *AdminCatalog) ServeNodeToggle(w http.ResponseWriter, r *http.Request) {
 
 	h.recordAdminAction(r, "admin.nodes.toggle", "node", req.Name,
 		fmt.Sprintf("node %s on cluster %s set enabled=%v", req.Name, clusterName, req.Enabled),
-		[]any{map[string]any{"cluster": clusterName, "name": req.Name, "enabled": req.Enabled}})
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: req.Name, auditKeyEnabled: req.Enabled}})
 	writeAdminJSON(w, http.StatusOK, toggleResponse{Name: req.Name, Enabled: req.Enabled})
 }
 
@@ -233,7 +233,7 @@ func (h *AdminCatalog) ServeStorageToggle(w http.ResponseWriter, r *http.Request
 
 	h.recordAdminAction(r, "admin.storages.toggle", "storage", req.Name,
 		fmt.Sprintf("storage %s on node %s cluster %s set enabled=%v", req.Name, req.Node, clusterName, req.Enabled),
-		[]any{map[string]any{"cluster": clusterName, "name": req.Name, "node": req.Node, "enabled": req.Enabled}})
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: req.Name, "node": req.Node, auditKeyEnabled: req.Enabled}})
 	writeAdminJSON(w, http.StatusOK, storageToggleResponse{Name: req.Name, Node: req.Node, Enabled: req.Enabled})
 }
 
@@ -334,7 +334,7 @@ func (h *AdminCatalog) ServeBridgeToggle(w http.ResponseWriter, r *http.Request)
 
 	h.recordAdminAction(r, "admin.bridges.toggle", "bridge", req.Name,
 		fmt.Sprintf("bridge %s on node %s cluster %s set enabled=%v", req.Name, req.Node, clusterName, req.Enabled),
-		[]any{map[string]any{"cluster": clusterName, "name": req.Name, "node": req.Node, "enabled": req.Enabled}})
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: req.Name, "node": req.Node, auditKeyEnabled: req.Enabled}})
 	writeAdminJSON(w, http.StatusOK, bridgeToggleResponse{Node: req.Node, Name: req.Name, Enabled: req.Enabled})
 }
 
@@ -437,7 +437,7 @@ func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 
 	h.recordAdminAction(r, "admin.isos.toggle", "iso", req.File,
 		fmt.Sprintf("iso %s on storage %s node %s cluster %s set enabled=%v", req.File, req.Storage, req.Node, clusterName, req.Enabled),
-		[]any{map[string]any{"cluster": clusterName, "node": req.Node, "storage": req.Storage, "file": req.File, "enabled": req.Enabled}})
+		[]any{map[string]any{auditKeyCluster: clusterName, "node": req.Node, "storage": req.Storage, "file": req.File, auditKeyEnabled: req.Enabled}})
 	writeAdminJSON(w, http.StatusOK, isoToggleResponse{Node: req.Node, Storage: req.Storage, File: req.File, Enabled: req.Enabled})
 }
 

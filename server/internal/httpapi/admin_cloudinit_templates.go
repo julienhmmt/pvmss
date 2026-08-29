@@ -103,7 +103,7 @@ func (h *AdminCatalog) ServeCloudInitTemplateCreate(w http.ResponseWriter, r *ht
 
 	h.recordAdminAction(r, "admin.cloudinit_templates.create", "cloudinit_template", tmpl.ID,
 		fmt.Sprintf("created cloud-init template %s (%s) on cluster %s", tmpl.Label, tmpl.ID, clusterName),
-		[]any{map[string]any{"cluster": clusterName, "id": tmpl.ID, "label": tmpl.Label, "enabled": tmpl.Enabled}})
+		[]any{map[string]any{auditKeyCluster: clusterName, "id": tmpl.ID, auditKeyLabel: tmpl.Label, auditKeyEnabled: tmpl.Enabled}})
 	writeAdminJSON(w, http.StatusCreated, adminCloudInitTemplateDTO{
 		ID: tmpl.ID, Label: tmpl.Label, Content: tmpl.Content, Enabled: tmpl.Enabled,
 	})
@@ -155,7 +155,7 @@ func (h *AdminCatalog) ServeCloudInitTemplateUpdate(w http.ResponseWriter, r *ht
 
 	h.recordAdminAction(r, "admin.cloudinit_templates.update", "cloudinit_template", id,
 		fmt.Sprintf("updated cloud-init template %s (%s) on cluster %s", tmpl.Label, id, clusterName),
-		[]any{map[string]any{"cluster": clusterName, "id": id, "label": tmpl.Label, "enabled": tmpl.Enabled}})
+		[]any{map[string]any{auditKeyCluster: clusterName, "id": id, auditKeyLabel: tmpl.Label, auditKeyEnabled: tmpl.Enabled}})
 	writeAdminJSON(w, http.StatusOK, adminCloudInitTemplateDTO{
 		ID: tmpl.ID, Label: tmpl.Label, Content: tmpl.Content, Enabled: tmpl.Enabled,
 	})

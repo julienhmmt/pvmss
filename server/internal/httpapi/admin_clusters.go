@@ -4,7 +4,6 @@ package httpapi
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -123,8 +122,8 @@ func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request
 		return
 	}
 	handler.recordAdminAction(r, "admin.clusters.create", "cluster", created.Name,
-		fmt.Sprintf("created cluster %s", created.Name),
-		[]any{map[string]any{"name": created.Name, "url": created.URL, "tlsInsecureSkipVerify": created.TLSInsecureSkipVerify, "tokenId": created.TokenID, "oidcEnabled": created.OIDCEnabled}})
+		"created cluster "+created.Name,
+		[]any{map[string]any{auditKeyName: created.Name, "url": created.URL, "tlsInsecureSkipVerify": created.TLSInsecureSkipVerify, "tokenId": created.TokenID, "oidcEnabled": created.OIDCEnabled}})
 	writeAdminJSON(w, http.StatusCreated, handler.clusterDTO(created))
 }
 
@@ -155,8 +154,8 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 		return
 	}
 	handler.recordAdminAction(r, "admin.clusters.update", "cluster", name,
-		fmt.Sprintf("updated cluster %s", name),
-		[]any{map[string]any{"name": name, "url": updated.URL, "tlsInsecureSkipVerify": updated.TLSInsecureSkipVerify, "tokenId": updated.TokenID, "oidcEnabled": updated.OIDCEnabled}})
+		"updated cluster "+name,
+		[]any{map[string]any{auditKeyName: name, "url": updated.URL, "tlsInsecureSkipVerify": updated.TLSInsecureSkipVerify, "tokenId": updated.TokenID, "oidcEnabled": updated.OIDCEnabled}})
 	writeAdminJSON(w, http.StatusOK, handler.clusterDTO(updated))
 }
 
@@ -220,7 +219,7 @@ func (handler *AdminClusters) ServeOIDC(w http.ResponseWriter, r *http.Request) 
 	}
 	handler.recordAdminAction(r, "admin.clusters.oidc", "cluster", name,
 		fmt.Sprintf("set cluster %s OIDC enabled=%v", name, request.Enabled),
-		[]any{map[string]any{"name": name, "oidcEnabled": request.Enabled}})
+		[]any{map[string]any{auditKeyName: name, "oidcEnabled": request.Enabled}})
 	writeAdminJSON(w, http.StatusOK, struct {
 		Name        string `json:"name"`
 		OIDCEnabled bool   `json:"oidcEnabled"`
@@ -239,8 +238,8 @@ func (handler *AdminClusters) ServeDelete(w http.ResponseWriter, r *http.Request
 		handler.inventories.Remove(name)
 	}
 	handler.recordAdminAction(r, "admin.clusters.delete", "cluster", name,
-		fmt.Sprintf("removed cluster %s", name),
-		[]any{map[string]any{"name": name, "status": "removed"}})
+		"removed cluster "+name,
+		[]any{map[string]any{auditKeyName: name, "status": "removed"}})
 	writeAdminJSON(w, http.StatusOK, struct {
 		Status string `json:"status"`
 	}{Status: "removed"})
@@ -336,9 +335,7 @@ func (handler *AdminClusters) SetTrustedProxyHops(n int) {
 
 func (handler *AdminClusters) recordAdminAction(r *http.Request, action, targetType, targetID, summary string, changes []any) {
 	actor, _ := handler.auth.Principal(r)
-	detail := map[string]any{"summary": summary, "changes": changes}
-	detailJSON, _ := json.Marshal(detail)
-	if err := handler.store.RecordAdminAction(r.Context(), actor.Username, action, targetType, targetID, string(detailJSON), clientIP(r, handler.trustedProxyHops)); err != nil {
+	if err := handler.store.RecordAdminAction(r.Context(), actor.Username, action, targetType, targetID, detailJSON(summary, changes), clientIP(r, handler.trustedProxyHops)); err != nil {
 		handler.log.Error("failed to record admin action", "component", "httpapi", "action", action, "error", err)
 	}
 }
