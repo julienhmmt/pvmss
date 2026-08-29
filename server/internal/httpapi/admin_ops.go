@@ -2,10 +2,13 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
@@ -27,12 +30,13 @@ const defaultClusterName = "default"
 // redaction. Every /api/v1/admin/* route is wrapped by Auth.RequireAdmin
 // (FR-016); the public version endpoint is not.
 type AdminOps struct {
-	auth       *Auth
-	store      *store.Store
-	client     cluster.Client
-	projection *inventory.Projection
-	version    string
-	log        *slog.Logger
+	auth             *Auth
+	store            *store.Store
+	client           cluster.Client
+	projection       *inventory.Projection
+	version          string
+	log              *slog.Logger
+	trustedProxyHops int
 }
 
 // NewAdminOps creates the handler for all T14 admin exploitation endpoints.
@@ -51,13 +55,35 @@ func NewAdminOps(authHandler *Auth, st *store.Store, client cluster.Client, proj
 	}
 }
 
+// SetTrustedProxyHops configures how many X-Forwarded-For hops are trusted
+// when extracting the client IP for audit entries.
+func (h *AdminOps) SetTrustedProxyHops(n int) {
+	h.trustedProxyHops = n
+}
+
+// actorAndIP returns the resolved identity and client IP for the request.
+// It never fails; on principal resolution failure it returns an empty actor.
+func (h *AdminOps) actorAndIP(r *http.Request) (auth.Identity, string) {
+	identity, err := h.auth.Principal(r)
+	if err != nil {
+		return auth.Identity{}, clientIP(r, h.trustedProxyHops)
+	}
+
+	return identity, clientIP(r, h.trustedProxyHops)
+}
+
 type auditEntryDTO struct {
-	ID        int64  `json:"id"`
-	Actor     string `json:"actor"`
-	Cluster   string `json:"cluster"`
-	VMID      int    `json:"vmid"`
-	Action    string `json:"action"`
-	Timestamp string `json:"timestamp"`
+	ID         int64  `json:"id"`
+	Actor      string `json:"actor"`
+	Cluster    string `json:"cluster"`
+	VMID       *int   `json:"vmid"`
+	Action     string `json:"action"`
+	Timestamp  string `json:"timestamp"`
+	TargetType string `json:"targetType"`
+	TargetID   string `json:"targetId"`
+	Detail     string `json:"detail"`
+	IPAddress  string `json:"ipAddress"`
+	Severity   string `json:"severity"`
 }
 
 type auditPageDTO struct {
@@ -77,19 +103,24 @@ func (h *AdminOps) ServeAudit(w http.ResponseWriter, r *http.Request) {
 	result, err := h.store.ListAuditLog(r.Context(), filter)
 	if err != nil {
 		h.log.Error("admin audit list failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
 
 	items := make([]auditEntryDTO, len(result.Items))
 	for i, e := range result.Items {
 		items[i] = auditEntryDTO{
-			ID:        e.ID,
-			Actor:     e.Actor,
-			Cluster:   e.Cluster,
-			VMID:      e.VMID,
-			Action:    e.Action,
-			Timestamp: e.Timestamp.UTC().Format(time.RFC3339),
+			ID:         e.ID,
+			Actor:      e.Actor,
+			Cluster:    e.Cluster,
+			VMID:       e.VMID,
+			Action:     e.Action,
+			Timestamp:  e.Timestamp.UTC().Format(time.RFC3339),
+			TargetType: e.TargetType,
+			TargetID:   e.TargetID,
+			Detail:     e.Detail,
+			IPAddress:  e.IPAddress,
+			Severity:   e.Severity,
 		}
 	}
 
@@ -99,6 +130,89 @@ func (h *AdminOps) ServeAudit(w http.ResponseWriter, r *http.Request) {
 		Page:     result.Page,
 		PageSize: result.PageSize,
 	})
+}
+
+// auditConfigDTO is the response body for GET /admin/audit/config.
+type auditConfigDTO struct {
+	RetentionDays int `json:"retentionDays"`
+}
+
+// ServeAuditConfig handles GET /api/v1/admin/audit/config (issue #02). Returns
+// the current audit retention in days.
+func (h *AdminOps) ServeAuditConfig(w http.ResponseWriter, r *http.Request) {
+	cfg, err := h.store.GetAuditConfig(r.Context())
+	if err != nil {
+		h.log.Error("admin audit config get failed", "component", "httpapi", "error", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		return
+	}
+
+	writeAdminJSON(w, http.StatusOK, auditConfigDTO{RetentionDays: cfg.RetentionDays})
+}
+
+// auditConfigRequest is the body for PUT /api/v1/admin/audit/config.
+type auditConfigRequest struct {
+	RetentionDays int `json:"retentionDays"`
+}
+
+// ServeAuditConfigUpdate handles PUT /api/v1/admin/audit/config (issue #02).
+// Rejects retention below 30 days with 400. The actual prune of now-expired
+// rows is left to the daily tick — this endpoint only changes the setting.
+func (h *AdminOps) ServeAuditConfigUpdate(w http.ResponseWriter, r *http.Request) {
+	var req auditConfigRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+		return
+	}
+
+	if req.RetentionDays < 30 {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", "retention_days must be at least 30")
+		return
+	}
+
+	if err := h.store.SetAuditConfig(r.Context(), req.RetentionDays); err != nil {
+		h.log.Error("admin audit config set failed", "component", "httpapi", "error", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		return
+	}
+
+	actor, ip := h.actorAndIP(r)
+	_ = h.store.RecordAdminAction(r.Context(), actor.Username, "admin.audit_config.update", "audit_config", "",
+		detailJSON(fmt.Sprintf("retention set to %d days", req.RetentionDays), nil), ip)
+
+	writeAdminJSON(w, http.StatusOK, auditConfigDTO(req))
+}
+
+// prunePreviewDTO is the response body for GET /admin/audit/prune-preview.
+type prunePreviewDTO struct {
+	RetentionDays int   `json:"retentionDays"`
+	RowsToDelete  int64 `json:"rowsToDelete"`
+}
+
+// ServeAuditPrunePreview handles GET /api/v1/admin/audit/prune-preview
+// (issue #02). Returns the count of rows that would be deleted at the given
+// retention, without deleting them. Used by the UI confirmation flow.
+func (h *AdminOps) ServeAuditPrunePreview(w http.ResponseWriter, r *http.Request) {
+	daysStr := r.URL.Query().Get("retention_days")
+	if daysStr == "" {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", "retention_days query parameter is required")
+		return
+	}
+
+	days, err := strconv.Atoi(daysStr)
+	if err != nil || days < 1 {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", "retention_days must be a positive integer")
+		return
+	}
+
+	count, err := h.store.CountAuditPrunePreview(r.Context(), days)
+	if err != nil {
+		h.log.Error("admin audit prune preview failed", "component", "httpapi", "error", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		return
+	}
+
+	writeAdminJSON(w, http.StatusOK, prunePreviewDTO{RetentionDays: days, RowsToDelete: count})
 }
 
 // parseAuditFilter extracts the AuditFilter from query parameters. It returns
@@ -155,6 +269,10 @@ func parseAuditFilter(w http.ResponseWriter, r *http.Request) (store.AuditFilter
 			return store.AuditFilter{}, false
 		}
 		filter.To = &to
+	}
+
+	if sev := q.Get("severity"); sev != "" {
+		filter.Severity = &sev
 	}
 
 	return filter, true
@@ -260,6 +378,8 @@ func sortNodeSummaries(nodes []nodeSummaryDTO) {
 // ServeDBExport handles GET /api/v1/admin/db/export (FR-007). Streams a
 // VACUUM INTO-produced snapshot as a binary file download.
 func (h *AdminOps) ServeDBExport(w http.ResponseWriter, r *http.Request) {
+	actor, ip := h.actorAndIP(r)
+
 	filename := "pvmss-" + time.Now().UTC().Format("20060102-150405") + ".db"
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
@@ -270,6 +390,10 @@ func (h *AdminOps) ServeDBExport(w http.ResponseWriter, r *http.Request) {
 		// see a truncated stream.
 		return
 	}
+
+	preview, _ := h.store.ExportPreview(r.Context())
+	detail := exportDetail(preview)
+	_ = h.store.RecordAdminAction(r.Context(), actor.Username, "admin.db_export", "db", "", detail, ip)
 }
 
 // --- Database import (US3) ---
@@ -299,8 +423,11 @@ func (h *AdminOps) ServeDBImport(w http.ResponseWriter, r *http.Request) {
 	// the limit (gosec G120: unbounded form parsing).
 	r.Body = http.MaxBytesReader(w, r.Body, 50<<20)
 
+	actor, ip := h.actorAndIP(r)
+
 	//nolint:gosec // body is bounded by MaxBytesReader above
 	if err := r.ParseMultipartForm(50 << 20); err != nil {
+		h.recordImportRejected(r.Context(), actor, ip, "upload parse failed: "+err.Error())
 		writeAdminError(w, http.StatusBadRequest, "invalid_upload", "could not parse multipart upload")
 		return
 	}
@@ -308,6 +435,7 @@ func (h *AdminOps) ServeDBImport(w http.ResponseWriter, r *http.Request) {
 
 	file, _, err := r.FormFile("file")
 	if err != nil {
+		h.recordImportRejected(r.Context(), actor, ip, "missing file field")
 		writeAdminError(w, http.StatusBadRequest, "invalid_upload", "missing 'file' field in multipart upload")
 		return
 	}
@@ -316,11 +444,13 @@ func (h *AdminOps) ServeDBImport(w http.ResponseWriter, r *http.Request) {
 	preview, err := h.store.ValidateImport(r.Context(), file)
 	if err != nil {
 		if errors.Is(err, store.ErrInvalidDatabase) {
+			h.recordImportRejected(r.Context(), actor, ip, "invalid SQLite database")
 			writeAdminError(w, http.StatusBadRequest, "invalid_database", "uploaded file is not a valid SQLite database")
 			return
 		}
 		h.log.Error("admin db import validate failed", "component", "httpapi", "error", err)
-		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+		h.recordImportRejected(r.Context(), actor, ip, "validation failed: "+err.Error())
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
 
@@ -346,6 +476,16 @@ func (h *AdminOps) ServeDBImportConfirm(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	actor, ip := h.actorAndIP(r)
+	// Trace the import attempt before the swap so a failure still leaves a row.
+	// We record a generic summary here because reading the staging preview
+	// before ConfirmImport would consume the token's Lookup (which deletes
+	// expired entries as a side effect), collapsing the 410/404 distinction
+	// the HTTP handler relies on. The detailed table list is recorded after
+	// the swap succeeds via result.Tables.
+	_ = h.store.RecordAdminAction(r.Context(), actor.Username, "admin.db_import", "db", "",
+		detailJSON("database import confirmed", nil), ip)
+
 	result, err := h.store.ConfirmImport(r.Context(), req.StagingToken)
 	if err != nil {
 		if store.IsNotFound(err) {
@@ -361,7 +501,16 @@ func (h *AdminOps) ServeDBImportConfirm(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Re-insert the same trace into the (now imported) live database so the
+	// success is also recorded with the actual table list.
+	_ = h.store.RecordAdminAction(r.Context(), actor.Username, "admin.db_import", "db", "", importDetail(result.Tables), ip)
+
 	writeAdminJSON(w, http.StatusOK, importResultDTO{Status: "restored", Tables: result.Tables})
+}
+
+func (h *AdminOps) recordImportRejected(ctx context.Context, actor auth.Identity, ip, reason string) {
+	detail := detailJSON("database import rejected: "+reason, nil)
+	_ = h.store.RecordAdminAction(ctx, actor.Username, "admin.db_import.rejected", "db", "", detail, ip)
 }
 
 type configFieldDTO struct {
@@ -436,4 +585,48 @@ func (h *AdminOps) ServePublicVersion(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 	_ = writeJSON(w, http.StatusOK, body)
+}
+
+// Audit detail JSON map keys. Declared as constants to satisfy goconst and
+// keep the audit payload schema documented in one place.
+const (
+	auditKeySummary = "summary"
+	auditKeyChanges = "changes"
+	auditKeyCluster = "cluster"
+	auditKeyName    = "name"
+	auditKeyField   = "field"
+	auditKeyEnabled = "enabled"
+	auditKeyOld     = "old"
+	auditKeyNew     = "new"
+	auditKeyID      = "id"
+	auditKeyLabel   = "label"
+	auditKeyActor   = "actor"
+	auditKeyType    = "keyType"
+)
+
+func detailJSON(summary string, changes []any) string {
+	body, err := json.Marshal(map[string]any{auditKeySummary: summary, auditKeyChanges: changes})
+	if err != nil {
+		return `{"summary":"` + summary + `","changes":[]}`
+	}
+
+	return string(body)
+}
+
+func importDetail(tables []store.TablePreview) string {
+	changes := make([]any, len(tables))
+	for i, t := range tables {
+		changes[i] = map[string]any{"table": t.Name, "rowCount": t.RowCount}
+	}
+
+	return detailJSON("database import", changes)
+}
+
+func exportDetail(tables []store.TablePreview) string {
+	changes := make([]any, len(tables))
+	for i, t := range tables {
+		changes[i] = map[string]any{"table": t.Name, "rowCount": t.RowCount}
+	}
+
+	return detailJSON("database export", changes)
 }

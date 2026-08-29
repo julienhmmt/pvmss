@@ -570,8 +570,8 @@ func TestVmAction_AuditRecorded(t *testing.T) {
 		t.Errorf("action = %q, want start", rows[0].Action)
 	}
 
-	if rows[0].VMID != 101 {
-		t.Errorf("vmid = %d, want 101", rows[0].VMID)
+	if *rows[0].VMID != 101 {
+		t.Errorf("vmid = %d, want 101", *rows[0].VMID)
 	}
 }
 

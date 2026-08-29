@@ -3,6 +3,7 @@ package store_test
 
 import (
 	"context"
+	"database/sql"
 	"path/filepath"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/store"
@@ -77,7 +78,7 @@ func TestRecordAction_InsertsOneRowWithRealActor(t *testing.T) {
 		t.Errorf("cluster = %q, want default", row.Cluster)
 	}
 
-	if row.VMID != 101 {
+	if *row.VMID != 101 {
 		t.Errorf("vmid = %d, want 101", row.VMID)
 	}
 
@@ -121,7 +122,7 @@ func TestRecordAction_AppendsDistinctRows(t *testing.T) {
 	}
 
 	for i, want := range actions {
-		if rows[i].Actor != want.actor || rows[i].VMID != want.vmid || rows[i].Action != want.action {
+		if rows[i].Actor != want.actor || *rows[i].VMID != want.vmid || rows[i].Action != want.action {
 			t.Errorf("row %d = %+v, want %+v", i, rows[i], want)
 		}
 	}
@@ -180,7 +181,7 @@ func TestListAuditLog_NoFilter_ReturnsAllMostRecentFirst(t *testing.T) {
 		t.Errorf("envelope = page %d pageSize %d, want 1/100", page.Page, page.PageSize)
 	}
 	// Most recent first: last inserted was alice@pve secondary start 301.
-	if page.Items[0].VMID != 301 || page.Items[0].Action != testAuditAction {
+	if *page.Items[0].VMID != 301 || page.Items[0].Action != testAuditAction {
 		t.Errorf("first item = %+v, want vmid 301 start", page.Items[0])
 	}
 }
@@ -257,7 +258,7 @@ func TestListAuditLog_Filters(t *testing.T) {
 
 			gotVMIDs := make([]int, len(page.Items))
 			for i, item := range page.Items {
-				gotVMIDs[i] = item.VMID
+				gotVMIDs[i] = *item.VMID
 			}
 
 			if !equalIntSlices(gotVMIDs, tc.wantVMIDs) {
@@ -369,7 +370,7 @@ func TestListAuditLog_Sc002_AllActionsFromT05ToT10(t *testing.T) {
 		}
 
 		got := page.Items[0]
-		if got.Action != want.action || got.VMID != want.vmid || got.Actor != want.actor {
+		if got.Action != want.action || *got.VMID != want.vmid || got.Actor != want.actor {
 			t.Errorf("action=%s: got %+v, want %+v", want.action, got, want)
 		}
 	}
@@ -391,4 +392,278 @@ func equalIntSlices(a, b []int) bool {
 	}
 
 	return true
+}
+
+// TestRecordAdminAction_InsertsRowWithAdminFields — admin mutations write a
+// row with cluster="" and vmid=nil, plus the new target/detail/IP/severity
+// columns. Verified via a direct SELECT since QueryAudit only reads the
+// original six columns.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestRecordAdminAction_InsertsRowWithAdminFields(t *testing.T) {
+	st := newAuditStore(t)
+	ctx := context.Background()
+
+	if err := st.RecordAdminAction(ctx, "admin", "admin.clusters.create", "cluster", "prod", `{"summary":"cluster=prod created"}`, "203.0.113.5"); err != nil {
+		t.Fatalf("RecordAdminAction: %v", err)
+	}
+
+	var (
+		cluster, action, targetType, targetID, detail, ip, severity string
+		vmid                                                        sql.NullInt64
+	)
+
+	err := st.DB().QueryRowContext(ctx,
+		`SELECT cluster, action, vmid, target_type, target_id, detail, ip_address, severity FROM audit_log ORDER BY id DESC LIMIT 1`,
+	).Scan(&cluster, &action, &vmid, &targetType, &targetID, &detail, &ip, &severity)
+	if err != nil {
+		t.Fatalf("query audit row: %v", err)
+	}
+
+	if cluster != "" {
+		t.Errorf("cluster = %q, want empty", cluster)
+	}
+
+	if action != "admin.clusters.create" {
+		t.Errorf("action = %q, want admin.clusters.create", action)
+	}
+
+	if vmid.Valid {
+		t.Errorf("vmid = %d, want NULL", vmid.Int64)
+	}
+
+	if targetType != "cluster" {
+		t.Errorf("target_type = %q, want cluster", targetType)
+	}
+
+	if targetID != "prod" {
+		t.Errorf("target_id = %q, want prod", targetID)
+	}
+
+	if detail != `{"summary":"cluster=prod created"}` {
+		t.Errorf("detail = %q, want JSON summary", detail)
+	}
+
+	if ip != "203.0.113.5" {
+		t.Errorf("ip_address = %q, want 203.0.113.5", ip)
+	}
+
+	if severity != "info" {
+		t.Errorf("severity = %q, want info", severity)
+	}
+}
+
+// TestRecordAction_StillWritesSeverity — the 15 existing VM callers are
+// unchanged in signature but the row now carries a derived severity.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestRecordAction_StillWritesSeverity(t *testing.T) {
+	st := newAuditStore(t)
+	ctx := context.Background()
+
+	if err := st.RecordAction(ctx, testAuditActor, testStoreCluster, 101, "vm.destroy"); err != nil {
+		t.Fatalf("RecordAction: %v", err)
+	}
+
+	var severity string
+	if err := st.DB().QueryRowContext(ctx,
+		`SELECT severity FROM audit_log ORDER BY id DESC LIMIT 1`,
+	).Scan(&severity); err != nil {
+		t.Fatalf("query severity: %v", err)
+	}
+
+	if severity != "warning" {
+		t.Errorf("severity = %q, want warning (contains 'destroy')", severity)
+	}
+}
+
+// --- Retention (issue #02 / Phase 4) ---
+
+// insertAuditRowAtTimestamp writes an audit_log row with an explicit timestamp
+// (bypassing time.Now) so prune tests can place rows inside or outside the
+// retention window without waiting. The nullable columns receive empty
+// strings, matching what RecordAction writes in production.
+func insertAuditRowAtTimestamp(t *testing.T, st *store.Store, ts time.Time) {
+	t.Helper()
+
+	ctx := context.Background()
+
+	_, err := st.DB().ExecContext(ctx,
+		`INSERT INTO audit_log (actor, cluster, vmid, action, timestamp, target_type, target_id, detail, ip_address, severity) VALUES (?, ?, ?, ?, ?, '', '', '', '', 'info')`,
+		"alice@pve", "default", 101, "start", ts.UTC().Format(time.RFC3339Nano))
+	if err != nil {
+		t.Fatalf("insert old audit row: %v", err)
+	}
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestGetAuditConfig_DefaultIs365(t *testing.T) {
+	st := newAuditStore(t)
+	ctx := context.Background()
+
+	cfg, err := st.GetAuditConfig(ctx)
+	if err != nil {
+		t.Fatalf("GetAuditConfig: %v", err)
+	}
+
+	if cfg.RetentionDays != 365 {
+		t.Errorf("retention = %d, want 365 (schemaV20 seed)", cfg.RetentionDays)
+	}
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestSetAuditConfig_RejectsBelowFloor(t *testing.T) {
+	st := newAuditStore(t)
+	ctx := context.Background()
+
+	if err := st.SetAuditConfig(ctx, 29); err == nil {
+		t.Fatal("SetAuditConfig(29) succeeded, want error")
+	}
+
+	if err := st.SetAuditConfig(ctx, 30); err != nil {
+		t.Errorf("SetAuditConfig(30) failed, want ok: %v", err)
+	}
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestSetAuditConfig_PersistsNewValue(t *testing.T) {
+	st := newAuditStore(t)
+	ctx := context.Background()
+
+	if err := st.SetAuditConfig(ctx, 60); err != nil {
+		t.Fatalf("SetAuditConfig(60): %v", err)
+	}
+
+	cfg, err := st.GetAuditConfig(ctx)
+	if err != nil {
+		t.Fatalf("GetAuditConfig: %v", err)
+	}
+
+	if cfg.RetentionDays != 60 {
+		t.Errorf("retention = %d, want 60", cfg.RetentionDays)
+	}
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestPruneAuditLog_DeletesOldRowsKeepsRecent(t *testing.T) {
+	st := newAuditStore(t)
+	ctx := context.Background()
+
+	now := time.Now().UTC()
+	// Two rows outside a 30-day window, one inside.
+	insertAuditRowAtTimestamp(t, st, now.Add(-40*24*time.Hour))
+	insertAuditRowAtTimestamp(t, st, now.Add(-35*24*time.Hour))
+	insertAuditRowAtTimestamp(t, st, now.Add(-10*24*time.Hour))
+
+	deleted, err := st.PruneAuditLog(ctx, 30)
+	if err != nil {
+		t.Fatalf("PruneAuditLog: %v", err)
+	}
+
+	if deleted != 2 {
+		t.Errorf("deleted = %d, want 2", deleted)
+	}
+
+	rows, err := st.QueryAudit(ctx)
+	if err != nil {
+		t.Fatalf("QueryAudit: %v", err)
+	}
+
+	if len(rows) != 1 {
+		t.Errorf("remaining rows = %d, want 1 (the 10-day-old row)", len(rows))
+	}
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestPruneAuditLog_FloorRetentionDoesNotEmptyTable(t *testing.T) {
+	st := newAuditStore(t)
+	ctx := context.Background()
+
+	// A row just inside the 30-day floor.
+	insertAuditRowAtTimestamp(t, st, time.Now().UTC().Add(-29*24*time.Hour))
+
+	deleted, err := st.PruneAuditLog(ctx, 30)
+	if err != nil {
+		t.Fatalf("PruneAuditLog: %v", err)
+	}
+
+	if deleted != 0 {
+		t.Errorf("deleted = %d, want 0 (row is within 30 days)", deleted)
+	}
+
+	rows, err := st.QueryAudit(ctx)
+	if err != nil {
+		t.Fatalf("QueryAudit: %v", err)
+	}
+
+	if len(rows) != 1 {
+		t.Errorf("rows = %d, want 1 (floor retention must not empty the table)", len(rows))
+	}
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestCountAuditPrunePreview_MatchesPrune(t *testing.T) {
+	st := newAuditStore(t)
+	ctx := context.Background()
+
+	now := time.Now().UTC()
+	insertAuditRowAtTimestamp(t, st, now.Add(-100*24*time.Hour))
+	insertAuditRowAtTimestamp(t, st, now.Add(-50*24*time.Hour))
+	insertAuditRowAtTimestamp(t, st, now.Add(-5*24*time.Hour))
+
+	preview, err := st.CountAuditPrunePreview(ctx, 30)
+	if err != nil {
+		t.Fatalf("CountAuditPrunePreview: %v", err)
+	}
+
+	if preview != 2 {
+		t.Errorf("preview = %d, want 2", preview)
+	}
+
+	// Preview must not delete.
+	rows, err := st.QueryAudit(ctx)
+	if err != nil {
+		t.Fatalf("QueryAudit: %v", err)
+	}
+
+	if len(rows) != 3 {
+		t.Errorf("rows after preview = %d, want 3 (preview must not delete)", len(rows))
+	}
+
+	deleted, err := st.PruneAuditLog(ctx, 30)
+	if err != nil {
+		t.Fatalf("PruneAuditLog: %v", err)
+	}
+
+	if deleted != preview {
+		t.Errorf("deleted = %d, want %d (preview count)", deleted, preview)
+	}
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestPruneAuditLog_DoesNotBlockConcurrentQuery(t *testing.T) {
+	st := newAuditStore(t)
+	ctx := context.Background()
+
+	now := time.Now().UTC()
+	for i := range 20 {
+		insertAuditRowAtTimestamp(t, st, now.Add(-time.Duration(100+i)*24*time.Hour))
+	}
+
+	// Concurrent query while pruning. SQLite serializes writers, but reads
+	// via QueryContext must not be blocked by the DELETE.
+	done := make(chan error, 1)
+
+	go func() {
+		_, err := st.QueryAudit(ctx)
+		done <- err
+	}()
+
+	if _, err := st.PruneAuditLog(ctx, 30); err != nil {
+		t.Fatalf("PruneAuditLog: %v", err)
+	}
+
+	if err := <-done; err != nil {
+		t.Errorf("concurrent QueryAudit failed: %v", err)
+	}
 }

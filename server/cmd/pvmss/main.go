@@ -107,6 +107,12 @@ func run() int {
 	defer cancelInventory()
 	inventoryRegistry.Start(inventoryCtx)
 
+	// Daily audit prune tick (issue #02): deletes audit_log rows older than
+	// the configured retention. Runs in its own goroutine so it does not
+	// couple to the inventory worker's refresh cycle. A prune runs once at
+	// startup, then every 24h.
+	go runAuditPrune(inventoryCtx, st, logger)
+
 	sessions, err := auth.NewSessionManager(st, cfg.SessionSecret, cfg.CookieSecure)
 	if err != nil {
 		logger.Error("failed to create session manager", "component", "main", "error", err)
@@ -339,56 +345,12 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	authHandler := httpapi.NewAuthWithRegistry(clusterRegistry, st, sessions, cfg.AdminPasswordHash, auth.NewTokenService(st), logger)
 	vms := httpapi.NewVMsWithRegistry(inventoryRegistry, authHandler, cfg.MaxListPageSize, 0, logger, st, policyService)
 
-	// Both cluster.Client implementations (Fake, Proxmox) also implement
-	// cluster.Writer — reads and writes are separated by interface
-	// (constitution IV), not by implementation. The assertion is safe because
-	// the switch above only selects values that satisfy both.
-	writer, ok := clusterClient.(cluster.Writer)
-	if !ok {
-		return nil, errors.New("cluster client does not implement Writer")
-	}
-
-	creator, ok := clusterClient.(cluster.Creator)
-	if !ok {
-		return nil, errors.New("cluster client does not implement Creator")
-	}
-
-	cloudInitReader, ok := clusterClient.(cluster.CloudInitReader)
-	if !ok {
-		return nil, errors.New("cluster client does not implement CloudInitReader")
-	}
-
-	snapshotReader, ok := clusterClient.(cluster.SnapshotReader)
-	if !ok {
-		return nil, errors.New("cluster client does not implement SnapshotReader")
-	}
-
-	snapshotWriter, ok := clusterClient.(cluster.SnapshotWriter)
-	if !ok {
-		return nil, errors.New("cluster client does not implement SnapshotWriter")
-	}
-
-	consoleRelay, ok := clusterClient.(cluster.ConsoleRelay)
-	if !ok {
-		return nil, errors.New("cluster client does not implement ConsoleRelay")
-	}
-
-	serialRelay, ok := clusterClient.(cluster.TerminalRelay)
-	if !ok {
-		return nil, errors.New("cluster client does not implement TerminalRelay")
+	clients, err := resolveClusterClientInterfaces(clusterClient)
+	if err != nil {
+		return nil, err
 	}
 
 	consoleTickets := vm.NewConsoleTicketStore()
-
-	metricsReader, ok := clusterClient.(cluster.MetricsHistoryReader)
-	if !ok {
-		return nil, errors.New("cluster client does not implement MetricsHistoryReader")
-	}
-
-	metricsCurrentReader, ok := clusterClient.(cluster.MetricsCurrentReader)
-	if !ok {
-		return nil, errors.New("cluster client does not implement MetricsCurrentReader")
-	}
 
 	// Every *WithRegistry constructor below resolves its cluster.Client and
 	// inventory.Index per request from the request's own :cluster value via
@@ -396,30 +358,41 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	// resolved above — a request scoped to a non-default cluster must never
 	// be served from another cluster's client (cross-tenant data leak when
 	// node names or vmids collide between clusters).
-	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: writer, Clients: clusterRegistry, Store: st, Refresher: worker, Log: logger}, policyService)
-	vmBulk := httpapi.NewVMBulkWithRegistry(httpapi.VMBulkRegistryDeps{Registry: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: writer, Store: st, Refresher: refresher, Log: logger, Clients: clusterRegistry})
-	vmCloudInit := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Reader: cloudInitReader, Writer: writer, Clients: clusterRegistry, Store: st, Refresher: worker, Log: logger}, policyService)
+	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: clients.writer, Clients: clusterRegistry, Store: st, Refresher: worker, Log: logger}, policyService)
+	vmBulk := httpapi.NewVMBulkWithRegistry(httpapi.VMBulkRegistryDeps{Registry: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: clients.writer, Store: st, Refresher: refresher, Log: logger, Clients: clusterRegistry})
+	vmCloudInit := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Reader: clients.cloudInitReader, Writer: clients.writer, Clients: clusterRegistry, Store: st, Refresher: worker, Log: logger}, policyService)
 	vmCreate := httpapi.NewVMCreateWithRegistry(
 		authHandler,
 		st,
 		clusterRegistry,
-		creator,
-		writer,
+		clients.creator,
+		clients.writer,
 		logger,
 		policyService,
 	)
-	tasks := httpapi.NewTasksWithRegistry(authHandler, clusterRegistry, creator, worker, logger)
-	snapshots := httpapi.NewVMSnapshotsWithRegistry(httpapi.VMSnapshotsRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Reader: snapshotReader, Writer: snapshotWriter, Clients: clusterRegistry, Store: st, Log: logger, Services: []*policy.Policy{policyService}})
-	vmConsole := httpapi.NewVMConsoleWithRegistry(httpapi.VMConsoleRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Relay: consoleRelay, Clients: clusterRegistry, Tickets: consoleTickets, Store: st, Log: logger})
-	vmSerialConsole := httpapi.NewVMSerialConsoleWithRegistry(httpapi.VMSerialConsoleRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Relay: serialRelay, Clients: clusterRegistry, Tickets: consoleTickets, Store: st, Log: logger})
-	vmMetrics := httpapi.NewVMMetricsWithRegistry(inventoryRegistry, projection, authHandler, metricsReader, metricsCurrentReader, clusterRegistry, logger)
+	vmCreate.SetTrustedProxyHops(cfg.TrustedProxyHops)
+	tasks := httpapi.NewTasksWithRegistry(authHandler, clusterRegistry, clients.creator, worker, logger)
+	snapshots := httpapi.NewVMSnapshotsWithRegistry(httpapi.VMSnapshotsRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Reader: clients.snapshotReader, Writer: clients.snapshotWriter, Clients: clusterRegistry, Store: st, Log: logger, Services: []*policy.Policy{policyService}})
+	vmConsole := httpapi.NewVMConsoleWithRegistry(httpapi.VMConsoleRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Relay: clients.consoleRelay, Clients: clusterRegistry, Tickets: consoleTickets, Store: st, Log: logger})
+	vmSerialConsole := httpapi.NewVMSerialConsoleWithRegistry(httpapi.VMSerialConsoleRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Relay: clients.serialRelay, Clients: clusterRegistry, Tickets: consoleTickets, Store: st, Log: logger})
+	vmMetrics := httpapi.NewVMMetricsWithRegistry(inventoryRegistry, projection, authHandler, clients.metricsReader, clients.metricsCurrentReader, clusterRegistry, logger)
 	adminCatalog := httpapi.NewAdminCatalogWithRegistry(authHandler, st, clusterRegistry, projection, logger)
+	adminCatalog.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminPolicy := httpapi.NewAdminPolicyWithRegistry(authHandler, policyService, clusterRegistry, logger)
-	adminPools := httpapi.NewAdminPoolsWithRegistry(httpapi.AdminPoolsRegistryDeps{Auth: authHandler, Clients: clusterRegistry, Source: inventoryRegistry, Projection: projection, Writer: writer, Audit: st, Refresher: worker, Store: st, Log: logger})
+	adminPolicy.SetStore(st)
+	adminPolicy.SetTrustedProxyHops(cfg.TrustedProxyHops)
+	adminPools := httpapi.NewAdminPoolsWithRegistry(httpapi.AdminPoolsRegistryDeps{Auth: authHandler, Clients: clusterRegistry, Source: inventoryRegistry, Projection: projection, Writer: clients.writer, Audit: st, Refresher: worker, Store: st, Log: logger})
+	adminPools.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminOps := httpapi.NewAdminOps(authHandler, st, clusterClient, projection, appVersion, logger)
+	adminOps.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, clusterRegistry, inventoryRegistry, logger)
+	adminClusters.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	docsHandler := httpapi.NewDocsAPIHandler(authHandler, st, logger)
 	adminDocs := httpapi.NewAdminDocs(authHandler, st, docsHandler, logger)
+
+	authHandler.SetTrustedProxyHops(cfg.TrustedProxyHops)
+	vm.SetResolveAuditor(st)
+	policy.SetQuotaAuditor(st)
 
 	return httpapi.NewRouter(httpapi.RouterConfig{
 		Health:           health,
@@ -434,6 +407,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		Auth:             authHandler,
 		WebBuildDir:      webDir,
 		Log:              logger,
+		Store:            st,
 		SnapshotHandlers: []*httpapi.VMSnapshots{snapshots},
 		VMConsole:        vmConsole,
 		VMSerialConsole:  vmSerialConsole,
@@ -445,7 +419,61 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		AdminClusters:    adminClusters,
 		Docs:             docsHandler,
 		AdminDocs:        adminDocs,
+		TrustedProxyHops: cfg.TrustedProxyHops,
 	}), nil
+}
+
+// clusterClientInterfaces bundles the cluster.Client capability interfaces
+// resolved once at router build time.
+type clusterClientInterfaces struct {
+	writer               cluster.Writer
+	creator              cluster.Creator
+	cloudInitReader      cluster.CloudInitReader
+	snapshotReader       cluster.SnapshotReader
+	snapshotWriter       cluster.SnapshotWriter
+	consoleRelay         cluster.ConsoleRelay
+	serialRelay          cluster.TerminalRelay
+	metricsReader        cluster.MetricsHistoryReader
+	metricsCurrentReader cluster.MetricsCurrentReader
+}
+
+// resolveClusterClientInterfaces asserts that the cluster client implements
+// every capability interface the router needs. Both cluster.Client
+// implementations (Fake, Proxmox) satisfy all of them — reads and writes are
+// separated by interface (constitution IV), not by implementation.
+func resolveClusterClientInterfaces(clusterClient cluster.Client) (clusterClientInterfaces, error) {
+	var c clusterClientInterfaces
+	var ok bool
+
+	if c.writer, ok = clusterClient.(cluster.Writer); !ok {
+		return c, errors.New("cluster client does not implement Writer")
+	}
+	if c.creator, ok = clusterClient.(cluster.Creator); !ok {
+		return c, errors.New("cluster client does not implement Creator")
+	}
+	if c.cloudInitReader, ok = clusterClient.(cluster.CloudInitReader); !ok {
+		return c, errors.New("cluster client does not implement CloudInitReader")
+	}
+	if c.snapshotReader, ok = clusterClient.(cluster.SnapshotReader); !ok {
+		return c, errors.New("cluster client does not implement SnapshotReader")
+	}
+	if c.snapshotWriter, ok = clusterClient.(cluster.SnapshotWriter); !ok {
+		return c, errors.New("cluster client does not implement SnapshotWriter")
+	}
+	if c.consoleRelay, ok = clusterClient.(cluster.ConsoleRelay); !ok {
+		return c, errors.New("cluster client does not implement ConsoleRelay")
+	}
+	if c.serialRelay, ok = clusterClient.(cluster.TerminalRelay); !ok {
+		return c, errors.New("cluster client does not implement TerminalRelay")
+	}
+	if c.metricsReader, ok = clusterClient.(cluster.MetricsHistoryReader); !ok {
+		return c, errors.New("cluster client does not implement MetricsHistoryReader")
+	}
+	if c.metricsCurrentReader, ok = clusterClient.(cluster.MetricsCurrentReader); !ok {
+		return c, errors.New("cluster client does not implement MetricsCurrentReader")
+	}
+
+	return c, nil
 }
 
 // resolveWebBuildDir returns the absolute path to the static web build directory.
@@ -512,4 +540,45 @@ func (f inventoryFreshness) Clusters() []httpapi.ClusterFreshness {
 
 func (f inventoryFreshness) DemoMode() bool {
 	return f.demoMode
+}
+
+// auditPruneInterval is how often the daily prune tick fires.
+const auditPruneInterval = 24 * time.Hour
+
+// runAuditPrune deletes audit_log rows older than the configured retention,
+// once at startup then every auditPruneInterval. It logs the deleted count at
+// info level so retention activity is visible in aggregated logs. A prune
+// failure is logged but never stops the tick — the next tick retries.
+func runAuditPrune(ctx context.Context, st *store.Store, log *slog.Logger) {
+	prune := func() {
+		cfg, err := st.GetAuditConfig(ctx)
+		if err != nil {
+			log.Error("audit prune: get config failed", "component", "audit", "error", err)
+			return
+		}
+
+		n, err := st.PruneAuditLog(ctx, cfg.RetentionDays)
+		if err != nil {
+			log.Error("audit prune failed", "component", "audit", "error", err)
+			return
+		}
+
+		if n > 0 {
+			log.Info("audit prune completed", "component", "audit", "deleted", n, "retentionDays", cfg.RetentionDays)
+		}
+	}
+
+	prune()
+
+	ticker := time.NewTicker(auditPruneInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			prune()
+		}
+	}
 }

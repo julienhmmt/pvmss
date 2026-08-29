@@ -112,7 +112,7 @@ func TestAction_SuccessRecordsAuditAndRefreshes(t *testing.T) {
 		t.Fatalf("audit rows = %d, want 1", len(rows))
 	}
 
-	if rows[0].Action != "start" || rows[0].VMID != 101 || rows[0].Actor != cluster.FakeUserAlice {
+	if rows[0].Action != "start" || *rows[0].VMID != 101 || rows[0].Actor != cluster.FakeUserAlice {
 		t.Errorf("audit row = %+v, want action=start vmid=101 actor=alice", rows[0])
 	}
 }
@@ -222,7 +222,7 @@ func TestDelete_SuccessRemovesVMAndRecordsAudit(t *testing.T) {
 		t.Fatalf("QueryAudit: %v", err)
 	}
 
-	if len(rows) != 1 || rows[0].Action != "delete" || rows[0].VMID != 101 {
+	if len(rows) != 1 || rows[0].Action != "delete" || *rows[0].VMID != 101 {
 		t.Errorf("audit rows = %+v, want one delete row for 101", rows)
 	}
 }
@@ -337,11 +337,11 @@ func TestDelete_ForceStopsRunningVMThenDeletes(t *testing.T) {
 	var hasStop, hasDelete bool
 
 	for _, row := range rows {
-		if row.Action == "stop" && row.VMID == 100 {
+		if row.Action == "stop" && *row.VMID == 100 {
 			hasStop = true
 		}
 
-		if row.Action == "delete" && row.VMID == 100 {
+		if row.Action == "delete" && *row.VMID == 100 {
 			hasDelete = true
 		}
 	}
@@ -427,7 +427,7 @@ func TestPatch_AuditActionRecorded(t *testing.T) {
 				t.Fatalf("QueryAudit: %v", err)
 			}
 
-			if len(rows) != 1 || rows[0].Action != tc.wantAction || rows[0].VMID != 101 {
+			if len(rows) != 1 || rows[0].Action != tc.wantAction || *rows[0].VMID != 101 {
 				t.Errorf("audit rows = %+v, want one %q row for 101", rows, tc.wantAction)
 			}
 		})

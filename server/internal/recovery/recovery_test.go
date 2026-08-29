@@ -230,7 +230,8 @@ func assertRecoveredDB(ctx context.Context, t *testing.T, v04Path string) {
 		SELECT max_sockets, max_cores, max_memory_mb, max_disk_per_vm_gb,
 		       max_network_cards, max_snapshots, max_vm_per_user, allow_custom_yaml
 		FROM vm_limits WHERE cluster = ?`, "test-cluster").Scan(
-		&sockets, &cores, &memMB, &diskGB, &netCards, &snapshots, &vmPerUser, &allowYAML)
+		&sockets, &cores, &memMB, &diskGB, &netCards, &snapshots, &vmPerUser, &allowYAML,
+	)
 	if err != nil {
 		t.Fatalf("query vm_limits: %v", err)
 	}

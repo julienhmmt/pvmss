@@ -3,6 +3,7 @@ package httpapi
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"pvmss/server/internal/auth"
@@ -15,16 +16,17 @@ import (
 
 // AdminPools serves the admin pool list, provisioning, and cascade endpoints.
 type AdminPools struct {
-	auth       *Auth
-	client     cluster.Client
-	clients    cluster.ClientProvider
-	source     inventory.LookupSource
-	projection *inventory.Projection
-	writer     cluster.Writer
-	audit      vm.AuditRecorder
-	refresher  vm.IndexRefresher
-	store      *store.Store
-	log        *slog.Logger
+	auth             *Auth
+	client           cluster.Client
+	clients          cluster.ClientProvider
+	source           inventory.LookupSource
+	projection       *inventory.Projection
+	writer           cluster.Writer
+	audit            vm.AuditRecorder
+	refresher        vm.IndexRefresher
+	store            *store.Store
+	log              *slog.Logger
+	trustedProxyHops int
 }
 
 // AdminPoolsDeps groups the collaborators AdminPools needs. Bundling them
@@ -143,11 +145,16 @@ func (h *AdminPools) ServeCreate(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
 		return
 	}
-	creds, err := pools.CreateManaged(r.Context(), actor, client, h.store, queryCluster(r), request.Name, request.Comment)
+	clusterName := queryCluster(r)
+	creds, err := pools.CreateManaged(r.Context(), actor, client, h.store, clusterName, request.Name, request.Comment)
 	if err != nil {
 		h.writeCreateError(w, err)
 		return
 	}
+
+	h.recordAdminAction(r, "admin.pools.create", "pool", creds.PoolName,
+		fmt.Sprintf("created managed pool %s on cluster %s", creds.PoolName, clusterName),
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: creds.PoolName, "username": creds.Username, "comment": creds.Comment, "managed": true}})
 	writeAdminJSON(w, http.StatusCreated, createPoolResponse{
 		Name:     creds.PoolName,
 		Username: creds.Username,
@@ -202,6 +209,9 @@ func (h *AdminPools) ServeDelete(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, http.StatusBadGateway, "deletion_failed", "pool deletion failed")
 		return
 	}
+	h.recordAdminAction(r, "admin.pools.delete", "pool", name,
+		fmt.Sprintf("deleted managed pool %s on cluster %s", name, clusterName),
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: name, "status": result.Status, "userDeleted": result.UserDeleted}})
 	writeAdminJSON(w, http.StatusOK, deletePoolResponse{Status: result.Status, UserDeleted: result.UserDeleted})
 }
 
@@ -256,6 +266,19 @@ func (h *AdminPools) adminActor(w http.ResponseWriter, r *http.Request) (auth.Id
 	return actor, true
 }
 
+// SetTrustedProxyHops configures how many X-Forwarded-For hops to trust for
+// client IP extraction used in audit log entries.
+func (h *AdminPools) SetTrustedProxyHops(n int) {
+	h.trustedProxyHops = n
+}
+
+func (h *AdminPools) recordAdminAction(r *http.Request, action, targetType, targetID, summary string, changes []any) {
+	actor, _ := h.auth.Principal(r)
+	if err := h.store.RecordAdminAction(r.Context(), actor.Username, action, targetType, targetID, detailJSON(summary, changes), clientIP(r, h.trustedProxyHops)); err != nil {
+		h.log.Error("failed to record admin action", "component", "httpapi", "action", action, "error", err)
+	}
+}
+
 func (h *AdminPools) writeCreateError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, pools.ErrInvalidName):
@@ -265,8 +288,7 @@ func (h *AdminPools) writeCreateError(w http.ResponseWriter, err error) {
 	case errors.Is(err, pools.ErrForbidden):
 		writeAdminError(w, http.StatusForbidden, "forbidden", msgAdminOnly)
 	default:
-		var provisioningErr *pools.ProvisionError
-		if errors.As(err, &provisioningErr) {
+		if provisioningErr, ok := errors.AsType[*pools.ProvisionError](err); ok {
 			h.log.Error("admin pool provisioning step failed", "component", "httpapi", "step", provisioningErr.Step, "error", provisioningErr.Err)
 		} else {
 			h.log.Error("admin pool provisioning failed", "component", "httpapi", "error", err)

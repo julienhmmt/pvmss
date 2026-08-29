@@ -3,6 +3,7 @@ package httpapi
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/policy"
@@ -88,6 +89,7 @@ func (handler *AdminPolicy) ServePolicyNodeUpdate(w http.ResponseWriter, r *http
 		return
 	}
 
+	original := current
 	applyNodePolicyPatch(&current, request)
 
 	if err := handler.service.SetNodeCapacity(r.Context(), clusterName, node, current); err != nil {
@@ -114,7 +116,29 @@ func (handler *AdminPolicy) ServePolicyNodeUpdate(w http.ResponseWriter, r *http
 		}
 	}
 
+	changes := nodeCapacityChangeDiff(original, updated)
+	handler.recordAdminAction(r, "admin.policy.nodes.update", "node_capacity", node,
+		fmt.Sprintf("updated node capacity for %s on cluster %s", node, clusterName), changes)
 	writeAdminJSON(w, http.StatusOK, nodePolicyResponseFromModel(updated))
+}
+
+// nodeCapacityChangeDiff compares before/after node capacity snapshots and
+// returns change entries for the audit detail payload.
+func nodeCapacityChangeDiff(original, updated policy.Capacity) []any {
+	changes := []any{}
+	if original.MaxVMs != updated.MaxVMs {
+		changes = append(changes, map[string]any{auditKeyField: "maxVms", auditKeyOld: original.MaxVMs, auditKeyNew: updated.MaxVMs})
+	}
+	if original.MaxVCPUs != updated.MaxVCPUs {
+		changes = append(changes, map[string]any{auditKeyField: "maxVcpus", auditKeyOld: original.MaxVCPUs, auditKeyNew: updated.MaxVCPUs})
+	}
+	if original.MaxRAMGB != updated.MaxRAMGB {
+		changes = append(changes, map[string]any{auditKeyField: "maxRamGb", auditKeyOld: original.MaxRAMGB, auditKeyNew: updated.MaxRAMGB})
+	}
+	if original.MaxDiskGB != updated.MaxDiskGB {
+		changes = append(changes, map[string]any{auditKeyField: "maxDiskGb", auditKeyOld: original.MaxDiskGB, auditKeyNew: updated.MaxDiskGB})
+	}
+	return changes
 }
 
 func applyNodePolicyPatch(capacity *policy.Capacity, request nodePolicyUpdateRequest) {
