@@ -74,6 +74,10 @@ func (stubClusterClient) DeleteUser(_ context.Context, _ string) error {
 	return cluster.ErrNotImplemented
 }
 
+func (stubClusterClient) StorageFreeSpace(_ context.Context, _, _ string) (int64, error) {
+	return 0, cluster.ErrNotImplemented
+}
+
 func (stubClusterClient) DisplayName(_ context.Context) (string, error) {
 	return "", cluster.ErrNotImplemented
 }

@@ -71,6 +71,10 @@ func (errDiscoveryClient) DeleteUser(_ context.Context, _ string) error {
 	return cluster.ErrNotImplemented
 }
 
+func (errDiscoveryClient) StorageFreeSpace(_ context.Context, _, _ string) (int64, error) {
+	return 0, cluster.ErrNotImplemented
+}
+
 func (errDiscoveryClient) DisplayName(_ context.Context) (string, error) {
 	return "", cluster.ErrNotImplemented
 }

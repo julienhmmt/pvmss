@@ -186,6 +186,7 @@ type catalogNodeCapacityDTO struct {
 	UsedVMs       int    `json:"usedVMs"`
 	UsedVCPUs     int    `json:"usedVCPUs"`
 	UsedRAMGB     int    `json:"usedRAMGB"`
+	UsedDiskGB    int    `json:"usedDiskGB"`
 	PhysicalVCPUs int    `json:"physicalVCPUs"`
 	PhysicalRAMGB int    `json:"physicalRAMGB"`
 }
@@ -220,7 +221,7 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clusterName, creator, pusher, writer, ok := h.resolveCreateTarget(w, req.Cluster)
+	clusterName, creator, pusher, writer, freeSpace, ok := h.resolveCreateTarget(w, req.Cluster)
 	if !ok {
 		return
 	}
@@ -228,13 +229,14 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := policy.ContextWithAuditIP(r.Context(), clientIP(r, h.trustedProxyHops))
 
 	result, err := vm.Create(ctx, identity, clusterName, req, vm.CreateDeps{
-		Store:    h.store,
-		Creator:  creator,
-		Pusher:   pusher,
-		Writer:   writer,
-		Audit:    h.store,
-		Log:      h.log,
-		Services: []*policy.Policy{h.policy},
+		Store:     h.store,
+		Creator:   creator,
+		Pusher:    pusher,
+		Writer:    writer,
+		FreeSpace: freeSpace,
+		Audit:     h.store,
+		Log:       h.log,
+		Services:  []*policy.Policy{h.policy},
 	})
 	if err != nil {
 		h.writeCreateFailure(w, err)
@@ -473,7 +475,8 @@ func (h *VMCreate) attachLimits(ctx context.Context, dto *catalogDTO, clusterNam
 		dto.NodeCapacities = append(dto.NodeCapacities, catalogNodeCapacityDTO{
 			Node: node, MaxVMs: capacity.MaxVMs, MaxVCPUs: capacity.MaxVCPUs, MaxRAMGB: capacity.MaxRAMGB,
 			MaxDiskGB: capacity.MaxDiskGB, UsedVMs: capacity.UsedVMs, UsedVCPUs: capacity.UsedVCPUs,
-			UsedRAMGB: capacity.UsedRAMGB, PhysicalVCPUs: capacity.PhysicalVCPUs, PhysicalRAMGB: capacity.PhysicalRAMGB,
+			UsedRAMGB: capacity.UsedRAMGB, UsedDiskGB: capacity.UsedDiskGB,
+			PhysicalVCPUs: capacity.PhysicalVCPUs, PhysicalRAMGB: capacity.PhysicalRAMGB,
 		})
 	}
 
@@ -505,24 +508,26 @@ func (h *VMCreate) resolveCatalogClient(w http.ResponseWriter, r *http.Request) 
 // without this, VM creation ran through the default cluster's client
 // regardless of which cluster the request named. The HardwareUpdater is
 // needed for post-clone configuration (US2/issue-02).
-func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster string) (string, cluster.Creator, vm.CloudInitPusher, vm.HardwareUpdater, bool) {
+func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster string) (string, cluster.Creator, vm.CloudInitPusher, vm.HardwareUpdater, vm.FreeSpaceChecker, bool) {
 	clusterName, err := ResolveClusterValue(requestedCluster, h.clients)
 	if err != nil {
 		code, message := clusterParamError(err)
 		h.writeCreateError(w, http.StatusBadRequest, code, message)
 
-		return "", nil, nil, nil, false
+		return "", nil, nil, nil, nil, false
 	}
 
 	if h.clients == nil {
 		writer, _ := h.creator.(vm.HardwareUpdater)
-		return clusterName, h.creator, h.pusher, writer, true
+		freeSpace, _ := h.creator.(vm.FreeSpaceChecker)
+
+		return clusterName, h.creator, h.pusher, writer, freeSpace, true
 	}
 
 	client, err := h.clients.Client(clusterName)
 	if err != nil {
 		h.writeCreateError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
-		return "", nil, nil, nil, false
+		return "", nil, nil, nil, nil, false
 	}
 
 	creator, ok := client.(cluster.Creator)
@@ -530,7 +535,7 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 		h.log.Error("cluster client does not implement Creator", "component", "httpapi", "cluster", clusterName)
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
-		return "", nil, nil, nil, false
+		return "", nil, nil, nil, nil, false
 	}
 
 	pusher, ok := client.(vm.CloudInitPusher)
@@ -538,7 +543,7 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 		h.log.Error("cluster client does not implement CloudInitPusher", "component", "httpapi", "cluster", clusterName)
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
-		return "", nil, nil, nil, false
+		return "", nil, nil, nil, nil, false
 	}
 
 	writer, ok := client.(vm.HardwareUpdater)
@@ -546,10 +551,18 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 		h.log.Error("cluster client does not implement HardwareUpdater", "component", "httpapi", "cluster", clusterName)
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
-		return "", nil, nil, nil, false
+		return "", nil, nil, nil, nil, false
 	}
 
-	return clusterName, creator, pusher, writer, true
+	freeSpace, ok := client.(vm.FreeSpaceChecker)
+	if !ok {
+		h.log.Error("cluster client does not implement FreeSpaceChecker", "component", "httpapi", "cluster", clusterName)
+		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return "", nil, nil, nil, nil, false
+	}
+
+	return clusterName, creator, pusher, writer, freeSpace, true
 }
 
 func (h *VMCreate) clientFor(clusterName string) (cluster.Client, error) {
@@ -628,6 +641,8 @@ func (h *VMCreate) writeCreateFailure(w http.ResponseWriter, err error) {
 		h.writeCreateError(w, http.StatusBadRequest, "invalid_source", err.Error())
 	case errors.Is(err, vm.ErrDiskReduction):
 		h.writeCreateError(w, http.StatusBadRequest, "disk_reduction", err.Error())
+	case errors.Is(err, vm.ErrInsufficientDiskSpace):
+		h.writeCreateError(w, http.StatusBadRequest, "insufficient_disk_space", err.Error())
 	case errors.Is(err, vm.ErrClusterCreate):
 		h.log.Error("cluster create failed", "component", "httpapi", "error", err)
 		h.writeCreateError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)

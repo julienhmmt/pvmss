@@ -162,6 +162,7 @@ const FIXED_SUBMIT_ERRORS: Partial<Record<string, () => string>> = {
 	invalid_name: m['vms.create.errorInvalidName'],
 	invalid_source: m['vms.create.errorInvalidSource'],
 	disk_reduction: m['vms.create.errorDiskReduction'],
+	insufficient_disk_space: m['vms.create.errorInsufficientDiskSpace'],
 	cluster_error: m['vms.create.errorClusterRejected'],
 	internal_error: m['vms.create.errorInternal']
 };
