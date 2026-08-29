@@ -61,7 +61,7 @@ func UpdateHardware(ctx context.Context, deps HardwareDependencies, patch Hardwa
 	}
 
 	if deps.Policy != nil {
-		if err := deps.Policy.CheckNodeCapacity(ctx, deps.ClusterName, entity.Node, sockets, cores, memoryMB, 0, entity.VMID); err != nil {
+		if err := deps.Policy.CheckNodeCapacity(ctx, deps.ClusterName, entity.Node, policy.CapacityDelta{Sockets: sockets, Cores: cores, MemoryMB: memoryMB, ExcludeVMID: entity.VMID}); err != nil {
 			return err
 		}
 	}

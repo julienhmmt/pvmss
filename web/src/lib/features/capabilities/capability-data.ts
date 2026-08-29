@@ -20,38 +20,25 @@ export interface Capability {
 	readonly description: () => string;
 }
 
+type MessageFn = () => string;
+
+const capabilityIds: readonly CapabilityId[] = [
+	'lifecycle',
+	'consoles',
+	'cloudinit',
+	'snapshots',
+	'storage',
+	'multiCluster'
+];
+
+const message = (id: CapabilityId, suffix: string): string =>
+	(m[`capabilities.card.${id}.${suffix}` as keyof typeof m] as MessageFn)();
+
 /**
  * Product capabilities shown on the home page and the /about page.
  */
-export const CAPABILITIES: readonly Capability[] = [
-	{
-		id: 'lifecycle',
-		title: () => m['capabilities.card.lifecycle.title'](),
-		description: () => m['capabilities.card.lifecycle.description']()
-	},
-	{
-		id: 'consoles',
-		title: () => m['capabilities.card.consoles.title'](),
-		description: () => m['capabilities.card.consoles.description']()
-	},
-	{
-		id: 'cloudinit',
-		title: () => m['capabilities.card.cloudinit.title'](),
-		description: () => m['capabilities.card.cloudinit.description']()
-	},
-	{
-		id: 'snapshots',
-		title: () => m['capabilities.card.snapshots.title'](),
-		description: () => m['capabilities.card.snapshots.description']()
-	},
-	{
-		id: 'storage',
-		title: () => m['capabilities.card.storage.title'](),
-		description: () => m['capabilities.card.storage.description']()
-	},
-	{
-		id: 'multiCluster',
-		title: () => m['capabilities.card.multiCluster.title'](),
-		description: () => m['capabilities.card.multiCluster.description']()
-	}
-];
+export const CAPABILITIES: readonly Capability[] = capabilityIds.map((id) => ({
+	id,
+	title: () => message(id, 'title'),
+	description: () => message(id, 'description')
+}));

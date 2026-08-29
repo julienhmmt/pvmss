@@ -93,11 +93,11 @@ func TestCheckNodeCapacity_ExcludesVMAndRejectsAdditionalUsage(t *testing.T) {
 		t.Fatalf("SetNodeCapacity: %v", err)
 	}
 
-	if err := service.CheckNodeCapacity(ctx, "default", machine.Node, machine.Sockets, machine.Cores, int(machine.MemoryTotal/(1024*1024)), 0, machine.VMID); err != nil {
+	if err := service.CheckNodeCapacity(ctx, "default", machine.Node, policy.CapacityDelta{Sockets: machine.Sockets, Cores: machine.Cores, MemoryMB: int(machine.MemoryTotal / (1024 * 1024)), ExcludeVMID: machine.VMID}); err != nil {
 		t.Fatalf("same VM footprint should fit after exclusion: %v", err)
 	}
 
-	if err := service.CheckNodeCapacity(ctx, "default", machine.Node, 1, 1, 1, 0, 0); !errors.Is(err, policy.ErrNodeCapacityExceeded) {
+	if err := service.CheckNodeCapacity(ctx, "default", machine.Node, policy.CapacityDelta{Sockets: 1, Cores: 1, MemoryMB: 1}); !errors.Is(err, policy.ErrNodeCapacityExceeded) {
 		t.Fatalf("additional capacity error = %v, want ErrNodeCapacityExceeded", err)
 	}
 }

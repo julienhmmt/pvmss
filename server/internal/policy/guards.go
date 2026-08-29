@@ -85,27 +85,28 @@ func (service *Policy) CheckGabarit(ctx context.Context, clusterName string, soc
 }
 
 // CheckNodeCapacity validates aggregate VM count, vCPU, RAM, and disk headroom.
-// excludeVMID removes a resizing VM's current contribution before adding the
-// requested replacement values. deltaDiskGB is the provisioned disk the new
-// or resized VM would add (D4c: enforced against MaxDiskGB, parallel to RAM).
-func (service *Policy) CheckNodeCapacity(ctx context.Context, clusterName, node string, deltaSockets, deltaCores, deltaMemoryMB, deltaDiskGB, excludeVMID int) error {
+// delta.ExcludeVMID removes a resizing VM's current contribution before adding
+// the requested replacement values. delta.DiskGB is the provisioned disk the
+// new or resized VM would add (D4c: enforced against MaxDiskGB, parallel to
+// RAM).
+func (service *Policy) CheckNodeCapacity(ctx context.Context, clusterName, node string, delta CapacityDelta) error {
 	capacity, err := service.NodeCapacity(ctx, clusterName, node)
 	if err != nil {
 		return fmt.Errorf("read node capacity: %w", err)
 	}
 
-	if excludeVMID != 0 {
-		service.excludeVM(&capacity, excludeVMID)
+	if delta.ExcludeVMID != 0 {
+		service.excludeVM(&capacity, delta.ExcludeVMID)
 	}
 
 	usedVMs := capacity.UsedVMs
-	if excludeVMID == 0 {
+	if delta.ExcludeVMID == 0 {
 		usedVMs++
 	}
 
-	usedVCPUs := capacity.UsedVCPUs + deltaSockets*deltaCores
-	usedRAMGB := capacity.UsedRAMGB + (deltaMemoryMB+1023)/1024
-	usedDiskGB := capacity.UsedDiskGB + deltaDiskGB
+	usedVCPUs := capacity.UsedVCPUs + delta.Sockets*delta.Cores
+	usedRAMGB := capacity.UsedRAMGB + (delta.MemoryMB+1023)/1024
+	usedDiskGB := capacity.UsedDiskGB + delta.DiskGB
 
 	dimensions := make([]string, 0, 4)
 	if capacity.MaxVMs > 0 && usedVMs > capacity.MaxVMs {
