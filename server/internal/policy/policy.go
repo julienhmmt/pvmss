@@ -84,6 +84,18 @@ type Capacity struct {
 	PhysicalRAMGB int
 }
 
+// CapacityDelta is the incremental VM footprint a capacity check is asked to
+// absorb. Sockets, Cores, MemoryMB, and DiskGB are the new or resized VM's
+// contribution; ExcludeVMID removes an existing VM's current contribution
+// before applying the delta (used by the resize path).
+type CapacityDelta struct {
+	Sockets     int
+	Cores       int
+	MemoryMB    int
+	DiskGB      int
+	ExcludeVMID int
+}
+
 // Policy owns persistence and the immutable inventory projection used to
 // calculate current usage. The cluster client is only used for admin writes'
 // physical-node validation.

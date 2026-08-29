@@ -243,7 +243,7 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 // is started explicitly after the snippet is attached, preventing a first boot
 // without cloud-init).
 func createFromISO(ctx context.Context, policyService *policy.Policy, deps CreateDeps, clusterName string, actor auth.Identity, req CreateRequest) (CreateResult, error) {
-	plan, err := planCreate(ctx, policyService, deps.Store, clusterName, actor, req, deps.Log, deps.FreeSpace)
+	plan, err := planCreate(ctx, policyService, deps, clusterName, actor, req)
 	if err != nil {
 		return CreateResult{}, err
 	}
@@ -366,7 +366,7 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 		req.Disk.SizeGB = tmpl.DiskSizeGB
 	}
 
-	plan, err := planCreate(ctx, policyService, deps.Store, clusterName, actor, req, deps.Log, deps.FreeSpace)
+	plan, err := planCreate(ctx, policyService, deps, clusterName, actor, req)
 	if err != nil {
 		return CreateResult{}, err
 	}
@@ -692,7 +692,7 @@ type nicPlan struct {
 // planCreate runs all pre-allocation validation: quota, name, catalog,
 // hardware ranges, gabarit, resource resolution, node capacity, and live
 // disk-space check (US3/issue-04).
-func planCreate(ctx context.Context, policyService *policy.Policy, st *store.Store, clusterName string, actor auth.Identity, req CreateRequest, log *slog.Logger, freeSpace FreeSpaceChecker) (createPlan, error) {
+func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDeps, clusterName string, actor auth.Identity, req CreateRequest) (createPlan, error) {
 	if err := policyService.CheckQuota(ctx, clusterName, actor); err != nil {
 		return createPlan{}, err
 	}
@@ -701,12 +701,12 @@ func planCreate(ctx context.Context, policyService *policy.Policy, st *store.Sto
 		return createPlan{}, err
 	}
 
-	resources, err := catalog.ApprovedResources(ctx, st, clusterName)
+	resources, err := catalog.ApprovedResources(ctx, deps.Store, clusterName)
 	if err != nil {
 		return createPlan{}, fmt.Errorf("read catalog: %w", err)
 	}
 
-	sockets, cpuCores, memoryMB, diskGB, bus, err := resolveHardware(ctx, st, clusterName, req)
+	sockets, cpuCores, memoryMB, diskGB, bus, err := resolveHardware(ctx, deps.Store, clusterName, req)
 	if err != nil {
 		return createPlan{}, err
 	}
@@ -733,18 +733,18 @@ func planCreate(ctx context.Context, policyService *policy.Policy, st *store.Sto
 		return createPlan{}, err
 	}
 
-	if err := policyService.CheckNodeCapacity(ctx, clusterName, node, sockets, cpuCores, memoryMB, diskGB, 0); err != nil {
+	if err := policyService.CheckNodeCapacity(ctx, clusterName, node, policy.CapacityDelta{Sockets: sockets, Cores: cpuCores, MemoryMB: memoryMB, DiskGB: diskGB}); err != nil {
 		return createPlan{}, err
 	}
 
 	// US3/issue-04 D4b: live disk-space check before VMID consumption.
-	if err := checkLiveDiskSpace(ctx, freeSpace, node, storage, diskGB); err != nil {
+	if err := checkLiveDiskSpace(ctx, deps.FreeSpace, node, storage, diskGB); err != nil {
 		return createPlan{}, err
 	}
 
 	// US3/issue-04 T042: log the placement decision when auto-selection ran.
-	if req.Node == "" && log != nil {
-		logPlacement(log, node, resources.Nodes, capacities, req)
+	if req.Node == "" && deps.Log != nil {
+		logPlacement(deps.Log, node, resources.Nodes, capacities, req)
 	}
 
 	return createPlan{node: node, storage: storage, sockets: sockets, cpuCores: cpuCores, memoryMB: memoryMB, diskGB: diskGB, bus: bus, nics: nics}, nil
