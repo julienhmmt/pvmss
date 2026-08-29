@@ -38,17 +38,17 @@ func (p Proxmox) NextVMID(ctx context.Context) (int, error) {
 	}
 }
 
-// CreateVM implements Creator via POST /nodes/{node}/qemu. spec's single
-// CPUCores value becomes a one-socket VM with that many cores — matching how
-// VM.CPUCores is itself derived elsewhere (fake.go's UpdateHardware:
-// CPUCores = sockets * cores). Proxmox's own start=1 param folds the initial
-// boot into the same task rather than a separate Action call, matching
-// FR-022 exactly.
+// CreateVM implements Creator via POST /nodes/{node}/qemu. spec's Sockets
+// and CPUCores values become the Proxmox form's sockets and cores keys —
+// matching how VM.CPUCores is itself derived elsewhere (fake.go's
+// UpdateHardware: CPUCores = sockets * cores). Proxmox's own start=1 param
+// folds the initial boot into the same task rather than a separate Action
+// call, matching FR-022 exactly.
 func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 	form := url.Values{
 		"vmid":    {strconv.Itoa(spec.VMID)},
 		"name":    {spec.Name},
-		"sockets": {"1"},
+		"sockets": {strconv.Itoa(spec.Sockets)},
 		"cores":   {strconv.Itoa(spec.CPUCores)},
 		"memory":  {strconv.Itoa(spec.MemoryMB)},
 	}
@@ -69,8 +69,12 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 		}
 	}
 
-	if spec.Network.Bridge != "" {
-		form.Set("net0", encodeNetValue(NetworkInterface{Model: spec.Network.Model, Bridge: spec.Network.Bridge}))
+	for i, nic := range spec.Network {
+		if nic.Bridge == "" {
+			continue
+		}
+
+		form.Set(fmt.Sprintf("net%d", i), encodeNetValue(NetworkInterface{Model: nic.Model, Bridge: nic.Bridge}))
 	}
 
 	// Always provision a serial port (serial0) backed by a socket. This makes
@@ -133,7 +137,9 @@ func (p Proxmox) TaskStatus(ctx context.Context, upid string) (TaskStatus, error
 	switch {
 	case status.Status == string(VMRunning):
 		result.State = TaskRunning
-	case status.ExitStatus == "OK":
+	case status.ExitStatus == "OK" || strings.HasPrefix(status.ExitStatus, "WARNINGS"):
+		// PVE returns WARNINGS for benign conditions (NUMA mismatch, local
+		// disks) — both references accept it as success (lifecycle-04).
 		result.State = TaskOK
 	default:
 		result.State = TaskError

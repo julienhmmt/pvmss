@@ -43,6 +43,8 @@ type FakeCall struct {
 	VMID          int
 	Action        string
 	Name          string
+	Pool          string
+	Full          bool
 	DiskKey       string
 	Bus           string
 	Storage       string
@@ -241,6 +243,16 @@ func (fake Fake) ListISOs(_ context.Context) ([]ISOImage, error) {
 		return nil, ErrUnreachable
 	}
 	return slices.Clone(fakeISOs), nil
+}
+
+// ListTemplates implements Client. Returns the fake template dataset — two
+// template VMs matching the V22 seed so the admin demo can discover and
+// approve them (US2/issue-02 T058).
+func (fake Fake) ListTemplates(_ context.Context) ([]TemplateVM, error) {
+	if fake.unavailable() {
+		return nil, ErrUnreachable
+	}
+	return slices.Clone(fakeTemplates), nil
 }
 
 // ListPools implements Client and returns a defensive copy of the live pool table.
@@ -956,6 +968,15 @@ var fakeISOs = []ISOImage{
 	{Storage: FakeStorageLocal, Node: FakeNode01, File: "debian-12-generic-amd64.iso", SizeBytes: 691945472},
 	{Storage: FakeStorageLocal, Node: FakeNode01, File: "ubuntu-24.04-server-amd64.iso", SizeBytes: 1258291200},
 	{Storage: FakeStorageLocal, Node: FakeNode02, File: "rocky-9-generic-x86_64.iso", SizeBytes: 1476395008},
+}
+
+// fakeTemplates is the US2/issue-02 template discovery dataset. Two template
+// VMs on pve-node-02 matching the V22 seed: a cloud-init capable debian-12
+// cloud image (full clone) and a basic alpine appliance (linked clone when
+// storage matches).
+var fakeTemplates = []TemplateVM{
+	{VMID: 9000, Node: FakeNode02, Name: "debian-12-cloud", CloudInitCapable: true, DiskStorage: FakeStorageLocalLVM, DiskSizeGB: 8, DiskBus: string(DiskBusSCSI)},
+	{VMID: 9001, Node: FakeNode02, Name: "alpine-appliance", CloudInitCapable: false, DiskStorage: FakeStorageLocal, DiskSizeGB: 2, DiskBus: string(DiskBusSCSI)},
 }
 
 // fakeUptimeOnStart is the uptime the fake assigns when a stopped VM is started

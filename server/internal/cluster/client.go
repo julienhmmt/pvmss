@@ -46,6 +46,7 @@ type Client interface {
 	ChangePassword(ctx context.Context, username, oldPassword, newPassword string) error
 	ListBridges(ctx context.Context) ([]Bridge, error)
 	ListISOs(ctx context.Context) ([]ISOImage, error)
+	ListTemplates(ctx context.Context) ([]TemplateVM, error)
 	ListPools(ctx context.Context) ([]Pool, error)
 	EnsurePoolRole(ctx context.Context) error
 	EnsurePoolUser(ctx context.Context, pool, password string) (string, error)
@@ -329,6 +330,22 @@ type ISOImage struct {
 	Node      string
 	File      string
 	SizeBytes int64
+}
+
+// TemplateVM is one template VM discovered in the cluster (US2/issue-02).
+// Proxmox marks templates with template=1 in /cluster/resources. The admin
+// approves which discovered templates are offered in the create wizard.
+// DiskStorage, DiskSizeGB, and DiskBus describe the template's primary disk
+// so the clone path can decide linked vs full and target the correct resize
+// key.
+type TemplateVM struct {
+	VMID             int
+	Node             string
+	Name             string
+	CloudInitCapable bool
+	DiskStorage      string
+	DiskSizeGB       int
+	DiskBus          string
 }
 
 // VMSnapshot is a live snapshot entry returned by a cluster for one VM.

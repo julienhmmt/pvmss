@@ -1,11 +1,17 @@
 import { getContext, setContext } from 'svelte';
 import { SvelteDate } from 'svelte/reactivity';
-import type { CreateMode } from './create.svelte';
+import type { CreateMode, VmSource } from './create.svelte';
 
 export const DRAFT_STORAGE_KEY = 'pvmss-vm-create-draft';
-export const DRAFT_SCHEMA_VERSION = 1;
+export const DRAFT_SCHEMA_VERSION = 3;
 
 const SAVE_DEBOUNCE_MS = 400;
+
+/** One NIC row persisted in the draft (mirrors NICRow from create.svelte). */
+export interface DraftNIC {
+	bridge: string;
+	model: string;
+}
 
 /** The form's persistable field values — VMCreateRequest's client-side twin. */
 export interface DraftValues {
@@ -18,13 +24,15 @@ export interface DraftValues {
 	storage: string;
 	storageAdjusted: boolean;
 	tagsInput: string;
+	sockets?: number;
 	cpuCores: number;
 	memoryMB: number;
 	diskSizeGB: number;
 	diskStorage: string;
-	bridge: string;
-	networkModel: string;
+	nics?: DraftNIC[];
 	isoFile: string;
+	sourceType?: VmSource;
+	templateId?: number;
 	startAfterCreate: boolean;
 }
 

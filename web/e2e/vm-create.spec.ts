@@ -115,7 +115,7 @@ test.describe('T06 VM creation', () => {
 				cpuCores: 1,
 				memoryMB: 1024,
 				disk: { storage: 'not-a-real-storage', sizeGB: 20 },
-				network: { bridge: 'vmbr0', model: 'virtio' }
+				network: [{ bridge: 'vmbr0', model: 'virtio' }]
 			}
 		});
 		expect(response.status()).toBe(400);

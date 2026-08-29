@@ -970,7 +970,7 @@ func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request)
 	h.writeJSONStatus(w, http.StatusOK, hardwareOptionsDTO{
 		Storages: hardwareStorages(resources.Storages, index),
 		Bridges:  hardwareBridges(resources.Bridges, entity.Node),
-		ISOs:     hardwareISOs(resources.ISOs, resources.Storages),
+		ISOs:     hardwareISOs(resources.ISOs),
 		Limits: vmLimitsDTO{
 			MaxSockets:        gabarit.MaxSockets,
 			MaxCores:          gabarit.MaxCores,
@@ -1007,21 +1007,12 @@ func hardwareBridges(bridges []catalog.Bridge, node string) []hardwareBridgeDTO 
 	return result
 }
 
-func hardwareISOs(isos []catalog.ISO, storages []catalog.Storage) []hardwareISODTO {
+func hardwareISOs(isos []catalog.ISO) []hardwareISODTO {
 	result := make([]hardwareISODTO, 0, len(isos))
 	for _, iso := range isos {
-		node := ""
-
-		for _, storage := range storages {
-			if storage.Name == iso.Storage {
-				node = storage.Node
-				break
-			}
-		}
-
 		result = append(result, hardwareISODTO{
 			VolID: iso.Storage + ":iso/" + iso.File,
-			Node:  node, Storage: iso.Storage, Name: iso.File,
+			Node:  iso.Node, Storage: iso.Storage, Name: iso.File,
 		})
 	}
 

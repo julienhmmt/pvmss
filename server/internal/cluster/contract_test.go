@@ -326,6 +326,42 @@ func runListISOsCase(t *testing.T, impl cluster.Client) {
 }
 
 //nolint:paralleltest // serial: shared fake identity fixture
+func TestContract_ListTemplates(t *testing.T) {
+	impls := map[string]cluster.Client{
+		fakeImplementationName: cluster.Fake{},
+	}
+
+	for name, impl := range impls {
+		t.Run(name, func(t *testing.T) {
+			runListTemplatesCase(t, impl)
+		})
+	}
+}
+
+// runListTemplatesCase checks ListTemplates returns at least one template
+// with a non-empty node and positive VMID. Extracted from
+// TestContract_ListTemplates to keep its Cognitive Complexity under the
+// SonarQube go:S3776 threshold.
+func runListTemplatesCase(t *testing.T, impl cluster.Client) {
+	t.Helper()
+
+	templates, err := impl.ListTemplates(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(templates) == 0 {
+		t.Fatal("expected at least one template")
+	}
+
+	for _, tmpl := range templates {
+		if tmpl.VMID == 0 || tmpl.Node == "" {
+			t.Errorf("template %+v has empty vmid or node", tmpl)
+		}
+	}
+}
+
+//nolint:paralleltest // serial: shared fake identity fixture
 func TestContract_GetMetricsHistory(t *testing.T) {
 	impls := map[string]cluster.MetricsHistoryReader{
 		fakeImplementationName: cluster.Fake{},

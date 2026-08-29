@@ -206,7 +206,9 @@ func queryRows[T any](
 
 // captureAtLatest reads the five T06/T07 row sets through the actual catalog
 // functions (which now carry AND enabled = 1). This is the "after" snapshot:
-// what the functions return under V9 with zero toggles performed.
+// what the functions return under V9 with zero toggles performed. The caller
+// must have added the sockets column (V21's DDL) manually so catalog.Profiles
+// can run — the test stops at V9 because V14 drops catalog_bridges.
 func captureAtLatest(t *testing.T, st *store.Store) (
 	[]catalog.Node,
 	[]catalog.Storage,
@@ -249,11 +251,21 @@ func TestCatalogAdminCompat_RowSetsIdenticalBeforeAndAfterV9(t *testing.T) {
 
 	beforeNodes, beforeStorages, beforeBridges, beforeISOs, beforeProfiles := captureAtV7(t, db)
 
-	// Migrate forward through V9.
+	// Migrate forward through V9, assert V9's changes landed.
 	runMigrationsUpTo(t, db, 9)
 
 	assertV9EnabledColumnOnAllTables(t, db)
 	assertPvmssTagSeeded(t, db)
+
+	// Add the sockets column manually (same DDL as V21) so catalog.Profiles
+	// can run against the V9 schema. We cannot migrate past V9 because V14
+	// drops and recreates catalog_bridges without re-seeding, which would
+	// change the bridge row set for a reason unrelated to V9's enabled
+	// column — the exact thing SC-003 isolates.
+	if _, err := db.ExecContext(context.Background(),
+		`ALTER TABLE catalog_profiles ADD COLUMN sockets INTEGER NOT NULL DEFAULT 1`); err != nil {
+		t.Fatalf("add sockets column: %v", err)
+	}
 
 	st := store.NewFromDB(db)
 

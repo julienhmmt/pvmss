@@ -15,9 +15,33 @@ type Creator interface {
 	// The VM materializes as the task progresses; a successful return means
 	// accepted, not finished.
 	CreateVM(ctx context.Context, spec VMSpec) (upid string, err error)
+	// CloneVM dispatches a clone of an existing template VM and returns the
+	// task's UPID (US2/issue-02). The clone is asynchronous like CreateVM;
+	// the caller polls TaskStatus until completion before post-clone config.
+	CloneVM(ctx context.Context, spec CloneSpec) (upid string, err error)
 	// TaskStatus reads a task's current state live (FR-014). Returns
 	// ErrNotFound for an unknown or expired UPID.
 	TaskStatus(ctx context.Context, upid string) (TaskStatus, error)
+}
+
+// CloneSpec is the fully-resolved specification of a clone operation
+// (US2/issue-02). SourceVMID is the Proxmox VMID of the template; SourceNode
+// is the node the template lives on. NewVMID is the allocated VMID for the
+// clone. Full selects full vs linked clone. Storage is the target storage for
+// a full clone (empty = same as source). Pool is the tenancy anchor that owns
+// the cloned VM (FR-004: always the actor's own, never client-supplied).
+// TargetNode is reserved for future cross-node clone support (D2b: currently
+// always empty, clone stays on SourceNode).
+type CloneSpec struct {
+	SourceVMID int
+	SourceNode string
+	NewVMID    int
+	Name       string
+	Full       bool
+	Storage    string
+	Pool       string
+	DiskBus    string
+	TargetNode string
 }
 
 // VMSpec is the fully-resolved specification of a VM to create (T06
@@ -29,6 +53,7 @@ type VMSpec struct {
 	Name             string
 	Pool             string
 	Tags             []string
+	Sockets          int
 	CPUCores         int
 	MemoryMB         int
 	Disk             DiskSpec
@@ -44,11 +69,16 @@ type DiskSpec struct {
 	Bus     string
 }
 
-// NetworkSpec is the VM's single initial NIC (multi-NIC is T07).
-type NetworkSpec struct {
+// NICSpec is one network interface card to attach at creation.
+type NICSpec struct {
 	Bridge string
 	Model  string
 }
+
+// NetworkSpec is the VM's initial set of NICs (US2/D3a: multi-NIC). A
+// NetworkSpec with zero entries produces no netN keys — the caller ensures at
+// least one NIC before dispatch.
+type NetworkSpec []NICSpec
 
 // ISOSpec is an optional installation ISO attached at creation.
 type ISOSpec struct {
