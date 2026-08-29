@@ -48,6 +48,7 @@ type proxmoxResourceRow struct {
 	Storage    string  `json:"storage"`
 	PluginType string  `json:"plugintype"`
 	Content    string  `json:"content"`
+	Template   int     `json:"template"` // 1 when the qemu VM is a template
 }
 
 // proxmoxSnapshotCapableStorage lists the Proxmox storage plugin types that
@@ -471,6 +472,108 @@ func proxmoxListISOContent(ctx context.Context, rest proxmoxRESTClient, node, st
 	}
 
 	return isos, nil
+}
+
+// ListTemplates implements Client, enumerating template VMs (template=1) via
+// /cluster/resources?type=vm (US2/issue-02 T056). Each row is hydrated with
+// its primary disk's storage, size, and bus via /nodes/{node}/qemu/{vmid}/config
+// so the clone path can decide linked vs full and target the correct resize key.
+// CloudInitCapable is detected by the presence of a cloud-init drive in the
+// fixed ide3 slot (proxmox_config.go's cloudInitDiskKey) — the same slot
+// EnsureCloudInitDrive writes, so a template that already has one is cloud-init
+// capable.
+func (p Proxmox) ListTemplates(ctx context.Context) ([]TemplateVM, error) {
+	rest := p.rest()
+
+	raw, err := rest.do(ctx, http.MethodGet, "/cluster/resources", url.Values{"type": {"vm"}})
+	if err != nil {
+		return nil, err
+	}
+
+	var rows []proxmoxResourceRow
+	if err := decodeData(raw, &rows); err != nil {
+		return nil, fmt.Errorf("decode template vms: %w", err)
+	}
+
+	var templates []TemplateVM
+
+	for _, row := range rows {
+		if row.Template != 1 {
+			continue
+		}
+
+		diskStorage, diskSizeGB, diskBus, cloudInitCapable, err := proxmoxTemplateDisk(ctx, rest, row.Node, row.VMID)
+		if err != nil {
+			return nil, fmt.Errorf("read template %d disk on %q: %w", row.VMID, row.Node, err)
+		}
+
+		templates = append(templates, TemplateVM{
+			VMID:             row.VMID,
+			Node:             row.Node,
+			Name:             row.Name,
+			CloudInitCapable: cloudInitCapable,
+			DiskStorage:      diskStorage,
+			DiskSizeGB:       diskSizeGB,
+			DiskBus:          diskBus,
+		})
+	}
+
+	return templates, nil
+}
+
+// proxmoxTemplateDisk reads the template's primary disk (the first scsi/virtio/
+// sata/ide key) from its config, returning (storage, sizeGB, bus, cloudInitCapable).
+// The primary disk is the first non-cdrom, non-cloudinit disk found in bus-family
+// priority order (scsi → virtio → sata → ide); Proxmox templates typically have a
+// single disk. Disk parsing reuses parseDiskValue (proxmox_config.go) so the format
+// "local-lvm:vm-101-disk-0,size=32G" is handled the same way as the disk tab and
+// the create wizard. CloudInitCapable is true when the fixed ide3 slot
+// (cloudInitDiskKey) holds a cloud-init drive — the same slot EnsureCloudInitDrive
+// writes, so a template that already has one is cloud-init capable.
+func proxmoxTemplateDisk(ctx context.Context, rest proxmoxRESTClient, node string, vmid int) (storage string, sizeGB int, bus string, cloudInitCapable bool, err error) {
+	cfg, err := fetchVMConfig(ctx, rest, node, vmid)
+	if err != nil {
+		return "", 0, "", false, err
+	}
+
+	for _, b := range []string{"scsi", "virtio", "sata", "ide"} {
+		for i := range 16 {
+			key := fmt.Sprintf("%s%d", b, i)
+			if key == cdromDiskKey || key == cloudInitDiskKey {
+				continue
+			}
+
+			val, ok := cfg[key].(string)
+			if !ok || val == "" || val == "none" {
+				continue
+			}
+
+			diskStorage, diskSizeGB := parseDiskValue(val)
+			if diskStorage == "" {
+				continue
+			}
+
+			cloudInitCapable = proxmoxConfigHasCloudInitDrive(cfg)
+
+			return diskStorage, diskSizeGB, b, cloudInitCapable, nil
+		}
+	}
+
+	cloudInitCapable = proxmoxConfigHasCloudInitDrive(cfg)
+
+	return "", 0, "", cloudInitCapable, nil
+}
+
+// proxmoxConfigHasCloudInitDrive reports whether cfg's fixed cloudInitDiskKey
+// slot holds a cloud-init drive. Mirrors EnsureCloudInitDrive's own detection
+// (proxmox_cloudinit.go): the slot value contains "cloudinit" when the drive
+// is present.
+func proxmoxConfigHasCloudInitDrive(cfg proxmoxVMConfig) bool {
+	if value, ok := cfg[cloudInitDiskKey].(string); ok && strings.Contains(value, "cloudinit") {
+		return true
+	}
+
+	return false
 }
 
 // proxmoxNodeNames lists every node name in the cluster.

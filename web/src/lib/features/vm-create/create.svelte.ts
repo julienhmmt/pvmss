@@ -19,12 +19,14 @@ export interface CatalogBridge {
 
 export interface CatalogISO {
 	storage: string;
+	node: string;
 	file: string;
 }
 
 export interface CatalogProfile {
 	id: string;
 	label: string;
+	sockets: number;
 	cpuCores: number;
 	memoryMB: number;
 	diskGB: number;
@@ -34,6 +36,19 @@ export interface CatalogProfile {
 export interface CatalogCloudInitTemplate {
 	id: string;
 	label: string;
+}
+
+/** One approved Proxmox template (US2/issue-02). The VMID is the Proxmox
+ *  VMID of the template VM; the node determines where the clone lands
+ *  (D2b: cross-node clone is forbidden). CloudInitCapable signals the UI
+ *  that the template supports cloud-init. DiskSizeGB is the template's
+ *  disk size (reductions are rejected). */
+export interface CatalogTemplate {
+	vmid: number;
+	node: string;
+	name: string;
+	cloudInitCapable: boolean;
+	diskSizeGB: number;
 }
 
 export interface CatalogTag {
@@ -82,6 +97,7 @@ export interface VmCreateCatalog {
 	bridges: CatalogBridge[];
 	isos: CatalogISO[];
 	profiles: CatalogProfile[];
+	templates: CatalogTemplate[];
 	cloudInitTemplates: CatalogCloudInitTemplate[];
 	tags: CatalogTag[];
 	gabarit?: CatalogGabarit;
@@ -89,7 +105,22 @@ export interface VmCreateCatalog {
 	nodeCapacities?: CatalogNodeCapacity[];
 }
 
-/** The single request shape both modes POST (FR-001) — no pool, no mode. */
+/** One network interface card in the creation request (US2/D3a). */
+export interface NICRequest {
+	bridge: string;
+	model: string;
+}
+
+/** One editable NIC row in the form's local state (US2/D3a). The shape
+ *  mirrors NICRequest but is a distinct type so the form owns its model. */
+export interface NICRow {
+	bridge: string;
+	model: string;
+}
+
+/** The single request shape both modes POST (FR-001) — no pool, no mode.
+ *  The VM source is either an ISO (iso field) or a Proxmox template
+ *  (templateId field), never both (US2/issue-02 D2a). */
 export interface VMCreateRequest {
 	cluster: string;
 	name: string;
@@ -97,11 +128,13 @@ export interface VMCreateRequest {
 	cloudInitTemplateId?: string;
 	node?: string;
 	tags?: string[];
+	sockets?: number;
 	cpuCores?: number;
 	memoryMB?: number;
 	disk?: { storage?: string; sizeGB?: number };
-	network?: { bridge?: string; model?: string };
+	network?: NICRequest[];
 	iso?: { storage: string; file: string };
+	templateId?: number;
 	startAfterCreate?: boolean;
 }
 
@@ -117,11 +150,18 @@ export interface VmCreateAccepted {
 
 export type CreateMode = 'simple' | 'detailed';
 
+/** The VM source type (US2/issue-02 D2a): 'iso' for OS without cloud images
+ *  (Windows, appliances), 'template' for cloud-init-capable Proxmox templates.
+ *  The two are mutually exclusive — the server rejects a request carrying both. */
+export type VmSource = 'iso' | 'template';
+
 /** Server error codes with fixed, non-parameterized text (server/internal/httpapi/vm_create.go). */
 const FIXED_SUBMIT_ERRORS: Partial<Record<string, () => string>> = {
 	admin_cannot_create: m['vms.create.adminBlocked'],
 	no_pool: m['vms.create.errorNoPool'],
 	invalid_name: m['vms.create.errorInvalidName'],
+	invalid_source: m['vms.create.errorInvalidSource'],
+	disk_reduction: m['vms.create.errorDiskReduction'],
 	cluster_error: m['vms.create.errorClusterRejected'],
 	internal_error: m['vms.create.errorInternal']
 };
@@ -132,6 +172,10 @@ const FIXED_SUBMIT_ERRORS: Partial<Record<string, () => string>> = {
 const NOT_APPROVED_DETAILS: Array<{ re: RegExp; translate: (match: RegExpMatchArray) => string }> = [
 	{
 		re: /^cloud-init template "(.+)" is not approved for this cluster$/,
+		translate: (match) => m['vms.create.errorNotApprovedTemplate']({ template: match[1] ?? '' })
+	},
+	{
+		re: /^template vmid (\d+) is not approved for this cluster$/,
 		translate: (match) => m['vms.create.errorNotApprovedTemplate']({ template: match[1] ?? '' })
 	},
 	{
@@ -160,8 +204,12 @@ const NOT_APPROVED_DETAILS: Array<{ re: RegExp; translate: (match: RegExpMatchAr
 		translate: (match) => m['vms.create.errorNotApprovedBridge']({ bridge: match[1] ?? '', node: match[2] ?? '' })
 	},
 	{
-		re: /^iso "(.+)" on storage "(.+)"$/,
-		translate: (match) => m['vms.create.errorNotApprovedIso']({ file: match[1] ?? '', storage: match[2] ?? '' })
+		re: /^iso "(.+)" on storage "(.+)" on node "(.+)"$/,
+		translate: (match) => m['vms.create.errorNotApprovedIso']({ file: match[1] ?? '', storage: match[2] ?? '', node: match[3] ?? '' })
+	},
+	{
+		re: /^no approved node holds iso "(.+)" on storage "(.+)"$/,
+		translate: (match) => m['vms.create.errorNoNodeHoldsIso']({ file: match[1] ?? '', storage: match[2] ?? '' })
 	},
 	{
 		re: /^node "(.+)"$/,
@@ -209,12 +257,20 @@ export class VmCreateStore {
 	storageAdjusted = $state(false);
 	tagsInput = $state('');
 	cpuCores = $state(1);
+	sockets = $state(1);
 	memoryMB = $state(2048);
 	diskSizeGB = $state(20);
 	diskStorage = $state('');
-	bridge = $state('');
-	networkModel = $state('virtio');
+	/** Multi-NIC rows (US2/D3a). Simple mode uses nics[0] only; detailed
+	 *  mode allows add/remove up to gabarit.maxNetworkCards. */
+	nics = $state<NICRow[]>([{ bridge: '', model: 'virtio' }]);
 	isoFile = $state('');
+	/** US2/issue-02: the VM source — 'iso' (default, preserves existing
+	 *  behaviour) or 'template' (clone from an approved Proxmox template).
+	 *  When 'template' is selected, the node selector is hidden (D2b: the
+	 *  clone stays on the template's node). */
+	sourceType = $state<VmSource>('iso');
+	templateId = $state(0);
 	startAfterCreate = $state(true);
 
 	/** Fetches the multi-cluster options and defaults to the first one, matching
@@ -294,6 +350,19 @@ export class VmCreateStore {
 		this.tagsInput = next.join(', ');
 	}
 
+	/** Adds a NIC row in detailed mode, up to gabarit.maxNetworkCards (US2/D3a). */
+	addNIC(): void {
+		const max = this.catalog?.gabarit?.maxNetworkCards ?? 4;
+		if (this.nics.length >= max) return;
+		this.nics.push({ bridge: '', model: 'virtio' });
+	}
+
+	/** Removes a NIC row at the given index (US2/D3a). At least one row remains. */
+	removeNIC(index: number): void {
+		if (this.nics.length <= 1) return;
+		this.nics.splice(index, 1);
+	}
+
 	/** The configured capacité for a node, if the administrator set one. */
 	nodeCapacity(node: string): CatalogNodeCapacity | undefined {
 		return this.catalog?.nodeCapacities?.find((capacity) => capacity.node === node);
@@ -319,22 +388,34 @@ export class VmCreateStore {
 		return this.buildDetailedRequest(request);
 	}
 
-	/** Detailed mode: every field explicit (FR-011), no profile reference. */
+	/** Detailed mode: every field explicit (FR-011), no profile reference.
+	 *  The source is either an ISO or a Proxmox template (US2/issue-02 D2a):
+	 *  when sourceType is 'template', templateId is sent and the ISO field is
+	 *  omitted; the node is derived from the template (D2b), not sent. */
 	buildDetailedRequest(request: VMCreateRequest): VMCreateRequest {
-		request.node = this.node;
+		request.sockets = this.sockets;
 		request.cpuCores = this.cpuCores;
 		request.memoryMB = this.memoryMB;
 		request.disk = { storage: this.diskStorage, sizeGB: this.diskSizeGB };
-		request.network = { bridge: this.bridge, model: this.networkModel };
+		request.network = this.nics.map((nic) => ({ bridge: nic.bridge, model: nic.model }));
 		const tags = this.tagsInput
 			.split(',')
 			.map((tag) => tag.trim())
 			.filter((tag) => tag !== '');
 		if (tags.length > 0) request.tags = tags;
-		if (this.isoFile !== '') {
-			const iso = this.catalog?.isos.find((entry) => entry.file === this.isoFile);
-			if (iso !== undefined) request.iso = { storage: iso.storage, file: iso.file };
+
+		if (this.sourceType === 'template' && this.templateId !== 0) {
+			request.templateId = this.templateId;
+			// D2b: the node is derived from the template server-side; do not
+			// send a client-supplied node for template clones.
+		} else {
+			request.node = this.node;
+			if (this.isoFile !== '') {
+				const iso = this.catalog?.isos.find((entry) => entry.file === this.isoFile && entry.node === this.node);
+				if (iso !== undefined) request.iso = { storage: iso.storage, file: iso.file };
+			}
 		}
+
 		return request;
 	}
 
@@ -364,13 +445,15 @@ export class VmCreateStore {
 			storage: this.storage,
 			storageAdjusted: this.storageAdjusted,
 			tagsInput: this.tagsInput,
+			sockets: this.sockets,
 			cpuCores: this.cpuCores,
 			memoryMB: this.memoryMB,
 			diskSizeGB: this.diskSizeGB,
 			diskStorage: this.diskStorage,
-			bridge: this.bridge,
-			networkModel: this.networkModel,
+			nics: this.nics.map((nic) => ({ ...nic })),
 			isoFile: this.isoFile,
+			sourceType: this.sourceType,
+			templateId: this.templateId,
 			startAfterCreate: this.startAfterCreate
 		};
 	}
@@ -387,13 +470,15 @@ export class VmCreateStore {
 		this.storage = values.storage;
 		this.storageAdjusted = values.storageAdjusted;
 		this.tagsInput = values.tagsInput;
+		this.sockets = values.sockets ?? 1;
 		this.cpuCores = values.cpuCores;
 		this.memoryMB = values.memoryMB;
 		this.diskSizeGB = values.diskSizeGB;
 		this.diskStorage = values.diskStorage;
-		this.bridge = values.bridge;
-		this.networkModel = values.networkModel;
+		this.nics = (values.nics ?? [{ bridge: '', model: 'virtio' }]).map((nic) => ({ ...nic }));
 		this.isoFile = values.isoFile;
+		this.sourceType = values.sourceType ?? 'iso';
+		this.templateId = values.templateId ?? 0;
 		this.startAfterCreate = values.startAfterCreate;
 	}
 }

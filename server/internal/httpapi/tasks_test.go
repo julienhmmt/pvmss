@@ -54,7 +54,7 @@ func TestTasks_PollTransitions(t *testing.T) {
 		CPUCores: 1,
 		MemoryMB: 2048,
 		Disk:     cluster.DiskSpec{Storage: "local-lvm", SizeGB: 20},
-		Network:  cluster.NetworkSpec{Bridge: testBridgeVmbr0, Model: "virtio"},
+		Network:  cluster.NetworkSpec{{Bridge: testBridgeVmbr0, Model: "virtio"}},
 	})
 	if err != nil {
 		t.Fatalf("CreateVM: %v", err)
@@ -240,7 +240,7 @@ func TestTasks_WithRegistry_PollsNamedCluster(t *testing.T) {
 		CPUCores: 1,
 		MemoryMB: 2048,
 		Disk:     cluster.DiskSpec{Storage: "local-lvm", SizeGB: 20},
-		Network:  cluster.NetworkSpec{Bridge: testBridgeVmbr0, Model: "virtio"},
+		Network:  cluster.NetworkSpec{{Bridge: testBridgeVmbr0, Model: "virtio"}},
 	})
 	if err != nil {
 		t.Fatalf("CreateVM: %v", err)
@@ -311,7 +311,7 @@ func TestTasks_WithRegistry_DefaultFallback(t *testing.T) {
 		VMID: vmid, Node: cluster.FakeNode01, Name: "fallback-vm", Pool: cluster.FakePoolAlice,
 		Tags: []string{cluster.FakeTagPvmss}, CPUCores: 1, MemoryMB: 2048,
 		Disk:    cluster.DiskSpec{Storage: "local-lvm", SizeGB: 20},
-		Network: cluster.NetworkSpec{Bridge: testBridgeVmbr0, Model: "virtio"},
+		Network: cluster.NetworkSpec{{Bridge: testBridgeVmbr0, Model: "virtio"}},
 	})
 	if err != nil {
 		t.Fatalf("CreateVM: %v", err)

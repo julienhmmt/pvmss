@@ -15,12 +15,12 @@ function sampleValues(): DraftValues {
 		storage: 'ceph-data',
 		storageAdjusted: false,
 		tagsInput: 'team-web',
+		sockets: 2,
 		cpuCores: 2,
 		memoryMB: 4096,
 		diskSizeGB: 40,
 		diskStorage: 'ceph-data',
-		bridge: 'vmbr0',
-		networkModel: 'virtio',
+		nics: [{ bridge: 'vmbr0', model: 'virtio' }],
 		isoFile: '',
 		startAfterCreate: true
 	};

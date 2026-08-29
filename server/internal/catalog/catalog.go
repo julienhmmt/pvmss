@@ -27,9 +27,12 @@ type Bridge struct {
 	Node string `json:"node"`
 }
 
-// ISO is one approved ISO image on an approved storage.
+// ISO is one approved ISO image on an approved storage on a node. Approval is
+// keyed by (node, storage, file) — one row per node, consistent with Storage
+// and Bridge. An ISO on shared storage has N rows (D1b).
 type ISO struct {
 	Storage string `json:"storage"`
+	Node    string `json:"node"`
 	File    string `json:"file"`
 }
 
@@ -39,10 +42,28 @@ type ISO struct {
 type Profile struct {
 	ID       string
 	Label    string
+	Sockets  int
 	CPUCores int
 	MemoryMB int
 	DiskGB   int
 	Bus      string
+}
+
+// Template is one approved Proxmox template (US2/issue-02). The VMID is the
+// Proxmox VMID of the template VM; the node determines where the clone lands
+// (D2b: cross-node clone is forbidden). CloudInitCapable drives the
+// full/linked clone decision. DiskStorage and DiskSizeGB drive the resize
+// decision (enlarge after clone, reject reduction before VMID). DiskBus is
+// the Proxmox bus family of the template's primary disk (e.g. "scsi") — the
+// clone inherits it, and post-clone ResizeDisk must target the correct key.
+type Template struct {
+	VMID             int
+	Node             string
+	Name             string
+	CloudInitCapable bool
+	DiskStorage      string
+	DiskSizeGB       int
+	DiskBus          string
 }
 
 // Resources is the approved-resource catalog for one cluster.
@@ -86,10 +107,11 @@ func (r Resources) HasBridge(name, node string) bool {
 	return false
 }
 
-// HasISO reports whether (storage, file) is an approved ISO.
-func (r Resources) HasISO(storage, file string) bool {
+// HasISO reports whether (storage, file) is an approved ISO on node. A
+// shared-storage ISO has one row per node, so each node matches independently.
+func (r Resources) HasISO(storage, file, node string) bool {
 	for _, iso := range r.ISOs {
-		if iso.Storage == storage && iso.File == file {
+		if iso.Storage == storage && iso.File == file && iso.Node == node {
 			return true
 		}
 	}
@@ -139,13 +161,15 @@ func ApprovedResources(ctx context.Context, st *store.Store, cluster string) (Re
 	}
 
 	for _, iso := range isos {
-		resources.ISOs = append(resources.ISOs, ISO{Storage: iso.Storage, File: iso.File})
+		resources.ISOs = append(resources.ISOs, ISO{Storage: iso.Storage, Node: iso.Node, File: iso.File})
 	}
 
 	return resources, nil
 }
 
 // Profiles reads the VM hardware profiles for a cluster.
+//
+//nolint:dupl // structurally similar to Templates by design (row→domain mapping)
 func Profiles(ctx context.Context, st *store.Store, cluster string) ([]Profile, error) {
 	rows, err := st.CatalogProfiles(ctx, cluster)
 	if err != nil {
@@ -157,6 +181,7 @@ func Profiles(ctx context.Context, st *store.Store, cluster string) ([]Profile, 
 		profiles = append(profiles, Profile{
 			ID:       row.ID,
 			Label:    row.Label,
+			Sockets:  row.Sockets,
 			CPUCores: row.CPUCores,
 			MemoryMB: row.MemoryMB,
 			DiskGB:   row.DiskGB,
@@ -177,4 +202,41 @@ func FindProfile(profiles []Profile, id string) (Profile, error) {
 	}
 
 	return Profile{}, fmt.Errorf("profile %q is not approved for this cluster", id)
+}
+
+// Templates reads the approved Proxmox templates for a cluster (US2/issue-02).
+//
+//nolint:dupl // structurally similar to Profiles by design (row→domain mapping)
+func Templates(ctx context.Context, st *store.Store, cluster string) ([]Template, error) {
+	rows, err := st.CatalogTemplates(ctx, cluster)
+	if err != nil {
+		return nil, err
+	}
+
+	templates := make([]Template, 0, len(rows))
+	for _, row := range rows {
+		templates = append(templates, Template{
+			VMID:             row.VMID,
+			Node:             row.Node,
+			Name:             row.Name,
+			CloudInitCapable: row.CloudInitCapable,
+			DiskStorage:      row.DiskStorage,
+			DiskSizeGB:       row.DiskSizeGB,
+			DiskBus:          row.DiskBus,
+		})
+	}
+
+	return templates, nil
+}
+
+// FindTemplate returns the template with the given VMID, or an error wrapping
+// ErrNotApproved when the VMID is absent from the catalog (US2/issue-02).
+func FindTemplate(templates []Template, vmid int) (Template, error) {
+	for _, tmpl := range templates {
+		if tmpl.VMID == vmid {
+			return tmpl, nil
+		}
+	}
+
+	return Template{}, fmt.Errorf("template vmid %d is not approved for this cluster", vmid)
 }

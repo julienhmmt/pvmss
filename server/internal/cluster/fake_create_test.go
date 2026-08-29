@@ -129,7 +129,7 @@ func TestFake_CreateVM_RecordsVMInDataset(t *testing.T) {
 		CPUCores:         2,
 		MemoryMB:         4096,
 		Disk:             DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 40},
-		Network:          NetworkSpec{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)},
+		Network:          NetworkSpec{{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)}},
 		StartAfterCreate: true,
 	}
 
@@ -202,7 +202,7 @@ func TestFake_CreateVM_NoStartLeavesVMStopped(t *testing.T) {
 		CPUCores: 1,
 		MemoryMB: 2048,
 		Disk:     DiskSpec{Storage: FakeStorageLocal, SizeGB: 20},
-		Network:  NetworkSpec{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)},
+		Network:  NetworkSpec{{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)}},
 	}
 	if _, err := client.CreateVM(ctx, spec); err != nil {
 		t.Fatalf("CreateVM: %v", err)
@@ -247,7 +247,7 @@ func TestFake_TaskStatus_PollCount(t *testing.T) {
 		CPUCores: 1,
 		MemoryMB: 2048,
 		Disk:     DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 20},
-		Network:  NetworkSpec{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)},
+		Network:  NetworkSpec{{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)}},
 	})
 	if err != nil {
 		t.Fatalf("CreateVM: %v", err)
@@ -286,4 +286,205 @@ func TestFake_TaskStatus_UnknownUPID(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error for unknown upid, got nil")
 	}
+}
+
+// TestFake_CloneVM_RegistersTaskAndCompletes verifies the fake clone
+// registers a task, reports running then ok on poll, and materializes the
+// cloned VM with the correct VMID, node, pool, and disk bus.
+//
+//nolint:paralleltest // serial: shared mutable fake dataset
+func TestFake_CloneVM_RegistersTaskAndCompletes(t *testing.T) {
+	defer ResetFake()
+
+	client := Fake{}
+	ctx := context.Background()
+
+	upid, err := client.CloneVM(ctx, CloneSpec{
+		SourceVMID: 9000,
+		SourceNode: FakeNode02,
+		NewVMID:    10000,
+		Name:       "cloned-vm",
+		Full:       true,
+		Storage:    FakeStorageLocalLVM,
+		Pool:       FakePoolAlice,
+		DiskBus:    string(DiskBusSCSI),
+	})
+	if err != nil {
+		t.Fatalf("CloneVM: %v", err)
+	}
+
+	if upid == "" {
+		t.Fatal("expected non-empty UPID")
+	}
+
+	assertTaskRunningTwice(t, ctx, client, upid)
+
+	status := assertTaskOK(t, ctx, client, upid)
+	_ = status
+
+	snap, err := client.Snapshot(ctx)
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v VM) bool { return v.VMID == 10000 })
+	if idx < 0 {
+		t.Fatalf("cloned VM 10000 not in snapshot")
+	}
+
+	cloned := snap.VMs[idx]
+
+	if cloned.Name != "cloned-vm" || cloned.Node != FakeNode02 || cloned.Pool != FakePoolAlice {
+		t.Errorf("cloned VM = %+v", cloned)
+	}
+
+	if cloned.Status != VMStopped {
+		t.Errorf("cloned VM status = %q, want %q", cloned.Status, VMStopped)
+	}
+
+	if len(cloned.Disks) != 1 || cloned.Disks[0].Key != "scsi0" {
+		t.Errorf("cloned VM disk = %+v, want key scsi0", cloned.Disks)
+	}
+}
+
+//nolint:revive // context-as-argument: test helper signature matches caller convention
+func assertTaskRunningTwice(t *testing.T, ctx context.Context, client Fake, upid string) {
+	t.Helper()
+
+	for i := range 2 {
+		status, err := client.TaskStatus(ctx, upid)
+		if err != nil {
+			t.Fatalf("TaskStatus call %d: %v", i+1, err)
+		}
+
+		if status.State != TaskRunning {
+			t.Fatalf("call %d: state = %q, want %q", i+1, status.State, TaskRunning)
+		}
+	}
+}
+
+//nolint:revive // context-as-argument: test helper signature matches caller convention
+func assertTaskOK(t *testing.T, ctx context.Context, client Fake, upid string) TaskStatus {
+	t.Helper()
+
+	status, err := client.TaskStatus(ctx, upid)
+	if err != nil {
+		t.Fatalf("TaskStatus call 3: %v", err)
+	}
+
+	if status.State != TaskOK {
+		t.Fatalf("call 3: state = %q, want %q", status.State, TaskOK)
+	}
+
+	return status
+}
+
+// TestFake_CloneVM_VirtioBus verifies the cloned VM's disk uses the bus
+// from the CloneSpec, not a hardcoded scsi.
+//
+//nolint:paralleltest // serial: shared mutable fake dataset
+func TestFake_CloneVM_VirtioBus(t *testing.T) {
+	defer ResetFake()
+
+	client := Fake{}
+	ctx := context.Background()
+
+	upid, err := client.CloneVM(ctx, CloneSpec{
+		SourceVMID: 9001,
+		SourceNode: FakeNode02,
+		NewVMID:    10001,
+		Name:       "virtio-clone",
+		Full:       false,
+		Pool:       "pool-bob",
+		DiskBus:    string(DiskBusVirtio),
+	})
+	if err != nil {
+		t.Fatalf("CloneVM: %v", err)
+	}
+
+	// Fast-forward to completion.
+	for range 3 {
+		if _, err := client.TaskStatus(ctx, upid); err != nil {
+			t.Fatalf("TaskStatus: %v", err)
+		}
+	}
+
+	snap, err := client.Snapshot(ctx)
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v VM) bool { return v.VMID == 10001 })
+	if idx < 0 {
+		t.Fatalf("cloned VM 10001 not in snapshot")
+	}
+
+	cloned := snap.VMs[idx]
+
+	if len(cloned.Disks) != 1 || cloned.Disks[0].Key != "virtio0" {
+		t.Errorf("cloned VM disk = %+v, want key virtio0", cloned.Disks)
+	}
+
+	if cloned.Disks[0].Bus != DiskBusVirtio {
+		t.Errorf("cloned VM disk bus = %q, want %q", cloned.Disks[0].Bus, DiskBusVirtio)
+	}
+
+	if cloned.Pool != "pool-bob" {
+		t.Errorf("cloned VM pool = %q, want pool-bob", cloned.Pool)
+	}
+}
+
+// TestFake_CloneVM_RecordsCall verifies the fake records a clone FakeCall
+// with the correct pool, storage, and full flag.
+//
+//nolint:paralleltest // serial: shared mutable fake dataset
+func TestFake_CloneVM_RecordsCall(t *testing.T) {
+	defer ResetFake()
+
+	client := Fake{}
+	ctx := context.Background()
+
+	_, err := client.CloneVM(ctx, CloneSpec{
+		SourceVMID: 9000,
+		SourceNode: FakeNode02,
+		NewVMID:    10002,
+		Name:       "call-test",
+		Full:       true,
+		Storage:    FakeStorageLocal,
+		Pool:       "pool-carol",
+		DiskBus:    string(DiskBusSCSI),
+	})
+	if err != nil {
+		t.Fatalf("CloneVM: %v", err)
+	}
+
+	calls := FakeCallsFor(10002)
+
+	cloneCall := findCloneFakeCall(calls)
+	if cloneCall == nil {
+		t.Fatal("no clone call recorded for VMID 10002")
+	}
+
+	if cloneCall.Pool != "pool-carol" {
+		t.Errorf("clone call pool = %q, want pool-carol", cloneCall.Pool)
+	}
+
+	if !cloneCall.Full {
+		t.Error("clone call full = false, want true")
+	}
+
+	if cloneCall.Storage != FakeStorageLocal {
+		t.Errorf("clone call storage = %q, want %q", cloneCall.Storage, FakeStorageLocal)
+	}
+}
+
+// findCloneFakeCall returns the first clone FakeCall in calls, or nil.
+func findCloneFakeCall(calls []FakeCall) *FakeCall {
+	for i := range calls {
+		if calls[i].Action == "clone" {
+			return &calls[i]
+		}
+	}
+
+	return nil
 }

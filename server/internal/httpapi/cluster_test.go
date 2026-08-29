@@ -42,6 +42,10 @@ func (stubClusterClient) ListISOs(_ context.Context) ([]cluster.ISOImage, error)
 	return nil, cluster.ErrNotImplemented
 }
 
+func (stubClusterClient) ListTemplates(_ context.Context) ([]cluster.TemplateVM, error) {
+	return nil, cluster.ErrNotImplemented
+}
+
 func (stubClusterClient) ListPools(_ context.Context) ([]cluster.Pool, error) {
 	return nil, cluster.ErrNotImplemented
 }

@@ -8,9 +8,15 @@
 	// only — the server re-checks against the same ceiling (constitution VI).
 	const form = getVmCreateContext();
 
+	const maxSockets = $derived(form.catalog?.gabarit?.maxSockets ?? 4);
 	const maxCores = $derived(form.catalog?.gabarit?.maxCores ?? 32);
 	const maxMemoryMB = $derived(form.catalog?.gabarit?.maxMemoryMB ?? 65536);
 
+	const socketsError = $derived(
+		Number.isInteger(form.sockets) && form.sockets >= 1 && form.sockets <= maxSockets
+			? null
+			: m['vms.create.socketsOutOfRange']({ min: 1, max: maxSockets })
+	);
 	const cpuError = $derived(
 		Number.isInteger(form.cpuCores) && form.cpuCores >= 1 && form.cpuCores <= maxCores
 			? null
@@ -48,6 +54,19 @@
 				{/if}
 			{/if}
 		</div>
+	{/if}
+
+	{#if form.mode === 'detailed'}
+		<FormField
+			label={m['vms.create.sockets']()}
+			hint={m['vms.create.socketsLimitHint']({ min: 1, max: maxSockets })}
+			error={socketsError}
+			required
+		>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField {id} {describedBy} {invalid} type="number" min={1} max={maxSockets} bind:value={form.sockets} required />
+			{/snippet}
+		</FormField>
 	{/if}
 
 	<FormField label={m['vms.create.vcpuCores']()} hint={m['vms.create.vcpuLimitHint']({ min: 1, max: maxCores })} error={cpuError} required>

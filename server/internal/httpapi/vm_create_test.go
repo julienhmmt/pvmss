@@ -263,7 +263,7 @@ func TestVMCreate_CatalogViolation(t *testing.T) {
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 
 	response := postVMCreate(t, handler,
-		`{"cluster":"default","name":"web-07","node":"pve-node-01","disk":{"storage":"not-a-real-storage","sizeGB":20},"network":{"bridge":"vmbr0","model":"virtio"},"cpuCores":1,"memoryMB":1024}`,
+		`{"cluster":"default","name":"web-07","node":"pve-node-01","disk":{"storage":"not-a-real-storage","sizeGB":20},"network":[{"bridge":"vmbr0","model":"virtio"}],"cpuCores":1,"memoryMB":1024}`,
 		cookie)
 	if response.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d: %s", response.Code, http.StatusBadRequest, response.Body.String())
@@ -431,8 +431,8 @@ func TestVMCreate_DetailedModeExactSpec(t *testing.T) {
 		"cluster":"default","name":"web-03","node":"pve-node-02","tags":["team-web"],
 		"cpuCores":3,"memoryMB":3072,
 		"disk":{"storage":"ceph-data","sizeGB":64},
-		"network":{"bridge":"vmbr1","model":"e1000"},
-		"iso":{"storage":"local","file":"debian-12-generic-amd64.iso"},
+		"network":[{"bridge":"vmbr1","model":"e1000"}],
+		"iso":{"storage":"local","file":"rocky-9-generic-x86_64.iso"},
 		"startAfterCreate":true
 	}`, cookie)
 	if response.Code != http.StatusAccepted {
@@ -476,10 +476,10 @@ func TestVMCreate_DetailedCatalogViolations(t *testing.T) {
 		name string
 		body string
 	}{
-		{"node", `{"cluster":"default","name":"web-10","node":"pve-node-03","cpuCores":1,"memoryMB":1024,"disk":{"storage":"local-lvm","sizeGB":20},"network":{"bridge":"vmbr0"}}`},
-		{"storage", `{"cluster":"default","name":"web-10","node":"pve-node-01","cpuCores":1,"memoryMB":1024,"disk":{"storage":"nas-scratch","sizeGB":20},"network":{"bridge":"vmbr0"}}`},
-		{"bridge", `{"cluster":"default","name":"web-10","node":"pve-node-01","cpuCores":1,"memoryMB":1024,"disk":{"storage":"local-lvm","sizeGB":20},"network":{"bridge":"vmbr9"}}`},
-		{"iso", `{"cluster":"default","name":"web-10","node":"pve-node-01","cpuCores":1,"memoryMB":1024,"disk":{"storage":"local-lvm","sizeGB":20},"network":{"bridge":"vmbr0"},"iso":{"storage":"local","file":"not-approved.iso"}}`},
+		{"node", `{"cluster":"default","name":"web-10","node":"pve-node-03","cpuCores":1,"memoryMB":1024,"disk":{"storage":"local-lvm","sizeGB":20},"network":[{"bridge":"vmbr0"}]}`},
+		{"storage", `{"cluster":"default","name":"web-10","node":"pve-node-01","cpuCores":1,"memoryMB":1024,"disk":{"storage":"nas-scratch","sizeGB":20},"network":[{"bridge":"vmbr0"}]}`},
+		{"bridge", `{"cluster":"default","name":"web-10","node":"pve-node-01","cpuCores":1,"memoryMB":1024,"disk":{"storage":"local-lvm","sizeGB":20},"network":[{"bridge":"vmbr9"}]}`},
+		{"iso", `{"cluster":"default","name":"web-10","node":"pve-node-01","cpuCores":1,"memoryMB":1024,"disk":{"storage":"local-lvm","sizeGB":20},"network":[{"bridge":"vmbr0"}],"iso":{"storage":"local","file":"not-approved.iso"}}`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -516,7 +516,7 @@ func TestVMCreate_DetailedInvalidHostname(t *testing.T) {
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 
 	response := postVMCreate(t, handler,
-		`{"cluster":"default","name":"-bad-","node":"pve-node-01","cpuCores":1,"memoryMB":1024,"disk":{"storage":"local-lvm","sizeGB":20},"network":{"bridge":"vmbr0"}}`,
+		`{"cluster":"default","name":"-bad-","node":"pve-node-01","cpuCores":1,"memoryMB":1024,"disk":{"storage":"local-lvm","sizeGB":20},"network":[{"bridge":"vmbr0"}]}`,
 		cookie)
 	if response.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d: %s", response.Code, http.StatusBadRequest, response.Body.String())
@@ -549,7 +549,7 @@ func TestVMCreate_DetailedOutOfRange(t *testing.T) {
 			cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 
 			body := fmt.Sprintf(
-				`{"cluster":"default","name":"web-11","node":"pve-node-01","cpuCores":%d,"memoryMB":%d,"disk":{"storage":"local-lvm","sizeGB":%d},"network":{"bridge":"vmbr0"}}`,
+				`{"cluster":"default","name":"web-11","node":"pve-node-01","cpuCores":%d,"memoryMB":%d,"disk":{"storage":"local-lvm","sizeGB":%d},"network":[{"bridge":"vmbr0"}]}`,
 				tc.cpu, tc.memory, tc.diskGB,
 			)
 

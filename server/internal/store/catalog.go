@@ -39,10 +39,25 @@ type CatalogProfile struct {
 	Cluster  string
 	ID       string
 	Label    string
+	Sockets  int
 	CPUCores int
 	MemoryMB int
 	DiskGB   int
 	Bus      string
+}
+
+// CatalogTemplate is one approved Proxmox template (catalog_templates row,
+// US2/issue-02). The VMID is the Proxmox VMID of the template VM; the node
+// determines where the clone lands (D2b: cross-node clone forbidden).
+type CatalogTemplate struct {
+	Cluster          string
+	Node             string
+	VMID             int
+	Name             string
+	CloudInitCapable bool
+	DiskStorage      string
+	DiskSizeGB       int
+	DiskBus          string
 }
 
 // queryCatalog runs a parameterised catalog query and collects the rows into a
@@ -108,16 +123,16 @@ func (s *Store) CatalogBridges(ctx context.Context, cluster string) ([]CatalogBr
 	)
 }
 
-// CatalogISOs returns the approved ISO images for a cluster, ordered by file.
-// Rows are deduplicated by (storage, file) so the user-facing catalog does not
-// show the same ISO twice when it is approved on multiple nodes.
+// CatalogISOs returns the approved ISO images for a cluster, one row per node
+// (D1b), ordered by node then file. An ISO on shared storage has N rows so
+// each node's locality can be validated independently.
 func (s *Store) CatalogISOs(ctx context.Context, cluster string) ([]CatalogISO, error) {
 	return queryCatalog(ctx, s.db, "catalog isos",
-		`SELECT DISTINCT cluster, storage, file FROM catalog_isos WHERE cluster = ? AND enabled = 1 ORDER BY file`,
+		`SELECT cluster, node, storage, file FROM catalog_isos WHERE cluster = ? AND enabled = 1 ORDER BY node, file`,
 		[]any{cluster},
 		func(rows *sql.Rows) (CatalogISO, error) {
 			var iso CatalogISO
-			return iso, rows.Scan(&iso.Cluster, &iso.Storage, &iso.File)
+			return iso, rows.Scan(&iso.Cluster, &iso.Node, &iso.Storage, &iso.File)
 		},
 	)
 }
@@ -125,11 +140,34 @@ func (s *Store) CatalogISOs(ctx context.Context, cluster string) ([]CatalogISO, 
 // CatalogProfiles returns the VM profiles for a cluster, ordered by id.
 func (s *Store) CatalogProfiles(ctx context.Context, cluster string) ([]CatalogProfile, error) {
 	return queryCatalog(ctx, s.db, "catalog profiles",
-		`SELECT cluster, id, label, cpu_cores, memory_mb, disk_gb, bus FROM catalog_profiles WHERE cluster = ? AND enabled = 1 ORDER BY id`,
+		`SELECT cluster, id, label, sockets, cpu_cores, memory_mb, disk_gb, bus FROM catalog_profiles WHERE cluster = ? AND enabled = 1 ORDER BY id`,
 		[]any{cluster},
 		func(rows *sql.Rows) (CatalogProfile, error) {
 			var p CatalogProfile
-			return p, rows.Scan(&p.Cluster, &p.ID, &p.Label, &p.CPUCores, &p.MemoryMB, &p.DiskGB, &p.Bus)
+			return p, rows.Scan(&p.Cluster, &p.ID, &p.Label, &p.Sockets, &p.CPUCores, &p.MemoryMB, &p.DiskGB, &p.Bus)
+		},
+	)
+}
+
+// CatalogTemplates returns the approved Proxmox templates for a cluster,
+// ordered by vmid (US2/issue-02). Each row is one approved template; the
+// admin curates which templates discovered via template=1 are offered.
+func (s *Store) CatalogTemplates(ctx context.Context, cluster string) ([]CatalogTemplate, error) {
+	return queryCatalog(ctx, s.db, "catalog templates",
+		`SELECT cluster, node, vmid, name, cloud_init_capable, disk_storage, disk_size_gb, disk_bus
+		 FROM catalog_templates WHERE cluster = ? AND enabled = 1 ORDER BY vmid`,
+		[]any{cluster},
+		func(rows *sql.Rows) (CatalogTemplate, error) {
+			var t CatalogTemplate
+
+			var cloudInit int
+			if err := rows.Scan(&t.Cluster, &t.Node, &t.VMID, &t.Name, &cloudInit, &t.DiskStorage, &t.DiskSizeGB, &t.DiskBus); err != nil {
+				return t, err
+			}
+
+			t.CloudInitCapable = cloudInit == 1
+
+			return t, nil
 		},
 	)
 }

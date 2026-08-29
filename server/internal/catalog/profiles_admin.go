@@ -28,6 +28,7 @@ var slugRe = regexp.MustCompile(`[^a-z0-9]+`)
 type AdminProfile struct {
 	ID       string
 	Label    string
+	Sockets  int
 	CPUCores int
 	MemoryMB int
 	DiskGB   int
@@ -92,10 +93,12 @@ func ListAdminProfiles(ctx context.Context, st *store.Store, cluster string) ([]
 }
 
 // ProfileSpec is the editable field set of a VM profile, shared by
-// CreateProfile and UpdateProfile. Grouping it collapses the five positional
+// CreateProfile and UpdateProfile. Grouping it collapses the positional
 // field parameters those functions used to take (SonarQube go:S107).
+// Sockets defaults to 1 when zero — the admin UI does not yet expose it.
 type ProfileSpec struct {
 	Label    string
+	Sockets  int
 	CPUCores int
 	MemoryMB int
 	DiskGB   int

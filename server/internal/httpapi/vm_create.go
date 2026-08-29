@@ -117,12 +117,14 @@ type catalogBridgeDTO struct {
 
 type catalogISODTO struct {
 	Storage string `json:"storage"`
+	Node    string `json:"node"`
 	File    string `json:"file"`
 }
 
 type catalogProfileDTO struct {
 	ID       string `json:"id"`
 	Label    string `json:"label"`
+	Sockets  int    `json:"sockets"`
 	CPUCores int    `json:"cpuCores"`
 	MemoryMB int    `json:"memoryMB"`
 	DiskGB   int    `json:"diskGB"`
@@ -132,6 +134,20 @@ type catalogProfileDTO struct {
 type catalogCloudInitTemplateDTO struct {
 	ID    string `json:"id"`
 	Label string `json:"label"`
+}
+
+// catalogTemplateDTO is one approved Proxmox template (US2/issue-02). The
+// VMID is the Proxmox VMID of the template; the node determines where the
+// clone lands (D2b: cross-node clone is forbidden, so the UI hides the node
+// selector when a template is chosen). CloudInitCapable signals the UI that
+// the template supports cloud-init. DiskSizeGB lets the UI show the minimum
+// disk size (reductions are rejected).
+type catalogTemplateDTO struct {
+	VMID             int    `json:"vmid"`
+	Node             string `json:"node"`
+	Name             string `json:"name"`
+	CloudInitCapable bool   `json:"cloudInitCapable"`
+	DiskSizeGB       int    `json:"diskSizeGB"`
 }
 
 type catalogTagDTO struct {
@@ -181,6 +197,7 @@ type catalogDTO struct {
 	Bridges            []catalogBridgeDTO            `json:"bridges"`
 	ISOs               []catalogISODTO               `json:"isos"`
 	Profiles           []catalogProfileDTO           `json:"profiles"`
+	Templates          []catalogTemplateDTO          `json:"templates"`
 	CloudInitTemplates []catalogCloudInitTemplateDTO `json:"cloudInitTemplates"`
 	Tags               []catalogTagDTO               `json:"tags"`
 	Gabarit            *catalogGabaritDTO            `json:"gabarit,omitempty"`
@@ -203,7 +220,7 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clusterName, creator, pusher, ok := h.resolveCreateTarget(w, req.Cluster)
+	clusterName, creator, pusher, writer, ok := h.resolveCreateTarget(w, req.Cluster)
 	if !ok {
 		return
 	}
@@ -214,6 +231,7 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Store:    h.store,
 		Creator:  creator,
 		Pusher:   pusher,
+		Writer:   writer,
 		Audit:    h.store,
 		Log:      h.log,
 		Services: []*policy.Policy{h.policy},
@@ -237,12 +255,13 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // catalogData is the raw catalog payload loaded from the store and the live
 // cluster before it is shaped into the response DTO.
 type catalogData struct {
-	resources catalog.Resources
-	snap      cluster.Snapshot
-	bridges   []cluster.Bridge
-	profiles  []catalog.Profile
-	templates []catalog.CloudInitTemplate
-	tags      []catalog.TagWithCount
+	resources        catalog.Resources
+	snap             cluster.Snapshot
+	bridges          []cluster.Bridge
+	profiles         []catalog.Profile
+	templates        []catalog.CloudInitTemplate
+	proxmoxTemplates []catalog.Template
+	tags             []catalog.TagWithCount
 }
 
 // loadCatalogData fetches every catalog slice from the store and the live
@@ -286,6 +305,14 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 
 	data.templates = templates
 
+	// US2/issue-02: approved Proxmox templates (clone source).
+	proxmoxTemplates, err := catalog.Templates(ctx, h.store, clusterName)
+	if err != nil {
+		return catalogData{}, fmt.Errorf("proxmox templates: %w", err)
+	}
+
+	data.proxmoxTemplates = proxmoxTemplates
+
 	// Admin-created tags only (FR-014/FR-015 surface) — the mandatory pvmss
 	// tag is added server-side and never offered as a user choice here.
 	tags, err := catalog.ListTags(ctx, h.store, nil, clusterName)
@@ -307,6 +334,7 @@ func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
 		Bridges:            catalogBridgeDTOs(data.resources.Bridges, data.bridges),
 		ISOs:               make([]catalogISODTO, 0, len(data.resources.ISOs)),
 		Profiles:           make([]catalogProfileDTO, 0, len(data.profiles)),
+		Templates:          make([]catalogTemplateDTO, 0, len(data.proxmoxTemplates)),
 		CloudInitTemplates: make([]catalogCloudInitTemplateDTO, 0, len(data.templates)),
 		Tags:               make([]catalogTagDTO, 0, len(data.tags)),
 	}
@@ -332,13 +360,14 @@ func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
 	}
 
 	for _, iso := range data.resources.ISOs {
-		dto.ISOs = append(dto.ISOs, catalogISODTO{Storage: iso.Storage, File: iso.File})
+		dto.ISOs = append(dto.ISOs, catalogISODTO{Storage: iso.Storage, Node: iso.Node, File: iso.File})
 	}
 
 	for _, profile := range data.profiles {
 		dto.Profiles = append(dto.Profiles, catalogProfileDTO{
 			ID:       profile.ID,
 			Label:    profile.Label,
+			Sockets:  profile.Sockets,
 			CPUCores: profile.CPUCores,
 			MemoryMB: profile.MemoryMB,
 			DiskGB:   profile.DiskGB,
@@ -350,6 +379,17 @@ func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
 	for _, tmpl := range data.templates {
 		dto.CloudInitTemplates = append(dto.CloudInitTemplates, catalogCloudInitTemplateDTO{
 			ID: tmpl.ID, Label: tmpl.Label,
+		})
+	}
+
+	// US2/issue-02: approved Proxmox templates (clone source).
+	for _, tmpl := range data.proxmoxTemplates {
+		dto.Templates = append(dto.Templates, catalogTemplateDTO{
+			VMID:             tmpl.VMID,
+			Node:             tmpl.Node,
+			Name:             tmpl.Name,
+			CloudInitCapable: tmpl.CloudInitCapable,
+			DiskSizeGB:       tmpl.DiskSizeGB,
 		})
 	}
 
@@ -461,26 +501,28 @@ func (h *VMCreate) resolveCatalogClient(w http.ResponseWriter, r *http.Request) 
 
 // resolveCreateTarget resolves the effective cluster name from req.Cluster
 // (defaulting the same way ResolveClusterParam does for the catalog route)
-// plus that cluster's own Creator and CloudInitPusher — without this, VM
-// creation ran through the default cluster's client regardless of which
-// cluster the request named.
-func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster string) (string, cluster.Creator, vm.CloudInitPusher, bool) {
+// plus that cluster's own Creator, CloudInitPusher, and HardwareUpdater —
+// without this, VM creation ran through the default cluster's client
+// regardless of which cluster the request named. The HardwareUpdater is
+// needed for post-clone configuration (US2/issue-02).
+func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster string) (string, cluster.Creator, vm.CloudInitPusher, vm.HardwareUpdater, bool) {
 	clusterName, err := ResolveClusterValue(requestedCluster, h.clients)
 	if err != nil {
 		code, message := clusterParamError(err)
 		h.writeCreateError(w, http.StatusBadRequest, code, message)
 
-		return "", nil, nil, false
+		return "", nil, nil, nil, false
 	}
 
 	if h.clients == nil {
-		return clusterName, h.creator, h.pusher, true
+		writer, _ := h.creator.(vm.HardwareUpdater)
+		return clusterName, h.creator, h.pusher, writer, true
 	}
 
 	client, err := h.clients.Client(clusterName)
 	if err != nil {
 		h.writeCreateError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
-		return "", nil, nil, false
+		return "", nil, nil, nil, false
 	}
 
 	creator, ok := client.(cluster.Creator)
@@ -488,7 +530,7 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 		h.log.Error("cluster client does not implement Creator", "component", "httpapi", "cluster", clusterName)
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
-		return "", nil, nil, false
+		return "", nil, nil, nil, false
 	}
 
 	pusher, ok := client.(vm.CloudInitPusher)
@@ -496,10 +538,18 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 		h.log.Error("cluster client does not implement CloudInitPusher", "component", "httpapi", "cluster", clusterName)
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
-		return "", nil, nil, false
+		return "", nil, nil, nil, false
 	}
 
-	return clusterName, creator, pusher, true
+	writer, ok := client.(vm.HardwareUpdater)
+	if !ok {
+		h.log.Error("cluster client does not implement HardwareUpdater", "component", "httpapi", "cluster", clusterName)
+		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return "", nil, nil, nil, false
+	}
+
+	return clusterName, creator, pusher, writer, true
 }
 
 func (h *VMCreate) clientFor(clusterName string) (cluster.Client, error) {
@@ -574,6 +624,10 @@ func (h *VMCreate) writeCreateFailure(w http.ResponseWriter, err error) {
 		h.writeCreateError(w, http.StatusBadRequest, "out_of_range", err.Error())
 	case errors.Is(err, vm.ErrNotApproved):
 		h.writeCreateError(w, http.StatusBadRequest, "not_approved", err.Error())
+	case errors.Is(err, vm.ErrInvalidSource):
+		h.writeCreateError(w, http.StatusBadRequest, "invalid_source", err.Error())
+	case errors.Is(err, vm.ErrDiskReduction):
+		h.writeCreateError(w, http.StatusBadRequest, "disk_reduction", err.Error())
 	case errors.Is(err, vm.ErrClusterCreate):
 		h.log.Error("cluster create failed", "component", "httpapi", "error", err)
 		h.writeCreateError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)

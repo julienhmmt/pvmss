@@ -91,6 +91,46 @@ func TestProfiles_SeedInvariants(t *testing.T) {
 	}
 }
 
+// TestApprovedResources_ISONodePopulated — the store query returns one row per
+// node (D1b), and ApprovedResources must copy iso.Node so HasISO can validate
+// node locality (US1). V17 drops seed ISOs, so this test seeds them directly.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestApprovedResources_ISONodePopulated(t *testing.T) {
+	st := openCatalogStore(t)
+	ctx := context.Background()
+
+	// Seed one ISO on pve-node-01 and the same file on pve-node-02 (shared
+	// storage pattern — one row per node, D1b).
+	for _, row := range []struct{ node, storage, file string }{
+		{"pve-node-01", "local", "debian-12.iso"},
+		{"pve-node-02", "local", "debian-12.iso"},
+	} {
+		if err := st.SetISOEnabled(ctx, "default", row.node, row.storage, row.file, true); err != nil {
+			t.Fatalf("SetISOEnabled: %v", err)
+		}
+	}
+
+	resources, err := catalog.ApprovedResources(ctx, st, "default")
+	if err != nil {
+		t.Fatalf("ApprovedResources: %v", err)
+	}
+
+	if len(resources.ISOs) != 2 {
+		t.Fatalf("ISOs = %d, want 2 (one row per node)", len(resources.ISOs))
+	}
+
+	for _, iso := range resources.ISOs {
+		if iso.Node == "" {
+			t.Errorf("ISO %q on storage %q has empty Node — store query must populate it", iso.File, iso.Storage)
+		}
+
+		if !resources.HasISO(iso.Storage, iso.File, iso.Node) {
+			t.Errorf("HasISO(%q, %q, %q) = false, want true (seeded ISO must match its own node)", iso.Storage, iso.File, iso.Node)
+		}
+	}
+}
+
 // TestApprovedResources_UnknownClusterReturnsEmpty — a cluster with no seeded
 // rows yields an empty catalog, not an error (membership checks then reject
 // everything, which is the correct failure mode for a misconfigured cluster).

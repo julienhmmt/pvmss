@@ -64,9 +64,9 @@ func TestProxmox_CreateVM(t *testing.T) {
 
 	spec := VMSpec{
 		VMID: 105, Node: "node01", Name: "web-1", Pool: FakePoolAliceShort, Tags: []string{FakeTagPvmss},
-		CPUCores: 4, MemoryMB: 4096,
+		Sockets: 1, CPUCores: 4, MemoryMB: 4096,
 		Disk:             DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 32, Bus: "scsi"},
-		Network:          NetworkSpec{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)},
+		Network:          NetworkSpec{{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)}},
 		ISO:              &ISOSpec{Storage: FakeStorageLocal, File: "debian-12.iso"},
 		StartAfterCreate: true,
 	}
@@ -195,5 +195,58 @@ func TestProxmoxUPIDNode(t *testing.T) {
 
 	if _, err := proxmoxUPIDNode("not-a-upid"); err == nil {
 		t.Error("expected an error for a malformed UPID")
+	}
+}
+
+// TestProxmox_CreateVM_SocketsAndMultiNIC asserts that sockets=2 produces
+// sockets=2 in the Proxmox form, and that two NICs produce net0 and net1
+// (US2/D3a, D3b — T037/T038 form-level assertions).
+func TestProxmox_CreateVM_SocketsAndMultiNIC(t *testing.T) {
+	t.Parallel()
+
+	var gotForm url.Values
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("POST /api2/json/nodes/node01/qemu", func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("parse form: %v", err)
+			}
+
+			gotForm = r.Form
+
+			writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmcreate:106:pvmss@pve:"}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	spec := VMSpec{
+		VMID: 106, Node: "node01", Name: "web-2", Pool: FakePoolAliceShort, Tags: []string{FakeTagPvmss},
+		Sockets: 2, CPUCores: 4, MemoryMB: 8192,
+		Disk: DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 32, Bus: "scsi"},
+		Network: NetworkSpec{
+			{Bridge: FakeBridgeVMbr0, Model: "virtio"},
+			{Bridge: FakeBridgeVMbr1, Model: "e1000"},
+		},
+	}
+
+	if _, err := p.CreateVM(context.Background(), spec); err != nil {
+		t.Fatalf("CreateVM: %v", err)
+	}
+
+	if gotForm.Get("sockets") != "2" {
+		t.Errorf("sockets = %q, want 2", gotForm.Get("sockets"))
+	}
+
+	if gotForm.Get("cores") != "4" {
+		t.Errorf("cores = %q, want 4", gotForm.Get("cores"))
+	}
+
+	if gotForm.Get("net0") != "virtio,bridge=vmbr0" {
+		t.Errorf("net0 = %q, want virtio,bridge=vmbr0", gotForm.Get("net0"))
+	}
+
+	if gotForm.Get("net1") != "e1000,bridge=vmbr1" {
+		t.Errorf("net1 = %q, want e1000,bridge=vmbr1", gotForm.Get("net1"))
 	}
 }

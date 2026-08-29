@@ -48,6 +48,8 @@ func registerAdminCatalogRoutes(mux *http.ServeMux, adminProtect adminRouteProte
 	mux.Handle("POST /api/v1/admin/bridges/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeBridgeToggle)))
 	mux.Handle("GET /api/v1/admin/isos", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeISOs)))
 	mux.Handle("POST /api/v1/admin/isos/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeISOToggle)))
+	mux.Handle("GET /api/v1/admin/templates", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeTemplates)))
+	mux.Handle("POST /api/v1/admin/templates/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeTemplateToggle)))
 	mux.Handle("GET /api/v1/admin/profiles", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeProfiles)))
 	mux.Handle("POST /api/v1/admin/profiles", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeProfileCreate)))
 	mux.Handle("PUT /api/v1/admin/profiles/{id}", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeProfileUpdate)))

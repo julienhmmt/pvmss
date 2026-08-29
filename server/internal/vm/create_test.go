@@ -9,6 +9,8 @@ import (
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
+	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"slices"
@@ -41,9 +43,9 @@ func newCreateFixture(t *testing.T) createFixture {
 
 	ctx := context.Background()
 	for _, bridge := range []catalog.Bridge{
-		{Name: "vmbr0", Node: "pve-node-01"},
-		{Name: "vmbr1", Node: "pve-node-01"},
-		{Name: "vmbr0", Node: "pve-node-02"},
+		{Name: testBridgeVMbr0, Node: "pve-node-01"},
+		{Name: testBridgeVMbr1, Node: "pve-node-01"},
+		{Name: testBridgeVMbr0, Node: "pve-node-02"},
 	} {
 		if err := st.SetBridgeEnabled(ctx, "default", bridge.Node, bridge.Name, true); err != nil {
 			t.Fatalf("seed bridge approval: %v", err)
@@ -62,6 +64,7 @@ func (f createFixture) create(t *testing.T, actor auth.Identity, req vm.CreateRe
 		Store:   f.store,
 		Creator: f.fake,
 		Pusher:  f.fake,
+		Writer:  f.fake,
 		Audit:   f.store,
 		Log:     log,
 	})
@@ -84,7 +87,7 @@ func detailedRequest() vm.CreateRequest {
 		CPUCores: 2,
 		MemoryMB: 4096,
 		Disk:     vm.DiskRequest{Storage: cluster.FakeStorageLocalLVM, SizeGB: 40},
-		Network:  vm.NetworkRequest{Bridge: cluster.FakeBridgeVMbr0, Model: string(cluster.DiskBusVirtio)},
+		Network:  vm.NetworkRequest{{Bridge: cluster.FakeBridgeVMbr0, Model: string(cluster.DiskBusVirtio)}},
 	}
 }
 
@@ -147,7 +150,7 @@ func TestCreate_ValidationPipeline(t *testing.T) {
 		{
 			name:    "bridge not approved",
 			actor:   aliceIdentity(),
-			mutate:  func(r *vm.CreateRequest) { r.Network.Bridge = "vmbr9" },
+			mutate:  func(r *vm.CreateRequest) { r.Network[0].Bridge = "vmbr9" },
 			wantErr: vm.ErrNotApproved,
 		},
 		{
@@ -392,6 +395,7 @@ func TestCreate_AuditFailureDoesNotFailCreate(t *testing.T) {
 		Store:   fixture.store,
 		Creator: fixture.fake,
 		Pusher:  fixture.fake,
+		Writer:  fixture.fake,
 		Audit:   failingAudit{},
 		Log:     log,
 	})
@@ -584,5 +588,312 @@ func TestCreate_CloudInitTemplate_DeletedAfterUse(t *testing.T) {
 
 	if snippet.Content != testCloudInitContent {
 		t.Errorf("snippet content = %q, want %q (unchanged)", snippet.Content, testCloudInitContent)
+	}
+}
+
+// --- US2: sockets and multi-NIC (T037, T038) ---
+
+// TestCreate_Sockets_PopulatesForm — sockets=2, cores=4 produces a VM with
+// Sockets=2, Cores=4, and CPUCores=8 (sockets*cores) in the fake dataset
+// (US2/D3b).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_Sockets_PopulatesForm(t *testing.T) {
+	fixture := newCreateFixture(t)
+	req := detailedRequest()
+	req.Sockets = 2
+	req.CPUCores = 4
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM not in snapshot")
+	}
+
+	created := snap.VMs[idx]
+	if created.Sockets != 2 {
+		t.Errorf("sockets = %d, want 2", created.Sockets)
+	}
+
+	if created.Cores != 4 {
+		t.Errorf("cores = %d, want 4", created.Cores)
+	}
+
+	if created.CPUCores != 8 {
+		t.Errorf("cpuCores (sockets*cores) = %d, want 8", created.CPUCores)
+	}
+}
+
+// TestCreate_Sockets_DefaultsToOne — a request without sockets preserves the
+// previous behaviour: the created VM has Sockets=1 (US2/D3b).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_Sockets_DefaultsToOne(t *testing.T) {
+	fixture := newCreateFixture(t)
+	req := detailedRequest()
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM not in snapshot")
+	}
+
+	if snap.VMs[idx].Sockets != 1 {
+		t.Errorf("sockets = %d, want 1 (default)", snap.VMs[idx].Sockets)
+	}
+}
+
+// TestCreate_Sockets_BeyondMaxSockets — sockets exceeding the gabarit's
+// MaxSockets is rejected with GabaritExceededError{Field: "sockets"} before
+// any cluster call (US2/D3b).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_Sockets_BeyondMaxSockets(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	snapshot, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	index := inventory.BuildIndex(snapshot)
+	service := policy.New(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
+
+	gabarit, err := service.Gabarit(context.Background(), testClusterName)
+	if err != nil {
+		t.Fatalf("Gabarit: %v", err)
+	}
+
+	gabarit.MaxSockets = 1
+	if err := service.SetGabarit(context.Background(), testClusterName, gabarit); err != nil {
+		t.Fatalf("SetGabarit: %v", err)
+	}
+
+	req := detailedRequest()
+	req.Sockets = 2
+	req.Name = "sockets-over"
+
+	_, err = vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{
+		Store:    fixture.store,
+		Creator:  fixture.fake,
+		Pusher:   fixture.fake,
+		Audit:    fixture.store,
+		Log:      slog.New(slog.DiscardHandler),
+		Services: []*policy.Policy{service},
+	})
+	if !errors.Is(err, policy.ErrGabaritExceeded) {
+		t.Fatalf("error = %v, want ErrGabaritExceeded", err)
+	}
+
+	var gabaritErr *policy.GabaritExceededError
+	if !errors.As(err, &gabaritErr) {
+		t.Fatalf("error is not a GabaritExceededError: %v", err)
+	}
+
+	if gabaritErr.Field != "sockets" {
+		t.Errorf("field = %q, want %q", gabaritErr.Field, "sockets")
+	}
+
+	if calls := cluster.FakeCalls(); len(calls) != 0 {
+		t.Fatalf("gabarit rejection reached cluster: %+v", calls)
+	}
+}
+
+// TestCreate_Sockets_NodeCapacityCountsSocketsTimesCores — CheckNodeCapacity
+// multiplies sockets*cores: with sockets=2, cores=4 (8 vCPU) and MaxVCPUs
+// set to UsedVCPUs+4, the request is rejected because 8 > 4. If only cores
+// were counted (4), the request would pass. The node_limits row is written
+// directly via UpsertNodePolicyRow to bypass the physical-capacity admin
+// validation (US2/D3b).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_Sockets_NodeCapacityCountsSocketsTimesCores(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	snapshot, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	index := inventory.BuildIndex(snapshot)
+	service := policy.New(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
+
+	capacity, err := service.NodeCapacity(context.Background(), testClusterName, cluster.FakeNode01)
+	if err != nil {
+		t.Fatalf("NodeCapacity: %v", err)
+	}
+
+	// Set MaxVCPUs to UsedVCPUs+4 directly in the store, bypassing the
+	// admin validation that would reject values above physical capacity.
+	// With sockets=2, cores=4: deltaVCPUs = 2*4 = 8 > 4 → rejected.
+	// With sockets=1, cores=4: deltaVCPUs = 1*4 = 4 = headroom → passes.
+	if err := fixture.store.UpsertNodePolicyRow(context.Background(), store.NodePolicyRow{
+		Cluster: testClusterName, Node: cluster.FakeNode01,
+		MaxVMs: capacity.MaxVMs, MaxVCPUs: capacity.UsedVCPUs + 4,
+		MaxRAMGB: capacity.MaxRAMGB, MaxDiskGB: capacity.MaxDiskGB,
+	}); err != nil {
+		t.Fatalf("UpsertNodePolicyRow: %v", err)
+	}
+
+	req := detailedRequest()
+	req.Sockets = 2
+	req.CPUCores = 4
+	req.Name = "sockets-capacity"
+
+	_, err = vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{
+		Store:    fixture.store,
+		Creator:  fixture.fake,
+		Pusher:   fixture.fake,
+		Audit:    fixture.store,
+		Log:      slog.New(slog.DiscardHandler),
+		Services: []*policy.Policy{service},
+	})
+	if !errors.Is(err, policy.ErrNodeCapacityExceeded) {
+		t.Fatalf("error = %v, want ErrNodeCapacityExceeded (8 vCPU > headroom of 4)", err)
+	}
+
+	if calls := cluster.FakeCalls(); len(calls) != 0 {
+		t.Fatalf("capacity rejection reached cluster: %+v", calls)
+	}
+}
+
+// TestCreate_MultiNIC_PopulatesForm — two NICs produce a VM with two network
+// interfaces (net0 and net1), each with its own bridge and model (US2/D3a).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_MultiNIC_PopulatesForm(t *testing.T) {
+	fixture := newCreateFixture(t)
+	req := detailedRequest()
+	req.Network = vm.NetworkRequest{
+		{Bridge: cluster.FakeBridgeVMbr0, Model: testModelVirtio},
+		{Bridge: testBridgeVMbr1, Model: "e1000"},
+	}
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM not in snapshot")
+	}
+
+	ifaces := snap.VMs[idx].NetworkInterfaces
+	if len(ifaces) != 2 {
+		t.Fatalf("network interfaces = %d, want 2", len(ifaces))
+	}
+
+	if ifaces[0].Bridge != "vmbr0" || ifaces[0].Model != "virtio" {
+		t.Errorf("net0 = {bridge: %q, model: %q}, want {vmbr0, virtio}", ifaces[0].Bridge, ifaces[0].Model)
+	}
+
+	if ifaces[1].Bridge != "vmbr1" || ifaces[1].Model != "e1000" {
+		t.Errorf("net1 = {bridge: %q, model: %q}, want {vmbr1, e1000}", ifaces[1].Bridge, ifaces[1].Model)
+	}
+}
+
+// TestCreate_MultiNIC_BeyondMaxNetworkCards — three NICs with MaxNetworkCards=2
+// is rejected with GabaritExceededError before any cluster call (US2/D3a).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_MultiNIC_BeyondMaxNetworkCards(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	snapshot, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	index := inventory.BuildIndex(snapshot)
+	service := policy.New(fixture.store, inventory.NewProjectionFromIndex(&index), fixture.fake)
+
+	gabarit, err := service.Gabarit(context.Background(), testClusterName)
+	if err != nil {
+		t.Fatalf("Gabarit: %v", err)
+	}
+
+	gabarit.MaxNetworkCards = 2
+	if err := service.SetGabarit(context.Background(), testClusterName, gabarit); err != nil {
+		t.Fatalf("SetGabarit: %v", err)
+	}
+
+	req := detailedRequest()
+	req.Name = "multi-nic-over"
+	req.Network = vm.NetworkRequest{
+		{Bridge: cluster.FakeBridgeVMbr0, Model: testModelVirtio},
+		{Bridge: testBridgeVMbr1, Model: testModelVirtio},
+		{Bridge: testBridgeVMbr0, Model: testModelVirtio},
+	}
+
+	_, err = vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{
+		Store:    fixture.store,
+		Creator:  fixture.fake,
+		Pusher:   fixture.fake,
+		Audit:    fixture.store,
+		Log:      slog.New(slog.DiscardHandler),
+		Services: []*policy.Policy{service},
+	})
+	if !errors.Is(err, policy.ErrGabaritExceeded) {
+		t.Fatalf("error = %v, want ErrGabaritExceeded", err)
+	}
+
+	var gabaritErr *policy.GabaritExceededError
+	if !errors.As(err, &gabaritErr) {
+		t.Fatalf("error is not a GabaritExceededError: %v", err)
+	}
+
+	if gabaritErr.Field != "networkCards" {
+		t.Errorf("field = %q, want %q", gabaritErr.Field, "networkCards")
+	}
+
+	if calls := cluster.FakeCalls(); len(calls) != 0 {
+		t.Fatalf("gabarit rejection reached cluster: %+v", calls)
+	}
+}
+
+// TestCreate_MultiNIC_EachBridgeValidated — each NIC's bridge is validated
+// against the node's catalog: a request with two NICs where the second
+// bridge is not approved on the node is rejected with ErrNotApproved (US2/D3a).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_MultiNIC_EachBridgeValidated(t *testing.T) {
+	fixture := newCreateFixture(t)
+	req := detailedRequest()
+	req.Network = vm.NetworkRequest{
+		{Bridge: cluster.FakeBridgeVMbr0, Model: testModelVirtio},
+		{Bridge: "vmbr9", Model: testModelVirtio},
+	}
+
+	_, err := fixture.create(t, aliceIdentity(), req)
+	if !errors.Is(err, vm.ErrNotApproved) {
+		t.Fatalf("error = %v, want ErrNotApproved (second NIC bridge not approved)", err)
+	}
+
+	if calls := cluster.FakeCalls(); len(calls) != 0 {
+		t.Fatalf("rejection reached cluster: %+v", calls)
 	}
 }
