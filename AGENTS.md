@@ -28,6 +28,7 @@ script, or CI job still pointing at `backend/` or `frontend/` is stale — see
 | `sonar-projects/` | Per-project SonarScanner `.properties` files                    |
 | `tools/`          | Helper scripts (sonar bootstrap/coverage/scan/query, superlint) |
 | `.devin/`         | Project rules + skills (see "Project Conventions")              |
+| `.agents/`        | Agent-local working files — `skills/`, `memory/` (gitignored)   |
 
 `server/` and `web/` are separate build units with separate tooling. The root
 `Makefile` exposes them via the `server-*` / `web-*` targets.
@@ -297,6 +298,24 @@ Stale references already cleaned up:
   `backend/docs/proxmox-permissions.*.md`.
 - `tools/superlinter.sh` — the stale `frontend/` exclude regex and broken volume
   mount (`$(pwd)../.`) have been fixed.
+
+## Agent Memory Journal (`.agents/memory/`)
+
+`.agents/memory/` is a **gitignored daily journal** (see `.gitignore`: `.agents/`)
+where agents record what they did, where, and a short summary so future agents
+can find the information fast. It is never committed.
+
+Convention:
+
+- One file per work session, named `YYYY-MM-DD-<short-slug>.md`.
+- Sections: **What** (one-line summary), **Where** (files touched, with paths),
+  **Why** (the problem being solved), **Key insight** (any non-obvious fact
+  worth remembering), **Verification performed** (commands run + results),
+  and **Verdict** (`<ACCEPT>` / `<REJECT>` / outcome).
+- Append-only — never edit or delete past entries; start a new file for a new
+  session. If two sessions happen on the same day, suffix `-2`, `-3`, etc.
+- Read recent entries before starting work in an area to avoid redoing
+  investigation.
 
 ## Project Conventions
 
