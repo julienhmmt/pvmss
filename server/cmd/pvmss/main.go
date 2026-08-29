@@ -408,18 +408,29 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		logger,
 		policyService,
 	)
+	vmCreate.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	tasks := httpapi.NewTasksWithRegistry(authHandler, clusterRegistry, creator, worker, logger)
 	snapshots := httpapi.NewVMSnapshotsWithRegistry(httpapi.VMSnapshotsRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Reader: snapshotReader, Writer: snapshotWriter, Clients: clusterRegistry, Store: st, Log: logger, Services: []*policy.Policy{policyService}})
 	vmConsole := httpapi.NewVMConsoleWithRegistry(httpapi.VMConsoleRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Relay: consoleRelay, Clients: clusterRegistry, Tickets: consoleTickets, Store: st, Log: logger})
 	vmSerialConsole := httpapi.NewVMSerialConsoleWithRegistry(httpapi.VMSerialConsoleRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Relay: serialRelay, Clients: clusterRegistry, Tickets: consoleTickets, Store: st, Log: logger})
 	vmMetrics := httpapi.NewVMMetricsWithRegistry(inventoryRegistry, projection, authHandler, metricsReader, metricsCurrentReader, clusterRegistry, logger)
 	adminCatalog := httpapi.NewAdminCatalogWithRegistry(authHandler, st, clusterRegistry, projection, logger)
+	adminCatalog.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminPolicy := httpapi.NewAdminPolicyWithRegistry(authHandler, policyService, clusterRegistry, logger)
+	adminPolicy.SetStore(st)
+	adminPolicy.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminPools := httpapi.NewAdminPoolsWithRegistry(httpapi.AdminPoolsRegistryDeps{Auth: authHandler, Clients: clusterRegistry, Source: inventoryRegistry, Projection: projection, Writer: writer, Audit: st, Refresher: worker, Store: st, Log: logger})
+	adminPools.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminOps := httpapi.NewAdminOps(authHandler, st, clusterClient, projection, appVersion, logger)
+	adminOps.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, clusterRegistry, inventoryRegistry, logger)
+	adminClusters.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	docsHandler := httpapi.NewDocsAPIHandler(authHandler, st, logger)
 	adminDocs := httpapi.NewAdminDocs(authHandler, st, docsHandler, logger)
+
+	authHandler.SetTrustedProxyHops(cfg.TrustedProxyHops)
+	vm.SetResolveAuditor(st)
+	policy.SetQuotaAuditor(st)
 
 	return httpapi.NewRouter(httpapi.RouterConfig{
 		Health:           health,
@@ -434,6 +445,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		Auth:             authHandler,
 		WebBuildDir:      webDir,
 		Log:              logger,
+		Store:            st,
 		SnapshotHandlers: []*httpapi.VMSnapshots{snapshots},
 		VMConsole:        vmConsole,
 		VMSerialConsole:  vmSerialConsole,

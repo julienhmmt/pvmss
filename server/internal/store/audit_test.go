@@ -78,7 +78,7 @@ func TestRecordAction_InsertsOneRowWithRealActor(t *testing.T) {
 		t.Errorf("cluster = %q, want default", row.Cluster)
 	}
 
-	if row.VMID != 101 {
+	if *row.VMID != 101 {
 		t.Errorf("vmid = %d, want 101", row.VMID)
 	}
 
@@ -122,7 +122,7 @@ func TestRecordAction_AppendsDistinctRows(t *testing.T) {
 	}
 
 	for i, want := range actions {
-		if rows[i].Actor != want.actor || rows[i].VMID != want.vmid || rows[i].Action != want.action {
+		if rows[i].Actor != want.actor || *rows[i].VMID != want.vmid || rows[i].Action != want.action {
 			t.Errorf("row %d = %+v, want %+v", i, rows[i], want)
 		}
 	}
@@ -181,7 +181,7 @@ func TestListAuditLog_NoFilter_ReturnsAllMostRecentFirst(t *testing.T) {
 		t.Errorf("envelope = page %d pageSize %d, want 1/100", page.Page, page.PageSize)
 	}
 	// Most recent first: last inserted was alice@pve secondary start 301.
-	if page.Items[0].VMID != 301 || page.Items[0].Action != testAuditAction {
+	if *page.Items[0].VMID != 301 || page.Items[0].Action != testAuditAction {
 		t.Errorf("first item = %+v, want vmid 301 start", page.Items[0])
 	}
 }
@@ -258,7 +258,7 @@ func TestListAuditLog_Filters(t *testing.T) {
 
 			gotVMIDs := make([]int, len(page.Items))
 			for i, item := range page.Items {
-				gotVMIDs[i] = item.VMID
+				gotVMIDs[i] = *item.VMID
 			}
 
 			if !equalIntSlices(gotVMIDs, tc.wantVMIDs) {
@@ -370,7 +370,7 @@ func TestListAuditLog_Sc002_AllActionsFromT05ToT10(t *testing.T) {
 		}
 
 		got := page.Items[0]
-		if got.Action != want.action || got.VMID != want.vmid || got.Actor != want.actor {
+		if got.Action != want.action || *got.VMID != want.vmid || got.Actor != want.actor {
 			t.Errorf("action=%s: got %+v, want %+v", want.action, got, want)
 		}
 	}

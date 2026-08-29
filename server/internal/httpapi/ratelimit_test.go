@@ -8,7 +8,7 @@ import (
 func TestIPRateLimiter_Allow(t *testing.T) {
 	t.Parallel()
 
-	l := newIPRateLimiter(2, time.Minute, 0)
+	l := newIPRateLimiter(2, time.Minute, 0, nil)
 	base := time.Now()
 
 	if !l.allow("1.2.3.4", base) {
@@ -35,7 +35,7 @@ func TestIPRateLimiter_Allow(t *testing.T) {
 func TestUserRateLimiter_Allow(t *testing.T) {
 	t.Parallel()
 
-	l := newUserRateLimiter(30, time.Minute, 0)
+	l := newUserRateLimiter(30, time.Minute, 0, nil)
 	base := time.Now()
 
 	for i := range 30 {
@@ -62,7 +62,7 @@ func TestUserRateLimiter_Allow(t *testing.T) {
 func TestUserRateLimiter_RetryAfter(t *testing.T) {
 	t.Parallel()
 
-	l := newUserRateLimiter(2, time.Minute, 0)
+	l := newUserRateLimiter(2, time.Minute, 0, nil)
 	base := time.Now()
 
 	if allowed, _ := l.allow("alice", base); !allowed {

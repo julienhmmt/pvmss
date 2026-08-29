@@ -3,29 +3,46 @@ package httpapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/policy"
+	"pvmss/server/internal/store"
 )
 
 // AdminPolicy serves the single global gabarit/quota surface and the dedicated
 // node-capacité surface. Router registration supplies the admin role guard.
 type AdminPolicy struct {
-	service  *policy.Policy
-	clusters ClusterLister
-	log      *slog.Logger
+	auth             *Auth
+	service          *policy.Policy
+	clusters         ClusterLister
+	store            *store.Store
+	log              *slog.Logger
+	trustedProxyHops int
 }
 
 // NewAdminPolicy creates the policy admin handler.
-func NewAdminPolicy(_ *Auth, service *policy.Policy, log *slog.Logger) *AdminPolicy {
-	return &AdminPolicy{service: service, log: log}
+func NewAdminPolicy(auth *Auth, service *policy.Policy, log *slog.Logger) *AdminPolicy {
+	return &AdminPolicy{auth: auth, service: service, log: log}
 }
 
 // NewAdminPolicyWithRegistry creates policy handlers with explicit cluster selection.
-func NewAdminPolicyWithRegistry(_ *Auth, service *policy.Policy, registry ClusterLister, log *slog.Logger) *AdminPolicy {
-	return &AdminPolicy{service: service, clusters: registry, log: log}
+func NewAdminPolicyWithRegistry(auth *Auth, service *policy.Policy, registry ClusterLister, log *slog.Logger) *AdminPolicy {
+	return &AdminPolicy{auth: auth, service: service, clusters: registry, log: log}
+}
+
+// SetStore wires the store used for admin action audit records.
+func (handler *AdminPolicy) SetStore(st *store.Store) {
+	handler.store = st
+}
+
+// SetTrustedProxyHops configures how many X-Forwarded-For hops to trust for
+// client IP extraction used in audit log entries.
+func (handler *AdminPolicy) SetTrustedProxyHops(n int) {
+	handler.trustedProxyHops = n
 }
 
 type policyResponse struct {
@@ -134,6 +151,33 @@ func (handler *AdminPolicy) ServePolicyUpdate(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	changes := []any{}
+	if current.Quota.MaxVMPerUser != updated.Quota.MaxVMPerUser {
+		changes = append(changes, map[string]any{"field": "quota.maxVmPerUser", "old": current.Quota.MaxVMPerUser, "new": updated.Quota.MaxVMPerUser})
+	}
+	if current.Gabarit.MaxSockets != updated.Gabarit.MaxSockets {
+		changes = append(changes, map[string]any{"field": "gabarit.maxSockets", "old": current.Gabarit.MaxSockets, "new": updated.Gabarit.MaxSockets})
+	}
+	if current.Gabarit.MaxCores != updated.Gabarit.MaxCores {
+		changes = append(changes, map[string]any{"field": "gabarit.maxCores", "old": current.Gabarit.MaxCores, "new": updated.Gabarit.MaxCores})
+	}
+	if current.Gabarit.MaxMemoryMB != updated.Gabarit.MaxMemoryMB {
+		changes = append(changes, map[string]any{"field": "gabarit.maxMemoryMB", "old": current.Gabarit.MaxMemoryMB, "new": updated.Gabarit.MaxMemoryMB})
+	}
+	if current.Gabarit.MaxDiskPerVMGB != updated.Gabarit.MaxDiskPerVMGB {
+		changes = append(changes, map[string]any{"field": "gabarit.maxDiskPerVmGb", "old": current.Gabarit.MaxDiskPerVMGB, "new": updated.Gabarit.MaxDiskPerVMGB})
+	}
+	if current.Gabarit.MaxNetworkCards != updated.Gabarit.MaxNetworkCards {
+		changes = append(changes, map[string]any{"field": "gabarit.maxNetworkCards", "old": current.Gabarit.MaxNetworkCards, "new": updated.Gabarit.MaxNetworkCards})
+	}
+	if current.Gabarit.MaxSnapshots != updated.Gabarit.MaxSnapshots {
+		changes = append(changes, map[string]any{"field": "gabarit.maxSnapshots", "old": current.Gabarit.MaxSnapshots, "new": updated.Gabarit.MaxSnapshots})
+	}
+	if current.Gabarit.AllowCustomYAML != updated.Gabarit.AllowCustomYAML {
+		changes = append(changes, map[string]any{"field": "gabarit.allowCustomYaml", "old": current.Gabarit.AllowCustomYAML, "new": updated.Gabarit.AllowCustomYAML})
+	}
+	handler.recordAdminAction(r, "admin.policy.update", "policy", clusterName,
+		fmt.Sprintf("updated policy for cluster %s", clusterName), changes)
 	writeAdminJSON(w, http.StatusOK, updated)
 }
 
@@ -211,4 +255,17 @@ func (handler *AdminPolicy) writePolicyValidation(w http.ResponseWriter, err err
 func (handler *AdminPolicy) writeFailure(w http.ResponseWriter, operation string, err error) {
 	handler.log.Error(operation+" failed", "component", "httpapi", "error", err)
 	writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
+}
+
+func (handler *AdminPolicy) recordAdminAction(r *http.Request, action, targetType, targetID, summary string, changes []any) {
+	if handler.store == nil {
+		return
+	}
+
+	actor, _ := handler.auth.Principal(r)
+	detail := map[string]any{"summary": summary, "changes": changes}
+	detailJSON, _ := json.Marshal(detail)
+	if err := handler.store.RecordAdminAction(r.Context(), actor.Username, action, targetType, targetID, string(detailJSON), clientIP(r, handler.trustedProxyHops)); err != nil {
+		handler.log.Error("failed to record admin action", "component", "httpapi", "action", action, "error", err)
+	}
 }

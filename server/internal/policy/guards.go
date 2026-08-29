@@ -6,6 +6,33 @@ import (
 	"pvmss/server/internal/auth"
 )
 
+// adminActionRecorder is the subset of the store needed to record quota
+// failures without exporting a full store dependency.
+type adminActionRecorder interface {
+	RecordAdminAction(ctx context.Context, actor, action, targetType, targetID, detail, ip string) error
+}
+
+var quotaAuditor adminActionRecorder
+
+// SetQuotaAuditor wires the audit recorder used by CheckQuota. It is set from
+// the main composition root.
+func SetQuotaAuditor(recorder adminActionRecorder) {
+	quotaAuditor = recorder
+}
+
+type auditIPKey struct{}
+
+// ContextWithAuditIP returns a context carrying the client IP for audit
+// entries produced by downstream policy checks.
+func ContextWithAuditIP(ctx context.Context, ip string) context.Context {
+	return context.WithValue(ctx, auditIPKey{}, ip)
+}
+
+func auditIPFromContext(ctx context.Context) string {
+	ip, _ := ctx.Value(auditIPKey{}).(string)
+	return ip
+}
+
 // CheckQuota refuses a non-administrator whose pool has reached its allowance.
 func (service *Policy) CheckQuota(ctx context.Context, clusterName string, actor auth.Identity) error {
 	quota, err := service.Quota(ctx, clusterName, actor)
@@ -17,7 +44,18 @@ func (service *Policy) CheckQuota(ctx context.Context, clusterName string, actor
 		return nil
 	}
 
+	recordQuotaExceeded(ctx, actor, quota.Used, quota.Allowed)
+
 	return &QuotaExceededError{Username: actor.Username, Used: quota.Used, Allowed: quota.Allowed}
+}
+
+func recordQuotaExceeded(ctx context.Context, actor auth.Identity, used, allowed int) {
+	if quotaAuditor == nil {
+		return
+	}
+
+	detail := fmt.Sprintf(`{"summary":"quota exceeded for %s (used %d of %d)","changes":[{"used":%d,"allowed":%d}]}`, actor.Username, used, allowed, used, allowed)
+	_ = quotaAuditor.RecordAdminAction(ctx, actor.Username, "quota.exceeded", "quota", actor.Username, detail, auditIPFromContext(ctx))
 }
 
 // CheckGabarit validates the resolved initial VM hardware in field order.

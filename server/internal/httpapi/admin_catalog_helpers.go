@@ -3,8 +3,10 @@ package httpapi
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"pvmss/server/internal/store"
+	"strings"
 )
 
 // catalogDeleteFunc deletes one catalog item by cluster and id.
@@ -61,6 +63,9 @@ func (h *AdminCatalog) serveCatalogDelete(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	h.recordAdminAction(r, catalogActionSlug(kind)+".delete", catalogTargetType(kind), id,
+		fmt.Sprintf("deleted %s %s on cluster %s", kind, id, clusterName),
+		[]any{map[string]any{"cluster": clusterName, "id": id}})
 	writeAdminJSON(w, http.StatusOK, statusResponse{Status: statusDeleted})
 }
 
@@ -106,5 +111,16 @@ func (h *AdminCatalog) serveCatalogToggle(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	h.recordAdminAction(r, catalogActionSlug(kind)+".toggle", catalogTargetType(kind), id,
+		fmt.Sprintf("toggled %s %s on cluster %s to enabled=%v", kind, id, clusterName, req.Enabled),
+		[]any{map[string]any{"cluster": clusterName, "id": id, "enabled": req.Enabled}})
 	writeAdminJSON(w, http.StatusOK, catalogToggleResponse{ID: id, Enabled: req.Enabled})
+}
+
+func catalogActionSlug(kind string) string {
+	return "admin." + strings.ReplaceAll(strings.ReplaceAll(kind, "-", ""), " ", "") + "s"
+}
+
+func catalogTargetType(kind string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(kind, "-", "_"), " ", "_")
 }
