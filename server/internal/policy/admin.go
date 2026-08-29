@@ -190,6 +190,7 @@ func checkBelowUsage(node string, requested, current Capacity) error {
 		{dimensionVMs, requested.MaxVMs, current.UsedVMs},
 		{dimensionVCPUs, requested.MaxVCPUs, current.UsedVCPUs},
 		{dimensionRAM, requested.MaxRAMGB, current.UsedRAMGB},
+		{dimensionDisk, requested.MaxDiskGB, current.UsedDiskGB},
 	}
 	for _, item := range values {
 		if item.requested != 0 && item.requested < item.used {

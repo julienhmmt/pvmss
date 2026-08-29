@@ -62,7 +62,7 @@ func TestResolveResources_ISOLocalityAutoSelectsHoldingNode(t *testing.T) {
 		ISO: &ISORequest{Storage: isoStorageLocal, File: isoFileDebian},
 	}
 
-	node, _, _, err := resolveResources(req, isoLocalityResources())
+	node, _, _, err := resolveResources(req, isoLocalityResources(), nil, nil)
 	if err != nil {
 		t.Fatalf("resolveResources: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestResolveResources_NoNodeHoldsISO(t *testing.T) {
 		ISO: &ISORequest{Storage: isoStorageLocal, File: "missing.iso"},
 	}
 
-	_, _, _, err := resolveResources(req, resources)
+	_, _, _, err := resolveResources(req, resources, nil, nil)
 	if !errors.Is(err, ErrNotApproved) {
 		t.Fatalf("error = %v, want ErrNotApproved", err)
 	}
@@ -117,7 +117,7 @@ func TestResolveResources_SharedStorageISOAllNodesCandidates(t *testing.T) {
 		ISO: &ISORequest{Storage: isoStorageShared, File: isoFileUbuntu},
 	}
 
-	node, _, _, err := resolveResources(req, isoLocalityResources())
+	node, _, _, err := resolveResources(req, isoLocalityResources(), nil, nil)
 	if err != nil {
 		t.Fatalf("resolveResources: %v", err)
 	}
@@ -133,7 +133,7 @@ func TestResolveResources_SharedStorageISOAllNodesCandidates(t *testing.T) {
 func TestResolveResources_NoISOUnchanged(t *testing.T) {
 	t.Parallel()
 
-	node, _, _, err := resolveResources(CreateRequest{}, isoLocalityResources())
+	node, _, _, err := resolveResources(CreateRequest{}, isoLocalityResources(), nil, nil)
 	if err != nil {
 		t.Fatalf("resolveResources: %v", err)
 	}

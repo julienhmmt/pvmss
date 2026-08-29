@@ -84,10 +84,11 @@ func (service *Policy) CheckGabarit(ctx context.Context, clusterName string, soc
 	return nil
 }
 
-// CheckNodeCapacity validates aggregate VM count, vCPU, and RAM headroom.
+// CheckNodeCapacity validates aggregate VM count, vCPU, RAM, and disk headroom.
 // excludeVMID removes a resizing VM's current contribution before adding the
-// requested replacement values. Node disk capacité is intentionally not used.
-func (service *Policy) CheckNodeCapacity(ctx context.Context, clusterName, node string, deltaSockets, deltaCores, deltaMemoryMB, excludeVMID int) error {
+// requested replacement values. deltaDiskGB is the provisioned disk the new
+// or resized VM would add (D4c: enforced against MaxDiskGB, parallel to RAM).
+func (service *Policy) CheckNodeCapacity(ctx context.Context, clusterName, node string, deltaSockets, deltaCores, deltaMemoryMB, deltaDiskGB, excludeVMID int) error {
 	capacity, err := service.NodeCapacity(ctx, clusterName, node)
 	if err != nil {
 		return fmt.Errorf("read node capacity: %w", err)
@@ -104,8 +105,9 @@ func (service *Policy) CheckNodeCapacity(ctx context.Context, clusterName, node 
 
 	usedVCPUs := capacity.UsedVCPUs + deltaSockets*deltaCores
 	usedRAMGB := capacity.UsedRAMGB + (deltaMemoryMB+1023)/1024
+	usedDiskGB := capacity.UsedDiskGB + deltaDiskGB
 
-	dimensions := make([]string, 0, 3)
+	dimensions := make([]string, 0, 4)
 	if capacity.MaxVMs > 0 && usedVMs > capacity.MaxVMs {
 		dimensions = append(dimensions, dimensionVMs)
 	}
@@ -118,11 +120,15 @@ func (service *Policy) CheckNodeCapacity(ctx context.Context, clusterName, node 
 		dimensions = append(dimensions, dimensionRAM)
 	}
 
+	if capacity.MaxDiskGB > 0 && usedDiskGB > capacity.MaxDiskGB {
+		dimensions = append(dimensions, dimensionDisk)
+	}
+
 	if len(dimensions) == 0 {
 		return nil
 	}
 
-	return &NodeCapacityExceededError{Node: node, Dimensions: dimensions, MaxVMs: capacity.MaxVMs, MaxVCPUs: capacity.MaxVCPUs, MaxRAMGB: capacity.MaxRAMGB}
+	return &NodeCapacityExceededError{Node: node, Dimensions: dimensions, MaxVMs: capacity.MaxVMs, MaxVCPUs: capacity.MaxVCPUs, MaxRAMGB: capacity.MaxRAMGB, MaxDiskGB: capacity.MaxDiskGB}
 }
 
 func (service *Policy) excludeVM(capacity *Capacity, vmid int) {
@@ -145,6 +151,7 @@ func (service *Policy) excludeVM(capacity *Capacity, vmid int) {
 	}
 
 	capacity.UsedRAMGB = service.ramGBExcluding(machine.Node, vmid)
+	capacity.UsedDiskGB = service.diskGBExcluding(machine.Node, vmid)
 }
 
 // QuotaExceededError carries the values needed for a safe user-facing message.
@@ -183,6 +190,7 @@ type NodeCapacityExceededError struct {
 	Node                       string
 	Dimensions                 []string
 	MaxVMs, MaxVCPUs, MaxRAMGB int
+	MaxDiskGB                  int
 }
 
 func (failure *NodeCapacityExceededError) Error() string {
@@ -200,6 +208,10 @@ func (failure *NodeCapacityExceededError) Error() string {
 
 	if dimension == dimensionRAM {
 		maximum = failure.MaxRAMGB
+	}
+
+	if dimension == dimensionDisk {
+		maximum = failure.MaxDiskGB
 	}
 
 	return fmt.Sprintf("node %q %s capacity (%d) would be exceeded", failure.Node, displayDimension, maximum)

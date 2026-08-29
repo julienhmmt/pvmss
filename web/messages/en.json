@@ -662,6 +662,7 @@
   "vms.create.errorCloudinitTemplateInvalid": "The selected cloud-init template is not available.",
   "vms.create.errorInvalidSource": "A request cannot carry both an ISO and a template source.",
   "vms.create.errorDiskReduction": "Disk size cannot be smaller than the template's disk.",
+  "vms.create.errorInsufficientDiskSpace": "The target storage does not have enough free space for the requested disk size.",
   "vms.create.source": "Source",
   "vms.create.sourceHelp": "Choose an ISO for OS without cloud images (Windows, appliances), or a template for cloud-init-capable images.",
   "vms.create.sourceIso": "ISO image",

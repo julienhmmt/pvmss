@@ -89,6 +89,10 @@ func (c *callCountClient) DeleteUser(_ context.Context, _ string) error {
 	return cluster.ErrNotImplemented
 }
 
+func (c *callCountClient) StorageFreeSpace(_ context.Context, _, _ string) (int64, error) {
+	return 0, cluster.ErrNotImplemented
+}
+
 func (c *callCountClient) DisplayName(_ context.Context) (string, error) {
 	return "", cluster.ErrNotImplemented
 }
@@ -468,6 +472,10 @@ func (hungClient) DeletePool(_ context.Context, _ string) error {
 
 func (hungClient) DeleteUser(_ context.Context, _ string) error {
 	return cluster.ErrNotImplemented
+}
+
+func (hungClient) StorageFreeSpace(_ context.Context, _, _ string) (int64, error) {
+	return 0, cluster.ErrNotImplemented
 }
 
 func (hungClient) DisplayName(_ context.Context) (string, error) {

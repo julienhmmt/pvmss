@@ -61,12 +61,13 @@ func (f createFixture) create(t *testing.T, actor auth.Identity, req vm.CreateRe
 	log := slog.New(slog.DiscardHandler)
 
 	return vm.Create(context.Background(), actor, req.Cluster, req, vm.CreateDeps{
-		Store:   f.store,
-		Creator: f.fake,
-		Pusher:  f.fake,
-		Writer:  f.fake,
-		Audit:   f.store,
-		Log:     log,
+		Store:     f.store,
+		Creator:   f.fake,
+		Pusher:    f.fake,
+		Writer:    f.fake,
+		FreeSpace: f.fake,
+		Audit:     f.store,
+		Log:       log,
 	})
 }
 
@@ -895,5 +896,53 @@ func TestCreate_MultiNIC_EachBridgeValidated(t *testing.T) {
 
 	if calls := cluster.FakeCalls(); len(calls) != 0 {
 		t.Fatalf("rejection reached cluster: %+v", calls)
+	}
+}
+
+// TestCreate_InsufficientDiskSpace_RefusedBeforeVMID — US3/issue-04 D4b: when
+// the live free-space check on the target storage reports less than the
+// requested disk, Create returns ErrInsufficientDiskSpace before any VMID is
+// allocated or cluster call made. The fixture wires the fake as FreeSpaceChecker,
+// so the live check runs against the fake's static storage dataset.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_InsufficientDiskSpace_RefusedBeforeVMID(t *testing.T) {
+	fixture := newCreateFixture(t)
+	req := detailedRequest()
+	req.Name = "oversized-disk"
+	// local-lvm on pve-node-01: Total=549755813888 (~512 GB), Used=219902325555
+	// (~205 GB), free ~307 GB. Requesting 400 GB exceeds the free space.
+	req.Disk.SizeGB = 400
+
+	_, err := fixture.create(t, aliceIdentity(), req)
+	if !errors.Is(err, vm.ErrInsufficientDiskSpace) {
+		t.Fatalf("error = %v, want ErrInsufficientDiskSpace", err)
+	}
+
+	// No VMID allocation or cluster mutation may have happened.
+	if calls := cluster.FakeCalls(); len(calls) != 0 {
+		t.Fatalf("disk-space rejection reached cluster: %+v", calls)
+	}
+}
+
+// TestCreate_SufficientDiskSpace_Passes — the happy path of the live check:
+// a disk that fits within the target storage's free space is accepted. This
+// guards against a regression where the check is wired but always rejects.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_SufficientDiskSpace_Passes(t *testing.T) {
+	fixture := newCreateFixture(t)
+	req := detailedRequest()
+	req.Name = "fits-disk"
+	// local-lvm on pve-node-01 has ~307 GB free; 40 GB fits.
+	req.Disk.SizeGB = 40
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if result.VMID < 1 || result.UPID == "" {
+		t.Fatalf("unexpected result: %+v", result)
 	}
 }

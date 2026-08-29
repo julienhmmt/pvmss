@@ -54,6 +54,10 @@ type Client interface {
 	SetPoolACL(ctx context.Context, username, poolID, role string) error
 	DeletePool(ctx context.Context, poolID string) error
 	DeleteUser(ctx context.Context, username string) error
+	// StorageFreeSpace returns the available bytes on a storage backend on a
+	// node (US3/issue-04 D4c). Used by the create path's live disk-space
+	// check before VMID allocation.
+	StorageFreeSpace(ctx context.Context, node, storage string) (int64, error)
 }
 
 // CloudInitReader reads per-VM cloud-init state and server-side snippet targets.

@@ -47,6 +47,7 @@ const (
 	dimensionVCPU  = "vcpu"
 	dimensionVMs   = "vms"
 	dimensionRAM   = "ram"
+	dimensionDisk  = "disk"
 )
 
 // Gabarit is the administrator-editable size ceiling for one VM.
@@ -67,7 +68,8 @@ type Quota struct {
 }
 
 // Capacity is a node's configured aggregate capacité, live usage, and physical
-// CPU/RAM facts. MaxDiskGB is intentionally displayed but not enforced.
+// CPU/RAM/disk facts. UsedDiskGB is the provisioned disk total from the
+// inventory projection (D4c), parallel to UsedRAMGB.
 type Capacity struct {
 	Node          string
 	MaxVMs        int
@@ -77,6 +79,7 @@ type Capacity struct {
 	UsedVMs       int
 	UsedVCPUs     int
 	UsedRAMGB     int
+	UsedDiskGB    int
 	PhysicalVCPUs int
 	PhysicalRAMGB int
 }
@@ -151,7 +154,10 @@ func (service *Policy) NodeCapacity(ctx context.Context, clusterName, node strin
 
 	index := service.projection.Load()
 
-	var usedRAMBytes int64
+	var (
+		usedRAMBytes  int64
+		usedDiskBytes int64
+	)
 
 	for _, machine := range index.ByNode[node] {
 		if !slices.Contains(machine.Tags, "pvmss") {
@@ -161,9 +167,11 @@ func (service *Policy) NodeCapacity(ctx context.Context, clusterName, node strin
 		capacity.UsedVMs++
 		capacity.UsedVCPUs += vmVCPUs(machine)
 		usedRAMBytes += machine.MemoryTotal
+		usedDiskBytes += machine.DiskTotal
 	}
 
 	capacity.UsedRAMGB = int(usedRAMBytes / bytesPerGB)
+	capacity.UsedDiskGB = int(usedDiskBytes / bytesPerGB)
 
 	for _, machine := range index.Nodes {
 		if machine.Name != node {

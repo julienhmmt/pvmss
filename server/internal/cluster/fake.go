@@ -255,6 +255,23 @@ func (fake Fake) ListTemplates(_ context.Context) ([]TemplateVM, error) {
 	return slices.Clone(fakeTemplates), nil
 }
 
+// StorageFreeSpace returns the available bytes on a storage backend on a node
+// (US3/issue-04). The fake computes avail = Total - Used from the static
+// storage dataset. Returns ErrNotFound for an unknown (node, storage) pair.
+func (fake Fake) StorageFreeSpace(_ context.Context, node, storage string) (int64, error) {
+	if fake.unavailable() {
+		return 0, ErrUnreachable
+	}
+
+	for _, s := range fakeStorages {
+		if s.Node == node && s.Name == storage {
+			return s.Total - s.Used, nil
+		}
+	}
+
+	return 0, ErrNotFound
+}
+
 // ListPools implements Client and returns a defensive copy of the live pool table.
 func (fake Fake) ListPools(_ context.Context) ([]Pool, error) {
 	state := fake.stateOrDefault()

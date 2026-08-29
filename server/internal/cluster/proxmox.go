@@ -525,6 +525,26 @@ func (p Proxmox) ListTemplates(ctx context.Context) ([]TemplateVM, error) {
 	return templates, nil
 }
 
+// StorageFreeSpace returns the available bytes on a storage backend on a node
+// (US3/issue-04). Queries GET /nodes/{node}/storage/{storage}/status and
+// extracts the `avail` field from the response.
+func (p Proxmox) StorageFreeSpace(ctx context.Context, node, storage string) (int64, error) {
+	raw, err := p.rest().do(ctx, http.MethodGet,
+		fmt.Sprintf("/nodes/%s/storage/%s/status", url.PathEscape(node), url.PathEscape(storage)), nil)
+	if err != nil {
+		return 0, err
+	}
+
+	var row struct {
+		Avail int64 `json:"avail"`
+	}
+	if err := decodeData(raw, &row); err != nil {
+		return 0, fmt.Errorf("decode storage status: %w", err)
+	}
+
+	return row.Avail, nil
+}
+
 // proxmoxTemplateDisk reads the template's primary disk (the first scsi/virtio/
 // sata/ide key) from its config, returning (storage, sizeGB, bus, cloudInitCapable).
 // The primary disk is the first non-cdrom, non-cloudinit disk found in bus-family

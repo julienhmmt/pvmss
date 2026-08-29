@@ -41,6 +41,10 @@ var (
 	// ErrDiskReduction — the requested disk size is smaller than the
 	// template's disk (US2/issue-02 D2c: Proxmox does not reduce disks).
 	ErrDiskReduction = errors.New("disk size below template")
+	// ErrInsufficientDiskSpace — the target storage does not have enough
+	// free space for the requested disk (US3/issue-04 D4b: hard refusal
+	// before VMID consumption).
+	ErrInsufficientDiskSpace = errors.New("insufficient disk space")
 )
 
 // Fixed technical safety ceilings (FR-008) — hardcoded anti-abuse bounds,
@@ -148,6 +152,15 @@ type HardwareUpdater interface {
 	Action(ctx context.Context, node string, vmid int, action string) error
 }
 
+// FreeSpaceChecker reads live free space from a storage backend (US3/issue-04
+// T045). Used by the create path's hard disk-space check before VMID
+// allocation (D4b). Defined as a narrow interface so vm.Create depends only
+// on the method it calls; cluster.Fake and the real Proxmox client both
+// satisfy it.
+type FreeSpaceChecker interface {
+	StorageFreeSpace(ctx context.Context, node, storage string) (int64, error)
+}
+
 // CreateResult is what a successful creation returns — the task is accepted,
 // the VM does not necessarily exist yet (FR-013).
 type CreateResult struct {
@@ -164,13 +177,14 @@ type CreateResult struct {
 // arguments (ctx, actor, clusterName, req). Bundling them keeps Create's
 // parameter count under go:S107's ceiling without losing any dependency.
 type CreateDeps struct {
-	Store    *store.Store
-	Creator  cluster.Creator
-	Pusher   CloudInitPusher
-	Writer   HardwareUpdater
-	Audit    AuditRecorder
-	Log      *slog.Logger
-	Services []*policy.Policy
+	Store     *store.Store
+	Creator   cluster.Creator
+	Pusher    CloudInitPusher
+	Writer    HardwareUpdater
+	FreeSpace FreeSpaceChecker
+	Audit     AuditRecorder
+	Log       *slog.Logger
+	Services  []*policy.Policy
 }
 
 // Create validates a creation request and dispatches it as an asynchronous
@@ -229,7 +243,7 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 // is started explicitly after the snippet is attached, preventing a first boot
 // without cloud-init).
 func createFromISO(ctx context.Context, policyService *policy.Policy, deps CreateDeps, clusterName string, actor auth.Identity, req CreateRequest) (CreateResult, error) {
-	plan, err := planCreate(ctx, policyService, deps.Store, clusterName, actor, req)
+	plan, err := planCreate(ctx, policyService, deps.Store, clusterName, actor, req, deps.Log, deps.FreeSpace)
 	if err != nil {
 		return CreateResult{}, err
 	}
@@ -352,7 +366,7 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 		req.Disk.SizeGB = tmpl.DiskSizeGB
 	}
 
-	plan, err := planCreate(ctx, policyService, deps.Store, clusterName, actor, req)
+	plan, err := planCreate(ctx, policyService, deps.Store, clusterName, actor, req, deps.Log, deps.FreeSpace)
 	if err != nil {
 		return CreateResult{}, err
 	}
@@ -676,8 +690,9 @@ type nicPlan struct {
 }
 
 // planCreate runs all pre-allocation validation: quota, name, catalog,
-// hardware ranges, gabarit, resource resolution, and node capacity.
-func planCreate(ctx context.Context, policyService *policy.Policy, st *store.Store, clusterName string, actor auth.Identity, req CreateRequest) (createPlan, error) {
+// hardware ranges, gabarit, resource resolution, node capacity, and live
+// disk-space check (US3/issue-04).
+func planCreate(ctx context.Context, policyService *policy.Policy, st *store.Store, clusterName string, actor auth.Identity, req CreateRequest, log *slog.Logger, freeSpace FreeSpaceChecker) (createPlan, error) {
 	if err := policyService.CheckQuota(ctx, clusterName, actor); err != nil {
 		return createPlan{}, err
 	}
@@ -700,7 +715,12 @@ func planCreate(ctx context.Context, policyService *policy.Policy, st *store.Sto
 		return createPlan{}, err
 	}
 
-	node, storage, nics, err := resolveResources(req, resources)
+	// US3/issue-04: fetch node capacities for placement scoring and storage
+	// free space from the projection for best-storage selection.
+	capacities := fetchNodeCapacities(ctx, policyService, clusterName, resources.Nodes)
+	storageFree := fetchStorageFreeBytes(policyService, resources.Storages)
+
+	node, storage, nics, err := resolveResources(req, resources, capacities, storageFree)
 	if err != nil {
 		return createPlan{}, err
 	}
@@ -713,11 +733,89 @@ func planCreate(ctx context.Context, policyService *policy.Policy, st *store.Sto
 		return createPlan{}, err
 	}
 
-	if err := policyService.CheckNodeCapacity(ctx, clusterName, node, sockets, cpuCores, memoryMB, 0); err != nil {
+	if err := policyService.CheckNodeCapacity(ctx, clusterName, node, sockets, cpuCores, memoryMB, diskGB, 0); err != nil {
 		return createPlan{}, err
 	}
 
+	// US3/issue-04 D4b: live disk-space check before VMID consumption.
+	if err := checkLiveDiskSpace(ctx, freeSpace, node, storage, diskGB); err != nil {
+		return createPlan{}, err
+	}
+
+	// US3/issue-04 T042: log the placement decision when auto-selection ran.
+	if req.Node == "" && log != nil {
+		logPlacement(log, node, resources.Nodes, capacities, req)
+	}
+
 	return createPlan{node: node, storage: storage, sockets: sockets, cpuCores: cpuCores, memoryMB: memoryMB, diskGB: diskGB, bus: bus, nics: nics}, nil
+}
+
+// checkLiveDiskSpace verifies the target storage has enough free space for the
+// requested disk (US3/issue-04 D4b). Skipped when no FreeSpaceChecker is wired
+// (unit tests that don't need the live check) or when diskGB is zero.
+func checkLiveDiskSpace(ctx context.Context, freeSpace FreeSpaceChecker, node, storage string, diskGB int) error {
+	if freeSpace == nil || diskGB <= 0 {
+		return nil
+	}
+
+	freeBytes, err := freeSpace.StorageFreeSpace(ctx, node, storage)
+	if err != nil {
+		return fmt.Errorf("%w: read free space on %q/%q: %w", ErrClusterCreate, node, storage, err)
+	}
+
+	needed := int64(diskGB) * bytesPerGB
+	if freeBytes < needed {
+		return fmt.Errorf("%w: storage %q on node %q has %d GB free, request needs %d GB", ErrInsufficientDiskSpace, storage, node, freeBytes/bytesPerGB, int64(diskGB))
+	}
+
+	return nil
+}
+
+// bytesPerGB is the conversion factor for disk-space checks.
+const bytesPerGB int64 = 1024 * 1024 * 1024
+
+// fetchNodeCapacities reads the capacity of each approved node from the policy
+// service. Nodes with no configured capacité return a zero-value Capacity
+// (scoreNode handles this gracefully).
+func fetchNodeCapacities(ctx context.Context, policyService *policy.Policy, clusterName string, nodes []catalog.Node) map[string]policy.Capacity {
+	capacities := make(map[string]policy.Capacity, len(nodes))
+
+	for _, n := range nodes {
+		nodeCap, err := policyService.NodeCapacity(ctx, clusterName, n.Name)
+		if err != nil {
+			continue
+		}
+
+		capacities[n.Name] = nodeCap
+	}
+
+	return capacities
+}
+
+// fetchStorageFreeBytes reads the projected free bytes for each approved
+// storage from the policy service's in-memory projection. Storages not in the
+// projection get 0 (bestStorageOnNode treats 0 as a valid candidate).
+func fetchStorageFreeBytes(policyService *policy.Policy, storages []catalog.Storage) map[string]int64 {
+	free := make(map[string]int64, len(storages))
+
+	for _, s := range storages {
+		free[s.Name] = policyService.StorageFreeBytes(s.Node, s.Name)
+	}
+
+	return free
+}
+
+// logPlacement emits a [placement] log line naming each candidate and its
+// score, like ProxMate's scheduler log.
+func logPlacement(log *slog.Logger, selected string, candidates []catalog.Node, capacities map[string]policy.Capacity, req CreateRequest) {
+	scores := make([]string, 0, len(candidates))
+
+	for _, n := range candidates {
+		score := scoreNode(capacities[n.Name], req)
+		scores = append(scores, fmt.Sprintf("%s=%.3f", n.Name, score))
+	}
+
+	log.Info("[placement] auto-selected node", "component", "vm", "selected", selected, "candidates", scores)
 }
 
 // resolveHardware returns the effective sockets, CPU, memory, disk, and bus
@@ -756,12 +854,25 @@ func defaultSockets(n int) int {
 	return n
 }
 
+// Placement scoring weights (US3/issue-04 D4a: fixed, matching ProxMate).
+// Revisit only if a real deployment demonstrates bad placement.
+const (
+	placementWeightMem  = 0.5
+	placementWeightCPU  = 0.35
+	placementWeightDisk = 0.15
+	placementFitBonus   = 1.0
+)
+
 // resolveResources resolves the node, storage, and NICs, applying
 // auto-selection defaults when the request omits them. When the request
 // carries an ISO and no explicit node, candidate nodes are restricted to
 // those that hold the ISO (US1: a node-local ISO silently fails on the wrong
 // node — the refusal must arrive before VMID consumption).
-func resolveResources(req CreateRequest, resources catalog.Resources) (node, storage string, nics []nicPlan, err error) {
+//
+// When no explicit node is selected, candidates are scored by free resource
+// fractions (US3/issue-04): memFrac*0.5 + cpuFrac*0.35 + diskFrac*0.15, +1
+// if the VM fits. Catalog order breaks ties for reproducibility.
+func resolveResources(req CreateRequest, resources catalog.Resources, capacities map[string]policy.Capacity, storageFree map[string]int64) (node, storage string, nics []nicPlan, err error) {
 	node = req.Node
 	if node == "" {
 		candidates := resources.Nodes
@@ -772,16 +883,18 @@ func resolveResources(req CreateRequest, resources catalog.Resources) (node, sto
 			}
 		}
 
+		// Hard filter: node must have at least one approved storage.
+		candidates = nodesWithStorage(resources, candidates)
 		if len(candidates) == 0 {
-			return "", "", nil, fmt.Errorf("%w: no approved node in catalog", ErrNotApproved)
+			return "", "", nil, fmt.Errorf("%w: no approved node with storage in catalog", ErrNotApproved)
 		}
 
-		node = candidates[0].Name
+		node = pickBestNode(candidates, capacities, req)
 	}
 
 	storage = req.Disk.Storage
 	if storage == "" {
-		storage = firstStorageOnNode(resources, node)
+		storage = bestStorageOnNode(resources, node, storageFree)
 		if storage == "" {
 			return "", "", nil, fmt.Errorf("%w: no approved storage on node %q", ErrNotApproved, node)
 		}
@@ -793,6 +906,87 @@ func resolveResources(req CreateRequest, resources catalog.Resources) (node, sto
 	}
 
 	return node, storage, nics, nil
+}
+
+// pickBestNode scores each candidate node and returns the name of the highest
+// scorer. Catalog order breaks ties (stable selection for reproducible tests).
+func pickBestNode(candidates []catalog.Node, capacities map[string]policy.Capacity, req CreateRequest) string {
+	best := candidates[0]
+	bestScore := scoreNode(capacities[best.Name], req)
+
+	for _, candidate := range candidates[1:] {
+		score := scoreNode(capacities[candidate.Name], req)
+		if score > bestScore {
+			best = candidate
+			bestScore = score
+		}
+	}
+
+	return best.Name
+}
+
+// scoreNode computes a placement score from free resource fractions
+// (US3/issue-04 D4a). The formula matches ProxMate's fixed weights:
+// memFrac*0.5 + cpuFrac*0.35 + diskFrac*0.15, +1 if the VM fits. A node with
+// no capacity data (zero value) scores 0 — still selectable as a fallback,
+// but preferred less than any node with known headroom.
+func scoreNode(capacity policy.Capacity, req CreateRequest) float64 {
+	var memFrac, cpuFrac, diskFrac float64
+
+	if capacity.PhysicalRAMGB > 0 {
+		freeMem := capacity.PhysicalRAMGB - capacity.UsedRAMGB
+		if freeMem > 0 {
+			memFrac = float64(freeMem) / float64(capacity.PhysicalRAMGB)
+		}
+	}
+
+	if capacity.PhysicalVCPUs > 0 {
+		freeCPU := capacity.PhysicalVCPUs - capacity.UsedVCPUs
+		if freeCPU > 0 {
+			cpuFrac = float64(freeCPU) / float64(capacity.PhysicalVCPUs)
+		}
+	}
+
+	if capacity.MaxDiskGB > 0 {
+		freeDisk := capacity.MaxDiskGB - capacity.UsedDiskGB
+		if freeDisk > 0 {
+			diskFrac = float64(freeDisk) / float64(capacity.MaxDiskGB)
+		}
+	}
+
+	score := memFrac*placementWeightMem + cpuFrac*placementWeightCPU + diskFrac*placementWeightDisk
+
+	// Bonus if the VM actually fits (bonus, not barrier — under overcommit
+	// a node is still returned rather than failing the create).
+	requestedRAM := (req.MemoryMB + 1023) / 1024
+	requestedCPU := defaultSockets(req.Sockets) * req.CPUCores
+
+	fitsMem := capacity.PhysicalRAMGB == 0 || capacity.PhysicalRAMGB-capacity.UsedRAMGB >= requestedRAM
+	fitsCPU := capacity.PhysicalVCPUs == 0 || capacity.PhysicalVCPUs-capacity.UsedVCPUs >= requestedCPU
+	fitsDisk := capacity.MaxDiskGB == 0 || capacity.MaxDiskGB-capacity.UsedDiskGB >= req.Disk.SizeGB
+
+	if fitsMem && fitsCPU && fitsDisk {
+		score += placementFitBonus
+	}
+
+	return score
+}
+
+// nodesWithStorage filters candidates to those that have at least one approved
+// storage in the catalog (US3/issue-04 hard filter).
+func nodesWithStorage(resources catalog.Resources, candidates []catalog.Node) []catalog.Node {
+	var filtered []catalog.Node
+
+	for _, candidate := range candidates {
+		for _, storage := range resources.Storages {
+			if storage.Node == candidate.Name {
+				filtered = append(filtered, candidate)
+				break
+			}
+		}
+	}
+
+	return filtered
 }
 
 // resolveNICs builds the resolved NIC list from the request. An empty request
@@ -889,14 +1083,27 @@ func checkTechnicalRange(cpuCores, memoryMB, diskGB int) error {
 
 // firstStorageOnNode returns the first approved storage attached to node, or
 // "" when none is (catalog queries are ordered, so this is deterministic).
-func firstStorageOnNode(resources catalog.Resources, node string) string {
+// bestStorageOnNode picks the approved storage with the most free space on
+// the selected node (US3/issue-04 T041). Falls back to catalog order when
+// free-space data is unavailable (zero free bytes). Catalog order breaks ties
+// for reproducibility.
+func bestStorageOnNode(resources catalog.Resources, node string, storageFree map[string]int64) string {
+	best := ""
+	bestFree := int64(-1)
+
 	for _, storage := range resources.Storages {
-		if storage.Node == node {
-			return storage.Name
+		if storage.Node != node {
+			continue
+		}
+
+		free := storageFree[storage.Name]
+		if free > bestFree {
+			best = storage.Name
+			bestFree = free
 		}
 	}
 
-	return ""
+	return best
 }
 
 func firstBridgeOnNode(resources catalog.Resources, node string) string {
