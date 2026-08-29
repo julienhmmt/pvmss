@@ -306,6 +306,7 @@ func createMigrationStandInTables(ctx context.Context, t *testing.T, db *sql.DB)
 		`CREATE TABLE IF NOT EXISTS sessions (token_hash BLOB PRIMARY KEY)`,
 		`CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT NOT NULL, cluster TEXT NOT NULL, vmid INTEGER NOT NULL, action TEXT NOT NULL, timestamp TEXT NOT NULL)`,
 		`CREATE TABLE IF NOT EXISTS catalog_profiles (cluster TEXT NOT NULL, id TEXT NOT NULL, label TEXT NOT NULL, cpu_cores INTEGER NOT NULL, memory_mb INTEGER NOT NULL, disk_gb INTEGER NOT NULL, bus TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, id))`,
+		`CREATE TABLE IF NOT EXISTS vm_limits (cluster TEXT PRIMARY KEY, max_sockets INTEGER NOT NULL, max_cores INTEGER NOT NULL, max_memory_mb INTEGER NOT NULL, max_disk_per_vm_gb INTEGER NOT NULL, max_network_cards INTEGER NOT NULL, max_snapshots INTEGER NOT NULL, max_vm_per_user INTEGER NOT NULL, allow_custom_yaml BOOLEAN NOT NULL)`,
 	}
 	for _, ddl := range standins {
 		if _, err := db.ExecContext(ctx, ddl); err != nil {

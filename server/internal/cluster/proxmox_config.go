@@ -260,6 +260,12 @@ func parseNetValue(index int, value string) NetworkInterface {
 				r := int(n)
 				nic.RateMbps = &r
 			}
+		case key == "firewall":
+			nic.Firewall = val == "1"
+		case key == "mtu":
+			if n, err := strconv.Atoi(val); err == nil {
+				nic.MTU = n
+			}
 		case proxmoxNICModels[key]:
 			nic.Model = key
 			nic.MAC = val
@@ -396,6 +402,15 @@ func encodeNetValue(iface NetworkInterface) string {
 
 	if iface.RateMbps != nil {
 		parts = append(parts, fmt.Sprintf("rate=%d", *iface.RateMbps))
+	}
+
+	// US6/issue-06 D6a: the Proxmox per-VM firewall is armed on every
+	// PVMSS-created NIC — the base isolation brick for a multi-tenant
+	// portal, imposed not user-exposed.
+	parts = append(parts, "firewall=1")
+
+	if iface.MTU > 0 {
+		parts = append(parts, fmt.Sprintf("mtu=%d", iface.MTU))
 	}
 
 	return strings.Join(parts, ",")

@@ -79,6 +79,23 @@ func bobIdentity() auth.Identity {
 	return auth.Identity{Username: cluster.FakeUserBob, Pool: cluster.FakePoolBob}
 }
 
+// mustPolicyService builds a policy service over the fixture's store.
+func mustPolicyService(st *store.Store) *policy.Policy {
+	return policy.New(st, nil, nil)
+}
+
+// mustGabarit reads the cluster's gabarit, failing the test on error.
+func mustGabarit(t *testing.T, st *store.Store) policy.Gabarit {
+	t.Helper()
+
+	gabarit, err := mustPolicyService(st).Gabarit(context.Background(), testClusterName)
+	if err != nil {
+		t.Fatalf("Gabarit: %v", err)
+	}
+
+	return gabarit
+}
+
 // detailedRequest is a fully explicit, catalog-valid detailed-mode request.
 func detailedRequest() vm.CreateRequest {
 	return vm.CreateRequest{
@@ -944,5 +961,154 @@ func TestCreate_SufficientDiskSpace_Passes(t *testing.T) {
 
 	if result.VMID < 1 || result.UPID == "" {
 		t.Fatalf("unexpected result: %+v", result)
+	}
+}
+
+// TestCreate_IsolationVLAN_StampsTagOnEveryNIC asserts the admin-imposed
+// per-cluster VLAN tag (US6/issue-06 D6b) is stamped on every created NIC.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_IsolationVLAN_StampsTagOnEveryNIC(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	gabarit := mustGabarit(t, fixture.store)
+	gabarit.IsolationVLANTag = 110
+
+	if err := mustPolicyService(fixture.store).SetGabarit(context.Background(), testClusterName, gabarit); err != nil {
+		t.Fatalf("SetGabarit: %v", err)
+	}
+
+	req := detailedRequest()
+	req.Name = "vlan-stamp"
+	req.Network = vm.NetworkRequest{
+		{Bridge: cluster.FakeBridgeVMbr0, Model: testModelVirtio},
+		{Bridge: testBridgeVMbr1, Model: "e1000"},
+	}
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM not in snapshot")
+	}
+
+	ifaces := snap.VMs[idx].NetworkInterfaces
+	if len(ifaces) != 2 {
+		t.Fatalf("network interfaces = %d, want 2", len(ifaces))
+	}
+
+	for i, nic := range ifaces {
+		if nic.VLAN == nil || *nic.VLAN != 110 {
+			t.Errorf("nic[%d].vlan = %v, want 110", i, nic.VLAN)
+		}
+
+		if !nic.Firewall {
+			t.Errorf("nic[%d].firewall = false, want true", i)
+		}
+	}
+}
+
+// TestCreate_IsolationVLAN_Zero_NoTag asserts that when the gabarit's VLAN
+// tag is 0 (the default), no tag is stamped on NICs.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_IsolationVLAN_Zero_NoTag(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	req := detailedRequest()
+	req.Name = "no-vlan"
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM not in snapshot")
+	}
+
+	ifaces := snap.VMs[idx].NetworkInterfaces
+	if len(ifaces) != 1 {
+		t.Fatalf("network interfaces = %d, want 1", len(ifaces))
+	}
+
+	if ifaces[0].VLAN != nil {
+		t.Errorf("nic.vlan = %v, want nil (no imposed tag)", ifaces[0].VLAN)
+	}
+}
+
+// TestCreate_UEFI_ProvisionsEFIDisk asserts that requesting UEFI produces
+// bios=ovmf, machine=q35, and efidisk0 on the created VM (US6/issue-06).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_UEFI_ProvisionsEFIDisk(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	req := detailedRequest()
+	req.Name = "uefi-vm"
+	req.UEFI = true
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if result.VMID < 1 || result.UPID == "" {
+		t.Fatalf("unexpected result: %+v", result)
+	}
+}
+
+// TestCreate_UEFI_WithTPM_ProvisionsTPMState asserts that UEFI+TPM is
+// accepted and the VM is created (the cluster layer emits tpmstate0).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_UEFI_WithTPM_ProvisionsTPMState(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	req := detailedRequest()
+	req.Name = "uefi-tpm-vm"
+	req.UEFI = true
+	req.TPM = true
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if result.VMID < 1 || result.UPID == "" {
+		t.Fatalf("unexpected result: %+v", result)
+	}
+}
+
+// TestCreate_TPM_WithoutUEFI_Rejected asserts that TPM without UEFI is
+// rejected with ErrInvalidRequest before any VMID is allocated (US6/issue-06:
+// TPM 2.0 requires UEFI).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_TPM_WithoutUEFI_Rejected(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	req := detailedRequest()
+	req.Name = "tpm-no-uefi"
+	req.TPM = true
+	req.UEFI = false
+
+	_, err := fixture.create(t, aliceIdentity(), req)
+	if !errors.Is(err, vm.ErrInvalidRequest) {
+		t.Fatalf("err = %v, want ErrInvalidRequest", err)
 	}
 }

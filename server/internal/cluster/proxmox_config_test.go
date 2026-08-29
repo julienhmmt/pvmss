@@ -109,7 +109,7 @@ func TestParseNetValue(t *testing.T) {
 
 		nic := parseNetValue(1, "virtio,bridge=vmbr1")
 
-		if nic.Model != "virtio" || nic.MAC != "" || nic.Bridge != FakeBridgeVMbr1 {
+		if nic.Model != string(DiskBusVirtio) || nic.MAC != "" || nic.Bridge != FakeBridgeVMbr1 {
 			t.Fatalf("nic = %+v", nic)
 		}
 	})
@@ -204,24 +204,35 @@ func TestParseDisks_SkipsReservedSlots(t *testing.T) {
 func TestEncodeNetValue(t *testing.T) {
 	t.Parallel()
 
-	t.Run("with mac", func(t *testing.T) {
+	t.Run("with mac, vlan, firewall", func(t *testing.T) {
 		t.Parallel()
 
 		vlan := 100
 
 		got := encodeNetValue(NetworkInterface{Model: "virtio", MAC: "AA:BB:CC:DD:EE:FF", Bridge: "vmbr0", VLAN: &vlan})
-		want := "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,tag=100"
+		want := "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,tag=100,firewall=1"
 
 		if got != want {
 			t.Errorf("encodeNetValue = %q, want %q", got, want)
 		}
 	})
 
-	t.Run("no mac, default model", func(t *testing.T) {
+	t.Run("no mac, default model, firewall always emitted", func(t *testing.T) {
 		t.Parallel()
 
 		got := encodeNetValue(NetworkInterface{Bridge: FakeBridgeVMbr1})
-		want := "virtio,bridge=vmbr1"
+		want := "virtio,bridge=vmbr1,firewall=1"
+
+		if got != want {
+			t.Errorf("encodeNetValue = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("mtu emitted when set", func(t *testing.T) {
+		t.Parallel()
+
+		got := encodeNetValue(NetworkInterface{Bridge: FakeBridgeVMbr0, MTU: 9000})
+		want := "virtio,bridge=vmbr0,firewall=1,mtu=9000"
 
 		if got != want {
 			t.Errorf("encodeNetValue = %q, want %q", got, want)

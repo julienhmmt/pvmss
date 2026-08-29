@@ -80,7 +80,10 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 
 	nics := make([]NetworkInterface, 0, len(spec.Network))
 	for _, nic := range spec.Network {
-		nics = append(nics, NetworkInterface{Model: nic.Model, Bridge: nic.Bridge})
+		nics = append(nics, NetworkInterface{
+			Model: nic.Model, Bridge: nic.Bridge, VLAN: nic.VLAN,
+			Firewall: nic.Firewall, MAC: nic.MAC, RateMbps: nic.RateMbps,
+		})
 	}
 
 	state.vms = append(state.vms, VM{

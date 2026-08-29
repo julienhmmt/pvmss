@@ -65,6 +65,7 @@ export interface CatalogGabarit {
 	maxDiskPerVMGB: number;
 	maxNetworkCards: number;
 	maxSnapshots: number;
+	isolationVlanTag: number;
 }
 
 /** The caller's own VM count against the cluster's per-user allowance.
@@ -135,6 +136,8 @@ export interface VMCreateRequest {
 	network?: NICRequest[];
 	iso?: { storage: string; file: string };
 	templateId?: number;
+	uefi?: boolean;
+	tpm?: boolean;
 	startAfterCreate?: boolean;
 }
 
@@ -274,6 +277,11 @@ export class VmCreateStore {
 	sourceType = $state<VmSource>('iso');
 	templateId = $state(0);
 	startAfterCreate = $state(true);
+	/** US6/issue-06: UEFI (bios=ovmf + q35 + efidisk0) and TPM 2.0 —
+	 *  detailed-mode only, off by default. TPM requires UEFI; the server
+	 *  rejects TPM-without-UEFI with ErrInvalidRequest. */
+	uefi = $state(false);
+	tpm = $state(false);
 
 	/** Fetches the multi-cluster options and defaults to the first one, matching
 	 *  the login page's cluster picker (must run before loadCatalog when the
@@ -418,6 +426,13 @@ export class VmCreateStore {
 			}
 		}
 
+		// US6/issue-06: UEFI/TPM are detailed-mode-only options. Only send
+		// them when true — the server defaults to seabios/no-TPM when absent.
+		if (this.uefi) {
+			request.uefi = true;
+			if (this.tpm) request.tpm = true;
+		}
+
 		return request;
 	}
 
@@ -456,7 +471,9 @@ export class VmCreateStore {
 			isoFile: this.isoFile,
 			sourceType: this.sourceType,
 			templateId: this.templateId,
-			startAfterCreate: this.startAfterCreate
+			startAfterCreate: this.startAfterCreate,
+			uefi: this.uefi,
+			tpm: this.tpm
 		};
 	}
 
@@ -482,6 +499,8 @@ export class VmCreateStore {
 		this.sourceType = values.sourceType ?? 'iso';
 		this.templateId = values.templateId ?? 0;
 		this.startAfterCreate = values.startAfterCreate;
+		this.uefi = values.uefi ?? false;
+		this.tpm = values.tpm ?? false;
 	}
 }
 

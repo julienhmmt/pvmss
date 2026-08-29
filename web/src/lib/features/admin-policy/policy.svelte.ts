@@ -11,6 +11,7 @@ export interface Gabarit {
 	maxNetworkCards: number;
 	maxSnapshots: number;
 	allowCustomYaml: boolean;
+	isolationVlanTag: number;
 }
 
 export interface Quota {
@@ -31,6 +32,7 @@ export interface GabaritPatch {
 	maxNetworkCards?: number;
 	maxSnapshots?: number;
 	allowCustomYaml?: boolean;
+	isolationVlanTag?: number;
 }
 
 export interface AdminPolicyPatch {

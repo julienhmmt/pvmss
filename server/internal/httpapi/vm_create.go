@@ -159,12 +159,13 @@ type catalogTagDTO struct {
 // gabarit) — the client uses it to validate hardware/disk fields before
 // submit and to show the user what they're allowed, not just what failed.
 type catalogGabaritDTO struct {
-	MaxSockets      int `json:"maxSockets"`
-	MaxCores        int `json:"maxCores"`
-	MaxMemoryMB     int `json:"maxMemoryMB"`
-	MaxDiskPerVMGB  int `json:"maxDiskPerVMGB"`
-	MaxNetworkCards int `json:"maxNetworkCards"`
-	MaxSnapshots    int `json:"maxSnapshots"`
+	MaxSockets       int `json:"maxSockets"`
+	MaxCores         int `json:"maxCores"`
+	MaxMemoryMB      int `json:"maxMemoryMB"`
+	MaxDiskPerVMGB   int `json:"maxDiskPerVMGB"`
+	MaxNetworkCards  int `json:"maxNetworkCards"`
+	MaxSnapshots     int `json:"maxSnapshots"`
+	IsolationVLANTag int `json:"isolationVlanTag"`
 }
 
 // catalogQuotaDTO is the caller's own VM count against the cluster's
@@ -450,7 +451,7 @@ func (h *VMCreate) attachLimits(ctx context.Context, dto *catalogDTO, clusterNam
 	dto.Gabarit = &catalogGabaritDTO{
 		MaxSockets: gabarit.MaxSockets, MaxCores: gabarit.MaxCores, MaxMemoryMB: gabarit.MaxMemoryMB,
 		MaxDiskPerVMGB: gabarit.MaxDiskPerVMGB, MaxNetworkCards: gabarit.MaxNetworkCards,
-		MaxSnapshots: gabarit.MaxSnapshots,
+		MaxSnapshots: gabarit.MaxSnapshots, IsolationVLANTag: gabarit.IsolationVLANTag,
 	}
 
 	quota, err := h.policy.Quota(ctx, clusterName, identity)
@@ -657,6 +658,7 @@ var createErrorMappings = []createErrorMapping{
 	{vm.ErrOutOfRange, http.StatusBadRequest, "out_of_range", ""},
 	{vm.ErrNotApproved, http.StatusBadRequest, "not_approved", ""},
 	{vm.ErrInvalidSource, http.StatusBadRequest, "invalid_source", ""},
+	{vm.ErrInvalidRequest, http.StatusBadRequest, "invalid_request", ""},
 	{vm.ErrDiskReduction, http.StatusBadRequest, "disk_reduction", ""},
 	{vm.ErrInsufficientDiskSpace, http.StatusBadRequest, "insufficient_disk_space", ""},
 	{vm.ErrClusterCreate, http.StatusBadGateway, "cluster_error", msgClusterRejected},

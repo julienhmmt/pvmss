@@ -64,11 +64,18 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 	}
 
 	if spec.Disk.Storage != "" {
-		form.Set(spec.Disk.Bus+"0", fmt.Sprintf("%s:%d", spec.Disk.Storage, spec.Disk.SizeGB))
+		diskValue := fmt.Sprintf("%s:%d,discard=on", spec.Disk.Storage, spec.Disk.SizeGB)
 
+		// US6/issue-06 D6a: iothread is gated on SCSI — it is not supported
+		// on virtio/IDE/SATA and Proxmox silently ignores the option there,
+		// but emitting it only where it works keeps the form clean.
 		if spec.Disk.Bus == string(DiskBusSCSI) {
+			diskValue += ",iothread=1"
+
 			form.Set("scsihw", "virtio-scsi-pci")
 		}
+
+		form.Set(spec.Disk.Bus+"0", diskValue)
 	}
 
 	for i, nic := range spec.Network {
@@ -76,7 +83,13 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 			continue
 		}
 
-		form.Set(fmt.Sprintf("net%d", i), encodeNetValue(NetworkInterface{Model: nic.Model, Bridge: nic.Bridge}))
+		// US6/issue-06: pass VLAN, Firewall, MAC, and RateMbps through to
+		// the encoder. Firewall is always true (D6a — imposed, not exposed).
+		// VLAN is the admin-imposed isolation tag (D6b).
+		form.Set(fmt.Sprintf("net%d", i), encodeNetValue(NetworkInterface{
+			Model: nic.Model, Bridge: nic.Bridge, VLAN: nic.VLAN,
+			Firewall: true, MAC: nic.MAC, RateMbps: nic.RateMbps,
+		}))
 	}
 
 	// Always provision a serial port (serial0) backed by a socket. This makes
@@ -89,6 +102,9 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 	if spec.ISO != nil {
 		form.Set(cdromDiskKey, fmt.Sprintf("%s:iso/%s,media=cdrom", spec.ISO.Storage, spec.ISO.File))
 	}
+
+	// US6/issue-06: UEFI (bios=ovmf) and TPM 2.0.
+	setUEFIFormKeys(form, spec)
 
 	if spec.StartAfterCreate {
 		form.Set("start", "1")
@@ -105,6 +121,38 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 	}
 
 	return upid, nil
+}
+
+// setUEFIFormKeys emits the UEFI/TPM form keys when BIOS is ovmf (US6/issue-06
+// D6a). When BIOS is ovmf, machine is forced to q35 (UEFI requires q35 —
+// pegaprox rule), efidisk0 is provisioned on the disk's storage, and
+// tpmstate0 is added when TPM is set — never omitted silently (the pegaprox
+// preset bug where tpm_version was set without tpm_storage). Extracted from
+// CreateVM to keep its cyclomatic complexity under gocyclo's ceiling.
+func setUEFIFormKeys(form url.Values, spec VMSpec) {
+	if spec.BIOS != "ovmf" {
+		return
+	}
+
+	form.Set("bios", "ovmf")
+
+	machine := spec.Machine
+	if machine == "" || machine == "i440fx" || machine == "pc" {
+		machine = "q35"
+	}
+
+	form.Set("machine", machine)
+
+	efiStorage := spec.Disk.Storage
+	if efiStorage == "" {
+		efiStorage = "local-lvm"
+	}
+
+	form.Set("efidisk0", efiStorage+":1,efitype=4m,pre-enrolled-keys=1")
+
+	if spec.TPM {
+		form.Set("tpmstate0", efiStorage+":1,version=v2.0")
+	}
 }
 
 // wrapVMIDCollision inspects a Proxmox error for a VMID-already-exists

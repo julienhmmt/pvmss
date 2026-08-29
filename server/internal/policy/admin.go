@@ -37,6 +37,7 @@ func (service *Policy) SetGabarit(ctx context.Context, clusterName string, gabar
 	row.MaxNetworkCards = gabarit.MaxNetworkCards
 	row.MaxSnapshots = gabarit.MaxSnapshots
 	row.AllowCustomYAML = gabarit.AllowCustomYAML
+	row.IsolationVLANTag = gabarit.IsolationVLANTag
 
 	return service.store.UpsertPolicyRow(ctx, row)
 }
@@ -59,6 +60,7 @@ func (service *Policy) SetPolicy(ctx context.Context, clusterName string, gabari
 	row.MaxSockets, row.MaxCores, row.MaxMemoryMB = gabarit.MaxSockets, gabarit.MaxCores, gabarit.MaxMemoryMB
 	row.MaxDiskPerVMGB, row.MaxNetworkCards, row.MaxSnapshots = gabarit.MaxDiskPerVMGB, gabarit.MaxNetworkCards, gabarit.MaxSnapshots
 	row.AllowCustomYAML, row.MaxVMPerUser = gabarit.AllowCustomYAML, allowed
+	row.IsolationVLANTag = gabarit.IsolationVLANTag
 
 	return service.store.UpsertPolicyRow(ctx, row)
 }
@@ -131,6 +133,12 @@ func validateGabarit(gabarit Gabarit) error {
 		if item.value > item.max {
 			return fmt.Errorf("%w: %s exceeds the upper limit of %d", ErrInvalidPolicy, item.name, item.max)
 		}
+	}
+
+	// US6/issue-06 D6b: isolation VLAN tag is 0 (no tag) or a valid 802.1Q
+	// tag (1–4094). 4095 is reserved in Proxmox and rejected here.
+	if gabarit.IsolationVLANTag < 0 || gabarit.IsolationVLANTag > 4094 {
+		return fmt.Errorf("%w: isolationVlanTag must be between 0 and 4094", ErrInvalidPolicy)
 	}
 
 	return nil
