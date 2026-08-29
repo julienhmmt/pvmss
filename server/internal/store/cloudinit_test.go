@@ -1,3 +1,4 @@
+//nolint:goconst // test fixtures reuse the log level string across store open sites
 package store_test
 
 import (

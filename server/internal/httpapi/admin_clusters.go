@@ -24,11 +24,12 @@ type runtimeClusterRegistry interface {
 
 // AdminClusters exposes runtime cluster administration endpoints.
 type AdminClusters struct {
-	auth        *Auth
-	store       *store.Store
-	clients     runtimeClusterRegistry
-	inventories *inventory.Registry
-	log         *slog.Logger
+	auth             *Auth
+	store            *store.Store
+	clients          runtimeClusterRegistry
+	inventories      *inventory.Registry
+	log              *slog.Logger
+	trustedProxyHops int
 }
 
 // NewAdminClusters creates the admin cluster handler.
@@ -120,6 +121,9 @@ func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request
 		handler.writeFailure(w, err)
 		return
 	}
+	handler.recordAdminAction(r, "admin.clusters.create", "cluster", created.Name,
+		"created cluster "+created.Name,
+		[]any{map[string]any{auditKeyName: created.Name, "url": created.URL, "tlsInsecureSkipVerify": created.TLSInsecureSkipVerify, "tokenId": created.TokenID, "oidcEnabled": created.OIDCEnabled}})
 	writeAdminJSON(w, http.StatusCreated, handler.clusterDTO(created))
 }
 
@@ -149,6 +153,9 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 		handler.writeFailure(w, err)
 		return
 	}
+	handler.recordAdminAction(r, "admin.clusters.update", "cluster", name,
+		"updated cluster "+name,
+		[]any{map[string]any{auditKeyName: name, "url": updated.URL, "tlsInsecureSkipVerify": updated.TLSInsecureSkipVerify, "tokenId": updated.TokenID, "oidcEnabled": updated.OIDCEnabled}})
 	writeAdminJSON(w, http.StatusOK, handler.clusterDTO(updated))
 }
 
@@ -210,6 +217,9 @@ func (handler *AdminClusters) ServeOIDC(w http.ResponseWriter, r *http.Request) 
 		handler.writeStoreFailure(w, err)
 		return
 	}
+	handler.recordAdminAction(r, "admin.clusters.oidc", "cluster", name,
+		fmt.Sprintf("set cluster %s OIDC enabled=%v", name, request.Enabled),
+		[]any{map[string]any{auditKeyName: name, "oidcEnabled": request.Enabled}})
 	writeAdminJSON(w, http.StatusOK, struct {
 		Name        string `json:"name"`
 		OIDCEnabled bool   `json:"oidcEnabled"`
@@ -227,6 +237,9 @@ func (handler *AdminClusters) ServeDelete(w http.ResponseWriter, r *http.Request
 	if handler.inventories != nil {
 		handler.inventories.Remove(name)
 	}
+	handler.recordAdminAction(r, "admin.clusters.delete", "cluster", name,
+		"removed cluster "+name,
+		[]any{map[string]any{auditKeyName: name, "status": "removed"}})
 	writeAdminJSON(w, http.StatusOK, struct {
 		Status string `json:"status"`
 	}{Status: "removed"})
@@ -312,6 +325,19 @@ func shortClusterError(err error) string {
 		return "connection refused"
 	}
 	return "cluster unreachable"
+}
+
+// SetTrustedProxyHops configures how many X-Forwarded-For hops to trust for
+// client IP extraction used in audit log entries.
+func (handler *AdminClusters) SetTrustedProxyHops(n int) {
+	handler.trustedProxyHops = n
+}
+
+func (handler *AdminClusters) recordAdminAction(r *http.Request, action, targetType, targetID, summary string, changes []any) {
+	actor, _ := handler.auth.Principal(r)
+	if err := handler.store.RecordAdminAction(r.Context(), actor.Username, action, targetType, targetID, detailJSON(summary, changes), clientIP(r, handler.trustedProxyHops)); err != nil {
+		handler.log.Error("failed to record admin action", "component", "httpapi", "action", action, "error", err)
+	}
 }
 
 func formatTime(value *time.Time) *string {

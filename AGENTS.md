@@ -268,6 +268,7 @@ operator who simply forgot to set the variable.
 | `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | `5s`                               |
 | `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | `15s`                              |
 | `PVMSS_MAX_LIST_PAGE_SIZE`                    | `100`                              |
+| `PVMSS_TRUSTED_PROXY_HOPS`                    | `1`                                |
 
 `PVMSS_OFFLINE`, `PVMSS_ENV`, `JWT_SECRET`, `PROXMOX_VERIFY_SSL` and
 `LOG_FILE_PATH` belonged to the v0.3 backend and are **no longer read**. Demo

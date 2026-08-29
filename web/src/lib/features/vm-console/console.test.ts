@@ -35,19 +35,19 @@ describe('fetchConsoleTicket', () => {
 
 describe('buildConsoleWebSocketURL', () => {
 	it('builds a same-origin wss URL when the page is https', () => {
-		vi.stubGlobal('window', { location: { protocol: 'https:', host: 'pvmss.example.com' } });
+		vi.stubGlobal('location', { protocol: 'https:', host: 'pvmss.example.com' });
 		const url = buildConsoleWebSocketURL('default', 100, 'opaque-token');
 		expect(url).toBe('wss://pvmss.example.com/api/v1/vms/default/100/console/websocket?token=opaque-token');
 	});
 
 	it('builds a same-origin ws URL when the page is http', () => {
-		vi.stubGlobal('window', { location: { protocol: 'http:', host: 'localhost:50001' } });
+		vi.stubGlobal('location', { protocol: 'http:', host: 'localhost:50001' });
 		const url = buildConsoleWebSocketURL('default', 100, 'opaque-token');
 		expect(url).toBe('ws://localhost:50001/api/v1/vms/default/100/console/websocket?token=opaque-token');
 	});
 
 	it('encodes the token and path segments', () => {
-		vi.stubGlobal('window', { location: { protocol: 'https:', host: 'h' } });
+		vi.stubGlobal('location', { protocol: 'https:', host: 'h' });
 		const url = buildConsoleWebSocketURL('my cluster', 100, 'token with spaces');
 		expect(url).toBe('wss://h/api/v1/vms/my%20cluster/100/console/websocket?token=token%20with%20spaces');
 	});
@@ -66,7 +66,7 @@ describe('buildConsolePopoutURL', () => {
 describe('openConsolePopout', () => {
 	it('opens the console URL in a new noopener window', () => {
 		const openMock = vi.fn();
-		vi.stubGlobal('window', { open: openMock });
+		vi.stubGlobal('open', openMock);
 
 		openConsolePopout('default', 100);
 
@@ -75,7 +75,7 @@ describe('openConsolePopout', () => {
 
 	it('returns the window handle from window.open', () => {
 		const fakeWindow = {} as Window;
-		vi.stubGlobal('window', { open: vi.fn().mockReturnValue(fakeWindow) });
+		vi.stubGlobal('open', vi.fn().mockReturnValue(fakeWindow));
 
 		expect(openConsolePopout('default', 100)).toBe(fakeWindow);
 	});

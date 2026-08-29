@@ -1,4 +1,4 @@
-//nolint:wsl_v5 // test scaffolding keeps setup and assertions adjacent
+//nolint:wsl_v5,goconst // test scaffolding keeps setup and assertions adjacent; log level string reused across store open sites
 package store_test
 
 import (

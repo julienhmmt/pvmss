@@ -5,10 +5,14 @@
 // +page.svelte (SC-004). Set only by Playwright via page.addInitScript() —
 // never by application code, never reachable from a URL. See VmConsole.svelte
 // for why this is a window global instead of a query parameter.
-export {};
 
 declare global {
 	interface Window {
 		__pvmssForceConsoleBoundaryError?: boolean;
 	}
+}
+
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface PvmssConsoleTestHooks {
+	__pvmssForceConsoleBoundaryError?: boolean;
 }

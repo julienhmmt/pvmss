@@ -62,6 +62,25 @@ func (s *Store) ExportDatabase(ctx context.Context, w io.Writer) error {
 	return nil
 }
 
+// ExportPreview returns the row counts of the tables that would be included
+// in a database export (the import allowlist in export form).
+func (s *Store) ExportPreview(ctx context.Context) ([]TablePreview, error) {
+	tables := ImportableTables()
+	out := make([]TablePreview, 0, len(tables))
+
+	for _, name := range tables {
+		var rowCount int
+
+		if err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM "+name).Scan(&rowCount); err != nil {
+			return nil, fmt.Errorf("count %s: %w", name, err)
+		}
+
+		out = append(out, TablePreview{Name: name, RowCount: rowCount})
+	}
+
+	return out, nil
+}
+
 // dbPath returns the on-disk path of the live database, or empty if it cannot
 // be determined. Resolved via PRAGMA database_list — SQLite knows its own
 // file path. For an in-memory or non-file DSN, "main" carries an empty file

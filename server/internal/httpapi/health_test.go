@@ -29,7 +29,7 @@ func TestHealth(t *testing.T) {
 		{
 			name:   healthStatusHealthy,
 			method: http.MethodGet,
-			pinger: fakePinger{err: nil},
+			pinger: fakeHealthPinger{err: nil},
 			wantBody: httpapi.HealthResponse{
 				Status: healthStatusHealthy,
 				Checks: map[string]httpapi.CheckResult{
@@ -40,7 +40,7 @@ func TestHealth(t *testing.T) {
 		{
 			name:       healthStatusUnhealthy,
 			method:     http.MethodGet,
-			pinger:     fakePinger{err: leakyErr},
+			pinger:     fakeHealthPinger{err: leakyErr},
 			wantStatus: http.StatusServiceUnavailable,
 			wantBody: httpapi.HealthResponse{
 				Status: healthStatusUnhealthy,
@@ -52,7 +52,7 @@ func TestHealth(t *testing.T) {
 		{
 			name:       "method not allowed",
 			method:     http.MethodPost,
-			pinger:     fakePinger{err: nil},
+			pinger:     fakeHealthPinger{err: nil},
 			wantStatus: http.StatusMethodNotAllowed,
 		},
 	}
@@ -69,7 +69,7 @@ func TestHealth_LogsError_WhenUnhealthy(t *testing.T) {
 	var buf strings.Builder
 
 	logger := slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelError}))
-	h := httpapi.NewHealth(fakePinger{err: errors.New("boom")}, logger, nil, 60*time.Second)
+	h := httpapi.NewHealth(fakeHealthPinger{err: errors.New("boom")}, logger, nil, 60*time.Second)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/health", nil)
@@ -102,11 +102,11 @@ func TestHealth_LogsError_WhenUnhealthy(t *testing.T) {
 	}
 }
 
-type fakePinger struct {
+type fakeHealthPinger struct {
 	err error
 }
 
-func (f fakePinger) Ping(_ context.Context) error {
+func (f fakeHealthPinger) Ping(_ context.Context) error {
 	if f.err != nil {
 		return f.err
 	}
@@ -133,7 +133,7 @@ func (f fakeFreshnessChecker) DemoMode() bool {
 // clustersCase is a single row of the TestHealth_ClustersAggregate table.
 type clustersCase struct {
 	name             string
-	pinger           fakePinger
+	pinger           fakeHealthPinger
 	freshness        fakeFreshnessChecker
 	wantStatus       int
 	wantClustersStat string
@@ -145,7 +145,7 @@ type clustersCase struct {
 type healthCase struct {
 	name       string
 	method     string
-	pinger     fakePinger
+	pinger     fakeHealthPinger
 	wantStatus int
 	wantBody   httpapi.HealthResponse
 }
@@ -277,7 +277,7 @@ func TestHealth_ClustersAggregate(t *testing.T) {
 	cases := []clustersCase{
 		{
 			name:             "all clusters fresh + database healthy → clusters healthy, no detail",
-			pinger:           fakePinger{err: nil},
+			pinger:           fakeHealthPinger{err: nil},
 			freshness:        fakeFreshnessChecker{clusters: []httpapi.ClusterFreshness{{Name: "a", RefreshedAt: time.Now()}, {Name: "b", RefreshedAt: time.Now()}}},
 			wantStatus:       http.StatusOK,
 			wantClustersStat: healthStatusHealthy,
@@ -286,7 +286,7 @@ func TestHealth_ClustersAggregate(t *testing.T) {
 		},
 		{
 			name:             "one cluster stale → clusters unhealthy, detail is a count not a name",
-			pinger:           fakePinger{err: nil},
+			pinger:           fakeHealthPinger{err: nil},
 			freshness:        fakeFreshnessChecker{clusters: []httpapi.ClusterFreshness{{Name: "alpha", RefreshedAt: time.Now()}, {Name: "beta", RefreshedAt: time.Now().Add(-10 * time.Minute)}}},
 			wantStatus:       http.StatusOK,
 			wantClustersStat: "unhealthy",
@@ -295,7 +295,7 @@ func TestHealth_ClustersAggregate(t *testing.T) {
 		},
 		{
 			name:             "database unhealthy → 503, top-level unhealthy (unchanged T00 rule)",
-			pinger:           fakePinger{err: errors.New("db down")},
+			pinger:           fakeHealthPinger{err: errors.New("db down")},
 			freshness:        fakeFreshnessChecker{clusters: []httpapi.ClusterFreshness{{Name: "a", RefreshedAt: time.Now()}}},
 			wantStatus:       http.StatusServiceUnavailable,
 			wantClustersStat: healthStatusHealthy,
@@ -303,7 +303,7 @@ func TestHealth_ClustersAggregate(t *testing.T) {
 		},
 		{
 			name:             "demoMode true when ClusterSource is fake",
-			pinger:           fakePinger{err: nil},
+			pinger:           fakeHealthPinger{err: nil},
 			freshness:        fakeFreshnessChecker{clusters: []httpapi.ClusterFreshness{{Name: "demo", RefreshedAt: time.Now()}}, demoMode: true},
 			wantStatus:       http.StatusOK,
 			wantClustersStat: healthStatusHealthy,
@@ -311,7 +311,7 @@ func TestHealth_ClustersAggregate(t *testing.T) {
 		},
 		{
 			name:             "zero clusters configured → clusters healthy (no stale possible)",
-			pinger:           fakePinger{err: nil},
+			pinger:           fakeHealthPinger{err: nil},
 			freshness:        fakeFreshnessChecker{clusters: nil},
 			wantStatus:       http.StatusOK,
 			wantClustersStat: healthStatusHealthy,

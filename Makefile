@@ -152,12 +152,12 @@ buildkit-status: ## Vérifie le statut de buildkit
 
 server-lint: ## Lance golangci-lint sur le next-gen server/ (config server/.golangci.yml)
 	@echo "$(BLUE)Lancement du linter Go sur $(SERVER_DIR)/...$(NC)"
-	cd $(SERVER_DIR) && golangci-lint run -v --timeout=5m ./...
+	cd $(SERVER_DIR) && go tool golangci-lint run -v --timeout=5m ./...
 	@echo "$(GREEN)✓ Lint server terminé$(NC)"
 
 server-fmt: ## Formate le code Go du next-gen server/ (golangci-lint fmt)
 	@echo "$(BLUE)Formatage du code Go $(SERVER_DIR)/...$(NC)"
-	cd $(SERVER_DIR) && golangci-lint fmt ./...
+	cd $(SERVER_DIR) && go tool golangci-lint fmt ./...
 	@echo "$(GREEN)✓ Formatage server terminé$(NC)"
 
 server-vet: ## Lance go vet sur le next-gen server/ (vérification légère sans golangci-lint)

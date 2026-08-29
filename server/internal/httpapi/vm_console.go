@@ -212,8 +212,7 @@ func isNormalClose(err error) bool {
 		return true
 	}
 
-	var ce websocket.CloseError
-	if errors.As(err, &ce) {
+	if ce, ok := errors.AsType[websocket.CloseError](err); ok {
 		switch ce.Code {
 		case websocket.StatusNormalClosure, websocket.StatusGoingAway:
 			return true

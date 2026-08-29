@@ -1,4 +1,4 @@
-//nolint:noctx // test scaffolding uses in-memory requests
+//nolint:noctx,goconst // test scaffolding uses in-memory requests; snapshot body literal reused across IDOR cases
 package httpapi_test
 
 import (

@@ -1,4 +1,4 @@
-//nolint:noctx,paralleltest // HTTP coverage tests use shared fake and session fixtures
+//nolint:noctx,paralleltest,goconst // HTTP coverage tests use shared fake and session fixtures; pool body literal reused across coverage rows
 package httpapi_test
 
 import (
