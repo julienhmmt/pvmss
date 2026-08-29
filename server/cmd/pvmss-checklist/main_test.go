@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"pvmss/server/internal/testfixture"
 	"strings"
 	"testing"
 )
@@ -89,18 +90,19 @@ func TestChecklistCLI_HappyPath(t *testing.T) {
 	ctx := context.Background()
 	repoRoot := findRepoRoot(t)
 	bin := buildChecklistBinary(ctx, t, repoRoot)
+	fixtureRoot := testfixture.ChecklistFiches(t)
 
-	out, err := exec.CommandContext(ctx, bin, "--repo-root", repoRoot).CombinedOutput() //nolint:gosec // test invokes its own freshly built binary
+	out, err := exec.CommandContext(ctx, bin, "--repo-root", fixtureRoot).CombinedOutput() //nolint:gosec // test invokes its own freshly built binary
 	if err != nil {
 		t.Fatalf("pvmss-checklist: %v\n%s", err, out)
 	}
 
 	output := string(out)
-	if !strings.Contains(output, "fiches found") {
+	if !strings.Contains(output, "58 fiches found") {
 		t.Errorf("output missing fiche count:\n%s", output)
 	}
 
-	if !strings.Contains(output, "SUMMARY:") {
+	if !strings.Contains(output, "SUMMARY: 53 closed, 5 open (3 real gaps, 2 deliberate design decisions)") {
 		t.Errorf("output missing SUMMARY line:\n%s", output)
 	}
 }
@@ -111,8 +113,9 @@ func TestChecklistCLI_ExitCodeZeroOnSuccess(t *testing.T) {
 	ctx := context.Background()
 	repoRoot := findRepoRoot(t)
 	bin := buildChecklistBinary(ctx, t, repoRoot)
+	fixtureRoot := testfixture.ChecklistFiches(t)
 
-	out, err := exec.CommandContext(ctx, bin, "--repo-root", repoRoot).CombinedOutput() //nolint:gosec // test invokes its own freshly built binary
+	out, err := exec.CommandContext(ctx, bin, "--repo-root", fixtureRoot).CombinedOutput() //nolint:gosec // test invokes its own freshly built binary
 	if code := exitCodeOf(t, err); code != 0 {
 		t.Fatalf("pvmss-checklist exit=%d, want 0:\n%s", code, out)
 	}
@@ -169,7 +172,7 @@ func TestChecklistCLI_DefaultRepoRoot(t *testing.T) {
 	bin := buildChecklistBinary(ctx, t, repoRoot)
 
 	cmd := exec.CommandContext(ctx, bin) //nolint:gosec // test invokes its own freshly built binary
-	cmd.Dir = repoRoot
+	cmd.Dir = testfixture.ChecklistFiches(t)
 
 	out, err := cmd.CombinedOutput()
 	if code := exitCodeOf(t, err); code != 0 {

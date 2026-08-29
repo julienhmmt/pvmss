@@ -2,9 +2,8 @@ package checklist_test
 
 import (
 	"bytes"
-	"os"
-	"path/filepath"
 	"pvmss/server/internal/checklist"
+	"pvmss/server/internal/testfixture"
 	"strings"
 	"testing"
 )
@@ -14,8 +13,8 @@ import (
 func TestGenerate_FicheCount(t *testing.T) {
 	t.Parallel()
 
-	// Use the real repo root — the fiche directories are part of the repo.
-	repoRoot := findRepoRoot(t)
+	// Generate the fiche tree so the test does not depend on gitignored files.
+	repoRoot := testfixture.ChecklistFiches(t)
 
 	var buf bytes.Buffer
 	if err := checklist.Generate(&buf, repoRoot); err != nil {
@@ -50,7 +49,7 @@ func TestGenerate_FicheCount(t *testing.T) {
 func TestGenerate_NoneFichesReportedCorrectly(t *testing.T) {
 	t.Parallel()
 
-	repoRoot := findRepoRoot(t)
+	repoRoot := testfixture.ChecklistFiches(t)
 
 	var buf bytes.Buffer
 	if err := checklist.Generate(&buf, repoRoot); err != nil {
@@ -86,7 +85,7 @@ func TestGenerate_NoneFichesReportedCorrectly(t *testing.T) {
 func TestGenerate_DeliberateVsGap(t *testing.T) {
 	t.Parallel()
 
-	repoRoot := findRepoRoot(t)
+	repoRoot := testfixture.ChecklistFiches(t)
 
 	var buf bytes.Buffer
 	if err := checklist.Generate(&buf, repoRoot); err != nil {
@@ -141,27 +140,4 @@ func TestGenerate_MissingFicheDir(t *testing.T) {
 	if !strings.Contains(output, "0 fiches found") {
 		t.Errorf("expected 0 fiches for empty repo, got:\n%s", output)
 	}
-}
-
-// findRepoRoot returns the repository root by looking for the .claude directory.
-func findRepoRoot(t *testing.T) string {
-	t.Helper()
-	// Walk up from the current directory to find .claude/v0.4/auth/
-	dir, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd: %v", err)
-	}
-
-	for range 10 {
-		candidate := filepath.Join(dir, ".claude", "v0.4", "auth")
-		if fi, err := os.Stat(candidate); err == nil && fi.IsDir() {
-			return dir
-		}
-
-		dir = filepath.Dir(dir)
-	}
-
-	t.Fatal("could not find repo root with .claude/v0.4/auth/")
-
-	return ""
 }
