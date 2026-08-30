@@ -35,6 +35,7 @@ type Tasks struct {
 	creator     cluster.Creator
 	clients     cluster.ClientProvider
 	invalidator TaskInvalidator
+	refreshers  ClusterRefresherResolver
 	log         *slog.Logger
 }
 
@@ -49,9 +50,12 @@ func NewTasks(authHandler *Auth, creator cluster.Creator, invalidator TaskInvali
 // keyed on the request's ?cluster= query param. creator is the default
 // cluster's Creator, kept as the fallback for the single-cluster / unit-test
 // path (clients == nil), matching every other WithRegistry constructor.
-func NewTasksWithRegistry(authHandler *Auth, clients cluster.ClientProvider, creator cluster.Creator, invalidator TaskInvalidator, log *slog.Logger) *Tasks {
+// refreshers resolves the per-cluster invalidator (lifecycle-02); nil keeps
+// invalidator as the fallback for every cluster.
+func NewTasksWithRegistry(authHandler *Auth, clients cluster.ClientProvider, creator cluster.Creator, invalidator TaskInvalidator, refreshers ClusterRefresherResolver, log *slog.Logger) *Tasks {
 	handler := NewTasks(authHandler, creator, invalidator, log)
 	handler.clients = clients
+	handler.refreshers = refreshers
 
 	return handler
 }
@@ -61,6 +65,7 @@ type taskStatusDTO struct {
 	State       string   `json:"state"`
 	Log         []string `json:"log"`
 	ExitMessage string   `json:"exitMessage,omitempty"`
+	Warnings    string   `json:"warnings,omitempty"`
 }
 
 // ServeHTTP polls one task. When the task is observed in its ok state, the
@@ -107,13 +112,22 @@ func (h *Tasks) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		h.log.Error("task status read failed", "component", "httpapi", "cluster", clusterName, "error", err)
-		h.writeTaskError(w, http.StatusBadGateway, "cluster_error", "cluster rejected the request")
+		// Surface Proxmox's own rejection message when there is one (ADR
+		// 0002); transport errors stay generic.
+		if code, message, ok := clusterRejectionResponse(err); ok {
+			h.writeTaskError(w, http.StatusBadGateway, code, message)
+		} else {
+			h.writeTaskError(w, http.StatusBadGateway, "cluster_error", "cluster rejected the request")
+		}
 
 		return
 	}
 
 	if status.State == cluster.TaskOK {
-		if _, err := h.invalidator.Refresh(r.Context()); err != nil {
+		// Resolve the invalidator per cluster like the Creator above: a task
+		// polled with ?cluster=b must invalidate b's projection, not the
+		// default cluster's (lifecycle-02 closed this for the write handlers).
+		if _, err := h.refresherFor(clusterName).Refresh(r.Context()); err != nil {
 			// The task genuinely succeeded; a failed invalidation only delays
 			// list visibility until the next automatic cycle — do not fail
 			// the poll for it.
@@ -126,7 +140,29 @@ func (h *Tasks) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		State:       string(status.State),
 		Log:         status.Log,
 		ExitMessage: status.ExitMessage,
+		Warnings:    status.Warnings,
 	})
+}
+
+// refresherFor resolves the TaskInvalidator for clusterName — the write-side
+// sibling of the per-request Creator resolution above (ticket 05). Without
+// it, a task polled with ?cluster=b invalidates the default cluster's
+// projection instead of b's. A missing resolver or unknown cluster falls back
+// to the startup invalidator with a warning — a failed invalidation only
+// delays list visibility, never fails the poll.
+func (h *Tasks) refresherFor(clusterName string) TaskInvalidator {
+	if h.refreshers == nil {
+		return h.invalidator
+	}
+
+	refresher, err := h.refreshers.RefresherFor(clusterName)
+	if err != nil {
+		h.log.Warn("task invalidator not found for cluster", "component", "httpapi", "cluster", clusterName, "error", err)
+
+		return h.invalidator
+	}
+
+	return refresher
 }
 
 func (h *Tasks) writeTaskJSON(w http.ResponseWriter, status int, value any) {

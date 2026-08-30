@@ -48,7 +48,7 @@ describe('convergeSingle', () => {
 
 		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
 
-		expect(onTick).toHaveBeenCalledWith('running');
+		expect(onTick).toHaveBeenCalledWith('running', undefined);
 		expect(get).toHaveBeenCalledTimes(1);
 	});
 
@@ -72,7 +72,7 @@ describe('convergeSingle', () => {
 
 		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
 
-		expect(onTick).toHaveBeenLastCalledWith('running');
+		expect(onTick).toHaveBeenLastCalledWith('running', undefined);
 		expect(get).toHaveBeenCalledTimes(3);
 	});
 
@@ -93,7 +93,7 @@ describe('convergeSingle', () => {
 		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
 
 		// The loop ended without converging — no error thrown.
-		expect(onTick).toHaveBeenLastCalledWith('stopped');
+		expect(onTick).toHaveBeenLastCalledWith('stopped', undefined);
 	});
 
 	it('survives intermediate read errors without terminating', async () => {
@@ -114,7 +114,7 @@ describe('convergeSingle', () => {
 		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
 
 		// The error was swallowed, the loop continued, and converged on the second read.
-		expect(onTick).toHaveBeenCalledWith('running');
+		expect(onTick).toHaveBeenCalledWith('running', undefined);
 		expect(get).toHaveBeenCalledTimes(2);
 	});
 });
@@ -141,7 +141,7 @@ describe('convergeBatch', () => {
 
 		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
 
-		expect(onTick).toHaveBeenCalledWith('stopped');
+		expect(onTick).toHaveBeenCalledWith('stopped', undefined);
 		expect(post).toHaveBeenCalledTimes(1);
 	});
 
@@ -163,7 +163,7 @@ describe('convergeBatch', () => {
 
 		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
 
-		expect(onTick).toHaveBeenLastCalledWith('stopped');
+		expect(onTick).toHaveBeenLastCalledWith('stopped', undefined);
 		expect(post).toHaveBeenCalledTimes(3);
 	});
 
@@ -183,7 +183,7 @@ describe('convergeBatch', () => {
 
 		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
 
-		expect(onTick).toHaveBeenCalledWith('running');
+		expect(onTick).toHaveBeenCalledWith('running', undefined);
 		expect(post).toHaveBeenCalledTimes(2);
 	});
 
@@ -203,6 +203,6 @@ describe('convergeBatch', () => {
 
 		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
 
-		expect(onTick).toHaveBeenLastCalledWith('running');
+		expect(onTick).toHaveBeenLastCalledWith('running', undefined);
 	});
 });

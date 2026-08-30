@@ -143,14 +143,17 @@ func TestProxmox_TaskStatus(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name       string
-		status     string
-		exitStatus string
-		want       TaskState
+		name         string
+		status       string
+		exitStatus   string
+		want         TaskState
+		wantWarnings string
 	}{
-		{"running", string(VMRunning), "", TaskRunning},
-		{"ok", "stopped", "OK", TaskOK},
-		{"error", "stopped", "job errored: disk full", TaskError},
+		{"running", string(VMRunning), "", TaskRunning, ""},
+		{"ok", string(VMStopped), "OK", TaskOK, ""},
+		{"warnings one", string(VMStopped), "WARNINGS: 1", TaskOK, "WARNINGS: 1"},
+		{"warnings bare", string(VMStopped), "WARNINGS", TaskOK, "WARNINGS"},
+		{"error", string(VMStopped), "job errored: disk full", TaskError, ""},
 	}
 
 	for _, tc := range cases {
@@ -181,6 +184,20 @@ func TestProxmox_TaskStatus(t *testing.T) {
 
 			if tc.want == TaskError && got.ExitMessage != tc.exitStatus {
 				t.Errorf("exitMessage = %q, want %q", got.ExitMessage, tc.exitStatus)
+			}
+
+			// Invariant: Warnings is present only on TaskOK, ExitMessage only
+			// on TaskError — the two never overlap.
+			if got.Warnings != tc.wantWarnings {
+				t.Errorf("warnings = %q, want %q", got.Warnings, tc.wantWarnings)
+			}
+
+			if tc.want == TaskOK && got.ExitMessage != "" {
+				t.Errorf("exitMessage = %q, want empty on TaskOK", got.ExitMessage)
+			}
+
+			if tc.want != TaskOK && got.Warnings != "" {
+				t.Errorf("warnings = %q, want empty when not TaskOK", got.Warnings)
 			}
 
 			if len(got.Log) != 1 {

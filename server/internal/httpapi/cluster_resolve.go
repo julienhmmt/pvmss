@@ -61,6 +61,14 @@ func (r registryRefresherResolver) RefresherFor(clusterName string) (vm.IndexRef
 	return r.registry.Worker(clusterName)
 }
 
+// NewRegistryRefresherResolver adapts an inventory Registry to
+// ClusterRefresherResolver, for constructors that do not receive a
+// LookupSource (e.g. the tasks handler) but still must invalidate the right
+// cluster's projection after a task completes.
+func NewRegistryRefresherResolver(registry *inventory.Registry) ClusterRefresherResolver {
+	return registryRefresherResolver{registry: registry}
+}
+
 // loadClusterIndex resolves the current Index for clusterName via resolver,
 // writing the appropriate error response and returning ok=false on any
 // failure: an unknown cluster name (404 cluster_not_found) or a known

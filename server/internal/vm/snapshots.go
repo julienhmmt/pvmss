@@ -9,6 +9,7 @@ import (
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/policy"
 	"regexp"
+	"time"
 )
 
 // Snapshot is a live snapshot entry owned by the cluster, not PVMSS.
@@ -25,13 +26,32 @@ var (
 	ErrVMStateRequiresRunning = errors.New("vmstate requires a running vm")
 	// ErrVMStateUnsupportedStorage reports a disk on incompatible storage.
 	ErrVMStateUnsupportedStorage = errors.New("vmstate storage is unsupported")
+	// ErrSnapshotUnsupportedStorage reports a disk on storage that cannot
+	// hold snapshots at all (plain lvm, iscsi, raw on file storage — ticket
+	// 07). Proxmox rejects such a create outright, so PVMSS refuses before
+	// dispatching.
+	ErrSnapshotUnsupportedStorage = errors.New("snapshot storage is unsupported")
 	// ErrSnapshotNotFound reports a missing snapshot on an otherwise resolved VM.
 	ErrSnapshotNotFound = errors.New("snapshot not found")
+	// ErrVMLocked reports a Proxmox lock that did not clear within the retry
+	// budget (ticket 06). The error message names the lock; a
+	// lock=snapshot-delete left behind by a failed delete carries the
+	// operator command `qm unlock <vmid>`.
+	ErrVMLocked = errors.New("vm is locked")
 )
 
 const maxSnapshotNameLength = 40
 
-var snapshotNamePattern = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_.-]*$`)
+// currentSnapshotName is Proxmox's pseudo-entry for the live state — filtered
+// from lists, never a real snapshot, but resolvable for config reads (ticket
+// 08).
+const currentSnapshotName = "current"
+
+// snapshotNamePattern mirrors Proxmox's own pve-configid format
+// (^[a-z][a-z0-9_-]+$ case-insensitive): a leading letter, at least two
+// characters, no dots. Anything looser is accepted here and then rejected by
+// Proxmox, which the user only sees as a failed request.
+var snapshotNamePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]+$`)
 
 // SnapshotDependencies contains the resolved read, write, policy, and audit dependencies.
 type SnapshotDependencies struct {
@@ -48,31 +68,32 @@ type SnapshotDependencies struct {
 
 // ValidateSnapshotName validates the single accepted snapshot-name policy.
 func ValidateSnapshotName(name string) error {
-	if name == "current" || len(name) > maxSnapshotNameLength || !snapshotNamePattern.MatchString(name) {
+	if name == currentSnapshotName || len(name) > maxSnapshotNameLength || !snapshotNamePattern.MatchString(name) {
 		return fmt.Errorf("%w: %q", ErrInvalidSnapshotName, name)
 	}
 
 	return nil
 }
 
-// ListSnapshots returns live snapshots and the configured per-VM snapshot gabarit.
-func ListSnapshots(ctx context.Context, deps SnapshotDependencies) ([]Snapshot, int, error) {
+// ListSnapshots returns live snapshots, the configured per-VM snapshot
+// gabarit, and the VM's current snapshot capability (ticket 07).
+func ListSnapshots(ctx context.Context, deps SnapshotDependencies) ([]Snapshot, int, SnapshotCapability, error) {
 	entity, err := resolveSnapshotTarget(deps)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, SnapshotCapability{}, err
 	}
 
 	snapshots, err := deps.Reader.ListSnapshots(ctx, entity.Node, entity.VMID)
 	if err != nil {
-		return nil, 0, fmt.Errorf("list snapshots: %w", err)
+		return nil, 0, SnapshotCapability{}, fmt.Errorf("list snapshots: %w", err)
 	}
 
 	gabarit, err := deps.readGabarit(ctx)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, SnapshotCapability{}, err
 	}
 
-	return visibleSnapshots(snapshots), gabarit.MaxSnapshots, nil
+	return visibleSnapshots(snapshots), gabarit.MaxSnapshots, ComputeSnapshotCapability(entity, deps.Index), nil
 }
 
 // CreateSnapshot validates and dispatches an asynchronous snapshot creation.
@@ -107,9 +128,19 @@ func CreateSnapshot(ctx context.Context, deps SnapshotDependencies, name, descri
 		return "", err
 	}
 
-	upid, err := deps.Writer.CreateSnapshot(ctx, entity.Node, entity.VMID, name, description, vmstate)
+	// Ticket 07: refuse before dispatching when any disk sits on storage that
+	// cannot hold snapshots (Proxmox rejects outright) — the UI already
+	// greys the create button via the capability field of the list response.
+	capability := ComputeSnapshotCapability(entity, deps.Index)
+	if !capability.CanSnapshot {
+		return "", fmt.Errorf("%w: %s", ErrSnapshotUnsupportedStorage, capability.Warnings[0])
+	}
+
+	upid, err := snapshotWithLockRetry(ctx, deps, func() (string, error) {
+		return deps.Writer.CreateSnapshot(ctx, entity.Node, entity.VMID, name, description, vmstate)
+	})
 	if err != nil {
-		return "", fmt.Errorf("create snapshot: %w", err)
+		return "", err
 	}
 	if err := recordSnapshotAction(ctx, deps, "vm_snapshot_create"); err != nil {
 		return "", err
@@ -127,9 +158,11 @@ func RollbackSnapshot(ctx context.Context, deps SnapshotDependencies, name strin
 		return "", err
 	}
 
-	upid, err := deps.Writer.RollbackSnapshot(ctx, entity.Node, entity.VMID, name)
+	upid, err := snapshotWithLockRetry(ctx, deps, func() (string, error) {
+		return deps.Writer.RollbackSnapshot(ctx, entity.Node, entity.VMID, name)
+	})
 	if err != nil {
-		return "", fmt.Errorf("rollback snapshot: %w", err)
+		return "", err
 	}
 	if err := recordSnapshotAction(ctx, deps, "vm_snapshot_rollback"); err != nil {
 		return "", err
@@ -147,15 +180,96 @@ func DeleteSnapshot(ctx context.Context, deps SnapshotDependencies, name string)
 		return "", err
 	}
 
-	upid, err := deps.Writer.DeleteSnapshot(ctx, entity.Node, entity.VMID, name)
+	upid, err := snapshotWithLockRetry(ctx, deps, func() (string, error) {
+		return deps.Writer.DeleteSnapshot(ctx, entity.Node, entity.VMID, name)
+	})
 	if err != nil {
-		return "", fmt.Errorf("delete snapshot: %w", err)
+		return "", err
 	}
 	if err := recordSnapshotAction(ctx, deps, "vm_snapshot_delete"); err != nil {
 		return "", err
 	}
 
 	return upid, nil
+}
+
+// snapshotWithLockRetry dispatches a snapshot write, retrying when Proxmox
+// rejects it with "VM is locked (lockname)" — the same bounded retry-on-lock
+// as the power actions (ticket 08), reusing extractLockName and the
+// LockRetryPollInterval / MaxLockRetryWait budgets. A VM stuck at
+// lock=snapshot-delete (NFS ESTALE, pegaprox incident #422) cannot clear
+// itself by waiting: the expiry error then tells the operator to run
+// `qm unlock <vmid>` on the node.
+func snapshotWithLockRetry(ctx context.Context, deps SnapshotDependencies, dispatch func() (string, error)) (string, error) {
+	upid, err := dispatch()
+	if err == nil {
+		return upid, nil
+	}
+
+	lockName, locked := extractLockName(err)
+	if !locked {
+		return "", err
+	}
+
+	deadline := time.NewTimer(MaxLockRetryWait)
+	defer deadline.Stop()
+
+	ticker := time.NewTicker(LockRetryPollInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			upid, err = dispatch()
+			if err == nil {
+				return upid, nil
+			}
+
+			if _, stillLocked := extractLockName(err); !stillLocked {
+				return "", err
+			}
+		case <-deadline.C:
+			if lockName == "snapshot-delete" {
+				return "", fmt.Errorf("%w: VM %d is locked by a %s left behind by a failed snapshot delete — run `qm unlock %d` on the node", ErrVMLocked, deps.VMID, lockName, deps.VMID)
+			}
+
+			return "", fmt.Errorf("%w: VM %d is locked by a %s; retry once it completes", ErrVMLocked, deps.VMID, lockName)
+		case <-ctx.Done():
+			return "", ctx.Err()
+		}
+	}
+}
+
+// SnapshotConfig returns one snapshot's stored config as a flat key→value
+// map (ticket 08) — the pre-rollback diff. "current" (the pseudo-entry,
+// filtered from lists) maps to the live config. A named snapshot must exist
+// (404 snapshot_not_found); "current" always resolves.
+func SnapshotConfig(ctx context.Context, deps SnapshotDependencies, name string) (map[string]string, error) {
+	var (
+		entity Entity
+		err    error
+	)
+	if name == currentSnapshotName {
+		entity, err = resolveSnapshotTarget(deps)
+	} else {
+		entity, err = findSnapshotTarget(ctx, deps, name)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	reader, ok := deps.Reader.(cluster.SnapshotConfigReader)
+	if !ok {
+		return nil, cluster.ErrNotImplemented
+	}
+
+	config, err := reader.SnapshotConfig(ctx, entity.Node, entity.VMID, name)
+	if err != nil {
+		return nil, fmt.Errorf("read snapshot config: %w", err)
+	}
+
+	return config, nil
 }
 
 func resolveSnapshotTarget(deps SnapshotDependencies) (Entity, error) {
@@ -193,7 +307,7 @@ func validateVMState(entity Entity, index *inventory.Index, vmstate bool) error 
 		return ErrVMStateRequiresRunning
 	}
 	for _, disk := range entity.Disks {
-		if !storageSupportsVMState(index, entity.Node, disk.Storage) {
+		if _, canVMState := diskStorageCapability(index, entity.Node, disk); !canVMState {
 			return fmt.Errorf("%w: disk %q is on a storage that does not support RAM state", ErrVMStateUnsupportedStorage, disk.Key)
 		}
 	}
@@ -201,18 +315,56 @@ func validateVMState(entity Entity, index *inventory.Index, vmstate bool) error 
 	return nil
 }
 
-//nolint:wsl_v5 // snapshot guards remain ordered within each domain operation
-func storageSupportsVMState(index *inventory.Index, node, name string) bool {
-	if index == nil {
-		return false
+// SnapshotCapability describes whether this VM can take snapshots and
+// RAM-state snapshots right now, with human-readable reasons (ticket 07).
+// Computed from the projection only — no cluster call.
+type SnapshotCapability struct {
+	CanSnapshot bool
+	CanVMState  bool
+	Warnings    []string
+}
+
+// ComputeSnapshotCapability derives the snapshot capability from the VM
+// entity and the storage index. canVMState requires the VM to be running and
+// every disk on storage that can hold RAM state; canSnapshot requires every
+// disk on snapshot-capable storage. Warnings carry the reasons, in display
+// order.
+func ComputeSnapshotCapability(entity Entity, index *inventory.Index) SnapshotCapability {
+	capability := SnapshotCapability{CanSnapshot: true, CanVMState: entity.Status == cluster.VMRunning}
+
+	if !capability.CanVMState {
+		capability.Warnings = append(capability.Warnings, "the VM must be running to capture RAM state")
 	}
-	for _, storage := range index.StoragesByNode[node] {
-		if storage.Name == name {
-			return storage.SupportsVMState
+
+	for _, disk := range entity.Disks {
+		canSnapshot, canVMState := diskStorageCapability(index, entity.Node, disk)
+
+		if !canSnapshot {
+			capability.CanSnapshot = false
+			capability.Warnings = append(capability.Warnings, fmt.Sprintf("disk %s is on storage %s which does not support snapshots", disk.Key, disk.Storage))
+		}
+
+		if !canVMState {
+			capability.CanVMState = false
+			capability.Warnings = append(capability.Warnings, fmt.Sprintf("disk %s is on storage %s which cannot hold RAM state", disk.Key, disk.Storage))
 		}
 	}
 
-	return false
+	return capability
+}
+
+func diskStorageCapability(index *inventory.Index, node string, disk cluster.Disk) (canSnapshot, canVMState bool) {
+	if index == nil {
+		return false, false
+	}
+
+	for _, storage := range index.StoragesByNode[node] {
+		if storage.Name == disk.Storage {
+			return cluster.StorageSnapshotCapability(storage.PluginType, disk.Format)
+		}
+	}
+
+	return false, false
 }
 
 func (deps SnapshotDependencies) readGabarit(ctx context.Context) (policy.Gabarit, error) {
@@ -230,7 +382,7 @@ func (deps SnapshotDependencies) readGabarit(ctx context.Context) (policy.Gabari
 func visibleSnapshots(snapshots []Snapshot) []Snapshot {
 	visible := make([]Snapshot, 0, len(snapshots))
 	for _, snapshot := range snapshots {
-		if snapshot.Name != "current" {
+		if snapshot.Name != currentSnapshotName {
 			visible = append(visible, snapshot)
 		}
 	}
@@ -242,7 +394,7 @@ func visibleSnapshots(snapshots []Snapshot) []Snapshot {
 func countRealSnapshots(snapshots []Snapshot) int {
 	count := 0
 	for _, snapshot := range snapshots {
-		if snapshot.Name != "current" {
+		if snapshot.Name != currentSnapshotName {
 			count++
 		}
 	}

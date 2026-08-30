@@ -15,6 +15,7 @@ const (
 	storagePluginCephFS  = "cephfs"
 	storagePluginDir     = "dir"
 	storagePluginLVM     = "lvm"
+	storagePluginLVMThin = "lvmthin"
 	storagePluginPBS     = "pbs"
 	storageContentImages = "images"
 )
@@ -26,6 +27,10 @@ var (
 	ErrNotImplemented         = errors.New("not implemented")
 	ErrInvalidAction          = errors.New("invalid action")
 	ErrInvalidStateTransition = errors.New("invalid state transition")
+	// ErrClusterRejected is wrapped by ClusterRejectedError for any 4xx/5xx
+	// Proxmox response (except 404, which stays ErrNotFound). The wrapped
+	// message is Proxmox's own — see ClusterRejectedError.
+	ErrClusterRejected = errors.New("cluster rejected the request")
 	// ErrVMRunning is returned by Delete when the target VM is running. Real
 	// Proxmox rejects a destroy on a running VM with HTTP 500 ("VM X is running
 	// - destroy failed"); the fake mirrors this so the force-stop-then-delete
@@ -220,6 +225,11 @@ type Disk struct {
 	Storage  string  `json:"storage"`
 	SizeGB   int     `json:"sizeGB"`
 	IsBoot   bool    `json:"isBoot"`
+	// Format is the disk image format ("qcow2", "raw", ...) parsed from the
+	// Proxmox config volume ID or the explicit format= option. Empty on
+	// block-backed storages (lvmthin, zfspool, rbd) where the plugin — not
+	// the format — decides snapshot support (ticket 07).
+	Format string `json:"format,omitempty"`
 }
 
 // CDROMState describes the fixed ide2 CD-ROM drive.
@@ -393,6 +403,13 @@ type SnapshotWriter interface {
 	CreateSnapshot(ctx context.Context, node string, vmid int, name, description string, vmstate bool) (string, error)
 	RollbackSnapshot(ctx context.Context, node string, vmid int, name string) (string, error)
 	DeleteSnapshot(ctx context.Context, node string, vmid int, name string) (string, error)
+}
+
+// SnapshotConfigReader reads one snapshot's stored config as a flat key→value
+// map (ticket 08). "current" maps to the live config — the pre-rollback diff
+// needs both sides.
+type SnapshotConfigReader interface {
+	SnapshotConfig(ctx context.Context, node string, vmid int, name string) (map[string]string, error)
 }
 
 // VNCProxyTicket is the Proxmox-side VNC ticket, port, and node returned by

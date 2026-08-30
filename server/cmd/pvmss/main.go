@@ -372,7 +372,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		policyService,
 	)
 	vmCreate.SetTrustedProxyHops(cfg.TrustedProxyHops)
-	tasks := httpapi.NewTasksWithRegistry(authHandler, clusterRegistry, clients.creator, worker, logger)
+	tasks := httpapi.NewTasksWithRegistry(authHandler, clusterRegistry, clients.creator, worker, httpapi.NewRegistryRefresherResolver(inventoryRegistry), logger)
 	snapshots := httpapi.NewVMSnapshotsWithRegistry(httpapi.VMSnapshotsRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Reader: clients.snapshotReader, Writer: clients.snapshotWriter, Clients: clusterRegistry, Store: st, Log: logger, Services: []*policy.Policy{policyService}})
 	vmConsole := httpapi.NewVMConsoleWithRegistry(httpapi.VMConsoleRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Relay: clients.consoleRelay, Clients: clusterRegistry, Tickets: consoleTickets, Store: st, Log: logger})
 	vmSerialConsole := httpapi.NewVMSerialConsoleWithRegistry(httpapi.VMSerialConsoleRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Relay: clients.serialRelay, Clients: clusterRegistry, Tickets: consoleTickets, Store: st, Log: logger})

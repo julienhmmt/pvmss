@@ -123,4 +123,9 @@ type TaskStatus struct {
 	Log []string
 	// ExitMessage is present only when State == TaskError.
 	ExitMessage string
+	// Warnings carries the task's exitstatus when it succeeded with non-fatal
+	// warnings (Proxmox "WARNINGS: N" — a success, not a failure). Present
+	// only when State == TaskOK; empty otherwise. The tray surfaces it so a
+	// success-with-warnings is distinguishable from a plain success.
+	Warnings string
 }

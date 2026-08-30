@@ -58,7 +58,7 @@ export interface ConvergeTarget {
 export async function convergeSingle(
 	target: ConvergeTarget,
 	targetStatus: VmStatus,
-	onTick: (status: VmStatus) => void,
+	onTick: (status: VmStatus, lock?: string) => void,
 	signal?: AbortSignal,
 ): Promise<void> {
 	const deadline = Date.now() + ACTION_CONVERGE_TIMEOUT_MS;
@@ -69,7 +69,7 @@ export async function convergeSingle(
 
 		try {
 			const live = await get<LiveStatusResponse>(path);
-			onTick(live.status);
+			onTick(live.status, live.lock);
 			if (live.status === targetStatus) return;
 		} catch {
 			// Intermediate read error: preserve optimistic state, retry next tick.
@@ -92,7 +92,7 @@ export async function convergeSingle(
 export async function convergeBatch(
 	target: ConvergeTarget,
 	targetStatus: VmStatus,
-	onTick: (status: VmStatus) => void,
+	onTick: (status: VmStatus, lock?: string) => void,
 	signal?: AbortSignal,
 ): Promise<void> {
 	const deadline = Date.now() + ACTION_CONVERGE_TIMEOUT_MS;
@@ -108,7 +108,7 @@ export async function convergeBatch(
 				(r) => r.cluster === target.cluster && r.vmid === target.vmid,
 			);
 			if (item) {
-				onTick(item.status);
+				onTick(item.status, item.lock);
 				if (item.status === targetStatus) return;
 			}
 		} catch {

@@ -22,11 +22,34 @@ const proxmoxTimeout = 20 * time.Second
 const proxmoxAuthHeaderFmt = "PVEAPIToken=%s=%s"
 
 // proxmoxEnvelope is the {"data": ...} wrapper every Proxmox API response
-// uses. Errors carries per-field validation messages on a 4xx response.
+// uses. Errors carries per-field validation messages on a 4xx response;
+// Message carries the top-level message some error responses use instead.
 type proxmoxEnvelope struct {
-	Data   json.RawMessage   `json:"data"`
-	Errors map[string]string `json:"errors,omitempty"`
+	Data    json.RawMessage   `json:"data"`
+	Errors  map[string]string `json:"errors,omitempty"`
+	Message string            `json:"message,omitempty"`
 }
+
+// RejectionError wraps a 4xx/5xx Proxmox response: the HTTP status and
+// Proxmox's own message (extracted by proxmoxErrorMessage) are kept so the
+// HTTP layer can decide what to surface — the message describes the VM's
+// storage or state, never cluster internals or credentials, but a 401/403
+// body can name the token and must not be rendered. Errors.Is(err,
+// ErrClusterRejected) matches it.
+type RejectionError struct {
+	Status  int
+	Message string
+	Method  string
+	Path    string
+}
+
+func (e *RejectionError) Error() string {
+	return fmt.Sprintf("proxmox %s %s: HTTP %d: %s", e.Method, e.Path, e.Status, e.Message)
+}
+
+// Unwrap exposes ErrClusterRejected so errors.Is works across the package
+// boundary without string matching.
+func (e *RejectionError) Unwrap() error { return ErrClusterRejected }
 
 // proxmoxRESTClient is the shared low-level REST client every Proxmox method
 // builds from the struct's own fields (or, for the two calls that must act as
@@ -281,13 +304,16 @@ func (c proxmoxRESTClient) authenticate(req *http.Request) {
 
 // parseProxmoxResponse maps a raw HTTP response to the cluster package's
 // sentinel errors where one applies, or the decoded "data" payload otherwise.
+// 404 stays ErrNotFound (the "resource absent" contract callers branch on);
+// every other 4xx/5xx becomes a RejectionError carrying Proxmox's own
+// message, so the HTTP layer can surface it instead of a generic 500.
 func parseProxmoxResponse(method, path string, status int, raw []byte) (json.RawMessage, error) {
 	if status == http.StatusNotFound {
 		return nil, ErrNotFound
 	}
 
 	if status >= http.StatusBadRequest {
-		return nil, fmt.Errorf("proxmox %s %s: HTTP %d: %s", method, path, status, proxmoxErrorMessage(raw))
+		return nil, &RejectionError{Status: status, Message: proxmoxErrorMessage(raw), Method: method, Path: path}
 	}
 
 	if len(raw) == 0 {
@@ -303,20 +329,29 @@ func parseProxmoxResponse(method, path string, status int, raw []byte) (json.Raw
 }
 
 // proxmoxErrorMessage extracts a human-readable message from a Proxmox error
-// response body, falling back to the raw (trimmed) body when it isn't the
-// expected {"data":null,"errors":{...}} shape.
+// response body. Proxmox uses two shapes: per-field {"data":null,"errors":
+// {...}} validation errors, and a top-level {"data":null,"message":"..."}
+// message. Both are read, falling back to the raw (trimmed) body otherwise.
 func proxmoxErrorMessage(raw []byte) string {
 	var envelope proxmoxEnvelope
-	if err := json.Unmarshal(raw, &envelope); err != nil || len(envelope.Errors) == 0 {
+	if err := json.Unmarshal(raw, &envelope); err != nil {
 		return strings.TrimSpace(string(raw))
 	}
 
-	parts := make([]string, 0, len(envelope.Errors))
-	for field, message := range envelope.Errors {
-		parts = append(parts, fmt.Sprintf("%s: %s", field, message))
+	if len(envelope.Errors) > 0 {
+		parts := make([]string, 0, len(envelope.Errors))
+		for field, message := range envelope.Errors {
+			parts = append(parts, fmt.Sprintf("%s: %s", field, message))
+		}
+
+		return strings.Join(parts, "; ")
 	}
 
-	return strings.Join(parts, "; ")
+	if envelope.Message != "" {
+		return envelope.Message
+	}
+
+	return strings.TrimSpace(string(raw))
 }
 
 // decodeData unmarshals a decoded "data" payload into out. A nil/empty

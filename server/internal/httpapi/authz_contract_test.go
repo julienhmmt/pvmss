@@ -341,6 +341,7 @@ var resolveExemptRoutes = map[string]string{
 	"POST /api/v1/vms/{cluster}/{vmid}/snapshots":                 "delegates to vm.CreateSnapshot which resolves",
 	"POST /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/rollback": "delegates to vm.RollbackSnapshot which resolves",
 	"DELETE /api/v1/vms/{cluster}/{vmid}/snapshots/{name}":        "delegates to vm.DeleteSnapshot which resolves",
+	"GET /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/config":    "delegates to vm.SnapshotConfig which resolves",
 }
 
 func handlerArgToSource(arg string) (string, bool) {

@@ -88,8 +88,83 @@ func TestProxmoxRESTClient_Do_ErrorBody(t *testing.T) {
 		t.Fatal("expected error")
 	}
 
+	if !errors.Is(err, ErrClusterRejected) {
+		t.Fatalf("error should satisfy ErrClusterRejected, got %v", err)
+	}
+
+	var rejection *RejectionError
+	if !errors.As(err, &rejection) {
+		t.Fatalf("error should be a *RejectionError, got %T", err)
+	}
+
+	if rejection.Status != http.StatusBadRequest {
+		t.Errorf("status = %d, want %d", rejection.Status, http.StatusBadRequest)
+	}
+
 	if got := err.Error(); !strings.Contains(got, "password: too short") {
 		t.Fatalf("error %q should surface the field message", got)
+	}
+}
+
+func TestProxmoxRESTClient_Do_RejectionExtractsTopLevelMessage(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"data":null,"message":"VM is locked (backup)"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	rest := newProxmoxREST(srv.URL, testTokenName, testTokenVal, newProxmoxHTTPClient(false))
+
+	_, err := rest.do(context.Background(), http.MethodPost, "/nodes/n1/qemu/100/status/start", nil)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	var rejection *RejectionError
+	if !errors.As(err, &rejection) {
+		t.Fatalf("error should be a *RejectionError, got %T", err)
+	}
+
+	if rejection.Status != http.StatusInternalServerError {
+		t.Errorf("status = %d, want %d", rejection.Status, http.StatusInternalServerError)
+	}
+
+	if rejection.Message != "VM is locked (backup)" {
+		t.Errorf("message = %q, want the top-level message", rejection.Message)
+	}
+}
+
+func TestProxmoxRESTClient_Do_RejectionCarriesStatusForAuthErrors(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(`{"data":null,"message":"no such API token: user@pve!tokenname"}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	rest := newProxmoxREST(srv.URL, testTokenName, testTokenVal, newProxmoxHTTPClient(false))
+
+	_, err := rest.do(context.Background(), http.MethodGet, "/cluster/resources", nil)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	var rejection *RejectionError
+	if !errors.As(err, &rejection) {
+		t.Fatalf("error should be a *RejectionError, got %T", err)
+	}
+
+	// The cluster layer keeps the raw message (the HTTP layer decides whether
+	// to surface it — a 401 body can name the token).
+	if rejection.Status != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d", rejection.Status, http.StatusUnauthorized)
+	}
+
+	if !strings.Contains(rejection.Message, "tokenname") {
+		t.Errorf("message = %q, want the raw body retained for the http layer", rejection.Message)
 	}
 }
 

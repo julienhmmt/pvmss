@@ -12,7 +12,7 @@ var secondaryNodes = []Node{
 
 var secondaryStorages = []Storage{
 	{Name: FakeStorageLocal, Node: FakeNode01, Type: storagePluginDir, PluginType: storagePluginDir, Content: "images,iso,vztmpl,backup,snippets", Total: 1099511627776, Used: 329853488332, SupportsVMState: false},
-	{Name: FakeStorageLocalLVM, Node: FakeNode01, Type: storagePluginLVM, PluginType: storagePluginLVM, Content: "images,rootdir", Total: 549755813888, Used: 109951162777, SupportsVMState: true},
+	{Name: FakeStorageLocalLVM, Node: FakeNode01, Type: storagePluginLVMThin, PluginType: storagePluginLVMThin, Content: "images,rootdir", Total: 549755813888, Used: 109951162777, SupportsVMState: true},
 	{Name: "ceph-data", Node: FakeNode02, Type: storagePluginCephFS, PluginType: storagePluginCephFS, Content: storageContentImages, Total: 1099511627776, Used: 219902325555, SupportsVMState: true},
 }
 
