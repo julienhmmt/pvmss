@@ -905,7 +905,11 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 		return createPlan{}, err
 	}
 
-	if err := checkGabaritAndCapacity(ctx, policyService, clusterName, node, sockets, cpuCores, memoryMB, diskGB, len(nics)); err != nil {
+	if err := checkGabaritAndCapacity(ctx, policyService, gabaritRequest{
+		clusterName: clusterName, node: node,
+		sockets: sockets, cpuCores: cpuCores, memoryMB: memoryMB, diskGB: diskGB,
+		nicCount: len(nics),
+	}); err != nil {
 		return createPlan{}, err
 	}
 
@@ -926,15 +930,30 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 	}, nil
 }
 
+// gabaritRequest groups the resolved hardware dimensions a gabarit + capacity
+// check needs. Extracted from checkGabaritAndCapacity's parameter list to
+// stay under go:S107's 7-parameter ceiling.
+type gabaritRequest struct {
+	clusterName string
+	node        string
+	sockets     int
+	cpuCores    int
+	memoryMB    int
+	diskGB      int
+	nicCount    int
+}
+
 // checkGabaritAndCapacity runs the gabarit ceiling check and the node-capacity
 // check together (US2/D3a + US3/issue-04). Extracted from planCreate to keep
 // its cyclomatic complexity under gocyclo's ceiling.
-func checkGabaritAndCapacity(ctx context.Context, policyService *policy.Policy, clusterName, node string, sockets, cpuCores, memoryMB, diskGB, nicCount int) error {
-	if err := policyService.CheckGabarit(ctx, clusterName, sockets, cpuCores, memoryMB, diskGB, nicCount); err != nil {
+func checkGabaritAndCapacity(ctx context.Context, policyService *policy.Policy, req gabaritRequest) error {
+	if err := policyService.CheckGabarit(ctx, req.clusterName, req.sockets, req.cpuCores, req.memoryMB, req.diskGB, req.nicCount); err != nil {
 		return err
 	}
 
-	return policyService.CheckNodeCapacity(ctx, clusterName, node, policy.CapacityDelta{Sockets: sockets, Cores: cpuCores, MemoryMB: memoryMB, DiskGB: diskGB})
+	return policyService.CheckNodeCapacity(ctx, req.clusterName, req.node, policy.CapacityDelta{
+		Sockets: req.sockets, Cores: req.cpuCores, MemoryMB: req.memoryMB, DiskGB: req.diskGB,
+	})
 }
 
 // finalizePlanChecks runs the post-capacity checks: the live disk-space
