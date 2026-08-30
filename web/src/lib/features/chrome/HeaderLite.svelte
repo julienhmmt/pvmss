@@ -12,17 +12,26 @@
 </script>
 
 <header
-	class="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-background/80 px-5 py-3 backdrop-blur-md"
+	class="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-5 backdrop-blur-md"
 	aria-label={m['chrome.header.ariaLabel']()}
 >
-	<a href={resolve('/')} class="text-sm font-bold tracking-tight">{m['chrome.sidebar.brand']()}</a>
-	<div class="flex-1"></div>
 	<a
-		href={resolve('/docs')}
-		class="rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		href={resolve('/')}
+		class="inline-flex h-9 items-center rounded-lg px-2 text-sm font-bold tracking-tight text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 	>
-		{m['chrome.header.docs']()}
+		{m['chrome.sidebar.brand']()}
 	</a>
-	<LanguageSwitcher />
-	<ThemeToggle />
+
+	<div class="flex-1"></div>
+
+	<nav class="flex items-center gap-1.5">
+		<a
+			href={resolve('/docs')}
+			class="inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		>
+			{m['chrome.header.docs']()}
+		</a>
+		<LanguageSwitcher />
+		<ThemeToggle />
+	</nav>
 </header>
