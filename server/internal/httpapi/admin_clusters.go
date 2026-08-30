@@ -281,9 +281,12 @@ func (handler *AdminClusters) replace(ctx context.Context, row store.ClusterRow)
 
 func (handler *AdminClusters) clusterDTO(row store.ClusterRow) adminClusterDTO {
 	index := (*inventory.Index)(nil)
+	fresh := false
 	if handler.inventories != nil {
 		index, _ = handler.inventories.Index(row.Name)
+		fresh = handler.inventories.IsIndexFresh(row.Name)
 	}
+
 	version := row.ProxmoxVersion
 	nodeCount, vmCount := 0, 0
 	if index != nil {
@@ -292,10 +295,30 @@ func (handler *AdminClusters) clusterDTO(row store.ClusterRow) adminClusterDTO {
 			version = index.ProxmoxVersion
 		}
 	}
+
+	lastTestStatus := row.LastTestStatus
+	lastTestAt := formatTime(row.LastTestAt)
+	lastTestMessage := row.LastTestMessage
+
+	// Surface the current reachability in real time. If the last manual test
+	// reported "ok" but the inventory index is now stale or missing, the
+	// cluster is no longer reachable. Override the stale "ok" status so the
+	// admin page does not claim the cluster is healthy (issue: cluster down
+	// but admin page still shows "ok"). The message is left empty — the
+	// frontend localizes a hint based on the "unreachable" status.
+	if !fresh && lastTestStatus != nil && *lastTestStatus == "ok" {
+		status := "unreachable"
+		lastTestStatus = &status
+		lastTestAt = nil
+		lastTestMessage = nil
+		version = ""
+		nodeCount, vmCount = 0, 0
+	}
+
 	return adminClusterDTO{
 		Name: row.Name, DisplayName: row.DisplayName, URL: row.URL, TLSInsecureSkipVerify: row.TLSInsecureSkipVerify, TokenID: row.TokenID,
 		TokenSet: row.TokenSecret != "", OIDCEnabled: row.OIDCEnabled, RemovedAt: formatTime(row.RemovedAt),
-		LastTestStatus: row.LastTestStatus, LastTestAt: formatTime(row.LastTestAt), LastTestMessage: row.LastTestMessage,
+		LastTestStatus: lastTestStatus, LastTestAt: lastTestAt, LastTestMessage: lastTestMessage,
 		ProxmoxVersion: optionalValue(version), NodeCount: nodeCount, VMCount: vmCount,
 	}
 }

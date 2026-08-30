@@ -14,12 +14,14 @@
 	nodes={store.sortedNodes}
 	loading={store.loading}
 	error={store.error}
+	errorCode={store.errorCode}
 	saving={store.saving}
 	saveError={store.saveError}
 	clusterOptions={store.clusterOptions}
 	cluster={store.cluster}
 	onClusterChange={(v) => store.setCluster(v)}
 	onLoad={() => void store.load()}
+	onRetry={() => void store.retryConnection()}
 	onSave={(node, patch) => void store.save(node, patch)}
 	sortBy={store.sortBy}
 	sortDir={store.sortDir}

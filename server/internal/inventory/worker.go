@@ -2,6 +2,7 @@ package inventory
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"pvmss/server/internal/cluster"
@@ -13,7 +14,12 @@ import (
 // A slow or hung upstream must not block the singleflight-serialized refresh
 // cycle indefinitely — every external call has a timeout (golang-design-patterns
 // rule 9). Override with WithRefreshTimeout.
-const defaultRefreshTimeout = 15 * time.Second
+//
+// It must be at least as long as the Proxmox HTTP client's 20s per-attempt
+// timeout plus a small margin, otherwise the worker cancels before the client
+// can return its own network error and the refresh logs a generic
+// "context deadline exceeded" instead of "cluster unreachable".
+const defaultRefreshTimeout = 25 * time.Second
 
 // Worker owns the refresh cycle: it calls cluster.Client.Snapshot, builds an
 // Index, and atomically swaps it into the Projection on success. On failure
@@ -80,7 +86,15 @@ func (w *Worker) refreshCycle(ctx context.Context) (time.Time, error) {
 
 	snap, err := w.client.Snapshot(ctx)
 	if err != nil {
+		// A deadline exceeded from the worker's own timeout is still a cluster
+		// unreachability signal: the cluster did not respond before we gave up.
+		// Wrap it so downstream code and logs see cluster.ErrUnreachable.
+		if errors.Is(err, context.DeadlineExceeded) {
+			err = fmt.Errorf("%w: %w", cluster.ErrUnreachable, err)
+		}
+
 		w.log.Error("inventory refresh failed", "component", "inventory", "error", err)
+
 		return time.Time{}, err
 	}
 

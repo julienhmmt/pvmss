@@ -12,9 +12,11 @@
 		tone: Tone;
 		/** Visible status name (e.g. "Running", "Stopped", "Paused"). */
 		label: string;
+		/** When true, the dot pulses to signal an in-flight optimistic state. */
+		pending?: boolean;
 	}
 
-	let { tone, label }: Props = $props();
+	let { tone, label, pending = false }: Props = $props();
 
 	const tones: Record<Tone, { wrap: string; dot: string }> = {
 		ok: {
@@ -35,6 +37,9 @@
 <span
 	class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium {tones[tone].wrap}"
 >
-	<span class="h-1.5 w-1.5 rounded-full {tones[tone].dot}" aria-hidden="true"></span>
+	<span
+		class="h-1.5 w-1.5 rounded-full {tones[tone].dot}{pending ? ' animate-pulse' : ''}"
+		aria-hidden="true"
+	></span>
 	{label}
 </span>

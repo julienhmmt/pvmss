@@ -11,6 +11,7 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
+	"strconv"
 	"strings"
 )
 
@@ -439,6 +440,112 @@ func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf("iso %s on storage %s node %s cluster %s set enabled=%v", req.File, req.Storage, req.Node, clusterName, req.Enabled),
 		[]any{map[string]any{auditKeyCluster: clusterName, "node": req.Node, "storage": req.Storage, "file": req.File, auditKeyEnabled: req.Enabled}})
 	writeAdminJSON(w, http.StatusOK, isoToggleResponse{Node: req.Node, Storage: req.Storage, File: req.File, Enabled: req.Enabled})
+}
+
+// adminTemplateDTO is the admin response shape for one discovered template.
+type adminTemplateDTO struct {
+	VMID             int    `json:"vmid"`
+	Node             string `json:"node"`
+	Name             string `json:"name"`
+	CloudInitCapable bool   `json:"cloudInitCapable"`
+	DiskStorage      string `json:"diskStorage"`
+	DiskSizeGB       int    `json:"diskSizeGB"`
+	DiskBus          string `json:"diskBus"`
+	Enabled          bool   `json:"enabled"`
+}
+
+// ServeTemplates handles GET /api/v1/admin/templates.
+func (h *AdminCatalog) ServeTemplates(w http.ResponseWriter, r *http.Request) {
+	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
+
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
+		return
+	}
+
+	templates, err := catalog.AdminListTemplates(r.Context(), h.store, client, clusterName)
+	if err != nil {
+		h.log.Error("admin list templates failed", "component", "httpapi", "error", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return
+	}
+
+	dto := make([]adminTemplateDTO, len(templates))
+	for i, tmpl := range templates {
+		dto[i] = adminTemplateDTO{
+			VMID: tmpl.VMID, Node: tmpl.Node, Name: tmpl.Name,
+			CloudInitCapable: tmpl.CloudInitCapable, DiskStorage: tmpl.DiskStorage,
+			DiskSizeGB: tmpl.DiskSizeGB, DiskBus: tmpl.DiskBus, Enabled: tmpl.Enabled,
+		}
+	}
+
+	writeAdminJSON(w, http.StatusOK, dto)
+}
+
+type templateToggleRequest struct {
+	Cluster string `json:"cluster"`
+	VMID    int    `json:"vmid"`
+	Enabled bool   `json:"enabled"`
+}
+
+type templateToggleResponse struct {
+	VMID    int  `json:"vmid"`
+	Enabled bool `json:"enabled"`
+}
+
+// ServeTemplateToggle handles POST /api/v1/admin/templates/toggle.
+func (h *AdminCatalog) ServeTemplateToggle(w http.ResponseWriter, r *http.Request) {
+	var req templateToggleRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
+		return
+	}
+	if req.VMID == 0 {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
+		return
+	}
+
+	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
+
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
+		return
+	}
+
+	// catalog.SetTemplateEnabled fetches the discovery set once, finds the
+	// template, extracts its values for the first-approval insert, and
+	// upserts the enabled state. No pre-fetch here — that would duplicate
+	// the cluster round-trip.
+	err = catalog.SetTemplateEnabled(r.Context(), h.store, client, clusterName, catalog.TemplateRef{VMID: req.VMID}, req.Enabled)
+	if errors.Is(err, cluster.ErrNotFound) {
+		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf("template vmid %d not found in cluster", req.VMID))
+		return
+	}
+
+	if err != nil {
+		h.log.Error("admin toggle template failed", "component", "httpapi", "error", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return
+	}
+
+	h.recordAdminAction(r, "admin.templates.toggle", "template", strconv.Itoa(req.VMID),
+		fmt.Sprintf("template vmid %d cluster %s set enabled=%v", req.VMID, clusterName, req.Enabled),
+		[]any{map[string]any{auditKeyCluster: clusterName, "vmid": req.VMID, auditKeyEnabled: req.Enabled}})
+	writeAdminJSON(w, http.StatusOK, templateToggleResponse{VMID: req.VMID, Enabled: req.Enabled})
 }
 
 // --- helpers ---

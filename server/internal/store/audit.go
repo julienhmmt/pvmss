@@ -18,10 +18,10 @@ type AuditEntry struct {
 	VMID       *int
 	Action     string
 	Timestamp  time.Time
-	TargetType string
-	TargetID   string
-	Detail     string
-	IPAddress  string
+	TargetType sql.NullString
+	TargetID   sql.NullString
+	Detail     sql.NullString
+	IPAddress  sql.NullString
 	Severity   string
 }
 

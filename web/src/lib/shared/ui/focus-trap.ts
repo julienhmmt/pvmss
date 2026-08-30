@@ -1,5 +1,5 @@
 import { tick } from 'svelte';
-import type { Action } from 'svelte/action';
+import type { Action, ActionReturn } from 'svelte/action';
 
 /**
  * CSS selector for the elements that can receive keyboard focus inside a
@@ -37,7 +37,7 @@ function getFocusableElements(node: HTMLElement): HTMLElement[] {
  * Shift+Tab wrap focus within the element, and the originally focused element
  * is restored when the action is destroyed (i.e. when the dialog closes).
  */
-export const focusTrap: Action<HTMLElement> = (node) => {
+export const focusTrap = ((node: HTMLElement): ActionReturn => {
 	const trigger = document.activeElement;
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -80,7 +80,7 @@ export const focusTrap: Action<HTMLElement> = (node) => {
 			}
 		}
 	};
-};
+}) satisfies Action<HTMLElement>;
 
 /** Computes the tab index to focus when Shift+Tab wraps past the start. */
 function prevTabIndex(currentIndex: number, length: number): number {

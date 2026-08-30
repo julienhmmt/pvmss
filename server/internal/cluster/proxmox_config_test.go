@@ -1,6 +1,11 @@
 package cluster
 
-import "testing"
+import (
+	"context"
+	"net/http"
+	"testing"
+	"time"
+)
 
 func TestParseDiskValue(t *testing.T) {
 	t.Parallel()
@@ -10,21 +15,25 @@ func TestParseDiskValue(t *testing.T) {
 		value       string
 		wantStorage string
 		wantSizeGB  int
+		wantFormat  string
 	}{
-		{"simple", "local-lvm:vm-101-disk-0,size=32G", FakeStorageLocalLVM, 32},
-		{"options before size", "local-lvm:vm-101-disk-0,cache=writeback,size=64G", FakeStorageLocalLVM, 64},
-		{"megabytes round down", "local:vm-101-disk-1,size=512M", FakeStorageLocal, 0},
-		{"no size option", "local:vm-101-disk-2", FakeStorageLocal, 0},
-		{"malformed, no colon", "not-a-disk-value", "", 0},
+		{"simple", "local-lvm:vm-101-disk-0,size=32G", FakeStorageLocalLVM, 32, ""},
+		{"options before size", "local-lvm:vm-101-disk-0,cache=writeback,size=64G", FakeStorageLocalLVM, 64, ""},
+		{"megabytes round down", "local:vm-101-disk-1,size=512M", FakeStorageLocal, 0, ""},
+		{"no size option", "local:vm-101-disk-2", FakeStorageLocal, 0, ""},
+		{"qcow2 from filename", "local:vm-101-disk-0.qcow2,size=32G", FakeStorageLocal, 32, testDiskFormatQCow2},
+		{"raw from filename", "local:vm-101-disk-0.raw,size=32G", FakeStorageLocal, 32, testDiskFormatRaw},
+		{"explicit format option wins", "local:vm-101-disk-0.vmdk,format=qcow2,size=32G", FakeStorageLocal, 32, testDiskFormatQCow2},
+		{"malformed, no colon", "not-a-disk-value", "", 0, ""},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			storage, sizeGB := parseDiskValue(tc.value)
-			if storage != tc.wantStorage || sizeGB != tc.wantSizeGB {
-				t.Errorf("parseDiskValue(%q) = (%q, %d), want (%q, %d)", tc.value, storage, sizeGB, tc.wantStorage, tc.wantSizeGB)
+			storage, sizeGB, format := parseDiskValue(tc.value)
+			if storage != tc.wantStorage || sizeGB != tc.wantSizeGB || format != tc.wantFormat {
+				t.Errorf("parseDiskValue(%q) = (%q, %d, %q), want (%q, %d, %q)", tc.value, storage, sizeGB, format, tc.wantStorage, tc.wantSizeGB, tc.wantFormat)
 			}
 		})
 	}
@@ -109,7 +118,7 @@ func TestParseNetValue(t *testing.T) {
 
 		nic := parseNetValue(1, "virtio,bridge=vmbr1")
 
-		if nic.Model != "virtio" || nic.MAC != "" || nic.Bridge != FakeBridgeVMbr1 {
+		if nic.Model != string(DiskBusVirtio) || nic.MAC != "" || nic.Bridge != FakeBridgeVMbr1 {
 			t.Fatalf("nic = %+v", nic)
 		}
 	})
@@ -204,27 +213,117 @@ func TestParseDisks_SkipsReservedSlots(t *testing.T) {
 func TestEncodeNetValue(t *testing.T) {
 	t.Parallel()
 
-	t.Run("with mac", func(t *testing.T) {
+	t.Run("with mac, vlan, firewall", func(t *testing.T) {
 		t.Parallel()
 
 		vlan := 100
 
 		got := encodeNetValue(NetworkInterface{Model: "virtio", MAC: "AA:BB:CC:DD:EE:FF", Bridge: "vmbr0", VLAN: &vlan})
-		want := "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,tag=100"
+		want := "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,tag=100,firewall=1"
 
 		if got != want {
 			t.Errorf("encodeNetValue = %q, want %q", got, want)
 		}
 	})
 
-	t.Run("no mac, default model", func(t *testing.T) {
+	t.Run("no mac, default model, firewall always emitted", func(t *testing.T) {
 		t.Parallel()
 
 		got := encodeNetValue(NetworkInterface{Bridge: FakeBridgeVMbr1})
-		want := "virtio,bridge=vmbr1"
+		want := "virtio,bridge=vmbr1,firewall=1"
 
 		if got != want {
 			t.Errorf("encodeNetValue = %q, want %q", got, want)
 		}
 	})
+
+	t.Run("mtu emitted when set", func(t *testing.T) {
+		t.Parallel()
+
+		got := encodeNetValue(NetworkInterface{Bridge: FakeBridgeVMbr0, MTU: 9000})
+		want := "virtio,bridge=vmbr0,firewall=1,mtu=9000"
+
+		if got != want {
+			t.Errorf("encodeNetValue = %q, want %q", got, want)
+		}
+	})
+}
+
+func TestProxmox_VMStatus(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name       string
+		body       string
+		wantStatus VMStatus
+		wantLock   string
+		wantUptime time.Duration
+	}{
+		{
+			name:       "running no lock",
+			body:       `{"data":{"status":"running","uptime":3600}}`,
+			wantStatus: VMRunning,
+			wantLock:   "",
+			wantUptime: 3600 * time.Second,
+		},
+		{
+			name:       "stopped no lock",
+			body:       `{"data":{"status":"stopped","uptime":0}}`,
+			wantStatus: VMStopped,
+			wantLock:   "",
+			wantUptime: 0,
+		},
+		{
+			name:       "running with backup lock",
+			body:       `{"data":{"status":"running","lock":"backup","uptime":120}}`,
+			wantStatus: VMRunning,
+			wantLock:   "backup",
+			wantUptime: 120 * time.Second,
+		},
+		{
+			name:       "paused",
+			body:       `{"data":{"status":"paused","uptime":500}}`,
+			wantStatus: VMPaused,
+			wantLock:   "",
+			wantUptime: 500 * time.Second,
+		},
+		{
+			name:       "unknown status defaults to stopped",
+			body:       `{"data":{"status":"weird","uptime":0}}`,
+			wantStatus: VMStopped,
+			wantLock:   "",
+			wantUptime: 0,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+				mux.HandleFunc("GET /api2/json/nodes/pve1/qemu/100/status/current", func(w http.ResponseWriter, _ *http.Request) {
+					writeJSONFixture(t, w, tc.body)
+				})
+			})
+
+			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+			live, err := p.VMStatus(context.Background(), "pve1", 100)
+			if err != nil {
+				t.Fatalf("VMStatus: %v", err)
+			}
+
+			if live.Status != tc.wantStatus {
+				t.Errorf("status = %q, want %q", live.Status, tc.wantStatus)
+			}
+
+			if live.Lock != tc.wantLock {
+				t.Errorf("lock = %q, want %q", live.Lock, tc.wantLock)
+			}
+
+			if live.Uptime != tc.wantUptime {
+				t.Errorf("uptime = %v, want %v", live.Uptime, tc.wantUptime)
+			}
+		})
+	}
 }

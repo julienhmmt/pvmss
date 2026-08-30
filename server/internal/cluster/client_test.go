@@ -82,7 +82,7 @@ func TestNetworkInterfaceMarshalJSON(t *testing.T) {
 			t.Fatalf("marshal: %v", err)
 		}
 
-		want := `{"index":0,"bridge":"vmbr0","model":"","mac":"","vlan":null,"rateMbps":null,"ipAddresses":[]}`
+		want := `{"index":0,"bridge":"vmbr0","model":"","mac":"","vlan":null,"rateMbps":null,"firewall":false,"mtu":0,"ipAddresses":[]}`
 
 		if string(got) != want {
 			t.Fatalf("got %s, want %s", got, want)

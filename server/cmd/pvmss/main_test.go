@@ -385,7 +385,9 @@ func TestDiscoverClusterDisplayNames_PopulatesEmptyRows(t *testing.T) {
 		t.Fatalf("ListClusters after clear: %v", err)
 	}
 
-	discoverClusterDisplayNames(ctx, registry, clearedRows, st, slog.Default())
+	_ = clearedRows // kept for clarity: discovery now reads rows internally
+
+	discoverClusterDisplayNames(ctx, registry, st, slog.Default())
 
 	row, err := st.GetCluster(ctx, "proxmox")
 	if err != nil {
@@ -430,7 +432,7 @@ func TestDiscoverClusterDisplayNames_SkipsFake(t *testing.T) {
 		t.Fatalf("NewRegistry: %v", err)
 	}
 
-	discoverClusterDisplayNames(ctx, registry, clearedRows, st, slog.Default())
+	discoverClusterDisplayNames(ctx, registry, st, slog.Default())
 
 	refreshed, err := st.ListClusters(ctx)
 	if err != nil {
@@ -476,7 +478,7 @@ func TestDiscoverClusterDisplayNames_PreservesExisting(t *testing.T) {
 		t.Fatalf("NewRegistryWithFactory: %v", err)
 	}
 
-	discoverClusterDisplayNames(ctx, registry, rows, st, slog.Default())
+	discoverClusterDisplayNames(ctx, registry, st, slog.Default())
 
 	row, err := st.GetCluster(ctx, "proxmox")
 	if err != nil {

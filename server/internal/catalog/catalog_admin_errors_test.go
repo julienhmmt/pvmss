@@ -31,6 +31,10 @@ func (errDiscoveryClient) ListISOs(_ context.Context) ([]cluster.ISOImage, error
 	return nil, errDiscovery
 }
 
+func (errDiscoveryClient) ListTemplates(_ context.Context) ([]cluster.TemplateVM, error) {
+	return nil, errDiscovery
+}
+
 func (errDiscoveryClient) Authenticate(_ context.Context, _, _ string) (cluster.Identity, error) {
 	return cluster.Identity{}, cluster.ErrNotImplemented
 }
@@ -65,6 +69,10 @@ func (errDiscoveryClient) DeletePool(_ context.Context, _ string) error {
 
 func (errDiscoveryClient) DeleteUser(_ context.Context, _ string) error {
 	return cluster.ErrNotImplemented
+}
+
+func (errDiscoveryClient) StorageFreeSpace(_ context.Context, _, _ string) (int64, error) {
+	return 0, cluster.ErrNotImplemented
 }
 
 func (errDiscoveryClient) DisplayName(_ context.Context) (string, error) {

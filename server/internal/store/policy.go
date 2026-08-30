@@ -9,15 +9,16 @@ import (
 
 // PolicyRow is the persisted per-cluster gabarit and quota row.
 type PolicyRow struct {
-	Cluster         string
-	MaxSockets      int
-	MaxCores        int
-	MaxMemoryMB     int
-	MaxDiskPerVMGB  int
-	MaxNetworkCards int
-	MaxSnapshots    int
-	MaxVMPerUser    int
-	AllowCustomYAML bool
+	Cluster          string
+	MaxSockets       int
+	MaxCores         int
+	MaxMemoryMB      int
+	MaxDiskPerVMGB   int
+	MaxNetworkCards  int
+	MaxSnapshots     int
+	MaxVMPerUser     int
+	AllowCustomYAML  bool
+	IsolationVLANTag int
 }
 
 // NodePolicyRow is the persisted per-node capacité row.
@@ -36,11 +37,11 @@ func (s *Store) PolicyRow(ctx context.Context, cluster string) (PolicyRow, error
 
 	err := s.db.QueryRowContext(ctx, `
 		SELECT cluster, max_sockets, max_cores, max_memory_mb, max_disk_per_vm_gb,
-		       max_network_cards, max_snapshots, max_vm_per_user, allow_custom_yaml
+		       max_network_cards, max_snapshots, max_vm_per_user, allow_custom_yaml, isolation_vlan_tag
 		FROM vm_limits WHERE cluster = ?`, cluster).Scan(
 		&row.Cluster, &row.MaxSockets, &row.MaxCores, &row.MaxMemoryMB,
 		&row.MaxDiskPerVMGB, &row.MaxNetworkCards, &row.MaxSnapshots,
-		&row.MaxVMPerUser, &row.AllowCustomYAML,
+		&row.MaxVMPerUser, &row.AllowCustomYAML, &row.IsolationVLANTag,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return PolicyRow{}, fmt.Errorf("policy row for cluster %q: %w", cluster, sql.ErrNoRows)
@@ -58,8 +59,8 @@ func (s *Store) UpsertPolicyRow(ctx context.Context, row PolicyRow) error {
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO vm_limits (
 			cluster, max_sockets, max_cores, max_memory_mb, max_disk_per_vm_gb,
-			max_network_cards, max_snapshots, max_vm_per_user, allow_custom_yaml
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+			max_network_cards, max_snapshots, max_vm_per_user, allow_custom_yaml, isolation_vlan_tag
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(cluster) DO UPDATE SET
 			max_sockets = excluded.max_sockets,
 			max_cores = excluded.max_cores,
@@ -68,10 +69,11 @@ func (s *Store) UpsertPolicyRow(ctx context.Context, row PolicyRow) error {
 			max_network_cards = excluded.max_network_cards,
 			max_snapshots = excluded.max_snapshots,
 			max_vm_per_user = excluded.max_vm_per_user,
-			allow_custom_yaml = excluded.allow_custom_yaml`,
+			allow_custom_yaml = excluded.allow_custom_yaml,
+			isolation_vlan_tag = excluded.isolation_vlan_tag`,
 		row.Cluster, row.MaxSockets, row.MaxCores, row.MaxMemoryMB,
 		row.MaxDiskPerVMGB, row.MaxNetworkCards, row.MaxSnapshots,
-		row.MaxVMPerUser, row.AllowCustomYAML,
+		row.MaxVMPerUser, row.AllowCustomYAML, row.IsolationVLANTag,
 	)
 	if err != nil {
 		return fmt.Errorf("upsert policy row: %w", err)

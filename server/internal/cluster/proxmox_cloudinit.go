@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // errBuildSnippetUpload wraps multipart-builder failures while constructing a
@@ -297,6 +298,17 @@ func decodeAgentExecPID(raw json.RawMessage) (int, error) {
 	return envelope.PID, nil
 }
 
+// agentExecPoll is the interval between exec-status reads. maxAgentExecWait
+// bounds the total wait. Both are vars so tests can shorten them, mirroring
+// maxForceStopWait in vm/actions.go. Without a pause the loop hammers
+// /agent/exec-status as fast as the network allows (hundreds of calls for a
+// two-second guest script), and reconstructing p.rest() per poll opened a fresh
+// TLS connection every iteration.
+var (
+	agentExecPoll    = 500 * time.Millisecond
+	maxAgentExecWait = 15 * time.Second
+)
+
 // agentExecStatus is one poll of the guest-agent exec-status endpoint.
 type agentExecStatus struct {
 	Exited   bool   `json:"exited"`
@@ -305,44 +317,79 @@ type agentExecStatus struct {
 	ErrData  string `json:"err-data"`
 }
 
-// waitAgentExec polls agent/exec-status until the guest process exits. A zero
-// exit code means success; exit code 3 means the user does not exist on the
-// guest. Any other non-zero exit surfaces the guest's stderr.
+// waitAgentExec polls agent/exec-status until the guest process exits, bounded
+// by maxAgentExecWait. A zero exit code means success; exit code 3 means the
+// user does not exist on the guest. Any other non-zero exit surfaces the
+// guest's stderr. The rest client is built once (outside the loop) so every
+// poll reuses one connection; the ticker/deadline shape mirrors deleteWithRetry
+// (vm/actions.go). On timeout it returns a symptom-named error pointing at the
+// missing qemu-guest-agent rather than an opaque context.DeadlineExceeded.
 func (p Proxmox) waitAgentExec(ctx context.Context, node string, vmid, pid int) error {
+	rest := p.rest().withNoRetry()
+	path := fmt.Sprintf("/nodes/%s/qemu/%d/agent/exec-status?pid=%d", url.PathEscape(node), vmid, pid)
+
+	deadline := time.NewTimer(maxAgentExecWait)
+	defer deadline.Stop()
+
+	// First poll runs immediately — the guest process may have already exited
+	// by the time we get here, and this keeps the common fast path tick-free.
+	if exited, err := pollAgentExecStatus(ctx, rest, path); err != nil || exited {
+		return err
+	}
+
+	ticker := time.NewTicker(agentExecPoll)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("wait for guest agent exec: %w", ctx.Err())
-		default:
-		}
-
-		raw, err := p.rest().do(ctx, http.MethodGet, fmt.Sprintf("/nodes/%s/qemu/%d/agent/exec-status?pid=%d", url.PathEscape(node), vmid, pid), nil)
-		if err != nil {
-			return fmt.Errorf("poll guest agent exec-status: %w", err)
-		}
-
-		var status agentExecStatus
-		if err := decodeData(raw, &status); err != nil {
-			return fmt.Errorf("decode agent exec-status: %w", err)
-		}
-
-		if !status.Exited {
-			continue
-		}
-
-		switch status.ExitCode {
-		case 0:
-			return nil
-		case 3:
-			return fmt.Errorf("guest user does not exist: %w", ErrSSHKeyUserUnknown)
-		default:
-			msg := status.ErrData
-			if msg == "" {
-				msg = status.OutData
+		case <-deadline.C:
+			return errors.New("guest agent did not report exec completion within 15s (is qemu-guest-agent running?)")
+		case <-ticker.C:
+			exited, err := pollAgentExecStatus(ctx, rest, path)
+			if err != nil {
+				return err
 			}
 
-			return fmt.Errorf("guest agent ssh-key add failed (exit %d): %s", status.ExitCode, msg)
+			if exited {
+				return nil
+			}
 		}
+	}
+}
+
+// pollAgentExecStatus performs one exec-status read and maps the exit code to
+// its error semantics: nil on success or still-running, ErrSSHKeyUserUnknown
+// on exit code 3, the guest's stderr on any other non-zero exit. The returned
+// bool is true once the guest process has exited (caller should stop polling).
+func pollAgentExecStatus(ctx context.Context, rest proxmoxRESTClient, path string) (bool, error) {
+	raw, err := rest.do(ctx, http.MethodGet, path, nil)
+	if err != nil {
+		return false, fmt.Errorf("poll guest agent exec-status: %w", err)
+	}
+
+	var status agentExecStatus
+	if err := decodeData(raw, &status); err != nil {
+		return false, fmt.Errorf("decode agent exec-status: %w", err)
+	}
+
+	if !status.Exited {
+		return false, nil
+	}
+
+	switch status.ExitCode {
+	case 0:
+		return true, nil
+	case 3:
+		return true, fmt.Errorf("guest user does not exist: %w", ErrSSHKeyUserUnknown)
+	default:
+		msg := status.ErrData
+		if msg == "" {
+			msg = status.OutData
+		}
+
+		return true, fmt.Errorf("guest agent ssh-key add failed (exit %d): %s", status.ExitCode, msg)
 	}
 }
 

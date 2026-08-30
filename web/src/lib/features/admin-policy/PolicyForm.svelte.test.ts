@@ -14,6 +14,7 @@ function buildPolicy(overrides: Partial<AdminPolicy['gabarit']> = {}): AdminPoli
 			maxNetworkCards: 4,
 			maxSnapshots: 5,
 			allowCustomYaml: false,
+			isolationVlanTag: 0,
 			...overrides
 		},
 		quota: { maxVmPerUser: -1 }

@@ -96,7 +96,7 @@ describe('VmListStore', () => {
 		expect(store.result?.quota?.allowed).toBe(-1);
 	});
 
-	it('sets error on failure', async () => {
+	it('sets error and errorCode on failure', async () => {
 		vi.stubGlobal(
 			'fetch',
 			vi.fn().mockResolvedValue(jsonResponse(503, { code: 'inventory_not_ready', message: 'inventory has not been populated yet' }))
@@ -106,7 +106,24 @@ describe('VmListStore', () => {
 		await store.load();
 
 		expect(store.error).toBe('inventory has not been populated yet');
+		expect(store.errorCode).toBe('inventory_not_ready');
 		expect(store.result).toBeNull();
+	});
+
+	it('clears errorCode on a successful reload after a failure', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse(503, { code: 'inventory_not_ready', message: 'inventory has not been populated yet' }))
+			.mockResolvedValueOnce(jsonResponse(200, oneVmResult));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const { store } = makeStore('');
+		await store.load();
+		expect(store.errorCode).toBe('inventory_not_ready');
+
+		await store.load();
+		expect(store.errorCode).toBeNull();
+		expect(store.error).toBeNull();
 	});
 
 	it('search is debounced, resets the page, syncs the URL, and reloads', async () => {

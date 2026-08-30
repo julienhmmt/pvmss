@@ -184,6 +184,44 @@ const schemaV20 = `CREATE TABLE audit_config (
 );
 INSERT INTO audit_config (id, retention_days) VALUES (1, 365);`
 
+// schemaV21 adds a sockets column to catalog_profiles so the admin can set a
+// profile's socket count (US2/D3b). Existing rows default to 1, preserving the
+// previous hardcoded behaviour.
+const schemaV21 = `ALTER TABLE catalog_profiles ADD COLUMN sockets INTEGER NOT NULL DEFAULT 1`
+
+// schemaV22 adds the approved Proxmox template catalog (US2/issue-02): a
+// sibling to catalog_isos, keyed by (cluster, vmid) since Proxmox VMIDs are
+// cluster-unique. The node determines where the clone lands (D2b: cross-node
+// clone is forbidden). cloud_init_capable drives the full/linked decision
+// (D2c/issue-02 §5). disk_storage and disk_size_gb drive the resize decision
+// (D2c: enlarge after clone, reject reduction before VMID).
+//
+// Seed: two templates on pve-node-02 — one cloud-init capable (debian-12
+// cloud image, full clone), one not (a basic appliance, linked clone when
+// storage matches). The VMIDs (9000, 9001) are in the Proxmox template
+// range (9000+ by convention).
+const schemaV22 = `CREATE TABLE catalog_templates (
+	cluster            TEXT NOT NULL,
+	node               TEXT NOT NULL,
+	vmid               INTEGER NOT NULL,
+	name               TEXT NOT NULL DEFAULT '',
+	cloud_init_capable BOOLEAN NOT NULL DEFAULT 0,
+	disk_storage       TEXT NOT NULL DEFAULT '',
+	disk_size_gb       INTEGER NOT NULL DEFAULT 0,
+	disk_bus           TEXT NOT NULL DEFAULT 'scsi',
+	enabled            BOOLEAN NOT NULL DEFAULT 1,
+	PRIMARY KEY (cluster, vmid)
+);
+INSERT INTO catalog_templates (cluster, node, vmid, name, cloud_init_capable, disk_storage, disk_size_gb, disk_bus) VALUES
+	('default', 'pve-node-02', 9000, 'debian-12-cloud', 1, 'local-lvm', 8, 'scsi'),
+	('default', 'pve-node-02', 9001, 'alpine-appliance', 0, 'local', 2, 'scsi');`
+
+// schemaV23 adds an optional per-cluster isolation VLAN tag to vm_limits
+// (US6/issue-06 D6b + Q18: one VLAN per cluster, imposed — the admin sets it
+// alongside the gabarit; empty/0 = no tag imposed). Tenants never choose the
+// segmentation; the create path stamps the tag on every NIC.
+const schemaV23 = `ALTER TABLE vm_limits ADD COLUMN isolation_vlan_tag INTEGER NOT NULL DEFAULT 0`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -213,4 +251,7 @@ var Migrations = []Migration{
 	{Version: 18, DDL: schemaV18},
 	{Version: 19, DDL: schemaV19},
 	{Version: 20, DDL: schemaV20},
+	{Version: 21, DDL: schemaV21},
+	{Version: 22, DDL: schemaV22},
+	{Version: 23, DDL: schemaV23},
 }

@@ -42,6 +42,10 @@ func (stubClusterClient) ListISOs(_ context.Context) ([]cluster.ISOImage, error)
 	return nil, cluster.ErrNotImplemented
 }
 
+func (stubClusterClient) ListTemplates(_ context.Context) ([]cluster.TemplateVM, error) {
+	return nil, cluster.ErrNotImplemented
+}
+
 func (stubClusterClient) ListPools(_ context.Context) ([]cluster.Pool, error) {
 	return nil, cluster.ErrNotImplemented
 }
@@ -68,6 +72,10 @@ func (stubClusterClient) DeletePool(_ context.Context, _ string) error {
 
 func (stubClusterClient) DeleteUser(_ context.Context, _ string) error {
 	return cluster.ErrNotImplemented
+}
+
+func (stubClusterClient) StorageFreeSpace(_ context.Context, _, _ string) (int64, error) {
+	return 0, cluster.ErrNotImplemented
 }
 
 func (stubClusterClient) DisplayName(_ context.Context) (string, error) {
