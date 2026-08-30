@@ -13,9 +13,15 @@
 	import UserIcon from '$lib/shared/ui/icons/UserIcon.svelte';
 	import LockIcon from '$lib/shared/ui/icons/LockIcon.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import { getStatusContext } from '$lib/features/chrome/status.svelte';
 
 	const form = new LoginForm();
 	const session = getSessionContext();
+	const status = getStatusContext();
+
+	$effect(() => {
+		form.setPveDisabled(status.allClustersDown);
+	});
 	onMount(() => {
 		void form.loadClusters();
 	});
@@ -48,12 +54,18 @@
 					<p class="mt-2 text-sm text-muted-foreground">{m['login.description']()}</p>
 				</div>
 				<form class="grid gap-4" onsubmit={(event) => { event.preventDefault(); void submit(); }}>
+					{#if form.pveDisabled && form.provider === 'pve'}
+						<p class="rounded-md bg-warning-soft p-3 text-sm text-warning-soft-foreground" role="status">
+							{m['login.clusterDownHint']()}
+						</p>
+					{/if}
 					{#if form.provider === 'pve'}
 						<ClusterSelector
 							options={form.clusters}
 							value={form.cluster}
 							onChange={(value) => (form.cluster = value)}
 							id="login-cluster"
+							disabled={form.pveDisabled}
 						/>
 						<FormField label={m['login.username']()} hint={m['login.usernameRealmHint']()} required>
 							{#snippet children({ id, describedBy, invalid })}
@@ -63,6 +75,7 @@
 									{invalid}
 									bind:value={form.username}
 									autocomplete="username"
+									disabled={form.pveDisabled}
 									required
 								>
 									{#snippet leading()}
@@ -82,6 +95,7 @@
 								autocomplete="current-password"
 								bind:value={form.password}
 								reveal
+								disabled={form.provider === 'pve' && form.pveDisabled}
 								required
 							>
 								{#snippet leading()}
@@ -91,14 +105,14 @@
 						{/snippet}
 					</FormField>
 					{#if form.provider === 'pve' && form.selectedCluster?.oidcEnabled}
-						<Button variant="secondary" onclick={() => void form.signInOIDC()}>
+						<Button variant="secondary" onclick={() => void form.signInOIDC()} disabled={form.pveDisabled}>
 							{m['login.signInOidc']()}
 						</Button>
 					{/if}
 					{#if form.error}
 						<p role="alert" class="text-sm text-destructive">{form.error}</p>
 					{/if}
-					<Button type="submit" loading={form.loading}>
+					<Button type="submit" loading={form.loading} disabled={form.provider === 'pve' && form.pveDisabled}>
 						{form.loading ? m['login.signingIn']() : m['login.signIn']()}
 					</Button>
 				</form>

@@ -43,8 +43,8 @@ Rules for the fields:
 | **Route** | `/login` |
 | **API** | `GET /api/v1/auth/clusters` → `POST /api/v1/auth/login` or `POST /api/v1/auth/oidc` → `GET /api/v1/auth/me` |
 | **Steps** | 1. Pick a cluster from the pre-login list. 2. Submit Proxmox credentials, or trigger OIDC. 3. Session cookie is set; redirect to the requested page. |
-| **States** | Empty cluster list when no cluster is configured; inline credential error |
-| **Safety nets** | Per-IP rate limit, 10 requests / minute, shared by login, admin-login, cluster list, and OIDC (`authRateLimitMaxRequests`, `router.go:16`) — the cluster list is unauthenticated and discloses cluster names, so it is bounded too |
+| **States** | Empty cluster list when no cluster is configured; inline credential error; Proxmox sign-in is disabled when every configured cluster is unreachable, while local admin sign-in remains available |
+| **Safety nets** | Per-IP rate limit, 10 requests / minute, shared by login, admin-login, cluster list, and OIDC (`authRateLimitMaxRequests`, `router.go:16`) — the cluster list is unauthenticated and discloses cluster names, so it is bounded too; the backend rejects `POST /api/v1/auth/login` with `cluster_unavailable` when the selected cluster is down, so the restriction cannot be bypassed by calling the API directly |
 
 ### Sign in as admin
 
