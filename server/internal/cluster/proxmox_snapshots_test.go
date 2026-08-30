@@ -171,19 +171,11 @@ func TestProxmox_SnapshotConfig(t *testing.T) {
 
 			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
 				mux.HandleFunc("GET /api2/json/nodes/node01/qemu/101/snapshot/before-upgrade/config", func(w http.ResponseWriter, r *http.Request) {
-					gotPath = r.URL.Path
-					if r.URL.RawQuery != "" {
-						gotPath += "?" + r.URL.RawQuery
-					}
-
+					recordPath(&gotPath, r)
 					writeJSONFixture(t, w, `{"data":{"memory":"2048","cores":"2"}}`)
 				})
 				mux.HandleFunc("GET /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, r *http.Request) {
-					gotPath = r.URL.Path
-					if r.URL.RawQuery != "" {
-						gotPath += "?" + r.URL.RawQuery
-					}
-
+					recordPath(&gotPath, r)
 					writeJSONFixture(t, w, `{"data":{"memory":"4096"}}`)
 				})
 			})
@@ -203,6 +195,16 @@ func TestProxmox_SnapshotConfig(t *testing.T) {
 				t.Errorf("memory = %q, want %q", config["memory"], tc.wantConfig["memory"])
 			}
 		})
+	}
+}
+
+// recordPath stores the request URL (path + optional query) into dst. Shared
+// by the snapshot-config test handlers to keep TestProxmox_SnapshotConfig
+// under SonarQube's go:S3776 cognitive-complexity limit.
+func recordPath(dst *string, r *http.Request) {
+	*dst = r.URL.Path
+	if r.URL.RawQuery != "" {
+		*dst += "?" + r.URL.RawQuery
 	}
 }
 

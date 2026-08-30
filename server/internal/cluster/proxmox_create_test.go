@@ -178,32 +178,40 @@ func TestProxmox_TaskStatus(t *testing.T) {
 				t.Fatalf("TaskStatus: %v", err)
 			}
 
-			if got.State != tc.want {
-				t.Errorf("state = %q, want %q", got.State, tc.want)
-			}
-
-			if tc.want == TaskError && got.ExitMessage != tc.exitStatus {
-				t.Errorf("exitMessage = %q, want %q", got.ExitMessage, tc.exitStatus)
-			}
-
-			// Invariant: Warnings is present only on TaskOK, ExitMessage only
-			// on TaskError — the two never overlap.
-			if got.Warnings != tc.wantWarnings {
-				t.Errorf("warnings = %q, want %q", got.Warnings, tc.wantWarnings)
-			}
-
-			if tc.want == TaskOK && got.ExitMessage != "" {
-				t.Errorf("exitMessage = %q, want empty on TaskOK", got.ExitMessage)
-			}
-
-			if tc.want != TaskOK && got.Warnings != "" {
-				t.Errorf("warnings = %q, want empty when not TaskOK", got.Warnings)
-			}
+			assertTaskStatus(t, got, tc.want, tc.wantWarnings, tc.exitStatus)
 
 			if len(got.Log) != 1 {
 				t.Errorf("log = %v, want one line", got.Log)
 			}
 		})
+	}
+}
+
+// assertTaskStatus checks the TaskStatus state, warnings, and exit-message
+// invariants (Warnings present only on TaskOK, ExitMessage only on TaskError).
+// Extracted from TestProxmox_TaskStatus to keep its cognitive complexity
+// under SonarQube's go:S3776 limit.
+func assertTaskStatus(t *testing.T, got TaskStatus, want TaskState, wantWarnings, exitStatus string) {
+	t.Helper()
+
+	if got.State != want {
+		t.Errorf("state = %q, want %q", got.State, want)
+	}
+
+	if got.Warnings != wantWarnings {
+		t.Errorf("warnings = %q, want %q", got.Warnings, wantWarnings)
+	}
+
+	if want == TaskError && got.ExitMessage != exitStatus {
+		t.Errorf("exitMessage = %q, want %q", got.ExitMessage, exitStatus)
+	}
+
+	if want == TaskOK && got.ExitMessage != "" {
+		t.Errorf("exitMessage = %q, want empty on TaskOK", got.ExitMessage)
+	}
+
+	if want != TaskOK && got.Warnings != "" {
+		t.Errorf("warnings = %q, want empty when not TaskOK", got.Warnings)
 	}
 }
 
