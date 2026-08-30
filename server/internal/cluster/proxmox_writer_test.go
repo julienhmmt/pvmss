@@ -73,43 +73,59 @@ func TestProxmox_Action_ShutdownSendsTimeout(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			var gotForm url.Values
+			gotForm := captureActionForm(t, tc.action)
 
-			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
-				mux.HandleFunc("POST /api2/json/nodes/node01/qemu/101/status/"+tc.action, func(w http.ResponseWriter, r *http.Request) {
-					if err := r.ParseForm(); err != nil {
-						t.Fatalf("parse form: %v", err)
-					}
-
-					gotForm = r.PostForm
-
-					writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmaction:101:pvmss@pve:"}`)
-				})
-			})
-
-			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
-
-			if err := p.Action(context.Background(), testNodeName, testVMID, tc.action); err != nil {
-				t.Fatalf("Action: %v", err)
-			}
-
-			if tc.wantNoForm {
-				if len(gotForm) != 0 {
-					t.Errorf("form = %q, want no parameters", gotForm.Encode())
-				}
-
-				if gotForm.Get("skiplock") != "" {
-					t.Errorf("skiplock must never be sent, got %q", gotForm.Get("skiplock"))
-				}
-			} else if gotForm.Encode() != tc.wantForm {
-				t.Errorf("form = %q, want %q", gotForm.Encode(), tc.wantForm)
-			}
-
-			// skiplock must never be sent regardless of action.
-			if gotForm.Get("skiplock") != "" {
-				t.Errorf("skiplock must never be sent, got %q", gotForm.Get("skiplock"))
-			}
+			assertActionForm(t, gotForm, tc.wantForm, tc.wantNoForm)
 		})
+	}
+}
+
+// captureActionForm runs Action with a form-capturing test server and returns
+// the submitted form. Shared by the ticket-05 shutdown-timeout test cases.
+func captureActionForm(t *testing.T, action string) url.Values {
+	t.Helper()
+
+	var gotForm url.Values
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("POST /api2/json/nodes/node01/qemu/101/status/"+action, func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("parse form: %v", err)
+			}
+
+			gotForm = r.PostForm
+
+			writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmaction:101:pvmss@pve:"}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	if err := p.Action(context.Background(), testNodeName, testVMID, action); err != nil {
+		t.Fatalf("Action: %v", err)
+	}
+
+	return gotForm
+}
+
+// assertActionForm checks the action form matches the expected encoding or
+// is empty (wantNoForm), and that skiplock is never sent. Extracted from
+// TestProxmox_Action_ShutdownSendsTimeout to keep its cognitive complexity
+// under go:S3776's ceiling.
+func assertActionForm(t *testing.T, form url.Values, wantForm string, wantNoForm bool) {
+	t.Helper()
+
+	if wantNoForm {
+		if len(form) != 0 {
+			t.Errorf("form = %q, want no parameters", form.Encode())
+		}
+	} else if form.Encode() != wantForm {
+		t.Errorf("form = %q, want %q", form.Encode(), wantForm)
+	}
+
+	// skiplock must never be sent regardless of action.
+	if form.Get("skiplock") != "" {
+		t.Errorf("skiplock must never be sent, got %q", form.Get("skiplock"))
 	}
 }
 

@@ -279,44 +279,62 @@ func TestProxmox_CreateVM_DiskDefaults(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			var gotForm url.Values
-
-			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
-				mux.HandleFunc("POST /api2/json/nodes/node01/qemu", func(w http.ResponseWriter, r *http.Request) {
-					if err := r.ParseForm(); err != nil {
-						t.Fatalf("parse form: %v", err)
-					}
-
-					gotForm = r.Form
-
-					writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmcreate:107:pvmss@pve:"}`)
-				})
-			})
-
-			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
-
-			spec := VMSpec{
-				VMID: 107, Node: testNodeName, Name: "disk-test", Pool: FakePoolAliceShort,
-				Sockets: 1, CPUCores: 2, MemoryMB: 2048,
-				Disk:    DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 20, Bus: tc.bus},
-				Network: NetworkSpec{{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)}},
-			}
-
-			if _, err := p.CreateVM(context.Background(), spec); err != nil {
-				t.Fatalf("CreateVM: %v", err)
-			}
-
-			diskKey := tc.bus + "0"
-			if gotForm.Get(diskKey) != tc.wantDisk {
-				t.Errorf("%s = %q, want %q", diskKey, gotForm.Get(diskKey), tc.wantDisk)
-			}
-
-			if tc.wantSCSIHW != "" {
-				if gotForm.Get("scsihw") != tc.wantSCSIHW {
-					t.Errorf("scsihw = %q, want %q", gotForm.Get("scsihw"), tc.wantSCSIHW)
-				}
-			}
+			gotForm := captureDiskDefaultsForm(t, tc.bus)
+			assertDiskDefaultsForm(t, gotForm, tc.bus, tc.wantDisk, tc.wantSCSIHW)
 		})
+	}
+}
+
+// captureDiskDefaultsForm runs CreateVM with a form-capturing test server for
+// the disk-defaults test cases. Returns the submitted form.
+func captureDiskDefaultsForm(t *testing.T, bus string) url.Values {
+	t.Helper()
+
+	var gotForm url.Values
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("POST /api2/json/nodes/node01/qemu", func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("parse form: %v", err)
+			}
+
+			gotForm = r.Form
+
+			writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmcreate:107:pvmss@pve:"}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	spec := VMSpec{
+		VMID: 107, Node: testNodeName, Name: "disk-test", Pool: FakePoolAliceShort,
+		Sockets: 1, CPUCores: 2, MemoryMB: 2048,
+		Disk:    DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 20, Bus: bus},
+		Network: NetworkSpec{{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)}},
+	}
+
+	if _, err := p.CreateVM(context.Background(), spec); err != nil {
+		t.Fatalf("CreateVM: %v", err)
+	}
+
+	return gotForm
+}
+
+// assertDiskDefaultsForm checks the disk and scsihw form fields. Extracted
+// from TestProxmox_CreateVM_DiskDefaults to keep its cognitive complexity
+// under go:S3776's ceiling.
+func assertDiskDefaultsForm(t *testing.T, form url.Values, bus, wantDisk, wantSCSIHW string) {
+	t.Helper()
+
+	diskKey := bus + "0"
+	if form.Get(diskKey) != wantDisk {
+		t.Errorf("%s = %q, want %q", diskKey, form.Get(diskKey), wantDisk)
+	}
+
+	if wantSCSIHW != "" {
+		if form.Get("scsihw") != wantSCSIHW {
+			t.Errorf("scsihw = %q, want %q", form.Get("scsihw"), wantSCSIHW)
+		}
 	}
 }
 
@@ -374,50 +392,68 @@ func TestProxmox_CreateVM_UEFI(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			var gotForm url.Values
-
-			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
-				mux.HandleFunc("POST /api2/json/nodes/node01/qemu", func(w http.ResponseWriter, r *http.Request) {
-					if err := r.ParseForm(); err != nil {
-						t.Fatalf("parse form: %v", err)
-					}
-
-					gotForm = r.Form
-
-					writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmcreate:108:pvmss@pve:"}`)
-				})
-			})
-
-			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
-
-			spec := VMSpec{
-				VMID: 108, Node: testNodeName, Name: "uefi-test", Pool: FakePoolAliceShort,
-				Sockets: 1, CPUCores: 2, MemoryMB: 4096,
-				Disk:    DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 32, Bus: string(DiskBusSCSI)},
-				Network: NetworkSpec{{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)}},
-				BIOS:    tc.bios, Machine: tc.machine, TPM: tc.tpm,
-			}
-
-			if _, err := p.CreateVM(context.Background(), spec); err != nil {
-				t.Fatalf("CreateVM: %v", err)
-			}
-
-			if gotForm.Get("bios") != testBIOSOVMF {
-				t.Errorf("bios = %q, want ovmf", gotForm.Get("bios"))
-			}
-
-			if gotForm.Get("machine") != tc.wantMachine {
-				t.Errorf("machine = %q, want %q", gotForm.Get("machine"), tc.wantMachine)
-			}
-
-			if gotForm.Get("efidisk0") != tc.wantEFI {
-				t.Errorf("efidisk0 = %q, want %q", gotForm.Get("efidisk0"), tc.wantEFI)
-			}
-
-			if gotForm.Get("tpmstate0") != tc.wantTPM {
-				t.Errorf("tpmstate0 = %q, want %q", gotForm.Get("tpmstate0"), tc.wantTPM)
-			}
+			gotForm := captureUEFIForm(t, tc.bios, tc.machine, tc.tpm)
+			assertUEFIForm(t, gotForm, tc.wantMachine, tc.wantEFI, tc.wantTPM)
 		})
+	}
+}
+
+// captureUEFIForm runs CreateVM with a form-capturing test server for the
+// UEFI/TPM test cases. Returns the submitted form.
+func captureUEFIForm(t *testing.T, bios, machine string, tpm bool) url.Values {
+	t.Helper()
+
+	var gotForm url.Values
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("POST /api2/json/nodes/node01/qemu", func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("parse form: %v", err)
+			}
+
+			gotForm = r.Form
+
+			writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmcreate:108:pvmss@pve:"}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	spec := VMSpec{
+		VMID: 108, Node: testNodeName, Name: "uefi-test", Pool: FakePoolAliceShort,
+		Sockets: 1, CPUCores: 2, MemoryMB: 4096,
+		Disk:    DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 32, Bus: string(DiskBusSCSI)},
+		Network: NetworkSpec{{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)}},
+		BIOS:    bios, Machine: machine, TPM: tpm,
+	}
+
+	if _, err := p.CreateVM(context.Background(), spec); err != nil {
+		t.Fatalf("CreateVM: %v", err)
+	}
+
+	return gotForm
+}
+
+// assertUEFIForm checks the bios/machine/efidisk0/tpmstate0 form fields.
+// Extracted from TestProxmox_CreateVM_UEFI to keep its cognitive complexity
+// under go:S3776's ceiling.
+func assertUEFIForm(t *testing.T, form url.Values, wantMachine, wantEFI, wantTPM string) {
+	t.Helper()
+
+	if form.Get("bios") != testBIOSOVMF {
+		t.Errorf("bios = %q, want ovmf", form.Get("bios"))
+	}
+
+	if form.Get("machine") != wantMachine {
+		t.Errorf("machine = %q, want %q", form.Get("machine"), wantMachine)
+	}
+
+	if form.Get("efidisk0") != wantEFI {
+		t.Errorf("efidisk0 = %q, want %q", form.Get("efidisk0"), wantEFI)
+	}
+
+	if form.Get("tpmstate0") != wantTPM {
+		t.Errorf("tpmstate0 = %q, want %q", form.Get("tpmstate0"), wantTPM)
 	}
 }
 
@@ -502,45 +538,64 @@ func TestProxmox_CreateVM_AgentOSTypeBoot(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			var gotForm url.Values
+			gotForm := captureCreateVMForm(t, tc.disk, tc.iso)
 
-			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
-				mux.HandleFunc("POST /api2/json/nodes/node01/qemu", func(w http.ResponseWriter, r *http.Request) {
-					if err := r.ParseForm(); err != nil {
-						t.Fatalf("parse form: %v", err)
-					}
-
-					gotForm = r.Form
-
-					writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmcreate:110:pvmss@pve:"}`)
-				})
-			})
-
-			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
-
-			spec := VMSpec{
-				VMID: 110, Node: testNodeName, Name: "boot-test", Pool: FakePoolAliceShort,
-				Sockets: 1, CPUCores: 2, MemoryMB: 2048,
-				Disk:    tc.disk,
-				Network: NetworkSpec{{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)}},
-				ISO:     tc.iso,
-			}
-
-			if _, err := p.CreateVM(context.Background(), spec); err != nil {
-				t.Fatalf("CreateVM: %v", err)
-			}
-
-			if gotForm.Get("agent") != "1" {
-				t.Errorf("agent = %q, want 1 (QEMU guest agent must be enabled at create time)", gotForm.Get("agent"))
-			}
-
-			if gotForm.Get("ostype") != "l26" {
-				t.Errorf("ostype = %q, want l26 (every catalog entry is Linux)", gotForm.Get("ostype"))
-			}
-
-			if gotForm.Get("boot") != tc.wantBoot {
-				t.Errorf("boot = %q, want %q", gotForm.Get("boot"), tc.wantBoot)
-			}
+			assertAgentOSTypeBootForm(t, gotForm, tc.wantBoot)
 		})
 	}
+}
+
+// assertAgentOSTypeBootForm checks the issue-03 form keys (agent=1,
+// ostype=l26, boot=order=...). Extracted from TestProxmox_CreateVM_AgentOSTypeBoot
+// to keep its cognitive complexity under go:S3776's ceiling.
+func assertAgentOSTypeBootForm(t *testing.T, form url.Values, wantBoot string) {
+	t.Helper()
+
+	if form.Get("agent") != "1" {
+		t.Errorf("agent = %q, want 1 (QEMU guest agent must be enabled at create time)", form.Get("agent"))
+	}
+
+	if form.Get("ostype") != "l26" {
+		t.Errorf("ostype = %q, want l26 (every catalog entry is Linux)", form.Get("ostype"))
+	}
+
+	if form.Get("boot") != wantBoot {
+		t.Errorf("boot = %q, want %q", form.Get("boot"), wantBoot)
+	}
+}
+
+// captureCreateVMForm runs CreateVM with a form-capturing test server and
+// returns the submitted form. Shared by the issue-03 boot-order test cases.
+func captureCreateVMForm(t *testing.T, disk DiskSpec, iso *ISOSpec) url.Values {
+	t.Helper()
+
+	var gotForm url.Values
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("POST /api2/json/nodes/node01/qemu", func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("parse form: %v", err)
+			}
+
+			gotForm = r.Form
+
+			writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmcreate:110:pvmss@pve:"}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	spec := VMSpec{
+		VMID: 110, Node: testNodeName, Name: "boot-test", Pool: FakePoolAliceShort,
+		Sockets: 1, CPUCores: 2, MemoryMB: 2048,
+		Disk:    disk,
+		Network: NetworkSpec{{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)}},
+		ISO:     iso,
+	}
+
+	if _, err := p.CreateVM(context.Background(), spec); err != nil {
+		t.Fatalf("CreateVM: %v", err)
+	}
+
+	return gotForm
 }

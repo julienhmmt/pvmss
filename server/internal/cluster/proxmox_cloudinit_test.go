@@ -543,22 +543,31 @@ func TestProxmox_WaitAgentExec_ExitCodes(t *testing.T) {
 			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
 			err := p.waitAgentExec(context.Background(), testNodeName, testVMID, 4242)
-
-			switch {
-			case tc.wantErr != nil:
-				if !errors.Is(err, tc.wantErr) {
-					t.Fatalf("err = %v, want %v", err, tc.wantErr)
-				}
-			case tc.wantMsg != "":
-				if err == nil || !strings.Contains(err.Error(), tc.wantMsg) {
-					t.Fatalf("err = %v, want message containing %q", err, tc.wantMsg)
-				}
-			default:
-				if err != nil {
-					t.Fatalf("err = %v, want nil", err)
-				}
-			}
+			assertAgentExecError(t, err, tc.wantErr, tc.wantMsg)
 		})
+	}
+}
+
+// assertAgentExecError checks the waitAgentExec error against the expected
+// sentinel, message substring, or nil. Extracted from
+// TestProxmox_WaitAgentExec_ExitCodes to keep its cognitive complexity under
+// go:S3776's ceiling.
+func assertAgentExecError(t *testing.T, err, wantErr error, wantMsg string) {
+	t.Helper()
+
+	switch {
+	case wantErr != nil:
+		if !errors.Is(err, wantErr) {
+			t.Fatalf("err = %v, want %v", err, wantErr)
+		}
+	case wantMsg != "":
+		if err == nil || !strings.Contains(err.Error(), wantMsg) {
+			t.Fatalf("err = %v, want message containing %q", err, wantMsg)
+		}
+	default:
+		if err != nil {
+			t.Fatalf("err = %v, want nil", err)
+		}
 	}
 }
 
