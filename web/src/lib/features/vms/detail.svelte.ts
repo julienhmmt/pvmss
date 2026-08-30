@@ -19,6 +19,9 @@ export interface VmDetailEntity {
 	diskTotal: number;
 	uptimeSeconds?: number;
 	description?: string;
+	/** Proxmox lock name (e.g. "snapshot-delete", "backup") from the live
+	 *  status — non-empty means the VM rejects most operations. */
+	lock?: string;
 	sockets?: number;
 	cores?: number;
 	disks?: VmDisk[];
@@ -309,9 +312,13 @@ export class VmDetailStore {
 			await convergeSingle(
 				{ cluster: this.cluster, vmid: this.entity.vmid },
 				target,
-				(status) => {
+				(status, lock) => {
 					if (this.entity !== null) {
-						this.entity = { ...this.entity, status };
+						// The live read also carries the Proxmox lock name —
+						// keep the badge honest while the page stays open.
+						this.entity = lock === undefined
+							? { ...this.entity, status }
+							: { ...this.entity, status, lock };
 					}
 				},
 			);

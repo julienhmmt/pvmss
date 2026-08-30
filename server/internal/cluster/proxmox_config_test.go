@@ -15,21 +15,25 @@ func TestParseDiskValue(t *testing.T) {
 		value       string
 		wantStorage string
 		wantSizeGB  int
+		wantFormat  string
 	}{
-		{"simple", "local-lvm:vm-101-disk-0,size=32G", FakeStorageLocalLVM, 32},
-		{"options before size", "local-lvm:vm-101-disk-0,cache=writeback,size=64G", FakeStorageLocalLVM, 64},
-		{"megabytes round down", "local:vm-101-disk-1,size=512M", FakeStorageLocal, 0},
-		{"no size option", "local:vm-101-disk-2", FakeStorageLocal, 0},
-		{"malformed, no colon", "not-a-disk-value", "", 0},
+		{"simple", "local-lvm:vm-101-disk-0,size=32G", FakeStorageLocalLVM, 32, ""},
+		{"options before size", "local-lvm:vm-101-disk-0,cache=writeback,size=64G", FakeStorageLocalLVM, 64, ""},
+		{"megabytes round down", "local:vm-101-disk-1,size=512M", FakeStorageLocal, 0, ""},
+		{"no size option", "local:vm-101-disk-2", FakeStorageLocal, 0, ""},
+		{"qcow2 from filename", "local:vm-101-disk-0.qcow2,size=32G", FakeStorageLocal, 32, testDiskFormatQCow2},
+		{"raw from filename", "local:vm-101-disk-0.raw,size=32G", FakeStorageLocal, 32, testDiskFormatRaw},
+		{"explicit format option wins", "local:vm-101-disk-0.vmdk,format=qcow2,size=32G", FakeStorageLocal, 32, testDiskFormatQCow2},
+		{"malformed, no colon", "not-a-disk-value", "", 0, ""},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			storage, sizeGB := parseDiskValue(tc.value)
-			if storage != tc.wantStorage || sizeGB != tc.wantSizeGB {
-				t.Errorf("parseDiskValue(%q) = (%q, %d), want (%q, %d)", tc.value, storage, sizeGB, tc.wantStorage, tc.wantSizeGB)
+			storage, sizeGB, format := parseDiskValue(tc.value)
+			if storage != tc.wantStorage || sizeGB != tc.wantSizeGB || format != tc.wantFormat {
+				t.Errorf("parseDiskValue(%q) = (%q, %d, %q), want (%q, %d, %q)", tc.value, storage, sizeGB, format, tc.wantStorage, tc.wantSizeGB, tc.wantFormat)
 			}
 		})
 	}

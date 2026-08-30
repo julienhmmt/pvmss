@@ -199,6 +199,8 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/snapshots", protect(snapshots, vmWriteLimiter))
 		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/rollback", protect(snapshots, vmWriteLimiter))
 		mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/snapshots/{name}", protect(snapshots, vmWriteLimiter))
+		// Ticket 08: one snapshot's stored config — the pre-rollback diff.
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/config", snapshots)
 	}
 
 	if cfg.VMConsole != nil {

@@ -88,8 +88,17 @@ type snapshotDTO struct {
 }
 
 type snapshotListDTO struct {
-	Snapshots    []snapshotDTO `json:"snapshots"`
-	MaxSnapshots int           `json:"maxSnapshots"`
+	Snapshots    []snapshotDTO         `json:"snapshots"`
+	MaxSnapshots int                   `json:"maxSnapshots"`
+	Capability   snapshotCapabilityDTO `json:"capability"`
+}
+
+// snapshotCapabilityDTO mirrors vm.SnapshotCapability for the create dialog:
+// it greys the RAM checkbox and the submit button with a reason (ticket 07).
+type snapshotCapabilityDTO struct {
+	CanSnapshot bool     `json:"canSnapshot"`
+	CanVMState  bool     `json:"canVMState"`
+	Warnings    []string `json:"warnings"`
 }
 
 type snapshotTaskDTO struct {
@@ -99,11 +108,20 @@ type snapshotTaskDTO struct {
 	UPID    string `json:"upid"`
 }
 
+// snapshotConfigDTO carries one snapshot's stored config (ticket 08) — the
+// pre-rollback diff. name == "current" means the live config.
+type snapshotConfigDTO struct {
+	Name   string            `json:"name"`
+	Config map[string]string `json:"config"`
+}
+
 // ServeHTTP dispatches the four snapshot routes registered by NewRouter.
 //
 //nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
 func (h *VMSnapshots) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
+	case strings.HasSuffix(r.URL.Path, "/config"):
+		h.handleConfig(w, r)
 	case strings.HasSuffix(r.URL.Path, "/rollback"):
 		h.handleNamedAction(w, r, vm.RollbackSnapshot)
 	case r.Method == http.MethodGet:
@@ -116,6 +134,41 @@ func (h *VMSnapshots) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Allow", "GET, POST, DELETE")
 		h.writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
 	}
+}
+
+// handleConfig serves GET .../snapshots/{name}/config — one snapshot's stored
+// config for the pre-rollback diff (ticket 08). name="current" returns the
+// live config.
+//
+//nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
+func (h *VMSnapshots) handleConfig(w http.ResponseWriter, r *http.Request) {
+	identity, clusterName, vmid, ok := h.requestTarget(w, r)
+	if !ok {
+		return
+	}
+
+	index, ok := loadClusterIndex(h.resolver, clusterName, func(status int, code, message string) { h.writeError(w, status, code, message) })
+	if !ok {
+		return
+	}
+
+	// The {name} path value is required by the route pattern itself, so it
+	// is never empty here.
+	name := r.PathValue("name")
+
+	deps, ok := h.dependencies(w, index, identity, clusterName, vmid)
+	if !ok {
+		return
+	}
+
+	config, err := vm.SnapshotConfig(r.Context(), deps, name)
+	if err != nil {
+		h.writeSnapshotError(w, err)
+
+		return
+	}
+
+	h.writePayload(w, http.StatusOK, snapshotConfigDTO{Name: name, Config: config})
 }
 
 //nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
@@ -135,13 +188,13 @@ func (h *VMSnapshots) handleList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	snapshots, maxSnapshots, err := vm.ListSnapshots(r.Context(), deps)
+	snapshots, maxSnapshots, capability, err := vm.ListSnapshots(r.Context(), deps)
 	if err != nil {
 		h.writeSnapshotError(w, err)
 		return
 	}
 
-	result := snapshotListDTO{Snapshots: make([]snapshotDTO, 0, len(snapshots)), MaxSnapshots: maxSnapshots}
+	result := snapshotListDTO{Snapshots: make([]snapshotDTO, 0, len(snapshots)), MaxSnapshots: maxSnapshots, Capability: snapshotCapabilityDTO{CanSnapshot: capability.CanSnapshot, CanVMState: capability.CanVMState, Warnings: capability.Warnings}}
 	for _, snapshot := range snapshots {
 		result.Snapshots = append(result.Snapshots, snapshotDTOFromModel(snapshot))
 	}
@@ -153,7 +206,7 @@ func (h *VMSnapshots) handleList(w http.ResponseWriter, r *http.Request) {
 func (h *VMSnapshots) handleCreate(w http.ResponseWriter, r *http.Request) {
 	var request snapshotCreateRequest
 	if err := decodeJSON(w, r, &request); err != nil {
-		h.writeError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
+		h.writeError(w, http.StatusBadRequest, codeInvalidRequest, msgInvalidRequestBody)
 		return
 	}
 
@@ -255,16 +308,39 @@ func (h *VMSnapshots) writeSnapshotError(w http.ResponseWriter, err error) {
 		h.writeError(w, http.StatusBadRequest, "vmstate_requires_running", "RAM state can only be captured while the VM is running")
 	case errors.Is(err, vm.ErrVMStateUnsupportedStorage):
 		h.writeError(w, http.StatusBadRequest, "vmstate_unsupported_storage", err.Error())
+	case errors.Is(err, vm.ErrSnapshotUnsupportedStorage):
+		h.writeError(w, http.StatusBadRequest, "snapshot_storage_unsupported", err.Error())
 	case errors.Is(err, vm.ErrSnapshotNotFound):
 		h.writeError(w, http.StatusNotFound, "snapshot_not_found", err.Error())
 	case errors.Is(err, policy.ErrUnavailable):
 		h.writeError(w, http.StatusServiceUnavailable, "policy_unavailable", msgPolicyUnavailable)
 	case errors.Is(err, cluster.ErrNotFound):
 		h.writeError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
+	case errors.Is(err, cluster.ErrClusterRejected), errors.Is(err, vm.ErrVMLocked):
+		// A Proxmox rejection surfaces its own message with a stable machine
+		// code; a lock that did not clear within the retry budget surfaces the
+		// retry-expiry message under the same vm_locked code (ADR 0002).
+		code, message, _ := snapshotRejectionResponse(err)
+		h.writeError(w, http.StatusBadGateway, code, message)
 	default:
 		h.log.Error("vm snapshot operation failed", "component", "httpapi", "error", err)
 		h.writeError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
+}
+
+// snapshotRejectionResponse maps a cluster rejection (cluster.ErrClusterRejected)
+// or a lock-retry expiry (vm.ErrVMLocked) to the (code, message) pair the UI
+// acts on. ok=false when err is neither.
+func snapshotRejectionResponse(err error) (code, message string, ok bool) {
+	if code, message, ok := clusterRejectionResponse(err); ok {
+		return code, message, true
+	}
+
+	if errors.Is(err, vm.ErrVMLocked) {
+		return "vm_locked", err.Error(), true
+	}
+
+	return "", "", false
 }
 
 //nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent

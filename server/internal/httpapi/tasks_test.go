@@ -3,14 +3,24 @@ package httpapi_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/vm"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
+)
+
+// Test fixtures for the create specs used across the tasks tests (goconst).
+const (
+	testStorageLocalLVM = "local-lvm"
+	testNICModelVirtio  = "virtio"
 )
 
 func getTask(t *testing.T, handler *httpapi.Tasks, upid string, cookie *http.Cookie) *httptest.ResponseRecorder {
@@ -53,8 +63,8 @@ func TestTasks_PollTransitions(t *testing.T) {
 		Tags:     []string{cluster.FakeTagPvmss},
 		CPUCores: 1,
 		MemoryMB: 2048,
-		Disk:     cluster.DiskSpec{Storage: "local-lvm", SizeGB: 20},
-		Network:  cluster.NetworkSpec{{Bridge: testBridgeVmbr0, Model: "virtio"}},
+		Disk:     cluster.DiskSpec{Storage: testStorageLocalLVM, SizeGB: 20},
+		Network:  cluster.NetworkSpec{{Bridge: testBridgeVmbr0, Model: testNICModelVirtio}},
 	})
 	if err != nil {
 		t.Fatalf("CreateVM: %v", err)
@@ -169,7 +179,7 @@ func TestTasks_RollbackInvalidatesIndex(t *testing.T) {
 // and a multi-cluster ClientProvider, so the per-request ?cluster= resolution
 // path is exercised (the cross-cluster fix). Each named cluster maps to its
 // own Fake instance so a task created on one cluster is invisible to another.
-func newTasksHandlerWithRegistry(t *testing.T, clients map[string]cluster.Client) (*httpapi.Tasks, *httpapi.Auth, *inventory.Projection) {
+func newTasksHandlerWithRegistry(t *testing.T, clients map[string]cluster.Client, refreshers httpapi.ClusterRefresherResolver) (*httpapi.Tasks, *httpapi.Auth, *inventory.Projection) {
 	t.Helper()
 	t.Cleanup(cluster.ResetFake)
 	authHandler := newAuthHandler(t)
@@ -185,7 +195,7 @@ func newTasksHandlerWithRegistry(t *testing.T, clients map[string]cluster.Client
 
 	provider := vmCreateClientProvider{clients: clients}
 
-	return httpapi.NewTasksWithRegistry(authHandler, provider, cluster.Fake{}, worker, logger), authHandler, projection
+	return httpapi.NewTasksWithRegistry(authHandler, provider, cluster.Fake{}, worker, refreshers, logger), authHandler, projection
 }
 
 // getTaskWithCluster issues GET /api/v1/tasks/{upid}?cluster={cluster} against
@@ -221,7 +231,7 @@ func TestTasks_WithRegistry_PollsNamedCluster(t *testing.T) {
 	handler, authHandler, _ := newTasksHandlerWithRegistry(t, map[string]cluster.Client{
 		auditTestCluster:      cluster.Fake{},
 		crossSecondaryCluster: secondary,
-	})
+	}, nil)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 
 	ctx := context.Background()
@@ -239,8 +249,8 @@ func TestTasks_WithRegistry_PollsNamedCluster(t *testing.T) {
 		Tags:     []string{cluster.FakeTagPvmss},
 		CPUCores: 1,
 		MemoryMB: 2048,
-		Disk:     cluster.DiskSpec{Storage: "local-lvm", SizeGB: 20},
-		Network:  cluster.NetworkSpec{{Bridge: testBridgeVmbr0, Model: "virtio"}},
+		Disk:     cluster.DiskSpec{Storage: testStorageLocalLVM, SizeGB: 20},
+		Network:  cluster.NetworkSpec{{Bridge: testBridgeVmbr0, Model: testNICModelVirtio}},
 	})
 	if err != nil {
 		t.Fatalf("CreateVM: %v", err)
@@ -278,7 +288,7 @@ func TestTasks_WithRegistry_PollsNamedCluster(t *testing.T) {
 func TestTasks_WithRegistry_UnknownClusterReturns404(t *testing.T) {
 	handler, authHandler, _ := newTasksHandlerWithRegistry(t, map[string]cluster.Client{
 		auditTestCluster: cluster.Fake{},
-	})
+	}, nil)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 
 	response := getTaskWithCluster(t, handler, "UPID:anything", "ghost", cookie)
@@ -297,7 +307,7 @@ func TestTasks_WithRegistry_UnknownClusterReturns404(t *testing.T) {
 func TestTasks_WithRegistry_DefaultFallback(t *testing.T) {
 	handler, authHandler, _ := newTasksHandlerWithRegistry(t, map[string]cluster.Client{
 		auditTestCluster: cluster.Fake{},
-	})
+	}, nil)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 
 	ctx := context.Background()
@@ -310,8 +320,8 @@ func TestTasks_WithRegistry_DefaultFallback(t *testing.T) {
 	upid, err := (cluster.Fake{}).CreateVM(ctx, cluster.VMSpec{
 		VMID: vmid, Node: cluster.FakeNode01, Name: "fallback-vm", Pool: cluster.FakePoolAlice,
 		Tags: []string{cluster.FakeTagPvmss}, CPUCores: 1, MemoryMB: 2048,
-		Disk:    cluster.DiskSpec{Storage: "local-lvm", SizeGB: 20},
-		Network: cluster.NetworkSpec{{Bridge: testBridgeVmbr0, Model: "virtio"}},
+		Disk:    cluster.DiskSpec{Storage: testStorageLocalLVM, SizeGB: 20},
+		Network: cluster.NetworkSpec{{Bridge: testBridgeVmbr0, Model: testNICModelVirtio}},
 	})
 	if err != nil {
 		t.Fatalf("CreateVM: %v", err)
@@ -339,5 +349,95 @@ func TestTasks_WithRegistry_DefaultFallback(t *testing.T) {
 
 	if body.State != testStatusRunning {
 		t.Fatalf("state = %q, want running (first poll)", body.State)
+	}
+}
+
+// recordedInvalidator is a TaskInvalidator test double that counts refreshes.
+type recordedInvalidator struct {
+	label     string
+	refreshed atomic.Int32
+}
+
+func (r *recordedInvalidator) Refresh(context.Context) (time.Time, error) {
+	r.refreshed.Add(1)
+
+	return time.Now(), nil
+}
+
+// taskRefresherRecorder is a ClusterRefresherResolver test double that records
+// every cluster it was asked to resolve.
+type taskRefresherRecorder struct {
+	mu        sync.Mutex
+	asked     []string
+	byCluster map[string]*recordedInvalidator
+}
+
+func (m *taskRefresherRecorder) RefresherFor(clusterName string) (vm.IndexRefresher, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.asked = append(m.asked, clusterName)
+
+	invalidator, ok := m.byCluster[clusterName]
+	if !ok {
+		return nil, fmt.Errorf("no invalidator for cluster %q", clusterName)
+	}
+
+	return invalidator, nil
+}
+
+// TestTasks_WithRegistry_InvalidatesNamedClusterProjection — ticket 05: the
+// post-task invalidation resolves the ?cluster= param to that cluster's own
+// invalidator instead of the startup default. Fails before the fix (the
+// default worker was refreshed for every cluster).
+//
+//nolint:paralleltest // serial: shared fake task fixture
+func TestTasks_WithRegistry_InvalidatesNamedClusterProjection(t *testing.T) {
+	secondary := cluster.Fake{}
+	alphaInvalidator := &recordedInvalidator{label: "alpha"}
+	betaInvalidator := &recordedInvalidator{label: "beta"}
+	resolver := &taskRefresherRecorder{byCluster: map[string]*recordedInvalidator{
+		auditTestCluster:      alphaInvalidator,
+		crossSecondaryCluster: betaInvalidator,
+	}}
+
+	handler, authHandler, _ := newTasksHandlerWithRegistry(t, map[string]cluster.Client{
+		auditTestCluster:      cluster.Fake{},
+		crossSecondaryCluster: secondary,
+	}, resolver)
+	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+
+	ctx := context.Background()
+
+	vmid, err := secondary.NextVMID(ctx)
+	if err != nil {
+		t.Fatalf("NextVMID: %v", err)
+	}
+
+	upid, err := secondary.CreateVM(ctx, cluster.VMSpec{
+		VMID: vmid, Node: cluster.FakeNode01, Name: "secondary-vm", Pool: cluster.FakePoolAlice,
+		Tags: []string{cluster.FakeTagPvmss}, CPUCores: 1, MemoryMB: 2048,
+		Disk:    cluster.DiskSpec{Storage: testStorageLocalLVM, SizeGB: 20},
+		Network: cluster.NetworkSpec{{Bridge: testBridgeVmbr0, Model: testNICModelVirtio}},
+	})
+	if err != nil {
+		t.Fatalf("CreateVM: %v", err)
+	}
+
+	// Poll through the third call, when the fake task reaches ok and the
+	// invalidation fires.
+	for range 3 {
+		response := getTaskWithCluster(t, handler, upid, crossSecondaryCluster, cookie)
+		if response.Code != http.StatusOK {
+			t.Fatalf("poll status = %d, want 200: %s", response.Code, response.Body.String())
+		}
+	}
+
+	if betaInvalidator.refreshed.Load() != 1 {
+		t.Errorf("secondary invalidations = %d, want 1", betaInvalidator.refreshed.Load())
+	}
+
+	if alphaInvalidator.refreshed.Load() != 0 {
+		t.Errorf("default invalidations = %d, want 0", alphaInvalidator.refreshed.Load())
 	}
 }

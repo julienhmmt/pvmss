@@ -23,7 +23,7 @@ type AdminDocs struct {
 // Admin docs error codes and messages, centralized so the duplicated literals
 // live in one place (go:S1192).
 const (
-	codeDocInvalidRequest  = "invalid_request"
+	codeInvalidRequest     = "invalid_request"
 	codeDocNotFound        = "not_found"
 	codeDocDuplicatePage   = "duplicate_page"
 	codeDocInvalidPage     = "invalid_page"
@@ -115,12 +115,12 @@ func (h *AdminDocs) ServeDocsList(w http.ResponseWriter, r *http.Request) {
 func (h *AdminDocs) ServeDocCreate(w http.ResponseWriter, r *http.Request) {
 	var req docCreateRequest
 	if err := decodeJSON(w, r, &req); err != nil {
-		writeAdminError(w, http.StatusBadRequest, codeDocInvalidRequest, msgDocInvalidRequestBody)
+		writeAdminError(w, http.StatusBadRequest, codeInvalidRequest, msgDocInvalidRequestBody)
 		return
 	}
 
 	if len(req.BodyMD) > maxDocBody {
-		writeAdminError(w, http.StatusBadRequest, codeDocInvalidRequest, msgDocBodyTooLong)
+		writeAdminError(w, http.StatusBadRequest, codeInvalidRequest, msgDocBodyTooLong)
 		return
 	}
 
@@ -150,18 +150,18 @@ func (h *AdminDocs) ServeDocUpdate(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	lang := r.PathValue("lang")
 	if id == "" || lang == "" {
-		writeAdminError(w, http.StatusBadRequest, codeDocInvalidRequest, msgDocIDLangRequired)
+		writeAdminError(w, http.StatusBadRequest, codeInvalidRequest, msgDocIDLangRequired)
 		return
 	}
 
 	var req docUpdateRequest
 	if err := decodeJSON(w, r, &req); err != nil {
-		writeAdminError(w, http.StatusBadRequest, codeDocInvalidRequest, msgDocInvalidRequestBody)
+		writeAdminError(w, http.StatusBadRequest, codeInvalidRequest, msgDocInvalidRequestBody)
 		return
 	}
 
 	if len(req.BodyMD) > maxDocBody {
-		writeAdminError(w, http.StatusBadRequest, codeDocInvalidRequest, msgDocBodyTooLong)
+		writeAdminError(w, http.StatusBadRequest, codeInvalidRequest, msgDocBodyTooLong)
 		return
 	}
 
@@ -195,7 +195,7 @@ func (h *AdminDocs) ServeDocDelete(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	lang := r.PathValue("lang")
 	if id == "" || lang == "" {
-		writeAdminError(w, http.StatusBadRequest, codeDocInvalidRequest, msgDocIDLangRequired)
+		writeAdminError(w, http.StatusBadRequest, codeInvalidRequest, msgDocIDLangRequired)
 		return
 	}
 
@@ -225,13 +225,13 @@ func (h *AdminDocs) ServeDocToggle(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	lang := r.PathValue("lang")
 	if id == "" || lang == "" {
-		writeAdminError(w, http.StatusBadRequest, codeDocInvalidRequest, msgDocIDLangRequired)
+		writeAdminError(w, http.StatusBadRequest, codeInvalidRequest, msgDocIDLangRequired)
 		return
 	}
 
 	var req docToggleRequest
 	if err := decodeJSON(w, r, &req); err != nil {
-		writeAdminError(w, http.StatusBadRequest, codeDocInvalidRequest, msgDocInvalidRequestBody)
+		writeAdminError(w, http.StatusBadRequest, codeInvalidRequest, msgDocInvalidRequestBody)
 		return
 	}
 

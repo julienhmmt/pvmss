@@ -226,6 +226,11 @@ type vmDetailDTO struct {
 	HasSerial         bool                       `json:"hasSerial"`
 	UptimeSeconds     int64                      `json:"uptimeSeconds,omitempty"`
 	Description       string                     `json:"description,omitempty"`
+	// Lock carries the live Proxmox lock name ("snapshot-delete", "backup",
+	// ...) from a best-effort /status/current read (ticket 06) — the page
+	// shows a badge and the operator command to clear it. Empty when the VM
+	// is unlocked or the live read failed.
+	Lock string `json:"lock,omitempty"`
 }
 
 type diskRequest struct {
@@ -343,7 +348,7 @@ func (h *VMDetail) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeEntity(w, entity)
+	h.writeEntity(w, r, entity)
 }
 
 // handleStatus serves GET /vms/:cluster/:vmid/status — the live status read
@@ -557,7 +562,7 @@ func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeEntity(w, entity)
+	h.writeEntity(w, r, entity)
 }
 
 func (h *VMDetail) handleDisk(w http.ResponseWriter, r *http.Request) {
@@ -813,7 +818,7 @@ func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeEntity(w, entity)
+	h.writeEntity(w, r, entity)
 }
 
 // handleEnableSerial serves POST /vms/:cluster/:vmid/serial — the serial-
@@ -882,7 +887,7 @@ func (h *VMDetail) handleEnableSerial(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeEntity(w, entity)
+	h.writeEntity(w, r, entity)
 }
 
 func (h *VMDetail) writeHardwareError(w http.ResponseWriter, err error) {
@@ -918,6 +923,14 @@ func (h *VMDetail) writeCommonVMError(w http.ResponseWriter, err error) bool {
 }
 
 func (h *VMDetail) writeUnhandledVMError(w http.ResponseWriter, message string, err error) {
+	// A cluster rejection is not an unhandled error: surface Proxmox's own
+	// message with its machine code instead of a generic 500 (ADR 0002).
+	if code, msg, ok := clusterRejectionResponse(err); ok {
+		h.writeDetailError(w, http.StatusBadGateway, code, msg)
+
+		return
+	}
+
 	h.log.Error(message, "component", "httpapi", "error", err)
 	h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 }
@@ -999,6 +1012,9 @@ func (h *VMDetail) writeNetworkError(w http.ResponseWriter, err error) {
 		h.writeDetailError(w, http.StatusServiceUnavailable, "policy_unavailable", msgPolicyUnavailable)
 	case errors.Is(err, vm.ErrInvalidNetworkModel), errors.Is(err, vm.ErrDuplicateNetworkIndex):
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", err.Error())
+	case errors.Is(err, cluster.ErrClusterRejected):
+		code, message, _ := clusterRejectionResponse(err)
+		h.writeDetailError(w, http.StatusBadGateway, code, message)
 	default:
 		h.log.Error("vm network operation failed", "component", "httpapi", "error", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
@@ -1167,6 +1183,9 @@ func (h *VMDetail) writeDiskError(w http.ResponseWriter, err error) {
 		h.writeDetailError(w, http.StatusBadRequest, "bus_full", err.Error())
 	case errors.Is(err, cluster.ErrNotFound):
 		h.writeDetailError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
+	case errors.Is(err, cluster.ErrClusterRejected):
+		code, message, _ := clusterRejectionResponse(err)
+		h.writeDetailError(w, http.StatusBadGateway, code, message)
 	default:
 		h.log.Error("vm disk operation failed", "component", "httpapi", "error", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
@@ -1204,7 +1223,7 @@ func parseIntPathValue(r *http.Request, key string) (int, error) {
 	return value, nil
 }
 
-func (h *VMDetail) writeEntity(w http.ResponseWriter, entity vm.Entity) {
+func (h *VMDetail) writeEntity(w http.ResponseWriter, r *http.Request, entity vm.Entity) {
 	dto := vmDetailDTO{
 		Cluster:           entity.Cluster,
 		VMID:              entity.VMID,
@@ -1226,6 +1245,15 @@ func (h *VMDetail) writeEntity(w http.ResponseWriter, entity vm.Entity) {
 	}
 	if entity.Uptime > 0 {
 		dto.UptimeSeconds = int64(entity.Uptime.Seconds())
+	}
+
+	// Ticket 06: the detail DTO carries the live Proxmox lock (best-effort —
+	// a failed live read must not fail the whole detail) so the page can show
+	// the lock badge; the convergence loop keeps it fresh after actions.
+	if reader := h.statusReaderFor(entity.Cluster); reader != nil {
+		if live, err := reader.VMStatus(r.Context(), entity.Node, entity.VMID); err == nil {
+			dto.Lock = live.Lock
+		}
 	}
 
 	h.writeJSONStatus(w, http.StatusOK, dto)
@@ -1363,6 +1391,9 @@ func (h *VMDetail) writeActionError(w http.ResponseWriter, err error) {
 		h.writeDetailError(w, http.StatusConflict, "invalid_state_transition", err.Error())
 	case errors.Is(err, cluster.ErrVMRunning):
 		h.writeDetailError(w, http.StatusConflict, "vm_running", msgVMRunning)
+	case errors.Is(err, cluster.ErrClusterRejected):
+		code, message, _ := clusterRejectionResponse(err)
+		h.writeDetailError(w, http.StatusBadGateway, code, message)
 	default:
 		h.log.Error("vm action failed", "component", "httpapi", "error", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
@@ -1385,6 +1416,9 @@ func (h *VMDetail) writePatchError(w http.ResponseWriter, err error) {
 	case errors.Is(err, cluster.ErrNotFound):
 		h.log.Error("cluster writer: VM not found after Resolve", "component", "httpapi", "error", err)
 		h.writeDetailError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
+	case errors.Is(err, cluster.ErrClusterRejected):
+		code, message, _ := clusterRejectionResponse(err)
+		h.writeDetailError(w, http.StatusBadGateway, code, message)
 	default:
 		h.log.Error("vm patch failed", "component", "httpapi", "error", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)

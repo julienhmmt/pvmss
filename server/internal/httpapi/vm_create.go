@@ -218,7 +218,7 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var req vm.CreateRequest
 	if err := decodeJSON(w, r, &req); err != nil {
-		h.writeCreateError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
+		h.writeCreateError(w, http.StatusBadRequest, codeInvalidRequest, msgInvalidRequestBody)
 		return
 	}
 
@@ -658,7 +658,7 @@ var createErrorMappings = []createErrorMapping{
 	{vm.ErrOutOfRange, http.StatusBadRequest, "out_of_range", ""},
 	{vm.ErrNotApproved, http.StatusBadRequest, "not_approved", ""},
 	{vm.ErrInvalidSource, http.StatusBadRequest, "invalid_source", ""},
-	{vm.ErrInvalidRequest, http.StatusBadRequest, "invalid_request", ""},
+	{vm.ErrInvalidRequest, http.StatusBadRequest, codeInvalidRequest, ""},
 	{vm.ErrDiskReduction, http.StatusBadRequest, "disk_reduction", ""},
 	{vm.ErrInsufficientDiskSpace, http.StatusBadRequest, "insufficient_disk_space", ""},
 	{vm.ErrClusterCreate, http.StatusBadGateway, "cluster_error", msgClusterRejected},

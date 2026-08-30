@@ -13,7 +13,7 @@ func TestFakeSnapshotLifecycle_IsTaskVisibleOnlyAfterCompletion(t *testing.T) {
 	client := Fake{}
 	ctx := context.Background()
 
-	upid, err := client.CreateSnapshot(ctx, FakeNode01, 101, "before-upgrade", "pre-migration", false)
+	upid, err := client.CreateSnapshot(ctx, FakeNode01, 101, testSnapshotName, "pre-migration", false)
 	if err != nil {
 		t.Fatalf("CreateSnapshot: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestFakeSnapshotLifecycle_IsTaskVisibleOnlyAfterCompletion(t *testing.T) {
 		t.Fatalf("ListSnapshots after completion: %v", err)
 	}
 
-	if len(after) != 1 || after[0].Name != "before-upgrade" {
+	if len(after) != 1 || after[0].Name != testSnapshotName {
 		t.Fatalf("snapshots after completion = %+v", after)
 	}
 

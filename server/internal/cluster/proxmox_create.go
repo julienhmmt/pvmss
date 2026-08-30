@@ -245,6 +245,9 @@ func (p Proxmox) TaskStatus(ctx context.Context, upid string) (TaskStatus, error
 		// PVE returns WARNINGS for benign conditions (NUMA mismatch, local
 		// disks) — both references accept it as success (lifecycle-04).
 		result.State = TaskOK
+		if strings.HasPrefix(status.ExitStatus, "WARNINGS") {
+			result.Warnings = status.ExitStatus
+		}
 	default:
 		result.State = TaskError
 		result.ExitMessage = status.ExitStatus

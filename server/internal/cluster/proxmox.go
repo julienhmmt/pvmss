@@ -56,16 +56,37 @@ type proxmoxResourceRow struct {
 	Template   int     `json:"template"` // 1 when the qemu VM is a template
 }
 
-// proxmoxSnapshotCapableStorage lists the Proxmox storage plugin types that
-// support internal (RAM-included) snapshots — the real capability behind
-// Storage.SupportsVMState. Not derivable from the API directly (Proxmox does
-// not expose a "supports vmstate" flag), so this mirrors PVE's own documented
-// per-plugin snapshot support.
-var proxmoxSnapshotCapableStorage = map[string]bool{
-	"zfspool": true,
-	"lvmthin": true,
-	"rbd":     true,
-	"btrfs":   true,
+// StorageSnapshotCapability reports whether a (storage plugin, disk format)
+// pair supports snapshots and RAM-state snapshots (ticket 07). The plugin
+// alone decides for block-backed storages (zfspool, lvmthin, rbd, btrfs);
+// file-backed storages (dir, nfs, cifs, cephfs) need qcow2 disks. Plain lvm
+// (non-thin), iscsi and raw-on-file cannot snapshot at all.
+//
+// ponytail: the file-backed rows mirror PVE's documented per-plugin snapshot
+// support but were not validated line-by-line against the PVE sources —
+// ticket 07 flags exactly this; revisit if a real cluster surprises us.
+func StorageSnapshotCapability(pluginType, format string) (canSnapshot, canVMState bool) {
+	switch pluginType {
+	case "zfspool", "lvmthin", "rbd", "btrfs":
+		return true, true
+	case "dir", "nfs", "cifs", "cephfs":
+		return format == "qcow2", format == "qcow2"
+	default:
+		return false, false
+	}
+}
+
+// pluginSupportsVMState is the plugin-level view behind Storage.SupportsVMState
+// (a storage can hold RAM state when its plugin snapshots natively). The
+// per-disk decision also depends on the disk format — see
+// StorageSnapshotCapability.
+func pluginSupportsVMState(pluginType string) bool {
+	switch pluginType {
+	case "zfspool", "lvmthin", "rbd", "btrfs":
+		return true
+	default:
+		return false
+	}
 }
 
 // proxmoxClusterResourcesPath is the /cluster/resources endpoint, used by
@@ -206,7 +227,7 @@ func proxmoxStorageFromRow(row proxmoxResourceRow) Storage {
 		Content:         row.Content,
 		Total:           row.MaxDisk,
 		Used:            row.Disk,
-		SupportsVMState: proxmoxSnapshotCapableStorage[row.PluginType],
+		SupportsVMState: pluginSupportsVMState(row.PluginType),
 	}
 }
 
@@ -577,7 +598,7 @@ func proxmoxTemplateDisk(ctx context.Context, rest proxmoxRESTClient, node strin
 				continue
 			}
 
-			diskStorage, diskSizeGB := parseDiskValue(val)
+			diskStorage, diskSizeGB, _ := parseDiskValue(val)
 			if diskStorage == "" {
 				continue
 			}

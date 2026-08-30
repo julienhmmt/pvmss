@@ -125,12 +125,12 @@ func parseDisks(cfg proxmoxVMConfig) ([]Disk, int64) {
 				continue
 			}
 
-			storage, sizeGB := parseDiskValue(value)
+			storage, sizeGB, format := parseDiskValue(value)
 			if storage == "" {
 				continue
 			}
 
-			disks = append(disks, Disk{Key: key, Bus: bus, BusIndex: index, Storage: storage, SizeGB: sizeGB})
+			disks = append(disks, Disk{Key: key, Bus: bus, BusIndex: index, Storage: storage, SizeGB: sizeGB, Format: format})
 			total += int64(sizeGB) * 1024 * 1024 * 1024
 		}
 	}
@@ -138,24 +138,54 @@ func parseDisks(cfg proxmoxVMConfig) ([]Disk, int64) {
 	return disks, total
 }
 
-// parseDiskValue splits a Proxmox disk config value ("local-lvm:vm-101-disk-0,size=32G")
-// into its storage and size in whole GB.
-func parseDiskValue(value string) (storage string, sizeGB int) {
+// parseDiskValue splits a Proxmox disk config value ("local-lvm:vm-101-disk-0,size=32G"
+// or "local:vm-101-disk-0.qcow2,size=32G") into its storage, size in whole GB,
+// and image format.
+func parseDiskValue(value string) (storage string, sizeGB int, format string) {
 	volume, options, _ := strings.Cut(value, ",")
 
 	storage, _, ok := strings.Cut(volume, ":")
 	if !ok {
-		return "", 0
+		return "", 0, ""
 	}
 
 	for opt := range strings.SplitSeq(options, ",") {
 		key, val, ok := strings.Cut(opt, "=")
-		if ok && key == "size" {
+		if !ok {
+			continue
+		}
+
+		switch key {
+		case "size":
 			sizeGB = parseProxmoxSizeGB(val)
+		case "format":
+			format = val
 		}
 	}
 
-	return storage, sizeGB
+	if format == "" {
+		format = parseDiskFormatFromVolume(volume)
+	}
+
+	return storage, sizeGB, format
+}
+
+// parseDiskFormatFromVolume derives a disk's format from its volume filename
+// when no explicit format= option was given. PVE appends the format to the
+// volume name on file-based storages ("local:vm-100-disk-0.qcow2"); block
+// storages carry a bare name and return "" — the plugin decides there.
+func parseDiskFormatFromVolume(volume string) string {
+	_, filePart, ok := strings.Cut(volume, ":")
+	if !ok {
+		filePart = volume
+	}
+
+	dot := strings.LastIndexByte(filePart, '.')
+	if dot < 0 || dot == len(filePart)-1 {
+		return ""
+	}
+
+	return filePart[dot+1:]
 }
 
 // parseProxmoxSizeGB converts a Proxmox size value (a trailing-unit string

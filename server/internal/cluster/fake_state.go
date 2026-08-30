@@ -29,6 +29,10 @@ type fakeState struct {
 	errDeleteUser error
 	pushErr       error
 	sshErr        error
+	// snapshotWriteErr, when set, is returned by every snapshot write
+	// (create/rollback/delete) instead of dispatching (ticket 02: tests inject
+	// a cluster rejection to exercise the handler's error mapping).
+	snapshotWriteErr error
 	// createErr, when set, is returned by the next CreateVM call instead of
 	// dispatching (US5/issue-05: tests inject cluster.ErrVMIDTaken to exercise
 	// the retry loop, or a generic error to exercise the failure path).
