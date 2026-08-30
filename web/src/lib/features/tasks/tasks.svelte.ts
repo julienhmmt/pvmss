@@ -1,4 +1,5 @@
 import { getContext, setContext } from 'svelte';
+import { SvelteMap } from 'svelte/reactivity';
 import { get, post, ApiRequestError } from '$lib/shared/api/client';
 import { m } from '$lib/paraglide/messages.js';
 
@@ -64,7 +65,7 @@ export class TaskTrayStore {
 	#okListeners: (() => void)[] = [];
 	/** Per-task consecutive non-404 poll error count — reset on any successful
 	 *  poll, and on finish. */
-	#consecutiveErrors = new Map<string, number>();
+	#consecutiveErrors = new SvelteMap<string, number>();
 	/** Guards against overlapping poll cycles — a slow task (real VM creates
 	 *  can take longer than POLL_INTERVAL_MS) must not let two intervals
 	 *  race and finish the same task twice, which used to fire a duplicate

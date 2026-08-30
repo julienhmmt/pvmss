@@ -1,5 +1,6 @@
 import { del, get, post, ApiRequestError } from '$lib/shared/api/client';
 import { m } from '$lib/paraglide/messages.js';
+import { SvelteSet } from 'svelte/reactivity';
 import type { TaskKind, TaskTrayStore } from '$lib/features/tasks/tasks.svelte';
 
 export interface VmSnapshot {
@@ -99,7 +100,7 @@ export class VmSnapshotsStore {
 			get<SnapshotConfigResponse>(`${this.#basePath}/${encodeURIComponent(name)}/config`),
 			get<SnapshotConfigResponse>(`${this.#basePath}/current/config`)
 		]);
-		const keys = new Set([...Object.keys(snapshot.config), ...Object.keys(current.config)]);
+		const keys = new SvelteSet([...Object.keys(snapshot.config), ...Object.keys(current.config)]);
 		const entries: RollbackDiffEntry[] = [];
 		for (const key of keys) {
 			const before = current.config[key] ?? '';

@@ -7,7 +7,7 @@
 	 * role="status" with aria-live="polite". Existing inline role="alert"
 	 * blocks elsewhere are untouched — this is an ADDITIONAL channel.
 	 */
-	import { getToastContext, type ToastEntry, type ToastVariant } from './toast.svelte';
+	import { getToastContext, type ToastVariant } from './toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import CloseIcon from './icons/CloseIcon.svelte';
 

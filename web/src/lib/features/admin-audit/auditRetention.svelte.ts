@@ -1,5 +1,6 @@
 import { get, put, ApiRequestError } from '$lib/shared/api/client';
 import { setContext, getContext } from 'svelte';
+import { SvelteURLSearchParams } from 'svelte/reactivity';
 import { m } from '$lib/paraglide/messages.js';
 
 export interface AuditConfig {
@@ -49,7 +50,7 @@ export class AuditRetentionStore {
 		this.preview = null;
 		this.saved = false;
 		try {
-			const params = new URLSearchParams({ retention_days: String(days) });
+			const params = new SvelteURLSearchParams({ retention_days: String(days) });
 			this.preview = await get<PrunePreview>(`/api/v1/admin/audit/prune-preview?${params.toString()}`);
 		} catch (err) {
 			this.previewError = err instanceof ApiRequestError ? err.message : m['admin.audit.retention.previewError']();

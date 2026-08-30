@@ -1,5 +1,6 @@
 import { get, post, put, del, ApiRequestError } from '$lib/shared/api/client';
 import { setContext, getContext } from 'svelte';
+import { SvelteSet } from 'svelte/reactivity';
 import { m } from '$lib/paraglide/messages.js';
 
 /** AdminDocPage mirrors the adminDocDTO response from GET /api/v1/admin/docs. */
@@ -70,8 +71,8 @@ export class AdminDocsStore {
 		)
 	);
 
-	categoryOptions = $derived([...new Set(this.pages.map((p) => p.category))].sort());
-	langOptions = $derived([...new Set(this.pages.map((p) => p.lang))].sort());
+	categoryOptions = $derived([...new SvelteSet(this.pages.map((p) => p.category))].sort());
+	langOptions = $derived([...new SvelteSet(this.pages.map((p) => p.lang))].sort());
 
 	setSort(column: 'title' | 'id' | 'category' | 'lang'): void {
 		if (this.sortBy === column) {

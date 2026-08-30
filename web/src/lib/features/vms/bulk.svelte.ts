@@ -1,4 +1,5 @@
 import { getContext, setContext } from 'svelte';
+import { SvelteMap } from 'svelte/reactivity';
 import { post } from '$lib/shared/api/client';
 import type { VmListItem } from './list.svelte';
 
@@ -57,7 +58,7 @@ function toItemTarget(item: VmListItem): BulkTarget {
  * - per-target result lookup for the mixed-outcome panel (US2).
  */
 export class VmBulkSelection {
-	#selected = $state<Map<string, BulkTarget>>(new Map());
+	#selected = new SvelteMap<string, BulkTarget>();
 	submitting = $state(false);
 	lastResult = $state<BulkActionResult | null>(null);
 
@@ -77,42 +78,32 @@ export class VmBulkSelection {
 		return this.#selected.has(targetKey(cluster, vmid));
 	}
 
-	// Svelte 5 $state does NOT deeply proxy a native Map: in-place
-	// .set()/.delete()/.clear() calls do not trigger reactivity. Every
-	// mutation must reassign #selected to a fresh Map so that hasSelection /
-	// selectedCount (and thus the bulk-action bar) actually update.
 	toggle(target: BulkTarget): void {
 		const key = targetKey(target.cluster, target.vmid);
-		const next = new Map(this.#selected);
-		if (next.has(key)) {
-			next.delete(key);
+		if (this.#selected.has(key)) {
+			this.#selected.delete(key);
 		} else {
-			next.set(key, target);
+			this.#selected.set(key, target);
 		}
-		this.#selected = next;
 	}
 
 	selectPage(items: VmListItem[]): void {
-		const next = new Map(this.#selected);
 		for (const item of items) {
 			const key = vmItemKey(item);
-			if (!next.has(key)) {
-				next.set(key, toItemTarget(item));
+			if (!this.#selected.has(key)) {
+				this.#selected.set(key, toItemTarget(item));
 			}
 		}
-		this.#selected = next;
 	}
 
 	clearPage(items: VmListItem[]): void {
-		const next = new Map(this.#selected);
 		for (const item of items) {
-			next.delete(vmItemKey(item));
+			this.#selected.delete(vmItemKey(item));
 		}
-		this.#selected = next;
 	}
 
 	clear(): void {
-		this.#selected = new Map();
+		this.#selected.clear();
 	}
 
 	pageAllSelected(items: VmListItem[]): boolean {
