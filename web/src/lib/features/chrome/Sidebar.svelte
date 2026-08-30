@@ -3,7 +3,7 @@
 	 * Sidebar — Layer B app-shell sidebar (236px sticky column). Brand + cluster,
 	 * "New machine" CTA and Machines link (hidden for admins), Home / Nodes,
 	 * admin groups shown as collapsible sections only when session.isAdmin, user
-	 * chip, version. Active nav uses aria-current="page" + tint fill.
+	 * chip. Active nav uses aria-current="page" + tint fill.
 	 *
 	 * Below 900px the same markup becomes a drawer (T035): the parent layout
 	 * mounts it inside a Dialog-style overlay driven by ChromeState.sidebarOpen.
@@ -21,13 +21,6 @@
 	import { goto } from '$app/navigation';
 	import { m } from '$lib/paraglide/messages.js';
 	import SidebarIcon from './SidebarIcon.svelte';
-
-	interface Props {
-		/** Public version string (fetched once by the shell layout). */
-		version?: string | null;
-	}
-
-	let { version = null }: Props = $props();
 
 	const session = getSessionContext();
 	const chrome = getChromeContext();
@@ -296,11 +289,6 @@
 				</svg>
 				{m['auth.logout']()}
 			</button>
-		{/if}
-		{#if version}
-			<p class="px-2 font-mono text-xs text-muted-foreground-subtle">
-				{m['chrome.sidebar.version']({ version })}
-			</p>
 		{/if}
 	</div>
 </aside>

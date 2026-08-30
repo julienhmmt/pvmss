@@ -1,6 +1,7 @@
 import { get, post, put, del, ApiRequestError } from '$lib/shared/api/client';
 import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 import { setContext, getContext } from 'svelte';
+import { SvelteSet } from 'svelte/reactivity';
 import { m } from '$lib/paraglide/messages.js';
 
 export interface AdminProfile {
@@ -49,7 +50,7 @@ export class AdminProfilesStore {
 		)
 	);
 
-	busOptions = $derived([...new Set(this.profiles.map((p) => p.bus))].sort());
+	busOptions = $derived([...new SvelteSet(this.profiles.map((p) => p.bus))].sort());
 
 	setSort(column: 'id' | 'label' | 'cpuCores' | 'memoryMB' | 'diskGB'): void {
 		if (this.sortBy === column) {

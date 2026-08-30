@@ -1,6 +1,7 @@
 import { get, post, ApiRequestError } from '$lib/shared/api/client';
 import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 import { setContext, getContext } from 'svelte';
+import { SvelteSet } from 'svelte/reactivity';
 import { m } from '$lib/paraglide/messages.js';
 
 export interface AdminNode {
@@ -128,8 +129,8 @@ export class AdminCatalogStore {
 		)
 	);
 
-	isoStorageOptions = $derived([...new Set(this.isos.map((i) => i.storage))].sort());
-	isoNodeOptions = $derived([...new Set(this.isos.map((i) => i.node))].sort());
+	isoStorageOptions = $derived([...new SvelteSet(this.isos.map((i) => i.storage))].sort());
+	isoNodeOptions = $derived([...new SvelteSet(this.isos.map((i) => i.node))].sort());
 
 	filteredStorages = $derived(
 		sortStorages(
@@ -153,8 +154,8 @@ export class AdminCatalogStore {
 		)
 	);
 
-	storageNodeOptions = $derived([...new Set(this.storages.map((s) => s.node))].sort());
-	storageTypeOptions = $derived([...new Set(this.storages.map((s) => s.type))].sort());
+	storageNodeOptions = $derived([...new SvelteSet(this.storages.map((s) => s.node))].sort());
+	storageTypeOptions = $derived([...new SvelteSet(this.storages.map((s) => s.type))].sort());
 
 	filteredBridges = $derived(
 		sortBridges(
@@ -179,7 +180,7 @@ export class AdminCatalogStore {
 		)
 	);
 
-	bridgeNodeOptions = $derived([...new Set(this.bridges.map((b) => b.node))].sort());
+	bridgeNodeOptions = $derived([...new SvelteSet(this.bridges.map((b) => b.node))].sort());
 
 	filteredNodes = $derived(
 		sortNodes(
@@ -195,7 +196,7 @@ export class AdminCatalogStore {
 		)
 	);
 
-	nodeStatusFilterOptions = $derived([...new Set(this.nodes.map((n) => n.status))].sort());
+	nodeStatusFilterOptions = $derived([...new SvelteSet(this.nodes.map((n) => n.status))].sort());
 
 	setStorageSort(column: StorageSortColumn): void {
 		if (this.storageSortBy === column) {

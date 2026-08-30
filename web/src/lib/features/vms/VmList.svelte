@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SvelteMap } from 'svelte/reactivity';
 	import {
 		getVmListContext,
 		SORTABLE_COLUMNS,
@@ -139,7 +140,7 @@
 		}
 	] as const;
 
-	let rowActionInFlight = $state<Map<string, VmAction>>(new Map());
+	const rowActionInFlight = new SvelteMap<string, VmAction>();
 
 	function rowActionKey(cluster: string, vmid: number): string {
 		return `${cluster}:${vmid}`;
@@ -162,9 +163,7 @@
 	): Promise<void> {
 		if (isRowActionInFlight(cluster, vmid) || !isQuickActionApplicable(action, status)) return;
 		const key = rowActionKey(cluster, vmid);
-		const next = new Map(rowActionInFlight);
-		next.set(key, action.kind);
-		rowActionInFlight = next;
+		rowActionInFlight.set(key, action.kind);
 		try {
 			const result = await store.rowAction(cluster, vmid, action.kind);
 			if (result.ok) {
@@ -173,9 +172,7 @@
 				toast.error(m['toast.vmActionFailed']({ error: result.error ?? m['error.generic']() }));
 			}
 		} finally {
-			const clear = new Map(rowActionInFlight);
-			clear.delete(key);
-			rowActionInFlight = clear;
+			rowActionInFlight.delete(key);
 		}
 	}
 

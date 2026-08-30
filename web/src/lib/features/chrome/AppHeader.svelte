@@ -12,6 +12,8 @@
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
 	import StatusBanner from './StatusBanner.svelte';
+	import MenuIcon from '$lib/shared/ui/icons/MenuIcon.svelte';
+	import CloseIcon from '$lib/shared/ui/icons/CloseIcon.svelte';
 	import { resolve } from '$app/paths';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -45,58 +47,56 @@
 <StatusBanner />
 
 <header
-	class="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-background/80 px-5 py-3 backdrop-blur-md"
+	class="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-5 backdrop-blur-md"
 	aria-label={m['chrome.header.ariaLabel']()}
 >
 	<button
 		type="button"
-		class="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
+		class="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:hidden"
 		aria-label={m['chrome.sidebar.drawerOpen']()}
 		aria-expanded={chrome.sidebarOpen}
 		aria-controls="app-sidebar-drawer"
 		onclick={() => chrome.openSidebar()}
 		data-testid="sidebar-menu-button"
 	>
-		<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-			<line x1="4" y1="7" x2="20" y2="7" />
-			<line x1="4" y1="12" x2="20" y2="12" />
-			<line x1="4" y1="17" x2="20" y2="17" />
-		</svg>
+		<MenuIcon />
 	</button>
 
 	<div class="flex-1"></div>
 
-	<a
-		href={resolve('/docs')}
-		class="rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-	>
-		{m['chrome.header.docs']()}
-	</a>
+	<nav class="flex items-center gap-1.5" aria-label={m['nav.language']()}>
+		<a
+			href={resolve('/docs')}
+			class="inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		>
+			{m['chrome.header.docs']()}
+		</a>
 
-	<button
-		type="button"
-		class="relative rounded-lg px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-		aria-label={tray.tasks.length > 0
-			? m['chrome.header.activityWithCount']({ count: tray.tasks.length })
-			: m['chrome.header.activity']()}
-		aria-expanded={chrome.activityOpen}
-		aria-controls="activity-drawer"
-		onclick={() => chrome.toggleActivity()}
-		data-testid="activity-button"
-	>
-		{m['chrome.header.activity']()}
-		{#if tray.tasks.length > 0}
-			<span
-				class="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground"
-				aria-hidden="true"
-			>
-				{tray.tasks.length}
-			</span>
-		{/if}
+		<button
+			type="button"
+			class="relative inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+			aria-label={tray.tasks.length > 0
+				? m['chrome.header.activityWithCount']({ count: tray.tasks.length })
+				: m['chrome.header.activity']()}
+			aria-expanded={chrome.activityOpen}
+			aria-controls="activity-drawer"
+			onclick={() => chrome.toggleActivity()}
+			data-testid="activity-button"
+		>
+			{m['chrome.header.activity']()}
+			{#if tray.tasks.length > 0}
+				<span
+					class="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground"
+					aria-hidden="true"
+				>
+					{tray.tasks.length}
+				</span>
+			{/if}
 		</button>
 
 		<LanguageSwitcher />
-	<ThemeToggle />
+		<ThemeToggle />
+	</nav>
 </header>
 
 {#if chrome.activityOpen}
@@ -121,14 +121,11 @@
 			<h2 class="text-sm font-semibold">{m['activity.heading']()}</h2>
 			<button
 				type="button"
-				class="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				aria-label={m['common.close']()}
 				onclick={() => chrome.closeActivity()}
 			>
-				<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-					<line x1="6" y1="6" x2="18" y2="18" />
-					<line x1="18" y1="6" x2="6" y2="18" />
-				</svg>
+				<CloseIcon />
 			</button>
 		</div>
 		{#if tray.tasks.length === 0}

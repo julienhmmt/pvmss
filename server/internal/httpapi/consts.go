@@ -33,6 +33,7 @@ const (
 	msgPolicyUnavailable     = "policy service is not configured"
 	msgClusterNotFound       = "cluster not found"
 	msgAdminOnly             = "admin only"
+	msgClusterUnavailable    = "cluster is unavailable"
 	msgNotReportedByCluster  = " not reported by the cluster"
 	msgOnNode                = `" on node "`
 )

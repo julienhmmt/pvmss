@@ -10,6 +10,7 @@ const KNOWN_ERROR_CODES: Partial<Record<string, () => string>> = {
 	invalid_request: m['login.error.invalidRequest'],
 	cluster_required: m['login.error.clusterRequired'],
 	invalid_cluster: m['login.error.invalidCluster'],
+	cluster_unavailable: m['login.error.clusterUnavailable'],
 	not_found: m['login.error.oidcNotEnabled']
 };
 
@@ -38,8 +39,13 @@ export class LoginForm {
 	provider = $state.raw<LoginProvider>('pve');
 	clusters = $state.raw<ClusterOption[]>([]);
 	cluster = $state.raw('');
+	pveDisabled = $state.raw(false);
 	loading = $state.raw(false);
 	error = $state.raw<string | null>(null);
+
+	setPveDisabled(value: boolean): void {
+		this.pveDisabled = value;
+	}
 
 	async loadClusters(): Promise<void> {
 		try {
@@ -61,6 +67,10 @@ export class LoginForm {
 		try {
 			if (this.provider === 'local') {
 				return await post<Principal>('/api/v1/auth/admin-login', { password: this.password });
+			}
+			if (this.pveDisabled) {
+				this.error = m['login.error.clusterUnavailable']();
+				return null;
 			}
 			const username = this.username.includes('@') ? this.username : `${this.username}@pve`;
 			const request: { username: string; password: string; cluster?: string } = {

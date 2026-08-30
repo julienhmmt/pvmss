@@ -17,6 +17,7 @@
 	import CapabilitiesPanel from '$lib/features/chrome/CapabilitiesPanel.svelte';
 	import AppHeader from '$lib/features/chrome/AppHeader.svelte';
 	import HeaderLite from '$lib/features/chrome/HeaderLite.svelte';
+	import StatusBanner from '$lib/features/chrome/StatusBanner.svelte';
 	import ShortcutsDialog from '$lib/features/chrome/ShortcutsDialog.svelte';
 	import Toaster from '$lib/shared/ui/Toaster.svelte';
 	import { setToastContext } from '$lib/shared/ui/toast.svelte';
@@ -60,6 +61,8 @@
 	}
 
 	let version = $state<string | null>(null);
+	const githubUrl = 'https://github.com/julienhmmt/pvmss';
+	const websiteUrl = 'https://j.hommet.net/pvmss';
 	onMount(async () => {
 		try {
 			const result = await get<{ version: string }>('/api/v1/public/version');
@@ -136,6 +139,7 @@
 	const hasRouteError = $derived(page.error !== null);
 	const isHomePage = $derived(page.route.id === '/');
 	const isAboutPage = $derived(page.route.id === '/about');
+	const isLoginPage = $derived(page.route.id === '/login');
 	const showCapabilitiesPanel = $derived(signedIn && !isHomePage && !isAboutPage);
 	let shortcutsOpen = $state(false);
 
@@ -161,7 +165,7 @@
 		</a>
 		<div class="flex min-h-screen">
 			<div class="sticky top-0 hidden h-screen min-[900px]:flex">
-				<Sidebar {version} />
+				<Sidebar />
 			</div>
 
 			<dialog
@@ -171,7 +175,7 @@
 				aria-label={m['chrome.sidebar.ariaLabel']()}
 				class="drawer-slide-in-left fixed left-0 top-0 m-0 h-full w-[260px] max-w-full border-0 p-0 min-[900px]:hidden"
 			>
-				<Sidebar {version} />
+				<Sidebar />
 			</dialog>
 
 			<div class="flex min-w-0 flex-1 flex-col">
@@ -194,8 +198,16 @@
 						</div>
 					</div>
 				{/if}
-				<footer class="border-t border-border px-7 py-3 text-xs text-muted-foreground-subtle">
+				<footer class="flex items-center justify-between gap-4 border-t border-border px-7 py-3 text-xs text-muted-foreground-subtle">
 					{#if version}PVMSS {version}{/if}
+					<div class="flex items-center gap-4">
+						<a href={githubUrl} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
+							{m['chrome.footer.github']()}
+						</a>
+						<a href={websiteUrl} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
+							{m['chrome.footer.website']()}
+						</a>
+					</div>
 				</footer>
 			</div>
 		</div>
@@ -209,8 +221,14 @@
 		>
 			{m['chrome.skipToContent']()}
 		</a>
-		<HeaderLite />
-		<main id="main-content" class="flex flex-1 flex-col items-center justify-center p-6">
+		<StatusBanner />
+		{#if !isLoginPage}
+			<HeaderLite />
+		{/if}
+		<main
+			id="main-content"
+			class="flex flex-1 flex-col {isLoginPage ? 'h-full' : 'items-center justify-center p-6'}"
+		>
 			{#if hasRouteError}
 				{@render children()}
 			{:else if !routeChecked && !isPublicPath(page.url.pathname)}
@@ -221,9 +239,19 @@
 				{@render children()}
 			{/if}
 		</main>
-		<footer class="border-t border-border py-3 text-center text-xs text-muted-foreground-subtle">
-			{#if version}PVMSS {version}{/if}
-		</footer>
+		{#if !isLoginPage}
+			<footer class="border-t border-border py-3 text-center text-xs text-muted-foreground-subtle">
+				{#if version}PVMSS {version}{/if}
+				<div class="mt-1 flex items-center justify-center gap-4">
+					<a href={githubUrl} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
+						{m['chrome.footer.github']()}
+					</a>
+					<a href={websiteUrl} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
+						{m['chrome.footer.website']()}
+					</a>
+				</div>
+			</footer>
+		{/if}
 	</div>
 {/if}
 
