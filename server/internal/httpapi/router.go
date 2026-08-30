@@ -14,10 +14,15 @@ import (
 )
 
 const (
-	authRateLimitMaxRequests        = 10
-	authRateLimitWindow             = time.Minute
-	vmWriteRateLimitMaxRequests     = 30
-	vmWriteRateLimitWindow          = time.Minute
+	authRateLimitMaxRequests    = 10
+	authRateLimitWindow         = time.Minute
+	vmWriteRateLimitMaxRequests = 30
+	vmWriteRateLimitWindow      = time.Minute
+	// vmStatusRateLimitMaxRequests allows the frontend convergence loop to
+	// poll batch live status every 1.5s for up to 30s per action (20 polls),
+	// with headroom for concurrent actions.
+	vmStatusRateLimitMaxRequests    = 120
+	vmStatusRateLimitWindow         = time.Minute
 	clusterTestRateLimitMaxRequests = 10
 	clusterTestRateLimitWindow      = time.Minute
 	adminWriteRateLimitMaxRequests  = 60
@@ -49,6 +54,7 @@ type RouterConfig struct {
 	VMs              http.Handler
 	VMDetail         http.Handler
 	VMBulk           *VMBulk
+	VMStatusBatch    *VMStatusBatch
 	VMCloudInit      *VMCloudInit
 	VMCreate         *VMCreate
 	Tasks            *Tasks
@@ -80,6 +86,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	hops := cfg.TrustedProxyHops
 	csrf := newCSRFMiddleware(cfg.Auth, cfg.Store, hops)
 	vmWriteLimiter := newUserRateLimiter(vmWriteRateLimitMaxRequests, vmWriteRateLimitWindow, hops, cfg.Store)
+	vmStatusLimiter := newUserRateLimiter(vmStatusRateLimitMaxRequests, vmStatusRateLimitWindow, hops, cfg.Store)
 	clusterTestLimiter := newUserRateLimiter(clusterTestRateLimitMaxRequests, clusterTestRateLimitWindow, hops, cfg.Store)
 	adminWriteLimiter := newUserRateLimiter(adminWriteRateLimitMaxRequests, adminWriteRateLimitWindow, hops, cfg.Store)
 	authWriteLimiter := newUserRateLimiter(authWriteRateLimitMaxRequests, authWriteRateLimitWindow, hops, cfg.Store)
@@ -97,6 +104,43 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	mux.Handle("GET /health", cfg.Health)
 	mux.Handle("GET /api/v1/cluster/nodes", cfg.Auth.Require(cfg.ClusterNodes))
 	mux.Handle("POST /api/v1/cluster/refresh", protect(cfg.Auth.Require(cfg.ClusterRefresh), clusterTestLimiter))
+
+	registerVMRoutes(mux, cfg, protect, vmWriteLimiter, vmStatusLimiter)
+	registerAuthRoutes(mux, cfg, protect, authWriteLimiter, hops)
+
+	// Issue #53 public documentation — audience-filtered list and rendered
+	// single-page view. Not wrapped in auth.Require: the handler resolves the
+	// caller itself (to hide admin-audience pages from non-admins) and issues
+	// its own 401/403 on admin-audience pages.
+	if cfg.Docs != nil {
+		mux.Handle("GET /api/v1/docs", http.HandlerFunc(cfg.Docs.ServeDocsList))
+		mux.Handle("GET /api/v1/docs/{id}", http.HandlerFunc(cfg.Docs.ServeDoc))
+	}
+
+	// Admin-only route groups (T11/T12/T13/T14/T18/issue#53). Each group is
+	// wired by its own helper behind the RequireAdmin guard (FR-008). Extracted
+	// from NewRouter to keep its Cognitive Complexity under the SonarQube
+	// go:S3776 threshold.
+	registerAdminRoutes(mux, cfg, adminProtect)
+
+	registerAPINotFound(mux, cfg)
+	registerSPA(mux, cfg)
+
+	// Wrap the entire mux with security headers so every response (API and
+	// SPA) gets CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy,
+	// Permissions-Policy, HSTS, and cache-control for API paths.
+	return withSecurityHeaders(mux)
+}
+
+// protectFunc is the signature of NewRouter's `protect` closure, factored out
+// so the extracted route-registration helpers can take it as a parameter.
+type protectFunc func(next http.Handler, limiter *userRateLimiter) http.Handler
+
+// registerVMRoutes wires the VM, task, console, serial, snapshot, and metrics
+// routes. Extracted from NewRouter to keep its cyclomatic complexity under
+// gocyclo's ceiling. The handlers call h.auth.Principal(r) directly and return
+// 401 on their own, so they are not wrapped in auth.Require.
+func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc, vmWriteLimiter, vmStatusLimiter *userRateLimiter) {
 	// Not wrapped in auth.Require: the handler needs the resolved Identity
 	// itself (for scope enforcement) and calls h.auth.Principal(r) directly,
 	// returning 401 on its own — wrapping would just re-run the same check.
@@ -107,6 +151,13 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	// {cluster}/{vmid} pattern so the literal "bulk-action" segment wins.
 	if cfg.VMBulk != nil {
 		mux.Handle("POST /api/v1/vms/bulk-action", protect(cfg.VMBulk, vmWriteLimiter))
+	}
+	// Batch live-status read (ADR 0001). Registered before the
+	// {cluster}/{vmid} pattern so the literal "status" segment wins, same
+	// reason as bulk-action above. Wrapped in protect for CSRF (it takes a
+	// POST body) with a read-oriented rate limit.
+	if cfg.VMStatusBatch != nil {
+		mux.Handle("POST /api/v1/vms/status", protect(cfg.VMStatusBatch, vmStatusLimiter))
 	}
 	// VM creation + catalog + task polling — same Principal pattern as above.
 	if cfg.VMCreate != nil {
@@ -124,6 +175,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}", protect(cfg.VMDetail, vmWriteLimiter))
 	mux.Handle("PATCH /api/v1/vms/{cluster}/{vmid}", protect(cfg.VMDetail, vmWriteLimiter))
 	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/hardware-options", cfg.VMDetail)
+	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/status", cfg.VMDetail)
 	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/disks", protect(cfg.VMDetail, vmWriteLimiter))
 	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/disks/{diskKey}/resize", protect(cfg.VMDetail, vmWriteLimiter))
 	mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/disks/{diskKey}", protect(cfg.VMDetail, vmWriteLimiter))
@@ -160,7 +212,12 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/metrics/history", cfg.VMMetrics)
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/metrics/stream", cfg.VMMetrics)
 	}
+}
 
+// registerAuthRoutes wires the unauthenticated credential-check endpoints
+// (per-IP rate limited) and the authenticated token/password endpoints
+// (per-user rate limited + CSRF). Extracted from NewRouter for gocyclo.
+func registerAuthRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc, authWriteLimiter *userRateLimiter, hops int) {
 	// Unauthenticated credential-check endpoints get a per-IP rate limit —
 	// nothing else gates repeated guesses against them. The pre-login cluster
 	// list and OIDC trigger are also unauthenticated and disclose cluster
@@ -176,22 +233,11 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	mux.HandleFunc("GET /api/v1/auth/tokens", cfg.Auth.ListTokens)
 	mux.Handle("DELETE /api/v1/auth/tokens/{id}", protect(http.HandlerFunc(cfg.Auth.RevokeToken), authWriteLimiter))
 	mux.Handle("POST /api/v1/auth/password", protect(http.HandlerFunc(cfg.Auth.ChangePassword), authWriteLimiter))
+}
 
-	// Issue #53 public documentation — audience-filtered list and rendered
-	// single-page view. Not wrapped in auth.Require: the handler resolves the
-	// caller itself (to hide admin-audience pages from non-admins) and issues
-	// its own 401/403 on admin-audience pages.
-	if cfg.Docs != nil {
-		mux.Handle("GET /api/v1/docs", http.HandlerFunc(cfg.Docs.ServeDocsList))
-		mux.Handle("GET /api/v1/docs/{id}", http.HandlerFunc(cfg.Docs.ServeDoc))
-	}
-
-	// Admin-only route groups (T11/T12/T13/T14/T18/issue#53). Each group is
-	// wired by its own helper behind the RequireAdmin guard (FR-008). Extracted
-	// from NewRouter to keep its Cognitive Complexity under the SonarQube
-	// go:S3776 threshold.
-	registerAdminRoutes(mux, cfg, adminProtect)
-
+// registerAPINotFound installs the catch-all 404 for unknown /api/ paths across
+// every method the SPA might use. Extracted from NewRouter for gocyclo.
+func registerAPINotFound(mux *http.ServeMux, cfg RouterConfig) {
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
 		mux.Handle(method+" /api/", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			if err := writeError(w, http.StatusNotFound, "unknown API path"); err != nil {
@@ -199,20 +245,21 @@ func NewRouter(cfg RouterConfig) http.Handler {
 			}
 		}))
 	}
+}
 
-	if cfg.WebBuildDir != "" {
-		spa := &spaHandler{
-			root:  http.Dir(cfg.WebBuildDir),
-			index: "/index.html",
-			log:   cfg.Log,
-		}
-		mux.Handle("GET /", spa)
+// registerSPA wires the static SPA handler when WebBuildDir is set. Extracted
+// from NewRouter for gocyclo.
+func registerSPA(mux *http.ServeMux, cfg RouterConfig) {
+	if cfg.WebBuildDir == "" {
+		return
 	}
 
-	// Wrap the entire mux with security headers so every response (API and
-	// SPA) gets CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy,
-	// Permissions-Policy, HSTS, and cache-control for API paths.
-	return withSecurityHeaders(mux)
+	spa := &spaHandler{
+		root:  http.Dir(cfg.WebBuildDir),
+		index: "/index.html",
+		log:   cfg.Log,
+	}
+	mux.Handle("GET /", spa)
 }
 
 // newAdminProtect builds the admin authorization guard used by NewRouter.

@@ -5,10 +5,13 @@ import (
 	"errors"
 	"mime/multipart"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestParseCloudInitConfig(t *testing.T) {
@@ -406,4 +409,189 @@ func readMultipartFileBody(t *testing.T, file multipart.File) string {
 	}
 
 	return body.String()
+}
+
+// withAgentExecTiming temporarily shortens the agent-exec polling constants so
+// tests can exercise the ticker/deadline loop in milliseconds instead of real
+// seconds. It restores the originals on cleanup. The waitAgentExec tests are
+// NOT parallel because they mutate these package-level vars.
+func withAgentExecTiming(t *testing.T, poll, wait time.Duration) {
+	t.Helper()
+
+	prevPoll, prevWait := agentExecPoll, maxAgentExecWait
+	agentExecPoll = poll
+	maxAgentExecWait = wait
+
+	t.Cleanup(func() {
+		agentExecPoll = prevPoll
+		maxAgentExecWait = prevWait
+	})
+}
+
+// newAgentExecStatusServer builds a test Proxmox server whose exec-status
+// handler delegates to respond, passing the 1-based request count so callers
+// can vary the response per poll. The returned counter lets callers assert the
+// request bound.
+func newAgentExecStatusServer(t *testing.T, respond func(count int) string) (*httptest.Server, *int32) {
+	t.Helper()
+
+	var count int32
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/nodes/node01/qemu/101/agent/exec-status", func(w http.ResponseWriter, _ *http.Request) {
+			n := atomic.AddInt32(&count, 1)
+			writeJSONFixture(t, w, respond(int(n)))
+		})
+	})
+
+	return srv, &count
+}
+
+// TestProxmox_WaitAgentExec_EventualCompletion verifies the loop polls until
+// the guest reports completion: the first few polls return "running", then one
+// returns exited with exit code 0. The request count equals the number of
+// polls actually made (no busy-loop hammering).
+//
+//nolint:paralleltest // serial: mutates package-level agentExecPoll/maxAgentExecWait
+func TestProxmox_WaitAgentExec_EventualCompletion(t *testing.T) {
+	withAgentExecTiming(t, 5*time.Millisecond, 200*time.Millisecond)
+
+	srv, countPtr := newAgentExecStatusServer(t, func(n int) string {
+		if n < 3 {
+			return `{"data":{"exited":false}}`
+		}
+
+		return `{"data":{"exited":true,"exitcode":0}}`
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	start := time.Now()
+
+	if err := p.waitAgentExec(context.Background(), testNodeName, testVMID, 4242); err != nil {
+		t.Fatalf("waitAgentExec: %v", err)
+	}
+
+	elapsed := time.Since(start)
+
+	if got := atomic.LoadInt32(countPtr); got != 3 {
+		t.Errorf("request count = %d, want 3 (first two running, third completed)", got)
+	}
+
+	if elapsed > 100*time.Millisecond {
+		t.Errorf("elapsed = %v, want well under the 200ms deadline", elapsed)
+	}
+}
+
+// TestProxmox_WaitAgentExec_Timeout verifies that when the guest never reports
+// completion, the loop gives up after maxAgentExecWait with the named timeout
+// error and a request count bounded by maxAgentExecWait/agentExecPoll (not
+// hundreds).
+//
+//nolint:paralleltest // serial: mutates package-level agentExecPoll/maxAgentExecWait
+func TestProxmox_WaitAgentExec_Timeout(t *testing.T) {
+	withAgentExecTiming(t, 5*time.Millisecond, 60*time.Millisecond)
+
+	srv, countPtr := newAgentExecStatusServer(t, func(_ int) string {
+		return `{"data":{"exited":false}}`
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	err := p.waitAgentExec(context.Background(), testNodeName, testVMID, 4242)
+	if err == nil {
+		t.Fatal("expected a timeout error, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "guest agent did not report exec completion") {
+		t.Errorf("err = %q, want the named timeout error mentioning qemu-guest-agent", err.Error())
+	}
+
+	// maxAgentExecWait/agentExecPoll = 12, plus the immediate first poll =>
+	// ~13. Allow jitter but reject a busy loop (hundreds).
+	if got := atomic.LoadInt32(countPtr); got > 20 {
+		t.Errorf("request count = %d, want bounded by ~maxAgentExecWait/agentExecPoll (not hundreds)", got)
+	}
+}
+
+// TestProxmox_WaitAgentExec_ExitCodes preserves the exit-code mapping: 0 is
+// success, 3 is ErrSSHKeyUserUnknown, any other non-zero surfaces the guest
+// stderr. These resolve on the immediate first poll so timing is irrelevant.
+//
+//nolint:paralleltest // serial: mutates package-level agentExecPoll/maxAgentExecWait
+func TestProxmox_WaitAgentExec_ExitCodes(t *testing.T) {
+	withAgentExecTiming(t, 50*time.Millisecond, time.Second)
+
+	cases := []struct {
+		name    string
+		exit    int
+		wantErr error
+		wantMsg string
+	}{
+		{"exit 0 is success", 0, nil, ""},
+		{"exit 3 is user unknown", 3, ErrSSHKeyUserUnknown, ""},
+		{"exit 1 surfaces stderr", 1, nil, "guest agent ssh-key add failed (exit 1)"},
+	}
+
+	for _, tc := range cases {
+		//nolint:paralleltest // serial: parent mutates package-level timing vars
+		t.Run(tc.name, func(t *testing.T) {
+			srv, _ := newAgentExecStatusServer(t, func(_ int) string {
+				return `{"data":{"exited":true,"exitcode":` + strconv.Itoa(tc.exit) + `,"err-data":"boom"}}`
+			})
+
+			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+			err := p.waitAgentExec(context.Background(), testNodeName, testVMID, 4242)
+
+			switch {
+			case tc.wantErr != nil:
+				if !errors.Is(err, tc.wantErr) {
+					t.Fatalf("err = %v, want %v", err, tc.wantErr)
+				}
+			case tc.wantMsg != "":
+				if err == nil || !strings.Contains(err.Error(), tc.wantMsg) {
+					t.Fatalf("err = %v, want message containing %q", err, tc.wantMsg)
+				}
+			default:
+				if err != nil {
+					t.Fatalf("err = %v, want nil", err)
+				}
+			}
+		})
+	}
+}
+
+// TestProxmox_WaitAgentExec_ContextCancelled verifies that cancelling the
+// context mid-loop terminates promptly (within one poll interval) rather than
+// waiting for the deadline.
+//
+//nolint:paralleltest // serial: mutates package-level agentExecPoll/maxAgentExecWait
+func TestProxmox_WaitAgentExec_ContextCancelled(t *testing.T) {
+	withAgentExecTiming(t, 20*time.Millisecond, 5*time.Second)
+
+	srv, _ := newAgentExecStatusServer(t, func(_ int) string {
+		return `{"data":{"exited":false}}`
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		time.Sleep(30 * time.Millisecond)
+		cancel()
+	}()
+
+	start := time.Now()
+	err := p.waitAgentExec(ctx, testNodeName, testVMID, 4242)
+	elapsed := time.Since(start)
+
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v, want context.Canceled", err)
+	}
+
+	if elapsed > 500*time.Millisecond {
+		t.Errorf("elapsed = %v, want prompt cancellation (well under the 5s deadline)", elapsed)
+	}
 }

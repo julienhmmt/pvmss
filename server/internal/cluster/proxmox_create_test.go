@@ -459,3 +459,88 @@ func TestProxmox_CreateVM_NoUEFI(t *testing.T) {
 		}
 	}
 }
+
+// TestProxmox_CreateVM_AgentOSTypeBoot asserts the issue-03 form keys:
+// agent=1 and ostype=l26 are always present, and boot=order= is built only
+// from the devices the spec actually created (disk bus + ISO cdrom key).
+func TestProxmox_CreateVM_AgentOSTypeBoot(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		disk     DiskSpec
+		iso      *ISOSpec
+		wantBoot string
+	}{
+		{
+			name:     "disk and ISO",
+			disk:     DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 32, Bus: string(DiskBusSCSI)},
+			iso:      &ISOSpec{Storage: FakeStorageLocal, File: "debian-12.iso"},
+			wantBoot: "order=scsi0;ide2",
+		},
+		{
+			name:     "disk alone",
+			disk:     DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 32, Bus: string(DiskBusSCSI)},
+			iso:      nil,
+			wantBoot: "order=scsi0",
+		},
+		{
+			name:     "virtio bus disk",
+			disk:     DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 32, Bus: string(DiskBusVirtio)},
+			iso:      nil,
+			wantBoot: "order=virtio0",
+		},
+		{
+			name:     "neither disk nor ISO omits boot key",
+			disk:     DiskSpec{Bus: string(DiskBusSCSI)},
+			iso:      nil,
+			wantBoot: "",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var gotForm url.Values
+
+			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+				mux.HandleFunc("POST /api2/json/nodes/node01/qemu", func(w http.ResponseWriter, r *http.Request) {
+					if err := r.ParseForm(); err != nil {
+						t.Fatalf("parse form: %v", err)
+					}
+
+					gotForm = r.Form
+
+					writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmcreate:110:pvmss@pve:"}`)
+				})
+			})
+
+			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+			spec := VMSpec{
+				VMID: 110, Node: testNodeName, Name: "boot-test", Pool: FakePoolAliceShort,
+				Sockets: 1, CPUCores: 2, MemoryMB: 2048,
+				Disk:    tc.disk,
+				Network: NetworkSpec{{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)}},
+				ISO:     tc.iso,
+			}
+
+			if _, err := p.CreateVM(context.Background(), spec); err != nil {
+				t.Fatalf("CreateVM: %v", err)
+			}
+
+			if gotForm.Get("agent") != "1" {
+				t.Errorf("agent = %q, want 1 (QEMU guest agent must be enabled at create time)", gotForm.Get("agent"))
+			}
+
+			if gotForm.Get("ostype") != "l26" {
+				t.Errorf("ostype = %q, want l26 (every catalog entry is Linux)", gotForm.Get("ostype"))
+			}
+
+			if gotForm.Get("boot") != tc.wantBoot {
+				t.Errorf("boot = %q, want %q", gotForm.Get("boot"), tc.wantBoot)
+			}
+		})
+	}
+}

@@ -330,7 +330,11 @@
 								{machine.node}
 							</td>
 							<td class="px-4 py-3" data-label={m['vms.list.columnStatus']()}>
-								<Pill tone={statusTone[machine.status]} label={statusLabels[machine.status]()} />
+								<Pill
+									tone={statusTone[machine.status]}
+									label={statusLabels[machine.status]()}
+									pending={isRowActionInFlight(machine.cluster, machine.vmid)}
+							/>
 							</td>
 							<td class="px-4 py-3 font-mono text-muted-foreground" data-label={m['vms.list.columnCpu']()}>
 								{machine.cpuCores} {m['common.cores']()}

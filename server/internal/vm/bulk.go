@@ -77,6 +77,14 @@ type ClusterWriterResolver interface {
 	WriterFor(cluster string) (cluster.Writer, error)
 }
 
+// ClusterRefresherResolver resolves the IndexRefresher for a named cluster —
+// the refresh-side sibling of ClusterWriterResolver (ticket 09). BulkAction
+// refreshes once per distinct affected cluster after the loop, not once per
+// target.
+type ClusterRefresherResolver interface {
+	RefresherFor(cluster string) (IndexRefresher, error)
+}
+
 // BulkDeps groups the collaborators BulkAction (and the per-target Action it
 // loops over) need beyond the per-request arguments (ctx, targets, kind).
 // Bundling them keeps BulkAction's and Action's parameter counts under
@@ -85,12 +93,18 @@ type ClusterWriterResolver interface {
 // per target; Action ignores them and uses Writer directly (its caller
 // already resolved the one clusterName it needs before constructing deps).
 type BulkDeps struct {
-	Resolver       ClusterIndexResolver
-	WriterResolver ClusterWriterResolver
-	Actor          auth.Identity
-	Writer         cluster.Writer
-	Audit          AuditRecorder
-	Refresher      IndexRefresher
+	Resolver          ClusterIndexResolver
+	WriterResolver    ClusterWriterResolver
+	RefresherResolver ClusterRefresherResolver
+	Actor             auth.Identity
+	Writer            cluster.Writer
+	Audit             AuditRecorder
+	Refresher         IndexRefresher
+	// StatusReader reads live VM status for shutdown escalation (ticket 05).
+	// Nil when the caller does not support escalation (legacy callers).
+	StatusReader cluster.VMStatusReader
+	// Force authorizes shutdown to skip ACPI and go directly to stop (ticket 05).
+	Force bool
 }
 
 // BulkAction performs one power transition on every target in targets, in
@@ -118,11 +132,40 @@ func BulkAction(
 	kind string,
 ) []BulkTargetResult {
 	results := make([]BulkTargetResult, 0, len(targets))
+	affectedClusters := make(map[string]struct{})
+
 	for _, target := range targets {
 		results = append(results, bulkActionResultFor(ctx, deps, target, kind))
+		affectedClusters[target.Cluster] = struct{}{}
 	}
 
+	// Refresh once per distinct affected cluster (ticket 09). Not once per
+	// target — that was N redundant cluster snapshots. Best-effort: a refresh
+	// failure is logged, not returned, so the batch result is unaffected.
+	refreshAfterBulk(ctx, deps, affectedClusters)
+
 	return results
+}
+
+// refreshAfterBulk refreshes the projection once per distinct cluster that
+// was targeted by the bulk action. Uses the per-cluster RefresherResolver
+// when available (multi-cluster), falling back to the single Refresher
+// (single-cluster mode). Best-effort — errors are swallowed.
+func refreshAfterBulk(ctx context.Context, deps BulkDeps, clusters map[string]struct{}) {
+	for clusterName := range clusters {
+		refresher := deps.Refresher
+		if deps.RefresherResolver != nil {
+			if r, err := deps.RefresherResolver.RefresherFor(clusterName); err == nil {
+				refresher = r
+			}
+		}
+
+		if refresher == nil {
+			continue
+		}
+
+		_, _ = refresher.Refresh(ctx)
+	}
 }
 
 // bulkActionResultFor resolves and performs the action for a single target and

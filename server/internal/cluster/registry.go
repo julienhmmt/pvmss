@@ -149,7 +149,13 @@ func factoryForSource(source string) (ClientFactory, error) {
 			if row.TokenID == "" || row.TokenSecret == "" {
 				return nil, errors.New("cluster credentials are required")
 			}
-			return Proxmox{BaseURL: row.URL, APITokenName: row.TokenID, APITokenValue: row.TokenSecret, TLSInsecureSkipVerify: row.TLSInsecureSkipVerify}, nil
+			return Proxmox{
+				BaseURL:               row.URL,
+				APITokenName:          row.TokenID,
+				APITokenValue:         row.TokenSecret,
+				TLSInsecureSkipVerify: row.TLSInsecureSkipVerify,
+				httpClient:            newProxmoxHTTPClient(row.TLSInsecureSkipVerify),
+			}, nil
 		}, nil
 	default:
 		return nil, fmt.Errorf("unknown cluster source %q", source)

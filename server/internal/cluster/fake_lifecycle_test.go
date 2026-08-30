@@ -186,3 +186,59 @@ func TestFake_HardwareNetwork(t *testing.T) {
 		t.Fatalf("UpdateNetwork: %v", err)
 	}
 }
+
+// TestFake_VMStatus verifies the fake's VMStatusReader returns the live status
+// from its in-memory state, including the injectable lock field.
+func TestFake_VMStatus(t *testing.T) {
+	t.Parallel()
+
+	fake := cluster.NewFake("test-vmstatus")
+	ctx := context.Background()
+
+	// VM 100 is running in the default fake dataset.
+	live, err := fake.VMStatus(ctx, cluster.FakeNode01, 100)
+	if err != nil {
+		t.Fatalf("VMStatus: %v", err)
+	}
+
+	if live.Status != cluster.VMRunning {
+		t.Errorf("status = %q, want %q", live.Status, cluster.VMRunning)
+	}
+
+	if live.Lock != "" {
+		t.Errorf("lock = %q, want empty", live.Lock)
+	}
+
+	// Inject a lock and verify it is reported.
+	fake.SetVMLock(100, "backup")
+
+	live, err = fake.VMStatus(ctx, cluster.FakeNode01, 100)
+	if err != nil {
+		t.Fatalf("VMStatus after lock: %v", err)
+	}
+
+	if live.Lock != "backup" {
+		t.Errorf("lock = %q, want %q", live.Lock, "backup")
+	}
+
+	// Clear the lock.
+	fake.SetVMLock(100, "")
+
+	live, _ = fake.VMStatus(ctx, cluster.FakeNode01, 100)
+	if live.Lock != "" {
+		t.Errorf("lock after clear = %q, want empty", live.Lock)
+	}
+}
+
+// TestFake_VMStatus_NotFound verifies the fake returns ErrNotFound for an
+// unknown VM.
+func TestFake_VMStatus_NotFound(t *testing.T) {
+	t.Parallel()
+
+	fake := cluster.NewFake("test-vmstatus-notfound")
+
+	_, err := fake.VMStatus(context.Background(), cluster.FakeNode01, 99999)
+	if !errors.Is(err, cluster.ErrNotFound) {
+		t.Fatalf("error = %v, want ErrNotFound", err)
+	}
+}

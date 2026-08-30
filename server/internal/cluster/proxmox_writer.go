@@ -7,7 +7,14 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
+
+// shutdownTimeout is the ACPI timeout Proxmox sends to the guest during
+// shutdown. Without it Proxmox waits on the guest's ACPI handler forever,
+// leaving the task open with no recourse in the UI. A var so tests can
+// shorten it; not configurable by env until an operator asks.
+var shutdownTimeout = 60 * time.Second
 
 // proxmoxValidActions mirrors fake.go's validActions — the exhaustive set of
 // power transitions FR-006 accepts. vm.IsValidAction already gates this
@@ -25,6 +32,19 @@ func vmConfigPath(node string, vmid int) string {
 	return fmt.Sprintf("/nodes/%s/qemu/%d/config", url.PathEscape(node), vmid)
 }
 
+// actionForm returns the parameters Proxmox accepts for a given action.
+// shutdown is the only one that needs a bound: without a timeout Proxmox
+// waits on the guest's ACPI handler forever. Other actions send no
+// parameters. skiplock is never sent — PVMSS authenticates by API token,
+// and Proxmox rejects skiplock under token even for root@pam.
+func actionForm(action string) url.Values {
+	if action == actionShutdown {
+		return url.Values{"timeout": {strconv.Itoa(int(shutdownTimeout.Seconds()))}}
+	}
+
+	return nil
+}
+
 // Action implements Writer via POST /nodes/{node}/qemu/{vmid}/status/{action}.
 // Proxmox returns a task UPID; it is discarded — the Writer contract is
 // synchronous (error only), matching how the fake and every caller (vm.Action)
@@ -35,7 +55,8 @@ func (p Proxmox) Action(ctx context.Context, node string, vmid int, action strin
 	}
 
 	_, err := p.rest().do(ctx, http.MethodPost,
-		fmt.Sprintf("/nodes/%s/qemu/%d/status/%s", url.PathEscape(node), vmid, action), nil)
+		fmt.Sprintf("/nodes/%s/qemu/%d/status/%s", url.PathEscape(node), vmid, action),
+		actionForm(action))
 
 	return err
 }
