@@ -165,7 +165,7 @@
 		</a>
 		<div class="flex min-h-screen">
 			<div class="sticky top-0 hidden h-screen min-[900px]:flex">
-				<Sidebar {version} />
+				<Sidebar />
 			</div>
 
 			<dialog
@@ -175,7 +175,7 @@
 				aria-label={m['chrome.sidebar.ariaLabel']()}
 				class="drawer-slide-in-left fixed left-0 top-0 m-0 h-full w-[260px] max-w-full border-0 p-0 min-[900px]:hidden"
 			>
-				<Sidebar {version} />
+				<Sidebar />
 			</dialog>
 
 			<div class="flex min-w-0 flex-1 flex-col">

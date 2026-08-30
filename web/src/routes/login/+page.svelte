@@ -126,6 +126,11 @@
 				>
 					{form.provider === 'pve' ? m['login.useLocalAdmin']() : m['login.backToProxmoxLogin']()}
 				</button>
+				<div class="self-start">
+					<Button variant="ghost" onclick={() => void goto(resolve('/'))}>
+						{m['login.backToMainPage']()}
+					</Button>
+				</div>
 			</Card>
 		</div>
 	</div>

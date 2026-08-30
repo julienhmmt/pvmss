@@ -313,6 +313,7 @@
   "login.usernameRealmHint": "The @pve realm is added automatically.",
   "login.useLocalAdmin": "Sign in as local administrator instead",
   "login.backToProxmoxLogin": "← Back to Proxmox sign-in",
+  "login.backToMainPage": "← Return to main page",
   "login.error.invalidCredentials": "Incorrect username or password.",
   "login.error.invalidRequest": "Username and password are required.",
   "login.error.clusterRequired": "Choose a cluster before signing in.",
