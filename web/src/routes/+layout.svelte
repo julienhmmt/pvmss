@@ -61,6 +61,8 @@
 	}
 
 	let version = $state<string | null>(null);
+	const githubUrl = 'https://github.com/julienhmmt/pvmss';
+	const websiteUrl = 'https://j.hommet.net/pvmss';
 	onMount(async () => {
 		try {
 			const result = await get<{ version: string }>('/api/v1/public/version');
@@ -196,8 +198,16 @@
 						</div>
 					</div>
 				{/if}
-				<footer class="border-t border-border px-7 py-3 text-xs text-muted-foreground-subtle">
+				<footer class="flex items-center justify-between gap-4 border-t border-border px-7 py-3 text-xs text-muted-foreground-subtle">
 					{#if version}PVMSS {version}{/if}
+					<div class="flex items-center gap-4">
+						<a href={githubUrl} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
+							{m['chrome.footer.github']()}
+						</a>
+						<a href={websiteUrl} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
+							{m['chrome.footer.website']()}
+						</a>
+					</div>
 				</footer>
 			</div>
 		</div>
@@ -232,6 +242,14 @@
 		{#if !isLoginPage}
 			<footer class="border-t border-border py-3 text-center text-xs text-muted-foreground-subtle">
 				{#if version}PVMSS {version}{/if}
+				<div class="mt-1 flex items-center justify-center gap-4">
+					<a href={githubUrl} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
+						{m['chrome.footer.github']()}
+					</a>
+					<a href={websiteUrl} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
+						{m['chrome.footer.website']()}
+					</a>
+				</div>
 			</footer>
 		{/if}
 	</div>

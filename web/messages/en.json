@@ -1186,6 +1186,8 @@
   "chrome.header.activity": "Activity",
   "chrome.header.activityWithCount": "Activity, {count} in progress",
   "chrome.header.menu": "Menu",
+  "chrome.footer.github": "GitHub",
+  "chrome.footer.website": "Website",
   "home.empty.title": "No machines yet",
   "home.empty.description": "Create your first machine to get started.",
   "home.empty.create": "New machine",
