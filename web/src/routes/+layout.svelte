@@ -17,6 +17,7 @@
 	import CapabilitiesPanel from '$lib/features/chrome/CapabilitiesPanel.svelte';
 	import AppHeader from '$lib/features/chrome/AppHeader.svelte';
 	import HeaderLite from '$lib/features/chrome/HeaderLite.svelte';
+	import StatusBanner from '$lib/features/chrome/StatusBanner.svelte';
 	import ShortcutsDialog from '$lib/features/chrome/ShortcutsDialog.svelte';
 	import Toaster from '$lib/shared/ui/Toaster.svelte';
 	import { setToastContext } from '$lib/shared/ui/toast.svelte';
@@ -136,6 +137,7 @@
 	const hasRouteError = $derived(page.error !== null);
 	const isHomePage = $derived(page.route.id === '/');
 	const isAboutPage = $derived(page.route.id === '/about');
+	const isLoginPage = $derived(page.route.id === '/login');
 	const showCapabilitiesPanel = $derived(signedIn && !isHomePage && !isAboutPage);
 	let shortcutsOpen = $state(false);
 
@@ -209,8 +211,14 @@
 		>
 			{m['chrome.skipToContent']()}
 		</a>
-		<HeaderLite />
-		<main id="main-content" class="flex flex-1 flex-col items-center justify-center p-6">
+		<StatusBanner />
+		{#if !isLoginPage}
+			<HeaderLite />
+		{/if}
+		<main
+			id="main-content"
+			class="flex flex-1 flex-col {isLoginPage ? 'h-full' : 'items-center justify-center p-6'}"
+		>
 			{#if hasRouteError}
 				{@render children()}
 			{:else if !routeChecked && !isPublicPath(page.url.pathname)}
@@ -221,9 +229,11 @@
 				{@render children()}
 			{/if}
 		</main>
-		<footer class="border-t border-border py-3 text-center text-xs text-muted-foreground-subtle">
-			{#if version}PVMSS {version}{/if}
-		</footer>
+		{#if !isLoginPage}
+			<footer class="border-t border-border py-3 text-center text-xs text-muted-foreground-subtle">
+				{#if version}PVMSS {version}{/if}
+			</footer>
+		{/if}
 	</div>
 {/if}
 
