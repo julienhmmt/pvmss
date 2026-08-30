@@ -13,6 +13,7 @@
 	import type { HTMLInputAttributes } from 'svelte/elements';
 	import EyeIcon from './icons/EyeIcon.svelte';
 	import EyeOffIcon from './icons/EyeOffIcon.svelte';
+	import { m } from '$lib/paraglide/messages.js';
 
 	type InputType = 'text' | 'password' | 'email' | 'url' | 'number' | 'search' | 'tel';
 	type InputMode = 'numeric' | 'decimal' | 'tel' | 'email' | 'url' | 'search';
@@ -118,7 +119,7 @@
 			<button
 				type="button"
 				class="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:text-foreground"
-				aria-label={revealed ? 'Hide password' : 'Show password'}
+				aria-label={revealed ? m['common.hidePassword']() : m['common.showPassword']()}
 				onclick={() => (revealed = !revealed)}
 			>
 				{#if revealed}<EyeOffIcon />{:else}<EyeIcon />{/if}

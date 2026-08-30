@@ -2,6 +2,7 @@
 	import { getLocaleContext } from './locale.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Locale } from '$lib/paraglide/runtime.js';
+	import GlobeIcon from '$lib/shared/ui/icons/GlobeIcon.svelte';
 
 	/**
 	 * LanguageSwitcher — FR/EN options today, structured so a third locale is
@@ -17,19 +18,19 @@
 </script>
 
 <div
-	class="inline-flex items-center gap-1 text-sm"
+	class="inline-flex items-center gap-1.5 text-sm"
 	role="group"
 	aria-label={m['nav.language']()}
 >
-	<span aria-hidden="true" class="text-muted-foreground">🌐</span>
+	<GlobeIcon class="h-4 w-4 text-muted-foreground" />
 	{#each LOCALE_OPTIONS as option (option.value)}
 		<button
 			type="button"
 			aria-pressed={locale.current === option.value}
 			onclick={() => locale.set(option.value)}
-			class="rounded-md px-2 py-1 transition-colors {locale.current === option.value
-				? 'font-medium text-foreground'
-				: 'text-muted-foreground hover:text-foreground'}"
+			class="inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {locale.current === option.value
+				? 'bg-accent font-medium text-foreground'
+				: 'text-muted-foreground hover:bg-accent hover:text-foreground'}"
 		>
 			{option.label()}
 		</button>

@@ -9,9 +9,10 @@
 		id?: string;
 		label?: string;
 		includeAll?: boolean;
+		disabled?: boolean;
 	}
 
-	let { options, value, onChange, id = 'cluster-selector', label = m['common.cluster'](), includeAll = false }: Props = $props();
+	let { options, value, onChange, id = 'cluster-selector', label = m['common.cluster'](), includeAll = false, disabled = false }: Props = $props();
 
 	function handleChange(event: Event): void {
 		onChange((event.currentTarget as HTMLSelectElement).value);
@@ -23,10 +24,11 @@
 		{label}
 		<select
 			{id}
-			class="rounded-md border border-input bg-background px-3 py-1.5 text-sm font-normal"
+			class="rounded-md border border-input bg-background px-3 py-1.5 text-sm font-normal disabled:opacity-50 disabled:cursor-not-allowed"
 			value={value}
 			onchange={handleChange}
 			aria-label={label}
+			disabled={disabled}
 		>
 			{#if includeAll}
 				<option value="">{m['common.allClusters']()}</option>
