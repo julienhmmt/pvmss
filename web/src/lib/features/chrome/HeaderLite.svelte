@@ -1,18 +1,15 @@
 <script lang="ts">
 	/**
-	 * HeaderLite — the signed-out chrome (T039). Shown on `/login` and the
-	 * anonymous home instead of the signed-in sidebar + AppHeader. Keeps
+	 * HeaderLite — the signed-out chrome (T039). Shown on the anonymous
+	 * home, about, and docs pages instead of the signed-in sidebar + AppHeader. Keeps
 	 * language, theme, and the docs link reachable without a sidebar. No
 	 * "New machine", no quota, no admin nav — those are signed-in only.
 	 */
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
-	import StatusBanner from './StatusBanner.svelte';
 	import { resolve } from '$app/paths';
 	import { m } from '$lib/paraglide/messages.js';
 </script>
-
-<StatusBanner />
 
 <header
 	class="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-background/80 px-5 py-3 backdrop-blur-md"
