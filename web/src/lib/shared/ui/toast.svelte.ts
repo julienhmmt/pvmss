@@ -1,4 +1,5 @@
 import { getContext, setContext } from 'svelte';
+import { SvelteMap } from 'svelte/reactivity';
 
 /**
  * ToastVariant maps to the Layer B soft-surface tokens. `error` uses the
@@ -34,7 +35,7 @@ export class ToastRegion {
 	items = $state.raw<readonly ToastEntry[]>([]);
 
 	#nextId = 1;
-	#timers = new Map<number, ReturnType<typeof setTimeout>>();
+	#timers = new SvelteMap<number, ReturnType<typeof setTimeout>>();
 	/** Hard cap to prevent a flood from burying the viewport. */
 	readonly #maxItems = 6;
 

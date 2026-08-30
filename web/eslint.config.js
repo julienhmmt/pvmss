@@ -44,14 +44,15 @@ export default [
     }
   },
   {
-    // Generated (SvelteKit output, build artifacts, ambient .d.ts) — not our source.
+    // Generated (SvelteKit output, build artifacts, ambient .d.ts, i18n) — not our source.
     ignores: [
       '.svelte-kit/',
       'build/',
       'node_modules/',
       'test-results/',
       'playwright-report/',
-      '**/*.d.ts'
+      '**/*.d.ts',
+      'src/lib/paraglide/'
     ]
   }
 ];
