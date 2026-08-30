@@ -358,8 +358,9 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	// resolved above — a request scoped to a non-default cluster must never
 	// be served from another cluster's client (cross-tenant data leak when
 	// node names or vmids collide between clusters).
-	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: clients.writer, Clients: clusterRegistry, Store: st, Refresher: worker, Log: logger}, policyService)
-	vmBulk := httpapi.NewVMBulkWithRegistry(httpapi.VMBulkRegistryDeps{Registry: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: clients.writer, Store: st, Refresher: refresher, Log: logger, Clients: clusterRegistry})
+	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: clients.writer, Clients: clusterRegistry, Store: st, Refresher: worker, StatusReader: clients.statusReader, Log: logger}, policyService)
+	vmBulk := httpapi.NewVMBulkWithRegistry(httpapi.VMBulkRegistryDeps{Registry: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: clients.writer, Store: st, Refresher: worker, Log: logger, Clients: clusterRegistry})
+	vmStatusBatch := httpapi.NewVMStatusBatch(httpapi.VMStatusBatchDeps{Source: inventoryRegistry, Auth: authHandler, StatusReader: clients.statusReader, Clients: clusterRegistry, Log: logger})
 	vmCloudInit := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Reader: clients.cloudInitReader, Writer: clients.writer, Clients: clusterRegistry, Store: st, Refresher: worker, Log: logger}, policyService)
 	vmCreate := httpapi.NewVMCreateWithRegistry(
 		authHandler,
@@ -401,6 +402,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		VMs:              vms,
 		VMDetail:         vmDetail,
 		VMBulk:           vmBulk,
+		VMStatusBatch:    vmStatusBatch,
 		VMCloudInit:      vmCloudInit,
 		VMCreate:         vmCreate,
 		Tasks:            tasks,
@@ -435,6 +437,7 @@ type clusterClientInterfaces struct {
 	serialRelay          cluster.TerminalRelay
 	metricsReader        cluster.MetricsHistoryReader
 	metricsCurrentReader cluster.MetricsCurrentReader
+	statusReader         cluster.VMStatusReader
 }
 
 // resolveClusterClientInterfaces asserts that the cluster client implements
@@ -471,6 +474,9 @@ func resolveClusterClientInterfaces(clusterClient cluster.Client) (clusterClient
 	}
 	if c.metricsCurrentReader, ok = clusterClient.(cluster.MetricsCurrentReader); !ok {
 		return c, errors.New("cluster client does not implement MetricsCurrentReader")
+	}
+	if c.statusReader, ok = clusterClient.(cluster.VMStatusReader); !ok {
+		return c, errors.New("cluster client does not implement VMStatusReader")
 	}
 
 	return c, nil

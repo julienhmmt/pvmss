@@ -40,6 +40,27 @@ func resolveCapability[T any](clients cluster.ClientProvider, fallback T, cluste
 	return value, nil
 }
 
+// ClusterRefresherResolver resolves the IndexRefresher for a named cluster —
+// the write-side sibling of registryResolver. Without it, a handler bound once
+// at startup to the default cluster's *inventory.Worker would refresh the
+// default cluster's projection after every write, even writes targeting a
+// non-default cluster (the same class of bug registryResolver closed for
+// reads).
+type ClusterRefresherResolver interface {
+	RefresherFor(cluster string) (vm.IndexRefresher, error)
+}
+
+// registryRefresherResolver adapts the inventory Registry to
+// ClusterRefresherResolver — each cluster name resolves to that cluster's own
+// *inventory.Worker, which satisfies vm.IndexRefresher.
+type registryRefresherResolver struct {
+	registry *inventory.Registry
+}
+
+func (r registryRefresherResolver) RefresherFor(clusterName string) (vm.IndexRefresher, error) {
+	return r.registry.Worker(clusterName)
+}
+
 // loadClusterIndex resolves the current Index for clusterName via resolver,
 // writing the appropriate error response and returning ok=false on any
 // failure: an unknown cluster name (404 cluster_not_found) or a known

@@ -6,7 +6,17 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/vm"
 	"strings"
+	"sync"
 	"testing"
+	"time"
+)
+
+// Test action literals used often enough to trip goconst. Kept as unexported
+// consts so the test cases stay readable without lint noise.
+const (
+	actionShutdown = "shutdown"
+	actionStop     = "stop"
+	actionStart    = "start"
 )
 
 // failingAuditErr returns a configured error from RecordAction so the
@@ -482,5 +492,452 @@ func TestPatch_AuditErrorWrapped(t *testing.T) {
 
 	if !strings.Contains(err.Error(), "record audit") {
 		t.Errorf("err = %q, want it wrapped with \"record audit\"", err.Error())
+	}
+}
+
+// =============================================================================
+// Shutdown escalation (ticket 05)
+// =============================================================================
+
+// scriptedStatusReader returns a sequence of statuses on successive calls,
+// then repeats the last one. Thread-safe via the embedded mutex.
+type scriptedStatusReader struct {
+	mu     sync.Mutex
+	status []cluster.VMStatus
+	calls  int
+}
+
+func (r *scriptedStatusReader) VMStatus(_ context.Context, _ string, _ int) (cluster.VMLiveStatus, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	idx := r.calls
+	if idx >= len(r.status) {
+		idx = len(r.status) - 1
+	}
+
+	r.calls++
+
+	return cluster.VMLiveStatus{Status: r.status[idx]}, nil
+}
+
+// trackingWriter wraps cluster.Fake and records every Action call. For
+// shutdown and stop it does NOT delegate to the fake — the scripted status
+// reader controls when the VM appears stopped, so the fake's own state
+// machine would reject the escalation stop as "already stopped". Other
+// actions (start, reboot, etc.) delegate normally.
+type trackingWriter struct {
+	cluster.Fake
+	mu      sync.Mutex
+	actions []string
+}
+
+func (w *trackingWriter) Action(ctx context.Context, node string, vmid int, action string) error {
+	w.mu.Lock()
+	w.actions = append(w.actions, action)
+	w.mu.Unlock()
+
+	if action == actionShutdown || action == actionStop {
+		// Don't change fake state — the scripted reader drives convergence.
+		return nil
+	}
+
+	return w.Fake.Action(ctx, node, vmid, action)
+}
+
+func (w *trackingWriter) recordedActions() []string {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	cp := make([]string, len(w.actions))
+	copy(cp, w.actions)
+
+	return cp
+}
+
+//nolint:paralleltest // serial: shared fake VM fixture + global var mutation
+func TestAction_ShutdownEscalation_GuestStopsBeforeTimeout(t *testing.T) {
+	// Shorten the escalation budget and poll interval so the test runs fast.
+	originalEscalation := vm.MaxShutdownEscalationWait
+	originalPost := vm.MaxPostEscalationWait
+	originalPoll := vm.ShutdownPollInterval
+	vm.MaxShutdownEscalationWait = 200 * time.Millisecond
+	vm.MaxPostEscalationWait = 200 * time.Millisecond
+	vm.ShutdownPollInterval = 20 * time.Millisecond
+
+	t.Cleanup(func() {
+		vm.MaxShutdownEscalationWait = originalEscalation
+		vm.MaxPostEscalationWait = originalPost
+		vm.ShutdownPollInterval = originalPoll
+	})
+
+	fake := actionsIndex(t)
+	idx := buildResolveIndex(t)
+	st := bulkTestStore(t)
+	writer := &trackingWriter{Fake: *fake}
+	// Guest stops on the 2nd poll.
+	reader := &scriptedStatusReader{status: []cluster.VMStatus{cluster.VMRunning, cluster.VMStopped}}
+
+	// VM 100 is running in the fake dataset.
+	err := vm.Action(context.Background(), vm.BulkDeps{
+		Actor:        aliceIdentity(),
+		Writer:       writer,
+		Audit:        st,
+		Refresher:    noopRefresher{},
+		StatusReader: reader,
+	}, idx, testClusterName, 100, actionShutdown)
+	if err != nil {
+		t.Fatalf("Action: %v", err)
+	}
+
+	actions := writer.recordedActions()
+	// Only shutdown was sent — no escalation to stop.
+	if len(actions) != 1 || actions[0] != actionShutdown {
+		t.Errorf("actions = %v, want [shutdown]", actions)
+	}
+
+	rows, err := st.QueryAudit(context.Background())
+	if err != nil {
+		t.Fatalf("QueryAudit: %v", err)
+	}
+
+	if len(rows) != 1 || rows[0].Action != actionShutdown {
+		t.Errorf("audit rows = %v, want 1 shutdown entry", rows)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake VM fixture + global var mutation
+func TestAction_ShutdownEscalation_GuestDoesNotStop_EscalatesToStop(t *testing.T) {
+	originalEscalation := vm.MaxShutdownEscalationWait
+	originalPost := vm.MaxPostEscalationWait
+	originalPoll := vm.ShutdownPollInterval
+	vm.MaxShutdownEscalationWait = 100 * time.Millisecond
+	vm.MaxPostEscalationWait = 100 * time.Millisecond
+	vm.ShutdownPollInterval = 20 * time.Millisecond
+
+	t.Cleanup(func() {
+		vm.MaxShutdownEscalationWait = originalEscalation
+		vm.MaxPostEscalationWait = originalPost
+		vm.ShutdownPollInterval = originalPoll
+	})
+
+	fake := actionsIndex(t)
+	idx := buildResolveIndex(t)
+	st := bulkTestStore(t)
+	writer := &trackingWriter{Fake: *fake}
+	// Guest never stops — always running.
+	reader := &scriptedStatusReader{status: []cluster.VMStatus{cluster.VMRunning}}
+
+	// VM 100 is running in the fake dataset.
+	err := vm.Action(context.Background(), vm.BulkDeps{
+		Actor:        aliceIdentity(),
+		Writer:       writer,
+		Audit:        st,
+		Refresher:    noopRefresher{},
+		StatusReader: reader,
+	}, idx, testClusterName, 100, actionShutdown)
+	if err != nil {
+		t.Fatalf("Action: %v", err)
+	}
+
+	actions := writer.recordedActions()
+	// shutdown then stop.
+	if len(actions) != 2 || actions[0] != actionShutdown || actions[1] != actionStop {
+		t.Errorf("actions = %v, want [shutdown stop]", actions)
+	}
+
+	rows, err := st.QueryAudit(context.Background())
+	if err != nil {
+		t.Fatalf("QueryAudit: %v", err)
+	}
+
+	if len(rows) != 2 {
+		t.Fatalf("audit rows = %d, want 2", len(rows))
+	}
+
+	if rows[0].Action != actionShutdown || rows[1].Action != actionStop {
+		t.Errorf("audit actions = %s %s, want shutdown stop", rows[0].Action, rows[1].Action)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake VM fixture + global var mutation
+func TestAction_ShutdownForce_SkipsShutdownGoesDirectlyToStop(t *testing.T) {
+	fake := actionsIndex(t)
+	idx := buildResolveIndex(t)
+	st := bulkTestStore(t)
+	writer := &trackingWriter{Fake: *fake}
+	reader := &scriptedStatusReader{status: []cluster.VMStatus{cluster.VMStopped}}
+
+	// VM 100 is running in the fake dataset.
+	err := vm.Action(context.Background(), vm.BulkDeps{
+		Actor:        aliceIdentity(),
+		Writer:       writer,
+		Audit:        st,
+		Refresher:    noopRefresher{},
+		StatusReader: reader,
+		Force:        true,
+	}, idx, testClusterName, 100, actionShutdown)
+	if err != nil {
+		t.Fatalf("Action: %v", err)
+	}
+
+	actions := writer.recordedActions()
+	// Force: only stop, no shutdown.
+	if len(actions) != 1 || actions[0] != actionStop {
+		t.Errorf("actions = %v, want [stop]", actions)
+	}
+
+	rows, err := st.QueryAudit(context.Background())
+	if err != nil {
+		t.Fatalf("QueryAudit: %v", err)
+	}
+
+	if len(rows) != 1 || rows[0].Action != actionStop {
+		t.Errorf("audit rows = %v, want 1 stop entry", rows)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake VM fixture + global var mutation
+func TestAction_ShutdownEscalation_ContextCancellation(t *testing.T) {
+	originalEscalation := vm.MaxShutdownEscalationWait
+	vm.MaxShutdownEscalationWait = 10 * time.Second
+
+	t.Cleanup(func() { vm.MaxShutdownEscalationWait = originalEscalation })
+
+	fake := actionsIndex(t)
+	idx := buildResolveIndex(t)
+	st := bulkTestStore(t)
+	writer := &trackingWriter{Fake: *fake}
+	reader := &scriptedStatusReader{status: []cluster.VMStatus{cluster.VMRunning}}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	// Cancel after shutdown is sent but during polling.
+	go func() {
+		time.Sleep(50 * time.Millisecond)
+		cancel()
+	}()
+
+	// VM 100 is running in the fake dataset.
+	_ = vm.Action(ctx, vm.BulkDeps{
+		Actor:        aliceIdentity(),
+		Writer:       writer,
+		Audit:        st,
+		Refresher:    noopRefresher{},
+		StatusReader: reader,
+	}, idx, testClusterName, 100, actionShutdown)
+
+	actions := writer.recordedActions()
+	// shutdown was sent, but stop should NOT have been sent (context cancelled
+	// during polling before escalation).
+	if len(actions) != 1 || actions[0] != actionShutdown {
+		t.Errorf("actions = %v, want [shutdown] (context cancelled before escalation)", actions)
+	}
+}
+
+// =============================================================================
+// Idempotence (ticket 08)
+// =============================================================================
+
+//nolint:paralleltest // serial: shared fake VM fixture
+func TestAction_Idempotence_TargetStateHolds_NoWriterCall(t *testing.T) {
+	cases := []struct {
+		name     string
+		vmid     int
+		action   string
+		liveStat cluster.VMStatus
+	}{
+		{"start on running is a no-op", 100, actionStart, cluster.VMRunning},
+		{"stop on stopped is a no-op", 101, actionStop, cluster.VMStopped},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			fake := actionsIndex(t)
+			idx := buildResolveIndex(t)
+			st := bulkTestStore(t)
+			writer := &trackingWriter{Fake: *fake}
+			reader := &scriptedStatusReader{status: []cluster.VMStatus{tc.liveStat}}
+
+			err := vm.Action(context.Background(), vm.BulkDeps{
+				Actor:        aliceIdentity(),
+				Writer:       writer,
+				Audit:        st,
+				Refresher:    noopRefresher{},
+				StatusReader: reader,
+			}, idx, testClusterName, tc.vmid, tc.action)
+			if err != nil {
+				t.Fatalf("Action: %v", err)
+			}
+
+			// No writer call — the target state already holds.
+			actions := writer.recordedActions()
+			if len(actions) != 0 {
+				t.Errorf("writer calls = %v, want none (target state already holds)", actions)
+			}
+
+			// Audit entry is still recorded — the intention is real.
+			rows, err := st.QueryAudit(context.Background())
+			if err != nil {
+				t.Fatalf("QueryAudit: %v", err)
+			}
+
+			if len(rows) != 1 || rows[0].Action != tc.action {
+				t.Errorf("audit rows = %v, want 1 %s entry", rows, tc.action)
+			}
+		})
+	}
+}
+
+//nolint:paralleltest // serial: shared fake VM fixture
+func TestAction_Idempotence_RebootOnRunning_WriterCallStillHappens(t *testing.T) {
+	fake := actionsIndex(t)
+	idx := buildResolveIndex(t)
+	st := bulkTestStore(t)
+	writer := &trackingWriter{Fake: *fake}
+	// VM 100 is running — reboot is a transition, not a target state.
+	reader := &scriptedStatusReader{status: []cluster.VMStatus{cluster.VMRunning}}
+
+	err := vm.Action(context.Background(), vm.BulkDeps{
+		Actor:        aliceIdentity(),
+		Writer:       writer,
+		Audit:        st,
+		Refresher:    noopRefresher{},
+		StatusReader: reader,
+	}, idx, testClusterName, 100, "reboot")
+	if err != nil {
+		t.Fatalf("Action: %v", err)
+	}
+
+	// Writer call happened — reboot is not idempotent.
+	actions := writer.recordedActions()
+	if len(actions) != 1 || actions[0] != "reboot" {
+		t.Errorf("writer calls = %v, want [reboot]", actions)
+	}
+}
+
+// =============================================================================
+// Retry-on-lock (ticket 08)
+// =============================================================================
+
+// lockErrorWriter returns a "VM is locked (backup)" error for the first N
+// Action calls, then delegates to the embedded Fake.
+type lockErrorWriter struct {
+	cluster.Fake
+	mu           sync.Mutex
+	lockCount    int
+	successAfter int // number of lock errors before success
+}
+
+func (w *lockErrorWriter) Action(ctx context.Context, node string, vmid int, action string) error {
+	w.mu.Lock()
+	w.lockCount++
+	count := w.lockCount
+	w.mu.Unlock()
+
+	if count <= w.successAfter {
+		return errors.New("VM is locked (backup)")
+	}
+
+	return w.Fake.Action(ctx, node, vmid, action)
+}
+
+//nolint:paralleltest // serial: shared fake VM fixture + global var mutation
+func TestAction_RetryOnLock_SucceedsAfterRetries(t *testing.T) {
+	originalWait := vm.MaxLockRetryWait
+	originalPoll := vm.LockRetryPollInterval
+	vm.MaxLockRetryWait = 200 * time.Millisecond
+	vm.LockRetryPollInterval = 20 * time.Millisecond
+
+	t.Cleanup(func() {
+		vm.MaxLockRetryWait = originalWait
+		vm.LockRetryPollInterval = originalPoll
+	})
+
+	fake := actionsIndex(t)
+	idx := buildResolveIndex(t)
+	st := bulkTestStore(t)
+	// Lock errors for the first 2 calls, success on the 3rd.
+	writer := &lockErrorWriter{Fake: *fake, successAfter: 2}
+
+	// VM 101 is stopped → start should eventually succeed.
+	err := vm.Action(context.Background(), vm.BulkDeps{
+		Actor:     aliceIdentity(),
+		Writer:    writer,
+		Audit:     st,
+		Refresher: noopRefresher{},
+	}, idx, testClusterName, 101, actionStart)
+	if err != nil {
+		t.Fatalf("Action: %v", err)
+	}
+
+	rows, err := st.QueryAudit(context.Background())
+	if err != nil {
+		t.Fatalf("QueryAudit: %v", err)
+	}
+
+	if len(rows) != 1 || rows[0].Action != actionStart {
+		t.Errorf("audit rows = %v, want 1 start entry", rows)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake VM fixture + global var mutation
+func TestAction_RetryOnLock_TimeoutNamesTheLock(t *testing.T) {
+	originalWait := vm.MaxLockRetryWait
+	originalPoll := vm.LockRetryPollInterval
+	vm.MaxLockRetryWait = 100 * time.Millisecond
+	vm.LockRetryPollInterval = 20 * time.Millisecond
+
+	t.Cleanup(func() {
+		vm.MaxLockRetryWait = originalWait
+		vm.LockRetryPollInterval = originalPoll
+	})
+
+	fake := actionsIndex(t)
+	idx := buildResolveIndex(t)
+	st := bulkTestStore(t)
+	// Always locked.
+	writer := &lockErrorWriter{Fake: *fake, successAfter: 999}
+
+	err := vm.Action(context.Background(), vm.BulkDeps{
+		Actor:     aliceIdentity(),
+		Writer:    writer,
+		Audit:     st,
+		Refresher: noopRefresher{},
+	}, idx, testClusterName, 101, actionStart)
+	if err == nil {
+		t.Fatal("Action: expected error, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "backup") {
+		t.Errorf("error = %q, want it to name the lock 'backup'", err.Error())
+	}
+}
+
+//nolint:paralleltest // serial: shared fake VM fixture
+func TestAction_NonLockError_NotRetried(t *testing.T) {
+	originalWait := vm.MaxLockRetryWait
+	vm.MaxLockRetryWait = 10 * time.Second
+
+	t.Cleanup(func() { vm.MaxLockRetryWait = originalWait })
+
+	fake := actionsIndex(t)
+	idx := buildResolveIndex(t)
+	st := bulkTestStore(t)
+	// A non-lock error (e.g. invalid state transition).
+	// VM 100 is running → start fails with "invalid state transition".
+	// No StatusReader → no idempotence check → the error goes through
+	// retry-on-lock, which sees it's not a lock error and returns immediately.
+	err := vm.Action(context.Background(), vm.BulkDeps{
+		Actor:     aliceIdentity(),
+		Writer:    fake,
+		Audit:     st,
+		Refresher: noopRefresher{},
+	}, idx, testClusterName, 100, actionStart)
+	if err == nil {
+		t.Fatal("Action: expected error, got nil")
+	}
+	// Should return quickly (not wait 10s for lock retry).
+	if !errors.Is(err, cluster.ErrInvalidStateTransition) {
+		t.Fatalf("err = %v, want ErrInvalidStateTransition", err)
 	}
 }

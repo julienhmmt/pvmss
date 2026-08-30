@@ -367,6 +367,22 @@ type VMSnapshot struct {
 	VMState     bool
 }
 
+// VMStatusReader reads one VM's live power state. Distinct from Client
+// (whole-cluster snapshot) because a lifecycle transition needs the state
+// now, not the projection's up-to-30s-old view. See ADR 0001.
+type VMStatusReader interface {
+	VMStatus(ctx context.Context, node string, vmid int) (VMLiveStatus, error)
+}
+
+// VMLiveStatus is a live read of /nodes/{node}/qemu/{vmid}/status/current.
+// Lock carries Proxmox's own lock name ("backup", "migrate",
+// "snapshot-delete", "create", ...) or "" when the VM is unlocked.
+type VMLiveStatus struct {
+	Status VMStatus
+	Lock   string
+	Uptime time.Duration
+}
+
 // SnapshotReader reads live snapshots for a resolved VM.
 type SnapshotReader interface {
 	ListSnapshots(ctx context.Context, node string, vmid int) ([]VMSnapshot, error)

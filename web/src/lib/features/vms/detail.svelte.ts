@@ -2,6 +2,7 @@ import { getContext, setContext } from 'svelte';
 import { get, post, del, patch, put, ApiRequestError } from '$lib/shared/api/client';
 import { m } from '$lib/paraglide/messages.js';
 import type { VmStatus } from './list.svelte';
+import { convergeSingle } from './converge';
 
 export type VmAction = 'start' | 'stop' | 'shutdown' | 'reboot' | 'reset' | 'pause' | 'resume';
 
@@ -287,7 +288,9 @@ export class VmDetailStore {
 
 	/**
 	 * Triggers a power action (V12). The status flips optimistically before the
-	 * server responds, then reload() reconciles with the authoritative state.
+	 * server responds, then a convergence loop polls the live-status endpoint
+	 * (ADR 0001) until the real state matches — replacing the old `load()` call
+	 * that overwrote the optimistic flip with a stale projection read.
 	 * `aria-live` on the status element (constitution XII) announces the flip.
 	 */
 	async action(kind: VmAction): Promise<void> {
@@ -296,11 +299,22 @@ export class VmDetailStore {
 		this.actionInFlight = true;
 
 		const previousStatus = this.entity.status;
-		this.entity = { ...this.entity, status: optimisticStatus(kind) };
+		const target = optimisticStatus(kind);
+		this.entity = { ...this.entity, status: target };
 
 		try {
 			await post<ActionResponse>(`${this.#basePath}/actions`, { action: kind });
-			await this.load();
+			// Converge: poll live status until it matches the optimistic target.
+			// No load() — the projection is stale until the 30s inventory tick.
+			await convergeSingle(
+				{ cluster: this.cluster, vmid: this.entity.vmid },
+				target,
+				(status) => {
+					if (this.entity !== null) {
+						this.entity = { ...this.entity, status };
+					}
+				},
+			);
 		} catch (err) {
 			// Revert the optimistic flip on failure.
 			if (this.entity !== null) {
@@ -383,7 +397,7 @@ export class VmDetailStore {
 }
 
 /** optimisticStatus returns the status a VM is expected to show after kind. */
-function optimisticStatus(kind: VmAction): VmStatus {
+export function optimisticStatus(kind: VmAction): VmStatus {
 	switch (kind) {
 		case 'start':
 		case 'reboot':

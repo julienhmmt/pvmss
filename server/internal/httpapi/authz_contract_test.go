@@ -546,6 +546,7 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 		Store: st, Refresher: worker, Log: logger,
 	})
 	vmBulk := httpapi.NewVMBulk(projection, authHandler, cluster.Fake{}, st, worker, logger)
+	vmStatusBatch := httpapi.NewVMStatusBatchSingle(projection, authHandler, cluster.Fake{}, logger)
 	vmCreate := httpapi.NewVMCreate(authHandler, st, cluster.Fake{}, cluster.Fake{}, cluster.Fake{}, logger, policyService)
 	vmConsole := httpapi.NewVMConsole(projection, authHandler, consoleRelayStub{}, vm.NewConsoleTicketStore(), st, logger)
 	vmSerial := httpapi.NewVMSerialConsole(projection, authHandler, terminalRelayStub{}, vm.NewConsoleTicketStore(), st, logger)
@@ -570,6 +571,7 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 		VMs:              vms,
 		VMDetail:         vmDetail,
 		VMBulk:           vmBulk,
+		VMStatusBatch:    vmStatusBatch,
 		VMCloudInit:      vmCloudInit,
 		VMCreate:         vmCreate,
 		VMConsole:        vmConsole,

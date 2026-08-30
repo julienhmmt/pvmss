@@ -1,6 +1,11 @@
 package cluster
 
-import "testing"
+import (
+	"context"
+	"net/http"
+	"testing"
+	"time"
+)
 
 func TestParseDiskValue(t *testing.T) {
 	t.Parallel()
@@ -238,4 +243,83 @@ func TestEncodeNetValue(t *testing.T) {
 			t.Errorf("encodeNetValue = %q, want %q", got, want)
 		}
 	})
+}
+
+func TestProxmox_VMStatus(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name       string
+		body       string
+		wantStatus VMStatus
+		wantLock   string
+		wantUptime time.Duration
+	}{
+		{
+			name:       "running no lock",
+			body:       `{"data":{"status":"running","uptime":3600}}`,
+			wantStatus: VMRunning,
+			wantLock:   "",
+			wantUptime: 3600 * time.Second,
+		},
+		{
+			name:       "stopped no lock",
+			body:       `{"data":{"status":"stopped","uptime":0}}`,
+			wantStatus: VMStopped,
+			wantLock:   "",
+			wantUptime: 0,
+		},
+		{
+			name:       "running with backup lock",
+			body:       `{"data":{"status":"running","lock":"backup","uptime":120}}`,
+			wantStatus: VMRunning,
+			wantLock:   "backup",
+			wantUptime: 120 * time.Second,
+		},
+		{
+			name:       "paused",
+			body:       `{"data":{"status":"paused","uptime":500}}`,
+			wantStatus: VMPaused,
+			wantLock:   "",
+			wantUptime: 500 * time.Second,
+		},
+		{
+			name:       "unknown status defaults to stopped",
+			body:       `{"data":{"status":"weird","uptime":0}}`,
+			wantStatus: VMStopped,
+			wantLock:   "",
+			wantUptime: 0,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+				mux.HandleFunc("GET /api2/json/nodes/pve1/qemu/100/status/current", func(w http.ResponseWriter, _ *http.Request) {
+					writeJSONFixture(t, w, tc.body)
+				})
+			})
+
+			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+			live, err := p.VMStatus(context.Background(), "pve1", 100)
+			if err != nil {
+				t.Fatalf("VMStatus: %v", err)
+			}
+
+			if live.Status != tc.wantStatus {
+				t.Errorf("status = %q, want %q", live.Status, tc.wantStatus)
+			}
+
+			if live.Lock != tc.wantLock {
+				t.Errorf("lock = %q, want %q", live.Lock, tc.wantLock)
+			}
+
+			if live.Uptime != tc.wantUptime {
+				t.Errorf("uptime = %v, want %v", live.Uptime, tc.wantUptime)
+			}
+		})
+	}
 }

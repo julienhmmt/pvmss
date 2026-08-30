@@ -397,6 +397,53 @@ func runMetricsHistoryCase(impl cluster.MetricsHistoryReader) func(t *testing.T)
 	}
 }
 
+// TestContract_VMStatus verifies the fake's VMStatusReader against the
+// contract: a known VM returns its live status with a valid VMStatus value;
+// an unknown VM returns ErrNotFound.
+//
+//nolint:paralleltest // serial: shared fake identity fixture
+func TestContract_VMStatus(t *testing.T) {
+	impls := map[string]cluster.VMStatusReader{
+		fakeImplementationName: cluster.Fake{},
+	}
+
+	for name, impl := range impls {
+		t.Run(name, func(t *testing.T) {
+			live, err := impl.VMStatus(context.Background(), cluster.FakeNode01, 100)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			switch live.Status {
+			case cluster.VMRunning, cluster.VMStopped, cluster.VMPaused:
+				// valid
+			default:
+				t.Errorf("status = %q, want a valid VMStatus", live.Status)
+			}
+
+			if live.Lock != "" {
+				t.Errorf("expected empty lock on default fake, got %q", live.Lock)
+			}
+		})
+	}
+}
+
+//nolint:paralleltest // serial: shared fake identity fixture
+func TestContract_VMStatus_NotFound(t *testing.T) {
+	impls := map[string]cluster.VMStatusReader{
+		fakeImplementationName: cluster.Fake{},
+	}
+
+	for name, impl := range impls {
+		t.Run(name, func(t *testing.T) {
+			_, err := impl.VMStatus(context.Background(), cluster.FakeNode01, 99999)
+			if !errors.Is(err, cluster.ErrNotFound) {
+				t.Fatalf("error = %v, want ErrNotFound", err)
+			}
+		})
+	}
+}
+
 func checkMetricsSamples(t *testing.T, timeframe cluster.MetricsTimeframe, samples []cluster.MetricsSample) {
 	t.Helper()
 

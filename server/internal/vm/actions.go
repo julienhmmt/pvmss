@@ -23,6 +23,24 @@ const forceStopPoll = 100 * time.Millisecond
 
 var maxForceStopWait = 15 * time.Second
 
+// Shutdown escalation constants (ticket 05).
+const (
+	shutdownEscalationWait = 60 * time.Second
+	postEscalationStopWait = 30 * time.Second
+)
+
+var (
+	// ShutdownPollInterval is the interval between live-status polls during
+	// shutdown escalation. A var so tests can shorten it.
+	ShutdownPollInterval = 2 * time.Second
+	// MaxShutdownEscalationWait bounds the normal shutdown poll before
+	// escalating to stop. A var so tests can shorten it.
+	MaxShutdownEscalationWait = shutdownEscalationWait
+	// MaxPostEscalationWait bounds the post-stop poll. A var so tests can
+	// shorten it.
+	MaxPostEscalationWait = postEscalationStopWait
+)
+
 // AuditRecorder is the store dependency for recording a write. Only the method
 // T05 needs is on the interface, so the handler test can use the real store
 // and production can use *store.Store.
@@ -113,8 +131,19 @@ type WriteDeps struct {
 // Action performs a power transition on a VM. It is the only path from an
 // HTTP action request to the cluster writer (FR-006). The node is always
 // Resolve()'s server-resolved value — the caller cannot supply one (S01 root
-// cause, structurally closed). After the write, it records the audit entry
-// and refreshes the Index (FR-009, FR-010).
+// cause, structurally closed). After the write, it records the audit entry.
+//
+// Action does NOT refresh the Index — the caller owns refresh (ticket 09).
+// handleAction refreshes once for a single-VM action; BulkAction refreshes
+// once per distinct affected cluster. This avoids N redundant cluster
+// snapshots during a bulk action.
+//
+// For shutdown, when deps.StatusReader is non-nil, Action implements bounded
+// escalation (ticket 05): without Force, it sends shutdown, polls live status
+// for up to 60s, and auto-escalates to stop if the guest hasn't stopped; with
+// Force, it skips shutdown and sends stop directly. Both shutdown and stop are
+// recorded as separate audit entries when escalation occurs (same pattern as
+// Delete's force-stop).
 func Action(ctx context.Context, deps BulkDeps, index *inventory.Index, clusterName string, vmid int, action string) error {
 	if !validActions[action] {
 		return fmt.Errorf("%w: %q", ErrActionRejected, action)
@@ -125,7 +154,33 @@ func Action(ctx context.Context, deps BulkDeps, index *inventory.Index, clusterN
 		return err
 	}
 
-	if err := deps.Writer.Action(ctx, entity.Node, entity.VMID, action); err != nil {
+	// Shutdown with escalation (ticket 05). Only when a StatusReader is
+	// available — legacy callers without one get the old immediate behavior.
+	if action == "shutdown" && deps.StatusReader != nil {
+		return shutdownWithEscalation(ctx, deps, entity, clusterName, vmid)
+	}
+
+	// Idempotence (ticket 08): start on a running VM and stop on a stopped
+	// VM are successes, not errors. The user asked for the target state and
+	// it already holds. Only applies to start/stop (target states), not to
+	// transitions like reboot/reset/shutdown/pause/resume.
+	if deps.StatusReader != nil && isIdempotentNoop(action) {
+		live, readErr := deps.StatusReader.VMStatus(ctx, entity.Node, entity.VMID)
+		if readErr == nil && isAlreadyInTargetState(action, live.Status) {
+			// Record the audit entry — the intention is real even though
+			// no Proxmox call was made.
+			if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, clusterName, vmid, action); err != nil {
+				return fmt.Errorf(auditWrapFmt, err)
+			}
+
+			return nil
+		}
+	}
+
+	// Retry-on-lock (ticket 08): a VM locked by backup/migrate/snapshot/etc.
+	// rejects actions with "VM is locked (lockname)". Retry with backoff
+	// until the lock clears or the budget expires.
+	if err := actionWithLockRetry(ctx, deps, entity, action); err != nil {
 		return fmt.Errorf("cluster action: %w", err)
 	}
 
@@ -133,9 +188,196 @@ func Action(ctx context.Context, deps BulkDeps, index *inventory.Index, clusterN
 		return fmt.Errorf(auditWrapFmt, err)
 	}
 
-	_, _ = deps.Refresher.Refresh(ctx)
+	return nil
+}
+
+// isIdempotentNoop reports whether action is a target-state transition
+// (start/stop) that can be a no-op when the target state already holds.
+// reboot/reset/shutdown/pause/resume are transitions, not target states —
+// they must always be sent.
+func isIdempotentNoop(action string) bool {
+	return action == "start" || action == "stop"
+}
+
+// isAlreadyInTargetState reports whether the live status already matches the
+// target state of action. Only called for start/stop (isIdempotentNoop).
+func isAlreadyInTargetState(action string, live cluster.VMStatus) bool {
+	if action == "start" {
+		return live == cluster.VMRunning
+	}
+
+	if action == "stop" {
+		return live == cluster.VMStopped
+	}
+
+	return false
+}
+
+// Lock retry constants (ticket 08). Vars so tests can shorten them.
+const lockRetryBudget = 30 * time.Second
+
+var (
+	// LockRetryPollInterval is the interval between retries when a VM is
+	// locked. A var so tests can shorten it.
+	LockRetryPollInterval = 2 * time.Second
+	// MaxLockRetryWait bounds the total retry-on-lock wait. A var so tests
+	// can shorten it.
+	MaxLockRetryWait = lockRetryBudget
+)
+
+// actionWithLockRetry calls deps.Writer.Action and retries when the error
+// indicates a VM lock (e.g. "VM is locked (backup)"). Returns a named-lock
+// error when the budget expires.
+func actionWithLockRetry(ctx context.Context, deps BulkDeps, entity Entity, action string) error {
+	err := deps.Writer.Action(ctx, entity.Node, entity.VMID, action)
+	if err == nil {
+		return nil
+	}
+
+	lockName, locked := extractLockName(err)
+	if !locked {
+		return err
+	}
+
+	// Retry with backoff until the lock clears or the budget expires.
+	deadline := time.NewTimer(MaxLockRetryWait)
+	defer deadline.Stop()
+
+	ticker := time.NewTicker(LockRetryPollInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			err = deps.Writer.Action(ctx, entity.Node, entity.VMID, action)
+			if err == nil {
+				return nil
+			}
+
+			if _, stillLocked := extractLockName(err); !stillLocked {
+				return err
+			}
+		case <-deadline.C:
+			return fmt.Errorf("VM %d is locked by a %s; retry once it completes", entity.VMID, lockName)
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+
+// extractLockName checks whether err is a Proxmox "VM is locked" error and
+// returns the lock name. Proxmox's message format is:
+//
+//	"VM is locked (backup)"
+//	"VM is locked (snapshot-delete)"
+//
+// The lock name is returned without parentheses.
+func extractLockName(err error) (string, bool) {
+	if err == nil {
+		return "", false
+	}
+
+	msg := err.Error()
+
+	idx := strings.Index(msg, "VM is locked (")
+	if idx < 0 {
+		return "", false
+	}
+
+	start := idx + len("VM is locked (")
+
+	end := strings.IndexByte(msg[start:], ')')
+	if end < 0 {
+		return "", false
+	}
+
+	return msg[start : start+end], true
+}
+
+// shutdownWithEscalation implements the bounded shutdown→stop escalation
+// (ticket 05). Without Force: send shutdown, poll live status for up to
+// maxShutdownEscalationWait, escalate to stop if still running, then poll
+// for up to maxPostEscalationWait. With Force: skip shutdown, send stop
+// directly. Both transitions are audited separately when escalation occurs.
+func shutdownWithEscalation(ctx context.Context, deps BulkDeps, entity Entity, clusterName string, vmid int) error {
+	if deps.Force {
+		// Force: skip shutdown, go directly to stop.
+		if err := deps.Writer.Action(ctx, entity.Node, entity.VMID, "stop"); err != nil {
+			return fmt.Errorf("cluster stop: %w", err)
+		}
+
+		if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, clusterName, vmid, "stop"); err != nil {
+			return fmt.Errorf(auditWrapFmt, err)
+		}
+
+		return nil
+	}
+
+	// Normal: send shutdown with timeout, then poll for stopped.
+	if err := deps.Writer.Action(ctx, entity.Node, entity.VMID, "shutdown"); err != nil {
+		return fmt.Errorf("cluster shutdown: %w", err)
+	}
+
+	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, clusterName, vmid, "shutdown"); err != nil {
+		return fmt.Errorf(auditWrapFmt, err)
+	}
+
+	// Poll for stopped up to the escalation budget.
+	stopped, err := pollForStopped(ctx, deps.StatusReader, entity.Node, vmid, MaxShutdownEscalationWait)
+	if err != nil {
+		// Status read failure during polling — the shutdown was already sent.
+		// Don't fail the whole action (best-effort): returning nil here despite
+		// a non-nil err is intentional, not a missed error wrap.
+		return nil //nolint:nilerr // best-effort: shutdown already dispatched
+	}
+
+	if stopped {
+		return nil
+	}
+
+	// Escalation: guest didn't stop within the budget. Send stop.
+	if err := deps.Writer.Action(ctx, entity.Node, entity.VMID, "stop"); err != nil {
+		return fmt.Errorf("cluster stop (shutdown escalation): %w", err)
+	}
+
+	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, clusterName, vmid, "stop"); err != nil {
+		return fmt.Errorf(auditWrapFmt, err)
+	}
+
+	// Poll for stopped up to the post-escalation budget.
+	_, _ = pollForStopped(ctx, deps.StatusReader, entity.Node, vmid, MaxPostEscalationWait)
 
 	return nil
+}
+
+// pollForStopped polls the live status reader until the VM reports stopped or
+// the budget expires. Returns true if the VM reached stopped, false if the
+// budget expired. A context cancellation returns the context error.
+func pollForStopped(ctx context.Context, reader cluster.VMStatusReader, node string, vmid int, budget time.Duration) (bool, error) {
+	deadline := time.NewTimer(budget)
+	defer deadline.Stop()
+
+	ticker := time.NewTicker(ShutdownPollInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			live, err := reader.VMStatus(ctx, node, vmid)
+			if err != nil {
+				// Transient read error: keep polling.
+				continue
+			}
+
+			if live.Status == cluster.VMStopped {
+				return true, nil
+			}
+		case <-deadline.C:
+			return false, nil
+		case <-ctx.Done():
+			return false, ctx.Err()
+		}
+	}
 }
 
 // Delete permanently removes a VM and its disks (V14: no soft-delete, no undo).

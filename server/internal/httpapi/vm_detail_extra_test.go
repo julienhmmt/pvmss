@@ -288,15 +288,17 @@ func TestVMDetail_Action_ClusterUnreachableMapped(t *testing.T) {
 }
 
 // TestVMDetail_Action_InvalidStateTransitionMapped — a status-incompatible
-// transition (start on a running VM) maps to 409 invalid_state_transition.
+// transition (reboot on a stopped VM) maps to 409 invalid_state_transition.
+// Note: start on a running VM is no longer an error — ticket 08 made start/stop
+// idempotent (a no-op success when the target state already holds).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Action_InvalidStateTransitionMapped(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
-	// VM 100 is running; start is incompatible → ErrInvalidStateTransition.
-	rec, env := serveDetailError(handler, detailRequest(http.MethodPost, "/api/v1/vms/default/100/actions", `{"action":"start"}`, cookie))
+	// VM 101 is stopped; reboot requires a running VM → ErrInvalidStateTransition.
+	rec, env := serveDetailError(handler, detailRequest(http.MethodPost, "/api/v1/vms/default/101/actions", `{"action":"reboot"}`, cookie))
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusConflict, rec.Body.String())
 	}

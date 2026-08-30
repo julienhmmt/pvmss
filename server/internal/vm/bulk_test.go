@@ -10,11 +10,18 @@ import (
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
+	"sync"
 	"testing"
 	"time"
 )
 
-const bulkStatusError = "error"
+const (
+	bulkStatusError = "error"
+	// clusterA/clusterB are the two-cluster names used in the per-cluster
+	// refresh tests. Kept as consts so the repeated literals don't trip goconst.
+	clusterA = "cluster-a"
+	clusterB = "cluster-b"
+)
 
 // testIndexResolver is a simple ClusterIndexResolver backed by a static map of
 // cluster name → Index. It stands in for the inventory Registry in unit tests
@@ -315,6 +322,185 @@ func TestBulkAction_NonExistentClusterError(t *testing.T) {
 
 	if results[1].Status != bulkStatusError {
 		t.Errorf("result[1] = %q, want error", results[1].Status)
+	}
+}
+
+// =============================================================================
+// Bulk refresh behavior (ticket 09)
+// =============================================================================
+
+// countingRefresher is an IndexRefresher that counts Refresh calls.
+// Thread-safe via the embedded mutex.
+type countingRefresher struct {
+	mu        sync.Mutex
+	calls     int
+	byCluster map[string]int
+}
+
+func (r *countingRefresher) Refresh(_ context.Context) (time.Time, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.calls++
+
+	return time.Now(), nil
+}
+
+func (r *countingRefresher) callCount() int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	return r.calls
+}
+
+// countingRefresherResolver is a ClusterRefresherResolver that returns a
+// countingRefresher per cluster, tracking calls per cluster.
+type countingRefresherResolver struct {
+	mu         sync.Mutex
+	refreshers map[string]*countingRefresher
+}
+
+func newCountingRefresherResolver() *countingRefresherResolver {
+	return &countingRefresherResolver{refreshers: make(map[string]*countingRefresher)}
+}
+
+func (r *countingRefresherResolver) RefresherFor(clusterName string) (vm.IndexRefresher, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	ref, ok := r.refreshers[clusterName]
+	if !ok {
+		ref = &countingRefresher{byCluster: make(map[string]int)}
+		r.refreshers[clusterName] = ref
+	}
+
+	return ref, nil
+}
+
+func (r *countingRefresherResolver) callsFor(clusterName string) int {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if ref, ok := r.refreshers[clusterName]; ok {
+		return ref.callCount()
+	}
+
+	return 0
+}
+
+//nolint:paralleltest // serial: shared fake dataset
+func TestBulkAction_SingleCluster_OneRefresh(t *testing.T) {
+	resolver := bulkTestResolver(t)
+	refresher := &countingRefresher{}
+	refresherResolver := newCountingRefresherResolver()
+
+	// 10 targets on the same cluster.
+	targets := make([]vm.BulkTarget, 10)
+	for i := range targets {
+		targets[i] = vm.BulkTarget{Cluster: testClusterName, VMID: 101 + i}
+	}
+
+	_ = vm.BulkAction(context.Background(), vm.BulkDeps{
+		Resolver:          resolver,
+		RefresherResolver: refresherResolver,
+		Actor:             aliceIdentity(),
+		Writer:            cluster.Fake{},
+		Audit:             noopAudit{},
+		Refresher:         refresher,
+	}, targets, "start")
+
+	// With RefresherResolver, the per-cluster refresher is used once.
+	if got := refresherResolver.callsFor(testClusterName); got != 1 {
+		t.Errorf("refresh calls for %q = %d, want 1", testClusterName, got)
+	}
+
+	// The fallback refresher should NOT be used when a resolver is set.
+	if refresher.callCount() != 0 {
+		t.Errorf("fallback refresher calls = %d, want 0", refresher.callCount())
+	}
+}
+
+//nolint:paralleltest // serial: shared fake dataset
+func TestBulkAction_TwoClusters_OneRefreshPerCluster(t *testing.T) {
+	cluster.ResetFake()
+	t.Cleanup(cluster.ResetFake)
+
+	snap, err := (cluster.Fake{}).Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := inventory.BuildIndex(snap)
+
+	resolver := testIndexResolver{indexes: map[string]*inventory.Index{
+		clusterA: &idx,
+		clusterB: &idx,
+	}}
+	refresherResolver := newCountingRefresherResolver()
+
+	// 5 targets on cluster-a, 5 on cluster-b.
+	targets := []vm.BulkTarget{
+		{Cluster: clusterA, VMID: 101},
+		{Cluster: clusterA, VMID: 102},
+		{Cluster: clusterA, VMID: 103},
+		{Cluster: clusterA, VMID: 104},
+		{Cluster: clusterA, VMID: 105},
+		{Cluster: clusterB, VMID: 101},
+		{Cluster: clusterB, VMID: 102},
+		{Cluster: clusterB, VMID: 103},
+		{Cluster: clusterB, VMID: 104},
+		{Cluster: clusterB, VMID: 105},
+	}
+
+	_ = vm.BulkAction(context.Background(), vm.BulkDeps{
+		Resolver:          resolver,
+		RefresherResolver: refresherResolver,
+		Actor:             aliceIdentity(),
+		Writer:            cluster.Fake{},
+		Audit:             noopAudit{},
+	}, targets, "start")
+
+	if got := refresherResolver.callsFor(clusterA); got != 1 {
+		t.Errorf("refresh calls for cluster-a = %d, want 1", got)
+	}
+
+	if got := refresherResolver.callsFor(clusterB); got != 1 {
+		t.Errorf("refresh calls for cluster-b = %d, want 1", got)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake dataset
+func TestBulkAction_FailedTarget_StillRefreshes(t *testing.T) {
+	resolver := bulkTestResolver(t)
+	refresherResolver := newCountingRefresherResolver()
+
+	// VM 100 is running → start fails. VM 101 is stopped → start succeeds.
+	// The refresh should still happen after the loop.
+	targets := []vm.BulkTarget{
+		{Cluster: testClusterName, VMID: 100},
+		{Cluster: testClusterName, VMID: 101},
+	}
+
+	results := vm.BulkAction(context.Background(), vm.BulkDeps{
+		Resolver:          resolver,
+		RefresherResolver: refresherResolver,
+		Actor:             aliceIdentity(),
+		Writer:            cluster.Fake{},
+		Audit:             noopAudit{},
+	}, targets, "start")
+
+	// One target failed, one succeeded.
+	if results[0].Status != bulkStatusError {
+		t.Errorf("result[0] = %q, want error", results[0].Status)
+	}
+
+	if results[1].Status != "ok" {
+		t.Errorf("result[1] = %q, want ok", results[1].Status)
+	}
+
+	// Refresh still happened once for the cluster.
+	if got := refresherResolver.callsFor(testClusterName); got != 1 {
+		t.Errorf("refresh calls = %d, want 1 (even with a failed target)", got)
 	}
 }
 

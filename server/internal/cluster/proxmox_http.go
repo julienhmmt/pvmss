@@ -38,6 +38,10 @@ type proxmoxRESTClient struct {
 	tokenName  string
 	tokenValue string
 	http       *http.Client
+	// noRetry short-circuits the GET retry loop. Set by withNoRetry for short
+	// probes (guest-agent exec-status) that legitimately hang until timeout —
+	// retrying them only multiplies the wait and slows every list load.
+	noRetry bool
 	// ticket/csrf, when set, authenticate as a specific end user via a PVE
 	// ticket instead of the service API token. Used only by Authenticate's
 	// own follow-up calls and by ChangePassword, both of which must act with
@@ -47,23 +51,52 @@ type proxmoxRESTClient struct {
 	csrf   string
 }
 
-func (p Proxmox) rest() proxmoxRESTClient {
-	return newProxmoxREST(p.BaseURL, p.APITokenName, p.APITokenValue, p.TLSInsecureSkipVerify)
+// rest builds a proxmoxRESTClient from the Proxmox struct's own fields,
+// reusing the cached *http.Client so the Transport's keep-alive pool is
+// shared across calls (ticket 07). Pointer receiver so the lazy init in
+// ensureClient can mutate p.httpClient; every caller passes an addressable
+// copy (the value-receiver Client methods), so this is safe.
+func (p *Proxmox) rest() proxmoxRESTClient {
+	p.ensureClient()
+
+	return newProxmoxREST(p.BaseURL, p.APITokenName, p.APITokenValue, p.httpClient)
 }
 
-func newProxmoxREST(baseURL, tokenName, tokenValue string, insecureSkipVerify bool) proxmoxRESTClient {
+// ensureClient lazily initializes p.httpClient when nil (zero-value or
+// test-constructed Proxmox) so rest() never panics. In production the field
+// is set at construction in registry.go and this is a no-op.
+func (p *Proxmox) ensureClient() {
+	if p.httpClient != nil {
+		return
+	}
+
+	p.httpClient = newProxmoxHTTPClient(p.TLSInsecureSkipVerify)
+}
+
+// newProxmoxHTTPClient builds an *http.Client with a tuned Transport: the Go
+// default MaxIdleConnsPerHost is 2, far too low for the per-VM hydration
+// burst (one /status/current per VM). Pooling eliminates the per-call TLS
+// handshake cost that made the observed 20s timeout more likely.
+func newProxmoxHTTPClient(insecureSkipVerify bool) *http.Client {
 	transport := &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 10,
+		IdleConnTimeout:     90 * time.Second,
 		TLSClientConfig: &tls.Config{
 			MinVersion:         tls.VersionTLS12,   // minimum TLS 1.2 enforced
 			InsecureSkipVerify: insecureSkipVerify, //nolint:gosec // operator-configured per cluster; defaults to false
 		},
 	}
 
+	return &http.Client{Timeout: proxmoxTimeout, Transport: transport}
+}
+
+func newProxmoxREST(baseURL, tokenName, tokenValue string, client *http.Client) proxmoxRESTClient {
 	return proxmoxRESTClient{
 		base:       apiBase(baseURL),
 		tokenName:  tokenName,
 		tokenValue: tokenValue,
-		http:       &http.Client{Timeout: proxmoxTimeout, Transport: transport},
+		http:       client,
 	}
 }
 
@@ -90,27 +123,108 @@ func (c proxmoxRESTClient) withTicket(ticket, csrf string) proxmoxRESTClient {
 	return c
 }
 
-// do executes one authenticated call and returns the decoded "data" payload.
-// GET requests encode form as a query string; every other method sends it as
-// an application/x-www-form-urlencoded body, matching Proxmox's own API.
+// withNoRetry returns a copy of c with the retry loop disabled. Used by
+// short probes (guest-agent exec-status) that legitimately hang until
+// timeout — retrying them only multiplies the wait.
+func (c proxmoxRESTClient) withNoRetry() proxmoxRESTClient {
+	c.noRetry = true
+
+	return c
+}
+
+// retryMaxAttempts is the total number of attempts (1 initial + 2 retries)
+// for a GET that keeps hitting transient failures, matching ProxMate's
+// PROXMOX_RETRIES=2 budget.
+const retryMaxAttempts = 3
+
+// retryBaseBackoff and retryMaxBackoff bound the exponential backoff between
+// retry attempts: 250ms, then 500ms, capped at 2s (ProxMate's
+// Math.min(2_000, 250 * 2 ** (attempt - 1))).
+const (
+	retryBaseBackoff = 250 * time.Millisecond
+	retryMaxBackoff  = 2 * time.Second
+)
+
+// do executes an authenticated call and returns the decoded "data" payload.
+// GET requests are retried on transient failures (transport errors, HTTP
+// status >= 500, or 429) with bounded exponential backoff, up to 2
+// additional attempts. POST/PUT/DELETE are never retried — a create can't
+// double-provision. Context cancellation during backoff returns promptly.
+// The noRetry flag short-circuits the loop for short probes.
 func (c proxmoxRESTClient) do(ctx context.Context, method, path string, form url.Values) (json.RawMessage, error) {
+	if c.noRetry || method != http.MethodGet {
+		raw, _, err := c.doOnce(ctx, method, path, form)
+		return raw, err
+	}
+
+	for attempt := 1; ; attempt++ {
+		raw, status, err := c.doOnce(ctx, method, path, form)
+		if !isRetryableStatus(status, err) || attempt >= retryMaxAttempts {
+			return raw, err
+		}
+
+		backoff := retryBackoff(attempt)
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(backoff):
+		}
+	}
+}
+
+// retryBackoff returns the bounded exponential backoff for a given attempt
+// number (1-based): 250ms, 500ms, 1s, 2s, 2s, and so on.
+func retryBackoff(attempt int) time.Duration {
+	backoff := retryBaseBackoff << (attempt - 1)
+	if backoff > retryMaxBackoff || backoff < 0 {
+		return retryMaxBackoff
+	}
+
+	return backoff
+}
+
+// isRetryableStatus reports whether a failed attempt should be retried: a
+// transport error (status 0, no response received), HTTP >= 500, or 429. A
+// nil error (success) or any other 4xx is not retryable — 404 is a
+// legitimate ErrNotFound, and 400/401/403 are caller errors that won't fix
+// themselves.
+func isRetryableStatus(status int, err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if status == 0 {
+		return true
+	}
+
+	return status >= 500 || status == http.StatusTooManyRequests
+}
+
+// doOnce executes a single authenticated call and returns the decoded "data"
+// payload, the HTTP status code (0 for transport errors with no response),
+// and any error. GET requests encode form as a query string; every other
+// method sends it as an application/x-www-form-urlencoded body, matching
+// Proxmox's own API.
+func (c proxmoxRESTClient) doOnce(ctx context.Context, method, path string, form url.Values) (json.RawMessage, int, error) {
 	req, err := c.buildRequest(ctx, method, path, form)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %w", ErrUnreachable, err)
+		return nil, 0, fmt.Errorf("%w: %w", ErrUnreachable, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("read proxmox response: %w", err)
+		return nil, resp.StatusCode, fmt.Errorf("read proxmox response: %w", err)
 	}
 
-	return parseProxmoxResponse(method, path, resp.StatusCode, raw)
+	data, perr := parseProxmoxResponse(method, path, resp.StatusCode, raw)
+
+	return data, resp.StatusCode, perr
 }
 
 func (c proxmoxRESTClient) buildRequest(ctx context.Context, method, path string, form url.Values) (*http.Request, error) {

@@ -26,6 +26,11 @@ type Proxmox struct {
 	APITokenName          string
 	APITokenValue         string
 	TLSInsecureSkipVerify bool
+	// httpClient is the cached *http.Client reused across every REST call so
+	// the underlying Transport's keep-alive connection pool is shared (ticket
+	// 07). Set at construction in registry.go; rest() lazily initializes it
+	// when nil so a zero-value Proxmox (tests) never panics.
+	httpClient *http.Client
 }
 
 // proxmoxResourceRow is one row of /cluster/resources?type=... — Proxmox's

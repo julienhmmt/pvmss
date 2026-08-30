@@ -48,6 +48,10 @@ type fakeState struct {
 	nextVMID           int
 	nextSnapshotTaskID uint64
 	tasks              map[string]*fakeTask
+	// vmLocks maps vmid → Proxmox lock name ("backup", "migrate", ...). Empty
+	// or absent means unlocked. Tests inject a lock to exercise retry-on-lock
+	// (ticket 08) and the lock field in VMLiveStatus (ticket 01b).
+	vmLocks map[int]string
 }
 
 var (
@@ -83,6 +87,7 @@ func newFakeState(clusterName string) *fakeState {
 		snapshots:        make(map[fakeSnapshotKey][]VMSnapshot),
 		identities:       originalFakeIdentities(),
 		roleState:        make(map[string][]string),
+		vmLocks:          make(map[int]string),
 	}
 	if clusterName == "secondary" {
 		state.nodes = slices.Clone(secondaryNodes)
@@ -125,6 +130,7 @@ func (s *fakeState) reset(clusterName string) {
 	s.createErr = nil
 	s.createErrCount = 0
 	s.taskErr = ""
+	s.vmLocks = make(map[int]string)
 
 	s.identMu.Lock()
 	s.identities = fresh.identities

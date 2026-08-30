@@ -380,6 +380,46 @@ func fetchUptime(ctx context.Context, rest proxmoxRESTClient, node string, vmid 
 	return time.Duration(status.Uptime) * time.Second, nil
 }
 
+// VMStatus implements VMStatusReader via GET /nodes/{node}/qemu/{vmid}/status/current.
+// It reads the live power state, lock, and uptime in a single call — the same
+// endpoint fetchUptime already used, now exposed as the domain-level live-status
+// read (ADR 0001).
+func (p Proxmox) VMStatus(ctx context.Context, node string, vmid int) (VMLiveStatus, error) {
+	raw, err := p.rest().do(ctx, http.MethodGet,
+		fmt.Sprintf("/nodes/%s/qemu/%d/status/current", url.PathEscape(node), vmid), nil)
+	if err != nil {
+		return VMLiveStatus{}, err
+	}
+
+	var status struct {
+		Status string `json:"status"`
+		Lock   string `json:"lock"`
+		Uptime int64  `json:"uptime"`
+	}
+	if err := decodeData(raw, &status); err != nil {
+		return VMLiveStatus{}, fmt.Errorf("decode vm status: %w", err)
+	}
+
+	return VMLiveStatus{
+		Status: parseVMStatus(status.Status),
+		Lock:   status.Lock,
+		Uptime: time.Duration(status.Uptime) * time.Second,
+	}, nil
+}
+
+// parseVMStatus maps Proxmox's status string to the VMStatus enum. Proxmox
+// reports "running", "stopped", "paused" — matching the enum directly. An
+// unexpected value defaults to stopped rather than failing the read, matching
+// the best-effort posture of the snapshot path.
+func parseVMStatus(s string) VMStatus {
+	switch VMStatus(s) {
+	case VMRunning, VMStopped, VMPaused:
+		return VMStatus(s)
+	default:
+		return VMStopped
+	}
+}
+
 // encodeNetValue renders a NetworkInterface back to Proxmox's netN grammar.
 func encodeNetValue(iface NetworkInterface) string {
 	model := iface.Model

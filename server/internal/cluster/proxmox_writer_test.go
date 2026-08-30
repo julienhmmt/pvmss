@@ -49,6 +49,70 @@ func TestProxmox_Action_Valid(t *testing.T) {
 	}
 }
 
+// TestProxmox_Action_ShutdownSendsTimeout verifies that shutdown sends the
+// timeout parameter (ticket 05) and other actions do not.
+func TestProxmox_Action_ShutdownSendsTimeout(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name       string
+		action     string
+		wantForm   string
+		wantNoForm bool
+	}{
+		{"shutdown sends timeout", "shutdown", "timeout=60", false},
+		{"start sends no params", "start", "", true},
+		{"stop sends no params", "stop", "", true},
+		{"reboot sends no params", "reboot", "", true},
+		{"reset sends no params", "reset", "", true},
+		{"pause sends no params", "pause", "", true},
+		{"resume sends no params", "resume", "", true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var gotForm url.Values
+
+			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+				mux.HandleFunc("POST /api2/json/nodes/node01/qemu/101/status/"+tc.action, func(w http.ResponseWriter, r *http.Request) {
+					if err := r.ParseForm(); err != nil {
+						t.Fatalf("parse form: %v", err)
+					}
+
+					gotForm = r.PostForm
+
+					writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmaction:101:pvmss@pve:"}`)
+				})
+			})
+
+			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+			if err := p.Action(context.Background(), testNodeName, testVMID, tc.action); err != nil {
+				t.Fatalf("Action: %v", err)
+			}
+
+			if tc.wantNoForm {
+				if len(gotForm) != 0 {
+					t.Errorf("form = %q, want no parameters", gotForm.Encode())
+				}
+
+				if gotForm.Get("skiplock") != "" {
+					t.Errorf("skiplock must never be sent, got %q", gotForm.Get("skiplock"))
+				}
+			} else if gotForm.Encode() != tc.wantForm {
+				t.Errorf("form = %q, want %q", gotForm.Encode(), tc.wantForm)
+			}
+
+			// skiplock must never be sent regardless of action.
+			if gotForm.Get("skiplock") != "" {
+				t.Errorf("skiplock must never be sent, got %q", gotForm.Get("skiplock"))
+			}
+		})
+	}
+}
+
 func TestProxmox_Patch_OnlySendsSetFields(t *testing.T) {
 	t.Parallel()
 

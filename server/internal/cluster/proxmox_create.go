@@ -78,6 +78,21 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 		form.Set(spec.Disk.Bus+"0", diskValue)
 	}
 
+	// Enable the QEMU guest agent. Without agent=1 in the config, every
+	// /agent/* endpoint returns an error — which silently disables
+	// SetCloudInitPassword and AddSSHKey on every VM PVMSS creates — and
+	// shutdown/reboot fall back to ACPI alone.
+	form.Set("agent", "1")
+
+	// ostype tunes Proxmox's own defaults (clock source, default drivers).
+	// Every catalog entry PVMSS exposes is Linux.
+	form.Set("ostype", "l26")
+
+	// Explicit boot order built only from the devices this spec actually
+	// created — a hardcoded order naming a device that is absent makes the
+	// VM unbootable.
+	setBootOrderForm(form, spec)
+
 	for i, nic := range spec.Network {
 		if nic.Bridge == "" {
 			continue
@@ -121,6 +136,27 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 	}
 
 	return upid, nil
+}
+
+// setBootOrderForm emits boot=order=<devices> built only from the devices the
+// spec actually created (issue-03). A hardcoded order naming an absent device
+// makes the VM unbootable, so the disk bus key is added only when storage is
+// set and the cdrom key only when an ISO is mounted. Extracted from CreateVM
+// to keep its cyclomatic complexity under gocyclo's ceiling.
+func setBootOrderForm(form url.Values, spec VMSpec) {
+	var bootOrder []string
+
+	if spec.Disk.Storage != "" {
+		bootOrder = append(bootOrder, spec.Disk.Bus+"0")
+	}
+
+	if spec.ISO != nil {
+		bootOrder = append(bootOrder, cdromDiskKey)
+	}
+
+	if len(bootOrder) > 0 {
+		form.Set("boot", "order="+strings.Join(bootOrder, ";"))
+	}
 }
 
 // setUEFIFormKeys emits the UEFI/TPM form keys when BIOS is ovmf (US6/issue-06

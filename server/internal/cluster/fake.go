@@ -588,6 +588,39 @@ func (fake Fake) Action(_ context.Context, node string, vmid int, action string)
 	return nil
 }
 
+// VMStatus implements VMStatusReader. The fake's in-memory state already tracks
+// each VM's status and uptime; the lock comes from the injectable vmLocks map
+// (empty by default = unlocked, matching Proxmox's /status/current).
+func (fake Fake) VMStatus(_ context.Context, node string, vmid int) (VMLiveStatus, error) {
+	state := fake.stateOrDefault()
+	state.vmMu.RLock()
+	defer state.vmMu.RUnlock()
+
+	idx := slices.IndexFunc(state.vms, func(v VM) bool { return v.VMID == vmid && v.Node == node })
+	if idx < 0 {
+		return VMLiveStatus{}, ErrNotFound
+	}
+
+	return VMLiveStatus{
+		Status: state.vms[idx].Status,
+		Lock:   state.vmLocks[vmid],
+		Uptime: state.vms[idx].Uptime,
+	}, nil
+}
+
+// SetVMLock injects a Proxmox lock name on a VM for testing retry-on-lock
+// (ticket 08) and the lock field in VMLiveStatus. An empty lockName clears it.
+func (fake Fake) SetVMLock(vmid int, lockName string) {
+	state := fake.stateOrDefault()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
+	if lockName == "" {
+		delete(state.vmLocks, vmid)
+	} else {
+		state.vmLocks[vmid] = lockName
+	}
+}
+
 // validateTransition rejects a power action that makes no sense for the VM's
 // current status. Real Proxmox rejects these natively; the fake mirrors that
 // so T17's bulk scenarios produce the same per-target error entries a real

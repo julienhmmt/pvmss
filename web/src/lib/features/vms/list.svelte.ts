@@ -3,6 +3,8 @@ import { SvelteURLSearchParams } from 'svelte/reactivity';
 import { get, post, ApiRequestError } from '$lib/shared/api/client';
 import { m } from '$lib/paraglide/messages.js';
 import type { VmAction } from './detail.svelte';
+import { optimisticStatus } from './detail.svelte';
+import { convergeBatch } from './converge';
 
 export type VmStatus = 'running' | 'stopped' | 'paused';
 export type VmScope = 'mine' | 'all';
@@ -183,25 +185,63 @@ export class VmListStore {
 	}
 
 	/**
-	 * Triggers a power action on a single VM from the list view, then reloads
-	 * the list so the row reflects the authoritative status. Returns a result
-	 * object so the caller can fire the appropriate toast without coupling the
-	 * store to the toast queue.
+	 * Triggers a power action on a single VM from the list view, then converges
+	 * via the batch live-status endpoint (ADR 0001) — replacing the old `load()`
+	 * that overwrote the optimistic flip with a stale projection read.
+	 * Returns a result object so the caller can fire the appropriate toast
+	 * without coupling the store to the toast queue.
 	 */
 	async rowAction(cluster: string, vmid: number, action: VmAction): Promise<RowActionResult> {
+		const target = optimisticStatus(action);
+
+		// Capture the previous status BEFORE the optimistic flip — the row in
+		// `this.result` will be patched to `target` next, so reading it back in
+		// the catch block would just return `target` (a no-op revert).
+		const row = this.#findRow(cluster, vmid);
+		if (row === null) {
+			// Row is gone (e.g. deleted concurrently) — nothing to flip or revert.
+			return { ok: false, error: m['vms.detail.errorAction']() };
+		}
+		const previousStatus = row.status;
+
+		// Optimistic flip: patch the row's status immediately.
+		this.#patchRowStatus(cluster, vmid, target);
+
 		try {
 			await post<{ status: string }>(
 				`/api/v1/vms/${encodeURIComponent(cluster)}/${vmid}/actions`,
 				{ action }
 			);
-			await this.load();
+			// Converge: poll batch live status until it matches the optimistic target.
+			await convergeBatch({ cluster, vmid }, target, (status) => {
+				this.#patchRowStatus(cluster, vmid, status);
+			});
 			return { ok: true };
 		} catch (err) {
+			// Revert to the captured previous status.
+			this.#patchRowStatus(cluster, vmid, previousStatus);
 			return {
 				ok: false,
 				error: err instanceof ApiRequestError ? err.message : m['vms.detail.errorAction']()
 			};
 		}
+	}
+
+	/** Finds a row by cluster+vmid in the current result set. */
+	#findRow(cluster: string, vmid: number): VmListItem | null {
+		if (this.result === null) return null;
+		return this.result.items.find((r) => r.cluster === cluster && r.vmid === vmid) ?? null;
+	}
+
+	/** Patches a single row's status in-place without reloading the list. */
+	#patchRowStatus(cluster: string, vmid: number, status: VmStatus): void {
+		if (this.result === null) return;
+		this.result = {
+			...this.result,
+			items: this.result.items.map((r) =>
+				r.cluster === cluster && r.vmid === vmid ? { ...r, status } : r,
+			),
+		};
 	}
 }
 
