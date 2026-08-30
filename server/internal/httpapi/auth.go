@@ -78,6 +78,8 @@ type Auth struct {
 	tokens           *auth.TokenService
 	log              *slog.Logger
 	trustedProxyHops int
+	freshness        ClusterFreshnessChecker
+	staleThreshold   time.Duration
 }
 
 // NewAuth creates the legacy single-cluster authentication endpoint handlers.
@@ -94,6 +96,14 @@ func NewAuthWithRegistry(registry cluster.ClientProvider, st *store.Store, sessi
 // when extracting the client IP for audit entries.
 func (h *Auth) SetTrustedProxyHops(n int) {
 	h.trustedProxyHops = n
+}
+
+// SetClusterFreshnessChecker wires the cluster health source used to reject
+// user logins when the selected cluster is unreachable. Admin login is never
+// gated by this check.
+func (h *Auth) SetClusterFreshnessChecker(freshness ClusterFreshnessChecker, staleThreshold time.Duration) {
+	h.freshness = freshness
+	h.staleThreshold = staleThreshold
 }
 
 // Login authenticates a PVE cluster account. The local administrator has its
@@ -131,6 +141,13 @@ func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
+
+	if !h.isClusterAvailable(clusterName) {
+		h.log.Info("cluster unavailable, rejecting user login", "component", "httpapi", "cluster", clusterName)
+		writeAuthError(w, http.StatusServiceUnavailable, "cluster_unavailable", msgClusterUnavailable)
+		return
+	}
+
 	result, err := authenticatePVE(r.Context(), client, request.Username, request.Password)
 	if err != nil {
 		h.log.Info("pve authentication failed", "component", "httpapi", "error", err)
@@ -411,6 +428,29 @@ func (h *Auth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 }
 
 var errAuthClusterRequired = errors.New("authentication cluster required")
+
+// isClusterAvailable reports whether the named cluster has completed a recent
+// successful inventory refresh. A missing checker or missing cluster means the
+// availability is unknown and the login proceeds (legacy/no-freshness paths).
+func (h *Auth) isClusterAvailable(name string) bool {
+	if h.freshness == nil {
+		return true
+	}
+
+	for _, c := range h.freshness.Clusters() {
+		if c.Name != name {
+			continue
+		}
+
+		if c.RefreshedAt.IsZero() {
+			return false
+		}
+
+		return time.Since(c.RefreshedAt) <= h.staleThreshold
+	}
+
+	return false
+}
 
 func (h *Auth) loginClient(name string) (cluster.Client, string, error) {
 	if h.clusters == nil {

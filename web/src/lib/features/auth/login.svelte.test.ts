@@ -58,4 +58,45 @@ describe('LoginForm', () => {
 		expect(form.error).toBe(m['login.error.invalidCredentials']());
 		expect(form.error).not.toBe('invalid credentials');
 	});
+
+	it('translates a cluster_unavailable error', async () => {
+		const fetchMock = vi.fn().mockResolvedValueOnce(
+			jsonResponse(503, { code: 'cluster_unavailable', message: 'cluster is unavailable' })
+		);
+		vi.stubGlobal('fetch', fetchMock);
+		const form = new LoginForm();
+		form.username = 'alice';
+		form.password = 'pvmss-alice';
+		const principal = await form.submit();
+		expect(principal).toBeNull();
+		expect(form.error).toBe(m['login.error.clusterUnavailable']());
+		expect(form.error).not.toBe('cluster is unavailable');
+	});
+
+	it('refuses PVE login when the cluster is disabled without calling the server', async () => {
+		const fetchMock = vi.fn();
+		vi.stubGlobal('fetch', fetchMock);
+		const form = new LoginForm();
+		form.setPveDisabled(true);
+		form.username = 'alice';
+		form.password = 'pvmss-alice';
+		const principal = await form.submit();
+		expect(principal).toBeNull();
+		expect(form.error).toBe(m['login.error.clusterUnavailable']());
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it('allows local admin login even when PVE login is disabled', async () => {
+		const fetchMock = vi.fn().mockResolvedValueOnce(
+			jsonResponse(200, { username: 'admin', displayName: 'admin', isAdmin: true, cluster: '', clusterDisplayName: '' })
+		);
+		vi.stubGlobal('fetch', fetchMock);
+		const form = new LoginForm();
+		form.setPveDisabled(true);
+		form.provider = 'local';
+		form.password = 'admin-password';
+		const principal = await form.submit();
+		expect(principal?.isAdmin).toBe(true);
+		expect(form.error).toBeNull();
+	});
 });

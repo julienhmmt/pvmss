@@ -15,6 +15,7 @@ import (
 	"pvmss/server/internal/store"
 	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -432,4 +433,55 @@ type testWriter struct {
 func (w testWriter) Write(bytes []byte) (int, error) {
 	w.t.Log(string(bytes))
 	return len(bytes), nil
+}
+
+type authTestFreshness struct {
+	clusters []httpapi.ClusterFreshness
+}
+
+func (f authTestFreshness) Clusters() []httpapi.ClusterFreshness { return f.clusters }
+func (authTestFreshness) DemoMode() bool                         { return false }
+
+//nolint:paralleltest // serial: shared fake auth and session fixtures
+func TestAuth_Login_RejectedWhenClusterUnavailable(t *testing.T) {
+	handler, _ := newAuthHandlerWithStore(t)
+	handler.SetClusterFreshnessChecker(authTestFreshness{
+		clusters: []httpapi.ClusterFreshness{{Name: auditTestCluster, RefreshedAt: time.Now().Add(-2 * time.Hour)}},
+	}, time.Minute)
+
+	rec := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice","cluster":"default"}`)
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusServiceUnavailable)
+	}
+
+	code, _ := authErrorResponse(t, rec)
+	if code != "cluster_unavailable" {
+		t.Errorf("code = %q, want cluster_unavailable", code)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake auth and session fixtures
+func TestAuth_Login_AllowedWhenClusterFresh(t *testing.T) {
+	handler, _ := newAuthHandlerWithStore(t)
+	handler.SetClusterFreshnessChecker(authTestFreshness{
+		clusters: []httpapi.ClusterFreshness{{Name: auditTestCluster, RefreshedAt: time.Now()}},
+	}, time.Minute)
+
+	rec := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice","cluster":"default"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake auth and session fixtures
+func TestAuth_AdminLogin_AllowedWhenClusterUnavailable(t *testing.T) {
+	handler, _ := newAuthHandlerWithStore(t)
+	handler.SetClusterFreshnessChecker(authTestFreshness{
+		clusters: []httpapi.ClusterFreshness{{Name: auditTestCluster, RefreshedAt: time.Time{}}},
+	}, time.Minute)
+
+	rec := serveJSON(handler.AdminLogin, "/api/v1/auth/admin-login", `{"password":"pvmss-local-admin"}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
 }

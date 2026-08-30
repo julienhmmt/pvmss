@@ -26,7 +26,7 @@ import (
 //
 // This is the Phase-1 feedback loop for the "disconnected app" bug report.
 //
-//nolint:paralleltest // serial: background worker + shared temp dir
+//nolint:paralleltest,funlen // integration scenario: background worker + shared temp dir
 func TestClusterDownScenario(t *testing.T) {
 	// One cluster named "offline-demo" — the fake returns ErrUnreachable for
 	// that name on every call, mirroring a single-cluster instance whose
@@ -79,7 +79,27 @@ func TestClusterDownScenario(t *testing.T) {
 
 	authHandler := httpapi.NewAuthWithRegistry(clusterRegistry, st, sessions, string(hashBytes), auth.NewTokenService(st), logger)
 
-	loginResp := serveJSON(authHandler.AdminLogin, "/api/v1/auth/admin/login", `{"password":"pvmss-local-admin"}`)
+	freshness := testInventoryFreshness{registry: inventoryRegistry, demoMode: false}
+	authHandler.SetClusterFreshnessChecker(freshness, 60*time.Second)
+
+	// --- POST /api/v1/auth/login (user login must be unavailable when the cluster is down) ---
+	userLoginResp := serveJSON(authHandler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
+
+	t.Logf("POST /api/v1/auth/login status=%d body=%s", userLoginResp.Code, userLoginResp.Body.String())
+
+	var userLoginErr struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	}
+
+	_ = json.Unmarshal(userLoginResp.Body.Bytes(), &userLoginErr)
+
+	if userLoginResp.Code != http.StatusServiceUnavailable || userLoginErr.Code != "cluster_unavailable" {
+		t.Fatalf("user login should be rejected when cluster is down: status=%d code=%q", userLoginResp.Code, userLoginErr.Code)
+	}
+
+	// --- POST /api/v1/auth/admin-login (local admin can still connect) ---
+	loginResp := serveJSON(authHandler.AdminLogin, "/api/v1/auth/admin-login", `{"password":"pvmss-local-admin"}`)
 	if loginResp.Code != http.StatusOK {
 		t.Fatalf("admin login status=%d body=%s", loginResp.Code, loginResp.Body.String())
 	}
@@ -109,8 +129,6 @@ func TestClusterDownScenario(t *testing.T) {
 	t.Logf("SYMPTOM 1: vm list code=%q message=%q", vmErr.Code, vmErr.Message)
 
 	// --- GET /health (SPA status banner poll) ---
-	freshness := testInventoryFreshness{registry: inventoryRegistry, demoMode: false}
-
 	health := httpapi.NewHealth(st, logger, freshness, 60*time.Second)
 
 	healthReq := httptest.NewRequest(http.MethodGet, "/health", nil)
