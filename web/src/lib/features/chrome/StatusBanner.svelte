@@ -39,6 +39,23 @@
 		aria-live="polite"
 		class="border-b px-4 py-2 text-center text-sm {SEVERITY_STYLES[status.severity]}"
 	>
-		{message()}
+		<span class="inline-flex items-center gap-2">
+			{message()}
+			{#if status.clusterDownCounts}
+				<span class="font-medium">
+					{m['banner.degraded.clustersDetail'](status.clusterDownCounts)}
+				</span>
+			{/if}
+		</span>
+		{#if status.severity === 'degraded'}
+			<button
+				type="button"
+				class="ml-3 underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+				onclick={() => void status.retryClusterConnection()}
+				data-testid="banner-cluster-retry"
+			>
+				{m['banner.degraded.retry']()}
+			</button>
+		{/if}
 	</div>
 {/if}

@@ -16,19 +16,21 @@
 		nodes: NodeCapacity[];
 		loading: boolean;
 		error: string | null;
+		errorCode: string | null;
 		saving: boolean;
 		saveError: string | null;
 		clusterOptions: ClusterOption[];
 		cluster: string;
 		onClusterChange: (value: string) => void;
 		onLoad: () => void;
+		onRetry: () => void;
 		onSave: (node: string, patch: NodeCapacityPatch) => void;
 		sortBy: SortColumn;
 		sortDir: 'asc' | 'desc';
 		onSort: (column: SortColumn) => void;
 	}
 
-	let { nodes, loading, error, saving, saveError, clusterOptions, cluster, onClusterChange, onLoad, onSave, sortBy, sortDir, onSort }: Props = $props();
+	let { nodes, loading, error, errorCode, saving, saveError, clusterOptions, cluster, onClusterChange, onLoad, onRetry, onSave, sortBy, sortDir, onSort }: Props = $props();
 	let selected = $state<NodeCapacity | null>(null);
 	let dialogOpen = $state(false);
 
@@ -63,6 +65,15 @@
 	{#if loading}
 		<div role="status" aria-live="polite" class="sr-only">{m['policy.loading']()}</div>
 		<TableSkeleton columns={5} />
+	{:else if errorCode === 'inventory_not_ready'}
+		<EmptyState
+			title={m['policy.clusterUnreachableTitle']()}
+			description={m['policy.clusterUnreachableDescription']()}
+		>
+			{#snippet actions()}
+				<Button onclick={onRetry}>{m['policy.clusterUnreachableRetry']()}</Button>
+			{/snippet}
+		</EmptyState>
 	{:else if error}
 		<div class="space-y-3" role="alert"><p class="text-destructive">{error}</p><Button variant="secondary" onclick={onLoad}>{m['policy.retry']()}</Button></div>
 	{:else}

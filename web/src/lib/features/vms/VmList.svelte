@@ -12,6 +12,7 @@
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import { formatBytes } from '$lib/shared/format-bytes';
+	import { post } from '$lib/shared/api/client';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Pill from '$lib/shared/ui/Pill.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
@@ -84,6 +85,16 @@
 
 	function handlePageSizeChange(event: Event): void {
 		store.setPageSize(Number((event.currentTarget as HTMLSelectElement).value));
+	}
+
+	async function handleClusterRetry(): Promise<void> {
+		try {
+			await post('/api/v1/cluster/refresh');
+		} catch {
+			// The refresh itself may fail (cluster still down) — reload picks
+			// up the current error state either way.
+		}
+		await store.load();
 	}
 
 	function handleRowToggle(cluster: string, vmid: number): void {
@@ -229,11 +240,28 @@
 		{/if}
 	</div>
 
-	{#if store.error}
+	{#if store.errorCode === 'inventory_not_ready'}
+		<EmptyState
+			title={m['vms.list.clusterUnreachableTitle']()}
+			description={m['vms.list.clusterUnreachableDescription']()}
+			dataTestid="vm-list-cluster-unreachable"
+		>
+			{#snippet actions()}
+				<button
+					type="button"
+					class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+					onclick={() => void handleClusterRetry()}
+					data-testid="vm-list-cluster-retry"
+				>
+					{m['vms.list.clusterUnreachableRetry']()}
+				</button>
+			{/snippet}
+		</EmptyState>
+	{:else if store.error}
 		<p role="alert" class="px-4 py-3 text-sm text-destructive" data-testid="vm-list-error">{store.error}</p>
 	{/if}
 
-	{#if store.result && store.result.items.length === 0}
+	{#if store.errorCode !== 'inventory_not_ready' && store.result && store.result.items.length === 0}
 		{#if store.result.emptyReason === 'no_vms_owned'}
 			<EmptyState title={m['vms.list.emptyOwned']()} dataTestid="vm-empty-owned">
 				{#snippet actions()}
@@ -250,7 +278,7 @@
 		{:else}
 			<EmptyState title={m['vms.list.emptyMatch']()} dataTestid="vm-empty-match" />
 		{/if}
-	{:else}
+	{:else if store.result}
 		<div class="overflow-x-auto">
 			<table class="pv-responsive-table text-sm">
 				<caption class="sr-only">{m['vms.list.caption']()}</caption>

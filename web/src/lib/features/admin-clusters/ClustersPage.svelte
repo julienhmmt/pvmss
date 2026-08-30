@@ -24,6 +24,42 @@
 		formOpen = true;
 	}
 
+	function statusLabel(status: AdminCluster['lastTestStatus']): string {
+		switch (status) {
+			case 'ok':
+				return m['common.statusOk']();
+			case 'unreachable':
+				return m['common.statusUnreachable']();
+			case 'error':
+				return m['common.statusError']();
+			default:
+				return m['common.untested']();
+		}
+	}
+
+	function statusClass(status: AdminCluster['lastTestStatus']): string {
+		switch (status) {
+			case 'ok':
+				return 'bg-success text-success-foreground';
+			case 'unreachable':
+			case 'error':
+				return 'bg-destructive text-destructive-foreground';
+			default:
+				return 'bg-muted text-muted-foreground';
+		}
+	}
+
+	function statusHint(status: AdminCluster['lastTestStatus']): string | null {
+		switch (status) {
+			case 'unreachable':
+				return m['admin.clusters.unreachableHint']();
+			case 'error':
+				return m['admin.clusters.errorHint']();
+			default:
+				return null;
+		}
+	}
+
 	async function saveCluster(input: ClusterInput): Promise<void> {
 		const succeeded =
 			editing === null
@@ -77,8 +113,12 @@
 							</td>
 							<td class="px-4 py-3 text-muted-foreground">{cluster.displayName || '—'}</td>
 							<td class="px-4 py-3">
-								<span class="rounded-full bg-muted px-2 py-1 text-xs">{cluster.lastTestStatus ?? m['common.untested']()}</span>
-								{#if cluster.lastTestMessage}<div class="mt-1 text-xs text-muted-foreground">{cluster.lastTestMessage}</div>{/if}
+								<span class="rounded-full px-2 py-1 text-xs {statusClass(cluster.lastTestStatus)}">{statusLabel(cluster.lastTestStatus)}</span>
+								{#if cluster.lastTestMessage}
+									<div class="mt-1 text-xs text-muted-foreground">{cluster.lastTestMessage}</div>
+								{:else if statusHint(cluster.lastTestStatus)}
+									<div class="mt-1 text-xs text-muted-foreground">{statusHint(cluster.lastTestStatus)}</div>
+								{/if}
 							</td>
 							<td class="px-4 py-3 text-muted-foreground">{cluster.proxmoxVersion ?? '—'}</td>
 							<td class="px-4 py-3">{cluster.nodeCount} / {cluster.vmCount}</td>

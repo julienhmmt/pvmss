@@ -6,6 +6,7 @@
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 
@@ -13,6 +14,7 @@
 		policy: AdminPolicy | null;
 		loading: boolean;
 		error: string | null;
+		errorCode: string | null;
 		saving: boolean;
 		saveError: string | null;
 		saved: boolean;
@@ -20,6 +22,7 @@
 		cluster: string;
 		onClusterChange: (value: string) => void;
 		onLoad: () => void;
+		onRetry: () => void;
 		onSave: (patch: AdminPolicyPatch) => void;
 	}
 
@@ -27,6 +30,7 @@
 		policy,
 		loading,
 		error,
+		errorCode,
 		saving,
 		saveError,
 		saved,
@@ -34,6 +38,7 @@
 		cluster,
 		onClusterChange,
 		onLoad,
+		onRetry,
 		onSave
 	}: Props = $props();
 
@@ -96,6 +101,15 @@
 <section aria-labelledby="policy-title">
 	{#if loading}
 		<p class="text-muted-foreground" role="status" aria-live="polite">{m['policy.loading']()}</p>
+	{:else if errorCode === 'inventory_not_ready'}
+		<EmptyState
+			title={m['policy.clusterUnreachableTitle']()}
+			description={m['policy.clusterUnreachableDescription']()}
+		>
+			{#snippet actions()}
+				<Button onclick={onRetry}>{m['policy.clusterUnreachableRetry']()}</Button>
+			{/snippet}
+		</EmptyState>
 	{:else if error}
 		<div class="space-y-3" role="alert">
 			<p class="text-destructive">{error}</p>

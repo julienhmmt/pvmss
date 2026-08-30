@@ -111,3 +111,104 @@ describe('StatusState.poll', () => {
 		expect(state.severity).toBe('unknown');
 	});
 });
+
+describe('StatusState.clusterDownCounts', () => {
+	afterEach(() => vi.restoreAllMocks());
+
+	it('returns the parsed cluster counts when clusters check is unhealthy', async () => {
+		const state = new StatusState(
+			vi.fn().mockResolvedValue(
+				makeResponse({
+					status: 'healthy',
+					checks: { database: { status: 'healthy' }, clusters: { status: 'unhealthy', detail: '1 of 1 clusters unreachable' } }
+				})
+			)
+		);
+		await state.pollOnce();
+		expect(state.clusterDownCounts).toEqual({ unreachable: 1, total: 1 });
+	});
+
+	it('returns null when clusters check is healthy', async () => {
+		const state = new StatusState(vi.fn().mockResolvedValue(makeResponse()));
+		await state.pollOnce();
+		expect(state.clusterDownCounts).toBeNull();
+	});
+});
+
+describe('StatusState.allClustersDown', () => {
+	afterEach(() => vi.restoreAllMocks());
+
+	it('is true when every cluster is unreachable', async () => {
+		const state = new StatusState(
+			vi.fn().mockResolvedValue(
+				makeResponse({
+					status: 'healthy',
+					checks: { database: { status: 'healthy' }, clusters: { status: 'unhealthy', detail: '2 of 2 clusters unreachable' } }
+				})
+			)
+		);
+		await state.pollOnce();
+		expect(state.allClustersDown).toBe(true);
+	});
+
+	it('is false when only some clusters are unreachable', async () => {
+		const state = new StatusState(
+			vi.fn().mockResolvedValue(
+				makeResponse({
+					status: 'healthy',
+					checks: { database: { status: 'healthy' }, clusters: { status: 'unhealthy', detail: '1 of 2 clusters unreachable' } }
+				})
+			)
+		);
+		await state.pollOnce();
+		expect(state.allClustersDown).toBe(false);
+	});
+
+	it('is false when clusters check is healthy', async () => {
+		const state = new StatusState(vi.fn().mockResolvedValue(makeResponse()));
+		await state.pollOnce();
+		expect(state.allClustersDown).toBe(false);
+	});
+});
+
+describe('StatusState.retryClusterConnection', () => {
+	afterEach(() => vi.restoreAllMocks());
+
+	it('posts a cluster refresh then re-polls health', async () => {
+		const degraded = makeResponse({
+			status: 'healthy',
+			checks: { database: { status: 'healthy' }, clusters: { status: 'unhealthy', detail: '1 of 1 clusters unreachable' } }
+		});
+		const healthy = makeResponse();
+		let pollCall = 0;
+		const fetcher = (): Promise<HealthResponse> => {
+			pollCall++;
+			return Promise.resolve(pollCall === 1 ? degraded : healthy);
+		};
+		const postMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+		vi.stubGlobal('fetch', postMock);
+
+		const state = new StatusState(fetcher);
+		await state.pollOnce();
+		expect(state.severity).toBe('degraded');
+
+		await state.retryClusterConnection();
+		expect(postMock).toHaveBeenCalledOnce();
+		expect(state.severity).toBe('none');
+	});
+
+	it('re-polls even when the refresh POST fails (cluster still down)', async () => {
+		const degraded = makeResponse({
+			status: 'healthy',
+			checks: { database: { status: 'healthy' }, clusters: { status: 'unhealthy', detail: '1 of 1 clusters unreachable' } }
+		});
+		const fetcher = vi.fn().mockResolvedValue(degraded);
+		const postMock = vi.fn().mockResolvedValue(new Response('{"code":"cluster_unreachable"}', { status: 502 }));
+		vi.stubGlobal('fetch', postMock);
+
+		const state = new StatusState(fetcher);
+		await state.pollOnce();
+		await state.retryClusterConnection();
+		expect(state.severity).toBe('degraded');
+	});
+});
