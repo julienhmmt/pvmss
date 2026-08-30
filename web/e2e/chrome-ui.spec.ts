@@ -5,8 +5,8 @@ import { test, expect } from '@playwright/test';
 // against the fake cluster client (constitution XI — no Proxmox needed).
 //
 // The default locale is French (Paraglide base locale). SSR renders in French;
-// the language switcher changes it at runtime. Selectors use French labels
-// for the initial state and locale-agnostic patterns where possible.
+// the language switcher is a two-button group and the theme toggle is an icon
+// button. Selectors use locale-agnostic patterns where possible.
 
 test.describe('T19 chrome UI', () => {
 	test.describe('US1 — language switcher', () => {
@@ -33,21 +33,19 @@ test.describe('T19 chrome UI', () => {
 			// Default locale is French (constitution: French is the source language).
 			await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
 
-			// Open the language dropdown — the button's aria-label is "Langue" in French.
-			await page.getByRole('button', { name: 'Langue' }).click();
-			await page.getByRole('menuitemradio', { name: 'English' }).click();
+			// The language switcher exposes each locale as a button.
+			await page.getByRole('button', { name: 'English' }).click();
 
 			// <html lang> updates immediately, no reload.
 			await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 
-			// The button's aria-label is now "Language" in English.
-			await expect(page.getByRole('button', { name: 'Language' })).toBeVisible();
+			// The home CTA has switched to English.
+			await expect(page.getByRole('link', { name: 'Log in' })).toBeVisible();
 		});
 
 		test('language choice persists across reload', async ({ page }) => {
 			await page.goto('/');
-			await page.getByRole('button', { name: 'Langue' }).click();
-			await page.getByRole('menuitemradio', { name: 'English' }).click();
+			await page.getByRole('button', { name: 'English' }).click();
 			await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 
 			await page.reload();
@@ -63,8 +61,8 @@ test.describe('T19 chrome UI', () => {
 			await page.evaluate(() => localStorage.removeItem('pvmss-theme-v1'));
 			await page.reload();
 
-			// Toggle to dark — the switch's aria-label is "Thème" in French.
-			await page.getByRole('switch', { name: 'Thème' }).click();
+			// The theme toggle is an icon button labelled "Thème" / "Theme".
+			await page.getByRole('button', { name: /Thème|Theme/ }).click();
 			await expect(html).toHaveClass(/dark/);
 
 			// Persist across reload.
@@ -79,7 +77,7 @@ test.describe('T19 chrome UI', () => {
 			const page = await context.newPage();
 			await page.goto('/');
 			// The toggle is reachable and functional under reduced motion.
-			await page.getByRole('switch', { name: 'Thème' }).click();
+			await page.getByRole('button', { name: /Thème|Theme/ }).click();
 			await expect(page.locator('html')).toHaveClass(/dark/);
 			await context.close();
 		});
@@ -110,10 +108,10 @@ test.describe('T19 chrome UI', () => {
 
 		test('authenticated user sees My VMs, Create a VM, Documentation, and a welcome', async ({ page }) => {
 			await page.goto('/login');
-			await page.getByLabel('Username').fill('alice');
-			await page.getByLabel('Password').fill('pvmss-alice');
+			await page.locator('input[autocomplete="username"]').fill('alice');
+			await page.locator('input[type="password"]').fill('pvmss-alice');
 			await page.locator('#login-cluster').selectOption('default');
-			await page.getByRole('button', { name: 'Sign in' }).click();
+			await page.locator('button[type="submit"]').click();
 			await page.waitForURL(/\/$/);
 			const cta = ctaSection(page);
 			await expect(cta.getByRole('link', { name: /Mes VM|My VMs/ })).toBeVisible();
@@ -124,8 +122,8 @@ test.describe('T19 chrome UI', () => {
 		test('authenticated admin sees Documentation but no My VMs or Create a VM', async ({ page }) => {
 			await page.goto('/login');
 			await page.getByRole('button', { name: /administrat/i }).click();
-			await page.getByLabel('Password').fill('pvmss-e2e-admin');
-			await page.getByRole('button', { name: 'Sign in' }).click();
+			await page.locator('input[type="password"]').fill('pvmss-e2e-admin');
+			await page.locator('button[type="submit"]').click();
 			await page.waitForURL(/\/admin/);
 			await page.goto('/');
 			const cta = ctaSection(page);

@@ -232,6 +232,8 @@
   "common.allStatuses": "Tous les statuts",
   "common.cores": "cœurs",
   "common.rowsPerPage": "Lignes par page",
+  "common.showPassword": "Afficher le mot de passe",
+  "common.hidePassword": "Masquer le mot de passe",
   "common.pageIndicator": "Page {current} de {total}",
   "common.paginationLabel": "Pagination",
   "common.selectStorage": "Sélectionner un stockage",

@@ -232,6 +232,8 @@
   "common.allStatuses": "All statuses",
   "common.cores": "cores",
   "common.rowsPerPage": "Rows per page",
+  "common.showPassword": "Show password",
+  "common.hidePassword": "Hide password",
   "common.pageIndicator": "Page {current} of {total}",
   "common.paginationLabel": "Pagination",
   "common.selectStorage": "Select storage",
