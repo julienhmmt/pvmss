@@ -37,14 +37,23 @@ export class DashboardStore {
 	summary = $state.raw<DashboardSummary | null>(null);
 	loading = $state.raw(false);
 	error = $state.raw<string | null>(null);
+	errorCode = $state.raw<string | null>(null);
 
 	async load(): Promise<void> {
 		this.loading = true;
 		this.error = null;
+		this.errorCode = null;
+
 		try {
 			this.summary = await get<DashboardSummary>('/api/v1/admin/dashboard');
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : m['admin.dashboard.loadError']();
+			if (err instanceof ApiRequestError) {
+				this.error = err.message;
+				this.errorCode = err.code;
+			} else {
+				this.error = m['admin.dashboard.loadError']();
+				this.errorCode = null;
+			}
 		} finally {
 			this.loading = false;
 		}

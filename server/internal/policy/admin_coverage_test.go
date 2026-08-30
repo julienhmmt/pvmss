@@ -288,10 +288,10 @@ func TestSetNodeCapacity_ValidCapacity_Persists(t *testing.T) {
 	service, _ := newPolicyService(t)
 	ctx := context.Background()
 
-	// FakeNode03 is offline with zero pvmss-tagged VMs, so any non-negative
-	// capacity passes the below-usage check. Its physical limits are 16
-	// vCPUs and 64 GB RAM, so we stay within them.
-	capacity := policy.Capacity{MaxVMs: 10, MaxVCPUs: 16, MaxRAMGB: 64, MaxDiskGB: 500}
+	// FakeNode03 has one pvmss-tagged VM (VMID 111) with 1024 GB disk, so
+	// MaxDiskGB must be >= 1024 to pass the below-usage check. Its physical
+	// limits are 16 vCPUs and 64 GB RAM, so we stay within them.
+	capacity := policy.Capacity{MaxVMs: 10, MaxVCPUs: 16, MaxRAMGB: 64, MaxDiskGB: 2048}
 	if err := service.SetNodeCapacity(ctx, "default", cluster.FakeNode03, capacity); err != nil {
 		t.Fatalf("SetNodeCapacity: %v", err)
 	}
@@ -301,7 +301,7 @@ func TestSetNodeCapacity_ValidCapacity_Persists(t *testing.T) {
 		t.Fatalf("NodeCapacity: %v", err)
 	}
 
-	if got.MaxVMs != 10 || got.MaxVCPUs != 16 || got.MaxRAMGB != 64 || got.MaxDiskGB != 500 {
+	if got.MaxVMs != 10 || got.MaxVCPUs != 16 || got.MaxRAMGB != 64 || got.MaxDiskGB != 2048 {
 		t.Fatalf("capacity = %+v, want %+v", got, capacity)
 	}
 }

@@ -29,6 +29,7 @@ type VMCloudInit struct {
 	clients    cluster.ClientProvider
 	store      *store.Store
 	refresher  vm.IndexRefresher
+	refreshers ClusterRefresherResolver
 	policy     *policy.Policy
 	log        *slog.Logger
 }
@@ -63,11 +64,15 @@ func NewVMCloudInit(deps VMCloudInitDeps, services ...*policy.Policy) *VMCloudIn
 	}
 
 	resolver := vm.ClusterIndexResolver(singleClusterResolver{projection: deps.Projection})
+
+	var refreshers ClusterRefresherResolver
+
 	if registry, ok := deps.Source.(*inventory.Registry); ok {
 		resolver = registryResolver{registry: registry}
+		refreshers = registryRefresherResolver{registry: registry}
 	}
 
-	return &VMCloudInit{projection: deps.Projection, resolver: resolver, auth: deps.Auth, reader: deps.Reader, writer: deps.Writer, clients: deps.Clients, store: deps.Store, refresher: deps.Refresher, policy: policyService, log: deps.Log}
+	return &VMCloudInit{projection: deps.Projection, resolver: resolver, auth: deps.Auth, reader: deps.Reader, writer: deps.Writer, clients: deps.Clients, store: deps.Store, refresher: deps.Refresher, refreshers: refreshers, policy: policyService, log: deps.Log}
 }
 
 // index resolves the current Index for clusterName, writing the appropriate
@@ -96,6 +101,26 @@ func (h *VMCloudInit) writerFor(w http.ResponseWriter, clusterName string) (clus
 	}
 
 	return writer, true
+}
+
+// refresherFor resolves the vm.IndexRefresher for clusterName. A missing
+// refresher must not fail a write already applied on the cluster — so it
+// never writes an HTTP error. When the per-cluster resolver is unset
+// (single-cluster mode) or the cluster is unknown, it returns the fallback
+// refresher and logs a warning. The result is never nil when the fallback
+// is non-nil.
+func (h *VMCloudInit) refresherFor(clusterName string) vm.IndexRefresher {
+	if h.refreshers == nil {
+		return h.refresher
+	}
+
+	refresher, err := h.refreshers.RefresherFor(clusterName)
+	if err != nil {
+		h.log.Warn("refresher not found for cluster, using fallback", "component", "httpapi", "cluster", clusterName, "error", err)
+		return h.refresher
+	}
+
+	return refresher
 }
 
 type cloudInitConfigDTO struct {
@@ -238,7 +263,7 @@ func (h *VMCloudInit) putConfig(w http.ResponseWriter, r *http.Request, actor au
 
 	rebooted, err := vm.SetCloudInitConfig(r.Context(), vm.CloudInitConfigDeps{
 		Index: index, Actor: actor, ClusterName: clusterName, VMID: vmid,
-		Reader: reader, Writer: writer, Audit: h.store, Refresher: h.refresher,
+		Reader: reader, Writer: writer, Audit: h.store, Refresher: h.refresherFor(clusterName),
 	}, cluster.CloudInitUpdate{
 		User: request.User, Password: request.Password, SSHKeys: request.SSHKeys, IPMode: request.IPMode,
 		IPAddress: request.IPAddress, Gateway: request.Gateway, DNSServer: request.DNSServer, SearchDomain: request.SearchDomain,

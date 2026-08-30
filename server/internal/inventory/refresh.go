@@ -70,3 +70,34 @@ func (r *Refresher) Refresh(ctx context.Context) (time.Time, error) {
 
 	return at, nil
 }
+
+// RefreshAsync performs the guard check synchronously and, if the guard
+// passes, launches the refresh in a background goroutine using a context
+// detached from the caller's request lifecycle. This lets the HTTP handler
+// return 202 Accepted immediately instead of blocking for up to
+// InventoryRefreshTimeout — the server's WriteTimeout would otherwise cancel
+// the request before a slow or dead cluster's refresh completes.
+//
+// Returns nil if the refresh was started, or *TooSoonError if the guard
+// refused. The refresh result is logged by the worker; callers learn the
+// outcome by re-reading the projection (e.g. re-loading the VM list or
+// polling /health).
+func (r *Refresher) RefreshAsync(ctx context.Context) error {
+	if current := r.worker.projection.Load(); current != nil {
+		if remaining := r.minInterval - time.Since(current.RefreshedAt); remaining > 0 {
+			return &TooSoonError{RetryAfter: remaining}
+		}
+	}
+
+	go func() {
+		// Detach from the request's cancellation so the refresh survives the
+		// HTTP response being written. The worker's own timeout
+		// (InventoryRefreshTimeout) bounds the call.
+		detached := context.WithoutCancel(ctx)
+		if _, err := r.worker.Refresh(detached); err != nil {
+			r.worker.log.Error("async refresh failed", "component", "inventory", "error", err)
+		}
+	}()
+
+	return nil
+}

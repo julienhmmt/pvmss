@@ -49,6 +49,23 @@ func (fake Fake) NextVMID(_ context.Context) (int, error) {
 // returned UPID.
 func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 	state := fake.stateOrDefault()
+
+	// US5/issue-05: inject a CreateVM error when configured by the test.
+	state.createMu.Lock()
+	if state.createErr != nil {
+		err := state.createErr
+		if state.createErrCount > 0 {
+			state.createErrCount--
+			if state.createErrCount == 0 {
+				state.createErr = nil
+			}
+		}
+		state.createMu.Unlock()
+
+		return "", err
+	}
+	state.createMu.Unlock()
+
 	state.vmMu.Lock()
 
 	status := VMStopped
@@ -61,16 +78,27 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 		diskTotal = int64(spec.Disk.SizeGB) * 1024 * 1024 * 1024
 	}
 
+	nics := make([]NetworkInterface, 0, len(spec.Network))
+	for _, nic := range spec.Network {
+		nics = append(nics, NetworkInterface{
+			Model: nic.Model, Bridge: nic.Bridge, VLAN: nic.VLAN,
+			Firewall: nic.Firewall, MAC: nic.MAC, RateMbps: nic.RateMbps,
+		})
+	}
+
 	state.vms = append(state.vms, VM{
-		VMID:        spec.VMID,
-		Name:        spec.Name,
-		Node:        spec.Node,
-		Status:      status,
-		Pool:        spec.Pool,
-		Tags:        append([]string(nil), spec.Tags...),
-		CPUCores:    spec.CPUCores,
-		MemoryTotal: int64(spec.MemoryMB) * 1024 * 1024,
-		DiskTotal:   diskTotal,
+		VMID:              spec.VMID,
+		Name:              spec.Name,
+		Node:              spec.Node,
+		Status:            status,
+		Pool:              spec.Pool,
+		Tags:              append([]string(nil), spec.Tags...),
+		Sockets:           spec.Sockets,
+		Cores:             spec.CPUCores,
+		CPUCores:          spec.Sockets * spec.CPUCores,
+		MemoryTotal:       int64(spec.MemoryMB) * 1024 * 1024,
+		DiskTotal:         diskTotal,
+		NetworkInterfaces: nics,
 	})
 	state.vmMu.Unlock()
 
@@ -91,6 +119,8 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 
 // TaskStatus implements Creator. Poll-count-based: running for a UPID's first
 // two queries, ok from the third onward (SC-006 — deterministic, no sleeps).
+// US5/issue-05: when SetFakeTaskError was called, the next registered task
+// reports TaskError on its first poll instead of running.
 func (fake Fake) TaskStatus(_ context.Context, upid string) (TaskStatus, error) {
 	state := fake.stateOrDefault()
 	state.createMu.Lock()
@@ -99,6 +129,21 @@ func (fake Fake) TaskStatus(_ context.Context, upid string) (TaskStatus, error) 
 	if !ok {
 		state.createMu.Unlock()
 		return TaskStatus{}, ErrNotFound
+	}
+
+	// US5/issue-05: inject a task error on the first poll when configured.
+	if state.taskErr != "" && task.polls == 0 {
+		task.polls++
+
+		exitMsg := state.taskErr
+		state.taskErr = ""
+
+		log := append([]string(nil), task.log...)
+		log = append(log, "TASK ERROR: "+exitMsg)
+
+		state.createMu.Unlock()
+
+		return TaskStatus{UPID: upid, State: TaskError, ExitMessage: exitMsg, Log: log}, nil
 	}
 
 	task.polls++
@@ -120,4 +165,70 @@ func (fake Fake) TaskStatus(_ context.Context, upid string) (TaskStatus, error) 
 	log = append(log, "TASK OK")
 
 	return TaskStatus{UPID: upid, State: TaskOK, Log: log}, nil
+}
+
+// CloneVM implements Creator: registers a poll-counted clone task under the
+// returned UPID (US2/issue-02). The cloned VM enters the fake's mutable dataset
+// on the third poll (TaskOK), via the task's onComplete callback — mirroring
+// how a real Proxmox clone materializes the VM only after the task finishes.
+// The fake VM inherits a template-sized disk so post-clone ResizeDisk can find
+// it; the caller applies the actual resize via Writer.ResizeDisk after
+// waitCreateTask returns.
+func (fake Fake) CloneVM(_ context.Context, spec CloneSpec) (string, error) {
+	state := fake.stateOrDefault()
+
+	upid := fmt.Sprintf("UPID:%s:%08X:%08X:%08X:qmclone:%d:pvmss@pve:", spec.SourceNode, spec.NewVMID, 0x10000000+spec.NewVMID, 0x20000000+spec.NewVMID, spec.NewVMID)
+
+	// The cloned VM's disk: a primary disk on the clone's storage (or the
+	// source node's local-lvm if no target storage was specified). The bus
+	// family comes from the template (spec.DiskBus) — the clone inherits it.
+	// The size is a small default (8 GB) — the caller resizes via
+	// Writer.ResizeDisk after the task completes.
+	diskStorage := spec.Storage
+	if diskStorage == "" {
+		diskStorage = "local-lvm"
+	}
+
+	diskBus := DiskBus(spec.DiskBus)
+	if diskBus == "" {
+		diskBus = DiskBusSCSI
+	}
+
+	diskKey := string(diskBus) + "0"
+
+	state.createMu.Lock()
+	if state.tasks == nil {
+		state.tasks = make(map[string]*fakeTask)
+	}
+
+	state.tasks[upid] = &fakeTask{
+		upid: upid,
+		log:  []string{"cloning disk...", "starting qmclone..."},
+		onComplete: func() {
+			state.vmMu.Lock()
+			state.vms = append(state.vms, VM{
+				VMID:    spec.NewVMID,
+				Name:    spec.Name,
+				Node:    spec.SourceNode,
+				Pool:    spec.Pool,
+				Status:  VMStopped,
+				Tags:    []string{"pvmss"},
+				Sockets: 1,
+				Disks: []Disk{{
+					Key:      diskKey,
+					Bus:      diskBus,
+					BusIndex: 0,
+					Storage:  diskStorage,
+					SizeGB:   8,
+				}},
+				DiskTotal: 8 * 1024 * 1024 * 1024,
+			})
+			state.vmMu.Unlock()
+		},
+	}
+	state.createMu.Unlock()
+
+	state.record(FakeCall{Node: spec.SourceNode, VMID: spec.NewVMID, Action: "clone", Name: spec.Name, Pool: spec.Pool, Full: spec.Full, Storage: spec.Storage})
+
+	return upid, nil
 }

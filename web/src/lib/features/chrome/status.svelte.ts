@@ -1,10 +1,31 @@
 import { getContext, setContext } from 'svelte';
-import { get } from '$lib/shared/api/client';
+import { get, post } from '$lib/shared/api/client';
 
 /** Server-side health check entry (subset of httpapi.CheckResult). */
 export interface CheckResult {
 	status: string;
 	detail?: string;
+}
+
+/**
+ * Cluster-down detail extracted from checks.clusters.detail. The backend
+ * returns the detail as a fixed string such as "1 of 1 clusters unreachable".
+ * This function parses it into (unreachable, total) counts so the banner can
+ * render a localized, parameterized message instead of concatenating the
+ * raw English detail to a translated base message.
+ */
+export function clusterDownCounts(raw: HealthResponse | null): { unreachable: number; total: number } | null {
+	const detail = raw?.checks?.clusters?.detail;
+	if (raw?.checks?.clusters?.status !== 'unhealthy' || !detail) {
+		return null;
+	}
+
+	const match = /(\d+)\s+of\s+(\d+)\s+clusters?\s+unreachable/i.exec(detail);
+	if (match == null || match[1] == null || match[2] == null) {
+		return null;
+	}
+
+	return { unreachable: parseInt(match[1], 10), total: parseInt(match[2], 10) };
 }
 
 /** GET /health response shape (extended by T19 with checks.clusters + demoMode). */
@@ -55,6 +76,28 @@ export class StatusState {
 		if (data.checks?.clusters?.status === 'unhealthy') return 'degraded';
 		if (data.demoMode === true) return 'info';
 		return 'none';
+	}
+
+	/** The cluster-unreachable counts when severity is 'degraded', else null. */
+	get clusterDownCounts(): { unreachable: number; total: number } | null {
+		return clusterDownCounts(this.#raw);
+	}
+
+	/** True when every configured cluster is unreachable. */
+	get allClustersDown(): boolean {
+		const counts = this.clusterDownCounts;
+		return counts != null && counts.unreachable > 0 && counts.unreachable === counts.total;
+	}
+
+	/** Triggers a cluster refresh then re-polls health — the banner retry action. */
+	async retryClusterConnection(): Promise<void> {
+		try {
+			await post('/api/v1/cluster/refresh');
+		} catch {
+			// The refresh may fail (cluster still down) — re-poll reports the
+			// current state either way.
+		}
+		await this.pollOnce();
 	}
 
 	/** Immediate poll, then setInterval at the fixed cadence. Called once on mount. */

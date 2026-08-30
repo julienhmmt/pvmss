@@ -14,8 +14,8 @@ import (
 	"time"
 )
 
-// TestClusterRefresh_Success — POST /cluster/refresh succeeds and returns
-// refreshedAt (FR-005).
+// TestClusterRefresh_Success — POST /cluster/refresh returns 202 Accepted
+// immediately; the refresh runs in the background and populates the projection.
 //
 //nolint:paralleltest // serial: shared inventory fixture
 func TestClusterRefresh_Success(t *testing.T) {
@@ -32,8 +32,8 @@ func TestClusterRefresh_Success(t *testing.T) {
 	r := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/refresh", nil)
 	h.ServeHTTP(w, r)
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d", w.Code, http.StatusOK)
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, want %d", w.Code, http.StatusAccepted)
 	}
 
 	var got struct {
@@ -46,6 +46,9 @@ func TestClusterRefresh_Success(t *testing.T) {
 	if got.RefreshedAt == "" {
 		t.Fatal("refreshedAt should not be empty")
 	}
+
+	// Wait for the background refresh to populate the projection.
+	waitForProjection(t, projection, 2*time.Second)
 }
 
 // TestClusterRefresh_TooSoon — a second immediate call returns 429 with
@@ -62,14 +65,18 @@ func TestClusterRefresh_TooSoon(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	h := httpapi.NewClusterRefresh(refresher, logger)
 
-	// First refresh succeeds.
+	// First refresh returns 202 (async).
 	w1 := httptest.NewRecorder()
 	r1 := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/refresh", nil)
 	h.ServeHTTP(w1, r1)
 
-	if w1.Code != http.StatusOK {
-		t.Fatalf("first refresh status = %d, want %d", w1.Code, http.StatusOK)
+	if w1.Code != http.StatusAccepted {
+		t.Fatalf("first refresh status = %d, want %d", w1.Code, http.StatusAccepted)
 	}
+
+	// Wait for the background refresh to populate the projection so the guard
+	// check on the second call sees a recent RefreshedAt.
+	waitForProjection(t, projection, 2*time.Second)
 
 	// Second immediate refresh is refused.
 	w2 := httptest.NewRecorder()
@@ -116,10 +123,11 @@ func TestClusterRefresh_TooSoonMakesZeroClientCalls(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	h := httpapi.NewClusterRefresh(refresher, logger)
 
-	// First refresh.
+	// First refresh (async — wait for it to complete).
 	w1 := httptest.NewRecorder()
 	r1 := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/refresh", nil)
 	h.ServeHTTP(w1, r1)
+	waitForProjection(t, projection, 2*time.Second)
 
 	callsAfterFirst := client.calls
 
@@ -133,8 +141,10 @@ func TestClusterRefresh_TooSoonMakesZeroClientCalls(t *testing.T) {
 	}
 }
 
-// TestClusterRefresh_Unreachable — a failed client call returns 502
-// cluster_unreachable (contracts/cluster-refresh.md).
+// TestClusterRefresh_Unreachable — with async refresh the handler returns
+// 202 Accepted immediately even when the cluster is unreachable; the refresh
+// fails in the background and the client learns the outcome by re-reading the
+// projection (re-loading the VM list or polling /health).
 //
 //nolint:paralleltest // serial: shared inventory fixture
 func TestClusterRefresh_Unreachable(t *testing.T) {
@@ -151,20 +161,35 @@ func TestClusterRefresh_Unreachable(t *testing.T) {
 	r := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/refresh", nil)
 	h.ServeHTTP(w, r)
 
-	if w.Code != http.StatusBadGateway {
-		t.Fatalf("status = %d, want %d", w.Code, http.StatusBadGateway)
+	if w.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, want %d (async refresh returns 202 immediately)", w.Code, http.StatusAccepted)
 	}
 
 	var got struct {
-		Code    string `json:"code"`
-		Message string `json:"message"`
+		RefreshedAt string `json:"refreshedAt"`
 	}
 	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
 
-	if got.Code != "cluster_unreachable" {
-		t.Fatalf("code = %q, want cluster_unreachable", got.Code)
+	if got.RefreshedAt == "" {
+		t.Fatal("refreshedAt should not be empty")
+	}
+}
+
+// waitForProjection polls until the projection is non-nil or the deadline fires.
+func waitForProjection(t *testing.T, projection *inventory.Projection, timeout time.Duration) {
+	t.Helper()
+
+	deadline := time.After(timeout)
+
+	for projection.Load() == nil {
+		select {
+		case <-deadline:
+			t.Fatal("projection did not populate within timeout")
+		default:
+			time.Sleep(5 * time.Millisecond)
+		}
 	}
 }
 

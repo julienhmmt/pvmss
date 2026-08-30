@@ -73,7 +73,7 @@ test.describe('T12 admin policy', () => {
 		await signInAlice(page.request);
 		const first = await page.request.post('/api/v1/vms', { data: {
 			cluster: 'default', name: 'capacity-demo-one', node: 'pve-node-03', cpuCores: 1, memoryMB: 1024,
-			disk: { storage: 'backup-nfs', sizeGB: 10 }, network: { bridge: 'vmbr0', model: 'virtio' }
+			disk: { storage: 'backup-nfs', sizeGB: 10 }, network: [{ bridge: 'vmbr0', model: 'virtio' }]
 		} });
 		expect(first.status()).toBe(202);
 		const accepted = (await first.json()) as { vmid: number; upid: string };
@@ -84,7 +84,7 @@ test.describe('T12 admin policy', () => {
 		}
 		const second = await page.request.post('/api/v1/vms', { data: {
 			cluster: 'default', name: 'capacity-demo-two', node: 'pve-node-03', cpuCores: 1, memoryMB: 1024,
-			disk: { storage: 'backup-nfs', sizeGB: 10 }, network: { bridge: 'vmbr0', model: 'virtio' }
+			disk: { storage: 'backup-nfs', sizeGB: 10 }, network: [{ bridge: 'vmbr0', model: 'virtio' }]
 		} });
 		expect(second.status()).toBe(400);
 		expect((await second.json()).code).toBe('capacity_exceeded');

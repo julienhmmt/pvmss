@@ -39,7 +39,8 @@
 			form.gabarit.maxDiskPerVmGb !== original.gabarit.maxDiskPerVmGb ||
 			form.gabarit.maxNetworkCards !== original.gabarit.maxNetworkCards ||
 			form.gabarit.maxSnapshots !== original.gabarit.maxSnapshots ||
-			form.gabarit.allowCustomYaml !== original.gabarit.allowCustomYaml
+			form.gabarit.allowCustomYaml !== original.gabarit.allowCustomYaml ||
+			form.gabarit.isolationVlanTag !== original.gabarit.isolationVlanTag
 	);
 
 	// Notify the parent whenever the dirty state changes so it can guard
@@ -105,6 +106,11 @@
 			? outOfRangeMessage(m['policy.maxVmPerUser'](), -1, MAX_VM_PER_USER)
 			: null
 	);
+	const isolationVlanError = $derived(
+		form.gabarit.isolationVlanTag < 0 || form.gabarit.isolationVlanTag > 4094
+			? outOfRangeMessage(m['policy.isolationVlanTag'](), 0, 4094)
+			: null
+	);
 
 	const isValid = $derived(
 		!maxSocketsError &&
@@ -113,7 +119,8 @@
 			!maxDiskError &&
 			!maxNetworkCardsError &&
 			!maxSnapshotsError &&
-			!maxVmPerUserError
+			!maxVmPerUserError &&
+			!isolationVlanError
 	);
 
 	const serverErrorField = $derived.by((): string | null => {
@@ -199,6 +206,16 @@
 				<FormField label={m['policy.maxNetworkCards']()} required class="max-w-xs" error={maxNetworkCardsError ?? serverErrorForField('maxNetworkCards')}>
 					{#snippet children({ id, describedBy, invalid })}
 						<TextField {id} {describedBy} {invalid} type="number" min={0} max={MAX_NETWORK_CARDS} bind:value={form.gabarit.maxNetworkCards} required />
+					{/snippet}
+				</FormField>
+				<FormField
+					label={m['policy.isolationVlanTag']()}
+					hint={m['policy.isolationVlanHint']()}
+					class="max-w-xs"
+					error={isolationVlanError ?? serverErrorForField('isolationVlanTag')}
+				>
+					{#snippet children({ id, describedBy, invalid })}
+						<TextField {id} {describedBy} {invalid} type="number" min={0} max={4094} bind:value={form.gabarit.isolationVlanTag} />
 					{/snippet}
 				</FormField>
 			</fieldset>

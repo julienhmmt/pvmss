@@ -38,6 +38,11 @@ type snapshotTaskResponse struct {
 	UPID    string `json:"upid"`
 }
 
+type snapshotErrorResponse struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+}
+
 func newVMSnapshotsHandler(t *testing.T) (*httpapi.VMSnapshots, *httpapi.Auth) {
 	t.Helper()
 	cluster.ResetFake()
@@ -75,9 +80,14 @@ func snapshotRequest(method, path, body string, cookie *http.Cookie) *http.Reque
 	request.SetPathValue("cluster", "default")
 	request.SetPathValue("vmid", pathVmid(path))
 
+	// The snapshot name is the segment after "snapshots" — for
+	// /snapshots/{name}, /snapshots/{name}/rollback and /snapshots/{name}/config.
 	segments := strings.Split(strings.Trim(path, "/"), "/")
-	if len(segments) >= 6 {
-		request.SetPathValue("name", segments[5])
+	for index, segment := range segments {
+		if segment == "snapshots" && index+1 < len(segments) {
+			request.SetPathValue("name", segments[index+1])
+			break
+		}
 	}
 
 	return request
@@ -118,6 +128,182 @@ func TestVMSnapshots_ListAndCreate_OwnerContract(t *testing.T) {
 
 	if task.UPID == "" || task.Name != "before-upgrade" || task.VMID != 101 {
 		t.Fatalf("task = %+v", task)
+	}
+}
+
+// TestVMSnapshots_ConfigEndpoint — ticket 08: GET .../snapshots/{name}/config
+// returns the stored config; a missing snapshot is a 404 snapshot_not_found;
+// "current" resolves to the live config without a list entry.
+//
+//nolint:paralleltest // serial: shared fake and SQLite fixtures
+func TestVMSnapshots_ConfigEndpoint(t *testing.T) {
+	handler, authHandler := newVMSnapshotsHandler(t)
+	cookie := aliceCookie(t, authHandler)
+
+	missing := httptest.NewRecorder()
+	handler.ServeHTTP(missing, snapshotRequest(http.MethodGet, "/api/v1/vms/default/101/snapshots/ghost/config", "", cookie))
+
+	if missing.Code != http.StatusNotFound {
+		t.Fatalf("missing status = %d, want 404: %s", missing.Code, missing.Body.String())
+	}
+
+	assertAPIError(t, missing.Body.Bytes(), "snapshot_not_found")
+
+	seed := seedSnapshotRequest(t, "restore-point")
+
+	configRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(configRecorder, snapshotRequest(http.MethodGet, "/api/v1/vms/default/101/snapshots/"+seed+"/config", "", cookie))
+
+	if configRecorder.Code != http.StatusOK {
+		t.Fatalf("config status = %d, want 200: %s", configRecorder.Code, configRecorder.Body.String())
+	}
+
+	var body struct {
+		Name   string            `json:"name"`
+		Config map[string]string `json:"config"`
+	}
+	if err := json.Unmarshal(configRecorder.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode config: %v", err)
+	}
+
+	if body.Name != seed || len(body.Config) == 0 {
+		t.Fatalf("config = %+v, want name %q and a non-empty config", body, seed)
+	}
+
+	currentRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(currentRecorder, snapshotRequest(http.MethodGet, "/api/v1/vms/default/101/snapshots/current/config", "", cookie))
+
+	if currentRecorder.Code != http.StatusOK {
+		t.Fatalf("current config status = %d, want 200: %s", currentRecorder.Code, currentRecorder.Body.String())
+	}
+}
+
+// seedSnapshotRequest creates a snapshot on fake VM 101 through the fake's
+// own async task path and returns its name.
+func seedSnapshotRequest(t *testing.T, name string) string {
+	t.Helper()
+
+	upid, err := (cluster.Fake{}).CreateSnapshot(context.Background(), cluster.FakeNode01, 101, name, "", false)
+	if err != nil {
+		t.Fatalf("CreateSnapshot seed: %v", err)
+	}
+
+	for range 3 {
+		if _, err := (cluster.Fake{}).TaskStatus(context.Background(), upid); err != nil {
+			t.Fatalf("TaskStatus seed: %v", err)
+		}
+	}
+
+	return name
+}
+
+// TestVMSnapshots_List_IncludesCapability — ticket 07: the list carries the
+// snapshot capability so the create dialog can grey options with a reason.
+//
+//nolint:paralleltest // serial: shared fake and SQLite fixtures
+func TestVMSnapshots_List_IncludesCapability(t *testing.T) {
+	handler, authHandler := newVMSnapshotsHandler(t)
+	cookie := aliceCookie(t, authHandler)
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, snapshotRequest(http.MethodGet, "/api/v1/vms/default/101/snapshots", "", cookie))
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("GET status = %d: %s", recorder.Code, recorder.Body.String())
+	}
+
+	var body struct {
+		Capability struct {
+			CanSnapshot bool     `json:"canSnapshot"`
+			CanVMState  bool     `json:"canVMState"`
+			Warnings    []string `json:"warnings"`
+		} `json:"capability"`
+	}
+	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode list: %v", err)
+	}
+
+	// Fake VM 101: disks on lvmthin (snapshot-capable), stopped (no RAM state).
+	if !body.Capability.CanSnapshot {
+		t.Error("canSnapshot = false, want true")
+	}
+
+	if body.Capability.CanVMState {
+		t.Error("canVMState = true, want false (VM stopped)")
+	}
+
+	if len(body.Capability.Warnings) == 0 {
+		t.Error("warnings empty, want the running-state reason")
+	}
+}
+
+// TestVMSnapshots_ClusterRejection_SurfacesProxmoxMessage asserts ticket 02:
+// a Proxmox rejection (4xx/5xx) is surfaced as a 502 with a stable machine
+// code and Proxmox's own message — never a generic 500 — and that 401/403
+// messages are suppressed (a PVE auth body can name the token).
+//
+//nolint:paralleltest // serial: shared fake and SQLite fixtures
+func TestVMSnapshots_ClusterRejection_SurfacesProxmoxMessage(t *testing.T) {
+	handler, authHandler := newVMSnapshotsHandler(t)
+	cookie := aliceCookie(t, authHandler)
+
+	cases := []struct {
+		name        string
+		rejection   *cluster.RejectionError
+		wantCode    string
+		wantMessage string
+	}{
+		{
+			name:        "storage unsupported",
+			rejection:   &cluster.RejectionError{Status: 500, Method: "POST", Path: "/nodes/n1/qemu/101/snapshot", Message: "snapshot feature not available for storage 'local'"},
+			wantCode:    "snapshot_storage_unsupported",
+			wantMessage: "snapshot feature not available for storage 'local'",
+		},
+		{
+			name:        "vm locked",
+			rejection:   &cluster.RejectionError{Status: 500, Method: "POST", Path: "/nodes/n1/qemu/101/snapshot", Message: "cannot delete snapshot: VM is locked by an ongoing backup"},
+			wantCode:    "vm_locked",
+			wantMessage: "cannot delete snapshot: VM is locked by an ongoing backup",
+		},
+		{
+			name:        "name already used",
+			rejection:   &cluster.RejectionError{Status: 500, Method: "POST", Path: "/nodes/n1/qemu/101/snapshot", Message: "snapshot name already used"},
+			wantCode:    "snapshot_name_exists",
+			wantMessage: "snapshot name already used",
+		},
+		{
+			name:        "auth error message suppressed",
+			rejection:   &cluster.RejectionError{Status: 401, Method: "POST", Path: "/nodes/n1/qemu/101/snapshot", Message: "no such API token: user@pve!tokenname"},
+			wantCode:    "cluster_rejected",
+			wantMessage: "cluster rejected the request",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			cluster.SetFakeSnapshotWriteError(tc.rejection)
+			defer cluster.SetFakeSnapshotWriteError(nil)
+
+			recorder := httptest.NewRecorder()
+			handler.ServeHTTP(recorder, snapshotRequest(http.MethodPost, "/api/v1/vms/default/101/snapshots", `{"name":"snap1"}`, cookie))
+
+			if recorder.Code != http.StatusBadGateway {
+				t.Fatalf("status = %d, want 502: %s", recorder.Code, recorder.Body.String())
+			}
+
+			var body snapshotErrorResponse
+			if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+				t.Fatalf("decode error: %v", err)
+			}
+
+			if body.Code != tc.wantCode {
+				t.Errorf("code = %q, want %q", body.Code, tc.wantCode)
+			}
+
+			if body.Message != tc.wantMessage {
+				t.Errorf("message = %q, want %q", body.Message, tc.wantMessage)
+			}
+		})
 	}
 }
 

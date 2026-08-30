@@ -116,10 +116,10 @@ func (h *AdminOps) ServeAudit(w http.ResponseWriter, r *http.Request) {
 			VMID:       e.VMID,
 			Action:     e.Action,
 			Timestamp:  e.Timestamp.UTC().Format(time.RFC3339),
-			TargetType: e.TargetType,
-			TargetID:   e.TargetID,
-			Detail:     e.Detail,
-			IPAddress:  e.IPAddress,
+			TargetType: e.TargetType.String,
+			TargetID:   e.TargetID.String,
+			Detail:     e.Detail.String,
+			IPAddress:  e.IPAddress.String,
 			Severity:   e.Severity,
 		}
 	}

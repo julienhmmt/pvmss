@@ -20,6 +20,7 @@
 	import ShortcutsDialog from '$lib/features/chrome/ShortcutsDialog.svelte';
 	import Toaster from '$lib/shared/ui/Toaster.svelte';
 	import { setToastContext } from '$lib/shared/ui/toast.svelte';
+	import ClusterDownOverlay from '$lib/shared/ui/ClusterDownOverlay.svelte';
 
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -67,6 +68,29 @@
 			// Version is informational — a failure leaves the footer silent.
 		}
 	});
+
+	// Pages that can still function (or are not cluster-dependent) when all
+	// clusters are unreachable. Everything else is covered by ClusterDownOverlay.
+	const clusterIndependentPaths = new Set([
+		'/',
+		'/about',
+		'/docs',
+		'/login',
+		'/profile/tokens',
+		'/admin/clusters',
+		'/admin/settings',
+		'/admin/appinfo',
+		'/admin/docs',
+		'/admin/tags',
+		'/admin/profiles'
+	]);
+
+	// Treat dynamic docs as cluster-independent; all other /admin/* pages need
+	// at least one reachable cluster.
+	function isClusterIndependent(path: string): boolean {
+		if (clusterIndependentPaths.has(path)) return true;
+		return path.startsWith('/docs/');
+	}
 
 	// T035: force the sidebar drawer closed when the viewport crosses 900px
 	// upward so desktop cannot get stuck "closed" (data-model.md).
@@ -154,7 +178,13 @@
 				<AppHeader />
 				<main id="main-content" class="flex-1 p-7">
 					<div class="mx-auto max-w-[1180px]">
-						{@render children()}
+						{#if status.allClustersDown && !isClusterIndependent(page.url.pathname)}
+							<ClusterDownOverlay>
+								{@render children()}
+							</ClusterDownOverlay>
+						{:else}
+							{@render children()}
+						{/if}
 					</div>
 				</main>
 				{#if showCapabilitiesPanel}

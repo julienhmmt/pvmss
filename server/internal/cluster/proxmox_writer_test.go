@@ -49,6 +49,86 @@ func TestProxmox_Action_Valid(t *testing.T) {
 	}
 }
 
+// TestProxmox_Action_ShutdownSendsTimeout verifies that shutdown sends the
+// timeout parameter (ticket 05) and other actions do not.
+func TestProxmox_Action_ShutdownSendsTimeout(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name       string
+		action     string
+		wantForm   string
+		wantNoForm bool
+	}{
+		{"shutdown sends timeout", "shutdown", "timeout=60", false},
+		{"start sends no params", "start", "", true},
+		{"stop sends no params", "stop", "", true},
+		{"reboot sends no params", "reboot", "", true},
+		{"reset sends no params", "reset", "", true},
+		{"pause sends no params", "pause", "", true},
+		{"resume sends no params", "resume", "", true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			gotForm := captureActionForm(t, tc.action)
+
+			assertActionForm(t, gotForm, tc.wantForm, tc.wantNoForm)
+		})
+	}
+}
+
+// captureActionForm runs Action with a form-capturing test server and returns
+// the submitted form. Shared by the ticket-05 shutdown-timeout test cases.
+func captureActionForm(t *testing.T, action string) url.Values {
+	t.Helper()
+
+	var gotForm url.Values
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("POST /api2/json/nodes/node01/qemu/101/status/"+action, func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("parse form: %v", err)
+			}
+
+			gotForm = r.PostForm
+
+			writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmaction:101:pvmss@pve:"}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	if err := p.Action(context.Background(), testNodeName, testVMID, action); err != nil {
+		t.Fatalf("Action: %v", err)
+	}
+
+	return gotForm
+}
+
+// assertActionForm checks the action form matches the expected encoding or
+// is empty (wantNoForm), and that skiplock is never sent. Extracted from
+// TestProxmox_Action_ShutdownSendsTimeout to keep its cognitive complexity
+// under go:S3776's ceiling.
+func assertActionForm(t *testing.T, form url.Values, wantForm string, wantNoForm bool) {
+	t.Helper()
+
+	if wantNoForm {
+		if len(form) != 0 {
+			t.Errorf("form = %q, want no parameters", form.Encode())
+		}
+	} else if form.Encode() != wantForm {
+		t.Errorf("form = %q, want %q", form.Encode(), wantForm)
+	}
+
+	// skiplock must never be sent regardless of action.
+	if form.Get("skiplock") != "" {
+		t.Errorf("skiplock must never be sent, got %q", form.Get("skiplock"))
+	}
+}
+
 func TestProxmox_Patch_OnlySendsSetFields(t *testing.T) {
 	t.Parallel()
 

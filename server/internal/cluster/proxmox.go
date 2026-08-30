@@ -26,6 +26,11 @@ type Proxmox struct {
 	APITokenName          string
 	APITokenValue         string
 	TLSInsecureSkipVerify bool
+	// httpClient is the cached *http.Client reused across every REST call so
+	// the underlying Transport's keep-alive connection pool is shared (ticket
+	// 07). Set at construction in registry.go; rest() lazily initializes it
+	// when nil so a zero-value Proxmox (tests) never panics.
+	httpClient *http.Client
 }
 
 // proxmoxResourceRow is one row of /cluster/resources?type=... — Proxmox's
@@ -48,19 +53,45 @@ type proxmoxResourceRow struct {
 	Storage    string  `json:"storage"`
 	PluginType string  `json:"plugintype"`
 	Content    string  `json:"content"`
+	Template   int     `json:"template"` // 1 when the qemu VM is a template
 }
 
-// proxmoxSnapshotCapableStorage lists the Proxmox storage plugin types that
-// support internal (RAM-included) snapshots — the real capability behind
-// Storage.SupportsVMState. Not derivable from the API directly (Proxmox does
-// not expose a "supports vmstate" flag), so this mirrors PVE's own documented
-// per-plugin snapshot support.
-var proxmoxSnapshotCapableStorage = map[string]bool{
-	"zfspool": true,
-	"lvmthin": true,
-	"rbd":     true,
-	"btrfs":   true,
+// StorageSnapshotCapability reports whether a (storage plugin, disk format)
+// pair supports snapshots and RAM-state snapshots (ticket 07). The plugin
+// alone decides for block-backed storages (zfspool, lvmthin, rbd, btrfs);
+// file-backed storages (dir, nfs, cifs, cephfs) need qcow2 disks. Plain lvm
+// (non-thin), iscsi and raw-on-file cannot snapshot at all.
+//
+// ponytail: the file-backed rows mirror PVE's documented per-plugin snapshot
+// support but were not validated line-by-line against the PVE sources —
+// ticket 07 flags exactly this; revisit if a real cluster surprises us.
+func StorageSnapshotCapability(pluginType, format string) (canSnapshot, canVMState bool) {
+	switch pluginType {
+	case "zfspool", "lvmthin", "rbd", "btrfs":
+		return true, true
+	case "dir", "nfs", "cifs", "cephfs":
+		return format == "qcow2", format == "qcow2"
+	default:
+		return false, false
+	}
 }
+
+// pluginSupportsVMState is the plugin-level view behind Storage.SupportsVMState
+// (a storage can hold RAM state when its plugin snapshots natively). The
+// per-disk decision also depends on the disk format — see
+// StorageSnapshotCapability.
+func pluginSupportsVMState(pluginType string) bool {
+	switch pluginType {
+	case "zfspool", "lvmthin", "rbd", "btrfs":
+		return true
+	default:
+		return false
+	}
+}
+
+// proxmoxClusterResourcesPath is the /cluster/resources endpoint, used by
+// Snapshot, ListStorages and ListTemplates.
+const proxmoxClusterResourcesPath = "/cluster/resources"
 
 // Snapshot implements Client: one /cluster/resources call for the node,
 // VM, and storage summary, then one /qemu/{vmid}/config (plus, for running
@@ -69,7 +100,7 @@ var proxmoxSnapshotCapableStorage = map[string]bool{
 func (p Proxmox) Snapshot(ctx context.Context) (Snapshot, error) {
 	rest := p.rest()
 
-	raw, err := rest.do(ctx, http.MethodGet, "/cluster/resources", nil)
+	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, nil)
 	if err != nil {
 		return Snapshot{}, err
 	}
@@ -196,7 +227,7 @@ func proxmoxStorageFromRow(row proxmoxResourceRow) Storage {
 		Content:         row.Content,
 		Total:           row.MaxDisk,
 		Used:            row.Disk,
-		SupportsVMState: proxmoxSnapshotCapableStorage[row.PluginType],
+		SupportsVMState: pluginSupportsVMState(row.PluginType),
 	}
 }
 
@@ -414,7 +445,7 @@ func (p Proxmox) ListBridges(ctx context.Context) ([]Bridge, error) {
 func (p Proxmox) ListISOs(ctx context.Context) ([]ISOImage, error) {
 	rest := p.rest()
 
-	raw, err := rest.do(ctx, http.MethodGet, "/cluster/resources", url.Values{"type": {"storage"}})
+	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{"type": {"storage"}})
 	if err != nil {
 		return nil, err
 	}
@@ -471,6 +502,128 @@ func proxmoxListISOContent(ctx context.Context, rest proxmoxRESTClient, node, st
 	}
 
 	return isos, nil
+}
+
+// ListTemplates implements Client, enumerating template VMs (template=1) via
+// /cluster/resources?type=vm (US2/issue-02 T056). Each row is hydrated with
+// its primary disk's storage, size, and bus via /nodes/{node}/qemu/{vmid}/config
+// so the clone path can decide linked vs full and target the correct resize key.
+// CloudInitCapable is detected by the presence of a cloud-init drive in the
+// fixed ide3 slot (proxmox_config.go's cloudInitDiskKey) — the same slot
+// EnsureCloudInitDrive writes, so a template that already has one is cloud-init
+// capable.
+func (p Proxmox) ListTemplates(ctx context.Context) ([]TemplateVM, error) {
+	rest := p.rest()
+
+	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{"type": {"vm"}})
+	if err != nil {
+		return nil, err
+	}
+
+	var rows []proxmoxResourceRow
+	if err := decodeData(raw, &rows); err != nil {
+		return nil, fmt.Errorf("decode template vms: %w", err)
+	}
+
+	var templates []TemplateVM
+
+	for _, row := range rows {
+		if row.Template != 1 {
+			continue
+		}
+
+		diskStorage, diskSizeGB, diskBus, cloudInitCapable, err := proxmoxTemplateDisk(ctx, rest, row.Node, row.VMID)
+		if err != nil {
+			return nil, fmt.Errorf("read template %d disk on %q: %w", row.VMID, row.Node, err)
+		}
+
+		templates = append(templates, TemplateVM{
+			VMID:             row.VMID,
+			Node:             row.Node,
+			Name:             row.Name,
+			CloudInitCapable: cloudInitCapable,
+			DiskStorage:      diskStorage,
+			DiskSizeGB:       diskSizeGB,
+			DiskBus:          diskBus,
+		})
+	}
+
+	return templates, nil
+}
+
+// StorageFreeSpace returns the available bytes on a storage backend on a node
+// (US3/issue-04). Queries GET /nodes/{node}/storage/{storage}/status and
+// extracts the `avail` field from the response.
+func (p Proxmox) StorageFreeSpace(ctx context.Context, node, storage string) (int64, error) {
+	raw, err := p.rest().do(ctx, http.MethodGet,
+		fmt.Sprintf("/nodes/%s/storage/%s/status", url.PathEscape(node), url.PathEscape(storage)), nil)
+	if err != nil {
+		return 0, err
+	}
+
+	var row struct {
+		Avail int64 `json:"avail"`
+	}
+	if err := decodeData(raw, &row); err != nil {
+		return 0, fmt.Errorf("decode storage status: %w", err)
+	}
+
+	return row.Avail, nil
+}
+
+// proxmoxTemplateDisk reads the template's primary disk (the first scsi/virtio/
+// sata/ide key) from its config, returning (storage, sizeGB, bus, cloudInitCapable).
+// The primary disk is the first non-cdrom, non-cloudinit disk found in bus-family
+// priority order (scsi → virtio → sata → ide); Proxmox templates typically have a
+// single disk. Disk parsing reuses parseDiskValue (proxmox_config.go) so the format
+// "local-lvm:vm-101-disk-0,size=32G" is handled the same way as the disk tab and
+// the create wizard. CloudInitCapable is true when the fixed ide3 slot
+// (cloudInitDiskKey) holds a cloud-init drive — the same slot EnsureCloudInitDrive
+// writes, so a template that already has one is cloud-init capable.
+func proxmoxTemplateDisk(ctx context.Context, rest proxmoxRESTClient, node string, vmid int) (storage string, sizeGB int, bus string, cloudInitCapable bool, err error) {
+	cfg, err := fetchVMConfig(ctx, rest, node, vmid)
+	if err != nil {
+		return "", 0, "", false, err
+	}
+
+	for _, b := range []string{"scsi", "virtio", "sata", "ide"} {
+		for i := range 16 {
+			key := fmt.Sprintf("%s%d", b, i)
+			if key == cdromDiskKey || key == cloudInitDiskKey {
+				continue
+			}
+
+			val, ok := cfg[key].(string)
+			if !ok || val == "" || val == "none" {
+				continue
+			}
+
+			diskStorage, diskSizeGB, _ := parseDiskValue(val)
+			if diskStorage == "" {
+				continue
+			}
+
+			cloudInitCapable = proxmoxConfigHasCloudInitDrive(cfg)
+
+			return diskStorage, diskSizeGB, b, cloudInitCapable, nil
+		}
+	}
+
+	cloudInitCapable = proxmoxConfigHasCloudInitDrive(cfg)
+
+	return "", 0, "", cloudInitCapable, nil
+}
+
+// proxmoxConfigHasCloudInitDrive reports whether cfg's fixed cloudInitDiskKey
+// slot holds a cloud-init drive. Mirrors EnsureCloudInitDrive's own detection
+// (proxmox_cloudinit.go): the slot value contains "cloudinit" when the drive
+// is present.
+func proxmoxConfigHasCloudInitDrive(cfg proxmoxVMConfig) bool {
+	if value, ok := cfg[cloudInitDiskKey].(string); ok && strings.Contains(value, "cloudinit") {
+		return true
+	}
+
+	return false
 }
 
 // proxmoxNodeNames lists every node name in the cluster.

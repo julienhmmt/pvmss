@@ -8,8 +8,19 @@
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import { formatBytes } from '$lib/shared/format-bytes';
 	import { m } from '$lib/paraglide/messages.js';
+	import { post } from '$lib/shared/api/client';
 
 	const store = getDashboardContext();
+
+	async function handleClusterRetry(): Promise<void> {
+		try {
+			await post('/api/v1/cluster/refresh');
+		} catch {
+			// The refresh may fail (cluster still down) — reload picks up the
+			// current state either way.
+		}
+		await store.load();
+	}
 
 	function usagePercent(used: number, total: number): number {
 		if (total <= 0) return 0;
@@ -71,6 +82,23 @@
 		<Skeleton class="h-40 w-full" />
 		<Skeleton class="h-40 w-full" />
 	</div>
+{:else if store.errorCode === 'inventory_not_ready'}
+	<EmptyState
+		title={m['admin.dashboard.clusterUnreachableTitle']()}
+		description={m['admin.dashboard.clusterUnreachableDescription']()}
+		dataTestid="dashboard-cluster-unreachable"
+	>
+		{#snippet actions()}
+			<button
+				type="button"
+				class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+				onclick={() => void handleClusterRetry()}
+				data-testid="dashboard-cluster-retry"
+			>
+				{m['admin.dashboard.clusterUnreachableRetry']()}
+			</button>
+		{/snippet}
+	</EmptyState>
 {:else if store.error}
 	<p role="alert" class="text-destructive">{store.error}</p>
 {:else if store.summary}

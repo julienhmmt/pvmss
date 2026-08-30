@@ -117,12 +117,14 @@ type catalogBridgeDTO struct {
 
 type catalogISODTO struct {
 	Storage string `json:"storage"`
+	Node    string `json:"node"`
 	File    string `json:"file"`
 }
 
 type catalogProfileDTO struct {
 	ID       string `json:"id"`
 	Label    string `json:"label"`
+	Sockets  int    `json:"sockets"`
 	CPUCores int    `json:"cpuCores"`
 	MemoryMB int    `json:"memoryMB"`
 	DiskGB   int    `json:"diskGB"`
@@ -134,6 +136,20 @@ type catalogCloudInitTemplateDTO struct {
 	Label string `json:"label"`
 }
 
+// catalogTemplateDTO is one approved Proxmox template (US2/issue-02). The
+// VMID is the Proxmox VMID of the template; the node determines where the
+// clone lands (D2b: cross-node clone is forbidden, so the UI hides the node
+// selector when a template is chosen). CloudInitCapable signals the UI that
+// the template supports cloud-init. DiskSizeGB lets the UI show the minimum
+// disk size (reductions are rejected).
+type catalogTemplateDTO struct {
+	VMID             int    `json:"vmid"`
+	Node             string `json:"node"`
+	Name             string `json:"name"`
+	CloudInitCapable bool   `json:"cloudInitCapable"`
+	DiskSizeGB       int    `json:"diskSizeGB"`
+}
+
 type catalogTagDTO struct {
 	Name  string `json:"name"`
 	Color string `json:"color"`
@@ -143,12 +159,13 @@ type catalogTagDTO struct {
 // gabarit) — the client uses it to validate hardware/disk fields before
 // submit and to show the user what they're allowed, not just what failed.
 type catalogGabaritDTO struct {
-	MaxSockets      int `json:"maxSockets"`
-	MaxCores        int `json:"maxCores"`
-	MaxMemoryMB     int `json:"maxMemoryMB"`
-	MaxDiskPerVMGB  int `json:"maxDiskPerVMGB"`
-	MaxNetworkCards int `json:"maxNetworkCards"`
-	MaxSnapshots    int `json:"maxSnapshots"`
+	MaxSockets       int `json:"maxSockets"`
+	MaxCores         int `json:"maxCores"`
+	MaxMemoryMB      int `json:"maxMemoryMB"`
+	MaxDiskPerVMGB   int `json:"maxDiskPerVMGB"`
+	MaxNetworkCards  int `json:"maxNetworkCards"`
+	MaxSnapshots     int `json:"maxSnapshots"`
+	IsolationVLANTag int `json:"isolationVlanTag"`
 }
 
 // catalogQuotaDTO is the caller's own VM count against the cluster's
@@ -170,6 +187,7 @@ type catalogNodeCapacityDTO struct {
 	UsedVMs       int    `json:"usedVMs"`
 	UsedVCPUs     int    `json:"usedVCPUs"`
 	UsedRAMGB     int    `json:"usedRAMGB"`
+	UsedDiskGB    int    `json:"usedDiskGB"`
 	PhysicalVCPUs int    `json:"physicalVCPUs"`
 	PhysicalRAMGB int    `json:"physicalRAMGB"`
 }
@@ -181,6 +199,7 @@ type catalogDTO struct {
 	Bridges            []catalogBridgeDTO            `json:"bridges"`
 	ISOs               []catalogISODTO               `json:"isos"`
 	Profiles           []catalogProfileDTO           `json:"profiles"`
+	Templates          []catalogTemplateDTO          `json:"templates"`
 	CloudInitTemplates []catalogCloudInitTemplateDTO `json:"cloudInitTemplates"`
 	Tags               []catalogTagDTO               `json:"tags"`
 	Gabarit            *catalogGabaritDTO            `json:"gabarit,omitempty"`
@@ -199,11 +218,11 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var req vm.CreateRequest
 	if err := decodeJSON(w, r, &req); err != nil {
-		h.writeCreateError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
+		h.writeCreateError(w, http.StatusBadRequest, codeInvalidRequest, msgInvalidRequestBody)
 		return
 	}
 
-	clusterName, creator, pusher, ok := h.resolveCreateTarget(w, req.Cluster)
+	clusterName, creator, pusher, writer, freeSpace, ok := h.resolveCreateTarget(w, req.Cluster)
 	if !ok {
 		return
 	}
@@ -211,12 +230,14 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := policy.ContextWithAuditIP(r.Context(), clientIP(r, h.trustedProxyHops))
 
 	result, err := vm.Create(ctx, identity, clusterName, req, vm.CreateDeps{
-		Store:    h.store,
-		Creator:  creator,
-		Pusher:   pusher,
-		Audit:    h.store,
-		Log:      h.log,
-		Services: []*policy.Policy{h.policy},
+		Store:     h.store,
+		Creator:   creator,
+		Pusher:    pusher,
+		Writer:    writer,
+		FreeSpace: freeSpace,
+		Audit:     h.store,
+		Log:       h.log,
+		Services:  []*policy.Policy{h.policy},
 	})
 	if err != nil {
 		h.writeCreateFailure(w, err)
@@ -237,12 +258,13 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // catalogData is the raw catalog payload loaded from the store and the live
 // cluster before it is shaped into the response DTO.
 type catalogData struct {
-	resources catalog.Resources
-	snap      cluster.Snapshot
-	bridges   []cluster.Bridge
-	profiles  []catalog.Profile
-	templates []catalog.CloudInitTemplate
-	tags      []catalog.TagWithCount
+	resources        catalog.Resources
+	snap             cluster.Snapshot
+	bridges          []cluster.Bridge
+	profiles         []catalog.Profile
+	templates        []catalog.CloudInitTemplate
+	proxmoxTemplates []catalog.Template
+	tags             []catalog.TagWithCount
 }
 
 // loadCatalogData fetches every catalog slice from the store and the live
@@ -286,6 +308,14 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 
 	data.templates = templates
 
+	// US2/issue-02: approved Proxmox templates (clone source).
+	proxmoxTemplates, err := catalog.Templates(ctx, h.store, clusterName)
+	if err != nil {
+		return catalogData{}, fmt.Errorf("proxmox templates: %w", err)
+	}
+
+	data.proxmoxTemplates = proxmoxTemplates
+
 	// Admin-created tags only (FR-014/FR-015 surface) — the mandatory pvmss
 	// tag is added server-side and never offered as a user choice here.
 	tags, err := catalog.ListTags(ctx, h.store, nil, clusterName)
@@ -307,6 +337,7 @@ func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
 		Bridges:            catalogBridgeDTOs(data.resources.Bridges, data.bridges),
 		ISOs:               make([]catalogISODTO, 0, len(data.resources.ISOs)),
 		Profiles:           make([]catalogProfileDTO, 0, len(data.profiles)),
+		Templates:          make([]catalogTemplateDTO, 0, len(data.proxmoxTemplates)),
 		CloudInitTemplates: make([]catalogCloudInitTemplateDTO, 0, len(data.templates)),
 		Tags:               make([]catalogTagDTO, 0, len(data.tags)),
 	}
@@ -332,13 +363,14 @@ func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
 	}
 
 	for _, iso := range data.resources.ISOs {
-		dto.ISOs = append(dto.ISOs, catalogISODTO{Storage: iso.Storage, File: iso.File})
+		dto.ISOs = append(dto.ISOs, catalogISODTO{Storage: iso.Storage, Node: iso.Node, File: iso.File})
 	}
 
 	for _, profile := range data.profiles {
 		dto.Profiles = append(dto.Profiles, catalogProfileDTO{
 			ID:       profile.ID,
 			Label:    profile.Label,
+			Sockets:  profile.Sockets,
 			CPUCores: profile.CPUCores,
 			MemoryMB: profile.MemoryMB,
 			DiskGB:   profile.DiskGB,
@@ -350,6 +382,17 @@ func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
 	for _, tmpl := range data.templates {
 		dto.CloudInitTemplates = append(dto.CloudInitTemplates, catalogCloudInitTemplateDTO{
 			ID: tmpl.ID, Label: tmpl.Label,
+		})
+	}
+
+	// US2/issue-02: approved Proxmox templates (clone source).
+	for _, tmpl := range data.proxmoxTemplates {
+		dto.Templates = append(dto.Templates, catalogTemplateDTO{
+			VMID:             tmpl.VMID,
+			Node:             tmpl.Node,
+			Name:             tmpl.Name,
+			CloudInitCapable: tmpl.CloudInitCapable,
+			DiskSizeGB:       tmpl.DiskSizeGB,
 		})
 	}
 
@@ -408,7 +451,7 @@ func (h *VMCreate) attachLimits(ctx context.Context, dto *catalogDTO, clusterNam
 	dto.Gabarit = &catalogGabaritDTO{
 		MaxSockets: gabarit.MaxSockets, MaxCores: gabarit.MaxCores, MaxMemoryMB: gabarit.MaxMemoryMB,
 		MaxDiskPerVMGB: gabarit.MaxDiskPerVMGB, MaxNetworkCards: gabarit.MaxNetworkCards,
-		MaxSnapshots: gabarit.MaxSnapshots,
+		MaxSnapshots: gabarit.MaxSnapshots, IsolationVLANTag: gabarit.IsolationVLANTag,
 	}
 
 	quota, err := h.policy.Quota(ctx, clusterName, identity)
@@ -433,7 +476,8 @@ func (h *VMCreate) attachLimits(ctx context.Context, dto *catalogDTO, clusterNam
 		dto.NodeCapacities = append(dto.NodeCapacities, catalogNodeCapacityDTO{
 			Node: node, MaxVMs: capacity.MaxVMs, MaxVCPUs: capacity.MaxVCPUs, MaxRAMGB: capacity.MaxRAMGB,
 			MaxDiskGB: capacity.MaxDiskGB, UsedVMs: capacity.UsedVMs, UsedVCPUs: capacity.UsedVCPUs,
-			UsedRAMGB: capacity.UsedRAMGB, PhysicalVCPUs: capacity.PhysicalVCPUs, PhysicalRAMGB: capacity.PhysicalRAMGB,
+			UsedRAMGB: capacity.UsedRAMGB, UsedDiskGB: capacity.UsedDiskGB,
+			PhysicalVCPUs: capacity.PhysicalVCPUs, PhysicalRAMGB: capacity.PhysicalRAMGB,
 		})
 	}
 
@@ -461,26 +505,30 @@ func (h *VMCreate) resolveCatalogClient(w http.ResponseWriter, r *http.Request) 
 
 // resolveCreateTarget resolves the effective cluster name from req.Cluster
 // (defaulting the same way ResolveClusterParam does for the catalog route)
-// plus that cluster's own Creator and CloudInitPusher — without this, VM
-// creation ran through the default cluster's client regardless of which
-// cluster the request named.
-func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster string) (string, cluster.Creator, vm.CloudInitPusher, bool) {
+// plus that cluster's own Creator, CloudInitPusher, and HardwareUpdater —
+// without this, VM creation ran through the default cluster's client
+// regardless of which cluster the request named. The HardwareUpdater is
+// needed for post-clone configuration (US2/issue-02).
+func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster string) (string, cluster.Creator, vm.CloudInitPusher, vm.HardwareUpdater, vm.FreeSpaceChecker, bool) {
 	clusterName, err := ResolveClusterValue(requestedCluster, h.clients)
 	if err != nil {
 		code, message := clusterParamError(err)
 		h.writeCreateError(w, http.StatusBadRequest, code, message)
 
-		return "", nil, nil, false
+		return "", nil, nil, nil, nil, false
 	}
 
 	if h.clients == nil {
-		return clusterName, h.creator, h.pusher, true
+		writer, _ := h.creator.(vm.HardwareUpdater)
+		freeSpace, _ := h.creator.(vm.FreeSpaceChecker)
+
+		return clusterName, h.creator, h.pusher, writer, freeSpace, true
 	}
 
 	client, err := h.clients.Client(clusterName)
 	if err != nil {
 		h.writeCreateError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
-		return "", nil, nil, false
+		return "", nil, nil, nil, nil, false
 	}
 
 	creator, ok := client.(cluster.Creator)
@@ -488,7 +536,7 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 		h.log.Error("cluster client does not implement Creator", "component", "httpapi", "cluster", clusterName)
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
-		return "", nil, nil, false
+		return "", nil, nil, nil, nil, false
 	}
 
 	pusher, ok := client.(vm.CloudInitPusher)
@@ -496,10 +544,26 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 		h.log.Error("cluster client does not implement CloudInitPusher", "component", "httpapi", "cluster", clusterName)
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
-		return "", nil, nil, false
+		return "", nil, nil, nil, nil, false
 	}
 
-	return clusterName, creator, pusher, true
+	writer, ok := client.(vm.HardwareUpdater)
+	if !ok {
+		h.log.Error("cluster client does not implement HardwareUpdater", "component", "httpapi", "cluster", clusterName)
+		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return "", nil, nil, nil, nil, false
+	}
+
+	freeSpace, ok := client.(vm.FreeSpaceChecker)
+	if !ok {
+		h.log.Error("cluster client does not implement FreeSpaceChecker", "component", "httpapi", "cluster", clusterName)
+		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return "", nil, nil, nil, nil, false
+	}
+
+	return clusterName, creator, pusher, writer, freeSpace, true
 }
 
 func (h *VMCreate) clientFor(clusterName string) (cluster.Client, error) {
@@ -557,30 +621,64 @@ func catalogBridgeDTOs(bridges []catalog.Bridge, live []cluster.Bridge) []catalo
 // writeCreateFailure maps vm.Create's sentinel errors to the contract's
 // status codes and error codes.
 func (h *VMCreate) writeCreateFailure(w http.ResponseWriter, err error) {
-	switch {
-	case errors.Is(err, vm.ErrAdminCannotCreate):
-		h.writeCreateError(w, http.StatusForbidden, "admin_cannot_create", "administrators cannot create VMs")
-	case errors.Is(err, vm.ErrNoPool):
-		h.writeCreateError(w, http.StatusForbidden, "no_pool", "this account cannot own VMs")
-	case errors.Is(err, policy.ErrQuotaExceeded):
-		h.writeCreateError(w, http.StatusBadRequest, "quota_exceeded", err.Error())
-	case errors.Is(err, policy.ErrGabaritExceeded):
-		h.writeCreateError(w, http.StatusBadRequest, "gabarit_exceeded", err.Error())
-	case errors.Is(err, policy.ErrNodeCapacityExceeded):
-		h.writeCreateError(w, http.StatusBadRequest, "capacity_exceeded", err.Error())
-	case errors.Is(err, vm.ErrInvalidName):
-		h.writeCreateError(w, http.StatusBadRequest, "invalid_name", "name must be a valid hostname (lowercase alphanumeric and hyphen, no leading/trailing hyphen, max 63 chars)")
-	case errors.Is(err, vm.ErrOutOfRange):
-		h.writeCreateError(w, http.StatusBadRequest, "out_of_range", err.Error())
-	case errors.Is(err, vm.ErrNotApproved):
-		h.writeCreateError(w, http.StatusBadRequest, "not_approved", err.Error())
-	case errors.Is(err, vm.ErrClusterCreate):
-		h.log.Error("cluster create failed", "component", "httpapi", "error", err)
-		h.writeCreateError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
-	default:
-		h.log.Error("vm create failed", "component", "httpapi", "error", err)
-		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+	if status, code, message, ok := mapCreateError(err); ok {
+		if code == "cluster_error" {
+			h.log.Error("cluster create failed", "component", "httpapi", "error", err)
+		}
+
+		h.writeCreateError(w, status, code, message)
+
+		return
 	}
+
+	h.log.Error("vm create failed", "component", "httpapi", "error", err)
+	h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+}
+
+// createErrorMapping pairs a sentinel error with its HTTP status, error code,
+// and message. A nil message means "use err.Error()" (the sentinel carries a
+// dynamic detail string).
+type createErrorMapping struct {
+	err     error
+	status  int
+	code    string
+	message string // empty → err.Error()
+}
+
+// createErrorMappings is the table writeCreateFailure consults. Order matters
+// only for errors.Is precedence, which is identity-based here.
+var createErrorMappings = []createErrorMapping{
+	{vm.ErrAdminCannotCreate, http.StatusForbidden, "admin_cannot_create", "administrators cannot create VMs"},
+	{vm.ErrNoPool, http.StatusForbidden, "no_pool", "this account cannot own VMs"},
+	{policy.ErrQuotaExceeded, http.StatusBadRequest, "quota_exceeded", ""},
+	{policy.ErrGabaritExceeded, http.StatusBadRequest, "gabarit_exceeded", ""},
+	{policy.ErrNodeCapacityExceeded, http.StatusBadRequest, "capacity_exceeded", ""},
+	{vm.ErrInvalidName, http.StatusBadRequest, "invalid_name", "name must be a valid hostname (lowercase alphanumeric and hyphen, no leading/trailing hyphen, max 63 chars)"},
+	{vm.ErrNameTaken, http.StatusBadRequest, "name_taken", ""},
+	{vm.ErrOutOfRange, http.StatusBadRequest, "out_of_range", ""},
+	{vm.ErrNotApproved, http.StatusBadRequest, "not_approved", ""},
+	{vm.ErrInvalidSource, http.StatusBadRequest, "invalid_source", ""},
+	{vm.ErrInvalidRequest, http.StatusBadRequest, codeInvalidRequest, ""},
+	{vm.ErrDiskReduction, http.StatusBadRequest, "disk_reduction", ""},
+	{vm.ErrInsufficientDiskSpace, http.StatusBadRequest, "insufficient_disk_space", ""},
+	{vm.ErrClusterCreate, http.StatusBadGateway, "cluster_error", msgClusterRejected},
+}
+
+// mapCreateError returns the HTTP status, code, and message for a known
+// sentinel error, or (0, "", "", false) for an unrecognized error.
+func mapCreateError(err error) (int, string, string, bool) {
+	for _, m := range createErrorMappings {
+		if errors.Is(err, m.err) {
+			msg := m.message
+			if msg == "" {
+				msg = err.Error()
+			}
+
+			return m.status, m.code, msg, true
+		}
+	}
+
+	return 0, "", "", false
 }
 
 func (h *VMCreate) writeCreateJSON(w http.ResponseWriter, status int, value any) {

@@ -125,12 +125,12 @@ func parseDisks(cfg proxmoxVMConfig) ([]Disk, int64) {
 				continue
 			}
 
-			storage, sizeGB := parseDiskValue(value)
+			storage, sizeGB, format := parseDiskValue(value)
 			if storage == "" {
 				continue
 			}
 
-			disks = append(disks, Disk{Key: key, Bus: bus, BusIndex: index, Storage: storage, SizeGB: sizeGB})
+			disks = append(disks, Disk{Key: key, Bus: bus, BusIndex: index, Storage: storage, SizeGB: sizeGB, Format: format})
 			total += int64(sizeGB) * 1024 * 1024 * 1024
 		}
 	}
@@ -138,24 +138,54 @@ func parseDisks(cfg proxmoxVMConfig) ([]Disk, int64) {
 	return disks, total
 }
 
-// parseDiskValue splits a Proxmox disk config value ("local-lvm:vm-101-disk-0,size=32G")
-// into its storage and size in whole GB.
-func parseDiskValue(value string) (storage string, sizeGB int) {
+// parseDiskValue splits a Proxmox disk config value ("local-lvm:vm-101-disk-0,size=32G"
+// or "local:vm-101-disk-0.qcow2,size=32G") into its storage, size in whole GB,
+// and image format.
+func parseDiskValue(value string) (storage string, sizeGB int, format string) {
 	volume, options, _ := strings.Cut(value, ",")
 
 	storage, _, ok := strings.Cut(volume, ":")
 	if !ok {
-		return "", 0
+		return "", 0, ""
 	}
 
 	for opt := range strings.SplitSeq(options, ",") {
 		key, val, ok := strings.Cut(opt, "=")
-		if ok && key == "size" {
+		if !ok {
+			continue
+		}
+
+		switch key {
+		case "size":
 			sizeGB = parseProxmoxSizeGB(val)
+		case "format":
+			format = val
 		}
 	}
 
-	return storage, sizeGB
+	if format == "" {
+		format = parseDiskFormatFromVolume(volume)
+	}
+
+	return storage, sizeGB, format
+}
+
+// parseDiskFormatFromVolume derives a disk's format from its volume filename
+// when no explicit format= option was given. PVE appends the format to the
+// volume name on file-based storages ("local:vm-100-disk-0.qcow2"); block
+// storages carry a bare name and return "" — the plugin decides there.
+func parseDiskFormatFromVolume(volume string) string {
+	_, filePart, ok := strings.Cut(volume, ":")
+	if !ok {
+		filePart = volume
+	}
+
+	dot := strings.LastIndexByte(filePart, '.')
+	if dot < 0 || dot == len(filePart)-1 {
+		return ""
+	}
+
+	return filePart[dot+1:]
 }
 
 // parseProxmoxSizeGB converts a Proxmox size value (a trailing-unit string
@@ -259,6 +289,12 @@ func parseNetValue(index int, value string) NetworkInterface {
 			if n, err := strconv.ParseFloat(val, 64); err == nil {
 				r := int(n)
 				nic.RateMbps = &r
+			}
+		case key == "firewall":
+			nic.Firewall = val == "1"
+		case key == "mtu":
+			if n, err := strconv.Atoi(val); err == nil {
+				nic.MTU = n
 			}
 		case proxmoxNICModels[key]:
 			nic.Model = key
@@ -374,6 +410,46 @@ func fetchUptime(ctx context.Context, rest proxmoxRESTClient, node string, vmid 
 	return time.Duration(status.Uptime) * time.Second, nil
 }
 
+// VMStatus implements VMStatusReader via GET /nodes/{node}/qemu/{vmid}/status/current.
+// It reads the live power state, lock, and uptime in a single call — the same
+// endpoint fetchUptime already used, now exposed as the domain-level live-status
+// read (ADR 0001).
+func (p Proxmox) VMStatus(ctx context.Context, node string, vmid int) (VMLiveStatus, error) {
+	raw, err := p.rest().do(ctx, http.MethodGet,
+		fmt.Sprintf("/nodes/%s/qemu/%d/status/current", url.PathEscape(node), vmid), nil)
+	if err != nil {
+		return VMLiveStatus{}, err
+	}
+
+	var status struct {
+		Status string `json:"status"`
+		Lock   string `json:"lock"`
+		Uptime int64  `json:"uptime"`
+	}
+	if err := decodeData(raw, &status); err != nil {
+		return VMLiveStatus{}, fmt.Errorf("decode vm status: %w", err)
+	}
+
+	return VMLiveStatus{
+		Status: parseVMStatus(status.Status),
+		Lock:   status.Lock,
+		Uptime: time.Duration(status.Uptime) * time.Second,
+	}, nil
+}
+
+// parseVMStatus maps Proxmox's status string to the VMStatus enum. Proxmox
+// reports "running", "stopped", "paused" — matching the enum directly. An
+// unexpected value defaults to stopped rather than failing the read, matching
+// the best-effort posture of the snapshot path.
+func parseVMStatus(s string) VMStatus {
+	switch VMStatus(s) {
+	case VMRunning, VMStopped, VMPaused:
+		return VMStatus(s)
+	default:
+		return VMStopped
+	}
+}
+
 // encodeNetValue renders a NetworkInterface back to Proxmox's netN grammar.
 func encodeNetValue(iface NetworkInterface) string {
 	model := iface.Model
@@ -396,6 +472,15 @@ func encodeNetValue(iface NetworkInterface) string {
 
 	if iface.RateMbps != nil {
 		parts = append(parts, fmt.Sprintf("rate=%d", *iface.RateMbps))
+	}
+
+	// US6/issue-06 D6a: the Proxmox per-VM firewall is armed on every
+	// PVMSS-created NIC — the base isolation brick for a multi-tenant
+	// portal, imposed not user-exposed.
+	parts = append(parts, "firewall=1")
+
+	if iface.MTU > 0 {
+		parts = append(parts, fmt.Sprintf("mtu=%d", iface.MTU))
 	}
 
 	return strings.Join(parts, ",")

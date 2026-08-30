@@ -20,8 +20,8 @@ const (
 
 // sampleResources builds a Resources fixture covering every membership path:
 // one matching node, a storage matched by (name, node), a bridge, and an ISO
-// matched by (storage, file). Pairs that share a name but differ on the second
-// key are included to prove the composite-key lookups do not collide.
+// matched by (storage, file, node). Pairs that share a name but differ on the
+// second key are included to prove the composite-key lookups do not collide.
 func sampleResources() catalog.Resources {
 	return catalog.Resources{
 		Nodes: []catalog.Node{
@@ -39,8 +39,9 @@ func sampleResources() catalog.Resources {
 			{Name: bridgeVMbr1, Node: node01},
 		},
 		ISOs: []catalog.ISO{
-			{Storage: storageLocal, File: debianISO},
-			{Storage: storageNFS, File: debianISO}, // same file, different storage
+			{Storage: storageLocal, Node: node01, File: debianISO},
+			{Storage: storageNFS, Node: node01, File: debianISO},          // same file, different storage
+			{Storage: storageLocal, Node: node02, File: debianGenericISO}, // same storage, different node
 		},
 		// Profiles are looked up via FindProfile, which takes a []Profile.
 	}
@@ -123,28 +124,32 @@ func TestResources_HasBridge(t *testing.T) {
 	}
 }
 
-// TestResources_HasISO — HasISO matches the (storage, file) pair, so the same
-// file on two storages must not cross-match.
+// TestResources_HasISO — HasISO matches the (storage, file, node) triple, so
+// the same file on two storages must not cross-match, and the same storage on
+// two nodes must not cross-match either.
 func TestResources_HasISO(t *testing.T) {
 	t.Parallel()
 
 	resources := sampleResources()
 
 	cases := []struct {
-		storage, file string
-		want          bool
+		storage, file, node string
+		want                bool
 	}{
-		{storageLocal, debianISO, true},
-		{storageNFS, debianISO, true},
-		{storageLocal, "ubuntu-24.04.iso", false}, // right storage, wrong file
-		{"missing", debianISO, false},             // right file, wrong storage
-		{"", "", false},
+		{storageLocal, debianISO, node01, true},
+		{storageNFS, debianISO, node01, true},
+		{storageLocal, debianGenericISO, node02, true},
+		{storageLocal, debianISO, node02, false},          // right storage+file, wrong node
+		{storageLocal, debianGenericISO, node01, false},   // right storage, wrong file+node
+		{storageLocal, "ubuntu-24.04.iso", node01, false}, // right storage+node, wrong file
+		{"missing", debianISO, node01, false},             // right file+node, wrong storage
+		{"", "", "", false},
 	}
 
 	for _, tc := range cases {
-		got := resources.HasISO(tc.storage, tc.file)
+		got := resources.HasISO(tc.storage, tc.file, tc.node)
 		if got != tc.want {
-			t.Errorf("HasISO(%q, %q) = %v, want %v", tc.storage, tc.file, got, tc.want)
+			t.Errorf("HasISO(%q, %q, %q) = %v, want %v", tc.storage, tc.file, tc.node, got, tc.want)
 		}
 	}
 }

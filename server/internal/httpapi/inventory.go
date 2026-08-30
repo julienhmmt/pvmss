@@ -44,13 +44,18 @@ func (h *ClusterRefresh) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	at, err := h.refresher.Refresh(r.Context())
-	if err != nil {
+	// Async refresh: the guard check runs synchronously (returns 429 if too
+	// soon), but the actual cluster call runs in a background goroutine so
+	// the server's WriteTimeout cannot cancel a slow/dead cluster's refresh
+	// before it completes. The client gets 202 immediately and learns the
+	// outcome by re-reading the projection (re-loading the VM list or
+	// polling /health) — which the frontend already does.
+	if err := h.refresher.RefreshAsync(r.Context()); err != nil {
 		h.writeRefreshError(w, err)
 		return
 	}
 
-	resp := clusterRefreshResponse{RefreshedAt: at.UTC().Format(time.RFC3339Nano)}
+	resp := clusterRefreshResponse{RefreshedAt: time.Now().UTC().Format(time.RFC3339Nano)}
 
 	body, err := json.Marshal(resp)
 	if err != nil {
@@ -63,7 +68,7 @@ func (h *ClusterRefresh) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := writeJSON(w, http.StatusOK, body); err != nil {
+	if err := writeJSON(w, http.StatusAccepted, body); err != nil {
 		h.log.Error("failed to write refresh response", "component", "httpapi", "error", err)
 	}
 }

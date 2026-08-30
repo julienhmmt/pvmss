@@ -47,17 +47,21 @@ const (
 	dimensionVCPU  = "vcpu"
 	dimensionVMs   = "vms"
 	dimensionRAM   = "ram"
+	dimensionDisk  = "disk"
 )
 
 // Gabarit is the administrator-editable size ceiling for one VM.
+// IsolationVLANTag is the per-cluster imposed VLAN (US6/issue-06 D6b + Q18):
+// 0 means no tag imposed; a positive value is stamped on every created NIC.
 type Gabarit struct {
-	MaxSockets      int
-	MaxCores        int
-	MaxMemoryMB     int
-	MaxDiskPerVMGB  int
-	MaxNetworkCards int
-	MaxSnapshots    int
-	AllowCustomYAML bool
+	MaxSockets       int
+	MaxCores         int
+	MaxMemoryMB      int
+	MaxDiskPerVMGB   int
+	MaxNetworkCards  int
+	MaxSnapshots     int
+	AllowCustomYAML  bool
+	IsolationVLANTag int
 }
 
 // Quota is the current VM count and per-user allowance.
@@ -67,7 +71,8 @@ type Quota struct {
 }
 
 // Capacity is a node's configured aggregate capacité, live usage, and physical
-// CPU/RAM facts. MaxDiskGB is intentionally displayed but not enforced.
+// CPU/RAM/disk facts. UsedDiskGB is the provisioned disk total from the
+// inventory projection (D4c), parallel to UsedRAMGB.
 type Capacity struct {
 	Node          string
 	MaxVMs        int
@@ -77,8 +82,21 @@ type Capacity struct {
 	UsedVMs       int
 	UsedVCPUs     int
 	UsedRAMGB     int
+	UsedDiskGB    int
 	PhysicalVCPUs int
 	PhysicalRAMGB int
+}
+
+// CapacityDelta is the incremental VM footprint a capacity check is asked to
+// absorb. Sockets, Cores, MemoryMB, and DiskGB are the new or resized VM's
+// contribution; ExcludeVMID removes an existing VM's current contribution
+// before applying the delta (used by the resize path).
+type CapacityDelta struct {
+	Sockets     int
+	Cores       int
+	MemoryMB    int
+	DiskGB      int
+	ExcludeVMID int
 }
 
 // Policy owns persistence and the immutable inventory projection used to
@@ -115,6 +133,7 @@ func (service *Policy) Gabarit(ctx context.Context, clusterName string) (Gabarit
 		MaxSockets: row.MaxSockets, MaxCores: row.MaxCores, MaxMemoryMB: row.MaxMemoryMB,
 		MaxDiskPerVMGB: row.MaxDiskPerVMGB, MaxNetworkCards: row.MaxNetworkCards,
 		MaxSnapshots: row.MaxSnapshots, AllowCustomYAML: row.AllowCustomYAML,
+		IsolationVLANTag: row.IsolationVLANTag,
 	}, nil
 }
 
@@ -151,7 +170,10 @@ func (service *Policy) NodeCapacity(ctx context.Context, clusterName, node strin
 
 	index := service.projection.Load()
 
-	var usedRAMBytes int64
+	var (
+		usedRAMBytes  int64
+		usedDiskBytes int64
+	)
 
 	for _, machine := range index.ByNode[node] {
 		if !slices.Contains(machine.Tags, "pvmss") {
@@ -161,9 +183,11 @@ func (service *Policy) NodeCapacity(ctx context.Context, clusterName, node strin
 		capacity.UsedVMs++
 		capacity.UsedVCPUs += vmVCPUs(machine)
 		usedRAMBytes += machine.MemoryTotal
+		usedDiskBytes += machine.DiskTotal
 	}
 
 	capacity.UsedRAMGB = int(usedRAMBytes / bytesPerGB)
+	capacity.UsedDiskGB = int(usedDiskBytes / bytesPerGB)
 
 	for _, machine := range index.Nodes {
 		if machine.Name != node {
@@ -187,6 +211,26 @@ func (service *Policy) poolVMCount(pool string) int {
 	}
 
 	return len(service.projection.Load().ByPool[pool])
+}
+
+// PoolHasName reports whether any VM in the given pool already carries name
+// (US5/issue-05 D5b: per-pool name uniqueness). The check is case-sensitive —
+// ValidateName already enforces lowercase hostname form, so "Web" and "web"
+// cannot both pass validation. Returns false when no projection is wired
+// (unit tests that don't need the check); callers that need a hard check
+// must ensure a projection is configured.
+func (service *Policy) PoolHasName(pool, name string) bool {
+	if service.projection == nil || service.projection.Load() == nil {
+		return false
+	}
+
+	for _, machine := range service.projection.Load().ByPool[pool] {
+		if machine.Name == name {
+			return true
+		}
+	}
+
+	return false
 }
 
 func vmVCPUs(machine cluster.VM) int {

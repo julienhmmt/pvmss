@@ -125,6 +125,14 @@ func run() int {
 		return 1
 	}
 
+	// Discover cluster display names in the background so a down cluster
+	// cannot block startup. DisplayName calls a GET (retried 3× with a 20s
+	// client timeout) — a dead cluster would hang the server for up to 60s
+	// per cluster before it ever started listening. The 5s per-cluster cap
+	// bounds the worst case; a successful discovery updates the row and the
+	// sidebar picks it up on the next /me or page load.
+	go discoverClusterDisplayNames(context.Background(), clusterRegistry, st, logger)
+
 	return serve(router, cfg, logger)
 }
 
@@ -170,12 +178,8 @@ func openStore(cfg config.Configuration, logger *slog.Logger) (*store.Store, err
 // default cluster client. The registry owns per-cluster Client instances; the
 // default client is the one most handlers operate on.
 //
-// It also discovers each cluster's display name (the real Proxmox cluster name
-// from /cluster/status, or the fake's logical name) and persists it when the
-// row does not already have one — so the sidebar shows a meaningful name from
-// first boot instead of the internal "default" until an admin tests the
-// cluster. Discovery is best-effort: a failed DisplayName call logs a warning
-// and leaves the row untouched, never blocking startup.
+// Display-name discovery is deferred to a background goroutine (see run) so a
+// down cluster cannot block startup.
 func initCluster(cfg config.Configuration, st *store.Store, logger *slog.Logger) (*cluster.Registry, cluster.Client, error) {
 	rows, err := st.ListClusters(context.Background())
 	if err != nil {
@@ -192,10 +196,16 @@ func initCluster(cfg config.Configuration, st *store.Store, logger *slog.Logger)
 		logger.Error("default cluster is unavailable", "component", "main", "error", err)
 		return nil, nil, err
 	}
-	discoverClusterDisplayNames(context.Background(), clusterRegistry, rows, st, logger)
 	logger.Info("cluster registry initialized", "component", "cluster", "source", cfg.ClusterSource, "clusters", clusterRegistry.List())
 	return clusterRegistry, clusterClient, nil
 }
+
+// displayNameDiscoveryTimeout caps how long a single cluster's DisplayName
+// call may take during background discovery. A dead cluster's GET is retried
+// 3× with a 20s client timeout; without this cap one unreachable cluster
+// would block discovery (and previously, startup) for up to 60s. 5s is
+// enough for a healthy cluster's /cluster/status and bounds the dead case.
+const displayNameDiscoveryTimeout = 5 * time.Second
 
 // discoverClusterDisplayNames populates the display_name column for Proxmox
 // clusters that don't already have one by calling Client.DisplayName() (the
@@ -203,7 +213,16 @@ func initCluster(cfg config.Configuration, st *store.Store, logger *slog.Logger)
 // their DisplayName() implementation just returns the internal logical name
 // ("default", "secondary"), which is the opposite of a human-readable label —
 // the fake seed already sets meaningful display names.
-func discoverClusterDisplayNames(ctx context.Context, registry *cluster.Registry, rows []store.ClusterRow, st *store.Store, logger *slog.Logger) {
+//
+// Runs in a background goroutine launched after the HTTP server starts
+// listening, so a down cluster cannot delay boot. Each cluster's call is
+// bounded by displayNameDiscoveryTimeout.
+func discoverClusterDisplayNames(ctx context.Context, registry *cluster.Registry, st *store.Store, logger *slog.Logger) {
+	rows, err := st.ListClusters(ctx)
+	if err != nil {
+		logger.Warn("display name discovery: list clusters failed", "component", "cluster", "error", err)
+		return
+	}
 	for _, row := range rows {
 		if row.DisplayName != "" {
 			continue
@@ -216,7 +235,9 @@ func discoverClusterDisplayNames(ctx context.Context, registry *cluster.Registry
 		if _, ok := client.(cluster.Fake); ok {
 			continue
 		}
-		displayName, err := client.DisplayName(ctx)
+		callCtx, cancel := context.WithTimeout(ctx, displayNameDiscoveryTimeout)
+		displayName, err := client.DisplayName(callCtx)
+		cancel()
 		if err != nil {
 			logger.Warn("cluster display name discovery failed", "component", "cluster", "cluster", row.Name, "error", err)
 			continue
@@ -358,8 +379,9 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	// resolved above — a request scoped to a non-default cluster must never
 	// be served from another cluster's client (cross-tenant data leak when
 	// node names or vmids collide between clusters).
-	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: clients.writer, Clients: clusterRegistry, Store: st, Refresher: worker, Log: logger}, policyService)
-	vmBulk := httpapi.NewVMBulkWithRegistry(httpapi.VMBulkRegistryDeps{Registry: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: clients.writer, Store: st, Refresher: refresher, Log: logger, Clients: clusterRegistry})
+	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: clients.writer, Clients: clusterRegistry, Store: st, Refresher: worker, StatusReader: clients.statusReader, Log: logger}, policyService)
+	vmBulk := httpapi.NewVMBulkWithRegistry(httpapi.VMBulkRegistryDeps{Registry: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: clients.writer, Store: st, Refresher: worker, Log: logger, Clients: clusterRegistry})
+	vmStatusBatch := httpapi.NewVMStatusBatch(httpapi.VMStatusBatchDeps{Source: inventoryRegistry, Auth: authHandler, StatusReader: clients.statusReader, Clients: clusterRegistry, Log: logger})
 	vmCloudInit := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Reader: clients.cloudInitReader, Writer: clients.writer, Clients: clusterRegistry, Store: st, Refresher: worker, Log: logger}, policyService)
 	vmCreate := httpapi.NewVMCreateWithRegistry(
 		authHandler,
@@ -371,7 +393,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		policyService,
 	)
 	vmCreate.SetTrustedProxyHops(cfg.TrustedProxyHops)
-	tasks := httpapi.NewTasksWithRegistry(authHandler, clusterRegistry, clients.creator, worker, logger)
+	tasks := httpapi.NewTasksWithRegistry(authHandler, clusterRegistry, clients.creator, worker, httpapi.NewRegistryRefresherResolver(inventoryRegistry), logger)
 	snapshots := httpapi.NewVMSnapshotsWithRegistry(httpapi.VMSnapshotsRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Reader: clients.snapshotReader, Writer: clients.snapshotWriter, Clients: clusterRegistry, Store: st, Log: logger, Services: []*policy.Policy{policyService}})
 	vmConsole := httpapi.NewVMConsoleWithRegistry(httpapi.VMConsoleRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Relay: clients.consoleRelay, Clients: clusterRegistry, Tickets: consoleTickets, Store: st, Log: logger})
 	vmSerialConsole := httpapi.NewVMSerialConsoleWithRegistry(httpapi.VMSerialConsoleRegistryDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Relay: clients.serialRelay, Clients: clusterRegistry, Tickets: consoleTickets, Store: st, Log: logger})
@@ -401,6 +423,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		VMs:              vms,
 		VMDetail:         vmDetail,
 		VMBulk:           vmBulk,
+		VMStatusBatch:    vmStatusBatch,
 		VMCloudInit:      vmCloudInit,
 		VMCreate:         vmCreate,
 		Tasks:            tasks,
@@ -435,6 +458,7 @@ type clusterClientInterfaces struct {
 	serialRelay          cluster.TerminalRelay
 	metricsReader        cluster.MetricsHistoryReader
 	metricsCurrentReader cluster.MetricsCurrentReader
+	statusReader         cluster.VMStatusReader
 }
 
 // resolveClusterClientInterfaces asserts that the cluster client implements
@@ -471,6 +495,9 @@ func resolveClusterClientInterfaces(clusterClient cluster.Client) (clusterClient
 	}
 	if c.metricsCurrentReader, ok = clusterClient.(cluster.MetricsCurrentReader); !ok {
 		return c, errors.New("cluster client does not implement MetricsCurrentReader")
+	}
+	if c.statusReader, ok = clusterClient.(cluster.VMStatusReader); !ok {
+		return c, errors.New("cluster client does not implement VMStatusReader")
 	}
 
 	return c, nil

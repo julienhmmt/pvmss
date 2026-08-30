@@ -9,9 +9,19 @@ export interface VmSnapshot {
 	vmstate: boolean;
 }
 
+/** Server-computed snapshot capability of the VM (ticket 07). Warnings are
+ *  English strings generated server-side; they inform rather than block. */
+export interface VmSnapshotCapability {
+	canSnapshot: boolean;
+	canVMState: boolean;
+	warnings: string[];
+}
+
 interface SnapshotListResponse {
 	snapshots: VmSnapshot[];
 	maxSnapshots: number;
+	/** Absent on older servers — callers fall back to the `!running` rule. */
+	capability?: VmSnapshotCapability;
 }
 
 interface SnapshotTaskResponse {
@@ -21,6 +31,18 @@ interface SnapshotTaskResponse {
 	upid: string;
 }
 
+export interface SnapshotConfigResponse {
+	name: string;
+	config: Record<string, string>;
+}
+
+/** One changed config key between the VM's current config and a snapshot's. */
+export interface RollbackDiffEntry {
+	key: string;
+	before: string;
+	after: string;
+}
+
 /** Owns live snapshot data and registers accepted writes with the global task tray. */
 export class VmSnapshotsStore {
 	readonly cluster: string;
@@ -28,6 +50,7 @@ export class VmSnapshotsStore {
 	readonly #tray: TaskTrayStore;
 	snapshots = $state.raw<readonly VmSnapshot[]>([]);
 	maxSnapshots = $state.raw<number | null>(null);
+	capability = $state.raw<VmSnapshotCapability | null>(null);
 	loading = $state.raw(false);
 	inFlight = $state.raw(false);
 	error = $state.raw<string | null>(null);
@@ -47,6 +70,7 @@ export class VmSnapshotsStore {
 			const response = await get<SnapshotListResponse>(this.#basePath);
 			this.snapshots = response.snapshots;
 			this.maxSnapshots = response.maxSnapshots;
+			this.capability = response.capability ?? null;
 		} catch (error: unknown) {
 			this.error = errorMessage(error, () => m['vms.snapshots.errorLoad']());
 		} finally {
@@ -64,6 +88,25 @@ export class VmSnapshotsStore {
 
 	async delete(name: string): Promise<boolean> {
 		return this.dispatch('vm_snapshot_delete', name, () => del<SnapshotTaskResponse>(`${this.#basePath}/${encodeURIComponent(name)}`));
+	}
+
+	/** Diffs a snapshot's stored config against the VM's current config so a
+	 *  rollback can be previewed before it happens (ticket 08). `name` may be
+	 *  `current` for the live pseudo-entry; the diff is computed over the
+	 *  union of keys, listing every key whose value would change. */
+	async rollbackDiff(name: string): Promise<RollbackDiffEntry[]> {
+		const [snapshot, current] = await Promise.all([
+			get<SnapshotConfigResponse>(`${this.#basePath}/${encodeURIComponent(name)}/config`),
+			get<SnapshotConfigResponse>(`${this.#basePath}/current/config`)
+		]);
+		const keys = new Set([...Object.keys(snapshot.config), ...Object.keys(current.config)]);
+		const entries: RollbackDiffEntry[] = [];
+		for (const key of keys) {
+			const before = current.config[key] ?? '';
+			const after = snapshot.config[key] ?? '';
+			if (before !== after) entries.push({ key, before, after });
+		}
+		return entries.sort((a, b) => a.key.localeCompare(b.key));
 	}
 
 	clearError(): void {

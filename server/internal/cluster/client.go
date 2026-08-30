@@ -15,6 +15,7 @@ const (
 	storagePluginCephFS  = "cephfs"
 	storagePluginDir     = "dir"
 	storagePluginLVM     = "lvm"
+	storagePluginLVMThin = "lvmthin"
 	storagePluginPBS     = "pbs"
 	storageContentImages = "images"
 )
@@ -26,6 +27,10 @@ var (
 	ErrNotImplemented         = errors.New("not implemented")
 	ErrInvalidAction          = errors.New("invalid action")
 	ErrInvalidStateTransition = errors.New("invalid state transition")
+	// ErrClusterRejected is wrapped by ClusterRejectedError for any 4xx/5xx
+	// Proxmox response (except 404, which stays ErrNotFound). The wrapped
+	// message is Proxmox's own — see ClusterRejectedError.
+	ErrClusterRejected = errors.New("cluster rejected the request")
 	// ErrVMRunning is returned by Delete when the target VM is running. Real
 	// Proxmox rejects a destroy on a running VM with HTTP 500 ("VM X is running
 	// - destroy failed"); the fake mirrors this so the force-stop-then-delete
@@ -35,6 +40,11 @@ var (
 	// ErrSSHKeyUserUnknown is returned by Writer.AddSSHKey when the guest user
 	// named in the request does not exist on the guest (guest-agent exit code 3).
 	ErrSSHKeyUserUnknown = errors.New("ssh key user not found on guest")
+	// ErrVMIDTaken is returned by CreateVM/CloneVM when Proxmox rejects the
+	// VMID because it already exists (US5/issue-05). GET /cluster/nextid
+	// returns the smallest free ID at call time without reserving it, so two
+	// concurrent creations can collide; the caller retries with a fresh VMID.
+	ErrVMIDTaken = errors.New("vmid already taken")
 )
 
 // Client is the single contract for reading cluster data. Every implementation
@@ -46,6 +56,7 @@ type Client interface {
 	ChangePassword(ctx context.Context, username, oldPassword, newPassword string) error
 	ListBridges(ctx context.Context) ([]Bridge, error)
 	ListISOs(ctx context.Context) ([]ISOImage, error)
+	ListTemplates(ctx context.Context) ([]TemplateVM, error)
 	ListPools(ctx context.Context) ([]Pool, error)
 	EnsurePoolRole(ctx context.Context) error
 	EnsurePoolUser(ctx context.Context, pool, password string) (string, error)
@@ -53,6 +64,10 @@ type Client interface {
 	SetPoolACL(ctx context.Context, username, poolID, role string) error
 	DeletePool(ctx context.Context, poolID string) error
 	DeleteUser(ctx context.Context, username string) error
+	// StorageFreeSpace returns the available bytes on a storage backend on a
+	// node (US3/issue-04 D4c). Used by the create path's live disk-space
+	// check before VMID allocation.
+	StorageFreeSpace(ctx context.Context, node, storage string) (int64, error)
 }
 
 // CloudInitReader reads per-VM cloud-init state and server-side snippet targets.
@@ -210,6 +225,11 @@ type Disk struct {
 	Storage  string  `json:"storage"`
 	SizeGB   int     `json:"sizeGB"`
 	IsBoot   bool    `json:"isBoot"`
+	// Format is the disk image format ("qcow2", "raw", ...) parsed from the
+	// Proxmox config volume ID or the explicit format= option. Empty on
+	// block-backed storages (lvmthin, zfspool, rbd) where the plugin — not
+	// the format — decides snapshot support (ticket 07).
+	Format string `json:"format,omitempty"`
 }
 
 // CDROMState describes the fixed ide2 CD-ROM drive.
@@ -233,6 +253,8 @@ type NetworkInterface struct {
 	MAC         string   `json:"mac"`
 	VLAN        *int     `json:"vlan"`
 	RateMbps    *int     `json:"rateMbps"`
+	Firewall    bool     `json:"firewall"`
+	MTU         int      `json:"mtu"`
 	IPAddresses []string `json:"ipAddresses"`
 }
 
@@ -331,12 +353,44 @@ type ISOImage struct {
 	SizeBytes int64
 }
 
+// TemplateVM is one template VM discovered in the cluster (US2/issue-02).
+// Proxmox marks templates with template=1 in /cluster/resources. The admin
+// approves which discovered templates are offered in the create wizard.
+// DiskStorage, DiskSizeGB, and DiskBus describe the template's primary disk
+// so the clone path can decide linked vs full and target the correct resize
+// key.
+type TemplateVM struct {
+	VMID             int
+	Node             string
+	Name             string
+	CloudInitCapable bool
+	DiskStorage      string
+	DiskSizeGB       int
+	DiskBus          string
+}
+
 // VMSnapshot is a live snapshot entry returned by a cluster for one VM.
 type VMSnapshot struct {
 	Name        string
 	Description string
 	CreatedAt   time.Time
 	VMState     bool
+}
+
+// VMStatusReader reads one VM's live power state. Distinct from Client
+// (whole-cluster snapshot) because a lifecycle transition needs the state
+// now, not the projection's up-to-30s-old view. See ADR 0001.
+type VMStatusReader interface {
+	VMStatus(ctx context.Context, node string, vmid int) (VMLiveStatus, error)
+}
+
+// VMLiveStatus is a live read of /nodes/{node}/qemu/{vmid}/status/current.
+// Lock carries Proxmox's own lock name ("backup", "migrate",
+// "snapshot-delete", "create", ...) or "" when the VM is unlocked.
+type VMLiveStatus struct {
+	Status VMStatus
+	Lock   string
+	Uptime time.Duration
 }
 
 // SnapshotReader reads live snapshots for a resolved VM.
@@ -349,6 +403,13 @@ type SnapshotWriter interface {
 	CreateSnapshot(ctx context.Context, node string, vmid int, name, description string, vmstate bool) (string, error)
 	RollbackSnapshot(ctx context.Context, node string, vmid int, name string) (string, error)
 	DeleteSnapshot(ctx context.Context, node string, vmid int, name string) (string, error)
+}
+
+// SnapshotConfigReader reads one snapshot's stored config as a flat key→value
+// map (ticket 08). "current" maps to the live config — the pre-rollback diff
+// needs both sides.
+type SnapshotConfigReader interface {
+	SnapshotConfig(ctx context.Context, node string, vmid int, name string) (map[string]string, error)
 }
 
 // VNCProxyTicket is the Proxmox-side VNC ticket, port, and node returned by

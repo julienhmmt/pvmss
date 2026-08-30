@@ -93,7 +93,7 @@ func assertCDROMResult(t *testing.T, wantErr, err error, wantState, gotState str
 func cdromDependencies(index *inventory.Index, actor auth.Identity, vmid int) vm.CDROMDependencies {
 	return vm.CDROMDependencies{
 		Index: index, Actor: actor, ClusterName: testClusterName, VMID: vmid,
-		Writer: cluster.Fake{}, Resources: catalog.Resources{ISOs: []catalog.ISO{{Storage: "local", File: "debian-12-generic-amd64.iso"}}},
+		Writer: cluster.Fake{}, Resources: catalog.Resources{ISOs: []catalog.ISO{{Storage: "local", Node: cluster.FakeNode01, File: "debian-12-generic-amd64.iso"}}},
 		Audit: noopAudit{}, Refresher: noopRefresher{},
 	}
 }

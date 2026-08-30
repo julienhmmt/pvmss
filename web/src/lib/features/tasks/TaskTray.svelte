@@ -7,6 +7,16 @@
 	// when a task reaches its terminal state (constitution XII).
 	const tray = getTaskTrayContext();
 
+	const toastClass = $derived(
+		tray.toast === null
+			? ''
+			: tray.toast.kind === 'error'
+				? 'border-destructive bg-background text-destructive'
+				: tray.toast.kind === 'info'
+					? 'border-info-soft-border bg-info-soft text-info-soft-foreground'
+					: 'border-border bg-background text-foreground'
+	);
+
 	let dismissTimer: ReturnType<typeof setTimeout> | null = null;
 	$effect(() => {
 		if (tray.toast !== null) {
@@ -32,9 +42,7 @@
 		{#if tray.toast !== null}
 			<div
 				role="status"
-				class="rounded-md border px-4 py-2 text-sm shadow-lg {tray.toast.kind === 'success'
-					? 'border-border bg-background text-foreground'
-					: 'border-destructive bg-background text-destructive'}"
+				class="rounded-md border px-4 py-2 text-sm shadow-lg {toastClass}"
 			>
 				{tray.toast.message}
 				<button

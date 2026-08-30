@@ -21,14 +21,15 @@ import (
 // cluster.Client call lives here; all of that stays inside Action(), called
 // once per target.
 type VMBulk struct {
-	resolver       vm.ClusterIndexResolver
-	writerResolver vm.ClusterWriterResolver
-	projection     *inventory.Projection
-	auth           *Auth
-	writer         cluster.Writer
-	store          *store.Store
-	refresher      vm.IndexRefresher
-	log            *slog.Logger
+	resolver          vm.ClusterIndexResolver
+	writerResolver    vm.ClusterWriterResolver
+	refresherResolver vm.ClusterRefresherResolver
+	projection        *inventory.Projection
+	auth              *Auth
+	writer            cluster.Writer
+	store             *store.Store
+	refresher         vm.IndexRefresher
+	log               *slog.Logger
 }
 
 // singleClusterResolver adapts a default projection to the
@@ -105,14 +106,15 @@ type VMBulkRegistryDeps struct {
 // own projection via Registry.Index.
 func NewVMBulkWithRegistry(deps VMBulkRegistryDeps) *VMBulk {
 	return &VMBulk{
-		resolver:       registryResolver{registry: deps.Registry},
-		writerResolver: clientWriterResolver{clients: deps.Clients, fallback: deps.Writer},
-		projection:     deps.Projection,
-		auth:           deps.Auth,
-		writer:         deps.Writer,
-		store:          deps.Store,
-		refresher:      deps.Refresher,
-		log:            deps.Log,
+		resolver:          registryResolver{registry: deps.Registry},
+		writerResolver:    clientWriterResolver{clients: deps.Clients, fallback: deps.Writer},
+		refresherResolver: registryRefresherResolver{registry: deps.Registry},
+		projection:        deps.Projection,
+		auth:              deps.Auth,
+		writer:            deps.Writer,
+		store:             deps.Store,
+		refresher:         deps.Refresher,
+		log:               deps.Log,
 	}
 }
 
@@ -164,12 +166,13 @@ func (h *VMBulk) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	results := vm.BulkAction(r.Context(), vm.BulkDeps{
-		Resolver:       h.resolver,
-		WriterResolver: h.writerResolver,
-		Actor:          identity,
-		Writer:         h.writer,
-		Audit:          h.store,
-		Refresher:      h.refresher,
+		Resolver:          h.resolver,
+		WriterResolver:    h.writerResolver,
+		RefresherResolver: h.refresherResolver,
+		Actor:             identity,
+		Writer:            h.writer,
+		Audit:             h.store,
+		Refresher:         h.refresher,
 	}, req.Targets, req.Action)
 	h.writeJSONStatus(w, http.StatusOK, bulkActionResponseDTO{Results: results})
 }

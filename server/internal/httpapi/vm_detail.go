@@ -24,54 +24,64 @@ import (
 // PATCH /vms/:cluster/:vmid (rename/description). 403/404 semantics are
 // byte-identical across all four (contracts behavioural rule).
 type VMDetail struct {
-	projection *inventory.Projection
-	resolver   vm.ClusterIndexResolver
-	auth       *Auth
-	writer     cluster.Writer
-	clients    cluster.ClientProvider
-	store      *store.Store
-	refresher  vm.IndexRefresher
-	policy     *policy.Policy
-	log        *slog.Logger
+	projection   *inventory.Projection
+	resolver     vm.ClusterIndexResolver
+	auth         *Auth
+	writer       cluster.Writer
+	clients      cluster.ClientProvider
+	store        *store.Store
+	refresher    vm.IndexRefresher
+	refreshers   ClusterRefresherResolver
+	statusReader cluster.VMStatusReader
+	policy       *policy.Policy
+	log          *slog.Logger
 }
 
 // ServeHTTP dispatches to the sub-handlers.
 func (h *VMDetail) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if strings.HasSuffix(r.URL.Path, "/hardware-options") {
-		h.handleHardwareOptions(w, r)
+	if h.dispatchBySuffix(w, r) {
 		return
 	}
 
+	h.dispatchByMethod(w, r)
+}
+
+// dispatchBySuffix routes sub-resource paths identified by their URL suffix
+// (e.g. /hardware-options, /disks, /status). Returns true when the request
+// was handled, false when it should fall through to the method-based switch.
+func (h *VMDetail) dispatchBySuffix(w http.ResponseWriter, r *http.Request) bool {
+	cases := []struct {
+		suffix  string
+		handler func(http.ResponseWriter, *http.Request)
+	}{
+		{"/hardware-options", h.handleHardwareOptions},
+		{"/cdrom", h.handleCDROM},
+		{"/network", h.handleNetwork},
+		{"/hardware", h.handleHardware},
+		{"/serial", h.handleEnableSerial},
+		{"/audit", h.handleAudit},
+		{"/status", h.handleStatus},
+	}
+
+	for _, c := range cases {
+		if strings.HasSuffix(r.URL.Path, c.suffix) {
+			c.handler(w, r)
+			return true
+		}
+	}
+
+	// /disks and the per-disk routes (which carry a diskKey path value) share
+	// the disk handler.
 	if strings.HasSuffix(r.URL.Path, "/disks") || r.PathValue("diskKey") != "" {
 		h.handleDisk(w, r)
-		return
+		return true
 	}
 
-	if strings.HasSuffix(r.URL.Path, "/cdrom") {
-		h.handleCDROM(w, r)
-		return
-	}
+	return false
+}
 
-	if strings.HasSuffix(r.URL.Path, "/network") {
-		h.handleNetwork(w, r)
-		return
-	}
-
-	if strings.HasSuffix(r.URL.Path, "/hardware") {
-		h.handleHardware(w, r)
-		return
-	}
-
-	if strings.HasSuffix(r.URL.Path, "/serial") {
-		h.handleEnableSerial(w, r)
-		return
-	}
-
-	if strings.HasSuffix(r.URL.Path, "/audit") {
-		h.handleAudit(w, r)
-		return
-	}
-
+// dispatchByMethod routes the base /vms/{cluster}/{vmid} path by HTTP method.
+func (h *VMDetail) dispatchByMethod(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		h.handleGet(w, r)
@@ -101,21 +111,30 @@ func NewVMDetail(projection *inventory.Projection, authHandler *Auth, writer clu
 		policyService = policy.New(st, projection, nil)
 	}
 
-	return &VMDetail{projection: projection, resolver: singleClusterResolver{projection: projection}, auth: authHandler, writer: writer, store: st, refresher: refresher, policy: policyService, log: log}
+	h := &VMDetail{projection: projection, resolver: singleClusterResolver{projection: projection}, auth: authHandler, writer: writer, store: st, refresher: refresher, policy: policyService, log: log}
+	// In single-cluster mode, the writer is typically the same client that
+	// implements VMStatusReader (Fake or Proxmox both do). Wire it so the
+	// /status endpoint works without the WithRegistry constructor.
+	if reader, ok := writer.(cluster.VMStatusReader); ok {
+		h.statusReader = reader
+	}
+
+	return h
 }
 
 // VMDetailDeps groups the shared dependencies for constructing a VMDetail
 // handler. It collapses the seven positional parameters NewVMDetailWithRegistry
 // used to take (SonarQube go:S107).
 type VMDetailDeps struct {
-	Source     inventory.LookupSource
-	Projection *inventory.Projection
-	Auth       *Auth
-	Writer     cluster.Writer
-	Clients    cluster.ClientProvider
-	Store      *store.Store
-	Refresher  vm.IndexRefresher
-	Log        *slog.Logger
+	Source       inventory.LookupSource
+	Projection   *inventory.Projection
+	Auth         *Auth
+	Writer       cluster.Writer
+	Clients      cluster.ClientProvider
+	Store        *store.Store
+	Refresher    vm.IndexRefresher
+	StatusReader cluster.VMStatusReader
+	Log          *slog.Logger
 }
 
 // NewVMDetailWithRegistry adds cluster-aware reads and writes: every index
@@ -128,9 +147,11 @@ func NewVMDetailWithRegistry(deps VMDetailDeps, services ...*policy.Policy) *VMD
 	handler := NewVMDetail(deps.Projection, deps.Auth, deps.Writer, deps.Store, deps.Refresher, deps.Log, services...)
 	if registry, ok := deps.Source.(*inventory.Registry); ok {
 		handler.resolver = registryResolver{registry: registry}
+		handler.refreshers = registryRefresherResolver{registry: registry}
 	}
 
 	handler.clients = deps.Clients
+	handler.statusReader = deps.StatusReader
 
 	return handler
 }
@@ -153,6 +174,39 @@ func (h *VMDetail) writerFor(w http.ResponseWriter, clusterName string) (cluster
 	return writer, true
 }
 
+// statusReaderFor resolves the cluster.VMStatusReader for clusterName. Returns
+// nil when no reader is available (single-cluster mode without one, or the
+// cluster client doesn't implement VMStatusReader) — callers that need
+// escalation fall back to the immediate-shutdown path.
+func (h *VMDetail) statusReaderFor(clusterName string) cluster.VMStatusReader {
+	reader, err := resolveCapability(h.clients, h.statusReader, clusterName, "VMStatusReader")
+	if err != nil {
+		return nil
+	}
+
+	return reader
+}
+
+// refresherFor resolves the vm.IndexRefresher for clusterName. Unlike
+// writerFor, a missing refresher must not fail an action already applied on
+// the cluster — so it never writes an HTTP error. When the per-cluster
+// resolver is unset (single-cluster mode) or the cluster is unknown, it
+// returns the fallback refresher and logs a warning. The result is never nil
+// when the fallback is non-nil.
+func (h *VMDetail) refresherFor(clusterName string) vm.IndexRefresher {
+	if h.refreshers == nil {
+		return h.refresher
+	}
+
+	refresher, err := h.refreshers.RefresherFor(clusterName)
+	if err != nil {
+		h.log.Warn("refresher not found for cluster, using fallback", "component", "httpapi", "cluster", clusterName, "error", err)
+		return h.refresher
+	}
+
+	return refresher
+}
+
 type vmDetailDTO struct {
 	Cluster           string                     `json:"cluster"`
 	VMID              int                        `json:"vmid"`
@@ -172,6 +226,11 @@ type vmDetailDTO struct {
 	HasSerial         bool                       `json:"hasSerial"`
 	UptimeSeconds     int64                      `json:"uptimeSeconds,omitempty"`
 	Description       string                     `json:"description,omitempty"`
+	// Lock carries the live Proxmox lock name ("snapshot-delete", "backup",
+	// ...) from a best-effort /status/current read (ticket 06) — the page
+	// shows a badge and the operator command to clear it. Empty when the VM
+	// is unlocked or the live read failed.
+	Lock string `json:"lock,omitempty"`
 }
 
 type diskRequest struct {
@@ -245,6 +304,9 @@ type vmLimitsDTO struct {
 
 type actionRequest struct {
 	Action string `json:"action"`
+	// Force authorizes shutdown to skip ACPI and go directly to stop (ticket 05).
+	// Only meaningful for shutdown; ignored for other actions.
+	Force bool `json:"force"`
 }
 
 type actionResponse struct {
@@ -286,7 +348,64 @@ func (h *VMDetail) handleGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeEntity(w, entity)
+	h.writeEntity(w, r, entity)
+}
+
+// handleStatus serves GET /vms/:cluster/:vmid/status — the live status read
+// (ADR 0001). Unlike handleGet which reads the projection, this reads the
+// cluster's live /status/current via VMStatusReader, so the front's converge
+// loop sees the real power state immediately after an action, not the
+// projection's up-to-30s-stale view. Read-only: never writes the projection.
+func (h *VMDetail) handleStatus(w http.ResponseWriter, r *http.Request) {
+	identity, err := h.auth.Principal(r)
+	if err != nil {
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
+		return
+	}
+
+	clusterName, vmid, ok := h.parsePath(r)
+	if !ok {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
+		return
+	}
+
+	statusReader := h.statusReaderFor(clusterName)
+	if statusReader == nil {
+		h.writeDetailError(w, http.StatusServiceUnavailable, "no_status_reader", "live status reader not configured")
+		return
+	}
+
+	index, ok := h.index(w, clusterName)
+	if !ok {
+		return
+	}
+
+	entity, err := vm.Resolve(index, identity, clusterName, vmid)
+	if err != nil {
+		h.writeResolveError(w, err)
+		return
+	}
+
+	live, err := statusReader.VMStatus(r.Context(), entity.Node, vmid)
+	if err != nil {
+		h.log.Error("live status read failed", "component", "httpapi", "cluster", clusterName, "vmid", vmid, "error", err)
+		h.writeDetailError(w, http.StatusBadGateway, "cluster_error", "failed to read live status")
+
+		return
+	}
+
+	h.writeJSONStatus(w, http.StatusOK, vmLiveStatusDTO{
+		Status: string(live.Status),
+		Lock:   live.Lock,
+		Uptime: int64(live.Uptime.Seconds()),
+	})
+}
+
+// vmLiveStatusDTO is the response shape for GET /vms/:cluster/:vmid/status.
+type vmLiveStatusDTO struct {
+	Status string `json:"status"`
+	Lock   string `json:"lock,omitempty"`
+	Uptime int64  `json:"uptime"`
 }
 
 // handleAction serves POST /vms/:cluster/:vmid/actions (US2, closes S01).
@@ -328,13 +447,23 @@ func (h *VMDetail) handleAction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := vm.Action(r.Context(), vm.BulkDeps{
-		Actor:     identity,
-		Writer:    writer,
-		Audit:     h.store,
-		Refresher: h.refresher,
+		Actor:        identity,
+		Writer:       writer,
+		Audit:        h.store,
+		Refresher:    h.refresherFor(clusterName),
+		StatusReader: h.statusReaderFor(clusterName),
+		Force:        req.Force,
 	}, index, clusterName, vmid, req.Action); err != nil {
 		h.writeActionError(w, err)
 		return
+	}
+
+	// Refresh the projection once after the action (ticket 09: the caller
+	// owns refresh, not Action). Best-effort — the action already succeeded.
+	if refresher := h.refresherFor(clusterName); refresher != nil {
+		if _, err := refresher.Refresh(r.Context()); err != nil {
+			h.log.Warn("post-action refresh failed", "component", "httpapi", "cluster", clusterName, "error", err)
+		}
 	}
 
 	h.writeJSONStatus(w, http.StatusOK, actionResponse{Status: "accepted"})
@@ -368,7 +497,7 @@ func (h *VMDetail) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := vm.Delete(r.Context(), vm.WriteDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer, Audit: h.store, Refresher: h.refresher, Force: r.URL.Query().Get("force") == "true"}); err != nil {
+	if err := vm.Delete(r.Context(), vm.WriteDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer, Audit: h.store, Refresher: h.refresherFor(clusterName), Force: r.URL.Query().Get("force") == "true"}); err != nil {
 		h.writeActionError(w, err)
 		return
 	}
@@ -411,7 +540,7 @@ func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := vm.Patch(r.Context(), vm.WriteDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer, Audit: h.store, Refresher: h.refresher}, req.Name, req.Description); err != nil {
+	if err := vm.Patch(r.Context(), vm.WriteDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer, Audit: h.store, Refresher: h.refresherFor(clusterName)}, req.Name, req.Description); err != nil {
 		h.writePatchError(w, err)
 		return
 	}
@@ -433,7 +562,7 @@ func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeEntity(w, entity)
+	h.writeEntity(w, r, entity)
 }
 
 func (h *VMDetail) handleDisk(w http.ResponseWriter, r *http.Request) {
@@ -476,7 +605,7 @@ func (h *VMDetail) handleDisk(w http.ResponseWriter, r *http.Request) {
 		Resources:   resources,
 		Policy:      h.policy,
 		Audit:       h.store,
-		Refresher:   h.refresher,
+		Refresher:   h.refresherFor(clusterName),
 	}
 
 	switch r.Method {
@@ -606,7 +735,7 @@ func (h *VMDetail) handleCDROM(w http.ResponseWriter, r *http.Request) {
 		Writer:      writer,
 		Resources:   resources,
 		Audit:       h.store,
-		Refresher:   h.refresher,
+		Refresher:   h.refresherFor(clusterName),
 	}, request.Action, request.ISOVolID)
 	if err != nil {
 		h.writeCDROMError(w, err)
@@ -671,7 +800,7 @@ func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
 
 	err = vm.UpdateHardware(r.Context(), vm.HardwareDependencies{
 		Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer,
-		Policy: h.policy, Audit: h.store, Refresher: h.refresher,
+		Policy: h.policy, Audit: h.store, Refresher: h.refresherFor(clusterName),
 	}, vm.HardwarePatch{Sockets: request.Sockets, Cores: request.Cores, MemoryMB: request.MemoryMB, Tags: request.Tags})
 	if err != nil {
 		h.writeHardwareError(w, err)
@@ -689,7 +818,7 @@ func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeEntity(w, entity)
+	h.writeEntity(w, r, entity)
 }
 
 // handleEnableSerial serves POST /vms/:cluster/:vmid/serial — the serial-
@@ -734,7 +863,7 @@ func (h *VMDetail) handleEnableSerial(w http.ResponseWriter, r *http.Request) {
 		VMID:        vmid,
 		Writer:      writer,
 		Audit:       h.store,
-		Refresher:   h.refresher,
+		Refresher:   h.refresherFor(clusterName),
 	})
 	if err != nil {
 		if h.writeCommonVMError(w, err) {
@@ -758,7 +887,7 @@ func (h *VMDetail) handleEnableSerial(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.writeEntity(w, entity)
+	h.writeEntity(w, r, entity)
 }
 
 func (h *VMDetail) writeHardwareError(w http.ResponseWriter, err error) {
@@ -794,6 +923,14 @@ func (h *VMDetail) writeCommonVMError(w http.ResponseWriter, err error) bool {
 }
 
 func (h *VMDetail) writeUnhandledVMError(w http.ResponseWriter, message string, err error) {
+	// A cluster rejection is not an unhandled error: surface Proxmox's own
+	// message with its machine code instead of a generic 500 (ADR 0002).
+	if code, msg, ok := clusterRejectionResponse(err); ok {
+		h.writeDetailError(w, http.StatusBadGateway, code, msg)
+
+		return
+	}
+
 	h.log.Error(message, "component", "httpapi", "error", err)
 	h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 }
@@ -851,7 +988,7 @@ func (h *VMDetail) handleNetwork(w http.ResponseWriter, r *http.Request) {
 
 	updated, err := vm.UpdateNetwork(r.Context(), vm.NetworkDependencies{
 		Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer,
-		Resources: resources, Policy: h.policy, Audit: h.store, Refresher: h.refresher,
+		Resources: resources, Policy: h.policy, Audit: h.store, Refresher: h.refresherFor(clusterName),
 	}, interfaces)
 	if err != nil {
 		h.writeNetworkError(w, err)
@@ -875,6 +1012,9 @@ func (h *VMDetail) writeNetworkError(w http.ResponseWriter, err error) {
 		h.writeDetailError(w, http.StatusServiceUnavailable, "policy_unavailable", msgPolicyUnavailable)
 	case errors.Is(err, vm.ErrInvalidNetworkModel), errors.Is(err, vm.ErrDuplicateNetworkIndex):
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", err.Error())
+	case errors.Is(err, cluster.ErrClusterRejected):
+		code, message, _ := clusterRejectionResponse(err)
+		h.writeDetailError(w, http.StatusBadGateway, code, message)
 	default:
 		h.log.Error("vm network operation failed", "component", "httpapi", "error", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
@@ -970,7 +1110,7 @@ func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request)
 	h.writeJSONStatus(w, http.StatusOK, hardwareOptionsDTO{
 		Storages: hardwareStorages(resources.Storages, index),
 		Bridges:  hardwareBridges(resources.Bridges, entity.Node),
-		ISOs:     hardwareISOs(resources.ISOs, resources.Storages),
+		ISOs:     hardwareISOs(resources.ISOs),
 		Limits: vmLimitsDTO{
 			MaxSockets:        gabarit.MaxSockets,
 			MaxCores:          gabarit.MaxCores,
@@ -1007,21 +1147,12 @@ func hardwareBridges(bridges []catalog.Bridge, node string) []hardwareBridgeDTO 
 	return result
 }
 
-func hardwareISOs(isos []catalog.ISO, storages []catalog.Storage) []hardwareISODTO {
+func hardwareISOs(isos []catalog.ISO) []hardwareISODTO {
 	result := make([]hardwareISODTO, 0, len(isos))
 	for _, iso := range isos {
-		node := ""
-
-		for _, storage := range storages {
-			if storage.Name == iso.Storage {
-				node = storage.Node
-				break
-			}
-		}
-
 		result = append(result, hardwareISODTO{
 			VolID: iso.Storage + ":iso/" + iso.File,
-			Node:  node, Storage: iso.Storage, Name: iso.File,
+			Node:  iso.Node, Storage: iso.Storage, Name: iso.File,
 		})
 	}
 
@@ -1052,6 +1183,9 @@ func (h *VMDetail) writeDiskError(w http.ResponseWriter, err error) {
 		h.writeDetailError(w, http.StatusBadRequest, "bus_full", err.Error())
 	case errors.Is(err, cluster.ErrNotFound):
 		h.writeDetailError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
+	case errors.Is(err, cluster.ErrClusterRejected):
+		code, message, _ := clusterRejectionResponse(err)
+		h.writeDetailError(w, http.StatusBadGateway, code, message)
 	default:
 		h.log.Error("vm disk operation failed", "component", "httpapi", "error", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
@@ -1089,7 +1223,7 @@ func parseIntPathValue(r *http.Request, key string) (int, error) {
 	return value, nil
 }
 
-func (h *VMDetail) writeEntity(w http.ResponseWriter, entity vm.Entity) {
+func (h *VMDetail) writeEntity(w http.ResponseWriter, r *http.Request, entity vm.Entity) {
 	dto := vmDetailDTO{
 		Cluster:           entity.Cluster,
 		VMID:              entity.VMID,
@@ -1111,6 +1245,15 @@ func (h *VMDetail) writeEntity(w http.ResponseWriter, entity vm.Entity) {
 	}
 	if entity.Uptime > 0 {
 		dto.UptimeSeconds = int64(entity.Uptime.Seconds())
+	}
+
+	// Ticket 06: the detail DTO carries the live Proxmox lock (best-effort —
+	// a failed live read must not fail the whole detail) so the page can show
+	// the lock badge; the convergence loop keeps it fresh after actions.
+	if reader := h.statusReaderFor(entity.Cluster); reader != nil {
+		if live, err := reader.VMStatus(r.Context(), entity.Node, entity.VMID); err == nil {
+			dto.Lock = live.Lock
+		}
 	}
 
 	h.writeJSONStatus(w, http.StatusOK, dto)
@@ -1248,6 +1391,9 @@ func (h *VMDetail) writeActionError(w http.ResponseWriter, err error) {
 		h.writeDetailError(w, http.StatusConflict, "invalid_state_transition", err.Error())
 	case errors.Is(err, cluster.ErrVMRunning):
 		h.writeDetailError(w, http.StatusConflict, "vm_running", msgVMRunning)
+	case errors.Is(err, cluster.ErrClusterRejected):
+		code, message, _ := clusterRejectionResponse(err)
+		h.writeDetailError(w, http.StatusBadGateway, code, message)
 	default:
 		h.log.Error("vm action failed", "component", "httpapi", "error", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
@@ -1270,6 +1416,9 @@ func (h *VMDetail) writePatchError(w http.ResponseWriter, err error) {
 	case errors.Is(err, cluster.ErrNotFound):
 		h.log.Error("cluster writer: VM not found after Resolve", "component", "httpapi", "error", err)
 		h.writeDetailError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
+	case errors.Is(err, cluster.ErrClusterRejected):
+		code, message, _ := clusterRejectionResponse(err)
+		h.writeDetailError(w, http.StatusBadGateway, code, message)
 	default:
 		h.log.Error("vm patch failed", "component", "httpapi", "error", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)

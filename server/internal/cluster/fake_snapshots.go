@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strconv"
 	"time"
 )
 
@@ -29,6 +30,9 @@ func (fake Fake) ListSnapshots(_ context.Context, node string, vmid int) ([]VMSn
 // CreateSnapshot dispatches a fake asynchronous snapshot task.
 func (fake Fake) CreateSnapshot(_ context.Context, node string, vmid int, name, description string, vmstate bool) (string, error) {
 	state := fake.stateOrDefault()
+	if err := state.snapshotWriteGuard(vmid); err != nil {
+		return "", err
+	}
 	if err := state.ensureVM(node, vmid); err != nil {
 		return "", err
 	}
@@ -43,27 +47,72 @@ func (fake Fake) CreateSnapshot(_ context.Context, node string, vmid int, name, 
 // RollbackSnapshot dispatches a fake asynchronous rollback task.
 func (fake Fake) RollbackSnapshot(_ context.Context, node string, vmid int, name string) (string, error) {
 	state := fake.stateOrDefault()
-	if err := state.ensureSnapshot(node, vmid, name); err != nil {
-		return "", err
-	}
 
-	upid := state.newSnapshotTask(node, vmid, "qmrollback", func() { state.applyRollback(node, vmid, name) })
-	state.record(FakeCall{Node: node, VMID: vmid, Action: "rollback_snapshot", Name: name})
-
-	return upid, nil
+	return fake.dispatchNamedSnapshotWrite(state, node, vmid, name, "qmrollback", "rollback_snapshot", func() { state.applyRollback(node, vmid, name) })
 }
 
 // DeleteSnapshot dispatches a fake asynchronous delete task.
 func (fake Fake) DeleteSnapshot(_ context.Context, node string, vmid int, name string) (string, error) {
 	state := fake.stateOrDefault()
+
+	return fake.dispatchNamedSnapshotWrite(state, node, vmid, name, "qmdelsnapshot", "delete_snapshot", func() { state.removeSnapshot(node, vmid, name) })
+}
+
+// dispatchNamedSnapshotWrite runs the shared rollback/delete preamble: write
+// guard, existence check, task registration, call recording.
+func (fake Fake) dispatchNamedSnapshotWrite(state *fakeState, node string, vmid int, name, taskAction, recordAction string, onComplete func()) (string, error) {
+	if err := state.snapshotWriteGuard(vmid); err != nil {
+		return "", err
+	}
 	if err := state.ensureSnapshot(node, vmid, name); err != nil {
 		return "", err
 	}
 
-	upid := state.newSnapshotTask(node, vmid, "qmdelsnapshot", func() { state.removeSnapshot(node, vmid, name) })
-	state.record(FakeCall{Node: node, VMID: vmid, Action: "delete_snapshot", Name: name})
+	upid := state.newSnapshotTask(node, vmid, taskAction, onComplete)
+	state.record(FakeCall{Node: node, VMID: vmid, Action: recordAction, Name: name})
 
 	return upid, nil
+}
+
+// snapshotWriteGuard returns the injected write error (ticket 02) or the lock
+// rejection (ticket 06) that precedes any snapshot write, or nil to proceed.
+func (s *fakeState) snapshotWriteGuard(vmid int) error {
+	if err := s.snapshotWriteError(); err != nil {
+		return err
+	}
+
+	return s.snapshotLockError(vmid)
+}
+
+// snapshotLockError mirrors real Proxmox: a locked VM rejects every snapshot
+// write with "VM is locked (<lockname>)" — the message extractLockName parses.
+func (s *fakeState) snapshotLockError(vmid int) error {
+	s.vmMu.RLock()
+	defer s.vmMu.RUnlock()
+
+	if lock, ok := s.vmLocks[vmid]; ok && lock != "" {
+		return fmt.Errorf("VM is locked (%s)", lock)
+	}
+
+	return nil
+}
+
+// SetFakeSnapshotWriteError configures the default fake so every snapshot
+// write (create/rollback/delete) fails with the given error — used by tests
+// to exercise the handler's cluster-rejection mapping (ticket 02). A nil
+// error clears it.
+func SetFakeSnapshotWriteError(err error) {
+	state := defaultState()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
+	state.snapshotWriteErr = err
+}
+
+// snapshotWriteError returns the injected write error, if any.
+func (s *fakeState) snapshotWriteError() error {
+	s.vmMu.RLock()
+	defer s.vmMu.RUnlock()
+	return s.snapshotWriteErr
 }
 
 func (s *fakeState) ensureVM(node string, vmid int) error {
@@ -159,4 +208,30 @@ func (s *fakeState) removeSnapshot(node string, vmid int, name string) {
 
 func cloneVMSnapshots(snapshots []VMSnapshot) []VMSnapshot {
 	return append([]VMSnapshot(nil), snapshots...)
+}
+
+// SnapshotConfig implements SnapshotConfigReader with the fake VM's current
+// state — deterministic enough for the pre-rollback diff UI (ticket 08).
+func (fake Fake) SnapshotConfig(_ context.Context, node string, vmid int, name string) (map[string]string, error) {
+	state := fake.stateOrDefault()
+	state.vmMu.RLock()
+	defer state.vmMu.RUnlock()
+
+	index := state.findVM(node, vmid)
+	if index < 0 {
+		return nil, ErrNotFound
+	}
+
+	if name != "current" && !slices.ContainsFunc(state.snapshots[fakeSnapshotKey{node: node, vmid: vmid}], func(snapshot VMSnapshot) bool { return snapshot.Name == name }) {
+		return nil, ErrNotFound
+	}
+
+	target := state.vms[index]
+
+	return map[string]string{
+		"name":   target.Name,
+		"cores":  strconv.Itoa(target.Cores),
+		"memory": strconv.FormatInt(target.MemoryTotal, 10),
+		"status": string(target.Status),
+	}, nil
 }

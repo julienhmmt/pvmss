@@ -51,6 +51,19 @@ type CatalogProfileEnabled struct {
 	Enabled  bool
 }
 
+// CatalogTemplateEnabled is one catalog_templates row with its enabled state
+// (US2/issue-02). Used by the admin listing endpoint.
+type CatalogTemplateEnabled struct {
+	VMID             int
+	Node             string
+	Name             string
+	CloudInitCapable bool
+	DiskStorage      string
+	DiskSizeGB       int
+	DiskBus          string
+	Enabled          bool
+}
+
 // CatalogTag is one catalog_tags row.
 type CatalogTag struct {
 	Cluster   string
@@ -168,6 +181,79 @@ func (s *Store) SetProfileEnabled(ctx context.Context, cluster, id string, enabl
 	return execUpdateOne(ctx, s.db,
 		`UPDATE catalog_profiles SET enabled = ? WHERE cluster = ? AND id = ?`,
 		[]any{enabled, cluster, id},
+	)
+}
+
+// CatalogTemplatesEnabled returns all catalog_templates rows (including
+// disabled) with their enabled state, ordered by vmid (US2/issue-02).
+func (s *Store) CatalogTemplatesEnabled(ctx context.Context, cluster string) ([]CatalogTemplateEnabled, error) {
+	return queryCatalog(ctx, s.db, "catalog templates enabled",
+		`SELECT vmid, node, name, cloud_init_capable, disk_storage, disk_size_gb, disk_bus, enabled
+		 FROM catalog_templates WHERE cluster = ? ORDER BY vmid`,
+		[]any{cluster},
+		func(rows *sql.Rows) (CatalogTemplateEnabled, error) {
+			var t CatalogTemplateEnabled
+
+			var cloudInit int
+			if err := rows.Scan(&t.VMID, &t.Node, &t.Name, &cloudInit, &t.DiskStorage, &t.DiskSizeGB, &t.DiskBus, &t.Enabled); err != nil {
+				return t, err
+			}
+
+			t.CloudInitCapable = cloudInit == 1
+
+			return t, nil
+		},
+	)
+}
+
+// TemplateValues is the editable field set of a catalog_templates row (US2).
+type TemplateValues struct {
+	Node             string
+	Name             string
+	CloudInitCapable bool
+	DiskStorage      string
+	DiskSizeGB       int
+	DiskBus          string
+}
+
+// InsertTemplate inserts a new template row with the given enabled state.
+// Returns ErrDuplicate if the vmid already exists for the cluster
+// (US2/issue-02).
+func (s *Store) InsertTemplate(ctx context.Context, cluster string, vmid int, values TemplateValues, enabled bool) error {
+	return execInsertOne(ctx, s.db,
+		`INSERT INTO catalog_templates (cluster, node, vmid, name, cloud_init_capable, disk_storage, disk_size_gb, disk_bus, enabled)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(cluster, vmid) DO NOTHING`,
+		[]any{cluster, values.Node, vmid, values.Name, values.CloudInitCapable, values.DiskStorage, values.DiskSizeGB, values.DiskBus, enabled},
+	)
+}
+
+// UpdateTemplate updates an existing template's values. Returns sql.ErrNoRows
+// if the template does not exist (US2/issue-02).
+func (s *Store) UpdateTemplate(ctx context.Context, cluster string, vmid int, values TemplateValues) error {
+	return execUpdateOne(ctx, s.db,
+		`UPDATE catalog_templates SET node = ?, name = ?, cloud_init_capable = ?, disk_storage = ?, disk_size_gb = ?, disk_bus = ?
+		 WHERE cluster = ? AND vmid = ?`,
+		[]any{values.Node, values.Name, values.CloudInitCapable, values.DiskStorage, values.DiskSizeGB, values.DiskBus, cluster, vmid},
+	)
+}
+
+// DeleteTemplate removes a template row. Returns sql.ErrNoRows if the template
+// did not exist (US2/issue-02).
+func (s *Store) DeleteTemplate(ctx context.Context, cluster string, vmid int) error {
+	return execUpdateOne(ctx, s.db,
+		`DELETE FROM catalog_templates WHERE cluster = ? AND vmid = ?`,
+		[]any{cluster, vmid},
+	)
+}
+
+// SetTemplateEnabled upserts the enabled state for one template (US2/issue-02).
+func (s *Store) SetTemplateEnabled(ctx context.Context, cluster string, vmid int, enabled bool) error {
+	return execWrite(ctx, s.db,
+		`INSERT INTO catalog_templates (cluster, node, vmid, name, cloud_init_capable, disk_storage, disk_size_gb, enabled)
+		 VALUES (?, '', ?, '', 0, '', 0, ?)
+		 ON CONFLICT(cluster, vmid) DO UPDATE SET enabled = excluded.enabled`,
+		[]any{cluster, vmid, enabled},
 	)
 }
 

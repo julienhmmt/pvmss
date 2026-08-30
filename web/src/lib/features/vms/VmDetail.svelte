@@ -12,10 +12,12 @@
 	import VmActivityTab from './VmActivityTab.svelte';
 	import ConsoleBanner from './ConsoleBanner.svelte';
 	import VmMetricsRow from './VmMetricsRow.svelte';
+	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import { formatBytes } from '$lib/shared/format-bytes';
 
 	const store = getVmDetailContext();
+	const session = getSessionContext();
 
 	let deleteOpen = $state(false);
 	let editingName = $state(false);
@@ -162,6 +164,14 @@
 					<span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span>
 					{store.entity.status}
 				</span>
+				{#if store.entity.lock}
+					<span
+						class="inline-flex items-center gap-1.5 rounded-full border border-warning-soft-border bg-warning-soft px-2.5 py-0.5 text-xs font-medium text-warning-soft-foreground"
+						data-testid="vm-lock-badge"
+					>
+						{m['vms.lock.badge']({ lock: store.entity.lock })}
+					</span>
+				{/if}
 			</div>
 			<div class="flex items-center gap-2">
 				<ConsoleBanner />
@@ -171,6 +181,12 @@
 		<p class="mt-3 font-mono text-sm text-muted-foreground" data-testid="vm-meta">
 			{m['vms.detail.meta']({ vmid: String(store.entity.vmid), node: store.entity.node, pool: store.entity.pool })}
 		</p>
+
+		{#if store.entity.lock && session.isAdmin}
+			<p class="mt-2 font-mono text-xs text-muted-foreground" data-testid="vm-lock-unlock-command">
+				{m['vms.lock.unlockCommand']({ vmid: String(store.entity.vmid) })}
+			</p>
+		{/if}
 
 		<div class="mt-5">
 			<VmActionBar onDelete={() => (deleteOpen = true)} />

@@ -326,6 +326,42 @@ func runListISOsCase(t *testing.T, impl cluster.Client) {
 }
 
 //nolint:paralleltest // serial: shared fake identity fixture
+func TestContract_ListTemplates(t *testing.T) {
+	impls := map[string]cluster.Client{
+		fakeImplementationName: cluster.Fake{},
+	}
+
+	for name, impl := range impls {
+		t.Run(name, func(t *testing.T) {
+			runListTemplatesCase(t, impl)
+		})
+	}
+}
+
+// runListTemplatesCase checks ListTemplates returns at least one template
+// with a non-empty node and positive VMID. Extracted from
+// TestContract_ListTemplates to keep its Cognitive Complexity under the
+// SonarQube go:S3776 threshold.
+func runListTemplatesCase(t *testing.T, impl cluster.Client) {
+	t.Helper()
+
+	templates, err := impl.ListTemplates(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(templates) == 0 {
+		t.Fatal("expected at least one template")
+	}
+
+	for _, tmpl := range templates {
+		if tmpl.VMID == 0 || tmpl.Node == "" {
+			t.Errorf("template %+v has empty vmid or node", tmpl)
+		}
+	}
+}
+
+//nolint:paralleltest // serial: shared fake identity fixture
 func TestContract_GetMetricsHistory(t *testing.T) {
 	impls := map[string]cluster.MetricsHistoryReader{
 		fakeImplementationName: cluster.Fake{},
@@ -358,6 +394,53 @@ func runMetricsHistoryCase(impl cluster.MetricsHistoryReader) func(t *testing.T)
 
 			checkMetricsSamples(t, timeframe, samples)
 		}
+	}
+}
+
+// TestContract_VMStatus verifies the fake's VMStatusReader against the
+// contract: a known VM returns its live status with a valid VMStatus value;
+// an unknown VM returns ErrNotFound.
+//
+//nolint:paralleltest // serial: shared fake identity fixture
+func TestContract_VMStatus(t *testing.T) {
+	impls := map[string]cluster.VMStatusReader{
+		fakeImplementationName: cluster.Fake{},
+	}
+
+	for name, impl := range impls {
+		t.Run(name, func(t *testing.T) {
+			live, err := impl.VMStatus(context.Background(), cluster.FakeNode01, 100)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			switch live.Status {
+			case cluster.VMRunning, cluster.VMStopped, cluster.VMPaused:
+				// valid
+			default:
+				t.Errorf("status = %q, want a valid VMStatus", live.Status)
+			}
+
+			if live.Lock != "" {
+				t.Errorf("expected empty lock on default fake, got %q", live.Lock)
+			}
+		})
+	}
+}
+
+//nolint:paralleltest // serial: shared fake identity fixture
+func TestContract_VMStatus_NotFound(t *testing.T) {
+	impls := map[string]cluster.VMStatusReader{
+		fakeImplementationName: cluster.Fake{},
+	}
+
+	for name, impl := range impls {
+		t.Run(name, func(t *testing.T) {
+			_, err := impl.VMStatus(context.Background(), cluster.FakeNode01, 99999)
+			if !errors.Is(err, cluster.ErrNotFound) {
+				t.Fatalf("error = %v, want ErrNotFound", err)
+			}
+		})
 	}
 }
 

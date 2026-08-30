@@ -52,5 +52,5 @@ func clusterParamError(err error) (string, string) {
 	if errors.Is(err, cluster.ErrClusterNotFound) {
 		return "not_found", "cluster not found"
 	}
-	return "invalid_request", "invalid cluster parameter"
+	return codeInvalidRequest, "invalid cluster parameter"
 }

@@ -43,6 +43,8 @@ type FakeCall struct {
 	VMID          int
 	Action        string
 	Name          string
+	Pool          string
+	Full          bool
 	DiskKey       string
 	Bus           string
 	Storage       string
@@ -241,6 +243,33 @@ func (fake Fake) ListISOs(_ context.Context) ([]ISOImage, error) {
 		return nil, ErrUnreachable
 	}
 	return slices.Clone(fakeISOs), nil
+}
+
+// ListTemplates implements Client. Returns the fake template dataset — two
+// template VMs matching the V22 seed so the admin demo can discover and
+// approve them (US2/issue-02 T058).
+func (fake Fake) ListTemplates(_ context.Context) ([]TemplateVM, error) {
+	if fake.unavailable() {
+		return nil, ErrUnreachable
+	}
+	return slices.Clone(fakeTemplates), nil
+}
+
+// StorageFreeSpace returns the available bytes on a storage backend on a node
+// (US3/issue-04). The fake computes avail = Total - Used from the static
+// storage dataset. Returns ErrNotFound for an unknown (node, storage) pair.
+func (fake Fake) StorageFreeSpace(_ context.Context, node, storage string) (int64, error) {
+	if fake.unavailable() {
+		return 0, ErrUnreachable
+	}
+
+	for _, s := range fakeStorages {
+		if s.Node == node && s.Name == storage {
+			return s.Total - s.Used, nil
+		}
+	}
+
+	return 0, ErrNotFound
 }
 
 // ListPools implements Client and returns a defensive copy of the live pool table.
@@ -465,6 +494,27 @@ func SetFakeCloudInitPushError(err error) {
 	state.pushErr = err
 }
 
+// SetFakeCreateError configures the default fake's CreateVM error for the
+// next count calls (US5/issue-05: tests inject cluster.ErrVMIDTaken to
+// exercise the retry loop). count=0 means unlimited until cleared by reset.
+func SetFakeCreateError(err error, count int) {
+	state := defaultState()
+	state.createMu.Lock()
+	defer state.createMu.Unlock()
+	state.createErr = err
+	state.createErrCount = count
+}
+
+// SetFakeTaskError configures the default fake so the next registered task
+// reports TaskError with the given exit message on its first TaskStatus poll
+// (US5/issue-05: tests inject a task error to exercise the rollback path).
+func SetFakeTaskError(exitMessage string) {
+	state := defaultState()
+	state.createMu.Lock()
+	defer state.createMu.Unlock()
+	state.taskErr = exitMessage
+}
+
 // AddSSHKey implements Writer and records the agent-side key injection. It
 // never merges into the fake's cloud-init config (the guest is the source of
 // truth for an injected key); tests assert the call reached the fake.
@@ -536,6 +586,39 @@ func (fake Fake) Action(_ context.Context, node string, vmid int, action string)
 	state.record(FakeCall{Node: node, VMID: vmid, Action: action})
 
 	return nil
+}
+
+// VMStatus implements VMStatusReader. The fake's in-memory state already tracks
+// each VM's status and uptime; the lock comes from the injectable vmLocks map
+// (empty by default = unlocked, matching Proxmox's /status/current).
+func (fake Fake) VMStatus(_ context.Context, node string, vmid int) (VMLiveStatus, error) {
+	state := fake.stateOrDefault()
+	state.vmMu.RLock()
+	defer state.vmMu.RUnlock()
+
+	idx := slices.IndexFunc(state.vms, func(v VM) bool { return v.VMID == vmid && v.Node == node })
+	if idx < 0 {
+		return VMLiveStatus{}, ErrNotFound
+	}
+
+	return VMLiveStatus{
+		Status: state.vms[idx].Status,
+		Lock:   state.vmLocks[vmid],
+		Uptime: state.vms[idx].Uptime,
+	}, nil
+}
+
+// SetVMLock injects a Proxmox lock name on a VM for testing retry-on-lock
+// (ticket 08) and the lock field in VMLiveStatus. An empty lockName clears it.
+func (fake Fake) SetVMLock(vmid int, lockName string) {
+	state := fake.stateOrDefault()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
+	if lockName == "" {
+		delete(state.vmLocks, vmid)
+	} else {
+		state.vmLocks[vmid] = lockName
+	}
 }
 
 // validateTransition rejects a power action that makes no sense for the VM's
@@ -934,7 +1017,7 @@ func originalFakePools() []Pool {
 
 var fakeStorages = []Storage{
 	{Name: FakeStorageLocal, Node: FakeNode01, Type: storagePluginDir, PluginType: storagePluginDir, Content: "images,iso,vztmpl,backup,snippets", Total: 2199023255552, Used: 879609302220, SupportsVMState: false},
-	{Name: FakeStorageLocalLVM, Node: FakeNode01, Type: storagePluginLVM, PluginType: storagePluginLVM, Content: "images,rootdir", Total: 549755813888, Used: 219902325555, SupportsVMState: true},
+	{Name: FakeStorageLocalLVM, Node: FakeNode01, Type: storagePluginLVMThin, PluginType: storagePluginLVMThin, Content: "images,rootdir", Total: 549755813888, Used: 219902325555, SupportsVMState: true},
 	{Name: "ceph-data", Node: FakeNode02, Type: storagePluginCephFS, PluginType: storagePluginCephFS, Content: storageContentImages, Total: 1099511627776, Used: 329853488332, SupportsVMState: true},
 	{Name: FakeStorageLocal, Node: FakeNode02, Type: storagePluginDir, PluginType: storagePluginDir, Content: "images,iso", Total: 274877906944, Used: 68719476736, SupportsVMState: false},
 	{Name: FakeStorageBackupNFS, Node: FakeNode03, Type: "nfs", PluginType: "nfs", Content: "backup", Total: 5497558138880, Used: 1099511627776, SupportsVMState: false},
@@ -956,6 +1039,15 @@ var fakeISOs = []ISOImage{
 	{Storage: FakeStorageLocal, Node: FakeNode01, File: "debian-12-generic-amd64.iso", SizeBytes: 691945472},
 	{Storage: FakeStorageLocal, Node: FakeNode01, File: "ubuntu-24.04-server-amd64.iso", SizeBytes: 1258291200},
 	{Storage: FakeStorageLocal, Node: FakeNode02, File: "rocky-9-generic-x86_64.iso", SizeBytes: 1476395008},
+}
+
+// fakeTemplates is the US2/issue-02 template discovery dataset. Two template
+// VMs on pve-node-02 matching the V22 seed: a cloud-init capable debian-12
+// cloud image (full clone) and a basic alpine appliance (linked clone when
+// storage matches).
+var fakeTemplates = []TemplateVM{
+	{VMID: 9000, Node: FakeNode02, Name: "debian-12-cloud", CloudInitCapable: true, DiskStorage: FakeStorageLocalLVM, DiskSizeGB: 8, DiskBus: string(DiskBusSCSI)},
+	{VMID: 9001, Node: FakeNode02, Name: "alpine-appliance", CloudInitCapable: false, DiskStorage: FakeStorageLocal, DiskSizeGB: 2, DiskBus: string(DiskBusSCSI)},
 }
 
 // fakeUptimeOnStart is the uptime the fake assigns when a stopped VM is started

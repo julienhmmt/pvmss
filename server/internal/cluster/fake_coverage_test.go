@@ -1132,7 +1132,7 @@ func TestFake_CreateVM_WithISO(t *testing.T) {
 		CPUCores:         2,
 		MemoryMB:         4096,
 		Disk:             cluster.DiskSpec{Storage: cluster.FakeStorageLocalLVM, SizeGB: 30},
-		Network:          cluster.NetworkSpec{Bridge: cluster.FakeBridgeVMbr0, Model: string(cluster.DiskBusVirtio)},
+		Network:          cluster.NetworkSpec{{Bridge: cluster.FakeBridgeVMbr0, Model: string(cluster.DiskBusVirtio)}},
 		ISO:              &cluster.ISOSpec{Storage: "local", File: "debian-12.iso"},
 		StartAfterCreate: false,
 	}

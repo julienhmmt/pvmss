@@ -13,7 +13,7 @@ describe('AdminPolicyStore', () => {
 	it('loads the server policy without local ceilings', async () => {
 		const policy = {
 			cluster: 'default',
-			gabarit: { maxSockets: 4, maxCores: 8, maxMemoryMB: 16384, maxDiskPerVmGb: 500, maxNetworkCards: 4, maxSnapshots: 5, allowCustomYaml: true },
+			gabarit: { maxSockets: 4, maxCores: 8, maxMemoryMB: 16384, maxDiskPerVmGb: 500, maxNetworkCards: 4, maxSnapshots: 5, allowCustomYaml: true, isolationVlanTag: 0 },
 			quota: { maxVmPerUser: -1 }
 		};
 		vi.stubGlobal('fetch', vi.fn().mockImplementation(() => jsonResponse(200, policy)));
@@ -25,7 +25,7 @@ describe('AdminPolicyStore', () => {
 	it('saves a partial policy and reconciles the full server response', async () => {
 		const response = {
 			cluster: 'default',
-			gabarit: { maxSockets: 4, maxCores: 8, maxMemoryMB: 16384, maxDiskPerVmGb: 10, maxNetworkCards: 4, maxSnapshots: 5, allowCustomYaml: true },
+			gabarit: { maxSockets: 4, maxCores: 8, maxMemoryMB: 16384, maxDiskPerVmGb: 10, maxNetworkCards: 4, maxSnapshots: 5, allowCustomYaml: true, isolationVlanTag: 0 },
 			quota: { maxVmPerUser: 1 }
 		};
 		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, response));

@@ -145,14 +145,14 @@ func (h *VMs) parseQuery(r *http.Request) (vm.ListQuery, *queryError) {
 
 	page, err := parseOptionalInt(params.Get("page"))
 	if err != nil {
-		return query, &queryError{code: "invalid_request", message: "page must be an integer"}
+		return query, &queryError{code: codeInvalidRequest, message: "page must be an integer"}
 	}
 
 	query.Page = page
 
 	pageSize, err := parseOptionalInt(params.Get("pageSize"))
 	if err != nil {
-		return query, &queryError{code: "invalid_request", message: "pageSize must be an integer"}
+		return query, &queryError{code: codeInvalidRequest, message: "pageSize must be an integer"}
 	}
 
 	if pageSize > h.maxPageSize {

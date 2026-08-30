@@ -49,6 +49,20 @@ type ISOApproval struct {
 	Enabled   bool
 }
 
+// TemplateApproval is one discovered Proxmox template with its admin approval
+// state (US2/issue-02). The admin sees all templates the cluster reports and
+// toggles which are offered in the create wizard.
+type TemplateApproval struct {
+	VMID             int
+	Node             string
+	Name             string
+	CloudInitCapable bool
+	DiskStorage      string
+	DiskSizeGB       int
+	DiskBus          string
+	Enabled          bool
+}
+
 // AdminListNodes returns every node the cluster reports, unioned with its
 // stored approval state. A node with no catalog row reports enabled=false
 // (FR-001: every resource, not only approved ones).
@@ -194,11 +208,120 @@ func AdminListISOs(ctx context.Context, st *store.Store, client cluster.Client, 
 	return out, nil
 }
 
-// SetNodeEnabled upserts the enabled state for one node. Returns
-// cluster.ErrNotFound if the node is not in the current discovery set
-// (FR-006: never a delete, but toggling an undiscovered resource is a 404).
-// A cluster discovery error is surfaced verbatim so the caller can map it to
-// 5xx instead of mistaking it for a 404.
+// AdminListTemplates returns every Proxmox template the cluster reports,
+// unioned with its stored approval state keyed by VMID (US2/issue-02). When a
+// stored row exists, its field values are authoritative (the admin may have
+// approved a template whose discovered values have since changed); when no
+// row exists, the discovered values are used and Enabled is false. This
+// mirrors AdminListISOs' union of discovery + stored state.
+func AdminListTemplates(ctx context.Context, st *store.Store, client cluster.Client, clusterName string) ([]TemplateApproval, error) {
+	discovered, err := client.ListTemplates(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	storedRows, err := st.CatalogTemplatesEnabled(ctx, clusterName)
+	if err != nil {
+		return nil, err
+	}
+
+	storedByVMID := make(map[int]store.CatalogTemplateEnabled, len(storedRows))
+	for _, row := range storedRows {
+		storedByVMID[row.VMID] = row
+	}
+
+	out := make([]TemplateApproval, 0, len(discovered))
+	for _, tmpl := range discovered {
+		approval := TemplateApproval{
+			VMID:             tmpl.VMID,
+			Node:             tmpl.Node,
+			Name:             tmpl.Name,
+			CloudInitCapable: tmpl.CloudInitCapable,
+			DiskStorage:      tmpl.DiskStorage,
+			DiskSizeGB:       tmpl.DiskSizeGB,
+			DiskBus:          tmpl.DiskBus,
+			Enabled:          false,
+		}
+
+		// A stored row is authoritative: its field values and enabled state
+		// override discovery. This keeps the admin view consistent with the
+		// clone path (catalog.Templates), which reads the same stored rows.
+		if stored, ok := storedByVMID[tmpl.VMID]; ok {
+			approval.Node = stored.Node
+			approval.Name = stored.Name
+			approval.CloudInitCapable = stored.CloudInitCapable
+			approval.DiskStorage = stored.DiskStorage
+			approval.DiskSizeGB = stored.DiskSizeGB
+			approval.DiskBus = stored.DiskBus
+			approval.Enabled = stored.Enabled
+		}
+
+		out = append(out, approval)
+	}
+
+	return out, nil
+}
+
+// TemplateRef identifies one discovered template by its VMID.
+type TemplateRef struct {
+	VMID int
+}
+
+// SetTemplateEnabled upserts the enabled state for one template. Returns
+// cluster.ErrNotFound if the template is not in the current discovery set.
+// See SetNodeEnabled for the discovery-error contract.
+//
+// The discovered template's field values are used to populate the row on
+// first approval (so the row is complete, not a stub with empty fields).
+// The caller does not need to pre-fetch discovered values — this function
+// fetches the discovery set once and extracts the values itself, avoiding
+// a redundant cluster round-trip.
+func SetTemplateEnabled(ctx context.Context, st *store.Store, client cluster.Client, clusterName string, ref TemplateRef, enabled bool) error {
+	discovered, err := client.ListTemplates(ctx)
+	if err != nil {
+		return err
+	}
+
+	var found *cluster.TemplateVM
+
+	for i := range discovered {
+		if discovered[i].VMID == ref.VMID {
+			found = &discovered[i]
+			break
+		}
+	}
+
+	if found == nil {
+		return cluster.ErrNotFound
+	}
+
+	existing, err := st.CatalogTemplatesEnabled(ctx, clusterName)
+	if err != nil {
+		return err
+	}
+
+	for _, row := range existing {
+		if row.VMID == ref.VMID {
+			return st.SetTemplateEnabled(ctx, clusterName, ref.VMID, enabled)
+		}
+	}
+
+	// Not yet in the table — insert with discovered values so the row is
+	// complete, not just a stub with empty fields. The enabled state is the
+	// caller's (admin toggle), not hardcoded to 1.
+	values := store.TemplateValues{
+		Node: found.Node, Name: found.Name, CloudInitCapable: found.CloudInitCapable,
+		DiskStorage: found.DiskStorage, DiskSizeGB: found.DiskSizeGB, DiskBus: found.DiskBus,
+	}
+
+	return st.InsertTemplate(ctx, clusterName, ref.VMID, values, enabled)
+}
+
+// SetNodeEnabled toggles the enabled flag on a catalog node approval.
+// It returns cluster.ErrNotFound if the node is not in the current discovery
+// set (FR-006: never a delete, but toggling an undiscovered resource is a
+// 404). A cluster discovery error is surfaced verbatim so the caller can map
+// it to 5xx instead of mistaking it for a 404.
 func SetNodeEnabled(ctx context.Context, st *store.Store, client cluster.Client, clusterName, name string, enabled bool) error {
 	discovered, err := nodeDiscovered(ctx, client, name)
 	if err != nil {
