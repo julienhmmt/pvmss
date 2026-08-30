@@ -66,7 +66,7 @@
 </svelte:head>
 
 <section class="mx-auto w-full max-w-5xl py-2">
-	<PageHeader title={m['vms.list.heading']()} description={m['vms.list.description']()}>
+		<PageHeader title={m['vms.list.heading']()} description={m['vms.list.description']()}>
 		{#snippet actions()}
 			<div class="flex flex-wrap items-center gap-2">
 				<ClusterSelector options={clusterOptions} value={vmListStore.cluster} onChange={(value) => vmListStore.setCluster(value)} includeAll id="vm-cluster-filter" />

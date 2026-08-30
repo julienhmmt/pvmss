@@ -1,4 +1,4 @@
-import { get, put, ApiRequestError } from '$lib/shared/api/client';
+import { get, post, put, ApiRequestError } from '$lib/shared/api/client';
 import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 import { getContext, setContext } from 'svelte';
 import { m } from '$lib/paraglide/messages.js';
@@ -45,6 +45,7 @@ export class AdminPolicyStore {
 	policy = $state.raw<AdminPolicy | null>(null);
 	loading = $state.raw(false);
 	error = $state.raw<string | null>(null);
+	errorCode = $state.raw<string | null>(null);
 	saving = $state.raw(false);
 	saveError = $state.raw<string | null>(null);
 	saved = $state.raw(false);
@@ -62,6 +63,7 @@ export class AdminPolicyStore {
 				this.cluster = first.name;
 			}
 		} catch (error: unknown) {
+			this.errorCode = error instanceof ApiRequestError ? error.code : null;
 			this.error = error instanceof ApiRequestError ? error.message : m['policy.loadError']();
 		}
 	}
@@ -75,9 +77,11 @@ export class AdminPolicyStore {
 		await this.loadClusters();
 		this.loading = true;
 		this.error = null;
+		this.errorCode = null;
 		try {
 			this.policy = await get<AdminPolicy>(`/api/v1/admin/policy?cluster=${encodeURIComponent(this.cluster)}`);
 		} catch (error: unknown) {
+			this.errorCode = error instanceof ApiRequestError ? error.code : null;
 			this.error = error instanceof ApiRequestError ? error.message : m['policy.loadError']();
 		} finally {
 			this.loading = false;
@@ -97,6 +101,15 @@ export class AdminPolicyStore {
 		} finally {
 			this.saving = false;
 		}
+	}
+
+	async retryConnection(): Promise<void> {
+		try {
+			await post('/api/v1/cluster/refresh');
+		} catch {
+			// Ignore; the next load will surface the current state.
+		}
+		await this.load();
 	}
 }
 

@@ -219,6 +219,19 @@ func (registry *Registry) All() map[string]*Index {
 	return result
 }
 
+// IsIndexFresh reports whether the named cluster's last successful refresh is
+// recent enough to be considered usable. It uses twice the configured refresh
+// interval as the stale threshold, matching the health handler's definition of
+// an unreachable cluster. A missing index is not fresh.
+func (registry *Registry) IsIndexFresh(name string) bool {
+	index, err := registry.Index(name)
+	if err != nil || index == nil {
+		return false
+	}
+
+	return time.Since(index.RefreshedAt) <= 2*registry.interval
+}
+
 func (registry *Registry) addEntry(name string) {
 	if registry.provider == nil {
 		return

@@ -72,6 +72,7 @@ export class VmListStore {
 	result = $state.raw<VmListResult | null>(null);
 	loading = $state.raw(false);
 	error = $state.raw<string | null>(null);
+	errorCode = $state.raw<string | null>(null);
 
 	cluster = $state('');
 	search = $state('');
@@ -117,11 +118,18 @@ export class VmListStore {
 	async load(): Promise<void> {
 		this.loading = true;
 		this.error = null;
+		this.errorCode = null;
 		try {
 			const query = this.queryString();
 			this.result = await get<VmListResult>(`/api/v1/vms${query === '' ? '' : `?${query}`}`);
 		} catch (err) {
-			this.error = err instanceof ApiRequestError ? err.message : m['vms.list.errorLoading']();
+			if (err instanceof ApiRequestError) {
+				this.error = err.message;
+				this.errorCode = err.code;
+			} else {
+				this.error = m['vms.list.errorLoading']();
+				this.errorCode = null;
+			}
 		} finally {
 			this.loading = false;
 		}
