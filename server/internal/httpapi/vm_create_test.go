@@ -74,6 +74,7 @@ func newVMCreateHandler(t *testing.T) (*httpapi.VMCreate, *httpapi.Auth, *store.
 	t.Cleanup(func() { _ = st.Close() })
 	seedBridgeApprovals(t, st)
 	seedISOApprovals(t, st)
+	seedTagApprovals(t, st)
 
 	return httpapi.NewVMCreate(
 		authHandler,
@@ -121,6 +122,16 @@ func seedStaleStorageApprovals(t *testing.T, st *store.Store) {
 		if err := st.SetStorageEnabled(context.Background(), "default", name, cluster.FakeNode03, true); err != nil {
 			t.Fatalf("seed stale storage approval %q: %v", name, err)
 		}
+	}
+}
+
+// seedTagApprovals seeds the admin-curated tags the create tests reference
+// (FR-013: tags outside the catalog are rejected).
+func seedTagApprovals(t *testing.T, st *store.Store) {
+	t.Helper()
+
+	if err := st.InsertTag(context.Background(), "default", "team-web", "#3b82f6", time.Now().UTC().Format(time.RFC3339)); err != nil {
+		t.Fatalf("seed tag approval: %v", err)
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"pvmss/server/internal/store"
+	"slices"
 )
 
 // Node is one approved cluster node.
@@ -72,6 +73,14 @@ type Resources struct {
 	Storages []Storage
 	Bridges  []Bridge
 	ISOs     []ISO
+	// Tags is the admin-curated tag name allowlist (FR-013): users may only
+	// reference these tags on create and hardware updates.
+	Tags []string
+}
+
+// HasTag reports whether name is an admin-approved tag.
+func (r Resources) HasTag(name string) bool {
+	return slices.Contains(r.Tags, name)
 }
 
 // HasNode reports whether name is an approved node.
@@ -142,11 +151,17 @@ func ApprovedResources(ctx context.Context, st *store.Store, cluster string) (Re
 		return Resources{}, err
 	}
 
+	tagRows, err := st.CatalogTags(ctx, cluster)
+	if err != nil {
+		return Resources{}, err
+	}
+
 	resources := Resources{
 		Nodes:    make([]Node, 0, len(nodes)),
 		Storages: make([]Storage, 0, len(storages)),
 		Bridges:  make([]Bridge, 0, len(bridges)),
 		ISOs:     make([]ISO, 0, len(isos)),
+		Tags:     make([]string, 0, len(tagRows)),
 	}
 	for _, node := range nodes {
 		resources.Nodes = append(resources.Nodes, Node{Name: node.Name})
@@ -162,6 +177,10 @@ func ApprovedResources(ctx context.Context, st *store.Store, cluster string) (Re
 
 	for _, iso := range isos {
 		resources.ISOs = append(resources.ISOs, ISO{Storage: iso.Storage, Node: iso.Node, File: iso.File})
+	}
+
+	for _, tag := range tagRows {
+		resources.Tags = append(resources.Tags, tag.Name)
 	}
 
 	return resources, nil

@@ -100,7 +100,7 @@ This is the core of the product. Everything else exists to support it.
 | **API** | `POST /api/v1/vms/bulk-action` |
 | **Steps** | 1. Select VMs across one or more clusters. 2. Pick an action. 3. Read the per-VM result — each entry is `ok` or `error` with its own message. |
 | **States** | Per-row result, not a single global success/failure |
-| **Safety nets** | Only the five valid power actions are accepted (`validActions`, `server/internal/vm/actions.go:34`): `start`, `stop`, `shutdown`, `reboot`, `reset`. A partial failure never rolls back the successes — it reports them. |
+| **Safety nets** | Only the valid power actions are accepted (`validActions`, `server/internal/vm/actions.go`): `start`, `stop`, `shutdown`, `reboot`, `reset`, `pause`, `resume`. A partial failure never rolls back the successes — it reports them. |
 
 ### Create a VM
 
@@ -112,7 +112,7 @@ This is the core of the product. Everything else exists to support it.
 | **API** | `GET /api/v1/vm-create/catalog` → `POST /api/v1/vms` → `GET /api/v1/tasks/{upid}` (polled) |
 | **Steps** | 1. Base (name, profile, cluster, node). 2. Disk. 3. Hardware. 4. Network. 5. Review — the only place raw JSON is shown, and only on request. 6. Submit; the response is a Proxmox UPID. 7. The task tray polls until done, then refreshes the VM list. |
 | **States** | Wizard step validation; task tray shows in-flight work so the user can navigate away |
-| **Safety nets** | Every choice comes from the admin-approved catalog — nodes, storages, bridges, ISOs, profiles, cloud-init templates. Quotas and gabarit limits are checked server-side (`policy/`), not in the wizard. |
+| **Safety nets** | Every choice comes from the admin-approved catalog — nodes, storages, bridges, ISOs, profiles, cloud-init templates, tags. Quotas and gabarit limits are checked server-side (`policy/`), not in the wizard. |
 
 ### Operate a single VM
 
@@ -128,10 +128,10 @@ This is the core of the product. Everything else exists to support it.
 
 | Tab | Actions | API |
 | --- | --- | --- |
-| Overview | 5 power actions, rename, description, delete | `POST .../actions`, `PATCH .../{vmid}`, `DELETE .../{vmid}` |
+| Overview | 7 power actions (shutdown = guest-agent/ACPI only, no auto force-stop; stop = hard stop), rename, description, delete | `POST .../actions`, `PATCH .../{vmid}`, `DELETE .../{vmid}` |
 | Disks | add, resize, detach | `POST .../disks`, `PUT .../disks/{diskKey}/resize`, `DELETE .../disks/{diskKey}` |
 | Network | edit interface | `PUT .../network` |
-| Hardware | CPU/RAM, CDROM | `GET .../hardware-options`, `PUT .../hardware`, `PATCH .../cdrom` |
+| Hardware | CPU/RAM, tags (admin-curated picker), CDROM | `GET .../hardware-options`, `PUT .../hardware`, `PATCH .../cdrom` |
 | Cloud-init | form + raw snippet editor | `GET`/`PUT .../cloudinit`, `GET`/`PUT .../cloudinit/snippet` |
 | Snapshots | create, rollback, delete | `GET`/`POST .../snapshots`, `POST .../snapshots/{name}/rollback`, `DELETE .../snapshots/{name}` |
 

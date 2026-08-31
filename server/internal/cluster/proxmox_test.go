@@ -385,7 +385,7 @@ func TestProxmox_ListBridges(t *testing.T) {
 		t.Fatalf("bridges = %+v, want 2 (eth0 excluded)", bridges)
 	}
 
-	if bridges[0].Name != "vmbr0" || !bridges[0].Active {
+	if bridges[0].Name != FakeBridgeVMbr0 || !bridges[0].Active {
 		t.Errorf("bridges[0] = %+v", bridges[0])
 	}
 
@@ -419,5 +419,167 @@ func TestProxmox_ListISOs(t *testing.T) {
 
 	if len(isos) != 1 || isos[0].File != "debian-12.iso" || isos[0].Storage != FakeStorageLocal || isos[0].SizeBytes != 691945472 {
 		t.Fatalf("isos = %+v", isos)
+	}
+}
+
+// Proxmox answers HTTP 595 when the API node cannot reach a target node's
+// pveproxy — in practice, the node is offline. One offline node must not
+// poison the whole listing: resources on the healthy nodes are still
+// returned (regression: admin ISO/bridge pages 500'd when any node was down).
+const (
+	testProxmoxNodeName = "pve1"
+	testISOFile         = "debian-12.iso"
+)
+
+//nolint:dupl // intentionally parallel to TestProxmox_ListISOs_OfflineNodeSkipped (same 595 fixture shape, different resource)
+func TestProxmox_ListBridges_OfflineNodeSkipped(t *testing.T) {
+	t.Parallel()
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/nodes", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"node":"pve1"},{"node":"pve2"}]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve1/network", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"iface":"vmbr0","type":"bridge","active":1,"comments":""}]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve2/network", func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(595) // pveproxy: cannot connect to the remote node
+			writeJSONFixture(t, w, `{"data":null}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	bridges, err := p.ListBridges(context.Background())
+	if err != nil {
+		t.Fatalf("ListBridges: %v", err)
+	}
+
+	if len(bridges) != 1 || bridges[0].Name != FakeBridgeVMbr0 || bridges[0].Node != testProxmoxNodeName {
+		t.Fatalf("bridges = %+v, want vmbr0 on pve1 only", bridges)
+	}
+}
+
+//nolint:dupl // intentionally parallel to TestProxmox_ListBridges_OfflineNodeSkipped (same 595 fixture shape, different resource)
+func TestProxmox_ListISOs_OfflineNodeSkipped(t *testing.T) {
+	t.Parallel()
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[
+				{"type":"storage","node":"pve1","storage":"local"},
+				{"type":"storage","node":"pve2","storage":"durango_temp"}
+			]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve1/storage/local/content", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"volid":"local:iso/debian-12.iso","size":691945472}]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve2/storage/durango_temp/content", func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(595) // pveproxy: cannot connect to the remote node
+			writeJSONFixture(t, w, `{"data":null}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	isos, err := p.ListISOs(context.Background())
+	if err != nil {
+		t.Fatalf("ListISOs: %v", err)
+	}
+
+	if len(isos) != 1 || isos[0].File != testISOFile || isos[0].Node != testProxmoxNodeName {
+		t.Fatalf("isos = %+v, want debian-12.iso on pve1 only", isos)
+	}
+}
+
+// A storage whose /cluster/resources status is not "available" ("unknown" =
+// node offline, "inactive" = Proxmox cannot read it) must not be asked for
+// content at all: each wasted call costs seconds against a dead node and was
+// timing the admin ISO page out (regression: 4 unavailable storages × 3
+// retries × ~4s per attempt).
+func TestProxmox_ListISOs_SkipsUnavailableStorages(t *testing.T) {
+	t.Parallel()
+
+	var unavailableCalls int
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[
+				{"type":"storage","node":"pve1","storage":"local","status":"available"},
+				{"type":"storage","node":"pve2","storage":"durango_temp","status":"unknown"},
+				{"type":"storage","node":"pve3","storage":"dead_nfs","status":"inactive"}
+			]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve1/storage/local/content", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"volid":"local:iso/debian-12.iso","size":691945472}]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve2/storage/durango_temp/content", func(w http.ResponseWriter, _ *http.Request) {
+			unavailableCalls++
+
+			w.WriteHeader(595)
+			writeJSONFixture(t, w, `{"data":null}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve3/storage/dead_nfs/content", func(w http.ResponseWriter, _ *http.Request) {
+			unavailableCalls++
+
+			w.WriteHeader(http.StatusInternalServerError)
+			writeJSONFixture(t, w, `{"data":null}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	isos, err := p.ListISOs(context.Background())
+	if err != nil {
+		t.Fatalf("ListISOs: %v", err)
+	}
+
+	if unavailableCalls != 0 {
+		t.Errorf("unavailable storages were asked for content %d times, want 0", unavailableCalls)
+	}
+
+	if len(isos) != 1 || isos[0].File != testISOFile || isos[0].Node != testProxmoxNodeName {
+		t.Fatalf("isos = %+v, want debian-12.iso on pve1 only", isos)
+	}
+}
+
+// A node whose /nodes status is not "online" must not be asked for its
+// network interfaces at all — same wasted-call regression as the ISO listing.
+func TestProxmox_ListBridges_SkipsOfflineNodes(t *testing.T) {
+	t.Parallel()
+
+	var offlineCalls int
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/nodes", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[
+				{"node":"pve1","status":"online"},
+				{"node":"pve2","status":"offline"}
+			]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve1/network", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"iface":"vmbr0","type":"bridge","active":1,"comments":""}]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve2/network", func(w http.ResponseWriter, _ *http.Request) {
+			offlineCalls++
+
+			w.WriteHeader(595)
+			writeJSONFixture(t, w, `{"data":null}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	bridges, err := p.ListBridges(context.Background())
+	if err != nil {
+		t.Fatalf("ListBridges: %v", err)
+	}
+
+	if offlineCalls != 0 {
+		t.Errorf("offline node was asked for network interfaces %d times, want 0", offlineCalls)
+	}
+
+	if len(bridges) != 1 || bridges[0].Name != FakeBridgeVMbr0 || bridges[0].Node != testProxmoxNodeName {
+		t.Fatalf("bridges = %+v, want vmbr0 on pve1 only", bridges)
 	}
 }

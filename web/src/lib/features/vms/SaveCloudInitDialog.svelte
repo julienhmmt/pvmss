@@ -24,9 +24,17 @@
 
 <Dialog bind:open labelledBy="cloudinit-save-title" onClose={close}>
 	<h2 id="cloudinit-save-title" class="mb-2 text-lg font-semibold">{m['vms.cloudinit.dialogTitle']()}</h2>
-	<p id="cloudinit-save-description" class="mb-4 text-sm text-muted-foreground">
+	<!-- Ticket 06: the old "applies on next reboot" line was false for most
+	     fields — per-instance cloud-init modules do not replay while the
+	     instance-id is unchanged. Say what applies when, per field group. -->
+	<p id="cloudinit-save-description" class="mb-2 text-sm text-muted-foreground">
 		{m['vms.cloudinit.dialogDescription']()}
 	</p>
+	<ul class="mb-4 grid gap-1.5 text-sm text-muted-foreground" data-testid="cloudinit-save-scopes">
+		<li>{m['vms.cloudinit.dialogScopeNetwork']()}</li>
+		<li>{m['vms.cloudinit.dialogScopeNow']()}</li>
+		<li>{m['vms.cloudinit.dialogScopeFirstBoot']()}</li>
+	</ul>
 	<label class="flex items-start gap-2 text-sm">
 		<input
 			type="checkbox"
