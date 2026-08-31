@@ -397,6 +397,16 @@ func (p Proxmox) ChangePassword(ctx context.Context, username, oldPassword, newP
 	return err
 }
 
+// isNodeUnavailable reports whether err is Proxmox's inter-node connection
+// failure (HTTP 595): the API node could not reach the target node's pveproxy,
+// in practice because the node is offline. Per-node enumerations skip such
+// nodes instead of failing the whole listing.
+func isNodeUnavailable(err error) bool {
+	var rejection *RejectionError
+
+	return errors.As(err, &rejection) && rejection.Status == 595
+}
+
 // ListBridges implements Client. Bridges are per-node network configuration
 // in Proxmox — there is no cluster-wide listing — so this enumerates nodes
 // first, then each node's /network, keeping every node's own view (including
@@ -404,7 +414,7 @@ func (p Proxmox) ChangePassword(ctx context.Context, username, oldPassword, newP
 func (p Proxmox) ListBridges(ctx context.Context) ([]Bridge, error) {
 	rest := p.rest()
 
-	nodes, err := proxmoxNodeNames(ctx, rest)
+	nodes, err := proxmoxNodes(ctx, rest)
 	if err != nil {
 		return nil, err
 	}
@@ -412,9 +422,17 @@ func (p Proxmox) ListBridges(ctx context.Context) ([]Bridge, error) {
 	var bridges []Bridge
 
 	for _, node := range nodes {
-		raw, err := rest.do(ctx, http.MethodGet, fmt.Sprintf("/nodes/%s/network", url.PathEscape(node)), nil)
+		if !proxmoxNodeOnline(node.Status) {
+			continue
+		}
+
+		raw, err := rest.do(ctx, http.MethodGet, fmt.Sprintf("/nodes/%s/network", url.PathEscape(node.Name)), nil)
 		if err != nil {
-			return nil, fmt.Errorf("list network interfaces on %q: %w", node, err)
+			if isNodeUnavailable(err) {
+				continue
+			}
+
+			return nil, fmt.Errorf("list network interfaces on %q: %w", node.Name, err)
 		}
 
 		var rows []struct {
@@ -424,7 +442,7 @@ func (p Proxmox) ListBridges(ctx context.Context) ([]Bridge, error) {
 			Comments string `json:"comments"`
 		}
 		if err := decodeData(raw, &rows); err != nil {
-			return nil, fmt.Errorf("decode network interfaces on %q: %w", node, err)
+			return nil, fmt.Errorf("decode network interfaces on %q: %w", node.Name, err)
 		}
 
 		for _, row := range rows {
@@ -432,7 +450,7 @@ func (p Proxmox) ListBridges(ctx context.Context) ([]Bridge, error) {
 				continue
 			}
 
-			bridges = append(bridges, Bridge{Name: row.Iface, Node: node, Active: row.Active == 1, Comment: row.Comments})
+			bridges = append(bridges, Bridge{Name: row.Iface, Node: node.Name, Active: row.Active == 1, Comment: row.Comments})
 		}
 	}
 
@@ -458,8 +476,16 @@ func (p Proxmox) ListISOs(ctx context.Context) ([]ISOImage, error) {
 	var isos []ISOImage
 
 	for _, row := range rows {
+		if !proxmoxStorageAvailable(row.Status) {
+			continue
+		}
+
 		found, err := proxmoxListISOContent(ctx, rest, row.Node, row.Storage)
 		if err != nil {
+			if isNodeUnavailable(err) {
+				continue
+			}
+
 			return nil, fmt.Errorf("list iso content on %q/%q: %w", row.Node, row.Storage, err)
 		}
 
@@ -626,24 +652,39 @@ func proxmoxConfigHasCloudInitDrive(cfg proxmoxVMConfig) bool {
 	return false
 }
 
-// proxmoxNodeNames lists every node name in the cluster.
-func proxmoxNodeNames(ctx context.Context, rest proxmoxRESTClient) ([]string, error) {
+// proxmoxNodeRow is one row of /nodes: the node name plus the cluster's own
+// view of its availability ("online"/"offline").
+type proxmoxNodeRow struct {
+	Name   string `json:"node"`
+	Status string `json:"status"`
+}
+
+// proxmoxNodes lists every node in the cluster with its status.
+func proxmoxNodes(ctx context.Context, rest proxmoxRESTClient) ([]proxmoxNodeRow, error) {
 	raw, err := rest.do(ctx, http.MethodGet, "/nodes", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var rows []struct {
-		Node string `json:"node"`
-	}
+	var rows []proxmoxNodeRow
 	if err := decodeData(raw, &rows); err != nil {
 		return nil, fmt.Errorf("decode nodes: %w", err)
 	}
 
-	names := make([]string, 0, len(rows))
-	for _, row := range rows {
-		names = append(names, row.Node)
-	}
+	return rows, nil
+}
 
-	return names, nil
+// proxmoxNodeOnline reports whether a /nodes status row describes a node
+// whose pveproxy is expected to answer. An empty status (older PVE releases)
+// is treated as online — the per-call 595 skip remains the safety net.
+func proxmoxNodeOnline(status string) bool {
+	return status == "" || status == "online"
+}
+
+// proxmoxStorageAvailable reports whether a /cluster/resources storage row
+// can serve content. "unknown" means the node's pvestatd cannot report it
+// (node offline); "inactive" means Proxmox itself cannot read it — asking
+// either for ISO content wastes seconds per storage and 595s/500s the call.
+func proxmoxStorageAvailable(status string) bool {
+	return status == "" || status == "available"
 }
