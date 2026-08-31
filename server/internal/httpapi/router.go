@@ -180,6 +180,7 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/disks/{diskKey}/resize", protect(cfg.VMDetail, vmWriteLimiter))
 	mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/disks/{diskKey}", protect(cfg.VMDetail, vmWriteLimiter))
 	mux.Handle("PATCH /api/v1/vms/{cluster}/{vmid}/cdrom", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/boot-cdrom", protect(cfg.VMDetail, vmWriteLimiter))
 	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/network", protect(cfg.VMDetail, vmWriteLimiter))
 	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/hardware", protect(cfg.VMDetail, vmWriteLimiter))
 	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/serial", protect(cfg.VMDetail, vmWriteLimiter))
