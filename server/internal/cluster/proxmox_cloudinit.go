@@ -342,7 +342,13 @@ func encodeIPConfig(config CloudInitConfig) string {
 // sshKeyAddScript is the fixed guest-side script the SSH key is appended
 // through. The username and key are passed as positional argv (see
 // AddSSHKey), not interpolated into this string, so a crafted key cannot
-// break out of the append.
+// break out of the append. The append is idempotent (ticket 07): a
+// missing trailing newline is repaired before appending — otherwise the new
+// key glues onto the last existing line and invalidates both — and an exact
+// whole-line duplicate is a no-op, so a retry after a network error does not
+// duplicate. The newline guard is an explicit if because its condition chain
+// legitimately returns non-zero when false, which set -e would treat as
+// fatal.
 const sshKeyAddScript = `#!/bin/sh
 set -eu
 user="$1"
@@ -352,7 +358,11 @@ home=$(getent passwd "$user" | cut -d: -f6)
 auth="$home/.ssh/authorized_keys"
 mkdir -p "$home/.ssh"
 chmod 700 "$home/.ssh"
-echo "$key" >> "$auth"
+touch "$auth"
+if [ -s "$auth" ] && [ -n "$(tail -c1 "$auth")" ]; then
+	echo >> "$auth"
+fi
+grep -qxF "$key" "$auth" || printf '%s\n' "$key" >> "$auth"
 chmod 600 "$auth"
 owner=$(getent passwd "$user" | cut -d: -f3,4)
 chown "$owner" "$home/.ssh" "$auth"
