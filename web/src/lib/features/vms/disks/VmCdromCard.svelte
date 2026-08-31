@@ -16,10 +16,15 @@
 
 	async function bootFromCdrom(): Promise<void> {
 		const vmName = store.entity?.name ?? '';
-		// Toast the moment the server accepts the boot request — the guest can
-		// take tens of seconds to actually be up, and the user must know the
-		// CD-ROM boot was triggered now, not after convergence.
-		await store.bootFromCdrom(() => toast.success(m['toast.vmBootedFromCdrom']({ name: vmName })));
+		// Optimistic feedback: the server request only returns once the guest
+		// is up (it waits for the boot before restoring the boot order), so a
+		// toast on response would land tens of seconds after the click. Fire
+		// success now; a failure corrects it with an error toast.
+		toast.success(m['toast.vmBootedFromCdrom']({ name: vmName }));
+		const success = await store.bootFromCdrom();
+		if (!success) {
+			toast.error(store.bootCdromError ?? m['vms.detail.errorBootCdrom']());
+		}
 	}
 
 	function requestBoot(): void {
