@@ -58,6 +58,8 @@ export interface HardwareOptions {
 	storages: { node: string; storage: string; type: string }[];
 	bridges: { node: string; bridge: string }[];
 	isos: { volId: string; node: string; storage: string; name: string; sizeBytes: number }[];
+	/** Admin-curated tags users may toggle (the protected pvmss tag is excluded). */
+	tags: { name: string; color: string }[];
 	limits: {
 		maxSockets: number;
 		maxCores: number;

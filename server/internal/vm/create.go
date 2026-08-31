@@ -1340,7 +1340,8 @@ func nodesWithISO(resources catalog.Resources, storage, file string) []catalog.N
 }
 
 // validateCatalog checks that the resolved node, storage, each NIC's bridge
-// and model, and the optional ISO are all present in the approved catalog.
+// and model, the optional ISO, and every requested tag are all present in the
+// approved catalog.
 func validateCatalog(req CreateRequest, resources catalog.Resources, node, storage string, nics []nicPlan) error {
 	if !resources.HasNode(node) {
 		return fmt.Errorf("%w: node %q", ErrNotApproved, node)
@@ -1362,6 +1363,12 @@ func validateCatalog(req CreateRequest, resources catalog.Resources, node, stora
 
 	if req.ISO != nil && !resources.HasISO(req.ISO.Storage, req.ISO.File, node) {
 		return fmt.Errorf("%w: iso %q on storage %q on node %q", ErrNotApproved, req.ISO.File, req.ISO.Storage, node)
+	}
+
+	for _, tag := range req.Tags {
+		if !resources.HasTag(tag) {
+			return fmt.Errorf("%w: tag %q", ErrNotApproved, tag)
+		}
 	}
 
 	return nil
