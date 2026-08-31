@@ -55,6 +55,7 @@ func (h *VMDetail) dispatchBySuffix(w http.ResponseWriter, r *http.Request) bool
 		handler func(http.ResponseWriter, *http.Request)
 	}{
 		{"/hardware-options", h.handleHardwareOptions},
+		{"/boot-cdrom", h.handleBootCDROM},
 		{"/cdrom", h.handleCDROM},
 		{"/network", h.handleNetwork},
 		{"/hardware", h.handleHardware},
@@ -683,6 +684,58 @@ func (h *VMDetail) handleDiskDelete(w http.ResponseWriter, r *http.Request, deps
 	h.writeJSONStatus(w, http.StatusOK, deleteResponse{Status: "deleted"})
 }
 
+// handleBootCDROM serves POST /vms/:cluster/:vmid/boot-cdrom: a one-time boot
+// from the mounted CD-ROM. The VM must be stopped — the UI shuts a running VM
+// down first (confirm dialog) and calls this once it is stopped. The server
+// sets the CD-first boot order, starts the VM, and restores the original boot
+// order once the guest is up (one-time semantics).
+func (h *VMDetail) handleBootCDROM(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", "POST")
+		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
+
+		return
+	}
+
+	identity, err := h.auth.Principal(r)
+	if err != nil {
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
+		return
+	}
+
+	clusterName, vmid, ok := h.parsePath(r)
+	if !ok {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
+		return
+	}
+
+	index, ok := h.index(w, clusterName)
+	if !ok {
+		return
+	}
+
+	writer, ok := h.writerFor(w, clusterName)
+	if !ok {
+		return
+	}
+
+	if err := vm.BootFromCDROM(r.Context(), vm.BootDependencies{
+		Index:        index,
+		Actor:        identity,
+		ClusterName:  clusterName,
+		VMID:         vmid,
+		Writer:       writer,
+		Audit:        h.store,
+		Refresher:    h.refresherFor(clusterName),
+		StatusReader: h.statusReaderFor(clusterName),
+	}); err != nil {
+		h.writeBootCDROMError(w, err)
+		return
+	}
+
+	h.writeJSONStatus(w, http.StatusOK, actionResponse{Status: "accepted"})
+}
+
 func (h *VMDetail) handleCDROM(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPatch {
 		w.Header().Set("Allow", "PATCH")
@@ -1033,6 +1086,22 @@ func (h *VMDetail) writeCDROMError(w http.ResponseWriter, err error) {
 		h.writeDetailError(w, http.StatusBadRequest, "iso_not_approved", err.Error())
 	default:
 		h.writeUnhandledVMError(w, "vm cdrom operation failed", err)
+	}
+}
+
+// writeBootCDROMError maps vm.BootFromCDROM errors to HTTP statuses.
+func (h *VMDetail) writeBootCDROMError(w http.ResponseWriter, err error) {
+	if h.writeCommonVMError(w, err) {
+		return
+	}
+
+	switch {
+	case errors.Is(err, vm.ErrCDROMNotMounted):
+		h.writeDetailError(w, http.StatusConflict, "no_cdrom", err.Error())
+	case errors.Is(err, cluster.ErrVMRunning):
+		h.writeDetailError(w, http.StatusConflict, "vm_running", msgVMRunning)
+	default:
+		h.writeUnhandledVMError(w, "vm boot-cdrom failed", err)
 	}
 }
 

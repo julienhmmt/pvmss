@@ -54,6 +54,7 @@ type FakeCall struct {
 	Sockets       int
 	Cores         int
 	MemoryMB      int
+	BootOrder     []string
 	CloudInitData CloudInitConfig
 }
 
@@ -859,6 +860,25 @@ func (fake Fake) SetCDROM(_ context.Context, node string, vmid int, cdrom CDROMS
 	state.vms[idx].CDROM = cdrom
 
 	state.record(FakeCall{Node: node, VMID: vmid, Action: "set_cdrom"})
+
+	return nil
+}
+
+// SetBootOrder implements Writer and replaces the fake VM's boot order.
+// An empty order clears the explicit boot config (Proxmox default behavior).
+func (fake Fake) SetBootOrder(_ context.Context, node string, vmid int, order []string) error {
+	state := fake.stateOrDefault()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
+
+	idx := state.findVM(node, vmid)
+	if idx < 0 {
+		return ErrNotFound
+	}
+
+	state.vms[idx].BootOrder = append([]string(nil), order...)
+
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "set_boot_order", BootOrder: append([]string(nil), order...)})
 
 	return nil
 }
