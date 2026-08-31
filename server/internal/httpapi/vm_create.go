@@ -222,19 +222,20 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clusterName, creator, pusher, writer, freeSpace, ok := h.resolveCreateTarget(w, req.Cluster)
+	target, ok := h.resolveCreateTarget(w, req.Cluster)
 	if !ok {
 		return
 	}
 
 	ctx := policy.ContextWithAuditIP(r.Context(), clientIP(r, h.trustedProxyHops))
 
-	result, err := vm.Create(ctx, identity, clusterName, req, vm.CreateDeps{
+	result, err := vm.Create(ctx, identity, target.clusterName, req, vm.CreateDeps{
 		Store:     h.store,
-		Creator:   creator,
-		Pusher:    pusher,
-		Writer:    writer,
-		FreeSpace: freeSpace,
+		Creator:   target.creator,
+		Pusher:    target.pusher,
+		Writer:    target.writer,
+		FreeSpace: target.freeSpace,
+		Snippets:  target.snippets,
 		Audit:     h.store,
 		Log:       h.log,
 		Services:  []*policy.Policy{h.policy},
@@ -503,32 +504,45 @@ func (h *VMCreate) resolveCatalogClient(w http.ResponseWriter, r *http.Request) 
 	return clusterName, client, true
 }
 
+// createTarget bundles the per-cluster capabilities the create path needs,
+// resolved from the request's own cluster (never the default client).
+type createTarget struct {
+	clusterName string
+	creator     cluster.Creator
+	pusher      vm.CloudInitPusher
+	writer      vm.HardwareUpdater
+	freeSpace   vm.FreeSpaceChecker
+	snippets    vm.SnippetStorageFinder
+}
+
 // resolveCreateTarget resolves the effective cluster name from req.Cluster
 // (defaulting the same way ResolveClusterParam does for the catalog route)
-// plus that cluster's own Creator, CloudInitPusher, and HardwareUpdater —
-// without this, VM creation ran through the default cluster's client
-// regardless of which cluster the request named. The HardwareUpdater is
-// needed for post-clone configuration (US2/issue-02).
-func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster string) (string, cluster.Creator, vm.CloudInitPusher, vm.HardwareUpdater, vm.FreeSpaceChecker, bool) {
+// plus that cluster's own Creator, CloudInitPusher, HardwareUpdater, and
+// SnippetStorageFinder — without this, VM creation ran through the default
+// cluster's client regardless of which cluster the request named. The
+// HardwareUpdater is needed for post-clone configuration (US2/issue-02); the
+// SnippetStorageFinder for the plan-time snippet storage resolution (ticket 04).
+func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster string) (createTarget, bool) {
 	clusterName, err := ResolveClusterValue(requestedCluster, h.clients)
 	if err != nil {
 		code, message := clusterParamError(err)
 		h.writeCreateError(w, http.StatusBadRequest, code, message)
 
-		return "", nil, nil, nil, nil, false
+		return createTarget{}, false
 	}
 
 	if h.clients == nil {
 		writer, _ := h.creator.(vm.HardwareUpdater)
 		freeSpace, _ := h.creator.(vm.FreeSpaceChecker)
+		snippets, _ := h.creator.(vm.SnippetStorageFinder)
 
-		return clusterName, h.creator, h.pusher, writer, freeSpace, true
+		return createTarget{clusterName: clusterName, creator: h.creator, pusher: h.pusher, writer: writer, freeSpace: freeSpace, snippets: snippets}, true
 	}
 
 	client, err := h.clients.Client(clusterName)
 	if err != nil {
 		h.writeCreateError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
-		return "", nil, nil, nil, nil, false
+		return createTarget{}, false
 	}
 
 	creator, ok := client.(cluster.Creator)
@@ -536,7 +550,7 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 		h.log.Error("cluster client does not implement Creator", "component", "httpapi", "cluster", clusterName)
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
-		return "", nil, nil, nil, nil, false
+		return createTarget{}, false
 	}
 
 	pusher, ok := client.(vm.CloudInitPusher)
@@ -544,7 +558,7 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 		h.log.Error("cluster client does not implement CloudInitPusher", "component", "httpapi", "cluster", clusterName)
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
-		return "", nil, nil, nil, nil, false
+		return createTarget{}, false
 	}
 
 	writer, ok := client.(vm.HardwareUpdater)
@@ -552,7 +566,7 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 		h.log.Error("cluster client does not implement HardwareUpdater", "component", "httpapi", "cluster", clusterName)
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
-		return "", nil, nil, nil, nil, false
+		return createTarget{}, false
 	}
 
 	freeSpace, ok := client.(vm.FreeSpaceChecker)
@@ -560,10 +574,15 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 		h.log.Error("cluster client does not implement FreeSpaceChecker", "component", "httpapi", "cluster", clusterName)
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
-		return "", nil, nil, nil, nil, false
+		return createTarget{}, false
 	}
 
-	return clusterName, creator, pusher, writer, freeSpace, true
+	// Optional capability: a client without FindSnippetStorage only blocks
+	// cloud-init template requests (planCreate refuses before VMID
+	// allocation), not plain ISO creations.
+	snippets, _ := client.(vm.SnippetStorageFinder)
+
+	return createTarget{clusterName: clusterName, creator: creator, pusher: pusher, writer: writer, freeSpace: freeSpace, snippets: snippets}, true
 }
 
 func (h *VMCreate) clientFor(clusterName string) (cluster.Client, error) {
@@ -661,6 +680,7 @@ var createErrorMappings = []createErrorMapping{
 	{vm.ErrInvalidRequest, http.StatusBadRequest, codeInvalidRequest, ""},
 	{vm.ErrDiskReduction, http.StatusBadRequest, "disk_reduction", ""},
 	{vm.ErrInsufficientDiskSpace, http.StatusBadRequest, "insufficient_disk_space", ""},
+	{vm.ErrNoSnippetStorage, http.StatusBadRequest, "no_snippet_storage", ""},
 	{vm.ErrClusterCreate, http.StatusBadGateway, "cluster_error", msgClusterRejected},
 }
 

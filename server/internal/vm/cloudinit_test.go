@@ -22,6 +22,15 @@ type testRefresher struct{}
 
 func (testRefresher) Refresh(context.Context) (time.Time, error) { return time.Now(), nil }
 
+// Fixture constants centralised to satisfy goconst (min-occurrences 4).
+const (
+	// testPasswordValue is the throwaway password the password-path tests
+	// apply through the guest agent.
+	testPasswordValue = "hunter2-change-me"
+	// testActionSetCloudInitPassword is the fake's agent password-apply action.
+	testActionSetCloudInitPassword = "set_cloudinit_password"
+)
+
 func cloudInitIndex(t *testing.T) *inventory.Index {
 	t.Helper()
 	cluster.ResetFake()
@@ -135,11 +144,16 @@ func TestSetCloudInitSnippet_PersistsTargetPushesAndPreservesClear(t *testing.T)
 		t.Fatalf("SetCloudInitSnippet: %v", err)
 	}
 	calls := cluster.FakeCallsFor(101)
-	if len(calls) != 2 || calls[0].Action != "push_cloudinit_snippet" || calls[0].Storage != cluster.FakeSnippetStorage || calls[0].Filename != "pvmss-101.yml" || calls[0].Content != content {
+	// Ticket 03: the attach now ensures the cloud-init drive first, so the
+	// sequence is push → ensure → attach.
+	if len(calls) != 3 || calls[0].Action != "push_cloudinit_snippet" || calls[0].Storage != cluster.FakeSnippetStorage || calls[0].Filename != "pvmss-101.yml" || calls[0].Content != content {
 		t.Fatalf("calls = %+v", calls)
 	}
-	if calls[1].Action != "attach_cloudinit_snippet" || calls[1].Storage != cluster.FakeSnippetStorage || calls[1].Filename != "pvmss-101.yml" {
-		t.Fatalf("attach call = %+v, want attach of pvmss-101.yml", calls[1])
+	if calls[1].Action != "ensure_cloudinit_drive" {
+		t.Fatalf("second call = %+v, want ensure_cloudinit_drive before the attach", calls[1])
+	}
+	if calls[2].Action != "attach_cloudinit_snippet" || calls[2].Storage != cluster.FakeSnippetStorage || calls[2].Filename != "pvmss-101.yml" {
+		t.Fatalf("attach call = %+v, want attach of pvmss-101.yml", calls[2])
 	}
 	if err := vm.SetCloudInitSnippet(context.Background(), vm.CloudInitSnippetDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Service: service}, ""); err != nil {
 		t.Fatalf("clear snippet: %v", err)
@@ -285,7 +299,7 @@ func TestSetCloudInitConfig_PasswordUsesGuestAgentNotCipassword(t *testing.T) {
 	if err := (cluster.Fake{}).Action(context.Background(), cluster.FakeNode01, 101, "start"); err != nil {
 		t.Fatalf("start VM 101 for test setup: %v", err)
 	}
-	password := "hunter2-change-me"
+	password := testPasswordValue
 	rebooted, err := vm.SetCloudInitConfig(context.Background(), vm.CloudInitConfigDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st, Refresher: testRefresher{}}, cluster.CloudInitUpdate{Password: &password}, false)
 	if err != nil {
 		t.Fatalf("SetCloudInitConfig with password: %v", err)
@@ -302,7 +316,7 @@ func TestSetCloudInitConfig_PasswordUsesGuestAgentNotCipassword(t *testing.T) {
 			if c.CloudInitData.Password != "" {
 				t.Errorf("config carried a cleartext password: %+v", c.CloudInitData)
 			}
-		case "set_cloudinit_password":
+		case testActionSetCloudInitPassword:
 			sawAgent = true
 		}
 	}
@@ -346,4 +360,204 @@ func TestSetCloudInitConfig_RejectsNonIPv4StaticAddresses(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestSetCloudInitConfig_PasswordUsesResolvedCiUser is the ticket-02
+// regression test: the password lands on the VM's own ciuser read from the
+// live config — never a hardcoded root (a cloud image's root is locked).
+//
+//nolint:paralleltest // serial: shared fake dataset
+func TestSetCloudInitConfig_PasswordUsesResolvedCiUser(t *testing.T) {
+	index := cloudInitIndex(t)
+	st := cloudInitStore(t)
+	if err := (cluster.Fake{}).Action(context.Background(), cluster.FakeNode01, 101, "start"); err != nil {
+		t.Fatalf("start VM 101 for test setup: %v", err)
+	}
+
+	password := testPasswordValue
+	if _, err := vm.SetCloudInitConfig(context.Background(), vm.CloudInitConfigDeps{
+		Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101,
+		Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st, Refresher: testRefresher{},
+	}, cluster.CloudInitUpdate{Password: &password}, false); err != nil {
+		t.Fatalf("SetCloudInitConfig: %v", err)
+	}
+
+	assertPasswordAppliedTo(t, cluster.FakeCloudInitUser)
+}
+
+// TestSetCloudInitConfig_PasswordPrefersPatchUser verifies the resolution
+// order: a patch that changes ciuser AND sets a password applies the password
+// to the NEW user, not the previous one (ticket 02).
+//
+//nolint:paralleltest // serial: shared fake dataset
+func TestSetCloudInitConfig_PasswordPrefersPatchUser(t *testing.T) {
+	index := cloudInitIndex(t)
+	st := cloudInitStore(t)
+	if err := (cluster.Fake{}).Action(context.Background(), cluster.FakeNode01, 101, "start"); err != nil {
+		t.Fatalf("start VM 101 for test setup: %v", err)
+	}
+
+	password := testPasswordValue
+	user := "ubuntu"
+	if _, err := vm.SetCloudInitConfig(context.Background(), vm.CloudInitConfigDeps{
+		Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101,
+		Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st, Refresher: testRefresher{},
+	}, cluster.CloudInitUpdate{User: &user, Password: &password}, false); err != nil {
+		t.Fatalf("SetCloudInitConfig: %v", err)
+	}
+
+	assertPasswordAppliedTo(t, user)
+}
+
+// TestSetCloudInitConfig_PasswordWithoutUser_Refused verifies the no-fallback
+// rule (ticket 02): neither the patch nor the live config defines a ciuser,
+// so the password is refused with ErrNoCloudInitUser instead of being applied
+// to a guessed account.
+//
+//nolint:paralleltest // serial: shared fake dataset
+func TestSetCloudInitConfig_PasswordWithoutUser_Refused(t *testing.T) {
+	index := cloudInitIndex(t)
+	st := cloudInitStore(t)
+
+	// A freshly created fake VM carries agent=1 (mirroring the real create
+	// path) but no ciuser until one is written.
+	vmid := createBareFakeVM(t, index)
+
+	password := testPasswordValue
+	_, err := vm.SetCloudInitConfig(context.Background(), vm.CloudInitConfigDeps{
+		Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: vmid,
+		Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st, Refresher: testRefresher{},
+	}, cluster.CloudInitUpdate{Password: &password}, false)
+	if !errors.Is(err, vm.ErrNoCloudInitUser) {
+		t.Fatalf("error = %v, want ErrNoCloudInitUser", err)
+	}
+
+	for _, c := range cluster.FakeCallsFor(vmid) {
+		if c.Action == testActionSetCloudInitPassword {
+			t.Fatalf("a password was applied without a ciuser: %+v", c)
+		}
+	}
+}
+
+// TestSetCloudInitConfig_PasswordAgentDisabled_Refused verifies ticket 05's
+// immediate pre-flight refusal when agent= is absent from the VM config: no
+// agent call is emitted and the error is actionable, not opaque.
+//
+//nolint:paralleltest // serial: shared fake dataset
+func TestSetCloudInitConfig_PasswordAgentDisabled_Refused(t *testing.T) {
+	index := cloudInitIndex(t)
+	st := cloudInitStore(t)
+	if err := (cluster.Fake{}).Action(context.Background(), cluster.FakeNode01, 101, "start"); err != nil {
+		t.Fatalf("start VM 101 for test setup: %v", err)
+	}
+
+	password := testPasswordValue
+	_, err := vm.SetCloudInitConfig(context.Background(), vm.CloudInitConfigDeps{
+		Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101,
+		Reader: agentDisabledReader{}, Writer: cluster.Fake{}, Audit: st, Refresher: testRefresher{},
+	}, cluster.CloudInitUpdate{Password: &password}, false)
+	if !errors.Is(err, vm.ErrGuestAgentDisabled) {
+		t.Fatalf("error = %v, want ErrGuestAgentDisabled", err)
+	}
+
+	for _, c := range cluster.FakeCallsFor(101) {
+		if c.Action == "ping_guest_agent" || c.Action == testActionSetCloudInitPassword {
+			t.Fatalf("an agent call was emitted with the agent disabled: %+v", c)
+		}
+	}
+}
+
+// TestSetCloudInitConfig_PasswordVMStopped_Refused verifies ticket 05's
+// pre-flight against the LIVE status: a stopped VM is refused with
+// ErrVMNotRunning before any agent call.
+//
+//nolint:paralleltest // serial: shared fake dataset
+func TestSetCloudInitConfig_PasswordVMStopped_Refused(t *testing.T) {
+	index := cloudInitIndex(t)
+	st := cloudInitStore(t)
+
+	password := testPasswordValue
+	_, err := vm.SetCloudInitConfig(context.Background(), vm.CloudInitConfigDeps{
+		Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101,
+		Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st, Refresher: testRefresher{},
+		StatusReader: stoppedStatusReader{},
+	}, cluster.CloudInitUpdate{Password: &password}, false)
+	if !errors.Is(err, vm.ErrVMNotRunning) {
+		t.Fatalf("error = %v, want ErrVMNotRunning", err)
+	}
+
+	for _, c := range cluster.FakeCallsFor(101) {
+		if c.Action == "ping_guest_agent" || c.Action == testActionSetCloudInitPassword {
+			t.Fatalf("an agent call was emitted on a stopped VM: %+v", c)
+		}
+	}
+}
+
+// assertPasswordAppliedTo checks the fake recorded the agent password apply
+// for exactly the given user (ticket 02).
+func assertPasswordAppliedTo(t *testing.T, user string) {
+	t.Helper()
+
+	var sawAgent bool
+
+	for _, c := range cluster.FakeCallsFor(101) {
+		if c.Action != testActionSetCloudInitPassword {
+			continue
+		}
+
+		sawAgent = true
+
+		if c.Name != user {
+			t.Fatalf("password applied to %q, want %q", c.Name, user)
+		}
+	}
+
+	if !sawAgent {
+		t.Fatal("expected a set_cloudinit_password agent call")
+	}
+}
+
+// createBareFakeVM registers a fresh VM in the fake dataset and returns its
+// VMID. The fake's CreateVM seeds agent=1 (mirroring the real create path)
+// but no ciuser.
+func createBareFakeVM(t *testing.T, index *inventory.Index) int {
+	t.Helper()
+
+	vmid := 300
+	if _, err := (cluster.Fake{}).CreateVM(context.Background(), cluster.VMSpec{
+		VMID: vmid, Node: cluster.FakeNode01, Name: "bare-vm", Pool: cluster.FakePoolAlice,
+		Tags: []string{"pvmss"},
+	}); err != nil {
+		t.Fatalf("CreateVM: %v", err)
+	}
+
+	// Rebuild the index so the new VM is resolvable through the ownership gate.
+	snapshot, err := (cluster.Fake{}).Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	fresh := inventory.BuildIndex(snapshot)
+	fresh.RefreshedAt = time.Now()
+	*index = fresh
+
+	return vmid
+}
+
+// agentDisabledReader hides the agent flag so the pre-flight sees an
+// agent-less VM (the fake's seeded configs carry agent=1).
+type agentDisabledReader struct{ cluster.Fake }
+
+func (r agentDisabledReader) GetCloudInitConfig(ctx context.Context, node string, vmid int) (cluster.CloudInitConfig, error) {
+	config, err := r.Fake.GetCloudInitConfig(ctx, node, vmid)
+	config.Agent = false
+
+	return config, err
+}
+
+// stoppedStatusReader reports the VM as stopped regardless of fake state.
+type stoppedStatusReader struct{}
+
+func (stoppedStatusReader) VMStatus(context.Context, string, int) (cluster.VMLiveStatus, error) {
+	return cluster.VMLiveStatus{Status: cluster.VMStopped}, nil
 }

@@ -53,6 +53,13 @@ var (
 	// in a user's list are never indistinguishable). Mapped to 400 by the
 	// handler with the code "name_taken".
 	ErrNameTaken = errors.New("name already taken")
+	// ErrNoSnippetStorage — a cloud-init template was requested but no
+	// snippet-capable storage exists on the chosen node, so the snippet could
+	// never be uploaded. Refused before VMID allocation (ticket 04: the same
+	// "never spend a VMID on a request that will be rejected" discipline as
+	// the template resolution) instead of creating a VM whose cloud-init is
+	// silently absent.
+	ErrNoSnippetStorage = errors.New("no snippet-capable storage on the selected node")
 )
 
 // Fixed technical safety ceilings (FR-008) — hardcoded anti-abuse bounds,
@@ -182,6 +189,16 @@ type FreeSpaceChecker interface {
 	StorageFreeSpace(ctx context.Context, node, storage string) (int64, error)
 }
 
+// SnippetStorageFinder resolves a snippet-capable storage on a node (ticket
+// 04). planCreate resolves the snippet target at plan time — the same rule
+// the snippet editor uses — instead of the create path guessing from the VM
+// disk's storage, which is block-backed and cannot host a snippet. Narrow
+// interface so vm.Create depends only on the method it calls; cluster.Fake
+// and the real Proxmox client both satisfy it.
+type SnippetStorageFinder interface {
+	FindSnippetStorage(ctx context.Context, node string) (string, error)
+}
+
 // CreateResult is what a successful creation returns — the task is accepted,
 // the VM does not necessarily exist yet (FR-013).
 type CreateResult struct {
@@ -203,6 +220,7 @@ type CreateDeps struct {
 	Pusher    CloudInitPusher
 	Writer    HardwareUpdater
 	FreeSpace FreeSpaceChecker
+	Snippets  SnippetStorageFinder
 	Audit     AuditRecorder
 	Log       *slog.Logger
 	Services  []*policy.Policy
@@ -314,6 +332,7 @@ func createFromISO(ctx context.Context, policyService *policy.Policy, deps Creat
 			Deps: deps, Actor: actor, ClusterName: clusterName, Username: actor.Username,
 			Spec: spec, VMID: finalVMID, Template: cloudTemplate, UPID: upid,
 			StartAfterCreate: startAfterCreate,
+			SnippetStorage:   plan.snippetStorage,
 		}, &result)
 	}
 
@@ -337,6 +356,9 @@ type cloudInitWaitRequest struct {
 	Template         catalog.CloudInitTemplate
 	UPID             string
 	StartAfterCreate bool
+	// SnippetStorage is the plan-time-resolved snippet-capable storage
+	// (ticket 04).
+	SnippetStorage string
 }
 
 // applyCloudInitAfterWait waits for the create task, then attaches the
@@ -360,6 +382,7 @@ func applyCloudInitAfterWait(ctx context.Context, req cloudInitWaitRequest, resu
 	applyCloudInitTemplate(ctx, cloudInitApplyRequest{
 		Deps: req.Deps, ClusterName: req.ClusterName, Username: req.Username,
 		Spec: req.Spec, VMID: req.VMID, Template: req.Template,
+		SnippetStorage: req.SnippetStorage,
 	}, result)
 
 	// lifecycle-04: start the VM explicitly after the snippet is attached,
@@ -685,6 +708,9 @@ type cloudInitApplyRequest struct {
 	Spec        cluster.VMSpec
 	VMID        int
 	Template    catalog.CloudInitTemplate
+	// SnippetStorage is the plan-time-resolved snippet-capable storage
+	// (ticket 04) — never the VM disk's storage, which is block-backed.
+	SnippetStorage string
 }
 
 // applyCloudInitTemplate writes the resolved template's snippet to the store
@@ -698,7 +724,7 @@ func applyCloudInitTemplate(ctx context.Context, req cloudInitApplyRequest, resu
 
 	result.CloudInitTemplateID = req.Template.ID
 	filename := fmt.Sprintf("%s%d.yml", snippetFilenamePrefix, req.VMID)
-	storage := req.Spec.Disk.Storage
+	storage := req.SnippetStorage
 
 	storeErr := req.Deps.Store.PutCloudInitSnippet(ctx, req.ClusterName, req.VMID, storage, filename, req.Template.Content, req.Username)
 	if storeErr != nil {
@@ -771,6 +797,7 @@ func applyPostCloneConfig(ctx context.Context, cfg postCloneConfig, result *Crea
 			Deps: cfg.Deps, ClusterName: cfg.ClusterName, Username: cfg.Username,
 			Spec: cluster.VMSpec{Node: cfg.Node, Disk: cluster.DiskSpec{Storage: cfg.Plan.storage}},
 			VMID: cfg.VMID, Template: cfg.CloudTemplate,
+			SnippetStorage: cfg.Plan.snippetStorage,
 		}, result)
 	}
 
@@ -807,8 +834,13 @@ func primaryDiskKey(bus string) string {
 
 // createPlan holds the resolved and validated values for a VM creation request.
 type createPlan struct {
-	node             string
-	storage          string
+	node    string
+	storage string
+	// snippetStorage is the snippet-capable storage resolved at plan time
+	// when a cloud-init template was requested (ticket 04). Empty when no
+	// template was requested — resolution costs a cluster read and must not
+	// run on the plain ISO path.
+	snippetStorage   string
 	sockets          int
 	cpuCores         int
 	memoryMB         int
@@ -892,16 +924,10 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 	}
 
 	// US3/issue-04: fetch node capacities for placement scoring and storage
-	// free space from the projection for best-storage selection.
-	capacities := fetchNodeCapacities(ctx, policyService, clusterName, resources.Nodes)
-	storageFree := fetchStorageFreeBytes(policyService, resources.Storages)
-
-	node, storage, nics, err := resolveResources(req, resources, capacities, storageFree)
+	// free space from the projection for best-storage selection, then resolve
+	// and validate the placement (node/storage/NICs against the catalog).
+	node, storage, nics, err := resolvePlacement(ctx, req, policyService, clusterName, resources, deps.Log)
 	if err != nil {
-		return createPlan{}, err
-	}
-
-	if err := validateCatalog(req, resources, node, storage, nics); err != nil {
 		return createPlan{}, err
 	}
 
@@ -918,16 +944,67 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 		return createPlan{}, err
 	}
 
-	// US3/issue-04 T042: log the placement decision when auto-selection ran.
-	if req.Node == "" && deps.Log != nil {
-		logPlacement(deps.Log, node, resources.Nodes, capacities, req)
+	snippetStorage, err := resolvePlanSnippetStorage(ctx, deps, req, node)
+	if err != nil {
+		return createPlan{}, err
 	}
 
 	return createPlan{
-		node: node, storage: storage, sockets: sockets, cpuCores: cpuCores,
+		node: node, storage: storage, snippetStorage: snippetStorage,
+		sockets: sockets, cpuCores: cpuCores,
 		memoryMB: memoryMB, diskGB: diskGB, bus: bus, nics: nics,
 		isolationVLANTag: vlanTag, uefi: req.UEFI, tpm: req.TPM,
 	}, nil
+}
+
+// resolvePlacement fetches node capacities and storage free space from the
+// projection (US3/issue-04), resolves node/storage/NICs, validates the choice
+// against the catalog, and logs the placement decision when auto-selection
+// ran (T042). Extracted from planCreate to keep its cyclomatic complexity
+// under gocyclo's ceiling.
+func resolvePlacement(ctx context.Context, req CreateRequest, policyService *policy.Policy, clusterName string, resources catalog.Resources, log *slog.Logger) (node, storage string, nics []nicPlan, err error) {
+	capacities := fetchNodeCapacities(ctx, policyService, clusterName, resources.Nodes)
+	storageFree := fetchStorageFreeBytes(policyService, resources.Storages)
+
+	node, storage, nics, err = resolveResources(req, resources, capacities, storageFree)
+	if err != nil {
+		return "", "", nil, err
+	}
+
+	if err := validateCatalog(req, resources, node, storage, nics); err != nil {
+		return "", "", nil, err
+	}
+
+	if req.Node == "" && log != nil {
+		logPlacement(log, node, resources.Nodes, capacities, req)
+	}
+
+	return node, storage, nics, nil
+}
+
+// resolvePlanSnippetStorage resolves the snippet target at plan time when a
+// cloud-init template was requested — before NextVMID, so a node without any
+// snippet-capable storage is refused without burning a VMID (the same
+// discipline as the template resolution). The VM disk's storage is
+// block-backed (ZFS/LVM-thin/Ceph) and cannot host a snippet, so the editor's
+// FindSnippetStorage rule is the only correct source (ticket 04). Returns ""
+// when no template was requested: the resolution costs a cluster read and
+// must not run on the plain ISO path.
+func resolvePlanSnippetStorage(ctx context.Context, deps CreateDeps, req CreateRequest, node string) (string, error) {
+	if req.CloudInitTemplateID == "" {
+		return "", nil
+	}
+
+	if deps.Snippets == nil {
+		return "", fmt.Errorf("%w: no snippet storage resolver wired", ErrClusterCreate)
+	}
+
+	storage, err := deps.Snippets.FindSnippetStorage(ctx, node)
+	if err != nil {
+		return "", fmt.Errorf("%w: %s: enable the snippets content type on a storage of this node (%w)", ErrNoSnippetStorage, node, err)
+	}
+
+	return storage, nil
 }
 
 // gabaritRequest groups the resolved hardware dimensions a gabarit + capacity

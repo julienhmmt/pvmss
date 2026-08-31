@@ -66,6 +66,7 @@ func (f createFixture) create(t *testing.T, actor auth.Identity, req vm.CreateRe
 		Pusher:    f.fake,
 		Writer:    f.fake,
 		FreeSpace: f.fake,
+		Snippets:  f.fake,
 		Audit:     f.store,
 		Log:       log,
 	})
@@ -493,6 +494,128 @@ func TestCreate_CloudInitTemplate_Applied(t *testing.T) {
 
 	if !pushed {
 		t.Error("PushCloudInitSnippet not recorded with the template content")
+	}
+}
+
+// failingSnippetFinder refuses every resolution — the stand-in for a node
+// without any snippet-capable storage (ticket 04).
+type failingSnippetFinder struct{}
+
+func (failingSnippetFinder) FindSnippetStorage(context.Context, string) (string, error) {
+	return "", cluster.ErrNotFound
+}
+
+// fixedSnippetFinder always resolves to one storage and counts calls, so
+// tests can assert the create path used the plan-resolved target (ticket 04).
+type fixedSnippetFinder struct {
+	calls   int
+	storage string
+}
+
+func (f *fixedSnippetFinder) FindSnippetStorage(context.Context, string) (string, error) {
+	f.calls++
+
+	return f.storage, nil
+}
+
+// TestCreate_CloudInitTemplate_NoSnippetStorage_RejectedBeforeVMID — ticket
+// 04: a cloud-init template on a node without snippet-capable storage is
+// refused before NextVMID, instead of creating a VM whose cloud-init is
+// silently absent.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_NoSnippetStorage_RejectedBeforeVMID(t *testing.T) {
+	fixture := newCreateFixture(t)
+	tmplID := createTestTemplate(t, fixture.store)
+
+	req := detailedRequest()
+	req.CloudInitTemplateID = tmplID
+
+	log := slog.New(slog.DiscardHandler)
+
+	_, err := vm.Create(context.Background(), aliceIdentity(), testClusterName, req, vm.CreateDeps{
+		Store: fixture.store, Creator: fixture.fake, Pusher: fixture.fake,
+		Writer: fixture.fake, FreeSpace: fixture.fake, Snippets: failingSnippetFinder{},
+		Audit: fixture.store, Log: log,
+	})
+	if !errors.Is(err, vm.ErrNoSnippetStorage) {
+		t.Fatalf("error = %v, want ErrNoSnippetStorage", err)
+	}
+
+	for _, c := range cluster.FakeCalls() {
+		if c.Action == "create" {
+			t.Fatalf("a VM was created despite the missing snippet storage: %+v", c)
+		}
+	}
+}
+
+// TestCreate_CloudInitTemplate_UsesPlanSnippetStorage — ticket 04: the
+// snippet is pushed to the storage resolved at plan time, never the VM disk's
+// storage (which is block-backed and cannot host a snippet).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_UsesPlanSnippetStorage(t *testing.T) {
+	fixture := newCreateFixture(t)
+	tmplID := createTestTemplate(t, fixture.store)
+
+	finder := &fixedSnippetFinder{storage: "snippet-vol"}
+
+	req := detailedRequest()
+	req.CloudInitTemplateID = tmplID
+
+	log := slog.New(slog.DiscardHandler)
+
+	result, err := vm.Create(context.Background(), aliceIdentity(), testClusterName, req, vm.CreateDeps{
+		Store: fixture.store, Creator: fixture.fake, Pusher: fixture.fake,
+		Writer: fixture.fake, FreeSpace: fixture.fake, Snippets: finder,
+		Audit: fixture.store, Log: log,
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if finder.calls == 0 {
+		t.Fatal("the plan never resolved a snippet storage")
+	}
+
+	pushedToSnippetVol := false
+
+	for _, c := range cluster.FakeCallsFor(result.VMID) {
+		if c.Action == "push_cloudinit_snippet" {
+			if c.Storage != "snippet-vol" {
+				t.Fatalf("snippet pushed to %q, want the plan-resolved snippet-vol", c.Storage)
+			}
+
+			pushedToSnippetVol = true
+		}
+	}
+
+	if !pushedToSnippetVol {
+		t.Fatal("no snippet push recorded")
+	}
+}
+
+// TestCreate_WithoutCloudInitTemplate_DoesNotResolveSnippetStorage — ticket
+// 04: the resolution costs a cluster read and must not run on the plain ISO
+// path.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_WithoutCloudInitTemplate_DoesNotResolveSnippetStorage(t *testing.T) {
+	fixture := newCreateFixture(t)
+	finder := &fixedSnippetFinder{storage: "snippet-vol"}
+
+	log := slog.New(slog.DiscardHandler)
+
+	if _, err := vm.Create(context.Background(), aliceIdentity(), testClusterName, detailedRequest(), vm.CreateDeps{
+		Store: fixture.store, Creator: fixture.fake, Pusher: fixture.fake,
+		Writer: fixture.fake, FreeSpace: fixture.fake, Snippets: finder,
+		Audit: fixture.store, Log: log,
+	}); err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if finder.calls != 0 {
+		t.Errorf("FindSnippetStorage calls = %d, want 0 without a cloud-init template", finder.calls)
 	}
 }
 

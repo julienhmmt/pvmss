@@ -467,7 +467,16 @@ func (fake Fake) PushCloudInitSnippet(_ context.Context, node, storage, filename
 }
 
 // AttachCloudInitSnippet implements Writer and records the cicustom attach.
-func (fake Fake) AttachCloudInitSnippet(_ context.Context, node, storage, filename string, vmid int) error {
+// Like the real client, attaching ensures the cloud-init drive first —
+// Proxmox silently ignores cicustom without one — so the fake's call log
+// shows the same ensure-then-attach order the contract test asserts.
+func (fake Fake) AttachCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int) error {
+	if filename != "" {
+		if err := fake.EnsureCloudInitDrive(ctx, node, vmid); err != nil {
+			return err
+		}
+	}
+
 	state := fake.stateOrDefault()
 	if state.findVM(node, vmid) < 0 {
 		return ErrNotFound
@@ -476,14 +485,74 @@ func (fake Fake) AttachCloudInitSnippet(_ context.Context, node, storage, filena
 	return nil
 }
 
-// SetCloudInitPassword implements Writer and records the agent password apply.
-func (fake Fake) SetCloudInitPassword(_ context.Context, node string, vmid int, _ string) error {
+// SetCloudInitPassword implements Writer and records the agent password apply
+// with its target user. The password itself is never retained (REPORT.md §1).
+// Tests can inject a failure for the next N calls (SetFakeGuestPasswordError)
+// to exercise the caller's retry-on-missing-account loop.
+func (fake Fake) SetCloudInitPassword(_ context.Context, node string, vmid int, user, _ string) error {
 	state := fake.stateOrDefault()
 	if state.findVM(node, vmid) < 0 {
 		return ErrNotFound
 	}
-	state.record(FakeCall{Node: node, VMID: vmid, Action: "set_cloudinit_password"})
+
+	state.pingMu.Lock()
+	err := state.guestPasswordErr
+	if state.guestPasswordErrLeft > 0 {
+		state.guestPasswordErrLeft--
+		if state.guestPasswordErrLeft == 0 {
+			state.guestPasswordErr = nil
+		}
+	}
+	state.pingMu.Unlock()
+
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "set_cloudinit_password", Name: user})
+
+	return err
+}
+
+// SetFakeGuestPasswordError makes the next n SetCloudInitPassword calls return
+// err (cluster.ErrGuestUserUnknown exercises the retry path; nil clears it).
+func SetFakeGuestPasswordError(err error, count int) {
+	state := defaultState()
+	state.pingMu.Lock()
+	defer state.pingMu.Unlock()
+	state.guestPasswordErr = err
+	state.guestPasswordErrLeft = count
+}
+
+// PingGuestAgent implements Writer and records the probe. Tests can make the
+// first N pings fail (SetFakeGuestAgentPingFailures) to exercise the caller's
+// bounded wait loop.
+func (fake Fake) PingGuestAgent(_ context.Context, node string, vmid int) error {
+	state := fake.stateOrDefault()
+	if state.findVM(node, vmid) < 0 {
+		return ErrNotFound
+	}
+
+	state.pingMu.Lock()
+	remaining := state.agentPingFailures
+	if remaining > 0 {
+		state.agentPingFailures--
+	}
+	state.pingMu.Unlock()
+
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "ping_guest_agent"})
+
+	if remaining > 0 {
+		return ErrUnreachable
+	}
+
 	return nil
+}
+
+// SetFakeGuestAgentPingFailures makes the next n PingGuestAgent calls fail
+// with ErrUnreachable before succeeding, so tests can exercise the bounded
+// ping loop without sleeps.
+func SetFakeGuestAgentPingFailures(n int) {
+	state := defaultState()
+	state.pingMu.Lock()
+	defer state.pingMu.Unlock()
+	state.agentPingFailures = n
 }
 
 // SetFakeCloudInitPushError configures the default fake's push failure used by tests.
