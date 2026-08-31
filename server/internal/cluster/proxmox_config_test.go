@@ -218,7 +218,7 @@ func TestEncodeNetValue(t *testing.T) {
 
 		vlan := 100
 
-		got := encodeNetValue(NetworkInterface{Model: "virtio", MAC: "AA:BB:CC:DD:EE:FF", Bridge: "vmbr0", VLAN: &vlan})
+		got := encodeNetValue(NetworkInterface{Model: "virtio", MAC: "AA:BB:CC:DD:EE:FF", Bridge: FakeBridgeVMbr0, VLAN: &vlan})
 		want := "virtio=AA:BB:CC:DD:EE:FF,bridge=vmbr0,tag=100,firewall=1"
 
 		if got != want {

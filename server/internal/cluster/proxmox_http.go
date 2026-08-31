@@ -207,10 +207,12 @@ func retryBackoff(attempt int) time.Duration {
 }
 
 // isRetryableStatus reports whether a failed attempt should be retried: a
-// transport error (status 0, no response received), HTTP >= 500, or 429. A
-// nil error (success) or any other 4xx is not retryable — 404 is a
+// transport error (status 0, no response received), HTTP >= 500 (except 595),
+// or 429. A nil error (success) or any other 4xx is not retryable — 404 is a
 // legitimate ErrNotFound, and 400/401/403 are caller errors that won't fix
-// themselves.
+// themselves. 595 is Proxmox's "could not reach the target node" status: the
+// node is down, and retrying it 250ms later only multiplies an already slow
+// per-node enumeration (observed ~4s per attempt against a dead node).
 func isRetryableStatus(status int, err error) bool {
 	if err == nil {
 		return false
@@ -218,6 +220,10 @@ func isRetryableStatus(status int, err error) bool {
 
 	if status == 0 {
 		return true
+	}
+
+	if status == 595 {
+		return false
 	}
 
 	return status >= 500 || status == http.StatusTooManyRequests
