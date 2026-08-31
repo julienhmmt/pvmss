@@ -4,6 +4,7 @@
 	import MountIsoDialog from './MountIsoDialog.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import DiscIcon from '$lib/shared/ui/icons/DiscIcon.svelte';
+	import SpinnerIcon from '$lib/shared/ui/icons/SpinnerIcon.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
@@ -15,10 +16,10 @@
 
 	async function bootFromCdrom(): Promise<void> {
 		const vmName = store.entity?.name ?? '';
-		const success = await store.bootFromCdrom();
-		if (success) {
-			toast.success(m['toast.vmBootedFromCdrom']({ name: vmName }));
-		}
+		// Toast the moment the server accepts the boot request — the guest can
+		// take tens of seconds to actually be up, and the user must know the
+		// CD-ROM boot was triggered now, not after convergence.
+		await store.bootFromCdrom(() => toast.success(m['toast.vmBootedFromCdrom']({ name: vmName })));
 	}
 
 	function requestBoot(): void {
@@ -56,14 +57,19 @@
 		</button>
 		<button
 			type="button"
-			class="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
+			class="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
 			disabled={store.cdromInFlight || store.bootCdromInFlight || !isoMounted}
 			onclick={requestBoot}
 			data-testid="vm-cdrom-boot"
 			title={isoMounted ? m['vms.disks.bootFromCdrom']() : m['vms.disks.bootFromCdromNeedsIso']()}
 		>
-			<DiscIcon class="h-4 w-4" />
-			{m['vms.disks.bootFromCdrom']()}
+			{#if store.bootCdromInFlight}
+				<SpinnerIcon class="h-4 w-4" />
+				{m['vms.disks.bootCdromBooting']()}
+			{:else}
+				<DiscIcon class="h-4 w-4" />
+				{m['vms.disks.bootFromCdrom']()}
+			{/if}
 		</button>
 		<button
 			type="button"

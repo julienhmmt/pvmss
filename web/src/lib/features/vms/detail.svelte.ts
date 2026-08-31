@@ -271,24 +271,29 @@ export class VmDetailStore {
 	 * (the server endpoint requires a stopped VM), then the boot starts and the
 	 * status converges to running. The boot order is restored by the server
 	 * once the guest is up, so the next reboot boots from disk again.
+	 *
+	 * `onAccepted` fires the moment the server accepts the boot request —
+	 * before convergence — so the UI can give immediate feedback (toast)
+	 * instead of waiting for the guest to actually be up.
 	 */
-	async bootFromCdrom(): Promise<boolean> {
+	async bootFromCdrom(onAccepted?: () => void): Promise<boolean> {
 		if (this.bootCdromInFlight || this.entity === null) return false;
 		this.bootCdromError = null;
-
-		if (this.entity.status !== 'stopped') {
-			// Reboot into CD-ROM: shut down first, then boot from the ISO.
-			await this.action('shutdown');
-			const statusAfter: string = this.entity?.status ?? 'running';
-			if (this.actionError || statusAfter !== 'stopped') {
-				this.bootCdromError = this.actionError ?? m['vms.detail.errorBootCdrom']();
-				return false;
-			}
-		}
-
 		this.bootCdromInFlight = true;
+
 		try {
+			if (this.entity.status !== 'stopped') {
+				// Reboot into CD-ROM: shut down first, then boot from the ISO.
+				await this.action('shutdown');
+				const statusAfter: string = this.entity?.status ?? 'running';
+				if (this.actionError || statusAfter !== 'stopped') {
+					this.bootCdromError = this.actionError ?? m['vms.detail.errorBootCdrom']();
+					return false;
+				}
+			}
+
 			await post<ActionResponse>(`${this.#basePath}/boot-cdrom`, {});
+			onAccepted?.();
 			const target = optimisticStatus('start');
 			this.entity = { ...this.entity, status: target };
 			await convergeSingle(
