@@ -272,11 +272,11 @@ export class VmDetailStore {
 	 * status converges to running. The boot order is restored by the server
 	 * once the guest is up, so the next reboot boots from disk again.
 	 *
-	 * `onAccepted` fires the moment the server accepts the boot request —
-	 * before convergence — so the UI can give immediate feedback (toast)
-	 * instead of waiting for the guest to actually be up.
+	 * The HTTP request only returns once the guest is up — the server waits
+	 * for the boot before restoring the boot order — so callers must give
+	 * feedback optimistically (toast on click), not on response.
 	 */
-	async bootFromCdrom(onAccepted?: () => void): Promise<boolean> {
+	async bootFromCdrom(): Promise<boolean> {
 		if (this.bootCdromInFlight || this.entity === null) return false;
 		this.bootCdromError = null;
 		this.bootCdromInFlight = true;
@@ -293,7 +293,6 @@ export class VmDetailStore {
 			}
 
 			await post<ActionResponse>(`${this.#basePath}/boot-cdrom`, {});
-			onAccepted?.();
 			const target = optimisticStatus('start');
 			this.entity = { ...this.entity, status: target };
 			await convergeSingle(
