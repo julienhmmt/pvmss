@@ -38,6 +38,9 @@
 	<p class="text-sm text-muted-foreground">
 		{m['vms.cloudinit.snippetHelp']()}
 	</p>
+	<p class="mt-1 text-sm text-warning" data-testid="cloudinit-snippet-secret-warning">
+		{m['vms.cloudinit.snippetSecretWarning']()}
+	</p>
 	{#if store.snippetLoading && store.snippet === null}
 		<p role="status" aria-live="polite" class="mt-4 text-sm">{m['vms.cloudinit.snippetLoading']()}</p>
 	{/if}

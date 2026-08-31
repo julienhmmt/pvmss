@@ -8,6 +8,7 @@ const (
 )
 
 // originalFakeCloudInitConfigs returns the initial structured state used by the fake browser demo.
+// Agent is true: the demo VMs mirror what the real create path provisions (agent=1).
 func originalFakeCloudInitConfigs() map[fakeCloudInitKey]CloudInitConfig {
 	return map[fakeCloudInitKey]CloudInitConfig{
 		{node: FakeNode01, vmid: 100}: {
@@ -16,6 +17,7 @@ func originalFakeCloudInitConfigs() map[fakeCloudInitKey]CloudInitConfig {
 			IPMode:       CloudInitIPModeDHCP,
 			DNSServer:    FakeCloudInitDNS,
 			SearchDomain: fakeSearchDomain,
+			Agent:        true,
 		},
 		{node: FakeNode01, vmid: 101}: {
 			User:         FakeCloudInitUser,
@@ -25,6 +27,7 @@ func originalFakeCloudInitConfigs() map[fakeCloudInitKey]CloudInitConfig {
 			Gateway:      FakeCloudInitDNS,
 			DNSServer:    FakeCloudInitDNS,
 			SearchDomain: fakeSearchDomain,
+			Agent:        true,
 		},
 		{node: FakeNode01, vmid: 102}: {
 			User:         FakeCloudInitUser,
@@ -32,6 +35,7 @@ func originalFakeCloudInitConfigs() map[fakeCloudInitKey]CloudInitConfig {
 			IPMode:       CloudInitIPModeDHCP,
 			DNSServer:    FakeCloudInitDNS,
 			SearchDomain: fakeSearchDomain,
+			Agent:        true,
 		},
 	}
 }

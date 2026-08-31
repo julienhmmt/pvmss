@@ -190,3 +190,79 @@ describe('VmDetailStore.action', () => {
 		expect(store.actionInFlight).toBe(false);
 	});
 });
+
+describe('VmDetailStore.bootFromCdrom', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.useRealTimers();
+	});
+
+	it('boots directly when the VM is stopped and converges to running', async () => {
+		const { calls } = stubFetchSequence([
+			{ status: 200, body: { status: 'accepted' } },
+			{ status: 200, body: { status: 'running', uptime: 0 } }
+		]);
+
+		const store = makeStore({ ...baseEntity, status: 'stopped' });
+		const promise = store.bootFromCdrom();
+		await vi.waitFor(() => expect(promise).resolves.toBe(true));
+
+		expect(calls[0]).toBe('/api/v1/vms/default/100/boot-cdrom');
+		expect(store.entity?.status).toBe('running');
+		expect(store.bootCdromInFlight).toBe(false);
+		expect(store.bootCdromError).toBeNull();
+	});
+
+	it('shuts a running VM down first, then boots from the CD-ROM', async () => {
+		const { calls } = stubFetchSequence([
+			// shutdown action
+			{ status: 200, body: { status: 'ok' } },
+			{ status: 200, body: { status: 'stopped', uptime: 0 } },
+			// boot-cdrom
+			{ status: 200, body: { status: 'accepted' } },
+			{ status: 200, body: { status: 'running', uptime: 0 } }
+		]);
+
+		const store = makeStore({ ...baseEntity, status: 'running' });
+		const promise = store.bootFromCdrom();
+		await vi.waitFor(() => expect(promise).resolves.toBe(true));
+
+		expect(calls[0]).toBe('/api/v1/vms/default/100/actions');
+		expect(calls).toContain('/api/v1/vms/default/100/boot-cdrom');
+		expect(store.entity?.status).toBe('running');
+	});
+
+	it('aborts when the shutdown does not converge to stopped', async () => {
+		const { calls } = stubFetchSequence([
+			// shutdown action accepted, but the live status stays running
+			{ status: 200, body: { status: 'ok' } },
+			{ status: 200, body: { status: 'running', uptime: 0 } }
+		]);
+
+		const store = makeStore({ ...baseEntity, status: 'running' });
+		const promise = store.bootFromCdrom();
+		// Convergence timeout is 30s of fake time.
+		await vi.advanceTimersByTimeAsync(31_000);
+		await vi.waitFor(() => expect(promise).resolves.toBe(false));
+
+		expect(calls).not.toContain('/api/v1/vms/default/100/boot-cdrom');
+		expect(store.bootCdromError).not.toBeNull();
+	});
+
+	it('reports the server error when boot-cdrom fails', async () => {
+		stubFetchSequence([
+			{ status: 409, body: { code: 'no_cdrom', message: 'no iso mounted' } }
+		]);
+
+		const store = makeStore({ ...baseEntity, status: 'stopped' });
+		const promise = store.bootFromCdrom();
+		await vi.waitFor(() => expect(promise).resolves.toBe(false));
+
+		expect(store.bootCdromError).not.toBeNull();
+		expect(store.bootCdromInFlight).toBe(false);
+	});
+});

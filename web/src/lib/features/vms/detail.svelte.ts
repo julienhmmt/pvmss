@@ -58,6 +58,8 @@ export interface HardwareOptions {
 	storages: { node: string; storage: string; type: string }[];
 	bridges: { node: string; bridge: string }[];
 	isos: { volId: string; node: string; storage: string; name: string; sizeBytes: number }[];
+	/** Admin-curated tags users may toggle (the protected pvmss tag is excluded). */
+	tags: { name: string; color: string }[];
 	limits: {
 		maxSockets: number;
 		maxCores: number;
@@ -129,6 +131,9 @@ export class VmDetailStore {
 	diskInFlight = $state.raw(false);
 	diskError = $state.raw<string | null>(null);
 	cdromInFlight = $state.raw(false);
+	/** True while the boot-from-CDROM flow is in flight. */
+	bootCdromInFlight = $state.raw(false);
+	bootCdromError = $state.raw<string | null>(null);
 	networkInFlight = $state.raw(false);
 	hardwareInFlight = $state.raw(false);
 	writeError = $state.raw<string | null>(null);
@@ -258,6 +263,55 @@ export class VmDetailStore {
 			this.writeError = errorMessage(err, () => m['vms.detail.errorUpdateCdrom']());
 		} finally {
 			this.cdromInFlight = false;
+		}
+	}
+
+	/**
+	 * One-time boot from the mounted CD-ROM. A running VM is shut down first
+	 * (the server endpoint requires a stopped VM), then the boot starts and the
+	 * status converges to running. The boot order is restored by the server
+	 * once the guest is up, so the next reboot boots from disk again.
+	 *
+	 * The HTTP request only returns once the guest is up — the server waits
+	 * for the boot before restoring the boot order — so callers must give
+	 * feedback optimistically (toast on click), not on response.
+	 */
+	async bootFromCdrom(): Promise<boolean> {
+		if (this.bootCdromInFlight || this.entity === null) return false;
+		this.bootCdromError = null;
+		this.bootCdromInFlight = true;
+
+		try {
+			if (this.entity.status !== 'stopped') {
+				// Reboot into CD-ROM: shut down first, then boot from the ISO.
+				await this.action('shutdown');
+				const statusAfter: string = this.entity?.status ?? 'running';
+				if (this.actionError || statusAfter !== 'stopped') {
+					this.bootCdromError = this.actionError ?? m['vms.detail.errorBootCdrom']();
+					return false;
+				}
+			}
+
+			await post<ActionResponse>(`${this.#basePath}/boot-cdrom`, {});
+			const target = optimisticStatus('start');
+			this.entity = { ...this.entity, status: target };
+			await convergeSingle(
+				{ cluster: this.cluster, vmid: this.entity.vmid },
+				target,
+				(status, lock) => {
+					if (this.entity !== null) {
+						this.entity = lock === undefined
+							? { ...this.entity, status }
+							: { ...this.entity, status, lock };
+					}
+				},
+			);
+			return true;
+		} catch (err) {
+			this.bootCdromError = errorMessage(err, () => m['vms.detail.errorBootCdrom']());
+			return false;
+		} finally {
+			this.bootCdromInFlight = false;
 		}
 	}
 

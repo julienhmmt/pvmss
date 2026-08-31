@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -55,6 +56,7 @@ func (h *VMDetail) dispatchBySuffix(w http.ResponseWriter, r *http.Request) bool
 		handler func(http.ResponseWriter, *http.Request)
 	}{
 		{"/hardware-options", h.handleHardwareOptions},
+		{"/boot-cdrom", h.handleBootCDROM},
 		{"/cdrom", h.handleCDROM},
 		{"/network", h.handleNetwork},
 		{"/hardware", h.handleHardware},
@@ -271,7 +273,15 @@ type hardwareOptionsDTO struct {
 	Storages []hardwareStorageDTO `json:"storages"`
 	Bridges  []hardwareBridgeDTO  `json:"bridges"`
 	ISOs     []hardwareISODTO     `json:"isos"`
+	Tags     []hardwareTagDTO     `json:"tags"`
 	Limits   vmLimitsDTO          `json:"limits"`
+}
+
+// hardwareTagDTO is one admin-curated tag offered to the VM tag picker.
+// The protected pvmss tag is excluded — users cannot toggle it.
+type hardwareTagDTO struct {
+	Name  string `json:"name"`
+	Color string `json:"color"`
 }
 
 type hardwareStorageDTO struct {
@@ -304,7 +314,7 @@ type vmLimitsDTO struct {
 
 type actionRequest struct {
 	Action string `json:"action"`
-	// Force authorizes shutdown to skip ACPI and go directly to stop (ticket 05).
+	// Force authorizes shutdown to skip the ACPI request and stop directly.
 	// Only meaningful for shutdown; ignored for other actions.
 	Force bool `json:"force"`
 }
@@ -683,6 +693,58 @@ func (h *VMDetail) handleDiskDelete(w http.ResponseWriter, r *http.Request, deps
 	h.writeJSONStatus(w, http.StatusOK, deleteResponse{Status: "deleted"})
 }
 
+// handleBootCDROM serves POST /vms/:cluster/:vmid/boot-cdrom: a one-time boot
+// from the mounted CD-ROM. The VM must be stopped — the UI shuts a running VM
+// down first (confirm dialog) and calls this once it is stopped. The server
+// sets the CD-first boot order, starts the VM, and restores the original boot
+// order once the guest is up (one-time semantics).
+func (h *VMDetail) handleBootCDROM(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", "POST")
+		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
+
+		return
+	}
+
+	identity, err := h.auth.Principal(r)
+	if err != nil {
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
+		return
+	}
+
+	clusterName, vmid, ok := h.parsePath(r)
+	if !ok {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
+		return
+	}
+
+	index, ok := h.index(w, clusterName)
+	if !ok {
+		return
+	}
+
+	writer, ok := h.writerFor(w, clusterName)
+	if !ok {
+		return
+	}
+
+	if err := vm.BootFromCDROM(r.Context(), vm.BootDependencies{
+		Index:        index,
+		Actor:        identity,
+		ClusterName:  clusterName,
+		VMID:         vmid,
+		Writer:       writer,
+		Audit:        h.store,
+		Refresher:    h.refresherFor(clusterName),
+		StatusReader: h.statusReaderFor(clusterName),
+	}); err != nil {
+		h.writeBootCDROMError(w, err)
+		return
+	}
+
+	h.writeJSONStatus(w, http.StatusOK, actionResponse{Status: "accepted"})
+}
+
 func (h *VMDetail) handleCDROM(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPatch {
 		w.Header().Set("Allow", "PATCH")
@@ -798,9 +860,17 @@ func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	allowedTags, err := h.allowedTagNames(r.Context(), clusterName)
+	if err != nil {
+		h.log.Error(msgHardwareCatalogFailed, "component", "httpapi", "error", err)
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return
+	}
+
 	err = vm.UpdateHardware(r.Context(), vm.HardwareDependencies{
 		Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer,
-		Policy: h.policy, Audit: h.store, Refresher: h.refresherFor(clusterName),
+		Policy: h.policy, Audit: h.store, Refresher: h.refresherFor(clusterName), AllowedTags: allowedTags,
 	}, vm.HardwarePatch{Sockets: request.Sockets, Cores: request.Cores, MemoryMB: request.MemoryMB, Tags: request.Tags})
 	if err != nil {
 		h.writeHardwareError(w, err)
@@ -898,6 +968,8 @@ func (h *VMDetail) writeHardwareError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrEmptyHardwarePatch):
 		h.writeDetailError(w, http.StatusBadRequest, "empty_patch", err.Error())
+	case errors.Is(err, vm.ErrNotApproved):
+		h.writeDetailError(w, http.StatusBadRequest, "not_approved", err.Error())
 	case errors.Is(err, policy.ErrNodeCapacityExceeded):
 		h.writeDetailError(w, http.StatusBadRequest, "capacity_exceeded", err.Error())
 	case errors.Is(err, policy.ErrUnavailable):
@@ -1036,6 +1108,39 @@ func (h *VMDetail) writeCDROMError(w http.ResponseWriter, err error) {
 	}
 }
 
+// writeBootCDROMError maps vm.BootFromCDROM errors to HTTP statuses.
+func (h *VMDetail) writeBootCDROMError(w http.ResponseWriter, err error) {
+	if h.writeCommonVMError(w, err) {
+		return
+	}
+
+	switch {
+	case errors.Is(err, vm.ErrCDROMNotMounted):
+		h.writeDetailError(w, http.StatusConflict, "no_cdrom", err.Error())
+	case errors.Is(err, cluster.ErrVMRunning):
+		h.writeDetailError(w, http.StatusConflict, "vm_running", msgVMRunning)
+	default:
+		h.writeUnhandledVMError(w, "vm boot-cdrom failed", err)
+	}
+}
+
+// allowedTagNames loads the admin-curated tag allowlist for a cluster
+// (FR-013). ListTags lazily seeds the mandatory pvmss tag, so the allowlist
+// is never empty on a healthy store.
+func (h *VMDetail) allowedTagNames(ctx context.Context, clusterName string) ([]string, error) {
+	tags, err := catalog.ListTags(ctx, h.store, h.projection, clusterName)
+	if err != nil {
+		return nil, err
+	}
+
+	names := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		names = append(names, tag.Name)
+	}
+
+	return names, nil
+}
+
 func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", "GET")
@@ -1107,10 +1212,19 @@ func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request)
 		remaining[string(bus)] = max - used
 	}
 
+	tagDTOs, err := hardwareTagDTOs(r.Context(), h, clusterName)
+	if err != nil {
+		h.log.Error(msgHardwareCatalogFailed, "component", "httpapi", "error", err)
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return
+	}
+
 	h.writeJSONStatus(w, http.StatusOK, hardwareOptionsDTO{
 		Storages: hardwareStorages(resources.Storages, index),
 		Bridges:  hardwareBridges(resources.Bridges, entity.Node),
 		ISOs:     hardwareISOs(resources.ISOs),
+		Tags:     tagDTOs,
 		Limits: vmLimitsDTO{
 			MaxSockets:        gabarit.MaxSockets,
 			MaxCores:          gabarit.MaxCores,
@@ -1120,6 +1234,26 @@ func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request)
 			RemainingBusSlots: remaining,
 		},
 	})
+}
+
+// hardwareTagDTOs loads the cluster's admin-curated tags for the VM tag
+// picker. The protected pvmss tag is excluded — users cannot toggle it.
+func hardwareTagDTOs(ctx context.Context, h *VMDetail, clusterName string) ([]hardwareTagDTO, error) {
+	tags, err := catalog.ListTags(ctx, h.store, h.projection, clusterName)
+	if err != nil {
+		return nil, err
+	}
+
+	dtOs := make([]hardwareTagDTO, 0, len(tags))
+	for _, tag := range tags {
+		if tag.Protected {
+			continue
+		}
+
+		dtOs = append(dtOs, hardwareTagDTO{Name: tag.Name, Color: tag.Color})
+	}
+
+	return dtOs, nil
 }
 
 func hardwareStorages(storages []catalog.Storage, index *inventory.Index) []hardwareStorageDTO {

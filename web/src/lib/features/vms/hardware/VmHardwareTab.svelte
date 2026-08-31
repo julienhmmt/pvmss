@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SvelteSet } from 'svelte/reactivity';
 	import { getVmDetailContext } from '../detail.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -7,7 +8,7 @@
 	let socketsDraft = $state('1');
 	let coresDraft = $state('1');
 	let memoryDraft = $state('1024');
-	let tagsDraft = $state('');
+	const selectedTags = new SvelteSet<string>();
 
 	$effect(() => {
 		const entity = store.entity;
@@ -15,8 +16,11 @@
 		socketsDraft = String(entity.sockets ?? 1);
 		coresDraft = String(entity.cores ?? entity.cpuCores);
 		memoryDraft = String(Math.round(entity.memoryTotal / 1024 / 1024));
-		tagsDraft = entity.tags.join(', ');
+		selectedTags.clear();
+		for (const tag of entity.tags) selectedTags.add(tag);
 	});
+
+	const catalogTags = $derived(store.hardwareOptions?.tags ?? []);
 
 	const hardwareWillRestart = $derived.by(() => {
 		const entity = store.entity;
@@ -31,6 +35,14 @@
 		);
 	});
 
+	function toggleTag(name: string): void {
+		if (selectedTags.has(name)) {
+			selectedTags.delete(name);
+		} else {
+			selectedTags.add(name);
+		}
+	}
+
 	async function saveHardware(): Promise<void> {
 		const sockets = Number(socketsDraft);
 		const cores = Number(coresDraft);
@@ -40,10 +52,7 @@
 			sockets,
 			cores,
 			memoryMB,
-			tags: tagsDraft
-				.split(',')
-				.map((tag) => tag.trim())
-				.filter(Boolean)
+			tags: [...selectedTags]
 		});
 	}
 </script>
@@ -81,14 +90,33 @@
 				data-testid="vm-hardware-memory"
 			/>
 		</label>
-		<label class="grid gap-1.5 text-sm font-medium">
+		<div class="grid gap-1.5 text-sm font-medium">
 			{m['vms.hardware.tags']()}
-			<input
-				class="pv-input"
-				bind:value={tagsDraft}
-				data-testid="vm-hardware-tags"
-			/>
-		</label>
+			{#if catalogTags.length === 0}
+				<p class="text-sm font-normal text-muted-foreground" data-testid="vm-hardware-tags-empty">
+					{m['vms.create.tagsNoneAvailable']()}
+				</p>
+			{:else}
+				<div class="flex flex-wrap gap-2" role="group" aria-label={m['vms.hardware.tags']()} data-testid="vm-hardware-tags">
+					{#each catalogTags as tag (tag.name)}
+						{@const isSelected = selectedTags.has(tag.name)}
+						<button
+							type="button"
+							aria-pressed={isSelected}
+							onclick={() => toggleTag(tag.name)}
+							data-testid="vm-hardware-tag-{tag.name}"
+							class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background {isSelected
+								? 'border-transparent bg-primary text-primary-foreground'
+								: 'border-border bg-muted text-muted-foreground hover:bg-muted/80'}"
+						>
+							<span class="h-2 w-2 rounded-full" style="background-color: {tag.color}" aria-hidden="true"></span>
+							{tag.name}
+						</button>
+					{/each}
+				</div>
+				<p class="text-xs font-normal text-muted-foreground">{m['vms.hardware.tagsHint']()}</p>
+			{/if}
+		</div>
 	</div>
 	{#if hardwareWillRestart}
 		<p class="mt-4 rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning-soft-foreground" data-testid="vm-hardware-restart-notice">

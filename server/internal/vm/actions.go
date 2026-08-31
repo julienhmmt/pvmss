@@ -23,24 +23,6 @@ const forceStopPoll = 100 * time.Millisecond
 
 var maxForceStopWait = 15 * time.Second
 
-// Shutdown escalation constants (ticket 05).
-const (
-	shutdownEscalationWait = 60 * time.Second
-	postEscalationStopWait = 30 * time.Second
-)
-
-var (
-	// ShutdownPollInterval is the interval between live-status polls during
-	// shutdown escalation. A var so tests can shorten it.
-	ShutdownPollInterval = 2 * time.Second
-	// MaxShutdownEscalationWait bounds the normal shutdown poll before
-	// escalating to stop. A var so tests can shorten it.
-	MaxShutdownEscalationWait = shutdownEscalationWait
-	// MaxPostEscalationWait bounds the post-stop poll. A var so tests can
-	// shorten it.
-	MaxPostEscalationWait = postEscalationStopWait
-)
-
 // AuditRecorder is the store dependency for recording a write. Only the method
 // T05 needs is on the interface, so the handler test can use the real store
 // and production can use *store.Store.
@@ -138,12 +120,10 @@ type WriteDeps struct {
 // once per distinct affected cluster. This avoids N redundant cluster
 // snapshots during a bulk action.
 //
-// For shutdown, when deps.StatusReader is non-nil, Action implements bounded
-// escalation (ticket 05): without Force, it sends shutdown, polls live status
-// for up to 60s, and auto-escalates to stop if the guest hasn't stopped; with
-// Force, it skips shutdown and sends stop directly. Both shutdown and stop are
-// recorded as separate audit entries when escalation occurs (same pattern as
-// Delete's force-stop).
+// shutdown is a pure guest-agent/ACPI shutdown: the guest OS decides whether
+// to stop, and a guest that ignores the request keeps running (the user then
+// chooses stop explicitly). With Force, shutdown skips the ACPI request and
+// stops the VM directly.
 func Action(ctx context.Context, deps BulkDeps, index *inventory.Index, clusterName string, vmid int, action string) error {
 	if !validActions[action] {
 		return fmt.Errorf("%w: %q", ErrActionRejected, action)
@@ -154,10 +134,12 @@ func Action(ctx context.Context, deps BulkDeps, index *inventory.Index, clusterN
 		return err
 	}
 
-	// Shutdown with escalation (ticket 05). Only when a StatusReader is
-	// available — legacy callers without one get the old immediate behavior.
-	if action == "shutdown" && deps.StatusReader != nil {
-		return shutdownWithEscalation(ctx, deps, entity, clusterName, vmid)
+	// Shutdown with Force skips the ACPI request and stops the VM directly.
+	// Without Force, shutdown falls through to the normal path below: a pure
+	// guest-agent/ACPI shutdown — the guest OS decides; if it ignores the
+	// request the VM keeps running and the user must use stop explicitly.
+	if action == "shutdown" && deps.Force {
+		return forceShutdown(ctx, deps, entity, clusterName, vmid)
 	}
 
 	// Idempotence (ticket 08): start on a running VM and stop on a stopped
@@ -211,6 +193,21 @@ func isAlreadyInTargetState(action string, live cluster.VMStatus) bool {
 	}
 
 	return false
+}
+
+// forceShutdown implements shutdown with Force: skip the ACPI request and stop
+// the VM directly, recording the stop as its own audit entry (same pattern as
+// Delete's force-stop).
+func forceShutdown(ctx context.Context, deps BulkDeps, entity Entity, clusterName string, vmid int) error {
+	if err := deps.Writer.Action(ctx, entity.Node, entity.VMID, "stop"); err != nil {
+		return fmt.Errorf("cluster stop: %w", err)
+	}
+
+	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, clusterName, vmid, "stop"); err != nil {
+		return fmt.Errorf(auditWrapFmt, err)
+	}
+
+	return nil
 }
 
 // Lock retry constants (ticket 08). Vars so tests can shorten them.
@@ -292,92 +289,6 @@ func extractLockName(err error) (string, bool) {
 	}
 
 	return msg[start : start+end], true
-}
-
-// shutdownWithEscalation implements the bounded shutdown→stop escalation
-// (ticket 05). Without Force: send shutdown, poll live status for up to
-// maxShutdownEscalationWait, escalate to stop if still running, then poll
-// for up to maxPostEscalationWait. With Force: skip shutdown, send stop
-// directly. Both transitions are audited separately when escalation occurs.
-func shutdownWithEscalation(ctx context.Context, deps BulkDeps, entity Entity, clusterName string, vmid int) error {
-	if deps.Force {
-		// Force: skip shutdown, go directly to stop.
-		if err := deps.Writer.Action(ctx, entity.Node, entity.VMID, "stop"); err != nil {
-			return fmt.Errorf("cluster stop: %w", err)
-		}
-
-		if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, clusterName, vmid, "stop"); err != nil {
-			return fmt.Errorf(auditWrapFmt, err)
-		}
-
-		return nil
-	}
-
-	// Normal: send shutdown with timeout, then poll for stopped.
-	if err := deps.Writer.Action(ctx, entity.Node, entity.VMID, "shutdown"); err != nil {
-		return fmt.Errorf("cluster shutdown: %w", err)
-	}
-
-	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, clusterName, vmid, "shutdown"); err != nil {
-		return fmt.Errorf(auditWrapFmt, err)
-	}
-
-	// Poll for stopped up to the escalation budget.
-	stopped, err := pollForStopped(ctx, deps.StatusReader, entity.Node, vmid, MaxShutdownEscalationWait)
-	if err != nil {
-		// Status read failure during polling — the shutdown was already sent.
-		// Don't fail the whole action (best-effort): returning nil here despite
-		// a non-nil err is intentional, not a missed error wrap.
-		return nil //nolint:nilerr // best-effort: shutdown already dispatched
-	}
-
-	if stopped {
-		return nil
-	}
-
-	// Escalation: guest didn't stop within the budget. Send stop.
-	if err := deps.Writer.Action(ctx, entity.Node, entity.VMID, "stop"); err != nil {
-		return fmt.Errorf("cluster stop (shutdown escalation): %w", err)
-	}
-
-	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, clusterName, vmid, "stop"); err != nil {
-		return fmt.Errorf(auditWrapFmt, err)
-	}
-
-	// Poll for stopped up to the post-escalation budget.
-	_, _ = pollForStopped(ctx, deps.StatusReader, entity.Node, vmid, MaxPostEscalationWait)
-
-	return nil
-}
-
-// pollForStopped polls the live status reader until the VM reports stopped or
-// the budget expires. Returns true if the VM reached stopped, false if the
-// budget expired. A context cancellation returns the context error.
-func pollForStopped(ctx context.Context, reader cluster.VMStatusReader, node string, vmid int, budget time.Duration) (bool, error) {
-	deadline := time.NewTimer(budget)
-	defer deadline.Stop()
-
-	ticker := time.NewTicker(ShutdownPollInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			live, err := reader.VMStatus(ctx, node, vmid)
-			if err != nil {
-				// Transient read error: keep polling.
-				continue
-			}
-
-			if live.Status == cluster.VMStopped {
-				return true, nil
-			}
-		case <-deadline.C:
-			return false, nil
-		case <-ctx.Done():
-			return false, ctx.Err()
-		}
-	}
 }
 
 // Delete permanently removes a VM and its disks (V14: no soft-delete, no undo).

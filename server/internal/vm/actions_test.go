@@ -556,27 +556,14 @@ func (w *trackingWriter) recordedActions() []string {
 }
 
 //nolint:paralleltest // serial: shared fake VM fixture + global var mutation
-func TestAction_ShutdownEscalation_GuestStopsBeforeTimeout(t *testing.T) {
-	// Shorten the escalation budget and poll interval so the test runs fast.
-	originalEscalation := vm.MaxShutdownEscalationWait
-	originalPost := vm.MaxPostEscalationWait
-	originalPoll := vm.ShutdownPollInterval
-	vm.MaxShutdownEscalationWait = 200 * time.Millisecond
-	vm.MaxPostEscalationWait = 200 * time.Millisecond
-	vm.ShutdownPollInterval = 20 * time.Millisecond
-
-	t.Cleanup(func() {
-		vm.MaxShutdownEscalationWait = originalEscalation
-		vm.MaxPostEscalationWait = originalPost
-		vm.ShutdownPollInterval = originalPoll
-	})
-
+func TestAction_Shutdown_PureGuestShutdown_NoEscalation(t *testing.T) {
 	fake := actionsIndex(t)
 	idx := buildResolveIndex(t)
 	st := bulkTestStore(t)
 	writer := &trackingWriter{Fake: *fake}
-	// Guest stops on the 2nd poll.
-	reader := &scriptedStatusReader{status: []cluster.VMStatus{cluster.VMRunning, cluster.VMStopped}}
+	// Guest never stops — shutdown must NOT escalate to stop; the guest OS
+	// decides. The user must send stop explicitly if they want a force-stop.
+	reader := &scriptedStatusReader{status: []cluster.VMStatus{cluster.VMRunning}}
 
 	// VM 100 is running in the fake dataset.
 	err := vm.Action(context.Background(), vm.BulkDeps{
@@ -607,75 +594,19 @@ func TestAction_ShutdownEscalation_GuestStopsBeforeTimeout(t *testing.T) {
 }
 
 //nolint:paralleltest // serial: shared fake VM fixture + global var mutation
-func TestAction_ShutdownEscalation_GuestDoesNotStop_EscalatesToStop(t *testing.T) {
-	originalEscalation := vm.MaxShutdownEscalationWait
-	originalPost := vm.MaxPostEscalationWait
-	originalPoll := vm.ShutdownPollInterval
-	vm.MaxShutdownEscalationWait = 100 * time.Millisecond
-	vm.MaxPostEscalationWait = 100 * time.Millisecond
-	vm.ShutdownPollInterval = 20 * time.Millisecond
-
-	t.Cleanup(func() {
-		vm.MaxShutdownEscalationWait = originalEscalation
-		vm.MaxPostEscalationWait = originalPost
-		vm.ShutdownPollInterval = originalPoll
-	})
-
-	fake := actionsIndex(t)
-	idx := buildResolveIndex(t)
-	st := bulkTestStore(t)
-	writer := &trackingWriter{Fake: *fake}
-	// Guest never stops — always running.
-	reader := &scriptedStatusReader{status: []cluster.VMStatus{cluster.VMRunning}}
-
-	// VM 100 is running in the fake dataset.
-	err := vm.Action(context.Background(), vm.BulkDeps{
-		Actor:        aliceIdentity(),
-		Writer:       writer,
-		Audit:        st,
-		Refresher:    noopRefresher{},
-		StatusReader: reader,
-	}, idx, testClusterName, 100, actionShutdown)
-	if err != nil {
-		t.Fatalf("Action: %v", err)
-	}
-
-	actions := writer.recordedActions()
-	// shutdown then stop.
-	if len(actions) != 2 || actions[0] != actionShutdown || actions[1] != actionStop {
-		t.Errorf("actions = %v, want [shutdown stop]", actions)
-	}
-
-	rows, err := st.QueryAudit(context.Background())
-	if err != nil {
-		t.Fatalf("QueryAudit: %v", err)
-	}
-
-	if len(rows) != 2 {
-		t.Fatalf("audit rows = %d, want 2", len(rows))
-	}
-
-	if rows[0].Action != actionShutdown || rows[1].Action != actionStop {
-		t.Errorf("audit actions = %s %s, want shutdown stop", rows[0].Action, rows[1].Action)
-	}
-}
-
-//nolint:paralleltest // serial: shared fake VM fixture + global var mutation
 func TestAction_ShutdownForce_SkipsShutdownGoesDirectlyToStop(t *testing.T) {
 	fake := actionsIndex(t)
 	idx := buildResolveIndex(t)
 	st := bulkTestStore(t)
 	writer := &trackingWriter{Fake: *fake}
-	reader := &scriptedStatusReader{status: []cluster.VMStatus{cluster.VMStopped}}
 
 	// VM 100 is running in the fake dataset.
 	err := vm.Action(context.Background(), vm.BulkDeps{
-		Actor:        aliceIdentity(),
-		Writer:       writer,
-		Audit:        st,
-		Refresher:    noopRefresher{},
-		StatusReader: reader,
-		Force:        true,
+		Actor:     aliceIdentity(),
+		Writer:    writer,
+		Audit:     st,
+		Refresher: noopRefresher{},
+		Force:     true,
 	}, idx, testClusterName, 100, actionShutdown)
 	if err != nil {
 		t.Fatalf("Action: %v", err)
@@ -694,43 +625,6 @@ func TestAction_ShutdownForce_SkipsShutdownGoesDirectlyToStop(t *testing.T) {
 
 	if len(rows) != 1 || rows[0].Action != actionStop {
 		t.Errorf("audit rows = %v, want 1 stop entry", rows)
-	}
-}
-
-//nolint:paralleltest // serial: shared fake VM fixture + global var mutation
-func TestAction_ShutdownEscalation_ContextCancellation(t *testing.T) {
-	originalEscalation := vm.MaxShutdownEscalationWait
-	vm.MaxShutdownEscalationWait = 10 * time.Second
-
-	t.Cleanup(func() { vm.MaxShutdownEscalationWait = originalEscalation })
-
-	fake := actionsIndex(t)
-	idx := buildResolveIndex(t)
-	st := bulkTestStore(t)
-	writer := &trackingWriter{Fake: *fake}
-	reader := &scriptedStatusReader{status: []cluster.VMStatus{cluster.VMRunning}}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	// Cancel after shutdown is sent but during polling.
-	go func() {
-		time.Sleep(50 * time.Millisecond)
-		cancel()
-	}()
-
-	// VM 100 is running in the fake dataset.
-	_ = vm.Action(ctx, vm.BulkDeps{
-		Actor:        aliceIdentity(),
-		Writer:       writer,
-		Audit:        st,
-		Refresher:    noopRefresher{},
-		StatusReader: reader,
-	}, idx, testClusterName, 100, actionShutdown)
-
-	actions := writer.recordedActions()
-	// shutdown was sent, but stop should NOT have been sent (context cancelled
-	// during polling before escalation).
-	if len(actions) != 1 || actions[0] != actionShutdown {
-		t.Errorf("actions = %v, want [shutdown] (context cancelled before escalation)", actions)
 	}
 }
 

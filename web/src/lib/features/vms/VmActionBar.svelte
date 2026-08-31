@@ -2,6 +2,14 @@
 	import { getVmDetailContext, type VmAction } from './detail.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import PlayIcon from '$lib/shared/ui/icons/PlayIcon.svelte';
+	import PowerOffIcon from '$lib/shared/ui/icons/PowerOffIcon.svelte';
+	import StopIcon from '$lib/shared/ui/icons/StopIcon.svelte';
+	import RestartIcon from '$lib/shared/ui/icons/RestartIcon.svelte';
+	import ResetIcon from '$lib/shared/ui/icons/ResetIcon.svelte';
+	import PauseIcon from '$lib/shared/ui/icons/PauseIcon.svelte';
+	import TrashIcon from '$lib/shared/ui/icons/TrashIcon.svelte';
+	import type { Component } from 'svelte';
 
 	const store = getVmDetailContext();
 	const toast = getToastContext();
@@ -9,6 +17,7 @@
 	type ActionDef = {
 		kind: VmAction;
 		label: () => string;
+		icon: Component<{ class?: string }>;
 		/** Shown when the VM is in this status — the button is disabled otherwise. */
 		applicable: import('./list.svelte').VmStatus[];
 		variant: 'primary' | 'neutral' | 'danger';
@@ -17,13 +26,13 @@
 	};
 
 	const ACTIONS: readonly ActionDef[] = [
-		{ kind: 'start', label: () => m['vms.action.start'](), applicable: ['stopped'], variant: 'primary', successToast: (name) => m['toast.vmStarted']({ name }) },
-		{ kind: 'shutdown', label: () => m['vms.action.shutdown'](), applicable: ['running'], variant: 'neutral', successToast: (name) => m['toast.vmShutdown']({ name }) },
-		{ kind: 'stop', label: () => m['vms.action.stop'](), applicable: ['running'], variant: 'danger', successToast: (name) => m['toast.vmStopped']({ name }) },
-		{ kind: 'reboot', label: () => m['vms.action.reboot'](), applicable: ['running'], variant: 'neutral', successToast: (name) => m['toast.vmRebooted']({ name }) },
-		{ kind: 'reset', label: () => m['vms.action.reset'](), applicable: ['running', 'paused'], variant: 'danger', successToast: (name) => m['toast.vmReset']({ name }) },
-		{ kind: 'pause', label: () => m['vms.action.pause'](), applicable: ['running'], variant: 'neutral', successToast: (name) => m['toast.vmPaused']({ name }) },
-		{ kind: 'resume', label: () => m['vms.action.resume'](), applicable: ['paused'], variant: 'primary', successToast: (name) => m['toast.vmResumed']({ name }) }
+		{ kind: 'start', label: () => m['vms.action.start'](), icon: PlayIcon, applicable: ['stopped'], variant: 'primary', successToast: (name) => m['toast.vmStarted']({ name }) },
+		{ kind: 'shutdown', label: () => m['vms.action.shutdown'](), icon: PowerOffIcon, applicable: ['running'], variant: 'neutral', successToast: (name) => m['toast.vmShutdown']({ name }) },
+		{ kind: 'stop', label: () => m['vms.action.stop'](), icon: StopIcon, applicable: ['running'], variant: 'danger', successToast: (name) => m['toast.vmStopped']({ name }) },
+		{ kind: 'reboot', label: () => m['vms.action.reboot'](), icon: RestartIcon, applicable: ['running'], variant: 'neutral', successToast: (name) => m['toast.vmRebooted']({ name }) },
+		{ kind: 'reset', label: () => m['vms.action.reset'](), icon: ResetIcon, applicable: ['running', 'paused'], variant: 'danger', successToast: (name) => m['toast.vmReset']({ name }) },
+		{ kind: 'pause', label: () => m['vms.action.pause'](), icon: PauseIcon, applicable: ['running'], variant: 'neutral', successToast: (name) => m['toast.vmPaused']({ name }) },
+		{ kind: 'resume', label: () => m['vms.action.resume'](), icon: PlayIcon, applicable: ['paused'], variant: 'primary', successToast: (name) => m['toast.vmResumed']({ name }) }
 	] as const;
 
 	interface Props {
@@ -65,26 +74,28 @@
 	{#each ACTIONS as action (action.kind)}
 		<button
 			type="button"
-			class="rounded-lg px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50 {variantClass(action.variant)}"
+			class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50 {variantClass(action.variant)}"
 			disabled={store.actionInFlight || !isApplicable(action)}
 			onclick={() => handleAction(action.kind)}
 			data-testid="vm-action-{action.kind}"
 			title={action.label()}
 			aria-label={action.label()}
 		>
+			<action.icon class="h-4 w-4" />
 			{action.label()}
 		</button>
 	{/each}
 
 	<button
 		type="button"
-		class="ml-auto rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
+		class="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
 		disabled={store.deleteInFlight}
 		onclick={onDelete}
 		data-testid="vm-action-delete"
 		title={m['vms.action.delete']()}
 		aria-label={m['vms.action.delete']()}
 	>
+		<TrashIcon class="h-4 w-4" />
 		{m['vms.action.delete']()}
 	</button>
 </div>

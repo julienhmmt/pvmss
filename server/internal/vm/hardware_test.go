@@ -8,6 +8,7 @@ import (
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/vm"
+	"slices"
 	"testing"
 )
 
@@ -32,7 +33,7 @@ func TestUpdateHardware_RestartsForResourceChanges(t *testing.T) {
 
 	calls := cluster.FakeCallsFor(101)
 	// The setup "start" is call 0; UpdateHardware's stop/update/start are 1-3.
-	if len(calls) != 4 || calls[1].Action != "stop" || calls[2].Action != "update_hardware" || calls[3].Action != "start" {
+	if len(calls) != 4 || calls[1].Action != "stop" || calls[2].Action != "update_hardware" || calls[3].Action != actionStart {
 		t.Fatalf("calls = %+v, want setup-start/stop/update_hardware/start", calls)
 	}
 }
@@ -51,6 +52,52 @@ func TestUpdateHardware_TagsOnlyStaysLive(t *testing.T) {
 	calls := cluster.FakeCallsFor(101)
 	if len(calls) != 1 || calls[0].Action != "update_hardware" {
 		t.Fatalf("calls = %+v, want one update_hardware call", calls)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake cluster dataset
+func TestUpdateHardware_UnknownTagRejected(t *testing.T) {
+	cluster.ResetFake()
+
+	deps := hardwareDependencies(diskTestIndex(t, 101, cluster.VMStopped), aliceIdentity(), 101)
+
+	patch := vm.HardwarePatch{Tags: &[]string{"forged-tag"}}
+	if err := vm.UpdateHardware(context.Background(), deps, patch); !errors.Is(err, vm.ErrNotApproved) {
+		t.Fatalf("err = %v, want ErrNotApproved", err)
+	}
+
+	if calls := cluster.FakeCallsFor(101); len(calls) != 0 {
+		t.Fatalf("fake calls = %+v, want none", calls)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake cluster dataset
+func TestUpdateHardware_PvmssTagAlwaysRetained(t *testing.T) {
+	cluster.ResetFake()
+
+	deps := hardwareDependencies(diskTestIndex(t, 101, cluster.VMRunning), aliceIdentity(), 101)
+
+	// A patch that omits pvmss must not strip the mandatory tag (FR-002):
+	// a VM without it is invisible to every PVMSS endpoint.
+	patch := vm.HardwarePatch{Tags: &[]string{"updated"}}
+	if err := vm.UpdateHardware(context.Background(), deps, patch); err != nil {
+		t.Fatalf("UpdateHardware: %v", err)
+	}
+
+	calls := cluster.FakeCallsFor(101)
+	if len(calls) != 1 || calls[0].Action != "update_hardware" {
+		t.Fatalf("calls = %+v, want one update_hardware call", calls)
+	}
+
+	snap, err := (cluster.Fake{}).Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	for _, testVM := range snap.VMs {
+		if testVM.VMID == 101 && !slices.Contains(testVM.Tags, testPvmssTag) {
+			t.Fatalf("tags = %v, want pvmss retained", testVM.Tags)
+		}
 	}
 }
 
@@ -85,5 +132,6 @@ func TestUpdateHardware_RejectsNonOwner(t *testing.T) {
 func hardwareDependencies(index *inventory.Index, actor auth.Identity, vmid int) vm.HardwareDependencies {
 	return vm.HardwareDependencies{
 		Index: index, Actor: actor, ClusterName: testClusterName, VMID: vmid, Writer: cluster.Fake{}, Gabarit: policy.DefaultGabarit(), Audit: noopAudit{}, Refresher: noopRefresher{},
+		AllowedTags: []string{testPvmssTag, "updated"},
 	}
 }

@@ -119,6 +119,35 @@ func TestRouter_CloudInitRoutesAreSpecific(t *testing.T) {
 	}
 }
 
+// TestRouter_BootCDROMRouteRegistered verifies the boot-cdrom route is wired
+// through NewRouter: an unauthenticated POST must reach the handler (401), not
+// fall through to the mux's 404. Regression: the handler existed but the mux
+// pattern was missing, so every real request 404'd.
+func TestRouter_BootCDROMRouteRegistered(t *testing.T) {
+	t.Parallel()
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	authHandler := newAuthHandler(t)
+	projection := inventory.NewProjection()
+	health := httpapi.NewHealth(fakeHealthPinger{}, logger, nil, 60*time.Second)
+	clusterNodes := httpapi.NewClusterNodes(projection, logger)
+	clusterRefresh := httpapi.NewClusterRefresh(inventory.NewRefresher(inventory.NewWorker(&stubClusterClient{}, projection, time.Hour, logger), 5*time.Second), logger)
+	vms := httpapi.NewVMs(projection, authHandler, 100, -1, logger)
+	vmDetail := httpapi.NewVMDetail(projection, authHandler, cluster.Fake{}, nil, nil, logger)
+	mux := httpapi.NewRouter(httpapi.RouterConfig{
+		Health: health, ClusterNodes: clusterNodes, ClusterRefresh: clusterRefresh,
+		VMs: vms, VMDetail: vmDetail, Auth: authHandler, Log: logger,
+	})
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/vms/default/101/boot-cdrom", strings.NewReader("{}"))
+	mux.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusUnauthorized {
+		t.Fatalf("POST boot-cdrom status = %d, want 401 (route reached handler, not 404)", recorder.Code)
+	}
+}
+
 //nolint:paralleltest // serial: shared router and filesystem fixtures
 func TestRouter_MissingBuildDir_HealthStillWorks(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))

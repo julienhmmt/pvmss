@@ -196,6 +196,53 @@ func TestContract_CloudInitReaderAndWriter(t *testing.T) {
 	}
 }
 
+// TestContract_AttachEnsuresDriveFirst — ticket 03's contract: attaching a
+// snippet provisions the cloud-init drive before the cicustom write, in the
+// fake exactly like in the real client (Proxmox silently ignores cicustom
+// without a drive). Detaching needs no drive.
+//
+//nolint:paralleltest // serial: shared fake cloud-init fixture
+func TestContract_AttachEnsuresDriveFirst(t *testing.T) {
+	cluster.ResetFake()
+
+	if err := (cluster.Fake{}).AttachCloudInitSnippet(context.Background(), cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-101.yml", 101); err != nil {
+		t.Fatalf("AttachCloudInitSnippet: %v", err)
+	}
+
+	calls := cluster.FakeCallsFor(101)
+	if len(calls) != 2 || calls[0].Action != "ensure_cloudinit_drive" || calls[1].Action != "attach_cloudinit_snippet" {
+		t.Fatalf("calls = %+v, want ensure then attach", calls)
+	}
+
+	cluster.ResetFake()
+
+	if err := (cluster.Fake{}).AttachCloudInitSnippet(context.Background(), cluster.FakeNode01, cluster.FakeSnippetStorage, "", 101); err != nil {
+		t.Fatalf("detach AttachCloudInitSnippet: %v", err)
+	}
+
+	if calls := cluster.FakeCallsFor(101); len(calls) != 1 || calls[0].Action != "attach_cloudinit_snippet" {
+		t.Fatalf("detach calls = %+v, want a single attach (no drive provisioning)", calls)
+	}
+}
+
+// TestContract_SetCloudInitPasswordCarriesUser — ticket 02's contract: the
+// password apply records the target user, which the caller resolves from the
+// VM's ciuser (never a hardcoded root).
+//
+//nolint:paralleltest // serial: shared fake cloud-init fixture
+func TestContract_SetCloudInitPasswordCarriesUser(t *testing.T) {
+	cluster.ResetFake()
+
+	if err := (cluster.Fake{}).SetCloudInitPassword(context.Background(), cluster.FakeNode01, 101, "debian", "s3cret"); err != nil {
+		t.Fatalf("SetCloudInitPassword: %v", err)
+	}
+
+	calls := cluster.FakeCallsFor(101)
+	if len(calls) != 1 || calls[0].Action != "set_cloudinit_password" || calls[0].Name != "debian" {
+		t.Fatalf("calls = %+v, want one set_cloudinit_password for debian", calls)
+	}
+}
+
 //nolint:paralleltest // serial: shared fake identity fixture
 func TestContract_Snapshot_StableAcrossCalls(t *testing.T) {
 	impls := map[string]cluster.Client{

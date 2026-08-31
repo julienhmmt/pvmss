@@ -100,10 +100,10 @@ type BulkDeps struct {
 	Writer            cluster.Writer
 	Audit             AuditRecorder
 	Refresher         IndexRefresher
-	// StatusReader reads live VM status for shutdown escalation (ticket 05).
-	// Nil when the caller does not support escalation (legacy callers).
+	// StatusReader reads live VM status for idempotent start/stop no-ops.
+	// Nil when the caller does not support live-status reads (legacy callers).
 	StatusReader cluster.VMStatusReader
-	// Force authorizes shutdown to skip ACPI and go directly to stop (ticket 05).
+	// Force authorizes shutdown to skip ACPI and go directly to stop.
 	Force bool
 }
 

@@ -291,7 +291,7 @@ func TestFake_SetCloudInitPassword_NotFound(t *testing.T) {
 	t.Parallel()
 
 	fake := cluster.NewFake("test-ci-pw-notfound")
-	if err := fake.SetCloudInitPassword(context.Background(), cluster.FakeNode01, 99999, "newpass"); !errors.Is(err, cluster.ErrNotFound) {
+	if err := fake.SetCloudInitPassword(context.Background(), cluster.FakeNode01, 99999, "debian", "newpass"); !errors.Is(err, cluster.ErrNotFound) {
 		t.Fatalf("SetCloudInitPassword(not found) error = %v, want ErrNotFound", err)
 	}
 }

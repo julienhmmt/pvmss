@@ -17,6 +17,7 @@ type fakeState struct {
 	identMu  sync.RWMutex
 	pushMu   sync.RWMutex
 	sshMu    sync.RWMutex
+	pingMu   sync.Mutex
 
 	vms           []VM
 	nodes         []Node
@@ -29,6 +30,16 @@ type fakeState struct {
 	errDeleteUser error
 	pushErr       error
 	sshErr        error
+	// agentPingFailures, when positive, makes the next n PingGuestAgent calls
+	// return ErrUnreachable before succeeding (ticket 05: exercises the
+	// caller's bounded ping loop without a real guest).
+	agentPingFailures int
+	// guestPasswordErr, when set, is returned by the next
+	// guestPasswordErrLeft SetCloudInitPassword calls instead of succeeding
+	// (ticket 05: inject cluster.ErrGuestUserUnknown to exercise the
+	// retry-on-missing-account loop).
+	guestPasswordErr     error
+	guestPasswordErrLeft int
 	// snapshotWriteErr, when set, is returned by every snapshot write
 	// (create/rollback/delete) instead of dispatching (ticket 02: tests inject
 	// a cluster rejection to exercise the handler's error mapping).

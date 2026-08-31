@@ -100,6 +100,17 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 		DiskTotal:         diskTotal,
 		NetworkInterfaces: nics,
 	})
+
+	// The real create path always sends agent=1 (proxmox_create.go), so a
+	// fake-created VM carries an enabled guest agent even before any
+	// cloud-init config is written — the password pre-flight reads it from
+	// the config (ticket 05).
+	if state.cloudInitConfigs == nil {
+		state.cloudInitConfigs = make(map[fakeCloudInitKey]CloudInitConfig)
+	}
+
+	state.cloudInitConfigs[fakeCloudInitKey{node: spec.Node, vmid: spec.VMID}] = CloudInitConfig{Agent: true, IPMode: CloudInitIPModeDHCP}
+
 	state.vmMu.Unlock()
 
 	upid := fmt.Sprintf("UPID:%s:%08X:%08X:%08X:qmcreate:%d:pvmss@pve:", spec.Node, spec.VMID, 0x10000000+spec.VMID, 0x20000000+spec.VMID, spec.VMID)
