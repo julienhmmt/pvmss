@@ -531,6 +531,7 @@
   "vms.disks.mountSelectIso": "Select approved ISO",
   "vms.disks.mount": "Mount",
   "vms.disks.bootFromCdrom": "Boot from CD-ROM",
+  "vms.disks.bootCdromBooting": "Booting from CD-ROM…",
   "vms.disks.bootFromCdromNeedsIso": "Mount an ISO first",
   "vms.disks.bootCdromConfirmTitle": "Boot from CD-ROM?",
   "vms.disks.bootCdromConfirmBody": "The VM will boot once from the mounted ISO. The boot order is restored afterwards, so later reboots start from the disk again.",

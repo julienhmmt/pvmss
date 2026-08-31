@@ -217,6 +217,30 @@ describe('VmDetailStore.bootFromCdrom', () => {
 		expect(store.bootCdromError).toBeNull();
 	});
 
+	it('fires onAccepted as soon as the server accepts, before convergence', async () => {
+		stubFetchSequence([
+			{ status: 200, body: { status: 'accepted' } },
+			// First live read: not up yet. Convergence needs another tick.
+			{ status: 200, body: { status: 'stopped', uptime: 0 } },
+			{ status: 200, body: { status: 'running', uptime: 0 } }
+		]);
+
+		let accepted = false;
+		const store = makeStore({ ...baseEntity, status: 'stopped' });
+		const promise = store.bootFromCdrom(() => {
+			accepted = true;
+		});
+
+		// The callback fires while the boot is still in flight — the toast
+		// must not wait for the guest to be up.
+		await vi.waitFor(() => expect(accepted).toBe(true));
+		expect(store.bootCdromInFlight).toBe(true);
+
+		await vi.advanceTimersByTimeAsync(ACTION_POLL_MS);
+		await vi.waitFor(() => expect(promise).resolves.toBe(true));
+		expect(store.entity?.status).toBe('running');
+	});
+
 	it('shuts a running VM down first, then boots from the CD-ROM', async () => {
 		const { calls } = stubFetchSequence([
 			// shutdown action
