@@ -499,7 +499,6 @@
   "vms.cloudinit.dialogScopeNow": "Immédiatement, via l'agent guest — le mot de passe (la VM doit tourner avec l'agent QEMU activé).",
   "vms.cloudinit.dialogScopeFirstBoot": "Au premier démarrage d'une VM neuve seulement — l'utilisateur et la liste de clés SSH. Sur une VM déjà provisionnée, ils exigent cloud-init clean dans le guest (voir le guide cloud-init).",
   "vms.cloudinit.dialogReboot": "Redémarrer maintenant après l'enregistrement",
-  "vms.cloudinit.dialogReboot": "Redémarrer maintenant après l'enregistrement",
   "vms.cloudinit.dialogConfirm": "Confirmer l'enregistrement",
   "vms.disks.heading": "Disques",
   "vms.disks.description": "Les disques de démarrage sont protégés. L'augmentation est disponible pendant l'exécution de la VM.",
