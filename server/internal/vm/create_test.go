@@ -15,6 +15,7 @@ import (
 	"pvmss/server/internal/vm"
 	"slices"
 	"testing"
+	"time"
 )
 
 // createFixture wires the real seeded store and the fake Creator, so
@@ -50,6 +51,11 @@ func newCreateFixture(t *testing.T) createFixture {
 		if err := st.SetBridgeEnabled(ctx, "default", bridge.Node, bridge.Name, true); err != nil {
 			t.Fatalf("seed bridge approval: %v", err)
 		}
+	}
+
+	// FR-013: tags are admin-curated — seed the one the tests reference.
+	if err := st.InsertTag(ctx, testClusterName, "team-web", "#3b82f6", time.Now().UTC().Format(time.RFC3339)); err != nil {
+		t.Fatalf("seed tag approval: %v", err)
 	}
 
 	return createFixture{store: st, fake: cluster.Fake{}}

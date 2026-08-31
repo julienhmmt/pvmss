@@ -8,6 +8,7 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/policy"
+	"slices"
 )
 
 var (
@@ -36,6 +37,9 @@ type HardwareDependencies struct {
 	Gabarit     policy.Gabarit
 	Audit       AuditRecorder
 	Refresher   IndexRefresher
+	// AllowedTags is the admin-curated tag allowlist for this cluster
+	// (FR-013). A tag patch referencing a name outside it is rejected.
+	AllowedTags []string
 }
 
 // UpdateHardware applies a hardware patch, restarting a running VM only when
@@ -48,6 +52,12 @@ func UpdateHardware(ctx context.Context, deps HardwareDependencies, patch Hardwa
 
 	if patch.Sockets == nil && patch.Cores == nil && patch.MemoryMB == nil && patch.Tags == nil {
 		return ErrEmptyHardwarePatch
+	}
+
+	// FR-013: users may only assign admin-curated tags. The mandatory pvmss
+	// tag is re-added below, so it never needs to be in the patch.
+	if err := validatePatchTags(patch, deps.AllowedTags); err != nil {
+		return err
 	}
 
 	gabarit, err := resolveGabarit(ctx, deps.Policy, deps.Gabarit, deps.ClusterName, func(g policy.Gabarit) bool { return g.MaxSockets > 0 })
@@ -160,9 +170,35 @@ func effectiveHardware(entity Entity, patch HardwarePatch, gabarit policy.Gabari
 	tags := append([]string(nil), entity.Tags...)
 	if patch.Tags != nil {
 		tags = append([]string(nil), (*patch.Tags)...)
+		// pvmss is mandatory (FR-002): a VM without it is invisible to every
+		// PVMSS endpoint, so a user tag patch can never strip it.
+		if !slices.Contains(tags, pvmssTag) {
+			tags = append(tags, pvmssTag)
+		}
 	}
 
 	return sockets, cores, memoryMB, tags, nil
+}
+
+// validatePatchTags rejects tag patches referencing names outside the
+// admin-curated catalog (FR-013). A patch without tags is always valid.
+func validatePatchTags(patch HardwarePatch, allowed []string) error {
+	if patch.Tags == nil {
+		return nil
+	}
+
+	return validateTags(*patch.Tags, allowed)
+}
+
+// validateTags rejects tags outside the admin-curated catalog (FR-013).
+func validateTags(tags, allowed []string) error {
+	for _, tag := range tags {
+		if !slices.Contains(allowed, tag) {
+			return fmt.Errorf("%w: tag %q", ErrNotApproved, tag)
+		}
+	}
+
+	return nil
 }
 
 func hardwareChanged(entity Entity, sockets, cores, memoryMB int) bool {

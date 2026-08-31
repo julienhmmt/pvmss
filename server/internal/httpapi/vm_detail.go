@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -272,7 +273,15 @@ type hardwareOptionsDTO struct {
 	Storages []hardwareStorageDTO `json:"storages"`
 	Bridges  []hardwareBridgeDTO  `json:"bridges"`
 	ISOs     []hardwareISODTO     `json:"isos"`
+	Tags     []hardwareTagDTO     `json:"tags"`
 	Limits   vmLimitsDTO          `json:"limits"`
+}
+
+// hardwareTagDTO is one admin-curated tag offered to the VM tag picker.
+// The protected pvmss tag is excluded — users cannot toggle it.
+type hardwareTagDTO struct {
+	Name  string `json:"name"`
+	Color string `json:"color"`
 }
 
 type hardwareStorageDTO struct {
@@ -851,9 +860,17 @@ func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	allowedTags, err := h.allowedTagNames(r.Context(), clusterName)
+	if err != nil {
+		h.log.Error(msgHardwareCatalogFailed, "component", "httpapi", "error", err)
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return
+	}
+
 	err = vm.UpdateHardware(r.Context(), vm.HardwareDependencies{
 		Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer,
-		Policy: h.policy, Audit: h.store, Refresher: h.refresherFor(clusterName),
+		Policy: h.policy, Audit: h.store, Refresher: h.refresherFor(clusterName), AllowedTags: allowedTags,
 	}, vm.HardwarePatch{Sockets: request.Sockets, Cores: request.Cores, MemoryMB: request.MemoryMB, Tags: request.Tags})
 	if err != nil {
 		h.writeHardwareError(w, err)
@@ -951,6 +968,8 @@ func (h *VMDetail) writeHardwareError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrEmptyHardwarePatch):
 		h.writeDetailError(w, http.StatusBadRequest, "empty_patch", err.Error())
+	case errors.Is(err, vm.ErrNotApproved):
+		h.writeDetailError(w, http.StatusBadRequest, "not_approved", err.Error())
 	case errors.Is(err, policy.ErrNodeCapacityExceeded):
 		h.writeDetailError(w, http.StatusBadRequest, "capacity_exceeded", err.Error())
 	case errors.Is(err, policy.ErrUnavailable):
@@ -1105,6 +1124,23 @@ func (h *VMDetail) writeBootCDROMError(w http.ResponseWriter, err error) {
 	}
 }
 
+// allowedTagNames loads the admin-curated tag allowlist for a cluster
+// (FR-013). ListTags lazily seeds the mandatory pvmss tag, so the allowlist
+// is never empty on a healthy store.
+func (h *VMDetail) allowedTagNames(ctx context.Context, clusterName string) ([]string, error) {
+	tags, err := catalog.ListTags(ctx, h.store, h.projection, clusterName)
+	if err != nil {
+		return nil, err
+	}
+
+	names := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		names = append(names, tag.Name)
+	}
+
+	return names, nil
+}
+
 func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.Header().Set("Allow", "GET")
@@ -1176,10 +1212,19 @@ func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request)
 		remaining[string(bus)] = max - used
 	}
 
+	tagDTOs, err := hardwareTagDTOs(r.Context(), h, clusterName)
+	if err != nil {
+		h.log.Error(msgHardwareCatalogFailed, "component", "httpapi", "error", err)
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return
+	}
+
 	h.writeJSONStatus(w, http.StatusOK, hardwareOptionsDTO{
 		Storages: hardwareStorages(resources.Storages, index),
 		Bridges:  hardwareBridges(resources.Bridges, entity.Node),
 		ISOs:     hardwareISOs(resources.ISOs),
+		Tags:     tagDTOs,
 		Limits: vmLimitsDTO{
 			MaxSockets:        gabarit.MaxSockets,
 			MaxCores:          gabarit.MaxCores,
@@ -1189,6 +1234,26 @@ func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request)
 			RemainingBusSlots: remaining,
 		},
 	})
+}
+
+// hardwareTagDTOs loads the cluster's admin-curated tags for the VM tag
+// picker. The protected pvmss tag is excluded — users cannot toggle it.
+func hardwareTagDTOs(ctx context.Context, h *VMDetail, clusterName string) ([]hardwareTagDTO, error) {
+	tags, err := catalog.ListTags(ctx, h.store, h.projection, clusterName)
+	if err != nil {
+		return nil, err
+	}
+
+	dtOs := make([]hardwareTagDTO, 0, len(tags))
+	for _, tag := range tags {
+		if tag.Protected {
+			continue
+		}
+
+		dtOs = append(dtOs, hardwareTagDTO{Name: tag.Name, Color: tag.Color})
+	}
+
+	return dtOs, nil
 }
 
 func hardwareStorages(storages []catalog.Storage, index *inventory.Index) []hardwareStorageDTO {

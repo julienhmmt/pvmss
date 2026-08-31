@@ -112,7 +112,7 @@ This is the core of the product. Everything else exists to support it.
 | **API** | `GET /api/v1/vm-create/catalog` → `POST /api/v1/vms` → `GET /api/v1/tasks/{upid}` (polled) |
 | **Steps** | 1. Base (name, profile, cluster, node). 2. Disk. 3. Hardware. 4. Network. 5. Review — the only place raw JSON is shown, and only on request. 6. Submit; the response is a Proxmox UPID. 7. The task tray polls until done, then refreshes the VM list. |
 | **States** | Wizard step validation; task tray shows in-flight work so the user can navigate away |
-| **Safety nets** | Every choice comes from the admin-approved catalog — nodes, storages, bridges, ISOs, profiles, cloud-init templates. Quotas and gabarit limits are checked server-side (`policy/`), not in the wizard. |
+| **Safety nets** | Every choice comes from the admin-approved catalog — nodes, storages, bridges, ISOs, profiles, cloud-init templates, tags. Quotas and gabarit limits are checked server-side (`policy/`), not in the wizard. |
 
 ### Operate a single VM
 
@@ -131,7 +131,7 @@ This is the core of the product. Everything else exists to support it.
 | Overview | 7 power actions (shutdown = guest-agent/ACPI only, no auto force-stop; stop = hard stop), rename, description, delete | `POST .../actions`, `PATCH .../{vmid}`, `DELETE .../{vmid}` |
 | Disks | add, resize, detach | `POST .../disks`, `PUT .../disks/{diskKey}/resize`, `DELETE .../disks/{diskKey}` |
 | Network | edit interface | `PUT .../network` |
-| Hardware | CPU/RAM, CDROM | `GET .../hardware-options`, `PUT .../hardware`, `PATCH .../cdrom` |
+| Hardware | CPU/RAM, tags (admin-curated picker), CDROM | `GET .../hardware-options`, `PUT .../hardware`, `PATCH .../cdrom` |
 | Cloud-init | form + raw snippet editor | `GET`/`PUT .../cloudinit`, `GET`/`PUT .../cloudinit/snippet` |
 | Snapshots | create, rollback, delete | `GET`/`POST .../snapshots`, `POST .../snapshots/{name}/rollback`, `DELETE .../snapshots/{name}` |
 
