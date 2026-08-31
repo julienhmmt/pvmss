@@ -40,6 +40,11 @@ var (
 	// ErrSSHKeyUserUnknown is returned by Writer.AddSSHKey when the guest user
 	// named in the request does not exist on the guest (guest-agent exit code 3).
 	ErrSSHKeyUserUnknown = errors.New("ssh key user not found on guest")
+	// ErrGuestUserUnknown is returned by Writer.SetCloudInitPassword when the
+	// guest agent reports that the target user does not exist yet — cloud-init
+	// creates the account mid-boot, so an early attempt is retryable, not
+	// fatal (see vm.applyCloudInitPassword's bounded retry loop).
+	ErrGuestUserUnknown = errors.New("guest user does not exist")
 	// ErrVMIDTaken is returned by CreateVM/CloneVM when Proxmox rejects the
 	// VMID because it already exists (US5/issue-05). GET /cluster/nextid
 	// returns the smallest free ID at call time without reserving it, so two
@@ -96,6 +101,12 @@ type CloudInitConfig struct {
 	Gateway      string
 	DNSServer    string
 	SearchDomain string
+	// Agent mirrors the VM config's agent= flag (first comma token == "1").
+	// It is not a cloud-init key, but it rides along because the password
+	// path needs to know whether the QEMU guest agent is enabled before it
+	// probes the guest (ticket 05's pre-flight), and the config read is
+	// already in hand. Never exposed through the API DTO.
+	Agent bool
 }
 
 // CloudInitUpdate is a partial cloud-init update. Nil fields remain unchanged.
@@ -144,7 +155,17 @@ type Writer interface {
 	// never uses the cipassword config key, whose crypt hash Proxmox stores on
 	// the cloud-init seed drive and cloud-init caches under /var/lib/cloud —
 	// both readable by any tenant root for the VM's lifetime (REPORT.md §1).
-	SetCloudInitPassword(ctx context.Context, node string, vmid int, password string) error
+	// user is the VM's own ciuser: a cloud image's account is debian/ubuntu
+	// and root is locked, so a hardcoded "root" writes the password onto an
+	// account nobody can log into. The guest account is created by cloud-init
+	// mid-boot, so a user-unknown response is reported as ErrGuestUserUnknown
+	// for the caller's bounded retry.
+	SetCloudInitPassword(ctx context.Context, node string, vmid int, user, password string) error
+	// PingGuestAgent probes the QEMU guest agent on a running guest. It uses
+	// a short per-attempt timeout and no retry: an agent configured but not
+	// yet up hangs until timeout, and retrying only multiplies the wait —
+	// the caller polls instead (ticket 05).
+	PingGuestAgent(ctx context.Context, node string, vmid int) error
 	// AddSSHKey injects a single public key into the running guest's
 	// authorized_keys via the QEMU guest agent, without a reboot. The key is
 	// passed as a positional argv to a fixed script (no shell interpolation),

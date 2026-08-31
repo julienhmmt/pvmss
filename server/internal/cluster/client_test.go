@@ -29,6 +29,9 @@ const (
 	testTicket    = "ticket-abc"
 	testTokenName = "user@pve!pvmss" //nolint:gosec // test fixture, not a real credential
 	testTokenVal  = "secret-token"   //nolint:gosec // test fixture, not a real credential
+	// testSnippetFilename is the per-VM snippet filename the cloud-init tests
+	// push and attach (goconst).
+	testSnippetFilename = "pvmss-101.yml"
 )
 
 // nopReadWriteCloser wraps a bytes.Buffer so it satisfies io.ReadWriteCloser

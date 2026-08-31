@@ -10,6 +10,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 )
@@ -38,10 +39,16 @@ func (p Proxmox) GetCloudInitConfig(ctx context.Context, node string, vmid int) 
 }
 
 func parseCloudInitConfig(cfg proxmoxVMConfig) CloudInitConfig {
-	result := CloudInitConfig{IPMode: CloudInitIPModeDHCP, User: cfg.str("ciuser")}
+	result := CloudInitConfig{IPMode: CloudInitIPModeDHCP, User: cfg.str("ciuser"), Agent: agentEnabled(cfg.str("agent"))}
 
 	if keys := cfg.str("sshkeys"); keys != "" {
-		decoded, err := url.QueryUnescape(keys)
+		// Proxmox percent-decodes sshkeys with Perl's uri_unescape, which does
+		// NOT turn '+' back into a space — url.QueryEscape encodes a space AS
+		// '+', so every key written that way reaches the guest as
+		// "ssh-ed25519+AAAA...". PathUnescape decodes %XX and leaves '+'
+		// intact, the exact inverse of the PathEscape used at write time and
+		// the correct counterpart to Proxmox's uri_unescape.
+		decoded, err := url.PathUnescape(keys)
 		if err != nil {
 			decoded = keys
 		}
@@ -61,6 +68,15 @@ func parseCloudInitConfig(cfg proxmoxVMConfig) CloudInitConfig {
 	result.SearchDomain = cfg.str("searchdomain")
 
 	return result
+}
+
+// agentEnabled parses the VM config's agent= flag. Proxmox's grammar is
+// "[1|0][,frozen=[1|0]]" — the first comma token decides, so "0,frozen=1" is
+// disabled and "1,frozen=1" is enabled.
+func agentEnabled(raw string) bool {
+	first, _, _ := strings.Cut(raw, ",")
+
+	return first == "1"
 }
 
 // parseIPConfig reads Proxmox's ipconfigN grammar ("ip=dhcp" or
@@ -99,16 +115,38 @@ func proxmoxFindSnippetStorage(ctx context.Context, rest proxmoxRESTClient, node
 
 	var rows []struct {
 		Storage string `json:"storage"`
+		Active  int    `json:"active"`
+		Shared  int    `json:"shared"`
 	}
 	if err := decodeData(raw, &rows); err != nil {
 		return "", fmt.Errorf("decode node storages: %w", err)
 	}
 
-	if len(rows) == 0 {
+	// Prefer a shared storage over a node-local one: a snippet on local
+	// storage is invisible to the other nodes, so a later migration would
+	// leave the VM pointing at a file it cannot read (ticket 04). Inactive
+	// storages are skipped outright. Proxmox reports the flags as 1/0.
+	best := ""
+
+	for _, row := range rows {
+		if row.Active != 1 {
+			continue
+		}
+
+		if row.Shared == 1 {
+			return row.Storage, nil
+		}
+
+		if best == "" {
+			best = row.Storage
+		}
+	}
+
+	if best == "" {
 		return "", ErrNotFound
 	}
 
-	return rows[0].Storage, nil
+	return best, nil
 }
 
 // EnsureCloudInitDrive implements Writer: idempotently ensures the fixed
@@ -163,7 +201,14 @@ func (p Proxmox) SetCloudInitConfig(ctx context.Context, node string, vmid int, 
 	}
 
 	if len(config.SSHKeys) > 0 {
-		form.Set("sshkeys", url.QueryEscape(strings.Join(config.SSHKeys, "\n")))
+		// Proxmox percent-decodes sshkeys with Perl's uri_unescape, which does
+		// NOT turn '+' back into a space. url.QueryEscape encodes a space AS
+		// '+', so every key written that way reaches the guest as
+		// "ssh-ed25519+AAAA..." — an invalid key. PathEscape uses %20, which
+		// survives the decode intact. The read side must stay PathUnescape
+		// (parseCloudInitConfig): a base64 blob legitimately contains '+',
+		// which QueryUnescape would corrupt into spaces.
+		form.Set("sshkeys", url.PathEscape(strings.Join(config.SSHKeys, "\n")))
 	}
 
 	form.Set("ipconfig0", encodeIPConfig(config))
@@ -186,7 +231,19 @@ func (p Proxmox) SetCloudInitConfig(ctx context.Context, node string, vmid int, 
 // user-data, so ciuser/sshkeys/ipconfig0 keep applying; a user= slot would
 // replace the generated user-data and silently drop the structured config.
 // An empty filename detaches the snippet by clearing cicustom.
+//
+// Like SetCloudInitConfig, the attach path ensures the cloud-init drive first:
+// without one in the fixed ide3 slot, Proxmox silently ignores cicustom — no
+// seed ISO is generated and the snippet never reaches the guest. Detaching
+// needs no drive, so the ensure runs only when a filename is given; the
+// contract matches the fake's own ordering (ticket 03).
 func (p Proxmox) AttachCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int) error {
+	if filename != "" {
+		if err := p.EnsureCloudInitDrive(ctx, node, vmid); err != nil {
+			return err
+		}
+	}
+
 	form := url.Values{}
 
 	if filename == "" {
@@ -200,22 +257,71 @@ func (p Proxmox) AttachCloudInitSnippet(ctx context.Context, node, storage, file
 	return err
 }
 
-// SetCloudInitPassword applies the cloud-init password via the QEMU guest
-// agent so it lands only in /etc/shadow on the guest. It deliberately does NOT
-// use the cipassword config key: Proxmox writes that as a crypt hash on the
-// cloud-init seed drive (/dev/sr0) and cloud-init caches the same user-data
-// under /var/lib/cloud on the root disk — both readable by any tenant root for
-// the VM's lifetime. The agent path avoids the seed drive entirely. Requires a
+// SetCloudInitPassword applies the cloud-init password for user via the QEMU
+// guest agent so it lands only in /etc/shadow on the guest. It deliberately
+// does NOT use the cipassword config key: Proxmox writes that as a crypt hash
+// on the cloud-init seed drive (/dev/sr0) and cloud-init caches the same
+// user-data under /var/lib/cloud on the root disk — both readable by any
+// tenant root for the VM's lifetime. The agent path avoids the seed drive
+// entirely. user is the VM's own ciuser — a cloud image's account is
+// debian/ubuntu and root is locked, so a hardcoded "root" would write the
+// password onto an account nobody can log into (ticket 02). Requires a
 // running guest with qemu-guest-agent enabled; callers surface a clear error
 // when the agent is unavailable.
-func (p Proxmox) SetCloudInitPassword(ctx context.Context, node string, vmid int, password string) error {
+func (p Proxmox) SetCloudInitPassword(ctx context.Context, node string, vmid int, user, password string) error {
 	form := url.Values{}
-	form.Set("username", "root")
+	form.Set("username", user)
 	form.Set("password", password)
 
 	_, err := p.rest().do(ctx, http.MethodPut, fmt.Sprintf("/nodes/%s/qemu/%d/agent/set-user-password", url.PathEscape(node), vmid), form)
 	if err != nil {
+		if isGuestUserUnknown(err) {
+			return fmt.Errorf("%w: %w", ErrGuestUserUnknown, err)
+		}
+
 		return fmt.Errorf("set user password via guest agent: %w", err)
+	}
+
+	return nil
+}
+
+// guestUserUnknownMarkers are the substrings Proxmox's guest-agent layer
+// reports when the target account does not exist on the guest. cloud-init
+// creates the account mid-boot, so this error means "too early", not "wrong
+// user" — the caller retries within its bounded window (ticket 05).
+var guestUserUnknownMarkers = []string{"does not exist", "no such user"}
+
+// isGuestUserUnknown reports whether err is the guest agent's user-not-found
+// rejection. The wording varies across Proxmox/QGA versions, so both known
+// phrasings are matched case-insensitively; anything else is surfaced as-is.
+func isGuestUserUnknown(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	msg := strings.ToLower(err.Error())
+
+	return slices.ContainsFunc(guestUserUnknownMarkers, func(marker string) bool {
+		return strings.Contains(msg, marker)
+	})
+}
+
+// agentPingTimeout bounds one guest-agent ping. An agent configured but not
+// started pends until timeout — a short per-attempt bound keeps each probe
+// cheap; the caller polls instead of retrying.
+const agentPingTimeout = 3 * time.Second
+
+// PingGuestAgent implements Writer: one POST to the guest-agent ping endpoint
+// with a short timeout and no retry (POSTs are never retried anyway). Any
+// error — unreachable, VM stopped, agent not up — means "not ready yet"; the
+// caller decides whether to keep polling.
+func (p Proxmox) PingGuestAgent(ctx context.Context, node string, vmid int) error {
+	ctx, cancel := context.WithTimeout(ctx, agentPingTimeout)
+	defer cancel()
+
+	_, err := p.rest().withNoRetry().do(ctx, http.MethodPost, fmt.Sprintf("/nodes/%s/qemu/%d/agent/ping", url.PathEscape(node), vmid), nil)
+	if err != nil {
+		return fmt.Errorf("guest agent ping: %w", err)
 	}
 
 	return nil

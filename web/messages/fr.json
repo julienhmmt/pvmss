@@ -484,6 +484,7 @@
   "vms.cloudinit.errorSaveConfig": "Échec de l'enregistrement de la configuration cloud-init",
   "vms.cloudinit.snippetHeading": "Extrait YAML personnalisé",
   "vms.cloudinit.snippetHelp": "Utilisez un document commençant par #cloud-config. Un contenu vide efface l'extrait enregistré.",
+  "vms.cloudinit.snippetSecretWarning": "Ne mettez pas de secret ici : l'extrait est stocké en clair et lisible par les administrateurs.",
   "vms.cloudinit.snippetLoading": "Chargement de l'extrait…",
   "vms.cloudinit.snippetContent": "Contenu YAML",
   "vms.cloudinit.snippetPushFailed": "Extrait enregistré, mais pas encore appliqué à la VM. Réessayez plus tard.",

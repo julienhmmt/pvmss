@@ -27,3 +27,11 @@ fields include:
 
 See the upstream [cloud-init docs](https://cloudinit.readthedocs.io/) for the
 full schema.
+
+## Snippets are not a vault
+
+Snippet content is stored in plain text — both in the portal's database and on
+the cluster's cloud-init storage, where cloud-init must be able to read it —
+and any administrator can view it. Never put passwords, API tokens, or private
+keys in a snippet; use the cloud-init **password** field (delivered through
+the guest agent and never stored) and SSH keys instead.

@@ -484,6 +484,7 @@
   "vms.cloudinit.errorSaveConfig": "failed to save cloud-init configuration",
   "vms.cloudinit.snippetHeading": "Custom YAML snippet",
   "vms.cloudinit.snippetHelp": "Use a document beginning with #cloud-config. Empty content clears the saved snippet.",
+  "vms.cloudinit.snippetSecretWarning": "Do not put secrets here: the snippet is stored in plain text and readable by administrators.",
   "vms.cloudinit.snippetLoading": "Loading snippet…",
   "vms.cloudinit.snippetContent": "YAML content",
   "vms.cloudinit.snippetPushFailed": "Snippet saved, but not yet applied to the VM. Try again later.",

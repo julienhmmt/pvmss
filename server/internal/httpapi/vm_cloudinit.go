@@ -21,17 +21,18 @@ const maxCloudInitSnippetBody = 128 * 1024
 
 // VMCloudInit serves the four per-VM cloud-init endpoints.
 type VMCloudInit struct {
-	projection *inventory.Projection
-	resolver   vm.ClusterIndexResolver
-	auth       *Auth
-	reader     cluster.CloudInitReader
-	writer     cluster.Writer
-	clients    cluster.ClientProvider
-	store      *store.Store
-	refresher  vm.IndexRefresher
-	refreshers ClusterRefresherResolver
-	policy     *policy.Policy
-	log        *slog.Logger
+	projection   *inventory.Projection
+	resolver     vm.ClusterIndexResolver
+	auth         *Auth
+	reader       cluster.CloudInitReader
+	writer       cluster.Writer
+	statusReader cluster.VMStatusReader
+	clients      cluster.ClientProvider
+	store        *store.Store
+	refresher    vm.IndexRefresher
+	refreshers   ClusterRefresherResolver
+	policy       *policy.Policy
+	log          *slog.Logger
 }
 
 // VMCloudInitDeps groups the shared dependencies for constructing a VMCloudInit
@@ -41,15 +42,16 @@ type VMCloudInit struct {
 // below resolves per-request from the request's own :cluster path value
 // instead of the single bound Projection/Reader/Writer.
 type VMCloudInitDeps struct {
-	Source     inventory.LookupSource
-	Projection *inventory.Projection
-	Auth       *Auth
-	Reader     cluster.CloudInitReader
-	Writer     cluster.Writer
-	Clients    cluster.ClientProvider
-	Store      *store.Store
-	Refresher  vm.IndexRefresher
-	Log        *slog.Logger
+	Source       inventory.LookupSource
+	Projection   *inventory.Projection
+	Auth         *Auth
+	Reader       cluster.CloudInitReader
+	Writer       cluster.Writer
+	StatusReader cluster.VMStatusReader
+	Clients      cluster.ClientProvider
+	Store        *store.Store
+	Refresher    vm.IndexRefresher
+	Log          *slog.Logger
 }
 
 // NewVMCloudInit creates the dedicated cloud-init handler.
@@ -72,7 +74,23 @@ func NewVMCloudInit(deps VMCloudInitDeps, services ...*policy.Policy) *VMCloudIn
 		refreshers = registryRefresherResolver{registry: registry}
 	}
 
-	return &VMCloudInit{projection: deps.Projection, resolver: resolver, auth: deps.Auth, reader: deps.Reader, writer: deps.Writer, clients: deps.Clients, store: deps.Store, refresher: deps.Refresher, refreshers: refreshers, policy: policyService, log: deps.Log}
+	return &VMCloudInit{projection: deps.Projection, resolver: resolver, auth: deps.Auth, reader: deps.Reader, writer: deps.Writer, statusReader: deps.StatusReader, clients: deps.Clients, store: deps.Store, refresher: deps.Refresher, refreshers: refreshers, policy: policyService, log: deps.Log}
+}
+
+// statusReaderFor resolves the cluster.VMStatusReader for clusterName, falling
+// back to the single-cluster reader when per-cluster resolution is
+// unavailable — the same fallback rule VMStatusBatch applies.
+func (h *VMCloudInit) statusReaderFor(clusterName string) cluster.VMStatusReader {
+	if h.clients == nil {
+		return h.statusReader
+	}
+
+	reader, err := resolveCapability(h.clients, h.statusReader, clusterName, "VMStatusReader")
+	if err != nil {
+		return h.statusReader
+	}
+
+	return reader
 }
 
 // index resolves the current Index for clusterName, writing the appropriate
@@ -264,6 +282,7 @@ func (h *VMCloudInit) putConfig(w http.ResponseWriter, r *http.Request, actor au
 	rebooted, err := vm.SetCloudInitConfig(r.Context(), vm.CloudInitConfigDeps{
 		Index: index, Actor: actor, ClusterName: clusterName, VMID: vmid,
 		Reader: reader, Writer: writer, Audit: h.store, Refresher: h.refresherFor(clusterName),
+		StatusReader: h.statusReaderFor(clusterName),
 	}, cluster.CloudInitUpdate{
 		User: request.User, Password: request.Password, SSHKeys: request.SSHKeys, IPMode: request.IPMode,
 		IPAddress: request.IPAddress, Gateway: request.Gateway, DNSServer: request.DNSServer, SearchDomain: request.SearchDomain,
@@ -420,6 +439,8 @@ func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 		h.writeError(w, http.StatusBadRequest, "invalid_key", err.Error())
 	case errors.Is(err, cluster.ErrSSHKeyUserUnknown):
 		h.writeError(w, http.StatusBadRequest, "ssh_user_unknown", "the cloud-init user does not exist on the guest")
+	case h.writeGuestAgentError(w, err):
+		// Already written by the helper (ticket 02/05 password-path errors).
 	case errors.Is(err, cloudinit.ErrSnippetPrefix), errors.Is(err, cloudinit.ErrSnippetTooLarge), errors.Is(err, cloudinit.ErrSnippetInvalidUTF8):
 		h.writeError(w, http.StatusBadRequest, "invalid_snippet", err.Error())
 	case errors.Is(err, vm.ErrSnippetPushFailed):
@@ -430,6 +451,25 @@ func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 		h.log.Error("cloud-init request failed", "component", "httpapi", "error", err)
 		h.writeError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
+}
+
+// writeGuestAgentError maps the password-path errors introduced by tickets 02
+// and 05. It writes the response and reports true when err is one of them.
+func (h *VMCloudInit) writeGuestAgentError(w http.ResponseWriter, err error) bool {
+	switch {
+	case errors.Is(err, vm.ErrNoCloudInitUser):
+		h.writeError(w, http.StatusBadRequest, "no_cloudinit_user", "no cloud-init user is defined on this VM; set one before setting a password")
+	case errors.Is(err, vm.ErrGuestAgentDisabled):
+		h.writeError(w, http.StatusConflict, "guest_agent_disabled", "the QEMU guest agent is not enabled on this VM")
+	case errors.Is(err, vm.ErrVMNotRunning):
+		h.writeError(w, http.StatusConflict, "vm_not_running", "start the VM before setting its cloud-init password")
+	case errors.Is(err, vm.ErrGuestAgentUnreachable):
+		h.writeError(w, http.StatusGatewayTimeout, "guest_agent_unreachable", err.Error())
+	default:
+		return false
+	}
+
+	return true
 }
 
 func (h *VMCloudInit) writeJSONStatus(w http.ResponseWriter, status int, value any) {

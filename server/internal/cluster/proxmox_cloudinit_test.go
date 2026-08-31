@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"errors"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -198,7 +199,7 @@ func TestProxmox_PushCloudInitSnippet(t *testing.T) {
 
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
-	err := p.PushCloudInitSnippet(context.Background(), testNodeName, "local", "pvmss-101.yml", testVMID, "#cloud-config\n")
+	err := p.PushCloudInitSnippet(context.Background(), testNodeName, "local", testSnippetFilename, testVMID, "#cloud-config\n")
 	if err != nil {
 		t.Fatalf("PushCloudInitSnippet: %v", err)
 	}
@@ -207,7 +208,7 @@ func TestProxmox_PushCloudInitSnippet(t *testing.T) {
 		t.Errorf("content field = %q, want snippets", gotContentField)
 	}
 
-	if gotFilename != "pvmss-101.yml" {
+	if gotFilename != testSnippetFilename {
 		t.Errorf("filename = %q", gotFilename)
 	}
 
@@ -216,6 +217,8 @@ func TestProxmox_PushCloudInitSnippet(t *testing.T) {
 	}
 }
 
+// TestProxmox_FindSnippetStorage_NotFound verifies the refusal when the node
+// has no snippet-capable storage at all.
 func TestProxmox_FindSnippetStorage_NotFound(t *testing.T) {
 	t.Parallel()
 
@@ -230,6 +233,153 @@ func TestProxmox_FindSnippetStorage_NotFound(t *testing.T) {
 	_, err := p.FindSnippetStorage(context.Background(), testNodeName)
 	if err == nil {
 		t.Fatal("expected an error when no snippet-capable storage exists")
+	}
+}
+
+// TestProxmox_SetCloudInitConfig_SSHKeysSurviveProxmoxDecode is the ticket-01
+// regression test. Proxmox percent-decodes sshkeys with Perl's uri_unescape,
+// which does NOT turn '+' back into a space; url.QueryEscape encodes a space
+// AS '+', so every key written that way reached the guest as
+// "ssh-ed25519+AAAA...". The wire body must therefore carry %2520 (the form
+// encoding of the literal "%20" PathEscape produced), never %2B.
+func TestProxmox_SetCloudInitConfig_SSHKeysSurviveProxmoxDecode(t *testing.T) {
+	t.Parallel()
+
+	var rawBody string
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":{"scsi0":"local-lvm:vm-101-disk-0,size=32G"}}`)
+		})
+		mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, r *http.Request) {
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				t.Fatalf("read body: %v", err)
+			}
+
+			rawBody = string(body)
+
+			writeJSONFixture(t, w, `{"data":null}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	config := CloudInitConfig{SSHKeys: []string{"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5 alice@laptop"}, IPMode: CloudInitIPModeDHCP}
+	if err := p.SetCloudInitConfig(context.Background(), testNodeName, testVMID, config); err != nil {
+		t.Fatalf("SetCloudInitConfig: %v", err)
+	}
+
+	// The space between key type and blob must travel as %2520 on the wire
+	// (form-encoding of the percent-encoded %20), never as %2B (the
+	// form-encoding of QueryEscape's '+').
+	if !strings.Contains(rawBody, "%2520") {
+		t.Errorf("wire body = %q, want a %%2520-encoded space (PathEscape), got QueryEscape's plus", rawBody)
+	}
+
+	if strings.Contains(rawBody, "%2B") {
+		t.Errorf("body carries a form-encoded '+' for a space: %s", rawBody)
+	}
+}
+
+// TestProxmox_SetCloudInitConfig_SSHKeysRoundTrip simulates Proxmox's exact
+// decode chain — form-decode on receipt, then uri_unescape (decodes %XX,
+// leaves '+') when generating the seed — and asserts the key read back is
+// byte-identical, including a base64 blob containing a literal '+'.
+func TestProxmox_SetCloudInitConfig_SSHKeysRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	keyWithPlus := "ssh-ed25519 AAAAB3NzaC1+abc== alice@laptop"
+	want := []string{keyWithPlus, "ssh-ed25519 BBBB bob@laptop"}
+
+	var stored string
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("parse form: %v", err)
+			}
+
+			// Proxmox stores the form-decoded value verbatim in the config.
+			stored = r.FormValue("sshkeys")
+
+			writeJSONFixture(t, w, `{"data":null}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, _ *http.Request) {
+			// A cloud-init drive is already present, so the ensure step
+			// short-circuits and the test exercises only the sshkeys path.
+			writeJSONFixture(t, w, `{"data":{"ide3":"local-lvm:vm-101-cloudinit,media=cdrom","sshkeys":`+strconv.Quote(stored)+`}}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	config := CloudInitConfig{SSHKeys: want, IPMode: CloudInitIPModeDHCP}
+	if err := p.SetCloudInitConfig(context.Background(), testNodeName, testVMID, config); err != nil {
+		t.Fatalf("SetCloudInitConfig: %v", err)
+	}
+
+	// The stored config must carry %20 for spaces — a '+' would decode to a
+	// space and corrupt the key inside the guest.
+	if strings.Contains(stored, "+ ") {
+		t.Errorf("stored sshkeys = %q, want spaces percent-encoded", stored)
+	}
+
+	got, err := p.GetCloudInitConfig(context.Background(), testNodeName, testVMID)
+	if err != nil {
+		t.Fatalf("GetCloudInitConfig: %v", err)
+	}
+
+	if len(got.SSHKeys) != len(want) || got.SSHKeys[0] != want[0] || got.SSHKeys[1] != want[1] {
+		t.Errorf("round-tripped keys = %+v, want %+v", got.SSHKeys, want)
+	}
+}
+
+// TestProxmox_FindSnippetStorage_PrefersSharedActive verifies the selection
+// rule (ticket 04): inactive storages are skipped, and a shared storage wins
+// over a node-local one so a later migration cannot orphan the snippet.
+func TestProxmox_FindSnippetStorage_PrefersSharedActive(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		rows string
+		want string
+	}{
+		{name: "shared active preferred over local", rows: `[{"storage":"local","active":1,"shared":0},{"storage":"cephfs","active":1,"shared":1}]`, want: "cephfs"},
+		{name: "inactive storage ignored", rows: `[{"storage":"local","active":0,"shared":0},{"storage":"local-2","active":1,"shared":0}]`, want: "local-2"},
+		{name: "only inactive storages is not found", rows: `[{"storage":"local","active":0,"shared":0}]`, want: ""},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+				mux.HandleFunc("GET /api2/json/nodes/node01/storage", func(w http.ResponseWriter, _ *http.Request) {
+					writeJSONFixture(t, w, `{"data":`+tc.rows+`}`)
+				})
+			})
+
+			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+			got, err := p.FindSnippetStorage(context.Background(), testNodeName)
+			if tc.want == "" {
+				if err == nil {
+					t.Fatal("expected an error when no active snippet storage exists")
+				}
+
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("FindSnippetStorage: %v", err)
+			}
+
+			if got != tc.want {
+				t.Errorf("storage = %q, want %q", got, tc.want)
+			}
+		})
 	}
 }
 
@@ -248,7 +398,7 @@ func TestProxmox_AttachCloudInitSnippet(t *testing.T) {
 		wantKey  string
 		wantVal  string
 	}{
-		{name: "vendor slot merges snippet", filename: "pvmss-101.yml", wantKey: "cicustom", wantVal: "vendor=local:snippets/pvmss-101.yml"},
+		{name: "vendor slot merges snippet", filename: testSnippetFilename, wantKey: "cicustom", wantVal: "vendor=local:snippets/pvmss-101.yml"},
 		{name: "empty filename detaches", filename: "", wantKey: "delete", wantVal: "cicustom"},
 	}
 
@@ -266,6 +416,11 @@ func attachCloudInitSnippetSubtest(t *testing.T, filename, wantKey, wantVal stri
 	seen := map[string]string{}
 
 	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		// The VM already carries a cloud-init drive, so the ensure step
+		// (ticket 03) short-circuits and only the cicustom PUT happens.
+		mux.HandleFunc("GET /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":{"ide3":"local-lvm:vm-101-cloudinit,media=cdrom"}}`)
+		})
 		mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/config", recordCloudInitConfigForm(t, seen))
 	})
 
@@ -298,8 +453,90 @@ func recordCloudInitConfigForm(t *testing.T, seen map[string]string) http.Handle
 	}
 }
 
+// TestProxmox_AttachCloudInitSnippet_EnsuresDriveFirst is the ticket-03
+// regression test: without a cloud-init drive, Proxmox silently ignores
+// cicustom, so the attach must provision the drive first — exactly like
+// SetCloudInitConfig does. A detach (empty filename) needs no drive.
+func TestProxmox_AttachCloudInitSnippet_EnsuresDriveFirst(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		filename   string
+		configData string
+		wantPuts   int
+		wantFirst  string
+	}{
+		{
+			name:       "VM without a drive gets one before the attach",
+			filename:   testSnippetFilename,
+			configData: `{"data":{"scsi0":"local-lvm:vm-101-disk-0,size=32G"}}`,
+			wantPuts:   2,
+			wantFirst:  "ide3",
+		},
+		{
+			name:       "VM with a drive attaches directly",
+			filename:   testSnippetFilename,
+			configData: `{"data":{"ide3":"local-lvm:vm-101-cloudinit,media=cdrom"}}`,
+			wantPuts:   1,
+		},
+		{
+			name:       "detach never provisions a drive",
+			filename:   "",
+			configData: `{"data":{"scsi0":"local-lvm:vm-101-disk-0,size=32G"}}`,
+			wantPuts:   1,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var putKeys []string
+
+			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+				mux.HandleFunc("GET /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, _ *http.Request) {
+					writeJSONFixture(t, w, tc.configData)
+				})
+				mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, r *http.Request) {
+					if err := r.ParseForm(); err != nil {
+						t.Fatalf("parse form: %v", err)
+					}
+
+					switch {
+					case r.FormValue("ide3") != "":
+						putKeys = append(putKeys, "ide3")
+					case r.FormValue("cicustom") != "":
+						putKeys = append(putKeys, "cicustom")
+					case r.FormValue("delete") != "":
+						putKeys = append(putKeys, "delete")
+					}
+
+					writeJSONFixture(t, w, `{"data":null}`)
+				})
+			})
+
+			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+			if err := p.AttachCloudInitSnippet(context.Background(), testNodeName, "local", tc.filename, testVMID); err != nil {
+				t.Fatalf("AttachCloudInitSnippet: %v", err)
+			}
+
+			if len(putKeys) != tc.wantPuts {
+				t.Fatalf("PUT sequence = %+v, want %d writes", putKeys, tc.wantPuts)
+			}
+
+			if tc.wantFirst != "" && putKeys[0] != tc.wantFirst {
+				t.Errorf("first PUT = %q, want %q (drive before cicustom)", putKeys[0], tc.wantFirst)
+			}
+		})
+	}
+}
+
 // TestProxmox_SetCloudInitPassword_Agent verifies the password is applied via
-// the guest-agent endpoint (writes /etc/shadow), never cipassword (REPORT.md §1).
+// the guest-agent endpoint (writes /etc/shadow), never cipassword (REPORT.md §1),
+// and that the username is the caller-resolved ciuser — never a hardcoded root
+// (ticket 02: a cloud image's root is locked).
 func TestProxmox_SetCloudInitPassword_Agent(t *testing.T) {
 	t.Parallel()
 
@@ -321,7 +558,7 @@ func TestProxmox_SetCloudInitPassword_Agent(t *testing.T) {
 
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
-	if err := p.SetCloudInitPassword(context.Background(), testNodeName, testVMID, "s3cret"); err != nil {
+	if err := p.SetCloudInitPassword(context.Background(), testNodeName, testVMID, "debian", "s3cret"); err != nil {
 		t.Fatalf("SetCloudInitPassword: %v", err)
 	}
 
@@ -329,8 +566,82 @@ func TestProxmox_SetCloudInitPassword_Agent(t *testing.T) {
 		t.Errorf("path = %q, want agent/set-user-password", gotPath)
 	}
 
-	if gotUser != "root" || gotPassword != "s3cret" {
-		t.Errorf("username/password = %q/%q, want root/s3cret", gotUser, gotPassword)
+	if gotUser != "debian" || gotPassword != "s3cret" {
+		t.Errorf("username/password = %q/%q, want debian/s3cret", gotUser, gotPassword)
+	}
+}
+
+// TestProxmox_SetCloudInitPassword_UserUnknown verifies that the guest agent's
+// "user does not exist" rejection maps to the retryable ErrGuestUserUnknown
+// sentinel (ticket 05: cloud-init creates the account mid-boot).
+func TestProxmox_SetCloudInitPassword_UserUnknown(t *testing.T) {
+	t.Parallel()
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/agent/set-user-password", func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"data":null,"errors":"user 'debian' does not exist"}`))
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	err := p.SetCloudInitPassword(context.Background(), testNodeName, testVMID, "debian", "s3cret")
+	if !errors.Is(err, ErrGuestUserUnknown) {
+		t.Fatalf("err = %v, want ErrGuestUserUnknown", err)
+	}
+}
+
+// TestProxmox_PingGuestAgent verifies the probe hits the agent ping endpoint.
+func TestProxmox_PingGuestAgent(t *testing.T) {
+	t.Parallel()
+
+	var gotPath string
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("POST /api2/json/nodes/node01/qemu/101/agent/ping", func(w http.ResponseWriter, r *http.Request) {
+			gotPath = r.URL.Path
+
+			writeJSONFixture(t, w, `{"data":{}}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	if err := p.PingGuestAgent(context.Background(), testNodeName, testVMID); err != nil {
+		t.Fatalf("PingGuestAgent: %v", err)
+	}
+
+	if gotPath != "/api2/json/nodes/node01/qemu/101/agent/ping" {
+		t.Errorf("path = %q, want agent/ping", gotPath)
+	}
+}
+
+// TestAgentEnabled verifies the agent= grammar: the first comma token decides,
+// so "0,frozen=1" is disabled and "1,frozen=1" enabled.
+func TestAgentEnabled(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		raw  string
+		want bool
+	}{
+		{name: "empty is disabled", raw: "", want: false},
+		{name: "0 is disabled", raw: "0", want: false},
+		{name: "1 is enabled", raw: "1", want: true},
+		{name: "1 with frozen is enabled", raw: "1,frozen=1", want: true},
+		{name: "0 with frozen is disabled", raw: "0,frozen=1", want: false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := agentEnabled(tc.raw); got != tc.want {
+				t.Errorf("agentEnabled(%q) = %v, want %v", tc.raw, got, tc.want)
+			}
+		})
 	}
 }
 
