@@ -190,6 +190,21 @@ func (p Proxmox) SetCDROM(ctx context.Context, node string, vmid int, cdrom CDRO
 	return err
 }
 
+// SetBootOrder implements Writer: writes the persistent boot=order=... key.
+// An empty order deletes the key, restoring Proxmox's default boot behavior.
+func (p Proxmox) SetBootOrder(ctx context.Context, node string, vmid int, order []string) error {
+	form := url.Values{}
+	if len(order) == 0 {
+		form.Set(actionDelete, "boot")
+	} else {
+		form.Set("boot", "order="+strings.Join(order, ";"))
+	}
+
+	_, err := p.rest().do(ctx, http.MethodPut, vmConfigPath(node, vmid), form)
+
+	return err
+}
+
 // UpdateNetwork implements Writer with full-replace semantics (matching the
 // fake's "replaces the fake VM's network interfaces" contract): every netN
 // index present in the live config but absent from interfaces is deleted in

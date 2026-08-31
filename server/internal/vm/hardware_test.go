@@ -32,7 +32,7 @@ func TestUpdateHardware_RestartsForResourceChanges(t *testing.T) {
 
 	calls := cluster.FakeCallsFor(101)
 	// The setup "start" is call 0; UpdateHardware's stop/update/start are 1-3.
-	if len(calls) != 4 || calls[1].Action != "stop" || calls[2].Action != "update_hardware" || calls[3].Action != "start" {
+	if len(calls) != 4 || calls[1].Action != "stop" || calls[2].Action != "update_hardware" || calls[3].Action != actionStart {
 		t.Fatalf("calls = %+v, want setup-start/stop/update_hardware/start", calls)
 	}
 }

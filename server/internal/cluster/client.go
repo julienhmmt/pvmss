@@ -134,6 +134,10 @@ type Writer interface {
 	ResizeDisk(ctx context.Context, node string, vmid int, diskKey string, sizeGB int) error
 	DeleteDisk(ctx context.Context, node string, vmid int, diskKey string) error
 	SetCDROM(ctx context.Context, node string, vmid int, state CDROMState) error
+	// SetBootOrder writes the VM's persistent boot=order=... key. An empty
+	// order deletes the key, restoring Proxmox's default boot behavior. Used
+	// by the one-time boot-from-CDROM flow: set CD-first, start, then restore.
+	SetBootOrder(ctx context.Context, node string, vmid int, order []string) error
 	UpdateNetwork(ctx context.Context, node string, vmid int, interfaces []NetworkInterface) error
 	UpdateHardware(ctx context.Context, node string, vmid, sockets, cores, memoryMB int, tags []string) error
 	// EnableSerial provisions a socket-backed serial port (serial0) on an
