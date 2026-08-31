@@ -15,6 +15,32 @@ After creation, open the VM's **Cloud-init** tab to view or edit the snippet.
 The editor accepts any valid `#cloud-config` document. Changes are pushed to
 the cluster's cloud-init storage and take effect on the next boot.
 
+## What applies when
+
+Cloud-init modules do not all replay the same way:
+
+- **Network settings** (IP, gateway, DNS, search domain) are reapplied at
+  every boot — a reboot is enough.
+- **The password** is delivered immediately to the running guest through the
+  QEMU guest agent; no reboot is involved.
+- **The user and the SSH-key list** (and most of a custom snippet) are
+  consumed by per-instance modules that run **once, on a new VM's first
+  boot**. Changing them on an already-provisioned VM updates the config but
+  does not replay inside the guest.
+
+To reapply user/SSH-key/snippet changes on an already-provisioned VM, run
+inside the guest, then reboot:
+
+```sh
+sudo cloud-init clean --logs --seed && sudo reboot
+```
+
+This resets cloud-init's per-instance state, so the next boot replays the
+modules with the new configuration. To add an SSH key to a running VM
+without any of this, use the **Add key now** section of the Cloud-init tab:
+it injects the key immediately through the guest agent and also saves it to
+the config for future boots.
+
 ## Supported fields
 
 The portal validates that your snippet starts with `#cloud-config`. Common
