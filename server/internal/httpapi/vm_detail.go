@@ -304,7 +304,7 @@ type vmLimitsDTO struct {
 
 type actionRequest struct {
 	Action string `json:"action"`
-	// Force authorizes shutdown to skip ACPI and go directly to stop (ticket 05).
+	// Force authorizes shutdown to skip the ACPI request and stop directly.
 	// Only meaningful for shutdown; ignored for other actions.
 	Force bool `json:"force"`
 }

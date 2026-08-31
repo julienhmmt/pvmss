@@ -100,7 +100,7 @@ This is the core of the product. Everything else exists to support it.
 | **API** | `POST /api/v1/vms/bulk-action` |
 | **Steps** | 1. Select VMs across one or more clusters. 2. Pick an action. 3. Read the per-VM result — each entry is `ok` or `error` with its own message. |
 | **States** | Per-row result, not a single global success/failure |
-| **Safety nets** | Only the five valid power actions are accepted (`validActions`, `server/internal/vm/actions.go:34`): `start`, `stop`, `shutdown`, `reboot`, `reset`. A partial failure never rolls back the successes — it reports them. |
+| **Safety nets** | Only the valid power actions are accepted (`validActions`, `server/internal/vm/actions.go`): `start`, `stop`, `shutdown`, `reboot`, `reset`, `pause`, `resume`. A partial failure never rolls back the successes — it reports them. |
 
 ### Create a VM
 
@@ -128,7 +128,7 @@ This is the core of the product. Everything else exists to support it.
 
 | Tab | Actions | API |
 | --- | --- | --- |
-| Overview | 5 power actions, rename, description, delete | `POST .../actions`, `PATCH .../{vmid}`, `DELETE .../{vmid}` |
+| Overview | 7 power actions (shutdown = guest-agent/ACPI only, no auto force-stop; stop = hard stop), rename, description, delete | `POST .../actions`, `PATCH .../{vmid}`, `DELETE .../{vmid}` |
 | Disks | add, resize, detach | `POST .../disks`, `PUT .../disks/{diskKey}/resize`, `DELETE .../disks/{diskKey}` |
 | Network | edit interface | `PUT .../network` |
 | Hardware | CPU/RAM, CDROM | `GET .../hardware-options`, `PUT .../hardware`, `PATCH .../cdrom` |

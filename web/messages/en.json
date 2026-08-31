@@ -425,7 +425,7 @@
   "vms.detail.errorUpdate": "update failed",
   "vms.action.start": "Start",
   "vms.action.shutdown": "Shut down",
-  "vms.action.stop": "Stop",
+  "vms.action.stop": "Force stop",
   "vms.action.reboot": "Reboot",
   "vms.action.reset": "Reset",
   "vms.action.delete": "Delete…",
