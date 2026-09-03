@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { m } from '$lib/paraglide/messages.js';
+	import Logo from './Logo.svelte';
 	import WarningIcon from './icons/WarningIcon.svelte';
 	import ErrorIcon from './icons/ErrorIcon.svelte';
 
@@ -16,7 +17,13 @@
 >
 	<div class="auth-brand-glow absolute inset-0" aria-hidden="true"></div>
 	<div class="relative flex flex-col gap-8">
-		<a href={resolve('/')} class="text-lg font-bold tracking-tight">{m['shell.title']()}</a>
+		<a
+			href={resolve('/')}
+			class="inline-flex items-center gap-2 text-lg font-bold tracking-tight text-primary-foreground"
+		>
+			<Logo variant="mono" showText={false} class="text-primary-foreground" />
+			{m['shell.title']()}
+		</a>
 		{#if mode === 'warning'}
 			<div class="flex max-w-md flex-col gap-6">
 				<WarningIcon class="h-16 w-16" />
