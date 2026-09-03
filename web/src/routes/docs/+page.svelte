@@ -7,6 +7,7 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Locale } from '$lib/paraglide/runtime.js';
 	import type { DocSummary } from '$lib/features/docs/docs.svelte';
+	import Card from '$lib/shared/ui/Card.svelte';
 
 	interface CategoryGroup {
 		category: string;
@@ -92,29 +93,37 @@
 			<p class="text-muted-foreground">{m['docs.empty']()}</p>
 		{:else}
 			{#each grouped as group (group.category)}
-				<div class="mb-8">
+				<section class="mb-8">
 					<h2 class="mb-3 text-lg font-medium">{group.category}</h2>
-					<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-						{#each group.pages as page (page.id + '-' + page.lang)}
-							<a
-								href={resolve(`/docs/${page.id}?lang=${page.lang}`)}
-								class="block rounded-lg border border-border p-4 transition-colors hover:border-primary/50 hover:bg-accent/30"
-							>
-								<div class="mb-2 flex items-center justify-between gap-2">
-									<h3 class="font-medium">{page.title}</h3>
-									{#if page.audience === 'admin'}
-										<span class={`shrink-0 rounded px-2 py-0.5 text-xs font-medium ${audienceBadgeClass(page.audience)}`}>
-											{m['docs.audienceAdmin']()}
-										</span>
-									{/if}
-								</div>
-								<p class="text-xs text-muted-foreground">
-									<span class="font-mono">{page.id}</span> · {page.lang}
-								</p>
-							</a>
-						{/each}
-					</div>
-				</div>
+					<Card as="div" pad="none">
+						<ul class="divide-y divide-border">
+							{#each group.pages as page, index (page.id + '-' + page.lang)}
+								<li>
+									<a
+										href={resolve(`/docs/${page.id}?lang=${page.lang}`)}
+										class="flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+										class:rounded-t-xl={index === 0}
+										class:rounded-b-xl={index === group.pages.length - 1}
+									>
+										<div class="flex min-w-0 flex-1 flex-col gap-0.5">
+											<div class="flex items-center gap-2">
+												<h3 class="truncate font-medium">{page.title}</h3>
+												{#if page.audience === 'admin'}
+													<span class={`shrink-0 rounded px-2 py-0.5 text-xs font-medium ${audienceBadgeClass(page.audience)}`}>
+														{m['docs.audienceAdmin']()}
+													</span>
+												{/if}
+											</div>
+											<p class="text-xs text-muted-foreground">
+												<span class="font-mono">{page.id}</span> · {page.lang}
+											</p>
+										</div>
+									</a>
+								</li>
+							{/each}
+						</ul>
+					</Card>
+				</section>
 			{/each}
 		{/if}
 	{/if}
