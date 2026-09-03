@@ -80,20 +80,20 @@
   /* Hand-derived from the Layer B light ramp (research.md R3, tokens.md §2).
      Warm near-black ground, lifted orange accent, two distinct mute steps. */
   --background: oklch(17% 0.006 49deg);
-  --foreground: oklch(96% 0.004 95deg);
+  --foreground: oklch(90% 0.004 95deg);
   --card: oklch(21% 0.006 56deg);
-  --card-foreground: oklch(96% 0.004 95deg);
+  --card-foreground: oklch(90% 0.004 95deg);
   --popover: oklch(21% 0.006 56deg);
-  --popover-foreground: oklch(96% 0.004 95deg);
+  --popover-foreground: oklch(90% 0.004 95deg);
   --primary: oklch(72% 0.17 44deg);
   --primary-foreground: oklch(17% 0.006 49deg);
   --secondary: oklch(25% 0.006 56deg);
-  --secondary-foreground: oklch(96% 0.004 95deg);
+  --secondary-foreground: oklch(90% 0.004 95deg);
   --muted: oklch(25% 0.006 56deg);
-  --muted-foreground: oklch(72% 0.01 56deg);
-  --muted-foreground-subtle: oklch(60% 0.012 56deg);
+  --muted-foreground: oklch(65% 0.01 56deg);
+  --muted-foreground-subtle: oklch(55% 0.012 56deg);
   --accent: oklch(25% 0.006 56deg);
-  --accent-foreground: oklch(96% 0.004 95deg);
+  --accent-foreground: oklch(90% 0.004 95deg);
   --destructive: oklch(70.4% 0.191 22.216deg);
   --destructive-foreground: oklch(98.5% 0.001 106.423deg);
   --destructive-soft: oklch(28% 0.07 27.325deg);
@@ -114,9 +114,9 @@
   --info-soft: oklch(28% 0.06 245deg);
   --info-soft-foreground: oklch(85% 0.12 245deg);
   --info-soft-border: oklch(40% 0.1 245deg);
-  --border: oklch(100% 0 0deg / 10%);
+  --border: oklch(100% 0 0deg / 8%);
   --border-subtle: oklch(100% 0 0deg / 6%);
-  --input: oklch(100% 0 0deg / 15%);
+  --input: oklch(100% 0 0deg / 12%);
   --ring: oklch(72% 0.17 44deg);
   --chart-1: oklch(87.9% 0.169 91.605deg);
   --chart-2: oklch(76.9% 0.188 70.08deg);
@@ -124,7 +124,7 @@
   --chart-4: oklch(55.5% 0.163 48.998deg);
   --chart-5: oklch(47.3% 0.137 46.201deg);
   --sidebar: oklch(21% 0.006 56deg);
-  --sidebar-foreground: oklch(96% 0.004 95deg);
+  --sidebar-foreground: oklch(90% 0.004 95deg);
   --sidebar-primary: oklch(72% 0.17 44deg);
   --sidebar-primary-foreground: oklch(17% 0.006 49deg);
   --sidebar-accent: oklch(26% 0.03 44deg);
@@ -244,8 +244,8 @@
 
 .dark .shadow-card {
   box-shadow:
-    0 1px 2px oklch(0% 0 0deg / 0.3),
-    0 1px 3px oklch(0% 0 0deg / 0.4);
+    0 1px 2px oklch(0% 0 0deg / 0.2),
+    0 1px 3px oklch(0% 0 0deg / 0.28);
 }
 
 /* Shared form-control base. One source of truth for input styling so every
@@ -307,6 +307,24 @@
 
   .pv-select:disabled {
     cursor: not-allowed;
+  }
+
+  /* Dark-mode autofill: override the browser's bright yellow fill color with
+     the warm dark ground and matching text. */
+  .pv-input:-webkit-autofill,
+  .pv-input:-webkit-autofill:hover,
+  .pv-input:-webkit-autofill:focus,
+  .pv-input:-webkit-autofill:active {
+    -webkit-text-fill-color: var(--foreground);
+    -webkit-box-shadow: 0 0 0 1000px var(--background) inset;
+    box-shadow: 0 0 0 1000px var(--background) inset;
+  }
+
+  .pv-input:-webkit-autofill:focus-visible {
+    outline: none;
+    border-color: var(--ring);
+    -webkit-box-shadow: 0 0 0 1000px var(--background) inset, 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+    box-shadow: 0 0 0 1000px var(--background) inset, 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
   }
 }
 
