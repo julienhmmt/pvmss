@@ -3,6 +3,7 @@ package store_test
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"path/filepath"
 	"pvmss/server/internal/store"
 	"testing"
@@ -312,6 +313,58 @@ func createMigrationStandInTables(ctx context.Context, t *testing.T, db *sql.DB)
 		if _, err := db.ExecContext(ctx, ddl); err != nil {
 			t.Fatalf("create stand-in table: %v", err)
 		}
+	}
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestRunMigrations_V24RemovesDemoTemplateRows(t *testing.T) {
+	db := openTestDB(t)
+	ctx := context.Background()
+
+	// Build the pre-V24 schema (V1..V23) so rows can be inserted the way the
+	// old V22 seed used to ship them.
+	if err := store.RunMigrations(ctx, db, store.Migrations[:23]); err != nil {
+		t.Fatalf("RunMigrations to V23: %v", err)
+	}
+
+	demo := `INSERT INTO catalog_templates (cluster, node, vmid, name, cloud_init_capable, disk_storage, disk_size_gb, disk_bus) VALUES
+		('default', 'pve-node-02', 9000, 'debian-12-cloud', 1, 'local-lvm', 8, 'scsi'),
+		('default', 'pve-node-02', 9001, 'alpine-appliance', 0, 'local', 2, 'scsi'),
+		('default', 'pve-node-02', 9100, 'my-real-template', 1, 'local-lvm', 8, 'scsi')`
+	if _, err := db.ExecContext(ctx, demo); err != nil {
+		t.Fatalf("insert demo rows: %v", err)
+	}
+
+	if err := store.RunMigrations(ctx, db, store.Migrations); err != nil {
+		t.Fatalf("RunMigrations to V24: %v", err)
+	}
+
+	rows, err := db.QueryContext(ctx, `SELECT vmid, name FROM catalog_templates ORDER BY vmid`)
+	if err != nil {
+		t.Fatalf("query catalog_templates: %v", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var remaining []string
+
+	for rows.Next() {
+		var vmid int
+
+		var name string
+
+		if err := rows.Scan(&vmid, &name); err != nil {
+			t.Fatalf("scan row: %v", err)
+		}
+
+		remaining = append(remaining, fmt.Sprintf("%d/%s", vmid, name))
+	}
+
+	if err := rows.Err(); err != nil {
+		t.Fatalf("rows: %v", err)
+	}
+
+	if len(remaining) != 1 || remaining[0] != "9100/my-real-template" {
+		t.Fatalf("catalog_templates after V24 = %v, want only the legitimate approval 9100/my-real-template", remaining)
 	}
 }
 

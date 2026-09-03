@@ -49,6 +49,24 @@ describe('StepBase source selector', () => {
 		expect(sourceOptions()).toEqual(['iso', 'template']);
 		document.body.innerHTML = '';
 	});
+
+	it('explains the missing template source when no template is approved', () => {
+		storeInstance = new VmCreateStore();
+		storeInstance.catalog = catalogWith([]);
+		mount(StepBase, { target: document.body });
+		expect(document.querySelector('[data-testid="no-templates-hint"]')).not.toBeNull();
+		document.body.innerHTML = '';
+	});
+
+	it('hides the no-template hint once a template is approved', () => {
+		storeInstance = new VmCreateStore();
+		storeInstance.catalog = catalogWith([
+			{ vmid: 9000, node: 'pve-node-02', name: 'debian-12-cloud', cloudInitCapable: true, diskSizeGB: 8, diskStorage: 'local-lvm' }
+		]);
+		mount(StepBase, { target: document.body });
+		expect(document.querySelector('[data-testid="no-templates-hint"]')).toBeNull();
+		document.body.innerHTML = '';
+	});
 });
 
 describe('StepBase template disk minimum (issue 04)', () => {

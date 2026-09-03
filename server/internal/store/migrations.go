@@ -196,10 +196,9 @@ const schemaV21 = `ALTER TABLE catalog_profiles ADD COLUMN sockets INTEGER NOT N
 // (D2c/issue-02 §5). disk_storage and disk_size_gb drive the resize decision
 // (D2c: enlarge after clone, reject reduction before VMID).
 //
-// Seed: two templates on pve-node-02 — one cloud-init capable (debian-12
-// cloud image, full clone), one not (a basic appliance, linked clone when
-// storage matches). The VMIDs (9000, 9001) are in the Proxmox template
-// range (9000+ by convention).
+// No seed: a real deployment starts with zero approved templates — admins
+// approve whatever their cluster actually reports (the fake demo source
+// discovers its own template set for demo mode).
 const schemaV22 = `CREATE TABLE catalog_templates (
 	cluster            TEXT NOT NULL,
 	node               TEXT NOT NULL,
@@ -211,16 +210,26 @@ const schemaV22 = `CREATE TABLE catalog_templates (
 	disk_bus           TEXT NOT NULL DEFAULT 'scsi',
 	enabled            BOOLEAN NOT NULL DEFAULT 1,
 	PRIMARY KEY (cluster, vmid)
-);
-INSERT INTO catalog_templates (cluster, node, vmid, name, cloud_init_capable, disk_storage, disk_size_gb, disk_bus) VALUES
-	('default', 'pve-node-02', 9000, 'debian-12-cloud', 1, 'local-lvm', 8, 'scsi'),
-	('default', 'pve-node-02', 9001, 'alpine-appliance', 0, 'local', 2, 'scsi');`
+);`
 
 // schemaV23 adds an optional per-cluster isolation VLAN tag to vm_limits
 // (US6/issue-06 D6b + Q18: one VLAN per cluster, imposed — the admin sets it
 // alongside the gabarit; empty/0 = no tag imposed). Tenants never choose the
 // segmentation; the create path stamps the tag on every NIC.
 const schemaV23 = `ALTER TABLE vm_limits ADD COLUMN isolation_vlan_tag INTEGER NOT NULL DEFAULT 0`
+
+// schemaV24 removes the demo template rows the V22 seed used to insert
+// (debian-12-cloud and alpine-appliance on cluster "default"). Databases
+// created before the seed was dropped must not keep offering templates that
+// do not exist in Proxmox. The delete matches the exact seed signature so a
+// legitimately approved template is never touched.
+const schemaV24 = `DELETE FROM catalog_templates
+	 WHERE cluster = 'default'
+	   AND vmid IN (9000, 9001)
+	   AND node = 'pve-node-02'
+	   AND name IN ('debian-12-cloud', 'alpine-appliance')
+	   AND disk_storage IN ('local-lvm', 'local')
+	   AND disk_bus = 'scsi'`
 
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
@@ -254,4 +263,5 @@ var Migrations = []Migration{
 	{Version: 21, DDL: schemaV21},
 	{Version: 22, DDL: schemaV22},
 	{Version: 23, DDL: schemaV23},
+	{Version: 24, DDL: schemaV24},
 }

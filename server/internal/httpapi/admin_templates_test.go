@@ -24,9 +24,8 @@ type adminTemplateDTO struct {
 }
 
 // TestAdminTemplates_ListShowsDiscovered — GET /admin/templates returns the
-// fake template discovery set, all disabled (no migration-seeded rows match
-// the discovered VMIDs because the V22 seed uses the same VMIDs but the
-// admin list is union of discovery + stored state).
+// fake template discovery set, all disabled (the schema ships no approval
+// rows; the admin list is the union of discovery + stored state).
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminTemplates_ListShowsDiscovered(t *testing.T) {
@@ -103,8 +102,8 @@ func TestAdminTemplates_ToggleOffOnFirstApproval(t *testing.T) {
 	handler, authHandler, _ := newAdminHandler(t)
 	cookie := adminCookie(t, authHandler)
 
-	// Template 9001 has no stored row (only 9000 is seeded by V22). Toggle
-	// it to disabled — the row must be inserted with enabled=false.
+	// Template 9001 has no stored row yet. Toggle it to disabled — the row
+	// must be inserted with enabled=false.
 	rec := adminPost(t, handler, authHandler, cookie, "/api/v1/admin/templates/toggle",
 		`{"cluster":"default","vmid":9001,"enabled":false}`)
 	if rec.Code != http.StatusOK {
@@ -288,7 +287,14 @@ func TestAdminTemplates_DeleteRemovesOrphanApproval(t *testing.T) {
 	cookie := adminCookie(t, authHandler)
 	ctx := context.Background()
 
-	// The V22 seed ships an approval for 9000; delete it.
+	// Ship an approval for 9000, then delete it.
+	if err := st.InsertTemplate(ctx, "default", 9000, store.TemplateValues{
+		Node: cluster.FakeNode02, Name: "debian-12-cloud", CloudInitCapable: true,
+		DiskStorage: "local-lvm", DiskSizeGB: 8, DiskBus: string(cluster.DiskBusSCSI),
+	}, true); err != nil {
+		t.Fatalf("InsertTemplate: %v", err)
+	}
+
 	rec := adminDelete(t, handler, authHandler, cookie, "/api/v1/admin/templates/default/9000")
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("delete status = %d: %s", rec.Code, rec.Body.String())

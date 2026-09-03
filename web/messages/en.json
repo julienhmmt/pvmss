@@ -719,6 +719,7 @@
   "vms.create.templateHelp": "The clone stays on the template's node.",
   "vms.create.chooseTemplate": "Choose a template",
   "vms.create.templateMinRaised": "Disk size raised to the template's minimum ({min} GB).",
+  "vms.create.noTemplatesAvailable": "No VM templates are available on this cluster. An admin can approve one under Admin → VM templates.",
   "vms.create.diskBelowTemplateMin": "Disk size is below the selected template's minimum ({min} GB).",
   "vms.create.fullCloneHintCloudInit": "This template always produces a full copy (cloud-init template).",
   "vms.create.fullCloneHintStorage": "Full copy: the target storage differs from the template's disk storage.",

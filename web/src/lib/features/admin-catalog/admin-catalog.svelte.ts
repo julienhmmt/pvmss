@@ -617,7 +617,8 @@ function sortTemplates(templates: AdminTemplate[], sortBy: TemplateSortColumn, d
 	return dir === 'asc' ? sorted : sorted.reverse();
 }
 
-function sortNodes(nodes: AdminNode[], sortBy: NodeSortColumn, dir: 'asc' | 'desc'): AdminNode[] {	const sorted = [...nodes].sort((a, b) => {
+function sortNodes(nodes: AdminNode[], sortBy: NodeSortColumn, dir: 'asc' | 'desc'): AdminNode[] {
+	const sorted = [...nodes].sort((a, b) => {
 		let cmp = 0;
 		switch (sortBy) {
 			case 'name':

@@ -58,6 +58,18 @@ func newCreateFixture(t *testing.T) createFixture {
 		t.Fatalf("seed tag approval: %v", err)
 	}
 
+	// US2/issue-02: template approvals are admin-curated — seed the two the
+	// clone tests reference (the schema ships no demo rows).
+	templates := map[int]store.TemplateValues{
+		9000: {Node: cluster.FakeNode02, Name: "debian-12-cloud", CloudInitCapable: true, DiskStorage: cluster.FakeStorageLocalLVM, DiskSizeGB: 8, DiskBus: string(cluster.DiskBusSCSI)},
+		9001: {Node: cluster.FakeNode02, Name: "alpine-appliance", CloudInitCapable: false, DiskStorage: cluster.FakeStorageLocal, DiskSizeGB: 2, DiskBus: string(cluster.DiskBusSCSI)},
+	}
+	for vmid, values := range templates {
+		if err := st.InsertTemplate(ctx, testClusterName, vmid, values, true); err != nil {
+			t.Fatalf("seed template approval %d: %v", vmid, err)
+		}
+	}
+
 	return createFixture{store: st, fake: cluster.Fake{}}
 }
 

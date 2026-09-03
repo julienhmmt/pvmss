@@ -662,8 +662,8 @@ func TestAdminListTemplates_DiscoveryWinsOnValues(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
 
-	// Approval row with stale values (VMID 9100 is not touched by the V22
-	// seed, so InsertTemplate creates it).
+	// Approval row with stale values (VMID 9100 is unused by the other
+	// tests, so InsertTemplate creates it).
 	stale := store.TemplateValues{
 		Node: "old-node", Name: "old-name", CloudInitCapable: false,
 		DiskStorage: "old-storage", DiskSizeGB: 4, DiskBus: "virtio",

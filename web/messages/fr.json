@@ -719,6 +719,7 @@
   "vms.create.templateHelp": "Le clone reste sur le nœud du modèle.",
   "vms.create.chooseTemplate": "Choisir un modèle",
   "vms.create.templateMinRaised": "Taille du disque portée au minimum du modèle ({min} Go).",
+  "vms.create.noTemplatesAvailable": "Aucun modèle de VM n'est disponible sur ce cluster. Un administrateur peut en approuver un dans Administration → Modèles de VM.",
   "vms.create.diskBelowTemplateMin": "La taille du disque est inférieure au minimum du modèle sélectionné ({min} Go).",
   "vms.create.fullCloneHintCloudInit": "Ce modèle produit toujours une copie complète (modèle cloud-init).",
   "vms.create.fullCloneHintStorage": "Copie complète : le stockage cible diffère du stockage du disque du modèle.",

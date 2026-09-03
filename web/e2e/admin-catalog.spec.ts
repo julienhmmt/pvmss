@@ -187,16 +187,14 @@ test.describe('T11 admin catalog', () => {
 		await page.goto('/admin/templates');
 		await expect(page.getByTestId('template-row')).toHaveCount(2);
 
-		// The V22 seed ships both templates enabled. Toggle alpine off,
-		// verify the state survives a reload, then re-enable it.
-		const alpineSwitch = exactRow(page, 'alpine-appliance').getByRole('switch');
-		await expect(alpineSwitch).toHaveAttribute('aria-checked', 'true');
-		await alpineSwitch.click();
-		await expect(alpineSwitch).toHaveAttribute('aria-checked', 'false');
+		// No template is approved initially (the schema ships no demo rows).
+		// Enable debian-12-cloud and verify the approval survives a reload.
+		const debianSwitch = exactRow(page, 'debian-12-cloud').getByRole('switch');
+		await expect(debianSwitch).toHaveAttribute('aria-checked', 'false');
+		await debianSwitch.click();
+		await expect(debianSwitch).toHaveAttribute('aria-checked', 'true');
 		await page.reload();
-		await expect(exactRow(page, 'alpine-appliance').getByRole('switch')).toHaveAttribute('aria-checked', 'false');
-		await exactRow(page, 'alpine-appliance').getByRole('switch').click();
-		await expect(exactRow(page, 'alpine-appliance').getByRole('switch')).toHaveAttribute('aria-checked', 'true');
+		await expect(exactRow(page, 'debian-12-cloud').getByRole('switch')).toHaveAttribute('aria-checked', 'true');
 
 		// SC: the approval surfaces in the user's create wizard.
 		await signInAlice(page.request);
