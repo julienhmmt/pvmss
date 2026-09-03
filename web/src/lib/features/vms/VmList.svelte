@@ -416,7 +416,7 @@
 			<label class="flex items-center gap-2 text-xs text-muted-foreground">
 				{m['common.rowsPerPage']()}
 				<select
-					class="rounded-md border border-border bg-background px-2 py-1 text-sm"
+					class="h-10 rounded-md border border-border bg-background px-2 py-1 text-sm"
 					value={store.pageSize}
 					onchange={handlePageSizeChange}
 					data-testid="vm-page-size"

@@ -72,7 +72,7 @@
 				<ClusterSelector options={clusterOptions} value={vmListStore.cluster} onChange={(value) => vmListStore.setCluster(value)} includeAll id="vm-cluster-filter" />
 				<Button
 					variant="secondary"
-					size="sm"
+					size="md"
 					disabled={vmListStore.loading}
 					onclick={() => void vmListStore.load()}
 				>
