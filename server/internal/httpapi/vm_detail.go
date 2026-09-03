@@ -228,6 +228,7 @@ type vmDetailDTO struct {
 	HasSerial         bool                       `json:"hasSerial"`
 	UptimeSeconds     int64                      `json:"uptimeSeconds,omitempty"`
 	Description       string                     `json:"description,omitempty"`
+	DescriptionHTML   string                     `json:"descriptionHtml,omitempty"`
 	// Lock carries the live Proxmox lock name ("snapshot-delete", "backup",
 	// ...) from a best-effort /status/current read (ticket 06) — the page
 	// shows a badge and the operator command to clear it. Empty when the VM
@@ -1376,6 +1377,7 @@ func (h *VMDetail) writeEntity(w http.ResponseWriter, r *http.Request, entity vm
 		NetworkInterfaces: entity.NetworkInterfaces,
 		HasSerial:         entity.HasSerial,
 		Description:       entity.Description,
+		DescriptionHTML:   renderMarkdownToHTML(entity.Description),
 	}
 	if entity.Uptime > 0 {
 		dto.UptimeSeconds = int64(entity.Uptime.Seconds())
