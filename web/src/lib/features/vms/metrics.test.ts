@@ -106,4 +106,19 @@ describe('parseMetricsStreamMessage', () => {
 
 		expect(() => parseMetricsStreamMessage(data)).toThrow('cpuPercent');
 	});
+
+	it('throws when the timestamp is not a string', () => {
+		const data = JSON.stringify({
+			timestamp: 1234567890,
+			cpuPercent: 12.5,
+			memoryUsedBytes: 1,
+			memoryMaxBytes: 2,
+			diskReadBytesPerSec: 3,
+			diskWriteBytesPerSec: 4,
+			netInBytesPerSec: 5,
+			netOutBytesPerSec: 6
+		});
+
+		expect(() => parseMetricsStreamMessage(data)).toThrow('timestamp');
+	});
 });

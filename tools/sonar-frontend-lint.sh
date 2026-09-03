@@ -42,12 +42,15 @@ if [ -f web/coverage/lcov.info ]; then
     # base dir is the repo root and sources are under web/src, so prefix
     # every SF: line with "web/".
     # Drop files SonarQube does not index: .svelte/.svelte.ts/.svelte.js
-    # (excluded via sonar.javascript.exclusions), generated paraglide .js,
-    # and node_modules — otherwise SonarQube logs thousands of unresolved
-    # path warnings and the coverage sensor stalls.
+    # (excluded via sonar.javascript.exclusions), generated paraglide .js
+    # (both web/src/paraglide/ and web/src/lib/paraglide/), test infrastructure
+    # (web/src/test/ — excluded from source indexing), and node_modules —
+    # otherwise SonarQube logs thousands of unresolved path warnings and the
+    # coverage sensor stalls.
     sed 's|^SF:src/|SF:web/src/|' web/coverage/lcov.info \
         | grep -v -E '^SF:.*\.(svelte|svelte\.ts|svelte\.js)$' \
-        | grep -v -E '^SF:web/src/lib/paraglide/' \
+        | grep -v -E '^SF:web/src/(lib/)?paraglide/' \
+        | grep -v -E '^SF:web/src/test/' \
         > .sonar/web-lcov.info
 else
     echo "Warning: web/coverage/lcov.info not found; web coverage will be 0%." >&2

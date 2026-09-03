@@ -113,4 +113,35 @@ describe('focusTrap', () => {
 		container.remove();
 		trigger.remove();
 	});
+
+	it('focuses the container on Tab when no focusable child exists', async () => {
+		const container = setupContainer(0);
+		container.setAttribute('tabindex', '0');
+		vi.stubGlobal('getComputedStyle', () => ({ display: 'block', visibility: 'visible' }) as CSSStyleDeclaration);
+		const cleanup = focusTrap(container);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		const event = new KeyboardEvent('keydown', { key: 'Tab' });
+		const preventDefault = vi.spyOn(event, 'preventDefault');
+		container.dispatchEvent(event);
+		expect(preventDefault).toHaveBeenCalled();
+		expect(document.activeElement).toBe(container);
+		cleanup.destroy?.();
+		container.remove();
+	});
+
+	it('moves focus backward to the previous element on Shift+Tab from the middle', async () => {
+		const container = setupContainer(3);
+		vi.stubGlobal('getComputedStyle', () => ({ display: 'block', visibility: 'visible' }) as CSSStyleDeclaration);
+		const cleanup = focusTrap(container);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		const buttons = container.querySelectorAll('button');
+		buttons[1]!.focus();
+		const event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true });
+		const preventDefault = vi.spyOn(event, 'preventDefault');
+		container.dispatchEvent(event);
+		expect(preventDefault).toHaveBeenCalled();
+		expect(document.activeElement).toBe(buttons[0]);
+		cleanup.destroy?.();
+		container.remove();
+	});
 });
