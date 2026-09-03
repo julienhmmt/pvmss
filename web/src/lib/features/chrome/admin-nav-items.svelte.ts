@@ -56,6 +56,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 		items: [
 			{ href: resolve('/admin/storages'), label: () => m['chrome.adminNav.storages']() },
 			{ href: resolve('/admin/isos'), label: () => m['chrome.adminNav.isos']() },
+			{ href: resolve('/admin/templates'), label: () => m['chrome.adminNav.templates']() },
 			{ href: resolve('/admin/bridges'), label: () => m['chrome.adminNav.bridges']() },
 			{ href: resolve('/admin/cloudinit-templates'), label: () => m['chrome.adminNav.cloudinit']() },
 			{ href: resolve('/admin/docs'), label: () => m['chrome.adminNav.documentation']() },

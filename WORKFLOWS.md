@@ -110,9 +110,9 @@ This is the core of the product. Everything else exists to support it.
 | **Entry** | Sidebar CTA, home dashboard, or the `/vms` empty state |
 | **Route** | `/vms/create` |
 | **API** | `GET /api/v1/vm-create/catalog` → `POST /api/v1/vms` → `GET /api/v1/tasks/{upid}` (polled) |
-| **Steps** | 1. Base (name, profile, cluster, node). 2. Disk. 3. Hardware. 4. Network. 5. Review — the only place raw JSON is shown, and only on request. 6. Submit; the response is a Proxmox UPID. 7. The task tray polls until done, then refreshes the VM list. |
-| **States** | Wizard step validation; task tray shows in-flight work so the user can navigate away |
-| **Safety nets** | Every choice comes from the admin-approved catalog — nodes, storages, bridges, ISOs, profiles, cloud-init templates, tags. Quotas and gabarit limits are checked server-side (`policy/`), not in the wizard. |
+| **Steps** | 1. Base (name, profile, cluster, node). 2. Disk. 3. Hardware. 4. Network. 5. Review — the only place raw JSON is shown, and only on request. 6. Submit; the response is a Proxmox UPID. 7. The task tray polls until done, then refreshes the VM list. Detailed mode may pick a Proxmox template as the source instead of an ISO: the node is derived from the template (the selector hides), the disk minimum rises to the template's disk, and the wizard says when the target storage forces a full copy instead of a linked clone. |
+| **States** | Wizard step validation; task tray shows in-flight work so the user can navigate away. Template source: the template option only appears when at least one template is approved; an empty catalog legitimately hides it. |
+| **Safety nets** | Every choice comes from the admin-approved catalog — nodes, storages, bridges, ISOs, profiles, cloud-init templates, VM templates, tags. Quotas and gabarit limits are checked server-side (`policy/`), not in the wizard. A template clone stays on the template's node (the wizard hides the node selector), the disk size can never drop below the template's disk, and a stale or deleted template fails fast before a VMID is spent. |
 
 ### Operate a single VM
 
@@ -208,7 +208,7 @@ non-admin), wired in `router_admin.go`. Nav grouping comes from
 | --- | --- | --- |
 | Dashboard | `/admin` | Overview (`GET /api/v1/admin/dashboard`) |
 | Infrastructure | `/admin/nodes`, `/admin/clusters`, `/admin/pools` | Approve nodes; cluster CRUD with connection test and OIDC config; pool create and cascade delete |
-| Catalog | `/admin/storages`, `/admin/isos`, `/admin/bridges`, `/admin/cloudinit-templates`, `/admin/docs`, `/admin/profiles`, `/admin/tags` | Toggle what users may pick; CRUD for profiles, tags, cloud-init templates, docs |
+| Catalog | `/admin/storages`, `/admin/isos`, `/admin/templates`, `/admin/bridges`, `/admin/cloudinit-templates`, `/admin/docs`, `/admin/profiles`, `/admin/tags` | Toggle what users may pick; CRUD for profiles, tags, cloud-init templates, docs; remove orphaned VM-template approvals |
 | Policy | `/admin/policy`, `/admin/policy/nodes` | Quotas and gabarit limits; per-node capacity |
 | System | `/admin/appinfo`, `/admin/settings` | App info, audit log, DB export/import |
 
@@ -232,7 +232,7 @@ Three admin workflows deserve the full template because they are the risky ones.
 | --- | --- |
 | **Audience** | admin |
 | **Entry** | Any catalog page under `/admin` |
-| **Route** | `/admin/nodes`, `/admin/storages`, `/admin/isos`, `/admin/bridges` |
+| **Route** | `/admin/nodes`, `/admin/storages`, `/admin/isos`, `/admin/templates`, `/admin/bridges` |
 | **API** | `GET /api/v1/admin/{kind}` → `POST /api/v1/admin/{kind}/toggle` |
 | **Steps** | 1. Pick a cluster from the selector. 2. Search, filter by node/state/type, and sort by the available columns. 3. Toggle an item on or off. 4. A toast confirms the change. 5. It appears in, or disappears from, the create-VM catalog. |
 | **States** | `TableSkeleton` while loading; `EmptyState` with a link to `/admin/clusters` when no items are discovered; a second `EmptyState` with a reset-filters action when filters exclude every row; sortable columns, usage bars for storages, and active-state dots for bridges. |

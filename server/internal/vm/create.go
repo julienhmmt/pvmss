@@ -224,6 +224,16 @@ type CreateDeps struct {
 	Audit     AuditRecorder
 	Log       *slog.Logger
 	Services  []*policy.Policy
+	// Templates is the clone-time freshness backstop's reader (T17, issue
+	// 02): one TemplateByVMID call before a VMID is spent. Nil skips the
+	// backstop (unit tests without the live path).
+	Templates TemplateReader
+}
+
+// TemplateReader is the clone path's single-template discovery capability
+// (issue 03's TemplateByVMID). Kept narrow so tests can stub discovery.
+type TemplateReader interface {
+	TemplateByVMID(ctx context.Context, vmid int) (cluster.TemplateVM, error)
 }
 
 // Create validates a creation request and dispatches it as an asynchronous
@@ -404,6 +414,11 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 		return CreateResult{}, err
 	}
 
+	tmpl, err = refreshTemplateFromDiscovery(ctx, deps, clusterName, tmpl)
+	if err != nil {
+		return CreateResult{}, err
+	}
+
 	// D2b: the clone stays on the template's node. Override any client-
 	// supplied node — the selector is hidden in the UI, but a forged request
 	// must not place the clone on a different node.
@@ -491,6 +506,46 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 	}
 
 	return result, nil
+}
+
+// refreshTemplateFromDiscovery is the clone-time freshness backstop (T17,
+// issue 02). The stored row is the approval; discovery is the truth about
+// the template's current values. Re-check before a VMID is spent: a template
+// deleted since approval fails fast (ErrNotApproved) instead of failing
+// after a VMID is consumed.
+func refreshTemplateFromDiscovery(ctx context.Context, deps CreateDeps, clusterName string, tmpl catalog.Template) (catalog.Template, error) {
+	if deps.Templates == nil {
+		return tmpl, nil
+	}
+
+	live, err := deps.Templates.TemplateByVMID(ctx, tmpl.VMID)
+	switch {
+	case errors.Is(err, cluster.ErrNotFound):
+		return catalog.Template{}, fmt.Errorf("%w: template no longer exists", ErrNotApproved)
+	case err != nil:
+		// Discovery is unavailable — the approval still stands; the clone
+		// itself will fail if the cluster is truly unreachable.
+		deps.Log.Warn("template freshness check failed, proceeding with stored values", "component", "vm", "cluster", clusterName, "vmid", tmpl.VMID, "error", err)
+
+		return tmpl, nil
+	case live.DiskUnreadable:
+		// Keep the discovered node; the stored disk fields were validated at
+		// approval and are never empty.
+		deps.Log.Warn("template disk unreadable at clone time, using stored disk fields", "component", "vm", "cluster", clusterName, "vmid", tmpl.VMID)
+
+		tmpl.Node = live.Node
+
+		return tmpl, nil
+	default:
+		tmpl.Node = live.Node
+		tmpl.Name = live.Name
+		tmpl.CloudInitCapable = live.CloudInitCapable
+		tmpl.DiskStorage = live.DiskStorage
+		tmpl.DiskSizeGB = live.DiskSizeGB
+		tmpl.DiskBus = live.DiskBus
+
+		return tmpl, nil
+	}
 }
 
 // dispatchCreateWithRetry dispatches a CreateVM call, retrying with a fresh

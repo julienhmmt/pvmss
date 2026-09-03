@@ -71,6 +71,7 @@ func adminMux(handler *httpapi.AdminCatalog, auth *httpapi.Auth) *http.ServeMux 
 	mux.Handle("POST /api/v1/admin/isos/toggle", guard(http.HandlerFunc(handler.ServeISOToggle)))
 	mux.Handle("GET /api/v1/admin/templates", guard(http.HandlerFunc(handler.ServeTemplates)))
 	mux.Handle("POST /api/v1/admin/templates/toggle", guard(http.HandlerFunc(handler.ServeTemplateToggle)))
+	mux.Handle("DELETE /api/v1/admin/templates/{cluster}/{vmid}", guard(http.HandlerFunc(handler.ServeTemplateDelete)))
 	mux.Handle("GET /api/v1/admin/profiles", guard(http.HandlerFunc(handler.ServeProfiles)))
 	mux.Handle("POST /api/v1/admin/profiles", guard(http.HandlerFunc(handler.ServeProfileCreate)))
 	mux.Handle("PUT /api/v1/admin/profiles/{id}", guard(http.HandlerFunc(handler.ServeProfileUpdate)))

@@ -24,9 +24,41 @@
 	// from the template server-side (D2b), so no node filtering here.
 	const templates = $derived(form.catalog?.templates ?? []);
 
+	// Never offer a source that leads to an empty required dropdown: without
+	// approved templates the template path is a dead end, so the selector
+	// omits it and any stale 'template' selection falls back to ISO.
+	const hasTemplates = $derived(templates.length > 0);
+
+	const sourceOptions = $derived(
+		hasTemplates
+			? [
+					{ value: 'iso', label: m['vms.create.sourceIso']() },
+					{ value: 'template', label: m['vms.create.sourceTemplate']() }
+				]
+			: [{ value: 'iso', label: m['vms.create.sourceIso']() }]
+	);
+
+	$effect(() => {
+		if (!hasTemplates && form.sourceType === 'template') {
+			form.sourceType = 'iso';
+		}
+	});
+
 	// US2/issue-02 D2b: hide the node selector when a template is selected —
 	// the clone stays on the template's node.
 	const showNodeSelector = $derived(form.sourceType !== 'template');
+
+	// Issue 04: the template's disk is the clone source — Proxmox cannot
+	// shrink it, so the disk size may never drop below the template's size.
+	// Switching the source away from template clears the floor.
+	let templateMinRaised = $state(false);
+
+	$effect(() => {
+		if (form.sourceType !== 'template') {
+			form.templateMinDiskGB = 0;
+			templateMinRaised = false;
+		}
+	});
 
 	// Select binds to string values; templateId is a number. Derive the
 	// string representation from the form state. One-way binding only —
@@ -39,6 +71,7 @@
 		const value = (event.currentTarget as HTMLSelectElement).value;
 		const vmid = value === '' ? 0 : Number(value);
 		form.templateId = vmid;
+		templateMinRaised = false;
 
 		// D2b: the clone stays on the template's node. Set form.node so
 		// StepNetwork's bridge dropdown filters by the correct node.
@@ -46,8 +79,30 @@
 			const tmpl = templates.find((t) => t.vmid === vmid);
 			if (tmpl) {
 				form.node = tmpl.node;
+				if (form.diskSizeGB < tmpl.diskSizeGB) {
+					form.diskSizeGB = tmpl.diskSizeGB;
+					templateMinRaised = true;
+				}
+				form.templateMinDiskGB = tmpl.diskSizeGB;
 			}
+		} else {
+			form.templateMinDiskGB = 0;
 		}
+	}
+	// Issue 04: group templates by node and carry the facts that matter in
+	// the label. The shared Select has no optgroup support, so the template
+	// picker is a native select — keyboard type-ahead for free.
+	const templateGroups = $derived(
+		[...new Set(templates.map((tmpl) => tmpl.node))].sort().map((node) => ({
+			node,
+			templates: templates.filter((tmpl) => tmpl.node === node)
+		}))
+	);
+
+	function templateLabel(tmpl: typeof templates[number]): string {
+		const name = tmpl.name !== '' ? tmpl.name : `VMID ${tmpl.vmid}`;
+		const cloudInit = tmpl.cloudInitCapable ? ` · ${m['admin.templates.cloudInit']()}` : '';
+		return `${name} · ${tmpl.diskSizeGB} GB${cloudInit}`;
 	}
 </script>
 
@@ -65,10 +120,7 @@
 				{describedBy}
 				{invalid}
 				bind:value={form.sourceType}
-				options={[
-					{ value: 'iso', label: m['vms.create.sourceIso']() },
-					{ value: 'template', label: m['vms.create.sourceTemplate']() }
-				]}
+				options={sourceOptions}
 			/>
 		{/snippet}
 	</FormField>
@@ -118,18 +170,28 @@
 	{#if form.sourceType === 'template'}
 		<FormField label={m['vms.create.template']()} required hint={m['vms.create.templateHelp']()}>
 			{#snippet children({ id, describedBy, invalid })}
-				<Select
+				<select
 					{id}
-					{describedBy}
-					{invalid}
+					class="pv-input pv-select"
+					aria-describedby={describedBy}
+					aria-invalid={invalid ? 'true' : undefined}
 					value={templateIdStr}
 					onchange={onTemplateChange}
-					placeholder={m['vms.create.chooseTemplate']()}
-					options={templates.map((tmpl) => ({
-						value: String(tmpl.vmid),
-						label: tmpl.name !== '' ? `${tmpl.name} (VMID ${tmpl.vmid})` : `VMID ${tmpl.vmid}`
-					}))}
-				/>
+				>
+					<option value="" disabled>{m['vms.create.chooseTemplate']()}</option>
+					{#each templateGroups as group (group.node)}
+						<optgroup label={group.node}>
+							{#each group.templates as tmpl (tmpl.vmid)}
+								<option value={String(tmpl.vmid)}>{templateLabel(tmpl)}</option>
+							{/each}
+						</optgroup>
+					{/each}
+				</select>
+				{#if templateMinRaised}
+					<p class="mt-1 text-xs text-muted-foreground" data-testid="template-min-raised">
+						{m['vms.create.templateMinRaised']({ min: form.templateMinDiskGB })}
+					</p>
+				{/if}
 			{/snippet}
 		</FormField>
 	{:else}

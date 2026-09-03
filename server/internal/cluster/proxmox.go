@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -558,9 +559,19 @@ func (p Proxmox) ListTemplates(ctx context.Context) ([]TemplateVM, error) {
 			continue
 		}
 
+		// Issue 03: degrade per template instead of aborting the whole list —
+		// one unreadable config must not blank the admin page or block every
+		// toggle.
 		diskStorage, diskSizeGB, diskBus, cloudInitCapable, err := proxmoxTemplateDisk(ctx, rest, row.Node, row.VMID)
 		if err != nil {
-			return nil, fmt.Errorf("read template %d disk on %q: %w", row.VMID, row.Node, err)
+			slog.Warn("template config unreadable, keeping row without disk fields",
+				"component", "cluster", "vmid", row.VMID, "node", row.Node, "error", err)
+
+			templates = append(templates, TemplateVM{
+				VMID: row.VMID, Node: row.Node, Name: row.Name, DiskUnreadable: true,
+			})
+
+			continue
 		}
 
 		templates = append(templates, TemplateVM{
@@ -575,6 +586,55 @@ func (p Proxmox) ListTemplates(ctx context.Context) ([]TemplateVM, error) {
 	}
 
 	return templates, nil
+}
+
+// TemplateByVMID implements Client: one /cluster/resources call plus one
+// config read for a single template (issue 03 — no full re-hydration per
+// toggle or clone). Unknown VMIDs are ErrNotFound; an unreadable config
+// degrades to a DiskUnreadable row with the discovered node kept.
+func (p Proxmox) TemplateByVMID(ctx context.Context, vmid int) (TemplateVM, error) {
+	rest := p.rest()
+
+	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{"type": {"vm"}})
+	if err != nil {
+		return TemplateVM{}, err
+	}
+
+	var rows []proxmoxResourceRow
+	if err := decodeData(raw, &rows); err != nil {
+		return TemplateVM{}, fmt.Errorf("decode template vms: %w", err)
+	}
+
+	var found *proxmoxResourceRow
+
+	for i := range rows {
+		if rows[i].Template == 1 && rows[i].VMID == vmid {
+			found = &rows[i]
+			break
+		}
+	}
+
+	if found == nil {
+		return TemplateVM{}, ErrNotFound
+	}
+
+	diskStorage, diskSizeGB, diskBus, cloudInitCapable, err := proxmoxTemplateDisk(ctx, rest, found.Node, found.VMID)
+	if err != nil {
+		slog.Warn("template config unreadable, returning row without disk fields",
+			"component", "cluster", "vmid", found.VMID, "node", found.Node, "error", err)
+
+		return TemplateVM{VMID: found.VMID, Node: found.Node, Name: found.Name, DiskUnreadable: true}, nil
+	}
+
+	return TemplateVM{
+		VMID:             found.VMID,
+		Node:             found.Node,
+		Name:             found.Name,
+		CloudInitCapable: cloudInitCapable,
+		DiskStorage:      diskStorage,
+		DiskSizeGB:       diskSizeGB,
+		DiskBus:          diskBus,
+	}, nil
 }
 
 // StorageFreeSpace returns the available bytes on a storage backend on a node

@@ -256,6 +256,22 @@ func (fake Fake) ListTemplates(_ context.Context) ([]TemplateVM, error) {
 	return slices.Clone(fakeTemplates), nil
 }
 
+// TemplateByVMID implements Client: a single-template lookup over the fake
+// dataset. Unknown VMIDs are ErrNotFound; fake templates are always readable.
+func (fake Fake) TemplateByVMID(_ context.Context, vmid int) (TemplateVM, error) {
+	if fake.unavailable() {
+		return TemplateVM{}, ErrUnreachable
+	}
+
+	for _, tmpl := range fakeTemplates {
+		if tmpl.VMID == vmid {
+			return tmpl, nil
+		}
+	}
+
+	return TemplateVM{}, ErrNotFound
+}
+
 // StorageFreeSpace returns the available bytes on a storage backend on a node
 // (US3/issue-04). The fake computes avail = Total - Used from the static
 // storage dataset. Returns ErrNotFound for an unknown (node, storage) pair.

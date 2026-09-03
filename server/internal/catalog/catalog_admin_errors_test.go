@@ -35,6 +35,10 @@ func (errDiscoveryClient) ListTemplates(_ context.Context) ([]cluster.TemplateVM
 	return nil, errDiscovery
 }
 
+func (errDiscoveryClient) TemplateByVMID(_ context.Context, _ int) (cluster.TemplateVM, error) {
+	return cluster.TemplateVM{}, errDiscovery
+}
+
 func (errDiscoveryClient) Authenticate(_ context.Context, _, _ string) (cluster.Identity, error) {
 	return cluster.Identity{}, cluster.ErrNotImplemented
 }

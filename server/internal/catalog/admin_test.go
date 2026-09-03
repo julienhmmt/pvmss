@@ -11,6 +11,8 @@ import (
 	"testing"
 )
 
+const storageLocalLVM = "local-lvm"
+
 // openAdminStore opens a fully-migrated store (V9) with the T06 seed and the
 // pvmss tag, ready for admin catalog operations.
 func openAdminStore(t *testing.T) *store.Store {
@@ -621,4 +623,279 @@ func countTagsByName(tags []catalog.TagWithCount, name string) int {
 	}
 
 	return count
+}
+
+// templateSetClient overrides the fake's template discovery with a fixed set,
+// so tests can simulate drift (a template moved/resized after approval) and
+// orphans (an approval whose template Proxmox no longer reports).
+type templateSetClient struct {
+	cluster.Fake
+	templates []cluster.TemplateVM
+}
+
+func (c templateSetClient) ListTemplates(_ context.Context) ([]cluster.TemplateVM, error) {
+	return c.templates, nil
+}
+
+// findApprovalTemplate returns the TemplateApproval with the given VMID.
+func findApprovalTemplate(t *testing.T, templates []catalog.TemplateApproval, vmid int) catalog.TemplateApproval {
+	t.Helper()
+
+	for _, tmpl := range templates {
+		if tmpl.VMID == vmid {
+			return tmpl
+		}
+	}
+
+	t.Fatalf("template %d not found in approval list", vmid)
+
+	return catalog.TemplateApproval{}
+}
+
+// TestAdminListTemplates_DiscoveryWinsOnValues — a stored row's field values
+// are a snapshot taken at approval time; when discovery reports different
+// values, the list shows the discovered ones and the stored row is reconciled
+// (write-back). The stored enabled flag stays authoritative.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestAdminListTemplates_DiscoveryWinsOnValues(t *testing.T) {
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	// Approval row with stale values (VMID 9100 is not touched by the V22
+	// seed, so InsertTemplate creates it).
+	stale := store.TemplateValues{
+		Node: "old-node", Name: "old-name", CloudInitCapable: false,
+		DiskStorage: "old-storage", DiskSizeGB: 4, DiskBus: "virtio",
+	}
+	if err := st.InsertTemplate(ctx, "default", 9100, stale, true); err != nil {
+		t.Fatalf("InsertTemplate: %v", err)
+	}
+
+	// Discovery reports the template has since been renamed, migrated,
+	// resized, and given a cloud-init drive.
+	fresh := cluster.TemplateVM{
+		VMID: 9100, Node: "pve-node-01", Name: "debian-13-cloud", CloudInitCapable: true,
+		DiskStorage: storageLocalLVM, DiskSizeGB: 40, DiskBus: testProfileBus,
+	}
+	client := templateSetClient{Fake: cluster.Fake{}, templates: []cluster.TemplateVM{fresh}}
+
+	approvals, err := catalog.AdminListTemplates(ctx, st, client, "default")
+	if err != nil {
+		t.Fatalf("AdminListTemplates: %v", err)
+	}
+
+	got := findApprovalTemplate(t, approvals, 9100)
+	assertTemplateMatchesDiscovery(t, got, fresh)
+
+	// The stored row was reconciled to the discovered values, enabled untouched.
+	rows, err := st.CatalogTemplatesEnabled(ctx, "default")
+	if err != nil {
+		t.Fatalf("CatalogTemplatesEnabled: %v", err)
+	}
+
+	for _, row := range rows {
+		if row.VMID != 9100 {
+			continue
+		}
+
+		assertTemplateMatchesDiscovery(t, catalog.TemplateApproval{
+			Node: row.Node, Name: row.Name, CloudInitCapable: row.CloudInitCapable,
+			DiskStorage: row.DiskStorage, DiskSizeGB: row.DiskSizeGB, DiskBus: row.DiskBus,
+		}, fresh)
+
+		if !row.Enabled {
+			t.Error("reconciliation must not touch enabled")
+		}
+
+		return
+	}
+
+	t.Fatal("stored row 9100 vanished")
+}
+
+// assertTemplateMatchesDiscovery checks that an approval carries exactly the
+// discovered field values. Shared by the list and store-reconciliation checks
+// of TestAdminListTemplates_DiscoveryWinsOnValues.
+func assertTemplateMatchesDiscovery(t *testing.T, got catalog.TemplateApproval, want cluster.TemplateVM) {
+	t.Helper()
+
+	if got.Node != want.Node || got.Name != want.Name || !got.CloudInitCapable ||
+		got.DiskStorage != want.DiskStorage || got.DiskSizeGB != want.DiskSizeGB || got.DiskBus != want.DiskBus {
+		t.Errorf("approval = %+v, want discovered values %+v", got, want)
+	}
+}
+
+// TestAdminListTemplates_SurfacesOrphanApprovals — a stored approval whose
+// template Proxmox no longer reports must stay visible to the admin (with
+// Missing=true), not silently disappear from the list.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestAdminListTemplates_SurfacesOrphanApprovals(t *testing.T) {
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	orphan := store.TemplateValues{
+		Node: node02, Name: "deleted-template", CloudInitCapable: false,
+		DiskStorage: storageLocal, DiskSizeGB: 2, DiskBus: testProfileBus,
+	}
+	if err := st.InsertTemplate(ctx, "default", 9999, orphan, true); err != nil {
+		t.Fatalf("InsertTemplate: %v", err)
+	}
+
+	// Discovery only reports 9000 — 9999 is gone from Proxmox.
+	client := templateSetClient{Fake: cluster.Fake{}, templates: []cluster.TemplateVM{
+		{VMID: 9000, Node: node02, Name: "debian-12-cloud", CloudInitCapable: true, DiskStorage: storageLocalLVM, DiskSizeGB: 8, DiskBus: testProfileBus},
+	}}
+
+	approvals, err := catalog.AdminListTemplates(ctx, st, client, "default")
+	if err != nil {
+		t.Fatalf("AdminListTemplates: %v", err)
+	}
+
+	live := findApprovalTemplate(t, approvals, 9000)
+	if live.Missing {
+		t.Error("discovered template 9000 must not be flagged missing")
+	}
+
+	ghost := findApprovalTemplate(t, approvals, 9999)
+	if !ghost.Missing {
+		t.Error("orphan approval 9999 must be flagged missing")
+	}
+
+	if !ghost.Enabled {
+		t.Error("orphan approval keeps its stored enabled state")
+	}
+}
+
+// unreadableTemplateClient simulates a template whose disk config cannot be
+// read (issue 03): TemplateByVMID returns a DiskUnreadable row.
+type unreadableTemplateClient struct {
+	cluster.Fake
+	vmid int
+}
+
+func (c unreadableTemplateClient) TemplateByVMID(_ context.Context, vmid int) (cluster.TemplateVM, error) {
+	if vmid == c.vmid {
+		return cluster.TemplateVM{VMID: vmid, Node: node02, Name: "unreadable", DiskUnreadable: true}, nil
+	}
+
+	return cluster.TemplateVM{}, cluster.ErrNotFound
+}
+
+// TestSetTemplateEnabled_RejectsUnreadableOnApprove — approving a template
+// whose disk could not be read would store empty disk_bus/disk_storage and
+// break the post-clone resize (issue 03): refuse with ErrTemplateUnreadable
+// and write no row.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestSetTemplateEnabled_RejectsUnreadableOnApprove(t *testing.T) {
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	client := unreadableTemplateClient{Fake: cluster.Fake{}, vmid: 9100}
+
+	err := catalog.SetTemplateEnabled(ctx, st, client, "default", catalog.TemplateRef{VMID: 9100}, true)
+	if !errors.Is(err, catalog.ErrTemplateUnreadable) {
+		t.Fatalf("err = %v, want ErrTemplateUnreadable", err)
+	}
+
+	rows, err := st.CatalogTemplatesEnabled(ctx, "default")
+	if err != nil {
+		t.Fatalf("CatalogTemplatesEnabled: %v", err)
+	}
+
+	for _, row := range rows {
+		if row.VMID == 9100 {
+			t.Error("no row must be written for an unreadable template approval")
+		}
+	}
+}
+
+// TestSetTemplateEnabled_AllowsDisablingUnreadable — an approved template
+// whose disk later becomes unreadable must stay disable-able (users still see
+// it; only the enable direction is blocked).
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestSetTemplateEnabled_AllowsDisablingUnreadable(t *testing.T) {
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	values := store.TemplateValues{
+		Node: node02, Name: "unreadable", CloudInitCapable: false,
+		DiskStorage: storageLocal, DiskSizeGB: 2, DiskBus: testProfileBus,
+	}
+	if err := st.InsertTemplate(ctx, "default", 9100, values, true); err != nil {
+		t.Fatalf("InsertTemplate: %v", err)
+	}
+
+	client := unreadableTemplateClient{Fake: cluster.Fake{}, vmid: 9100}
+
+	if err := catalog.SetTemplateEnabled(ctx, st, client, "default", catalog.TemplateRef{VMID: 9100}, false); err != nil {
+		t.Fatalf("SetTemplateEnabled(disable) = %v, want nil", err)
+	}
+
+	rows, err := st.CatalogTemplatesEnabled(ctx, "default")
+	if err != nil {
+		t.Fatalf("CatalogTemplatesEnabled: %v", err)
+	}
+
+	for _, row := range rows {
+		if row.VMID == 9100 && row.Enabled {
+			t.Error("disable must persist on an unreadable template")
+		}
+	}
+}
+
+// TestAdminListTemplates_UnreadableDoesNotClobberStoredRow — an unreadable
+// discovery (issue 03) reports empty disk fields; reconciliation must not
+// write them over the stored, approval-time values (T17's clone-time
+// fallback relies on those fields being non-empty).
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestAdminListTemplates_UnreadableDoesNotClobberStoredRow(t *testing.T) {
+	st := openAdminStore(t)
+	ctx := context.Background()
+
+	values := store.TemplateValues{
+		Node: node02, Name: "approved-template", CloudInitCapable: true,
+		DiskStorage: storageLocalLVM, DiskSizeGB: 8, DiskBus: testProfileBus,
+	}
+	if err := st.InsertTemplate(ctx, "default", 9100, values, true); err != nil {
+		t.Fatalf("InsertTemplate: %v", err)
+	}
+
+	// Discovery still reports the template but cannot read its config.
+	client := templateSetClient{Fake: cluster.Fake{}, templates: []cluster.TemplateVM{
+		{VMID: 9100, Node: node02, Name: "approved-template", DiskUnreadable: true},
+	}}
+
+	approvals, err := catalog.AdminListTemplates(ctx, st, client, "default")
+	if err != nil {
+		t.Fatalf("AdminListTemplates: %v", err)
+	}
+
+	got := findApprovalTemplate(t, approvals, 9100)
+	if !got.DiskUnreadable {
+		t.Error("approval should carry DiskUnreadable")
+	}
+
+	rows, err := st.CatalogTemplatesEnabled(ctx, "default")
+	if err != nil {
+		t.Fatalf("CatalogTemplatesEnabled: %v", err)
+	}
+
+	for _, row := range rows {
+		if row.VMID != 9100 {
+			continue
+		}
+
+		if row.DiskStorage != storageLocalLVM || row.DiskSizeGB != 8 || row.DiskBus != testProfileBus {
+			t.Errorf("stored row = %+v, want the approval-time disk fields untouched", row)
+		}
+
+		return
+	}
+
+	t.Fatal("stored row 9100 vanished")
 }

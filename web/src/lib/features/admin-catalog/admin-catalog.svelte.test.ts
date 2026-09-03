@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AdminCatalogStore, type AdminBridge, type AdminISO, type AdminNode, type AdminStorage } from './admin-catalog.svelte';
+import { AdminCatalogStore, type AdminBridge, type AdminISO, type AdminNode, type AdminStorage, type AdminTemplate } from './admin-catalog.svelte';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -53,6 +53,12 @@ const nodes: AdminNode[] = [
 		vmCount: 1,
 		enabled: false
 	}
+];
+
+const templates: AdminTemplate[] = [
+	{ vmid: 9000, node: 'pve-node-02', name: 'debian-12-cloud', cloudInitCapable: true, diskStorage: 'local-lvm', diskSizeGB: 8, diskBus: 'scsi', enabled: true, missing: false, diskUnreadable: false },
+	{ vmid: 9001, node: 'pve-node-02', name: 'alpine-appliance', cloudInitCapable: false, diskStorage: 'local', diskSizeGB: 2, diskBus: 'scsi', enabled: false, missing: false, diskUnreadable: false },
+	{ vmid: 9002, node: 'pve-node-01', name: 'rocky-9-base', cloudInitCapable: false, diskStorage: 'local-lvm', diskSizeGB: 32, diskBus: 'virtio', enabled: false, missing: false, diskUnreadable: false }
 ];
 
 describe('AdminCatalogStore', () => {
@@ -501,6 +507,184 @@ describe('AdminCatalogStore', () => {
 			expect(store.bridgeEnabledFilter).toBe('all');
 			expect(store.bridgeSortBy).toBe('name');
 			expect(store.bridgeSortDir).toBe('asc');
+		});
+	});
+
+	describe('templates', () => {
+		it('loadTemplates fetches and maps the DTO for the selected cluster', async () => {
+			const fetchMock = vi.fn().mockImplementation((url: string) => {
+				if (url.includes('/auth/clusters')) {
+					return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default', oidcEnabled: false }]));
+				}
+				return Promise.resolve(jsonResponse(200, templates));
+			});
+			vi.stubGlobal('fetch', fetchMock);
+			const store = new AdminCatalogStore();
+
+			await store.loadTemplates();
+
+			expect(store.templates).toEqual(templates);
+			expect(store.error).toBeNull();
+			const calls = fetchMock.mock.calls as [string][];
+			expect(calls.at(-1)?.[0]).toBe('/api/v1/admin/templates?cluster=default');
+		});
+
+		it('loadTemplates keeps other catalog lists untouched (separate from loadAll)', async () => {
+			vi.stubGlobal(
+				'fetch',
+				vi.fn().mockImplementation((url: string) => {
+					if (url.includes('/auth/clusters')) {
+						return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default', oidcEnabled: false }]));
+					}
+					return Promise.resolve(jsonResponse(200, templates));
+				})
+			);
+			const store = new AdminCatalogStore();
+
+			await store.loadTemplates();
+
+			expect(store.nodes).toEqual([]);
+			expect(store.storages).toEqual([]);
+			expect(store.bridges).toEqual([]);
+			expect(store.isos).toEqual([]);
+		});
+
+		it('toggleTemplate posts the right body and optimistically flips the row', async () => {
+			let resolvePost: (value: Response) => void = () => undefined;
+			const fetchMock = vi.fn().mockImplementation(
+				() =>
+					new Promise<Response>((resolve) => {
+						resolvePost = resolve;
+					})
+			);
+			vi.stubGlobal('fetch', fetchMock);
+			const store = new AdminCatalogStore();
+			store.templates = templates;
+
+			const pending = store.toggleTemplate(9001, true);
+
+			// Optimistic: the row flips before the response arrives.
+			expect(store.templates[1]?.enabled).toBe(true);
+
+			resolvePost(jsonResponse(200, { vmid: 9001, enabled: true }));
+			await pending;
+
+			expect(store.templates[1]?.enabled).toBe(true);
+			expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({
+				cluster: 'default',
+				vmid: 9001,
+				enabled: true
+			});
+		});
+
+		it('toggleTemplate failure rolls the optimistic flip back and sets toggleError', async () => {
+			vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(500, { message: 'boom' })));
+			const store = new AdminCatalogStore();
+			store.templates = templates;
+
+			await expect(store.toggleTemplate(9000, false)).rejects.toBeTruthy();
+
+			expect(store.templates[0]?.enabled).toBe(true);
+			expect(store.toggleError).not.toBeNull();
+		});
+
+		it('filteredTemplates filters by search, node, and storage', () => {
+			const store = new AdminCatalogStore();
+			store.templates = templates;
+			expect(store.filteredTemplates.length).toBe(3);
+
+			store.templateSearch = 'debian';
+			expect(store.filteredTemplates.map((t) => t.vmid)).toEqual([9000]);
+
+			store.resetTemplateFilters();
+			store.templateNodeFilter = 'pve-node-01';
+			expect(store.filteredTemplates.map((t) => t.vmid)).toEqual([9002]);
+
+			store.resetTemplateFilters();
+			store.templateStorageFilter = 'local';
+			expect(store.filteredTemplates.map((t) => t.vmid)).toEqual([9001]);
+		});
+
+		it('filteredTemplates sorts by vmid, name, and node', () => {
+			const store = new AdminCatalogStore();
+			store.templates = [...templates].reverse();
+
+			store.templateSortBy = 'vmid';
+			expect(store.filteredTemplates.map((t) => t.vmid)).toEqual([9000, 9001, 9002]);
+
+			store.templateSortBy = 'name';
+			expect(store.filteredTemplates.map((t) => t.name)).toEqual(['alpine-appliance', 'debian-12-cloud', 'rocky-9-base']);
+
+			store.templateSortBy = 'node';
+			expect(store.filteredTemplates.map((t) => t.node)).toEqual(['pve-node-01', 'pve-node-02', 'pve-node-02']);
+
+			store.templateSortDir = 'desc';
+			expect(store.filteredTemplates.map((t) => t.node)).toEqual(['pve-node-02', 'pve-node-02', 'pve-node-01']);
+		});
+
+		it('templateStorageOptions and templateNodeOptions derive from the rows', () => {
+			const store = new AdminCatalogStore();
+			store.templates = templates;
+			expect(store.templateStorageOptions).toEqual(['local', 'local-lvm']);
+			expect(store.templateNodeOptions).toEqual(['pve-node-01', 'pve-node-02']);
+		});
+
+		it('removeTemplate deletes the approval row and drops it from the list', async () => {
+			const fetchMock = vi.fn().mockImplementation((url: string) => {
+				if (url.includes('/auth/clusters')) {
+					return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default', oidcEnabled: false }]));
+				}
+				return Promise.resolve(new Response(null, { status: 204 }));
+			});
+			vi.stubGlobal('fetch', fetchMock);
+			const store = new AdminCatalogStore();
+			store.templates = templates;
+
+			await store.removeTemplate(9002);
+
+			expect(store.templates.map((t) => t.vmid)).toEqual([9000, 9001]);
+			const calls = fetchMock.mock.calls as [string, RequestInit?][];
+			const [url, init] = calls.at(-1)!;
+			expect(url).toBe('/api/v1/admin/templates/default/9002');
+			expect(init?.method).toBe('DELETE');
+		});
+
+		it('removeTemplate failure keeps the row and sets toggleError', async () => {
+			vi.stubGlobal(
+				'fetch',
+				vi.fn().mockImplementation((url: string) => {
+					if (url.includes('/auth/clusters')) {
+						return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default', oidcEnabled: false }]));
+					}
+					return Promise.resolve(jsonResponse(500, { message: 'boom' }));
+				})
+			);
+			const store = new AdminCatalogStore();
+			store.templates = templates;
+
+			await expect(store.removeTemplate(9002)).rejects.toBeTruthy();
+
+			expect(store.templates.length).toBe(3);
+			expect(store.toggleError).not.toBeNull();
+		});
+
+		it('resetTemplateFilters clears all filters and sort', () => {
+			const store = new AdminCatalogStore();
+			store.templates = templates;
+			store.templateSearch = 'deb';
+			store.templateStorageFilter = 'local';
+			store.templateNodeFilter = 'pve-node-01';
+			store.templateSortBy = 'name';
+			store.templateSortDir = 'desc';
+
+			store.resetTemplateFilters();
+
+			expect(store.filteredTemplates.length).toBe(3);
+			expect(store.templateSearch).toBe('');
+			expect(store.templateStorageFilter).toBe('');
+			expect(store.templateNodeFilter).toBe('');
+			expect(store.templateSortBy).toBe('vmid');
+			expect(store.templateSortDir).toBe('asc');
 		});
 	});
 });

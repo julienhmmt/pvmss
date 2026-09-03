@@ -1,4 +1,4 @@
-import { get, post, ApiRequestError } from '$lib/shared/api/client';
+import { get, post, del, ApiRequestError } from '$lib/shared/api/client';
 import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 import { setContext, getContext } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
@@ -42,6 +42,23 @@ export interface AdminISO {
 	enabled: boolean;
 }
 
+export interface AdminTemplate {
+	vmid: number;
+	node: string;
+	name: string;
+	cloudInitCapable: boolean;
+	diskStorage: string;
+	diskSizeGB: number;
+	diskBus: string;
+	enabled: boolean;
+	/** True for a stored approval whose template Proxmox no longer reports —
+	 *  the row stays listed so the admin can remove it. */
+	missing: boolean;
+	/** True when the template's config read failed (issue 03) — the row is
+	 *  greyed out and enabling is refused (disabling stays possible). */
+	diskUnreadable: boolean;
+}
+
 interface ToggleResponse {
 	name: string;
 	enabled: boolean;
@@ -66,6 +83,11 @@ interface ISOToggleResponse {
 	enabled: boolean;
 }
 
+interface TemplateToggleResponse {
+	vmid: number;
+	enabled: boolean;
+}
+
 /**
  * AdminCatalogStore manages the discover-and-approve state for nodes,
  * storages, bridges, and ISOs. One store instance per admin page, via context
@@ -79,6 +101,7 @@ export class AdminCatalogStore {
 	storages = $state.raw<AdminStorage[]>([]);
 	bridges = $state.raw<AdminBridge[]>([]);
 	isos = $state.raw<AdminISO[]>([]);
+	templates = $state.raw<AdminTemplate[]>([]);
 
 	loading = $state.raw(false);
 	error = $state.raw<string | null>(null);
@@ -112,6 +135,12 @@ export class AdminCatalogStore {
 	nodeEnabledFilter: 'all' | 'enabled' | 'disabled' = $state('all');
 	nodeSortBy: NodeSortColumn = $state('name');
 	nodeSortDir: 'asc' | 'desc' = $state('asc');
+
+	templateSearch = $state('');
+	templateStorageFilter = $state('');
+	templateNodeFilter = $state('');
+	templateSortBy: TemplateSortColumn = $state('vmid');
+	templateSortDir: 'asc' | 'desc' = $state('asc');
 
 	filteredIsos = $derived(
 		sortIsos(
@@ -198,6 +227,25 @@ export class AdminCatalogStore {
 
 	nodeStatusFilterOptions = $derived([...new SvelteSet(this.nodes.map((n) => n.status))].sort());
 
+	filteredTemplates = $derived(
+		sortTemplates(
+			this.templates.filter((tmpl) => {
+				const search = this.templateSearch.toLowerCase();
+				if (search && !tmpl.name.toLowerCase().includes(search) && String(tmpl.vmid) !== search) return false;
+				if (this.templateStorageFilter && tmpl.diskStorage !== this.templateStorageFilter) return false;
+				if (this.templateNodeFilter && tmpl.node !== this.templateNodeFilter) return false;
+				return true;
+			}),
+			this.templateSortBy,
+			this.templateSortDir
+		)
+	);
+
+	templateStorageOptions = $derived(
+		[...new SvelteSet(this.templates.map((t) => t.diskStorage).filter((storage) => storage !== ''))].sort()
+	);
+	templateNodeOptions = $derived([...new SvelteSet(this.templates.map((t) => t.node))].sort());
+
 	setStorageSort(column: StorageSortColumn): void {
 		if (this.storageSortBy === column) {
 			this.storageSortDir = this.storageSortDir === 'asc' ? 'desc' : 'asc';
@@ -269,6 +317,23 @@ export class AdminCatalogStore {
 		this.nodeSortDir = 'asc';
 	}
 
+	setTemplateSort(column: TemplateSortColumn): void {
+		if (this.templateSortBy === column) {
+			this.templateSortDir = this.templateSortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			this.templateSortBy = column;
+			this.templateSortDir = 'asc';
+		}
+	}
+
+	resetTemplateFilters(): void {
+		this.templateSearch = '';
+		this.templateStorageFilter = '';
+		this.templateNodeFilter = '';
+		this.templateSortBy = 'vmid';
+		this.templateSortDir = 'asc';
+	}
+
 	async loadClusters(): Promise<void> {
 		try {
 			this.clusterOptions = await fetchClusterOptions();
@@ -306,6 +371,22 @@ export class AdminCatalogStore {
 	setCluster(value: string): void {
 		this.cluster = value;
 		void this.loadAll();
+	}
+
+	/** Loads only the template list (plus cluster options). Template discovery
+	 *  is N+1 against Proxmox, so it must never ride on loadAll() — the nodes/
+	 *  storages/bridges/ISOs pages must not pay for it. */
+	async loadTemplates(): Promise<void> {
+		await this.loadClusters();
+		this.loading = true;
+		this.error = null;
+		try {
+			this.templates = await get<AdminTemplate[]>(`/api/v1/admin/templates?cluster=${encodeURIComponent(this.cluster)}`);
+		} catch (err) {
+			this.error = err instanceof ApiRequestError ? err.message : m['admin.catalog.loadError']();
+		} finally {
+			this.loading = false;
+		}
 	}
 
 	async toggleNode(name: string, enabled: boolean): Promise<void> {
@@ -385,12 +466,50 @@ export class AdminCatalogStore {
 			this.toggling = null;
 		}
 	}
+
+	async toggleTemplate(vmid: number, enabled: boolean): Promise<void> {
+		this.toggling = `template:${vmid}`;
+		this.toggleError = null;
+		// Optimistic flip (T02): update the row immediately, roll back on
+		// failure.
+		this.templates = this.templates.map((t) => (t.vmid === vmid ? { ...t, enabled } : t));
+		try {
+			await post<TemplateToggleResponse>('/api/v1/admin/templates/toggle', {
+				cluster: this.cluster,
+				vmid,
+				enabled
+			});
+		} catch (err) {
+			this.templates = this.templates.map((t) => (t.vmid === vmid ? { ...t, enabled: !enabled } : t));
+			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.toggleTemplateError']();
+			throw err;
+		} finally {
+			this.toggling = null;
+		}
+	}
+
+	/** Removes an approval row (issue 02) — offered by the UI on missing
+	 *  (orphaned) rows only; the API deletes any approval. */
+	async removeTemplate(vmid: number): Promise<void> {
+		this.toggling = `template:${vmid}`;
+		this.toggleError = null;
+		try {
+			await del(`/api/v1/admin/templates/${encodeURIComponent(this.cluster)}/${vmid}`);
+			this.templates = this.templates.filter((t) => t.vmid !== vmid);
+		} catch (err) {
+			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.templates.removeError']();
+			throw err;
+		} finally {
+			this.toggling = null;
+		}
+	}
 }
 
 export type ISOSortColumn = 'file' | 'storage' | 'node' | 'size' | 'enabled';
 export type StorageSortColumn = 'name' | 'node' | 'type' | 'usage' | 'enabled';
 export type BridgeSortColumn = 'name' | 'node' | 'active' | 'comment' | 'enabled';
 export type NodeSortColumn = 'name' | 'status' | 'vmCount' | 'cpuUsage' | 'memoryUsage' | 'enabled';
+export type TemplateSortColumn = 'vmid' | 'name' | 'node' | 'disk' | 'cloudInit' | 'enabled';
 
 function sortBridges(bridges: AdminBridge[], sortBy: BridgeSortColumn, dir: 'asc' | 'desc'): AdminBridge[] {
 	const sorted = [...bridges].sort((a, b) => {
@@ -470,8 +589,35 @@ function sortIsos(isos: AdminISO[], sortBy: ISOSortColumn, dir: 'asc' | 'desc'):
 	return dir === 'asc' ? sorted : sorted.reverse();
 }
 
-function sortNodes(nodes: AdminNode[], sortBy: NodeSortColumn, dir: 'asc' | 'desc'): AdminNode[] {
-	const sorted = [...nodes].sort((a, b) => {
+function sortTemplates(templates: AdminTemplate[], sortBy: TemplateSortColumn, dir: 'asc' | 'desc'): AdminTemplate[] {
+	const sorted = [...templates].sort((a, b) => {
+		let cmp = 0;
+		switch (sortBy) {
+			case 'vmid':
+				cmp = a.vmid - b.vmid || a.name.localeCompare(b.name);
+				break;
+			case 'name':
+				cmp = a.name.localeCompare(b.name) || a.vmid - b.vmid;
+				break;
+			case 'node':
+				cmp = a.node.localeCompare(b.node) || a.vmid - b.vmid;
+				break;
+			case 'disk':
+				cmp = a.diskSizeGB - b.diskSizeGB || a.diskStorage.localeCompare(b.diskStorage) || a.vmid - b.vmid;
+				break;
+			case 'cloudInit':
+				cmp = Number(a.cloudInitCapable) - Number(b.cloudInitCapable) || a.vmid - b.vmid;
+				break;
+			case 'enabled':
+				cmp = Number(a.enabled) - Number(b.enabled) || a.vmid - b.vmid;
+				break;
+		}
+		return cmp;
+	});
+	return dir === 'asc' ? sorted : sorted.reverse();
+}
+
+function sortNodes(nodes: AdminNode[], sortBy: NodeSortColumn, dir: 'asc' | 'desc'): AdminNode[] {	const sorted = [...nodes].sort((a, b) => {
 		let cmp = 0;
 		switch (sortBy) {
 			case 'name':

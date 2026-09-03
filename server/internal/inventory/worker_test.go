@@ -61,6 +61,10 @@ func (c *callCountClient) ListTemplates(_ context.Context) ([]cluster.TemplateVM
 	return nil, cluster.ErrNotImplemented
 }
 
+func (c *callCountClient) TemplateByVMID(_ context.Context, _ int) (cluster.TemplateVM, error) {
+	return cluster.TemplateVM{}, cluster.ErrNotImplemented
+}
+
 func (c *callCountClient) ListPools(_ context.Context) ([]cluster.Pool, error) {
 	return nil, cluster.ErrNotImplemented
 }
@@ -444,6 +448,10 @@ func (hungClient) ListISOs(_ context.Context) ([]cluster.ISOImage, error) {
 
 func (hungClient) ListTemplates(_ context.Context) ([]cluster.TemplateVM, error) {
 	return nil, cluster.ErrNotImplemented
+}
+
+func (hungClient) TemplateByVMID(_ context.Context, _ int) (cluster.TemplateVM, error) {
+	return cluster.TemplateVM{}, cluster.ErrNotImplemented
 }
 
 func (hungClient) ListPools(_ context.Context) ([]cluster.Pool, error) {
