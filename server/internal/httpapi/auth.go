@@ -483,7 +483,7 @@ func (h *Auth) ServeClusters(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.clusterStore == nil {
-		writeAuthJSON(w, http.StatusOK, []authClusterDTO{{Name: "default"}})
+		writeAuthJSON(w, http.StatusOK, []authClusterDTO{})
 		return
 	}
 	rows, err := h.clusterStore.ListClusters(r.Context())

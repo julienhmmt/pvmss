@@ -2,14 +2,13 @@ import { getContext, setContext } from 'svelte';
 
 /**
  * ChromeState — owns the app-shell layout state: the sidebar drawer (open on
- * viewports < 900px, forced closed on desktop) and the activity drawer.
+ * viewports < 900px, forced closed on desktop).
  *
  * Constitution VII: instantiated once in +layout.svelte and provided via
  * context, not a module singleton. The server is untouched by this feature.
  */
 export class ChromeState {
 	sidebarOpen = $state(false);
-	activityOpen = $state(false);
 
 	openSidebar(): void {
 		this.sidebarOpen = true;
@@ -17,18 +16,6 @@ export class ChromeState {
 
 	closeSidebar(): void {
 		this.sidebarOpen = false;
-	}
-
-	openActivity(): void {
-		this.activityOpen = true;
-	}
-
-	closeActivity(): void {
-		this.activityOpen = false;
-	}
-
-	toggleActivity(): void {
-		this.activityOpen = !this.activityOpen;
 	}
 }
 

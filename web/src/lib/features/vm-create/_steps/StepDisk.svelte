@@ -24,6 +24,25 @@
 			? null
 			: m['vms.create.diskOutOfRange']({ min: 1, max: maxDiskGB })
 	);
+
+	// Issue 04: mirror buildCloneSpec (vm/create.go) so the user sees when a
+	// full copy — minutes and real space — is coming instead of a linked
+	// clone. A cloud-init-capable template always full-clones; otherwise a
+	// target storage differing from the template's disk storage forces full.
+	const selectedTemplate = $derived(
+		form.sourceType === 'template'
+			? (form.catalog?.templates ?? []).find((tmpl) => tmpl.vmid === form.templateId)
+			: undefined
+	);
+	const fullCloneHint = $derived(
+		selectedTemplate === undefined
+			? null
+			: selectedTemplate.cloudInitCapable
+				? m['vms.create.fullCloneHintCloudInit']()
+				: form.diskStorage !== '' && form.diskStorage !== selectedTemplate.diskStorage
+					? m['vms.create.fullCloneHintStorage']()
+					: null
+	);
 </script>
 
 <div class="grid gap-4">
@@ -51,7 +70,11 @@
 
 	<FormField label={m['vms.create.size']()} hint={m['vms.create.diskLimitHint']({ min: 1, max: maxDiskGB })} error={diskError} required>
 		{#snippet children({ id, describedBy, invalid })}
-			<TextField {id} {describedBy} {invalid} type="number" min={1} max={maxDiskGB} bind:value={form.diskSizeGB} required />
+			<TextField {id} {describedBy} {invalid} type="number" min={Math.max(1, form.templateMinDiskGB)} max={maxDiskGB} bind:value={form.diskSizeGB} required />
 		{/snippet}
 	</FormField>
+
+	{#if fullCloneHint !== null}
+		<p class="text-sm text-muted-foreground" data-testid="full-clone-hint">{fullCloneHint}</p>
+	{/if}
 </div>

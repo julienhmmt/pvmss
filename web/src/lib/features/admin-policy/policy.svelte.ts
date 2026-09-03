@@ -50,7 +50,7 @@ export class AdminPolicyStore {
 	saveError = $state.raw<string | null>(null);
 	saved = $state.raw(false);
 	clusterOptions = $state.raw<ClusterOption[]>([]);
-	cluster = $state('default');
+	cluster = $state('');
 
 	/** Resolves the real cluster name (matches admin-catalog's pattern) so
 	 *  requests never send the literal "default" against a deployment whose

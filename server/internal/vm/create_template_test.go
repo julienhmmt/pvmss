@@ -3,6 +3,7 @@ package vm_test
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/store"
@@ -12,9 +13,12 @@ import (
 )
 
 // templateRequest is a fully explicit, catalog-valid detailed-mode request
-// that clones from an approved Proxmox template (US2/issue-02). The seed
-// (schemaV22) approves VMID 9000 on pve-node-02 (cloud-init capable, 8 GB
-// disk) and VMID 9001 on pve-node-02 (not cloud-init capable, 2 GB disk).
+// that clones from an approved Proxmox template (US2/issue-02). The fixture
+// (newCreateFixture) approves VMID 9000 on pve-node-02 (cloud-init capable,
+// 8 GB disk) and VMID 9001 on pve-node-02 (not cloud-init capable, 2 GB
+// disk).
+const discoveryNode01 = "pve-node-01"
+
 func templateRequest(templateVMID int) vm.CreateRequest {
 	return vm.CreateRequest{
 		Cluster:    testClusterName,
@@ -310,6 +314,59 @@ func TestCreate_TemplateClone_NoDiskSizeUsesTemplateSize(t *testing.T) {
 	}
 }
 
+// TestCreate_TemplateClone_SimpleModeMinimalRequest — the simple-mode
+// wizard sends only cluster, name, templateId, and startAfterCreate (no
+// cpuCores, memoryMB, sockets, disk, or network). The clone must inherit
+// the template's hardware: checkTechnicalRange must not reject the zero
+// values, and UpdateHardware must not be called (which would shrink the
+// clone to the minimum). Regression for the HTTP 400 out_of_range that
+// blocked template-based creation from the web UI.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_TemplateClone_SimpleModeMinimalRequest(t *testing.T) {
+	fixture := newCreateFixture(t)
+	req := vm.CreateRequest{
+		Cluster:          testClusterName,
+		Name:             "clone-01",
+		TemplateID:       9000,
+		StartAfterCreate: true,
+	}
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if result.UPID == "" {
+		t.Fatalf("no UPID returned")
+	}
+
+	if result.Node != cluster.FakeNode02 {
+		t.Errorf("result.Node = %q, want %q", result.Node, cluster.FakeNode02)
+	}
+
+	// The clone must not have been hit by a hardware override — the
+	// template's CPU/memory are inherited, not shrunk to the minimum.
+	for _, c := range cluster.FakeCalls() {
+		if c.VMID == result.VMID && c.Action == actionUpdateHW {
+			t.Errorf("unexpected update_hardware call for VMID %d (simple mode should inherit template hardware)", result.VMID)
+		}
+	}
+
+	// The pvmss tag must still be stamped via SetTags — without it, the
+	// clone is invisible to PVMSS (FR-006: Resolve returns ErrNotFound).
+	snap, _ := fixture.fake.Snapshot(context.Background())
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("cloned VM %d not in snapshot", result.VMID)
+	}
+
+	if !slices.Contains(snap.VMs[idx].Tags, "pvmss") {
+		t.Errorf("cloned VM %d tags = %v, want pvmss tag present (FR-006)", result.VMID, snap.VMs[idx].Tags)
+	}
+}
+
 // TestCreate_TemplateClone_CloudInitAppliedAfterTask — lifecycle-04: when
 // a cloud-init template is requested alongside a Proxmox template clone,
 // the cloud-init snippet is attached after the clone task completes.
@@ -512,5 +569,136 @@ func TestCreate_TemplateClone_PoolPropagation(t *testing.T) {
 
 	if snap.VMs[idx].Pool != cluster.FakePoolAlice {
 		t.Errorf("cloned VM Pool = %q, want %q", snap.VMs[idx].Pool, cluster.FakePoolAlice)
+	}
+}
+
+// goneTemplateClient simulates a template deleted in Proxmox after approval
+// (issue 02): discovery no longer reports it.
+type goneTemplateClient struct {
+	cluster.Fake
+}
+
+func (goneTemplateClient) TemplateByVMID(_ context.Context, _ int) (cluster.TemplateVM, error) {
+	return cluster.TemplateVM{}, cluster.ErrNotFound
+}
+
+// migratedTemplateClient simulates a template migrated to another node after
+// approval (issue 02): discovery reports pve-node-01, the stored row says
+// pve-node-02.
+type migratedTemplateClient struct {
+	cluster.Fake
+}
+
+func (migratedTemplateClient) TemplateByVMID(_ context.Context, _ int) (cluster.TemplateVM, error) {
+	return cluster.TemplateVM{
+		VMID: 9000, Node: discoveryNode01, Name: "debian-12-cloud", CloudInitCapable: true,
+		DiskStorage: "local-lvm", DiskSizeGB: 8, DiskBus: string(cluster.DiskBusSCSI),
+	}, nil
+}
+
+// unreadableAtCloneClient simulates a template whose config became unreadable
+// between approval and clone time (issue 03): the discovered node is kept,
+// the disk fields fall back to the stored row.
+type unreadableAtCloneClient struct {
+	cluster.Fake
+}
+
+func (unreadableAtCloneClient) TemplateByVMID(_ context.Context, _ int) (cluster.TemplateVM, error) {
+	return cluster.TemplateVM{VMID: 9000, Node: discoveryNode01, Name: "debian-12-cloud", DiskUnreadable: true}, nil
+}
+
+// createWithTemplates runs the clone path with an explicit TemplateReader
+// (the clone-time freshness backstop's seam).
+func createWithTemplates(t *testing.T, fixture createFixture, templates interface {
+	TemplateByVMID(ctx context.Context, vmid int) (cluster.TemplateVM, error)
+}, req vm.CreateRequest,
+) (vm.CreateResult, error) {
+	t.Helper()
+
+	log := slog.New(slog.DiscardHandler)
+
+	return vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{
+		Store:     fixture.store,
+		Creator:   fixture.fake,
+		Pusher:    fixture.fake,
+		Writer:    fixture.fake,
+		FreeSpace: fixture.fake,
+		Snippets:  fixture.fake,
+		Audit:     fixture.store,
+		Log:       log,
+		Templates: templates,
+	})
+}
+
+// TestCreate_TemplateClone_DeletedTemplateFailsFast — a template deleted in
+// Proxmox after approval fails the create fast (ErrNotApproved) before a
+// VMID is spent (issue 02/T17).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_TemplateClone_DeletedTemplateFailsFast(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	cluster.ResetFake()
+
+	_, err := createWithTemplates(t, fixture, goneTemplateClient{}, templateRequest(9000))
+	if !errors.Is(err, vm.ErrNotApproved) {
+		t.Fatalf("err = %v, want ErrNotApproved", err)
+	}
+
+	if findCloneCall(9001) != nil {
+		t.Error("no clone may be dispatched for a deleted template")
+	}
+}
+
+// TestCreate_TemplateClone_ClonesOnDiscoveredNode — a template migrated since
+// approval is cloned on its new node: discovery wins on values at clone time,
+// the stored row keeps only the approval role (T17).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_TemplateClone_ClonesOnDiscoveredNode(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	cluster.ResetFake()
+
+	result, err := createWithTemplates(t, fixture, migratedTemplateClient{}, templateRequest(9000))
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if result.Node != discoveryNode01 {
+		t.Errorf("clone node = %q, want the discovered node", result.Node)
+	}
+
+	call := findCloneCall(result.VMID)
+	if call == nil {
+		t.Fatal("clone call not recorded")
+	}
+
+	if call.Node != discoveryNode01 {
+		t.Errorf("clone POST node = %q, want pve-node-01", call.Node)
+	}
+}
+
+// TestCreate_TemplateClone_UnreadableFallsBackToStoredDisk — when the config
+// is unreadable at clone time, the discovered node is kept and the stored
+// disk fields (validated at approval) drive the resize floor (T17).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_TemplateClone_UnreadableFallsBackToStoredDisk(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	cluster.ResetFake()
+
+	result, err := createWithTemplates(t, fixture, unreadableAtCloneClient{}, templateRequest(9000))
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if result.Node != discoveryNode01 {
+		t.Errorf("clone node = %q, want the discovered node", result.Node)
+	}
+
+	if findCloneCall(result.VMID) == nil {
+		t.Error("clone call not recorded")
 	}
 }

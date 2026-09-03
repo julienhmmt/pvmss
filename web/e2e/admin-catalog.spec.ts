@@ -179,6 +179,31 @@ test.describe('T11 admin catalog', () => {
 		await expect(page.locator('tr', { hasText: 'e2eteam' })).toHaveCount(0);
 	});
 
+	test('approves a VM template from the admin page and a user sees it in the create wizard', async ({
+		page
+	}) => {
+		await signInAdmin(page.request);
+
+		await page.goto('/admin/templates');
+		await expect(page.getByTestId('template-row')).toHaveCount(2);
+
+		// No template is approved initially (the schema ships no demo rows).
+		// Enable debian-12-cloud and verify the approval survives a reload.
+		const debianSwitch = exactRow(page, 'debian-12-cloud').getByRole('switch');
+		await expect(debianSwitch).toHaveAttribute('aria-checked', 'false');
+		await debianSwitch.click();
+		await expect(debianSwitch).toHaveAttribute('aria-checked', 'true');
+		await page.reload();
+		await expect(exactRow(page, 'debian-12-cloud').getByRole('switch')).toHaveAttribute('aria-checked', 'true');
+
+		// SC: the approval surfaces in the user's create wizard.
+		await signInAlice(page.request);
+		await page.goto('/vms/create');
+		await page.getByRole('tab', { name: 'Detailed' }).click();
+		await page.getByLabel('Source').selectOption('template');
+		await expect(page.getByLabel('Template').locator('option', { hasText: 'debian-12-cloud' })).toHaveCount(1);
+	});
+
 	test('a non-admin identity is redirected from the UI and rejected by the server (FR-008, SC-004)', async ({
 		page
 	}) => {

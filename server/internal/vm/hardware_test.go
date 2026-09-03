@@ -33,7 +33,7 @@ func TestUpdateHardware_RestartsForResourceChanges(t *testing.T) {
 
 	calls := cluster.FakeCallsFor(101)
 	// The setup "start" is call 0; UpdateHardware's stop/update/start are 1-3.
-	if len(calls) != 4 || calls[1].Action != "stop" || calls[2].Action != "update_hardware" || calls[3].Action != actionStart {
+	if len(calls) != 4 || calls[1].Action != "stop" || calls[2].Action != actionUpdateHW || calls[3].Action != actionStart {
 		t.Fatalf("calls = %+v, want setup-start/stop/update_hardware/start", calls)
 	}
 }
@@ -50,7 +50,7 @@ func TestUpdateHardware_TagsOnlyStaysLive(t *testing.T) {
 	}
 
 	calls := cluster.FakeCallsFor(101)
-	if len(calls) != 1 || calls[0].Action != "update_hardware" {
+	if len(calls) != 1 || calls[0].Action != actionUpdateHW {
 		t.Fatalf("calls = %+v, want one update_hardware call", calls)
 	}
 }
@@ -85,7 +85,7 @@ func TestUpdateHardware_PvmssTagAlwaysRetained(t *testing.T) {
 	}
 
 	calls := cluster.FakeCallsFor(101)
-	if len(calls) != 1 || calls[0].Action != "update_hardware" {
+	if len(calls) != 1 || calls[0].Action != actionUpdateHW {
 		t.Fatalf("calls = %+v, want one update_hardware call", calls)
 	}
 

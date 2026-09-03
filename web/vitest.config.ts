@@ -13,7 +13,13 @@ export default defineConfig({
 		coverage: {
 			provider: 'v8',
 			reporter: ['text', 'json', 'lcov', 'html'],
-			exclude: ['node_modules/', 'src/**/*.test.ts', 'src/**/*.spec.ts']
+			exclude: [
+				'node_modules/',
+				'src/**/*.test.ts',
+				'src/**/*.spec.ts',
+				'src/test/**',
+				'src/lib/paraglide/**'
+			]
 		}
 	},
 	resolve: {

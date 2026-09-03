@@ -29,7 +29,7 @@ function createMemoryStorage(): Storage {
 	return storage;
 }
 
-if (typeof globalThis.localStorage === 'undefined') {
+if (globalThis.localStorage === undefined) {
 	try {
 		Object.defineProperty(globalThis, 'localStorage', {
 			value: createMemoryStorage(),

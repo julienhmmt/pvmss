@@ -13,9 +13,11 @@
 		checked: boolean;
 		/** Called when the user toggles the switch. */
 		onToggle: () => void;
+		/** Disables interaction (e.g. an unreadable template's enable direction). */
+		disabled?: boolean;
 	}
 
-	let { label, checked, onToggle }: Props = $props();
+	let { label, checked, onToggle, disabled = false }: Props = $props();
 
 	function handleClick(): void {
 		onToggle();
@@ -34,9 +36,10 @@
 	role="switch"
 	aria-checked={checked}
 	aria-label={label}
+	{disabled}
 	onclick={handleClick}
 	onkeydown={handleKeydown}
-	class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+	class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
 	class:bg-primary={checked}
 	class:bg-input={!checked}
 >

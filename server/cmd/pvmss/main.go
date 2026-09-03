@@ -59,6 +59,11 @@ const (
 	// app info page, and the public /api/v1/public/version endpoint (T14).
 	// It is a compile-time literal; no runtime discovery is performed.
 	appVersion = "0.4.0-dev"
+
+	// errNoClustersConfigured is the error message shared by initCluster and
+	// initInventory when the registry has no clusters. Extracted as a
+	// constant to satisfy go:S1192 (the literal was duplicated 4×).
+	errNoClustersConfigured = "no clusters configured"
 )
 
 func main() {
@@ -191,9 +196,14 @@ func initCluster(cfg config.Configuration, st *store.Store, logger *slog.Logger)
 		logger.Error("failed to create cluster registry", "component", "main", "error", err)
 		return nil, nil, err
 	}
-	clusterClient, err := clusterRegistry.Client("default")
+	names := clusterRegistry.List()
+	if len(names) == 0 {
+		logger.Error(errNoClustersConfigured, "component", "main")
+		return nil, nil, errors.New(errNoClustersConfigured)
+	}
+	clusterClient, err := clusterRegistry.Client(names[0])
 	if err != nil {
-		logger.Error("default cluster is unavailable", "component", "main", "error", err)
+		logger.Error("primary cluster is unavailable", "component", "main", "cluster", names[0], "error", err)
 		return nil, nil, err
 	}
 	logger.Info("cluster registry initialized", "component", "cluster", "source", cfg.ClusterSource, "clusters", clusterRegistry.List())
@@ -251,7 +261,7 @@ func discoverClusterDisplayNames(ctx context.Context, registry *cluster.Registry
 	}
 }
 
-// initInventory builds the inventory registry and resolves the default
+// initInventory builds the inventory registry and resolves the first
 // cluster's projection, worker, and refresher. Each active cluster gets an
 // independent projection and refresh worker (FR-002, AC03 §2.4).
 func initInventory(cfg config.Configuration, clusterRegistry *cluster.Registry, logger *slog.Logger) (*inventory.Registry, *inventory.Projection, *inventory.Worker, *inventory.Refresher, error) {
@@ -263,19 +273,25 @@ func initInventory(cfg config.Configuration, clusterRegistry *cluster.Registry, 
 	)
 	inventoryRegistry.SetManualRefreshMinInterval(cfg.InventoryManualRefreshMinInterval)
 
-	defaultProjection, err := inventoryRegistry.Projection("default")
+	names := clusterRegistry.List()
+	if len(names) == 0 {
+		logger.Error(errNoClustersConfigured, "component", "main")
+		return nil, nil, nil, nil, errors.New(errNoClustersConfigured)
+	}
+	primary := names[0]
+	defaultProjection, err := inventoryRegistry.Projection(primary)
 	if err != nil {
-		logger.Error("default inventory projection is unavailable", "component", "main", "error", err)
+		logger.Error("primary inventory projection is unavailable", "component", "main", "cluster", primary, "error", err)
 		return nil, nil, nil, nil, err
 	}
-	defaultWorker, err := inventoryRegistry.Worker("default")
+	defaultWorker, err := inventoryRegistry.Worker(primary)
 	if err != nil {
-		logger.Error("default inventory worker is unavailable", "component", "main", "error", err)
+		logger.Error("primary inventory worker is unavailable", "component", "main", "cluster", primary, "error", err)
 		return nil, nil, nil, nil, err
 	}
-	defaultRefresher, err := inventoryRegistry.Refresher("default")
+	defaultRefresher, err := inventoryRegistry.Refresher(primary)
 	if err != nil {
-		logger.Error("default inventory refresher is unavailable", "component", "main", "error", err)
+		logger.Error("primary inventory refresher is unavailable", "component", "main", "cluster", primary, "error", err)
 		return nil, nil, nil, nil, err
 	}
 

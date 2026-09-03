@@ -19,6 +19,7 @@ export interface VmDetailEntity {
 	diskTotal: number;
 	uptimeSeconds?: number;
 	description?: string;
+	descriptionHtml?: string;
 	/** Proxmox lock name (e.g. "snapshot-delete", "backup") from the live
 	 *  status — non-empty means the VM rejects most operations. */
 	lock?: string;

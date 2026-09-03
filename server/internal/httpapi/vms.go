@@ -133,8 +133,14 @@ type queryError struct {
 // except scope, which vm.List re-derives from the identity regardless.
 func (h *VMs) parseQuery(r *http.Request) (vm.ListQuery, *queryError) {
 	params := r.URL.Query()
+	clusterName := params.Get("cluster")
+	if clusterName == "" && h.source != nil {
+		if names := clusterNamesFromSource(h.source); len(names) == 1 {
+			clusterName = names[0]
+		}
+	}
 	query := vm.ListQuery{
-		Cluster: params.Get("cluster"),
+		Cluster: clusterName,
 		Search:  params.Get("search"),
 		Status:  cluster.VMStatus(params.Get("status")),
 		Node:    params.Get("node"),
@@ -200,6 +206,21 @@ func sourceHasReadyIndex(source inventory.Source, clusterName string) bool {
 		}
 	}
 	return false
+}
+
+// clusterNamesFromSource returns the cluster names registered in the inventory
+// source, ignoring the empty compatibility key used by single-index projections.
+func clusterNamesFromSource(source inventory.Source) []string {
+	if source == nil {
+		return nil
+	}
+	names := make([]string, 0, len(source.All()))
+	for name := range source.All() {
+		if name != "" {
+			names = append(names, name)
+		}
+	}
+	return names
 }
 
 func (h *VMs) writeList(ctx context.Context, w http.ResponseWriter, result vm.ListResult) {

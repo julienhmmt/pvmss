@@ -17,6 +17,7 @@ const (
 	actionShutdown = "shutdown"
 	actionStop     = "stop"
 	actionStart    = "start"
+	actionUpdateHW = "update_hardware"
 )
 
 // failingAuditErr returns a configured error from RecordAction so the
