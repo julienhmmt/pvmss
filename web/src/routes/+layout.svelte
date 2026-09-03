@@ -14,7 +14,6 @@
 	import { setStatusContext } from '$lib/features/chrome/status.svelte';
 	import { setChromeContext } from '$lib/features/chrome/chrome.svelte';
 	import Sidebar from '$lib/features/chrome/Sidebar.svelte';
-	import CapabilitiesPanel from '$lib/features/chrome/CapabilitiesPanel.svelte';
 	import AppHeader from '$lib/features/chrome/AppHeader.svelte';
 	import HeaderLite from '$lib/features/chrome/HeaderLite.svelte';
 	import StatusBanner from '$lib/features/chrome/StatusBanner.svelte';
@@ -137,10 +136,7 @@
 
 	const signedIn = $derived(session.principal !== null);
 	const hasRouteError = $derived(page.error !== null);
-	const isHomePage = $derived(page.route.id === '/');
-	const isAboutPage = $derived(page.route.id === '/about');
 	const isLoginPage = $derived(page.route.id === '/login');
-	const showCapabilitiesPanel = $derived(signedIn && !isHomePage && !isAboutPage);
 	let shortcutsOpen = $state(false);
 
 	let sidebarDialog: HTMLDialogElement | null = $state(null);
@@ -191,13 +187,6 @@
 						{/if}
 					</div>
 				</main>
-				{#if showCapabilitiesPanel}
-					<div class="px-7 pb-4">
-						<div class="mx-auto max-w-[1180px]">
-							<CapabilitiesPanel />
-						</div>
-					</div>
-				{/if}
 				<footer class="flex items-center justify-between gap-4 border-t border-border px-7 py-3 text-xs text-muted-foreground-subtle">
 					{#if version}PVMSS {version}{/if}
 					<div class="flex items-center gap-4">
