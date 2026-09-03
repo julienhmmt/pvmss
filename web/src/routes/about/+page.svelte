@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { m } from '$lib/paraglide/messages.js';
+	import Button from '$lib/shared/ui/Button.svelte';
 	import { CAPABILITIES } from '$lib/features/capabilities/capability-data';
 	import CapabilityIcon from '$lib/features/capabilities/CapabilityIcon.svelte';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
@@ -183,12 +185,12 @@
 	</section>
 
 	<div class="mt-10">
-		<ButtonLink
-			href={resolve('/')}
+		<Button
 			variant="secondary"
 			data-testid="about-back-home"
+			onclick={() => void goto(resolve('/'))}
 		>
 			{m['common.back']()}
-		</ButtonLink>
+		</Button>
 	</div>
 </article>
