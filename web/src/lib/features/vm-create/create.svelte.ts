@@ -161,6 +161,11 @@ export type CreateMode = 'simple' | 'detailed';
  *  The two are mutually exclusive — the server rejects a request carrying both. */
 export type VmSource = 'iso' | 'template';
 
+/** Simple-mode source (V08): the user can either pick a size profile or clone
+ *  from an approved Proxmox template. This is a UI-only distinction; the
+ *  request still carries either profileId or templateId. */
+export type SimpleSource = 'profile' | 'template';
+
 /** Server error codes with fixed, non-parameterized text (server/internal/httpapi/vm_create.go). */
 const FIXED_SUBMIT_ERRORS: Partial<Record<string, () => string>> = {
 	admin_cannot_create: m['vms.create.adminBlocked'],
@@ -278,6 +283,10 @@ export class VmCreateStore {
 	 *  When 'template' is selected, the node selector is hidden (D2b: the
 	 *  clone stays on the template's node). */
 	sourceType = $state<VmSource>('iso');
+	/** Simple-mode source (V08): 'profile' (predefined size) or 'template'
+	 *  (clone from an approved Proxmox template). Profile is the default
+	 *  because it matches the original simple workflow. */
+	simpleSource = $state<SimpleSource>('profile');
 	templateId = $state(0);
 	/** Issue 04: the selected template's disk floor. 0 when no template is
 	 *  selected — the disk size may never drop below it (Proxmox cannot
@@ -385,8 +394,9 @@ export class VmCreateStore {
 		return this.catalog?.nodeCapacities?.find((capacity) => capacity.node === node);
 	}
 
-	/** Builds the outgoing request for simple mode: profile-driven, with the
-	 *  auto-selections sent explicitly when the user adjusted them (V08). */
+	/** Builds the outgoing request for simple mode: profile-driven or a
+	 *  template clone, with the auto-selections sent explicitly when the user
+	 *  adjusted them (V08). */
 	buildRequest(): VMCreateRequest {
 		const request: VMCreateRequest = {
 			cluster: this.catalog?.cluster ?? this.cluster,
@@ -394,6 +404,11 @@ export class VmCreateStore {
 			startAfterCreate: this.startAfterCreate
 		};
 		if (this.mode === 'simple') {
+			if (this.simpleSource === 'template' && this.templateId !== 0) {
+				request.templateId = this.templateId;
+				if (this.cloudInitTemplateId !== '') request.cloudInitTemplateId = this.cloudInitTemplateId;
+				return request;
+			}
 			if (this.profileId !== '') request.profileId = this.profileId;
 			if (this.cloudInitTemplateId !== '') request.cloudInitTemplateId = this.cloudInitTemplateId;
 			if (this.nodeAdjusted && this.node !== '') request.node = this.node;
@@ -484,6 +499,7 @@ export class VmCreateStore {
 			nics: this.nics.map((nic) => ({ ...nic })),
 			isoFile: this.isoFile,
 			sourceType: this.sourceType,
+			simpleSource: this.simpleSource,
 			templateId: this.templateId,
 			templateMinDiskGB: this.templateMinDiskGB,
 			startAfterCreate: this.startAfterCreate,
@@ -512,6 +528,7 @@ export class VmCreateStore {
 		this.nics = (values.nics ?? [{ bridge: '', model: 'virtio' }]).map((nic) => ({ ...nic }));
 		this.isoFile = values.isoFile;
 		this.sourceType = values.sourceType ?? 'iso';
+		this.simpleSource = values.simpleSource ?? 'profile';
 		this.templateId = values.templateId ?? 0;
 		this.templateMinDiskGB = values.templateMinDiskGB ?? 0;
 		this.startAfterCreate = values.startAfterCreate;

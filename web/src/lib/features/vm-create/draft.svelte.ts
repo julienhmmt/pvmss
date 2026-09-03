@@ -1,6 +1,6 @@
 import { getContext, setContext } from 'svelte';
 import { SvelteDate } from 'svelte/reactivity';
-import type { CreateMode, VmSource } from './create.svelte';
+import type { CreateMode, SimpleSource, VmSource } from './create.svelte';
 
 export const DRAFT_STORAGE_KEY = 'pvmss-vm-create-draft';
 export const DRAFT_SCHEMA_VERSION = 4;
@@ -32,6 +32,7 @@ export interface DraftValues {
 	nics?: DraftNIC[];
 	isoFile: string;
 	sourceType?: VmSource;
+	simpleSource?: SimpleSource;
 	templateId?: number;
 	templateMinDiskGB?: number;
 	startAfterCreate: boolean;
