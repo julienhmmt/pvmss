@@ -212,7 +212,7 @@ func TestVMBulk_SpansTwoClusters(t *testing.T) {
 		t.Fatalf("results = %d, want 2", len(resp.Results))
 	}
 
-	if resp.Results[0].Cluster != "default" || resp.Results[0].Status != "ok" {
+	if resp.Results[0].Cluster != auditTestCluster || resp.Results[0].Status != "ok" {
 		t.Errorf("result[0] = %+v, want cluster=default status=ok", resp.Results[0])
 	}
 

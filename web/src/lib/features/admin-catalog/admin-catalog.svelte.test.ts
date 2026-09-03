@@ -56,9 +56,9 @@ const nodes: AdminNode[] = [
 ];
 
 const templates: AdminTemplate[] = [
-	{ vmid: 9000, node: 'pve-node-02', name: 'debian-12-cloud', cloudInitCapable: true, diskStorage: 'local-lvm', diskSizeGB: 8, diskBus: 'scsi', enabled: true, missing: false, diskUnreadable: false },
-	{ vmid: 9001, node: 'pve-node-02', name: 'alpine-appliance', cloudInitCapable: false, diskStorage: 'local', diskSizeGB: 2, diskBus: 'scsi', enabled: false, missing: false, diskUnreadable: false },
-	{ vmid: 9002, node: 'pve-node-01', name: 'rocky-9-base', cloudInitCapable: false, diskStorage: 'local-lvm', diskSizeGB: 32, diskBus: 'virtio', enabled: false, missing: false, diskUnreadable: false }
+	{ vmid: 9000, node: 'pve-node-02', name: 'debian-12-cloud', cloudInitCapable: true, diskStorage: 'local-lvm', diskSizeGB: 8, diskBus: 'scsi', enabled: true, missing: false, diskUnreadable: false, overrideDiscovery: false },
+	{ vmid: 9001, node: 'pve-node-02', name: 'alpine-appliance', cloudInitCapable: false, diskStorage: 'local', diskSizeGB: 2, diskBus: 'scsi', enabled: false, missing: false, diskUnreadable: false, overrideDiscovery: false },
+	{ vmid: 9002, node: 'pve-node-01', name: 'rocky-9-base', cloudInitCapable: false, diskStorage: 'local-lvm', diskSizeGB: 32, diskBus: 'virtio', enabled: false, missing: false, diskUnreadable: false, overrideDiscovery: false }
 ];
 
 describe('AdminCatalogStore', () => {
@@ -70,6 +70,7 @@ describe('AdminCatalogStore', () => {
 		);
 		vi.stubGlobal('fetch', fetchMock);
 		const store = new AdminCatalogStore();
+		store.cluster = 'default';
 		store.bridges = bridges;
 
 		await store.toggleBridge('node-a', 'vmbr0', true);
@@ -559,6 +560,7 @@ describe('AdminCatalogStore', () => {
 			);
 			vi.stubGlobal('fetch', fetchMock);
 			const store = new AdminCatalogStore();
+			store.cluster = 'default';
 			store.templates = templates;
 
 			const pending = store.toggleTemplate(9001, true);
@@ -638,6 +640,7 @@ describe('AdminCatalogStore', () => {
 			});
 			vi.stubGlobal('fetch', fetchMock);
 			const store = new AdminCatalogStore();
+			store.cluster = 'default';
 			store.templates = templates;
 
 			await store.removeTemplate(9002);
@@ -665,6 +668,63 @@ describe('AdminCatalogStore', () => {
 			await expect(store.removeTemplate(9002)).rejects.toBeTruthy();
 
 			expect(store.templates.length).toBe(3);
+			expect(store.toggleError).not.toBeNull();
+		});
+
+		it('updateTemplate PUTs the patch and marks the row as overrideDiscovery', async () => {
+			const fetchMock = vi.fn().mockImplementation((url: string) => {
+				if (url.includes('/auth/clusters')) {
+					return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default', oidcEnabled: false }]));
+				}
+				return Promise.resolve(jsonResponse(200, {
+					vmid: 9000, node: 'pve-node-02', name: 'debian-12-cloud', cloudInitCapable: true,
+					diskStorage: 'local', diskSizeGB: 4, diskBus: 'virtio', enabled: true, missing: false,
+					diskUnreadable: false, overrideDiscovery: true
+				}));
+			});
+			vi.stubGlobal('fetch', fetchMock);
+			const store = new AdminCatalogStore();
+			store.cluster = 'default';
+			store.templates = templates;
+
+			await store.updateTemplate(9000, {
+				node: 'pve-node-02', name: 'debian-12-cloud', cloudInitCapable: true,
+				diskStorage: 'local', diskSizeGB: 4, diskBus: 'virtio'
+			});
+
+			const updated = store.templates.find((t) => t.vmid === 9000);
+			expect(updated?.diskStorage).toBe('local');
+			expect(updated?.diskSizeGB).toBe(4);
+			expect(updated?.diskBus).toBe('virtio');
+			expect(updated?.overrideDiscovery).toBe(true);
+
+			const calls = fetchMock.mock.calls as [string, RequestInit?][];
+			const [url, init] = calls.at(-1)!;
+			expect(url).toBe('/api/v1/admin/templates/default/9000');
+			expect(init?.method).toBe('PUT');
+		});
+
+		it('updateTemplate failure keeps the row unchanged and sets toggleError', async () => {
+			vi.stubGlobal(
+				'fetch',
+				vi.fn().mockImplementation((url: string) => {
+					if (url.includes('/auth/clusters')) {
+						return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default', oidcEnabled: false }]));
+					}
+					return Promise.resolve(jsonResponse(500, { message: 'boom' }));
+				})
+			);
+			const store = new AdminCatalogStore();
+			store.templates = templates;
+
+			await expect(store.updateTemplate(9000, {
+				node: 'pve-node-02', name: 'debian-12-cloud', cloudInitCapable: true,
+				diskStorage: 'local', diskSizeGB: 4, diskBus: 'virtio'
+			})).rejects.toBeTruthy();
+
+			const unchanged = store.templates.find((t) => t.vmid === 9000);
+			expect(unchanged?.diskStorage).toBe('local-lvm');
+			expect(unchanged?.overrideDiscovery).toBe(false);
 			expect(store.toggleError).not.toBeNull();
 		});
 

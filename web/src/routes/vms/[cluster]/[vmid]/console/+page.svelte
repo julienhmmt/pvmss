@@ -12,7 +12,7 @@
 
 	type ConsoleMode = 'graphical' | 'text';
 
-	const cluster = page.params.cluster ?? 'default';
+	const cluster = page.params.cluster ?? '';
 	const vmid = Number(page.params.vmid);
 
 	const store = setConsoleContext(cluster, vmid);

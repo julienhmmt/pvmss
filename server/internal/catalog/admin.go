@@ -69,6 +69,10 @@ type TemplateApproval struct {
 	// DiskUnreadable is true when the template's config read failed (issue
 	// 03): the row is shown greyed out and enabling is refused.
 	DiskUnreadable bool
+	// OverrideDiscovery is true when an admin pinned the editable fields
+	// (schemaV26). The list then shows the stored (overridden) values
+	// instead of the discovered ones and skips the drift write-back.
+	OverrideDiscovery bool
 }
 
 // AdminListNodes returns every node the cluster reports, unioned with its
@@ -253,11 +257,22 @@ func AdminListTemplates(ctx context.Context, st *store.Store, client cluster.Cli
 
 		if stored, ok := storedByVMID[tmpl.VMID]; ok {
 			approval.Enabled = stored.Enabled
+			approval.OverrideDiscovery = stored.OverrideDiscovery
 
-			// An unreadable discovery reports empty disk fields (issue 03) —
-			// never write them over the stored, approval-time values: the
+			// When the admin pinned the row (schemaV26), the stored values
+			// are authoritative — show them instead of the discovered ones
+			// and skip the drift write-back so the pin survives the next
+			// list. An unreadable discovery reports empty disk fields
+			// (issue 03) — never write them over the stored values: the
 			// clone-time fallback (T17) relies on them being non-empty.
-			if !tmpl.DiskUnreadable && templateDrift(stored, tmpl) {
+			if stored.OverrideDiscovery {
+				approval.Node = stored.Node
+				approval.Name = stored.Name
+				approval.CloudInitCapable = stored.CloudInitCapable
+				approval.DiskStorage = stored.DiskStorage
+				approval.DiskSizeGB = stored.DiskSizeGB
+				approval.DiskBus = stored.DiskBus
+			} else if !tmpl.DiskUnreadable && templateDrift(stored, tmpl) {
 				values := store.TemplateValues{
 					Node: tmpl.Node, Name: tmpl.Name, CloudInitCapable: tmpl.CloudInitCapable,
 					DiskStorage: tmpl.DiskStorage, DiskSizeGB: tmpl.DiskSizeGB, DiskBus: tmpl.DiskBus,
@@ -286,6 +301,7 @@ func AdminListTemplates(ctx context.Context, st *store.Store, client cluster.Cli
 		})
 		approval.Enabled = row.Enabled
 		approval.Missing = true
+		approval.OverrideDiscovery = row.OverrideDiscovery
 
 		out = append(out, approval)
 	}
@@ -332,6 +348,23 @@ var ErrTemplateNotFound = errors.New("template not found")
 // any approval row.
 func DeleteTemplate(ctx context.Context, st *store.Store, cluster string, vmid int) error {
 	err := st.DeleteTemplate(ctx, cluster, vmid)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrTemplateNotFound
+	}
+
+	return err
+}
+
+// UpdateTemplate overrides an approved template's editable fields and pins the
+// row against discovery-wins write-back (schemaV26). Returns
+// ErrTemplateNotFound when the cluster has no approval for the vmid. The
+// override is a human mutation, so the caller (HTTP handler) audits it; this
+// function only persists. DiskSizeGB must be >= 0; the HTTP handler validates
+// the upper bound against the gabarit.
+func UpdateTemplate(ctx context.Context, st *store.Store, cluster string, vmid int, values store.TemplateValues) error {
+	values.OverrideDiscovery = true
+
+	err := st.UpdateTemplate(ctx, cluster, vmid, values)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrTemplateNotFound
 	}

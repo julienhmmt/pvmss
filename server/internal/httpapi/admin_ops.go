@@ -21,10 +21,6 @@ import (
 // default MaxListPageSize used by T04's VM list (contracts/admin-ops.md).
 const maxAuditPageSize = 100
 
-// defaultClusterName is the single-cluster name used throughout the v0.4
-// codebase. Centralized here so goconst does not flag the shared literal.
-const defaultClusterName = "default"
-
 // AdminOps serves the T14 admin exploitation endpoints: the audit log read,
 // the dashboard aggregate, the database export/import, and the app info with
 // redaction. Every /api/v1/admin/* route is wrapped by Auth.RequireAdmin
@@ -557,11 +553,26 @@ func (h *AdminOps) ServeAppInfo(w http.ResponseWriter, _ *http.Request) {
 	idx := h.projection.Load()
 	clusters := make([]clusterHealthDTO, 0, 1)
 	if idx != nil {
-		clusters = append(clusters, clusterHealthDTO{
-			Name:                 defaultClusterName,
-			RefreshedAt:          idx.RefreshedAt.UTC().Format(time.RFC3339),
-			LastRefreshSucceeded: !idx.RefreshedAt.IsZero(),
-		})
+		clusterRows, err := h.store.ListClusters(context.Background())
+		if err != nil || len(clusterRows) == 0 {
+			clusters = append(clusters, clusterHealthDTO{
+				Name:                 "unknown",
+				RefreshedAt:          idx.RefreshedAt.UTC().Format(time.RFC3339),
+				LastRefreshSucceeded: !idx.RefreshedAt.IsZero(),
+			})
+		} else {
+			for _, row := range clusterRows {
+				name := row.DisplayName
+				if name == "" {
+					name = row.Name
+				}
+				clusters = append(clusters, clusterHealthDTO{
+					Name:                 name,
+					RefreshedAt:          idx.RefreshedAt.UTC().Format(time.RFC3339),
+					LastRefreshSucceeded: !idx.RefreshedAt.IsZero(),
+				})
+			}
+		}
 	}
 
 	writeAdminJSON(w, http.StatusOK, appInfoDTO{

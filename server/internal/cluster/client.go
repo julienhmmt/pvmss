@@ -145,6 +145,10 @@ type Writer interface {
 	SetBootOrder(ctx context.Context, node string, vmid int, order []string) error
 	UpdateNetwork(ctx context.Context, node string, vmid int, interfaces []NetworkInterface) error
 	UpdateHardware(ctx context.Context, node string, vmid, sockets, cores, memoryMB int, tags []string) error
+	// SetTags writes only the VM's tags without touching hardware. Used by
+	// the clone path when no hardware override was requested but the
+	// mandatory pvmss tag still needs to be stamped (FR-006).
+	SetTags(ctx context.Context, node string, vmid int, tags []string) error
 	// EnableSerial provisions a socket-backed serial port (serial0) on an
 	// existing VM so the PVMSS Text/serial console works for VMs created
 	// before serial0 was added at create time.

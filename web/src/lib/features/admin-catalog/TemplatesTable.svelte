@@ -13,12 +13,13 @@
 		toggling: string | null;
 		onToggle: (vmid: number, enabled: boolean) => void;
 		onRemove: (vmid: number) => void;
+		onEdit: (template: AdminTemplate) => void;
 		sortBy: TemplateSortColumn;
 		sortDir: 'asc' | 'desc';
 		onSort: (column: TemplateSortColumn) => void;
 	}
 
-	let { templates, toggling, onToggle, onRemove, sortBy, sortDir, onSort }: Props = $props();
+	let { templates, toggling, onToggle, onRemove, onEdit, sortBy, sortDir, onSort }: Props = $props();
 
 	function handleSort(column: string): void {
 		onSort(column as TemplateSortColumn);
@@ -65,6 +66,13 @@
 							>
 								{m['admin.templates.unreadableBadge']()}
 							</span>
+						{/if}{#if tmpl.overrideDiscovery}
+							<span
+								class="ml-2 inline-flex items-center rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+								data-testid="template-override-badge"
+							>
+								{m['admin.templates.overrideBadge']()}
+							</span>
 						{/if}
 					</td>
 					<td class="px-4 py-3 font-mono" data-label={m['common.node']()}>{tmpl.node}</td>
@@ -102,16 +110,28 @@
 						{/if}
 					</td>
 					<td class="px-4 py-3" data-label={m['admin.templates.remove']()}>
-						{#if tmpl.missing}
-							<Button
-								variant="ghost"
-								size="sm"
-								onclick={() => onRemove(tmpl.vmid)}
-								data-testid="template-remove"
-							>
-								{m['admin.templates.remove']()}
-							</Button>
-						{/if}
+						<div class="flex items-center gap-1">
+							{#if !tmpl.missing}
+								<Button
+									variant="ghost"
+									size="sm"
+									onclick={() => onEdit(tmpl)}
+									data-testid="template-edit"
+								>
+									{m['admin.templates.edit']()}
+								</Button>
+							{/if}
+							{#if tmpl.missing}
+								<Button
+									variant="ghost"
+									size="sm"
+									onclick={() => onRemove(tmpl.vmid)}
+									data-testid="template-remove"
+								>
+									{m['admin.templates.remove']()}
+								</Button>
+							{/if}
+						</div>
 					</td>
 				</tr>
 			{:else}

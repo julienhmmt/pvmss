@@ -62,6 +62,10 @@ type CatalogTemplateEnabled struct {
 	DiskSizeGB       int
 	DiskBus          string
 	Enabled          bool
+	// OverrideDiscovery is true when an admin pinned the editable fields;
+	// the catalog admin list then skips the discovery-wins write-back for
+	// this row (schemaV26).
+	OverrideDiscovery bool
 }
 
 // CatalogTag is one catalog_tags row.
@@ -188,18 +192,21 @@ func (s *Store) SetProfileEnabled(ctx context.Context, cluster, id string, enabl
 // disabled) with their enabled state, ordered by vmid (US2/issue-02).
 func (s *Store) CatalogTemplatesEnabled(ctx context.Context, cluster string) ([]CatalogTemplateEnabled, error) {
 	return queryCatalog(ctx, s.db, "catalog templates enabled",
-		`SELECT vmid, node, name, cloud_init_capable, disk_storage, disk_size_gb, disk_bus, enabled
+		`SELECT vmid, node, name, cloud_init_capable, disk_storage, disk_size_gb, disk_bus, enabled, override_discovery
 		 FROM catalog_templates WHERE cluster = ? ORDER BY vmid`,
 		[]any{cluster},
 		func(rows *sql.Rows) (CatalogTemplateEnabled, error) {
 			var t CatalogTemplateEnabled
 
 			var cloudInit int
-			if err := rows.Scan(&t.VMID, &t.Node, &t.Name, &cloudInit, &t.DiskStorage, &t.DiskSizeGB, &t.DiskBus, &t.Enabled); err != nil {
+
+			var override int
+			if err := rows.Scan(&t.VMID, &t.Node, &t.Name, &cloudInit, &t.DiskStorage, &t.DiskSizeGB, &t.DiskBus, &t.Enabled, &override); err != nil {
 				return t, err
 			}
 
 			t.CloudInitCapable = cloudInit == 1
+			t.OverrideDiscovery = override == 1
 
 			return t, nil
 		},
@@ -207,13 +214,15 @@ func (s *Store) CatalogTemplatesEnabled(ctx context.Context, cluster string) ([]
 }
 
 // TemplateValues is the editable field set of a catalog_templates row (US2).
+// OverrideDiscovery pins the row against discovery-wins write-back (schemaV26).
 type TemplateValues struct {
-	Node             string
-	Name             string
-	CloudInitCapable bool
-	DiskStorage      string
-	DiskSizeGB       int
-	DiskBus          string
+	Node              string
+	Name              string
+	CloudInitCapable  bool
+	DiskStorage       string
+	DiskSizeGB        int
+	DiskBus           string
+	OverrideDiscovery bool
 }
 
 // InsertTemplate inserts a new template row with the given enabled state.
@@ -221,20 +230,22 @@ type TemplateValues struct {
 // (US2/issue-02).
 func (s *Store) InsertTemplate(ctx context.Context, cluster string, vmid int, values TemplateValues, enabled bool) error {
 	return execInsertOne(ctx, s.db,
-		`INSERT INTO catalog_templates (cluster, node, vmid, name, cloud_init_capable, disk_storage, disk_size_gb, disk_bus, enabled)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`INSERT INTO catalog_templates (cluster, node, vmid, name, cloud_init_capable, disk_storage, disk_size_gb, disk_bus, enabled, override_discovery)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(cluster, vmid) DO NOTHING`,
-		[]any{cluster, values.Node, vmid, values.Name, values.CloudInitCapable, values.DiskStorage, values.DiskSizeGB, values.DiskBus, enabled},
+		[]any{cluster, values.Node, vmid, values.Name, values.CloudInitCapable, values.DiskStorage, values.DiskSizeGB, values.DiskBus, enabled, values.OverrideDiscovery},
 	)
 }
 
-// UpdateTemplate updates an existing template's values. Returns sql.ErrNoRows
-// if the template does not exist (US2/issue-02).
+// UpdateTemplate updates an existing template's values, including the
+// override_discovery flag. Returns sql.ErrNoRows if the template does not
+// exist (US2/issue-02). Setting OverrideDiscovery=true pins the row so the
+// catalog admin list stops overwriting these fields with discovery values.
 func (s *Store) UpdateTemplate(ctx context.Context, cluster string, vmid int, values TemplateValues) error {
 	return execUpdateOne(ctx, s.db,
-		`UPDATE catalog_templates SET node = ?, name = ?, cloud_init_capable = ?, disk_storage = ?, disk_size_gb = ?, disk_bus = ?
+		`UPDATE catalog_templates SET node = ?, name = ?, cloud_init_capable = ?, disk_storage = ?, disk_size_gb = ?, disk_bus = ?, override_discovery = ?
 		 WHERE cluster = ? AND vmid = ?`,
-		[]any{values.Node, values.Name, values.CloudInitCapable, values.DiskStorage, values.DiskSizeGB, values.DiskBus, cluster, vmid},
+		[]any{values.Node, values.Name, values.CloudInitCapable, values.DiskStorage, values.DiskSizeGB, values.DiskBus, values.OverrideDiscovery, cluster, vmid},
 	)
 }
 

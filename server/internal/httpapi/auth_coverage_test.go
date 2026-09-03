@@ -304,7 +304,7 @@ func TestAuthCoverage_ServeClusters_MethodNotAllowed(t *testing.T) {
 }
 
 //nolint:paralleltest // serial: shared fake auth and session fixtures
-func TestAuthCoverage_ServeClusters_NoStoreReturnsDefault(t *testing.T) {
+func TestAuthCoverage_ServeClusters_NoStoreReturnsEmpty(t *testing.T) {
 	handler := newAuthHandler(t)
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/clusters", nil)
 	rec := httptest.NewRecorder()
@@ -321,8 +321,8 @@ func TestAuthCoverage_ServeClusters_NoStoreReturnsDefault(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 
-	if len(clusters) != 1 || clusters[0].Name != auditTestCluster {
-		t.Fatalf("clusters = %+v, want [{default}]", clusters)
+	if len(clusters) != 0 {
+		t.Fatalf("clusters = %+v, want [] (no store bound)", clusters)
 	}
 }
 

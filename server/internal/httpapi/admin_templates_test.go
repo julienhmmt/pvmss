@@ -207,6 +207,124 @@ func assertDiscoveredTemplateValues(t *testing.T, tmpl adminTemplateDTO) {
 	}
 }
 
+// TestAdminTemplates_UpdateOverridesDiscovery — PUT /admin/templates/{cluster}/{vmid}
+// pins the stored field values against discovery-wins write-back (schemaV26).
+// After the PUT, the list shows the overridden values, not the discovered ones.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestAdminTemplates_UpdateOverridesDiscovery(t *testing.T) {
+	handler, authHandler, _ := newAdminHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	// Approve template 9000 first so a stored row exists.
+	rec := adminPost(t, handler, authHandler, cookie, "/api/v1/admin/templates/toggle",
+		`{"cluster":"default","vmid":9000,"enabled":true}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("toggle status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// Override the values via the new PUT endpoint. The fake reports
+	// local-lvm / 8 GB / scsi for 9000; we pin overriddenStorage / 4 GB / virtio.
+	const (
+		overriddenStorage = "local"
+		overriddenBus     = "virtio"
+		overriddenDiskGB  = 4
+	)
+
+	update := adminPut(t, handler, authHandler, cookie, "/api/v1/admin/templates/default/9000",
+		`{"node":"pve-node-02","name":"debian-12-cloud","cloudInitCapable":true,"diskStorage":"local","diskSizeGB":4,"diskBus":"virtio"}`)
+	if update.Code != http.StatusOK {
+		t.Fatalf("update status = %d: %s", update.Code, update.Body.String())
+	}
+
+	var resp adminTemplateDTO
+	if err := json.Unmarshal(update.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode update response: %v", err)
+	}
+
+	if resp.DiskStorage != overriddenStorage || resp.DiskSizeGB != overriddenDiskGB || resp.DiskBus != overriddenBus {
+		t.Fatalf("update response = %+v, want overridden values", resp)
+	}
+
+	// The list must now show the overridden values, not the discovered ones.
+	list := adminGet(t, handler, authHandler, cookie, "/api/v1/admin/templates?cluster=default")
+	if list.Code != http.StatusOK {
+		t.Fatalf("list status = %d", list.Code)
+	}
+
+	var templates []adminTemplateDTO
+	if err := json.Unmarshal(list.Body.Bytes(), &templates); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	assertTemplateOverriddenValues(t, templates, 9000, overriddenStorage, overriddenDiskGB, overriddenBus)
+}
+
+// assertTemplateOverriddenValues finds the template by vmid and checks its
+// disk fields match the overridden values (override must win over discovery).
+func assertTemplateOverriddenValues(t *testing.T, templates []adminTemplateDTO, vmid int, wantStorage string, wantDiskGB int, wantBus string) {
+	t.Helper()
+
+	for _, tmpl := range templates {
+		if tmpl.VMID != vmid {
+			continue
+		}
+
+		if tmpl.DiskStorage != wantStorage {
+			t.Errorf("template %d diskStorage = %q, want %q (override must win over discovery)", vmid, tmpl.DiskStorage, wantStorage)
+		}
+
+		if tmpl.DiskSizeGB != wantDiskGB {
+			t.Errorf("template %d diskSizeGB = %d, want %d (override must win over discovery)", vmid, tmpl.DiskSizeGB, wantDiskGB)
+		}
+
+		if tmpl.DiskBus != wantBus {
+			t.Errorf("template %d diskBus = %q, want %q (override must win over discovery)", vmid, tmpl.DiskBus, wantBus)
+		}
+
+		return
+	}
+
+	t.Fatalf("template %d not in list after override", vmid)
+}
+
+// TestAdminTemplates_UpdateUnknownReturns404 — PUT to a vmid with no stored
+// approval row returns 404.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestAdminTemplates_UpdateUnknownReturns404(t *testing.T) {
+	handler, authHandler, _ := newAdminHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	rec := adminPut(t, handler, authHandler, cookie, "/api/v1/admin/templates/default/99999",
+		`{"node":"pve-node-02","name":"x","cloudInitCapable":false,"diskStorage":"local","diskSizeGB":4,"diskBus":"scsi"}`)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusNotFound, rec.Body.String())
+	}
+}
+
+// TestAdminTemplates_UpdateInvalidBodyReturns400 — missing required fields
+// are a 400.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestAdminTemplates_UpdateInvalidBodyReturns400(t *testing.T) {
+	handler, authHandler, _ := newAdminHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	// Approve so the row exists; the validation runs before the lookup.
+	rec := adminPost(t, handler, authHandler, cookie, "/api/v1/admin/templates/toggle",
+		`{"cluster":"default","vmid":9000,"enabled":true}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("toggle status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	bad := adminPut(t, handler, authHandler, cookie, "/api/v1/admin/templates/default/9000",
+		`{"node":"","name":"x","cloudInitCapable":false,"diskStorage":"","diskSizeGB":4,"diskBus":""}`)
+	if bad.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d: %s", bad.Code, http.StatusBadRequest, bad.Body.String())
+	}
+}
+
 // TestAdminTemplates_NonAdminReturns403 — non-admin gets 403.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture

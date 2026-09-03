@@ -31,6 +31,7 @@ describe('AdminPolicyStore', () => {
 		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, response));
 		vi.stubGlobal('fetch', fetchMock);
 		const store = new AdminPolicyStore();
+		store.cluster = 'default';
 		await store.save({ gabarit: { maxDiskPerVmGb: 10 }, quota: { maxVmPerUser: 1 } });
 		expect(store.policy).toEqual(response);
 		expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({

@@ -51,7 +51,8 @@ func newAdminHandler(t *testing.T) (*httpapi.AdminCatalog, *httpapi.Auth, *store
 	snap, _ := fake.Snapshot(context.Background())
 	idx := inventory.BuildIndex(snap)
 	projection := inventory.NewProjectionFromIndex(&idx)
-	adminCatalog := httpapi.NewAdminCatalog(authHandler, st, fake, projection, logger)
+	registry := fakeClusterListerProvider{names: []string{auditTestCluster}}
+	adminCatalog := httpapi.NewAdminCatalogWithRegistry(authHandler, st, registry, projection, logger)
 
 	return adminCatalog, authHandler, st
 }
@@ -71,6 +72,7 @@ func adminMux(handler *httpapi.AdminCatalog, auth *httpapi.Auth) *http.ServeMux 
 	mux.Handle("POST /api/v1/admin/isos/toggle", guard(http.HandlerFunc(handler.ServeISOToggle)))
 	mux.Handle("GET /api/v1/admin/templates", guard(http.HandlerFunc(handler.ServeTemplates)))
 	mux.Handle("POST /api/v1/admin/templates/toggle", guard(http.HandlerFunc(handler.ServeTemplateToggle)))
+	mux.Handle("PUT /api/v1/admin/templates/{cluster}/{vmid}", guard(http.HandlerFunc(handler.ServeTemplateUpdate)))
 	mux.Handle("DELETE /api/v1/admin/templates/{cluster}/{vmid}", guard(http.HandlerFunc(handler.ServeTemplateDelete)))
 	mux.Handle("GET /api/v1/admin/profiles", guard(http.HandlerFunc(handler.ServeProfiles)))
 	mux.Handle("POST /api/v1/admin/profiles", guard(http.HandlerFunc(handler.ServeProfileCreate)))
