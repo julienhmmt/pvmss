@@ -252,36 +252,9 @@ func AdminListTemplates(ctx context.Context, st *store.Store, client cluster.Cli
 
 	out := make([]TemplateApproval, 0, len(discovered)+len(storedRows))
 	for _, tmpl := range discovered {
-		approval := newTemplateApproval(tmpl)
-		approval.DiskUnreadable = tmpl.DiskUnreadable
-
-		if stored, ok := storedByVMID[tmpl.VMID]; ok {
-			approval.Enabled = stored.Enabled
-			approval.OverrideDiscovery = stored.OverrideDiscovery
-
-			// When the admin pinned the row (schemaV26), the stored values
-			// are authoritative — show them instead of the discovered ones
-			// and skip the drift write-back so the pin survives the next
-			// list. An unreadable discovery reports empty disk fields
-			// (issue 03) — never write them over the stored values: the
-			// clone-time fallback (T17) relies on them being non-empty.
-			if stored.OverrideDiscovery {
-				approval.Node = stored.Node
-				approval.Name = stored.Name
-				approval.CloudInitCapable = stored.CloudInitCapable
-				approval.DiskStorage = stored.DiskStorage
-				approval.DiskSizeGB = stored.DiskSizeGB
-				approval.DiskBus = stored.DiskBus
-			} else if !tmpl.DiskUnreadable && templateDrift(stored, tmpl) {
-				values := store.TemplateValues{
-					Node: tmpl.Node, Name: tmpl.Name, CloudInitCapable: tmpl.CloudInitCapable,
-					DiskStorage: tmpl.DiskStorage, DiskSizeGB: tmpl.DiskSizeGB, DiskBus: tmpl.DiskBus,
-				}
-
-				if err := st.UpdateTemplate(ctx, clusterName, tmpl.VMID, values); err != nil {
-					return nil, err
-				}
-			}
+		approval, err := reconcileTemplateApproval(ctx, st, clusterName, tmpl, storedByVMID)
+		if err != nil {
+			return nil, err
 		}
 
 		out = append(out, approval)
@@ -307,6 +280,59 @@ func AdminListTemplates(ctx context.Context, st *store.Store, client cluster.Cli
 	}
 
 	return out, nil
+}
+
+// reconcileTemplateApproval builds the approval view for one discovered
+// template, applying the stored approval row when one exists: enabled flag,
+// admin pin (OverrideDiscovery), and drift write-back. Extracted from
+// AdminListTemplates to keep its cognitive complexity under the go:S3776
+// limit.
+func reconcileTemplateApproval(
+	ctx context.Context,
+	st *store.Store,
+	clusterName string,
+	tmpl cluster.TemplateVM,
+	storedByVMID map[int]store.CatalogTemplateEnabled,
+) (TemplateApproval, error) {
+	approval := newTemplateApproval(tmpl)
+	approval.DiskUnreadable = tmpl.DiskUnreadable
+
+	stored, ok := storedByVMID[tmpl.VMID]
+	if !ok {
+		return approval, nil
+	}
+
+	approval.Enabled = stored.Enabled
+	approval.OverrideDiscovery = stored.OverrideDiscovery
+
+	// When the admin pinned the row (schemaV26), the stored values
+	// are authoritative — show them instead of the discovered ones
+	// and skip the drift write-back so the pin survives the next
+	// list. An unreadable discovery reports empty disk fields
+	// (issue 03) — never write them over the stored values: the
+	// clone-time fallback (T17) relies on them being non-empty.
+	if stored.OverrideDiscovery {
+		approval.Node = stored.Node
+		approval.Name = stored.Name
+		approval.CloudInitCapable = stored.CloudInitCapable
+		approval.DiskStorage = stored.DiskStorage
+		approval.DiskSizeGB = stored.DiskSizeGB
+		approval.DiskBus = stored.DiskBus
+
+		return approval, nil
+	}
+
+	if !tmpl.DiskUnreadable && templateDrift(stored, tmpl) {
+		values := store.TemplateValues{
+			Node: tmpl.Node, Name: tmpl.Name, CloudInitCapable: tmpl.CloudInitCapable,
+			DiskStorage: tmpl.DiskStorage, DiskSizeGB: tmpl.DiskSizeGB, DiskBus: tmpl.DiskBus,
+		}
+		if err := st.UpdateTemplate(ctx, clusterName, tmpl.VMID, values); err != nil {
+			return TemplateApproval{}, err
+		}
+	}
+
+	return approval, nil
 }
 
 // newTemplateApproval builds the approval view of one discovered template

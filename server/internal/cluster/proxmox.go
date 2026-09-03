@@ -427,32 +427,50 @@ func (p Proxmox) ListBridges(ctx context.Context) ([]Bridge, error) {
 			continue
 		}
 
-		raw, err := rest.do(ctx, http.MethodGet, fmt.Sprintf("/nodes/%s/network", url.PathEscape(node.Name)), nil)
+		nodeBridges, err := proxmoxListNodeBridges(ctx, rest, node.Name)
 		if err != nil {
-			if isNodeUnavailable(err) {
-				continue
-			}
-
-			return nil, fmt.Errorf("list network interfaces on %q: %w", node.Name, err)
+			return nil, err
 		}
 
-		var rows []struct {
-			Iface    string `json:"iface"`
-			Type     string `json:"type"`
-			Active   int    `json:"active"`
-			Comments string `json:"comments"`
-		}
-		if err := decodeData(raw, &rows); err != nil {
-			return nil, fmt.Errorf("decode network interfaces on %q: %w", node.Name, err)
+		bridges = append(bridges, nodeBridges...)
+	}
+
+	return bridges, nil
+}
+
+// proxmoxListNodeBridges fetches and decodes one node's network interfaces,
+// returning only the bridge-typed rows. A node that is temporarily
+// unavailable (RejectionError 595) is skipped — the caller keeps the other
+// nodes' bridges. Extracted from ListBridges to keep its cognitive
+// complexity under the go:S3776 limit.
+func proxmoxListNodeBridges(ctx context.Context, rest proxmoxRESTClient, node string) ([]Bridge, error) {
+	raw, err := rest.do(ctx, http.MethodGet, fmt.Sprintf("/nodes/%s/network", url.PathEscape(node)), nil)
+	if err != nil {
+		if isNodeUnavailable(err) {
+			return nil, nil
 		}
 
-		for _, row := range rows {
-			if row.Type != "bridge" {
-				continue
-			}
+		return nil, fmt.Errorf("list network interfaces on %q: %w", node, err)
+	}
 
-			bridges = append(bridges, Bridge{Name: row.Iface, Node: node.Name, Active: row.Active == 1, Comment: row.Comments})
+	var rows []struct {
+		Iface    string `json:"iface"`
+		Type     string `json:"type"`
+		Active   int    `json:"active"`
+		Comments string `json:"comments"`
+	}
+	if err := decodeData(raw, &rows); err != nil {
+		return nil, fmt.Errorf("decode network interfaces on %q: %w", node, err)
+	}
+
+	var bridges []Bridge
+
+	for _, row := range rows {
+		if row.Type != "bridge" {
+			continue
 		}
+
+		bridges = append(bridges, Bridge{Name: row.Iface, Node: node, Active: row.Active == 1, Comment: row.Comments})
 	}
 
 	return bridges, nil
