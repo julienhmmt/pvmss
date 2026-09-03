@@ -62,6 +62,11 @@ type Client interface {
 	ListBridges(ctx context.Context) ([]Bridge, error)
 	ListISOs(ctx context.Context) ([]ISOImage, error)
 	ListTemplates(ctx context.Context) ([]TemplateVM, error)
+	// TemplateByVMID looks up one template (issue 03): one /cluster/resources
+	// call plus one config read, instead of re-hydrating the whole list per
+	// toggle or clone. Returns ErrNotFound when discovery does not report the
+	// VMID; a config read failure degrades to a DiskUnreadable row.
+	TemplateByVMID(ctx context.Context, vmid int) (TemplateVM, error)
 	ListPools(ctx context.Context) ([]Pool, error)
 	EnsurePoolRole(ctx context.Context) error
 	EnsurePoolUser(ctx context.Context, pool, password string) (string, error)
@@ -140,6 +145,10 @@ type Writer interface {
 	SetBootOrder(ctx context.Context, node string, vmid int, order []string) error
 	UpdateNetwork(ctx context.Context, node string, vmid int, interfaces []NetworkInterface) error
 	UpdateHardware(ctx context.Context, node string, vmid, sockets, cores, memoryMB int, tags []string) error
+	// SetTags writes only the VM's tags without touching hardware. Used by
+	// the clone path when no hardware override was requested but the
+	// mandatory pvmss tag still needs to be stamped (FR-006).
+	SetTags(ctx context.Context, node string, vmid int, tags []string) error
 	// EnableSerial provisions a socket-backed serial port (serial0) on an
 	// existing VM so the PVMSS Text/serial console works for VMs created
 	// before serial0 was added at create time.
@@ -383,7 +392,9 @@ type ISOImage struct {
 // approves which discovered templates are offered in the create wizard.
 // DiskStorage, DiskSizeGB, and DiskBus describe the template's primary disk
 // so the clone path can decide linked vs full and target the correct resize
-// key.
+// key. DiskUnreadable is true when the config read failed (issue 03): the
+// row is kept with the fields it has, approval is refused, and the clone
+// path falls back to the stored approval-time fields.
 type TemplateVM struct {
 	VMID             int
 	Node             string
@@ -392,6 +403,7 @@ type TemplateVM struct {
 	DiskStorage      string
 	DiskSizeGB       int
 	DiskBus          string
+	DiskUnreadable   bool
 }
 
 // VMSnapshot is a live snapshot entry returned by a cluster for one VM.

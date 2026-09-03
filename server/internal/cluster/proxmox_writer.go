@@ -263,6 +263,19 @@ func (p Proxmox) UpdateHardware(ctx context.Context, node string, vmid, sockets,
 	return err
 }
 
+// SetTags implements Writer: writes only the tags key, leaving hardware
+// untouched. Used by the clone path when no hardware override was requested
+// but the mandatory pvmss tag still needs to be stamped (FR-006).
+func (p Proxmox) SetTags(ctx context.Context, node string, vmid int, tags []string) error {
+	form := url.Values{
+		"tags": {strings.Join(tags, ";")},
+	}
+
+	_, err := p.rest().do(ctx, http.MethodPut, vmConfigPath(node, vmid), form)
+
+	return err
+}
+
 // EnableSerial implements Writer: provisions a socket-backed serial port
 // (serial0) on an existing VM so the PVMSS Text/serial console works for VMs
 // created before serial0 was added at create time. A socket-backed port needs

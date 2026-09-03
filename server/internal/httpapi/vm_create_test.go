@@ -76,10 +76,12 @@ func newVMCreateHandler(t *testing.T) (*httpapi.VMCreate, *httpapi.Auth, *store.
 	seedISOApprovals(t, st)
 	seedTagApprovals(t, st)
 
-	return httpapi.NewVMCreate(
+	provider := vmCreateClientProvider{clients: map[string]cluster.Client{auditTestCluster: cluster.Fake{}}}
+
+	return httpapi.NewVMCreateWithRegistry(
 		authHandler,
 		st,
-		cluster.Fake{},
+		provider,
 		cluster.Fake{},
 		cluster.Fake{},
 		logger,
@@ -750,5 +752,7 @@ func newTasksHandler(t *testing.T) (*httpapi.Tasks, *httpapi.Auth, *inventory.Pr
 	projection := buildProjectionWithIndex(t, snap, time.Now())
 	worker := inventory.NewWorker(cluster.Fake{}, projection, time.Hour, logger)
 
-	return httpapi.NewTasks(authHandler, cluster.Fake{}, worker, logger), authHandler, projection
+	provider := vmCreateClientProvider{clients: map[string]cluster.Client{auditTestCluster: cluster.Fake{}}}
+
+	return httpapi.NewTasksWithRegistry(authHandler, provider, cluster.Fake{}, worker, nil, logger), authHandler, projection
 }

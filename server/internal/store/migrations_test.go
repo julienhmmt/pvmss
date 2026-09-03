@@ -3,6 +3,7 @@ package store_test
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"path/filepath"
 	"pvmss/server/internal/store"
 	"testing"
@@ -302,16 +303,74 @@ func createMigrationStandInTables(ctx context.Context, t *testing.T, db *sql.DB)
 
 	standins := []string{
 		`CREATE TABLE IF NOT EXISTS clusters (name TEXT PRIMARY KEY)`,
+		`CREATE TABLE IF NOT EXISTS catalog_nodes (cluster TEXT NOT NULL, name TEXT NOT NULL, PRIMARY KEY (cluster, name))`,
+		`CREATE TABLE IF NOT EXISTS catalog_storages (cluster TEXT NOT NULL, name TEXT NOT NULL, node TEXT NOT NULL, PRIMARY KEY (cluster, name, node))`,
 		`CREATE TABLE IF NOT EXISTS catalog_isos (cluster TEXT NOT NULL, storage TEXT NOT NULL, file TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, storage, file))`,
-		`CREATE TABLE IF NOT EXISTS sessions (token_hash BLOB PRIMARY KEY)`,
+		`CREATE TABLE IF NOT EXISTS catalog_tags (cluster TEXT NOT NULL, name TEXT NOT NULL, color TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY (cluster, name))`,
+		`CREATE TABLE IF NOT EXISTS catalog_cloudinit_templates (cluster TEXT NOT NULL, name TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, name))`,
+		`CREATE TABLE IF NOT EXISTS vm_cloudinit_snippets (cluster TEXT NOT NULL, vmid INTEGER NOT NULL, content TEXT NOT NULL, storage TEXT NOT NULL, filename TEXT NOT NULL, updated_at TEXT NOT NULL, updated_by TEXT NOT NULL, PRIMARY KEY (cluster, vmid))`,
+		`CREATE TABLE IF NOT EXISTS sessions (token_hash BLOB PRIMARY KEY, cluster TEXT NOT NULL DEFAULT '')`,
 		`CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT NOT NULL, cluster TEXT NOT NULL, vmid INTEGER NOT NULL, action TEXT NOT NULL, timestamp TEXT NOT NULL)`,
 		`CREATE TABLE IF NOT EXISTS catalog_profiles (cluster TEXT NOT NULL, id TEXT NOT NULL, label TEXT NOT NULL, cpu_cores INTEGER NOT NULL, memory_mb INTEGER NOT NULL, disk_gb INTEGER NOT NULL, bus TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, id))`,
 		`CREATE TABLE IF NOT EXISTS vm_limits (cluster TEXT PRIMARY KEY, max_sockets INTEGER NOT NULL, max_cores INTEGER NOT NULL, max_memory_mb INTEGER NOT NULL, max_disk_per_vm_gb INTEGER NOT NULL, max_network_cards INTEGER NOT NULL, max_snapshots INTEGER NOT NULL, max_vm_per_user INTEGER NOT NULL, allow_custom_yaml BOOLEAN NOT NULL)`,
+		`CREATE TABLE IF NOT EXISTS node_limits (cluster TEXT NOT NULL, node TEXT NOT NULL, max_vms INTEGER NOT NULL, max_vcpus INTEGER NOT NULL, max_ram_gb INTEGER NOT NULL, max_disk_gb INTEGER NOT NULL, PRIMARY KEY (cluster, node))`,
 	}
 	for _, ddl := range standins {
 		if _, err := db.ExecContext(ctx, ddl); err != nil {
 			t.Fatalf("create stand-in table: %v", err)
 		}
+	}
+}
+
+//nolint:paralleltest // serial: shared database fixture
+func TestRunMigrations_V24RemovesDemoTemplateRows(t *testing.T) {
+	db := openTestDB(t)
+	ctx := context.Background()
+
+	// Build the pre-V24 schema (V1..V23) so rows can be inserted the way the
+	// old V22 seed used to ship them.
+	if err := store.RunMigrations(ctx, db, store.Migrations[:23]); err != nil {
+		t.Fatalf("RunMigrations to V23: %v", err)
+	}
+
+	demo := `INSERT INTO catalog_templates (cluster, node, vmid, name, cloud_init_capable, disk_storage, disk_size_gb, disk_bus) VALUES
+		('default', 'pve-node-02', 9000, 'debian-12-cloud', 1, 'local-lvm', 8, 'scsi'),
+		('default', 'pve-node-02', 9001, 'alpine-appliance', 0, 'local', 2, 'scsi'),
+		('default', 'pve-node-02', 9100, 'my-real-template', 1, 'local-lvm', 8, 'scsi')`
+	if _, err := db.ExecContext(ctx, demo); err != nil {
+		t.Fatalf("insert demo rows: %v", err)
+	}
+
+	if err := store.RunMigrations(ctx, db, store.Migrations); err != nil {
+		t.Fatalf("RunMigrations to V24: %v", err)
+	}
+
+	rows, err := db.QueryContext(ctx, `SELECT vmid, name FROM catalog_templates ORDER BY vmid`)
+	if err != nil {
+		t.Fatalf("query catalog_templates: %v", err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	var remaining []string
+
+	for rows.Next() {
+		var vmid int
+
+		var name string
+
+		if err := rows.Scan(&vmid, &name); err != nil {
+			t.Fatalf("scan row: %v", err)
+		}
+
+		remaining = append(remaining, fmt.Sprintf("%d/%s", vmid, name))
+	}
+
+	if err := rows.Err(); err != nil {
+		t.Fatalf("rows: %v", err)
+	}
+
+	if len(remaining) != 1 || remaining[0] != "9100/my-real-template" {
+		t.Fatalf("catalog_templates after V24 = %v, want only the legitimate approval 9100/my-real-template", remaining)
 	}
 }
 

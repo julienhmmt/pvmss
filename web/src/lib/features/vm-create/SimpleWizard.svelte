@@ -10,18 +10,45 @@
 	import TextField from '$lib/shared/ui/TextField.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
 	import ProfilePicker from './ProfilePicker.svelte';
+	import TemplatePicker from './TemplatePicker.svelte';
 	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Switch from '$lib/shared/ui/Switch.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 
-	// Simple-mode wizard (V08): pick a profile, name the VM, and submit. Node
-	// and storage are auto-selected from the catalog's first approved entries,
-	// visibly marked, and adjustable via the "Adjust" toggle (FR-010).
+	// Simple-mode wizard (V08): pick a profile or an approved Proxmox
+	// template, name the VM, and submit. Profile mode lets the user adjust
+	// node and storage; template mode keeps the clone on the template's node.
 	const form = getVmCreateContext();
 	const tray = getTaskTrayContext();
 	const toast = getToastContext();
 	const draft = getDraftContext();
+
+	const hasTemplates = $derived((form.catalog?.templates ?? []).length > 0);
+
+	$effect(() => {
+		if (!hasTemplates && form.simpleSource === 'template') {
+			form.simpleSource = 'profile';
+		}
+	});
+
+	// Template clones ignore the placement toggles; reset them when switching
+	// to that source so stale profile placement values do not block submit.
+	$effect(() => {
+		if (form.simpleSource === 'template') {
+			form.nodeAdjusted = false;
+			form.storageAdjusted = false;
+		}
+	});
+
+	const simpleSourceOptions = $derived(
+		hasTemplates
+			? [
+					{ value: 'profile', label: m['vms.create.profile']() },
+					{ value: 'template', label: m['vms.create.template']() }
+				]
+			: [{ value: 'profile', label: m['vms.create.profile']() }]
+	);
 
 	function profileDescription(profile: { cpuCores: number; memoryMB: number; diskGB: number; bus: string }): string {
 		return `${profile.cpuCores} vCPU · ${profile.memoryMB} MB · ${profile.diskGB} GB · ${profile.bus}`;
@@ -43,6 +70,16 @@
 			: form.catalog === null
 				? null
 				: m['vms.create.errorProfileRequired']()
+	);
+
+	const templateError = $derived(
+		form.catalog && form.simpleSource === 'template'
+			? form.templateId !== 0 && form.catalog.templates.some((tmpl) => tmpl.vmid === form.templateId)
+				? null
+				: form.templateId === 0
+					? m['vms.create.errorTemplateRequired']()
+					: m['vms.create.errorTemplateInvalid']()
+			: null
 	);
 
 	const cloudInitTemplateError = $derived(
@@ -72,10 +109,10 @@
 		form.catalog !== null &&
 			!form.submitting &&
 			!nameError &&
-			!profileError &&
 			!cloudInitTemplateError &&
-			!nodeError &&
-			!storageError
+			(form.simpleSource === 'template'
+				? !templateError
+				: !profileError && !nodeError && !storageError)
 	);
 
 	async function submit(): Promise<void> {
@@ -120,17 +157,33 @@
 			{/snippet}
 		</FormField>
 
-		<ProfilePicker
-			legend={m['vms.create.profile']()}
-			bind:value={form.profileId}
-			profiles={cat.profiles.map((profile) => ({
-				id: profile.id,
-				label: profile.label,
-				description: profileDescription(profile)
-			}))}
-		/>
-		{#if profileError}
-			<p role="alert" class="text-xs font-medium text-destructive">{profileError}</p>
+		<FormField label={m['vms.create.source']()} required>
+			{#snippet children({ id, describedBy, invalid })}
+				<Select
+					{id}
+					{describedBy}
+					{invalid}
+					bind:value={form.simpleSource}
+					options={simpleSourceOptions}
+				/>
+			{/snippet}
+		</FormField>
+
+		{#if form.simpleSource === 'template'}
+			<TemplatePicker error={templateError} />
+		{:else}
+			<ProfilePicker
+				legend={m['vms.create.profile']()}
+				bind:value={form.profileId}
+				profiles={cat.profiles.map((profile) => ({
+					id: profile.id,
+					label: profile.label,
+					description: profileDescription(profile)
+				}))}
+			/>
+			{#if profileError}
+				<p role="alert" class="text-xs font-medium text-destructive">{profileError}</p>
+			{/if}
 		{/if}
 
 		{#if cat.cloudInitTemplates.length > 0}
@@ -151,50 +204,52 @@
 			</FormField>
 		{/if}
 
-		<div class="grid gap-3 rounded-lg border border-border bg-muted/30 p-4">
-			<div class="flex items-center justify-between">
-				<span class="text-sm font-medium text-foreground">{m['vms.create.placement']()}</span>
-				<Switch
-					label={form.nodeAdjusted ? m['vms.create.resetAutomatic']() : m['vms.create.adjust']()}
-					checked={form.nodeAdjusted}
-					onToggle={() => {
-						form.nodeAdjusted = !form.nodeAdjusted;
-						form.storageAdjusted = form.nodeAdjusted;
-					}}
-				/>
-			</div>
-			{#if form.nodeAdjusted}
-				<div class="grid gap-3 sm:grid-cols-2">
-					<FormField label={m['vms.create.node']()} error={nodeError}>
-						{#snippet children({ id, describedBy, invalid })}
-							<Select
-								{id}
-								{describedBy}
-								{invalid}
-								bind:value={form.node}
-								options={cat.nodes}
-							/>
-						{/snippet}
-					</FormField>
-					<FormField label={m['vms.create.storage']()} required error={storageError}>
-						{#snippet children({ id, describedBy, invalid })}
-							<Select
-								{id}
-								{describedBy}
-								{invalid}
-								bind:value={form.storage}
-								placeholder={m['vms.create.chooseStorage']()}
-								options={cat.storages.filter((s) => s.node === form.node).map((s) => s.name)}
-							/>
-						{/snippet}
-					</FormField>
+		{#if form.simpleSource === 'profile'}
+			<div class="grid gap-3 rounded-lg border border-border bg-muted/30 p-4">
+				<div class="flex items-center justify-between">
+					<span class="text-sm font-medium text-foreground">{m['vms.create.placement']()}</span>
+					<Switch
+						label={form.nodeAdjusted ? m['vms.create.resetAutomatic']() : m['vms.create.adjust']()}
+						checked={form.nodeAdjusted}
+						onToggle={() => {
+							form.nodeAdjusted = !form.nodeAdjusted;
+							form.storageAdjusted = form.nodeAdjusted;
+						}}
+					/>
 				</div>
-			{:else}
-				<p class="text-sm text-muted-foreground">
-					{m['vms.create.placementAutomatic']({ node: form.effectiveNode(), storage: form.effectiveStorage() })}
-				</p>
-			{/if}
-		</div>
+				{#if form.nodeAdjusted}
+					<div class="grid gap-3 sm:grid-cols-2">
+						<FormField label={m['vms.create.node']()} error={nodeError}>
+							{#snippet children({ id, describedBy, invalid })}
+								<Select
+									{id}
+									{describedBy}
+									{invalid}
+									bind:value={form.node}
+									options={cat.nodes}
+								/>
+							{/snippet}
+						</FormField>
+						<FormField label={m['vms.create.storage']()} required error={storageError}>
+							{#snippet children({ id, describedBy, invalid })}
+								<Select
+									{id}
+									{describedBy}
+									{invalid}
+									bind:value={form.storage}
+									placeholder={m['vms.create.chooseStorage']()}
+									options={cat.storages.filter((s) => s.node === form.node).map((s) => s.name)}
+								/>
+							{/snippet}
+						</FormField>
+					</div>
+				{:else}
+					<p class="text-sm text-muted-foreground">
+						{m['vms.create.placementAutomatic']({ node: form.effectiveNode(), storage: form.effectiveStorage() })}
+					</p>
+				{/if}
+			</div>
+		{/if}
 
 		<Checkbox
 			label={m['vms.create.startAfterCreate']()}

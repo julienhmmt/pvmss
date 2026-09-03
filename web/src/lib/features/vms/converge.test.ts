@@ -117,6 +117,48 @@ describe('convergeSingle', () => {
 		expect(onTick).toHaveBeenCalledWith('running', undefined);
 		expect(get).toHaveBeenCalledTimes(2);
 	});
+
+	it('resolves the delay immediately when the signal is already aborted before the wait', async () => {
+		// Abort during the pending GET so that by the time delay() runs the
+		// signal is already aborted — exercises delay()'s early-return path.
+		let resolveGet!: (v: unknown) => void;
+		vi.mocked(get).mockReturnValueOnce(new Promise((r) => { resolveGet = r; }) as never);
+		const controller = new AbortController();
+		const onTick = vi.fn();
+
+		const promise = convergeSingle(
+			{ cluster: 'default', vmid: 100 },
+			'running',
+			onTick,
+			controller.signal,
+		);
+
+		controller.abort();
+		resolveGet({ status: 'stopped', uptime: 0 });
+
+		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
+	});
+
+	it('aborts the delay wait when the signal fires during the poll interval', async () => {
+		// GET never converges so the loop enters delay(); aborting mid-wait
+		// exercises the abort event listener (clearTimeout + resolve).
+		vi.mocked(get).mockResolvedValue({ status: 'stopped', uptime: 0 } as never);
+		const controller = new AbortController();
+		const onTick = vi.fn();
+
+		const promise = convergeSingle(
+			{ cluster: 'default', vmid: 100 },
+			'running',
+			onTick,
+			controller.signal,
+		);
+
+		// Flush the GET microtask so the loop is now inside delay().
+		await vi.advanceTimersByTimeAsync(0);
+		controller.abort();
+
+		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
+	});
 });
 
 describe('convergeBatch', () => {

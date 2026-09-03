@@ -56,10 +56,17 @@ func newVMCreateHandlerWithCreator(t *testing.T, creator cluster.Creator) (*http
 	t.Cleanup(func() { _ = st.Close() })
 	seedBridgeApprovals(t, st)
 
-	return httpapi.NewVMCreate(
+	client, ok := creator.(cluster.Client)
+	if !ok {
+		client = cluster.Fake{}
+	}
+
+	provider := vmCreateClientProvider{clients: map[string]cluster.Client{auditTestCluster: client}}
+
+	return httpapi.NewVMCreateWithRegistry(
 		authHandler,
 		st,
-		cluster.Fake{},
+		provider,
 		creator,
 		cluster.Fake{},
 		logger,

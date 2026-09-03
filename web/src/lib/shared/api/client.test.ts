@@ -113,3 +113,40 @@ describe('ApiRequestError', () => {
 		expect(err.name).toBe('ApiRequestError');
 	});
 });
+
+describe('CSRF reload', () => {
+	it('reloads the page on 403 with invalid_csrf_token code', async () => {
+		const reload = vi.fn();
+		vi.stubGlobal('location', { reload });
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+			jsonResponse(403, { code: 'invalid_csrf_token', message: 'csrf mismatch' }),
+		));
+		// The request rejects with ApiRequestError after triggering the reload.
+		await expect(get('/api/v1/foo')).rejects.toThrow('csrf mismatch');
+		expect(reload).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not reload on a 403 with a different code', async () => {
+		const reload = vi.fn();
+		vi.stubGlobal('location', { reload });
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+			jsonResponse(403, { code: 'forbidden', message: 'not allowed' }),
+		));
+		await expect(get('/api/v1/foo')).rejects.toThrow('not allowed');
+		expect(reload).not.toHaveBeenCalled();
+	});
+});
+
+describe('getCookie no-document guard', () => {
+	it('omits X-CSRF-Token header when document is undefined (SSR)', async () => {
+		// withCSRF reads document.cookie; when document is undefined it returns
+		// the options unchanged. Stub document to undefined to exercise the guard.
+		vi.stubGlobal('document', undefined);
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { ok: true }));
+		vi.stubGlobal('fetch', fetchMock);
+		await post('/api/v1/foo', { x: 1 });
+		const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+		const headers = init.headers as Record<string, string>;
+		expect(headers['X-CSRF-Token']).toBeUndefined();
+	});
+});

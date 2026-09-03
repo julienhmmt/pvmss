@@ -241,7 +241,9 @@ func newAdminPoolsHandler(t *testing.T) (*httpapi.AdminPools, *httpapi.Auth) {
 	projection := inventory.NewProjectionFromIndex(&index)
 	worker := inventory.NewWorker(client, projection, time.Hour, slog.Default())
 	st := newAdminStore(t)
-	handler := httpapi.NewAdminPools(httpapi.AdminPoolsDeps{Auth: authHandler, Client: client, Projection: projection, Writer: client, Audit: st, Refresher: worker, Store: st, Log: slog.Default()})
+	provider := vmCreateClientProvider{clients: map[string]cluster.Client{auditTestCluster: client}}
+	registry := inventory.NewRegistryFromIndexes(map[string]*inventory.Index{"default": &index})
+	handler := httpapi.NewAdminPoolsWithRegistry(httpapi.AdminPoolsRegistryDeps{Auth: authHandler, Clients: provider, Source: registry, Projection: projection, Writer: client, Audit: st, Refresher: worker, Store: st, Log: slog.Default()})
 	return handler, authHandler
 }
 

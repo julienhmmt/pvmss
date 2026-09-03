@@ -12,6 +12,8 @@
 	import VmActivityTab from './VmActivityTab.svelte';
 	import ConsoleBanner from './ConsoleBanner.svelte';
 	import VmMetricsRow from './VmMetricsRow.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
+	import { focusOnMount } from '$lib/shared/ui/focus-on-mount';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import { formatBytes } from '$lib/shared/format-bytes';
@@ -189,7 +191,7 @@
 		{/if}
 
 		<div class="mt-5">
-			<VmActionBar onDelete={() => (deleteOpen = true)} />
+			<VmActionBar onDelete={() => { deleteOpen = true; }} />
 		</div>
 	</header>
 
@@ -233,7 +235,14 @@
 			class="mt-4 rounded-xl border border-border bg-card p-6 shadow-card"
 		>
 			<section>
-				<h2 class="text-sm font-medium text-muted-foreground">{m['vms.detail.descriptionLabel']()}</h2>
+				<div class="flex items-center justify-between">
+	<h2 class="text-sm font-medium text-muted-foreground">{m['vms.detail.descriptionLabel']()}</h2>
+	{#if !editingDescription}
+		<Button variant="secondary" size="sm" onclick={startEditDescription} label={m['common.edit']()}>
+			{m['common.edit']()}
+		</Button>
+	{/if}
+</div>
 				{#if editingDescription}
 					<textarea
 						class="pv-input mt-3"
@@ -244,6 +253,7 @@
 					}}
 						rows="4"
 						data-testid="vm-description-edit"
+						use:focusOnMount
 					></textarea>
 					<div class="mt-3 flex gap-2">
 						<button
@@ -263,15 +273,24 @@
 						</button>
 					</div>
 				{:else}
-					<button
-						type="button"
+					<div
 						class="mt-3 w-full rounded-lg border border-dashed border-border bg-muted/30 px-4 py-4 text-left text-sm leading-6 hover:cursor-text hover:bg-muted/50"
+						role="button"
+						tabindex="0"
 						onclick={startEditDescription}
+						onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEditDescription(); } }}
 						title={m['vms.detail.clickToEdit']()}
 						data-testid="vm-description"
 					>
-						{store.entity.description || m['vms.detail.noDescription']()}
-					</button>
+						{#if store.entity.descriptionHtml}
+							<article class="prose prose-sm max-w-none dark:prose-invert">
+								<!-- eslint-disable-next-line svelte/no-at-html-tags -- backend renderer is XSS-safe (server/internal/httpapi/markdown.go) -->
+								{@html store.entity.descriptionHtml}
+							</article>
+						{:else}
+							{m['vms.detail.noDescription']()}
+						{/if}
+					</div>
 				{/if}
 			</section>
 		</div>

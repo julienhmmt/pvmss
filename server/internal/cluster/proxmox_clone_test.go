@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/url"
 	"strings"
@@ -346,5 +347,139 @@ func TestProxmox_CloneVM_URLEncoding(t *testing.T) {
 
 	if !strings.Contains(requestPath, "/nodes/pve-node-02/qemu/9000/clone") {
 		t.Errorf("request path = %q, expected clone path", requestPath)
+	}
+}
+
+// TestProxmox_ListTemplates_DegradesOnConfigError — one template whose config
+// read fails must not abort the whole list (issue 03): the failing row stays,
+// flagged DiskUnreadable, and the others keep their disk fields.
+func TestProxmox_ListTemplates_DegradesOnConfigError(t *testing.T) {
+	t.Parallel()
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[
+				{"type":"qemu","node":"pve-node-02","vmid":9000,"name":"debian-12-cloud","template":1},
+				{"type":"qemu","node":"pve-node-02","vmid":9001,"name":"broken","template":1}
+			]}`)
+		})
+
+		mux.HandleFunc("GET /api2/json/nodes/pve-node-02/qemu/9000/config", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":{"scsi0":"local-lvm:vm-9000-disk-0,size=8G","ide3":"local-lvm:cloudinit"}}`)
+		})
+
+		mux.HandleFunc("GET /api2/json/nodes/pve-node-02/qemu/9001/config", func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	templates, err := p.ListTemplates(context.Background())
+	if err != nil {
+		t.Fatalf("ListTemplates: %v", err)
+	}
+
+	if len(templates) != 2 {
+		t.Fatalf("expected 2 templates (degraded, not aborted), got %d", len(templates))
+	}
+
+	for _, tmpl := range templates {
+		if tmpl.VMID == 9001 && !tmpl.DiskUnreadable {
+			t.Error("template 9001 should be flagged DiskUnreadable")
+		}
+
+		if tmpl.VMID == 9000 && tmpl.DiskUnreadable {
+			t.Error("template 9000 should not be flagged DiskUnreadable")
+		}
+	}
+}
+
+// TestProxmox_TemplateByVMID — a single-template lookup costs one
+// /cluster/resources call plus one config read (issue 03: no full
+// re-hydration per toggle).
+func TestProxmox_TemplateByVMID(t *testing.T) {
+	t.Parallel()
+
+	resourcesCalls := 0
+	configCalls := 0
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, _ *http.Request) {
+			resourcesCalls++
+
+			writeJSONFixture(t, w, `{"data":[
+				{"type":"qemu","node":"pve-node-02","vmid":9000,"name":"debian-12-cloud","template":1}
+			]}`)
+		})
+
+		mux.HandleFunc("GET /api2/json/nodes/pve-node-02/qemu/9000/config", func(w http.ResponseWriter, _ *http.Request) {
+			configCalls++
+
+			writeJSONFixture(t, w, `{"data":{"scsi0":"local-lvm:vm-9000-disk-0,size=8G","ide3":"local-lvm:cloudinit"}}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	tmpl, err := p.TemplateByVMID(context.Background(), 9000)
+	if err != nil {
+		t.Fatalf("TemplateByVMID: %v", err)
+	}
+
+	if tmpl.VMID != 9000 || tmpl.DiskStorage != "local-lvm" || tmpl.DiskSizeGB != 8 || !tmpl.CloudInitCapable {
+		t.Errorf("TemplateByVMID = %+v, want the hydrated debian-12-cloud row", tmpl)
+	}
+
+	if resourcesCalls != 1 || configCalls != 1 {
+		t.Errorf("calls = resources:%d config:%d, want 1/1", resourcesCalls, configCalls)
+	}
+}
+
+// TestProxmox_TemplateByVMID_Unknown — a VMID absent from discovery is
+// cluster.ErrNotFound.
+func TestProxmox_TemplateByVMID_Unknown(t *testing.T) {
+	t.Parallel()
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[]}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	if _, err := p.TemplateByVMID(context.Background(), 9000); !errors.Is(err, ErrNotFound) {
+		t.Errorf("err = %v, want ErrNotFound", err)
+	}
+}
+
+// TestProxmox_TemplateByVMID_Unreadable — an unreadable config degrades to a
+// DiskUnreadable row (the caller decides: approve is refused, clone falls
+// back to stored fields), not an error.
+func TestProxmox_TemplateByVMID_Unreadable(t *testing.T) {
+	t.Parallel()
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/resources", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[
+				{"type":"qemu","node":"pve-node-02","vmid":9001,"name":"broken","template":1}
+			]}`)
+		})
+
+		mux.HandleFunc("GET /api2/json/nodes/pve-node-02/qemu/9001/config", func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	tmpl, err := p.TemplateByVMID(context.Background(), 9001)
+	if err != nil {
+		t.Fatalf("TemplateByVMID: %v", err)
+	}
+
+	if !tmpl.DiskUnreadable || tmpl.Node != FakeNode02 {
+		t.Errorf("TemplateByVMID = %+v, want node kept and DiskUnreadable", tmpl)
 	}
 }

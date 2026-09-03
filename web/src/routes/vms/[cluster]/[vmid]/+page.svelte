@@ -8,7 +8,7 @@
 	import Breadcrumb from '$lib/shared/ui/Breadcrumb.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
-	const cluster = page.params.cluster ?? 'default';
+	const cluster = page.params.cluster ?? '';
 	const vmid = Number(page.params.vmid);
 
 	const store = setVmDetailContext(cluster, vmid);

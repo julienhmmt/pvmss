@@ -32,7 +32,7 @@ export class AdminPolicyNodesStore {
 	saving = $state.raw(false);
 	saveError = $state.raw<string | null>(null);
 	clusterOptions = $state.raw<ClusterOption[]>([]);
-	cluster = $state('default');
+	cluster = $state('');
 
 	sortBy: 'node' | 'maxVms' | 'maxVcpus' | 'maxRamGb' | 'maxDiskGb' | 'usedVms' | 'usedVcpus' | 'usedRamGb' | 'physicalVcpus' | 'physicalRamGb' = $state('node');
 	sortDir: 'asc' | 'desc' = $state('asc');

@@ -196,10 +196,9 @@ const schemaV21 = `ALTER TABLE catalog_profiles ADD COLUMN sockets INTEGER NOT N
 // (D2c/issue-02 §5). disk_storage and disk_size_gb drive the resize decision
 // (D2c: enlarge after clone, reject reduction before VMID).
 //
-// Seed: two templates on pve-node-02 — one cloud-init capable (debian-12
-// cloud image, full clone), one not (a basic appliance, linked clone when
-// storage matches). The VMIDs (9000, 9001) are in the Proxmox template
-// range (9000+ by convention).
+// No seed: a real deployment starts with zero approved templates — admins
+// approve whatever their cluster actually reports (the fake demo source
+// discovers its own template set for demo mode).
 const schemaV22 = `CREATE TABLE catalog_templates (
 	cluster            TEXT NOT NULL,
 	node               TEXT NOT NULL,
@@ -211,16 +210,61 @@ const schemaV22 = `CREATE TABLE catalog_templates (
 	disk_bus           TEXT NOT NULL DEFAULT 'scsi',
 	enabled            BOOLEAN NOT NULL DEFAULT 1,
 	PRIMARY KEY (cluster, vmid)
-);
-INSERT INTO catalog_templates (cluster, node, vmid, name, cloud_init_capable, disk_storage, disk_size_gb, disk_bus) VALUES
-	('default', 'pve-node-02', 9000, 'debian-12-cloud', 1, 'local-lvm', 8, 'scsi'),
-	('default', 'pve-node-02', 9001, 'alpine-appliance', 0, 'local', 2, 'scsi');`
+);`
 
 // schemaV23 adds an optional per-cluster isolation VLAN tag to vm_limits
 // (US6/issue-06 D6b + Q18: one VLAN per cluster, imposed — the admin sets it
 // alongside the gabarit; empty/0 = no tag imposed). Tenants never choose the
 // segmentation; the create path stamps the tag on every NIC.
 const schemaV23 = `ALTER TABLE vm_limits ADD COLUMN isolation_vlan_tag INTEGER NOT NULL DEFAULT 0`
+
+// schemaV24 removes the demo template rows the V22 seed used to insert
+// (debian-12-cloud and alpine-appliance on cluster "default"). Databases
+// created before the seed was dropped must not keep offering templates that
+// do not exist in Proxmox. The delete matches the exact seed signature so a
+// legitimately approved template is never touched.
+const schemaV24 = `DELETE FROM catalog_templates
+	 WHERE cluster = 'default'
+	   AND vmid IN (9000, 9001)
+	   AND node = 'pve-node-02'
+	   AND name IN ('debian-12-cloud', 'alpine-appliance')
+	   AND disk_storage IN ('local-lvm', 'local')
+	   AND disk_bus = 'scsi'`
+
+// schemaV25 renames the cluster "default" to its display_name (the real
+// Proxmox cluster name discovered via /cluster/status). The internal name
+// "default" was a placeholder from the initial setup; the display_name is
+// the authoritative name the user sees and expects. Cascades to every table
+// with a cluster column. Only runs when display_name is set, non-empty, and
+// differs from "default". The clusters table is updated last so the subquery
+// in the child-table updates still finds the old name.
+const schemaV25 = `
+UPDATE audit_log               SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE catalog_bridges         SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE catalog_cloudinit_templates SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE catalog_isos            SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE catalog_nodes           SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE catalog_profiles        SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE catalog_storages        SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE catalog_tags            SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE catalog_templates       SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE managed_pools           SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE node_limits             SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE sessions                SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE vm_cloudinit_snippets   SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE vm_limits               SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE clusters                SET name = display_name WHERE name = 'default' AND display_name IS NOT NULL AND display_name != '';
+`
+
+// schemaV26 adds an admin override flag to catalog_templates. When set, the
+// catalog admin list stops overwriting the stored field values with the
+// Proxmox-discovered ones (catalog/admin.go: templateDrift write-back). This
+// lets an administrator pin a template's editable fields (name, node, disk
+// storage, disk size, disk bus, cloud-init flag) to values that differ from
+// what Proxmox reports — e.g. to correct a misnamed template or to cap a
+// template's disk size below what discovery claims. The flag defaults to 0
+// (discovery wins, the existing behavior).
+const schemaV26 = `ALTER TABLE catalog_templates ADD COLUMN override_discovery BOOLEAN NOT NULL DEFAULT 0`
 
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
@@ -254,4 +298,7 @@ var Migrations = []Migration{
 	{Version: 21, DDL: schemaV21},
 	{Version: 22, DDL: schemaV22},
 	{Version: 23, DDL: schemaV23},
+	{Version: 24, DDL: schemaV24},
+	{Version: 25, DDL: schemaV25},
+	{Version: 26, DDL: schemaV26},
 }

@@ -80,7 +80,10 @@ func NewAdminPoolsWithRegistry(deps AdminPoolsRegistryDeps) *AdminPools {
 }
 
 // clientFor resolves the cluster.Client for clusterName, falling back to the
-// single bound client when clients is nil (legacy single-cluster ctor).
+// single bound client when clients is nil (legacy single-cluster ctor). When
+// clusterName is empty and a multi-cluster registry is bound, the first
+// available cluster is used (preserves the omitted-?cluster= behavior the
+// admin pools tests rely on).
 func (h *AdminPools) clientFor(clusterName string) (cluster.Client, error) {
 	if h.clients == nil {
 		if h.client == nil {
@@ -90,18 +93,54 @@ func (h *AdminPools) clientFor(clusterName string) (cluster.Client, error) {
 		return h.client, nil
 	}
 
+	if clusterName == "" {
+		names := h.clients.List()
+		if len(names) == 0 {
+			return nil, cluster.ErrClusterNotFound
+		}
+		clusterName = names[0]
+	}
+
 	return h.clients.Client(clusterName)
 }
 
 // projectionFor resolves the inventory.Projection for clusterName, falling
-// back to the single bound projection when source is nil.
+// back to the single bound projection when source is nil. When clusterName
+// is empty and a multi-cluster registry is bound, the first available
+// cluster's projection is used.
 func (h *AdminPools) projectionFor(clusterName string) (*inventory.Projection, error) {
 	registry, ok := h.source.(*inventory.Registry)
 	if !ok {
 		return h.projection, nil
 	}
 
+	if clusterName == "" {
+		names := h.clients.List()
+		if len(names) == 0 {
+			return nil, cluster.ErrClusterNotFound
+		}
+		clusterName = names[0]
+	}
+
 	return registry.Projection(clusterName)
+}
+
+// resolveClusterName resolves the effective cluster name from the request's
+// ?cluster= query parameter, falling back to the first available cluster
+// when it is empty. Returns the resolved name (never empty on success).
+func (h *AdminPools) resolveClusterName(r *http.Request) (string, error) {
+	clusterName := queryCluster(r)
+	if clusterName != "" {
+		return clusterName, nil
+	}
+	if h.clients == nil {
+		return "", nil
+	}
+	names := h.clients.List()
+	if len(names) == 0 {
+		return "", cluster.ErrClusterNotFound
+	}
+	return names[0], nil
 }
 
 // ServeList handles GET /api/v1/admin/pools.
@@ -109,7 +148,11 @@ func (h *AdminPools) ServeList(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.adminActor(w, r); !ok {
 		return
 	}
-	clusterName := queryCluster(r)
+	clusterName, err := h.resolveClusterName(r)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return
+	}
 	client, err := h.clientFor(clusterName)
 	if err != nil {
 		writeAdminError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
@@ -140,12 +183,16 @@ func (h *AdminPools) ServeCreate(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
 		return
 	}
-	client, err := h.clientFor(queryCluster(r))
+	clusterName, err := h.resolveClusterName(r)
 	if err != nil {
 		writeAdminError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
 		return
 	}
-	clusterName := queryCluster(r)
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return
+	}
 	creds, err := pools.CreateManaged(r.Context(), actor, client, h.store, clusterName, request.Name, request.Comment)
 	if err != nil {
 		h.writeCreateError(w, err)
@@ -175,7 +222,11 @@ func (h *AdminPools) ServeDelete(w http.ResponseWriter, r *http.Request) {
 		writeAdminError(w, http.StatusBadRequest, "invalid_pool_name", "invalid pool name")
 		return
 	}
-	clusterName := queryCluster(r)
+	clusterName, err := h.resolveClusterName(r)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return
+	}
 	client, err := h.clientFor(clusterName)
 	if err != nil {
 		writeAdminError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)

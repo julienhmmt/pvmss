@@ -25,7 +25,7 @@ export class AdminProfilesStore {
 	saving = $state.raw(false);
 	saveError = $state.raw<string | null>(null);
 	clusterOptions = $state.raw<ClusterOption[]>([]);
-	cluster = $state('default');
+	cluster = $state('');
 
 	search = $state('');
 	busFilter = $state('');

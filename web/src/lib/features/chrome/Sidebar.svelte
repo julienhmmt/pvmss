@@ -21,6 +21,8 @@
 	import { goto } from '$app/navigation';
 	import { m } from '$lib/paraglide/messages.js';
 	import SidebarIcon from './SidebarIcon.svelte';
+	import LanguageSwitcher from './LanguageSwitcher.svelte';
+	import ThemeToggle from './ThemeToggle.svelte';
 
 	const session = getSessionContext();
 	const chrome = getChromeContext();
@@ -99,6 +101,8 @@
 		if (!group) return;
 		navigation.toggleGroup({ index, active: isActiveGroup(group) });
 	}
+
+	const docsHref = resolve('/docs');
 
 	function closeDrawer(): void {
 		chrome.closeSidebar();
@@ -270,7 +274,22 @@
 		{/if}
 	</div>
 
-	<div class="mt-auto flex flex-col gap-3 px-3 pb-5 pt-4">
+	<div class="mt-auto flex flex-col gap-3 border-t border-sidebar-border px-3 pb-5 pt-4">
+		<a
+			href={docsHref}
+			aria-current={isActive(docsHref) ? 'page' : undefined}
+			class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {isActive(docsHref)
+				? 'bg-sidebar-accent text-sidebar-accent-foreground'
+				: 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}"
+		>
+			<SidebarIcon name="info" />
+			{m['chrome.header.docs']()}
+		</a>
+		<div class="flex flex-wrap items-center justify-between gap-2">
+			<LanguageSwitcher />
+			<ThemeToggle />
+		</div>
+
 		{#if session.principal}
 			<p class="px-2 text-xs text-muted-foreground-subtle">
 				{m['chrome.sidebar.userChip']({ username: session.principal.displayName || session.principal.username })}

@@ -46,6 +46,10 @@ func (stubClusterClient) ListTemplates(_ context.Context) ([]cluster.TemplateVM,
 	return nil, cluster.ErrNotImplemented
 }
 
+func (stubClusterClient) TemplateByVMID(_ context.Context, _ int) (cluster.TemplateVM, error) {
+	return cluster.TemplateVM{}, cluster.ErrNotImplemented
+}
+
 func (stubClusterClient) ListPools(_ context.Context) ([]cluster.Pool, error) {
 	return nil, cluster.ErrNotImplemented
 }

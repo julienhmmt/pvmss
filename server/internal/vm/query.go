@@ -140,7 +140,7 @@ func list(ctx context.Context, source inventory.Source, query ListQuery, identit
 		AvailableNodes: facetedNodes,
 	}
 	if len(services) > 0 && services[0] != nil {
-		quota, err := services[0].Quota(ctx, "default", identity)
+		quota, err := services[0].Quota(ctx, query.Cluster, identity)
 		if err != nil {
 			return ListResult{}, fmt.Errorf("read quota: %w", err)
 		}
