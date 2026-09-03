@@ -175,6 +175,7 @@ type CloudInitPusher interface {
 // real Proxmox client both satisfy it.
 type HardwareUpdater interface {
 	UpdateHardware(ctx context.Context, node string, vmid, sockets, cores, memoryMB int, tags []string) error
+	SetTags(ctx context.Context, node string, vmid int, tags []string) error
 	ResizeDisk(ctx context.Context, node string, vmid int, diskKey string, sizeGB int) error
 	Action(ctx context.Context, node string, vmid int, action string) error
 	Delete(ctx context.Context, node string, vmid int) error
@@ -433,6 +434,13 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 		req.Disk.SizeGB = tmpl.DiskSizeGB
 	}
 
+	// Simple-mode template requests omit cpuCores/memoryMB — the clone
+	// inherits the template's hardware. Default the zeros to the minimums
+	// so checkTechnicalRange passes, and track that no override was
+	// requested so applyPostCloneConfig skips UpdateHardware (which would
+	// otherwise shrink the clone to 1 vCPU / 128 MB).
+	hardwareOverride := defaultTemplateHardware(&req)
+
 	plan, err := planCreate(ctx, policyService, deps, clusterName, actor, req)
 	if err != nil {
 		return CreateResult{}, err
@@ -499,6 +507,7 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 		VMID: finalVMID, Node: tmpl.Node, Plan: plan, Template: tmpl,
 		CloudTemplate: cloudTemplate, StartAfterCreate: startAfterCreate,
 		Tags: buildTags(req), DiskKey: primaryDiskKey(tmpl.DiskBus),
+		HardwareOverride: hardwareOverride,
 	}, &result)
 
 	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, finalVMID, "vm_create"); err != nil {
@@ -626,6 +635,23 @@ func rollbackFailedCreate(ctx context.Context, deps CreateDeps, actor auth.Ident
 	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, vmid, "vm_create_rollback"); err != nil {
 		deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
 	}
+}
+
+// defaultTemplateHardware defaults zero CPU/memory to the technical
+// minimums so checkTechnicalRange passes, and returns whether the caller
+// explicitly supplied hardware (so applyPostCloneConfig can skip the
+// post-clone UpdateHardware that would otherwise shrink the clone).
+func defaultTemplateHardware(req *CreateRequest) bool {
+	override := req.CPUCores != 0 || req.MemoryMB != 0
+	if req.CPUCores == 0 {
+		req.CPUCores = MinCPUCores
+	}
+
+	if req.MemoryMB == 0 {
+		req.MemoryMB = MinMemoryMB
+	}
+
+	return override
 }
 
 // resolveTemplate looks up the approved Proxmox template before any VMID is
@@ -817,6 +843,10 @@ type postCloneConfig struct {
 	StartAfterCreate bool
 	Tags             []string
 	DiskKey          string
+	// HardwareOverride is false when the request omitted cpuCores/memoryMB
+	// (simple template mode). The clone inherits the template's hardware
+	// and UpdateHardware is skipped.
+	HardwareOverride bool
 }
 
 // applyPostCloneConfig runs the post-clone configuration sequence (US2/issue-02
@@ -825,26 +855,8 @@ type postCloneConfig struct {
 // result.CloudInitPushError but does not abort the remaining steps — the clone
 // is already real and the VM exists.
 func applyPostCloneConfig(ctx context.Context, cfg postCloneConfig, result *CreateResult) {
-	// 1. Hardware overrides (cores/memory/sockets). The cloned VM inherits the
-	// template's hardware; the request's values override them.
-	if cfg.Deps.Writer != nil {
-		if err := cfg.Deps.Writer.UpdateHardware(ctx, cfg.Node, cfg.VMID, cfg.Plan.sockets, cfg.Plan.cpuCores, cfg.Plan.memoryMB, cfg.Tags); err != nil {
-			cfg.Deps.Log.Error("post-clone hardware update failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
-			result.CloudInitPushError = err.Error()
-		}
-	}
-
-	// 2. Disk resize — only enlarge (D2c: Proxmox does not reduce disks;
-	// the reduction was already rejected before VMID allocation).
-	if cfg.Deps.Writer != nil && cfg.Plan.diskGB > cfg.Template.DiskSizeGB && cfg.DiskKey != "" {
-		if err := cfg.Deps.Writer.ResizeDisk(ctx, cfg.Node, cfg.VMID, cfg.DiskKey, cfg.Plan.diskGB); err != nil {
-			cfg.Deps.Log.Error("post-clone disk resize failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
-
-			if result.CloudInitPushError == "" {
-				result.CloudInitPushError = err.Error()
-			}
-		}
-	}
+	applyCloneHardware(ctx, cfg, result)
+	applyCloneDiskResize(ctx, cfg, result)
 
 	// 3. Cloud-init snippet attachment (same mechanism as the ISO path).
 	if cfg.CloudTemplate.ID != "" {
@@ -861,6 +873,52 @@ func applyPostCloneConfig(ctx context.Context, cfg postCloneConfig, result *Crea
 	if cfg.StartAfterCreate && result.CloudInitPushError == "" && cfg.Deps.Writer != nil {
 		if err := cfg.Deps.Writer.Action(ctx, cfg.Node, cfg.VMID, "start"); err != nil {
 			cfg.Deps.Log.Error("post-clone start failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
+		}
+	}
+}
+
+// applyCloneHardware applies hardware overrides when the caller explicitly
+// supplied CPU/memory, and always stamps the mandatory pvmss tag (FR-006).
+// In simple template mode (no hardware override), SetTags is used so the
+// clone inherits the template's hardware unchanged — UpdateHardware would
+// shrink it to the plan's minimums (1 vCPU / 128 MB).
+func applyCloneHardware(ctx context.Context, cfg postCloneConfig, result *CreateResult) {
+	if cfg.Deps.Writer == nil {
+		return
+	}
+
+	if cfg.HardwareOverride {
+		if err := cfg.Deps.Writer.UpdateHardware(ctx, cfg.Node, cfg.VMID, cfg.Plan.sockets, cfg.Plan.cpuCores, cfg.Plan.memoryMB, cfg.Tags); err != nil {
+			cfg.Deps.Log.Error("post-clone hardware update failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
+			result.CloudInitPushError = err.Error()
+
+			return
+		}
+
+		return
+	}
+
+	// No hardware override — still stamp the pvmss tag so the clone is
+	// visible to PVMSS (FR-006). Without this, a simple-mode clone exists in
+	// Proxmox but Resolve() returns ErrNotFound.
+	if err := cfg.Deps.Writer.SetTags(ctx, cfg.Node, cfg.VMID, cfg.Tags); err != nil {
+		cfg.Deps.Log.Error("post-clone set tags failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
+		result.CloudInitPushError = err.Error()
+	}
+}
+
+// applyCloneDiskResize enlarges the clone's disk when the plan's size exceeds
+// the template's (D2c: Proxmox does not reduce disks).
+func applyCloneDiskResize(ctx context.Context, cfg postCloneConfig, result *CreateResult) {
+	if cfg.Deps.Writer == nil || cfg.Plan.diskGB <= cfg.Template.DiskSizeGB || cfg.DiskKey == "" {
+		return
+	}
+
+	if err := cfg.Deps.Writer.ResizeDisk(ctx, cfg.Node, cfg.VMID, cfg.DiskKey, cfg.Plan.diskGB); err != nil {
+		cfg.Deps.Log.Error("post-clone disk resize failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
+
+		if result.CloudInitPushError == "" {
+			result.CloudInitPushError = err.Error()
 		}
 	}
 }

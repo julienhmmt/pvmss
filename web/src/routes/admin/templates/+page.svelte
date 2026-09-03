@@ -4,10 +4,13 @@
 	import { resolve } from '$app/paths';
 	import {
 		setAdminCatalogContext,
+		type AdminTemplate,
+		type AdminTemplatePatch,
 		type TemplateSortColumn
 	} from '$lib/features/admin-catalog/admin-catalog.svelte';
 	import TemplatesTable from '$lib/features/admin-catalog/TemplatesTable.svelte';
 	import TemplatesTableToolbar from '$lib/features/admin-catalog/TemplatesTableToolbar.svelte';
+	import TemplateEditDialog from '$lib/features/admin-catalog/TemplateEditDialog.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
@@ -19,6 +22,8 @@
 	const store = setAdminCatalogContext();
 	const toast = getToastContext();
 
+	let editing = $state<AdminTemplate | null>(null);
+
 	onMount(() => {
 		void store.loadTemplates();
 	});
@@ -29,6 +34,22 @@
 
 	function handleRemove(vmid: number): void {
 		void performRemove(vmid);
+	}
+
+	function handleEdit(template: AdminTemplate): void {
+		editing = template;
+	}
+
+	async function handleEditSave(patch: AdminTemplatePatch): Promise<void> {
+		if (editing === null) return;
+		const vmid = editing.vmid;
+		try {
+			await store.updateTemplate(vmid, patch);
+			editing = null;
+			toast.success(m['admin.templates.updateSuccess']({ vmid }));
+		} catch {
+			toast.error(m['admin.templates.updateError']());
+		}
 	}
 
 	async function performToggle(vmid: number, enabled: boolean): Promise<void> {
@@ -131,6 +152,7 @@
 				toggling={store.toggling}
 				onToggle={handleToggle}
 				onRemove={handleRemove}
+				onEdit={handleEdit}
 				sortBy={store.templateSortBy}
 				sortDir={store.templateSortDir}
 				onSort={handleSort}
@@ -138,3 +160,11 @@
 		</div>
 	{/if}
 {/if}
+
+<TemplateEditDialog
+	template={editing}
+	open={editing !== null}
+	saving={store.toggling?.startsWith('template:') ?? false}
+	onClose={() => (editing = null)}
+	onSave={handleEditSave}
+/>

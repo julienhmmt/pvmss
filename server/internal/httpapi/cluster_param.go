@@ -28,7 +28,7 @@ func ResolveClusterValue(value string, lister ClusterLister) (string, error) {
 func resolveClusterValue(value string, lister ClusterLister) (string, error) {
 	if lister == nil {
 		if value == "" {
-			return defaultClusterName, nil
+			return "", ErrClusterRequired
 		}
 		return value, nil
 	}
@@ -42,7 +42,7 @@ func resolveClusterValue(value string, lister ClusterLister) (string, error) {
 	if len(names) > 1 {
 		return "", ErrClusterRequired
 	}
-	return defaultClusterName, nil
+	return "", ErrClusterRequired
 }
 
 func clusterParamError(err error) (string, string) {

@@ -303,11 +303,17 @@ func createMigrationStandInTables(ctx context.Context, t *testing.T, db *sql.DB)
 
 	standins := []string{
 		`CREATE TABLE IF NOT EXISTS clusters (name TEXT PRIMARY KEY)`,
+		`CREATE TABLE IF NOT EXISTS catalog_nodes (cluster TEXT NOT NULL, name TEXT NOT NULL, PRIMARY KEY (cluster, name))`,
+		`CREATE TABLE IF NOT EXISTS catalog_storages (cluster TEXT NOT NULL, name TEXT NOT NULL, node TEXT NOT NULL, PRIMARY KEY (cluster, name, node))`,
 		`CREATE TABLE IF NOT EXISTS catalog_isos (cluster TEXT NOT NULL, storage TEXT NOT NULL, file TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, storage, file))`,
-		`CREATE TABLE IF NOT EXISTS sessions (token_hash BLOB PRIMARY KEY)`,
+		`CREATE TABLE IF NOT EXISTS catalog_tags (cluster TEXT NOT NULL, name TEXT NOT NULL, color TEXT NOT NULL, created_at TEXT NOT NULL, PRIMARY KEY (cluster, name))`,
+		`CREATE TABLE IF NOT EXISTS catalog_cloudinit_templates (cluster TEXT NOT NULL, name TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, name))`,
+		`CREATE TABLE IF NOT EXISTS vm_cloudinit_snippets (cluster TEXT NOT NULL, vmid INTEGER NOT NULL, content TEXT NOT NULL, storage TEXT NOT NULL, filename TEXT NOT NULL, updated_at TEXT NOT NULL, updated_by TEXT NOT NULL, PRIMARY KEY (cluster, vmid))`,
+		`CREATE TABLE IF NOT EXISTS sessions (token_hash BLOB PRIMARY KEY, cluster TEXT NOT NULL DEFAULT '')`,
 		`CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT NOT NULL, cluster TEXT NOT NULL, vmid INTEGER NOT NULL, action TEXT NOT NULL, timestamp TEXT NOT NULL)`,
 		`CREATE TABLE IF NOT EXISTS catalog_profiles (cluster TEXT NOT NULL, id TEXT NOT NULL, label TEXT NOT NULL, cpu_cores INTEGER NOT NULL, memory_mb INTEGER NOT NULL, disk_gb INTEGER NOT NULL, bus TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, id))`,
 		`CREATE TABLE IF NOT EXISTS vm_limits (cluster TEXT PRIMARY KEY, max_sockets INTEGER NOT NULL, max_cores INTEGER NOT NULL, max_memory_mb INTEGER NOT NULL, max_disk_per_vm_gb INTEGER NOT NULL, max_network_cards INTEGER NOT NULL, max_snapshots INTEGER NOT NULL, max_vm_per_user INTEGER NOT NULL, allow_custom_yaml BOOLEAN NOT NULL)`,
+		`CREATE TABLE IF NOT EXISTS node_limits (cluster TEXT NOT NULL, node TEXT NOT NULL, max_vms INTEGER NOT NULL, max_vcpus INTEGER NOT NULL, max_ram_gb INTEGER NOT NULL, max_disk_gb INTEGER NOT NULL, PRIMARY KEY (cluster, node))`,
 	}
 	for _, ddl := range standins {
 		if _, err := db.ExecContext(ctx, ddl); err != nil {

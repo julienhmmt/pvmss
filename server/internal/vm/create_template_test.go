@@ -314,6 +314,59 @@ func TestCreate_TemplateClone_NoDiskSizeUsesTemplateSize(t *testing.T) {
 	}
 }
 
+// TestCreate_TemplateClone_SimpleModeMinimalRequest — the simple-mode
+// wizard sends only cluster, name, templateId, and startAfterCreate (no
+// cpuCores, memoryMB, sockets, disk, or network). The clone must inherit
+// the template's hardware: checkTechnicalRange must not reject the zero
+// values, and UpdateHardware must not be called (which would shrink the
+// clone to the minimum). Regression for the HTTP 400 out_of_range that
+// blocked template-based creation from the web UI.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_TemplateClone_SimpleModeMinimalRequest(t *testing.T) {
+	fixture := newCreateFixture(t)
+	req := vm.CreateRequest{
+		Cluster:          testClusterName,
+		Name:             "clone-01",
+		TemplateID:       9000,
+		StartAfterCreate: true,
+	}
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if result.UPID == "" {
+		t.Fatalf("no UPID returned")
+	}
+
+	if result.Node != cluster.FakeNode02 {
+		t.Errorf("result.Node = %q, want %q", result.Node, cluster.FakeNode02)
+	}
+
+	// The clone must not have been hit by a hardware override — the
+	// template's CPU/memory are inherited, not shrunk to the minimum.
+	for _, c := range cluster.FakeCalls() {
+		if c.VMID == result.VMID && c.Action == actionUpdateHW {
+			t.Errorf("unexpected update_hardware call for VMID %d (simple mode should inherit template hardware)", result.VMID)
+		}
+	}
+
+	// The pvmss tag must still be stamped via SetTags — without it, the
+	// clone is invisible to PVMSS (FR-006: Resolve returns ErrNotFound).
+	snap, _ := fixture.fake.Snapshot(context.Background())
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("cloned VM %d not in snapshot", result.VMID)
+	}
+
+	if !slices.Contains(snap.VMs[idx].Tags, "pvmss") {
+		t.Errorf("cloned VM %d tags = %v, want pvmss tag present (FR-006)", result.VMID, snap.VMs[idx].Tags)
+	}
+}
+
 // TestCreate_TemplateClone_CloudInitAppliedAfterTask — lifecycle-04: when
 // a cloud-init template is requested alongside a Proxmox template clone,
 // the cloud-init snippet is attached after the clone task completes.

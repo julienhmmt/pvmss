@@ -939,6 +939,26 @@ func (fake Fake) UpdateHardware(_ context.Context, node string, vmid, sockets, c
 	return nil
 }
 
+// SetTags implements Writer and updates only the fake VM's tags, leaving
+// hardware untouched. Used by the clone path when no hardware override was
+// requested but the mandatory pvmss tag still needs to be stamped.
+func (fake Fake) SetTags(_ context.Context, node string, vmid int, tags []string) error {
+	state := fake.stateOrDefault()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
+
+	idx := state.findVM(node, vmid)
+	if idx < 0 {
+		return ErrNotFound
+	}
+
+	state.vms[idx].Tags = append([]string(nil), tags...)
+
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "set_tags"})
+
+	return nil
+}
+
 // EnableSerial implements Writer and flips the fake VM's HasSerial flag on.
 func (fake Fake) EnableSerial(_ context.Context, node string, vmid int) error {
 	state := fake.stateOrDefault()

@@ -1,4 +1,4 @@
-import { get, post, del, ApiRequestError } from '$lib/shared/api/client';
+import { get, post, put, del, ApiRequestError } from '$lib/shared/api/client';
 import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 import { setContext, getContext } from 'svelte';
 import { SvelteSet } from 'svelte/reactivity';
@@ -57,6 +57,21 @@ export interface AdminTemplate {
 	/** True when the template's config read failed (issue 03) — the row is
 	 *  greyed out and enabling is refused (disabling stays possible). */
 	diskUnreadable: boolean;
+	/** True when an admin pinned the editable fields (schemaV26). The list
+	 *  then shows the stored (overridden) values instead of the discovered
+	 *  ones and the drift write-back is skipped. */
+	overrideDiscovery: boolean;
+}
+
+/** The editable field set of a catalog_templates row, sent on PUT
+ *  /api/v1/admin/templates/{cluster}/{vmid} (schemaV26 override). */
+export interface AdminTemplatePatch {
+	node: string;
+	name: string;
+	cloudInitCapable: boolean;
+	diskStorage: string;
+	diskSizeGB: number;
+	diskBus: string;
 }
 
 interface ToggleResponse {
@@ -96,7 +111,7 @@ interface TemplateToggleResponse {
  */
 export class AdminCatalogStore {
 	clusterOptions = $state.raw<ClusterOption[]>([]);
-	cluster = $state('default');
+	cluster = $state('');
 	nodes = $state.raw<AdminNode[]>([]);
 	storages = $state.raw<AdminStorage[]>([]);
 	bridges = $state.raw<AdminBridge[]>([]);
@@ -498,6 +513,32 @@ export class AdminCatalogStore {
 			this.templates = this.templates.filter((t) => t.vmid !== vmid);
 		} catch (err) {
 			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.templates.removeError']();
+			throw err;
+		} finally {
+			this.toggling = null;
+		}
+	}
+
+	/** Overrides a template's editable fields and pins the row against
+	 *  discovery-wins write-back (schemaV26). The cluster comes from the
+	 *  store's current cluster selection. */
+	async updateTemplate(vmid: number, patch: AdminTemplatePatch): Promise<void> {
+		this.toggling = `template:${vmid}`;
+		this.toggleError = null;
+		try {
+			const updated = await put<AdminTemplate>(
+				`/api/v1/admin/templates/${encodeURIComponent(this.cluster)}/${vmid}`,
+				patch
+			);
+			// Preserve enabled/missing/diskUnreadable from the existing row;
+			// the PUT response only carries the overridden field values.
+			this.templates = this.templates.map((t) =>
+				t.vmid === vmid
+					? { ...t, ...patch, overrideDiscovery: true, enabled: updated.enabled || t.enabled }
+					: t
+			);
+		} catch (err) {
+			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.templates.updateError']();
 			throw err;
 		} finally {
 			this.toggling = null;

@@ -448,16 +448,17 @@ func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 // missing is true for a stored approval whose template Proxmox no longer
 // reports (issue 02) — the UI offers Remove on those rows only.
 type adminTemplateDTO struct {
-	VMID             int    `json:"vmid"`
-	Node             string `json:"node"`
-	Name             string `json:"name"`
-	CloudInitCapable bool   `json:"cloudInitCapable"`
-	DiskStorage      string `json:"diskStorage"`
-	DiskSizeGB       int    `json:"diskSizeGB"`
-	DiskBus          string `json:"diskBus"`
-	Enabled          bool   `json:"enabled"`
-	Missing          bool   `json:"missing"`
-	DiskUnreadable   bool   `json:"diskUnreadable"`
+	VMID              int    `json:"vmid"`
+	Node              string `json:"node"`
+	Name              string `json:"name"`
+	CloudInitCapable  bool   `json:"cloudInitCapable"`
+	DiskStorage       string `json:"diskStorage"`
+	DiskSizeGB        int    `json:"diskSizeGB"`
+	DiskBus           string `json:"diskBus"`
+	Enabled           bool   `json:"enabled"`
+	Missing           bool   `json:"missing"`
+	DiskUnreadable    bool   `json:"diskUnreadable"`
+	OverrideDiscovery bool   `json:"overrideDiscovery"`
 }
 
 // ServeTemplates handles GET /api/v1/admin/templates.
@@ -492,6 +493,7 @@ func (h *AdminCatalog) ServeTemplates(w http.ResponseWriter, r *http.Request) {
 			CloudInitCapable: tmpl.CloudInitCapable, DiskStorage: tmpl.DiskStorage,
 			DiskSizeGB: tmpl.DiskSizeGB, DiskBus: tmpl.DiskBus, Enabled: tmpl.Enabled,
 			Missing: tmpl.Missing, DiskUnreadable: tmpl.DiskUnreadable,
+			OverrideDiscovery: tmpl.OverrideDiscovery,
 		}
 	}
 
@@ -595,6 +597,84 @@ func (h *AdminCatalog) ServeTemplateDelete(w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// templateUpdateRequest is the body of PUT /api/v1/admin/templates/{cluster}/{vmid}
+// (schemaV26 override). The cluster is taken from the path to match the
+// delete handler's convention; the body carries the editable field values.
+type templateUpdateRequest struct {
+	Node             string `json:"node"`
+	Name             string `json:"name"`
+	CloudInitCapable bool   `json:"cloudInitCapable"`
+	DiskStorage      string `json:"diskStorage"`
+	DiskSizeGB       int    `json:"diskSizeGB"`
+	DiskBus          string `json:"diskBus"`
+}
+
+// ServeTemplateUpdate handles PUT /api/v1/admin/templates/{cluster}/{vmid}.
+// Overrides the discovered template field values and pins the row against
+// discovery-wins write-back (schemaV26). The create path still enforces the
+// gabarit on clones, so an override above the gabarit simply means clones
+// from this template are rejected at create time — the admin owns that.
+func (h *AdminCatalog) ServeTemplateUpdate(w http.ResponseWriter, r *http.Request) {
+	clusterName := r.PathValue("cluster")
+
+	vmid, err := strconv.Atoi(r.PathValue("vmid"))
+	if err != nil || vmid <= 0 {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", "template vmid is required")
+
+		return
+	}
+
+	var req templateUpdateRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
+
+		return
+	}
+
+	if req.Node == "" || req.DiskStorage == "" || req.DiskBus == "" {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", "node, diskStorage, and diskBus are required")
+
+		return
+	}
+
+	if req.DiskSizeGB < 0 {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", "diskSizeGB must not be negative")
+
+		return
+	}
+
+	values := store.TemplateValues{
+		Node: req.Node, Name: req.Name, CloudInitCapable: req.CloudInitCapable,
+		DiskStorage: req.DiskStorage, DiskSizeGB: req.DiskSizeGB, DiskBus: req.DiskBus,
+	}
+	if err := catalog.UpdateTemplate(r.Context(), h.store, clusterName, vmid, values); err != nil {
+		if errors.Is(err, catalog.ErrTemplateNotFound) {
+			writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf("template vmid %d not found on cluster %q", vmid, clusterName))
+
+			return
+		}
+
+		h.log.Error("admin update template failed", "component", "httpapi", "error", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return
+	}
+
+	h.recordAdminAction(r, "admin.templates.update", "template", strconv.Itoa(vmid),
+		fmt.Sprintf("overrode template vmid %d on cluster %s: node=%s name=%q disk=%dGB@%s bus=%s cloudinit=%v",
+			vmid, clusterName, req.Node, req.Name, req.DiskSizeGB, req.DiskStorage, req.DiskBus, req.CloudInitCapable),
+		[]any{map[string]any{
+			auditKeyCluster: clusterName, "vmid": vmid, "node": req.Node, "name": req.Name,
+			"diskStorage": req.DiskStorage, "diskSizeGB": req.DiskSizeGB, "diskBus": req.DiskBus,
+			"cloudInitCapable": req.CloudInitCapable,
+		}})
+	writeAdminJSON(w, http.StatusOK, adminTemplateDTO{
+		VMID: vmid, Node: req.Node, Name: req.Name, CloudInitCapable: req.CloudInitCapable,
+		DiskStorage: req.DiskStorage, DiskSizeGB: req.DiskSizeGB, DiskBus: req.DiskBus,
+		OverrideDiscovery: true,
+	})
+}
+
 // --- helpers ---
 
 func (h *AdminCatalog) clientFor(name string) (cluster.Client, error) {
@@ -627,7 +707,7 @@ func (h *AdminCatalog) recordAdminAction(r *http.Request, action, targetType, ta
 func queryCluster(r *http.Request) string {
 	c := r.URL.Query().Get("cluster")
 	if c == "" {
-		return defaultClusterName
+		return ""
 	}
 
 	return c

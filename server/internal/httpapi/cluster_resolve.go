@@ -25,6 +25,17 @@ func resolveCapability[T any](clients cluster.ClientProvider, fallback T, cluste
 		return fallback, nil
 	}
 
+	if clusterName == "" {
+		names := clients.List()
+		if len(names) == 0 {
+			var zero T
+
+			return zero, cluster.ErrClusterNotFound
+		}
+
+		clusterName = names[0]
+	}
+
 	client, err := clients.Client(clusterName)
 	if err != nil {
 		var zero T

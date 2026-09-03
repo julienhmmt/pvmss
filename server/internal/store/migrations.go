@@ -231,6 +231,41 @@ const schemaV24 = `DELETE FROM catalog_templates
 	   AND disk_storage IN ('local-lvm', 'local')
 	   AND disk_bus = 'scsi'`
 
+// schemaV25 renames the cluster "default" to its display_name (the real
+// Proxmox cluster name discovered via /cluster/status). The internal name
+// "default" was a placeholder from the initial setup; the display_name is
+// the authoritative name the user sees and expects. Cascades to every table
+// with a cluster column. Only runs when display_name is set, non-empty, and
+// differs from "default". The clusters table is updated last so the subquery
+// in the child-table updates still finds the old name.
+const schemaV25 = `
+UPDATE audit_log               SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE catalog_bridges         SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE catalog_cloudinit_templates SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE catalog_isos            SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE catalog_nodes           SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE catalog_profiles        SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE catalog_storages        SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE catalog_tags            SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE catalog_templates       SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE managed_pools           SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE node_limits             SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE sessions                SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE vm_cloudinit_snippets   SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE vm_limits               SET cluster = (SELECT display_name FROM clusters WHERE name = 'default') WHERE cluster = 'default' AND (SELECT display_name FROM clusters WHERE name = 'default') IS NOT NULL AND (SELECT display_name FROM clusters WHERE name = 'default') != '';
+UPDATE clusters                SET name = display_name WHERE name = 'default' AND display_name IS NOT NULL AND display_name != '';
+`
+
+// schemaV26 adds an admin override flag to catalog_templates. When set, the
+// catalog admin list stops overwriting the stored field values with the
+// Proxmox-discovered ones (catalog/admin.go: templateDrift write-back). This
+// lets an administrator pin a template's editable fields (name, node, disk
+// storage, disk size, disk bus, cloud-init flag) to values that differ from
+// what Proxmox reports — e.g. to correct a misnamed template or to cap a
+// template's disk size below what discovery claims. The flag defaults to 0
+// (discovery wins, the existing behavior).
+const schemaV26 = `ALTER TABLE catalog_templates ADD COLUMN override_discovery BOOLEAN NOT NULL DEFAULT 0`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -264,4 +299,6 @@ var Migrations = []Migration{
 	{Version: 22, DDL: schemaV22},
 	{Version: 23, DDL: schemaV23},
 	{Version: 24, DDL: schemaV24},
+	{Version: 25, DDL: schemaV25},
+	{Version: 26, DDL: schemaV26},
 }
