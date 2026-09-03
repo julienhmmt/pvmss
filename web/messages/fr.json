@@ -705,6 +705,8 @@
   "vms.create.errorNotApprovedProfile": "Le profil {profile} n'est pas approuvé pour ce cluster.",
   "vms.create.errorNotApprovedTemplate": "Le modèle cloud-init {template} n'est pas approuvé pour ce cluster.",
   "vms.create.errorProfileRequired": "Sélectionnez un profil.",
+  "vms.create.errorTemplateRequired": "Sélectionnez un modèle.",
+  "vms.create.errorTemplateInvalid": "Le modèle sélectionné n'est pas disponible.",
   "vms.create.errorNodeRequired": "Sélectionnez un nœud approuvé.",
   "vms.create.errorStorageRequired": "Sélectionnez un stockage approuvé.",
   "vms.create.errorCloudinitTemplateInvalid": "Le modèle cloud-init sélectionné n'est pas disponible.",
