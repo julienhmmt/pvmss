@@ -6,7 +6,7 @@
 	import { fetchDocPage, type DocRendered } from '$lib/features/docs/docs.svelte';
 	import { getLocaleContext } from '$lib/features/chrome/locale.svelte';
 	import { m } from '$lib/paraglide/messages.js';
-	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
 	import type { Locale } from '$lib/paraglide/runtime.js';
 	import { ApiRequestError } from '$lib/shared/api/client';
@@ -61,9 +61,9 @@
 
 <section class="mx-auto w-full max-w-3xl px-4 py-8 md:px-6">
 	<div class="mb-6 flex flex-col gap-4">
-		<ButtonLink href={resolve('/docs')} variant="secondary" size="sm">
+		<Button variant="secondary" size="sm" onclick={() => void goto(resolve('/docs'))}>
 			← {m['docs.back']()}
-		</ButtonLink>
+		</Button>
 
 		<div class="flex items-start justify-between gap-4">
 			{#if doc}

@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import Button from '$lib/shared/ui/Button.svelte';
 	import { setConsoleContext } from '$lib/features/vm-console/console.svelte';
 	import { setSerialConsoleContext } from '$lib/features/vm-console/serial.svelte';
 	import VmConsole from '$lib/features/vm-console/VmConsole.svelte';
@@ -58,12 +60,13 @@
 
 <section class="mx-auto flex h-screen w-full max-w-6xl flex-col px-4 py-4">
 	<div class="mb-3 flex items-center gap-3">
-		<a
-			href={resolve('/vms/[cluster]/[vmid]', { cluster, vmid: String(vmid) })}
-			class="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
+		<Button
+			variant="secondary"
+			size="sm"
+			onclick={() => void goto(resolve('/vms/[cluster]/[vmid]', { cluster, vmid: String(vmid) }))}
 		>
 			{m['common.backToVm']()}
-		</a>
+		</Button>
 		<h1 class="text-lg font-semibold" data-testid="vm-console-title">
 			{m['vms.console.heading']({ vmid: String(vmid) })}
 		</h1>
