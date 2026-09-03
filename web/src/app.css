@@ -396,21 +396,6 @@
 
 /* Layer B — subtle micro-interaction animations. All durations stay at or
    below 200ms and are zeroed out by the prefers-reduced-motion rule above. */
-.drawer-slide-in {
-	animation: drawer-slide-in 180ms ease-out;
-}
-
-@keyframes drawer-slide-in {
-	from {
-		transform: translateX(100%);
-		opacity: 0.6;
-	}
-	to {
-		transform: translateX(0);
-		opacity: 1;
-	}
-}
-
 .drawer-slide-in-left {
 	animation: drawer-slide-in-left 180ms ease-out;
 }
