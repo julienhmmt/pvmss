@@ -247,8 +247,7 @@ func (fake Fake) ListISOs(_ context.Context) ([]ISOImage, error) {
 }
 
 // ListTemplates implements Client. Returns the fake template dataset — two
-// template VMs matching the V22 seed so the admin demo can discover and
-// approve them (US2/issue-02 T058).
+// template VMs the admin demo can discover and approve (US2/issue-02 T058).
 func (fake Fake) ListTemplates(_ context.Context) ([]TemplateVM, error) {
 	if fake.unavailable() {
 		return nil, ErrUnreachable
@@ -1147,9 +1146,8 @@ var fakeISOs = []ISOImage{
 }
 
 // fakeTemplates is the US2/issue-02 template discovery dataset. Two template
-// VMs on pve-node-02 matching the V22 seed: a cloud-init capable debian-12
-// cloud image (full clone) and a basic alpine appliance (linked clone when
-// storage matches).
+// VMs on pve-node-02: a cloud-init capable debian-12 cloud image (full
+// clone) and a basic alpine appliance (linked clone when storage matches).
 var fakeTemplates = []TemplateVM{
 	{VMID: 9000, Node: FakeNode02, Name: "debian-12-cloud", CloudInitCapable: true, DiskStorage: FakeStorageLocalLVM, DiskSizeGB: 8, DiskBus: string(DiskBusSCSI)},
 	{VMID: 9001, Node: FakeNode02, Name: "alpine-appliance", CloudInitCapable: false, DiskStorage: FakeStorageLocal, DiskSizeGB: 2, DiskBus: string(DiskBusSCSI)},

@@ -122,6 +122,11 @@
 				bind:value={form.sourceType}
 				options={sourceOptions}
 			/>
+			{#if form.catalog && !hasTemplates}
+				<p class="mt-1 text-xs text-muted-foreground" data-testid="no-templates-hint">
+					{m['vms.create.noTemplatesAvailable']()}
+				</p>
+			{/if}
 		{/snippet}
 	</FormField>
 

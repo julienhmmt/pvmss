@@ -13,9 +13,10 @@ import (
 )
 
 // templateRequest is a fully explicit, catalog-valid detailed-mode request
-// that clones from an approved Proxmox template (US2/issue-02). The seed
-// (schemaV22) approves VMID 9000 on pve-node-02 (cloud-init capable, 8 GB
-// disk) and VMID 9001 on pve-node-02 (not cloud-init capable, 2 GB disk).
+// that clones from an approved Proxmox template (US2/issue-02). The fixture
+// (newCreateFixture) approves VMID 9000 on pve-node-02 (cloud-init capable,
+// 8 GB disk) and VMID 9001 on pve-node-02 (not cloud-init capable, 2 GB
+// disk).
 const discoveryNode01 = "pve-node-01"
 
 func templateRequest(templateVMID int) vm.CreateRequest {
