@@ -33,6 +33,7 @@ export interface DraftValues {
 	isoFile: string;
 	sourceType?: VmSource;
 	templateId?: number;
+	templateMinDiskGB?: number;
 	startAfterCreate: boolean;
 	uefi?: boolean;
 	tpm?: boolean;

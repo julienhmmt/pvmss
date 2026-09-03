@@ -42,13 +42,16 @@ export interface CatalogCloudInitTemplate {
  *  VMID of the template VM; the node determines where the clone lands
  *  (D2b: cross-node clone is forbidden). CloudInitCapable signals the UI
  *  that the template supports cloud-init. DiskSizeGB is the template's
- *  disk size (reductions are rejected). */
+ *  disk size (reductions are rejected). DiskStorage is where the template's
+ *  disk lives — the clone *source* storage, used to warn when the target
+ *  storage differs (full copy instead of linked clone). */
 export interface CatalogTemplate {
 	vmid: number;
 	node: string;
 	name: string;
 	cloudInitCapable: boolean;
 	diskSizeGB: number;
+	diskStorage: string;
 }
 
 export interface CatalogTag {
@@ -276,6 +279,10 @@ export class VmCreateStore {
 	 *  clone stays on the template's node). */
 	sourceType = $state<VmSource>('iso');
 	templateId = $state(0);
+	/** Issue 04: the selected template's disk floor. 0 when no template is
+	 *  selected — the disk size may never drop below it (Proxmox cannot
+	 *  shrink a clone's source disk). */
+	templateMinDiskGB = $state(0);
 	startAfterCreate = $state(true);
 	/** US6/issue-06: UEFI (bios=ovmf + q35 + efidisk0) and TPM 2.0 —
 	 *  detailed-mode only, off by default. TPM requires UEFI; the server
@@ -438,6 +445,13 @@ export class VmCreateStore {
 
 	/** Submits the built request; returns the accepted task handle on 202. */
 	async submit(): Promise<VmCreateAccepted | null> {
+		// Issue 04: the client already knows the template's disk floor —
+		// reject below it locally instead of a round-trip to ErrDiskReduction.
+		if (this.templateMinDiskGB > 0 && this.diskSizeGB < this.templateMinDiskGB) {
+			this.submitError = m['vms.create.diskBelowTemplateMin']({ min: this.templateMinDiskGB });
+			return null;
+		}
+
 		this.submitting = true;
 		this.submitError = null;
 		try {
@@ -471,6 +485,7 @@ export class VmCreateStore {
 			isoFile: this.isoFile,
 			sourceType: this.sourceType,
 			templateId: this.templateId,
+			templateMinDiskGB: this.templateMinDiskGB,
 			startAfterCreate: this.startAfterCreate,
 			uefi: this.uefi,
 			tpm: this.tpm
@@ -498,6 +513,7 @@ export class VmCreateStore {
 		this.isoFile = values.isoFile;
 		this.sourceType = values.sourceType ?? 'iso';
 		this.templateId = values.templateId ?? 0;
+		this.templateMinDiskGB = values.templateMinDiskGB ?? 0;
 		this.startAfterCreate = values.startAfterCreate;
 		this.uefi = values.uefi ?? false;
 		this.tpm = values.tpm ?? false;

@@ -58,6 +58,8 @@ type adminNodeDTO struct {
 }
 
 // ServeNodes handles GET /api/v1/admin/nodes.
+//
+//nolint:dupl // structurally similar to ServeTemplates by design (row→DTO mapping)
 func (h *AdminCatalog) ServeNodes(w http.ResponseWriter, r *http.Request) {
 	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
 	if clusterErr != nil {
@@ -443,6 +445,8 @@ func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 }
 
 // adminTemplateDTO is the admin response shape for one discovered template.
+// missing is true for a stored approval whose template Proxmox no longer
+// reports (issue 02) — the UI offers Remove on those rows only.
 type adminTemplateDTO struct {
 	VMID             int    `json:"vmid"`
 	Node             string `json:"node"`
@@ -452,9 +456,13 @@ type adminTemplateDTO struct {
 	DiskSizeGB       int    `json:"diskSizeGB"`
 	DiskBus          string `json:"diskBus"`
 	Enabled          bool   `json:"enabled"`
+	Missing          bool   `json:"missing"`
+	DiskUnreadable   bool   `json:"diskUnreadable"`
 }
 
 // ServeTemplates handles GET /api/v1/admin/templates.
+//
+//nolint:dupl // structurally similar to ServeNodes by design (row→DTO mapping)
 func (h *AdminCatalog) ServeTemplates(w http.ResponseWriter, r *http.Request) {
 	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
 	if clusterErr != nil {
@@ -483,6 +491,7 @@ func (h *AdminCatalog) ServeTemplates(w http.ResponseWriter, r *http.Request) {
 			VMID: tmpl.VMID, Node: tmpl.Node, Name: tmpl.Name,
 			CloudInitCapable: tmpl.CloudInitCapable, DiskStorage: tmpl.DiskStorage,
 			DiskSizeGB: tmpl.DiskSizeGB, DiskBus: tmpl.DiskBus, Enabled: tmpl.Enabled,
+			Missing: tmpl.Missing, DiskUnreadable: tmpl.DiskUnreadable,
 		}
 	}
 
@@ -535,6 +544,11 @@ func (h *AdminCatalog) ServeTemplateToggle(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	if errors.Is(err, catalog.ErrTemplateUnreadable) {
+		writeAdminError(w, http.StatusBadRequest, "template_unreadable", fmt.Sprintf("template vmid %d disk could not be read; it cannot be approved", req.VMID))
+		return
+	}
+
 	if err != nil {
 		h.log.Error("admin toggle template failed", "component", "httpapi", "error", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
@@ -546,6 +560,39 @@ func (h *AdminCatalog) ServeTemplateToggle(w http.ResponseWriter, r *http.Reques
 		fmt.Sprintf("template vmid %d cluster %s set enabled=%v", req.VMID, clusterName, req.Enabled),
 		[]any{map[string]any{auditKeyCluster: clusterName, "vmid": req.VMID, auditKeyEnabled: req.Enabled}})
 	writeAdminJSON(w, http.StatusOK, templateToggleResponse{VMID: req.VMID, Enabled: req.Enabled})
+}
+
+// ServeTemplateDelete handles DELETE /api/v1/admin/templates/{cluster}/{vmid}
+// (issue 02): removes an approval row — the UI offers Remove only on missing
+// (orphaned) rows, but the API deletes any approval.
+func (h *AdminCatalog) ServeTemplateDelete(w http.ResponseWriter, r *http.Request) {
+	clusterName := r.PathValue("cluster")
+
+	vmid, err := strconv.Atoi(r.PathValue("vmid"))
+	if err != nil || vmid <= 0 {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", "template vmid is required")
+
+		return
+	}
+
+	err = catalog.DeleteTemplate(r.Context(), h.store, clusterName, vmid)
+	if errors.Is(err, catalog.ErrTemplateNotFound) {
+		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf("template vmid %d not found on cluster %q", vmid, clusterName))
+
+		return
+	}
+
+	if err != nil {
+		h.log.Error("admin delete template failed", "component", "httpapi", "error", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return
+	}
+
+	h.recordAdminAction(r, "admin.templates.delete", "template", strconv.Itoa(vmid),
+		fmt.Sprintf("deleted template approval vmid %d on cluster %s", vmid, clusterName),
+		[]any{map[string]any{auditKeyCluster: clusterName, "vmid": vmid}})
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // --- helpers ---

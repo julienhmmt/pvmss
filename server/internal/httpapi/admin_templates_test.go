@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/store"
@@ -138,15 +139,13 @@ func TestAdminTemplates_ToggleOffOnFirstApproval(t *testing.T) {
 	}
 }
 
-// TestAdminTemplates_ListPrefersStoredValues — when a stored row exists, the
-// admin list must show the stored field values (authoritative), not the
-// discovered values. This keeps the admin view consistent with the clone path
-// (catalog.Templates reads the same stored rows). The fake's discovered
-// template 9000 is cloud-init capable on local-lvm; the test overrides the
-// stored row to a different storage and verifies the list reflects it.
+// TestAdminTemplates_ListDiscoveryWinsOnValues — when a stored row's values
+// drift from discovery (template resized/migrated/renamed in Proxmox after
+// approval), the list shows the discovered values and the stored row is
+// reconciled (issue 02). The stored enabled flag stays authoritative.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
-func TestAdminTemplates_ListPrefersStoredValues(t *testing.T) {
+func TestAdminTemplates_ListDiscoveryWinsOnValues(t *testing.T) {
 	handler, authHandler, st := newAdminHandler(t)
 	cookie := adminCookie(t, authHandler)
 
@@ -158,8 +157,8 @@ func TestAdminTemplates_ListPrefersStoredValues(t *testing.T) {
 		t.Fatalf("toggle status = %d: %s", rec.Code, rec.Body.String())
 	}
 
-	// Override the stored row's disk_storage to a value that does not match
-	// discovery (fake reports local-lvm for 9000).
+	// Override the stored row's values so they drift from discovery (fake
+	// reports local-lvm / 8 GB / scsi for 9000).
 	if err := st.UpdateTemplate(context.Background(), "default", 9000, store.TemplateValues{
 		Node: cluster.FakeNode02, Name: "debian-12-cloud", CloudInitCapable: true,
 		DiskStorage: "overridden-storage", DiskSizeGB: 99, DiskBus: string(cluster.DiskBusVirtio),
@@ -179,7 +178,7 @@ func TestAdminTemplates_ListPrefersStoredValues(t *testing.T) {
 
 	for _, tmpl := range templates {
 		if tmpl.VMID == 9000 {
-			assertStoredTemplateOverridden(t, tmpl)
+			assertDiscoveredTemplateValues(t, tmpl)
 			return
 		}
 	}
@@ -187,23 +186,25 @@ func TestAdminTemplates_ListPrefersStoredValues(t *testing.T) {
 	t.Fatal("template 9000 not in list")
 }
 
-// assertStoredTemplateOverridden verifies that template 9000's stored row
-// fields override the discovered values. Extracted from
-// TestAdminTemplates_ListPrefersStoredValues to keep cognitive complexity
-// under the SonarQube ceiling.
-func assertStoredTemplateOverridden(t *testing.T, tmpl adminTemplateDTO) {
+// assertDiscoveredTemplateValues verifies that template 9000's list entry
+// carries the fake's discovered values, not the drifted stored ones.
+func assertDiscoveredTemplateValues(t *testing.T, tmpl adminTemplateDTO) {
 	t.Helper()
 
-	if tmpl.DiskStorage != "overridden-storage" {
-		t.Errorf("template 9000 diskStorage = %q, want %q (stored value must override discovery)", tmpl.DiskStorage, "overridden-storage")
+	if tmpl.DiskStorage != "local-lvm" {
+		t.Errorf("template 9000 diskStorage = %q, want %q (discovery must win on values)", tmpl.DiskStorage, "local-lvm")
 	}
 
-	if tmpl.DiskSizeGB != 99 {
-		t.Errorf("template 9000 diskSizeGB = %d, want 99 (stored value)", tmpl.DiskSizeGB)
+	if tmpl.DiskSizeGB != 8 {
+		t.Errorf("template 9000 diskSizeGB = %d, want 8 (discovered value)", tmpl.DiskSizeGB)
 	}
 
-	if tmpl.DiskBus != string(cluster.DiskBusVirtio) {
-		t.Errorf("template 9000 diskBus = %q, want %s (stored value)", tmpl.DiskBus, cluster.DiskBusVirtio)
+	if tmpl.DiskBus != string(cluster.DiskBusSCSI) {
+		t.Errorf("template 9000 diskBus = %q, want %s (discovered value)", tmpl.DiskBus, cluster.DiskBusSCSI)
+	}
+
+	if !tmpl.Enabled {
+		t.Error("template 9000 enabled must come from the stored row (true)")
 	}
 }
 
@@ -273,5 +274,87 @@ func TestAdminTemplates_ListClusterUnreachableReturns500(t *testing.T) {
 	rec := adminGet(t, handler, authHandler, cookie, "/api/v1/admin/templates?cluster=default")
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
+	}
+}
+
+// TestAdminTemplates_DeleteRemovesOrphanApproval — DELETE
+// /admin/templates/{cluster}/{vmid} removes the approval row (204); the row
+// disappears from catalog.Templates; an unknown vmid or cluster is a 404;
+// non-admins get 403.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestAdminTemplates_DeleteRemovesOrphanApproval(t *testing.T) {
+	handler, authHandler, st := newAdminHandler(t)
+	cookie := adminCookie(t, authHandler)
+	ctx := context.Background()
+
+	// The V22 seed ships an approval for 9000; delete it.
+	rec := adminDelete(t, handler, authHandler, cookie, "/api/v1/admin/templates/default/9000")
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("delete status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	templates, err := catalog.Templates(ctx, st, "default")
+	if err != nil {
+		t.Fatalf("catalog.Templates: %v", err)
+	}
+
+	for _, tmpl := range templates {
+		if tmpl.VMID == 9000 {
+			t.Error("template 9000 should be gone from the catalog after delete")
+		}
+	}
+
+	// Unknown vmid → 404.
+	rec = adminDelete(t, handler, authHandler, cookie, "/api/v1/admin/templates/default/99999")
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("unknown vmid status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+
+	// Unknown cluster → 404 (no rows to delete there).
+	rec = adminDelete(t, handler, authHandler, cookie, "/api/v1/admin/templates/no-such-cluster/9001")
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("unknown cluster status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+
+	// Non-admin → 403.
+	aliceCookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+
+	rec = adminDelete(t, handler, authHandler, aliceCookie, "/api/v1/admin/templates/default/9001")
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("non-admin status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+}
+
+// unreadableTemplateHTTPClient serves one unreadable template (issue 03).
+type unreadableTemplateHTTPClient struct {
+	cluster.Fake
+}
+
+func (unreadableTemplateHTTPClient) TemplateByVMID(_ context.Context, vmid int) (cluster.TemplateVM, error) {
+	return cluster.TemplateVM{VMID: vmid, Node: cluster.FakeNode02, Name: "unreadable", DiskUnreadable: true}, nil
+}
+
+// TestAdminTemplates_ToggleUnreadable — approving an unreadable template is a
+// 400 (the row would carry empty disk fields); disabling stays possible.
+//
+//nolint:paralleltest // serial: database-backed handler fixture
+func TestAdminTemplates_ToggleUnreadable(t *testing.T) {
+	authHandler := newAuthHandler(t)
+	st := newAdminStore(t)
+	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
+	handler := httpapi.NewAdminCatalog(authHandler, st, unreadableTemplateHTTPClient{}, nil, logger)
+	cookie := adminCookie(t, authHandler)
+
+	rec := adminPost(t, handler, authHandler, cookie, "/api/v1/admin/templates/toggle",
+		`{"cluster":"default","vmid":9000,"enabled":true}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("approve status = %d, want %d", rec.Code, http.StatusBadRequest)
+	}
+
+	rec = adminPost(t, handler, authHandler, cookie, "/api/v1/admin/templates/toggle",
+		`{"cluster":"default","vmid":9000,"enabled":false}`)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("disable status = %d, want %d", rec.Code, http.StatusOK)
 	}
 }

@@ -141,13 +141,16 @@ type catalogCloudInitTemplateDTO struct {
 // clone lands (D2b: cross-node clone is forbidden, so the UI hides the node
 // selector when a template is chosen). CloudInitCapable signals the UI that
 // the template supports cloud-init. DiskSizeGB lets the UI show the minimum
-// disk size (reductions are rejected).
+// disk size (reductions are rejected). DiskStorage is the template disk's
+// source storage — the UI uses it to warn when the chosen target storage
+// forces a full copy (buildCloneSpec's rule).
 type catalogTemplateDTO struct {
 	VMID             int    `json:"vmid"`
 	Node             string `json:"node"`
 	Name             string `json:"name"`
 	CloudInitCapable bool   `json:"cloudInitCapable"`
 	DiskSizeGB       int    `json:"diskSizeGB"`
+	DiskStorage      string `json:"diskStorage"`
 }
 
 type catalogTagDTO struct {
@@ -239,6 +242,7 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Audit:     h.store,
 		Log:       h.log,
 		Services:  []*policy.Policy{h.policy},
+		Templates: target.templates,
 	})
 	if err != nil {
 		h.writeCreateFailure(w, err)
@@ -394,6 +398,7 @@ func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
 			Name:             tmpl.Name,
 			CloudInitCapable: tmpl.CloudInitCapable,
 			DiskSizeGB:       tmpl.DiskSizeGB,
+			DiskStorage:      tmpl.DiskStorage,
 		})
 	}
 
@@ -513,6 +518,7 @@ type createTarget struct {
 	writer      vm.HardwareUpdater
 	freeSpace   vm.FreeSpaceChecker
 	snippets    vm.SnippetStorageFinder
+	templates   vm.TemplateReader
 }
 
 // resolveCreateTarget resolves the effective cluster name from req.Cluster
@@ -535,8 +541,9 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 		writer, _ := h.creator.(vm.HardwareUpdater)
 		freeSpace, _ := h.creator.(vm.FreeSpaceChecker)
 		snippets, _ := h.creator.(vm.SnippetStorageFinder)
+		templates, _ := h.creator.(vm.TemplateReader)
 
-		return createTarget{clusterName: clusterName, creator: h.creator, pusher: h.pusher, writer: writer, freeSpace: freeSpace, snippets: snippets}, true
+		return createTarget{clusterName: clusterName, creator: h.creator, pusher: h.pusher, writer: writer, freeSpace: freeSpace, snippets: snippets, templates: templates}, true
 	}
 
 	client, err := h.clients.Client(clusterName)
@@ -582,7 +589,11 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 	// allocation), not plain ISO creations.
 	snippets, _ := client.(vm.SnippetStorageFinder)
 
-	return createTarget{clusterName: clusterName, creator: creator, pusher: pusher, writer: writer, freeSpace: freeSpace, snippets: snippets}, true
+	// Optional capability: the clone-time freshness backstop (T17). A client
+	// without TemplateByVMID skips the backstop.
+	templates, _ := client.(vm.TemplateReader)
+
+	return createTarget{clusterName: clusterName, creator: creator, pusher: pusher, writer: writer, freeSpace: freeSpace, snippets: snippets, templates: templates}, true
 }
 
 func (h *VMCreate) clientFor(clusterName string) (cluster.Client, error) {

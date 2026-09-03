@@ -44,8 +44,8 @@ func newCreateFixture(t *testing.T) createFixture {
 
 	ctx := context.Background()
 	for _, bridge := range []catalog.Bridge{
-		{Name: testBridgeVMbr0, Node: "pve-node-01"},
-		{Name: testBridgeVMbr1, Node: "pve-node-01"},
+		{Name: testBridgeVMbr0, Node: discoveryNode01},
+		{Name: testBridgeVMbr1, Node: discoveryNode01},
 		{Name: testBridgeVMbr0, Node: "pve-node-02"},
 	} {
 		if err := st.SetBridgeEnabled(ctx, "default", bridge.Node, bridge.Name, true); err != nil {

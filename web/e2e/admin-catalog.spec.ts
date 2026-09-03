@@ -179,6 +179,33 @@ test.describe('T11 admin catalog', () => {
 		await expect(page.locator('tr', { hasText: 'e2eteam' })).toHaveCount(0);
 	});
 
+	test('approves a VM template from the admin page and a user sees it in the create wizard', async ({
+		page
+	}) => {
+		await signInAdmin(page.request);
+
+		await page.goto('/admin/templates');
+		await expect(page.getByTestId('template-row')).toHaveCount(2);
+
+		// The V22 seed ships both templates enabled. Toggle alpine off,
+		// verify the state survives a reload, then re-enable it.
+		const alpineSwitch = exactRow(page, 'alpine-appliance').getByRole('switch');
+		await expect(alpineSwitch).toHaveAttribute('aria-checked', 'true');
+		await alpineSwitch.click();
+		await expect(alpineSwitch).toHaveAttribute('aria-checked', 'false');
+		await page.reload();
+		await expect(exactRow(page, 'alpine-appliance').getByRole('switch')).toHaveAttribute('aria-checked', 'false');
+		await exactRow(page, 'alpine-appliance').getByRole('switch').click();
+		await expect(exactRow(page, 'alpine-appliance').getByRole('switch')).toHaveAttribute('aria-checked', 'true');
+
+		// SC: the approval surfaces in the user's create wizard.
+		await signInAlice(page.request);
+		await page.goto('/vms/create');
+		await page.getByRole('tab', { name: 'Detailed' }).click();
+		await page.getByLabel('Source').selectOption('template');
+		await expect(page.getByLabel('Template').locator('option', { hasText: 'debian-12-cloud' })).toHaveCount(1);
+	});
+
 	test('a non-admin identity is redirected from the UI and rejected by the server (FR-008, SC-004)', async ({
 		page
 	}) => {
