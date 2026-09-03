@@ -59,6 +59,11 @@ const (
 	// app info page, and the public /api/v1/public/version endpoint (T14).
 	// It is a compile-time literal; no runtime discovery is performed.
 	appVersion = "0.4.0-dev"
+
+	// errNoClustersConfigured is the error message shared by initCluster and
+	// initInventory when the registry has no clusters. Extracted as a
+	// constant to satisfy go:S1192 (the literal was duplicated 4×).
+	errNoClustersConfigured = "no clusters configured"
 )
 
 func main() {
@@ -193,8 +198,8 @@ func initCluster(cfg config.Configuration, st *store.Store, logger *slog.Logger)
 	}
 	names := clusterRegistry.List()
 	if len(names) == 0 {
-		logger.Error("no clusters configured", "component", "main")
-		return nil, nil, errors.New("no clusters configured")
+		logger.Error(errNoClustersConfigured, "component", "main")
+		return nil, nil, errors.New(errNoClustersConfigured)
 	}
 	clusterClient, err := clusterRegistry.Client(names[0])
 	if err != nil {
@@ -270,8 +275,8 @@ func initInventory(cfg config.Configuration, clusterRegistry *cluster.Registry, 
 
 	names := clusterRegistry.List()
 	if len(names) == 0 {
-		logger.Error("no clusters configured", "component", "main")
-		return nil, nil, nil, nil, errors.New("no clusters configured")
+		logger.Error(errNoClustersConfigured, "component", "main")
+		return nil, nil, nil, nil, errors.New(errNoClustersConfigured)
 	}
 	primary := names[0]
 	defaultProjection, err := inventoryRegistry.Projection(primary)

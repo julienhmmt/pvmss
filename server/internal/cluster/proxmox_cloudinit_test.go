@@ -498,22 +498,7 @@ func TestProxmox_AttachCloudInitSnippet_EnsuresDriveFirst(t *testing.T) {
 				mux.HandleFunc("GET /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, _ *http.Request) {
 					writeJSONFixture(t, w, tc.configData)
 				})
-				mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, r *http.Request) {
-					if err := r.ParseForm(); err != nil {
-						t.Fatalf("parse form: %v", err)
-					}
-
-					switch {
-					case r.FormValue("ide3") != "":
-						putKeys = append(putKeys, "ide3")
-					case r.FormValue("cicustom") != "":
-						putKeys = append(putKeys, "cicustom")
-					case r.FormValue("delete") != "":
-						putKeys = append(putKeys, "delete")
-					}
-
-					writeJSONFixture(t, w, `{"data":null}`)
-				})
+				mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/config", recordConfigPut(t, &putKeys))
 			})
 
 			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
@@ -530,6 +515,31 @@ func TestProxmox_AttachCloudInitSnippet_EnsuresDriveFirst(t *testing.T) {
 				t.Errorf("first PUT = %q, want %q (drive before cicustom)", putKeys[0], tc.wantFirst)
 			}
 		})
+	}
+}
+
+// recordConfigPut returns a PUT /config handler that records the ordered
+// sequence of config keys the attach loop writes (ide3, cicustom, or delete).
+// Extracted from TestProxmox_AttachCloudInitSnippet_EnsuresDriveFirst to keep
+// its cognitive complexity under the go:S3776 limit.
+func recordConfigPut(t *testing.T, putKeys *[]string) http.HandlerFunc {
+	t.Helper()
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Fatalf("parse form: %v", err)
+		}
+
+		switch {
+		case r.FormValue("ide3") != "":
+			*putKeys = append(*putKeys, "ide3")
+		case r.FormValue("cicustom") != "":
+			*putKeys = append(*putKeys, "cicustom")
+		case r.FormValue("delete") != "":
+			*putKeys = append(*putKeys, "delete")
+		}
+
+		writeJSONFixture(t, w, `{"data":null}`)
 	}
 }
 

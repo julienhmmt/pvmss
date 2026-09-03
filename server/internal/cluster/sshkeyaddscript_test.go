@@ -112,23 +112,7 @@ func TestSSHKeyAddScript_Behaviour(t *testing.T) {
 			binDir, homes := t.TempDir(), t.TempDir()
 			writeGetentStub(t, binDir, homes)
 
-			home := filepath.Join(homes, "debian")
-			if tc.userFound {
-				if err := os.MkdirAll(home, 0o750); err != nil {
-					t.Fatalf("mkdir home: %v", err)
-				}
-			}
-
-			auth := filepath.Join(home, ".ssh", "authorized_keys")
-			if tc.existing != "" {
-				if err := os.MkdirAll(filepath.Dir(auth), 0o750); err != nil {
-					t.Fatalf("mkdir .ssh: %v", err)
-				}
-
-				if err := os.WriteFile(auth, []byte(tc.existing), 0o600); err != nil {
-					t.Fatalf("seed authorized_keys: %v", err)
-				}
-			}
+			auth := seedAuthorizedKeys(t, homes, tc.userFound, tc.existing)
 
 			exit, stderr := runSSHKeyAddScript(t, binDir, "debian", key)
 			if exit != tc.wantExit {
@@ -139,20 +123,58 @@ func TestSSHKeyAddScript_Behaviour(t *testing.T) {
 				return
 			}
 
-			raw, err := os.ReadFile(auth) //nolint:gosec // test-only path built from t.TempDir
-			if err != nil {
-				t.Fatalf("read authorized_keys: %v", err)
-			}
-
-			lines := nonEmptyLines(string(raw))
-			if len(lines) != tc.wantLines {
-				t.Fatalf("authorized_keys = %q (%d lines), want %d lines", string(raw), len(lines), tc.wantLines)
-			}
-
-			if !strings.HasSuffix(string(raw), "\n") {
-				t.Errorf("authorized_keys does not end with a newline: %q", string(raw))
-			}
+			verifyAuthorizedKeys(t, auth, tc.wantLines)
 		})
+	}
+}
+
+// seedAuthorizedKeys creates the fake user's home directory (when userFound
+// is true) and optionally seeds an existing authorized_keys file. Returns
+// the path to the authorized_keys file. Extracted from
+// TestSSHKeyAddScript_Behaviour to keep its cognitive complexity under the
+// go:S3776 limit.
+func seedAuthorizedKeys(t *testing.T, homes string, userFound bool, existing string) string {
+	t.Helper()
+
+	home := filepath.Join(homes, "debian")
+	if userFound {
+		if err := os.MkdirAll(home, 0o750); err != nil {
+			t.Fatalf("mkdir home: %v", err)
+		}
+	}
+
+	auth := filepath.Join(home, ".ssh", "authorized_keys")
+	if existing != "" {
+		if err := os.MkdirAll(filepath.Dir(auth), 0o750); err != nil {
+			t.Fatalf("mkdir .ssh: %v", err)
+		}
+		if err := os.WriteFile(auth, []byte(existing), 0o600); err != nil {
+			t.Fatalf("seed authorized_keys: %v", err)
+		}
+	}
+
+	return auth
+}
+
+// verifyAuthorizedKeys reads the file back and asserts it has the expected
+// non-empty line count and a trailing newline. Extracted from
+// TestSSHKeyAddScript_Behaviour to keep its cognitive complexity under the
+// go:S3776 limit.
+func verifyAuthorizedKeys(t *testing.T, auth string, wantLines int) {
+	t.Helper()
+
+	raw, err := os.ReadFile(auth) //nolint:gosec // test-only path built from t.TempDir
+	if err != nil {
+		t.Fatalf("read authorized_keys: %v", err)
+	}
+
+	lines := nonEmptyLines(string(raw))
+	if len(lines) != wantLines {
+		t.Fatalf("authorized_keys = %q (%d lines), want %d lines", string(raw), len(lines), wantLines)
+	}
+
+	if !strings.HasSuffix(string(raw), "\n") {
+		t.Errorf("authorized_keys does not end with a newline: %q", string(raw))
 	}
 }
 

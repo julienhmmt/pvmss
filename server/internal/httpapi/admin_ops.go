@@ -538,48 +538,67 @@ func (h *AdminOps) ServeAppInfo(w http.ResponseWriter, _ *http.Request) {
 		cfg = config.Configuration{}
 	}
 
-	fields := cfg.Redacted()
-	configDTOs := make([]configFieldDTO, 0, len(fields))
-	for _, f := range fields {
-		dto := configFieldDTO{Name: f.Name, Redacted: f.Redacted}
-		if !f.Redacted {
-			dto.Value = &f.Value
-		}
-		// Redacted fields: Value stays nil → JSON null (contracts/admin-ops.md).
-		configDTOs = append(configDTOs, dto)
-	}
-
-	// Per-cluster health from the projection's refresh state.
-	idx := h.projection.Load()
-	clusters := make([]clusterHealthDTO, 0, 1)
-	if idx != nil {
-		clusterRows, err := h.store.ListClusters(context.Background())
-		if err != nil || len(clusterRows) == 0 {
-			clusters = append(clusters, clusterHealthDTO{
-				Name:                 "unknown",
-				RefreshedAt:          idx.RefreshedAt.UTC().Format(time.RFC3339),
-				LastRefreshSucceeded: !idx.RefreshedAt.IsZero(),
-			})
-		} else {
-			for _, row := range clusterRows {
-				name := row.DisplayName
-				if name == "" {
-					name = row.Name
-				}
-				clusters = append(clusters, clusterHealthDTO{
-					Name:                 name,
-					RefreshedAt:          idx.RefreshedAt.UTC().Format(time.RFC3339),
-					LastRefreshSucceeded: !idx.RefreshedAt.IsZero(),
-				})
-			}
-		}
-	}
+	configDTOs := buildConfigFieldDTOs(cfg.Redacted())
+	clusters := h.buildClusterHealthDTOs()
 
 	writeAdminJSON(w, http.StatusOK, appInfoDTO{
 		Version:  h.version,
 		Config:   configDTOs,
 		Clusters: clusters,
 	})
+}
+
+// buildConfigFieldDTOs maps the redacted config fields to their DTO form.
+// Redacted fields leave Value nil so they serialize as JSON null
+// (contracts/admin-ops.md).
+func buildConfigFieldDTOs(fields []config.Field) []configFieldDTO {
+	dtos := make([]configFieldDTO, 0, len(fields))
+	for _, f := range fields {
+		dto := configFieldDTO{Name: f.Name, Redacted: f.Redacted}
+		if !f.Redacted {
+			dto.Value = &f.Value
+		}
+		dtos = append(dtos, dto)
+	}
+	return dtos
+}
+
+// buildClusterHealthDTOs builds the per-cluster health view from the
+// projection's refresh state. When no projection is loaded or no cluster
+// rows exist, a single "unknown" entry is returned so the admin still sees
+// the last refresh timestamp. Extracted from ServeAppInfo to keep its
+// cognitive complexity under the go:S3776 limit.
+func (h *AdminOps) buildClusterHealthDTOs() []clusterHealthDTO {
+	idx := h.projection.Load()
+	if idx == nil {
+		return make([]clusterHealthDTO, 0, 1)
+	}
+
+	refreshedAt := idx.RefreshedAt.UTC().Format(time.RFC3339)
+	succeeded := !idx.RefreshedAt.IsZero()
+
+	clusterRows, err := h.store.ListClusters(context.Background())
+	if err != nil || len(clusterRows) == 0 {
+		return []clusterHealthDTO{{
+			Name:                 "unknown",
+			RefreshedAt:          refreshedAt,
+			LastRefreshSucceeded: succeeded,
+		}}
+	}
+
+	clusters := make([]clusterHealthDTO, 0, len(clusterRows))
+	for _, row := range clusterRows {
+		name := row.DisplayName
+		if name == "" {
+			name = row.Name
+		}
+		clusters = append(clusters, clusterHealthDTO{
+			Name:                 name,
+			RefreshedAt:          refreshedAt,
+			LastRefreshSucceeded: succeeded,
+		})
+	}
+	return clusters
 }
 
 type publicVersionDTO struct {
