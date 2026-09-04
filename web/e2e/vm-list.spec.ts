@@ -164,4 +164,21 @@ test.describe('T04 VM list', () => {
 		await expect(page.locator('[data-testid="vm-empty-match"]')).toBeVisible();
 		await expect(page.locator('[data-testid="vm-empty-owned"]')).toBeHidden();
 	});
+
+	test('console icon opens the noVNC console in a new tab', async ({ page, context }) => {
+		await signInAlice(page.request);
+		await page.goto('/vms?cluster=default');
+
+		await expect(vmRows(page)).toHaveCount(7);
+
+		const consoleLink = page.getByTestId('vm-row-console').first();
+		await expect(consoleLink).toBeVisible();
+
+		const [popup] = await Promise.all([
+			context.waitForEvent('page'),
+			consoleLink.click()
+		]);
+
+		await popup.waitForURL('/vms/default/*/console');
+	});
 });
