@@ -90,7 +90,7 @@
 		{/snippet}
 	</PageHeader>
 
-	{#if vmListStore.loading && vmListStore.result === null}
+	{#if vmListStore.loading}
 		<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
 		<TableSkeleton columns={9} />
 	{:else}
