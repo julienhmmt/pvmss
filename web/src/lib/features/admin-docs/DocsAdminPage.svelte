@@ -4,6 +4,7 @@
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Switch from '$lib/shared/ui/Switch.svelte';
+	import TableCard from '$lib/shared/ui/TableCard.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
@@ -205,112 +206,110 @@
 	{/if}
 
 	{#if pages.length > 0}
-		<div class="mb-4 flex flex-wrap items-center gap-2">
-			<input
-				type="search"
-				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-				placeholder={m['admin.docs.searchPlaceholder']()}
-				value={search}
-				oninput={(e) => onSearchChange(e.currentTarget.value)}
-			/>
-			<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={categoryFilter} onchange={(e) => onCategoryFilterChange(e.currentTarget.value)}>
-				<option value="">{m['admin.docs.filterCategory']()}</option>
-				{#each categoryOptions as cat (cat)}
-					<option value={cat}>{cat}</option>
-				{/each}
-			</select>
-			<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={langFilter} onchange={(e) => onLangFilterChange(e.currentTarget.value)}>
-				<option value="">{m['admin.docs.filterLang']()}</option>
-				{#each langOptions as lang (lang)}
-					<option value={lang}>{lang}</option>
-				{/each}
-			</select>
-			<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={audienceFilter} onchange={(e) => onAudienceFilterChange(e.currentTarget.value as 'all' | 'user' | 'admin')}>
-				<option value="all">{m['admin.docs.filterAudience']()}</option>
-				<option value="user">{m['docs.audienceUser']()}</option>
-				<option value="admin">{m['docs.audienceAdmin']()}</option>
-			</select>
-			<button
-				class="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
-				onclick={onResetFilters}
-			>
-				{m['admin.docs.resetFilters']()}
-			</button>
-		</div>
-	{/if}
-
-	<div class="overflow-x-auto rounded-lg border border-border">
-		<table class="w-full text-sm">
-			<thead class="bg-muted/50 text-left">
-				<tr>
-					<TableHeader text={m['docs.titleField']()} tooltip={m['admin.docs.searchPlaceholder']()} column="title" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-					<TableHeader text={m['docs.category']()} tooltip={m['admin.docs.filterCategory']()} column="category" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-					<th class="px-4 py-2 font-medium">{m['docs.audience']()}</th>
-					<TableHeader text={m['docs.language']()} tooltip={m['admin.docs.filterLang']()} column="lang" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-					<th class="px-4 py-2 font-medium">{m['docs.enabled']()}</th>
-					<th class="px-4 py-2 font-medium">{m['admin.docs.actions']()}</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each filteredPages as page (`${page.id}-${page.lang}`)}
-					<tr class="border-t border-border">
-						<td class="px-4 py-2">
-							<div class="flex flex-col">
-								<span>{page.title}</span>
-								<span class="font-mono text-xs text-muted-foreground">{page.id}</span>
-							</div>
-						</td>
-						<td class="px-4 py-2">{page.category}</td>
-						<td class="px-4 py-2">
-							<span class={`inline-block rounded px-2 py-0.5 text-xs font-medium ${audienceBadgeClass(page.audience)}`}>
-								{page.audience === 'admin' ? m['docs.audienceAdmin']() : m['docs.audienceUser']()}
-							</span>
-						</td>
-						<td class="px-4 py-2 font-mono text-xs">{page.lang}</td>
-						<td class="px-4 py-2">
-							<span class="inline-flex items-center gap-2">
-								<Switch
-									checked={page.enabled}
-									label={page.enabled ? m['admin.docs.disableLabel']({ title: page.title }) : m['admin.docs.enableLabel']({ title: page.title })}
-									onToggle={() => onToggle(page.id, page.lang, !page.enabled)}
-								/>
-								<span class="text-xs text-muted-foreground">
-									{page.enabled ? m['docs.enabled']() : m['admin.docs.disabled']()}
-								</span>
-							</span>
-						</td>
-						<td class="px-4 py-2">
-							<div class="flex gap-2">
-								<Button variant="secondary" size="sm" label={m['admin.docs.editLabel']({ title: page.title })} onclick={() => openEdit(page)}>{m['admin.docs.edit']()}</Button>
-								<Button
-									variant="destructive"
-									size="sm"
-									label={m['admin.docs.deleteLabel']({ title: page.title })}
-									disabled={page.isSystem}
-									onclick={() => confirmDelete(page)}
-								>{m['admin.docs.delete']()}</Button>
-							</div>
-							{#if page.isSystem}
-								<p class="mt-1 text-xs text-muted-foreground">{m['docs.systemProtected']()}</p>
-							{/if}
-						</td>
+		<TableCard>
+			{#snippet toolbar()}
+				<input
+					type="search"
+					class="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+					placeholder={m['admin.docs.searchPlaceholder']()}
+					value={search}
+					oninput={(e) => onSearchChange(e.currentTarget.value)}
+				/>
+				<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={categoryFilter} onchange={(e) => onCategoryFilterChange(e.currentTarget.value)}>
+					<option value="">{m['admin.docs.filterCategory']()}</option>
+					{#each categoryOptions as cat (cat)}
+						<option value={cat}>{cat}</option>
+					{/each}
+				</select>
+				<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={langFilter} onchange={(e) => onLangFilterChange(e.currentTarget.value)}>
+					<option value="">{m['admin.docs.filterLang']()}</option>
+					{#each langOptions as lang (lang)}
+						<option value={lang}>{lang}</option>
+					{/each}
+				</select>
+				<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={audienceFilter} onchange={(e) => onAudienceFilterChange(e.currentTarget.value as 'all' | 'user' | 'admin')}>
+					<option value="all">{m['admin.docs.filterAudience']()}</option>
+					<option value="user">{m['docs.audienceUser']()}</option>
+					<option value="admin">{m['docs.audienceAdmin']()}</option>
+				</select>
+				<button
+					class="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted"
+					onclick={onResetFilters}
+				>
+					{m['admin.docs.resetFilters']()}
+				</button>
+			{/snippet}
+			<table class="pv-responsive-table w-full text-sm">
+				<caption class="sr-only">{m['docs.title']()}</caption>
+				<thead class="bg-muted/60 text-left text-sm font-medium text-muted-foreground">
+					<tr>
+						<TableHeader text={m['docs.titleField']()} tooltip={m['admin.docs.searchPlaceholder']()} column="title" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<TableHeader text={m['docs.category']()} tooltip={m['admin.docs.filterCategory']()} column="category" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<th class="px-4 py-3 font-medium">{m['docs.audience']()}</th>
+						<TableHeader text={m['docs.language']()} tooltip={m['admin.docs.filterLang']()} column="lang" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<th class="px-4 py-3 font-medium">{m['docs.enabled']()}</th>
+						<th class="px-4 py-3 font-medium">{m['admin.docs.actions']()}</th>
 					</tr>
-				{:else}
-					<tr><td colspan={6} class="p-0">
-						{#if pages.length > 0}
+				</thead>
+				<tbody class="divide-y divide-border">
+					{#each filteredPages as page (`${page.id}-${page.lang}`)}
+						<tr class="group transition-colors hover:bg-muted/40">
+							<td class="px-4 py-3.5" data-label={m['docs.titleField']()}>
+								<div class="flex flex-col">
+									<span>{page.title}</span>
+									<span class="font-mono text-xs text-muted-foreground">{page.id}</span>
+								</div>
+							</td>
+							<td class="px-4 py-3.5" data-label={m['docs.category']()}>{page.category}</td>
+							<td class="px-4 py-3.5" data-label={m['docs.audience']()}>
+								<span class={`inline-block rounded px-2 py-0.5 text-xs font-medium ${audienceBadgeClass(page.audience)}`}>
+									{page.audience === 'admin' ? m['docs.audienceAdmin']() : m['docs.audienceUser']()}
+								</span>
+							</td>
+							<td class="px-4 py-3.5 font-mono text-xs" data-label={m['docs.language']()}>{page.lang}</td>
+							<td class="px-4 py-3.5" data-label={m['docs.enabled']()}>
+								<span class="inline-flex items-center gap-2">
+									<Switch
+										checked={page.enabled}
+										label={page.enabled ? m['admin.docs.disableLabel']({ title: page.title }) : m['admin.docs.enableLabel']({ title: page.title })}
+										onToggle={() => onToggle(page.id, page.lang, !page.enabled)}
+									/>
+									<span class="text-xs text-muted-foreground">
+										{page.enabled ? m['docs.enabled']() : m['admin.docs.disabled']()}
+									</span>
+								</span>
+							</td>
+							<td class="px-4 py-3.5" data-label={m['admin.docs.actions']()}>
+								<div class="flex gap-2">
+									<Button variant="secondary" size="sm" label={m['admin.docs.editLabel']({ title: page.title })} onclick={() => openEdit(page)}>{m['admin.docs.edit']()}</Button>
+									<Button
+										variant="destructive"
+										size="sm"
+										label={m['admin.docs.deleteLabel']({ title: page.title })}
+										disabled={page.isSystem}
+										onclick={() => confirmDelete(page)}
+									>{m['admin.docs.delete']()}</Button>
+								</div>
+								{#if page.isSystem}
+									<p class="mt-1 text-xs text-muted-foreground">{m['docs.systemProtected']()}</p>
+								{/if}
+							</td>
+						</tr>
+					{:else}
+						<tr><td colspan={6} class="p-0">
 							<EmptyState title={m['admin.docs.noFilterMatches']()} />
-						{:else}
-							<EmptyState title={m['docs.empty']()}>
-								{#snippet actions()}
-									<Button onclick={openCreate}>{m['docs.newPage']()}</Button>
-								{/snippet}
-							</EmptyState>
-						{/if}
-					</td></tr>
-				{/each}
-			</tbody>
-		</table>
-	</div>
+						</td></tr>
+					{/each}
+				</tbody>
+			</table>
+		</TableCard>
+	{:else}
+		<EmptyState title={m['docs.empty']()}>
+			{#snippet actions()}
+				<Button onclick={openCreate}>{m['docs.newPage']()}</Button>
+			{/snippet}
+		</EmptyState>
+	{/if}
 {/if}
 
 <DocsFormDialog
