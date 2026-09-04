@@ -150,26 +150,26 @@
 					{m['admin.tags.resetFilters']()}
 				</Button>
 			{/snippet}
-			<table class="pv-responsive-table w-full text-sm">
+			<table class="pv-table pv-responsive-table">
 				<caption class="sr-only">{m['admin.tags.title']()}</caption>
-				<thead class="bg-muted/60 text-left text-sm font-medium text-muted-foreground">
+				<thead>
 					<tr>
 						<TableHeader text={m['common.name']()} tooltip={m['admin.tags.tooltip.color']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 						<TableHeader text={m['admin.tags.color']()} tooltip={m['admin.tags.tooltip.color']()} />
 						<TableHeader text={m['common.vms']()} tooltip={m['admin.tags.tooltip.vmCount']()} column="vmCount" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-						<th class="px-4 py-3 font-medium">{m['common.actions']()}</th>
+						<th class="font-medium">{m['common.actions']()}</th>
 					</tr>
 				</thead>
-				<tbody class="divide-y divide-border">
+				<tbody>
 					{#each filteredTags as tag (tag.name)}
 						<tr class="group transition-colors hover:bg-muted/40">
-							<td class="px-4 py-3.5 font-mono" data-label={m['common.name']()}>
+							<td class="font-mono" data-label={m['common.name']()}>
 								{tag.name}
 								{#if tag.protected}
 									<span class="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{m['admin.tags.protected']()}</span>
 								{/if}
 							</td>
-							<td class="px-4 py-3.5" data-label={m['admin.tags.color']()}>
+							<td data-label={m['admin.tags.color']()}>
 								{#if editingTag === tag.name}
 									<div class="flex items-center gap-2">
 										<ColorPicker bind:value={editColor} class="h-8 w-12 p-1" />
@@ -184,8 +184,8 @@
 									</div>
 								{/if}
 							</td>
-							<td class="px-4 py-3.5" data-label={m['common.vms']()}>{tag.vmCount}</td>
-							<td class="px-4 py-3.5" data-label={m['common.actions']()}>
+							<td data-label={m['common.vms']()}>{tag.vmCount}</td>
+							<td data-label={m['common.actions']()}>
 								{#if !tag.protected}
 									<Button variant="destructive" size="sm" label={m['admin.tags.deleteLabel']({ name: tag.name })} onclick={() => (pendingDelete = tag)}>{m['common.delete']()}</Button>
 								{:else}

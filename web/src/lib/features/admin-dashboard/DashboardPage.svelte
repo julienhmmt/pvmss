@@ -6,6 +6,7 @@
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import StatCard from '$lib/shared/ui/StatCard.svelte';
 	import { formatBytes } from '$lib/shared/format-bytes';
 	import { m } from '$lib/paraglide/messages.js';
 	import { post } from '$lib/shared/api/client';
@@ -49,6 +50,15 @@
 		void goto(resolve('/admin/pools'));
 	}
 
+	// The four status rows in the VM popover differed only by dot colour,
+	// label and counter key — one list, not four near-identical blocks.
+	const VM_STATUS_BREAKDOWN = [
+		{ key: 'running', dot: 'bg-success', label: () => m['admin.dashboard.vmRunning']() },
+		{ key: 'paused', dot: 'bg-warning', label: () => m['admin.dashboard.vmPaused']() },
+		{ key: 'stopped', dot: 'bg-muted-foreground', label: () => m['admin.dashboard.vmStopped']() },
+		{ key: 'other', dot: 'bg-info', label: () => m['admin.dashboard.vmOther']() }
+	] as const;
+
 	let showVmPopover = $state(false);
 </script>
 
@@ -79,7 +89,7 @@
      for now. This notice exists so an admin who notices the Images/
      Cloud-init templates pages missing from the sidebar knows why. -->
 <div
-	class="mb-6 rounded-lg border border-warning-soft-border bg-warning-soft p-4 text-sm text-warning-soft-foreground"
+	class="mb-6 rounded-xl border border-warning-soft-border bg-warning-soft p-4 text-sm text-warning-soft-foreground"
 	data-testid="dashboard-cloud-image-paused-notice"
 >
 	<p class="font-medium">{m['admin.dashboard.cloudImagePausedTitle']()}</p>
@@ -100,34 +110,39 @@
 	<EmptyState
 		title={m['admin.dashboard.clusterUnreachableTitle']()}
 		description={m['admin.dashboard.clusterUnreachableDescription']()}
+		tone="error"
 		dataTestid="dashboard-cluster-unreachable"
 	>
 		{#snippet actions()}
-			<button
-				type="button"
-				class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-				onclick={() => void handleClusterRetry()}
-				data-testid="dashboard-cluster-retry"
-			>
+			<Button onclick={() => void handleClusterRetry()} data-testid="dashboard-cluster-retry">
 				{m['admin.dashboard.clusterUnreachableRetry']()}
-			</button>
+			</Button>
 		{/snippet}
 	</EmptyState>
 {:else if store.error}
-	<p role="alert" class="text-destructive">{store.error}</p>
+	<p
+		role="alert"
+		class="rounded-xl border border-destructive-soft-border bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive-soft-foreground"
+	>
+		{store.error}
+	</p>
 {:else if store.summary}
 	<div role="status" aria-live="polite" class="sr-only">{m['admin.dashboard.loaded']()}</div>
 
 	<section class="space-y-6">
-		<!-- Summary cards + Create pool shortcut -->
+		<!-- Summary tiles + Create pool shortcut -->
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-			<div class="rounded-lg border border-border bg-card p-4" data-testid="dashboard-card-nodes">
-				<p class="text-sm text-muted-foreground">{m['admin.dashboard.nodes']()}</p>
-				<p class="text-3xl font-semibold">{store.summary.nodeCount}</p>
-			</div>
+			<StatCard
+				label={m['admin.dashboard.nodes']()}
+				value={store.summary.nodeCount}
+				data-testid="dashboard-card-nodes"
+			/>
 
+			<!-- The VM tile carries a status breakdown on hover/focus, so it stays
+			     a hand-built tile: StatCard has no popover slot and should not
+			     grow one for a single call site. -->
 			<div
-				class="relative rounded-lg border border-border bg-card p-4"
+				class="relative rounded-xl border border-border bg-card p-4 shadow-card"
 				data-testid="dashboard-card-vms"
 				role="button"
 				tabindex="0"
@@ -136,38 +151,35 @@
 				onfocus={() => (showVmPopover = true)}
 				onblur={() => (showVmPopover = false)}
 			>
-				<p class="text-sm text-muted-foreground">{m['admin.dashboard.vms']()}</p>
-				<p class="text-3xl font-semibold">{store.summary.vmCount}</p>
+				<p class="text-[0.6875rem] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+					{m['admin.dashboard.vms']()}
+				</p>
+				<p class="mt-1.5 font-mono text-3xl font-semibold leading-none tracking-tight tabular-nums">
+					{store.summary.vmCount}
+				</p>
 				{#if showVmPopover}
 					<div
-						class="absolute left-1/2 top-full z-10 mt-2 -translate-x-1/2 rounded-md border border-border bg-popover p-3 text-sm shadow-md"
+						class="absolute left-1/2 top-full z-10 mt-2 w-max -translate-x-1/2 rounded-xl border border-border bg-popover p-3 text-sm shadow-overlay"
 						role="tooltip"
 						data-testid="dashboard-vm-popover"
 					>
-						<p class="mb-1 font-medium text-muted-foreground">{m['admin.dashboard.vmCountHover']()}</p>
-						<ul class="space-y-0.5">
-							<li class="flex items-center gap-2">
-								<span class="h-2 w-2 rounded-full bg-success"></span>
-								{m['admin.dashboard.vmRunning']()}: <span class="font-mono">{store.summary.vmStatusCounts.running}</span>
-							</li>
-							<li class="flex items-center gap-2">
-								<span class="h-2 w-2 rounded-full bg-warning"></span>
-								{m['admin.dashboard.vmPaused']()}: <span class="font-mono">{store.summary.vmStatusCounts.paused}</span>
-							</li>
-							<li class="flex items-center gap-2">
-								<span class="h-2 w-2 rounded-full bg-muted-foreground"></span>
-								{m['admin.dashboard.vmStopped']()}: <span class="font-mono">{store.summary.vmStatusCounts.stopped}</span>
-							</li>
-							<li class="flex items-center gap-2">
-								<span class="h-2 w-2 rounded-full bg-info"></span>
-								{m['admin.dashboard.vmOther']()}: <span class="font-mono">{store.summary.vmStatusCounts.other}</span>
-							</li>
+						<p class="mb-2 text-[0.6875rem] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+							{m['admin.dashboard.vmCountHover']()}
+						</p>
+						<ul class="grid gap-1">
+							{#each VM_STATUS_BREAKDOWN as row (row.key)}
+								<li class="flex items-center gap-2">
+									<span class="h-2 w-2 shrink-0 rounded-full {row.dot}" aria-hidden="true"></span>
+									<span class="flex-1">{row.label()}</span>
+									<span class="ml-3 font-mono tabular-nums">{store.summary.vmStatusCounts[row.key]}</span>
+								</li>
+							{/each}
 						</ul>
 					</div>
 				{/if}
 			</div>
 
-			<div class="flex items-center justify-center rounded-lg border border-border bg-card p-4">
+			<div class="flex items-center justify-center rounded-xl border border-dashed border-border bg-card/60 p-4">
 				<Button variant="primary" size="md" onclick={goToCreatePool} data-testid="dashboard-create-pool">
 					{m['admin.dashboard.createPool']()}
 				</Button>
@@ -188,50 +200,52 @@
 				{/snippet}
 			</EmptyState>
 		{:else}
-			<div class="space-y-2">
-				<h2 class="text-lg font-medium">{m['admin.dashboard.nodesHeader']()}</h2>
+			<div class="space-y-3">
+				<h2 class="text-sm font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+					{m['admin.dashboard.nodesHeader']()}
+				</h2>
 				<div class="grid grid-cols-1 gap-4 md:grid-cols-2" data-testid="dashboard-nodes-grid">
 					{#each store.summary.nodes as node (node.name)}
 						{@const cpuPct = cpuPercent(node)}
 						{@const memPct = usagePercent(node.memoryUsedBytes, node.memoryTotalBytes)}
 						<button
 							type="button"
-							class="group flex flex-col gap-3 rounded-lg border border-border bg-card p-4 text-left transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+							class="group flex flex-col gap-4 rounded-xl border border-border bg-card p-4 text-left shadow-card transition-[box-shadow,border-color] duration-150 hover:border-muted-foreground-subtle hover:shadow-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
 							onclick={() => goToNodeVms(node.name)}
 							data-testid="dashboard-node-card"
 							data-node={node.name}
 						>
-							<div class="flex items-center justify-between">
-								<div class="flex items-center gap-2">
+							<div class="flex items-center justify-between gap-3">
+								<div class="flex min-w-0 items-center gap-2">
 									<span
-										class="h-2 w-2 rounded-full {node.status === 'online' ? 'bg-success' : 'bg-destructive'}"
+										class="h-2 w-2 shrink-0 rounded-full {node.status === 'online'
+											? 'bg-success'
+											: 'bg-destructive'}"
 										aria-hidden="true"
 									></span>
-									<span class="font-mono font-medium">{node.name}</span>
+									<span class="truncate font-mono text-sm font-semibold">{node.name}</span>
 								</div>
-								<span class="text-sm text-muted-foreground">
-									{node.vmCount} {m['admin.dashboard.nodeVms']()}
+								<span class="shrink-0 text-xs text-muted-foreground">
+									<span class="font-mono tabular-nums">{node.vmCount}</span>
+									{m['admin.dashboard.nodeVms']()}
 								</span>
 							</div>
 
-							<div class="flex flex-col gap-1">
-								<div class="flex items-center justify-between text-xs text-muted-foreground">
-									<span>{m['admin.dashboard.cpu']()} · {node.cpuCores} {m['common.cores']()}</span>
-									<span class="font-mono">{cpuPct}%</span>
-								</div>
-								<div class="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-									<div class="h-full rounded-full {usageColor(cpuPct)}" style="width: {cpuPct}%"></div>
-								</div>
-							</div>
-
-							<div class="flex flex-col gap-1">
-								<div class="flex items-center justify-between text-xs text-muted-foreground">
-									<span>{m['admin.dashboard.memory']()}</span>
-									<span class="font-mono">{formatBytes(node.memoryUsedBytes)} / {formatBytes(node.memoryTotalBytes)}</span>
-								</div>
-								<div class="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-									<div class="h-full rounded-full {usageColor(memPct)}" style="width: {memPct}%"></div>
-								</div>
+							<div class="grid gap-3">
+								{#each [{ label: `${m['admin.dashboard.cpu']()} · ${node.cpuCores} ${m['common.cores']()}`, value: `${cpuPct}%`, pct: cpuPct }, { label: m['admin.dashboard.memory'](), value: `${formatBytes(node.memoryUsedBytes)} / ${formatBytes(node.memoryTotalBytes)}`, pct: memPct }] as meter (meter.label)}
+									<div class="flex flex-col gap-1.5">
+										<div class="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+											<span class="truncate">{meter.label}</span>
+											<span class="shrink-0 font-mono tabular-nums">{meter.value}</span>
+										</div>
+										<div class="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+											<div
+												class="h-full rounded-full {usageColor(meter.pct)} transition-[width] duration-500"
+												style="width: {meter.pct}%"
+											></div>
+										</div>
+									</div>
+								{/each}
 							</div>
 						</button>
 					{/each}
@@ -239,8 +253,8 @@
 			</div>
 		{/if}
 
-		<p class="text-sm text-muted-foreground">
-			{m['admin.dashboard.version']()} {store.summary.version}
+		<p class="text-xs text-muted-foreground-subtle">
+			{m['admin.dashboard.version']()} <span class="font-mono">{store.summary.version}</span>
 		</p>
 	</section>
 {/if}

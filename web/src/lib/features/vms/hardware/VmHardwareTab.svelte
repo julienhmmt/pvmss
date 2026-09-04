@@ -2,6 +2,7 @@
 	import { SvelteSet } from 'svelte/reactivity';
 	import { getVmDetailContext } from '../detail.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import Button from '$lib/shared/ui/Button.svelte';
 
 	const store = getVmDetailContext();
 
@@ -123,15 +124,14 @@
 			{m['vms.hardware.restartNotice']()}
 		</p>
 	{/if}
-	<button
-		type="button"
-		class="mt-5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-		disabled={store.hardwareInFlight}
+	<Button
+		class="mt-5"
+		loading={store.hardwareInFlight}
 		onclick={() => saveHardware()}
 		data-testid="vm-hardware-save"
 	>
 		{store.hardwareInFlight ? m['common.saving']() : m['vms.hardware.saveButton']()}
-	</button>
+	</Button>
 	<p class="sr-only" role="status" aria-live="polite">
 		{store.hardwareInFlight
 			? hardwareWillRestart

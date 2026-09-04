@@ -88,16 +88,16 @@
 {/if}
 
 <div class="overflow-x-auto rounded-lg border border-border" aria-labelledby="nodes-heading">
-	<table class="pv-responsive-table text-sm">
+	<table class="pv-table pv-responsive-table">
 		<caption class="sr-only">{m['nodes.caption']()}</caption>
-		<thead class="bg-muted/50 text-left">
+		<thead>
 			<tr>
-				<th scope="col" class="px-4 py-3 font-medium">{m['nodes.columnName']()}</th>
-				<th scope="col" class="px-4 py-3 font-medium">{m['nodes.columnStatus']()}</th>
-				<th scope="col" class="px-4 py-3 font-medium">{m['nodes.columnVms']()}</th>
-				<th scope="col" class="px-4 py-3 font-medium">{m['nodes.columnCpu']()}</th>
-				<th scope="col" class="px-4 py-3 font-medium">{m['nodes.columnMemory']()}</th>
-				<th scope="col" class="px-4 py-3 font-medium">{m['nodes.columnStorage']()}</th>
+				<th scope="col" class="font-medium">{m['nodes.columnName']()}</th>
+				<th scope="col" class="font-medium">{m['nodes.columnStatus']()}</th>
+				<th scope="col" class="font-medium">{m['nodes.columnVms']()}</th>
+				<th scope="col" class="font-medium">{m['nodes.columnCpu']()}</th>
+				<th scope="col" class="font-medium">{m['nodes.columnMemory']()}</th>
+				<th scope="col" class="font-medium">{m['nodes.columnStorage']()}</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -106,17 +106,17 @@
 				{@const memPct = usagePercent(node.memoryUsed, node.memoryTotal)}
 				{@const storPct = usagePercent(node.storageUsed, node.storageTotal)}
 				<tr class="border-t border-border">
-					<td class="px-4 py-3 font-mono font-medium" data-label={m['nodes.columnName']()}>{node.name}</td>
-					<td class="px-4 py-3" data-label={m['nodes.columnStatus']()}>
+					<td class="font-mono font-medium" data-label={m['nodes.columnName']()}>{node.name}</td>
+					<td data-label={m['nodes.columnStatus']()}>
 						<span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium {statusClasses[node.status]}">
 							<span class="h-1.5 w-1.5 rounded-full {statusDot[node.status]}"></span>
 							{node.status}
 						</span>
 					</td>
-					<td class="px-4 py-3 text-muted-foreground" data-label={m['nodes.columnVms']()} data-testid="vm-count">
+					<td class="text-muted-foreground" data-label={m['nodes.columnVms']()} data-testid="vm-count">
 						{node.vmCount}
 					</td>
-					<td class="px-4 py-3" data-label={m['nodes.columnCpu']()}>
+					<td data-label={m['nodes.columnCpu']()}>
 						<div class="flex flex-col gap-1">
 							<span class="text-muted-foreground">{node.cpuCores} {m['common.cores']()} · {formatPercent(node.cpuUsage)}</span>
 							<div class="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
@@ -124,7 +124,7 @@
 							</div>
 						</div>
 					</td>
-					<td class="px-4 py-3" data-label={m['nodes.columnMemory']()}>
+					<td data-label={m['nodes.columnMemory']()}>
 						<div class="flex flex-col gap-1">
 							<span class="text-muted-foreground">{formatBytes(node.memoryUsed)} / {formatBytes(node.memoryTotal)}</span>
 							<div class="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
@@ -132,7 +132,7 @@
 							</div>
 						</div>
 					</td>
-					<td class="px-4 py-3" data-label={m['nodes.columnStorage']()}>
+					<td data-label={m['nodes.columnStorage']()}>
 						<div class="flex flex-col gap-1">
 							<span class="text-muted-foreground">{formatBytes(node.storageUsed)} / {formatBytes(node.storageTotal)}</span>
 							<div class="h-1.5 w-24 overflow-hidden rounded-full bg-muted">

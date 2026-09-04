@@ -43,7 +43,7 @@
 
 {#if bulk.hasSelection}
 	<div
-		class="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-md border border-border bg-background/95 p-3 backdrop-blur"
+		class="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-primary/25 bg-sidebar-accent/70 px-4 py-3 shadow-raised backdrop-blur"
 		data-testid="vm-bulk-action-bar"
 	>
 		<span class="text-sm font-medium" data-testid="vm-bulk-selected-count">

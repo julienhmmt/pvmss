@@ -7,6 +7,7 @@
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import FormField from '$lib/shared/ui/FormField.svelte';
+	import FormSection from '$lib/shared/ui/FormSection.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
 	import ProfilePicker from './ProfilePicker.svelte';
@@ -210,7 +211,7 @@
 {:else}
 	{@const cat = form.catalog}
 	<form
-		class="grid gap-4"
+		class="grid gap-8"
 		novalidate
 		aria-label={m['vms.create.heading']()}
 		aria-describedby="simple-wizard-help"
@@ -220,12 +221,16 @@
 		}}
 	>
 		<p id="simple-wizard-help" class="sr-only">{m['vms.create.reviewRequest']()}</p>
-		<FormField label={m['vms.create.name']()} required error={nameError}>
-			{#snippet children({ id, describedBy, invalid })}
-				<TextField {id} {describedBy} {invalid} bind:value={form.name} required placeholder="web-04" />
-			{/snippet}
-		</FormField>
 
+		<FormSection step={1} legend={m['vms.create.sectionIdentity']()}>
+			<FormField label={m['vms.create.name']()} required error={nameError}>
+				{#snippet children({ id, describedBy, invalid })}
+					<TextField {id} {describedBy} {invalid} bind:value={form.name} required placeholder="web-04" />
+				{/snippet}
+			</FormField>
+		</FormSection>
+
+		<FormSection step={2} legend={m['vms.create.sectionSource']()}>
 		<FormField label={m['vms.create.source']()} required>
 			{#snippet children({ id, describedBy, invalid })}
 				<Select
@@ -328,10 +333,12 @@
 			</FormField>
 		{/if}
 
+		</FormSection>
+
+		<FormSection step={3} legend={m['vms.create.sectionPlacement']()}>
 		{#if form.simpleSource === 'profile'}
-			<div class="grid gap-3 rounded-lg border border-border bg-muted/30 p-4">
-				<div class="flex items-center justify-between">
-					<span class="text-sm font-medium text-foreground">{m['vms.create.placement']()}</span>
+			<FormSection variant="panel" legend={m['vms.create.placement']()}>
+				{#snippet actions()}
 					<Switch
 						label={form.nodeAdjusted ? m['vms.create.resetAutomatic']() : m['vms.create.adjust']()}
 						checked={form.nodeAdjusted}
@@ -340,7 +347,7 @@
 							form.storageAdjusted = form.nodeAdjusted;
 						}}
 					/>
-				</div>
+				{/snippet}
 				{#if form.nodeAdjusted}
 					<div class="grid gap-3 sm:grid-cols-2">
 						<FormField label={m['vms.create.node']()} error={nodeError}>
@@ -372,7 +379,7 @@
 						{m['vms.create.placementAutomatic']({ node: form.effectiveNode(), storage: form.effectiveStorage() })}
 					</p>
 				{/if}
-			</div>
+			</FormSection>
 		{/if}
 
 		<Checkbox
@@ -380,10 +387,23 @@
 			checked={form.startAfterCreate}
 			onToggle={(checked) => (form.startAfterCreate = checked)}
 		/>
+		</FormSection>
 
-		{#if form.submitError}<p role="alert" class="text-sm text-destructive">{form.submitError}</p>{/if}
-		<Button type="submit" loading={form.submitting} disabled={!canSubmit}>
-			{form.submitting ? m['common.creating']() : m['vms.create.submit']()}
-		</Button>
+		<!-- Action row, separated by a rule: the form has three chapters above
+		     it, so submit needs to read as the end of the page rather than as
+		     one more field in the stack. -->
+		<div class="mt-2 flex flex-col gap-3 border-t border-border pt-5 sm:items-end">
+			{#if form.submitError}
+				<p
+					role="alert"
+					class="w-full rounded-[var(--radius-control)] border border-destructive-soft-border bg-destructive-soft px-3 py-2 text-sm font-medium text-destructive-soft-foreground"
+				>
+					{form.submitError}
+				</p>
+			{/if}
+			<Button type="submit" size="lg" loading={form.submitting} disabled={!canSubmit}>
+				{form.submitting ? m['common.creating']() : m['vms.create.submit']()}
+			</Button>
+		</div>
 	</form>
 {/if}

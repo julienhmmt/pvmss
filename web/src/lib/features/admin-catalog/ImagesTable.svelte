@@ -26,9 +26,9 @@
 	}
 </script>
 
-<table class="pv-responsive-table w-full text-sm">
+<table class="pv-table pv-responsive-table">
 	<caption class="sr-only">{m['admin.images.heading']()}</caption>
-	<thead class="bg-muted/60 text-left text-sm font-medium text-muted-foreground">
+	<thead>
 			<tr>
 				<TableHeader text={m['admin.catalog.file']()} column="file" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 				<TableHeader text={m['common.storage']()} column="storage" activeColumn={sortBy} {sortDir} onSort={handleSort} />
@@ -42,13 +42,13 @@
 					{sortDir}
 					onSort={handleSort}
 				/>
-				<td class="px-4 py-3"><span class="sr-only">{m['admin.catalog.remove']()}</span></td>
+				<td><span class="sr-only">{m['admin.catalog.remove']()}</span></td>
 			</tr>
 		</thead>
-		<tbody class="divide-y divide-border">
+		<tbody>
 			{#each images as image (image.node + ':' + image.storage + ':' + image.file)}
 				<tr class="group transition-colors {image.missing ? 'opacity-60' : 'hover:bg-muted/40'}" data-testid="image-row">
-					<td class="px-4 py-3.5 font-mono" data-label={m['admin.catalog.file']()}>
+					<td class="font-mono" data-label={m['admin.catalog.file']()}>
 						{image.file}{#if image.missing}
 							<span
 								class="ml-2 inline-flex items-center rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive"
@@ -58,10 +58,10 @@
 							</span>
 						{/if}
 					</td>
-					<td class="px-4 py-3.5 font-mono" data-label={m['common.storage']()}>{image.storage}</td>
-					<td class="px-4 py-3.5 font-mono" data-label={m['common.node']()}>{image.node}</td>
-					<td class="px-4 py-3.5" data-label={m['admin.catalog.size']()}>{formatBytes(image.sizeBytes)}</td>
-					<td class="px-4 py-3.5" data-label={m['admin.catalog.statusColumn']()}>
+					<td class="font-mono" data-label={m['common.storage']()}>{image.storage}</td>
+					<td class="font-mono" data-label={m['common.node']()}>{image.node}</td>
+					<td data-label={m['admin.catalog.size']()}>{formatBytes(image.sizeBytes)}</td>
+					<td data-label={m['admin.catalog.statusColumn']()}>
 						{#if image.missing}
 							<span class="text-xs text-muted-foreground">{m['admin.catalog.missingBadge']()}</span>
 						{:else}
@@ -86,7 +86,7 @@
 							</span>
 						{/if}
 					</td>
-					<td class="px-4 py-3.5" data-label={m['admin.catalog.remove']()}>
+					<td data-label={m['admin.catalog.remove']()}>
 						{#if image.missing}
 							<Button
 								variant="ghost"

@@ -17,6 +17,13 @@
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Pill from '$lib/shared/ui/Pill.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
+	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
+	import Toolbar from '$lib/shared/ui/Toolbar.svelte';
+	import TextField from '$lib/shared/ui/TextField.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
+	import SortButton from '$lib/shared/ui/SortButton.svelte';
+	import SearchIcon from '$lib/shared/ui/icons/SearchIcon.svelte';
 	import ChevronDownIcon from '$lib/shared/ui/icons/ChevronDownIcon.svelte';
 	import PlayIcon from '$lib/shared/ui/icons/PlayIcon.svelte';
 	import PowerOffIcon from '$lib/shared/ui/icons/PowerOffIcon.svelte';
@@ -47,6 +54,10 @@
 
 	const PAGE_SIZE_OPTIONS: readonly number[] = [10, 25, 50] as const;
 
+	// Columns whose cells are figures, not prose: they get the `.num` class
+	// (tabular mono, right-aligned) so digits line up down the column.
+	const NUMERIC_COLUMNS: ReadonlySet<VmSortBy> = new Set<VmSortBy>(['vmid', 'cpu', 'memory']);
+
 	const statusTone: Record<VmStatus, 'ok' | 'off' | 'warn'> = {
 		running: 'ok',
 		stopped: 'off',
@@ -62,15 +73,6 @@
 	function ariaSort(column: VmSortBy): 'ascending' | 'descending' | 'none' {
 		if (store.sortBy !== column) return 'none';
 		return store.sortDir === 'asc' ? 'ascending' : 'descending';
-	}
-
-	function sortIndicator(column: VmSortBy): string {
-		if (store.sortBy !== column) return '';
-		return store.sortDir === 'asc' ? ' ↑' : ' ↓';
-	}
-
-	function sortIndicatorClass(column: VmSortBy): string {
-		return store.sortBy === column ? 'text-primary' : 'text-muted-foreground-subtle';
 	}
 
 	function handleSort(column: VmSortBy): void {
@@ -185,78 +187,81 @@
 	let allOnPageSelected = $derived(bulk.pageAllSelected(pageItems));
 </script>
 
-<Card pad="none" class="overflow-hidden">
-	<div class="flex flex-wrap items-center gap-3 border-b border-border p-4">
-		<div class="flex-1">
+<Card pad="none">
+	<Toolbar>
+		{#snippet search()}
 			<label for="vm-search" class="sr-only">{m['common.search']()}</label>
-			<input
+			<TextField
 				id="vm-search"
 				type="search"
 				placeholder={m['vms.list.searchPlaceholder']()}
-				class="w-full max-w-sm rounded-md border border-border bg-background px-3 py-1.5 text-sm"
 				value={store.search}
-				oninput={(event) => store.applySearch(event.currentTarget.value)}
+				oninput={(event: Event) => store.applySearch((event.currentTarget as HTMLInputElement).value)}
 				data-testid="vm-search"
+			>
+				{#snippet leading()}<SearchIcon class="h-4 w-4" />{/snippet}
+			</TextField>
+		{/snippet}
+
+		{#snippet filters()}
+			<label class="sr-only" for="vm-status-filter">{m['vms.list.filterStatusLabel']()}</label>
+			<Select
+				id="vm-status-filter"
+				class="w-auto min-w-[9rem]"
+				value={store.status}
+				onchange={handleStatusChange}
+				options={STATUS_OPTIONS.map((option) => ({ value: option.value, label: option.label() }))}
+				data-testid="vm-status-filter"
 			/>
-		</div>
 
-		<label class="sr-only" for="vm-status-filter">{m['vms.list.filterStatusLabel']()}</label>
-		<select
-			id="vm-status-filter"
-			class="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-			value={store.status}
-			onchange={handleStatusChange}
-			data-testid="vm-status-filter"
-		>
-			{#each STATUS_OPTIONS as option (option.value)}
-				<option value={option.value}>{option.label()}</option>
-			{/each}
-		</select>
+			<label class="sr-only" for="vm-node-filter">{m['vms.list.filterNodeLabel']()}</label>
+			<Select
+				id="vm-node-filter"
+				class="w-auto min-w-[9rem]"
+				value={store.node}
+				onchange={handleNodeChange}
+				options={[
+					{ value: '', label: m['common.allNodes']() },
+					...(store.result?.availableNodes ?? []).map((node) => ({ value: node, label: node }))
+				]}
+				data-testid="vm-node-filter"
+			/>
+		{/snippet}
 
-		<label class="sr-only" for="vm-node-filter">{m['vms.list.filterNodeLabel']()}</label>
-		<select
-			id="vm-node-filter"
-			class="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
-			value={store.node}
-			onchange={handleNodeChange}
-			data-testid="vm-node-filter"
-		>
-			<option value="">{m['common.allNodes']()}</option>
-			{#each store.result?.availableNodes ?? [] as node (node)}
-				<option value={node}>{node}</option>
-			{/each}
-		</select>
-
-		{#if store.result?.quota}
-			<p class="text-sm text-muted-foreground" data-testid="vm-quota">
-				{#if store.result.quota.allowed === -1}
-					{m['vms.list.quotaUnlimited']({ used: store.result.quota.used })}
-				{:else}
-					{m['vms.list.quotaLimited']({ used: store.result.quota.used, allowed: store.result.quota.allowed })}
-				{/if}
-			</p>
-		{/if}
-	</div>
+		{#snippet meta()}
+			{#if store.result?.quota}
+				<span data-testid="vm-quota">
+					{#if store.result.quota.allowed === -1}
+						{m['vms.list.quotaUnlimited']({ used: store.result.quota.used })}
+					{:else}
+						{m['vms.list.quotaLimited']({ used: store.result.quota.used, allowed: store.result.quota.allowed })}
+					{/if}
+				</span>
+			{/if}
+		{/snippet}
+	</Toolbar>
 
 	{#if store.errorCode === 'inventory_not_ready'}
 		<EmptyState
 			title={m['vms.list.clusterUnreachableTitle']()}
 			description={m['vms.list.clusterUnreachableDescription']()}
+			tone="error"
 			dataTestid="vm-list-cluster-unreachable"
 		>
 			{#snippet actions()}
-				<button
-					type="button"
-					class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-					onclick={() => void handleClusterRetry()}
-					data-testid="vm-list-cluster-retry"
-				>
+				<Button onclick={() => void handleClusterRetry()} data-testid="vm-list-cluster-retry">
 					{m['vms.list.clusterUnreachableRetry']()}
-				</button>
+				</Button>
 			{/snippet}
 		</EmptyState>
 	{:else if store.error}
-		<p role="alert" class="px-4 py-3 text-sm text-destructive" data-testid="vm-list-error">{store.error}</p>
+		<p
+			role="alert"
+			class="m-4 rounded-[var(--radius-control)] border border-destructive-soft-border bg-destructive-soft px-3 py-2 text-sm font-medium text-destructive-soft-foreground"
+			data-testid="vm-list-error"
+		>
+			{store.error}
+		</p>
 	{/if}
 
 	{#if store.errorCode !== 'inventory_not_ready' && store.result && store.result.items.length === 0}
@@ -264,12 +269,7 @@
 			<EmptyState title={m['vms.list.emptyOwned']()} dataTestid="vm-empty-owned">
 				{#snippet actions()}
 					{#if !session.isAdmin}
-						<a
-							href={resolve('/vms/create')}
-							class="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
-						>
-							{m['vms.list.create']()}
-						</a>
+						<ButtonLink href={resolve('/vms/create')}>{m['vms.list.create']()}</ButtonLink>
 					{/if}
 				{/snippet}
 			</EmptyState>
@@ -277,64 +277,59 @@
 			<EmptyState title={m['vms.list.emptyMatch']()} dataTestid="vm-empty-match" />
 		{/if}
 	{:else if store.result}
-		<div class="overflow-x-auto">
-			<table class="pv-responsive-table text-sm">
+		<div class="max-h-[calc(100svh-20rem)] overflow-auto">
+			<table class="pv-table pv-responsive-table">
 				<caption class="sr-only">{m['vms.list.caption']()}</caption>
-				<thead class="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
-					<tr class="border-b border-border">
-						<th scope="col" class="px-4 py-3">
+				<thead>
+					<tr>
+						<th scope="col" class="w-10">
 							<input
 								type="checkbox"
-								class="h-4 w-4 rounded border-border"
+								class="h-4 w-4 rounded border-border accent-primary"
 								checked={allOnPageSelected}
 								onchange={handleSelectAllOnPage}
 								data-testid="vm-bulk-select-all"
 								aria-label={m['vms.list.selectAll']()}
 							/>
 						</th>
-						<th scope="col" class="px-4 py-3 font-medium">{m['vms.list.columnCluster']()}</th>
+						<th scope="col">{m['vms.list.columnCluster']()}</th>
 						{#each SORTABLE_COLUMNS as column (column)}
-							<th scope="col" class="px-4 py-3 font-medium" aria-sort={ariaSort(column)}>
-								<button
-									type="button"
-									class="inline-flex items-center font-medium hover:text-foreground"
+							<th scope="col" class={NUMERIC_COLUMNS.has(column) ? 'num' : ''} aria-sort={ariaSort(column)}>
+								<SortButton
+									label={COLUMN_LABELS[column]()}
+									active={store.sortBy === column}
+									direction={store.sortDir}
 									onclick={() => handleSort(column)}
 									data-testid="sort-{column}"
-								>
-									{COLUMN_LABELS[column]()}
-									<span class="ml-0.5 {sortIndicatorClass(column)}" aria-hidden="true">{sortIndicator(column)}</span>
-								</button>
+								/>
 							</th>
 						{/each}
 						{#if store.scope === 'all'}
-							<th scope="col" class="px-4 py-3 font-medium">{m['vms.list.columnPool']()}</th>
+							<th scope="col">{m['vms.list.columnPool']()}</th>
 						{/if}
-						<th scope="col" class="px-4 py-3 text-right font-medium">{m['vms.list.columnActions']()}</th>
+						<th scope="col" class="text-right">{m['vms.list.columnActions']()}</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each store.result?.items ?? [] as machine (`${machine.cluster}:${machine.vmid}`)}
-						<tr
-							class="border-b border-border last:border-0 transition-colors hover:bg-muted/40"
-							data-testid="vm-row"
-						>
-							<td class="px-4 py-3" data-nolabel="true">
+						<tr data-testid="vm-row">
+							<td data-nolabel="true">
 								<input
 									type="checkbox"
-									class="h-4 w-4 rounded border-border"
+									class="h-4 w-4 rounded border-border accent-primary"
 									checked={bulk.isSelected(machine.cluster, machine.vmid)}
 									onchange={() => handleRowToggle(machine.cluster, machine.vmid)}
 									data-testid="vm-bulk-select-row"
 									aria-label={m['vms.list.selectRow']({ name: machine.name })}
 								/>
 							</td>
-							<td class="px-4 py-3 font-mono text-muted-foreground" data-label={m['vms.list.columnCluster']()}>
+							<td class="text-muted-foreground" data-label={m['vms.list.columnCluster']()}>
 								{machine.clusterDisplayName}
 							</td>
-							<td class="px-4 py-3" data-label={m['vms.list.columnName']()}>
+							<td data-label={m['vms.list.columnName']()}>
 								<a
 									href={resolve(`/vms/${encodeURIComponent(machine.cluster)}/${machine.vmid}`)}
-									class="font-medium text-foreground hover:text-primary hover:underline"
+									class="font-medium text-foreground underline-offset-2 hover:text-primary hover:underline"
 									data-testid="vm-row-link"
 								>
 									{machine.name}
@@ -342,54 +337,52 @@
 								{#if machine.tags.length > 0}
 									<div class="mt-1 flex flex-wrap gap-1">
 										{#each machine.tags as tag (tag)}
-											<span class="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-												{tag}
-											</span>
+											<Pill tone="off" dot={false} label={tag} />
 										{/each}
 									</div>
 								{/if}
 							</td>
-							<td class="px-4 py-3 font-mono text-muted-foreground" data-label={m['vms.list.columnId']()}>
+							<td class="num text-muted-foreground" data-label={m['vms.list.columnId']()}>
 								{machine.vmid}
 							</td>
-							<td class="px-4 py-3 font-mono text-muted-foreground" data-label={m['vms.list.columnNode']()}>
+							<td class="whitespace-nowrap font-mono text-muted-foreground" data-label={m['vms.list.columnNode']()}>
 								{machine.node}
 							</td>
-							<td class="px-4 py-3" data-label={m['vms.list.columnStatus']()}>
+							<td data-label={m['vms.list.columnStatus']()}>
 								<Pill
 									tone={statusTone[machine.status]}
 									label={statusLabels[machine.status]()}
 									pending={isRowActionInFlight(machine.cluster, machine.vmid)}
-							/>
+								/>
 							</td>
-							<td class="px-4 py-3 font-mono text-muted-foreground" data-label={m['vms.list.columnCpu']()}>
-								{machine.cpuCores} {m['common.cores']()}
+							<td class="num text-muted-foreground" data-label={m['vms.list.columnCpu']()}>
+								{machine.cpuCores}<span class="ml-1 font-sans text-xs">{m['common.cores']()}</span>
 							</td>
-							<td class="px-4 py-3 font-mono text-muted-foreground" data-label={m['vms.list.columnMemory']()}>
+							<td class="num text-muted-foreground" data-label={m['vms.list.columnMemory']()}>
 								{formatBytes(machine.memoryTotal)}
 							</td>
 							{#if store.scope === 'all'}
-								<td class="px-4 py-3 text-muted-foreground" data-label={m['vms.list.columnPool']()}>
+								<td class="text-muted-foreground" data-label={m['vms.list.columnPool']()}>
 									{machine.pool}
 								</td>
 							{/if}
-							<td class="px-4 py-3" data-label={m['vms.list.columnActions']()} data-nolabel="true">
+							<td data-label={m['vms.list.columnActions']()} data-nolabel="true">
 								<div class="flex items-center justify-end gap-1">
 									{#if isRowActionInFlight(machine.cluster, machine.vmid)}
-										<span class="flex h-7 w-7 items-center justify-center text-muted-foreground" aria-live="polite">
+										<span class="flex h-8 w-8 items-center justify-center text-muted-foreground" aria-live="polite">
 											<SpinnerIcon class="h-4 w-4" />
 										</span>
 									{:else}
 										{#each QUICK_ACTIONS as action (action.kind)}
 											{@const applicable = isQuickActionApplicable(action, machine.status)}
-											<button
-												type="button"
-												class="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
+											<Button
+												variant="ghost"
+												size="icon-sm"
 												disabled={!applicable}
 												onclick={() => void handleQuickAction(machine.cluster, machine.vmid, machine.name, machine.status, action)}
 												data-testid="vm-quick-action-{action.kind}"
 												title={action.label()}
-												aria-label={action.label()}
+												label={action.label()}
 												aria-disabled={!applicable}
 											>
 												{#if action.kind === 'start'}
@@ -399,10 +392,24 @@
 												{:else if action.kind === 'reboot'}
 													<RestartIcon class="h-4 w-4" />
 												{/if}
-											</button>
+											</Button>
 										{/each}
 										{#if machine.status === 'running'}
-											<a href={resolve('/vms/[cluster]/[vmid]/console', { cluster: machine.cluster, vmid: String(machine.vmid) })} target='_blank' rel='noopener noreferrer' class='flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background' title={m['vms.console.open']()} aria-label={m['vms.console.open']()} data-testid='vm-row-console'><ConsoleIcon class='h-4 w-4' /></a>
+											<ButtonLink
+												variant="ghost"
+												size="icon-sm"
+												href={resolve('/vms/[cluster]/[vmid]/console', {
+													cluster: machine.cluster,
+													vmid: String(machine.vmid)
+												})}
+												target="_blank"
+												rel="noopener noreferrer"
+												title={m['vms.console.open']()}
+												label={m['vms.console.open']()}
+												data-testid="vm-row-console"
+											>
+												<ConsoleIcon class="h-4 w-4" />
+											</ButtonLink>
 										{/if}
 									{/if}
 								</div>
@@ -414,47 +421,46 @@
 		</div>
 
 		<nav
-			class="flex flex-wrap items-center justify-between gap-3 border-t border-border p-4"
+			class="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3"
 			aria-label={m['vms.list.paginationLabel']()}
 		>
 			<label class="flex items-center gap-2 text-xs text-muted-foreground">
 				{m['common.rowsPerPage']()}
-				<select
-					class="h-10 rounded-md border border-border bg-background px-2 py-1 text-sm"
-					value={store.pageSize}
+				<Select
+					class="w-auto"
+					value={String(store.pageSize)}
 					onchange={handlePageSizeChange}
+					options={PAGE_SIZE_OPTIONS.map((size) => ({ value: String(size), label: String(size) }))}
 					data-testid="vm-page-size"
-				>
-					{#each PAGE_SIZE_OPTIONS as size (size)}
-						<option value={size}>{size}</option>
-					{/each}
-				</select>
+				/>
 			</label>
 
-			<div class="flex items-center gap-1 rounded-md border border-border p-1">
-				<button
-					type="button"
-					class="flex h-7 w-7 items-center justify-center rounded hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
-					disabled={store.result === null || store.result.page <= 1}
-					onclick={() => store.setPage(store.page - 1)}
-					data-testid="vm-page-prev"
-				>
-					<ChevronDownIcon class="h-4 w-4 rotate-90" />
-					<span class="sr-only">{m['common.previous']()}</span>
-				</button>
-				<span class="px-2 text-sm text-muted-foreground" data-testid="vm-page-indicator">
+			<div class="flex items-center gap-2">
+				<span class="font-mono text-xs tabular-nums text-muted-foreground" data-testid="vm-page-indicator">
 					{m['common.pageIndicator']({ current: store.result?.page ?? store.page, total: pageCount })}
 				</span>
-				<button
-					type="button"
-					class="flex h-7 w-7 items-center justify-center rounded hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40"
-					disabled={store.result === null || store.result.page >= pageCount}
-					onclick={() => store.setPage(store.page + 1)}
-					data-testid="vm-page-next"
-				>
-					<ChevronDownIcon class="h-4 w-4 -rotate-90" />
-					<span class="sr-only">{m['common.next']()}</span>
-				</button>
+				<div class="flex items-center gap-1">
+					<Button
+						variant="secondary"
+						size="icon-sm"
+						label={m['common.previous']()}
+						disabled={store.result === null || store.result.page <= 1}
+						onclick={() => store.setPage(store.page - 1)}
+						data-testid="vm-page-prev"
+					>
+						<ChevronDownIcon class="h-4 w-4 rotate-90" />
+					</Button>
+					<Button
+						variant="secondary"
+						size="icon-sm"
+						label={m['common.next']()}
+						disabled={store.result === null || store.result.page >= pageCount}
+						onclick={() => store.setPage(store.page + 1)}
+						data-testid="vm-page-next"
+					>
+						<ChevronDownIcon class="h-4 w-4 -rotate-90" />
+					</Button>
+				</div>
 			</div>
 		</nav>
 	{/if}

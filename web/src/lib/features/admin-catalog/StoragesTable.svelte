@@ -32,9 +32,9 @@
 	}
 </script>
 
-<table class="pv-responsive-table w-full text-sm">
+<table class="pv-table pv-responsive-table">
 	<caption class="sr-only">{m['admin.storages.heading']()}</caption>
-	<thead class="bg-muted/60 text-left text-sm font-medium text-muted-foreground">
+	<thead>
 		<tr>
 			<TableHeader text={m['common.name']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 			<TableHeader text={m['common.node']()} column="node" activeColumn={sortBy} {sortDir} onSort={handleSort} />
@@ -62,10 +62,10 @@
 				{sortDir}
 				onSort={handleSort}
 			/>
-			<td class="px-4 py-3"><span class="sr-only">{m['admin.catalog.remove']()}</span></td>
+			<td><span class="sr-only">{m['admin.catalog.remove']()}</span></td>
 		</tr>
 	</thead>
-	<tbody class="divide-y divide-border">
+	<tbody>
 		{#each storages as storage (storage.name + storage.node)}
 			<tr
 				class="group transition-colors {storage.noStorage ? 'bg-muted/20 text-muted-foreground' : storage.missing ? 'opacity-60' : 'hover:bg-muted/40'}"
@@ -73,7 +73,7 @@
 				data-storage-name={storage.noStorage ? '' : storage.name}
 				data-storage-node={storage.node}
 			>
-				<td class="px-4 py-3.5" data-label={m['common.name']()}>
+				<td data-label={m['common.name']()}>
 					{#if storage.noStorage}
 						<span class="text-muted-foreground italic">{m['admin.storages.noAvailableStorage']()}</span>
 					{:else}
@@ -88,13 +88,13 @@
 						{/if}
 					{/if}
 				</td>
-				<td class="px-4 py-3.5 font-mono" data-label={m['common.node']()}>{storage.node}</td>
-				<td class="px-4 py-3.5" data-label={m['common.type']()}>
+				<td class="font-mono" data-label={m['common.node']()}>{storage.node}</td>
+				<td data-label={m['common.type']()}>
 					{#if !storage.noStorage}
 						{storage.type}
 					{/if}
 				</td>
-				<td class="px-4 py-3.5" data-label={m['admin.catalog.usage']()}>
+				<td data-label={m['admin.catalog.usage']()}>
 					{#if !storage.noStorage && !storage.missing}
 						<NodeUsageBar
 							value={storage.totalBytes > 0 ? storage.usedBytes / storage.totalBytes : 0}
@@ -106,7 +106,7 @@
 						/>
 					{/if}
 				</td>
-				<td class="px-4 py-3.5" data-label={m['admin.catalog.statusColumn']()}>
+				<td data-label={m['admin.catalog.statusColumn']()}>
 					{#if !storage.noStorage}
 						{#if storage.missing}
 							<span class="text-xs text-muted-foreground">{m['admin.catalog.missingBadge']()}</span>
@@ -133,7 +133,7 @@
 						{/if}
 					{/if}
 				</td>
-				<td class="px-4 py-3.5" data-label={m['admin.catalog.remove']()}>
+				<td data-label={m['admin.catalog.remove']()}>
 					{#if storage.missing}
 						<Button
 							variant="ghost"

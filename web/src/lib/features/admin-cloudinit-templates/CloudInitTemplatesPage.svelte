@@ -94,22 +94,22 @@
 	{/if}
 
 	<TableCard>
-		<table class="pv-responsive-table w-full text-sm">
+		<table class="pv-table pv-responsive-table">
 			<caption class="sr-only">{m['admin.cloudinit.header']()}</caption>
-			<thead class="bg-muted/60 text-left text-sm font-medium text-muted-foreground">
+			<thead>
 				<tr>
-					<th class="px-4 py-3 font-medium">{m['admin.cloudinit.id']()}</th>
-					<th class="px-4 py-3 font-medium">{m['admin.cloudinit.labelField']()}</th>
-					<th class="px-4 py-3 font-medium">{m['admin.cloudinit.enabledStatus']()}</th>
-					<th class="px-4 py-3 font-medium">{m['common.actions']()}</th>
+					<th class="font-medium">{m['admin.cloudinit.id']()}</th>
+					<th class="font-medium">{m['admin.cloudinit.labelField']()}</th>
+					<th class="font-medium">{m['admin.cloudinit.enabledStatus']()}</th>
+					<th class="font-medium">{m['common.actions']()}</th>
 				</tr>
 			</thead>
-			<tbody class="divide-y divide-border">
+			<tbody>
 				{#each templates as template (template.id)}
 					<tr class="group transition-colors hover:bg-muted/40">
-						<td class="px-4 py-3.5 font-mono text-xs" data-label={m['admin.cloudinit.id']()}>{template.id}</td>
-						<td class="px-4 py-3.5" data-label={m['admin.cloudinit.labelField']()}>{template.label}</td>
-						<td class="px-4 py-3.5" data-label={m['admin.cloudinit.enabledStatus']()}>
+						<td class="font-mono text-xs" data-label={m['admin.cloudinit.id']()}>{template.id}</td>
+						<td data-label={m['admin.cloudinit.labelField']()}>{template.label}</td>
+						<td data-label={m['admin.cloudinit.enabledStatus']()}>
 							<span class="inline-flex items-center gap-2">
 								<Switch
 									checked={template.enabled}
@@ -121,7 +121,7 @@
 								</span>
 							</span>
 						</td>
-						<td class="px-4 py-3.5" data-label={m['common.actions']()}>
+						<td data-label={m['common.actions']()}>
 							<div class="flex gap-2">
 								<Button variant="ghost" size="sm" label={m['admin.cloudinit.editLabel']({ label: template.label })} onclick={() => openEdit(template)}>{m['admin.cloudinit.edit']()}</Button>
 								<Button variant="destructive" size="sm" label={m['admin.cloudinit.deleteLabel']({ label: template.label })} onclick={() => onDelete(template.id)}>{m['admin.cloudinit.delete']()}</Button>

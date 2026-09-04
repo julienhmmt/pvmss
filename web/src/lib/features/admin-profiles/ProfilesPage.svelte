@@ -175,9 +175,9 @@
 					{m['admin.profiles.resetFilters']()}
 				</Button>
 			{/snippet}
-			<table class="pv-responsive-table w-full text-sm">
+			<table class="pv-table pv-responsive-table">
 				<caption class="sr-only">{m['admin.profiles.title']()}</caption>
-				<thead class="bg-muted/60 text-left text-sm font-medium text-muted-foreground">
+				<thead>
 					<tr>
 						<TableHeader text={m['admin.profiles.id']()} tooltip={m['admin.profiles.tooltip.id']()} column="id" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 						<TableHeader text={m['admin.profiles.labelField']()} tooltip={m['admin.profiles.tooltip.id']()} column="label" activeColumn={sortBy} {sortDir} onSort={handleSort} />
@@ -185,20 +185,20 @@
 						<TableHeader text={m['common.memory']()} tooltip={m['admin.profiles.tooltip.memory']()} column="memoryMB" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 						<TableHeader text={m['admin.profiles.disk']()} tooltip={m['admin.profiles.tooltip.disk']()} column="diskGB" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 						<TableHeader text={m['admin.profiles.bus']()} tooltip={m['admin.profiles.tooltip.bus']()} />
-						<th class="px-4 py-3 font-medium">{m['admin.profiles.enabledStatus']()}</th>
-						<th class="px-4 py-3 font-medium">{m['common.actions']()}</th>
+						<th class="font-medium">{m['admin.profiles.enabledStatus']()}</th>
+						<th class="font-medium">{m['common.actions']()}</th>
 					</tr>
 				</thead>
-				<tbody class="divide-y divide-border">
+				<tbody>
 					{#each filteredProfiles as profile (profile.id)}
 						<tr class="group transition-colors hover:bg-muted/40">
-							<td class="px-4 py-3.5 font-mono text-xs" data-label={m['admin.profiles.id']()}>{profile.id}</td>
-							<td class="px-4 py-3.5" data-label={m['admin.profiles.labelField']()}>{profile.label}</td>
-							<td class="px-4 py-3.5" data-label={m['admin.profiles.vcpu']()}>{profile.cpuCores}</td>
-							<td class="px-4 py-3.5" data-label={m['common.memory']()}>{profile.memoryMB} MB</td>
-							<td class="px-4 py-3.5" data-label={m['admin.profiles.disk']()}>{profile.diskGB} GB</td>
-							<td class="px-4 py-3.5" data-label={m['admin.profiles.bus']()}>{profile.bus}</td>
-							<td class="px-4 py-3.5" data-label={m['admin.profiles.enabledStatus']()}>
+							<td class="font-mono text-xs" data-label={m['admin.profiles.id']()}>{profile.id}</td>
+							<td data-label={m['admin.profiles.labelField']()}>{profile.label}</td>
+							<td data-label={m['admin.profiles.vcpu']()}>{profile.cpuCores}</td>
+							<td data-label={m['common.memory']()}>{profile.memoryMB} MB</td>
+							<td data-label={m['admin.profiles.disk']()}>{profile.diskGB} GB</td>
+							<td data-label={m['admin.profiles.bus']()}>{profile.bus}</td>
+							<td data-label={m['admin.profiles.enabledStatus']()}>
 								<span class="inline-flex items-center gap-2">
 									<Switch
 										checked={profile.enabled}
@@ -210,7 +210,7 @@
 									</span>
 								</span>
 							</td>
-							<td class="px-4 py-3.5" data-label={m['common.actions']()}>
+							<td data-label={m['common.actions']()}>
 								<div class="flex gap-2">
 									<Button variant="secondary" size="sm" label={m['admin.profiles.editLabel']({ label: profile.label })} onclick={() => openEdit(profile)}>{m['admin.profiles.edit']()}</Button>
 									<Button variant="destructive" size="sm" label={m['admin.profiles.deleteLabel']({ label: profile.label })} onclick={() => (pendingDelete = profile)}>{m['admin.profiles.delete']()}</Button>

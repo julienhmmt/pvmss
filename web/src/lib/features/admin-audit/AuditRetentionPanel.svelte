@@ -55,7 +55,7 @@
 			<label class="flex flex-col gap-1 text-sm">
 				<span class="text-muted-foreground">{m['admin.audit.retention.daysLabel']()}</span>
 				<input
-					class="rounded-md border border-border bg-background px-3 py-1.5 w-32"
+					class="pv-input w-32"
 					type="number"
 					min="30"
 					bind:value={daysInput}

@@ -13,6 +13,8 @@
 	import ConsoleBanner from './ConsoleBanner.svelte';
 	import VmMetricsRow from './VmMetricsRow.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import Pill from '$lib/shared/ui/Pill.svelte';
+	import StatCard from '$lib/shared/ui/StatCard.svelte';
 	import { focusOnMount } from '$lib/shared/ui/focus-on-mount';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -38,11 +40,16 @@
 	];
 	let activeTab = $state('overview');
 
-	const statusClasses: Record<string, string> = {
-		running: 'bg-success-soft text-success-soft-foreground border-success-soft-border',
-		stopped: 'bg-muted text-muted-foreground border-border',
-		paused: 'bg-destructive-soft text-destructive-soft-foreground border-destructive-soft-border'
-	};
+	// Same mapping as the VM list. It used to differ here — paused rendered in
+	// the destructive triple on this page and in the warning triple in the
+	// list, so the same VM changed colour depending on where you looked at
+	// it. Paused is a caution, not a failure. Anything unrecognised falls
+	// back to the neutral tone rather than rendering an unstyled badge.
+	function statusTone(status: string): 'ok' | 'off' | 'warn' {
+		if (status === 'running') return 'ok';
+		if (status === 'paused') return 'warn';
+		return 'off';
+	}
 
 	function formatUptime(seconds: number): string {
 		const days = Math.floor(seconds / 86400);
@@ -127,26 +134,17 @@
 				{#if editingName}
 					<input
 						type="text"
-						class="rounded-md border border-border bg-background px-2 py-1 text-2xl font-semibold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+						class="pv-input w-auto max-w-full text-2xl font-semibold tracking-tight"
 						bind:value={nameDraft}
 						onkeydown={handleNameKeydown}
 						data-testid="vm-name-edit"
 					/>
-					<button
-						type="button"
-						class="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-						onclick={() => void commitName()}
-						data-testid="vm-name-save"
-					>
+					<Button size="sm" onclick={() => void commitName()} data-testid="vm-name-save">
 						{m['common.save']()}
-					</button>
-					<button
-						type="button"
-						class="rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-						onclick={cancelName}
-					>
+					</Button>
+					<Button variant="secondary" size="sm" onclick={cancelName}>
 						{m['common.cancel']()}
-					</button>
+					</Button>
 				{:else}
 					<button
 						type="button"
@@ -158,20 +156,12 @@
 						{store.entity.name}
 					</button>
 				{/if}
-				<span
-					class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium {statusClasses[store.entity.status]}"
-					aria-live="polite"
-					data-testid="vm-status"
-				>
-					<span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true"></span>
-					{store.entity.status}
+				<span aria-live="polite" data-testid="vm-status">
+					<Pill tone={statusTone(store.entity.status)} size="md" label={store.entity.status} />
 				</span>
 				{#if store.entity.lock}
-					<span
-						class="inline-flex items-center gap-1.5 rounded-full border border-warning-soft-border bg-warning-soft px-2.5 py-0.5 text-xs font-medium text-warning-soft-foreground"
-						data-testid="vm-lock-badge"
-					>
-						{m['vms.lock.badge']({ lock: store.entity.lock })}
+					<span data-testid="vm-lock-badge">
+						<Pill tone="warn" size="md" dot={false} label={m['vms.lock.badge']({ lock: store.entity.lock })} />
 					</span>
 				{/if}
 			</div>
@@ -195,37 +185,34 @@
 		</div>
 	</header>
 
-	<section class="mt-6 rounded-xl border border-border bg-card p-6 shadow-card">
-		<div class="grid grid-cols-2 gap-6 md:grid-cols-4">
-			<div data-testid="vm-stat-cpu">
-				<p class="text-sm text-muted-foreground">{m['vms.detail.statCpu']()}</p>
-				<p class="mt-1 text-2xl font-semibold font-mono">{store.entity.cpuCores} {m['common.cores']()}</p>
-			</div>
-			<div data-testid="vm-stat-memory">
-				<p class="text-sm text-muted-foreground">{m['vms.detail.statMemory']()}</p>
-				<p class="mt-1 text-2xl font-semibold font-mono">{formatBytes(store.entity.memoryTotal)}</p>
-			</div>
-			<div data-testid="vm-stat-disk">
-				<p class="text-sm text-muted-foreground">{m['vms.detail.statDisk']()}</p>
-				<p class="mt-1 text-2xl font-semibold font-mono">{formatBytes(store.entity.diskTotal)}</p>
-			</div>
-			<div data-testid="vm-stat-uptime">
-				<p class="text-sm text-muted-foreground">{m['vms.detail.statUptime']()}</p>
-				<p class="mt-1 text-2xl font-semibold font-mono">
-					{#if store.entity.uptimeSeconds}
-						{formatUptime(store.entity.uptimeSeconds)}
-					{:else}
-						{m['common.dash']()}
-					{/if}
-				</p>
-			</div>
-		</div>
-	</section>
+	<div class="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+		<StatCard
+			label={m['vms.detail.statCpu']()}
+			value={store.entity.cpuCores}
+			hint={m['common.cores']()}
+			data-testid="vm-stat-cpu"
+		/>
+		<StatCard
+			label={m['vms.detail.statMemory']()}
+			value={formatBytes(store.entity.memoryTotal)}
+			data-testid="vm-stat-memory"
+		/>
+		<StatCard
+			label={m['vms.detail.statDisk']()}
+			value={formatBytes(store.entity.diskTotal)}
+			data-testid="vm-stat-disk"
+		/>
+		<StatCard
+			label={m['vms.detail.statUptime']()}
+			value={store.entity.uptimeSeconds ? formatUptime(store.entity.uptimeSeconds) : m['common.dash']()}
+			data-testid="vm-stat-uptime"
+		/>
+	</div>
 
 	<VmMetricsRow />
 
 	<div class="mt-8">
-		<Tabs {tabs} bind:active={activeTab} />
+		<Tabs {tabs} bind:active={activeTab} look="underline" />
 
 		<div
 			id="panel-overview"
@@ -256,21 +243,12 @@
 						use:focusOnMount
 					></textarea>
 					<div class="mt-3 flex gap-2">
-						<button
-							type="button"
-							class="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-							onclick={() => void commitDescription()}
-							data-testid="vm-description-save"
-						>
+						<Button size="sm" onclick={() => void commitDescription()} data-testid="vm-description-save">
 							{m['common.save']()}
-						</button>
-						<button
-							type="button"
-							class="rounded-lg border border-border bg-background px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-							onclick={cancelDescription}
-						>
+						</Button>
+						<Button variant="secondary" size="sm" onclick={cancelDescription}>
 							{m['common.cancel']()}
-						</button>
+						</Button>
 					</div>
 				{:else}
 					<div

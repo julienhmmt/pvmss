@@ -81,27 +81,27 @@
 	<form class="flex flex-wrap items-end gap-3" onsubmit={(e) => { e.preventDefault(); applyFilter(); }}>
 		<label class="flex flex-col gap-1 text-sm">
 			<span class="text-muted-foreground">{m['admin.audit.action']()}</span>
-			<input class="rounded-md border border-border bg-background px-3 py-1.5" type="text" bind:value={actionFilter} placeholder={m['admin.audit.actionPlaceholder']()} />
+			<input class="pv-input" type="text" bind:value={actionFilter} placeholder={m['admin.audit.actionPlaceholder']()} />
 		</label>
 		<label class="flex flex-col gap-1 text-sm">
 			<span class="text-muted-foreground">{m['admin.audit.actor']()}</span>
-			<input class="rounded-md border border-border bg-background px-3 py-1.5" type="text" bind:value={actorFilter} placeholder={m['admin.audit.actorPlaceholder']()} />
+			<input class="pv-input" type="text" bind:value={actorFilter} placeholder={m['admin.audit.actorPlaceholder']()} />
 		</label>
 		<label class="flex flex-col gap-1 text-sm">
 			<span class="text-muted-foreground">{m['admin.audit.vmid']()}</span>
-			<input class="rounded-md border border-border bg-background px-3 py-1.5 w-24" type="number" bind:value={vmidFilter} placeholder="101" />
+			<input class="pv-input w-24" type="number" bind:value={vmidFilter} placeholder="101" />
 		</label>
 		<label class="flex flex-col gap-1 text-sm">
 			<span class="text-muted-foreground">{m['admin.audit.from']()}</span>
-			<input class="rounded-md border border-border bg-background px-3 py-1.5" type="datetime-local" bind:value={fromFilter} />
+			<input class="pv-input" type="datetime-local" bind:value={fromFilter} />
 		</label>
 		<label class="flex flex-col gap-1 text-sm">
 			<span class="text-muted-foreground">{m['admin.audit.to']()}</span>
-			<input class="rounded-md border border-border bg-background px-3 py-1.5" type="datetime-local" bind:value={toFilter} />
+			<input class="pv-input" type="datetime-local" bind:value={toFilter} />
 		</label>
 		<label class="flex flex-col gap-1 text-sm">
 			<span class="text-muted-foreground">{m['admin.audit.severity']()}</span>
-			<select class="rounded-md border border-border bg-background px-3 py-1.5" bind:value={severityFilter}>
+			<select class="pv-input" bind:value={severityFilter}>
 				<option value="">{m['admin.audit.severityAll']()}</option>
 				<option value="critical">{m['admin.audit.severityCritical']()}</option>
 				<option value="warning">{m['admin.audit.severityWarning']()}</option>
@@ -121,31 +121,31 @@
 		<div role="status" aria-live="polite" class="sr-only">{m['admin.audit.entriesLoaded']({ loaded: store.entries.length, total: store.total })}</div>
 
 		<div class="overflow-x-auto rounded-md border border-border">
-			<table class="w-full text-sm">
-				<thead class="bg-muted/50 text-left">
+			<table class="pv-table">
+				<thead>
 					<tr>
-						<th class="px-4 py-2 font-medium">{m['admin.audit.time']()}</th>
-						<th class="px-4 py-2 font-medium">{m['admin.audit.actor']()}</th>
-						<th class="px-4 py-2 font-medium">{m['common.cluster']()}</th>
-						<th class="px-4 py-2 font-medium">{m['admin.audit.columnVm']()}</th>
-						<th class="px-4 py-2 font-medium">{m['admin.audit.action']()}</th>
-						<th class="px-4 py-2 font-medium">{m['admin.audit.target']()}</th>
-						<th class="px-4 py-2 font-medium">{m['admin.audit.severity']()}</th>
-						<th class="px-4 py-2 font-medium">{m['admin.audit.detail']()}</th>
+						<th class="font-medium">{m['admin.audit.time']()}</th>
+						<th class="font-medium">{m['admin.audit.actor']()}</th>
+						<th class="font-medium">{m['common.cluster']()}</th>
+						<th class="font-medium">{m['admin.audit.columnVm']()}</th>
+						<th class="font-medium">{m['admin.audit.action']()}</th>
+						<th class="font-medium">{m['admin.audit.target']()}</th>
+						<th class="font-medium">{m['admin.audit.severity']()}</th>
+						<th class="font-medium">{m['admin.audit.detail']()}</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each store.entries as entry (entry.id)}
 						{@const summary = detailSummary(entry)}
 						<tr class="border-t border-border">
-							<td class="px-4 py-2 text-muted-foreground">{formatTimestamp(entry.timestamp)}</td>
-							<td class="px-4 py-2">{entry.actor}</td>
-							<td class="px-4 py-2">{entry.cluster}</td>
-							<td class="px-4 py-2">{entry.vmid ?? ''}</td>
-							<td class="px-4 py-2 font-mono">{entry.action}</td>
-							<td class="px-4 py-2">{entry.targetType ? `${entry.targetType}:${entry.targetId}` : ''}</td>
-							<td class="px-4 py-2">{entry.severity}</td>
-							<td class="px-4 py-2">
+							<td class="text-muted-foreground">{formatTimestamp(entry.timestamp)}</td>
+							<td>{entry.actor}</td>
+							<td>{entry.cluster}</td>
+							<td>{entry.vmid ?? ''}</td>
+							<td class="font-mono">{entry.action}</td>
+							<td>{entry.targetType ? `${entry.targetType}:${entry.targetId}` : ''}</td>
+							<td>{entry.severity}</td>
+							<td>
 								<button type="button" class="text-left hover:underline" onclick={() => selectedDetail = selectedDetail === entry.id ? null : entry.id}>
 									{summary}
 								</button>

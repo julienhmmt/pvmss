@@ -206,37 +206,37 @@
 			{/if}
 			<span class="ml-auto text-sm text-muted-foreground">{resultCountText}</span>
 		{/snippet}
-		<table class="pv-responsive-table w-full text-sm">
+		<table class="pv-table pv-responsive-table">
 			<caption class="sr-only">{m['admin.pools.heading']()}</caption>
-			<thead class="bg-muted/60 text-left text-sm font-medium text-muted-foreground">
+			<thead>
 				<tr>
 					<TableHeader text={m['common.name']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-					<th class="px-4 py-3 font-medium">{m['admin.pools.comment']()}</th>
+					<th class="font-medium">{m['admin.pools.comment']()}</th>
 					<TableHeader text={m['admin.pools.vmsColumn']()} tooltip={m['admin.pools.vmsTooltip']()} class="text-center" />
 					<TableHeader text={m['common.total']()} column="total" activeColumn={sortBy} {sortDir} onSort={handleSort} class="text-center" />
 					<TableHeader text={m['common.running']()} column="running" activeColumn={sortBy} {sortDir} onSort={handleSort} class="text-center" />
 					<TableHeader text={m['common.stopped']()} column="stopped" activeColumn={sortBy} {sortDir} onSort={handleSort} class="text-center" />
-					<th class="px-4 py-3 text-right font-medium">{m['common.actions']()}</th>
+					<th class="text-right font-medium">{m['common.actions']()}</th>
 				</tr>
 			</thead>
-			<tbody class="divide-y divide-border">
+			<tbody>
 				{#each filteredPools as pool (pool.name)}
 					<tr class="group transition-colors hover:bg-muted/40">
-						<td class="px-4 py-3.5 font-mono" data-label={m['common.name']()}>{pool.name}</td>
-						<td class="px-4 py-3.5 text-muted-foreground" data-label={m['admin.pools.comment']()}>
+						<td class="font-mono" data-label={m['common.name']()}>{pool.name}</td>
+						<td class="text-muted-foreground" data-label={m['admin.pools.comment']()}>
 							{#if pool.comment}
 								<span class="block max-w-xs truncate" title={pool.comment}>{pool.comment}</span>
 							{:else}
 								<span class="text-muted-foreground-subtle">—</span>
 							{/if}
 						</td>
-						<td class="px-4 py-3.5 text-center" data-label={m['admin.pools.vmsColumn']()}>
+						<td class="text-center" data-label={m['admin.pools.vmsColumn']()}>
 							<PoolVmBar running={pool.running} stopped={pool.stopped} total={pool.total} />
 						</td>
-						<td class="px-4 py-3.5 text-center font-mono tabular-nums" data-label={m['common.total']()}>{pool.total}</td>
-						<td class="px-4 py-3.5 text-center font-mono tabular-nums" data-label={m['common.running']()}>{pool.running}</td>
-						<td class="px-4 py-3.5 text-center font-mono tabular-nums" data-label={m['common.stopped']()}>{pool.stopped}</td>
-						<td class="px-4 py-3.5 text-right" data-label={m['common.actions']()} data-nolabel="true">
+						<td class="text-center font-mono tabular-nums" data-label={m['common.total']()}>{pool.total}</td>
+						<td class="text-center font-mono tabular-nums" data-label={m['common.running']()}>{pool.running}</td>
+						<td class="text-center font-mono tabular-nums" data-label={m['common.stopped']()}>{pool.stopped}</td>
+						<td class="text-right" data-label={m['common.actions']()} data-nolabel="true">
 							<Button
 								variant="ghost"
 								size="sm"

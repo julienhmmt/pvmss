@@ -87,25 +87,25 @@
 	{:else if store.tokens.length === 0}
 		<EmptyState title={m['profile.tokens.empty']()} class="mt-6" />
 	{:else}
-		<table class="mt-4 w-full border-collapse text-left text-sm">
+		<table class="pv-table mt-4">
 			<caption class="sr-only">{m['profile.tokens.caption']()}</caption>
 			<thead>
 				<tr class="border-b border-border">
-					<th scope="col" class="px-3 py-2 font-medium">{m['profile.tokens.columnLabel']()}</th>
-					<th scope="col" class="px-3 py-2 font-medium">{m['profile.tokens.columnScope']()}</th>
-					<th scope="col" class="px-3 py-2 font-medium">{m['profile.tokens.columnCreated']()}</th>
-					<th scope="col" class="px-3 py-2 font-medium">{m['profile.tokens.columnLastUsed']()}</th>
-					<th scope="col" class="px-3 py-2 font-medium"><span class="sr-only">{m['common.actions']()}</span></th>
+					<th scope="col" class="font-medium">{m['profile.tokens.columnLabel']()}</th>
+					<th scope="col" class="font-medium">{m['profile.tokens.columnScope']()}</th>
+					<th scope="col" class="font-medium">{m['profile.tokens.columnCreated']()}</th>
+					<th scope="col" class="font-medium">{m['profile.tokens.columnLastUsed']()}</th>
+					<th scope="col" class="font-medium"><span class="sr-only">{m['common.actions']()}</span></th>
 				</tr>
 			</thead>
 			<tbody>
 				{#each store.tokens as token (token.id)}
 					<tr class="border-b border-border last:border-0">
-						<td class="px-3 py-2 font-medium">{token.label}</td>
-						<td class="px-3 py-2 text-muted-foreground">{token.scope}</td>
-						<td class="px-3 py-2 text-muted-foreground">{new Date(token.createdAt).toLocaleString()}</td>
-						<td class="px-3 py-2 text-muted-foreground">{token.lastUsedAt ? new Date(token.lastUsedAt).toLocaleString() : m['profile.tokens.never']()}</td>
-						<td class="px-3 py-2 text-right">
+						<td class="font-medium">{token.label}</td>
+						<td class="text-muted-foreground">{token.scope}</td>
+						<td class="text-muted-foreground">{new Date(token.createdAt).toLocaleString()}</td>
+						<td class="text-muted-foreground">{token.lastUsedAt ? new Date(token.lastUsedAt).toLocaleString() : m['profile.tokens.never']()}</td>
+						<td class="text-right">
 							<Button
 							variant="ghost"
 							size="sm"

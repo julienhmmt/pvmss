@@ -8,6 +8,7 @@
 	import { VmSnapshotsStore, type VmSnapshot } from './snapshots.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 
 	const vmStore = getVmDetailContext();
 	const tray = getTaskTrayContext();
@@ -48,7 +49,7 @@
 		</div>
 		<div class="flex items-center gap-3">
 			<span class="rounded-full bg-muted px-3 py-1 text-sm font-medium" data-testid="snapshot-counter">{snapshots.snapshots.length}/{snapshots.maxSnapshots ?? m['common.dash']()}</span>
-			<button type="button" class="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90" onclick={() => (createOpen = true)} data-testid="snapshot-create-open">{m['vms.snapshots.createButton']()}</button>
+			<Button onclick={() => (createOpen = true)} data-testid="snapshot-create-open">{m['vms.snapshots.createButton']()}</Button>
 		</div>
 	</div>
 	{#if snapshots.maxSnapshots !== null && snapshots.snapshots.length >= snapshots.maxSnapshots}
@@ -63,16 +64,10 @@
 		<EmptyState
 			title={m['vms.snapshots.empty']()}
 			dataTestid="snapshot-empty"
-			class="mt-6 rounded-lg border border-dashed border-border py-6"
+			class="mt-6 rounded-xl border border-dashed border-border"
 		>
 			{#snippet actions()}
-				<button
-					type="button"
-					class="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-					onclick={() => (createOpen = true)}
-				>
-					{m['vms.snapshots.createButton']()}
-				</button>
+				<Button onclick={() => (createOpen = true)}>{m['vms.snapshots.createButton']()}</Button>
 			{/snippet}
 		</EmptyState>
 	{:else}

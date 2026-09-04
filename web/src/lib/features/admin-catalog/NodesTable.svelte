@@ -64,9 +64,9 @@
 	}
 </script>
 
-<table class="pv-responsive-table w-full text-sm">
+<table class="pv-table pv-responsive-table">
 	<caption class="sr-only">{m['admin.nodes.tableCaption']()}</caption>
-	<thead class="bg-muted/60 text-left text-sm font-medium text-muted-foreground">
+	<thead>
 		<tr>
 			<TableHeader
 				text={m['common.name']()}
@@ -112,15 +112,15 @@
 				{sortDir}
 				onSort={handleSort}
 			/>
-			<td class="px-4 py-3"><span class="sr-only">{m['admin.catalog.remove']()}</span></td>
+			<td><span class="sr-only">{m['admin.catalog.remove']()}</span></td>
 		</tr>
 	</thead>
-	<tbody class="divide-y divide-border">
+	<tbody>
 		{#each nodes as node (node.name)}
 			{@const cpuPct = Math.round(node.cpuUsage * 100)}
 			{@const memPct = memoryUsagePercent(node.memoryUsed, node.memoryTotal)}
 			<tr class="group transition-colors {node.missing ? 'opacity-60' : 'hover:bg-muted/40'}" data-testid="node-row" data-node-name={node.name}>
-				<td class="px-4 py-3.5 font-mono font-medium" data-label={m['common.name']()}>
+				<td class="font-mono font-medium" data-label={m['common.name']()}>
 					{node.name}{#if node.missing}
 						<span
 							class="ml-2 inline-flex items-center rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive"
@@ -130,17 +130,17 @@
 						</span>
 					{/if}
 				</td>
-				<td class="px-4 py-3.5" data-label={m['common.status']()}>
+				<td data-label={m['common.status']()}>
 					{#if node.missing}
 						<span class="text-xs text-muted-foreground">{m['admin.catalog.missingBadge']()}</span>
 					{:else}
 						<StatusDot tone={nodeStatusTone(node.status)} label={nodeStatusLabel(node.status)} />
 					{/if}
 				</td>
-				<td class="px-4 py-3.5 text-muted-foreground" data-label={m['common.vms']()}>
+				<td class="text-muted-foreground" data-label={m['common.vms']()}>
 					{node.vmCount}
 				</td>
-				<td class="px-4 py-3.5" data-label={m['common.cpu']()}>
+				<td data-label={m['common.cpu']()}>
 					{#if !node.missing}
 						<NodeUsageBar
 							value={node.cpuUsage}
@@ -148,7 +148,7 @@
 						/>
 					{/if}
 				</td>
-				<td class="px-4 py-3.5" data-label={m['common.memory']()}>
+				<td data-label={m['common.memory']()}>
 					{#if !node.missing}
 						<NodeUsageBar
 							value={node.memoryTotal > 0 ? node.memoryUsed / node.memoryTotal : 0}
@@ -160,7 +160,7 @@
 						/>
 					{/if}
 				</td>
-				<td class="px-4 py-3.5" data-label={m['admin.catalog.statusColumn']()}>
+				<td data-label={m['admin.catalog.statusColumn']()}>
 					{#if node.missing}
 						<span class="text-xs text-muted-foreground">{m['admin.catalog.missingBadge']()}</span>
 					{:else}
@@ -182,7 +182,7 @@
 						</span>
 					{/if}
 				</td>
-				<td class="px-4 py-3.5" data-label={m['admin.catalog.remove']()}>
+				<td data-label={m['admin.catalog.remove']()}>
 					{#if node.missing}
 						<Button
 							variant="ghost"

@@ -43,7 +43,7 @@
 	{#each region.items as toast (toast.id)}
 		<div
 			role={variantRole[toast.variant]}
-			class="toast-in pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-[0.625rem] border px-4 py-3 text-sm shadow-card {variantStyles[
+			class="toast-in pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-[var(--radius-control)] border px-4 py-3 text-sm shadow-overlay {variantStyles[
 				toast.variant
 			]}"
 			data-testid="toast"
