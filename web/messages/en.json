@@ -1307,7 +1307,7 @@
   "toast.vmDeleted": "VM \"{name}\" deleted",
   "toast.vmActionFailed": "Action failed: {error}",
   "toast.vmDeleteFailed": "Delete failed: {error}",
-  "toast.vmCreateQueued": "VM creation queued — tracking progress in Activity",
+  "toast.vmCreateQueued": "VM creation queued",
   "toast.vmCreateFailed": "VM creation failed: {error}",
   "toast.draftRestored": "Draft restored (saved {savedAt})",
   "login.brandTagline": "Self-service Proxmox VM management",

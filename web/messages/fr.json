@@ -1307,7 +1307,7 @@
   "toast.vmDeleted": "VM « {name} » supprimée",
   "toast.vmActionFailed": "Échec de l'action : {error}",
   "toast.vmDeleteFailed": "Échec de la suppression : {error}",
-  "toast.vmCreateQueued": "Création de VM en file — suivi dans Activité",
+  "toast.vmCreateQueued": "Création de VM en file",
   "toast.vmCreateFailed": "Échec de la création de VM : {error}",
   "toast.draftRestored": "Brouillon restauré (enregistré {savedAt})",
   "login.brandTagline": "Gestion auto-service des VM Proxmox",
