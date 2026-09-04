@@ -196,6 +196,17 @@ func setBootOrderForm(form url.Values, spec VMSpec) {
 	}
 }
 
+// resolveUEFIMachine forces q35 (UEFI requires q35 — pegaprox rule) unless
+// the caller already specified a non-i440fx/pc machine type. Shared with the
+// fake dataset so it mirrors the real create path exactly.
+func resolveUEFIMachine(machine string) string {
+	if machine == "" || machine == "i440fx" || machine == "pc" {
+		return "q35"
+	}
+
+	return machine
+}
+
 // setUEFIFormKeys emits the UEFI/TPM form keys when BIOS is ovmf (US6/issue-06
 // D6a). When BIOS is ovmf, machine is forced to q35 (UEFI requires q35 —
 // pegaprox rule), efidisk0 is provisioned on the disk's storage, and
@@ -203,18 +214,12 @@ func setBootOrderForm(form url.Values, spec VMSpec) {
 // preset bug where tpm_version was set without tpm_storage). Extracted from
 // CreateVM to keep its cyclomatic complexity under gocyclo's ceiling.
 func setUEFIFormKeys(form url.Values, spec VMSpec) {
-	if spec.BIOS != "ovmf" {
+	if spec.BIOS != biosOVMF {
 		return
 	}
 
-	form.Set("bios", "ovmf")
-
-	machine := spec.Machine
-	if machine == "" || machine == "i440fx" || machine == "pc" {
-		machine = "q35"
-	}
-
-	form.Set("machine", machine)
+	form.Set("bios", biosOVMF)
+	form.Set("machine", resolveUEFIMachine(spec.Machine))
 
 	efiStorage := spec.Disk.Storage
 	if efiStorage == "" {

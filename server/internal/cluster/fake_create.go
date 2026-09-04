@@ -97,6 +97,15 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 		})
 	}
 
+	// Mirrors setUEFIFormKeys (proxmox_create.go) so fake-created VMs are
+	// observable the same way a real create would be (US6/issue-06).
+	isUEFI := spec.BIOS == biosOVMF
+
+	var machine string
+	if isUEFI {
+		machine = resolveUEFIMachine(spec.Machine)
+	}
+
 	state.vms = append(state.vms, VM{
 		VMID:              spec.VMID,
 		Name:              spec.Name,
@@ -113,6 +122,10 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 		NetworkInterfaces: nics,
 		CDROM:             cdromFromSpec(spec),
 		BootOrder:         bootOrderFromSpec(spec),
+		BIOS:              spec.BIOS,
+		Machine:           machine,
+		EFIDisk:           isUEFI,
+		TPMState:          isUEFI && spec.TPM,
 	})
 
 	// The real create path always sends agent=1 (proxmox_create.go), so a

@@ -352,6 +352,15 @@ type VM struct {
 	// hydrateVM for the real client; the fake dataset sets it on creation
 	// (new VMs) and via EnableSerial (retrofit).
 	HasSerial bool
+	// BIOS is the firmware type ("ovmf" for UEFI, empty for legacy SeaBIOS).
+	// Machine and EFIDisk are set alongside it, TPMState alongside a
+	// requested TPM (US6/issue-06 D6a). Set by the fake dataset on creation;
+	// not hydrated by the real client — nothing currently reads these back
+	// from Proxmox.
+	BIOS     string
+	Machine  string
+	EFIDisk  bool
+	TPMState bool
 }
 
 // Storage is a storage backend attached to a node.

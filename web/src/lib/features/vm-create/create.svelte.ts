@@ -453,9 +453,10 @@ export class VmCreateStore {
 	ciGateway = $state('');
 	startAfterCreate = $state(true);
 	/** US6/issue-06: UEFI (bios=ovmf + q35 + efidisk0) and TPM 2.0 —
-	 *  detailed-mode only, off by default. TPM requires UEFI; the server
-	 *  rejects TPM-without-UEFI with ErrInvalidRequest. */
-	uefi = $state(false);
+	 *  detailed-mode only. UEFI defaults on (modern OSes expect UEFI boot);
+	 *  TPM stays opt-in. TPM requires UEFI; the server rejects
+	 *  TPM-without-UEFI with ErrInvalidRequest. */
+	uefi = $state(true);
 	tpm = $state(false);
 
 	/** Fetches the multi-cluster options and defaults to the first one, matching
@@ -749,12 +750,13 @@ export class VmCreateStore {
 			}
 		}
 
-		// US6/issue-06: UEFI/TPM are detailed-mode-only options. Only send
-		// them when true — the server defaults to seabios/no-TPM when absent.
-		if (this.uefi) {
-			request.uefi = true;
-			if (this.tpm) request.tpm = true;
-		}
+		// US6/issue-06: UEFI/TPM are detailed-mode-only options. UEFI is sent
+		// explicitly (true or false) so an unchecked box is honored — the
+		// server defaults to UEFI=true when the field is absent entirely
+		// (simple mode never sends it). TPM only sent when true; the server
+		// default there is already false.
+		request.uefi = this.uefi;
+		if (this.uefi && this.tpm) request.tpm = true;
 
 		return request;
 	}
@@ -857,7 +859,7 @@ export class VmCreateStore {
 		this.ciIpAddress = values.ciIpAddress ?? '';
 		this.ciGateway = values.ciGateway ?? '';
 		this.startAfterCreate = values.startAfterCreate;
-		this.uefi = values.uefi ?? false;
+		this.uefi = values.uefi ?? true;
 		this.tpm = values.tpm ?? false;
 	}
 }

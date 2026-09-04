@@ -475,7 +475,9 @@ func TestCreate_CloudInitTemplate_Applied(t *testing.T) {
 	tmplID := createTestTemplate(t, fixture.store)
 
 	cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", true)
-	t.Cleanup(func() { cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", false) })
+	t.Cleanup(func() {
+		cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", false)
+	})
 
 	req := detailedRequest()
 	req.CloudInitTemplateID = tmplID
@@ -571,7 +573,9 @@ func TestCreate_CloudInitTemplate_UsesPlanSnippetStorage(t *testing.T) {
 	finder := &fixedSnippetFinder{storage: "snippet-vol"}
 
 	cluster.SetFakeSnippetPresent(cluster.FakeNode01, "snippet-vol", "pvmss-template-"+tmplID+".yml", true)
-	t.Cleanup(func() { cluster.SetFakeSnippetPresent(cluster.FakeNode01, "snippet-vol", "pvmss-template-"+tmplID+".yml", false) })
+	t.Cleanup(func() {
+		cluster.SetFakeSnippetPresent(cluster.FakeNode01, "snippet-vol", "pvmss-template-"+tmplID+".yml", false)
+	})
 
 	req := detailedRequest()
 	req.CloudInitTemplateID = tmplID
@@ -724,7 +728,9 @@ func TestCreate_CloudInitTemplate_DeletedAfterUse(t *testing.T) {
 	tmplID := createTestTemplate(t, fixture.store)
 
 	cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", true)
-	t.Cleanup(func() { cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", false) })
+	t.Cleanup(func() {
+		cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", false)
+	})
 
 	req := detailedRequest()
 	req.CloudInitTemplateID = tmplID
@@ -1198,20 +1204,96 @@ func TestCreate_UEFI_ProvisionsEFIDisk(t *testing.T) {
 
 	req := detailedRequest()
 	req.Name = "uefi-vm"
-	req.UEFI = true
+	req.UEFI = new(true)
 
 	result, err := fixture.create(t, aliceIdentity(), req)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
-	if result.VMID < 1 || result.UPID == "" {
-		t.Fatalf("unexpected result: %+v", result)
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM %d not found in snapshot", result.VMID)
+	}
+
+	got := snap.VMs[idx]
+	if got.BIOS != "ovmf" || got.Machine != "q35" || !got.EFIDisk {
+		t.Errorf("bios=%q machine=%q efidisk=%v, want ovmf/q35/true", got.BIOS, got.Machine, got.EFIDisk)
+	}
+
+	if got.TPMState {
+		t.Errorf("tpmstate = true, want false (TPM not requested)")
+	}
+}
+
+// TestCreate_UEFI_DefaultsToTrueWhenOmitted asserts that a request that
+// never sets UEFI still provisions bios=ovmf (US6/issue-06: default-on).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_UEFI_DefaultsToTrueWhenOmitted(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	req := detailedRequest()
+	req.Name = "uefi-default-vm"
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM %d not found in snapshot", result.VMID)
+	}
+
+	if got := snap.VMs[idx].BIOS; got != "ovmf" {
+		t.Errorf("bios = %q, want ovmf (UEFI defaults to true when omitted)", got)
+	}
+}
+
+// TestCreate_UEFI_ExplicitFalseStaysSeaBIOS asserts that explicitly
+// disabling UEFI is honored, not overridden by the default.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_UEFI_ExplicitFalseStaysSeaBIOS(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	req := detailedRequest()
+	req.Name = "seabios-vm"
+	req.UEFI = new(false)
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM %d not found in snapshot", result.VMID)
+	}
+
+	if got := snap.VMs[idx]; got.BIOS != "" || got.EFIDisk {
+		t.Errorf("bios=%q efidisk=%v, want empty/false (explicit UEFI=false)", got.BIOS, got.EFIDisk)
 	}
 }
 
 // TestCreate_UEFI_WithTPM_ProvisionsTPMState asserts that UEFI+TPM is
-// accepted and the VM is created (the cluster layer emits tpmstate0).
+// accepted and the cluster layer emits tpmstate0.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_UEFI_WithTPM_ProvisionsTPMState(t *testing.T) {
@@ -1219,7 +1301,7 @@ func TestCreate_UEFI_WithTPM_ProvisionsTPMState(t *testing.T) {
 
 	req := detailedRequest()
 	req.Name = "uefi-tpm-vm"
-	req.UEFI = true
+	req.UEFI = new(true)
 	req.TPM = true
 
 	result, err := fixture.create(t, aliceIdentity(), req)
@@ -1227,8 +1309,18 @@ func TestCreate_UEFI_WithTPM_ProvisionsTPMState(t *testing.T) {
 		t.Fatalf("Create: %v", err)
 	}
 
-	if result.VMID < 1 || result.UPID == "" {
-		t.Fatalf("unexpected result: %+v", result)
+	snap, err := fixture.fake.Snapshot(context.Background())
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
+	if idx < 0 {
+		t.Fatalf("created VM %d not found in snapshot", result.VMID)
+	}
+
+	if got := snap.VMs[idx]; !got.TPMState {
+		t.Errorf("tpmstate = false, want true")
 	}
 }
 
@@ -1243,7 +1335,7 @@ func TestCreate_TPM_WithoutUEFI_Rejected(t *testing.T) {
 	req := detailedRequest()
 	req.Name = "tpm-no-uefi"
 	req.TPM = true
-	req.UEFI = false
+	req.UEFI = new(false)
 
 	_, err := fixture.create(t, aliceIdentity(), req)
 	if !errors.Is(err, vm.ErrInvalidRequest) {

@@ -145,11 +145,13 @@ type CreateRequest struct {
 	TemplateID          int            `json:"templateId,omitempty"`
 	Image               *ImageRequest  `json:"image,omitempty"`
 	// UEFI requests bios=ovmf + machine=q35 + efidisk0 (US6/issue-06 D6a).
-	// TPM requests tpmstate0 alongside the EFI disk; ignored when UEFI is
-	// false — TPM 2.0 requires UEFI.
-	UEFI             bool `json:"uefi,omitempty"`
-	TPM              bool `json:"tpm,omitempty"`
-	StartAfterCreate bool `json:"startAfterCreate,omitempty"`
+	// Pointer so "omitted" (default true — modern OSes expect UEFI boot) is
+	// distinguishable from an explicit false (legacy SeaBIOS). TPM requests
+	// tpmstate0 alongside the EFI disk; ignored when UEFI is false — TPM 2.0
+	// requires UEFI. TPM stays off by default even though UEFI doesn't.
+	UEFI             *bool `json:"uefi,omitempty"`
+	TPM              bool  `json:"tpm,omitempty"`
+	StartAfterCreate bool  `json:"startAfterCreate,omitempty"`
 }
 
 // DiskRequest is the request's single initial disk.
@@ -1277,11 +1279,21 @@ func checkName(policyService *policy.Policy, pool, name string) error {
 	return nil
 }
 
+// resolveUEFI defaults UEFI to true when the request omits it (US6/issue-06:
+// modern OSes expect UEFI boot). An explicit false selects legacy SeaBIOS.
+func resolveUEFI(req CreateRequest) bool {
+	if req.UEFI == nil {
+		return true
+	}
+
+	return *req.UEFI
+}
+
 // checkUEFICompat rejects the impossible TPM-without-UEFI combination early
 // (US6/issue-06 D6a: TPM 2.0 requires UEFI). Extracted from planCreate to
 // keep its cyclomatic complexity under gocyclo's ceiling.
 func checkUEFICompat(req CreateRequest) error {
-	if req.TPM && !req.UEFI {
+	if req.TPM && !resolveUEFI(req) {
 		return fmt.Errorf("%w: tpm requires uefi", ErrInvalidRequest)
 	}
 
@@ -1366,7 +1378,7 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 		node: node, storage: storage, snippetStorage: snippetStorage,
 		sockets: sockets, cpuCores: cpuCores,
 		memoryMB: memoryMB, diskGB: diskGB, bus: bus, nics: nics,
-		isolationVLANTag: vlanTag, uefi: req.UEFI, tpm: req.TPM,
+		isolationVLANTag: vlanTag, uefi: resolveUEFI(req), tpm: req.TPM,
 		imageSizeGB: imageSizeGB,
 	}, nil
 }
