@@ -42,6 +42,19 @@
 	function handleSort(column: BridgeSortColumn): void {
 		store.setBridgeSort(column);
 	}
+
+	function handleRemove(node: string, name: string): void {
+		void performRemove(node, name);
+	}
+
+	async function performRemove(node: string, name: string): Promise<void> {
+		try {
+			await store.removeBridge(node, name);
+			toast.success(m['admin.bridges.removeSuccess']({ name, node }));
+		} catch {
+			toast.error(m['admin.catalog.removeBridgeError']());
+		}
+	}
 </script>
 
 <svelte:head>
@@ -114,6 +127,7 @@
 				bridges={store.filteredBridges}
 				toggling={store.toggling}
 				onToggle={handleToggle}
+				onRemove={handleRemove}
 				sortBy={store.bridgeSortBy}
 				sortDir={store.bridgeSortDir}
 				onSort={handleSort}

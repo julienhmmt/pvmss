@@ -70,6 +70,19 @@
 	function handleSort(column: NodeSortColumn): void {
 		store.setNodeSort(column);
 	}
+
+	function handleRemove(name: string): void {
+		void performRemove(name);
+	}
+
+	async function performRemove(name: string): Promise<void> {
+		try {
+			await store.removeNode(name);
+			toast.success(m['admin.nodes.removeSuccess']({ name }));
+		} catch {
+			toast.error(m['admin.catalog.removeNodeError']());
+		}
+	}
 </script>
 
 <svelte:head>
@@ -144,6 +157,7 @@
 				sortBy={store.nodeSortBy}
 				sortDir={store.nodeSortDir}
 				onToggle={handleToggle}
+				onRemove={handleRemove}
 				onSort={handleSort}
 			/>
 		</TableCard>

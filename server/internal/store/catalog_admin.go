@@ -177,6 +177,43 @@ func (s *Store) SetISOEnabled(ctx context.Context, cluster, node, storage, file 
 	)
 }
 
+// DeleteNode removes a node approval row. Returns sql.ErrNoRows if the node
+// did not exist — used to drop an orphan approval whose node Proxmox no longer
+// reports.
+func (s *Store) DeleteNode(ctx context.Context, cluster, name string) error {
+	return execUpdateOne(ctx, s.db,
+		`DELETE FROM catalog_nodes WHERE cluster = ? AND name = ?`,
+		[]any{cluster, name},
+	)
+}
+
+// DeleteStorage removes a storage approval row. Returns sql.ErrNoRows if the
+// (name, node) pair did not exist.
+func (s *Store) DeleteStorage(ctx context.Context, cluster, name, node string) error {
+	return execUpdateOne(ctx, s.db,
+		`DELETE FROM catalog_storages WHERE cluster = ? AND name = ? AND node = ?`,
+		[]any{cluster, name, node},
+	)
+}
+
+// DeleteBridge removes a bridge approval row. Returns sql.ErrNoRows if the
+// (node, name) pair did not exist.
+func (s *Store) DeleteBridge(ctx context.Context, cluster, node, name string) error {
+	return execUpdateOne(ctx, s.db,
+		`DELETE FROM catalog_bridges WHERE cluster = ? AND node = ? AND name = ?`,
+		[]any{cluster, node, name},
+	)
+}
+
+// DeleteISO removes an ISO approval row. Returns sql.ErrNoRows if the
+// (node, storage, file) triple did not exist.
+func (s *Store) DeleteISO(ctx context.Context, cluster, node, storage, file string) error {
+	return execUpdateOne(ctx, s.db,
+		`DELETE FROM catalog_isos WHERE cluster = ? AND node = ? AND storage = ? AND file = ?`,
+		[]any{cluster, node, storage, file},
+	)
+}
+
 // SetProfileEnabled updates the enabled state for one profile. Returns
 // sql.ErrNoRows if the profile does not exist (the catalog layer maps this to
 // ErrProfileNotFound) — guards against a delete between the catalog layer's

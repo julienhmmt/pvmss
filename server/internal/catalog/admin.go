@@ -4,12 +4,17 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/store"
 	"slices"
 )
 
 // NodeApproval is one discovered node with its admin approval state.
+// Missing is true for a stored approval whose node Proxmox no longer reports
+// — the row stays listed (greyed out) so the admin can remove it. Only
+// disabled orphans are surfaced; enabled orphans are auto-removed since they
+// would otherwise be offered to users on a node that no longer exists.
 type NodeApproval struct {
 	Name         string
 	Status       string
@@ -21,9 +26,12 @@ type NodeApproval struct {
 	StorageUsed  int64
 	VMCount      int
 	Enabled      bool
+	Missing      bool
 }
 
 // StorageApproval is one discovered storage with its admin approval state.
+// Missing is true for a stored approval whose storage Proxmox no longer
+// reports (see NodeApproval for the enabled-orphan auto-remove rule).
 type StorageApproval struct {
 	Name    string
 	Node    string
@@ -31,24 +39,31 @@ type StorageApproval struct {
 	Total   int64
 	Used    int64
 	Enabled bool
+	Missing bool
 }
 
 // BridgeApproval is one discovered bridge with its admin approval state.
+// Missing is true for a stored approval whose bridge Proxmox no longer
+// reports (see NodeApproval for the enabled-orphan auto-remove rule).
 type BridgeApproval struct {
 	Name    string
 	Node    string
 	Active  bool
 	Comment string
 	Enabled bool
+	Missing bool
 }
 
 // ISOApproval is one discovered ISO with its admin approval state.
+// Missing is true for a stored approval whose ISO file Proxmox no longer
+// reports (see NodeApproval for the enabled-orphan auto-remove rule).
 type ISOApproval struct {
 	Storage   string
 	Node      string
 	File      string
 	SizeBytes int64
 	Enabled   bool
+	Missing   bool
 }
 
 // TemplateApproval is one discovered Proxmox template with its admin approval
@@ -78,20 +93,29 @@ type TemplateApproval struct {
 // AdminListNodes returns every node the cluster reports, unioned with its
 // stored approval state. A node with no catalog row reports enabled=false
 // (FR-001: every resource, not only approved ones).
+//
+// Stored approvals whose node Proxmox no longer reports are orphans: an
+// enabled orphan is auto-removed (it would otherwise be offered to users on a
+// node that no longer exists), a disabled orphan is surfaced with Missing=true
+// so the admin can remove it.
 func AdminListNodes(ctx context.Context, st *store.Store, client cluster.Client, clusterName string) ([]NodeApproval, error) {
 	snap, err := client.Snapshot(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	enabledMap, err := st.CatalogNodesEnabled(ctx, clusterName)
+	enabledRows, err := st.CatalogNodesEnabled(ctx, clusterName)
 	if err != nil {
 		return nil, err
 	}
 
-	enabledByName := make(map[string]bool, len(enabledMap))
-	for _, n := range enabledMap {
+	enabledByName := make(map[string]bool, len(enabledRows))
+	discoveredByName := make(map[string]bool, len(snap.Nodes))
+	for _, n := range enabledRows {
 		enabledByName[n.Name] = n.Enabled
+	}
+	for _, node := range snap.Nodes {
+		discoveredByName[node.Name] = true
 	}
 
 	// Count VMs per node from the snapshot.
@@ -100,7 +124,7 @@ func AdminListNodes(ctx context.Context, st *store.Store, client cluster.Client,
 		vmCountByNode[vm.Node]++
 	}
 
-	out := make([]NodeApproval, 0, len(snap.Nodes))
+	out := make([]NodeApproval, 0, len(snap.Nodes)+len(enabledRows))
 	for _, node := range snap.Nodes {
 		out = append(out, NodeApproval{
 			Name:         node.Name,
@@ -116,11 +140,34 @@ func AdminListNodes(ctx context.Context, st *store.Store, client cluster.Client,
 		})
 	}
 
+	if err := appendOrphanNodes(ctx, st, clusterName, enabledRows, discoveredByName, &out); err != nil {
+		return nil, err
+	}
+
 	return out, nil
 }
 
-// AdminListStorages returns every storage the cluster reports, unioned with
-// its stored approval state per (name, node) pair.
+// appendOrphanNodes surfaces disabled orphan approvals (Missing=true) and
+// auto-removes enabled orphan approvals. It appends to out.
+func appendOrphanNodes(ctx context.Context, st *store.Store, clusterName string, rows []store.CatalogNodeEnabled, discovered map[string]bool, out *[]NodeApproval) error {
+	for _, row := range rows {
+		if discovered[row.Name] {
+			continue
+		}
+		if row.Enabled {
+			if err := st.DeleteNode(ctx, clusterName, row.Name); err != nil {
+				return fmt.Errorf("auto-remove orphan node %q: %w", row.Name, err)
+			}
+			continue
+		}
+		*out = append(*out, NodeApproval{Name: row.Name, Enabled: false, Missing: true})
+	}
+	return nil
+}
+
+// AdminListStorages returns every VM-capable storage the cluster reports,
+// unioned with its stored approval state per (name, node) pair. Orphan
+// approvals (storage gone from Proxmox) are handled as in AdminListNodes.
 func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Client, clusterName string) ([]StorageApproval, error) {
 	snap, err := client.Snapshot(ctx)
 	if err != nil {
@@ -133,11 +180,18 @@ func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Clie
 	}
 
 	enabledByKey := make(map[storageKey]bool, len(enabledRows))
+	discoveredByKey := make(map[storageKey]bool, len(snap.Storages))
 	for _, s := range enabledRows {
 		enabledByKey[storageKey{Name: s.Name, Node: s.Node}] = s.Enabled
 	}
+	for _, storage := range snap.Storages {
+		if !cluster.IsVMCapableStorage(storage) {
+			continue
+		}
+		discoveredByKey[storageKey{Name: storage.Name, Node: storage.Node}] = true
+	}
 
-	out := make([]StorageApproval, 0, len(snap.Storages))
+	out := make([]StorageApproval, 0, len(snap.Storages)+len(enabledRows))
 	for _, storage := range snap.Storages {
 		if !cluster.IsVMCapableStorage(storage) {
 			continue
@@ -153,11 +207,35 @@ func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Clie
 		})
 	}
 
+	if err := appendOrphanStorages(ctx, st, clusterName, enabledRows, discoveredByKey, &out); err != nil {
+		return nil, err
+	}
+
 	return out, nil
 }
 
+// appendOrphanStorages surfaces disabled orphan approvals (Missing=true) and
+// auto-removes enabled orphan approvals.
+func appendOrphanStorages(ctx context.Context, st *store.Store, clusterName string, rows []store.CatalogStorageEnabled, discovered map[storageKey]bool, out *[]StorageApproval) error {
+	for _, row := range rows {
+		key := storageKey{Name: row.Name, Node: row.Node}
+		if discovered[key] {
+			continue
+		}
+		if row.Enabled {
+			if err := st.DeleteStorage(ctx, clusterName, row.Name, row.Node); err != nil {
+				return fmt.Errorf("auto-remove orphan storage %q on %q: %w", row.Name, row.Node, err)
+			}
+			continue
+		}
+		*out = append(*out, StorageApproval{Name: row.Name, Node: row.Node, Enabled: false, Missing: true})
+	}
+	return nil
+}
+
 // AdminListBridges returns every bridge the cluster reports, unioned with its
-// stored approval state per (node, name) pair.
+// stored approval state per (node, name) pair. Orphan approvals (bridge gone
+// from Proxmox) are handled as in AdminListNodes.
 func AdminListBridges(ctx context.Context, st *store.Store, client cluster.Client, clusterName string) ([]BridgeApproval, error) {
 	discovered, err := client.ListBridges(ctx)
 	if err != nil {
@@ -170,11 +248,15 @@ func AdminListBridges(ctx context.Context, st *store.Store, client cluster.Clien
 	}
 
 	enabledByKey := make(map[bridgeKey]bool, len(enabledRows))
+	discoveredByKey := make(map[bridgeKey]bool, len(discovered))
 	for _, b := range enabledRows {
 		enabledByKey[bridgeKey{Name: b.Name, Node: b.Node}] = b.Enabled
 	}
+	for _, bridge := range discovered {
+		discoveredByKey[bridgeKey{Name: bridge.Name, Node: bridge.Node}] = true
+	}
 
-	out := make([]BridgeApproval, 0, len(discovered))
+	out := make([]BridgeApproval, 0, len(discovered)+len(enabledRows))
 	for _, bridge := range discovered {
 		out = append(out, BridgeApproval{
 			Name:    bridge.Name,
@@ -185,11 +267,37 @@ func AdminListBridges(ctx context.Context, st *store.Store, client cluster.Clien
 		})
 	}
 
+	if err := appendOrphanBridges(ctx, st, clusterName, enabledRows, discoveredByKey, &out); err != nil {
+		return nil, err
+	}
+
 	return out, nil
 }
 
+// appendOrphanBridges surfaces disabled orphan approvals (Missing=true) and
+// auto-removes enabled orphan approvals.
+func appendOrphanBridges(ctx context.Context, st *store.Store, clusterName string, rows []store.CatalogBridgeEnabled, discovered map[bridgeKey]bool, out *[]BridgeApproval) error {
+	for _, row := range rows {
+		key := bridgeKey{Name: row.Name, Node: row.Node}
+		if discovered[key] {
+			continue
+		}
+		if row.Enabled {
+			if err := st.DeleteBridge(ctx, clusterName, row.Node, row.Name); err != nil {
+				return fmt.Errorf("auto-remove orphan bridge %q on %q: %w", row.Name, row.Node, err)
+			}
+			continue
+		}
+		*out = append(*out, BridgeApproval{Name: row.Name, Node: row.Node, Enabled: false, Missing: true})
+	}
+	return nil
+}
+
 // AdminListISOs returns every ISO the cluster reports, unioned with its stored
-// approval state keyed by (node, storage, file).
+// approval state keyed by (node, storage, file). Orphan approvals (ISO file
+// gone from Proxmox) are handled as in AdminListNodes: enabled orphans are
+// auto-removed (a vanished ISO cannot be used and would mislead users),
+// disabled orphans are surfaced with Missing=true for manual removal.
 func AdminListISOs(ctx context.Context, st *store.Store, client cluster.Client, clusterName string) ([]ISOApproval, error) {
 	discovered, err := client.ListISOs(ctx)
 	if err != nil {
@@ -202,11 +310,15 @@ func AdminListISOs(ctx context.Context, st *store.Store, client cluster.Client, 
 	}
 
 	enabledByKey := make(map[isoKey]bool, len(enabledRows))
+	discoveredByKey := make(map[isoKey]bool, len(discovered))
 	for _, i := range enabledRows {
 		enabledByKey[isoKey{Node: i.Node, Storage: i.Storage, File: i.File}] = i.Enabled
 	}
+	for _, iso := range discovered {
+		discoveredByKey[isoKey{Node: iso.Node, Storage: iso.Storage, File: iso.File}] = true
+	}
 
-	out := make([]ISOApproval, 0, len(discovered))
+	out := make([]ISOApproval, 0, len(discovered)+len(enabledRows))
 	for _, iso := range discovered {
 		out = append(out, ISOApproval{
 			Storage:   iso.Storage,
@@ -217,7 +329,30 @@ func AdminListISOs(ctx context.Context, st *store.Store, client cluster.Client, 
 		})
 	}
 
+	if err := appendOrphanISOs(ctx, st, clusterName, enabledRows, discoveredByKey, &out); err != nil {
+		return nil, err
+	}
+
 	return out, nil
+}
+
+// appendOrphanISOs surfaces disabled orphan approvals (Missing=true) and
+// auto-removes enabled orphan approvals.
+func appendOrphanISOs(ctx context.Context, st *store.Store, clusterName string, rows []store.CatalogISOEnabled, discovered map[isoKey]bool, out *[]ISOApproval) error {
+	for _, row := range rows {
+		key := isoKey{Node: row.Node, Storage: row.Storage, File: row.File}
+		if discovered[key] {
+			continue
+		}
+		if row.Enabled {
+			if err := st.DeleteISO(ctx, clusterName, row.Node, row.Storage, row.File); err != nil {
+				return fmt.Errorf("auto-remove orphan iso %q on %q: %w", row.File, row.Node, err)
+			}
+			continue
+		}
+		*out = append(*out, ISOApproval{Storage: row.Storage, Node: row.Node, File: row.File, Enabled: false, Missing: true})
+	}
+	return nil
 }
 
 // AdminListTemplates returns every Proxmox template the cluster reports,
@@ -515,6 +650,60 @@ func SetISOEnabled(ctx context.Context, st *store.Store, client cluster.Client, 
 	}
 
 	return st.SetISOEnabled(ctx, clusterName, ref.Node, ref.Storage, ref.File, enabled)
+}
+
+// ErrNodeNotFound is returned when a node approval row does not exist for the
+// cluster (removing an orphan approval whose node was deleted in Proxmox).
+var ErrNodeNotFound = errors.New("node not found")
+
+// ErrStorageNotFound is returned when a storage approval row does not exist.
+var ErrStorageNotFound = errors.New("storage not found")
+
+// ErrBridgeNotFound is returned when a bridge approval row does not exist.
+var ErrBridgeNotFound = errors.New("bridge not found")
+
+// ErrISONotFound is returned when an ISO approval row does not exist.
+var ErrISONotFound = errors.New("iso not found")
+
+// DeleteNode removes a node approval row. Returns ErrNodeNotFound when the
+// cluster has no approval for the node — the admin UI offers Remove only on
+// missing (orphaned) rows, but the API deletes any approval row.
+func DeleteNode(ctx context.Context, st *store.Store, cluster, name string) error {
+	err := st.DeleteNode(ctx, cluster, name)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNodeNotFound
+	}
+	return err
+}
+
+// DeleteStorage removes a storage approval row. Returns ErrStorageNotFound when
+// the cluster has no approval for the (name, node) pair.
+func DeleteStorage(ctx context.Context, st *store.Store, cluster, name, node string) error {
+	err := st.DeleteStorage(ctx, cluster, name, node)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrStorageNotFound
+	}
+	return err
+}
+
+// DeleteBridge removes a bridge approval row. Returns ErrBridgeNotFound when
+// the cluster has no approval for the (node, name) pair.
+func DeleteBridge(ctx context.Context, st *store.Store, cluster, node, name string) error {
+	err := st.DeleteBridge(ctx, cluster, node, name)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrBridgeNotFound
+	}
+	return err
+}
+
+// DeleteISO removes an ISO approval row. Returns ErrISONotFound when the
+// cluster has no approval for the (node, storage, file) triple.
+func DeleteISO(ctx context.Context, st *store.Store, cluster, node, storage, file string) error {
+	err := st.DeleteISO(ctx, cluster, node, storage, file)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrISONotFound
+	}
+	return err
 }
 
 // nodeDiscovered reports whether the cluster reports a node with the given

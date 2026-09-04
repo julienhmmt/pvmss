@@ -266,6 +266,7 @@ type catalogData struct {
 	resources        catalog.Resources
 	snap             cluster.Snapshot
 	bridges          []cluster.Bridge
+	isos             []cluster.ISOImage
 	profiles         []catalog.Profile
 	templates        []catalog.CloudInitTemplate
 	proxmoxTemplates []catalog.Template
@@ -298,6 +299,13 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 	}
 
 	data.bridges = bridges
+
+	isos, err := client.ListISOs(ctx)
+	if err != nil {
+		return catalogData{}, fmt.Errorf("iso discovery: %w", err)
+	}
+
+	data.isos = isos
 
 	profiles, err := catalog.Profiles(ctx, h.store, clusterName)
 	if err != nil {
@@ -334,7 +342,22 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 }
 
 // buildCatalogDTO maps the raw catalog data into the response contract.
+// Approved resources are filtered against live discovery: a node, storage,
+// bridge, or ISO that Proxmox no longer reports is dropped from the user-facing
+// catalog even if its approval row still exists in the store (the admin list
+// surfaces those orphans for manual cleanup, and enabled orphans are
+// auto-removed there).
 func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
+	discoveredNodes := make(map[string]bool, len(data.snap.Nodes))
+	for _, n := range data.snap.Nodes {
+		discoveredNodes[n.Name] = true
+	}
+
+	discoveredISOs := make(map[isoDiscoveryKey]bool, len(data.isos))
+	for _, i := range data.isos {
+		discoveredISOs[isoDiscoveryKey{Node: i.Node, Storage: i.Storage, File: i.File}] = true
+	}
+
 	dto := catalogDTO{
 		Cluster:            clusterName,
 		Nodes:              make([]string, 0, len(data.resources.Nodes)),
@@ -348,6 +371,9 @@ func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
 	}
 
 	for _, node := range data.resources.Nodes {
+		if !discoveredNodes[node.Name] {
+			continue
+		}
 		dto.Nodes = append(dto.Nodes, node.Name)
 	}
 
@@ -368,6 +394,9 @@ func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
 	}
 
 	for _, iso := range data.resources.ISOs {
+		if !discoveredISOs[isoDiscoveryKey{Node: iso.Node, Storage: iso.Storage, File: iso.File}] {
+			continue
+		}
 		dto.ISOs = append(dto.ISOs, catalogISODTO{Storage: iso.Storage, Node: iso.Node, File: iso.File})
 	}
 
@@ -618,18 +647,30 @@ func vmCapableStorage(storage catalog.Storage, available []cluster.Storage) (clu
 	return cluster.Storage{}, false
 }
 
+// isoDiscoveryKey is a composite map key for ISOs, avoiding string-concat
+// collisions when a storage or file contains ":".
+type isoDiscoveryKey struct {
+	Node    string
+	Storage string
+	File    string
+}
+
 // catalogBridgeDTOs dedupes by (name, node) — the same bridge name can be
 // approved on more than one node, and each is a distinct, independently
 // selectable option (bridge approval is per-node, like storage). live carries
 // the cluster's current network config, which is where the description
 // (Proxmox "comments" field) actually lives — catalog_bridges only stores
-// the approval, not the comment.
+// the approval, not the comment. Bridges absent from live (orphan approvals
+// whose bridge Proxmox no longer reports) are dropped so users never see a
+// bridge they cannot actually use.
 func catalogBridgeDTOs(bridges []catalog.Bridge, live []cluster.Bridge) []catalogBridgeDTO {
 	type key struct{ name, node string }
 
 	commentByKey := make(map[key]string, len(live))
+	liveByKey := make(map[key]bool, len(live))
 	for _, bridge := range live {
 		commentByKey[key{bridge.Name, bridge.Node}] = bridge.Comment
+		liveByKey[key{bridge.Name, bridge.Node}] = true
 	}
 
 	out := make([]catalogBridgeDTO, 0, len(bridges))
@@ -638,6 +679,9 @@ func catalogBridgeDTOs(bridges []catalog.Bridge, live []cluster.Bridge) []catalo
 	for _, bridge := range bridges {
 		k := key{bridge.Name, bridge.Node}
 		if _, exists := seen[k]; exists {
+			continue
+		}
+		if !liveByKey[k] {
 			continue
 		}
 
