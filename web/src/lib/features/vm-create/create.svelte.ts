@@ -509,6 +509,16 @@ export class VmCreateStore {
 			if (this.storageAdjusted && this.storage !== '') {
 				request.disk = { storage: this.storage };
 			}
+			if (this.isoFile !== '') {
+				// When the node is adjusted, only an ISO on that node is valid
+				// (the server rejects a mismatch with ErrNotApproved). When auto,
+				// send any matching file — the server restricts candidate nodes
+				// to those that hold the ISO (resolveResources/nodesWithISO).
+				const iso = this.catalog?.isos.find(
+					(entry) => entry.file === this.isoFile && (!this.nodeAdjusted || entry.node === this.node)
+				);
+				if (iso !== undefined) request.iso = { storage: iso.storage, file: iso.file };
+			}
 			return request;
 		}
 		return this.buildDetailedRequest(request);

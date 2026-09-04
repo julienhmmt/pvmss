@@ -46,7 +46,10 @@ describe('VmCreateStore.buildRequest in simple mode', () => {
 			nodes: ['pve-node-01'],
 			storages: [{ name: 'local-lvm', node: 'pve-node-01' }],
 			bridges: [],
-			isos: [],
+			isos: [
+				{ storage: 'local', node: 'pve-node-01', file: 'debian-12.iso' },
+				{ storage: 'local', node: 'pve-node-02', file: 'ubuntu-24.04.iso' }
+			],
 			profiles: [
 				{ id: 'small', label: 'Small', sockets: 1, cpuCores: 1, memoryMB: 2048, diskGB: 20, bus: 'scsi' }
 			],
@@ -76,6 +79,59 @@ describe('VmCreateStore.buildRequest in simple mode', () => {
 			cloudInitTemplateId: 'ci-01',
 			node: 'pve-node-01',
 			disk: { storage: 'local-lvm' },
+			startAfterCreate: true
+		});
+	});
+
+	it('builds a profile request with an ISO (auto node — server places on an ISO-holding node)', () => {
+		const store = new VmCreateStore();
+		store.catalog = catalog();
+		store.name = 'web-04';
+		store.profileId = 'small';
+		store.isoFile = 'ubuntu-24.04.iso';
+
+		expect(store.buildRequest()).toEqual({
+			cluster: 'default',
+			name: 'web-04',
+			profileId: 'small',
+			iso: { storage: 'local', file: 'ubuntu-24.04.iso' },
+			startAfterCreate: true
+		});
+	});
+
+	it('builds a profile request with an ISO on the adjusted node', () => {
+		const store = new VmCreateStore();
+		store.catalog = catalog();
+		store.name = 'web-04';
+		store.profileId = 'small';
+		store.isoFile = 'debian-12.iso';
+		store.nodeAdjusted = true;
+		store.node = 'pve-node-01';
+
+		expect(store.buildRequest()).toEqual({
+			cluster: 'default',
+			name: 'web-04',
+			profileId: 'small',
+			node: 'pve-node-01',
+			iso: { storage: 'local', file: 'debian-12.iso' },
+			startAfterCreate: true
+		});
+	});
+
+	it('omits the ISO when the adjusted node does not hold it', () => {
+		const store = new VmCreateStore();
+		store.catalog = catalog();
+		store.name = 'web-04';
+		store.profileId = 'small';
+		store.isoFile = 'ubuntu-24.04.iso';
+		store.nodeAdjusted = true;
+		store.node = 'pve-node-01';
+
+		expect(store.buildRequest()).toEqual({
+			cluster: 'default',
+			name: 'web-04',
+			profileId: 'small',
+			node: 'pve-node-01',
 			startAfterCreate: true
 		});
 	});
