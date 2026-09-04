@@ -382,7 +382,9 @@ func TestCreate_TemplateClone_CloudInitAppliedAfterTask(t *testing.T) {
 	tmplID := createTestTemplate(t, fixture.store)
 
 	cluster.SetFakeSnippetPresent(cluster.FakeNode02, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", true)
-	t.Cleanup(func() { cluster.SetFakeSnippetPresent(cluster.FakeNode02, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", false) })
+	t.Cleanup(func() {
+		cluster.SetFakeSnippetPresent(cluster.FakeNode02, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", false)
+	})
 
 	req := templateRequest(9000)
 	req.CloudInitTemplateID = tmplID
@@ -437,7 +439,9 @@ func TestCreate_TemplateClone_StartAfterCreateWithCloudInit(t *testing.T) {
 	tmplID := createTestTemplate(t, fixture.store)
 
 	cluster.SetFakeSnippetPresent(cluster.FakeNode02, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", true)
-	t.Cleanup(func() { cluster.SetFakeSnippetPresent(cluster.FakeNode02, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", false) })
+	t.Cleanup(func() {
+		cluster.SetFakeSnippetPresent(cluster.FakeNode02, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", false)
+	})
 
 	req := templateRequest(9000)
 	req.CloudInitTemplateID = tmplID

@@ -11,10 +11,10 @@ import (
 // A zero-value Fake{} still works: methods fall back to the process-wide
 // default state, which is what ResetFake / FakeCalls inspect.
 type fakeState struct {
-	vmMu     sync.RWMutex
-	callMu   sync.Mutex
-	createMu sync.Mutex
-	identMu  sync.RWMutex
+	vmMu      sync.RWMutex
+	callMu    sync.Mutex
+	createMu  sync.Mutex
+	identMu   sync.RWMutex
 	pushMu    sync.RWMutex
 	sshMu     sync.RWMutex
 	pingMu    sync.Mutex

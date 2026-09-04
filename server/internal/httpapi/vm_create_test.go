@@ -655,7 +655,9 @@ func TestVMCreate_WithCloudInitTemplate_Success(t *testing.T) {
 	// fake models the admin-placed baseline file via SetFakeSnippetPresent
 	// (cluster.Writer.HasSnippet).
 	cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", true)
-	t.Cleanup(func() { cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", false) })
+	t.Cleanup(func() {
+		cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", false)
+	})
 
 	rec := postVMCreate(t, handler,
 		`{"cluster":"default","name":"web-20","profileId":"medium","cloudInitTemplateId":"`+tmplID+`"}`, cookie)
