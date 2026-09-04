@@ -24,6 +24,8 @@ export interface AdminStorage {
 	totalBytes: number;
 	usedBytes: number;
 	enabled: boolean;
+	/** True for a synthetic row representing a node that has no storage. */
+	noStorage?: boolean;
 }
 
 export interface AdminBridge {
@@ -176,29 +178,49 @@ export class AdminCatalogStore {
 	isoStorageOptions = $derived([...new SvelteSet(this.isos.map((i) => i.storage))].sort());
 	isoNodeOptions = $derived([...new SvelteSet(this.isos.map((i) => i.node))].sort());
 
-	filteredStorages = $derived(
-		sortStorages(
-			this.storages.filter((storage) => {
-				const search = this.storageSearch.toLowerCase();
-				if (search) {
-					const match =
-						storage.name.toLowerCase().includes(search) ||
-						storage.node.toLowerCase().includes(search) ||
-						storage.type.toLowerCase().includes(search);
-					if (!match) return false;
-				}
-				if (this.storageNodeFilter && storage.node !== this.storageNodeFilter) return false;
-				if (this.storageTypeFilter && storage.type !== this.storageTypeFilter) return false;
-				if (this.storageEnabledFilter === 'enabled' && !storage.enabled) return false;
-				if (this.storageEnabledFilter === 'disabled' && storage.enabled) return false;
-				return true;
-			}),
-			this.storageSortBy,
-			this.storageSortDir
-		)
-	);
+	filteredStorages = $derived.by(() => {
+		const search = this.storageSearch.toLowerCase();
+		const filtered = this.storages.filter((storage) => {
+			if (search) {
+				const match =
+					storage.name.toLowerCase().includes(search) ||
+					storage.node.toLowerCase().includes(search) ||
+					storage.type.toLowerCase().includes(search);
+				if (!match) return false;
+			}
+			if (this.storageNodeFilter && storage.node !== this.storageNodeFilter) return false;
+			if (this.storageTypeFilter && storage.type !== this.storageTypeFilter) return false;
+			if (this.storageEnabledFilter === 'enabled' && !storage.enabled) return false;
+			if (this.storageEnabledFilter === 'disabled' && storage.enabled) return false;
+			return true;
+		});
 
-	storageNodeOptions = $derived([...new SvelteSet(this.storages.map((s) => s.node))].sort());
+		const storageNodes = new SvelteSet(this.storages.map((s) => s.node));
+		let selectedNodeNames: string[];
+		if (this.storageNodeFilter) {
+			selectedNodeNames = this.nodes.some((n) => n.name === this.storageNodeFilter) ? [this.storageNodeFilter] : [];
+		} else if (search) {
+			selectedNodeNames = this.nodes.filter((n) => n.name.toLowerCase().includes(search)).map((n) => n.name);
+		} else {
+			selectedNodeNames = this.nodes.map((n) => n.name);
+		}
+
+		const placeholders: AdminStorage[] = selectedNodeNames
+			.filter((node) => !storageNodes.has(node))
+			.map((node) => ({
+				name: '',
+				node,
+				type: '',
+				totalBytes: 0,
+				usedBytes: 0,
+				enabled: false,
+				noStorage: true
+			}));
+
+		return sortStorages([...filtered, ...placeholders], this.storageSortBy, this.storageSortDir);
+	});
+
+	storageNodeOptions = $derived([...new SvelteSet(this.nodes.map((n) => n.name))].sort());
 	storageTypeOptions = $derived([...new SvelteSet(this.storages.map((s) => s.type))].sort());
 
 	filteredBridges = $derived(
