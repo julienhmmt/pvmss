@@ -42,6 +42,19 @@
 	function handleSort(column: ISOSortColumn): void {
 		store.setISOSort(column);
 	}
+
+	function handleRemove(node: string, storage: string, file: string): void {
+		void performRemove(node, storage, file);
+	}
+
+	async function performRemove(node: string, storage: string, file: string): Promise<void> {
+		try {
+			await store.removeISO(node, storage, file);
+			toast.success(m['admin.isos.removeSuccess']({ file, node }));
+		} catch {
+			toast.error(m['admin.catalog.removeIsoError']());
+		}
+	}
 </script>
 
 <svelte:head>
@@ -114,6 +127,7 @@
 				isos={store.filteredIsos}
 				toggling={store.toggling}
 				onToggle={handleToggle}
+				onRemove={handleRemove}
 				sortBy={store.isoSortBy}
 				sortDir={store.isoSortDir}
 				onSort={handleSort}

@@ -42,6 +42,19 @@
 	function handleSort(column: StorageSortColumn): void {
 		store.setStorageSort(column);
 	}
+
+	function handleRemove(name: string, node: string): void {
+		void performRemove(name, node);
+	}
+
+	async function performRemove(name: string, node: string): Promise<void> {
+		try {
+			await store.removeStorage(name, node);
+			toast.success(m['admin.storages.removeSuccess']({ name, node }));
+		} catch {
+			toast.error(m['admin.catalog.removeStorageError']());
+		}
+	}
 </script>
 
 <svelte:head>
@@ -114,6 +127,7 @@
 				storages={store.filteredStorages}
 				toggling={store.toggling}
 				onToggle={handleToggle}
+				onRemove={handleRemove}
 				sortBy={store.storageSortBy}
 				sortDir={store.storageSortDir}
 				onSort={handleSort}

@@ -15,6 +15,9 @@ export interface AdminNode {
 	storageUsed: number;
 	vmCount: number;
 	enabled: boolean;
+	/** True for a stored approval whose node Proxmox no longer reports —
+	 *  the row stays listed so the admin can remove it. */
+	missing?: boolean;
 }
 
 export interface AdminStorage {
@@ -26,6 +29,8 @@ export interface AdminStorage {
 	enabled: boolean;
 	/** True for a synthetic row representing a node that has no storage. */
 	noStorage?: boolean;
+	/** True for a stored approval whose storage Proxmox no longer reports. */
+	missing?: boolean;
 }
 
 export interface AdminBridge {
@@ -34,6 +39,8 @@ export interface AdminBridge {
 	active: boolean;
 	comment: string;
 	enabled: boolean;
+	/** True for a stored approval whose bridge Proxmox no longer reports. */
+	missing?: boolean;
 }
 
 export interface AdminISO {
@@ -42,6 +49,8 @@ export interface AdminISO {
 	file: string;
 	sizeBytes: number;
 	enabled: boolean;
+	/** True for a stored approval whose ISO file Proxmox no longer reports. */
+	missing?: boolean;
 }
 
 export interface AdminTemplate {
@@ -503,6 +512,66 @@ export class AdminCatalogStore {
 			);
 		} catch (err) {
 			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.toggleIsoError']();
+			throw err;
+		} finally {
+			this.toggling = null;
+		}
+	}
+
+	/** Removes an orphan node approval — offered by the UI on missing rows only. */
+	async removeNode(name: string): Promise<void> {
+		this.toggling = `node:${name}`;
+		this.toggleError = null;
+		try {
+			await del(`/api/v1/admin/nodes/${encodeURIComponent(this.cluster)}/${encodeURIComponent(name)}`);
+			this.nodes = this.nodes.filter((n) => n.name !== name);
+		} catch (err) {
+			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.removeNodeError']();
+			throw err;
+		} finally {
+			this.toggling = null;
+		}
+	}
+
+	/** Removes an orphan storage approval — offered by the UI on missing rows only. */
+	async removeStorage(name: string, node: string): Promise<void> {
+		this.toggling = `storage:${name}@${node}`;
+		this.toggleError = null;
+		try {
+			await del(`/api/v1/admin/storages/${encodeURIComponent(this.cluster)}/${encodeURIComponent(node)}/${encodeURIComponent(name)}`);
+			this.storages = this.storages.filter((s) => !(s.name === name && s.node === node));
+		} catch (err) {
+			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.removeStorageError']();
+			throw err;
+		} finally {
+			this.toggling = null;
+		}
+	}
+
+	/** Removes an orphan bridge approval — offered by the UI on missing rows only. */
+	async removeBridge(node: string, name: string): Promise<void> {
+		this.toggling = `bridge:${node}/${name}`;
+		this.toggleError = null;
+		try {
+			await del(`/api/v1/admin/bridges/${encodeURIComponent(this.cluster)}/${encodeURIComponent(node)}/${encodeURIComponent(name)}`);
+			this.bridges = this.bridges.filter((b) => !(b.node === node && b.name === name));
+		} catch (err) {
+			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.removeBridgeError']();
+			throw err;
+		} finally {
+			this.toggling = null;
+		}
+	}
+
+	/** Removes an orphan ISO approval — offered by the UI on missing rows only. */
+	async removeISO(node: string, storage: string, file: string): Promise<void> {
+		this.toggling = `iso:${node}:${storage}:${file}`;
+		this.toggleError = null;
+		try {
+			await del(`/api/v1/admin/isos/${encodeURIComponent(this.cluster)}/${encodeURIComponent(node)}/${encodeURIComponent(storage)}/${encodeURIComponent(file)}`);
+			this.isos = this.isos.filter((i) => !(i.node === node && i.storage === storage && i.file === file));
+		} catch (err) {
+			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.removeIsoError']();
 			throw err;
 		} finally {
 			this.toggling = null;
