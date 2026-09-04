@@ -282,6 +282,39 @@ func TestProxmox_SetCloudInitConfig_SSHKeysSurviveProxmoxDecode(t *testing.T) {
 	}
 }
 
+// TestEncodeSSHKeys_OnlyProxmoxSafeCharacters is the live regression test:
+// Proxmox's own sshkeys format validator rejected a real key (an email-style
+// "user@host" comment, universal in ssh-keygen output) with "HTTP 400:
+// sshkeys: invalid format - invalid urlencoded string" — url.PathEscape
+// leaves '@' unescaped (RFC3986 allows it raw in a path segment), but
+// Proxmox's validator does not accept it raw. Only unreserved characters and
+// %XX sequences may appear in the output; anything else reproduces the live
+// 400 on the next SSH key with a "user@host" comment.
+func TestEncodeSSHKeys_OnlyProxmoxSafeCharacters(t *testing.T) {
+	t.Parallel()
+
+	key := "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEEHKEQ6FLrn8b85ClMxvu04DbAiyMZ5tf5ktL4xEpSZ mettmett@JH-LVL10"
+
+	encoded := encodeSSHKeys([]string{key})
+
+	for _, r := range encoded {
+		safe := (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') ||
+			r == '-' || r == '.' || r == '_' || r == '~' || r == '%'
+		if !safe {
+			t.Fatalf("encoded sshkeys %q contains %q, not a Proxmox-safe character", encoded, r)
+		}
+	}
+
+	decoded, err := url.PathUnescape(encoded)
+	if err != nil {
+		t.Fatalf("PathUnescape: %v", err)
+	}
+
+	if decoded != key {
+		t.Errorf("round-tripped key = %q, want %q", decoded, key)
+	}
+}
+
 // TestProxmox_SetCloudInitConfig_SSHKeysRoundTrip simulates Proxmox's exact
 // decode chain — form-decode on receipt, then uri_unescape (decodes %XX,
 // leaves '+') when generating the seed — and asserts the key read back is

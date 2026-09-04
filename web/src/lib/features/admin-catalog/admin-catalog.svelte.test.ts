@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AdminCatalogStore, type AdminBridge, type AdminISO, type AdminNode, type AdminStorage, type AdminTemplate } from './admin-catalog.svelte';
+import { AdminCatalogStore, type AdminBridge, type AdminISO, type AdminImage, type AdminNode, type AdminStorage, type AdminTemplate } from './admin-catalog.svelte';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -14,6 +14,12 @@ const isos: AdminISO[] = [
 	{ node: 'node-a', storage: 'local', file: 'debian-12.iso', sizeBytes: 1000, enabled: true },
 	{ node: 'node-a', storage: 'local', file: 'ubuntu-24.iso', sizeBytes: 2000, enabled: false },
 	{ node: 'node-b', storage: 'nfs', file: 'rocky-9.iso', sizeBytes: 3000, enabled: true }
+];
+
+const images: AdminImage[] = [
+	{ node: 'node-a', storage: 'local', file: 'debian-12.qcow2', sizeBytes: 1000, enabled: true },
+	{ node: 'node-a', storage: 'local', file: 'ubuntu-24.img', sizeBytes: 2000, enabled: false },
+	{ node: 'node-b', storage: 'nfs', file: 'rocky-9.raw', sizeBytes: 3000, enabled: true }
 ];
 
 const nodes: AdminNode[] = [
@@ -156,6 +162,175 @@ describe('AdminCatalogStore', () => {
 			expect(store.filteredIsos.length).toBe(3);
 			expect(store.isoSortBy).toBe('file');
 			expect(store.isoSortDir).toBe('asc');
+		});
+	});
+
+	describe('filteredImages', () => {
+		it('returns all images when no filters are set', () => {
+			const store = new AdminCatalogStore();
+			store.images = images;
+			expect(store.filteredImages.length).toBe(3);
+		});
+
+		it('filters by search term on file name', () => {
+			const store = new AdminCatalogStore();
+			store.images = images;
+			store.imageSearch = 'debian';
+			expect(store.filteredImages.length).toBe(1);
+			expect(store.filteredImages[0]?.file).toBe('debian-12.qcow2');
+		});
+
+		it('filters by storage', () => {
+			const store = new AdminCatalogStore();
+			store.images = images;
+			store.imageStorageFilter = 'nfs';
+			expect(store.filteredImages.length).toBe(1);
+			expect(store.filteredImages[0]?.storage).toBe('nfs');
+		});
+
+		it('filters by node', () => {
+			const store = new AdminCatalogStore();
+			store.images = images;
+			store.imageNodeFilter = 'node-b';
+			expect(store.filteredImages.length).toBe(1);
+			expect(store.filteredImages[0]?.node).toBe('node-b');
+		});
+
+		it('filters by enabled state', () => {
+			const store = new AdminCatalogStore();
+			store.images = images;
+			store.imageEnabledFilter = 'enabled';
+			expect(store.filteredImages.length).toBe(2);
+			expect(store.filteredImages.every((i) => i.enabled)).toBe(true);
+		});
+
+		it('sorts by file ascending then descending', () => {
+			const store = new AdminCatalogStore();
+			store.images = images;
+			store.imageSortBy = 'file';
+			store.imageSortDir = 'asc';
+			expect(store.filteredImages.map((i) => i.file)).toEqual(['debian-12.qcow2', 'rocky-9.raw', 'ubuntu-24.img']);
+			store.imageSortDir = 'desc';
+			expect(store.filteredImages.map((i) => i.file)).toEqual(['ubuntu-24.img', 'rocky-9.raw', 'debian-12.qcow2']);
+		});
+
+		it('sorts by size', () => {
+			const store = new AdminCatalogStore();
+			store.images = images;
+			store.imageSortBy = 'size';
+			store.imageSortDir = 'asc';
+			expect(store.filteredImages.map((i) => i.sizeBytes)).toEqual([1000, 2000, 3000]);
+		});
+
+		it('imageStorageOptions and imageNodeOptions derive from the rows', () => {
+			const store = new AdminCatalogStore();
+			store.images = images;
+			expect(store.imageStorageOptions).toEqual(['local', 'nfs']);
+			expect(store.imageNodeOptions).toEqual(['node-a', 'node-b']);
+		});
+
+		it('resetImageFilters clears all filters and sort', () => {
+			const store = new AdminCatalogStore();
+			store.images = images;
+			store.imageSearch = 'deb';
+			store.imageStorageFilter = 'local';
+			store.imageEnabledFilter = 'enabled';
+			store.imageSortBy = 'size';
+			store.imageSortDir = 'desc';
+			store.resetImageFilters();
+			expect(store.filteredImages.length).toBe(3);
+			expect(store.imageSortBy).toBe('file');
+			expect(store.imageSortDir).toBe('asc');
+		});
+	});
+
+	describe('image mutations', () => {
+		it('toggleImage posts the right body and updates the exact row', async () => {
+			const fetchMock = vi.fn().mockResolvedValue(
+				jsonResponse(200, { node: 'node-a', storage: 'local', file: 'debian-12.qcow2', enabled: false })
+			);
+			vi.stubGlobal('fetch', fetchMock);
+			const store = new AdminCatalogStore();
+			store.cluster = 'default';
+			store.images = images;
+
+			await store.toggleImage('node-a', 'local', 'debian-12.qcow2', false);
+
+			expect(store.images).toEqual([
+				{ ...images[0], enabled: false },
+				images[1],
+				images[2]
+			]);
+			expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({
+				cluster: 'default',
+				node: 'node-a',
+				storage: 'local',
+				file: 'debian-12.qcow2',
+				enabled: false
+			});
+		});
+
+		it('toggleImage failure keeps the row unchanged and sets toggleError', async () => {
+			vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(500, { message: 'boom' })));
+			const store = new AdminCatalogStore();
+			store.cluster = 'default';
+			store.images = images;
+
+			await expect(store.toggleImage('node-a', 'local', 'debian-12.qcow2', false)).rejects.toBeTruthy();
+
+			expect(store.images[0]?.enabled).toBe(true);
+			expect(store.toggleError).not.toBeNull();
+		});
+
+		it('removeImage deletes the approval row and drops it from the list', async () => {
+			const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+			vi.stubGlobal('fetch', fetchMock);
+			const store = new AdminCatalogStore();
+			store.cluster = 'default';
+			store.images = images;
+
+			await store.removeImage('node-b', 'nfs', 'rocky-9.raw');
+
+			expect(store.images.map((i) => i.file)).toEqual(['debian-12.qcow2', 'ubuntu-24.img']);
+			const calls = fetchMock.mock.calls as [string, RequestInit?][];
+			const [url, init] = calls.at(-1)!;
+			expect(url).toBe('/api/v1/admin/images/default/node-b/nfs/rocky-9.raw');
+			expect(init?.method).toBe('DELETE');
+		});
+
+		it('removeImage failure keeps the row and sets toggleError', async () => {
+			vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(500, { message: 'boom' })));
+			const store = new AdminCatalogStore();
+			store.cluster = 'default';
+			store.images = images;
+
+			await expect(store.removeImage('node-b', 'nfs', 'rocky-9.raw')).rejects.toBeTruthy();
+
+			expect(store.images.length).toBe(3);
+			expect(store.toggleError).not.toBeNull();
+		});
+
+		it('loadImages fetches only the image list (separate from loadAll)', async () => {
+			const fetchMock = vi.fn().mockImplementation((url: string) => {
+				if (url.includes('/auth/clusters')) {
+					return Promise.resolve(jsonResponse(200, [{ name: 'default', displayName: 'Default', oidcEnabled: false }]));
+				}
+				return Promise.resolve(jsonResponse(200, images));
+			});
+			vi.stubGlobal('fetch', fetchMock);
+			const store = new AdminCatalogStore();
+
+			await store.loadImages();
+
+			expect(store.images).toEqual(images);
+			expect(store.error).toBeNull();
+			expect(store.nodes).toEqual([]);
+			expect(store.storages).toEqual([]);
+			expect(store.bridges).toEqual([]);
+			expect(store.isos).toEqual([]);
+			expect(store.templates).toEqual([]);
+			const calls = fetchMock.mock.calls as [string][];
+			expect(calls.at(-1)?.[0]).toBe('/api/v1/admin/images?cluster=default');
 		});
 	});
 

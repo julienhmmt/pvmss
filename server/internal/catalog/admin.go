@@ -706,6 +706,150 @@ func DeleteISO(ctx context.Context, st *store.Store, cluster, node, storage, fil
 	return err
 }
 
+// ImageApproval is one discovered cloud image with its admin approval state.
+// Missing is true for a stored approval whose image file Proxmox no longer
+// reports (see NodeApproval for the enabled-orphan auto-remove rule).
+type ImageApproval struct {
+	Storage   string
+	Node      string
+	File      string
+	SizeBytes int64
+	Enabled   bool
+	Missing   bool
+}
+
+// AdminListImages returns every cloud image the cluster reports, unioned with
+// its stored approval state keyed by (node, storage, file). Orphan approvals
+// (image file gone from Proxmox) are handled as in AdminListISOs: enabled
+// orphans are auto-removed, disabled orphans are surfaced with Missing=true.
+func AdminListImages(ctx context.Context, st *store.Store, client cluster.Client, clusterName string) ([]ImageApproval, error) {
+	discovered, err := client.ListCloudImages(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	enabledRows, err := st.CatalogImagesEnabled(ctx, clusterName)
+	if err != nil {
+		return nil, err
+	}
+
+	enabledByKey := make(map[imageKey]bool, len(enabledRows))
+	discoveredByKey := make(map[imageKey]bool, len(discovered))
+	for _, i := range enabledRows {
+		enabledByKey[imageKey{Node: i.Node, Storage: i.Storage, File: i.File}] = i.Enabled
+	}
+	for _, image := range discovered {
+		discoveredByKey[imageKey{Node: image.Node, Storage: image.Storage, File: image.File}] = true
+	}
+
+	out := make([]ImageApproval, 0, len(discovered)+len(enabledRows))
+	for _, image := range discovered {
+		out = append(out, ImageApproval{
+			Storage:   image.Storage,
+			Node:      image.Node,
+			File:      image.File,
+			SizeBytes: image.SizeBytes,
+			Enabled:   enabledByKey[imageKey{Node: image.Node, Storage: image.Storage, File: image.File}],
+		})
+	}
+
+	if err := appendOrphanImages(ctx, st, clusterName, enabledRows, discoveredByKey, &out); err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
+// appendOrphanImages surfaces disabled orphan approvals (Missing=true) and
+// auto-removes enabled orphan approvals.
+func appendOrphanImages(ctx context.Context, st *store.Store, clusterName string, rows []store.CatalogImageEnabled, discovered map[imageKey]bool, out *[]ImageApproval) error {
+	for _, row := range rows {
+		key := imageKey{Node: row.Node, Storage: row.Storage, File: row.File}
+		if discovered[key] {
+			continue
+		}
+		if row.Enabled {
+			if err := st.DeleteImage(ctx, clusterName, row.Node, row.Storage, row.File); err != nil {
+				return fmt.Errorf("auto-remove orphan image %q on %q: %w", row.File, row.Node, err)
+			}
+			continue
+		}
+		*out = append(*out, ImageApproval{Storage: row.Storage, Node: row.Node, File: row.File, Enabled: false, Missing: true})
+	}
+	return nil
+}
+
+// ImageRef identifies one discovered cloud image by its (node, storage, file)
+// triple — the same key the enabled-state store and discovery check use.
+type ImageRef struct {
+	Node    string
+	Storage string
+	File    string
+}
+
+// SetImageEnabled upserts the enabled state for one cloud image identified by
+// ref. See SetISOEnabled for the discovery-error contract.
+func SetImageEnabled(ctx context.Context, st *store.Store, client cluster.Client, clusterName string, ref ImageRef, enabled bool) error {
+	discovered, err := imageDiscovered(ctx, client, ref.Node, ref.Storage, ref.File)
+	if err != nil {
+		return err
+	}
+
+	if !discovered {
+		return cluster.ErrNotFound
+	}
+
+	sizeBytes := int64(0)
+
+	images, err := client.ListCloudImages(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, image := range images {
+		if image.Node == ref.Node && image.Storage == ref.Storage && image.File == ref.File {
+			sizeBytes = image.SizeBytes
+			break
+		}
+	}
+
+	return st.SetImageEnabled(ctx, clusterName, ref.Node, ref.Storage, ref.File, sizeBytes, enabled)
+}
+
+// ErrImageNotFound is returned when a cloud image approval row does not exist.
+var ErrImageNotFound = errors.New("image not found")
+
+// DeleteImage removes a cloud image approval row. Returns ErrImageNotFound
+// when the cluster has no approval for the (node, storage, file) triple.
+func DeleteImage(ctx context.Context, st *store.Store, cluster, node, storage, file string) error {
+	err := st.DeleteImage(ctx, cluster, node, storage, file)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrImageNotFound
+	}
+	return err
+}
+
+// imageDiscovered reports whether the cluster reports a cloud image with the
+// given (node, storage, file) triple. See nodeDiscovered for the error contract.
+func imageDiscovered(ctx context.Context, client cluster.Client, node, storage, file string) (bool, error) {
+	images, err := client.ListCloudImages(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return slices.ContainsFunc(images, func(i cluster.CloudImage) bool {
+		return i.Node == node && i.Storage == storage && i.File == file
+	}), nil
+}
+
+// imageKey is a composite map key for cloud images, avoiding string-concat
+// collisions when a storage or file contains ":".
+type imageKey struct {
+	Node    string
+	Storage string
+	File    string
+}
+
 // nodeDiscovered reports whether the cluster reports a node with the given
 // name. A discovery error is returned verbatim so the caller can distinguish
 // "not present" (404) from "cluster unreachable" (5xx).

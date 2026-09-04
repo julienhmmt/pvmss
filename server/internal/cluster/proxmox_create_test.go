@@ -139,6 +139,65 @@ func assertCPUForm(t *testing.T, form url.Values) {
 	}
 }
 
+// TestProxmox_CreateVM_ImageImportFrom asserts the cloud-image disk form:
+// import-from requires Proxmox's <storage>:0 target syntax (a non-zero size
+// is rejected by check_drive_param), and the source must be a PVE-managed
+// volume of vtype 'import' — passed as a volid, not an absolute path
+// (absolute paths are root@pam-only). Cloud images live in the storage's
+// import/ directory with .qcow2/.raw/.vmdk/.ova extensions.
+func TestProxmox_CreateVM_ImageImportFrom(t *testing.T) {
+	t.Parallel()
+
+	var gotForm url.Values
+
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("POST /api2/json/nodes/node01/qemu", func(w http.ResponseWriter, r *http.Request) {
+			if err := r.ParseForm(); err != nil {
+				t.Fatalf("parse form: %v", err)
+			}
+
+			gotForm = r.Form
+
+			writeJSONFixture(t, w, `{"data":"UPID:node01:...:qmcreate:111:pvmss@pve:"}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	spec := VMSpec{
+		VMID: 111, Node: testNodeName, Name: "img-test", Pool: FakePoolAliceShort,
+		Sockets: 1, CPUCores: 1, MemoryMB: 2048,
+		Disk:    DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 12, Bus: string(DiskBusSCSI)},
+		Network: NetworkSpec{{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)}},
+		Image:   &ImageSpec{Storage: FakeStorageLocal, File: "debian-13-genericcloud-amd64.qcow2"},
+	}
+
+	if _, err := p.CreateVM(context.Background(), spec); err != nil {
+		t.Fatalf("CreateVM: %v", err)
+	}
+
+	wantDisk := "local-lvm:0,discard=on,import-from=local:import/debian-13-genericcloud-amd64.qcow2,iothread=1"
+
+	if gotForm.Get(diskKeySCSI0) != wantDisk {
+		t.Errorf("scsi0 = %q, want %q", gotForm.Get(diskKeySCSI0), wantDisk)
+	}
+
+	// The cloud-init drive is attached in this same create call — ProxMate
+	// and pegaprox both do this, never as a later follow-up — so the seed
+	// device exists before the create task even finishes.
+	if got, want := gotForm.Get(cloudInitDiskKey), FakeStorageLocalLVM+":cloudinit"; got != want {
+		t.Errorf("%s = %q, want %q", cloudInitDiskKey, got, want)
+	}
+
+	// Network config is applied afterwards through SetCloudInitConfig, not
+	// at create time (the REST API cannot write a snippet file, so native
+	// keys are the only per-VM cloud-init delivery mechanism) — no ipconfig0
+	// form key at create time.
+	if gotForm.Get("ipconfig0") != "" {
+		t.Errorf("ipconfig0 = %q, want unset at create time", gotForm.Get("ipconfig0"))
+	}
+}
+
 func TestProxmox_TaskStatus(t *testing.T) {
 	t.Parallel()
 

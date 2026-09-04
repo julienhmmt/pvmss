@@ -35,8 +35,9 @@ var (
 	// ErrClusterCreate — the cluster client rejected or failed the dispatch
 	// (mapped to 502 by the handler).
 	ErrClusterCreate = errors.New("cluster create failed")
-	// ErrInvalidSource — the request carries both an ISO and a template
-	// source, or neither (US2/issue-02 D2a). Mapped to 400 by the handler.
+	// ErrInvalidSource — the request carries more than one VM source (ISO,
+	// template, cloud image) or none (US2/issue-02 D2a). Mapped to 400 by
+	// the handler.
 	ErrInvalidSource = errors.New("invalid vm source")
 	// ErrInvalidRequest — the request carries an impossible combination of
 	// options (US6/issue-06: TPM without UEFI). Mapped to 400 by the handler.
@@ -60,6 +61,10 @@ var (
 	// the template resolution) instead of creating a VM whose cloud-init is
 	// silently absent.
 	ErrNoSnippetStorage = errors.New("no snippet-capable storage on the selected node")
+	// ErrDiskBelowImage — the requested disk size is smaller than the cloud
+	// image being imported (the import lands at the image's size and only
+	// grows). Refused before VMID allocation.
+	ErrDiskBelowImage = errors.New("disk size below cloud image")
 )
 
 // Fixed technical safety ceilings (FR-008) — hardcoded anti-abuse bounds,
@@ -76,6 +81,18 @@ const (
 // defaultNetworkModel is applied when a request omits the NIC model (simple
 // mode never asks for it).
 const defaultNetworkModel = "virtio"
+
+// Image-mode fallback hardware — applied only when no profile was selected
+// (a cluster with no profiles configured yet). Deliberately bigger than the
+// shared technical minimum (1 vCPU/128 MB): a cloud image needs real
+// headroom to boot, not just pass checkTechnicalRange. The wizard's manual
+// disk field always sends a nonzero size in practice; imageDefaultDiskGB is
+// a defensive floor for a direct API caller that omits it.
+const (
+	imageDefaultCPUCores = 1
+	imageDefaultMemoryMB = 2048
+	imageDefaultDiskGB   = 12
+)
 
 // defaultDiskBus is applied when no profile is used (detailed mode). Profiles
 // override this with their own bus value (FR-009).
@@ -106,10 +123,12 @@ var allowedNetworkModels = map[string]bool{
 // forge) and no mode field (the server cannot tell and does not care which
 // wizard produced it).
 //
-// The VM source is either an ISO (for OS without cloud images — Windows,
-// appliances) or a Proxmox template (for cloud-init-capable images). The two
-// are mutually exclusive (US2/issue-02 D2a): a request carrying both is
-// rejected with ErrInvalidSource before any VMID is allocated.
+// The VM source is exactly one of: an ISO (for OS without cloud images —
+// Windows, appliances), a Proxmox template (for cloud-init-capable images),
+// or a cloud image (imported as the primary disk, configured by cloud-init).
+// The three are mutually exclusive (US2/issue-02 D2a): a request carrying
+// more than one is rejected with ErrInvalidSource before any VMID is
+// allocated.
 type CreateRequest struct {
 	Cluster             string         `json:"cluster"`
 	Name                string         `json:"name"`
@@ -124,6 +143,7 @@ type CreateRequest struct {
 	Network             NetworkRequest `json:"network"`
 	ISO                 *ISORequest    `json:"iso,omitempty"`
 	TemplateID          int            `json:"templateId,omitempty"`
+	Image               *ImageRequest  `json:"image,omitempty"`
 	// UEFI requests bios=ovmf + machine=q35 + efidisk0 (US6/issue-06 D6a).
 	// TPM requests tpmstate0 alongside the EFI disk; ignored when UEFI is
 	// false — TPM 2.0 requires UEFI.
@@ -155,14 +175,47 @@ type ISORequest struct {
 	File    string `json:"file"`
 }
 
-// CloudInitPusher applies a cloud-init snippet to a VM's storage — T08's
+// ImageRequest is an optional cloud image source: the image is imported as
+// the VM's primary disk (import-from) and configured by cloud-init on first
+// boot. ImageCloudInit is mandatory in image mode — a cloud image has no
+// installer, so cloud-init is the only way in.
+type ImageRequest struct {
+	Storage   string                `json:"storage"`
+	File      string                `json:"file"`
+	CloudInit ImageCloudInitRequest `json:"cloudInit"`
+}
+
+// ImageCloudInitRequest is the cloud-init configuration applied at first
+// boot, delivered entirely through Proxmox's native cloud-init keys
+// (ciuser/sshkeys/ipconfig0 — Writer.SetCloudInitConfig). Proxmox's REST API
+// cannot write a per-VM snippet file (see cluster.Writer.HasSnippet), so
+// there is deliberately no packages or raw user-data field here: neither can
+// be delivered per VM. A fixed, admin-preplaced baseline snippet
+// (imageBaselineSnippetFilename) is attached automatically when present,
+// covering cluster-wide needs like installing qemu-guest-agent. Password is
+// deliberately absent too — access is granted through SSH keys, and a
+// password is set post-boot via the guest agent.
+type ImageCloudInitRequest struct {
+	User      string   `json:"user,omitempty"`
+	SSHKeys   []string `json:"sshKeys,omitempty"`
+	IPMode    string   `json:"ipMode,omitempty"` // "dhcp" (default) | "static"
+	IPAddress string   `json:"ipAddress,omitempty"`
+	Gateway   string   `json:"gateway,omitempty"`
+}
+
+// CloudInitPusher applies cloud-init configuration to a VM — T08's
 // cluster.Writer.PushCloudInitSnippet, reused verbatim by the creation-time
-// template apply step (FR-007). Defined here as a narrow consumer contract so
-// vm.Create depends only on the push method it actually calls, not the full
-// Writer surface; cluster.Fake and the real Proxmox client both satisfy it.
+// template apply step (FR-007), plus the native-key and baseline-snippet
+// methods image mode uses (Proxmox's REST API cannot write a per-VM snippet
+// file — see cluster.Writer.HasSnippet). Defined here as a narrow consumer
+// contract so vm.Create depends only on the methods it actually calls, not
+// the full Writer surface; cluster.Fake and the real Proxmox client both
+// satisfy it.
 type CloudInitPusher interface {
 	PushCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int, content string) error
 	AttachCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int) error
+	SetCloudInitConfig(ctx context.Context, node string, vmid int, config cluster.CloudInitConfig) error
+	HasSnippet(ctx context.Context, node, storage, filename string) (bool, error)
 }
 
 // HardwareUpdater is the post-clone mutation contract (US2/issue-02 +
@@ -274,9 +327,27 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 		return CreateResult{}, ErrNoPool
 	}
 
-	// US2/issue-02 D2a: ISO and template are mutually exclusive sources.
-	if req.ISO != nil && req.TemplateID != 0 {
-		return CreateResult{}, fmt.Errorf("%w: request carries both iso and templateId", ErrInvalidSource)
+	// US2/issue-02 D2a: ISO, template, and cloud image are mutually
+	// exclusive sources.
+	sources := 0
+	if req.ISO != nil {
+		sources++
+	}
+
+	if req.TemplateID != 0 {
+		sources++
+	}
+
+	if req.Image != nil {
+		sources++
+	}
+
+	if sources > 1 {
+		return CreateResult{}, fmt.Errorf("%w: request carries more than one of iso, templateId, image", ErrInvalidSource)
+	}
+
+	if req.Image != nil {
+		return createFromImage(ctx, policyService, deps, clusterName, actor, req)
 	}
 
 	if req.TemplateID != 0 {
@@ -284,6 +355,179 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 	}
 
 	return createFromISO(ctx, policyService, deps, clusterName, actor, req)
+}
+
+// createFromImage is the cloud-image path: CreateVM with import-from (the
+// image becomes the primary disk at the image's size, grown to the requested
+// size after the task), then cloud-init delivered through Proxmox's native
+// keys (see applyImageCloudInitConfig — the REST API cannot write a per-VM
+// snippet file). Cloud-init is mandatory in image mode — the image is a full
+// disk, so there is no installer and no second boot path. The VM is never
+// started inside the create task: the network/identity config is not applied
+// yet, and cloud-init does not replay on the next boot without
+// `cloud-init clean`. It is started explicitly after that config lands.
+func createFromImage(ctx context.Context, policyService *policy.Policy, deps CreateDeps, clusterName string, actor auth.Identity, req CreateRequest) (CreateResult, error) {
+	// Image mode without a profile: the wizard sends only the image and the
+	// disk size, so CPU/memory come through zero. Default to
+	// imageDefault{CPUCores,MemoryMB} rather than the shared technical
+	// minimum (1 vCPU/128 MB) — a cloud image needs real headroom to boot.
+	// req.ProfileID != "" skips this: resolveHardware overwrites these
+	// fields with the profile's values regardless (FR-009).
+	if req.ProfileID == "" {
+		if req.CPUCores == 0 {
+			req.CPUCores = imageDefaultCPUCores
+		}
+
+		if req.MemoryMB == 0 {
+			req.MemoryMB = imageDefaultMemoryMB
+		}
+
+		if req.Disk.SizeGB == 0 {
+			req.Disk.SizeGB = imageDefaultDiskGB
+		}
+	}
+
+	plan, err := planCreate(ctx, policyService, deps, clusterName, actor, req)
+	if err != nil {
+		return CreateResult{}, err
+	}
+
+	// Never start inside the create task: the snippet is not attached yet,
+	// and cloud-init does not replay on the next boot without
+	// `cloud-init clean`. The original value drives the explicit start after
+	// attachment.
+	startAfterCreate := req.StartAfterCreate
+	req.StartAfterCreate = false
+
+	vmid, err := deps.Creator.NextVMID(ctx)
+	if err != nil {
+		return CreateResult{}, fmt.Errorf("%w: allocate vmid: %w", ErrClusterCreate, err)
+	}
+
+	spec := buildCreateSpec(actor, req, plan, vmid)
+
+	finalVMID, upid, err := dispatchCreateWithRetry(ctx, deps, spec)
+	if err != nil {
+		return CreateResult{}, err
+	}
+
+	result := CreateResult{Cluster: clusterName, VMID: finalVMID, Name: req.Name, Node: plan.node, UPID: upid}
+
+	// The create task must finish before the snippet is attached — the PUT
+	// hits a 500 "VM is locked (create)" otherwise. A wait failure is a
+	// failed create task: the half-made VM is purged best-effort (US5/
+	// issue-05 D5a).
+	if waitErr := waitCreateTask(ctx, deps.Creator, upid); waitErr != nil {
+		deps.Log.Error("create task wait failed", "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", waitErr)
+		result.CloudInitPushError = waitErr.Error()
+
+		rollbackFailedCreate(ctx, deps, actor, clusterName, finalVMID, spec.Node, "create task failed")
+
+		if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, finalVMID, "vm_create"); err != nil {
+			deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
+		}
+
+		return result, nil
+	}
+
+	// import-from lands the disk at the source image's size (Proxmox
+	// requires the :0 target syntax); grow it to the requested size now that
+	// the create task released the VM lock. ResizeDisk only grows, so the
+	// call is skipped when the request matches the image size. A resize
+	// failure does not abort — the VM exists — it is recorded like the other
+	// post-create steps.
+	if plan.imageSizeGB > 0 && plan.diskGB > plan.imageSizeGB && deps.Writer != nil {
+		if err := deps.Writer.ResizeDisk(ctx, spec.Node, finalVMID, spec.Disk.Bus+"0", plan.diskGB); err != nil {
+			deps.Log.Error("image disk resize failed", "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
+			result.CloudInitPushError = err.Error()
+		}
+	}
+
+	applyImageCloudInitConfig(ctx, imageCloudInitApply{
+		Deps: deps, ClusterName: clusterName,
+		Spec: spec, VMID: finalVMID, SnippetStorage: plan.snippetStorage, CloudInit: req.Image.CloudInit,
+	}, &result)
+
+	// Auto-start (image mode): the VM is fully configured at first boot, so
+	// start it explicitly after the snippet is attached — the first boot sees
+	// cloud-init.
+	if startAfterCreate && result.CloudInitPushError == "" && deps.Writer != nil {
+		if err := deps.Writer.Action(ctx, spec.Node, finalVMID, "start"); err != nil {
+			deps.Log.Error("post-cloudinit start failed", "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
+		}
+	}
+
+	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, finalVMID, "vm_create"); err != nil {
+		deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
+	}
+
+	return result, nil
+}
+
+// imageBaselineSnippetFilename is the fixed, admin-preplaced vendor-data
+// snippet image mode attaches when present. Proxmox's REST API cannot write
+// a snippets file (Writer.HasSnippet), so PVMSS never generates or uploads
+// one — an admin creates this ONE file once (e.g. to install
+// qemu-guest-agent) via direct filesystem access to the node, and every
+// image-mode VM picks it up automatically. Absent is a normal, silent state,
+// not an error: most clusters simply have not set one up yet.
+const imageBaselineSnippetFilename = "pvmss-baseline.yml"
+
+// imageCloudInitApply bundles the inputs to applyImageCloudInitConfig.
+type imageCloudInitApply struct {
+	Deps           CreateDeps
+	ClusterName    string
+	Spec           cluster.VMSpec
+	VMID           int
+	SnippetStorage string
+	CloudInit      ImageCloudInitRequest
+}
+
+// applyImageCloudInitConfig delivers image-mode cloud-init through Proxmox's
+// native keys (ciuser/sshkeys/ipconfig0 — the only per-VM mechanism the REST
+// API actually supports; see cluster.Writer.HasSnippet), then attaches the
+// fixed baseline snippet when an admin has placed one. A failure does NOT
+// abort the creation (the task succeeded and the VM exists): it records the
+// error on result.CloudInitPushError (FR-008), which also blocks the
+// post-attach auto-start.
+func applyImageCloudInitConfig(ctx context.Context, cfg imageCloudInitApply, result *CreateResult) {
+	config := cluster.CloudInitConfig{
+		User:    cfg.CloudInit.User,
+		SSHKeys: cfg.CloudInit.SSHKeys,
+		IPMode:  cluster.CloudInitIPModeDHCP,
+	}
+
+	if cfg.CloudInit.IPMode == "static" && cfg.CloudInit.IPAddress != "" {
+		config.IPMode = cluster.CloudInitIPModeStatic
+		config.IPAddress = cfg.CloudInit.IPAddress
+		config.Gateway = cfg.CloudInit.Gateway
+	}
+
+	if err := cfg.Deps.Pusher.SetCloudInitConfig(ctx, cfg.Spec.Node, cfg.VMID, config); err != nil {
+		cfg.Deps.Log.Error("cloud-init config set failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
+		result.CloudInitPushError = err.Error()
+
+		return
+	}
+
+	present, err := cfg.Deps.Pusher.HasSnippet(ctx, cfg.Spec.Node, cfg.SnippetStorage, imageBaselineSnippetFilename)
+	if err != nil {
+		// Best-effort: a lookup failure just means the baseline is skipped —
+		// the VM still got its identity and network from the native keys
+		// above, so this does not block start.
+		cfg.Deps.Log.Error("baseline snippet lookup failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
+
+		return
+	}
+
+	if !present {
+		return
+	}
+
+	if err := cfg.Deps.Pusher.AttachCloudInitSnippet(ctx, cfg.Spec.Node, cfg.SnippetStorage, imageBaselineSnippetFilename, cfg.VMID); err != nil {
+		cfg.Deps.Log.Error("baseline snippet attach failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
+		result.CloudInitPushError = err.Error()
+	}
 }
 
 // createFromISO is the original creation path (T06): CreateVM with an optional
@@ -340,7 +584,7 @@ func createFromISO(ctx context.Context, policyService *policy.Policy, deps Creat
 	// post-processing must not become a long HTTP request.
 	if cloudTemplate.ID != "" {
 		applyCloudInitAfterWait(ctx, cloudInitWaitRequest{
-			Deps: deps, Actor: actor, ClusterName: clusterName, Username: actor.Username,
+			Deps: deps, Actor: actor, ClusterName: clusterName,
 			Spec: spec, VMID: finalVMID, Template: cloudTemplate, UPID: upid,
 			StartAfterCreate: startAfterCreate,
 			SnippetStorage:   plan.snippetStorage,
@@ -361,7 +605,6 @@ type cloudInitWaitRequest struct {
 	Deps             CreateDeps
 	Actor            auth.Identity
 	ClusterName      string
-	Username         string
 	Spec             cluster.VMSpec
 	VMID             int
 	Template         catalog.CloudInitTemplate
@@ -391,7 +634,7 @@ func applyCloudInitAfterWait(ctx context.Context, req cloudInitWaitRequest, resu
 	}
 
 	applyCloudInitTemplate(ctx, cloudInitApplyRequest{
-		Deps: req.Deps, ClusterName: req.ClusterName, Username: req.Username,
+		Deps: req.Deps, ClusterName: req.ClusterName,
 		Spec: req.Spec, VMID: req.VMID, Template: req.Template,
 		SnippetStorage: req.SnippetStorage,
 	}, result)
@@ -503,7 +746,7 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 	}
 
 	applyPostCloneConfig(ctx, postCloneConfig{
-		Deps: deps, ClusterName: clusterName, Username: actor.Username,
+		Deps: deps, ClusterName: clusterName,
 		VMID: finalVMID, Node: tmpl.Node, Plan: plan, Template: tmpl,
 		CloudTemplate: cloudTemplate, StartAfterCreate: startAfterCreate,
 		Tags: buildTags(req), DiskKey: primaryDiskKey(tmpl.DiskBus),
@@ -685,6 +928,27 @@ func checkDiskReduction(diskGB int, tmpl catalog.Template) error {
 	return nil
 }
 
+// checkDiskAboveImage rejects a disk size smaller than the cloud image being
+// imported (image-mode D2c: the import lands at the image's size and only
+// grows afterwards, so a smaller request is a reduction). The caller passes
+// the resolved disk size (from planCreate, which applies profile overrides)
+// and the resolved node, so a forged request cannot bypass this guard with a
+// profile whose DiskGB is smaller than the image. Returns the image's size in
+// whole GB (rounded up) so the caller can grow the imported disk afterwards.
+func checkDiskAboveImage(resources catalog.Resources, req CreateRequest, node string, diskGB int) (int, error) {
+	image, err := resources.FindCloudImage(req.Image.Storage, req.Image.File, node)
+	if err != nil {
+		return 0, fmt.Errorf("%w: %s", ErrNotApproved, err.Error())
+	}
+
+	minGB := int((image.SizeBytes + bytesPerGB - 1) / bytesPerGB)
+	if int64(diskGB)*bytesPerGB < image.SizeBytes {
+		return 0, fmt.Errorf("%w: requested %d GB, image %q is %d GB", ErrDiskBelowImage, diskGB, image.File, minGB)
+	}
+
+	return minGB, nil
+}
+
 // buildCloneSpec assembles the CloneSpec from the resolved template, plan,
 // request, and allocated VMID (US2/issue-02 §5). Full clone when the template
 // is cloud-init capable (lvmthin cannot linked-clone an imported disk), or
@@ -776,6 +1040,10 @@ func buildCreateSpec(actor auth.Identity, req CreateRequest, plan createPlan, vm
 		spec.ISO = &cluster.ISOSpec{Storage: req.ISO.Storage, File: req.ISO.File}
 	}
 
+	if req.Image != nil {
+		spec.Image = &cluster.ImageSpec{Storage: req.Image.Storage, File: req.Image.File}
+	}
+
 	return spec
 }
 
@@ -785,7 +1053,6 @@ func buildCreateSpec(actor auth.Identity, req CreateRequest, plan createPlan, vm
 type cloudInitApplyRequest struct {
 	Deps        CreateDeps
 	ClusterName string
-	Username    string
 	Spec        cluster.VMSpec
 	VMID        int
 	Template    catalog.CloudInitTemplate
@@ -794,30 +1061,46 @@ type cloudInitApplyRequest struct {
 	SnippetStorage string
 }
 
-// applyCloudInitTemplate writes the resolved template's snippet to the store
-// and pushes it to the cluster node. A failure does NOT abort the creation
-// (the task is already dispatched and cannot be undone): it records the error
-// message on result.CloudInitPushError (FR-008).
+// templateSnippetFilename is the fixed, admin-preplaced snippet filename for
+// one cloud-init template — one file per template (not per VM), reused by
+// every clone. templateID is a slug (catalog.DeriveCloudInitTemplateID),
+// filesystem-safe as-is.
+func templateSnippetFilename(templateID string) string {
+	return fmt.Sprintf("pvmss-template-%s.yml", templateID)
+}
+
+// applyCloudInitTemplate attaches the fixed, admin-preplaced snippet file for
+// the resolved cloud-init template. Proxmox's REST API cannot write a
+// snippets-content file (upload/download-url both reject content=snippets —
+// see cluster.Writer.HasSnippet), so the template's Content field stored in
+// PVMSS's catalog is reference/documentation only: an admin must place the
+// matching file on the cluster (<storage>/snippets/<filename>, filesystem or
+// SSH access) and keep it in sync with catalog edits themselves. A missing
+// file is NOT silently skipped like image mode's optional baseline — the
+// user explicitly chose a cloud-init template expecting it to apply, so its
+// absence is recorded on result.CloudInitPushError like any other failure.
+// A failure does NOT abort the creation (the task is already dispatched and
+// cannot be undone).
 func applyCloudInitTemplate(ctx context.Context, req cloudInitApplyRequest, result *CreateResult) {
 	if req.Template.ID == "" {
 		return
 	}
 
 	result.CloudInitTemplateID = req.Template.ID
-	filename := fmt.Sprintf("%s%d.yml", snippetFilenamePrefix, req.VMID)
+	filename := templateSnippetFilename(req.Template.ID)
 	storage := req.SnippetStorage
 
-	storeErr := req.Deps.Store.PutCloudInitSnippet(ctx, req.ClusterName, req.VMID, storage, filename, req.Template.Content, req.Username)
-	if storeErr != nil {
-		req.Deps.Log.Error("cloud-init template store failed", "component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "error", storeErr)
-		result.CloudInitPushError = storeErr.Error()
+	present, err := req.Deps.Pusher.HasSnippet(ctx, req.Spec.Node, storage, filename)
+	if err != nil {
+		req.Deps.Log.Error("cloud-init template snippet lookup failed", "component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "error", err)
+		result.CloudInitPushError = err.Error()
 
 		return
 	}
 
-	if err := req.Deps.Pusher.PushCloudInitSnippet(ctx, req.Spec.Node, storage, filename, req.VMID, req.Template.Content); err != nil {
-		req.Deps.Log.Error("cloud-init template push failed", "component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "error", err)
-		result.CloudInitPushError = err.Error()
+	if !present {
+		req.Deps.Log.Error("cloud-init template snippet missing on cluster", "component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "template", req.Template.ID, "expected_filename", filename)
+		result.CloudInitPushError = fmt.Sprintf("cloud-init template %q has no matching snippet file on the cluster (expected %q on a snippets-capable storage) — an admin must place it", req.Template.ID, filename)
 
 		return
 	}
@@ -834,7 +1117,6 @@ func applyCloudInitTemplate(ctx context.Context, req cloudInitApplyRequest, resu
 type postCloneConfig struct {
 	Deps             CreateDeps
 	ClusterName      string
-	Username         string
 	VMID             int
 	Node             string
 	Plan             createPlan
@@ -861,7 +1143,7 @@ func applyPostCloneConfig(ctx context.Context, cfg postCloneConfig, result *Crea
 	// 3. Cloud-init snippet attachment (same mechanism as the ISO path).
 	if cfg.CloudTemplate.ID != "" {
 		applyCloudInitTemplate(ctx, cloudInitApplyRequest{
-			Deps: cfg.Deps, ClusterName: cfg.ClusterName, Username: cfg.Username,
+			Deps: cfg.Deps, ClusterName: cfg.ClusterName,
 			Spec: cluster.VMSpec{Node: cfg.Node, Disk: cluster.DiskSpec{Storage: cfg.Plan.storage}},
 			VMID: cfg.VMID, Template: cfg.CloudTemplate,
 			SnippetStorage: cfg.Plan.snippetStorage,
@@ -953,12 +1235,16 @@ type createPlan struct {
 	// when a cloud-init template was requested (ticket 04). Empty when no
 	// template was requested — resolution costs a cluster read and must not
 	// run on the plain ISO path.
-	snippetStorage   string
-	sockets          int
-	cpuCores         int
-	memoryMB         int
-	diskGB           int
-	bus              string
+	snippetStorage string
+	sockets        int
+	cpuCores       int
+	memoryMB       int
+	diskGB         int
+	bus            string
+	// imageSizeGB is the cloud image's size in whole GB (rounded up), set
+	// only in image mode. import-from lands the disk at this size; the
+	// caller grows it to diskGB after the create task completes.
+	imageSizeGB      int
 	nics             []nicPlan
 	isolationVLANTag int
 	uefi             bool
@@ -1044,6 +1330,20 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 		return createPlan{}, err
 	}
 
+	// D2c (image mode): reject a disk size below the cloud image before any
+	// VMID is spent — the import lands at the image's size and only grows.
+	// Run after planCreate so the check sees the resolved disk size (profile
+	// overrides applied). The image size rides on the plan so createFromImage
+	// can grow the imported disk to the requested size.
+	var imageSizeGB int
+
+	if req.Image != nil {
+		imageSizeGB, err = checkDiskAboveImage(resources, req, node, diskGB)
+		if err != nil {
+			return createPlan{}, err
+		}
+	}
+
 	if err := checkGabaritAndCapacity(ctx, policyService, gabaritRequest{
 		clusterName: clusterName, node: node,
 		sockets: sockets, cpuCores: cpuCores, memoryMB: memoryMB, diskGB: diskGB,
@@ -1067,6 +1367,7 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 		sockets: sockets, cpuCores: cpuCores,
 		memoryMB: memoryMB, diskGB: diskGB, bus: bus, nics: nics,
 		isolationVLANTag: vlanTag, uefi: req.UEFI, tpm: req.TPM,
+		imageSizeGB: imageSizeGB,
 	}, nil
 }
 
@@ -1096,15 +1397,15 @@ func resolvePlacement(ctx context.Context, req CreateRequest, policyService *pol
 }
 
 // resolvePlanSnippetStorage resolves the snippet target at plan time when a
-// cloud-init template was requested — before NextVMID, so a node without any
-// snippet-capable storage is refused without burning a VMID (the same
-// discipline as the template resolution). The VM disk's storage is
+// cloud-init template or a cloud image was requested — before NextVMID, so a
+// node without any snippet-capable storage is refused without burning a VMID
+// (the same discipline as the template resolution). The VM disk's storage is
 // block-backed (ZFS/LVM-thin/Ceph) and cannot host a snippet, so the editor's
 // FindSnippetStorage rule is the only correct source (ticket 04). Returns ""
-// when no template was requested: the resolution costs a cluster read and
-// must not run on the plain ISO path.
+// when neither was requested: the resolution costs a cluster read and must
+// not run on the plain ISO path.
 func resolvePlanSnippetStorage(ctx context.Context, deps CreateDeps, req CreateRequest, node string) (string, error) {
-	if req.CloudInitTemplateID == "" {
+	if req.CloudInitTemplateID == "" && req.Image == nil {
 		return "", nil
 	}
 
@@ -1296,6 +1597,13 @@ func resolveResources(req CreateRequest, resources catalog.Resources, capacities
 			}
 		}
 
+		if req.Image != nil {
+			candidates = nodesWithImage(resources, req.Image.Storage, req.Image.File)
+			if len(candidates) == 0 {
+				return "", "", nil, fmt.Errorf("%w: no approved node holds image %q on storage %q", ErrNotApproved, req.Image.File, req.Image.Storage)
+			}
+		}
+
 		// Hard filter: node must have at least one approved storage.
 		candidates = nodesWithStorage(resources, candidates)
 		if len(candidates) == 0 {
@@ -1452,6 +1760,20 @@ func nodesWithISO(resources catalog.Resources, storage, file string) []catalog.N
 	return matched
 }
 
+// nodesWithImage returns the approved nodes that hold the given cloud image,
+// preserving catalog order so auto-selection is deterministic.
+func nodesWithImage(resources catalog.Resources, storage, file string) []catalog.Node {
+	var matched []catalog.Node
+
+	for _, node := range resources.Nodes {
+		if resources.HasCloudImage(storage, file, node.Name) {
+			matched = append(matched, node)
+		}
+	}
+
+	return matched
+}
+
 // validateCatalog checks that the resolved node, storage, each NIC's bridge
 // and model, the optional ISO, and every requested tag are all present in the
 // approved catalog.
@@ -1476,6 +1798,10 @@ func validateCatalog(req CreateRequest, resources catalog.Resources, node, stora
 
 	if req.ISO != nil && !resources.HasISO(req.ISO.Storage, req.ISO.File, node) {
 		return fmt.Errorf("%w: iso %q on storage %q on node %q", ErrNotApproved, req.ISO.File, req.ISO.Storage, node)
+	}
+
+	if req.Image != nil && !resources.HasCloudImage(req.Image.Storage, req.Image.File, node) {
+		return fmt.Errorf("%w: image %q on storage %q on node %q", ErrNotApproved, req.Image.File, req.Image.Storage, node)
 	}
 
 	for _, tag := range req.Tags {

@@ -61,6 +61,12 @@ type Client interface {
 	ChangePassword(ctx context.Context, username, oldPassword, newPassword string) error
 	ListBridges(ctx context.Context) ([]Bridge, error)
 	ListISOs(ctx context.Context) ([]ISOImage, error)
+	// ListCloudImages enumerates the cloud images the cluster reports:
+	// .qcow2/.raw/.vmdk/.ova files on import-capable storages (Proxmox
+	// lists them under content=import with vtype 'import'). Only import-
+	// vtype volumes are accepted by import-from for non-root API tokens.
+	// Approval (catalog_images) is keyed by (Node, Storage, File) like ISOs.
+	ListCloudImages(ctx context.Context) ([]CloudImage, error)
 	ListTemplates(ctx context.Context) ([]TemplateVM, error)
 	// TemplateByVMID looks up one template (issue 03): one /cluster/resources
 	// call plus one config read, instead of re-hydrating the whole list per
@@ -163,6 +169,15 @@ type Writer interface {
 	// and silently drop the structured config. An empty filename detaches
 	// the snippet (Proxmox stores none). See REPORT.md §4 / addendum.
 	AttachCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int) error
+	// HasSnippet reports whether filename already exists under storage's
+	// snippets/ content on node. Proxmox's REST API cannot write a snippets
+	// file — upload and download-url both reject content=snippets
+	// (PVE::API2::Storage::Status hardcodes the enum to iso/vztmpl/import,
+	// a deliberate restriction since a snippet can carry an arbitrary
+	// hookscript). PVMSS therefore never creates snippet files; it only
+	// checks whether an admin already placed a fixed, well-known one before
+	// pointing a VM's cicustom at it (image-mode create's baseline).
+	HasSnippet(ctx context.Context, node, storage, filename string) (bool, error)
 	// SetCloudInitPassword applies the VM's cloud-init password post-boot via
 	// the QEMU guest agent, writing it only to /etc/shadow on the guest. It
 	// never uses the cipassword config key, whose crypt hash Proxmox stores on
@@ -381,6 +396,17 @@ type Bridge struct {
 // (catalog_isos) is keyed by (Node, Storage, File) so the same file on the same
 // storage name across multiple nodes can be toggled independently.
 type ISOImage struct {
+	Storage   string
+	Node      string
+	File      string
+	SizeBytes int64
+}
+
+// CloudImage is one cloud image discovered on a storage backend on a node —
+// a .qcow2/.raw/.vmdk/.ova file under import content (Proxmox lists them
+// there with vtype 'import'). Approval (catalog_images) is keyed by
+// (Node, Storage, File) like ISOs.
+type CloudImage struct {
 	Storage   string
 	Node      string
 	File      string

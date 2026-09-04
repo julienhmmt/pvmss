@@ -35,6 +35,15 @@ export interface DraftValues {
 	simpleSource?: SimpleSource;
 	templateId?: number;
 	templateMinDiskGB?: number;
+	/** Cloud-image source (image mode) and its mandatory cloud-init. */
+	imageStorage?: string;
+	imageFile?: string;
+	imageMinDiskGB?: number;
+	ciUser?: string;
+	ciSshKeysInput?: string;
+	ciIpMode?: 'dhcp' | 'static';
+	ciIpAddress?: string;
+	ciGateway?: string;
 	startAfterCreate: boolean;
 	uefi?: boolean;
 	tpm?: boolean;

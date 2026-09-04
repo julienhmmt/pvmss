@@ -72,6 +72,20 @@
 	{/snippet}
 </PageHeader>
 
+<!-- Deliberate pause, not a bug: cloud-image/cloud-init-template creation is
+     gated off server-side (server/internal/httpapi/vm_create.go
+     cloudImageFeatureEnabled) — per-VM cloud-init forking needs PVMSS to
+     hold SSH credentials to every Proxmox node, judged too much new scope
+     for now. This notice exists so an admin who notices the Images/
+     Cloud-init templates pages missing from the sidebar knows why. -->
+<div
+	class="mb-6 rounded-lg border border-warning-soft-border bg-warning-soft p-4 text-sm text-warning-soft-foreground"
+	data-testid="dashboard-cloud-image-paused-notice"
+>
+	<p class="font-medium">{m['admin.dashboard.cloudImagePausedTitle']()}</p>
+	<p class="mt-1">{m['admin.dashboard.cloudImagePausedBody']()}</p>
+</div>
+
 {#if store.loading}
 	<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
 	<div class="grid grid-cols-1 gap-4 sm:grid-cols-2" data-testid="dashboard-stats-skeleton">

@@ -23,6 +23,16 @@ export interface CatalogISO {
 	file: string;
 }
 
+/** One approved cloud image (import-from source). SizeBytes lets the UI
+ *  enforce the minimum disk size — the server rejects a smaller disk with
+ *  "disk_below_image" (Proxmox import-from grows but never shrinks). */
+export interface CatalogImage {
+	storage: string;
+	node: string;
+	file: string;
+	sizeBytes: number;
+}
+
 export interface CatalogProfile {
 	id: string;
 	label: string;
@@ -100,6 +110,7 @@ export interface VmCreateCatalog {
 	storages: CatalogStorage[];
 	bridges: CatalogBridge[];
 	isos: CatalogISO[];
+	images: CatalogImage[];
 	profiles: CatalogProfile[];
 	templates: CatalogTemplate[];
 	cloudInitTemplates: CatalogCloudInitTemplate[];
@@ -122,9 +133,34 @@ export interface NICRow {
 	model: string;
 }
 
+/** The cloud-init configuration of a cloud-image creation (image mode),
+ *  delivered entirely through Proxmox's native cloud-init keys — the REST
+ *  API cannot write a per-VM snippet file, so there is no packages or raw
+ *  user-data field; a fixed, admin-preplaced baseline snippet is attached
+ *  server-side when present. No password field either — access is via SSH
+ *  keys; a password is set post-boot through the guest agent. */
+export interface ImageCloudInitRequest {
+	user?: string;
+	sshKeys?: string[];
+	ipMode?: 'dhcp' | 'static';
+	ipAddress?: string;
+	gateway?: string;
+}
+
+/** One cloud-image source in the creation request: the image is imported as
+ *  the VM's primary disk (import-from) and configured by cloud-init on first
+ *  boot. CloudInit is mandatory in image mode — a cloud image has no
+ *  installer, so cloud-init is the only way in. */
+export interface ImageRequest {
+	storage: string;
+	file: string;
+	cloudInit: ImageCloudInitRequest;
+}
+
 /** The single request shape both modes POST (FR-001) — no pool, no mode.
- *  The VM source is either an ISO (iso field) or a Proxmox template
- *  (templateId field), never both (US2/issue-02 D2a). */
+ *  The VM source is either an ISO (iso field), a Proxmox template
+ *  (templateId field) or a cloud image (image field), never more than one
+ *  (US2/issue-02 D2a). */
 export interface VMCreateRequest {
 	cluster: string;
 	name: string;
@@ -139,6 +175,7 @@ export interface VMCreateRequest {
 	network?: NICRequest[];
 	iso?: { storage: string; file: string };
 	templateId?: number;
+	image?: ImageRequest;
 	uefi?: boolean;
 	tpm?: boolean;
 	startAfterCreate?: boolean;
@@ -157,14 +194,21 @@ export interface VmCreateAccepted {
 export type CreateMode = 'simple' | 'detailed';
 
 /** The VM source type (US2/issue-02 D2a): 'iso' for OS without cloud images
- *  (Windows, appliances), 'template' for cloud-init-capable Proxmox templates.
- *  The two are mutually exclusive — the server rejects a request carrying both. */
-export type VmSource = 'iso' | 'template';
+ *  (Windows, appliances), 'template' for cloud-init-capable Proxmox
+ *  templates, 'image' for approved cloud images imported with cloud-init.
+ *  The three are mutually exclusive — the server rejects a request carrying
+ *  more than one. */
+export type VmSource = 'iso' | 'template' | 'image';
 
-/** Simple-mode source (V08): the user can either pick a size profile or clone
- *  from an approved Proxmox template. This is a UI-only distinction; the
- *  request still carries either profileId or templateId. */
-export type SimpleSource = 'profile' | 'template';
+/** Simple-mode source (V08): the user can either pick a size profile, clone
+ *  from an approved Proxmox template, or boot an approved cloud image. This
+ *  is a UI-only distinction; the request still carries profileId,
+ *  templateId or image. */
+export type SimpleSource = 'profile' | 'template' | 'image';
+
+/** Conversion factor for disk-size checks — mirrors the server's
+ *  bytesPerGB (server/internal/vm/create.go). */
+const BYTES_PER_GB = 1024 * 1024 * 1024;
 
 /** Server error codes with fixed, non-parameterized text (server/internal/httpapi/vm_create.go). */
 const FIXED_SUBMIT_ERRORS: Partial<Record<string, () => string>> = {
@@ -175,6 +219,7 @@ const FIXED_SUBMIT_ERRORS: Partial<Record<string, () => string>> = {
 	invalid_source: m['vms.create.errorInvalidSource'],
 	invalid_request: m['vms.create.errorInvalidRequest'],
 	disk_reduction: m['vms.create.errorDiskReduction'],
+	disk_below_image: m['vms.create.errorDiskBelowImage'],
 	insufficient_disk_space: m['vms.create.errorInsufficientDiskSpace'],
 	no_snippet_storage: m['vms.create.errorNoSnippetStorage'],
 	cluster_error: m['vms.create.errorClusterRejected'],
@@ -386,6 +431,26 @@ export class VmCreateStore {
 	 *  selected — the disk size may never drop below it (Proxmox cannot
 	 *  shrink a clone's source disk). */
 	templateMinDiskGB = $state(0);
+	/** Cloud-image source (image mode): the selected image's storage and
+	 *  file, keyed together because the same file name can exist on several
+	 *  storages. Empty strings when no image is selected. */
+	imageStorage = $state('');
+	imageFile = $state('');
+	/** The selected image's disk floor in GB (sizeBytes ceiled to GB) —
+	 *  the disk size may never drop below it (server code "disk_below_image").
+	 *  0 when no image is selected. */
+	imageMinDiskGB = $state(0);
+	/** Image-mode cloud-init (required): username, SSH public keys (one per
+	 *  line), network mode with optional static addressing. Delivered
+	 *  server-side through Proxmox's native cloud-init keys — no packages or
+	 *  raw user-data field, since neither can be written per VM (a fixed,
+	 *  admin-preplaced baseline snippet covers cluster-wide needs instead).
+	 *  No password field — access is granted through SSH keys. */
+	ciUser = $state('');
+	ciSshKeysInput = $state('');
+	ciIpMode = $state<'dhcp' | 'static'>('dhcp');
+	ciIpAddress = $state('');
+	ciGateway = $state('');
 	startAfterCreate = $state(true);
 	/** US6/issue-06: UEFI (bios=ovmf + q35 + efidisk0) and TPM 2.0 —
 	 *  detailed-mode only, off by default. TPM requires UEFI; the server
@@ -488,6 +553,120 @@ export class VmCreateStore {
 		return this.catalog?.nodeCapacities?.find((capacity) => capacity.node === node);
 	}
 
+	/** The catalog entry of the selected cloud image, if any. */
+	selectedImage(): CatalogImage | undefined {
+		if (this.imageFile === '') return undefined;
+		return this.catalog?.images.find(
+			(image) => image.file === this.imageFile && image.storage === this.imageStorage
+		);
+	}
+
+	/** Selects the detailed-mode VM source, clearing the other sources
+	 *  (US2/issue-02 D2a mutual exclusion). Image mode defaults
+	 *  start-after-create to true: the VM is fully configured at first boot. */
+	setSourceType(source: VmSource): void {
+		this.sourceType = source;
+		if (source !== 'iso') this.isoFile = '';
+		if (source !== 'template') {
+			this.templateId = 0;
+			this.templateMinDiskGB = 0;
+		}
+		if (source !== 'image') this.clearImage();
+		if (source === 'image') this.startAfterCreate = true;
+	}
+
+	/** Selects the simple-mode source, clearing the other sources. Image mode
+	 *  defaults start-after-create to true (see setSourceType). Unlike the
+	 *  detailed source, an ISO is not a simple source of its own — it is an
+	 *  optional add-on of the profile source, so only the non-profile sources
+	 *  clear it. */
+	setSimpleSource(source: SimpleSource): void {
+		this.simpleSource = source;
+		if (source !== 'template') {
+			this.templateId = 0;
+			this.templateMinDiskGB = 0;
+		}
+		if (source !== 'profile') this.isoFile = '';
+		if (source !== 'image') this.clearImage();
+		if (source === 'image') this.startAfterCreate = true;
+	}
+
+	/** Selects a cloud image and derives its disk floor (sizeBytes ceiled to
+	 *  GB, mirroring the server's checkDiskAboveImage). The image's node also
+	 *  becomes the form's node so downstream selects filter correctly. */
+	selectImage(storage: string, file: string): void {
+		this.imageStorage = storage;
+		this.imageFile = file;
+		const image = this.selectedImage();
+		this.imageMinDiskGB = image === undefined ? 0 : Math.ceil(image.sizeBytes / BYTES_PER_GB);
+		if (image !== undefined) this.node = image.node;
+	}
+
+	/** Clears the cloud-image selection and its disk floor. */
+	clearImage(): void {
+		this.imageStorage = '';
+		this.imageFile = '';
+		this.imageMinDiskGB = 0;
+	}
+
+	/** Parses ciSshKeysInput's newline-separated textarea into the SSH key
+	 *  list sent in the request. */
+	sshKeys(): string[] {
+		return this.ciSshKeysInput
+			.split('\n')
+			.map((key) => key.trim())
+			.filter((key) => key !== '');
+	}
+
+	/** True when the active mode's source is a cloud image. */
+	isImageSource(): boolean {
+		return this.mode === 'simple' ? this.simpleSource === 'image' : this.sourceType === 'image';
+	}
+
+	/** True when the catalog has at least one profile — image mode requires
+	 *  picking one when this is true (a fixed admin preset replaces the tiny
+	 *  1 vCPU/128 MB default cloud images used to get). */
+	hasProfiles(): boolean {
+		return (this.catalog?.profiles ?? []).length > 0;
+	}
+
+	/** The client-side blocker for image mode, or null when the form may be
+	 *  submitted: an image must be selected, a profile is required when the
+	 *  cluster has any (otherwise the disk must cover the image), and
+	 *  cloud-init is mandatory (user, SSH keys, static IP when static). */
+	imageModeBlocker(): string | null {
+		if (!this.isImageSource()) return null;
+		if (this.imageFile === '') return m['vms.create.errorImageRequired']();
+		if (this.hasProfiles()) {
+			if (this.profileId === '' || !this.catalog?.profiles.some((profile) => profile.id === this.profileId)) {
+				return m['vms.create.errorProfileRequired']();
+			}
+		} else if (this.diskSizeGB < this.imageMinDiskGB) {
+			return m['vms.create.diskBelowImageMin']({ min: this.imageMinDiskGB });
+		}
+		if (this.ciUser.trim() === '') return m['vms.create.errorCiUserRequired']();
+		if (this.sshKeys().length === 0) return m['vms.create.errorCiSshKeysRequired']();
+		if (this.ciIpMode === 'static' && this.ciIpAddress.trim() === '') {
+			return m['vms.create.errorCiIpRequired']();
+		}
+		return null;
+	}
+
+	/** Builds the image source of the outgoing request (image mode). */
+	buildImageRequest(): ImageRequest {
+		const isStatic = this.ciIpMode === 'static';
+		const cloudInit: ImageCloudInitRequest = {
+			user: this.ciUser.trim(),
+			sshKeys: this.sshKeys(),
+			ipMode: this.ciIpMode
+		};
+		if (isStatic) {
+			cloudInit.ipAddress = this.ciIpAddress.trim();
+			if (this.ciGateway.trim() !== '') cloudInit.gateway = this.ciGateway.trim();
+		}
+		return { storage: this.imageStorage, file: this.imageFile, cloudInit };
+	}
+
 	/** Builds the outgoing request for simple mode: profile-driven or a
 	 *  template clone, with the auto-selections sent explicitly when the user
 	 *  adjusted them (V08). */
@@ -498,6 +677,18 @@ export class VmCreateStore {
 			startAfterCreate: this.startAfterCreate
 		};
 		if (this.mode === 'simple') {
+			// Image mode (cloud image): the image is the source, the disk size
+			// is required and must cover the image; storage is auto-selected
+			// server-side and the node among the ones holding the image.
+			if (this.simpleSource === 'image' && this.imageFile !== '') {
+				request.image = this.buildImageRequest();
+				if (this.profileId !== '') {
+					request.profileId = this.profileId;
+				} else {
+					request.disk = { sizeGB: this.diskSizeGB };
+				}
+				return request;
+			}
 			if (this.simpleSource === 'template' && this.templateId !== 0) {
 				request.templateId = this.templateId;
 				if (this.cloudInitTemplateId !== '') request.cloudInitTemplateId = this.cloudInitTemplateId;
@@ -524,10 +715,13 @@ export class VmCreateStore {
 		return this.buildDetailedRequest(request);
 	}
 
-	/** Detailed mode: every field explicit (FR-011), no profile reference.
-	 *  The source is either an ISO or a Proxmox template (US2/issue-02 D2a):
-	 *  when sourceType is 'template', templateId is sent and the ISO field is
-	 *  omitted; the node is derived from the template (D2b), not sent. */
+	/** Detailed mode: every field explicit (FR-011) — except image source,
+	 *  which may carry a profileId (server ignores the explicit hardware
+	 *  fields when one is set, FR-009). The source is an ISO, a Proxmox
+	 *  template or a cloud image (US2/issue-02 D2a): when sourceType is
+	 *  'template', templateId is sent and the ISO field is omitted; when
+	 *  'image', the image and its cloud-init are sent; the node is derived
+	 *  from the template (D2b) for clones, not sent. */
 	buildDetailedRequest(request: VMCreateRequest): VMCreateRequest {
 		request.sockets = this.sockets;
 		request.cpuCores = this.cpuCores;
@@ -546,7 +740,10 @@ export class VmCreateStore {
 			// send a client-supplied node for template clones.
 		} else {
 			request.node = this.node;
-			if (this.isoFile !== '') {
+			if (this.sourceType === 'image' && this.imageFile !== '') {
+				request.image = this.buildImageRequest();
+				if (this.profileId !== '') request.profileId = this.profileId;
+			} else if (this.isoFile !== '') {
 				const iso = this.catalog?.isos.find((entry) => entry.file === this.isoFile && entry.node === this.node);
 				if (iso !== undefined) request.iso = { storage: iso.storage, file: iso.file };
 			}
@@ -568,6 +765,14 @@ export class VmCreateStore {
 		// reject below it locally instead of a round-trip to ErrDiskReduction.
 		if (this.templateMinDiskGB > 0 && this.diskSizeGB < this.templateMinDiskGB) {
 			this.submitError = m['vms.create.diskBelowTemplateMin']({ min: this.templateMinDiskGB });
+			return null;
+		}
+
+		// Image mode: enforce the image's disk floor and the mandatory
+		// cloud-init client-side (the server re-checks both).
+		const imageBlocker = this.imageModeBlocker();
+		if (imageBlocker !== null) {
+			this.submitError = imageBlocker;
 			return null;
 		}
 
@@ -606,6 +811,14 @@ export class VmCreateStore {
 			simpleSource: this.simpleSource,
 			templateId: this.templateId,
 			templateMinDiskGB: this.templateMinDiskGB,
+			imageStorage: this.imageStorage,
+			imageFile: this.imageFile,
+			imageMinDiskGB: this.imageMinDiskGB,
+			ciUser: this.ciUser,
+			ciSshKeysInput: this.ciSshKeysInput,
+			ciIpMode: this.ciIpMode,
+			ciIpAddress: this.ciIpAddress,
+			ciGateway: this.ciGateway,
 			startAfterCreate: this.startAfterCreate,
 			uefi: this.uefi,
 			tpm: this.tpm
@@ -635,6 +848,14 @@ export class VmCreateStore {
 		this.simpleSource = values.simpleSource ?? 'profile';
 		this.templateId = values.templateId ?? 0;
 		this.templateMinDiskGB = values.templateMinDiskGB ?? 0;
+		this.imageStorage = values.imageStorage ?? '';
+		this.imageFile = values.imageFile ?? '';
+		this.imageMinDiskGB = values.imageMinDiskGB ?? 0;
+		this.ciUser = values.ciUser ?? '';
+		this.ciSshKeysInput = values.ciSshKeysInput ?? '';
+		this.ciIpMode = values.ciIpMode ?? 'dhcp';
+		this.ciIpAddress = values.ciIpAddress ?? '';
+		this.ciGateway = values.ciGateway ?? '';
 		this.startAfterCreate = values.startAfterCreate;
 		this.uefi = values.uefi ?? false;
 		this.tpm = values.tpm ?? false;

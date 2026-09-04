@@ -15,9 +15,10 @@ type fakeState struct {
 	callMu   sync.Mutex
 	createMu sync.Mutex
 	identMu  sync.RWMutex
-	pushMu   sync.RWMutex
-	sshMu    sync.RWMutex
-	pingMu   sync.Mutex
+	pushMu    sync.RWMutex
+	sshMu     sync.RWMutex
+	pingMu    sync.Mutex
+	snippetMu sync.RWMutex
 
 	vms           []VM
 	nodes         []Node
@@ -67,6 +68,19 @@ type fakeState struct {
 	// or absent means unlocked. Tests inject a lock to exercise retry-on-lock
 	// (ticket 08) and the lock field in VMLiveStatus (ticket 01b).
 	vmLocks map[int]string
+	// snippetPresence models a fixed, admin-preplaced snippet file the fake
+	// reports as existing — HasSnippet cannot invent one, so this defaults
+	// empty (nothing present) and tests opt a (node, storage, filename) triple
+	// in via SetFakeSnippetPresent.
+	snippetPresence map[fakeSnippetKey]bool
+}
+
+// fakeSnippetKey identifies one (node, storage, filename) snippet-presence
+// entry.
+type fakeSnippetKey struct {
+	node     string
+	storage  string
+	filename string
 }
 
 var (
@@ -103,6 +117,7 @@ func newFakeState(clusterName string) *fakeState {
 		identities:       originalFakeIdentities(),
 		roleState:        make(map[string][]string),
 		vmLocks:          make(map[int]string),
+		snippetPresence:  make(map[fakeSnippetKey]bool),
 	}
 	if clusterName == "secondary" {
 		state.nodes = slices.Clone(secondaryNodes)
@@ -146,6 +161,10 @@ func (s *fakeState) reset(clusterName string) {
 	s.createErrCount = 0
 	s.taskErr = ""
 	s.vmLocks = make(map[int]string)
+
+	s.snippetMu.Lock()
+	s.snippetPresence = fresh.snippetPresence
+	s.snippetMu.Unlock()
 
 	s.identMu.Lock()
 	s.identities = fresh.identities
