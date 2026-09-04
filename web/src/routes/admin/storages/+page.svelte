@@ -74,48 +74,51 @@
 		</p>
 	{/if}
 
-	<StoragesTableToolbar {store} />
-
-	{#if store.storages.length === 0}
-		<EmptyState
-			title={m['admin.storages.emptyTitle']()}
-			description={m['admin.storages.emptyDescription']()}
-		>
-			{#snippet actions()}
-				<Button
-					variant="secondary"
-					size="sm"
-					onclick={() => goto(resolve('/admin/clusters'))}
-				>
-					{m['admin.storages.emptyAction']()}
-				</Button>
-			{/snippet}
-		</EmptyState>
-	{:else if store.filteredStorages.length === 0}
-		<EmptyState
-			title={m['admin.storages.noMatchTitle']()}
-			description={m['admin.storages.noMatchDescription']()}
-		>
-			{#snippet actions()}
-				<Button
-					variant="secondary"
-					size="sm"
-					onclick={() => store.resetStorageFilters()}
-				>
-					{m['admin.storages.resetFilters']()}
-				</Button>
-			{/snippet}
-		</EmptyState>
-	{:else}
-		<div class="fade-in">
-			<StoragesTable
-				storages={store.filteredStorages}
-				toggling={store.toggling}
-				onToggle={handleToggle}
-				sortBy={store.storageSortBy}
-				sortDir={store.storageSortDir}
-				onSort={handleSort}
-			/>
+	<div class="overflow-hidden rounded-lg border border-border bg-card shadow-card">
+		<div class="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
+			<StoragesTableToolbar {store} />
 		</div>
-	{/if}
+		{#if store.storages.length === 0}
+			<EmptyState
+				title={m['admin.storages.emptyTitle']()}
+				description={m['admin.storages.emptyDescription']()}
+			>
+				{#snippet actions()}
+					<Button
+						variant="secondary"
+						size="sm"
+						onclick={() => goto(resolve('/admin/clusters'))}
+					>
+						{m['admin.storages.emptyAction']()}
+					</Button>
+				{/snippet}
+			</EmptyState>
+		{:else if store.filteredStorages.length === 0}
+			<EmptyState
+				title={m['admin.storages.noMatchTitle']()}
+				description={m['admin.storages.noMatchDescription']()}
+			>
+				{#snippet actions()}
+					<Button
+						variant="secondary"
+						size="sm"
+						onclick={() => store.resetStorageFilters()}
+					>
+						{m['admin.storages.resetFilters']()}
+					</Button>
+				{/snippet}
+			</EmptyState>
+		{:else}
+			<div class="overflow-x-auto">
+				<StoragesTable
+					storages={store.filteredStorages}
+					toggling={store.toggling}
+					onToggle={handleToggle}
+					sortBy={store.storageSortBy}
+					sortDir={store.storageSortDir}
+					onSort={handleSort}
+				/>
+			</div>
+		{/if}
+	</div>
 {/if}

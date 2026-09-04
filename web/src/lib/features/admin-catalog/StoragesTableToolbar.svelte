@@ -18,7 +18,7 @@
 	]);
 </script>
 
-<div class="mb-4 flex flex-wrap items-center gap-3">
+<div class="flex w-full flex-wrap items-center gap-3">
 	<TextField
 		type="search"
 		class="w-full sm:w-64"
