@@ -55,6 +55,6 @@
 		{m['admin.storages.resetFilters']()}
 	</Button>
 	<span class="ml-auto text-sm text-muted-foreground" data-testid="storage-result-count">
-		{m['admin.storages.resultCount']({ count: store.filteredStorages.length })}
+		{m['admin.storages.resultCount']({ count: store.filteredStorageCount })}
 	</span>
 </div>

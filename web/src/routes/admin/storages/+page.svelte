@@ -65,7 +65,7 @@
 	<p role="alert" class="text-destructive">{store.error}</p>
 {:else}
 	<div role="status" aria-live="polite" class="sr-only">
-		{m['admin.storages.storagesLoaded']({ count: store.filteredStorages.length })}
+		{m['admin.storages.storagesLoaded']({ count: store.filteredStorageCount })}
 	</div>
 
 	{#if store.toggleError}
