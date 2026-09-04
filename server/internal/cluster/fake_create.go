@@ -78,6 +78,17 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 		diskTotal = int64(spec.Disk.SizeGB) * 1024 * 1024 * 1024
 	}
 
+	// The real create path always materializes the primary disk (import-from
+	// or plain allocation), so the fake mirrors it — otherwise post-create
+	// steps like ResizeDisk find no disk to grow.
+	var disks []Disk
+	if spec.Disk.Storage != "" {
+		disks = append(disks, Disk{
+			Key: spec.Disk.Bus + "0", Bus: DiskBus(spec.Disk.Bus), BusIndex: 0,
+			Storage: spec.Disk.Storage, SizeGB: spec.Disk.SizeGB,
+		})
+	}
+
 	nics := make([]NetworkInterface, 0, len(spec.Network))
 	for _, nic := range spec.Network {
 		nics = append(nics, NetworkInterface{
@@ -98,6 +109,7 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 		CPUCores:          spec.Sockets * spec.CPUCores,
 		MemoryTotal:       int64(spec.MemoryMB) * 1024 * 1024,
 		DiskTotal:         diskTotal,
+		Disks:             disks,
 		NetworkInterfaces: nics,
 		CDROM:             cdromFromSpec(spec),
 		BootOrder:         bootOrderFromSpec(spec),

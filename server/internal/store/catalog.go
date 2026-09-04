@@ -34,6 +34,19 @@ type CatalogISO struct {
 	File    string
 }
 
+// CatalogImage is one approved cloud image (catalog_images row). A cloud
+// image is a bootable disk image (.qcow2/.raw/.vmdk/.ova) an admin placed
+// on a Proxmox storage's import/ directory themselves; SizeBytes carries
+// the discovered image size so the create path can reject a disk size
+// below it.
+type CatalogImage struct {
+	Cluster   string
+	Node      string
+	Storage   string
+	File      string
+	SizeBytes int64
+}
+
 // CatalogProfile is one VM hardware profile (catalog_profiles row).
 type CatalogProfile struct {
 	Cluster  string
@@ -133,6 +146,20 @@ func (s *Store) CatalogISOs(ctx context.Context, cluster string) ([]CatalogISO, 
 		func(rows *sql.Rows) (CatalogISO, error) {
 			var iso CatalogISO
 			return iso, rows.Scan(&iso.Cluster, &iso.Node, &iso.Storage, &iso.File)
+		},
+	)
+}
+
+// CatalogImages returns the approved cloud images for a cluster, one row per
+// node (D1b), ordered by node then file. An image on shared storage has N
+// rows so each node's locality can be validated independently.
+func (s *Store) CatalogImages(ctx context.Context, cluster string) ([]CatalogImage, error) {
+	return queryCatalog(ctx, s.db, "catalog images",
+		`SELECT cluster, node, storage, file, size_bytes FROM catalog_images WHERE cluster = ? AND enabled = 1 ORDER BY node, file`,
+		[]any{cluster},
+		func(rows *sql.Rows) (CatalogImage, error) {
+			var img CatalogImage
+			return img, rows.Scan(&img.Cluster, &img.Node, &img.Storage, &img.File, &img.SizeBytes)
 		},
 	)
 }

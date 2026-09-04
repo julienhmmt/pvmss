@@ -602,15 +602,19 @@ func createCatalogTemplate(t *testing.T, st *store.Store) string {
 	return tmpl.ID
 }
 
-// TestVMCreateCatalog_IncludesCloudInitTemplates — GET .../catalog's response
-// includes the cloudInitTemplates field with only enabled templates (FR-005,
-// SC-002).
+// TestVMCreateCatalog_CloudInitTemplatesEmptyWhileFeatureDisabled — GET
+// .../catalog's cloudInitTemplates field is always empty while
+// cloudImageFeatureEnabled is false (vm_create.go, 2026-09-04: per-VM
+// cloud-init forking needs PVMSS to hold SSH credentials to every Proxmox
+// node, judged too much scope for now — paused, not removed). An approved,
+// enabled template still exists in the catalog store underneath; this
+// confirms the HTTP layer's single choke point hides it regardless.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestVMCreateCatalog_IncludesCloudInitTemplates(t *testing.T) {
+func TestVMCreateCatalog_CloudInitTemplatesEmptyWhileFeatureDisabled(t *testing.T) {
 	handler, authHandler, st := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
-	tmplID := createCatalogTemplate(t, st)
+	createCatalogTemplate(t, st)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/vm-create/catalog", nil)
 	req.AddCookie(cookie)
@@ -632,24 +636,8 @@ func TestVMCreateCatalog_IncludesCloudInitTemplates(t *testing.T) {
 		t.Fatalf("decode catalog: %v", err)
 	}
 
-	if len(body.CloudInitTemplates) != 1 || body.CloudInitTemplates[0].ID != tmplID {
-		t.Fatalf("cloudInitTemplates = %+v, want one enabled %q", body.CloudInitTemplates, tmplID)
-	}
-
-	// Disable the template and confirm it drops out of the catalog field.
-	if err := catalog.SetCloudInitTemplateEnabled(context.Background(), st, auditTestCluster, tmplID, false); err != nil {
-		t.Fatalf("disable: %v", err)
-	}
-
-	rec2 := httptest.NewRecorder()
-	handler.ServeCatalog(rec2, req)
-
-	if err := json.Unmarshal(rec2.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode catalog: %v", err)
-	}
-
 	if len(body.CloudInitTemplates) != 0 {
-		t.Fatalf("disabled template should be absent, got %+v", body.CloudInitTemplates)
+		t.Fatalf("cloudInitTemplates = %+v, want empty while the feature is disabled", body.CloudInitTemplates)
 	}
 }
 
@@ -661,6 +649,13 @@ func TestVMCreate_WithCloudInitTemplate_Success(t *testing.T) {
 	handler, authHandler, st := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 	tmplID := createCatalogTemplate(t, st)
+
+	// Proxmox's REST API cannot write a snippets-content file, so the
+	// template's catalog Content never reaches the cluster directly — the
+	// fake models the admin-placed baseline file via SetFakeSnippetPresent
+	// (cluster.Writer.HasSnippet).
+	cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", true)
+	t.Cleanup(func() { cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", false) })
 
 	rec := postVMCreate(t, handler,
 		`{"cluster":"default","name":"web-20","profileId":"medium","cloudInitTemplateId":"`+tmplID+`"}`, cookie)

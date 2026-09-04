@@ -40,6 +40,15 @@ type CatalogISOEnabled struct {
 	Enabled bool
 }
 
+// CatalogImageEnabled is one catalog_images row with its enabled state.
+type CatalogImageEnabled struct {
+	Node      string
+	Storage   string
+	File      string
+	SizeBytes int64
+	Enabled   bool
+}
+
 // CatalogProfileEnabled is one catalog_profiles row with its enabled state.
 type CatalogProfileEnabled struct {
 	ID       string
@@ -128,6 +137,19 @@ func (s *Store) CatalogISOsEnabled(ctx context.Context, cluster string) ([]Catal
 	)
 }
 
+// CatalogImagesEnabled returns all catalog_images rows (including disabled)
+// with their enabled state, ordered by node then file.
+func (s *Store) CatalogImagesEnabled(ctx context.Context, cluster string) ([]CatalogImageEnabled, error) {
+	return queryCatalog(ctx, s.db, "catalog images enabled",
+		`SELECT node, storage, file, size_bytes, enabled FROM catalog_images WHERE cluster = ? ORDER BY node, file`,
+		[]any{cluster},
+		func(rows *sql.Rows) (CatalogImageEnabled, error) {
+			var img CatalogImageEnabled
+			return img, rows.Scan(&img.Node, &img.Storage, &img.File, &img.SizeBytes, &img.Enabled)
+		},
+	)
+}
+
 // CatalogProfilesEnabled returns all catalog_profiles rows (including disabled)
 // with their full fields, ordered by id.
 func (s *Store) CatalogProfilesEnabled(ctx context.Context, cluster string) ([]CatalogProfileEnabled, error) {
@@ -177,6 +199,16 @@ func (s *Store) SetISOEnabled(ctx context.Context, cluster, node, storage, file 
 	)
 }
 
+// SetImageEnabled upserts the enabled state and discovered size for one
+// (node, storage, file) triple.
+func (s *Store) SetImageEnabled(ctx context.Context, cluster, node, storage, file string, sizeBytes int64, enabled bool) error {
+	return execWrite(ctx, s.db,
+		`INSERT INTO catalog_images (cluster, node, storage, file, size_bytes, enabled) VALUES (?, ?, ?, ?, ?, ?)
+		 ON CONFLICT(cluster, node, storage, file) DO UPDATE SET enabled = excluded.enabled, size_bytes = excluded.size_bytes`,
+		[]any{cluster, node, storage, file, sizeBytes, enabled},
+	)
+}
+
 // DeleteNode removes a node approval row. Returns sql.ErrNoRows if the node
 // did not exist — used to drop an orphan approval whose node Proxmox no longer
 // reports.
@@ -210,6 +242,15 @@ func (s *Store) DeleteBridge(ctx context.Context, cluster, node, name string) er
 func (s *Store) DeleteISO(ctx context.Context, cluster, node, storage, file string) error {
 	return execUpdateOne(ctx, s.db,
 		`DELETE FROM catalog_isos WHERE cluster = ? AND node = ? AND storage = ? AND file = ?`,
+		[]any{cluster, node, storage, file},
+	)
+}
+
+// DeleteImage removes a cloud image approval row. Returns sql.ErrNoRows if
+// the (node, storage, file) triple did not exist.
+func (s *Store) DeleteImage(ctx context.Context, cluster, node, storage, file string) error {
+	return execUpdateOne(ctx, s.db,
+		`DELETE FROM catalog_images WHERE cluster = ? AND node = ? AND storage = ? AND file = ?`,
 		[]any{cluster, node, storage, file},
 	)
 }

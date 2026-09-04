@@ -48,7 +48,7 @@
 				/>
 			{/snippet}
 		</FormField>
-		<FormField label={m['admin.cloudinit.contentField']()} required>
+		<FormField label={m['admin.cloudinit.contentField']()} hint={m['admin.cloudinit.contentSyncWarning']()} required>
 			{#snippet children({ id, describedBy, invalid })}
 				<Textarea
 					{id}

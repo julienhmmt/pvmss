@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { getVmCreateContext } from './create.svelte';
+	import { getVmCreateContext, type SimpleSource } from './create.svelte';
 	import { getDraftContext } from './draft.svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
@@ -11,6 +11,8 @@
 	import Select from '$lib/shared/ui/Select.svelte';
 	import ProfilePicker from './ProfilePicker.svelte';
 	import TemplatePicker from './TemplatePicker.svelte';
+	import ImagePicker from './ImagePicker.svelte';
+	import ImageCloudInitFields from './ImageCloudInitFields.svelte';
 	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Switch from '$lib/shared/ui/Switch.svelte';
@@ -25,18 +27,24 @@
 	const draft = getDraftContext();
 
 	const hasTemplates = $derived((form.catalog?.templates ?? []).length > 0);
+	const hasImages = $derived((form.catalog?.images ?? []).length > 0);
+	const hasProfiles = $derived(form.hasProfiles());
 
 	$effect(() => {
 		if (!hasTemplates && form.simpleSource === 'template') {
 			form.simpleSource = 'profile';
 		}
+		if (!hasImages && form.simpleSource === 'image') {
+			form.simpleSource = 'profile';
+		}
 	});
 
-	// Template clones ignore the placement toggles; reset them when switching
-	// to that source so stale profile placement values do not block submit.
-	// ISO is also cleared — template + ISO is mutually exclusive (ErrInvalidSource).
+	// Template clones and cloud images ignore the placement toggles; reset
+	// them when switching to those sources so stale profile placement values
+	// do not block submit. ISO is also cleared — template/image + ISO is
+	// mutually exclusive (ErrInvalidSource).
 	$effect(() => {
-		if (form.simpleSource === 'template') {
+		if (form.simpleSource === 'template' || form.simpleSource === 'image') {
 			form.nodeAdjusted = false;
 			form.storageAdjusted = false;
 			form.isoFile = '';
@@ -55,14 +63,11 @@
 		}
 	});
 
-	const simpleSourceOptions = $derived(
-		hasTemplates
-			? [
-					{ value: 'profile', label: m['vms.create.profile']() },
-					{ value: 'template', label: m['vms.create.template']() }
-				]
-			: [{ value: 'profile', label: m['vms.create.profile']() }]
-	);
+	const simpleSourceOptions = $derived([
+		{ value: 'profile', label: m['vms.create.profile']() },
+		...(hasTemplates ? [{ value: 'template', label: m['vms.create.template']() }] : []),
+		...(hasImages ? [{ value: 'image', label: m['vms.create.sourceImage']() }] : [])
+	]);
 
 	// ISOs are node-local. When the node is adjusted, only show ISOs on that
 	// node (the server rejects a mismatch). When auto, show all — the server
@@ -111,6 +116,36 @@
 			: null
 	);
 
+	const imageError = $derived(
+		form.simpleSource === 'image' && form.imageFile === '' ? m['vms.create.errorImageRequired']() : null
+	);
+
+	// Image mode: when the cluster has no profiles, an explicit disk size
+	// covering the image is required (the server rejects a smaller disk
+	// with "disk_below_image"). When profiles exist, the profile's disk
+	// size is authoritative and this field is not shown at all.
+	const maxDiskGB = $derived(form.catalog?.gabarit?.maxDiskPerVMGB ?? 2048);
+	const diskSizeError = $derived(
+		form.simpleSource !== 'image' || hasProfiles
+			? null
+			: form.diskSizeGB < form.imageMinDiskGB
+				? m['vms.create.diskBelowImageMin']({ min: form.imageMinDiskGB })
+				: !Number.isInteger(form.diskSizeGB) || form.diskSizeGB < 1 || form.diskSizeGB > maxDiskGB
+					? m['vms.create.diskOutOfRange']({ min: 1, max: maxDiskGB })
+					: null
+	);
+
+	// Image mode: when profiles exist, picking one is mandatory (the
+	// profile's CPU/memory/disk/bus replace the tiny 1 vCPU/128 MB default
+	// cloud images used to get).
+	const imageProfileError = $derived(
+		form.simpleSource === 'image' && hasProfiles
+			? form.profileId !== '' && form.catalog?.profiles.some((profile) => profile.id === form.profileId)
+				? null
+				: m['vms.create.errorProfileRequired']()
+			: null
+	);
+
 	const nodeError = $derived(
 		form.nodeAdjusted && form.catalog
 			? form.node !== '' && form.catalog.nodes.includes(form.node)
@@ -133,9 +168,12 @@
 			!form.submitting &&
 			!nameError &&
 			!cloudInitTemplateError &&
-			(form.simpleSource === 'template'
-				? !templateError
-				: !profileError && !nodeError && !storageError)
+			!form.imageModeBlocker() &&
+			(form.simpleSource === 'image'
+				? !imageError && !diskSizeError && !imageProfileError
+				: form.simpleSource === 'template'
+					? !templateError
+					: !profileError && !nodeError && !storageError)
 	);
 
 	async function submit(): Promise<void> {
@@ -147,7 +185,15 @@
 		}
 		draft.clear();
 		tray.track({ upid: accepted.upid, kind: 'vm_create', vmid: accepted.vmid, name: accepted.name, cluster: accepted.cluster });
-		toast.info(m['toast.vmCreateQueued']());
+		if (accepted.cloudInitPushError) {
+			// The VM was created (task queued) but cloud-init could not be
+			// applied — surface it, sticky (duration 0), instead of the
+			// success toast: cloudInitPushError used to be dead data on this
+			// type, silently hiding the failure from the user.
+			toast.error(m['toast.vmCreateCloudInitWarning']({ error: accepted.cloudInitPushError }), 0);
+		} else {
+			toast.info(m['toast.vmCreateQueued']());
+		}
 		await goto(resolve('/vms'));
 	}
 </script>
@@ -186,13 +232,54 @@
 					{id}
 					{describedBy}
 					{invalid}
-					bind:value={form.simpleSource}
+					value={form.simpleSource}
+					onchange={(event: Event) => form.setSimpleSource((event.currentTarget as HTMLSelectElement).value as SimpleSource)}
 					options={simpleSourceOptions}
 				/>
 			{/snippet}
 		</FormField>
 
-		{#if form.simpleSource === 'template'}
+		{#if form.simpleSource === 'image'}
+			<ImagePicker error={imageError} />
+			<ImageCloudInitFields />
+			{#if hasProfiles}
+				{@const selectedProfile = cat.profiles.find((profile) => profile.id === form.profileId)}
+				<ProfilePicker
+					legend={m['vms.create.profile']()}
+					bind:value={form.profileId}
+					profiles={cat.profiles.map((profile) => ({
+						id: profile.id,
+						label: profile.label,
+						description: profileDescription(profile)
+					}))}
+				/>
+				{#if imageProfileError}
+					<p role="alert" class="text-xs font-medium text-destructive">{imageProfileError}</p>
+				{:else if selectedProfile}
+					<p class="text-sm text-muted-foreground">{m['vms.create.profileDiskNote']({ size: selectedProfile.diskGB })}</p>
+				{/if}
+			{:else}
+				<FormField
+					label={m['vms.create.size']()}
+					required
+					hint={m['vms.create.diskLimitHint']({ min: Math.max(1, form.imageMinDiskGB), max: maxDiskGB })}
+					error={diskSizeError}
+				>
+					{#snippet children({ id, describedBy, invalid })}
+						<TextField
+							{id}
+							{describedBy}
+							{invalid}
+							type="number"
+							min={Math.max(1, form.imageMinDiskGB)}
+							max={maxDiskGB}
+							bind:value={form.diskSizeGB}
+							required
+						/>
+					{/snippet}
+				</FormField>
+			{/if}
+		{:else if form.simpleSource === 'template'}
 			<TemplatePicker error={templateError} />
 		{:else}
 			<ProfilePicker
@@ -223,7 +310,7 @@
 			{/if}
 		{/if}
 
-		{#if cat.cloudInitTemplates.length > 0}
+		{#if cat.cloudInitTemplates.length > 0 && form.simpleSource !== 'image'}
 			<FormField label={m['vms.create.cloudinitTemplate']()} hint={m['common.optional']()} error={cloudInitTemplateError}>
 				{#snippet children({ id, describedBy, invalid })}
 					<Select

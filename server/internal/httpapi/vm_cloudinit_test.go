@@ -3,7 +3,6 @@ package httpapi_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -203,85 +202,49 @@ func assertSSHKeyInjected(t *testing.T, handler http.Handler, path string, authH
 	}
 }
 
+// TestVMCloudInit_SnippetSaveAlwaysDisabled — Proxmox's REST API cannot write
+// a snippets-content file on any PVE version (upload/download-url both
+// reject content=snippets), so the custom-YAML save path is permanently
+// disabled — regardless of content validity, and unconditionally (not a
+// gabarit.AllowCustomYAML policy choice anymore). GET still works: existing
+// rows (e.g. from before this change, or seeded by tests/fake) remain
+// readable.
+//
 //nolint:paralleltest // serial: shared fake VM and SQLite fixtures
-func TestVMCloudInit_SnippetNullEmptyAndPushFailure(t *testing.T) {
+func TestVMCloudInit_SnippetSaveAlwaysDisabled(t *testing.T) {
 	handler, authHandler, st := newVMCloudInitHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
-	get := func() map[string]any {
-		recorder := httptest.NewRecorder()
-		handler.ServeHTTP(recorder, cloudInitRequest(http.MethodGet, "/api/v1/vms/default/101/cloudinit/snippet", "", cookie))
-
-		if recorder.Code != http.StatusOK {
-			t.Fatalf("GET status = %d, body = %s", recorder.Code, recorder.Body.String())
-		}
-
-		var body map[string]any
-		if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
-			t.Fatal(err)
-		}
-
-		return body
-	}
-	if got := get(); got["content"] != nil {
-		t.Fatalf("fresh content = %v, want null", got["content"])
-	}
-
-	body := `{"content":"#cloud-config\nusers: {}\n"}`
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPut, "/api/v1/vms/default/101/cloudinit/snippet", body, cookie))
+	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodGet, "/api/v1/vms/default/101/cloudinit/snippet", "", cookie))
 
 	if recorder.Code != http.StatusOK {
-		t.Fatalf("save status = %d, body = %s", recorder.Code, recorder.Body.String())
+		t.Fatalf("GET status = %d, body = %s", recorder.Code, recorder.Body.String())
 	}
 
-	if got := get(); got["content"] != "#cloud-config\nusers: {}\n" {
-		t.Fatalf("saved content = %v", got["content"])
+	var body map[string]any
+	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+
+	if body["content"] != nil {
+		t.Fatalf("fresh content = %v, want null", body["content"])
 	}
 
 	recorder = httptest.NewRecorder()
-	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPut, "/api/v1/vms/default/101/cloudinit/snippet", `{"content":""}`, cookie))
+	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPut, "/api/v1/vms/default/101/cloudinit/snippet", `{"content":"#cloud-config\nusers: {}\n"}`, cookie))
 
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("clear status = %d, body = %s", recorder.Code, recorder.Body.String())
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("save status = %d, want 403, body = %s", recorder.Code, recorder.Body.String())
 	}
 
-	if got := get(); got["content"] != "" {
-		t.Fatalf("cleared content = %v, want empty string", got["content"])
-	}
-
-	cluster.SetFakeCloudInitPushError(errors.New("offline"))
-
-	recorder = httptest.NewRecorder()
-	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPut, "/api/v1/vms/default/101/cloudinit/snippet", `{"content":"#cloud-config\nnew: true\n"}`, cookie))
-
-	if recorder.Code != http.StatusBadGateway {
-		t.Fatalf("push failure status = %d, want 502", recorder.Code)
-	}
-
-	assertAPIError(t, recorder.Body.Bytes(), "push_failed")
-
-	stored, found, err := st.GetCloudInitSnippet(context.Background(), "default", 101)
-	if err != nil || !found || stored.Content != "#cloud-config\nnew: true\n" {
-		t.Fatalf("stored after push failure = %+v, found %v, err %v", stored, found, err)
-	}
-}
-
-//nolint:paralleltest // serial: shared fake VM and SQLite fixtures
-func TestVMCloudInit_SnippetRejectsInvalidBeforeCluster(t *testing.T) {
-	handler, authHandler, st := newVMCloudInitHandler(t)
-	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPut, "/api/v1/vms/default/101/cloudinit/snippet", `{"content":"users: {}"}`, aliceCookie(t, authHandler)))
-
-	if recorder.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want 400", recorder.Code)
-	}
+	assertAPIError(t, recorder.Body.Bytes(), "custom_yaml_disabled")
 
 	if _, found, err := st.GetCloudInitSnippet(context.Background(), "default", 101); err != nil || found {
-		t.Fatalf("invalid snippet persisted: found %v, err %v", found, err)
+		t.Fatalf("snippet persisted despite the disabled save path: found %v, err %v", found, err)
 	}
 
 	if len(cluster.FakeCallsFor(101)) != 0 {
-		t.Fatalf("invalid snippet reached fake: %+v", cluster.FakeCallsFor(101))
+		t.Fatalf("save reached the fake cluster: %+v", cluster.FakeCallsFor(101))
 	}
 }

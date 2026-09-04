@@ -6,7 +6,6 @@ import (
 	"errors"
 	"path/filepath"
 	"pvmss/server/internal/auth"
-	"pvmss/server/internal/cloudinit"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
@@ -134,52 +133,31 @@ func TestSetCloudInitConfig_RebootNowCallsT05Once(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest,gocyclo // serial: shared fake dataset; table of assertions
-func TestSetCloudInitSnippet_PersistsTargetPushesAndPreservesClear(t *testing.T) {
-	index := cloudInitIndex(t)
-	st := cloudInitStore(t)
-	service := policy.New(st, inventory.NewProjectionFromIndex(index), cluster.Fake{})
-	content := "#cloud-config\nusers: {}\n"
-	if err := vm.SetCloudInitSnippet(context.Background(), vm.CloudInitSnippetDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Service: service}, content); err != nil {
-		t.Fatalf("SetCloudInitSnippet: %v", err)
-	}
-	calls := cluster.FakeCallsFor(101)
-	// Ticket 03: the attach now ensures the cloud-init drive first, so the
-	// sequence is push → ensure → attach.
-	if len(calls) != 3 || calls[0].Action != "push_cloudinit_snippet" || calls[0].Storage != cluster.FakeSnippetStorage || calls[0].Filename != "pvmss-101.yml" || calls[0].Content != content {
-		t.Fatalf("calls = %+v", calls)
-	}
-	if calls[1].Action != "ensure_cloudinit_drive" {
-		t.Fatalf("second call = %+v, want ensure_cloudinit_drive before the attach", calls[1])
-	}
-	if calls[2].Action != "attach_cloudinit_snippet" || calls[2].Storage != cluster.FakeSnippetStorage || calls[2].Filename != "pvmss-101.yml" {
-		t.Fatalf("attach call = %+v, want attach of pvmss-101.yml", calls[2])
-	}
-	if err := vm.SetCloudInitSnippet(context.Background(), vm.CloudInitSnippetDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Service: service}, ""); err != nil {
-		t.Fatalf("clear snippet: %v", err)
-	}
-	snippet, found, err := st.GetCloudInitSnippet(context.Background(), testClusterName, 101)
-	if err != nil || !found || snippet.Content != "" {
-		t.Fatalf("cleared snippet = %+v, found %v, err %v", snippet, found, err)
-	}
-}
-
+// TestSetCloudInitSnippet_AlwaysDisabled — Proxmox's REST API cannot write a
+// snippets-content file on any PVE version (upload/download-url both reject
+// content=snippets), so the save path always returns ErrCustomYAMLDisabled —
+// regardless of content validity, and independent of the gabarit.
+// AllowCustomYAML setting (it was never a real policy choice: an admin
+// turning it on could never have made this work). Nothing reaches the fake
+// cluster or the store.
+//
 //nolint:paralleltest // serial: shared fake dataset
-func TestSetCloudInitSnippet_ValidationAndPushFailure(t *testing.T) {
+func TestSetCloudInitSnippet_AlwaysDisabled(t *testing.T) {
 	index := cloudInitIndex(t)
 	st := cloudInitStore(t)
 	service := policy.New(st, inventory.NewProjectionFromIndex(index), cluster.Fake{})
-	if err := vm.SetCloudInitSnippet(context.Background(), vm.CloudInitSnippetDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Service: service}, "not yaml"); !errors.Is(err, cloudinit.ErrSnippetPrefix) {
-		t.Fatalf("invalid error = %v, want ErrSnippetPrefix", err)
+	deps := vm.CloudInitSnippetDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Service: service}
+
+	if err := vm.SetCloudInitSnippet(context.Background(), deps, "#cloud-config\nusers: {}\n"); !errors.Is(err, vm.ErrCustomYAMLDisabled) {
+		t.Fatalf("error = %v, want ErrCustomYAMLDisabled", err)
 	}
-	pushErr := errors.New("push unavailable")
-	cluster.SetFakeCloudInitPushError(pushErr)
-	err := vm.SetCloudInitSnippet(context.Background(), vm.CloudInitSnippetDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Service: service}, "#cloud-config\n")
-	if !errors.Is(err, vm.ErrSnippetPushFailed) {
-		t.Fatalf("push error = %v, want ErrSnippetPushFailed", err)
+
+	if len(cluster.FakeCallsFor(101)) != 0 {
+		t.Fatalf("save reached the fake cluster: %+v", cluster.FakeCallsFor(101))
 	}
-	if _, found, readErr := st.GetCloudInitSnippet(context.Background(), testClusterName, 101); readErr != nil || !found {
-		t.Fatalf("snippet after push failure found %v, err %v; want committed row", found, readErr)
+
+	if _, found, err := st.GetCloudInitSnippet(context.Background(), testClusterName, 101); err != nil || found {
+		t.Fatalf("snippet persisted despite the disabled save path: found %v, err %v", found, err)
 	}
 }
 

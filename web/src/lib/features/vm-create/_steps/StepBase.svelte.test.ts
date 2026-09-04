@@ -18,6 +18,7 @@ function catalogWith(templates: VmCreateCatalog['templates']): VmCreateCatalog {
 		storages: [{ name: 'local-lvm', node: 'pve-node-01' }],
 		bridges: [],
 		isos: [],
+		images: [],
 		profiles: [],
 		templates,
 		cloudInitTemplates: [],

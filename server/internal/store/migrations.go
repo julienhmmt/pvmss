@@ -266,6 +266,24 @@ UPDATE clusters                SET name = display_name WHERE name = 'default' AN
 // (discovery wins, the existing behavior).
 const schemaV26 = `ALTER TABLE catalog_templates ADD COLUMN override_discovery BOOLEAN NOT NULL DEFAULT 0`
 
+// schemaV27 adds the approved cloud-image catalog (catalog_images): a sibling
+// to catalog_isos keyed by (cluster, node, storage, file). A cloud image is a
+// bootable disk image (.qcow2/.raw/.vmdk/.ova) an admin placed on a Proxmox
+// storage's import/ directory themselves — PVMSS never fetches images from the
+// internet. size_bytes carries the discovered image size so the create path
+// can reject a disk size below it before a VMID is spent.
+const schemaV27 = `CREATE TABLE catalog_images (
+	cluster    TEXT NOT NULL,
+	node       TEXT NOT NULL,
+	storage    TEXT NOT NULL,
+	file       TEXT NOT NULL,
+	size_bytes INTEGER NOT NULL DEFAULT 0,
+	enabled    BOOLEAN NOT NULL DEFAULT 1,
+	PRIMARY KEY (cluster, node, storage, file)
+);
+INSERT INTO catalog_images (cluster, node, storage, file, size_bytes) VALUES
+	('default', 'pve-node-01', 'local', 'ubuntu-24.04-server-cloudimg-amd64.qcow2', 644245094);`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -301,4 +319,5 @@ var Migrations = []Migration{
 	{Version: 24, DDL: schemaV24},
 	{Version: 25, DDL: schemaV25},
 	{Version: 26, DDL: schemaV26},
+	{Version: 27, DDL: schemaV27},
 }

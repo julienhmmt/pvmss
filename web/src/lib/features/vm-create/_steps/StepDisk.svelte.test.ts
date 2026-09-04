@@ -21,6 +21,7 @@ function catalogWith(template: VmCreateCatalog['templates'][number]): VmCreateCa
 		],
 		bridges: [],
 		isos: [],
+		images: [],
 		profiles: [],
 		templates: [template],
 		cloudInitTemplates: [],

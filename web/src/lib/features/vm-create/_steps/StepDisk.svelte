@@ -18,11 +18,25 @@
 			: null
 	);
 
+	// Image source with profiles configured: the profile's disk size is
+	// authoritative (FR-009) — show it as read-only text instead of a size
+	// input. Storage placement stays user-editable regardless (a profile
+	// never picks where the disk lands).
+	const showProfilePicker = $derived(form.sourceType === 'image' && form.hasProfiles());
+	const selectedProfile = $derived((form.catalog?.profiles ?? []).find((profile) => profile.id === form.profileId));
+
 	const maxDiskGB = $derived(form.catalog?.gabarit?.maxDiskPerVMGB ?? 2048);
+	// The effective floor: the template's disk for clones (issue 04), the
+	// cloud image's size for image mode (server code "disk_below_image").
+	const minDiskGB = $derived(
+		Math.max(1, form.templateMinDiskGB, form.sourceType === 'image' ? form.imageMinDiskGB : 0)
+	);
 	const diskError = $derived(
-		Number.isInteger(form.diskSizeGB) && form.diskSizeGB >= 1 && form.diskSizeGB <= maxDiskGB
-			? null
-			: m['vms.create.diskOutOfRange']({ min: 1, max: maxDiskGB })
+		form.sourceType === 'image' && form.diskSizeGB < form.imageMinDiskGB
+			? m['vms.create.diskBelowImageMin']({ min: form.imageMinDiskGB })
+			: Number.isInteger(form.diskSizeGB) && form.diskSizeGB >= 1 && form.diskSizeGB <= maxDiskGB
+				? null
+				: m['vms.create.diskOutOfRange']({ min: 1, max: maxDiskGB })
 	);
 
 	// Issue 04: mirror buildCloneSpec (vm/create.go) so the user sees when a
@@ -68,11 +82,17 @@
 		{/snippet}
 	</FormField>
 
-	<FormField label={m['vms.create.size']()} hint={m['vms.create.diskLimitHint']({ min: 1, max: maxDiskGB })} error={diskError} required>
-		{#snippet children({ id, describedBy, invalid })}
-			<TextField {id} {describedBy} {invalid} type="number" min={Math.max(1, form.templateMinDiskGB)} max={maxDiskGB} bind:value={form.diskSizeGB} required />
-		{/snippet}
-	</FormField>
+	{#if showProfilePicker}
+		{#if selectedProfile}
+			<p class="text-sm text-muted-foreground">{m['vms.create.profileDiskNote']({ size: selectedProfile.diskGB })}</p>
+		{/if}
+	{:else}
+		<FormField label={m['vms.create.size']()} hint={m['vms.create.diskLimitHint']({ min: minDiskGB, max: maxDiskGB })} error={diskError} required>
+			{#snippet children({ id, describedBy, invalid })}
+				<TextField {id} {describedBy} {invalid} type="number" min={minDiskGB} max={maxDiskGB} bind:value={form.diskSizeGB} required />
+			{/snippet}
+		</FormField>
+	{/if}
 
 	{#if fullCloneHint !== null}
 		<p class="text-sm text-muted-foreground" data-testid="full-clone-hint">{fullCloneHint}</p>

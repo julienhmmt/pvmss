@@ -267,6 +267,13 @@ func TestCatalogAdminCompat_RowSetsIdenticalBeforeAndAfterV9(t *testing.T) {
 		t.Fatalf("add sockets column: %v", err)
 	}
 
+	// Add catalog_images manually (same DDL as V27) so ApprovedResources can
+	// run against the V9 schema — same constraint as the sockets column
+	// above.
+	if _, err := db.ExecContext(context.Background(), store.Migrations[26].DDL); err != nil {
+		t.Fatalf("add catalog_images table: %v", err)
+	}
+
 	st := store.NewFromDB(db)
 
 	afterNodes, afterStorages, afterBridges, afterISOs, afterProfiles := captureAtLatest(t, st)

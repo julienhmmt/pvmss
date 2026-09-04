@@ -53,12 +53,15 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 	{
 		heading: () => m['chrome.adminNav.catalog'](),
 		icon: 'catalog',
+		// Images and cloud-init templates are unlisted (not deleted — the
+		// pages and backend still exist) while cloud-image creation is
+		// paused: server/internal/httpapi/vm_create.go
+		// cloudImageFeatureEnabled.
 		items: [
 			{ href: resolve('/admin/storages'), label: () => m['chrome.adminNav.storages']() },
 			{ href: resolve('/admin/isos'), label: () => m['chrome.adminNav.isos']() },
 			{ href: resolve('/admin/templates'), label: () => m['chrome.adminNav.templates']() },
 			{ href: resolve('/admin/bridges'), label: () => m['chrome.adminNav.bridges']() },
-			{ href: resolve('/admin/cloudinit-templates'), label: () => m['chrome.adminNav.cloudinit']() },
 			{ href: resolve('/admin/docs'), label: () => m['chrome.adminNav.documentation']() },
 			{ href: resolve('/admin/profiles'), label: () => m['chrome.adminNav.profiles']() },
 			{ href: resolve('/admin/tags'), label: () => m['chrome.adminNav.tags']() }
