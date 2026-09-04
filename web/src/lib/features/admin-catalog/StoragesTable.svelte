@@ -65,41 +65,54 @@
 		</thead>
 		<tbody>
 			{#each storages as storage (storage.name + storage.node)}
-				{@const usagePct = storageUsagePercent(storage.usedBytes, storage.totalBytes)}
-				<tr class="border-t border-border" data-testid="storage-row" data-storage-name={storage.name} data-storage-node={storage.node}>
-					<td class="px-4 py-3 font-mono font-medium" data-label={m['common.name']()}>{storage.name}</td>
+				<tr class="border-t border-border" data-testid="storage-row" data-storage-name={storage.noStorage ? '' : storage.name} data-storage-node={storage.node}>
+					<td class="px-4 py-3" data-label={m['common.name']()}>
+						{#if storage.noStorage}
+							<span class="text-muted-foreground italic">{m['admin.storages.noAvailableStorage']()}</span>
+						{:else}
+							<span class="font-mono font-medium">{storage.name}</span>
+						{/if}
+					</td>
 					<td class="px-4 py-3 font-mono" data-label={m['common.node']()}>{storage.node}</td>
-					<td class="px-4 py-3" data-label={m['common.type']()}>{storage.type}</td>
+					<td class="px-4 py-3" data-label={m['common.type']()}>
+						{#if !storage.noStorage}
+							{storage.type}
+						{/if}
+					</td>
 					<td class="px-4 py-3" data-label={m['admin.catalog.usage']()}>
-						<NodeUsageBar
-							value={storage.totalBytes > 0 ? storage.usedBytes / storage.totalBytes : 0}
-							label={m['admin.storages.usageLabel']({
-								used: formatBytes(storage.usedBytes),
-								total: formatBytes(storage.totalBytes),
-								percent: usagePct
-							})}
-						/>
+						{#if !storage.noStorage}
+							<NodeUsageBar
+								value={storage.totalBytes > 0 ? storage.usedBytes / storage.totalBytes : 0}
+								label={m['admin.storages.usageLabel']({
+									used: formatBytes(storage.usedBytes),
+									total: formatBytes(storage.totalBytes),
+									percent: storageUsagePercent(storage.usedBytes, storage.totalBytes)
+								})}
+							/>
+						{/if}
 					</td>
 					<td class="px-4 py-3" data-label={m['admin.catalog.statusColumn']()}>
-						<span
-							class="inline-flex items-center gap-2"
-							aria-busy={toggling === `storage:${storage.name}@${storage.node}`}
-						>
-							<Switch
-								checked={storage.enabled}
-								label={storage.enabled
-									? m['admin.catalog.revokeApproval']({ name: storage.name })
-									: m['admin.catalog.approveName']({ name: storage.name })}
-								onToggle={() => onToggle(storage.name, storage.node, !storage.enabled)}
-							/>
-							<span class="text-xs text-muted-foreground">
-								{#if toggling === `storage:${storage.name}@${storage.node}`}
-									…
-								{:else}
-									{storage.enabled ? m['admin.catalog.approvedStatus']() : m['admin.catalog.approveAction']()}
-								{/if}
+						{#if !storage.noStorage}
+							<span
+								class="inline-flex items-center gap-2"
+								aria-busy={toggling === `storage:${storage.name}@${storage.node}`}
+							>
+								<Switch
+									checked={storage.enabled}
+									label={storage.enabled
+										? m['admin.catalog.revokeApproval']({ name: storage.name })
+										: m['admin.catalog.approveName']({ name: storage.name })}
+									onToggle={() => onToggle(storage.name, storage.node, !storage.enabled)}
+								/>
+								<span class="text-xs text-muted-foreground">
+									{#if toggling === `storage:${storage.name}@${storage.node}`}
+										…
+									{:else}
+										{storage.enabled ? m['admin.catalog.approvedStatus']() : m['admin.catalog.approveAction']()}
+									{/if}
+								</span>
 							</span>
-						</span>
+						{/if}
 					</td>
 				</tr>
 			{:else}

@@ -1061,6 +1061,7 @@
   "admin.storages.enabledSuccess": "{name} on {node} enabled",
   "admin.storages.disabledSuccess": "{name} on {node} disabled",
   "admin.storages.usageLabel": "{used} / {total} ({percent}%)",
+  "admin.storages.noAvailableStorage": "No available storage",
   "admin.tags.title": "Tags",
   "admin.tags.newTag": "New tag",
   "admin.tags.color": "Color",
