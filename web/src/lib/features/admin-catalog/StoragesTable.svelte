@@ -65,7 +65,12 @@
 		</thead>
 		<tbody>
 			{#each storages as storage (storage.name + storage.node)}
-				<tr class="border-t border-border" data-testid="storage-row" data-storage-name={storage.noStorage ? '' : storage.name} data-storage-node={storage.node}>
+				<tr
+				class="border-t border-border {storage.noStorage ? 'bg-muted/20 text-muted-foreground' : 'transition-colors hover:bg-muted/40'}"
+				data-testid="storage-row"
+				data-storage-name={storage.noStorage ? '' : storage.name}
+				data-storage-node={storage.node}
+			>
 					<td class="px-4 py-3" data-label={m['common.name']()}>
 						{#if storage.noStorage}
 							<span class="text-muted-foreground italic">{m['admin.storages.noAvailableStorage']()}</span>

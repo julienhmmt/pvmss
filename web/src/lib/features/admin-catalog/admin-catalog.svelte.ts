@@ -178,9 +178,9 @@ export class AdminCatalogStore {
 	isoStorageOptions = $derived([...new SvelteSet(this.isos.map((i) => i.storage))].sort());
 	isoNodeOptions = $derived([...new SvelteSet(this.isos.map((i) => i.node))].sort());
 
-	filteredStorages = $derived.by(() => {
+	filteredRealStorages = $derived.by(() => {
 		const search = this.storageSearch.toLowerCase();
-		const filtered = this.storages.filter((storage) => {
+		return this.storages.filter((storage) => {
 			if (search) {
 				const match =
 					storage.name.toLowerCase().includes(search) ||
@@ -194,7 +194,10 @@ export class AdminCatalogStore {
 			if (this.storageEnabledFilter === 'disabled' && storage.enabled) return false;
 			return true;
 		});
+	});
 
+	filteredStorages = $derived.by(() => {
+		const search = this.storageSearch.toLowerCase();
 		const storageNodes = new SvelteSet(this.storages.map((s) => s.node));
 		let selectedNodeNames: string[];
 		if (this.storageNodeFilter) {
@@ -217,8 +220,10 @@ export class AdminCatalogStore {
 				noStorage: true
 			}));
 
-		return sortStorages([...filtered, ...placeholders], this.storageSortBy, this.storageSortDir);
+		return sortStorages([...this.filteredRealStorages, ...placeholders], this.storageSortBy, this.storageSortDir);
 	});
+
+	filteredStorageCount = $derived(this.filteredRealStorages.length);
 
 	storageNodeOptions = $derived([...new SvelteSet(this.nodes.map((n) => n.name))].sort());
 	storageTypeOptions = $derived([...new SvelteSet(this.storages.map((s) => s.type))].sort());
