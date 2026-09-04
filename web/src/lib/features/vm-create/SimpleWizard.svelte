@@ -34,10 +34,12 @@
 
 	// Template clones ignore the placement toggles; reset them when switching
 	// to that source so stale profile placement values do not block submit.
+	// ISO is also cleared — template + ISO is mutually exclusive (ErrInvalidSource).
 	$effect(() => {
 		if (form.simpleSource === 'template') {
 			form.nodeAdjusted = false;
 			form.storageAdjusted = false;
+			form.isoFile = '';
 		}
 	});
 
@@ -48,6 +50,15 @@
 					{ value: 'template', label: m['vms.create.template']() }
 				]
 			: [{ value: 'profile', label: m['vms.create.profile']() }]
+	);
+
+	// ISOs are node-local. When the node is adjusted, only show ISOs on that
+	// node (the server rejects a mismatch). When auto, show all — the server
+	// restricts candidate nodes to those holding the selected ISO.
+	const isoOptions = $derived(
+		(form.catalog?.isos ?? [])
+			.filter((iso) => !form.nodeAdjusted || iso.node === form.node)
+			.map((iso) => ({ value: iso.file, label: iso.file }))
 	);
 
 	function profileDescription(profile: { cpuCores: number; memoryMB: number; diskGB: number; bus: string }): string {
@@ -183,6 +194,20 @@
 			/>
 			{#if profileError}
 				<p role="alert" class="text-xs font-medium text-destructive">{profileError}</p>
+			{/if}
+			{#if isoOptions.length > 0}
+				<FormField label={m['vms.create.iso']()} hint={m['common.optional']()}>
+					{#snippet children({ id, describedBy, invalid })}
+						<Select
+							{id}
+							{describedBy}
+							{invalid}
+							bind:value={form.isoFile}
+							placeholder={m['common.none']()}
+							options={isoOptions}
+						/>
+					{/snippet}
+				</FormField>
 			{/if}
 		{/if}
 
