@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { AdminPool, CreatedPoolCredentials } from './pools.svelte';
+	import type { ClusterOption } from '$lib/shared/clusters';
 	import CreatePoolDialog from './CreatePoolDialog.svelte';
+	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import DeletePoolConfirm from './DeletePoolConfirm.svelte';
 	import PoolVmBar from './PoolVmBar.svelte';
 	import PoolCredentialsBanner from './PoolCredentialsBanner.svelte';
@@ -25,13 +27,16 @@
 		deleteError: string | null;
 		announce: string | null;
 		credentials: CreatedPoolCredentials | null;
+		clusterOptions: ClusterOption[];
+		cluster: string;
+		onClusterChange: (value: string) => void;
 		onSearch: (value: string) => void;
 		onCreate: (name: string, comment: string) => Promise<void>;
 		onDelete: (name: string) => Promise<void>;
 		onDismissCredentials: () => void;
 	}
 
-	let { pools, loading, error, saving, saveError, deleteError, deleting, announce, credentials, onSearch, onCreate, onDelete, onDismissCredentials }: Props = $props();
+	let { pools, loading, error, saving, saveError, deleteError, deleting, announce, credentials, clusterOptions, cluster, onClusterChange, onSearch, onCreate, onDelete, onDismissCredentials }: Props = $props();
 	let search = $state('');
 	let showCreate = $state(false);
 	let deleteName = $state<string | null>(null);
@@ -131,6 +136,7 @@
 
 <PageHeader title={m['admin.pools.heading']()} description={m['admin.pools.description']()}>
 	{#snippet actions()}
+		<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="pools-cluster" />
 		<Button onclick={openCreate}>{m['admin.pools.newPool']()}</Button>
 	{/snippet}
 </PageHeader>
