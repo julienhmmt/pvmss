@@ -4,6 +4,7 @@
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import TableCard from '$lib/shared/ui/TableCard.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
@@ -122,93 +123,91 @@
 	{/if}
 
 	{#if tags.length > 0}
-		<div class="mb-4 flex flex-wrap items-center gap-2">
-			<TextField
-				type="search"
-				placeholder={m['admin.tags.searchPlaceholder']()}
-				value={search}
-				oninput={(e: Event & { currentTarget: HTMLInputElement }) => onSearchChange(e.currentTarget.value)}
-				class="w-full sm:w-48"
-			/>
-			<Select
-				value={protectedFilter}
-				onchange={(e: Event & { currentTarget: HTMLSelectElement }) => onProtectedFilterChange(e.currentTarget.value as 'all' | 'protected' | 'unprotected')}
-				options={[
-					{ value: 'all', label: m['admin.tags.filterProtected']() },
-					{ value: 'protected', label: m['admin.tags.filterProtectedOnly']() },
-					{ value: 'unprotected', label: m['admin.tags.filterUnprotectedOnly']() }
-				]}
-				class="w-full sm:w-44"
-			/>
-			<Button
-				variant="secondary"
-				size="sm"
-				onclick={onResetFilters}
-			>
-				{m['admin.tags.resetFilters']()}
-			</Button>
-		</div>
-	{/if}
-
-	<div class="overflow-x-auto rounded-lg border border-border">
-		<table class="w-full text-sm">
-			<thead class="bg-muted/50 text-left">
-				<tr>
-					<TableHeader text={m['common.name']()} tooltip={m['admin.tags.tooltip.color']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-					<TableHeader text={m['admin.tags.color']()} tooltip={m['admin.tags.tooltip.color']()} />
-					<TableHeader text={m['common.vms']()} tooltip={m['admin.tags.tooltip.vmCount']()} column="vmCount" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-					<th class="px-4 py-2 font-medium">{m['common.actions']()}</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each filteredTags as tag (tag.name)}
-					<tr class="border-t border-border">
-						<td class="px-4 py-2 font-mono">
-							{tag.name}
-							{#if tag.protected}
-								<span class="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{m['admin.tags.protected']()}</span>
-							{/if}
-						</td>
-						<td class="px-4 py-2">
-							{#if editingTag === tag.name}
-								<div class="flex items-center gap-2">
-									<ColorPicker bind:value={editColor} class="h-8 w-12 p-1" />
-									<Button variant="ghost" size="sm" onclick={saveEdit}>{m['common.save']()}</Button>
-									<Button variant="ghost" size="sm" onclick={() => (editingTag = null)}>{m['common.cancel']()}</Button>
-								</div>
-							{:else}
-								<div class="flex items-center gap-2">
-									<span class="inline-block h-4 w-4 rounded-full border" style="background: {tag.color}"></span>
-									<span class="font-mono text-xs">{tag.color}</span>
-									<Button variant="ghost" size="sm" label={m['admin.tags.editColorLabel']({ name: tag.name })} onclick={() => startEdit(tag)}>{m['common.edit']()}</Button>
-								</div>
-							{/if}
-						</td>
-						<td class="px-4 py-2">{tag.vmCount}</td>
-						<td class="px-4 py-2">
-							{#if !tag.protected}
-								<Button variant="destructive" size="sm" label={m['admin.tags.deleteLabel']({ name: tag.name })} onclick={() => (pendingDelete = tag)}>{m['common.delete']()}</Button>
-							{:else}
-								<span class="text-xs text-muted-foreground">—</span>
-							{/if}
-						</td>
+		<TableCard>
+			{#snippet toolbar()}
+				<TextField
+					type="search"
+					placeholder={m['admin.tags.searchPlaceholder']()}
+					value={search}
+					oninput={(e: Event & { currentTarget: HTMLInputElement }) => onSearchChange(e.currentTarget.value)}
+					class="w-full sm:w-48"
+				/>
+				<Select
+					value={protectedFilter}
+					onchange={(e: Event & { currentTarget: HTMLSelectElement }) => onProtectedFilterChange(e.currentTarget.value as 'all' | 'protected' | 'unprotected')}
+					options={[
+						{ value: 'all', label: m['admin.tags.filterProtected']() },
+						{ value: 'protected', label: m['admin.tags.filterProtectedOnly']() },
+						{ value: 'unprotected', label: m['admin.tags.filterUnprotectedOnly']() }
+					]}
+					class="w-full sm:w-44"
+				/>
+				<Button
+					variant="secondary"
+					size="sm"
+					onclick={onResetFilters}
+				>
+					{m['admin.tags.resetFilters']()}
+				</Button>
+			{/snippet}
+			<table class="pv-responsive-table w-full text-sm">
+				<caption class="sr-only">{m['admin.tags.title']()}</caption>
+				<thead class="bg-muted/60 text-left text-sm font-medium text-muted-foreground">
+					<tr>
+						<TableHeader text={m['common.name']()} tooltip={m['admin.tags.tooltip.color']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<TableHeader text={m['admin.tags.color']()} tooltip={m['admin.tags.tooltip.color']()} />
+						<TableHeader text={m['common.vms']()} tooltip={m['admin.tags.tooltip.vmCount']()} column="vmCount" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<th class="px-4 py-3 font-medium">{m['common.actions']()}</th>
 					</tr>
-				{:else}
-					<tr><td colspan={4} class="p-0">
-						{#if tags.length > 0}
+				</thead>
+				<tbody class="divide-y divide-border">
+					{#each filteredTags as tag (tag.name)}
+						<tr class="group transition-colors hover:bg-muted/40">
+							<td class="px-4 py-3.5 font-mono" data-label={m['common.name']()}>
+								{tag.name}
+								{#if tag.protected}
+									<span class="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">{m['admin.tags.protected']()}</span>
+								{/if}
+							</td>
+							<td class="px-4 py-3.5" data-label={m['admin.tags.color']()}>
+								{#if editingTag === tag.name}
+									<div class="flex items-center gap-2">
+										<ColorPicker bind:value={editColor} class="h-8 w-12 p-1" />
+										<Button variant="ghost" size="sm" onclick={saveEdit}>{m['common.save']()}</Button>
+										<Button variant="ghost" size="sm" onclick={() => (editingTag = null)}>{m['common.cancel']()}</Button>
+									</div>
+								{:else}
+									<div class="flex items-center gap-2">
+										<span class="inline-block h-4 w-4 rounded-full border" style="background: {tag.color}"></span>
+										<span class="font-mono text-xs">{tag.color}</span>
+										<Button variant="ghost" size="sm" label={m['admin.tags.editColorLabel']({ name: tag.name })} onclick={() => startEdit(tag)}>{m['common.edit']()}</Button>
+									</div>
+								{/if}
+							</td>
+							<td class="px-4 py-3.5" data-label={m['common.vms']()}>{tag.vmCount}</td>
+							<td class="px-4 py-3.5" data-label={m['common.actions']()}>
+								{#if !tag.protected}
+									<Button variant="destructive" size="sm" label={m['admin.tags.deleteLabel']({ name: tag.name })} onclick={() => (pendingDelete = tag)}>{m['common.delete']()}</Button>
+								{:else}
+									<span class="text-xs text-muted-foreground">—</span>
+								{/if}
+							</td>
+						</tr>
+					{:else}
+						<tr><td colspan={4} class="p-0">
 							<EmptyState title={m['admin.tags.noFilterMatches']()} />
-						{:else}
-							<EmptyState title={m['admin.tags.noTags']()}>
-								{#snippet actions()}
-									<Button onclick={openCreate}>{m['admin.tags.newTag']()}</Button>
-								{/snippet}
-							</EmptyState>
-						{/if}
-					</td></tr>
-				{/each}
-			</tbody>
-		</table>
-	</div>
+						</td></tr>
+					{/each}
+				</tbody>
+			</table>
+		</TableCard>
+	{:else}
+		<EmptyState title={m['admin.tags.noTags']()}>
+			{#snippet actions()}
+				<Button onclick={openCreate}>{m['admin.tags.newTag']()}</Button>
+			{/snippet}
+		</EmptyState>
+	{/if}
 {/if}
 
 <Dialog bind:open={showForm} size="sm" labelledBy="tag-form-title" onClose={() => (showForm = false)}>
