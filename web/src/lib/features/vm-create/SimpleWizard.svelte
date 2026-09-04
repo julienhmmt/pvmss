@@ -43,6 +43,18 @@
 		}
 	});
 
+	// ISO install and cloud-init are incompatible use cases: ISO is for a
+	// manual OS install, cloud-init is for pre-built cloud images. When a
+	// cloud-init template is selected, the server suppresses start=1 and
+	// starts the VM only after attaching the snippet (lifecycle-04) — so an
+	// ISO install with a stale cloud-init selection leaves the VM stopped.
+	// Clear the cloud-init template when an ISO is picked.
+	$effect(() => {
+		if (form.isoFile !== '') {
+			form.cloudInitTemplateId = '';
+		}
+	});
+
 	const simpleSourceOptions = $derived(
 		hasTemplates
 			? [
