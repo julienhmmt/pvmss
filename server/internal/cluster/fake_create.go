@@ -99,6 +99,8 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 		MemoryTotal:       int64(spec.MemoryMB) * 1024 * 1024,
 		DiskTotal:         diskTotal,
 		NetworkInterfaces: nics,
+		CDROM:             cdromFromSpec(spec),
+		BootOrder:         bootOrderFromSpec(spec),
 	})
 
 	// The real create path always sends agent=1 (proxmox_create.go), so a
@@ -242,4 +244,30 @@ func (fake Fake) CloneVM(_ context.Context, spec CloneSpec) (string, error) {
 	state.record(FakeCall{Node: spec.SourceNode, VMID: spec.NewVMID, Action: "clone", Name: spec.Name, Pool: spec.Pool, Full: spec.Full, Storage: spec.Storage})
 
 	return upid, nil
+}
+
+// cdromFromSpec builds the CD-ROM state a real Proxmox create would leave:
+// mounted with the ISO volume ID when an ISO is provided, absent otherwise.
+func cdromFromSpec(spec VMSpec) CDROMState {
+	if spec.ISO == nil {
+		return CDROMState{State: CDROMAbsent}
+	}
+
+	return CDROMState{State: CDROMMounted, ISOVolID: spec.ISO.Storage + ":iso/" + spec.ISO.File}
+}
+
+// bootOrderFromSpec mirrors proxmox_create.go's setBootOrderForm: CD-ROM first
+// when an ISO is present (so the VM boots from the installer), then disk.
+func bootOrderFromSpec(spec VMSpec) []string {
+	var order []string
+
+	if spec.ISO != nil {
+		order = append(order, cdromDiskKey)
+	}
+
+	if spec.Disk.Storage != "" {
+		order = append(order, spec.Disk.Bus+"0")
+	}
+
+	return order
 }

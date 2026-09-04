@@ -1131,7 +1131,7 @@ func TestFake_CreateVM_WithISO(t *testing.T) {
 		Tags:             []string{"pvmss"},
 		CPUCores:         2,
 		MemoryMB:         4096,
-		Disk:             cluster.DiskSpec{Storage: cluster.FakeStorageLocalLVM, SizeGB: 30},
+		Disk:             cluster.DiskSpec{Storage: cluster.FakeStorageLocalLVM, SizeGB: 30, Bus: string(cluster.DiskBusSCSI)},
 		Network:          cluster.NetworkSpec{{Bridge: cluster.FakeBridgeVMbr0, Model: string(cluster.DiskBusVirtio)}},
 		ISO:              &cluster.ISOSpec{Storage: "local", File: "debian-12.iso"},
 		StartAfterCreate: false,
@@ -1154,21 +1154,45 @@ func TestFake_CreateVM_WithISO(t *testing.T) {
 	var found bool
 
 	for _, vm := range snap.VMs {
-		if vm.VMID == vmid {
-			found = true
-
-			if vm.Name != "iso-vm" {
-				t.Errorf("Name = %q, want iso-vm", vm.Name)
-			}
-
-			if vm.Status != cluster.VMStopped {
-				t.Errorf("Status = %q, want stopped (no StartAfterCreate)", vm.Status)
-			}
+		if vm.VMID != vmid {
+			continue
 		}
+
+		found = true
+
+		assertISOCreatedVM(t, vm)
 	}
 
 	if !found {
 		t.Fatalf("created VM %d not in snapshot", vmid)
+	}
+}
+
+// assertISOCreatedVM checks the fields a real Proxmox create with an ISO
+// would leave: stopped (no StartAfterCreate), CD-ROM mounted with the ISO
+// volume ID, and CD-first boot order. Extracted from TestFake_CreateVM_WithISO
+// to keep its cognitive complexity under go:S3776's ceiling.
+func assertISOCreatedVM(t *testing.T, vm cluster.VM) {
+	t.Helper()
+
+	if vm.Name != "iso-vm" {
+		t.Errorf("Name = %q, want iso-vm", vm.Name)
+	}
+
+	if vm.Status != cluster.VMStopped {
+		t.Errorf("Status = %q, want stopped (no StartAfterCreate)", vm.Status)
+	}
+
+	if vm.CDROM.State != cluster.CDROMMounted {
+		t.Errorf("CDROM State = %q, want mounted", vm.CDROM.State)
+	}
+
+	if vm.CDROM.ISOVolID != "local:iso/debian-12.iso" {
+		t.Errorf("CDROM ISOVolID = %q, want local:iso/debian-12.iso", vm.CDROM.ISOVolID)
+	}
+
+	if !slices.Equal(vm.BootOrder, []string{"ide2", "scsi0"}) {
+		t.Errorf("BootOrder = %v, want [ide2 scsi0] (CD-ROM first for ISO install)", vm.BootOrder)
 	}
 }
 
