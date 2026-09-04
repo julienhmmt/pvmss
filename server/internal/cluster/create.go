@@ -47,6 +47,11 @@ type CloneSpec struct {
 	TargetNode string
 }
 
+// biosOVMF is the Proxmox bios value selecting UEFI firmware (US6/issue-06
+// D6a). Shared between the real create path and the fake dataset so both
+// recognize the same trigger value.
+const biosOVMF = "ovmf"
+
 // VMSpec is the fully-resolved specification of a VM to create (T06
 // data-model.md). Every field is already validated and resolved server-side —
 // the pool is the actor's own, never client-supplied (FR-004).
