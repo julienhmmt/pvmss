@@ -3,11 +3,10 @@ package vm_test
 import (
 	"context"
 	"errors"
-	"slices"
-	"testing"
-
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/vm"
+	"slices"
+	"testing"
 )
 
 // TestCreate_Image_ZeroHardwareDefaultsToImageDefaults — a cloud-image

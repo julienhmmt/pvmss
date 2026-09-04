@@ -3,10 +3,9 @@ package catalog_test
 import (
 	"context"
 	"errors"
-	"testing"
-
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
+	"testing"
 )
 
 // TestAdminListImages_IncludesSuperset verifies the admin image list includes
