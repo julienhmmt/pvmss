@@ -6,6 +6,7 @@
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Switch from '$lib/shared/ui/Switch.svelte';
+	import TableCard from '$lib/shared/ui/TableCard.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -92,22 +93,23 @@
 		</p>
 	{/if}
 
-	<div class="overflow-x-auto rounded-lg border border-border">
-		<table class="w-full text-sm">
-			<thead class="bg-muted/50 text-left">
+	<TableCard>
+		<table class="pv-responsive-table w-full text-sm">
+			<caption class="sr-only">{m['admin.cloudinit.header']()}</caption>
+			<thead class="bg-muted/60 text-left text-sm font-medium text-muted-foreground">
 				<tr>
-					<th class="px-4 py-2 font-medium">{m['admin.cloudinit.id']()}</th>
-					<th class="px-4 py-2 font-medium">{m['admin.cloudinit.labelField']()}</th>
-					<th class="px-4 py-2 font-medium">{m['admin.cloudinit.enabledStatus']()}</th>
-					<th class="px-4 py-2 font-medium">{m['common.actions']()}</th>
+					<th class="px-4 py-3 font-medium">{m['admin.cloudinit.id']()}</th>
+					<th class="px-4 py-3 font-medium">{m['admin.cloudinit.labelField']()}</th>
+					<th class="px-4 py-3 font-medium">{m['admin.cloudinit.enabledStatus']()}</th>
+					<th class="px-4 py-3 font-medium">{m['common.actions']()}</th>
 				</tr>
 			</thead>
-			<tbody>
+			<tbody class="divide-y divide-border">
 				{#each templates as template (template.id)}
-					<tr class="border-t border-border">
-						<td class="px-4 py-2 font-mono text-xs">{template.id}</td>
-						<td class="px-4 py-2">{template.label}</td>
-						<td class="px-4 py-2">
+					<tr class="group transition-colors hover:bg-muted/40">
+						<td class="px-4 py-3.5 font-mono text-xs" data-label={m['admin.cloudinit.id']()}>{template.id}</td>
+						<td class="px-4 py-3.5" data-label={m['admin.cloudinit.labelField']()}>{template.label}</td>
+						<td class="px-4 py-3.5" data-label={m['admin.cloudinit.enabledStatus']()}>
 							<span class="inline-flex items-center gap-2">
 								<Switch
 									checked={template.enabled}
@@ -119,7 +121,7 @@
 								</span>
 							</span>
 						</td>
-						<td class="px-4 py-2">
+						<td class="px-4 py-3.5" data-label={m['common.actions']()}>
 							<div class="flex gap-2">
 								<Button variant="ghost" size="sm" label={m['admin.cloudinit.editLabel']({ label: template.label })} onclick={() => openEdit(template)}>{m['admin.cloudinit.edit']()}</Button>
 								<Button variant="destructive" size="sm" label={m['admin.cloudinit.deleteLabel']({ label: template.label })} onclick={() => onDelete(template.id)}>{m['admin.cloudinit.delete']()}</Button>
@@ -137,7 +139,7 @@
 				{/each}
 			</tbody>
 		</table>
-	</div>
+	</TableCard>
 {/if}
 
 <CloudInitTemplateFormDialog
