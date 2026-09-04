@@ -9,9 +9,10 @@
 		activeColumn?: string;
 		sortDir?: 'asc' | 'desc';
 		onSort?: (column: string) => void;
+		class?: string;
 	}
 
-	let { text, tooltip, column = '', activeColumn = '', sortDir = 'asc', onSort }: Props = $props();
+	let { text, tooltip, column = '', activeColumn = '', sortDir = 'asc', onSort, class: className = '' }: Props = $props();
 
 	const isActive = $derived(column !== '' && activeColumn === column);
 	const indicator = $derived(isActive ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '');
@@ -19,7 +20,7 @@
 	const sortable = $derived(column !== '' && onSort !== undefined);
 </script>
 
-<th class="px-4 py-2 font-medium" aria-sort={sortable ? ariaSort : undefined}>
+<th class="px-4 py-2 font-medium {className}" aria-sort={sortable ? ariaSort : undefined}>
 	<span class="inline-flex items-center gap-1">
 		{#if sortable}
 			<button
