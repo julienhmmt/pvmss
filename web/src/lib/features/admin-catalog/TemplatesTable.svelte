@@ -26,9 +26,9 @@
 	}
 </script>
 
-<table class="pv-responsive-table w-full text-sm">
+<table class="pv-table pv-responsive-table">
 	<caption class="sr-only">{m['admin.templates.heading']()}</caption>
-	<thead class="bg-muted/60 text-left text-sm font-medium text-muted-foreground">
+	<thead>
 		<tr>
 			<TableHeader text={m['admin.templates.vmid']()} column="vmid" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 			<TableHeader text={m['admin.templates.name']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
@@ -43,14 +43,14 @@
 				{sortDir}
 				onSort={handleSort}
 			/>
-			<td class="px-4 py-3"><span class="sr-only">{m['admin.templates.remove']()}</span></td>
+			<td><span class="sr-only">{m['admin.templates.remove']()}</span></td>
 		</tr>
 	</thead>
-	<tbody class="divide-y divide-border">
+	<tbody>
 		{#each templates as tmpl (tmpl.vmid)}
 			<tr class="group transition-colors hover:bg-muted/40 {tmpl.missing || tmpl.diskUnreadable ? 'opacity-60' : ''}" data-testid="template-row">
-				<td class="px-4 py-3.5 font-mono" data-label={m['admin.templates.vmid']()}>{tmpl.vmid}</td>
-				<td class="px-4 py-3.5" data-label={m['admin.templates.name']()}>
+				<td class="font-mono" data-label={m['admin.templates.vmid']()}>{tmpl.vmid}</td>
+				<td data-label={m['admin.templates.name']()}>
 					{tmpl.name !== '' ? tmpl.name : `VMID ${tmpl.vmid}`}{#if tmpl.missing}
 						<span
 							class="ml-2 inline-flex items-center rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive"
@@ -74,18 +74,18 @@
 						</span>
 					{/if}
 				</td>
-				<td class="px-4 py-3.5 font-mono" data-label={m['common.node']()}>{tmpl.node}</td>
-				<td class="px-4 py-3.5" data-label={m['admin.templates.disk']()}>
+				<td class="font-mono" data-label={m['common.node']()}>{tmpl.node}</td>
+				<td data-label={m['admin.templates.disk']()}>
 					{tmpl.diskSizeGB} GB · {tmpl.diskStorage}
 				</td>
-				<td class="px-4 py-3.5" data-label={m['admin.templates.cloudInit']()}>
+				<td data-label={m['admin.templates.cloudInit']()}>
 					{#if tmpl.cloudInitCapable}
 						<span class="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
 							{m['admin.templates.cloudInit']()}
 						</span>
 					{/if}
 				</td>
-				<td class="px-4 py-3.5" data-label={m['admin.catalog.statusColumn']()}>
+				<td data-label={m['admin.catalog.statusColumn']()}>
 					{#if tmpl.missing}
 						<span class="text-xs text-muted-foreground">{m['admin.templates.missingBadge']()}</span>
 					{:else}
@@ -108,7 +108,7 @@
 						</span>
 					{/if}
 				</td>
-				<td class="px-4 py-3.5" data-label={m['admin.templates.remove']()}>
+				<td data-label={m['admin.templates.remove']()}>
 					<div class="flex items-center gap-1">
 						{#if !tmpl.missing}
 							<Button

@@ -80,25 +80,25 @@
 	{:else}
 		{#if saveError}<p role="alert" class="mb-4 text-sm text-destructive">{saveError}</p>{/if}
 		<TableCard>
-			<table class="pv-responsive-table w-full text-sm">
+			<table class="pv-table pv-responsive-table">
 				<caption class="sr-only">{m['policy.nodeTitle']()}</caption>
-				<thead class="bg-muted/60 text-left text-sm font-medium text-muted-foreground">
+				<thead>
 					<tr>
 						<TableHeader text={m['policy.node']()} column="node" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 						<TableHeader text={m['policy.capacity']()} column="maxVms" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 						<TableHeader text={m['policy.usage']()} column="usedVms" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 						<TableHeader text={m['policy.physical']()} column="physicalVcpus" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-						<th scope="col" class="px-4 py-3 font-medium">{m['policy.actions']()}</th>
+						<th scope="col" class="font-medium">{m['policy.actions']()}</th>
 					</tr>
 				</thead>
-				<tbody class="divide-y divide-border">
+				<tbody>
 					{#each nodes as node (node.node)}
 						<tr class="group transition-colors hover:bg-muted/40">
-							<th scope="row" class="px-4 py-3.5 text-left font-mono" data-label={m['policy.node']()}>{node.node}</th>
-							<td class="px-4 py-3.5" data-label={m['policy.capacity']()}>{node.maxVms} / {node.maxVcpus} / {node.maxRamGb} / {node.maxDiskGb}</td>
-							<td class="px-4 py-3.5" data-label={m['policy.usage']()}>{node.usedVms} VMs · {node.usedVcpus} vCPU · {node.usedRamGb} GB</td>
-							<td class="px-4 py-3.5" data-label={m['policy.physical']()}>{node.physicalVcpus} vCPU · {node.physicalRamGb} GB</td>
-							<td class="px-4 py-3.5" data-label={m['policy.actions']()}><Button variant="secondary" size="sm" label={`${m['policy.edit']()} ${node.node}`} onclick={() => openEditor(node)}>{m['policy.edit']()}</Button></td>
+							<th scope="row" class="text-left font-mono" data-label={m['policy.node']()}>{node.node}</th>
+							<td data-label={m['policy.capacity']()}>{node.maxVms} / {node.maxVcpus} / {node.maxRamGb} / {node.maxDiskGb}</td>
+							<td data-label={m['policy.usage']()}>{node.usedVms} VMs · {node.usedVcpus} vCPU · {node.usedRamGb} GB</td>
+							<td data-label={m['policy.physical']()}>{node.physicalVcpus} vCPU · {node.physicalRamGb} GB</td>
+							<td data-label={m['policy.actions']()}><Button variant="secondary" size="sm" label={`${m['policy.edit']()} ${node.node}`} onclick={() => openEditor(node)}>{m['policy.edit']()}</Button></td>
 						</tr>
 					{:else}
 						<tr><td colspan={5} class="p-0">

@@ -91,28 +91,28 @@
 		<TableSkeleton columns={6} />
 	{:else}
 		<div class="overflow-x-auto rounded-lg border border-border">
-			<table class="w-full min-w-[900px] text-left text-sm">
+			<table class="pv-table min-w-[900px]">
 				<caption class="sr-only">{m['admin.clusters.caption']()}</caption>
-				<thead class="bg-muted/50">
+				<thead>
 					<tr>
-						<th scope="col" class="px-4 py-3 font-medium">{m['common.name']()}</th>
-						<th scope="col" class="px-4 py-3 font-medium">{m['admin.clusters.displayName']()}</th>
-						<th scope="col" class="px-4 py-3 font-medium">{m['common.status']()}</th>
-						<th scope="col" class="px-4 py-3 font-medium">{m['admin.clusters.version']()}</th>
-						<th scope="col" class="px-4 py-3 font-medium">{m['admin.clusters.nodesVms']()}</th>
-						<th scope="col" class="px-4 py-3 font-medium">{m['admin.clusters.oidc']()}</th>
-						<th scope="col" class="px-4 py-3 font-medium">{m['common.actions']()}</th>
+						<th scope="col" class="font-medium">{m['common.name']()}</th>
+						<th scope="col" class="font-medium">{m['admin.clusters.displayName']()}</th>
+						<th scope="col" class="font-medium">{m['common.status']()}</th>
+						<th scope="col" class="font-medium">{m['admin.clusters.version']()}</th>
+						<th scope="col" class="font-medium">{m['admin.clusters.nodesVms']()}</th>
+						<th scope="col" class="font-medium">{m['admin.clusters.oidc']()}</th>
+						<th scope="col" class="font-medium">{m['common.actions']()}</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each store.clusters as cluster (cluster.name)}
 						<tr class="border-t border-border align-top">
-							<td class="px-4 py-3">
+							<td>
 								<div class="font-medium">{cluster.name}</div>
 								<div class="max-w-xs truncate text-xs text-muted-foreground" title={cluster.url}>{cluster.url}</div>
 							</td>
-							<td class="px-4 py-3 text-muted-foreground">{cluster.displayName || '—'}</td>
-							<td class="px-4 py-3">
+							<td class="text-muted-foreground">{cluster.displayName || '—'}</td>
+							<td>
 								<span class="rounded-full px-2 py-1 text-xs {statusClass(cluster.lastTestStatus)}">{statusLabel(cluster.lastTestStatus)}</span>
 								{#if cluster.lastTestMessage}
 									<div class="mt-1 text-xs text-muted-foreground">{cluster.lastTestMessage}</div>
@@ -120,10 +120,10 @@
 									<div class="mt-1 text-xs text-muted-foreground">{statusHint(cluster.lastTestStatus)}</div>
 								{/if}
 							</td>
-							<td class="px-4 py-3 text-muted-foreground">{cluster.proxmoxVersion ?? '—'}</td>
-							<td class="px-4 py-3">{cluster.nodeCount} / {cluster.vmCount}</td>
-							<td class="px-4 py-3">{cluster.oidcEnabled ? m['common.enabled']() : m['common.off']()}</td>
-							<td class="px-4 py-3">
+							<td class="text-muted-foreground">{cluster.proxmoxVersion ?? '—'}</td>
+							<td>{cluster.nodeCount} / {cluster.vmCount}</td>
+							<td>{cluster.oidcEnabled ? m['common.enabled']() : m['common.off']()}</td>
+							<td>
 								<div class="flex flex-wrap gap-2">
 									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.testLabel']({ name: cluster.name })} onclick={() => void store.test(cluster.name)}>{m['admin.clusters.test']()}</Button>
 									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.editLabel']({ name: cluster.name })} onclick={() => editCluster(cluster)}>{m['common.edit']()}</Button>

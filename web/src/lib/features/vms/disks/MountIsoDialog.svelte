@@ -2,6 +2,7 @@
 	import { getVmDetailContext } from '../detail.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import Button from '$lib/shared/ui/Button.svelte';
 
 	const store = getVmDetailContext();
 
@@ -30,7 +31,7 @@
 		<label class="grid gap-1 text-sm">
 			{m['vms.disks.mountApprovedIso']()}
 			<select
-				class="rounded-md border border-border bg-background px-2 py-2"
+				class="pv-input"
 				bind:value={selectedIso}
 				data-testid="mount-iso-select"
 			>
@@ -44,22 +45,15 @@
 			<p role="alert" class="text-sm text-destructive">{store.writeError}</p>
 		{/if}
 		<div class="mt-2 flex justify-end gap-2">
-			<button
-				type="button"
-				class="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted"
-				onclick={close}
-			>
-				Cancel
-			</button>
-			<button
-				type="button"
-				class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-				disabled={!selectedIso || store.cdromInFlight}
+			<Button variant="secondary" onclick={close}>{m['common.cancel']()}</Button>
+			<Button
+				disabled={!selectedIso}
+				loading={store.cdromInFlight}
 				onclick={submit}
 				data-testid="mount-iso-submit"
 			>
 				{store.cdromInFlight ? m['common.mounting']() : m['vms.disks.mount']()}
-			</button>
+			</Button>
 		</div>
 	</div>
 </Dialog>

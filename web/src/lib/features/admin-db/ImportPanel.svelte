@@ -70,18 +70,18 @@
 			<p class="text-sm text-muted-foreground">
 				{m['admin.db.previewDescription']()}
 			</p>
-			<table class="w-full text-sm">
-				<thead class="bg-muted/50 text-left">
+			<table class="pv-table">
+				<thead>
 					<tr>
-						<th class="px-3 py-1.5 font-medium">{m['admin.db.table']()}</th>
-						<th class="px-3 py-1.5 font-medium">{m['admin.db.rows']()}</th>
+						<th class="py-1.5 font-medium">{m['admin.db.table']()}</th>
+						<th class="py-1.5 font-medium">{m['admin.db.rows']()}</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each store.preview.tables as table (table.name)}
 						<tr class="border-t border-border">
-							<td class="px-3 py-1.5 font-mono">{table.name}</td>
-							<td class="px-3 py-1.5">{table.rowCount}</td>
+							<td class="py-1.5 font-mono">{table.name}</td>
+							<td class="py-1.5">{table.rowCount}</td>
 						</tr>
 					{/each}
 				</tbody>

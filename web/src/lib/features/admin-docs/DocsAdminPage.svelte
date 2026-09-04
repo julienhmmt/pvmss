@@ -210,24 +210,24 @@
 			{#snippet toolbar()}
 				<input
 					type="search"
-					class="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+					class="pv-input text-sm"
 					placeholder={m['admin.docs.searchPlaceholder']()}
 					value={search}
 					oninput={(e) => onSearchChange(e.currentTarget.value)}
 				/>
-				<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={categoryFilter} onchange={(e) => onCategoryFilterChange(e.currentTarget.value)}>
+				<select class="pv-input text-sm" value={categoryFilter} onchange={(e) => onCategoryFilterChange(e.currentTarget.value)}>
 					<option value="">{m['admin.docs.filterCategory']()}</option>
 					{#each categoryOptions as cat (cat)}
 						<option value={cat}>{cat}</option>
 					{/each}
 				</select>
-				<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={langFilter} onchange={(e) => onLangFilterChange(e.currentTarget.value)}>
+				<select class="pv-input text-sm" value={langFilter} onchange={(e) => onLangFilterChange(e.currentTarget.value)}>
 					<option value="">{m['admin.docs.filterLang']()}</option>
 					{#each langOptions as lang (lang)}
 						<option value={lang}>{lang}</option>
 					{/each}
 				</select>
-				<select class="rounded-md border border-border bg-background px-3 py-1.5 text-sm" value={audienceFilter} onchange={(e) => onAudienceFilterChange(e.currentTarget.value as 'all' | 'user' | 'admin')}>
+				<select class="pv-input text-sm" value={audienceFilter} onchange={(e) => onAudienceFilterChange(e.currentTarget.value as 'all' | 'user' | 'admin')}>
 					<option value="all">{m['admin.docs.filterAudience']()}</option>
 					<option value="user">{m['docs.audienceUser']()}</option>
 					<option value="admin">{m['docs.audienceAdmin']()}</option>
@@ -239,35 +239,35 @@
 					{m['admin.docs.resetFilters']()}
 				</button>
 			{/snippet}
-			<table class="pv-responsive-table w-full text-sm">
+			<table class="pv-table pv-responsive-table">
 				<caption class="sr-only">{m['docs.title']()}</caption>
-				<thead class="bg-muted/60 text-left text-sm font-medium text-muted-foreground">
+				<thead>
 					<tr>
 						<TableHeader text={m['docs.titleField']()} tooltip={m['admin.docs.searchPlaceholder']()} column="title" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 						<TableHeader text={m['docs.category']()} tooltip={m['admin.docs.filterCategory']()} column="category" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-						<th class="px-4 py-3 font-medium">{m['docs.audience']()}</th>
+						<th class="font-medium">{m['docs.audience']()}</th>
 						<TableHeader text={m['docs.language']()} tooltip={m['admin.docs.filterLang']()} column="lang" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-						<th class="px-4 py-3 font-medium">{m['docs.enabled']()}</th>
-						<th class="px-4 py-3 font-medium">{m['admin.docs.actions']()}</th>
+						<th class="font-medium">{m['docs.enabled']()}</th>
+						<th class="font-medium">{m['admin.docs.actions']()}</th>
 					</tr>
 				</thead>
-				<tbody class="divide-y divide-border">
+				<tbody>
 					{#each filteredPages as page (`${page.id}-${page.lang}`)}
 						<tr class="group transition-colors hover:bg-muted/40">
-							<td class="px-4 py-3.5" data-label={m['docs.titleField']()}>
+							<td data-label={m['docs.titleField']()}>
 								<div class="flex flex-col">
 									<span>{page.title}</span>
 									<span class="font-mono text-xs text-muted-foreground">{page.id}</span>
 								</div>
 							</td>
-							<td class="px-4 py-3.5" data-label={m['docs.category']()}>{page.category}</td>
-							<td class="px-4 py-3.5" data-label={m['docs.audience']()}>
+							<td data-label={m['docs.category']()}>{page.category}</td>
+							<td data-label={m['docs.audience']()}>
 								<span class={`inline-block rounded px-2 py-0.5 text-xs font-medium ${audienceBadgeClass(page.audience)}`}>
 									{page.audience === 'admin' ? m['docs.audienceAdmin']() : m['docs.audienceUser']()}
 								</span>
 							</td>
-							<td class="px-4 py-3.5 font-mono text-xs" data-label={m['docs.language']()}>{page.lang}</td>
-							<td class="px-4 py-3.5" data-label={m['docs.enabled']()}>
+							<td class="font-mono text-xs" data-label={m['docs.language']()}>{page.lang}</td>
+							<td data-label={m['docs.enabled']()}>
 								<span class="inline-flex items-center gap-2">
 									<Switch
 										checked={page.enabled}
@@ -279,7 +279,7 @@
 									</span>
 								</span>
 							</td>
-							<td class="px-4 py-3.5" data-label={m['admin.docs.actions']()}>
+							<td data-label={m['admin.docs.actions']()}>
 								<div class="flex gap-2">
 									<Button variant="secondary" size="sm" label={m['admin.docs.editLabel']({ title: page.title })} onclick={() => openEdit(page)}>{m['admin.docs.edit']()}</Button>
 									<Button

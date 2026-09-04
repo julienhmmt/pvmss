@@ -10,6 +10,7 @@
 	import PauseIcon from '$lib/shared/ui/icons/PauseIcon.svelte';
 	import TrashIcon from '$lib/shared/ui/icons/TrashIcon.svelte';
 	import type { Component } from 'svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 
 	const store = getVmDetailContext();
 	const toast = getToastContext();
@@ -45,16 +46,21 @@
 		return store.entity !== null && action.applicable.includes(store.entity.status);
 	}
 
-	function variantClass(variant: ActionDef['variant']): string {
-		switch (variant) {
-			case 'primary':
-				return 'bg-primary text-primary-foreground hover:bg-primary/90';
-			case 'danger':
-				return 'bg-destructive text-destructive-foreground hover:bg-destructive/90';
-			default:
-				return 'border border-border bg-background hover:bg-muted';
-		}
-	}
+	// Seven actions sit in this bar and at most two apply at a time, so only
+	// the state-appropriate one is filled. The forceful actions (stop, reset)
+	// stay bordered and destructive-tinted rather than solid red: seven solid
+	// buttons, five of them greyed out, read as noise instead of as a choice.
+	// Only the applicable action carries its own weight; the rest fall back to
+	// the neutral bordered shape so a disabled orange or red fill never sits
+	// in the bar pretending to be a live control.
+	const BUTTON_VARIANT: Record<ActionDef['variant'], 'primary' | 'secondary' | 'outline'> = {
+		primary: 'primary',
+		danger: 'outline',
+		neutral: 'secondary'
+	};
+
+	const DANGER_TINT =
+		'border-destructive/40 text-destructive hover:border-destructive/60 hover:bg-destructive/10 hover:text-destructive';
 
 	async function handleAction(kind: VmAction): Promise<void> {
 		const actionDef = ACTIONS.find((a) => a.kind === kind);
@@ -72,32 +78,35 @@
 
 <div class="flex flex-wrap items-center gap-2" data-testid="vm-action-bar">
 	{#each ACTIONS as action (action.kind)}
-		<button
-			type="button"
-			class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-50 {variantClass(action.variant)}"
-			disabled={store.actionInFlight || !isApplicable(action)}
+		{@const applicable = isApplicable(action)}
+		<Button
+			size="sm"
+			variant={applicable ? BUTTON_VARIANT[action.variant] : 'secondary'}
+			class={applicable && action.variant === 'danger' ? DANGER_TINT : ''}
+			disabled={store.actionInFlight || !applicable}
 			onclick={() => handleAction(action.kind)}
 			data-testid="vm-action-{action.kind}"
 			title={action.label()}
-			aria-label={action.label()}
+			label={action.label()}
 		>
 			<action.icon class="h-4 w-4" />
 			{action.label()}
-		</button>
+		</Button>
 	{/each}
 
-	<button
-		type="button"
-		class="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-50"
+	<Button
+		size="sm"
+		variant="outline"
+		class="ml-auto {DANGER_TINT}"
 		disabled={store.deleteInFlight}
 		onclick={onDelete}
 		data-testid="vm-action-delete"
 		title={m['vms.action.delete']()}
-		aria-label={m['vms.action.delete']()}
+		label={m['vms.action.delete']()}
 	>
 		<TrashIcon class="h-4 w-4" />
 		{m['vms.action.delete']()}
-	</button>
+	</Button>
 </div>
 
 {#if store.actionError}

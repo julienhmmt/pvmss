@@ -34,32 +34,32 @@
 		<p class="mt-5 text-sm text-destructive" role="alert">{store.hardwareError}</p>
 	{:else if store.entity?.networkInterfaces?.length}
 		<div class="mt-5 overflow-x-auto">
-			<table class="pv-responsive-table text-sm">
+			<table class="pv-table pv-responsive-table">
 				<thead>
 					<tr class="border-b border-border text-xs text-muted-foreground">
-						<th class="px-3 py-2.5 font-medium">{m['vms.network.columnInterface']()}</th>
-						<th class="px-3 py-2.5 font-medium">{m['vms.network.columnBridge']()}</th>
-						<th class="px-3 py-2.5 font-medium">{m['vms.network.columnModel']()}</th>
-						<th class="px-3 py-2.5 font-medium">{m['vms.network.columnMac']()}</th>
-						<th class="px-3 py-2.5 font-medium">{m['vms.network.columnVlan']()}</th>
-						<th class="px-3 py-2.5 font-medium">{m['vms.network.columnRate']()}</th>
-						<th class="px-3 py-2.5 font-medium">{m['vms.network.columnIps']()}</th>
-						<th class="px-3 py-2.5 font-medium">{m['common.actions']()}</th>
+						<th class="font-medium">{m['vms.network.columnInterface']()}</th>
+						<th class="font-medium">{m['vms.network.columnBridge']()}</th>
+						<th class="font-medium">{m['vms.network.columnModel']()}</th>
+						<th class="font-medium">{m['vms.network.columnMac']()}</th>
+						<th class="font-medium">{m['vms.network.columnVlan']()}</th>
+						<th class="font-medium">{m['vms.network.columnRate']()}</th>
+						<th class="font-medium">{m['vms.network.columnIps']()}</th>
+						<th class="font-medium">{m['common.actions']()}</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each store.entity.networkInterfaces as nic (nic.index)}
 						<tr class="border-b border-border last:border-b-0" data-testid={`vm-nic-${nic.index}`}>
-							<td class="px-3 py-3 font-medium font-mono" data-label={m['vms.network.columnInterface']()}>
+							<td class="font-medium font-mono" data-label={m['vms.network.columnInterface']()}>
 								net{nic.index}
 							</td>
-							<td class="px-3 py-3 font-mono text-muted-foreground" data-label={m['vms.network.columnBridge']()}>
+							<td class="font-mono text-muted-foreground" data-label={m['vms.network.columnBridge']()}>
 								{nic.bridge}
 							</td>
-							<td class="px-3 py-3 font-mono text-muted-foreground" data-label={m['vms.network.columnModel']()}>
+							<td class="font-mono text-muted-foreground" data-label={m['vms.network.columnModel']()}>
 								{nic.model}
 							</td>
-							<td class="px-3 py-3" data-label={m['vms.network.columnMac']()}>
+							<td data-label={m['vms.network.columnMac']()}>
 								<button
 									type="button"
 									class="rounded-md border border-border bg-muted/40 px-2 py-0.5 font-mono text-xs hover:bg-muted"
@@ -69,13 +69,13 @@
 									{copied === nic.mac ? m['common.copied']() : nic.mac}
 								</button>
 							</td>
-							<td class="px-3 py-3 font-mono text-muted-foreground" data-label={m['vms.network.columnVlan']()}>
+							<td class="font-mono text-muted-foreground" data-label={m['vms.network.columnVlan']()}>
 								{nic.vlan ?? m['common.dash']()}
 							</td>
-							<td class="px-3 py-3 font-mono text-muted-foreground" data-label={m['vms.network.columnRate']()}>
+							<td class="font-mono text-muted-foreground" data-label={m['vms.network.columnRate']()}>
 								{nic.rateMbps ? m['vms.network.rateValue']({ rate: nic.rateMbps }) : m['common.dash']()}
 							</td>
-							<td class="px-3 py-3" data-label={m['vms.network.columnIps']()}>
+							<td data-label={m['vms.network.columnIps']()}>
 								{#if nic.ipAddresses.length}
 									<div class="flex flex-wrap gap-1">
 										{#each nic.ipAddresses as ip (ip)}
@@ -92,7 +92,7 @@
 									<span class="text-muted-foreground">{m['common.dash']()}</span>
 								{/if}
 							</td>
-							<td class="px-3 py-3" data-label={m['common.actions']()}>
+							<td data-label={m['common.actions']()}>
 								<button
 									type="button"
 									class="rounded-lg border border-border px-2.5 py-1 text-xs font-medium hover:bg-muted disabled:opacity-50"
@@ -111,7 +111,7 @@
 	{:else}
 		<EmptyState
 			title={m['vms.network.empty']()}
-			class="mt-5 rounded-lg border border-dashed border-border py-4"
+			class="mt-5 rounded-xl border border-dashed border-border"
 		/>
 	{/if}
 	{#if store.writeError}

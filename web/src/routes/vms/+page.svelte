@@ -13,6 +13,7 @@
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
 	import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -79,12 +80,7 @@
 					{vmListStore.loading ? m['common.refreshing']() : m['common.refresh']()}
 				</Button>
 				{#if !session.isAdmin}
-					<a
-						href={resolve('/vms/create')}
-						class="inline-flex items-center justify-center rounded-[0.625rem] bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-card transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-					>
-						{m['vms.list.create']()}
-					</a>
+					<ButtonLink href={resolve('/vms/create')}>{m['vms.list.create']()}</ButtonLink>
 				{/if}
 			</div>
 		{/snippet}
