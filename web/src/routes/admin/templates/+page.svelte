@@ -13,6 +13,7 @@
 	import TemplateEditDialog from '$lib/features/admin-catalog/TemplateEditDialog.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import TableCard from '$lib/shared/ui/TableCard.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
@@ -113,8 +114,6 @@
 		</p>
 	{/if}
 
-	<TemplatesTableToolbar {store} />
-
 	{#if store.templates.length === 0}
 		<EmptyState
 			title={m['admin.templates.emptyTitle']()}
@@ -146,7 +145,10 @@
 			{/snippet}
 		</EmptyState>
 	{:else}
-		<div class="fade-in">
+		<TableCard>
+			{#snippet toolbar()}
+				<TemplatesTableToolbar {store} />
+			{/snippet}
 			<TemplatesTable
 				templates={store.filteredTemplates}
 				toggling={store.toggling}
@@ -157,7 +159,7 @@
 				sortDir={store.templateSortDir}
 				onSort={handleSort}
 			/>
-		</div>
+		</TableCard>
 	{/if}
 {/if}
 

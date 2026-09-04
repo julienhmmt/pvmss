@@ -23,36 +23,34 @@
 	]);
 </script>
 
-<div class="mb-4 flex flex-wrap items-center gap-3">
-	<TextField
-		type="search"
-		class="w-full sm:w-64"
-		placeholder={m['admin.nodes.searchPlaceholder']()}
-		bind:value={store.nodeSearch}
-		data-testid="node-search"
-	/>
-	<Select
-		class="w-full sm:w-48"
-		placeholder={m['admin.nodes.filterAllStatuses']()}
-		options={store.nodeStatusFilterOptions}
-		bind:value={store.nodeStatusFilter}
-		data-testid="node-status-filter"
-	/>
-	<Select
-		class="w-full sm:w-44"
-		options={enabledFilterOptions}
-		bind:value={store.nodeEnabledFilter as string}
-		data-testid="node-enabled-filter"
-	/>
-	<Button
-		variant="ghost"
-		size="sm"
-		onclick={() => store.resetNodeFilters()}
-		data-testid="node-reset-filters"
-	>
-		{m['admin.nodes.resetFilters']()}
-	</Button>
-	<span class="ml-auto text-sm text-muted-foreground" data-testid="node-result-count">
-		{m['admin.nodes.resultCount']({ count: store.filteredNodes.length })}
-	</span>
-</div>
+<TextField
+	type="search"
+	class="w-full sm:w-64"
+	placeholder={m['admin.nodes.searchPlaceholder']()}
+	bind:value={store.nodeSearch}
+	data-testid="node-search"
+/>
+<Select
+	class="w-full sm:w-48"
+	placeholder={m['admin.nodes.filterAllStatuses']()}
+	options={store.nodeStatusFilterOptions}
+	bind:value={store.nodeStatusFilter}
+	data-testid="node-status-filter"
+/>
+<Select
+	class="w-full sm:w-44"
+	options={enabledFilterOptions}
+	bind:value={store.nodeEnabledFilter as string}
+	data-testid="node-enabled-filter"
+/>
+<Button
+	variant="ghost"
+	size="sm"
+	onclick={() => store.resetNodeFilters()}
+	data-testid="node-reset-filters"
+>
+	{m['admin.nodes.resetFilters']()}
+</Button>
+<span class="ml-auto text-sm text-muted-foreground" data-testid="node-result-count">
+	{m['admin.nodes.resultCount']({ count: store.filteredNodes.length })}
+</span>

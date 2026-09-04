@@ -10,6 +10,7 @@
 	import BridgesTableToolbar from '$lib/features/admin-catalog/BridgesTableToolbar.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import TableCard from '$lib/shared/ui/TableCard.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
@@ -74,8 +75,6 @@
 		</p>
 	{/if}
 
-	<BridgesTableToolbar {store} />
-
 	{#if store.bridges.length === 0}
 		<EmptyState
 			title={m['admin.bridges.emptyTitle']()}
@@ -107,7 +106,10 @@
 			{/snippet}
 		</EmptyState>
 	{:else}
-		<div class="fade-in">
+		<TableCard>
+			{#snippet toolbar()}
+				<BridgesTableToolbar {store} />
+			{/snippet}
 			<BridgesTable
 				bridges={store.filteredBridges}
 				toggling={store.toggling}
@@ -116,6 +118,6 @@
 				sortDir={store.bridgeSortDir}
 				onSort={handleSort}
 			/>
-		</div>
+		</TableCard>
 	{/if}
 {/if}

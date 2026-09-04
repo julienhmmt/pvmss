@@ -7,6 +7,7 @@
 	import PoolCredentialsBanner from './PoolCredentialsBanner.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import TableCard from '$lib/shared/ui/TableCard.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
@@ -185,8 +186,8 @@
 		<p role="alert" class="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">{deleteError}</p>
 	{/if}
 
-	<div class="overflow-hidden rounded-lg border border-border bg-card shadow-card">
-		<div class="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
+	<TableCard>
+		{#snippet toolbar()}
 			<div class="relative w-full max-w-xs">
 				<span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
 					<SearchIcon class="h-4 w-4" />
@@ -204,69 +205,66 @@
 				<Button variant="ghost" size="sm" onclick={resetFilters}>{m['admin.pools.resetFilters']()}</Button>
 			{/if}
 			<span class="ml-auto text-sm text-muted-foreground">{resultCountText}</span>
-		</div>
-
-		<div class="overflow-x-auto">
-			<table class="pv-responsive-table w-full text-sm">
-				<caption class="sr-only">{m['admin.pools.heading']()}</caption>
-				<thead class="bg-muted/60 text-left text-sm font-medium text-muted-foreground">
-					<tr>
-						<TableHeader text={m['common.name']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-						<th class="px-4 py-3 font-medium">{m['admin.pools.comment']()}</th>
-						<TableHeader text={m['admin.pools.vmsColumn']()} tooltip={m['admin.pools.vmsTooltip']()} class="text-center" />
-						<TableHeader text={m['common.total']()} column="total" activeColumn={sortBy} {sortDir} onSort={handleSort} class="text-center" />
-						<TableHeader text={m['common.running']()} column="running" activeColumn={sortBy} {sortDir} onSort={handleSort} class="text-center" />
-						<TableHeader text={m['common.stopped']()} column="stopped" activeColumn={sortBy} {sortDir} onSort={handleSort} class="text-center" />
-						<th class="px-4 py-3 text-right font-medium">{m['common.actions']()}</th>
+		{/snippet}
+		<table class="pv-responsive-table w-full text-sm">
+			<caption class="sr-only">{m['admin.pools.heading']()}</caption>
+			<thead class="bg-muted/60 text-left text-sm font-medium text-muted-foreground">
+				<tr>
+					<TableHeader text={m['common.name']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<th class="px-4 py-3 font-medium">{m['admin.pools.comment']()}</th>
+					<TableHeader text={m['admin.pools.vmsColumn']()} tooltip={m['admin.pools.vmsTooltip']()} class="text-center" />
+					<TableHeader text={m['common.total']()} column="total" activeColumn={sortBy} {sortDir} onSort={handleSort} class="text-center" />
+					<TableHeader text={m['common.running']()} column="running" activeColumn={sortBy} {sortDir} onSort={handleSort} class="text-center" />
+					<TableHeader text={m['common.stopped']()} column="stopped" activeColumn={sortBy} {sortDir} onSort={handleSort} class="text-center" />
+					<th class="px-4 py-3 text-right font-medium">{m['common.actions']()}</th>
+				</tr>
+			</thead>
+			<tbody class="divide-y divide-border">
+				{#each filteredPools as pool (pool.name)}
+					<tr class="group transition-colors hover:bg-muted/40">
+						<td class="px-4 py-3.5 font-mono" data-label={m['common.name']()}>{pool.name}</td>
+						<td class="px-4 py-3.5 text-muted-foreground" data-label={m['admin.pools.comment']()}>
+							{#if pool.comment}
+								<span class="block max-w-xs truncate" title={pool.comment}>{pool.comment}</span>
+							{:else}
+								<span class="text-muted-foreground-subtle">—</span>
+							{/if}
+						</td>
+						<td class="px-4 py-3.5 text-center" data-label={m['admin.pools.vmsColumn']()}>
+							<PoolVmBar running={pool.running} stopped={pool.stopped} total={pool.total} />
+						</td>
+						<td class="px-4 py-3.5 text-center font-mono tabular-nums" data-label={m['common.total']()}>{pool.total}</td>
+						<td class="px-4 py-3.5 text-center font-mono tabular-nums" data-label={m['common.running']()}>{pool.running}</td>
+						<td class="px-4 py-3.5 text-center font-mono tabular-nums" data-label={m['common.stopped']()}>{pool.stopped}</td>
+						<td class="px-4 py-3.5 text-right" data-label={m['common.actions']()} data-nolabel="true">
+							<Button
+								variant="ghost"
+								size="sm"
+								label={m['admin.pools.deletePoolLabel']({ name: pool.name })}
+								onclick={() => openDelete(pool.name)}
+							>
+								<TrashIcon class="h-4 w-4 text-destructive" />
+							</Button>
+						</td>
 					</tr>
-				</thead>
-				<tbody class="divide-y divide-border">
-					{#each filteredPools as pool (pool.name)}
-						<tr class="group transition-colors hover:bg-muted/40">
-							<td class="px-4 py-3.5 font-mono" data-label={m['common.name']()}>{pool.name}</td>
-							<td class="px-4 py-3.5 text-muted-foreground" data-label={m['admin.pools.comment']()}>
-								{#if pool.comment}
-									<span class="block max-w-xs truncate" title={pool.comment}>{pool.comment}</span>
-								{:else}
-									<span class="text-muted-foreground-subtle">—</span>
-								{/if}
-							</td>
-							<td class="px-4 py-3.5 text-center" data-label={m['admin.pools.vmsColumn']()}>
-								<PoolVmBar running={pool.running} stopped={pool.stopped} total={pool.total} />
-							</td>
-							<td class="px-4 py-3.5 text-center font-mono tabular-nums" data-label={m['common.total']()}>{pool.total}</td>
-							<td class="px-4 py-3.5 text-center font-mono tabular-nums" data-label={m['common.running']()}>{pool.running}</td>
-							<td class="px-4 py-3.5 text-center font-mono tabular-nums" data-label={m['common.stopped']()}>{pool.stopped}</td>
-							<td class="px-4 py-3.5 text-right" data-label={m['common.actions']()} data-nolabel="true">
-								<Button
-									variant="ghost"
-									size="sm"
-									label={m['admin.pools.deletePoolLabel']({ name: pool.name })}
-									onclick={() => openDelete(pool.name)}
-								>
-									<TrashIcon class="h-4 w-4 text-destructive" />
-								</Button>
-							</td>
-						</tr>
-					{:else}
-						<tr>
-							<td colspan={7} class="p-0">
-								{#if filteredPools.length === 0 && search === ''}
-									<EmptyState title={emptyTitle()}>
-										{#snippet actions()}
-											<Button onclick={openCreate}>{m['admin.pools.newPool']()}</Button>
-										{/snippet}
-									</EmptyState>
-								{:else}
-									<EmptyState title={emptyTitle()} />
-								{/if}
-							</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-	</div>
+				{:else}
+					<tr>
+						<td colspan={7} class="p-0">
+							{#if filteredPools.length === 0 && search === ''}
+								<EmptyState title={emptyTitle()}>
+									{#snippet actions()}
+										<Button onclick={openCreate}>{m['admin.pools.newPool']()}</Button>
+									{/snippet}
+								</EmptyState>
+							{:else}
+								<EmptyState title={emptyTitle()} />
+							{/if}
+						</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	</TableCard>
 {/if}
 
 <CreatePoolDialog

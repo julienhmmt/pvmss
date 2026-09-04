@@ -10,6 +10,7 @@
 	import StoragesTableToolbar from '$lib/features/admin-catalog/StoragesTableToolbar.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import TableCard from '$lib/shared/ui/TableCard.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
@@ -74,51 +75,49 @@
 		</p>
 	{/if}
 
-	<div class="overflow-hidden rounded-lg border border-border bg-card shadow-card">
-		<div class="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
-			<StoragesTableToolbar {store} />
-		</div>
-		{#if store.storages.length === 0}
-			<EmptyState
-				title={m['admin.storages.emptyTitle']()}
-				description={m['admin.storages.emptyDescription']()}
-			>
-				{#snippet actions()}
-					<Button
-						variant="secondary"
-						size="sm"
-						onclick={() => goto(resolve('/admin/clusters'))}
-					>
-						{m['admin.storages.emptyAction']()}
-					</Button>
-				{/snippet}
-			</EmptyState>
-		{:else if store.filteredStorages.length === 0}
-			<EmptyState
-				title={m['admin.storages.noMatchTitle']()}
-				description={m['admin.storages.noMatchDescription']()}
-			>
-				{#snippet actions()}
-					<Button
-						variant="secondary"
-						size="sm"
-						onclick={() => store.resetStorageFilters()}
-					>
-						{m['admin.storages.resetFilters']()}
-					</Button>
-				{/snippet}
-			</EmptyState>
-		{:else}
-			<div class="overflow-x-auto">
-				<StoragesTable
-					storages={store.filteredStorages}
-					toggling={store.toggling}
-					onToggle={handleToggle}
-					sortBy={store.storageSortBy}
-					sortDir={store.storageSortDir}
-					onSort={handleSort}
-				/>
-			</div>
-		{/if}
-	</div>
+	{#if store.storages.length === 0}
+		<EmptyState
+			title={m['admin.storages.emptyTitle']()}
+			description={m['admin.storages.emptyDescription']()}
+		>
+			{#snippet actions()}
+				<Button
+					variant="secondary"
+					size="sm"
+					onclick={() => goto(resolve('/admin/clusters'))}
+				>
+					{m['admin.storages.emptyAction']()}
+				</Button>
+			{/snippet}
+		</EmptyState>
+	{:else if store.filteredStorages.length === 0}
+		<EmptyState
+			title={m['admin.storages.noMatchTitle']()}
+			description={m['admin.storages.noMatchDescription']()}
+		>
+			{#snippet actions()}
+				<Button
+					variant="secondary"
+					size="sm"
+					onclick={() => store.resetStorageFilters()}
+				>
+					{m['admin.storages.resetFilters']()}
+				</Button>
+			{/snippet}
+		</EmptyState>
+	{:else}
+		<TableCard>
+			{#snippet toolbar()}
+				<StoragesTableToolbar {store} />
+			{/snippet}
+			<StoragesTable
+				storages={store.filteredStorages}
+				toggling={store.toggling}
+				onToggle={handleToggle}
+				sortBy={store.storageSortBy}
+				sortDir={store.storageSortDir}
+				onSort={handleSort}
+			/>
+		</TableCard>
+	{/if}
 {/if}

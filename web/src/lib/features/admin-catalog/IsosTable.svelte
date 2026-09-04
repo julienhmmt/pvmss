@@ -24,10 +24,9 @@
 	}
 </script>
 
-<div class="overflow-x-auto rounded-lg border border-border">
-	<table class="pv-responsive-table text-sm">
-		<caption class="sr-only">{m['admin.isos.heading']()}</caption>
-		<thead class="bg-muted/50 text-left">
+<table class="pv-responsive-table w-full text-sm">
+	<caption class="sr-only">{m['admin.isos.heading']()}</caption>
+	<thead class="bg-muted/60 text-left text-sm font-medium text-muted-foreground">
 			<tr>
 				<TableHeader text={m['admin.catalog.file']()} column="file" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 				<TableHeader text={m['common.storage']()} column="storage" activeColumn={sortBy} {sortDir} onSort={handleSort} />
@@ -43,14 +42,14 @@
 				/>
 			</tr>
 		</thead>
-		<tbody>
+		<tbody class="divide-y divide-border">
 			{#each isos as iso (iso.node + ':' + iso.storage + ':' + iso.file)}
-				<tr class="border-t border-border" data-testid="iso-row">
-					<td class="px-4 py-3 font-mono" data-label={m['admin.catalog.file']()}>{iso.file}</td>
-					<td class="px-4 py-3 font-mono" data-label={m['common.storage']()}>{iso.storage}</td>
-					<td class="px-4 py-3 font-mono" data-label={m['common.node']()}>{iso.node}</td>
-					<td class="px-4 py-3" data-label={m['admin.catalog.size']()}>{formatBytes(iso.sizeBytes)}</td>
-					<td class="px-4 py-3" data-label={m['admin.catalog.statusColumn']()}>
+				<tr class="group transition-colors hover:bg-muted/40" data-testid="iso-row">
+					<td class="px-4 py-3.5 font-mono" data-label={m['admin.catalog.file']()}>{iso.file}</td>
+					<td class="px-4 py-3.5 font-mono" data-label={m['common.storage']()}>{iso.storage}</td>
+					<td class="px-4 py-3.5 font-mono" data-label={m['common.node']()}>{iso.node}</td>
+					<td class="px-4 py-3.5" data-label={m['admin.catalog.size']()}>{formatBytes(iso.sizeBytes)}</td>
+					<td class="px-4 py-3.5" data-label={m['admin.catalog.statusColumn']()}>
 						<span
 							class="inline-flex items-center gap-2"
 							aria-busy={toggling === `iso:${iso.node}:${iso.storage}:${iso.file}`}
@@ -81,4 +80,3 @@
 			{/each}
 		</tbody>
 	</table>
-</div>
