@@ -10,6 +10,7 @@
 	import IsosTableToolbar from '$lib/features/admin-catalog/IsosTableToolbar.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import TableCard from '$lib/shared/ui/TableCard.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
@@ -74,8 +75,6 @@
 		</p>
 	{/if}
 
-	<IsosTableToolbar {store} />
-
 	{#if store.isos.length === 0}
 		<EmptyState
 			title={m['admin.isos.emptyTitle']()}
@@ -107,7 +106,10 @@
 			{/snippet}
 		</EmptyState>
 	{:else}
-		<div class="fade-in">
+		<TableCard>
+			{#snippet toolbar()}
+				<IsosTableToolbar {store} />
+			{/snippet}
 			<IsosTable
 				isos={store.filteredIsos}
 				toggling={store.toggling}
@@ -116,6 +118,6 @@
 				sortDir={store.isoSortDir}
 				onSort={handleSort}
 			/>
-		</div>
+		</TableCard>
 	{/if}
 {/if}
