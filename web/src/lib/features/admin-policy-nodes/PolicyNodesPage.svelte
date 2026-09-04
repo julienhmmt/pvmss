@@ -6,6 +6,7 @@
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import TableCard from '$lib/shared/ui/TableCard.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
@@ -78,10 +79,10 @@
 		<div class="space-y-3" role="alert"><p class="text-destructive">{error}</p><Button variant="secondary" onclick={onLoad}>{m['policy.retry']()}</Button></div>
 	{:else}
 		{#if saveError}<p role="alert" class="mb-4 text-sm text-destructive">{saveError}</p>{/if}
-		<div class="overflow-x-auto rounded-lg border border-border">
-			<table class="w-full min-w-[760px] text-sm">
+		<TableCard>
+			<table class="pv-responsive-table w-full text-sm">
 				<caption class="sr-only">{m['policy.nodeTitle']()}</caption>
-				<thead class="bg-muted/50 text-left">
+				<thead class="bg-muted/60 text-left text-sm font-medium text-muted-foreground">
 					<tr>
 						<TableHeader text={m['policy.node']()} column="node" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 						<TableHeader text={m['policy.capacity']()} column="maxVms" activeColumn={sortBy} {sortDir} onSort={handleSort} />
@@ -90,14 +91,14 @@
 						<th scope="col" class="px-4 py-3 font-medium">{m['policy.actions']()}</th>
 					</tr>
 				</thead>
-				<tbody>
+				<tbody class="divide-y divide-border">
 					{#each nodes as node (node.node)}
-						<tr class="border-t border-border">
-							<th scope="row" class="px-4 py-3 text-left font-mono">{node.node}</th>
-							<td class="px-4 py-3">{node.maxVms} / {node.maxVcpus} / {node.maxRamGb} / {node.maxDiskGb}</td>
-							<td class="px-4 py-3">{node.usedVms} VMs · {node.usedVcpus} vCPU · {node.usedRamGb} GB</td>
-							<td class="px-4 py-3">{node.physicalVcpus} vCPU · {node.physicalRamGb} GB</td>
-							<td class="px-4 py-3"><Button variant="secondary" size="sm" label={`${m['policy.edit']()} ${node.node}`} onclick={() => openEditor(node)}>{m['policy.edit']()}</Button></td>
+						<tr class="group transition-colors hover:bg-muted/40">
+							<th scope="row" class="px-4 py-3.5 text-left font-mono" data-label={m['policy.node']()}>{node.node}</th>
+							<td class="px-4 py-3.5" data-label={m['policy.capacity']()}>{node.maxVms} / {node.maxVcpus} / {node.maxRamGb} / {node.maxDiskGb}</td>
+							<td class="px-4 py-3.5" data-label={m['policy.usage']()}>{node.usedVms} VMs · {node.usedVcpus} vCPU · {node.usedRamGb} GB</td>
+							<td class="px-4 py-3.5" data-label={m['policy.physical']()}>{node.physicalVcpus} vCPU · {node.physicalRamGb} GB</td>
+							<td class="px-4 py-3.5" data-label={m['policy.actions']()}><Button variant="secondary" size="sm" label={`${m['policy.edit']()} ${node.node}`} onclick={() => openEditor(node)}>{m['policy.edit']()}</Button></td>
 						</tr>
 					{:else}
 						<tr><td colspan={5} class="p-0">
@@ -106,7 +107,7 @@
 					{/each}
 				</tbody>
 			</table>
-		</div>
+		</TableCard>
 	{/if}
 </section>
 
