@@ -21,6 +21,7 @@
 	import PlayIcon from '$lib/shared/ui/icons/PlayIcon.svelte';
 	import PowerOffIcon from '$lib/shared/ui/icons/PowerOffIcon.svelte';
 	import RestartIcon from '$lib/shared/ui/icons/RestartIcon.svelte';
+	import ConsoleIcon from '$lib/shared/ui/icons/ConsoleIcon.svelte';
 	import SpinnerIcon from '$lib/shared/ui/icons/SpinnerIcon.svelte';
 
 	const store = getVmListContext();
@@ -400,6 +401,9 @@
 												{/if}
 											</button>
 										{/each}
+										{#if machine.status === 'running'}
+											<a href={resolve('/vms/[cluster]/[vmid]/console', { cluster: machine.cluster, vmid: String(machine.vmid) })} target='_blank' rel='noopener noreferrer' class='flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background' title={m['vms.console.open']()} aria-label={m['vms.console.open']()} data-testid='vm-row-console'><ConsoleIcon class='h-4 w-4' /></a>
+										{/if}
 									{/if}
 								</div>
 							</td>
