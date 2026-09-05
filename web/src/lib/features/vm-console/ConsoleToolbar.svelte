@@ -2,6 +2,7 @@
 	import { getConsoleContext } from './console.svelte';
 	import { openConsolePopout } from './console';
 	import { m } from '$lib/paraglide/messages.js';
+	import Button from '$lib/shared/ui/Button.svelte';
 
 	const store = getConsoleContext();
 
@@ -21,54 +22,49 @@
 </script>
 
 <div class="flex flex-wrap items-center gap-2" data-testid="vm-console-toolbar">
-	<button
-		type="button"
-		class="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+	<Button
+		variant="secondary"
+		size="sm"
 		disabled={store.state !== 'connected'}
 		onclick={() => store.toggleScale()}
 		data-testid="vm-console-scale"
 	>
 		{m['vms.console.scale']()} {store.scaleViewport ? m['common.on']() : m['common.off']()}
-	</button>
+	</Button>
 
-	<button
-		type="button"
-		class="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+	<Button
+		variant="secondary"
+		size="sm"
 		disabled={store.state !== 'connected'}
 		onclick={() => store.sendCtrlAltDel()}
 		data-testid="vm-console-ctrlaltdel"
 	>
 		Ctrl+Alt+Del
-	</button>
+	</Button>
 
-	<button
-		type="button"
-		class="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+	<Button
+		variant="secondary"
+		size="sm"
 		disabled={store.state !== 'connected'}
 		onclick={() => store.disconnect()}
 		data-testid="vm-console-disconnect"
 	>
 		{m['vms.console.disconnect']()}
-	</button>
+	</Button>
 
-	<button
-		type="button"
-		class="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+	<Button
+		variant="secondary"
+		size="sm"
 		disabled={store.state === 'connecting' || store.state === 'idle'}
 		onclick={() => store.reconnect()}
 		data-testid="vm-console-reconnect-btn"
 	>
 		{m['vms.console.reconnect']()}
-	</button>
+	</Button>
 
-	<button
-		type="button"
-		class="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted"
-		onclick={popout}
-		data-testid="vm-console-popout"
-	>
+	<Button variant="secondary" size="sm" onclick={popout} data-testid="vm-console-popout">
 		{m['vms.console.popout']()}
-	</button>
+	</Button>
 
 	{#if popoutBlocked}
 		<span class="text-xs text-destructive" data-testid="vm-console-popout-blocked">
@@ -78,27 +74,27 @@
 
 	<div class="mx-2 h-5 w-px bg-border"></div>
 
-	<button
-		type="button"
-		class="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+	<Button
+		variant="secondary"
+		size="sm"
 		disabled={store.state !== 'connected'}
 		onclick={pasteFromLocal}
 		data-testid="vm-console-paste-to-vm"
 		title={m['vms.console.pasteTitle']()}
 	>
 		{m['vms.console.pasteToVm']()}
-	</button>
+	</Button>
 
-	<button
-		type="button"
-		class="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+	<Button
+		variant="secondary"
+		size="sm"
 		disabled={store.clipboard.fromVM === ''}
 		onclick={copyToLocal}
 		data-testid="vm-console-copy-from-vm"
 		title={m['vms.console.copyTitle']()}
 	>
 		{m['vms.console.copyFromVm']()}
-	</button>
+	</Button>
 
 	{#if store.clipboard.fromVM}
 		<span class="text-xs text-muted-foreground" data-testid="vm-console-clipboard-preview">

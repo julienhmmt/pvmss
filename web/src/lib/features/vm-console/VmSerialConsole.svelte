@@ -3,6 +3,7 @@
 	import '@xterm/xterm/css/xterm.css';
 	import { getSerialConsoleContext } from './serial.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import Button from '$lib/shared/ui/Button.svelte';
 
 	const store = getSerialConsoleContext();
 
@@ -34,35 +35,29 @@
 
 	{#if store.state === 'error'}
 		<div
+			role="alert"
+			aria-live="assertive"
 			class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-destructive"
 			data-testid="vm-serial-console-error"
 		>
 			<p>{store.error ?? m['vms.console.connectionFailed']()}</p>
-			<button
-				type="button"
-				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:bg-muted"
-				onclick={() => store.reconnect()}
-				data-testid="vm-serial-console-retry"
-			>
+			<Button variant="secondary" size="sm" onclick={() => store.reconnect()} data-testid="vm-serial-console-retry">
 				{m['vms.console.retry']()}
-			</button>
+			</Button>
 		</div>
 	{/if}
 
 	{#if store.state === 'disconnected'}
 		<div
+			role="status"
+			aria-live="polite"
 			class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-muted-foreground"
 			data-testid="vm-serial-console-disconnected"
 		>
 			<p>{m['vms.console.disconnected']()}</p>
-			<button
-				type="button"
-				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground hover:bg-muted"
-				onclick={() => store.reconnect()}
-				data-testid="vm-serial-console-reconnect"
-			>
+			<Button variant="secondary" size="sm" onclick={() => store.reconnect()} data-testid="vm-serial-console-reconnect">
 				{m['vms.console.reconnect']()}
-			</button>
+			</Button>
 		</div>
 	{/if}
 </div>
