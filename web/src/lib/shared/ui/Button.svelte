@@ -57,7 +57,7 @@
 	const base =
 		'inline-flex shrink-0 items-center justify-center gap-2 rounded-[var(--radius-control)] font-semibold ' +
 		'transition-[background-color,border-color,color,transform] duration-150 ' +
-		'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ' +
+		'pv-focus ' +
 		'active:translate-y-px disabled:pointer-events-none disabled:opacity-50 disabled:active:translate-y-0';
 
 	const sizes: Record<Size, string> = {

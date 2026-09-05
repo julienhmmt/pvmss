@@ -107,7 +107,7 @@
 							aria-pressed={isSelected}
 							onclick={() => toggleTag(tag.name)}
 							data-testid="vm-hardware-tag-{tag.name}"
-							class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background {isSelected
+							class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors pv-focus {isSelected
 								? 'border-transparent bg-primary text-primary-foreground'
 								: 'border-border bg-muted text-muted-foreground hover:bg-muted/80'}"
 						>

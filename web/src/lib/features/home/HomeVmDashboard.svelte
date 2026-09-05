@@ -156,7 +156,7 @@
 							{statusLabels[vm.status]()}
 						</span>
 						<span class="font-mono text-muted-foreground">{vm.node}</span>
-						<span class="font-mono text-muted-foreground">{vm.cpuCores} {m['common.cores']()}</span>
+						<span class="font-mono text-muted-foreground">{vm.cpuCores} {m['common.coreCount']({ count: vm.cpuCores })}</span>
 						<span class="font-mono text-muted-foreground">{vm.memoryTotal > 0 ? formatBytes(vm.memoryTotal) : '—'}</span>
 					</li>
 				{/each}

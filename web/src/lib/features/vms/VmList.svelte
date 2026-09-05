@@ -374,7 +374,7 @@
 								/>
 							</td>
 							<td class="num text-muted-foreground" data-label={m['vms.list.columnCpu']()}>
-								{machine.cpuCores}<span class="ml-1 font-sans text-xs">{m['common.cores']()}</span>
+								{machine.cpuCores}<span class="ml-1 font-sans text-xs">{m['common.coreCount']({ count: machine.cpuCores })}</span>
 							</td>
 							<td class="num text-muted-foreground" data-label={m['vms.list.columnMemory']()}>
 								{formatBytes(machine.memoryTotal)}
