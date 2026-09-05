@@ -3,6 +3,7 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import { getSearchContext } from './search.svelte';
 	import type { VmListItem, VmStatus } from '$lib/features/vms/list.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
 	import Pill from '$lib/shared/ui/Pill.svelte';
@@ -65,7 +66,7 @@
 			</ul>
 		</Card>
 	{:else if store.error}
-		<p role="alert" class="text-sm text-destructive" data-testid="search-error">{store.error}</p>
+		<Alert data-testid="search-error">{store.error}</Alert>
 	{:else if store.result === null}
 		<EmptyState title={m['search.instructions']()} dataTestid="search-instructions" />
 	{:else if store.result.items.length === 0}

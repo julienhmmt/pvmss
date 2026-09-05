@@ -2,6 +2,7 @@
 	import { getVmDetailContext, type VmNetworkInterface } from '../detail.svelte';
 	import EditNetworkInterfaceDialog from './EditNetworkInterfaceDialog.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	const store = getVmDetailContext();
@@ -31,7 +32,7 @@
 	{#if store.hardwareLoading}
 		<p class="mt-5 text-sm text-muted-foreground" role="status">{m['vms.network.loading']()}</p>
 	{:else if store.hardwareError}
-		<p class="mt-5 text-sm text-destructive" role="alert">{store.hardwareError}</p>
+		<Alert class="mt-5">{store.hardwareError}</Alert>
 	{:else if store.entity?.networkInterfaces?.length}
 		<div class="mt-5 overflow-x-auto">
 			<table class="pv-table pv-responsive-table">
@@ -115,7 +116,7 @@
 		/>
 	{/if}
 	{#if store.writeError}
-		<p class="mt-3 text-sm text-destructive" role="alert">{store.writeError}</p>
+		<Alert class="mt-3">{store.writeError}</Alert>
 	{/if}
 </section>
 

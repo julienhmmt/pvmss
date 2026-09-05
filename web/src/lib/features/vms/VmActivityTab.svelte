@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { getVmDetailContext } from './detail.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	const store = getVmDetailContext();
@@ -35,7 +36,7 @@
 			{m['common.loading']()}
 		</p>
 	{:else if store.auditError && store.auditItems === null}
-		<p role="alert" class="mt-6 text-sm text-destructive" data-testid="vm-activity-error">{store.auditError}</p>
+		<Alert data-testid="vm-activity-error" class="mt-6">{store.auditError}</Alert>
 	{:else if store.auditItems !== null && store.auditItems.length === 0}
 		<EmptyState
 			title={m['vm.activity.empty']()}

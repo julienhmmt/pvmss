@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ClusterFormDialog from './ClusterFormDialog.svelte';
 	import type { AdminCluster, AdminClustersStore, ClusterInput } from './clusters.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
@@ -85,7 +86,7 @@
 
 <section class="mx-auto w-full max-w-6xl">
 	{#if store.announce}<p class="sr-only" role="status" aria-live="polite">{store.announce}</p>{/if}
-	{#if store.error}<p class="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive" role="alert">{store.error}</p>{/if}
+	{#if store.error}<Alert class="mb-4">{store.error}</Alert>{/if}
 	{#if store.loading}
 		<div role="status" aria-live="polite" class="sr-only">{m['admin.clusters.loading']()}</div>
 		<TableSkeleton columns={6} />

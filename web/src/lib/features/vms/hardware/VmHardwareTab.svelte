@@ -2,6 +2,7 @@
 	import { SvelteSet } from 'svelte/reactivity';
 	import { getVmDetailContext } from '../detail.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 
 	const store = getVmDetailContext();
@@ -140,6 +141,6 @@
 			: ''}
 	</p>
 	{#if store.writeError}
-		<p class="mt-3 text-sm text-destructive" role="alert">{store.writeError}</p>
+		<Alert class="mt-3">{store.writeError}</Alert>
 	{/if}
 </section>

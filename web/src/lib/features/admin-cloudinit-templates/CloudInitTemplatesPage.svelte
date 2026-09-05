@@ -2,6 +2,7 @@
 	import type { AdminCloudInitTemplate } from './cloudInitTemplates.svelte';
 	import type { ClusterOption } from '$lib/shared/clusters';
 	import CloudInitTemplateFormDialog from './CloudInitTemplateFormDialog.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
@@ -85,12 +86,10 @@
 	<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
 	<TableSkeleton columns={4} />
 {:else if error}
-	<p role="alert" class="text-destructive">{error}</p>
+	<Alert>{error}</Alert>
 {:else}
 	{#if saveError}
-		<p role="alert" class="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
-			{saveError}
-		</p>
+		<Alert class="mb-4">{saveError}</Alert>
 	{/if}
 
 	<TableCard>

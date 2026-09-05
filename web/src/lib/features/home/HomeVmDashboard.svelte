@@ -8,6 +8,7 @@
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 
 	type DashboardVm = VmListItem;
 
@@ -71,7 +72,9 @@
 	{#if loading && vms.length === 0}
 		<p role="status" aria-live="polite" class="py-6 text-center text-sm text-muted-foreground">{m['common.loading']()}</p>
 	{:else if error}
-		<p role="alert" class="py-6 text-center text-sm text-destructive">{error}</p>
+		<div class="flex justify-center py-6">
+			<Alert class="max-w-sm">{error}</Alert>
+		</div>
 	{:else if vms.length === 0}
 		<div class="py-8 text-center">
 			<p class="text-sm text-muted-foreground">{m['home.dashboard.empty']()}</p>

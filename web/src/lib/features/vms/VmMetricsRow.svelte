@@ -8,6 +8,7 @@
 	import { onMount } from 'svelte';
 	import { getVmDetailContext } from './detail.svelte';
 	import { MetricsStore, type MetricsRange } from './metrics.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import LineChart from '$lib/shared/ui/LineChart.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -86,7 +87,7 @@
 	</div>
 
 	{#if store.error}
-		<p role="alert" class="mt-4 text-sm text-destructive" data-testid="vm-metrics-error">{store.error}</p>
+		<Alert data-testid="vm-metrics-error" class="mt-4">{store.error}</Alert>
 	{:else if store.loading && store.samples.length === 0}
 		<div class="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" data-testid="vm-metrics-loading">
 			<Skeleton class="h-24 w-full" />

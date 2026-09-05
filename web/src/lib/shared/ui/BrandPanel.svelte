@@ -13,15 +13,15 @@
 </script>
 
 <div
-	class="relative hidden flex-col justify-between overflow-hidden bg-primary p-10 text-primary-foreground lg:flex"
+	class="relative hidden flex-col justify-between overflow-hidden bg-primary p-10 text-[oklch(98.7%_0.022_95.277deg)] lg:flex"
 >
 	<div class="auth-brand-glow absolute inset-0" aria-hidden="true"></div>
 	<div class="relative flex flex-col gap-8">
 		<a
 			href={resolve('/')}
-			class="inline-flex items-center gap-2 text-lg font-bold tracking-tight text-primary-foreground"
+			class="inline-flex items-center gap-2 text-lg font-bold tracking-tight text-[oklch(98.7%_0.022_95.277deg)]"
 		>
-			<Logo variant="mono" showText={false} class="text-primary-foreground" />
+			<Logo variant="mono" showText={false} class="text-[oklch(98.7%_0.022_95.277deg)]" />
 			{m['shell.title']()}
 		</a>
 		{#if mode === 'warning'}
@@ -29,7 +29,7 @@
 				<WarningIcon class="h-16 w-16" />
 				<div>
 					<h2 class="text-3xl font-semibold leading-tight tracking-tight">{m['auth.warningBrandTitle']()}</h2>
-					<p class="mt-3 text-sm text-primary-foreground/80">{m['auth.warningBrandDescription']()}</p>
+					<p class="mt-3 text-sm text-[oklch(98.7%_0.022_95.277deg)]/80">{m['auth.warningBrandDescription']()}</p>
 				</div>
 			</div>
 		{:else if mode === 'error'}
@@ -37,13 +37,13 @@
 				<ErrorIcon class="h-16 w-16" />
 				<div>
 					<h2 class="text-3xl font-semibold leading-tight tracking-tight">{m['error.brandTitle']()}</h2>
-					<p class="mt-3 text-sm text-primary-foreground/80">{m['error.brandDescription']()}</p>
+					<p class="mt-3 text-sm text-[oklch(98.7%_0.022_95.277deg)]/80">{m['error.brandDescription']()}</p>
 				</div>
 			</div>
 		{:else}
 			<div class="max-w-md">
 				<h2 class="text-3xl font-semibold leading-tight tracking-tight">{m['login.brandTagline']()}</h2>
-				<p class="mt-3 text-sm text-primary-foreground/80">{m['shell.subtitle']()}</p>
+				<p class="mt-3 text-sm text-[oklch(98.7%_0.022_95.277deg)]/80">{m['shell.subtitle']()}</p>
 			</div>
 		{/if}
 	</div>
@@ -51,15 +51,15 @@
 		<ul class="relative flex flex-col gap-5">
 			<li class="flex flex-col gap-1">
 				<p class="text-sm font-semibold">{m['login.brandFeature1']()}</p>
-				<p class="text-xs text-primary-foreground/75">{m['login.brandFeature1Desc']()}</p>
+				<p class="text-xs text-[oklch(98.7%_0.022_95.277deg)]/75">{m['login.brandFeature1Desc']()}</p>
 			</li>
 			<li class="flex flex-col gap-1">
 				<p class="text-sm font-semibold">{m['login.brandFeature2']()}</p>
-				<p class="text-xs text-primary-foreground/75">{m['login.brandFeature2Desc']()}</p>
+				<p class="text-xs text-[oklch(98.7%_0.022_95.277deg)]/75">{m['login.brandFeature2Desc']()}</p>
 			</li>
 			<li class="flex flex-col gap-1">
 				<p class="text-sm font-semibold">{m['login.brandFeature3']()}</p>
-				<p class="text-xs text-primary-foreground/75">{m['login.brandFeature3Desc']()}</p>
+				<p class="text-xs text-[oklch(98.7%_0.022_95.277deg)]/75">{m['login.brandFeature3Desc']()}</p>
 			</li>
 		</ul>
 	{/if}

@@ -14,7 +14,13 @@
   --popover: #ffffff;
   --popover-foreground: #1c1a19;
   --primary: oklch(66% 0.185 44deg);
-  --primary-foreground: oklch(98.7% 0.022 95.277deg);
+  /* Was oklch(98.7% 0.022 95.277deg) — near-white on this orange is 3.23:1,
+     under the 4.5:1 AA floor for 14px semibold button labels. Dark mode
+     already puts dark ink on its (lighter) primary and passes at 7.25:1;
+     this reuses --foreground so light does the same, at 5.18:1. BrandPanel
+     is the one deliberate exception (see its own file) — it is a hero
+     surface, not a button, and keeps its own light-on-orange treatment. */
+  --primary-foreground: var(--foreground);
   --secondary: oklch(96.7% 0.001 286.375deg);
   --secondary-foreground: oklch(21% 0.006 285.885deg);
   --muted: #f1eeeb;
@@ -55,7 +61,7 @@
   --sidebar: #ffffff;
   --sidebar-foreground: #1c1a19;
   --sidebar-primary: oklch(66% 0.185 44deg);
-  --sidebar-primary-foreground: oklch(98.7% 0.022 95.277deg);
+  --sidebar-primary-foreground: var(--sidebar-foreground);
   --sidebar-accent: oklch(96.5% 0.022 44deg);
   --sidebar-accent-foreground: oklch(51% 0.15 44deg);
   --sidebar-border: #e8e4e0;
@@ -589,5 +595,19 @@
 	.pv-responsive-table.pv-table tbody tr td:first-child,
 	.pv-responsive-table.pv-table tbody tr:hover td:first-child {
 		box-shadow: none;
+	}
+}
+
+/* Tablet gap (640–899px): the sidebar is still a drawer here (it only goes
+   inline at >=900px, see routes/+layout.svelte), so the content column is
+   full-width but still narrow. At that width a full desktop column set
+   wraps long values across 2–3 lines and can push the Actions column off
+   the visible area. Columns marked with this class drop out only in that
+   band — below 640px .pv-responsive-table has already turned every field
+   into a label/value row, where this does not apply, and at >=900px the
+   desktop column set is restored. */
+@media (min-width: 640px) and (max-width: 899px) {
+	.pv-table-tablet-hide {
+		display: none;
 	}
 }

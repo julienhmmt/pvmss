@@ -5,6 +5,7 @@
 	import DeleteDiskDialog from './DeleteDiskDialog.svelte';
 	import VmCdromCard from './VmCdromCard.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 
@@ -47,7 +48,7 @@
 	{#if store.hardwareLoading}
 		<p class="mt-5 text-sm text-muted-foreground" role="status">{m['vms.disks.loading']()}</p>
 	{:else if store.hardwareError}
-		<p class="mt-5 text-sm text-destructive" role="alert">{store.hardwareError}</p>
+		<Alert class="mt-5">{store.hardwareError}</Alert>
 	{:else if store.entity?.disks?.length}
 		<div class="mt-5 overflow-x-auto">
 			<table class="pv-table pv-responsive-table">
@@ -112,7 +113,7 @@
 		</EmptyState>
 	{/if}
 	{#if store.diskError}
-		<p class="mt-3 text-sm text-destructive" role="alert">{store.diskError}</p>
+		<Alert class="mt-3">{store.diskError}</Alert>
 	{/if}
 </section>
 

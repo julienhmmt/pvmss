@@ -4,6 +4,7 @@
 	import { getVmCreateContext, type SimpleSource } from './create.svelte';
 	import { getDraftContext } from './draft.svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import FormField from '$lib/shared/ui/FormField.svelte';
@@ -394,12 +395,7 @@
 		     one more field in the stack. -->
 		<div class="mt-2 flex flex-col gap-3 border-t border-border pt-5 sm:items-end">
 			{#if form.submitError}
-				<p
-					role="alert"
-					class="w-full rounded-[var(--radius-control)] border border-destructive-soft-border bg-destructive-soft px-3 py-2 text-sm font-medium text-destructive-soft-foreground"
-				>
-					{form.submitError}
-				</p>
+				<Alert>{form.submitError}</Alert>
 			{/if}
 			<Button type="submit" size="lg" loading={form.submitting} disabled={!canSubmit}>
 				{form.submitting ? m['common.creating']() : m['vms.create.submit']()}

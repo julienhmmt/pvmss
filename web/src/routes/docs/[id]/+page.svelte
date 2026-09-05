@@ -6,6 +6,7 @@
 	import { fetchDocPage, type DocRendered } from '$lib/features/docs/docs.svelte';
 	import { getLocaleContext } from '$lib/features/chrome/locale.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
 	import type { Locale } from '$lib/paraglide/runtime.js';
@@ -94,7 +95,7 @@
 	{:else if notFound}
 		<p role="alert" class="text-muted-foreground">{m['docs.notFound']()}</p>
 	{:else if error}
-		<p role="alert" class="text-destructive">{error}</p>
+		<Alert>{error}</Alert>
 	{:else if doc}
 		<Card as="article" pad="lg">
 			<div class="doc-content">

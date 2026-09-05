@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getVmBulkContext } from './bulk.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -82,9 +83,7 @@
 		</Button>
 
 		{#if submitError}
-			<p role="alert" class="text-sm text-destructive" data-testid="vm-bulk-submit-error">
-				{submitError}
-			</p>
+			<Alert data-testid="vm-bulk-submit-error">{submitError}</Alert>
 		{/if}
 
 		{#if bulk.lastResult}

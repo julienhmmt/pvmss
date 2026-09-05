@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getVmDetailContext, type VmAction } from './detail.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import PlayIcon from '$lib/shared/ui/icons/PlayIcon.svelte';
@@ -110,9 +111,7 @@
 </div>
 
 {#if store.actionError}
-	<p role="alert" class="mt-2 text-sm text-destructive" data-testid="vm-action-error">
-		{store.actionError}
-	</p>
+	<Alert data-testid="vm-action-error" class="mt-2">{store.actionError}</Alert>
 {/if}
 
 {#if store.actionInFlight && store.entity}
