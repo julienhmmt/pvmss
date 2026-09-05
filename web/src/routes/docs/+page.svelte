@@ -102,7 +102,7 @@
 								<li>
 									<a
 										href={resolve(`/docs/${page.id}?lang=${page.lang}`)}
-										class="flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+										class="flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-accent/30 pv-focus"
 										class:rounded-t-xl={index === 0}
 										class:rounded-b-xl={index === group.pages.length - 1}
 									>

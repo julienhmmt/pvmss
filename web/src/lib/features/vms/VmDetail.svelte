@@ -190,7 +190,7 @@
 		<StatCard
 			label={m['vms.detail.statCpu']()}
 			value={store.entity.cpuCores}
-			hint={m['common.cores']()}
+			hint={m['common.coreCount']({ count: store.entity.cpuCores })}
 			data-testid="vm-stat-cpu"
 		/>
 		<StatCard

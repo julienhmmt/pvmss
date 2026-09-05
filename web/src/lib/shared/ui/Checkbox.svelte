@@ -57,7 +57,7 @@
 		type="checkbox"
 		{checked}
 		{disabled}
-		class="mt-0.5 h-4 w-4 rounded accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+		class="mt-0.5 h-4 w-4 rounded accent-primary pv-focus"
 		aria-invalid={invalid ? 'true' : undefined}
 		aria-describedby={describedBy}
 		onchange={handleChange}

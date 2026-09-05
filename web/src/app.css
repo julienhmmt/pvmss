@@ -25,7 +25,13 @@
   --secondary-foreground: oklch(21% 0.006 285.885deg);
   --muted: #f1eeeb;
   --muted-foreground: #5f5854;
-  --muted-foreground-subtle: #8d8681;
+  /* Was #8d8681 — 3.32:1 on this background, under the 4.5:1 AA floor for
+     normal text (16 of its 25 call sites are text: labels, char counters,
+     "—" placeholders, footer text — the other 9 are borders/dots, not
+     subject to that floor). This keeps a visible step below
+     --muted-foreground (6.46:1) while clearing AA itself (4.57:1 on
+     --background, 4.94:1 on --card). */
+  --muted-foreground-subtle: #766f6a;
   --accent: #f1eeeb;
   --accent-foreground: #1c1a19;
   --destructive: oklch(57.7% 0.245 27.325deg);
@@ -104,7 +110,10 @@
   --secondary-foreground: oklch(90% 0.004 95deg);
   --muted: oklch(25% 0.006 56deg);
   --muted-foreground: oklch(65% 0.01 56deg);
-  --muted-foreground-subtle: oklch(55% 0.012 56deg);
+  /* Was 55% — 3.92:1 on this background, same AA gap as light mode's fix
+     above. 62% clears AA (5.20:1 on --background, 4.81:1 on --card) while
+     staying below --muted-foreground's 65%. */
+  --muted-foreground-subtle: oklch(62% 0.012 56deg);
   --accent: oklch(25% 0.006 56deg);
   --accent-foreground: oklch(90% 0.004 95deg);
   --destructive: oklch(70.4% 0.191 22.216deg);
@@ -279,7 +288,17 @@
 @layer components {
   /* One focus recipe for the whole app: a 2px ring separated from the control
      by a 2px background gap. Every interactive element uses `.pv-focus` (or
-     the Tailwind equivalent it mirrors) so focus never looks hand-rolled. */
+     the Tailwind equivalent it mirrors) so focus never looks hand-rolled.
+
+     Edge-flush controls are the deliberate exception: sidebar nav rows and
+     "Machines" popovers (Sidebar.svelte), table sort links (SortButton.svelte),
+     a toggle's own track (Switch.svelte), the toast dismiss control
+     (Toaster.svelte), and the mobile header's icon buttons (AppHeader.svelte,
+     HeaderLite.svelte, LanguageSwitcher.svelte, ThemeToggle.svelte) stay on
+     the shorter `focus-visible:ring-2 focus-visible:ring-ring`, no offset —
+     a control that spans its container edge to edge (a 236px sidebar column,
+     a table header cell) would have that offset ring clipped by the
+     container's own edge or overflow. Don't "fix" those into `.pv-focus`. */
   .pv-focus:focus-visible {
     outline: none;
     box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);

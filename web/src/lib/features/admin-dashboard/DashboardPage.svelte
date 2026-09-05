@@ -206,7 +206,7 @@
 						{@const memPct = usagePercent(node.memoryUsedBytes, node.memoryTotalBytes)}
 						<button
 							type="button"
-							class="group flex flex-col gap-4 rounded-xl border border-border bg-card p-4 text-left shadow-card transition-[box-shadow,border-color] duration-150 hover:border-muted-foreground-subtle hover:shadow-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+							class="group flex flex-col gap-4 rounded-xl border border-border bg-card p-4 text-left shadow-card transition-[box-shadow,border-color] duration-150 hover:border-muted-foreground-subtle hover:shadow-raised pv-focus"
 							onclick={() => goToNodeVms(node.name)}
 							data-testid="dashboard-node-card"
 							data-node={node.name}
@@ -228,7 +228,7 @@
 							</div>
 
 							<div class="grid gap-3">
-								{#each [{ label: `${m['admin.dashboard.cpu']()} · ${node.cpuCores} ${m['common.cores']()}`, value: `${cpuPct}%`, pct: cpuPct }, { label: m['admin.dashboard.memory'](), value: `${formatBytes(node.memoryUsedBytes)} / ${formatBytes(node.memoryTotalBytes)}`, pct: memPct }] as meter (meter.label)}
+								{#each [{ label: `${m['admin.dashboard.cpu']()} · ${node.cpuCores} ${m['common.coreCount']({ count: node.cpuCores })}`, value: `${cpuPct}%`, pct: cpuPct }, { label: m['admin.dashboard.memory'](), value: `${formatBytes(node.memoryUsedBytes)} / ${formatBytes(node.memoryTotalBytes)}`, pct: memPct }] as meter (meter.label)}
 									<div class="flex flex-col gap-1.5">
 										<div class="flex items-center justify-between gap-3 text-xs text-muted-foreground">
 											<span class="truncate">{meter.label}</span>

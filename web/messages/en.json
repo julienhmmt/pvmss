@@ -230,7 +230,16 @@
   "common.allClusters": "All clusters",
   "common.allNodes": "All nodes",
   "common.allStatuses": "All statuses",
-  "common.cores": "cores",
+  "common.coreCount": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "core",
+        "countPlural=other": "cores"
+      }
+    }
+  ],
   "common.rowsPerPage": "Rows per page",
   "common.showPassword": "Show password",
   "common.hidePassword": "Hide password",

@@ -35,7 +35,7 @@
 
 	const shell =
 		'block rounded-xl border border-border bg-card p-4 text-left shadow-card transition-[box-shadow,border-color] duration-150';
-	const linkShell = 'hover:border-muted-foreground-subtle hover:shadow-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
+	const linkShell = 'hover:border-muted-foreground-subtle hover:shadow-raised pv-focus';
 </script>
 
 {#snippet body()}

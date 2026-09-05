@@ -68,7 +68,7 @@
 		<button
 			role="tab"
 			aria-selected={form.mode === 'simple'}
-			class="inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background {form.mode === 'simple'
+			class="inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium transition-colors pv-focus {form.mode === 'simple'
 				? 'bg-primary text-primary-foreground'
 				: 'bg-muted text-muted-foreground hover:bg-muted/80'}"
 			onclick={() => (form.mode = 'simple')}
@@ -78,7 +78,7 @@
 		<button
 			role="tab"
 			aria-selected={form.mode === 'detailed'}
-			class="inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background {form.mode === 'detailed'
+			class="inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium transition-colors pv-focus {form.mode === 'detailed'
 				? 'bg-primary text-primary-foreground'
 				: 'bg-muted text-muted-foreground hover:bg-muted/80'}"
 			onclick={() => (form.mode = 'detailed')}

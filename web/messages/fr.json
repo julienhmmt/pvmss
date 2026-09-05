@@ -230,7 +230,16 @@
   "common.allClusters": "Tous les clusters",
   "common.allNodes": "Tous les nœuds",
   "common.allStatuses": "Tous les statuts",
-  "common.cores": "cœurs",
+  "common.coreCount": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "cœur",
+        "countPlural=other": "cœurs"
+      }
+    }
+  ],
   "common.rowsPerPage": "Lignes par page",
   "common.showPassword": "Afficher le mot de passe",
   "common.hidePassword": "Masquer le mot de passe",

@@ -117,7 +117,7 @@
 					</td>
 					<td data-label={m['nodes.columnCpu']()}>
 						<div class="flex flex-col gap-1">
-							<span class="text-muted-foreground">{node.cpuCores} {m['common.cores']()} · {formatPercent(node.cpuUsage)}</span>
+							<span class="text-muted-foreground">{node.cpuCores} {m['common.coreCount']({ count: node.cpuCores })} · {formatPercent(node.cpuUsage)}</span>
 							<div class="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
 								<div class="h-full rounded-full {usageColor(cpuPct)}" style="width: {cpuPct}%"></div>
 							</div>
