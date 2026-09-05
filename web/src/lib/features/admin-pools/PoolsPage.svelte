@@ -5,6 +5,7 @@
 	import DeletePoolConfirm from './DeletePoolConfirm.svelte';
 	import PoolVmBar from './PoolVmBar.svelte';
 	import PoolCredentialsBanner from './PoolCredentialsBanner.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import TableCard from '$lib/shared/ui/TableCard.svelte';
@@ -177,13 +178,13 @@
 	<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
 	<TableSkeleton columns={7} />
 {:else if error}
-	<p role="alert" class="text-destructive">{error}</p>
+	<Alert>{error}</Alert>
 {:else}
 	{#if saveError}
-		<p role="alert" class="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">{saveError}</p>
+		<Alert class="mb-4">{saveError}</Alert>
 	{/if}
 	{#if deleteError}
-		<p role="alert" class="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">{deleteError}</p>
+		<Alert class="mb-4">{deleteError}</Alert>
 	{/if}
 
 	<TableCard>

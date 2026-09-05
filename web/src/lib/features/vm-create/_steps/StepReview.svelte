@@ -4,6 +4,7 @@
 	import { getVmCreateContext } from '../create.svelte';
 	import { getDraftContext } from '../draft.svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import Button from '$lib/shared/ui/Button.svelte';
@@ -44,7 +45,7 @@
 		class="overflow-x-auto rounded-lg border border-border bg-muted p-4 font-mono text-xs"
 		data-testid="review-request">{JSON.stringify(outgoing, null, 2)}</pre>
 
-	{#if form.submitError}<p role="alert" class="text-sm text-destructive">{form.submitError}</p>{/if}
+	{#if form.submitError}<Alert>{form.submitError}</Alert>{/if}
 	{#if imageBlocker !== null}
 		<p class="text-sm text-muted-foreground" data-testid="image-blocker">{imageBlocker}</p>
 	{/if}

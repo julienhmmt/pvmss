@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getVmDetailContext, type VmDisk } from '../detail.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -34,7 +35,7 @@
 		</p>
 	{/if}
 	{#if store.diskError}
-		<p role="alert" class="mb-4 text-sm text-destructive">{store.diskError}</p>
+		<Alert class="mb-4">{store.diskError}</Alert>
 	{/if}
 	<div class="flex justify-end gap-2">
 		<button

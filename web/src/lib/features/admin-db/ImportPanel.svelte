@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import { getDbOpsContext } from './dbOps.svelte';
@@ -40,11 +41,11 @@
 	</p>
 
 	{#if store.importError}
-		<p role="alert" class="rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">{store.importError}</p>
+		<Alert>{store.importError}</Alert>
 	{/if}
 
 	{#if store.confirmError}
-		<p role="alert" class="rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">{store.confirmError}</p>
+		<Alert>{store.confirmError}</Alert>
 	{/if}
 
 	{#if store.confirmResult}

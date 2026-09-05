@@ -7,6 +7,7 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Locale } from '$lib/paraglide/runtime.js';
 	import type { DocSummary } from '$lib/features/docs/docs.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
 
 	interface CategoryGroup {
@@ -86,7 +87,7 @@
 	{#if loading}
 		<p role="status" aria-live="polite" class="text-muted-foreground">{m['docs.loading']()}</p>
 	{:else if error}
-		<p role="alert" class="text-destructive">{error}</p>
+		<Alert>{error}</Alert>
 	{:else}
 		{@const grouped = groupByCategory(visiblePages(pages, session.isAdmin, selectedLang))}
 		{#if grouped.length === 0}

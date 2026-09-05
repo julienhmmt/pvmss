@@ -3,6 +3,7 @@
 	import type { NodeCapacity, NodeCapacityPatch } from './policyNodes.svelte';
 	import type { ClusterOption } from '$lib/shared/clusters';
 	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
@@ -78,7 +79,7 @@
 	{:else if error}
 		<div class="space-y-3" role="alert"><p class="text-destructive">{error}</p><Button variant="secondary" onclick={onLoad}>{m['policy.retry']()}</Button></div>
 	{:else}
-		{#if saveError}<p role="alert" class="mb-4 text-sm text-destructive">{saveError}</p>{/if}
+		{#if saveError}<Alert class="mb-4">{saveError}</Alert>{/if}
 		<TableCard>
 			<table class="pv-table pv-responsive-table">
 				<caption class="sr-only">{m['policy.nodeTitle']()}</caption>

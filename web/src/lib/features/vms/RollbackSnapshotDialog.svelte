@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import { VmSnapshotsStore } from './snapshots.svelte';
 	import type { RollbackDiffEntry, VmSnapshot } from './snapshots.svelte';
@@ -57,7 +58,7 @@
 	<p class="mb-4 text-sm font-medium text-destructive" data-testid="snapshot-rollback-restart-warning">
 		{m['vms.snapshots.rollbackRestarts']()}
 	</p>
-	{#if store.error}<p role="alert" class="mb-4 text-sm text-destructive" data-testid="snapshot-rollback-error">{store.error}</p>{/if}
+	{#if store.error}<Alert data-testid="snapshot-rollback-error" class="mb-4">{store.error}</Alert>{/if}
 
 	<div class="mb-4 rounded-lg border border-border">
 		<button type="button" class="flex w-full items-center justify-between px-4 py-2.5 text-sm font-medium hover:bg-muted" onclick={() => void toggleDiff()} aria-expanded={diffOpen} data-testid="snapshot-rollback-diff-toggle">
@@ -69,7 +70,7 @@
 				{#if diffLoading}
 					<p role="status" class="text-sm text-muted-foreground">{m['vms.snapshots.loading']()}</p>
 				{:else if diffError}
-					<p role="alert" class="text-sm text-destructive" data-testid="snapshot-rollback-diff-error">{diffError}</p>
+					<Alert data-testid="snapshot-rollback-diff-error">{diffError}</Alert>
 				{:else if diffEntries !== null && diffEntries.length === 0}
 					<p role="status" class="text-sm text-muted-foreground" data-testid="snapshot-rollback-diff-empty">{m['vms.snapshots.rollbackDiffEmpty']()}</p>
 				{:else if diffEntries !== null}

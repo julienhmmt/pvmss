@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getAuditRetentionContext } from './auditRetention.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -49,7 +50,7 @@
 	{#if store.loading}
 		<p class="text-sm text-muted-foreground" role="status" aria-live="polite">{m['common.loading']()}</p>
 	{:else if store.error}
-		<p role="alert" class="rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">{store.error}</p>
+		<Alert>{store.error}</Alert>
 	{:else}
 		<form class="flex flex-wrap items-end gap-3" onsubmit={(e) => { e.preventDefault(); if (canPreview()) void onPreview(); }}>
 			<label class="flex flex-col gap-1 text-sm">
@@ -68,11 +69,11 @@
 		</form>
 
 		{#if parsedDays() < 30 && daysInput !== ''}
-			<p role="alert" class="text-sm text-destructive">{m['admin.audit.retention.minDays']()}</p>
+			<Alert>{m['admin.audit.retention.minDays']()}</Alert>
 		{/if}
 
 		{#if store.previewError}
-			<p role="alert" class="rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">{store.previewError}</p>
+			<Alert>{store.previewError}</Alert>
 		{/if}
 
 		{#if store.preview}
@@ -99,7 +100,7 @@
 		{/if}
 
 		{#if store.saveError}
-			<p role="alert" class="rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">{store.saveError}</p>
+			<Alert>{store.saveError}</Alert>
 		{/if}
 
 		{#if store.saved}

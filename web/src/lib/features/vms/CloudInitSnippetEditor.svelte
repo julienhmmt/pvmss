@@ -2,6 +2,7 @@
 	import { onMount, untrack } from 'svelte';
 	import type { CloudInitStore } from './cloudinit.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 
 	interface Props {
 		store: CloudInitStore;
@@ -57,7 +58,7 @@
 		></textarea>
 	</label>
 	{#if store.snippetError}
-		<p role="alert" class="mt-3 text-sm text-destructive" data-testid="cloudinit-snippet-error">{store.snippetError}</p>
+		<Alert data-testid="cloudinit-snippet-error" class="mt-3">{store.snippetError}</Alert>
 	{/if}
 	<div class="mt-4 flex flex-wrap gap-2">
 		<button type="button" class="rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-muted" onclick={() => void load()} data-testid="cloudinit-snippet-reload">

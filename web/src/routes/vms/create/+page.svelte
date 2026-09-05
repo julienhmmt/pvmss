@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { setVmCreateContext } from '$lib/features/vm-create/create.svelte';
 	import { setDraftContext } from '$lib/features/vm-create/draft.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import SimpleWizard from '$lib/features/vm-create/SimpleWizard.svelte';
@@ -46,7 +47,7 @@
 
 {#if session.isAdmin}
 	<section class="mx-auto w-full max-w-2xl px-4 py-8">
-		<p role="alert" class="text-sm text-destructive">{m['vms.create.adminBlocked']()}</p>
+		<Alert>{m['vms.create.adminBlocked']()}</Alert>
 	</section>
 {:else}
 <section class="mx-auto w-full max-w-2xl px-4 py-8">

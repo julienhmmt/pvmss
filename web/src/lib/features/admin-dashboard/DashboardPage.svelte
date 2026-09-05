@@ -2,6 +2,7 @@
 	import { getDashboardContext, type NodeSummary } from './dashboard.svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
@@ -120,12 +121,7 @@
 		{/snippet}
 	</EmptyState>
 {:else if store.error}
-	<p
-		role="alert"
-		class="rounded-xl border border-destructive-soft-border bg-destructive-soft px-4 py-3 text-sm font-medium text-destructive-soft-foreground"
-	>
-		{store.error}
-	</p>
+	<Alert>{store.error}</Alert>
 {:else if store.summary}
 	<div role="status" aria-live="polite" class="sr-only">{m['admin.dashboard.loaded']()}</div>
 

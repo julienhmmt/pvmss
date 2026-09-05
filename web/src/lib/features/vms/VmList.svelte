@@ -8,6 +8,7 @@
 	} from './list.svelte';
 	import type { VmAction } from './detail.svelte';
 	import { getVmBulkContext } from './bulk.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { resolve } from '$app/paths';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
@@ -57,6 +58,19 @@
 	// Columns whose cells are figures, not prose: they get the `.num` class
 	// (tabular mono, right-aligned) so digits line up down the column.
 	const NUMERIC_COLUMNS: ReadonlySet<VmSortBy> = new Set<VmSortBy>(['vmid', 'cpu', 'memory']);
+
+	// Columns that drop out in the 640–899px tablet band (sidebar still a
+	// drawer, content still narrow) — Node is the only one from the sortable
+	// set; Cluster and Pool are handled where they're each rendered, since
+	// neither comes from this loop.
+	const TABLET_HIDDEN_COLUMNS: ReadonlySet<VmSortBy> = new Set<VmSortBy>(['node']);
+
+	function thClass(column: VmSortBy): string {
+		const classes: string[] = [];
+		if (NUMERIC_COLUMNS.has(column)) classes.push('num');
+		if (TABLET_HIDDEN_COLUMNS.has(column)) classes.push('pv-table-tablet-hide');
+		return classes.join(' ');
+	}
 
 	const statusTone: Record<VmStatus, 'ok' | 'off' | 'warn'> = {
 		running: 'ok',
@@ -255,13 +269,7 @@
 			{/snippet}
 		</EmptyState>
 	{:else if store.error}
-		<p
-			role="alert"
-			class="m-4 rounded-[var(--radius-control)] border border-destructive-soft-border bg-destructive-soft px-3 py-2 text-sm font-medium text-destructive-soft-foreground"
-			data-testid="vm-list-error"
-		>
-			{store.error}
-		</p>
+		<Alert data-testid="vm-list-error" class="m-4">{store.error}</Alert>
 	{/if}
 
 	{#if store.errorCode !== 'inventory_not_ready' && store.result && store.result.items.length === 0}
@@ -292,9 +300,11 @@
 								aria-label={m['vms.list.selectAll']()}
 							/>
 						</th>
-						<th scope="col">{m['vms.list.columnCluster']()}</th>
+						{#if store.cluster === ''}
+							<th scope="col" class="pv-table-tablet-hide">{m['vms.list.columnCluster']()}</th>
+						{/if}
 						{#each SORTABLE_COLUMNS as column (column)}
-							<th scope="col" class={NUMERIC_COLUMNS.has(column) ? 'num' : ''} aria-sort={ariaSort(column)}>
+							<th scope="col" class={thClass(column)} aria-sort={ariaSort(column)}>
 								<SortButton
 									label={COLUMN_LABELS[column]()}
 									active={store.sortBy === column}
@@ -305,7 +315,7 @@
 							</th>
 						{/each}
 						{#if store.scope === 'all'}
-							<th scope="col">{m['vms.list.columnPool']()}</th>
+							<th scope="col" class="pv-table-tablet-hide">{m['vms.list.columnPool']()}</th>
 						{/if}
 						<th scope="col" class="text-right">{m['vms.list.columnActions']()}</th>
 					</tr>
@@ -323,9 +333,14 @@
 									aria-label={m['vms.list.selectRow']({ name: machine.name })}
 								/>
 							</td>
-							<td class="text-muted-foreground" data-label={m['vms.list.columnCluster']()}>
-								{machine.clusterDisplayName}
-							</td>
+							{#if store.cluster === ''}
+								<td
+									class="pv-table-tablet-hide text-muted-foreground"
+									data-label={m['vms.list.columnCluster']()}
+								>
+									{machine.clusterDisplayName}
+								</td>
+							{/if}
 							<td data-label={m['vms.list.columnName']()}>
 								<a
 									href={resolve(`/vms/${encodeURIComponent(machine.cluster)}/${machine.vmid}`)}
@@ -345,7 +360,10 @@
 							<td class="num text-muted-foreground" data-label={m['vms.list.columnId']()}>
 								{machine.vmid}
 							</td>
-							<td class="whitespace-nowrap font-mono text-muted-foreground" data-label={m['vms.list.columnNode']()}>
+							<td
+								class="pv-table-tablet-hide whitespace-nowrap font-mono text-muted-foreground"
+								data-label={m['vms.list.columnNode']()}
+							>
 								{machine.node}
 							</td>
 							<td data-label={m['vms.list.columnStatus']()}>
@@ -362,7 +380,7 @@
 								{formatBytes(machine.memoryTotal)}
 							</td>
 							{#if store.scope === 'all'}
-								<td class="text-muted-foreground" data-label={m['vms.list.columnPool']()}>
+								<td class="pv-table-tablet-hide text-muted-foreground" data-label={m['vms.list.columnPool']()}>
 									{machine.pool}
 								</td>
 							{/if}

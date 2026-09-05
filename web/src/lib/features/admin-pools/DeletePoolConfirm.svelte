@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -21,7 +22,7 @@
 		{m['admin.pools.deleteConfirm']({ poolName })}
 	</p>
 	{#if error}
-		<p class="mt-3 text-sm text-destructive" role="alert">{error}</p>
+		<Alert class="mt-3">{error}</Alert>
 	{/if}
 	<div class="mt-6 flex justify-end gap-2">
 		<Button variant="ghost" onclick={onClose}>{m['common.cancel']()}</Button>

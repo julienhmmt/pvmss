@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { AdminPolicy, AdminPolicyPatch, Gabarit } from './policy.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
 	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
@@ -247,7 +248,7 @@
 		/>
 	</Card>
 
-	{#if saveError && !serverErrorField}<p role="alert" class="text-sm text-destructive">{saveError}</p>{/if}
+	{#if saveError && !serverErrorField}<Alert>{saveError}</Alert>{/if}
 	{#if isDirty}<p class="text-xs text-muted-foreground">{m['policy.unsavedChanges']()}</p>{/if}
 	<div class="flex justify-end gap-2">
 		{#if isDirty}

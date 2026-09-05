@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getVmDetailContext } from '../detail.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import MountIsoDialog from './MountIsoDialog.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
@@ -93,10 +94,10 @@
 		</Button>
 	</div>
 	{#if store.bootCdromError}
-		<p class="mt-3 text-sm text-destructive" role="alert" data-testid="vm-cdrom-boot-error">{store.bootCdromError}</p>
+		<Alert data-testid="vm-cdrom-boot-error" class="mt-3">{store.bootCdromError}</Alert>
 	{/if}
 	{#if store.writeError}
-		<p class="mt-3 text-sm text-destructive" role="alert">{store.writeError}</p>
+		<Alert class="mt-3">{store.writeError}</Alert>
 	{/if}
 </div>
 

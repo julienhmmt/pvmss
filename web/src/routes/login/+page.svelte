@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import BrandPanel from '$lib/shared/ui/BrandPanel.svelte';
 	import { LoginForm } from '$lib/features/auth/login.svelte';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
@@ -110,7 +111,7 @@
 						</Button>
 					{/if}
 					{#if form.error}
-						<p role="alert" class="text-sm text-destructive">{form.error}</p>
+						<Alert>{form.error}</Alert>
 					{/if}
 					<Button type="submit" loading={form.loading} disabled={form.provider === 'pve' && form.pveDisabled}>
 						{form.loading ? m['login.signingIn']() : m['login.signIn']()}

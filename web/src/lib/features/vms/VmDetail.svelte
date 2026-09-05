@@ -2,6 +2,7 @@
 	import { getVmDetailContext } from './detail.svelte';
 	import VmActionBar from './VmActionBar.svelte';
 	import DeleteVmDialog from './DeleteVmDialog.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Tabs from '$lib/shared/ui/Tabs.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 	import VmDisksTab from './disks/VmDisksTab.svelte';
@@ -126,7 +127,7 @@
 		</div>
 	</div>
 {:else if store.error}
-	<p role="alert" class="text-destructive" data-testid="vm-detail-error">{store.error}</p>
+	<Alert data-testid="vm-detail-error">{store.error}</Alert>
 {:else if store.entity}
 	<header class="rounded-xl border border-border bg-card p-6 shadow-card">
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -305,9 +306,7 @@
 	</div>
 
 	{#if store.patchError}
-		<p role="alert" class="mt-4 text-sm text-destructive" data-testid="vm-patch-error">
-			{store.patchError}
-		</p>
+		<Alert data-testid="vm-patch-error" class="mt-4">{store.patchError}</Alert>
 	{/if}
 
 	<DeleteVmDialog bind:open={deleteOpen} />

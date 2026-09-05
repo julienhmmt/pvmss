@@ -2,6 +2,7 @@
 	import type { ClusterNode, NodeStatus } from './nodes.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import { formatBytes } from '$lib/shared/format-bytes';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 
@@ -82,9 +83,7 @@
 </PageHeader>
 
 {#if refreshError}
-	<p role="alert" class="mb-4 text-sm text-destructive" data-testid="refresh-error">
-		{refreshError}
-	</p>
+	<Alert data-testid="refresh-error" class="mb-4">{refreshError}</Alert>
 {/if}
 
 <div class="overflow-x-auto rounded-lg border border-border" aria-labelledby="nodes-heading">

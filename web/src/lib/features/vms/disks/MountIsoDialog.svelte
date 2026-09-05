@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getVmDetailContext } from '../detail.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import Button from '$lib/shared/ui/Button.svelte';
@@ -42,7 +43,7 @@
 			</select>
 		</label>
 		{#if store.writeError}
-			<p role="alert" class="text-sm text-destructive">{store.writeError}</p>
+			<Alert>{store.writeError}</Alert>
 		{/if}
 		<div class="mt-2 flex justify-end gap-2">
 			<Button variant="secondary" onclick={close}>{m['common.cancel']()}</Button>

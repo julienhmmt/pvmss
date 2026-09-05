@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { AuditFilter } from './auditLog.svelte';
 	import { getAuditLogContext } from './auditLog.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
@@ -116,7 +117,7 @@
 		<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
 		<TableSkeleton columns={5} />
 	{:else if store.error}
-		<p role="alert" class="text-destructive">{store.error}</p>
+		<Alert>{store.error}</Alert>
 	{:else}
 		<div role="status" aria-live="polite" class="sr-only">{m['admin.audit.entriesLoaded']({ loaded: store.entries.length, total: store.total })}</div>
 
