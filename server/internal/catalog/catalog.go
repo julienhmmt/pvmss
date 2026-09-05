@@ -37,6 +37,19 @@ type ISO struct {
 	File    string `json:"file"`
 }
 
+// Image is one approved cloud image on an approved storage on a node — a
+// bootable disk image (.qcow2/.raw/.vmdk/.ova) an admin placed on the
+// storage's import/ directory themselves (PVMSS never fetches images from
+// the internet). Approval is keyed by (node, storage, file) like ISO.
+// SizeBytes is the discovered image size; the create path rejects a disk
+// size below it.
+type Image struct {
+	Storage   string `json:"storage"`
+	Node      string `json:"node"`
+	File      string `json:"file"`
+	SizeBytes int64  `json:"sizeBytes"`
+}
+
 // Profile is a fixed VM hardware preset (FR-009): when a creation request
 // references a profile, these values are authoritative — client-submitted
 // hardware fields that accompany a profile are ignored.
@@ -73,6 +86,7 @@ type Resources struct {
 	Storages []Storage
 	Bridges  []Bridge
 	ISOs     []ISO
+	Images   []Image
 	// Tags is the admin-curated tag name allowlist (FR-013): users may only
 	// reference these tags on create and hardware updates.
 	Tags []string
@@ -128,6 +142,31 @@ func (r Resources) HasISO(storage, file, node string) bool {
 	return false
 }
 
+// HasCloudImage reports whether (storage, file) is an approved cloud image
+// on node. A shared-storage image has one row per node, so each node matches
+// independently.
+func (r Resources) HasCloudImage(storage, file, node string) bool {
+	for _, image := range r.Images {
+		if image.Storage == storage && image.File == file && image.Node == node {
+			return true
+		}
+	}
+
+	return false
+}
+
+// FindImage returns the approved cloud image matching (storage, file, node),
+// or an error wrapping ErrNotApproved when absent.
+func (r Resources) FindCloudImage(storage, file, node string) (Image, error) {
+	for _, image := range r.Images {
+		if image.Storage == storage && image.File == file && image.Node == node {
+			return image, nil
+		}
+	}
+
+	return Image{}, fmt.Errorf("cloud image %q on storage %q is not approved for this cluster", file, storage)
+}
+
 // ApprovedResources reads the full approved-resource catalog for a cluster
 // from the store (T06: fixture rows seeded by migration version 7).
 func ApprovedResources(ctx context.Context, st *store.Store, cluster string) (Resources, error) {
@@ -151,6 +190,11 @@ func ApprovedResources(ctx context.Context, st *store.Store, cluster string) (Re
 		return Resources{}, err
 	}
 
+	images, err := st.CatalogImages(ctx, cluster)
+	if err != nil {
+		return Resources{}, err
+	}
+
 	tagRows, err := st.CatalogTags(ctx, cluster)
 	if err != nil {
 		return Resources{}, err
@@ -161,6 +205,7 @@ func ApprovedResources(ctx context.Context, st *store.Store, cluster string) (Re
 		Storages: make([]Storage, 0, len(storages)),
 		Bridges:  make([]Bridge, 0, len(bridges)),
 		ISOs:     make([]ISO, 0, len(isos)),
+		Images:   make([]Image, 0, len(images)),
 		Tags:     make([]string, 0, len(tagRows)),
 	}
 	for _, node := range nodes {
@@ -177,6 +222,10 @@ func ApprovedResources(ctx context.Context, st *store.Store, cluster string) (Re
 
 	for _, iso := range isos {
 		resources.ISOs = append(resources.ISOs, ISO{Storage: iso.Storage, Node: iso.Node, File: iso.File})
+	}
+
+	for _, image := range images {
+		resources.Images = append(resources.Images, Image{Storage: image.Storage, Node: image.Node, File: image.File, SizeBytes: image.SizeBytes})
 	}
 
 	for _, tag := range tagRows {

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getVmDetailContext } from './detail.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -44,7 +45,7 @@
 </script>
 
 <Dialog bind:open labelledBy="delete-vm-title" onClose={close}>
-	<h2 id="delete-vm-title" class="mb-2 text-lg font-semibold">
+	<h2 id="delete-vm-title" class="mb-4 text-lg font-semibold">
 		{#if store.entity}{m['vms.deleteDialogTitle']({ name: store.entity.name })}{:else}{m['vms.deleteDialogTitle']({ name: '' })}{/if}
 	</h2>
 
@@ -62,9 +63,7 @@
 	{/if}
 
 	{#if store.deleteError && !(store.deleteErrorCode === 'vm_running' && needsForceStop)}
-		<p role="alert" class="mb-4 text-sm text-destructive" data-testid="vm-delete-error">
-			{store.deleteError}
-		</p>
+		<Alert data-testid="vm-delete-error" class="mb-4">{store.deleteError}</Alert>
 	{/if}
 
 	<div class="flex justify-end gap-2">

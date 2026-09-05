@@ -7,6 +7,7 @@
 	 */
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
+	import Logo from '$lib/shared/ui/Logo.svelte';
 	import { resolve } from '$app/paths';
 	import { m } from '$lib/paraglide/messages.js';
 </script>
@@ -17,8 +18,9 @@
 >
 	<a
 		href={resolve('/')}
-		class="inline-flex h-9 items-center rounded-lg px-2 text-sm font-bold tracking-tight text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+		class="inline-flex h-9 items-center gap-2 rounded-lg px-2 text-sm font-bold tracking-tight text-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 	>
+		<Logo showText={false} class="text-foreground" />
 		{m['chrome.sidebar.brand']()}
 	</a>
 

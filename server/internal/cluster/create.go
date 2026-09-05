@@ -47,6 +47,11 @@ type CloneSpec struct {
 	TargetNode string
 }
 
+// biosOVMF is the Proxmox bios value selecting UEFI firmware (US6/issue-06
+// D6a). Shared between the real create path and the fake dataset so both
+// recognize the same trigger value.
+const biosOVMF = "ovmf"
+
 // VMSpec is the fully-resolved specification of a VM to create (T06
 // data-model.md). Every field is already validated and resolved server-side —
 // the pool is the actor's own, never client-supplied (FR-004).
@@ -56,21 +61,35 @@ type CloneSpec struct {
 // "ovmf", the create path forces Machine to "q35" (pegaprox rule: UEFI
 // requires q35) and emits efidisk0 (+ tpmstate0 when TPM is set).
 type VMSpec struct {
-	VMID             int
-	Node             string
-	Name             string
-	Pool             string
-	Tags             []string
-	Sockets          int
-	CPUCores         int
-	MemoryMB         int
-	Disk             DiskSpec
-	Network          NetworkSpec
-	ISO              *ISOSpec
+	VMID     int
+	Node     string
+	Name     string
+	Pool     string
+	Tags     []string
+	Sockets  int
+	CPUCores int
+	MemoryMB int
+	Disk     DiskSpec
+	Network  NetworkSpec
+	ISO      *ISOSpec
+	// Image is the optional cloud image the VM's primary disk imports from
+	// (import-from). Mutually exclusive with ISO at the vm.Create layer.
+	Image            *ImageSpec
 	BIOS             string
 	Machine          string
 	TPM              bool
 	StartAfterCreate bool
+}
+
+// ImageSpec is an optional cloud image imported as the VM's primary disk at
+// creation (Proxmox import-from, PVE ≥ 7.2). Network config is applied
+// afterwards through Writer.SetCloudInitConfig, not at create time: Proxmox's
+// REST API cannot write a cloud-init snippet file (upload/download-url both
+// reject content=snippets — see Writer.HasSnippet), so ciuser/sshkeys/
+// ipconfig0 are the only reliable per-VM cloud-init delivery mechanism.
+type ImageSpec struct {
+	Storage string
+	File    string
 }
 
 // DiskSpec is the VM's single initial disk (multi-disk is T07).

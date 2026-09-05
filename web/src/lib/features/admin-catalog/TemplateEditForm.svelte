@@ -28,7 +28,7 @@
 
 <h2 id="template-edit-title" class="text-lg font-semibold">{m['admin.templates.editTitle']({ vmid: template.vmid })}</h2>
 <p class="mt-2 text-sm text-muted-foreground">{m['admin.templates.overrideHint']()}</p>
-<form class="mt-5 grid gap-4" onsubmit={(event) => { event.preventDefault(); onSave({ ...values }); }}>
+<form class="mt-6 grid gap-4" onsubmit={(event) => { event.preventDefault(); onSave({ ...values }); }}>
 	<FormField label={m['admin.templates.fieldNode']()} required>
 		{#snippet children({ id, describedBy, invalid })}
 			<TextField {id} {describedBy} {invalid} bind:value={values.node} required />

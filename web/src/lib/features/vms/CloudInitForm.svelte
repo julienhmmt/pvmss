@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { CloudInitConfigUpdate, CloudInitIPMode, CloudInitStore } from './cloudinit.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import FormField from '$lib/shared/ui/FormField.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
 	import Textarea from '$lib/shared/ui/Textarea.svelte';
@@ -150,7 +151,7 @@
 					{m['vms.cloudinit.addSSHKeyNow']()}
 				</Button>
 				{#if store.sshKeyError}
-					<p role="alert" class="text-sm text-destructive">{store.sshKeyError}</p>
+					<Alert>{store.sshKeyError}</Alert>
 				{/if}
 			</div>
 		</div>

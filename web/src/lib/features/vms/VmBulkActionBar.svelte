@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getVmBulkContext } from './bulk.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -43,7 +44,7 @@
 
 {#if bulk.hasSelection}
 	<div
-		class="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-md border border-border bg-background/95 p-3 backdrop-blur"
+		class="sticky top-0 z-10 mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-primary/25 bg-sidebar-accent/70 px-4 py-3 shadow-raised backdrop-blur"
 		data-testid="vm-bulk-action-bar"
 	>
 		<span class="text-sm font-medium" data-testid="vm-bulk-selected-count">
@@ -82,9 +83,7 @@
 		</Button>
 
 		{#if submitError}
-			<p role="alert" class="text-sm text-destructive" data-testid="vm-bulk-submit-error">
-				{submitError}
-			</p>
+			<Alert data-testid="vm-bulk-submit-error">{submitError}</Alert>
 		{/if}
 
 		{#if bulk.lastResult}

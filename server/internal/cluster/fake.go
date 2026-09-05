@@ -246,6 +246,17 @@ func (fake Fake) ListISOs(_ context.Context) ([]ISOImage, error) {
 	return slices.Clone(fakeISOs), nil
 }
 
+// ListCloudImages implements Client. Returns the fake cloud-image dataset —
+// a superset of what the catalog seed approved (ubuntu-24.04 cloudimg on
+// local/node-01) so the admin demo has debian-12-generic-cloudimg to
+// discover and approve, rocky-9 as the unapproved target.
+func (fake Fake) ListCloudImages(_ context.Context) ([]CloudImage, error) {
+	if fake.unavailable() {
+		return nil, ErrUnreachable
+	}
+	return slices.Clone(fakeCloudImages), nil
+}
+
 // ListTemplates implements Client. Returns the fake template dataset — two
 // template VMs the admin demo can discover and approve (US2/issue-02 T058).
 func (fake Fake) ListTemplates(_ context.Context) ([]TemplateVM, error) {
@@ -501,6 +512,17 @@ func (fake Fake) AttachCloudInitSnippet(ctx context.Context, node, storage, file
 	return nil
 }
 
+// HasSnippet implements Writer. The default answer is false — the fake
+// cannot invent an admin-preplaced file — unless a test opts a
+// (node, storage, filename) triple in via SetFakeSnippetPresent.
+func (fake Fake) HasSnippet(_ context.Context, node, storage, filename string) (bool, error) {
+	state := fake.stateOrDefault()
+	state.snippetMu.RLock()
+	defer state.snippetMu.RUnlock()
+
+	return state.snippetPresence[fakeSnippetKey{node: node, storage: storage, filename: filename}], nil
+}
+
 // SetCloudInitPassword implements Writer and records the agent password apply
 // with its target user. The password itself is never retained (REPORT.md §1).
 // Tests can inject a failure for the next N calls (SetFakeGuestPasswordError)
@@ -577,6 +599,16 @@ func SetFakeCloudInitPushError(err error) {
 	state.pushMu.Lock()
 	defer state.pushMu.Unlock()
 	state.pushErr = err
+}
+
+// SetFakeSnippetPresent configures the default fake's HasSnippet answer for
+// one (node, storage, filename) triple — tests use it to exercise the
+// baseline-snippet-found branch of image-mode create.
+func SetFakeSnippetPresent(node, storage, filename string, present bool) {
+	state := defaultState()
+	state.snippetMu.Lock()
+	defer state.snippetMu.Unlock()
+	state.snippetPresence[fakeSnippetKey{node: node, storage: storage, filename: filename}] = present
 }
 
 // SetFakeCreateError configures the default fake's CreateVM error for the
@@ -1163,6 +1195,15 @@ var fakeISOs = []ISOImage{
 	{Storage: FakeStorageLocal, Node: FakeNode01, File: "debian-12-generic-amd64.iso", SizeBytes: 691945472},
 	{Storage: FakeStorageLocal, Node: FakeNode01, File: "ubuntu-24.04-server-amd64.iso", SizeBytes: 1258291200},
 	{Storage: FakeStorageLocal, Node: FakeNode02, File: "rocky-9-generic-x86_64.iso", SizeBytes: 1476395008},
+}
+
+// fakeCloudImages is the cloud-image discovery dataset. The ubuntu row
+// mirrors the catalog_images seed (approved); debian-12 is the demo's
+// discover-and-approve target and rocky-9 the unapproved rejection target.
+var fakeCloudImages = []CloudImage{
+	{Storage: FakeStorageLocal, Node: FakeNode01, File: "ubuntu-24.04-server-cloudimg-amd64.qcow2", SizeBytes: 644245094},
+	{Storage: FakeStorageLocal, Node: FakeNode01, File: "debian-12-generic-cloudimg-amd64.qcow2", SizeBytes: 601295421},
+	{Storage: FakeStorageLocal, Node: FakeNode02, File: "rocky-9-generic-cloudimg-x86_64.raw", SizeBytes: 734003200},
 }
 
 // fakeTemplates is the US2/issue-02 template discovery dataset. Two template

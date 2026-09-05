@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import { getDbOpsContext } from './dbOps.svelte';
@@ -40,11 +41,11 @@
 	</p>
 
 	{#if store.importError}
-		<p role="alert" class="rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">{store.importError}</p>
+		<Alert>{store.importError}</Alert>
 	{/if}
 
 	{#if store.confirmError}
-		<p role="alert" class="rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">{store.confirmError}</p>
+		<Alert>{store.confirmError}</Alert>
 	{/if}
 
 	{#if store.confirmResult}
@@ -70,18 +71,18 @@
 			<p class="text-sm text-muted-foreground">
 				{m['admin.db.previewDescription']()}
 			</p>
-			<table class="w-full text-sm">
-				<thead class="bg-muted/50 text-left">
+			<table class="pv-table">
+				<thead>
 					<tr>
-						<th class="px-3 py-1.5 font-medium">{m['admin.db.table']()}</th>
-						<th class="px-3 py-1.5 font-medium">{m['admin.db.rows']()}</th>
+						<th class="py-1.5 font-medium">{m['admin.db.table']()}</th>
+						<th class="py-1.5 font-medium">{m['admin.db.rows']()}</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each store.preview.tables as table (table.name)}
 						<tr class="border-t border-border">
-							<td class="px-3 py-1.5 font-mono">{table.name}</td>
-							<td class="px-3 py-1.5">{table.rowCount}</td>
+							<td class="py-1.5 font-mono">{table.name}</td>
+							<td class="py-1.5">{table.rowCount}</td>
 						</tr>
 					{/each}
 				</tbody>

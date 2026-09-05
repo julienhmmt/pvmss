@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { getVmDetailContext } from './detail.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 
 	const store = getVmDetailContext();
@@ -35,29 +36,29 @@
 			{m['common.loading']()}
 		</p>
 	{:else if store.auditError && store.auditItems === null}
-		<p role="alert" class="mt-6 text-sm text-destructive" data-testid="vm-activity-error">{store.auditError}</p>
+		<Alert data-testid="vm-activity-error" class="mt-6">{store.auditError}</Alert>
 	{:else if store.auditItems !== null && store.auditItems.length === 0}
 		<EmptyState
 			title={m['vm.activity.empty']()}
 			dataTestid="vm-activity-empty"
-			class="mt-6 rounded-lg border border-dashed border-border py-6"
+			class="mt-6 rounded-xl border border-dashed border-border"
 		/>
 	{:else if store.auditItems !== null && store.auditItems.length > 0}
 		<div class="mt-6 overflow-x-auto">
-			<table class="w-full text-sm" data-testid="vm-activity-table">
+			<table class="pv-table" data-testid="vm-activity-table">
 				<thead>
 					<tr class="border-b border-border text-left text-muted-foreground">
-						<th scope="col" class="py-2 pr-4 font-medium">{m['vm.activity.actor']()}</th>
-						<th scope="col" class="py-2 pr-4 font-medium">{m['vm.activity.action']()}</th>
-						<th scope="col" class="py-2 pr-4 font-medium">{m['vm.activity.time']()}</th>
+						<th scope="col" class="pr-4 font-medium">{m['vm.activity.actor']()}</th>
+						<th scope="col" class="pr-4 font-medium">{m['vm.activity.action']()}</th>
+						<th scope="col" class="pr-4 font-medium">{m['vm.activity.time']()}</th>
 					</tr>
 				</thead>
-				<tbody class="divide-y divide-border">
+				<tbody>
 					{#each store.auditItems as entry (entry.id)}
 						<tr data-testid="vm-activity-row">
-							<td class="py-2 pr-4">{entry.actor}</td>
-							<td class="py-2 pr-4 font-mono">{entry.action}</td>
-							<td class="py-2 pr-4 text-muted-foreground">{formatTimestamp(entry.timestamp)}</td>
+							<td class="pr-4">{entry.actor}</td>
+							<td class="pr-4 font-mono">{entry.action}</td>
+							<td class="pr-4 text-muted-foreground">{formatTimestamp(entry.timestamp)}</td>
 						</tr>
 					{/each}
 				</tbody>

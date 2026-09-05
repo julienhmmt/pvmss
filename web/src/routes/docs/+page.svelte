@@ -7,7 +7,10 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import type { Locale } from '$lib/paraglide/runtime.js';
 	import type { DocSummary } from '$lib/features/docs/docs.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
+	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
 
 	interface CategoryGroup {
 		category: string;
@@ -68,25 +71,24 @@
 </svelte:head>
 
 <section class="mx-auto w-full max-w-4xl px-4 py-8 md:px-6">
-	<div class="mb-6 flex items-center justify-between">
-		<h1 class="text-2xl font-semibold">{m['docs.title']()}</h1>
-		<label class="flex items-center gap-2 text-sm">
-			<span class="text-muted-foreground">{m['docs.language']()}</span>
-			<select
-				class="rounded-md border border-border bg-background px-2 py-1 text-sm"
-				value={selectedLang}
-				onchange={(e) => (selectedLang = e.currentTarget.value as Locale)}
-			>
-				<option value="en">en</option>
-				<option value="fr">fr</option>
-			</select>
-		</label>
-	</div>
+	<PageHeader title={m['docs.title']()}>
+		{#snippet actions()}
+			<label class="flex items-center gap-2 text-sm">
+				{m['docs.language']()}
+				<Select
+					value={selectedLang}
+					options={['en', 'fr']}
+					onchange={(e: Event) => (selectedLang = (e.currentTarget as HTMLSelectElement).value as Locale)}
+					class="w-auto"
+				/>
+			</label>
+		{/snippet}
+	</PageHeader>
 
 	{#if loading}
 		<p role="status" aria-live="polite" class="text-muted-foreground">{m['docs.loading']()}</p>
 	{:else if error}
-		<p role="alert" class="text-destructive">{error}</p>
+		<Alert>{error}</Alert>
 	{:else}
 		{@const grouped = groupByCategory(visiblePages(pages, session.isAdmin, selectedLang))}
 		{#if grouped.length === 0}
@@ -101,7 +103,7 @@
 								<li>
 									<a
 										href={resolve(`/docs/${page.id}?lang=${page.lang}`)}
-										class="flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+										class="flex items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-accent/30 pv-focus"
 										class:rounded-t-xl={index === 0}
 										class:rounded-b-xl={index === group.pages.length - 1}
 									>
