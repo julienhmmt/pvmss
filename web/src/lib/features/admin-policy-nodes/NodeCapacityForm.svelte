@@ -20,7 +20,7 @@
 
 <h2 id="node-capacity-title" class="text-lg font-semibold">{m['policy.edit']()}: {node.node}</h2>
 <p class="mt-2 text-sm text-muted-foreground">{m['policy.noCap']()}</p>
-<form class="mt-5 grid gap-4" onsubmit={(event) => { event.preventDefault(); onSave({ ...values }); }}>
+<form class="mt-6 grid gap-4" onsubmit={(event) => { event.preventDefault(); onSave({ ...values }); }}>
 	<FormField label={m['policy.maxVms']()} required>
 		{#snippet children({ id, describedBy, invalid })}
 			<TextField {id} {describedBy} {invalid} type="number" min={0} bind:value={values.maxVms} required />

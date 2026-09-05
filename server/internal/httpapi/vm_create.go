@@ -15,6 +15,19 @@ import (
 	"pvmss/server/internal/vm"
 )
 
+// cloudImageFeatureEnabled gates the cloud-image / cloud-init-template
+// creation path off at this single choke point (2026-09-04): forking a
+// cloud-init template per VM needs PVMSS's server to SSH into the Proxmox
+// node and write a snippet file itself — Proxmox's REST API cannot write one
+// at all (confirmed against live PVE source: PVE::API2::Storage::Status
+// hardcodes the upload/download-url content enum to iso/vztmpl/import) — and
+// that new credential/dependency was judged too much scope for now. The
+// underlying implementation (image import, native-key cloud-init, cloud-init
+// templates) still works end to end; this only stops buildCatalogDTO from
+// advertising images/cloud-init templates, so no wizard offers them. Flip to
+// true to bring the feature back — nothing else needs to change.
+const cloudImageFeatureEnabled = false
+
 // VMCreate serves POST /api/v1/vms (the single creation endpoint for both
 // simple and detailed modes — FR-001) and GET /api/v1/vm-create/catalog
 // (FR-002). All validation lives in vm.Create; this handler only decodes,
@@ -121,6 +134,15 @@ type catalogISODTO struct {
 	File    string `json:"file"`
 }
 
+// catalogImageDTO is one approved cloud image (import-from source). SizeBytes
+// lets the UI enforce the minimum disk size (reductions are rejected).
+type catalogImageDTO struct {
+	Storage   string `json:"storage"`
+	Node      string `json:"node"`
+	File      string `json:"file"`
+	SizeBytes int64  `json:"sizeBytes"`
+}
+
 type catalogProfileDTO struct {
 	ID       string `json:"id"`
 	Label    string `json:"label"`
@@ -201,6 +223,7 @@ type catalogDTO struct {
 	Storages           []catalogStorageDTO           `json:"storages"`
 	Bridges            []catalogBridgeDTO            `json:"bridges"`
 	ISOs               []catalogISODTO               `json:"isos"`
+	Images             []catalogImageDTO             `json:"images"`
 	Profiles           []catalogProfileDTO           `json:"profiles"`
 	Templates          []catalogTemplateDTO          `json:"templates"`
 	CloudInitTemplates []catalogCloudInitTemplateDTO `json:"cloudInitTemplates"`
@@ -266,6 +289,8 @@ type catalogData struct {
 	resources        catalog.Resources
 	snap             cluster.Snapshot
 	bridges          []cluster.Bridge
+	isos             []cluster.ISOImage
+	images           []catalog.Image
 	profiles         []catalog.Profile
 	templates        []catalog.CloudInitTemplate
 	proxmoxTemplates []catalog.Template
@@ -298,6 +323,22 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 	}
 
 	data.bridges = bridges
+
+	isos, err := client.ListISOs(ctx)
+	if err != nil {
+		return catalogData{}, fmt.Errorf("iso discovery: %w", err)
+	}
+
+	data.isos = isos
+
+	images, err := client.ListCloudImages(ctx)
+	if err != nil {
+		return catalogData{}, fmt.Errorf("image discovery: %w", err)
+	}
+
+	for _, image := range images {
+		data.images = append(data.images, catalog.Image{Storage: image.Storage, Node: image.Node, File: image.File, SizeBytes: image.SizeBytes})
+	}
 
 	profiles, err := catalog.Profiles(ctx, h.store, clusterName)
 	if err != nil {
@@ -334,13 +375,34 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 }
 
 // buildCatalogDTO maps the raw catalog data into the response contract.
+// Approved resources are filtered against live discovery: a node, storage,
+// bridge, or ISO that Proxmox no longer reports is dropped from the user-facing
+// catalog even if its approval row still exists in the store (the admin list
+// surfaces those orphans for manual cleanup, and enabled orphans are
+// auto-removed there).
 func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
+	discoveredNodes := make(map[string]bool, len(data.snap.Nodes))
+	for _, n := range data.snap.Nodes {
+		discoveredNodes[n.Name] = true
+	}
+
+	discoveredISOs := make(map[isoDiscoveryKey]bool, len(data.isos))
+	for _, i := range data.isos {
+		discoveredISOs[isoDiscoveryKey{Node: i.Node, Storage: i.Storage, File: i.File}] = true
+	}
+
+	discoveredImages := make(map[isoDiscoveryKey]bool, len(data.images))
+	for _, i := range data.images {
+		discoveredImages[isoDiscoveryKey{Node: i.Node, Storage: i.Storage, File: i.File}] = true
+	}
+
 	dto := catalogDTO{
 		Cluster:            clusterName,
 		Nodes:              make([]string, 0, len(data.resources.Nodes)),
 		Storages:           make([]catalogStorageDTO, 0, len(data.resources.Storages)),
 		Bridges:            catalogBridgeDTOs(data.resources.Bridges, data.bridges),
 		ISOs:               make([]catalogISODTO, 0, len(data.resources.ISOs)),
+		Images:             make([]catalogImageDTO, 0, len(data.resources.Images)),
 		Profiles:           make([]catalogProfileDTO, 0, len(data.profiles)),
 		Templates:          make([]catalogTemplateDTO, 0, len(data.proxmoxTemplates)),
 		CloudInitTemplates: make([]catalogCloudInitTemplateDTO, 0, len(data.templates)),
@@ -348,6 +410,9 @@ func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
 	}
 
 	for _, node := range data.resources.Nodes {
+		if !discoveredNodes[node.Name] {
+			continue
+		}
 		dto.Nodes = append(dto.Nodes, node.Name)
 	}
 
@@ -368,7 +433,19 @@ func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
 	}
 
 	for _, iso := range data.resources.ISOs {
+		if !discoveredISOs[isoDiscoveryKey{Node: iso.Node, Storage: iso.Storage, File: iso.File}] {
+			continue
+		}
 		dto.ISOs = append(dto.ISOs, catalogISODTO{Storage: iso.Storage, Node: iso.Node, File: iso.File})
+	}
+
+	if cloudImageFeatureEnabled {
+		for _, image := range data.resources.Images {
+			if !discoveredImages[isoDiscoveryKey{Node: image.Node, Storage: image.Storage, File: image.File}] {
+				continue
+			}
+			dto.Images = append(dto.Images, catalogImageDTO{Storage: image.Storage, Node: image.Node, File: image.File, SizeBytes: image.SizeBytes})
+		}
 	}
 
 	for _, profile := range data.profiles {
@@ -384,10 +461,12 @@ func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
 	}
 
 	// T18: catalog exposes only id+label per spec/contracts — never content.
-	for _, tmpl := range data.templates {
-		dto.CloudInitTemplates = append(dto.CloudInitTemplates, catalogCloudInitTemplateDTO{
-			ID: tmpl.ID, Label: tmpl.Label,
-		})
+	if cloudImageFeatureEnabled {
+		for _, tmpl := range data.templates {
+			dto.CloudInitTemplates = append(dto.CloudInitTemplates, catalogCloudInitTemplateDTO{
+				ID: tmpl.ID, Label: tmpl.Label,
+			})
+		}
 	}
 
 	// US2/issue-02: approved Proxmox templates (clone source).
@@ -618,18 +697,30 @@ func vmCapableStorage(storage catalog.Storage, available []cluster.Storage) (clu
 	return cluster.Storage{}, false
 }
 
+// isoDiscoveryKey is a composite map key for ISOs, avoiding string-concat
+// collisions when a storage or file contains ":".
+type isoDiscoveryKey struct {
+	Node    string
+	Storage string
+	File    string
+}
+
 // catalogBridgeDTOs dedupes by (name, node) — the same bridge name can be
 // approved on more than one node, and each is a distinct, independently
 // selectable option (bridge approval is per-node, like storage). live carries
 // the cluster's current network config, which is where the description
 // (Proxmox "comments" field) actually lives — catalog_bridges only stores
-// the approval, not the comment.
+// the approval, not the comment. Bridges absent from live (orphan approvals
+// whose bridge Proxmox no longer reports) are dropped so users never see a
+// bridge they cannot actually use.
 func catalogBridgeDTOs(bridges []catalog.Bridge, live []cluster.Bridge) []catalogBridgeDTO {
 	type key struct{ name, node string }
 
 	commentByKey := make(map[key]string, len(live))
+	liveByKey := make(map[key]bool, len(live))
 	for _, bridge := range live {
 		commentByKey[key{bridge.Name, bridge.Node}] = bridge.Comment
+		liveByKey[key{bridge.Name, bridge.Node}] = true
 	}
 
 	out := make([]catalogBridgeDTO, 0, len(bridges))
@@ -638,6 +729,9 @@ func catalogBridgeDTOs(bridges []catalog.Bridge, live []cluster.Bridge) []catalo
 	for _, bridge := range bridges {
 		k := key{bridge.Name, bridge.Node}
 		if _, exists := seen[k]; exists {
+			continue
+		}
+		if !liveByKey[k] {
 			continue
 		}
 
@@ -690,9 +784,14 @@ var createErrorMappings = []createErrorMapping{
 	{vm.ErrInvalidSource, http.StatusBadRequest, "invalid_source", ""},
 	{vm.ErrInvalidRequest, http.StatusBadRequest, codeInvalidRequest, ""},
 	{vm.ErrDiskReduction, http.StatusBadRequest, "disk_reduction", ""},
+	{vm.ErrDiskBelowImage, http.StatusBadRequest, "disk_below_image", ""},
 	{vm.ErrInsufficientDiskSpace, http.StatusBadRequest, "insufficient_disk_space", ""},
 	{vm.ErrNoSnippetStorage, http.StatusBadRequest, "no_snippet_storage", ""},
-	{vm.ErrClusterCreate, http.StatusBadGateway, "cluster_error", msgClusterRejected},
+	// cluster_error passes the full error chain (empty message → err.Error()):
+	// the Proxmox rejection text ("'import-from' requires special syntax",
+	// "has wrong type 'iso'", ...) is the only way to diagnose a 502 from the
+	// browser, and the frontend surfaces it after the localized prefix.
+	{vm.ErrClusterCreate, http.StatusBadGateway, "cluster_error", ""},
 }
 
 // mapCreateError returns the HTTP status, code, and message for a known

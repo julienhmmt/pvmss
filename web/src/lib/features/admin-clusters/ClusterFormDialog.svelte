@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import FormField from '$lib/shared/ui/FormField.svelte';
@@ -71,7 +72,7 @@
 			variant="warning"
 		/>
 		{#if error}
-			<p class="text-sm text-destructive" role="alert">{error}</p>
+			<Alert>{error}</Alert>
 		{/if}
 		<div class="mt-2 flex justify-end gap-2">
 			<Button variant="secondary" onclick={onClose} disabled={saving}>{m['common.cancel']()}</Button>

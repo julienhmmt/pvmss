@@ -38,16 +38,33 @@ func (p Proxmox) GetCloudInitConfig(ctx context.Context, node string, vmid int) 
 	return parseCloudInitConfig(cfg), nil
 }
 
+// encodeSSHKeys percent-encodes a newline-joined key list for Proxmox's
+// sshkeys form field. Proxmox's own format validator rejects the result of
+// url.PathEscape: RFC3986 leaves path-segment sub-delims — notably '@',
+// which every "user@host" SSH key comment contains — unescaped, and Proxmox
+// requires those escaped too ("sshkeys: invalid format - invalid urlencoded
+// string", confirmed live). url.QueryEscape escapes those, matching what
+// ProxMate's encodeURIComponent produces, but it also turns space into '+'
+// — and Proxmox decodes with Perl's uri_unescape, which does NOT turn '+'
+// back into a space, corrupting the key. Escaping first and then rewriting
+// only the '+' that QueryEscape used for space back to '%20' gets both
+// right: QueryEscape already turned any literal '+' in the input into
+// "%2B", so every remaining '+' in its output is unambiguously an encoded
+// space. The read side (parseCloudInitConfig) stays PathUnescape — a
+// general percent-decoder that handles %40, %20, %2B and everything else
+// this produces identically.
+func encodeSSHKeys(keys []string) string {
+	return strings.ReplaceAll(url.QueryEscape(strings.Join(keys, "\n")), "+", "%20")
+}
+
 func parseCloudInitConfig(cfg proxmoxVMConfig) CloudInitConfig {
 	result := CloudInitConfig{IPMode: CloudInitIPModeDHCP, User: cfg.str("ciuser"), Agent: agentEnabled(cfg.str("agent"))}
 
 	if keys := cfg.str("sshkeys"); keys != "" {
-		// Proxmox percent-decodes sshkeys with Perl's uri_unescape, which does
-		// NOT turn '+' back into a space — url.QueryEscape encodes a space AS
-		// '+', so every key written that way reaches the guest as
-		// "ssh-ed25519+AAAA...". PathUnescape decodes %XX and leaves '+'
-		// intact, the exact inverse of the PathEscape used at write time and
-		// the correct counterpart to Proxmox's uri_unescape.
+		// encodeSSHKeys never emits a literal '+' (every space and literal
+		// '+' in the input is percent-encoded), so a plain %XX decoder is
+		// the exact inverse — matching Proxmox's own uri_unescape on the
+		// read side too, which likewise never turns '+' into a space.
 		decoded, err := url.PathUnescape(keys)
 		if err != nil {
 			decoded = keys
@@ -201,14 +218,7 @@ func (p Proxmox) SetCloudInitConfig(ctx context.Context, node string, vmid int, 
 	}
 
 	if len(config.SSHKeys) > 0 {
-		// Proxmox percent-decodes sshkeys with Perl's uri_unescape, which does
-		// NOT turn '+' back into a space. url.QueryEscape encodes a space AS
-		// '+', so every key written that way reaches the guest as
-		// "ssh-ed25519+AAAA..." — an invalid key. PathEscape uses %20, which
-		// survives the decode intact. The read side must stay PathUnescape
-		// (parseCloudInitConfig): a base64 blob legitimately contains '+',
-		// which QueryUnescape would corrupt into spaces.
-		form.Set("sshkeys", url.PathEscape(strings.Join(config.SSHKeys, "\n")))
+		form.Set("sshkeys", encodeSSHKeys(config.SSHKeys))
 	}
 
 	form.Set("ipconfig0", encodeIPConfig(config))
@@ -224,6 +234,24 @@ func (p Proxmox) SetCloudInitConfig(ctx context.Context, node string, vmid int, 
 	_, err := p.rest().do(ctx, http.MethodPut, fmt.Sprintf(vmConfigEndpointFmt, url.PathEscape(node), vmid), form)
 
 	return err
+}
+
+// HasSnippet implements Writer by listing storage's snippets content and
+// checking for filename — the only way to know a fixed, admin-preplaced
+// snippet exists, since the REST API cannot write one itself.
+func (p Proxmox) HasSnippet(ctx context.Context, node, storage, filename string) (bool, error) {
+	found, err := proxmoxListContent(ctx, p.rest(), node, storage, "snippets")
+	if err != nil {
+		return false, err
+	}
+
+	for _, f := range found {
+		if f.File == filename {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // AttachCloudInitSnippet points the VM at an already-uploaded snippet file

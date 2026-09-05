@@ -21,8 +21,10 @@
 	import { goto } from '$app/navigation';
 	import { m } from '$lib/paraglide/messages.js';
 	import SidebarIcon from './SidebarIcon.svelte';
+	import Logo from '$lib/shared/ui/Logo.svelte';
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
+	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
 
 	const session = getSessionContext();
 	const chrome = getChromeContext();
@@ -120,20 +122,17 @@
 	data-testid="app-sidebar"
 >
 	<div class="flex flex-col gap-4 px-3 pt-5">
-		<div class="flex items-baseline gap-2 px-2">
-			<span class="text-base font-bold tracking-tight">{m['chrome.sidebar.brand']()}</span>
+		<div class="flex items-center gap-2 px-2">
+			<Logo />
 			{#if session.principal}
 				<span class="font-mono text-xs text-muted-foreground">{session.principal.clusterDisplayName || session.principal.cluster}</span>
 			{/if}
 		</div>
 
 		{#if session.principal && !session.isAdmin}
-			<a
-				href={resolve('/vms/create')}
-				class="rounded-[0.625rem] bg-primary px-3 py-2.5 text-center text-sm font-semibold text-primary-foreground shadow-card transition-colors hover:bg-primary/90"
-			>
+			<ButtonLink href={resolve('/vms/create')} block>
 				{m['chrome.sidebar.newMachine']()}
-			</a>
+			</ButtonLink>
 		{/if}
 	</div>
 

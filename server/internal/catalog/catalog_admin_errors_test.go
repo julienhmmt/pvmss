@@ -31,6 +31,10 @@ func (errDiscoveryClient) ListISOs(_ context.Context) ([]cluster.ISOImage, error
 	return nil, errDiscovery
 }
 
+func (errDiscoveryClient) ListCloudImages(_ context.Context) ([]cluster.CloudImage, error) {
+	return nil, errDiscovery
+}
+
 func (errDiscoveryClient) ListTemplates(_ context.Context) ([]cluster.TemplateVM, error) {
 	return nil, errDiscovery
 }

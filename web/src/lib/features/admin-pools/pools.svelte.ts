@@ -1,4 +1,5 @@
 import { del, get, post, ApiRequestError } from '$lib/shared/api/client';
+import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 import { getContext, setContext } from 'svelte';
 import { m } from '$lib/paraglide/messages.js';
 
@@ -41,14 +42,38 @@ export class PoolsStore {
 	searchTerm = $state.raw('');
 	announce = $state.raw<string | null>(null);
 	createdCredentials = $state.raw<CreatedPoolCredentials | null>(null);
+	clusterOptions = $state.raw<ClusterOption[]>([]);
+	cluster = $state('default');
 	#searchTimer: ReturnType<typeof setTimeout> | null = null;
 
+	/** Resolves the real cluster name so requests never send the literal "default"
+	 *  against a deployment whose cluster is named something else. */
+	async loadClusters(): Promise<void> {
+		try {
+			this.clusterOptions = await fetchClusterOptions();
+			const first = this.clusterOptions[0];
+			if (first && (this.clusterOptions.length === 1 || !this.clusterOptions.some((option) => option.name === this.cluster))) {
+				this.cluster = first.name;
+			}
+		} catch (err) {
+			this.error = err instanceof ApiRequestError ? err.message : m['admin.pools.loadError']();
+		}
+	}
+
+	setCluster(value: string): void {
+		this.cluster = value;
+		void this.load();
+	}
+
 	async load(): Promise<void> {
+		if (this.clusterOptions.length === 0) {
+			await this.loadClusters();
+		}
 		this.loading = true;
 		this.error = null;
 		try {
 			const query = this.searchTerm ? `&search=${encodeURIComponent(this.searchTerm)}` : '';
-			this.pools = await get<AdminPool[]>(`/api/v1/admin/pools?cluster=default${query}`);
+			this.pools = await get<AdminPool[]>(`/api/v1/admin/pools?cluster=${encodeURIComponent(this.cluster)}${query}`);
 		} catch (error) {
 			this.error = error instanceof ApiRequestError ? error.message : m['admin.pools.loadError']();
 		} finally {
@@ -71,7 +96,7 @@ export class PoolsStore {
 		this.announce = null;
 		this.createdCredentials = null;
 		try {
-			const created = await post<CreatedPoolCredentials>('/api/v1/admin/pools', {
+			const created = await post<CreatedPoolCredentials>(`/api/v1/admin/pools?cluster=${encodeURIComponent(this.cluster)}`, {
 				name,
 				comment
 			});
@@ -105,7 +130,7 @@ export class PoolsStore {
 		this.deleteError = null;
 		this.announce = null;
 		try {
-			const result = await del<DeletePoolResponse>(`/api/v1/admin/pools/${encodeURIComponent(name)}?cluster=default`);
+			const result = await del<DeletePoolResponse>(`/api/v1/admin/pools/${encodeURIComponent(name)}?cluster=${encodeURIComponent(this.cluster)}`);
 			this.pools = this.pools.filter((pool) => pool.name !== name);
 			this.announce = result.userDeleted
 				? m['admin.pools.deleted']({ name })

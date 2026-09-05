@@ -50,7 +50,7 @@
 		{#if status.severity === 'degraded'}
 			<button
 				type="button"
-				class="ml-3 underline underline-offset-2 hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+				class="ml-3 underline underline-offset-2 hover:no-underline pv-focus"
 				onclick={() => void status.retryClusterConnection()}
 				data-testid="banner-cluster-retry"
 			>

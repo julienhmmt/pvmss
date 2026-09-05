@@ -64,7 +64,28 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 	}
 
 	if spec.Disk.Storage != "" {
-		diskValue := fmt.Sprintf("%s:%d,discard=on", spec.Disk.Storage, spec.Disk.SizeGB)
+		// import-from requires Proxmox's special <storage>:0 target syntax —
+		// a non-zero size is rejected outright by check_drive_param
+		// ("'import-from' requires special syntax"). The import lands at the
+		// source image's size; the vm layer grows the disk to the requested
+		// size after the create task completes (createFromImage).
+		sizeGB := spec.Disk.SizeGB
+		if spec.Image != nil {
+			sizeGB = 0
+		}
+
+		diskValue := fmt.Sprintf("%s:%d,discard=on", spec.Disk.Storage, sizeGB)
+
+		// A cloud image imports as the primary disk via import-from
+		// (PVE ≥ 7.2): Proxmox copies the image onto the target storage.
+		// The source must be a PVE-managed volume of vtype 'import' (not
+		// 'iso' — .img files are rejected) and must be passed as a volid,
+		// not an absolute path (absolute paths are root@pam-only).
+		// Cloud images live in the storage's import/ directory with
+		// .qcow2/.raw/.vmdk/.ova extensions → volid <storage>:import/<file>.
+		if spec.Image != nil {
+			diskValue += ",import-from=" + spec.Image.Storage + ":import/" + spec.Image.File
+		}
 
 		// US6/issue-06 D6a: iothread is gated on SCSI — it is not supported
 		// on virtio/IDE/SATA and Proxmox silently ignores the option there,
@@ -76,6 +97,20 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 		}
 
 		form.Set(spec.Disk.Bus+"0", diskValue)
+
+		// A cloud image needs its cloud-init drive from the moment the VM
+		// exists — ProxMate and pegaprox both attach it in the very same
+		// create call as the imported disk ("<storage>:cloudinit" on a fixed
+		// IDE slot), never as a later follow-up. PVMSS previously only
+		// attached it lazily, on the first SetCloudInitConfig/
+		// AttachCloudInitSnippet call after the create task finished —
+		// functionally idempotent (EnsureCloudInitDrive no-ops once this is
+		// set) but one more round trip that can fail on its own. Attaching
+		// it here removes that gap for the one path that always needs
+		// cloud-init: an imported cloud image has no installer.
+		if spec.Image != nil {
+			form.Set(cloudInitDiskKey, spec.Disk.Storage+":cloudinit")
+		}
 	}
 
 	// Enable the QEMU guest agent. Without agent=1 in the config, every
@@ -141,22 +176,35 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 // setBootOrderForm emits boot=order=<devices> built only from the devices the
 // spec actually created (issue-03). A hardcoded order naming an absent device
 // makes the VM unbootable, so the disk bus key is added only when storage is
-// set and the cdrom key only when an ISO is mounted. Extracted from CreateVM
-// to keep its cyclomatic complexity under gocyclo's ceiling.
+// set and the cdrom key only when an ISO is mounted. When an ISO is present,
+// the CD-ROM goes first so the VM boots from the installer on a fresh empty
+// disk — a disk-first order makes the VM fail to boot and Proxmox stops it.
+// After installation the user removes the ISO or changes the boot order.
 func setBootOrderForm(form url.Values, spec VMSpec) {
 	var bootOrder []string
-
-	if spec.Disk.Storage != "" {
-		bootOrder = append(bootOrder, spec.Disk.Bus+"0")
-	}
 
 	if spec.ISO != nil {
 		bootOrder = append(bootOrder, cdromDiskKey)
 	}
 
+	if spec.Disk.Storage != "" {
+		bootOrder = append(bootOrder, spec.Disk.Bus+"0")
+	}
+
 	if len(bootOrder) > 0 {
 		form.Set("boot", "order="+strings.Join(bootOrder, ";"))
 	}
+}
+
+// resolveUEFIMachine forces q35 (UEFI requires q35 — pegaprox rule) unless
+// the caller already specified a non-i440fx/pc machine type. Shared with the
+// fake dataset so it mirrors the real create path exactly.
+func resolveUEFIMachine(machine string) string {
+	if machine == "" || machine == "i440fx" || machine == "pc" {
+		return "q35"
+	}
+
+	return machine
 }
 
 // setUEFIFormKeys emits the UEFI/TPM form keys when BIOS is ovmf (US6/issue-06
@@ -166,18 +214,12 @@ func setBootOrderForm(form url.Values, spec VMSpec) {
 // preset bug where tpm_version was set without tpm_storage). Extracted from
 // CreateVM to keep its cyclomatic complexity under gocyclo's ceiling.
 func setUEFIFormKeys(form url.Values, spec VMSpec) {
-	if spec.BIOS != "ovmf" {
+	if spec.BIOS != biosOVMF {
 		return
 	}
 
-	form.Set("bios", "ovmf")
-
-	machine := spec.Machine
-	if machine == "" || machine == "i440fx" || machine == "pc" {
-		machine = "q35"
-	}
-
-	form.Set("machine", machine)
+	form.Set("bios", biosOVMF)
+	form.Set("machine", resolveUEFIMachine(spec.Machine))
 
 	efiStorage := spec.Disk.Storage
 	if efiStorage == "" {

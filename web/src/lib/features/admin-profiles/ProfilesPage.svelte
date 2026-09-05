@@ -1,10 +1,12 @@
 <script lang="ts">
 	import type { AdminProfile } from './profiles.svelte';
 	import type { ClusterOption } from '$lib/shared/clusters';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Switch from '$lib/shared/ui/Switch.svelte';
+	import TableCard from '$lib/shared/ui/TableCard.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
@@ -129,110 +131,106 @@
 	<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
 	<TableSkeleton columns={8} />
 {:else if error}
-	<p role="alert" class="text-destructive">{error}</p>
+	<Alert>{error}</Alert>
 {:else}
 	{#if saveError}
-		<p role="alert" class="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
-			{saveError}
-		</p>
+		<Alert class="mb-4">{saveError}</Alert>
 	{/if}
 
 	{#if profiles.length > 0}
-		<div class="mb-4 flex flex-wrap items-center gap-2">
-			<TextField
-				type="search"
-				placeholder={m['admin.profiles.searchPlaceholder']()}
-				value={search}
-				oninput={(e: Event & { currentTarget: HTMLInputElement }) => onSearchChange(e.currentTarget.value)}
-				class="w-full sm:w-48"
-			/>
-			<Select
-				value={busFilter}
-				onchange={(e: Event & { currentTarget: HTMLSelectElement }) => onBusFilterChange(e.currentTarget.value)}
-				options={[
-					{ value: '', label: m['admin.profiles.filterBus']() },
-					...busOptions.map((bus) => ({ value: bus, label: bus }))
-				]}
-				class="w-full sm:w-44"
-			/>
-			<Select
-				value={enabledFilter}
-				onchange={(e: Event & { currentTarget: HTMLSelectElement }) => onEnabledFilterChange(e.currentTarget.value as 'all' | 'enabled' | 'disabled')}
-				options={[
-					{ value: 'all', label: m['admin.profiles.filterEnabled']() },
-					{ value: 'enabled', label: m['admin.profiles.filterEnabledOnly']() },
-					{ value: 'disabled', label: m['admin.profiles.filterDisabledOnly']() }
-				]}
-				class="w-full sm:w-44"
-			/>
-			<Button
-				variant="secondary"
-				size="sm"
-				onclick={onResetFilters}
-			>
-				{m['admin.profiles.resetFilters']()}
-			</Button>
-		</div>
-	{/if}
-
-	<div class="overflow-x-auto rounded-lg border border-border">
-		<table class="w-full text-sm">
-			<thead class="bg-muted/50 text-left">
-				<tr>
-					<TableHeader text={m['admin.profiles.id']()} tooltip={m['admin.profiles.tooltip.id']()} column="id" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-					<TableHeader text={m['admin.profiles.labelField']()} tooltip={m['admin.profiles.tooltip.id']()} column="label" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-					<TableHeader text={m['admin.profiles.vcpu']()} tooltip={m['admin.profiles.tooltip.vcpu']()} column="cpuCores" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-					<TableHeader text={m['common.memory']()} tooltip={m['admin.profiles.tooltip.memory']()} column="memoryMB" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-					<TableHeader text={m['admin.profiles.disk']()} tooltip={m['admin.profiles.tooltip.disk']()} column="diskGB" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-					<TableHeader text={m['admin.profiles.bus']()} tooltip={m['admin.profiles.tooltip.bus']()} />
-					<th class="px-4 py-2 font-medium">{m['admin.profiles.enabledStatus']()}</th>
-					<th class="px-4 py-2 font-medium">{m['common.actions']()}</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each filteredProfiles as profile (profile.id)}
-					<tr class="border-t border-border">
-						<td class="px-4 py-2 font-mono text-xs">{profile.id}</td>
-						<td class="px-4 py-2">{profile.label}</td>
-						<td class="px-4 py-2">{profile.cpuCores}</td>
-						<td class="px-4 py-2">{profile.memoryMB} MB</td>
-						<td class="px-4 py-2">{profile.diskGB} GB</td>
-						<td class="px-4 py-2">{profile.bus}</td>
-						<td class="px-4 py-2">
-							<span class="inline-flex items-center gap-2">
-								<Switch
-									checked={profile.enabled}
-									label={profile.enabled ? m['admin.profiles.disable']({ label: profile.label }) : m['admin.profiles.enable']({ label: profile.label })}
-									onToggle={() => onToggle(profile.id, !profile.enabled)}
-								/>
-								<span class="text-xs text-muted-foreground">
-									{profile.enabled ? m['admin.profiles.enabledStatus']() : m['admin.profiles.disabledStatus']()}
-								</span>
-							</span>
-						</td>
-						<td class="px-4 py-2">
-							<div class="flex gap-2">
-								<Button variant="secondary" size="sm" label={m['admin.profiles.editLabel']({ label: profile.label })} onclick={() => openEdit(profile)}>{m['admin.profiles.edit']()}</Button>
-								<Button variant="destructive" size="sm" label={m['admin.profiles.deleteLabel']({ label: profile.label })} onclick={() => (pendingDelete = profile)}>{m['admin.profiles.delete']()}</Button>
-							</div>
-						</td>
+		<TableCard>
+			{#snippet toolbar()}
+				<TextField
+					type="search"
+					placeholder={m['admin.profiles.searchPlaceholder']()}
+					value={search}
+					oninput={(e: Event & { currentTarget: HTMLInputElement }) => onSearchChange(e.currentTarget.value)}
+					class="w-full sm:w-48"
+				/>
+				<Select
+					value={busFilter}
+					onchange={(e: Event & { currentTarget: HTMLSelectElement }) => onBusFilterChange(e.currentTarget.value)}
+					options={[
+						{ value: '', label: m['admin.profiles.filterBus']() },
+						...busOptions.map((bus) => ({ value: bus, label: bus }))
+					]}
+					class="w-full sm:w-44"
+				/>
+				<Select
+					value={enabledFilter}
+					onchange={(e: Event & { currentTarget: HTMLSelectElement }) => onEnabledFilterChange(e.currentTarget.value as 'all' | 'enabled' | 'disabled')}
+					options={[
+						{ value: 'all', label: m['admin.profiles.filterEnabled']() },
+						{ value: 'enabled', label: m['admin.profiles.filterEnabledOnly']() },
+						{ value: 'disabled', label: m['admin.profiles.filterDisabledOnly']() }
+					]}
+					class="w-full sm:w-44"
+				/>
+				<Button
+					variant="secondary"
+					size="sm"
+					onclick={onResetFilters}
+				>
+					{m['admin.profiles.resetFilters']()}
+				</Button>
+			{/snippet}
+			<table class="pv-table pv-responsive-table">
+				<caption class="sr-only">{m['admin.profiles.title']()}</caption>
+				<thead>
+					<tr>
+						<TableHeader text={m['admin.profiles.id']()} tooltip={m['admin.profiles.tooltip.id']()} column="id" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<TableHeader text={m['admin.profiles.labelField']()} tooltip={m['admin.profiles.tooltip.id']()} column="label" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<TableHeader text={m['admin.profiles.vcpu']()} tooltip={m['admin.profiles.tooltip.vcpu']()} column="cpuCores" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<TableHeader text={m['common.memory']()} tooltip={m['admin.profiles.tooltip.memory']()} column="memoryMB" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<TableHeader text={m['admin.profiles.disk']()} tooltip={m['admin.profiles.tooltip.disk']()} column="diskGB" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+						<TableHeader text={m['admin.profiles.bus']()} tooltip={m['admin.profiles.tooltip.bus']()} />
+						<th class="font-medium">{m['admin.profiles.enabledStatus']()}</th>
+						<th class="font-medium">{m['common.actions']()}</th>
 					</tr>
-				{:else}
-					<tr><td colspan={8} class="p-0">
-						{#if profiles.length > 0}
+				</thead>
+				<tbody>
+					{#each filteredProfiles as profile (profile.id)}
+						<tr class="group transition-colors hover:bg-muted/40">
+							<td class="font-mono text-xs" data-label={m['admin.profiles.id']()}>{profile.id}</td>
+							<td data-label={m['admin.profiles.labelField']()}>{profile.label}</td>
+							<td data-label={m['admin.profiles.vcpu']()}>{profile.cpuCores}</td>
+							<td data-label={m['common.memory']()}>{profile.memoryMB} MB</td>
+							<td data-label={m['admin.profiles.disk']()}>{profile.diskGB} GB</td>
+							<td data-label={m['admin.profiles.bus']()}>{profile.bus}</td>
+							<td data-label={m['admin.profiles.enabledStatus']()}>
+								<span class="inline-flex items-center gap-2">
+									<Switch
+										checked={profile.enabled}
+										label={profile.enabled ? m['admin.profiles.disable']({ label: profile.label }) : m['admin.profiles.enable']({ label: profile.label })}
+										onToggle={() => onToggle(profile.id, !profile.enabled)}
+									/>
+									<span class="text-xs text-muted-foreground">
+										{profile.enabled ? m['admin.profiles.enabledStatus']() : m['admin.profiles.disabledStatus']()}
+									</span>
+								</span>
+							</td>
+							<td data-label={m['common.actions']()}>
+								<div class="flex gap-2">
+									<Button variant="secondary" size="sm" label={m['admin.profiles.editLabel']({ label: profile.label })} onclick={() => openEdit(profile)}>{m['admin.profiles.edit']()}</Button>
+									<Button variant="destructive" size="sm" label={m['admin.profiles.deleteLabel']({ label: profile.label })} onclick={() => (pendingDelete = profile)}>{m['admin.profiles.delete']()}</Button>
+								</div>
+							</td>
+						</tr>
+					{:else}
+						<tr><td colspan={8} class="p-0">
 							<EmptyState title={m['admin.profiles.noFilterMatches']()} />
-						{:else}
-							<EmptyState title={m['admin.profiles.noProfiles']()}>
-								{#snippet actions()}
-									<Button onclick={openCreate}>{m['admin.profiles.newProfile']()}</Button>
-								{/snippet}
-							</EmptyState>
-						{/if}
-					</td></tr>
-				{/each}
-			</tbody>
-		</table>
-	</div>
+						</td></tr>
+					{/each}
+				</tbody>
+			</table>
+		</TableCard>
+	{:else}
+		<EmptyState title={m['admin.profiles.noProfiles']()}>
+			{#snippet actions()}
+				<Button onclick={openCreate}>{m['admin.profiles.newProfile']()}</Button>
+			{/snippet}
+		</EmptyState>
+	{/if}
 {/if}
 
 <Dialog bind:open={showForm} size="lg" labelledBy="profile-form-title" onClose={() => (showForm = false)}>

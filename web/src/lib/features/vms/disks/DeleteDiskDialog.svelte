@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getVmDetailContext, type VmDisk } from '../detail.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -23,7 +24,7 @@
 </script>
 
 <Dialog bind:open labelledBy="delete-disk-title" onClose={close}>
-	<h2 id="delete-disk-title" class="mb-2 text-lg font-semibold">{m['vms.disks.deleteDialogTitle']({ disk: disk?.key ?? 'disk' })}</h2>
+	<h2 id="delete-disk-title" class="mb-4 text-lg font-semibold">{m['vms.disks.deleteDialogTitle']({ disk: disk?.key ?? 'disk' })}</h2>
 	{#if disk?.isBoot}
 		<p class="mb-4 text-sm text-warning" role="alert" data-testid="delete-disk-boot-warning">
 			{m['vms.disks.deleteBootWarning']()}
@@ -34,7 +35,7 @@
 		</p>
 	{/if}
 	{#if store.diskError}
-		<p role="alert" class="mb-4 text-sm text-destructive">{store.diskError}</p>
+		<Alert class="mb-4">{store.diskError}</Alert>
 	{/if}
 	<div class="flex justify-end gap-2">
 		<button

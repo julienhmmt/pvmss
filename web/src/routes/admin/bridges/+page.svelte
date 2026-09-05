@@ -8,8 +8,10 @@
 	} from '$lib/features/admin-catalog/admin-catalog.svelte';
 	import BridgesTable from '$lib/features/admin-catalog/BridgesTable.svelte';
 	import BridgesTableToolbar from '$lib/features/admin-catalog/BridgesTableToolbar.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import TableCard from '$lib/shared/ui/TableCard.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
@@ -41,6 +43,19 @@
 	function handleSort(column: BridgeSortColumn): void {
 		store.setBridgeSort(column);
 	}
+
+	function handleRemove(node: string, name: string): void {
+		void performRemove(node, name);
+	}
+
+	async function performRemove(node: string, name: string): Promise<void> {
+		try {
+			await store.removeBridge(node, name);
+			toast.success(m['admin.bridges.removeSuccess']({ name, node }));
+		} catch {
+			toast.error(m['admin.catalog.removeBridgeError']());
+		}
+	}
 </script>
 
 <svelte:head>
@@ -62,19 +77,15 @@
 	<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
 	<TableSkeleton columns={5} />
 {:else if store.error}
-	<p role="alert" class="text-destructive">{store.error}</p>
+	<Alert>{store.error}</Alert>
 {:else}
 	<div role="status" aria-live="polite" class="sr-only">
 		{m['admin.bridges.bridgesLoaded']({ count: store.filteredBridges.length })}
 	</div>
 
 	{#if store.toggleError}
-		<p role="alert" class="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
-			{store.toggleError}
-		</p>
+		<Alert class="mb-4">{store.toggleError}</Alert>
 	{/if}
-
-	<BridgesTableToolbar {store} />
 
 	{#if store.bridges.length === 0}
 		<EmptyState
@@ -107,15 +118,19 @@
 			{/snippet}
 		</EmptyState>
 	{:else}
-		<div class="fade-in">
+		<TableCard>
+			{#snippet toolbar()}
+				<BridgesTableToolbar {store} />
+			{/snippet}
 			<BridgesTable
 				bridges={store.filteredBridges}
 				toggling={store.toggling}
 				onToggle={handleToggle}
+				onRemove={handleRemove}
 				sortBy={store.bridgeSortBy}
 				sortDir={store.bridgeSortDir}
 				onSort={handleSort}
 			/>
-		</div>
+		</TableCard>
 	{/if}
 {/if}

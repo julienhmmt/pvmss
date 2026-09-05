@@ -15,6 +15,9 @@ export interface AdminNode {
 	storageUsed: number;
 	vmCount: number;
 	enabled: boolean;
+	/** True for a stored approval whose node Proxmox no longer reports —
+	 *  the row stays listed so the admin can remove it. */
+	missing?: boolean;
 }
 
 export interface AdminStorage {
@@ -24,6 +27,10 @@ export interface AdminStorage {
 	totalBytes: number;
 	usedBytes: number;
 	enabled: boolean;
+	/** True for a synthetic row representing a node that has no storage. */
+	noStorage?: boolean;
+	/** True for a stored approval whose storage Proxmox no longer reports. */
+	missing?: boolean;
 }
 
 export interface AdminBridge {
@@ -32,6 +39,8 @@ export interface AdminBridge {
 	active: boolean;
 	comment: string;
 	enabled: boolean;
+	/** True for a stored approval whose bridge Proxmox no longer reports. */
+	missing?: boolean;
 }
 
 export interface AdminISO {
@@ -40,6 +49,18 @@ export interface AdminISO {
 	file: string;
 	sizeBytes: number;
 	enabled: boolean;
+	/** True for a stored approval whose ISO file Proxmox no longer reports. */
+	missing?: boolean;
+}
+
+export interface AdminImage {
+	storage: string;
+	node: string;
+	file: string;
+	sizeBytes: number;
+	enabled: boolean;
+	/** True for a stored approval whose image file Proxmox no longer reports. */
+	missing?: boolean;
 }
 
 export interface AdminTemplate {
@@ -98,6 +119,13 @@ interface ISOToggleResponse {
 	enabled: boolean;
 }
 
+interface ImageToggleResponse {
+	node: string;
+	storage: string;
+	file: string;
+	enabled: boolean;
+}
+
 interface TemplateToggleResponse {
 	vmid: number;
 	enabled: boolean;
@@ -116,6 +144,7 @@ export class AdminCatalogStore {
 	storages = $state.raw<AdminStorage[]>([]);
 	bridges = $state.raw<AdminBridge[]>([]);
 	isos = $state.raw<AdminISO[]>([]);
+	images = $state.raw<AdminImage[]>([]);
 	templates = $state.raw<AdminTemplate[]>([]);
 
 	loading = $state.raw(false);
@@ -130,6 +159,13 @@ export class AdminCatalogStore {
 	isoEnabledFilter: 'all' | 'enabled' | 'disabled' = $state('all');
 	isoSortBy: ISOSortColumn = $state('file');
 	isoSortDir: 'asc' | 'desc' = $state('asc');
+
+	imageSearch = $state('');
+	imageStorageFilter = $state('');
+	imageNodeFilter = $state('');
+	imageEnabledFilter: 'all' | 'enabled' | 'disabled' = $state('all');
+	imageSortBy: ImageSortColumn = $state('file');
+	imageSortDir: 'asc' | 'desc' = $state('asc');
 
 	storageSearch = $state('');
 	storageNodeFilter = $state('');
@@ -176,29 +212,73 @@ export class AdminCatalogStore {
 	isoStorageOptions = $derived([...new SvelteSet(this.isos.map((i) => i.storage))].sort());
 	isoNodeOptions = $derived([...new SvelteSet(this.isos.map((i) => i.node))].sort());
 
-	filteredStorages = $derived(
-		sortStorages(
-			this.storages.filter((storage) => {
-				const search = this.storageSearch.toLowerCase();
-				if (search) {
-					const match =
-						storage.name.toLowerCase().includes(search) ||
-						storage.node.toLowerCase().includes(search) ||
-						storage.type.toLowerCase().includes(search);
-					if (!match) return false;
-				}
-				if (this.storageNodeFilter && storage.node !== this.storageNodeFilter) return false;
-				if (this.storageTypeFilter && storage.type !== this.storageTypeFilter) return false;
-				if (this.storageEnabledFilter === 'enabled' && !storage.enabled) return false;
-				if (this.storageEnabledFilter === 'disabled' && storage.enabled) return false;
+	filteredImages = $derived(
+		sortImages(
+			this.images.filter((image) => {
+				const search = this.imageSearch.toLowerCase();
+				if (search && !image.file.toLowerCase().includes(search)) return false;
+				if (this.imageStorageFilter && image.storage !== this.imageStorageFilter) return false;
+				if (this.imageNodeFilter && image.node !== this.imageNodeFilter) return false;
+				if (this.imageEnabledFilter === 'enabled' && !image.enabled) return false;
+				if (this.imageEnabledFilter === 'disabled' && image.enabled) return false;
 				return true;
 			}),
-			this.storageSortBy,
-			this.storageSortDir
+			this.imageSortBy,
+			this.imageSortDir
 		)
 	);
 
-	storageNodeOptions = $derived([...new SvelteSet(this.storages.map((s) => s.node))].sort());
+	imageStorageOptions = $derived([...new SvelteSet(this.images.map((i) => i.storage))].sort());
+	imageNodeOptions = $derived([...new SvelteSet(this.images.map((i) => i.node))].sort());
+
+	filteredRealStorages = $derived.by(() => {
+		const search = this.storageSearch.toLowerCase();
+		return this.storages.filter((storage) => {
+			if (search) {
+				const match =
+					storage.name.toLowerCase().includes(search) ||
+					storage.node.toLowerCase().includes(search) ||
+					storage.type.toLowerCase().includes(search);
+				if (!match) return false;
+			}
+			if (this.storageNodeFilter && storage.node !== this.storageNodeFilter) return false;
+			if (this.storageTypeFilter && storage.type !== this.storageTypeFilter) return false;
+			if (this.storageEnabledFilter === 'enabled' && !storage.enabled) return false;
+			if (this.storageEnabledFilter === 'disabled' && storage.enabled) return false;
+			return true;
+		});
+	});
+
+	filteredStorages = $derived.by(() => {
+		const search = this.storageSearch.toLowerCase();
+		const storageNodes = new SvelteSet(this.storages.map((s) => s.node));
+		let selectedNodeNames: string[];
+		if (this.storageNodeFilter) {
+			selectedNodeNames = this.nodes.some((n) => n.name === this.storageNodeFilter) ? [this.storageNodeFilter] : [];
+		} else if (search) {
+			selectedNodeNames = this.nodes.filter((n) => n.name.toLowerCase().includes(search)).map((n) => n.name);
+		} else {
+			selectedNodeNames = this.nodes.map((n) => n.name);
+		}
+
+		const placeholders: AdminStorage[] = selectedNodeNames
+			.filter((node) => !storageNodes.has(node))
+			.map((node) => ({
+				name: '',
+				node,
+				type: '',
+				totalBytes: 0,
+				usedBytes: 0,
+				enabled: false,
+				noStorage: true
+			}));
+
+		return sortStorages([...this.filteredRealStorages, ...placeholders], this.storageSortBy, this.storageSortDir);
+	});
+
+	filteredStorageCount = $derived(this.filteredRealStorages.length);
+
+	storageNodeOptions = $derived([...new SvelteSet(this.nodes.map((n) => n.name))].sort());
 	storageTypeOptions = $derived([...new SvelteSet(this.storages.map((s) => s.type))].sort());
 
 	filteredBridges = $derived(
@@ -288,6 +368,15 @@ export class AdminCatalogStore {
 		}
 	}
 
+	setImageSort(column: ImageSortColumn): void {
+		if (this.imageSortBy === column) {
+			this.imageSortDir = this.imageSortDir === 'asc' ? 'desc' : 'asc';
+		} else {
+			this.imageSortBy = column;
+			this.imageSortDir = 'asc';
+		}
+	}
+
 	setNodeSort(column: NodeSortColumn): void {
 		if (this.nodeSortBy === column) {
 			this.nodeSortDir = this.nodeSortDir === 'asc' ? 'desc' : 'asc';
@@ -304,6 +393,15 @@ export class AdminCatalogStore {
 		this.isoEnabledFilter = 'all';
 		this.isoSortBy = 'file';
 		this.isoSortDir = 'asc';
+	}
+
+	resetImageFilters(): void {
+		this.imageSearch = '';
+		this.imageStorageFilter = '';
+		this.imageNodeFilter = '';
+		this.imageEnabledFilter = 'all';
+		this.imageSortBy = 'file';
+		this.imageSortDir = 'asc';
 	}
 
 	resetStorageFilters(): void {
@@ -404,6 +502,22 @@ export class AdminCatalogStore {
 		}
 	}
 
+	/** Loads only the image list (plus cluster options). Like loadTemplates(),
+	 *  images get their own split load so the nodes/storages/bridges/ISOs
+	 *  pages never pay for them. */
+	async loadImages(): Promise<void> {
+		await this.loadClusters();
+		this.loading = true;
+		this.error = null;
+		try {
+			this.images = await get<AdminImage[]>(`/api/v1/admin/images?cluster=${encodeURIComponent(this.cluster)}`);
+		} catch (err) {
+			this.error = err instanceof ApiRequestError ? err.message : m['admin.catalog.loadError']();
+		} finally {
+			this.loading = false;
+		}
+	}
+
 	async toggleNode(name: string, enabled: boolean): Promise<void> {
 		this.toggling = `node:${name}`;
 		this.toggleError = null;
@@ -482,6 +596,103 @@ export class AdminCatalogStore {
 		}
 	}
 
+	async toggleImage(node: string, storage: string, file: string, enabled: boolean): Promise<void> {
+		this.toggling = `image:${node}:${storage}:${file}`;
+		this.toggleError = null;
+		try {
+			await post<ImageToggleResponse>('/api/v1/admin/images/toggle', {
+				cluster: this.cluster,
+				node,
+				storage,
+				file,
+				enabled
+			});
+			this.images = this.images.map((i) =>
+				i.node === node && i.storage === storage && i.file === file ? { ...i, enabled } : i
+			);
+		} catch (err) {
+			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.images.toggleError']();
+			throw err;
+		} finally {
+			this.toggling = null;
+		}
+	}
+
+	/** Removes an orphan node approval — offered by the UI on missing rows only. */
+	async removeNode(name: string): Promise<void> {
+		this.toggling = `node:${name}`;
+		this.toggleError = null;
+		try {
+			await del(`/api/v1/admin/nodes/${encodeURIComponent(this.cluster)}/${encodeURIComponent(name)}`);
+			this.nodes = this.nodes.filter((n) => n.name !== name);
+		} catch (err) {
+			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.removeNodeError']();
+			throw err;
+		} finally {
+			this.toggling = null;
+		}
+	}
+
+	/** Removes an orphan storage approval — offered by the UI on missing rows only. */
+	async removeStorage(name: string, node: string): Promise<void> {
+		this.toggling = `storage:${name}@${node}`;
+		this.toggleError = null;
+		try {
+			await del(`/api/v1/admin/storages/${encodeURIComponent(this.cluster)}/${encodeURIComponent(node)}/${encodeURIComponent(name)}`);
+			this.storages = this.storages.filter((s) => !(s.name === name && s.node === node));
+		} catch (err) {
+			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.removeStorageError']();
+			throw err;
+		} finally {
+			this.toggling = null;
+		}
+	}
+
+	/** Removes an orphan bridge approval — offered by the UI on missing rows only. */
+	async removeBridge(node: string, name: string): Promise<void> {
+		this.toggling = `bridge:${node}/${name}`;
+		this.toggleError = null;
+		try {
+			await del(`/api/v1/admin/bridges/${encodeURIComponent(this.cluster)}/${encodeURIComponent(node)}/${encodeURIComponent(name)}`);
+			this.bridges = this.bridges.filter((b) => !(b.node === node && b.name === name));
+		} catch (err) {
+			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.removeBridgeError']();
+			throw err;
+		} finally {
+			this.toggling = null;
+		}
+	}
+
+	/** Removes an orphan ISO approval — offered by the UI on missing rows only. */
+	async removeISO(node: string, storage: string, file: string): Promise<void> {
+		this.toggling = `iso:${node}:${storage}:${file}`;
+		this.toggleError = null;
+		try {
+			await del(`/api/v1/admin/isos/${encodeURIComponent(this.cluster)}/${encodeURIComponent(node)}/${encodeURIComponent(storage)}/${encodeURIComponent(file)}`);
+			this.isos = this.isos.filter((i) => !(i.node === node && i.storage === storage && i.file === file));
+		} catch (err) {
+			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.catalog.removeIsoError']();
+			throw err;
+		} finally {
+			this.toggling = null;
+		}
+	}
+
+	/** Removes an orphan image approval — offered by the UI on missing rows only. */
+	async removeImage(node: string, storage: string, file: string): Promise<void> {
+		this.toggling = `image:${node}:${storage}:${file}`;
+		this.toggleError = null;
+		try {
+			await del(`/api/v1/admin/images/${encodeURIComponent(this.cluster)}/${encodeURIComponent(node)}/${encodeURIComponent(storage)}/${encodeURIComponent(file)}`);
+			this.images = this.images.filter((i) => !(i.node === node && i.storage === storage && i.file === file));
+		} catch (err) {
+			this.toggleError = err instanceof ApiRequestError ? err.message : m['admin.images.removeError']();
+			throw err;
+		} finally {
+			this.toggling = null;
+		}
+	}
+
 	async toggleTemplate(vmid: number, enabled: boolean): Promise<void> {
 		this.toggling = `template:${vmid}`;
 		this.toggleError = null;
@@ -547,6 +758,7 @@ export class AdminCatalogStore {
 }
 
 export type ISOSortColumn = 'file' | 'storage' | 'node' | 'size' | 'enabled';
+export type ImageSortColumn = 'file' | 'storage' | 'node' | 'size' | 'enabled';
 export type StorageSortColumn = 'name' | 'node' | 'type' | 'usage' | 'enabled';
 export type BridgeSortColumn = 'name' | 'node' | 'active' | 'comment' | 'enabled';
 export type NodeSortColumn = 'name' | 'status' | 'vmCount' | 'cpuUsage' | 'memoryUsage' | 'enabled';
@@ -607,6 +819,31 @@ function sortStorages(storages: AdminStorage[], sortBy: StorageSortColumn, dir: 
 
 function sortIsos(isos: AdminISO[], sortBy: ISOSortColumn, dir: 'asc' | 'desc'): AdminISO[] {
 	const sorted = [...isos].sort((a, b) => {
+		let cmp = 0;
+		switch (sortBy) {
+			case 'file':
+				cmp = a.file.localeCompare(b.file);
+				break;
+			case 'storage':
+				cmp = a.storage.localeCompare(b.storage) || a.file.localeCompare(b.file);
+				break;
+			case 'node':
+				cmp = a.node.localeCompare(b.node) || a.file.localeCompare(b.file);
+				break;
+			case 'size':
+				cmp = a.sizeBytes - b.sizeBytes || a.file.localeCompare(b.file);
+				break;
+			case 'enabled':
+				cmp = Number(a.enabled) - Number(b.enabled) || a.file.localeCompare(b.file);
+				break;
+		}
+		return cmp;
+	});
+	return dir === 'asc' ? sorted : sorted.reverse();
+}
+
+function sortImages(images: AdminImage[], sortBy: ImageSortColumn, dir: 'asc' | 'desc'): AdminImage[] {
+	const sorted = [...images].sort((a, b) => {
 		let cmp = 0;
 		switch (sortBy) {
 			case 'file':

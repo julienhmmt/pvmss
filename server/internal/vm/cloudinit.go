@@ -285,89 +285,17 @@ type CloudInitSnippetDeps struct {
 	Service     *policy.Policy
 }
 
-// SetCloudInitSnippet validates, persists, pushes, and audits one custom snippet.
-func SetCloudInitSnippet(ctx context.Context, deps CloudInitSnippetDeps, content string) error {
-	index := deps.Index
-	actor := deps.Actor
-	clusterName := deps.ClusterName
-	vmid := deps.VMID
-	reader := deps.Reader
-	writer := deps.Writer
-	st := deps.Store
-	service := deps.Service
-
-	if service == nil {
-		return policy.ErrUnavailable
-	}
-
-	gabarit, err := service.Gabarit(ctx, clusterName)
-	if err != nil {
-		return fmt.Errorf("read gabarit: %w", err)
-	}
-
-	if !gabarit.AllowCustomYAML {
-		return ErrCustomYAMLDisabled
-	}
-
-	if err := cloudinit.Validate(content); err != nil {
-		return err
-	}
-
-	entity, err := resolveCloudInitTarget(index, actor, clusterName, vmid)
-	if err != nil {
-		return err
-	}
-
-	storage, filename, err := resolveSnippetArtifact(ctx, st, reader, entity, clusterName, vmid)
-	if err != nil {
-		return err
-	}
-
-	if err := st.PutCloudInitSnippet(ctx, clusterName, vmid, storage, filename, content, actor.Username); err != nil {
-		return err
-	}
-
-	if err := writer.PushCloudInitSnippet(ctx, entity.Node, storage, filename, vmid, content); err != nil {
-		return wrapJoin(ErrSnippetPushFailed, err)
-	}
-
-	// Point the VM at the just-pushed snippet via the vendor-data slot. Before
-	// this step the file lived in storage but was never referenced by the VM,
-	// so the guest never received it (REPORT.md addendum: silent no-op).
-	if err := writer.AttachCloudInitSnippet(ctx, entity.Node, storage, filename, vmid); err != nil {
-		return wrapJoin(ErrSnippetPushFailed, err)
-	}
-
-	if err := st.RecordAction(ctx, actor.Username, clusterName, vmid, "edit_cloudinit_snippet"); err != nil {
-		return fmt.Errorf("record cloud-init snippet audit: %w", err)
-	}
-
-	return nil
-}
-
-// resolveSnippetArtifact returns the storage and filename for a cloud-init
-// snippet, reusing the existing record when present and discovering storage
-// from the cluster reader when creating a new one.
-func resolveSnippetArtifact(ctx context.Context, st *store.Store, reader cluster.CloudInitReader, entity Entity, clusterName string, vmid int) (storage, filename string, err error) {
-	existing, found, err := st.GetCloudInitSnippet(ctx, clusterName, vmid)
-	if err != nil {
-		return "", "", fmt.Errorf("read existing cloud-init snippet: %w", err)
-	}
-
-	storage = existing.Storage
-	if !found {
-		storage, err = reader.FindSnippetStorage(ctx, entity.Node)
-		if err != nil {
-			return "", "", fmt.Errorf("resolve cloud-init snippet storage: %w", err)
-		}
-	}
-
-	filename = fmt.Sprintf("%s%d.yml", snippetFilenamePrefix, vmid)
-	if found && existing.Filename != "" {
-		filename = existing.Filename
-	}
-
-	return storage, filename, nil
+// SetCloudInitSnippet is permanently disabled: Proxmox's REST API cannot
+// write a snippets-content file on any PVE version (upload/download-url both
+// hardcode their content enum to iso/vztmpl/import — deliberate, since a
+// snippet can carry an arbitrary hookscript). This was never a
+// gabarit.AllowCustomYAML *policy* choice — an admin turning it on could
+// never have made it work — so it always returns ErrCustomYAMLDisabled now
+// rather than depending on that setting. Saving arbitrary per-VM raw
+// #cloud-config content would require SSH/filesystem access PVMSS does not
+// have; existing snippet rows remain readable via GetCloudInitSnippet.
+func SetCloudInitSnippet(_ context.Context, _ CloudInitSnippetDeps, _ string) error {
+	return ErrCustomYAMLDisabled
 }
 
 func resolveCloudInitTarget(index *inventory.Index, actor auth.Identity, clusterName string, vmid int) (Entity, error) {

@@ -162,10 +162,16 @@ Warm near-black ground (oklch(17% 0.006 49deg)), lifted card surfaces (oklch(21%
 ### Hierarchy
 
 - **Heading** (600, 1.875rem / 2.25rem line-height): Page titles, admin section headers.
+- **Panel Title** (600, 1.25rem / 1.75rem line-height, tight tracking): Bare (non-`Card`) admin panel headers — one `<h2>` per panel, stacked directly on the page (AuditRetentionPanel, AuditLogPanel, ExportPanel, ImportPanel). De facto standard already; named here so it stops reading as an off-scale one-off.
 - **Title** (600, 1.5rem / 2rem line-height): Card titles, dialog titles, section headers.
+- **Dialog Title** (600, 1.125rem / 1.75rem line-height): The heading inside a `Dialog` — smaller than `Title` because a dialog's own chrome (backdrop, close affordance, max-width) already sets it apart from the page; used as-is across ~20 dialogs (DeleteVmDialog, AddDiskDialog, ClusterFormDialog, ShortcutsDialog, ConfirmDialog, and others).
 - **Body** (400, 0.875rem / 1.25rem line-height): Default text, table cells, form values.
 - **Label** (500, 0.875rem / 1.25rem line-height): Form labels, nav items, button text.
 - **Mono** (400, 0.875rem, tabular numbers): Technical values, code, JSON previews.
+
+`Card.svelte`'s own `title` prop renders smaller still (`text-sm font-semibold`) — a banded header sitting flush against the card's border, not a peer of the tiers above. No panel in the app has adopted it yet; don't reach for it as a substitute for **Panel Title** on a component that isn't already a `Card`.
+
+The anonymous home page's hero (`text-4xl`) and its two marketing sections' centered headers (`text-xl`, HomeCapabilities/HomeHowItWorks) sit outside this scale on purpose — a landing pitch, shown only to logged-out visitors, is allowed a heavier register than the app's own internal chrome.
 
 ### Rules
 
@@ -179,8 +185,17 @@ The system uses a hybrid approach: tonal layering for most surfaces, soft shadow
 
 ### Shadow Vocabulary
 
-- **Card Shadow** (`0 1px 2px oklch(28% 0.01 56deg / 0.04), 0 1px 3px oklch(28% 0.01 56deg / 0.06)`): Default card elevation. Two-layer, warm-tinted, very soft. Applied via `.shadow-card`.
-- **Card Shadow Dark** (`0 1px 2px oklch(0% 0 0deg / 0.3), 0 1px 3px oklch(0% 0 0deg / 0.4)`): Dark mode equivalent with higher opacity to compensate for the dark ground.
+Three steps, no more. Each is a token (`--elev-rest`, `--elev-raised`,
+`--elev-overlay`) defined once per theme, so light and dark cannot drift:
+
+- **`.shadow-card`** (`--elev-rest`): the resting step. Cards, tiles, panels.
+- **`.shadow-raised`** (`--elev-raised`): hover on an interactive card, and the
+  bulk-action bar. Reserved for "this element is lifting toward you".
+- **`.shadow-overlay`** (`--elev-overlay`): dialogs, popovers, toasts —
+  anything floating over the page.
+
+Dark mode redefines the same three tokens with higher opacity to compensate for
+the dark ground.
 
 ### Named rules
 
@@ -190,11 +205,22 @@ The system uses a hybrid approach: tonal layering for most surfaces, soft shadow
 
 ### Buttons
 
-- **Shape:** Rounded lg (0.75rem), inline-flex, items-center, gap-2
-- **Primary:** Blaze Orange background, near-white foreground, 0.5rem 1rem padding. Hover: slightly darker orange. Focus: 2px ring offset by 2px background. Loading: spinner icon + disabled state.
-- **Secondary:** Muted background, ink foreground. Hover: slightly darker muted.
+- **Shape:** `--radius-control` (0.625rem) — the same radius as inputs, so a
+  button next to a field reads as one control set. inline-flex, items-center,
+  gap-2, fixed heights (sm 2rem / md 2.5rem / lg 2.75rem, plus square `icon`
+  and `icon-sm` sizes) so a row of mixed controls aligns without hand-tuning.
+- **Primary:** Blaze Orange background, near-white foreground. Hover: slightly darker orange. Focus: 2px ring offset by 2px background. Loading: spinner icon + disabled state.
+- **Secondary:** Card background with a 1px border. Hover: border darkens, muted fill.
+- **Outline:** Transparent with a 1px border — the quieter bordered form on tinted grounds.
 - **Ghost:** Transparent background, muted-foreground text. Hover: muted background.
+- **Subtle:** Filled neutral, no border — for dense rows where a border grid would be noisy.
 - **Destructive:** Destructive background, white foreground. Used for delete and revoke actions.
+- **Press:** every variant translates down 1px on `:active`. Depth comes from
+  that, never from a resting shadow (see the flat-by-default rule).
+
+Never hand-roll a button. `Button.svelte` and `ButtonLink.svelte` are the same
+component in two semantics — which one a call site needs is a semantics
+decision (does it navigate?), never a visual one.
 
 ### Inputs / Fields
 
@@ -219,15 +245,50 @@ The system uses a hybrid approach: tonal layering for most surfaces, soft shadow
 
 ### Tables
 
-- **Style:** `.pv-responsive-table` — full width, border-collapse, no vertical borders, border-b on rows.
-- **Mobile:** Collapses to stacked cards with label/value pairs driven by `data-label` attribute on each `<td>`.
-- **Sort indicators:** Subtle arrow (up/down) after column header text.
+Two classes, applied together: `.pv-table` owns the look, `.pv-responsive-table`
+owns the mobile collapse. Cells carry no spacing utilities of their own — that
+is what let admin tables drift away from the VM list.
+
+- **Header:** sticky band on `--muted`, 11px uppercase with 0.04em tracking, a
+  hairline under it.
+- **Rows:** 0.75rem/1rem cells, a `--border-subtle` rule between them, a muted
+  hover fill plus a 2px accent rail inset on the first cell.
+- **Figures:** `.num` on a `<th>`/`<td>` gives tabular mono digits, right
+  aligned, so VMIDs, core counts and sizes line up down the column. Headers
+  stay in the sans face; only cells go mono.
+- **Mobile:** collapses to stacked cards with label/value pairs driven by the
+  `data-label` attribute on each `<td>`; the desktop cell metrics are handed
+  back to the card layout below 640px.
+- **Sort indicators:** `SortButton.svelte` — an arrow whose space is reserved
+  permanently, so the column never reflows when the direction changes. Inactive
+  columns reveal a faint arrow on hover.
+
+### Forms
+
+- **`FormField`** owns the label, hint, error and the aria wiring. Mark the
+  rarer side of requiredness: `required` prints the asterisk, `optional` prints
+  a muted tag. Using both in one form is the mistake this makes visible.
+- **`FormSection`** groups fields under a real `<fieldset>`/`<legend>`, with an
+  optional step number for wizards and a `panel` variant for advanced or
+  secondary settings. Any form past about six controls needs chapters.
+- **`Toolbar`** is the filter row above a list: search (capped at ~22rem),
+  filters, then `meta` and `actions` pushed right.
 
 ### Dialogs
 
 - **Container:** `Dialog.svelte` — backdrop blur, centered card, focus trap, escape to close, focus restoration.
 - **Max width:** `max-w-lg` default, `max-w-2xl` for wide forms.
 - **Animation:** 160ms ease-out fade-in.
+- **Vertical rhythm:** `Dialog.svelte` owns no spacing below its own title — each
+  caller hand-rolls the gap after its `<h2>`, and three different values
+  (`mb-2`, `mb-3`, `mb-4`) had accumulated for the same "title → body" gap
+  across ~20 dialogs with no reason to differ. **Title → body is `mb-4`/`mt-4`
+  (1rem)**, the same step as the gap between two form fields — a dialog's
+  title and its content are read as one continuous block, not two separate
+  sections. Where a dialog interposes a supporting hint line between the title
+  and its form (`TemplateEditForm`, `NodeCapacityForm`), the hint itself sits
+  at `mt-2` (0.5rem, title → hint is the tighter "same idea" gap) and the form
+  below it opens a real section at `mt-6` (1.5rem).
 
 ### Toasts
 
@@ -243,7 +304,7 @@ The system uses a hybrid approach: tonal layering for most surfaces, soft shadow
 
 ### Empty States
 
-- **Style:** `EmptyState.svelte` — centered icon, title, description, optional action snippet.
+- **Style:** `EmptyState.svelte` — icon in a tinted disc, title, description, optional action snippet. `tone="error"` swaps the disc to the destructive triple for unreachable-cluster states.
 - **Character:** Teaching, not scolding. "Create your first VM" not "No VMs found."
 
 ## 6. Do's and Don'ts
@@ -255,7 +316,8 @@ The system uses a hybrid approach: tonal layering for most surfaces, soft shadow
 - **Do** use OKLCH for all semantic colors with soft variants for backgrounds.
 - **Do** use Archivo Variable for all text. Use the mono font only for technical values.
 - **Do** use `.pv-input` and `.pv-select` classes on all form controls for consistent styling.
-- **Do** use `.shadow-card` for card elevation and `.pv-responsive-table` for data tables.
+- **Do** use `.shadow-card` / `.shadow-raised` / `.shadow-overlay` for elevation, and `.pv-table .pv-responsive-table` for data tables.
+- **Do** use `Button` / `ButtonLink`, `TextField`, `Select`, `FormField`, `FormSection`, `Toolbar`, `Pill`, `StatCard` and `EmptyState` instead of re-styling their markup by hand.
 - **Do** use `Dialog.svelte` for all modal dialogs — it has focus trap, escape handling, and focus restoration.
 - **Do** use skeleton loading states, not spinners in the middle of content.
 - **Do** use teaching empty states with actionable next steps.

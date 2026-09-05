@@ -2,10 +2,12 @@
 	import type { AdminCloudInitTemplate } from './cloudInitTemplates.svelte';
 	import type { ClusterOption } from '$lib/shared/clusters';
 	import CloudInitTemplateFormDialog from './CloudInitTemplateFormDialog.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Switch from '$lib/shared/ui/Switch.svelte';
+	import TableCard from '$lib/shared/ui/TableCard.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -84,30 +86,29 @@
 	<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
 	<TableSkeleton columns={4} />
 {:else if error}
-	<p role="alert" class="text-destructive">{error}</p>
+	<Alert>{error}</Alert>
 {:else}
 	{#if saveError}
-		<p role="alert" class="mb-4 rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">
-			{saveError}
-		</p>
+		<Alert class="mb-4">{saveError}</Alert>
 	{/if}
 
-	<div class="overflow-x-auto rounded-lg border border-border">
-		<table class="w-full text-sm">
-			<thead class="bg-muted/50 text-left">
+	<TableCard>
+		<table class="pv-table pv-responsive-table">
+			<caption class="sr-only">{m['admin.cloudinit.header']()}</caption>
+			<thead>
 				<tr>
-					<th class="px-4 py-2 font-medium">{m['admin.cloudinit.id']()}</th>
-					<th class="px-4 py-2 font-medium">{m['admin.cloudinit.labelField']()}</th>
-					<th class="px-4 py-2 font-medium">{m['admin.cloudinit.enabledStatus']()}</th>
-					<th class="px-4 py-2 font-medium">{m['common.actions']()}</th>
+					<th class="font-medium">{m['admin.cloudinit.id']()}</th>
+					<th class="font-medium">{m['admin.cloudinit.labelField']()}</th>
+					<th class="font-medium">{m['admin.cloudinit.enabledStatus']()}</th>
+					<th class="font-medium">{m['common.actions']()}</th>
 				</tr>
 			</thead>
 			<tbody>
 				{#each templates as template (template.id)}
-					<tr class="border-t border-border">
-						<td class="px-4 py-2 font-mono text-xs">{template.id}</td>
-						<td class="px-4 py-2">{template.label}</td>
-						<td class="px-4 py-2">
+					<tr class="group transition-colors hover:bg-muted/40">
+						<td class="font-mono text-xs" data-label={m['admin.cloudinit.id']()}>{template.id}</td>
+						<td data-label={m['admin.cloudinit.labelField']()}>{template.label}</td>
+						<td data-label={m['admin.cloudinit.enabledStatus']()}>
 							<span class="inline-flex items-center gap-2">
 								<Switch
 									checked={template.enabled}
@@ -119,7 +120,7 @@
 								</span>
 							</span>
 						</td>
-						<td class="px-4 py-2">
+						<td data-label={m['common.actions']()}>
 							<div class="flex gap-2">
 								<Button variant="ghost" size="sm" label={m['admin.cloudinit.editLabel']({ label: template.label })} onclick={() => openEdit(template)}>{m['admin.cloudinit.edit']()}</Button>
 								<Button variant="destructive" size="sm" label={m['admin.cloudinit.deleteLabel']({ label: template.label })} onclick={() => onDelete(template.id)}>{m['admin.cloudinit.delete']()}</Button>
@@ -137,7 +138,7 @@
 				{/each}
 			</tbody>
 		</table>
-	</div>
+	</TableCard>
 {/if}
 
 <CloudInitTemplateFormDialog

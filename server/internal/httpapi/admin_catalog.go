@@ -55,6 +55,7 @@ type adminNodeDTO struct {
 	StorageUsed  int64   `json:"storageUsed"`
 	VMCount      int     `json:"vmCount"`
 	Enabled      bool    `json:"enabled"`
+	Missing      bool    `json:"missing"`
 }
 
 // ServeNodes handles GET /api/v1/admin/nodes.
@@ -87,7 +88,7 @@ func (h *AdminCatalog) ServeNodes(w http.ResponseWriter, r *http.Request) {
 			Name: n.Name, Status: n.Status, CPUCores: n.CPUCores, CPUUsage: n.CPUUsage,
 			MemoryTotal: n.MemoryTotal, MemoryUsed: n.MemoryUsed,
 			StorageTotal: n.StorageTotal, StorageUsed: n.StorageUsed,
-			VMCount: n.VMCount, Enabled: n.Enabled,
+			VMCount: n.VMCount, Enabled: n.Enabled, Missing: n.Missing,
 		}
 	}
 
@@ -153,6 +154,7 @@ type adminStorageDTO struct {
 	Total   int64  `json:"totalBytes"`
 	Used    int64  `json:"usedBytes"`
 	Enabled bool   `json:"enabled"`
+	Missing bool   `json:"missing"`
 }
 
 // ServeStorages handles GET /api/v1/admin/storages.
@@ -181,7 +183,7 @@ func (h *AdminCatalog) ServeStorages(w http.ResponseWriter, r *http.Request) {
 	for i, s := range storages {
 		dto[i] = adminStorageDTO{
 			Name: s.Name, Node: s.Node, Type: s.Type,
-			Total: s.Total, Used: s.Used, Enabled: s.Enabled,
+			Total: s.Total, Used: s.Used, Enabled: s.Enabled, Missing: s.Missing,
 		}
 	}
 
@@ -248,6 +250,7 @@ type adminBridgeDTO struct {
 	Active  bool   `json:"active"`
 	Comment string `json:"comment"`
 	Enabled bool   `json:"enabled"`
+	Missing bool   `json:"missing"`
 }
 
 // ServeBridges handles GET /api/v1/admin/bridges.
@@ -278,7 +281,7 @@ func (h *AdminCatalog) ServeBridges(w http.ResponseWriter, r *http.Request) {
 	for i, b := range bridges {
 		dto[i] = adminBridgeDTO{
 			Name: b.Name, Node: b.Node, Active: b.Active,
-			Comment: b.Comment, Enabled: b.Enabled,
+			Comment: b.Comment, Enabled: b.Enabled, Missing: b.Missing,
 		}
 	}
 
@@ -349,6 +352,7 @@ type adminISODTO struct {
 	File      string `json:"file"`
 	SizeBytes int64  `json:"sizeBytes"`
 	Enabled   bool   `json:"enabled"`
+	Missing   bool   `json:"missing"`
 }
 
 // ServeISOs handles GET /api/v1/admin/isos.
@@ -379,7 +383,7 @@ func (h *AdminCatalog) ServeISOs(w http.ResponseWriter, r *http.Request) {
 	for i, iso := range isos {
 		dto[i] = adminISODTO{
 			Storage: iso.Storage, Node: iso.Node, File: iso.File,
-			SizeBytes: iso.SizeBytes, Enabled: iso.Enabled,
+			SizeBytes: iso.SizeBytes, Enabled: iso.Enabled, Missing: iso.Missing,
 		}
 	}
 
@@ -442,6 +446,257 @@ func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf("iso %s on storage %s node %s cluster %s set enabled=%v", req.File, req.Storage, req.Node, clusterName, req.Enabled),
 		[]any{map[string]any{auditKeyCluster: clusterName, "node": req.Node, "storage": req.Storage, "file": req.File, auditKeyEnabled: req.Enabled}})
 	writeAdminJSON(w, http.StatusOK, isoToggleResponse{Node: req.Node, Storage: req.Storage, File: req.File, Enabled: req.Enabled})
+}
+
+// ServeNodeDelete handles DELETE /api/v1/admin/nodes/{cluster}/{name}: removes
+// an orphan node approval row. The UI offers Remove only on missing rows, but
+// the API deletes any approval.
+func (h *AdminCatalog) ServeNodeDelete(w http.ResponseWriter, r *http.Request) {
+	clusterName := r.PathValue("cluster")
+	name := r.PathValue("name")
+	if name == "" {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", "node name is required")
+		return
+	}
+
+	err := catalog.DeleteNode(r.Context(), h.store, clusterName, name)
+	if errors.Is(err, catalog.ErrNodeNotFound) {
+		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf("node %q not found on cluster %q", name, clusterName))
+		return
+	}
+
+	if err != nil {
+		h.log.Error("admin delete node failed", "component", "httpapi", "error", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		return
+	}
+
+	h.recordAdminAction(r, "admin.nodes.delete", "node", name,
+		fmt.Sprintf("deleted node approval %q on cluster %s", name, clusterName),
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: name}})
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ServeStorageDelete handles DELETE /api/v1/admin/storages/{cluster}/{node}/{name}:
+// removes an orphan storage approval row.
+func (h *AdminCatalog) ServeStorageDelete(w http.ResponseWriter, r *http.Request) {
+	clusterName := r.PathValue("cluster")
+	node := r.PathValue("node")
+	name := r.PathValue("name")
+	if name == "" || node == "" {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", "storage name and node are required")
+		return
+	}
+
+	err := catalog.DeleteStorage(r.Context(), h.store, clusterName, name, node)
+	if errors.Is(err, catalog.ErrStorageNotFound) {
+		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf("storage %q on node %q not found on cluster %q", name, node, clusterName))
+		return
+	}
+
+	if err != nil {
+		h.log.Error("admin delete storage failed", "component", "httpapi", "error", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		return
+	}
+
+	h.recordAdminAction(r, "admin.storages.delete", "storage", name,
+		fmt.Sprintf("deleted storage approval %q on node %s cluster %s", name, node, clusterName),
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: name, "node": node}})
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ServeBridgeDelete handles DELETE /api/v1/admin/bridges/{cluster}/{node}/{name}:
+// removes an orphan bridge approval row.
+func (h *AdminCatalog) ServeBridgeDelete(w http.ResponseWriter, r *http.Request) {
+	clusterName := r.PathValue("cluster")
+	node := r.PathValue("node")
+	name := r.PathValue("name")
+	if name == "" || node == "" {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", "bridge name and node are required")
+		return
+	}
+
+	err := catalog.DeleteBridge(r.Context(), h.store, clusterName, node, name)
+	if errors.Is(err, catalog.ErrBridgeNotFound) {
+		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf("bridge %q on node %q not found on cluster %q", name, node, clusterName))
+		return
+	}
+
+	if err != nil {
+		h.log.Error("admin delete bridge failed", "component", "httpapi", "error", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		return
+	}
+
+	h.recordAdminAction(r, "admin.bridges.delete", "bridge", name,
+		fmt.Sprintf("deleted bridge approval %q on node %s cluster %s", name, node, clusterName),
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: name, "node": node}})
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// --- Images (cloud images) ---
+
+type adminImageDTO struct {
+	Storage   string `json:"storage"`
+	Node      string `json:"node"`
+	File      string `json:"file"`
+	SizeBytes int64  `json:"sizeBytes"`
+	Enabled   bool   `json:"enabled"`
+	Missing   bool   `json:"missing"`
+}
+
+// ServeImages handles GET /api/v1/admin/images.
+//
+//nolint:dupl // intentionally parallel to ServeISOs (same shape, different resource)
+func (h *AdminCatalog) ServeImages(w http.ResponseWriter, r *http.Request) {
+	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
+
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
+		return
+	}
+	images, err := catalog.AdminListImages(r.Context(), h.store, client, clusterName)
+	if err != nil {
+		h.log.Error("admin list images failed", "component", "httpapi", "error", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return
+	}
+
+	dto := make([]adminImageDTO, len(images))
+	for i, image := range images {
+		dto[i] = adminImageDTO{
+			Storage: image.Storage, Node: image.Node, File: image.File,
+			SizeBytes: image.SizeBytes, Enabled: image.Enabled, Missing: image.Missing,
+		}
+	}
+
+	writeAdminJSON(w, http.StatusOK, dto)
+}
+
+type imageToggleRequest struct {
+	Cluster string `json:"cluster"`
+	Node    string `json:"node"`
+	Storage string `json:"storage"`
+	File    string `json:"file"`
+	Enabled bool   `json:"enabled"`
+}
+
+type imageToggleResponse struct {
+	Node    string `json:"node"`
+	Storage string `json:"storage"`
+	File    string `json:"file"`
+	Enabled bool   `json:"enabled"`
+}
+
+// ServeImageToggle handles POST /api/v1/admin/images/toggle.
+func (h *AdminCatalog) ServeImageToggle(w http.ResponseWriter, r *http.Request) {
+	var req imageToggleRequest
+	if err := decodeJSON(w, r, &req); err != nil {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
+		return
+	}
+	if strings.TrimSpace(req.Node) == "" {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msgInvalidRequestBody)
+		return
+	}
+
+	clusterName, clusterErr := ResolveClusterValue(req.Cluster, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
+
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
+		return
+	}
+	err = catalog.SetImageEnabled(r.Context(), h.store, client, clusterName, catalog.ImageRef{Node: req.Node, Storage: req.Storage, File: req.File}, req.Enabled)
+	if errors.Is(err, cluster.ErrNotFound) {
+		writeAdminError(w, http.StatusNotFound, "not_found", imageNotFoundMsg(req.Node, req.Storage, req.File))
+		return
+	}
+
+	if err != nil {
+		h.log.Error("admin toggle image failed", "component", "httpapi", "error", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return
+	}
+
+	h.recordAdminAction(r, "admin.images.toggle", "image", req.File,
+		fmt.Sprintf("image %s on storage %s node %s cluster %s set enabled=%v", req.File, req.Storage, req.Node, clusterName, req.Enabled),
+		[]any{map[string]any{auditKeyCluster: clusterName, "node": req.Node, "storage": req.Storage, "file": req.File, auditKeyEnabled: req.Enabled}})
+	writeAdminJSON(w, http.StatusOK, imageToggleResponse{Node: req.Node, Storage: req.Storage, File: req.File, Enabled: req.Enabled})
+}
+
+// ServeImageDelete handles DELETE /api/v1/admin/images/{cluster}/{node}/{storage}/{file}:
+// removes an orphan cloud image approval row.
+func (h *AdminCatalog) ServeImageDelete(w http.ResponseWriter, r *http.Request) {
+	clusterName := r.PathValue("cluster")
+	node := r.PathValue("node")
+	storage := r.PathValue("storage")
+	file := r.PathValue("file")
+	if node == "" || storage == "" || file == "" {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", "node, storage, and file are required")
+		return
+	}
+
+	err := catalog.DeleteImage(r.Context(), h.store, clusterName, node, storage, file)
+	if errors.Is(err, catalog.ErrImageNotFound) {
+		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf("image %q on storage %q node %q not found on cluster %q", file, storage, node, clusterName))
+		return
+	}
+
+	if err != nil {
+		h.log.Error("admin delete image failed", "component", "httpapi", "error", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		return
+	}
+
+	h.recordAdminAction(r, "admin.images.delete", "image", file,
+		fmt.Sprintf("deleted image approval %q on storage %s node %s cluster %s", file, storage, node, clusterName),
+		[]any{map[string]any{auditKeyCluster: clusterName, "node": node, "storage": storage, "file": file}})
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ServeISODelete handles DELETE /api/v1/admin/isos/{cluster}/{node}/{storage}/{file}:
+// removes an orphan ISO approval row.
+func (h *AdminCatalog) ServeISODelete(w http.ResponseWriter, r *http.Request) {
+	clusterName := r.PathValue("cluster")
+	node := r.PathValue("node")
+	storage := r.PathValue("storage")
+	file := r.PathValue("file")
+	if node == "" || storage == "" || file == "" {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", "node, storage, and file are required")
+		return
+	}
+
+	err := catalog.DeleteISO(r.Context(), h.store, clusterName, node, storage, file)
+	if errors.Is(err, catalog.ErrISONotFound) {
+		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf("iso %q on storage %q node %q not found on cluster %q", file, storage, node, clusterName))
+		return
+	}
+
+	if err != nil {
+		h.log.Error("admin delete iso failed", "component", "httpapi", "error", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		return
+	}
+
+	h.recordAdminAction(r, "admin.isos.delete", "iso", file,
+		fmt.Sprintf("deleted iso approval %q on storage %s node %s cluster %s", file, storage, node, clusterName),
+		[]any{map[string]any{auditKeyCluster: clusterName, "node": node, "storage": storage, "file": file}})
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // adminTemplateDTO is the admin response shape for one discovered template.
@@ -741,4 +996,8 @@ func bridgeNotFoundMsg(node, name string) string {
 
 func isoNotFoundMsg(node, storage, file string) string {
 	return "iso \"" + file + "\" on storage \"" + storage + msgOnNode + node + "\"" + msgNotReportedByCluster
+}
+
+func imageNotFoundMsg(node, storage, file string) string {
+	return "image \"" + file + "\" on storage \"" + storage + msgOnNode + node + "\"" + msgNotReportedByCluster
 }

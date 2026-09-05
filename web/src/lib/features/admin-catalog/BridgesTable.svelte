@@ -4,6 +4,7 @@
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
 	import StatusDot from '$lib/shared/ui/StatusDot.svelte';
 	import TableHeader from '$lib/shared/ui/TableHeader.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	type BridgeSortColumn = 'name' | 'node' | 'active' | 'comment' | 'enabled';
@@ -12,12 +13,13 @@
 		bridges: AdminBridge[];
 		toggling: string | null;
 		onToggle: (node: string, name: string, enabled: boolean) => void;
+		onRemove: (node: string, name: string) => void;
 		sortBy: BridgeSortColumn;
 		sortDir: 'asc' | 'desc';
 		onSort: (column: BridgeSortColumn) => void;
 	}
 
-	let { bridges, toggling, onToggle, sortBy, sortDir, onSort }: Props = $props();
+	let { bridges, toggling, onToggle, onRemove, sortBy, sortDir, onSort }: Props = $props();
 
 	type Tone = 'success' | 'destructive' | 'warning' | 'info' | 'muted';
 
@@ -34,50 +36,66 @@
 	}
 </script>
 
-<div class="overflow-x-auto rounded-lg border border-border">
-	<table class="pv-responsive-table text-sm">
-		<caption class="sr-only">{m['admin.bridges.heading']()}</caption>
-		<thead class="bg-muted/50 text-left">
-			<tr>
-				<TableHeader text={m['common.name']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-				<TableHeader text={m['common.node']()} column="node" activeColumn={sortBy} {sortDir} onSort={handleSort} />
-				<TableHeader
-					text={m['common.active']()}
-					tooltip={m['admin.catalog.tooltip.bridgeActive']()}
-					column="active"
-					activeColumn={sortBy}
-					{sortDir}
-					onSort={handleSort}
-				/>
-				<TableHeader
-					text={m['admin.catalog.comment']()}
-					column="comment"
-					activeColumn={sortBy}
-					{sortDir}
-					onSort={handleSort}
-				/>
-				<TableHeader
-					text={m['admin.catalog.statusColumn']()}
-					tooltip={m['admin.catalog.tooltip.statusColumn']()}
-					column="enabled"
-					activeColumn={sortBy}
-					{sortDir}
-					onSort={handleSort}
-				/>
-			</tr>
-		</thead>
-		<tbody>
-			{#each bridges as bridge (bridge.name + bridge.node)}
-				<tr class="border-t border-border" data-testid="bridge-row">
-					<td class="px-4 py-3 font-mono font-medium" data-label={m['common.name']()}>{bridge.name}</td>
-					<td class="px-4 py-3 font-mono" data-label={m['common.node']()}>{bridge.node}</td>
-					<td class="px-4 py-3" data-label={m['common.active']()}>
+<table class="pv-table pv-responsive-table">
+	<caption class="sr-only">{m['admin.bridges.heading']()}</caption>
+	<thead>
+		<tr>
+			<TableHeader text={m['common.name']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+			<TableHeader text={m['common.node']()} column="node" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+			<TableHeader
+				text={m['common.active']()}
+				tooltip={m['admin.catalog.tooltip.bridgeActive']()}
+				column="active"
+				activeColumn={sortBy}
+				{sortDir}
+				onSort={handleSort}
+			/>
+			<TableHeader
+				text={m['admin.catalog.comment']()}
+				column="comment"
+				activeColumn={sortBy}
+				{sortDir}
+				onSort={handleSort}
+			/>
+			<TableHeader
+				text={m['admin.catalog.statusColumn']()}
+				tooltip={m['admin.catalog.tooltip.statusColumn']()}
+				column="enabled"
+				activeColumn={sortBy}
+				{sortDir}
+				onSort={handleSort}
+			/>
+			<td><span class="sr-only">{m['admin.catalog.remove']()}</span></td>
+		</tr>
+	</thead>
+	<tbody>
+		{#each bridges as bridge (bridge.name + bridge.node)}
+			<tr class="group transition-colors {bridge.missing ? 'opacity-60' : 'hover:bg-muted/40'}" data-testid="bridge-row">
+				<td class="font-mono font-medium" data-label={m['common.name']()}>
+					{bridge.name}{#if bridge.missing}
+						<span
+							class="ml-2 inline-flex items-center rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive"
+							data-testid="bridge-missing-badge"
+						>
+							{m['admin.catalog.missingBadge']()}
+						</span>
+					{/if}
+				</td>
+				<td class="font-mono" data-label={m['common.node']()}>{bridge.node}</td>
+				<td data-label={m['common.active']()}>
+					{#if bridge.missing}
+						<span class="text-xs text-muted-foreground">{m['admin.catalog.missingBadge']()}</span>
+					{:else}
 						<StatusDot tone={bridgeActiveTone(bridge.active)} label={bridgeActiveLabel(bridge.active)} />
-					</td>
-					<td class="px-4 py-3 text-muted-foreground" data-label={m['admin.catalog.comment']()}>
-						{bridge.comment || m['common.dash']()}
-					</td>
-					<td class="px-4 py-3" data-label={m['admin.catalog.statusColumn']()}>
+					{/if}
+				</td>
+				<td class="text-muted-foreground" data-label={m['admin.catalog.comment']()}>
+					{bridge.comment || m['common.dash']()}
+				</td>
+				<td data-label={m['admin.catalog.statusColumn']()}>
+					{#if bridge.missing}
+						<span class="text-xs text-muted-foreground">{m['admin.catalog.missingBadge']()}</span>
+					{:else}
 						<span
 							class="inline-flex items-center gap-2"
 							aria-busy={toggling === `bridge:${bridge.node}/${bridge.name}`}
@@ -97,15 +115,27 @@
 								{/if}
 							</span>
 						</span>
-					</td>
-				</tr>
-			{:else}
-				<tr>
-					<td colspan={5} class="p-0">
-						<EmptyState title={m['admin.catalog.noBridges']()} />
-					</td>
-				</tr>
-			{/each}
-		</tbody>
-	</table>
-</div>
+					{/if}
+				</td>
+				<td data-label={m['admin.catalog.remove']()}>
+					{#if bridge.missing}
+						<Button
+							variant="ghost"
+							size="sm"
+							onclick={() => onRemove(bridge.node, bridge.name)}
+							data-testid="bridge-remove"
+						>
+							{m['admin.catalog.remove']()}
+						</Button>
+					{/if}
+				</td>
+			</tr>
+		{:else}
+			<tr>
+				<td colspan={6} class="p-0">
+					<EmptyState title={m['admin.catalog.noBridges']()} />
+				</td>
+			</tr>
+		{/each}
+	</tbody>
+</table>

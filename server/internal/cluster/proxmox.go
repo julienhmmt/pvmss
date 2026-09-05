@@ -499,7 +499,7 @@ func (p Proxmox) ListISOs(ctx context.Context) ([]ISOImage, error) {
 			continue
 		}
 
-		found, err := proxmoxListISOContent(ctx, rest, row.Node, row.Storage)
+		found, err := proxmoxListContent(ctx, rest, row.Node, row.Storage, "iso")
 		if err != nil {
 			if isNodeUnavailable(err) {
 				continue
@@ -514,10 +514,81 @@ func (p Proxmox) ListISOs(ctx context.Context) ([]ISOImage, error) {
 	return isos, nil
 }
 
-func proxmoxListISOContent(ctx context.Context, rest proxmoxRESTClient, node, storage string) ([]ISOImage, error) {
+// ListCloudImages implements Client, enumerating cloud images on every
+// import-capable storage. Proxmox classifies files by extension: .qcow2,
+// .raw, .vmdk, and .ova get vtype 'import' and are listed under
+// content=import. Only import-vtype files are accepted by import-from for
+// non-root API tokens — .img files are vtype 'iso' and rejected, and absolute
+// filesystem paths are root@pam-only. Node scoping matches ListISOs: one row
+// per (node, storage) pairing.
+func (p Proxmox) ListCloudImages(ctx context.Context) ([]CloudImage, error) {
+	rest := p.rest()
+
+	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{"type": {"storage"}})
+	if err != nil {
+		return nil, err
+	}
+
+	var rows []proxmoxResourceRow
+	if err := decodeData(raw, &rows); err != nil {
+		return nil, fmt.Errorf("decode storages: %w", err)
+	}
+
+	var images []CloudImage
+
+	for _, row := range rows {
+		if !proxmoxStorageAvailable(row.Status) {
+			continue
+		}
+
+		found, err := proxmoxListContent(ctx, rest, row.Node, row.Storage, "import")
+		if err != nil {
+			if isNodeUnavailable(err) {
+				continue
+			}
+
+			return nil, fmt.Errorf("list import content on %q/%q: %w", row.Node, row.Storage, err)
+		}
+
+		for _, f := range found {
+			if !IsCloudImageFile(f.File) {
+				continue
+			}
+
+			images = append(images, CloudImage{Storage: row.Storage, Node: row.Node, File: f.File, SizeBytes: f.SizeBytes})
+		}
+	}
+
+	return images, nil
+}
+
+// cloudImageFileExtensions are the file extensions Proxmox classifies as vtype
+// 'import' (PVE::Storage::IMPORT_EXT_RE_1): .qcow2, .raw, .vmdk, .ova. Only
+// import-vtype volumes are accepted by import-from for non-root API tokens.
+// Admins place cloud images in the storage's import/ directory with one of
+// these extensions — PVMSS never fetches images from the internet.
+var cloudImageFileExtensions = []string{".qcow2", ".raw", ".vmdk", ".ova"}
+
+// IsCloudImageFile reports whether name looks like a cloud image file — one
+// with an import-vtype extension Proxmox's import-from accepts.
+func IsCloudImageFile(name string) bool {
+	lower := strings.ToLower(name)
+	for _, ext := range cloudImageFileExtensions {
+		if strings.HasSuffix(lower, ext) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// proxmoxListContent lists files of a given content type on a storage. The
+// content parameter is "iso" or "import". For iso content, volids are
+// <storage>:iso/<file>; for import content, <storage>:import/<file>.
+func proxmoxListContent(ctx context.Context, rest proxmoxRESTClient, node, storage, content string) ([]ISOImage, error) {
 	raw, err := rest.do(ctx, http.MethodGet,
 		fmt.Sprintf("/nodes/%s/storage/%s/content", url.PathEscape(node), url.PathEscape(storage)),
-		url.Values{"content": {"iso"}})
+		url.Values{"content": {content}})
 	if err != nil {
 		if errors.Is(err, ErrNotFound) {
 			return nil, nil
@@ -531,7 +602,7 @@ func proxmoxListISOContent(ctx context.Context, rest proxmoxRESTClient, node, st
 		Size  int64  `json:"size"`
 	}
 	if err := decodeData(raw, &rows); err != nil {
-		return nil, fmt.Errorf("decode iso content: %w", err)
+		return nil, fmt.Errorf("decode %s content: %w", content, err)
 	}
 
 	isos := make([]ISOImage, 0, len(rows))
@@ -542,7 +613,7 @@ func proxmoxListISOContent(ctx context.Context, rest proxmoxRESTClient, node, st
 			continue
 		}
 
-		file = strings.TrimPrefix(file, "iso/")
+		file = strings.TrimPrefix(file, content+"/")
 		isos = append(isos, ISOImage{Storage: storage, Node: node, File: file, SizeBytes: row.Size})
 	}
 

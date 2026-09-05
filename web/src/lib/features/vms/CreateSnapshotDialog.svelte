@@ -50,7 +50,7 @@
 </script>
 
 <Dialog bind:open labelledBy="create-snapshot-title" onClose={close}>
-	<h2 id="create-snapshot-title" class="mb-2 text-lg font-semibold">{m['vms.snapshots.createDialogTitle']()}</h2>
+	<h2 id="create-snapshot-title" class="mb-4 text-lg font-semibold">{m['vms.snapshots.createDialogTitle']()}</h2>
 	<p class="mb-4 text-sm text-muted-foreground">{m['vms.snapshots.createDescription']()}</p>
 	<form onsubmit={(event) => { event.preventDefault(); void submit(); }}>
 		<div class="space-y-4">

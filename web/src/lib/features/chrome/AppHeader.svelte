@@ -10,6 +10,7 @@
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { getChromeContext } from './chrome.svelte';
 	import MenuIcon from '$lib/shared/ui/icons/MenuIcon.svelte';
+	import Logo from '$lib/shared/ui/Logo.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const tray = getTaskTrayContext();
@@ -42,7 +43,7 @@
 		<MenuIcon />
 	</button>
 
-	<span class="text-sm font-bold tracking-tight text-foreground">{m['chrome.sidebar.brand']()}</span>
+	<Logo class="text-foreground" />
 
 	<div class="flex-1"></div>
 </header>

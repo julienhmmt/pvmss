@@ -78,12 +78,32 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 		diskTotal = int64(spec.Disk.SizeGB) * 1024 * 1024 * 1024
 	}
 
+	// The real create path always materializes the primary disk (import-from
+	// or plain allocation), so the fake mirrors it — otherwise post-create
+	// steps like ResizeDisk find no disk to grow.
+	var disks []Disk
+	if spec.Disk.Storage != "" {
+		disks = append(disks, Disk{
+			Key: spec.Disk.Bus + "0", Bus: DiskBus(spec.Disk.Bus), BusIndex: 0,
+			Storage: spec.Disk.Storage, SizeGB: spec.Disk.SizeGB,
+		})
+	}
+
 	nics := make([]NetworkInterface, 0, len(spec.Network))
 	for _, nic := range spec.Network {
 		nics = append(nics, NetworkInterface{
 			Model: nic.Model, Bridge: nic.Bridge, VLAN: nic.VLAN,
 			Firewall: nic.Firewall, MAC: nic.MAC, RateMbps: nic.RateMbps,
 		})
+	}
+
+	// Mirrors setUEFIFormKeys (proxmox_create.go) so fake-created VMs are
+	// observable the same way a real create would be (US6/issue-06).
+	isUEFI := spec.BIOS == biosOVMF
+
+	var machine string
+	if isUEFI {
+		machine = resolveUEFIMachine(spec.Machine)
 	}
 
 	state.vms = append(state.vms, VM{
@@ -98,7 +118,14 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 		CPUCores:          spec.Sockets * spec.CPUCores,
 		MemoryTotal:       int64(spec.MemoryMB) * 1024 * 1024,
 		DiskTotal:         diskTotal,
+		Disks:             disks,
 		NetworkInterfaces: nics,
+		CDROM:             cdromFromSpec(spec),
+		BootOrder:         bootOrderFromSpec(spec),
+		BIOS:              spec.BIOS,
+		Machine:           machine,
+		EFIDisk:           isUEFI,
+		TPMState:          isUEFI && spec.TPM,
 	})
 
 	// The real create path always sends agent=1 (proxmox_create.go), so a
@@ -242,4 +269,30 @@ func (fake Fake) CloneVM(_ context.Context, spec CloneSpec) (string, error) {
 	state.record(FakeCall{Node: spec.SourceNode, VMID: spec.NewVMID, Action: "clone", Name: spec.Name, Pool: spec.Pool, Full: spec.Full, Storage: spec.Storage})
 
 	return upid, nil
+}
+
+// cdromFromSpec builds the CD-ROM state a real Proxmox create would leave:
+// mounted with the ISO volume ID when an ISO is provided, absent otherwise.
+func cdromFromSpec(spec VMSpec) CDROMState {
+	if spec.ISO == nil {
+		return CDROMState{State: CDROMAbsent}
+	}
+
+	return CDROMState{State: CDROMMounted, ISOVolID: spec.ISO.Storage + ":iso/" + spec.ISO.File}
+}
+
+// bootOrderFromSpec mirrors proxmox_create.go's setBootOrderForm: CD-ROM first
+// when an ISO is present (so the VM boots from the installer), then disk.
+func bootOrderFromSpec(spec VMSpec) []string {
+	var order []string
+
+	if spec.ISO != nil {
+		order = append(order, cdromDiskKey)
+	}
+
+	if spec.Disk.Storage != "" {
+		order = append(order, spec.Disk.Bus+"0")
+	}
+
+	return order
 }

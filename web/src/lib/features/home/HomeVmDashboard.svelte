@@ -3,17 +3,23 @@
 	import { resolve } from '$app/paths';
 	import { m } from '$lib/paraglide/messages.js';
 	import { formatBytes } from '$lib/shared/format-bytes';
-	import type { VmListItem, VmStatus } from '$lib/features/vms/list.svelte';
+	import type { VmListItem, VmQuota, VmStatus } from '$lib/features/vms/list.svelte';
 	import { onMount } from 'svelte';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
+	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
+	import Meter from '$lib/shared/ui/Meter.svelte';
+	import SpinnerIcon from '$lib/shared/ui/icons/SpinnerIcon.svelte';
 
 	type DashboardVm = VmListItem;
 
 	const session = getSessionContext();
+	const tray = getTaskTrayContext();
 
 	let vms = $state<DashboardVm[]>([]);
+	let quota = $state<VmQuota | null | undefined>(undefined);
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 	let refreshCount = $state(0);
@@ -22,8 +28,16 @@
 		loading = true;
 		error = null;
 		try {
-			const result = await get<{ items: DashboardVm[] }>('/api/v1/vms?scope=mine&pageSize=20');
+			// The list endpoint needs an explicit cluster — a scope=mine request
+			// with none returns a 500, since it can't pick one out of several
+			// without being told. The session already knows which cluster this
+			// user belongs to (there's exactly one, unlike the admin-facing VM
+			// list's cross-cluster view), so pass it along.
+			const cluster = session.principal?.cluster ?? '';
+			const query = `scope=mine&pageSize=20${cluster ? `&cluster=${encodeURIComponent(cluster)}` : ''}`;
+			const result = await get<{ items: DashboardVm[]; quota?: VmQuota }>(`/api/v1/vms?${query}`);
 			vms = result.items;
+			quota = result.quota ?? null;
 		} catch {
 			error = m['home.dashboard.loadError']();
 		} finally {
@@ -68,10 +82,28 @@
 		</Button>
 	</div>
 
+	<!-- Their quota and any operation still running — the two things beyond
+	     the VM list itself that "how am I doing right now" needs. Rendered
+	     once the first load settles (quota !== undefined); a failed load
+	     leaves both at their last-known state rather than flashing empty. -->
+	{#if quota !== undefined}
+		<div class="mb-4 max-w-xs">
+			<Meter {quota} heading={m['home.dashboard.quotaHeading']()} />
+		</div>
+	{/if}
+	{#if tray.tasks.length > 0}
+		<p class="mb-4 flex items-center gap-2 text-sm text-muted-foreground" role="status">
+			<SpinnerIcon class="h-3.5 w-3.5" />
+			{m['task.ariaLabel']({ count: tray.tasks.length })}
+		</p>
+	{/if}
+
 	{#if loading && vms.length === 0}
 		<p role="status" aria-live="polite" class="py-6 text-center text-sm text-muted-foreground">{m['common.loading']()}</p>
 	{:else if error}
-		<p role="alert" class="py-6 text-center text-sm text-destructive">{error}</p>
+		<div class="flex justify-center py-6">
+			<Alert class="max-w-sm">{error}</Alert>
+		</div>
 	{:else if vms.length === 0}
 		<div class="py-8 text-center">
 			<p class="text-sm text-muted-foreground">{m['home.dashboard.empty']()}</p>
@@ -124,7 +156,7 @@
 							{statusLabels[vm.status]()}
 						</span>
 						<span class="font-mono text-muted-foreground">{vm.node}</span>
-						<span class="font-mono text-muted-foreground">{vm.cpuCores} {m['common.cores']()}</span>
+						<span class="font-mono text-muted-foreground">{vm.cpuCores} {m['common.coreCount']({ count: vm.cpuCores })}</span>
 						<span class="font-mono text-muted-foreground">{vm.memoryTotal > 0 ? formatBytes(vm.memoryTotal) : '—'}</span>
 					</li>
 				{/each}

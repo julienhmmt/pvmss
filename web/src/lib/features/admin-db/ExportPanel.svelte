@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getDbOpsContext } from './dbOps.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -13,7 +14,7 @@
 	</p>
 
 	{#if store.exportError}
-		<p role="alert" class="rounded-md bg-destructive/10 px-4 py-2 text-sm text-destructive">{store.exportError}</p>
+		<Alert>{store.exportError}</Alert>
 	{/if}
 
 	<Button disabled={store.exporting} onclick={() => void store.exportDatabase()}>

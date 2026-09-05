@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { setVmCreateContext } from '$lib/features/vm-create/create.svelte';
 	import { setDraftContext } from '$lib/features/vm-create/draft.svelte';
+	import Alert from '$lib/shared/ui/Alert.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import SimpleWizard from '$lib/features/vm-create/SimpleWizard.svelte';
@@ -46,7 +47,7 @@
 
 {#if session.isAdmin}
 	<section class="mx-auto w-full max-w-2xl px-4 py-8">
-		<p role="alert" class="text-sm text-destructive">{m['vms.create.adminBlocked']()}</p>
+		<Alert>{m['vms.create.adminBlocked']()}</Alert>
 	</section>
 {:else}
 <section class="mx-auto w-full max-w-2xl px-4 py-8">
@@ -67,7 +68,7 @@
 		<button
 			role="tab"
 			aria-selected={form.mode === 'simple'}
-			class="inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background {form.mode === 'simple'
+			class="inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium transition-colors pv-focus {form.mode === 'simple'
 				? 'bg-primary text-primary-foreground'
 				: 'bg-muted text-muted-foreground hover:bg-muted/80'}"
 			onclick={() => (form.mode = 'simple')}
@@ -77,7 +78,7 @@
 		<button
 			role="tab"
 			aria-selected={form.mode === 'detailed'}
-			class="inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background {form.mode === 'detailed'
+			class="inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium transition-colors pv-focus {form.mode === 'detailed'
 				? 'bg-primary text-primary-foreground'
 				: 'bg-muted text-muted-foreground hover:bg-muted/80'}"
 			onclick={() => (form.mode = 'detailed')}
