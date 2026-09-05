@@ -51,7 +51,7 @@
 </script>
 
 <Dialog bind:open labelledBy="rollback-snapshot-title" onClose={close}>
-	<h2 id="rollback-snapshot-title" class="mb-2 text-lg font-semibold">{m['vms.snapshots.rollbackDialogTitle']()}</h2>
+	<h2 id="rollback-snapshot-title" class="mb-4 text-lg font-semibold">{m['vms.snapshots.rollbackDialogTitle']()}</h2>
 	<p class="mb-2 text-sm text-muted-foreground">
 		{m['vms.snapshots.rollbackConfirm']({ name: snapshot?.name ?? '' })}
 	</p>

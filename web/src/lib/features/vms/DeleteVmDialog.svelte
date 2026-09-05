@@ -45,7 +45,7 @@
 </script>
 
 <Dialog bind:open labelledBy="delete-vm-title" onClose={close}>
-	<h2 id="delete-vm-title" class="mb-2 text-lg font-semibold">
+	<h2 id="delete-vm-title" class="mb-4 text-lg font-semibold">
 		{#if store.entity}{m['vms.deleteDialogTitle']({ name: store.entity.name })}{:else}{m['vms.deleteDialogTitle']({ name: '' })}{/if}
 	</h2>
 

@@ -24,7 +24,7 @@
 </script>
 
 <Dialog bind:open labelledBy="delete-disk-title" onClose={close}>
-	<h2 id="delete-disk-title" class="mb-2 text-lg font-semibold">{m['vms.disks.deleteDialogTitle']({ disk: disk?.key ?? 'disk' })}</h2>
+	<h2 id="delete-disk-title" class="mb-4 text-lg font-semibold">{m['vms.disks.deleteDialogTitle']({ disk: disk?.key ?? 'disk' })}</h2>
 	{#if disk?.isBoot}
 		<p class="mb-4 text-sm text-warning" role="alert" data-testid="delete-disk-boot-warning">
 			{m['vms.disks.deleteBootWarning']()}

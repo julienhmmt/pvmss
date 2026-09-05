@@ -162,10 +162,16 @@ Warm near-black ground (oklch(17% 0.006 49deg)), lifted card surfaces (oklch(21%
 ### Hierarchy
 
 - **Heading** (600, 1.875rem / 2.25rem line-height): Page titles, admin section headers.
+- **Panel Title** (600, 1.25rem / 1.75rem line-height, tight tracking): Bare (non-`Card`) admin panel headers — one `<h2>` per panel, stacked directly on the page (AuditRetentionPanel, AuditLogPanel, ExportPanel, ImportPanel). De facto standard already; named here so it stops reading as an off-scale one-off.
 - **Title** (600, 1.5rem / 2rem line-height): Card titles, dialog titles, section headers.
+- **Dialog Title** (600, 1.125rem / 1.75rem line-height): The heading inside a `Dialog` — smaller than `Title` because a dialog's own chrome (backdrop, close affordance, max-width) already sets it apart from the page; used as-is across ~20 dialogs (DeleteVmDialog, AddDiskDialog, ClusterFormDialog, ShortcutsDialog, ConfirmDialog, and others).
 - **Body** (400, 0.875rem / 1.25rem line-height): Default text, table cells, form values.
 - **Label** (500, 0.875rem / 1.25rem line-height): Form labels, nav items, button text.
 - **Mono** (400, 0.875rem, tabular numbers): Technical values, code, JSON previews.
+
+`Card.svelte`'s own `title` prop renders smaller still (`text-sm font-semibold`) — a banded header sitting flush against the card's border, not a peer of the tiers above. No panel in the app has adopted it yet; don't reach for it as a substitute for **Panel Title** on a component that isn't already a `Card`.
+
+The anonymous home page's hero (`text-4xl`) and its two marketing sections' centered headers (`text-xl`, HomeCapabilities/HomeHowItWorks) sit outside this scale on purpose — a landing pitch, shown only to logged-out visitors, is allowed a heavier register than the app's own internal chrome.
 
 ### Rules
 
@@ -273,6 +279,16 @@ is what let admin tables drift away from the VM list.
 - **Container:** `Dialog.svelte` — backdrop blur, centered card, focus trap, escape to close, focus restoration.
 - **Max width:** `max-w-lg` default, `max-w-2xl` for wide forms.
 - **Animation:** 160ms ease-out fade-in.
+- **Vertical rhythm:** `Dialog.svelte` owns no spacing below its own title — each
+  caller hand-rolls the gap after its `<h2>`, and three different values
+  (`mb-2`, `mb-3`, `mb-4`) had accumulated for the same "title → body" gap
+  across ~20 dialogs with no reason to differ. **Title → body is `mb-4`/`mt-4`
+  (1rem)**, the same step as the gap between two form fields — a dialog's
+  title and its content are read as one continuous block, not two separate
+  sections. Where a dialog interposes a supporting hint line between the title
+  and its form (`TemplateEditForm`, `NodeCapacityForm`), the hint itself sits
+  at `mt-2` (0.5rem, title → hint is the tighter "same idea" gap) and the form
+  below it opens a real section at `mt-6` (1.5rem).
 
 ### Toasts
 

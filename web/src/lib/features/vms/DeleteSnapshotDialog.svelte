@@ -25,7 +25,7 @@
 </script>
 
 <Dialog bind:open labelledBy="delete-snapshot-title" onClose={close}>
-	<h2 id="delete-snapshot-title" class="mb-2 text-lg font-semibold">{m['vms.snapshots.deleteDialogTitle']()}</h2>
+	<h2 id="delete-snapshot-title" class="mb-4 text-lg font-semibold">{m['vms.snapshots.deleteDialogTitle']()}</h2>
 	<p class="mb-4 text-sm text-muted-foreground">{m['vms.snapshots.deleteConfirm']({ name: snapshot?.name ?? '' })}</p>
 	{#if store.error}<Alert data-testid="snapshot-delete-error" class="mb-4">{store.error}</Alert>{/if}
 	<div class="flex justify-end gap-2">

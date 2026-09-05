@@ -9,6 +9,8 @@
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
+	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
 	import type { Locale } from '$lib/paraglide/runtime.js';
 	import { ApiRequestError } from '$lib/shared/api/client';
 
@@ -61,34 +63,29 @@
 </svelte:head>
 
 <section class="mx-auto w-full max-w-3xl px-4 py-8 md:px-6">
-	<div class="mb-6 flex flex-col gap-4">
+	<div class="mb-4">
 		<Button variant="secondary" size="sm" onclick={() => void goto(resolve('/docs'))}>
 			← {m['docs.back']()}
 		</Button>
+	</div>
 
-		<div class="flex items-start justify-between gap-4">
-			{#if doc}
-				<h1 class="text-2xl font-semibold">{doc.title}</h1>
-			{:else}
-				<h1 class="text-2xl font-semibold">{m['docs.title']()}</h1>
-			{/if}
-			<label class="flex shrink-0 items-center gap-2 text-sm">
-				<span class="text-muted-foreground">{m['docs.language']()}</span>
-				<select
-					class="rounded-md border border-border bg-background px-2 py-1 text-sm"
+	<PageHeader title={doc ? doc.title : m['docs.title']()}>
+		{#snippet actions()}
+			<label class="flex items-center gap-2 text-sm">
+				{m['docs.language']()}
+				<Select
 					value={selectedLang}
-					onchange={(e) => {
-						selectedLang = e.currentTarget.value as Locale;
+					options={['en', 'fr']}
+					onchange={(e: Event) => {
+						selectedLang = (e.currentTarget as HTMLSelectElement).value as Locale;
 						updateURLLang(selectedLang);
 						void loadDoc(selectedLang);
 					}}
-				>
-					<option value="en">en</option>
-					<option value="fr">fr</option>
-				</select>
+					class="w-auto"
+				/>
 			</label>
-		</div>
-	</div>
+		{/snippet}
+	</PageHeader>
 
 	{#if loading}
 		<p role="status" aria-live="polite" class="text-muted-foreground">{m['docs.loading']()}</p>

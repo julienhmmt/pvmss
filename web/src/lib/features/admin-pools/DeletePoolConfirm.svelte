@@ -17,7 +17,7 @@
 </script>
 
 <Dialog bind:open labelledBy="delete-pool-title" {onClose}>
-	<h2 id="delete-pool-title" class="mb-3 text-lg font-semibold">{m['admin.pools.deleteTitle']()}</h2>
+	<h2 id="delete-pool-title" class="mb-4 text-lg font-semibold">{m['admin.pools.deleteTitle']()}</h2>
 	<p class="text-sm text-muted-foreground">
 		{m['admin.pools.deleteConfirm']({ poolName })}
 	</p>
