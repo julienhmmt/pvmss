@@ -8,17 +8,23 @@
 	import FeatureMultiClusterIcon from '$lib/shared/ui/icons/FeatureMultiClusterIcon.svelte';
 	import FeatureQuotasIcon from '$lib/shared/ui/icons/FeatureQuotasIcon.svelte';
 	import FeatureSelfServiceIcon from '$lib/shared/ui/icons/FeatureSelfServiceIcon.svelte';
+	import { getSessionContext } from '$lib/features/auth/session.svelte';
 
 	/**
-	 * HomeCapabilities — combined product feature + capability grid.
-	 * Renders for everyone (no auth state). The first 3 cards are the
+	 * HomeCapabilities — combined product feature + capability grid, the pitch
+	 * for someone deciding whether to use PVMSS. Anonymous-only, matching
+	 * HomeHowItWorks: an authenticated user already uses the product and has
+	 * their own VMs, quota, and running tasks to look at instead — the same
+	 * content stays reachable any time via /about. The first 3 cards are the
 	 * high-level feature highlights; the next 5 are the unique capability
 	 * cards; the 9th is the admin section preview. The duplicate
 	 * "Multi-cluster" card is shown once via the feature highlight.
 	 */
+	const session = getSessionContext();
 	const coreCapabilities = CAPABILITIES.filter((capability) => capability.id !== 'multiCluster');
 </script>
 
+{#if !session.principal}
 <section class="w-full max-w-4xl" aria-labelledby="home-capabilities-heading">
 	<h2 id="home-capabilities-heading" class="text-center text-xl font-semibold tracking-tight">
 		{m['capabilities.heading']()}
@@ -74,3 +80,4 @@
 		</a>
 	</div>
 </section>
+{/if}
