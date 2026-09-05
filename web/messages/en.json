@@ -1350,6 +1350,7 @@
   "home.dashboard.empty": "No VMs yet.",
   "home.dashboard.emptyAction": "Create your first VM",
   "home.dashboard.heading": "Your virtual machines",
+  "home.dashboard.quotaHeading": "Your quota",
   "home.dashboard.loadError": "Could not load VMs",
   "home.dashboard.refresh": "Refresh",
   "home.dashboard.statusPaused": "Paused",
