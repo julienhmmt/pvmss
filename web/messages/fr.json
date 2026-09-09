@@ -1452,5 +1452,12 @@
   "vm.activity.actor": "Acteur",
   "vm.activity.action": "Action",
   "vm.activity.time": "Heure",
-  "vm.activity.pagetitle": "Page {page} sur {total}"
+  "vm.activity.pagetitle": "Page {page} sur {total}",
+  "machine.status.running": "En cours",
+  "machine.status.stopped": "Arrêtée",
+  "machine.status.provisioning": "Provisionnement",
+  "machine.status.starting": "Démarrage",
+  "machine.status.stopping": "Arrêt en cours",
+  "machine.status.failed": "Échec de création",
+  "machine.status.partial": "Partiellement prête"
 }

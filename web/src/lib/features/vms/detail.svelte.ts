@@ -113,6 +113,9 @@ export class VmDetailStore {
 
 	/** True while a power action is in flight; the UI shows an optimistic status. */
 	actionInFlight = $state.raw(false);
+	/** The kind of the in-flight power action, or null. Feeds `displayStatus`
+	 *  (issue 09) so the detail header can show `starting` / `stopping`. */
+	inFlightActionKind = $state.raw<VmAction | null>(null);
 	actionError = $state.raw<string | null>(null);
 
 	/** True while a delete is in flight; the UI disables the button. */
@@ -355,6 +358,7 @@ export class VmDetailStore {
 		if (this.actionInFlight || this.entity === null) return;
 		this.actionError = null;
 		this.actionInFlight = true;
+		this.inFlightActionKind = kind;
 
 		const previousStatus = this.entity.status;
 		const target = optimisticStatus(kind);
@@ -385,6 +389,7 @@ export class VmDetailStore {
 			this.actionError = errorMessage(err, () => m['vms.detail.errorAction']());
 		} finally {
 			this.actionInFlight = false;
+			this.inFlightActionKind = null;
 		}
 	}
 

@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
 	import { getVmCreateContext, type SimpleSource } from './create.svelte';
 	import { getDraftContext } from './draft.svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
+	import { getTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
+	import { handleAccepted } from './post-submit';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -26,6 +26,7 @@
 	const form = getVmCreateContext();
 	const tray = getTaskTrayContext();
 	const toast = getToastContext();
+	const outcomeLedger = getTaskOutcomeLedgerContext();
 	const draft = getDraftContext();
 
 	const hasTemplates = $derived((form.catalog?.templates ?? []).length > 0);
@@ -185,18 +186,7 @@
 			if (form.submitError) toast.error(m['toast.vmCreateFailed']({ error: form.submitError }));
 			return;
 		}
-		draft.clear();
-		tray.track({ upid: accepted.upid, kind: 'vm_create', vmid: accepted.vmid, name: accepted.name, cluster: accepted.cluster });
-		if (accepted.cloudInitPushError) {
-			// The VM was created (task queued) but cloud-init could not be
-			// applied — surface it, sticky (duration 0), instead of the
-			// success toast: cloudInitPushError used to be dead data on this
-			// type, silently hiding the failure from the user.
-			toast.error(m['toast.vmCreateCloudInitWarning']({ error: accepted.cloudInitPushError }), 0);
-		} else {
-			toast.info(m['toast.vmCreateQueued']());
-		}
-		await goto(resolve('/vms'));
+		await handleAccepted(accepted, { tray, toast, draft, outcomeLedger });
 	}
 </script>
 
