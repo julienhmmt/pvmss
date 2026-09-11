@@ -1,144 +1,186 @@
-# Guide de l'administrateur
+# Guide administrateur
 
-Bienvenue dans le guide de l'administrateur PVMSS. PVMSS (Proxmox Virtual
-Machine Self-Service) est un portail en libre-service permettant à vos
+Bienvenue dans le guide administrateur de PVMSS. PVMSS (Proxmox Virtual
+Machine Self-Service) est un portail en libre-service qui permet à vos
 utilisateurs de créer, exploiter et dépanner des machines virtuelles Proxmox
 VE sans exposer l'interface Proxmox.
 
-L'administrateur dispose d'un accès complet à toutes les fonctionnalités de
-l'application. Il n'y a pas de rôle auditeur ou observateur distinct : se
-connecter avec un compte administrateur déverrouille à la fois l'interface
-utilisateur standard et tout ce qui se trouve sous `/admin`.
+L'administrateur a accès à toutes les fonctionnalités. Il n'existe pas de rôle
+auditeur ou observateur distinct : se connecter avec un compte administrateur
+débloque à la fois la surface utilisateur standard et tout ce qui se trouve
+sous `/admin`.
 
 ## Premiers pas
 
-1. Ouvrez le panneau d'administration sur `/admin` (un compte administrateur est requis).
-2. Consultez **Informations sur l'application** (`/admin/appinfo`) pour confirmer que l'instance est connectée au bon environnement Proxmox.
-3. Approuvez les ressources que les utilisateurs peuvent utiliser : **Nœuds**, **Stockages**, **ISO**, **Ponts**, et **Modèles cloud-init**.
-4. Facultatif mais recommandé : créez des **Profils de VM** pour que les utilisateurs puissent choisir des configurations matérielles pré-approuvées, et définissez des **Tags** pour organiser les VMs.
-5. Définissez la **Politique** (quotas par utilisateur) et les plafonds de **Capacité des nœuds**.
-6. Créez autant de **Pools utilisateurs** que nécessaire depuis `/admin/pools`.
-7. Indiquez à vos utilisateurs que le portail est disponible pour qu'ils commencent à créer des VMs.
-8. Surveillez le **Journal d'audit** (`/admin/settings`) pour retracer chaque écriture de VM jusqu'à l'utilisateur responsable.
+1. Ouvrez le panneau d'administration sur `/admin` (compte administrateur requis).
+2. Vérifiez **Infos application** (`/admin/appinfo`) pour confirmer que l'instance est connectée au bon environnement Proxmox.
+3. Ajoutez ou vérifiez vos **Clusters** (`/admin/clusters`) et lancez le **Test** de connexion.
+4. Approuvez les ressources utilisables : **Nœuds**, **Stockages**, **ISO**, **Templates de VM**, **Images cloud** et **Bridges**.
+5. Optionnel mais recommandé : créez des **profils de VM** pour proposer des gabarits matériels pré-approuvés, définissez des **Tags** et rédigez des **templates cloud-init**.
+6. Réglez la **Politique** (gabarit et quota par cluster) et la **Capacité des nœuds**.
+7. Activez éventuellement les **documents cloud-init** (voir plus bas).
+8. Créez autant de **pools utilisateurs** que nécessaire depuis `/admin/pools`.
+9. Informez vos utilisateurs que le portail est disponible.
+10. Surveillez le **journal d'audit** (`/admin/settings`) pour retracer chaque écriture jusqu'à l'utilisateur qui l'a faite.
 
-## Informations sur l'application (App Info)
+## Tableau de bord
 
-`/admin/appinfo` offre une vue d'ensemble en lecture seule de l'instance en cours :
+`/admin` résume le cluster : état et charge des nœuds, nombre de VM par état,
+version en cours et heure du dernier rafraîchissement d'inventaire.
+
+## Informations de l'application (App Info)
+
+`/admin/appinfo` est une vue en lecture seule de l'instance :
 
 - **Informations de build** : version de l'application, version de Go, système d'exploitation et architecture.
-- **Environnement** : indique si PVMSS fonctionne contre un vrai cluster Proxmox (`PVMSS_CLUSTER_SOURCE=proxmox`) ou le cluster d'essai intégré (`PVMSS_CLUSTER_SOURCE=fake`).
-- **Statut du cluster Proxmox** : nom du cluster et nombre de nœuds en mode cluster, ou mode autonome pour un nœud unique.
-- **Variables d'environnement (sous-ensemble sûr)** : configuration non sensible telle que `PROXMOX_URL`, `PVMSS_PORT`, `PVMSS_DB_PATH`.
+- **Environnement** : PVMSS tourne-t-il sur un vrai cluster Proxmox (`PVMSS_CLUSTER_SOURCE=proxmox`) ou sur le cluster de démonstration intégré (`PVMSS_CLUSTER_SOURCE=fake`).
+- **État du cluster Proxmox** : nom du cluster et nombre de nœuds, ou mode autonome pour un nœud seul.
+- **Variables d'environnement (sous-ensemble sûr)** : configuration non sensible comme `PROXMOX_URL`, `PVMSS_PORT`, `PVMSS_DB_PATH`.
 
-Utilisez cette page pour confirmer la connectivité après un déploiement ou une modification de configuration. Si l'instance ne peut pas joindre Proxmox, vérifiez les journaux du serveur et les variables d'environnement ci-dessous.
+Utilisez cette page pour confirmer la connectivité après un déploiement ou un changement de configuration. Si l'instance ne joint pas Proxmox, consultez les logs du serveur et les variables ci-dessous.
 
 ## Configuration (variables d'environnement)
 
-PVMSS se configure entièrement via des variables d'environnement, validées au démarrage. Le serveur refuse de démarrer si une valeur requise est manquante ou mal formée.
+PVMSS se configure entièrement par variables d'environnement, validées au démarrage. Le serveur refuse de démarrer si une valeur requise manque ou est mal formée.
 
 Requises :
 
-- `PVMSS_PORT` — port TCP sur lequel le serveur écoute (l'image officielle utilise `50000`).
-- `PVMSS_DB_PATH` — chemin vers le fichier de base de données SQLite.
-- `SESSION_SECRET` — 32+ octets utilisés pour chiffrer les sessions utilisateur.
+- `PVMSS_PORT` — port TCP d'écoute (l'image officielle utilise `50000`).
+- `PVMSS_DB_PATH` — chemin du fichier SQLite.
+- `SESSION_SECRET` — 32 octets minimum, chiffre les sessions.
 - `LOG_LEVEL` — `debug`, `info`, `warn` ou `error` (minuscules uniquement).
 - `LOG_FORMAT` — `json` ou `console`.
 - `LOG_OUTPUT` — `stdout`, `stderr` ou un chemin de fichier.
-- `PVMSS_CLUSTER_SOURCE` — `proxmox` ou `fake`. Volontairement sans défaut : `fake` embarque des identifiants de démonstration et ne doit jamais être sélectionné par accident.
+- `PVMSS_CLUSTER_SOURCE` — `proxmox` ou `fake`. Pas de valeur par défaut, volontairement : `fake` embarque des identifiants de démonstration et ne doit jamais être choisi par accident.
 
 Requises quand `PVMSS_CLUSTER_SOURCE=proxmox` :
 
 - `PROXMOX_URL` — par exemple `https://hote:8006/api2/json`.
-- `PROXMOX_API_TOKEN_NAME` — l'identifiant du jeton API Proxmox (`user@pve!token`).
-- `PROXMOX_API_TOKEN_VALUE` — le secret associé au jeton.
+- `PROXMOX_API_TOKEN_NAME` — identifiant du token d'API Proxmox (`user@pve!token`).
+- `PROXMOX_API_TOKEN_VALUE` — le secret correspondant.
+
+Ces trois variables décrivent le premier cluster ; les clusters supplémentaires s'ajoutent depuis `/admin/clusters`.
 
 Optionnelles :
 
-- `PVMSS_HOST` — adresse de liaison (l'image définit `0.0.0.0`).
-- `PVMSS_WEB_DIR` — emplacement de la SPA compilée (par défaut un chemin relatif à l'exécutable).
-- `ADMIN_PASSWORD_HASH` — si défini, doit être un hash bcrypt (`$2…`) ; permet d'épingler le mot de passe administrateur.
-- `PVMSS_COOKIE_SECURE` — `true` par défaut ; passez à `false` uniquement en HTTP pour les essais locaux.
-- `PVMSS_INVENTORY_REFRESH_INTERVAL` — intervalle d'actualisation de l'inventaire en arrière-plan (défaut `30s`).
-- `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` — délai minimal entre deux actualisations manuelles (défaut `5s`).
-- `PVMSS_INVENTORY_REFRESH_TIMEOUT` — délai par actualisation (défaut `15s`).
-- `PVMSS_MAX_LIST_PAGE_SIZE` — taille maximale des pages de liste (défaut `100`).
+- `PVMSS_HOST` — adresse d'écoute (l'image met `0.0.0.0`).
+- `PVMSS_WEB_DIR` — emplacement de la SPA compilée (par défaut relatif à l'exécutable).
+- `ADMIN_PASSWORD_HASH` — si défini, doit être un hash bcrypt (`$2…`) ; active la connexion administrateur locale.
+- `PVMSS_COOKIE_SECURE` — `true` par défaut ; `false` uniquement derrière du HTTP en clair pour un essai local.
+- `PVMSS_TRUSTED_PROXY_HOPS` — nombre de reverse proxies devant PVMSS, pour déduire l'IP client (limitation de débit, audit) — défaut `1`.
+- `PVMSS_INVENTORY_REFRESH_INTERVAL` — période de rafraîchissement d'inventaire (défaut `30s`).
+- `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` — délai minimal entre deux rafraîchissements manuels (défaut `5s`).
+- `PVMSS_INVENTORY_REFRESH_TIMEOUT` — délai maximal d'un rafraîchissement (défaut `15s`).
+- `PVMSS_MAX_LIST_PAGE_SIZE` — taille de page maximale des listes (défaut `100`).
 
-Pour les instructions de déploiement complètes (Docker, Kubernetes, Helm), consultez le README du projet.
-
-## Nœuds
-
-`/admin/nodes` liste chaque hôte Proxmox VE avec la consommation CPU et mémoire en direct, ainsi que l'état en ligne/hors ligne. Un worker en arrière-plan actualise les métriques des nœuds selon l'intervalle configuré par `PVMSS_INVENTORY_REFRESH_INTERVAL` ; les pages d'administration lisent ce cache local, la navigation reste donc instantanée même sur de gros clusters. Chaque carte de nœud expose aussi un bouton d'actualisation dédié et l'horodatage de la dernière mise à jour. Lorsque Proxmox signale un nœud hors ligne, PVMSS continue d'afficher les dernières valeurs connues tout en marquant clairement le nœud comme hors ligne.
+Pour les instructions de déploiement complètes (Docker, Kubernetes, Helm), voir le README du projet.
 
 ## Clusters (multi-cluster)
 
-PVMSS prend en charge la connexion simultanée à plusieurs environnements Proxmox. Chaque connexion est un **cluster** avec sa propre URL, son propre jeton API et éventuellement un fournisseur OIDC.
+PVMSS peut se connecter à plusieurs environnements Proxmox simultanément. Chaque connexion est un **cluster** avec son URL, son token d'API et ses options.
 
-- Ouvrez **Admin > Clusters** (`/admin/clusters`) pour ajouter, éditer, tester et supprimer des connexions de cluster.
-- Un cluster est identifié par un nom ; les VMs sont toujours adressées par leur `cluster` et leur `VMID`, donc deux clusters peuvent réutiliser les mêmes VMID sans conflit.
-- Utilisez l'action **Tester** pour vérifier la connectivité et les identifiants avant d'exposer le cluster aux utilisateurs.
-- Lorsque le Proxmox d'un cluster prend en charge OIDC, vous pouvez **activer OIDC** sur ce cluster afin que ses utilisateurs puissent se connecter via le fournisseur d'identité du cluster depuis l'écran de connexion.
-- Les nœuds, stockages, ISO, ponts et tags approuvés sont gérés par cluster ; les surfaces du catalogue vous permettent de limiter ce que les utilisateurs voient sur chaque cluster.
+- Ouvrez **Admin > Clusters** (`/admin/clusters`) pour ajouter, modifier, tester et retirer des connexions.
+- Un cluster est identifié par un nom ; les VM sont toujours adressées par `cluster` + `VMID`, deux clusters peuvent donc réutiliser les mêmes VMID sans conflit.
+- Le **Test** vérifie la connectivité et les identifiants avant d'exposer le cluster ; il rapporte la version de Proxmox et le nombre de nœuds et de VM.
+- La **vérification TLS** peut être désactivée par cluster pour un labo auto-signé ; gardez-la active en production.
+- L'interrupteur **OIDC** est réservé à une future intégration SSO : l'activer affiche un bouton sur l'écran de connexion mais la connexion n'est pas encore implémentée.
+- **Répertoire de snippets** et **Stockage de snippets** activent les documents cloud-init pour ce cluster (voir la section dédiée). Le badge du cluster affiche « cloud-init : activé » une fois les deux renseignés.
+- Nœuds, stockages, ISO, images, templates, bridges, templates cloud-init et politique sont gérés par cluster.
 
-La page **Informations sur l'application** indique le(s) cluster(s) connecté(s), le nom et le nombre de nœuds, ce qui permet de confirmer la topologie attendue.
+## Nœuds
+
+`/admin/nodes` liste chaque hôte Proxmox VE par cluster avec la consommation CPU et mémoire en direct, le nombre de VM et l'état en ligne / hors ligne. Recherchez, filtrez par état ou activation, triez la table. Basculez un nœud pour l'approuver ou le masquer à la création de VM ; désactiver un nœud qui héberge des VM demande confirmation et ne touche jamais ces VM. Un travail de fond rafraîchit les métriques selon `PVMSS_INVENTORY_REFRESH_INTERVAL` ; les pages admin lisent ce cache, la navigation reste instantanée même sur de gros clusters.
 
 ## Catalogue : ressources exposées aux utilisateurs
 
-La zone **Catalogue** de la navigation administrateur contrôle ce que la création de VM peut référencer. Les ressources découvertes apparaissent automatiquement ici ; basculez l'interrupteur pour contrôler ce que les utilisateurs voient.
+La zone **Catalogue** contrôle ce que la création de VM peut référencer. Les ressources découvertes apparaissent automatiquement ; l'interrupteur « activé » contrôle ce que voient les utilisateurs. Chaque page du catalogue a un sélecteur de cluster, une recherche, des filtres et des colonnes triables.
 
-- **Stockages** (`/admin/storages`) — approuvez les backends de stockage pouvant héberger les disques de VM, regroupés par nœud en mode cluster.
-- **ISO** (`/admin/isos`) — approuvez les images ISO que les utilisateurs peuvent démarrer.
-- **Ponts** (`/admin/bridges`) — approuvez les ponts réseau (VMBR) disponibles pour les cartes réseau des VMs. Les ponts Open vSwitch ne sont pas listés.
-- **Modèles cloud-init** (`/admin/cloudinit-templates`) — créez, activez, désactivez et éditez des modèles `#cloud-config` gérés par les administrateurs, que les utilisateurs peuvent choisir à la création.
-- **Profils** (`/admin/profiles`) — définissez des profils matériels pré-approuvés (CPU, mémoire, disque, bus) pour que les utilisateurs choisissent une configuration connue au lieu de saisir des valeurs libres.
-- **Tags** (`/admin/tags`) — gérez les libellés que les utilisateurs peuvent attacher aux VMs pour le filtrage et la recherche. Un tag est immuable une fois créé ; le tag `pvmss` est réservé et ne peut pas être supprimé.
+- **Stockages** (`/admin/storages`) — approuver les stockages pouvant héberger des disques de VM, regroupés par nœud, avec barres d'usage.
+- **ISO** (`/admin/isos`) — approuver les images ISO de démarrage.
+- **Templates de VM** (`/admin/templates`) — approuver les templates Proxmox clonables, avec surcharges optionnelles par template. Un clone reste sur le nœud du template ; l'assistant prévient quand le stockage cible impose une copie complète.
+- **Images cloud** (`/admin/images`, URL directe) — approuver les images cloud découvertes dans le contenu `import/` d'un stockage. PVMSS ne télécharge jamais d'image depuis Internet : déposez-les vous-même sur le stockage.
+- **Bridges** (`/admin/bridges`) — approuver les bridges réseau (VMBR) pour les cartes réseau. Les bridges Open vSwitch ne sont pas listés.
+- **Templates cloud-init** (`/admin/cloudinit-templates`) — créer, activer, désactiver et modifier des documents `#cloud-config` que les utilisateurs peuvent choisir à la création.
+- **Profils** (`/admin/profiles`) — définir des profils matériels pré-approuvés (sockets, cœurs, mémoire, disque, bus) avec surcharges nœud/stockage optionnelles, une icône et une couleur.
+- **Tags** (`/admin/tags`) — gérer les étiquettes attachables aux VM, chacune avec une couleur. Un tag est immuable une fois créé (seule sa couleur change) ; le tag `pvmss` est réservé et ne peut pas être supprimé.
+
+### Approbations obsolètes
+
+Les approbations sont réconciliées avec la découverte en direct. Quand une ressource (nœud, stockage, ISO, image, template, bridge) disparaît de Proxmox, sa ligne est signalée comme manquante et propose une action **Retirer**, pour que le catalogue ne référence jamais quelque chose qui n'existe plus.
 
 ## Considérations réseau
 
-Les utilisateurs finaux peuvent spécifier par carte réseau, dans les pages Créer une VM et Modifier les ressources :
+À la création, les utilisateurs choisissent un bridge et un modèle de carte par NIC ; le pare-feu Proxmox par VM est toujours activé. Après création, ils peuvent modifier chaque NIC dans l'onglet Réseau de la VM :
 
-- **Vitesse réseau** (Proxmox `rate`, en Mo/s) : bornée entre 1 et 10240 Mo/s. Laisser vide donne une vitesse illimitée.
-- **Tag VLAN** (1-4096) : ajouté à l'interface sous la forme `,tag=X`. Assurez-vous que vos commutateurs physiques et vos ponts Proxmox sont configurés pour les ID VLAN autorisés.
-- **MTU** (576-9000 octets) : laisser vide utilise la valeur par défaut Proxmox de 1500. N'utilisez des MTU personnalisés que sur des réseaux soigneusement contrôlés.
+- **Débit** (`rate` Proxmox, en Mbit/s) : vide = illimité.
+- **Tag VLAN** (1-4094) : ajouté à l'interface en `,tag=X`. Assurez-vous que vos commutateurs physiques et bridges Proxmox acceptent les VLAN autorisés.
 
-En tant qu'administrateur, documentez les ID VLAN que vos utilisateurs doivent utiliser et surveillez les journaux de création pour les problèmes liés au VLAN.
+Le **tag VLAN d'isolation** de la politique applique un VLAN à chaque NIC créée via PVMSS sur ce cluster ; laissez 0 pour désactiver.
 
 ## Pools utilisateurs
 
-`/admin/pools` est l'endroit où vous créez les utilisateurs en libre-service. Chaque pool provisionne :
+`/admin/pools` crée les utilisateurs self-service. Chaque pool provisionne :
 
 - un utilisateur Proxmox dédié,
-- un pool Proxmox dédié nommé d'après l'utilisateur,
-- et une ACL liant l'utilisateur au rôle partagé `PVMSSUser` sur ce pool.
+- un pool Proxmox dédié portant le nom de l'utilisateur,
+- une ACL liant l'utilisateur au rôle partagé `PVMSSUser` sur ce pool.
 
-PVMSS impose un motif de nom de pool (1-32 caractères alphanumériques minuscules avec tirets internes) et une longueur minimale de mot de passe de 8 caractères. Les utilisateurs ne voient que les VMs de leur propre pool.
+PVMSS impose un motif de nom (1 à 32 caractères alphanumériques minuscules avec tirets internes) et un mot de passe de 8 caractères minimum. Les utilisateurs ne voient que les VM de leur propre pool. Supprimer un pool supprime aussi l'utilisateur et l'ACL Proxmox ; les pools non créés par PVMSS sont refusés.
 
 ## Politique (limites)
 
-`/admin/policy` définit les quotas par utilisateur : nombre maximal de VMs, CPU, mémoire et disque. `/admin/policy/nodes` plafonne la part des ressources d'un nœud qu'une seule VM peut consommer. Les deux sont appliqués côté serveur avant tout appel Proxmox, donc les requêtes au-dessus du quota ou de la capacité du nœud sont rejetées tôt. Les limites de snapshots (nombre maximal par VM) sont aussi appliquées via la politique.
+`/admin/policy` est par cluster et comporte deux parties :
+
+- **Gabarit** — le plafond d'une VM : sockets, cœurs, mémoire, disque par VM, cartes réseau, snapshots, autorisation du YAML cloud-init libre sur les VM, et tag VLAN d'isolation.
+- **Quota** — nombre maximal de VM par utilisateur.
+
+`/admin/policy/nodes` plafonne ce que PVMSS peut allouer au total sur un nœud (VM, vCPU, RAM, disque) et montre l'usage courant face à la capacité physique. Tout est appliqué côté serveur avant tout appel à Proxmox : une demande au-delà d'une limite est refusée tôt avec un message clair.
+
+## Activer les documents cloud-init
+
+L'API REST de Proxmox ne sait pas écrire de fichiers `snippets` ; PVMSS les écrit donc lui-même dans un répertoire que vous montez dans son conteneur. Une fois activé, les utilisateurs peuvent attacher un template admin ou l'un de leurs fichiers (page `/cloud-init`, 20 par utilisateur) à une nouvelle VM ; PVMSS écrit une copie propre à la VM `pvmss-<vmid>.yml`, l'attache en vendor data et l'enregistre. Modifier la source ensuite ne touche jamais les VM existantes.
+
+1. Dans Proxmox, choisissez un stockage **partagé par tous les nœuds** (NFS/CIFS). Datacenter › Storage › Edit → Content : ajoutez **Snippets**.
+2. Montez `<chemin du stockage>/snippets` dans le conteneur PVMSS. Compose : `- /mnt/pve/shared/snippets:/snippets`. Helm : `persistence.snippets.enabled=true` avec `existingClaim` ou `nfs.server` + `nfs.path`. Kubernetes brut : le volume `snippets` commenté dans `pvmss-deployment.yaml`.
+3. **Admin › Clusters › Modifier** : *Répertoire de snippets* = le chemin dans le conteneur (`/snippets`), *Stockage de snippets* = l'identifiant du stockage Proxmox. Le badge passe à « cloud-init : activé ».
+4. Vérifiez : créez un template cloud-init, créez une VM avec, puis sur un nœud lancez `qm config <vmid> | grep cicustom` et contrôlez le fichier dans `snippets/`.
+5. Un stockage de type répertoire local à un nœud ne fonctionne que si toutes les VM sont placées sur ce nœud — déconseillé.
+6. Activez **Autoriser le YAML cloud-init libre** dans la politique si les utilisateurs peuvent modifier le document de leurs VM depuis l'onglet Cloud-init.
+
+Sans cible d'écriture, l'assistant masque le sélecteur et une création portant un document est refusée avec `cloudinit_write_unavailable`, avant qu'un VMID ne soit consommé.
+
+Les VM créées depuis une image cloud reçoivent en plus un snippet de base fixe, `pvmss-baseline.yml`, si vous en déposez un dans le même répertoire `snippets/` (par exemple pour installer `qemu-guest-agent`) ; son absence est silencieuse.
+
+Supprimer une VM via PVMSS retire aussi son `pvmss-<vmid>.yml` (au mieux — un échec de nettoyage est journalisé et ne bloque jamais la suppression). Les VM supprimées directement dans Proxmox laissent leur fichier ; listez les orphelins sur un nœud avec `ls /mnt/pve/<stockage>/snippets/pvmss-*.yml` à comparer avec `qm list`.
 
 ## Documentation (ce CMS)
 
-Cette page est l'une des plusieurs gérées sous **Documentation** (`/admin/docs`). Les administrateurs peuvent créer, éditer, activer, désactiver et supprimer des pages Markdown ici. Les pages intégrées sont marquées **système** et ne peuvent pas être supprimées, mais leur contenu peut être édité. Chaque page a un public `user` (public) ou `admin` (réservé aux administrateurs) ; les pages réservées aux administrateurs sont masquées aux non-administrateurs dans la liste publique des docs.
+Cette page fait partie de celles gérées sous **Documentation** (`/admin/docs`). Les administrateurs peuvent créer, modifier, activer/désactiver et supprimer des pages Markdown en anglais et en français. Les pages intégrées sont marquées **système** et ne peuvent pas être supprimées, mais leur contenu est modifiable. Chaque page a une audience `user` (publique) ou `admin` (administrateurs) ; les pages admin sont masquées aux non-administrateurs et refusées en accès direct.
+
+Les pages intégrées sont insérées une seule fois, si elles manquent, et jamais écrasées au redémarrage : vos modifications survivent aux mises à jour. Pour récupérer un texte intégré plus récent, supprimez la page et redémarrez, ou collez le nouveau contenu depuis la release.
 
 ## Paramètres, audit et maintenance
 
-`/admin/settings` expose des contrôles opérationnels :
+`/admin/settings` expose les commandes d'exploitation :
 
-- **Journal d'audit** — chaque écriture de VM (création, démarrage, arrêt, édition, suppression, changement cloud-init) est enregistrée avec l'utilisateur responsable, ce qui permet de retracer l'activité.
-- **Export / import de base de données** — sauvegardez ou restaurez la base SQLite utilisée par PVMSS pour toute sa configuration et son historique d'audit.
+- **Journal d'audit** — chaque écriture (création de VM, action d'alimentation, modification, suppression, changement cloud-init, changements de catalogue et de politique, connexions) est enregistrée avec l'utilisateur, l'IP, la sévérité et la cible. Filtrez et paginez ; chaque VM affiche aussi ses propres entrées dans son onglet Activité.
+- **Rétention** — nombre de jours de conservation des lignes d'audit, avec aperçu du nombre de lignes qu'une purge supprimerait avant de l'appliquer.
+- **Export / import de la base** — sauvegardez la base SQLite ou restaurez-en une. L'import est en deux temps : l'envoi renvoie un aperçu table par table, rien n'est écrit avant confirmation.
 
 ## Recommandations de sécurité
 
-- Exposez PVMSS uniquement en HTTPS (généralement derrière un reverse proxy) et restreignez l'accès aux réseaux de confiance.
-- Utilisez des comptes Proxmox dédiés pour PVMSS ; évitez de partager le mot de passe administrateur intégré.
-- Gardez les permissions Proxmox simples : un jeton API de service avec le rôle `PVMSS_Service` pour le backend, des comptes administrateurs humains avec le rôle `PVMSS_Admin`, et des utilisateurs finaux confinés à leur pool en rôle `PVMSSUser`. Voir `/docs/proxmox-permissions` pour les commandes `pveum` exactes.
-- N'attribuez pas de privilèges Proxmox étendus aux utilisateurs de libre-service habituels.
-- Passez régulièrement en revue les pools utilisateurs et désactivez ou supprimez les comptes inutilisés.
+- Servez PVMSS uniquement en HTTPS (derrière un reverse proxy) et restreignez l'accès aux réseaux de confiance. Réglez `PVMSS_TRUSTED_PROXY_HOPS` au nombre de proxies pour que la limitation de débit et l'audit voient la vraie IP client.
+- Utilisez des comptes Proxmox dédiés à PVMSS ; ne partagez pas le mot de passe administrateur intégré.
+- Gardez des permissions Proxmox simples : un token de service avec le rôle `PVMSS_Service` pour le backend, des administrateurs humains avec le rôle `PVMSS_Admin`, et des utilisateurs confinés à leur pool `PVMSSUser`. Voir `/docs/proxmox-permissions` pour les commandes `pveum` exactes.
+- N'accordez pas de privilèges Proxmox étendus aux utilisateurs self-service.
+- Passez régulièrement en revue les pools et désactivez ou supprimez les comptes inutilisés.
+- Les documents cloud-init sont stockés en clair ; rappelez aux utilisateurs de n'y mettre aucun secret.
 
-## Limites connues
+## Limitations connues
 
-- PVMSS cible les clusters (et nœuds autonomes) Proxmox VE 8.x/9.x.
-- Il n'y a pas d'intégration d'authentification externe (OIDC/SAML) câblée dans les comptes PVMSS au-delà de ce que l'écran de connexion peut proposer ; les comptes utilisateurs sont provisionnés via `/admin/pools` côté Proxmox.
-- PVMSS prend en charge les serveurs autonomes et les clusters, mais les opérations cluster avancées (migration à chaud, HA, orchestration des sauvegardes) se font directement dans Proxmox.
-- Les administrateurs ne peuvent pas créer de VMs depuis l'interface d'administration ; la création de VMs se fait via l'interface utilisateur en libre-service ou directement dans Proxmox.
-- Les sauvegardes et les conteneurs LXC sont gérés dans Proxmox, pas dans PVMSS.
+- PVMSS cible les clusters Proxmox VE 8.x/9.x (et les nœuds autonomes).
+- La connexion OIDC/SSO n'est pas encore implémentée ; les comptes sont provisionnés via `/admin/pools` côté Proxmox.
+- Les opérations avancées de cluster (migration à chaud, HA, orchestration des sauvegardes) se font directement dans Proxmox.
+- Les administrateurs créent des VM via la même interface self-service que les utilisateurs, ou directement dans Proxmox.
+- Sauvegardes et conteneurs LXC sont gérés dans Proxmox, pas dans PVMSS.
+- Le changement de mot de passe n'est disponible que par API pour l'instant (`POST /api/v1/auth/password`).

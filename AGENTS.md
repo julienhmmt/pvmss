@@ -39,6 +39,7 @@ building a user-facing feature:
 | File           | Answers                                                       |
 | -------------- | ------------------------------------------------------------- |
 | `PRODUCT.md`   | Who the users are, why the product exists, design principles  |
+| `docs/FEATURES.md` | Route-by-route inventory of every shipped feature and its status |
 | `DESIGN.md`    | Design tokens — colors, typography, spacing                   |
 | `WORKFLOWS.md` | What a user does, end to end, per workflow                    |
 
@@ -200,8 +201,16 @@ Packages under `server/internal/`:
 | `recovery/`  | Recovery runs and fixtures                                    |
 | `checklist/` | Operational checklist walkthroughs                            |
 | `auth/`      | Sessions, password hashing, admin auth                        |
-| `cloudinit/` | Cloud-init snippet generation                                 |
+| `cloudinit/` | Cloud-init document validation + slug helpers                 |
 | `config/`    | Env-based configuration, validation, slog logger, redaction   |
+
+Cloud-init documents are written by PVMSS itself into a bind-mounted storage
+`snippets/` directory configured per cluster (`clusters.snippet_dir` /
+`clusters.snippet_storage`, admin form in `/admin/clusters`); the Proxmox
+REST API cannot write snippets. Sources: `catalog_cloudinit_templates`
+(admin, per cluster) and `user_cloudinit_files` (owner-scoped, max 20);
+each VM gets its own `pvmss-<vmid>.yml` copy recorded in
+`vm_cloudinit_snippets`.
 
 Cloud-init documents are written by PVMSS itself into a bind-mounted storage
 `snippets/` directory configured per cluster

@@ -117,8 +117,8 @@ PVMSS utilise une base de données SQLite intégrée pour stocker toute la confi
 - Les nœuds, stockages, VMBR et dépôts ISO approuvés
 - Les limites de ressources VM (globales et par nœud)
 - Les tags et pools utilisateurs
-- Les templates cloud-init et configuration SFTP
-- Les profils VM
+- Les templates cloud-init, les fichiers cloud-init des utilisateurs et les copies par VM
+- Les profils VM, les connexions aux clusters, le journal d'audit
 
 Toute la configuration est gérée via la section **Admin** de l'interface web, qui fournit :
 
@@ -348,7 +348,6 @@ les documents cloud-init.
 - Pas encore d'audit de sécurité complet.
 - OIDC : l'interrupteur par cluster existe mais la connexion n'est pas implémentée (l'endpoint répond 501).
 - Le changement de mot de passe n'est disponible que par API (`POST /api/v1/auth/password`), pas encore de page.
-- Le document cloud-init n'est pas retiré du stockage de snippets à la suppression de sa VM.
 - Conteneurs LXC, sauvegardes, migration à chaud / HA, SDN et règles de pare-feu restent dans Proxmox.
 
 ### Prochaines évolutions majeures
