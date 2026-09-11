@@ -398,107 +398,186 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 // surfaces those orphans for manual cleanup, and enabled orphans are
 // auto-removed there).
 func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
-	discoveredNodes := make(map[string]bool, len(data.snap.Nodes))
-	for _, n := range data.snap.Nodes {
-		discoveredNodes[n.Name] = true
-	}
-
-	discoveredISOs := make(map[isoDiscoveryKey]bool, len(data.isos))
-	for _, i := range data.isos {
-		discoveredISOs[isoDiscoveryKey{Node: i.Node, Storage: i.Storage, File: i.File}] = true
-	}
-
-	discoveredImages := make(map[isoDiscoveryKey]bool, len(data.images))
-	for _, i := range data.images {
-		discoveredImages[isoDiscoveryKey{Node: i.Node, Storage: i.Storage, File: i.File}] = true
-	}
-
-	dto := catalogDTO{
+	return catalogDTO{
 		Cluster:            clusterName,
-		Nodes:              make([]string, 0, len(data.resources.Nodes)),
-		Storages:           make([]catalogStorageDTO, 0, len(data.resources.Storages)),
+		Nodes:              catalogNodeNames(data.resources.Nodes, data.snap),
+		Storages:           catalogStorageDTOs(data.resources.Storages, data.snap.Storages),
 		Bridges:            catalogBridgeDTOs(data.resources.Bridges, data.bridges),
-		ISOs:               make([]catalogISODTO, 0, len(data.resources.ISOs)),
-		Images:             make([]catalogImageDTO, 0, len(data.resources.Images)),
-		Profiles:           make([]catalogProfileDTO, 0, len(data.profiles)),
-		Templates:          make([]catalogTemplateDTO, 0, len(data.proxmoxTemplates)),
-		CloudInitTemplates: make([]catalogCloudInitTemplateDTO, 0, len(data.templates)),
-		Tags:               make([]catalogTagDTO, 0, len(data.tags)),
+		ISOs:               catalogFileDTOs(data.resources.ISOs, catalogISOKey, liveISOKeys(data.isos), catalogISOView),
+		Images:             catalogImageDTOs(data),
+		Profiles:           mapCatalogSlice(data.profiles, catalogProfileView),
+		Templates:          mapCatalogSlice(data.proxmoxTemplates, catalogTemplateView),
+		CloudInitTemplates: catalogCloudInitTemplateDTOs(data.templates),
+		Tags:               catalogTagDTOs(data.tags),
+	}
+}
+
+// mapCatalogSlice converts each item with viewOf — the catalog DTO mappers
+// below are all this same loop.
+func mapCatalogSlice[In, Out any](items []In, viewOf func(In) Out) []Out {
+	out := make([]Out, 0, len(items))
+	for _, item := range items {
+		out = append(out, viewOf(item))
 	}
 
-	for _, node := range data.resources.Nodes {
-		if !discoveredNodes[node.Name] {
+	return out
+}
+
+// catalogNodeNames keeps only approved nodes the cluster still reports.
+func catalogNodeNames(nodes []catalog.Node, snap cluster.Snapshot) []string {
+	discovered := make(map[string]bool, len(snap.Nodes))
+	for _, n := range snap.Nodes {
+		discovered[n.Name] = true
+	}
+
+	names := make([]string, 0, len(nodes))
+	for _, node := range nodes {
+		if !discovered[node.Name] {
 			continue
 		}
-		dto.Nodes = append(dto.Nodes, node.Name)
+
+		names = append(names, node.Name)
 	}
 
-	for _, tag := range data.tags {
+	return names
+}
+
+// catalogTagDTOs maps tags, dropping admin-protected ones.
+func catalogTagDTOs(tags []catalog.TagWithCount) []catalogTagDTO {
+	out := make([]catalogTagDTO, 0, len(tags))
+	for _, tag := range tags {
 		if tag.Protected {
 			continue
 		}
 
-		dto.Tags = append(dto.Tags, catalogTagDTO{Name: tag.Name, Color: tag.Color})
+		out = append(out, catalogTagDTO{Name: tag.Name, Color: tag.Color})
 	}
 
-	for _, storage := range data.resources.Storages {
-		if _, ok := vmCapableStorage(storage, data.snap.Storages); !ok {
+	return out
+}
+
+// catalogStorageDTOs keeps only approved storages that are still VM-capable
+// on the live cluster.
+func catalogStorageDTOs(storages []catalog.Storage, available []cluster.Storage) []catalogStorageDTO {
+	out := make([]catalogStorageDTO, 0, len(storages))
+	for _, storage := range storages {
+		if _, ok := vmCapableStorage(storage, available); !ok {
 			continue
 		}
 
-		dto.Storages = append(dto.Storages, catalogStorageDTO{Name: storage.Name, Node: storage.Node})
+		out = append(out, catalogStorageDTO{Name: storage.Name, Node: storage.Node})
 	}
 
-	for _, iso := range data.resources.ISOs {
-		if !discoveredISOs[isoDiscoveryKey{Node: iso.Node, Storage: iso.Storage, File: iso.File}] {
+	return out
+}
+
+// catalogFileDTOs maps approved file resources (ISOs, cloud images) to DTOs,
+// dropping any the cluster no longer reports (the live discovery key set).
+func catalogFileDTOs[R, DTO any](resources []R, keyOf func(R) isoDiscoveryKey, live map[isoDiscoveryKey]bool, viewOf func(R) DTO) []DTO {
+	out := make([]DTO, 0, len(resources))
+	for _, resource := range resources {
+		if !live[keyOf(resource)] {
 			continue
 		}
-		dto.ISOs = append(dto.ISOs, catalogISODTO{Storage: iso.Storage, Node: iso.Node, File: iso.File})
+
+		out = append(out, viewOf(resource))
 	}
 
-	if cloudImageFeatureEnabled {
-		for _, image := range data.resources.Images {
-			if !discoveredImages[isoDiscoveryKey{Node: image.Node, Storage: image.Storage, File: image.File}] {
-				continue
-			}
-			dto.Images = append(dto.Images, catalogImageDTO{Storage: image.Storage, Node: image.Node, File: image.File, SizeBytes: image.SizeBytes})
-		}
+	return out
+}
+
+// catalogISOKey is the discovery key of an approved ISO row.
+func catalogISOKey(iso catalog.ISO) isoDiscoveryKey {
+	return isoDiscoveryKey{Node: iso.Node, Storage: iso.Storage, File: iso.File}
+}
+
+// catalogImageKey is the discovery key of an approved cloud image row.
+func catalogImageKey(image catalog.Image) isoDiscoveryKey {
+	return isoDiscoveryKey{Node: image.Node, Storage: image.Storage, File: image.File}
+}
+
+// liveISOKeys builds the discovery lookup set for ISOs.
+func liveISOKeys(isos []cluster.ISOImage) map[isoDiscoveryKey]bool {
+	live := make(map[isoDiscoveryKey]bool, len(isos))
+	for _, iso := range isos {
+		live[isoDiscoveryKey{Node: iso.Node, Storage: iso.Storage, File: iso.File}] = true
 	}
 
-	for _, profile := range data.profiles {
-		dto.Profiles = append(dto.Profiles, catalogProfileDTO{
-			ID:       profile.ID,
-			Label:    profile.Label,
-			Sockets:  profile.Sockets,
-			CPUCores: profile.CPUCores,
-			MemoryMB: profile.MemoryMB,
-			DiskGB:   profile.DiskGB,
-			Bus:      profile.Bus,
-		})
+	return live
+}
+
+// liveImageKeys builds the discovery lookup set for cloud images.
+func liveImageKeys(images []catalog.Image) map[isoDiscoveryKey]bool {
+	live := make(map[isoDiscoveryKey]bool, len(images))
+	for _, image := range images {
+		live[catalogImageKey(image)] = true
 	}
 
-	// T18: catalog exposes only id+label per spec/contracts — never content.
-	if cloudImageFeatureEnabled {
-		for _, tmpl := range data.templates {
-			dto.CloudInitTemplates = append(dto.CloudInitTemplates, catalogCloudInitTemplateDTO{
-				ID: tmpl.ID, Label: tmpl.Label,
-			})
-		}
+	return live
+}
+
+// catalogISOView maps an approved ISO row to its catalog DTO.
+func catalogISOView(iso catalog.ISO) catalogISODTO {
+	return catalogISODTO{Storage: iso.Storage, Node: iso.Node, File: iso.File}
+}
+
+// catalogImageView maps an approved cloud image row to its catalog DTO.
+func catalogImageView(image catalog.Image) catalogImageDTO {
+	return catalogImageDTO{
+		Storage: image.Storage, Node: image.Node, File: image.File, SizeBytes: image.SizeBytes,
+	}
+}
+
+// catalogImageDTOs maps approved cloud images — gated on the cloud-image
+// feature flag (an empty non-nil slice when disabled).
+func catalogImageDTOs(data catalogData) []catalogImageDTO {
+	if !cloudImageFeatureEnabled {
+		return make([]catalogImageDTO, 0, len(data.resources.Images))
 	}
 
-	// US2/issue-02: approved Proxmox templates (clone source).
-	for _, tmpl := range data.proxmoxTemplates {
-		dto.Templates = append(dto.Templates, catalogTemplateDTO{
-			VMID:             tmpl.VMID,
-			Node:             tmpl.Node,
-			Name:             tmpl.Name,
-			CloudInitCapable: tmpl.CloudInitCapable,
-			DiskSizeGB:       tmpl.DiskSizeGB,
-			DiskStorage:      tmpl.DiskStorage,
-		})
+	return catalogFileDTOs(data.resources.Images, catalogImageKey, liveImageKeys(data.images), catalogImageView)
+}
+
+// catalogProfileView maps a profile row to its catalog DTO.
+func catalogProfileView(profile catalog.Profile) catalogProfileDTO {
+	return catalogProfileDTO{
+		ID:       profile.ID,
+		Label:    profile.Label,
+		Sockets:  profile.Sockets,
+		CPUCores: profile.CPUCores,
+		MemoryMB: profile.MemoryMB,
+		DiskGB:   profile.DiskGB,
+		Bus:      profile.Bus,
+	}
+}
+
+// catalogTemplateView maps an approved Proxmox template (clone source,
+// US2/issue-02) to its catalog DTO.
+func catalogTemplateView(tmpl catalog.Template) catalogTemplateDTO {
+	return catalogTemplateDTO{
+		VMID:             tmpl.VMID,
+		Node:             tmpl.Node,
+		Name:             tmpl.Name,
+		CloudInitCapable: tmpl.CloudInitCapable,
+		DiskSizeGB:       tmpl.DiskSizeGB,
+		DiskStorage:      tmpl.DiskStorage,
+	}
+}
+
+// catalogCloudInitTemplateDTOs maps cloud-init templates — T18: the catalog
+// exposes only id+label per spec/contracts, never content. Gated on the
+// cloud-image feature flag (empty non-nil slice when disabled).
+func catalogCloudInitTemplateDTOs(templates []catalog.CloudInitTemplate) []catalogCloudInitTemplateDTO {
+	out := make([]catalogCloudInitTemplateDTO, 0, len(templates))
+	if !cloudImageFeatureEnabled {
+		return out
 	}
 
-	return dto
+	for _, tmpl := range templates {
+		out = append(out, catalogCloudInitTemplateDTO{ID: tmpl.ID, Label: tmpl.Label})
+	}
+
+	return out
 }
 
 // ServeCatalog handles GET /api/v1/vm-create/catalog. The catalog is the same
@@ -734,6 +813,7 @@ func catalogBridgeDTOs(bridges []catalog.Bridge, live []cluster.Bridge) []catalo
 	type key struct{ name, node string }
 
 	commentByKey := make(map[key]string, len(live))
+
 	liveByKey := make(map[key]bool, len(live))
 	for _, bridge := range live {
 		commentByKey[key{bridge.Name, bridge.Node}] = bridge.Comment
@@ -748,6 +828,7 @@ func catalogBridgeDTOs(bridges []catalog.Bridge, live []cluster.Bridge) []catalo
 		if _, exists := seen[k]; exists {
 			continue
 		}
+
 		if !liveByKey[k] {
 			continue
 		}

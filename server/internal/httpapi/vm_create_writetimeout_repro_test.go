@@ -34,6 +34,7 @@ func TestVMCreate_SlowClone_StillReachesClientDespiteShortServerWriteTimeout(t *
 	// mechanism (a synchronous wait that would outlive a short deadline).
 	originalPoll := vm.CreateTaskPoll
 	vm.CreateTaskPoll = 100 * time.Millisecond
+
 	t.Cleanup(func() { vm.CreateTaskPoll = originalPoll })
 
 	ts := httptest.NewUnstartedServer(handler)
@@ -42,6 +43,7 @@ func TestVMCreate_SlowClone_StillReachesClientDespiteShortServerWriteTimeout(t *
 	// than a real template clone. Without ServeHTTP's own deadline
 	// extension, this would kill the response before it's written.
 	ts.Config.WriteTimeout = 1 * time.Millisecond
+
 	ts.Start()
 	defer ts.Close()
 
@@ -50,15 +52,17 @@ func TestVMCreate_SlowClone_StillReachesClientDespiteShortServerWriteTimeout(t *
 	if err != nil {
 		t.Fatalf("build request: %v", err)
 	}
+
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(cookie)
 
 	client := &http.Client{Timeout: 5 * time.Second}
+
 	resp, doErr := client.Do(req)
 	if doErr != nil {
 		t.Fatalf("client.Do: %v", doErr)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusAccepted {
 		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusAccepted)
@@ -72,6 +76,7 @@ func TestVMCreate_SlowClone_StillReachesClientDespiteShortServerWriteTimeout(t *
 	if decodeErr := json.NewDecoder(resp.Body).Decode(&result); decodeErr != nil {
 		t.Fatalf("decode 202 body: %v", decodeErr)
 	}
+
 	if result.VMID < 1 || result.UPID == "" || result.Name != "slow-clone-repro" {
 		t.Fatalf("unexpected result: %+v", result)
 	}

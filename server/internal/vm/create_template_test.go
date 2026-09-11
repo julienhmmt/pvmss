@@ -226,7 +226,7 @@ func TestCreate_TemplateClone_CloudInitTemplateForcesFullClone(t *testing.T) {
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_TemplateClone_NonCloudInitTemplateAllowsLinkedClone(t *testing.T) {
 	fixture := newCreateFixture(t)
-	req := templateRequest(9001) // VMID 9001 is not cloud-init capable, disk on "local"
+	req := templateRequest(9001) // VMID 9001 is not cloud-init capable, disk on testStorageLocal
 
 	result, err := fixture.create(t, aliceIdentity(), req)
 	if err != nil {
@@ -414,7 +414,7 @@ func TestCreate_TemplateClone_CloudInitAppliedAfterTask(t *testing.T) {
 	attached := false
 
 	for _, c := range cluster.FakeCallsFor(result.VMID) {
-		if c.Action == "attach_cloudinit_snippet" && c.Filename == "pvmss-template-"+tmplID+".yml" {
+		if c.Action == testActionAttachCloudInitSnippet && c.Filename == "pvmss-template-"+tmplID+".yml" {
 			attached = true
 		}
 	}

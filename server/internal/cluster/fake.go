@@ -477,7 +477,16 @@ func (fake Fake) SetCloudInitConfig(ctx context.Context, node string, vmid int, 
 	return nil
 }
 
-// PushCloudInitSnippet implements Writer and records the server-owned target and content.
+// SnippetWriteAvailable implements Writer. The fake always has a write
+// target so the dev stack and tests see cloud-init documents enabled.
+func (fake Fake) SnippetWriteAvailable() bool {
+	return true
+}
+
+// PushCloudInitSnippet implements Writer and records the server-owned target
+// and content. On success it also marks the file present so HasSnippet
+// answers true for the same (node, storage, filename) triple — matching the
+// real client's write-then-verify contract.
 func (fake Fake) PushCloudInitSnippet(_ context.Context, node, storage, filename string, vmid int, content string) error {
 	state := fake.stateOrDefault()
 	state.pushMu.RLock()
@@ -489,6 +498,10 @@ func (fake Fake) PushCloudInitSnippet(_ context.Context, node, storage, filename
 	if err != nil {
 		return err
 	}
+
+	state.snippetMu.Lock()
+	state.snippetPresence[fakeSnippetKey{node: node, storage: storage, filename: filename}] = true
+	state.snippetMu.Unlock()
 
 	return nil
 }

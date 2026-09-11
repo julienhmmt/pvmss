@@ -194,7 +194,7 @@ func TestCreate_ValidationPipeline(t *testing.T) {
 			name:  "iso not approved",
 			actor: aliceIdentity(),
 			mutate: func(r *vm.CreateRequest) {
-				r.ISO = &vm.ISORequest{Storage: "local", File: "windows-11.iso"}
+				r.ISO = &vm.ISORequest{Storage: testStorageLocal, File: "windows-11.iso"}
 			},
 			wantErr: vm.ErrNotApproved,
 		},
@@ -498,7 +498,7 @@ func TestCreate_CloudInitTemplate_Applied(t *testing.T) {
 	attached := false
 
 	for _, c := range cluster.FakeCallsFor(result.VMID) {
-		if c.Action == "attach_cloudinit_snippet" && c.Filename == "pvmss-template-"+tmplID+".yml" {
+		if c.Action == testActionAttachCloudInitSnippet && c.Filename == "pvmss-template-"+tmplID+".yml" {
 			attached = true
 		}
 	}
@@ -554,7 +554,7 @@ func TestCreate_CloudInitTemplate_NoSnippetStorage_RejectedBeforeVMID(t *testing
 	}
 
 	for _, c := range cluster.FakeCalls() {
-		if c.Action == "create" {
+		if c.Action == testActionCreate {
 			t.Fatalf("a VM was created despite the missing snippet storage: %+v", c)
 		}
 	}
@@ -598,7 +598,7 @@ func TestCreate_CloudInitTemplate_UsesPlanSnippetStorage(t *testing.T) {
 	attachedToSnippetVol := false
 
 	for _, c := range cluster.FakeCallsFor(result.VMID) {
-		if c.Action == "attach_cloudinit_snippet" {
+		if c.Action == testActionAttachCloudInitSnippet {
 			if c.Storage != "snippet-vol" {
 				t.Fatalf("snippet attached from %q, want the plan-resolved snippet-vol", c.Storage)
 			}

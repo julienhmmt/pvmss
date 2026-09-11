@@ -16,6 +16,9 @@ export interface AdminCluster {
 	proxmoxVersion: string | null;
 	nodeCount: number;
 	vmCount: number;
+	snippetDir: string;
+	snippetStorage: string;
+	cloudInitWriteEnabled: boolean;
 }
 
 export interface ClusterInput {
@@ -24,6 +27,8 @@ export interface ClusterInput {
 	tlsInsecureSkipVerify: boolean;
 	tokenId: string;
 	tokenSecret: string;
+	snippetDir: string;
+	snippetStorage: string;
 }
 
 export interface ClusterTestResult {

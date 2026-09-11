@@ -69,7 +69,9 @@
 						url: input.url,
 						tlsInsecureSkipVerify: input.tlsInsecureSkipVerify,
 						tokenId: input.tokenId,
-						tokenSecret: input.tokenSecret
+						tokenSecret: input.tokenSecret,
+						snippetDir: input.snippetDir,
+						snippetStorage: input.snippetStorage
 					});
 		// Failure leaves the dialog open with store.error rendered inline
 		// (ClusterFormDialog's error prop) — closing unconditionally here hid
@@ -89,7 +91,7 @@
 	{#if store.error}<Alert class="mb-4">{store.error}</Alert>{/if}
 	{#if store.loading}
 		<div role="status" aria-live="polite" class="sr-only">{m['admin.clusters.loading']()}</div>
-		<TableSkeleton columns={6} />
+		<TableSkeleton columns={8} />
 	{:else}
 		<div class="overflow-x-auto rounded-lg border border-border">
 			<table class="pv-table min-w-[900px]">
@@ -102,6 +104,7 @@
 						<th scope="col" class="font-medium">{m['admin.clusters.version']()}</th>
 						<th scope="col" class="font-medium">{m['admin.clusters.nodesVms']()}</th>
 						<th scope="col" class="font-medium">{m['admin.clusters.oidc']()}</th>
+						<th scope="col" class="font-medium">{m['admin.clusters.cloudinitSection']()}</th>
 						<th scope="col" class="font-medium">{m['common.actions']()}</th>
 					</tr>
 				</thead>
@@ -124,6 +127,7 @@
 							<td class="text-muted-foreground">{cluster.proxmoxVersion ?? '—'}</td>
 							<td>{cluster.nodeCount} / {cluster.vmCount}</td>
 							<td>{cluster.oidcEnabled ? m['common.enabled']() : m['common.off']()}</td>
+							<td class="text-muted-foreground">{cluster.cloudInitWriteEnabled ? m['admin.clusters.cloudinitOn']() : m['admin.clusters.cloudinitOff']()}</td>
 							<td>
 								<div class="flex flex-wrap gap-2">
 									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.testLabel']({ name: cluster.name })} onclick={() => void store.test(cluster.name)}>{m['admin.clusters.test']()}</Button>

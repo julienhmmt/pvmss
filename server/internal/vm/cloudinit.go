@@ -15,8 +15,6 @@ import (
 	"time"
 )
 
-const snippetFilenamePrefix = "pvmss-"
-
 // wrapJoin wraps two errors using the "%w: %w" verb so both are matchable via
 // errors.Is. Centralized to avoid duplicating the format literal.
 func wrapJoin(sentinel, cause error) error {

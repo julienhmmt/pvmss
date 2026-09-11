@@ -374,25 +374,7 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 // yet, and cloud-init does not replay on the next boot without
 // `cloud-init clean`. It is started explicitly after that config lands.
 func createFromImage(ctx context.Context, policyService *policy.Policy, deps CreateDeps, clusterName string, actor auth.Identity, req CreateRequest) (CreateResult, error) {
-	// Image mode without a profile: the wizard sends only the image and the
-	// disk size, so CPU/memory come through zero. Default to
-	// imageDefault{CPUCores,MemoryMB} rather than the shared technical
-	// minimum (1 vCPU/128 MB) — a cloud image needs real headroom to boot.
-	// req.ProfileID != "" skips this: resolveHardware overwrites these
-	// fields with the profile's values regardless (FR-009).
-	if req.ProfileID == "" {
-		if req.CPUCores == 0 {
-			req.CPUCores = imageDefaultCPUCores
-		}
-
-		if req.MemoryMB == 0 {
-			req.MemoryMB = imageDefaultMemoryMB
-		}
-
-		if req.Disk.SizeGB == 0 {
-			req.Disk.SizeGB = imageDefaultDiskGB
-		}
-	}
+	defaultImageHardware(&req)
 
 	plan, err := planCreate(ctx, policyService, deps, clusterName, actor, req)
 	if err != nil {
@@ -425,50 +407,95 @@ func createFromImage(ctx context.Context, policyService *policy.Policy, deps Cre
 	// failed create task: the half-made VM is purged best-effort (US5/
 	// issue-05 D5a).
 	if waitErr := waitCreateTask(ctx, deps.Creator, upid); waitErr != nil {
-		deps.Log.Error("create task wait failed", "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", waitErr)
-		result.CloudInitPushError = waitErr.Error()
-
-		rollbackFailedCreate(ctx, deps, actor, clusterName, finalVMID, spec.Node, "create task failed")
-
-		if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, finalVMID, "vm_create"); err != nil {
-			deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
-		}
-
-		return result, nil
+		return failImageCreate(ctx, deps, actor, clusterName, finalVMID, spec.Node, waitErr, result)
 	}
 
-	// import-from lands the disk at the source image's size (Proxmox
-	// requires the :0 target syntax); grow it to the requested size now that
-	// the create task released the VM lock. ResizeDisk only grows, so the
-	// call is skipped when the request matches the image size. A resize
-	// failure does not abort — the VM exists — it is recorded like the other
-	// post-create steps.
-	if plan.imageSizeGB > 0 && plan.diskGB > plan.imageSizeGB && deps.Writer != nil {
-		if err := deps.Writer.ResizeDisk(ctx, spec.Node, finalVMID, spec.Disk.Bus+"0", plan.diskGB); err != nil {
-			deps.Log.Error("image disk resize failed", "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
-			result.CloudInitPushError = err.Error()
-		}
-	}
+	resizeImageDisk(ctx, deps, clusterName, plan, spec, finalVMID, &result)
 
 	applyImageCloudInitConfig(ctx, imageCloudInitApply{
 		Deps: deps, ClusterName: clusterName,
 		Spec: spec, VMID: finalVMID, SnippetStorage: plan.snippetStorage, CloudInit: req.Image.CloudInit,
 	}, &result)
 
-	// Auto-start (image mode): the VM is fully configured at first boot, so
-	// start it explicitly after the snippet is attached — the first boot sees
-	// cloud-init.
-	if startAfterCreate && result.CloudInitPushError == "" && deps.Writer != nil {
-		if err := deps.Writer.Action(ctx, spec.Node, finalVMID, "start"); err != nil {
-			deps.Log.Error("post-cloudinit start failed", "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
-		}
-	}
+	startImageVM(ctx, deps, clusterName, spec, finalVMID, startAfterCreate, &result)
 
 	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, finalVMID, "vm_create"); err != nil {
 		deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
 	}
 
 	return result, nil
+}
+
+// defaultImageHardware fills the zero-value hardware fields of an image-mode
+// request with the image defaults: the wizard sends only the image and the
+// disk size, so CPU/memory come through zero. imageDefault{CPUCores,MemoryMB}
+// applies rather than the shared technical minimum (1 vCPU/128 MB) — a cloud
+// image needs real headroom to boot. A set ProfileID skips this:
+// resolveHardware overwrites these fields with the profile's values
+// regardless (FR-009).
+func defaultImageHardware(req *CreateRequest) {
+	if req.ProfileID != "" {
+		return
+	}
+
+	if req.CPUCores == 0 {
+		req.CPUCores = imageDefaultCPUCores
+	}
+
+	if req.MemoryMB == 0 {
+		req.MemoryMB = imageDefaultMemoryMB
+	}
+
+	if req.Disk.SizeGB == 0 {
+		req.Disk.SizeGB = imageDefaultDiskGB
+	}
+}
+
+// failImageCreate handles a failed create-task wait on the image path: the
+// half-made VM is purged best-effort (US5/issue-05 D5a), the wait error is
+// recorded on the result, and the create is audited.
+func failImageCreate(ctx context.Context, deps CreateDeps, actor auth.Identity, clusterName string, vmid int, node string, waitErr error, result CreateResult) (CreateResult, error) {
+	deps.Log.Error("create task wait failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", waitErr)
+	result.CloudInitPushError = waitErr.Error()
+
+	rollbackFailedCreate(ctx, deps, actor, clusterName, vmid, node, "create task failed")
+
+	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, vmid, "vm_create"); err != nil {
+		deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+	}
+
+	return result, nil
+}
+
+// resizeImageDisk grows the imported disk to the requested size. import-from
+// lands the disk at the source image's size (Proxmox requires the :0 target
+// syntax), so the grow runs now that the create task released the VM lock.
+// ResizeDisk only grows, so the call is skipped when the request matches the
+// image size. A resize failure does not abort — the VM exists — it is
+// recorded like the other post-create steps.
+func resizeImageDisk(ctx context.Context, deps CreateDeps, clusterName string, plan createPlan, spec cluster.VMSpec, vmid int, result *CreateResult) {
+	if plan.imageSizeGB <= 0 || plan.diskGB <= plan.imageSizeGB || deps.Writer == nil {
+		return
+	}
+
+	if err := deps.Writer.ResizeDisk(ctx, spec.Node, vmid, spec.Disk.Bus+"0", plan.diskGB); err != nil {
+		deps.Log.Error("image disk resize failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+		result.CloudInitPushError = err.Error()
+	}
+}
+
+// startImageVM implements auto-start for image mode: the VM is fully
+// configured at first boot, so it is started explicitly after the snippet is
+// attached — the first boot sees cloud-init. A recorded cloud-init failure
+// (result.CloudInitPushError) blocks the start.
+func startImageVM(ctx context.Context, deps CreateDeps, clusterName string, spec cluster.VMSpec, vmid int, startAfterCreate bool, result *CreateResult) {
+	if !startAfterCreate || result.CloudInitPushError != "" || deps.Writer == nil {
+		return
+	}
+
+	if err := deps.Writer.Action(ctx, spec.Node, vmid, "start"); err != nil {
+		deps.Log.Error("post-cloudinit start failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+	}
 }
 
 // imageBaselineSnippetFilename is the fixed, admin-preplaced vendor-data
@@ -1613,30 +1640,9 @@ const (
 // fractions (US3/issue-04): memFrac*0.5 + cpuFrac*0.35 + diskFrac*0.15, +1
 // if the VM fits. Catalog order breaks ties for reproducibility.
 func resolveResources(req CreateRequest, resources catalog.Resources, capacities map[string]policy.Capacity, storageFree map[string]int64) (node, storage string, nics []nicPlan, err error) {
-	node = req.Node
-	if node == "" {
-		candidates := resources.Nodes
-		if req.ISO != nil {
-			candidates = nodesWithISO(resources, req.ISO.Storage, req.ISO.File)
-			if len(candidates) == 0 {
-				return "", "", nil, fmt.Errorf("%w: no approved node holds iso %q on storage %q", ErrNotApproved, req.ISO.File, req.ISO.Storage)
-			}
-		}
-
-		if req.Image != nil {
-			candidates = nodesWithImage(resources, req.Image.Storage, req.Image.File)
-			if len(candidates) == 0 {
-				return "", "", nil, fmt.Errorf("%w: no approved node holds image %q on storage %q", ErrNotApproved, req.Image.File, req.Image.Storage)
-			}
-		}
-
-		// Hard filter: node must have at least one approved storage.
-		candidates = nodesWithStorage(resources, candidates)
-		if len(candidates) == 0 {
-			return "", "", nil, fmt.Errorf("%w: no approved node with storage in catalog", ErrNotApproved)
-		}
-
-		node = pickBestNode(candidates, capacities, req)
+	node, err = resolveNode(req, resources, capacities)
+	if err != nil {
+		return "", "", nil, err
 	}
 
 	storage = req.Disk.Storage
@@ -1653,6 +1659,39 @@ func resolveResources(req CreateRequest, resources catalog.Resources, capacities
 	}
 
 	return node, storage, nics, nil
+}
+
+// resolveNode returns the requested node, or — when the request omits it —
+// the best-scoring approved node. Candidates are restricted to nodes holding
+// the requested ISO or image, then hard-filtered to nodes with at least one
+// approved storage.
+func resolveNode(req CreateRequest, resources catalog.Resources, capacities map[string]policy.Capacity) (string, error) {
+	if req.Node != "" {
+		return req.Node, nil
+	}
+
+	candidates := resources.Nodes
+	if req.ISO != nil {
+		candidates = nodesWithISO(resources, req.ISO.Storage, req.ISO.File)
+		if len(candidates) == 0 {
+			return "", fmt.Errorf("%w: no approved node holds iso %q on storage %q", ErrNotApproved, req.ISO.File, req.ISO.Storage)
+		}
+	}
+
+	if req.Image != nil {
+		candidates = nodesWithImage(resources, req.Image.Storage, req.Image.File)
+		if len(candidates) == 0 {
+			return "", fmt.Errorf("%w: no approved node holds image %q on storage %q", ErrNotApproved, req.Image.File, req.Image.Storage)
+		}
+	}
+
+	// Hard filter: node must have at least one approved storage.
+	candidates = nodesWithStorage(resources, candidates)
+	if len(candidates) == 0 {
+		return "", fmt.Errorf("%w: no approved node with storage in catalog", ErrNotApproved)
+	}
+
+	return pickBestNode(candidates, capacities, req), nil
 }
 
 // pickBestNode scores each candidate node and returns the name of the highest

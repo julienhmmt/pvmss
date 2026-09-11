@@ -50,6 +50,10 @@ var (
 	// returns the smallest free ID at call time without reserving it, so two
 	// concurrent creations can collide; the caller retries with a fresh VMID.
 	ErrVMIDTaken = errors.New("vmid already taken")
+	// ErrSnippetWriteUnavailable reports a cluster with no snippet write target
+	// (snippet_dir/snippet_storage unset): PVMSS cannot create a cloud-init
+	// document file for it. Proxmox's REST API cannot write snippets at all.
+	ErrSnippetWriteUnavailable = errors.New("cloud-init documents are not enabled on this cluster (set the snippet directory in Admin › Clusters)")
 )
 
 // Client is the single contract for reading cluster data. Every implementation
@@ -161,6 +165,14 @@ type Writer interface {
 	EnableSerial(ctx context.Context, node string, vmid int) error
 	EnsureCloudInitDrive(ctx context.Context, node string, vmid int) error
 	SetCloudInitConfig(ctx context.Context, node string, vmid int, config CloudInitConfig) error
+	// PushCloudInitSnippet writes content as filename into the cluster's
+	// configured snippet directory (snippet_dir on the cluster row). Proxmox's
+	// REST API cannot write snippets — upload and download-url both reject
+	// content=snippets (PVE::API2::Storage::Status hardcodes the enum to
+	// iso/vztmpl/import, a deliberate restriction since a snippet can carry
+	// an arbitrary hookscript) — so PVMSS writes the file itself into the
+	// bind-mounted directory the administrator configured. No write target →
+	// ErrSnippetWriteUnavailable.
 	PushCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int, content string) error
 	// AttachCloudInitSnippet points the VM's config at an already-pushed
 	// snippet file via the vendor-data slot. vendor= MERGES the snippet with
@@ -170,14 +182,15 @@ type Writer interface {
 	// the snippet (Proxmox stores none). See REPORT.md §4 / addendum.
 	AttachCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int) error
 	// HasSnippet reports whether filename already exists under storage's
-	// snippets/ content on node. Proxmox's REST API cannot write a snippets
-	// file — upload and download-url both reject content=snippets
-	// (PVE::API2::Storage::Status hardcodes the enum to iso/vztmpl/import,
-	// a deliberate restriction since a snippet can carry an arbitrary
-	// hookscript). PVMSS therefore never creates snippet files; it only
-	// checks whether an admin already placed a fixed, well-known one before
-	// pointing a VM's cicustom at it (image-mode create's baseline).
+	// snippets/ content on node. It is the visibility proof after
+	// PushCloudInitSnippet: PVMSS wrote the file into the mounted snippet
+	// directory, and this confirms Proxmox actually lists it before a VM's
+	// cicustom is pointed at it (a wrong mount must never leave a VM
+	// referencing nothing).
 	HasSnippet(ctx context.Context, node, storage, filename string) (bool, error)
+	// SnippetWriteAvailable reports whether this cluster has a snippet write
+	// target, i.e. whether PushCloudInitSnippet can succeed at all.
+	SnippetWriteAvailable() bool
 	// SetCloudInitPassword applies the VM's cloud-init password post-boot via
 	// the QEMU guest agent, writing it only to /etc/shadow on the guest. It
 	// never uses the cipassword config key, whose crypt hash Proxmox stores on

@@ -32,6 +32,9 @@ const (
 	// testSnippetFilename is the per-VM snippet filename the cloud-init tests
 	// push and attach (goconst).
 	testSnippetFilename = "pvmss-101.yml"
+	// testSnippetStorage is the configured snippet write target's storage id
+	// in the cloud-init writer tests (goconst).
+	testSnippetStorage = "shared"
 )
 
 // nopReadWriteCloser wraps a bytes.Buffer so it satisfies io.ReadWriteCloser
