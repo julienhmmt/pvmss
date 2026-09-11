@@ -13,7 +13,13 @@ import (
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
+	"time"
 )
+
+// createWriteDeadlineMargin covers the post-clone/create configuration steps
+// (hardware overrides, disk resize, cloud-init push) that run after
+// vm.WaitCreateTask returns, before the response is written.
+const createWriteDeadlineMargin = 2 * time.Minute
 
 // cloudImageFeatureEnabled gates the cloud-image / cloud-init-template
 // creation path off at this single choke point (2026-09-04): forking a
@@ -240,6 +246,17 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.writeCreateError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return
+	}
+
+	// Creation blocks on vm.WaitCreateTask (up to vm.MaxCreateTaskWait) before
+	// writing any response — the server's global WriteTimeout (10s,
+	// cmd/pvmss/main.go) is nowhere near enough for a template clone or image
+	// import. Extend just this response's write deadline so a slow clone
+	// still reaches the client instead of the connection dying underneath a
+	// creation that actually succeeded (report: VM created in Proxmox, PVMSS
+	// showed "Échec de la création").
+	if rc := http.NewResponseController(w); rc != nil {
+		_ = rc.SetWriteDeadline(time.Now().Add(vm.MaxCreateTaskWait + createWriteDeadlineMargin))
 	}
 
 	var req vm.CreateRequest
