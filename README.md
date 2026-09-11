@@ -115,8 +115,8 @@ PVMSS uses an embedded SQLite database to store all configuration. The database 
 - Approved Proxmox nodes, storages, VMBRs, and ISO repositories
 - VM resource limits (global and per-node)
 - Tags and user pools
-- Cloud-init templates and SFTP configuration
-- VM profiles
+- Cloud-init templates, users' cloud-init files, and per-VM document copies
+- VM profiles, cluster connections, audit log
 
 All configuration is managed through the **Admin** section of the web UI, which provides:
 
@@ -378,7 +378,6 @@ documents.
 - Security hardening is ongoing; no formal penetration test yet.
 - OIDC: the per-cluster toggle exists but sign-in is not implemented (the endpoint returns 501).
 - Password change is API-only (`POST /api/v1/auth/password`); no page yet.
-- The cloud-init document is not removed from the snippet storage when its VM is deleted.
 - LXC containers, backups, live migration / HA, SDN and firewall rules stay in Proxmox.
 
 ### Next major features

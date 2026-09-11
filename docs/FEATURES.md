@@ -90,7 +90,7 @@ Wizard at `/vms/create` — **Simple** and **Detailed** modes, five steps
 | Per-VM copy written by PVMSS as `pvmss-<vmid>.yml` into the cluster's mounted `snippets/` dir, attached as `vendor=`; later edits to the source never touch the VM | at creation | `POST /api/v1/vms` | ✅ |
 | Feature off = loud: cluster without snippet dir → picker hidden, create with a document → 409 `cloudinit_write_unavailable` | — | — | ✅ |
 | Baseline snippet `pvmss-baseline.yml` auto-attached for cloud-image VMs when present | — | — | ✅ |
-| Snippet file removed when the VM is deleted | — | — | 🚧 |
+| Snippet file and its row removed when the VM is deleted (best effort, never blocks the delete) | — | `DELETE /api/v1/vms/{cluster}/{vmid}` | ✅ |
 
 ## 7. Cluster visibility
 

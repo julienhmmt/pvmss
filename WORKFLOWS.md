@@ -42,7 +42,7 @@ Rules for the fields:
 | **Entry** | `/login`, or any guarded page via `AuthRequired` |
 | **Route** | `/login` |
 | **API** | `GET /api/v1/auth/clusters` → `POST /api/v1/auth/login` or `POST /api/v1/auth/oidc` → `GET /api/v1/auth/me` |
-| **Steps** | 1. Pick a cluster from the pre-login list. 2. Submit Proxmox credentials, or trigger OIDC. 3. Session cookie is set; redirect to the requested page. |
+| **Steps** | 1. Pick a cluster from the pre-login list. 2. Submit Proxmox credentials (the OIDC button, shown when a cluster has the toggle on, currently returns 501 `not_implemented`). 3. Session cookie is set; redirect to the requested page. |
 | **States** | Empty cluster list when no cluster is configured; inline credential error; Proxmox sign-in is disabled when every configured cluster is unreachable, while local admin sign-in remains available |
 | **Safety nets** | Per-IP rate limit, 10 requests / minute, shared by login, admin-login, cluster list, and OIDC (`authRateLimitMaxRequests`, `router.go:16`) — the cluster list is unauthenticated and discloses cluster names, so it is bounded too; the backend rejects `POST /api/v1/auth/login` with `cluster_unavailable` when the selected cluster is down, so the restriction cannot be bypassed by calling the API directly |
 
@@ -112,31 +112,31 @@ This is the core of the product. Everything else exists to support it.
 | **API** | `GET /api/v1/vm-create/catalog` → `POST /api/v1/vms` → `GET /api/v1/tasks/{upid}` (polled) |
 | **Steps** | 1. Base (name, profile, cluster, node). 2. Disk. 3. Hardware. 4. Network. 5. Review — the only place raw JSON is shown, and only on request. 6. Submit; the response is a Proxmox UPID. 7. The task tray polls until done, then refreshes the VM list. Detailed mode may pick a Proxmox template as the source instead of an ISO: the node is derived from the template (the selector hides), the disk minimum rises to the template's disk, and the wizard says when the target storage forces a full copy instead of a linked clone. A third source, a cloud image, imports the image as the primary disk (Proxmox `import-from`) and requires cloud-init fields (user, SSH keys, network); the disk minimum rises to the image's size, and the VM starts only after the create task finishes and its cloud-init config is applied — never inside the create task itself. |
 | **States** | Wizard step validation; task tray shows in-flight work so the user can navigate away. Template source: the template option only appears when at least one template is approved; an empty catalog legitimately hides it. Image source: same — hidden until at least one cloud image is approved. If applying the cloud-init config fails after a successful image import, the VM exists but stays stopped and unconfigured; the create response's `cloudInitPushError` field carries the reason. |
-| **Safety nets** | Every choice comes from the admin-approved catalog — nodes, storages, bridges, ISOs, profiles, cloud-init templates, VM templates, cloud images, tags. Quotas and gabarit limits are checked server-side (`policy/`), not in the wizard. A template clone stays on the template's node (the wizard hides the node selector), the disk size can never drop below the template's disk, and a stale or deleted template fails fast before a VMID is spent. A cloud image is admin-approved cluster-side (`/admin/images`) from files discovered under a storage's `import/` content — never fetched from the internet — and the disk size can never drop below the image's size. Image-mode cloud-init is delivered entirely through Proxmox's native ciuser/sshkeys/ipconfig0 keys, not a per-VM generated file. A cloud-init document (admin template or user file) is copied into a per-VM file `pvmss-<vmid>.yml` at creation time — PVMSS writes it directly into a bind-mounted storage `snippets/` directory (the Proxmox API cannot write snippets), then attaches it as vendor-data. Editing the source document later does not touch existing VMs. |
+| **Safety nets** | Every choice comes from the admin-approved catalog — nodes, storages, bridges, ISOs, profiles, cloud-init templates, VM templates, cloud images, tags. Quotas and gabarit limits are checked server-side (`policy/`), not in the wizard. A template clone stays on the template's node (the wizard hides the node selector), the disk size can never drop below the template's disk, and a stale or deleted template fails fast before a VMID is spent. A cloud image is admin-approved cluster-side (`/admin/images`) from files discovered under a storage's `import/` content — never fetched from the internet — and the disk size can never drop below the image's size. Cloud-init documents (an admin template or one of the user's own files, `cloudInitTemplateId` xor `cloudInitFileId`) are written by PVMSS itself as a per-VM copy — see *Create a VM with a cloud-init document* below; a cluster without a snippet write target hides the picker (`cloudInitWriteEnabled: false` in the catalog) and refuses a create carrying a document with 409 `cloudinit_write_unavailable` before any VMID is spent. Image-mode native keys (ciuser/sshkeys/ipconfig0) are applied after the import task; a fixed, admin-preplaced baseline snippet (`pvmss-baseline.yml` in the cluster's `snippets/` directory, e.g. to install `qemu-guest-agent`) is attached automatically when present; its absence is silent, not an error. |
 
 ### Create a VM with a cloud-init document
 
 | | |
 | --- | --- |
 | **Audience** | end user |
-| **Entry** | The "Cloud-init document (optional)" select in the Create VM wizard (Simple or Detailed) |
+| **Entry** | The cloud-init select in `/vms/create` (Base step) |
 | **Route** | `/vms/create` |
-| **API** | `GET /api/v1/cloudinit/templates` (admin templates), `GET /api/v1/cloudinit/files` (my files), `POST /api/v1/vms` with `cloudInitTemplateId` or `cloudInitFileId` |
-| **Steps** | 1. The wizard loads admin templates and the user's own files. 2. The select shows two optgroups: "Administrator templates" and "My files"; empty selection = no document. 3. On submit, the backend copies the selected document into `pvmss-<vmid>.yml` in the cluster's snippet directory, verifies it is visible, attaches it as vendor-data, and records the row. 4. The VM starts with the document applied. |
-| **States** | The select self-hides when there are no documents or the cluster has no write target. A disabled-cluster hint shows when the catalog is loaded but writing is off. A stale document ID (deleted after the draft was saved) is caught at submit time. |
-| **Safety nets** | Only one of `cloudInitTemplateId` / `cloudInitFileId` is accepted; both set is a 400. A foreign user's file ID returns `not_approved` (not `not_found`, to avoid leaking existence). The per-VM copy is immutable — editing the source later does not touch existing VMs. |
+| **API** | `GET /api/v1/vm-create/catalog` (admin templates + `cloudInitWriteEnabled`), `GET /api/v1/cloudinit/files` (my files) → `POST /api/v1/vms` with `cloudInitTemplateId` **or** `cloudInitFileId` |
+| **Steps** | 1. Pick a document from one grouped select — "Admin templates" then "My files". 2. The Review step names the chosen document. 3. On submit the server resolves the content, writes `pvmss-<vmid>.yml` into the cluster's mounted `snippets/` directory (atomic temp + rename, `pvmss-*.yml` allowlist), verifies Proxmox sees it, attaches it as `cicustom=vendor=…`, then records the `vm_cloudinit_snippets` row. Same path for ISO and clone sources. |
+| **States** | Select hidden (with a one-line hint) when the cluster has no write target or the source is a cloud image; a foreign `cloudInitFileId` resolves to `ErrNotApproved`, never to another user's content |
+| **Safety nets** | Template id and file id are mutually exclusive (400). No write target → 409 `cloudinit_write_unavailable` before a VMID is spent. The VM keeps its own copy: later edits to the template or file never touch it. `users:` in the document is overridden by the generated account (documented in the editor hint). |
 
 ### Manage my cloud-init files
 
 | | |
 | --- | --- |
 | **Audience** | end user |
-| **Entry** | Sidebar nav item "Cloud-init files" (non-admin users) |
+| **Entry** | Sidebar → Cloud-init |
 | **Route** | `/cloud-init` |
-| **API** | `GET /api/v1/cloudinit/files`, `POST /api/v1/cloudinit/files`, `PUT /api/v1/cloudinit/files/{id}`, `DELETE /api/v1/cloudinit/files/{id}` |
-| **Steps** | 1. List page shows the user's own documents (up to 20) with name, slug, and content preview. 2. "New file" opens a dialog with name + content fields. 3. Content must start with `#cloud-config` and be ≤ 16 KiB. 4. Save creates the file; edit overwrites; delete removes it. 5. A "Manage my files" link from the VM wizard select points here. |
-| **States** | Empty state with a "New file" CTA. Content validation errors show inline. Delete has a confirm dialog. |
-| **Safety nets** | Files are owner-scoped — a user cannot read or edit another user's files. Content is validated server-side (`#cloud-config` prefix, size limit, UTF-8). Deleting a file does not affect VMs already created from it (the per-VM copy is independent). |
+| **API** | `GET /api/v1/cloudinit/files`, `POST /api/v1/cloudinit/files`, `GET/PUT/DELETE /api/v1/cloudinit/files/{id}` |
+| **Steps** | 1. List my documents. 2. Create or edit one — `#cloud-config` header and YAML validated server-side. 3. Delete by id. |
+| **States** | Empty state on first visit; 409 `cloudinit_file_limit` at 20 documents |
+| **Safety nets** | Rows are owner-scoped at the store boundary — another owner's id is a 404, not a 403. Deleting a file never affects VMs created from it (they hold their own copy). |
 
 ### Operate a single VM
 
@@ -146,7 +146,7 @@ This is the core of the product. Everything else exists to support it.
 | **Entry** | A row in `/vms` |
 | **Route** | `/vms/[cluster]/[vmid]` |
 | **API** | `GET /api/v1/vms/{cluster}/{vmid}` plus the per-tab endpoints below |
-| **Steps** | Six tabs, each self-contained (`VmDetail.svelte:23`) |
+| **Steps** | Seven tabs, each self-contained (`VmDetail.svelte`) |
 | **States** | Cloud-init and Snapshots tabs mount lazily — their panels only render when active |
 | **Safety nets** | Every write is gated by `vm.Resolve()` inside the handler; destructive actions each get their own dialog |
 
@@ -174,9 +174,9 @@ Rename validates as a hostname (lowercase, ≤63 chars, `hostnameRe` in
 | **Entry** | `ConsoleBanner` on the VM detail page |
 | **Route** | `/vms/[cluster]/[vmid]/console` |
 | **API** | `POST /api/v1/vms/{cluster}/{vmid}/vnc-ticket` → `GET /api/v1/vms/{cluster}/{vmid}/console/websocket` |
-| **Steps** | 1. Request a short-lived VNC ticket. 2. Upgrade to a WebSocket proxied to Proxmox. |
+| **Steps** | 1. Request a short-lived VNC ticket. 2. Upgrade to a WebSocket proxied to Proxmox. 3. The same `VmActionBar` power actions are available on the console page (delete stays details-only). A **serial** client (xterm.js) runs the parallel path `POST …/serial-ticket` → `GET …/serial/websocket`; `POST …/serial` adds a serial port to a VM that has none. |
 | **States** | Connection failure surfaces as a console error, not a blank frame |
-| **Safety nets** | Ticket is per-VM and issued only after the ownership check; dev note — the Vite dev server must run under Node, not bun, or the WebSocket breaks with a 1006 |
+| **Safety nets** | Tickets are per-VM, single-use, and issued only after the ownership check; CSWSH origin check on the upgrade; dev note — the Vite dev server must run under Node, not bun, or the WebSocket breaks with a 1006 |
 
 ### View VM metrics history
 
@@ -231,10 +231,10 @@ non-admin), wired in `router_admin.go`. Nav grouping comes from
 | Group | Routes | What it does |
 | --- | --- | --- |
 | Dashboard | `/admin` | Overview (`GET /api/v1/admin/dashboard`) |
-| Infrastructure | `/admin/nodes`, `/admin/clusters`, `/admin/pools` | Approve nodes; cluster CRUD with connection test and OIDC config; pool create and cascade delete |
-| Catalog | `/admin/storages`, `/admin/isos`, `/admin/templates`, `/admin/bridges`, `/admin/cloudinit-templates`, `/admin/docs`, `/admin/profiles`, `/admin/tags` | Toggle what users may pick; CRUD for profiles, tags, cloud-init templates, docs; remove orphaned VM-template approvals |
+| Infrastructure | `/admin/nodes`, `/admin/clusters`, `/admin/pools` | Approve nodes; cluster CRUD with connection test, OIDC toggle (sign-in itself returns 501 — not implemented), and the cloud-init snippet write target (`snippetDir` + `snippetStorage`, `cloudInitWriteEnabled` badge); pool create and cascade delete |
+| Catalog | `/admin/storages`, `/admin/isos`, `/admin/images` (no nav entry yet), `/admin/templates`, `/admin/bridges`, `/admin/cloudinit-templates`, `/admin/docs`, `/admin/profiles`, `/admin/tags` | Toggle what users may pick; CRUD for profiles, tags, cloud-init templates, docs; remove orphaned approvals for every discovered kind |
 | Policy | `/admin/policy`, `/admin/policy/nodes` | Quotas and gabarit limits; per-node capacity |
-| System | `/admin/appinfo`, `/admin/settings` | App info, audit log, DB export/import |
+| System | `/admin/appinfo`, `/admin/settings` | App info; audit log with retention (`GET/PUT /api/v1/admin/audit/config`, `GET …/audit/prune-preview`); DB export/import |
 
 Three admin workflows deserve the full template because they are the risky ones.
 
