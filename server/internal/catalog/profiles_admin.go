@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"pvmss/server/internal/cloudinit"
 	"pvmss/server/internal/store"
-	"regexp"
 	"strings"
 )
 
@@ -18,9 +18,6 @@ var ErrProfileNotFound = errors.New("profile not found")
 
 // ErrInvalidProfile is returned when profile fields are out of range or missing.
 var ErrInvalidProfile = errors.New("invalid profile")
-
-// slugRe strips non-alphanumeric characters for slug derivation.
-var slugRe = regexp.MustCompile(`[^a-z0-9]+`)
 
 // AdminProfile is one catalog_profiles row with its enabled state, as returned
 // by the admin profiles list endpoint (includes disabled profiles, unlike
@@ -40,15 +37,7 @@ type AdminProfile struct {
 // T06's own small/medium/large style (e.g. "X-Large (8 vCPU, 16 GB, 160 GB)"
 // → "x-large-8-vcpu-16-gb-160-gb"). The slug is the profile's permanent id.
 func DeriveProfileID(label string) string {
-	lowered := strings.ToLower(label)
-	slug := slugRe.ReplaceAllString(lowered, "-")
-
-	slug = strings.Trim(slug, "-")
-	if slug == "" {
-		slug = "profile"
-	}
-
-	return slug
+	return cloudinit.Slugify(label, "profile")
 }
 
 // validateProfileFields checks that cpuCores, memoryMB, diskGB are positive and

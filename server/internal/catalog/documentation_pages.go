@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"pvmss/server/internal/cloudinit"
 	"pvmss/server/internal/store"
 	"strings"
 	"time"
@@ -83,14 +84,7 @@ func systemPageError(id string) error {
 // mirroring DeriveCloudInitTemplateID (e.g. "Getting started" →
 // "getting-started"). The slug is the page's permanent id.
 func DeriveDocumentationPageID(title string) string {
-	lowered := strings.ToLower(title)
-	slug := slugRe.ReplaceAllString(lowered, "-")
-	slug = strings.Trim(slug, "-")
-	if slug == "" {
-		slug = "page"
-	}
-
-	return slug
+	return cloudinit.Slugify(title, "page")
 }
 
 // toPage maps a store row to the catalog struct.
