@@ -19,6 +19,16 @@
 
 	const outgoing = $derived(form.buildRequest());
 
+	// The review shows the chosen document's label — the raw request JSON
+	// only carries the id.
+	const cloudInitDocumentLabel = $derived(
+		form.cloudInitTemplateId !== ''
+			? (form.catalog?.cloudInitTemplates.find((t) => t.id === form.cloudInitTemplateId)?.label ?? form.cloudInitTemplateId)
+			: form.cloudInitFileId !== ''
+				? (form.myCloudInitFiles.find((f) => f.id === form.cloudInitFileId)?.label ?? form.cloudInitFileId)
+				: null
+	);
+
 	// Image mode: block the submit until the image's disk floor and the
 	// mandatory cloud-init are satisfied (mirrored by store.submit).
 	const imageBlocker = $derived(form.imageModeBlocker());
@@ -35,6 +45,9 @@
 
 <div class="grid gap-4">
 	<h2 class="text-sm font-medium">{m['vms.create.reviewHeading']()}</h2>
+	<p class="text-sm text-muted-foreground">
+		{m['vms.create.reviewCloudinitDocument']()}: {cloudInitDocumentLabel ?? m['vms.create.cloudinitNone']()}
+	</p>
 	<pre
 		class="overflow-x-auto rounded-lg border border-border bg-muted p-4 font-mono text-xs"
 		data-testid="review-request">{JSON.stringify(outgoing, null, 2)}</pre>

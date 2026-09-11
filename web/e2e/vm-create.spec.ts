@@ -26,6 +26,7 @@ test.describe('T06 VM creation', () => {
 		await deleteCreatedVms(page.request);
 	});
 	test('simple mode: create a VM and watch the task complete in the tray', async ({ page }) => {
+		await page.addInitScript(() => localStorage.setItem('pvmss-locale', 'en'));
 		await signInAlice(page.request);
 		await page.goto('/vms?cluster=default');
 
@@ -63,6 +64,7 @@ test.describe('T06 VM creation', () => {
 	});
 
 	test('detailed mode: explicit node/storage/bridge create the exact VM', async ({ page }) => {
+		await page.addInitScript(() => localStorage.setItem('pvmss-locale', 'en'));
 		await signInAlice(page.request);
 		await page.goto('/vms/create');
 
@@ -87,6 +89,7 @@ test.describe('T06 VM creation', () => {
 	});
 
 	test('draft: reloading mid-fill restores the values with a toast', async ({ page }) => {
+		await page.addInitScript(() => localStorage.setItem('pvmss-locale', 'en'));
 		await signInAlice(page.request);
 		await page.goto('/vms/create');
 
@@ -149,6 +152,54 @@ test.describe('T06 VM creation', () => {
 				expect(createdVm.pool).toBe('pool-alice');
 			}
 		}
+	});
+
+	// cloudinit-userdata ticket 04: a user-owned file picked under "My files"
+	// in the Detailed wizard is copied into the VM's own snippet at creation.
+	test('detailed mode: a cloud-init file from "My files" lands on the VM', async ({ page }) => {
+		await page.addInitScript(() => localStorage.setItem('pvmss-locale', 'en'));
+		await signInAlice(page.request);
+
+		// Create the file at /cloud-init first.
+		await page.goto('/cloud-init');
+		await page.getByRole('button', { name: 'New file' }).first().click();
+		await page.getByLabel('Label').fill('E2E boot script');
+		await page.getByLabel('Content').fill('#cloud-config\npackages:\n  - htop\n');
+		await page.getByRole('button', { name: 'Create' }).click();
+		await expect(page.locator('tr', { hasText: 'E2E boot script' })).toBeVisible();
+
+		// Detailed wizard: pick it under the "My files" optgroup.
+		await page.goto('/vms/create');
+		await page.getByRole('tab', { name: 'Detailed' }).click();
+		await page.getByLabel('Name').fill('web-e2e-ci');
+		const picker = page.getByLabel('Cloud-init document');
+		await expect(picker.locator('option', { hasText: 'E2E boot script' })).toHaveCount(1);
+		await picker.selectOption({ label: 'E2E boot script' });
+
+		// The review step names the document and the request carries the file id.
+		await page.getByRole('tab', { name: 'Review' }).click();
+		await expect(page.getByText('Cloud-init document: E2E boot script')).toBeVisible();
+		const outgoing = await page.locator('[data-testid="review-request"]').textContent();
+		expect(outgoing).toContain('"cloudInitFileId": "e2e-boot-script"');
+
+		await page.getByRole('button', { name: 'Create VM' }).click();
+		await expect(page).toHaveURL(/\/vms$/);
+		await expect(page.getByText('VM "web-e2e-ci" created')).toBeVisible({ timeout: 20000 });
+
+		// The VM's cloud-init tab shows the file's content — the per-VM copy.
+		await page.goto('/vms');
+		await page.getByRole('searchbox', { name: 'Search VMs by name, tag, or ID' }).fill('web-e2e-ci');
+		await page.getByRole('link', { name: /web-e2e-ci/ }).first().click();
+		await page.getByRole('tab', { name: 'Cloud-init' }).click();
+		await page.getByRole('button', { name: 'YAML editor' }).click();
+		await expect(page.locator('[data-testid="cloudinit-snippet-content"]')).toHaveValue(/htop/);
+
+		// Restore alice's empty file list — the files spec asserts an empty
+		// state and the fake dataset is shared across spec files.
+		await page.goto('/cloud-init');
+		await page.locator('tr', { hasText: 'E2E boot script' }).getByRole('button', { name: 'Delete E2E boot script' }).click();
+		await page.getByTestId('cloudinit-file-delete-confirm').click();
+		await expect(page.getByTestId('cloudinit-files-empty')).toBeVisible();
 	});
 
 	test('admin without pool can create a VM', async ({ page }) => {

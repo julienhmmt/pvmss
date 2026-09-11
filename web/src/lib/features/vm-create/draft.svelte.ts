@@ -19,6 +19,7 @@ export interface DraftValues {
 	name: string;
 	profileId: string;
 	cloudInitTemplateId?: string;
+	cloudInitFileId?: string;
 	node: string;
 	nodeAdjusted: boolean;
 	storage: string;

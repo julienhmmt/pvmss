@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"pvmss/server/internal/catalog"
+	"pvmss/server/internal/cloudinit"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
@@ -839,4 +840,89 @@ func newTasksHandler(t *testing.T) (*httpapi.Tasks, *httpapi.Auth, *inventory.Pr
 	provider := vmCreateClientProvider{clients: map[string]cluster.Client{auditTestCluster: cluster.Fake{}}}
 
 	return httpapi.NewTasksWithRegistry(authHandler, provider, cluster.Fake{}, worker, nil, logger), authHandler, projection
+}
+
+// --- cloudinit-userdata ticket 04: user file id through the HTTP surface ---
+
+// createUserCloudInitFile seeds one of alice's own files via the domain path
+// and returns its id.
+func createUserCloudInitFile(t *testing.T, st *store.Store, owner, label string) string {
+	t.Helper()
+
+	f, err := cloudinit.CreateUserFile(context.Background(), st, owner, label, "#cloud-config\npackages:\n  - htop\n")
+	if err != nil {
+		t.Fatalf("CreateUserFile: %v", err)
+	}
+
+	return f.ID
+}
+
+// TestVMCreate_WithCloudInitFile_Success — POST /api/v1/vms with one of the
+// actor's own file ids returns 202 and the response includes cloudInitFileId.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMCreate_WithCloudInitFile_Success(t *testing.T) {
+	handler, authHandler, st := newVMCreateHandler(t)
+	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+	fileID := createUserCloudInitFile(t, st, cluster.FakeUserAlice, "Dev box")
+
+	rec := postVMCreate(t, handler,
+		`{"cluster":"default","name":"web-30","profileId":"medium","cloudInitFileId":"`+fileID+`"}`, cookie)
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusAccepted, rec.Body.String())
+	}
+
+	var result struct {
+		VMID               int    `json:"vmid"`
+		CloudInitFileID    string `json:"cloudInitFileId"`
+		CloudInitPushError string `json:"cloudInitPushError"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
+		t.Fatalf("decode 202: %v", err)
+	}
+
+	if result.CloudInitFileID != fileID {
+		t.Errorf("cloudInitFileId = %q, want %q", result.CloudInitFileID, fileID)
+	}
+
+	if result.CloudInitPushError != "" {
+		t.Errorf("cloudInitPushError = %q, want empty", result.CloudInitPushError)
+	}
+}
+
+// TestVMCreate_BothCloudInitIds_Rejected — a request carrying both
+// cloudInitTemplateId and cloudInitFileId is a 400 invalid_source.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMCreate_BothCloudInitIds_Rejected(t *testing.T) {
+	handler, authHandler, st := newVMCreateHandler(t)
+	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+	tmplID := createCatalogTemplate(t, st)
+	fileID := createUserCloudInitFile(t, st, cluster.FakeUserAlice, "Dev box")
+
+	rec := postVMCreate(t, handler,
+		`{"cluster":"default","name":"web-31","profileId":"medium","cloudInitTemplateId":"`+tmplID+`","cloudInitFileId":"`+fileID+`"}`, cookie)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+
+	assertAPIError(t, rec.Body.Bytes(), "invalid_source")
+}
+
+// TestVMCreate_ForeignCloudInitFile_NotApproved — bob's file id in alice's
+// request is 400 not_approved, indistinguishable from an unknown id.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMCreate_ForeignCloudInitFile_NotApproved(t *testing.T) {
+	handler, authHandler, st := newVMCreateHandler(t)
+	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+	bobFileID := createUserCloudInitFile(t, st, cluster.FakeUserBob, "Bob box")
+
+	rec := postVMCreate(t, handler,
+		`{"cluster":"default","name":"web-32","profileId":"medium","cloudInitFileId":"`+bobFileID+`"}`, cookie)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
+	}
+
+	assertAPIError(t, rec.Body.Bytes(), "not_approved")
 }

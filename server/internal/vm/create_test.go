@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/catalog"
+	"pvmss/server/internal/cloudinit"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
@@ -1582,5 +1583,109 @@ func TestCreate_SecureBoot_WithoutUEFI_Rejected(t *testing.T) {
 	_, err := fixture.create(t, aliceIdentity(), req)
 	if !errors.Is(err, vm.ErrInvalidRequest) {
 		t.Fatalf("err = %v, want ErrInvalidRequest", err)
+	}
+}
+
+// --- cloudinit-userdata ticket 04: user-owned file as the document source ---
+
+// createTestUserFile seeds one of alice's own cloud-init documents through
+// the domain path (validates content, derives the id from the label) and
+// returns its id.
+func createTestUserFile(t *testing.T, st *store.Store, owner, label, content string) string {
+	t.Helper()
+
+	f, err := cloudinit.CreateUserFile(context.Background(), st, owner, label, content)
+	if err != nil {
+		t.Fatalf("CreateUserFile: %v", err)
+	}
+
+	return f.ID
+}
+
+// TestCreate_CloudInitFile_WritesPerVMCopy — a user file goes through the
+// exact same write → verify → attach → record pipeline as an admin template
+// (spec D4), and the result names the file id.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitFile_WritesPerVMCopy(t *testing.T) {
+	fixture := newCreateFixture(t)
+	fileID := createTestUserFile(t, fixture.store, aliceIdentity().Username, "Dev box", testCloudInitContent)
+
+	req := detailedRequest()
+	req.CloudInitFileID = fileID
+	req.StartAfterCreate = true
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if result.CloudInitFileID != fileID {
+		t.Errorf("result.CloudInitFileID = %q, want %q", result.CloudInitFileID, fileID)
+	}
+
+	if result.CloudInitTemplateID != "" {
+		t.Errorf("result.CloudInitTemplateID = %q, want empty", result.CloudInitTemplateID)
+	}
+
+	if result.CloudInitPushError != "" {
+		t.Errorf("result.CloudInitPushError = %q, want empty", result.CloudInitPushError)
+	}
+
+	wantFilename := fmt.Sprintf("pvmss-%d.yml", result.VMID)
+	pushIdx, attachIdx := snippetCallIndices(t, result.VMID, wantFilename, testCloudInitContent)
+
+	if pushIdx < 0 || attachIdx < 0 {
+		t.Fatalf("push=%d attach=%d, want both recorded", pushIdx, attachIdx)
+	}
+
+	if pushIdx > attachIdx {
+		t.Error("attach recorded before push")
+	}
+
+	assertSnippetRow(t, fixture.store, result.VMID, wantFilename, testCloudInitContent, aliceIdentity().Username)
+}
+
+// TestCreate_CloudInitFile_ForeignOwnerNotApproved — bob's file id in alice's
+// request is the same 400 as an unknown template (ErrNotApproved) and no
+// VMID is spent: the API must not reveal whether the id exists for someone
+// else.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitFile_ForeignOwnerNotApproved(t *testing.T) {
+	fixture := newCreateFixture(t)
+	bobFileID := createTestUserFile(t, fixture.store, bobIdentity().Username, "Bob box", testCloudInitContent)
+
+	req := detailedRequest()
+	req.CloudInitFileID = bobFileID
+
+	_, err := fixture.create(t, aliceIdentity(), req)
+	if !errors.Is(err, vm.ErrNotApproved) {
+		t.Fatalf("error = %v, want ErrNotApproved", err)
+	}
+
+	for _, c := range cluster.FakeCalls() {
+		if c.Action == testActionCreate || c.Action == "next_vmid" {
+			t.Fatalf("rejected request reached the cluster: %+v", c)
+		}
+	}
+}
+
+// TestCreate_BothCloudInitIdsRejected — template id and file id are mutually
+// exclusive (spec: one document source per request).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_BothCloudInitIdsRejected(t *testing.T) {
+	fixture := newCreateFixture(t)
+	tmplID := createTestTemplate(t, fixture.store)
+	fileID := createTestUserFile(t, fixture.store, aliceIdentity().Username, "Dev box", testCloudInitContent)
+
+	req := detailedRequest()
+	req.CloudInitTemplateID = tmplID
+	req.CloudInitFileID = fileID
+
+	_, err := fixture.create(t, aliceIdentity(), req)
+	if !errors.Is(err, vm.ErrInvalidSource) {
+		t.Fatalf("error = %v, want ErrInvalidSource", err)
 	}
 }

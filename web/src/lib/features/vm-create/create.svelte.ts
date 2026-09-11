@@ -170,6 +170,7 @@ export interface VMCreateRequest {
 	name: string;
 	profileId?: string;
 	cloudInitTemplateId?: string;
+	cloudInitFileId?: string;
 	node?: string;
 	tags?: string[];
 	sockets?: number;
@@ -193,6 +194,7 @@ export interface VmCreateAccepted {
 	node: string;
 	upid: string;
 	cloudInitTemplateId?: string;
+	cloudInitFileId?: string;
 	cloudInitPushError?: string;
 }
 
@@ -227,6 +229,7 @@ const FIXED_SUBMIT_ERRORS: Partial<Record<string, () => string>> = {
 	disk_below_image: m['vms.create.errorDiskBelowImage'],
 	insufficient_disk_space: m['vms.create.errorInsufficientDiskSpace'],
 	no_snippet_storage: m['vms.create.errorNoSnippetStorage'],
+	cloudinit_write_unavailable: m['vms.create.errorCloudinitWriteUnavailable'],
 	cluster_error: m['vms.create.errorClusterRejected'],
 	internal_error: m['vms.create.errorInternal']
 };
@@ -408,6 +411,14 @@ export class VmCreateStore {
 	name = $state('');
 	profileId = $state('');
 	cloudInitTemplateId = $state('');
+	/** The actor's own cloud-init document id (cloudinit-userdata 03/04) —
+	 *  mutually exclusive with cloudInitTemplateId. The select binds the
+	 *  encoded cloudInitDocumentValue, never this field directly. */
+	cloudInitFileId = $state('');
+	/** The signed-in user's own files — owner-scoped, cluster-agnostic, so
+	 *  fetched once alongside the catalog rather than per cluster. Load
+	 *  failure is non-fatal: the "My files" group simply stays empty. */
+	myCloudInitFiles = $state.raw<{ id: string; label: string }[]>([]);
 	node = $state('');
 	nodeAdjusted = $state(false);
 	storage = $state('');
@@ -505,6 +516,49 @@ export class VmCreateStore {
 			this.catalog = await get<VmCreateCatalog>(path);
 		} catch (error: unknown) {
 			this.catalogError = error instanceof ApiRequestError ? error.message : m['vms.create.errorCatalog']();
+		}
+	}
+
+	/** Loads the actor's own cloud-init files for the picker's "My files"
+	 *  group. Non-fatal by design: a failure leaves the group empty. */
+	async loadMyCloudInitFiles(): Promise<void> {
+		try {
+			const result = await get<{ files: { id: string; label: string }[] }>('/api/v1/cloudinit/files');
+			this.myCloudInitFiles = result.files;
+		} catch {
+			this.myCloudInitFiles = [];
+		}
+	}
+
+	/** The select's single encoded value: 't:<id>' for an admin template,
+	 *  'f:<id>' for one of the user's files, '' for none. The encoding never
+	 *  leaves the component layer. */
+	get cloudInitDocumentValue(): string {
+		if (this.cloudInitTemplateId !== '') return `t:${this.cloudInitTemplateId}`;
+		if (this.cloudInitFileId !== '') return `f:${this.cloudInitFileId}`;
+		return '';
+	}
+
+	set cloudInitDocumentValue(value: string) {
+		if (value.startsWith('t:')) {
+			this.cloudInitTemplateId = value.slice(2);
+			this.cloudInitFileId = '';
+		} else if (value.startsWith('f:')) {
+			this.cloudInitTemplateId = '';
+			this.cloudInitFileId = value.slice(2);
+		} else {
+			this.cloudInitTemplateId = '';
+			this.cloudInitFileId = '';
+		}
+	}
+
+	/** Emits exactly one of cloudInitTemplateId / cloudInitFileId on the
+	 *  request when a document is selected (never both — ErrInvalidSource). */
+	applyCloudInitDocument(request: VMCreateRequest): void {
+		if (this.cloudInitTemplateId !== '') {
+			request.cloudInitTemplateId = this.cloudInitTemplateId;
+		} else if (this.cloudInitFileId !== '') {
+			request.cloudInitFileId = this.cloudInitFileId;
 		}
 	}
 
@@ -702,14 +756,14 @@ export class VmCreateStore {
 			}
 			if (this.simpleSource === 'template' && this.templateId !== 0) {
 				request.templateId = this.templateId;
-				if (this.cloudInitTemplateId !== '') request.cloudInitTemplateId = this.cloudInitTemplateId;
+				this.applyCloudInitDocument(request);
 				// No uefi/secureBoot field: a clone inherits the template's own firmware.
 				return request;
 			}
 			request.uefi = this.uefi;
 			if (this.uefi && this.secureBoot) request.secureBoot = true;
 			if (this.profileId !== '') request.profileId = this.profileId;
-			if (this.cloudInitTemplateId !== '') request.cloudInitTemplateId = this.cloudInitTemplateId;
+			this.applyCloudInitDocument(request);
 			if (this.nodeAdjusted && this.node !== '') request.node = this.node;
 			if (this.storageAdjusted && this.storage !== '') {
 				request.disk = { storage: this.storage };
@@ -763,6 +817,10 @@ export class VmCreateStore {
 			}
 		}
 
+		// The document picker is hidden in image mode — image cloud-init is
+		// the native-fields block, not a vendor-data document.
+		if (this.sourceType !== 'image') this.applyCloudInitDocument(request);
+
 		// US6/issue-06: UEFI is sent explicitly (true or false) so an
 		// unchecked box is honored — the server defaults to UEFI=true when
 		// the field is absent entirely (simple mode's template branch never
@@ -811,6 +869,7 @@ export class VmCreateStore {
 			name: this.name,
 			profileId: this.profileId,
 			cloudInitTemplateId: this.cloudInitTemplateId,
+			cloudInitFileId: this.cloudInitFileId,
 			node: this.node,
 			nodeAdjusted: this.nodeAdjusted,
 			storage: this.storage,
@@ -849,6 +908,7 @@ export class VmCreateStore {
 		this.name = values.name;
 		this.profileId = values.profileId;
 		this.cloudInitTemplateId = values.cloudInitTemplateId ?? '';
+		this.cloudInitFileId = values.cloudInitFileId ?? '';
 		this.node = values.node;
 		this.nodeAdjusted = values.nodeAdjusted;
 		this.storage = values.storage;

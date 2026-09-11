@@ -18,6 +18,8 @@ test.describe('T18 admin cloud-init templates', () => {
 	test.describe.configure({ mode: 'serial' });
 
 	test('create a template, use it during simple-mode VM creation, then disable it (SC-001..SC-006)', async ({ page }) => {
+		// Default locale is French; pin English so the English selectors match.
+		await page.addInitScript(() => localStorage.setItem('pvmss-locale', 'en'));
 		// SC-001: create a template as admin (only admins manage templates).
 		await signInAdmin(page.request);
 		await page.goto('/admin/cloudinit-templates');
@@ -35,7 +37,7 @@ test.describe('T18 admin cloud-init templates', () => {
 		// so alice performs the creation steps.
 		await signInAlice(page.request);
 		await page.goto('/vms/create');
-		const picker = page.getByLabel('Cloud-init template');
+		const picker = page.getByLabel('Cloud-init document');
 		await expect(picker).toBeVisible();
 		await expect(picker.locator('option', { hasText: 'Web server' })).toHaveCount(1);
 
@@ -94,6 +96,6 @@ test.describe('T18 admin cloud-init templates', () => {
 		await page.goto('/vms/create');
 		// The picker is only rendered when at least one enabled template exists;
 		// with the sole template disabled, the field should be absent.
-		await expect(page.getByLabel('Cloud-init template')).toHaveCount(0);
+		await expect(page.getByLabel('Cloud-init document')).toHaveCount(0);
 	});
 });

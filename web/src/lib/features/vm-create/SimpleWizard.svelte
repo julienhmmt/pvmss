@@ -15,6 +15,7 @@
 	import TemplatePicker from './TemplatePicker.svelte';
 	import ImagePicker from './ImagePicker.svelte';
 	import ImageCloudInitFields from './ImageCloudInitFields.svelte';
+	import CloudInitDocumentSelect from './CloudInitDocumentSelect.svelte';
 	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Switch from '$lib/shared/ui/Switch.svelte';
@@ -59,13 +60,13 @@
 
 	// ISO install and cloud-init are incompatible use cases: ISO is for a
 	// manual OS install, cloud-init is for pre-built cloud images. When a
-	// cloud-init template is selected, the server suppresses start=1 and
+	// cloud-init document is selected, the server suppresses start=1 and
 	// starts the VM only after attaching the snippet (lifecycle-04) — so an
 	// ISO install with a stale cloud-init selection leaves the VM stopped.
-	// Clear the cloud-init template when an ISO is picked.
+	// Clear the cloud-init document when an ISO is picked.
 	$effect(() => {
 		if (form.isoFile !== '') {
-			form.cloudInitTemplateId = '';
+			form.cloudInitDocumentValue = '';
 		}
 	});
 
@@ -116,10 +117,12 @@
 			: null
 	);
 
-	const cloudInitTemplateError = $derived(
-		form.catalog && form.cloudInitTemplateId !== '' && !form.catalog.cloudInitTemplates.some((template) => template.id === form.cloudInitTemplateId)
+	const cloudInitDocumentError = $derived(
+		form.cloudInitTemplateId !== '' && form.catalog && !form.catalog.cloudInitTemplates.some((template) => template.id === form.cloudInitTemplateId)
 			? m['vms.create.errorCloudinitTemplateInvalid']()
-			: null
+			: form.cloudInitFileId !== '' && !form.myCloudInitFiles.some((file) => file.id === form.cloudInitFileId)
+				? m['vms.create.errorCloudinitFileInvalid']()
+				: null
 	);
 
 	const imageError = $derived(
@@ -173,7 +176,7 @@
 		form.catalog !== null &&
 			!form.submitting &&
 			!nameError &&
-			!cloudInitTemplateError &&
+			!cloudInitDocumentError &&
 			!form.imageModeBlocker() &&
 			(form.simpleSource === 'image'
 				? !imageError && !diskSizeError && !imageProfileError
@@ -309,23 +312,7 @@
 			{/if}
 		{/if}
 
-		{#if cat.cloudInitTemplates.length > 0 && form.simpleSource !== 'image'}
-			<FormField label={m['vms.create.cloudinitTemplate']()} hint={m['common.optional']()} error={cloudInitTemplateError}>
-				{#snippet children({ id, describedBy, invalid })}
-					<Select
-						{id}
-						{describedBy}
-						{invalid}
-						bind:value={form.cloudInitTemplateId}
-						placeholder={m['common.none']()}
-						options={cat.cloudInitTemplates.map((template) => ({
-							value: template.id,
-							label: template.label
-						}))}
-					/>
-				{/snippet}
-			</FormField>
-		{/if}
+		<CloudInitDocumentSelect error={cloudInitDocumentError} />
 
 		<FormField label={m['vms.create.tags']()} hint={m['vms.create.tagsHelp']()}>
 			{#if catalogTags.length === 0}
