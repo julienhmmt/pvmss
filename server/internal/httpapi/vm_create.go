@@ -104,6 +104,7 @@ type createResultDTO struct {
 	Node                string `json:"node"`
 	UPID                string `json:"upid"`
 	CloudInitTemplateID string `json:"cloudInitTemplateId,omitempty"`
+	CloudInitFileID     string `json:"cloudInitFileId,omitempty"`
 	CloudInitPushError  string `json:"cloudInitPushError,omitempty"`
 }
 
@@ -287,6 +288,7 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Node:                result.Node,
 		UPID:                result.UPID,
 		CloudInitTemplateID: result.CloudInitTemplateID,
+		CloudInitFileID:     result.CloudInitFileID,
 		CloudInitPushError:  result.CloudInitPushError,
 	})
 }

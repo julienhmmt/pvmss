@@ -135,20 +135,25 @@ var allowedNetworkModels = map[string]bool{
 // more than one is rejected with ErrInvalidSource before any VMID is
 // allocated.
 type CreateRequest struct {
-	Cluster             string         `json:"cluster"`
-	Name                string         `json:"name"`
-	ProfileID           string         `json:"profileId,omitempty"`
-	CloudInitTemplateID string         `json:"cloudInitTemplateId,omitempty"`
-	Node                string         `json:"node,omitempty"`
-	Tags                []string       `json:"tags,omitempty"`
-	Sockets             int            `json:"sockets,omitempty"`
-	CPUCores            int            `json:"cpuCores,omitempty"`
-	MemoryMB            int            `json:"memoryMB,omitempty"`
-	Disk                DiskRequest    `json:"disk"`
-	Network             NetworkRequest `json:"network"`
-	ISO                 *ISORequest    `json:"iso,omitempty"`
-	TemplateID          int            `json:"templateId,omitempty"`
-	Image               *ImageRequest  `json:"image,omitempty"`
+	Cluster             string `json:"cluster"`
+	Name                string `json:"name"`
+	ProfileID           string `json:"profileId,omitempty"`
+	CloudInitTemplateID string `json:"cloudInitTemplateId,omitempty"`
+	// CloudInitFileID names one of the actor's own cloud-init documents
+	// (cloudinit-userdata ticket 03/04). Mutually exclusive with
+	// CloudInitTemplateID.
+	CloudInitFileID string `json:"cloudInitFileId,omitempty"`
+
+	Node       string         `json:"node,omitempty"`
+	Tags       []string       `json:"tags,omitempty"`
+	Sockets    int            `json:"sockets,omitempty"`
+	CPUCores   int            `json:"cpuCores,omitempty"`
+	MemoryMB   int            `json:"memoryMB,omitempty"`
+	Disk       DiskRequest    `json:"disk"`
+	Network    NetworkRequest `json:"network"`
+	ISO        *ISORequest    `json:"iso,omitempty"`
+	TemplateID int            `json:"templateId,omitempty"`
+	Image      *ImageRequest  `json:"image,omitempty"`
 	// UEFI requests bios=ovmf + machine=q35 + efidisk0 (US6/issue-06 D6a).
 	// Pointer so "omitted" (default true — modern OSes expect UEFI boot) is
 	// distinguishable from an explicit false (legacy SeaBIOS). TPM requests
@@ -275,6 +280,7 @@ type CreateResult struct {
 	Node                string
 	UPID                string
 	CloudInitTemplateID string
+	CloudInitFileID     string
 	CloudInitPushError  string
 }
 
@@ -357,6 +363,12 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 
 	if sources > 1 {
 		return CreateResult{}, fmt.Errorf("%w: request carries more than one of iso, templateId, image", ErrInvalidSource)
+	}
+
+	// The cloud-init document is also a single choice: an admin template OR
+	// one of the actor's own files, never both (cloudinit-userdata D4).
+	if req.CloudInitTemplateID != "" && req.CloudInitFileID != "" {
+		return CreateResult{}, fmt.Errorf("%w: request carries both cloudInitTemplateId and cloudInitFileId", ErrInvalidSource)
 	}
 
 	if req.Image != nil {
@@ -586,19 +598,19 @@ func createFromISO(ctx context.Context, policyService *policy.Policy, deps Creat
 	// unknown or disabled id is rejected without burning a VMID — the same
 	// "never spend a VMID on a request that will be rejected" discipline T06
 	// applies to node/storage/bridge/ISO catalog membership.
-	cloudTemplate, err := resolveCloudInitTemplate(ctx, deps.Store, clusterName, req.CloudInitTemplateID)
+	cloudDoc, err := resolveCloudInitDocument(ctx, deps.Store, clusterName, actor, req)
 	if err != nil {
 		return CreateResult{}, err
 	}
 
-	// lifecycle-04: when a cloud-init template is requested, do not let
+	// lifecycle-04: when a cloud-init document is requested, do not let
 	// Proxmox start the VM in the same create task — the snippet is not
 	// attached yet, and cloud-init does not replay on the next boot without
 	// `cloud-init clean`. The VM is started explicitly after attachment.
 	// Capture the original request so applyCloudInitAfterWait can start the
 	// VM after cloud-init is attached.
 	startAfterCreate := req.StartAfterCreate
-	if cloudTemplate.ID != "" {
+	if cloudDoc.present() {
 		req.StartAfterCreate = false
 	}
 
@@ -620,12 +632,12 @@ func createFromISO(ctx context.Context, policyService *policy.Policy, deps Creat
 	// lifecycle-04: wait for the create task to finish before attaching
 	// cloud-init. Without this, the PUT /nodes/{node}/qemu/{vmid}/config
 	// hits a 500 "VM is locked (create)" from Proxmox. Only wait when a
-	// cloud-init template is requested — a simple ISO creation with no
+	// cloud-init document is requested — a simple ISO creation with no
 	// post-processing must not become a long HTTP request.
-	if cloudTemplate.ID != "" {
+	if cloudDoc.present() {
 		applyCloudInitAfterWait(ctx, cloudInitWaitRequest{
 			Deps: deps, Actor: actor, ClusterName: clusterName,
-			Spec: spec, VMID: finalVMID, Template: cloudTemplate, UPID: upid,
+			Spec: spec, VMID: finalVMID, Document: cloudDoc, UPID: upid,
 			StartAfterCreate: startAfterCreate,
 			SnippetStorage:   plan.snippetStorage,
 		}, &result)
@@ -647,7 +659,7 @@ type cloudInitWaitRequest struct {
 	ClusterName      string
 	Spec             cluster.VMSpec
 	VMID             int
-	Template         catalog.CloudInitTemplate
+	Document         cloudInitDocument
 	UPID             string
 	StartAfterCreate bool
 	// SnippetStorage is the plan-time-resolved snippet-capable storage
@@ -675,8 +687,9 @@ func applyCloudInitAfterWait(ctx context.Context, req cloudInitWaitRequest, resu
 
 	applyCloudInitDocument(ctx, cloudInitApplyRequest{
 		Deps: req.Deps, Actor: req.Actor, ClusterName: req.ClusterName,
-		Spec: req.Spec, VMID: req.VMID, Template: req.Template,
-		Content: req.Template.Content, SourceLabel: "template:" + req.Template.ID,
+		Spec: req.Spec, VMID: req.VMID,
+		TemplateID: req.Document.TemplateID, FileID: req.Document.FileID,
+		Content: req.Document.Content, SourceLabel: req.Document.SourceLabel,
 		SnippetStorage: req.SnippetStorage,
 	}, result)
 
@@ -740,7 +753,7 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 		return CreateResult{}, err
 	}
 
-	cloudTemplate, err := resolveCloudInitTemplate(ctx, deps.Store, clusterName, req.CloudInitTemplateID)
+	cloudDoc, err := resolveCloudInitDocument(ctx, deps.Store, clusterName, actor, req)
 	if err != nil {
 		return CreateResult{}, err
 	}
@@ -750,7 +763,7 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 	// original request so applyPostCloneConfig can start the VM after
 	// cloud-init is attached.
 	startAfterCreate := req.StartAfterCreate
-	if cloudTemplate.ID != "" {
+	if cloudDoc.present() {
 		req.StartAfterCreate = false
 	}
 
@@ -789,7 +802,7 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 	applyPostCloneConfig(ctx, postCloneConfig{
 		Deps: deps, Actor: actor, ClusterName: clusterName,
 		VMID: finalVMID, Node: tmpl.Node, Plan: plan, Template: tmpl,
-		CloudTemplate: cloudTemplate, StartAfterCreate: startAfterCreate,
+		CloudDocument: cloudDoc, StartAfterCreate: startAfterCreate,
 		Tags: buildTags(req), DiskKey: primaryDiskKey(tmpl.DiskBus),
 		HardwareOverride: hardwareOverride,
 	}, &result)
@@ -1015,25 +1028,50 @@ func buildCloneSpec(tmpl catalog.Template, plan createPlan, req CreateRequest, v
 	return spec
 }
 
-// resolveCloudInitTemplate looks up the requested cloud-init template id
-// before any VMID is allocated. An empty id means no template was requested.
-// The stored content is re-validated here — a template edited by hand in the
-// database must not reach Proxmox.
-func resolveCloudInitTemplate(ctx context.Context, st *store.Store, clusterName, templateID string) (catalog.CloudInitTemplate, error) {
-	if templateID == "" {
-		return catalog.CloudInitTemplate{}, nil
+// cloudInitDocument is the resolved content of whichever document the
+// request named, with a label for logs/audit. Zero value = none requested.
+type cloudInitDocument struct {
+	TemplateID, FileID, Content, SourceLabel string
+}
+
+// present reports whether a document was requested and resolved.
+func (d cloudInitDocument) present() bool {
+	return d.TemplateID != "" || d.FileID != ""
+}
+
+// resolveCloudInitDocument resolves the admin template (cluster-scoped,
+// enabled-only) or the actor's own file (owner-scoped) before any VMID is
+// allocated. A foreign or missing file id is "not approved" — the same 400
+// as an unknown template, so the response never reveals whether another
+// user owns that id. The stored content is re-validated — a row edited by
+// hand in the database must not reach Proxmox.
+func resolveCloudInitDocument(ctx context.Context, st *store.Store, clusterName string, actor auth.Identity, req CreateRequest) (cloudInitDocument, error) {
+	var doc cloudInitDocument
+
+	switch {
+	case req.CloudInitTemplateID != "":
+		tmpl, err := catalog.FindCloudInitTemplate(ctx, st, clusterName, req.CloudInitTemplateID)
+		if err != nil {
+			return cloudInitDocument{}, fmt.Errorf("%w: cloud-init template %q is not approved for this cluster", ErrNotApproved, req.CloudInitTemplateID)
+		}
+
+		doc = cloudInitDocument{TemplateID: tmpl.ID, Content: tmpl.Content, SourceLabel: "template:" + tmpl.ID}
+	case req.CloudInitFileID != "":
+		file, err := cloudinit.GetUserFile(ctx, st, actor.Username, req.CloudInitFileID)
+		if err != nil {
+			return cloudInitDocument{}, fmt.Errorf("%w: cloud-init file %q not found", ErrNotApproved, req.CloudInitFileID)
+		}
+
+		doc = cloudInitDocument{FileID: file.ID, Content: file.Content, SourceLabel: "file:" + file.ID}
+	default:
+		return cloudInitDocument{}, nil
 	}
 
-	tmpl, err := catalog.FindCloudInitTemplate(ctx, st, clusterName, templateID)
-	if err != nil {
-		return catalog.CloudInitTemplate{}, fmt.Errorf("%w: cloud-init template %q is not approved for this cluster", ErrNotApproved, templateID)
+	if err := cloudinit.Validate(doc.Content); err != nil {
+		return cloudInitDocument{}, fmt.Errorf("%w: %w", ErrInvalidRequest, err)
 	}
 
-	if err := cloudinit.Validate(tmpl.Content); err != nil {
-		return catalog.CloudInitTemplate{}, fmt.Errorf("%w: %w", ErrInvalidRequest, err)
-	}
-
-	return tmpl, nil
+	return doc, nil
 }
 
 // buildCreateSpec assembles the cluster.VMSpec from the validated plan,
@@ -1104,11 +1142,14 @@ type cloudInitApplyRequest struct {
 	ClusterName string
 	Spec        cluster.VMSpec
 	VMID        int
-	Template    catalog.CloudInitTemplate
-	// Content is the document body to write — the resolved source's content
-	// (admin template today; a user file joins in issue 04).
+	// TemplateID/FileID identify the resolved source for CreateResult —
+	// exactly one is set (admin template or user file).
+	TemplateID string
+	FileID     string
+	// Content is the document body to write — the resolved source's content.
 	Content string
-	// SourceLabel identifies the document's origin in logs ("template:<id>").
+	// SourceLabel identifies the document's origin in logs
+	// ("template:<id>" / "file:<id>").
 	SourceLabel string
 	// SnippetStorage is the plan-time-resolved snippet-capable storage
 	// (ticket 04) — never the VM disk's storage, which is block-backed.
@@ -1128,7 +1169,8 @@ func applyCloudInitDocument(ctx context.Context, req cloudInitApplyRequest, resu
 		return
 	}
 
-	result.CloudInitTemplateID = req.Template.ID
+	result.CloudInitTemplateID = req.TemplateID
+	result.CloudInitFileID = req.FileID
 	filename := fmt.Sprintf("%s%d.yml", snippetFilenamePrefix, req.VMID)
 	storage := req.SnippetStorage
 	log := req.Deps.Log.With("component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "source", req.SourceLabel, "filename", filename)
@@ -1183,7 +1225,7 @@ type postCloneConfig struct {
 	Node             string
 	Plan             createPlan
 	Template         catalog.Template
-	CloudTemplate    catalog.CloudInitTemplate
+	CloudDocument    cloudInitDocument
 	StartAfterCreate bool
 	Tags             []string
 	DiskKey          string
@@ -1203,12 +1245,13 @@ func applyPostCloneConfig(ctx context.Context, cfg postCloneConfig, result *Crea
 	applyCloneDiskResize(ctx, cfg, result)
 
 	// 3. Cloud-init document write + attach (same mechanism as the ISO path).
-	if cfg.CloudTemplate.ID != "" {
+	if cfg.CloudDocument.present() {
 		applyCloudInitDocument(ctx, cloudInitApplyRequest{
 			Deps: cfg.Deps, Actor: cfg.Actor, ClusterName: cfg.ClusterName,
-			Spec: cluster.VMSpec{Node: cfg.Node, Disk: cluster.DiskSpec{Storage: cfg.Plan.storage}},
-			VMID: cfg.VMID, Template: cfg.CloudTemplate,
-			Content: cfg.CloudTemplate.Content, SourceLabel: "template:" + cfg.CloudTemplate.ID,
+			Spec:       cluster.VMSpec{Node: cfg.Node, Disk: cluster.DiskSpec{Storage: cfg.Plan.storage}},
+			VMID:       cfg.VMID,
+			TemplateID: cfg.CloudDocument.TemplateID, FileID: cfg.CloudDocument.FileID,
+			Content: cfg.CloudDocument.Content, SourceLabel: cfg.CloudDocument.SourceLabel,
 			SnippetStorage: cfg.Plan.snippetStorage,
 		}, result)
 	}
@@ -1486,7 +1529,7 @@ func resolvePlacement(ctx context.Context, req CreateRequest, policyService *pol
 // when neither was requested: the resolution costs a cluster read and must
 // not run on the plain ISO path.
 func resolvePlanSnippetStorage(ctx context.Context, deps CreateDeps, req CreateRequest, node string) (string, error) {
-	if req.CloudInitTemplateID == "" && req.Image == nil {
+	if req.CloudInitTemplateID == "" && req.CloudInitFileID == "" && req.Image == nil {
 		return "", nil
 	}
 
