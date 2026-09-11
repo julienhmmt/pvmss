@@ -178,6 +178,7 @@ export interface VMCreateRequest {
 	image?: ImageRequest;
 	uefi?: boolean;
 	tpm?: boolean;
+	secureBoot?: boolean;
 	startAfterCreate?: boolean;
 }
 
@@ -452,12 +453,15 @@ export class VmCreateStore {
 	ciIpAddress = $state('');
 	ciGateway = $state('');
 	startAfterCreate = $state(true);
-	/** US6/issue-06: UEFI (bios=ovmf + q35 + efidisk0) and TPM 2.0 —
-	 *  detailed-mode only. UEFI defaults on (modern OSes expect UEFI boot);
-	 *  TPM stays opt-in. TPM requires UEFI; the server rejects
-	 *  TPM-without-UEFI with ErrInvalidRequest. */
+	/** US6/issue-06: UEFI (bios=ovmf + q35 + efidisk0), TPM 2.0, and Secure
+	 *  Boot — available in both modes. UEFI defaults on (modern OSes expect
+	 *  UEFI boot); TPM and Secure Boot stay opt-in. Both require UEFI; the
+	 *  server rejects either without UEFI with ErrInvalidRequest. Secure Boot
+	 *  pre-enrolls Microsoft's keys — needed for Windows, not most Linux
+	 *  ISOs (many ship an unsigned bootloader Secure Boot would refuse). */
 	uefi = $state(true);
 	tpm = $state(false);
+	secureBoot = $state(false);
 
 	/** Fetches the multi-cluster options and defaults to the first one, matching
 	 *  the login page's cluster picker (must run before loadCatalog when the
@@ -689,15 +693,17 @@ export class VmCreateStore {
 					request.disk = { sizeGB: this.diskSizeGB };
 				}
 				request.uefi = this.uefi;
+				if (this.uefi && this.secureBoot) request.secureBoot = true;
 				return request;
 			}
 			if (this.simpleSource === 'template' && this.templateId !== 0) {
 				request.templateId = this.templateId;
 				if (this.cloudInitTemplateId !== '') request.cloudInitTemplateId = this.cloudInitTemplateId;
-				// No uefi field: a clone inherits the template's own firmware.
+				// No uefi/secureBoot field: a clone inherits the template's own firmware.
 				return request;
 			}
 			request.uefi = this.uefi;
+			if (this.uefi && this.secureBoot) request.secureBoot = true;
 			if (this.profileId !== '') request.profileId = this.profileId;
 			if (this.cloudInitTemplateId !== '') request.cloudInitTemplateId = this.cloudInitTemplateId;
 			if (this.nodeAdjusted && this.node !== '') request.node = this.node;
@@ -753,13 +759,14 @@ export class VmCreateStore {
 			}
 		}
 
-		// US6/issue-06: UEFI/TPM are detailed-mode-only options. UEFI is sent
-		// explicitly (true or false) so an unchecked box is honored — the
-		// server defaults to UEFI=true when the field is absent entirely
-		// (simple mode never sends it). TPM only sent when true; the server
-		// default there is already false.
+		// US6/issue-06: UEFI is sent explicitly (true or false) so an
+		// unchecked box is honored — the server defaults to UEFI=true when
+		// the field is absent entirely (simple mode's template branch never
+		// sends it). TPM/SecureBoot only sent when true; the server default
+		// for both is already false.
 		request.uefi = this.uefi;
 		if (this.uefi && this.tpm) request.tpm = true;
+		if (this.uefi && this.secureBoot) request.secureBoot = true;
 
 		return request;
 	}
@@ -826,7 +833,8 @@ export class VmCreateStore {
 			ciGateway: this.ciGateway,
 			startAfterCreate: this.startAfterCreate,
 			uefi: this.uefi,
-			tpm: this.tpm
+			tpm: this.tpm,
+			secureBoot: this.secureBoot
 		};
 	}
 
@@ -864,6 +872,7 @@ export class VmCreateStore {
 		this.startAfterCreate = values.startAfterCreate;
 		this.uefi = values.uefi ?? true;
 		this.tpm = values.tpm ?? false;
+		this.secureBoot = values.secureBoot ?? false;
 	}
 }
 

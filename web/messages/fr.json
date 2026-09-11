@@ -706,6 +706,8 @@
   "vms.create.uefiHint": "Démarrer avec UEFI au lieu de SeaBIOS. Requis pour Windows 11 et le secure boot.",
   "vms.create.tpm": "TPM 2.0",
   "vms.create.tpmHint": "Provisionner un périphérique TPM 2.0. Requiert UEFI ; ignoré sans lui.",
+  "vms.create.secureBoot": "Secure Boot",
+  "vms.create.secureBootHint": "Pré-enregistrer les clés Secure Boot de Microsoft. Activez pour un ISO Windows — requis par Windows. Laissez désactivé pour la plupart des ISO Linux : beaucoup embarquent un bootloader non signé que Secure Boot refusera d'exécuter, empêchant la VM de démarrer.",
   "vms.create.diskLimitHint": "{min}–{max} Go autorisés",
   "vms.create.diskOutOfRange": "Saisissez une taille entre {min} et {max} Go",
   "vms.create.yourCapacity": "Votre capacité",
