@@ -21,19 +21,6 @@ import (
 // vm.WaitCreateTask returns, before the response is written.
 const createWriteDeadlineMargin = 2 * time.Minute
 
-// cloudImageFeatureEnabled gates the cloud-image / cloud-init-template
-// creation path off at this single choke point (2026-09-04): forking a
-// cloud-init template per VM needs PVMSS's server to SSH into the Proxmox
-// node and write a snippet file itself — Proxmox's REST API cannot write one
-// at all (confirmed against live PVE source: PVE::API2::Storage::Status
-// hardcodes the upload/download-url content enum to iso/vztmpl/import) — and
-// that new credential/dependency was judged too much scope for now. The
-// underlying implementation (image import, native-key cloud-init, cloud-init
-// templates) still works end to end; this only stops buildCatalogDTO from
-// advertising images/cloud-init templates, so no wizard offers them. Flip to
-// true to bring the feature back — nothing else needs to change.
-const cloudImageFeatureEnabled = false
-
 // VMCreate serves POST /api/v1/vms (the single creation endpoint for both
 // simple and detailed modes — FR-001) and GET /api/v1/vm-create/catalog
 // (FR-002). All validation lives in vm.Create; this handler only decodes,
@@ -233,10 +220,14 @@ type catalogDTO struct {
 	Profiles           []catalogProfileDTO           `json:"profiles"`
 	Templates          []catalogTemplateDTO          `json:"templates"`
 	CloudInitTemplates []catalogCloudInitTemplateDTO `json:"cloudInitTemplates"`
-	Tags               []catalogTagDTO               `json:"tags"`
-	Gabarit            *catalogGabaritDTO            `json:"gabarit,omitempty"`
-	Quota              *catalogQuotaDTO              `json:"quota,omitempty"`
-	NodeCapacities     []catalogNodeCapacityDTO      `json:"nodeCapacities,omitempty"`
+	// CloudInitWriteEnabled reports whether this cluster has a snippet write
+	// target configured (Admin › Clusters): cloud-init documents can be
+	// written, so the wizard may offer the document picker.
+	CloudInitWriteEnabled bool                     `json:"cloudInitWriteEnabled"`
+	Tags                  []catalogTagDTO          `json:"tags"`
+	Gabarit               *catalogGabaritDTO       `json:"gabarit,omitempty"`
+	Quota                 *catalogQuotaDTO         `json:"quota,omitempty"`
+	NodeCapacities        []catalogNodeCapacityDTO `json:"nodeCapacities,omitempty"`
 }
 
 // ServeHTTP handles POST /api/v1/vms. Creation is asynchronous (FR-013):
@@ -397,18 +388,19 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 // catalog even if its approval row still exists in the store (the admin list
 // surfaces those orphans for manual cleanup, and enabled orphans are
 // auto-removed there).
-func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
+func buildCatalogDTO(clusterName string, data catalogData, cloudInitWriteEnabled bool) catalogDTO {
 	return catalogDTO{
-		Cluster:            clusterName,
-		Nodes:              catalogNodeNames(data.resources.Nodes, data.snap),
-		Storages:           catalogStorageDTOs(data.resources.Storages, data.snap.Storages),
-		Bridges:            catalogBridgeDTOs(data.resources.Bridges, data.bridges),
-		ISOs:               catalogFileDTOs(data.resources.ISOs, catalogISOKey, liveISOKeys(data.isos), catalogISOView),
-		Images:             catalogImageDTOs(data),
-		Profiles:           mapCatalogSlice(data.profiles, catalogProfileView),
-		Templates:          mapCatalogSlice(data.proxmoxTemplates, catalogTemplateView),
-		CloudInitTemplates: catalogCloudInitTemplateDTOs(data.templates),
-		Tags:               catalogTagDTOs(data.tags),
+		Cluster:               clusterName,
+		Nodes:                 catalogNodeNames(data.resources.Nodes, data.snap),
+		Storages:              catalogStorageDTOs(data.resources.Storages, data.snap.Storages),
+		Bridges:               catalogBridgeDTOs(data.resources.Bridges, data.bridges),
+		ISOs:                  catalogFileDTOs(data.resources.ISOs, catalogISOKey, liveISOKeys(data.isos), catalogISOView),
+		Images:                catalogImageDTOs(data),
+		Profiles:              mapCatalogSlice(data.profiles, catalogProfileView),
+		Templates:             mapCatalogSlice(data.proxmoxTemplates, catalogTemplateView),
+		CloudInitTemplates:    catalogCloudInitTemplateDTOs(data.templates, cloudInitWriteEnabled),
+		CloudInitWriteEnabled: cloudInitWriteEnabled,
+		Tags:                  catalogTagDTOs(data.tags),
 	}
 }
 
@@ -528,13 +520,9 @@ func catalogImageView(image catalog.Image) catalogImageDTO {
 	}
 }
 
-// catalogImageDTOs maps approved cloud images — gated on the cloud-image
-// feature flag (an empty non-nil slice when disabled).
+// catalogImageDTOs maps approved cloud images, dropping any the cluster no
+// longer reports (the live discovery key set).
 func catalogImageDTOs(data catalogData) []catalogImageDTO {
-	if !cloudImageFeatureEnabled {
-		return make([]catalogImageDTO, 0, len(data.resources.Images))
-	}
-
 	return catalogFileDTOs(data.resources.Images, catalogImageKey, liveImageKeys(data.images), catalogImageView)
 }
 
@@ -565,11 +553,12 @@ func catalogTemplateView(tmpl catalog.Template) catalogTemplateDTO {
 }
 
 // catalogCloudInitTemplateDTOs maps cloud-init templates — T18: the catalog
-// exposes only id+label per spec/contracts, never content. Gated on the
-// cloud-image feature flag (empty non-nil slice when disabled).
-func catalogCloudInitTemplateDTOs(templates []catalog.CloudInitTemplate) []catalogCloudInitTemplateDTO {
+// exposes only id+label per spec/contracts, never content. The list is empty
+// when the cluster has no snippet write target: offering a document the
+// create could never write would fail at submit time anyway (spec D6).
+func catalogCloudInitTemplateDTOs(templates []catalog.CloudInitTemplate, writeEnabled bool) []catalogCloudInitTemplateDTO {
 	out := make([]catalogCloudInitTemplateDTO, 0, len(templates))
-	if !cloudImageFeatureEnabled {
+	if !writeEnabled {
 		return out
 	}
 
@@ -603,7 +592,15 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dto := buildCatalogDTO(clusterName, data)
+	// The document picker is offered only when this cluster's client can
+	// actually write a snippet (spec D1/D6). Clients without the capability
+	// (a client that predates the write target) report disabled.
+	writeEnabled := false
+	if writer, ok := client.(interface{ SnippetWriteAvailable() bool }); ok {
+		writeEnabled = writer.SnippetWriteAvailable()
+	}
+
+	dto := buildCatalogDTO(clusterName, data, writeEnabled)
 
 	if err := h.attachLimits(r.Context(), &dto, clusterName, identity); err != nil {
 		h.log.Error("policy read failed", "component", "httpapi", "error", err)
@@ -884,6 +881,7 @@ var createErrorMappings = []createErrorMapping{
 	{vm.ErrDiskReduction, http.StatusBadRequest, "disk_reduction", ""},
 	{vm.ErrDiskBelowImage, http.StatusBadRequest, "disk_below_image", ""},
 	{vm.ErrInsufficientDiskSpace, http.StatusBadRequest, "insufficient_disk_space", ""},
+	{vm.ErrCloudInitWriteUnavailable, http.StatusConflict, "cloudinit_write_unavailable", "cloud-init documents are not enabled on this cluster (set the snippet directory in Admin › Clusters)"},
 	{vm.ErrNoSnippetStorage, http.StatusBadRequest, "no_snippet_storage", ""},
 	// cluster_error passes the full error chain (empty message → err.Error()):
 	// the Proxmox rejection text ("'import-from' requires special syntax",

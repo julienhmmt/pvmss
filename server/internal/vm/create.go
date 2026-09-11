@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/catalog"
+	"pvmss/server/internal/cloudinit"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
@@ -61,6 +62,10 @@ var (
 	// the template resolution) instead of creating a VM whose cloud-init is
 	// silently absent.
 	ErrNoSnippetStorage = errors.New("no snippet-capable storage on the selected node")
+	// ErrCloudInitWriteUnavailable — a cloud-init document was requested but
+	// the cluster has no snippet write target (Admin › Clusters). Refused at
+	// plan time, before a VMID is spent. Mapped to 409.
+	ErrCloudInitWriteUnavailable = errors.New("cloud-init documents are not enabled on this cluster")
 	// ErrDiskBelowImage — the requested disk size is smaller than the cloud
 	// image being imported (the import lands at the image's size and only
 	// grows). Refused before VMID allocation.
@@ -212,12 +217,13 @@ type ImageCloudInitRequest struct {
 
 // CloudInitPusher applies cloud-init configuration to a VM — T08's
 // cluster.Writer.PushCloudInitSnippet, reused verbatim by the creation-time
-// template apply step (FR-007), plus the native-key and baseline-snippet
-// methods image mode uses (Proxmox's REST API cannot write a per-VM snippet
-// file — see cluster.Writer.HasSnippet). Defined here as a narrow consumer
-// contract so vm.Create depends only on the methods it actually calls, not
-// the full Writer surface; cluster.Fake and the real Proxmox client both
-// satisfy it.
+// document apply step (FR-007), plus the native-key and baseline-snippet
+// methods image mode uses. The push is a filesystem write into the cluster's
+// configured snippet directory (spec D1) — Proxmox's REST API cannot write a
+// snippet file — followed by HasSnippet as the visibility proof. Defined here
+// as a narrow consumer contract so vm.Create depends only on the methods it
+// actually calls, not the full Writer surface; cluster.Fake and the real
+// Proxmox client both satisfy it.
 type CloudInitPusher interface {
 	PushCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int, content string) error
 	AttachCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int) error
@@ -667,9 +673,10 @@ func applyCloudInitAfterWait(ctx context.Context, req cloudInitWaitRequest, resu
 		return
 	}
 
-	applyCloudInitTemplate(ctx, cloudInitApplyRequest{
-		Deps: req.Deps, ClusterName: req.ClusterName,
+	applyCloudInitDocument(ctx, cloudInitApplyRequest{
+		Deps: req.Deps, Actor: req.Actor, ClusterName: req.ClusterName,
 		Spec: req.Spec, VMID: req.VMID, Template: req.Template,
+		Content: req.Template.Content, SourceLabel: "template:" + req.Template.ID,
 		SnippetStorage: req.SnippetStorage,
 	}, result)
 
@@ -780,7 +787,7 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 	}
 
 	applyPostCloneConfig(ctx, postCloneConfig{
-		Deps: deps, ClusterName: clusterName,
+		Deps: deps, Actor: actor, ClusterName: clusterName,
 		VMID: finalVMID, Node: tmpl.Node, Plan: plan, Template: tmpl,
 		CloudTemplate: cloudTemplate, StartAfterCreate: startAfterCreate,
 		Tags: buildTags(req), DiskKey: primaryDiskKey(tmpl.DiskBus),
@@ -1010,6 +1017,8 @@ func buildCloneSpec(tmpl catalog.Template, plan createPlan, req CreateRequest, v
 
 // resolveCloudInitTemplate looks up the requested cloud-init template id
 // before any VMID is allocated. An empty id means no template was requested.
+// The stored content is re-validated here — a template edited by hand in the
+// database must not reach Proxmox.
 func resolveCloudInitTemplate(ctx context.Context, st *store.Store, clusterName, templateID string) (catalog.CloudInitTemplate, error) {
 	if templateID == "" {
 		return catalog.CloudInitTemplate{}, nil
@@ -1018,6 +1027,10 @@ func resolveCloudInitTemplate(ctx context.Context, st *store.Store, clusterName,
 	tmpl, err := catalog.FindCloudInitTemplate(ctx, st, clusterName, templateID)
 	if err != nil {
 		return catalog.CloudInitTemplate{}, fmt.Errorf("%w: cloud-init template %q is not approved for this cluster", ErrNotApproved, templateID)
+	}
+
+	if err := cloudinit.Validate(tmpl.Content); err != nil {
+		return catalog.CloudInitTemplate{}, fmt.Errorf("%w: %w", ErrInvalidRequest, err)
 	}
 
 	return tmpl, nil
@@ -1083,74 +1096,88 @@ func buildCreateSpec(actor auth.Identity, req CreateRequest, plan createPlan, vm
 }
 
 // cloudInitApplyRequest bundles the per-creation inputs to
-// applyCloudInitTemplate. Keeping them in a struct holds the helper under
+// applyCloudInitDocument. Keeping them in a struct holds the helper under
 // go:S107's ceiling and makes the single call site self-documenting.
 type cloudInitApplyRequest struct {
 	Deps        CreateDeps
+	Actor       auth.Identity
 	ClusterName string
 	Spec        cluster.VMSpec
 	VMID        int
 	Template    catalog.CloudInitTemplate
+	// Content is the document body to write — the resolved source's content
+	// (admin template today; a user file joins in issue 04).
+	Content string
+	// SourceLabel identifies the document's origin in logs ("template:<id>").
+	SourceLabel string
 	// SnippetStorage is the plan-time-resolved snippet-capable storage
 	// (ticket 04) — never the VM disk's storage, which is block-backed.
 	SnippetStorage string
 }
 
-// templateSnippetFilename is the fixed, admin-preplaced snippet filename for
-// one cloud-init template — one file per template (not per VM), reused by
-// every clone. templateID is a slug (catalog.DeriveCloudInitTemplateID),
-// filesystem-safe as-is.
-func templateSnippetFilename(templateID string) string {
-	return fmt.Sprintf("pvmss-template-%s.yml", templateID)
-}
-
-// applyCloudInitTemplate attaches the fixed, admin-preplaced snippet file for
-// the resolved cloud-init template. Proxmox's REST API cannot write a
-// snippets-content file (upload/download-url both reject content=snippets —
-// see cluster.Writer.HasSnippet), so the template's Content field stored in
-// PVMSS's catalog is reference/documentation only: an admin must place the
-// matching file on the cluster (<storage>/snippets/<filename>, filesystem or
-// SSH access) and keep it in sync with catalog edits themselves. A missing
-// file is NOT silently skipped like image mode's optional baseline — the
-// user explicitly chose a cloud-init template expecting it to apply, so its
-// absence is recorded on result.CloudInitPushError like any other failure.
-// A failure does NOT abort the creation (the task is already dispatched and
-// cannot be undone).
-func applyCloudInitTemplate(ctx context.Context, req cloudInitApplyRequest, result *CreateResult) {
-	if req.Template.ID == "" {
+// applyCloudInitDocument writes the VM's own copy of the chosen document
+// into the cluster's snippet directory, proves Proxmox can see it, attaches
+// it through the vendor-data slot, and records the copy. Every VM gets its
+// own file (spec D4): editing the source template later never changes an
+// existing VM. A failure at any step lands on result.CloudInitPushError and
+// leaves the VM stopped — the create task is already dispatched and cannot
+// be undone, and starting without the document would silently boot a VM
+// the user did not ask for.
+func applyCloudInitDocument(ctx context.Context, req cloudInitApplyRequest, result *CreateResult) {
+	if req.Content == "" {
 		return
 	}
 
 	result.CloudInitTemplateID = req.Template.ID
-	filename := templateSnippetFilename(req.Template.ID)
+	filename := fmt.Sprintf("%s%d.yml", snippetFilenamePrefix, req.VMID)
 	storage := req.SnippetStorage
+	log := req.Deps.Log.With("component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "source", req.SourceLabel, "filename", filename)
+
+	if err := req.Deps.Pusher.PushCloudInitSnippet(ctx, req.Spec.Node, storage, filename, req.VMID, req.Content); err != nil {
+		log.Error("cloud-init document write failed", "error", err)
+		result.CloudInitPushError = err.Error()
+
+		return
+	}
 
 	present, err := req.Deps.Pusher.HasSnippet(ctx, req.Spec.Node, storage, filename)
 	if err != nil {
-		req.Deps.Log.Error("cloud-init template snippet lookup failed", "component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "error", err)
+		log.Error("cloud-init document visibility check failed", "error", err)
 		result.CloudInitPushError = err.Error()
 
 		return
 	}
 
 	if !present {
-		req.Deps.Log.Error("cloud-init template snippet missing on cluster", "component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "template", req.Template.ID, "expected_filename", filename)
-		result.CloudInitPushError = fmt.Sprintf("cloud-init template %q has no matching snippet file on the cluster (expected %q on a snippets-capable storage) — an admin must place it", req.Template.ID, filename)
+		log.Error("cloud-init document written but not visible to Proxmox")
+
+		result.CloudInitPushError = fmt.Sprintf("cloud-init document was written but Proxmox does not list %s:snippets/%s — check that the cluster's snippet directory is that storage's snippets/ directory", storage, filename)
 
 		return
 	}
 
-	// Point the VM at the snippet through the vendor-data slot so the guest
-	// actually receives it (REPORT.md addendum: previously a silent no-op).
 	if err := req.Deps.Pusher.AttachCloudInitSnippet(ctx, req.Spec.Node, storage, filename, req.VMID); err != nil {
-		req.Deps.Log.Error("cloud-init template attach failed", "component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "error", err)
+		log.Error("cloud-init document attach failed", "error", err)
 		result.CloudInitPushError = err.Error()
+
+		return
+	}
+
+	if req.Deps.Store != nil {
+		if err := req.Deps.Store.PutCloudInitSnippet(ctx, req.ClusterName, req.VMID, storage, filename, req.Content, req.Actor.Username); err != nil {
+			// The row is the unit of truth for the cloud-init tab and for
+			// delete-time cleanup — a VM whose copy is not recorded is a
+			// cloud-init failure like any other: report it, stay stopped.
+			log.Error("cloud-init document row not recorded", "error", err)
+			result.CloudInitPushError = err.Error()
+		}
 	}
 }
 
 // postCloneConfig bundles the inputs to applyPostCloneConfig (US2/issue-02).
 type postCloneConfig struct {
 	Deps             CreateDeps
+	Actor            auth.Identity
 	ClusterName      string
 	VMID             int
 	Node             string
@@ -1175,12 +1202,13 @@ func applyPostCloneConfig(ctx context.Context, cfg postCloneConfig, result *Crea
 	applyCloneHardware(ctx, cfg, result)
 	applyCloneDiskResize(ctx, cfg, result)
 
-	// 3. Cloud-init snippet attachment (same mechanism as the ISO path).
+	// 3. Cloud-init document write + attach (same mechanism as the ISO path).
 	if cfg.CloudTemplate.ID != "" {
-		applyCloudInitTemplate(ctx, cloudInitApplyRequest{
-			Deps: cfg.Deps, ClusterName: cfg.ClusterName,
+		applyCloudInitDocument(ctx, cloudInitApplyRequest{
+			Deps: cfg.Deps, Actor: cfg.Actor, ClusterName: cfg.ClusterName,
 			Spec: cluster.VMSpec{Node: cfg.Node, Disk: cluster.DiskSpec{Storage: cfg.Plan.storage}},
 			VMID: cfg.VMID, Template: cfg.CloudTemplate,
+			Content: cfg.CloudTemplate.Content, SourceLabel: "template:" + cfg.CloudTemplate.ID,
 			SnippetStorage: cfg.Plan.snippetStorage,
 		}, result)
 	}
@@ -1468,6 +1496,10 @@ func resolvePlanSnippetStorage(ctx context.Context, deps CreateDeps, req CreateR
 
 	storage, err := deps.Snippets.FindSnippetStorage(ctx, node)
 	if err != nil {
+		if errors.Is(err, cluster.ErrSnippetWriteUnavailable) {
+			return "", fmt.Errorf("%w: %w", ErrCloudInitWriteUnavailable, err)
+		}
+
 		return "", fmt.Errorf("%w: %s: enable the snippets content type on a storage of this node (%w)", ErrNoSnippetStorage, node, err)
 	}
 

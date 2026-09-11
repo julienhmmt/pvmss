@@ -3,6 +3,7 @@ package vm_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
@@ -368,23 +369,15 @@ func TestCreate_TemplateClone_SimpleModeMinimalRequest(t *testing.T) {
 }
 
 // TestCreate_TemplateClone_CloudInitAppliedAfterTask — lifecycle-04: when
-// a cloud-init template is requested alongside a Proxmox template clone,
-// the fixed admin-preplaced snippet for that template is attached after the
-// clone task completes. Proxmox's REST API cannot write a snippets-content
-// file (upload/download-url both reject content=snippets), so the catalog
-// template's Content is documentation/reference only — the actual file must
-// already exist on the cluster (cluster.Writer.HasSnippet), which the fake
-// models via SetFakeSnippetPresent.
+// a cloud-init template is requested alongside a Proxmox template clone, the
+// document content is written as the VM's own snippet (pvmss-<vmid>.yml,
+// spec D4), verified, and attached after the clone task completes — the same
+// per-VM-copy contract as the ISO path.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_TemplateClone_CloudInitAppliedAfterTask(t *testing.T) {
 	fixture := newCreateFixture(t)
 	tmplID := createTestTemplate(t, fixture.store)
-
-	cluster.SetFakeSnippetPresent(cluster.FakeNode02, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", true)
-	t.Cleanup(func() {
-		cluster.SetFakeSnippetPresent(cluster.FakeNode02, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", false)
-	})
 
 	req := templateRequest(9000)
 	req.CloudInitTemplateID = tmplID
@@ -411,17 +404,14 @@ func TestCreate_TemplateClone_CloudInitAppliedAfterTask(t *testing.T) {
 		t.Fatalf("cloned VM %d not in snapshot — cloud-init may have been attached before task completion", result.VMID)
 	}
 
-	attached := false
+	wantFilename := fmt.Sprintf("pvmss-%d.yml", result.VMID)
+	pushIdx, attachIdx := snippetCallIndices(t, result.VMID, wantFilename, testCloudInitContent)
 
-	for _, c := range cluster.FakeCallsFor(result.VMID) {
-		if c.Action == testActionAttachCloudInitSnippet && c.Filename == "pvmss-template-"+tmplID+".yml" {
-			attached = true
-		}
+	if pushIdx < 0 || attachIdx < 0 {
+		t.Fatalf("push=%d attach=%d, want both recorded for VMID %d", pushIdx, attachIdx, result.VMID)
 	}
 
-	if !attached {
-		t.Errorf("baseline snippet attach not recorded for VMID %d", result.VMID)
-	}
+	assertSnippetRow(t, fixture.store, result.VMID, wantFilename, testCloudInitContent, aliceIdentity().Username)
 
 	if result.CloudInitTemplateID != tmplID {
 		t.Errorf("result.CloudInitTemplateID = %q, want %q", result.CloudInitTemplateID, tmplID)
@@ -437,11 +427,6 @@ func TestCreate_TemplateClone_CloudInitAppliedAfterTask(t *testing.T) {
 func TestCreate_TemplateClone_StartAfterCreateWithCloudInit(t *testing.T) {
 	fixture := newCreateFixture(t)
 	tmplID := createTestTemplate(t, fixture.store)
-
-	cluster.SetFakeSnippetPresent(cluster.FakeNode02, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", true)
-	t.Cleanup(func() {
-		cluster.SetFakeSnippetPresent(cluster.FakeNode02, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", false)
-	})
 
 	req := templateRequest(9000)
 	req.CloudInitTemplateID = tmplID

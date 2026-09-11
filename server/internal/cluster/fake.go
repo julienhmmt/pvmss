@@ -500,7 +500,9 @@ func (fake Fake) PushCloudInitSnippet(_ context.Context, node, storage, filename
 	}
 
 	state.snippetMu.Lock()
-	state.snippetPresence[fakeSnippetKey{node: node, storage: storage, filename: filename}] = true
+	if state.snippetPushMarksPresent {
+		state.snippetPresence[fakeSnippetKey{node: node, storage: storage, filename: filename}] = true
+	}
 	state.snippetMu.Unlock()
 
 	return nil
@@ -622,6 +624,17 @@ func SetFakeSnippetPresent(node, storage, filename string, present bool) {
 	state.snippetMu.Lock()
 	defer state.snippetMu.Unlock()
 	state.snippetPresence[fakeSnippetKey{node: node, storage: storage, filename: filename}] = present
+}
+
+// SetFakeSnippetVisibility controls whether a successful PushCloudInitSnippet
+// marks the file visible to HasSnippet. True (the default) is the real
+// client's write-then-verify contract; false simulates a wrong mount — the
+// write succeeds on the PVMSS side but Proxmox never lists the file.
+func SetFakeSnippetVisibility(marksPresent bool) {
+	state := defaultState()
+	state.snippetMu.Lock()
+	defer state.snippetMu.Unlock()
+	state.snippetPushMarksPresent = marksPresent
 }
 
 // SetFakeCreateError configures the default fake's CreateVM error for the

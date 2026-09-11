@@ -28,19 +28,20 @@ test.describe('T18 admin cloud-init templates', () => {
 
 		const templateRow = page.locator('tr', { hasText: 'Web server' });
 		await expect(templateRow).toBeVisible();
-		await expect(templateRow.getByRole('button', { name: 'Enabled' })).toBeVisible();
+		await expect(templateRow.getByRole('switch', { name: 'Disable Web server' })).toBeVisible();
 
 		// SC-002: the template appears in the simple-mode picker while enabled.
 		// VM creation requires a pool-owning account (admins have no pool),
 		// so alice performs the creation steps.
 		await signInAlice(page.request);
 		await page.goto('/vms/create');
-		await expect(page.getByLabel('Cloud-init template (optional)')).toBeVisible();
-		const picker = page.getByLabel('Cloud-init template (optional)');
+		const picker = page.getByLabel('Cloud-init template');
+		await expect(picker).toBeVisible();
 		await expect(picker.locator('option', { hasText: 'Web server' })).toHaveCount(1);
 
 		// SC-003: select it during simple-mode VM creation and confirm the
-		// resulting VM's cloud-init tab shows the template content.
+		// resulting VM's cloud-init tab shows the template content — the
+		// per-VM copy (pvmss-<vmid>.yml) written at creation.
 		await page.getByLabel('Name').fill('cit-e2e-01');
 		await page.getByRole('radio', { name: /small/i }).check();
 		await picker.selectOption({ label: 'Web server' });
@@ -54,7 +55,7 @@ test.describe('T18 admin cloud-init templates', () => {
 		// surfaces regardless of pagination, then open its detail.
 		await page.goto('/vms');
 		await page.getByRole('searchbox', { name: 'Search VMs by name, tag, or ID' }).fill('cit-e2e-01');
-	 const vmLink = page.getByRole('link', { name: /cit-e2e-01/ }).first();
+		const vmLink = page.getByRole('link', { name: /cit-e2e-01/ }).first();
 		await expect(vmLink).toBeVisible();
 		await vmLink.click();
 		await page.getByRole('tab', { name: 'Cloud-init' }).click();
@@ -64,17 +65,35 @@ test.describe('T18 admin cloud-init templates', () => {
 		const snippet = page.locator('[data-testid="cloudinit-snippet-content"]');
 		await expect(snippet).toHaveValue(/nginx/);
 
+		// SC-004b: editing the source template must not alter the existing
+		// VM — the per-VM copy is the unit of truth (spec D4).
+		await signInAdmin(page.request);
+		await page.goto('/admin/cloudinit-templates');
+		await templateRow.getByRole('button', { name: 'Edit Web server' }).click();
+		await page.getByLabel('Content (must start with #cloud-config)').fill('#cloud-config\npackages:\n  - postgresql\n');
+		await page.getByRole('button', { name: 'Save' }).click();
+		await expect(page.getByRole('dialog')).toHaveCount(0);
+
+		await signInAlice(page.request);
+		await page.goto('/vms');
+		await page.getByRole('searchbox', { name: 'Search VMs by name, tag, or ID' }).fill('cit-e2e-01');
+		await page.getByRole('link', { name: /cit-e2e-01/ }).first().click();
+		await page.getByRole('tab', { name: 'Cloud-init' }).click();
+		await page.getByRole('button', { name: 'YAML editor' }).click();
+		await expect(snippet).toHaveValue(/nginx/);
+		await expect(snippet).not.toHaveValue(/postgresql/);
+
 		// SC-005/SC-006: disable the template and confirm it disappears from the
 		// picker on a fresh create visit.
 		await signInAdmin(page.request);
 		await page.goto('/admin/cloudinit-templates');
-		await templateRow.getByRole('button', { name: 'Enabled' }).click();
-		await expect(templateRow.getByRole('button', { name: 'Disabled' })).toBeVisible();
+		await templateRow.getByRole('switch', { name: 'Disable Web server' }).click();
+		await expect(templateRow.getByRole('switch', { name: 'Enable Web server' })).toBeVisible();
 
 		await signInAlice(page.request);
 		await page.goto('/vms/create');
 		// The picker is only rendered when at least one enabled template exists;
 		// with the sole template disabled, the field should be absent.
-		await expect(page.getByLabel('Cloud-init template (optional)')).toHaveCount(0);
+		await expect(page.getByLabel('Cloud-init template')).toHaveCount(0);
 	});
 });

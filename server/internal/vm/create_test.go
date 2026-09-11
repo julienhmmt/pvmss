@@ -3,6 +3,7 @@ package vm_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"path/filepath"
 	"pvmss/server/internal/auth"
@@ -14,6 +15,7 @@ import (
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 )
@@ -462,25 +464,71 @@ func createTestTemplate(t *testing.T, st *store.Store) string {
 	return tmpl.ID
 }
 
-// TestCreate_CloudInitTemplate_Applied — a valid enabled template is
-// resolved, its fixed admin-preplaced snippet is attached, and the result
-// echoes the template id (FR-007, SC-003). Proxmox's REST API cannot write a
-// snippets-content file, so the catalog template's Content never reaches the
-// cluster directly — the fake models the admin-placed file via
-// SetFakeSnippetPresent (see cluster.Writer.HasSnippet).
+// snippetCallIndices scans the fake call log for vmid and returns the
+// indices of the per-VM snippet push and attach (-1 when absent). Both
+// calls must name wantFilename and the push must carry wantContent.
+func snippetCallIndices(t *testing.T, vmid int, wantFilename, wantContent string) (pushIdx, attachIdx int) {
+	t.Helper()
+
+	pushIdx, attachIdx = -1, -1
+
+	for i, c := range cluster.FakeCallsFor(vmid) {
+		switch c.Action {
+		case testActionPushCloudInitSnippet:
+			pushIdx = i
+
+			if c.Filename != wantFilename || c.Content != wantContent {
+				t.Errorf("push call = %+v, want filename %q with content %q", c, wantFilename, wantContent)
+			}
+		case testActionAttachCloudInitSnippet:
+			attachIdx = i
+
+			if c.Filename != wantFilename {
+				t.Errorf("attach call = %+v, want filename %q", c, wantFilename)
+			}
+		}
+	}
+
+	return pushIdx, attachIdx
+}
+
+// assertSnippetRow checks the persisted vm_cloudinit_snippets row for vmid:
+// present, carrying the per-VM copy's filename and content, written by the
+// creating actor.
+func assertSnippetRow(t *testing.T, st *store.Store, vmid int, wantFilename, wantContent, wantActor string) {
+	t.Helper()
+
+	snippet, found, err := st.GetCloudInitSnippet(context.Background(), testClusterName, vmid)
+	if err != nil {
+		t.Fatalf("GetCloudInitSnippet: %v", err)
+	}
+
+	if !found {
+		t.Fatal("no vm_cloudinit_snippets row recorded")
+	}
+
+	if snippet.Content != wantContent || snippet.Filename != wantFilename {
+		t.Errorf("snippet row = %+v, want content %q filename %q", snippet, wantContent, wantFilename)
+	}
+
+	if snippet.UpdatedBy != wantActor {
+		t.Errorf("snippet.UpdatedBy = %q, want %q", snippet.UpdatedBy, wantActor)
+	}
+}
+
+// TestCreate_CloudInitTemplate_WritesPerVMCopy — a valid enabled template is
+// resolved, its content is written as the VM's own snippet file
+// (pvmss-<vmid>.yml, spec D4), verified visible, attached through the
+// vendor-data slot, and recorded in vm_cloudinit_snippets (FR-007, SC-003).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_CloudInitTemplate_Applied(t *testing.T) {
+func TestCreate_CloudInitTemplate_WritesPerVMCopy(t *testing.T) {
 	fixture := newCreateFixture(t)
 	tmplID := createTestTemplate(t, fixture.store)
 
-	cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", true)
-	t.Cleanup(func() {
-		cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", false)
-	})
-
 	req := detailedRequest()
 	req.CloudInitTemplateID = tmplID
+	req.StartAfterCreate = true
 
 	result, err := fixture.create(t, aliceIdentity(), req)
 	if err != nil {
@@ -495,16 +543,80 @@ func TestCreate_CloudInitTemplate_Applied(t *testing.T) {
 		t.Errorf("result.CloudInitPushError = %q, want empty", result.CloudInitPushError)
 	}
 
-	attached := false
+	wantFilename := fmt.Sprintf("pvmss-%d.yml", result.VMID)
+	pushIdx, attachIdx := snippetCallIndices(t, result.VMID, wantFilename, testCloudInitContent)
 
-	for _, c := range cluster.FakeCallsFor(result.VMID) {
-		if c.Action == testActionAttachCloudInitSnippet && c.Filename == "pvmss-template-"+tmplID+".yml" {
-			attached = true
-		}
+	if pushIdx < 0 || attachIdx < 0 {
+		t.Fatalf("push=%d attach=%d, want both recorded", pushIdx, attachIdx)
 	}
 
-	if !attached {
-		t.Error("AttachCloudInitSnippet not recorded for the template's baseline file")
+	if pushIdx > attachIdx {
+		t.Error("attach recorded before push — the VM must never point at a file not yet written")
+	}
+
+	started := slices.ContainsFunc(cluster.FakeCallsFor(result.VMID), func(c cluster.FakeCall) bool {
+		return c.Action == testActionStart
+	})
+
+	if !started {
+		t.Error("VM was not started even though startAfterCreate was set")
+	}
+
+	assertSnippetRow(t, fixture.store, result.VMID, wantFilename, testCloudInitContent, aliceIdentity().Username)
+}
+
+// TestCreate_CloudInitTemplate_TwoVMsTwoFiles — every VM owns its file (spec
+// D4): two creates from the same template produce two distinct snippet files
+// and two store rows.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_TwoVMsTwoFiles(t *testing.T) {
+	fixture := newCreateFixture(t)
+	tmplID := createTestTemplate(t, fixture.store)
+
+	first, err := fixture.create(t, aliceIdentity(), func() vm.CreateRequest {
+		req := detailedRequest()
+		req.Name = "web-a"
+		req.CloudInitTemplateID = tmplID
+
+		return req
+	}())
+	if err != nil {
+		t.Fatalf("first Create: %v", err)
+	}
+
+	second, err := fixture.create(t, aliceIdentity(), func() vm.CreateRequest {
+		req := detailedRequest()
+		req.Name = "web-b"
+		req.CloudInitTemplateID = tmplID
+
+		return req
+	}())
+	if err != nil {
+		t.Fatalf("second Create: %v", err)
+	}
+
+	if first.VMID == second.VMID {
+		t.Fatal("both creates returned the same VMID")
+	}
+
+	for _, res := range []vm.CreateResult{first, second} {
+		wantFilename := fmt.Sprintf("pvmss-%d.yml", res.VMID)
+		pushed := false
+
+		for _, c := range cluster.FakeCallsFor(res.VMID) {
+			if c.Action == testActionPushCloudInitSnippet && c.Filename == wantFilename {
+				pushed = true
+			}
+		}
+
+		if !pushed {
+			t.Errorf("no push of %q recorded for VMID %d", wantFilename, res.VMID)
+		}
+
+		if _, found, err := fixture.store.GetCloudInitSnippet(context.Background(), testClusterName, res.VMID); err != nil || !found {
+			t.Errorf("GetCloudInitSnippet(%d): found=%v err=%v", res.VMID, found, err)
+		}
 	}
 }
 
@@ -514,6 +626,14 @@ type failingSnippetFinder struct{}
 
 func (failingSnippetFinder) FindSnippetStorage(context.Context, string) (string, error) {
 	return "", cluster.ErrNotFound
+}
+
+// writeUnavailableSnippetFinder reports a cluster with no snippet write
+// target — the stand-in for an unconfigured Proxmox cluster (spec D6).
+type writeUnavailableSnippetFinder struct{}
+
+func (writeUnavailableSnippetFinder) FindSnippetStorage(context.Context, string) (string, error) {
+	return "", cluster.ErrSnippetWriteUnavailable
 }
 
 // fixedSnippetFinder always resolves to one storage and counts calls, so
@@ -561,9 +681,9 @@ func TestCreate_CloudInitTemplate_NoSnippetStorage_RejectedBeforeVMID(t *testing
 }
 
 // TestCreate_CloudInitTemplate_UsesPlanSnippetStorage — ticket 04: the
-// baseline snippet is looked up and attached on the storage resolved at plan
-// time, never the VM disk's storage (which is block-backed and cannot host a
-// snippet).
+// per-VM document is written to and attached from the storage resolved at
+// plan time, never the VM disk's storage (which is block-backed and cannot
+// host a snippet).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_CloudInitTemplate_UsesPlanSnippetStorage(t *testing.T) {
@@ -571,11 +691,6 @@ func TestCreate_CloudInitTemplate_UsesPlanSnippetStorage(t *testing.T) {
 	tmplID := createTestTemplate(t, fixture.store)
 
 	finder := &fixedSnippetFinder{storage: "snippet-vol"}
-
-	cluster.SetFakeSnippetPresent(cluster.FakeNode01, "snippet-vol", "pvmss-template-"+tmplID+".yml", true)
-	t.Cleanup(func() {
-		cluster.SetFakeSnippetPresent(cluster.FakeNode01, "snippet-vol", "pvmss-template-"+tmplID+".yml", false)
-	})
 
 	req := detailedRequest()
 	req.CloudInitTemplateID = tmplID
@@ -595,20 +710,54 @@ func TestCreate_CloudInitTemplate_UsesPlanSnippetStorage(t *testing.T) {
 		t.Fatal("the plan never resolved a snippet storage")
 	}
 
-	attachedToSnippetVol := false
+	pushedTo, attachedTo := false, false
 
 	for _, c := range cluster.FakeCallsFor(result.VMID) {
-		if c.Action == testActionAttachCloudInitSnippet {
-			if c.Storage != "snippet-vol" {
-				t.Fatalf("snippet attached from %q, want the plan-resolved snippet-vol", c.Storage)
-			}
+		if (c.Action == testActionPushCloudInitSnippet || c.Action == testActionAttachCloudInitSnippet) && c.Storage != "snippet-vol" {
+			t.Fatalf("snippet action %q ran on %q, want the plan-resolved snippet-vol", c.Action, c.Storage)
+		}
 
-			attachedToSnippetVol = true
+		if c.Action == testActionPushCloudInitSnippet {
+			pushedTo = true
+		}
+
+		if c.Action == testActionAttachCloudInitSnippet {
+			attachedTo = true
 		}
 	}
 
-	if !attachedToSnippetVol {
-		t.Fatal("no snippet attach recorded")
+	if !pushedTo || !attachedTo {
+		t.Fatalf("push=%v attach=%v, want both on the plan-resolved storage", pushedTo, attachedTo)
+	}
+}
+
+// TestCreate_CloudInitTemplate_WriteUnavailable409 — spec D6: a cloud-init
+// document request on a cluster with no snippet write target is refused with
+// ErrCloudInitWriteUnavailable (→ 409) before any VMID is allocated.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_WriteUnavailable409(t *testing.T) {
+	fixture := newCreateFixture(t)
+	tmplID := createTestTemplate(t, fixture.store)
+
+	req := detailedRequest()
+	req.CloudInitTemplateID = tmplID
+
+	log := slog.New(slog.DiscardHandler)
+
+	_, err := vm.Create(context.Background(), aliceIdentity(), testClusterName, req, vm.CreateDeps{
+		Store: fixture.store, Creator: fixture.fake, Pusher: fixture.fake,
+		Writer: fixture.fake, FreeSpace: fixture.fake, Snippets: writeUnavailableSnippetFinder{},
+		Audit: fixture.store, Log: log,
+	})
+	if !errors.Is(err, vm.ErrCloudInitWriteUnavailable) {
+		t.Fatalf("error = %v, want ErrCloudInitWriteUnavailable", err)
+	}
+
+	for _, c := range cluster.FakeCalls() {
+		if c.Action == testActionCreate || c.Action == testActionPushCloudInitSnippet {
+			t.Fatalf("rejected request reached the cluster: %+v", c)
+		}
 	}
 }
 
@@ -682,12 +831,13 @@ func TestCreate_CloudInitTemplate_Disabled_RejectedBeforeVMID(t *testing.T) {
 	}
 }
 
-// TestCreate_CloudInitTemplate_PushFailure_SoftField — a push failure after
-// CreateVM succeeded sets CreateResult.CloudInitPushError without failing the
-// creation (FR-008): the VM still materializes.
+// TestCreate_CloudInitTemplate_PushFails — a push failure after CreateVM
+// succeeded sets CreateResult.CloudInitPushError without failing the
+// creation (FR-008): the VM still materializes but is not started, nothing
+// is attached, and no snippet row is recorded.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_CloudInitTemplate_PushFailure_SoftField(t *testing.T) {
+func TestCreate_CloudInitTemplate_PushFails(t *testing.T) {
 	fixture := newCreateFixture(t)
 	tmplID := createTestTemplate(t, fixture.store)
 
@@ -696,6 +846,7 @@ func TestCreate_CloudInitTemplate_PushFailure_SoftField(t *testing.T) {
 
 	req := detailedRequest()
 	req.CloudInitTemplateID = tmplID
+	req.StartAfterCreate = true
 
 	result, err := fixture.create(t, aliceIdentity(), req)
 	if err != nil {
@@ -713,24 +864,91 @@ func TestCreate_CloudInitTemplate_PushFailure_SoftField(t *testing.T) {
 	if result.CloudInitTemplateID != tmplID {
 		t.Errorf("result.CloudInitTemplateID = %q, want %q (resolved even though push failed)", result.CloudInitTemplateID, tmplID)
 	}
+
+	for _, c := range cluster.FakeCallsFor(result.VMID) {
+		if c.Action == testActionAttachCloudInitSnippet {
+			t.Error("attach recorded despite the push failure — the VM must never point at a missing file")
+		}
+
+		if c.Action == testActionStart {
+			t.Error("VM started despite the push failure")
+		}
+	}
+
+	if _, found, err := fixture.store.GetCloudInitSnippet(context.Background(), testClusterName, result.VMID); err != nil || found {
+		t.Errorf("GetCloudInitSnippet: found=%v err=%v, want no row after a failed push", found, err)
+	}
+}
+
+// TestCreate_CloudInitTemplate_NotVisible — spec D1: the write going through
+// the mount is not proof enough; when Proxmox does not list the file the
+// create reports a CloudInitPushError naming the snippet dir expectation and
+// the VM is not started.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_NotVisible(t *testing.T) {
+	fixture := newCreateFixture(t)
+	tmplID := createTestTemplate(t, fixture.store)
+
+	cluster.SetFakeSnippetVisibility(false)
+	t.Cleanup(func() { cluster.SetFakeSnippetVisibility(true) })
+
+	req := detailedRequest()
+	req.CloudInitTemplateID = tmplID
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if !strings.Contains(result.CloudInitPushError, "snippets/pvmss-") {
+		t.Errorf("CloudInitPushError = %q, want a message naming the expected snippets file", result.CloudInitPushError)
+	}
+
+	for _, c := range cluster.FakeCallsFor(result.VMID) {
+		if c.Action == testActionAttachCloudInitSnippet {
+			t.Error("attach recorded despite the file being invisible to Proxmox")
+		}
+	}
+}
+
+// TestCreate_CloudInitTemplate_InvalidContentRefused — a template row whose
+// content does not pass cloudinit.Validate (edited by hand in the DB) is
+// refused with ErrInvalidRequest before a VMID is spent.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_CloudInitTemplate_InvalidContentRefused(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	now := time.Now().UTC().Format(time.RFC3339)
+	if err := fixture.store.InsertCloudInitTemplate(context.Background(), testClusterName, "broken", "Broken", "not cloud-config", now, now); err != nil {
+		t.Fatalf("InsertCloudInitTemplate: %v", err)
+	}
+
+	req := detailedRequest()
+	req.CloudInitTemplateID = "broken"
+
+	_, err := fixture.create(t, aliceIdentity(), req)
+	if !errors.Is(err, vm.ErrInvalidRequest) {
+		t.Fatalf("error = %v, want ErrInvalidRequest", err)
+	}
+
+	for _, c := range cluster.FakeCalls() {
+		if c.Action == testActionCreate {
+			t.Fatalf("rejected request reached the cluster: %+v", c)
+		}
+	}
 }
 
 // TestCreate_CloudInitTemplate_DeletedAfterUse — deleting a cloud-init
 // template after a VM was created from it does not error and does not touch
-// the already-created VM (FR-009, SC-006). There is no per-VM store copy to
-// "vanish" any more: the catalog template's Content was never pushed
-// anywhere (Proxmox's REST API cannot write a snippets-content file) — the
-// admin-preplaced file on the cluster is independent of the catalog row.
+// the already-created VM (FR-009, SC-006): the per-VM copy is the unit of
+// truth (spec D4), so the VM's own snippet row survives the template delete.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_CloudInitTemplate_DeletedAfterUse(t *testing.T) {
 	fixture := newCreateFixture(t)
 	tmplID := createTestTemplate(t, fixture.store)
-
-	cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", true)
-	t.Cleanup(func() {
-		cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", false)
-	})
 
 	req := detailedRequest()
 	req.CloudInitTemplateID = tmplID
@@ -748,8 +966,13 @@ func TestCreate_CloudInitTemplate_DeletedAfterUse(t *testing.T) {
 		t.Fatalf("DeleteCloudInitTemplate: %v", err)
 	}
 
-	if _, found, err := fixture.store.GetCloudInitSnippet(context.Background(), testClusterName, result.VMID); err != nil || found {
-		t.Errorf("GetCloudInitSnippet: found=%v err=%v, want no per-VM row", found, err)
+	snippet, found, err := fixture.store.GetCloudInitSnippet(context.Background(), testClusterName, result.VMID)
+	if err != nil || !found {
+		t.Fatalf("GetCloudInitSnippet: found=%v err=%v, want the per-VM row to survive", found, err)
+	}
+
+	if snippet.Content != testCloudInitContent {
+		t.Errorf("snippet.Content = %q, want the per-VM copy of %q", snippet.Content, testCloudInitContent)
 	}
 }
 
