@@ -114,6 +114,10 @@ export interface VmCreateCatalog {
 	profiles: CatalogProfile[];
 	templates: CatalogTemplate[];
 	cloudInitTemplates: CatalogCloudInitTemplate[];
+	/** Whether the cluster has a snippet write target configured. The server
+	 *  already empties cloudInitTemplates when false, so the picker never
+	 *  renders — the flag exists for consumers that want the reason. */
+	cloudInitWriteEnabled: boolean;
 	tags: CatalogTag[];
 	gabarit?: CatalogGabarit;
 	quota?: CatalogQuota;

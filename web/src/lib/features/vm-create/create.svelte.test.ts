@@ -85,6 +85,7 @@ describe('VmCreateStore.buildRequest in simple mode', () => {
 				{ vmid: 9000, node: 'pve-node-02', name: 'debian-12-cloud', cloudInitCapable: true, diskSizeGB: 8, diskStorage: 'local-lvm' }
 			],
 			cloudInitTemplates: [],
+			cloudInitWriteEnabled: false,
 			tags: []
 		};
 	}
@@ -228,6 +229,7 @@ describe('VmCreateStore.submit error translation', () => {
 			profiles: [],
 			templates: [{ vmid: 9000, node: 'pve-node-01', name: 'tmpl', cloudInitCapable: true, diskSizeGB: 8, diskStorage: 'local-lvm' }],
 			cloudInitTemplates: [],
+			cloudInitWriteEnabled: false,
 			tags: []
 		};
 		await store.submit();
@@ -309,6 +311,7 @@ describe('VmCreateStore cloud-image source (image mode)', () => {
 			profiles: [],
 			templates: [],
 			cloudInitTemplates: [],
+			cloudInitWriteEnabled: false,
 			tags: []
 		};
 	}

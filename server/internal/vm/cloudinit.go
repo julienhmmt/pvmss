@@ -15,6 +15,12 @@ import (
 	"time"
 )
 
+// snippetFilenamePrefix prefixes every cloud-init document file PVMSS writes
+// into a cluster's snippet directory (spec D4): the per-VM copy is
+// "pvmss-<vmid>.yml", the same shape the writer's filename allowlist accepts
+// (cluster.snippetFilenameRE).
+const snippetFilenamePrefix = "pvmss-"
+
 // wrapJoin wraps two errors using the "%w: %w" verb so both are matchable via
 // errors.Is. Centralized to avoid duplicating the format literal.
 func wrapJoin(sentinel, cause error) error {

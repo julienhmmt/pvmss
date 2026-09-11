@@ -57,6 +57,15 @@ func (provider vmCreateClientProvider) List() []string {
 // Every test that creates a VM mutates the fake dataset, so cleanup resets it.
 func newVMCreateHandler(t *testing.T) (*httpapi.VMCreate, *httpapi.Auth, *store.Store) {
 	t.Helper()
+
+	return newVMCreateHandlerWithClient(t, cluster.Fake{})
+}
+
+// newVMCreateHandlerWithClient is newVMCreateHandler with a caller-chosen
+// cluster client — tests that need a client without the snippet write
+// capability (or with a failing one) pass their own.
+func newVMCreateHandlerWithClient(t *testing.T, client cluster.Client) (*httpapi.VMCreate, *httpapi.Auth, *store.Store) {
+	t.Helper()
 	t.Cleanup(cluster.ResetFake)
 	authHandler := newAuthHandler(t)
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
@@ -76,7 +85,7 @@ func newVMCreateHandler(t *testing.T) (*httpapi.VMCreate, *httpapi.Auth, *store.
 	seedISOApprovals(t, st)
 	seedTagApprovals(t, st)
 
-	provider := vmCreateClientProvider{clients: map[string]cluster.Client{auditTestCluster: cluster.Fake{}}}
+	provider := vmCreateClientProvider{clients: map[string]cluster.Client{auditTestCluster: client}}
 
 	return httpapi.NewVMCreateWithRegistry(
 		authHandler,
@@ -86,6 +95,23 @@ func newVMCreateHandler(t *testing.T) (*httpapi.VMCreate, *httpapi.Auth, *store.
 		cluster.Fake{},
 		logger,
 	), authHandler, st
+}
+
+// noSnippetWriteClient is a cluster client that predates the snippet write
+// target: it only implements cluster.Client, so the catalog reports
+// cloudInitWriteEnabled=false.
+type noSnippetWriteClient struct {
+	cluster.Client
+}
+
+// snippetWriteUnavailableClient is a full Writer whose snippet write target
+// is unconfigured — FindSnippetStorage always reports unavailable.
+type snippetWriteUnavailableClient struct {
+	cluster.Fake
+}
+
+func (snippetWriteUnavailableClient) FindSnippetStorage(context.Context, string) (string, error) {
+	return "", cluster.ErrSnippetWriteUnavailable
 }
 
 func seedBridgeApprovals(t *testing.T, st *store.Store) {
@@ -602,17 +628,60 @@ func createCatalogTemplate(t *testing.T, st *store.Store) string {
 	return tmpl.ID
 }
 
-// TestVMCreateCatalog_CloudInitTemplatesEmptyWhileFeatureDisabled — GET
-// .../catalog's cloudInitTemplates field is always empty while
-// cloudImageFeatureEnabled is false (vm_create.go, 2026-09-04: per-VM
-// cloud-init forking needs PVMSS to hold SSH credentials to every Proxmox
-// node, judged too much scope for now — paused, not removed). An approved,
-// enabled template still exists in the catalog store underneath; this
-// confirms the HTTP layer's single choke point hides it regardless.
+// TestVMCreateCatalog_CloudInitTemplatesExposedWhenWriteEnabled — GET
+// .../catalog lists the approved cloud-init templates and reports
+// cloudInitWriteEnabled=true when the cluster client can write snippets
+// (spec D1). The response must not carry the template content.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestVMCreateCatalog_CloudInitTemplatesEmptyWhileFeatureDisabled(t *testing.T) {
+func TestVMCreateCatalog_CloudInitTemplatesExposedWhenWriteEnabled(t *testing.T) {
 	handler, authHandler, st := newVMCreateHandler(t)
+	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+	tmplID := createCatalogTemplate(t, st)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/vm-create/catalog", nil)
+	req.AddCookie(cookie)
+
+	rec := httptest.NewRecorder()
+	handler.ServeCatalog(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var body struct {
+		CloudInitWriteEnabled bool `json:"cloudInitWriteEnabled"`
+		CloudInitTemplates    []struct {
+			ID      string `json:"id"`
+			Label   string `json:"label"`
+			Content string `json:"content"`
+		} `json:"cloudInitTemplates"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode catalog: %v", err)
+	}
+
+	if !body.CloudInitWriteEnabled {
+		t.Error("cloudInitWriteEnabled = false, want true (fake always writes)")
+	}
+
+	if len(body.CloudInitTemplates) != 1 || body.CloudInitTemplates[0].ID != tmplID {
+		t.Fatalf("cloudInitTemplates = %+v, want the one approved template %q", body.CloudInitTemplates, tmplID)
+	}
+
+	if body.CloudInitTemplates[0].Content != "" {
+		t.Error("catalog leaked template content — the response must only carry id/label")
+	}
+}
+
+// TestVMCreateCatalog_CloudInitTemplatesHiddenWithoutWriteTarget — a cluster
+// client that cannot write snippets (no SnippetWriteAvailable capability, or
+// capability reporting false) gets an empty template list and
+// cloudInitWriteEnabled=false (spec D6: no write target, no picker).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMCreateCatalog_CloudInitTemplatesHiddenWithoutWriteTarget(t *testing.T) {
+	handler, authHandler, st := newVMCreateHandlerWithClient(t, noSnippetWriteClient{Client: cluster.Fake{}})
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 	createCatalogTemplate(t, st)
 
@@ -627,17 +696,21 @@ func TestVMCreateCatalog_CloudInitTemplatesEmptyWhileFeatureDisabled(t *testing.
 	}
 
 	var body struct {
-		CloudInitTemplates []struct {
-			ID    string `json:"id"`
-			Label string `json:"label"`
+		CloudInitWriteEnabled bool `json:"cloudInitWriteEnabled"`
+		CloudInitTemplates    []struct {
+			ID string `json:"id"`
 		} `json:"cloudInitTemplates"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
 		t.Fatalf("decode catalog: %v", err)
 	}
 
+	if body.CloudInitWriteEnabled {
+		t.Error("cloudInitWriteEnabled = true for a client without the capability")
+	}
+
 	if len(body.CloudInitTemplates) != 0 {
-		t.Fatalf("cloudInitTemplates = %+v, want empty while the feature is disabled", body.CloudInitTemplates)
+		t.Fatalf("cloudInitTemplates = %+v, want empty without a write target", body.CloudInitTemplates)
 	}
 }
 
@@ -649,15 +722,6 @@ func TestVMCreate_WithCloudInitTemplate_Success(t *testing.T) {
 	handler, authHandler, st := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 	tmplID := createCatalogTemplate(t, st)
-
-	// Proxmox's REST API cannot write a snippets-content file, so the
-	// template's catalog Content never reaches the cluster directly — the
-	// fake models the admin-placed baseline file via SetFakeSnippetPresent
-	// (cluster.Writer.HasSnippet).
-	cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", true)
-	t.Cleanup(func() {
-		cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-template-"+tmplID+".yml", false)
-	})
 
 	rec := postVMCreate(t, handler,
 		`{"cluster":"default","name":"web-20","profileId":"medium","cloudInitTemplateId":"`+tmplID+`"}`, cookie)
@@ -710,6 +774,29 @@ func TestVMCreate_WithCloudInitTemplate_PushFailure(t *testing.T) {
 
 	if result.CloudInitPushError == "" {
 		t.Error("cloudInitPushError should be non-empty on push failure")
+	}
+}
+
+// TestVMCreate_WithCloudInitTemplate_WriteUnavailable409 — a cloud-init
+// document request on a cluster with no snippet write target is refused with
+// 409 cloudinit_write_unavailable before any VMID is allocated (spec D6).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMCreate_WithCloudInitTemplate_WriteUnavailable409(t *testing.T) {
+	handler, authHandler, st := newVMCreateHandlerWithClient(t, snippetWriteUnavailableClient{})
+	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+	tmplID := createCatalogTemplate(t, st)
+
+	rec := postVMCreate(t, handler,
+		`{"cluster":"default","name":"web-21b","profileId":"medium","cloudInitTemplateId":"`+tmplID+`"}`, cookie)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusConflict, rec.Body.String())
+	}
+
+	assertAPIError(t, rec.Body.Bytes(), "cloudinit_write_unavailable")
+
+	if calls := cluster.FakeCalls(); len(calls) != 0 {
+		t.Fatalf("rejected request reached the cluster: %+v", calls)
 	}
 }
 

@@ -22,6 +22,7 @@ function catalogWith(templates: VmCreateCatalog['templates']): VmCreateCatalog {
 		profiles: [],
 		templates,
 		cloudInitTemplates: [],
+		cloudInitWriteEnabled: false,
 		tags: []
 	};
 }

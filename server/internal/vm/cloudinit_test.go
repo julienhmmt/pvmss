@@ -36,6 +36,10 @@ const (
 	testActionCreate = "create"
 	// testActionAttachCloudInitSnippet is the fake's snippet-attach action name.
 	testActionAttachCloudInitSnippet = "attach_cloudinit_snippet"
+	// testActionPushCloudInitSnippet is the fake's snippet-write action name.
+	testActionPushCloudInitSnippet = "push_cloudinit_snippet"
+	// testActionStart is the fake's VM-start action name.
+	testActionStart = "start"
 )
 
 func cloudInitIndex(t *testing.T) *inventory.Index {

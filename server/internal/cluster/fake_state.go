@@ -73,6 +73,12 @@ type fakeState struct {
 	// empty (nothing present) and tests opt a (node, storage, filename) triple
 	// in via SetFakeSnippetPresent.
 	snippetPresence map[fakeSnippetKey]bool
+	// snippetPushMarksPresent, when false, keeps a successful
+	// PushCloudInitSnippet from recording the file as visible — the "write
+	// went through the mount but Proxmox does not list it" failure (wrong
+	// mount) the create path must catch via HasSnippet. Defaults true,
+	// matching the real client's write-then-verify contract.
+	snippetPushMarksPresent bool
 }
 
 // fakeSnippetKey identifies one (node, storage, filename) snippet-presence
@@ -111,13 +117,14 @@ func (fake Fake) stateOrDefault() *fakeState {
 
 func newFakeState(clusterName string) *fakeState {
 	state := &fakeState{
-		cloudInitConfigs: originalFakeCloudInitConfigs(),
-		cloudInitDrives:  make(map[fakeCloudInitKey]bool),
-		snapshots:        make(map[fakeSnapshotKey][]VMSnapshot),
-		identities:       originalFakeIdentities(),
-		roleState:        make(map[string][]string),
-		vmLocks:          make(map[int]string),
-		snippetPresence:  make(map[fakeSnippetKey]bool),
+		cloudInitConfigs:        originalFakeCloudInitConfigs(),
+		cloudInitDrives:         make(map[fakeCloudInitKey]bool),
+		snapshots:               make(map[fakeSnapshotKey][]VMSnapshot),
+		identities:              originalFakeIdentities(),
+		roleState:               make(map[string][]string),
+		vmLocks:                 make(map[int]string),
+		snippetPresence:         make(map[fakeSnippetKey]bool),
+		snippetPushMarksPresent: true,
 	}
 	if clusterName == "secondary" {
 		state.nodes = slices.Clone(secondaryNodes)
@@ -164,6 +171,7 @@ func (s *fakeState) reset(clusterName string) {
 
 	s.snippetMu.Lock()
 	s.snippetPresence = fresh.snippetPresence
+	s.snippetPushMarksPresent = fresh.snippetPushMarksPresent
 	s.snippetMu.Unlock()
 
 	s.identMu.Lock()
