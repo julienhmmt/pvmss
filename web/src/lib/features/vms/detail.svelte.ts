@@ -3,6 +3,7 @@ import { get, post, del, patch, put, ApiRequestError } from '$lib/shared/api/cli
 import { m } from '$lib/paraglide/messages.js';
 import type { VmStatus } from './list.svelte';
 import { convergeSingle } from './converge';
+import { markVmDeleted } from './recently-deleted';
 
 export type VmAction = 'start' | 'stop' | 'shutdown' | 'reboot' | 'reset' | 'pause' | 'resume';
 
@@ -408,6 +409,7 @@ export class VmDetailStore {
 		try {
 			const path = force ? `${this.#basePath}?force=true` : this.#basePath;
 			await del<DeleteResponse>(path);
+			markVmDeleted(this.cluster, this.vmid);
 			this.deleted = true;
 		} catch (err) {
 			this.deleteError = errorMessage(err, () => m['vms.detail.errorDelete']());
