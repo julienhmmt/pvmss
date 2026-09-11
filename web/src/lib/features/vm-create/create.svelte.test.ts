@@ -107,7 +107,8 @@ describe('VmCreateStore.buildRequest in simple mode', () => {
 			cloudInitTemplateId: 'ci-01',
 			node: 'pve-node-01',
 			disk: { storage: 'local-lvm' },
-			startAfterCreate: true
+			startAfterCreate: true,
+			uefi: true
 		});
 	});
 
@@ -123,7 +124,8 @@ describe('VmCreateStore.buildRequest in simple mode', () => {
 			name: 'web-04',
 			profileId: 'small',
 			iso: { storage: 'local', file: 'ubuntu-24.04.iso' },
-			startAfterCreate: true
+			startAfterCreate: true,
+			uefi: true
 		});
 	});
 
@@ -142,7 +144,8 @@ describe('VmCreateStore.buildRequest in simple mode', () => {
 			profileId: 'small',
 			node: 'pve-node-01',
 			iso: { storage: 'local', file: 'debian-12.iso' },
-			startAfterCreate: true
+			startAfterCreate: true,
+			uefi: true
 		});
 	});
 
@@ -160,7 +163,8 @@ describe('VmCreateStore.buildRequest in simple mode', () => {
 			name: 'web-04',
 			profileId: 'small',
 			node: 'pve-node-01',
-			startAfterCreate: true
+			startAfterCreate: true,
+			uefi: true
 		});
 	});
 
@@ -488,7 +492,8 @@ describe('VmCreateStore cloud-image source (image mode)', () => {
 				cloudInit: { user: 'admin', sshKeys: ['ssh-ed25519 AAAA...'], ipMode: 'dhcp' }
 			},
 			disk: { sizeGB: 8 },
-			startAfterCreate: true
+			startAfterCreate: true,
+			uefi: true
 		});
 		expect(request.iso).toBeUndefined();
 		expect(request.templateId).toBeUndefined();
