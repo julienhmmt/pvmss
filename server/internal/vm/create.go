@@ -562,6 +562,12 @@ func applyImageCloudInitConfig(ctx context.Context, cfg imageCloudInitApply, res
 		return
 	}
 
+	// No snippet write target on this cluster: there is nowhere a baseline
+	// could live, so skip the lookup (resolvePlanSnippetStorage).
+	if cfg.SnippetStorage == "" {
+		return
+	}
+
 	present, err := cfg.Deps.Pusher.HasSnippet(ctx, cfg.Spec.Node, cfg.SnippetStorage, imageBaselineSnippetFilename)
 	if err != nil {
 		// Best-effort: a lookup failure just means the baseline is skipped —
@@ -1528,8 +1534,16 @@ func resolvePlacement(ctx context.Context, req CreateRequest, policyService *pol
 // FindSnippetStorage rule is the only correct source (ticket 04). Returns ""
 // when neither was requested: the resolution costs a cluster read and must
 // not run on the plain ISO path.
+//
+// A document needs the write target, so an unconfigured cluster is refused
+// (ErrCloudInitWriteUnavailable → 409). Image mode only uses it for the
+// optional hand-placed baseline (spec D7): with no write target the
+// baseline is skipped ("" storage) and the create proceeds on the native
+// ciuser/sshkeys/ipconfig0 keys alone.
 func resolvePlanSnippetStorage(ctx context.Context, deps CreateDeps, req CreateRequest, node string) (string, error) {
-	if req.CloudInitTemplateID == "" && req.CloudInitFileID == "" && req.Image == nil {
+	wantsDocument := req.CloudInitTemplateID != "" || req.CloudInitFileID != ""
+
+	if !wantsDocument && req.Image == nil {
 		return "", nil
 	}
 
@@ -1540,6 +1554,10 @@ func resolvePlanSnippetStorage(ctx context.Context, deps CreateDeps, req CreateR
 	storage, err := deps.Snippets.FindSnippetStorage(ctx, node)
 	if err != nil {
 		if errors.Is(err, cluster.ErrSnippetWriteUnavailable) {
+			if !wantsDocument {
+				return "", nil
+			}
+
 			return "", fmt.Errorf("%w: %w", ErrCloudInitWriteUnavailable, err)
 		}
 

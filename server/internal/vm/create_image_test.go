@@ -3,6 +3,7 @@ package vm_test
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/vm"
 	"slices"
@@ -376,5 +377,46 @@ func TestCreate_Image_NotApproved(t *testing.T) {
 	_, err := fixture.create(t, aliceIdentity(), req)
 	if !errors.Is(err, vm.ErrNotApproved) {
 		t.Fatalf("error = %v, want ErrNotApproved", err)
+	}
+}
+
+// TestCreate_Image_NoWriteTarget_SkipsBaseline — image mode delivers
+// cloud-init through Proxmox's native keys and only uses the snippet
+// storage for the optional hand-placed baseline (spec D7). A cluster with
+// no snippet write target must therefore still create image VMs: the
+// baseline is skipped, nothing is refused.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_Image_NoWriteTarget_SkipsBaseline(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	req := imageRequest()
+	req.StartAfterCreate = true
+
+	result, err := vm.Create(context.Background(), aliceIdentity(), req.Cluster, req, vm.CreateDeps{
+		Store: fixture.store, Creator: fixture.fake, Pusher: fixture.fake,
+		Writer: fixture.fake, FreeSpace: fixture.fake, Snippets: writeUnavailableSnippetFinder{},
+		Audit: fixture.store, Log: slog.New(slog.DiscardHandler),
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if result.CloudInitPushError != "" {
+		t.Errorf("result.CloudInitPushError = %q, want empty", result.CloudInitPushError)
+	}
+
+	index := fakeCallIndexes(result.VMID, "set_cloudinit_config", testActionAttachCloudInitSnippet, "start")
+
+	if index["set_cloudinit_config"] == -1 {
+		t.Fatal("SetCloudInitConfig not recorded")
+	}
+
+	if index[testActionAttachCloudInitSnippet] != -1 {
+		t.Errorf("attach_cloudinit_snippet recorded without a write target: index %d", index[testActionAttachCloudInitSnippet])
+	}
+
+	if index["start"] == -1 {
+		t.Error("start not recorded: image VM must still start without a write target")
 	}
 }
