@@ -33,6 +33,9 @@
 	const hasImages = $derived((form.catalog?.images ?? []).length > 0);
 	const hasProfiles = $derived(form.hasProfiles());
 
+	const catalogTags = $derived(form.catalog?.tags ?? []);
+	const selectedTags = $derived(new Set(form.selectedTags()));
+
 	$effect(() => {
 		if (!hasTemplates && form.simpleSource === 'template') {
 			form.simpleSource = 'profile';
@@ -324,6 +327,29 @@
 			</FormField>
 		{/if}
 
+		<FormField label={m['vms.create.tags']()} hint={m['vms.create.tagsHelp']()}>
+			{#if catalogTags.length === 0}
+				<p class="text-sm text-muted-foreground">{m['vms.create.tagsNoneAvailable']()}</p>
+			{:else}
+				<div class="flex flex-wrap gap-2" role="group" aria-label={m['vms.create.tags']()}>
+					{#each catalogTags as tag (tag.name)}
+						{@const isSelected = selectedTags.has(tag.name)}
+						<button
+							type="button"
+							aria-pressed={isSelected}
+							onclick={() => form.toggleTag(tag.name)}
+							class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors pv-focus {isSelected
+								? 'border-transparent bg-primary text-primary-foreground'
+								: 'border-border bg-muted text-muted-foreground hover:bg-muted/80'}"
+						>
+							<span class="h-2 w-2 rounded-full" style="background-color: {tag.color}" aria-hidden="true"></span>
+							{tag.name}
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</FormField>
+
 		</FormSection>
 
 		<FormSection step={3} legend={m['vms.create.sectionPlacement']()}>
@@ -371,6 +397,15 @@
 					</p>
 				{/if}
 			</FormSection>
+		{/if}
+
+		{#if form.simpleSource !== 'template'}
+			<Checkbox
+				label={m['vms.create.uefi']()}
+				hint={m['vms.create.uefiHint']()}
+				checked={form.uefi}
+				onToggle={(checked) => (form.uefi = checked)}
+			/>
 		{/if}
 
 		<Checkbox

@@ -688,13 +688,16 @@ export class VmCreateStore {
 				} else {
 					request.disk = { sizeGB: this.diskSizeGB };
 				}
+				request.uefi = this.uefi;
 				return request;
 			}
 			if (this.simpleSource === 'template' && this.templateId !== 0) {
 				request.templateId = this.templateId;
 				if (this.cloudInitTemplateId !== '') request.cloudInitTemplateId = this.cloudInitTemplateId;
+				// No uefi field: a clone inherits the template's own firmware.
 				return request;
 			}
+			request.uefi = this.uefi;
 			if (this.profileId !== '') request.profileId = this.profileId;
 			if (this.cloudInitTemplateId !== '') request.cloudInitTemplateId = this.cloudInitTemplateId;
 			if (this.nodeAdjusted && this.node !== '') request.node = this.node;
