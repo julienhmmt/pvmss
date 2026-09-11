@@ -538,6 +538,23 @@ func (fake Fake) HasSnippet(_ context.Context, node, storage, filename string) (
 	return state.snippetPresence[fakeSnippetKey{node: node, storage: storage, filename: filename}], nil
 }
 
+// RemoveCloudInitSnippet implements Writer and records the removal, clearing
+// the presence flag so a subsequent HasSnippet returns false.
+func (fake Fake) RemoveCloudInitSnippet(_ context.Context, storage, filename string) error {
+	state := fake.stateOrDefault()
+	state.record(FakeCall{Action: "remove_cloudinit_snippet", Storage: storage, Filename: filename})
+
+	state.snippetMu.Lock()
+	for key := range state.snippetPresence {
+		if key.storage == storage && key.filename == filename {
+			delete(state.snippetPresence, key)
+		}
+	}
+	state.snippetMu.Unlock()
+
+	return nil
+}
+
 // SetCloudInitPassword implements Writer and records the agent password apply
 // with its target user. The password itself is never retained (REPORT.md §1).
 // Tests can inject a failure for the next N calls (SetFakeGuestPasswordError)

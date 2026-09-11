@@ -188,6 +188,10 @@ type Writer interface {
 	// cicustom is pointed at it (a wrong mount must never leave a VM
 	// referencing nothing).
 	HasSnippet(ctx context.Context, node, storage, filename string) (bool, error)
+	// RemoveCloudInitSnippet deletes a file PVMSS wrote into the cluster's
+	// snippet directory. Missing file is not an error. Unconfigured target
+	// → ErrSnippetWriteUnavailable.
+	RemoveCloudInitSnippet(ctx context.Context, storage, filename string) error
 	// SnippetWriteAvailable reports whether this cluster has a snippet write
 	// target, i.e. whether PushCloudInitSnippet can succeed at all.
 	SnippetWriteAvailable() bool
