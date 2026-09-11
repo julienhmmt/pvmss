@@ -78,6 +78,7 @@ type VMSpec struct {
 	BIOS             string
 	Machine          string
 	TPM              bool
+	SecureBoot       bool
 	StartAfterCreate bool
 }
 

@@ -47,6 +47,7 @@ export interface DraftValues {
 	startAfterCreate: boolean;
 	uefi?: boolean;
 	tpm?: boolean;
+	secureBoot?: boolean;
 }
 
 export interface StoredDraft {

@@ -112,6 +112,26 @@ describe('VmCreateStore.buildRequest in simple mode', () => {
 		});
 	});
 
+	it('sends secureBoot only when both uefi and secureBoot are on', () => {
+		const store = new VmCreateStore();
+		store.catalog = catalog();
+		store.name = 'web-04';
+		store.profileId = 'small';
+		store.secureBoot = true;
+
+		expect(store.buildRequest()).toEqual({
+			cluster: 'default',
+			name: 'web-04',
+			profileId: 'small',
+			startAfterCreate: true,
+			uefi: true,
+			secureBoot: true
+		});
+
+		store.uefi = false;
+		expect(store.buildRequest().secureBoot).toBeUndefined();
+	});
+
 	it('builds a profile request with an ISO (auto node — server places on an ISO-holding node)', () => {
 		const store = new VmCreateStore();
 		store.catalog = catalog();

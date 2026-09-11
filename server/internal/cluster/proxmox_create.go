@@ -209,10 +209,13 @@ func resolveUEFIMachine(machine string) string {
 
 // setUEFIFormKeys emits the UEFI/TPM form keys when BIOS is ovmf (US6/issue-06
 // D6a). When BIOS is ovmf, machine is forced to q35 (UEFI requires q35 —
-// pegaprox rule), efidisk0 is provisioned on the disk's storage, and
-// tpmstate0 is added when TPM is set — never omitted silently (the pegaprox
-// preset bug where tpm_version was set without tpm_storage). Extracted from
-// CreateVM to keep its cyclomatic complexity under gocyclo's ceiling.
+// pegaprox rule), efidisk0 is provisioned on the disk's storage with Secure
+// Boot's key enrollment following spec.SecureBoot (off by default — most
+// Linux ISOs ship an unsigned bootloader Secure Boot would refuse to run),
+// and tpmstate0 is added when TPM is set — never omitted silently (the
+// pegaprox preset bug where tpm_version was set without tpm_storage).
+// Extracted from CreateVM to keep its cyclomatic complexity under gocyclo's
+// ceiling.
 func setUEFIFormKeys(form url.Values, spec VMSpec) {
 	if spec.BIOS != biosOVMF {
 		return
@@ -226,7 +229,12 @@ func setUEFIFormKeys(form url.Values, spec VMSpec) {
 		efiStorage = "local-lvm"
 	}
 
-	form.Set("efidisk0", efiStorage+":1,efitype=4m,pre-enrolled-keys=1")
+	preEnrolledKeys := "0"
+	if spec.SecureBoot {
+		preEnrolledKeys = "1"
+	}
+
+	form.Set("efidisk0", efiStorage+":1,efitype=4m,pre-enrolled-keys="+preEnrolledKeys)
 
 	if spec.TPM {
 		form.Set("tpmstate0", efiStorage+":1,version=v2.0")

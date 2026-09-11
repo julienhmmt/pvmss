@@ -1342,3 +1342,22 @@ func TestCreate_TPM_WithoutUEFI_Rejected(t *testing.T) {
 		t.Fatalf("err = %v, want ErrInvalidRequest", err)
 	}
 }
+
+// TestCreate_SecureBoot_WithoutUEFI_Rejected asserts that SecureBoot without
+// UEFI is rejected with ErrInvalidRequest before any VMID is allocated
+// (Secure Boot is a UEFI-only firmware feature).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_SecureBoot_WithoutUEFI_Rejected(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	req := detailedRequest()
+	req.Name = "secureboot-no-uefi"
+	req.SecureBoot = true
+	req.UEFI = new(false)
+
+	_, err := fixture.create(t, aliceIdentity(), req)
+	if !errors.Is(err, vm.ErrInvalidRequest) {
+		t.Fatalf("err = %v, want ErrInvalidRequest", err)
+	}
+}

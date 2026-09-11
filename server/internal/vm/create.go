@@ -149,8 +149,13 @@ type CreateRequest struct {
 	// distinguishable from an explicit false (legacy SeaBIOS). TPM requests
 	// tpmstate0 alongside the EFI disk; ignored when UEFI is false — TPM 2.0
 	// requires UEFI. TPM stays off by default even though UEFI doesn't.
+	// SecureBoot pre-enrolls Microsoft's Secure Boot keys on the EFI disk;
+	// ignored when UEFI is false. Off by default — most Linux ISOs ship an
+	// unsigned bootloader that Secure Boot would refuse to run, and Windows
+	// (which does need it) is the exception, not the rule.
 	UEFI             *bool `json:"uefi,omitempty"`
 	TPM              bool  `json:"tpm,omitempty"`
+	SecureBoot       bool  `json:"secureBoot,omitempty"`
 	StartAfterCreate bool  `json:"startAfterCreate,omitempty"`
 }
 
@@ -1036,6 +1041,7 @@ func buildCreateSpec(actor auth.Identity, req CreateRequest, plan createPlan, vm
 		Network:          cluster.NetworkSpec(nics),
 		BIOS:             bios,
 		TPM:              plan.tpm,
+		SecureBoot:       plan.secureBoot,
 		StartAfterCreate: req.StartAfterCreate,
 	}
 	if req.ISO != nil {
@@ -1251,6 +1257,7 @@ type createPlan struct {
 	isolationVLANTag int
 	uefi             bool
 	tpm              bool
+	secureBoot       bool
 }
 
 // nicPlan is one resolved and validated NIC.
@@ -1289,12 +1296,19 @@ func resolveUEFI(req CreateRequest) bool {
 	return *req.UEFI
 }
 
-// checkUEFICompat rejects the impossible TPM-without-UEFI combination early
-// (US6/issue-06 D6a: TPM 2.0 requires UEFI). Extracted from planCreate to
-// keep its cyclomatic complexity under gocyclo's ceiling.
+// checkUEFICompat rejects the impossible TPM/SecureBoot-without-UEFI
+// combinations early (US6/issue-06 D6a: TPM 2.0 requires UEFI; Secure Boot is
+// a UEFI-only firmware feature). Extracted from planCreate to keep its
+// cyclomatic complexity under gocyclo's ceiling.
 func checkUEFICompat(req CreateRequest) error {
-	if req.TPM && !resolveUEFI(req) {
-		return fmt.Errorf("%w: tpm requires uefi", ErrInvalidRequest)
+	if !resolveUEFI(req) {
+		if req.TPM {
+			return fmt.Errorf("%w: tpm requires uefi", ErrInvalidRequest)
+		}
+
+		if req.SecureBoot {
+			return fmt.Errorf("%w: secureBoot requires uefi", ErrInvalidRequest)
+		}
 	}
 
 	return nil
@@ -1379,7 +1393,7 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 		sockets: sockets, cpuCores: cpuCores,
 		memoryMB: memoryMB, diskGB: diskGB, bus: bus, nics: nics,
 		isolationVLANTag: vlanTag, uefi: resolveUEFI(req), tpm: req.TPM,
-		imageSizeGB: imageSizeGB,
+		secureBoot: req.SecureBoot, imageSizeGB: imageSizeGB,
 	}, nil
 }
 
