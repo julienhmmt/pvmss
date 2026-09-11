@@ -534,6 +534,7 @@
   "vms.cloudinit.snippetSave": "Enregistrer l'extrait",
   "vms.cloudinit.errorLoadSnippet": "Échec du chargement de l'extrait cloud-init",
   "vms.cloudinit.errorSaveSnippet": "Échec de l'enregistrement de l'extrait cloud-init",
+  "vms.cloudinit.errorWriteUnavailable": "Les documents cloud-init ne sont pas activés sur ce cluster — contactez un administrateur.",
   "vms.cloudinit.dialogTitle": "Enregistrer les modifications cloud-init ?",
   "vms.cloudinit.dialogDescription": "Ce qui s'applique, et quand :",
   "vms.cloudinit.dialogScopeNetwork": "Au prochain démarrage — adresse IP, passerelle, DNS, domaine de recherche.",

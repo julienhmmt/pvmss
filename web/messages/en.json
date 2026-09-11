@@ -534,6 +534,7 @@
   "vms.cloudinit.snippetSave": "Save snippet",
   "vms.cloudinit.errorLoadSnippet": "failed to load cloud-init snippet",
   "vms.cloudinit.errorSaveSnippet": "failed to save cloud-init snippet",
+  "vms.cloudinit.errorWriteUnavailable": "Cloud-init documents are not enabled on this cluster — ask an administrator.",
   "vms.cloudinit.dialogTitle": "Save cloud-init changes?",
   "vms.cloudinit.dialogDescription": "What applies when:",
   "vms.cloudinit.dialogScopeNetwork": "Next boot — IP address, gateway, DNS, search domain.",

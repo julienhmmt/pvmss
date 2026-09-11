@@ -202,16 +202,12 @@ func assertSSHKeyInjected(t *testing.T, handler http.Handler, path string, authH
 	}
 }
 
-// TestVMCloudInit_SnippetSaveAlwaysDisabled — Proxmox's REST API cannot write
-// a snippets-content file on any PVE version (upload/download-url both
-// reject content=snippets), so the custom-YAML save path is permanently
-// disabled — regardless of content validity, and unconditionally (not a
-// gabarit.AllowCustomYAML policy choice anymore). GET still works: existing
-// rows (e.g. from before this change, or seeded by tests/fake) remain
-// readable.
+// TestVMCloudInit_SnippetSave — ticket 05: with AllowCustomYAML on (the
+// default) and a write target set (the fake default), PUT saves the
+// snippet and returns 200. GET still works for existing rows.
 //
 //nolint:paralleltest // serial: shared fake VM and SQLite fixtures
-func TestVMCloudInit_SnippetSaveAlwaysDisabled(t *testing.T) {
+func TestVMCloudInit_SnippetSave(t *testing.T) {
 	handler, authHandler, st := newVMCloudInitHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
@@ -234,17 +230,42 @@ func TestVMCloudInit_SnippetSaveAlwaysDisabled(t *testing.T) {
 	recorder = httptest.NewRecorder()
 	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPut, "/api/v1/vms/default/101/cloudinit/snippet", `{"content":"#cloud-config\nusers: {}\n"}`, cookie))
 
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("save status = %d, want 200, body = %s", recorder.Code, recorder.Body.String())
+	}
+
+	snippet, found, err := st.GetCloudInitSnippet(context.Background(), "default", 101)
+	if err != nil || !found || snippet.Content != "#cloud-config\nusers: {}\n" {
+		t.Fatalf("snippet = %+v, found %v, err %v", snippet, found, err)
+	}
+}
+
+// TestVMCloudInit_SnippetSave_PolicyOff — AllowCustomYAML=false returns 403.
+//
+//nolint:paralleltest // serial: shared fake VM and SQLite fixtures
+func TestVMCloudInit_SnippetSave_PolicyOff(t *testing.T) {
+	handler, authHandler, st := newVMCloudInitHandler(t)
+	cookie := aliceCookie(t, authHandler)
+
+	// Disable custom YAML via the store directly (the handler auto-creates
+	// a policy service from the same store).
+	current, err := st.PolicyRow(context.Background(), "default")
+	if err != nil {
+		t.Fatalf("PolicyRow: %v", err)
+	}
+
+	current.AllowCustomYAML = false
+
+	if err := st.UpsertPolicyRow(context.Background(), current); err != nil {
+		t.Fatalf("UpsertPolicyRow: %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPut, "/api/v1/vms/default/101/cloudinit/snippet", `{"content":"#cloud-config\n"}`, cookie))
+
 	if recorder.Code != http.StatusForbidden {
 		t.Fatalf("save status = %d, want 403, body = %s", recorder.Code, recorder.Body.String())
 	}
 
 	assertAPIError(t, recorder.Body.Bytes(), "custom_yaml_disabled")
-
-	if _, found, err := st.GetCloudInitSnippet(context.Background(), "default", 101); err != nil || found {
-		t.Fatalf("snippet persisted despite the disabled save path: found %v, err %v", found, err)
-	}
-
-	if len(cluster.FakeCallsFor(101)) != 0 {
-		t.Fatalf("save reached the fake cluster: %+v", cluster.FakeCallsFor(101))
-	}
 }
