@@ -47,6 +47,9 @@ var (
 	// ErrSnippetPushFailed reports a committed snippet that was not applied upstream.
 	ErrSnippetPushFailed = errors.New("cloud-init snippet push failed")
 	// ErrCustomYAMLDisabled reports an administrator-disabled snippet editor.
+	// Policy-controlled again since ticket 05: with a configured snippet write
+	// target (ticket 01), an admin who turns AllowCustomYAML on can actually
+	// save per-VM documents.
 	ErrCustomYAMLDisabled = errors.New("custom yaml disabled")
 	// ErrNoCloudInitUser reports a password request on a VM whose patch and
 	// live config define no ciuser. The password is refused, never applied to
@@ -289,17 +292,92 @@ type CloudInitSnippetDeps struct {
 	Service     *policy.Policy
 }
 
-// SetCloudInitSnippet is permanently disabled: Proxmox's REST API cannot
-// write a snippets-content file on any PVE version (upload/download-url both
-// hardcode their content enum to iso/vztmpl/import — deliberate, since a
-// snippet can carry an arbitrary hookscript). This was never a
-// gabarit.AllowCustomYAML *policy* choice — an admin turning it on could
-// never have made it work — so it always returns ErrCustomYAMLDisabled now
-// rather than depending on that setting. Saving arbitrary per-VM raw
-// #cloud-config content would require SSH/filesystem access PVMSS does not
-// have; existing snippet rows remain readable via GetCloudInitSnippet.
-func SetCloudInitSnippet(_ context.Context, _ CloudInitSnippetDeps, _ string) error {
-	return ErrCustomYAMLDisabled
+// SetCloudInitSnippet saves a per-VM cloud-init document. The content is
+// validated, written to the configured snippet storage as pvmss-<vmid>.yml
+// (overwriting the creation-time copy from ticket 02 — one file per VM,
+// always), verified visible, attached as vendor-data, then recorded in the
+// store. Empty content detaches: the cicustom is cleared and the row content
+// is set to "" without pushing or deleting the file (ticket 06 owns removal).
+// Requires gabarit.AllowCustomYAML and a configured snippet write target.
+func SetCloudInitSnippet(ctx context.Context, deps CloudInitSnippetDeps, content string) error {
+	service := deps.Service
+
+	if service == nil {
+		return policy.ErrUnavailable
+	}
+
+	gabarit, err := service.Gabarit(ctx, deps.ClusterName)
+	if err != nil {
+		return fmt.Errorf("read gabarit: %w", err)
+	}
+
+	if !gabarit.AllowCustomYAML {
+		return ErrCustomYAMLDisabled
+	}
+
+	entity, err := resolveCloudInitTarget(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
+	if err != nil {
+		return err
+	}
+
+	storage, err := deps.Reader.FindSnippetStorage(ctx, entity.Node)
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrCloudInitWriteUnavailable, err)
+	}
+
+	filename := fmt.Sprintf("%s%d.yml", snippetFilenamePrefix, deps.VMID)
+
+	if content == "" {
+		return detachCloudInitSnippet(ctx, deps, entity, storage, filename)
+	}
+
+	return writeCloudInitSnippet(ctx, deps, entity, storage, filename, content)
+}
+
+// detachCloudInitSnippet clears the cicustom and sets the row content to ""
+// without pushing or deleting the file (ticket 06 owns removal).
+func detachCloudInitSnippet(ctx context.Context, deps CloudInitSnippetDeps, entity Entity, storage, filename string) error {
+	if err := deps.Writer.AttachCloudInitSnippet(ctx, entity.Node, storage, "", deps.VMID); err != nil {
+		return wrapJoin(ErrSnippetPushFailed, err)
+	}
+
+	if err := deps.Store.PutCloudInitSnippet(ctx, deps.ClusterName, deps.VMID, storage, filename, "", deps.Actor.Username); err != nil {
+		return err
+	}
+
+	return deps.Store.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, "edit_cloudinit_snippet")
+}
+
+// writeCloudInitSnippet validates, pushes, verifies, attaches, then records
+// the row — the row write is after the cluster steps so a failed push never
+// records a document the VM never received.
+func writeCloudInitSnippet(ctx context.Context, deps CloudInitSnippetDeps, entity Entity, storage, filename, content string) error {
+	if err := cloudinit.Validate(content); err != nil {
+		return err
+	}
+
+	if err := deps.Writer.PushCloudInitSnippet(ctx, entity.Node, storage, filename, deps.VMID, content); err != nil {
+		return fmt.Errorf("%w: %w", ErrCloudInitWriteUnavailable, err)
+	}
+
+	visible, err := deps.Writer.HasSnippet(ctx, entity.Node, storage, filename)
+	if err != nil {
+		return wrapJoin(ErrSnippetPushFailed, err)
+	}
+
+	if !visible {
+		return fmt.Errorf("%w: %s not visible after push", ErrSnippetPushFailed, filename)
+	}
+
+	if err := deps.Writer.AttachCloudInitSnippet(ctx, entity.Node, storage, filename, deps.VMID); err != nil {
+		return wrapJoin(ErrSnippetPushFailed, err)
+	}
+
+	if err := deps.Store.PutCloudInitSnippet(ctx, deps.ClusterName, deps.VMID, storage, filename, content, deps.Actor.Username); err != nil {
+		return err
+	}
+
+	return deps.Store.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, "edit_cloudinit_snippet")
 }
 
 func resolveCloudInitTarget(index *inventory.Index, actor auth.Identity, clusterName string, vmid int) (Entity, error) {

@@ -425,6 +425,8 @@ func (h *VMCloudInit) putSnippet(w http.ResponseWriter, r *http.Request, actor a
 
 func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 	switch {
+	case errors.Is(err, vm.ErrCloudInitWriteUnavailable):
+		h.writeError(w, http.StatusConflict, "cloudinit_write_unavailable", "cloud-init documents are not enabled on this cluster (set the snippet directory in Admin › Clusters)")
 	case errors.Is(err, vm.ErrCustomYAMLDisabled):
 		h.writeError(w, http.StatusForbidden, "custom_yaml_disabled", "the administrator has disabled custom cloud-init snippets")
 	case errors.Is(err, policy.ErrUnavailable):
