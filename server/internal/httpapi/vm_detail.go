@@ -508,7 +508,7 @@ func (h *VMDetail) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := vm.Delete(r.Context(), vm.WriteDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer, Audit: h.store, Refresher: h.refresherFor(clusterName), Force: r.URL.Query().Get("force") == "true"}); err != nil {
+	if err := vm.Delete(r.Context(), vm.WriteDeps{Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid, Writer: writer, Audit: h.store, Refresher: h.refresherFor(clusterName), Store: h.store, Log: h.log, Force: r.URL.Query().Get("force") == "true"}); err != nil {
 		h.writeActionError(w, err)
 		return
 	}

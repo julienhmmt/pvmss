@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
@@ -599,6 +600,34 @@ func (p Proxmox) PushCloudInitSnippet(_ context.Context, _, storage, filename st
 	}
 
 	return writeFileAtomic(p.SnippetDir, filename, content)
+}
+
+// RemoveCloudInitSnippet implements Writer by deleting a file from the
+// cluster's configured snippet directory. A missing file is not an error
+// (the VM may have been created before a write target was configured, or
+// the file was already removed). Same guards as PushCloudInitSnippet.
+func (p Proxmox) RemoveCloudInitSnippet(_ context.Context, storage, filename string) error {
+	if !p.SnippetWriteAvailable() {
+		return ErrSnippetWriteUnavailable
+	}
+
+	if storage != p.SnippetStorage {
+		return fmt.Errorf("snippet storage %q is not this cluster's configured snippet storage %q", storage, p.SnippetStorage)
+	}
+
+	if !snippetFilenameRE.MatchString(filename) || filepath.Base(filename) != filename {
+		return fmt.Errorf("refusing to remove snippet with unsafe filename %q", filename)
+	}
+
+	if err := os.Remove(filepath.Join(p.SnippetDir, filename)); err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil
+		}
+
+		return fmt.Errorf("remove snippet %q: %w", filename, err)
+	}
+
+	return nil
 }
 
 // writeFileAtomic writes content to dir/filename via a temp file and rename,

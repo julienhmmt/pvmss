@@ -88,3 +88,16 @@ func (s *Store) PutCloudInitSnippet(ctx context.Context, cluster string, vmid in
 
 	return nil
 }
+
+// DeleteCloudInitSnippet removes the VM's document row. No row is not an error.
+func (s *Store) DeleteCloudInitSnippet(ctx context.Context, cluster string, vmid int) error {
+	_, err := s.db.ExecContext(ctx,
+		`DELETE FROM vm_cloudinit_snippets WHERE cluster = ? AND vmid = ?`,
+		cluster, vmid,
+	)
+	if err != nil {
+		return fmt.Errorf("delete cloud-init snippet: %w", err)
+	}
+
+	return nil
+}
