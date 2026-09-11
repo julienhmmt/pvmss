@@ -98,7 +98,7 @@ La zone **Catalogue** contrôle ce que la création de VM peut référencer. Les
 - **Stockages** (`/admin/storages`) — approuver les stockages pouvant héberger des disques de VM, regroupés par nœud, avec barres d'usage.
 - **ISO** (`/admin/isos`) — approuver les images ISO de démarrage.
 - **Templates de VM** (`/admin/templates`) — approuver les templates Proxmox clonables, avec surcharges optionnelles par template. Un clone reste sur le nœud du template ; l'assistant prévient quand le stockage cible impose une copie complète.
-- **Images cloud** (`/admin/images`, URL directe) — approuver les images cloud découvertes dans le contenu `import/` d'un stockage. PVMSS ne télécharge jamais d'image depuis Internet : déposez-les vous-même sur le stockage.
+- **Images cloud** (`/admin/images`) — approuver les images cloud découvertes dans le contenu `import/` d'un stockage. PVMSS ne télécharge jamais d'image depuis Internet : déposez-les vous-même sur le stockage.
 - **Bridges** (`/admin/bridges`) — approuver les bridges réseau (VMBR) pour les cartes réseau. Les bridges Open vSwitch ne sont pas listés.
 - **Templates cloud-init** (`/admin/cloudinit-templates`) — créer, activer, désactiver et modifier des documents `#cloud-config` que les utilisateurs peuvent choisir à la création.
 - **Profils** (`/admin/profiles`) — définir des profils matériels pré-approuvés (sockets, cœurs, mémoire, disque, bus) avec surcharges nœud/stockage optionnelles, une icône et une couleur.
