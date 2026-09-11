@@ -112,7 +112,31 @@ This is the core of the product. Everything else exists to support it.
 | **API** | `GET /api/v1/vm-create/catalog` → `POST /api/v1/vms` → `GET /api/v1/tasks/{upid}` (polled) |
 | **Steps** | 1. Base (name, profile, cluster, node). 2. Disk. 3. Hardware. 4. Network. 5. Review — the only place raw JSON is shown, and only on request. 6. Submit; the response is a Proxmox UPID. 7. The task tray polls until done, then refreshes the VM list. Detailed mode may pick a Proxmox template as the source instead of an ISO: the node is derived from the template (the selector hides), the disk minimum rises to the template's disk, and the wizard says when the target storage forces a full copy instead of a linked clone. A third source, a cloud image, imports the image as the primary disk (Proxmox `import-from`) and requires cloud-init fields (user, SSH keys, network); the disk minimum rises to the image's size, and the VM starts only after the create task finishes and its cloud-init config is applied — never inside the create task itself. |
 | **States** | Wizard step validation; task tray shows in-flight work so the user can navigate away. Template source: the template option only appears when at least one template is approved; an empty catalog legitimately hides it. Image source: same — hidden until at least one cloud image is approved. If applying the cloud-init config fails after a successful image import, the VM exists but stays stopped and unconfigured; the create response's `cloudInitPushError` field carries the reason. |
-| **Safety nets** | Every choice comes from the admin-approved catalog — nodes, storages, bridges, ISOs, profiles, cloud-init templates, VM templates, cloud images, tags. Quotas and gabarit limits are checked server-side (`policy/`), not in the wizard. A template clone stays on the template's node (the wizard hides the node selector), the disk size can never drop below the template's disk, and a stale or deleted template fails fast before a VMID is spent. A cloud image is admin-approved cluster-side (`/admin/images`) from files discovered under a storage's `import/` content — never fetched from the internet — and the disk size can never drop below the image's size. Image-mode cloud-init is delivered entirely through Proxmox's native ciuser/sshkeys/ipconfig0 keys, not a per-VM generated file: Proxmox's REST API cannot write a cloud-init snippet (upload/download-url both reject `content=snippets` — a deliberate PVE restriction), so there is no per-VM packages or raw user-data field. A fixed, admin-preplaced baseline snippet (`pvmss-baseline.yml` in a snippet-capable storage's `snippets/` directory, e.g. to install `qemu-guest-agent`) is attached automatically when present; its absence is silent, not an error. Template-mode cloud-init has the same restriction, one file per template rather than one per cluster: a cloud-init template's Content field in `/admin/cloudinit-templates` is documentation only — an admin must separately place the matching file (`pvmss-template-<template-id>.yml`) on the cluster, kept in sync by hand. Unlike the image baseline, its absence is NOT silent: the user explicitly picked a cloud-init template expecting it to apply, so a missing file is reported on `cloudInitPushError` like any other failure. |
+| **Safety nets** | Every choice comes from the admin-approved catalog — nodes, storages, bridges, ISOs, profiles, cloud-init templates, VM templates, cloud images, tags. Quotas and gabarit limits are checked server-side (`policy/`), not in the wizard. A template clone stays on the template's node (the wizard hides the node selector), the disk size can never drop below the template's disk, and a stale or deleted template fails fast before a VMID is spent. A cloud image is admin-approved cluster-side (`/admin/images`) from files discovered under a storage's `import/` content — never fetched from the internet — and the disk size can never drop below the image's size. Image-mode cloud-init is delivered entirely through Proxmox's native ciuser/sshkeys/ipconfig0 keys, not a per-VM generated file. A cloud-init document (admin template or user file) is copied into a per-VM file `pvmss-<vmid>.yml` at creation time — PVMSS writes it directly into a bind-mounted storage `snippets/` directory (the Proxmox API cannot write snippets), then attaches it as vendor-data. Editing the source document later does not touch existing VMs. |
+
+### Create a VM with a cloud-init document
+
+| | |
+| --- | --- |
+| **Audience** | end user |
+| **Entry** | The "Cloud-init document (optional)" select in the Create VM wizard (Simple or Detailed) |
+| **Route** | `/vms/create` |
+| **API** | `GET /api/v1/cloudinit/templates` (admin templates), `GET /api/v1/cloudinit/files` (my files), `POST /api/v1/vms` with `cloudInitTemplateId` or `cloudInitFileId` |
+| **Steps** | 1. The wizard loads admin templates and the user's own files. 2. The select shows two optgroups: "Administrator templates" and "My files"; empty selection = no document. 3. On submit, the backend copies the selected document into `pvmss-<vmid>.yml` in the cluster's snippet directory, verifies it is visible, attaches it as vendor-data, and records the row. 4. The VM starts with the document applied. |
+| **States** | The select self-hides when there are no documents or the cluster has no write target. A disabled-cluster hint shows when the catalog is loaded but writing is off. A stale document ID (deleted after the draft was saved) is caught at submit time. |
+| **Safety nets** | Only one of `cloudInitTemplateId` / `cloudInitFileId` is accepted; both set is a 400. A foreign user's file ID returns `not_approved` (not `not_found`, to avoid leaking existence). The per-VM copy is immutable — editing the source later does not touch existing VMs. |
+
+### Manage my cloud-init files
+
+| | |
+| --- | --- |
+| **Audience** | end user |
+| **Entry** | Sidebar nav item "Cloud-init files" (non-admin users) |
+| **Route** | `/cloud-init` |
+| **API** | `GET /api/v1/cloudinit/files`, `POST /api/v1/cloudinit/files`, `PUT /api/v1/cloudinit/files/{id}`, `DELETE /api/v1/cloudinit/files/{id}` |
+| **Steps** | 1. List page shows the user's own documents (up to 20) with name, slug, and content preview. 2. "New file" opens a dialog with name + content fields. 3. Content must start with `#cloud-config` and be ≤ 16 KiB. 4. Save creates the file; edit overwrites; delete removes it. 5. A "Manage my files" link from the VM wizard select points here. |
+| **States** | Empty state with a "New file" CTA. Content validation errors show inline. Delete has a confirm dialog. |
+| **Safety nets** | Files are owner-scoped — a user cannot read or edit another user's files. Content is validated server-side (`#cloud-config` prefix, size limit, UTF-8). Deleting a file does not affect VMs already created from it (the per-VM copy is independent). |
 
 ### Operate a single VM
 
@@ -132,7 +156,7 @@ This is the core of the product. Everything else exists to support it.
 | Disks | add, resize, detach | `POST .../disks`, `PUT .../disks/{diskKey}/resize`, `DELETE .../disks/{diskKey}` |
 | Network | edit interface | `PUT .../network` |
 | Hardware | CPU/RAM, tags (admin-curated picker), CDROM | `GET .../hardware-options`, `PUT .../hardware`, `PATCH .../cdrom` |
-| Cloud-init | native-key form (writable); raw snippet view (read-only — Proxmox's REST API cannot write a snippets-content file, so `PUT .../cloudinit/snippet` always 403s) | `GET`/`PUT .../cloudinit`, `GET .../cloudinit/snippet` |
+| Cloud-init | native-key form (writable); per-VM document editor (writable when `AllowCustomYAML` is on and the cluster has a snippet write target; read-only otherwise) | `GET`/`PUT .../cloudinit`, `GET`/`PUT .../cloudinit/snippet` |
 | Snapshots | create, rollback, delete | `GET`/`POST .../snapshots`, `POST .../snapshots/{name}/rollback`, `DELETE .../snapshots/{name}` |
 
 Dialogs: `DeleteVmDialog`, `CreateSnapshotDialog`, `RollbackSnapshotDialog`,

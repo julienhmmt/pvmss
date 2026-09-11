@@ -6,27 +6,50 @@ shown here are the portal defaults.
 
 ## Naming
 
-VM names are lowercase, hyphenated, and unique within your pool. Avoid generic
-names like `vm1` — a descriptive name (`web-prod-01`) makes the VMs list
-searchable and the audit log readable.
+VM names are hostnames: lowercase, hyphenated, at most 63 characters, and
+unique within your pool (the name becomes the guest's DNS label through
+cloud-init). Avoid generic names like `vm1` — a descriptive name
+(`web-prod-01`) makes the VMs list searchable and the activity log readable.
+
+## Sources
+
+- **ISO** — installs from an administrator-approved image; the VM boots from
+  the CD-ROM first.
+- **Template** — clones an approved Proxmox template. The VM stays on the
+  template's node, the disk cannot be smaller than the template's, and the
+  wizard tells you when the target storage forces a full copy instead of a
+  linked clone.
+- **Cloud image** — imports an approved cloud image as the primary disk and
+  requires the cloud-init fields (user, SSH keys, network). The VM starts
+  only after the import finishes and cloud-init is applied.
 
 ## Resources
 
 - Start from a **profile** when one fits your workload; profiles encode the
   approved CPU, memory, and disk combinations and keep the catalog consistent.
 - Custom values are clamped by the cluster policy: requests above the per-user
-  quota or the node capacity are rejected before any Proxmox call is made.
+  quota, the gabarit limits, or the node capacity are rejected before any
+  Proxmox call is made.
+- Leave the node unset and PVMSS picks the least loaded approved node with
+  enough free storage.
 - Disks use the storage you select; pick a storage that matches the disk's
   expected I/O profile.
 
+## Firmware
+
+New VMs boot in **UEFI** by default. **Secure Boot** is off by default: most
+Linux ISOs ship an unsigned bootloader and would install but never boot from
+disk with it on; turn it on for Windows. Enable **TPM 2.0** for guests that
+require it (Windows 11).
+
 ## Cloud-init
 
-Prefer a **cloud-init template** over a manual post-install setup. Templates
-are admin-curated and validated server-side; selecting one guarantees the
-snippet is well-formed. See the [cloud-init how-to](/docs/cloud-init-howto) for
-the supported fields.
+Prefer a **cloud-init document** over a manual post-install setup. Pick an
+admin template or one of your own files; the VM gets its own copy at
+creation. See the [cloud-init how-to](/docs/cloud-init-howto).
 
 ## After creation
 
-New VMs appear in **My VMs** immediately. The first boot may take a minute
-while cloud-init runs; the console tab shows live boot output.
+New VMs appear in **My VMs** as soon as the create task finishes. The first
+boot may take a minute while cloud-init runs; the console shows live boot
+output.

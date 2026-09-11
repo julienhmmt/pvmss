@@ -1,51 +1,67 @@
 ---
+# Copy to docker-compose.yml and adjust. Every variable is read by
+# server/internal/config/load.go — the server refuses to start if a required
+# one is missing or malformed (LOG_LEVEL is lowercase only).
 services:
   pvmss:
-    image: jhmmt/pvmss:0.3.0
+    image: jhmmt/pvmss:latest
     container_name: pvmss
     restart: unless-stopped
     ports:
       - "50000:50000/tcp"
-    # Use either the .env file for environment variables
-    # or the environment variables in the docker-compose.yml file.
+    # Use either an .env file (see example.env) or the inline environment
+    # block below — not both.
     # env_file:
-    #  - .env
+    #   - .env
     environment:
-      # Proxmox VE settings
+      # ─── Cluster source (required, no default on purpose) ────────────────
+      # "proxmox" talks to a real cluster; "fake" serves demo data with demo
+      # credentials (admin@pve / pvmss-admin) and must never be picked by
+      # accident.
+      PVMSS_CLUSTER_SOURCE: "proxmox"
+      PROXMOX_URL: "https://ip-or-name:8006/api2/json"
       PROXMOX_API_TOKEN_NAME: "tokenName@changeMe!value"
       PROXMOX_API_TOKEN_VALUE: "aaaaaaaa-0000-44aa-1111-aaaaaaaaaaa"
-      PROXMOX_URL: "https://ip-or-name:8006/api2/json"
-      PROXMOX_VERIFY_SSL: "false"
-      # PVMSS settings — secrets (minimum 32 characters each)
-      JWT_SECRET: "changeMeWithSomethingElseUniqueMinimum32Chars"
-      SESSION_SECRET: "changeMeWithSomethingElseUniqueMinimum32Chars"
-      ADMIN_PASSWORD_HASH: "$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
-      # PVMSS settings — general
+      # ─── Server (required) ───────────────────────────────────────────────
+      PVMSS_PORT: "50000"
       PVMSS_DB_PATH: "/data/pvmss.db"
-      # Bind all interfaces inside the container so the host port mapping
-      # below ("50000:50000") can reach the server.
-      PVMSS_HOST: "0.0.0.0"
-      LOG_LEVEL: "INFO"
-      LOG_OUTPUT: "file" # stdout / file / both
-      LOG_FILE_PATH: "/app/info.log" # If "file" or "both" on LOG_OUTPUT,
-      LOG_FORMAT: "console" # "console" or "json". If "json", the log will be in JSON format, used for SIEM.
-      # This example serves plain HTTP on port 50000 with no TLS terminator,
-      # so PVMSS_ENV is set to "development" to allow non-Secure auth cookies.
-      # For production, put PVMSS behind HTTPS and set PVMSS_ENV: "production"
-      # (PVMSS_COOKIE_SECURE then defaults to true and cannot be disabled).
-      PVMSS_ENV: "development"
-      PVMSS_OFFLINE: "false"
+      # 32+ bytes. Generate with: openssl rand -hex 32
+      SESSION_SECRET: "changeMeWithSomethingElseUniqueMinimum32Chars"
+      # ─── Logging (required) ──────────────────────────────────────────────
+      LOG_LEVEL: "info" # debug | info | warn | error (lowercase only)
+      LOG_FORMAT: "console" # console | json (json for SIEM ingestion)
+      LOG_OUTPUT: "stdout" # stdout | stderr | a writable file path
+      # ─── Optional ────────────────────────────────────────────────────────
+      # Bcrypt hash for the local admin login. Generate with:
+      #   htpasswd -bnBC 10 "" "StrongPassword" | tr -d ':\n'
+      # Escape every "$" as "$$" in compose files.
+      ADMIN_PASSWORD_HASH: "$$2y$$10$$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
+      # This example serves plain HTTP with no TLS terminator, so the Secure
+      # cookie flag is off. Put PVMSS behind HTTPS and remove this line (or set
+      # "true") in production.
+      PVMSS_COOKIE_SECURE: "false"
+      # Reverse proxies in front of PVMSS (client IP for rate limits / audit).
+      # PVMSS_TRUSTED_PROXY_HOPS: "1"
+      # PVMSS_INVENTORY_REFRESH_INTERVAL: "30s"
+      # PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL: "5s"
+      # PVMSS_INVENTORY_REFRESH_TIMEOUT: "15s"
+      # PVMSS_MAX_LIST_PAGE_SIZE: "100"
       TZ: "Europe/Paris"
     volumes:
       - pvmss_data:/data
-      - ./app.log:/app/info.log # If "file" or "both" on LOG_OUTPUT, you need to set this to a valid file path
-      # Cloud-init SFTP upload (optional - mount private key for snippet uploads)
-      - ./pvmss_snippets_ed25519:/app/pvmss_snippets_ed25519:ro
+      # Logs to a file instead of stdout: set LOG_OUTPUT=/app/pvmss.log and
+      # uncomment the line below.
+      # - ./pvmss.log:/app/pvmss.log
+      # Cloud-init documents: mount the snippets/ dir of a SHARED Proxmox
+      # storage (NFS/CIFS) here, then set "Snippet directory" = /snippets and
+      # the storage id in Admin › Clusters. Leave commented to keep the
+      # feature off. See the in-app page /docs/admin-guide.
+      # - /mnt/pve/shared/snippets:/snippets
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 64M
+          cpus: "1"
+          memory: 128M
 
 volumes:
   pvmss_data: {}

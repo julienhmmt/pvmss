@@ -36,22 +36,25 @@ PVMSS runs as a stateless web application (Go REST API + SvelteKit SPA) and reli
 
 ## Feature highlights
 
+The complete, route-by-route inventory lives in [docs/FEATURES.md](docs/FEATURES.md).
+
 ### End users
 
-- Create VMs with custom CPU/RAM/disk/ISO/network/tag options (EFI, TPM, multi-NIC, disk bus selection, network card model, etc.).
-- Launch the Proxmox noVNC console straight from the portal (websocket proxy with session cookies).
-- Start, stop, reboot, delete, and resize existing VMs.
-- Search VMs by VMID or name and inspect live metrics (CPU, memory, disk, network, uptime).
-- Self-service profile: list personal VMs, reset password, view quotas.
-- Interface localized in **English** and **French**.
+- Sign in with Proxmox credentials on the cluster of your choice; personal API tokens for scripting.
+- **My VMs**: cross-cluster list, search/filter/sort mirrored in the URL, live status, bulk power actions with per-VM results, console button in every row.
+- **Create a VM** wizard (Simple / Detailed) from three sources: an approved **ISO**, a Proxmox **template** (linked or full clone), or a **cloud image** (`import-from` + cloud-init). Hardware profiles or custom CPU/RAM/disk, auto-placement with capacity scoring, multi-NIC (bridge + model), UEFI / Secure Boot / TPM 2.0, curated tags, boot from CD-ROM.
+- **Operate a VM**: 7 power actions, rename, Markdown description, delete; disks (add / grow / detach); NIC edit (bridge, model, VLAN, rate); CPU/RAM/tags/CD-ROM; snapshots (create / rollback / delete, RAM optional); metrics history (hour/day/week) and live stream; per-VM activity log.
+- **Consoles**: noVNC and serial (xterm.js), both proxied through PVMSS with single-use tickets; power actions from the console page.
+- **Cloud-init**: native form (user, password via guest agent, SSH keys, IP/DNS), "add key now" injection, admin templates or your own **cloud-init files** (`/cloud-init`, up to 20) applied as a per-VM document at creation, per-VM editor when the admin allows it.
+- Nodes page with live capacity, in-app documentation, EN + FR, keyboard-first and WCAG 2.1 AA target.
 
 ### Administrators
 
-- Approve Proxmox nodes, storages, VMBRs, and ISO repositories shown to users.
-- Manage tags and user pools.
-- Define global VM limits plus per-node caps (CPU, RAM, disk, number of NICs/disks).
-- Admin documentation and application insights page (runtime, environment, cluster status).
-- **Unified Settings Panel**: A single interface to manage all configuration (VM limits, node limits, inventory items, cloud-init templates, VM profiles, SFTP configuration) with audit trail and import/export functionality.
+- **Clusters**: connect several Proxmox environments, test connectivity, per-cluster cloud-init write target (snippet directory + storage).
+- **Catalog**: approve nodes, storages, ISOs, cloud images, VM templates, bridges; CRUD for hardware profiles, tags, cloud-init templates; stale approvals reconciled against live discovery.
+- **Pools**: create a self-service user = Proxmox user + pool + ACL in one step; cascade delete.
+- **Policy**: per-cluster gabarit (sockets, cores, memory, disk per VM, NICs, snapshots, custom cloud-init YAML, isolation VLAN) and quota (VMs per user); per-node capacity caps with live usage.
+- **System**: dashboard, app info, audit log with retention + prune preview, SQLite export and two-phase import, in-app documentation CMS (EN/FR, audience-scoped).
 
 ## Architecture at a glance
 
@@ -158,6 +161,26 @@ Each profile includes:
 - `icon`, `color`: Visual customization
 - `enabled`: Whether the profile is visible to users
 
+### Cloud-init documents (optional)
+
+Proxmox's REST API cannot write `snippets` files, so PVMSS writes them itself.
+To let users attach a cloud-init document (an admin template or one of their
+own files under `/cloud-init`) to a new VM:
+
+1. In Proxmox, pick a storage **shared by every node** (NFS/CIFS) and add
+   **Snippets** to its content types (Datacenter › Storage › Edit).
+2. Mount that storage's `snippets/` directory into the PVMSS container —
+   see the commented volume in the Docker / Compose / Helm examples below.
+3. In **Admin › Clusters › Edit**, set *Snippet directory* to the container
+   path (e.g. `/snippets`) and *Snippet storage* to the Proxmox storage id.
+   The cluster badge turns "cloud-init: on".
+
+Each VM gets its own copy (`pvmss-<vmid>.yml`, attached as `vendor=`), so
+editing a template later never changes existing VMs. Without a write target
+the picker is hidden and creation with a document is refused with a clear
+error. Full walkthrough: in-app page `/docs/admin-guide`, section *Enabling
+cloud-init documents*.
+
 ### Environment variables
 
 You can rely on `.env` + `env_file` or inline `environment:` entries, but **not both**. The needed variables are listed below:
@@ -182,6 +205,7 @@ You can rely on `.env` + `env_file` or inline `environment:` entries, but **not 
 | `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` | Minimum delay between user-triggered refreshes                             | ❌                       | `5s`                   |
 | `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | Timeout for a single inventory refresh                                     | ❌                       | `15s`                  |
 | `PVMSS_MAX_LIST_PAGE_SIZE`                    | Upper bound on list endpoint page size                                     | ❌                       | `100`                  |
+| `PVMSS_TRUSTED_PROXY_HOPS`                    | Number of reverse proxies in front of PVMSS (for client IP / rate limits)  | ❌                       | `1`                    |
 | `TZ`                                          | Container timezone                                                         | ❌                       | `UTC`                  |
 
 The Docker image presets `PVMSS_DB_PATH=/data/pvmss.db`, `PVMSS_HOST=0.0.0.0`
@@ -256,6 +280,13 @@ docker run -d \
   jhmmt/pvmss:latest
 ```
 
+To enable cloud-init documents, also mount the shared snippets directory
+(see [Cloud-init documents](#cloud-init-documents-optional)):
+
+```bash
+-v /mnt/pve/shared/snippets:/snippets \
+```
+
 To write JSON logs to a file inside the container instead of stdout, override:
 
 ```bash
@@ -294,6 +325,10 @@ services:
     volumes:
       - ./pvmss.db:/data/pvmss.db
       # - ./pvmss.log:/app/pvmss.log # Uncomment to persist logs to a file inside the container
+      # Cloud-init documents: mount the snippets/ dir of a SHARED Proxmox
+      # storage, then set "Snippet directory" = /snippets and the storage id
+      # in Admin › Clusters. Leave commented to keep the feature off.
+      # - /mnt/pve/shared/snippets:/snippets
     deploy:
       resources:
         limits:
@@ -325,21 +360,30 @@ Use the file [`pvmss-deployment.yaml`](pvmss-deployment.yaml) to create namespac
 
 Apply with `kubectl apply -f pvmss-deployment.yaml`. Provide your own ingress/HTTPRoute, an example is provided in `pvmss-httproute.yml` (Gateway API).
 
+A Helm chart lives in [`helm/`](helm/): `helm install pvmss ./helm -f my-values.yaml`.
+`values.yaml` documents every variable; `persistence.snippets` mounts a shared
+Proxmox storage's `snippets/` directory (existing PVC or NFS) for cloud-init
+documents.
+
 ## Operations
 
 - **Logs**: `docker logs -f pvmss` or `kubectl -n pvmss logs -f deploy/pvmss`. Switch `LOG_LEVEL=debug` for verbose traces. Use `LOG_FORMAT=json` with `LOG_OUTPUT=stdout` or a file path to emit JSON logs that can be shipped to a SIEM or log aggregator.
 - **Health**: startup logs include cluster connectivity and inventory refresh status. The admin "Application Info" page shows runtime metrics, environment variables, and Proxmox cluster status.
 - **Upgrades**: pull the desired image tag and restart the container. Configuration is stored in the SQLite database and persists automatically.
+- **Built-in documentation**: the in-app pages (`/docs`) are seeded once into the database and never overwritten, so admin edits survive upgrades. To pick up a newer built-in text after an upgrade, delete the page in **Admin › Documentation** and restart, or paste the new content from `server/internal/docs/seed/`.
 - **Static analysis (SonarQube)**: run `make sonar` to start a local SonarQube container, provision tokens, generate Go coverage, and scan the two projects — `pvmss-server` (Go) and `pvmss-web` (SvelteKit TS). Results are at `http://localhost:9000/projects`. Stop with `make sonar-down` and clean data with `make sonar-clean`.
 
 ## Limitations
 
 - Security hardening is ongoing; no formal penetration test yet.
-- App is not as dynamic as I'd like to. It is a work in progress.
+- OIDC: the per-cluster toggle exists but sign-in is not implemented (the endpoint returns 501).
+- Password change is API-only (`POST /api/v1/auth/password`); no page yet.
+- The cloud-init document is not removed from the snippet storage when its VM is deleted.
+- LXC containers, backups, live migration / HA, SDN and firewall rules stay in Proxmox.
 
 ### Next major features
 
-- OpenID Connect / SSO integration.
+- OpenID Connect / SSO sign-in.
 - Migration of VMs between Proxmox nodes.
 
 Feedback and contributions are welcome through issues or pull requests. Next versions and features will be documented here: <https://github.com/julienhmmt/pvmss/projects?query=is%3Aopen>.
