@@ -51,17 +51,12 @@ spec:
                 secretKeyRef:
                   name: {{ include "pvmss.fullname" . }}-secrets
                   key: {{ .Values.deployment.secretEnv.PROXMOX_API_TOKEN_VALUE }}
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "pvmss.fullname" . }}-secrets
-                  key: {{ .Values.deployment.secretEnv.JWT_SECRET }}
             - name: SESSION_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ include "pvmss.fullname" . }}-secrets
                   key: {{ .Values.deployment.secretEnv.SESSION_SECRET }}
-            # Variables simples
+            # Plain variables
             {{- range $k, $v := .Values.deployment.env }}
             - name: {{ $k }}
               value: "{{ $v }}"
@@ -71,6 +66,10 @@ spec:
               mountPath: /data
             - name: pvmss-logs
               mountPath: /data/logs
+            {{- if .Values.persistence.snippets.enabled }}
+            - name: snippets
+              mountPath: {{ .Values.persistence.snippets.mountPath }}
+            {{- end }}
           resources:
             requests:
               cpu: {{ .Values.deployment.resources.requests.cpu }}
@@ -93,3 +92,18 @@ spec:
         - name: pvmss-logs
           persistentVolumeClaim:
             claimName: {{ include "pvmss.fullname" . }}-logs-pvc
+        {{- if .Values.persistence.snippets.enabled }}
+        {{- with .Values.persistence.snippets }}
+        - name: snippets
+          {{- if .existingClaim }}
+          persistentVolumeClaim:
+            claimName: {{ .existingClaim }}
+          {{- else if and .nfs.server .nfs.path }}
+          nfs:
+            server: {{ .nfs.server }}
+            path: {{ .nfs.path }}
+          {{- else }}
+          {{ fail "persistence.snippets.enabled requires existingClaim or nfs.server + nfs.path" }}
+          {{- end }}
+        {{- end }}
+        {{- end }}

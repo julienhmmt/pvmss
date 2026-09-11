@@ -194,7 +194,7 @@ Packages under `server/internal/`:
 | `cluster/`   | Cluster clients (`proxmox` and `fake` sources), multi-cluster |
 | `store/`     | SQLite persistence (modernc.org/sqlite)                       |
 | `inventory/` | Background inventory refresh + cache                          |
-| `catalog/`   | Approved nodes/ISOs/storages/bridges, cloud-init templates    |
+| `catalog/`   | Approved nodes/ISOs/storages/bridges, cloud-init templates     |
 | `policy/`    | Limits, quotas, authorization policy                          |
 | `pools/`     | Proxmox pool handling                                         |
 | `recovery/`  | Recovery runs and fixtures                                    |
@@ -202,6 +202,11 @@ Packages under `server/internal/`:
 | `auth/`      | Sessions, password hashing, admin auth                        |
 | `cloudinit/` | Cloud-init snippet generation                                 |
 | `config/`    | Env-based configuration, validation, slog logger, redaction   |
+
+Cloud-init documents are written by PVMSS itself into a bind-mounted storage
+`snippets/` directory configured per cluster
+(`clusters.snippet_dir/snippet_storage`); the Proxmox API cannot write
+snippets. User-owned cloud-init files live in `store/user_cloudinit_files.go`.
 
 ### Web (`web/`)
 
