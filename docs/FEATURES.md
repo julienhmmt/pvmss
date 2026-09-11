@@ -18,7 +18,7 @@ exists, backend not implemented).
 | Session cookie (`SESSION_SECRET`), CSRF token, secure cookie flag | — | all writes | ✅ |
 | Sign out | header menu | `POST /api/v1/auth/logout` | ✅ |
 | Change own Proxmox password | API only (no page yet) | `POST /api/v1/auth/password` | 🧪 |
-| Personal API tokens (create — secret shown once — list, revoke) | `/profile/tokens` (direct URL, no nav link yet) | `GET/POST/DELETE /api/v1/auth/tokens` | ✅ |
+| Personal API tokens (create — secret shown once — list, revoke) | `/profile/tokens` (sidebar → API tokens) | `GET/POST/DELETE /api/v1/auth/tokens` | ✅ |
 | Proxmox sign-in blocked while the selected cluster is unreachable; admin sign-in stays available | `/login` | `cluster_unavailable` error | ✅ |
 | Per-IP rate limit on auth endpoints (10 req/min) | — | `router.go` | ✅ |
 | OIDC / SSO sign-in | `/login` (button appears when enabled on a cluster) | `POST /api/v1/auth/oidc` → **501** | 🚧 |
@@ -120,7 +120,7 @@ All routes behind `RequireAdmin`.
 | Nodes | `/admin/nodes` | approve/disable per cluster; confirm when disabling a node with running VMs; search/filter/sort; orphan cleanup | ✅ |
 | Storages | `/admin/storages` | approve per node/cluster; usage bars; orphan cleanup | ✅ |
 | ISOs | `/admin/isos` | approve discovered ISOs; orphan cleanup | ✅ |
-| Cloud images | `/admin/images` (direct URL, no nav link yet) | approve images discovered under a storage's `import/` content; orphan cleanup | ✅ |
+| Cloud images | `/admin/images` | approve images discovered under a storage's `import/` content; orphan cleanup | ✅ |
 | VM templates | `/admin/templates` | approve Proxmox templates for cloning, per-template overrides; orphan cleanup | ✅ |
 | Bridges | `/admin/bridges` | approve VMBRs (OVS not listed); orphan cleanup | ✅ |
 | Cloud-init templates | `/admin/cloudinit-templates` | CRUD + enable/disable `#cloud-config` documents (header + YAML validated) | ✅ |

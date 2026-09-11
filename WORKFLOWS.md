@@ -63,7 +63,7 @@ Rules for the fields:
 | | |
 | --- | --- |
 | **Audience** | end user |
-| **Entry** | Profile menu |
+| **Entry** | Sidebar → API tokens |
 | **Route** | `/profile/tokens` |
 | **API** | `GET /api/v1/auth/tokens`, `POST /api/v1/auth/tokens`, `DELETE /api/v1/auth/tokens/{id}` |
 | **Steps** | 1. List existing tokens. 2. Create one — the secret is shown once. 3. Revoke by id. |
@@ -232,7 +232,7 @@ non-admin), wired in `router_admin.go`. Nav grouping comes from
 | --- | --- | --- |
 | Dashboard | `/admin` | Overview (`GET /api/v1/admin/dashboard`) |
 | Infrastructure | `/admin/nodes`, `/admin/clusters`, `/admin/pools` | Approve nodes; cluster CRUD with connection test, OIDC toggle (sign-in itself returns 501 — not implemented), and the cloud-init snippet write target (`snippetDir` + `snippetStorage`, `cloudInitWriteEnabled` badge); pool create and cascade delete |
-| Catalog | `/admin/storages`, `/admin/isos`, `/admin/images` (no nav entry yet), `/admin/templates`, `/admin/bridges`, `/admin/cloudinit-templates`, `/admin/docs`, `/admin/profiles`, `/admin/tags` | Toggle what users may pick; CRUD for profiles, tags, cloud-init templates, docs; remove orphaned approvals for every discovered kind |
+| Catalog | `/admin/storages`, `/admin/isos`, `/admin/images`, `/admin/templates`, `/admin/bridges`, `/admin/cloudinit-templates`, `/admin/docs`, `/admin/profiles`, `/admin/tags` | Toggle what users may pick; CRUD for profiles, tags, cloud-init templates, docs; remove orphaned approvals for every discovered kind |
 | Policy | `/admin/policy`, `/admin/policy/nodes` | Quotas and gabarit limits; per-node capacity |
 | System | `/admin/appinfo`, `/admin/settings` | App info; audit log with retention (`GET/PUT /api/v1/admin/audit/config`, `GET …/audit/prune-preview`); DB export/import |
 
