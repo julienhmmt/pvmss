@@ -103,10 +103,10 @@ func TestCreate_Image_ProfileResolvesHardware(t *testing.T) {
 func imageRequest() vm.CreateRequest {
 	req := detailedRequest()
 	req.Image = &vm.ImageRequest{
-		Storage: "local",
+		Storage: testStorageLocal,
 		File:    "ubuntu-24.04-server-cloudimg-amd64.qcow2",
 		CloudInit: vm.ImageCloudInitRequest{
-			User:    "ubuntu",
+			User:    testUserUbuntu,
 			SSHKeys: []string{"ssh-ed25519 AAAA"},
 		},
 	}
@@ -140,7 +140,7 @@ func TestCreate_Image_AppliesCloudInit(t *testing.T) {
 		t.Fatalf("GetCloudInitConfig: %v", err)
 	}
 
-	if config.User != "ubuntu" {
+	if config.User != testUserUbuntu {
 		t.Errorf("config.User = %q, want ubuntu", config.User)
 	}
 
@@ -148,30 +148,36 @@ func TestCreate_Image_AppliesCloudInit(t *testing.T) {
 		t.Errorf("config.SSHKeys = %v, want [ssh-ed25519 AAAA]", config.SSHKeys)
 	}
 
-	setConfigIndex, attachIndex, startIndex := -1, -1, -1
+	index := fakeCallIndexes(result.VMID, "set_cloudinit_config", testActionAttachCloudInitSnippet, "start")
 
-	for i, c := range cluster.FakeCallsFor(result.VMID) {
-		switch c.Action {
-		case "set_cloudinit_config":
-			setConfigIndex = i
-		case "attach_cloudinit_snippet":
-			attachIndex = i
-		case "start":
-			startIndex = i
-		}
-	}
-
-	if setConfigIndex == -1 {
+	if index["set_cloudinit_config"] == -1 {
 		t.Fatal("SetCloudInitConfig not recorded")
 	}
 
-	if attachIndex != -1 {
-		t.Errorf("attach_cloudinit_snippet recorded despite no baseline snippet present: index %d", attachIndex)
+	if index[testActionAttachCloudInitSnippet] != -1 {
+		t.Errorf("attach_cloudinit_snippet recorded despite no baseline snippet present: index %d", index[testActionAttachCloudInitSnippet])
 	}
 
-	if startIndex == -1 || startIndex < setConfigIndex {
-		t.Errorf("start action %d did not come after the cloud-init config set %d", startIndex, setConfigIndex)
+	if index["start"] == -1 || index["start"] < index["set_cloudinit_config"] {
+		t.Errorf("start action %d did not come after the cloud-init config set %d", index["start"], index["set_cloudinit_config"])
 	}
+}
+
+// fakeCallIndexes returns the recorded-call index of each named fake action
+// for vmid (the last occurrence wins), or -1 for actions never recorded.
+func fakeCallIndexes(vmid int, actions ...string) map[string]int {
+	index := make(map[string]int, len(actions))
+	for _, action := range actions {
+		index[action] = -1
+	}
+
+	for i, call := range cluster.FakeCallsFor(vmid) {
+		if _, ok := index[call.Action]; ok {
+			index[call.Action] = i
+		}
+	}
+
+	return index
 }
 
 // TestCreate_Image_AttachesBaselineSnippetWhenPresent — when an admin has
@@ -182,8 +188,10 @@ func TestCreate_Image_AppliesCloudInit(t *testing.T) {
 func TestCreate_Image_AttachesBaselineSnippetWhenPresent(t *testing.T) {
 	fixture := newCreateFixture(t)
 
-	cluster.SetFakeSnippetPresent(cluster.FakeNode01, "local", "pvmss-baseline.yml", true)
-	t.Cleanup(func() { cluster.SetFakeSnippetPresent(cluster.FakeNode01, "local", "pvmss-baseline.yml", false) })
+	cluster.SetFakeSnippetPresent(cluster.FakeNode01, testStorageLocal, "pvmss-baseline.yml", true)
+	t.Cleanup(func() {
+		cluster.SetFakeSnippetPresent(cluster.FakeNode01, testStorageLocal, "pvmss-baseline.yml", false)
+	})
 
 	req := imageRequest()
 
@@ -199,7 +207,7 @@ func TestCreate_Image_AttachesBaselineSnippetWhenPresent(t *testing.T) {
 	found := false
 
 	for _, c := range cluster.FakeCallsFor(result.VMID) {
-		if c.Action == "attach_cloudinit_snippet" && c.Filename == "pvmss-baseline.yml" {
+		if c.Action == testActionAttachCloudInitSnippet && c.Filename == "pvmss-baseline.yml" {
 			found = true
 		}
 	}
@@ -220,13 +228,13 @@ func TestCreate_Image_GrowsImportedDisk(t *testing.T) {
 
 	// Seed a 1 GB image approval directly (the create path validates
 	// against the catalog, not discovery).
-	if err := fixture.store.SetImageEnabled(context.Background(), testClusterName, cluster.FakeNode01, "local", "small.qcow2", 1024*1024*1024, true); err != nil {
+	if err := fixture.store.SetImageEnabled(context.Background(), testClusterName, cluster.FakeNode01, testStorageLocal, "small.qcow2", 1024*1024*1024, true); err != nil {
 		t.Fatalf("seed small image approval: %v", err)
 	}
 
 	req := detailedRequest()
 	req.Disk.SizeGB = 12
-	req.Image = &vm.ImageRequest{Storage: "local", File: "small.qcow2", CloudInit: vm.ImageCloudInitRequest{User: "ubuntu"}}
+	req.Image = &vm.ImageRequest{Storage: testStorageLocal, File: "small.qcow2", CloudInit: vm.ImageCloudInitRequest{User: testUserUbuntu}}
 
 	result, err := fixture.create(t, aliceIdentity(), req)
 	if err != nil {
@@ -262,13 +270,13 @@ func TestCreate_Image_GrowsImportedDisk(t *testing.T) {
 func TestCreate_Image_NoResizeWhenSizeMatchesImage(t *testing.T) {
 	fixture := newCreateFixture(t)
 
-	if err := fixture.store.SetImageEnabled(context.Background(), testClusterName, cluster.FakeNode01, "local", "exact.qcow2", 12*1024*1024*1024, true); err != nil {
+	if err := fixture.store.SetImageEnabled(context.Background(), testClusterName, cluster.FakeNode01, testStorageLocal, "exact.qcow2", 12*1024*1024*1024, true); err != nil {
 		t.Fatalf("seed exact image approval: %v", err)
 	}
 
 	req := detailedRequest()
 	req.Disk.SizeGB = 12
-	req.Image = &vm.ImageRequest{Storage: "local", File: "exact.qcow2", CloudInit: vm.ImageCloudInitRequest{User: "ubuntu"}}
+	req.Image = &vm.ImageRequest{Storage: testStorageLocal, File: "exact.qcow2", CloudInit: vm.ImageCloudInitRequest{User: testUserUbuntu}}
 
 	result, err := fixture.create(t, aliceIdentity(), req)
 	if err != nil {
@@ -295,7 +303,7 @@ func TestCreate_Image_SourceMutualExclusion(t *testing.T) {
 		{
 			name: "image and iso",
 			mut: func(req *vm.CreateRequest) {
-				req.ISO = &vm.ISORequest{Storage: "local", File: "debian-12-generic-amd64.iso"}
+				req.ISO = &vm.ISORequest{Storage: testStorageLocal, File: "debian-12-generic-amd64.iso"}
 			},
 		},
 		{
@@ -317,7 +325,7 @@ func TestCreate_Image_SourceMutualExclusion(t *testing.T) {
 			}
 
 			for _, c := range cluster.FakeCalls() {
-				if c.Action == "create" {
+				if c.Action == testActionCreate {
 					t.Fatalf("a VM was created despite the invalid source: %+v", c)
 				}
 			}
@@ -335,13 +343,13 @@ func TestCreate_Image_DiskBelowImage_RejectedBeforeVMID(t *testing.T) {
 
 	// Seed a 10 GB image approval directly (the create path validates
 	// against the catalog, not discovery).
-	if err := fixture.store.SetImageEnabled(context.Background(), testClusterName, cluster.FakeNode01, "local", "big.qcow2", 10*1024*1024*1024, true); err != nil {
+	if err := fixture.store.SetImageEnabled(context.Background(), testClusterName, cluster.FakeNode01, testStorageLocal, "big.qcow2", 10*1024*1024*1024, true); err != nil {
 		t.Fatalf("seed big image approval: %v", err)
 	}
 
 	req := detailedRequest()
 	req.Disk.SizeGB = 4
-	req.Image = &vm.ImageRequest{Storage: "local", File: "big.qcow2", CloudInit: vm.ImageCloudInitRequest{User: "ubuntu"}}
+	req.Image = &vm.ImageRequest{Storage: testStorageLocal, File: "big.qcow2", CloudInit: vm.ImageCloudInitRequest{User: testUserUbuntu}}
 
 	_, err := fixture.create(t, aliceIdentity(), req)
 	if !errors.Is(err, vm.ErrDiskBelowImage) {
@@ -349,7 +357,7 @@ func TestCreate_Image_DiskBelowImage_RejectedBeforeVMID(t *testing.T) {
 	}
 
 	for _, c := range cluster.FakeCalls() {
-		if c.Action == "create" {
+		if c.Action == testActionCreate {
 			t.Fatalf("a VM was created despite the undersized disk: %+v", c)
 		}
 	}
@@ -363,7 +371,7 @@ func TestCreate_Image_NotApproved(t *testing.T) {
 	fixture := newCreateFixture(t)
 
 	req := detailedRequest()
-	req.Image = &vm.ImageRequest{Storage: "local", File: "unknown.qcow2", CloudInit: vm.ImageCloudInitRequest{User: "ubuntu"}}
+	req.Image = &vm.ImageRequest{Storage: testStorageLocal, File: "unknown.qcow2", CloudInit: vm.ImageCloudInitRequest{User: testUserUbuntu}}
 
 	_, err := fixture.create(t, aliceIdentity(), req)
 	if !errors.Is(err, vm.ErrNotApproved) {

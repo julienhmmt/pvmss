@@ -103,7 +103,7 @@ func TestApprovedResources_ISONodePopulated(t *testing.T) {
 	// Seed one ISO on pve-node-01 and the same file on pve-node-02 (shared
 	// storage pattern — one row per node, D1b).
 	for _, row := range []struct{ node, storage, file string }{
-		{"pve-node-01", "local", "debian-12.iso"},
+		{node01, "local", "debian-12.iso"},
 		{"pve-node-02", "local", "debian-12.iso"},
 	} {
 		if err := st.SetISOEnabled(ctx, "default", row.node, row.storage, row.file, true); err != nil {

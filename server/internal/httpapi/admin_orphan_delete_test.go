@@ -49,6 +49,7 @@ func newAdminHandlerWithEmptyDiscovery(t *testing.T) (*httpapi.AdminCatalog, *ht
 	st := newAdminStore(t)
 	registry := emptyDiscoveryRegistry{client: emptyDiscoveryListClient{}}
 	handler := httpapi.NewAdminCatalogWithRegistry(authHandler, st, registry, nil, testLogger(t))
+
 	return handler, authHandler, st
 }
 
@@ -65,6 +66,8 @@ func (r emptyDiscoveryRegistry) Client(_ string) (cluster.Client, error) {
 
 // TestAdminISOs_DeleteOrphan: DELETE /api/v1/admin/isos/{cluster}/{node}/{storage}/{file}
 // removes a disabled orphan ISO approval.
+//
+//nolint:paralleltest // serial: shared database fixture
 func TestAdminISOs_DeleteOrphan(t *testing.T) {
 	handler, authHandler, st := newAdminHandlerWithEmptyDiscovery(t)
 	cookie := adminCookie(t, authHandler)
@@ -87,6 +90,8 @@ func TestAdminISOs_DeleteOrphan(t *testing.T) {
 
 // TestAdminISOs_DisabledOrphanSurfacedAsMissing: GET /admin/isos surfaces a
 // disabled orphan with missing=true.
+//
+//nolint:paralleltest // serial: shared database fixture
 func TestAdminISOs_DisabledOrphanSurfacedAsMissing(t *testing.T) {
 	handler, authHandler, st := newAdminHandlerWithEmptyDiscovery(t)
 	cookie := adminCookie(t, authHandler)
@@ -107,14 +112,17 @@ func TestAdminISOs_DisabledOrphanSurfacedAsMissing(t *testing.T) {
 	}
 
 	found := false
+
 	for _, iso := range isos {
 		if iso.File == "ghost.iso" && iso.Node == "pve-node-01" {
 			found = true
+
 			if !iso.Missing {
 				t.Error("disabled orphan ISO should have missing=true")
 			}
 		}
 	}
+
 	if !found {
 		t.Fatal("disabled orphan ISO should be surfaced in the list")
 	}
@@ -122,6 +130,8 @@ func TestAdminISOs_DisabledOrphanSurfacedAsMissing(t *testing.T) {
 
 // TestAdminISOs_EnabledOrphanAutoRemoved: GET /admin/isos auto-removes an
 // enabled orphan — it does not appear in the list at all.
+//
+//nolint:paralleltest // serial: shared database fixture
 func TestAdminISOs_EnabledOrphanAutoRemoved(t *testing.T) {
 	handler, authHandler, st := newAdminHandlerWithEmptyDiscovery(t)
 	cookie := adminCookie(t, authHandler)
@@ -150,6 +160,8 @@ func TestAdminISOs_EnabledOrphanAutoRemoved(t *testing.T) {
 
 // TestAdminNodes_DeleteOrphan: DELETE /api/v1/admin/nodes/{cluster}/{name}
 // removes a disabled orphan node approval.
+//
+//nolint:paralleltest // serial: shared database fixture
 func TestAdminNodes_DeleteOrphan(t *testing.T) {
 	handler, authHandler, st := newAdminHandlerWithEmptyDiscovery(t)
 	cookie := adminCookie(t, authHandler)
@@ -171,6 +183,8 @@ func TestAdminNodes_DeleteOrphan(t *testing.T) {
 }
 
 // TestAdminStorages_DeleteOrphan: DELETE removes a disabled orphan storage.
+//
+//nolint:paralleltest // serial: shared database fixture
 func TestAdminStorages_DeleteOrphan(t *testing.T) {
 	handler, authHandler, st := newAdminHandlerWithEmptyDiscovery(t)
 	cookie := adminCookie(t, authHandler)
@@ -187,6 +201,8 @@ func TestAdminStorages_DeleteOrphan(t *testing.T) {
 }
 
 // TestAdminBridges_DeleteOrphan: DELETE removes a disabled orphan bridge.
+//
+//nolint:paralleltest // serial: shared database fixture
 func TestAdminBridges_DeleteOrphan(t *testing.T) {
 	handler, authHandler, st := newAdminHandlerWithEmptyDiscovery(t)
 	cookie := adminCookie(t, authHandler)

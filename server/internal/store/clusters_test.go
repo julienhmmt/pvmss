@@ -147,6 +147,39 @@ func TestClusters_LastActiveGuard(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // migration fixtures are intentionally serial
+func TestSetClusterSnippetTarget_RoundTrip(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+	row := store.ClusterRow{Name: "snippet-cluster", URL: testUpdateClusterURL, TokenID: testClusterTokenID, TokenSecret: testClusterTokenSecret}
+	if err := st.CreateCluster(ctx, row); err != nil {
+		t.Fatalf("CreateCluster: %v", err)
+	}
+	if err := st.SetClusterSnippetTarget(ctx, row.Name, "/snippets", "shared"); err != nil {
+		t.Fatalf("SetClusterSnippetTarget: %v", err)
+	}
+	stored, err := st.GetCluster(ctx, row.Name)
+	if err != nil {
+		t.Fatalf("GetCluster: %v", err)
+	}
+	if stored.SnippetDir != "/snippets" || stored.SnippetStorage != "shared" {
+		t.Fatalf("snippet target = %q/%q, want /snippets/shared", stored.SnippetDir, stored.SnippetStorage)
+	}
+	if err := st.SetClusterSnippetTarget(ctx, row.Name, "", ""); err != nil {
+		t.Fatalf("clear snippet target: %v", err)
+	}
+	stored, err = st.GetCluster(ctx, row.Name)
+	if err != nil {
+		t.Fatalf("GetCluster after clear: %v", err)
+	}
+	if stored.SnippetDir != "" || stored.SnippetStorage != "" {
+		t.Fatalf("snippet target after clear = %q/%q, want empty", stored.SnippetDir, stored.SnippetStorage)
+	}
+	if err := st.SetClusterSnippetTarget(ctx, "no-such-cluster", "/snippets", "shared"); !errors.Is(err, store.ErrInvalidClusterName) {
+		t.Fatalf("unknown name error = %v, want ErrInvalidClusterName", err)
+	}
+}
+
 // TestEnsureSeedClusters_SetsDisplayNames — the fake cluster seed now sets a
 // human-readable DisplayName for each demo cluster so the sidebar doesn't
 // show the raw internal name "default" on a fresh deployment.

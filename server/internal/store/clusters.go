@@ -42,6 +42,8 @@ type ClusterRow struct {
 	LastTestAt            *time.Time
 	LastTestMessage       *string
 	ProxmoxVersion        string
+	SnippetDir            string
+	SnippetStorage        string
 }
 
 // serviceTokenID is the deterministic Proxmox service token used to seed the
@@ -89,13 +91,13 @@ func (s *Store) CreateCluster(ctx context.Context, row ClusterRow) error {
 
 // GetCluster returns an active cluster and decrypts its service-account secret.
 func (s *Store) GetCluster(ctx context.Context, name string) (ClusterRow, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT name, display_name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, oidc_enabled, created_at, removed_at, last_test_status, last_test_at, last_test_message, proxmox_version FROM clusters WHERE name = ? AND removed_at IS NULL`, name)
+	row := s.db.QueryRowContext(ctx, `SELECT name, display_name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, oidc_enabled, created_at, removed_at, last_test_status, last_test_at, last_test_message, proxmox_version, snippet_dir, snippet_storage FROM clusters WHERE name = ? AND removed_at IS NULL`, name)
 	return s.scanCluster(row)
 }
 
 // ListClusters returns every active cluster ordered by immutable logical name.
 func (s *Store) ListClusters(ctx context.Context) ([]ClusterRow, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT name, display_name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, oidc_enabled, created_at, removed_at, last_test_status, last_test_at, last_test_message, proxmox_version FROM clusters WHERE removed_at IS NULL ORDER BY name`)
+	rows, err := s.db.QueryContext(ctx, `SELECT name, display_name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, oidc_enabled, created_at, removed_at, last_test_status, last_test_at, last_test_message, proxmox_version, snippet_dir, snippet_storage FROM clusters WHERE removed_at IS NULL ORDER BY name`)
 	if err != nil {
 		return nil, fmt.Errorf("list clusters: %w", err)
 	}
@@ -234,6 +236,21 @@ func (s *Store) SetClusterDisplayName(ctx context.Context, name, displayName str
 	return nil
 }
 
+// SetClusterSnippetTarget records where PVMSS may write cloud-init documents
+// for this cluster. Both values empty disables the feature. Validation
+// (absolute dir, storage id grammar, set-together) is the handler's job;
+// the store only persists.
+func (s *Store) SetClusterSnippetTarget(ctx context.Context, name, dir, storage string) error {
+	res, err := s.db.ExecContext(ctx, `UPDATE clusters SET snippet_dir = ?, snippet_storage = ? WHERE name = ? AND removed_at IS NULL`, dir, storage, name)
+	if err != nil {
+		return fmt.Errorf("set cluster snippet target: %w", err)
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrInvalidClusterName
+	}
+	return nil
+}
+
 func nullableString(value string) any {
 	if value == "" {
 		return nil
@@ -255,7 +272,7 @@ func (s *Store) scanCluster(scanner clusterScanner) (ClusterRow, error) {
 		lastStatus, lastAt, lastMessage sql.NullString
 		proxmoxVersion                  sql.NullString
 	)
-	if err := scanner.Scan(&row.Name, &displayName, &row.URL, &tlsInsecure, &row.TokenID, &ciphertext, &oidcEnabled, &createdAt, &removedAt, &lastStatus, &lastAt, &lastMessage, &proxmoxVersion); err != nil {
+	if err := scanner.Scan(&row.Name, &displayName, &row.URL, &tlsInsecure, &row.TokenID, &ciphertext, &oidcEnabled, &createdAt, &removedAt, &lastStatus, &lastAt, &lastMessage, &proxmoxVersion, &row.SnippetDir, &row.SnippetStorage); err != nil {
 		return ClusterRow{}, err
 	}
 	row.DisplayName = displayName.String

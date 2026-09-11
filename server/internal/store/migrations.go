@@ -284,6 +284,13 @@ const schemaV27 = `CREATE TABLE catalog_images (
 INSERT INTO catalog_images (cluster, node, storage, file, size_bytes) VALUES
 	('default', 'pve-node-01', 'local', 'ubuntu-24.04-server-cloudimg-amd64.qcow2', 644245094);`
 
+// schemaV28 adds the per-cluster cloud-init snippet write target
+// (.scratch/cloudinit-userdata, D1): snippet_dir is an absolute path inside
+// the PVMSS process's filesystem that IS <storage path>/snippets/ of the
+// Proxmox storage named by snippet_storage. Both empty = documents disabled.
+const schemaV28 = `ALTER TABLE clusters ADD COLUMN snippet_dir TEXT NOT NULL DEFAULT '';
+ALTER TABLE clusters ADD COLUMN snippet_storage TEXT NOT NULL DEFAULT '';`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -320,4 +327,5 @@ var Migrations = []Migration{
 	{Version: 25, DDL: schemaV25},
 	{Version: 26, DDL: schemaV26},
 	{Version: 27, DDL: schemaV27},
+	{Version: 28, DDL: schemaV28},
 }

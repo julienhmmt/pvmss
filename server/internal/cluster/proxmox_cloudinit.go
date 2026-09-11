@@ -1,25 +1,19 @@
 package cluster
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"time"
 )
-
-// errBuildSnippetUpload wraps multipart-builder failures while constructing a
-// snippet upload request. Each call site wraps a distinct underlying error
-// (WriteField, CreateFormFile, part.Write, writer.Close); only the literal is
-// deduplicated.
-const errBuildSnippetUpload = "build snippet upload: %w"
 
 // vmConfigEndpointFmt is the Proxmox REST path for a VM's config endpoint,
 // formatted with the URL-escaped node name and the numeric VMID.
@@ -119,24 +113,61 @@ func parseIPConfig(raw string, result *CloudInitConfig) {
 	}
 }
 
-// FindSnippetStorage implements CloudInitReader.
+// FindSnippetStorage implements CloudInitReader. PVMSS can only write to the
+// one snippet directory the administrator configured for the cluster
+// (spec D1), so this returns p.SnippetStorage — but only after proving the
+// node lists it as an active snippets provider: a mistyped id or a storage
+// without the snippets content flag must not produce a cicustom pointing at
+// nothing. With no write target configured it reports
+// ErrSnippetWriteUnavailable.
 func (p Proxmox) FindSnippetStorage(ctx context.Context, node string) (string, error) {
-	return proxmoxFindSnippetStorage(ctx, p.rest(), node)
-}
+	if !p.SnippetWriteAvailable() {
+		return "", ErrSnippetWriteUnavailable
+	}
 
-func proxmoxFindSnippetStorage(ctx context.Context, rest proxmoxRESTClient, node string) (string, error) {
-	raw, err := rest.do(ctx, http.MethodGet, fmt.Sprintf("/nodes/%s/storage", url.PathEscape(node)), url.Values{"content": {"snippets"}})
+	rows, err := listSnippetStorages(ctx, p.rest(), node)
 	if err != nil {
 		return "", err
 	}
 
-	var rows []struct {
-		Storage string `json:"storage"`
-		Active  int    `json:"active"`
-		Shared  int    `json:"shared"`
+	for _, row := range rows {
+		if row.Storage == p.SnippetStorage && row.Active == 1 {
+			return p.SnippetStorage, nil
+		}
 	}
+
+	return "", fmt.Errorf("%w: storage %q is not snippets-enabled or not active on node %s", ErrNotFound, p.SnippetStorage, node)
+}
+
+// snippetStorageRow is one row of GET /nodes/{node}/storage?content=snippets.
+type snippetStorageRow struct {
+	Storage string `json:"storage"`
+	Active  int    `json:"active"`
+	Shared  int    `json:"shared"`
+}
+
+func listSnippetStorages(ctx context.Context, rest proxmoxRESTClient, node string) ([]snippetStorageRow, error) {
+	raw, err := rest.do(ctx, http.MethodGet, fmt.Sprintf("/nodes/%s/storage", url.PathEscape(node)), url.Values{"content": {"snippets"}})
+	if err != nil {
+		return nil, err
+	}
+
+	var rows []snippetStorageRow
 	if err := decodeData(raw, &rows); err != nil {
-		return "", fmt.Errorf("decode node storages: %w", err)
+		return nil, fmt.Errorf("decode node storages: %w", err)
+	}
+
+	return rows, nil
+}
+
+// proxmoxFindSnippetStorage picks any active snippet-capable storage on the
+// node — the fallback for the cloud-init DRIVE placement (ide3), which only
+// needs a storage the VM's node can see. It is unrelated to the configured
+// snippet write target, which FindSnippetStorage owns.
+func proxmoxFindSnippetStorage(ctx context.Context, rest proxmoxRESTClient, node string) (string, error) {
+	rows, err := listSnippetStorages(ctx, rest, node)
+	if err != nil {
+		return "", err
 	}
 
 	// Prefer a shared storage over a node-local one: a snippet on local
@@ -237,8 +268,8 @@ func (p Proxmox) SetCloudInitConfig(ctx context.Context, node string, vmid int, 
 }
 
 // HasSnippet implements Writer by listing storage's snippets content and
-// checking for filename — the only way to know a fixed, admin-preplaced
-// snippet exists, since the REST API cannot write one itself.
+// checking for filename — the visibility proof after PushCloudInitSnippet:
+// the write went through the mount, this confirms Proxmox sees it.
 func (p Proxmox) HasSnippet(ctx context.Context, node, storage, filename string) (bool, error) {
 	found, err := proxmoxListContent(ctx, p.rest(), node, storage, "snippets")
 	if err != nil {
@@ -537,57 +568,75 @@ func pollAgentExecStatus(ctx context.Context, rest proxmoxRESTClient, path strin
 	}
 }
 
-// PushCloudInitSnippet implements Writer. Proxmox has no dedicated "write a
-// snippet" API call — a snippet is just a file under a snippets-capable
-// storage's directory, written through the storage's own multipart upload
-// endpoint with content type "snippets". vmid is unused: the filename already
-// encodes the VM (vm/cloudinit.go's snippetFilenamePrefix), matching the
-// interface signature every other implementation shares.
-func (p Proxmox) PushCloudInitSnippet(ctx context.Context, node, storage, filename string, _ int, content string) error {
-	rest := p.rest()
+// snippetFilenameRE is the only shape PVMSS ever writes: a pvmss- prefix,
+// a safe body, a yaml extension. Callers build names from VMIDs, but the
+// writer re-checks so a bug elsewhere cannot escape the snippet directory.
+var snippetFilenameRE = regexp.MustCompile(`^pvmss-[A-Za-z0-9._-]+\.ya?ml$`)
 
-	var body bytes.Buffer
+// SnippetWriteAvailable implements Writer.
+func (p Proxmox) SnippetWriteAvailable() bool {
+	return p.SnippetDir != "" && p.SnippetStorage != ""
+}
 
-	writer := multipart.NewWriter(&body)
-	if err := writer.WriteField("content", "snippets"); err != nil {
-		return fmt.Errorf(errBuildSnippetUpload, err)
+// PushCloudInitSnippet implements Writer by writing content into the
+// cluster's configured snippet directory. There is no Proxmox API for this
+// (the upload endpoint's content enum is iso/vztmpl/import); the directory
+// is the storage's own snippets/ dir, bind-mounted into the PVMSS process
+// (spec D1). temp-file + rename is atomic, so Proxmox never reads a
+// half-written file, and a retry simply overwrites. node and vmid are
+// unused: the filename already carries the VM.
+func (p Proxmox) PushCloudInitSnippet(_ context.Context, _, storage, filename string, _ int, content string) error {
+	if !p.SnippetWriteAvailable() {
+		return ErrSnippetWriteUnavailable
 	}
 
-	part, err := writer.CreateFormFile("filename", filename)
+	if storage != p.SnippetStorage {
+		return fmt.Errorf("snippet storage %q is not this cluster's configured snippet storage %q", storage, p.SnippetStorage)
+	}
+
+	if !snippetFilenameRE.MatchString(filename) || filepath.Base(filename) != filename {
+		return fmt.Errorf("refusing to write snippet with unsafe filename %q", filename)
+	}
+
+	return writeFileAtomic(p.SnippetDir, filename, content)
+}
+
+// writeFileAtomic writes content to dir/filename via a temp file and rename,
+// mode 0644 (cloud-init on the Proxmox node reads it as a non-root user).
+// dir must already exist: it is the administrator-mounted snippets/ share —
+// creating it silently would mask a missing mount and drop the document into
+// the container's local filesystem where Proxmox can never see it.
+func writeFileAtomic(dir, filename, content string) (err error) {
+	tmp, err := os.CreateTemp(dir, ".pvmss-*.tmp")
 	if err != nil {
-		return fmt.Errorf(errBuildSnippetUpload, err)
+		return fmt.Errorf("create snippet temp file: %w", err)
 	}
 
-	if _, err := part.Write([]byte(content)); err != nil {
-		return fmt.Errorf(errBuildSnippetUpload, err)
+	defer func() {
+		if err != nil {
+			_ = os.Remove(tmp.Name())
+		}
+	}()
+
+	if _, err = tmp.WriteString(content); err != nil {
+		_ = tmp.Close()
+
+		return fmt.Errorf("write snippet: %w", err)
 	}
 
-	if err := writer.Close(); err != nil {
-		return fmt.Errorf(errBuildSnippetUpload, err)
+	if err = tmp.Chmod(0o644); err != nil {
+		_ = tmp.Close()
+
+		return fmt.Errorf("chmod snippet: %w", err)
 	}
 
-	path := fmt.Sprintf("/nodes/%s/storage/%s/upload", url.PathEscape(node), url.PathEscape(storage))
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, rest.base+path, &body)
-	if err != nil {
-		return fmt.Errorf("build snippet upload request: %w", err)
+	if err = tmp.Close(); err != nil {
+		return fmt.Errorf("close snippet: %w", err)
 	}
 
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-	rest.authenticate(req)
-
-	resp, err := rest.http.Do(req)
-	if err != nil {
-		return fmt.Errorf("%w: %w", ErrUnreachable, err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	raw, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("read snippet upload response: %w", err)
+	if err = os.Rename(tmp.Name(), filepath.Join(dir, filename)); err != nil {
+		return fmt.Errorf("publish snippet: %w", err)
 	}
 
-	_, err = parseProxmoxResponse(http.MethodPost, path, resp.StatusCode, raw)
-
-	return err
+	return nil
 }

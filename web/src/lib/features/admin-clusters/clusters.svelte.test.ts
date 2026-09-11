@@ -19,7 +19,10 @@ const cluster = {
 	lastTestMessage: null,
 	proxmoxVersion: '8.2.4',
 	nodeCount: 2,
-	vmCount: 18
+	vmCount: 18,
+	snippetDir: '/snippets',
+	snippetStorage: 'shared',
+	cloudInitWriteEnabled: true
 };
 
 describe('AdminClustersStore', () => {
@@ -31,6 +34,25 @@ describe('AdminClustersStore', () => {
 		await store.load();
 		expect(store.clusters).toEqual([cluster]);
 		expect(store.error).toBeNull();
+	});
+
+	it('create() forwards the snippet write target (spec D8)', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, cluster));
+		vi.stubGlobal('fetch', fetchMock);
+		const store = new AdminClustersStore();
+		await store.create({
+			name: 'secondary',
+			url: 'https://secondary.invalid',
+			tlsInsecureSkipVerify: false,
+			tokenId: 'pvmss@pve!service',
+			tokenSecret: 'secret',
+			snippetDir: '/snippets',
+			snippetStorage: 'shared'
+		});
+		expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toMatchObject({
+			snippetDir: '/snippets',
+			snippetStorage: 'shared'
+		});
 	});
 
 	it('toggles OIDC locally from the server acknowledgement', async () => {

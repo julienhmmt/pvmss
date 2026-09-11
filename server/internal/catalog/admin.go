@@ -111,9 +111,11 @@ func AdminListNodes(ctx context.Context, st *store.Store, client cluster.Client,
 
 	enabledByName := make(map[string]bool, len(enabledRows))
 	discoveredByName := make(map[string]bool, len(snap.Nodes))
+
 	for _, n := range enabledRows {
 		enabledByName[n.Name] = n.Enabled
 	}
+
 	for _, node := range snap.Nodes {
 		discoveredByName[node.Name] = true
 	}
@@ -140,29 +142,13 @@ func AdminListNodes(ctx context.Context, st *store.Store, client cluster.Client,
 		})
 	}
 
-	if err := appendOrphanNodes(ctx, st, clusterName, enabledRows, discoveredByName, &out); err != nil {
+	if err := sweepOrphans(ctx, st, clusterName,
+		toOrphanRows(enabledRows, nodeOrphanRow), discoveredByName,
+		removeNodeOrphan, missingNodeApproval, &out); err != nil {
 		return nil, err
 	}
 
 	return out, nil
-}
-
-// appendOrphanNodes surfaces disabled orphan approvals (Missing=true) and
-// auto-removes enabled orphan approvals. It appends to out.
-func appendOrphanNodes(ctx context.Context, st *store.Store, clusterName string, rows []store.CatalogNodeEnabled, discovered map[string]bool, out *[]NodeApproval) error {
-	for _, row := range rows {
-		if discovered[row.Name] {
-			continue
-		}
-		if row.Enabled {
-			if err := st.DeleteNode(ctx, clusterName, row.Name); err != nil {
-				return fmt.Errorf("auto-remove orphan node %q: %w", row.Name, err)
-			}
-			continue
-		}
-		*out = append(*out, NodeApproval{Name: row.Name, Enabled: false, Missing: true})
-	}
-	return nil
 }
 
 // AdminListStorages returns every VM-capable storage the cluster reports,
@@ -179,16 +165,19 @@ func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Clie
 		return nil, err
 	}
 
-	enabledByKey := make(map[storageKey]bool, len(enabledRows))
-	discoveredByKey := make(map[storageKey]bool, len(snap.Storages))
+	enabledByKey := make(map[nameNodeKey]bool, len(enabledRows))
+	discoveredByKey := make(map[nameNodeKey]bool, len(snap.Storages))
+
 	for _, s := range enabledRows {
-		enabledByKey[storageKey{Name: s.Name, Node: s.Node}] = s.Enabled
+		enabledByKey[nameNodeKey{Name: s.Name, Node: s.Node}] = s.Enabled
 	}
+
 	for _, storage := range snap.Storages {
 		if !cluster.IsVMCapableStorage(storage) {
 			continue
 		}
-		discoveredByKey[storageKey{Name: storage.Name, Node: storage.Node}] = true
+
+		discoveredByKey[nameNodeKey{Name: storage.Name, Node: storage.Node}] = true
 	}
 
 	out := make([]StorageApproval, 0, len(snap.Storages)+len(enabledRows))
@@ -203,34 +192,17 @@ func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Clie
 			Type:    storage.Type,
 			Total:   storage.Total,
 			Used:    storage.Used,
-			Enabled: enabledByKey[storageKey{Name: storage.Name, Node: storage.Node}],
+			Enabled: enabledByKey[nameNodeKey{Name: storage.Name, Node: storage.Node}],
 		})
 	}
 
-	if err := appendOrphanStorages(ctx, st, clusterName, enabledRows, discoveredByKey, &out); err != nil {
+	if err := sweepOrphans(ctx, st, clusterName,
+		toOrphanRows(enabledRows, storageOrphanRow), discoveredByKey,
+		removeStorageOrphan, missingStorageApproval, &out); err != nil {
 		return nil, err
 	}
 
 	return out, nil
-}
-
-// appendOrphanStorages surfaces disabled orphan approvals (Missing=true) and
-// auto-removes enabled orphan approvals.
-func appendOrphanStorages(ctx context.Context, st *store.Store, clusterName string, rows []store.CatalogStorageEnabled, discovered map[storageKey]bool, out *[]StorageApproval) error {
-	for _, row := range rows {
-		key := storageKey{Name: row.Name, Node: row.Node}
-		if discovered[key] {
-			continue
-		}
-		if row.Enabled {
-			if err := st.DeleteStorage(ctx, clusterName, row.Name, row.Node); err != nil {
-				return fmt.Errorf("auto-remove orphan storage %q on %q: %w", row.Name, row.Node, err)
-			}
-			continue
-		}
-		*out = append(*out, StorageApproval{Name: row.Name, Node: row.Node, Enabled: false, Missing: true})
-	}
-	return nil
 }
 
 // AdminListBridges returns every bridge the cluster reports, unioned with its
@@ -247,13 +219,15 @@ func AdminListBridges(ctx context.Context, st *store.Store, client cluster.Clien
 		return nil, err
 	}
 
-	enabledByKey := make(map[bridgeKey]bool, len(enabledRows))
-	discoveredByKey := make(map[bridgeKey]bool, len(discovered))
+	enabledByKey := make(map[nameNodeKey]bool, len(enabledRows))
+	discoveredByKey := make(map[nameNodeKey]bool, len(discovered))
+
 	for _, b := range enabledRows {
-		enabledByKey[bridgeKey{Name: b.Name, Node: b.Node}] = b.Enabled
+		enabledByKey[nameNodeKey{Name: b.Name, Node: b.Node}] = b.Enabled
 	}
+
 	for _, bridge := range discovered {
-		discoveredByKey[bridgeKey{Name: bridge.Name, Node: bridge.Node}] = true
+		discoveredByKey[nameNodeKey{Name: bridge.Name, Node: bridge.Node}] = true
 	}
 
 	out := make([]BridgeApproval, 0, len(discovered)+len(enabledRows))
@@ -263,34 +237,17 @@ func AdminListBridges(ctx context.Context, st *store.Store, client cluster.Clien
 			Node:    bridge.Node,
 			Active:  bridge.Active,
 			Comment: bridge.Comment,
-			Enabled: enabledByKey[bridgeKey{Name: bridge.Name, Node: bridge.Node}],
+			Enabled: enabledByKey[nameNodeKey{Name: bridge.Name, Node: bridge.Node}],
 		})
 	}
 
-	if err := appendOrphanBridges(ctx, st, clusterName, enabledRows, discoveredByKey, &out); err != nil {
+	if err := sweepOrphans(ctx, st, clusterName,
+		toOrphanRows(enabledRows, bridgeOrphanRow), discoveredByKey,
+		removeBridgeOrphan, missingBridgeApproval, &out); err != nil {
 		return nil, err
 	}
 
 	return out, nil
-}
-
-// appendOrphanBridges surfaces disabled orphan approvals (Missing=true) and
-// auto-removes enabled orphan approvals.
-func appendOrphanBridges(ctx context.Context, st *store.Store, clusterName string, rows []store.CatalogBridgeEnabled, discovered map[bridgeKey]bool, out *[]BridgeApproval) error {
-	for _, row := range rows {
-		key := bridgeKey{Name: row.Name, Node: row.Node}
-		if discovered[key] {
-			continue
-		}
-		if row.Enabled {
-			if err := st.DeleteBridge(ctx, clusterName, row.Node, row.Name); err != nil {
-				return fmt.Errorf("auto-remove orphan bridge %q on %q: %w", row.Name, row.Node, err)
-			}
-			continue
-		}
-		*out = append(*out, BridgeApproval{Name: row.Name, Node: row.Node, Enabled: false, Missing: true})
-	}
-	return nil
 }
 
 // AdminListISOs returns every ISO the cluster reports, unioned with its stored
@@ -304,55 +261,8 @@ func AdminListISOs(ctx context.Context, st *store.Store, client cluster.Client, 
 		return nil, err
 	}
 
-	enabledRows, err := st.CatalogISOsEnabled(ctx, clusterName)
-	if err != nil {
-		return nil, err
-	}
-
-	enabledByKey := make(map[isoKey]bool, len(enabledRows))
-	discoveredByKey := make(map[isoKey]bool, len(discovered))
-	for _, i := range enabledRows {
-		enabledByKey[isoKey{Node: i.Node, Storage: i.Storage, File: i.File}] = i.Enabled
-	}
-	for _, iso := range discovered {
-		discoveredByKey[isoKey{Node: iso.Node, Storage: iso.Storage, File: iso.File}] = true
-	}
-
-	out := make([]ISOApproval, 0, len(discovered)+len(enabledRows))
-	for _, iso := range discovered {
-		out = append(out, ISOApproval{
-			Storage:   iso.Storage,
-			Node:      iso.Node,
-			File:      iso.File,
-			SizeBytes: iso.SizeBytes,
-			Enabled:   enabledByKey[isoKey{Node: iso.Node, Storage: iso.Storage, File: iso.File}],
-		})
-	}
-
-	if err := appendOrphanISOs(ctx, st, clusterName, enabledRows, discoveredByKey, &out); err != nil {
-		return nil, err
-	}
-
-	return out, nil
-}
-
-// appendOrphanISOs surfaces disabled orphan approvals (Missing=true) and
-// auto-removes enabled orphan approvals.
-func appendOrphanISOs(ctx context.Context, st *store.Store, clusterName string, rows []store.CatalogISOEnabled, discovered map[isoKey]bool, out *[]ISOApproval) error {
-	for _, row := range rows {
-		key := isoKey{Node: row.Node, Storage: row.Storage, File: row.File}
-		if discovered[key] {
-			continue
-		}
-		if row.Enabled {
-			if err := st.DeleteISO(ctx, clusterName, row.Node, row.Storage, row.File); err != nil {
-				return fmt.Errorf("auto-remove orphan iso %q on %q: %w", row.File, row.Node, err)
-			}
-			continue
-		}
-		*out = append(*out, ISOApproval{Storage: row.Storage, Node: row.Node, File: row.File, Enabled: false, Missing: true})
-	}
-	return nil
+	return adminListFiles(ctx, st, clusterName, isoFileEntries(discovered),
+		st.CatalogISOsEnabled, isoOrphanRow, removeISOOrphan, isoApprovalView, missingISOApproval)
 }
 
 // AdminListTemplates returns every Proxmox template the cluster reports,
@@ -673,6 +583,7 @@ func DeleteNode(ctx context.Context, st *store.Store, cluster, name string) erro
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrNodeNotFound
 	}
+
 	return err
 }
 
@@ -683,6 +594,7 @@ func DeleteStorage(ctx context.Context, st *store.Store, cluster, name, node str
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrStorageNotFound
 	}
+
 	return err
 }
 
@@ -693,6 +605,7 @@ func DeleteBridge(ctx context.Context, st *store.Store, cluster, node, name stri
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrBridgeNotFound
 	}
+
 	return err
 }
 
@@ -703,6 +616,7 @@ func DeleteISO(ctx context.Context, st *store.Store, cluster, node, storage, fil
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrISONotFound
 	}
+
 	return err
 }
 
@@ -728,55 +642,8 @@ func AdminListImages(ctx context.Context, st *store.Store, client cluster.Client
 		return nil, err
 	}
 
-	enabledRows, err := st.CatalogImagesEnabled(ctx, clusterName)
-	if err != nil {
-		return nil, err
-	}
-
-	enabledByKey := make(map[imageKey]bool, len(enabledRows))
-	discoveredByKey := make(map[imageKey]bool, len(discovered))
-	for _, i := range enabledRows {
-		enabledByKey[imageKey{Node: i.Node, Storage: i.Storage, File: i.File}] = i.Enabled
-	}
-	for _, image := range discovered {
-		discoveredByKey[imageKey{Node: image.Node, Storage: image.Storage, File: image.File}] = true
-	}
-
-	out := make([]ImageApproval, 0, len(discovered)+len(enabledRows))
-	for _, image := range discovered {
-		out = append(out, ImageApproval{
-			Storage:   image.Storage,
-			Node:      image.Node,
-			File:      image.File,
-			SizeBytes: image.SizeBytes,
-			Enabled:   enabledByKey[imageKey{Node: image.Node, Storage: image.Storage, File: image.File}],
-		})
-	}
-
-	if err := appendOrphanImages(ctx, st, clusterName, enabledRows, discoveredByKey, &out); err != nil {
-		return nil, err
-	}
-
-	return out, nil
-}
-
-// appendOrphanImages surfaces disabled orphan approvals (Missing=true) and
-// auto-removes enabled orphan approvals.
-func appendOrphanImages(ctx context.Context, st *store.Store, clusterName string, rows []store.CatalogImageEnabled, discovered map[imageKey]bool, out *[]ImageApproval) error {
-	for _, row := range rows {
-		key := imageKey{Node: row.Node, Storage: row.Storage, File: row.File}
-		if discovered[key] {
-			continue
-		}
-		if row.Enabled {
-			if err := st.DeleteImage(ctx, clusterName, row.Node, row.Storage, row.File); err != nil {
-				return fmt.Errorf("auto-remove orphan image %q on %q: %w", row.File, row.Node, err)
-			}
-			continue
-		}
-		*out = append(*out, ImageApproval{Storage: row.Storage, Node: row.Node, File: row.File, Enabled: false, Missing: true})
-	}
-	return nil
+	return adminListFiles(ctx, st, clusterName, imageFileEntries(discovered),
+		st.CatalogImagesEnabled, imageOrphanRow, removeImageOrphan, imageApprovalView, missingImageApproval)
 }
 
 // ImageRef identifies one discovered cloud image by its (node, storage, file)
@@ -826,6 +693,7 @@ func DeleteImage(ctx context.Context, st *store.Store, cluster, node, storage, f
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrImageNotFound
 	}
+
 	return err
 }
 
@@ -842,12 +710,267 @@ func imageDiscovered(ctx context.Context, client cluster.Client, node, storage, 
 	}), nil
 }
 
-// imageKey is a composite map key for cloud images, avoiding string-concat
-// collisions when a storage or file contains ":".
-type imageKey struct {
+// nameNodeKey is a composite map key for resources approved by (name, node)
+// — storages and bridges — avoiding string-concat collisions when a name
+// contains "@".
+type nameNodeKey struct {
+	Name string
+	Node string
+}
+
+// fileKey is a composite map key for file approvals (ISOs, cloud images)
+// keyed by (node, storage, file), avoiding string-concat collisions when a
+// storage or file contains ":".
+type fileKey struct {
 	Node    string
 	Storage string
 	File    string
+}
+
+// orphanRow flattens one stored approval row to the two fields the orphan
+// sweep needs: its discovery key and its enabled flag.
+type orphanRow[Key comparable] struct {
+	key     Key
+	enabled bool
+}
+
+// toOrphanRows flattens stored approval rows for sweepOrphans via toRow.
+func toOrphanRows[Row any, Key comparable](rows []Row, toRow func(Row) orphanRow[Key]) []orphanRow[Key] {
+	out := make([]orphanRow[Key], 0, len(rows))
+	for _, row := range rows {
+		out = append(out, toRow(row))
+	}
+
+	return out
+}
+
+// sweepOrphans applies the orphan rule shared by every AdminList* function:
+// a stored approval whose key discovery no longer reports is an orphan — an
+// enabled orphan is auto-removed via remove (it would otherwise be offered
+// to users on a resource that no longer exists), a disabled orphan is
+// appended to out via missing (surfaced as Missing=true) so the admin can
+// remove it.
+func sweepOrphans[Key comparable, A any](
+	ctx context.Context,
+	st *store.Store,
+	clusterName string,
+	rows []orphanRow[Key],
+	discovered map[Key]bool,
+	remove func(context.Context, *store.Store, string, orphanRow[Key]) error,
+	missing func(orphanRow[Key]) A,
+	out *[]A,
+) error {
+	for _, row := range rows {
+		if discovered[row.key] {
+			continue
+		}
+
+		if row.enabled {
+			if err := remove(ctx, st, clusterName, row); err != nil {
+				return err
+			}
+
+			continue
+		}
+
+		*out = append(*out, missing(row))
+	}
+
+	return nil
+}
+
+// nodeOrphanRow flattens a stored node approval row for sweepOrphans.
+func nodeOrphanRow(row store.CatalogNodeEnabled) orphanRow[string] {
+	return orphanRow[string]{key: row.Name, enabled: row.Enabled}
+}
+
+// storageOrphanRow flattens a stored storage approval row for sweepOrphans.
+func storageOrphanRow(row store.CatalogStorageEnabled) orphanRow[nameNodeKey] {
+	return orphanRow[nameNodeKey]{key: nameNodeKey{Name: row.Name, Node: row.Node}, enabled: row.Enabled}
+}
+
+// bridgeOrphanRow flattens a stored bridge approval row for sweepOrphans.
+func bridgeOrphanRow(row store.CatalogBridgeEnabled) orphanRow[nameNodeKey] {
+	return orphanRow[nameNodeKey]{key: nameNodeKey{Name: row.Name, Node: row.Node}, enabled: row.Enabled}
+}
+
+// isoOrphanRow flattens a stored ISO approval row for sweepOrphans.
+func isoOrphanRow(row store.CatalogISOEnabled) orphanRow[fileKey] {
+	return orphanRow[fileKey]{key: fileKey{Node: row.Node, Storage: row.Storage, File: row.File}, enabled: row.Enabled}
+}
+
+// imageOrphanRow flattens a stored cloud image approval row for sweepOrphans.
+func imageOrphanRow(row store.CatalogImageEnabled) orphanRow[fileKey] {
+	return orphanRow[fileKey]{key: fileKey{Node: row.Node, Storage: row.Storage, File: row.File}, enabled: row.Enabled}
+}
+
+// removeNodeOrphan deletes an enabled orphan node approval row.
+func removeNodeOrphan(ctx context.Context, st *store.Store, clusterName string, row orphanRow[string]) error {
+	if err := st.DeleteNode(ctx, clusterName, row.key); err != nil {
+		return fmt.Errorf("auto-remove orphan node %q: %w", row.key, err)
+	}
+
+	return nil
+}
+
+// removeStorageOrphan deletes an enabled orphan storage approval row.
+func removeStorageOrphan(ctx context.Context, st *store.Store, clusterName string, row orphanRow[nameNodeKey]) error {
+	if err := st.DeleteStorage(ctx, clusterName, row.key.Name, row.key.Node); err != nil {
+		return fmt.Errorf("auto-remove orphan storage %q on %q: %w", row.key.Name, row.key.Node, err)
+	}
+
+	return nil
+}
+
+// removeBridgeOrphan deletes an enabled orphan bridge approval row.
+func removeBridgeOrphan(ctx context.Context, st *store.Store, clusterName string, row orphanRow[nameNodeKey]) error {
+	if err := st.DeleteBridge(ctx, clusterName, row.key.Node, row.key.Name); err != nil {
+		return fmt.Errorf("auto-remove orphan bridge %q on %q: %w", row.key.Name, row.key.Node, err)
+	}
+
+	return nil
+}
+
+// removeISOOrphan deletes an enabled orphan ISO approval row.
+func removeISOOrphan(ctx context.Context, st *store.Store, clusterName string, row orphanRow[fileKey]) error {
+	if err := st.DeleteISO(ctx, clusterName, row.key.Node, row.key.Storage, row.key.File); err != nil {
+		return fmt.Errorf("auto-remove orphan iso %q on %q: %w", row.key.File, row.key.Node, err)
+	}
+
+	return nil
+}
+
+// removeImageOrphan deletes an enabled orphan cloud image approval row.
+func removeImageOrphan(ctx context.Context, st *store.Store, clusterName string, row orphanRow[fileKey]) error {
+	if err := st.DeleteImage(ctx, clusterName, row.key.Node, row.key.Storage, row.key.File); err != nil {
+		return fmt.Errorf("auto-remove orphan image %q on %q: %w", row.key.File, row.key.Node, err)
+	}
+
+	return nil
+}
+
+// missingNodeApproval builds the Missing=true view of a disabled orphan node.
+func missingNodeApproval(row orphanRow[string]) NodeApproval {
+	return NodeApproval{Name: row.key, Missing: true}
+}
+
+// missingStorageApproval builds the Missing=true view of a disabled orphan
+// storage.
+func missingStorageApproval(row orphanRow[nameNodeKey]) StorageApproval {
+	return StorageApproval{Name: row.key.Name, Node: row.key.Node, Missing: true}
+}
+
+// missingBridgeApproval builds the Missing=true view of a disabled orphan
+// bridge.
+func missingBridgeApproval(row orphanRow[nameNodeKey]) BridgeApproval {
+	return BridgeApproval{Name: row.key.Name, Node: row.key.Node, Missing: true}
+}
+
+// fileEntry is one discovered file resource (ISO or cloud image) normalized
+// for the shared approval pipeline — both have the same fields.
+type fileEntry struct {
+	Storage   string
+	Node      string
+	File      string
+	SizeBytes int64
+}
+
+// key returns the (node, storage, file) approval key of the file.
+func (f fileEntry) key() fileKey {
+	return fileKey{Node: f.Node, Storage: f.Storage, File: f.File}
+}
+
+// isoFileEntries normalizes discovered ISOs for adminListFiles.
+func isoFileEntries(discovered []cluster.ISOImage) []fileEntry {
+	out := make([]fileEntry, 0, len(discovered))
+	for _, iso := range discovered {
+		out = append(out, fileEntry{Storage: iso.Storage, Node: iso.Node, File: iso.File, SizeBytes: iso.SizeBytes})
+	}
+
+	return out
+}
+
+// imageFileEntries normalizes discovered cloud images for adminListFiles.
+func imageFileEntries(discovered []cluster.CloudImage) []fileEntry {
+	out := make([]fileEntry, 0, len(discovered))
+	for _, image := range discovered {
+		out = append(out, fileEntry{Storage: image.Storage, Node: image.Node, File: image.File, SizeBytes: image.SizeBytes})
+	}
+
+	return out
+}
+
+// isoApprovalView builds the approval view of one discovered ISO.
+func isoApprovalView(file fileEntry, enabled bool) ISOApproval {
+	return ISOApproval{
+		Storage: file.Storage, Node: file.Node, File: file.File,
+		SizeBytes: file.SizeBytes, Enabled: enabled,
+	}
+}
+
+// imageApprovalView builds the approval view of one discovered cloud image.
+func imageApprovalView(file fileEntry, enabled bool) ImageApproval {
+	return ImageApproval{
+		Storage: file.Storage, Node: file.Node, File: file.File,
+		SizeBytes: file.SizeBytes, Enabled: enabled,
+	}
+}
+
+// missingISOApproval builds the Missing=true view of a disabled orphan ISO.
+func missingISOApproval(row orphanRow[fileKey]) ISOApproval {
+	return ISOApproval{Storage: row.key.Storage, Node: row.key.Node, File: row.key.File, Missing: true}
+}
+
+// missingImageApproval builds the Missing=true view of a disabled orphan
+// cloud image.
+func missingImageApproval(row orphanRow[fileKey]) ImageApproval {
+	return ImageApproval{Storage: row.key.Storage, Node: row.key.Node, File: row.key.File, Missing: true}
+}
+
+// adminListFiles is the shared list-and-sweep pipeline for the two file
+// resources: ISOs and cloud images have identical shapes end to end (same
+// discovery fields, same (node, storage, file) approval key, same approval
+// view). Every discovered file gets an approval view with Enabled from the
+// stored row; stored rows whose file vanished are swept as orphans.
+func adminListFiles[Row, A any](
+	ctx context.Context,
+	st *store.Store,
+	clusterName string,
+	discovered []fileEntry,
+	listRows func(context.Context, string) ([]Row, error),
+	toOrphanRow func(Row) orphanRow[fileKey],
+	removeOrphan func(context.Context, *store.Store, string, orphanRow[fileKey]) error,
+	viewOf func(fileEntry, bool) A,
+	missing func(orphanRow[fileKey]) A,
+) ([]A, error) {
+	rows, err := listRows(ctx, clusterName)
+	if err != nil {
+		return nil, err
+	}
+
+	orphans := toOrphanRows(rows, toOrphanRow)
+
+	enabledByKey := make(map[fileKey]bool, len(orphans))
+	discoveredByKey := make(map[fileKey]bool, len(discovered))
+
+	for _, row := range orphans {
+		enabledByKey[row.key] = row.enabled
+	}
+
+	for _, file := range discovered {
+		discoveredByKey[file.key()] = true
+	}
+
+	out := make([]A, 0, len(discovered)+len(orphans))
+	for _, file := range discovered {
+		out = append(out, viewOf(file, enabledByKey[file.key()]))
+	}
+
+	if err := sweepOrphans(ctx, st, clusterName, orphans, discoveredByKey, removeOrphan, missing, &out); err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }
 
 // nodeDiscovered reports whether the cluster reports a node with the given
@@ -899,24 +1022,4 @@ func isoDiscovered(ctx context.Context, client cluster.Client, node, storage, fi
 	return slices.ContainsFunc(isos, func(i cluster.ISOImage) bool {
 		return i.Node == node && i.Storage == storage && i.File == file
 	}), nil
-}
-
-// storageKey is a composite map key for storages, avoiding string-concat
-// collisions when a name contains "@".
-type storageKey struct {
-	Name string
-	Node string
-}
-
-type bridgeKey struct {
-	Name string
-	Node string
-}
-
-// isoKey is a composite map key for ISOs, avoiding string-concat collisions
-// when a storage or file contains ":".
-type isoKey struct {
-	Node    string
-	Storage string
-	File    string
 }

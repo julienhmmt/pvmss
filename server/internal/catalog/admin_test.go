@@ -333,7 +333,7 @@ func TestAdminListISOs_IncludesSuperset(t *testing.T) {
 // TestSetISOEnabled_ToggleIsolatesByStorageFile verifies toggling one ISO does
 // not affect another.
 //
-//nolint:paralleltest // serial: shared fake dataset and database fixture
+//nolint:paralleltest,dupl // serial: shared fake dataset; parallel to the image variant (same contract, different resource)
 func TestSetISOEnabled_ToggleIsolatesByStorageFile(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -675,7 +675,7 @@ func TestAdminListTemplates_DiscoveryWinsOnValues(t *testing.T) {
 	// Discovery reports the template has since been renamed, migrated,
 	// resized, and given a cloud-init drive.
 	fresh := cluster.TemplateVM{
-		VMID: 9100, Node: "pve-node-01", Name: "debian-13-cloud", CloudInitCapable: true,
+		VMID: 9100, Node: node01, Name: "debian-13-cloud", CloudInitCapable: true,
 		DiskStorage: storageLocalLVM, DiskSizeGB: 40, DiskBus: testProfileBus,
 	}
 	client := templateSetClient{Fake: cluster.Fake{}, templates: []cluster.TemplateVM{fresh}}

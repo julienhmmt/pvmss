@@ -4,6 +4,7 @@ package httpapi_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -22,9 +23,11 @@ import (
 )
 
 const (
-	adminClusterTestSecret = "admin-cluster-test-secret-with-32-bytes"
-	adminClustersPath      = "/api/v1/admin/clusters"
-	oidcEnabledBody        = `{"enabled":true}`
+	adminClusterTestSecret    = "admin-cluster-test-secret-with-32-bytes"
+	adminClustersPath         = "/api/v1/admin/clusters"
+	oidcEnabledBody           = `{"enabled":true}`
+	adminClusterSnippetDir    = "/snippets"
+	adminClusterSnippetTarget = "shared"
 )
 
 type adminClusterFixture struct {
@@ -465,6 +468,69 @@ func TestAdminClusters_DeleteLastClusterConflictAndReactivateRoundTrip(t *testin
 	assertClusterErrorBody(t, response, "last_cluster")
 }
 
+// TestAdminClusters_SnippetTargetValidation — spec D8: the snippet write
+// target is both-or-neither, the dir absolute, the storage id a valid Proxmox
+// identifier; a valid pair persists and flips cloudInitWriteEnabled.
+//
+//nolint:paralleltest // HTTP fixture shares fake cluster state
+func TestAdminClusters_SnippetTargetValidation(t *testing.T) {
+	fixture := newAdminClusterFixture(t)
+	cookie := adminClusterCookie(t, fixture.auth)
+
+	update := func(body string) *httptest.ResponseRecorder {
+		return adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeUpdate, HTTPMethod: http.MethodPut, Path: adminClustersSecondaryPath, Name: crossSecondaryCluster, Body: body})
+	}
+
+	cases := []struct {
+		name     string
+		dir      string
+		storage  string
+		wantCode int
+	}{
+		{name: "dir only is rejected", dir: adminClusterSnippetDir, wantCode: http.StatusBadRequest},
+		{name: "storage only is rejected", storage: adminClusterSnippetTarget, wantCode: http.StatusBadRequest},
+		{name: "relative dir is rejected", dir: "snippets", storage: adminClusterSnippetTarget, wantCode: http.StatusBadRequest},
+		{name: "invalid storage id is rejected", dir: adminClusterSnippetDir, storage: "-bad", wantCode: http.StatusBadRequest},
+		{name: "both empty stays valid", wantCode: http.StatusOK},
+		{name: "valid pair is accepted", dir: adminClusterSnippetDir, storage: adminClusterSnippetTarget, wantCode: http.StatusOK},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			body := fmt.Sprintf(`{"url":"https://pve-b.example.com:8006/api2/json","tokenId":"pvmss@pve!service","snippetDir":%q,"snippetStorage":%q}`, testCase.dir, testCase.storage)
+			response := update(body)
+			if response.Code != testCase.wantCode {
+				t.Fatalf("status = %d, want %d: %s", response.Code, testCase.wantCode, response.Body.String())
+			}
+			if testCase.wantCode != http.StatusOK {
+				assertClusterErrorBody(t, response, "invalid_request")
+			}
+		})
+	}
+
+	response := update(`{"url":"https://pve-b.example.com:8006/api2/json","tokenId":"pvmss@pve!service","snippetDir":"` + adminClusterSnippetDir + `","snippetStorage":"` + adminClusterSnippetTarget + `"}`)
+	if response.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", response.Code, response.Body.String())
+	}
+
+	var updated adminClusterDTOForTest
+	if err := json.Unmarshal(response.Body.Bytes(), &updated); err != nil {
+		t.Fatalf("decode updated: %v", err)
+	}
+
+	if updated.SnippetDir != adminClusterSnippetDir || updated.SnippetStorage != adminClusterSnippetTarget || !updated.CloudInitWriteEnabled {
+		t.Fatalf("updated cluster = %+v, want snippet target echoed and write enabled", updated)
+	}
+
+	row, err := fixture.store.GetCluster(context.Background(), crossSecondaryCluster)
+	if err != nil {
+		t.Fatalf("GetCluster: %v", err)
+	}
+
+	if row.SnippetDir != adminClusterSnippetDir || row.SnippetStorage != adminClusterSnippetTarget {
+		t.Fatalf("stored snippet target = %q/%q", row.SnippetDir, row.SnippetStorage)
+	}
+}
+
 type adminClusterDTOForTest struct {
 	Name                  string  `json:"name"`
 	DisplayName           string  `json:"displayName"`
@@ -475,6 +541,9 @@ type adminClusterDTOForTest struct {
 	RemovedAt             *string `json:"removedAt"`
 	LastTestStatus        *string `json:"lastTestStatus"`
 	LastTestAt            *string `json:"lastTestAt"`
+	SnippetDir            string  `json:"snippetDir"`
+	SnippetStorage        string  `json:"snippetStorage"`
+	CloudInitWriteEnabled bool    `json:"cloudInitWriteEnabled"`
 }
 
 func assertClusterErrorBody(t *testing.T, response *httptest.ResponseRecorder, wantCode string) {

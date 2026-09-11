@@ -30,6 +30,8 @@ func (emptyDiscoveryClient) ListISOs(_ context.Context) ([]cluster.ISOImage, err
 // TestAdminListISOs_EnabledOrphanAutoRemoved: an enabled ISO approval whose
 // file Proxmox no longer reports is silently removed — it would otherwise be
 // offered to users on a file that no longer exists.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminListISOs_EnabledOrphanAutoRemoved(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -57,6 +59,7 @@ func TestAdminListISOs_EnabledOrphanAutoRemoved(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CatalogISOsEnabled: %v", err)
 	}
+
 	for _, row := range rows {
 		if row.File == debianGenericISO {
 			t.Errorf("enabled orphan ISO %q should have been deleted from the store", debianGenericISO)
@@ -68,6 +71,8 @@ func TestAdminListISOs_EnabledOrphanAutoRemoved(t *testing.T) {
 // whose file is gone is surfaced with Missing=true so the admin can remove it
 // manually — auto-removing a disabled row would lose the admin's intent if the
 // file comes back.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminListISOs_DisabledOrphanSurfacedAsMissing(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -77,6 +82,7 @@ func TestAdminListISOs_DisabledOrphanSurfacedAsMissing(t *testing.T) {
 		catalog.ISORef{Node: node01, Storage: storageLocal, File: debianGenericISO}, true); err != nil {
 		t.Fatalf("SetISOEnabled true: %v", err)
 	}
+
 	if err := st.SetISOEnabled(ctx, "default", node01, storageLocal, debianGenericISO, false); err != nil {
 		t.Fatalf("SetISOEnabled false: %v", err)
 	}
@@ -87,23 +93,29 @@ func TestAdminListISOs_DisabledOrphanSurfacedAsMissing(t *testing.T) {
 	}
 
 	found := false
+
 	for _, iso := range isos {
 		if iso.File == debianGenericISO && iso.Node == node01 {
 			found = true
+
 			if !iso.Missing {
 				t.Error("disabled orphan ISO should have Missing=true")
 			}
+
 			if iso.Enabled {
 				t.Error("disabled orphan ISO should still be disabled")
 			}
 		}
 	}
+
 	if !found {
 		t.Fatalf("disabled orphan ISO %q should be surfaced as missing", debianGenericISO)
 	}
 }
 
 // TestDeleteISO_RemovesOrphan: the admin can remove a disabled orphan approval.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestDeleteISO_RemovesOrphan(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -123,6 +135,8 @@ func TestDeleteISO_RemovesOrphan(t *testing.T) {
 
 // TestAdminListNodes_EnabledOrphanAutoRemoved: an enabled node approval whose
 // node Proxmox no longer reports is auto-removed.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminListNodes_EnabledOrphanAutoRemoved(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -135,7 +149,7 @@ func TestAdminListNodes_EnabledOrphanAutoRemoved(t *testing.T) {
 	}
 
 	for _, n := range nodes {
-		if n.Name == "pve-node-01" {
+		if n.Name == node01 {
 			t.Errorf("enabled orphan node pve-node-01 should have been auto-removed, got %+v", n)
 		}
 	}
@@ -144,8 +158,9 @@ func TestAdminListNodes_EnabledOrphanAutoRemoved(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CatalogNodesEnabled: %v", err)
 	}
+
 	for _, row := range rows {
-		if row.Name == "pve-node-01" && row.Enabled {
+		if row.Name == node01 && row.Enabled {
 			t.Errorf("enabled orphan node pve-node-01 should have been deleted from the store")
 		}
 	}
@@ -153,6 +168,8 @@ func TestAdminListNodes_EnabledOrphanAutoRemoved(t *testing.T) {
 
 // TestAdminListNodes_DisabledOrphanSurfacedAsMissing: a disabled node approval
 // whose node is gone is surfaced with Missing=true.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminListNodes_DisabledOrphanSurfacedAsMissing(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -168,20 +185,25 @@ func TestAdminListNodes_DisabledOrphanSurfacedAsMissing(t *testing.T) {
 	}
 
 	found := false
+
 	for _, n := range nodes {
 		if n.Name == "ghost-node" {
 			found = true
+
 			if !n.Missing {
 				t.Error("disabled orphan node should have Missing=true")
 			}
 		}
 	}
+
 	if !found {
 		t.Fatal("disabled orphan node ghost-node should be surfaced as missing")
 	}
 }
 
 // TestDeleteNode_RemovesOrphan: the admin can remove a disabled orphan node.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestDeleteNode_RemovesOrphan(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -201,6 +223,8 @@ func TestDeleteNode_RemovesOrphan(t *testing.T) {
 
 // TestAdminListStorages_EnabledOrphanAutoRemoved: an enabled storage approval
 // whose storage is gone is auto-removed.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminListStorages_EnabledOrphanAutoRemoved(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -221,6 +245,8 @@ func TestAdminListStorages_EnabledOrphanAutoRemoved(t *testing.T) {
 
 // TestAdminListStorages_DisabledOrphanSurfacedAsMissing: a disabled storage
 // approval whose storage is gone is surfaced with Missing=true.
+//
+//nolint:dupl,paralleltest // parallel per-resource contract test; serial: shared fake dataset and database fixture
 func TestAdminListStorages_DisabledOrphanSurfacedAsMissing(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -235,20 +261,25 @@ func TestAdminListStorages_DisabledOrphanSurfacedAsMissing(t *testing.T) {
 	}
 
 	found := false
+
 	for _, s := range storages {
 		if s.Name == "ghost-storage" && s.Node == "ghost-node" {
 			found = true
+
 			if !s.Missing {
 				t.Error("disabled orphan storage should have Missing=true")
 			}
 		}
 	}
+
 	if !found {
 		t.Fatal("disabled orphan storage should be surfaced as missing")
 	}
 }
 
 // TestDeleteStorage_RemovesOrphan: the admin can remove a disabled orphan storage.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestDeleteStorage_RemovesOrphan(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -268,6 +299,8 @@ func TestDeleteStorage_RemovesOrphan(t *testing.T) {
 
 // TestAdminListBridges_EnabledOrphanAutoRemoved: an enabled bridge approval
 // whose bridge is gone is auto-removed.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminListBridges_EnabledOrphanAutoRemoved(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -291,6 +324,8 @@ func TestAdminListBridges_EnabledOrphanAutoRemoved(t *testing.T) {
 
 // TestAdminListBridges_DisabledOrphanSurfacedAsMissing: a disabled bridge
 // approval whose bridge is gone is surfaced with Missing=true.
+//
+//nolint:dupl,paralleltest // parallel per-resource contract test; serial: shared fake dataset and database fixture
 func TestAdminListBridges_DisabledOrphanSurfacedAsMissing(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
@@ -305,20 +340,25 @@ func TestAdminListBridges_DisabledOrphanSurfacedAsMissing(t *testing.T) {
 	}
 
 	found := false
+
 	for _, b := range bridges {
 		if b.Name == "ghost-bridge" && b.Node == "ghost-node" {
 			found = true
+
 			if !b.Missing {
 				t.Error("disabled orphan bridge should have Missing=true")
 			}
 		}
 	}
+
 	if !found {
 		t.Fatal("disabled orphan bridge should be surfaced as missing")
 	}
 }
 
 // TestDeleteBridge_RemovesOrphan: the admin can remove a disabled orphan bridge.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestDeleteBridge_RemovesOrphan(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()

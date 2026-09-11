@@ -10,11 +10,11 @@ import (
 // US6/issue-06: UEFI/TPM test fixtures — repeated Proxmox form values
 // centralized for goconst and readability.
 const (
-	testBIOSOVMF     = "ovmf"
-	testMachineQ35   = "q35"
+	testBIOSOVMF               = "ovmf"
+	testMachineQ35             = "q35"
 	testEFIDiskValue           = "local-lvm:1,efitype=4m,pre-enrolled-keys=0"
 	testEFIDiskValueSecureBoot = "local-lvm:1,efitype=4m,pre-enrolled-keys=1"
-	testTPMDiskValue = "local-lvm:1,version=v2.0"
+	testTPMDiskValue           = "local-lvm:1,version=v2.0"
 )
 
 func TestProxmox_NextVMID(t *testing.T) {

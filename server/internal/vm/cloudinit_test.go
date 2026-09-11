@@ -28,6 +28,14 @@ const (
 	testPasswordValue = "hunter2-change-me"
 	// testActionSetCloudInitPassword is the fake's agent password-apply action.
 	testActionSetCloudInitPassword = "set_cloudinit_password"
+	// testStorageLocal is the fake-local storage name the fixtures share.
+	testStorageLocal = "local"
+	// testUserUbuntu is the cloud-init user the fixtures share.
+	testUserUbuntu = "ubuntu"
+	// testActionCreate is the fake's VM-create action name.
+	testActionCreate = "create"
+	// testActionAttachCloudInitSnippet is the fake's snippet-attach action name.
+	testActionAttachCloudInitSnippet = "attach_cloudinit_snippet"
 )
 
 func cloudInitIndex(t *testing.T) *inventory.Index {
@@ -78,7 +86,7 @@ func TestGetCloudInitConfig_OwnerAndForbidden(t *testing.T) {
 func TestSetCloudInitConfig_MergesDHCPAuditsAndDoesNotReboot(t *testing.T) {
 	index := cloudInitIndex(t)
 	st := cloudInitStore(t)
-	user := "ubuntu"
+	user := testUserUbuntu
 	mode := cluster.CloudInitIPModeDHCP
 	keys := []string{"ssh-ed25519 AAAA-new"}
 	rebooted, err := vm.SetCloudInitConfig(context.Background(), vm.CloudInitConfigDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st, Refresher: testRefresher{}}, cluster.CloudInitUpdate{User: &user, IPMode: &mode, SSHKeys: &keys}, false)
@@ -114,7 +122,7 @@ func TestSetCloudInitConfig_RebootNowCallsT05Once(t *testing.T) {
 	if err := (cluster.Fake{}).Action(context.Background(), cluster.FakeNode01, 101, "start"); err != nil {
 		t.Fatalf("start VM 101 for test setup: %v", err)
 	}
-	user := "ubuntu"
+	user := testUserUbuntu
 	rebooted, err := vm.SetCloudInitConfig(context.Background(), vm.CloudInitConfigDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st, Refresher: testRefresher{}}, cluster.CloudInitUpdate{User: &user}, true)
 	if err != nil {
 		t.Fatalf("SetCloudInitConfig: %v", err)
@@ -376,7 +384,7 @@ func TestSetCloudInitConfig_PasswordPrefersPatchUser(t *testing.T) {
 	}
 
 	password := testPasswordValue
-	user := "ubuntu"
+	user := testUserUbuntu
 	if _, err := vm.SetCloudInitConfig(context.Background(), vm.CloudInitConfigDeps{
 		Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101,
 		Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st, Refresher: testRefresher{},
