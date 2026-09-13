@@ -1,6 +1,6 @@
 module pvmss
 
-go 1.25.0
+go 1.26.0
 
 require (
 	github.com/go-resty/resty/v2 v2.17.2
@@ -13,7 +13,7 @@ require (
 	github.com/rs/zerolog v1.35.1
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.54.0
-	golang.org/x/sync v0.22.0
+	golang.org/x/sync v0.23.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.56.0
 )
