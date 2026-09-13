@@ -3,17 +3,18 @@
 Guidance for Claude Code (claude.ai/code) in this repo.
 
 The single source of truth for all agents is `AGENTS.md` (project overview,
-commands, architecture, mandatory graph-first workflow, conventions). It is
+commands, architecture, the mandatory locate-before-you-read workflow,
+conventions). It is
 imported below — follow it in full:
 
 @AGENTS.md
 
 ## Claude Code-Specific Notes
 
-- **Graphify**: when the user types `/graphify`, invoke the graphify skill
-  before doing anything else. Per the graph-first workflow in AGENTS.md, build
-  or refresh a folder's snapshot (`/graphify <folder>` /
-  `/graphify <folder> --update`) before creating code there.
+- **Locating code**: use `tools/pq` (see AGENTS.md) before any Grep/Glob.
+  `pq def NAME` to find a declaration, `pq callers NAME` to find usage,
+  `pq api <dir>` for a package's surface. The graphify and code-review-graph
+  workflows were removed on 2026-09-11.
 - **Skills**: project skills live in `.devin/skills/` (golang-*,
   svelte-code-writer, tailwind-design-system, todo-planning,
   backend-refactor). Invoke the matching skill at the start of matching tasks
