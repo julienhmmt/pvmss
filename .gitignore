@@ -42,3 +42,4 @@ web/prototype/
 
 # Tests file for web
 web/coverage
+_to_delete/
