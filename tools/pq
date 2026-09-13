@@ -1,0 +1,130 @@
+#!/usr/bin/env bash
+# pq — project query. Locate code cheaply. Depends only on ripgrep.
+# Project-agnostic: language rules are selected per query, nothing is indexed.
+set -euo pipefail
+
+X=(-g '!node_modules' -g '!.svelte-kit' -g '!build' -g '!dist' -g '!coverage'
+   -g '!vendor' -g '!.git' -g '!test-results' -g '!graphify-out'
+   -g '!.code-review-graph' -g '!*.min.*' -g '!*.lock' -g '!*.sum')
+NOTEST=(-g '!*_test.go' -g '!*.test.*' -g '!*.spec.*' -g '!e2e/**' -g '!tests/**')
+
+die() { echo "pq: $*" >&2; exit 1; }
+usage() {
+  cat >&2 <<'U'
+pq def NAME [PATH]      where a symbol is defined (declarations, then file names)
+pq api PATH             exported surface of a package/directory
+pq callers NAME [PATH]  who uses it — counts per file, not raw lines
+pq file PATH            skeleton of one file: symbols + line numbers
+pq tree [PATH]          directories ranked by symbol count
+pq grep PATTERN [PATH]  pre-filtered ripgrep (no build dirs, no vendor)
+
+Always run `pq def` before `pq grep`. Raw grep on a common name costs
+20x more tokens than the declaration you were actually looking for.
+U
+  exit 1
+}
+
+# Declaration patterns, per language family. NAME is injected as \bNAME\b.
+def_pats() {
+  local n="$1"
+  printf '%s\n' \
+    "^func (\([^)]*\) )?${n}\b" \
+    "^(type|var|const) ${n}\b" \
+    "^[[:space:]]*(export )?(default )?(async )?function \*?${n}\b" \
+    "^[[:space:]]*(export )?(abstract )?(const|let|class|interface|type|enum) ${n}\b" \
+    "^[[:space:]]*(async )?(def|class) ${n}\b" \
+    "^[[:space:]]*(pub )?(async )?(fn|struct|enum|trait|type|impl) ${n}\b" \
+    "^[[:space:]]*${n}[[:space:]]*[:=][[:space:]]*(async[[:space:]]+)?(\(|function)"
+}
+
+# Any-declaration patterns, for file/tree scans.
+any_pats() {
+  printf '%s\n' \
+    '^func (\([^)]*\) )?[A-Za-z_]' \
+    '^(type|var|const) [A-Za-z_(]' \
+    '^[[:space:]]*(export )?(default )?(async )?function [A-Za-z_*]' \
+    '^[[:space:]]*export (abstract )?(const|class|interface|type|enum) [A-Za-z_]' \
+    '^[[:space:]]*(async )?(def|class) [A-Za-z_]' \
+    '^[[:space:]]*pub (async )?(fn|struct|enum|trait|type) [A-Za-z_]'
+}
+
+# Exported/public-only patterns.
+api_pats() {
+  printf '%s\n' \
+    '^func [A-Z]' \
+    '^func \([a-z][A-Za-z0-9]* \*?[A-Z][A-Za-z0-9]*\) [A-Z]' \
+    '^(type|const|var) [A-Z]' \
+    '^[[:space:]]*export (default )?(async )?function [A-Za-z_]' \
+    '^[[:space:]]*export (abstract )?(const|class|interface|type|enum) [A-Za-z_]' \
+    '^[[:space:]]*pub (async )?(fn|struct|enum|trait|type) [a-z_]'
+}
+
+run_rg() { # patterns_fn name path extra...
+  local fn="$1" name="$2" path="$3"; shift 3
+  local -a pats=()
+  while IFS= read -r p; do pats+=(-e "$p"); done < <("$fn" ${name:+"$name"})
+  rg -n --no-heading --color never "${pats[@]}" "${X[@]}" "$@" -- "$path" || true
+}
+
+cmd="${1:-}"; [ -n "$cmd" ] || usage; shift || true
+
+case "$cmd" in
+  def)
+    n="${1:-}"; [ -n "$n" ] || die "def needs a symbol name"
+    p="${2:-.}"
+    out=$(run_rg def_pats "$n" "$p" "${NOTEST[@]}")
+    if [ -z "$out" ]; then
+      out=$(run_rg def_pats "$n" "$p")
+      [ -n "$out" ] && echo "# (only test files matched)"
+    fi
+    if [ -z "$out" ]; then
+      # No declaration: the symbol may be the file itself (Svelte
+      # components, kebab-case modules). Fall back to a basename match.
+      kebab=$(printf '%s' "$n" | sed 's/\([A-Z]\)/-\L\1/g; s/^-//')
+      files=$(rg --files "${X[@]}" -- "$p" \
+        | rg -i "/(${n}|${kebab})\.[a-z0-9]+$" || true)
+      if [ -n "$files" ]; then
+        echo "# no declaration for '$n', but these files are named like it:"
+        echo "$files"
+      else
+        echo "# no declaration found for '$n' — it may be a method declared"
+        echo "# inside an interface/class, a generated symbol, or spelled"
+        echo "# differently. Try: pq grep '$n'"
+      fi
+      exit 0
+    fi
+    echo "$out"
+    echo "# note: methods declared inside interfaces/classes are not matched;"
+    echo "# pq callers '$n' shows the full usage surface"
+    ;;
+  api)
+    p="${1:-}"; [ -n "$p" ] || die "api needs a path"
+    run_rg api_pats "" "$p" "${NOTEST[@]}" | sed 's/ {$//; s/ ($/(/'
+    ;;
+  callers)
+    n="${1:-}"; [ -n "$n" ] || die "callers needs a symbol name"
+    p="${2:-.}"
+    echo "# files using '$n', by occurrence count (declarations included)"
+    rg -c --color never -w "$n" "${X[@]}" -- "$p" 2>/dev/null \
+      | awk -F: '{printf "%6d  %s\n", $NF, substr($0,1,length($0)-length($NF)-1)}' \
+      | sort -rn || echo "# none"
+    echo "# then: pq grep '$n' <one-of-those-paths>"
+    ;;
+  file)
+    p="${1:-}"; [ -n "$p" ] || die "file needs a path"
+    [ -f "$p" ] || die "not a file: $p"
+    run_rg any_pats "" "$p" | sed 's/ {$//'
+    ;;
+  tree)
+    p="${1:-.}"
+    run_rg any_pats "" "$p" \
+      | awk -F: '{n=$1; sub(/\/[^\/]*$/,"",n); c[n]++} END {for (k in c) printf "%6d  %s\n", c[k], k}' \
+      | sort -rn
+    ;;
+  grep)
+    q="${1:-}"; [ -n "$q" ] || die "grep needs a pattern"
+    p="${2:-.}"
+    rg -n --no-heading --color never "${X[@]}" -- "$q" "$p" || echo "# no match"
+    ;;
+  *) usage ;;
+esac

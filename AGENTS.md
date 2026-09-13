@@ -26,7 +26,7 @@ script, or CI job still pointing at `backend/` or `frontend/` is stale — see
 | `docs/`           | Documentation (`docs/plans/` holds task plans)                  |
 | `specs/`          | Feature specifications (speckit); gitignored but real work      |
 | `sonar-projects/` | Per-project SonarScanner `.properties` files                    |
-| `tools/`          | Helper scripts (sonar bootstrap/coverage/scan/query, superlint) |
+| `tools/`          | Helper scripts (`pq`, sonar bootstrap/coverage/scan/query, superlint) |
 | `.devin/`         | Project rules + skills (see "Project Conventions")              |
 | `.agents/`        | Agent-local working files — `skills/`, `memory/` (gitignored)   |
 
@@ -98,76 +98,46 @@ make sonar-down         # Stop the server
 make sonar-clean        # Stop and remove all SonarQube data
 ```
 
-## MANDATORY: Graph-First Workflow
+## MANDATORY: Locate Before You Read
 
-**Grep/Glob as a first move is a workflow violation, not a shortcut.** Before
-creating or modifying code in ANY folder, consult the knowledge graph for that
-folder first. Broad, unscoped Grep/Glob sweeps to "find where X lives" or
-"understand how Y works" are exactly what the graph replaces — if you catch
-yourself about to grep the whole tree for a symbol or concept, stop and check
-the graph instead.
+**An unanchored `rg NAME` across the tree is a workflow violation.** Measured on
+this repo: `rg -n "Snapshot"` returns 1 107 lines (~30 570 tokens); the three
+declarations you actually wanted cost ~131. Same 0.2 s, 230x the price. Reading
+a whole package to find one function costs ~138 000 tokens.
 
-Two complementary graphs exist:
+Use `tools/pq`. It wraps ripgrep with declaration-aware patterns and
+excludes `node_modules`, build output and vendor trees. It indexes nothing —
+every answer is computed fresh in ~200 ms, so it is never stale.
 
-1. **code-review-graph MCP tools** — live graph, auto-updates on file changes
-   via hooks. Preferred when the MCP server is available.
-2. **graphify static snapshots** — `<folder>/graphify-out/` directories.
-   Agent-crawlable, no MCP required, work with any model.
+| Question | Command | Typical cost |
+| --- | --- | --- |
+| Where is `Foo` defined? | `pq def Foo` | ~130 tok |
+| What does this package expose? | `pq api server/internal/vm` | ~2.5k tok |
+| Who uses `Foo`? | `pq callers Foo` | ~190 tok |
+| What is in this file? | `pq file path/to/x.go` | varies |
+| How is this area organised? | `pq tree server/internal` | ~120 tok |
+| Free-text, last resort | `pq grep 'pattern' [path]` | unbounded |
 
-### Procedure (follow in order — do not skip to Grep)
+### Procedure
 
-1. **Locate the graph** for the folder you are about to touch:
-   - If code-review-graph MCP tools are available → use them (table below).
-   - Else look for `<folder>/graphify-out/GRAPH_REPORT.md`.
-2. **If a graphify snapshot exists**: start at `graphify-out/wiki/index.md`
-   (or `GRAPH_REPORT.md` if no wiki) for communities and god nodes = core
-   abstractions, then the relevant `wiki/*.md` article for the node/area in
-   question, then `graph.json` only if you need exact edge data.
-3. **If NO snapshot exists for that folder, create one before coding:**
-   `/graphify <folder>`. Current coverage: `server/`, `web/`, and a merged
-   server+web graph at root `graphify-out/`.
-4. **If the snapshot is stale** (files modified after the date in
-   `GRAPH_REPORT.md`'s header): refresh with `/graphify <folder> --update`
-   (incremental, only re-extracts changed files).
-5. **Grep/Glob/Read are last resort, scoped, and justified** — use them only
-   for what the graph cannot answer (exact string literals, config values,
-   generated files, or a specific path the graph already pointed you to).
-   Never use them as the first exploration step in a folder that has a graph.
+1. `pq def NAME` first. It answers "where is X" outright.
+2. `pq callers NAME` before any grep — it returns one line per file with an
+   occurrence count, so you pick the two files worth reading instead of paging
+   through every hit. Then `pq grep NAME <that-path>`.
+3. Orientation is top-down: `pq tree` -> `pq api <dir>` -> `pq file` -> `Read`
+   the one function. Stop as soon as you have what you need.
+4. `Read` on a whole package is a last resort and must be justified.
+5. For *why* the code is shaped this way rather than *where* it is, that is the
+   project journal, not the locator.
 
-### code-review-graph MCP tools
+The `project-query` skill carries the same rules plus raw ripgrep fallbacks.
 
-| Tool | Use when |
-| ------ | ---------- |
-| `detect_changes` | Reviewing code changes — gives risk-scored analysis |
-| `get_review_context` | Need source snippets for review — token-efficient |
-| `get_impact_radius` | Understanding blast radius of a change |
-| `get_affected_flows` | Finding which execution paths are impacted |
-| `query_graph` | Tracing callers, callees, imports, tests, dependencies (patterns: callers_of/callees_of/imports_of/tests_for) |
-| `semantic_search_nodes` | Finding functions/classes by name or keyword |
-| `get_architecture_overview` | Understanding high-level codebase structure |
-| `refactor_tool` | Planning renames, finding dead code |
-
-When to prefer them over Grep:
-
-- **Exploring code**: `semantic_search_nodes` or `query_graph` instead of Grep
-- **Understanding impact**: `get_impact_radius` instead of manually tracing imports
-- **Code review**: `detect_changes` + `get_review_context` instead of reading entire files
-- **Architecture questions**: `get_architecture_overview` + `list_communities`
-- **Coverage check**: `query_graph` pattern="tests_for"
-
-### graphify CLI (static snapshots)
-
-```text
-/graphify <folder>                 # full pipeline → <folder>/graphify-out/
-/graphify <folder> --update        # incremental refresh (changed files only)
-/graphify <folder> --wiki          # rebuild agent-crawlable wiki articles
-/graphify query "<question>"       # ask the graph a question (broad context)
-/graphify explain "<NodeName>"     # plain-language explanation of a node
-/graphify path "<A>" "<B>"         # shortest path between two concepts
-```
-
-Unlike code-review-graph, snapshots do NOT auto-update — refresh them after
-significant changes.
+**Removed 2026-09-11:** the code-review-graph MCP server, its `PostToolUse`
+hook (it ran on every Edit/Write/Bash), and 173 MB of `graphify-out/` snapshots
+frozen since 30 August. Its leftover `pre-commit` git hook and
+`.code-review-graph/graph.db` followed on 2026-09-13. They answered "who calls
+X" — which ripgrep answers in 200 ms — at the cost of a permanently stale
+index. Do not reintroduce a code index without measuring against `pq` first.
 
 ## Architecture
 
