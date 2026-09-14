@@ -26,6 +26,11 @@ var (
 	ErrUserFileLimit = errors.New("cloud-init file limit reached")
 )
 
+// userFileNotFoundError wraps ErrUserFileNotFound with the missing id.
+func userFileNotFoundError(id string) error {
+	return fmt.Errorf("%w: %q", ErrUserFileNotFound, id)
+}
+
 // UserFileStore is the narrow store surface the domain functions need — tests
 // stub it, production passes *store.Store.
 type UserFileStore interface {
@@ -52,7 +57,7 @@ func GetUserFile(ctx context.Context, st UserFileStore, owner, id string) (store
 	}
 
 	if !found {
-		return store.UserCloudInitFile{}, fmt.Errorf("%w: %q", ErrUserFileNotFound, id)
+		return store.UserCloudInitFile{}, userFileNotFoundError(id)
 	}
 
 	return f, nil
@@ -121,7 +126,7 @@ func UpdateUserFile(ctx context.Context, st UserFileStore, owner, id, label, con
 	stamp := time.Now().UTC().Format(time.RFC3339Nano)
 	if err := st.UpdateUserCloudInitFile(ctx, owner, id, label, content, stamp); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return store.UserCloudInitFile{}, fmt.Errorf("%w: %q", ErrUserFileNotFound, id)
+			return store.UserCloudInitFile{}, userFileNotFoundError(id)
 		}
 
 		return store.UserCloudInitFile{}, err
@@ -135,7 +140,7 @@ func UpdateUserFile(ctx context.Context, st UserFileStore, owner, id, label, con
 func DeleteUserFile(ctx context.Context, st UserFileStore, owner, id string) error {
 	if err := st.DeleteUserCloudInitFile(ctx, owner, id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("%w: %q", ErrUserFileNotFound, id)
+			return userFileNotFoundError(id)
 		}
 
 		return err

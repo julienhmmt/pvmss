@@ -322,7 +322,7 @@ func SetCloudInitSnippet(ctx context.Context, deps CloudInitSnippetDeps, content
 
 	storage, err := deps.Reader.FindSnippetStorage(ctx, entity.Node)
 	if err != nil {
-		return fmt.Errorf("%w: %w", ErrCloudInitWriteUnavailable, err)
+		return wrapJoin(ErrCloudInitWriteUnavailable, err)
 	}
 
 	filename := fmt.Sprintf("%s%d.yml", snippetFilenamePrefix, deps.VMID)
@@ -357,7 +357,7 @@ func writeCloudInitSnippet(ctx context.Context, deps CloudInitSnippetDeps, entit
 	}
 
 	if err := deps.Writer.PushCloudInitSnippet(ctx, entity.Node, storage, filename, deps.VMID, content); err != nil {
-		return fmt.Errorf("%w: %w", ErrCloudInitWriteUnavailable, err)
+		return wrapJoin(ErrCloudInitWriteUnavailable, err)
 	}
 
 	visible, err := deps.Writer.HasSnippet(ctx, entity.Node, storage, filename)

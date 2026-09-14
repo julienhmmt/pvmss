@@ -192,6 +192,25 @@ func fakeCallIndexes(vmid int, actions ...string) map[string]int {
 	return index
 }
 
+// snippetPushFor returns the content of the per-VM pvmss-<vmid>.yml snippet
+// push recorded by the fake writer (empty when no push was recorded) and
+// whether the attach call for the same filename was recorded.
+func snippetPushFor(vmid int) (content string, attached bool) {
+	snippetName := fmt.Sprintf("pvmss-%d.yml", vmid)
+
+	for _, c := range cluster.FakeCallsFor(vmid) {
+		if c.Action == "push_cloudinit_snippet" && c.Filename == snippetName {
+			content = c.Content
+		}
+
+		if c.Action == testActionAttachCloudInitSnippet && c.Filename == snippetName {
+			attached = true
+		}
+	}
+
+	return content, attached
+}
+
 // TestCreate_Image_AttachesBaselineSnippetWhenPresent — when an admin has
 // placed a cluster-wide pvmss-baseline.yml, its content replaces the
 // generated baseline (issue 03): the merged document is pushed as
@@ -222,37 +241,24 @@ func TestCreate_Image_AttachesBaselineSnippetWhenPresent(t *testing.T) {
 	}
 
 	// The per-VM snippet is pushed and attached (not the cluster-wide file).
-	snippetName := fmt.Sprintf("pvmss-%d.yml", result.VMID)
+	pushedContent, attached := snippetPushFor(result.VMID)
 
-	pushed := false
-
-	attached := false
-
-	for _, c := range cluster.FakeCallsFor(result.VMID) {
-		if c.Action == "push_cloudinit_snippet" && c.Filename == snippetName {
-			pushed = true
-			// The override content (nmap) should be in the pushed document,
-			// not the generated baseline (qemu-guest-agent).
-			if !strings.Contains(c.Content, "nmap") {
-				t.Errorf("pushed snippet does not contain override content: %s", c.Content)
-			}
-
-			if strings.Contains(c.Content, "qemu-guest-agent") {
-				t.Errorf("pushed snippet should not contain generated baseline when override present: %s", c.Content)
-			}
-		}
-
-		if c.Action == testActionAttachCloudInitSnippet && c.Filename == snippetName {
-			attached = true
-		}
-	}
-
-	if !pushed {
+	if pushedContent == "" {
 		t.Error("per-VM snippet push not recorded")
 	}
 
 	if !attached {
 		t.Error("per-VM snippet attach not recorded")
+	}
+
+	// The override content (nmap) should be in the pushed document,
+	// not the generated baseline (qemu-guest-agent).
+	if !strings.Contains(pushedContent, "nmap") {
+		t.Errorf("pushed snippet does not contain override content: %s", pushedContent)
+	}
+
+	if strings.Contains(pushedContent, "qemu-guest-agent") {
+		t.Errorf("pushed snippet should not contain generated baseline when override present: %s", pushedContent)
 	}
 }
 
@@ -285,15 +291,7 @@ func TestCreate_Image_UserDocumentMergesWithBaseline(t *testing.T) {
 		t.Errorf("result.BaselineState = %q, want 'applied'", result.BaselineState)
 	}
 
-	snippetName := fmt.Sprintf("pvmss-%d.yml", result.VMID)
-
-	var pushedContent string
-
-	for _, c := range cluster.FakeCallsFor(result.VMID) {
-		if c.Action == "push_cloudinit_snippet" && c.Filename == snippetName {
-			pushedContent = c.Content
-		}
-	}
+	pushedContent, _ := snippetPushFor(result.VMID)
 
 	if pushedContent == "" {
 		t.Fatal("per-VM snippet push not recorded")

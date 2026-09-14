@@ -87,6 +87,16 @@ const (
 // mode never asks for it).
 const defaultNetworkModel = "virtio"
 
+// allocateVMIDError wraps a NextVMID failure in ErrClusterCreate.
+func allocateVMIDError(err error) error {
+	return fmt.Errorf("%w: allocate vmid: %w", ErrClusterCreate, err)
+}
+
+// notApprovedError wraps a catalog lookup failure in ErrNotApproved.
+func notApprovedError(err error) error {
+	return fmt.Errorf("%w: %s", ErrNotApproved, err.Error())
+}
+
 // Image-mode fallback hardware — applied only when no profile was selected
 // (a cluster with no profiles configured yet). Deliberately bigger than the
 // shared technical minimum (1 vCPU/128 MB): a cloud image needs real
@@ -424,7 +434,7 @@ func createFromImage(ctx context.Context, policyService *policy.Policy, deps Cre
 
 	vmid, err := deps.Creator.NextVMID(ctx)
 	if err != nil {
-		return CreateResult{}, fmt.Errorf("%w: allocate vmid: %w", ErrClusterCreate, err)
+		return CreateResult{}, allocateVMIDError(err)
 	}
 
 	spec := buildCreateSpec(actor, req, plan, vmid)
@@ -441,7 +451,14 @@ func createFromImage(ctx context.Context, policyService *policy.Policy, deps Cre
 	// failed create task: the half-made VM is purged best-effort (US5/
 	// issue-05 D5a).
 	if waitErr := waitCreateTask(ctx, deps.Creator, upid); waitErr != nil {
-		return failImageCreate(ctx, deps, actor, clusterName, finalVMID, spec.Node, waitErr, result)
+		return failImageCreate(ctx, deps, imageCreateFailure{
+			actor:       actor,
+			clusterName: clusterName,
+			vmid:        finalVMID,
+			node:        spec.Node,
+			waitErr:     waitErr,
+			result:      result,
+		})
 	}
 
 	resizeImageDisk(ctx, deps, clusterName, plan, spec, finalVMID, &result)
@@ -505,20 +522,32 @@ func defaultImageHardware(req *CreateRequest) {
 	}
 }
 
+// imageCreateFailure carries the context of a failed image-mode create to
+// failImageCreate: the half-made VM's identity, the wait error, and the
+// accumulated result.
+type imageCreateFailure struct {
+	actor       auth.Identity
+	clusterName string
+	vmid        int
+	node        string
+	waitErr     error
+	result      CreateResult
+}
+
 // failImageCreate handles a failed create-task wait on the image path: the
 // half-made VM is purged best-effort (US5/issue-05 D5a), the wait error is
 // recorded on the result, and the create is audited.
-func failImageCreate(ctx context.Context, deps CreateDeps, actor auth.Identity, clusterName string, vmid int, node string, waitErr error, result CreateResult) (CreateResult, error) {
-	deps.Log.Error("create task wait failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", waitErr)
-	result.CloudInitPushError = waitErr.Error()
+func failImageCreate(ctx context.Context, deps CreateDeps, f imageCreateFailure) (CreateResult, error) {
+	deps.Log.Error("create task wait failed", "component", "vm", "cluster", f.clusterName, "vmid", f.vmid, "error", f.waitErr)
+	f.result.CloudInitPushError = f.waitErr.Error()
 
-	rollbackFailedCreate(ctx, deps, actor, clusterName, vmid, node, "create task failed")
+	rollbackFailedCreate(ctx, deps, f.actor, f.clusterName, f.vmid, f.node, "create task failed")
 
-	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, vmid, "vm_create"); err != nil {
-		deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+	if err := deps.Audit.RecordAction(ctx, f.actor.Username, f.clusterName, f.vmid, "vm_create"); err != nil {
+		deps.Log.Error(auditLogMsg, "component", "vm", "cluster", f.clusterName, "vmid", f.vmid, "error", err)
 	}
 
-	return result, nil
+	return f.result, nil
 }
 
 // resizeImageDisk grows the imported disk to the requested size. import-from
@@ -726,7 +755,7 @@ func createFromISO(ctx context.Context, policyService *policy.Policy, deps Creat
 
 	vmid, err := deps.Creator.NextVMID(ctx)
 	if err != nil {
-		return CreateResult{}, fmt.Errorf("%w: allocate vmid: %w", ErrClusterCreate, err)
+		return CreateResult{}, allocateVMIDError(err)
 	}
 
 	spec := buildCreateSpec(actor, req, plan, vmid)
@@ -879,7 +908,7 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 
 	vmid, err := deps.Creator.NextVMID(ctx)
 	if err != nil {
-		return CreateResult{}, fmt.Errorf("%w: allocate vmid: %w", ErrClusterCreate, err)
+		return CreateResult{}, allocateVMIDError(err)
 	}
 
 	cloneSpec := buildCloneSpec(tmpl, plan, req, vmid, actor.Pool)
@@ -1073,7 +1102,7 @@ func resolveTemplate(ctx context.Context, st *store.Store, clusterName string, t
 
 	tmpl, err := catalog.FindTemplate(templates, templateID)
 	if err != nil {
-		return catalog.Template{}, fmt.Errorf("%w: %s", ErrNotApproved, err.Error())
+		return catalog.Template{}, notApprovedError(err)
 	}
 
 	return tmpl, nil
@@ -1102,7 +1131,7 @@ func checkDiskReduction(diskGB int, tmpl catalog.Template) error {
 func checkDiskAboveImage(resources catalog.Resources, req CreateRequest, node string, diskGB int) (int, error) {
 	image, err := resources.FindCloudImage(req.Image.Storage, req.Image.File, node)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %s", ErrNotApproved, err.Error())
+		return 0, notApprovedError(err)
 	}
 
 	minGB := int((image.SizeBytes + bytesPerGB - 1) / bytesPerGB)
@@ -1818,7 +1847,7 @@ func resolveHardware(ctx context.Context, st *store.Store, clusterName string, r
 
 	profile, err := catalog.FindProfile(profiles, req.ProfileID)
 	if err != nil {
-		return 0, 0, 0, 0, "", fmt.Errorf("%w: %s", ErrNotApproved, err.Error())
+		return 0, 0, 0, 0, "", notApprovedError(err)
 	}
 
 	// FR-009: the profile's catalog values are authoritative — hardware

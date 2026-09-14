@@ -1268,6 +1268,9 @@ const (
 	FakeStoragePBS = "pbs-backup"
 	// FakeSnippetStorage is the deterministic snippets-capable fake storage.
 	FakeSnippetStorage = "local"
+	// FakeClusterOffline is the cluster name that makes a Fake report
+	// ErrUnreachable — the offline demo and tests share it.
+	FakeClusterOffline = "offline-demo"
 	// FakeCloudInitUser is the demo cloud-init account.
 	FakeCloudInitUser = "debian"
 	// FakeCloudInitDNS is the demo DNS server.

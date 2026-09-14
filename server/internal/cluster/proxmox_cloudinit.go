@@ -295,8 +295,8 @@ func (p Proxmox) ReadSnippet(_ context.Context, _, storage, filename string) (st
 		return "", ErrSnippetWriteUnavailable
 	}
 
-	if storage != p.SnippetStorage {
-		return "", fmt.Errorf("snippet storage %q is not this cluster's configured snippet storage %q", storage, p.SnippetStorage)
+	if err := p.checkSnippetStorage(storage); err != nil {
+		return "", err
 	}
 
 	if !snippetFilenameRE.MatchString(filename) || filepath.Base(filename) != filename {
@@ -608,6 +608,16 @@ func (p Proxmox) SnippetWriteAvailable() bool {
 	return p.SnippetDir != "" && p.SnippetStorage != ""
 }
 
+// checkSnippetStorage rejects a snippet operation aimed at a storage other
+// than the cluster's configured snippet storage.
+func (p Proxmox) checkSnippetStorage(storage string) error {
+	if storage != p.SnippetStorage {
+		return fmt.Errorf("snippet storage %q is not this cluster's configured snippet storage %q", storage, p.SnippetStorage)
+	}
+
+	return nil
+}
+
 // PushCloudInitSnippet implements Writer by writing content into the
 // cluster's configured snippet directory. There is no Proxmox API for this
 // (the upload endpoint's content enum is iso/vztmpl/import); the directory
@@ -620,8 +630,8 @@ func (p Proxmox) PushCloudInitSnippet(_ context.Context, _, storage, filename st
 		return ErrSnippetWriteUnavailable
 	}
 
-	if storage != p.SnippetStorage {
-		return fmt.Errorf("snippet storage %q is not this cluster's configured snippet storage %q", storage, p.SnippetStorage)
+	if err := p.checkSnippetStorage(storage); err != nil {
+		return err
 	}
 
 	if !snippetFilenameRE.MatchString(filename) || filepath.Base(filename) != filename {
@@ -640,8 +650,8 @@ func (p Proxmox) RemoveCloudInitSnippet(_ context.Context, storage, filename str
 		return ErrSnippetWriteUnavailable
 	}
 
-	if storage != p.SnippetStorage {
-		return fmt.Errorf("snippet storage %q is not this cluster's configured snippet storage %q", storage, p.SnippetStorage)
+	if err := p.checkSnippetStorage(storage); err != nil {
+		return err
 	}
 
 	if !snippetFilenameRE.MatchString(filename) || filepath.Base(filename) != filename {

@@ -3,9 +3,12 @@ package cluster_test
 import (
 	"context"
 	"errors"
+	"io"
+	"net"
 	"pvmss/server/internal/cluster"
 	"slices"
 	"testing"
+	"time"
 )
 
 func TestFake_Snapshot_DeepCopyDoesNotMutateOriginal(t *testing.T) {
@@ -172,7 +175,7 @@ func TestFake_DisplayName_NamedAndEmpty(t *testing.T) {
 func TestFake_DisplayName_Unreachable(t *testing.T) {
 	t.Parallel()
 
-	fake := cluster.Fake{ClusterName: "offline-demo"}
+	fake := cluster.Fake{ClusterName: cluster.FakeClusterOffline}
 	if _, err := fake.DisplayName(context.Background()); !errors.Is(err, cluster.ErrUnreachable) {
 		t.Fatalf("DisplayName(offline-demo) error = %v, want ErrUnreachable", err)
 	}
@@ -181,7 +184,7 @@ func TestFake_DisplayName_Unreachable(t *testing.T) {
 func TestFake_Snapshot_Unreachable(t *testing.T) {
 	t.Parallel()
 
-	fake := cluster.Fake{ClusterName: "offline-demo"}
+	fake := cluster.Fake{ClusterName: cluster.FakeClusterOffline}
 	if _, err := fake.Snapshot(context.Background()); !errors.Is(err, cluster.ErrUnreachable) {
 		t.Fatalf("Snapshot(offline-demo) error = %v, want ErrUnreachable", err)
 	}
@@ -1246,5 +1249,376 @@ func completeFakeTaskExternal(t *testing.T, fake cluster.Fake, upid string) {
 		if _, err := fake.TaskStatus(context.Background(), upid); err != nil {
 			t.Fatalf("TaskStatus: %v", err)
 		}
+	}
+}
+
+func TestFake_ListDatasets(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	fake := cluster.NewFake("test-list-datasets")
+
+	images, err := fake.ListCloudImages(ctx)
+	if err != nil {
+		t.Fatalf("ListCloudImages: %v", err)
+	}
+
+	if len(images) == 0 {
+		t.Error("ListCloudImages returned no images")
+	}
+
+	templates, err := fake.ListTemplates(ctx)
+	if err != nil {
+		t.Fatalf("ListTemplates: %v", err)
+	}
+
+	if len(templates) == 0 {
+		t.Error("ListTemplates returned no templates")
+	}
+
+	tmpl, err := fake.TemplateByVMID(ctx, 9000)
+	if err != nil {
+		t.Fatalf("TemplateByVMID(9000): %v", err)
+	}
+
+	if tmpl.VMID != 9000 {
+		t.Errorf("TemplateByVMID(9000) vmid = %d", tmpl.VMID)
+	}
+
+	if _, err := fake.TemplateByVMID(ctx, 99999); !errors.Is(err, cluster.ErrNotFound) {
+		t.Errorf("TemplateByVMID(99999) = %v, want ErrNotFound", err)
+	}
+
+	offline := cluster.Fake{ClusterName: cluster.FakeClusterOffline}
+
+	if _, err := offline.ListCloudImages(ctx); !errors.Is(err, cluster.ErrUnreachable) {
+		t.Errorf("ListCloudImages(offline) = %v, want ErrUnreachable", err)
+	}
+
+	if _, err := offline.ListTemplates(ctx); !errors.Is(err, cluster.ErrUnreachable) {
+		t.Errorf("ListTemplates(offline) = %v, want ErrUnreachable", err)
+	}
+
+	if _, err := offline.TemplateByVMID(ctx, 9000); !errors.Is(err, cluster.ErrUnreachable) {
+		t.Errorf("TemplateByVMID(offline) = %v, want ErrUnreachable", err)
+	}
+}
+
+func TestFake_StorageFreeSpace(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	fake := cluster.NewFake("test-storage-free")
+
+	avail, err := fake.StorageFreeSpace(ctx, cluster.FakeNode01, cluster.FakeStorageLocal)
+	if err != nil {
+		t.Fatalf("StorageFreeSpace: %v", err)
+	}
+
+	if avail <= 0 {
+		t.Errorf("StorageFreeSpace = %d, want > 0", avail)
+	}
+
+	if _, err := fake.StorageFreeSpace(ctx, cluster.FakeNode01, "no-such-storage"); !errors.Is(err, cluster.ErrNotFound) {
+		t.Errorf("StorageFreeSpace(unknown) = %v, want ErrNotFound", err)
+	}
+
+	offline := cluster.Fake{ClusterName: cluster.FakeClusterOffline}
+
+	if _, err := offline.StorageFreeSpace(ctx, cluster.FakeNode01, cluster.FakeStorageLocal); !errors.Is(err, cluster.ErrUnreachable) {
+		t.Errorf("StorageFreeSpace(offline) = %v, want ErrUnreachable", err)
+	}
+}
+
+//nolint:paralleltest // serial: shared default fake state
+func TestFake_SnippetRoundTrip(t *testing.T) {
+	cluster.ResetFake()
+	defer cluster.ResetFake()
+
+	ctx := context.Background()
+	fake := cluster.Fake{}
+
+	if !fake.SnippetWriteAvailable() {
+		t.Error("SnippetWriteAvailable = false, want true")
+	}
+
+	if err := fake.AttachCloudInitSnippet(ctx, cluster.FakeNode01, cluster.FakeStorageLocal, "pvmss-100.yml", 100); err != nil {
+		t.Fatalf("AttachCloudInitSnippet: %v", err)
+	}
+
+	if err := fake.AttachCloudInitSnippet(ctx, cluster.FakeNode01, cluster.FakeStorageLocal, "pvmss-x.yml", 99999); !errors.Is(err, cluster.ErrNotFound) {
+		t.Errorf("AttachCloudInitSnippet(99999) = %v, want ErrNotFound", err)
+	}
+
+	cluster.SetFakeSnippetContent(cluster.FakeNode01, cluster.FakeStorageLocal, "pvmss-baseline.yml", "#cloud-config\n")
+
+	present, err := fake.HasSnippet(ctx, cluster.FakeNode01, cluster.FakeStorageLocal, "pvmss-baseline.yml")
+	if err != nil {
+		t.Fatalf("HasSnippet: %v", err)
+	}
+
+	if !present {
+		t.Error("HasSnippet = false after SetFakeSnippetContent")
+	}
+
+	content, err := fake.ReadSnippet(ctx, cluster.FakeNode01, cluster.FakeStorageLocal, "pvmss-baseline.yml")
+	if err != nil {
+		t.Fatalf("ReadSnippet: %v", err)
+	}
+
+	if content != "#cloud-config\n" {
+		t.Errorf("ReadSnippet = %q, want the seeded content", content)
+	}
+
+	if _, err := fake.ReadSnippet(ctx, cluster.FakeNode01, cluster.FakeStorageLocal, "missing.yml"); !errors.Is(err, cluster.ErrNotFound) {
+		t.Errorf("ReadSnippet(missing) = %v, want ErrNotFound", err)
+	}
+}
+
+//nolint:paralleltest // serial: shared default fake state
+func TestFake_RemoveCloudInitSnippet(t *testing.T) {
+	cluster.ResetFake()
+	defer cluster.ResetFake()
+
+	ctx := context.Background()
+	fake := cluster.Fake{}
+
+	cluster.SetFakeSnippetContent(cluster.FakeNode01, cluster.FakeStorageLocal, "pvmss-baseline.yml", "#cloud-config\n")
+	cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeStorageLocal, "flag-only.yml", true)
+
+	if present, err := fake.HasSnippet(ctx, cluster.FakeNode01, cluster.FakeStorageLocal, "flag-only.yml"); err != nil || !present {
+		t.Errorf("HasSnippet(flag-only) = %v, %v, want true, nil", present, err)
+	}
+
+	if err := fake.RemoveCloudInitSnippet(ctx, cluster.FakeStorageLocal, "pvmss-baseline.yml"); err != nil {
+		t.Fatalf("RemoveCloudInitSnippet: %v", err)
+	}
+
+	present, err := fake.HasSnippet(ctx, cluster.FakeNode01, cluster.FakeStorageLocal, "pvmss-baseline.yml")
+	if err != nil {
+		t.Fatalf("HasSnippet after remove: %v", err)
+	}
+
+	if present {
+		t.Error("HasSnippet = true after RemoveCloudInitSnippet")
+	}
+}
+
+//nolint:paralleltest // serial: shared default fake state
+func TestFake_SetCloudInitPassword_Countdown(t *testing.T) {
+	cluster.ResetFake()
+	defer cluster.ResetFake()
+
+	ctx := context.Background()
+	fake := cluster.Fake{}
+
+	injected := errors.New("guest user unknown")
+	cluster.SetFakeGuestPasswordError(injected, 1)
+
+	defer cluster.SetFakeGuestPasswordError(nil, 0)
+
+	if err := fake.SetCloudInitPassword(ctx, cluster.FakeNode01, 100, "debian", "pw"); !errors.Is(err, injected) {
+		t.Fatalf("SetCloudInitPassword(first) = %v, want injected error", err)
+	}
+
+	if err := fake.SetCloudInitPassword(ctx, cluster.FakeNode01, 100, "debian", "pw"); err != nil {
+		t.Errorf("SetCloudInitPassword(second) = %v, want nil (countdown cleared)", err)
+	}
+}
+
+//nolint:paralleltest // serial: shared default fake state
+func TestFake_PingGuestAgent_Countdown(t *testing.T) {
+	cluster.ResetFake()
+	defer cluster.ResetFake()
+
+	ctx := context.Background()
+	fake := cluster.Fake{}
+
+	cluster.SetFakeGuestAgentPingFailures(1)
+	defer cluster.SetFakeGuestAgentPingFailures(0)
+
+	if err := fake.PingGuestAgent(ctx, cluster.FakeNode01, 100); !errors.Is(err, cluster.ErrUnreachable) {
+		t.Fatalf("PingGuestAgent(first) = %v, want ErrUnreachable", err)
+	}
+
+	if err := fake.PingGuestAgent(ctx, cluster.FakeNode01, 100); err != nil {
+		t.Errorf("PingGuestAgent(second) = %v, want nil (countdown cleared)", err)
+	}
+}
+
+//nolint:paralleltest // serial: shared default fake state
+func TestFake_GuestNetworkInterfaces_AgentDown(t *testing.T) {
+	cluster.ResetFake()
+	defer cluster.ResetFake()
+
+	ctx := context.Background()
+	fake := cluster.Fake{}
+
+	cluster.SetFakeGuestAgentPingFailures(1)
+	defer cluster.SetFakeGuestAgentPingFailures(0)
+
+	if _, err := fake.GuestNetworkInterfaces(ctx, cluster.FakeNode01, 100); !errors.Is(err, cluster.ErrUnreachable) {
+		t.Fatalf("GuestNetworkInterfaces(agent down) = %v, want ErrUnreachable", err)
+	}
+
+	if _, err := fake.GuestNetworkInterfaces(ctx, cluster.FakeNode01, 100); err != nil {
+		t.Errorf("GuestNetworkInterfaces(agent up) = %v, want nil", err)
+	}
+}
+
+//nolint:paralleltest // serial: shared default fake state
+func TestFake_EnsurePoolRole_Idempotent(t *testing.T) {
+	cluster.ResetFake()
+	defer cluster.ResetFake()
+
+	ctx := context.Background()
+	fake := cluster.Fake{}
+
+	if err := fake.EnsurePoolRole(ctx); err != nil {
+		t.Fatalf("EnsurePoolRole(first): %v", err)
+	}
+
+	if err := fake.EnsurePoolRole(ctx); err != nil {
+		t.Errorf("EnsurePoolRole(second) = %v, want nil (role exists)", err)
+	}
+}
+
+//nolint:paralleltest // serial: shared default fake state
+func TestFake_KnobSetters(t *testing.T) {
+	cluster.ResetFake()
+	defer cluster.ResetFake()
+
+	cluster.SetFakeCloudInitPushError(errors.New("push failed"))
+	cluster.SetFakeSnippetVisibility(false)
+	cluster.SetFakeTaskError("task failed")
+	cluster.SetFakeCreateError(cluster.ErrVMIDTaken, 1)
+
+	defer func() {
+		cluster.SetFakeCloudInitPushError(nil)
+		cluster.SetFakeSnippetVisibility(true)
+		cluster.SetFakeTaskError("")
+		cluster.SetFakeCreateError(nil, 0)
+	}()
+
+	if _, err := (cluster.Fake{}).CreateVM(context.Background(), cluster.VMSpec{}); !errors.Is(err, cluster.ErrVMIDTaken) {
+		t.Errorf("CreateVM(injected) = %v, want ErrVMIDTaken", err)
+	}
+}
+
+func TestFake_TagsSerialFirmware(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	fake := cluster.NewFake("test-tags-serial-firmware")
+
+	if err := fake.SetTags(ctx, cluster.FakeNode01, 100, []string{"alpha", "beta"}); err != nil {
+		t.Fatalf("SetTags: %v", err)
+	}
+
+	snap, err := fake.Snapshot(ctx)
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	for _, v := range snap.VMs {
+		if v.VMID == 100 && !slices.Equal(v.Tags, []string{"alpha", "beta"}) {
+			t.Errorf("tags = %v, want [alpha beta]", v.Tags)
+		}
+	}
+
+	if err := fake.SetTags(ctx, cluster.FakeNode01, 99999, nil); !errors.Is(err, cluster.ErrNotFound) {
+		t.Errorf("SetTags(99999) = %v, want ErrNotFound", err)
+	}
+
+	if err := fake.EnableSerial(ctx, cluster.FakeNode01, 101); err != nil {
+		t.Fatalf("EnableSerial: %v", err)
+	}
+
+	snap, err = fake.Snapshot(ctx)
+	if err != nil {
+		t.Fatalf("Snapshot: %v", err)
+	}
+
+	for _, v := range snap.VMs {
+		if v.VMID == 101 && !v.HasSerial {
+			t.Error("HasSerial = false after EnableSerial")
+		}
+	}
+
+	if err := fake.EnableSerial(ctx, cluster.FakeNode01, 99999); !errors.Is(err, cluster.ErrNotFound) {
+		t.Errorf("EnableSerial(99999) = %v, want ErrNotFound", err)
+	}
+}
+
+func TestFake_ReadFirmwareConfig_AndRetrofit(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	fake := cluster.NewFake("test-firmware")
+
+	if _, err := fake.ReadFirmwareConfig(ctx, cluster.FakeNode01, 100); err != nil {
+		t.Fatalf("ReadFirmwareConfig: %v", err)
+	}
+
+	if _, err := fake.ReadFirmwareConfig(ctx, cluster.FakeNode01, 99999); !errors.Is(err, cluster.ErrNotFound) {
+		t.Errorf("ReadFirmwareConfig(99999) = %v, want ErrNotFound", err)
+	}
+
+	if err := fake.RetrofitToSeaBIOS(ctx, cluster.FakeNode01, 100); err != nil {
+		t.Fatalf("RetrofitToSeaBIOS: %v", err)
+	}
+
+	fw, err := fake.ReadFirmwareConfig(ctx, cluster.FakeNode01, 100)
+	if err != nil {
+		t.Fatalf("ReadFirmwareConfig after retrofit: %v", err)
+	}
+
+	if fw.BIOS != "" || fw.Machine != "" || fw.HasEFIDisk || fw.HasTPM || fw.SecureBoot {
+		t.Errorf("firmware after retrofit = %+v, want all UEFI keys cleared", fw)
+	}
+
+	if err := fake.RetrofitToSeaBIOS(ctx, cluster.FakeNode01, 99999); !errors.Is(err, cluster.ErrNotFound) {
+		t.Errorf("RetrofitToSeaBIOS(99999) = %v, want ErrNotFound", err)
+	}
+}
+
+func TestFake_RelaySerial(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	local, remote := net.Pipe()
+
+	t.Cleanup(func() {
+		_ = local.Close()
+		_ = remote.Close()
+	})
+
+	done := make(chan error, 1)
+	go func() { done <- (cluster.Fake{}).RelaySerial(ctx, "", 0, cluster.TermProxyTicket{}, local) }()
+
+	if _, err := remote.Write([]byte("x")); err != nil {
+		t.Fatalf("remote write: %v", err)
+	}
+
+	buf := make([]byte, 16)
+
+	if err := remote.SetReadDeadline(time.Now().Add(2 * time.Second)); err != nil {
+		t.Fatalf("set read deadline: %v", err)
+	}
+
+	if _, err := remote.Read(buf); err != nil {
+		t.Fatalf("remote read: %v", err)
+	}
+
+	cancel()
+
+	if err := remote.Close(); err != nil {
+		t.Fatalf("remote close: %v", err)
+	}
+
+	if err := <-done; err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, io.ErrClosedPipe) {
+		t.Errorf("RelaySerial = %v", err)
 	}
 }
