@@ -142,9 +142,13 @@ func AdminListNodes(ctx context.Context, st *store.Store, client cluster.Client,
 		})
 	}
 
-	if err := sweepOrphans(ctx, st, clusterName,
-		toOrphanRows(enabledRows, nodeOrphanRow), discoveredByName,
-		removeNodeOrphan, missingNodeApproval, &out); err != nil {
+	if err := sweepOrphans(ctx, st, clusterName, orphanSweep[string, NodeApproval]{
+		rows:       toOrphanRows(enabledRows, nodeOrphanRow),
+		discovered: discoveredByName,
+		remove:     removeNodeOrphan,
+		missing:    missingNodeApproval,
+		out:        &out,
+	}); err != nil {
 		return nil, err
 	}
 
@@ -196,9 +200,13 @@ func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Clie
 		})
 	}
 
-	if err := sweepOrphans(ctx, st, clusterName,
-		toOrphanRows(enabledRows, storageOrphanRow), discoveredByKey,
-		removeStorageOrphan, missingStorageApproval, &out); err != nil {
+	if err := sweepOrphans(ctx, st, clusterName, orphanSweep[nameNodeKey, StorageApproval]{
+		rows:       toOrphanRows(enabledRows, storageOrphanRow),
+		discovered: discoveredByKey,
+		remove:     removeStorageOrphan,
+		missing:    missingStorageApproval,
+		out:        &out,
+	}); err != nil {
 		return nil, err
 	}
 
@@ -241,9 +249,13 @@ func AdminListBridges(ctx context.Context, st *store.Store, client cluster.Clien
 		})
 	}
 
-	if err := sweepOrphans(ctx, st, clusterName,
-		toOrphanRows(enabledRows, bridgeOrphanRow), discoveredByKey,
-		removeBridgeOrphan, missingBridgeApproval, &out); err != nil {
+	if err := sweepOrphans(ctx, st, clusterName, orphanSweep[nameNodeKey, BridgeApproval]{
+		rows:       toOrphanRows(enabledRows, bridgeOrphanRow),
+		discovered: discoveredByKey,
+		remove:     removeBridgeOrphan,
+		missing:    missingBridgeApproval,
+		out:        &out,
+	}); err != nil {
 		return nil, err
 	}
 
@@ -261,8 +273,14 @@ func AdminListISOs(ctx context.Context, st *store.Store, client cluster.Client, 
 		return nil, err
 	}
 
-	return adminListFiles(ctx, st, clusterName, isoFileEntries(discovered),
-		st.CatalogISOsEnabled, isoOrphanRow, removeISOOrphan, isoApprovalView, missingISOApproval)
+	return adminListFiles(ctx, st, clusterName, fileListing[store.CatalogISOEnabled, ISOApproval]{
+		discovered:   isoFileEntries(discovered),
+		listRows:     st.CatalogISOsEnabled,
+		toOrphanRow:  isoOrphanRow,
+		removeOrphan: removeISOOrphan,
+		viewOf:       isoApprovalView,
+		missing:      missingISOApproval,
+	})
 }
 
 // AdminListTemplates returns every Proxmox template the cluster reports,
@@ -642,8 +660,14 @@ func AdminListImages(ctx context.Context, st *store.Store, client cluster.Client
 		return nil, err
 	}
 
-	return adminListFiles(ctx, st, clusterName, imageFileEntries(discovered),
-		st.CatalogImagesEnabled, imageOrphanRow, removeImageOrphan, imageApprovalView, missingImageApproval)
+	return adminListFiles(ctx, st, clusterName, fileListing[store.CatalogImageEnabled, ImageApproval]{
+		discovered:   imageFileEntries(discovered),
+		listRows:     st.CatalogImagesEnabled,
+		toOrphanRow:  imageOrphanRow,
+		removeOrphan: removeImageOrphan,
+		viewOf:       imageApprovalView,
+		missing:      missingImageApproval,
+	})
 }
 
 // ImageRef identifies one discovered cloud image by its (node, storage, file)
@@ -744,6 +768,17 @@ func toOrphanRows[Row any, Key comparable](rows []Row, toRow func(Row) orphanRow
 	return out
 }
 
+// orphanSweep carries the inputs of sweepOrphans: the flattened stored rows,
+// the keys discovery still reports, the remove/missing functions, and the
+// output disabled orphans append to.
+type orphanSweep[Key comparable, A any] struct {
+	rows       []orphanRow[Key]
+	discovered map[Key]bool
+	remove     func(context.Context, *store.Store, string, orphanRow[Key]) error
+	missing    func(orphanRow[Key]) A
+	out        *[]A
+}
+
 // sweepOrphans applies the orphan rule shared by every AdminList* function:
 // a stored approval whose key discovery no longer reports is an orphan — an
 // enabled orphan is auto-removed via remove (it would otherwise be offered
@@ -754,26 +789,22 @@ func sweepOrphans[Key comparable, A any](
 	ctx context.Context,
 	st *store.Store,
 	clusterName string,
-	rows []orphanRow[Key],
-	discovered map[Key]bool,
-	remove func(context.Context, *store.Store, string, orphanRow[Key]) error,
-	missing func(orphanRow[Key]) A,
-	out *[]A,
+	s orphanSweep[Key, A],
 ) error {
-	for _, row := range rows {
-		if discovered[row.key] {
+	for _, row := range s.rows {
+		if s.discovered[row.key] {
 			continue
 		}
 
 		if row.enabled {
-			if err := remove(ctx, st, clusterName, row); err != nil {
+			if err := s.remove(ctx, st, clusterName, row); err != nil {
 				return err
 			}
 
 			continue
 		}
 
-		*out = append(*out, missing(row))
+		*s.out = append(*s.out, s.missing(row))
 	}
 
 	return nil
@@ -927,6 +958,18 @@ func missingImageApproval(row orphanRow[fileKey]) ImageApproval {
 	return ImageApproval{Storage: row.key.Storage, Node: row.key.Node, File: row.key.File, Missing: true}
 }
 
+// fileListing carries the inputs of adminListFiles: the discovered files and
+// the per-resource functions that adapt stored rows, orphan removal, and
+// approval views.
+type fileListing[Row, A any] struct {
+	discovered   []fileEntry
+	listRows     func(context.Context, string) ([]Row, error)
+	toOrphanRow  func(Row) orphanRow[fileKey]
+	removeOrphan func(context.Context, *store.Store, string, orphanRow[fileKey]) error
+	viewOf       func(fileEntry, bool) A
+	missing      func(orphanRow[fileKey]) A
+}
+
 // adminListFiles is the shared list-and-sweep pipeline for the two file
 // resources: ISOs and cloud images have identical shapes end to end (same
 // discovery fields, same (node, storage, file) approval key, same approval
@@ -936,37 +979,38 @@ func adminListFiles[Row, A any](
 	ctx context.Context,
 	st *store.Store,
 	clusterName string,
-	discovered []fileEntry,
-	listRows func(context.Context, string) ([]Row, error),
-	toOrphanRow func(Row) orphanRow[fileKey],
-	removeOrphan func(context.Context, *store.Store, string, orphanRow[fileKey]) error,
-	viewOf func(fileEntry, bool) A,
-	missing func(orphanRow[fileKey]) A,
+	l fileListing[Row, A],
 ) ([]A, error) {
-	rows, err := listRows(ctx, clusterName)
+	rows, err := l.listRows(ctx, clusterName)
 	if err != nil {
 		return nil, err
 	}
 
-	orphans := toOrphanRows(rows, toOrphanRow)
+	orphans := toOrphanRows(rows, l.toOrphanRow)
 
 	enabledByKey := make(map[fileKey]bool, len(orphans))
-	discoveredByKey := make(map[fileKey]bool, len(discovered))
+	discoveredByKey := make(map[fileKey]bool, len(l.discovered))
 
 	for _, row := range orphans {
 		enabledByKey[row.key] = row.enabled
 	}
 
-	for _, file := range discovered {
+	for _, file := range l.discovered {
 		discoveredByKey[file.key()] = true
 	}
 
-	out := make([]A, 0, len(discovered)+len(orphans))
-	for _, file := range discovered {
-		out = append(out, viewOf(file, enabledByKey[file.key()]))
+	out := make([]A, 0, len(l.discovered)+len(orphans))
+	for _, file := range l.discovered {
+		out = append(out, l.viewOf(file, enabledByKey[file.key()]))
 	}
 
-	if err := sweepOrphans(ctx, st, clusterName, orphans, discoveredByKey, removeOrphan, missing, &out); err != nil {
+	if err := sweepOrphans(ctx, st, clusterName, orphanSweep[fileKey, A]{
+		rows:       orphans,
+		discovered: discoveredByKey,
+		remove:     l.removeOrphan,
+		missing:    l.missing,
+		out:        &out,
+	}); err != nil {
 		return nil, err
 	}
 

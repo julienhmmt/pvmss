@@ -1001,8 +1001,6 @@ func (h *VMDetail) handleEnableSerial(w http.ResponseWriter, r *http.Request) {
 // graphical console becomes readable (cloud-image-console issue 08). Refuses
 // VMs with TPM state or Secure Boot before changing anything; a running VM
 // requires confirm=true in the request body. Reports each step's outcome.
-//
-//nolint:gocyclo // linear handler: auth→parse→dispatch→respond
 func (h *VMDetail) handleRetrofitSeaBIOS(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", "POST")
@@ -1062,22 +1060,7 @@ func (h *VMDetail) handleRetrofitSeaBIOS(w http.ResponseWriter, r *http.Request)
 		Confirm:      request.Confirm,
 	})
 	if err != nil {
-		if h.writeCommonVMError(w, err) {
-			return
-		}
-
-		switch {
-		case errors.Is(err, vm.ErrRetrofitRefused):
-			h.writeDetailError(w, http.StatusConflict, "retrofit_refused", err.Error())
-		case errors.Is(err, vm.ErrRetrofitRequiresConfirmation):
-			h.writeDetailError(w, http.StatusConflict, "retrofit_confirm_required", err.Error())
-		case errors.Is(err, vm.ErrRetrofitRestartFailed):
-			h.writeDetailError(w, http.StatusInternalServerError, "retrofit_restart_failed", err.Error())
-		default:
-			h.log.Error("retrofit seabios failed", "component", "httpapi", "cluster", clusterName, "vmid", vmid, "error", err)
-			h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
-		}
-
+		h.writeRetrofitError(w, clusterName, vmid, err)
 		return
 	}
 
@@ -1093,6 +1076,27 @@ func (h *VMDetail) handleRetrofitSeaBIOS(w http.ResponseWriter, r *http.Request)
 	}
 
 	h.writeEntity(w, r, entity)
+}
+
+// writeRetrofitError maps a RetrofitToSeaBIOS failure to its HTTP response:
+// refusals and the confirmation gate are 409s, a restart failure is a 500,
+// anything unmapped is logged and reported as internal_error.
+func (h *VMDetail) writeRetrofitError(w http.ResponseWriter, clusterName string, vmid int, err error) {
+	if h.writeCommonVMError(w, err) {
+		return
+	}
+
+	switch {
+	case errors.Is(err, vm.ErrRetrofitRefused):
+		h.writeDetailError(w, http.StatusConflict, "retrofit_refused", err.Error())
+	case errors.Is(err, vm.ErrRetrofitRequiresConfirmation):
+		h.writeDetailError(w, http.StatusConflict, "retrofit_confirm_required", err.Error())
+	case errors.Is(err, vm.ErrRetrofitRestartFailed):
+		h.writeDetailError(w, http.StatusInternalServerError, "retrofit_restart_failed", err.Error())
+	default:
+		h.log.Error("retrofit seabios failed", "component", "httpapi", "cluster", clusterName, "vmid", vmid, "error", err)
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+	}
 }
 
 func (h *VMDetail) writeHardwareError(w http.ResponseWriter, err error) {
@@ -1536,28 +1540,41 @@ func (h *VMDetail) writeEntity(w http.ResponseWriter, r *http.Request, entity vm
 		}
 	}
 
-	// The projection carries config-only interfaces — parseNetworkInterfaces
-	// deliberately skips the per-VM agent round trip — so a running VM's live
-	// IPs are asked of the guest agent here instead (best-effort, like Lock).
-	// The config's agent= flag already tells us when probing is pointless; a
-	// failed probe on an enabled channel is itself the communication test.
-	if entity.Status == cluster.VMRunning {
-		switch {
-		case !entity.Agent:
-			dto.GuestAgent = "disabled"
-		default:
-			if reader := h.guestNetReaderFor(entity.Cluster); reader != nil {
-				if guests, err := reader.GuestNetworkInterfaces(r.Context(), entity.Node, entity.VMID); err == nil {
-					dto.GuestAgent = "ok"
-					mergeGuestIPs(dto.NetworkInterfaces, guests)
-				} else {
-					dto.GuestAgent = "unreachable"
-				}
-			}
-		}
-	}
+	h.fillGuestAgent(r.Context(), entity, &dto)
 
 	h.writeJSONStatus(w, http.StatusOK, dto)
+}
+
+// fillGuestAgent probes the guest agent for a running VM's live IPs and
+// reports the channel's state on the DTO. The projection carries config-only
+// interfaces — parseNetworkInterfaces deliberately skips the per-VM agent
+// round trip — so a running VM's live IPs are asked of the guest agent here
+// instead (best-effort, like Lock). The config's agent= flag already tells
+// us when probing is pointless; a failed probe on an enabled channel is
+// itself the communication test.
+func (h *VMDetail) fillGuestAgent(ctx context.Context, entity vm.Entity, dto *vmDetailDTO) {
+	if entity.Status != cluster.VMRunning {
+		return
+	}
+
+	if !entity.Agent {
+		dto.GuestAgent = "disabled"
+		return
+	}
+
+	reader := h.guestNetReaderFor(entity.Cluster)
+	if reader == nil {
+		return
+	}
+
+	guests, err := reader.GuestNetworkInterfaces(ctx, entity.Node, entity.VMID)
+	if err != nil {
+		dto.GuestAgent = "unreachable"
+		return
+	}
+
+	dto.GuestAgent = "ok"
+	mergeGuestIPs(dto.NetworkInterfaces, guests)
 }
 
 // mergeGuestIPs copies each guest-reported IP list onto the configured NIC

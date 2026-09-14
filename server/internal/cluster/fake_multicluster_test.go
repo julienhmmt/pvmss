@@ -10,7 +10,7 @@ import (
 
 //nolint:paralleltest // fake contract tests share package fixture state
 func TestFake_OfflineDemoRejectsEveryClientMethod(t *testing.T) {
-	fake := cluster.Fake{ClusterName: "offline-demo"}
+	fake := cluster.Fake{ClusterName: cluster.FakeClusterOffline}
 	ctx := context.Background()
 	tests := []struct {
 		name string

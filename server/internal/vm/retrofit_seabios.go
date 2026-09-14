@@ -53,8 +53,6 @@ type RetrofitDependencies struct {
 // cloud-init's packages and runcmd are once-per-instance, so the baseline
 // cannot be retrofitted — only the firmware. This is the only retrofittable
 // half of the cloud-image-console effort.
-//
-//nolint:gocyclo // linear stop→retrofit→start flow, each step is one guard
 func RetrofitToSeaBIOS(ctx context.Context, deps RetrofitDependencies) error {
 	entity, err := Resolve(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
 	if err != nil {
@@ -94,6 +92,25 @@ func RetrofitToSeaBIOS(ctx context.Context, deps RetrofitDependencies) error {
 		return ErrRetrofitRequiresConfirmation
 	}
 
+	if err := applyRetrofit(ctx, deps, entity, wasRunning); err != nil {
+		return err
+	}
+
+	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, "retrofit_seabios"); err != nil {
+		return fmt.Errorf("record retrofit audit: %w", err)
+	}
+
+	if _, err := deps.Refresher.Refresh(ctx); err != nil {
+		return fmt.Errorf("refresh inventory after retrofit: %w", err)
+	}
+
+	return nil
+}
+
+// applyRetrofit performs the stop → firmware switch → start sequence. The
+// stop/start pair only runs for a VM that was running; a stopped VM gets the
+// firmware change alone.
+func applyRetrofit(ctx context.Context, deps RetrofitDependencies, entity Entity, wasRunning bool) error {
 	if wasRunning {
 		if err := deps.Writer.Action(ctx, entity.Node, entity.VMID, "stop"); err != nil {
 			return fmt.Errorf("stop VM before retrofit: %w", err)
@@ -108,14 +125,6 @@ func RetrofitToSeaBIOS(ctx context.Context, deps RetrofitDependencies) error {
 		if err := deps.Writer.Action(ctx, entity.Node, entity.VMID, "start"); err != nil {
 			return fmt.Errorf("%w: %w", ErrRetrofitRestartFailed, err)
 		}
-	}
-
-	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, "retrofit_seabios"); err != nil {
-		return fmt.Errorf("record retrofit audit: %w", err)
-	}
-
-	if _, err := deps.Refresher.Refresh(ctx); err != nil {
-		return fmt.Errorf("refresh inventory after retrofit: %w", err)
 	}
 
 	return nil

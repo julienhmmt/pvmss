@@ -17,7 +17,7 @@ var secondaryStorages = []Storage{
 }
 
 func (fake Fake) unavailable() bool {
-	return fake.ClusterName == "offline-demo"
+	return fake.ClusterName == FakeClusterOffline
 }
 
 func (fake Fake) snapshotSources() ([]Node, []VM, []Storage, string) {
