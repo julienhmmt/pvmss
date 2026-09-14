@@ -126,6 +126,7 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 		Machine:           machine,
 		EFIDisk:           isUEFI,
 		TPMState:          isUEFI && spec.TPM,
+		Agent:             true,
 	})
 
 	// The real create path always sends agent=1 (proxmox_create.go), so a

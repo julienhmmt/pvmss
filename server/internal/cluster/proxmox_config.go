@@ -251,7 +251,8 @@ var proxmoxNICModels = map[string]bool{
 // parseNetworkInterfaces reads every attached NIC from cfg (net0..net31 —
 // Proxmox's own hardware limit). IPAddresses is deliberately left empty:
 // populating it needs a live QEMU guest agent call correlated by MAC against
-// each NIC, a per-VM extra round trip this reader does not make.
+// each NIC, a per-VM extra round trip this reader does not make — the VM
+// detail endpoint fills it lazily through GuestNetworkReader instead.
 func parseNetworkInterfaces(cfg proxmoxVMConfig) []NetworkInterface {
 	var nics []NetworkInterface
 
@@ -375,6 +376,7 @@ func hydrateVM(ctx context.Context, rest proxmoxRESTClient, vm *VM) error {
 	vm.BootOrder = parseBootOrder(cfg)
 	vm.Description = cfg.str("description")
 	vm.HasSerial = cfgHasSerial(cfg)
+	vm.Agent = agentEnabled(cfg.str("agent"))
 
 	if len(vm.Tags) == 0 {
 		vm.Tags = splitProxmoxTags(cfg.str("tags"))

@@ -750,6 +750,49 @@ func TestFake_SetCDROM_Success(t *testing.T) {
 	}
 }
 
+func TestFake_GuestNetworkInterfaces_RunningVM(t *testing.T) {
+	t.Parallel()
+
+	fake := cluster.NewFake("test-guestnet-running")
+
+	guests, err := fake.GuestNetworkInterfaces(context.Background(), cluster.FakeNode01, 100)
+	if err != nil {
+		t.Fatalf("GuestNetworkInterfaces: %v", err)
+	}
+
+	if len(guests) != 1 {
+		t.Fatalf("guests = %+v, want 1 (the seeded NIC on running VM 100)", guests)
+	}
+
+	if guests[0].MAC != "BC:24:11:00:00:64" {
+		t.Errorf("guests[0].MAC = %q, want the configured NIC's MAC", guests[0].MAC)
+	}
+
+	if len(guests[0].IPAddresses) != 1 || guests[0].IPAddresses[0] != "10.10.100.10" {
+		t.Errorf("guests[0].IPAddresses = %v, want the deterministic fake address", guests[0].IPAddresses)
+	}
+}
+
+func TestFake_GuestNetworkInterfaces_StoppedVMUnreachable(t *testing.T) {
+	t.Parallel()
+
+	fake := cluster.NewFake("test-guestnet-stopped")
+
+	if _, err := fake.GuestNetworkInterfaces(context.Background(), cluster.FakeNode01, 101); !errors.Is(err, cluster.ErrUnreachable) {
+		t.Fatalf("GuestNetworkInterfaces(stopped) error = %v, want ErrUnreachable", err)
+	}
+}
+
+func TestFake_GuestNetworkInterfaces_NotFound(t *testing.T) {
+	t.Parallel()
+
+	fake := cluster.NewFake("test-guestnet-notfound")
+
+	if _, err := fake.GuestNetworkInterfaces(context.Background(), cluster.FakeNode01, 99999); !errors.Is(err, cluster.ErrNotFound) {
+		t.Fatalf("GuestNetworkInterfaces(not found) error = %v, want ErrNotFound", err)
+	}
+}
+
 func TestFake_UpdateNetwork_NotFound(t *testing.T) {
 	t.Parallel()
 

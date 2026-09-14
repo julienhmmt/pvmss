@@ -86,6 +86,10 @@ type Entity struct {
 	// HasSerial is true when the VM carries a serial port (serial0), so the
 	// PVMSS Text/serial console is reachable. Mirrors cluster.VM.HasSerial.
 	HasSerial bool
+	// Agent mirrors cluster.VM.Agent — the config's guest-agent flag — so
+	// the detail endpoint can explain absent live IPs without probing a
+	// channel that is configured off.
+	Agent bool
 }
 
 // Resolve is the ONLY function capable of turning a (cluster, vmid) pair into
@@ -156,6 +160,7 @@ func Resolve(source inventory.LookupSource, actor auth.Identity, clusterName str
 		CDROM:             machine.CDROM,
 		NetworkInterfaces: cloneNetworkInterfaces(machine.NetworkInterfaces),
 		HasSerial:         machine.HasSerial,
+		Agent:             machine.Agent,
 	}, nil
 }
 

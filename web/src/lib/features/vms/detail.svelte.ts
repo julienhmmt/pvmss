@@ -30,6 +30,12 @@ export interface VmDetailEntity {
 	cdrom?: VmCdrom;
 	networkInterfaces?: VmNetworkInterface[];
 	hasSerial?: boolean;
+	/** Why live per-NIC IPs are present or absent on a running VM: the
+	 *  guest-agent channel is "disabled" in the VM config, "unreachable"
+	 *  (enabled but the agent did not answer), or "ok" (answered — IPs may
+	 *  still be empty while DHCP is pending). Absent when the VM is not
+	 *  running. */
+	guestAgent?: 'ok' | 'disabled' | 'unreachable';
 }
 
 export interface VmDisk {
