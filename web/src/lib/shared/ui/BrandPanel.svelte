@@ -13,7 +13,7 @@
 </script>
 
 <div
-	class="relative hidden flex-col justify-between overflow-hidden bg-primary p-10 text-[oklch(98.7%_0.022_95.277deg)] lg:flex"
+	class="relative hidden flex-col justify-between overflow-hidden bg-primary-solid p-10 text-[oklch(98.7%_0.022_95.277deg)] lg:flex"
 >
 	<div class="auth-brand-glow absolute inset-0" aria-hidden="true"></div>
 	<div class="relative flex flex-col gap-8">

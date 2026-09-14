@@ -8,7 +8,7 @@
 </script>
 
 <svg
-	class="text-primary {className}"
+	class="text-primary-solid {className}"
 	viewBox="0 0 24 24"
 	fill="none"
 	aria-hidden="true"

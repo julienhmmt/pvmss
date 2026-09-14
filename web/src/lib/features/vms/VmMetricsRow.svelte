@@ -74,7 +74,7 @@
 				<button
 					type="button"
 					class="px-2.5 py-1.5 text-xs font-semibold first:rounded-l-lg last:rounded-r-lg {store.range === r.value
-						? 'bg-primary text-primary-foreground'
+						? 'bg-primary-solid text-primary-foreground'
 						: 'hover:bg-muted'}"
 					aria-pressed={store.range === r.value}
 					onclick={() => void store.setRange(r.value)}

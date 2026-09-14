@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getVmDetailContext, type VmAction } from './detail.svelte';
 	import Alert from '$lib/shared/ui/Alert.svelte';
+	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import PlayIcon from '$lib/shared/ui/icons/PlayIcon.svelte';
@@ -37,6 +38,31 @@
 		{ kind: 'resume', label: () => m['vms.action.resume'](), icon: PlayIcon, applicable: ['paused'], variant: 'primary', successToast: (name) => m['toast.vmResumed']({ name }) }
 	] as const;
 
+	/**
+	 * The forceful actions cut power to a running guest, so they get a
+	 * confirmation step before they fire. `shutdown` and `reboot` ask the
+	 * guest to stop itself and are recoverable; `start`, `pause` and `resume`
+	 * are not destructive at all.
+	 */
+	interface Confirmation {
+		title: (name: string) => string;
+		message: (name: string) => string;
+		confirmLabel: () => string;
+	}
+
+	const CONFIRMATIONS: Partial<Record<VmAction, Confirmation>> = {
+		stop: {
+			title: (name) => m['vms.confirm.forceStop.title']({ name }),
+			message: () => m['vms.confirm.forceStop.message'](),
+			confirmLabel: () => m['vms.confirm.forceStop.confirm']()
+		},
+		reset: {
+			title: (name) => m['vms.confirm.reset.title']({ name }),
+			message: () => m['vms.confirm.reset.message'](),
+			confirmLabel: () => m['vms.confirm.reset.confirm']()
+		}
+	};
+
 	interface Props {
 		onDelete?: () => void;
 		hideDelete?: boolean;
@@ -44,29 +70,30 @@
 
 	let { onDelete = () => {}, hideDelete = false }: Props = $props();
 
+	/** The forceful action awaiting confirmation, if any. */
+	let pending = $state<VmAction | null>(null);
+	const confirmation = $derived(pending === null ? null : (CONFIRMATIONS[pending] ?? null));
+	const vmName = $derived(store.entity?.name ?? '');
+
 	function isApplicable(action: ActionDef): boolean {
 		return store.entity !== null && action.applicable.includes(store.entity.status);
 	}
 
-	// Seven actions sit in this bar and at most two apply at a time, so only
-	// the state-appropriate one is filled. The forceful actions (stop, reset)
-	// stay bordered and destructive-tinted rather than solid red: seven solid
-	// buttons, five of them greyed out, read as noise instead of as a choice.
-	// Only the applicable action carries its own weight; the rest fall back to
-	// the neutral bordered shape so a disabled orange or red fill never sits
-	// in the bar pretending to be a live control.
-	const BUTTON_VARIANT: Record<ActionDef['variant'], 'primary' | 'secondary' | 'outline'> = {
+	// Seven actions sit in this bar and at most two apply at a time. Only the
+	// state-appropriate action carries a fill: `primary` (start, resume) in the
+	// accent, the forceful `stop` and `reset` in the destructive red so cutting
+	// power can never be mistaken for a graceful shutdown. The rest stay on the
+	// neutral bordered shape, and every inapplicable action falls back to that
+	// same shape so a disabled fill never sits in the bar pretending to be a
+	// live control. The two destructive ones also confirm first (CONFIRMATIONS).
+	const BUTTON_VARIANT: Record<ActionDef['variant'], 'primary' | 'secondary' | 'destructive'> = {
 		primary: 'primary',
-		danger: 'outline',
+		danger: 'destructive',
 		neutral: 'secondary'
 	};
 
-	const DANGER_TINT =
-		'border-destructive/40 text-destructive hover:border-destructive/60 hover:bg-destructive/10 hover:text-destructive';
-
 	async function handleAction(kind: VmAction): Promise<void> {
 		const actionDef = ACTIONS.find((a) => a.kind === kind);
-		const vmName = store.entity?.name ?? '';
 		const hadErrorBefore = store.actionError;
 		await store.action(kind);
 		// store.action sets actionError on failure and clears it on success.
@@ -76,6 +103,20 @@
 			toast.success(actionDef.successToast(vmName));
 		}
 	}
+
+	function requestAction(kind: VmAction): void {
+		if (CONFIRMATIONS[kind]) {
+			pending = kind;
+			return;
+		}
+		void handleAction(kind);
+	}
+
+	async function confirmPending(): Promise<void> {
+		if (pending === null) return;
+		await handleAction(pending);
+		pending = null;
+	}
 </script>
 
 <div class="flex flex-wrap items-center gap-2" data-testid="vm-action-bar">
@@ -84,9 +125,8 @@
 		<Button
 			size="sm"
 			variant={applicable ? BUTTON_VARIANT[action.variant] : 'secondary'}
-			class={applicable && action.variant === 'danger' ? DANGER_TINT : ''}
 			disabled={store.actionInFlight || !applicable}
-			onclick={() => handleAction(action.kind)}
+			onclick={() => requestAction(action.kind)}
 			data-testid="vm-action-{action.kind}"
 			title={action.label()}
 			label={action.label()}
@@ -99,8 +139,8 @@
 	{#if !hideDelete}
 		<Button
 			size="sm"
-			variant="outline"
-			class="ml-auto {DANGER_TINT}"
+			variant="destructive"
+			class="ml-auto"
 			disabled={store.deleteInFlight}
 			onclick={onDelete}
 			data-testid="vm-action-delete"
@@ -112,6 +152,20 @@
 		</Button>
 	{/if}
 </div>
+
+{#if confirmation}
+	<ConfirmDialog
+		open={true}
+		title={confirmation.title(vmName)}
+		message={confirmation.message(vmName)}
+		confirmLabel={confirmation.confirmLabel()}
+		cancelLabel={m['common.cancel']()}
+		confirming={store.actionInFlight}
+		testId="vm-action-confirm"
+		onConfirm={confirmPending}
+		onClose={() => (pending = null)}
+	/>
+{/if}
 
 {#if store.actionError}
 	<Alert data-testid="vm-action-error" class="mt-2">{store.actionError}</Alert>

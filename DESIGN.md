@@ -5,90 +5,92 @@
 name: PVMSS
 description: Proxmox VM Self-Service portal — warm, human infrastructure management
 colors:
-  primary: "#d9742e"
-  primary-dark: "#e88a3e"
-  background: "#f7f6f4"
-  foreground: "#1c1a19"
-  card: "#ffffff"
-  muted: "#f1eeeb"
-  muted-foreground: "#5f5854"
-  border: "#e8e4e0"
-  destructive: "#c0392b"
-  success: "#3ba55c"
-  warning: "#d4a017"
-  info: "#3b7dd8"
-  sidebar: "#ffffff"
-  background-dark: "#2a2826"
-  card-dark: "#363330"
+primary: "#ba5100"
+primary-solid: "#ba5100"
+primary-dark: "#e88a3e"
+background: "#f7f6f4"
+foreground: "#1c1a19"
+card: "#ffffff"
+muted: "#f1eeeb"
+muted-foreground: "#5f5854"
+border: "#e8e4e0"
+destructive: "#c0392b"
+success: "#3ba55c"
+warning: "#d4a017"
+info: "#3b7dd8"
+sidebar: "#ffffff"
+background-dark: "#2a2826"
+card-dark: "#363330"
 typography:
-  body:
-    fontFamily: "'Archivo Variable', sans-serif"
-    fontSize: "0.875rem"
-    fontWeight: 400
-    lineHeight: "1.25rem"
-  title:
-    fontFamily: "'Archivo Variable', sans-serif"
-    fontSize: "1.5rem"
-    fontWeight: 600
-    lineHeight: "2rem"
-  heading:
-    fontFamily: "'Archivo Variable', sans-serif"
-    fontSize: "1.875rem"
-    fontWeight: 600
-    lineHeight: "2.25rem"
-  label:
-    fontFamily: "'Archivo Variable', sans-serif"
-    fontSize: "0.875rem"
-    fontWeight: 500
-    lineHeight: "1.25rem"
-  mono:
-    fontFamily: "ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace"
-    fontSize: "0.875rem"
-    fontWeight: 400
-    lineHeight: "1.25rem"
+body:
+fontFamily: "'Archivo Variable', sans-serif"
+fontSize: "0.875rem"
+fontWeight: 400
+lineHeight: "1.25rem"
+title:
+fontFamily: "'Archivo Variable', sans-serif"
+fontSize: "1.5rem"
+fontWeight: 600
+lineHeight: "2rem"
+heading:
+fontFamily: "'Archivo Variable', sans-serif"
+fontSize: "1.875rem"
+fontWeight: 600
+lineHeight: "2.25rem"
+label:
+fontFamily: "'Archivo Variable', sans-serif"
+fontSize: "0.875rem"
+fontWeight: 500
+lineHeight: "1.25rem"
+mono:
+fontFamily: "ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace"
+fontSize: "0.875rem"
+fontWeight: 400
+lineHeight: "1.25rem"
 rounded:
-  sm: "0.5rem"
-  md: "0.6rem"
-  lg: "0.75rem"
-  input: "0.625rem"
-  xl: "1.125rem"
+sm: "0.5rem"
+md: "0.6rem"
+lg: "0.75rem"
+input: "0.625rem"
+xl: "1.125rem"
 spacing:
-  content-max: "87.5rem"
-  navbar-height: "3.5rem"
-  sidebar-width: "236px"
+content-max: "87.5rem"
+navbar-height: "3.5rem"
+sidebar-width: "236px"
 components:
-  button-primary:
-    backgroundColor: "{colors.primary}"
-    textColor: "#fff8f0"
-    rounded: "{rounded.lg}"
-    padding: "0.5rem 1rem"
-  button-primary-hover:
-    backgroundColor: "#c96a2a"
-  button-secondary:
-    backgroundColor: "{colors.muted}"
-    textColor: "{colors.foreground}"
-    rounded: "{rounded.lg}"
-    padding: "0.5rem 1rem"
-  button-ghost:
-    backgroundColor: "transparent"
-    textColor: "{colors.muted-foreground}"
-    rounded: "{rounded.lg}"
-    padding: "0.5rem 1rem"
-  button-destructive:
-    backgroundColor: "{colors.destructive}"
-    textColor: "#fff"
-    rounded: "{rounded.lg}"
-    padding: "0.5rem 1rem"
-  input:
-    backgroundColor: "{colors.background}"
-    textColor: "{colors.foreground}"
-    rounded: "{rounded.input}"
-    padding: "0.5rem 0.75rem"
-  card:
-    backgroundColor: "{colors.card}"
-    textColor: "{colors.foreground}"
-    rounded: "{rounded.lg}"
-    padding: "1.5rem"
+button-primary:
+backgroundColor: "{colors.primary-solid}"
+textColor: "#fff8f0"
+rounded: "{rounded.lg}"
+padding: "0.5rem 1rem"
+button-primary-hover:
+backgroundColor: "#a24200"
+button-secondary:
+backgroundColor: "{colors.muted}"
+textColor: "{colors.foreground}"
+rounded: "{rounded.lg}"
+padding: "0.5rem 1rem"
+button-ghost:
+backgroundColor: "transparent"
+textColor: "{colors.muted-foreground}"
+rounded: "{rounded.lg}"
+padding: "0.5rem 1rem"
+button-destructive:
+backgroundColor: "{colors.destructive}"
+textColor: "#fff"
+rounded: "{rounded.lg}"
+padding: "0.5rem 1rem"
+input:
+backgroundColor: "{colors.background}"
+textColor: "{colors.foreground}"
+rounded: "{rounded.input}"
+padding: "0.5rem 0.75rem"
+card:
+backgroundColor: "{colors.card}"
+textColor: "{colors.foreground}"
+rounded: "{rounded.lg}"
+padding: "1.5rem"
+
 ---
 
 ## 1. Overview
@@ -121,7 +123,7 @@ get a usable machine.
 **Key Characteristics:**
 
 - Warm paper background (#f7f6f4) with white card surfaces
-- Single orange accent (oklch 66% 0.185 44deg) used sparingly
+- Single orange accent (oklch 56% 0.16 51deg) used sparingly
 - OKLCH color space for all semantic colors with soft background variants
 - Archivo Variable as the sole typeface (headings, body, labels, data)
 - 12px base radius (0.75rem) with 10px input radius (0.625rem)
@@ -137,11 +139,21 @@ colors carry state, not decoration.
 
 ### Primary
 
-- **Blaze Orange** (oklch(66% 0.185 44deg) / #d9742e): Primary actions, active
-  nav state, focus rings, links. Used on <=10% of any screen. Its rarity is the
-  point.
-- **Blaze Orange Dark** (oklch(72% 0.17 44deg) / #e88a3e): Dark mode primary,
-  lifted for contrast.
+- **Blaze Orange** (oklch(56% 0.16 51deg) / #ba5100): the accent. Active nav
+  state, focus rings, links, tints (`bg-primary/10`), status dots, meters and
+  chart strokes. Used on <=10% of any screen. Its rarity is the point. Deepened
+  from the original 66% lightness so accent text clears AA on the paper ground
+  (4.56:1); at 66% it sat at 3.09:1.
+- **Blaze Orange Solid** (oklch(56% 0.16 51deg) / #ba5100): the fill under a
+  label — primary buttons, active tabs, step badges. Deliberately *not* the same
+  token as the accent, because the two roles want opposite things in dark mode:
+  a fill needs to be dark enough for a white label (>=4.5:1), an accent needs to
+  be light enough to read against a near-black ground. One token cannot be both,
+  so this one is fixed across themes and the accent moves instead.
+- **Blaze Orange Dark** (oklch(72% 0.17 44deg) / #e88a3e): the dark mode
+  *accent* only — lifted for contrast against the dark ground (7.21:1). The
+  solid fill stays #ba5100 in dark mode, so a primary button is the same button
+  in both themes, still reading as a control at 3.59:1 against a dark card.
 
 ### Neutral
 
@@ -174,8 +186,13 @@ soft-border for use in banners, badges, and soft-state surfaces.
 ### Dark Mode
 
 Warm near-black ground (oklch(17% 0.006 49deg)), lifted card surfaces (oklch(21%
-0.006 56deg)), and lifted orange accent. Never use pure black (#000) or cool
+0.006 56deg)), and a lifted orange *accent*. Never use pure black (#000) or cool
 gray for dark mode backgrounds.
+
+Only the accent is lifted. The solid fill (Blaze Orange Solid) is the same
+#ba5100 as light mode, so primary buttons keep their warm-white label rather
+than flipping to dark ink — the label colour is a property of the button, not
+of the theme.
 
 ### Named Rules
 
@@ -345,15 +362,15 @@ chosen concept ("Calm workspace") fixes three structural decisions:
 
 ### Production mapping
 
-| Prototype element        | Production component                          |
-| ------------------------ | --------------------------------------------- |
-| Sidebar shell            | `web/src/lib/features/chrome/Sidebar.svelte`  |
-| Brand mark + wordmark    | `web/src/lib/shared/ui/Logo.svelte`           |
-| Primary nav items        | `sidebar-navigation.svelte.ts`                |
-| Theme toggle             | `chrome/ThemeToggle.svelte`                   |
-| Language switcher        | `chrome/LanguageSwitcher.svelte`              |
-| Context header           | `chrome/AppHeader.svelte` (slimmed)           |
-| Account link             | new — fold into `Sidebar.svelte` bottom slot  |
+| Prototype element     | Production component                         |
+| --------------------- | -------------------------------------------- |
+| Sidebar shell         | `web/src/lib/features/chrome/Sidebar.svelte` |
+| Brand mark + wordmark | `web/src/lib/shared/ui/Logo.svelte`          |
+| Primary nav items     | `sidebar-navigation.svelte.ts`               |
+| Theme toggle          | `chrome/ThemeToggle.svelte`                  |
+| Language switcher     | `chrome/LanguageSwitcher.svelte`             |
+| Context header        | `chrome/AppHeader.svelte` (slimmed)          |
+| Account link          | new — fold into `Sidebar.svelte` bottom slot |
 
 ## 6. Screen Catalog
 
@@ -601,15 +618,15 @@ data actually exists.
 
 ### Machine states
 
-| State        | Pill tone     | Meaning                                            |
-| ------------ | ------------- | -------------------------------------------------- |
-| running      | success-soft  | Up; address known. SSH + console available.        |
-| stopped      | muted         | Down; files kept. Start available.                 |
-| provisioning | warning-soft  | Request accepted; setup in progress. Leave freely. |
-| starting     | warning-soft  | Power-on in progress. Connect info pending.        |
-| stopping     | warning-soft  | Graceful shutdown in progress. Files will be kept. |
-| failed       | error-soft    | No VM allocated. Allowance not consumed. Review.   |
-| partial      | warning-soft  | Created, but access config failed. Stopped.        |
+| State        | Pill tone    | Meaning                                            |
+| ------------ | ------------ | -------------------------------------------------- |
+| running      | success-soft | Up; address known. SSH + console available.        |
+| stopped      | muted        | Down; files kept. Start available.                 |
+| provisioning | warning-soft | Request accepted; setup in progress. Leave freely. |
+| starting     | warning-soft | Power-on in progress. Connect info pending.        |
+| stopping     | warning-soft | Graceful shutdown in progress. Files will be kept. |
+| failed       | error-soft   | No VM allocated. Allowance not consumed. Review.   |
+| partial      | warning-soft | Created, but access config failed. Stopped.        |
 
 ### Safety rules
 
@@ -620,7 +637,7 @@ data actually exists.
   explicitly says "Do not create a duplicate" and routes to help.
 - **No readiness claim without connection data.** The "Connect" action on the
   list and the SSH section on detail only render when `status === 'running' &&
-  address` is truthy.
+address` is truthy.
 - **Graceful shutdown, not force-off.** The shutdown action opens an inline
   confirmation that names the behavior ("graceful shutdown, not a forced
   power-off").
@@ -650,9 +667,9 @@ data actually exists.
   button next to a field reads as one control set. inline-flex, items-center,
   gap-2, fixed heights (sm 2rem / md 2.5rem / lg 2.75rem, plus square `icon`
   and `icon-sm` sizes) so a row of mixed controls aligns without hand-tuning.
-- **Primary:** Blaze Orange background, near-white foreground. Hover: slightly
-  darker orange. Focus: 2px ring offset by 2px background. Loading: spinner
-  icon + disabled state.
+- **Primary:** Blaze Orange Solid background, near-white foreground, in both
+  themes. Hover: softened fill. Focus: 2px ring offset by 2px background.
+  Loading: spinner icon + disabled state.
 - **Secondary:** Card background with a 1px border. Hover: border darkens,
   muted fill.
 - **Outline:** Transparent with a 1px border — the quieter bordered form on

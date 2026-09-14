@@ -59,7 +59,7 @@
 					role="tab"
 					aria-selected={current === step.id}
 					class="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors pv-focus {current === step.id
-						? 'bg-primary text-primary-foreground'
+						? 'bg-primary-solid text-primary-foreground'
 						: stepIndex(current) > i
 							? 'bg-success-soft text-success-soft-foreground'
 							: 'bg-muted text-muted-foreground hover:bg-muted/80'}"

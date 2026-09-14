@@ -24,6 +24,13 @@
 
 	let mode = $state<ConsoleMode>('graphical');
 
+	// cloud-image-console issue 06: image-born VMs (carrying the pvmss-image
+	// tag) default to the text/serial tab — the graphical console under UEFI
+	// renders as static for a cloud kernel, and SeaBIOS image VMs ship a
+	// working text console from first boot. The user's manual switch still
+	// wins; this only seeds the initial mode before the entity loads.
+	const IMAGE_TAG = 'pvmss-image';
+
 	function switchMode(next: ConsoleMode): void {
 		if (mode === next) return;
 		// Tear down the inactive session so no WebSocket leaks (the user
@@ -44,7 +51,14 @@
 	}
 
 	onMount(() => {
-		void vmStore.load();
+		void vmStore.load().then(() => {
+			// Issue 06: an image-born VM (pvmss-image tag) opens on the text
+			// tab. Only seeds when the user has not yet switched — a manual
+			// switch before load() lands keeps the user's choice.
+			if (mode === 'graphical' && vmStore.entity?.tags?.includes(IMAGE_TAG)) {
+				mode = 'text';
+			}
+		});
 		// The connect happens inside VmConsole.svelte's onMount, which runs
 		// after the container element is bound.
 	});
@@ -98,7 +112,7 @@
 		<button
 			type="button"
 			class="rounded-md px-3 py-1.5 text-sm font-medium {mode === 'graphical'
-				? 'bg-primary text-primary-foreground'
+				? 'bg-primary-solid text-primary-foreground'
 				: 'border border-border bg-background text-foreground hover:bg-muted'}"
 			onclick={() => switchMode('graphical')}
 			data-testid="vm-console-mode-graphical"
@@ -109,7 +123,7 @@
 		<button
 			type="button"
 			class="rounded-md px-3 py-1.5 text-sm font-medium {mode === 'text'
-				? 'bg-primary text-primary-foreground'
+				? 'bg-primary-solid text-primary-foreground'
 				: 'border border-border bg-background text-foreground hover:bg-muted'}"
 			onclick={() => switchMode('text')}
 			data-testid="vm-console-mode-text"
@@ -122,38 +136,42 @@
 	{#if mode === 'graphical'}
 		<ConsoleToolbar />
 	{:else}
-		<div class="flex flex-wrap items-center gap-2" data-testid="vm-serial-console-toolbar">
-			<button
-				type="button"
-				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+		<div
+			class="flex flex-wrap items-center gap-2 rounded-[var(--radius-control)] border border-border bg-muted/40 px-2 py-1.5"
+			data-testid="vm-serial-console-toolbar"
+		>
+			<Button
+				variant="secondary"
+				size="sm"
 				disabled={serialStore.state !== 'connected'}
 				onclick={() => serialStore.disconnect()}
 				data-testid="vm-serial-console-disconnect"
+				title={m['vms.console.disconnect']()}
 			>
 				{m['vms.console.disconnect']()}
-			</button>
-			<button
-				type="button"
-				class="rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+			</Button>
+			<Button
+				variant={serialStore.state === 'connected' ? 'secondary' : 'primary'}
+				size="sm"
 				disabled={serialStore.state === 'connecting' || serialStore.state === 'idle'}
 				onclick={() => serialStore.reconnect()}
 				data-testid="vm-serial-console-reconnect-btn"
+				title={m['vms.console.serial.reconnect']()}
 			>
-				{m['vms.console.reconnect']()}
-			</button>
+				{m['vms.console.serial.reconnect']()}
+			</Button>
 		</div>
 		{#if vmStore.entity && vmStore.entity.hasSerial === false}
 			<div class="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/40 p-3 text-sm" data-testid="vm-serial-console-enable">
 				<p class="text-muted-foreground">{m['vms.console.serial.noSerial']()}</p>
-				<button
-					type="button"
-					class="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+				<Button
+					size="sm"
 					disabled={vmStore.serialEnabling}
 					onclick={handleEnableSerial}
 					data-testid="vm-serial-console-enable-btn"
 				>
 					{vmStore.serialEnabling ? m['vms.console.serial.enabling']() : m['vms.console.serial.enable']()}
-				</button>
+				</Button>
 				{#if vmStore.serialEnableError}
 					<p class="text-destructive" data-testid="vm-serial-console-enable-error">{vmStore.serialEnableError}</p>
 				{/if}
