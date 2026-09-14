@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Select — the shared native <select> primitive. Uses .pv-input + .pv-select
+	 * Select - the shared native <select> primitive. Uses .pv-input + .pv-select
 	 * so it matches TextField (same radius, focus ring, disabled state). The UA
 	 * chevron is replaced with a ChevronDownIcon positioned in the wrapper so
 	 * it tints correctly in dark mode.

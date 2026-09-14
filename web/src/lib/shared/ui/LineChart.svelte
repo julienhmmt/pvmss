@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * LineChart — a small, dependency-free SVG sparkline. Thin wrapper around
+	 * LineChart - a small, dependency-free SVG sparkline. Thin wrapper around
 	 * buildLineChartPath; scales via viewBox so it stretches to fill its
 	 * container (h-full w-full via the class prop).
 	 */

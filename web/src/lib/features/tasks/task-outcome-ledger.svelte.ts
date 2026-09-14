@@ -2,19 +2,19 @@ import { getContext, setContext } from 'svelte';
 import { SvelteMap } from 'svelte/reactivity';
 
 /**
- * TaskOutcomeLedger — session-scoped, in-memory record of vm_create
+ * TaskOutcomeLedger - session-scoped, in-memory record of vm_create
  * terminal outcomes the task tray no longer tracks (the tray removes a
  * task the moment it reaches a terminal state).
  *
  * Two outcomes are recorded:
- *   - `partial` — the create API returned `cloudInitPushError` (the VM
+ *   - `partial` - the create API returned `cloudInitPushError` (the VM
  *     exists but access config failed). Written by the create flow at
  *     submit time.
- *   - `failed`  — a tracked `vm_create` task ended in `error` (the VM was
+ *   - `failed` - a tracked `vm_create` task ended in `error` (the VM was
  *     not successfully allocated). Written by the shell from the tray's
  *     `onTaskError` signal.
  *
- * ponytail: ephemeral — a reload clears the ledger, so a `partial` VM
+ * ponytail: ephemeral - a reload clears the ledger, so a `partial` VM
  * collapses to `stopped` and a `failed` creation to absent. Upgrade path:
  * persist `partial` server-side (a tag or a status extension) so the
  * no-duplicate safety and the "do not create a duplicate" banner survive a

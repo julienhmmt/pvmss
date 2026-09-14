@@ -25,7 +25,7 @@
 	let mode = $state<ConsoleMode>('graphical');
 
 	// cloud-image-console issue 06: image-born VMs (carrying the pvmss-image
-	// tag) default to the text/serial tab — the graphical console under UEFI
+	// tag) default to the text/serial tab - the graphical console under UEFI
 	// renders as static for a cloud kernel, and SeaBIOS image VMs ship a
 	// working text console from first boot. The user's manual switch still
 	// wins; this only seeds the initial mode before the entity loads.
@@ -53,7 +53,7 @@
 	onMount(() => {
 		void vmStore.load().then(() => {
 			// Issue 06: an image-born VM (pvmss-image tag) opens on the text
-			// tab. Only seeds when the user has not yet switched — a manual
+			// tab. Only seeds when the user has not yet switched - a manual
 			// switch before load() lands keeps the user's choice.
 			if (mode === 'graphical' && vmStore.entity?.tags?.includes(IMAGE_TAG)) {
 				mode = 'text';

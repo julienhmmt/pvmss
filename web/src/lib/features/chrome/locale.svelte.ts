@@ -3,7 +3,7 @@ import { setLocale as paraglideSetLocale, type Locale } from '$lib/paraglide/run
 
 /**
  * Supported interface locales. Adding a third locale is one more message file
- * plus one entry here — never a change to the switcher component (FR-003).
+ * plus one entry here - never a change to the switcher component (FR-003).
  */
 const SUPPORTED_LOCALES: readonly Locale[] = ['fr', 'en'];
 const DEFAULT_LOCALE: Locale = 'fr';
@@ -11,7 +11,7 @@ const DEFAULT_LOCALE: Locale = 'fr';
 /** localStorage key for the persisted locale preference (FR-005). */
 export const LOCALE_STORAGE_KEY = 'pvmss-locale';
 
-/** Paraglide setLocale injection seam — overridable in tests. */
+/** Paraglide setLocale injection seam - overridable in tests. */
 export interface LocaleRuntime {
 	setLocale: (locale: Locale) => void;
 }
@@ -22,7 +22,7 @@ const defaultRuntime: LocaleRuntime = { setLocale: paraglideSetLocale };
  * LocaleState owns the active interface language: a $state-backed current
  * locale, persisted to localStorage, kept in sync with Paraglide's runtime and
  * document.documentElement.lang (FR-004/FR-005). Instantiated once in
- * +layout.svelte and provided via context (constitution VII — no module
+ * +layout.svelte and provided via context (constitution VII - no module
  * singletons).
  */
 export class LocaleState {

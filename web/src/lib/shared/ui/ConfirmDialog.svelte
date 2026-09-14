@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * ConfirmDialog — a reusable destructive-action confirmation dialog.
+	 * ConfirmDialog - a reusable destructive-action confirmation dialog.
 	 * Wraps Dialog.svelte with a title, message, cancel button, and
 	 * destructive confirm button. Used for delete/revoke actions that
 	 * need an explicit confirmation step to prevent data loss.

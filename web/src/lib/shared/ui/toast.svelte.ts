@@ -26,7 +26,7 @@ export interface ToastInput {
 const DEFAULT_DURATION_MS = 4000;
 
 /**
- * ToastRegion — the global toast queue (FR-019). One instance per app shell,
+ * ToastRegion - the global toast queue (FR-019). One instance per app shell,
  * provided through context (constitution VII: no module singletons). Callers
  * push toasts via `push()`; the <Toaster /> region renders and auto-dismisses
  * them. The queue is capped so a runaway emitter cannot flood the viewport.
@@ -80,7 +80,7 @@ export class ToastRegion {
 		this.items = this.items.filter((item) => item.id !== id);
 	}
 
-	/** Clears all toasts — used on route teardown if ever needed. */
+	/** Clears all toasts - used on route teardown if ever needed. */
 	clear(): void {
 		for (const id of this.#timers.keys()) this.#clearTimer(id);
 		this.items = [];

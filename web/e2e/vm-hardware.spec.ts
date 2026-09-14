@@ -12,7 +12,7 @@ test.describe("T07 VM hardware (disks, CD-ROM, network, sockets/cores/RAM/tags)"
     page,
   }) => {
     await signInAlice(page.request);
-    // web-02 (VMID 101, node pve-node-01) — stopped, owned by alice, has a
+    // web-02 (VMID 101, node pve-node-01) - stopped, owned by alice, has a
     // pre-seeded boot disk scsi0 and a second disk scsi1.
     await page.goto("/vms/default/101");
     await page.getByTestId("vm-tab-disks").click();
@@ -42,7 +42,7 @@ test.describe("T07 VM hardware (disks, CD-ROM, network, sockets/cores/RAM/tags)"
     await page.getByTestId("vm-action-confirm").click();
     await expect(page.getByTestId("vm-status")).toContainText("stopped");
 
-    // The boot disk's delete control is disabled — no destructive call possible.
+    // The boot disk's delete control is disabled - no destructive call possible.
     await expect(page.getByTestId("vm-disk-delete-open-scsi0")).toBeDisabled();
     await expect(page.getByTestId("vm-disk-delete-open-scsi0")).toHaveText(
       "Protected",

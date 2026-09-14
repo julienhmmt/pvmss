@@ -16,7 +16,7 @@ export interface AdminProfile {
 
 /**
  * AdminProfilesStore manages the CRUD state for VM profiles. API responses are
- * $state.raw — they are API data, not form edits.
+ * $state.raw - they are API data, not form edits.
  */
 export class AdminProfilesStore {
 	profiles = $state.raw<AdminProfile[]>([]);

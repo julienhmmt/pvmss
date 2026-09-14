@@ -108,7 +108,7 @@ describe('displayStatus', () => {
 	it('does not show failed when the VM has since started running', () => {
 		// A `failed` outcome can come from a deadline / 404 / poll-error, not
 		// necessarily a true creation failure. If the server reports the VM
-		// is up, the user can connect — never contradict a live VM with
+		// is up, the user can connect - never contradict a live VM with
 		// "Creation failed".
 		const map = new Map([['default:100', 'failed' as const]]);
 		expect(

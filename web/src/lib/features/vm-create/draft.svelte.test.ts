@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DraftStore, DRAFT_SCHEMA_VERSION, DRAFT_STORAGE_KEY } from './draft.svelte';
 import type { DraftValues } from './draft.svelte';
 
-// T035/T036 (US3): versioned localStorage draft — restore on match, silent
+// T035/T036 (US3): versioned localStorage draft - restore on match, silent
 // discard on mismatch, clear on successful creation (FR-019..FR-021).
 
 function sampleValues(): DraftValues {
@@ -48,7 +48,7 @@ describe('DraftStore.load', () => {
 		expect(draft.consumeRestoreToast()).toBe(true);
 	});
 
-	it('mismatched schema version discards silently — no values, no toast, draft removed', () => {
+	it('mismatched schema version discards silently - no values, no toast, draft removed', () => {
 		seedDraft(DRAFT_SCHEMA_VERSION + 1);
 		const draft = new DraftStore();
 

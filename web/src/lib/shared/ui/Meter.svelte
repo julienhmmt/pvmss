@@ -1,9 +1,9 @@
 <script lang="ts">
 	/**
-	 * Meter — Layer B thin quota / usage bar (mockup `.mt`). Consumes
+	 * Meter - Layer B thin quota / usage bar (mockup `.mt`). Consumes
 	 * `quotaMeterView` so the unlimited / exhausted / unavailable rules live
 	 * in one tested place. `role="meter"` with now/min/max only when bounded;
-	 * unlimited and unavailable render text only — no fake 0–100 bar.
+	 * unlimited and unavailable render text only - no fake 0–100 bar.
 	 */
 	import { quotaMeterView } from './quota-meter.svelte';
 	import type { VmQuota } from '$lib/features/vms/list.svelte';

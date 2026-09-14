@@ -3,7 +3,7 @@ import { resolveErrorMessage, KNOWN_ERROR_CODES } from './errorMessage';
 import { m } from '$lib/paraglide/messages.js';
 import { getLocale, setLocale } from '$lib/paraglide/runtime.js';
 
-// T012 (US1): resolveErrorMessage — a known `code` resolves to the matching
+// T012 (US1): resolveErrorMessage - a known `code` resolves to the matching
 // localized message; an unlisted `code` resolves to the generic localized
 // fallback. Table-driven over every code currently in the map, in both
 // locales (FR-006: bounded client-side mapping, never the raw server message).
@@ -31,7 +31,7 @@ describe('resolveErrorMessage', () => {
 	}
 
 	// Ticket 02 (ADR 0002): cluster_rejected carries Proxmox's own message as
-	// its content — surfaced as-is, never replaced by the generic fallback.
+	// its content - surfaced as-is, never replaced by the generic fallback.
 	describe('code "cluster_rejected"', () => {
 		it('surfaces the raw Proxmox message when present', () => {
 			setLocale('fr', { reload: false });

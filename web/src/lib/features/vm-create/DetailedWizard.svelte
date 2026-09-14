@@ -9,8 +9,8 @@
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
-	// Detailed-mode wizard (V09): five steps — Base, Hardware, Disk, Network,
-	// Review — over the shared create store. Cloud-init is T08's step, not
+	// Detailed-mode wizard (V09): five steps - Base, Hardware, Disk, Network,
+	// Review - over the shared create store. Cloud-init is T08's step, not
 	// this tranche's (spec Assumptions). Keyboard-navigable: steps are
 	// buttons in a tablist, fields are native inputs (constitution XII).
 	const form = getVmCreateContext();

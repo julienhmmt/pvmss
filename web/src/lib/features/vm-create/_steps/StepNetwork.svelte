@@ -5,7 +5,7 @@
 	import Select from '$lib/shared/ui/Select.svelte';
 	import Tooltip from '$lib/shared/ui/Tooltip.svelte';
 
-	// Network step: one or more NICs (US2/D3a — multi-NIC). In simple mode
+	// Network step: one or more NICs (US2/D3a - multi-NIC). In simple mode
 	// only nics[0] is used; detailed mode allows add/remove up to
 	// gabarit.maxNetworkCards. Each NIC's bridge is filtered to the node.
 	const form = getVmCreateContext();

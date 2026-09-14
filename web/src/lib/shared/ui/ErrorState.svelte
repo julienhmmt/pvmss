@@ -5,7 +5,7 @@
 	import ErrorIcon from './icons/ErrorIcon.svelte';
 
 	/**
-	 * ErrorState — a consistent error display for store-level failures.
+	 * ErrorState - a consistent error display for store-level failures.
 	 * Shows an error icon, a title, an optional description, and an optional
 	 * retry action. Communicates the error as an alert to assistive technologies.
 	 */

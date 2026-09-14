@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChromeState } from './chrome.svelte';
 
-// T006 (US2): ChromeState — owns the sidebar drawer layout state. Tested
+// T006 (US2): ChromeState - owns the sidebar drawer layout state. Tested
 // without a DOM beyond happy-dom's window/matchMedia.
 //
 // Contract (data-model.md "Chrome layout"):

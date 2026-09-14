@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * FormSection — a titled group of fields inside a longer form.
+	 * FormSection - a titled group of fields inside a longer form.
 	 *
 	 * The create-VM wizard and the admin forms were flat `grid gap-4` stacks:
 	 * ten controls of identical weight with nothing saying which ones belong
@@ -8,7 +8,7 @@
 	 * `<fieldset>`/`<legend>` (so assistive tech gets the grouping for free)
 	 * with an optional description and a numbered marker for wizard steps.
 	 *
-	 * `variant="plain"` is the default — a legend, a hairline, and the
+	 * `variant="plain"` is the default - a legend, a hairline, and the
 	 * fields. `variant="panel"` puts the group on the muted ground for
 	 * secondary or advanced settings that should read as an aside.
 	 */

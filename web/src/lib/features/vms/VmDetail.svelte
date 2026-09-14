@@ -43,7 +43,7 @@
 	];
 	let activeTab = $state('overview');
 
-	// Same mapping as the VM list. It used to differ here — paused rendered in
+	// Same mapping as the VM list. It used to differ here - paused rendered in
 	// the destructive triple on this page and in the warning triple in the
 	// list, so the same VM changed colour depending on where you looked at
 	// it. Paused is a caution, not a failure. Anything unrecognised falls

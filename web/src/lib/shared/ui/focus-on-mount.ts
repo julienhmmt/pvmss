@@ -1,7 +1,7 @@
 import { tick } from 'svelte';
 
 /**
- * focusOnMount — a Svelte action that moves focus to the attached element
+ * focusOnMount - a Svelte action that moves focus to the attached element
  * on mount when enabled and no other element is already focused inside it.
  * Useful for focus management on prominent auth/error screens without
  * relying on the HTML autofocus attribute.

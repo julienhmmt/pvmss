@@ -1,5 +1,5 @@
 /**
- * field-id — stable unique id generator for form controls. A module-scoped
+ * field-id - stable unique id generator for form controls. A module-scoped
  * counter keeps ids short and deterministic per render pass. Prefer passing
  * an explicit id for prerendered pages (login, marketing) to avoid any
  * SSR/client hydration drift; the generator is a convenience for

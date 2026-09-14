@@ -27,7 +27,7 @@ interface AdminNavGroup {
 }
 
 /**
- * Admin navigation items — the single source for the admin destination list.
+ * Admin navigation items - the single source for the admin destination list.
  * Rendered as the "Administration" group inside the global Sidebar (T034:
  * the admin area no longer ships a second 52-width rail). The server-side
  * RequireAdmin middleware remains the real guard; this is IA only.

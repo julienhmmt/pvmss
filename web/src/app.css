@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Layer B — PVMSS App mockup (specs/002-design-import/contracts/visual-language.md).
+  /* Layer B - PVMSS App mockup (specs/002-design-import/contracts/visual-language.md).
      Warm paper ground, white surfaces, orange accent, 12px radius, two mute steps. */
   --background: #f7f6f4;
   --foreground: #1c1a19;
@@ -17,13 +17,13 @@
      At 66% lightness white text sat at 3.24:1, under the 4.5:1 AA floor for
      14px semibold button labels, which is why the label used to be dark ink.
      At 56% white clears AA (4.70:1) while the hue stays the documented brand
-     orange (51deg — the old token had drifted to 44deg, visibly redder than
+     orange (51deg - the old token had drifted to 44deg, visibly redder than
      DESIGN.md's #d9742e). Side benefit: --primary is also used as link/accent
      text, and it now clears AA there too (4.56:1 on the paper ground, was
      3.09:1). */
   --primary: oklch(56% 0.16 51deg);
   /* The fill under a label, as opposed to the accent. Light mode happens to
-     need the same value for both, but dark mode does not (see .dark below) —
+     need the same value for both, but dark mode does not (see .dark below) - 
      so the two roles get their own token instead of sharing one and forcing
      one theme to lose. Label-bearing fills use this; tints, dots, meters,
      charts, focus rings and accent text use --primary. */
@@ -33,9 +33,9 @@
   --secondary-foreground: oklch(21% 0.006 285.885deg);
   --muted: #f1eeeb;
   --muted-foreground: #5f5854;
-  /* Was #8d8681 — 3.32:1 on this background, under the 4.5:1 AA floor for
+  /* Was #8d8681 - 3.32:1 on this background, under the 4.5:1 AA floor for
      normal text (16 of its 25 call sites are text: labels, char counters,
-     "—" placeholders, footer text — the other 9 are borders/dots, not
+     " - " placeholders, footer text - the other 9 are borders/dots, not
      subject to that floor). This keeps a visible step below
      --muted-foreground (6.46:1) while clearing AA itself (4.57:1 on
      --background, 4.94:1 on --card). */
@@ -122,7 +122,7 @@
      accent text, tints, dots and focus rings need (7.21:1 on the background,
      6.67:1 on a card). It is NOT used as a label-bearing fill, because a fill
      dark enough for a white label (4.5:1) is too dark to read as accent text
-     (3.88:1) — one value cannot do both, which is why the roles are split. */
+     (3.88:1) - one value cannot do both, which is why the roles are split. */
   --primary: oklch(72% 0.17 44deg);
   /* Same deep orange as light mode, so a primary button is the same button in
      both themes and the label stays warm white instead of flipping to dark ink.
@@ -135,14 +135,14 @@
   --secondary-foreground: oklch(90% 0.004 95deg);
   --muted: oklch(25% 0.006 56deg);
   --muted-foreground: oklch(65% 0.01 56deg);
-  /* Was 55% — 3.92:1 on this background, same AA gap as light mode's fix
+  /* Was 55% - 3.92:1 on this background, same AA gap as light mode's fix
      above. 62% clears AA (5.20:1 on --background, 4.81:1 on --card) while
      staying below --muted-foreground's 65%. */
   --muted-foreground-subtle: oklch(62% 0.012 56deg);
   --accent: oklch(25% 0.006 56deg);
   --accent-foreground: oklch(90% 0.004 95deg);
   --destructive: oklch(70.4% 0.191 22.216deg);
-  /* Was oklch(98.5% 0.001 106.423deg) — near-white on this dark mode fill is
+  /* Was oklch(98.5% 0.001 106.423deg) - near-white on this dark mode fill is
      2.77:1, well under AA, because dark mode deliberately lifts --destructive
      to a light red. Dark ink on it reads at 6.29:1. --destructive-foreground
      is only ever text on a solid bg-destructive, so this is safe. */
@@ -285,7 +285,7 @@
   margin-right: auto;
 }
 
-/* Layer B — mono run for technical values (vmid, node, sizes, UPID).
+/* Layer B - mono run for technical values (vmid, node, sizes, UPID).
    Mirrors the mockup's `.m` class. Use via the `.mono` utility or the
    `font-mono` Tailwind token. */
 .mono {
@@ -316,7 +316,7 @@
    ring-ring ring-offset-2 ring-offset-background.
    In the `components` layer (not plain CSS) so Tailwind utilities like
    `pl-9`/`pr-9` (leading/trailing icon padding) always win regardless of
-   source order — same-specificity plain CSS here would otherwise clobber
+   source order - same-specificity plain CSS here would otherwise clobber
    them since this block loads after Tailwind's utilities. */
 @layer components {
   /* One focus recipe for the whole app: a 2px ring separated from the control
@@ -328,7 +328,7 @@
      a toggle's own track (Switch.svelte), the toast dismiss control
      (Toaster.svelte), and the mobile header's icon buttons (AppHeader.svelte,
      HeaderLite.svelte, LanguageSwitcher.svelte, ThemeToggle.svelte) stay on
-     the shorter `focus-visible:ring-2 focus-visible:ring-ring`, no offset —
+     the shorter `focus-visible:ring-2 focus-visible:ring-ring`, no offset - 
      a control that spans its container edge to edge (a 236px sidebar column,
      a table header cell) would have that offset ring clipped by the
      container's own edge or overflow. Don't "fix" those into `.pv-focus`. */
@@ -444,7 +444,7 @@
   }
 }
 
-/* Layer B — responsive table pattern. On viewports < 640px each row
+/* Layer B - responsive table pattern. On viewports < 640px each row
    collapses into a stacked card of label/value pairs driven by the
    `data-label` attribute on each <td>. On >= 640px the element is a
    normal table. The <thead> is hidden on mobile (labels move inline). */
@@ -511,7 +511,7 @@
   }
 }
 
-/* Layer B — subtle micro-interaction animations. All durations stay at or
+/* Layer B - subtle micro-interaction animations. All durations stay at or
    below 200ms and are zeroed out by the prefers-reduced-motion rule above. */
 .drawer-slide-in-left {
   animation: drawer-slide-in-left 180ms ease-out;
@@ -628,8 +628,8 @@
 }
 
 /* Numeric / identifier columns: tabular figures, right-aligned so digits
-   line up down the column. Headers keep the sans face — only the cells are
-   mono — so the header band stays one typographic voice. */
+   line up down the column. Headers keep the sans face - only the cells are
+   mono - so the header band stays one typographic voice. */
 .pv-table thead th.num {
   text-align: right;
 }
@@ -669,7 +669,7 @@
    full-width but still narrow. At that width a full desktop column set
    wraps long values across 2–3 lines and can push the Actions column off
    the visible area. Columns marked with this class drop out only in that
-   band — below 640px .pv-responsive-table has already turned every field
+   band - below 640px .pv-responsive-table has already turned every field
    into a label/value row, where this does not apply, and at >=900px the
    desktop column set is restored. */
 @media (min-width: 640px) and (max-width: 899px) {

@@ -21,7 +21,7 @@
 		kind: VmAction;
 		label: () => string;
 		icon: Component<{ class?: string }>;
-		/** Shown when the VM is in this status — the button is disabled otherwise. */
+		/** Shown when the VM is in this status - the button is disabled otherwise. */
 		applicable: import('./list.svelte').VmStatus[];
 		variant: 'primary' | 'neutral' | 'danger';
 		/** Toast message key fired on a successful action. */

@@ -1,5 +1,5 @@
 <script lang="ts">
-	/** RestartIcon — reboot action affordance. Inherits currentColor. */
+	/** RestartIcon - reboot action affordance. Inherits currentColor. */
 	interface Props {
 		class?: string;
 	}

@@ -5,7 +5,7 @@
 	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
 
 	/**
-	 * HomeCta — reads T02's session store (initialized/username/isAdmin) and
+	 * HomeCta - reads T02's session store (initialized/username/isAdmin) and
 	 * renders the CTA set per data-model.md's mapping table. No new endpoint,
 	 * no new field (FR-013). The admin sees no "Create a VM" button, matching
 	 * P06's cross-reference to T06 FR-005's server-side rule.

@@ -185,7 +185,7 @@
 </script>
 
 <svelte:head>
-	<title>{m['docs.title']()} — PVMSS</title>
+	<title>{m['docs.title']()} - PVMSS</title>
 </svelte:head>
 
 <PageHeader title={m['docs.title']()}>

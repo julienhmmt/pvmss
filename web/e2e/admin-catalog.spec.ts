@@ -13,7 +13,7 @@ async function signInAlice(request: APIRequestContext): Promise<void> {
 }
 
 // Finds the row whose first (name) cell matches `name` exactly, further
-// scoped to rows containing `context` — e.g. distinguishing "local" from
+// scoped to rows containing `context` - e.g. distinguishing "local" from
 // "local-lvm", or "local"@pve-node-01 from "local"@pve-node-02.
 function exactRow(page: Page, name: string, context?: string) {
 	const row = page.locator('tr').filter({ has: page.locator('td', { hasText: new RegExp(`^${name}$`) }) });
@@ -46,7 +46,7 @@ test.describe('T11 admin catalog', () => {
 		await expect(nodeSwitchAfter).toHaveAttribute('aria-checked', 'true');
 
 		// Storages: local@pve-node-01 starts unapproved; local@pve-node-02 stays
-		// approved and unaffected (FR-003 — per (name, node) pair, not by name).
+		// approved and unaffected (FR-003 - per (name, node) pair, not by name).
 		await page.goto('/admin/storages');
 		const storageNode01 = exactRow(page, 'local', 'pve-node-01');
 		const storageNode02 = exactRow(page, 'local', 'pve-node-02');
@@ -174,7 +174,7 @@ test.describe('T11 admin catalog', () => {
 		await tagRow.getByRole('button', { name: 'Save' }).click();
 		await expect(tagRow.getByText('#00ff00')).toBeVisible();
 
-		// Delete it — succeeds, unlike pvmss.
+		// Delete it - succeeds, unlike pvmss.
 		await tagRow.getByRole('button', { name: 'Delete' }).click();
 		await expect(page.locator('tr', { hasText: 'e2eteam' })).toHaveCount(0);
 	});

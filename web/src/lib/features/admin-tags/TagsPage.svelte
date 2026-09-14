@@ -188,7 +188,7 @@
 								{#if !tag.protected}
 									<Button variant="destructive" size="sm" label={m['admin.tags.deleteLabel']({ name: tag.name })} onclick={() => (pendingDelete = tag)}>{m['common.delete']()}</Button>
 								{:else}
-									<span class="text-xs text-muted-foreground">—</span>
+									<span class="text-xs text-muted-foreground"> - </span>
 								{/if}
 							</td>
 						</tr>
