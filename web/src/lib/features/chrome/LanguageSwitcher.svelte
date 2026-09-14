@@ -4,7 +4,7 @@
 	import type { Locale } from '$lib/paraglide/runtime.js';
 
 	/**
-	 * LanguageSwitcher — FR/EN as compact two-letter code buttons. A third
+	 * LanguageSwitcher - FR/EN as compact two-letter code buttons. A third
 	 * locale is one more message file plus one entry here (FR-003).
 	 */
 	const LOCALE_OPTIONS: readonly { value: Locale; short: string; name: () => string }[] = [

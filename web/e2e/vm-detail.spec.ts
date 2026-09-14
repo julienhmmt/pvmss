@@ -17,7 +17,7 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 		await page.goto('/vms?cluster=default');
 
 		// Click the web-01 row link (VMID 100, running). Default list sort is
-		// by name, so "first row" isn't deterministically web-01 — target it explicitly.
+		// by name, so "first row" isn't deterministically web-01 - target it explicitly.
 		await page.getByTestId('vm-row-link').filter({ hasText: 'web-01' }).click();
 		await expect(page).toHaveURL(/\/vms\/default\/100$/);
 
@@ -37,7 +37,7 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 		await expect(page.getByTestId('vm-metrics-charts')).toBeVisible({ timeout: 10000 });
 		await expect(page.getByTestId('line-chart')).toHaveCount(4);
 
-		// Default range is "hour" — pressed state reflects it.
+		// Default range is "hour" - pressed state reflects it.
 		await expect(page.getByTestId('vm-metrics-range-hour')).toHaveAttribute('aria-pressed', 'true');
 
 		await page.getByTestId('vm-metrics-range-day').click();
@@ -65,7 +65,7 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 
 	test('delete opens a confirmation dialog, confirms, and the VM disappears', async ({ page }) => {
 		await signInAlice(page.request);
-		// sandbox-01 (VMID 114) — stopped, owned by alice.
+		// sandbox-01 (VMID 114) - stopped, owned by alice.
 		await page.goto('/vms/default/114');
 
 		await page.getByTestId('vm-action-delete').click();
@@ -78,19 +78,19 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 
 	test('delete a running VM prompts for force-stop, then confirms and deletes', async ({ page }) => {
 		await signInAlice(page.request);
-		// web-01 (VMID 100) — running, owned by alice.
+		// web-01 (VMID 100) - running, owned by alice.
 		await page.goto('/vms/default/100');
 
 		await page.getByTestId('vm-action-delete').click();
 		await expect(page.getByRole('dialog')).toBeVisible();
 
-		// First confirm — the server reports the VM is running.
+		// First confirm - the server reports the VM is running.
 		await page.getByTestId('vm-delete-confirm').click();
 
 		// The dialog switches to the force-stop warning step.
 		await expect(page.getByTestId('vm-delete-running-warning')).toBeVisible();
 
-		// Second confirm — force-stops and deletes.
+		// Second confirm - force-stops and deletes.
 		await page.getByTestId('vm-delete-confirm').click();
 
 		// After delete, navigates back to the list.
@@ -151,7 +151,7 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 	test('a non-owner opening a VM by URL gets 403/404, no data leaks', async ({ page }) => {
 		// Bob opens alice's VM 100 by editing the URL. Sign in via page.request
 		// (not the standalone `request` fixture) so the session cookie lands in
-		// the browser context the page itself uses — a separate APIRequestContext
+		// the browser context the page itself uses - a separate APIRequestContext
 		// has its own cookie jar and never reaches the page.
 		await signIn(page.request, 'bob', 'pvmss-bob');
 		await page.goto('/vms/default/100');

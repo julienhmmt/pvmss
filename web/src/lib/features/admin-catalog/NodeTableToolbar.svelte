@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * NodeTableToolbar — search, status filter, enabled filter, and reset for
+	 * NodeTableToolbar - search, status filter, enabled filter, and reset for
 	 * the admin node catalog. Lives above the table and binds directly to the
 	 * AdminCatalogStore node filter state.
 	 */

@@ -1,16 +1,16 @@
 <script lang="ts">
 	/**
-	 * ClusterSelector — the cluster-picker label+select pair shown in most
+	 * ClusterSelector - the cluster-picker label+select pair shown in most
 	 * page headers. Was the last hand-rolled `<select>` in the app (its own
 	 * `rounded-md border border-input px-3 py-1.5`, matching neither the
 	 * radius nor the height of every other control); it now wraps the shared
-	 * Select primitive. The external API is unchanged on purpose — every call
+	 * Select primitive. The external API is unchanged on purpose - every call
 	 * site keeps passing options/value/onChange/id/label/includeAll/disabled
 	 * exactly as before.
 	 *
 	 * `includeAll` prepends a real, selectable "All clusters" option (value
-	 * `''`) to the list — the same technique the VM list's own node filter
-	 * already uses — rather than Select's `placeholder` prop, which renders a
+	 * `''`) to the list - the same technique the VM list's own node filter
+	 * already uses - rather than Select's `placeholder` prop, which renders a
 	 * disabled "choose one" prompt, a different semantic than "all of them".
 	 */
 	import type { ClusterOption } from '$lib/shared/clusters';

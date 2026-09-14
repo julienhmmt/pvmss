@@ -12,7 +12,7 @@ export interface BaselineState {
 
 /**
  * AdminBaselineStore manages the admin baseline view (issue 07). API
- * responses are $state.raw — they are API data, not form edits (constitution
+ * responses are $state.raw - they are API data, not form edits (constitution
  * VII). One store instance per admin baseline page, via context.
  */
 export class AdminBaselineStore {

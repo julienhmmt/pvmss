@@ -14,7 +14,7 @@ const metricsMaxLiveTicks = 20;
 const metricsReconnectDelayMs = 3000;
 
 /**
- * MetricsStore — owns the metrics-history fetch, the selected range, and the
+ * MetricsStore - owns the metrics-history fetch, the selected range, and the
  * live SSE ticker for one VM's Overview tab. One instance per VmMetricsRow
  * (constitution VII: no module singletons), matching ConsoleStore's shape:
  * connect on mount while the VM is running, disconnect on unmount.
@@ -55,7 +55,7 @@ export class MetricsStore {
 		try {
 			const history = await fetchMetricsHistory(this.cluster, this.vmid, this.range);
 			// A later call may have already resolved while this one was in
-			// flight (e.g. rapid range switching) — only the most recent
+			// flight (e.g. rapid range switching) - only the most recent
 			// request may write into state.
 			if (requestId !== this.#requestId) return;
 			this.#history = history.samples;

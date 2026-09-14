@@ -1,5 +1,5 @@
 <script lang="ts">
-	/** StopIcon — force-stop action affordance. Inherits currentColor. */
+	/** StopIcon - force-stop action affordance. Inherits currentColor. */
 	interface Props {
 		class?: string;
 	}

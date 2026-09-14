@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * VmMetricsRow — CPU/memory/disk/network sparklines for the Overview tab,
+	 * VmMetricsRow - CPU/memory/disk/network sparklines for the Overview tab,
 	 * below the existing static stat cards. History is fetched once on mount;
 	 * live ticks stream over SSE while the VM is running and merge onto the
 	 * same series without disturbing the selected range.

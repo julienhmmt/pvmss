@@ -38,7 +38,7 @@ export interface DocUpdateInput {
 
 /**
  * AdminDocsStore manages the CRUD state for admin-authored documentation
- * pages. API responses are $state.raw — they are API data, not form edits.
+ * pages. API responses are $state.raw - they are API data, not form edits.
  */
 export class AdminDocsStore {
 	pages = $state.raw<AdminDocPage[]>([]);

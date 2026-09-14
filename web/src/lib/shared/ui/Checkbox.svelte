@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Checkbox — the shared checkbox primitive with an inline label and
+	 * Checkbox - the shared checkbox primitive with an inline label and
 	 * optional hint. Two variants: `default` for ordinary booleans, and
 	 * `warning` for security-sensitive or risky options (e.g. "skip TLS
 	 * verification"), which tints the row with warning-soft so it reads as

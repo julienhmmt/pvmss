@@ -74,7 +74,7 @@ describe('VmDetailStore.action', () => {
 		expect(store.actionInFlight).toBe(true);
 
 		// Let the POST resolve and the first live-status read happen.
-		// The first read returns 'stopped' — the entity is patched but
+		// The first read returns 'stopped' - the entity is patched but
 		// the loop hasn't converged yet (target is 'running').
 		await vi.waitFor(() => expect(store.entity?.status).toBe('stopped'));
 		expect(store.actionInFlight).toBe(true);
@@ -82,13 +82,13 @@ describe('VmDetailStore.action', () => {
 		// Advance one poll interval for the second read.
 		await vi.advanceTimersByTimeAsync(ACTION_POLL_MS);
 
-		// Second read returns 'running' — convergence.
+		// Second read returns 'running' - convergence.
 		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
 
 		expect(store.entity?.status).toBe('running');
 		expect(store.actionInFlight).toBe(false);
 
-		// No load() call — only the action POST and status GET.
+		// No load() call - only the action POST and status GET.
 		expect(calls).not.toContain('/api/v1/vms/default/100');
 	});
 
@@ -117,7 +117,7 @@ describe('VmDetailStore.action', () => {
 		// entity reload (which would be `GET /api/v1/vms/default/100`).
 		expect(calls).not.toContain('/api/v1/vms/default/100');
 
-		// The entity's non-status fields are unchanged — only status was
+		// The entity's non-status fields are unchanged - only status was
 		// patched by the convergence loop.
 		expect(store.entity?.name).toBe('web-01');
 		expect(store.entity?.cpuCores).toBe(2);

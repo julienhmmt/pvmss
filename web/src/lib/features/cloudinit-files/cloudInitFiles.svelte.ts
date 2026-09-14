@@ -2,7 +2,7 @@ import { get, post, put, del, ApiRequestError } from '$lib/shared/api/client';
 import { setContext, getContext } from 'svelte';
 import { m } from '$lib/paraglide/messages.js';
 
-/** List rows carry no content — GET /files/{id} returns the full document. */
+/** List rows carry no content - GET /files/{id} returns the full document. */
 export interface CloudInitFileSummary {
 	id: string;
 	label: string;
@@ -38,8 +38,8 @@ function fileSaveError(err: unknown): string {
 
 /**
  * CloudInitFilesStore manages the signed-in user's own cloud-init documents
- * (no cluster, no enable flag — every authenticated user has a private set).
- * API responses are $state.raw — they are API data, not form edits.
+ * (no cluster, no enable flag - every authenticated user has a private set).
+ * API responses are $state.raw - they are API data, not form edits.
  */
 export class CloudInitFilesStore {
 	files = $state.raw<CloudInitFileSummary[]>([]);

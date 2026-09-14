@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 // API tokens are deactivated: routes unregistered and bearer resolution
 // disabled in Auth.Principal. Unskip if the feature is re-enabled.
 test.describe.skip('T02 API tokens', () => {
-	// Bearer checks use the top-level `request` fixture, not `page.request` —
+	// Bearer checks use the top-level `request` fixture, not `page.request` - 
 	// the latter shares the browser's session cookie, which would keep
 	// authenticating these calls even after the bearer token is revoked.
 	test('creates, uses, lists, and revokes a token from the profile page', async ({ page, request }) => {

@@ -9,7 +9,7 @@ export interface CatalogStorage {
 	node: string;
 }
 
-/** One approved bridge on one node — bridge approval is per-node, like
+/** One approved bridge on one node - bridge approval is per-node, like
  *  storage, so a bridge option only makes sense scoped to the VM's node. */
 export interface CatalogBridge {
 	name: string;
@@ -24,7 +24,7 @@ export interface CatalogISO {
 }
 
 /** One approved cloud image (import-from source). SizeBytes lets the UI
- *  enforce the minimum disk size — the server rejects a smaller disk with
+ *  enforce the minimum disk size - the server rejects a smaller disk with
  *  "disk_below_image" (Proxmox import-from grows but never shrinks). */
 export interface CatalogImage {
 	storage: string;
@@ -53,7 +53,7 @@ export interface CatalogCloudInitTemplate {
  *  (D2b: cross-node clone is forbidden). CloudInitCapable signals the UI
  *  that the template supports cloud-init. DiskSizeGB is the template's
  *  disk size (reductions are rejected). DiskStorage is where the template's
- *  disk lives — the clone *source* storage, used to warn when the target
+ *  disk lives - the clone *source* storage, used to warn when the target
  *  storage differs (full copy instead of linked clone). */
 export interface CatalogTemplate {
 	vmid: number;
@@ -69,7 +69,7 @@ export interface CatalogTag {
 	color: string;
 }
 
-/** The administrator-editable per-VM size ceiling (gabarit) — the same
+/** The administrator-editable per-VM size ceiling (gabarit) - the same
  *  bounds the server re-checks on submit (constitution VI). */
 export interface CatalogGabarit {
 	maxSockets: number;
@@ -116,7 +116,7 @@ export interface VmCreateCatalog {
 	cloudInitTemplates: CatalogCloudInitTemplate[];
 	/** Whether the cluster has a snippet write target configured. The server
 	 *  already empties cloudInitTemplates when false, so the picker never
-	 *  renders — the flag exists for consumers that want the reason. */
+	 *  renders - the flag exists for consumers that want the reason. */
 	cloudInitWriteEnabled: boolean;
 	tags: CatalogTag[];
 	gabarit?: CatalogGabarit;
@@ -138,10 +138,10 @@ export interface NICRow {
 }
 
 /** The cloud-init configuration of a cloud-image creation (image mode),
- *  delivered entirely through Proxmox's native cloud-init keys — the REST
+ *  delivered entirely through Proxmox's native cloud-init keys - the REST
  *  API cannot write a per-VM snippet file, so there is no packages or raw
  *  user-data field; a fixed, admin-preplaced baseline snippet is attached
- *  server-side when present. No password field either — access is via SSH
+ *  server-side when present. No password field either - access is via SSH
  *  keys; a password is set post-boot through the guest agent. */
 export interface ImageCloudInitRequest {
 	user?: string;
@@ -153,7 +153,7 @@ export interface ImageCloudInitRequest {
 
 /** One cloud-image source in the creation request: the image is imported as
  *  the VM's primary disk (import-from) and configured by cloud-init on first
- *  boot. CloudInit is mandatory in image mode — a cloud image has no
+ *  boot. CloudInit is mandatory in image mode - a cloud image has no
  *  installer, so cloud-init is the only way in. */
 export interface ImageRequest {
 	storage: string;
@@ -161,7 +161,7 @@ export interface ImageRequest {
 	cloudInit: ImageCloudInitRequest;
 }
 
-/** The single request shape both modes POST (FR-001) — no pool, no mode.
+/** The single request shape both modes POST (FR-001) - no pool, no mode.
  *  The VM source is either an ISO (iso field), a Proxmox template
  *  (templateId field) or a cloud image (image field), never more than one
  *  (US2/issue-02 D2a). */
@@ -207,7 +207,7 @@ export type CreateMode = 'simple' | 'detailed';
 /** The VM source type (US2/issue-02 D2a): 'iso' for OS without cloud images
  *  (Windows, appliances), 'template' for cloud-init-capable Proxmox
  *  templates, 'image' for approved cloud images imported with cloud-init.
- *  The three are mutually exclusive — the server rejects a request carrying
+ *  The three are mutually exclusive - the server rejects a request carrying
  *  more than one. */
 export type VmSource = 'iso' | 'template' | 'image';
 
@@ -217,7 +217,7 @@ export type VmSource = 'iso' | 'template' | 'image';
  *  templateId or image. */
 export type SimpleSource = 'profile' | 'template' | 'image';
 
-/** Conversion factor for disk-size checks — mirrors the server's
+/** Conversion factor for disk-size checks - mirrors the server's
  *  bytesPerGB (server/internal/vm/create.go). */
 const BYTES_PER_GB = 1024 * 1024 * 1024;
 
@@ -308,7 +308,7 @@ function translateGabaritExceeded(message: string): string {
 
 /** Parses the server's out-of-range messages into a localized string. The
  *  server emits "%w: cpuCores must be between %d and %d" (and memoryMB/disk
- *  sizeGB variants) — server/internal/vm/create.go. */
+ *  sizeGB variants) - server/internal/vm/create.go. */
 function translateOutOfRange(message: string): string {
 	const match = message.match(/^(\w+) must be between (\d+) and (\d+)$/);
 	if (!match) return m['vms.create.errorCreation']();
@@ -329,7 +329,7 @@ const DYNAMIC_SUBMIT_ERRORS: Record<string, (message: string) => string> = {
 };
 
 /** "not_approved" messages (server/internal/vm/create.go) all share the
- *  "not approved for this cluster: <detail>" shape — parsed here since the
+ *  "not approved for this cluster: <detail>" shape - parsed here since the
  *  server sends free text, not a structured code per resource kind. */
 const NOT_APPROVED_DETAILS: Array<{ re: RegExp; translate: (match: RegExpMatchArray) => string }> = [
 	{
@@ -388,7 +388,7 @@ function translateNotApproved(message: string): string {
 	return m['vms.create.errorNotApprovedGeneric']();
 }
 
-/** Translates a VM-create submit failure — never shows the server's raw
+/** Translates a VM-create submit failure - never shows the server's raw
  *  English message (constitution: UI text is always localized). */
 function translateSubmitError(error: unknown): string {
 	if (!(error instanceof ApiRequestError)) return m['vms.create.errorCreation']();
@@ -415,11 +415,11 @@ export class VmCreateStore {
 	name = $state('');
 	profileId = $state('');
 	cloudInitTemplateId = $state('');
-	/** The actor's own cloud-init document id (cloudinit-userdata 03/04) —
+	/** The actor's own cloud-init document id (cloudinit-userdata 03/04) - 
 	 *  mutually exclusive with cloudInitTemplateId. The select binds the
 	 *  encoded cloudInitDocumentValue, never this field directly. */
 	cloudInitFileId = $state('');
-	/** The signed-in user's own files — owner-scoped, cluster-agnostic, so
+	/** The signed-in user's own files - owner-scoped, cluster-agnostic, so
 	 *  fetched once alongside the catalog rather than per cluster. Load
 	 *  failure is non-fatal: the "My files" group simply stays empty. */
 	myCloudInitFiles = $state.raw<{ id: string; label: string }[]>([]);
@@ -437,7 +437,7 @@ export class VmCreateStore {
 	 *  mode allows add/remove up to gabarit.maxNetworkCards. */
 	nics = $state<NICRow[]>([{ bridge: '', model: 'virtio' }]);
 	isoFile = $state('');
-	/** US2/issue-02: the VM source — 'iso' (default, preserves existing
+	/** US2/issue-02: the VM source - 'iso' (default, preserves existing
 	 *  behaviour) or 'template' (clone from an approved Proxmox template).
 	 *  When 'template' is selected, the node selector is hidden (D2b: the
 	 *  clone stays on the template's node). */
@@ -448,7 +448,7 @@ export class VmCreateStore {
 	simpleSource = $state<SimpleSource>('profile');
 	templateId = $state(0);
 	/** Issue 04: the selected template's disk floor. 0 when no template is
-	 *  selected — the disk size may never drop below it (Proxmox cannot
+	 *  selected - the disk size may never drop below it (Proxmox cannot
 	 *  shrink a clone's source disk). */
 	templateMinDiskGB = $state(0);
 	/** Cloud-image source (image mode): the selected image's storage and
@@ -456,16 +456,16 @@ export class VmCreateStore {
 	 *  storages. Empty strings when no image is selected. */
 	imageStorage = $state('');
 	imageFile = $state('');
-	/** The selected image's disk floor in GB (sizeBytes ceiled to GB) —
+	/** The selected image's disk floor in GB (sizeBytes ceiled to GB) - 
 	 *  the disk size may never drop below it (server code "disk_below_image").
 	 *  0 when no image is selected. */
 	imageMinDiskGB = $state(0);
 	/** Image-mode cloud-init (required): username, SSH public keys (one per
 	 *  line), network mode with optional static addressing. Delivered
-	 *  server-side through Proxmox's native cloud-init keys — no packages or
+	 *  server-side through Proxmox's native cloud-init keys - no packages or
 	 *  raw user-data field, since neither can be written per VM (a fixed,
 	 *  admin-preplaced baseline snippet covers cluster-wide needs instead).
-	 *  No password field — access is granted through SSH keys. */
+	 *  No password field - access is granted through SSH keys. */
 	ciUser = $state('');
 	ciSshKeysInput = $state('');
 	ciIpMode = $state<'dhcp' | 'static'>('dhcp');
@@ -473,10 +473,10 @@ export class VmCreateStore {
 	ciGateway = $state('');
 	startAfterCreate = $state(true);
 	/** US6/issue-06: UEFI (bios=ovmf + q35 + efidisk0), TPM 2.0, and Secure
-	 *  Boot — available in both modes. UEFI defaults on (modern OSes expect
+	 *  Boot - available in both modes. UEFI defaults on (modern OSes expect
 	 *  UEFI boot); TPM and Secure Boot stay opt-in. Both require UEFI; the
 	 *  server rejects either without UEFI with ErrInvalidRequest. Secure Boot
-	 *  pre-enrolls Microsoft's keys — needed for Windows, not most Linux
+	 *  pre-enrolls Microsoft's keys - needed for Windows, not most Linux
 	 *  ISOs (many ship an unsigned bootloader Secure Boot would refuse). */
 	uefi = $state(true);
 	tpm = $state(false);
@@ -484,7 +484,7 @@ export class VmCreateStore {
 
 	/** Fetches the multi-cluster options and defaults to the first one, matching
 	 *  the login page's cluster picker (must run before loadCatalog when the
-	 *  deployment has more than one cluster — the catalog needs one to target). */
+	 *  deployment has more than one cluster - the catalog needs one to target). */
 	async loadClusters(): Promise<void> {
 		try {
 			this.clusterOptions = await fetchClusterOptions();
@@ -500,7 +500,7 @@ export class VmCreateStore {
 		void this.loadCatalog();
 	}
 
-	/** The cluster's human-readable name for display — never the raw internal
+	/** The cluster's human-readable name for display - never the raw internal
 	 *  id (which may be an opaque string like "default" that means nothing to
 	 *  the operator; the id is only ever meaningful as an API parameter). */
 	clusterDisplayName(): string {
@@ -557,7 +557,7 @@ export class VmCreateStore {
 	}
 
 	/** Emits exactly one of cloudInitTemplateId / cloudInitFileId on the
-	 *  request when a document is selected (never both — ErrInvalidSource). */
+	 *  request when a document is selected (never both - ErrInvalidSource). */
 	applyCloudInitDocument(request: VMCreateRequest): void {
 		if (this.cloudInitTemplateId !== '') {
 			request.cloudInitTemplateId = this.cloudInitTemplateId;
@@ -587,7 +587,7 @@ export class VmCreateStore {
 	}
 
 	/** Parses tagsInput's comma-separated string into its selected tag names
-	 *  (detailed mode's tag picker — FR-014: admin-created tags only). */
+	 *  (detailed mode's tag picker - FR-014: admin-created tags only). */
 	selectedTags(): string[] {
 		return this.tagsInput
 			.split(',')
@@ -644,7 +644,7 @@ export class VmCreateStore {
 
 	/** Selects the simple-mode source, clearing the other sources. Image mode
 	 *  defaults start-after-create to true (see setSourceType). Unlike the
-	 *  detailed source, an ISO is not a simple source of its own — it is an
+	 *  detailed source, an ISO is not a simple source of its own - it is an
 	 *  optional add-on of the profile source, so only the non-profile sources
 	 *  clear it. */
 	setSimpleSource(source: SimpleSource): void {
@@ -698,7 +698,7 @@ export class VmCreateStore {
 		return this.mode === 'simple' ? this.simpleSource === 'image' : this.sourceType === 'image';
 	}
 
-	/** True when the catalog has at least one profile — image mode requires
+	/** True when the catalog has at least one profile - image mode requires
 	 *  picking one when this is true (a fixed admin preset replaces the tiny
 	 *  1 vCPU/128 MB default cloud images used to get). */
 	hasProfiles(): boolean {
@@ -784,7 +784,7 @@ export class VmCreateStore {
 			if (this.isoFile !== '') {
 				// When the node is adjusted, only an ISO on that node is valid
 				// (the server rejects a mismatch with ErrNotApproved). When auto,
-				// send any matching file — the server restricts candidate nodes
+				// send any matching file - the server restricts candidate nodes
 				// to those that hold the ISO (resolveResources/nodesWithISO).
 				const iso = this.catalog?.isos.find(
 					(entry) => entry.file === this.isoFile && (!this.nodeAdjusted || entry.node === this.node)
@@ -796,7 +796,7 @@ export class VmCreateStore {
 		return this.buildDetailedRequest(request);
 	}
 
-	/** Detailed mode: every field explicit (FR-011) — except image source,
+	/** Detailed mode: every field explicit (FR-011) - except image source,
 	 *  which may carry a profileId (server ignores the explicit hardware
 	 *  fields when one is set, FR-009). The source is an ISO, a Proxmox
 	 *  template or a cloud image (US2/issue-02 D2a): when sourceType is
@@ -835,7 +835,7 @@ export class VmCreateStore {
 		this.applyCloudInitDocument(request);
 
 		// US6/issue-06: UEFI is sent explicitly (true or false) so an
-		// unchecked box is honored — the server defaults to UEFI=true when
+		// unchecked box is honored - the server defaults to UEFI=true when
 		// the field is absent entirely (simple mode's template branch never
 		// sends it). TPM/SecureBoot only sent when true; the server default
 		// for both is already false.
@@ -848,7 +848,7 @@ export class VmCreateStore {
 
 	/** Submits the built request; returns the accepted task handle on 202. */
 	async submit(): Promise<VmCreateAccepted | null> {
-		// Issue 04: the client already knows the template's disk floor —
+		// Issue 04: the client already knows the template's disk floor - 
 		// reject below it locally instead of a round-trip to ErrDiskReduction.
 		if (this.templateMinDiskGB > 0 && this.diskSizeGB < this.templateMinDiskGB) {
 			this.submitError = m['vms.create.diskBelowTemplateMin']({ min: this.templateMinDiskGB });
@@ -914,7 +914,7 @@ export class VmCreateStore {
 		};
 	}
 
-	/** Restores a version-matched draft into the form (FR-020) — all fields
+	/** Restores a version-matched draft into the form (FR-020) - all fields
 	 *  at once, never partially. */
 	applyDraft(values: DraftValues): void {
 		this.mode = values.mode;

@@ -4,7 +4,7 @@ import type { TrackedTask } from '$lib/features/tasks/tasks.svelte';
 
 /**
  * The seven end-user-facing machine states (DESIGN.md §7). These are not
- * server enum values — they are derived client-side from the server status,
+ * server enum values - they are derived client-side from the server status,
  * in-flight power actions, the task tray (vm_create), and a session-scoped
  * outcome ledger. See {@link displayStatus}.
  */
@@ -21,12 +21,12 @@ export type MachineDisplayStatus =
 export interface MachineDisplayInput {
 	cluster: string;
 	vmid: number;
-	/** Server-reported status — the floor; never fabricated. */
+	/** Server-reported status - the floor; never fabricated. */
 	status: VmStatus;
 }
 
 /** In-flight vm_create tasks (read from the task tray). A task present here
- *  is in flight — the tray removes terminal tasks, so presence ⇒ running. */
+ *  is in flight - the tray removes terminal tasks, so presence ⇒ running. */
 export interface TaskTraySnapshot {
 	tasks: readonly TrackedTask[];
 }
@@ -34,7 +34,7 @@ export interface TaskTraySnapshot {
 /**
  * Session-scoped record of vm_create outcomes the tray no longer tracks.
  *
- * ponytail: ephemeral — a reload clears it, so a `partial` VM collapses to
+ * ponytail: ephemeral - a reload clears it, so a `partial` VM collapses to
  * `stopped` and a `failed` creation to absent after reload. Upgrade path:
  * persist `partial` server-side (a tag or a status extension) so the
  * no-duplicate safety survives a reload.
@@ -46,7 +46,7 @@ export interface TaskOutcomeLedger {
 export interface DisplayStatusDeps {
 	/** In-flight vm_create tasks (the tray). */
 	tray: TaskTraySnapshot;
-	/** Session outcome ledger for failed / partial. Optional — callers
+	/** Session outcome ledger for failed / partial. Optional - callers
 	 *  that only render running / stopped (e.g. admin views) may omit it. */
 	ledger?: TaskOutcomeLedger;
 	/** In-flight power action for this VM, if any. The list passes its
@@ -68,10 +68,10 @@ const STOPPING_ACTIONS: ReadonlySet<VmAction> = new Set(['shutdown', 'stop']);
  *    transitioning; this wins over a stale server status).
  * 2. In-flight `vm_create` task → `provisioning`.
  * 3. Session outcome ledger → `partial` / `failed` (only when the VM is
- *    not running — a live VM is connectable regardless of a stale
+ *    not running - a live VM is connectable regardless of a stale
  *    creation-time outcome).
  * 4. Server status floor (`running` / `stopped`; `paused` collapses to
- *    `stopped` — it is not a Calm-workspace display state).
+ *    `stopped` - it is not a Calm-workspace display state).
  */
 export function displayStatus(vm: MachineDisplayInput, deps: DisplayStatusDeps): MachineDisplayStatus {
 	const { tray, ledger, inFlightAction = null } = deps;
@@ -89,7 +89,7 @@ export function displayStatus(vm: MachineDisplayInput, deps: DisplayStatusDeps):
 
 	const outcome = ledger?.get(vm.cluster, vm.vmid);
 	// Both outcomes are creation-time signals. Once the server reports the
-	// VM is up, the user can reconfigure / connect — the badge returns to
+	// VM is up, the user can reconfigure / connect - the badge returns to
 	// `running` so we never contradict a live VM with "Creation failed".
 	// A `failed` outcome from a deadline / 404 / poll-error is not a hard
 	// guarantee the VM is absent; the server status is the floor.
@@ -105,7 +105,7 @@ export function displayStatus(vm: MachineDisplayInput, deps: DisplayStatusDeps):
  * A machine is connectable only when it is running AND has a reported
  * address. The UI never fabricates an address (DESIGN.md §7 "No guessed
  * addresses"). On the list, where the DTO carries no address, this returns
- * false and the row falls back to "View details" — honest, not a guess.
+ * false and the row falls back to "View details" - honest, not a guess.
  */
 export function canConnect(status: MachineDisplayStatus, address: string | undefined | null): boolean {
 	return status === 'running' && Boolean(address);

@@ -33,5 +33,5 @@
 		</span>
 	</div>
 {:else}
-	<span class="text-xs text-muted-foreground-subtle">—</span>
+	<span class="text-xs text-muted-foreground-subtle"> - </span>
 {/if}

@@ -33,7 +33,7 @@
 		await store.delete(needsForceStop);
 		if (store.deleteError) {
 			if (store.deleteErrorCode === 'vm_running' && !needsForceStop) {
-				// The VM is running — switch to the force-stop confirmation step
+				// The VM is running - switch to the force-stop confirmation step
 				// rather than showing a generic error toast.
 				needsForceStop = true;
 				return;

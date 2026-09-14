@@ -1,8 +1,8 @@
 <script lang="ts">
 	/**
-	 * ImageCloudInitFields — the mandatory cloud-init section of image mode.
+	 * ImageCloudInitFields - the mandatory cloud-init section of image mode.
 	 * Shared by the simple wizard and the detailed wizard's Base step.
-	 * Delivered entirely through Proxmox's native cloud-init keys — the
+	 * Delivered entirely through Proxmox's native cloud-init keys - the
 	 * server cannot write a per-VM snippet file, so there is no packages or
 	 * raw user-data field here; a fixed, admin-preplaced baseline snippet
 	 * covers cluster-wide needs (e.g. installing qemu-guest-agent) instead.

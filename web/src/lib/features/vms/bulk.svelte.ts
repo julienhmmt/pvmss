@@ -4,7 +4,7 @@ import { post } from '$lib/shared/api/client';
 import type { VmListItem } from './list.svelte';
 
 /**
- * Composite identity for a bulk-action target. Never a bare vmid — the same
+ * Composite identity for a bulk-action target. Never a bare vmid - the same
  * VMID can exist in multiple clusters (T15), so selection and request bodies
  * always carry the cluster alongside.
  */
@@ -49,7 +49,7 @@ function toItemTarget(item: VmListItem): BulkTarget {
 
 /**
  * Page-local selection state for the VM list (T17). Selection is keyed by
- * the composite (cluster, vmid) identity — never a bare vmid. The store is
+ * the composite (cluster, vmid) identity - never a bare vmid. The store is
  * NOT persisted in the URL: navigating to another page does not silently
  * carry selection over (quickstart SC-002). The store owns:
  *

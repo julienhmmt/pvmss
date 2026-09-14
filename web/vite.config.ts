@@ -33,7 +33,7 @@ export default defineConfig({
 			interval: 1000
 		},
 		hmr: {
-			// Do NOT set hmr.host — it must be a string hostname; passing true
+			// Do NOT set hmr.host - it must be a string hostname; passing true
 			// stringifies to "true" and the browser tries wss://true/ (DNS
 			// failure). Omitting it lets the Vite client infer the host from
 			// the page URL, so HMR works for any proxy/OrbStack URL.

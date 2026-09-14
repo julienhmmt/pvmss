@@ -1,7 +1,7 @@
 import { getContext, setContext } from 'svelte';
 
 /**
- * ChromeState — owns the app-shell layout state: the sidebar drawer (open on
+ * ChromeState - owns the app-shell layout state: the sidebar drawer (open on
  * viewports < 900px, forced closed on desktop).
  *
  * Constitution VII: instantiated once in +layout.svelte and provided via

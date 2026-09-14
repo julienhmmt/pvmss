@@ -56,7 +56,7 @@ describe('CloudInitDocumentSelect', () => {
 
 		// The select's DOM value is the encoded 'f:<id>'; the decode direction
 		// (select → store) is covered by the cloudInitDocumentValue round-trip
-		// test in create.svelte.test.ts — jsdom's :checked does not reflect
+		// test in create.svelte.test.ts - jsdom's :checked does not reflect
 		// option.selected, so a synthetic change event can't exercise it.
 		expect(document.querySelector('select')!.value).toBe('f:dev-box');
 	});

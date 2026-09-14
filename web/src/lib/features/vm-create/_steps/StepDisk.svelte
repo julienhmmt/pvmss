@@ -5,7 +5,7 @@
 	import TextField from '$lib/shared/ui/TextField.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
 
-	// Disk step: one initial disk (multi-disk is T07) — an approved storage on
+	// Disk step: one initial disk (multi-disk is T07) - an approved storage on
 	// the chosen node, plus a size within the technical ceiling.
 	const form = getVmCreateContext();
 
@@ -19,7 +19,7 @@
 	);
 
 	// Image source with profiles configured: the profile's disk size is
-	// authoritative (FR-009) — show it as read-only text instead of a size
+	// authoritative (FR-009) - show it as read-only text instead of a size
 	// input. Storage placement stays user-editable regardless (a profile
 	// never picks where the disk lands).
 	const showProfilePicker = $derived(form.sourceType === 'image' && form.hasProfiles());
@@ -40,7 +40,7 @@
 	);
 
 	// Issue 04: mirror buildCloneSpec (vm/create.go) so the user sees when a
-	// full copy — minutes and real space — is coming instead of a linked
+	// full copy - minutes and real space - is coming instead of a linked
 	// clone. A cloud-init-capable template always full-clones; otherwise a
 	// target storage differing from the template's disk storage forces full.
 	const selectedTemplate = $derived(

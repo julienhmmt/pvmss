@@ -73,7 +73,7 @@ test.describe('T03 inventory projection', () => {
 		const firstTime = await refreshedAt.getAttribute('datetime');
 
 		// The manual-refresh guard clock starts at server boot (the worker
-		// runs one refresh immediately on startup — worker.go Run()), so a
+		// runs one refresh immediately on startup - worker.go Run()), so a
 		// click landing within that window is correctly guarded (429) and
 		// leaves refreshedAt unchanged. Retry until the guard has cleared and
 		// a click actually performs a refresh, instead of assuming the first
@@ -99,7 +99,7 @@ test.describe('T03 inventory projection', () => {
 		await expect(page.locator('[data-testid="refresh-error"]')).toBeVisible();
 	});
 
-	test('the guard is temporary — waiting it out re-enables the button (quickstart step 6)', async ({ page }) => {
+	test('the guard is temporary - waiting it out re-enables the button (quickstart step 6)', async ({ page }) => {
 		await signIn(page.request);
 		await page.goto('/nodes');
 
@@ -107,7 +107,7 @@ test.describe('T03 inventory projection', () => {
 		await refreshButton.click();
 		await expect(refreshButton).toBeDisabled({ timeout: 5000 });
 
-		// Guard is configured to 2s for e2e (playwright.config.ts) — wait it out.
+		// Guard is configured to 2s for e2e (playwright.config.ts) - wait it out.
 		await expect(refreshButton).toBeEnabled({ timeout: 5000 });
 		await expect(page.locator('[data-testid="refresh-error"]')).toBeHidden();
 	});

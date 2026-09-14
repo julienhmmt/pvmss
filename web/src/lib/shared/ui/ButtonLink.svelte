@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * ButtonLink — the anchor-shaped twin of Button.
+	 * ButtonLink - the anchor-shaped twin of Button.
 	 * Use for navigation CTAs that need the button look but must keep
 	 * link semantics (screen-reader role, right-click, href).
 	 *

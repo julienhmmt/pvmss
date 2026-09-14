@@ -1,5 +1,5 @@
 <script lang="ts">
-	/** PlayIcon — start action affordance. Inherits currentColor. */
+	/** PlayIcon - start action affordance. Inherits currentColor. */
 	interface Props {
 		class?: string;
 	}

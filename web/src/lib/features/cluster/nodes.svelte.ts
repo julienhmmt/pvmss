@@ -37,9 +37,9 @@ export class NodesStore {
 	refreshDisabled = $state.raw(false);
 
 	// Timer that clears refreshDisabled once the guard window reported by the
-	// server has elapsed — without it, a user who hits the guard once is
+	// server has elapsed - without it, a user who hits the guard once is
 	// stuck with a disabled button for the rest of the session (T03 quickstart
-	// step 6: "wait out the guard interval, click again — it works").
+	// step 6: "wait out the guard interval, click again - it works").
 	#reenableTimer: ReturnType<typeof setTimeout> | null = null;
 
 	async load(): Promise<void> {

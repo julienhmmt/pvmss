@@ -1,5 +1,5 @@
 <script lang="ts">
-	/** UserIcon — user/identity affordance for input leading icons. Inherits currentColor. */
+	/** UserIcon - user/identity affordance for input leading icons. Inherits currentColor. */
 	interface Props {
 		class?: string;
 	}

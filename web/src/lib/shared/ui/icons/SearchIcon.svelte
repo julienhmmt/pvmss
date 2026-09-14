@@ -1,5 +1,5 @@
 <script lang="ts">
-	/** SearchIcon — magnifying-glass affordance for search inputs. Inherits currentColor. */
+	/** SearchIcon - magnifying-glass affordance for search inputs. Inherits currentColor. */
 	interface Props {
 		class?: string;
 	}

@@ -16,7 +16,7 @@ export interface SerialTicketResponse {
 
 /**
  * Requests a single-use console ticket from the backend. The ticket is an
- * opaque token — no Proxmox ticket, node, or port leaks to the client
+ * opaque token - no Proxmox ticket, node, or port leaks to the client
  * (FR-002, FR-003). The token is consumed exactly once when the WebSocket
  * opens (FR-004).
  *
@@ -31,14 +31,14 @@ export async function fetchConsoleTicket(cluster: string, vmid: number): Promise
 
 /**
  * Builds the WebSocket URL for the console relay endpoint. The opaque token
- * travels as a query parameter — it is single-use and short-TTL, so it is not
+ * travels as a query parameter - it is single-use and short-TTL, so it is not
  * a standing capability (FR-004). The URL is always same-origin: the browser
  * connects to the same host that served the page, and the backend relays to
  * the cluster's VNC server (FR-007).
  *
  * The scheme is derived from the page protocol: wss: for https:, ws: for
  * http:. This matches the legacy buildWebSocketURL behavior (F07) without the
- * VITE_BACKEND_HOST / VITE_BACKEND_PROTOCOL overrides — same-origin only.
+ * VITE_BACKEND_HOST / VITE_BACKEND_PROTOCOL overrides - same-origin only.
  */
 export function buildConsoleWebSocketURL(cluster: string, vmid: number, token: string): string {
 	const protocol = globalThis.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -61,7 +61,7 @@ export function buildConsolePopoutURL(cluster: string, vmid: number): string {
 
 /**
  * Opens the console route in a second, independent browser window. The new
- * window is a fresh mount of the same route — it authenticates via the
+ * window is a fresh mount of the same route - it authenticates via the
  * shared session cookie and fetches its own single-use VNC ticket, so it is
  * an independent console session from the one (if any) already connected in
  * this window. `noopener` prevents the new window from reaching back into

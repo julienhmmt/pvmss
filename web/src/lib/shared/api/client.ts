@@ -22,7 +22,7 @@ export class ApiRequestError extends Error {
 	}
 }
 
-/** The single network entry point (constitution XIII) — every API call goes through this. */
+/** The single network entry point (constitution XIII) - every API call goes through this. */
 export async function get<T>(path: string): Promise<T> {
 	return request<T>(path);
 }
@@ -62,7 +62,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 		try {
 			envelope = (await response.json()) as ErrorEnvelope;
 		} catch {
-			// Body wasn't JSON (or was empty) — keep the generic envelope.
+			// Body wasn't JSON (or was empty) - keep the generic envelope.
 		}
 
 		if (response.status === 403 && envelope.code === 'invalid_csrf_token' && typeof globalThis !== 'undefined') {

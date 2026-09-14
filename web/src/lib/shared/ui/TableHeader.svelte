@@ -1,11 +1,11 @@
 <script lang="ts">
 	/**
-	 * TableHeader — a `<th>` for the admin tables, with optional sorting and
+	 * TableHeader - a `<th>` for the admin tables, with optional sorting and
 	 * an optional tooltip.
 	 *
 	 * The cell's own look (padding, uppercase, sticky band) comes from
 	 * `.pv-table thead th` in app.css, so this component no longer carries
-	 * spacing utilities of its own — that is what let admin tables drift
+	 * spacing utilities of its own - that is what let admin tables drift
 	 * apart from the VM list in the first place. Sorting is signalled by the
 	 * shared SortButton (a reserved-width arrow) rather than by appending a
 	 * ↑/↓ glyph to the label, which shifted the column on every sort.
@@ -21,7 +21,7 @@
 		activeColumn?: string;
 		sortDir?: 'asc' | 'desc';
 		onSort?: (column: string) => void;
-		/** Right-align the column — for figures and action columns. */
+		/** Right-align the column - for figures and action columns. */
 		numeric?: boolean;
 		class?: string;
 	}

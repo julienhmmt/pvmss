@@ -21,7 +21,7 @@ export interface VmSnapshotCapability {
 interface SnapshotListResponse {
 	snapshots: VmSnapshot[];
 	maxSnapshots: number;
-	/** Absent on older servers — callers fall back to the `!running` rule. */
+	/** Absent on older servers - callers fall back to the `!running` rule. */
 	capability?: VmSnapshotCapability;
 }
 

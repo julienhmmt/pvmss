@@ -87,7 +87,7 @@
 						snippetStorage: input.snippetStorage
 					});
 		// Failure leaves the dialog open with store.error rendered inline
-		// (ClusterFormDialog's error prop) — closing unconditionally here hid
+		// (ClusterFormDialog's error prop) - closing unconditionally here hid
 		// create/update failures behind an easy-to-miss page-top banner.
 		if (succeeded) formOpen = false;
 	}
@@ -128,7 +128,7 @@
 								<div class="font-medium">{cluster.name}</div>
 								<div class="max-w-xs truncate text-xs text-muted-foreground" title={cluster.url}>{cluster.url}</div>
 							</td>
-							<td class="text-muted-foreground">{cluster.displayName || '—'}</td>
+							<td class="text-muted-foreground">{cluster.displayName || ' - '}</td>
 							<td>
 								<span class="rounded-full px-2 py-1 text-xs {statusClass(cluster.lastTestStatus)}">{statusLabel(cluster.lastTestStatus)}</span>
 								{#if cluster.lastTestMessage}
@@ -137,7 +137,7 @@
 									<div class="mt-1 text-xs text-muted-foreground">{statusHint(cluster.lastTestStatus)}</div>
 								{/if}
 							</td>
-							<td class="text-muted-foreground">{cluster.proxmoxVersion ?? '—'}</td>
+							<td class="text-muted-foreground">{cluster.proxmoxVersion ?? ' - '}</td>
 							<td>{cluster.nodeCount} / {cluster.vmCount}</td>
 							<td>{cluster.oidcEnabled ? m['common.enabled']() : m['common.off']()}</td>
 							<td class="text-muted-foreground">{cluster.cloudInitWriteEnabled ? m['admin.clusters.cloudinitOn']() : m['admin.clusters.cloudinitOff']()}</td>

@@ -37,7 +37,7 @@ describe('console default mode (issue 06)', () => {
 	});
 
 	it('preserves the user manual switch even if the tag is present', () => {
-		// User switched to graphical before load() landed — keep graphical.
+		// User switched to graphical before load() landed - keep graphical.
 		expect(defaultModeForTags(['pvmss', 'pvmss-image'], true)).toBe('graphical');
 	});
 });

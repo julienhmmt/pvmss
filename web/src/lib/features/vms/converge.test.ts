@@ -77,7 +77,7 @@ describe('convergeSingle', () => {
 	});
 
 	it('expires gracefully after the timeout, accepting the last reading', async () => {
-		// Always returns 'stopped' — never converges to 'running'.
+		// Always returns 'stopped' - never converges to 'running'.
 		vi.mocked(get).mockResolvedValue({ status: 'stopped', uptime: 0 } as never);
 		const onTick = vi.fn();
 
@@ -92,7 +92,7 @@ describe('convergeSingle', () => {
 
 		await vi.waitFor(() => expect(promise).resolves.toBeUndefined());
 
-		// The loop ended without converging — no error thrown.
+		// The loop ended without converging - no error thrown.
 		expect(onTick).toHaveBeenLastCalledWith('stopped', undefined);
 	});
 
@@ -120,7 +120,7 @@ describe('convergeSingle', () => {
 
 	it('resolves the delay immediately when the signal is already aborted before the wait', async () => {
 		// Abort during the pending GET so that by the time delay() runs the
-		// signal is already aborted — exercises delay()'s early-return path.
+		// signal is already aborted - exercises delay()'s early-return path.
 		let resolveGet!: (v: unknown) => void;
 		vi.mocked(get).mockReturnValueOnce(new Promise((r) => { resolveGet = r; }) as never);
 		const controller = new AbortController();

@@ -1,5 +1,5 @@
 <script lang="ts">
-	/** LockIcon — password affordance for input leading icons. Inherits currentColor. */
+	/** LockIcon - password affordance for input leading icons. Inherits currentColor. */
 	interface Props {
 		class?: string;
 	}

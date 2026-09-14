@@ -1,6 +1,6 @@
 <script lang="ts" module>
 	/**
-	 * AllowanceMeter — a segmented `role="meter"` bar. Renders `limit`
+	 * AllowanceMeter - a segmented `role="meter"` bar. Renders `limit`
 	 * segments; `used` of them are filled in accent. Used in the list
 	 * footer and the create summary (DESIGN.md §8 "Allowance meter").
 	 *
@@ -8,7 +8,7 @@
 	 * two share the `role="meter"` + aria contract but differ in shape:
 	 * Meter is a continuous fill for a 0–100 percentage; AllowanceMeter
 	 * is a fixed count of slots (e.g. "3 of 5 machines used"). Reusing
-	 * Meter's `quotaMeterView` here would be wrong — that helper models a
+	 * Meter's `quotaMeterView` here would be wrong - that helper models a
 	 * percentage of a bound, not a slot count.
 	 */
 	export interface AllowanceMeterProps {

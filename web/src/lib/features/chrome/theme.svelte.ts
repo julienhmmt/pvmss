@@ -18,7 +18,7 @@ export const THEME_STORAGE_KEY = 'pvmss-theme-v1';
  * persisted under a versioned localStorage key, applied by toggling the
  * `dark` class on <html> (constitution X: the OKLCH tokens themselves are
  * untouched). Instantiated once in +layout.svelte and provided via context
- * (constitution VII — no module singletons).
+ * (constitution VII - no module singletons).
  */
 export class ThemeState {
 	#current = $state<Theme>(DEFAULT_THEME);
@@ -40,7 +40,7 @@ export class ThemeState {
 		this.apply();
 	}
 
-	/** Toggles the `dark` class on <html> — same DOM contract as legacy theme.svelte.ts. */
+	/** Toggles the `dark` class on <html> - same DOM contract as legacy theme.svelte.ts. */
 	apply(): void {
 		document.documentElement.classList.toggle('dark', this.#current === 'dark');
 	}

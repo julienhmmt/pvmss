@@ -13,7 +13,7 @@ export interface DraftNIC {
 	model: string;
 }
 
-/** The form's persistable field values — VMCreateRequest's client-side twin. */
+/** The form's persistable field values - VMCreateRequest's client-side twin. */
 export interface DraftValues {
 	mode: CreateMode;
 	name: string;
@@ -95,7 +95,7 @@ export class DraftStore {
 		return pending;
 	}
 
-	/** Debounced persist on field change (FR-019) — only the latest values
+	/** Debounced persist on field change (FR-019) - only the latest values
 	 *  within the debounce window are written. */
 	scheduleSave(values: DraftValues): void {
 		if (this.#saveTimer !== null) clearTimeout(this.#saveTimer);
@@ -117,7 +117,7 @@ export class DraftStore {
 		localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
 	}
 
-	/** Clears the draft — called the instant a creation succeeds, before any
+	/** Clears the draft - called the instant a creation succeeds, before any
 	 *  navigation (FR-021). */
 	clear(): void {
 		if (this.#saveTimer !== null) clearTimeout(this.#saveTimer);

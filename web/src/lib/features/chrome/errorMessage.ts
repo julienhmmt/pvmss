@@ -3,7 +3,7 @@ import { m } from '$lib/paraglide/messages.js';
 /**
  * Bounded, explicitly-listed set of server error `code` values already shipped
  * by T05/T06/T09/T12/T15's contracts, mapped to localized Paraglide messages.
- * A `code` not present here returns the generic localized fallback — never the
+ * A `code` not present here returns the generic localized fallback - never the
  * server's raw `message` string (FR-006). This map grows incrementally as later
  * tranches surface error codes users actually see.
  *
@@ -22,7 +22,7 @@ const ERROR_CODE_MAP: Record<string, () => string> = {
 	snapshot_name_exists: () => m['error.snapshot_name_exists']()
 };
 
-/** Every code currently in the map — exported for table-driven tests. */
+/** Every code currently in the map - exported for table-driven tests. */
 export const KNOWN_ERROR_CODES: readonly string[] = Object.keys(ERROR_CODE_MAP);
 
 /**
@@ -30,7 +30,7 @@ export const KNOWN_ERROR_CODES: readonly string[] = Object.keys(ERROR_CODE_MAP);
  * codes fall back to the generic localized message, never the raw server text.
  *
  * One deliberate exception (ADR 0002): a `cluster_rejected` code carries
- * Proxmox's own message as its fallback — that message is the content the
+ * Proxmox's own message as its fallback - that message is the content the
  * user needs ("storage does not support snapshots", "VM is locked"), it
  * describes the VM's storage or state, and 401/403 rejections carry the
  * generic fallback anyway, so surfacing it never leaks an auth error body.

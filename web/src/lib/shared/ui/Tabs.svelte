@@ -1,9 +1,9 @@
 <script lang="ts">
 	/**
-	 * Tabs — the shared tablist. Two looks for two jobs:
+	 * Tabs - the shared tablist. Two looks for two jobs:
 	 *
 	 * - `segmented` (default): the pill-in-a-tray form. Right for a small,
-	 *   closed set of views inside a card — it reads as a switch.
+	 *   closed set of views inside a card - it reads as a switch.
 	 * - `underline`: a rule with the active tab underscored in the accent.
 	 *   Right for page-level section navigation (VM detail: Hardware, Disks,
 	 *   Network, Snapshots, …), where a tray of pills competes with the page

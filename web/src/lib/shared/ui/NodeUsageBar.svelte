@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * NodeUsageBar — a small meter for node capacity (CPU or memory).
+	 * NodeUsageBar - a small meter for node capacity (CPU or memory).
 	 * Value is 0–1. Colours shift at the low/high thresholds using the design
 	 * system semantic tokens (success / warning / destructive).
 	 */

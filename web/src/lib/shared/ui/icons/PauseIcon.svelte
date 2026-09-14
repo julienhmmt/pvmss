@@ -1,5 +1,5 @@
 <script lang="ts">
-	/** PauseIcon — pause action affordance. Inherits currentColor. */
+	/** PauseIcon - pause action affordance. Inherits currentColor. */
 	interface Props {
 		class?: string;
 	}

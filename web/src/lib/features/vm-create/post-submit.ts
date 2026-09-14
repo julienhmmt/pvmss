@@ -29,7 +29,7 @@ export interface PostSubmitDeps {
  * - Surfaces the right toast (sticky error for cloud-init, info otherwise).
  * - Navigates back to the machine list.
  *
- * Extracting this prevents the two wizards from drifting — a previous
+ * Extracting this prevents the two wizards from drifting - a previous
  * version had SimpleWizard record `partial` but StepReview silently skip it,
  * breaking the no-duplicate safety for the detailed path.
  */
@@ -44,7 +44,7 @@ export async function handleAccepted(accepted: VmCreateAccepted, deps: PostSubmi
 	});
 	if (accepted.cloudInitPushError) {
 		// The VM was created (task queued) but cloud-init could not be
-		// applied — record a `partial` outcome so the list / detail can
+		// applied - record a `partial` outcome so the list / detail can
 		// show the "do not create a duplicate" safety until the VM is
 		// reconfigured or deleted (issue 09). The tray will still poll
 		// the vm_create task to completion; the ledger is the persistent
@@ -57,7 +57,7 @@ export async function handleAccepted(accepted: VmCreateAccepted, deps: PostSubmi
 		deps.toast.info(m['toast.vmCreateQueued']());
 	}
 	// cloud-image-console issue 05: a cloud-image VM ships without a
-	// password — SSH is the only way in until a console password is set
+	// password - SSH is the only way in until a console password is set
 	// on the console page. Surface the hint after the standard toast so
 	// the operator knows where to go.
 	if (accepted.fromImage) {

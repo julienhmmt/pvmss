@@ -23,7 +23,7 @@
 	<section class="flex flex-col items-center gap-10 py-12">
 		{#if !session.principal}
 			<!-- The product pitch: name, tagline, "how it works", capabilities.
-			     Anonymous visitors only — a signed-in user already uses PVMSS
+			     Anonymous visitors only - a signed-in user already uses PVMSS
 			     and lands here to check their VMs, not to be resold the product. -->
 			<div class="text-center">
 				<div class="mb-4 inline-flex items-center justify-center rounded-2xl bg-primary/10 p-4 text-primary">

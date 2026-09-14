@@ -9,12 +9,12 @@ import { buildSerialWebSocketURL, consoleTicketErrorMessage, fetchSerialTicket }
 export type SerialState = 'idle' | 'connecting' | 'connected' | 'disconnected' | 'error';
 
 /**
- * SerialConsoleStore — the Svelte 5 runes state for the xterm.js serial
+ * SerialConsoleStore - the Svelte 5 runes state for the xterm.js serial
  * terminal. One instance per console route (constitution VII: no module
  * singletons). Owns the xterm.js Terminal + FitAddon lifecycle and the raw
  * WebSocket byte tunnel to the backend's serial relay.
  *
- * The store is deliberately thin — it wraps xterm.js's API in $state fields the
+ * The store is deliberately thin - it wraps xterm.js's API in $state fields the
  * template can bind to, and handles the Proxmox serial framing:
  *   - outgoing keystrokes: encoded as "0:len:data"
  *   - incoming output: parsed from "0:len:data"
@@ -34,7 +34,7 @@ export class SerialConsoleStore {
 	#ws: WebSocket | null = null;
 	#container: HTMLElement | null = null;
 	#keepaliveTimer: ReturnType<typeof setInterval> | null = null;
-	// connectedAt is set on WS open so we can detect an "instant close" —
+	// connectedAt is set on WS open so we can detect an "instant close" - 
 	// Proxmox returns EOF immediately when the VM has no serial device to
 	// attach to (see #onClose).
 	#connectedAt = 0;
@@ -151,8 +151,8 @@ export class SerialConsoleStore {
 	/**
 	 * Parses a Proxmox serial frame and writes output to the terminal.
 	 * Framing: "type:payload" where type is 0 (data), 1 (resize), 2 (keepalive).
-	 * Data frames: "0:len:chars" — write chars to the terminal.
-	 * Keepalive frames: "2" — respond with "2".
+	 * Data frames: "0:len:chars" - write chars to the terminal.
+	 * Keepalive frames: "2" - respond with "2".
 	 */
 	#handleFrame(frame: string): void {
 		const sep = frame.indexOf(':');
@@ -162,13 +162,13 @@ export class SerialConsoleStore {
 		const rest = frame.slice(sep + 1);
 
 		if (type === '0') {
-			// "0:len:data" — extract data after the second colon.
+			// "0:len:data" - extract data after the second colon.
 			const lenSep = rest.indexOf(':');
 			if (lenSep < 0) return;
 			const payload = rest.slice(lenSep + 1);
 			this.#term?.write(payload);
 		} else if (type === '2') {
-			// Keepalive ping from server — respond with "2".
+			// Keepalive ping from server - respond with "2".
 			this.#ws?.send('2');
 		}
 	}

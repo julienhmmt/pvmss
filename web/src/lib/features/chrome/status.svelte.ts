@@ -39,10 +39,10 @@ export interface HealthResponse {
 /** Banner severity, from most to least urgent. First match wins (data-model.md). */
 export type Severity = 'none' | 'info' | 'degraded' | 'unhealthy' | 'unknown';
 
-/** Polling cadence — roughly half of T03's 30s server refresh interval. */
+/** Polling cadence - roughly half of T03's 30s server refresh interval. */
 const POLL_INTERVAL_MS = 15_000;
 
-/** Fetcher seam — overridable in tests. */
+/** Fetcher seam - overridable in tests. */
 export type HealthFetcher = () => Promise<HealthResponse>;
 
 const defaultFetcher: HealthFetcher = () => get<HealthResponse>('/health');
@@ -51,7 +51,7 @@ const defaultFetcher: HealthFetcher = () => get<HealthResponse>('/health');
  * StatusState polls the extended GET /health and derives one severity for
  * StatusBanner.svelte. raw is $state.raw (constitution VII: API response data,
  * reassigned whole, never mutated in place). A failed poll sets severity to
- * "unknown" — distinct from "none", per spec.md Edge Cases: silence would
+ * "unknown" - distinct from "none", per spec.md Edge Cases: silence would
  * misreport an unreachable check as "everything is fine."
  */
 export class StatusState {
@@ -89,12 +89,12 @@ export class StatusState {
 		return counts != null && counts.unreachable > 0 && counts.unreachable === counts.total;
 	}
 
-	/** Triggers a cluster refresh then re-polls health — the banner retry action. */
+	/** Triggers a cluster refresh then re-polls health - the banner retry action. */
 	async retryClusterConnection(): Promise<void> {
 		try {
 			await post('/api/v1/cluster/refresh');
 		} catch {
-			// The refresh may fail (cluster still down) — re-poll reports the
+			// The refresh may fail (cluster still down) - re-poll reports the
 			// current state either way.
 		}
 		await this.pollOnce();
@@ -106,7 +106,7 @@ export class StatusState {
 		this.#timer = setInterval(() => void this.pollOnce(), POLL_INTERVAL_MS);
 	}
 
-	/** Clears the interval — symmetric lifecycle for testability. */
+	/** Clears the interval - symmetric lifecycle for testability. */
 	stop(): void {
 		if (this.#timer !== null) clearInterval(this.#timer);
 		this.#timer = null;

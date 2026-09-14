@@ -22,7 +22,7 @@ export interface AppInfo {
 
 /**
  * AppInfoStore manages the admin app info view. API responses are $state.raw
- * — they are API data, not form edits (constitution VII). One store instance
+ * - they are API data, not form edits (constitution VII). One store instance
  * per admin appinfo page, via context.
  */
 export class AppInfoStore {

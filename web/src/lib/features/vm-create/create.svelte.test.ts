@@ -133,7 +133,7 @@ describe('VmCreateStore.buildRequest in simple mode', () => {
 		expect(store.buildRequest().secureBoot).toBeUndefined();
 	});
 
-	it('builds a profile request with an ISO (auto node — server places on an ISO-holding node)', () => {
+	it('builds a profile request with an ISO (auto node - server places on an ISO-holding node)', () => {
 		const store = new VmCreateStore();
 		store.catalog = catalog();
 		store.name = 'web-04';
@@ -289,7 +289,7 @@ describe('VmCreateStore.submit error translation', () => {
 		const err = new ApiRequestError(500, 'unknown_code', 'something else');
 		const msg = await submitWithError(err);
 		expect(msg).not.toBeNull();
-		// Generic message — does not echo the raw server text.
+		// Generic message - does not echo the raw server text.
 		expect(msg).not.toContain('something else');
 	});
 });
@@ -559,7 +559,7 @@ describe('VmCreateStore cloud-image source (image mode)', () => {
 		expect(request.tpm).toBe(true);
 	});
 
-	/** A catalog with one profile — the mandatory-profile path. */
+	/** A catalog with one profile - the mandatory-profile path. */
 	function catalogWithProfile(): VmCreateCatalog {
 		return {
 			...catalog(),
@@ -666,7 +666,7 @@ describe('VmCreateStore cloud-init document (ticket 04)', () => {
 		expect(store.cloudInitDocumentValue).toBe('');
 	});
 
-	it('emits cloudInitFileId — and never both ids — on the request', () => {
+	it('emits cloudInitFileId - and never both ids - on the request', () => {
 		const store = new VmCreateStore();
 		store.catalog = catalog();
 		store.name = 'web-04';

@@ -228,7 +228,7 @@
 							{#if pool.comment}
 								<span class="block max-w-xs truncate" title={pool.comment}>{pool.comment}</span>
 							{:else}
-								<span class="text-muted-foreground-subtle">—</span>
+								<span class="text-muted-foreground-subtle"> - </span>
 							{/if}
 						</td>
 						<td class="text-center" data-label={m['admin.pools.vmsColumn']()}>

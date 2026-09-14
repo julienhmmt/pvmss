@@ -28,7 +28,7 @@
 		loading = true;
 		error = null;
 		try {
-			// The list endpoint needs an explicit cluster — a scope=mine request
+			// The list endpoint needs an explicit cluster - a scope=mine request
 			// with none returns a 500, since it can't pick one out of several
 			// without being told. The session already knows which cluster this
 			// user belongs to (there's exactly one, unlike the admin-facing VM
@@ -82,7 +82,7 @@
 		</Button>
 	</div>
 
-	<!-- Their quota and any operation still running — the two things beyond
+	<!-- Their quota and any operation still running - the two things beyond
 	     the VM list itself that "how am I doing right now" needs. Rendered
 	     once the first load settles (quota !== undefined); a failed load
 	     leaves both at their last-known state rather than flashing empty. -->
@@ -157,7 +157,7 @@
 						</span>
 						<span class="font-mono text-muted-foreground">{vm.node}</span>
 						<span class="font-mono text-muted-foreground">{vm.cpuCores} {m['common.coreCount']({ count: vm.cpuCores })}</span>
-						<span class="font-mono text-muted-foreground">{vm.memoryTotal > 0 ? formatBytes(vm.memoryTotal) : '—'}</span>
+						<span class="font-mono text-muted-foreground">{vm.memoryTotal > 0 ? formatBytes(vm.memoryTotal) : ' - '}</span>
 					</li>
 				{/each}
 			</ul>

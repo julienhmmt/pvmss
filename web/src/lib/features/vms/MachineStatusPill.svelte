@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * MachineStatusPill — wraps `Pill.svelte` (not a fork) to map the
+	 * MachineStatusPill - wraps `Pill.svelte` (not a fork) to map the
 	 * 7-state `MachineDisplayStatus` (issue 09) to an existing Pill tone
 	 * + a Paraglide label. DESIGN.md §8 "Status pills".
 	 *

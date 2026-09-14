@@ -4,7 +4,7 @@
 	import SunIcon from '$lib/shared/ui/icons/SunIcon.svelte';
 	import MoonIcon from '$lib/shared/ui/icons/MoonIcon.svelte';
 
-	/** ThemeToggle — explicit icon button: shows the current mode, click to toggle.
+	/** ThemeToggle - explicit icon button: shows the current mode, click to toggle.
 	 *  Keeps a recognizable sun/moon glyph rather than an unlabeled switch. */
 	const theme = getThemeContext();
 

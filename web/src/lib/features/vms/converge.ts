@@ -27,7 +27,7 @@ interface LiveStatusResponse {
 	uptime: number;
 }
 
-/** Response shape from POST /vms/status (batch) — a bare array per ticket 01b. */
+/** Response shape from POST /vms/status (batch) - a bare array per ticket 01b. */
 type BatchStatusResponse = BatchStatusItem[];
 
 interface BatchStatusItem {
@@ -50,7 +50,7 @@ export interface ConvergeTarget {
  * - Polls `GET /api/v1/vms/:cluster/:vmid/status` every `ACTION_POLL_MS`.
  * - Calls `onTick` with each live reading so the store can patch the entity.
  * - Returns when `live.status === targetStatus` (converged) or the timeout
- *   expires (accepts the last reading — the action was accepted by Proxmox,
+ *   expires (accepts the last reading - the action was accepted by Proxmox,
  *   slow convergence is not a POST failure).
  * - Intermediate read errors are swallowed: the optimistic state survives
  *   and the next tick retries.
@@ -87,7 +87,7 @@ export async function convergeSingle(
  * - Same convergence and timeout semantics as `convergeSingle`.
  *
  * The batch endpoint is used even for a single row so the list and detail
- * stores share the same code path — no special-casing.
+ * stores share the same code path - no special-casing.
  */
 export async function convergeBatch(
 	target: ConvergeTarget,

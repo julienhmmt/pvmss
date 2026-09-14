@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { quotaMeterView } from './quota-meter.svelte';
 import type { VmQuota } from '$lib/features/vms/list.svelte';
 
-// T005 (US1/US2): quotaMeterView — pure presentation math for the sidebar /
+// T005 (US1/US2): quotaMeterView - pure presentation math for the sidebar /
 // list quota meter. Tested without a DOM. The contract (data-model.md):
 //   - allowed === -1  → unlimited (no fake 0–100 bar, no numeric denominator)
 //   - used >= allowed (allowed >= 0) → exhausted

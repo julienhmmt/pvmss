@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * ColorPicker — the shared color input primitive. Wraps a native
+	 * ColorPicker - the shared color input primitive. Wraps a native
 	 * <input type="color"> in the same .pv-input styling and ARIA wiring
 	 * (aria-describedby, aria-invalid) as TextField/Select so it can be used
 	 * inside FormField or standalone.

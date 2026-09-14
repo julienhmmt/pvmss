@@ -1,11 +1,11 @@
 <script lang="ts">
 	/**
-	 * Toaster — renders the global toast queue (FR-019) as a fixed,
+	 * Toaster - renders the global toast queue (FR-019) as a fixed,
 	 * accessible live region anchored bottom-right on desktop and bottom-full
 	 * on mobile. Each toast fades/slides in (reduced-motion safe via the
 	 * global app.css rule). Error toasts use role="alert"; success/info use
 	 * role="status" with aria-live="polite". Existing inline role="alert"
-	 * blocks elsewhere are untouched — this is an ADDITIONAL channel.
+	 * blocks elsewhere are untouched - this is an ADDITIONAL channel.
 	 */
 	import { getToastContext, type ToastVariant } from './toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';

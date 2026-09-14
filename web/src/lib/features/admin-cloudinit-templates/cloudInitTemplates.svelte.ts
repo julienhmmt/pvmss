@@ -12,7 +12,7 @@ export interface AdminCloudInitTemplate {
 
 /**
  * AdminCloudInitTemplatesStore manages the CRUD state for cloud-init
- * templates. API responses are $state.raw — they are API data, not form edits.
+ * templates. API responses are $state.raw - they are API data, not form edits.
  */
 export class AdminCloudInitTemplatesStore {
 	templates = $state.raw<AdminCloudInitTemplate[]>([]);

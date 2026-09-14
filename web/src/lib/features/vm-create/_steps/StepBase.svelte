@@ -11,7 +11,7 @@
 
 	// Base step (FR-011): name, source type (ISO vs template vs cloud image,
 	// US2/issue-02), node (hidden for template source, D2b), extra tags
-	// (pvmss is added server-side, FR-006), and the source — all choices
+	// (pvmss is added server-side, FR-006), and the source - all choices
 	// from the approved catalog.
 	const form = getVmCreateContext();
 
@@ -54,13 +54,13 @@
 		}
 	});
 
-	// US2/issue-02 D2b: hide the node selector when a template is selected —
+	// US2/issue-02 D2b: hide the node selector when a template is selected - 
 	// the clone stays on the template's node. Image mode keeps it: like an
 	// ISO, an image is node-local and the server restricts candidates to the
 	// nodes holding it.
 	const showNodeSelector = $derived(form.sourceType !== 'template');
 
-	// Issue 04: the template's disk is the clone source — Proxmox cannot
+	// Issue 04: the template's disk is the clone source - Proxmox cannot
 	// shrink it, so the disk size may never drop below the template's size.
 	// Switching the source away from template clears the floor.
 	$effect(() => {

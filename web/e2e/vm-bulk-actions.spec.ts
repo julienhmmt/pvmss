@@ -29,7 +29,7 @@ test.describe('T17 VM bulk actions', () => {
 		await signInAlice(page.request);
 		await page.goto('/vms?cluster=default');
 
-		// Wait for the list to load — alice owns 7 VMs.
+		// Wait for the list to load - alice owns 7 VMs.
 		await expect(page.locator('[data-testid="vm-row"]')).toHaveCount(7);
 
 		// Select two stopped VMs by name (sort-order-independent): dev-02 (124) and web-02 (101).
@@ -83,7 +83,7 @@ test.describe('T17 VM bulk actions', () => {
 		await page.locator('[data-testid="vm-bulk-action-select"]').selectOption('start');
 		await page.locator('[data-testid="vm-bulk-action-submit"]').click();
 
-		// The result panel shows 2 rows — one ok, one error.
+		// The result panel shows 2 rows - one ok, one error.
 		await expect(page.locator('[data-testid="vm-bulk-result-panel"]')).toBeVisible();
 		await expect(page.locator('[data-testid="vm-bulk-result-row"]')).toHaveCount(2);
 		await expect(page.locator('[data-testid="vm-bulk-result-ok"]')).toHaveCount(1);

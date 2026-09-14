@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Button — the shared button primitive, in the same hand-rolled style as
+	 * Button - the shared button primitive, in the same hand-rolled style as
 	 * Switch/Dialog/Tabs (no bits-ui in this codebase). Gives every admin
 	 * button one vocabulary and a real focus-visible ring (product register:
 	 * every interactive control needs default/hover/focus/disabled states).

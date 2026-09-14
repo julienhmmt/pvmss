@@ -4,8 +4,8 @@
 	import { m } from '$lib/paraglide/messages.js';
 
 	/**
-	 * CapabilitiesPanel — compact informational panel shown in the connected
-	 * layout (when session.principal !== null). Uses session context only —
+	 * CapabilitiesPanel - compact informational panel shown in the connected
+	 * layout (when session.principal !== null). Uses session context only - 
 	 * no new API calls. Shows a brief capabilities summary, an admin-scope
 	 * hint for administrators, and a link to the full /about page.
 	 */

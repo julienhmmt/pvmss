@@ -7,12 +7,12 @@
 	import ProfilePicker from '../ProfilePicker.svelte';
 
 	// Hardware step: vCPU and memory. Client-side bounds are a convenience
-	// only — the server re-checks against the same ceiling (constitution VI).
+	// only - the server re-checks against the same ceiling (constitution VI).
 	const form = getVmCreateContext();
 
 	// Image source with profiles configured: a profile replaces manual
 	// sockets/CPU/memory entirely (the server ignores those fields once a
-	// profileId is set — FR-009), so pick one instead of typing values.
+	// profileId is set - FR-009), so pick one instead of typing values.
 	const showProfilePicker = $derived(form.sourceType === 'image' && form.hasProfiles());
 
 	function profileDescription(profile: { cpuCores: number; memoryMB: number; diskGB: number; bus: string }): string {

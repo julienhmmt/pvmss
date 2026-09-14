@@ -6,7 +6,7 @@
  * DELETE returns a task UPID that PVMSS discards without waiting on). The
  * server refreshes its inventory cache immediately after issuing the delete,
  * but the VM often isn't actually gone from Proxmox yet, so that refresh
- * still captures it — the cache does not clear until a later inventory tick
+ * still captures it - the cache does not clear until a later inventory tick
  * once the destroy task has actually finished. This client-side suppression
  * closes that visible gap.
  */
@@ -34,7 +34,7 @@ function writeEntries(entries: Entry[]): void {
 	try {
 		sessionStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
 	} catch {
-		// sessionStorage unavailable (private mode, disabled) — suppression just
+		// sessionStorage unavailable (private mode, disabled) - suppression just
 		// won't survive the navigation; the VM still disappears on the next
 		// inventory refresh.
 	}

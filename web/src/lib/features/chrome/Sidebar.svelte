@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Sidebar — Layer B app-shell sidebar (236px sticky column). Brand + cluster,
+	 * Sidebar - Layer B app-shell sidebar (236px sticky column). Brand + cluster,
 	 * "New machine" CTA and Machines link (hidden for admins), Home / Nodes,
 	 * admin groups shown as collapsible sections only when session.isAdmin, user
 	 * chip. Active nav uses aria-current="page" + tint fill.

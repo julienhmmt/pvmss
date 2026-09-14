@@ -1,5 +1,5 @@
 <script lang="ts">
-	/** DiscIcon — CD-ROM / boot-from-ISO affordance. Inherits currentColor. */
+	/** DiscIcon - CD-ROM / boot-from-ISO affordance. Inherits currentColor. */
 	interface Props {
 		class?: string;
 	}
