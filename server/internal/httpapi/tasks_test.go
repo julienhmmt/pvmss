@@ -40,7 +40,7 @@ func getTask(t *testing.T, handler *httpapi.Tasks, upid string, cookie *http.Coo
 	return recorder
 }
 
-// TestTasks_PollTransitions — T012/SC-006: the fake's poll-count state machine
+// T012/SC-006: the fake's poll-count state machine
 // surfaces as running, then ok across three GET calls.
 //
 //nolint:paralleltest // serial: shared fake task fixture
