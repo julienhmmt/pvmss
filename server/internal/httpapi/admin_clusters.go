@@ -190,8 +190,17 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 		handler.writeStoreFailure(w, err)
 		return
 	}
-	row.SnippetDir, row.SnippetStorage = request.SnippetDir, request.SnippetStorage
-	if err := handler.replace(r.Context(), row); err != nil {
+	// Re-fetch the stored row so the registry factory receives the decrypted
+	// token secret. The HTTP request omits TokenSecret on edit (the field is
+	// only required on create), so the in-memory row above has it empty —
+	// passing that to replace() would fail with "cluster credentials are
+	// required" on the Proxmox factory.
+	stored, err := handler.store.GetCluster(r.Context(), name)
+	if err != nil {
+		handler.writeFailure(w, err)
+		return
+	}
+	if err := handler.replace(r.Context(), stored); err != nil {
 		handler.writeFailure(w, err)
 		return
 	}
@@ -338,7 +347,11 @@ func (handler *AdminClusters) clusterDTO(row store.ClusterRow) adminClusterDTO {
 	nodeCount, vmCount := 0, 0
 	if index != nil {
 		nodeCount, vmCount = len(index.Nodes), len(index.ByVMID)
-		if version == "" {
+		// Prefer the live inventory version — the background worker refreshes
+		// it every interval, so it tracks cluster upgrades without a manual
+		// Test. Fall back to the persisted DB value only when the index is
+		// cold or has no version (cluster unreachable at last refresh).
+		if index.ProxmoxVersion != "" {
 			version = index.ProxmoxVersion
 		}
 	}
