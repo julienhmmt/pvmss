@@ -4,6 +4,7 @@
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import FormField from '$lib/shared/ui/FormField.svelte';
+	import FormSection from '$lib/shared/ui/FormSection.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
 	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
 	import type { AdminCluster, ClusterInput } from './clusters.svelte';
@@ -24,6 +25,9 @@
 	let tokenId = $state('');
 	let tokenSecret = $state('');
 	let tlsInsecureSkipVerify = $state(false);
+	let snippetDir = $state('');
+	let snippetStorage = $state('');
+	let pairError = $state<string | null>(null);
 	const TITLE_ID = 'cluster-form-title';
 
 	$effect(() => {
@@ -34,11 +38,21 @@
 			tokenId = editing?.tokenId ?? '';
 			tokenSecret = '';
 			tlsInsecureSkipVerify = editing?.tlsInsecureSkipVerify ?? false;
+			snippetDir = editing?.snippetDir ?? '';
+			snippetStorage = editing?.snippetStorage ?? '';
+			pairError = null;
 		});
 	});
 
 	function submit(): void {
-		onSubmit({ name: name.trim(), url: url.trim(), tokenId: tokenId.trim(), tokenSecret, tlsInsecureSkipVerify });
+		const dir = snippetDir.trim();
+		const storage = snippetStorage.trim();
+		if ((dir === '') !== (storage === '')) {
+			pairError = m['admin.clusters.cloudinitPairError']();
+			return;
+		}
+		pairError = null;
+		onSubmit({ name: name.trim(), url: url.trim(), tokenId: tokenId.trim(), tokenSecret, tlsInsecureSkipVerify, snippetDir: dir, snippetStorage: storage });
 	}
 </script>
 
@@ -71,8 +85,20 @@
 			onToggle={(checked) => (tlsInsecureSkipVerify = checked)}
 			variant="warning"
 		/>
-		{#if error}
-			<Alert>{error}</Alert>
+		<FormSection legend={m['admin.clusters.cloudinitSection']()} description={m['admin.clusters.cloudinitHint']()}>
+			<FormField label={m['admin.clusters.snippetDir']()}>
+				{#snippet children({ id, describedBy, invalid })}
+					<TextField {id} {describedBy} {invalid} bind:value={snippetDir} placeholder="/snippets" />
+				{/snippet}
+			</FormField>
+			<FormField label={m['admin.clusters.snippetStorage']()}>
+				{#snippet children({ id, describedBy, invalid })}
+					<TextField {id} {describedBy} {invalid} bind:value={snippetStorage} placeholder="shared" />
+				{/snippet}
+			</FormField>
+		</FormSection>
+		{#if pairError ?? error}
+			<Alert>{pairError ?? error}</Alert>
 		{/if}
 		<div class="mt-2 flex justify-end gap-2">
 			<Button variant="secondary" onclick={onClose} disabled={saving}>{m['common.cancel']()}</Button>

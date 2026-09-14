@@ -366,6 +366,99 @@ func TestDelete_ForceStopsRunningVMThenDeletes(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared fake VM fixture and SQLite store
+func TestDelete_RemovesCloudInitDocument(t *testing.T) {
+	fake := actionsIndex(t)
+	idx := buildResolveIndex(t)
+	st := bulkTestStore(t)
+
+	// Seed a snippet row for VM 101 (alice-owned) — the file delete target.
+	if err := st.PutCloudInitSnippet(context.Background(), testClusterName, 101,
+		cluster.FakeSnippetStorage, "pvmss-101.yml", "#cloud-config\n", "alice"); err != nil {
+		t.Fatalf("PutCloudInitSnippet: %v", err)
+	}
+
+	if err := vm.Delete(context.Background(), vm.WriteDeps{
+		Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName,
+		VMID: 101, Writer: fake, Audit: st, Refresher: noopRefresher{},
+		Store: st,
+	}); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+
+	// The fake saw the remove call.
+	var sawRemove bool
+
+	for _, c := range cluster.FakeCalls() {
+		if c.Action == "remove_cloudinit_snippet" && c.Filename == "pvmss-101.yml" {
+			sawRemove = true
+		}
+	}
+
+	if !sawRemove {
+		t.Errorf("no remove_cloudinit_snippet call recorded: %+v", cluster.FakeCalls())
+	}
+
+	// The row is gone.
+	if _, found, err := st.GetCloudInitSnippet(context.Background(), testClusterName, 101); err != nil || found {
+		t.Errorf("snippet after delete found %v, err %v; want absent", found, err)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake VM fixture and SQLite store
+func TestDelete_CleanupFailureIsNonFatal(t *testing.T) {
+	fake := actionsIndex(t)
+	idx := buildResolveIndex(t)
+	st := bulkTestStore(t)
+
+	// Seed a snippet row for VM 101.
+	if err := st.PutCloudInitSnippet(context.Background(), testClusterName, 101,
+		cluster.FakeSnippetStorage, "pvmss-101.yml", "#cloud-config\n", "alice"); err != nil {
+		t.Fatalf("PutCloudInitSnippet: %v", err)
+	}
+
+	// Inject a remove error on the fake. The delete must still succeed.
+	cluster.SetFakeCloudInitPushError(errors.New("remove unavailable"))
+
+	err := vm.Delete(context.Background(), vm.WriteDeps{
+		Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName,
+		VMID: 101, Writer: fake, Audit: st, Refresher: noopRefresher{},
+		Store: st,
+	})
+
+	cluster.SetFakeCloudInitPushError(nil)
+
+	if err != nil {
+		t.Fatalf("Delete: %v; cleanup failure must not block delete", err)
+	}
+
+	// The row is still gone — the store delete succeeds even if the file remove failed.
+	if _, found, err := st.GetCloudInitSnippet(context.Background(), testClusterName, 101); err != nil || found {
+		t.Errorf("snippet after delete found %v, err %v; want absent", found, err)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake VM fixture
+func TestDelete_NoSnippetNoRemoveCall(t *testing.T) {
+	fake := actionsIndex(t)
+	idx := buildResolveIndex(t)
+	st := bulkTestStore(t)
+
+	if err := vm.Delete(context.Background(), vm.WriteDeps{
+		Index: idx, Actor: aliceIdentity(), ClusterName: testClusterName,
+		VMID: 101, Writer: fake, Audit: st, Refresher: noopRefresher{},
+		Store: st,
+	}); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+
+	for _, c := range cluster.FakeCalls() {
+		if c.Action == "remove_cloudinit_snippet" {
+			t.Errorf("unexpected remove call when no snippet row existed: %+v", c)
+		}
+	}
+}
+
 // =============================================================================
 // Patch
 // =============================================================================

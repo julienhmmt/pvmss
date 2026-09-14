@@ -10,6 +10,7 @@
 	import VmSerialConsole from '$lib/features/vm-console/VmSerialConsole.svelte';
 	import ConsoleToolbar from '$lib/features/vm-console/ConsoleToolbar.svelte';
 	import { setVmDetailContext } from '$lib/features/vms/detail.svelte';
+	import VmActionBar from '$lib/features/vms/VmActionBar.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	type ConsoleMode = 'graphical' | 'text';
@@ -87,6 +88,10 @@
 		>
 			{mode === 'graphical' ? store.state : serialStore.state}
 		</span>
+	</div>
+
+	<div class="mb-3" data-testid="vm-console-action-bar">
+		<VmActionBar hideDelete />
 	</div>
 
 	<div class="mb-3 flex items-center gap-2" data-testid="vm-console-mode-switcher">

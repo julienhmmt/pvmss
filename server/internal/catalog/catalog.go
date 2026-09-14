@@ -155,7 +155,7 @@ func (r Resources) HasCloudImage(storage, file, node string) bool {
 	return false
 }
 
-// FindImage returns the approved cloud image matching (storage, file, node),
+// FindCloudImage returns the approved cloud image matching (storage, file, node),
 // or an error wrapping ErrNotApproved when absent.
 func (r Resources) FindCloudImage(storage, file, node string) (Image, error) {
 	for _, image := range r.Images {

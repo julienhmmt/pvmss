@@ -477,7 +477,16 @@ func (fake Fake) SetCloudInitConfig(ctx context.Context, node string, vmid int, 
 	return nil
 }
 
-// PushCloudInitSnippet implements Writer and records the server-owned target and content.
+// SnippetWriteAvailable implements Writer. The fake always has a write
+// target so the dev stack and tests see cloud-init documents enabled.
+func (fake Fake) SnippetWriteAvailable() bool {
+	return true
+}
+
+// PushCloudInitSnippet implements Writer and records the server-owned target
+// and content. On success it also marks the file present so HasSnippet
+// answers true for the same (node, storage, filename) triple — matching the
+// real client's write-then-verify contract.
 func (fake Fake) PushCloudInitSnippet(_ context.Context, node, storage, filename string, vmid int, content string) error {
 	state := fake.stateOrDefault()
 	state.pushMu.RLock()
@@ -489,6 +498,12 @@ func (fake Fake) PushCloudInitSnippet(_ context.Context, node, storage, filename
 	if err != nil {
 		return err
 	}
+
+	state.snippetMu.Lock()
+	if state.snippetPushMarksPresent {
+		state.snippetPresence[fakeSnippetKey{node: node, storage: storage, filename: filename}] = true
+	}
+	state.snippetMu.Unlock()
 
 	return nil
 }
@@ -521,6 +536,23 @@ func (fake Fake) HasSnippet(_ context.Context, node, storage, filename string) (
 	defer state.snippetMu.RUnlock()
 
 	return state.snippetPresence[fakeSnippetKey{node: node, storage: storage, filename: filename}], nil
+}
+
+// RemoveCloudInitSnippet implements Writer and records the removal, clearing
+// the presence flag so a subsequent HasSnippet returns false.
+func (fake Fake) RemoveCloudInitSnippet(_ context.Context, storage, filename string) error {
+	state := fake.stateOrDefault()
+	state.record(FakeCall{Action: "remove_cloudinit_snippet", Storage: storage, Filename: filename})
+
+	state.snippetMu.Lock()
+	for key := range state.snippetPresence {
+		if key.storage == storage && key.filename == filename {
+			delete(state.snippetPresence, key)
+		}
+	}
+	state.snippetMu.Unlock()
+
+	return nil
 }
 
 // SetCloudInitPassword implements Writer and records the agent password apply
@@ -609,6 +641,17 @@ func SetFakeSnippetPresent(node, storage, filename string, present bool) {
 	state.snippetMu.Lock()
 	defer state.snippetMu.Unlock()
 	state.snippetPresence[fakeSnippetKey{node: node, storage: storage, filename: filename}] = present
+}
+
+// SetFakeSnippetVisibility controls whether a successful PushCloudInitSnippet
+// marks the file visible to HasSnippet. True (the default) is the real
+// client's write-then-verify contract; false simulates a wrong mount — the
+// write succeeds on the PVMSS side but Proxmox never lists the file.
+func SetFakeSnippetVisibility(marksPresent bool) {
+	state := defaultState()
+	state.snippetMu.Lock()
+	defer state.snippetMu.Unlock()
+	state.snippetPushMarksPresent = marksPresent
 }
 
 // SetFakeCreateError configures the default fake's CreateVM error for the

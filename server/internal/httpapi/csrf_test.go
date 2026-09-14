@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/httpapi"
-	"strings"
 	"testing"
 )
 
@@ -19,7 +18,7 @@ func TestCSRF_MissingTokenReturns403(t *testing.T) {
 
 	session, _ := loginCSRF(t, handler, `{"username":"alice","password":"pvmss-alice"}`)
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/auth/tokens", strings.NewReader(`{"label":"test","scope":"read"}`))
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/cluster/refresh", nil)
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(session)
 
@@ -47,7 +46,7 @@ func TestCSRF_WrongTokenReturns403(t *testing.T) {
 
 	session, csrfCookie := loginCSRF(t, handler, `{"username":"alice","password":"pvmss-alice"}`)
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/auth/tokens", strings.NewReader(`{"label":"test","scope":"read"}`))
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/cluster/refresh", nil)
 	req.Header.Set("Content-Type", "application/json")
 	req.AddCookie(session)
 	req.AddCookie(csrfCookie)
@@ -68,15 +67,15 @@ func TestCSRF_ValidTokenPasses(t *testing.T) {
 
 	session, csrfCookie := loginCSRF(t, handler, `{"username":"alice","password":"pvmss-alice"}`)
 
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/auth/tokens", strings.NewReader(`{"label":"test","scope":"read"}`))
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/cluster/refresh", nil)
 	req.Header.Set("Content-Type", "application/json")
 	setCSRF(req, session, csrfCookie)
 
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusCreated {
-		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusCreated, rec.Body.String())
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 }
 

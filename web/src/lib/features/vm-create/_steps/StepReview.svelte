@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
 	import { getVmCreateContext } from '../create.svelte';
 	import { getDraftContext } from '../draft.svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
+	import { getTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
+	import { handleAccepted } from '../post-submit';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -15,8 +15,19 @@
 	const tray = getTaskTrayContext();
 	const toast = getToastContext();
 	const draft = getDraftContext();
+	const outcomeLedger = getTaskOutcomeLedgerContext();
 
 	const outgoing = $derived(form.buildRequest());
+
+	// The review shows the chosen document's label — the raw request JSON
+	// only carries the id.
+	const cloudInitDocumentLabel = $derived(
+		form.cloudInitTemplateId !== ''
+			? (form.catalog?.cloudInitTemplates.find((t) => t.id === form.cloudInitTemplateId)?.label ?? form.cloudInitTemplateId)
+			: form.cloudInitFileId !== ''
+				? (form.myCloudInitFiles.find((f) => f.id === form.cloudInitFileId)?.label ?? form.cloudInitFileId)
+				: null
+	);
 
 	// Image mode: block the submit until the image's disk floor and the
 	// mandatory cloud-init are satisfied (mirrored by store.submit).
@@ -28,19 +39,15 @@
 			if (form.submitError) toast.error(m['toast.vmCreateFailed']({ error: form.submitError }));
 			return;
 		}
-		draft.clear();
-		tray.track({ upid: accepted.upid, kind: 'vm_create', vmid: accepted.vmid, name: accepted.name, cluster: accepted.cluster });
-		if (accepted.cloudInitPushError) {
-			toast.error(m['toast.vmCreateCloudInitWarning']({ error: accepted.cloudInitPushError }), 0);
-		} else {
-			toast.info(m['toast.vmCreateQueued']());
-		}
-		await goto(resolve('/vms'));
+		await handleAccepted(accepted, { tray, toast, draft, outcomeLedger });
 	}
 </script>
 
 <div class="grid gap-4">
 	<h2 class="text-sm font-medium">{m['vms.create.reviewHeading']()}</h2>
+	<p class="text-sm text-muted-foreground">
+		{m['vms.create.reviewCloudinitDocument']()}: {cloudInitDocumentLabel ?? m['vms.create.cloudinitNone']()}
+	</p>
 	<pre
 		class="overflow-x-auto rounded-lg border border-border bg-muted p-4 font-mono text-xs"
 		data-testid="review-request">{JSON.stringify(outgoing, null, 2)}</pre>

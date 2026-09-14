@@ -92,7 +92,7 @@ func TestCreateSnapshot_GuardsRejectBeforeClusterWrite(t *testing.T) {
 					}
 
 					snap.VMs[index].Status = cluster.VMRunning
-					snap.VMs[index].Disks[1].Storage = "local"
+					snap.VMs[index].Disks[1].Storage = testStorageLocal
 				}
 			},
 			wantError: vm.ErrVMStateUnsupportedStorage,

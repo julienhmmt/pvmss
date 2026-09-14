@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
 	import { getVmCreateContext, type SimpleSource } from './create.svelte';
 	import { getDraftContext } from './draft.svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
+	import { getTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
+	import { handleAccepted } from './post-submit';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -15,6 +15,7 @@
 	import TemplatePicker from './TemplatePicker.svelte';
 	import ImagePicker from './ImagePicker.svelte';
 	import ImageCloudInitFields from './ImageCloudInitFields.svelte';
+	import CloudInitDocumentSelect from './CloudInitDocumentSelect.svelte';
 	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Switch from '$lib/shared/ui/Switch.svelte';
@@ -26,11 +27,15 @@
 	const form = getVmCreateContext();
 	const tray = getTaskTrayContext();
 	const toast = getToastContext();
+	const outcomeLedger = getTaskOutcomeLedgerContext();
 	const draft = getDraftContext();
 
 	const hasTemplates = $derived((form.catalog?.templates ?? []).length > 0);
 	const hasImages = $derived((form.catalog?.images ?? []).length > 0);
 	const hasProfiles = $derived(form.hasProfiles());
+
+	const catalogTags = $derived(form.catalog?.tags ?? []);
+	const selectedTags = $derived(new Set(form.selectedTags()));
 
 	$effect(() => {
 		if (!hasTemplates && form.simpleSource === 'template') {
@@ -55,13 +60,13 @@
 
 	// ISO install and cloud-init are incompatible use cases: ISO is for a
 	// manual OS install, cloud-init is for pre-built cloud images. When a
-	// cloud-init template is selected, the server suppresses start=1 and
+	// cloud-init document is selected, the server suppresses start=1 and
 	// starts the VM only after attaching the snippet (lifecycle-04) — so an
 	// ISO install with a stale cloud-init selection leaves the VM stopped.
-	// Clear the cloud-init template when an ISO is picked.
+	// Clear the cloud-init document when an ISO is picked.
 	$effect(() => {
 		if (form.isoFile !== '') {
-			form.cloudInitTemplateId = '';
+			form.cloudInitDocumentValue = '';
 		}
 	});
 
@@ -112,10 +117,12 @@
 			: null
 	);
 
-	const cloudInitTemplateError = $derived(
-		form.catalog && form.cloudInitTemplateId !== '' && !form.catalog.cloudInitTemplates.some((template) => template.id === form.cloudInitTemplateId)
+	const cloudInitDocumentError = $derived(
+		form.cloudInitTemplateId !== '' && form.catalog && !form.catalog.cloudInitTemplates.some((template) => template.id === form.cloudInitTemplateId)
 			? m['vms.create.errorCloudinitTemplateInvalid']()
-			: null
+			: form.cloudInitFileId !== '' && !form.myCloudInitFiles.some((file) => file.id === form.cloudInitFileId)
+				? m['vms.create.errorCloudinitFileInvalid']()
+				: null
 	);
 
 	const imageError = $derived(
@@ -169,7 +176,7 @@
 		form.catalog !== null &&
 			!form.submitting &&
 			!nameError &&
-			!cloudInitTemplateError &&
+			!cloudInitDocumentError &&
 			!form.imageModeBlocker() &&
 			(form.simpleSource === 'image'
 				? !imageError && !diskSizeError && !imageProfileError
@@ -185,18 +192,7 @@
 			if (form.submitError) toast.error(m['toast.vmCreateFailed']({ error: form.submitError }));
 			return;
 		}
-		draft.clear();
-		tray.track({ upid: accepted.upid, kind: 'vm_create', vmid: accepted.vmid, name: accepted.name, cluster: accepted.cluster });
-		if (accepted.cloudInitPushError) {
-			// The VM was created (task queued) but cloud-init could not be
-			// applied — surface it, sticky (duration 0), instead of the
-			// success toast: cloudInitPushError used to be dead data on this
-			// type, silently hiding the failure from the user.
-			toast.error(m['toast.vmCreateCloudInitWarning']({ error: accepted.cloudInitPushError }), 0);
-		} else {
-			toast.info(m['toast.vmCreateQueued']());
-		}
-		await goto(resolve('/vms'));
+		await handleAccepted(accepted, { tray, toast, draft, outcomeLedger });
 	}
 </script>
 
@@ -316,23 +312,30 @@
 			{/if}
 		{/if}
 
-		{#if cat.cloudInitTemplates.length > 0 && form.simpleSource !== 'image'}
-			<FormField label={m['vms.create.cloudinitTemplate']()} hint={m['common.optional']()} error={cloudInitTemplateError}>
-				{#snippet children({ id, describedBy, invalid })}
-					<Select
-						{id}
-						{describedBy}
-						{invalid}
-						bind:value={form.cloudInitTemplateId}
-						placeholder={m['common.none']()}
-						options={cat.cloudInitTemplates.map((template) => ({
-							value: template.id,
-							label: template.label
-						}))}
-					/>
-				{/snippet}
-			</FormField>
-		{/if}
+		<CloudInitDocumentSelect error={cloudInitDocumentError} />
+
+		<FormField label={m['vms.create.tags']()} hint={m['vms.create.tagsHelp']()}>
+			{#if catalogTags.length === 0}
+				<p class="text-sm text-muted-foreground">{m['vms.create.tagsNoneAvailable']()}</p>
+			{:else}
+				<div class="flex flex-wrap gap-2" role="group" aria-label={m['vms.create.tags']()}>
+					{#each catalogTags as tag (tag.name)}
+						{@const isSelected = selectedTags.has(tag.name)}
+						<button
+							type="button"
+							aria-pressed={isSelected}
+							onclick={() => form.toggleTag(tag.name)}
+							class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors pv-focus {isSelected
+								? 'border-transparent bg-primary text-primary-foreground'
+								: 'border-border bg-muted text-muted-foreground hover:bg-muted/80'}"
+						>
+							<span class="h-2 w-2 rounded-full" style="background-color: {tag.color}" aria-hidden="true"></span>
+							{tag.name}
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</FormField>
 
 		</FormSection>
 
@@ -381,6 +384,25 @@
 					</p>
 				{/if}
 			</FormSection>
+		{/if}
+
+		{#if form.simpleSource !== 'template'}
+			<Checkbox
+				label={m['vms.create.uefi']()}
+				hint={m['vms.create.uefiHint']()}
+				checked={form.uefi}
+				onToggle={(checked) => {
+					form.uefi = checked;
+					if (!checked) form.secureBoot = false;
+				}}
+			/>
+			<Checkbox
+				label={m['vms.create.secureBoot']()}
+				hint={m['vms.create.secureBootHint']()}
+				checked={form.secureBoot}
+				onToggle={(checked) => (form.secureBoot = checked)}
+				disabled={!form.uefi}
+			/>
 		{/if}
 
 		<Checkbox

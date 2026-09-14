@@ -77,7 +77,10 @@
 			: [{ href: resolve('/'), label: () => m['chrome.sidebar.navHome'](), icon: 'home' as SidebarIconName }]),
 		{ href: resolve('/search'), label: () => m['chrome.sidebar.navSearch'](), icon: 'search' as SidebarIconName },
 		...(!session.isAdmin
-			? [{ href: resolve('/vms'), label: () => m['chrome.sidebar.navMachines'](), icon: 'vm' as SidebarIconName }]
+			? [
+					{ href: resolve('/vms'), label: () => m['chrome.sidebar.navMachines'](), icon: 'vm' as SidebarIconName },
+					{ href: resolve('/cloud-init'), label: () => m['chrome.sidebar.navCloudInit'](), icon: 'catalog' as SidebarIconName }
+				]
 			: []),
 		{ href: resolve('/about'), label: () => m['chrome.sidebar.navAbout'](), icon: 'info' as SidebarIconName }
 	]);
