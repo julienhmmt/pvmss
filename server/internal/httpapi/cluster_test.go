@@ -102,7 +102,7 @@ func buildProjectionWithIndex(t *testing.T, snap cluster.Snapshot, refreshedAt t
 }
 
 // TestClusterNodes_Success — GET /cluster/nodes reads from the Index, includes
-// vmCount and refreshedAt (contracts/cluster-refresh.md, FR-008).
+// vmCount and refreshedAt.
 //
 //nolint:paralleltest // serial: shared fake cluster fixture
 func TestClusterNodes_Success(t *testing.T) {
@@ -176,7 +176,7 @@ func TestClusterNodes_Success(t *testing.T) {
 }
 
 // TestClusterNodes_NotReady — before the first refresh, GET /cluster/nodes
-// returns 503 inventory_not_ready, distinct from an empty list (FR-009).
+// returns 503 inventory_not_ready, distinct from an empty list.
 //
 //nolint:paralleltest // serial: shared fake cluster fixture
 func TestClusterNodes_NotReady(t *testing.T) {

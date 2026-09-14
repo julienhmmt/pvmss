@@ -109,7 +109,7 @@ func projectionRefreshedAt(t *testing.T, registry *inventory.Registry, clusterNa
 }
 
 // TestVMDetail_ActionOnSecondaryClusterRefreshesOnlySecondaryProjection is the
-// acceptance test for ticket 02: an action on a non-default cluster must
+// acceptance test for an action on a non-default cluster must
 // refresh that cluster's projection, not the default cluster's. Before the
 // fix, the handler used the default cluster's worker for every cluster, so
 // the default projection was refreshed instead.

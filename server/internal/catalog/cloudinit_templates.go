@@ -20,13 +20,13 @@ var ErrDuplicateCloudInitTemplate = errors.New("duplicate cloud-init template")
 var ErrCloudInitTemplateNotFound = errors.New("cloud-init template not found")
 
 // ErrInvalidCloudInitTemplate is returned when template fields are missing or
-// content fails T08's validation (400).
+// content fails the validation.
 var ErrInvalidCloudInitTemplate = errors.New("invalid cloud-init template")
 
 // CloudInitTemplate is one catalog_cloudinit_templates row. The same struct is
 // returned by both the admin (all rows) and catalog (enabled-only) readers;
 // each audience's handler calls the reader appropriate to its own audience,
-// matching T11's identical split for profiles.
+// matching the identical split for profiles.
 type CloudInitTemplate struct {
 	ID        string
 	Label     string
@@ -37,7 +37,7 @@ type CloudInitTemplate struct {
 }
 
 // DeriveCloudInitTemplateID converts a label to a lowercase hyphenated slug,
-// mirroring T11's DeriveProfileID convention (e.g. "Web server" → "web-server").
+// mirroring DeriveProfileID convention (e.g. "Web server" → "web-server").
 // The slug is the template's permanent id.
 func DeriveCloudInitTemplateID(label string) string {
 	return cloudinit.Slugify(label, "template")
@@ -63,7 +63,7 @@ func ListCloudInitTemplates(ctx context.Context, st *store.Store, cluster string
 }
 
 // CloudInitTemplates returns only enabled templates for the cluster, ordered by
-// id — T06's catalog reader's data source (FR-004). Disabled templates remain
+// id — the catalog reader's data source. Disabled templates remain
 // visible only through ListCloudInitTemplates (the admin list).
 func CloudInitTemplates(ctx context.Context, st *store.Store, cluster string) ([]CloudInitTemplate, error) {
 	rows, err := st.CatalogCloudInitTemplatesEnabled(ctx, cluster)
@@ -84,9 +84,9 @@ func CloudInitTemplates(ctx context.Context, st *store.Store, cluster string) ([
 
 // FindCloudInitTemplate returns a single enabled template by id — used by
 // vm.Create to resolve a template's content server-side before allocating a
-// VMID (FR-006). Returns ErrCloudInitTemplateNotFound when the id is absent or
-// disabled. Named FindCloudInitTemplate to mirror catalog.FindProfile (T11's
-// own single-lookup convention), since Go forbids a type and function sharing
+// VMID. Returns ErrCloudInitTemplateNotFound when the id is absent or
+// disabled. Named FindCloudInitTemplate to mirror catalog.FindProfile (single-lookup
+// convention), since Go forbids a type and function sharing
 // the name CloudInitTemplate.
 func FindCloudInitTemplate(ctx context.Context, st *store.Store, cluster, id string) (CloudInitTemplate, error) {
 	templates, err := CloudInitTemplates(ctx, st, cluster)
@@ -104,7 +104,7 @@ func FindCloudInitTemplate(ctx context.Context, st *store.Store, cluster, id str
 }
 
 // CreateCloudInitTemplate derives a slug from the label, validates the content
-// with T08's cloudinit.Validate (FR-003), rejects slug collisions with
+// with the cloudinit.Validate, rejects slug collisions with
 // ErrDuplicateCloudInitTemplate (409), and inserts the new row. The new
 // template is enabled by default.
 func CreateCloudInitTemplate(ctx context.Context, st *store.Store, cluster, label, content string) (CloudInitTemplate, error) {
@@ -144,7 +144,7 @@ func CreateCloudInitTemplate(ctx context.Context, st *store.Store, cluster, labe
 }
 
 // UpdateCloudInitTemplate changes an existing template's label and content,
-// re-validating the content with T08's cloudinit.Validate (FR-003). Returns
+// re-validating the content with the cloudinit.Validate. Returns
 // ErrCloudInitTemplateNotFound if the id does not exist (404).
 func UpdateCloudInitTemplate(ctx context.Context, st *store.Store, cluster, id, label, content string) (CloudInitTemplate, error) {
 	label = strings.TrimSpace(label)
@@ -179,7 +179,7 @@ func UpdateCloudInitTemplate(ctx context.Context, st *store.Store, cluster, id, 
 
 // DeleteCloudInitTemplate removes a template row. Returns
 // ErrCloudInitTemplateNotFound if the id does not exist. Has no cascade —
-// nothing references a template by id after creation (FR-009).
+// nothing references a template by id after creation.
 func DeleteCloudInitTemplate(ctx context.Context, st *store.Store, cluster, id string) error {
 	exists, err := st.CloudInitTemplateExists(ctx, cluster, id)
 	if err != nil {

@@ -1,10 +1,7 @@
-// recovery_test.go is the CLI-level integration test plan.md names as this
-// tranche's E2E-equivalent gate satisfier ("Playwright exercises
-// browser-driven user journeys; this tranche has no browser-reachable
-// surface... a shell-level integration test ... builds both binaries, runs
-// them against fixtures, asserts exit codes and database contents"). It
-// builds cmd/pvmss-recover and cmd/pvmss-checklist as real binaries and
-// drives them as subprocesses, mirroring quickstart.md Steps 1 and 3.
+// recovery_test.go is the CLI-level integration test: it builds
+// cmd/pvmss-recover and cmd/pvmss-checklist as real binaries and drives
+// them as subprocesses against fixtures, asserting exit codes and
+// database contents.
 package recovery_test
 
 import (
@@ -69,10 +66,9 @@ func errorsAsExitError(err error, target **exec.ExitError) bool {
 }
 
 // TestRecoveryCLI_EndToEnd runs pvmss-checklist and pvmss-recover as real
-// subprocesses against file-backed fixtures, per quickstart.md Steps 1 and
-// 3 and contracts/cutover.md's exit-code table.
+// subprocesses against file-backed fixtures, Steps 1 and 3 and the exit-code table.
 // TestRecoveryCLI_EndToEnd builds cmd/pvmss-recover and cmd/pvmss-checklist as
-// real binaries, drives them as subprocesses, and asserts the SC-004 golden
+// real binaries, drives them as subprocesses, and asserts the golden
 // summary plus the pvmss-recover happy-path and edge-case exit codes.
 func TestRecoveryCLI_EndToEnd(t *testing.T) {
 	t.Parallel()
@@ -83,10 +79,10 @@ func TestRecoveryCLI_EndToEnd(t *testing.T) {
 	recoverBin := buildRecoveryBinary(ctx, t, repoRoot, "pvmss-recover")
 	checklistBin := buildRecoveryBinary(ctx, t, repoRoot, "pvmss-checklist")
 
-	// --- pvmss-checklist: SUMMARY must match SC-004 exactly (quickstart Step 1) ---
+	//  - pvmss-checklist: SUMMARY must match exactly (quickstart Step 1) -
 	runChecklistGolden(ctx, t, checklistBin, testfixture.ChecklistFiches(t))
 
-	// --- pvmss-recover: seed a legacy fixture, run against a migrated v0.4 db ---
+	//  - pvmss-recover: seed a legacy fixture, run against a migrated v0.4 db -
 	legacyPath := openAndSeedLegacyDB(ctx, t)
 	v04Path := openAndMigrateV04DB(t)
 
@@ -144,8 +140,8 @@ func openAndMigrateV04DB(t *testing.T) string {
 	return path
 }
 
-// runChecklistGolden runs pvmss-checklist and asserts the SC-004 golden
-// summary (quickstart.md Step 1): "58 fiches found" and the exact SUMMARY
+// runChecklistGolden runs pvmss-checklist and asserts the golden
+// summary: "58 fiches found" and the exact SUMMARY
 // line "53 closed, 5 open (3 real gaps, 2 deliberate design decisions)".
 func runChecklistGolden(ctx context.Context, t *testing.T, bin, repoRoot string) {
 	t.Helper()
@@ -182,7 +178,7 @@ func runRecoverCmd(ctx context.Context, t *testing.T, bin, legacyPath, v04Path s
 }
 
 // runRecoverGolden runs pvmss-recover once and asserts the happy path
-// (quickstart.md Step 3): exit 0, a SUMMARY line, and the recovered
+// exit 0, a SUMMARY line, and the recovered
 // database contents match defaultSeed()'s known values.
 func runRecoverGolden(ctx context.Context, t *testing.T, bin, legacyPath, v04Path string) {
 	t.Helper()
@@ -196,14 +192,14 @@ func runRecoverGolden(ctx context.Context, t *testing.T, bin, legacyPath, v04Pat
 		t.Errorf("pvmss-recover output missing SUMMARY line:\n%s", out)
 	}
 
-	// Inspect the target database directly (quickstart.md Step 3 validate block).
+	// Inspect the target database directly (Step 3 validate block).
 	assertRecoveredDB(ctx, t, v04Path)
 }
 
 // assertRecoveredDB checks the v0.4 database directly against
-// defaultSeed()'s known values, per quickstart.md Step 3's validate block
-// and SC-002 (the three no-legacy-source vm_limits fields must be T12's
-// shipped defaults, never anything read from the legacy row).
+// defaultSeed()'s known values, Step 3's validate block
+// and (the three no-legacy-source vm_limits fields must be shipped defaults, never anything
+// read from the legacy row).
 func assertRecoveredDB(ctx context.Context, t *testing.T, v04Path string) {
 	t.Helper()
 
@@ -247,13 +243,13 @@ func assertRecoveredDB(ctx context.Context, t *testing.T, v04Path string) {
 }
 
 // assertRecoverEdgeCases exercises the pvmss-recover CLI contract beyond the
-// happy path: SC-003 idempotence (a second run produces identical row
-// counts, no duplicates) and the contracts/cutover.md exit-code table
+// happy path: idempotence (a second run produces identical row
+// counts, no duplicates) and the exit-code table
 // (invalid cluster name -> 2, unreadable legacy db -> 1).
 func assertRecoverEdgeCases(ctx context.Context, t *testing.T, bin, legacyPath, v04Path string) {
 	t.Helper()
 
-	// --- Idempotence (SC-003): re-running produces identical row counts ---
+	//  - Idempotence: re-running produces identical row counts -
 	if _, code := runRecoverCmd(ctx, t, bin, legacyPath, v04Path); code != 0 {
 		t.Fatalf("second pvmss-recover run exit=%d, want 0", code)
 	}
@@ -268,7 +264,7 @@ func assertRecoverEdgeCases(ctx context.Context, t *testing.T, bin, legacyPath, 
 		t.Errorf("catalog_nodes count after second run = %d, want 2 (no duplicates)", n)
 	}
 
-	// --- Exit code 2: invalid cluster name (contracts/cutover.md) ---
+	//  - Exit code 2: invalid cluster name -
 	badNameCmd := exec.CommandContext(ctx, bin, //nolint:gosec // test invokes its own freshly built binary
 		"--legacy-db", legacyPath,
 		"--v0.4-db", v04Path,

@@ -30,7 +30,7 @@ func openCatalogStore(t *testing.T) *store.Store {
 }
 
 // TestApprovedResources_SeedInvariants pins the fixture's cross-table
-// invariants (T06 data-model.md): every approved storage's node is itself
+// invariants: every approved storage's node is itself
 // approved, and every seeded row belongs to the configured cluster.
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -92,8 +92,8 @@ func TestProfiles_SeedInvariants(t *testing.T) {
 }
 
 // TestApprovedResources_ISONodePopulated — the store query returns one row per
-// node (D1b), and ApprovedResources must copy iso.Node so HasISO can validate
-// node locality (US1). V17 drops seed ISOs, so this test seeds them directly.
+// node, and ApprovedResources must copy iso.Node so HasISO can validate
+// node locality. V17 drops seed ISOs, so this test seeds them directly.
 //
 //nolint:paralleltest // serial: shared database fixture
 func TestApprovedResources_ISONodePopulated(t *testing.T) {
@@ -101,7 +101,7 @@ func TestApprovedResources_ISONodePopulated(t *testing.T) {
 	ctx := context.Background()
 
 	// Seed one ISO on pve-node-01 and the same file on pve-node-02 (shared
-	// storage pattern — one row per node, D1b).
+	// storage pattern — one row per node).
 	for _, row := range []struct{ node, storage, file string }{
 		{node01, "local", "debian-12.iso"},
 		{"pve-node-02", "local", "debian-12.iso"},

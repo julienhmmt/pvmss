@@ -37,8 +37,7 @@ type Identity struct {
 	// in welcome messages and user chips; Username remains the canonical value
 	// for Proxmox API calls.
 	DisplayName string `json:"displayName"`
-	// Pool is the tenancy anchor owning this user's VMs (PD00: one pool per
-	// user). Empty for the local admin and for a cluster admin with no
+	// Pool is the tenancy anchor owning this user's VMs (one pool per user). Empty for the local admin and for a cluster admin with no
 	// personal pool.
 	Pool               string `json:"pool"`
 	IsAdmin            bool   `json:"isAdmin"`
@@ -65,9 +64,8 @@ type SessionRepository interface {
 
 // SessionManager issues opaque, database-backed browser sessions with sliding
 // expiry. Sessions are trivially revocable: logout deletes the row, so a
-// cleared cookie can never be replayed (plan.md: SQLite session over JWT,
-// chosen specifically because a self-contained signed token cannot be
-// revoked before its own expiry).
+// cleared cookie can never be replayed (SQLite session over JWT, chosen specifically because a
+// self-contained signed token cannot be revoked before its own expiry).
 type SessionManager struct {
 	repository SessionRepository
 	secret     []byte

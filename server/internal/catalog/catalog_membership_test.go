@@ -155,7 +155,7 @@ func TestResources_HasISO(t *testing.T) {
 }
 
 // TestFindProfile_FoundAndNotFound — FindProfile returns the matching profile
-// by id, or an error for an absent id (FR-003).
+// by id, or an error for an absent id.
 func TestFindProfile_FoundAndNotFound(t *testing.T) {
 	t.Parallel()
 

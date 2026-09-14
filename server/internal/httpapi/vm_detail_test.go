@@ -22,7 +22,6 @@ import (
 )
 
 // vmDetailEntity mirrors the GET /vms/:cluster/:vmid 200 contract
-// (contracts/vm-detail-actions.md).
 type vmDetailEntity struct {
 	VMID          int      `json:"vmid"`
 	Name          string   `json:"name"`
@@ -203,10 +202,10 @@ func adminCookie(t *testing.T, authHandler *httpapi.Auth) *http.Cookie {
 }
 
 // =============================================================================
-// Phase 3 — User Story 1: GET /vms/:cluster/:vmid (T007–T010)
+// GET /vms/:cluster/:vmid
 // =============================================================================
 
-// TestVMDetail_Get_OwnerSeesFullEntity — T007: the owner gets the full Entity
+// TestVMDetail_Get_OwnerSeesFullEntity — the owner gets the full Entity
 // per contracts (identity, status, metrics, uptime).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -257,7 +256,7 @@ func TestVMDetail_Get_OwnerSeesFullEntity(t *testing.T) {
 }
 
 // TestVMDetail_Get_BaselineStateCarried — the detail DTO carries the
-// persisted baseline delivery state for image-mode VMs (issue 03).
+// persisted baseline delivery state for image-mode VMs.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Get_BaselineStateCarried(t *testing.T) {
@@ -282,7 +281,7 @@ func TestVMDetail_Get_BaselineStateCarried(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Get_NonOwnerTaggedForbidden — T008: a non-owner requesting a
+// TestVMDetail_Get_NonOwnerTaggedForbidden — a non-owner requesting a
 // tagged VM they don't own gets 403.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -300,7 +299,7 @@ func TestVMDetail_Get_NonOwnerTaggedForbidden(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Get_UntaggedNotFound — T009: an untagged VM returns 404 with
+// TestVMDetail_Get_UntaggedNotFound — an untagged VM returns 404 with
 // the same error shape as the 403 case (byte-identical shape, contracts).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -320,7 +319,7 @@ func TestVMDetail_Get_UntaggedNotFound(t *testing.T) {
 }
 
 // TestVMDetail_Get_NonexistentNotFound — a VMID that doesn't exist is also 404,
-// indistinguishable from the untagged case (FR-002).
+// indistinguishable from the untagged case.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Get_NonexistentNotFound(t *testing.T) {
@@ -337,7 +336,7 @@ func TestVMDetail_Get_NonexistentNotFound(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Get_AdminSeesAnyTaggedVM — T010: an admin sees any tagged VM
+// TestVMDetail_Get_AdminSeesAnyTaggedVM — an admin sees any tagged VM
 // regardless of pool.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -373,7 +372,7 @@ func TestVMDetail_Get_UnauthenticatedRejected(t *testing.T) {
 }
 
 // TestVMDetail_Get_StoppedVmOmitsUptime — uptimeSeconds is absent (omitempty)
-// when the VM is not running (contracts).
+// when the VM is not running.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Get_StoppedVmOmitsUptime(t *testing.T) {
@@ -395,10 +394,10 @@ func TestVMDetail_Get_StoppedVmOmitsUptime(t *testing.T) {
 }
 
 // =============================================================================
-// Phase 4 — User Story 2: POST /vms/:cluster/:vmid/actions (T016–T021)
+// POST /vms/:cluster/:vmid/actions
 // =============================================================================
 
-// TestVmAction_OwnerStartStoppedVM — T016: owner triggers start on a stopped
+// TestVmAction_OwnerStartStoppedVM — owner triggers start on a stopped
 // VM → 200, fake client records the call on the Index-resolved node.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -426,19 +425,19 @@ func TestVmAction_OwnerStartStoppedVM(t *testing.T) {
 	}
 }
 
-// TestVmAction_NonOwnerStopRejected — T017: S01 PoC literal — non-owner sends
+// TestVmAction_NonOwnerStopRejected — PoC literal — non-owner sends
 // {"action":"stop"} for a VM they don't own → 403, fake client records ZERO
-// calls for that VM (SC-001).
+// calls for that VM.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmAction_NonOwnerStopRejected(t *testing.T) {
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	cookie := bobCookie(t, authHandler) // bob does not own pool-alice
 
-	// VM 100 is alice's (pool-alice). Bob sends stop — S01's exact PoC request.
+	// VM 100 is alice's (pool-alice). Bob sends stop — the exact PoC request.
 	rec, env := serveDetailError(handler, detailRequest(http.MethodPost, "/api/v1/vms/default/100/actions", `{"action":"stop"}`, cookie))
 	if rec.Code != http.StatusForbidden {
-		t.Fatalf("status = %d, want %d (S01 PoC: now rejected)", rec.Code, http.StatusForbidden)
+		t.Fatalf("status = %d, want %d (now rejected)", rec.Code, http.StatusForbidden)
 	}
 
 	if env.Code != apiCodeForbidden {
@@ -451,9 +450,9 @@ func TestVmAction_NonOwnerStopRejected(t *testing.T) {
 	}
 }
 
-// TestVmAction_ForgedNodeFieldRejected — T018: a forged/extra "node" field in
-// the request body → 400 (DisallowUnknownFields, T00's strict decoder). The
-// request schema has no node field — there is nothing to forge (S01 root cause).
+// TestVmAction_ForgedNodeFieldRejected — a forged/extra "node" field in
+// the request body → 400 (DisallowUnknownFields, strict decoder). The
+// request schema has no node field — there is nothing to forge (root cause).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmAction_ForgedNodeFieldRejected(t *testing.T) {
@@ -476,7 +475,7 @@ func TestVmAction_ForgedNodeFieldRejected(t *testing.T) {
 	}
 }
 
-// TestVmAction_UntaggedVMNotFound — T019: untagged VM, any caller → 404.
+// TestVmAction_UntaggedVMNotFound — untagged VM, any caller → 404.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmAction_UntaggedVMNotFound(t *testing.T) {
@@ -499,7 +498,7 @@ func TestVmAction_UntaggedVMNotFound(t *testing.T) {
 	}
 }
 
-// TestVmAction_AdminActsOnAnyTaggedVM — T020: admin action on any tagged VM → 200.
+// TestVmAction_AdminActsOnAnyTaggedVM — admin action on any tagged VM → 200.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmAction_AdminActsOnAnyTaggedVM(t *testing.T) {
@@ -518,11 +517,10 @@ func TestVmAction_AdminActsOnAnyTaggedVM(t *testing.T) {
 	}
 }
 
-// TestVmAction_AllFiveValidActionsAccepted — T021: all 5 valid actions
+// TestVmAction_AllFiveValidActionsAccepted — all 5 valid actions
 // accepted; any other string → 400. Each action targets a VM in the
-// appropriate state (T001b: the fake now rejects status-incompatible
-// transitions — start needs a stopped VM, stop/shutdown/reboot/reset need a
-// running one).
+// appropriate state (the fake now rejects status-incompatible transitions — start needs a
+// stopped VM, stop/shutdown/reboot/reset need a running one).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmAction_AllFiveValidActionsAccepted(t *testing.T) {
@@ -569,7 +567,7 @@ func TestVmAction_AllFiveValidActionsAccepted(t *testing.T) {
 }
 
 // TestVmAction_AuditRecorded — every successful write is recorded in audit_log
-// with the real actor before the response is sent (FR-009).
+// with the real actor before the response is sent.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmAction_AuditRecorded(t *testing.T) {
@@ -603,7 +601,7 @@ func TestVmAction_AuditRecorded(t *testing.T) {
 	}
 }
 
-// TestVmAction_IndexInvalidatedAfterWrite — FR-010: after a successful write,
+// TestVmAction_IndexInvalidatedAfterWrite — after a successful write,
 // the Index is rebuilt so the next read reflects it.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -634,7 +632,7 @@ func TestVmAction_IndexInvalidatedAfterWrite(t *testing.T) {
 }
 
 // =============================================================================
-// Phase 5 — User Story 3: DELETE /vms/:cluster/:vmid (T026–T028)
+// DELETE /vms/:cluster/:vmid
 // =============================================================================
 
 // assertDeleteSucceeded asserts the response is 200 and the fake received
@@ -657,7 +655,7 @@ func assertDeleteSucceeded(t *testing.T, rec *httptest.ResponseRecorder, vmid in
 	}
 }
 
-// TestVmDelete_OwnerSucceeds — T026: owner deletes their VM → 200, fake client
+// TestVmDelete_OwnerSucceeds — owner deletes their VM → 200, fake client
 // receives the delete call.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -669,7 +667,7 @@ func TestVmDelete_OwnerSucceeds(t *testing.T) {
 	assertDeleteSucceeded(t, rec, 114)
 }
 
-// TestVmDelete_NonOwnerRejected — T027: non-owner delete attempt → 403, no
+// TestVmDelete_NonOwnerRejected — non-owner delete attempt → 403, no
 // delete call (same Resolve() gate — not a parallel check).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -693,7 +691,7 @@ func TestVmDelete_NonOwnerRejected(t *testing.T) {
 	}
 }
 
-// TestVmDelete_AdminDeletesAnyTaggedVM — T028: admin deletes any tagged VM → 200.
+// TestVmDelete_AdminDeletesAnyTaggedVM — admin deletes any tagged VM → 200.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmDelete_AdminDeletesAnyTaggedVM(t *testing.T) {
@@ -771,10 +769,10 @@ func TestVmDelete_ForceStopsAndDeletesRunningVM(t *testing.T) {
 }
 
 // =============================================================================
-// Phase 6 — User Story 4: PATCH /vms/:cluster/:vmid (T032–T035)
+// PATCH /vms/:cluster/:vmid
 // =============================================================================
 
-// TestVmPatch_OwnerRenames — T032: owner renames → 200, updated Entity returned.
+// TestVmPatch_OwnerRenames — owner renames → 200, updated Entity returned.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmPatch_OwnerRenames(t *testing.T) {
@@ -795,7 +793,7 @@ func TestVmPatch_OwnerRenames(t *testing.T) {
 	}
 }
 
-// TestVmPatch_InvalidHostname — T033: invalid hostname → 400, specific error code.
+// TestVmPatch_InvalidHostname — invalid hostname → 400, specific error code.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmPatch_InvalidHostname(t *testing.T) {
@@ -827,7 +825,7 @@ func TestVmPatch_InvalidHostname(t *testing.T) {
 	}
 }
 
-// TestVmPatch_EmptyBody — T034: empty patch body → 400.
+// TestVmPatch_EmptyBody — empty patch body → 400.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmPatch_EmptyBody(t *testing.T) {
@@ -844,7 +842,7 @@ func TestVmPatch_EmptyBody(t *testing.T) {
 	}
 }
 
-// TestVmPatch_NonOwnerRejected — T035: non-owner patch attempt → 403 (same
+// TestVmPatch_NonOwnerRejected — non-owner patch attempt → 403 (same
 // Resolve() gate).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -1045,7 +1043,7 @@ func TestVMDetail_CDROM(t *testing.T) {
 	}
 }
 
-// TestVMDetail_ResolveIsTheOnlyOwnershipCheck — T042/SC-005: the detail handler
+// TestVMDetail_ResolveIsTheOnlyOwnershipCheck — the detail handler
 // performs exactly one ownership check, delegated to vm.Resolve. 403 and 404 come
 // from vm.Resolve's errors, not a parallel check.
 //
@@ -1062,6 +1060,6 @@ func TestVMDetail_ResolveIsTheOnlyOwnershipCheck(t *testing.T) {
 	}
 	// If a parallel check existed, it would need its own error — but the
 	// handler maps only vm.ErrForbidden to 403. This test exists to fail if
-	// someone adds a second ownership check (SC-005 grep guard in T042).
+	// someone adds a second ownership check (grep guard).
 	_ = errors.Is(vm.ErrForbidden, vm.ErrForbidden)
 }

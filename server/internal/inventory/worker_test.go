@@ -14,7 +14,7 @@ import (
 )
 
 // callCountClient wraps a cluster.Client and counts Snapshot calls — the
-// instrumented counter that proves SC-001 (at most one call per refresh cycle
+// instrumented counter that proves (at most one call per refresh cycle
 // regardless of concurrent readers).
 type callCountClient struct {
 	snapshot cluster.Snapshot
@@ -149,7 +149,7 @@ func TestWorker_SuccessfulCycleSwapsIndex(t *testing.T) {
 	}
 }
 
-// TestWorker_FailingCycleLeavesPreviousIndex — FR-004: a failed refresh does
+// TestWorker_FailingCycleLeavesPreviousIndex — a failed refresh does
 // not clear or corrupt the existing projection.
 //
 //nolint:paralleltest // serial: shared inventory worker fixture
@@ -188,7 +188,7 @@ func TestWorker_FailingCycleLeavesPreviousIndex(t *testing.T) {
 	}
 }
 
-// TestWorker_CallsClientOnceEvenUnderConcurrentReads — SC-001: the cluster
+// TestWorker_CallsClientOnceEvenUnderConcurrentReads — the cluster
 // client is called at most once per refresh cycle, regardless of how many
 // concurrent readers access the projection during that cycle.
 //
@@ -269,7 +269,7 @@ func TestWorker_ConcurrentRefreshesSingleFlight(t *testing.T) {
 
 // TestWorker_RunDoesInitialRefresh — Run performs an initial refresh before
 // starting the ticker, so the projection is populated before the HTTP server
-// accepts traffic (T015).
+// accepts traffic.
 //
 //nolint:paralleltest // serial: shared inventory worker fixture
 func TestWorker_RunDoesInitialRefresh(t *testing.T) {
@@ -302,8 +302,7 @@ func TestWorker_RunDoesInitialRefresh(t *testing.T) {
 }
 
 // TestWorker_FailingFirstRefreshLeavesNil — edge case: if the very first
-// refresh fails, the projection remains nil (FR-009: never-refreshed is
-// distinct from empty).
+// refresh fails, the projection remains nil (never-refreshed is distinct from empty).
 //
 //nolint:paralleltest // serial: shared inventory worker fixture
 func TestWorker_FailingFirstRefreshLeavesNil(t *testing.T) {

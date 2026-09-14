@@ -36,7 +36,7 @@ var ErrConsolePasswordFailed = errors.New("console password action failed")
 // the VM's own ciuser via the QEMU guest agent (never cipassword — the seed
 // drive hash is readable by the tenant), and returns the password once for
 // display. The password is not persisted, not logged, and not recorded in the
-// audit trail (cloud-image-console issue 05).
+// audit trail.
 func SetConsolePassword(ctx context.Context, deps ConsolePasswordDeps) (string, error) {
 	entity, err := resolveCloudInitTarget(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
 	if err != nil {
@@ -68,7 +68,7 @@ func SetConsolePassword(ctx context.Context, deps ConsolePasswordDeps) (string, 
 	}
 
 	// Record the action without the password — the audit trail must not
-	// carry the generated value (issue 05).
+	// carry the generated value.
 	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, "set_console_password"); err != nil {
 		return "", fmt.Errorf("record console-password audit: %w", err)
 	}

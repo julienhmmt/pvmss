@@ -124,7 +124,7 @@ func TestSetCloudInitConfig_MergesDHCPAuditsAndDoesNotReboot(t *testing.T) {
 func TestSetCloudInitConfig_RebootNowCallsT05Once(t *testing.T) {
 	index := cloudInitIndex(t)
 	st := cloudInitStore(t)
-	// T001b: the fake now rejects reboot on a stopped VM. VM 101 is stopped in
+	// The fake now rejects reboot on a stopped VM. VM 101 is stopped in
 	// the pristine dataset — start it first so the reboot succeeds.
 	if err := (cluster.Fake{}).Action(context.Background(), cluster.FakeNode01, 101, "start"); err != nil {
 		t.Fatalf("start VM 101 for test setup: %v", err)
@@ -148,7 +148,7 @@ func TestSetCloudInitConfig_RebootNowCallsT05Once(t *testing.T) {
 	}
 }
 
-// TestSetCloudInitSnippet_PersistsTargetPushesAndAttaches — ticket 05: with
+// TestSetCloudInitSnippet_PersistsTargetPushesAndAttaches — with
 // AllowCustomYAML on and a write target set, saving a per-VM document
 // writes pvmss-<vmid>.yml, verifies it is visible, attaches it, then records
 // the row (after the cluster steps, not before).
@@ -292,8 +292,8 @@ func TestSetCloudInitConfig_RejectsMalformedSSHKeys(t *testing.T) {
 	st := cloudInitStore(t)
 
 	// A pasted multi-line block must be rejected before it ever reaches
-	// Proxmox, where it would smuggle extra keys into authorized_keys
-	// (REPORT.md §2/#3). The structured config write must not happen.
+	// Proxmox, where it would smuggle extra keys into authorized_keys.
+	// The structured config write must not happen.
 	keys := []string{"ssh-ed25519 AAAA-good\nssh-ed25519 AAAA-smuggled"}
 	_, err := vm.SetCloudInitConfig(context.Background(), vm.CloudInitConfigDeps{Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st, Refresher: testRefresher{}}, cluster.CloudInitUpdate{SSHKeys: &keys}, false)
 	if err == nil {
@@ -465,7 +465,7 @@ func TestSetCloudInitConfig_RejectsNonIPv4StaticAddresses(t *testing.T) {
 	}
 }
 
-// TestSetCloudInitConfig_PasswordUsesResolvedCiUser is the ticket-02
+// TestSetCloudInitConfig_PasswordUsesResolvedCiUser is the
 // regression test: the password lands on the VM's own ciuser read from the
 // live config — never a hardcoded root (a cloud image's root is locked).
 //
@@ -490,7 +490,7 @@ func TestSetCloudInitConfig_PasswordUsesResolvedCiUser(t *testing.T) {
 
 // TestSetCloudInitConfig_PasswordPrefersPatchUser verifies the resolution
 // order: a patch that changes ciuser AND sets a password applies the password
-// to the NEW user, not the previous one (ticket 02).
+// to the NEW user, not the previous one.
 //
 //nolint:paralleltest // serial: shared fake dataset
 func TestSetCloudInitConfig_PasswordPrefersPatchUser(t *testing.T) {
@@ -513,7 +513,7 @@ func TestSetCloudInitConfig_PasswordPrefersPatchUser(t *testing.T) {
 }
 
 // TestSetCloudInitConfig_PasswordWithoutUser_Refused verifies the no-fallback
-// rule (ticket 02): neither the patch nor the live config defines a ciuser,
+// Neither the patch nor the live config defines a ciuser,
 // so the password is refused with ErrNoCloudInitUser instead of being applied
 // to a guessed account.
 //
@@ -542,8 +542,8 @@ func TestSetCloudInitConfig_PasswordWithoutUser_Refused(t *testing.T) {
 	}
 }
 
-// TestSetCloudInitConfig_PasswordAgentDisabled_Refused verifies ticket 05's
-// immediate pre-flight refusal when agent= is absent from the VM config: no
+// TestSetCloudInitConfig_PasswordAgentDisabled_Refused verifies the immediate pre-flight
+// refusal when agent= is absent from the VM config: no
 // agent call is emitted and the error is actionable, not opaque.
 //
 //nolint:paralleltest // serial: shared fake dataset
@@ -570,8 +570,8 @@ func TestSetCloudInitConfig_PasswordAgentDisabled_Refused(t *testing.T) {
 	}
 }
 
-// TestSetCloudInitConfig_PasswordVMStopped_Refused verifies ticket 05's
-// pre-flight against the LIVE status: a stopped VM is refused with
+// TestSetCloudInitConfig_PasswordVMStopped_Refused verifies the pre-flight against the LIVE
+// status: a stopped VM is refused with
 // ErrVMNotRunning before any agent call.
 //
 //nolint:paralleltest // serial: shared fake dataset
@@ -597,7 +597,7 @@ func TestSetCloudInitConfig_PasswordVMStopped_Refused(t *testing.T) {
 }
 
 // assertPasswordAppliedTo checks the fake recorded the agent password apply
-// for exactly the given user (ticket 02).
+// for exactly the given user.
 func assertPasswordAppliedTo(t *testing.T, user string) {
 	t.Helper()
 

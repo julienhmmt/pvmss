@@ -18,13 +18,13 @@ import (
 )
 
 // maxAuditPageSize is the upper bound on audit log page size. Matches the
-// default MaxListPageSize used by T04's VM list (contracts/admin-ops.md).
+// default MaxListPageSize used by VM list.
 const maxAuditPageSize = 100
 
-// AdminOps serves the T14 admin exploitation endpoints: the audit log read,
+// AdminOps serves the admin exploitation endpoints: the audit log read,
 // the dashboard aggregate, the database export/import, and the app info with
 // redaction. Every /api/v1/admin/* route is wrapped by Auth.RequireAdmin
-// (FR-016); the public version endpoint is not.
+// the public version endpoint is not.
 type AdminOps struct {
 	auth             *Auth
 	store            *store.Store
@@ -35,7 +35,7 @@ type AdminOps struct {
 	trustedProxyHops int
 }
 
-// NewAdminOps creates the handler for all T14 admin exploitation endpoints.
+// NewAdminOps creates the handler for all admin exploitation endpoints.
 // The projection feeds the dashboard's node/VM counts and storage occupancy
 // (from Index.StoragesByNode) and the appinfo's per-cluster refresh state.
 // The version string is surfaced in the dashboard and the public version
@@ -89,7 +89,7 @@ type auditPageDTO struct {
 	PageSize int             `json:"pageSize"`
 }
 
-// ServeAudit handles GET /api/v1/admin/audit (FR-001/FR-002).
+// ServeAudit handles GET /api/v1/admin/audit.
 func (h *AdminOps) ServeAudit(w http.ResponseWriter, r *http.Request) {
 	filter, ok := parseAuditFilter(w, r)
 	if !ok {
@@ -133,7 +133,7 @@ type auditConfigDTO struct {
 	RetentionDays int `json:"retentionDays"`
 }
 
-// ServeAuditConfig handles GET /api/v1/admin/audit/config (issue #02). Returns
+// ServeAuditConfig handles GET /api/v1/admin/audit/config. Returns
 // the current audit retention in days.
 func (h *AdminOps) ServeAuditConfig(w http.ResponseWriter, r *http.Request) {
 	cfg, err := h.store.GetAuditConfig(r.Context())
@@ -151,7 +151,7 @@ type auditConfigRequest struct {
 	RetentionDays int `json:"retentionDays"`
 }
 
-// ServeAuditConfigUpdate handles PUT /api/v1/admin/audit/config (issue #02).
+// ServeAuditConfigUpdate handles PUT /api/v1/admin/audit/config.
 // Rejects retention below 30 days with 400. The actual prune of now-expired
 // rows is left to the daily tick — this endpoint only changes the setting.
 func (h *AdminOps) ServeAuditConfigUpdate(w http.ResponseWriter, r *http.Request) {
@@ -185,8 +185,8 @@ type prunePreviewDTO struct {
 	RowsToDelete  int64 `json:"rowsToDelete"`
 }
 
-// ServeAuditPrunePreview handles GET /api/v1/admin/audit/prune-preview
-// (issue #02). Returns the count of rows that would be deleted at the given
+// ServeAuditPrunePreview handles GET /api/v1/admin/audit/prune-preview.
+// Returns the count of rows that would be deleted at the given
 // retention, without deleting them. Used by the UI confirmation flow.
 func (h *AdminOps) ServeAuditPrunePreview(w http.ResponseWriter, r *http.Request) {
 	daysStr := r.URL.Query().Get("retention_days")
@@ -300,11 +300,11 @@ type dashboardDTO struct {
 	RefreshedAt    string            `json:"refreshedAt"`
 }
 
-// ServeDashboard handles GET /api/v1/admin/dashboard (FR-004/FR-005/FR-006).
+// ServeDashboard handles GET /api/v1/admin/dashboard.
 // Only Proxmox nodes that host at least one PVMSS-managed VM are surfaced;
 // per-node CPU/RAM usage and VM counts come from the in-memory Index, and VM
 // status counts come from Index.ByVMID. No cluster.Client call is made,
-// satisfying SC-003 and constitution IV.
+// satisfying the read/write separation.
 func (h *AdminOps) ServeDashboard(w http.ResponseWriter, _ *http.Request) {
 	idx := h.projection.Load()
 	if idx == nil {
@@ -371,7 +371,7 @@ func sortNodeSummaries(nodes []nodeSummaryDTO) {
 	}
 }
 
-// ServeDBExport handles GET /api/v1/admin/db/export (FR-007). Streams a
+// ServeDBExport handles GET /api/v1/admin/db/export. Streams a
 // VACUUM INTO-produced snapshot as a binary file download.
 func (h *AdminOps) ServeDBExport(w http.ResponseWriter, r *http.Request) {
 	actor, ip := h.actorAndIP(r)
@@ -392,7 +392,7 @@ func (h *AdminOps) ServeDBExport(w http.ResponseWriter, r *http.Request) {
 	_ = h.store.RecordAdminAction(r.Context(), actor.Username, "admin.db_export", "db", "", detail, ip)
 }
 
-// --- Database import (US3) ---
+//  - Database import -
 
 type importPreviewDTO struct {
 	StagingToken  string               `json:"stagingToken"`
@@ -410,7 +410,7 @@ type importResultDTO struct {
 	Tables []store.TablePreview `json:"tables"`
 }
 
-// ServeDBImport handles POST /api/v1/admin/db/import (FR-008/FR-009).
+// ServeDBImport handles POST /api/v1/admin/db/import.
 // Accepts a multipart file upload, validates it, and returns a preview
 // without writing anything to the live database.
 func (h *AdminOps) ServeDBImport(w http.ResponseWriter, r *http.Request) {
@@ -459,7 +459,6 @@ func (h *AdminOps) ServeDBImport(w http.ResponseWriter, r *http.Request) {
 }
 
 // ServeDBImportConfirm handles POST /api/v1/admin/db/import/confirm
-// (FR-010/FR-012).
 func (h *AdminOps) ServeDBImportConfirm(w http.ResponseWriter, r *http.Request) {
 	var req importConfirmRequest
 	if err := decodeJSON(w, r, &req); err != nil {
@@ -527,7 +526,7 @@ type appInfoDTO struct {
 	Clusters []clusterHealthDTO `json:"clusters"`
 }
 
-// ServeAppInfo handles GET /api/v1/admin/appinfo (FR-013/FR-014).
+// ServeAppInfo handles GET /api/v1/admin/appinfo.
 func (h *AdminOps) ServeAppInfo(w http.ResponseWriter, _ *http.Request) {
 	// The Configuration is loaded fresh from the environment so the admin
 	// sees the current effective config, not a stale snapshot.
@@ -550,7 +549,6 @@ func (h *AdminOps) ServeAppInfo(w http.ResponseWriter, _ *http.Request) {
 
 // buildConfigFieldDTOs maps the redacted config fields to their DTO form.
 // Redacted fields leave Value nil so they serialize as JSON null
-// (contracts/admin-ops.md).
 func buildConfigFieldDTOs(fields []config.Field) []configFieldDTO {
 	dtos := make([]configFieldDTO, 0, len(fields))
 	for _, f := range fields {
@@ -605,9 +603,9 @@ type publicVersionDTO struct {
 	Version string `json:"version"`
 }
 
-// ServePublicVersion handles GET /api/v1/public/version (FR-015). No
+// ServePublicVersion handles GET /api/v1/public/version. No
 // authentication required — the version alone is visible in the public
-// footer (X17).
+// footer.
 func (h *AdminOps) ServePublicVersion(w http.ResponseWriter, _ *http.Request) {
 	body, err := json.Marshal(publicVersionDTO{Version: h.version})
 	if err != nil {

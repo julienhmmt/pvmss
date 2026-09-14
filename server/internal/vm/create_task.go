@@ -17,17 +17,17 @@ var CreateTaskPoll = 2 * time.Second
 var MaxCreateTaskWait = 10 * time.Minute
 
 // WaitCreateTask polls upid until the cluster reports it finished. It mirrors
-// the poll-then-timeout shape of deleteWithRetry in actions.go (lifecycle-04).
+// the poll-then-timeout shape of deleteWithRetry in actions.go.
 //
 // Semantics:
-//   - TaskOK → nil
-//   - TaskError → error carrying ExitMessage and the last log lines (a bare
-//     "create task failed" without the log is inexplicable in support)
-//   - TaskRunning → retry at the next tick
-//   - a transient read error → do not abort, retry (fail-soft, matching
-//     proxmoxTaskLog's best-effort log fetch)
-//   - MaxCreateTaskWait exceeded → explicit "create task timed out" error
-//   - ctx.Done() → ctx.Err()
+// - TaskOK → nil
+// - TaskError → error carrying ExitMessage and the last log lines (a bare
+// "create task failed" without the log is inexplicable in support)
+// - TaskRunning → retry at the next tick
+// - a transient read error → do not abort, retry (fail-soft, matching
+// proxmoxTaskLog's best-effort log fetch)
+// - MaxCreateTaskWait exceeded → explicit "create task timed out" error
+// - ctx.Done() → ctx.Err()
 func WaitCreateTask(ctx context.Context, creator cluster.Creator, upid string) error {
 	deadline := time.Now().Add(MaxCreateTaskWait)
 
@@ -67,7 +67,7 @@ func WaitCreateTask(ctx context.Context, creator cluster.Creator, upid string) e
 	}
 }
 
-// waitCreateTask is the internal alias (lifecycle-04).
+// waitCreateTask is the internal alias.
 func waitCreateTask(ctx context.Context, creator cluster.Creator, upid string) error {
 	return WaitCreateTask(ctx, creator, upid)
 }

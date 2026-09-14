@@ -2,7 +2,7 @@
 //
 // The fake serial relay is a minimal byte-pipe that echoes the browser's
 // keystrokes back as Proxmox-style "0:len:data" frames so an xterm.js client
-// sees its own input render. There is no OS underneath (constitution VIII), so
+// sees its own input render. There is no OS underneath, so
 // this is genuinely functional for the offline demo without pretending to be a
 // real shell — it proves the ticket-store + relay + framing path end to end.
 package cluster

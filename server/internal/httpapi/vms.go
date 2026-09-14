@@ -16,10 +16,9 @@ import (
 	"strconv"
 )
 
-// VMs serves GET /api/v1/vms — the ONLY VM-listing endpoint in the system
-// (FR-001, SC-001). It reads the inventory projection, never the cluster
-// client (constitution IV), and enforces scope server-side via vm.List
-// (FR-003).
+// VMs serves GET /api/v1/vms — the ONLY VM-listing endpoint in the system.
+// It reads the inventory projection, never the cluster
+// client, and enforces scope server-side via vm.List
 type VMs struct {
 	projection   *inventory.Projection
 	source       inventory.Source
@@ -33,7 +32,7 @@ type VMs struct {
 
 // NewVMs creates the handler for the given inventory projection. maxPageSize
 // caps an accepted pageSize (rejected, not truncated); quota is the per-user
-// allowance reported to non-admin callers (-1 = unlimited, V07).
+// allowance reported to non-admin callers (-1 = unlimited).
 func NewVMs(projection *inventory.Projection, authHandler *Auth, maxPageSize, quota int, log *slog.Logger, services ...*policy.Policy) *VMs {
 	var policyService *policy.Policy
 	if len(services) > 0 {
@@ -129,7 +128,7 @@ type queryError struct {
 }
 
 // parseQuery reads the request's list parameters. Unknown or malformed values
-// are rejected explicitly (constitution XIII) — never silently defaulted,
+// are rejected explicitly — never silently defaulted,
 // except scope, which vm.List re-derives from the identity regardless.
 func (h *VMs) parseQuery(r *http.Request) (vm.ListQuery, *queryError) {
 	params := r.URL.Query()

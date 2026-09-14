@@ -9,7 +9,7 @@ import (
 
 // TestFake_PoolLifecycle exercises the pool management methods of the fake
 // cluster client (EnsurePoolRole, CreatePool, SetPoolACL, ListPools, DeletePool)
-// so every branch of the built-in substitute is covered (constitution XI: the
+// so every branch of the built-in substitute is covered (the
 // fake must demonstrate every feature).
 func TestFake_PoolLifecycle(t *testing.T) {
 	t.Parallel()

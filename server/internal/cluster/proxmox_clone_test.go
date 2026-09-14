@@ -351,7 +351,7 @@ func TestProxmox_CloneVM_URLEncoding(t *testing.T) {
 }
 
 // TestProxmox_ListTemplates_DegradesOnConfigError — one template whose config
-// read fails must not abort the whole list (issue 03): the failing row stays,
+// read fails must not abort the whole list: the failing row stays,
 // flagged DiskUnreadable, and the others keep their disk fields.
 func TestProxmox_ListTemplates_DegradesOnConfigError(t *testing.T) {
 	t.Parallel()
@@ -396,8 +396,7 @@ func TestProxmox_ListTemplates_DegradesOnConfigError(t *testing.T) {
 }
 
 // TestProxmox_TemplateByVMID — a single-template lookup costs one
-// /cluster/resources call plus one config read (issue 03: no full
-// re-hydration per toggle).
+// /cluster/resources call plus one config read (no full re-hydration per toggle).
 func TestProxmox_TemplateByVMID(t *testing.T) {
 	t.Parallel()
 

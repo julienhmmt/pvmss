@@ -46,7 +46,7 @@ func TestCreateProfile_SlugCollision(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
 
-	// "small" already exists from T06's seed.
+	// "small" already exists from the seed.
 	_, err := catalog.CreateProfile(ctx, st, "default", catalog.ProfileSpec{Label: "Small", CPUCores: 1, MemoryMB: 2048, DiskGB: 20, Bus: testProfileBus})
 	if !errors.Is(err, catalog.ErrDuplicateProfile) {
 		t.Fatalf("CreateProfile with existing slug: got %v, want ErrDuplicateProfile", err)
@@ -175,7 +175,7 @@ func TestDeleteProfile_NotFound(t *testing.T) {
 }
 
 // TestDeleteProfile_Success — deleting an existing profile removes it from the
-// list. No cascade (FR-011).
+// list. No cascade.
 func TestDeleteProfile_Success(t *testing.T) {
 	t.Parallel()
 
@@ -200,7 +200,7 @@ func TestDeleteProfile_Success(t *testing.T) {
 }
 
 // TestSetProfileEnabled_Toggle — disabling a profile excludes it from
-// catalog.Profiles (T06's view) while keeping it in the admin list.
+// catalog.Profiles (view) while keeping it in the admin list.
 func TestSetProfileEnabled_Toggle(t *testing.T) {
 	t.Parallel()
 
@@ -227,7 +227,7 @@ func TestSetProfileEnabled_Toggle(t *testing.T) {
 		t.Error("profile should be disabled in admin list")
 	}
 
-	// T06's Profiles should exclude it.
+	// Profiles should exclude it.
 	t06Profiles, err := catalog.Profiles(ctx, st, "default")
 	if err != nil {
 		t.Fatalf("Profiles: %v", err)
@@ -289,7 +289,7 @@ func TestSetProfileEnabled_NotFound(t *testing.T) {
 	}
 }
 
-// --- Tags tests ---
+//  - Tags tests -
 
 // buildTagProjection creates a projection from the fake cluster snapshot for
 // tag VM count tests.
@@ -426,7 +426,7 @@ func TestCreateTag_InvalidName(t *testing.T) {
 }
 
 // TestCreateTag_DefaultColor — an empty color falls back to the indigo default
-// (#4f46e5) rather than being rejected (FR-013).
+// (#4f46e5) rather than being rejected.
 func TestCreateTag_DefaultColor(t *testing.T) {
 	t.Parallel()
 

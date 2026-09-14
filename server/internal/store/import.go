@@ -14,13 +14,13 @@ import (
 )
 
 // importableTables is the literal allowlist of PVMSS instance-configuration
-// tables that an import may replace (T14 data-model.md). Auth/system
+// tables that an import may replace. Auth/system
 // bookkeeping (schema_migrations, sessions, api_tokens), historical/per-VM
 // runtime data (audit_log, vm_cloudinit_snippets), and any table not on this
-// list are excluded — see data-model.md's three-way category test.
+// list are excluded.
 //
-// T12 and T13 each append their own table name(s) here once their migrations
-// land — not invented by this tranche (spec Assumptions). The list is
+// Each new table is appended here once its migration lands — the list
+// shape is fixed, not invented ad hoc. The list is
 // intentionally exported via ImportableTables() so tests can verify it
 // against the live schema without reaching into package-private state.
 var importableTables = []string{
@@ -36,7 +36,7 @@ var importableTables = []string{
 
 // ImportableTables returns a copy of the import allowlist. Tests use this to
 // verify the list matches the live schema without hardcoding an exhaustive
-// expectation of every future tranche's tables (plan.md constraint on T011).
+// expectation of every future migration's tables.
 func ImportableTables() []string {
 	out := make([]string, len(importableTables))
 	copy(out, importableTables)
@@ -81,7 +81,7 @@ var importableSet = func() map[string]bool {
 // ValidateImport writes the upload to a temp file, opens it read-only as a
 // second SQLite connection, lists its tables via sqlite_master, intersects
 // with importableTables, counts rows per matching table, and stages the
-// result in the in-memory ImportStaging (T14 FR-008/FR-009). Nothing in the
+// result in the in-memory ImportStaging. Nothing in the
 // live database is touched.
 //
 // A non-SQLite upload returns ErrInvalidDatabase and stages nothing.
@@ -225,7 +225,7 @@ func classifyUploadTables(ctx context.Context, uploadDB *sql.DB) ([]TablePreview
 // ConfirmImport looks up the staging token (404 if unknown, 410 if expired)
 // and, in one SQLite transaction against the live database, replaces every
 // table named in the preview — DELETE then reload from the staged file —
-// all-or-nothing (T14 FR-010). On success, the temp file and staging entry
+// all-or-nothing. On success, the temp file and staging entry
 // are removed. On failure, the transaction rolls back and the staging entry
 // is kept so the admin may retry confirm without re-uploading.
 func (s *Store) ConfirmImport(ctx context.Context, token string) (ImportResult, error) {
@@ -429,5 +429,5 @@ func quoteCols(cols []string) []string {
 }
 
 // ErrInvalidDatabase is returned by ValidateImport when the upload is not a
-// well-formed SQLite database (T14 FR-009).
+// well-formed SQLite database.
 var ErrInvalidDatabase = errors.New("uploaded file is not a valid SQLite database")

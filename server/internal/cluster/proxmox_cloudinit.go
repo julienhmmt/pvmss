@@ -116,7 +116,7 @@ func parseIPConfig(raw string, result *CloudInitConfig) {
 
 // FindSnippetStorage implements CloudInitReader. PVMSS can only write to the
 // one snippet directory the administrator configured for the cluster
-// (spec D1), so this returns p.SnippetStorage — but only after proving the
+// so this returns p.SnippetStorage — but only after proving the
 // node lists it as an active snippets provider: a mistyped id or a storage
 // without the snippets content flag must not produce a cicustom pointing at
 // nothing. With no write target configured it reports
@@ -173,7 +173,7 @@ func proxmoxFindSnippetStorage(ctx context.Context, rest proxmoxRESTClient, node
 
 	// Prefer a shared storage over a node-local one: a snippet on local
 	// storage is invisible to the other nodes, so a later migration would
-	// leave the VM pointing at a file it cannot read (ticket 04). Inactive
+	// leave the VM pointing at a file it cannot read. Inactive
 	// storages are skipped outright. Proxmox reports the flags as 1/0.
 	best := ""
 
@@ -287,7 +287,7 @@ func (p Proxmox) HasSnippet(ctx context.Context, node, storage, filename string)
 }
 
 // ReadSnippet implements Writer by reading a snippet file from the cluster's
-// configured snippet directory (cloud-image-console issue 03). Used to load an
+// configured snippet directory. Used to load an
 // admin-preplaced cluster-wide baseline so it can replace the generated
 // baseline in the delivered vendor-data.
 func (p Proxmox) ReadSnippet(_ context.Context, _, storage, filename string) (string, error) {
@@ -325,7 +325,7 @@ func (p Proxmox) ReadSnippet(_ context.Context, _, storage, filename string) (st
 // without one in the fixed ide3 slot, Proxmox silently ignores cicustom — no
 // seed ISO is generated and the snippet never reaches the guest. Detaching
 // needs no drive, so the ensure runs only when a filename is given; the
-// contract matches the fake's own ordering (ticket 03).
+// ordering matches the fake's own ordering.
 func (p Proxmox) AttachCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int) error {
 	if filename != "" {
 		if err := p.EnsureCloudInitDrive(ctx, node, vmid); err != nil {
@@ -354,7 +354,7 @@ func (p Proxmox) AttachCloudInitSnippet(ctx context.Context, node, storage, file
 // tenant root for the VM's lifetime. The agent path avoids the seed drive
 // entirely. user is the VM's own ciuser — a cloud image's account is
 // debian/ubuntu and root is locked, so a hardcoded "root" would write the
-// password onto an account nobody can log into (ticket 02). Requires a
+// password onto an account nobody can log into. Requires a
 // running guest with qemu-guest-agent enabled; callers surface a clear error
 // when the agent is unavailable.
 func (p Proxmox) SetCloudInitPassword(ctx context.Context, node string, vmid int, user, password string) error {
@@ -377,7 +377,7 @@ func (p Proxmox) SetCloudInitPassword(ctx context.Context, node string, vmid int
 // guestUserUnknownMarkers are the substrings Proxmox's guest-agent layer
 // reports when the target account does not exist on the guest. cloud-init
 // creates the account mid-boot, so this error means "too early", not "wrong
-// user" — the caller retries within its bounded window (ticket 05).
+// user" — the caller retries within its bounded window.
 var guestUserUnknownMarkers = []string{"does not exist", "no such user"}
 
 // isGuestUserUnknown reports whether err is the guest agent's user-not-found
@@ -431,7 +431,7 @@ func encodeIPConfig(config CloudInitConfig) string {
 // sshKeyAddScript is the fixed guest-side script the SSH key is appended
 // through. The username and key are passed as positional argv (see
 // AddSSHKey), not interpolated into this string, so a crafted key cannot
-// break out of the append. The append is idempotent (ticket 07): a
+// break out of the append. The append is idempotent: a
 // missing trailing newline is repaired before appending — otherwise the new
 // key glues onto the last existing line and invalidates both — and an exact
 // whole-line duplicate is a no-op, so a retry after a network error does not
@@ -621,8 +621,8 @@ func (p Proxmox) checkSnippetStorage(storage string) error {
 // PushCloudInitSnippet implements Writer by writing content into the
 // cluster's configured snippet directory. There is no Proxmox API for this
 // (the upload endpoint's content enum is iso/vztmpl/import); the directory
-// is the storage's own snippets/ dir, bind-mounted into the PVMSS process
-// (spec D1). temp-file + rename is atomic, so Proxmox never reads a
+// is the storage's own snippets/ dir, bind-mounted into the PVMSS process.
+// temp-file + rename is atomic, so Proxmox never reads a
 // half-written file, and a retry simply overwrites. node and vmid are
 // unused: the filename already carries the VM.
 func (p Proxmox) PushCloudInitSnippet(_ context.Context, _, storage, filename string, _ int, content string) error {

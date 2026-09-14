@@ -32,30 +32,29 @@ type fakeState struct {
 	pushErr       error
 	sshErr        error
 	// agentPingFailures, when positive, makes the next n PingGuestAgent calls
-	// return ErrUnreachable before succeeding (ticket 05: exercises the
-	// caller's bounded ping loop without a real guest).
+	// return ErrUnreachable before succeeding (exercises the caller's bounded ping loop without a
+	// real guest).
 	agentPingFailures int
 	// guestPasswordErr, when set, is returned by the next
 	// guestPasswordErrLeft SetCloudInitPassword calls instead of succeeding
-	// (ticket 05: inject cluster.ErrGuestUserUnknown to exercise the
-	// retry-on-missing-account loop).
+	// (inject cluster.ErrGuestUserUnknown to exercise the retry-on-missing-account loop).
 	guestPasswordErr     error
 	guestPasswordErrLeft int
 	// snapshotWriteErr, when set, is returned by every snapshot write
-	// (create/rollback/delete) instead of dispatching (ticket 02: tests inject
-	// a cluster rejection to exercise the handler's error mapping).
+	// (create/rollback/delete) instead of dispatching (tests inject a cluster rejection to
+	// exercise the handler's error mapping).
 	snapshotWriteErr error
 	// createErr, when set, is returned by the next CreateVM call instead of
-	// dispatching (US5/issue-05: tests inject cluster.ErrVMIDTaken to exercise
-	// the retry loop, or a generic error to exercise the failure path).
+	// dispatching (tests inject cluster.ErrVMIDTaken to exercise the retry loop, or a generic
+	// error to exercise the failure path).
 	createErr error
 	// createErrCount limits how many consecutive CreateVM calls return
 	// createErr before clearing it (0 = unlimited). Used to simulate a
 	// transient collision that succeeds on retry.
 	createErrCount int
 	// taskErr, when set, makes the next registered task report TaskError on
-	// its first TaskStatus poll instead of TaskRunning (US5/issue-05: tests
-	// inject a task error to exercise the rollback path).
+	// its first TaskStatus poll instead of TaskRunning (tests inject a task error to exercise the
+	// rollback path).
 	taskErr            string
 	cloudInitConfigs   map[fakeCloudInitKey]CloudInitConfig
 	cloudInitDrives    map[fakeCloudInitKey]bool
@@ -64,9 +63,9 @@ type fakeState struct {
 	nextVMID           int
 	nextSnapshotTaskID uint64
 	tasks              map[string]*fakeTask
-	// vmLocks maps vmid → Proxmox lock name ("backup", "migrate", ...). Empty
+	//  vmLocks maps vmid → Proxmox lock name ("backup", "migrate", ...). Empty
 	// or absent means unlocked. Tests inject a lock to exercise retry-on-lock
-	// (ticket 08) and the lock field in VMLiveStatus (ticket 01b).
+	// and the lock field in VMLiveStatus.
 	vmLocks map[int]string
 	// snippetPresence models a fixed, admin-preplaced snippet file the fake
 	// reports as existing — HasSnippet cannot invent one, so this defaults

@@ -9,7 +9,7 @@ import (
 
 // MapCatalog reads the four legacy enabled_* tables and returns rows for
 // the v0.4 catalog_* tables. Storage node expansion is performed by the
-// optional resolver (data-model.md §1); when nil, every storage is skipped
+// optional resolver; when nil, every storage is skipped
 // with a named reason.
 func MapCatalog(ctx context.Context, legacyDB *sql.DB, cluster string, resolver StorageNodeResolver) (
 	nodes []NodeRow, storages []StorageRow, skips []SkipReason,
@@ -194,7 +194,7 @@ func splitISOVolid(name string) (storage, file string, ok bool) {
 	return name[:idx], name[idx+1:], true
 }
 
-// --- Upsert helpers ---
+//  - Upsert helpers -
 
 func upsertNode(ctx context.Context, v04DB *sql.DB, cluster string, r NodeRow) error {
 	_, err := v04DB.ExecContext(ctx, `

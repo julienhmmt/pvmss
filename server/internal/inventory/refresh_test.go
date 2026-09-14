@@ -46,7 +46,7 @@ func TestRefresh_OutsideGuardSucceeds(t *testing.T) {
 	}
 }
 
-// TestRefresh_InsideGuardRefusedWithZeroCalls — FR-006, SC-001: a manual
+// TestRefresh_InsideGuardRefusedWithZeroCalls — a manual
 // refresh within the guard interval is refused with ErrRefreshTooSoon and
 // makes zero client calls.
 //
@@ -84,8 +84,7 @@ func TestRefresh_InsideGuardRefusedWithZeroCalls(t *testing.T) {
 
 // TestRefresh_RetryAfterCountsDownNotFullInterval — the remaining wait
 // reported shrinks as time passes, it is not the full guard interval on
-// every refusal (contracts/cluster-refresh.md: retryAfterSeconds is how long
-// is left, not a constant).
+// every refusal (retryAfterSeconds is how long is left, not a constant).
 //
 //nolint:paralleltest // serial: shared refresh fixture
 func TestRefresh_RetryAfterCountsDownNotFullInterval(t *testing.T) {
@@ -138,7 +137,7 @@ func TestRefresh_FirstRefreshAllowedWhenProjectionEmpty(t *testing.T) {
 
 // TestRefresh_FailingClientReturnsUnreachable — a manual refresh whose client
 // call fails returns ErrClusterUnreachable; the previous projection is
-// still served (FR-004).
+// still served.
 //
 //nolint:paralleltest // serial: shared refresh fixture
 func TestRefresh_FailingClientReturnsUnreachable(t *testing.T) {

@@ -11,8 +11,8 @@ import (
 )
 
 // ClusterRefresh serves POST /api/v1/cluster/refresh — a manual refresh
-// action guarded by a minimum interval (FR-005, FR-006). The guard is
-// enforced server-side (constitution VI), not only by disabling a button.
+// action guarded by a minimum interval. The guard is
+// enforced server-side, not only by disabling a button.
 type ClusterRefresh struct {
 	refresher *inventory.Refresher
 	log       *slog.Logger

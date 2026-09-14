@@ -11,7 +11,7 @@ import (
 const validCloudInitContent = "#cloud-config\npackages:\n  - nginx\n"
 
 // TestDeriveCloudInitTemplateID checks slug derivation from labels, mirroring
-// T11's DeriveProfileID convention (lowercase, hyphenated).
+// DeriveProfileID convention (lowercase, hyphenated).
 func TestDeriveCloudInitTemplateID(t *testing.T) {
 	t.Parallel()
 
@@ -107,8 +107,8 @@ func TestCreateCloudInitTemplate_SlugCollision(t *testing.T) {
 	}
 }
 
-// TestCreateCloudInitTemplate_InvalidContent — content validation delegates to
-// T08's cloudinit.Validate: reject missing #cloud-config prefix, reject > 16 KiB.
+// TestCreateCloudInitTemplate_InvalidContent — content validation delegates to the
+// cloudinit.Validate: reject missing #cloud-config prefix, reject > 16 KiB.
 func TestCreateCloudInitTemplate_InvalidContent(t *testing.T) {
 	t.Parallel()
 
@@ -132,8 +132,8 @@ func TestCreateCloudInitTemplate_InvalidContent(t *testing.T) {
 	}
 }
 
-// TestCloudInitTemplates_EnabledOnly — CloudInitTemplates (T06's catalog
-// reader) and CloudInitTemplate (single lookup) return only enabled templates,
+// TestCloudInitTemplates_EnabledOnly — CloudInitTemplates (catalog reader) and
+// CloudInitTemplate (single lookup) return only enabled templates,
 // while ListCloudInitTemplates (admin) returns every row including disabled.
 func TestCloudInitTemplates_EnabledOnly(t *testing.T) {
 	t.Parallel()
@@ -258,7 +258,7 @@ func TestUpdateCloudInitTemplate_NotFound(t *testing.T) {
 }
 
 // TestDeleteCloudInitTemplate_NoCascade — deleting a template removes it from
-// every list; no cascade (FR-009 — a VM created from it keeps its own snippet).
+// every list; no cascade (a VM created from it keeps its own snippet).
 func TestDeleteCloudInitTemplate_NoCascade(t *testing.T) {
 	t.Parallel()
 
@@ -360,8 +360,8 @@ func TestUpdateCloudInitTemplate_EmptyLabel(t *testing.T) {
 	}
 }
 
-// TestUpdateCloudInitTemplate_InvalidContent — content failing T08's
-// cloudinit.Validate is rejected with ErrInvalidCloudInitTemplate (400).
+// TestUpdateCloudInitTemplate_InvalidContent — content failing the cloudinit.Validate is
+// rejected with ErrInvalidCloudInitTemplate.
 func TestUpdateCloudInitTemplate_InvalidContent(t *testing.T) {
 	t.Parallel()
 

@@ -121,7 +121,7 @@ func newVMDetailHandlerWithWriter(t *testing.T, writer cluster.Writer) (*httpapi
 
 // TestVMDetail_Get_RegistryClusterNotFound — when the handler is wired to a
 // multi-cluster Registry and the path's cluster has no entry, handleGet
-// returns 404 cluster_not_found (FR-015).
+// returns 404 cluster_not_found.
 //
 //nolint:paralleltest // serial: shared fake authentication state
 func TestVMDetail_Get_RegistryClusterNotFound(t *testing.T) {
@@ -289,7 +289,7 @@ func TestVMDetail_Action_ClusterUnreachableMapped(t *testing.T) {
 
 // TestVMDetail_Action_InvalidStateTransitionMapped — a status-incompatible
 // transition (reboot on a stopped VM) maps to 409 invalid_state_transition.
-// Note: start on a running VM is no longer an error — ticket 08 made start/stop
+// Note: start on a running VM is no longer an error — made start/stop
 // idempotent (a no-op success when the target state already holds).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -308,8 +308,8 @@ func TestVMDetail_Action_InvalidStateTransitionMapped(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Action_DefaultErrorMapped — a non-sentinel writer error maps to
-// 500 internal_error (the writeActionError default branch).
+// TestVMDetail_Action_DefaultErrorMapped — a non-sentinel writer error maps to 500
+// internal_error (the writeActionError default branch).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Action_DefaultErrorMapped(t *testing.T) {

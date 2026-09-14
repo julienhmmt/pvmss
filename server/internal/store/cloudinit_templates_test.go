@@ -72,7 +72,7 @@ func findTemplateByID(t *testing.T, rows []store.CatalogCloudInitTemplate, id st
 
 // TestCloudInitTemplates_RoundTripAndStates walks the full CRUD lifecycle via
 // focused helpers: empty start, insert, duplicate, isolation, toggle, update,
-// and delete — the storage layer contract for T18.
+// and delete — the storage layer contract.
 //
 //nolint:paralleltest // round trip owns a shared SQLite fixture across ordered steps
 func TestCloudInitTemplates_RoundTripAndStates(t *testing.T) {

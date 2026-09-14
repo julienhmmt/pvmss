@@ -11,7 +11,7 @@ import (
 )
 
 // TestCreate_Image_SeaBIOSDefault — image mode defaults to SeaBIOS
-// (cloud-image-console issue 02): a request that omits uefi creates a VM with
+// a request that omits uefi creates a VM with
 // no efidisk0 and no bios=ovmf, so the graphical tab shows the guest's real
 // text console instead of an uninitialised framebuffer.
 //
@@ -185,7 +185,7 @@ func TestCreate_Image_NoWriteTarget_SeaBIOSDefault(t *testing.T) {
 
 // TestCreate_Image_StampedWithPvmssImageTag — image-mode VMs carry the
 // pvmss-image tag alongside the mandatory pvmss tag, so the console can
-// default to the readable text tab (cloud-image-console issue 06).
+// default to the readable text tab.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_Image_StampedWithPvmssImageTag(t *testing.T) {

@@ -22,7 +22,7 @@ const (
 )
 
 // newAuditStore opens a fully-migrated Store for audit tests. The audit_log
-// table arrives in schemaV6 (T05), so a fresh Open already has it.
+// table arrives in schemaV6, so a fresh Open already has it.
 func newAuditStore(t *testing.T) *store.Store {
 	t.Helper()
 	cfg := config.Configuration{
@@ -43,9 +43,9 @@ func newAuditStore(t *testing.T) *store.Store {
 	return st
 }
 
-// TestRecordAction_InsertsOneRowWithRealActor — T005: RecordAction inserts
+// TestRecordAction_InsertsOneRowWithRealActor — RecordAction inserts
 // exactly one audit_log row carrying the real acting username, never a
-// service-account name (FR-009, closes S01's traceability gap).
+// service-account name (closes traceability gap).
 //
 //nolint:paralleltest // serial: shared database fixture
 func TestRecordAction_InsertsOneRowWithRealActor(t *testing.T) {
@@ -153,7 +153,7 @@ func seedAuditRows(t *testing.T, st *store.Store) {
 	}
 }
 
-// TestListAuditLog_NoFilter_ReturnsAllMostRecentFirst — T002: no filter
+// TestListAuditLog_NoFilter_ReturnsAllMostRecentFirst — no filter
 // returns every row, most recent (last inserted) first, with the pagination
 // envelope populated.
 //
@@ -186,7 +186,7 @@ func TestListAuditLog_NoFilter_ReturnsAllMostRecentFirst(t *testing.T) {
 	}
 }
 
-// TestListAuditLog_Filters — T002: every filter combination is applied
+// TestListAuditLog_Filters — every filter combination is applied
 // server-side with AND semantics.
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -269,7 +269,7 @@ func TestListAuditLog_Filters(t *testing.T) {
 }
 
 // TestListAuditLog_Pagination — page 2 returns the next slice using the
-// same page/pageSize/total envelope T04 established.
+// same page/pageSize/total envelope established.
 //
 //nolint:paralleltest,gocyclo // serial: shared database fixture; pagination has 3 sequential pages
 func TestListAuditLog_Pagination(t *testing.T) {
@@ -333,8 +333,8 @@ func TestListAuditLog_EmptyStore(t *testing.T) {
 	}
 }
 
-// TestListAuditLog_Sc002_AllActionsFromT05ToT10 — SC-002: one action from
-// each of T05, T06, T08, T09, T10 is recorded and retrievable by its own
+// TestListAuditLog_Sc002_AllActionsFromT05ToT10 — one action from
+// each is recorded and retrievable by its own
 // action string via ListAuditLog (no HTTP).
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -346,11 +346,11 @@ func TestListAuditLog_Sc002_AllActionsFromT05ToT10(t *testing.T) {
 		actor, cluster, action string
 		vmid                   int
 	}{
-		{testAuditActor, "default", testAuditAction, 101},          // T05
-		{testAuditActor, "default", "vm_create", 200},              // T06
-		{testAuditActor, "default", "edit_cloudinit_snippet", 101}, // T08
-		{testAuditActor, "default", "vm_snapshot_create", 101},     // T09
-		{testAuditActor, "default", "console_open", 101},           // T10
+		{testAuditActor, "default", testAuditAction, 101},
+		{testAuditActor, "default", "vm_create", 200},
+		{testAuditActor, "default", "edit_cloudinit_snippet", 101},
+		{testAuditActor, "default", "vm_snapshot_create", 101},
+		{testAuditActor, "default", "console_open", 101},
 	}
 	for _, a := range actions {
 		if err := st.RecordAction(ctx, a.actor, a.cluster, a.vmid, a.action); err != nil {
@@ -477,7 +477,7 @@ func TestRecordAction_StillWritesSeverity(t *testing.T) {
 	}
 }
 
-// --- Retention (issue #02 / Phase 4) ---
+//  - Retention -
 
 // insertAuditRowAtTimestamp writes an audit_log row with an explicit timestamp
 // (bypassing time.Now) so prune tests can place rows inside or outside the

@@ -27,9 +27,9 @@ func buildResolveIndex(t *testing.T) *inventory.Index {
 	return &idx
 }
 
-// TestResolve is the literal table from data-model.md: the five combinations
-// that prove Resolve is the single ownership gate (FR-001, FR-002, FR-004).
-// This is the most important test in T05 — it is the structural proof S01 is
+// TestResolve is the literal table from the five combinations
+// that prove Resolve is the single ownership gate.
+// This is the most important test — it is the structural proof is
 // closed (spec: "resolve_test.go + this phase's tests are the structural proof").
 //
 //nolint:paralleltest // serial: shared fake VM fixture
@@ -136,7 +136,7 @@ func assertResolveResult(
 }
 
 // TestResolve_AdminStillRequiresPvmssTag — an admin bypasses the pool check
-// but never the tag check (FR-004): an untagged VM is 404 for everyone,
+// but never the tag check: an untagged VM is 404 for everyone,
 // including an admin.
 //
 //nolint:paralleltest // serial: shared fake VM fixture
@@ -151,8 +151,8 @@ func TestResolve_AdminStillRequiresPvmssTag(t *testing.T) {
 }
 
 // TestResolve_NodeAlwaysFromIndex — the returned node is exactly what the
-// Index recorded, never re-derived from request input (FR-003, S01 root cause).
-// This is the one-line fix at the center of S01: there is no node parameter
+// Index recorded, never re-derived from request input (root cause).
+// This is the one-line fix at the center of there is no node parameter
 // to forge because Resolve does not accept one.
 //
 //nolint:paralleltest // serial: shared fake VM fixture
@@ -172,7 +172,7 @@ func TestResolve_NodeAlwaysFromIndex(t *testing.T) {
 }
 
 // TestResolve_EntityCarriesDetailFields — the Entity returned to a detail
-// request carries the metrics the V15 stat cards need (CPU, RAM, disk, uptime).
+// request carries the metrics the stat cards need (CPU, RAM, disk, uptime).
 //
 //nolint:paralleltest // serial: shared fake VM fixture
 func TestResolve_EntityCarriesDetailFields(t *testing.T) {

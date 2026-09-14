@@ -14,12 +14,12 @@ import (
 	"slices"
 )
 
-// Sentinel errors for the creation validation pipeline (T06 data-model.md).
+// Sentinel errors for the creation validation pipeline.
 // The handler maps them to 400/403; everything else from the cluster client
 // is a 502.
 var (
 	// ErrNoPool — a non-admin actor has no personal pool, so nothing can own
-	// the VM (FR-005).
+	// the VM.
 	ErrNoPool = errors.New("no personal pool")
 	// ErrAdminCannotCreate — an administrator (local or cluster) cannot create
 	// VMs through the self-service portal. VM ownership requires a personal
@@ -27,39 +27,37 @@ var (
 	// pages or directly in Proxmox.
 	ErrAdminCannotCreate = errors.New("administrators cannot create VMs")
 	// ErrOutOfRange — CPU/memory/disk violate the fixed technical safety
-	// ceiling (FR-008). Deliberately never called a "gabarit" (constitution
-	// I: that word is reserved for T12's policy).
+	// ceiling. Deliberately never called a "gabarit" (that word is reserved for the policy).
 	ErrOutOfRange = errors.New("out of technical range")
 	// ErrNotApproved — a referenced node, storage, bridge, ISO, or profile is
-	// absent from the cluster's catalog (FR-003).
+	// absent from the cluster's catalog.
 	ErrNotApproved = errors.New("not approved for this cluster")
 	// ErrClusterCreate — the cluster client rejected or failed the dispatch
 	// (mapped to 502 by the handler).
 	ErrClusterCreate = errors.New("cluster create failed")
 	// ErrInvalidSource — the request carries more than one VM source (ISO,
-	// template, cloud image) or none (US2/issue-02 D2a). Mapped to 400 by
+	// template, cloud image) or none. Mapped to 400 by
 	// the handler.
 	ErrInvalidSource = errors.New("invalid vm source")
 	// ErrInvalidRequest — the request carries an impossible combination of
-	// options (US6/issue-06: TPM without UEFI). Mapped to 400 by the handler.
+	// options (TPM without UEFI). Mapped to 400 by the handler.
 	ErrInvalidRequest = errors.New("invalid request")
 	// ErrDiskReduction — the requested disk size is smaller than the
-	// template's disk (US2/issue-02 D2c: Proxmox does not reduce disks).
+	// template's disk (Proxmox does not reduce disks).
 	ErrDiskReduction = errors.New("disk size below template")
 	// ErrInsufficientDiskSpace — the target storage does not have enough
-	// free space for the requested disk (US3/issue-04 D4b: hard refusal
-	// before VMID consumption).
+	// free space for the requested disk (hard refusal before VMID consumption).
 	ErrInsufficientDiskSpace = errors.New("insufficient disk space")
 	// ErrNameTaken — the actor already has a VM with the requested name in
-	// their personal pool (US5/issue-05 D5b: per-pool uniqueness so two VMs
-	// in a user's list are never indistinguishable). Mapped to 400 by the
+	// their personal pool (per-pool uniqueness so two VMs in a user's list are never
+	// indistinguishable). Mapped to 400 by the
 	// handler with the code "name_taken".
 	ErrNameTaken = errors.New("name already taken")
 	// ErrNoSnippetStorage — a cloud-init template was requested but no
 	// snippet-capable storage exists on the chosen node, so the snippet could
-	// never be uploaded. Refused before VMID allocation (ticket 04: the same
-	// "never spend a VMID on a request that will be rejected" discipline as
-	// the template resolution) instead of creating a VM whose cloud-init is
+	// never be uploaded. Refused before VMID allocation (the same "never spend a VMID on a request
+	// that will be rejected" discipline as the template resolution) instead of creating a VM whose
+	// cloud-init is
 	// silently absent.
 	ErrNoSnippetStorage = errors.New("no snippet-capable storage on the selected node")
 	// ErrCloudInitWriteUnavailable — a cloud-init document was requested but
@@ -72,7 +70,7 @@ var (
 	ErrDiskBelowImage = errors.New("disk size below cloud image")
 )
 
-// Fixed technical safety ceilings (FR-008) — hardcoded anti-abuse bounds,
+// Fixed technical safety ceilings — hardcoded anti-abuse bounds,
 // not admin-configurable.
 const (
 	MinCPUCores = 1
@@ -110,11 +108,11 @@ const (
 )
 
 // defaultDiskBus is applied when no profile is used (detailed mode). Profiles
-// override this with their own bus value (FR-009).
+// override this with their own bus value.
 const defaultDiskBus = "scsi"
 
 // maxVMIDRetries is the maximum number of VMID collision retries after the
-// first attempt (US5/issue-05 D5c: max 3 attempts total). GET /cluster/nextid
+// first attempt (max 3 attempts total). GET /cluster/nextid
 // returns the smallest free ID without reserving it, so two concurrent
 // creations can collide; retrying with a fresh VMID is not a mutation replay.
 const maxVMIDRetries = 2 // 1 initial + 2 retries = 3 attempts
@@ -124,8 +122,8 @@ const maxVMIDRetries = 2 // 1 initial + 2 retries = 3 attempts
 const auditLogMsg = "record audit failed"
 
 // allowedNetworkModels is the fixed whitelist of NIC models the server
-// accepts (FR-003 spirit: the catalog constrains bridges, this constrains
-// the model — a forged request with an arbitrary string is rejected).
+// accepts (spirit: the catalog constrains bridges, this constrains the model — a forged request
+// with an arbitrary string is rejected).
 var allowedNetworkModels = map[string]bool{
 	"virtio":  true,
 	"e1000":   true,
@@ -134,14 +132,14 @@ var allowedNetworkModels = map[string]bool{
 }
 
 // CreateRequest is the single creation request shape both frontend modes
-// build (FR-001). It deliberately carries no pool field (FR-004 — nothing to
-// forge) and no mode field (the server cannot tell and does not care which
+// build. It deliberately carries no pool field (nothing to forge) and no mode field (the server
+// cannot tell and does not care which
 // wizard produced it).
 //
 // The VM source is exactly one of: an ISO (for OS without cloud images —
 // Windows, appliances), a Proxmox template (for cloud-init-capable images),
 // or a cloud image (imported as the primary disk, configured by cloud-init).
-// The three are mutually exclusive (US2/issue-02 D2a): a request carrying
+// The three are mutually exclusive: a request carrying
 // more than one is rejected with ErrInvalidSource before any VMID is
 // allocated.
 type CreateRequest struct {
@@ -149,8 +147,8 @@ type CreateRequest struct {
 	Name                string `json:"name"`
 	ProfileID           string `json:"profileId,omitempty"`
 	CloudInitTemplateID string `json:"cloudInitTemplateId,omitempty"`
-	// CloudInitFileID names one of the actor's own cloud-init documents
-	// (cloudinit-userdata ticket 03/04). Mutually exclusive with
+	// CloudInitFileID names one of the actor's own cloud-init documents.
+	// Mutually exclusive with
 	// CloudInitTemplateID.
 	CloudInitFileID string `json:"cloudInitFileId,omitempty"`
 
@@ -164,7 +162,7 @@ type CreateRequest struct {
 	ISO        *ISORequest    `json:"iso,omitempty"`
 	TemplateID int            `json:"templateId,omitempty"`
 	Image      *ImageRequest  `json:"image,omitempty"`
-	// UEFI requests bios=ovmf + machine=q35 + efidisk0 (US6/issue-06 D6a).
+	// UEFI requests bios=ovmf + machine=q35 + efidisk0.
 	// Pointer so "omitted" (default true — modern OSes expect UEFI boot) is
 	// distinguishable from an explicit false (legacy SeaBIOS). TPM requests
 	// tpmstate0 alongside the EFI disk; ignored when UEFI is false — TPM 2.0
@@ -191,7 +189,7 @@ type NICRequest struct {
 	Model  string `json:"model,omitempty"`
 }
 
-// NetworkRequest is the request's list of initial NICs (US2/D3a: multi-NIC).
+// NetworkRequest is the request's list of initial NICs (multi-NIC).
 // Simple mode sends one entry; detailed mode may send several. A nil or empty
 // list is treated as a single auto-selected NIC by resolveResources.
 type NetworkRequest []NICRequest
@@ -230,11 +228,11 @@ type ImageCloudInitRequest struct {
 	Gateway   string   `json:"gateway,omitempty"`
 }
 
-// CloudInitPusher applies cloud-init configuration to a VM — T08's
+// CloudInitPusher applies cloud-init configuration to a VM — the
 // cluster.Writer.PushCloudInitSnippet, reused verbatim by the creation-time
-// document apply step (FR-007), plus the native-key and baseline-snippet
+// document apply step, plus the native-key and baseline-snippet
 // methods image mode uses. The push is a filesystem write into the cluster's
-// configured snippet directory (spec D1) — Proxmox's REST API cannot write a
+// configured snippet directory — Proxmox's REST API cannot write a
 // snippet file — followed by HasSnippet as the visibility proof. Defined here
 // as a narrow consumer contract so vm.Create depends only on the methods it
 // actually calls, not the full Writer surface; cluster.Fake and the real
@@ -247,12 +245,12 @@ type CloudInitPusher interface {
 	ReadSnippet(ctx context.Context, node, storage, filename string) (string, error)
 }
 
-// HardwareUpdater is the post-clone mutation contract (US2/issue-02 +
-// lifecycle-04). After the clone task completes, the caller applies hardware
+// HardwareUpdater is the post-clone mutation contract. After the clone task completes, the
+// caller applies hardware
 // overrides (cores/memory/sockets), resizes the disk if enlargement is
 // requested, and starts the VM if StartAfterCreate is set. Delete is included
-// for the rollback path (US5/issue-05 D5a: purge a half-made VM after a failed
-// create/clone task). Defined as a narrow interface so vm.Create depends only
+// for the rollback path (purge a half-made VM after a failed create/clone task). Defined as a
+// narrow interface so vm.Create depends only
 // on the methods it calls, not the full Writer surface; cluster.Fake and the
 // real Proxmox client both satisfy it.
 type HardwareUpdater interface {
@@ -263,17 +261,17 @@ type HardwareUpdater interface {
 	Delete(ctx context.Context, node string, vmid int) error
 }
 
-// FreeSpaceChecker reads live free space from a storage backend (US3/issue-04
-// T045). Used by the create path's hard disk-space check before VMID
-// allocation (D4b). Defined as a narrow interface so vm.Create depends only
+// FreeSpaceChecker reads live free space from a storage backend. Used by the create path's hard
+// disk-space check before VMID
+// allocation. Defined as a narrow interface so vm.Create depends only
 // on the method it calls; cluster.Fake and the real Proxmox client both
 // satisfy it.
 type FreeSpaceChecker interface {
 	StorageFreeSpace(ctx context.Context, node, storage string) (int64, error)
 }
 
-// SnippetStorageFinder resolves a snippet-capable storage on a node (ticket
-// 04). planCreate resolves the snippet target at plan time — the same rule
+// SnippetStorageFinder resolves a snippet-capable storage on a node. planCreate resolves the
+// snippet target at plan time — the same rule
 // the snippet editor uses — instead of the create path guessing from the VM
 // disk's storage, which is block-backed and cannot host a snippet. Narrow
 // interface so vm.Create depends only on the method it calls; cluster.Fake
@@ -283,7 +281,7 @@ type SnippetStorageFinder interface {
 }
 
 // CreateResult is what a successful creation returns — the task is accepted,
-// the VM does not necessarily exist yet (FR-013).
+// the VM does not necessarily exist yet.
 type CreateResult struct {
 	Cluster             string
 	VMID                int
@@ -294,18 +292,18 @@ type CreateResult struct {
 	CloudInitFileID     string
 	CloudInitPushError  string
 	// BaselineState is the delivery state of the generated cloud-init
-	// baseline for image-mode VMs (cloud-image-console issue 03):
-	//   - "applied" — the generated baseline was pushed and attached
-	//   - "override" — a cluster-wide pvmss-baseline.yml replaced the generated baseline
-	//   - "not_delivered" — the baseline could not be delivered (see BaselineError)
-	//   - "" — not an image-mode VM (no baseline)
+	// baseline for image-mode VMs:
+	// - "applied" — the generated baseline was pushed and attached
+	// - "override" — a cluster-wide pvmss-baseline.yml replaced the generated baseline
+	// - "not_delivered" — the baseline could not be delivered (see BaselineError)
+	// - "" — not an image-mode VM (no baseline)
 	BaselineState string
 	// BaselineError is the reason the baseline could not be delivered, when
 	// BaselineState is "not_delivered". Does NOT block the VM start — the
 	// native keys (ciuser/sshkeys/ipconfig0) were already set.
 	BaselineError string
 	// FromImage is true when the VM was created from a cloud image
-	// (cloud-image-console issue 05): the create summary warns that SSH is
+	// the create summary warns that SSH is
 	// the only access until a console password is set.
 	FromImage bool
 }
@@ -323,34 +321,34 @@ type CreateDeps struct {
 	Audit     AuditRecorder
 	Log       *slog.Logger
 	Services  []*policy.Policy
-	// Templates is the clone-time freshness backstop's reader (T17, issue
-	// 02): one TemplateByVMID call before a VMID is spent. Nil skips the
+	// Templates is the clone-time freshness backstop's reader: one TemplateByVMID call before a
+	// VMID is spent. Nil skips the
 	// backstop (unit tests without the live path).
 	Templates TemplateReader
 }
 
 // TemplateReader is the clone path's single-template discovery capability
-// (issue 03's TemplateByVMID). Kept narrow so tests can stub discovery.
+// (TemplateByVMID). Kept narrow so tests can stub discovery.
 type TemplateReader interface {
 	TemplateByVMID(ctx context.Context, vmid int) (cluster.TemplateVM, error)
 }
 
 // Create validates a creation request and dispatches it as an asynchronous
-// cluster task (T06 data-model.md, steps in order):
+// cluster task:
 //
-//  1. a non-admin actor must have a personal pool (FR-005); admins are exempt
-//  2. the name must be a valid hostname (FR-007, T05's rule reused)
-//  3. a profile's catalog values override any request hardware fields (FR-009)
-//  4. CPU/memory/disk must be within the technical ceiling (FR-008)
-//  5. unset node/storage/bridge are auto-selected from the first approved
-//     catalog entries (FR-010); every referenced resource must be a catalog
-//     member (FR-003)
-//  6. the VMID comes from the cluster client's single allocation point
-//     (FR-012); the pool is always the actor's own (FR-004); the pvmss tag
-//     is always present (FR-006)
-//  7. the dispatch is recorded in the audit log (FR-017)
+// 1. a non-admin actor must have a personal pool; admins are exempt
+// 2. the name must be a valid hostname
+// 3. a profile's catalog values override any request hardware fields
+// 4. CPU/memory/disk must be within the technical ceiling
+// 5. unset node/storage/bridge are auto-selected from the first approved
+// catalog entries; every referenced resource must be a catalog
+// member
+// 6. the VMID comes from the cluster client's single allocation point
+// the pool is always the actor's own; the pvmss tag
+// is always present
+// 7. the dispatch is recorded in the audit log
 //
-// Index invalidation (FR-018) is NOT done here — the VM does not exist yet;
+// Index invalidation is NOT done here — the VM does not exist yet;
 // the task-status handler invalidates when the task reaches ok.
 //
 // A step-7 audit-write failure does not fail the request: the cluster task
@@ -361,7 +359,7 @@ type TemplateReader interface {
 func Create(ctx context.Context, actor auth.Identity, clusterName string, req CreateRequest, deps CreateDeps) (CreateResult, error) {
 	policyService := selectPolicyService(deps.Store, deps.Services)
 
-	// FR-005: administrators (local or cluster) cannot create VMs through the
+	// Administrators (local or cluster) cannot create VMs through the
 	// self-service portal — VM ownership requires a personal pool, which admins
 	// do not have. A non-admin must have a personal pool to own the VM.
 	if actor.IsAdmin {
@@ -372,7 +370,7 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 		return CreateResult{}, ErrNoPool
 	}
 
-	// US2/issue-02 D2a: ISO, template, and cloud image are mutually
+	// ISO, template, and cloud image are mutually
 	// exclusive sources.
 	sources := 0
 	if req.ISO != nil {
@@ -392,7 +390,7 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 	}
 
 	// The cloud-init document is also a single choice: an admin template OR
-	// one of the actor's own files, never both (cloudinit-userdata D4).
+	// one of the actor's own files, never both.
 	if req.CloudInitTemplateID != "" && req.CloudInitFileID != "" {
 		return CreateResult{}, fmt.Errorf("%w: request carries both cloudInitTemplateId and cloudInitFileId", ErrInvalidSource)
 	}
@@ -448,8 +446,7 @@ func createFromImage(ctx context.Context, policyService *policy.Policy, deps Cre
 
 	// The create task must finish before the snippet is attached — the PUT
 	// hits a 500 "VM is locked (create)" otherwise. A wait failure is a
-	// failed create task: the half-made VM is purged best-effort (US5/
-	// issue-05 D5a).
+	// failed create task: the half-made VM is purged best-effort.
 	if waitErr := waitCreateTask(ctx, deps.Creator, upid); waitErr != nil {
 		return failImageCreate(ctx, deps, imageCreateFailure{
 			actor:       actor,
@@ -463,7 +460,7 @@ func createFromImage(ctx context.Context, policyService *policy.Policy, deps Cre
 
 	resizeImageDisk(ctx, deps, clusterName, plan, spec, finalVMID, &result)
 
-	// Resolve the user's selected cloud-init document (issue 04): merged on
+	// Resolve the user's selected cloud-init document: merged on
 	// top of the baseline by BuildVendorData. A rejected document fails the
 	// create with the existing validation error — returned, not swallowed,
 	// so the handler maps it to 400.
@@ -481,7 +478,7 @@ func createFromImage(ctx context.Context, policyService *policy.Policy, deps Cre
 	}, &result)
 
 	// Persist the baseline delivery state so the VM detail page can report
-	// it (issue 03). Best-effort: a store failure logs but does not abort.
+	// it. Best-effort: a store failure logs but does not abort.
 	if result.BaselineState != "" {
 		if err := deps.Store.PutBaselineState(ctx, clusterName, finalVMID, result.BaselineState, result.BaselineError); err != nil {
 			deps.Log.Error("persist baseline state failed", "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
@@ -503,7 +500,7 @@ func createFromImage(ctx context.Context, policyService *policy.Policy, deps Cre
 // applies rather than the shared technical minimum (1 vCPU/128 MB) — a cloud
 // image needs real headroom to boot. A set ProfileID skips this:
 // resolveHardware overwrites these fields with the profile's values
-// regardless (FR-009).
+// regardless.
 func defaultImageHardware(req *CreateRequest) {
 	if req.ProfileID != "" {
 		return
@@ -535,7 +532,7 @@ type imageCreateFailure struct {
 }
 
 // failImageCreate handles a failed create-task wait on the image path: the
-// half-made VM is purged best-effort (US5/issue-05 D5a), the wait error is
+// half-made VM is purged best-effort, the wait error is
 // recorded on the result, and the create is audited.
 func failImageCreate(ctx context.Context, deps CreateDeps, f imageCreateFailure) (CreateResult, error) {
 	deps.Log.Error("create task wait failed", "component", "vm", "cluster", f.clusterName, "vmid", f.vmid, "error", f.waitErr)
@@ -551,7 +548,9 @@ func failImageCreate(ctx context.Context, deps CreateDeps, f imageCreateFailure)
 }
 
 // resizeImageDisk grows the imported disk to the requested size. import-from
-// lands the disk at the source image's size (Proxmox requires the :0 target
+//
+//	lands the disk at the source image's size (Proxmox requires the:0 target
+//
 // syntax), so the grow runs now that the create task released the VM lock.
 // ResizeDisk only grows, so the call is skipped when the request matches the
 // image size. A resize failure does not abort — the VM exists — it is
@@ -591,7 +590,7 @@ func startImageVM(ctx context.Context, deps CreateDeps, clusterName string, spec
 const imageBaselineSnippetFilename = "pvmss-baseline.yml"
 
 // Baseline delivery states recorded on CreateResult.BaselineState and
-// persisted in vm_baseline_state (issue 03).
+// persisted in vm_baseline_state.
 const (
 	BaselineStateApplied      = "applied"
 	BaselineStateOverride     = "override"
@@ -607,19 +606,19 @@ type imageCloudInitApply struct {
 	SnippetStorage string
 	CloudInit      ImageCloudInitRequest
 	// UserDocument is the actor's selected cloud-init document content,
-	// merged on top of the baseline (issue 04). Empty when none selected.
+	// merged on top of the baseline. Empty when none selected.
 	UserDocument string
 }
 
 // applyImageCloudInitConfig delivers image-mode cloud-init through Proxmox's
 // native keys (ciuser/sshkeys/ipconfig0 — the only per-VM mechanism the REST
 // API actually supports; see cluster.Writer.HasSnippet), then pushes the
-// generated baseline (issue 01's BuildVendorData) as a per-VM snippet and
+// generated baseline (BuildVendorData) as a per-VM snippet and
 // attaches it as vendor-data. When an admin has placed a cluster-wide
 // pvmss-baseline.yml, its content replaces the generated baseline. A
 // baseline delivery failure does NOT abort the creation or block the start
 // (the native keys were already set): it records the reason on
-// result.BaselineError and sets BaselineState to "not_delivered" (issue 03).
+// result.BaselineError and sets BaselineState to "not_delivered".
 // Only a SetCloudInitConfig failure blocks the start (CloudInitPushError).
 func applyImageCloudInitConfig(ctx context.Context, cfg imageCloudInitApply, result *CreateResult) {
 	config := cluster.CloudInitConfig{
@@ -642,7 +641,7 @@ func applyImageCloudInitConfig(ctx context.Context, cfg imageCloudInitApply, res
 	}
 
 	// No snippet write target on this cluster: there is nowhere a baseline
-	// could live, so record "not_delivered" and let the VM start (issue 03).
+	// could live, so record "not_delivered" and let the VM start.
 	if cfg.SnippetStorage == "" {
 		result.BaselineState = BaselineStateNotDelivered
 		result.BaselineError = "no snippet write target configured for this cluster"
@@ -651,8 +650,8 @@ func applyImageCloudInitConfig(ctx context.Context, cfg imageCloudInitApply, res
 	}
 
 	// Build the vendor-data: the generated baseline, optionally replaced by
-	// a cluster-wide pvmss-baseline.yml the admin placed (issue 03), with
-	// the user's selected document merged on top (issue 04).
+	// a cluster-wide pvmss-baseline.yml the admin placed, with
+	// the user's selected document merged on top.
 	inputs := cloudinit.BaselineInputs{UserDocument: cfg.UserDocument}
 
 	present, err := cfg.Deps.Pusher.HasSnippet(ctx, cfg.Spec.Node, cfg.SnippetStorage, imageBaselineSnippetFilename)
@@ -693,7 +692,7 @@ func applyImageCloudInitConfig(ctx context.Context, cfg imageCloudInitApply, res
 	}
 
 	// Push the generated/merged document as a per-VM snippet, then attach
-	// it as vendor-data (issue 03).
+	// it as vendor-data.
 	snippetFilename := fmt.Sprintf("pvmss-%d.yml", cfg.VMID)
 
 	if err := cfg.Deps.Pusher.PushCloudInitSnippet(ctx, cfg.Spec.Node, cfg.SnippetStorage, snippetFilename, cfg.VMID, doc); err != nil {
@@ -721,8 +720,8 @@ func applyImageCloudInitConfig(ctx context.Context, cfg imageCloudInitApply, res
 	}
 }
 
-// createFromISO is the original creation path (T06): CreateVM with an optional
-// ISO, then cloud-init snippet attachment. lifecycle-04 adds waitCreateTask
+// createFromISO is the original creation path: CreateVM with an optional
+// ISO, then cloud-init snippet attachment. adds waitCreateTask
 // before cloud-init attachment so the Proxmox create lock is released, and
 // forces StartAfterCreate off when a cloud-init template is requested (the VM
 // is started explicitly after the snippet is attached, preventing a first boot
@@ -733,16 +732,16 @@ func createFromISO(ctx context.Context, policyService *policy.Policy, deps Creat
 		return CreateResult{}, err
 	}
 
-	// T18 step (FR-006): resolve a cloud-init template BEFORE NextVMID so an
+	// Resolve a cloud-init template BEFORE NextVMID so an
 	// unknown or disabled id is rejected without burning a VMID — the same
-	// "never spend a VMID on a request that will be rejected" discipline T06
+	// "never spend a VMID on a request that will be rejected" discipline
 	// applies to node/storage/bridge/ISO catalog membership.
 	cloudDoc, err := resolveCloudInitDocument(ctx, deps.Store, clusterName, actor, req)
 	if err != nil {
 		return CreateResult{}, err
 	}
 
-	// lifecycle-04: when a cloud-init document is requested, do not let
+	// When a cloud-init document is requested, do not let
 	// Proxmox start the VM in the same create task — the snippet is not
 	// attached yet, and cloud-init does not replay on the next boot without
 	// `cloud-init clean`. The VM is started explicitly after attachment.
@@ -768,7 +767,7 @@ func createFromISO(ctx context.Context, policyService *policy.Policy, deps Creat
 	spec.VMID = finalVMID
 	result := CreateResult{Cluster: clusterName, VMID: finalVMID, Name: req.Name, Node: plan.node, UPID: upid}
 
-	// lifecycle-04: wait for the create task to finish before attaching
+	// Wait for the create task to finish before attaching
 	// cloud-init. Without this, the PUT /nodes/{node}/qemu/{vmid}/config
 	// hits a 500 "VM is locked (create)" from Proxmox. Only wait when a
 	// cloud-init document is requested — a simple ISO creation with no
@@ -789,8 +788,8 @@ func createFromISO(ctx context.Context, policyService *policy.Policy, deps Creat
 	return result, nil
 }
 
-// cloudInitWaitRequest bundles the inputs to applyCloudInitAfterWait
-// (lifecycle-04). Extracted from createFromISO to keep the nesting under
+// cloudInitWaitRequest bundles the inputs to applyCloudInitAfterWait.
+// Extracted from createFromISO to keep the nesting under
 // nestif's ceiling.
 type cloudInitWaitRequest struct {
 	Deps             CreateDeps
@@ -802,22 +801,21 @@ type cloudInitWaitRequest struct {
 	UPID             string
 	StartAfterCreate bool
 	// SnippetStorage is the plan-time-resolved snippet-capable storage
-	// (ticket 04).
 	SnippetStorage string
 }
 
 // applyCloudInitAfterWait waits for the create task, then attaches the
 // cloud-init snippet and starts the VM if requested. A wait failure is
-// treated as a failed create task (US5/issue-05 D5a): the half-made VM is
+// treated as a failed create task: the half-made VM is
 // purged best-effort so it does not consume the user's quota. An attach
 // failure is recorded on result.CloudInitPushError but does not abort — the
-// task succeeded and the VM exists (lifecycle-04).
+// task succeeded and the VM exists.
 func applyCloudInitAfterWait(ctx context.Context, req cloudInitWaitRequest, result *CreateResult) {
 	if waitErr := waitCreateTask(ctx, req.Deps.Creator, req.UPID); waitErr != nil {
 		req.Deps.Log.Error("create task wait failed", "component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "error", waitErr)
 		result.CloudInitPushError = waitErr.Error()
 
-		// US5/issue-05 D5a: the create task failed, so the VM is half-made.
+		// The create task failed, so the VM is half-made.
 		// Purge it best-effort so it does not eat the user's quota.
 		rollbackFailedCreate(ctx, req.Deps, req.Actor, req.ClusterName, req.VMID, req.Spec.Node, "create task failed")
 
@@ -832,7 +830,7 @@ func applyCloudInitAfterWait(ctx context.Context, req cloudInitWaitRequest, resu
 		SnippetStorage: req.SnippetStorage,
 	}, result)
 
-	// lifecycle-04: start the VM explicitly after the snippet is attached,
+	// Start the VM explicitly after the snippet is attached,
 	// so the first boot sees cloud-init.
 	if req.StartAfterCreate && result.CloudInitPushError == "" && req.Deps.Writer != nil {
 		if startErr := req.Deps.Writer.Action(ctx, req.Spec.Node, req.VMID, "start"); startErr != nil {
@@ -841,10 +839,10 @@ func applyCloudInitAfterWait(ctx context.Context, req cloudInitWaitRequest, resu
 	}
 }
 
-// createFromTemplate is the clone path (US2/issue-02): CloneVM from an approved
+// createFromTemplate is the clone path: CloneVM from an approved
 // Proxmox template, wait for the clone task, then apply post-clone configuration
 // (hardware overrides, disk resize, cloud-init, start). The clone stays on the
-// template's node (D2b: cross-node clone is forbidden).
+// template's node (cross-node clone is forbidden).
 func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps CreateDeps, clusterName string, actor auth.Identity, req CreateRequest) (CreateResult, error) {
 	tmpl, err := resolveTemplate(ctx, deps.Store, clusterName, req.TemplateID)
 	if err != nil {
@@ -856,12 +854,12 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 		return CreateResult{}, err
 	}
 
-	// D2b: the clone stays on the template's node. Override any client-
+	// The clone stays on the template's node. Override any client
 	// supplied node — the selector is hidden in the UI, but a forged request
 	// must not place the clone on a different node.
 	req.Node = tmpl.Node
 
-	// D2c: a zero disk size means "use the template's size" — the clone
+	// A zero disk size means "use the template's size" — the clone
 	// keeps the template's disk as-is, no resize needed. Default it before
 	// planCreate so checkTechnicalRange (MinDiskGB=1) does not reject a
 	// zero, and so applyPostCloneConfig sees the template's size (no
@@ -882,7 +880,7 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 		return CreateResult{}, err
 	}
 
-	// D2c: reject disk reduction before VMID allocation. Run after
+	// Reject disk reduction before VMID allocation. Run after
 	// planCreate so the check sees the resolved disk size — a forged
 	// request carrying both a profileId (whose DiskGB may be smaller than
 	// the template's) and a templateId would otherwise bypass this guard.
@@ -897,7 +895,7 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 		return CreateResult{}, err
 	}
 
-	// lifecycle-04: do not start in the clone task when cloud-init is
+	// Do not start in the clone task when cloud-init is
 	// requested. The VM is started after snippet attachment. Capture the
 	// original request so applyPostCloneConfig can start the VM after
 	// cloud-init is attached.
@@ -921,9 +919,9 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 	cloneSpec.NewVMID = finalVMID
 	result := CreateResult{Cluster: clusterName, VMID: finalVMID, Name: req.Name, Node: tmpl.Node, UPID: upid}
 
-	// lifecycle-04: wait for the clone task to finish before any post-clone
+	// Wait for the clone task to finish before any post-clone
 	// configuration. The VM does not exist until the task completes.
-	// US5/issue-05 D5a: if the task fails, the half-made VM is purged
+	// If the task fails, the half-made VM is purged
 	// (best-effort) so it does not consume the user's quota.
 	if waitErr := waitCreateTask(ctx, deps.Creator, upid); waitErr != nil {
 		deps.Log.Error("clone task wait failed", "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", waitErr)
@@ -953,8 +951,8 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 	return result, nil
 }
 
-// refreshTemplateFromDiscovery is the clone-time freshness backstop (T17,
-// issue 02). The stored row is the approval; discovery is the truth about
+// refreshTemplateFromDiscovery is the clone-time freshness backstop. The stored row is the
+// approval; discovery is the truth about
 // the template's current values. Re-check before a VMID is spent: a template
 // deleted since approval fails fast (ErrNotApproved) instead of failing
 // after a VMID is consumed.
@@ -994,7 +992,7 @@ func refreshTemplateFromDiscovery(ctx context.Context, deps CreateDeps, clusterN
 }
 
 // dispatchCreateWithRetry dispatches a CreateVM call, retrying with a fresh
-// VMID when Proxmox reports a collision (US5/issue-05 D5c: max 3 attempts).
+// VMID when Proxmox reports a collision (max 3 attempts).
 // A retry with a new VMID is not a mutation replay — the original create never
 // succeeded, so ProxMate's idempotency concern does not apply. Returns the
 // final VMID (which may differ from spec.VMID after a retry) and the UPID.
@@ -1007,7 +1005,7 @@ func dispatchCreateWithRetry(ctx context.Context, deps CreateDeps, spec cluster.
 }
 
 // dispatchCloneWithRetry dispatches a CloneVM call with the same VMID collision
-// retry as dispatchCreateWithRetry (US5/issue-05 D5c). Returns the final
+// retry as dispatchCreateWithRetry. Returns the final
 // NewVMID (which may differ after a retry) and the UPID.
 func dispatchCloneWithRetry(ctx context.Context, deps CreateDeps, spec cluster.CloneSpec) (int, string, error) {
 	return retryWithFreshVMID(ctx, deps, spec.NewVMID, "clone", func(vmid int) (string, error) {
@@ -1017,10 +1015,10 @@ func dispatchCloneWithRetry(ctx context.Context, deps CreateDeps, spec cluster.C
 	})
 }
 
-// retryWithFreshVMID is the shared VMID-collision retry loop (US5/issue-05
-// D5c). dispatch is called with the current VMID; on ErrVMIDTaken it allocates
-// a fresh VMID and retries, up to maxVMIDRetries times. label is "create" or
-// "clone" for the error message and log.
+// retryWithFreshVMID is the shared VMID-collision retry loop. dispatch is called with the
+// current VMID; on ErrVMIDTaken it allocates
+// a fresh VMID and retries, up to maxVMIDRetries times. label is "create" or "clone" for the
+// error message and log.
 func retryWithFreshVMID(ctx context.Context, deps CreateDeps, initialVMID int, label string, dispatch func(vmid int) (string, error)) (int, string, error) {
 	vmid := initialVMID
 
@@ -1046,7 +1044,7 @@ func retryWithFreshVMID(ctx context.Context, deps CreateDeps, initialVMID int, l
 }
 
 // rollbackFailedCreate purges a half-made VM after a failed create or clone
-// task (US5/issue-05 D5a). The cleanup is best-effort: a failure is logged and
+// task. The cleanup is best-effort: a failure is logged and
 // does not mask the original error. An audit entry is recorded so the orphan
 // is traceable — ProxMate deliberately kept half-made VMs, but in a self-
 // service portal an orphan consuming the user's quota is indefensible.
@@ -1091,7 +1089,7 @@ func defaultTemplateHardware(req *CreateRequest) bool {
 }
 
 // resolveTemplate looks up the approved Proxmox template before any VMID is
-// allocated (US2/issue-02). Returns ErrNotApproved for an unknown or
+// allocated. Returns ErrNotApproved for an unknown or
 // disabled template — same "never spend a VMID on a rejected request"
 // discipline as ISO validation.
 func resolveTemplate(ctx context.Context, st *store.Store, clusterName string, templateID int) (catalog.Template, error) {
@@ -1109,7 +1107,7 @@ func resolveTemplate(ctx context.Context, st *store.Store, clusterName string, t
 }
 
 // checkDiskReduction rejects a disk size smaller than the template's disk
-// (US2/issue-02 D2c: Proxmox does not reduce disks). The caller passes the
+// (Proxmox does not reduce disks). The caller passes the
 // resolved disk size (from planCreate, which applies profile overrides), so
 // a forged request carrying both a profileId and a templateId cannot bypass
 // this guard with a profile whose DiskGB is smaller than the template's.
@@ -1122,8 +1120,8 @@ func checkDiskReduction(diskGB int, tmpl catalog.Template) error {
 }
 
 // checkDiskAboveImage rejects a disk size smaller than the cloud image being
-// imported (image-mode D2c: the import lands at the image's size and only
-// grows afterwards, so a smaller request is a reduction). The caller passes
+// imported (image-mode: the import lands at the image's size and only grows afterwards, so a
+// smaller request is a reduction). The caller passes
 // the resolved disk size (from planCreate, which applies profile overrides)
 // and the resolved node, so a forged request cannot bypass this guard with a
 // profile whose DiskGB is smaller than the image. Returns the image's size in
@@ -1143,7 +1141,7 @@ func checkDiskAboveImage(resources catalog.Resources, req CreateRequest, node st
 }
 
 // buildCloneSpec assembles the CloneSpec from the resolved template, plan,
-// request, and allocated VMID (US2/issue-02 §5). Full clone when the template
+// request, and allocated VMID. Full clone when the template
 // is cloud-init capable (lvmthin cannot linked-clone an imported disk), or
 // when the target storage differs from the template's disk storage. Linked
 // otherwise.
@@ -1215,8 +1213,8 @@ func resolveCloudInitDocument(ctx context.Context, st *store.Store, clusterName 
 
 // buildCreateSpec assembles the cluster.VMSpec from the validated plan,
 // request, actor identity, and allocated VMID. The "pvmss" tag is always
-// present (FR-004). Image-mode VMs also carry "pvmss-image" so the console
-// can default to the readable text tab (cloud-image-console issue 06).
+// present. Image-mode VMs also carry "pvmss-image" so the console
+// can default to the readable text tab.
 func buildCreateSpec(actor auth.Identity, req CreateRequest, plan createPlan, vmid int) cluster.VMSpec {
 	tags := append([]string(nil), req.Tags...)
 	if !slices.Contains(tags, "pvmss") {
@@ -1227,10 +1225,10 @@ func buildCreateSpec(actor auth.Identity, req CreateRequest, plan createPlan, vm
 		tags = append(tags, "pvmss-image")
 	}
 
-	// US6/issue-06 D6b: stamp the admin-imposed isolation VLAN on every NIC.
-	// The tag comes from the per-cluster gabarit (Q18); tenants never choose
-	// it. Firewall is always true (D6a — the Proxmox per-VM firewall is
-	// armed by default, not user-exposed).
+	// Stamp the admin-imposed isolation VLAN on every NIC.
+	// The tag comes from the per-cluster gabarit; tenants never choose
+	// it. Firewall is always true (the Proxmox per-VM firewall is armed by default, not
+	// user-exposed).
 	nics := make([]cluster.NICSpec, 0, len(plan.nics))
 	for _, nic := range plan.nics {
 		spec := cluster.NICSpec{Bridge: nic.bridge, Model: nic.model, Firewall: true}
@@ -1243,7 +1241,7 @@ func buildCreateSpec(actor auth.Identity, req CreateRequest, plan createPlan, vm
 		nics = append(nics, spec)
 	}
 
-	// US6/issue-06 D6a: UEFI maps to bios=ovmf; the cluster create path
+	// UEFI maps to bios=ovmf; the cluster create path
 	// forces machine=q35 and provisions efidisk0 (+ tpmstate0 when TPM).
 	bios := ""
 	if plan.uefi {
@@ -1296,14 +1294,14 @@ type cloudInitApplyRequest struct {
 	// ("template:<id>" / "file:<id>").
 	SourceLabel string
 	// SnippetStorage is the plan-time-resolved snippet-capable storage
-	// (ticket 04) — never the VM disk's storage, which is block-backed.
+	// never the VM disk's storage, which is block-backed.
 	SnippetStorage string
 }
 
 // applyCloudInitDocument writes the VM's own copy of the chosen document
 // into the cluster's snippet directory, proves Proxmox can see it, attaches
 // it through the vendor-data slot, and records the copy. Every VM gets its
-// own file (spec D4): editing the source template later never changes an
+// own file: editing the source template later never changes an
 // existing VM. A failure at any step lands on result.CloudInitPushError and
 // leaves the VM stopped — the create task is already dispatched and cannot
 // be undone, and starting without the document would silently boot a VM
@@ -1360,7 +1358,7 @@ func applyCloudInitDocument(ctx context.Context, req cloudInitApplyRequest, resu
 	}
 }
 
-// postCloneConfig bundles the inputs to applyPostCloneConfig (US2/issue-02).
+// postCloneConfig bundles the inputs to applyPostCloneConfig.
 type postCloneConfig struct {
 	Deps             CreateDeps
 	Actor            auth.Identity
@@ -1379,8 +1377,8 @@ type postCloneConfig struct {
 	HardwareOverride bool
 }
 
-// applyPostCloneConfig runs the post-clone configuration sequence (US2/issue-02
-// §4, in the order ProxMate uses): hardware overrides → disk resize → cloud-init
+// applyPostCloneConfig runs the post-clone configuration sequence (in the order ProxMate uses):
+// hardware overrides → disk resize → cloud-init
 // → start. Each step is best-effort: a failure is logged and recorded on
 // result.CloudInitPushError but does not abort the remaining steps — the clone
 // is already real and the VM exists.
@@ -1400,8 +1398,8 @@ func applyPostCloneConfig(ctx context.Context, cfg postCloneConfig, result *Crea
 		}, result)
 	}
 
-	// 4. Start the VM if requested (lifecycle-04: after cloud-init attachment
-	// so the first boot sees the snippet).
+	// 4. Start the VM if requested (after cloud-init attachment so the first boot sees the
+	// snippet).
 	if cfg.StartAfterCreate && result.CloudInitPushError == "" && cfg.Deps.Writer != nil {
 		if err := cfg.Deps.Writer.Action(ctx, cfg.Node, cfg.VMID, "start"); err != nil {
 			cfg.Deps.Log.Error("post-clone start failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
@@ -1410,7 +1408,7 @@ func applyPostCloneConfig(ctx context.Context, cfg postCloneConfig, result *Crea
 }
 
 // applyCloneHardware applies hardware overrides when the caller explicitly
-// supplied CPU/memory, and always stamps the mandatory pvmss tag (FR-006).
+// supplied CPU/memory, and always stamps the mandatory pvmss tag.
 // In simple template mode (no hardware override), SetTags is used so the
 // clone inherits the template's hardware unchanged — UpdateHardware would
 // shrink it to the plan's minimums (1 vCPU / 128 MB).
@@ -1431,7 +1429,7 @@ func applyCloneHardware(ctx context.Context, cfg postCloneConfig, result *Create
 	}
 
 	// No hardware override — still stamp the pvmss tag so the clone is
-	// visible to PVMSS (FR-006). Without this, a simple-mode clone exists in
+	// visible to PVMSS. Without this, a simple-mode clone exists in
 	// Proxmox but Resolve() returns ErrNotFound.
 	if err := cfg.Deps.Writer.SetTags(ctx, cfg.Node, cfg.VMID, cfg.Tags); err != nil {
 		cfg.Deps.Log.Error("post-clone set tags failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
@@ -1440,7 +1438,7 @@ func applyCloneHardware(ctx context.Context, cfg postCloneConfig, result *Create
 }
 
 // applyCloneDiskResize enlarges the clone's disk when the plan's size exceeds
-// the template's (D2c: Proxmox does not reduce disks).
+// the template's (Proxmox does not reduce disks).
 func applyCloneDiskResize(ctx context.Context, cfg postCloneConfig, result *CreateResult) {
 	if cfg.Deps.Writer == nil || cfg.Plan.diskGB <= cfg.Template.DiskSizeGB || cfg.DiskKey == "" {
 		return
@@ -1456,7 +1454,7 @@ func applyCloneDiskResize(ctx context.Context, cfg postCloneConfig, result *Crea
 }
 
 // buildTags returns the request's tags with the mandatory "pvmss" tag appended
-// when absent (FR-006). Shared by both creation paths.
+// when absent. Shared by both creation paths.
 func buildTags(req CreateRequest) []string {
 	tags := append([]string(nil), req.Tags...)
 	if !slices.Contains(tags, "pvmss") {
@@ -1482,7 +1480,7 @@ type createPlan struct {
 	node    string
 	storage string
 	// snippetStorage is the snippet-capable storage resolved at plan time
-	// when a cloud-init template was requested (ticket 04). Empty when no
+	// when a cloud-init template was requested. Empty when no
 	// template was requested — resolution costs a cluster read and must not
 	// run on the plain ISO path.
 	snippetStorage string
@@ -1508,8 +1506,8 @@ type nicPlan struct {
 	model  string
 }
 
-// checkName validates the hostname form (FR-008) then checks per-pool name
-// uniqueness (US5/issue-05 D5b). A malformed name reports ErrInvalidName
+// checkName validates the hostname form then checks per-pool name
+// uniqueness. A malformed name reports ErrInvalidName
 // before the duplicate check runs. Extracted from planCreate to keep its
 // cyclomatic complexity under gocyclo's ceiling.
 func checkName(policyService *policy.Policy, pool, name string) error {
@@ -1517,7 +1515,7 @@ func checkName(policyService *policy.Policy, pool, name string) error {
 		return err
 	}
 
-	// US5/issue-05 D5b: per-pool name uniqueness. The name is the only
+	// per-pool name uniqueness. The name is the only
 	// identifier the user manipulates in the portal; two VMs with the same
 	// name in one user's list are indistinguishable. Checked before any
 	// VMID is consumed, like every other rejection.
@@ -1528,10 +1526,10 @@ func checkName(policyService *policy.Policy, pool, name string) error {
 	return nil
 }
 
-// resolveUEFI defaults UEFI to true when the request omits it (US6/issue-06:
-// modern OSes expect UEFI boot). An explicit false selects legacy SeaBIOS.
+// resolveUEFI defaults UEFI to true when the request omits it (modern OSes expect UEFI boot).
+// An explicit false selects legacy SeaBIOS.
 //
-// Image mode is the exception (cloud-image-console issue 02): a cloud image
+// Image mode is the exception: a cloud image
 // ships a stripped-down kernel (Debian's linux-image-cloud-amd64 has
 // # CONFIG_DRM is not set) that cannot drive the emulated VGA under UEFI, so
 // the graphical console renders as static. Defaulting image mode to SeaBIOS
@@ -1552,8 +1550,8 @@ func resolveUEFI(req CreateRequest) bool {
 }
 
 // checkUEFICompat rejects the impossible TPM/SecureBoot-without-UEFI
-// combinations early (US6/issue-06 D6a: TPM 2.0 requires UEFI; Secure Boot is
-// a UEFI-only firmware feature). Extracted from planCreate to keep its
+// combinations early (TPM 2.0 requires UEFI; Secure Boot is a UEFI-only firmware feature).
+// Extracted from planCreate to keep its
 // cyclomatic complexity under gocyclo's ceiling.
 func checkUEFICompat(req CreateRequest) error {
 	if !resolveUEFI(req) {
@@ -1571,7 +1569,7 @@ func checkUEFICompat(req CreateRequest) error {
 
 // planCreate runs all pre-allocation validation: quota, name, catalog,
 // hardware ranges, gabarit, resource resolution, node capacity, and live
-// disk-space check (US3/issue-04). Name uniqueness by pool (US5/issue-05 D5b)
+// disk-space check. Name uniqueness by pool
 // is checked after ValidateName so a malformed name reports ErrInvalidName
 // before the duplicate check runs.
 func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDeps, clusterName string, actor auth.Identity, req CreateRequest) (createPlan, error) {
@@ -1583,7 +1581,7 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 		return createPlan{}, err
 	}
 
-	// US6/issue-06 D6a: TPM 2.0 requires UEFI — reject the impossible
+	// TPM 2.0 requires UEFI — reject the impossible
 	// combination early, before any VMID or catalog work.
 	if err := checkUEFICompat(req); err != nil {
 		return createPlan{}, err
@@ -1603,7 +1601,7 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 		return createPlan{}, err
 	}
 
-	// US3/issue-04: fetch node capacities for placement scoring and storage
+	// Fetch node capacities for placement scoring and storage
 	// free space from the projection for best-storage selection, then resolve
 	// and validate the placement (node/storage/NICs against the catalog).
 	node, storage, nics, err := resolvePlacement(ctx, req, policyService, clusterName, resources, deps.Log)
@@ -1611,7 +1609,7 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 		return createPlan{}, err
 	}
 
-	// D2c (image mode): reject a disk size below the cloud image before any
+	// (image mode): reject a disk size below the cloud image before any
 	// VMID is spent — the import lands at the image's size and only grows.
 	// Run after planCreate so the check sees the resolved disk size (profile
 	// overrides applied). The image size rides on the plan so createFromImage
@@ -1653,9 +1651,9 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 }
 
 // resolvePlacement fetches node capacities and storage free space from the
-// projection (US3/issue-04), resolves node/storage/NICs, validates the choice
+// projection, resolves node/storage/NICs, validates the choice
 // against the catalog, and logs the placement decision when auto-selection
-// ran (T042). Extracted from planCreate to keep its cyclomatic complexity
+// ran. Extracted from planCreate to keep its cyclomatic complexity
 // under gocyclo's ceiling.
 func resolvePlacement(ctx context.Context, req CreateRequest, policyService *policy.Policy, clusterName string, resources catalog.Resources, log *slog.Logger) (node, storage string, nics []nicPlan, err error) {
 	capacities := fetchNodeCapacities(ctx, policyService, clusterName, resources.Nodes)
@@ -1682,13 +1680,13 @@ func resolvePlacement(ctx context.Context, req CreateRequest, policyService *pol
 // node without any snippet-capable storage is refused without burning a VMID
 // (the same discipline as the template resolution). The VM disk's storage is
 // block-backed (ZFS/LVM-thin/Ceph) and cannot host a snippet, so the editor's
-// FindSnippetStorage rule is the only correct source (ticket 04). Returns ""
+// FindSnippetStorage rule is the only correct source. Returns ""
 // when neither was requested: the resolution costs a cluster read and must
 // not run on the plain ISO path.
 //
 // A document needs the write target, so an unconfigured cluster is refused
 // (ErrCloudInitWriteUnavailable → 409). Image mode only uses it for the
-// optional hand-placed baseline (spec D7): with no write target the
+// optional hand-placed baseline: with no write target the
 // baseline is skipped ("" storage) and the create proceeds on the native
 // ciuser/sshkeys/ipconfig0 keys alone.
 func resolvePlanSnippetStorage(ctx context.Context, deps CreateDeps, req CreateRequest, node string) (string, error) {
@@ -1732,7 +1730,7 @@ type gabaritRequest struct {
 }
 
 // checkGabaritAndCapacity runs the gabarit ceiling check and the node-capacity
-// check together (US2/D3a + US3/issue-04). Extracted from planCreate to keep
+// check together. Extracted from planCreate to keep
 // its cyclomatic complexity under gocyclo's ceiling.
 func checkGabaritAndCapacity(ctx context.Context, policyService *policy.Policy, req gabaritRequest) error {
 	if err := policyService.CheckGabarit(ctx, req.clusterName, req.sockets, req.cpuCores, req.memoryMB, req.diskGB, req.nicCount); err != nil {
@@ -1745,7 +1743,7 @@ func checkGabaritAndCapacity(ctx context.Context, policyService *policy.Policy, 
 }
 
 // finalizePlanChecks runs the post-capacity checks: the live disk-space
-// check (US3/issue-04 D4b) and the gabarit VLAN read (US6/issue-06 D6b).
+// check and the gabarit VLAN read.
 // Returns the per-cluster isolation VLAN tag (0 = none imposed). Extracted
 // from planCreate to keep its cyclomatic complexity under gocyclo's ceiling.
 func finalizePlanChecks(ctx context.Context, deps CreateDeps, policyService *policy.Policy, clusterName, node, storage string, diskGB int) (int, error) {
@@ -1762,7 +1760,7 @@ func finalizePlanChecks(ctx context.Context, deps CreateDeps, policyService *pol
 }
 
 // checkLiveDiskSpace verifies the target storage has enough free space for the
-// requested disk (US3/issue-04 D4b). Skipped when no FreeSpaceChecker is wired
+// requested disk. Skipped when no FreeSpaceChecker is wired
 // (unit tests that don't need the live check) or when diskGB is zero.
 func checkLiveDiskSpace(ctx context.Context, freeSpace FreeSpaceChecker, node, storage string, diskGB int) error {
 	if freeSpace == nil || diskGB <= 0 {
@@ -1830,8 +1828,8 @@ func logPlacement(log *slog.Logger, selected string, candidates []catalog.Node, 
 }
 
 // resolveHardware returns the effective sockets, CPU, memory, disk, and bus
-// values, applying the profile's catalog values when a profile is selected
-// (FR-009). Sockets defaults to 1 when the request omits it (zero value).
+// values, applying the profile's catalog values when a profile is selected.
+// Sockets defaults to 1 when the request omits it (zero value).
 func resolveHardware(ctx context.Context, st *store.Store, clusterName string, req CreateRequest) (sockets, cpuCores, memoryMB, diskGB int, bus string, err error) {
 	sockets, cpuCores, memoryMB, diskGB = defaultSockets(req.Sockets), req.CPUCores, req.MemoryMB, req.Disk.SizeGB
 	bus = defaultDiskBus
@@ -1850,13 +1848,13 @@ func resolveHardware(ctx context.Context, st *store.Store, clusterName string, r
 		return 0, 0, 0, 0, "", notApprovedError(err)
 	}
 
-	// FR-009: the profile's catalog values are authoritative — hardware
+	// The profile's catalog values are authoritative — hardware
 	// fields the request also carries are ignored, never merged.
 	return profile.Sockets, profile.CPUCores, profile.MemoryMB, profile.DiskGB, profile.Bus, nil
 }
 
 // defaultSockets returns n or 1 when n is zero — the Proxmox default and the
-// value every pre-US2 request implicitly used.
+// value every existing request implicitly used.
 func defaultSockets(n int) int {
 	if n == 0 {
 		return 1
@@ -1865,7 +1863,7 @@ func defaultSockets(n int) int {
 	return n
 }
 
-// Placement scoring weights (US3/issue-04 D4a: fixed, matching ProxMate).
+// Placement scoring weights (fixed, matching ProxMate).
 // Revisit only if a real deployment demonstrates bad placement.
 const (
 	placementWeightMem  = 0.5
@@ -1877,11 +1875,11 @@ const (
 // resolveResources resolves the node, storage, and NICs, applying
 // auto-selection defaults when the request omits them. When the request
 // carries an ISO and no explicit node, candidate nodes are restricted to
-// those that hold the ISO (US1: a node-local ISO silently fails on the wrong
-// node — the refusal must arrive before VMID consumption).
+// those that hold the ISO (a node-local ISO silently fails on the wrong node — the refusal must
+// arrive before VMID consumption).
 //
 // When no explicit node is selected, candidates are scored by free resource
-// fractions (US3/issue-04): memFrac*0.5 + cpuFrac*0.35 + diskFrac*0.15, +1
+// fractions: memFrac*0.5 + cpuFrac*0.35 + diskFrac*0.15, +1
 // if the VM fits. Catalog order breaks ties for reproducibility.
 func resolveResources(req CreateRequest, resources catalog.Resources, capacities map[string]policy.Capacity, storageFree map[string]int64) (node, storage string, nics []nicPlan, err error) {
 	node, err = resolveNode(req, resources, capacities)
@@ -1955,8 +1953,8 @@ func pickBestNode(candidates []catalog.Node, capacities map[string]policy.Capaci
 	return best.Name
 }
 
-// scoreNode computes a placement score from free resource fractions
-// (US3/issue-04 D4a). The formula matches ProxMate's fixed weights:
+// scoreNode computes a placement score from free resource fractions.
+// The formula matches ProxMate's fixed weights:
 // memFrac*0.5 + cpuFrac*0.35 + diskFrac*0.15, +1 if the VM fits. A node with
 // no capacity data (zero value) scores 0 — still selectable as a fallback,
 // but preferred less than any node with known headroom.
@@ -2003,7 +2001,7 @@ func scoreNode(capacity policy.Capacity, req CreateRequest) float64 {
 }
 
 // nodesWithStorage filters candidates to those that have at least one approved
-// storage in the catalog (US3/issue-04 hard filter).
+// storage in the catalog (hard filter).
 func nodesWithStorage(resources catalog.Resources, candidates []catalog.Node) []catalog.Node {
 	var filtered []catalog.Node
 
@@ -2122,7 +2120,7 @@ func validateCatalog(req CreateRequest, resources catalog.Resources, node, stora
 	return nil
 }
 
-// checkTechnicalRange enforces FR-008's fixed anti-abuse bounds.
+// checkTechnicalRange enforces the fixed anti-abuse bounds.
 func checkTechnicalRange(cpuCores, memoryMB, diskGB int) error {
 	switch {
 	case cpuCores < MinCPUCores || cpuCores > MaxCPUCores:
@@ -2136,10 +2134,10 @@ func checkTechnicalRange(cpuCores, memoryMB, diskGB int) error {
 	return nil
 }
 
-// firstStorageOnNode returns the first approved storage attached to node, or
-// "" when none is (catalog queries are ordered, so this is deterministic).
+// firstStorageOnNode returns the first approved storage attached to node, or "" when none is
+// (catalog queries are ordered, so this is deterministic).
 // bestStorageOnNode picks the approved storage with the most free space on
-// the selected node (US3/issue-04 T041). Falls back to catalog order when
+// the selected node. Falls back to catalog order when
 // free-space data is unavailable (zero free bytes). Catalog order breaks ties
 // for reproducibility.
 func bestStorageOnNode(resources catalog.Resources, node string, storageFree map[string]int64) string {

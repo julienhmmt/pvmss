@@ -1,7 +1,7 @@
 package store
 
-// schemaV10 creates the persistent T12 policy rows. The default row preserves
-// the values that T04, T07, and T09 enforced before policy was persisted.
+// schemaV10 creates the persistent policy rows. The default row preserves
+// the values that, and enforced before policy was persisted.
 const schemaV10 = `
 CREATE TABLE vm_limits (
 	cluster             TEXT PRIMARY KEY,

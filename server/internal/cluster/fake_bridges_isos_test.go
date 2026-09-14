@@ -7,7 +7,7 @@ import (
 )
 
 // TestFakeListBridges_ReturnsSupersetOfApproved verifies the fake's
-// ListBridges returns a strict superset of what T06 already approved
+// ListBridges returns a strict superset of what already approved
 // (vmbr0, vmbr1) — the demo needs at least one undiscovered bridge to
 // approve (vmbr2).
 //
@@ -40,7 +40,7 @@ func TestFakeListBridges_ReturnsSupersetOfApproved(t *testing.T) {
 }
 
 // TestFakeListISOs_ReturnsSupersetOfApproved verifies the fake's ListISOs
-// returns a strict superset of what T06 already approved (debian-12 and
+// returns a strict superset of what already approved (debian-12 and
 // ubuntu-24, both on local) — the demo needs at least one undiscovered ISO
 // to approve (rocky-9).
 //

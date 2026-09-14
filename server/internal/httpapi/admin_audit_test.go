@@ -36,7 +36,7 @@ const (
 )
 
 // auditAdminStore opens a fully-migrated store and seeds it with two audit
-// rows: a VM start (T05) and a cloud-init snippet edit (T08), both by alice.
+// rows: a VM start and a cloud-init snippet edit, both by alice.
 func auditAdminStore(t *testing.T) *store.Store {
 	t.Helper()
 	cfg := config.Configuration{
@@ -151,7 +151,7 @@ func opsPut(t *testing.T, ops *httpapi.AdminOps, auth *httpapi.Auth, cookie *htt
 	return rec
 }
 
-// --- audit handler tests ---
+//  - audit handler tests -
 
 type auditEntryDTO struct {
 	ID        int64  `json:"id"`
@@ -169,7 +169,7 @@ type auditPageDTO struct {
 	PageSize int             `json:"pageSize"`
 }
 
-// TestAdminAudit_AsAdminNoFilter_ReturnsEntriesAndPagination — T013: GET
+// TestAdminAudit_AsAdminNoFilter_ReturnsEntriesAndPagination — GET
 // /admin/audit as admin with no filter returns both seeded entries, most
 // recent first, with the pagination envelope populated.
 //
@@ -205,7 +205,7 @@ func TestAdminAudit_AsAdminNoFilter_ReturnsEntriesAndPagination(t *testing.T) {
 	}
 }
 
-// TestAdminAudit_FilterByAction — T014: GET /admin/audit?action=start returns
+// TestAdminAudit_FilterByAction — GET /admin/audit?action=start returns
 // only the matching entry.
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -228,8 +228,8 @@ func TestAdminAudit_FilterByAction(t *testing.T) {
 	}
 }
 
-// TestAdminAudit_AsNonAdmin_Returns403 — T015: GET /admin/audit as non-admin
-// returns 403 (FR-016).
+// TestAdminAudit_AsNonAdmin_Returns403 — GET /admin/audit as non-admin
+// returns 403.
 //
 //nolint:paralleltest // serial: shared database fixture
 func TestAdminAudit_AsNonAdmin_Returns403(t *testing.T) {
@@ -242,7 +242,7 @@ func TestAdminAudit_AsNonAdmin_Returns403(t *testing.T) {
 	}
 }
 
-// TestAdminAudit_PageSizeOverMaximum_Returns400 — T016: pageSize beyond the
+// TestAdminAudit_PageSizeOverMaximum_Returns400 — pageSize beyond the
 // configured maximum returns 400 page_size_too_large.
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -258,7 +258,7 @@ func TestAdminAudit_PageSizeOverMaximum_Returns400(t *testing.T) {
 	assertAPIError(t, rec.Body.Bytes(), apiCodePageSizeTooLarge)
 }
 
-// --- retention handler tests (issue #02 / Phase 4) ---
+//  - retention handler tests -
 
 type auditConfigDTO struct {
 	RetentionDays int `json:"retentionDays"`

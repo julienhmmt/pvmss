@@ -13,7 +13,7 @@ import (
 
 const storageLocalLVM = "local-lvm"
 
-// openAdminStore opens a fully-migrated store (V9) with the T06 seed and the
+// openAdminStore opens a fully-migrated store (V9) with the seed and the
 // pvmss tag, ready for admin catalog operations.
 func openAdminStore(t *testing.T) *store.Store {
 	t.Helper()
@@ -97,12 +97,12 @@ func TestAdminListNodes_IncludesAllDiscoveredNodes(t *testing.T) {
 
 	approved := findApprovalNode(t, nodes, "pve-node-01")
 	if !approved.Enabled {
-		t.Error("pve-node-01 should be enabled (T06 seed)")
+		t.Error("pve-node-01 should be enabled")
 	}
 
 	approved2 := findApprovalNode(t, nodes, "pve-node-02")
 	if !approved2.Enabled {
-		t.Error("pve-node-02 should be enabled (T06 seed)")
+		t.Error("pve-node-02 should be enabled")
 	}
 
 	unapproved := findApprovalNode(t, nodes, "pve-node-03")
@@ -161,7 +161,7 @@ func TestSetNodeEnabled_UpsertNeverDeletes(t *testing.T) {
 		t.Fatal("pve-node-03 should be disabled after toggle off")
 	}
 
-	// Cross-tranche proof: ApprovedResources (T06) excludes disabled nodes.
+	// ApprovedResources excludes disabled nodes.
 	resources, err := catalog.ApprovedResources(ctx, st, "default")
 	if err != nil {
 		t.Fatalf("ApprovedResources: %v", err)
@@ -205,7 +205,7 @@ func TestSetStorageEnabled_PerPairIsolation(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
 
-	// local@pve-node-02 is approved (T06 seed); local@pve-node-01 is not.
+	// local@pve-node-02 is approved (seed); local@pve-node-01 is not.
 	storages, err := catalog.AdminListStorages(ctx, st, cluster.Fake{}, "default")
 	if err != nil {
 		t.Fatalf("AdminListStorages: %v", err)
@@ -213,7 +213,7 @@ func TestSetStorageEnabled_PerPairIsolation(t *testing.T) {
 
 	node02Local := findApprovalStorage(t, storages, "local", "pve-node-02")
 	if !node02Local.Enabled {
-		t.Error("local@pve-node-02 should be enabled (T06 seed)")
+		t.Error("local@pve-node-02 should be enabled")
 	}
 
 	node01Local := findApprovalStorage(t, storages, "local", "pve-node-01")
@@ -440,8 +440,8 @@ func TestSetStorageEnabled_TogglePersists(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
 
-	// local@pve-node-01 is discovered but not approved (T06 seed approves only
-	// local@pve-node-02). Toggle it on, then off, asserting each step.
+	// local@pve-node-01 is discovered but not approved (seed approves only local@pve-node-02).
+	// Toggle it on, then off, asserting each step.
 	if err := catalog.SetStorageEnabled(ctx, st, cluster.Fake{}, "default", "local", "pve-node-01", true); err != nil {
 		t.Fatalf("SetStorageEnabled on: %v", err)
 	}
@@ -548,13 +548,13 @@ func TestSetISOEnabled_ToggleOffPersists(t *testing.T) {
 }
 
 // pvmssDefaultColor is the indigo hex ensurePvmssTag seeds for the mandatory
-// pvmss tag (FR-014). Centralized as a test const so repeated literals do not
+// pvmss tag. Centralized as a test const so repeated literals do not
 // trip goconst.
 const pvmssDefaultColor = "#4f46e5"
 
 // TestEnsurePvmssTag_InsertsForNonDefaultCluster — the V9 migration seeds the
 // mandatory pvmss tag only for the "default" cluster. ListTags lazily inserts
-// it for any other cluster via ensurePvmssTag (FR-014), so the admin surface
+// it for any other cluster via ensurePvmssTag, so the admin surface
 // never lists a cluster without it. Idempotent on repeat calls.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -769,7 +769,7 @@ func TestAdminListTemplates_SurfacesOrphanApprovals(t *testing.T) {
 }
 
 // unreadableTemplateClient simulates a template whose disk config cannot be
-// read (issue 03): TemplateByVMID returns a DiskUnreadable row.
+// read: TemplateByVMID returns a DiskUnreadable row.
 type unreadableTemplateClient struct {
 	cluster.Fake
 	vmid int
@@ -785,7 +785,7 @@ func (c unreadableTemplateClient) TemplateByVMID(_ context.Context, vmid int) (c
 
 // TestSetTemplateEnabled_RejectsUnreadableOnApprove — approving a template
 // whose disk could not be read would store empty disk_bus/disk_storage and
-// break the post-clone resize (issue 03): refuse with ErrTemplateUnreadable
+// break the post-clone resize: refuse with ErrTemplateUnreadable
 // and write no row.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -848,9 +848,9 @@ func TestSetTemplateEnabled_AllowsDisablingUnreadable(t *testing.T) {
 }
 
 // TestAdminListTemplates_UnreadableDoesNotClobberStoredRow — an unreadable
-// discovery (issue 03) reports empty disk fields; reconciliation must not
-// write them over the stored, approval-time values (T17's clone-time
-// fallback relies on those fields being non-empty).
+// discovery reports empty disk fields; reconciliation must not
+// write them over the stored, approval-time values (clone-time fallback relies on those fields
+// being non-empty).
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminListTemplates_UnreadableDoesNotClobberStoredRow(t *testing.T) {

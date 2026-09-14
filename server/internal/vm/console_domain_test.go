@@ -25,7 +25,7 @@ func (f *fakeAuditRecorder) RecordAction(_ context.Context, _, _ string, vmid in
 }
 
 // fakeProxyFetcher returns a vm.ProxyFetcher that records the node it was
-// called with (so tests can assert FR-007: node is server-resolved) and
+// called with (so tests can assert: node is server-resolved) and
 // returns the fixed ticket/port/err triple.
 func fakeProxyFetcher(ticket string, port int, err error, gotNode *string) vm.ProxyFetcher {
 	return func(_ context.Context, _ string, _ int, node string) (string, int, error) {
@@ -51,7 +51,7 @@ var consoleKindCases = []consoleKindCase{
 	{"terminal", vm.KindTerminal, "proxmox-term-ticket", 5902},
 }
 
-// TestGetConsoleTicket_ResolveThenIssueThenAudit — T012: the happy path calls
+// TestGetConsoleTicket_ResolveThenIssueThenAudit — the happy path calls
 // Resolve (ownership gate), then the proxy fetcher (with the server-resolved
 // node), then Issue (opaque token), then RecordAction("console_open"). The
 // returned ticket carries the opaque token and the server-resolved node.
@@ -90,7 +90,7 @@ func assertConsoleTicketIssuedAndAudited(t *testing.T, idx *inventory.Index, act
 	if ticket.Cluster != testClusterName || ticket.VMID != 100 {
 		t.Fatalf("ticket bound to %+v, want default/100", ticket)
 	}
-	// FR-007: the node passed to the fetcher is Resolve()'s
+	// The node passed to the fetcher is Resolve()'s
 	// server-resolved value, not a client-supplied one.
 	if gotNode != cluster.FakeNode01 {
 		t.Fatalf("fetcher called with node %q, want %q (server-resolved)", gotNode, cluster.FakeNode01)
@@ -109,7 +109,7 @@ func assertConsoleTicketIssuedAndAudited(t *testing.T, idx *inventory.Index, act
 	}
 }
 
-// TestGetConsoleTicket_NonOwnerForbidden — T012: Resolve() is the first gate;
+// TestGetConsoleTicket_NonOwnerForbidden — Resolve() is the first gate;
 // a non-owner gets ErrForbidden before the fetcher or store is touched.
 //
 //nolint:paralleltest // serial: shared fake VM fixture
@@ -142,7 +142,7 @@ func TestGetConsoleTicket_NonOwnerForbidden(t *testing.T) {
 	}
 }
 
-// TestGetConsoleTicket_ClusterClientErrorPropagates — T012: if the fetcher
+// TestGetConsoleTicket_ClusterClientErrorPropagates — if the fetcher
 // fails, the error propagates as ErrClusterConsoleUnavailable and no ticket is
 // issued.
 //
@@ -176,7 +176,7 @@ func TestGetConsoleTicket_ClusterClientErrorPropagates(t *testing.T) {
 	}
 }
 
-// TestGetConsoleTicket_AdminBypassesPoolCheck — T011: an admin can open a
+// TestGetConsoleTicket_AdminBypassesPoolCheck — an admin can open a
 // console for any tagged VM regardless of pool ownership (same as every other
 // Resolve()-gated endpoint).
 //

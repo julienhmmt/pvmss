@@ -19,7 +19,7 @@ import (
 // Without this, a handler bound once at startup to the "default" cluster's
 // client would keep serving every cluster's requests through that one
 // client — a cross-cluster data leak when node names or vmids collide
-// between clusters (root cause behind the metrics-history ticket).
+// between clusters (root cause behind the metrics-history fix).
 func resolveCapability[T any](clients cluster.ClientProvider, fallback T, clusterName, capability string) (T, error) {
 	if clients == nil {
 		return fallback, nil

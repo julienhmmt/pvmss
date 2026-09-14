@@ -59,9 +59,9 @@ type CatalogProfile struct {
 	Bus      string
 }
 
-// CatalogTemplate is one approved Proxmox template (catalog_templates row,
-// US2/issue-02). The VMID is the Proxmox VMID of the template VM; the node
-// determines where the clone lands (D2b: cross-node clone forbidden).
+// CatalogTemplate is one approved Proxmox template (catalog_templates row). The VMID is the
+// Proxmox VMID of the template VM; the node
+// determines where the clone lands (cross-node clone forbidden).
 type CatalogTemplate struct {
 	Cluster          string
 	Node             string
@@ -99,7 +99,7 @@ func queryCatalog[T any](ctx context.Context, db *sql.DB, label, query string, a
 }
 
 // CatalogNodes returns the approved nodes for a cluster, ordered by name so
-// simple-mode auto-selection (first approved entry, FR-010) is deterministic.
+// simple-mode auto-selection (first approved entry) is deterministic.
 func (s *Store) CatalogNodes(ctx context.Context, cluster string) ([]CatalogNode, error) {
 	return queryCatalog(ctx, s.db, "catalog nodes",
 		`SELECT cluster, name FROM catalog_nodes WHERE cluster = ? AND enabled = 1 ORDER BY name`,
@@ -112,7 +112,7 @@ func (s *Store) CatalogNodes(ctx context.Context, cluster string) ([]CatalogNode
 }
 
 // CatalogStorages returns the approved storages for a cluster, ordered by
-// node then name (deterministic auto-selection, FR-010).
+// node then name (deterministic auto-selection).
 func (s *Store) CatalogStorages(ctx context.Context, cluster string) ([]CatalogStorage, error) {
 	return queryCatalog(ctx, s.db, "catalog storages",
 		`SELECT cluster, name, node FROM catalog_storages WHERE cluster = ? AND enabled = 1 ORDER BY node, name`,
@@ -137,7 +137,7 @@ func (s *Store) CatalogBridges(ctx context.Context, cluster string) ([]CatalogBr
 }
 
 // CatalogISOs returns the approved ISO images for a cluster, one row per node
-// (D1b), ordered by node then file. An ISO on shared storage has N rows so
+// ordered by node then file. An ISO on shared storage has N rows so
 // each node's locality can be validated independently.
 func (s *Store) CatalogISOs(ctx context.Context, cluster string) ([]CatalogISO, error) {
 	return queryCatalog(ctx, s.db, "catalog isos",
@@ -151,7 +151,7 @@ func (s *Store) CatalogISOs(ctx context.Context, cluster string) ([]CatalogISO, 
 }
 
 // CatalogImages returns the approved cloud images for a cluster, one row per
-// node (D1b), ordered by node then file. An image on shared storage has N
+// node, ordered by node then file. An image on shared storage has N
 // rows so each node's locality can be validated independently.
 func (s *Store) CatalogImages(ctx context.Context, cluster string) ([]CatalogImage, error) {
 	return queryCatalog(ctx, s.db, "catalog images",
@@ -177,7 +177,7 @@ func (s *Store) CatalogProfiles(ctx context.Context, cluster string) ([]CatalogP
 }
 
 // CatalogTemplates returns the approved Proxmox templates for a cluster,
-// ordered by vmid (US2/issue-02). Each row is one approved template; the
+// ordered by vmid. Each row is one approved template; the
 // admin curates which templates discovered via template=1 are offered.
 func (s *Store) CatalogTemplates(ctx context.Context, cluster string) ([]CatalogTemplate, error) {
 	return queryCatalog(ctx, s.db, "catalog templates",

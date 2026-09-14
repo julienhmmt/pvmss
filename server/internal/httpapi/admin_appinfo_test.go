@@ -29,7 +29,7 @@ type publicVersionDTO struct {
 	Version string `json:"version"`
 }
 
-// TestAdminAppInfo_AsAdmin_ReturnsVersionAndConfig — T041: GET /admin/appinfo
+// TestAdminAppInfo_AsAdmin_ReturnsVersionAndConfig — GET /admin/appinfo
 // as admin returns version, config fields with AdminPasswordHash redacted,
 // and per-cluster health.
 //
@@ -76,7 +76,7 @@ func TestAdminAppInfo_AsAdmin_ReturnsVersionAndConfig(t *testing.T) {
 	}
 }
 
-// TestAdminAppInfo_Sc006_HashNotInResponseBody — T042/SC-006: the full
+// TestAdminAppInfo_Sc006_HashNotInResponseBody — the full
 // response body of GET /admin/appinfo does not contain the configured admin
 // password hash as a substring.
 //
@@ -113,7 +113,7 @@ func TestAdminAppInfo_Sc006_HashNotInResponseBody(t *testing.T) {
 	}
 }
 
-// TestAdminAppInfo_AsNonAdmin_Returns403 — T043: GET /admin/appinfo as
+// TestAdminAppInfo_AsNonAdmin_Returns403 — GET /admin/appinfo as
 // non-admin returns 403; GET /public/version as non-admin and as no identity
 // returns 200 both times.
 //
@@ -140,7 +140,7 @@ func TestAdminAppInfo_AsNonAdmin_Returns403(t *testing.T) {
 	}
 }
 
-// TestPublicVersion_ReturnsOnlyVersion — T044: GET /public/version returns
+// TestPublicVersion_ReturnsOnlyVersion — GET /public/version returns
 // only {"version": "..."}, no config, no health.
 //
 //nolint:paralleltest // serial: shared env

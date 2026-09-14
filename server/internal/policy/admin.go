@@ -135,7 +135,7 @@ func validateGabarit(gabarit Gabarit) error {
 		}
 	}
 
-	// US6/issue-06 D6b: isolation VLAN tag is 0 (no tag) or a valid 802.1Q
+	// Isolation VLAN tag is 0 (no tag) or a valid 802.1Q
 	// tag (1–4094). 4095 is reserved in Proxmox and rejected here.
 	if gabarit.IsolationVLANTag < 0 || gabarit.IsolationVLANTag > 4094 {
 		return fmt.Errorf("%w: isolationVlanTag must be between 0 and 4094", ErrInvalidPolicy)

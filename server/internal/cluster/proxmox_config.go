@@ -476,7 +476,7 @@ func encodeNetValue(iface NetworkInterface) string {
 		parts = append(parts, fmt.Sprintf("rate=%d", *iface.RateMbps))
 	}
 
-	// US6/issue-06 D6a: the Proxmox per-VM firewall is armed on every
+	// The Proxmox per-VM firewall is armed on every
 	// PVMSS-created NIC — the base isolation brick for a multi-tenant
 	// portal, imposed not user-exposed.
 	parts = append(parts, "firewall=1")

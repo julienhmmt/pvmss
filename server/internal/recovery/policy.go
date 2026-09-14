@@ -10,10 +10,10 @@ import (
 // MapPolicy reads the legacy vm_limits singleton and the node_limits table
 // and returns rows for the v0.4 equivalents.
 //
-// vm_limits: only the five fields legacy actually persisted are copied
-// (FR-003). max_sockets/max_cores/max_memory_mb are intentionally NOT
-// read or returned — there is no on-disk source for them (SC-002). The
-// caller must leave them at T12's shipped defaults.
+// vm_limits: only the five fields legacy actually persisted are copied.
+// max_sockets/max_cores/max_memory_mb are intentionally NOT
+// read or returned — there is no on-disk source for them. The
+// caller must leave them at the shipped defaults.
 //
 // node_limits: all four fields are copied. A legacy database that predates
 // schemaV2 has no max_vcpus/max_ram_gb/max_disk_gb columns; the fixture
@@ -78,8 +78,8 @@ func mapNodeLimits(ctx context.Context, legacyDB *sql.DB) ([]NodeLimitsRow, erro
 
 // upsertVMLimits writes the five copied fields into the v0.4 vm_limits row,
 // preserving the existing max_sockets/max_cores/max_memory_mb values
-// (T12's shipped defaults) by reading them first and re-inserting.
-// This is the literal implementation of SC-002: the three no-source fields
+// (shipped defaults) by reading them first and re-inserting.
+// This is the literal implementation of the three no-source fields
 // are never written by this function.
 func upsertVMLimits(ctx context.Context, v04DB *sql.DB, cluster string, row VMLimitsRow) error {
 	var existingSockets, existingCores, existingMemoryMB int
@@ -108,7 +108,7 @@ func upsertVMLimits(ctx context.Context, v04DB *sql.DB, cluster string, row VMLi
 		return nil
 
 	case errIsNoRows(err):
-		// No row yet — insert with T12's defaults for the three no-source fields.
+		// No row yet — insert with the defaults for the three no-source fields.
 		_, err = v04DB.ExecContext(ctx, `
 			INSERT INTO vm_limits (
 				cluster, max_sockets, max_cores, max_memory_mb,
@@ -129,7 +129,7 @@ func upsertVMLimits(ctx context.Context, v04DB *sql.DB, cluster string, row VMLi
 	}
 }
 
-// T12's shipped defaults for the three fields that have no legacy source.
+// the shipped defaults for the three fields that have no legacy source.
 const (
 	defaultMaxSockets  = 4
 	defaultMaxCores    = 8

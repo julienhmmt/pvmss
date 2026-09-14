@@ -44,7 +44,7 @@ func newExportStore(t *testing.T) *store.Store {
 	return st
 }
 
-// TestExportDatabase_ProducesValidSnapshotWithSameRowCount — T006:
+// TestExportDatabase_ProducesValidSnapshotWithSameRowCount
 // ExportDatabase produces a file that reopens as a valid, internally
 // consistent SQLite database with the same row counts as the live one.
 //
@@ -83,7 +83,7 @@ func TestExportDatabase_ProducesValidSnapshotWithSameRowCount(t *testing.T) {
 		t.Errorf("exported audit_log rows = %d, want 2", exportedAuditCount)
 	}
 
-	// The exported snapshot should contain the catalog tables too (T06 seed).
+	// The exported snapshot should contain the catalog tables too (seed).
 	var nodeCount int
 	if err := exportedDB.QueryRowContext(ctx, `SELECT COUNT(*) FROM catalog_nodes`).Scan(&nodeCount); err != nil {
 		t.Errorf("count exported catalog_nodes: %v", err)
@@ -92,7 +92,7 @@ func TestExportDatabase_ProducesValidSnapshotWithSameRowCount(t *testing.T) {
 	}
 }
 
-// TestExportDatabase_DoesNotBlockConcurrentWrite — T006: a concurrent write
+// TestExportDatabase_DoesNotBlockConcurrentWrite — a concurrent write
 // during export succeeds; VACUUM INTO does not block writers on the live
 // database.
 //

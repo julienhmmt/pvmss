@@ -25,7 +25,7 @@ type AuditEntry struct {
 	Severity   string
 }
 
-// schemaV19 rebuilds audit_log to support admin-action auditing (issue #01).
+// schemaV19 rebuilds audit_log to support admin-action auditing.
 // The original schema (V6) had only VM-scoped columns and a NOT NULL vmid,
 // which made it impossible to record admin mutations (cluster credentials,
 // policy, catalog toggles, db import/export) that have no vmid. The rebuild
@@ -54,12 +54,11 @@ DROP TABLE audit_log_v18;
 `
 
 // RecordAction inserts one audit_log row carrying the real acting username —
-// never a service-account name (FR-009, closes S01's traceability gap). The
+// never a service-account name (closes traceability gap). The
 // timestamp is server-side; a caller cannot supply it. The 15 existing VM
 // callers are unchanged; new columns receive empty defaults and the severity
 // is derived from the action verb. An audit write failure is logged and
-// swallowed so it can never prevent the action it records (spec decision:
-// "l'audit ne peut pas casser l'action qu'il enregistre").
+// swallowed so it can never prevent the action it records.
 func (s *Store) RecordAction(ctx context.Context, actor, cluster string, vmid int, action string) error {
 	return s.insertAuditRow(ctx, auditRow{
 		Actor:    actor,
@@ -119,14 +118,14 @@ func (s *Store) insertAuditRow(ctx context.Context, row auditRow) error {
 }
 
 // deriveSeverity maps an action string to one of three severity levels based
-// on its verb (spec decision: 3 levels, hardcoded, not configurable). The
+// on its verb (3 levels, hardcoded, not configurable). The
 // matching is substring-based to cover both dotted (admin.db_import.rejected)
 // and underscored (auth.login_failed) action vocabularies, matching pegaprox's
 // approach.
-//   - critical: contains fail, denied, rejected (e.g. auth.login_failed,
-//     admin.db_import.rejected, auth.csrf_rejected)
-//   - warning:  contains delete, remove, destroy, revoke (e.g. admin.tags.delete)
-//   - info:     everything else (e.g. admin.clusters.create, vm.power_on)
+// - critical: contains fail, denied, rejected (e.g. auth.login_failed,
+// admin.db_import.rejected, auth.csrf_rejected)
+//   - warning: contains delete, remove, destroy, revoke (e.g. admin.tags.delete)
+//   - info: everything else (e.g. admin.clusters.create, vm.power_on)
 func deriveSeverity(action string) string {
 	switch {
 	case strings.Contains(action, "fail"),
@@ -143,8 +142,8 @@ func deriveSeverity(action string) string {
 	}
 }
 
-// QueryAudit returns every audit_log row in insertion order. Test-only at this
-// tranche — production reads belong to T14's admin audit view.
+// QueryAudit returns every audit_log row in insertion order. Test-only for
+// now — production reads belong to the admin audit view.
 func (s *Store) QueryAudit(ctx context.Context) ([]AuditEntry, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT id, actor, cluster, vmid, action, timestamp, target_type, target_id, detail, ip_address, severity FROM audit_log ORDER BY id`)
@@ -182,8 +181,8 @@ func (s *Store) QueryAudit(ctx context.Context) ([]AuditEntry, error) {
 	return entries, rows.Err()
 }
 
-// AuditFilter holds the optional, AND-combined filters for ListAuditLog
-// (T14 data-model.md). Every field is optional; a zero value (empty string,
+// AuditFilter holds the optional, AND-combined filters for ListAuditLog.
+// Every field is optional; a zero value (empty string,
 // nil pointer) means "no filter on this field." Page is 1-based; PageSize
 // is capped by the caller (the HTTP handler enforces the configured maximum).
 type AuditFilter struct {
@@ -198,7 +197,7 @@ type AuditFilter struct {
 }
 
 // AuditPage is the paginated envelope returned by ListAuditLog, matching
-// T04's established list convention (contracts/vms-list.md) rather than
+// the established list convention rather than
 // inventing a second pagination shape.
 type AuditPage struct {
 	Items    []AuditEntry
@@ -207,8 +206,8 @@ type AuditPage struct {
 	PageSize int
 }
 
-// ListAuditLog returns a filtered, paginated view of T05's audit_log table,
-// most recent first (T14 FR-001/FR-002). No schema change, no new action
+// ListAuditLog returns a filtered, paginated view of the audit_log table,
+// most recent first. No schema change, no new action
 // string — a single SELECT with optional WHERE clauses and LIMIT/OFFSET.
 // A nil Items slice is never returned; an empty result yields a non-nil
 // zero-length slice.
@@ -335,7 +334,7 @@ func buildAuditWhere(f AuditFilter) (string, []any) {
 // erase the audit trail by setting retention to 0 or 1 day.
 const minAuditRetentionDays = 30
 
-// AuditConfig is the single-row audit retention configuration (issue #02).
+// AuditConfig is the single-row audit retention configuration.
 type AuditConfig struct {
 	RetentionDays int
 }

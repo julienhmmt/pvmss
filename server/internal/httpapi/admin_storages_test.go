@@ -16,7 +16,7 @@ type adminStorageDTO struct {
 	Enabled bool   `json:"enabled"`
 }
 
-// TestAdminStorages_ListShowsAllWithCorrectEnabled — T014: GET /admin/storages
+// TestAdminStorages_ListShowsAllWithCorrectEnabled — GET /admin/storages
 // shows all VM-capable fake storages with correct per-(name,node) enabled state.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -66,7 +66,7 @@ func TestAdminStorages_ListShowsAllWithCorrectEnabled(t *testing.T) {
 	}
 }
 
-// TestAdminStorages_ToggleOnePairLeavesSameNamedPairUntouched — T014: toggling
+// TestAdminStorages_ToggleOnePairLeavesSameNamedPairUntouched — toggling
 // one storage+node pair does not affect a same-named pair on another node.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -103,7 +103,7 @@ func TestAdminStorages_ToggleOnePairLeavesSameNamedPairUntouched(t *testing.T) {
 	}
 }
 
-// TestAdminStorages_NonAdminReturns403 — T014: non-admin gets 403.
+// TestAdminStorages_NonAdminReturns403 — non-admin gets 403.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminStorages_NonAdminReturns403(t *testing.T) {
@@ -116,7 +116,7 @@ func TestAdminStorages_NonAdminReturns403(t *testing.T) {
 	}
 }
 
-// TestAdminStorages_ToggleUnknownPairReturns404 — T014: unknown pair 404.
+// TestAdminStorages_ToggleUnknownPairReturns404 — unknown pair 404.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminStorages_ToggleUnknownPairReturns404(t *testing.T) {

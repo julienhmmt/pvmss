@@ -16,7 +16,7 @@ import (
 func TestUpdateHardware_RestartsForResourceChanges(t *testing.T) {
 	cluster.ResetFake()
 
-	// T001b: the fake now rejects stop on an already-stopped VM. VM 101 is
+	// The fake now rejects stop on an already-stopped VM. VM 101 is
 	// stopped in the pristine dataset, but the test exercises the restart
 	// flow for a running VM — start it first so the fake dataset matches the
 	// index's running status.
@@ -77,7 +77,7 @@ func TestUpdateHardware_PvmssTagAlwaysRetained(t *testing.T) {
 
 	deps := hardwareDependencies(diskTestIndex(t, 101, cluster.VMRunning), aliceIdentity(), 101)
 
-	// A patch that omits pvmss must not strip the mandatory tag (FR-002):
+	// A patch that omits pvmss must not strip the mandatory tag:
 	// a VM without it is invisible to every PVMSS endpoint.
 	patch := vm.HardwarePatch{Tags: &[]string{"updated"}}
 	if err := vm.UpdateHardware(context.Background(), deps, patch); err != nil {

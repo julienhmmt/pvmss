@@ -52,7 +52,7 @@ func TestClusterRefresh_Success(t *testing.T) {
 }
 
 // TestClusterRefresh_TooSoon — a second immediate call returns 429 with
-// retryAfterSeconds (FR-006, contracts/cluster-refresh.md).
+// retryAfterSeconds.
 //
 //nolint:paralleltest // serial: shared inventory fixture
 func TestClusterRefresh_TooSoon(t *testing.T) {
@@ -109,7 +109,7 @@ func TestClusterRefresh_TooSoon(t *testing.T) {
 	}
 }
 
-// TestClusterRefresh_TooSoonMakesZeroClientCalls — SC-001: a 429 refusal
+// TestClusterRefresh_TooSoonMakesZeroClientCalls — a 429 refusal
 // never triggers a cluster client call.
 //
 //nolint:paralleltest // serial: shared inventory fixture

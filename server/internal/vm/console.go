@@ -1,6 +1,5 @@
-// Package vm — T10 console ticket store and Resolve()-gated ticket issuance.
+// Package vm — console ticket store and Resolve()-gated ticket issuance.
 //
-// Per AC01 (see specs/011-t10-console-vnc/spec.md "Why this tranche exists"),
 // the console ticket store stays in process memory: a map, a mutex, a TTL, and
 // oldest-eviction when the fixed capacity is reached. It is never persisted
 // to SQLite or any store shared between replicas — PVMSS is single-instance
@@ -21,28 +20,26 @@ import (
 	"time"
 )
 
-// TicketTTL is the hardcoded validity window for a console ticket (plan.md
-// Constraints). Long enough to cover the WebSocket upgrade round-trip, short
+// TicketTTL is the hardcoded validity window for a console ticket. Long enough to cover the
+// WebSocket upgrade round-trip, short
 // enough that a stale, unconsumed ticket is not a standing capability.
 // Exported so the HTTP handler can include expiresInSeconds in the response
-// (contracts/vm-console.md).
 const TicketTTL = 30 * time.Second
 
 // ticketStoreCapacity caps the number of outstanding tickets. When the cap is
-// reached, the oldest entry is evicted before inserting a new one — B11's
-// "TTL + éviction du plus ancien", unchanged.
+// reached, the oldest entry is evicted before inserting a new one — the "TTL + éviction du plus
+// ancien", unchanged.
 const ticketStoreCapacity = 256
 
 // ErrInvalidTicket is returned by ConsoleTicketStore.Consume when the token is
 // missing, expired, already consumed, or bound to a different (kind, cluster,
 // vmid) than the one in the WebSocket URL. The WebSocket handler maps this to
-// a 400 without upgrading the connection (FR-004, FR-005).
+// a 400 without upgrading the connection.
 var ErrInvalidTicket = errors.New("invalid console ticket")
 
 // ErrClusterConsoleUnavailable is returned by GetConsoleTicket when the
 // cluster client's proxy ticket call fails — Proxmox is unreachable, the VM
 // is not running, etc. The HTTP handler maps this to 502 console_unavailable
-// (contracts/vm-console.md).
 var ErrClusterConsoleUnavailable = errors.New("console unavailable")
 
 // AuditActionConsoleOpen is the audit record action for opening a console
@@ -65,8 +62,8 @@ const (
 
 // ConsoleTicket is an in-memory, single-use, TTL-bound capability binding an
 // opaque token to (kind, cluster, vmid, node, ProxmoxTicket, port). The client
-// ever sees only the Token; every other field stays server-side (FR-002,
-// FR-003). Never persisted, never serialized to a store (AC01). Issued by
+// ever sees only the Token; every other field stays server-side. Never persisted, never
+// serialized to a store. Issued by
 // GetConsoleTicket, consumed once by the VNC or serial WebSocket handler.
 type ConsoleTicket struct {
 	Kind          ConsoleKind
@@ -80,7 +77,7 @@ type ConsoleTicket struct {
 	ExpiresAt     time.Time
 }
 
-// ConsoleTicketStore is the in-memory ticket store (AC01). Constructed once in
+// ConsoleTicketStore is the in-memory ticket store. Constructed once in
 // main.go and passed into httpapi alongside every other dependency — no
 // package-level singleton, no global mutable state. A single map holds both
 // VNC and serial terminal tickets, distinguished by the Kind field.
@@ -100,7 +97,7 @@ func NewConsoleTicketStore() *ConsoleTicketStore {
 
 // Issue generates an opaque, cryptographically random token, stores the entry,
 // appends to the insertion-order slice, and evicts the oldest entry if the
-// fixed capacity is exceeded (FR-003, B11). Returns the new ticket.
+// fixed capacity is exceeded. Returns the new ticket.
 func (s *ConsoleTicketStore) Issue(kind ConsoleKind, clusterName string, vmid int, node, proxmoxTicket string, port int) ConsoleTicket {
 	token, err := generateConsoleToken()
 	if err != nil {
@@ -140,7 +137,7 @@ func (s *ConsoleTicketStore) Issue(kind ConsoleKind, clusterName string, vmid in
 // mismatch against what was bound at issuance → ErrInvalidTicket. On success,
 // the entry is deleted from the map BEFORE returning it — a concurrent second
 // Consume for the same token cannot observe it as still present, closing the
-// single-use race (FR-004). A mismatched Consume does NOT consume the ticket:
+// single-use race. A mismatched Consume does NOT consume the ticket:
 // it remains valid for its real (kind, cluster, vmid).
 func (s *ConsoleTicketStore) Consume(kind ConsoleKind, token, clusterName string, vmid int) (ConsoleTicket, error) {
 	s.mu.Lock()
@@ -199,7 +196,7 @@ func generateConsoleToken() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-// --- GetConsoleTicket: Resolve()-gated issuance (T012) ---
+//  - GetConsoleTicket: Resolve()-gated issuance -
 
 // ProxyFetcher fetches the Proxmox-side ticket and port for a console session.
 // The VNC path supplies a wrapper around relay.GetVNCTicket; the serial path
@@ -223,11 +220,11 @@ type ConsoleTicketDeps struct {
 }
 
 // GetConsoleTicket is the only path from a ticket HTTP request to a console
-// capability (FR-001). It calls Resolve() first (the same and only ownership
+// capability. It calls Resolve() first (the same and only ownership
 // gate every other write uses), then the proxy fetcher to obtain the
 // Proxmox-side ticket, then the in-memory store to issue the opaque capability,
 // then records the audit entry. The node is always Resolve()'s server-resolved
-// value — the caller never supplies one (FR-007).
+// value — the caller never supplies one.
 func GetConsoleTicket(ctx context.Context, deps ConsoleTicketDeps) (ConsoleTicket, error) {
 	entity, err := Resolve(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
 	if err != nil {
@@ -248,9 +245,9 @@ func GetConsoleTicket(ctx context.Context, deps ConsoleTicketDeps) (ConsoleTicke
 	return ticket, nil
 }
 
-// --- test-only helpers (kept in production file so the white-box tests in
+//  - test-only helpers (kept in production file so the white-box tests in
 // console_test.go can exercise eviction and expiry without duplicating the
-// store's internals). Not used by any production caller. ---
+//  store's internals). Not used by any production caller. -
 
 // expireForTest forces a ticket's ExpiresAt into the past. Test-only.
 func (s *ConsoleTicketStore) expireForTest(token string) {

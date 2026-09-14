@@ -108,7 +108,7 @@ func (h *Auth) SetClusterFreshnessChecker(freshness ClusterFreshnessChecker, sta
 
 // Login authenticates a PVE cluster account. The local administrator has its
 // own endpoint (AdminLogin) — a wrong password means something different for
-// each, so neither is a branch inside the other (contracts/auth-login.md).
+// each, so neither is a branch inside the other.
 func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeAuthError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
@@ -247,11 +247,11 @@ func (h *Auth) Require(next http.Handler) http.Handler {
 	})
 }
 
-// RequireAdmin is the admin-only route guard (FR-008): the resolved identity
+// RequireAdmin is the admin-only route guard: the resolved identity
 // must authenticate (401 if not) and have IsAdmin == true (403 if not). It
 // duplicates the Principal resolution from Require rather than composing it,
 // so it can issue the role check without an extra handler hop. This is the
-// only admin-only route guard in v0.4 — T02 shipped authentication only, not
+// only admin-only route guard in v0.4 — earlier work shipped authentication only, not
 // role enforcement. Every /api/v1/admin/* route is wrapped by this, so a
 // non-admin identity can never reach an admin handler regardless of the HTTP
 // method or path.
@@ -289,9 +289,9 @@ func (h *Auth) Principal(r *http.Request) (auth.Identity, error) {
 	// API tokens are deactivated: bearer credentials are not resolved. Kept
 	// commented for re-enablement together with the routes in router.go.
 	// const bearerPrefix = "Bearer "
-	// authorization := r.Header.Get("Authorization")
+	//  authorization:= r.Header.Get("Authorization")
 	// if strings.HasPrefix(authorization, bearerPrefix) {
-	// 	return h.tokens.Resolve(r.Context(), strings.TrimSpace(strings.TrimPrefix(authorization, bearerPrefix)))
+	// return h.tokens.Resolve(r.Context(), strings.TrimSpace(strings.TrimPrefix(authorization, bearerPrefix)))
 	// }
 	return auth.Identity{}, auth.ErrUnauthenticated
 }
@@ -315,7 +315,6 @@ func (h *Auth) Logout(w http.ResponseWriter, r *http.Request) {
 
 // CreateToken creates an API token for the browser session identity. Only a
 // browser session may mint a token — a token cannot be used to mint another
-// (contracts/auth-tokens.md).
 func (h *Auth) CreateToken(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.sessions.Resolve(r.Context(), r)
 	if err != nil {
@@ -339,7 +338,7 @@ func (h *Auth) CreateToken(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListTokens returns the browser session identity's own tokens. Values are
-// never included — only a creation response ever carries one (SC-004).
+// never included — only a creation response ever carries one.
 func (h *Auth) ListTokens(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.sessions.Resolve(r.Context(), r)
 	if err != nil {
@@ -365,7 +364,7 @@ func (h *Auth) ListTokens(w http.ResponseWriter, r *http.Request) {
 
 // RevokeToken deletes a token owned by the browser session identity. An
 // unknown id and a not-owned id both 404, so a caller cannot probe other
-// users' token ids (contracts/auth-tokens.md).
+// users' token ids.
 func (h *Auth) RevokeToken(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.sessions.Resolve(r.Context(), r)
 	if err != nil {
@@ -390,7 +389,7 @@ func (h *Auth) RevokeToken(w http.ResponseWriter, r *http.Request) {
 
 // ChangePassword rotates the browser session identity's cluster password.
 // The local administrator has no password to change through this flow — its
-// secret is rotated outside the application (spec Assumption).
+// secret is rotated outside the application.
 func (h *Auth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.sessions.Resolve(r.Context(), r)
 	if err != nil {
@@ -504,7 +503,7 @@ type oidcRequest struct {
 	Cluster string `json:"cluster"`
 }
 
-// OIDC returns the deliberate T15 not-implemented response for enabled realms.
+// OIDC returns the deliberate not-implemented response for enabled realms.
 func (h *Auth) OIDC(w http.ResponseWriter, r *http.Request) {
 	var request oidcRequest
 	if err := decodeJSON(w, r, &request); err != nil || request.Cluster == "" {
@@ -595,8 +594,7 @@ func writeAuthError(w http.ResponseWriter, status int, code, message string) {
 }
 
 // userDisplayName extracts the local part of a Proxmox username, stripping the
-// optional pvmss- pool prefix so the UI can show "jho" instead of
-// "pvmss-jho@pve".
+// optional pvmss- pool prefix so the UI can show "jho" instead of "pvmss-jho@pve".
 func userDisplayName(username string) string {
 	local, _, _ := strings.Cut(username, "@")
 	return strings.TrimPrefix(local, pools.PoolPrefix)

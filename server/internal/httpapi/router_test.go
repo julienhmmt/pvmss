@@ -87,7 +87,7 @@ func TestRouter_SPAFallback(t *testing.T) {
 const cloudInitRoutePath = "/api/v1/vms/default/101/cloudinit"
 
 // TestRouter_CloudInitRoutesAreSpecific verifies that cloudinit routes require
-// the exact (vm, node) pair and reject near-miss paths (T008).
+// the exact (vm, node) pair and reject near-miss paths.
 func TestRouter_CloudInitRoutesAreSpecific(t *testing.T) {
 	t.Parallel()
 
@@ -190,7 +190,7 @@ func TestRouter_MissingBuildDir_HealthStillWorks(t *testing.T) {
 }
 
 // TestRouter_DocsRoutesRegistered verifies the docs and admin-docs routes are
-// wired through NewRouter when the handlers are provided (issue #53).
+// wired through NewRouter when the handlers are provided.
 //
 //nolint:paralleltest // serial: shared router and database fixtures
 func TestRouter_DocsRoutesRegistered(t *testing.T) {

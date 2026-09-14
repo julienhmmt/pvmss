@@ -23,7 +23,7 @@ var consoleKindCases = []consoleKindCase{
 	{"terminal", KindTerminal, "proxmox-term-ticket", 5902},
 }
 
-// TestConsoleTicketStore_IssueThenConsume_Succeeds — T004: a freshly issued
+// TestConsoleTicketStore_IssueThenConsume_Succeeds — a freshly issued
 // ticket is consumable exactly once for the (cluster, vmid) it was bound to.
 func TestConsoleTicketStore_IssueThenConsume_Succeeds(t *testing.T) {
 	t.Parallel()
@@ -69,7 +69,7 @@ func assertTicketIssuedAndConsumed(t *testing.T, tc consoleKindCase) {
 	}
 }
 
-// TestConsoleTicketStore_ConsumeTwice_FailsOnSecondCall — FR-004: a ticket is
+// TestConsoleTicketStore_ConsumeTwice_FailsOnSecondCall — a ticket is
 // single-use; the second Consume for the same token is rejected.
 func TestConsoleTicketStore_ConsumeTwice_FailsOnSecondCall(t *testing.T) {
 	t.Parallel()
@@ -116,7 +116,7 @@ func TestConsoleTicketStore_ConsumeAfterExpiry_Fails(t *testing.T) {
 	}
 }
 
-// TestConsoleTicketStore_ConsumeWithWrongClusterOrVMID_Fails — FR-002 defense
+// TestConsoleTicketStore_ConsumeWithWrongClusterOrVMID_Fails — defense
 // in depth: a ticket bound to (default, 101) is rejected against (default, 202)
 // or (other, 101).
 func TestConsoleTicketStore_ConsumeWithWrongClusterOrVMID_Fails(t *testing.T) {
@@ -168,7 +168,7 @@ func TestConsoleTicketStore_ConsumeWithWrongKind_Fails(t *testing.T) {
 }
 
 // TestConsoleTicketStore_EvictsOldestWhenFull — capacity is 256; the 257th
-// Issue evicts the oldest entry (B11's "TTL + éviction du plus ancien").
+// Issue evicts the oldest entry.
 func TestConsoleTicketStore_EvictsOldestWhenFull(t *testing.T) {
 	t.Parallel()
 
@@ -206,7 +206,7 @@ func TestConsoleTicketStore_EvictsOldestWhenFull(t *testing.T) {
 }
 
 // TestConsoleTicketStore_TTLIsThirtySeconds — the TTL is a hardcoded 30s
-// constant (plan.md Constraints), not a configuration field.
+// constant, not a configuration field.
 func TestConsoleTicketStore_TTLIsThirtySeconds(t *testing.T) {
 	t.Parallel()
 

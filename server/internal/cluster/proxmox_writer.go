@@ -17,7 +17,7 @@ import (
 var shutdownTimeout = 60 * time.Second
 
 // proxmoxValidActions mirrors fake.go's validActions — the exhaustive set of
-// power transitions FR-006 accepts. vm.IsValidAction already gates this
+// power transitions accepts. vm.IsValidAction already gates this
 // upstream; checked again here defensively, before any HTTP call, matching
 // the fake's own defense-in-depth.
 var proxmoxValidActions = map[string]bool{
@@ -64,7 +64,7 @@ func (p Proxmox) Action(ctx context.Context, node string, vmid int, action strin
 // Delete implements Writer via DELETE /nodes/{node}/qemu/{vmid}. purge=1 also
 // removes references from backup jobs and pools — matching the product's own
 // "irreversible, no soft-delete, no undo" contract (client.go: VM.Description
-// doc, V14). Proxmox rejects deleting a running VM with HTTP 500 ("VM X is
+// doc). Proxmox rejects deleting a running VM with HTTP 500 ("VM X is
 // running - destroy failed"); that is mapped to ErrVMRunning so callers can
 // distinguish it from a genuine cluster fault and decide whether to force-stop
 // first (see vm.Delete's Force flag) rather than papering over it here.
@@ -265,7 +265,7 @@ func (p Proxmox) UpdateHardware(ctx context.Context, node string, vmid, sockets,
 
 // SetTags implements Writer: writes only the tags key, leaving hardware
 // untouched. Used by the clone path when no hardware override was requested
-// but the mandatory pvmss tag still needs to be stamped (FR-006).
+// but the mandatory pvmss tag still needs to be stamped.
 func (p Proxmox) SetTags(ctx context.Context, node string, vmid int, tags []string) error {
 	form := url.Values{
 		"tags": {strings.Join(tags, ";")},
@@ -289,7 +289,7 @@ func (p Proxmox) EnableSerial(ctx context.Context, node string, vmid int) error 
 }
 
 // ReadFirmwareConfig reads the live firmware-related config of a VM via
-// GET /nodes/{node}/qemu/{vmid}/config (issue 08). The projection does not
+// GET /nodes/{node}/qemu/{vmid}/config. The projection does not
 // hydrate these fields, so the SeaBIOS retrofit reads them live to decide
 // whether a VM can be safely switched (TPM state or Secure Boot refuse).
 func (p Proxmox) ReadFirmwareConfig(ctx context.Context, node string, vmid int) (FirmwareConfig, error) {
@@ -314,7 +314,7 @@ func (p Proxmox) ReadFirmwareConfig(ctx context.Context, node string, vmid int) 
 }
 
 // RetrofitToSeaBIOS removes the UEFI firmware keys from a VM's config by
-// deleting bios, machine, efidisk0, and tpmstate0 in a single PUT (issue 08).
+// deleting bios, machine, efidisk0, and tpmstate0 in a single PUT.
 // The caller must have already refused VMs with TPM state or Secure Boot and
 // stopped the VM. Proxmox accepts a comma-joined delete list in one call.
 func (p Proxmox) RetrofitToSeaBIOS(ctx context.Context, node string, vmid int) error {

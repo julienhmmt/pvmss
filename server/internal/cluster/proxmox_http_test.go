@@ -253,7 +253,7 @@ func TestProxmoxRESTClient_Authenticate_UsesTicketWhenSet(t *testing.T) {
 	}
 }
 
-// --- Ticket 07: GET-only retry tests ---
+//  - GET-only retry tests -
 
 // retryTestServer builds an httptest.Server whose handler consults a
 // per-request response plan. Each call increments the shared counter so tests

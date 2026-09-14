@@ -10,10 +10,10 @@ import (
 )
 
 // NextVMID implements Creator via GET /cluster/nextid — the single
-// allocation point (FR-012), delegated to Proxmox's own cluster-wide counter
+// allocation point, delegated to Proxmox's own cluster-wide counter
 // rather than reimplemented client-side. The endpoint returns the smallest
 // free ID at call time without reserving it, so two concurrent creations can
-// collide; the caller handles ErrVMIDTaken by retrying (US5/issue-05 D5c).
+// collide; the caller handles ErrVMIDTaken by retrying.
 func (p Proxmox) NextVMID(ctx context.Context) (int, error) {
 	raw, err := p.rest().do(ctx, http.MethodGet, "/cluster/nextid", nil)
 	if err != nil {
@@ -45,7 +45,7 @@ func (p Proxmox) NextVMID(ctx context.Context) (int, error) {
 // matching how VM.CPUCores is itself derived elsewhere (fake.go's
 // UpdateHardware: CPUCores = sockets * cores). Proxmox's own start=1 param
 // folds the initial boot into the same task rather than a separate Action
-// call, matching FR-022 exactly.
+// call, exactly.
 func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 	form := url.Values{
 		"vmid":    {strconv.Itoa(spec.VMID)},
@@ -85,9 +85,9 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 			continue
 		}
 
-		// US6/issue-06: pass VLAN, Firewall, MAC, and RateMbps through to
-		// the encoder. Firewall is always true (D6a — imposed, not exposed).
-		// VLAN is the admin-imposed isolation tag (D6b).
+		// Pass VLAN, Firewall, MAC, and RateMbps through to
+		// the encoder. Firewall is always true (imposed, not exposed).
+		// VLAN is the admin-imposed isolation tag.
 		form.Set(fmt.Sprintf("net%d", i), encodeNetValue(NetworkInterface{
 			Model: nic.Model, Bridge: nic.Bridge, VLAN: nic.VLAN,
 			Firewall: true, MAC: nic.MAC, RateMbps: nic.RateMbps,
@@ -105,7 +105,7 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 		form.Set(cdromDiskKey, fmt.Sprintf("%s:iso/%s,media=cdrom", spec.ISO.Storage, spec.ISO.File))
 	}
 
-	// US6/issue-06: UEFI (bios=ovmf) and TPM 2.0.
+	// UEFI (bios=ovmf) and TPM 2.0.
 	setUEFIFormKeys(form, spec)
 
 	if spec.StartAfterCreate {
@@ -148,7 +148,7 @@ func setDiskFormKeys(form url.Values, spec VMSpec) {
 	// A cloud image imports as the primary disk via import-from
 	// (PVE ≥ 7.2): Proxmox copies the image onto the target storage.
 	// The source must be a PVE-managed volume of vtype 'import' (not
-	// 'iso' — .img files are rejected) and must be passed as a volid,
+	//  'iso' — .img files are rejected) and must be passed as a volid,
 	// not an absolute path (absolute paths are root@pam-only).
 	// Cloud images live in the storage's import/ directory with
 	// .qcow2/.raw/.vmdk/.ova extensions → volid <storage>:import/<file>.
@@ -156,7 +156,7 @@ func setDiskFormKeys(form url.Values, spec VMSpec) {
 		diskValue += ",import-from=" + spec.Image.Storage + ":import/" + spec.Image.File
 	}
 
-	// US6/issue-06 D6a: iothread is gated on SCSI — it is not supported
+	// Iothread is gated on SCSI — it is not supported
 	// on virtio/IDE/SATA and Proxmox silently ignores the option there,
 	// but emitting it only where it works keeps the form clean.
 	if spec.Disk.Bus == string(DiskBusSCSI) {
@@ -183,7 +183,7 @@ func setDiskFormKeys(form url.Values, spec VMSpec) {
 }
 
 // setBootOrderForm emits boot=order=<devices> built only from the devices the
-// spec actually created (issue-03). A hardcoded order naming an absent device
+// spec actually created. A hardcoded order naming an absent device
 // makes the VM unbootable, so the disk bus key is added only when storage is
 // set and the cdrom key only when an ISO is mounted. When an ISO is present,
 // the CD-ROM goes first so the VM boots from the installer on a fresh empty
@@ -216,8 +216,8 @@ func resolveUEFIMachine(machine string) string {
 	return machine
 }
 
-// setUEFIFormKeys emits the UEFI/TPM form keys when BIOS is ovmf (US6/issue-06
-// D6a). When BIOS is ovmf, machine is forced to q35 (UEFI requires q35 —
+// setUEFIFormKeys emits the UEFI/TPM form keys when BIOS is ovmf. When BIOS is ovmf, machine is
+// forced (UEFI requires q35
 // pegaprox rule), efidisk0 is provisioned on the disk's storage with Secure
 // Boot's key enrollment following spec.SecureBoot (off by default — most
 // Linux ISOs ship an unsigned bootloader Secure Boot would refuse to run),
@@ -252,7 +252,7 @@ func setUEFIFormKeys(form url.Values, spec VMSpec) {
 
 // wrapVMIDCollision inspects a Proxmox error for a VMID-already-exists
 // rejection and wraps it with ErrVMIDTaken so the caller can retry with a
-// fresh VMID (US5/issue-05 D5c). Proxmox returns HTTP 500 with a body like
+// fresh VMID. Proxmox returns HTTP 500 with a body like
 // {"errors":{"vmid":"VMID '100' already exists"}}; the low-level client
 // flattens that into a single error string, so a substring match is the
 // only detection available without re-parsing the raw body.
@@ -302,7 +302,7 @@ func (p Proxmox) TaskStatus(ctx context.Context, upid string) (TaskStatus, error
 		result.State = TaskRunning
 	case status.ExitStatus == "OK" || strings.HasPrefix(status.ExitStatus, "WARNINGS"):
 		// PVE returns WARNINGS for benign conditions (NUMA mismatch, local
-		// disks) — both references accept it as success (lifecycle-04).
+		// disks) — both references accept it as success.
 		result.State = TaskOK
 		if strings.HasPrefix(status.ExitStatus, "WARNINGS") {
 			result.Warnings = status.ExitStatus

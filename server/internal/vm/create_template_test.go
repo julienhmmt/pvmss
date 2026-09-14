@@ -14,9 +14,9 @@ import (
 )
 
 // templateRequest is a fully explicit, catalog-valid detailed-mode request
-// that clones from an approved Proxmox template (US2/issue-02). The fixture
-// (newCreateFixture) approves VMID 9000 on pve-node-02 (cloud-init capable,
-// 8 GB disk) and VMID 9001 on pve-node-02 (not cloud-init capable, 2 GB
+// that clones from an approved Proxmox template. The fixture
+// (newCreateFixture) approves VMID 9000 on pve-node-02 (cloud-init capable, 8 GB disk) and VMID
+// 9001 on pve-node-02 (not cloud-init capable, 2 GB
 // disk).
 const discoveryNode01 = "pve-node-01"
 
@@ -43,7 +43,7 @@ func findCloneCall(vmid int) *cluster.FakeCall {
 	return nil
 }
 
-// TestCreate_TemplateClone_RejectsMutualExclusion — US2/issue-02 D2a: a
+// TestCreate_TemplateClone_RejectsMutualExclusion — a
 // request carrying both an ISO and a templateId is rejected with
 // ErrInvalidSource before any VMID is allocated.
 //
@@ -63,7 +63,7 @@ func TestCreate_TemplateClone_RejectsMutualExclusion(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_RejectsUnknownTemplate — US2/issue-02: an
+// TestCreate_TemplateClone_RejectsUnknownTemplate — an
 // unapproved template VMID is rejected with ErrNotApproved before any VMID
 // is allocated.
 //
@@ -82,7 +82,7 @@ func TestCreate_TemplateClone_RejectsUnknownTemplate(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_RejectsDisabledTemplate — US2/issue-02: a
+// TestCreate_TemplateClone_RejectsDisabledTemplate — a
 // disabled template is rejected with ErrNotApproved before any VMID is
 // allocated.
 //
@@ -106,7 +106,7 @@ func TestCreate_TemplateClone_RejectsDisabledTemplate(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_RejectsDiskReduction — US2/issue-02 D2c: a
+// TestCreate_TemplateClone_RejectsDiskReduction — a
 // requested disk size smaller than the template's disk is rejected with
 // ErrDiskReduction before any VMID is allocated.
 //
@@ -126,8 +126,8 @@ func TestCreate_TemplateClone_RejectsDiskReduction(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_ProfileDiskBelowTemplateStillRejected — US2/issue-02
-// D2c: a forged request carrying both a profileId (whose DiskGB is smaller
+// TestCreate_TemplateClone_ProfileDiskBelowTemplateStillRejected
+// A forged request carrying both a profileId (whose DiskGB is smaller
 // than the template's disk) and a templateId must still be rejected with
 // ErrDiskReduction. The reduction check runs after planCreate (which applies
 // the profile's DiskGB), so the profile override cannot bypass the guard.
@@ -159,7 +159,7 @@ func TestCreate_TemplateClone_ProfileDiskBelowTemplateStillRejected(t *testing.T
 	}
 }
 
-// TestCreate_TemplateClone_OverridesNodeToTemplateNode — US2/issue-02 D2b:
+// TestCreate_TemplateClone_OverridesNodeToTemplateNode
 // a forged request that names a different node is overridden — the clone
 // stays on the template's node.
 //
@@ -190,8 +190,8 @@ func TestCreate_TemplateClone_OverridesNodeToTemplateNode(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_CloudInitTemplateForcesFullClone — US2/issue-02
-// §5: a cloud-init capable template is always cloned fully (lvmthin cannot
+// TestCreate_TemplateClone_CloudInitTemplateForcesFullClone
+// A cloud-init capable template is always cloned fully (lvmthin cannot
 // linked-clone an imported disk).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -221,8 +221,8 @@ func TestCreate_TemplateClone_CloudInitTemplateForcesFullClone(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_NonCloudInitTemplateAllowsLinkedClone — US2/issue-02
-// §5: a non-cloud-init template with matching storage allows a linked clone.
+// TestCreate_TemplateClone_NonCloudInitTemplateAllowsLinkedClone
+// A non-cloud-init template with matching storage allows a linked clone.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_TemplateClone_NonCloudInitTemplateAllowsLinkedClone(t *testing.T) {
@@ -243,7 +243,7 @@ func TestCreate_TemplateClone_NonCloudInitTemplateAllowsLinkedClone(t *testing.T
 	}
 }
 
-// TestCreate_TemplateClone_DiskEnlargementAfterTask — US2/issue-02 D2c:
+// TestCreate_TemplateClone_DiskEnlargementAfterTask
 // a requested disk size larger than the template's disk is applied after
 // the clone task completes (via Writer.ResizeDisk).
 //
@@ -271,7 +271,7 @@ func TestCreate_TemplateClone_DiskEnlargementAfterTask(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_NoDiskSizeUsesTemplateSize — US2/issue-02: a
+// TestCreate_TemplateClone_NoDiskSizeUsesTemplateSize — a
 // request with no explicit disk size (SizeGB=0) defaults to the template's
 // disk size. The clone succeeds, no resize is invoked (the plan disk equals
 // the template disk), and no out-of-range error is raised.
@@ -355,7 +355,7 @@ func TestCreate_TemplateClone_SimpleModeMinimalRequest(t *testing.T) {
 	}
 
 	// The pvmss tag must still be stamped via SetTags — without it, the
-	// clone is invisible to PVMSS (FR-006: Resolve returns ErrNotFound).
+	// clone is invisible to PVMSS (Resolve returns ErrNotFound).
 	snap, _ := fixture.fake.Snapshot(context.Background())
 
 	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
@@ -368,10 +368,10 @@ func TestCreate_TemplateClone_SimpleModeMinimalRequest(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_CloudInitAppliedAfterTask — lifecycle-04: when
+// TestCreate_TemplateClone_CloudInitAppliedAfterTask — when
 // a cloud-init template is requested alongside a Proxmox template clone, the
 // document content is written as the VM's own snippet (pvmss-<vmid>.yml,
-// spec D4), verified, and attached after the clone task completes — the same
+// ), verified, and attached after the clone task completes — the same
 // per-VM-copy contract as the ISO path.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -418,7 +418,7 @@ func TestCreate_TemplateClone_CloudInitAppliedAfterTask(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_StartAfterCreateWithCloudInit — lifecycle-04:
+// TestCreate_TemplateClone_StartAfterCreateWithCloudInit
 // when a cloud-init template is requested with StartAfterCreate, the VM is
 // not started in the clone task (StartAfterCreate is forced off for the
 // clone); the VM is started explicitly after cloud-init attachment.
@@ -459,7 +459,7 @@ func TestCreate_TemplateClone_StartAfterCreateWithCloudInit(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_AuditRecorded — FR-017: a successful clone is
+// TestCreate_TemplateClone_AuditRecorded — a successful clone is
 // recorded in the audit log.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -487,7 +487,7 @@ func TestCreate_TemplateClone_AuditRecorded(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_CatalogExposesTemplates — US2/issue-02: the
+// TestCreate_TemplateClone_CatalogExposesTemplates — the
 // catalog query returns the approved templates from the seed.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -536,7 +536,7 @@ func TestCreate_TemplateClone_CatalogExposesTemplates(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_PoolPropagation — FR-004: the cloned VM must
+// TestCreate_TemplateClone_PoolPropagation — the cloned VM must
 // land in the actor's personal pool, not an arbitrary or empty pool. The
 // clone call must carry the pool, and the materialized VM must have it.
 //
@@ -575,7 +575,7 @@ func TestCreate_TemplateClone_PoolPropagation(t *testing.T) {
 }
 
 // goneTemplateClient simulates a template deleted in Proxmox after approval
-// (issue 02): discovery no longer reports it.
+// discovery no longer reports it.
 type goneTemplateClient struct {
 	cluster.Fake
 }
@@ -585,7 +585,7 @@ func (goneTemplateClient) TemplateByVMID(_ context.Context, _ int) (cluster.Temp
 }
 
 // migratedTemplateClient simulates a template migrated to another node after
-// approval (issue 02): discovery reports pve-node-01, the stored row says
+// approval: discovery reports pve-node-01, the stored row says
 // pve-node-02.
 type migratedTemplateClient struct {
 	cluster.Fake
@@ -599,7 +599,7 @@ func (migratedTemplateClient) TemplateByVMID(_ context.Context, _ int) (cluster.
 }
 
 // unreadableAtCloneClient simulates a template whose config became unreadable
-// between approval and clone time (issue 03): the discovered node is kept,
+// between approval and clone time: the discovered node is kept,
 // the disk fields fall back to the stored row.
 type unreadableAtCloneClient struct {
 	cluster.Fake
@@ -634,7 +634,7 @@ func createWithTemplates(t *testing.T, fixture createFixture, templates interfac
 
 // TestCreate_TemplateClone_DeletedTemplateFailsFast — a template deleted in
 // Proxmox after approval fails the create fast (ErrNotApproved) before a
-// VMID is spent (issue 02/T17).
+// VMID is spent.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_TemplateClone_DeletedTemplateFailsFast(t *testing.T) {
@@ -654,7 +654,7 @@ func TestCreate_TemplateClone_DeletedTemplateFailsFast(t *testing.T) {
 
 // TestCreate_TemplateClone_ClonesOnDiscoveredNode — a template migrated since
 // approval is cloned on its new node: discovery wins on values at clone time,
-// the stored row keeps only the approval role (T17).
+// the stored row keeps only the approval role.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_TemplateClone_ClonesOnDiscoveredNode(t *testing.T) {
@@ -683,7 +683,7 @@ func TestCreate_TemplateClone_ClonesOnDiscoveredNode(t *testing.T) {
 
 // TestCreate_TemplateClone_UnreadableFallsBackToStoredDisk — when the config
 // is unreadable at clone time, the discovered node is kept and the stored
-// disk fields (validated at approval) drive the resize floor (T17).
+// disk fields (validated at approval) drive the resize floor.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_TemplateClone_UnreadableFallsBackToStoredDisk(t *testing.T) {

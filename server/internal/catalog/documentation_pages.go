@@ -27,7 +27,7 @@ var ErrInvalidDocumentationPage = errors.New("invalid documentation page")
 // page is a built-in system page (delete, id/lang change) (403).
 var ErrSystemDocumentationPage = errors.New("documentation page is system-protected")
 
-// DocumentationPage is one documentation_pages row (issue #53).
+// DocumentationPage is one documentation_pages row.
 type DocumentationPage struct {
 	ID        string
 	Lang      string

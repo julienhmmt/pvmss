@@ -1,14 +1,14 @@
 package store
 
-// schemaV9 adds the admin-catalogue surface (T11): an enabled column to each
-// of T06's five catalog tables (defaulted to 1 so every already-approved row
-// stays approved with zero data migration — SC-003), plus the new catalog_tags
-// table seeded with the mandatory, undeletable pvmss tag (FR-014).
+// schemaV9 adds the admin-catalogue surface: an enabled column to each
+// of the five catalog tables (defaulted to 1 so every already-approved row
+// stays approved with zero data migration), plus the new catalog_tags
+// table seeded with the mandatory, undeletable pvmss tag.
 //
-// The enabled column changes what a row's presence means: before T11, presence
-// meant "approved"; after T11, presence means "known to the admin surface" and
+// The enabled column changes what a row's presence means:, presence
+// meant "approved";, presence means "known to the admin surface" and
 // the enabled column is what "approved" means. Row composite keys are
-// unchanged from T06/T07.
+// unchanged.
 const schemaV9 = `
 ALTER TABLE catalog_nodes    ADD COLUMN enabled BOOLEAN NOT NULL DEFAULT 1;
 ALTER TABLE catalog_storages ADD COLUMN enabled BOOLEAN NOT NULL DEFAULT 1;

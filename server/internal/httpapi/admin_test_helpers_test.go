@@ -16,7 +16,7 @@ import (
 	"testing"
 )
 
-// newAdminStore opens a fully-migrated store (V9) with the T06 seed and pvmss
+// newAdminStore opens a fully-migrated store (V9) with the seed and pvmss
 // tag, ready for admin catalog handler tests.
 func newAdminStore(t *testing.T) *store.Store {
 	t.Helper()

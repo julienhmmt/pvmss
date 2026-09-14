@@ -8,8 +8,7 @@ const (
 	severityInfo     = "info"
 )
 
-// TestDeriveSeverity — the severity mapping is hardcoded (spec decision:
-// 3 levels, derived from the action verb). Each pattern must map to its
+// TestDeriveSeverity — the severity mapping is hardcoded (3 levels, derived from the action verb). Each pattern must map to its
 // level regardless of the action's namespace prefix. Internal test because
 // deriveSeverity is unexported.
 func TestDeriveSeverity(t *testing.T) {

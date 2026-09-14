@@ -9,7 +9,7 @@ import (
 )
 
 // renderMarkdownToHTML converts a small, safe subset of Markdown to HTML. It is
-// intentionally minimal (issue #53 docs are admin-authored): headings (h1-h3),
+// intentionally minimal (docs are admin-authored): headings (h1-h3),
 // paragraphs, unordered/ordered lists, fenced code blocks, inline code, bold,
 // italic, and links. Raw HTML in the input is escaped — the renderer only ever
 // emits a known-safe tag set, so the result is safe to insert via {@html} on
@@ -411,7 +411,9 @@ func renderLinks(s string) string {
 }
 
 // extractLink attempts to parse a Markdown link starting at s[start] where
-// s[start] == '['. It returns the index just after the closing ')', the link
+//
+//	s[start] == '['. It returns the index just after the closing '', the link
+//
 // text, the destination, and ok=true on success.
 func extractLink(s string, start int) (next int, text, dest string, ok bool) {
 	if s[start] != '[' {

@@ -39,7 +39,7 @@ type CascadeDeps struct {
 	Managed     *store.Store
 }
 
-// Delete stops and purges pool members through T05's VM write paths, then
+// Delete stops and purges pool members through VM write paths, then
 // removes the pool and makes a best-effort user deletion. When deps.Managed is
 // non-nil, the pool must be recorded as PVMSS-managed or deletion is refused
 // with ErrNotManaged before any cluster write.

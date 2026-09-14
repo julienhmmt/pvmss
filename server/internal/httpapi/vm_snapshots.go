@@ -29,7 +29,7 @@ type VMSnapshots struct {
 	log        *slog.Logger
 }
 
-// NewVMSnapshots creates the snapshot handler with the T05 Resolve projection,
+// NewVMSnapshots creates the snapshot handler with the Resolve projection,
 // bound to a single cluster. Use NewVMSnapshotsWithRegistry for multi-cluster
 // deployments.
 //
@@ -94,7 +94,7 @@ type snapshotListDTO struct {
 }
 
 // snapshotCapabilityDTO mirrors vm.SnapshotCapability for the create dialog:
-// it greys the RAM checkbox and the submit button with a reason (ticket 07).
+// it greys the RAM checkbox and the submit button with a reason.
 type snapshotCapabilityDTO struct {
 	CanSnapshot bool     `json:"canSnapshot"`
 	CanVMState  bool     `json:"canVMState"`
@@ -108,7 +108,7 @@ type snapshotTaskDTO struct {
 	UPID    string `json:"upid"`
 }
 
-// snapshotConfigDTO carries one snapshot's stored config (ticket 08) — the
+// snapshotConfigDTO carries one snapshot's stored config — the
 // pre-rollback diff. name == "current" means the live config.
 type snapshotConfigDTO struct {
 	Name   string            `json:"name"`
@@ -137,7 +137,7 @@ func (h *VMSnapshots) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleConfig serves GET .../snapshots/{name}/config — one snapshot's stored
-// config for the pre-rollback diff (ticket 08). name="current" returns the
+// config for the pre-rollback diff. name="current" returns the
 // live config.
 //
 //nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent

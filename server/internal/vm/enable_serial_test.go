@@ -23,8 +23,8 @@ func (w *fakeSerialWriter) EnableSerial(_ context.Context, node string, vmid int
 }
 
 // TestEnableSerialConsole_ResolveThenWriterThenAudit — the happy path calls
-// Resolve (ownership gate), then Writer.EnableSerial, then records the
-// "serial_enable" audit action and refreshes the inventory so HasSerial flips.
+// Resolve (ownership gate), then Writer.EnableSerial, then records the "serial_enable" audit
+// action and refreshes the inventory so HasSerial flips.
 //
 //nolint:paralleltest // serial: shared fake VM fixture
 func TestEnableSerialConsole_ResolveThenWriterThenAudit(t *testing.T) {

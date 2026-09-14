@@ -16,17 +16,18 @@ import (
 	"github.com/coder/websocket"
 )
 
-// VMConsole serves the two T10 console endpoints, both gated by the same
-// vm.Resolve() every other write uses (FR-001):
-//   - POST /api/v1/vms/:cluster/:vmid/vnc-ticket — issues an opaque,
-//     single-use console ticket (FR-002, FR-003).
-//   - GET  /api/v1/vms/:cluster/:vmid/console/websocket?token=<opaque> —
-//     upgrades to WebSocket, consumes the ticket (FR-004), and relays RFB
-//     frames between the browser and the cluster's VNC server (FR-008).
+// VMConsole serves the two console endpoints, both gated by the same
+// vm.Resolve() every other write uses:
+// - POST /api/v1/vms/:cluster/:vmid/vnc-ticket — issues an opaque,
+// single-use console ticket.
+//   - GET /api/v1/vms/:cluster/:vmid/console/websocket?token=<opaque> —
+//
+// upgrades to WebSocket, consumes the ticket, and relays RFB
+// frames between the browser and the cluster's VNC server.
 //
 // The legacy query-string console flow (passing the Proxmox ticket, node, and
-// port directly in the URL) does not exist (contracts/vm-console.md
-// "Behavioural rules": the legacy flow will not exist).
+// port directly in the URL) does not exist ("Behavioural rules": the legacy flow will not
+// exist).
 type VMConsole struct {
 	projection *inventory.Projection
 	resolver   vm.ClusterIndexResolver
@@ -75,7 +76,9 @@ type VMConsoleRegistryDeps struct {
 }
 
 // NewVMConsoleWithRegistry creates the handler with per-request index and
-// cluster.ConsoleRelay resolution, keyed on the request's own :cluster path
+//
+//	cluster.ConsoleRelay resolution, keyed on the request's own :cluster path
+//
 // value — without this, a console ticket for a non-default cluster would be
 // issued against the default cluster's node/port, and the relay would
 // connect to the wrong Proxmox host entirely.
@@ -233,7 +236,7 @@ func isNormalClose(err error) bool {
 // writeConsoleTicketError is the shared error-mapping used by both VMConsole
 // and VMSerialConsole. The unavailableMsg differs between VNC ("console is
 // not available for this VM") and serial ("serial terminal is not available
-// for this VM"); every other status/code is byte-identical (contracts).
+// for this VM"); every other status/code is byte-identical.
 func writeConsoleTicketError(w http.ResponseWriter, log *slog.Logger, err error, writeError func(http.ResponseWriter, int, string, string), unavailableMsg string) {
 	switch {
 	case errors.Is(err, vm.ErrForbidden):

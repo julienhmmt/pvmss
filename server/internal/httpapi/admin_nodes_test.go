@@ -35,8 +35,8 @@ type adminToggleResponse struct {
 	Enabled bool   `json:"enabled"`
 }
 
-// TestAdminNodes_ListAsAdmin_ReturnsAllNodes — T010: GET /admin/nodes as admin
-// returns every fake node (3), with correct enabled per T06's seed.
+// TestAdminNodes_ListAsAdmin_ReturnsAllNodes — GET /admin/nodes as admin
+// returns every fake node, with correct enabled per the seed.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminNodes_ListAsAdmin_ReturnsAllNodes(t *testing.T) {
@@ -75,8 +75,8 @@ func TestAdminNodes_ListAsAdmin_ReturnsAllNodes(t *testing.T) {
 	}
 }
 
-// TestAdminNodes_ListAsNonAdmin_Returns403 — T011: GET /admin/nodes as a
-// non-admin identity returns 403 (FR-008).
+// TestAdminNodes_ListAsNonAdmin_Returns403 — GET /admin/nodes as a
+// non-admin identity returns 403.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminNodes_ListAsNonAdmin_Returns403(t *testing.T) {
@@ -89,7 +89,7 @@ func TestAdminNodes_ListAsNonAdmin_Returns403(t *testing.T) {
 	}
 }
 
-// TestAdminNodes_ToggleUnapprovedNode — T012: POST /admin/nodes/toggle on the
+// TestAdminNodes_ToggleUnapprovedNode — POST /admin/nodes/toggle on the
 // unapproved node returns 200, and a subsequent GET reflects it.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -130,7 +130,7 @@ func TestAdminNodes_ToggleUnapprovedNode(t *testing.T) {
 	}
 }
 
-// TestAdminNodes_ToggleUnknownNode_Returns404 — T013: toggling a node not in
+// TestAdminNodes_ToggleUnknownNode_Returns404 — toggling a node not in
 // the discovery set returns 404.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -147,9 +147,9 @@ func TestAdminNodes_ToggleUnknownNode_Returns404(t *testing.T) {
 
 // newMultiClusterAdminCatalogHandler builds an AdminCatalog handler backed by
 // a real cluster.Registry seeded with the store's default/secondary/
-// offline-demo rows (T15), instead of the single fixed cluster.Fake the
-// single-cluster newAdminHandler above uses — needed to prove SC-004's
-// cross-cluster catalog isolation, which requires two distinct clusters'
+// offline-demo rows, instead of the single fixed cluster.Fake the
+// single-cluster newAdminHandler above uses — needed to prove the cross-cluster catalog
+// isolation, which requires two distinct clusters'
 // discovery sets and two distinct catalog_nodes rows to exist at once.
 func newMultiClusterAdminCatalogHandler(t *testing.T) (*httpapi.AdminCatalog, *httpapi.Auth) {
 	t.Helper()
@@ -185,12 +185,12 @@ func newMultiClusterAdminCatalogHandler(t *testing.T) (*httpapi.AdminCatalog, *h
 	return catalog, authHandler
 }
 
-// TestAdminNodes_CrossClusterApprovalIsolation — T033/SC-004: a node with an
+// TestAdminNodes_CrossClusterApprovalIsolation — a node with an
 // identical name (pve-node-01, present in both default's and secondary's
 // fake discovery sets) is approved independently per cluster. Toggling it on
 // one cluster must never affect the other's row — proven in both directions,
 // not just observed as an accident of seed data (default's pve-node-01/02
-// start pre-approved by T06's seed; secondary's do not).
+// start pre-approved by the seed; secondary's do not).
 //
 //nolint:paralleltest // shared fake dataset and database fixture
 func TestAdminNodes_CrossClusterApprovalIsolation(t *testing.T) {
@@ -216,7 +216,7 @@ func TestAdminNodes_CrossClusterApprovalIsolation(t *testing.T) {
 		return false
 	}
 
-	// Starting state, from T06's seed (default only) plus the absence of any
+	// Starting state, from the seed (default only) plus the absence of any
 	// secondary row: identical name, already-diverging approval state.
 	if !nodeEnabled(auditTestCluster, "pve-node-01") {
 		t.Fatal("default:pve-node-01 should start enabled (T06 seed)")
@@ -268,8 +268,10 @@ func assertCrossClusterToggleIsolation(
 	}
 }
 
-// TestAdminNodes_ClusterRequiredOnceMultipleConfigured — T032/FR-021 at the
-// nodes-endpoint level: once 2+ clusters are configured, omitting ?cluster=
+// TestAdminNodes_ClusterRequiredOnceMultipleConfigured — at the
+//
+//	nodes-endpoint level: once 2+ clusters are configured, omitting ?cluster=
+//
 // on GET /admin/nodes returns 400 cluster_required rather than silently
 // defaulting to an arbitrary cluster.
 //

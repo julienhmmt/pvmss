@@ -135,10 +135,10 @@ func bulkBody(action string, targets []bulkTargetDTO) string {
 }
 
 // =============================================================================
-// Phase 3 — User Story 1: POST /vms/bulk-action (T005–T009)
+// POST /vms/bulk-action
 // =============================================================================
 
-// TestVMBulk_AllOwnedStatusCompatible — T005: valid batch, all targets owned
+// TestVMBulk_AllOwnedStatusCompatible — valid batch, all targets owned
 // and status-compatible → 200, results has one ok entry per target.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -163,7 +163,7 @@ func TestVMBulk_AllOwnedStatusCompatible(t *testing.T) {
 	}
 }
 
-// TestVMBulk_SpansTwoClusters — T006: batch spanning two clusters → each
+// TestVMBulk_SpansTwoClusters — batch spanning two clusters → each
 // target resolved against its own cluster's index, both succeed independently.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -221,7 +221,7 @@ func TestVMBulk_SpansTwoClusters(t *testing.T) {
 	}
 }
 
-// TestVMBulk_InvalidAction — T007: invalid action string → 400 invalid_action,
+// TestVMBulk_InvalidAction — invalid action string → 400 invalid_action,
 // no target processed (fake client call log: 0 entries for this request).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -247,7 +247,7 @@ func TestVMBulk_InvalidAction(t *testing.T) {
 	}
 }
 
-// TestVMBulk_EmptyTargets — T008: empty targets → 400 empty_targets.
+// TestVMBulk_EmptyTargets — empty targets → 400 empty_targets.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMBulk_EmptyTargets(t *testing.T) {
@@ -264,8 +264,8 @@ func TestVMBulk_EmptyTargets(t *testing.T) {
 	}
 }
 
-// TestVMBulk_TooManyTargets — T009: targets with 101 entries → 400
-// too_many_targets, fake client call log: 0 entries (SC-003).
+// TestVMBulk_TooManyTargets — targets with 101 entries → 400
+// too_many_targets, fake client call log: 0 entries.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMBulk_TooManyTargets(t *testing.T) {
@@ -304,10 +304,10 @@ func TestVMBulk_Unauthenticated(t *testing.T) {
 }
 
 // =============================================================================
-// Phase 4 — User Story 2: A mixed batch never fails as a whole (T017–T019)
+// A mixed batch never fails as a whole
 // =============================================================================
 
-// TestVMBulk_MixedOwnedAndNonOwned — T017: batch of 3 where 2 targets belong
+// TestVMBulk_MixedOwnedAndNonOwned — batch of 3 where 2 targets belong
 // to alice and 1 to bob (forged directly) → 200, 3 result entries, bob's entry
 // status "error", alice's 2 entries reflect their real outcome.
 //
@@ -343,9 +343,9 @@ func TestVMBulk_MixedOwnedAndNonOwned(t *testing.T) {
 	}
 }
 
-// TestVMBulk_NonOwnedTargetZeroClientCalls — T018: same batch — fake client
-// call log records zero calls for bob's (cluster, vmid) (S01-closure guarantee,
-// per-target inside a batch).
+// TestVMBulk_NonOwnedTargetZeroClientCalls — same batch — fake client
+// call log records zero calls for bob's (cluster, vmid) (closure guarantee, per-target inside a
+// batch).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMBulk_NonOwnedTargetZeroClientCalls(t *testing.T) {
@@ -368,8 +368,8 @@ func TestVMBulk_NonOwnedTargetZeroClientCalls(t *testing.T) {
 	}
 }
 
-// TestVMBulk_NonexistentVMNotFoundMessage — T019: a target naming a
-// nonexistent VM → that entry's message is the same error T05's single-VM
+// TestVMBulk_NonexistentVMNotFoundMessage — a target naming a
+// nonexistent VM → that entry's message is the same error the single-VM
 // endpoint uses for the same case (vm.ErrNotFound).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -391,7 +391,7 @@ func TestVMBulk_NonexistentVMNotFoundMessage(t *testing.T) {
 	if resp.Results[1].Status != "error" {
 		t.Errorf("result[1] (999 nonexistent) = %q, want error", resp.Results[1].Status)
 	}
-	// The message is vm.ErrNotFound.Error() — the same error T05's Action()
+	// The message is vm.ErrNotFound.Error() — the same error Action()
 	// returns for a nonexistent VM, carried verbatim.
 	if resp.Results[1].Message != vm.ErrNotFound.Error() {
 		t.Errorf("result[1].Message = %q, want %q (vm.ErrNotFound verbatim)", resp.Results[1].Message, vm.ErrNotFound.Error())
@@ -399,10 +399,10 @@ func TestVMBulk_NonexistentVMNotFoundMessage(t *testing.T) {
 }
 
 // =============================================================================
-// Phase 5 — User Story 3: bearer-token auth (T022)
+// bearer-token auth
 // =============================================================================
 
-// TestVMBulk_BearerTokenAuth — T022: bearer-token-authenticated request →
+// TestVMBulk_BearerTokenAuth — bearer-token-authenticated request →
 // identical response shape and per-target semantics to the session-cookie
 // path.
 //

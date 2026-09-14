@@ -10,8 +10,8 @@ import (
 )
 
 // ClusterNodes serves GET /api/v1/cluster/nodes, reading from the inventory
-// projection — never the cluster client directly (FR-002, SC-004). The
-// handler is the literal fix AC02 exists for: reads no longer pay a
+// projection — never the cluster client directly. The
+// handler is the literal fix exists for: reads no longer pay a
 // per-request client call.
 type ClusterNodes struct {
 	projection *inventory.Projection
@@ -40,9 +40,9 @@ type clusterNodesResponse struct {
 	RefreshedAt string    `json:"refreshedAt"`
 }
 
-// clusterErrorEnvelope is the {code, message} shape used by this endpoint
-// (contracts/cluster-refresh.md). message stays generic — driver detail goes
-// only to the structured server log (constitution XIII).
+// clusterErrorEnvelope is the {code, message} shape used by this endpoint.
+// message stays generic — driver detail goes
+// only to the structured server log.
 type clusterErrorEnvelope struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
@@ -61,7 +61,7 @@ func (h *ClusterNodes) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	idx := h.projection.Load()
 	if idx == nil {
-		// FR-009: never-refreshed is distinct from an empty list.
+		// never-refreshed is distinct from an empty list.
 		if err := writeClusterError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet"); err != nil {
 			h.log.Error("failed to write inventory_not_ready response", "component", "httpapi", "error", err)
 		}

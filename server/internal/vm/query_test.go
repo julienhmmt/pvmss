@@ -24,7 +24,7 @@ const (
 
 // testIndex builds a small projection across two pools and two nodes —
 // large enough to exercise scope, search, filter, sort, and pagination
-// without depending on the T01 fake dataset's size.
+// without depending on the fake dataset's size.
 func testIndex() *inventory.Index {
 	index := inventory.BuildIndex(cluster.Snapshot{
 		VMs: []cluster.VM{
@@ -122,7 +122,7 @@ func TestList_SearchClassification(t *testing.T) {
 
 //nolint:paralleltest // serial: shared in-memory fixture state
 func TestList_SearchNeverCrossesScope(t *testing.T) {
-	// "cache-01" is bob's VM; alice's search must not surface it (SC-005).
+	// "cache-01" is bob's VM; alice's search must not surface it.
 	result, err := vm.List(testIndex(), vm.ListQuery{Search: "cache"}, alice, -1)
 	if err != nil {
 		t.Fatalf("List: %v", err)
@@ -170,7 +170,7 @@ func TestList_Filters(t *testing.T) {
 //nolint:paralleltest // serial: shared in-memory fixture state
 func TestList_NodeFacetIgnoresNodeFilter(t *testing.T) {
 	// The facet is computed before the node filter so the dropdown does not
-	// shrink to hide its own selection (data-model.md step 4).
+	// shrink to hide its own selection.
 	result, err := vm.List(testIndex(), vm.ListQuery{Node: cluster.FakeNode02}, alice, -1)
 	if err != nil {
 		t.Fatalf("List: %v", err)

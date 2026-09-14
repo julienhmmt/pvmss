@@ -26,19 +26,19 @@ const forceStopPoll = 100 * time.Millisecond
 var maxForceStopWait = 15 * time.Second
 
 // AuditRecorder is the store dependency for recording a write. Only the method
-// T05 needs is on the interface, so the handler test can use the real store
+// Needs is on the interface, so the handler test can use the real store
 // and production can use *store.Store.
 type AuditRecorder interface {
 	RecordAction(ctx context.Context, actor, clusterName string, vmid int, action string) error
 }
 
-// IndexRefresher rebuilds the Index after a write so the next read reflects it
-// (FR-010). *inventory.Worker satisfies this.
+// IndexRefresher rebuilds the Index after a write so the next read reflects it.
+// *inventory.Worker satisfies this.
 type IndexRefresher interface {
 	Refresh(ctx context.Context) (time.Time, error)
 }
 
-// validActions is the exhaustive set of accepted power actions (FR-006).
+// validActions is the exhaustive set of accepted power actions.
 var validActions = map[string]bool{
 	"start":    true,
 	"stop":     true,
@@ -51,7 +51,7 @@ var validActions = map[string]bool{
 
 // hostnameRe validates a VM name as a hostname: alphanumeric and hyphen, no
 // leading/trailing hyphen, ≤ 63 chars (legacy validation.go rule, reused per
-// spec FR-008). Lowercase only — a Proxmox VM name becomes a DNS label when
+// ). Lowercase only — a Proxmox VM name becomes a DNS label when
 // cloud-init sets the hostname.
 var hostnameRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
 
@@ -62,8 +62,8 @@ const maxDescriptionLength = 512
 const MaxDescriptionLength = maxDescriptionLength
 
 // IsValidAction reports whether action is one of the five accepted power
-// transitions (FR-006). Exported so the handler can reject malformed input
-// before calling Resolve (constitution XIII: malformed input rejected first).
+// transitions. Exported so the handler can reject malformed input
+// before calling Resolve (malformed input rejected first).
 func IsValidAction(action string) bool {
 	return validActions[action]
 }
@@ -82,9 +82,9 @@ var ErrEmptyPatch = errors.New("empty patch")
 // ErrDescriptionTooLong is returned when a description exceeds the max length.
 var ErrDescriptionTooLong = errors.New("description too long")
 
-// ValidateName checks a VM name against the hostname rule (FR-008). Exported
+// ValidateName checks a VM name against the hostname rule. Exported
 // so the handler can validate before calling Resolve (rejecting malformed input
-// before any authorization check — constitution XIII: malformed input is
+// before any authorization check — malformed input is
 // rejected first).
 func ValidateName(name string) error {
 	if !hostnameRe.MatchString(name) {
@@ -120,11 +120,11 @@ type WriteDeps struct {
 }
 
 // Action performs a power transition on a VM. It is the only path from an
-// HTTP action request to the cluster writer (FR-006). The node is always
-// Resolve()'s server-resolved value — the caller cannot supply one (S01 root
-// cause, structurally closed). After the write, it records the audit entry.
+// HTTP action request to the cluster writer. The node is always
+// Resolve()'s server-resolved value — the caller cannot supply one (root cause, structurally
+// closed). After the write, it records the audit entry.
 //
-// Action does NOT refresh the Index — the caller owns refresh (ticket 09).
+// Action does NOT refresh the Index — the caller owns refresh.
 // handleAction refreshes once for a single-VM action; BulkAction refreshes
 // once per distinct affected cluster. This avoids N redundant cluster
 // snapshots during a bulk action.
@@ -151,7 +151,7 @@ func Action(ctx context.Context, deps BulkDeps, index *inventory.Index, clusterN
 		return forceShutdown(ctx, deps, entity, clusterName, vmid)
 	}
 
-	// Idempotence (ticket 08): start on a running VM and stop on a stopped
+	// Idempotence: start on a running VM and stop on a stopped
 	// VM are successes, not errors. The user asked for the target state and
 	// it already holds. Only applies to start/stop (target states), not to
 	// transitions like reboot/reset/shutdown/pause/resume.
@@ -168,7 +168,7 @@ func Action(ctx context.Context, deps BulkDeps, index *inventory.Index, clusterN
 		}
 	}
 
-	// Retry-on-lock (ticket 08): a VM locked by backup/migrate/snapshot/etc.
+	// Retry-on-lock: a VM locked by backup/migrate/snapshot/etc.
 	// rejects actions with "VM is locked (lockname)". Retry with backoff
 	// until the lock clears or the budget expires.
 	if err := actionWithLockRetry(ctx, deps, entity, action); err != nil {
@@ -219,7 +219,7 @@ func forceShutdown(ctx context.Context, deps BulkDeps, entity Entity, clusterNam
 	return nil
 }
 
-// Lock retry constants (ticket 08). Vars so tests can shorten them.
+// Lock retry constants. Vars so tests can shorten them.
 const lockRetryBudget = 30 * time.Second
 
 var (
@@ -274,8 +274,8 @@ func actionWithLockRetry(ctx context.Context, deps BulkDeps, entity Entity, acti
 // extractLockName checks whether err is a Proxmox "VM is locked" error and
 // returns the lock name. Proxmox's message format is:
 //
-//	"VM is locked (backup)"
-//	"VM is locked (snapshot-delete)"
+// "VM is locked (backup)"
+// "VM is locked (snapshot-delete)"
 //
 // The lock name is returned without parentheses.
 func extractLockName(err error) (string, bool) {
@@ -300,8 +300,8 @@ func extractLockName(err error) (string, bool) {
 	return msg[start : start+end], true
 }
 
-// Delete permanently removes a VM and its disks (V14: no soft-delete, no undo).
-// Same Resolve() gate as Action — not a parallel ownership check (FR-007).
+// Delete permanently removes a VM and its disks (no soft-delete, no undo).
+// Same Resolve() gate as Action — not a parallel ownership check.
 //
 // A running VM is rejected by the cluster writer with cluster.ErrVMRunning
 // (real Proxmox returns HTTP 500 "VM X is running - destroy failed"; the fake
@@ -346,7 +346,7 @@ func Delete(ctx context.Context, deps WriteDeps) error {
 
 // forceStop stops a running VM so Delete can proceed, and records the stop as a
 // separate audit entry. The node/vmid come from the already-resolved entity —
-// the caller cannot supply them (S01 root cause, structurally closed).
+// the caller cannot supply them (root cause, structurally closed).
 func forceStop(ctx context.Context, deps WriteDeps, entity Entity) error {
 	if err := deps.Writer.Action(ctx, entity.Node, entity.VMID, "stop"); err != nil {
 		return fmt.Errorf("cluster stop: %w", err)
@@ -394,7 +394,7 @@ func deleteWithRetry(ctx context.Context, deps WriteDeps, entity Entity) error {
 }
 
 // Patch updates a VM's name and/or description. At least one field must be
-// non-empty; name is validated as a hostname (FR-008). The audit action is
+// non-empty; name is validated as a hostname. The audit action is
 // "rename" when name changes, "edit_description" when only description changes.
 // The handler re-resolves from the refreshed projection to return the updated
 // Entity — Patch itself does not return it, keeping the domain layer free of

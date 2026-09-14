@@ -131,7 +131,7 @@ func (h *VMStatusBatch) decodeTargets(w http.ResponseWriter, r *http.Request) ([
 
 // readTargets resolves and reads the live status for each target. A target
 // that fails resolution or the live read is omitted from the response (not a
-// whole-request failure), matching the spec in ticket 01b.
+// whole-request failure), matching the spec.
 func (h *VMStatusBatch) readTargets(ctx context.Context, identity auth.Identity, targets []statusTargetRequest) []statusTargetResponse {
 	results := make([]statusTargetResponse, 0, len(targets))
 

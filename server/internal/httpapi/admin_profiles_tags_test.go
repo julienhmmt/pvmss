@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// --- Profile DTOs for tests ---
+//  - Profile DTOs for tests -
 
 type adminProfileDTO struct {
 	ID       string `json:"id"`
@@ -32,7 +32,7 @@ type statusDTO struct {
 }
 
 // =============================================================================
-// Profile handler tests (T029)
+// Profile handler tests
 // =============================================================================
 
 // TestAdminProfiles_ListAsAdmin — GET /admin/profiles returns all profiles
@@ -259,7 +259,7 @@ func TestAdminProfiles_NonAdminAll_Returns403(t *testing.T) {
 }
 
 // =============================================================================
-// Tag handler tests (T036)
+// Tag handler tests
 // =============================================================================
 
 // TestAdminTags_ListAsAdmin — GET /admin/tags returns the seeded pvmss tag

@@ -82,7 +82,7 @@ func runSSHKeyAddScript(t *testing.T, binDir, user, key string) (int, string) {
 }
 
 // TestSSHKeyAddScript_Behaviour exercises the guest-side script as a real
-// /bin/sh program (ticket 07): the append must be newline-safe and
+// /bin/sh program: the append must be newline-safe and
 // idempotent, and a missing user must exit 3.
 func TestSSHKeyAddScript_Behaviour(t *testing.T) {
 	t.Parallel()

@@ -8,7 +8,7 @@ import (
 )
 
 // TestVMDetail_RetrofitSeaBIOS_NonAdminForbidden — the retrofit action is
-// admin-only (cloud-image-console issue 08); a non-admin owner gets 403 and
+// admin-only; a non-admin owner gets 403 and
 // the writer is not touched.
 //
 //nolint:paralleltest,dupl // serial: shared fake cluster dataset; standard POST-403 pattern

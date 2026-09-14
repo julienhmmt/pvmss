@@ -6,16 +6,15 @@ import (
 	"sync"
 )
 
-// liveStorageResolver adapts a cluster.Client to StorageNodeResolver
-// (FR-011, data-model.md §1, T015). It calls Snapshot at most once per
+// liveStorageResolver adapts a cluster.Client to StorageNodeResolver.
+// It calls Snapshot at most once per
 // resolver instance — the result (or error) is cached and reused for every
 // subsequent StorageNodes lookup, so a run with N storages still performs
-// exactly one live Proxmox call (tasks.md T035's own mechanical proof).
+// exactly one live Proxmox call.
 //
 // A Snapshot failure never aborts the run: it is cached like a normal
 // result, and every storage row surfaces it as a per-row skip reason via
-// mapStorages' existing error handling (plan.md: "isolated so its failure
-// never blocks any other step").
+// mapStorages' existing error handling.
 type liveStorageResolver struct {
 	client cluster.Client
 
@@ -26,7 +25,7 @@ type liveStorageResolver struct {
 
 // newLiveStorageResolver returns a StorageNodeResolver backed by a live
 // cluster.Client. Callers only construct one when Proxmox credentials are
-// available (FR-011); when they are not, Run passes a nil resolver instead.
+// available; when they are not, Run passes a nil resolver instead.
 func newLiveStorageResolver(client cluster.Client) *liveStorageResolver {
 	return &liveStorageResolver{client: client}
 }

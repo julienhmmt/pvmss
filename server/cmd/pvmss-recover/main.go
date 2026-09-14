@@ -1,20 +1,19 @@
 // Command pvmss-recover is the one-time v0.3 → v0.4 data migration tool
-// (T16 — Bascule). It reads a legacy SQLite database and upserts
+// (Bascule). It reads a legacy SQLite database and upserts
 // admin-configured facts into a fresh, already-migrated v0.4 database.
 //
 // Usage:
 //
 //	pvmss-recover --legacy-db /path/to/legacy.db --v0.4-db /path/to/v04.db --cluster-name default
 //
-// Proxmox credentials (--proxmox-url, --proxmox-token-id, --proxmox-token-secret,
+//	Proxmox credentials (--proxmox-url, --proxmox-token-id, --proxmox-token-secret,
+//
 // or their PROXMOX_URL / PROXMOX_API_TOKEN_NAME / PROXMOX_API_TOKEN_VALUE env
 // equivalents) populate the clusters row and, when all three are present,
 // opportunistically enable live storage-node expansion via one
-// cluster.Client.Snapshot call (FR-011). Without credentials, or if that
+// cluster.Client.Snapshot call. Without credentials, or if that
 // call fails, storage catalog entries are skipped with a named reason and
 // must be populated separately after cutover via the admin UI or API.
-//
-// See specs/017-t16-bascule/contracts/cutover.md for the full flag reference.
 package main
 
 import (
