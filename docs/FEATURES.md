@@ -15,12 +15,12 @@ exists, backend not implemented).
 | --- | --- | --- | --- |
 | Sign in with Proxmox credentials, per cluster | `/login` | `GET /api/v1/auth/clusters`, `POST /api/v1/auth/login` | ✅ |
 | Local administrator sign-in (`ADMIN_PASSWORD_HASH`, bcrypt) | `/login` | `POST /api/v1/auth/admin-login` | ✅ |
-| Session cookie (`SESSION_SECRET`), CSRF token, secure cookie flag | — | all writes | ✅ |
+| Session cookie (`SESSION_SECRET`), CSRF token, secure cookie flag | - | all writes | ✅ |
 | Sign out | header menu | `POST /api/v1/auth/logout` | ✅ |
 | Change own Proxmox password | API only (no page yet) | `POST /api/v1/auth/password` | 🧪 |
-| Personal API tokens (create — secret shown once — list, revoke) | `/profile/tokens` (sidebar → API tokens) | `GET/POST/DELETE /api/v1/auth/tokens` | ⛔ deactivated — routes unregistered, bearer resolution disabled in `Auth.Principal`; code kept |
+| Personal API tokens (create - secret shown once - list, revoke) | `/profile/tokens` (sidebar → API tokens) | `GET/POST/DELETE /api/v1/auth/tokens` | ⛔ deactivated - routes unregistered, bearer resolution disabled in `Auth.Principal`; code kept |
 | Proxmox sign-in blocked while the selected cluster is unreachable; admin sign-in stays available | `/login` | `cluster_unavailable` error | ✅ |
-| Per-IP rate limit on auth endpoints (10 req/min) | — | `router.go` | ✅ |
+| Per-IP rate limit on auth endpoints (10 req/min) | - | `router.go` | ✅ |
 | OIDC / SSO sign-in | `/login` (button appears when enabled on a cluster) | `POST /api/v1/auth/oidc` → **501** | 🚧 |
 
 ## 2. My VMs
@@ -32,20 +32,20 @@ exists, backend not implemented).
 | Search / filter / sort mirrored into the URL (linkable views) | `/vms`, `/search` | `GET /api/v1/vms` | ✅ |
 | Live status refresh for the visible rows | `/vms` | `POST /api/v1/vms/status` | ✅ |
 | Bulk power actions with per-VM result (`start`, `stop`, `shutdown`, `reboot`, `reset`, `pause`, `resume`) | `/vms` | `POST /api/v1/vms/bulk-action` | ✅ |
-| Console button straight from the list | `/vms` | — | ✅ |
+| Console button straight from the list | `/vms` | - | ✅ |
 | Just-deleted VM hidden until inventory catches up | `/vms` | client side | ✅ |
-| Ownership enforced server-side (`vm.Resolve()`), not by the list filter | — | every VM route | ✅ |
+| Ownership enforced server-side (`vm.Resolve()`), not by the list filter | - | every VM route | ✅ |
 
 ## 3. Create a VM
 
-Wizard at `/vms/create` — **Simple** and **Detailed** modes, five steps
+Wizard at `/vms/create` - **Simple** and **Detailed** modes, five steps
 (Base, Disk, Hardware, Network, Review). Catalog from
 `GET /api/v1/vm-create/catalog`, submit with `POST /api/v1/vms`, progress via
 `GET /api/v1/tasks/{upid}` in the task tray.
 
 | Feature | Status |
 | --- | --- |
-| Three sources: **ISO** (admin-approved), **Proxmox template** clone (linked or full — the wizard says which), **cloud image** import (`import-from`, requires cloud-init user/SSH keys/network) | ✅ |
+| Three sources: **ISO** (admin-approved), **Proxmox template** clone (linked or full - the wizard says which), **cloud image** import (`import-from`, requires cloud-init user/SSH keys/network) | ✅ |
 | Hardware profiles (admin-curated CPU/RAM/disk shapes) or custom values | ✅ |
 | Node auto-placement with capacity scoring + live storage free-space check; node fixed to the template's node for clones | ✅ |
 | Disk: storage + size; minimum raised to the template/image size | ✅ |
@@ -59,7 +59,7 @@ Wizard at `/vms/create` — **Simple** and **Detailed** modes, five steps
 | Quotas and gabarit limits checked server-side before any Proxmox call | ✅ |
 | Draft auto-saved in the browser | ✅ |
 
-## 4. Operate a VM — `/vms/[cluster]/[vmid]`
+## 4. Operate a VM - `/vms/[cluster]/[vmid]`
 
 | Tab | Actions | API | Status |
 | --- | --- | --- | --- |
@@ -88,28 +88,28 @@ Wizard at `/vms/create` — **Simple** and **Detailed** modes, five steps
 | Personal cloud-init files (max 20 per user, private to the owner) | `/cloud-init` | `GET/POST/PUT/DELETE /api/v1/cloudinit/files` | ✅ |
 | Admin cloud-init templates, per cluster, enable/disable | `/admin/cloudinit-templates` | `/api/v1/admin/cloudinit-templates` | ✅ |
 | Per-VM copy written by PVMSS as `pvmss-<vmid>.yml` into the cluster's mounted `snippets/` dir, attached as `vendor=`; later edits to the source never touch the VM | at creation | `POST /api/v1/vms` | ✅ |
-| Feature off = loud: cluster without snippet dir → picker hidden, create with a document → 409 `cloudinit_write_unavailable` | — | — | ✅ |
-| Baseline snippet `pvmss-baseline.yml` auto-attached for cloud-image VMs when present | — | — | ✅ |
-| Snippet file and its row removed when the VM is deleted (best effort, never blocks the delete) | — | `DELETE /api/v1/vms/{cluster}/{vmid}` | ✅ |
+| Feature off = loud: cluster without snippet dir → picker hidden, create with a document → 409 `cloudinit_write_unavailable` | - | - | ✅ |
+| Baseline snippet `pvmss-baseline.yml` auto-attached for cloud-image VMs when present | - | - | ✅ |
+| Snippet file and its row removed when the VM is deleted (best effort, never blocks the delete) | - | `DELETE /api/v1/vms/{cluster}/{vmid}` | ✅ |
 
 ## 7. Cluster visibility
 
 | Feature | Route | API | Status |
 | --- | --- | --- | --- |
 | Node list with capacity/status from the inventory cache; manual refresh throttled | `/nodes` | `GET /api/v1/cluster/nodes`, `POST /api/v1/cluster/refresh` | ✅ |
-| Graceful degradation when a cluster is down (banner, actions disabled, no crash) | everywhere | — | ✅ |
-| Multi-cluster: every VM addressed by `cluster` + `vmid`; same VMID may exist on two clusters | everywhere | — | ✅ |
+| Graceful degradation when a cluster is down (banner, actions disabled, no crash) | everywhere | - | ✅ |
+| Multi-cluster: every VM addressed by `cluster` + `vmid`; same VMID may exist on two clusters | everywhere | - | ✅ |
 
 ## 8. Documentation (in-app CMS)
 
 | Feature | Route | API | Status |
 | --- | --- | --- | --- |
 | Public docs index + reader, Markdown rendered server-side, EN + FR per page | `/docs`, `/docs/[id]` | `GET /api/v1/docs`, `GET /api/v1/docs/{id}` | ✅ |
-| Admin-audience pages hidden from users and 401/403 on direct access | — | — | ✅ |
-| Seeded system pages (getting-started, user guide, VM guidelines, cloud-init how-to, admin guide, cloud-init setup, Proxmox permissions) — inserted once, admin edits never clobbered | `/admin/docs` | `/api/v1/admin/docs` | ✅ |
+| Admin-audience pages hidden from users and 401/403 on direct access | - | - | ✅ |
+| Seeded system pages (getting-started, user guide, VM guidelines, cloud-init how-to, admin guide, cloud-init setup, Proxmox permissions) - inserted once, admin edits never clobbered | `/admin/docs` | `/api/v1/admin/docs` | ✅ |
 | About page | `/about` | `GET /api/v1/public/version` | ✅ |
 
-## 9. Administration — `/admin`
+## 9. Administration - `/admin`
 
 All routes behind `RequireAdmin`.
 

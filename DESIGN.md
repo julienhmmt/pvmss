@@ -3,7 +3,7 @@
 ---
 
 name: PVMSS
-description: Proxmox VM Self-Service portal — warm, human infrastructure management
+description: Proxmox VM Self-Service portal - warm, human infrastructure management
 colors:
 primary: "#ba5100"
 primary-solid: "#ba5100"
@@ -99,13 +99,13 @@ Creative North Star: "The Warm Console"
 
 PVMSS is infrastructure management made human. The interface should feel like a
 competent colleague's desk: organized, warm, slightly informal, never clinical.
-The warm paper background and orange accent are the signature — they distinguish
+The warm paper background and orange accent are the signature - they distinguish
 PVMSS from every cold, gray infrastructure dashboard.
 
 The system is restrained: one accent color (orange), warm neutral surfaces, and
 semantic colors used only for state (success, warning, destructive, info).
-Density is welcome when it serves the task — tables, admin forms, policy fields
-— but decoration is not. Every surface earns its visual weight.
+Density is welcome when it serves the task - tables, admin forms, policy fields
+ - but decoration is not. Every surface earns its visual weight.
 
 This system explicitly rejects generic SaaS aesthetics: no indigo gradients, no
 glassmorphism, no hero-metric templates, no identical card grids. It also rejects
@@ -113,7 +113,7 @@ cluttered enterprise dashboards with excessive panels and gauges. The warmth
 comes from the palette and microcopy, not from illustrations or animation.
 
 **Application direction (chosen concept: "Calm workspace"):** the signed-in app
-is a single, quiet workspace — a fixed sidebar, a slim context header, and one
+is a single, quiet workspace - a fixed sidebar, a slim context header, and one
 roomy content column. The machine list is the landing page, not a metrics
 dashboard. Creation is a single-page form with a live summary rail. The machine
 detail page is connection-first: state, SSH, and the browser console lead;
@@ -145,25 +145,25 @@ colors carry state, not decoration.
   from the original 66% lightness so accent text clears AA on the paper ground
   (4.56:1); at 66% it sat at 3.09:1.
 - **Blaze Orange Solid** (oklch(56% 0.16 51deg) / #ba5100): the fill under a
-  label — primary buttons, active tabs, step badges. Deliberately *not* the same
+  label - primary buttons, active tabs, step badges. Deliberately *not* the same
   token as the accent, because the two roles want opposite things in dark mode:
   a fill needs to be dark enough for a white label (>=4.5:1), an accent needs to
   be light enough to read against a near-black ground. One token cannot be both,
   so this one is fixed across themes and the accent moves instead.
 - **Blaze Orange Dark** (oklch(72% 0.17 44deg) / #e88a3e): the dark mode
-  *accent* only — lifted for contrast against the dark ground (7.21:1). The
+  *accent* only - lifted for contrast against the dark ground (7.21:1). The
   solid fill stays #ba5100 in dark mode, so a primary button is the same button
   in both themes, still reading as a control at 3.59:1 against a dark card.
 
 ### Neutral
 
-- **Warm Paper** (#f7f6f4): App background. The signature warmth — never use pure
+- **Warm Paper** (#f7f6f4): App background. The signature warmth - never use pure
   white or gray-50 here.
 - **Card White** (#ffffff): Card and popover surfaces. Slightly lifted from the
   paper ground.
 - **Warm Muted** (#f1eeeb): Muted backgrounds, secondary surfaces, accent
   backgrounds.
-- **Ink** (#1c1a19): Primary text. Near-black with warm undertone — never use
+- **Ink** (#1c1a19): Primary text. Near-black with warm undertone - never use
   #000.
 - **Muted Ink** (#5f5854): Secondary text, labels, hints.
 - **Subtle Ink** (#8d8681): Tertiary text, placeholders, metadata.
@@ -191,13 +191,13 @@ gray for dark mode backgrounds.
 
 Only the accent is lifted. The solid fill (Blaze Orange Solid) is the same
 #ba5100 as light mode, so primary buttons keep their warm-white label rather
-than flipping to dark ink — the label colour is a property of the button, not
+than flipping to dark ink - the label colour is a property of the button, not
 of the theme.
 
 ### Named Rules
 
 **The One Accent Rule.** Blaze Orange is used on <=10% of any screen. It
-appears on primary buttons, active nav, focus rings, and links — never as
+appears on primary buttons, active nav, focus rings, and links - never as
 decoration, background fill, or large area color.
 
 **The Warm Neutral Rule.** All neutrals are warm-tinted (hue 49-56deg in OKLCH).
@@ -210,7 +210,7 @@ Never use pure gray, cool gray, or #000/#fff for surfaces or text.
 **Mono Font:** ui-monospace, SF Mono, JetBrains Mono, Menlo
 
 **Character:** One family for everything. Archivo Variable is a workhorse sans
-with enough personality to avoid feeling generic. No display/body pairing —
+with enough personality to avoid feeling generic. No display/body pairing - 
 product UI doesn't need it. The mono font is reserved for technical values
 (VMIDs, node names, sizes, UPIDs) and uses tabular numbers.
 
@@ -219,14 +219,14 @@ product UI doesn't need it. The mono font is reserved for technical values
 - **Heading** (600, 1.875rem / 2.25rem line-height): Page titles, admin section
   headers.
 - **Panel Title** (600, 1.25rem / 1.75rem line-height, tight tracking): Bare
-  (non-`Card`) admin panel headers — one `<h2>` per panel, stacked directly on
+  (non-`Card`) admin panel headers - one `<h2>` per panel, stacked directly on
   the page (AuditRetentionPanel, AuditLogPanel, ExportPanel, ImportPanel). De
   facto standard already; named here so it stops reading as an off-scale
   one-off.
 - **Title** (600, 1.5rem / 2rem line-height): Card titles, dialog titles,
   section headers.
 - **Dialog Title** (600, 1.125rem / 1.75rem line-height): The heading inside a
-  `Dialog` — smaller than `Title` because a dialog's own chrome (backdrop,
+  `Dialog` - smaller than `Title` because a dialog's own chrome (backdrop,
   close affordance, max-width) already sets it apart from the page; used as-is
   across ~20 dialogs (DeleteVmDialog, AddDiskDialog, ClusterFormDialog,
   ShortcutsDialog, ConfirmDialog, and others).
@@ -238,13 +238,13 @@ product UI doesn't need it. The mono font is reserved for technical values
   previews.
 
 `Card.svelte`'s own `title` prop renders smaller still (`text-sm font-semibold`)
-— a banded header sitting flush against the card's border, not a peer of the
+ - a banded header sitting flush against the card's border, not a peer of the
 tiers above. No panel in the app has adopted it yet; don't reach for it as a
 substitute for **Panel Title** on a component that isn't already a `Card`.
 
 The anonymous home page's hero (`text-4xl`) and its two marketing sections'
 centered headers (`text-xl`, HomeCapabilities/HomeHowItWorks) sit outside this
-scale on purpose — a landing pitch, shown only to logged-out visitors, is
+scale on purpose - a landing pitch, shown only to logged-out visitors, is
 allowed a heavier register than the app's own internal chrome.
 
 ### Rules
@@ -270,7 +270,7 @@ Three steps, no more. Each is a token (`--elev-rest`, `--elev-raised`,
 - **`.shadow-card`** (`--elev-rest`): the resting step. Cards, tiles, panels.
 - **`.shadow-raised`** (`--elev-raised`): hover on an interactive card, and the
   bulk-action bar. Reserved for "this element is lifting toward you".
-- **`.shadow-overlay`** (`--elev-overlay`): dialogs, popovers, toasts — anything
+- **`.shadow-overlay`** (`--elev-overlay`): dialogs, popovers, toasts - anything
   floating over the page.
 
 Dark mode redefines the same three tokens with higher opacity to compensate for
@@ -282,7 +282,7 @@ the dark ground.
 cards, dialogs, and elevated elements. Never add shadows to buttons, inputs, or
 nav items.
 
-## 5. Application Shell — "Calm Workspace"
+## 5. Application Shell - "Calm Workspace"
 
 The signed-in application is a **single quiet workspace**, not a dashboard. The
 chosen concept ("Calm workspace") fixes three structural decisions:
@@ -318,22 +318,22 @@ chosen concept ("Calm workspace") fixes three structural decisions:
   the right. Hidden below 700px.
 - **Main content:** `max-width: 1290px`, centered, `padding: 44px 44px 20px`.
   Each screen owns its own internal layout; the shell does not impose a grid.
-- **Page footer:** thin, two-line — tagline left, context label right.
+- **Page footer:** thin, two-line - tagline left, context label right.
 
 ### Sidebar anatomy (top to bottom)
 
-1. **Brand** — the PVMSS mark (orange rounded square with the "P" glyph) and
+1. **Brand** - the PVMSS mark (orange rounded square with the "P" glyph) and
    wordmark, with a one-line caption ("Your own space to build.").
-2. **Workspace label** — a faint, tracked, uppercase label ("PERSONAL
+2. **Workspace label** - a faint, tracked, uppercase label ("PERSONAL
    WORKSPACE") that names the section below it.
-3. **Primary navigation** — three items, each a rounded link with an icon and a
+3. **Primary navigation** - three items, each a rounded link with an icon and a
    count chip:
-   - **My machines** (icon: machines) — count of non-failed machines. Active
+   - **My machines** (icon: machines) - count of non-failed machines. Active
      when the current screen is `machines`, `create`, or `detail`.
-   - **Activity** (icon: clock) — count of in-flight operations (provisioning,
+   - **Activity** (icon: clock) - count of in-flight operations (provisioning,
      starting, stopping) when > 0, rendered in the accent color.
    - **Help & guides** (icon: help).
-4. **Sidebar bottom** — pinned to the bottom:
+4. **Sidebar bottom** - pinned to the bottom:
    - A short reassurance note ("Approved by your team. Ready for your next
      idea.") with a shield icon.
    - Preferences row: theme toggle (sun/moon icon button) and language button
@@ -343,10 +343,10 @@ chosen concept ("Calm workspace") fixes three structural decisions:
 
 ### Responsive collapse
 
-- **Below 940px:** the sidebar becomes a horizontal top bar — brand left,
+- **Below 940px:** the sidebar becomes a horizontal top bar - brand left,
   navigation centered, preferences + account right. The workspace label and
   reassurance note hide.
-- **Below 700px:** the bar wraps to two rows — brand + preferences on row one,
+- **Below 700px:** the bar wraps to two rows - brand + preferences on row one,
   full-width navigation on row two. The context header hides. Content padding
   shrinks to `28px 20px`.
 - **Below 370px:** nav count chips and OS marks hide to preserve room.
@@ -355,7 +355,7 @@ chosen concept ("Calm workspace") fixes three structural decisions:
 
 - The active nav item uses `aria-current="page"` and the accent-soft background
   with accent-text color.
-- `create` and `detail` are not separate nav items — they are states of "My
+- `create` and `detail` are not separate nav items - they are states of "My
   machines" and highlight that item.
 - Navigation is client-side; the page heading receives focus on screen change
   (`#page-heading`, `tabindex="-1"`) and the scroll position resets to top.
@@ -370,7 +370,7 @@ chosen concept ("Calm workspace") fixes three structural decisions:
 | Theme toggle          | `chrome/ThemeToggle.svelte`                  |
 | Language switcher     | `chrome/LanguageSwitcher.svelte`             |
 | Context header        | `chrome/AppHeader.svelte` (slimmed)          |
-| Account link          | new — fold into `Sidebar.svelte` bottom slot |
+| Account link          | new - fold into `Sidebar.svelte` bottom slot |
 
 ## 6. Screen Catalog
 
@@ -389,109 +389,109 @@ for your projects. Everything you need, nothing you don't." Primary action:
 
 **Body, in priority order:**
 
-1. **Quota notice** (only when allowance is full) — a warning notice: "Your
+1. **Quota notice** (only when allowance is full) - a warning notice: "Your
    machine allowance is full" with guidance to ask an administrator. Never
    blocks use of existing machines.
-2. **State surface** — exactly one of:
-   - **Unavailable** — an error-toned empty state: "We can't reach your
+2. **State surface** - exactly one of:
+   - **Unavailable** - an error-toned empty state: "We can't reach your
      workspace." Reassures that machines are not deleted; offers "Try again".
-   - **Loading** — three skeleton rows (square + name + line + action) with a
+   - **Loading** - three skeleton rows (square + name + line + action) with a
      "Finish simulated loading" affordance in the prototype; in production, a
      `TableSkeleton`.
-   - **Empty (first visit)** — a teaching empty state: illustration (machines
+   - **Empty (first visit)** - a teaching empty state: illustration (machines
      icon in a rounded tile with a "+" badge), eyebrow "ROOM FOR YOUR NEXT
      IDEA", title "Your first machine starts here.", body explaining approved
      configurations, primary action "Create your first machine", and a muted
      reassurance line ("Guided choices · Approved configurations · Your own
      space").
-   - **List** — the machine collection (below).
-3. **Machine collection** — a single bordered container (`machine-collection`)
+   - **List** - the machine collection (below).
+3. **Machine collection** - a single bordered container (`machine-collection`)
    with three parts:
-   - **Toolbar** — search field (icon + input, capped ~300px), status filter
+   - **Toolbar** - search field (icon + input, capped ~300px), status filter
      select (All / Running / Stopped), and a right-aligned count
      ("`n` machines").
-   - **Column labels** — a grid header row (MACHINE / RESOURCES / STATUS / ·),
+   - **Column labels** - a grid header row (MACHINE / RESOURCES / STATUS / ·),
      hidden below 700px.
-   - **Rows** — each row is a 4-column grid:
-     - **Identity** — OS mark (rounded tile with the offering's initial, tone
+   - **Rows** - each row is a 4-column grid:
+     - **Identity** - OS mark (rounded tile with the offering's initial, tone
        -tinted), machine name (link to detail), and OS + size subtitle.
-     - **Resources** — vCPU · GB RAM on one line, GB storage on the next.
+     - **Resources** - vCPU · GB RAM on one line, GB storage on the next.
        Figures are tabular-num.
-     - **Status** — a status pill (dot + label). Tones: running → success-soft,
+     - **Status** - a status pill (dot + label). Tones: running → success-soft,
        provisioning/starting/stopping/partial → warning-soft, failed →
        error-soft, stopped → muted.
-     - **Actions** — stopped machines show "Start" (secondary); others show
+     - **Actions** - stopped machines show "Start" (secondary); others show
        "Connect" (running) or "View details" (other states), both secondary.
-   - **Row hint** — a single muted line below the row when the state needs
+   - **Row hint** - a single muted line below the row when the state needs
      explanation (provisioning, failed, partial, no-address, stopped). Failed
      and partial hints use the error color.
-   - **No results** — when filters match nothing: "No matching machines" with a
+   - **No results** - when filters match nothing: "No matching machines" with a
      "Clear filters" text button.
-   - **Allowance row** — a footer band: "`n / 5` machines used", a 5-segment
+   - **Allowance row** - a footer band: "`n / 5` machines used", a 5-segment
      meter (`role="meter"`, filled segments in accent), and "Set by your
      administrator".
-4. **Quiet help** — below the collection, a low-key help prompt: book icon,
+4. **Quiet help** - below the collection, a low-key help prompt: book icon,
    "A little help, if you need it.", one line of body, and a "Open the guide"
    text button. Never a banner; never above the list.
 
 ### 6.2 Create a machine (`create`)
 
 A **single-page form** with a **live summary rail**. No multi-step wizard in the
-chosen concept — all sections are visible at once, the summary updates live, and
+chosen concept - all sections are visible at once, the summary updates live, and
 the submit button lives in the summary.
 
 **Heading:** back link "My machines", eyebrow "A NEW PLACE TO BUILD", title
 "Create a machine", description "A few choices. Your own environment." A
 "Team-approved choices" caption with a shield icon sits at the right.
 
-**Layout:** a two-column grid — `creation-form` (fluid) + `creation-summary`
+**Layout:** a two-column grid - `creation-form` (fluid) + `creation-summary`
 (272px, sticky). Below 700px the summary stacks under the form and becomes
 static.
 
 **Form sections** (each a `<fieldset>` with a numbered legend, a description,
 and the controls):
 
-1. **01 — Choose your starting point** — offering options as full-width radio
+1. **01 - Choose your starting point** - offering options as full-width radio
    cards. Each card: OS mark, title + edition, an optional "Good first choice"
    badge (Ubuntu only), a one-line description, and a radio indicator that fills
    with a check when selected. A field note below: "Includes SSH and
    browser-console support. Network and storage are preconfigured."
-2. **02 — Give it room to work** — size options as a 3-column grid of radio
+2. **02 - Give it room to work** - size options as a 3-column grid of radio
    cards (Small / Standard / Large). Each card: name, radio indicator, a
    purpose line, a spec line ("`n` vCPU / `n` GB RAM"), and a storage line. A
    field note: "Not sure? Small is a good place to experiment."
-3. **03 — Make it yours** — name + access:
-   - **Machine name** — text input, hostname pattern, maxlength 63, with a
+3. **03 - Make it yours** - name + access:
+   - **Machine name** - text input, hostname pattern, maxlength 63, with a
      hint and an inline error (shown only after submit). Errors: invalid
      pattern, duplicate name.
-   - **Access grid** (2 columns) — login username (text, pattern-validated) and
+   - **Access grid** (2 columns) - login username (text, pattern-validated) and
      SSH public key (select). Each has its own hint.
-   - **Access note** — a top-bordered note: "Use the computer that holds your
+   - **Access note** - a top-bordered note: "Use the computer that holds your
      SSH private key."
-4. **Draft note** — below the last section: "Your choices stay while you
+4. **Draft note** - below the last section: "Your choices stay while you
    browse." In production, this is the draft-auto-save affordance.
 
 **Summary rail** (sticky, `creation-summary`):
 
 - Title row: machines icon + "Your new machine".
-- **Name** — the entered name, or "Waiting for a name" (muted).
-- **OS** — offering name + edition.
-- **Details** (`<dl>`) — Size, Processor, Memory, Storage, Login (mono), SSH
+- **Name** - the entered name, or "Waiting for a name" (muted).
+- **OS** - offering name + edition.
+- **Details** (`<dl>`) - Size, Processor, Memory, Storage, Login (mono), SSH
   key.
-- **Included** — two check rows: "Approved network & storage", "Starts after
+- **Included** - two check rows: "Approved network & storage", "Starts after
   setup".
-- **Quota** — "After creation: `n+1 / 5` machines".
-- **Submit** — "Create this machine" (orange, full-width, plus icon), disabled
+- **Quota** - "After creation: `n+1 / 5` machines".
+- **Submit** - "Create this machine" (orange, full-width, plus icon), disabled
   when blocked. A 10px disclaimer below: "Simulated creation only." (In
   production, replaced by the real provisioning note.)
 
 **Blocked states** (replace the form with an empty state):
 
-- **Quota reached** — "You've reached your machine allowance."
-- **No catalog** — "Your catalog isn't ready yet." Explains the admin must
+- **Quota reached** - "You've reached your machine allowance."
+- **No catalog** - "Your catalog isn't ready yet." Explains the admin must
   approve an offering first.
-- **Loading** — "Your catalog is still loading."
-- **Unavailable** — "We can't load the available choices." Offers "Try again".
+- **Loading** - "Your catalog is still loading."
+- **Unavailable** - "We can't load the available choices." Offers "Try again".
 
 **Validation behavior:**
 
@@ -508,51 +508,51 @@ before anything else.
 
 **Heading:** back link "My machines". A detail identity row: large OS mark,
 `<h1>` machine name, and a description line (OS · size · `VM {id}` in mono). At
-the right: a status pill and the primary power action — "Shut down" (secondary,
+the right: a status pill and the primary power action - "Shut down" (secondary,
 running) or "Start machine" (primary, stopped).
 
 **State banners (above the tabs, in priority order):**
 
-- **Shutdown confirmation** — a warning notice that appears inline when the
+- **Shutdown confirmation** - a warning notice that appears inline when the
   user clicks "Shut down": "Shut down this machine?" with a graceful-shutdown
   explanation, "Keep running" (secondary) and "Confirm shutdown"
   (warning-toned). Never a forced power-off.
-- **Provisioning** — a provisioning panel: eyebrow "WE'RE ON IT", title
+- **Provisioning** - a provisioning panel: eyebrow "WE'RE ON IT", title
   "Making room for your next project.", a reassurance line, a 4-step progress
   list (Request accepted → Preparing the disk → Configuring access → Starting
   the machine) with complete/current/pending states, and a "Back to my
   workspace" link.
-- **Failed / partial** — an error notice: explains what happened (storage
+- **Failed / partial** - an error notice: explains what happened (storage
   unavailable for failed; access config failed for partial), explicitly says
   "Do not create a duplicate" for partial, offers "Review the request" (failed)
   or "Get help from your administrator" (partial), and a collapsible
   "Technical details for your administrator" with a code line.
-- **Busy (starting/stopping)** — a neutral notice: "Starting your machine.
+- **Busy (starting/stopping)** - a neutral notice: "Starting your machine.
   Connection options will appear once it is running." / "Waiting for a graceful
   shutdown. Your files will be kept."
 
 **Tabs** (underline-style, accent on active):
 
-1. **Connect** (default) — a two-column layout: SSH section (fluid) + browser
+1. **Connect** (default) - a two-column layout: SSH section (fluid) + browser
    console aside (260px).
-   - **SSH section** — eyebrow "FROM YOUR COMPUTER", title "Connect with SSH",
+   - **SSH section** - eyebrow "FROM YOUR COMPUTER", title "Connect with SSH",
      one line of body, then the command in a bordered bar: `$ ssh user@address`
      with a copy icon button. A demo-address note (prototype) / a real-address
      note (production). A `<dl>` of connection facts (Username, IP address,
      Network). A connection-help note about the private key and team network.
-   - **Address unavailable** — when running but no address: "The address isn't
+   - **Address unavailable** - when running but no address: "The address isn't
      available yet" with guidance to use the console or ask an admin. "We won't
      guess an address." When not running: "SSH isn't available right now."
-   - **Console aside** — "Or stay in your browser.", one line of body, "Open
+   - **Console aside** - "Or stay in your browser.", one line of body, "Open
      browser console" (secondary, full-width, disabled unless running), and a
      hint.
-   - **Resource strip** — below the layout: vCPU / memory / storage, each with
+   - **Resource strip** - below the layout: vCPU / memory / storage, each with
      an icon, a bold value, and a one-line caption ("Allocated, not live
      usage").
-2. **Configuration** — a read-only `<dl>`: OS, approved size, disk, network &
+2. **Configuration** - a read-only `<dl>`: OS, approved size, disk, network &
    placement ("Managed by your team"), machine identifier (mono). Hardware
    editing and snapshots are designed later.
-3. **Activity** — a per-machine timeline: rows with a marker, a bold message, a
+3. **Activity** - a per-machine timeline: rows with a marker, a bold message, a
    "Simulated operation" subtitle, and a time. Empty state: "No operations in
    this demo session yet."
 
@@ -571,10 +571,10 @@ session" label at the right.
 
 **Body:**
 
-- **In progress** (only when operations are running) — a section listing
+- **In progress** (only when operations are running) - a section listing
   in-flight machines as rows (marker + name + status label + arrow), each
   linking to its detail page.
-- **Recent updates** — a timeline of activity rows (marker + bold machine name +
+- **Recent updates** - a timeline of activity rows (marker + bold machine name +
   message + time), each linking to the relevant detail. Empty state: "All quiet
   for now." with a "Go to my machines" link.
 
@@ -583,14 +583,14 @@ session" label at the right.
 **Heading:** eyebrow "A LITTLE GUIDANCE", title "You don't need to know
 Proxmox.", description "Start here. The infrastructure details can wait."
 
-**Layout:** a two-column grid — articles (fluid) + aside (260px).
+**Layout:** a two-column grid - articles (fluid) + aside (260px).
 
-- **Articles** — a stack of `<details>` accordions, each with a numbered
-  summary ("01 — Create your first machine", "02 — Connect with SSH or your
+- **Articles** - a stack of `<details>` accordions, each with a numbered
+  summary ("01 - Create your first machine", "02 - Connect with SSH or your
   browser", …). A `+`/`−` indicator sits at the right. The first article is
   open by default. Each article body is plain prose with inline text-button
   links to the relevant screen.
-- **Aside** — a muted card: "New to virtual machines?" with a short
+- **Aside** - a muted card: "New to virtual machines?" with a short
   explanation and a bulleted list of concepts.
 
 ### 6.6 Account (`account`)
@@ -600,15 +600,15 @@ workspace that feels comfortable to use."
 
 **Body** (a single `account-panel`, max 780px):
 
-- **Identity** — large avatar (initials), name, "Personal account" subtitle.
+- **Identity** - large avatar (initials), name, "Personal account" subtitle.
 - **Preference rows** (top-bordered, space-between):
-  - **Appearance** — "Warm light or a quieter dark workspace." with a
+  - **Appearance** - "Warm light or a quieter dark workspace." with a
     "Switch to light/dark" secondary button.
-  - **Language** — "The complete interface is available in English and French."
+  - **Language** - "The complete interface is available in English and French."
     with a language select.
-- **Field note** — "Authentication, passwords and API tokens are intentionally
+- **Field note** - "Authentication, passwords and API tokens are intentionally
   outside this prototype." (In production, this is where token management
-  lives — see `profile/tokens`.)
+  lives - see `profile/tokens`.)
 
 ## 7. State and Feedback Model
 
@@ -647,23 +647,23 @@ address` is truthy.
 
 ### Feedback surfaces
 
-- **Toasts** — fixed bottom-right (desktop) / bottom-full-width (mobile).
+- **Toasts** - fixed bottom-right (desktop) / bottom-full-width (mobile).
   Variants: success, error, info. Auto-dismiss 5s, manual dismiss. ARIA:
   `role="alert"` for errors, `role="status"` for success/info.
-- **Notices** — inline banners within the content flow. Three tones: warning
+- **Notices** - inline banners within the content flow. Three tones: warning
   (warning-soft), error (error-soft), neutral (subtle). Each has an icon, a
   bold title, a body, and optional actions. Never modal.
-- **Empty states** — teaching, not scolding. "Create your first machine" not
+- **Empty states** - teaching, not scolding. "Create your first machine" not
   "No VMs found." An illustration, an eyebrow, a title, a body, a primary
   action, and an optional reassurance line.
-- **Skeletons** — `.skeleton` with a breathing pulse (reduced-motion safe).
+- **Skeletons** - `.skeleton` with a breathing pulse (reduced-motion safe).
   Used for loading inside content, never spinners.
 
 ## 8. Components
 
 ### Buttons
 
-- **Shape:** `--radius-control` (0.625rem) — the same radius as inputs, so a
+- **Shape:** `--radius-control` (0.625rem) - the same radius as inputs, so a
   button next to a field reads as one control set. inline-flex, items-center,
   gap-2, fixed heights (sm 2rem / md 2.5rem / lg 2.75rem, plus square `icon`
   and `icon-sm` sizes) so a row of mixed controls aligns without hand-tuning.
@@ -672,11 +672,11 @@ address` is truthy.
   Loading: spinner icon + disabled state.
 - **Secondary:** Card background with a 1px border. Hover: border darkens,
   muted fill.
-- **Outline:** Transparent with a 1px border — the quieter bordered form on
+- **Outline:** Transparent with a 1px border - the quieter bordered form on
   tinted grounds.
 - **Ghost:** Transparent background, muted-foreground text. Hover: muted
   background.
-- **Subtle:** Filled neutral, no border — for dense rows where a border grid
+- **Subtle:** Filled neutral, no border - for dense rows where a border grid
   would be noisy.
 - **Destructive:** Destructive background, white foreground. Used for delete and
   revoke actions.
@@ -686,7 +686,7 @@ address` is truthy.
   that, never from a resting shadow (see the flat-by-default rule).
 
 Never hand-roll a button. `Button.svelte` and `ButtonLink.svelte` are the same
-component in two semantics — which one a call site needs is a semantics decision
+component in two semantics - which one a call site needs is a semantics decision
 (does it navigate?), never a visual one.
 
 ### Inputs / Fields
@@ -702,7 +702,7 @@ component in two semantics — which one a call site needs is a semantics decisi
 
 ### Radio cards (offering / size selectors)
 
-The creation form uses **radio cards** — full-width `<label>` wrappers around a
+The creation form uses **radio cards** - full-width `<label>` wrappers around a
 visually-hidden radio input. This is the pattern for any "choose one of N
 prepared options" control.
 
@@ -717,7 +717,7 @@ prepared options" control.
 
 - **Corner Style:** Radius lg (0.75rem)
 - **Background:** Card White (#ffffff) in light, oklch(21% 0.006 56deg) in dark
-- **Shadow Strategy:** `.shadow-card` — two-layer soft, warm-tinted
+- **Shadow Strategy:** `.shadow-card` - two-layer soft, warm-tinted
 - **Border:** 1px solid warm border
 - **Internal Padding:** `p-6` (1.5rem) default, `p-4` (1rem) compact
 
@@ -733,7 +733,7 @@ prepared options" control.
 ### Tables
 
 Two classes, applied together: `.pv-table` owns the look, `.pv-responsive-table`
-owns the mobile collapse. Cells carry no spacing utilities of their own — that
+owns the mobile collapse. Cells carry no spacing utilities of their own - that
 is what let admin tables drift away from the VM list.
 
 - **Header:** sticky band on `--muted`, 11px uppercase with 0.04em tracking, a
@@ -746,7 +746,7 @@ is what let admin tables drift away from the VM list.
 - **Mobile:** collapses to stacked cards with label/value pairs driven by the
   `data-label` attribute on each `<td>`; the desktop cell metrics are handed
   back to the card layout below 640px.
-- **Sort indicators:** `SortButton.svelte` — an arrow whose space is reserved
+- **Sort indicators:** `SortButton.svelte` - an arrow whose space is reserved
   permanently, so the column never reflows when the direction changes. Inactive
   columns reveal a faint arrow on hover.
 
@@ -763,15 +763,15 @@ is what let admin tables drift away from the VM list.
 
 ### Dialogs
 
-- **Container:** `Dialog.svelte` — backdrop blur, centered card, focus trap,
+- **Container:** `Dialog.svelte` - backdrop blur, centered card, focus trap,
   escape to close, focus restoration.
 - **Max width:** `max-w-lg` default, `max-w-2xl` for wide forms.
 - **Animation:** 160ms ease-out fade-in.
-- **Vertical rhythm:** `Dialog.svelte` owns no spacing below its own title —
+- **Vertical rhythm:** `Dialog.svelte` owns no spacing below its own title - 
   each caller hand-rolls the gap after its `<h2>`, and three different values
   (`mb-2`, `mb-3`, `mb-4`) had accumulated for the same "title → body" gap
   across ~20 dialogs with no reason to differ. **Title → body is `mb-4`/`mt-4`
-  (1rem)**, the same step as the gap between two form fields — a dialog's title
+  (1rem)**, the same step as the gap between two form fields - a dialog's title
   and its content are read as one continuous block, not two separate sections.
   Where a dialog interposes a supporting hint line between the title and its
   form (`TemplateEditForm`, `NodeCapacityForm`), the hint itself sits at `mt-2`
@@ -788,13 +788,13 @@ is what let admin tables drift away from the VM list.
 
 ### Skeletons
 
-- **Style:** `.skeleton` — muted background, pulse animation, reduced-motion
+- **Style:** `.skeleton` - muted background, pulse animation, reduced-motion
   safe.
 - **TableSkeleton:** Configurable rows/columns, matches real table structure.
 
 ### Empty States
 
-- **Style:** `EmptyState.svelte` — icon in a tinted disc, title, description,
+- **Style:** `EmptyState.svelte` - icon in a tinted disc, title, description,
   optional action snippet. `tone="error"` swaps the disc to the destructive
   triple for unreachable-cluster states.
 - **Character:** Teaching, not scolding. "Create your first VM" not "No VMs
@@ -811,7 +811,7 @@ partial → warning-soft, failed → error-soft, stopped → muted). The dot is
 
 A rounded tile (38×42px on the list, 53×58px on detail) showing the offering's
 initial. Tone-tinted: Ubuntu → accent-soft, Debian → subtle, Rocky →
-success-soft. The tile is an identity anchor, not a logo — it lets a user
+success-soft. The tile is an identity anchor, not a logo - it lets a user
 recognize their machine at a glance without a real OS logo.
 
 ### Allowance meter
@@ -824,19 +824,19 @@ The label always names the source ("Set by your administrator").
 
 Target: WCAG 2.1 AA.
 
-- **Skip link** — "Skip to content" appears on focus, jumps to `#main-content`.
-- **Focus management** — the page heading receives focus on screen change;
+- **Skip link** - "Skip to content" appears on focus, jumps to `#main-content`.
+- **Focus management** - the page heading receives focus on screen change;
   scroll resets to top. `:focus-visible` draws a 3px accent ring offset 4px.
-- **Semantics** — `<nav>`, `<main>`, `<header>`, `<footer>`, `<dialog>`,
+- **Semantics** - `<nav>`, `<main>`, `<header>`, `<footer>`, `<dialog>`,
   `<fieldset>`/`<legend>`, `<dl>`, `role="meter"`, `aria-current="page"`,
   `aria-pressed` for tabs, `aria-live="polite"` for the console transcript and
   provisioning panel, `role="alert"`/`role="status"` for notices and toasts.
-- **Keyboard** — every action is reachable by keyboard; the console dialog
+- **Keyboard** - every action is reachable by keyboard; the console dialog
   traps focus and restores it on close; escape closes dialogs.
-- **Reduced motion** — `prefers-reduced-motion: reduce` disables all
+- **Reduced motion** - `prefers-reduced-motion: reduce` disables all
   animations and transitions.
-- **Language** — `<html lang>` is set to the active locale (en/fr).
-- **Contrast** — body text ≥ 4.5:1, large text ≥ 3:1, focus rings ≥ 3:1.
+- **Language** - `<html lang>` is set to the active locale (en/fr).
+- **Contrast** - body text ≥ 4.5:1, large text ≥ 3:1, focus rings ≥ 3:1.
 
 ## 10. Internationalization
 
@@ -850,7 +850,7 @@ Target: WCAG 2.1 AA.
   hard-code widths that break under French text; the summary `<dl>` and the
   status pills use `overflow-wrap: anywhere` and `white-space: nowrap`
   respectively to absorb this.
-- **Numbers** — disk/memory sizes use the mono face with tabular numbers. The
+- **Numbers** - disk/memory sizes use the mono face with tabular numbers. The
   unit (`GB`/`Go`) is translated.
 
 ## 11. Do's and Don'ts
@@ -859,7 +859,7 @@ Target: WCAG 2.1 AA.
 
 - **Do** use the warm paper background (#f7f6f4) for the app background and
   white (#ffffff) for card surfaces.
-- **Do** use Blaze Orange sparingly — primary buttons, active nav, focus rings,
+- **Do** use Blaze Orange sparingly - primary buttons, active nav, focus rings,
   links only.
 - **Do** use OKLCH for all semantic colors with soft variants for backgrounds.
 - **Do** use Archivo Variable for all text. Use the mono font only for
@@ -871,7 +871,7 @@ Target: WCAG 2.1 AA.
 - **Do** use `Button` / `ButtonLink`, `TextField`, `Select`, `FormField`,
   `FormSection`, `Toolbar`, `Pill`, `StatCard` and `EmptyState` instead of
   re-styling their markup by hand.
-- **Do** use `Dialog.svelte` for all modal dialogs — it has focus trap, escape
+- **Do** use `Dialog.svelte` for all modal dialogs - it has focus trap, escape
   handling, and focus restoration.
 - **Do** use skeleton loading states, not spinners in the middle of content.
 - **Do** use teaching empty states with actionable next steps.
@@ -914,17 +914,17 @@ The chosen concept is a **direction**, not a copy. The prototype
 (`/Users/jh/git/gh/pvmss-design-prototypes`) is throwaway validation code. When
 migrating into `web/`:
 
-- **Reuse production components** — `Button`, `ButtonLink`, `TextField`,
+- **Reuse production components** - `Button`, `ButtonLink`, `TextField`,
   `Select`, `FormField`, `FormSection`, `Toolbar`, `Pill`, `Dialog`,
   `EmptyState`, `TableSkeleton`, `Sidebar`, `ThemeToggle`, `LanguageSwitcher`.
   Do not re-implement them from the prototype's hand-rolled classes.
-- **Reuse production state** — the existing `vm-create/draft.svelte.ts`
+- **Reuse production state** - the existing `vm-create/draft.svelte.ts`
   (draft auto-save), `vms/list.svelte.ts`, `vms/detail.svelte.ts`, and
   `tasks/` stores. The prototype's `PrototypeState` is a mock; the real state
   model already exists.
 - **Use Paraglide** (`web/messages/` + `web/project.inlang/`, output in
   `web/src/lib/paraglide/`) for all strings, not inline tuples.
-- **Use the existing token system** in `web/src/app.css` — the prototype's
+- **Use the existing token system** in `web/src/app.css` - the prototype's
   `--page`/`--surface`/`--accent` variables are the same warm identity expressed
   in OKLCH; production already has them as `--background`/`--card`/`--primary`.
 - **Map the screens to routes:**
@@ -934,7 +934,7 @@ migrating into `web/`:
   - `activity` → `/tasks` (or a new `/activity` route)
   - `help` → `/docs` (existing in-app docs)
   - `account` → `/profile`
-- **Add production tests** — Vitest for stores, Playwright for the creation
+- **Add production tests** - Vitest for stores, Playwright for the creation
   flow and state scenarios, accessibility checks, responsive checks, and
   bilingual checks as the design is migrated.
 - **Update `WORKFLOWS.md`** for any approved user-facing workflow changes

@@ -38,7 +38,7 @@ services:
     env_file:
       - .env
     environment:
-      # Vite proxy target — the Go backend on the docker network.
+      # Vite proxy target - the Go backend on the docker network.
       VITE_BACKEND_URL: http://pvmss-dev:50000
       # ORIGIN controls the public base for Vite asset URLs and HMR.
       # For OrbStack TLS access via https://web-dev.pvmss.orb.local (standard port),

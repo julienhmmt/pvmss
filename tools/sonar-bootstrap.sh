@@ -119,9 +119,9 @@ provision_project() {
         http_code=$(curl -s -o /dev/null -w "%{http_code}" -u "$ADMIN_USER:$current_pass" -X POST \
             "$SONAR_URL/api/projects/create?name=${encoded_name}&project=${key}" 2>/dev/null || true)
         if [ "$http_code" = "200" ] || [ "$http_code" = "400" ]; then
-            echo "  $key — OK"
+            echo "  $key - OK"
         else
-            echo "  $key — HTTP $http_code (may already exist)"
+            echo "  $key - HTTP $http_code (may already exist)"
         fi
     done
 }

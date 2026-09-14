@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# pq — project query. Locate code cheaply. Depends only on ripgrep.
+# pq - project query. Locate code cheaply. Depends only on ripgrep.
 # Project-agnostic: language rules are selected per query, nothing is indexed.
 set -euo pipefail
 
@@ -13,7 +13,7 @@ usage() {
   cat >&2 <<'U'
 pq def NAME [PATH]      where a symbol is defined (declarations, then file names)
 pq api PATH             exported surface of a package/directory
-pq callers NAME [PATH]  who uses it — counts per file, not raw lines
+pq callers NAME [PATH]  who uses it - counts per file, not raw lines
 pq file PATH            skeleton of one file: symbols + line numbers
 pq tree [PATH]          directories ranked by symbol count
 pq grep PATTERN [PATH]  pre-filtered ripgrep (no build dirs, no vendor)
@@ -87,7 +87,7 @@ case "$cmd" in
         echo "# no declaration for '$n', but these files are named like it:"
         echo "$files"
       else
-        echo "# no declaration found for '$n' — it may be a method declared"
+        echo "# no declaration found for '$n' - it may be a method declared"
         echo "# inside an interface/class, a generated symbol, or spelled"
         echo "# differently. Try: pq grep '$n'"
       fi
