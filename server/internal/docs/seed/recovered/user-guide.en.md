@@ -10,7 +10,7 @@ Proxmox VE, without using the Proxmox interface directly.
 2. **Find your VMs** on the My VMs page; search by name, VMID, or tag.
 3. **Create a VM** with the "Create a VM" button, then fill in the required parameters.
 4. **Open the console** once the VM is created and started, through the integrated noVNC or serial client.
-5. **Manage your cloud-init files** and **API tokens** from their own pages.
+5. **Manage your cloud-init files** from their own page.
 
 ## Home
 
@@ -93,7 +93,7 @@ edited when your administrator allows it. See the
 
 ### Snapshots
 
-- **Create**: enter a name (alphanumeric, hyphens, underscores, max 40 characters), an optional description, and choose whether to include RAM state.
+- **Create**: enter a name (starts with a letter, then letters, digits, hyphens or underscores — 2 to 40 characters), an optional description, and choose whether to include RAM state.
 - **View**: name, description, creation date, and whether RAM was included; the current state is marked.
 - **Rollback**: restores the VM to the snapshot state. This is destructive — changes made after the snapshot are lost.
 - **Delete**: permanently removes a snapshot and frees its storage.
@@ -122,11 +122,18 @@ documents (up to 20). They appear under "My files" in the Create a VM picker.
 Each VM gets its own copy at creation, so editing a file later never changes
 existing VMs.
 
-## API tokens
+## Limits
 
-The [API tokens](/profile/tokens) page lets you create personal access tokens
-for scripting against the PVMSS API. The secret is shown once; revoke a token
-at any time.
+Your administrator controls most limits per cluster; PVMSS enforces them
+server-side before any Proxmox call is made.
+
+- **Quota** — maximum number of VMs per user.
+- **Gabarit** — per-VM ceilings on sockets, cores, memory, disk size, network cards, and snapshots.
+- **VM name** — a lowercase hostname, at most 63 characters, unique in your pool.
+- **Description** — at most 512 characters.
+- **Bulk power actions** — up to 100 VMs per request.
+- **Cloud-init files** — up to 20 stored documents per user.
+- **Snapshot name** — a leading letter, then letters, digits, hyphens or underscores, 2 to 40 characters; `current` is reserved.
 
 ## Best practices
 
@@ -141,6 +148,7 @@ at any time.
 - Backups and live migration are handled in Proxmox, not in PVMSS.
 - Advanced networking (firewall rules, SDN) is configured in Proxmox.
 - Password change is available through the API only for now.
+- Personal API tokens are deactivated in this version; the API tokens page has no backend.
 
 ## Security and privacy
 

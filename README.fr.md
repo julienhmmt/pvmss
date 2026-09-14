@@ -40,7 +40,7 @@ L'inventaire complet, route par route, est dans [docs/FEATURES.md](docs/FEATURES
 
 ### Utilisateurs finaux
 
-- Connexion avec ses identifiants Proxmox sur le cluster de son choix ; tokens API personnels pour scripter.
+- Connexion avec ses identifiants Proxmox sur le cluster de son choix.
 - **Mes VM** : liste multi-cluster, recherche/filtre/tri reflétés dans l'URL, statut en direct, actions d'alimentation groupées avec résultat par VM, bouton console sur chaque ligne.
 - **Assistant de création** (mode Simple / Détaillé) depuis trois sources : une **ISO** approuvée, un **template** Proxmox (clone lié ou complet) ou une **image cloud** (`import-from` + cloud-init). Profils matériels ou valeurs libres, placement automatique avec score de capacité, multi-NIC (bridge + modèle), UEFI / Secure Boot / TPM 2.0, tags curés, démarrage sur CD-ROM.
 - **Exploitation d'une VM** : 7 actions d'alimentation, renommage, description Markdown, suppression ; disques (ajout / agrandissement / détachement) ; cartes réseau (bridge, modèle, VLAN, débit) ; CPU/RAM/tags/CD-ROM ; snapshots (création / restauration / suppression, RAM optionnelle) ; historique de métriques (heure/jour/semaine) et flux temps réel ; journal d'activité par VM.
@@ -144,8 +144,8 @@ nouvelle VM :
    Storage › Edit).
 2. Montez le répertoire `snippets/` de ce stockage dans le conteneur PVMSS —
    voir le volume commenté dans les exemples Docker / Compose / Helm ci-dessous.
-3. Dans **Admin › Clusters › Modifier**, renseignez *Répertoire de snippets*
-   (chemin dans le conteneur, ex. `/snippets`) et *Stockage de snippets*
+3. Dans **Admin › Clusters › Modifier**, renseignez _Répertoire de snippets_
+   (chemin dans le conteneur, ex. `/snippets`) et _Stockage de snippets_
    (identifiant du stockage Proxmox). Le badge du cluster passe à
    « cloud-init : activé ».
 
@@ -153,7 +153,7 @@ Chaque VM reçoit sa propre copie (`pvmss-<vmid>.yml`, attachée en `vendor=`) :
 modifier un template plus tard ne change jamais les VM existantes. Sans cible
 d'écriture, le sélecteur est masqué et la création avec un document est
 refusée avec une erreur explicite. Procédure complète : page intégrée
-`/docs/admin-guide`, section *Activer les documents cloud-init*.
+`/docs/admin-guide`, section _Activer les documents cloud-init_.
 
 ### Variables d'environnement
 
@@ -224,7 +224,7 @@ Le format JSON est une ligne par événement, avec un champ `component` (main, c
 
 | Plateforme          | Détails                                                                                                                                                                                                                                                    |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Docker / Podman** | Idéal pour tester ou déployer sur un seul hôte. Montez le volume de base de données et exposez `50000`.                                                                                                                                                 |
+| **Docker / Podman** | Idéal pour tester ou déployer sur un seul hôte. Montez le volume de base de données et exposez `50000`.                                                                                                                                                    |
 | **Docker Compose**  | Expérience recommandée : service unique, variables centralisées, environnement reproductible.                                                                                                                                                              |
 | **Kubernetes**      | Utilisez [`pvmss-deployment.yaml`](pvmss-deployment.yaml) (namespace + secret + configmap + PVC + Deployment + Service). Appliquez via `kubectl apply -f pvmss-deployment.yaml`. L'ingress/HTTPRoute reste à votre charge (exemple `pvmss-httproute.yml`). |
 
@@ -316,14 +316,14 @@ LOG_OUTPUT: "/app/pvmss.log"
 - ./pvmss.log:/app/pvmss.log
 ```
 
-2. **Démarrer la stack :**
+1. **Démarrer la stack :**
 
    ```bash
    docker compose up -d
    ```
 
-3. Ouvrez un navigateur et accédez à **<http://localhost:50000>**.
-4. Se connecter avec le compte admin, sur la page "Login", cliquez sur "Connexion administrateur".
+2. Ouvrez un navigateur et accédez à **<http://localhost:50000>**.
+3. Se connecter avec le compte admin, sur la page "Login", cliquez sur "Connexion administrateur".
 
 ## Démarrer avec Kubernetes
 
