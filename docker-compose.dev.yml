@@ -12,6 +12,7 @@ services:
       - "50000:50000/tcp"
     volumes:
       - ./pvmss.db:/app/pvmss.db
+      - ./snippets:/app/snippets
       # Cloud-init documents: mount the snippets/ dir of a SHARED Proxmox
       # storage (NFS/CIFS) here, then set "Snippet directory" = /snippets and
       # the storage id in Admin › Clusters. Leave commented to keep the
