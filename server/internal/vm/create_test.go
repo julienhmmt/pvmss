@@ -29,15 +29,23 @@ type createFixture struct {
 	fake  cluster.Fake
 }
 
+// Shared test log configuration constants — used by every test in the vm
+// package that opens a store, so goconst does not flag the literals.
+const (
+	testLogLevel  = "info"
+	testLogFormat = "json"
+	testLogOutput = "stdout"
+)
+
 func newCreateFixture(t *testing.T) createFixture {
 	t.Helper()
 	t.Cleanup(cluster.ResetFake)
 
 	st, err := store.Open(config.Configuration{
 		DBPath:    filepath.Join(t.TempDir(), "vm-create.db"),
-		LogLevel:  "info",
-		LogFormat: "json",
-		LogOutput: "stdout",
+		LogLevel:  testLogLevel,
+		LogFormat: testLogFormat,
+		LogOutput: testLogOutput,
 	})
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
@@ -1446,7 +1454,7 @@ func TestCreate_UEFI_ProvisionsEFIDisk(t *testing.T) {
 	}
 
 	got := snap.VMs[idx]
-	if got.BIOS != "ovmf" || got.Machine != "q35" || !got.EFIDisk {
+	if got.BIOS != testBIOSOVMF || got.Machine != "q35" || !got.EFIDisk {
 		t.Errorf("bios=%q machine=%q efidisk=%v, want ovmf/q35/true", got.BIOS, got.Machine, got.EFIDisk)
 	}
 
@@ -1480,7 +1488,7 @@ func TestCreate_UEFI_DefaultsToTrueWhenOmitted(t *testing.T) {
 		t.Fatalf("created VM %d not found in snapshot", result.VMID)
 	}
 
-	if got := snap.VMs[idx].BIOS; got != "ovmf" {
+	if got := snap.VMs[idx].BIOS; got != testBIOSOVMF {
 		t.Errorf("bios = %q, want ovmf (UEFI defaults to true when omitted)", got)
 	}
 }

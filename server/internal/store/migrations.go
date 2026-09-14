@@ -304,6 +304,18 @@ const schemaV29 = `CREATE TABLE user_cloudinit_files (
 	PRIMARY KEY (owner, id)
 )`
 
+// schemaV30 adds per-VM baseline delivery state for image-mode VMs
+// (cloud-image-console issue 03). state is "applied", "override", or
+// "not_delivered"; error carries the reason when state is "not_delivered".
+const schemaV30 = `CREATE TABLE vm_baseline_state (
+	cluster     TEXT NOT NULL,
+	vmid         INTEGER NOT NULL,
+	state        TEXT NOT NULL,
+	error        TEXT NOT NULL DEFAULT '',
+	updated_at   TEXT NOT NULL,
+	PRIMARY KEY (cluster, vmid)
+)`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -342,4 +354,5 @@ var Migrations = []Migration{
 	{Version: 27, DDL: schemaV27},
 	{Version: 28, DDL: schemaV28},
 	{Version: 29, DDL: schemaV29},
+	{Version: 30, DDL: schemaV30},
 }

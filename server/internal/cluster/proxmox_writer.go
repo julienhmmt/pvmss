@@ -287,3 +287,40 @@ func (p Proxmox) EnableSerial(ctx context.Context, node string, vmid int) error 
 
 	return err
 }
+
+// ReadFirmwareConfig reads the live firmware-related config of a VM via
+// GET /nodes/{node}/qemu/{vmid}/config (issue 08). The projection does not
+// hydrate these fields, so the SeaBIOS retrofit reads them live to decide
+// whether a VM can be safely switched (TPM state or Secure Boot refuse).
+func (p Proxmox) ReadFirmwareConfig(ctx context.Context, node string, vmid int) (FirmwareConfig, error) {
+	cfg, err := fetchVMConfig(ctx, p.rest(), node, vmid)
+	if err != nil {
+		return FirmwareConfig{}, err
+	}
+
+	fw := FirmwareConfig{
+		BIOS:       cfg.str("bios"),
+		Machine:    cfg.str("machine"),
+		HasEFIDisk: cfg.str("efidisk0") != "",
+		HasTPM:     cfg.str("tpmstate0") != "",
+	}
+
+	// Secure Boot is encoded as pre-enrolled-keys=1 on efidisk0.
+	if fw.HasEFIDisk {
+		fw.SecureBoot = strings.Contains(cfg.str("efidisk0"), "pre-enrolled-keys=1")
+	}
+
+	return fw, nil
+}
+
+// RetrofitToSeaBIOS removes the UEFI firmware keys from a VM's config by
+// deleting bios, machine, efidisk0, and tpmstate0 in a single PUT (issue 08).
+// The caller must have already refused VMs with TPM state or Secure Boot and
+// stopped the VM. Proxmox accepts a comma-joined delete list in one call.
+func (p Proxmox) RetrofitToSeaBIOS(ctx context.Context, node string, vmid int) error {
+	_, err := p.rest().do(ctx, http.MethodPut, vmConfigPath(node, vmid), url.Values{
+		actionDelete: {"bios,machine,efidisk0,tpmstate0"},
+	})
+
+	return err
+}

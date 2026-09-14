@@ -3,10 +3,12 @@ package vm_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/vm"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -116,9 +118,10 @@ func imageRequest() vm.CreateRequest {
 }
 
 // TestCreate_Image_AppliesCloudInit — the image path delivers cloud-init
-// through Proxmox's native keys (SetCloudInitConfig — the REST API cannot
-// write a per-VM snippet file), skips the baseline snippet when the admin
-// has not placed one, and only then starts the VM.
+// through Proxmox's native keys (SetCloudInitConfig), then pushes the
+// generated baseline as a per-VM snippet and attaches it as vendor-data
+// (issue 03). The baseline state is "applied" when no cluster-wide override
+// is present.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_Image_AppliesCloudInit(t *testing.T) {
@@ -136,6 +139,10 @@ func TestCreate_Image_AppliesCloudInit(t *testing.T) {
 		t.Errorf("result.CloudInitPushError = %q, want empty", result.CloudInitPushError)
 	}
 
+	if result.BaselineState != "applied" {
+		t.Errorf("result.BaselineState = %q, want 'applied'", result.BaselineState)
+	}
+
 	config, err := cluster.Fake{}.GetCloudInitConfig(context.Background(), cluster.FakeNode01, result.VMID)
 	if err != nil {
 		t.Fatalf("GetCloudInitConfig: %v", err)
@@ -149,18 +156,22 @@ func TestCreate_Image_AppliesCloudInit(t *testing.T) {
 		t.Errorf("config.SSHKeys = %v, want [ssh-ed25519 AAAA]", config.SSHKeys)
 	}
 
-	index := fakeCallIndexes(result.VMID, "set_cloudinit_config", testActionAttachCloudInitSnippet, "start")
+	index := fakeCallIndexes(result.VMID, "set_cloudinit_config", "push_cloudinit_snippet", testActionAttachCloudInitSnippet, "start")
 
 	if index["set_cloudinit_config"] == -1 {
 		t.Fatal("SetCloudInitConfig not recorded")
 	}
 
-	if index[testActionAttachCloudInitSnippet] != -1 {
-		t.Errorf("attach_cloudinit_snippet recorded despite no baseline snippet present: index %d", index[testActionAttachCloudInitSnippet])
+	if index["push_cloudinit_snippet"] == -1 {
+		t.Error("push_cloudinit_snippet not recorded — generated baseline should be pushed")
 	}
 
-	if index["start"] == -1 || index["start"] < index["set_cloudinit_config"] {
-		t.Errorf("start action %d did not come after the cloud-init config set %d", index["start"], index["set_cloudinit_config"])
+	if index[testActionAttachCloudInitSnippet] == -1 {
+		t.Error("attach_cloudinit_snippet not recorded — generated baseline should be attached")
+	}
+
+	if index["start"] == -1 || index["start"] < index[testActionAttachCloudInitSnippet] {
+		t.Errorf("start action %d did not come after the snippet attach %d", index["start"], index[testActionAttachCloudInitSnippet])
 	}
 }
 
@@ -182,14 +193,15 @@ func fakeCallIndexes(vmid int, actions ...string) map[string]int {
 }
 
 // TestCreate_Image_AttachesBaselineSnippetWhenPresent — when an admin has
-// placed the fixed baseline snippet, image-mode create attaches it after the
-// native-key config, on top of (not instead of) ciuser/sshkeys.
+// placed a cluster-wide pvmss-baseline.yml, its content replaces the
+// generated baseline (issue 03): the merged document is pushed as
+// pvmss-<vmid>.yml and attached as vendor-data. BaselineState is "override".
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_Image_AttachesBaselineSnippetWhenPresent(t *testing.T) {
 	fixture := newCreateFixture(t)
 
-	cluster.SetFakeSnippetPresent(cluster.FakeNode01, testStorageLocal, "pvmss-baseline.yml", true)
+	cluster.SetFakeSnippetContent(cluster.FakeNode01, testStorageLocal, "pvmss-baseline.yml", "#cloud-config\npackages:\n  - nmap\n")
 	t.Cleanup(func() {
 		cluster.SetFakeSnippetPresent(cluster.FakeNode01, testStorageLocal, "pvmss-baseline.yml", false)
 	})
@@ -205,16 +217,101 @@ func TestCreate_Image_AttachesBaselineSnippetWhenPresent(t *testing.T) {
 		t.Errorf("result.CloudInitPushError = %q, want empty", result.CloudInitPushError)
 	}
 
-	found := false
+	if result.BaselineState != "override" {
+		t.Errorf("result.BaselineState = %q, want 'override'", result.BaselineState)
+	}
+
+	// The per-VM snippet is pushed and attached (not the cluster-wide file).
+	snippetName := fmt.Sprintf("pvmss-%d.yml", result.VMID)
+
+	pushed := false
+
+	attached := false
 
 	for _, c := range cluster.FakeCallsFor(result.VMID) {
-		if c.Action == testActionAttachCloudInitSnippet && c.Filename == "pvmss-baseline.yml" {
-			found = true
+		if c.Action == "push_cloudinit_snippet" && c.Filename == snippetName {
+			pushed = true
+			// The override content (nmap) should be in the pushed document,
+			// not the generated baseline (qemu-guest-agent).
+			if !strings.Contains(c.Content, "nmap") {
+				t.Errorf("pushed snippet does not contain override content: %s", c.Content)
+			}
+
+			if strings.Contains(c.Content, "qemu-guest-agent") {
+				t.Errorf("pushed snippet should not contain generated baseline when override present: %s", c.Content)
+			}
+		}
+
+		if c.Action == testActionAttachCloudInitSnippet && c.Filename == snippetName {
+			attached = true
 		}
 	}
 
-	if !found {
-		t.Fatal("baseline snippet attach not recorded")
+	if !pushed {
+		t.Error("per-VM snippet push not recorded")
+	}
+
+	if !attached {
+		t.Error("per-VM snippet attach not recorded")
+	}
+}
+
+// TestCreate_Image_UserDocumentMergesWithBaseline — a user-selected
+// cloud-init document is merged on top of the generated baseline (issue 04):
+// the user's packages add to the baseline's (qemu-guest-agent), and the
+// user's scalar values win. The merged document is the one pushed and
+// attached.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_Image_UserDocumentMergesWithBaseline(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	userDoc := "#cloud-config\npackages:\n  - nmap\nruncmd:\n  - echo hello\n"
+	fileID := createTestUserFile(t, fixture.store, cluster.FakeUserAlice, "dev-box", userDoc)
+
+	req := imageRequest()
+	req.CloudInitFileID = fileID
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if result.CloudInitPushError != "" {
+		t.Errorf("result.CloudInitPushError = %q, want empty", result.CloudInitPushError)
+	}
+
+	if result.BaselineState != "applied" {
+		t.Errorf("result.BaselineState = %q, want 'applied'", result.BaselineState)
+	}
+
+	snippetName := fmt.Sprintf("pvmss-%d.yml", result.VMID)
+
+	var pushedContent string
+
+	for _, c := range cluster.FakeCallsFor(result.VMID) {
+		if c.Action == "push_cloudinit_snippet" && c.Filename == snippetName {
+			pushedContent = c.Content
+		}
+	}
+
+	if pushedContent == "" {
+		t.Fatal("per-VM snippet push not recorded")
+	}
+
+	// The merged document contains both the baseline's qemu-guest-agent
+	// and the user's nmap — packages concatenate (issue 04).
+	if !strings.Contains(pushedContent, "qemu-guest-agent") {
+		t.Errorf("merged document missing baseline package qemu-guest-agent: %s", pushedContent)
+	}
+
+	if !strings.Contains(pushedContent, "nmap") {
+		t.Errorf("merged document missing user package nmap: %s", pushedContent)
+	}
+
+	// The user's runcmd entry is present.
+	if !strings.Contains(pushedContent, "echo hello") {
+		t.Errorf("merged document missing user runcmd: %s", pushedContent)
 	}
 }
 
@@ -381,10 +478,9 @@ func TestCreate_Image_NotApproved(t *testing.T) {
 }
 
 // TestCreate_Image_NoWriteTarget_SkipsBaseline — image mode delivers
-// cloud-init through Proxmox's native keys and only uses the snippet
-// storage for the optional hand-placed baseline (spec D7). A cluster with
-// no snippet write target must therefore still create image VMs: the
-// baseline is skipped, nothing is refused.
+// cloud-init through Proxmox's native keys. A cluster with no snippet write
+// target must still create image VMs: the baseline is "not_delivered" with
+// the reason, but the create succeeds and the VM starts (issue 03).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_Image_NoWriteTarget_SkipsBaseline(t *testing.T) {
@@ -403,7 +499,15 @@ func TestCreate_Image_NoWriteTarget_SkipsBaseline(t *testing.T) {
 	}
 
 	if result.CloudInitPushError != "" {
-		t.Errorf("result.CloudInitPushError = %q, want empty", result.CloudInitPushError)
+		t.Errorf("result.CloudInitPushError = %q, want empty (native keys succeeded)", result.CloudInitPushError)
+	}
+
+	if result.BaselineState != "not_delivered" {
+		t.Errorf("result.BaselineState = %q, want 'not_delivered'", result.BaselineState)
+	}
+
+	if result.BaselineError == "" {
+		t.Error("result.BaselineError should record the reason")
 	}
 
 	index := fakeCallIndexes(result.VMID, "set_cloudinit_config", testActionAttachCloudInitSnippet, "start")

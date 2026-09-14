@@ -286,6 +286,35 @@ func (p Proxmox) HasSnippet(ctx context.Context, node, storage, filename string)
 	return false, nil
 }
 
+// ReadSnippet implements Writer by reading a snippet file from the cluster's
+// configured snippet directory (cloud-image-console issue 03). Used to load an
+// admin-preplaced cluster-wide baseline so it can replace the generated
+// baseline in the delivered vendor-data.
+func (p Proxmox) ReadSnippet(_ context.Context, _, storage, filename string) (string, error) {
+	if !p.SnippetWriteAvailable() {
+		return "", ErrSnippetWriteUnavailable
+	}
+
+	if storage != p.SnippetStorage {
+		return "", fmt.Errorf("snippet storage %q is not this cluster's configured snippet storage %q", storage, p.SnippetStorage)
+	}
+
+	if !snippetFilenameRE.MatchString(filename) || filepath.Base(filename) != filename {
+		return "", fmt.Errorf("refusing to read snippet with unsafe filename %q", filename)
+	}
+
+	data, err := os.ReadFile(filepath.Join(p.SnippetDir, filename)) //nolint:gosec // filename validated above
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", ErrNotFound
+		}
+
+		return "", err
+	}
+
+	return string(data), nil
+}
+
 // AttachCloudInitSnippet points the VM at an already-uploaded snippet file
 // through the vendor-data slot. vendor-data MERGES with the generated
 // user-data, so ciuser/sshkeys/ipconfig0 keep applying; a user= slot would

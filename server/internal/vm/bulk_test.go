@@ -62,9 +62,9 @@ func bulkTestStore(t *testing.T) *store.Store {
 
 	st, err := store.Open(config.Configuration{
 		DBPath:    filepath.Join(t.TempDir(), "bulk-test.db"),
-		LogLevel:  "info",
-		LogFormat: "json",
-		LogOutput: "stdout",
+		LogLevel:  testLogLevel,
+		LogFormat: testLogFormat,
+		LogOutput: testLogOutput,
 	})
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)

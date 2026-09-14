@@ -106,6 +106,10 @@ type createResultDTO struct {
 	CloudInitTemplateID string `json:"cloudInitTemplateId,omitempty"`
 	CloudInitFileID     string `json:"cloudInitFileId,omitempty"`
 	CloudInitPushError  string `json:"cloudInitPushError,omitempty"`
+	// FromImage is true when the VM was created from a cloud image
+	// (cloud-image-console issue 05): the create summary warns that SSH
+	// is the only access until a console password is set.
+	FromImage bool `json:"fromImage,omitempty"`
 }
 
 type catalogStorageDTO struct {
@@ -290,6 +294,7 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		CloudInitTemplateID: result.CloudInitTemplateID,
 		CloudInitFileID:     result.CloudInitFileID,
 		CloudInitPushError:  result.CloudInitPushError,
+		FromImage:           result.FromImage,
 	})
 }
 

@@ -182,6 +182,37 @@
 		<p class="text-xs text-muted-foreground" data-testid="vm-serial-console-hint">
 			{m['vms.console.serial.hint']()}
 		</p>
+
+	{#if vmStore.entity?.tags?.includes(IMAGE_TAG) || vmStore.entity?.baselineState}
+		<div class="mt-3 rounded-md border border-border bg-muted/40 p-3 text-sm" data-testid="vm-console-password-action">
+			<p class="text-muted-foreground">{m['vms.console.setPasswordHint']()}</p>
+			<div class="mt-2 flex flex-wrap items-center gap-2">
+				<Button
+					size="sm"
+					disabled={vmStore.consolePasswordInFlight || vmStore.entity?.guestAgent === 'disabled' || vmStore.entity?.guestAgent === 'unreachable' || vmStore.entity?.status !== 'running'}
+					onclick={() => void vmStore.setConsolePassword()}
+					data-testid="vm-console-set-password-btn"
+				>
+					{vmStore.consolePasswordInFlight ? m['common.loading']() : m['vms.console.setPassword']()}
+				</Button>
+				{#if vmStore.entity?.guestAgent === 'disabled'}
+					<p class="text-xs text-muted-foreground" data-testid="vm-console-password-agent-disabled">{m['vms.console.setPasswordAgentDisabled']()}</p>
+				{:else if vmStore.entity?.guestAgent === 'unreachable' || (vmStore.entity?.status === 'running' && vmStore.entity?.guestAgent !== 'ok')}
+					<p class="text-xs text-muted-foreground" data-testid="vm-console-password-disabled">{m['vms.console.setPasswordDisabled']()}</p>
+				{/if}
+			</div>
+			{#if vmStore.consolePasswordError}
+				<p class="mt-2 text-destructive text-sm" data-testid="vm-console-password-error">{vmStore.consolePasswordError}</p>
+			{/if}
+			{#if vmStore.generatedPassword}
+				<div class="mt-2 rounded-md border border-success-soft bg-success-soft/40 p-2" data-testid="vm-console-password-generated">
+					<p class="font-semibold text-sm">{m['vms.console.passwordGenerated']()}:</p>
+					<code class="block mt-1 font-mono text-sm break-all">{vmStore.generatedPassword}</code>
+					<p class="mt-1 text-xs text-muted-foreground">{m['vms.console.passwordCopyHint']()}</p>
+				</div>
+			{/if}
+		</div>
+	{/if}
 	{/if}
 
 	<div class="mt-3 flex-1 overflow-hidden">

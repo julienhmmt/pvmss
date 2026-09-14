@@ -188,6 +188,13 @@ type Writer interface {
 	// cicustom is pointed at it (a wrong mount must never leave a VM
 	// referencing nothing).
 	HasSnippet(ctx context.Context, node, storage, filename string) (bool, error)
+	// ReadSnippet reads the content of a snippet file from the cluster's
+	// configured snippet directory. Used by the image-mode create path to
+	// load an admin-preplaced cluster-wide baseline (pvmss-baseline.yml) so
+	// it can replace the generated baseline in the delivered vendor-data
+	// (cloud-image-console issue 03). Returns ErrSnippetWriteUnavailable
+	// when no snippet write target is configured.
+	ReadSnippet(ctx context.Context, node, storage, filename string) (string, error)
 	// RemoveCloudInitSnippet deletes a file PVMSS wrote into the cluster's
 	// snippet directory. Missing file is not an error. Unconfigured target
 	// → ErrSnippetWriteUnavailable.
@@ -215,10 +222,22 @@ type Writer interface {
 	// authorized_keys via the QEMU guest agent, without a reboot. The key is
 	// passed as a positional argv to a fixed script (no shell interpolation),
 	// so a multi-line paste cannot smuggle extra keys. The cloud-init config
-	// is synchronised best-effort so later duplicate/rebuild flows see the
+	// is synchronized best-effort so later duplicate/rebuild flows see the
 	// truthful key set, but the key is live in the guest regardless of that
 	// sync (REPORT.md §2/#2).
 	AddSSHKey(ctx context.Context, node string, vmid int, user, key string) error
+	// ReadFirmwareConfig reads the live firmware-related config of a VM
+	// (bios, machine, efidisk, tpm, secure boot). Used by the SeaBIOS
+	// retrofit (cloud-image-console issue 08) to refuse VMs whose boot
+	// depends on UEFI before changing anything. The projection does not
+	// hydrate these fields from Proxmox, so the retrofit reads them live.
+	ReadFirmwareConfig(ctx context.Context, node string, vmid int) (FirmwareConfig, error)
+	// RetrofitToSeaBIOS switches an existing VM from UEFI to SeaBIOS by
+	// deleting bios, machine, and efidisk0 from the VM config (issue 08).
+	// The caller must have already refused VMs with TPM state or Secure
+	// Boot, and must stop the VM before calling this. A failed call leaves
+	// the VM in whatever state Proxmox reached — the caller reports it.
+	RetrofitToSeaBIOS(ctx context.Context, node string, vmid int) error
 }
 
 // Snapshot is the complete result of one cluster read — all nodes, VMs, and
@@ -383,6 +402,22 @@ type VM struct {
 	Machine  string
 	EFIDisk  bool
 	TPMState bool
+	// SecureBoot is true when efidisk0 carries pre-enrolled-keys=1 (set by
+	// the fake on creation; not hydrated by the real client — the retrofit
+	// reads it live via Writer.ReadFirmwareConfig).
+	SecureBoot bool
+}
+
+// FirmwareConfig is the live firmware-related config of a VM, read by the
+// SeaBIOS retrofit (issue 08) to decide whether a VM can be safely switched
+// to SeaBIOS. The projection does not hydrate these from Proxmox, so the
+// retrofit reads them live via Writer.ReadFirmwareConfig.
+type FirmwareConfig struct {
+	BIOS       string // "ovmf" for UEFI, "" or "seabios" for SeaBIOS
+	Machine    string // "q35" under UEFI, "" or "i440fx" otherwise
+	HasEFIDisk bool
+	HasTPM     bool
+	SecureBoot bool // true when efidisk0 carries pre-enrolled-keys=1
 }
 
 // Storage is a storage backend attached to a node.

@@ -125,7 +125,7 @@
 			<p class="text-sm font-medium text-foreground">{m['vms.create.firmwareGroup']()}</p>
 			<Checkbox
 				label={m['vms.create.uefi']()}
-				hint={m['vms.create.uefiHint']()}
+				hint={form.sourceType === 'image' ? m['vms.create.uefiImageHint']() : m['vms.create.uefiHint']()}
 				checked={form.uefi}
 				onToggle={(checked) => {
 					form.uefi = checked;

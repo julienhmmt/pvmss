@@ -506,6 +506,8 @@ describe('VmCreateStore cloud-image source (image mode)', () => {
 
 		const request = store.buildRequest();
 
+		// Image mode defaults to SeaBIOS (cloud-image-console issue 02):
+		// selectImage unticks UEFI so the graphical console is readable.
 		expect(request).toEqual({
 			cluster: 'default',
 			name: 'web-04',
@@ -516,10 +518,45 @@ describe('VmCreateStore cloud-image source (image mode)', () => {
 			},
 			disk: { sizeGB: 8 },
 			startAfterCreate: true,
-			uefi: true
+			uefi: false
 		});
 		expect(request.iso).toBeUndefined();
 		expect(request.templateId).toBeUndefined();
+	});
+
+	it('selecting a cloud image unticks UEFI and clears TPM/Secure Boot (issue 02)', () => {
+		const store = new VmCreateStore();
+		store.catalog = catalog();
+		store.uefi = true;
+		store.tpm = true;
+		store.secureBoot = true;
+
+		store.selectImage('ceph-images', 'debian-12-generic.img');
+
+		expect(store.uefi).toBe(false);
+		expect(store.tpm).toBe(false);
+		expect(store.secureBoot).toBe(false);
+	});
+
+	it('re-ticking UEFI after selecting an image is honored (issue 02)', () => {
+		const store = new VmCreateStore();
+		store.catalog = catalog();
+		store.mode = 'detailed';
+		store.setSourceType('image');
+		store.selectImage('ceph-images', 'debian-12-generic.img');
+		store.ciUser = 'admin';
+		store.ciSshKeysInput = 'ssh-ed25519 AAAA...';
+		store.diskStorage = 'local-lvm';
+		store.diskSizeGB = 8;
+		expect(store.uefi).toBe(false);
+
+		// The checkbox stays re-tickable.
+		store.uefi = true;
+		store.tpm = true;
+
+		const request = store.buildRequest();
+		expect(request.uefi).toBe(true);
+		expect(request.tpm).toBe(true);
 	});
 
 	/** A catalog with one profile — the mandatory-profile path. */
@@ -658,7 +695,7 @@ describe('VmCreateStore cloud-init document (ticket 04)', () => {
 		expect(request.cloudInitTemplateId).toBeUndefined();
 	});
 
-	it('emits neither id in image mode even if state is stale', () => {
+	it('emits cloudInitFileId in image mode (issue 04)', () => {
 		const store = new VmCreateStore();
 		store.mode = 'detailed';
 		store.catalog = catalog();
@@ -668,13 +705,13 @@ describe('VmCreateStore cloud-init document (ticket 04)', () => {
 		store.imageFile = 'debian-12-generic.img';
 		store.ciUser = 'admin';
 		store.ciSshKeysInput = 'ssh-ed25519 AAAA...';
-		// Stale selection the picker would have cleared — the builder still
-		// must not send it (image cloud-init is the native-fields block).
+		// The picker is available in image mode (issue 04): the selected
+		// document is merged on top of the generated baseline.
 		store.cloudInitFileId = 'dev-box';
 
 		const request = store.buildRequest();
 
-		expect(request.cloudInitFileId).toBeUndefined();
+		expect(request.cloudInitFileId).toBe('dev-box');
 		expect(request.cloudInitTemplateId).toBeUndefined();
 	});
 

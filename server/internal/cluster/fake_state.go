@@ -73,6 +73,10 @@ type fakeState struct {
 	// empty (nothing present) and tests opt a (node, storage, filename) triple
 	// in via SetFakeSnippetPresent.
 	snippetPresence map[fakeSnippetKey]bool
+	// snippetContent stores the content of admin-preplaced snippet files so
+	// ReadSnippet can return them. Tests opt content in via
+	// SetFakeSnippetContent.
+	snippetContent map[fakeSnippetKey]string
 	// snippetPushMarksPresent, when false, keeps a successful
 	// PushCloudInitSnippet from recording the file as visible — the "write
 	// went through the mount but Proxmox does not list it" failure (wrong
@@ -124,6 +128,7 @@ func newFakeState(clusterName string) *fakeState {
 		roleState:               make(map[string][]string),
 		vmLocks:                 make(map[int]string),
 		snippetPresence:         make(map[fakeSnippetKey]bool),
+		snippetContent:          make(map[fakeSnippetKey]string),
 		snippetPushMarksPresent: true,
 	}
 	if clusterName == "secondary" {
@@ -171,6 +176,7 @@ func (s *fakeState) reset(clusterName string) {
 
 	s.snippetMu.Lock()
 	s.snippetPresence = fresh.snippetPresence
+	s.snippetContent = fresh.snippetContent
 	s.snippetPushMarksPresent = fresh.snippetPushMarksPresent
 	s.snippetMu.Unlock()
 
