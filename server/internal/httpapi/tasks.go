@@ -10,6 +10,14 @@ import (
 	"time"
 )
 
+// taskRefreshWriteDeadline extends the response write deadline past the
+// inventory refresh timeout so a slow-but-successful refresh still lets the
+// ok response reach the client. This is the defense-in-depth layer; the
+// primary fix is the async refresh below, which writes the response before
+// the refresh even starts. Covers the worker's defaultRefreshTimeout (25s)
+// plus a margin.
+const taskRefreshWriteDeadline = 30 * time.Second
+
 // TaskInvalidator rebuilds the inventory projection when a creation task
 // completes (FR-018). *inventory.Worker satisfies it; the unguarded
 // Refresh is used deliberately — the manual-refresh minimum interval does
@@ -78,6 +86,16 @@ type taskStatusDTO struct {
 // UPIDs are opaque, reveal only creation progress (not VM data), and the
 // tray is tab-local. T11+ may tie UPIDs to the actor's pool if needed.
 func (h *Tasks) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Defense in depth: extend this response's write deadline past the
+	// inventory refresh timeout. The primary fix (async refresh below)
+	// means the response is written before the refresh starts, but if the
+	// async path is ever reverted to synchronous, this deadline extension
+	// prevents the server's global WriteTimeout (10s) from killing a
+	// refresh that takes up to the worker's refresh timeout (25s default).
+	if rc := http.NewResponseController(w); rc != nil {
+		_ = rc.SetWriteDeadline(time.Now().Add(taskRefreshWriteDeadline))
+	}
+
 	if _, err := h.auth.Principal(r); err != nil {
 		h.writeTaskError(w, http.StatusUnauthorized, "unauthenticated", "authentication required")
 		return
@@ -124,13 +142,22 @@ func (h *Tasks) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if status.State == cluster.TaskOK {
-		// Resolve the invalidator per cluster like the Creator above: a task
-		// polled with ?cluster=b must invalidate b's projection, not the
-		// default cluster's (lifecycle-02 closed this for the write handlers).
-		if _, err := h.refresherFor(clusterName).Refresh(r.Context()); err != nil {
-			// The task genuinely succeeded; a failed invalidation only delays
-			// list visibility until the next automatic cycle — do not fail
-			// the poll for it.
+		// Invalidate the projection synchronously so the projection is
+		// fresh when the ok response reaches the client — the frontend's
+		// onTaskOk listener reloads the VM list immediately on receiving
+		// this response, so an async refresh here would leave the list
+		// reading a stale projection (the VM appears in the sidebar, which
+		// loads lazily, but not in the list, which reloads eagerly). The
+		// write deadline extension above ensures the response still reaches
+		// the client even when the refresh takes up to the worker's timeout
+		// (25s default). The worker's singleflight deduplicates concurrent
+		// refreshes, and the frontend stops polling after ok (the task is
+		// removed from the tray), so only this one poll blocks for the refresh.
+		invalidator := h.refresherFor(clusterName)
+		if _, err := invalidator.Refresh(r.Context()); err != nil {
+			// The task genuinely succeeded; a failed invalidation only
+			// delays list visibility until the next automatic cycle — do
+			// not fail the poll for it.
 			h.log.Error("post-task inventory invalidation failed", "component", "httpapi", "error", err)
 		}
 	}
