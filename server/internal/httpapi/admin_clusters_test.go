@@ -397,6 +397,45 @@ func TestAdminClusters_TestReachableReportsOKAndPersists(t *testing.T) {
 	}
 }
 
+// TestAdminClusters_LiveVersionOverridesStaleDB — the admin Clusters page
+// must show the live inventory version (refreshed every cycle by the
+// background worker), not a stale value persisted by a past manual Test.
+// Regression for the bug where a Proxmox upgrade was invisible until an
+// admin clicked Test again.
+//
+//nolint:paralleltest // HTTP fixture shares fake cluster state
+func TestAdminClusters_LiveVersionOverridesStaleDB(t *testing.T) {
+	fixture := newAdminClusterFixture(t)
+	cookie := adminClusterCookie(t, fixture.auth)
+
+	// Simulate a stale DB version from a past test (e.g. before an upgrade).
+	if err := fixture.store.SetClusterTestResult(context.Background(), auditTestCluster, "ok", "9.2.11", "", time.Now().UTC()); err != nil {
+		t.Fatalf("seed stale version: %v", err)
+	}
+
+	list := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeList, HTTPMethod: http.MethodGet, Path: adminClustersPath, Name: "", Body: ""})
+	if list.Code != http.StatusOK {
+		t.Fatalf("list status = %d: %s", list.Code, list.Body.String())
+	}
+	var rows []adminClusterDTOForTest
+	if err := json.Unmarshal(list.Body.Bytes(), &rows); err != nil {
+		t.Fatalf("decode list: %v", err)
+	}
+	for _, row := range rows {
+		if row.Name != auditTestCluster {
+			continue
+		}
+		// The fake cluster reports "8.2.4" (cluster.fakeProxmoxVersion); the
+		// stale DB has "9.2.11". The live index value must win.
+		const liveFakeVersion = "8.2.4"
+		if row.ProxmoxVersion == nil || *row.ProxmoxVersion != liveFakeVersion {
+			t.Fatalf("default row proxmoxVersion = %v, want %q (live inventory, not stale DB)", row.ProxmoxVersion, liveFakeVersion)
+		}
+		return
+	}
+	t.Fatalf("cluster %q missing from list", auditTestCluster)
+}
+
 // TestAdminClusters_OIDCToggleIsolated — T025/FR-011: toggling one cluster's
 // OIDC flag changes only that row; every other cluster's flag is untouched.
 // Also covers the 404 path for an unknown/removed cluster.
@@ -541,6 +580,7 @@ type adminClusterDTOForTest struct {
 	RemovedAt             *string `json:"removedAt"`
 	LastTestStatus        *string `json:"lastTestStatus"`
 	LastTestAt            *string `json:"lastTestAt"`
+	ProxmoxVersion        *string `json:"proxmoxVersion"`
 	SnippetDir            string  `json:"snippetDir"`
 	SnippetStorage        string  `json:"snippetStorage"`
 	CloudInitWriteEnabled bool    `json:"cloudInitWriteEnabled"`
