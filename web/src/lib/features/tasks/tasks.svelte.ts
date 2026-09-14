@@ -63,6 +63,9 @@ export class TaskTrayStore {
 
 	#timer: ReturnType<typeof setInterval> | null = null;
 	#okListeners: (() => void)[] = [];
+	/** Fired when a tracked task ends in `error` — the VM list / shell uses
+	 *  it to record a `failed` outcome in the session ledger (issue 09). */
+	#errorListeners: ((task: TrackedTask) => void)[] = [];
 	/** Per-task consecutive non-404 poll error count — reset on any successful
 	 *  poll, and on finish. */
 	#consecutiveErrors = new SvelteMap<string, number>();
@@ -79,6 +82,16 @@ export class TaskTrayStore {
 		this.#okListeners.push(listener);
 		return () => {
 			this.#okListeners = this.#okListeners.filter((fn) => fn !== listener);
+		};
+	}
+
+	/** Registers a listener fired when a tracked task ends in `error` —
+	 *  the shell uses it to record a `failed` outcome in the session ledger
+	 *  (issue 09). The task is removed from the tray immediately after. */
+	onTaskError(listener: (task: TrackedTask) => void): () => void {
+		this.#errorListeners.push(listener);
+		return () => {
+			this.#errorListeners = this.#errorListeners.filter((fn) => fn !== listener);
 		};
 	}
 
@@ -180,6 +193,9 @@ export class TaskTrayStore {
 		this.toast = toast;
 		if (toast.kind === 'success') {
 			for (const listener of this.#okListeners) listener();
+		}
+		if (toast.kind === 'error') {
+			for (const listener of [...this.#errorListeners]) listener(task);
 		}
 		if (this.tasks.length === 0) this.#stopPolling();
 	}

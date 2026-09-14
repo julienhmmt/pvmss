@@ -564,6 +564,7 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, nil, nil, logger)
 	docs := httpapi.NewDocsAPIHandler(authHandler, st, logger)
 	adminDocs := httpapi.NewAdminDocs(authHandler, st, docs, logger)
+	cloudInitFiles := httpapi.NewCloudInitFiles(authHandler, st, logger)
 
 	mux := httpapi.NewRouter(httpapi.RouterConfig{
 		Health:           health,
@@ -575,6 +576,7 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 		VMStatusBatch:    vmStatusBatch,
 		VMCloudInit:      vmCloudInit,
 		VMCreate:         vmCreate,
+		CloudInitFiles:   cloudInitFiles,
 		VMConsole:        vmConsole,
 		VMSerialConsole:  vmSerial,
 		SnapshotHandlers: []*httpapi.VMSnapshots{vmSnapshots},

@@ -17,6 +17,7 @@
 
 	onMount(() => {
 		void form.loadClusters().then(() => form.loadCatalog());
+		void form.loadMyCloudInitFiles();
 
 		const stored = draft.load();
 		if (stored !== null) {

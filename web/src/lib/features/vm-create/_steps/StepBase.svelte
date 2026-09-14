@@ -7,6 +7,7 @@
 	import TemplatePicker from '../TemplatePicker.svelte';
 	import ImagePicker from '../ImagePicker.svelte';
 	import ImageCloudInitFields from '../ImageCloudInitFields.svelte';
+	import CloudInitDocumentSelect from '../CloudInitDocumentSelect.svelte';
 
 	// Base step (FR-011): name, source type (ISO vs template vs cloud image,
 	// US2/issue-02), node (hidden for template source, D2b), extra tags
@@ -154,4 +155,8 @@
 			{/snippet}
 		</FormField>
 	{/if}
+
+	<!-- The document picker self-hides for the image source (image cloud-init
+	     is the native-fields block) and when the cluster has no write target. -->
+	<CloudInitDocumentSelect />
 </div>

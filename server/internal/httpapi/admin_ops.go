@@ -632,6 +632,9 @@ const (
 	auditKeyLabel   = "label"
 	auditKeyActor   = "actor"
 	auditKeyType    = "keyType"
+	auditKeyNode    = "node"
+	auditKeyStorage = "storage"
+	auditKeyFile    = "file"
 )
 
 func detailJSON(summary string, changes []any) string {

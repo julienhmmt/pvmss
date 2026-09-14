@@ -83,7 +83,7 @@ func TestCreate_VMIDCollisionRetry_SucceedsOnSecondAttempt(t *testing.T) {
 	createCalls := 0
 
 	for _, c := range cluster.FakeCalls() {
-		if c.Action == "create" {
+		if c.Action == testActionCreate {
 			createCalls++
 		}
 	}

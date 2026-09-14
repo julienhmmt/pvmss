@@ -238,7 +238,7 @@ func (h *AdminCatalog) ServeStorageToggle(w http.ResponseWriter, r *http.Request
 
 	h.recordAdminAction(r, "admin.storages.toggle", "storage", req.Name,
 		fmt.Sprintf("storage %s on node %s cluster %s set enabled=%v", req.Name, req.Node, clusterName, req.Enabled),
-		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: req.Name, "node": req.Node, auditKeyEnabled: req.Enabled}})
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: req.Name, auditKeyNode: req.Node, auditKeyEnabled: req.Enabled}})
 	writeAdminJSON(w, http.StatusOK, storageToggleResponse{Name: req.Name, Node: req.Node, Enabled: req.Enabled})
 }
 
@@ -340,7 +340,7 @@ func (h *AdminCatalog) ServeBridgeToggle(w http.ResponseWriter, r *http.Request)
 
 	h.recordAdminAction(r, "admin.bridges.toggle", "bridge", req.Name,
 		fmt.Sprintf("bridge %s on node %s cluster %s set enabled=%v", req.Name, req.Node, clusterName, req.Enabled),
-		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: req.Name, "node": req.Node, auditKeyEnabled: req.Enabled}})
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: req.Name, auditKeyNode: req.Node, auditKeyEnabled: req.Enabled}})
 	writeAdminJSON(w, http.StatusOK, bridgeToggleResponse{Node: req.Node, Name: req.Name, Enabled: req.Enabled})
 }
 
@@ -406,6 +406,8 @@ type isoToggleResponse struct {
 }
 
 // ServeISOToggle handles POST /api/v1/admin/isos/toggle.
+//
+//nolint:dupl // intentionally parallel to ServeImageToggle (same shape, different resource)
 func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 	var req isoToggleRequest
 	if err := decodeJSON(w, r, &req); err != nil {
@@ -444,7 +446,7 @@ func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 
 	h.recordAdminAction(r, "admin.isos.toggle", "iso", req.File,
 		fmt.Sprintf("iso %s on storage %s node %s cluster %s set enabled=%v", req.File, req.Storage, req.Node, clusterName, req.Enabled),
-		[]any{map[string]any{auditKeyCluster: clusterName, "node": req.Node, "storage": req.Storage, "file": req.File, auditKeyEnabled: req.Enabled}})
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyNode: req.Node, auditKeyStorage: req.Storage, auditKeyFile: req.File, auditKeyEnabled: req.Enabled}})
 	writeAdminJSON(w, http.StatusOK, isoToggleResponse{Node: req.Node, Storage: req.Storage, File: req.File, Enabled: req.Enabled})
 }
 
@@ -479,6 +481,8 @@ func (h *AdminCatalog) ServeNodeDelete(w http.ResponseWriter, r *http.Request) {
 
 // ServeStorageDelete handles DELETE /api/v1/admin/storages/{cluster}/{node}/{name}:
 // removes an orphan storage approval row.
+//
+//nolint:dupl // intentionally parallel to ServeBridgeDelete (same shape, different resource)
 func (h *AdminCatalog) ServeStorageDelete(w http.ResponseWriter, r *http.Request) {
 	clusterName := r.PathValue("cluster")
 	node := r.PathValue("node")
@@ -502,12 +506,14 @@ func (h *AdminCatalog) ServeStorageDelete(w http.ResponseWriter, r *http.Request
 
 	h.recordAdminAction(r, "admin.storages.delete", "storage", name,
 		fmt.Sprintf("deleted storage approval %q on node %s cluster %s", name, node, clusterName),
-		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: name, "node": node}})
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: name, auditKeyNode: node}})
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // ServeBridgeDelete handles DELETE /api/v1/admin/bridges/{cluster}/{node}/{name}:
 // removes an orphan bridge approval row.
+//
+//nolint:dupl // intentionally parallel to ServeStorageDelete (same shape, different resource)
 func (h *AdminCatalog) ServeBridgeDelete(w http.ResponseWriter, r *http.Request) {
 	clusterName := r.PathValue("cluster")
 	node := r.PathValue("node")
@@ -531,7 +537,7 @@ func (h *AdminCatalog) ServeBridgeDelete(w http.ResponseWriter, r *http.Request)
 
 	h.recordAdminAction(r, "admin.bridges.delete", "bridge", name,
 		fmt.Sprintf("deleted bridge approval %q on node %s cluster %s", name, node, clusterName),
-		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: name, "node": node}})
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyName: name, auditKeyNode: node}})
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -597,6 +603,8 @@ type imageToggleResponse struct {
 }
 
 // ServeImageToggle handles POST /api/v1/admin/images/toggle.
+//
+//nolint:dupl // intentionally parallel to ServeISOToggle (same shape, different resource)
 func (h *AdminCatalog) ServeImageToggle(w http.ResponseWriter, r *http.Request) {
 	var req imageToggleRequest
 	if err := decodeJSON(w, r, &req); err != nil {
@@ -635,12 +643,14 @@ func (h *AdminCatalog) ServeImageToggle(w http.ResponseWriter, r *http.Request) 
 
 	h.recordAdminAction(r, "admin.images.toggle", "image", req.File,
 		fmt.Sprintf("image %s on storage %s node %s cluster %s set enabled=%v", req.File, req.Storage, req.Node, clusterName, req.Enabled),
-		[]any{map[string]any{auditKeyCluster: clusterName, "node": req.Node, "storage": req.Storage, "file": req.File, auditKeyEnabled: req.Enabled}})
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyNode: req.Node, auditKeyStorage: req.Storage, auditKeyFile: req.File, auditKeyEnabled: req.Enabled}})
 	writeAdminJSON(w, http.StatusOK, imageToggleResponse{Node: req.Node, Storage: req.Storage, File: req.File, Enabled: req.Enabled})
 }
 
 // ServeImageDelete handles DELETE /api/v1/admin/images/{cluster}/{node}/{storage}/{file}:
 // removes an orphan cloud image approval row.
+//
+//nolint:dupl // intentionally parallel to ServeISODelete (same shape, different resource)
 func (h *AdminCatalog) ServeImageDelete(w http.ResponseWriter, r *http.Request) {
 	clusterName := r.PathValue("cluster")
 	node := r.PathValue("node")
@@ -665,12 +675,14 @@ func (h *AdminCatalog) ServeImageDelete(w http.ResponseWriter, r *http.Request) 
 
 	h.recordAdminAction(r, "admin.images.delete", "image", file,
 		fmt.Sprintf("deleted image approval %q on storage %s node %s cluster %s", file, storage, node, clusterName),
-		[]any{map[string]any{auditKeyCluster: clusterName, "node": node, "storage": storage, "file": file}})
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyNode: node, auditKeyStorage: storage, auditKeyFile: file}})
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // ServeISODelete handles DELETE /api/v1/admin/isos/{cluster}/{node}/{storage}/{file}:
 // removes an orphan ISO approval row.
+//
+//nolint:dupl // intentionally parallel to ServeImageDelete (same shape, different resource)
 func (h *AdminCatalog) ServeISODelete(w http.ResponseWriter, r *http.Request) {
 	clusterName := r.PathValue("cluster")
 	node := r.PathValue("node")
@@ -695,7 +707,7 @@ func (h *AdminCatalog) ServeISODelete(w http.ResponseWriter, r *http.Request) {
 
 	h.recordAdminAction(r, "admin.isos.delete", "iso", file,
 		fmt.Sprintf("deleted iso approval %q on storage %s node %s cluster %s", file, storage, node, clusterName),
-		[]any{map[string]any{auditKeyCluster: clusterName, "node": node, "storage": storage, "file": file}})
+		[]any{map[string]any{auditKeyCluster: clusterName, auditKeyNode: node, auditKeyStorage: storage, auditKeyFile: file}})
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -919,7 +931,7 @@ func (h *AdminCatalog) ServeTemplateUpdate(w http.ResponseWriter, r *http.Reques
 		fmt.Sprintf("overrode template vmid %d on cluster %s: node=%s name=%q disk=%dGB@%s bus=%s cloudinit=%v",
 			vmid, clusterName, req.Node, req.Name, req.DiskSizeGB, req.DiskStorage, req.DiskBus, req.CloudInitCapable),
 		[]any{map[string]any{
-			auditKeyCluster: clusterName, "vmid": vmid, "node": req.Node, "name": req.Name,
+			auditKeyCluster: clusterName, "vmid": vmid, auditKeyNode: req.Node, "name": req.Name,
 			"diskStorage": req.DiskStorage, "diskSizeGB": req.DiskSizeGB, "diskBus": req.DiskBus,
 			"cloudInitCapable": req.CloudInitCapable,
 		}})

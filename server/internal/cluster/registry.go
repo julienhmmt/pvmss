@@ -154,6 +154,8 @@ func factoryForSource(source string) (ClientFactory, error) {
 				APITokenName:          row.TokenID,
 				APITokenValue:         row.TokenSecret,
 				TLSInsecureSkipVerify: row.TLSInsecureSkipVerify,
+				SnippetDir:            row.SnippetDir,
+				SnippetStorage:        row.SnippetStorage,
 				httpClient:            newProxmoxHTTPClient(row.TLSInsecureSkipVerify),
 			}, nil
 		}, nil

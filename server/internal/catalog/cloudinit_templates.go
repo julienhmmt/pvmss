@@ -40,15 +40,7 @@ type CloudInitTemplate struct {
 // mirroring T11's DeriveProfileID convention (e.g. "Web server" → "web-server").
 // The slug is the template's permanent id.
 func DeriveCloudInitTemplateID(label string) string {
-	lowered := strings.ToLower(label)
-	slug := slugRe.ReplaceAllString(lowered, "-")
-
-	slug = strings.Trim(slug, "-")
-	if slug == "" {
-		slug = "template"
-	}
-
-	return slug
+	return cloudinit.Slugify(label, "template")
 }
 
 // ListCloudInitTemplates returns every template for the cluster (including

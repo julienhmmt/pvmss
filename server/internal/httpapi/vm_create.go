@@ -13,20 +13,13 @@ import (
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
+	"time"
 )
 
-// cloudImageFeatureEnabled gates the cloud-image / cloud-init-template
-// creation path off at this single choke point (2026-09-04): forking a
-// cloud-init template per VM needs PVMSS's server to SSH into the Proxmox
-// node and write a snippet file itself — Proxmox's REST API cannot write one
-// at all (confirmed against live PVE source: PVE::API2::Storage::Status
-// hardcodes the upload/download-url content enum to iso/vztmpl/import) — and
-// that new credential/dependency was judged too much scope for now. The
-// underlying implementation (image import, native-key cloud-init, cloud-init
-// templates) still works end to end; this only stops buildCatalogDTO from
-// advertising images/cloud-init templates, so no wizard offers them. Flip to
-// true to bring the feature back — nothing else needs to change.
-const cloudImageFeatureEnabled = false
+// createWriteDeadlineMargin covers the post-clone/create configuration steps
+// (hardware overrides, disk resize, cloud-init push) that run after
+// vm.WaitCreateTask returns, before the response is written.
+const createWriteDeadlineMargin = 2 * time.Minute
 
 // VMCreate serves POST /api/v1/vms (the single creation endpoint for both
 // simple and detailed modes — FR-001) and GET /api/v1/vm-create/catalog
@@ -111,6 +104,7 @@ type createResultDTO struct {
 	Node                string `json:"node"`
 	UPID                string `json:"upid"`
 	CloudInitTemplateID string `json:"cloudInitTemplateId,omitempty"`
+	CloudInitFileID     string `json:"cloudInitFileId,omitempty"`
 	CloudInitPushError  string `json:"cloudInitPushError,omitempty"`
 }
 
@@ -227,10 +221,14 @@ type catalogDTO struct {
 	Profiles           []catalogProfileDTO           `json:"profiles"`
 	Templates          []catalogTemplateDTO          `json:"templates"`
 	CloudInitTemplates []catalogCloudInitTemplateDTO `json:"cloudInitTemplates"`
-	Tags               []catalogTagDTO               `json:"tags"`
-	Gabarit            *catalogGabaritDTO            `json:"gabarit,omitempty"`
-	Quota              *catalogQuotaDTO              `json:"quota,omitempty"`
-	NodeCapacities     []catalogNodeCapacityDTO      `json:"nodeCapacities,omitempty"`
+	// CloudInitWriteEnabled reports whether this cluster has a snippet write
+	// target configured (Admin › Clusters): cloud-init documents can be
+	// written, so the wizard may offer the document picker.
+	CloudInitWriteEnabled bool                     `json:"cloudInitWriteEnabled"`
+	Tags                  []catalogTagDTO          `json:"tags"`
+	Gabarit               *catalogGabaritDTO       `json:"gabarit,omitempty"`
+	Quota                 *catalogQuotaDTO         `json:"quota,omitempty"`
+	NodeCapacities        []catalogNodeCapacityDTO `json:"nodeCapacities,omitempty"`
 }
 
 // ServeHTTP handles POST /api/v1/vms. Creation is asynchronous (FR-013):
@@ -240,6 +238,17 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		h.writeCreateError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
 		return
+	}
+
+	// Creation blocks on vm.WaitCreateTask (up to vm.MaxCreateTaskWait) before
+	// writing any response — the server's global WriteTimeout (10s,
+	// cmd/pvmss/main.go) is nowhere near enough for a template clone or image
+	// import. Extend just this response's write deadline so a slow clone
+	// still reaches the client instead of the connection dying underneath a
+	// creation that actually succeeded (report: VM created in Proxmox, PVMSS
+	// showed "Échec de la création").
+	if rc := http.NewResponseController(w); rc != nil {
+		_ = rc.SetWriteDeadline(time.Now().Add(vm.MaxCreateTaskWait + createWriteDeadlineMargin))
 	}
 
 	var req vm.CreateRequest
@@ -279,6 +288,7 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Node:                result.Node,
 		UPID:                result.UPID,
 		CloudInitTemplateID: result.CloudInitTemplateID,
+		CloudInitFileID:     result.CloudInitFileID,
 		CloudInitPushError:  result.CloudInitPushError,
 	})
 }
@@ -380,108 +390,185 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 // catalog even if its approval row still exists in the store (the admin list
 // surfaces those orphans for manual cleanup, and enabled orphans are
 // auto-removed there).
-func buildCatalogDTO(clusterName string, data catalogData) catalogDTO {
-	discoveredNodes := make(map[string]bool, len(data.snap.Nodes))
-	for _, n := range data.snap.Nodes {
-		discoveredNodes[n.Name] = true
+func buildCatalogDTO(clusterName string, data catalogData, cloudInitWriteEnabled bool) catalogDTO {
+	return catalogDTO{
+		Cluster:               clusterName,
+		Nodes:                 catalogNodeNames(data.resources.Nodes, data.snap),
+		Storages:              catalogStorageDTOs(data.resources.Storages, data.snap.Storages),
+		Bridges:               catalogBridgeDTOs(data.resources.Bridges, data.bridges),
+		ISOs:                  catalogFileDTOs(data.resources.ISOs, catalogISOKey, liveISOKeys(data.isos), catalogISOView),
+		Images:                catalogImageDTOs(data),
+		Profiles:              mapCatalogSlice(data.profiles, catalogProfileView),
+		Templates:             mapCatalogSlice(data.proxmoxTemplates, catalogTemplateView),
+		CloudInitTemplates:    catalogCloudInitTemplateDTOs(data.templates, cloudInitWriteEnabled),
+		CloudInitWriteEnabled: cloudInitWriteEnabled,
+		Tags:                  catalogTagDTOs(data.tags),
+	}
+}
+
+// mapCatalogSlice converts each item with viewOf — the catalog DTO mappers
+// below are all this same loop.
+func mapCatalogSlice[In, Out any](items []In, viewOf func(In) Out) []Out {
+	out := make([]Out, 0, len(items))
+	for _, item := range items {
+		out = append(out, viewOf(item))
 	}
 
-	discoveredISOs := make(map[isoDiscoveryKey]bool, len(data.isos))
-	for _, i := range data.isos {
-		discoveredISOs[isoDiscoveryKey{Node: i.Node, Storage: i.Storage, File: i.File}] = true
+	return out
+}
+
+// catalogNodeNames keeps only approved nodes the cluster still reports.
+func catalogNodeNames(nodes []catalog.Node, snap cluster.Snapshot) []string {
+	discovered := make(map[string]bool, len(snap.Nodes))
+	for _, n := range snap.Nodes {
+		discovered[n.Name] = true
 	}
 
-	discoveredImages := make(map[isoDiscoveryKey]bool, len(data.images))
-	for _, i := range data.images {
-		discoveredImages[isoDiscoveryKey{Node: i.Node, Storage: i.Storage, File: i.File}] = true
-	}
-
-	dto := catalogDTO{
-		Cluster:            clusterName,
-		Nodes:              make([]string, 0, len(data.resources.Nodes)),
-		Storages:           make([]catalogStorageDTO, 0, len(data.resources.Storages)),
-		Bridges:            catalogBridgeDTOs(data.resources.Bridges, data.bridges),
-		ISOs:               make([]catalogISODTO, 0, len(data.resources.ISOs)),
-		Images:             make([]catalogImageDTO, 0, len(data.resources.Images)),
-		Profiles:           make([]catalogProfileDTO, 0, len(data.profiles)),
-		Templates:          make([]catalogTemplateDTO, 0, len(data.proxmoxTemplates)),
-		CloudInitTemplates: make([]catalogCloudInitTemplateDTO, 0, len(data.templates)),
-		Tags:               make([]catalogTagDTO, 0, len(data.tags)),
-	}
-
-	for _, node := range data.resources.Nodes {
-		if !discoveredNodes[node.Name] {
+	names := make([]string, 0, len(nodes))
+	for _, node := range nodes {
+		if !discovered[node.Name] {
 			continue
 		}
-		dto.Nodes = append(dto.Nodes, node.Name)
+
+		names = append(names, node.Name)
 	}
 
-	for _, tag := range data.tags {
+	return names
+}
+
+// catalogTagDTOs maps tags, dropping admin-protected ones.
+func catalogTagDTOs(tags []catalog.TagWithCount) []catalogTagDTO {
+	out := make([]catalogTagDTO, 0, len(tags))
+	for _, tag := range tags {
 		if tag.Protected {
 			continue
 		}
 
-		dto.Tags = append(dto.Tags, catalogTagDTO{Name: tag.Name, Color: tag.Color})
+		out = append(out, catalogTagDTO{Name: tag.Name, Color: tag.Color})
 	}
 
-	for _, storage := range data.resources.Storages {
-		if _, ok := vmCapableStorage(storage, data.snap.Storages); !ok {
+	return out
+}
+
+// catalogStorageDTOs keeps only approved storages that are still VM-capable
+// on the live cluster.
+func catalogStorageDTOs(storages []catalog.Storage, available []cluster.Storage) []catalogStorageDTO {
+	out := make([]catalogStorageDTO, 0, len(storages))
+	for _, storage := range storages {
+		if _, ok := vmCapableStorage(storage, available); !ok {
 			continue
 		}
 
-		dto.Storages = append(dto.Storages, catalogStorageDTO{Name: storage.Name, Node: storage.Node})
+		out = append(out, catalogStorageDTO{Name: storage.Name, Node: storage.Node})
 	}
 
-	for _, iso := range data.resources.ISOs {
-		if !discoveredISOs[isoDiscoveryKey{Node: iso.Node, Storage: iso.Storage, File: iso.File}] {
+	return out
+}
+
+// catalogFileDTOs maps approved file resources (ISOs, cloud images) to DTOs,
+// dropping any the cluster no longer reports (the live discovery key set).
+func catalogFileDTOs[R, DTO any](resources []R, keyOf func(R) isoDiscoveryKey, live map[isoDiscoveryKey]bool, viewOf func(R) DTO) []DTO {
+	out := make([]DTO, 0, len(resources))
+	for _, resource := range resources {
+		if !live[keyOf(resource)] {
 			continue
 		}
-		dto.ISOs = append(dto.ISOs, catalogISODTO{Storage: iso.Storage, Node: iso.Node, File: iso.File})
+
+		out = append(out, viewOf(resource))
 	}
 
-	if cloudImageFeatureEnabled {
-		for _, image := range data.resources.Images {
-			if !discoveredImages[isoDiscoveryKey{Node: image.Node, Storage: image.Storage, File: image.File}] {
-				continue
-			}
-			dto.Images = append(dto.Images, catalogImageDTO{Storage: image.Storage, Node: image.Node, File: image.File, SizeBytes: image.SizeBytes})
-		}
+	return out
+}
+
+// catalogISOKey is the discovery key of an approved ISO row.
+func catalogISOKey(iso catalog.ISO) isoDiscoveryKey {
+	return isoDiscoveryKey{Node: iso.Node, Storage: iso.Storage, File: iso.File}
+}
+
+// catalogImageKey is the discovery key of an approved cloud image row.
+func catalogImageKey(image catalog.Image) isoDiscoveryKey {
+	return isoDiscoveryKey{Node: image.Node, Storage: image.Storage, File: image.File}
+}
+
+// liveISOKeys builds the discovery lookup set for ISOs.
+func liveISOKeys(isos []cluster.ISOImage) map[isoDiscoveryKey]bool {
+	live := make(map[isoDiscoveryKey]bool, len(isos))
+	for _, iso := range isos {
+		live[isoDiscoveryKey{Node: iso.Node, Storage: iso.Storage, File: iso.File}] = true
 	}
 
-	for _, profile := range data.profiles {
-		dto.Profiles = append(dto.Profiles, catalogProfileDTO{
-			ID:       profile.ID,
-			Label:    profile.Label,
-			Sockets:  profile.Sockets,
-			CPUCores: profile.CPUCores,
-			MemoryMB: profile.MemoryMB,
-			DiskGB:   profile.DiskGB,
-			Bus:      profile.Bus,
-		})
+	return live
+}
+
+// liveImageKeys builds the discovery lookup set for cloud images.
+func liveImageKeys(images []catalog.Image) map[isoDiscoveryKey]bool {
+	live := make(map[isoDiscoveryKey]bool, len(images))
+	for _, image := range images {
+		live[catalogImageKey(image)] = true
 	}
 
-	// T18: catalog exposes only id+label per spec/contracts — never content.
-	if cloudImageFeatureEnabled {
-		for _, tmpl := range data.templates {
-			dto.CloudInitTemplates = append(dto.CloudInitTemplates, catalogCloudInitTemplateDTO{
-				ID: tmpl.ID, Label: tmpl.Label,
-			})
-		}
+	return live
+}
+
+// catalogISOView maps an approved ISO row to its catalog DTO.
+func catalogISOView(iso catalog.ISO) catalogISODTO {
+	return catalogISODTO{Storage: iso.Storage, Node: iso.Node, File: iso.File}
+}
+
+// catalogImageView maps an approved cloud image row to its catalog DTO.
+func catalogImageView(image catalog.Image) catalogImageDTO {
+	return catalogImageDTO{
+		Storage: image.Storage, Node: image.Node, File: image.File, SizeBytes: image.SizeBytes,
+	}
+}
+
+// catalogImageDTOs maps approved cloud images, dropping any the cluster no
+// longer reports (the live discovery key set).
+func catalogImageDTOs(data catalogData) []catalogImageDTO {
+	return catalogFileDTOs(data.resources.Images, catalogImageKey, liveImageKeys(data.images), catalogImageView)
+}
+
+// catalogProfileView maps a profile row to its catalog DTO.
+func catalogProfileView(profile catalog.Profile) catalogProfileDTO {
+	return catalogProfileDTO{
+		ID:       profile.ID,
+		Label:    profile.Label,
+		Sockets:  profile.Sockets,
+		CPUCores: profile.CPUCores,
+		MemoryMB: profile.MemoryMB,
+		DiskGB:   profile.DiskGB,
+		Bus:      profile.Bus,
+	}
+}
+
+// catalogTemplateView maps an approved Proxmox template (clone source,
+// US2/issue-02) to its catalog DTO.
+func catalogTemplateView(tmpl catalog.Template) catalogTemplateDTO {
+	return catalogTemplateDTO{
+		VMID:             tmpl.VMID,
+		Node:             tmpl.Node,
+		Name:             tmpl.Name,
+		CloudInitCapable: tmpl.CloudInitCapable,
+		DiskSizeGB:       tmpl.DiskSizeGB,
+		DiskStorage:      tmpl.DiskStorage,
+	}
+}
+
+// catalogCloudInitTemplateDTOs maps cloud-init templates — T18: the catalog
+// exposes only id+label per spec/contracts, never content. The list is empty
+// when the cluster has no snippet write target: offering a document the
+// create could never write would fail at submit time anyway (spec D6).
+func catalogCloudInitTemplateDTOs(templates []catalog.CloudInitTemplate, writeEnabled bool) []catalogCloudInitTemplateDTO {
+	out := make([]catalogCloudInitTemplateDTO, 0, len(templates))
+	if !writeEnabled {
+		return out
 	}
 
-	// US2/issue-02: approved Proxmox templates (clone source).
-	for _, tmpl := range data.proxmoxTemplates {
-		dto.Templates = append(dto.Templates, catalogTemplateDTO{
-			VMID:             tmpl.VMID,
-			Node:             tmpl.Node,
-			Name:             tmpl.Name,
-			CloudInitCapable: tmpl.CloudInitCapable,
-			DiskSizeGB:       tmpl.DiskSizeGB,
-			DiskStorage:      tmpl.DiskStorage,
-		})
+	for _, tmpl := range templates {
+		out = append(out, catalogCloudInitTemplateDTO{ID: tmpl.ID, Label: tmpl.Label})
 	}
 
-	return dto
+	return out
 }
 
 // ServeCatalog handles GET /api/v1/vm-create/catalog. The catalog is the same
@@ -507,7 +594,15 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dto := buildCatalogDTO(clusterName, data)
+	// The document picker is offered only when this cluster's client can
+	// actually write a snippet (spec D1/D6). Clients without the capability
+	// (a client that predates the write target) report disabled.
+	writeEnabled := false
+	if writer, ok := client.(interface{ SnippetWriteAvailable() bool }); ok {
+		writeEnabled = writer.SnippetWriteAvailable()
+	}
+
+	dto := buildCatalogDTO(clusterName, data, writeEnabled)
 
 	if err := h.attachLimits(r.Context(), &dto, clusterName, identity); err != nil {
 		h.log.Error("policy read failed", "component", "httpapi", "error", err)
@@ -717,6 +812,7 @@ func catalogBridgeDTOs(bridges []catalog.Bridge, live []cluster.Bridge) []catalo
 	type key struct{ name, node string }
 
 	commentByKey := make(map[key]string, len(live))
+
 	liveByKey := make(map[key]bool, len(live))
 	for _, bridge := range live {
 		commentByKey[key{bridge.Name, bridge.Node}] = bridge.Comment
@@ -731,6 +827,7 @@ func catalogBridgeDTOs(bridges []catalog.Bridge, live []cluster.Bridge) []catalo
 		if _, exists := seen[k]; exists {
 			continue
 		}
+
 		if !liveByKey[k] {
 			continue
 		}
@@ -786,6 +883,7 @@ var createErrorMappings = []createErrorMapping{
 	{vm.ErrDiskReduction, http.StatusBadRequest, "disk_reduction", ""},
 	{vm.ErrDiskBelowImage, http.StatusBadRequest, "disk_below_image", ""},
 	{vm.ErrInsufficientDiskSpace, http.StatusBadRequest, "insufficient_disk_space", ""},
+	{vm.ErrCloudInitWriteUnavailable, http.StatusConflict, "cloudinit_write_unavailable", "cloud-init documents are not enabled on this cluster (set the snippet directory in Admin › Clusters)"},
 	{vm.ErrNoSnippetStorage, http.StatusBadRequest, "no_snippet_storage", ""},
 	// cluster_error passes the full error chain (empty message → err.Error()):
 	// the Proxmox rejection text ("'import-from' requires special syntax",

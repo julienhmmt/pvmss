@@ -408,6 +408,7 @@ func TestVMBulk_NonexistentVMNotFoundMessage(t *testing.T) {
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMBulk_BearerTokenAuth(t *testing.T) {
+	t.Skip("API tokens deactivated: bearer resolution disabled in Auth.Principal")
 	handler, authHandler := newVMBulkHandler(t)
 
 	// Create a bearer token for alice.

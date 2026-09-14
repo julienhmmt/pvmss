@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"io"
-	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -169,70 +170,201 @@ func TestProxmox_SetCloudInitConfig_EnsuresDriveThenWrites(t *testing.T) {
 	}
 }
 
-func TestProxmox_PushCloudInitSnippet(t *testing.T) {
+// TestPushCloudInitSnippet_WritesAtomically verifies the spec-D1 write path:
+// the document lands in the configured snippet directory as a real file
+// (mode 0644, exact content) and no temp file is left behind — rename means
+// Proxmox can never observe a half-written snippet.
+func TestPushCloudInitSnippet_WritesAtomically(t *testing.T) {
 	t.Parallel()
 
-	var gotContentField, gotFilename, gotFileBody string
+	dir := t.TempDir()
+	p := Proxmox{SnippetDir: dir, SnippetStorage: testSnippetStorage}
 
-	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
-		mux.HandleFunc("POST /api2/json/nodes/node01/storage/local/upload", func(w http.ResponseWriter, r *http.Request) {
-			r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
-			if err := r.ParseMultipartForm(1 << 20); err != nil { //nolint:gosec // test-only mock server (httptest, local loopback), body already bounded by MaxBytesReader above
-				t.Fatalf("parse multipart: %v", err)
-			}
-
-			gotContentField = r.FormValue("content")
-
-			file, header, err := r.FormFile("filename")
-			if err != nil {
-				t.Fatalf("form file: %v", err)
-			}
-			defer func() { _ = file.Close() }()
-
-			gotFilename = header.Filename
-
-			gotFileBody = readMultipartFileBody(t, file)
-
-			writeJSONFixture(t, w, `{"data":null}`)
-		})
-	})
-
-	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
-
-	err := p.PushCloudInitSnippet(context.Background(), testNodeName, "local", testSnippetFilename, testVMID, "#cloud-config\n")
-	if err != nil {
+	if err := p.PushCloudInitSnippet(context.Background(), testNodeName, testSnippetStorage, testSnippetFilename, testVMID, "#cloud-config\npackages:\n  - nginx\n"); err != nil {
 		t.Fatalf("PushCloudInitSnippet: %v", err)
 	}
 
-	if gotContentField != "snippets" {
-		t.Errorf("content field = %q, want snippets", gotContentField)
+	data, err := os.ReadFile(filepath.Join(dir, testSnippetFilename)) //nolint:gosec // test reads back the file the test just wrote
+	if err != nil {
+		t.Fatalf("read snippet: %v", err)
 	}
 
-	if gotFilename != testSnippetFilename {
-		t.Errorf("filename = %q", gotFilename)
+	if string(data) != "#cloud-config\npackages:\n  - nginx\n" {
+		t.Errorf("snippet content = %q", data)
 	}
 
-	if gotFileBody != "#cloud-config\n" {
-		t.Errorf("file body = %q", gotFileBody)
+	info, err := os.Stat(filepath.Join(dir, testSnippetFilename))
+	if err != nil {
+		t.Fatalf("stat snippet: %v", err)
+	}
+
+	if info.Mode().Perm() != 0o644 {
+		t.Errorf("snippet mode = %o, want 644", info.Mode().Perm())
+	}
+
+	leftovers, err := filepath.Glob(filepath.Join(dir, ".pvmss-*.tmp"))
+	if err != nil || len(leftovers) != 0 {
+		t.Errorf("temp leftovers = %v (err %v), want none", leftovers, err)
 	}
 }
 
-// TestProxmox_FindSnippetStorage_NotFound verifies the refusal when the node
-// has no snippet-capable storage at all.
-func TestProxmox_FindSnippetStorage_NotFound(t *testing.T) {
+// TestPushCloudInitSnippet_Overwrites verifies a retry replaces the file —
+// the same VMID (or an edit) must not leave stale content.
+func TestPushCloudInitSnippet_Overwrites(t *testing.T) {
 	t.Parallel()
 
-	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
-		mux.HandleFunc("GET /api2/json/nodes/node01/storage", func(w http.ResponseWriter, _ *http.Request) {
-			writeJSONFixture(t, w, `{"data":[]}`)
+	dir := t.TempDir()
+	p := Proxmox{SnippetDir: dir, SnippetStorage: testSnippetStorage}
+
+	if err := p.PushCloudInitSnippet(context.Background(), testNodeName, testSnippetStorage, testSnippetFilename, testVMID, "#cloud-config\npackages: [nginx]\n"); err != nil {
+		t.Fatalf("first push: %v", err)
+	}
+
+	if err := p.PushCloudInitSnippet(context.Background(), testNodeName, testSnippetStorage, testSnippetFilename, testVMID, "#cloud-config\npackages: [curl]\n"); err != nil {
+		t.Fatalf("second push: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(dir, testSnippetFilename)) //nolint:gosec // test reads back the file the test just wrote
+	if err != nil {
+		t.Fatalf("read snippet: %v", err)
+	}
+
+	if string(data) != "#cloud-config\npackages: [curl]\n" {
+		t.Errorf("snippet content = %q, want the second write", data)
+	}
+}
+
+// TestPushCloudInitSnippet_RejectsUnsafeFilename verifies the writer cannot
+// be coerced into writing outside the pvmss-*.yml shape or outside the
+// snippet directory — a bug in a caller must not become a path escape.
+func TestPushCloudInitSnippet_RejectsUnsafeFilename(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	p := Proxmox{SnippetDir: dir, SnippetStorage: testSnippetStorage}
+
+	for _, filename := range []string{"../pvmss-1.yml", "pvmss-1.txt", "vm-1.yml", "pvmss-1/x.yml"} {
+		if err := p.PushCloudInitSnippet(context.Background(), testNodeName, testSnippetStorage, filename, testVMID, "x"); err == nil {
+			t.Errorf("filename %q: expected an error", filename)
+		}
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("read dir: %v", err)
+	}
+
+	if len(entries) != 0 {
+		t.Errorf("snippet dir = %d entries, want none written", len(entries))
+	}
+}
+
+// TestPushCloudInitSnippet_Unconfigured verifies a cluster with no write
+// target reports the sentinel — never a filesystem attempt.
+func TestPushCloudInitSnippet_Unconfigured(t *testing.T) {
+	t.Parallel()
+
+	p := Proxmox{}
+	if err := p.PushCloudInitSnippet(context.Background(), testNodeName, testSnippetStorage, testSnippetFilename, testVMID, "x"); !errors.Is(err, ErrSnippetWriteUnavailable) {
+		t.Fatalf("error = %v, want ErrSnippetWriteUnavailable", err)
+	}
+}
+
+// TestPushCloudInitSnippet_WrongStorage verifies the writer refuses a storage
+// id that is not the configured one: the mounted directory belongs to exactly
+// one Proxmox storage.
+func TestPushCloudInitSnippet_WrongStorage(t *testing.T) {
+	t.Parallel()
+
+	p := Proxmox{SnippetDir: t.TempDir(), SnippetStorage: testSnippetStorage}
+	if err := p.PushCloudInitSnippet(context.Background(), testNodeName, "local", testSnippetFilename, testVMID, "x"); err == nil {
+		t.Fatal("expected an error for a non-configured storage")
+	}
+}
+
+// TestPushCloudInitSnippet_WriteErrorLeavesNoTemp verifies a failed write
+// cleans its temp file — the directory must never accumulate .pvmss-*.tmp.
+func TestPushCloudInitSnippet_WriteErrorLeavesNoTemp(t *testing.T) {
+	t.Parallel()
+
+	// A file where the directory should be forces CreateTemp to fail.
+	blocker := filepath.Join(t.TempDir(), "not-a-dir")
+	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
+		t.Fatalf("write blocker: %v", err)
+	}
+
+	p := Proxmox{SnippetDir: blocker, SnippetStorage: testSnippetStorage}
+
+	if err := p.PushCloudInitSnippet(context.Background(), testNodeName, testSnippetStorage, testSnippetFilename, testVMID, "x"); err == nil {
+		t.Fatal("expected a write error")
+	}
+
+	leftovers, err := filepath.Glob(filepath.Join(filepath.Dir(blocker), ".pvmss-*.tmp"))
+	if err != nil || len(leftovers) != 0 {
+		t.Errorf("temp leftovers = %v (err %v), want none", leftovers, err)
+	}
+}
+
+// TestFindSnippetStorage_ConfiguredMustBeOnNode verifies the new contract
+// (spec D1): the configured storage is returned only when the node actually
+// lists it as an active snippets provider; unconfigured means the sentinel.
+func TestFindSnippetStorage_ConfiguredMustBeOnNode(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		storage string
+		rows    string
+		want    string
+		wantErr error
+	}{
+		{name: "configured and active is returned", storage: testSnippetStorage, rows: `[{"storage":"local","active":1,"shared":0},{"storage":"shared","active":1,"shared":1}]`, want: testSnippetStorage},
+		{name: "configured but absent is not found", storage: testSnippetStorage, rows: `[{"storage":"local","active":1,"shared":0}]`, wantErr: ErrNotFound},
+		{name: "configured but inactive is not found", storage: testSnippetStorage, rows: `[{"storage":"shared","active":0,"shared":1}]`, wantErr: ErrNotFound},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+				mux.HandleFunc("GET /api2/json/nodes/node01/storage", func(w http.ResponseWriter, _ *http.Request) {
+					writeJSONFixture(t, w, `{"data":`+tc.rows+`}`)
+				})
+			})
+
+			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal, SnippetDir: "/snippets", SnippetStorage: tc.storage}
+
+			got, err := p.FindSnippetStorage(context.Background(), testNodeName)
+			if tc.wantErr != nil {
+				if !errors.Is(err, tc.wantErr) {
+					t.Fatalf("error = %v, want %v", err, tc.wantErr)
+				}
+
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("FindSnippetStorage: %v", err)
+			}
+
+			if got != tc.want {
+				t.Errorf("storage = %q, want %q", got, tc.want)
+			}
 		})
-	})
+	}
+}
 
-	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+// TestProxmox_FindSnippetStorage_Unconfigured verifies a cluster with no
+// write target reports ErrSnippetWriteUnavailable without consulting the
+// node — there is no directory PVMSS could write to, so the storage list is
+// irrelevant.
+func TestProxmox_FindSnippetStorage_Unconfigured(t *testing.T) {
+	t.Parallel()
 
-	_, err := p.FindSnippetStorage(context.Background(), testNodeName)
-	if err == nil {
-		t.Fatal("expected an error when no snippet-capable storage exists")
+	p := Proxmox{}
+	if _, err := p.FindSnippetStorage(context.Background(), testNodeName); !errors.Is(err, ErrSnippetWriteUnavailable) {
+		t.Fatalf("error = %v, want ErrSnippetWriteUnavailable", err)
 	}
 }
 
@@ -298,9 +430,7 @@ func TestEncodeSSHKeys_OnlyProxmoxSafeCharacters(t *testing.T) {
 	encoded := encodeSSHKeys([]string{key})
 
 	for _, r := range encoded {
-		safe := (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') ||
-			r == '-' || r == '.' || r == '_' || r == '~' || r == '%'
-		if !safe {
+		if !proxmoxSafeSSHKeyChar(r) {
 			t.Fatalf("encoded sshkeys %q contains %q, not a Proxmox-safe character", encoded, r)
 		}
 	}
@@ -313,6 +443,14 @@ func TestEncodeSSHKeys_OnlyProxmoxSafeCharacters(t *testing.T) {
 	if decoded != key {
 		t.Errorf("round-tripped key = %q, want %q", decoded, key)
 	}
+}
+
+// proxmoxSafeSSHKeyChar reports whether r may appear raw in the encoded
+// sshkeys form value — Proxmox's validator accepts only unreserved
+// characters and %XX sequences.
+func proxmoxSafeSSHKeyChar(r rune) bool {
+	return (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') ||
+		r == '-' || r == '.' || r == '_' || r == '~' || r == '%'
 }
 
 // TestProxmox_SetCloudInitConfig_SSHKeysRoundTrip simulates Proxmox's exact
@@ -369,8 +507,10 @@ func TestProxmox_SetCloudInitConfig_SSHKeysRoundTrip(t *testing.T) {
 }
 
 // TestProxmox_FindSnippetStorage_PrefersSharedActive verifies the selection
-// rule (ticket 04): inactive storages are skipped, and a shared storage wins
-// over a node-local one so a later migration cannot orphan the snippet.
+// rule (ticket 04) used by the cloud-init drive fallback: inactive storages
+// are skipped, and a shared storage wins over a node-local one so a later
+// migration cannot orphan the snippet. The configured-target selection lives
+// in FindSnippetStorage — this exercises the heuristic directly.
 func TestProxmox_FindSnippetStorage_PrefersSharedActive(t *testing.T) {
 	t.Parallel()
 
@@ -396,7 +536,7 @@ func TestProxmox_FindSnippetStorage_PrefersSharedActive(t *testing.T) {
 
 			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
-			got, err := p.FindSnippetStorage(context.Background(), testNodeName)
+			got, err := proxmoxFindSnippetStorage(context.Background(), p.rest(), testNodeName)
 			if tc.want == "" {
 				if err == nil {
 					t.Fatal("expected an error when no active snippet storage exists")
@@ -739,30 +879,6 @@ func TestProxmox_AddSSHKey_AgentExec(t *testing.T) {
 	if err := p.AddSSHKey(context.Background(), testNodeName, testVMID, FakeCloudInitUser, "ssh-ed25519 AAAA x"); err == nil {
 		t.Fatal("expected a failure for non-zero guest exit")
 	}
-}
-
-// readMultipartFileBody reads the entire contents of a multipart file into a
-// string. Extracted from the TestProxmox_PushCloudInitSnippet handler closure
-// to satisfy the cognitive-complexity ceiling (go:S3776); read logic unchanged.
-func readMultipartFileBody(t *testing.T, file multipart.File) string {
-	t.Helper()
-
-	var body strings.Builder
-
-	buf := make([]byte, 512)
-
-	for {
-		n, readErr := file.Read(buf)
-		if n > 0 {
-			body.Write(buf[:n])
-		}
-
-		if readErr != nil {
-			break
-		}
-	}
-
-	return body.String()
 }
 
 // withAgentExecTiming temporarily shortens the agent-exec polling constants so

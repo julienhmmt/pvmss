@@ -41,7 +41,7 @@ func TestAdminListImages_IncludesSuperset(t *testing.T) {
 // TestSetImageEnabled_ToggleIsolatesByFile verifies toggling one image does
 // not affect another and persists the discovered size.
 //
-//nolint:paralleltest // serial: shared fake dataset and database fixture
+//nolint:paralleltest,dupl // serial: shared fake dataset; parallel to the ISO variant (same contract, different resource)
 func TestSetImageEnabled_ToggleIsolatesByFile(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()

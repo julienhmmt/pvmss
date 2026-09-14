@@ -27,6 +27,13 @@ type Proxmox struct {
 	APITokenName          string
 	APITokenValue         string
 	TLSInsecureSkipVerify bool
+	// SnippetDir and SnippetStorage are the per-cluster cloud-init document
+	// write target (spec D1): SnippetDir is the absolute path, inside this
+	// process's filesystem, of the snippets/ directory of the Proxmox storage
+	// named SnippetStorage (bind-mounted there by the deployment). Both empty
+	// means the feature is off for this cluster.
+	SnippetDir     string
+	SnippetStorage string
 	// httpClient is the cached *http.Client reused across every REST call so
 	// the underlying Transport's keep-alive connection pool is shared (ticket
 	// 07). Set at construction in registry.go; rest() lazily initializes it
@@ -93,6 +100,10 @@ func pluginSupportsVMState(pluginType string) bool {
 // proxmoxClusterResourcesPath is the /cluster/resources endpoint, used by
 // Snapshot, ListStorages and ListTemplates.
 const proxmoxClusterResourcesPath = "/cluster/resources"
+
+// proxmoxResourceTypeParam is the "type" query parameter that filters
+// /cluster/resources results ("vm", "storage", ...).
+const proxmoxResourceTypeParam = "type"
 
 // Snapshot implements Client: one /cluster/resources call for the node,
 // VM, and storage summary, then one /qemu/{vmid}/config (plus, for running
@@ -482,7 +493,7 @@ func proxmoxListNodeBridges(ctx context.Context, rest proxmoxRESTClient, node st
 func (p Proxmox) ListISOs(ctx context.Context) ([]ISOImage, error) {
 	rest := p.rest()
 
-	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{"type": {"storage"}})
+	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{proxmoxResourceTypeParam: {"storage"}})
 	if err != nil {
 		return nil, err
 	}
@@ -524,7 +535,7 @@ func (p Proxmox) ListISOs(ctx context.Context) ([]ISOImage, error) {
 func (p Proxmox) ListCloudImages(ctx context.Context) ([]CloudImage, error) {
 	rest := p.rest()
 
-	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{"type": {"storage"}})
+	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{proxmoxResourceTypeParam: {"storage"}})
 	if err != nil {
 		return nil, err
 	}
@@ -631,7 +642,7 @@ func proxmoxListContent(ctx context.Context, rest proxmoxRESTClient, node, stora
 func (p Proxmox) ListTemplates(ctx context.Context) ([]TemplateVM, error) {
 	rest := p.rest()
 
-	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{"type": {"vm"}})
+	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{proxmoxResourceTypeParam: {"vm"}})
 	if err != nil {
 		return nil, err
 	}
@@ -684,7 +695,7 @@ func (p Proxmox) ListTemplates(ctx context.Context) ([]TemplateVM, error) {
 func (p Proxmox) TemplateByVMID(ctx context.Context, vmid int) (TemplateVM, error) {
 	rest := p.rest()
 
-	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{"type": {"vm"}})
+	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{proxmoxResourceTypeParam: {"vm"}})
 	if err != nil {
 		return TemplateVM{}, err
 	}

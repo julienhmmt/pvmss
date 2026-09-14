@@ -1,29 +1,34 @@
 # Premiers pas
 
-Bienvenue dans PVMSS, le portail en libre-service pour vos machines virtuelles Proxmox.
-Ce guide vous présente l'essentiel : la connexion, la recherche de vos VMs et la
-création d'une nouvelle machine.
+Bienvenue sur PVMSS, le portail en libre-service pour vos machines virtuelles
+Proxmox. Ce guide couvre l'essentiel : se connecter, retrouver ses VM et en
+créer une nouvelle.
 
 ## Se connecter
 
-Utilisez vos identifiants Proxmox sur la [page de connexion](/login). Si votre
-administrateur a activé l'authentification unique, vous pouvez aussi choisir le
-fournisseur OIDC de votre cluster depuis l'écran de connexion.
+Choisissez votre cluster et utilisez vos identifiants Proxmox sur la
+[page de connexion](/login). Si le cluster sélectionné est injoignable, le
+formulaire l'indique — réessayez plus tard ou choisissez un autre cluster.
 
-## Trouver vos VMs
+## Retrouver ses VM
 
-Une fois authentifié, la page **Mes VMs** liste toutes les machines virtuelles
-appartenant à votre pool, sur l'ensemble des clusters configurés. Utilisez la
-barre de recherche pour filtrer par nom ou VMID, et le sélecteur de cluster pour
-limiter l'affichage à un seul cluster.
+Une fois connecté, la page d'accueil affiche le nombre de vos VM, votre quota
+et les tâches encore en cours. La page **Mes VM** liste toutes les machines
+virtuelles de votre pool sur l'ensemble des clusters configurés. Utilisez la
+recherche pour filtrer par nom, VMID ou tag, et le sélecteur de cluster pour
+restreindre la vue à un seul cluster. Les filtres sont conservés dans l'URL :
+une vue filtrée peut être mise en favori.
 
 ## Créer une VM
 
-1. Ouvrez **Créer une VM** depuis la page d'accueil ou la page VMs.
-2. Choisissez un profil matériel ou saisissez des valeurs personnalisées.
-3. Sélectionnez un nœud, un stockage et (éventuellement) une ISO ou un modèle
-   cloud-init.
-4. Validez — le portail provisionne la VM et affiche la progression dans le
-   bac de notification de la barre supérieure.
+1. Ouvrez **Créer une VM** depuis la page d'accueil ou la page des VM.
+2. Choisissez une source : une ISO, un template Proxmox ou une image cloud.
+3. Choisissez un profil matériel ou saisissez des valeurs personnalisées ; le
+   nœud est choisi pour vous sauf en mode Détaillé.
+4. Attachez éventuellement un document cloud-init (template admin ou l'un de
+   [vos fichiers](/cloud-init)).
+5. Validez — le portail provisionne la VM et affiche la progression dans le
+   tiroir des tâches.
 
-Pour en savoir plus, consultez les [recommandations de création de VM](/docs/vm-creation-guidelines).
+Pour aller plus loin, consultez les [règles de création de VM](/docs/vm-creation-guidelines)
+et le [guide utilisateur](/docs/user-guide).

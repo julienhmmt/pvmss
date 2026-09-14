@@ -16,8 +16,9 @@ metadata:
   name: pvmss-secrets
 type: Opaque
 data:
+  # base64 values. admin-password-hash: bcrypt hash (or empty to disable the
+  # local admin login). session-secret: 32+ bytes (openssl rand -hex 32).
   admin-password-hash: changemebase64hash
-  jwt-secret: changemebase64hash
   pve-api-token: changemebase64hash
   session-secret: changemebase64hash
 ---
@@ -86,56 +87,55 @@ spec:
             - name: backend
               containerPort: 50000
               protocol: TCP
+          # Every variable is validated at boot by server/internal/config/load.go;
+          # the pod crash-loops if a required one is missing or malformed.
           env:
-            - name: ADMIN_PASSWORD_HASH
-              valueFrom:
-                secretKeyRef:
-                  name: pvmss-secrets
-                  key: admin-password-hash
-            - name: LOG_LEVEL
-              value: "INFO"
-            - name: LOG_OUTPUT
-              value: "stdout"
-            - name: LOG_FORMAT
-              value: "json"
-            # To also write logs to a dedicated logs volume, you can change
-            # LOG_OUTPUT to "both" and add, for example:
-            # - name: LOG_FILE_PATH
-            #   value: "/data/logs/pvmss.log"
+            # Required. "proxmox" for a real cluster; "fake" serves demo data
+            # with demo credentials and must never be selected by accident.
+            - name: PVMSS_CLUSTER_SOURCE
+              value: "proxmox"
+            - name: PROXMOX_URL
+              value: "https://changeme:8006/api2/json"
             - name: PROXMOX_API_TOKEN_NAME
-              value: "changeme"
+              value: "user@pve!token"
             - name: PROXMOX_API_TOKEN_VALUE
               valueFrom:
                 secretKeyRef:
                   name: pvmss-secrets
                   key: pve-api-token
-            # Set to "false" ONLY for self-signed labs; mount the Proxmox CA cert for production.
-            - name: PROXMOX_VERIFY_SSL
-              value: "true"
-            - name: PROXMOX_URL
-              value: "https://changeme:8006/api2/json"
-            - name: JWT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: pvmss-secrets
-                  key: jwt-secret
-            - name: SESSION_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: pvmss-secrets
-                  key: session-secret
-            - name: PVMSS_ENV
-              value: "production" # Can be 'dev', 'developpement', 'prod'
-            - name: PVMSS_OFFLINE
-              value: "false" # Set to true to disable Proxmox connection
+            - name: PVMSS_PORT
+              value: "50000"
             - name: PVMSS_DB_PATH
               value: "/data/pvmss.db"
             # Bind all interfaces inside the container; the Service controls exposure.
             - name: PVMSS_HOST
               value: "0.0.0.0"
-            # v0.4 web build directory (served by the v0.4 binary)
             - name: PVMSS_WEB_DIR
               value: "/app/web/build"
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: pvmss-secrets
+                  key: session-secret
+            - name: ADMIN_PASSWORD_HASH
+              valueFrom:
+                secretKeyRef:
+                  name: pvmss-secrets
+                  key: admin-password-hash
+            # Lowercase only: debug | info | warn | error
+            - name: LOG_LEVEL
+              value: "info"
+            - name: LOG_FORMAT
+              value: "json"
+            # stdout, stderr, or a file path on the logs volume, e.g. /data/logs/pvmss.log
+            - name: LOG_OUTPUT
+              value: "stdout"
+            # Set to "false" only when the HTTPRoute/Ingress does not terminate TLS.
+            - name: PVMSS_COOKIE_SECURE
+              value: "true"
+            # Reverse proxies in front of PVMSS (client IP for rate limits / audit).
+            - name: PVMSS_TRUSTED_PROXY_HOPS
+              value: "1"
             - name: TZ
               value: "Europe/Paris"
           volumeMounts:
@@ -145,6 +145,11 @@ spec:
             - name: pvmss-logs
               mountPath: /data/logs
               readOnly: false
+            # Cloud-init documents: mount the snippets/ dir of a SHARED Proxmox
+            # storage, then set "Snippet directory" = /snippets and the storage
+            # id in Admin › Clusters. See the in-app page /docs/admin-guide.
+            # - name: snippets
+            #   mountPath: /snippets
           resources:
             requests:
               memory: "64Mi"
@@ -167,6 +172,10 @@ spec:
         - name: pvmss-logs
           persistentVolumeClaim:
             claimName: pvmss-logs-pvc
+        # - name: snippets
+        #   nfs:
+        #     server: 192.168.1.10
+        #     path: /export/pve-shared/snippets
 ---           
 apiVersion: v1
 kind: Service

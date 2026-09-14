@@ -19,6 +19,7 @@ export interface DraftValues {
 	name: string;
 	profileId: string;
 	cloudInitTemplateId?: string;
+	cloudInitFileId?: string;
 	node: string;
 	nodeAdjusted: boolean;
 	storage: string;
@@ -47,6 +48,7 @@ export interface DraftValues {
 	startAfterCreate: boolean;
 	uefi?: boolean;
 	tpm?: boolean;
+	secureBoot?: boolean;
 }
 
 export interface StoredDraft {

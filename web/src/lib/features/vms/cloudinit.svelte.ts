@@ -123,7 +123,10 @@ export class CloudInitStore {
 			return this.snippetError === null;
 		} catch (err) {
 			this.snippetErrorCode = err instanceof ApiRequestError ? err.code : null;
-			this.snippetError = errorMessage(err, () => m['vms.cloudinit.errorSaveSnippet']());
+			this.snippetError =
+				err instanceof ApiRequestError && err.code === 'cloudinit_write_unavailable'
+					? m['vms.cloudinit.errorWriteUnavailable']()
+					: errorMessage(err, () => m['vms.cloudinit.errorSaveSnippet']());
 			return false;
 		} finally {
 			this.snippetInFlight = false;

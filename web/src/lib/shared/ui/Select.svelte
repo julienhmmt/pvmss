@@ -13,6 +13,10 @@
 	interface Option {
 		value: string;
 		label: string;
+		/** Optional optgroup label; groups render in first-seen order after
+		 *  the ungrouped options. Callers that never set group get identical
+		 *  markup to before. */
+		group?: string;
 	}
 
 	interface Props {
@@ -49,6 +53,26 @@
 	const normalized: ReadonlyArray<Option> = $derived(
 		options.map((option) => (typeof option === 'string' ? { value: option, label: option } : option))
 	);
+
+	// Ungrouped options render first, then one <optgroup> per distinct group
+	// in first-seen order.
+	const grouped = $derived.by(() => {
+		const ungrouped: Option[] = [];
+		const groups: { label: string; options: Option[] }[] = [];
+		for (const option of normalized) {
+			if (option.group === undefined) {
+				ungrouped.push(option);
+				continue;
+			}
+			const existing = groups.find((group) => group.label === option.group);
+			if (existing === undefined) {
+				groups.push({ label: option.group, options: [option] });
+			} else {
+				existing.options.push(option);
+			}
+		}
+		return { ungrouped, groups };
+	});
 </script>
 
 <div class="relative {klass}">
@@ -66,8 +90,15 @@
 		{#if placeholder}
 			<option value="" disabled>{placeholder}</option>
 		{/if}
-		{#each normalized as option (option.value)}
+		{#each grouped.ungrouped as option (option.value)}
 			<option value={option.value}>{option.label}</option>
+		{/each}
+		{#each grouped.groups as group (group.label)}
+			<optgroup label={group.label}>
+				{#each group.options as option (option.value)}
+					<option value={option.value}>{option.label}</option>
+				{/each}
+			</optgroup>
 		{/each}
 	</select>
 	<span class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground">

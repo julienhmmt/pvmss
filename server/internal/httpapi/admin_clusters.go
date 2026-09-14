@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
+	"regexp"
 	"time"
 )
 
@@ -52,6 +54,9 @@ type adminClusterDTO struct {
 	ProxmoxVersion        *string `json:"proxmoxVersion"`
 	NodeCount             int     `json:"nodeCount"`
 	VMCount               int     `json:"vmCount"`
+	SnippetDir            string  `json:"snippetDir"`
+	SnippetStorage        string  `json:"snippetStorage"`
+	CloudInitWriteEnabled bool    `json:"cloudInitWriteEnabled"`
 }
 
 type createClusterRequest struct {
@@ -60,6 +65,8 @@ type createClusterRequest struct {
 	TLSInsecureSkipVerify bool   `json:"tlsInsecureSkipVerify"`
 	TokenID               string `json:"tokenId"`
 	TokenSecret           string `json:"tokenSecret"`
+	SnippetDir            string `json:"snippetDir"`
+	SnippetStorage        string `json:"snippetStorage"`
 }
 
 type updateClusterRequest struct {
@@ -67,6 +74,28 @@ type updateClusterRequest struct {
 	TLSInsecureSkipVerify bool   `json:"tlsInsecureSkipVerify"`
 	TokenID               string `json:"tokenId"`
 	TokenSecret           string `json:"tokenSecret"`
+	SnippetDir            string `json:"snippetDir"`
+	SnippetStorage        string `json:"snippetStorage"`
+}
+
+// snippetStorageIDRE is spec D8's storage-id grammar — the same shape
+// Proxmox itself accepts for a storage identifier.
+var snippetStorageIDRE = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_.-]*$`)
+
+// validateSnippetTarget enforces spec D8: set together, absolute dir, sane
+// storage id. Returns the message for a 400 invalid_request, or "".
+func validateSnippetTarget(dir, storage string) string {
+	switch {
+	case dir == "" && storage == "":
+		return ""
+	case dir == "" || storage == "":
+		return "snippetDir and snippetStorage must be set together"
+	case !filepath.IsAbs(dir):
+		return "snippetDir must be an absolute path"
+	case !snippetStorageIDRE.MatchString(storage):
+		return "snippetStorage is not a valid storage id"
+	}
+	return ""
 }
 
 type testClusterResponse struct {
@@ -107,11 +136,20 @@ func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request
 		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid cluster request")
 		return
 	}
+	if msg := validateSnippetTarget(request.SnippetDir, request.SnippetStorage); msg != "" {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msg)
+		return
+	}
 	row := store.ClusterRow{Name: request.Name, URL: request.URL, TLSInsecureSkipVerify: request.TLSInsecureSkipVerify, TokenID: request.TokenID, TokenSecret: request.TokenSecret}
 	if err := handler.store.CreateCluster(r.Context(), row); err != nil {
 		handler.writeStoreFailure(w, err)
 		return
 	}
+	if err := handler.store.SetClusterSnippetTarget(r.Context(), row.Name, request.SnippetDir, request.SnippetStorage); err != nil {
+		handler.writeStoreFailure(w, err)
+		return
+	}
+	row.SnippetDir, row.SnippetStorage = request.SnippetDir, request.SnippetStorage
 	if err := handler.register(r.Context(), row); err != nil {
 		handler.writeFailure(w, err)
 		return
@@ -123,7 +161,7 @@ func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request
 	}
 	handler.recordAdminAction(r, "admin.clusters.create", "cluster", created.Name,
 		"created cluster "+created.Name,
-		[]any{map[string]any{auditKeyName: created.Name, "url": created.URL, "tlsInsecureSkipVerify": created.TLSInsecureSkipVerify, "tokenId": created.TokenID, "oidcEnabled": created.OIDCEnabled}})
+		[]any{map[string]any{auditKeyName: created.Name, "url": created.URL, "tlsInsecureSkipVerify": created.TLSInsecureSkipVerify, "tokenId": created.TokenID, "oidcEnabled": created.OIDCEnabled, "snippetDir": created.SnippetDir, "snippetStorage": created.SnippetStorage}})
 	writeAdminJSON(w, http.StatusCreated, handler.clusterDTO(created))
 }
 
@@ -132,6 +170,10 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 	var request updateClusterRequest
 	if err := decodeJSON(w, r, &request); err != nil {
 		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid cluster request")
+		return
+	}
+	if msg := validateSnippetTarget(request.SnippetDir, request.SnippetStorage); msg != "" {
+		writeAdminError(w, http.StatusBadRequest, "invalid_request", msg)
 		return
 	}
 	name := r.PathValue("name")
@@ -144,6 +186,11 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 		handler.writeStoreFailure(w, err)
 		return
 	}
+	if err := handler.store.SetClusterSnippetTarget(r.Context(), name, request.SnippetDir, request.SnippetStorage); err != nil {
+		handler.writeStoreFailure(w, err)
+		return
+	}
+	row.SnippetDir, row.SnippetStorage = request.SnippetDir, request.SnippetStorage
 	if err := handler.replace(r.Context(), row); err != nil {
 		handler.writeFailure(w, err)
 		return
@@ -155,7 +202,7 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 	}
 	handler.recordAdminAction(r, "admin.clusters.update", "cluster", name,
 		"updated cluster "+name,
-		[]any{map[string]any{auditKeyName: name, "url": updated.URL, "tlsInsecureSkipVerify": updated.TLSInsecureSkipVerify, "tokenId": updated.TokenID, "oidcEnabled": updated.OIDCEnabled}})
+		[]any{map[string]any{auditKeyName: name, "url": updated.URL, "tlsInsecureSkipVerify": updated.TLSInsecureSkipVerify, "tokenId": updated.TokenID, "oidcEnabled": updated.OIDCEnabled, "snippetDir": updated.SnippetDir, "snippetStorage": updated.SnippetStorage}})
 	writeAdminJSON(w, http.StatusOK, handler.clusterDTO(updated))
 }
 
@@ -320,6 +367,8 @@ func (handler *AdminClusters) clusterDTO(row store.ClusterRow) adminClusterDTO {
 		TokenSet: row.TokenSecret != "", OIDCEnabled: row.OIDCEnabled, RemovedAt: formatTime(row.RemovedAt),
 		LastTestStatus: lastTestStatus, LastTestAt: lastTestAt, LastTestMessage: lastTestMessage,
 		ProxmoxVersion: optionalValue(version), NodeCount: nodeCount, VMCount: vmCount,
+		SnippetDir: row.SnippetDir, SnippetStorage: row.SnippetStorage,
+		CloudInitWriteEnabled: row.SnippetDir != "" && row.SnippetStorage != "",
 	}
 }
 

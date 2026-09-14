@@ -38,10 +38,11 @@
 	] as const;
 
 	interface Props {
-		onDelete: () => void;
+		onDelete?: () => void;
+		hideDelete?: boolean;
 	}
 
-	let { onDelete }: Props = $props();
+	let { onDelete = () => {}, hideDelete = false }: Props = $props();
 
 	function isApplicable(action: ActionDef): boolean {
 		return store.entity !== null && action.applicable.includes(store.entity.status);
@@ -95,19 +96,21 @@
 		</Button>
 	{/each}
 
-	<Button
-		size="sm"
-		variant="outline"
-		class="ml-auto {DANGER_TINT}"
-		disabled={store.deleteInFlight}
-		onclick={onDelete}
-		data-testid="vm-action-delete"
-		title={m['vms.action.delete']()}
-		label={m['vms.action.delete']()}
-	>
-		<TrashIcon class="h-4 w-4" />
-		{m['vms.action.delete']()}
-	</Button>
+	{#if !hideDelete}
+		<Button
+			size="sm"
+			variant="outline"
+			class="ml-auto {DANGER_TINT}"
+			disabled={store.deleteInFlight}
+			onclick={onDelete}
+			data-testid="vm-action-delete"
+			title={m['vms.action.delete']()}
+			label={m['vms.action.delete']()}
+		>
+			<TrashIcon class="h-4 w-4" />
+			{m['vms.action.delete']()}
+		</Button>
+	{/if}
 </div>
 
 {#if store.actionError}

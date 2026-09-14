@@ -10,7 +10,7 @@ Two audiences share one portal:
 
 **End users** — developers and team members who need VMs without Proxmox access. They log in with their Proxmox credentials, pick a profile, and get a running machine. Their context: they want a VM fast, they don't want to understand Proxmox, and they want to manage their own machines (start, stop, snapshot, console) without filing tickets. Primary task: create and manage my VMs.
 
-**Admins** — infrastructure operators who configure the portal itself. They approve nodes, storages, bridges, and ISOs from the Proxmox cluster. They set quotas and gabarit limits. They manage cloud-init templates, tags, pools, documentation, and multi-cluster connections. Their context: they know Proxmox, they want control without logging into Proxmox for every change, and they need to enforce policy. Primary task: keep the catalog and policy in sync with the cluster.
+**Admins** — infrastructure operators who configure the portal itself. They approve nodes, storages, bridges, ISOs, VM templates, and cloud images from the Proxmox cluster. They set quotas, gabarit limits, and per-node capacity. They manage cloud-init templates and the per-cluster cloud-init write target, hardware profiles, tags, pools, documentation, the audit log, and multi-cluster connections. Their context: they know Proxmox, they want control without logging into Proxmox for every change, and they need to enforce policy. Primary task: keep the catalog and policy in sync with the cluster.
 
 ## Product Purpose
 

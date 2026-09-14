@@ -429,6 +429,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	adminClusters.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	docsHandler := httpapi.NewDocsAPIHandler(authHandler, st, logger)
 	adminDocs := httpapi.NewAdminDocs(authHandler, st, docsHandler, logger)
+	cloudInitFiles := httpapi.NewCloudInitFiles(authHandler, st, logger)
 
 	authHandler.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	vm.SetResolveAuditor(st)
@@ -444,6 +445,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		VMStatusBatch:    vmStatusBatch,
 		VMCloudInit:      vmCloudInit,
 		VMCreate:         vmCreate,
+		CloudInitFiles:   cloudInitFiles,
 		Tasks:            tasks,
 		Auth:             authHandler,
 		WebBuildDir:      webDir,

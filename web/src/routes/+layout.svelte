@@ -5,6 +5,7 @@
 	import { onNavigate } from '$app/navigation';
 	import '../app.css';
 	import { setTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
+	import { setTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
 	import { setSessionContext } from '$lib/features/auth/session.svelte';
 	import { isPublicPath } from '$lib/features/auth/public-routes';
 	import AuthRequired from '$lib/features/auth/AuthRequired.svelte';
@@ -28,6 +29,22 @@
 
 	const tray = setTaskTrayContext();
 	onDestroy(() => tray.destroy());
+
+	// Session-scoped record of vm_create terminal outcomes (failed / partial)
+	// the tray no longer tracks — feeds `displayStatus` (issue 09). The tray
+	// writes `failed` here when a tracked vm_create task ends in error; the
+	// create flow writes `partial` when cloud-init push fails.
+	const outcomeLedger = setTaskOutcomeLedgerContext();
+	// Register the listener immediately (not at destroy time) — onDestroy
+	// receives the unsubscribe function returned by onTaskError, so the
+	// listener is active for the shell's lifetime and torn down on unmount.
+	onDestroy(
+		tray.onTaskError((task) => {
+			if (task.kind === 'vm_create') {
+				outcomeLedger.record(task.cluster, task.vmid, 'failed');
+			}
+		})
+	);
 
 	const session = setSessionContext();
 	let routeChecked = $state(false);

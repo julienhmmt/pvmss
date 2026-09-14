@@ -9,12 +9,15 @@ serviceAccount:
   automountToken: true
   annotations: {}
 
-# SECRETS (base64-encode values or inject via --set-file)
+# SECRETS (plain values; the chart base64-encodes them — or inject via --set-file)
 secrets:
-  adminPasswordHash: changemebase64hash
-  jwtSecret: changemebase64hash
-  pveApiToken: changemebase64hash
-  sessionSecret: changemebase64hash
+  # Optional bcrypt hash for the local admin login. Leave empty to disable.
+  # Generate with: htpasswd -bnBC 10 "" "StrongPassword" | tr -d ':\n'
+  adminPasswordHash: ""
+  # Proxmox API token secret (the value matching deployment.env.PROXMOX_API_TOKEN_NAME).
+  pveApiToken: changeme
+  # 32+ bytes. Generate with: openssl rand -hex 32
+  sessionSecret: changeMeWithSomethingElseUniqueMinimum32Chars
 
 # PERSISTENCE (PVCs)
 persistence:
@@ -26,6 +29,17 @@ persistence:
     enabled: true
     size: 1Gi
     storageClass: ""
+  # Cloud-init documents. Mount the snippets/ directory of a SHARED Proxmox
+  # storage into the pod at mountPath, then configure that path + the storage
+  # id per cluster in Admin › Clusters. Off by default.
+  snippets:
+    enabled: false
+    mountPath: /snippets
+    # one of:
+    existingClaim: "" # a PVC you manage (e.g. NFS-backed)
+    nfs:
+      server: "" # e.g. 192.168.1.10
+      path: "" # e.g. /export/pve-shared/snippets
 
 # DEPLOYMENT
 deployment:
@@ -42,25 +56,34 @@ deployment:
     limits:
       cpu: "50m"
       memory: "128Mi"
+  # Every variable is validated at boot by server/internal/config/load.go;
+  # the pod crash-loops if a required one is missing or malformed.
   env:
-    LOG_LEVEL: "INFO"
-    LOG_OUTPUT: "stdout"
-    LOG_FORMAT: "json"
-    PROXMOX_API_TOKEN_NAME: "changeme"
-    # Set to "false" ONLY for self-signed labs; mount the Proxmox CA cert for production.
-    PROXMOX_VERIFY_SSL: "true"
+    # Required. "proxmox" for a real cluster; "fake" serves demo data with demo
+    # credentials and must never be selected by accident (no default).
+    PVMSS_CLUSTER_SOURCE: "proxmox"
     PROXMOX_URL: "https://changeme:8006/api2/json"
-    PVMSS_ENV: "production"
-    PVMSS_OFFLINE: "false"
+    PROXMOX_API_TOKEN_NAME: "user@pve!token"
+    PVMSS_PORT: "50000"
     PVMSS_DB_PATH: "/data/pvmss.db"
     # Bind all interfaces inside the container; the Service controls exposure.
     PVMSS_HOST: "0.0.0.0"
-    # v0.4 web build directory (served by the v0.4 binary)
     PVMSS_WEB_DIR: "/app/web/build"
+    # Lowercase only: debug | info | warn | error
+    LOG_LEVEL: "info"
+    LOG_FORMAT: "json"
+    LOG_OUTPUT: "stdout"
+    # Set to "false" only when the HTTPRoute/Ingress does not terminate TLS.
+    PVMSS_COOKIE_SECURE: "true"
+    # Reverse proxies in front of PVMSS (client IP for rate limits / audit).
+    PVMSS_TRUSTED_PROXY_HOPS: "1"
+    # PVMSS_INVENTORY_REFRESH_INTERVAL: "30s"
+    # PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL: "5s"
+    # PVMSS_INVENTORY_REFRESH_TIMEOUT: "15s"
+    # PVMSS_MAX_LIST_PAGE_SIZE: "100"
     TZ: "Europe/Paris"
   secretEnv:
     ADMIN_PASSWORD_HASH: admin-password-hash
-    JWT_SECRET: jwt-secret
     PROXMOX_API_TOKEN_VALUE: pve-api-token
     SESSION_SECRET: session-secret
 
@@ -69,7 +92,7 @@ service:
   type: ClusterIP
   port: 50000
   targetPort: 50000
-  # utilisé uniquement si type=NodePort
+  # only used when type=NodePort
   #nodePort: null
 
 # GATEWAY-API

@@ -92,3 +92,28 @@ func TestCloudInitSnippet_CompositeKeyIsolationAndUpsert(t *testing.T) {
 		t.Fatalf("other snippet = %+v, found %v, err %v", second, found, err)
 	}
 }
+
+//nolint:paralleltest // owns a temporary SQLite database
+func TestCloudInitSnippet_Delete(t *testing.T) {
+	ctx := context.Background()
+	st, _ := openCloudInitStore(t)
+
+	defer func() { _ = st.Close() }()
+
+	// Delete of nothing is not an error.
+	if err := st.DeleteCloudInitSnippet(ctx, "default", 101); err != nil {
+		t.Fatalf("delete of nothing: %v", err)
+	}
+
+	if err := st.PutCloudInitSnippet(ctx, "default", 101, "local", "pvmss-101.yml", "#cloud-config\n", "alice"); err != nil {
+		t.Fatalf("PutCloudInitSnippet: %v", err)
+	}
+
+	if err := st.DeleteCloudInitSnippet(ctx, "default", 101); err != nil {
+		t.Fatalf("DeleteCloudInitSnippet: %v", err)
+	}
+
+	if _, found, err := st.GetCloudInitSnippet(ctx, "default", 101); err != nil || found {
+		t.Fatalf("after delete found %v, err %v; want absent", found, err)
+	}
+}

@@ -5,6 +5,7 @@ import { m } from '$lib/paraglide/messages.js';
 import type { VmAction } from './detail.svelte';
 import { optimisticStatus } from './detail.svelte';
 import { convergeBatch } from './converge';
+import { isRecentlyDeletedVm } from './recently-deleted';
 
 export type VmStatus = 'running' | 'stopped' | 'paused';
 export type VmScope = 'mine' | 'all';
@@ -121,7 +122,16 @@ export class VmListStore {
 		this.errorCode = null;
 		try {
 			const query = this.queryString();
-			this.result = await get<VmListResult>(`/api/v1/vms${query === '' ? '' : `?${query}`}`);
+			const result = await get<VmListResult>(`/api/v1/vms${query === '' ? '' : `?${query}`}`);
+			// Proxmox destroy runs asynchronously (server/internal/cluster/proxmox_writer.go),
+			// so the inventory cache can still report a just-deleted VM for a short
+			// window. Hide anything this tab deleted itself until that window passes.
+			// ponytail: total/pagination counts are not adjusted for the suppressed
+			// row; acceptable since the count self-corrects once the cache catches up.
+			this.result = {
+				...result,
+				items: result.items.filter((item) => !isRecentlyDeletedVm(item.cluster, item.vmid))
+			};
 		} catch (err) {
 			if (err instanceof ApiRequestError) {
 				this.error = err.message;

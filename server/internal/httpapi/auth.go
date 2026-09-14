@@ -278,21 +278,22 @@ func (h *Auth) CSRFToken(r *http.Request) (string, error) {
 	return h.sessions.CSRFToken(r.Context(), r)
 }
 
-// Principal resolves browser cookies before attempting an Authorization bearer token.
+// Principal resolves browser cookies. The Authorization bearer-token branch is
+// deactivated (personal API tokens are disabled).
 func (h *Auth) Principal(r *http.Request) (auth.Identity, error) {
 	identity, err := h.sessions.Resolve(r.Context(), r)
 	if err == nil {
 		return identity, nil
 	}
 
-	const bearerPrefix = "Bearer "
-
-	authorization := r.Header.Get("Authorization")
-	if !strings.HasPrefix(authorization, bearerPrefix) {
-		return auth.Identity{}, auth.ErrUnauthenticated
-	}
-
-	return h.tokens.Resolve(r.Context(), strings.TrimSpace(strings.TrimPrefix(authorization, bearerPrefix)))
+	// API tokens are deactivated: bearer credentials are not resolved. Kept
+	// commented for re-enablement together with the routes in router.go.
+	// const bearerPrefix = "Bearer "
+	// authorization := r.Header.Get("Authorization")
+	// if strings.HasPrefix(authorization, bearerPrefix) {
+	// 	return h.tokens.Resolve(r.Context(), strings.TrimSpace(strings.TrimPrefix(authorization, bearerPrefix)))
+	// }
+	return auth.Identity{}, auth.ErrUnauthenticated
 }
 
 // Logout revokes the authenticated browser session.

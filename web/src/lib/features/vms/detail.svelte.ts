@@ -3,6 +3,7 @@ import { get, post, del, patch, put, ApiRequestError } from '$lib/shared/api/cli
 import { m } from '$lib/paraglide/messages.js';
 import type { VmStatus } from './list.svelte';
 import { convergeSingle } from './converge';
+import { markVmDeleted } from './recently-deleted';
 
 export type VmAction = 'start' | 'stop' | 'shutdown' | 'reboot' | 'reset' | 'pause' | 'resume';
 
@@ -113,6 +114,9 @@ export class VmDetailStore {
 
 	/** True while a power action is in flight; the UI shows an optimistic status. */
 	actionInFlight = $state.raw(false);
+	/** The kind of the in-flight power action, or null. Feeds `displayStatus`
+	 *  (issue 09) so the detail header can show `starting` / `stopping`. */
+	inFlightActionKind = $state.raw<VmAction | null>(null);
 	actionError = $state.raw<string | null>(null);
 
 	/** True while a delete is in flight; the UI disables the button. */
@@ -355,6 +359,7 @@ export class VmDetailStore {
 		if (this.actionInFlight || this.entity === null) return;
 		this.actionError = null;
 		this.actionInFlight = true;
+		this.inFlightActionKind = kind;
 
 		const previousStatus = this.entity.status;
 		const target = optimisticStatus(kind);
@@ -385,6 +390,7 @@ export class VmDetailStore {
 			this.actionError = errorMessage(err, () => m['vms.detail.errorAction']());
 		} finally {
 			this.actionInFlight = false;
+			this.inFlightActionKind = null;
 		}
 	}
 
@@ -403,6 +409,7 @@ export class VmDetailStore {
 		try {
 			const path = force ? `${this.#basePath}?force=true` : this.#basePath;
 			await del<DeleteResponse>(path);
+			markVmDeleted(this.cluster, this.vmid);
 			this.deleted = true;
 		} catch (err) {
 			this.deleteError = errorMessage(err, () => m['vms.detail.errorDelete']());
