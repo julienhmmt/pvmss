@@ -64,7 +64,7 @@
 	};
 
 	const variants: Record<Variant, string> = {
-		primary: 'bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/95',
+		primary: 'bg-primary-solid text-primary-foreground hover:bg-primary-solid/90 active:bg-primary-solid/95',
 		secondary: 'border border-border bg-card text-foreground hover:border-muted-foreground-subtle hover:bg-muted',
 		outline: 'border border-border bg-transparent text-foreground hover:border-muted-foreground-subtle hover:bg-muted/60',
 		ghost: 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',

@@ -3,6 +3,7 @@
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
@@ -67,17 +68,11 @@
 	{/if}
 
 	<div class="flex justify-end gap-2">
-		<button
-			type="button"
-			class="rounded-md border border-border bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
-			onclick={close}
-			data-testid="vm-delete-cancel"
-		>
+		<Button variant="ghost" onclick={close} data-testid="vm-delete-cancel">
 			{m['common.cancel']()}
-		</button>
-		<button
-			type="button"
-			class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
+		</Button>
+		<Button
+			variant="destructive"
 			disabled={store.deleteInFlight}
 			onclick={confirm}
 			data-testid="vm-delete-confirm"
@@ -89,6 +84,6 @@
 			{:else}
 				{m['common.deletePermanently']()}
 			{/if}
-		</button>
+		</Button>
 	</div>
 </Dialog>

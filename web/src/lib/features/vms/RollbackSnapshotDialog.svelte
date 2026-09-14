@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 	import { VmSnapshotsStore } from './snapshots.svelte';
 	import type { RollbackDiffEntry, VmSnapshot } from './snapshots.svelte';
 	import { ApiRequestError } from '$lib/shared/api/client';
@@ -89,9 +90,14 @@
 	</div>
 
 	<div class="flex justify-end gap-2">
-		<button type="button" class="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted" onclick={close} data-testid="snapshot-rollback-cancel">{m['common.cancel']()}</button>
-		<button type="button" class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50" disabled={store.inFlight || snapshot === null} onclick={() => void confirm()} data-testid="snapshot-rollback-confirm">
+		<Button variant="ghost" onclick={close} data-testid="snapshot-rollback-cancel">{m['common.cancel']()}</Button>
+		<Button
+			variant="destructive"
+			disabled={store.inFlight || snapshot === null}
+			onclick={() => void confirm()}
+			data-testid="snapshot-rollback-confirm"
+		>
 			{store.inFlight ? m['vms.snapshots.rollbackRestoring']() : m['vms.snapshots.rollbackButton']()}
-		</button>
+		</Button>
 	</div>
 </Dialog>

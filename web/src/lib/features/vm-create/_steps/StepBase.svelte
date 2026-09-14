@@ -126,7 +126,7 @@
 						aria-pressed={isSelected}
 						onclick={() => form.toggleTag(tag.name)}
 						class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors pv-focus {isSelected
-							? 'border-transparent bg-primary text-primary-foreground'
+							? 'border-transparent bg-primary-solid text-primary-foreground'
 							: 'border-border bg-muted text-muted-foreground hover:bg-muted/80'}"
 					>
 						<span class="h-2 w-2 rounded-full" style="background-color: {tag.color}" aria-hidden="true"></span>

@@ -59,7 +59,7 @@
 			<span class="flex items-center gap-2 text-sm font-semibold text-foreground">
 				{#if step !== undefined}
 					<span
-						class="flex h-5 w-5 items-center justify-center rounded-full bg-primary font-mono text-[0.6875rem] font-semibold text-primary-foreground"
+						class="flex h-5 w-5 items-center justify-center rounded-full bg-primary-solid font-mono text-[0.6875rem] font-semibold text-primary-foreground"
 						aria-hidden="true"
 					>
 						{step}
