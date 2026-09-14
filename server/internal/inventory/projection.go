@@ -3,7 +3,7 @@ package inventory
 import "sync/atomic"
 
 // Projection holds the current Index via an atomic pointer. Readers never
-// block on a mutex held during a slow client call — they always see either
+// block on a mutex held during a slow client call - they always see either
 // the previous complete index or the new complete one, never a partial one
 type Projection struct {
 	current atomic.Pointer[Index]
@@ -33,7 +33,7 @@ func (p *Projection) Load() *Index {
 }
 
 // store replaces the current index. Called only by the worker on a successful
-// refresh cycle — a failed cycle never calls this.
+// refresh cycle - a failed cycle never calls this.
 func (p *Projection) store(idx *Index) {
 	p.current.Store(idx)
 }

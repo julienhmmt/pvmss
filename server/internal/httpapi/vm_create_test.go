@@ -63,7 +63,7 @@ func newVMCreateHandler(t *testing.T) (*httpapi.VMCreate, *httpapi.Auth, *store.
 }
 
 // newVMCreateHandlerWithClient is newVMCreateHandler with a caller-chosen
-// cluster client — tests that need a client without the snippet write
+// cluster client - tests that need a client without the snippet write
 // capability (or with a failing one) pass their own.
 func newVMCreateHandlerWithClient(t *testing.T, client cluster.Client) (*httpapi.VMCreate, *httpapi.Auth, *store.Store) {
 	t.Helper()
@@ -106,7 +106,7 @@ type noSnippetWriteClient struct {
 }
 
 // snippetWriteUnavailableClient is a full Writer whose snippet write target
-// is unconfigured — FindSnippetStorage always reports unavailable.
+// is unconfigured - FindSnippetStorage always reports unavailable.
 type snippetWriteUnavailableClient struct {
 	cluster.Fake
 }
@@ -190,7 +190,7 @@ func postVMCreate(t *testing.T, handler *httpapi.VMCreate, body string, cookie *
 	return recorder
 }
 
-// TestVMCreate_SimpleModeSuccess — a simple-mode request returns
+// TestVMCreate_SimpleModeSuccess - a simple-mode request returns
 // 202 and the fake receives a spec whose pool is the actor's own.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -237,7 +237,7 @@ func TestVMCreate_SimpleModeSuccess(t *testing.T) {
 	t.Fatalf("created VM %d not in snapshot", result.VMID)
 }
 
-// TestVMCreate_PoolFieldHasNoEffect — a forged pool field in the
+// TestVMCreate_PoolFieldHasNoEffect - a forged pool field in the
 // raw body either fails strict decoding or is dropped; the created VM's pool
 // is the actor's regardless.
 //
@@ -249,7 +249,7 @@ func TestVMCreate_PoolFieldHasNoEffect(t *testing.T) {
 	response := postVMCreate(t, handler,
 		`{"cluster":"default","name":"web-05","profileId":"small","pool":"pool-bob"}`, cookie)
 	if response.Code == http.StatusBadRequest {
-		return // strict decoder rejected the unknown field — equally valid (quickstart)
+		return // strict decoder rejected the unknown field - equally valid (quickstart)
 	}
 
 	if response.Code != http.StatusAccepted {
@@ -268,7 +268,7 @@ func TestVMCreate_PoolFieldHasNoEffect(t *testing.T) {
 	}
 }
 
-// TestVMCreate_AdminCannotCreate — an admin (local or cluster) cannot create
+// TestVMCreate_AdminCannotCreate - an admin (local or cluster) cannot create
 // VMs through the self-service portal; the response is 403 Forbidden with the
 // admin_cannot_create error code.
 //
@@ -294,7 +294,7 @@ func TestVMCreate_AdminCannotCreate(t *testing.T) {
 	}
 }
 
-// TestVMCreate_CatalogViolation — a storage outside the seeded
+// TestVMCreate_CatalogViolation - a storage outside the seeded
 // catalog is rejected with 400 and no task is created.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -323,7 +323,7 @@ func TestVMCreate_CatalogViolation(t *testing.T) {
 	}
 }
 
-// TestVMCreateCatalog_SeededShape — the catalog endpoint serves
+// TestVMCreateCatalog_SeededShape - the catalog endpoint serves
 // the seeded fixture (contract shape), sourced from the store.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -459,7 +459,7 @@ func TestVMCreateCatalog_SelectsStorageClientByCluster(t *testing.T) {
 	}
 }
 
-// TestVMCreate_DetailedModeExactSpec — every field explicit; the fake
+// TestVMCreate_DetailedModeExactSpec - every field explicit; the fake
 // receives exactly those values, and no profile is involved.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -507,7 +507,7 @@ func TestVMCreate_DetailedModeExactSpec(t *testing.T) {
 	t.Fatalf("created VM %d not in snapshot", result.VMID)
 }
 
-// TestVMCreate_DetailedCatalogViolations — each resource kind
+// TestVMCreate_DetailedCatalogViolations - each resource kind
 // outside the seeded catalog is rejected individually, no task created.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -547,7 +547,7 @@ func TestVMCreate_DetailedCatalogViolations(t *testing.T) {
 	}
 }
 
-// TestVMCreate_DetailedInvalidHostname — the detailed path enforces the
+// TestVMCreate_DetailedInvalidHostname - the detailed path enforces the
 // same hostname rule as simple mode.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -565,7 +565,7 @@ func TestVMCreate_DetailedInvalidHostname(t *testing.T) {
 	assertAPIError(t, response.Body.Bytes(), "invalid_name")
 }
 
-// TestVMCreate_DetailedOutOfRange — hardware values past the
+// TestVMCreate_DetailedOutOfRange - hardware values past the
 // fixed technical ceiling are rejected before any cluster call.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -629,7 +629,7 @@ func createCatalogTemplate(t *testing.T, st *store.Store) string {
 	return tmpl.ID
 }
 
-// TestVMCreateCatalog_CloudInitTemplatesExposedWhenWriteEnabled — GET
+// TestVMCreateCatalog_CloudInitTemplatesExposedWhenWriteEnabled - GET
 // .../catalog lists the approved cloud-init templates and reports
 // cloudInitWriteEnabled=true when the cluster client can write snippets.
 // The response must not carry the template content.
@@ -671,11 +671,11 @@ func TestVMCreateCatalog_CloudInitTemplatesExposedWhenWriteEnabled(t *testing.T)
 	}
 
 	if body.CloudInitTemplates[0].Content != "" {
-		t.Error("catalog leaked template content — the response must only carry id/label")
+		t.Error("catalog leaked template content - the response must only carry id/label")
 	}
 }
 
-// TestVMCreateCatalog_CloudInitTemplatesHiddenWithoutWriteTarget — a cluster
+// TestVMCreateCatalog_CloudInitTemplatesHiddenWithoutWriteTarget - a cluster
 // client that cannot write snippets (no SnippetWriteAvailable capability, or
 // capability reporting false) gets an empty template list and
 // cloudInitWriteEnabled=false (no write target, no picker).
@@ -715,7 +715,7 @@ func TestVMCreateCatalog_CloudInitTemplatesHiddenWithoutWriteTarget(t *testing.T
 	}
 }
 
-// TestVMCreate_WithCloudInitTemplate_Success — POST /api/v1/vms with a valid
+// TestVMCreate_WithCloudInitTemplate_Success - POST /api/v1/vms with a valid
 // template id returns 202 and the response includes cloudInitTemplateId.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -748,7 +748,7 @@ func TestVMCreate_WithCloudInitTemplate_Success(t *testing.T) {
 	}
 }
 
-// TestVMCreate_WithCloudInitTemplate_PushFailure — a simulated push failure
+// TestVMCreate_WithCloudInitTemplate_PushFailure - a simulated push failure
 // still returns 202 but the response carries cloudInitPushError.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -778,7 +778,7 @@ func TestVMCreate_WithCloudInitTemplate_PushFailure(t *testing.T) {
 	}
 }
 
-// TestVMCreate_WithCloudInitTemplate_WriteUnavailable409 — a cloud-init
+// TestVMCreate_WithCloudInitTemplate_WriteUnavailable409 - a cloud-init
 // document request on a cluster with no snippet write target is refused with 409
 // cloudinit_write_unavailable before any VMID is allocated.
 //
@@ -801,7 +801,7 @@ func TestVMCreate_WithCloudInitTemplate_WriteUnavailable409(t *testing.T) {
 	}
 }
 
-// TestVMCreate_UnknownCloudInitTemplate_Returns400 — an unknown template id is
+// TestVMCreate_UnknownCloudInitTemplate_Returns400 - an unknown template id is
 // rejected with 400 not_approved before any VMID is allocated.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -857,7 +857,7 @@ func createUserCloudInitFile(t *testing.T, st *store.Store, owner, label string)
 	return f.ID
 }
 
-// TestVMCreate_WithCloudInitFile_Success — POST /api/v1/vms with one of the
+// TestVMCreate_WithCloudInitFile_Success - POST /api/v1/vms with one of the
 // actor's own file ids returns 202 and the response includes cloudInitFileId.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -890,7 +890,7 @@ func TestVMCreate_WithCloudInitFile_Success(t *testing.T) {
 	}
 }
 
-// TestVMCreate_BothCloudInitIds_Rejected — a request carrying both
+// TestVMCreate_BothCloudInitIds_Rejected - a request carrying both
 // cloudInitTemplateId and cloudInitFileId is a 400 invalid_source.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -909,7 +909,7 @@ func TestVMCreate_BothCloudInitIds_Rejected(t *testing.T) {
 	assertAPIError(t, rec.Body.Bytes(), "invalid_source")
 }
 
-// TestVMCreate_ForeignCloudInitFile_NotApproved — bob's file id in alice's
+// TestVMCreate_ForeignCloudInitFile_NotApproved - bob's file id in alice's
 // request is 400 not_approved, indistinguishable from an unknown id.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures

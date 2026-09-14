@@ -16,7 +16,7 @@ import (
 	"strconv"
 )
 
-// VMs serves GET /api/v1/vms — the ONLY VM-listing endpoint in the system.
+// VMs serves GET /api/v1/vms - the ONLY VM-listing endpoint in the system.
 // It reads the inventory projection, never the cluster
 // client, and enforces scope server-side via vm.List
 type VMs struct {
@@ -128,7 +128,7 @@ type queryError struct {
 }
 
 // parseQuery reads the request's list parameters. Unknown or malformed values
-// are rejected explicitly — never silently defaulted,
+// are rejected explicitly - never silently defaulted,
 // except scope, which vm.List re-derives from the identity regardless.
 func (h *VMs) parseQuery(r *http.Request) (vm.ListQuery, *queryError) {
 	params := r.URL.Query()
@@ -271,7 +271,7 @@ func (h *VMs) writeList(ctx context.Context, w http.ResponseWriter, result vm.Li
 // clusterDisplayNames maps each configured cluster's internal name to its
 // real Proxmox cluster name, discovered via the admin "test connection" flow
 // (store.SetClusterDisplayName). Empty when clusterStore is nil or a row has
-// no display name yet — callers fall back to the internal name.
+// no display name yet - callers fall back to the internal name.
 func (h *VMs) clusterDisplayNames(ctx context.Context) map[string]string {
 	if h.clusterStore == nil {
 		return nil

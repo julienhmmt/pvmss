@@ -12,13 +12,13 @@ import (
 // SnapshotReader, ConsoleRelay, ...) from a registry-backed ClientProvider,
 // keyed on the request's own :cluster path/query value. When clients is nil
 // (legacy single-cluster constructors and unit tests that construct a
-// handler directly with a bound capability), it returns fallback unchanged —
+// handler directly with a bound capability), it returns fallback unchanged - 
 // every WithRegistry constructor sets clients so the per-request path is the
 // one main.go actually exercises.
 //
 // Without this, a handler bound once at startup to the "default" cluster's
 // client would keep serving every cluster's requests through that one
-// client — a cross-cluster data leak when node names or vmids collide
+// client - a cross-cluster data leak when node names or vmids collide
 // between clusters (root cause behind the metrics-history fix).
 func resolveCapability[T any](clients cluster.ClientProvider, fallback T, clusterName, capability string) (T, error) {
 	if clients == nil {
@@ -51,7 +51,7 @@ func resolveCapability[T any](clients cluster.ClientProvider, fallback T, cluste
 	return value, nil
 }
 
-// ClusterRefresherResolver resolves the IndexRefresher for a named cluster —
+// ClusterRefresherResolver resolves the IndexRefresher for a named cluster - 
 // the write-side sibling of registryResolver. Without it, a handler bound once
 // at startup to the default cluster's *inventory.Worker would refresh the
 // default cluster's projection after every write, even writes targeting a
@@ -62,7 +62,7 @@ type ClusterRefresherResolver interface {
 }
 
 // registryRefresherResolver adapts the inventory Registry to
-// ClusterRefresherResolver — each cluster name resolves to that cluster's own
+// ClusterRefresherResolver - each cluster name resolves to that cluster's own
 // *inventory.Worker, which satisfies vm.IndexRefresher.
 type registryRefresherResolver struct {
 	registry *inventory.Registry

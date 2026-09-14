@@ -19,7 +19,7 @@ type vmLiveStatusResponse struct {
 	Uptime int64  `json:"uptime"`
 }
 
-// statusBatchResponse mirrors the POST /vms/status 200 body — a bare array
+// statusBatchResponse mirrors the POST /vms/status 200 body - a bare array
 type statusBatchResponse = []statusBatchItem
 
 type statusBatchItem struct {
@@ -31,7 +31,7 @@ type statusBatchItem struct {
 }
 
 // =============================================================================
-// GET /vms/:cluster/:vmid/status — live status read
+// GET /vms/:cluster/:vmid/status - live status read
 // =============================================================================
 
 //nolint:paralleltest // serial: shared fake authentication state
@@ -63,7 +63,7 @@ func TestVMDetail_Status_ReflectsActionImmediately(t *testing.T) {
 	cookie := aliceCookie(t, auth)
 
 	// VM 100 is running in the fake dataset. Stop it via the action endpoint,
-	// then immediately read live status — it should be "stopped" without
+	// then immediately read live status - it should be "stopped" without
 	// waiting for the 30s inventory tick.
 	actionReq := detailRequest(http.MethodPost, "/api/v1/vms/default/100/actions",
 		`{"action":"stop"}`, cookie)
@@ -122,7 +122,7 @@ func TestVMDetail_Status_NotFoundForUnknownVM(t *testing.T) {
 }
 
 // =============================================================================
-// POST /vms/status — batch live status read
+// POST /vms/status - batch live status read
 // =============================================================================
 
 //nolint:paralleltest // serial: shared fake authentication state
@@ -206,7 +206,7 @@ func TestVMStatusBatch_UnknownVMOmitted(t *testing.T) {
 
 	cookie := aliceCookie(t, authHandler)
 
-	// VM 100 exists, 99999 does not — the unknown one should be omitted, not
+	// VM 100 exists, 99999 does not - the unknown one should be omitted, not
 	// cause a failure.
 	body := `[{"cluster":"default","vmid":100},{"cluster":"default","vmid":99999}]`
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/vms/status", strings.NewReader(body))

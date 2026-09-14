@@ -55,7 +55,7 @@ func (w *agentWriterStub) SetCloudInitPassword(context.Context, string, int, str
 
 // TestApplyCloudInitPassword_PingsUntilReachable verifies the bounded wait:
 // the agent is unreachable for the first two probes, then the password is
-// applied — with a request count bounded by the window, not a busy loop.
+// applied - with a request count bounded by the window, not a busy loop.
 //
 //nolint:paralleltest // serial: mutates package-level ping timing vars
 func TestApplyCloudInitPassword_PingsUntilReachable(t *testing.T) {

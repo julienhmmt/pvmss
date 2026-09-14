@@ -15,7 +15,7 @@ const stagingTTL = 5 * time.Minute
 
 // StagingEntry is the in-memory record of an uploaded-but-unconfirmed import
 // file: the temp file path on disk and the preview returned to the admin.
-// Never persisted — same "runtime fact" shape VNCTicket established.
+// Never persisted - same "runtime fact" shape VNCTicket established.
 // Lost on restart, which is acceptable since nothing has been
 // written to the live database yet at that point.
 type StagingEntry struct {
@@ -48,7 +48,7 @@ func (s *ImportStaging) Stage(tempPath string, preview ImportPreview) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Lazily purge expired entries — no background goroutine.
+	// Lazily purge expired entries - no background goroutine.
 	s.purgeExpiredLocked()
 
 	s.entries[token] = StagingEntry{
@@ -65,7 +65,7 @@ func (s *ImportStaging) Stage(tempPath string, preview ImportPreview) string {
 // - ErrStagingExpired: the token was staged but its TTL has elapsed
 //
 // An expired entry is purged as a side effect of this call. Lookup does NOT
-// call purgeExpiredLocked on entry — that would turn expired tokens into
+// call purgeExpiredLocked on entry - that would turn expired tokens into
 // not-found tokens, collapsing the 410/404 distinction the HTTP handler
 // relies on. Instead, only the looked-up token is checked for expiry.
 func (s *ImportStaging) Lookup(token string) (StagingEntry, error) {
@@ -93,7 +93,7 @@ func (s *ImportStaging) Remove(token string) {
 	delete(s.entries, token)
 }
 
-// AdvanceTime shifts the staging clock by d. Test-only — production code
+// AdvanceTime shifts the staging clock by d. Test-only - production code
 // uses time.Now. Allows deterministic TTL tests without sleeping.
 func (s *ImportStaging) AdvanceTime(d time.Duration) {
 	s.mu.Lock()

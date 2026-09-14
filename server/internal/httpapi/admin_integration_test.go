@@ -11,7 +11,7 @@ import (
 // TestAdminIntegration_ToggleNodeThenApprovedResourcesIncludesIt
 // toggle a node on via the admin handler, then call the catalog.ApprovedResources directly (no
 // HTTP) and confirm it includes the
-// newly approved node — proof that both surfaces share one
+// newly approved node - proof that both surfaces share one
 // source of truth.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture

@@ -23,12 +23,12 @@ baseline générée (qemu-guest-agent) sur un cluster :
 1. Choisissez un stockage Proxmox ayant le contenu **snippets** activé. Pour
    l'activer : **Datacenter → Stockage → <stockage> → Contenu**, cochez
    `snippets`. Le stockage doit être visible par chaque nœud qui hébergera
-   des VM issues d'images — un stockage partagé (NFS, CephFS, `dir` sur un
+   des VM issues d'images - un stockage partagé (NFS, CephFS, `dir` sur un
    montage partagé) est le choix usuel.
 2. Dans **Admin → Clusters → Modifier**, le champ **Stockage snippets**
    liste chaque stockage compatible snippets que PVMSS voit sur le cluster.
    Sélectionnez-en un. Si la liste est vide, aucun stockage du cluster
-   n'annonce le contenu snippets — activez-le dans Proxmox puis rouvrez le
+   n'annonce le contenu snippets - activez-le dans Proxmox puis rouvrez le
    formulaire.
 3. Montez le répertoire `snippets/` de ce stockage dans le conteneur PVMSS à
    un chemin connu et indiquez ce chemin dans **Répertoire des snippets**.

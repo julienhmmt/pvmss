@@ -60,7 +60,7 @@ type docRenderedDTO struct {
 	HTML  string `json:"html"`
 }
 
-// ServeDocsList handles GET /api/v1/docs — the audience-filtered list of
+// ServeDocsList handles GET /api/v1/docs - the audience-filtered list of
 // enabled pages. Admin-audience pages are hidden unless the caller is an admin.
 func (h *DocsAPIHandler) ServeDocsList(w http.ResponseWriter, r *http.Request) {
 	pages, err := catalog.EnabledDocumentationPages(r.Context(), h.store)
@@ -86,7 +86,7 @@ func (h *DocsAPIHandler) ServeDocsList(w http.ResponseWriter, r *http.Request) {
 	writeJSON2(w, http.StatusOK, dto)
 }
 
-// ServeDoc handles GET /api/v1/docs/{id}?lang= — the rendered-HTML single-page
+// ServeDoc handles GET /api/v1/docs/{id}?lang= - the rendered-HTML single-page
 // view. Resolution uses catalog.GetDocumentationPage (en fallback). Unknown id
 // → 404; admin-audience page with non-admin caller → 403; missing JWT on an
 // admin page → 401.
@@ -160,7 +160,7 @@ func (h *DocsAPIHandler) renderedHTML(id, lang, bodyMD string) string {
 
 // callerIsAdmin resolves the caller and reports IsAdmin, returning false when
 // unauthenticated (the public list simply hides admin pages for anonymous
-// callers — it never 401s).
+// callers - it never 401s).
 func (h *DocsAPIHandler) callerIsAdmin(r *http.Request) bool {
 	identity, err := h.auth.Principal(r)
 	if err != nil {

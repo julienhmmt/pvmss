@@ -10,11 +10,11 @@ import (
 
 // The shared expectation set: every implementation of cluster.Client
 // is verified against the same behaviour, so the fake cannot drift from what
-// a real cluster is expected to do. Black-box on purpose — only the public
+// a real cluster is expected to do. Black-box on purpose - only the public
 // Client contract is exercised here.
 //
 // cluster.Proxmox talks to a real Proxmox VE API, so it has no fixed dataset
-// to compare against the fake's — its own coverage lives in
+// to compare against the fake's - its own coverage lives in
 // proxmox_test.go and friends, against an httptest-mocked PVE server. This
 // file's invariant checks (checkSnapshotNodes and friends) still apply to it
 // there.
@@ -196,7 +196,7 @@ func TestContract_CloudInitReaderAndWriter(t *testing.T) {
 	}
 }
 
-// TestContract_AttachEnsuresDriveFirst — the contract: attaching a
+// TestContract_AttachEnsuresDriveFirst - the contract: attaching a
 // snippet provisions the cloud-init drive before the cicustom write, in the
 // fake exactly like in the real client (Proxmox silently ignores cicustom
 // without a drive). Detaching needs no drive.
@@ -225,7 +225,7 @@ func TestContract_AttachEnsuresDriveFirst(t *testing.T) {
 	}
 }
 
-// TestContract_SetCloudInitPasswordCarriesUser — the contract: the
+// TestContract_SetCloudInitPasswordCarriesUser - the contract: the
 // password apply records the target user, which the caller resolves from the
 // VM's ciuser (never a hardcoded root).
 //
@@ -271,7 +271,7 @@ func TestContract_Snapshot_StableAcrossCalls(t *testing.T) {
 //nolint:paralleltest // serial: shared fake identity fixture
 func TestContract_Snapshot_DoesNotMutateAcrossCalls(t *testing.T) {
 	// A caller holding a reference to a previous Snapshot must not see it
-	// change when a later call returns — the fake returns copies, not
+	// change when a later call returns - the fake returns copies, not
 	// references to its package-level literals.
 	impls := map[string]cluster.Client{
 		fakeImplementationName: cluster.Fake{},

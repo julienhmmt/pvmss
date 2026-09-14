@@ -31,7 +31,7 @@ func userFileNotFoundError(id string) error {
 	return fmt.Errorf("%w: %q", ErrUserFileNotFound, id)
 }
 
-// UserFileStore is the narrow store surface the domain functions need — tests
+// UserFileStore is the narrow store surface the domain functions need - tests
 // stub it, production passes *store.Store.
 type UserFileStore interface {
 	ListUserCloudInitFiles(ctx context.Context, owner string) ([]store.UserCloudInitFile, error)
@@ -47,7 +47,7 @@ func ListUserFiles(ctx context.Context, st UserFileStore, owner string) ([]store
 	return st.ListUserCloudInitFiles(ctx, owner)
 }
 
-// GetUserFile returns one file by (owner, id) — ErrUserFileNotFound when the
+// GetUserFile returns one file by (owner, id) - ErrUserFileNotFound when the
 // pair does not exist (which also covers "exists but belongs to someone
 // else": the store never sees another owner's row).
 func GetUserFile(ctx context.Context, st UserFileStore, owner, id string) (store.UserCloudInitFile, error) {
@@ -65,7 +65,7 @@ func GetUserFile(ctx context.Context, st UserFileStore, owner, id string) (store
 
 // CreateUserFile validates label and content, derives the id from the label,
 // enforces the per-user cap, and inserts. Content must be non-empty AND pass
-// Validate — unlike a per-VM snippet (where empty means "none"), a stored
+// Validate - unlike a per-VM snippet (where empty means "none"), a stored
 // file exists only to be applied.
 func CreateUserFile(ctx context.Context, st UserFileStore, owner, label, content string) (store.UserCloudInitFile, error) {
 	label = strings.TrimSpace(label)

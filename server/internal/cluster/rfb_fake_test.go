@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// TestRFBFakeHandshake_VersionAndSecurity — the fake server sends the
+// TestRFBFakeHandshake_VersionAndSecurity - the fake server sends the
 // RFB 003.008 version string, then offers exactly one security type (None=1),
 // then a SecurityResult of 0 (OK). A real noVNC client expects exactly this
 // sequence to complete its handshake.
@@ -36,7 +36,7 @@ func TestRFBFakeHandshake_VersionAndSecurity(t *testing.T) {
 		t.Fatalf("write client ProtocolVersion: %v", err)
 	}
 
-	// Step 3: server sends SecurityTypes — [count, types...].
+	// Step 3: server sends SecurityTypes - [count, types...].
 	count := make([]byte, 1)
 	if _, err := io.ReadFull(client, count); err != nil {
 		t.Fatalf("read SecurityTypes count: %v", err)
@@ -119,7 +119,7 @@ func assertRFBServerInit(t *testing.T, client io.Reader, init rfbServerInit) {
 	}
 }
 
-// TestRFBFakeHandshake_ServerCutTextAfterInit — right after ServerInit,
+// TestRFBFakeHandshake_ServerCutTextAfterInit - right after ServerInit,
 // the fake server sends one ServerCutText with the fixed fixture string so
 // the "copy from VM" has real content.
 //
@@ -163,7 +163,7 @@ func TestRFBFakeHandshake_ServerCutTextAfterInit(t *testing.T) {
 	}
 }
 
-// TestRFBFakeHandshake_FramebufferUpdateIsCheckerboard — a
+// TestRFBFakeHandshake_FramebufferUpdateIsCheckerboard - a
 // FramebufferUpdateRequest is answered with one Raw-encoded rectangle covering
 // the whole framebuffer, filled with the checkerboard pattern.
 //
@@ -250,7 +250,7 @@ func TestRFBFakeHandshake_FramebufferUpdateIsCheckerboard(t *testing.T) {
 	}
 }
 
-// TestRFBFakeHandshake_AcceptsInputMessages — PointerEvent,
+// TestRFBFakeHandshake_AcceptsInputMessages - PointerEvent,
 // KeyEvent, and ClientCutText are all accepted without closing the connection.
 //
 //nolint:paralleltest // serial: shared fake fixture
@@ -285,7 +285,7 @@ func TestRFBFakeHandshake_AcceptsInputMessages(t *testing.T) {
 		t.Fatalf("write ClientCutText: %v", err)
 	}
 
-	// The connection must still be alive — send a FramebufferUpdateRequest and
+	// The connection must still be alive - send a FramebufferUpdateRequest and
 	// expect a FramebufferUpdate response.
 	fbur := make([]byte, 10)
 
@@ -307,7 +307,7 @@ func TestRFBFakeHandshake_AcceptsInputMessages(t *testing.T) {
 //  - helpers -
 
 // netPipe returns a synchronous, in-memory, full-duplex byte pipe. The fake
-// RFB server reads and writes raw bytes — it does not need real WebSocket
+// RFB server reads and writes raw bytes - it does not need real WebSocket
 // framing, so a plain net.Pipe is the most faithful test double for the
 // io.ReadWriteCloser the real relay hands to Serve().
 func netPipe(t *testing.T) (io.ReadWriteCloser, io.ReadWriteCloser) {

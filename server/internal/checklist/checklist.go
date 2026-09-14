@@ -4,7 +4,7 @@
 //
 // and cross-referencing each fiche ID against the table.
 //
-// The tool reads no database and has no dependency on tranche completion —
+// The tool reads no database and has no dependency on tranche completion - 
 // it only reads fiche filenames and the hardcoded mapping. Its
 // conclusions about legacy removal readiness are only valid once every
 // tranche it names is actually merged.
@@ -46,7 +46,7 @@ type FicheEntry struct {
 	Label    string
 	Tranche  string
 	IsNone   bool
-	NoneType string // "gap" or "deliberate" — only set when IsNone
+	NoneType string // "gap" or "deliberate" - only set when IsNone
 }
 
 // fr006Table is the fiche→tranche mapping, hardcoded as the
@@ -66,16 +66,16 @@ var fr006Table = map[string]struct {
 	"A05": {"T02", "Rafraîchir la session", ""},
 	"A06": {"T02", "Changer le mot de passe", ""},
 
-	// VM — V13 is a real gap
-	"V01": {"T04", "Tableau de bord — mes VMs", ""},
+	// VM - V13 is a real gap
+	"V01": {"T04", "Tableau de bord - mes VMs", ""},
 	"V02": {"T04", "Rechercher une VM par nom", ""},
 	"V03": {"T04", "Rechercher une VM par tag", ""},
 	"V04": {"T04", "Rechercher une VM par VMID", ""},
 	"V05": {"T04", "Filtrer les VMs", ""},
 	"V06": {"T04", "Trier et paginer les VMs", ""},
 	"V07": {"T04", "Consulter le quota", ""},
-	"V08": {"T06", "Créer une VM — mode simple", ""},
-	"V09": {"T06", "Créer une VM — formulaire détaillé", ""},
+	"V08": {"T06", "Créer une VM - mode simple", ""},
+	"V09": {"T06", "Créer une VM - formulaire détaillé", ""},
 	"V10": {"T06", "Brouillon de création de VM", ""},
 	"V11": {"T06", "Suivi des tâches", ""},
 	"V12": {"T05", "Démarrer / arrêter / redémarrer", ""},
@@ -95,7 +95,7 @@ var fr006Table = map[string]struct {
 	"V26": {"T09", "Snapshots", ""},
 	"V27": {"T10", "Console VNC", ""},
 
-	// Admin — are none
+	// Admin - are none
 	"X01": {"T11", "Tableau de bord admin", ""},
 	"X02": {"T11", "Gérer les nœuds", ""},
 	"X03": {"T11", "Gérer les stockages", ""},
@@ -116,7 +116,7 @@ var fr006Table = map[string]struct {
 	"X18": {"", "Panneau de paramètres unifié", "deliberate"},
 	"X19": {"T15", "Gérer les clusters", ""},
 
-	// Plateforme — all none (real gaps)
+	// Plateforme - all none (real gaps)
 	"P01": {"", "Assistant d'installation", "gap"},
 	"P02": {"", "Consulter la documentation", "gap"},
 	"P03": {"T19", "Changer la langue", ""},
@@ -175,11 +175,11 @@ func Generate(w io.Writer, repoRoot string) error {
 		if e.IsNone {
 			switch e.NoneType {
 			case "gap":
-				fmt.Fprintf(&b, "%s  %-45s → NONE (real gap — see spec.md FR-006)\n", e.ID, e.Label)
+				fmt.Fprintf(&b, "%s  %-45s → NONE (real gap - see spec.md FR-006)\n", e.ID, e.Label)
 
 				openGaps++
 			case "deliberate":
-				fmt.Fprintf(&b, "%s  %-45s → NONE (deliberate — superseded by design, not a gap)\n", e.ID, e.Label)
+				fmt.Fprintf(&b, "%s  %-45s → NONE (deliberate - superseded by design, not a gap)\n", e.ID, e.Label)
 
 				openDeliberate++
 			default:
@@ -252,7 +252,7 @@ func collectFicheEntries(dirPath string, _ ficheDir) ([]FicheEntry, error) {
 
 		info, ok := fr006Table[id]
 		if !ok {
-			// File exists but not table — report as unknown
+			// File exists but not table - report as unknown
 			entries = append(entries, FicheEntry{
 				ID:    id,
 				Label: labelFromFilename(f.Name()),

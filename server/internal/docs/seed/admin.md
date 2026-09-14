@@ -21,12 +21,12 @@ its container. To enable cloud-init documents and the generated baseline
 1. Pick a Proxmox storage that has the **snippets** content type enabled. To
    enable it: **Datacenter → Storage → <storage> → Content**, tick
    `snippets`. The storage must be visible to every node that will host
-   image-born VMs — a shared storage (NFS, CephFS, `dir` on a shared mount)
+   image-born VMs - a shared storage (NFS, CephFS, `dir` on a shared mount)
    is the usual choice.
 2. In **Admin → Clusters → Edit**, the **Snippet storage** field lists every
    snippet-capable storage PVMSS can see on the cluster. Select one. If the
    list is empty, no storage on the cluster advertises the snippets content
-   type yet — enable it in Proxmox and reopen the form.
+   type yet - enable it in Proxmox and reopen the form.
 3. Mount that storage's `snippets/` directory into the PVMSS container at a
    known path and enter that path as **Snippet directory**. The path must be
    the same directory Proxmox reads from for that storage. For a `dir`

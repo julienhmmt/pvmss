@@ -8,7 +8,7 @@ import (
 )
 
 // Upper sanity bounds for editable policy values. These are safety rails, not
-// Proxmox hard limits — they prevent fat-fingered values from being persisted.
+// Proxmox hard limits - they prevent fat-fingered values from being persisted.
 const (
 	maxSocketsLimit      = 16
 	maxCoresLimit        = 128

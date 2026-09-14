@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-// VMStatusBatch serves POST /api/v1/vms/status — the batch live-status read
+// VMStatusBatch serves POST /api/v1/vms/status - the batch live-status read
 // (ADR 0001). The front's list converge loop polls this once per tick for all
 // flipping rows instead of N per-VM calls. Each target is resolved through
 // vm.Resolve (same ownership gate as every other VM endpoint), then read live

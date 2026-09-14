@@ -7,13 +7,13 @@ VM when it is created.
 
 ## Two kinds of documents
 
-- **Admin templates** — written and curated by your administrator, listed
+- **Admin templates** - written and curated by your administrator, listed
   first in the picker.
-- **My files** — your own documents, managed on the [Cloud-init files](/cloud-init)
+- **My files** - your own documents, managed on the [Cloud-init files](/cloud-init)
   page (up to 20). Only you can see and use them.
 
 Both appear in one grouped select on the **Create a VM** form. The picker is
-hidden when the target cluster has no cloud-init write target — ask your
+hidden when the target cluster has no cloud-init write target - ask your
 administrator if you expected to see it.
 
 ## Your VM keeps its own copy
@@ -47,7 +47,7 @@ empty document detaches it.
 Cloud-init modules do not all replay the same way:
 
 - **Network settings** (IP, gateway, DNS, search domain) are reapplied at
-  every boot — a reboot is enough.
+  every boot - a reboot is enough.
 - **The password** is delivered immediately to the running guest through the
   QEMU guest agent; no reboot is involved.
 - **The user, the SSH-key list, and most of a document** are consumed by
@@ -68,8 +68,8 @@ the guest agent and also saves it to the config for future boots.
 
 ## Documents are not a vault
 
-Document content is stored in plain text — in the portal's database and on
-the cluster's snippet storage, where cloud-init must be able to read it — and
+Document content is stored in plain text - in the portal's database and on
+the cluster's snippet storage, where cloud-init must be able to read it - and
 any administrator can view it. Never put passwords, API tokens, or private
 keys in a document; use the cloud-init **password** field (delivered through
 the guest agent and never stored) and SSH keys instead.

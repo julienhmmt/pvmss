@@ -125,7 +125,7 @@ func TestSetCloudInitConfig_RebootNowCallsT05Once(t *testing.T) {
 	index := cloudInitIndex(t)
 	st := cloudInitStore(t)
 	// The fake now rejects reboot on a stopped VM. VM 101 is stopped in
-	// the pristine dataset — start it first so the reboot succeeds.
+	// the pristine dataset - start it first so the reboot succeeds.
 	if err := (cluster.Fake{}).Action(context.Background(), cluster.FakeNode01, 101, "start"); err != nil {
 		t.Fatalf("start VM 101 for test setup: %v", err)
 	}
@@ -148,7 +148,7 @@ func TestSetCloudInitConfig_RebootNowCallsT05Once(t *testing.T) {
 	}
 }
 
-// TestSetCloudInitSnippet_PersistsTargetPushesAndAttaches — with
+// TestSetCloudInitSnippet_PersistsTargetPushesAndAttaches - with
 // AllowCustomYAML on and a write target set, saving a per-VM document
 // writes pvmss-<vmid>.yml, verifies it is visible, attaches it, then records
 // the row (after the cluster steps, not before).
@@ -182,7 +182,7 @@ func TestSetCloudInitSnippet_PersistsTargetPushesAndAttaches(t *testing.T) {
 	}
 }
 
-// TestSetCloudInitSnippet_EmptyContentDetaches — empty content clears
+// TestSetCloudInitSnippet_EmptyContentDetaches - empty content clears
 // cicustom and sets the row to "" without pushing.
 //
 //nolint:paralleltest // serial: shared fake dataset
@@ -211,7 +211,7 @@ func TestSetCloudInitSnippet_EmptyContentDetaches(t *testing.T) {
 	}
 }
 
-// TestSetCloudInitSnippet_PolicyOffReturnsDisabled — AllowCustomYAML=false
+// TestSetCloudInitSnippet_PolicyOffReturnsDisabled - AllowCustomYAML=false
 // returns ErrCustomYAMLDisabled and nothing reaches the cluster.
 //
 //nolint:paralleltest // serial: shared fake dataset
@@ -238,7 +238,7 @@ func TestSetCloudInitSnippet_PolicyOffReturnsDisabled(t *testing.T) {
 	}
 }
 
-// TestSetCloudInitSnippet_InvalidContentRejected — content not starting with
+// TestSetCloudInitSnippet_InvalidContentRejected - content not starting with
 // #cloud-config is rejected before any push.
 //
 //nolint:paralleltest // serial: shared fake dataset
@@ -262,7 +262,7 @@ func TestSetCloudInitSnippet_InvalidContentRejected(t *testing.T) {
 	}
 }
 
-// TestSetCloudInitSnippet_InvisibleAfterPushFails — a push that doesn't
+// TestSetCloudInitSnippet_InvisibleAfterPushFails - a push that doesn't
 // become visible (wrong mount) returns ErrSnippetPushFailed and no row.
 //
 //nolint:paralleltest // serial: shared fake dataset
@@ -467,7 +467,7 @@ func TestSetCloudInitConfig_RejectsNonIPv4StaticAddresses(t *testing.T) {
 
 // TestSetCloudInitConfig_PasswordUsesResolvedCiUser is the
 // regression test: the password lands on the VM's own ciuser read from the
-// live config — never a hardcoded root (a cloud image's root is locked).
+// live config - never a hardcoded root (a cloud image's root is locked).
 //
 //nolint:paralleltest // serial: shared fake dataset
 func TestSetCloudInitConfig_PasswordUsesResolvedCiUser(t *testing.T) {

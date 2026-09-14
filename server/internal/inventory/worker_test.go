@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// callCountClient wraps a cluster.Client and counts Snapshot calls — the
+// callCountClient wraps a cluster.Client and counts Snapshot calls - the
 // instrumented counter that proves (at most one call per refresh cycle
 // regardless of concurrent readers).
 type callCountClient struct {
@@ -109,7 +109,7 @@ func testLogger() *slog.Logger {
 	return slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 }
 
-// TestWorker_SuccessfulCycleSwapsIndex — a successful refresh stores an Index
+// TestWorker_SuccessfulCycleSwapsIndex - a successful refresh stores an Index
 // in the projection with a non-zero RefreshedAt.
 //
 //nolint:paralleltest // serial: shared inventory worker fixture
@@ -149,7 +149,7 @@ func TestWorker_SuccessfulCycleSwapsIndex(t *testing.T) {
 	}
 }
 
-// TestWorker_FailingCycleLeavesPreviousIndex — a failed refresh does
+// TestWorker_FailingCycleLeavesPreviousIndex - a failed refresh does
 // not clear or corrupt the existing projection.
 //
 //nolint:paralleltest // serial: shared inventory worker fixture
@@ -169,7 +169,7 @@ func TestWorker_FailingCycleLeavesPreviousIndex(t *testing.T) {
 		t.Fatal("first refresh should have stored an index")
 	}
 
-	// Second refresh fails — the client returns an error.
+	// Second refresh fails - the client returns an error.
 	client.err = cluster.ErrUnreachable
 
 	_, err = worker.Refresh(context.Background())
@@ -180,7 +180,7 @@ func TestWorker_FailingCycleLeavesPreviousIndex(t *testing.T) {
 	// The projection must still hold the first index, byte-for-byte unchanged.
 	secondIdx := projection.Load()
 	if secondIdx != firstIdx {
-		t.Fatal("projection pointer changed after failed refresh — FR-004 violation")
+		t.Fatal("projection pointer changed after failed refresh - FR-004 violation")
 	}
 
 	if !secondIdx.RefreshedAt.Equal(firstAt) {
@@ -188,7 +188,7 @@ func TestWorker_FailingCycleLeavesPreviousIndex(t *testing.T) {
 	}
 }
 
-// TestWorker_CallsClientOnceEvenUnderConcurrentReads — the cluster
+// TestWorker_CallsClientOnceEvenUnderConcurrentReads - the cluster
 // client is called at most once per refresh cycle, regardless of how many
 // concurrent readers access the projection during that cycle.
 //
@@ -237,7 +237,7 @@ func TestWorker_CallsClientOnceEvenUnderConcurrentReads(t *testing.T) {
 	}
 }
 
-// TestWorker_ConcurrentRefreshesSingleFlight — multiple concurrent refresh
+// TestWorker_ConcurrentRefreshesSingleFlight - multiple concurrent refresh
 // requests result in exactly one client call (in-flight dedup). The client
 // has a delay so all goroutines arrive while the first is in flight.
 //
@@ -267,7 +267,7 @@ func TestWorker_ConcurrentRefreshesSingleFlight(t *testing.T) {
 	}
 }
 
-// TestWorker_RunDoesInitialRefresh — Run performs an initial refresh before
+// TestWorker_RunDoesInitialRefresh - Run performs an initial refresh before
 // starting the ticker, so the projection is populated before the HTTP server
 // accepts traffic.
 //
@@ -301,7 +301,7 @@ func TestWorker_RunDoesInitialRefresh(t *testing.T) {
 	<-done
 }
 
-// TestWorker_FailingFirstRefreshLeavesNil — edge case: if the very first
+// TestWorker_FailingFirstRefreshLeavesNil - edge case: if the very first
 // refresh fails, the projection remains nil (never-refreshed is distinct from empty).
 //
 //nolint:paralleltest // serial: shared inventory worker fixture
@@ -320,7 +320,7 @@ func TestWorker_FailingFirstRefreshLeavesNil(t *testing.T) {
 	}
 }
 
-// TestWorker_ShrinkingDataset — edge case: if the dataset shrinks between
+// TestWorker_ShrinkingDataset - edge case: if the dataset shrinks between
 // refreshes (a node disappears), the projection reflects the new, smaller set.
 //
 //nolint:paralleltest // serial: shared inventory worker fixture
@@ -367,7 +367,7 @@ func TestWorker_ErrorWrapping(t *testing.T) {
 	}
 }
 
-// TestWorker_TimeoutCancelsHungClient — a Snapshot call that blocks forever
+// TestWorker_TimeoutCancelsHungClient - a Snapshot call that blocks forever
 // is cancelled by the worker's per-call timeout, so the singleflight lock is
 // released and a later refresh can proceed (golang-design-patterns rule 9:
 // every external call has a timeout).
@@ -396,7 +396,7 @@ func TestWorker_TimeoutCancelsHungClient(t *testing.T) {
 		t.Fatalf("refresh took %v, should have timed out near 50ms", elapsed)
 	}
 
-	// The singleflight lock must be released — a second refresh with a
+	// The singleflight lock must be released - a second refresh with a
 	// working client must complete, not hang waiting for the first.
 	working := &callCountClient{snapshot: fakeSnapshot()}
 	worker2 := inventory.NewWorker(
@@ -417,7 +417,7 @@ func TestWorker_TimeoutCancelsHungClient(t *testing.T) {
 	select {
 	case <-done:
 	case <-time.After(3 * time.Second):
-		t.Fatal("second refresh hung — singleflight lock was not released after timeout")
+		t.Fatal("second refresh hung - singleflight lock was not released after timeout")
 	}
 
 	if projection.Load() == nil {

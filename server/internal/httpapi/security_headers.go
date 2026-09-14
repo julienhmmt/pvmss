@@ -2,7 +2,7 @@ package httpapi
 
 import "net/http"
 
-// apiSecurityHeaders is the strict CSP for API responses — no inline scripts
+// apiSecurityHeaders is the strict CSP for API responses - no inline scripts
 // or styles are ever served on /api/* routes.
 const apiSecurityHeaders = "default-src 'self'; " +
 	"script-src 'self'; " +
@@ -15,7 +15,7 @@ const apiSecurityHeaders = "default-src 'self'; " +
 	"form-action 'self'"
 
 // spaSecurityHeaders is the CSP for the SPA shell. SvelteKit's adapter-static
-// injects an inline bootstrap script to load the app bundle — 'unsafe-inline'
+// injects an inline bootstrap script to load the app bundle - 'unsafe-inline'
 // is required for script-src so the browser executes it. The inline script is
 // build-generated, not user-controlled, so the XSS risk is minimal. API
 // responses keep the stricter apiSecurityHeaders.

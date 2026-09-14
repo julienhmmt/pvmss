@@ -44,7 +44,7 @@ func openCloudInitTemplatesStore(t *testing.T) *store.Store {
 	return st
 }
 
-// insertCloudInitTemplateRow inserts a row and fails the test on error — the
+// insertCloudInitTemplateRow inserts a row and fails the test on error - the
 // shared setup step for tests that need a pre-existing row.
 func insertCloudInitTemplateRow(ctx context.Context, t *testing.T, st *store.Store, cluster, id, label, content string) {
 	t.Helper()
@@ -72,7 +72,7 @@ func findTemplateByID(t *testing.T, rows []store.CatalogCloudInitTemplate, id st
 
 // TestCloudInitTemplates_RoundTripAndStates walks the full CRUD lifecycle via
 // focused helpers: empty start, insert, duplicate, isolation, toggle, update,
-// and delete — the storage layer contract.
+// and delete - the storage layer contract.
 //
 //nolint:paralleltest // round trip owns a shared SQLite fixture across ordered steps
 func TestCloudInitTemplates_RoundTripAndStates(t *testing.T) {
@@ -280,7 +280,7 @@ func testCITUpdateAndDelete(ctx context.Context, t *testing.T, st *store.Store) 
 	}
 }
 
-// TestCloudInitTemplates_UpdateNotFound — updating a missing row returns
+// TestCloudInitTemplates_UpdateNotFound - updating a missing row returns
 // sql.ErrNoRows (the row vanished between the catalog layer's existence check
 // and the UPDATE).
 //
@@ -294,7 +294,7 @@ func TestCloudInitTemplates_UpdateNotFound(t *testing.T) {
 	}
 }
 
-// TestCloudInitTemplates_DeleteNotFound — deleting a missing row returns
+// TestCloudInitTemplates_DeleteNotFound - deleting a missing row returns
 // sql.ErrNoRows.
 //
 //nolint:paralleltest // serial: owns a SQLite fixture
@@ -307,7 +307,7 @@ func TestCloudInitTemplates_DeleteNotFound(t *testing.T) {
 	}
 }
 
-// TestCloudInitTemplates_SetEnabledNotFound — toggling a missing row returns
+// TestCloudInitTemplates_SetEnabledNotFound - toggling a missing row returns
 // sql.ErrNoRows.
 //
 //nolint:paralleltest // serial: owns a SQLite fixture
@@ -320,7 +320,7 @@ func TestCloudInitTemplates_SetEnabledNotFound(t *testing.T) {
 	}
 }
 
-// TestCloudInitTemplates_StoreErrors — once the underlying store is closed,
+// TestCloudInitTemplates_StoreErrors - once the underlying store is closed,
 // every catalog_cloudinit_templates operation surfaces a non-sentinel error
 // (not sql.ErrNoRows, not store.ErrDuplicate). This covers the transport-error
 // branches the happy-path and not-found tests cannot reach.
@@ -359,7 +359,7 @@ func TestCloudInitTemplates_StoreErrors(t *testing.T) {
 }
 
 // assertCloudInitStoreError fails when err is nil or one of the store sentinels
-// — a closed store must surface a non-sentinel transport error.
+// - a closed store must surface a non-sentinel transport error.
 func assertCloudInitStoreError(t *testing.T, err error) {
 	t.Helper()
 

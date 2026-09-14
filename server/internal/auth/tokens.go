@@ -92,7 +92,7 @@ func (s *TokenService) Resolve(ctx context.Context, raw string) (Identity, error
 	return token.Identity, nil
 }
 
-// List returns an identity's own tokens (label, scope, dates — never the value).
+// List returns an identity's own tokens (label, scope, dates - never the value).
 func (s *TokenService) List(ctx context.Context, username string) ([]TokenRecord, error) {
 	tokens, err := s.repository.ListTokens(ctx, username)
 	if err != nil {

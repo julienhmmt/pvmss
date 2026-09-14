@@ -33,7 +33,7 @@ func TestDeriveCloudInitTemplateID(t *testing.T) {
 	}
 }
 
-// TestCreateCloudInitTemplate_Success — a new template is created enabled by
+// TestCreateCloudInitTemplate_Success - a new template is created enabled by
 // default and appears in both the admin list and the enabled-only catalog reader.
 func TestCreateCloudInitTemplate_Success(t *testing.T) {
 	t.Parallel()
@@ -89,7 +89,7 @@ func TestCreateCloudInitTemplate_Success(t *testing.T) {
 	}
 }
 
-// TestCreateCloudInitTemplate_SlugCollision — creating a template whose label
+// TestCreateCloudInitTemplate_SlugCollision - creating a template whose label
 // derives to an existing slug returns ErrDuplicateCloudInitTemplate.
 func TestCreateCloudInitTemplate_SlugCollision(t *testing.T) {
 	t.Parallel()
@@ -107,7 +107,7 @@ func TestCreateCloudInitTemplate_SlugCollision(t *testing.T) {
 	}
 }
 
-// TestCreateCloudInitTemplate_InvalidContent — content validation delegates to the
+// TestCreateCloudInitTemplate_InvalidContent - content validation delegates to the
 // cloudinit.Validate: reject missing #cloud-config prefix, reject > 16 KiB.
 func TestCreateCloudInitTemplate_InvalidContent(t *testing.T) {
 	t.Parallel()
@@ -132,7 +132,7 @@ func TestCreateCloudInitTemplate_InvalidContent(t *testing.T) {
 	}
 }
 
-// TestCloudInitTemplates_EnabledOnly — CloudInitTemplates (catalog reader) and
+// TestCloudInitTemplates_EnabledOnly - CloudInitTemplates (catalog reader) and
 // CloudInitTemplate (single lookup) return only enabled templates,
 // while ListCloudInitTemplates (admin) returns every row including disabled.
 func TestCloudInitTemplates_EnabledOnly(t *testing.T) {
@@ -173,7 +173,7 @@ func TestCloudInitTemplates_EnabledOnly(t *testing.T) {
 	}
 }
 
-// TestSetCloudInitTemplateEnabled_ToggleIsUpsert — disabling then re-enabling
+// TestSetCloudInitTemplateEnabled_ToggleIsUpsert - disabling then re-enabling
 // never deletes the row; the row persists with its enabled flag toggled.
 func TestSetCloudInitTemplateEnabled_ToggleIsUpsert(t *testing.T) {
 	t.Parallel()
@@ -204,7 +204,7 @@ func TestSetCloudInitTemplateEnabled_ToggleIsUpsert(t *testing.T) {
 	}
 }
 
-// TestSetCloudInitTemplateEnabled_NotFound — toggling a non-existent template
+// TestSetCloudInitTemplateEnabled_NotFound - toggling a non-existent template
 // returns ErrCloudInitTemplateNotFound.
 func TestSetCloudInitTemplateEnabled_NotFound(t *testing.T) {
 	t.Parallel()
@@ -217,7 +217,7 @@ func TestSetCloudInitTemplateEnabled_NotFound(t *testing.T) {
 	}
 }
 
-// TestUpdateCloudInitTemplate_Success — updating label and content is reflected
+// TestUpdateCloudInitTemplate_Success - updating label and content is reflected
 // on the next read.
 func TestUpdateCloudInitTemplate_Success(t *testing.T) {
 	t.Parallel()
@@ -244,7 +244,7 @@ func TestUpdateCloudInitTemplate_Success(t *testing.T) {
 	}
 }
 
-// TestUpdateCloudInitTemplate_NotFound — updating a non-existent template
+// TestUpdateCloudInitTemplate_NotFound - updating a non-existent template
 // returns ErrCloudInitTemplateNotFound.
 func TestUpdateCloudInitTemplate_NotFound(t *testing.T) {
 	t.Parallel()
@@ -257,7 +257,7 @@ func TestUpdateCloudInitTemplate_NotFound(t *testing.T) {
 	}
 }
 
-// TestDeleteCloudInitTemplate_NoCascade — deleting a template removes it from
+// TestDeleteCloudInitTemplate_NoCascade - deleting a template removes it from
 // every list; no cascade (a VM created from it keeps its own snippet).
 func TestDeleteCloudInitTemplate_NoCascade(t *testing.T) {
 	t.Parallel()
@@ -284,7 +284,7 @@ func TestDeleteCloudInitTemplate_NoCascade(t *testing.T) {
 	}
 }
 
-// TestDeleteCloudInitTemplate_NotFound — deleting a non-existent template
+// TestDeleteCloudInitTemplate_NotFound - deleting a non-existent template
 // returns ErrCloudInitTemplateNotFound.
 func TestDeleteCloudInitTemplate_NotFound(t *testing.T) {
 	t.Parallel()
@@ -297,7 +297,7 @@ func TestDeleteCloudInitTemplate_NotFound(t *testing.T) {
 	}
 }
 
-// TestFindCloudInitTemplate_Success — an enabled template is resolved by id
+// TestFindCloudInitTemplate_Success - an enabled template is resolved by id
 // with its full content (the path vm.Create uses before allocating a VMID).
 func TestFindCloudInitTemplate_Success(t *testing.T) {
 	t.Parallel()
@@ -328,7 +328,7 @@ func TestFindCloudInitTemplate_Success(t *testing.T) {
 	}
 }
 
-// TestFindCloudInitTemplate_UnknownClusterReturnsNotFound — a cluster with no
+// TestFindCloudInitTemplate_UnknownClusterReturnsNotFound - a cluster with no
 // templates yields ErrCloudInitTemplateNotFound for any id (no error from the
 // reader itself, only the not-found sentinel).
 func TestFindCloudInitTemplate_UnknownClusterReturnsNotFound(t *testing.T) {
@@ -342,7 +342,7 @@ func TestFindCloudInitTemplate_UnknownClusterReturnsNotFound(t *testing.T) {
 	}
 }
 
-// TestUpdateCloudInitTemplate_EmptyLabel — an empty label is rejected with
+// TestUpdateCloudInitTemplate_EmptyLabel - an empty label is rejected with
 // ErrInvalidCloudInitTemplate before any store call (400, not 404).
 func TestUpdateCloudInitTemplate_EmptyLabel(t *testing.T) {
 	t.Parallel()
@@ -360,7 +360,7 @@ func TestUpdateCloudInitTemplate_EmptyLabel(t *testing.T) {
 	}
 }
 
-// TestUpdateCloudInitTemplate_InvalidContent — content failing the cloudinit.Validate is
+// TestUpdateCloudInitTemplate_InvalidContent - content failing the cloudinit.Validate is
 // rejected with ErrInvalidCloudInitTemplate.
 func TestUpdateCloudInitTemplate_InvalidContent(t *testing.T) {
 	t.Parallel()
@@ -378,7 +378,7 @@ func TestUpdateCloudInitTemplate_InvalidContent(t *testing.T) {
 	}
 }
 
-// TestCloudInitTemplates_ClosedStoreErrors — once the underlying store is
+// TestCloudInitTemplates_ClosedStoreErrors - once the underlying store is
 // closed, every catalog cloud-init operation surfaces a non-sentinel error
 // (not NotFound, not Duplicate, not Invalid). This covers the store-error
 // branches that the happy-path and not-found tests cannot reach: the
@@ -423,7 +423,7 @@ func TestCloudInitTemplates_ClosedStoreErrors(t *testing.T) {
 }
 
 // assertCloudInitCatalogStoreError fails when err is nil or one of the catalog
-// sentinels — a closed store must surface a non-sentinel transport error.
+// sentinels - a closed store must surface a non-sentinel transport error.
 func assertCloudInitCatalogStoreError(t *testing.T, err error) {
 	t.Helper()
 

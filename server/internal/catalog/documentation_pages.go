@@ -97,7 +97,7 @@ func toPage(r store.DocumentationPageRow) DocumentationPage {
 }
 
 // ListDocumentationPages returns every page (including disabled ones), ordered
-// by sort_order then title — the admin list endpoint's data source.
+// by sort_order then title - the admin list endpoint's data source.
 func ListDocumentationPages(ctx context.Context, st *store.Store) ([]DocumentationPage, error) {
 	rows, err := st.DocumentationPagesAll(ctx)
 	if err != nil {
@@ -113,7 +113,7 @@ func ListDocumentationPages(ctx context.Context, st *store.Store) ([]Documentati
 }
 
 // EnabledDocumentationPages returns only enabled pages, ordered by sort_order
-// then title — the public reader's data source.
+// then title - the public reader's data source.
 func EnabledDocumentationPages(ctx context.Context, st *store.Store) ([]DocumentationPage, error) {
 	rows, err := st.DocumentationPagesEnabled(ctx)
 	if err != nil {

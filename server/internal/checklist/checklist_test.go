@@ -81,7 +81,7 @@ func TestGenerate_NoneFichesReportedCorrectly(t *testing.T) {
 	}
 }
 
-// Deliberate vs gap distinction — are "deliberate", not "gap".
+// Deliberate vs gap distinction - are "deliberate", not "gap".
 func TestGenerate_DeliberateVsGap(t *testing.T) {
 	t.Parallel()
 
@@ -128,7 +128,7 @@ func findFicheLine(output, fiche string) string {
 func TestGenerate_MissingFicheDir(t *testing.T) {
 	t.Parallel()
 
-	//  Use a temp dir with no.claude/v0.4/ — should produce 0 fiches
+	//  Use a temp dir with no.claude/v0.4/ - should produce 0 fiches
 	repoRoot := t.TempDir()
 
 	var buf bytes.Buffer

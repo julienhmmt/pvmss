@@ -4,13 +4,13 @@ import "context"
 
 // Creator is the contract for allocating and tracking a new VM. It is
 // deliberately separate from Client (reads) and Writer (mutations of existing
-// VMs) — creation is the only operation that produces an asynchronous task a
+// VMs) - creation is the only operation that produces an asynchronous task a
 // caller must then poll.
 type Creator interface {
 	// NextVMID allocates the next free VMID. It is the single allocation
 	// point, delegated to Proxmox's GET /cluster/nextid. That
 	// endpoint returns the smallest free ID at call time without reserving
-	// it, so two concurrent creations can receive the same integer — the
+	// it, so two concurrent creations can receive the same integer - the
 	// caller must handle ErrVMIDTaken by retrying with a fresh VMID
 	// (max 3 attempts).
 	NextVMID(ctx context.Context) (int, error)
@@ -86,7 +86,7 @@ type VMSpec struct {
 // creation (Proxmox import-from, PVE ≥ 7.2). Network config is applied
 // afterwards through Writer.SetCloudInitConfig, not at create time: Proxmox's
 // REST API cannot write a cloud-init snippet file (upload/download-url both
-// reject content=snippets — see Writer.HasSnippet), so ciuser/sshkeys/
+// reject content=snippets - see Writer.HasSnippet), so ciuser/sshkeys/
 // ipconfig0 are the only reliable per-VM cloud-init delivery mechanism.
 type ImageSpec struct {
 	Storage string
@@ -101,7 +101,7 @@ type DiskSpec struct {
 }
 
 // NICSpec is one network interface card to attach at creation. VLAN is the
-// imposed isolation tag (per-cluster, admin-configured — never client-chosen). Firewall is
+// imposed isolation tag (per-cluster, admin-configured - never client-chosen). Firewall is
 // always true on PVMSS-created VMs (the Proxmox per-VM firewall is armed by default, not
 // user-exposed). MAC and
 // RateMbps pass through to the encoder when set.
@@ -115,7 +115,7 @@ type NICSpec struct {
 }
 
 // NetworkSpec is the VM's initial set of NICs (multi-NIC). A
-// NetworkSpec with zero entries produces no netN keys — the caller ensures at
+// NetworkSpec with zero entries produces no netN keys - the caller ensures at
 // least one NIC before dispatch.
 type NetworkSpec []NICSpec
 
@@ -144,7 +144,7 @@ type TaskStatus struct {
 	// ExitMessage is present only when State == TaskError.
 	ExitMessage string
 	// Warnings carries the task's exitstatus when it succeeded with non-fatal
-	// warnings (Proxmox "WARNINGS: N" — a success, not a failure). Present
+	// warnings (Proxmox "WARNINGS: N" - a success, not a failure). Present
 	// only when State == TaskOK; empty otherwise. The tray surfaces it so a
 	// success-with-warnings is distinguishable from a plain success.
 	Warnings string

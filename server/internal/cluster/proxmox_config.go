@@ -11,8 +11,8 @@ import (
 )
 
 // proxmoxVMConfig is a decoded /nodes/{node}/qemu/{vmid}/config response.
-// Proxmox mixes types across keys — cores/sockets/memory are numbers, disk
-// and network entries are strings — so it is decoded loosely and read through
+// Proxmox mixes types across keys - cores/sockets/memory are numbers, disk
+// and network entries are strings - so it is decoded loosely and read through
 // the str/int helpers below rather than a fixed struct.
 type proxmoxVMConfig map[string]any
 
@@ -63,7 +63,7 @@ func fetchVMConfig(ctx context.Context, rest proxmoxRESTClient, node string, vmi
 
 // proxmoxBusRange is the real hardware slot range per bus (virtio 0-15, scsi
 // 0-30, sata 0-5, ide 0-3), mirroring the usable-slot counts vm/disks.go
-// enforces on write (maxDisksForBus) — kept as a separate table because
+// enforces on write (maxDisksForBus) - kept as a separate table because
 // package vm already imports package cluster, so the reverse import is not
 // available here. Keep the two in sync if Proxmox's own limits ever change.
 var proxmoxBusRange = map[DiskBus]int{
@@ -106,7 +106,7 @@ func cfgHasSerial(cfg proxmoxVMConfig) bool {
 }
 
 // parseDisks reads every attached data disk from cfg in a deterministic
-// order (bus, then index) — map iteration order is random and callers (the
+// order (bus, then index) - map iteration order is random and callers (the
 // disk tab, the create wizard) expect a stable listing.
 func parseDisks(cfg proxmoxVMConfig) ([]Disk, int64) {
 	var disks []Disk
@@ -173,7 +173,7 @@ func parseDiskValue(value string) (storage string, sizeGB int, format string) {
 // parseDiskFormatFromVolume derives a disk's format from its volume filename
 // when no explicit format= option was given. PVE appends the format to the
 // volume name on file-based storages ("local:vm-100-disk-0.qcow2"); block
-// storages carry a bare name and return "" — the plugin decides there.
+// storages carry a bare name and return "" - the plugin decides there.
 func parseDiskFormatFromVolume(volume string) string {
 	_, filePart, ok := strings.Cut(volume, ":")
 	if !ok {
@@ -248,10 +248,10 @@ var proxmoxNICModels = map[string]bool{
 	string(DiskBusVirtio): true, "e1000": true, "e1000e": true, "rtl8139": true, "vmxnet3": true,
 }
 
-// parseNetworkInterfaces reads every attached NIC from cfg (net0..net31 —
+// parseNetworkInterfaces reads every attached NIC from cfg (net0..net31 - 
 // Proxmox's own hardware limit). IPAddresses is deliberately left empty:
 // populating it needs a live QEMU guest agent call correlated by MAC against
-// each NIC, a per-VM extra round trip this reader does not make — the VM
+// each NIC, a per-VM extra round trip this reader does not make - the VM
 // detail endpoint fills it lazily through GuestNetworkReader instead.
 func parseNetworkInterfaces(cfg proxmoxVMConfig) []NetworkInterface {
 	var nics []NetworkInterface
@@ -352,7 +352,7 @@ func splitProxmoxTags(raw string) []string {
 //
 // ponytail: one config fetch (plus one status fetch for running VMs) per VM,
 // sequential. Fine for a lab-sized cluster; a large fleet would want bounded
-// concurrency here — add it if inventory refresh starts taking noticeably
+// concurrency here - add it if inventory refresh starts taking noticeably
 // long.
 func hydrateVM(ctx context.Context, rest proxmoxRESTClient, vm *VM) error {
 	cfg, err := fetchVMConfig(ctx, rest, vm.Node, vm.VMID)
@@ -413,7 +413,7 @@ func fetchUptime(ctx context.Context, rest proxmoxRESTClient, node string, vmid 
 }
 
 // VMStatus implements VMStatusReader via GET /nodes/{node}/qemu/{vmid}/status/current.
-// It reads the live power state, lock, and uptime in a single call — the same
+// It reads the live power state, lock, and uptime in a single call - the same
 // endpoint fetchUptime already used, now exposed as the domain-level live-status
 // read (ADR 0001).
 func (p Proxmox) VMStatus(ctx context.Context, node string, vmid int) (VMLiveStatus, error) {
@@ -440,7 +440,7 @@ func (p Proxmox) VMStatus(ctx context.Context, node string, vmid int) (VMLiveSta
 }
 
 // parseVMStatus maps Proxmox's status string to the VMStatus enum. Proxmox
-// reports "running", "stopped", "paused" — matching the enum directly. An
+// reports "running", "stopped", "paused" - matching the enum directly. An
 // unexpected value defaults to stopped rather than failing the read, matching
 // the best-effort posture of the snapshot path.
 func parseVMStatus(s string) VMStatus {
@@ -477,7 +477,7 @@ func encodeNetValue(iface NetworkInterface) string {
 	}
 
 	// The Proxmox per-VM firewall is armed on every
-	// PVMSS-created NIC — the base isolation brick for a multi-tenant
+	// PVMSS-created NIC - the base isolation brick for a multi-tenant
 	// portal, imposed not user-exposed.
 	parts = append(parts, "firewall=1")
 

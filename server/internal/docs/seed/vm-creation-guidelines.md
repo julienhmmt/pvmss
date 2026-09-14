@@ -8,18 +8,18 @@ shown here are the portal defaults.
 
 VM names are hostnames: lowercase, hyphenated, at most 63 characters, and
 unique within your pool (the name becomes the guest's DNS label through
-cloud-init). Avoid generic names like `vm1` — a descriptive name
+cloud-init). Avoid generic names like `vm1` - a descriptive name
 (`web-prod-01`) makes the VMs list searchable and the activity log readable.
 
 ## Sources
 
-- **ISO** — installs from an administrator-approved image; the VM boots from
+- **ISO** - installs from an administrator-approved image; the VM boots from
   the CD-ROM first.
-- **Template** — clones an approved Proxmox template. The VM stays on the
+- **Template** - clones an approved Proxmox template. The VM stays on the
   template's node, the disk cannot be smaller than the template's, and the
   wizard tells you when the target storage forces a full copy instead of a
   linked clone.
-- **Cloud image** — imports an approved cloud image as the primary disk and
+- **Cloud image** - imports an approved cloud image as the primary disk and
   requires the cloud-init fields (user, SSH keys, network). The VM starts
   only after the import finishes and cloud-init is applied.
 

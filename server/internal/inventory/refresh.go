@@ -12,12 +12,12 @@ import (
 var ErrRefreshTooSoon = errors.New("refresh too soon")
 
 // ErrClusterUnreachable is returned when a manual refresh's client call fails.
-// The previous projection continues to be served — only this attempt
+// The previous projection continues to be served - only this attempt
 // is reported as failed.
 var ErrClusterUnreachable = errors.New("cluster unreachable")
 
 // TooSoonError wraps ErrRefreshTooSoon with the precise remaining wait before
-// the guard allows another attempt — not the full configured interval
+// the guard allows another attempt - not the full configured interval
 // (retryAfterSeconds is a countdown, not a constant). errors.Is(err, ErrRefreshTooSoon) still
 // matches via Unwrap.
 type TooSoonError struct {
@@ -30,7 +30,7 @@ func (e *TooSoonError) Unwrap() error { return ErrRefreshTooSoon }
 // Refresher handles manual refresh requests, guarded by a minimum interval
 // since the last successful refresh. The guard is enforced
 // server-side, not only by disabling a button. It reads
-// the worker's own projection directly — a Refresher is always paired with
+// the worker's own projection directly - a Refresher is always paired with
 // exactly one Worker, so there is no second projection reference a caller
 // could accidentally mismatch.
 type Refresher struct {
@@ -75,7 +75,7 @@ func (r *Refresher) Refresh(ctx context.Context) (time.Time, error) {
 // passes, launches the refresh in a background goroutine using a context
 // detached from the caller's request lifecycle. This lets the HTTP handler
 // return 202 Accepted immediately instead of blocking for up to
-// InventoryRefreshTimeout — the server's WriteTimeout would otherwise cancel
+// InventoryRefreshTimeout - the server's WriteTimeout would otherwise cancel
 // the request before a slow or dead cluster's refresh completes.
 //
 // Returns nil if the refresh was started, or *TooSoonError if the guard

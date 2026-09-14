@@ -18,9 +18,9 @@ import (
 
 // VMConsole serves the two console endpoints, both gated by the same
 // vm.Resolve() every other write uses:
-// - POST /api/v1/vms/:cluster/:vmid/vnc-ticket — issues an opaque,
+// - POST /api/v1/vms/:cluster/:vmid/vnc-ticket - issues an opaque,
 // single-use console ticket.
-//   - GET /api/v1/vms/:cluster/:vmid/console/websocket?token=<opaque> —
+//   - GET /api/v1/vms/:cluster/:vmid/console/websocket?token=<opaque> - 
 //
 // upgrades to WebSocket, consumes the ticket, and relays RFB
 // frames between the browser and the cluster's VNC server.
@@ -79,7 +79,7 @@ type VMConsoleRegistryDeps struct {
 //
 //	cluster.ConsoleRelay resolution, keyed on the request's own :cluster path
 //
-// value — without this, a console ticket for a non-default cluster would be
+// value - without this, a console ticket for a non-default cluster would be
 // issued against the default cluster's node/port, and the relay would
 // connect to the wrong Proxmox host entirely.
 func NewVMConsoleWithRegistry(deps VMConsoleRegistryDeps) *VMConsole {
@@ -191,7 +191,7 @@ func (h *VMConsole) writeConsoleError(w http.ResponseWriter, status int, code, m
 // isConsoleOriginAllowed validates the WebSocket Origin header against the
 // request's own host. Browsers always send Origin for WebSocket handshakes,
 // and a mismatch is the signal for a cross-site WebSocket hijacking attempt.
-// Missing Origin is rejected — browser console connections always carry it,
+// Missing Origin is rejected - browser console connections always carry it,
 // and accepting its absence would allow non-browser CSWSH attacks.
 func isConsoleOriginAllowed(r *http.Request) bool {
 	origin := r.Header.Get("Origin")
@@ -204,7 +204,7 @@ func isConsoleOriginAllowed(r *http.Request) bool {
 		return false
 	}
 
-	// Compare only the host (hostname:port) — the Origin scheme may be http(s)
+	// Compare only the host (hostname:port) - the Origin scheme may be http(s)
 	// or ws(s) depending on the client; the host comparison is what matters for
 	// CSWSH prevention.
 	return originURL.Host == r.Host

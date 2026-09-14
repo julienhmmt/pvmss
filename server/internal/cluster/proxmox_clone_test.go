@@ -350,7 +350,7 @@ func TestProxmox_CloneVM_URLEncoding(t *testing.T) {
 	}
 }
 
-// TestProxmox_ListTemplates_DegradesOnConfigError — one template whose config
+// TestProxmox_ListTemplates_DegradesOnConfigError - one template whose config
 // read fails must not abort the whole list: the failing row stays,
 // flagged DiskUnreadable, and the others keep their disk fields.
 func TestProxmox_ListTemplates_DegradesOnConfigError(t *testing.T) {
@@ -395,7 +395,7 @@ func TestProxmox_ListTemplates_DegradesOnConfigError(t *testing.T) {
 	}
 }
 
-// TestProxmox_TemplateByVMID — a single-template lookup costs one
+// TestProxmox_TemplateByVMID - a single-template lookup costs one
 // /cluster/resources call plus one config read (no full re-hydration per toggle).
 func TestProxmox_TemplateByVMID(t *testing.T) {
 	t.Parallel()
@@ -435,7 +435,7 @@ func TestProxmox_TemplateByVMID(t *testing.T) {
 	}
 }
 
-// TestProxmox_TemplateByVMID_Unknown — a VMID absent from discovery is
+// TestProxmox_TemplateByVMID_Unknown - a VMID absent from discovery is
 // cluster.ErrNotFound.
 func TestProxmox_TemplateByVMID_Unknown(t *testing.T) {
 	t.Parallel()
@@ -453,7 +453,7 @@ func TestProxmox_TemplateByVMID_Unknown(t *testing.T) {
 	}
 }
 
-// TestProxmox_TemplateByVMID_Unreadable — an unreadable config degrades to a
+// TestProxmox_TemplateByVMID_Unreadable - an unreadable config degrades to a
 // DiskUnreadable row (the caller decides: approve is refused, clone falls
 // back to stored fields), not an error.
 func TestProxmox_TemplateByVMID_Unreadable(t *testing.T) {

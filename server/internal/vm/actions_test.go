@@ -133,7 +133,7 @@ func TestAction_InvalidActionRejectedBeforeResolve(t *testing.T) {
 	idx := buildResolveIndex(t)
 
 	// A nonexistent VMID with an invalid action still returns ErrActionRejected
-	// — the action enum check runs before Resolve.
+	// - the action enum check runs before Resolve.
 	err := vm.Action(context.Background(), vm.BulkDeps{
 		Actor: aliceIdentity(), Writer: cluster.Fake{}, Audit: noopAudit{}, Refresher: noopRefresher{},
 	}, idx, testClusterName, 999, "foo")
@@ -301,7 +301,7 @@ func TestDelete_RunningVMRejectedWithoutForce(t *testing.T) {
 		t.Fatalf("err = %v, want ErrVMRunning", err)
 	}
 
-	// The VM must still be present — no stop, no delete.
+	// The VM must still be present - no stop, no delete.
 	snap, err := fake.Snapshot(context.Background())
 	if err != nil {
 		t.Fatalf("Snapshot: %v", err)
@@ -372,7 +372,7 @@ func TestDelete_RemovesCloudInitDocument(t *testing.T) {
 	idx := buildResolveIndex(t)
 	st := bulkTestStore(t)
 
-	// Seed a snippet row for VM 101 (alice-owned) — the file delete target.
+	// Seed a snippet row for VM 101 (alice-owned) - the file delete target.
 	if err := st.PutCloudInitSnippet(context.Background(), testClusterName, 101,
 		cluster.FakeSnippetStorage, "pvmss-101.yml", "#cloud-config\n", "alice"); err != nil {
 		t.Fatalf("PutCloudInitSnippet: %v", err)
@@ -432,7 +432,7 @@ func TestDelete_CleanupFailureIsNonFatal(t *testing.T) {
 		t.Fatalf("Delete: %v; cleanup failure must not block delete", err)
 	}
 
-	// The row is still gone — the store delete succeeds even if the file remove failed.
+	// The row is still gone - the store delete succeeds even if the file remove failed.
 	if _, found, err := st.GetCloudInitSnippet(context.Background(), testClusterName, 101); err != nil || found {
 		t.Errorf("snippet after delete found %v, err %v; want absent", found, err)
 	}
@@ -616,7 +616,7 @@ func (r *scriptedStatusReader) VMStatus(_ context.Context, _ string, _ int) (clu
 }
 
 // trackingWriter wraps cluster.Fake and records every Action call. For
-// shutdown and stop it does NOT delegate to the fake — the scripted status
+// shutdown and stop it does NOT delegate to the fake - the scripted status
 // reader controls when the VM appears stopped, so the fake's own state
 // machine would reject the escalation stop as "already stopped". Other
 // actions (start, reboot, etc.) delegate normally.
@@ -632,7 +632,7 @@ func (w *trackingWriter) Action(ctx context.Context, node string, vmid int, acti
 	w.mu.Unlock()
 
 	if action == actionShutdown || action == actionStop {
-		// Don't change fake state — the scripted reader drives convergence.
+		// Don't change fake state - the scripted reader drives convergence.
 		return nil
 	}
 
@@ -655,7 +655,7 @@ func TestAction_Shutdown_PureGuestShutdown_NoEscalation(t *testing.T) {
 	idx := buildResolveIndex(t)
 	st := bulkTestStore(t)
 	writer := &trackingWriter{Fake: *fake}
-	// Guest never stops — shutdown must NOT escalate to stop; the guest OS
+	// Guest never stops - shutdown must NOT escalate to stop; the guest OS
 	// decides. The user must send stop explicitly if they want a force-stop.
 	reader := &scriptedStatusReader{status: []cluster.VMStatus{cluster.VMRunning}}
 
@@ -672,7 +672,7 @@ func TestAction_Shutdown_PureGuestShutdown_NoEscalation(t *testing.T) {
 	}
 
 	actions := writer.recordedActions()
-	// Only shutdown was sent — no escalation to stop.
+	// Only shutdown was sent - no escalation to stop.
 	if len(actions) != 1 || actions[0] != actionShutdown {
 		t.Errorf("actions = %v, want [shutdown]", actions)
 	}
@@ -757,13 +757,13 @@ func TestAction_Idempotence_TargetStateHolds_NoWriterCall(t *testing.T) {
 				t.Fatalf("Action: %v", err)
 			}
 
-			// No writer call — the target state already holds.
+			// No writer call - the target state already holds.
 			actions := writer.recordedActions()
 			if len(actions) != 0 {
 				t.Errorf("writer calls = %v, want none (target state already holds)", actions)
 			}
 
-			// Audit entry is still recorded — the intention is real.
+			// Audit entry is still recorded - the intention is real.
 			rows, err := st.QueryAudit(context.Background())
 			if err != nil {
 				t.Fatalf("QueryAudit: %v", err)
@@ -782,7 +782,7 @@ func TestAction_Idempotence_RebootOnRunning_WriterCallStillHappens(t *testing.T)
 	idx := buildResolveIndex(t)
 	st := bulkTestStore(t)
 	writer := &trackingWriter{Fake: *fake}
-	// VM 100 is running — reboot is a transition, not a target state.
+	// VM 100 is running - reboot is a transition, not a target state.
 	reader := &scriptedStatusReader{status: []cluster.VMStatus{cluster.VMRunning}}
 
 	err := vm.Action(context.Background(), vm.BulkDeps{
@@ -796,7 +796,7 @@ func TestAction_Idempotence_RebootOnRunning_WriterCallStillHappens(t *testing.T)
 		t.Fatalf("Action: %v", err)
 	}
 
-	// Writer call happened — reboot is not idempotent.
+	// Writer call happened - reboot is not idempotent.
 	actions := writer.recordedActions()
 	if len(actions) != 1 || actions[0] != "reboot" {
 		t.Errorf("writer calls = %v, want [reboot]", actions)

@@ -16,9 +16,9 @@ import (
 // VMSerialConsole serves the two serial-terminal endpoints, both gated by the
 // same vm.Resolve() every other write uses, mirroring VMConsole but
 // for the text/serial console path:
-// - POST /api/v1/vms/:cluster/:vmid/serial-ticket — issues an opaque,
+// - POST /api/v1/vms/:cluster/:vmid/serial-ticket - issues an opaque,
 // single-use serial terminal ticket.
-//   - GET /api/v1/vms/:cluster/:vmid/serial/websocket?token=<opaque> —
+//   - GET /api/v1/vms/:cluster/:vmid/serial/websocket?token=<opaque> - 
 //
 // upgrades to WebSocket, consumes the ticket, and relays raw bytes between
 // the browser (xterm.js) and the cluster's serial terminal.

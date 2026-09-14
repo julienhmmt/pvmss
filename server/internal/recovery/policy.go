@@ -12,7 +12,7 @@ import (
 //
 // vm_limits: only the five fields legacy actually persisted are copied.
 // max_sockets/max_cores/max_memory_mb are intentionally NOT
-// read or returned — there is no on-disk source for them. The
+// read or returned - there is no on-disk source for them. The
 // caller must leave them at the shipped defaults.
 //
 // node_limits: all four fields are copied. A legacy database that predates
@@ -90,7 +90,7 @@ func upsertVMLimits(ctx context.Context, v04DB *sql.DB, cluster string, row VMLi
 
 	switch {
 	case err == nil:
-		// Row exists — update only the five copied fields, preserve the rest.
+		// Row exists - update only the five copied fields, preserve the rest.
 		_, err = v04DB.ExecContext(ctx, `
 			UPDATE vm_limits SET
 				max_disk_per_vm_gb = ?,
@@ -108,7 +108,7 @@ func upsertVMLimits(ctx context.Context, v04DB *sql.DB, cluster string, row VMLi
 		return nil
 
 	case errIsNoRows(err):
-		// No row yet — insert with the defaults for the three no-source fields.
+		// No row yet - insert with the defaults for the three no-source fields.
 		_, err = v04DB.ExecContext(ctx, `
 			INSERT INTO vm_limits (
 				cluster, max_sockets, max_cores, max_memory_mb,

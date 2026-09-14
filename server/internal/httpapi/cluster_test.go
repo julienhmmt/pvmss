@@ -101,7 +101,7 @@ func buildProjectionWithIndex(t *testing.T, snap cluster.Snapshot, refreshedAt t
 	return inventory.NewProjectionFromIndex(&idx)
 }
 
-// TestClusterNodes_Success — GET /cluster/nodes reads from the Index, includes
+// TestClusterNodes_Success - GET /cluster/nodes reads from the Index, includes
 // vmCount and refreshedAt.
 //
 //nolint:paralleltest // serial: shared fake cluster fixture
@@ -175,7 +175,7 @@ func TestClusterNodes_Success(t *testing.T) {
 	}
 }
 
-// TestClusterNodes_NotReady — before the first refresh, GET /cluster/nodes
+// TestClusterNodes_NotReady - before the first refresh, GET /cluster/nodes
 // returns 503 inventory_not_ready, distinct from an empty list.
 //
 //nolint:paralleltest // serial: shared fake cluster fixture
@@ -205,7 +205,7 @@ func TestClusterNodes_NotReady(t *testing.T) {
 	}
 }
 
-// TestClusterNodes_EmptyIsOK — an empty cluster (0 nodes) with a valid
+// TestClusterNodes_EmptyIsOK - an empty cluster (0 nodes) with a valid
 // RefreshedAt returns 200 with an empty array, not 503.
 //
 //nolint:paralleltest // serial: shared fake cluster fixture
@@ -239,7 +239,7 @@ func TestClusterNodes_EmptyIsOK(t *testing.T) {
 	}
 }
 
-// TestClusterNodes_MethodNotAllowed — non-GET returns 405.
+// TestClusterNodes_MethodNotAllowed - non-GET returns 405.
 //
 //nolint:paralleltest // serial: shared fake cluster fixture
 func TestClusterNodes_MethodNotAllowed(t *testing.T) {

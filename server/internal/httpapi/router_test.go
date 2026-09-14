@@ -211,7 +211,7 @@ func TestRouter_DocsRoutesRegistered(t *testing.T) {
 		Docs: docs, AdminDocs: adminDocs,
 	})
 
-	// Public docs list — reaches the handler (empty list, 200).
+	// Public docs list - reaches the handler (empty list, 200).
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/docs", nil)
 	mux.ServeHTTP(rec, req)
@@ -220,7 +220,7 @@ func TestRouter_DocsRoutesRegistered(t *testing.T) {
 		t.Fatalf("public docs list status = %d, want 200: %s", rec.Code, rec.Body.String())
 	}
 
-	// Admin docs list without auth — reaches the RequireAdmin guard (401).
+	// Admin docs list without auth - reaches the RequireAdmin guard (401).
 	rec = httptest.NewRecorder()
 	req = httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/admin/docs", nil)
 	mux.ServeHTTP(rec, req)
@@ -229,7 +229,7 @@ func TestRouter_DocsRoutesRegistered(t *testing.T) {
 		t.Fatalf("admin docs list without auth status = %d, want 401", rec.Code)
 	}
 
-	// Admin docs list with non-admin auth — reaches the RequireAdmin guard (403).
+	// Admin docs list with non-admin auth - reaches the RequireAdmin guard (403).
 	alice := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 	rec = httptest.NewRecorder()
 	req = httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/admin/docs", nil)
@@ -240,7 +240,7 @@ func TestRouter_DocsRoutesRegistered(t *testing.T) {
 		t.Fatalf("admin docs list with non-admin status = %d, want 403", rec.Code)
 	}
 
-	// Admin docs list with admin auth — reaches the handler (200).
+	// Admin docs list with admin auth - reaches the handler (200).
 	cookie := adminCookie(t, authHandler)
 	rec = httptest.NewRecorder()
 	req = httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/admin/docs", nil)
@@ -252,7 +252,7 @@ func TestRouter_DocsRoutesRegistered(t *testing.T) {
 	}
 
 	// Every admin docs CRUD route reaches the RequireAdmin guard (401 without
-	// auth) — this covers the route registration lines for POST/PUT/DELETE/toggle.
+	// auth) - this covers the route registration lines for POST/PUT/DELETE/toggle.
 	for _, tc := range []struct {
 		method string
 		path   string

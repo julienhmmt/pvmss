@@ -29,7 +29,7 @@ type Bridge struct {
 }
 
 // ISO is one approved ISO image on an approved storage on a node. Approval is
-// keyed by (node, storage, file) — one row per node, consistent with Storage
+// keyed by (node, storage, file) - one row per node, consistent with Storage
 // and Bridge. An ISO on shared storage has N rows.
 type ISO struct {
 	Storage string `json:"storage"`
@@ -37,7 +37,7 @@ type ISO struct {
 	File    string `json:"file"`
 }
 
-// Image is one approved cloud image on an approved storage on a node — a
+// Image is one approved cloud image on an approved storage on a node - a
 // bootable disk image (.qcow2/.raw/.vmdk/.ova) an admin placed on the
 // storage's import/ directory themselves (PVMSS never fetches images from
 // the internet). Approval is keyed by (node, storage, file) like ISO.
@@ -51,7 +51,7 @@ type Image struct {
 }
 
 // Profile is a fixed VM hardware preset: when a creation request
-// references a profile, these values are authoritative — client-submitted
+// references a profile, these values are authoritative - client-submitted
 // hardware fields that accompany a profile are ignored.
 type Profile struct {
 	ID       string
@@ -68,7 +68,7 @@ type Profile struct {
 // (cross-node clone is forbidden). CloudInitCapable drives the
 // full/linked clone decision. DiskStorage and DiskSizeGB drive the resize
 // decision (enlarge after clone, reject reduction before VMID). DiskBus is
-// the Proxmox bus family of the template's primary disk (e.g. "scsi") — the
+// the Proxmox bus family of the template's primary disk (e.g. "scsi") - the
 // clone inherits it, and post-clone ResizeDisk must target the correct key.
 type Template struct {
 	VMID             int

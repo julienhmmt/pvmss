@@ -15,8 +15,8 @@ import (
 // writeGetentStub installs a fake getent in binDir that resolves a user only
 // when a directory named after them exists under homes. getent is invoked as
 // `getent passwd <user>`, so the user is $2. It prints a passwd line whose
-// owner fields are the test process's own uid/gid — chown to self is
-// permitted without root, so the script's real chown line is exercised — and
+// owner fields are the test process's own uid/gid - chown to self is
+// permitted without root, so the script's real chown line is exercised - and
 // whose home field points at the per-user directory.
 func writeGetentStub(t *testing.T, binDir, homes string) {
 	t.Helper()

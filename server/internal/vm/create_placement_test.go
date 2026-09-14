@@ -19,7 +19,7 @@ const (
 
 // placementResources builds a three-node catalog where each node has one
 // storage and one bridge, so the hard filters (node has storage) always pass.
-// No ISOs — these tests focus on scoring, not ISO locality.
+// No ISOs - these tests focus on scoring, not ISO locality.
 func placementResources() catalog.Resources {
 	return catalog.Resources{
 		Nodes: []catalog.Node{
@@ -51,7 +51,7 @@ func placementCapacities() map[string]policy.Capacity {
 	}
 }
 
-// TestResolveResources_PlacementSelectsMostFreeNode — three nodes, middle one
+// TestResolveResources_PlacementSelectsMostFreeNode - three nodes, middle one
 // (pve-b) most free in RAM → it is selected, not Nodes[0].
 func TestResolveResources_PlacementSelectsMostFreeNode(t *testing.T) {
 	t.Parallel()
@@ -69,7 +69,7 @@ func TestResolveResources_PlacementSelectsMostFreeNode(t *testing.T) {
 	}
 }
 
-// TestResolveResources_PlacementEqualScoreCatalogOrderBreaksTie — at equal
+// TestResolveResources_PlacementEqualScoreCatalogOrderBreaksTie - at equal
 // score, catalog order breaks the tie (reproducible selection).
 func TestResolveResources_PlacementEqualScoreCatalogOrderBreaksTie(t *testing.T) {
 	t.Parallel()
@@ -93,7 +93,7 @@ func TestResolveResources_PlacementEqualScoreCatalogOrderBreaksTie(t *testing.T)
 	}
 }
 
-// TestResolveResources_PlacementExplicitNodeSkipsScoring — when the request
+// TestResolveResources_PlacementExplicitNodeSkipsScoring - when the request
 // specifies a node, scoring does not apply; the explicit node is used.
 func TestResolveResources_PlacementExplicitNodeSkipsScoring(t *testing.T) {
 	t.Parallel()
@@ -110,7 +110,7 @@ func TestResolveResources_PlacementExplicitNodeSkipsScoring(t *testing.T) {
 	}
 }
 
-// TestResolveResources_PlacementNoCapacityDataSelectsFirst — when no capacity
+// TestResolveResources_PlacementNoCapacityDataSelectsFirst - when no capacity
 // data is available (nil map), all nodes score 0 and catalog order breaks the
 // tie. A node is still returned (bonus, not barrier).
 func TestResolveResources_PlacementNoCapacityDataSelectsFirst(t *testing.T) {
@@ -128,7 +128,7 @@ func TestResolveResources_PlacementNoCapacityDataSelectsFirst(t *testing.T) {
 	}
 }
 
-// TestResolveResources_PlacementHardFilterNoStorage — a node with no approved
+// TestResolveResources_PlacementHardFilterNoStorage - a node with no approved
 // storage is filtered out of candidates.
 func TestResolveResources_PlacementHardFilterNoStorage(t *testing.T) {
 	t.Parallel()
@@ -159,7 +159,7 @@ func TestResolveResources_PlacementHardFilterNoStorage(t *testing.T) {
 	}
 }
 
-// TestBestStorageOnNode_PicksMostFree — bestStorageOnNode picks the storage
+// TestBestStorageOnNode_PicksMostFree - bestStorageOnNode picks the storage
 // with the most free space, not the first in catalog order.
 func TestBestStorageOnNode_PicksMostFree(t *testing.T) {
 	t.Parallel()
@@ -181,7 +181,7 @@ func TestBestStorageOnNode_PicksMostFree(t *testing.T) {
 	}
 }
 
-// TestBestStorageOnNode_FallsBackToCatalogOrder — when free-space data is
+// TestBestStorageOnNode_FallsBackToCatalogOrder - when free-space data is
 // unavailable (all zero), catalog order breaks the tie.
 func TestBestStorageOnNode_FallsBackToCatalogOrder(t *testing.T) {
 	t.Parallel()
@@ -199,7 +199,7 @@ func TestBestStorageOnNode_FallsBackToCatalogOrder(t *testing.T) {
 	}
 }
 
-// TestScoreNode_FitBonus — a node that fits the VM gets +1 bonus. The two
+// TestScoreNode_FitBonus - a node that fits the VM gets +1 bonus. The two
 // nodes have identical free fractions so the only difference is the bonus.
 func TestScoreNode_FitBonus(t *testing.T) {
 	t.Parallel()
@@ -245,7 +245,7 @@ func (f *fakeFreeSpaceChecker) StorageFreeSpace(_ context.Context, _, _ string) 
 	return f.free, f.err
 }
 
-// TestCheckLiveDiskSpace_TableDriven — exercises every branch of
+// TestCheckLiveDiskSpace_TableDriven - exercises every branch of
 // checkLiveDiskSpace: nil checker skip, zero-disk skip,
 // read-error wrapping, insufficient space, exact fit, and ample space.
 func TestCheckLiveDiskSpace_TableDriven(t *testing.T) {

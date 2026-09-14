@@ -29,7 +29,7 @@ var (
 // VM with no kernel; the power_state.condition means a VM with no egress is
 // not rebooted for nothing.
 const generatedBaseline = `#cloud-config
-# PVMSS baseline — generated at create for cloud-image VMs.
+# PVMSS baseline - generated at create for cloud-image VMs.
 # Replace it cluster-wide by placing <snippet_dir>/pvmss-baseline.yml.
 package_update: true
 packages:
@@ -79,12 +79,12 @@ type BaselineInputs struct {
 //
 // An empty Override selects the generated baseline; an empty UserDocument
 // selects no merge. A malformed Override or UserDocument that fails Validate
-// is rejected with ErrBaselineInvalid wrapping the cause — the create path
+// is rejected with ErrBaselineInvalid wrapping the cause - the create path
 // surfaces the existing validation errors rather than silently dropping the
 // document.
 //
 // Because every input is already validated as a #cloud-config YAML mapping,
-// the merge is always YAML-into-YAML — no MIME multipart and no raw-script
+// the merge is always YAML-into-YAML - no MIME multipart and no raw-script
 // edge case.
 func BuildVendorData(inputs BaselineInputs) (string, error) {
 	base := generatedBaseline
@@ -132,7 +132,7 @@ func mergeVendorData(baseDoc, userDoc, source string) (string, error) {
 		return "", fmt.Errorf("%w: marshal merged document: %w", ErrBaselineInvalid, err)
 	}
 
-	return "#cloud-config\n# PVMSS vendor-data — " + source + " baseline + user document merged.\n" + string(out), nil
+	return "#cloud-config\n# PVMSS vendor-data - " + source + " baseline + user document merged.\n" + string(out), nil
 }
 
 // parseCloudConfigMap parses a #cloud-config document into a generic map. The

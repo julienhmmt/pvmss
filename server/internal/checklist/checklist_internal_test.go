@@ -5,7 +5,7 @@ import "testing"
 // wantAuth is the ficheDir display name for the auth prefix, asserted twice below.
 const wantAuth = "auth"
 
-// TestLabelFromFilename — the label is the filename with its .md suffix and
+// TestLabelFromFilename - the label is the filename with its .md suffix and
 // leading "ID-" prefix stripped, then hyphens replaced by spaces. Covers the
 // normal case, no-prefix case, multi-hyphen case, and malformed inputs.
 func TestLabelFromFilename(t *testing.T) {
@@ -41,7 +41,7 @@ func TestLabelFromFilename(t *testing.T) {
 	}
 }
 
-// TestFicheDirForID — each known prefix maps to its display name; an empty id
+// TestFicheDirForID - each known prefix maps to its display name; an empty id
 // or an unknown prefix returns the empty string.
 func TestFicheDirForID(t *testing.T) {
 	t.Parallel()

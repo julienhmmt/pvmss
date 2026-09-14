@@ -41,7 +41,7 @@ func (p Proxmox) CloneVM(ctx context.Context, spec CloneSpec) (string, error) {
 	return upid, nil
 }
 
-// boolToStr returns "1" for true and "0" for false — the Proxmox API's boolean
+// boolToStr returns "1" for true and "0" for false - the Proxmox API's boolean
 //
 //	encoding (matches ProxMate's `opts.full? '1': '0'`).
 func boolToStr(b bool) string {

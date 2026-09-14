@@ -1,18 +1,18 @@
-// Package cluster — real Proxmox VNC relay (ConsoleRelay implementation).
+// Package cluster - real Proxmox VNC relay (ConsoleRelay implementation).
 //
 // This is the real cluster.Client's ConsoleRelay: GetVNCTicket dials Proxmox's
 // vncproxy endpoint for (node, vmid) to obtain a Proxmox-side VNC ticket and
 // port; RelayConsole dials Proxmox's own vncwebsocket endpoint and relays
 // frames bidirectionally between the browser WebSocket and Proxmox until either
 // side closes. The idea is reused from the legacy's (GetVNCProxyResty,
-// buildVNCWebSocketURL, forwardVNCMessages) — the code is not (no
+// buildVNCWebSocketURL, forwardVNCMessages) - the code is not (no
 // copy-paste from v0.3).
 //
 // The real Proxmox client is not fully wired in v0.4 yet (left Proxmox as a stub for every
 // read/write method). This file implements the console surface
 // against a minimal REST + WebSocket client so that a reachable Proxmox server
 // would actually work, but it is exercised only by integration tests against a
-// live endpoint — the demo and unit tests run against the fake.
+// live endpoint - the demo and unit tests run against the fake.
 package cluster
 
 import (
@@ -35,7 +35,7 @@ import (
 )
 
 // RFB protocol constants (RFC 6143) used only for the handshake this file
-// intercepts — version negotiation and the two security types Proxmox's
+// intercepts - version negotiation and the two security types Proxmox's
 // vncwebsocket endpoint can offer. Everything past SecurityResult (ClientInit
 // onward) is opaque framebuffer protocol PVMSS never needs to parse.
 const (
@@ -70,7 +70,7 @@ type proxmoxTermProxyResponse struct {
 // need. Constructed per-call from cluster.Proxmox's own BaseURL/APITokenName/
 // APITokenValue fields (set in main.go from PROXMOX_URL/PROXMOX_API_TOKEN_NAME/
 // PROXMOX_API_TOKEN_VALUE). Proxmox itself still returns ErrNotImplemented for
-// every read/write method beyond ConsoleRelay (stub) — this is only the
+// every read/write method beyond ConsoleRelay (stub) - this is only the
 // console surface, not the full client.
 type proxmoxVNCClient struct {
 	baseURL      string
@@ -81,7 +81,7 @@ type proxmoxVNCClient struct {
 
 // GetVNCTicket implements ConsoleRelay for the real Proxmox client. It calls
 // Proxmox's vncproxy endpoint for (node, vmid) and returns the Proxmox-side
-// ticket and port. The node is always Resolve()'s server-resolved value — the
+// ticket and port. The node is always Resolve()'s server-resolved value - the
 // caller never supplies one.
 //
 // Proxmox is not reachable in the demo or unit tests; this
@@ -104,7 +104,7 @@ func (p Proxmox) RelayConsole(ctx context.Context, _ string, vmid int, proxy VNC
 
 // GetTermProxy implements TerminalRelay for the real Proxmox client. It calls
 // Proxmox's termproxy endpoint for (node, vmid) and returns the Proxmox-side
-// ticket and port. The node is always Resolve()'s server-resolved value — the
+// ticket and port. The node is always Resolve()'s server-resolved value - the
 // caller never supplies one. Same auth-header pattern as
 // proxmoxGetVNCTicket.
 //
@@ -116,11 +116,11 @@ func (p Proxmox) GetTermProxy(ctx context.Context, _ string, vmid int, node stri
 }
 
 // RelaySerial implements TerminalRelay for the real Proxmox client. It dials
-// Proxmox's vncwebsocket endpoint (the SAME endpoint VNC uses — Proxmox
+// Proxmox's vncwebsocket endpoint (the SAME endpoint VNC uses - Proxmox
 // multiplexes serial tunnels through it via the termproxy ticket) and relays
 // raw bytes bidirectionally between the browser WebSocket (peer) and Proxmox
 // until either side closes. There is NO RFB handshake and NO DES auth for
-// serial — the vncwebsocket endpoint carries the serial tunnel as an
+// serial - the vncwebsocket endpoint carries the serial tunnel as an
 // already-framed byte stream; PVMSS is a dumb byte pipe and the browser-side
 // xterm.js layer owns the "type:payload" framing.
 //
@@ -179,7 +179,7 @@ func proxmoxRelayConsole(ctx context.Context, c proxmoxVNCClient, node string, v
 	wsURL := buildProxmoxVNCWebSocketURL(c.baseURL, node, vmid, proxy.Port, proxy.Ticket)
 
 	// A long-lived WebSocket must never dial through an *http.Client with
-	// Timeout set — that timer bounds the whole connection lifetime, not
+	// Timeout set - that timer bounds the whole connection lifetime, not
 	// just the handshake, and silently kills the relay ~Timeout after open
 	// (coder/websocket's own dial docs warn against this). Reuse the same
 	// transport (TLS config) but with no Timeout; ctx is what bounds this dial.
@@ -204,11 +204,11 @@ func proxmoxRelayConsole(ctx context.Context, c proxmoxVNCClient, node string, v
 
 	// Proxmox's websocket=1 vncproxy mode always demands RFB "VNC
 	// Authentication" (security type 2) using the ticket itself as the DES
-	// password (RFC 6143) — the URL vncticket only authorizes the
+	// password (RFC 6143) - the URL vncticket only authorizes the
 	// WebSocket upgrade, not the RFB session riding on top of it. PVMSS
 	// deliberately never sends that ticket to the browser (opaque token
 	// only), so we complete this handshake ourselves here, then present the
-	// browser a "security type: None" facade — it never sees Proxmox's auth
+	// browser a "security type: None" facade - it never sees Proxmox's auth
 	// requirement, or the ticket, at all.
 	if err := completeProxmoxVNCAuth(proxmoxNetConn, proxy.Ticket); err != nil {
 		return fmt.Errorf("proxmox vnc authentication: %w", err)
@@ -269,17 +269,17 @@ func proxmoxGetTermProxy(ctx context.Context, c proxmoxVNCClient, node string, v
 }
 
 // proxmoxRelaySerial dials Proxmox's vncwebsocket endpoint (the same endpoint
-// VNC uses — Proxmox multiplexes serial tunnels through it via the termproxy
+// VNC uses - Proxmox multiplexes serial tunnels through it via the termproxy
 // ticket) and copies raw bytes both ways between the browser peer and Proxmox
 // until either side closes. There is NO RFB handshake and NO DES auth for
-// serial — the vncwebsocket endpoint carries the serial tunnel as an
+// serial - the vncwebsocket endpoint carries the serial tunnel as an
 // already-framed byte stream; PVMSS is a dumb byte pipe and the browser-side
 // xterm.js layer owns the "type:payload" framing.
 func proxmoxRelaySerial(ctx context.Context, c proxmoxVNCClient, node string, vmid int, proxy TermProxyTicket, peer io.ReadWriteCloser) error {
 	wsURL := buildProxmoxVNCWebSocketURL(c.baseURL, node, vmid, proxy.Port, proxy.Ticket)
 
 	// Same long-lived-WebSocket dial constraint as proxmoxRelayConsole: never
-	// dial through an *http.Client with Timeout set — that timer bounds the
+	// dial through an *http.Client with Timeout set - that timer bounds the
 	// whole connection lifetime, not just the handshake. Reuse the transport
 	// (TLS config) but with no Timeout; ctx bounds this dial.
 	dialClient := &http.Client{Transport: c.httpClient.Transport}
@@ -307,7 +307,7 @@ func proxmoxRelaySerial(ctx context.Context, c proxmoxVNCClient, node string, vm
 	proxmoxNetConn := websocket.NetConn(ctx, proxmoxConn, websocket.MessageText)
 	defer func() { _ = proxmoxNetConn.Close() }()
 
-	// Plain bidirectional byte pipe — no RFB handshake, no DES auth. The
+	// Plain bidirectional byte pipe - no RFB handshake, no DES auth. The
 	// browser-side xterm.js layer encodes keystrokes as "0:len:data" and
 	// decodes "0:len:output"; PVMSS never inspects or terminates the framing.
 	errCh := make(chan error, 2)
@@ -324,7 +324,7 @@ func proxmoxRelaySerial(ctx context.Context, c proxmoxVNCClient, node string, vm
 
 // completeProxmoxVNCAuth performs the RFB version + security handshake with
 // Proxmox on PVMSS's own behalf, leaving proxmoxNetConn positioned right
-// after SecurityResult (ready for ClientInit/ServerInit — pure byte relay
+// after SecurityResult (ready for ClientInit/ServerInit - pure byte relay
 // from there on).
 func completeProxmoxVNCAuth(conn io.ReadWriter, ticket string) error {
 	if err := rfbClientVersionHandshake(conn); err != nil {
@@ -400,7 +400,7 @@ func rfbClientVersionHandshake(conn io.ReadWriter) error {
 
 // rfbServerVersionHandshake plays the RFB *server* role: PVMSS speaks first
 // to the browser, so this writes the version banner before reading the
-// browser's reply. Getting this order backwards deadlocks both sides —
+// browser's reply. Getting this order backwards deadlocks both sides - 
 // each waiting to read a banner the other is also waiting to read first.
 func rfbServerVersionHandshake(conn io.ReadWriter) error {
 	if _, err := conn.Write([]byte(rfbClientVersion)); err != nil {
@@ -452,7 +452,7 @@ func rfbChooseSecurityType(conn io.ReadWriter) (byte, error) {
 // rfbAnswerVNCAuthChallenge reads Proxmox's 16-byte DES challenge and
 // answers it using the ticket string as the VNC password (RFC 6143: the password is
 // DES-encrypted, in two independent 8-byte ECB blocks, using a key derived from the password's
-// first 8 bytes with each byte's bits reversed — a quirk of the original VNC protocol, not
+// first 8 bytes with each byte's bits reversed - a quirk of the original VNC protocol, not
 // modern DES usage).
 func rfbAnswerVNCAuthChallenge(conn io.ReadWriter, password string) error {
 	challenge := make([]byte, 16)
@@ -493,7 +493,7 @@ func rfbReadSecurityResult(conn io.ReadWriter) error {
 }
 
 // rfbReadReasonString reads an RFB-3.8-style [u32 length][bytes] failure
-// reason. Errors are ignored by callers — this only enriches an already-
+// reason. Errors are ignored by callers - this only enriches an already-
 // failing error path, never the sole failure signal.
 func rfbReadReasonString(conn io.ReadWriter) (string, error) {
 	var lenBuf [4]byte
@@ -517,7 +517,7 @@ func rfbReadReasonString(conn io.ReadWriter) (string, error) {
 }
 
 // vncDESKey derives the 8-byte DES key from a VNC password: the first 8
-// bytes (null-padded if shorter), each with its bits reversed — VNC's
+// bytes (null-padded if shorter), each with its bits reversed - VNC's
 // historical quirk (RFC 6143), not a general DES convention.
 func vncDESKey(password string) []byte {
 	key := make([]byte, 8)
@@ -543,7 +543,7 @@ func reverseByte(b byte) byte {
 }
 
 // buildProxmoxVNCWebSocketURL converts a Proxmox HTTP(S) base URL to the
-// vncwebsocket URL — the idea behind legacy's buildVNCWebSocketURL, reused.
+// vncwebsocket URL - the idea behind legacy's buildVNCWebSocketURL, reused.
 func buildProxmoxVNCWebSocketURL(baseURL, node string, vmid, port int, vncticket string) string {
 	base := strings.TrimSpace(baseURL)
 	if !strings.HasPrefix(base, "http://") && !strings.HasPrefix(base, "https://") {
@@ -582,7 +582,7 @@ func newProxmoxVNCClient(baseURL, tokenName, tokenValue string, insecureSkipVeri
 			// Force HTTP/1.1: Go's transport auto-negotiates h2 via ALPN once
 			// NextProtos is left empty, and Proxmox's api daemon doesn't speak
 			// the RFC 8441 extended-CONNECT upgrade h2 would require for the
-			// WebSocket handshake — it just hangs forever instead of erroring.
+			// WebSocket handshake - it just hangs forever instead of erroring.
 			NextProtos: []string{"http/1.1"},
 		},
 	}

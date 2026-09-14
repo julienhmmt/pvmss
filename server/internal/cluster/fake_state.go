@@ -68,7 +68,7 @@ type fakeState struct {
 	// and the lock field in VMLiveStatus.
 	vmLocks map[int]string
 	// snippetPresence models a fixed, admin-preplaced snippet file the fake
-	// reports as existing — HasSnippet cannot invent one, so this defaults
+	// reports as existing - HasSnippet cannot invent one, so this defaults
 	// empty (nothing present) and tests opt a (node, storage, filename) triple
 	// in via SetFakeSnippetPresent.
 	snippetPresence map[fakeSnippetKey]bool
@@ -77,7 +77,7 @@ type fakeState struct {
 	// SetFakeSnippetContent.
 	snippetContent map[fakeSnippetKey]string
 	// snippetPushMarksPresent, when false, keeps a successful
-	// PushCloudInitSnippet from recording the file as visible — the "write
+	// PushCloudInitSnippet from recording the file as visible - the "write
 	// went through the mount but Proxmox does not list it" failure (wrong
 	// mount) the create path must catch via HasSnippet. Defaults true,
 	// matching the real client's write-then-verify contract.

@@ -85,7 +85,7 @@ func (s *fakeState) snapshotWriteGuard(vmid int) error {
 }
 
 // snapshotLockError mirrors real Proxmox: a locked VM rejects every snapshot
-// write with "VM is locked (<lockname>)" — the message extractLockName parses.
+// write with "VM is locked (<lockname>)" - the message extractLockName parses.
 func (s *fakeState) snapshotLockError(vmid int) error {
 	s.vmMu.RLock()
 	defer s.vmMu.RUnlock()
@@ -98,7 +98,7 @@ func (s *fakeState) snapshotLockError(vmid int) error {
 }
 
 // SetFakeSnapshotWriteError configures the default fake so every snapshot
-// write (create/rollback/delete) fails with the given error — used by tests
+// write (create/rollback/delete) fails with the given error - used by tests
 // to exercise the handler's cluster-rejection mapping. A nil
 // error clears it.
 func SetFakeSnapshotWriteError(err error) {
@@ -211,7 +211,7 @@ func cloneVMSnapshots(snapshots []VMSnapshot) []VMSnapshot {
 }
 
 // SnapshotConfig implements SnapshotConfigReader with the fake VM's current
-// state — deterministic enough for the pre-rollback diff UI.
+// state - deterministic enough for the pre-rollback diff UI.
 func (fake Fake) SnapshotConfig(_ context.Context, node string, vmid int, name string) (map[string]string, error) {
 	state := fake.stateOrDefault()
 	state.vmMu.RLock()

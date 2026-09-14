@@ -13,13 +13,13 @@ import (
 
 // ErrNotFound is returned by Resolve when the (cluster, vmid) pair is absent
 // from the Index OR when the VM exists but lacks the mandatory pvmss tag
-// (a VM outside PVMSS scope is indistinguishable from a nonexistent one — the response never
+// (a VM outside PVMSS scope is indistinguishable from a nonexistent one - the response never
 // confirms a VM's existence to a caller who shouldn't see it).
 var ErrNotFound = errors.New("vm not found")
 
 // ErrForbidden is returned by Resolve when the VM is tagged pvmss but the
 // caller's pool does not own it and the caller is not an admin. This
-// is the only branch that distinguishes "wrong owner" from "doesn't exist" —
+// is the only branch that distinguishes "wrong owner" from "doesn't exist" - 
 // and only to tell a legitimate owner-in-training their action was understood
 // but denied, not to leak existence to a probing caller.
 var ErrForbidden = errors.New("forbidden")
@@ -58,7 +58,7 @@ func recordResolveFailed(actor auth.Identity, clusterName string, vmid int, reas
 	_ = resolveAuditor.RecordAdminAction(context.Background(), actor.Username, "vm.resolve_failed", "vm", targetID, detail, "")
 }
 
-// Entity is a single VM resolved through the ownership gate — the only value
+// Entity is a single VM resolved through the ownership gate - the only value
 // a write handler may use to identify its target. The Node field is
 // authoritative: it comes from the Index, never from request input (root cause). Carries the
 // detail-view metrics so GET /vms/:id can
@@ -85,7 +85,7 @@ type Entity struct {
 	// HasSerial is true when the VM carries a serial port (serial0), so the
 	// PVMSS Text/serial console is reachable. Mirrors cluster.VM.HasSerial.
 	HasSerial bool
-	// Agent mirrors cluster.VM.Agent — the config's guest-agent flag — so
+	// Agent mirrors cluster.VM.Agent - the config's guest-agent flag - so
 	// the detail endpoint can explain absent live IPs without probing a
 	// channel that is configured off.
 	Agent bool
@@ -100,7 +100,7 @@ type Entity struct {
 
 // Resolve is the ONLY function capable of turning a (cluster, vmid) pair into
 // a writable VM entity anywhere in the codebase. Every write
-// handler — action, delete, patch — calls this first and uses nothing else to
+// handler - action, delete, patch - calls this first and uses nothing else to
 // identify the target VM or its node., no future handler can reach
 // Proxmox for a write without going through it: the class of bug
 // represents becomes structurally unreachable, not merely patched at one call
@@ -111,16 +111,16 @@ type Entity struct {
 // 2. Check the pvmss tag. Absent → ErrNotFound (same error as step 1).
 // 3. If actor.IsAdmin, skip to step 5.
 // 4. Check entity.Pool == actor.Pool. Mismatch → ErrForbidden.
-// 5. Return Entity — the node exactly as recorded in the Index.
+// 5. Return Entity - the node exactly as recorded in the Index.
 //
 // Resolve is pure: it reads the Index snapshot it is handed and never calls
 // the cluster client. Callers do, after Resolve returns (reads and writes are separated). It is re-evaluated on every single write
-// request — no request-scoped or session-scoped caching of a prior
+// request - no request-scoped or session-scoped caching of a prior
 // authorization result.
 //
 // Source widened from a concrete *inventory.Index to the one-method
 // inventory.LookupSource interface so Resolve can dispatch through whichever
-// cluster's projection clusterName names (single decode point preserved —
+// cluster's projection clusterName names (single decode point preserved - 
 // rather than pushing per-cluster lookup out to every
 // caller). *inventory.Index still implements LookupSource, so this is a
 // backward-compatible widening: every existing call site keeps compiling and

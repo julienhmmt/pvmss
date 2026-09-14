@@ -41,7 +41,7 @@ func DeriveProfileID(label string) string {
 }
 
 // validateProfileFields checks that cpuCores, memoryMB, diskGB are positive and
-// bus is non-empty — the minimum the admin UI requires.
+// bus is non-empty - the minimum the admin UI requires.
 func validateProfileFields(cpuCores, memoryMB, diskGB int, bus string) error {
 	if cpuCores < 1 {
 		return fmt.Errorf("%w: cpuCores must be >= 1", ErrInvalidProfile)
@@ -63,7 +63,7 @@ func validateProfileFields(cpuCores, memoryMB, diskGB int, bus string) error {
 }
 
 // ListAdminProfiles returns every profile for the cluster (including disabled
-// ones), ordered by id — the admin list endpoint's data source.
+// ones), ordered by id - the admin list endpoint's data source.
 func ListAdminProfiles(ctx context.Context, st *store.Store, cluster string) ([]AdminProfile, error) {
 	rows, err := st.CatalogProfilesEnabled(ctx, cluster)
 	if err != nil {
@@ -84,7 +84,7 @@ func ListAdminProfiles(ctx context.Context, st *store.Store, cluster string) ([]
 // ProfileSpec is the editable field set of a VM profile, shared by
 // CreateProfile and UpdateProfile. Grouping it collapses the positional
 // field parameters those functions used to take (SonarQube go:S107).
-// Sockets defaults to 1 when zero — the admin UI does not yet expose it.
+// Sockets defaults to 1 when zero - the admin UI does not yet expose it.
 type ProfileSpec struct {
 	Label    string
 	Sockets  int
@@ -180,7 +180,7 @@ func UpdateProfile(ctx context.Context, st *store.Store, cluster, id string, spe
 }
 
 // DeleteProfile removes a profile row. Returns ErrProfileNotFound if the id
-// does not exist. Has no cascade — never stores a profile reference on
+// does not exist. Has no cascade - never stores a profile reference on
 // the VM itself.
 func DeleteProfile(ctx context.Context, st *store.Store, cluster, id string) error {
 	exists, err := st.ProfileExists(ctx, cluster, id)

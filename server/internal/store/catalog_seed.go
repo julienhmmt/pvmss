@@ -7,7 +7,7 @@ package store
 //
 // The rows below are hand-authored fixture data: the admin CRUD will make them editable, only
 // consumes them. The fixture
-// deliberately does NOT approve all of the fake dataset — a catalog that
+// deliberately does NOT approve all of the fake dataset - a catalog that
 // approves everything would never exercise the rejection path.
 const schemaV7 = `
 CREATE TABLE catalog_nodes (

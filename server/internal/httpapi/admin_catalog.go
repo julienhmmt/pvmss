@@ -767,7 +767,7 @@ func (h *AdminCatalog) ServeISODelete(w http.ResponseWriter, r *http.Request) {
 
 // adminTemplateDTO is the admin response shape for one discovered template.
 // missing is true for a stored approval whose template Proxmox no longer
-// reports — the UI offers Remove on those rows only.
+// reports - the UI offers Remove on those rows only.
 type adminTemplateDTO struct {
 	VMID              int    `json:"vmid"`
 	Node              string `json:"node"`
@@ -859,7 +859,7 @@ func (h *AdminCatalog) ServeTemplateToggle(w http.ResponseWriter, r *http.Reques
 
 	// catalog.SetTemplateEnabled fetches the discovery set once, finds the
 	// template, extracts its values for the first-approval insert, and
-	// upserts the enabled state. No pre-fetch here — that would duplicate
+	// upserts the enabled state. No pre-fetch here - that would duplicate
 	// the cluster round-trip.
 	err = catalog.SetTemplateEnabled(r.Context(), h.store, client, clusterName, catalog.TemplateRef{VMID: req.VMID}, req.Enabled)
 	if errors.Is(err, cluster.ErrNotFound) {
@@ -886,7 +886,7 @@ func (h *AdminCatalog) ServeTemplateToggle(w http.ResponseWriter, r *http.Reques
 }
 
 // ServeTemplateDelete handles DELETE /api/v1/admin/templates/{cluster}/{vmid}
-// removes an approval row — the UI offers Remove only on missing
+// removes an approval row - the UI offers Remove only on missing
 // (orphaned) rows, but the API deletes any approval.
 func (h *AdminCatalog) ServeTemplateDelete(w http.ResponseWriter, r *http.Request) {
 	clusterName := r.PathValue("cluster")
@@ -934,7 +934,7 @@ type templateUpdateRequest struct {
 // Overrides the discovered template field values and pins the row against
 // discovery-wins write-back (schemaV26). The create path still enforces the
 // gabarit on clones, so an override above the gabarit simply means clones
-// from this template are rejected at create time — the admin owns that.
+// from this template are rejected at create time - the admin owns that.
 func (h *AdminCatalog) ServeTemplateUpdate(w http.ResponseWriter, r *http.Request) {
 	clusterName := r.PathValue("cluster")
 
@@ -1015,7 +1015,7 @@ func (h *AdminCatalog) SetTrustedProxyHops(n int) {
 }
 
 // recordAdminAction writes one admin audit row for a catalog mutation. It
-// never fails the request — a failed audit write is logged and ignored.
+// never fails the request - a failed audit write is logged and ignored.
 func (h *AdminCatalog) recordAdminAction(r *http.Request, action, targetType, targetID, summary string, changes []any) {
 	actor, err := h.auth.Principal(r)
 	if err != nil {

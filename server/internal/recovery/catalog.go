@@ -86,7 +86,7 @@ func mapStorages(ctx context.Context, legacyDB *sql.DB, _ string, resolver Stora
 		if resolver == nil {
 			skips = append(skips, SkipReason{
 				Row:    name,
-				Reason: "no Proxmox credentials — storage-node expansion skipped",
+				Reason: "no Proxmox credentials - storage-node expansion skipped",
 			})
 
 			continue

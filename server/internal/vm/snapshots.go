@@ -42,7 +42,7 @@ var (
 
 const maxSnapshotNameLength = 40
 
-// currentSnapshotName is Proxmox's pseudo-entry for the live state — filtered
+// currentSnapshotName is Proxmox's pseudo-entry for the live state - filtered
 // from lists, never a real snapshot, but resolvable for config reads.
 const currentSnapshotName = "current"
 
@@ -128,7 +128,7 @@ func CreateSnapshot(ctx context.Context, deps SnapshotDependencies, name, descri
 	}
 
 	// Refuse before dispatching when any disk sits on storage that
-	// cannot hold snapshots (Proxmox rejects outright) — the UI already
+	// cannot hold snapshots (Proxmox rejects outright) - the UI already
 	// greys the create button via the capability field of the list response.
 	capability := ComputeSnapshotCapability(entity, deps.Index)
 	if !capability.CanSnapshot {
@@ -193,7 +193,7 @@ func DeleteSnapshot(ctx context.Context, deps SnapshotDependencies, name string)
 }
 
 // snapshotWithLockRetry dispatches a snapshot write, retrying when Proxmox
-// rejects it with "VM is locked (lockname)" — the same bounded retry-on-lock
+// rejects it with "VM is locked (lockname)" - the same bounded retry-on-lock
 // as the power actions, reusing extractLockName and the
 // LockRetryPollInterval / MaxLockRetryWait budgets. A VM stuck at
 // lock=snapshot-delete (NFS ESTALE, pegaprox incident #422) cannot clear
@@ -229,7 +229,7 @@ func snapshotWithLockRetry(ctx context.Context, deps SnapshotDependencies, dispa
 			}
 		case <-deadline.C:
 			if lockName == "snapshot-delete" {
-				return "", fmt.Errorf("%w: VM %d is locked by a %s left behind by a failed snapshot delete — run `qm unlock %d` on the node", ErrVMLocked, deps.VMID, lockName, deps.VMID)
+				return "", fmt.Errorf("%w: VM %d is locked by a %s left behind by a failed snapshot delete - run `qm unlock %d` on the node", ErrVMLocked, deps.VMID, lockName, deps.VMID)
 			}
 
 			return "", fmt.Errorf("%w: VM %d is locked by a %s; retry once it completes", ErrVMLocked, deps.VMID, lockName)
@@ -240,7 +240,7 @@ func snapshotWithLockRetry(ctx context.Context, deps SnapshotDependencies, dispa
 }
 
 // SnapshotConfig returns one snapshot's stored config as a flat key→value
-// map — the pre-rollback diff. "current" (the pseudo-entry,
+// map - the pre-rollback diff. "current" (the pseudo-entry,
 // filtered from lists) maps to the live config. A named snapshot must exist
 // (404 snapshot_not_found); "current" always resolves.
 func SnapshotConfig(ctx context.Context, deps SnapshotDependencies, name string) (map[string]string, error) {
@@ -316,7 +316,7 @@ func validateVMState(entity Entity, index *inventory.Index, vmstate bool) error 
 
 // SnapshotCapability describes whether this VM can take snapshots and
 // RAM-state snapshots right now, with human-readable reasons.
-// Computed from the projection only — no cluster call.
+// Computed from the projection only - no cluster call.
 type SnapshotCapability struct {
 	CanSnapshot bool
 	CanVMState  bool

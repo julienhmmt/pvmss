@@ -153,7 +153,7 @@ type auditConfigRequest struct {
 
 // ServeAuditConfigUpdate handles PUT /api/v1/admin/audit/config.
 // Rejects retention below 30 days with 400. The actual prune of now-expired
-// rows is left to the daily tick — this endpoint only changes the setting.
+// rows is left to the daily tick - this endpoint only changes the setting.
 func (h *AdminOps) ServeAuditConfigUpdate(w http.ResponseWriter, r *http.Request) {
 	var req auditConfigRequest
 	if err := decodeJSON(w, r, &req); err != nil {
@@ -382,7 +382,7 @@ func (h *AdminOps) ServeDBExport(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.store.ExportDatabase(r.Context(), w); err != nil {
 		h.log.Error("admin db export failed", "component", "httpapi", "error", err)
-		// Headers already sent — the best we can do is log; the client will
+		// Headers already sent - the best we can do is log; the client will
 		// see a truncated stream.
 		return
 	}
@@ -414,7 +414,7 @@ type importResultDTO struct {
 // Accepts a multipart file upload, validates it, and returns a preview
 // without writing anything to the live database.
 func (h *AdminOps) ServeDBImport(w http.ResponseWriter, r *http.Request) {
-	// Limit upload size to 50 MiB — a configuration database is small.
+	// Limit upload size to 50 MiB - a configuration database is small.
 	// MaxBytesReader wraps the body so ParseMultipartForm cannot read beyond
 	// the limit (gosec G120: unbounded form parsing).
 	r.Body = http.MaxBytesReader(w, r.Body, 50<<20)
@@ -488,7 +488,7 @@ func (h *AdminOps) ServeDBImportConfirm(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		if store.IsExpired(err) {
-			writeAdminError(w, http.StatusGone, "expired", "import preview expired — upload again")
+			writeAdminError(w, http.StatusGone, "expired", "import preview expired - upload again")
 			return
 		}
 		h.log.Error("admin db import confirm failed", "component", "httpapi", "error", err)
@@ -532,7 +532,7 @@ func (h *AdminOps) ServeAppInfo(w http.ResponseWriter, _ *http.Request) {
 	// sees the current effective config, not a stale snapshot.
 	cfg, err := config.Load()
 	if err != nil {
-		// If the env is broken, show what we can — the redaction logic does
+		// If the env is broken, show what we can - the redaction logic does
 		// not depend on a valid config, only on the field values.
 		cfg = config.Configuration{}
 	}
@@ -604,7 +604,7 @@ type publicVersionDTO struct {
 }
 
 // ServePublicVersion handles GET /api/v1/public/version. No
-// authentication required — the version alone is visible in the public
+// authentication required - the version alone is visible in the public
 // footer.
 func (h *AdminOps) ServePublicVersion(w http.ResponseWriter, _ *http.Request) {
 	body, err := json.Marshal(publicVersionDTO{Version: h.version})

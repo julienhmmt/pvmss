@@ -1,5 +1,5 @@
 // Package vm resolves VM list queries against the inventory projection.
-// List is the single read path behind GET /api/v1/vms — scope enforcement,
+// List is the single read path behind GET /api/v1/vms - scope enforcement,
 // search classification, filtering, sorting, and pagination all happen here,
 // in one pure function with no I/O.
 //
@@ -72,7 +72,7 @@ const (
 )
 
 // ListQuery is the resolved combination of search, filters, sort, page, and
-// scope. Scope is a requested value only — List re-derives the effective
+// scope. Scope is a requested value only - List re-derives the effective
 // scope from the caller's identity and never trusts it as-is.
 type ListQuery struct {
 	Cluster  string
@@ -106,8 +106,8 @@ type ListResult struct {
 	Quota          *Quota
 }
 
-// List resolves query against the index snapshot for identity. It is pure —
-// no I/O, no mutation of the index — and is the only branch point for scope
+// List resolves query against the index snapshot for identity. It is pure - 
+// no I/O, no mutation of the index - and is the only branch point for scope
 // in the whole request path. allowedQuota is the configured per-user
 // VM allowance reported in Quota (-1 = unlimited); the quota is attached
 // whenever the caller is not an admin, or an admin listing their own pool.
@@ -214,7 +214,7 @@ func scopedVMs(source inventory.Source, query ListQuery, identity auth.Identity)
 	pool := identity.Pool
 	adminAll := query.Scope == ScopeAll && identity.IsAdmin
 	// An empty Pool means the identity owns no pool (the local admin, or a
-	// PVE account never assigned one) — never treat that as "mine": Index.ByPool
+	// PVE account never assigned one) - never treat that as "mine": Index.ByPool
 	// also keys unpooled/orphan VMs under "", so without this guard those VMs
 	// would incorrectly appear as owned by every pool-less identity.
 	if pool == "" && !adminAll {

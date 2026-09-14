@@ -44,7 +44,7 @@ func (fake Fake) NextVMID(_ context.Context) (int, error) {
 }
 
 // CreateVM implements Creator: the VM enters the fake's mutable dataset
-// immediately (running when StartAfterCreate is set — folds the start into this same task) and
+// immediately (running when StartAfterCreate is set - folds the start into this same task) and
 // a poll-counted task is registered under the
 // returned UPID.
 func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
@@ -79,7 +79,7 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 	}
 
 	// The real create path always materializes the primary disk (import-from
-	// or plain allocation), so the fake mirrors it — otherwise post-create
+	// or plain allocation), so the fake mirrors it - otherwise post-create
 	// steps like ResizeDisk find no disk to grow.
 	var disks []Disk
 	if spec.Disk.Storage != "" {
@@ -132,7 +132,7 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 
 	// The real create path always sends agent=1 (proxmox_create.go), so a
 	// fake-created VM carries an enabled guest agent even before any
-	// cloud-init config is written — the password pre-flight reads it from
+	// cloud-init config is written - the password pre-flight reads it from
 	// the config.
 	if state.cloudInitConfigs == nil {
 		state.cloudInitConfigs = make(map[fakeCloudInitKey]CloudInitConfig)
@@ -209,7 +209,7 @@ func (fake Fake) TaskStatus(_ context.Context, upid string) (TaskStatus, error) 
 
 // CloneVM implements Creator: registers a poll-counted clone task under the
 // returned UPID. The cloned VM enters the fake's mutable dataset
-// on the third poll (TaskOK), via the task's onComplete callback — mirroring
+// on the third poll (TaskOK), via the task's onComplete callback - mirroring
 // how a real Proxmox clone materializes the VM only after the task finishes.
 // The fake VM inherits a template-sized disk so post-clone ResizeDisk can find
 // it; the caller applies the actual resize via Writer.ResizeDisk after
@@ -221,8 +221,8 @@ func (fake Fake) CloneVM(_ context.Context, spec CloneSpec) (string, error) {
 
 	// The cloned VM's disk: a primary disk on the clone's storage (or the
 	// source node's local-lvm if no target storage was specified). The bus
-	// family comes from the template (spec.DiskBus) — the clone inherits it.
-	// The size is a small default (8 GB) — the caller resizes via
+	// family comes from the template (spec.DiskBus) - the clone inherits it.
+	// The size is a small default (8 GB) - the caller resizes via
 	// Writer.ResizeDisk after the task completes.
 	diskStorage := spec.Storage
 	if diskStorage == "" {

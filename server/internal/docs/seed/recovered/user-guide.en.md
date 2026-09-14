@@ -24,14 +24,14 @@ it runs.
 Open the wizard via "Create a VM" after signing in. **Simple** mode asks only
 what is needed; **Detailed** mode exposes every option. Configure:
 
-- **Source**: an **ISO** image, a Proxmox **template** to clone, or a **cloud image** to import — all from the administrator-approved lists. A template clone stays on the template's node; a cloud image requires the cloud-init fields.
+- **Source**: an **ISO** image, a Proxmox **template** to clone, or a **cloud image** to import - all from the administrator-approved lists. A template clone stays on the template's node; a cloud image requires the cloud-init fields.
 - **Name and description**: a lowercase, hyphenated, unique name within your pool. A clear name (like `web-prod-01`) makes the list searchable and the activity log readable.
 - **Cluster and node**: the node is chosen automatically (least loaded approved node with enough storage) unless you pick one in Detailed mode.
 - **Profile (optional)**: if your administrator published hardware profiles, pick one to fill CPU, memory, and disk automatically.
 - **Resources**: sockets, cores, memory, and disk size. Values are clamped by the cluster policy and your per-user quota.
 - **Storage**: a storage approved by your administrator; the wizard checks free space live.
 - **Network**: one or more network cards, each with a bridge and a card model (VirtIO, E1000, E1000E, RTL8139, VMXNet3). The Proxmox firewall is always enabled; your administrator may impose an isolation VLAN.
-- **Firmware**: UEFI (default on), Secure Boot (default off — needed for Windows, breaks most Linux ISOs), TPM 2.0 for guests that require it.
+- **Firmware**: UEFI (default on), Secure Boot (default off - needed for Windows, breaks most Linux ISOs), TPM 2.0 for guests that require it.
 - **Cloud-init document**: an administrator template or one of [your own files](/cloud-init). See the [cloud-init how-to](/docs/cloud-init-howto).
 - **Startup**: choose whether the VM starts automatically after creation.
 - **Tags**: pick from the administrator-curated list.
@@ -60,11 +60,11 @@ The VM details page is organized in tabs.
 ### Overview
 
 - **Start**, **Shutdown** (graceful, guest agent / ACPI), **Reboot**, **Stop** (hard power off), **Reset**, **Pause**, **Resume**.
-- **Console** — open the graphical console.
-- **Boot from CD-ROM** once — restart on the mounted ISO for a single boot.
+- **Console** - open the graphical console.
+- **Boot from CD-ROM** once - restart on the mounted ISO for a single boot.
 - **Rename** and edit the **description** (Markdown is rendered).
-- **Delete** — permanently delete the VM (confirmation dialog).
-- **Metrics** — CPU, memory, disk, and network history over the last hour, day, or week.
+- **Delete** - permanently delete the VM (confirmation dialog).
+- **Metrics** - CPU, memory, disk, and network history over the last hour, day, or week.
 
 Prefer **Shutdown** over **Stop**. If shutdown does nothing, the QEMU guest
 agent is probably missing inside the VM: install it, or use **Stop**.
@@ -93,9 +93,9 @@ edited when your administrator allows it. See the
 
 ### Snapshots
 
-- **Create**: enter a name (starts with a letter, then letters, digits, hyphens or underscores — 2 to 40 characters), an optional description, and choose whether to include RAM state.
+- **Create**: enter a name (starts with a letter, then letters, digits, hyphens or underscores - 2 to 40 characters), an optional description, and choose whether to include RAM state.
 - **View**: name, description, creation date, and whether RAM was included; the current state is marked.
-- **Rollback**: restores the VM to the snapshot state. This is destructive — changes made after the snapshot are lost.
+- **Rollback**: restores the VM to the snapshot state. This is destructive - changes made after the snapshot are lost.
 - **Delete**: permanently removes a snapshot and frees its storage.
 
 Your administrator may set a maximum number of snapshots per VM. Snapshots
@@ -103,14 +103,14 @@ consume storage, so delete old ones when no longer needed.
 
 ### Activity
 
-Every action performed on the VM through PVMSS — who, what, when.
+Every action performed on the VM through PVMSS - who, what, when.
 
 ## Consoles
 
 The console page offers two clients:
 
-- **noVNC** — the graphical display, with the same power actions as the details page.
-- **Serial** — a text terminal (xterm.js) for guests with a serial port; you can enable a serial port on a VM that has none.
+- **noVNC** - the graphical display, with the same power actions as the details page.
+- **Serial** - a text terminal (xterm.js) for guests with a serial port; you can enable a serial port on a VM that has none.
 
 Both are relayed by PVMSS with a single-use ticket; no direct access to
 Proxmox is needed.
@@ -127,13 +127,13 @@ existing VMs.
 Your administrator controls most limits per cluster; PVMSS enforces them
 server-side before any Proxmox call is made.
 
-- **Quota** — maximum number of VMs per user.
-- **Gabarit** — per-VM ceilings on sockets, cores, memory, disk size, network cards, and snapshots.
-- **VM name** — a lowercase hostname, at most 63 characters, unique in your pool.
-- **Description** — at most 512 characters.
-- **Bulk power actions** — up to 100 VMs per request.
-- **Cloud-init files** — up to 20 stored documents per user.
-- **Snapshot name** — a leading letter, then letters, digits, hyphens or underscores, 2 to 40 characters; `current` is reserved.
+- **Quota** - maximum number of VMs per user.
+- **Gabarit** - per-VM ceilings on sockets, cores, memory, disk size, network cards, and snapshots.
+- **VM name** - a lowercase hostname, at most 63 characters, unique in your pool.
+- **Description** - at most 512 characters.
+- **Bulk power actions** - up to 100 VMs per request.
+- **Cloud-init files** - up to 20 stored documents per user.
+- **Snapshot name** - a leading letter, then letters, digits, hyphens or underscores, 2 to 40 characters; `current` is reserved.
 
 ## Best practices
 

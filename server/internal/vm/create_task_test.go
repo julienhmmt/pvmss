@@ -58,7 +58,7 @@ func shortenTaskPolls(t *testing.T) {
 	t.Cleanup(func() { vm.CreateTaskPoll = orig })
 }
 
-// TestWaitCreateTask_SuccessAfterPolls — the wait succeeds
+// TestWaitCreateTask_SuccessAfterPolls - the wait succeeds
 // after the task reports running for several polls then OK.
 //
 //nolint:paralleltest // mutates shared vm.CreateTaskPoll
@@ -83,7 +83,7 @@ func TestWaitCreateTask_SuccessAfterPolls(t *testing.T) {
 	}
 }
 
-// TestWaitCreateTask_TaskError — a task error is returned with
+// TestWaitCreateTask_TaskError - a task error is returned with
 // the exit message and trailing log lines.
 //
 //nolint:paralleltest // mutates shared vm.CreateTaskPoll
@@ -110,8 +110,8 @@ func TestWaitCreateTask_TaskError(t *testing.T) {
 	}
 }
 
-// TestWaitCreateTask_TransientErrorThenSuccess — a transient
-// read error (network blip, 5xx) does not abort the wait — the next poll
+// TestWaitCreateTask_TransientErrorThenSuccess - a transient
+// read error (network blip, 5xx) does not abort the wait - the next poll
 // succeeds.
 //
 //nolint:paralleltest // mutates shared vm.CreateTaskPoll
@@ -132,7 +132,7 @@ func TestWaitCreateTask_TransientErrorThenSuccess(t *testing.T) {
 	}
 }
 
-// TestWaitCreateTask_ContextCancelled — context cancellation
+// TestWaitCreateTask_ContextCancelled - context cancellation
 // during a transient error propagates immediately.
 //
 //nolint:paralleltest // mutates shared vm.CreateTaskPoll
@@ -152,7 +152,7 @@ func TestWaitCreateTask_ContextCancelled(t *testing.T) {
 	}
 }
 
-// TestWaitCreateTask_Timeout — exceeding the max wait returns
+// TestWaitCreateTask_Timeout - exceeding the max wait returns
 // an explicit timeout error.
 //
 //nolint:paralleltest // mutates shared vm.CreateTaskPoll and vm.MaxCreateTaskWait

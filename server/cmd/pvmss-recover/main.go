@@ -102,7 +102,7 @@ func run() int {
 }
 
 // openSQLite opens a SQLite database file. When readOnly is true, the
-// connection is opened in read-only mode — the recovery tool never writes
+// connection is opened in read-only mode - the recovery tool never writes
 // to the legacy database.
 func openSQLite(path string, readOnly bool) (*sql.DB, error) {
 	if path == "" {

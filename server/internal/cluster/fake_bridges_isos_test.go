@@ -8,7 +8,7 @@ import (
 
 // TestFakeListBridges_ReturnsSupersetOfApproved verifies the fake's
 // ListBridges returns a strict superset of what already approved
-// (vmbr0, vmbr1) — the demo needs at least one undiscovered bridge to
+// (vmbr0, vmbr1) - the demo needs at least one undiscovered bridge to
 // approve (vmbr2).
 //
 //nolint:paralleltest // serial: shared fake dataset
@@ -25,7 +25,7 @@ func TestFakeListBridges_ReturnsSupersetOfApproved(t *testing.T) {
 		}
 	}
 
-	// At least one bridge beyond the approved set — the demo target.
+	// At least one bridge beyond the approved set - the demo target.
 	var hasUnapproved bool
 
 	for _, b := range bridges {
@@ -41,7 +41,7 @@ func TestFakeListBridges_ReturnsSupersetOfApproved(t *testing.T) {
 
 // TestFakeListISOs_ReturnsSupersetOfApproved verifies the fake's ListISOs
 // returns a strict superset of what already approved (debian-12 and
-// ubuntu-24, both on local) — the demo needs at least one undiscovered ISO
+// ubuntu-24, both on local) - the demo needs at least one undiscovered ISO
 // to approve (rocky-9).
 //
 //nolint:paralleltest // serial: shared fake dataset
@@ -65,7 +65,7 @@ func TestFakeListISOs_ReturnsSupersetOfApproved(t *testing.T) {
 		}
 	}
 
-	// At least one ISO beyond the approved set — the demo target.
+	// At least one ISO beyond the approved set - the demo target.
 	var hasUnapproved bool
 
 	for _, i := range isos {

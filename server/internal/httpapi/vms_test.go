@@ -45,7 +45,7 @@ type vmListResponse struct {
 	Quota          *vmListQuota `json:"quota"`
 }
 
-// newVMsHandler builds the handler over the fake dataset — alice owns
+// newVMsHandler builds the handler over the fake dataset - alice owns
 // pool-alice (VMIDs 100, 101, 102, 114, 115), bob owns pool-bob.
 func newVMsHandler(t *testing.T) (*httpapi.VMs, *httpapi.Auth) {
 	t.Helper()
@@ -103,7 +103,7 @@ func sortedVMIDs(list vmListResponse) []int {
 	return ids
 }
 
-// TestVMs_DefaultScopeReturnsOnlyCallerPool — GET /vms with no scope
+// TestVMs_DefaultScopeReturnsOnlyCallerPool - GET /vms with no scope
 // parameter returns exactly the caller's pool.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -131,7 +131,7 @@ func TestVMs_DefaultScopeReturnsOnlyCallerPool(t *testing.T) {
 	}
 }
 
-// TestVMs_NonAdminScopeAllSilentlyOverridden — scope=all from a
+// TestVMs_NonAdminScopeAllSilentlyOverridden - scope=all from a
 // non-admin returns the same result as no scope at all.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -147,7 +147,7 @@ func TestVMs_NonAdminScopeAllSilentlyOverridden(t *testing.T) {
 	}
 }
 
-// TestVMs_AdminScopeAllReturnsAcrossPools — an admin asking for
+// TestVMs_AdminScopeAllReturnsAcrossPools - an admin asking for
 // scope=all sees VMs across pools.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -175,7 +175,7 @@ func TestVMs_AdminScopeAllReturnsAcrossPools(t *testing.T) {
 	}
 }
 
-// TestVMs_NoVMsOwnedEmptyReason — a caller whose pool has no VMs gets
+// TestVMs_NoVMsOwnedEmptyReason - a caller whose pool has no VMs gets
 // emptyReason no_vms_owned, not an error.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -218,7 +218,7 @@ func TestVMs_SearchByTag(t *testing.T) {
 	handler, authHandler := newVMsHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 
-	// "db" matches db-01 by tag AND sandbox-01/sandbox-02 by name substring —
+	// "db" matches db-01 by tag AND sandbox-01/sandbox-02 by name substring - 
 	// one input, both match kinds, union.
 	_, list := getVMList(t, handler, cookie, "search=db")
 	if got, want := sortedVMIDs(list), []int{102, 114, 115}; !slices.Equal(got, want) {
@@ -269,7 +269,7 @@ func TestVMs_StatusFilterCombinedWithSearch(t *testing.T) {
 	}
 }
 
-// TestVMs_NodeFilterKeepsFacet — the node filter narrows results but
+// TestVMs_NodeFilterKeepsFacet - the node filter narrows results but
 // availableNodes still lists every node in the scoped set (facet pre-filter).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -287,7 +287,7 @@ func TestVMs_NodeFilterKeepsFacet(t *testing.T) {
 	}
 }
 
-// TestVMs_SortColumns — every supported column, both directions.
+// TestVMs_SortColumns - every supported column, both directions.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMs_SortColumns(t *testing.T) {
@@ -344,7 +344,7 @@ func assertBadRequestCode(t *testing.T, body []byte, wantCode string) {
 	}
 }
 
-// TestVMs_InvalidSortColumnRejected — unsupported sort column → 400,
+// TestVMs_InvalidSortColumnRejected - unsupported sort column → 400,
 // never silently defaulted.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -360,7 +360,7 @@ func TestVMs_InvalidSortColumnRejected(t *testing.T) {
 	assertBadRequestCode(t, response.Body.Bytes(), "invalid_sort_column")
 }
 
-// TestVMs_PageBeyondRangeClamps — a page past the end returns the
+// TestVMs_PageBeyondRangeClamps - a page past the end returns the
 // nearest valid page, not an error or an empty result.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -397,7 +397,7 @@ func TestVMs_PageSizeOverMaximumRejected(t *testing.T) {
 	assertBadRequestCode(t, response.Body.Bytes(), "page_size_too_large")
 }
 
-// TestVMs_QuotaReported — a non-admin default-scope request carries
+// TestVMs_QuotaReported - a non-admin default-scope request carries
 // quota; an admin scope=all request omits it entirely.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -424,7 +424,7 @@ func TestVMs_QuotaReported(t *testing.T) {
 	}
 }
 
-// TestVMs_Unauthenticated — the endpoint requires a resolved identity.
+// TestVMs_Unauthenticated - the endpoint requires a resolved identity.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMs_Unauthenticated(t *testing.T) {

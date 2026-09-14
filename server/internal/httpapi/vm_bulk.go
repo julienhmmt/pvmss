@@ -16,7 +16,7 @@ import (
 // VMBulk serves POST /api/v1/vms/bulk-action. It authenticates the
 // actor through the same Auth.Principal path every other VM endpoint uses,
 // validates the whole request (action enum, target count 1..100) before
-// touching any target, then delegates to vm.BulkAction — a pure loop over
+// touching any target, then delegates to vm.BulkAction - a pure loop over
 // the existing Action(). No ownership logic, no Resolve() call, no
 // cluster.Client call lives here; all of that stays inside Action(), called
 // once per target.
@@ -33,7 +33,7 @@ type VMBulk struct {
 }
 
 // singleClusterResolver adapts a default projection to the
-// ClusterIndexResolver interface — every target resolves against this one
+// ClusterIndexResolver interface - every target resolves against this one
 // projection's current Index, keyed under whatever cluster name the target
 // carries. This is the single-cluster wiring; NewVMBulkWithRegistry supplies
 // the multi-cluster variant.
@@ -42,7 +42,7 @@ type singleClusterResolver struct {
 }
 
 func (r singleClusterResolver) IndexFor(_ string) (*inventory.Index, error) {
-	// A nil Index is reported via a nil error, not an error value — same
+	// A nil Index is reported via a nil error, not an error value - same
 	// contract as registryResolver.IndexFor (inventory.Registry.Index
 	// returns (nil, nil) for a known-but-not-yet-populated cluster). Callers
 	//  that only distinguish "err!= nil" (unknown cluster) from "index ==
@@ -50,7 +50,7 @@ func (r singleClusterResolver) IndexFor(_ string) (*inventory.Index, error) {
 	return r.projection.Load(), nil
 }
 
-// registryResolver adapts the inventory Registry to ClusterIndexResolver —
+// registryResolver adapts the inventory Registry to ClusterIndexResolver - 
 // each target's cluster name resolves to that cluster's own projection.
 type registryResolver struct {
 	registry *inventory.Registry
@@ -61,7 +61,7 @@ func (r registryResolver) IndexFor(clusterName string) (*inventory.Index, error)
 }
 
 // clientWriterResolver adapts a cluster.ClientProvider to
-// vm.ClusterWriterResolver — each bulk target's cluster name resolves to
+// vm.ClusterWriterResolver - each bulk target's cluster name resolves to
 // that cluster's own cluster.Writer, closing the gap where BulkDeps.Writer
 // alone could not vary per target. fallback is used when clients is nil
 // (single-cluster wiring), matching every other resolveCapability call site.

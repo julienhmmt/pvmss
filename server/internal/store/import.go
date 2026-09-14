@@ -19,7 +19,7 @@ import (
 // runtime data (audit_log, vm_cloudinit_snippets), and any table not on this
 // list are excluded.
 //
-// Each new table is appended here once its migration lands — the list
+// Each new table is appended here once its migration lands - the list
 // shape is fixed, not invented ad hoc. The list is
 // intentionally exported via ImportableTables() so tests can verify it
 // against the live schema without reaching into package-private state.
@@ -51,7 +51,7 @@ type TablePreview struct {
 	RowCount int    `json:"rowCount"`
 }
 
-// ImportPreview is the result of ValidateImport — what the admin sees before
+// ImportPreview is the result of ValidateImport - what the admin sees before
 // confirming. Tables lists allowlisted-and-present tables with row counts;
 // IgnoredTables lists tables present in the upload but not allowlisted,
 // shown for transparency, never applied.
@@ -62,7 +62,7 @@ type ImportPreview struct {
 	IgnoredTables []string
 }
 
-// ImportResult is the outcome of a successful ConfirmImport — the tables that
+// ImportResult is the outcome of a successful ConfirmImport - the tables that
 // were replaced and their row counts.
 type ImportResult struct {
 	Tables []TablePreview
@@ -120,7 +120,7 @@ func (s *Store) ValidateImport(ctx context.Context, upload io.Reader) (ImportPre
 	}
 
 	// Open the uploaded file read-only as a second, independent SQLite
-	// connection — never merged into the live connection pool.
+	// connection - never merged into the live connection pool.
 	uploadDB, err := sql.Open("sqlite", "file:"+tmpPath+"?mode=ro")
 	if err != nil {
 		return ImportPreview{}, fmt.Errorf("open upload: %w", err)
@@ -168,7 +168,7 @@ func (s *Store) ValidateImport(ctx context.Context, upload io.Reader) (ImportPre
 
 // classifyUploadTables lists every user table in the upload via sqlite_master,
 // then splits into allowlisted tables (with row counts) and ignored tables.
-// Table names come from sqlite_master, not user input — the gosec G201/G202
+// Table names come from sqlite_master, not user input - the gosec G201/G202
 // nolints on the COUNT(*) query reflect this.
 func classifyUploadTables(ctx context.Context, uploadDB *sql.DB) ([]TablePreview, []string, error) {
 	rows, err := uploadDB.QueryContext(ctx, `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name`)
@@ -224,7 +224,7 @@ func classifyUploadTables(ctx context.Context, uploadDB *sql.DB) ([]TablePreview
 
 // ConfirmImport looks up the staging token (404 if unknown, 410 if expired)
 // and, in one SQLite transaction against the live database, replaces every
-// table named in the preview — DELETE then reload from the staged file —
+// table named in the preview - DELETE then reload from the staged file - 
 // all-or-nothing. On success, the temp file and staging entry
 // are removed. On failure, the transaction rolls back and the staging entry
 // is kept so the admin may retry confirm without re-uploading.
@@ -280,7 +280,7 @@ func (s *Store) ConfirmImport(ctx context.Context, token string) (ImportResult, 
 // re-inserts every row copied from the staged upload DB. Table and column
 // names come from sqlite_master introspection, never user input.
 func replaceTable(ctx context.Context, tx *sql.Tx, uploadDB *sql.DB, table string) error {
-	// Introspect the upload table's columns — the live schema is the same
+	// Introspect the upload table's columns - the live schema is the same
 	// (the upload came from an export of this schema), but reading from the
 	// upload avoids assuming the live schema's column order matches.
 	cols, err := tableColumns(ctx, uploadDB, table)

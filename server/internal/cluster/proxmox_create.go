@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// NextVMID implements Creator via GET /cluster/nextid — the single
+// NextVMID implements Creator via GET /cluster/nextid - the single
 // allocation point, delegated to Proxmox's own cluster-wide counter
 // rather than reimplemented client-side. The endpoint returns the smallest
 // free ID at call time without reserving it, so two concurrent creations can
@@ -41,7 +41,7 @@ func (p Proxmox) NextVMID(ctx context.Context) (int, error) {
 }
 
 // CreateVM implements Creator via POST /nodes/{node}/qemu. spec's Sockets
-// and CPUCores values become the Proxmox form's sockets and cores keys —
+// and CPUCores values become the Proxmox form's sockets and cores keys - 
 // matching how VM.CPUCores is itself derived elsewhere (fake.go's
 // UpdateHardware: CPUCores = sockets * cores). Proxmox's own start=1 param
 // folds the initial boot into the same task rather than a separate Action
@@ -66,8 +66,8 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 	setDiskFormKeys(form, spec)
 
 	// Enable the QEMU guest agent. Without agent=1 in the config, every
-	// /agent/* endpoint returns an error — which silently disables
-	// SetCloudInitPassword and AddSSHKey on every VM PVMSS creates — and
+	// /agent/* endpoint returns an error - which silently disables
+	// SetCloudInitPassword and AddSSHKey on every VM PVMSS creates - and
 	// shutdown/reboot fall back to ACPI alone.
 	form.Set("agent", "1")
 
@@ -76,7 +76,7 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 	form.Set("ostype", "l26")
 
 	// Explicit boot order built only from the devices this spec actually
-	// created — a hardcoded order naming a device that is absent makes the
+	// created - a hardcoded order naming a device that is absent makes the
 	// VM unbootable.
 	setBootOrderForm(form, spec)
 
@@ -95,7 +95,7 @@ func (p Proxmox) CreateVM(ctx context.Context, spec VMSpec) (string, error) {
 	}
 
 	// Always provision a serial port (serial0) backed by a socket. This makes
-	// the PVMSS Text/serial console work out of the box for every VM — without
+	// the PVMSS Text/serial console work out of the box for every VM - without
 	// it, Proxmox opens the termproxy tunnel and immediately closes it (EOF),
 	// which surfaces as a black screen in the serial console. A socket-backed
 	// serial port needs no host device and is safe to add unconditionally.
@@ -133,7 +133,7 @@ func setDiskFormKeys(form url.Values, spec VMSpec) {
 		return
 	}
 
-	// import-from requires Proxmox's special <storage>:0 target syntax —
+	// import-from requires Proxmox's special <storage>:0 target syntax - 
 	// a non-zero size is rejected outright by check_drive_param
 	// ("'import-from' requires special syntax"). The import lands at the
 	// source image's size; the vm layer grows the disk to the requested
@@ -148,7 +148,7 @@ func setDiskFormKeys(form url.Values, spec VMSpec) {
 	// A cloud image imports as the primary disk via import-from
 	// (PVE ≥ 7.2): Proxmox copies the image onto the target storage.
 	// The source must be a PVE-managed volume of vtype 'import' (not
-	//  'iso' — .img files are rejected) and must be passed as a volid,
+	//  'iso' - .img files are rejected) and must be passed as a volid,
 	// not an absolute path (absolute paths are root@pam-only).
 	// Cloud images live in the storage's import/ directory with
 	// .qcow2/.raw/.vmdk/.ova extensions → volid <storage>:import/<file>.
@@ -156,7 +156,7 @@ func setDiskFormKeys(form url.Values, spec VMSpec) {
 		diskValue += ",import-from=" + spec.Image.Storage + ":import/" + spec.Image.File
 	}
 
-	// Iothread is gated on SCSI — it is not supported
+	// Iothread is gated on SCSI - it is not supported
 	// on virtio/IDE/SATA and Proxmox silently ignores the option there,
 	// but emitting it only where it works keeps the form clean.
 	if spec.Disk.Bus == string(DiskBusSCSI) {
@@ -168,11 +168,11 @@ func setDiskFormKeys(form url.Values, spec VMSpec) {
 	form.Set(spec.Disk.Bus+"0", diskValue)
 
 	// A cloud image needs its cloud-init drive from the moment the VM
-	// exists — ProxMate and pegaprox both attach it in the very same
+	// exists - ProxMate and pegaprox both attach it in the very same
 	// create call as the imported disk ("<storage>:cloudinit" on a fixed
 	// IDE slot), never as a later follow-up. PVMSS previously only
 	// attached it lazily, on the first SetCloudInitConfig/
-	// AttachCloudInitSnippet call after the create task finished —
+	// AttachCloudInitSnippet call after the create task finished - 
 	// functionally idempotent (EnsureCloudInitDrive no-ops once this is
 	// set) but one more round trip that can fail on its own. Attaching
 	// it here removes that gap for the one path that always needs
@@ -187,7 +187,7 @@ func setDiskFormKeys(form url.Values, spec VMSpec) {
 // makes the VM unbootable, so the disk bus key is added only when storage is
 // set and the cdrom key only when an ISO is mounted. When an ISO is present,
 // the CD-ROM goes first so the VM boots from the installer on a fresh empty
-// disk — a disk-first order makes the VM fail to boot and Proxmox stops it.
+// disk - a disk-first order makes the VM fail to boot and Proxmox stops it.
 // After installation the user removes the ISO or changes the boot order.
 func setBootOrderForm(form url.Values, spec VMSpec) {
 	var bootOrder []string
@@ -205,7 +205,7 @@ func setBootOrderForm(form url.Values, spec VMSpec) {
 	}
 }
 
-// resolveUEFIMachine forces q35 (UEFI requires q35 — pegaprox rule) unless
+// resolveUEFIMachine forces q35 (UEFI requires q35 - pegaprox rule) unless
 // the caller already specified a non-i440fx/pc machine type. Shared with the
 // fake dataset so it mirrors the real create path exactly.
 func resolveUEFIMachine(machine string) string {
@@ -219,9 +219,9 @@ func resolveUEFIMachine(machine string) string {
 // setUEFIFormKeys emits the UEFI/TPM form keys when BIOS is ovmf. When BIOS is ovmf, machine is
 // forced (UEFI requires q35
 // pegaprox rule), efidisk0 is provisioned on the disk's storage with Secure
-// Boot's key enrollment following spec.SecureBoot (off by default — most
+// Boot's key enrollment following spec.SecureBoot (off by default - most
 // Linux ISOs ship an unsigned bootloader Secure Boot would refuse to run),
-// and tpmstate0 is added when TPM is set — never omitted silently (the
+// and tpmstate0 is added when TPM is set - never omitted silently (the
 // pegaprox preset bug where tpm_version was set without tpm_storage).
 // Extracted from CreateVM to keep its cyclomatic complexity under gocyclo's
 // ceiling.
@@ -270,7 +270,7 @@ func wrapVMIDCollision(err error) error {
 
 // TaskStatus implements Creator. The node a task ran on is embedded in its
 // own UPID ("UPID:<node>:..."), which is how the Proxmox API itself expects
-// task status to be looked up — there is no node-independent endpoint.
+// task status to be looked up - there is no node-independent endpoint.
 func (p Proxmox) TaskStatus(ctx context.Context, upid string) (TaskStatus, error) {
 	node, err := proxmoxUPIDNode(upid)
 	if err != nil {
@@ -302,7 +302,7 @@ func (p Proxmox) TaskStatus(ctx context.Context, upid string) (TaskStatus, error
 		result.State = TaskRunning
 	case status.ExitStatus == "OK" || strings.HasPrefix(status.ExitStatus, "WARNINGS"):
 		// PVE returns WARNINGS for benign conditions (NUMA mismatch, local
-		// disks) — both references accept it as success.
+		// disks) - both references accept it as success.
 		result.State = TaskOK
 		if strings.HasPrefix(status.ExitStatus, "WARNINGS") {
 			result.Warnings = status.ExitStatus

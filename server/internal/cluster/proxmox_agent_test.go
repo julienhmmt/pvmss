@@ -59,7 +59,7 @@ func TestProxmox_GuestNetworkInterfaces(t *testing.T) {
 }
 
 // TestProxmox_GuestNetworkInterfaces_AgentDown verifies an agent-side error
-// (VM stopped, agent absent) propagates — the detail endpoint treats it as
+// (VM stopped, agent absent) propagates - the detail endpoint treats it as
 // "no live addresses".
 func TestProxmox_GuestNetworkInterfaces_AgentDown(t *testing.T) {
 	t.Parallel()

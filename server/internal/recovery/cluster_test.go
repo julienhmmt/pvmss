@@ -41,7 +41,7 @@ func TestMapCluster_FromEnvVars(t *testing.T) {
 	}
 
 	if len(row.TokenSecretCiphertext) == 0 {
-		t.Fatal("TokenSecretCiphertext is empty — token was not encrypted")
+		t.Fatal("TokenSecretCiphertext is empty - token was not encrypted")
 	}
 
 	if creds.TokenSecret != env["PROXMOX_API_TOKEN_VALUE"] {
@@ -138,7 +138,7 @@ func TestMapCluster_TokenEncryptionIsNotCleartext(t *testing.T) {
 	}
 
 	if string(row.TokenSecretCiphertext) == env["PROXMOX_API_TOKEN_VALUE"] {
-		t.Fatal("ciphertext matches plaintext — token was not encrypted")
+		t.Fatal("ciphertext matches plaintext - token was not encrypted")
 	}
 }
 

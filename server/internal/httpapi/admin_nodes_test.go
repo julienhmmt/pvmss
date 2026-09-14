@@ -35,7 +35,7 @@ type adminToggleResponse struct {
 	Enabled bool   `json:"enabled"`
 }
 
-// TestAdminNodes_ListAsAdmin_ReturnsAllNodes — GET /admin/nodes as admin
+// TestAdminNodes_ListAsAdmin_ReturnsAllNodes - GET /admin/nodes as admin
 // returns every fake node, with correct enabled per the seed.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -75,7 +75,7 @@ func TestAdminNodes_ListAsAdmin_ReturnsAllNodes(t *testing.T) {
 	}
 }
 
-// TestAdminNodes_ListAsNonAdmin_Returns403 — GET /admin/nodes as a
+// TestAdminNodes_ListAsNonAdmin_Returns403 - GET /admin/nodes as a
 // non-admin identity returns 403.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -89,7 +89,7 @@ func TestAdminNodes_ListAsNonAdmin_Returns403(t *testing.T) {
 	}
 }
 
-// TestAdminNodes_ToggleUnapprovedNode — POST /admin/nodes/toggle on the
+// TestAdminNodes_ToggleUnapprovedNode - POST /admin/nodes/toggle on the
 // unapproved node returns 200, and a subsequent GET reflects it.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -130,7 +130,7 @@ func TestAdminNodes_ToggleUnapprovedNode(t *testing.T) {
 	}
 }
 
-// TestAdminNodes_ToggleUnknownNode_Returns404 — toggling a node not in
+// TestAdminNodes_ToggleUnknownNode_Returns404 - toggling a node not in
 // the discovery set returns 404.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -148,7 +148,7 @@ func TestAdminNodes_ToggleUnknownNode_Returns404(t *testing.T) {
 // newMultiClusterAdminCatalogHandler builds an AdminCatalog handler backed by
 // a real cluster.Registry seeded with the store's default/secondary/
 // offline-demo rows, instead of the single fixed cluster.Fake the
-// single-cluster newAdminHandler above uses — needed to prove the cross-cluster catalog
+// single-cluster newAdminHandler above uses - needed to prove the cross-cluster catalog
 // isolation, which requires two distinct clusters'
 // discovery sets and two distinct catalog_nodes rows to exist at once.
 func newMultiClusterAdminCatalogHandler(t *testing.T) (*httpapi.AdminCatalog, *httpapi.Auth) {
@@ -185,10 +185,10 @@ func newMultiClusterAdminCatalogHandler(t *testing.T) (*httpapi.AdminCatalog, *h
 	return catalog, authHandler
 }
 
-// TestAdminNodes_CrossClusterApprovalIsolation — a node with an
+// TestAdminNodes_CrossClusterApprovalIsolation - a node with an
 // identical name (pve-node-01, present in both default's and secondary's
 // fake discovery sets) is approved independently per cluster. Toggling it on
-// one cluster must never affect the other's row — proven in both directions,
+// one cluster must never affect the other's row - proven in both directions,
 // not just observed as an accident of seed data (default's pve-node-01/02
 // start pre-approved by the seed; secondary's do not).
 //
@@ -222,7 +222,7 @@ func TestAdminNodes_CrossClusterApprovalIsolation(t *testing.T) {
 		t.Fatal("default:pve-node-01 should start enabled (T06 seed)")
 	}
 	if nodeEnabled(crossSecondaryCluster, "pve-node-01") {
-		t.Fatal("secondary:pve-node-01 should start disabled — cluster isolation, not shared with default's seed")
+		t.Fatal("secondary:pve-node-01 should start disabled - cluster isolation, not shared with default's seed")
 	}
 
 	assertCrossClusterToggleIsolation(t, handler, authHandler, cookie, nodeEnabled)
@@ -251,7 +251,7 @@ func assertCrossClusterToggleIsolation(
 		t.Fatal("secondary:pve-node-01 should be enabled after its own toggle")
 	}
 	if !nodeEnabled(auditTestCluster, "pve-node-01") {
-		t.Fatal("default:pve-node-01 should remain enabled — secondary's toggle must not touch it")
+		t.Fatal("default:pve-node-01 should remain enabled - secondary's toggle must not touch it")
 	}
 
 	// Reverse direction: explicitly revoke pve-node-01 on default only.
@@ -264,11 +264,11 @@ func assertCrossClusterToggleIsolation(
 		t.Fatal("default:pve-node-01 should be disabled after its own revoke")
 	}
 	if !nodeEnabled(crossSecondaryCluster, "pve-node-01") {
-		t.Fatal("secondary:pve-node-01 should remain enabled — default's revoke must not touch it")
+		t.Fatal("secondary:pve-node-01 should remain enabled - default's revoke must not touch it")
 	}
 }
 
-// TestAdminNodes_ClusterRequiredOnceMultipleConfigured — at the
+// TestAdminNodes_ClusterRequiredOnceMultipleConfigured - at the
 //
 //	nodes-endpoint level: once 2+ clusters are configured, omitting ?cluster=
 //

@@ -93,7 +93,7 @@ func toAdminDocDTO(p catalog.DocumentationPage) adminDocDTO {
 	}
 }
 
-// ServeDocsList handles GET /api/v1/admin/docs — every page (all langs,
+// ServeDocsList handles GET /api/v1/admin/docs - every page (all langs,
 // enabled+disabled), ordered by sort_order then title.
 func (h *AdminDocs) ServeDocsList(w http.ResponseWriter, r *http.Request) {
 	pages, err := catalog.ListDocumentationPages(r.Context(), h.store)

@@ -1,4 +1,4 @@
-// Package inventory owns the in-memory projection of cluster data — a
+// Package inventory owns the in-memory projection of cluster data - a
 // periodically refreshed index built from a cluster.Snapshot, indexed for
 // the lookups later work needs (by VM ID, by pool, by node). The index
 // is never persisted (it is a cache, never a source of truth).
@@ -15,7 +15,7 @@ import (
 )
 
 // Index is the in-memory projection built from one cluster.Snapshot. It is
-// immutable once built — the worker swaps the whole pointer on refresh, so
+// immutable once built - the worker swaps the whole pointer on refresh, so
 // readers always see either the previous complete index or the new complete
 // one, never a partial one.
 type Index struct {
@@ -28,7 +28,7 @@ type Index struct {
 	RefreshedAt    time.Time
 }
 
-// BuildIndex constructs an Index from a Snapshot. It is a pure function —
+// BuildIndex constructs an Index from a Snapshot. It is a pure function - 
 // it never mutates the input Snapshot, and the returned Index owns its own
 // copies of all slice and map data.
 func BuildIndex(snap cluster.Snapshot) Index {

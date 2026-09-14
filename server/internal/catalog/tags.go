@@ -75,7 +75,7 @@ func ListTags(ctx context.Context, st *store.Store, projection *inventory.Projec
 
 	// Build a tag-to-VM-count map from the live inventory projection. The
 	// projection may be nil when tags are not used (e.g. tests that only
-	// exercise nodes/storages/bridges/isos) — guard before dereferencing.
+	// exercise nodes/storages/bridges/isos) - guard before dereferencing.
 	tagCounts := make(map[string]int)
 
 	if projection != nil {
@@ -102,7 +102,7 @@ func ListTags(ctx context.Context, st *store.Store, projection *inventory.Projec
 }
 
 // ensurePvmssTag inserts the mandatory pvmss tag for the cluster if it does
-// not already exist. Idempotent — safe to call on every ListTags.
+// not already exist. Idempotent - safe to call on every ListTags.
 func ensurePvmssTag(ctx context.Context, st *store.Store, cluster string) error {
 	exists, err := st.TagExists(ctx, cluster, ProtectedTagName)
 	if err != nil {
@@ -116,7 +116,7 @@ func ensurePvmssTag(ctx context.Context, st *store.Store, cluster string) error 
 	createdAt := time.Now().UTC().Format(time.RFC3339)
 	if err := st.InsertTag(ctx, cluster, ProtectedTagName, "#4f46e5", createdAt); err != nil {
 		// A concurrent insert between our TagExists check and InsertTag is
-		// fine — the tag exists, which is all we need.
+		// fine - the tag exists, which is all we need.
 		if errors.Is(err, store.ErrDuplicate) {
 			return nil
 		}

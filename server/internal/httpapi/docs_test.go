@@ -133,7 +133,7 @@ func assertDocNotInPublicList(t *testing.T, docs *httpapi.DocsAPIHandler, admin 
 	}
 }
 
-// TestDocs_PublicList_HidesAdminAudienceFromNonAdmin — a user-audience page
+// TestDocs_PublicList_HidesAdminAudienceFromNonAdmin - a user-audience page
 // is listed for everyone; an admin-audience page only for admins.
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -191,7 +191,7 @@ func TestDocs_PublicList_HidesAdminAudienceFromNonAdmin(t *testing.T) {
 	}
 }
 
-// TestDocs_GetDoc_404UnknownID — unknown id returns 404.
+// TestDocs_GetDoc_404UnknownID - unknown id returns 404.
 //
 //nolint:paralleltest // serial: shared database fixture
 func TestDocs_GetDoc_404UnknownID(t *testing.T) {
@@ -202,7 +202,7 @@ func TestDocs_GetDoc_404UnknownID(t *testing.T) {
 	}
 }
 
-// TestDocs_GetDoc_AdminAudienceGating — admin page: 401 anonymous, 403
+// TestDocs_GetDoc_AdminAudienceGating - admin page: 401 anonymous, 403
 // non-admin, 200 admin.
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -240,7 +240,7 @@ func TestDocs_GetDoc_AdminAudienceGating(t *testing.T) {
 	}
 }
 
-// TestDocs_GetDoc_EnFallback — requesting a missing lang falls back to en.
+// TestDocs_GetDoc_EnFallback - requesting a missing lang falls back to en.
 //
 //nolint:paralleltest // serial: shared database fixture
 func TestDocs_GetDoc_EnFallback(t *testing.T) {
@@ -263,7 +263,7 @@ func TestDocs_GetDoc_EnFallback(t *testing.T) {
 	}
 }
 
-// TestAdminDocs_NonAdmin_Returns403 — every admin docs endpoint is 403 for a
+// TestAdminDocs_NonAdmin_Returns403 - every admin docs endpoint is 403 for a
 // non-admin identity.
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -290,7 +290,7 @@ func TestAdminDocs_NonAdmin_Returns403(t *testing.T) {
 	}
 }
 
-// TestAdminDocs_CreateValidation — bad slug/lang/audience/oversized body are
+// TestAdminDocs_CreateValidation - bad slug/lang/audience/oversized body are
 // rejected with 400.
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -389,7 +389,7 @@ func TestAdminDocs_ToggleFlipsEnabled(t *testing.T) {
 	assertDocNotInPublicList(t, docs, admin, auth, "toggle-me")
 }
 
-// TestAdminDocs_SystemDeleteRefused — a system page cannot be deleted (403).
+// TestAdminDocs_SystemDeleteRefused - a system page cannot be deleted (403).
 //
 //nolint:paralleltest // serial: shared database fixture
 func TestAdminDocs_SystemDeleteRefused(t *testing.T) {
@@ -410,7 +410,7 @@ func TestAdminDocs_SystemDeleteRefused(t *testing.T) {
 	}
 }
 
-// TestAdminDocs_ListReturnsAllPages — the admin list returns every page
+// TestAdminDocs_ListReturnsAllPages - the admin list returns every page
 // (enabled and disabled), with the full bodyMd field.
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -461,7 +461,7 @@ func TestAdminDocs_ListReturnsAllPages(t *testing.T) {
 	}
 }
 
-// TestAdminDocs_UpdateSucceeds — PUT updates mutable fields (200), rejects
+// TestAdminDocs_UpdateSucceeds - PUT updates mutable fields (200), rejects
 // invalid input (400), and 404s a missing page.
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -501,7 +501,7 @@ func TestAdminDocs_UpdateSucceeds(t *testing.T) {
 	}
 }
 
-// TestAdminDocs_DeleteSucceeds — DELETE removes a non-system page (200) and the
+// TestAdminDocs_DeleteSucceeds - DELETE removes a non-system page (200) and the
 // page disappears from the public list.
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -519,7 +519,7 @@ func TestAdminDocs_DeleteSucceeds(t *testing.T) {
 	assertDocNotInPublicList(t, docs, admin, auth, "remove-me")
 }
 
-// TestAdminDocs_ToggleInvalidBody — a malformed toggle body is 400.
+// TestAdminDocs_ToggleInvalidBody - a malformed toggle body is 400.
 //
 //nolint:paralleltest // serial: shared database fixture
 func TestAdminDocs_ToggleInvalidBody(t *testing.T) {
@@ -533,7 +533,7 @@ func TestAdminDocs_ToggleInvalidBody(t *testing.T) {
 	}
 }
 
-// TestDocs_GetDoc_DisabledReturns404 — a disabled page is never served to the
+// TestDocs_GetDoc_DisabledReturns404 - a disabled page is never served to the
 // public, even when the id is known.
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -555,7 +555,7 @@ func TestDocs_GetDoc_DisabledReturns404(t *testing.T) {
 	}
 }
 
-// TestDocs_GetDoc_CacheHit — fetching the same page twice returns identical
+// TestDocs_GetDoc_CacheHit - fetching the same page twice returns identical
 // rendered HTML (the render cache is populated on first miss then reused).
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -589,7 +589,7 @@ func TestDocs_GetDoc_CacheHit(t *testing.T) {
 	}
 }
 
-// TestDocs_StoreError_Returns500 — once the store is closed, every docs
+// TestDocs_StoreError_Returns500 - once the store is closed, every docs
 // endpoint surfaces a 500 (the internal-error branches the happy-path tests
 // cannot reach). The admin guard still passes because it uses the separate
 // session store, not the docs store.
@@ -628,7 +628,7 @@ func TestDocs_StoreError_Returns500(t *testing.T) {
 	}
 }
 
-// TestAdminDocs_MalformedJSON — create and update endpoints reject malformed
+// TestAdminDocs_MalformedJSON - create and update endpoints reject malformed
 // JSON bodies with 400.
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -650,7 +650,7 @@ func TestAdminDocs_MalformedJSON(t *testing.T) {
 	}
 }
 
-// TestAdminDocs_DeleteSystemPage — deleting a system page returns 403.
+// TestAdminDocs_DeleteSystemPage - deleting a system page returns 403.
 //
 //nolint:paralleltest // serial: shared database fixture
 func TestAdminDocs_DeleteSystemPage(t *testing.T) {
@@ -678,7 +678,7 @@ func TestAdminDocs_DeleteSystemPage(t *testing.T) {
 	}
 }
 
-// TestAdminDocs_ToggleMissingPage — toggling a missing page returns 404.
+// TestAdminDocs_ToggleMissingPage - toggling a missing page returns 404.
 //
 //nolint:paralleltest // serial: shared database fixture
 func TestAdminDocs_ToggleMissingPage(t *testing.T) {
@@ -691,7 +691,7 @@ func TestAdminDocs_ToggleMissingPage(t *testing.T) {
 	}
 }
 
-// TestAdminDocs_CreateDuplicate — creating a page with an existing slug/lang
+// TestAdminDocs_CreateDuplicate - creating a page with an existing slug/lang
 // returns 409 Conflict.
 //
 //nolint:paralleltest // serial: shared database fixture

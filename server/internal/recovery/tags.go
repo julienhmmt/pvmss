@@ -23,7 +23,7 @@ var defaultPalette = []string{
 
 // MapTags reads the legacy tags table and returns rows for catalog_tags,
 // assigning each tag a deterministic color from the default palette by
-// insertion order. The mandatory "pvmss" row is included — the upsert is
+// insertion order. The mandatory "pvmss" row is included - the upsert is
 // a no-op for it if it already exists in the v0.4 database.
 func MapTags(ctx context.Context, legacyDB *sql.DB) ([]TagRow, error) {
 	rows, err := legacyDB.QueryContext(ctx,

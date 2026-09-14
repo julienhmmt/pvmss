@@ -26,7 +26,7 @@ var (
 )
 
 // cdromBootKey is the boot-order key of the VM's fixed CD-ROM drive
-// (cluster.cdromDiskKey — duplicated here because that constant is unexported).
+// (cluster.cdromDiskKey - duplicated here because that constant is unexported).
 const cdromBootKey = "ide2"
 
 // BootDependencies contains the resolved VM write dependencies for the
@@ -46,7 +46,7 @@ type BootDependencies struct {
 // CD-ROM: set the boot order CD-first, start the guest, then restore the
 // original boot order once the guest is running.
 //
-// Proxmox has no one-time-boot API — boot order is a persistent config key
+// Proxmox has no one-time-boot API - boot order is a persistent config key
 // that qemu reads at start. Restoring the original order only after the guest
 // reports running is therefore race-free: the in-flight boot already consumed
 // the CD-first order, and the next reboot boots from disk again. The restore

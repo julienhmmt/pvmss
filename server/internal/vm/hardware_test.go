@@ -18,7 +18,7 @@ func TestUpdateHardware_RestartsForResourceChanges(t *testing.T) {
 
 	// The fake now rejects stop on an already-stopped VM. VM 101 is
 	// stopped in the pristine dataset, but the test exercises the restart
-	// flow for a running VM — start it first so the fake dataset matches the
+	// flow for a running VM - start it first so the fake dataset matches the
 	// index's running status.
 	if err := (cluster.Fake{}).Action(context.Background(), cluster.FakeNode01, 101, "start"); err != nil {
 		t.Fatalf("start VM 101 for test setup: %v", err)

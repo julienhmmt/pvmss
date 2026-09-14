@@ -19,7 +19,7 @@ import (
 )
 
 // errUnexpected is a non-sentinel error used to exercise the default (500)
-// branches of writeActionError and writePatchError — it matches no sentinel
+// branches of writeActionError and writePatchError - it matches no sentinel
 // the handlers know, so it must fall through to internal_error.
 var errUnexpected = errors.New("unexpected cluster failure")
 
@@ -81,7 +81,7 @@ func (w detailFailingWriter) Patch(ctx context.Context, node string, vmid int, n
 }
 
 // newVMDetailHandlerWithWriter builds the detail handler over the fake dataset
-// with a custom cluster.Writer, a real audit store, and a no-op refresher —
+// with a custom cluster.Writer, a real audit store, and a no-op refresher - 
 // used by the cluster-write error-mapping tests where the write must fail after
 // Resolve succeeds.
 func newVMDetailHandlerWithWriter(t *testing.T, writer cluster.Writer) (*httpapi.VMDetail, *httpapi.Auth) {
@@ -116,10 +116,10 @@ func newVMDetailHandlerWithWriter(t *testing.T, writer cluster.Writer) (*httpapi
 }
 
 // =============================================================================
-// handleGet — registry and inventory-not-ready paths
+// handleGet - registry and inventory-not-ready paths
 // =============================================================================
 
-// TestVMDetail_Get_RegistryClusterNotFound — when the handler is wired to a
+// TestVMDetail_Get_RegistryClusterNotFound - when the handler is wired to a
 // multi-cluster Registry and the path's cluster has no entry, handleGet
 // returns 404 cluster_not_found.
 //
@@ -145,7 +145,7 @@ func TestVMDetail_Get_RegistryClusterNotFound(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Get_InventoryNotReady — a projection that was never populated
+// TestVMDetail_Get_InventoryNotReady - a projection that was never populated
 // returns 503 inventory_not_ready rather than panicking.
 //
 //nolint:paralleltest // serial: shared fake authentication state
@@ -166,10 +166,10 @@ func TestVMDetail_Get_InventoryNotReady(t *testing.T) {
 }
 
 // =============================================================================
-// parsePath — invalid vmid segment
+// parsePath - invalid vmid segment
 // =============================================================================
 
-// TestVMDetail_Get_InvalidVMIDPath — a non-numeric or non-positive vmid
+// TestVMDetail_Get_InvalidVMIDPath - a non-numeric or non-positive vmid
 // segment is rejected with 400 invalid_request before any Resolve call.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -197,10 +197,10 @@ func TestVMDetail_Get_InvalidVMIDPath(t *testing.T) {
 }
 
 // =============================================================================
-// ServeHTTP — method not allowed on the base VM path
+// ServeHTTP - method not allowed on the base VM path
 // =============================================================================
 
-// TestVMDetail_MethodNotAllowed — a PUT to the base VM path (no disk/cdrom/
+// TestVMDetail_MethodNotAllowed - a PUT to the base VM path (no disk/cdrom/
 // network/hardware suffix) is rejected with 405 and an Allow header listing
 // the four accepted verbs.
 //
@@ -224,10 +224,10 @@ func TestVMDetail_MethodNotAllowed(t *testing.T) {
 }
 
 // =============================================================================
-// handleDelete — inventory not ready
+// handleDelete - inventory not ready
 // =============================================================================
 
-// TestVMDetail_Delete_InventoryNotReady — DELETE against a never-populated
+// TestVMDetail_Delete_InventoryNotReady - DELETE against a never-populated
 // projection returns 503 inventory_not_ready.
 //
 //nolint:paralleltest // serial: shared fake authentication state
@@ -248,10 +248,10 @@ func TestVMDetail_Delete_InventoryNotReady(t *testing.T) {
 }
 
 // =============================================================================
-// writeActionError — cluster-write error mapping (action + delete share it)
+// writeActionError - cluster-write error mapping (action + delete share it)
 // =============================================================================
 
-// TestVMDetail_Action_ClusterNotFoundMapped — a cluster.ErrNotFound from the
+// TestVMDetail_Action_ClusterNotFoundMapped - a cluster.ErrNotFound from the
 // writer after Resolve succeeds maps to 502 cluster_error.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -269,7 +269,7 @@ func TestVMDetail_Action_ClusterNotFoundMapped(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Action_ClusterUnreachableMapped — a cluster.ErrUnreachable from
+// TestVMDetail_Action_ClusterUnreachableMapped - a cluster.ErrUnreachable from
 // the writer maps to 502 cluster_unreachable.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -287,9 +287,9 @@ func TestVMDetail_Action_ClusterUnreachableMapped(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Action_InvalidStateTransitionMapped — a status-incompatible
+// TestVMDetail_Action_InvalidStateTransitionMapped - a status-incompatible
 // transition (reboot on a stopped VM) maps to 409 invalid_state_transition.
-// Note: start on a running VM is no longer an error — made start/stop
+// Note: start on a running VM is no longer an error - made start/stop
 // idempotent (a no-op success when the target state already holds).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -308,7 +308,7 @@ func TestVMDetail_Action_InvalidStateTransitionMapped(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Action_DefaultErrorMapped — a non-sentinel writer error maps to 500
+// TestVMDetail_Action_DefaultErrorMapped - a non-sentinel writer error maps to 500
 // internal_error (the writeActionError default branch).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -326,7 +326,7 @@ func TestVMDetail_Action_DefaultErrorMapped(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Delete_ClusterNotFoundMapped — DELETE shares writeActionError;
+// TestVMDetail_Delete_ClusterNotFoundMapped - DELETE shares writeActionError;
 // a cluster.ErrNotFound from the writer maps to 502 cluster_error.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -345,10 +345,10 @@ func TestVMDetail_Delete_ClusterNotFoundMapped(t *testing.T) {
 }
 
 // =============================================================================
-// writePatchError — cluster-write and validation error mapping
+// writePatchError - cluster-write and validation error mapping
 // =============================================================================
 
-// TestVMDetail_Patch_DescriptionTooLong — a description over the max length
+// TestVMDetail_Patch_DescriptionTooLong - a description over the max length
 // maps to 400 invalid_request (writePatchError's ErrDescriptionTooLong branch).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -368,7 +368,7 @@ func TestVMDetail_Patch_DescriptionTooLong(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Patch_InvalidBody — malformed JSON maps to 400 invalid_request
+// TestVMDetail_Patch_InvalidBody - malformed JSON maps to 400 invalid_request
 // (the decodeJSON branch of handlePatch).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -386,7 +386,7 @@ func TestVMDetail_Patch_InvalidBody(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Patch_ClusterNotFoundMapped — a cluster.ErrNotFound from the
+// TestVMDetail_Patch_ClusterNotFoundMapped - a cluster.ErrNotFound from the
 // patch writer maps to 502 cluster_error (writePatchError's ErrNotFound branch).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -404,7 +404,7 @@ func TestVMDetail_Patch_ClusterNotFoundMapped(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Patch_DefaultErrorMapped — a non-sentinel patch writer error
+// TestVMDetail_Patch_DefaultErrorMapped - a non-sentinel patch writer error
 // maps to 500 internal_error (the writePatchError default branch).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures

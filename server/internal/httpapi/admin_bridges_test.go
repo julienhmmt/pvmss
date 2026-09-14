@@ -47,7 +47,7 @@ func newDuplicateBridgeAdminHandler(t *testing.T) (*httpapi.AdminCatalog, *httpa
 	return handler, authHandler
 }
 
-// TestAdminBridges_ListShowsSuperset — GET /admin/bridges shows the fake
+// TestAdminBridges_ListShowsSuperset - GET /admin/bridges shows the fake
 // superset with approvals reset by the node-aware migration.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -81,7 +81,7 @@ func TestAdminBridges_ListShowsSuperset(t *testing.T) {
 	}
 }
 
-// TestAdminBridges_Toggle — toggle vmbr2 on, confirm it sticks.
+// TestAdminBridges_Toggle - toggle vmbr2 on, confirm it sticks.
 //
 //nolint:paralleltest,dupl // serial: shared fake dataset; intentionally parallel to TestAdminISOs_Toggle
 func TestAdminBridges_Toggle(t *testing.T) {
@@ -177,7 +177,7 @@ func TestAdminBridges_ToggleRequiresNode(t *testing.T) {
 	}
 }
 
-// TestAdminBridges_NonAdminReturns403 — non-admin 403.
+// TestAdminBridges_NonAdminReturns403 - non-admin 403.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminBridges_NonAdminReturns403(t *testing.T) {
@@ -190,7 +190,7 @@ func TestAdminBridges_NonAdminReturns403(t *testing.T) {
 	}
 }
 
-// TestAdminBridges_ToggleUnknownReturns404 — unknown bridge 404.
+// TestAdminBridges_ToggleUnknownReturns404 - unknown bridge 404.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminBridges_ToggleUnknownReturns404(t *testing.T) {

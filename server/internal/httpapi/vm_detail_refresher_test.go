@@ -26,7 +26,7 @@ const refresherSecondaryCluster = "secondary"
 // two-cluster inventory registry (default + secondary), each with its own
 // worker. It returns the handler, the auth cookie for alice, the inventory
 // registry (so tests can read each cluster's projection), and the default
-// cluster's worker (used as the fallback Refresher — same wiring as main.go).
+// cluster's worker (used as the fallback Refresher - same wiring as main.go).
 func newTwoClusterRefresherFixture(t *testing.T) (*httpapi.VMDetail, *http.Cookie, *inventory.Registry) {
 	t.Helper()
 	t.Cleanup(cluster.ResetFake)
@@ -184,7 +184,7 @@ func TestVMDetail_SingleClusterFallbackUsesBoundRefresher(t *testing.T) {
 	authHandler := newAuthHandler(t)
 	worker := inventory.NewWorker(cluster.Fake{}, projection, time.Hour, logger)
 
-	// No Source (no registry) — single-cluster mode, fallback refresher is the worker.
+	// No Source (no registry) - single-cluster mode, fallback refresher is the worker.
 	handler := httpapi.NewVMDetail(projection, authHandler, cluster.Fake{}, st, worker, logger)
 
 	cookie := aliceCookie(t, authHandler)
@@ -218,7 +218,7 @@ func TestVMDetail_StatusOnSecondaryClusterResolvesPerClusterReader(t *testing.T)
 	handler, cookie, _ := newTwoClusterRefresherFixture(t)
 
 	// VM 101 is stopped in both clusters, owned by alice. Read live status
-	// on the secondary cluster — the handler must resolve the secondary's
+	// on the secondary cluster - the handler must resolve the secondary's
 	// own VMStatusReader via Clients, not fall back to the default's.
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/vms/"+refresherSecondaryCluster+"/101/status", nil)
 	req.AddCookie(cookie)

@@ -15,7 +15,7 @@ import (
 	"testing"
 )
 
-// TestVMBulk_MethodNotAllowed — a non-POST method → 405 with an Allow: POST
+// TestVMBulk_MethodNotAllowed - a non-POST method → 405 with an Allow: POST
 // header, before any auth or body parsing.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -35,7 +35,7 @@ func TestVMBulk_MethodNotAllowed(t *testing.T) {
 	}
 }
 
-// TestVMBulk_InvalidBody — malformed JSON → 400 invalid_request.
+// TestVMBulk_InvalidBody - malformed JSON → 400 invalid_request.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMBulk_InvalidBody(t *testing.T) {
@@ -52,7 +52,7 @@ func TestVMBulk_InvalidBody(t *testing.T) {
 	}
 }
 
-// TestVMBulk_NilInventoryProducesErrorEntry — when the projection was never
+// TestVMBulk_NilInventoryProducesErrorEntry - when the projection was never
 // populated, singleClusterResolver.IndexFor returns an error and BulkAction
 // records one "error" entry per target (the batch never fails as a whole).
 // This covers the nil-index branch of singleClusterResolver.IndexFor.

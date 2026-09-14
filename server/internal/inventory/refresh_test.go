@@ -15,7 +15,7 @@ const (
 	retryMaximumAfterWait = 1900 * time.Millisecond
 )
 
-// TestRefresh_OutsideGuardSucceeds — a manual refresh outside the guard
+// TestRefresh_OutsideGuardSucceeds - a manual refresh outside the guard
 // interval succeeds and calls the client.
 //
 //nolint:paralleltest // serial: shared refresh fixture
@@ -46,7 +46,7 @@ func TestRefresh_OutsideGuardSucceeds(t *testing.T) {
 	}
 }
 
-// TestRefresh_InsideGuardRefusedWithZeroCalls — a manual
+// TestRefresh_InsideGuardRefusedWithZeroCalls - a manual
 // refresh within the guard interval is refused with ErrRefreshTooSoon and
 // makes zero client calls.
 //
@@ -60,7 +60,7 @@ func TestRefresh_InsideGuardRefusedWithZeroCalls(t *testing.T) {
 	_, _ = worker.Refresh(context.Background())
 	callsBefore := client.calls.Load()
 
-	// Immediately attempt a manual refresh — should be refused.
+	// Immediately attempt a manual refresh - should be refused.
 	refresher := inventory.NewRefresher(worker, 5*time.Second)
 
 	_, err := refresher.Refresh(context.Background())
@@ -82,7 +82,7 @@ func TestRefresh_InsideGuardRefusedWithZeroCalls(t *testing.T) {
 	}
 }
 
-// TestRefresh_RetryAfterCountsDownNotFullInterval — the remaining wait
+// TestRefresh_RetryAfterCountsDownNotFullInterval - the remaining wait
 // reported shrinks as time passes, it is not the full guard interval on
 // every refusal (retryAfterSeconds is how long is left, not a constant).
 //
@@ -109,7 +109,7 @@ func TestRefresh_RetryAfterCountsDownNotFullInterval(t *testing.T) {
 	}
 }
 
-// TestRefresh_FirstRefreshAllowedWhenProjectionEmpty — a manual refresh before
+// TestRefresh_FirstRefreshAllowedWhenProjectionEmpty - a manual refresh before
 // the first automatic cycle is allowed (the guard only applies after a
 // successful refresh).
 //
@@ -135,7 +135,7 @@ func TestRefresh_FirstRefreshAllowedWhenProjectionEmpty(t *testing.T) {
 	}
 }
 
-// TestRefresh_FailingClientReturnsUnreachable — a manual refresh whose client
+// TestRefresh_FailingClientReturnsUnreachable - a manual refresh whose client
 // call fails returns ErrClusterUnreachable; the previous projection is
 // still served.
 //

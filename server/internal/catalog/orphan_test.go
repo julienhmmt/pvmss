@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// emptyDiscoveryClient reports no nodes, storages, bridges, or ISOs — every
+// emptyDiscoveryClient reports no nodes, storages, bridges, or ISOs - every
 // stored approval is an orphan. It embeds cluster.Fake so Snapshot returns a
 // valid (empty-overridden) snapshot for the storage path.
 type emptyDiscoveryClient struct {
@@ -28,7 +28,7 @@ func (emptyDiscoveryClient) ListISOs(_ context.Context) ([]cluster.ISOImage, err
 }
 
 // TestAdminListISOs_EnabledOrphanAutoRemoved: an enabled ISO approval whose
-// file Proxmox no longer reports is silently removed — it would otherwise be
+// file Proxmox no longer reports is silently removed - it would otherwise be
 // offered to users on a file that no longer exists.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -37,7 +37,7 @@ func TestAdminListISOs_EnabledOrphanAutoRemoved(t *testing.T) {
 	ctx := context.Background()
 
 	// Approve an ISO that the fake cluster reports, then switch to a client
-	// that reports nothing — the approval becomes an enabled orphan.
+	// that reports nothing - the approval becomes an enabled orphan.
 	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default",
 		catalog.ISORef{Node: node01, Storage: storageLocal, File: debianGenericISO}, true); err != nil {
 		t.Fatalf("SetISOEnabled: %v", err)
@@ -69,7 +69,7 @@ func TestAdminListISOs_EnabledOrphanAutoRemoved(t *testing.T) {
 
 // TestAdminListISOs_DisabledOrphanSurfacedAsMissing: a disabled ISO approval
 // whose file is gone is surfaced with Missing=true so the admin can remove it
-// manually — auto-removing a disabled row would lose the admin's intent if the
+// manually - auto-removing a disabled row would lose the admin's intent if the
 // file comes back.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -77,7 +77,7 @@ func TestAdminListISOs_DisabledOrphanSurfacedAsMissing(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
 
-	// Approve then disable — the row persists with enabled=false.
+	// Approve then disable - the row persists with enabled=false.
 	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default",
 		catalog.ISORef{Node: node01, Storage: storageLocal, File: debianGenericISO}, true); err != nil {
 		t.Fatalf("SetISOEnabled true: %v", err)

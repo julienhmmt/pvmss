@@ -121,7 +121,7 @@ func TestVMDetail_Get_AgentDisabledExplainsAbsentIPs(t *testing.T) {
 		t.Errorf("guestAgent = %q, want disabled (VM 103 is seeded agent=0)", body.GuestAgent)
 	}
 
-	// A disabled channel is known from the config — no agent probe may run.
+	// A disabled channel is known from the config - no agent probe may run.
 	for _, call := range cluster.FakeCallsFor(103) {
 		if call.Action == "guest_network_interfaces" {
 			t.Fatal("guest agent probed a VM whose config disables the channel")

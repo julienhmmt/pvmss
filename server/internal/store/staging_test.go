@@ -30,7 +30,7 @@ func newStagingStore(t *testing.T) *store.Store {
 	return st
 }
 
-// TestImportStaging_DistinctTokensForTwoStages — two concurrent stages
+// TestImportStaging_DistinctTokensForTwoStages - two concurrent stages
 // get distinct tokens.
 //
 //nolint:paralleltest // serial: shared staging map
@@ -50,7 +50,7 @@ func TestImportStaging_DistinctTokensForTwoStages(t *testing.T) {
 	}
 }
 
-// TestImportStaging_ExpiresAfterTTL — a staged entry expires after its
+// TestImportStaging_ExpiresAfterTTL - a staged entry expires after its
 // TTL and is unreachable by ConfirmImport afterward.
 //
 //nolint:paralleltest // serial: shared staging map
@@ -73,7 +73,7 @@ func TestImportStaging_ExpiresAfterTTL(t *testing.T) {
 	}
 }
 
-// TestImportStaging_UnknownTokenReturnsNotFound — a token that was
+// TestImportStaging_UnknownTokenReturnsNotFound - a token that was
 // never staged returns the not-found sentinel.
 //
 //nolint:paralleltest // serial: shared staging map
@@ -91,7 +91,7 @@ func TestImportStaging_UnknownTokenReturnsNotFound(t *testing.T) {
 	}
 }
 
-// TestImportStaging_RemoveDeletesEntry — removing a token makes it
+// TestImportStaging_RemoveDeletesEntry - removing a token makes it
 // unreachable as not-found (not expired).
 //
 //nolint:paralleltest // serial: shared staging map
@@ -112,7 +112,7 @@ func TestImportStaging_RemoveDeletesEntry(t *testing.T) {
 	}
 }
 
-// TestImportStaging_LookupReturnsPreview — a valid token returns the staged
+// TestImportStaging_LookupReturnsPreview - a valid token returns the staged
 // preview and temp path.
 //
 //nolint:paralleltest // serial: shared staging map
@@ -138,7 +138,7 @@ func TestImportStaging_LookupReturnsPreview(t *testing.T) {
 	}
 }
 
-// ensure Staging is exercised via the Store facade too — a smoke test that
+// ensure Staging is exercised via the Store facade too - a smoke test that
 // the wiring is in place.
 //
 //nolint:paralleltest // serial: shared staging map

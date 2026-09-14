@@ -47,7 +47,7 @@ func sampleResources() catalog.Resources {
 	}
 }
 
-// TestResources_HasNode — HasNode reports true only for an approved node name.
+// TestResources_HasNode - HasNode reports true only for an approved node name.
 func TestResources_HasNode(t *testing.T) {
 	t.Parallel()
 
@@ -71,7 +71,7 @@ func TestResources_HasNode(t *testing.T) {
 	}
 }
 
-// TestResources_HasStorage — HasStorage matches the (name, node) pair, so a
+// TestResources_HasStorage - HasStorage matches the (name, node) pair, so a
 // storage name present on one node must not match a different node.
 func TestResources_HasStorage(t *testing.T) {
 	t.Parallel()
@@ -98,7 +98,7 @@ func TestResources_HasStorage(t *testing.T) {
 	}
 }
 
-// TestResources_HasBridge — HasBridge matches the (name, node) pair.
+// TestResources_HasBridge - HasBridge matches the (name, node) pair.
 func TestResources_HasBridge(t *testing.T) {
 	t.Parallel()
 
@@ -124,7 +124,7 @@ func TestResources_HasBridge(t *testing.T) {
 	}
 }
 
-// TestResources_HasISO — HasISO matches the (storage, file, node) triple, so
+// TestResources_HasISO - HasISO matches the (storage, file, node) triple, so
 // the same file on two storages must not cross-match, and the same storage on
 // two nodes must not cross-match either.
 func TestResources_HasISO(t *testing.T) {
@@ -154,7 +154,7 @@ func TestResources_HasISO(t *testing.T) {
 	}
 }
 
-// TestFindProfile_FoundAndNotFound — FindProfile returns the matching profile
+// TestFindProfile_FoundAndNotFound - FindProfile returns the matching profile
 // by id, or an error for an absent id.
 func TestFindProfile_FoundAndNotFound(t *testing.T) {
 	t.Parallel()
@@ -182,7 +182,7 @@ func TestFindProfile_FoundAndNotFound(t *testing.T) {
 	}
 }
 
-// TestFindProfile_EmptySlice — an empty profile slice never matches.
+// TestFindProfile_EmptySlice - an empty profile slice never matches.
 func TestFindProfile_EmptySlice(t *testing.T) {
 	t.Parallel()
 
@@ -195,7 +195,7 @@ func TestFindProfile_EmptySlice(t *testing.T) {
 	}
 }
 
-// TestFindProfile_ErrorIsNotSentinel — the not-found error is a formatted
+// TestFindProfile_ErrorIsNotSentinel - the not-found error is a formatted
 // message, not a wrapped sentinel, so errors.Is must not match a random error.
 func TestFindProfile_ErrorIsNotSentinel(t *testing.T) {
 	t.Parallel()

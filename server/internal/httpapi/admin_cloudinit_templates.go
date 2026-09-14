@@ -34,7 +34,7 @@ type cloudInitTemplateUpdateRequest struct {
 	Content string `json:"content"`
 }
 
-// ServeCloudInitTemplates handles GET /api/v1/admin/cloudinit-templates — lists
+// ServeCloudInitTemplates handles GET /api/v1/admin/cloudinit-templates - lists
 // every template including disabled ones (unlike catalog reader which filters by enabled = 1).
 // Admin-only via the RequireAdmin route guard.
 func (h *AdminCatalog) ServeCloudInitTemplates(w http.ResponseWriter, r *http.Request) {

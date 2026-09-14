@@ -344,7 +344,7 @@ func openTestStore(t *testing.T) *store.Store {
 	return st
 }
 
-// TestDiscoverClusterDisplayNames_PopulatesEmptyRows — a non-fake cluster
+// TestDiscoverClusterDisplayNames_PopulatesEmptyRows - a non-fake cluster
 // client that returns a display name has it persisted at startup. Fake
 // clusters are skipped: their DisplayName() would just echo the internal name.
 //
@@ -399,7 +399,7 @@ func TestDiscoverClusterDisplayNames_PopulatesEmptyRows(t *testing.T) {
 	}
 }
 
-// TestDiscoverClusterDisplayNames_SkipsFake — fake clusters are never
+// TestDiscoverClusterDisplayNames_SkipsFake - fake clusters are never
 // discovered: their DisplayName() just returns the logical cluster name, which
 // would re-introduce the "default" label. Fake display names come from the
 // seed instead.
@@ -415,7 +415,7 @@ func TestDiscoverClusterDisplayNames_SkipsFake(t *testing.T) {
 	}
 
 	// Wipe seeded display names to simulate a database created before the seed
-	// fix — discovery must not fill the fake rows with their internal names.
+	// fix - discovery must not fill the fake rows with their internal names.
 	for _, row := range rows {
 		if err := st.SetClusterDisplayName(ctx, row.Name, ""); err != nil {
 			t.Fatalf("clear DisplayName %q: %v", row.Name, err)
@@ -446,7 +446,7 @@ func TestDiscoverClusterDisplayNames_SkipsFake(t *testing.T) {
 	}
 }
 
-// TestDiscoverClusterDisplayNames_PreservesExisting — a cluster that already
+// TestDiscoverClusterDisplayNames_PreservesExisting - a cluster that already
 // has a display name is not overwritten by startup discovery.
 //
 //nolint:paralleltest // serial: shared database state

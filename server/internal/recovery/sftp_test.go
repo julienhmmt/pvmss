@@ -47,7 +47,7 @@ func TestRun_SftpConfigPopulated_NoEffect(t *testing.T) {
 		t.Fatalf("Run with sftp: %v", err)
 	}
 
-	// The two summaries must be identical — sftp_config has no effect on Run.
+	// The two summaries must be identical - sftp_config has no effect on Run.
 	if !summariesEqual(sum1, sum2) {
 		t.Errorf("Run output differs with/without sftp_config:\nwithout: %+v\nwith: %+v", sum1, sum2)
 	}
@@ -78,7 +78,7 @@ func TestRecoveryPackage_NoSftpReferences(t *testing.T) {
 	// recovery package contains "sftp" (case-insensitive).
 	// This is enforced by the behavioral test (Run ignores sftp_config)
 	// and by the design: the recovery tool simply never queries
-	// sftp_config — there is no code path that reads it.
+	// sftp_config - there is no code path that reads it.
 	_ = recovery.Summary{} // use the package to ensure it's imported
 }
 

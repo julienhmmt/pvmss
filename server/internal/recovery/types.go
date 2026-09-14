@@ -125,7 +125,7 @@ type TagRow struct {
 }
 
 // VMLimitsRow carries the five vm_limits fields legacy actually persisted.
-// max_sockets/max_cores/max_memory_mb are intentionally absent — there is
+// max_sockets/max_cores/max_memory_mb are intentionally absent - there is
 // no on-disk source for them.
 type VMLimitsRow struct {
 	MaxDiskPerVMGB  int

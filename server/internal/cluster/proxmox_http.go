@@ -33,7 +33,7 @@ type proxmoxEnvelope struct {
 
 // RejectionError wraps a 4xx/5xx Proxmox response: the HTTP status and
 // Proxmox's own message (extracted by proxmoxErrorMessage) are kept so the
-// HTTP layer can decide what to surface — the message describes the VM's
+// HTTP layer can decide what to surface - the message describes the VM's
 // storage or state, never cluster internals or credentials, but a 401/403
 // body can name the token and must not be rendered. Errors.Is(err,
 // ErrClusterRejected) matches it.
@@ -55,7 +55,7 @@ func (e *RejectionError) Unwrap() error { return ErrClusterRejected }
 // proxmoxRESTClient is the shared low-level REST client every Proxmox method
 // builds from the struct's own fields (or, for the two calls that must act as
 // a specific end user rather than the service account, from a ticket). Cheap
-// to construct — no connection happens until the first request — matching the
+// to construct - no connection happens until the first request - matching the
 // existing proxmoxVNCClient pattern in websocket_real.go.
 type proxmoxRESTClient struct {
 	base       string // "scheme://host:port/api2/json", no trailing slash
@@ -63,7 +63,7 @@ type proxmoxRESTClient struct {
 	tokenValue string
 	http       *http.Client
 	// noRetry short-circuits the GET retry loop. Set by withNoRetry for short
-	// probes (guest-agent exec-status) that legitimately hang until timeout —
+	// probes (guest-agent exec-status) that legitimately hang until timeout - 
 	// retrying them only multiplies the wait and slows every list load.
 	noRetry bool
 	// ticket/csrf, when set, authenticate as a specific end user via a PVE
@@ -126,7 +126,7 @@ func newProxmoxREST(baseURL, tokenName, tokenValue string, client *http.Client) 
 
 // apiBase normalizes a cluster's configured URL to "scheme://host:port/api2/json", tolerating
 // either form an operator might
-// enter — with or without the "/api2/json" suffix already present — so the
+// enter - with or without the "/api2/json" suffix already present - so the
 // whole client (and the console relay in websocket_real.go) agree on one
 // convention regardless of which way the "Add Cluster" form was filled in.
 func apiBase(raw string) string {
@@ -149,7 +149,7 @@ func (c proxmoxRESTClient) withTicket(ticket, csrf string) proxmoxRESTClient {
 
 // withNoRetry returns a copy of c with the retry loop disabled. Used by
 // short probes (guest-agent exec-status) that legitimately hang until
-// timeout — retrying them only multiplies the wait.
+// timeout - retrying them only multiplies the wait.
 func (c proxmoxRESTClient) withNoRetry() proxmoxRESTClient {
 	c.noRetry = true
 
@@ -172,7 +172,7 @@ const (
 // do executes an authenticated call and returns the decoded "data" payload.
 // GET requests are retried on transient failures (transport errors, HTTP
 // status >= 500, or 429) with bounded exponential backoff, up to 2
-// additional attempts. POST/PUT/DELETE are never retried — a create can't
+// additional attempts. POST/PUT/DELETE are never retried - a create can't
 // double-provision. Context cancellation during backoff returns promptly.
 // The noRetry flag short-circuits the loop for short probes.
 func (c proxmoxRESTClient) do(ctx context.Context, method, path string, form url.Values) (json.RawMessage, error) {
@@ -209,7 +209,7 @@ func retryBackoff(attempt int) time.Duration {
 
 // isRetryableStatus reports whether a failed attempt should be retried: a
 // transport error (status 0, no response received), HTTP >= 500 (except 595),
-// or 429. A nil error (success) or any other 4xx is not retryable — 404 is a
+// or 429. A nil error (success) or any other 4xx is not retryable - 404 is a
 // legitimate ErrNotFound, and 400/401/403 are caller errors that won't fix
 // themselves. 595 is Proxmox's "could not reach the target node" status: the
 // node is down, and retrying it 250ms later only multiplies an already slow
@@ -271,7 +271,7 @@ func (c proxmoxRESTClient) buildRequest(ctx context.Context, method, path string
 	switch {
 	case method == http.MethodGet || method == http.MethodDelete:
 		// Go's own http.Request.ParseForm only reads a body for POST/PUT/PATCH
-		// (net/http docs) — a DELETE body is silently ignored by many servers,
+		// (net/http docs) - a DELETE body is silently ignored by many servers,
 		// Proxmox's own API included. Query string works uniformly everywhere.
 		if len(form) > 0 {
 			target += "?" + form.Encode()
@@ -366,7 +366,7 @@ func proxmoxErrorMessage(raw []byte) string {
 }
 
 // decodeData unmarshals a decoded "data" payload into out. A nil/empty
-// payload leaves out untouched rather than erroring — some Proxmox endpoints
+// payload leaves out untouched rather than erroring - some Proxmox endpoints
 // return no data on success.
 func decodeData[T any](raw json.RawMessage, out *T) error {
 	if len(raw) == 0 {
@@ -376,7 +376,7 @@ func decodeData[T any](raw json.RawMessage, out *T) error {
 	return json.Unmarshal(raw, out)
 }
 
-// decodeJSONBody decodes an HTTP response body directly into out — used only
+// decodeJSONBody decodes an HTTP response body directly into out - used only
 // by proxmoxTicketAuth, which builds its own request outside of
 // proxmoxRESTClient.do (see that function's doc comment for why).
 func decodeJSONBody(resp *http.Response, out any) error {

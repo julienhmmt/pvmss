@@ -58,7 +58,7 @@ func assertTicketBoundToDifferentVMRejected(t *testing.T, p consoleTestParams) {
 
 	_ = json.Unmarshal(ticketRec.Body.Bytes(), &ticket)
 
-	// Try to use it against VM 101 — must be rejected before the upgrade.
+	// Try to use it against VM 101 - must be rejected before the upgrade.
 	rec := httptest.NewRecorder()
 	req := p.request(http.MethodGet, p.wsPath(101)+"?token="+ticket.Token, "", p.cookie)
 	p.handler.ServeHTTP(rec, req)
@@ -67,7 +67,7 @@ func assertTicketBoundToDifferentVMRejected(t *testing.T, p consoleTestParams) {
 		t.Fatalf("status = %d, want %d (ticket bound to different VM)", rec.Code, http.StatusBadRequest)
 	}
 
-	// The ticket is NOT consumed by the mismatched attempt — it remains valid
+	// The ticket is NOT consumed by the mismatched attempt - it remains valid
 	// for its real (cluster, vmid). Verify by consuming it directly.
 	if _, err := p.tickets.Consume(p.kind, ticket.Token, "default", 100); err != nil {
 		t.Fatalf("ticket was consumed by the mismatched attempt: %v", err)
@@ -114,7 +114,7 @@ func buildConsoleTestHandler(t *testing.T, port int, dbPath string, newHandler f
 }
 
 // buildFailingRelayHandler is a thin alias for buildConsoleTestHandler kept
-// for readability at 502-test call sites — the constructor passed in wires a
+// for readability at 502-test call sites - the constructor passed in wires a
 // failing relay rather than cluster.Fake{}.
 func buildFailingRelayHandler(t *testing.T, port int, dbPath string, newHandler func(cluster.Snapshot, *httpapi.Auth, *vm.ConsoleTicketStore, *store.Store, *slog.Logger) http.Handler) (http.Handler, *httpapi.Auth, *http.Cookie) {
 	t.Helper()
@@ -149,7 +149,7 @@ func assertClusterUnavailableReturns502(t *testing.T, handler http.Handler, requ
 // TestVMConsole_PostVNCTicket_OwnerGetsOpaqueToken and
 // TestVMSerialConsole_PostSerialTicket_OwnerGetsOpaqueToken. It issues a
 // ticket for VM 100 and asserts the response carries only the opaque token and
-// its TTL — no Proxmox ticket, node, or port leaks.
+// its TTL - no Proxmox ticket, node, or port leaks.
 func assertOwnerGetsOpaqueToken(t *testing.T, handler http.Handler, request func(method, path, body string, cookie *http.Cookie) *http.Request, ticketPath string, cookie *http.Cookie) {
 	t.Helper()
 

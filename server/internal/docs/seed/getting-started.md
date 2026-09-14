@@ -7,7 +7,7 @@ creating a new one.
 ## Logging in
 
 Pick your cluster and use your Proxmox credentials on the [login page](/login).
-If the selected cluster is unreachable, the form says so — try again later or
+If the selected cluster is unreachable, the form says so - try again later or
 pick another cluster.
 
 ## Finding your VMs
@@ -26,7 +26,7 @@ Filters are kept in the URL, so a filtered view can be bookmarked.
    you unless you switch to Detailed mode.
 4. Optionally attach a cloud-init document (an admin template or one of
    [your files](/cloud-init)).
-5. Submit — the portal provisions the VM and shows progress in the task tray.
+5. Submit - the portal provisions the VM and shows progress in the task tray.
 
 For more, see the [VM creation guidelines](/docs/vm-creation-guidelines) and
 the [user guide](/docs/user-guide).
