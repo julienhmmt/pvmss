@@ -196,6 +196,10 @@ export interface VmCreateAccepted {
 	cloudInitTemplateId?: string;
 	cloudInitFileId?: string;
 	cloudInitPushError?: string;
+	/** True when the VM was created from a cloud image (issue 05): the
+	 *  create summary warns that SSH is the only access until a console
+	 *  password is set. */
+	fromImage?: boolean;
 }
 
 export type CreateMode = 'simple' | 'detailed';
@@ -656,13 +660,21 @@ export class VmCreateStore {
 
 	/** Selects a cloud image and derives its disk floor (sizeBytes ceiled to
 	 *  GB, mirroring the server's checkDiskAboveImage). The image's node also
-	 *  becomes the form's node so downstream selects filter correctly. */
+	 *  becomes the form's node so downstream selects filter correctly.
+	 *  Selecting a cloud image also unticks UEFI (cloud-image-console issue
+	 *  02): a cloud kernel cannot drive the emulated VGA under UEFI, so
+	 *  SeaBIOS is the readable-console default. The checkbox stays re-tickable. */
 	selectImage(storage: string, file: string): void {
 		this.imageStorage = storage;
 		this.imageFile = file;
 		const image = this.selectedImage();
 		this.imageMinDiskGB = image === undefined ? 0 : Math.ceil(image.sizeBytes / BYTES_PER_GB);
-		if (image !== undefined) this.node = image.node;
+		if (image !== undefined) {
+			this.node = image.node;
+			this.uefi = false;
+			this.tpm = false;
+			this.secureBoot = false;
+		}
 	}
 
 	/** Clears the cloud-image selection and its disk floor. */
@@ -752,6 +764,7 @@ export class VmCreateStore {
 				}
 				request.uefi = this.uefi;
 				if (this.uefi && this.secureBoot) request.secureBoot = true;
+				this.applyCloudInitDocument(request);
 				return request;
 			}
 			if (this.simpleSource === 'template' && this.templateId !== 0) {
@@ -817,9 +830,9 @@ export class VmCreateStore {
 			}
 		}
 
-		// The document picker is hidden in image mode — image cloud-init is
-		// the native-fields block, not a vendor-data document.
-		if (this.sourceType !== 'image') this.applyCloudInitDocument(request);
+		// The document picker is available in image mode (issue 04): the
+		// selected document is merged on top of the generated baseline.
+		this.applyCloudInitDocument(request);
 
 		// US6/issue-06: UEFI is sent explicitly (true or false) so an
 		// unchecked box is honored — the server defaults to UEFI=true when

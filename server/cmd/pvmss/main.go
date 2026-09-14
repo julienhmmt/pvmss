@@ -427,6 +427,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	adminOps.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, clusterRegistry, inventoryRegistry, logger)
 	adminClusters.SetTrustedProxyHops(cfg.TrustedProxyHops)
+	adminBaseline := httpapi.NewAdminBaseline(authHandler, clusterRegistry, st, logger)
 	docsHandler := httpapi.NewDocsAPIHandler(authHandler, st, logger)
 	adminDocs := httpapi.NewAdminDocs(authHandler, st, docsHandler, logger)
 	cloudInitFiles := httpapi.NewCloudInitFiles(authHandler, st, logger)
@@ -462,6 +463,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		AdminClusters:    adminClusters,
 		Docs:             docsHandler,
 		AdminDocs:        adminDocs,
+		AdminBaseline:    adminBaseline,
 		TrustedProxyHops: cfg.TrustedProxyHops,
 	}), nil
 }

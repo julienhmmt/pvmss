@@ -16,6 +16,7 @@
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Pill from '$lib/shared/ui/Pill.svelte';
 	import StatCard from '$lib/shared/ui/StatCard.svelte';
+	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
 	import { focusOnMount } from '$lib/shared/ui/focus-on-mount';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -29,6 +30,7 @@
 	let editingDescription = $state(false);
 	let nameDraft = $state('');
 	let descriptionDraft = $state('');
+	let retrofitOpen = $state(false);
 
 	const tabs = [
 		{ id: 'overview', label: () => m['vms.detail.tabOverview']() },
@@ -181,6 +183,43 @@
 			</p>
 		{/if}
 
+		{#if session.isAdmin}
+			<div class="mt-3 flex flex-wrap items-center gap-2" data-testid="vm-admin-actions">
+				<Button
+					size="sm"
+					variant="secondary"
+					disabled={store.retrofitInFlight}
+					onclick={() => { retrofitOpen = true; }}
+					data-testid="vm-retrofit-seabios-btn"
+					title={m['vms.detail.retrofitSeabiosHint']()}
+					label={m['vms.detail.retrofitSeabios']()}
+				>
+					{m['vms.detail.retrofitSeabios']()}
+				</Button>
+				{#if store.retrofitError}
+					<p class="text-destructive text-sm" data-testid="vm-retrofit-seabios-error">{store.retrofitError}</p>
+				{/if}
+			</div>
+		{/if}
+
+		{#if store.entity.baselineState === 'applied'}
+			<p class="mt-3 text-sm text-muted-foreground" data-testid="vm-baseline-applied">
+				{m['vms.detail.baselineApplied']()}
+			</p>
+		{:else if store.entity.baselineState === 'override'}
+			<p class="mt-3 text-sm text-muted-foreground" data-testid="vm-baseline-override">
+				{m['vms.detail.baselineOverride']()}
+			</p>
+		{:else if store.entity.baselineState === 'not_delivered'}
+			<div class="mt-3" data-testid="vm-baseline-not-delivered">
+				<p class="text-sm font-medium text-warning">{m['vms.detail.baselineNotDelivered']()}</p>
+				<p class="text-xs text-muted-foreground">{m['vms.detail.baselineNotDeliveredHint']()}</p>
+				{#if store.entity.baselineError}
+					<p class="mt-1 font-mono text-xs text-muted-foreground" data-testid="vm-baseline-error">{store.entity.baselineError}</p>
+				{/if}
+			</div>
+		{/if}
+
 		<div class="mt-5">
 			<VmActionBar onDelete={() => { deleteOpen = true; }} />
 		</div>
@@ -310,4 +349,16 @@
 	{/if}
 
 	<DeleteVmDialog bind:open={deleteOpen} />
+
+	<ConfirmDialog
+		open={retrofitOpen}
+		title={m['vms.detail.retrofitSeabiosConfirmTitle']({ name: store.entity?.name ?? '' })}
+		message={m['vms.detail.retrofitSeabiosConfirmMessage']()}
+		confirmLabel={m['vms.detail.retrofitSeabiosConfirm']()}
+		cancelLabel={m['common.cancel']()}
+		confirming={store.retrofitInFlight}
+		testId="vm-retrofit-seabios-confirm"
+		onConfirm={async () => { await store.retrofitSeaBIOS(true); if (!store.retrofitError) retrofitOpen = false; }}
+		onClose={() => { retrofitOpen = false; }}
+	/>
 {/if}

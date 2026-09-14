@@ -62,6 +62,7 @@ func (h *VMDetail) dispatchBySuffix(w http.ResponseWriter, r *http.Request) bool
 		{"/network", h.handleNetwork},
 		{"/hardware", h.handleHardware},
 		{"/serial", h.handleEnableSerial},
+		{"/retrofit-seabios", h.handleRetrofitSeaBIOS},
 		{"/audit", h.handleAudit},
 		{"/status", h.handleStatus},
 	}
@@ -262,6 +263,12 @@ type vmDetailDTO struct {
 	// may still be empty while DHCP is pending). Empty when the VM is not
 	// running — the status field already explains it.
 	GuestAgent string `json:"guestAgent,omitempty"`
+	// BaselineState is the delivery state of the generated cloud-init
+	// baseline for image-mode VMs (issue 03): "applied", "override",
+	// "not_delivered". Empty for non-image VMs.
+	BaselineState string `json:"baselineState,omitempty"`
+	// BaselineError is the reason when BaselineState is "not_delivered".
+	BaselineError string `json:"baselineError,omitempty"`
 }
 
 type diskRequest struct {
@@ -989,6 +996,105 @@ func (h *VMDetail) handleEnableSerial(w http.ResponseWriter, r *http.Request) {
 	h.writeEntity(w, r, entity)
 }
 
+// handleRetrofitSeaBIOS serves POST /vms/:cluster/:vmid/retrofit-seabios —
+// the admin-only action that switches an existing UEFI VM to SeaBIOS so its
+// graphical console becomes readable (cloud-image-console issue 08). Refuses
+// VMs with TPM state or Secure Boot before changing anything; a running VM
+// requires confirm=true in the request body. Reports each step's outcome.
+//
+//nolint:gocyclo // linear handler: auth→parse→dispatch→respond
+func (h *VMDetail) handleRetrofitSeaBIOS(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", "POST")
+		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
+
+		return
+	}
+
+	identity, err := h.auth.Principal(r)
+	if err != nil {
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
+		return
+	}
+
+	// Issue 08: admin-only — a tenant cannot retrofit firmware.
+	if !identity.IsAdmin {
+		h.writeDetailError(w, http.StatusForbidden, "forbidden", msgAdminOnly)
+		return
+	}
+
+	clusterName, vmid, ok := h.parsePath(r)
+	if !ok {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
+		return
+	}
+
+	index, ok := h.index(w, clusterName)
+	if !ok {
+		return
+	}
+
+	writer, ok := h.writerFor(w, clusterName)
+	if !ok {
+		return
+	}
+
+	var request struct {
+		Confirm bool `json:"confirm"`
+	}
+
+	if r.ContentLength > 0 {
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+			return
+		}
+	}
+
+	err = vm.RetrofitToSeaBIOS(r.Context(), vm.RetrofitDependencies{
+		Index:        index,
+		Actor:        identity,
+		ClusterName:  clusterName,
+		VMID:         vmid,
+		Writer:       writer,
+		StatusReader: h.statusReaderFor(clusterName),
+		Audit:        h.store,
+		Refresher:    h.refresherFor(clusterName),
+		Confirm:      request.Confirm,
+	})
+	if err != nil {
+		if h.writeCommonVMError(w, err) {
+			return
+		}
+
+		switch {
+		case errors.Is(err, vm.ErrRetrofitRefused):
+			h.writeDetailError(w, http.StatusConflict, "retrofit_refused", err.Error())
+		case errors.Is(err, vm.ErrRetrofitRequiresConfirmation):
+			h.writeDetailError(w, http.StatusConflict, "retrofit_confirm_required", err.Error())
+		case errors.Is(err, vm.ErrRetrofitRestartFailed):
+			h.writeDetailError(w, http.StatusInternalServerError, "retrofit_restart_failed", err.Error())
+		default:
+			h.log.Error("retrofit seabios failed", "component", "httpapi", "cluster", clusterName, "vmid", vmid, "error", err)
+			h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+		}
+
+		return
+	}
+
+	refreshed, ok := h.index(w, clusterName)
+	if !ok {
+		return
+	}
+
+	entity, err := vm.Resolve(refreshed, identity, clusterName, vmid)
+	if err != nil {
+		h.writeResolveError(w, err)
+		return
+	}
+
+	h.writeEntity(w, r, entity)
+}
+
 func (h *VMDetail) writeHardwareError(w http.ResponseWriter, err error) {
 	if h.writeCommonVMError(w, err) {
 		return
@@ -1417,6 +1523,16 @@ func (h *VMDetail) writeEntity(w http.ResponseWriter, r *http.Request, entity vm
 	if reader := h.statusReaderFor(entity.Cluster); reader != nil {
 		if live, err := reader.VMStatus(r.Context(), entity.Node, entity.VMID); err == nil {
 			dto.Lock = live.Lock
+		}
+	}
+
+	// Issue 03: carry the baseline delivery state for image-mode VMs so the
+	// page can report it (best-effort — a store failure must not fail the
+	// whole detail).
+	if h.store != nil {
+		if state, found, err := h.store.GetBaselineState(r.Context(), entity.Cluster, entity.VMID); err == nil && found {
+			dto.BaselineState = state.State
+			dto.BaselineError = state.Error
 		}
 	}
 

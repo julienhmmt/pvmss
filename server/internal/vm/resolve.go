@@ -90,6 +90,13 @@ type Entity struct {
 	// the detail endpoint can explain absent live IPs without probing a
 	// channel that is configured off.
 	Agent bool
+	// BaselineState is the delivery state of the generated cloud-init
+	// baseline for image-mode VMs (cloud-image-console issue 03):
+	// "applied", "override", "not_delivered", or "" for non-image VMs.
+	// Populated by the handler from the store, not by Resolve.
+	BaselineState string
+	// BaselineError is the reason when BaselineState is "not_delivered".
+	BaselineError string
 }
 
 // Resolve is the ONLY function capable of turning a (cluster, vmid) pair into

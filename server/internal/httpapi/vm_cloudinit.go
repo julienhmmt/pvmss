@@ -191,13 +191,15 @@ type cloudInitSSHKeyResponse struct {
 	Status string `json:"status"`
 }
 
-// ServeHTTP dispatches config, snippet, and ssh-key routes by path suffix.
+// ServeHTTP dispatches config, snippet, ssh-key, and console-password routes by path suffix.
 func (h *VMCloudInit) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case strings.HasSuffix(r.URL.Path, "/cloudinit/snippet"):
 		h.handleSnippet(w, r)
 	case strings.HasSuffix(r.URL.Path, "/cloudinit/ssh-keys"):
 		h.handleSSHKey(w, r)
+	case strings.HasSuffix(r.URL.Path, "/console-password"):
+		h.handleConsolePassword(w, r)
 	default:
 		h.handleConfig(w, r)
 	}
@@ -361,6 +363,61 @@ func (h *VMCloudInit) handleSSHKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeJSONStatus(w, http.StatusOK, cloudInitSSHKeyResponse{Status: "injected"})
+}
+
+// consolePasswordResponse carries the generated password once for display.
+// The password is not persisted, not logged, and not recorded in the audit
+// trail (cloud-image-console issue 05).
+type consolePasswordResponse struct {
+	Password string `json:"password"`
+}
+
+func (h *VMCloudInit) handleConsolePassword(w http.ResponseWriter, r *http.Request) {
+	clusterName, vmid, ok := parseCloudInitPath(r)
+	if !ok {
+		h.writeError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", "POST")
+		h.writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
+
+		return
+	}
+
+	identity, err := h.auth.Principal(r)
+	if err != nil {
+		h.writeError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
+		return
+	}
+
+	index, ok := h.index(w, clusterName)
+	if !ok {
+		return
+	}
+
+	reader, ok := h.readerFor(w, clusterName)
+	if !ok {
+		return
+	}
+
+	writer, ok := h.writerFor(w, clusterName)
+	if !ok {
+		return
+	}
+
+	password, err := vm.SetConsolePassword(r.Context(), vm.ConsolePasswordDeps{
+		Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid,
+		Reader: reader, Writer: writer, Audit: h.store, Refresher: h.refresherFor(clusterName),
+		StatusReader: h.statusReaderFor(clusterName),
+	})
+	if err != nil {
+		h.writeDomainError(w, err)
+		return
+	}
+
+	h.writeJSONStatus(w, http.StatusOK, consolePasswordResponse{Password: password})
 }
 
 func (h *VMCloudInit) handleSnippet(w http.ResponseWriter, r *http.Request) {

@@ -41,6 +41,8 @@ const (
 	testActionPushCloudInitSnippet = "push_cloudinit_snippet"
 	// testActionStart is the fake's VM-start action name.
 	testActionStart = "start"
+	// testBIOSOVMF is the Proxmox bios value selecting UEFI firmware.
+	testBIOSOVMF = "ovmf"
 )
 
 func cloudInitIndex(t *testing.T) *inventory.Index {
@@ -58,7 +60,7 @@ func cloudInitIndex(t *testing.T) *inventory.Index {
 
 func cloudInitStore(t *testing.T) *store.Store {
 	t.Helper()
-	st, err := store.Open(config.Configuration{DBPath: filepath.Join(t.TempDir(), "cloudinit.db"), LogLevel: "info", LogFormat: "json", LogOutput: "stdout"})
+	st, err := store.Open(config.Configuration{DBPath: filepath.Join(t.TempDir(), "cloudinit.db"), LogLevel: testLogLevel, LogFormat: testLogFormat, LogOutput: testLogOutput})
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
 	}

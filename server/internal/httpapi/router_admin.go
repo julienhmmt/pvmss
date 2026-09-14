@@ -34,6 +34,10 @@ func registerAdminRoutes(mux *http.ServeMux, cfg RouterConfig, adminProtect admi
 	if cfg.AdminDocs != nil {
 		registerAdminDocsRoutes(mux, adminProtect, cfg.AdminDocs)
 	}
+
+	if cfg.AdminBaseline != nil {
+		registerAdminBaselineRoutes(mux, adminProtect, cfg.AdminBaseline)
+	}
 }
 
 // registerAdminCatalogRoutes wires the T11 admin catalog endpoints (nodes,
@@ -127,4 +131,11 @@ func registerAdminDocsRoutes(mux *http.ServeMux, adminProtect adminRouteProtect,
 	mux.Handle("PUT /api/v1/admin/docs/{id}/{lang}", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeDocUpdate)))
 	mux.Handle("DELETE /api/v1/admin/docs/{id}/{lang}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeDocDelete)))
 	mux.Handle("POST /api/v1/admin/docs/{id}/{lang}/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeDocToggle)))
+}
+
+// registerAdminBaselineRoutes wires the issue 07 admin baseline view
+// (read-only: the generated baseline + the cluster override state).
+// Admin-only (FR-008).
+func registerAdminBaselineRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminBaseline) {
+	mux.Handle("GET /api/v1/admin/baseline", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeBaseline)))
 }

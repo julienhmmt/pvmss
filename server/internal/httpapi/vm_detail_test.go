@@ -35,6 +35,8 @@ type vmDetailEntity struct {
 	DiskTotal     int64    `json:"diskTotal"`
 	UptimeSeconds int64    `json:"uptimeSeconds,omitempty"`
 	Description   string   `json:"description,omitempty"`
+	BaselineState string   `json:"baselineState,omitempty"`
+	BaselineError string   `json:"baselineError,omitempty"`
 }
 
 type apiErrorEnvelope struct {
@@ -251,6 +253,32 @@ func TestVMDetail_Get_OwnerSeesFullEntity(t *testing.T) {
 
 	if entity.UptimeSeconds <= 0 {
 		t.Errorf("uptimeSeconds = %d, want > 0 for a running VM", entity.UptimeSeconds)
+	}
+}
+
+// TestVMDetail_Get_BaselineStateCarried — the detail DTO carries the
+// persisted baseline delivery state for image-mode VMs (issue 03).
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMDetail_Get_BaselineStateCarried(t *testing.T) {
+	handler, authHandler, _, st := newVMDetailHandler(t)
+	cookie := aliceCookie(t, authHandler)
+
+	if err := st.PutBaselineState(context.Background(), "default", 100, "applied", ""); err != nil {
+		t.Fatalf("PutBaselineState: %v", err)
+	}
+
+	rec, entity := serveDetail(handler, detailRequest(http.MethodGet, "/api/v1/vms/default/100", "", cookie))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	if entity.BaselineState != "applied" {
+		t.Errorf("baselineState = %q, want 'applied'", entity.BaselineState)
+	}
+
+	if entity.BaselineError != "" {
+		t.Errorf("baselineError = %q, want empty", entity.BaselineError)
 	}
 }
 

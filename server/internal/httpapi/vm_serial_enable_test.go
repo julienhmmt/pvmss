@@ -41,7 +41,7 @@ func TestVMDetail_Serial_EnablesPortOnExistingVM(t *testing.T) {
 // TestVMDetail_Serial_NonOwnerForbidden — an actor who does not own the VM
 // (bob, pool-bob) gets 403 and the writer is not touched.
 //
-//nolint:paralleltest // serial: shared fake cluster dataset
+//nolint:paralleltest,dupl // serial: shared fake cluster dataset; standard POST-403 pattern
 func TestVMDetail_Serial_NonOwnerForbidden(t *testing.T) {
 	cluster.ResetFake()
 

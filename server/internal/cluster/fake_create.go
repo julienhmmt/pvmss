@@ -126,6 +126,7 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 		Machine:           machine,
 		EFIDisk:           isUEFI,
 		TPMState:          isUEFI && spec.TPM,
+		SecureBoot:        isUEFI && spec.SecureBoot,
 		Agent:             true,
 	})
 

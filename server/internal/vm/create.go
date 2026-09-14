@@ -234,6 +234,7 @@ type CloudInitPusher interface {
 	AttachCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int) error
 	SetCloudInitConfig(ctx context.Context, node string, vmid int, config cluster.CloudInitConfig) error
 	HasSnippet(ctx context.Context, node, storage, filename string) (bool, error)
+	ReadSnippet(ctx context.Context, node, storage, filename string) (string, error)
 }
 
 // HardwareUpdater is the post-clone mutation contract (US2/issue-02 +
@@ -282,6 +283,21 @@ type CreateResult struct {
 	CloudInitTemplateID string
 	CloudInitFileID     string
 	CloudInitPushError  string
+	// BaselineState is the delivery state of the generated cloud-init
+	// baseline for image-mode VMs (cloud-image-console issue 03):
+	//   - "applied" — the generated baseline was pushed and attached
+	//   - "override" — a cluster-wide pvmss-baseline.yml replaced the generated baseline
+	//   - "not_delivered" — the baseline could not be delivered (see BaselineError)
+	//   - "" — not an image-mode VM (no baseline)
+	BaselineState string
+	// BaselineError is the reason the baseline could not be delivered, when
+	// BaselineState is "not_delivered". Does NOT block the VM start — the
+	// native keys (ciuser/sshkeys/ipconfig0) were already set.
+	BaselineError string
+	// FromImage is true when the VM was created from a cloud image
+	// (cloud-image-console issue 05): the create summary warns that SSH is
+	// the only access until a console password is set.
+	FromImage bool
 }
 
 // CreateDeps groups the collaborators vm.Create needs beyond the per-request
@@ -418,7 +434,7 @@ func createFromImage(ctx context.Context, policyService *policy.Policy, deps Cre
 		return CreateResult{}, err
 	}
 
-	result := CreateResult{Cluster: clusterName, VMID: finalVMID, Name: req.Name, Node: plan.node, UPID: upid}
+	result := CreateResult{Cluster: clusterName, VMID: finalVMID, Name: req.Name, Node: plan.node, UPID: upid, FromImage: true}
 
 	// The create task must finish before the snippet is attached — the PUT
 	// hits a 500 "VM is locked (create)" otherwise. A wait failure is a
@@ -430,10 +446,30 @@ func createFromImage(ctx context.Context, policyService *policy.Policy, deps Cre
 
 	resizeImageDisk(ctx, deps, clusterName, plan, spec, finalVMID, &result)
 
+	// Resolve the user's selected cloud-init document (issue 04): merged on
+	// top of the baseline by BuildVendorData. A rejected document fails the
+	// create with the existing validation error — returned, not swallowed,
+	// so the handler maps it to 400.
+	userDoc, err := resolveCloudInitDocument(ctx, deps.Store, clusterName, actor, req)
+	if err != nil {
+		rollbackFailedCreate(ctx, deps, actor, clusterName, finalVMID, spec.Node, "cloud-init document rejected")
+
+		return result, err
+	}
+
 	applyImageCloudInitConfig(ctx, imageCloudInitApply{
 		Deps: deps, ClusterName: clusterName,
 		Spec: spec, VMID: finalVMID, SnippetStorage: plan.snippetStorage, CloudInit: req.Image.CloudInit,
+		UserDocument: userDoc.Content,
 	}, &result)
+
+	// Persist the baseline delivery state so the VM detail page can report
+	// it (issue 03). Best-effort: a store failure logs but does not abort.
+	if result.BaselineState != "" {
+		if err := deps.Store.PutBaselineState(ctx, clusterName, finalVMID, result.BaselineState, result.BaselineError); err != nil {
+			deps.Log.Error("persist baseline state failed", "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
+		}
+	}
 
 	startImageVM(ctx, deps, clusterName, spec, finalVMID, startAfterCreate, &result)
 
@@ -525,6 +561,14 @@ func startImageVM(ctx context.Context, deps CreateDeps, clusterName string, spec
 // not an error: most clusters simply have not set one up yet.
 const imageBaselineSnippetFilename = "pvmss-baseline.yml"
 
+// Baseline delivery states recorded on CreateResult.BaselineState and
+// persisted in vm_baseline_state (issue 03).
+const (
+	BaselineStateApplied      = "applied"
+	BaselineStateOverride     = "override"
+	BaselineStateNotDelivered = "not_delivered"
+)
+
 // imageCloudInitApply bundles the inputs to applyImageCloudInitConfig.
 type imageCloudInitApply struct {
 	Deps           CreateDeps
@@ -533,15 +577,21 @@ type imageCloudInitApply struct {
 	VMID           int
 	SnippetStorage string
 	CloudInit      ImageCloudInitRequest
+	// UserDocument is the actor's selected cloud-init document content,
+	// merged on top of the baseline (issue 04). Empty when none selected.
+	UserDocument string
 }
 
 // applyImageCloudInitConfig delivers image-mode cloud-init through Proxmox's
 // native keys (ciuser/sshkeys/ipconfig0 — the only per-VM mechanism the REST
-// API actually supports; see cluster.Writer.HasSnippet), then attaches the
-// fixed baseline snippet when an admin has placed one. A failure does NOT
-// abort the creation (the task succeeded and the VM exists): it records the
-// error on result.CloudInitPushError (FR-008), which also blocks the
-// post-attach auto-start.
+// API actually supports; see cluster.Writer.HasSnippet), then pushes the
+// generated baseline (issue 01's BuildVendorData) as a per-VM snippet and
+// attaches it as vendor-data. When an admin has placed a cluster-wide
+// pvmss-baseline.yml, its content replaces the generated baseline. A
+// baseline delivery failure does NOT abort the creation or block the start
+// (the native keys were already set): it records the reason on
+// result.BaselineError and sets BaselineState to "not_delivered" (issue 03).
+// Only a SetCloudInitConfig failure blocks the start (CloudInitPushError).
 func applyImageCloudInitConfig(ctx context.Context, cfg imageCloudInitApply, result *CreateResult) {
 	config := cluster.CloudInitConfig{
 		User:    cfg.CloudInit.User,
@@ -563,10 +613,18 @@ func applyImageCloudInitConfig(ctx context.Context, cfg imageCloudInitApply, res
 	}
 
 	// No snippet write target on this cluster: there is nowhere a baseline
-	// could live, so skip the lookup (resolvePlanSnippetStorage).
+	// could live, so record "not_delivered" and let the VM start (issue 03).
 	if cfg.SnippetStorage == "" {
+		result.BaselineState = BaselineStateNotDelivered
+		result.BaselineError = "no snippet write target configured for this cluster"
+
 		return
 	}
+
+	// Build the vendor-data: the generated baseline, optionally replaced by
+	// a cluster-wide pvmss-baseline.yml the admin placed (issue 03), with
+	// the user's selected document merged on top (issue 04).
+	inputs := cloudinit.BaselineInputs{UserDocument: cfg.UserDocument}
 
 	present, err := cfg.Deps.Pusher.HasSnippet(ctx, cfg.Spec.Node, cfg.SnippetStorage, imageBaselineSnippetFilename)
 	if err != nil {
@@ -575,16 +633,62 @@ func applyImageCloudInitConfig(ctx context.Context, cfg imageCloudInitApply, res
 		// above, so this does not block start.
 		cfg.Deps.Log.Error("baseline snippet lookup failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
 
+		result.BaselineState = BaselineStateNotDelivered
+		result.BaselineError = err.Error()
+
 		return
 	}
 
-	if !present {
+	if present {
+		override, err := cfg.Deps.Pusher.ReadSnippet(ctx, cfg.Spec.Node, cfg.SnippetStorage, imageBaselineSnippetFilename)
+		if err != nil {
+			cfg.Deps.Log.Error("baseline snippet read failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
+
+			result.BaselineState = BaselineStateNotDelivered
+			result.BaselineError = err.Error()
+
+			return
+		}
+
+		inputs.Override = override
+	}
+
+	doc, err := cloudinit.BuildVendorData(inputs)
+	if err != nil {
+		cfg.Deps.Log.Error("baseline build failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
+
+		result.BaselineState = BaselineStateNotDelivered
+		result.BaselineError = err.Error()
+
 		return
 	}
 
-	if err := cfg.Deps.Pusher.AttachCloudInitSnippet(ctx, cfg.Spec.Node, cfg.SnippetStorage, imageBaselineSnippetFilename, cfg.VMID); err != nil {
+	// Push the generated/merged document as a per-VM snippet, then attach
+	// it as vendor-data (issue 03).
+	snippetFilename := fmt.Sprintf("pvmss-%d.yml", cfg.VMID)
+
+	if err := cfg.Deps.Pusher.PushCloudInitSnippet(ctx, cfg.Spec.Node, cfg.SnippetStorage, snippetFilename, cfg.VMID, doc); err != nil {
+		cfg.Deps.Log.Error("baseline snippet push failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
+
+		result.BaselineState = BaselineStateNotDelivered
+		result.BaselineError = err.Error()
+
+		return
+	}
+
+	if err := cfg.Deps.Pusher.AttachCloudInitSnippet(ctx, cfg.Spec.Node, cfg.SnippetStorage, snippetFilename, cfg.VMID); err != nil {
 		cfg.Deps.Log.Error("baseline snippet attach failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
-		result.CloudInitPushError = err.Error()
+
+		result.BaselineState = BaselineStateNotDelivered
+		result.BaselineError = err.Error()
+
+		return
+	}
+
+	if present {
+		result.BaselineState = BaselineStateOverride
+	} else {
+		result.BaselineState = BaselineStateApplied
 	}
 }
 
@@ -1082,11 +1186,16 @@ func resolveCloudInitDocument(ctx context.Context, st *store.Store, clusterName 
 
 // buildCreateSpec assembles the cluster.VMSpec from the validated plan,
 // request, actor identity, and allocated VMID. The "pvmss" tag is always
-// present (FR-004).
+// present (FR-004). Image-mode VMs also carry "pvmss-image" so the console
+// can default to the readable text tab (cloud-image-console issue 06).
 func buildCreateSpec(actor auth.Identity, req CreateRequest, plan createPlan, vmid int) cluster.VMSpec {
 	tags := append([]string(nil), req.Tags...)
 	if !slices.Contains(tags, "pvmss") {
 		tags = append(tags, "pvmss")
+	}
+
+	if req.Image != nil && !slices.Contains(tags, "pvmss-image") {
+		tags = append(tags, "pvmss-image")
 	}
 
 	// US6/issue-06 D6b: stamp the admin-imposed isolation VLAN on every NIC.
@@ -1392,12 +1501,25 @@ func checkName(policyService *policy.Policy, pool, name string) error {
 
 // resolveUEFI defaults UEFI to true when the request omits it (US6/issue-06:
 // modern OSes expect UEFI boot). An explicit false selects legacy SeaBIOS.
+//
+// Image mode is the exception (cloud-image-console issue 02): a cloud image
+// ships a stripped-down kernel (Debian's linux-image-cloud-amd64 has
+// # CONFIG_DRM is not set) that cannot drive the emulated VGA under UEFI, so
+// the graphical console renders as static. Defaulting image mode to SeaBIOS
+// makes the graphical tab show the guest's real text console from first boot.
+// The wizard's UEFI checkbox stays visible and re-tickable; a request that
+// sends UEFI=true explicitly still creates a UEFI VM (TPM/Secure Boot keep
+// their "requires UEFI" behaviour via checkUEFICompat).
 func resolveUEFI(req CreateRequest) bool {
-	if req.UEFI == nil {
-		return true
+	if req.UEFI != nil {
+		return *req.UEFI
 	}
 
-	return *req.UEFI
+	if req.Image != nil {
+		return false
+	}
+
+	return true
 }
 
 // checkUEFICompat rejects the impossible TPM/SecureBoot-without-UEFI

@@ -71,6 +71,7 @@ type RouterConfig struct {
 	AdminPools       *AdminPools
 	AdminOps         *AdminOps
 	AdminClusters    *AdminClusters
+	AdminBaseline    *AdminBaseline
 	Docs             *DocsAPIHandler
 	AdminDocs        *AdminDocs
 	Store            *store.Store
@@ -197,6 +198,7 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/network", protect(cfg.VMDetail, vmWriteLimiter))
 	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/hardware", protect(cfg.VMDetail, vmWriteLimiter))
 	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/serial", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/retrofit-seabios", protect(cfg.VMDetail, vmWriteLimiter))
 	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/audit", cfg.VMDetail)
 
 	if cfg.VMCloudInit != nil {
@@ -205,6 +207,7 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", cfg.VMCloudInit)
 		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", protect(cfg.VMCloudInit, vmWriteLimiter))
 		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/cloudinit/ssh-keys", protect(cfg.VMCloudInit, vmWriteLimiter))
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/console-password", protect(cfg.VMCloudInit, vmWriteLimiter))
 	}
 
 	if len(cfg.SnapshotHandlers) > 0 && cfg.SnapshotHandlers[0] != nil {

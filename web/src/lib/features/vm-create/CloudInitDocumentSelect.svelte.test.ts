@@ -70,13 +70,13 @@ describe('CloudInitDocumentSelect', () => {
 		expect(document.body.textContent).toContain(m['vms.create.cloudinitDisabledHint']());
 	});
 
-	it('is hidden for the image source', () => {
+	it('is visible for the image source (issue 04)', () => {
 		storeInstance = new VmCreateStore();
 		storeInstance.catalog = catalogWith(true);
 		storeInstance.simpleSource = 'image';
 		mount(CloudInitDocumentSelect, { target: document.body });
 
-		expect(document.querySelector('select')).toBeNull();
+		expect(document.querySelector('select')).not.toBeNull();
 	});
 
 	it('is hidden when there is nothing to offer', () => {

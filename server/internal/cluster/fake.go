@@ -538,6 +538,22 @@ func (fake Fake) HasSnippet(_ context.Context, node, storage, filename string) (
 	return state.snippetPresence[fakeSnippetKey{node: node, storage: storage, filename: filename}], nil
 }
 
+// ReadSnippet implements Writer. Returns the content a test placed via
+// SetFakeSnippetContent, or an empty string when the file is not present.
+func (fake Fake) ReadSnippet(_ context.Context, node, storage, filename string) (string, error) {
+	state := fake.stateOrDefault()
+	state.snippetMu.RLock()
+	defer state.snippetMu.RUnlock()
+
+	key := fakeSnippetKey{node: node, storage: storage, filename: filename}
+
+	if !state.snippetPresence[key] {
+		return "", ErrNotFound
+	}
+
+	return state.snippetContent[key], nil
+}
+
 // RemoveCloudInitSnippet implements Writer and records the removal, clearing
 // the presence flag so a subsequent HasSnippet returns false.
 func (fake Fake) RemoveCloudInitSnippet(_ context.Context, storage, filename string) error {
@@ -692,6 +708,19 @@ func SetFakeSnippetPresent(node, storage, filename string, present bool) {
 	state.snippetMu.Lock()
 	defer state.snippetMu.Unlock()
 	state.snippetPresence[fakeSnippetKey{node: node, storage: storage, filename: filename}] = present
+}
+
+// SetFakeSnippetContent sets the content a test wants ReadSnippet to return
+// for one (node, storage, filename) triple, and marks it present so HasSnippet
+// also returns true. Used to exercise the cluster-wide baseline override path
+// (cloud-image-console issue 03).
+func SetFakeSnippetContent(node, storage, filename, content string) {
+	state := defaultState()
+	state.snippetMu.Lock()
+	defer state.snippetMu.Unlock()
+	key := fakeSnippetKey{node: node, storage: storage, filename: filename}
+	state.snippetPresence[key] = true
+	state.snippetContent[key] = content
 }
 
 // SetFakeSnippetVisibility controls whether a successful PushCloudInitSnippet
@@ -1099,6 +1128,54 @@ func (fake Fake) EnableSerial(_ context.Context, node string, vmid int) error {
 	state.vms[idx].HasSerial = true
 
 	state.record(FakeCall{Node: node, VMID: vmid, Action: "enable_serial"})
+
+	return nil
+}
+
+// ReadFirmwareConfig returns the live firmware config of a fake VM. The fake
+// stores BIOS/Machine/EFIDisk/TPMState/SecureBoot on the VM struct at create
+// time, so this just reads them back (issue 08).
+func (fake Fake) ReadFirmwareConfig(_ context.Context, node string, vmid int) (FirmwareConfig, error) {
+	state := fake.stateOrDefault()
+	state.vmMu.RLock()
+	defer state.vmMu.RUnlock()
+
+	idx := state.findVM(node, vmid)
+	if idx < 0 {
+		return FirmwareConfig{}, ErrNotFound
+	}
+
+	v := state.vms[idx]
+	return FirmwareConfig{
+		BIOS:       v.BIOS,
+		Machine:    v.Machine,
+		HasEFIDisk: v.EFIDisk,
+		HasTPM:     v.TPMState,
+		SecureBoot: v.SecureBoot,
+	}, nil
+}
+
+// RetrofitToSeaBIOS removes the UEFI firmware keys from a fake VM: clears
+// BIOS, Machine, EFIDisk, TPMState, and SecureBoot (issue 08). The caller
+// must have already refused VMs with TPM state or Secure Boot and stopped
+// the VM.
+func (fake Fake) RetrofitToSeaBIOS(_ context.Context, node string, vmid int) error {
+	state := fake.stateOrDefault()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
+
+	idx := state.findVM(node, vmid)
+	if idx < 0 {
+		return ErrNotFound
+	}
+
+	state.vms[idx].BIOS = ""
+	state.vms[idx].Machine = ""
+	state.vms[idx].EFIDisk = false
+	state.vms[idx].TPMState = false
+	state.vms[idx].SecureBoot = false
+
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "retrofit_seabios"})
 
 	return nil
 }

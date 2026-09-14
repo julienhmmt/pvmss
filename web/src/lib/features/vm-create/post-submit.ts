@@ -56,5 +56,12 @@ export async function handleAccepted(accepted: VmCreateAccepted, deps: PostSubmi
 	} else {
 		deps.toast.info(m['toast.vmCreateQueued']());
 	}
+	// cloud-image-console issue 05: a cloud-image VM ships without a
+	// password — SSH is the only way in until a console password is set
+	// on the console page. Surface the hint after the standard toast so
+	// the operator knows where to go.
+	if (accepted.fromImage) {
+		deps.toast.info(m['toast.vmCreateImageSshOnlyHint']());
+	}
 	await goto(resolve('/vms'));
 }

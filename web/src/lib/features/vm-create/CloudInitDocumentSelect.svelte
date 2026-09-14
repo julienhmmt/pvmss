@@ -9,9 +9,9 @@
 	// offering the cluster's admin templates and the user's own files as two
 	// optgroups. Bound to the store's encoded cloudInitDocumentValue
 	// ('t:<id>' | 'f:<id>' | ''). Hidden when the cluster has no snippet
-	// write target, when the source is a cloud image (its cloud-init is the
-	// native-fields block, not a vendor-data document), or when there is
-	// nothing to offer.
+	// write target, or when there is nothing to offer. Available in image
+	// mode (issue 04): the selected document is merged on top of the
+	// generated baseline, so adding a package never removes the guest agent.
 	const form = getVmCreateContext();
 
 	interface Props {
@@ -24,9 +24,6 @@
 	const templates = $derived(form.catalog?.cloudInitTemplates ?? []);
 	const files = $derived(form.myCloudInitFiles);
 	const writeEnabled = $derived(form.catalog?.cloudInitWriteEnabled ?? false);
-	const isImageSource = $derived(
-		form.mode === 'simple' ? form.simpleSource === 'image' : form.sourceType === 'image'
-	);
 
 	const options = $derived([
 		...templates.map((template) => ({
@@ -41,10 +38,10 @@
 		}))
 	]);
 
-	const visible = $derived(writeEnabled && !isImageSource && options.length > 0);
+	const visible = $derived(writeEnabled && options.length > 0);
 </script>
 
-{#if !writeEnabled && !isImageSource}
+{#if !writeEnabled}
 	<p class="text-xs text-muted-foreground">{m['vms.create.cloudinitDisabledHint']()}</p>
 {:else if visible}
 	<FormField label={m['vms.create.cloudinitDocument']()} hint={m['common.optional']()} {error}>

@@ -41,7 +41,7 @@ func newVMCloudInitHandler(t *testing.T) (*httpapi.VMCloudInit, *httpapi.Auth, *
 	t.Cleanup(func() { _ = st.Close() })
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
 	worker := inventory.NewWorker(cluster.Fake{}, projection, time.Hour, logger)
-	handler := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{Projection: projection, Auth: authHandler, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Refresher: worker, Log: logger})
+	handler := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{Projection: projection, Auth: authHandler, Reader: cluster.Fake{}, Writer: cluster.Fake{}, StatusReader: cluster.Fake{}, Store: st, Refresher: worker, Log: logger})
 
 	return handler, authHandler, st
 }
@@ -200,6 +200,34 @@ func assertSSHKeyInjected(t *testing.T, handler http.Handler, path string, authH
 	if !sawAgent {
 		t.Fatal("expected an add_ssh_key agent call")
 	}
+}
+
+// TestVMCloudInit_ConsolePassword — the console-password action (issue 05)
+// generates a password, applies it via the guest agent, and returns it once.
+// A stopped VM is refused with a clear error before the agent is probed.
+//
+//nolint:paralleltest // serial: shared fake VM and SQLite fixtures
+func TestVMCloudInit_ConsolePassword(t *testing.T) {
+	handler, authHandler, _ := newVMCloudInitHandler(t)
+	path := "/api/v1/vms/default/101/console-password"
+
+	t.Run("unauthenticated", func(t *testing.T) {
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPost, path, "", nil))
+
+		if recorder.Code != http.StatusUnauthorized {
+			t.Fatalf("status = %d, want 401", recorder.Code)
+		}
+	})
+
+	t.Run("refuses stopped VM", func(t *testing.T) {
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPost, path, "", aliceCookie(t, authHandler)))
+
+		if recorder.Code != http.StatusConflict {
+			t.Fatalf("status = %d, want 409 (vm not running)", recorder.Code)
+		}
+	})
 }
 
 // TestVMCloudInit_SnippetSave — ticket 05: with AllowCustomYAML on (the
