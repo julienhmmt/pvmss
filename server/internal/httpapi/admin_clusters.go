@@ -154,6 +154,7 @@ func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request
 		handler.writeFailure(w, err)
 		return
 	}
+	handler.awaitFirstRefresh(r.Context(), row.Name)
 	created, err := handler.store.GetCluster(r.Context(), row.Name)
 	if err != nil {
 		handler.writeFailure(w, err)
@@ -204,6 +205,7 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 		handler.writeFailure(w, err)
 		return
 	}
+	handler.awaitFirstRefresh(r.Context(), name)
 	updated, err := handler.store.GetCluster(r.Context(), name)
 	if err != nil {
 		handler.writeFailure(w, err)
@@ -333,6 +335,20 @@ func (handler *AdminClusters) replace(ctx context.Context, row store.ClusterRow)
 		}
 	}
 	return nil
+}
+
+// awaitFirstRefresh waits for the freshly (re)built inventory entry's first
+// refresh so the create/update response carries the cluster's real
+// reachability, version, and node/VM counts instead of a transient
+// "unreachable" derived from the just-wiped index. The call joins the
+// worker's already-running initial refresh via singleflight — it does not
+// issue a second Proxmox call. Errors are intentionally ignored: a failed
+// refresh leaves the index empty and clusterDTO reports that accurately.
+func (handler *AdminClusters) awaitFirstRefresh(ctx context.Context, name string) {
+	if handler.inventories == nil {
+		return
+	}
+	_, _ = handler.inventories.Refresh(ctx, name)
 }
 
 func (handler *AdminClusters) clusterDTO(row store.ClusterRow) adminClusterDTO {
