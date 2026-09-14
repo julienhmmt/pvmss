@@ -169,7 +169,7 @@ own files under `/cloud-init`) to a new VM:
 
 1. In Proxmox, pick a storage **shared by every node** (NFS/CIFS) and add
    **Snippets** to its content types (Datacenter › Storage › Edit).
-2. Mount that storage's `snippets/` directory into the PVMSS container —
+2. Mount that storage's `snippets/` directory into the PVMSS container - 
    see the commented volume in the Docker / Compose / Helm examples below.
 3. In **Admin › Clusters › Edit**, set *Snippet directory* to the container
    path (e.g. `/snippets`) and *Snippet storage* to the Proxmox storage id.
@@ -187,17 +187,17 @@ You can rely on `.env` + `env_file` or inline `environment:` entries, but **not 
 
 | Variable                                      | Description                                                                | Required                 | Default                |
 | --------------------------------------------- | -------------------------------------------------------------------------- | ------------------------ | ---------------------- |
-| `PVMSS_PORT`                                  | TCP port the HTTP server listens on (1–65535)                              | ✅                       | —                      |
-| `PVMSS_DB_PATH`                               | Path to the SQLite database file (must be on a persistent volume)          | ✅                       | —                      |
-| `SESSION_SECRET`                              | 32+ byte secret to encrypt sessions/cookies                                | ✅                       | —                      |
-| `PVMSS_CLUSTER_SOURCE`                        | `proxmox` for a real cluster, `fake` for demo data (no default, on purpose) | ✅                       | —                      |
-| `LOG_LEVEL`                                   | `debug`, `info`, `warn`, `error` — lowercase only                          | ✅                       | —                      |
-| `LOG_FORMAT`                                  | `console` (human readable) or `json` (machine/SIEM)                        | ✅                       | —                      |
-| `LOG_OUTPUT`                                  | `stdout`, `stderr`, or a writable file path                                | ✅                       | —                      |
-| `PROXMOX_URL`                                 | Full API URL (`https://host:8006/api2/json`)                               | when source is `proxmox` | —                      |
-| `PROXMOX_API_TOKEN_NAME`                      | Proxmox token name (`user@pve!token`)                                      | when source is `proxmox` | —                      |
-| `PROXMOX_API_TOKEN_VALUE`                     | Token secret that matches the name above                                   | when source is `proxmox` | —                      |
-| `ADMIN_PASSWORD_HASH`                         | Bcrypt hash for the local admin login; disabled when empty                 | ❌                       | —                      |
+| `PVMSS_PORT`                                  | TCP port the HTTP server listens on (1–65535)                              | ✅                       | - |
+| `PVMSS_DB_PATH`                               | Path to the SQLite database file (must be on a persistent volume)          | ✅                       | - |
+| `SESSION_SECRET`                              | 32+ byte secret to encrypt sessions/cookies                                | ✅                       | - |
+| `PVMSS_CLUSTER_SOURCE`                        | `proxmox` for a real cluster, `fake` for demo data (no default, on purpose) | ✅                       | - |
+| `LOG_LEVEL`                                   | `debug`, `info`, `warn`, `error` - lowercase only                          | ✅                       | - |
+| `LOG_FORMAT`                                  | `console` (human readable) or `json` (machine/SIEM)                        | ✅                       | - |
+| `LOG_OUTPUT`                                  | `stdout`, `stderr`, or a writable file path                                | ✅                       | - |
+| `PROXMOX_URL`                                 | Full API URL (`https://host:8006/api2/json`)                               | when source is `proxmox` | - |
+| `PROXMOX_API_TOKEN_NAME`                      | Proxmox token name (`user@pve!token`)                                      | when source is `proxmox` | - |
+| `PROXMOX_API_TOKEN_VALUE`                     | Token secret that matches the name above                                   | when source is `proxmox` | - |
+| `ADMIN_PASSWORD_HASH`                         | Bcrypt hash for the local admin login; disabled when empty                 | ❌                       | - |
 | `PVMSS_HOST`                                  | Address to bind (`0.0.0.0` for all interfaces)                             | ❌                       | `127.0.0.1`            |
 | `PVMSS_WEB_DIR`                               | Directory holding the built SPA                                            | ❌                       | relative to the binary |
 | `PVMSS_COOKIE_SECURE`                         | `Secure` flag on auth cookies (keep `true` in production)                  | ❌                       | `true`                 |
@@ -244,7 +244,7 @@ lowercase values. Typical setups:
   LOG_FORMAT=json
   ```
 
-`LOG_OUTPUT` takes `stdout`, `stderr`, or a writable file path — there is no
+`LOG_OUTPUT` takes `stdout`, `stderr`, or a writable file path - there is no
 "both" mode. The JSON format is line-delimited and includes a `component` field
 (main, cluster, inventory, ...), making it easy to consume with Fluent Bit,
 Filebeat, or any SIEM.
@@ -371,7 +371,7 @@ documents.
 - **Health**: startup logs include cluster connectivity and inventory refresh status. The admin "Application Info" page shows runtime metrics, environment variables, and Proxmox cluster status.
 - **Upgrades**: pull the desired image tag and restart the container. Configuration is stored in the SQLite database and persists automatically.
 - **Built-in documentation**: the in-app pages (`/docs`) are seeded once into the database and never overwritten, so admin edits survive upgrades. To pick up a newer built-in text after an upgrade, delete the page in **Admin › Documentation** and restart, or paste the new content from `server/internal/docs/seed/`.
-- **Static analysis (SonarQube)**: run `make sonar` to start a local SonarQube container, provision tokens, generate Go coverage, and scan the two projects — `pvmss-server` (Go) and `pvmss-web` (SvelteKit TS). Results are at `http://localhost:9000/projects`. Stop with `make sonar-down` and clean data with `make sonar-clean`.
+- **Static analysis (SonarQube)**: run `make sonar` to start a local SonarQube container, provision tokens, generate Go coverage, and scan the two projects - `pvmss-server` (Go) and `pvmss-web` (SvelteKit TS). Results are at `http://localhost:9000/projects`. Stop with `make sonar-down` and clean data with `make sonar-clean`.
 
 ## Limitations
 

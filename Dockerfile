@@ -15,7 +15,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Copy server source code (module root = /app/)
 COPY server/ ./
 
-# Build the v0.4 server binary (static, CGO disabled — no C toolchain needed)
+# Build the v0.4 server binary (static, CGO disabled - no C toolchain needed)
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 GOOS=linux \
@@ -50,13 +50,13 @@ ENV PVMSS_DB_PATH=/data/pvmss.db
 # docker-compose / k8s controls external exposure. Override with
 # -e PVMSS_HOST=127.0.0.1 for bare-metal/loopback-only deployments.
 ENV PVMSS_HOST=0.0.0.0
-# Web build directory — the v0.4 binary resolves this via PVMSS_WEB_DIR
+# Web build directory - the v0.4 binary resolves this via PVMSS_WEB_DIR
 # or falls back to a path relative to the executable.
 ENV PVMSS_WEB_DIR=/app/web/build
 
 # Expose the port the app runs on
 EXPOSE 50000
 
-# v0.4 entrypoint — the server binary (no -templates flag; web dir is
+# v0.4 entrypoint - the server binary (no -templates flag; web dir is
 # resolved via PVMSS_WEB_DIR env var or relative to the executable).
 ENTRYPOINT ["/app/pvmss"]
