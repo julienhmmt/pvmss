@@ -56,6 +56,15 @@
 		});
 	});
 
+	// Auto-fill the snippet directory with the standard mount path when the
+	// admin picks a storage and hasn't typed a custom path. The Helm chart
+	// and docker-compose examples both mount at /snippets.
+	$effect(() => {
+		if (snippetStorage && !snippetDir) {
+			snippetDir = '/snippets';
+		}
+	});
+
 	function submit(): void {
 		const dir = snippetDir.trim();
 		const storage = snippetStorage.trim();
