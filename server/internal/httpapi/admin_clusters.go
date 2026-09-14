@@ -422,10 +422,14 @@ func (handler *AdminClusters) writeFailure(w http.ResponseWriter, err error) {
 }
 
 func shortClusterError(err error) string {
-	if errors.Is(err, cluster.ErrUnreachable) {
+	switch {
+	case errors.Is(err, cluster.ErrTLSVerify):
+		return "TLS certificate verification failed — enable \"Skip TLS certificate verification\" if the cluster uses a self-signed certificate"
+	case errors.Is(err, cluster.ErrUnreachable):
 		return "connection refused"
+	default:
+		return "cluster unreachable"
 	}
-	return "cluster unreachable"
 }
 
 // SetTrustedProxyHops configures how many X-Forwarded-For hops to trust for

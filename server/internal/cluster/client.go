@@ -23,7 +23,13 @@ const (
 
 // Sentinel errors so callers can distinguish failure modes without string matching.
 var (
-	ErrUnreachable            = errors.New("cluster unreachable")
+	ErrUnreachable = errors.New("cluster unreachable")
+	// ErrTLSVerify is returned when the TLS handshake fails on certificate
+	// verification — typically a self-signed Proxmox certificate without the
+	// per-cluster "skip TLS verification" option. It is kept distinct from
+	// ErrUnreachable because the host is reachable; the fix is configuration,
+	// not connectivity.
+	ErrTLSVerify              = errors.New("cluster tls certificate verification failed")
 	ErrNotFound               = errors.New("not found")
 	ErrNotImplemented         = errors.New("not implemented")
 	ErrInvalidAction          = errors.New("invalid action")

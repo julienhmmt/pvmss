@@ -72,6 +72,36 @@ func TestProxmoxRESTClient_Do_Unreachable(t *testing.T) {
 	}
 }
 
+// TestProxmoxRESTClient_Do_TLSVerify — a self-signed server certificate with
+// verification enabled is classified as ErrTLSVerify, not ErrUnreachable:
+// the host answers, only the certificate is untrusted. Enabling skip-verify
+// reaches the server normally.
+func TestProxmoxRESTClient_Do_TLSVerify(t *testing.T) {
+	t.Parallel()
+
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"data":[]}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	rest := newProxmoxREST(srv.URL, testTokenName, testTokenVal, newProxmoxHTTPClient(false)).withNoRetry()
+
+	_, err := rest.do(context.Background(), http.MethodGet, "/nodes", nil)
+	if !errors.Is(err, ErrTLSVerify) {
+		t.Fatalf("err = %v, want ErrTLSVerify", err)
+	}
+
+	if errors.Is(err, ErrUnreachable) {
+		t.Fatalf("err = %v, must not wrap ErrUnreachable", err)
+	}
+
+	insecure := newProxmoxREST(srv.URL, testTokenName, testTokenVal, newProxmoxHTTPClient(true)).withNoRetry()
+
+	if _, err := insecure.do(context.Background(), http.MethodGet, "/nodes", nil); err != nil {
+		t.Fatalf("skip-verify call should succeed, got %v", err)
+	}
+}
+
 func TestProxmoxRESTClient_Do_ErrorBody(t *testing.T) {
 	t.Parallel()
 
