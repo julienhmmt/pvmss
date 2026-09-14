@@ -190,6 +190,61 @@ func (h *AdminCatalog) ServeStorages(w http.ResponseWriter, r *http.Request) {
 	writeAdminJSON(w, http.StatusOK, dto)
 }
 
+// snippetStorageDTO is one snippet-capable storage row returned by
+// ServeSnippetStorages. The admin cluster form uses this list to populate the
+// snippet storage picker so administrators select a compatible storage instead
+// of typing a name that may not have the snippets content type enabled.
+type snippetStorageDTO struct {
+	Name string `json:"name"`
+	Node string `json:"node"`
+	Type string `json:"type"`
+}
+
+// ServeSnippetStorages handles GET /api/v1/admin/snippet-storages?cluster=<name>.
+// It returns every storage the cluster reports with the snippets content type
+// enabled, deduplicated by name (a shared storage visible on two nodes appears
+// once). The admin cluster form uses this list to populate the snippet storage
+// picker.
+func (h *AdminCatalog) ServeSnippetStorages(w http.ResponseWriter, r *http.Request) {
+	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
+
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
+		return
+	}
+
+	snap, err := client.Snapshot(r.Context())
+	if err != nil {
+		h.log.Error("admin list snippet storages failed", "component", "httpapi", "error", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return
+	}
+
+	seen := make(map[string]bool, len(snap.Storages))
+	dto := make([]snippetStorageDTO, 0, len(snap.Storages))
+	for _, s := range snap.Storages {
+		if !cluster.IsSnippetCapableStorage(s) {
+			continue
+		}
+
+		if seen[s.Name] {
+			continue
+		}
+
+		seen[s.Name] = true
+		dto = append(dto, snippetStorageDTO{Name: s.Name, Node: s.Node, Type: s.Type})
+	}
+
+	writeAdminJSON(w, http.StatusOK, dto)
+}
+
 type storageToggleRequest struct {
 	Cluster string `json:"cluster"`
 	Name    string `json:"name"`

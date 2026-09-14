@@ -12,12 +12,13 @@ import (
 )
 
 const (
-	storagePluginCephFS  = "cephfs"
-	storagePluginDir     = "dir"
-	storagePluginLVM     = "lvm"
-	storagePluginLVMThin = "lvmthin"
-	storagePluginPBS     = "pbs"
-	storageContentImages = "images"
+	storagePluginCephFS    = "cephfs"
+	storagePluginDir       = "dir"
+	storagePluginLVM       = "lvm"
+	storagePluginLVMThin   = "lvmthin"
+	storagePluginPBS       = "pbs"
+	storageContentImages   = "images"
+	storageContentSnippets = "snippets"
 )
 
 // Sentinel errors so callers can distinguish failure modes without string matching.
@@ -442,6 +443,21 @@ func IsVMCapableStorage(storage Storage) bool {
 
 	for capability := range strings.SplitSeq(storage.Content, ",") {
 		if capability == storageContentImages {
+			return true
+		}
+	}
+
+	return false
+}
+
+// IsSnippetCapableStorage reports whether a storage advertises the snippets
+// content type — the prerequisite for PVMSS to write cloud-init vendor-data
+// files the VM can read back via cicustom. Unlike IsVMCapableStorage, PBS is
+// not excluded here because PBS does not advertise snippets anyway; the
+// content check alone is the correct gate.
+func IsSnippetCapableStorage(storage Storage) bool {
+	for capability := range strings.SplitSeq(storage.Content, ",") {
+		if capability == storageContentSnippets {
 			return true
 		}
 	}

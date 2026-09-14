@@ -66,6 +66,7 @@ func adminMux(handler *httpapi.AdminCatalog, auth *httpapi.Auth) *http.ServeMux 
 	mux.Handle("POST /api/v1/admin/nodes/toggle", guard(http.HandlerFunc(handler.ServeNodeToggle)))
 	mux.Handle("DELETE /api/v1/admin/nodes/{cluster}/{name}", guard(http.HandlerFunc(handler.ServeNodeDelete)))
 	mux.Handle("GET /api/v1/admin/storages", guard(http.HandlerFunc(handler.ServeStorages)))
+	mux.Handle("GET /api/v1/admin/snippet-storages", guard(http.HandlerFunc(handler.ServeSnippetStorages)))
 	mux.Handle("POST /api/v1/admin/storages/toggle", guard(http.HandlerFunc(handler.ServeStorageToggle)))
 	mux.Handle("DELETE /api/v1/admin/storages/{cluster}/{node}/{name}", guard(http.HandlerFunc(handler.ServeStorageDelete)))
 	mux.Handle("GET /api/v1/admin/bridges", guard(http.HandlerFunc(handler.ServeBridges)))
