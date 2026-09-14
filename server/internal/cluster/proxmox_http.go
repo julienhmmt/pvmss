@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -242,6 +243,10 @@ func (c proxmoxRESTClient) doOnce(ctx context.Context, method, path string, form
 
 	resp, err := c.http.Do(req)
 	if err != nil {
+		if _, ok := errors.AsType[*tls.CertificateVerificationError](err); ok {
+			return nil, 0, fmt.Errorf("%w: %w", ErrTLSVerify, err)
+		}
+
 		return nil, 0, fmt.Errorf("%w: %w", ErrUnreachable, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
