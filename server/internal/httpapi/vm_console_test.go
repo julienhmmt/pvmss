@@ -21,7 +21,7 @@ import (
 	"github.com/coder/websocket"
 )
 
-// vncTicketResponse mirrors the POST /vnc-ticket 200 contract.
+// vncTicketResponse mirrors the POST /vnc- contract.
 type vncTicketResponse = ticketResponse
 
 // newVMConsoleHandler builds the console handler over the fake dataset with a
@@ -72,12 +72,12 @@ func consoleRequest(method, path, body string, cookie *http.Cookie) *http.Reques
 }
 
 // =============================================================================
-// Phase 3 — User Story 1: POST /vnc-ticket (T013–T018)
+// POST /vnc-ticket
 // =============================================================================
 
-// TestVMConsole_PostVNCTicket_OwnerGetsOpaqueToken — T015: the owner of VM 100
+// TestVMConsole_PostVNCTicket_OwnerGetsOpaqueToken — the owner of VM 100
 // receives a 200 with a non-empty opaque token. No Proxmox ticket, node, or
-// port leaks into the response (FR-002, FR-003).
+// port leaks into the response.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMConsole_PostVNCTicket_OwnerGetsOpaqueToken(t *testing.T) {
@@ -85,8 +85,8 @@ func TestVMConsole_PostVNCTicket_OwnerGetsOpaqueToken(t *testing.T) {
 	assertOwnerGetsOpaqueToken(t, handler, consoleRequest, "/api/v1/vms/default/100/vnc-ticket", aliceCookie(t, authHandler))
 }
 
-// TestVMConsole_PostVNCTicket_NonOwnerForbidden — T016: a non-owner gets 403,
-// byte-identical with the other VM endpoints (contracts).
+// TestVMConsole_PostVNCTicket_NonOwnerForbidden — a non-owner gets 403,
+// byte-identical with the other VM endpoints.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMConsole_PostVNCTicket_NonOwnerForbidden(t *testing.T) {
@@ -103,7 +103,7 @@ func TestVMConsole_PostVNCTicket_NonOwnerForbidden(t *testing.T) {
 	assertAPIError(t, rec.Body.Bytes(), apiCodeForbidden)
 }
 
-// TestVMConsole_PostVNCTicket_NotFound — T017: a non-existent VMID gets 404.
+// TestVMConsole_PostVNCTicket_NotFound — a non-existent VMID gets 404.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMConsole_PostVNCTicket_NotFound(t *testing.T) {
@@ -120,7 +120,7 @@ func TestVMConsole_PostVNCTicket_NotFound(t *testing.T) {
 	assertAPIError(t, rec.Body.Bytes(), apiCodeNotFound)
 }
 
-// TestVMConsole_PostVNCTicket_Unauthenticated — T018: no cookie → 401.
+// TestVMConsole_PostVNCTicket_Unauthenticated — no cookie → 401.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMConsole_PostVNCTicket_Unauthenticated(t *testing.T) {
@@ -135,10 +135,10 @@ func TestVMConsole_PostVNCTicket_Unauthenticated(t *testing.T) {
 }
 
 // =============================================================================
-// Phase 3 — User Story 1: GET /console/websocket (T019–T021)
+// GET /console/websocket
 // =============================================================================
 
-// TestVMConsole_WebSocket_MissingTokenReturns400 — T020: a WebSocket request
+// TestVMConsole_WebSocket_MissingTokenReturns400 — a WebSocket request
 // without a token parameter is rejected with 400 before the upgrade.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -154,7 +154,7 @@ func TestVMConsole_WebSocket_MissingTokenReturns400(t *testing.T) {
 	}
 }
 
-// TestVMConsole_WebSocket_InvalidTokenReturns400 — T020: a WebSocket request
+// TestVMConsole_WebSocket_InvalidTokenReturns400 — a WebSocket request
 // with a token that was never issued (or already consumed) is rejected with 400.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -171,8 +171,8 @@ func TestVMConsole_WebSocket_InvalidTokenReturns400(t *testing.T) {
 	}
 }
 
-// TestVMConsole_WebSocket_TicketBoundToDifferentVMRejected — T020: a ticket
-// issued for VM 100 cannot be used against VM 101 (FR-004 defense in depth).
+// TestVMConsole_WebSocket_TicketBoundToDifferentVMRejected — a ticket
+// issued for VM 100 cannot be used against VM 101 (defense in depth).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMConsole_WebSocket_TicketBoundToDifferentVMRejected(t *testing.T) {
@@ -189,11 +189,11 @@ func TestVMConsole_WebSocket_TicketBoundToDifferentVMRejected(t *testing.T) {
 	})
 }
 
-// TestVMConsole_WebSocket_ValidTokenUpgradesAndRelaysRFBHandshake — T016: with
+// TestVMConsole_WebSocket_ValidTokenUpgradesAndRelaysRFBHandshake — with
 // a valid token, the handler upgrades to WebSocket and the fake relay speaks
 // the RFB 3.8 handshake. A real WebSocket client dials the endpoint, reads the
 // ProtocolVersion bytes, and asserts they match "RFB 003.008\n" — proving the
-// relay is genuinely functional, not a stub (constitution XI).
+// relay is genuinely functional, not a stub.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMConsole_WebSocket_ValidTokenUpgradesAndRelaysRFBHandshake(t *testing.T) {

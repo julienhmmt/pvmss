@@ -15,8 +15,8 @@ import (
 // from the result.
 //
 // Example: XFF = "203.0.113.5, 10.0.0.1" (client, proxy1)
-//   - trustedProxyHops=1 → index 1 → "10.0.0.1" (trust proxy1, take its claim)
-//   - trustedProxyHops=2 → index 0 → "203.0.113.5" (trust both, take the client)
+// - trustedProxyHops=1 → index 1 → "10.0.0.1" (trust proxy1, take its claim)
+// - trustedProxyHops=2 → index 0 → "203.0.113.5" (trust both, take the client)
 //
 // If the XFF chain is shorter than trustedProxyHops, the leftmost entry
 // (original client claim) is returned. If XFF is absent or

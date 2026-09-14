@@ -52,8 +52,8 @@ func TestList_CrossClusterPoolMerge(t *testing.T) {
 	}
 }
 
-// TestList_AdminScopeAllSpansEveryCluster — T017/spec.md User Story 1
-// acceptance scenario 5: an admin with scope=all and no cluster filter sees
+// TestList_AdminScopeAllSpansEveryCluster
+// An admin with scope=all and no cluster filter sees
 // every VM from every configured cluster, not only the pools their own
 // identity happens to match — proves the adminAll branch merges across
 // inventory.Registry.All() the same way the mine-scope branch already does.

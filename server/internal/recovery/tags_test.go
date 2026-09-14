@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// T008: tags → catalog_tags, default palette assignment, pvmss row upsert no-op.
+// Tags → catalog_tags, default palette assignment, pvmss row upsert no-op.
 func TestMapTags_DirectCopy(t *testing.T) {
 	t.Parallel()
 
@@ -85,7 +85,7 @@ func TestMapTags_EmptyTable(t *testing.T) {
 	}
 }
 
-// T008: pvmss row upsert is a no-op when it already exists (v0.4 seeds it).
+// Pvmss row upsert is a no-op when it already exists (v0.4 seeds it).
 func TestUpsertTag_PvmssNoop(t *testing.T) {
 	t.Parallel()
 

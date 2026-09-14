@@ -2,9 +2,9 @@
 // manifests and the Dockerfile: they must reference only v0.4 paths
 // (server/, web/), never legacy paths (backend/, frontend/).
 //
-// T028 authored this test as a pre-cutover canary (asserting legacy
-// entrypoints were still present); T032 flipped it to assert the
-// post-cutover state after T029-T031 updated the manifests. The net
+// Authored this test as a pre-cutover canary (asserting legacy
+// entrypoints were still present); flipped it to assert the
+// post-cutover state updated the manifests. The net
 // result is a live test that fails loudly if someone reverts the
 // manifests to legacy paths.
 package recovery_test
@@ -43,7 +43,7 @@ func findRepoRootForCutover(t *testing.T) string {
 
 // TestCutoverReadiness_DeploymentManifestReferencesV04 asserts that
 // pvmss-deployment.yaml references the v0.4 binary entrypoint and web
-// build path, not the legacy pvmss-backend / frontend paths (FR-009).
+// build path, not the legacy pvmss-backend / frontend paths.
 func TestCutoverReadiness_DeploymentManifestReferencesV04(t *testing.T) {
 	t.Parallel()
 
@@ -72,7 +72,7 @@ func TestCutoverReadiness_DeploymentManifestReferencesV04(t *testing.T) {
 }
 
 // TestCutoverReadiness_HelmChartReferencesV04 asserts that helm/ templates
-// and values do not reference legacy paths (FR-009).
+// and values do not reference legacy paths.
 func TestCutoverReadiness_HelmChartReferencesV04(t *testing.T) {
 	t.Parallel()
 
@@ -112,7 +112,6 @@ func TestCutoverReadiness_HelmChartReferencesV04(t *testing.T) {
 
 // TestCutoverReadiness_DockerfileBuildsOnlyV04 asserts that the Dockerfile
 // does not compile or copy backend/ or frontend/ — only server/ and web/
-// (FR-010).
 func TestCutoverReadiness_DockerfileBuildsOnlyV04(t *testing.T) {
 	t.Parallel()
 

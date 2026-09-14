@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// The shared expectation set (FR-010): every implementation of cluster.Client
+// The shared expectation set: every implementation of cluster.Client
 // is verified against the same behaviour, so the fake cannot drift from what
 // a real cluster is expected to do. Black-box on purpose — only the public
 // Client contract is exercised here.
@@ -45,7 +45,7 @@ func TestContract_Snapshot(t *testing.T) {
 }
 
 // checkSnapshotNodes validates every node in a Snapshot against the contract
-// invariants (FR-010).
+// invariants.
 func checkSnapshotNodes(t *testing.T, nodes []cluster.Node) {
 	t.Helper()
 
@@ -65,7 +65,7 @@ func checkSnapshotNodes(t *testing.T, nodes []cluster.Node) {
 }
 
 // checkSnapshotVMs validates every VM in a Snapshot against the contract
-// invariants (FR-010).
+// invariants.
 func checkSnapshotVMs(t *testing.T, vms []cluster.VM) {
 	t.Helper()
 
@@ -81,7 +81,7 @@ func checkSnapshotVMs(t *testing.T, vms []cluster.VM) {
 }
 
 // checkSnapshotStorages validates every storage in a Snapshot against the
-// contract invariants (FR-010).
+// Invariants.
 func checkSnapshotStorages(t *testing.T, storages []cluster.Storage) {
 	t.Helper()
 
@@ -196,7 +196,7 @@ func TestContract_CloudInitReaderAndWriter(t *testing.T) {
 	}
 }
 
-// TestContract_AttachEnsuresDriveFirst — ticket 03's contract: attaching a
+// TestContract_AttachEnsuresDriveFirst — the contract: attaching a
 // snippet provisions the cloud-init drive before the cicustom write, in the
 // fake exactly like in the real client (Proxmox silently ignores cicustom
 // without a drive). Detaching needs no drive.
@@ -225,7 +225,7 @@ func TestContract_AttachEnsuresDriveFirst(t *testing.T) {
 	}
 }
 
-// TestContract_SetCloudInitPasswordCarriesUser — ticket 02's contract: the
+// TestContract_SetCloudInitPasswordCarriesUser — the contract: the
 // password apply records the target user, which the caller resolves from the
 // VM's ciuser (never a hardcoded root).
 //
@@ -272,7 +272,7 @@ func TestContract_Snapshot_StableAcrossCalls(t *testing.T) {
 func TestContract_Snapshot_DoesNotMutateAcrossCalls(t *testing.T) {
 	// A caller holding a reference to a previous Snapshot must not see it
 	// change when a later call returns — the fake returns copies, not
-	// references to its package-level literals (data-model.md invariant 3).
+	// references to its package-level literals.
 	impls := map[string]cluster.Client{
 		fakeImplementationName: cluster.Fake{},
 	}

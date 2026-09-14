@@ -27,7 +27,7 @@ type Configuration struct {
 	InventoryManualRefreshMinInterval time.Duration
 	InventoryRefreshTimeout           time.Duration
 	// MaxListPageSize is the upper bound on a VM list request's pageSize —
-	// anything larger is rejected, never silently truncated (T04 data-model).
+	// anything larger is rejected, never silently truncated.
 	MaxListPageSize int
 	// TrustedProxyHops is the number of trusted reverse-proxy hops in front
 	// of the server. It controls X-Forwarded-For parsing in the shared

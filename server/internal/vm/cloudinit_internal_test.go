@@ -74,7 +74,7 @@ func TestApplyCloudInitPassword_PingsUntilReachable(t *testing.T) {
 }
 
 // TestApplyCloudInitPassword_RetriesWhileAccountMissing verifies option (b)
-// of ticket 05: a "user does not exist" rejection is retried within the same
+// A "user does not exist" rejection is retried within the same
 // bounded window until cloud-init has created the account.
 //
 //nolint:paralleltest // serial: mutates package-level ping timing vars

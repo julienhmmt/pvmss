@@ -1,7 +1,7 @@
 // Package catalog exposes the admin-curated set of resources a VM creation
-// may reference (AC03 §3.3): approved nodes, storages, bridges, ISOs, and VM
-// hardware profiles, scoped per cluster. In T06 the catalog is fixture data
-// seeded by store migration version 7 and read-only; T11 adds the admin CRUD.
+// may reference: approved nodes, storages, bridges, ISOs, and VM
+// hardware profiles, scoped per cluster. the catalog is fixture data
+// seeded by store migration version 7 and read-only; adds the admin CRUD.
 package catalog
 
 import (
@@ -30,7 +30,7 @@ type Bridge struct {
 
 // ISO is one approved ISO image on an approved storage on a node. Approval is
 // keyed by (node, storage, file) — one row per node, consistent with Storage
-// and Bridge. An ISO on shared storage has N rows (D1b).
+// and Bridge. An ISO on shared storage has N rows.
 type ISO struct {
 	Storage string `json:"storage"`
 	Node    string `json:"node"`
@@ -50,7 +50,7 @@ type Image struct {
 	SizeBytes int64  `json:"sizeBytes"`
 }
 
-// Profile is a fixed VM hardware preset (FR-009): when a creation request
+// Profile is a fixed VM hardware preset: when a creation request
 // references a profile, these values are authoritative — client-submitted
 // hardware fields that accompany a profile are ignored.
 type Profile struct {
@@ -63,9 +63,9 @@ type Profile struct {
 	Bus      string
 }
 
-// Template is one approved Proxmox template (US2/issue-02). The VMID is the
+// Template is one approved Proxmox template. The VMID is the
 // Proxmox VMID of the template VM; the node determines where the clone lands
-// (D2b: cross-node clone is forbidden). CloudInitCapable drives the
+// (cross-node clone is forbidden). CloudInitCapable drives the
 // full/linked clone decision. DiskStorage and DiskSizeGB drive the resize
 // decision (enlarge after clone, reject reduction before VMID). DiskBus is
 // the Proxmox bus family of the template's primary disk (e.g. "scsi") — the
@@ -87,7 +87,7 @@ type Resources struct {
 	Bridges  []Bridge
 	ISOs     []ISO
 	Images   []Image
-	// Tags is the admin-curated tag name allowlist (FR-013): users may only
+	// Tags is the admin-curated tag name allowlist: users may only
 	// reference these tags on create and hardware updates.
 	Tags []string
 }
@@ -168,7 +168,7 @@ func (r Resources) FindCloudImage(storage, file, node string) (Image, error) {
 }
 
 // ApprovedResources reads the full approved-resource catalog for a cluster
-// from the store (T06: fixture rows seeded by migration version 7).
+// from the store (fixture rows seeded by migration version 7).
 func ApprovedResources(ctx context.Context, st *store.Store, cluster string) (Resources, error) {
 	nodes, err := st.CatalogNodes(ctx, cluster)
 	if err != nil {
@@ -261,7 +261,7 @@ func Profiles(ctx context.Context, st *store.Store, cluster string) ([]Profile, 
 }
 
 // FindProfile returns the profile with the given id, or an error wrapping
-// ErrNotApproved when the id is absent from the catalog (FR-003).
+// ErrNotApproved when the id is absent from the catalog.
 func FindProfile(profiles []Profile, id string) (Profile, error) {
 	for _, profile := range profiles {
 		if profile.ID == id {
@@ -272,7 +272,7 @@ func FindProfile(profiles []Profile, id string) (Profile, error) {
 	return Profile{}, fmt.Errorf("profile %q is not approved for this cluster", id)
 }
 
-// Templates reads the approved Proxmox templates for a cluster (US2/issue-02).
+// Templates reads the approved Proxmox templates for a cluster.
 //
 //nolint:dupl // structurally similar to Profiles by design (row→domain mapping)
 func Templates(ctx context.Context, st *store.Store, cluster string) ([]Template, error) {
@@ -298,7 +298,7 @@ func Templates(ctx context.Context, st *store.Store, cluster string) ([]Template
 }
 
 // FindTemplate returns the template with the given VMID, or an error wrapping
-// ErrNotApproved when the VMID is absent from the catalog (US2/issue-02).
+// ErrNotApproved when the VMID is absent from the catalog.
 func FindTemplate(templates []Template, vmid int) (Template, error) {
 	for _, tmpl := range templates {
 		if tmpl.VMID == vmid {

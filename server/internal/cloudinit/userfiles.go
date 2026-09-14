@@ -11,7 +11,7 @@ import (
 )
 
 // MaxUserCloudInitFiles is the per-user cap on stored cloud-init documents
-// (.scratch/cloudinit-userdata D3): generous for real use, small enough that
+// generous for real use, small enough that
 // listing always ships full content.
 const MaxUserCloudInitFiles = 20
 

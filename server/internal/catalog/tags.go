@@ -13,7 +13,7 @@ import (
 )
 
 // ErrProtectedTag is returned when attempting to delete the mandatory pvmss
-// tag (FR-014). The handler translates this to 403.
+// tag. The handler translates this to 403.
 var ErrProtectedTag = errors.New("protected tag")
 
 // ErrDuplicateTag is returned when a tag name already exists (409).
@@ -32,7 +32,7 @@ var ErrInvalidTagColor = errors.New("invalid tag color")
 const ProtectedTagName = "pvmss"
 
 // TagWithCount is one catalog_tags row with a live VM count computed from the
-// inventory projection (FR-015: never stored).
+// inventory projection (never stored).
 type TagWithCount struct {
 	Name      string
 	Color     string
@@ -40,7 +40,7 @@ type TagWithCount struct {
 	Protected bool
 }
 
-// validateTagName checks the 1-50 alphanumeric rule (FR-013). The pvmss tag
+// validateTagName checks the 1-50 alphanumeric rule. The pvmss tag
 // itself passes validation (it is alphanumeric).
 func validateTagName(name string) error {
 	if len(name) < 1 || len(name) > 50 {
@@ -57,11 +57,11 @@ func validateTagName(name string) error {
 }
 
 // ListTags returns every tag for the cluster with a live VM count computed
-// from the inventory projection (FR-015). The pvmss tag is marked protected.
+// from the inventory projection. The pvmss tag is marked protected.
 //
-// FR-014 makes the pvmss tag mandatory and undeletable for every cluster. The
+// Makes the pvmss tag mandatory and undeletable for every cluster. The
 // V9 migration seeds it only for the "default" cluster (the only cluster at
-// T06); non-default clusters get it lazily here via ensurePvmssTag, so the
+// migration time); non-default clusters get it lazily here via ensurePvmssTag, so the
 // admin surface never lists a cluster without it.
 func ListTags(ctx context.Context, st *store.Store, projection *inventory.Projection, cluster string) ([]TagWithCount, error) {
 	if err := ensurePvmssTag(ctx, st, cluster); err != nil {
@@ -102,7 +102,7 @@ func ListTags(ctx context.Context, st *store.Store, projection *inventory.Projec
 }
 
 // ensurePvmssTag inserts the mandatory pvmss tag for the cluster if it does
-// not already exist (FR-014). Idempotent — safe to call on every ListTags.
+// not already exist. Idempotent — safe to call on every ListTags.
 func ensurePvmssTag(ctx context.Context, st *store.Store, cluster string) error {
 	exists, err := st.TagExists(ctx, cluster, ProtectedTagName)
 	if err != nil {
@@ -127,7 +127,7 @@ func ensurePvmssTag(ctx context.Context, st *store.Store, cluster string) error 
 	return nil
 }
 
-// CreateTag validates the name (1-50 alphanumeric, FR-013), rejects duplicates
+// CreateTag validates the name (1-50 alphanumeric), rejects duplicates
 // with ErrDuplicateTag (409), and inserts the new row.
 func CreateTag(ctx context.Context, st *store.Store, cluster, name, color string) (TagWithCount, error) {
 	name = strings.TrimSpace(name)
@@ -166,7 +166,7 @@ func CreateTag(ctx context.Context, st *store.Store, cluster, name, color string
 }
 
 // SetTagColor updates the color of an existing tag. The pvmss tag's color can
-// be changed (spec Acceptance Scenario 3.2: protection is delete-only).
+// be changed (.2: protection is delete-only).
 // Returns ErrTagNotFound if the tag does not exist.
 func SetTagColor(ctx context.Context, st *store.Store, cluster, name, color string) (TagWithCount, error) {
 	if color == "" {

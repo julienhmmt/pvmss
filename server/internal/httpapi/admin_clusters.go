@@ -78,11 +78,11 @@ type updateClusterRequest struct {
 	SnippetStorage        string `json:"snippetStorage"`
 }
 
-// snippetStorageIDRE is spec D8's storage-id grammar — the same shape
+// snippetStorageIDRE is the storage-id grammar — the same shape
 // Proxmox itself accepts for a storage identifier.
 var snippetStorageIDRE = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_.-]*$`)
 
-// validateSnippetTarget enforces spec D8: set together, absolute dir, sane
+// validateSnippetTarget enforces set together, absolute dir, sane
 // storage id. Returns the message for a 400 invalid_request, or "".
 func validateSnippetTarget(dir, storage string) string {
 	switch {

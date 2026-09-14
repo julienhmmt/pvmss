@@ -81,7 +81,7 @@ func columnExists(t *testing.T, db *sql.DB, table, column string) bool {
 	return false
 }
 
-// rawNode is the pre-T11 shape captured at V7 using direct SQL (no enabled
+// rawNode is the pre-V9 shape captured at V7 using direct SQL (no enabled
 // column exists yet). It matches catalog.Node exactly.
 type rawNode struct {
 	Name string
@@ -114,8 +114,8 @@ type rawProfile struct {
 	Bus      string
 }
 
-// captureAtV7 reads the five T06/T07 row sets using direct SQL — the queries
-// T06/T07 used before T11 added the enabled column. This is the "before"
+// captureAtV7 reads the five row sets using direct SQL — the queries run
+// before the enabled column existed. This is the "before"
 // snapshot: what the functions returned under V7.
 func captureAtV7(t *testing.T, db *sql.DB) (
 	[]rawNode,
@@ -204,7 +204,7 @@ func queryRows[T any](
 	return out
 }
 
-// captureAtLatest reads the five T06/T07 row sets through the actual catalog
+// captureAtLatest reads the five row sets through the actual catalog
 // functions (which now carry AND enabled = 1). This is the "after" snapshot:
 // what the functions return under V9 with zero toggles performed. The caller
 // must have added the sockets column (V21's DDL) manually so catalog.Profiles
@@ -233,11 +233,11 @@ func captureAtLatest(t *testing.T, st *store.Store) (
 	return resources.Nodes, resources.Storages, resources.Bridges, resources.ISOs, profiles
 }
 
-// TestCatalogAdminCompat_RowSetsIdenticalBeforeAndAfterV9 is SC-003: the
-// mechanical proof that T11's migration (V9: enabled column + catalog_tags)
-// does not change what T06's and T07's five existing read functions return.
-// The fixture DB is built at V7, outputs captured via direct SQL (the pre-T11
-// query shapes), then migrated forward to V9 with zero admin toggles
+// TestCatalogAdminCompat_RowSetsIdenticalBeforeAndAfterV9 is the
+// mechanical proof that the migration (V9: enabled column + catalog_tags)
+// does not change what the five existing read functions return.
+// The fixture DB is built at V7, outputs captured via direct SQL (the
+// pre-enabled-column query shapes), then migrated forward to V9 with zero admin toggles
 // performed, and outputs captured again through the actual catalog functions
 // (which now carry AND enabled = 1). The two snapshots must be identical —
 // every existing row's enabled defaults to 1.
@@ -246,7 +246,7 @@ func captureAtLatest(t *testing.T, st *store.Store) (
 func TestCatalogAdminCompat_RowSetsIdenticalBeforeAndAfterV9(t *testing.T) {
 	db := openRawDB(t)
 
-	// Build at V7 (T06's seed).
+	// Build at V7 (with the seed data).
 	runMigrationsUpTo(t, db, 7)
 
 	beforeNodes, beforeStorages, beforeBridges, beforeISOs, beforeProfiles := captureAtV7(t, db)
@@ -261,7 +261,7 @@ func TestCatalogAdminCompat_RowSetsIdenticalBeforeAndAfterV9(t *testing.T) {
 	// can run against the V9 schema. We cannot migrate past V9 because V14
 	// drops and recreates catalog_bridges without re-seeding, which would
 	// change the bridge row set for a reason unrelated to V9's enabled
-	// column — the exact thing SC-003 isolates.
+	// column — the exact thing this test isolates.
 	if _, err := db.ExecContext(context.Background(),
 		`ALTER TABLE catalog_profiles ADD COLUMN sockets INTEGER NOT NULL DEFAULT 1`); err != nil {
 		t.Fatalf("add sockets column: %v", err)

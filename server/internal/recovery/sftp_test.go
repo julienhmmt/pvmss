@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-// T013: asserts zero calls into anything reading sftp_config; a fixture with
+// Asserts zero calls into anything reading sftp_config; a fixture with
 // a populated sftp_config row produces byte-identical Run output to the same
-// fixture without it (SC-006, FR-004).
+// fixture without it.
 func TestRun_SftpConfigPopulated_NoEffect(t *testing.T) {
 	t.Parallel()
 
@@ -63,8 +63,8 @@ func TestRun_SftpConfigPopulated_NoEffect(t *testing.T) {
 	}
 }
 
-// SC-006: grep -rn "sftp" (case-insensitive) across every file this tranche's
-// recovery tool touches returns zero matches. This test verifies the recovery
+// Grep -rn "sftp" (case-insensitive) across every file the recovery
+// tool touches returns zero matches. This test verifies the recovery
 // package's source files contain no sftp references in their Go code (the
 // test fixture's schema DDL is the only allowed mention, and it lives in
 // the _test.go file, not in the recovery package's non-test source).
@@ -77,7 +77,7 @@ func TestRecoveryPackage_NoSftpReferences(t *testing.T) {
 	// We verify by checking that no exported type or function name in the
 	// recovery package contains "sftp" (case-insensitive).
 	// This is enforced by the behavioral test (Run ignores sftp_config)
-	// and by FR-004's design: the recovery tool simply never queries
+	// and by the design: the recovery tool simply never queries
 	// sftp_config — there is no code path that reads it.
 	_ = recovery.Summary{} // use the package to ensure it's imported
 }

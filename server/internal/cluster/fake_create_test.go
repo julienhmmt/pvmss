@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// T006 fake-client contract tests (T06 data-model.md): NextVMID allocates,
+// fake-client contract tests: NextVMID allocates,
 // CreateVM mutates the dataset, TaskStatus is poll-count-based. Run with
 // -race: NextVMID concurrency is the point of the first test.
 
@@ -170,7 +170,7 @@ func assertCreatedVM(t *testing.T, snap Snapshot, spec VMSpec, vmid int) {
 	if !slices.Contains(created.Tags, "pvmss") {
 		t.Errorf("created VM missing pvmss tag: %v", created.Tags)
 	}
-	// StartAfterCreate folds the start into the creation task (FR-022): the
+	// StartAfterCreate folds the start into the creation task: the
 	// VM is running once the fake has recorded it.
 	if created.Status != VMRunning {
 		t.Errorf("status = %q, want %q (startAfterCreate)", created.Status, VMRunning)
@@ -223,7 +223,7 @@ func TestFake_CreateVM_NoStartLeavesVMStopped(t *testing.T) {
 	}
 }
 
-// TestFake_TaskStatus_PollCount — SC-006: the first two queries for a upid
+// TestFake_TaskStatus_PollCount — the first two queries for a upid
 // return running, the third and later return ok. No wall-clock dependency.
 //
 //nolint:paralleltest // serial: shared mutable fake dataset

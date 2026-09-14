@@ -1,14 +1,14 @@
 package store
 
-// schemaV7 adds the approved-resource catalog (T06, AC03 §1.2): the nodes,
+// schemaV7 adds the approved-resource catalog: the nodes,
 // storages, bridges, ISOs, and VM profiles a creation request may reference.
-// Every table carries a cluster column (constitution V) even though only one
+// Every table carries a cluster column even though only one
 // cluster ("default") is configured today.
 //
-// The rows below are hand-authored fixture data (T06 Assumptions): T11's
-// admin CRUD will make them editable, T06 only consumes them. The fixture
-// deliberately does NOT approve all of T01's fake dataset — a catalog that
-// approves everything would never exercise FR-003's rejection path.
+// The rows below are hand-authored fixture data: the admin CRUD will make them editable, only
+// consumes them. The fixture
+// deliberately does NOT approve all of the fake dataset — a catalog that
+// approves everything would never exercise the rejection path.
 const schemaV7 = `
 CREATE TABLE catalog_nodes (
 	cluster TEXT NOT NULL,

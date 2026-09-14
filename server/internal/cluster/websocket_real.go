@@ -1,18 +1,18 @@
-// Package cluster — T10 real Proxmox VNC relay (ConsoleRelay implementation).
+// Package cluster — real Proxmox VNC relay (ConsoleRelay implementation).
 //
 // This is the real cluster.Client's ConsoleRelay: GetVNCTicket dials Proxmox's
 // vncproxy endpoint for (node, vmid) to obtain a Proxmox-side VNC ticket and
 // port; RelayConsole dials Proxmox's own vncwebsocket endpoint and relays
 // frames bidirectionally between the browser WebSocket and Proxmox until either
-// side closes. The idea is reused from the legacy's B11 (GetVNCProxyResty,
-// buildVNCWebSocketURL, forwardVNCMessages) — the code is not (constitution
-// VIII: no copy-paste from v0.3).
+// side closes. The idea is reused from the legacy's (GetVNCProxyResty,
+// buildVNCWebSocketURL, forwardVNCMessages) — the code is not (no
+// copy-paste from v0.3).
 //
-// The real Proxmox client is not fully wired in v0.4 yet (T01 left Proxmox as a
-// stub for every read/write method). This file implements the console surface
+// The real Proxmox client is not fully wired in v0.4 yet (left Proxmox as a stub for every
+// read/write method). This file implements the console surface
 // against a minimal REST + WebSocket client so that a reachable Proxmox server
 // would actually work, but it is exercised only by integration tests against a
-// live endpoint — the tranche's own demo and unit tests run against the fake.
+// live endpoint — the demo and unit tests run against the fake.
 package cluster
 
 import (
@@ -70,7 +70,7 @@ type proxmoxTermProxyResponse struct {
 // need. Constructed per-call from cluster.Proxmox's own BaseURL/APITokenName/
 // APITokenValue fields (set in main.go from PROXMOX_URL/PROXMOX_API_TOKEN_NAME/
 // PROXMOX_API_TOKEN_VALUE). Proxmox itself still returns ErrNotImplemented for
-// every read/write method beyond ConsoleRelay (T01 stub) — this is only the
+// every read/write method beyond ConsoleRelay (stub) — this is only the
 // console surface, not the full client.
 type proxmoxVNCClient struct {
 	baseURL      string
@@ -82,9 +82,9 @@ type proxmoxVNCClient struct {
 // GetVNCTicket implements ConsoleRelay for the real Proxmox client. It calls
 // Proxmox's vncproxy endpoint for (node, vmid) and returns the Proxmox-side
 // ticket and port. The node is always Resolve()'s server-resolved value — the
-// caller never supplies one (FR-007).
+// caller never supplies one.
 //
-// Proxmox is not reachable in the tranche's own demo or unit tests; this
+// Proxmox is not reachable in the demo or unit tests; this
 // method is exercised only by integration tests against a live endpoint.
 func (p Proxmox) GetVNCTicket(ctx context.Context, _ string, vmid int, node string) (VNCProxyTicket, error) {
 	c := newProxmoxVNCClient(p.BaseURL, p.APITokenName, p.APITokenValue, p.TLSInsecureSkipVerify)
@@ -95,7 +95,7 @@ func (p Proxmox) GetVNCTicket(ctx context.Context, _ string, vmid int, node stri
 // Proxmox's own vncwebsocket endpoint and relays frames bidirectionally
 // between the browser WebSocket (peer) and Proxmox until either side closes.
 //
-// Proxmox is not reachable in the tranche's own demo or unit tests; this
+// Proxmox is not reachable in the demo or unit tests; this
 // method is exercised only by integration tests against a live endpoint.
 func (p Proxmox) RelayConsole(ctx context.Context, _ string, vmid int, proxy VNCProxyTicket, peer io.ReadWriteCloser) error {
 	c := newProxmoxVNCClient(p.BaseURL, p.APITokenName, p.APITokenValue, p.TLSInsecureSkipVerify)
@@ -105,10 +105,10 @@ func (p Proxmox) RelayConsole(ctx context.Context, _ string, vmid int, proxy VNC
 // GetTermProxy implements TerminalRelay for the real Proxmox client. It calls
 // Proxmox's termproxy endpoint for (node, vmid) and returns the Proxmox-side
 // ticket and port. The node is always Resolve()'s server-resolved value — the
-// caller never supplies one (FR-007). Same auth-header pattern as
+// caller never supplies one. Same auth-header pattern as
 // proxmoxGetVNCTicket.
 //
-// Proxmox is not reachable in the tranche's own demo or unit tests; this
+// Proxmox is not reachable in the demo or unit tests; this
 // method is exercised only by integration tests against a live endpoint.
 func (p Proxmox) GetTermProxy(ctx context.Context, _ string, vmid int, node string) (TermProxyTicket, error) {
 	c := newProxmoxVNCClient(p.BaseURL, p.APITokenName, p.APITokenValue, p.TLSInsecureSkipVerify)
@@ -124,17 +124,17 @@ func (p Proxmox) GetTermProxy(ctx context.Context, _ string, vmid int, node stri
 // already-framed byte stream; PVMSS is a dumb byte pipe and the browser-side
 // xterm.js layer owns the "type:payload" framing.
 //
-// Proxmox is not reachable in the tranche's own demo or unit tests; this
+// Proxmox is not reachable in the demo or unit tests; this
 // method is exercised only by integration tests against a live endpoint.
 func (p Proxmox) RelaySerial(ctx context.Context, _ string, vmid int, proxy TermProxyTicket, peer io.ReadWriteCloser) error {
 	c := newProxmoxVNCClient(p.BaseURL, p.APITokenName, p.APITokenValue, p.TLSInsecureSkipVerify)
 	return proxmoxRelaySerial(ctx, c, proxy.Node, vmid, proxy, peer)
 }
 
-// --- The real flow, called directly from GetVNCTicket and RelayConsole above.
+//  - The real flow, called directly from GetVNCTicket and RelayConsole above.
 // Kept as free functions taking proxmoxVNCClient rather than methods on
-// Proxmox so the "idea reused from B11" stays a small, reviewable unit,
-// separate from the ConsoleRelay interface's method shape. ---
+// Proxmox so the "idea reused " stays a small, reviewable unit,
+//  separate from the ConsoleRelay interface's method shape. -
 
 // proxmoxGetVNCTicket dials the vncproxy endpoint and returns the ticket+port.
 func proxmoxGetVNCTicket(ctx context.Context, c proxmoxVNCClient, node string, vmid int) (VNCProxyTicket, error) {
@@ -204,7 +204,7 @@ func proxmoxRelayConsole(ctx context.Context, c proxmoxVNCClient, node string, v
 
 	// Proxmox's websocket=1 vncproxy mode always demands RFB "VNC
 	// Authentication" (security type 2) using the ticket itself as the DES
-	// password (RFC 6143 §7.2.2) — the URL vncticket only authorizes the
+	// password (RFC 6143) — the URL vncticket only authorizes the
 	// WebSocket upgrade, not the RFB session riding on top of it. PVMSS
 	// deliberately never sends that ticket to the browser (opaque token
 	// only), so we complete this handshake ourselves here, then present the
@@ -232,8 +232,8 @@ func proxmoxRelayConsole(ctx context.Context, c proxmoxVNCClient, node string, v
 
 // proxmoxGetTermProxy dials the termproxy endpoint and returns the ticket+port.
 // It mirrors proxmoxGetVNCTicket but POSTs to .../termproxy and decodes a
-// proxmoxTermProxyResponse. The termproxy endpoint does not take a
-// "websocket=1" form field (vncproxy does); it returns the port directly.
+// proxmoxTermProxyResponse. The termproxy endpoint does not take a "websocket=1" form field
+// (vncproxy does); it returns the port directly.
 func proxmoxGetTermProxy(ctx context.Context, c proxmoxVNCClient, node string, vmid int) (TermProxyTicket, error) {
 	endpoint := fmt.Sprintf("%s/nodes/%s/qemu/%d/termproxy", apiBase(c.baseURL), url.PathEscape(node), vmid)
 
@@ -450,10 +450,10 @@ func rfbChooseSecurityType(conn io.ReadWriter) (byte, error) {
 }
 
 // rfbAnswerVNCAuthChallenge reads Proxmox's 16-byte DES challenge and
-// answers it using the ticket string as the VNC password (RFC 6143 §7.2.2:
-// the password is DES-encrypted, in two independent 8-byte ECB blocks, using
-// a key derived from the password's first 8 bytes with each byte's bits
-// reversed — a quirk of the original VNC protocol, not modern DES usage).
+// answers it using the ticket string as the VNC password (RFC 6143: the password is
+// DES-encrypted, in two independent 8-byte ECB blocks, using a key derived from the password's
+// first 8 bytes with each byte's bits reversed — a quirk of the original VNC protocol, not
+// modern DES usage).
 func rfbAnswerVNCAuthChallenge(conn io.ReadWriter, password string) error {
 	challenge := make([]byte, 16)
 	if _, err := io.ReadFull(conn, challenge); err != nil {
@@ -518,7 +518,7 @@ func rfbReadReasonString(conn io.ReadWriter) (string, error) {
 
 // vncDESKey derives the 8-byte DES key from a VNC password: the first 8
 // bytes (null-padded if shorter), each with its bits reversed — VNC's
-// historical quirk (RFC 6143 §7.2.2), not a general DES convention.
+// historical quirk (RFC 6143), not a general DES convention.
 func vncDESKey(password string) []byte {
 	key := make([]byte, 8)
 	pw := []byte(password)

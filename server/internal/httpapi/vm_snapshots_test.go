@@ -131,7 +131,7 @@ func TestVMSnapshots_ListAndCreate_OwnerContract(t *testing.T) {
 	}
 }
 
-// TestVMSnapshots_ConfigEndpoint — ticket 08: GET .../snapshots/{name}/config
+// TestVMSnapshots_ConfigEndpoint — GET .../snapshots/{name}/config
 // returns the stored config; a missing snapshot is a 404 snapshot_not_found;
 // "current" resolves to the live config without a list entry.
 //
@@ -197,7 +197,7 @@ func seedSnapshotRequest(t *testing.T, name string) string {
 	return name
 }
 
-// TestVMSnapshots_List_IncludesCapability — ticket 07: the list carries the
+// TestVMSnapshots_List_IncludesCapability — the list carries the
 // snapshot capability so the create dialog can grey options with a reason.
 //
 //nolint:paralleltest // serial: shared fake and SQLite fixtures
@@ -237,7 +237,7 @@ func TestVMSnapshots_List_IncludesCapability(t *testing.T) {
 	}
 }
 
-// TestVMSnapshots_ClusterRejection_SurfacesProxmoxMessage asserts ticket 02:
+// TestVMSnapshots_ClusterRejection_SurfacesProxmoxMessage asserts
 // a Proxmox rejection (4xx/5xx) is surfaced as a 502 with a stable machine
 // code and Proxmox's own message — never a generic 500 — and that 401/403
 // messages are suppressed (a PVE auth body can name the token).

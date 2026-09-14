@@ -41,7 +41,7 @@ func placementResources() catalog.Resources {
 }
 
 // placementCapacities builds capacities where pve-b is the most free in RAM
-// (the test criterion from tasks.md). pve-a is loaded, pve-b is empty, pve-c
+// (the test criterion). pve-a is loaded, pve-b is empty, pve-c
 // is half-loaded.
 func placementCapacities() map[string]policy.Capacity {
 	return map[string]policy.Capacity{
@@ -52,7 +52,7 @@ func placementCapacities() map[string]policy.Capacity {
 }
 
 // TestResolveResources_PlacementSelectsMostFreeNode — three nodes, middle one
-// (pve-b) most free in RAM → it is selected, not Nodes[0] (US3/issue-04).
+// (pve-b) most free in RAM → it is selected, not Nodes[0].
 func TestResolveResources_PlacementSelectsMostFreeNode(t *testing.T) {
 	t.Parallel()
 
@@ -246,7 +246,7 @@ func (f *fakeFreeSpaceChecker) StorageFreeSpace(_ context.Context, _, _ string) 
 }
 
 // TestCheckLiveDiskSpace_TableDriven — exercises every branch of
-// checkLiveDiskSpace (US3/issue-04 D4b): nil checker skip, zero-disk skip,
+// checkLiveDiskSpace: nil checker skip, zero-disk skip,
 // read-error wrapping, insufficient space, exact fit, and ample space.
 func TestCheckLiveDiskSpace_TableDriven(t *testing.T) {
 	t.Parallel()

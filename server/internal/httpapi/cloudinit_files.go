@@ -10,7 +10,7 @@ import (
 )
 
 // CloudInitFiles serves the user-owned cloud-init document endpoints
-// (/api/v1/cloudinit/files — cloudinit-userdata spec D3). Every row is
+// (/api/v1/cloudinit/files). Every row is
 // scoped to the session identity's username; there is no cluster or admin
 // concept here.
 type CloudInitFiles struct {

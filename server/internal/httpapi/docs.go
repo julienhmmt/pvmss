@@ -11,7 +11,7 @@ import (
 	"sync"
 )
 
-// DocsAPIHandler serves the public documentation read endpoints (issue #53):
+// DocsAPIHandler serves the public documentation read endpoints:
 // the audience-filtered page list and the rendered-HTML single-page view. The
 // admin CRUD endpoints live on AdminDocs (admin_docs.go) behind RequireAdmin.
 type DocsAPIHandler struct {

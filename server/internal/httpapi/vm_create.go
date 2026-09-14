@@ -22,8 +22,8 @@ import (
 const createWriteDeadlineMargin = 2 * time.Minute
 
 // VMCreate serves POST /api/v1/vms (the single creation endpoint for both
-// simple and detailed modes — FR-001) and GET /api/v1/vm-create/catalog
-// (FR-002). All validation lives in vm.Create; this handler only decodes,
+// simple and detailed modes) and GET /api/v1/vm-create/catalog.
+// All validation lives in vm.Create; this handler only decodes,
 // maps errors, and encodes.
 type VMCreate struct {
 	auth             *Auth
@@ -39,9 +39,9 @@ type VMCreate struct {
 
 // NewVMCreate creates the handler. The creator is the cluster client's
 // creation contract (allocation + async dispatch), separate from reads and
-// from existing-VM writes (constitution IV). The pusher is the same cluster
-// client's T08 cloud-init push contract, reused by vm.Create's template-apply
-// step (FR-007) — never a second write mechanism.
+// from existing-VM writes. The pusher is the same cluster
+// client's cloud-init push contract, reused by vm.Create's template-apply
+// step — never a second write mechanism.
 func NewVMCreate(
 	authHandler *Auth,
 	st *store.Store,
@@ -107,7 +107,7 @@ type createResultDTO struct {
 	CloudInitFileID     string `json:"cloudInitFileId,omitempty"`
 	CloudInitPushError  string `json:"cloudInitPushError,omitempty"`
 	// FromImage is true when the VM was created from a cloud image
-	// (cloud-image-console issue 05): the create summary warns that SSH
+	// the create summary warns that SSH
 	// is the only access until a console password is set.
 	FromImage bool `json:"fromImage,omitempty"`
 }
@@ -156,10 +156,10 @@ type catalogCloudInitTemplateDTO struct {
 	Label string `json:"label"`
 }
 
-// catalogTemplateDTO is one approved Proxmox template (US2/issue-02). The
+// catalogTemplateDTO is one approved Proxmox template. The
 // VMID is the Proxmox VMID of the template; the node determines where the
-// clone lands (D2b: cross-node clone is forbidden, so the UI hides the node
-// selector when a template is chosen). CloudInitCapable signals the UI that
+// clone lands (cross-node clone is forbidden, so the UI hides the node selector when a template
+// is chosen). CloudInitCapable signals the UI that
 // the template supports cloud-init. DiskSizeGB lets the UI show the minimum
 // disk size (reductions are rejected). DiskStorage is the template disk's
 // source storage — the UI uses it to warn when the chosen target storage
@@ -178,8 +178,8 @@ type catalogTagDTO struct {
 	Color string `json:"color"`
 }
 
-// catalogGabaritDTO is the administrator-editable per-VM size ceiling (T12
-// gabarit) — the client uses it to validate hardware/disk fields before
+// catalogGabaritDTO is the administrator-editable per-VM size ceiling (gabarit) — the client
+// uses it to validate hardware/disk fields before
 // submit and to show the user what they're allowed, not just what failed.
 type catalogGabaritDTO struct {
 	MaxSockets       int `json:"maxSockets"`
@@ -235,7 +235,7 @@ type catalogDTO struct {
 	NodeCapacities        []catalogNodeCapacityDTO `json:"nodeCapacities,omitempty"`
 }
 
-// ServeHTTP handles POST /api/v1/vms. Creation is asynchronous (FR-013):
+// ServeHTTP handles POST /api/v1/vms. Creation is asynchronous:
 // 202 means the task was accepted, not that the VM exists.
 func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
@@ -369,7 +369,7 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 
 	data.templates = templates
 
-	// US2/issue-02: approved Proxmox templates (clone source).
+	// Approved Proxmox templates (clone source).
 	proxmoxTemplates, err := catalog.Templates(ctx, h.store, clusterName)
 	if err != nil {
 		return catalogData{}, fmt.Errorf("proxmox templates: %w", err)
@@ -377,7 +377,7 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 
 	data.proxmoxTemplates = proxmoxTemplates
 
-	// Admin-created tags only (FR-014/FR-015 surface) — the mandatory pvmss
+	// Admin-created tags only — the mandatory pvmss
 	// tag is added server-side and never offered as a user choice here.
 	tags, err := catalog.ListTags(ctx, h.store, nil, clusterName)
 	if err != nil {
@@ -546,8 +546,7 @@ func catalogProfileView(profile catalog.Profile) catalogProfileDTO {
 	}
 }
 
-// catalogTemplateView maps an approved Proxmox template (clone source,
-// US2/issue-02) to its catalog DTO.
+// catalogTemplateView maps an approved Proxmox template (clone source) to its catalog DTO.
 func catalogTemplateView(tmpl catalog.Template) catalogTemplateDTO {
 	return catalogTemplateDTO{
 		VMID:             tmpl.VMID,
@@ -559,10 +558,10 @@ func catalogTemplateView(tmpl catalog.Template) catalogTemplateDTO {
 	}
 }
 
-// catalogCloudInitTemplateDTOs maps cloud-init templates — T18: the catalog
+// catalogCloudInitTemplateDTOs maps cloud-init templates — the catalog
 // exposes only id+label per spec/contracts, never content. The list is empty
 // when the cluster has no snippet write target: offering a document the
-// create could never write would fail at submit time anyway (spec D6).
+// create could never write would fail at submit time anyway.
 func catalogCloudInitTemplateDTOs(templates []catalog.CloudInitTemplate, writeEnabled bool) []catalogCloudInitTemplateDTO {
 	out := make([]catalogCloudInitTemplateDTO, 0, len(templates))
 	if !writeEnabled {
@@ -600,7 +599,7 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// The document picker is offered only when this cluster's client can
-	// actually write a snippet (spec D1/D6). Clients without the capability
+	// actually write a snippet. Clients without the capability
 	// (a client that predates the write target) report disabled.
 	writeEnabled := false
 	if writer, ok := client.(interface{ SnippetWriteAvailable() bool }); ok {
@@ -622,7 +621,7 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 // attachLimits fills the catalog's gabarit/quota/nodeCapacities so the
 // detailed-mode wizard can show what the user is allowed and validate
 // hardware/disk fields client-side before the server re-checks them
-// (constitution VI: client bounds are a convenience only).
+// (client bounds are a convenience only).
 func (h *VMCreate) attachLimits(ctx context.Context, dto *catalogDTO, clusterName string, identity auth.Identity) error {
 	if h.policy == nil {
 		return nil
@@ -705,8 +704,8 @@ type createTarget struct {
 // plus that cluster's own Creator, CloudInitPusher, HardwareUpdater, and
 // SnippetStorageFinder — without this, VM creation ran through the default
 // cluster's client regardless of which cluster the request named. The
-// HardwareUpdater is needed for post-clone configuration (US2/issue-02); the
-// SnippetStorageFinder for the plan-time snippet storage resolution (ticket 04).
+// HardwareUpdater is needed for post-clone configuration; the
+// SnippetStorageFinder for the plan-time snippet storage resolution.
 func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster string) (createTarget, bool) {
 	clusterName, err := ResolveClusterValue(requestedCluster, h.clients)
 	if err != nil {
@@ -768,7 +767,7 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 	// allocation), not plain ISO creations.
 	snippets, _ := client.(vm.SnippetStorageFinder)
 
-	// Optional capability: the clone-time freshness backstop (T17). A client
+	// Optional capability: the clone-time freshness backstop. A client
 	// without TemplateByVMID skips the backstop.
 	templates, _ := client.(vm.TemplateReader)
 
@@ -891,8 +890,8 @@ var createErrorMappings = []createErrorMapping{
 	{vm.ErrCloudInitWriteUnavailable, http.StatusConflict, "cloudinit_write_unavailable", "cloud-init documents are not enabled on this cluster (set the snippet directory in Admin › Clusters)"},
 	{vm.ErrNoSnippetStorage, http.StatusBadRequest, "no_snippet_storage", ""},
 	// cluster_error passes the full error chain (empty message → err.Error()):
-	// the Proxmox rejection text ("'import-from' requires special syntax",
-	// "has wrong type 'iso'", ...) is the only way to diagnose a 502 from the
+	// the Proxmox rejection text ("'import-from' requires special syntax", "has wrong type 'iso'",
+	// ...) is the only way to diagnose a 502 from the
 	// browser, and the frontend surfaces it after the localized prefix.
 	{vm.ErrClusterCreate, http.StatusBadGateway, "cluster_error", ""},
 }

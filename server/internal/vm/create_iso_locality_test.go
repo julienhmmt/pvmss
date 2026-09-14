@@ -54,7 +54,7 @@ func isoLocalityResources() catalog.Resources {
 
 // TestResolveResources_ISOLocalityAutoSelectsHoldingNode — when the request
 // carries a node-local ISO and no explicit node, auto-selection must pick a
-// node that holds the ISO, not Nodes[0] (US1).
+// node that holds the ISO, not Nodes[0].
 func TestResolveResources_ISOLocalityAutoSelectsHoldingNode(t *testing.T) {
 	t.Parallel()
 
@@ -74,7 +74,7 @@ func TestResolveResources_ISOLocalityAutoSelectsHoldingNode(t *testing.T) {
 
 // TestValidateCatalog_ISOLocalityRejectsMismatchedNode — when the request
 // specifies a node that does not hold the ISO, validateCatalog must reject
-// with ErrNotApproved (US1).
+// with ErrNotApproved.
 func TestValidateCatalog_ISOLocalityRejectsMismatchedNode(t *testing.T) {
 	t.Parallel()
 
@@ -92,7 +92,7 @@ func TestValidateCatalog_ISOLocalityRejectsMismatchedNode(t *testing.T) {
 
 // TestResolveResources_NoNodeHoldsISO — when the request carries an ISO that
 // no approved node holds, resolveResources must return ErrNotApproved naming
-// the ISO (US1, Q19).
+// the ISO.
 func TestResolveResources_NoNodeHoldsISO(t *testing.T) {
 	t.Parallel()
 
@@ -109,7 +109,7 @@ func TestResolveResources_NoNodeHoldsISO(t *testing.T) {
 
 // TestResolveResources_SharedStorageISOAllNodesCandidates — when the ISO is on
 // shared storage (one row per node), every approved node is a candidate, so
-// auto-selection falls back to Nodes[0] (US1, D1b).
+// auto-selection falls back to Nodes[0].
 func TestResolveResources_SharedStorageISOAllNodesCandidates(t *testing.T) {
 	t.Parallel()
 
@@ -128,8 +128,7 @@ func TestResolveResources_SharedStorageISOAllNodesCandidates(t *testing.T) {
 }
 
 // TestResolveResources_NoISOUnchanged — a request without an ISO must behave
-// exactly as before: auto-select Nodes[0], no ISO locality filtering (US1
-// regression guard).
+// exactly as before: auto-select Nodes[0], no ISO locality filtering (regression guard).
 func TestResolveResources_NoISOUnchanged(t *testing.T) {
 	t.Parallel()
 

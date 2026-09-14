@@ -133,7 +133,7 @@ func TestAction_InvalidActionRejectedBeforeResolve(t *testing.T) {
 	idx := buildResolveIndex(t)
 
 	// A nonexistent VMID with an invalid action still returns ErrActionRejected
-	// — the action enum check runs before Resolve (constitution XIII).
+	// — the action enum check runs before Resolve.
 	err := vm.Action(context.Background(), vm.BulkDeps{
 		Actor: aliceIdentity(), Writer: cluster.Fake{}, Audit: noopAudit{}, Refresher: noopRefresher{},
 	}, idx, testClusterName, 999, "foo")
@@ -590,7 +590,7 @@ func TestPatch_AuditErrorWrapped(t *testing.T) {
 }
 
 // =============================================================================
-// Shutdown escalation (ticket 05)
+// Shutdown escalation
 // =============================================================================
 
 // scriptedStatusReader returns a sequence of statuses on successive calls,
@@ -723,7 +723,7 @@ func TestAction_ShutdownForce_SkipsShutdownGoesDirectlyToStop(t *testing.T) {
 }
 
 // =============================================================================
-// Idempotence (ticket 08)
+// Idempotence
 // =============================================================================
 
 //nolint:paralleltest // serial: shared fake VM fixture
@@ -804,7 +804,7 @@ func TestAction_Idempotence_RebootOnRunning_WriterCallStillHappens(t *testing.T)
 }
 
 // =============================================================================
-// Retry-on-lock (ticket 08)
+// Retry-on-lock
 // =============================================================================
 
 // lockErrorWriter returns a "VM is locked (backup)" error for the first N

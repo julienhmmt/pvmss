@@ -28,7 +28,7 @@ type importResultDTO struct {
 	Tables []store.TablePreview `json:"tables"`
 }
 
-// TestAdminDBExport_AsAdmin_ReturnsSQLiteFile — T031: GET /admin/db/export
+// TestAdminDBExport_AsAdmin_ReturnsSQLiteFile — GET /admin/db/export
 // as admin returns a downloadable, well-formed SQLite response with the
 // correct headers.
 //
@@ -68,7 +68,7 @@ func TestAdminDBExport_AsAdmin_ReturnsSQLiteFile(t *testing.T) {
 	// verify the header and headers.
 }
 
-// TestAdminDBImport_WellFormedUpload_ReturnsPreview — T032: POST
+// TestAdminDBImport_WellFormedUpload_ReturnsPreview — POST
 // /admin/db/import with a well-formed upload returns 200 preview with
 // correct tables/ignoredTables.
 //
@@ -125,7 +125,7 @@ func TestAdminDBImport_WellFormedUpload_ReturnsPreview(t *testing.T) {
 	}
 }
 
-// TestAdminDBImport_MalformedUpload_Returns400 — T032: POST /admin/db/import
+// TestAdminDBImport_MalformedUpload_Returns400 — POST /admin/db/import
 // with a malformed upload returns 400, nothing staged.
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -160,7 +160,7 @@ func TestAdminDBImport_MalformedUpload_Returns400(t *testing.T) {
 	}
 }
 
-// TestAdminDBImportConfirm_ValidToken_ReplacesTables — T033: POST
+// TestAdminDBImportConfirm_ValidToken_ReplacesTables — POST
 // /admin/db/import/confirm with a valid token returns 200 and the live
 // database reflects the replace.
 //
@@ -209,7 +209,7 @@ func TestAdminDBImportConfirm_ValidToken_ReplacesTables(t *testing.T) {
 	}
 }
 
-// TestAdminDBImportConfirm_UnknownToken_Returns404 — T033.
+// TestAdminDBImportConfirm_UnknownToken_Returns404
 //
 //nolint:paralleltest // serial: shared database fixture
 func TestAdminDBImportConfirm_UnknownToken_Returns404(t *testing.T) {
@@ -222,7 +222,7 @@ func TestAdminDBImportConfirm_UnknownToken_Returns404(t *testing.T) {
 	}
 }
 
-// TestAdminDBImportConfirm_ExpiredToken_Returns410 — T033.
+// TestAdminDBImportConfirm_ExpiredToken_Returns410
 //
 //nolint:paralleltest // serial: shared database fixture
 func TestAdminDBImportConfirm_ExpiredToken_Returns410(t *testing.T) {
@@ -261,7 +261,7 @@ func TestAdminDBImportConfirm_ExpiredToken_Returns410(t *testing.T) {
 	}
 }
 
-// TestAdminDB_NonAdmin_Returns403 — T034: all three db endpoints as non-admin
+// TestAdminDB_NonAdmin_Returns403 — all three db endpoints as non-admin
 // return 403.
 //
 //nolint:paralleltest // serial: shared database fixture

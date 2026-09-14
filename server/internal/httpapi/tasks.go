@@ -19,7 +19,7 @@ import (
 const taskRefreshWriteDeadline = 30 * time.Second
 
 // TaskInvalidator rebuilds the inventory projection when a creation task
-// completes (FR-018). *inventory.Worker satisfies it; the unguarded
+// completes. *inventory.Worker satisfies it; the unguarded
 // Refresh is used deliberately — the manual-refresh minimum interval does
 // not apply to write-triggered invalidation.
 type TaskInvalidator interface {
@@ -27,8 +27,8 @@ type TaskInvalidator interface {
 }
 
 // Tasks serves GET /api/v1/tasks/{upid} — a live read of an asynchronous
-// cluster task (FR-014). No PVMSS-side task table exists; the state is asked
-// of the cluster client on every poll (plan.md research decisions).
+// cluster task. No PVMSS-side task table exists; the state is asked
+// of the cluster client on every poll.
 //
 // UPIDs (Proxmox task IDs) do not embed cluster identity, so a multi-cluster
 // deployment cannot tell from a UPID alone which cluster ran it. The caller
@@ -58,7 +58,7 @@ func NewTasks(authHandler *Auth, creator cluster.Creator, invalidator TaskInvali
 // keyed on the request's ?cluster= query param. creator is the default
 // cluster's Creator, kept as the fallback for the single-cluster / unit-test
 // path (clients == nil), matching every other WithRegistry constructor.
-// refreshers resolves the per-cluster invalidator (lifecycle-02); nil keeps
+// refreshers resolves the per-cluster invalidator; nil keeps
 // invalidator as the fallback for every cluster.
 func NewTasksWithRegistry(authHandler *Auth, clients cluster.ClientProvider, creator cluster.Creator, invalidator TaskInvalidator, refreshers ClusterRefresherResolver, log *slog.Logger) *Tasks {
 	handler := NewTasks(authHandler, creator, invalidator, log)
@@ -78,13 +78,13 @@ type taskStatusDTO struct {
 
 // ServeHTTP polls one task. When the task is observed in its ok state, the
 // inventory index is invalidated so the next VM-list load shows the created
-// VM without a manual refresh (FR-018) — not at POST /vms time, when the VM
+// VM without a manual refresh — not at POST /vms time, when the VM
 // does not exist yet.
 //
 // The endpoint authenticates the caller but does not verify task ownership:
-// any authenticated user can poll any UPID. This is accepted for T06 because
+// any authenticated user can poll any UPID. This is accepted because
 // UPIDs are opaque, reveal only creation progress (not VM data), and the
-// tray is tab-local. T11+ may tie UPIDs to the actor's pool if needed.
+// tray is tab-local. Later work may tie UPIDs to the actor's pool if needed.
 func (h *Tasks) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Defense in depth: extend this response's write deadline past the
 	// inventory refresh timeout. The primary fix (async refresh below)
@@ -172,7 +172,7 @@ func (h *Tasks) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // refresherFor resolves the TaskInvalidator for clusterName — the write-side
-// sibling of the per-request Creator resolution above (ticket 05). Without
+// sibling of the per-request Creator resolution above. Without
 // it, a task polled with ?cluster=b invalidates the default cluster's
 // projection instead of b's. A missing resolver or unknown cluster falls back
 // to the startup invalidator with a warning — a failed invalidation only

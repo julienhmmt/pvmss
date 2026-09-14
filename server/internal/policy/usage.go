@@ -39,7 +39,7 @@ func (service *Policy) diskGBExcluding(node string, vmid int) int {
 }
 
 // StorageFreeBytes returns the available bytes on a storage backend on a node,
-// read from the in-memory inventory projection (US3/issue-04). Returns 0 when
+// read from the in-memory inventory projection. Returns 0 when
 // the projection is empty or the storage is not found — callers that need a
 // hard check must use the live cluster.StorageFreeSpace instead.
 func (service *Policy) StorageFreeBytes(node, storage string) int64 {

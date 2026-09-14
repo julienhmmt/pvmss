@@ -1,12 +1,14 @@
-// Command pvmss-checklist mechanically generates the T16 parity checklist
-// by walking the fiche directories under .claude/v0.4/{auth,vm,admin,plateforme}/
-// and cross-referencing each fiche against spec.md's FR-006 table.
+// Command pvmss-checklist mechanically generates the parity checklist
+//
+//	by walking the fiche directories under.claude/v0.4/{auth,vm,admin,plateforme}/
+//
+// and cross-referencing each fiche against the table.
 //
 // Usage:
 //
 //	pvmss-checklist --repo-root /path/to/pvmss
 //
-// Exit code is always 0 — this is a report, not a gate (contracts/cutover.md).
+// Exit code is always 0 — this is a report, not a gate.
 package main
 
 import (

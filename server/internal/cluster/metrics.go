@@ -9,7 +9,7 @@ import (
 
 // MetricsTimeframe selects the historical window for GetMetricsHistory.
 // Proxmox's own rrddata endpoint also supports "month" and "year", but T-02
-// (issue 02) scopes PVMSS to these three on purpose (spec Out of Scope).
+// scopes PVMSS to these three on purpose.
 type MetricsTimeframe string
 
 // The three supported history windows.
@@ -82,7 +82,7 @@ type MetricsHistoryReader interface {
 }
 
 // MetricsCurrentReader reads a VM's current metrics sample. Kept separate
-// from Client (constitution IV: reads and writes are separated, and small
+// from Client (reads and writes are separated, and small
 // single-purpose interfaces per SnapshotReader/SnapshotWriter) — a metrics
 // read is neither a Client-level cluster read nor a Writer-level VM mutation.
 type MetricsCurrentReader interface {

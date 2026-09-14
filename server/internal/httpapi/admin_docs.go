@@ -9,10 +9,10 @@ import (
 	"pvmss/server/internal/store"
 )
 
-// AdminDocs serves the admin documentation CRUD endpoints (issue #53): list
+// AdminDocs serves the admin documentation CRUD endpoints: list
 // all pages (all langs, enabled+disabled), create, update, delete (refuses
 // system pages), and toggle. Every route is wrapped by Auth.RequireAdmin at
-// the router (FR-008), the same guard as every other admin surface.
+// the router, the same guard as every other admin surface.
 type AdminDocs struct {
 	auth  *Auth
 	store *store.Store

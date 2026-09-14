@@ -19,22 +19,22 @@ type RunOptions struct {
 	StorageResolver StorageNodeResolver // nil = skip storage expansion
 }
 
-// Run executes the full recovery sequence (data-model.md "Sequence"):
+// Run executes the full recovery sequence:
 //
-//  1. Map cluster from env/flags → upsert clusters row
-//  2. Map enabled_nodes → upsert catalog_nodes
-//  3. Map enabled_storages → expand nodes → upsert catalog_storages
-//  4. Map enabled_vmbrs → upsert catalog_bridges
-//  5. Map enabled_isos → split volids → upsert catalog_isos
-//  6. Map vm_profiles → parse JSON → upsert catalog_profiles
-//  7. Map tags → assign colors → upsert catalog_tags
-//  8. Map vm_limits → upsert vm_limits (5 fields only, SC-002)
-//  9. Map node_limits → upsert node_limits
+// 1. Map cluster from env/flags → upsert clusters row
+// 2. Map enabled_nodes → upsert catalog_nodes
+// 3. Map enabled_storages → expand nodes → upsert catalog_storages
+// 4. Map enabled_vmbrs → upsert catalog_bridges
+// 5. Map enabled_isos → split volids → upsert catalog_isos
+// 6. Map vm_profiles → parse JSON → upsert catalog_profiles
+// 7. Map tags → assign colors → upsert catalog_tags
+// 8. Map vm_limits → upsert vm_limits (5 fields only)
+// 9. Map node_limits → upsert node_limits
 //
 // Every step is per-row error tolerant: a single malformed row is skipped
-// and named in the summary, never aborting the whole run (plan.md research
-// decisions). The only step that touches live Proxmox is step 3's
-// storage-node expansion (FR-011).
+// and named in the summary, never aborting the whole run. The only step that touches live
+// Proxmox is step 3's
+// storage-node expansion.
 func Run(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions) (Summary, error) {
 	var sum Summary
 
@@ -57,7 +57,7 @@ func Run(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions) (Summary
 		}
 	}
 
-	// FR-011: when Proxmox credentials are available and the caller didn't
+	// When Proxmox credentials are available and the caller didn't
 	// already inject a resolver (tests do), wire live storage-node
 	// expansion. A Snapshot failure is isolated to per-storage skip
 	// reasons (liveStorageResolver), never aborts the run.
@@ -74,8 +74,8 @@ func Run(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions) (Summary
 }
 
 // runFull is the actual orchestration body, separated from Run's initial
-// cluster step for readability. It processes each catalog table in
-// data-model.md's sequence order and accumulates the summary.
+// cluster step for readability. It processes each catalog table in the sequence order and
+// accumulates the summary.
 func runFull(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum Summary) (Summary, error) {
 	if err := stepNodes(ctx, legacyDB, v04DB, opts, &sum); err != nil {
 		return sum, err
@@ -112,7 +112,7 @@ func runFull(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum 
 	return sum, nil
 }
 
-// stepNodes maps enabled_nodes → catalog_nodes (data-model.md step 2).
+// stepNodes maps enabled_nodes → catalog_nodes.
 func stepNodes(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum *Summary) error {
 	nodeRows, err := mapNodes(ctx, legacyDB)
 	if err != nil {
@@ -134,7 +134,7 @@ func stepNodes(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, su
 }
 
 // stepStorages maps enabled_storages → catalog_storages with live node
-// expansion (FR-011). Skips are recorded but never abort the run.
+// expansion. Skips are recorded but never abort the run.
 func stepStorages(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum *Summary) error {
 	storageRows, storageSkips, err := mapStorages(ctx, legacyDB, opts.ClusterName, opts.StorageResolver)
 	if err != nil {
@@ -162,7 +162,7 @@ func stepStorages(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions,
 	return nil
 }
 
-// stepBridges maps enabled_vmbrs → catalog_bridges (data-model.md step 4).
+// stepBridges maps enabled_vmbrs → catalog_bridges.
 func stepBridges(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum *Summary) error {
 	bridgeRows, err := mapBridges(ctx, legacyDB)
 	if err != nil {
@@ -183,7 +183,7 @@ func stepBridges(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, 
 	return nil
 }
 
-// stepISOs maps enabled_isos → catalog_isos with volid split (step 5).
+// stepISOs maps enabled_isos → catalog_isos with volid split.
 //
 //nolint:dupl // sibling step* helpers share this exact map→skip→upsert shape by design
 func stepISOs(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum *Summary) error {
@@ -213,7 +213,7 @@ func stepISOs(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum
 	return nil
 }
 
-// stepProfiles maps vm_profiles → catalog_profiles with JSON parse (step 6).
+// stepProfiles maps vm_profiles → catalog_profiles with JSON parse.
 //
 //nolint:dupl // sibling step* helpers share this exact map→skip→upsert shape by design
 func stepProfiles(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum *Summary) error {
@@ -243,7 +243,7 @@ func stepProfiles(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions,
 	return nil
 }
 
-// stepTags maps tags → catalog_tags with the default palette (step 7).
+// stepTags maps tags → catalog_tags with the default palette.
 func stepTags(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum *Summary) error {
 	tagRows, err := MapTags(ctx, legacyDB)
 	if err != nil {
@@ -264,7 +264,7 @@ func stepTags(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum
 	return nil
 }
 
-// stepVMLimits maps vm_limits → vm_limits (5 fields only, SC-002, step 8).
+// stepVMLimits maps vm_limits → vm_limits (5 fields only).
 func stepVMLimits(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum *Summary) error {
 	vmLimits, err := mapVMLimits(ctx, legacyDB)
 	if err != nil {
@@ -285,7 +285,7 @@ func stepVMLimits(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions,
 	return nil
 }
 
-// stepNodeLimits maps node_limits → node_limits (data-model.md step 9).
+// stepNodeLimits maps node_limits → node_limits.
 func stepNodeLimits(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum *Summary) error {
 	nodeLimitRows, err := mapNodeLimits(ctx, legacyDB)
 	if err != nil {
@@ -306,8 +306,7 @@ func stepNodeLimits(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOption
 	return nil
 }
 
-// RenderSummary produces the human-readable stdout output per
-// contracts/cutover.md's exact output shape.
+// RenderSummary produces the human-readable stdout output per the exact output shape.
 func RenderSummary(sum Summary, legacyPath, v04Path, clusterName string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "pvmss-recover: legacy=%s v0.4=%s cluster=%s\n\n", legacyPath, v04Path, clusterName)

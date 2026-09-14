@@ -25,7 +25,7 @@ import (
 // GetTermProxy to exercise the 502 console_unavailable path.
 var errFailingTerminal = errors.New("terminal unreachable")
 
-// serialTicketResponse mirrors the POST /serial-ticket 200 contract.
+// serialTicketResponse mirrors the POST /serial- contract.
 type serialTicketResponse = ticketResponse
 
 // newVMSerialConsoleHandler builds the serial console handler over the fake

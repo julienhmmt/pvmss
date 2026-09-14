@@ -23,7 +23,7 @@ type EnableSerialDependencies struct {
 // EnableSerialConsole provisions a socket-backed serial port (serial0) on an
 // existing VM so the PVMSS Text/serial console becomes reachable for VMs
 // created before serial0 was added at create time (commit 2d085e6c). It
-// reuses Resolve() — the same ownership gate every write goes through (FR-001)
+// reuses Resolve() — the same ownership gate every write goes through
 // — then writes through the cluster.Writer and refreshes the inventory so the
 // VM's HasSerial flips without a poll cycle.
 func EnableSerialConsole(ctx context.Context, deps EnableSerialDependencies) error {

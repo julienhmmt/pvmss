@@ -6,7 +6,7 @@ import (
 )
 
 // UserCloudInitFile is one user_cloudinit_files row — a cloud-init document a
-// user owns and can reuse on any cluster (cloudinit-userdata spec D3).
+// user owns and can reuse on any cluster.
 type UserCloudInitFile struct {
 	Owner     string
 	ID        string
@@ -87,7 +87,7 @@ func (s *Store) UpdateUserCloudInitFile(ctx context.Context, owner, id, label, c
 
 // DeleteUserCloudInitFile removes a file row. Returns sql.ErrNoRows if the
 // (owner, id) pair did not exist. No cascade — VMs created from the file keep
-// their own per-VM copy (spec D4).
+// their own per-VM copy.
 func (s *Store) DeleteUserCloudInitFile(ctx context.Context, owner, id string) error {
 	return execUpdateOne(ctx, s.db,
 		`DELETE FROM user_cloudinit_files WHERE owner = ? AND id = ?`,

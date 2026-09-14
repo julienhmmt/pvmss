@@ -21,7 +21,7 @@ type cloudInitTemplateDTO struct {
 
 // cloudInitTemplatesMux wires the five new admin cloud-init-template routes
 // through RequireAdmin — the real guard the 403 tests must exercise. Kept local
-// so the shared adminMux does not reference handler methods before T006 lands.
+// so the shared adminMux does not reference handler methods lands.
 func cloudInitTemplatesMux(handler *httpapi.AdminCatalog, auth *httpapi.Auth) *http.ServeMux {
 	mux := http.NewServeMux()
 	guard := auth.RequireAdmin
@@ -95,7 +95,7 @@ func citDelete(t *testing.T, handler *httpapi.AdminCatalog, auth *httpapi.Auth, 
 }
 
 // TestAdminCloudInitTemplates_ListAsAdmin — GET returns an empty list
-// initially (no seed data, spec.md Assumptions), then a created template
+// initially (no seed data, Assumptions), then a created template
 // including disabled ones.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -141,7 +141,7 @@ func TestAdminCloudInitTemplates_ListAsAdmin(t *testing.T) {
 }
 
 // TestAdminCloudInitTemplates_NonAdmin_Returns403 — every endpoint returns 403
-// for a non-admin identity (FR-010, SC-005).
+// for a non-admin identity.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminCloudInitTemplates_NonAdmin_Returns403(t *testing.T) {
@@ -210,7 +210,7 @@ func TestAdminCloudInitTemplates_CreateDuplicate_Returns409(t *testing.T) {
 }
 
 // TestAdminCloudInitTemplates_CreateInvalidContent_Returns400 — content not
-// starting with #cloud-config is rejected (FR-003, reused T08 validation).
+// starting with #cloud-config is rejected (reused validation).
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminCloudInitTemplates_CreateInvalidContent_Returns400(t *testing.T) {
@@ -226,8 +226,8 @@ func TestAdminCloudInitTemplates_CreateInvalidContent_Returns400(t *testing.T) {
 	assertAPIError(t, rec.Body.Bytes(), "invalid_content")
 }
 
-// TestAdminCloudInitTemplates_CreateOversized_Returns400 — content over the
-// 16 KiB cap is rejected before the catalog sees it.
+// TestAdminCloudInitTemplates_CreateOversized_Returns400 — content over the 16 KiB cap is
+// rejected before the catalog sees it.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminCloudInitTemplates_CreateOversized_Returns400(t *testing.T) {

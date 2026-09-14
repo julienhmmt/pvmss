@@ -1,7 +1,7 @@
 // Package inventory owns the in-memory projection of cluster data — a
 // periodically refreshed index built from a cluster.Snapshot, indexed for
-// the lookups later tranches need (by VM ID, by pool, by node). The index
-// is never persisted (AC02: it is a cache, never a source of truth).
+// the lookups later work needs (by VM ID, by pool, by node). The index
+// is never persisted (it is a cache, never a source of truth).
 //
 //nolint:wsl_v5 // index construction keeps copy and index stages adjacent
 package inventory
@@ -17,7 +17,7 @@ import (
 // Index is the in-memory projection built from one cluster.Snapshot. It is
 // immutable once built — the worker swaps the whole pointer on refresh, so
 // readers always see either the previous complete index or the new complete
-// one, never a partial one (FR-004).
+// one, never a partial one.
 type Index struct {
 	Nodes          []cluster.Node
 	ByVMID         map[int]cluster.VM
@@ -30,7 +30,7 @@ type Index struct {
 
 // BuildIndex constructs an Index from a Snapshot. It is a pure function —
 // it never mutates the input Snapshot, and the returned Index owns its own
-// copies of all slice and map data (data-model.md invariant 3).
+// copies of all slice and map data.
 func BuildIndex(snap cluster.Snapshot) Index {
 	return BuildIndexForCluster("", snap)
 }

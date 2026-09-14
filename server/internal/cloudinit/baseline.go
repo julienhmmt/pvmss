@@ -19,8 +19,8 @@ var (
 
 // generatedBaseline is the vendor-data document PVMSS writes for every
 // cloud-image VM when no admin override is present. It is a decision, not an
-// implementation detail — see .scratch/cloud-image-console/spec.md ("The
-// generated baseline"). The Debian-family branch installs the standard kernel
+// implementation detail. The Debian-family branch installs the standard kernel
+//
 // (the cloud kernel cannot drive the emulated VGA under UEFI), purges the
 // cloud kernel, and touches a sentinel that gates the reboot; RHEL-family and
 // Arch already ship a standard kernel, so they only install and enable the
@@ -54,7 +54,7 @@ power_state:
 `
 
 // GeneratedBaseline returns the verbatim baseline document the portal
-// generates for cloud-image VMs. Exposed so the admin view (issue 07) reads
+// generates for cloud-image VMs. Exposed so the admin view reads
 // from the same source the create path delivers, never a copy.
 func GeneratedBaseline() string { return generatedBaseline }
 

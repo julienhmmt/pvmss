@@ -8,13 +8,13 @@ import (
 	"strconv"
 )
 
-// CloneVM implements Creator via POST /nodes/{sourceNode}/qemu/{sourceVMID}/clone
-// (US2/issue-02). The form fields mirror ProxMate's minimal clone: newid, name,
+// CloneVM implements Creator via POST /nodes/{sourceNode}/qemu/{sourceVMID}/clone.
+// The form fields mirror ProxMate's minimal clone: newid, name,
 // full, pool, and optional storage (only sent for a full clone to a different
 // storage). A linked clone omits storage so Proxmox keeps the disk on the
-// source's storage. TargetNode is intentionally not sent (D2b: cross-node clone
-// is forbidden; the clone stays on SourceNode). Pool is always sent so the
-// cloned VM lands in the actor's personal pool (FR-004).
+// source's storage. TargetNode is intentionally not sent (cross-node clone is forbidden; the
+// clone stays on SourceNode). Pool is always sent so the
+// cloned VM lands in the actor's personal pool.
 func (p Proxmox) CloneVM(ctx context.Context, spec CloneSpec) (string, error) {
 	form := url.Values{
 		"newid": {strconv.Itoa(spec.NewVMID)},
@@ -42,7 +42,8 @@ func (p Proxmox) CloneVM(ctx context.Context, spec CloneSpec) (string, error) {
 }
 
 // boolToStr returns "1" for true and "0" for false — the Proxmox API's boolean
-// encoding (matches ProxMate's `opts.full ? '1' : '0'`).
+//
+//	encoding (matches ProxMate's `opts.full? '1': '0'`).
 func boolToStr(b bool) string {
 	if b {
 		return "1"

@@ -8,10 +8,10 @@ import (
 	"testing"
 )
 
-// TestAdminIntegration_ToggleNodeThenApprovedResourcesIncludesIt — T017/SC-002:
-// toggle a node on via the admin handler, then call T06's
-// catalog.ApprovedResources directly (no HTTP) and confirm it includes the
-// newly approved node — the cross-tranche proof that both surfaces share one
+// TestAdminIntegration_ToggleNodeThenApprovedResourcesIncludesIt
+// toggle a node on via the admin handler, then call the catalog.ApprovedResources directly (no
+// HTTP) and confirm it includes the
+// newly approved node — proof that both surfaces share one
 // source of truth.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -26,7 +26,7 @@ func TestAdminIntegration_ToggleNodeThenApprovedResourcesIncludesIt(t *testing.T
 		t.Fatalf("toggle status = %d: %s", rec.Code, rec.Body.String())
 	}
 
-	// Cross-tranche: T06's ApprovedResources now includes pve-node-03.
+	// Cross-surface: ApprovedResources now includes pve-node-03.
 	resources, err := catalog.ApprovedResources(context.Background(), st, "default")
 	if err != nil {
 		t.Fatalf("ApprovedResources: %v", err)
@@ -41,6 +41,6 @@ func TestAdminIntegration_ToggleNodeThenApprovedResourcesIncludesIt(t *testing.T
 	}
 
 	if !found {
-		t.Fatal("pve-node-03 not in ApprovedResources after admin toggle — cross-tranche proof failed")
+		t.Fatal("pve-node-03 not in ApprovedResources after admin toggle")
 	}
 }

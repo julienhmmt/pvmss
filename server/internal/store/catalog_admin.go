@@ -60,8 +60,8 @@ type CatalogProfileEnabled struct {
 	Enabled  bool
 }
 
-// CatalogTemplateEnabled is one catalog_templates row with its enabled state
-// (US2/issue-02). Used by the admin listing endpoint.
+// CatalogTemplateEnabled is one catalog_templates row with its enabled state.
+// Used by the admin listing endpoint.
 type CatalogTemplateEnabled struct {
 	VMID             int
 	Node             string
@@ -163,7 +163,7 @@ func (s *Store) CatalogProfilesEnabled(ctx context.Context, cluster string) ([]C
 	)
 }
 
-// SetNodeEnabled upserts the enabled state for one node (FR-006: never a delete).
+// SetNodeEnabled upserts the enabled state for one node (never a delete).
 func (s *Store) SetNodeEnabled(ctx context.Context, cluster, name string, enabled bool) error {
 	return execWrite(ctx, s.db,
 		`INSERT INTO catalog_nodes (cluster, name, enabled) VALUES (?, ?, ?)
@@ -267,7 +267,7 @@ func (s *Store) SetProfileEnabled(ctx context.Context, cluster, id string, enabl
 }
 
 // CatalogTemplatesEnabled returns all catalog_templates rows (including
-// disabled) with their enabled state, ordered by vmid (US2/issue-02).
+// disabled) with their enabled state, ordered by vmid.
 func (s *Store) CatalogTemplatesEnabled(ctx context.Context, cluster string) ([]CatalogTemplateEnabled, error) {
 	return queryCatalog(ctx, s.db, "catalog templates enabled",
 		`SELECT vmid, node, name, cloud_init_capable, disk_storage, disk_size_gb, disk_bus, enabled, override_discovery
@@ -291,7 +291,7 @@ func (s *Store) CatalogTemplatesEnabled(ctx context.Context, cluster string) ([]
 	)
 }
 
-// TemplateValues is the editable field set of a catalog_templates row (US2).
+// TemplateValues is the editable field set of a catalog_templates row.
 // OverrideDiscovery pins the row against discovery-wins write-back (schemaV26).
 type TemplateValues struct {
 	Node              string
@@ -305,7 +305,6 @@ type TemplateValues struct {
 
 // InsertTemplate inserts a new template row with the given enabled state.
 // Returns ErrDuplicate if the vmid already exists for the cluster
-// (US2/issue-02).
 func (s *Store) InsertTemplate(ctx context.Context, cluster string, vmid int, values TemplateValues, enabled bool) error {
 	return execInsertOne(ctx, s.db,
 		`INSERT INTO catalog_templates (cluster, node, vmid, name, cloud_init_capable, disk_storage, disk_size_gb, disk_bus, enabled, override_discovery)
@@ -317,7 +316,7 @@ func (s *Store) InsertTemplate(ctx context.Context, cluster string, vmid int, va
 
 // UpdateTemplate updates an existing template's values, including the
 // override_discovery flag. Returns sql.ErrNoRows if the template does not
-// exist (US2/issue-02). Setting OverrideDiscovery=true pins the row so the
+// exist. Setting OverrideDiscovery=true pins the row so the
 // catalog admin list stops overwriting these fields with discovery values.
 func (s *Store) UpdateTemplate(ctx context.Context, cluster string, vmid int, values TemplateValues) error {
 	return execUpdateOne(ctx, s.db,
@@ -328,7 +327,7 @@ func (s *Store) UpdateTemplate(ctx context.Context, cluster string, vmid int, va
 }
 
 // DeleteTemplate removes a template row. Returns sql.ErrNoRows if the template
-// did not exist (US2/issue-02).
+// did not exist.
 func (s *Store) DeleteTemplate(ctx context.Context, cluster string, vmid int) error {
 	return execUpdateOne(ctx, s.db,
 		`DELETE FROM catalog_templates WHERE cluster = ? AND vmid = ?`,
@@ -336,7 +335,7 @@ func (s *Store) DeleteTemplate(ctx context.Context, cluster string, vmid int) er
 	)
 }
 
-// SetTemplateEnabled upserts the enabled state for one template (US2/issue-02).
+// SetTemplateEnabled upserts the enabled state for one template.
 func (s *Store) SetTemplateEnabled(ctx context.Context, cluster string, vmid int, enabled bool) error {
 	return execWrite(ctx, s.db,
 		`INSERT INTO catalog_templates (cluster, node, vmid, name, cloud_init_capable, disk_storage, disk_size_gb, enabled)

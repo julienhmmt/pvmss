@@ -40,14 +40,14 @@ const (
 	// Timeout strategy (defence in depth):
 	//
 	// 1. Server-level (here): readHeader, read, write, idle bound every
-	//    request. The write timeout is the outer ceiling for any handler,
-	//    including cluster calls.
+	// request. The write timeout is the outer ceiling for any handler,
+	// including cluster calls.
 	// 2. Handler-level: every handler that calls the cluster client passes
-	//    r.Context(), so cluster operations inherit the server's write
-	//    deadline and are cancelled when it fires.
+	// r.Context(), so cluster operations inherit the server's write
+	// deadline and are cancelled when it fires.
 	// 3. Worker-level: inventory refreshCycle wraps its cluster call in
-	//    context.WithTimeout(ctx, cfg.InventoryRefreshTimeout) so a hung
-	//    upstream cannot hold the singleflight lock indefinitely.
+	// context.WithTimeout(ctx, cfg.InventoryRefreshTimeout) so a hung
+	// upstream cannot hold the singleflight lock indefinitely.
 	//
 	// Note: InventoryRefreshTimeout (default 15s) can exceed writeTimeout
 	// (10s). With the fake cluster this is harmless (calls are instant).
@@ -56,7 +56,7 @@ const (
 	// asynchronous (202 Accepted + background refresh).
 
 	// appVersion is the version string surfaced in the dashboard, the admin
-	// app info page, and the public /api/v1/public/version endpoint (T14).
+	// app info page, and the public /api/v1/public/version endpoint.
 	// It is a compile-time literal; no runtime discovery is performed.
 	appVersion = "0.4.0-dev"
 
@@ -106,13 +106,13 @@ func run() int {
 		return 1
 	}
 
-	// Start every worker before the HTTP server accepts traffic (T015) so the
+	// Start every worker before the HTTP server accepts traffic so the
 	// projections are populated before the first request can arrive.
 	inventoryCtx, cancelInventory := context.WithCancel(context.Background())
 	defer cancelInventory()
 	inventoryRegistry.Start(inventoryCtx)
 
-	// Daily audit prune tick (issue #02): deletes audit_log rows older than
+	// Daily audit prune tick: deletes audit_log rows older than
 	// the configured retention. Runs in its own goroutine so it does not
 	// couple to the inventory worker's refresh cycle. A prune runs once at
 	// startup, then every 24h.
@@ -162,7 +162,7 @@ func loadConfig(stderr *slog.Logger) (config.Configuration, *slog.Logger, io.Clo
 }
 
 // openStore opens the SQLite database, runs migrations, and seeds built-in
-// documentation pages (issue #53 — idempotent: only inserts missing rows).
+// documentation pages (idempotent: only inserts missing rows).
 func openStore(cfg config.Configuration, logger *slog.Logger) (*store.Store, error) {
 	st, err := store.Open(cfg)
 	if err != nil {
@@ -263,7 +263,7 @@ func discoverClusterDisplayNames(ctx context.Context, registry *cluster.Registry
 
 // initInventory builds the inventory registry and resolves the first
 // cluster's projection, worker, and refresher. Each active cluster gets an
-// independent projection and refresh worker (FR-002, AC03 §2.4).
+// independent projection and refresh worker.
 func initInventory(cfg config.Configuration, clusterRegistry *cluster.Registry, logger *slog.Logger) (*inventory.Registry, *inventory.Projection, *inventory.Worker, *inventory.Refresher, error) {
 	inventoryRegistry := inventory.NewRegistry(
 		clusterRegistry,
@@ -487,7 +487,7 @@ type clusterClientInterfaces struct {
 // resolveClusterClientInterfaces asserts that the cluster client implements
 // every capability interface the router needs. Both cluster.Client
 // implementations (Fake, Proxmox) satisfy all of them — reads and writes are
-// separated by interface (constitution IV), not by implementation.
+// separated by interface, not by implementation.
 func resolveClusterClientInterfaces(clusterClient cluster.Client) (clusterClientInterfaces, error) {
 	var c clusterClientInterfaces
 	var ok bool
@@ -572,7 +572,7 @@ func validateWebBuildDir(path string) error {
 // inventoryFreshness adapts inventory.Registry to httpapi.ClusterFreshnessChecker.
 // It reads each cluster's Index.RefreshedAt (already maintained by the refresh
 // goroutines) and the demoMode flag — zero cluster.Client calls from the health
-// handler (constitution IV, FR-010).
+// handler.
 type inventoryFreshness struct {
 	registry *inventory.Registry
 	demoMode bool

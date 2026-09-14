@@ -10,13 +10,13 @@ import (
 
 // stagingTTL is how long an unconfirmed import preview remains reachable.
 // Long enough for an admin to read the confirmation dialog, short enough not
-// to accumulate stale uploads (T14 data-model.md).
+// to accumulate stale uploads.
 const stagingTTL = 5 * time.Minute
 
 // StagingEntry is the in-memory record of an uploaded-but-unconfirmed import
 // file: the temp file path on disk and the preview returned to the admin.
-// Never persisted — same "runtime fact" shape T10's VNCTicket established
-// (AC01). Lost on restart, which is acceptable since nothing has been
+// Never persisted — same "runtime fact" shape VNCTicket established.
+// Lost on restart, which is acceptable since nothing has been
 // written to the live database yet at that point.
 type StagingEntry struct {
 	TempPath  string
@@ -48,7 +48,7 @@ func (s *ImportStaging) Stage(tempPath string, preview ImportPreview) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Lazily purge expired entries — no background goroutine (constitution VIII).
+	// Lazily purge expired entries — no background goroutine.
 	s.purgeExpiredLocked()
 
 	s.entries[token] = StagingEntry{
@@ -61,8 +61,8 @@ func (s *ImportStaging) Stage(tempPath string, preview ImportPreview) string {
 }
 
 // Lookup returns the staging entry for a token, or a sentinel error:
-//   - ErrStagingNotFound: the token was never staged or has been removed
-//   - ErrStagingExpired: the token was staged but its TTL has elapsed
+// - ErrStagingNotFound: the token was never staged or has been removed
+// - ErrStagingExpired: the token was staged but its TTL has elapsed
 //
 // An expired entry is purged as a side effect of this call. Lookup does NOT
 // call purgeExpiredLocked on entry — that would turn expired tokens into

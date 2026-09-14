@@ -95,7 +95,7 @@ func TestAdminTemplates_Toggle(t *testing.T) {
 
 // TestAdminTemplates_ToggleOffOnFirstApproval — toggling a discovered template
 // to disabled when it has no stored row must insert the row with enabled=false,
-// not the hardcoded enabled=1 the original InsertTemplate used (US2/issue-02).
+// not the hardcoded enabled=1 the original InsertTemplate used.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminTemplates_ToggleOffOnFirstApproval(t *testing.T) {
@@ -141,7 +141,7 @@ func TestAdminTemplates_ToggleOffOnFirstApproval(t *testing.T) {
 // TestAdminTemplates_ListDiscoveryWinsOnValues — when a stored row's values
 // drift from discovery (template resized/migrated/renamed in Proxmox after
 // approval), the list shows the discovered values and the stored row is
-// reconciled (issue 02). The stored enabled flag stays authoritative.
+// reconciled. The stored enabled flag stays authoritative.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminTemplates_ListDiscoveryWinsOnValues(t *testing.T) {
@@ -450,7 +450,7 @@ func TestAdminTemplates_DeleteRemovesOrphanApproval(t *testing.T) {
 	}
 }
 
-// unreadableTemplateHTTPClient serves one unreadable template (issue 03).
+// unreadableTemplateHTTPClient serves one unreadable template.
 type unreadableTemplateHTTPClient struct {
 	cluster.Fake
 }
@@ -459,8 +459,8 @@ func (unreadableTemplateHTTPClient) TemplateByVMID(_ context.Context, vmid int) 
 	return cluster.TemplateVM{VMID: vmid, Node: cluster.FakeNode02, Name: "unreadable", DiskUnreadable: true}, nil
 }
 
-// TestAdminTemplates_ToggleUnreadable — approving an unreadable template is a
-// 400 (the row would carry empty disk fields); disabling stays possible.
+// TestAdminTemplates_ToggleUnreadable — approving an unreadable template is a 400 (the row
+// would carry empty disk fields); disabling stays possible.
 //
 //nolint:paralleltest // serial: database-backed handler fixture
 func TestAdminTemplates_ToggleUnreadable(t *testing.T) {

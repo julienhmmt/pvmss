@@ -67,9 +67,9 @@ type ISOApproval struct {
 }
 
 // TemplateApproval is one discovered Proxmox template with its admin approval
-// state (US2/issue-02). The admin sees all templates the cluster reports and
+// state. The admin sees all templates the cluster reports and
 // toggles which are offered in the create wizard. Missing is true for a
-// stored approval whose template Proxmox no longer reports (issue 02) — the
+// stored approval whose template Proxmox no longer reports — the
 // row stays visible so the admin can remove it.
 type TemplateApproval struct {
 	VMID             int
@@ -81,8 +81,8 @@ type TemplateApproval struct {
 	DiskBus          string
 	Enabled          bool
 	Missing          bool
-	// DiskUnreadable is true when the template's config read failed (issue
-	// 03): the row is shown greyed out and enabling is refused.
+	// DiskUnreadable is true when the template's config read failed: the row is shown greyed out
+	// and enabling is refused.
 	DiskUnreadable bool
 	// OverrideDiscovery is true when an admin pinned the editable fields
 	// (schemaV26). The list then shows the stored (overridden) values
@@ -92,7 +92,7 @@ type TemplateApproval struct {
 
 // AdminListNodes returns every node the cluster reports, unioned with its
 // stored approval state. A node with no catalog row reports enabled=false
-// (FR-001: every resource, not only approved ones).
+// (every resource, not only approved ones).
 //
 // Stored approvals whose node Proxmox no longer reports are orphans: an
 // enabled orphan is auto-removed (it would otherwise be offered to users on a
@@ -284,9 +284,9 @@ func AdminListISOs(ctx context.Context, st *store.Store, client cluster.Client, 
 }
 
 // AdminListTemplates returns every Proxmox template the cluster reports,
-// unioned with its stored approval state keyed by VMID (US2/issue-02).
+// unioned with its stored approval state keyed by VMID.
 // Discovery is the truth about a template's field values; the stored row is
-// the truth about approval only (issue 02). When they disagree, the list
+// the truth about approval only. When they disagree, the list
 // shows the discovered values and the stored row is reconciled with
 // UpdateTemplate — a drift write, not a human mutation, so it is not audited.
 // Stored rows with no discovered match are appended with Missing=true so the
@@ -372,8 +372,8 @@ func reconcileTemplateApproval(
 	// are authoritative — show them instead of the discovered ones
 	// and skip the drift write-back so the pin survives the next
 	// list. An unreadable discovery reports empty disk fields
-	// (issue 03) — never write them over the stored values: the
-	// clone-time fallback (T17) relies on them being non-empty.
+	// never write them over the stored values: the
+	// clone-time fallback relies on them being non-empty.
 	if stored.OverrideDiscovery {
 		approval.Node = stored.Node
 		approval.Name = stored.Name
@@ -413,8 +413,8 @@ func newTemplateApproval(tmpl cluster.TemplateVM) TemplateApproval {
 }
 
 // templateDrift reports whether a stored approval row's field values differ
-// from what discovery currently reports (issue 02: the stored row is an
-// approval-time snapshot and can go stale).
+// from what discovery currently reports (the stored row is an approval-time snapshot and can go
+// stale).
 func templateDrift(stored store.CatalogTemplateEnabled, tmpl cluster.TemplateVM) bool {
 	return stored.Node != tmpl.Node || stored.Name != tmpl.Name ||
 		stored.CloudInitCapable != tmpl.CloudInitCapable ||
@@ -428,7 +428,7 @@ type TemplateRef struct {
 }
 
 // ErrTemplateNotFound is returned when a template approval row does not exist
-// for the cluster (issue 02: removing an orphan approval).
+// for the cluster (removing an orphan approval).
 var ErrTemplateNotFound = errors.New("template not found")
 
 // DeleteTemplate removes a template approval row. Returns
@@ -462,7 +462,7 @@ func UpdateTemplate(ctx context.Context, st *store.Store, cluster string, vmid i
 }
 
 // ErrTemplateUnreadable is returned when approving a template whose disk
-// config could not be read (issue 03): the approval row would carry empty
+// config could not be read: the approval row would carry empty
 // disk_bus/disk_storage and break the post-clone resize. Disabling stays
 // possible.
 var ErrTemplateUnreadable = errors.New("template disk unreadable")
@@ -473,7 +473,7 @@ var ErrTemplateUnreadable = errors.New("template disk unreadable")
 //
 // The discovered template's field values are used to populate the row on
 // first approval (so the row is complete, not a stub with empty fields).
-// The lookup is a single TemplateByVMID call (issue 03) — not a full
+// The lookup is a single TemplateByVMID call — not a full
 // ListTemplates re-hydration per toggle.
 func SetTemplateEnabled(ctx context.Context, st *store.Store, client cluster.Client, clusterName string, ref TemplateRef, enabled bool) error {
 	found, err := client.TemplateByVMID(ctx, ref.VMID)
@@ -511,8 +511,8 @@ func SetTemplateEnabled(ctx context.Context, st *store.Store, client cluster.Cli
 
 // SetNodeEnabled toggles the enabled flag on a catalog node approval.
 // It returns cluster.ErrNotFound if the node is not in the current discovery
-// set (FR-006: never a delete, but toggling an undiscovered resource is a
-// 404). A cluster discovery error is surfaced verbatim so the caller can map
+// set (never a delete, but toggling an undiscovered resource is a 404). A cluster discovery
+// error is surfaced verbatim so the caller can map
 // it to 5xx instead of mistaking it for a 404.
 func SetNodeEnabled(ctx context.Context, st *store.Store, client cluster.Client, clusterName, name string, enabled bool) error {
 	discovered, err := nodeDiscovered(ctx, client, name)

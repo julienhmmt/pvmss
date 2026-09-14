@@ -1,10 +1,10 @@
-// Package vm implements bulk VM actions (T17 — Actions groupées). The one function of
-// substance this tranche produces is BulkAction, a loop over T05's exported
-// Action. Every later phase either wires it to HTTP/frontend (US1) or proves,
-// by test, a property it already has (US2, US3). No step here re-implements
+// Package vm implements bulk VM actions. The one function of
+// substance here is BulkAction, a loop over the exported
+// Action. Later work either wires it to HTTP/frontend or proves,
+// by test, a property it already has. Nothing here re-implements
 // Resolve()'s tag or pool check, no step reads the Index directly, and no step
 // calls cluster.Client directly — every one of those is inside Action(),
-// called once per target, unmodified from T05.
+// called once per target, unmodified.
 package vm
 
 import (
@@ -15,15 +15,15 @@ import (
 )
 
 // MaxBulkTargets is the upper bound on the number of targets a single bulk
-// request may carry (FR-004, SC-003). It reuses T04's MaxListPageSize figure
-// (100) rather than introducing an independent Configuration field — see
-// spec.md Assumptions. The handler references this constant directly.
+// request may carry. It reuses MaxListPageSize figure
+// rather than introducing an independent Configuration field. The handler references this
+// constant directly.
 const MaxBulkTargets = 100
 
 // BulkTarget identifies one VM inside a bulk request. Cluster is the same
-// domain as T05's Resolve() cluster argument and T15's composite identity —
-// never a bare vmid, never a client-supplied node (spec FR-001). No Node field
-// exists anywhere in this shape, matching T05's own single-VM action schema
+// domain as Resolve() cluster argument and the composite identity
+// never a bare vmid, never a client-supplied node. No Node field
+// exists anywhere in this shape, matching the single-VM action schema
 // (nothing to forge).
 type BulkTarget struct {
 	Cluster string `json:"cluster"`
@@ -59,8 +59,8 @@ type BulkActionResponse struct {
 }
 
 // ClusterIndexResolver resolves the current Index for a named cluster. The
-// bulk handler implements this against the inventory Registry (multi-cluster,
-// T15) or the single default projection. BulkAction uses it to dispatch each
+// bulk handler implements this against the inventory Registry (multi-cluster) or the single
+// default projection. BulkAction uses it to dispatch each
 // target through its own cluster's projection — the same per-cluster lookup
 // Resolve() already performs inside Action(), just lifted one level so the
 // loop can span clusters without re-implementing Resolve()'s tag or pool
@@ -78,7 +78,7 @@ type ClusterWriterResolver interface {
 }
 
 // ClusterRefresherResolver resolves the IndexRefresher for a named cluster —
-// the refresh-side sibling of ClusterWriterResolver (ticket 09). BulkAction
+// the refresh-side sibling of ClusterWriterResolver. BulkAction
 // refreshes once per distinct affected cluster after the loop, not once per
 // target.
 type ClusterRefresherResolver interface {
@@ -110,9 +110,9 @@ type BulkDeps struct {
 // BulkAction performs one power transition on every target in targets, in
 // array order, and returns one BulkTargetResult per target. It is pure
 // orchestration — no logic of its own beyond the loop. Each iteration calls
-// T05's existing, unmodified Action(), which alone performs Resolve()'s
+// the existing, unmodified Action(), which alone performs Resolve()'s
 // tag/ownership check, the underlying cluster.Client call, store.RecordAction,
-// and the T03/T15 Index invalidation for target.Cluster — all exactly as they
+// and the Index invalidation for target.Cluster — all exactly as they
 // already happen for a single-VM request.
 //
 // Action() returns nil → the result entry is {Cluster, VMID, Status: "ok"}.
@@ -124,7 +124,7 @@ type BulkDeps struct {
 //
 // A target whose cluster has no ready Index produces an "error" entry whose
 // Message is the resolver's own error string — the batch never fails as a
-// whole (spec FR-005).
+// whole.
 func BulkAction(
 	ctx context.Context,
 	deps BulkDeps,
@@ -139,7 +139,7 @@ func BulkAction(
 		affectedClusters[target.Cluster] = struct{}{}
 	}
 
-	// Refresh once per distinct affected cluster (ticket 09). Not once per
+	// Refresh once per distinct affected cluster. Not once per
 	// target — that was N redundant cluster snapshots. Best-effort: a refresh
 	// failure is logged, not returned, so the batch result is unaffected.
 	refreshAfterBulk(ctx, deps, affectedClusters)

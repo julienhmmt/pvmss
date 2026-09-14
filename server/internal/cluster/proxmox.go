@@ -28,15 +28,15 @@ type Proxmox struct {
 	APITokenValue         string
 	TLSInsecureSkipVerify bool
 	// SnippetDir and SnippetStorage are the per-cluster cloud-init document
-	// write target (spec D1): SnippetDir is the absolute path, inside this
+	// write target: SnippetDir is the absolute path, inside this
 	// process's filesystem, of the snippets/ directory of the Proxmox storage
 	// named SnippetStorage (bind-mounted there by the deployment). Both empty
 	// means the feature is off for this cluster.
 	SnippetDir     string
 	SnippetStorage string
 	// httpClient is the cached *http.Client reused across every REST call so
-	// the underlying Transport's keep-alive connection pool is shared (ticket
-	// 07). Set at construction in registry.go; rest() lazily initializes it
+	// the underlying Transport's keep-alive connection pool is shared. Set at construction in
+	// registry.go; rest() lazily initializes it
 	// when nil so a zero-value Proxmox (tests) never panics.
 	httpClient *http.Client
 }
@@ -65,14 +65,14 @@ type proxmoxResourceRow struct {
 }
 
 // StorageSnapshotCapability reports whether a (storage plugin, disk format)
-// pair supports snapshots and RAM-state snapshots (ticket 07). The plugin
+// pair supports snapshots and RAM-state snapshots. The plugin
 // alone decides for block-backed storages (zfspool, lvmthin, rbd, btrfs);
 // file-backed storages (dir, nfs, cifs, cephfs) need qcow2 disks. Plain lvm
 // (non-thin), iscsi and raw-on-file cannot snapshot at all.
 //
 // ponytail: the file-backed rows mirror PVE's documented per-plugin snapshot
 // support but were not validated line-by-line against the PVE sources —
-// ticket 07 flags exactly this; revisit if a real cluster surprises us.
+// Flags exactly this; revisit if a real cluster surprises us.
 func StorageSnapshotCapability(pluginType, format string) (canSnapshot, canVMState bool) {
 	switch pluginType {
 	case "zfspool", "lvmthin", "rbd", "btrfs":
@@ -102,7 +102,8 @@ func pluginSupportsVMState(pluginType string) bool {
 const proxmoxClusterResourcesPath = "/cluster/resources"
 
 // proxmoxResourceTypeParam is the "type" query parameter that filters
-// /cluster/resources results ("vm", "storage", ...).
+//
+//	/cluster/resources results ("vm", "storage", ...).
 const proxmoxResourceTypeParam = "type"
 
 // Snapshot implements Client: one /cluster/resources call for the node,
@@ -345,7 +346,9 @@ func proxmoxTicketAuth(ctx context.Context, rest proxmoxRESTClient, username, pa
 // query their own effective permissions, no elevated privilege required.
 // PVE always nests the response as path -> {privilege: propagate-bool}, even
 // for a single requested path (pve-access-control's AccessControl.pm
-// `permissions` method: `$res = { $path => $perms }`) — never a flat
+//
+//	`permissions` method: `$res = {$path => $perms}`) — never a flat
+//
 // privilege map.
 func proxmoxHasPermission(ctx context.Context, rest proxmoxRESTClient, path, privilege string) (bool, error) {
 	raw, err := rest.do(ctx, http.MethodGet, "/access/permissions", url.Values{"path": {path}})
@@ -526,10 +529,14 @@ func (p Proxmox) ListISOs(ctx context.Context) ([]ISOImage, error) {
 }
 
 // ListCloudImages implements Client, enumerating cloud images on every
-// import-capable storage. Proxmox classifies files by extension: .qcow2,
-// .raw, .vmdk, and .ova get vtype 'import' and are listed under
+//
+//	import-capable storage. Proxmox classifies files by extension: .qcow2,
+//
+// .raw,.vmdk, and.ova get vtype 'import' and are listed under
 // content=import. Only import-vtype files are accepted by import-from for
-// non-root API tokens — .img files are vtype 'iso' and rejected, and absolute
+//
+//	non-root API tokens — .img files are vtype 'iso' and rejected, and absolute
+//
 // filesystem paths are root@pam-only. Node scoping matches ListISOs: one row
 // per (node, storage) pairing.
 func (p Proxmox) ListCloudImages(ctx context.Context) ([]CloudImage, error) {
@@ -632,7 +639,7 @@ func proxmoxListContent(ctx context.Context, rest proxmoxRESTClient, node, stora
 }
 
 // ListTemplates implements Client, enumerating template VMs (template=1) via
-// /cluster/resources?type=vm (US2/issue-02 T056). Each row is hydrated with
+// /cluster/resources?type=vm. Each row is hydrated with
 // its primary disk's storage, size, and bus via /nodes/{node}/qemu/{vmid}/config
 // so the clone path can decide linked vs full and target the correct resize key.
 // CloudInitCapable is detected by the presence of a cloud-init drive in the
@@ -659,7 +666,7 @@ func (p Proxmox) ListTemplates(ctx context.Context) ([]TemplateVM, error) {
 			continue
 		}
 
-		// Issue 03: degrade per template instead of aborting the whole list —
+		// Degrade per template instead of aborting the whole list
 		// one unreadable config must not blank the admin page or block every
 		// toggle.
 		diskStorage, diskSizeGB, diskBus, cloudInitCapable, err := proxmoxTemplateDisk(ctx, rest, row.Node, row.VMID)
@@ -689,8 +696,8 @@ func (p Proxmox) ListTemplates(ctx context.Context) ([]TemplateVM, error) {
 }
 
 // TemplateByVMID implements Client: one /cluster/resources call plus one
-// config read for a single template (issue 03 — no full re-hydration per
-// toggle or clone). Unknown VMIDs are ErrNotFound; an unreadable config
+// config read for a single template (no full re-hydration per toggle or clone). Unknown VMIDs
+// are ErrNotFound; an unreadable config
 // degrades to a DiskUnreadable row with the discovered node kept.
 func (p Proxmox) TemplateByVMID(ctx context.Context, vmid int) (TemplateVM, error) {
 	rest := p.rest()
@@ -737,8 +744,8 @@ func (p Proxmox) TemplateByVMID(ctx context.Context, vmid int) (TemplateVM, erro
 	}, nil
 }
 
-// StorageFreeSpace returns the available bytes on a storage backend on a node
-// (US3/issue-04). Queries GET /nodes/{node}/storage/{storage}/status and
+// StorageFreeSpace returns the available bytes on a storage backend on a node.
+// Queries GET /nodes/{node}/storage/{storage}/status and
 // extracts the `avail` field from the response.
 func (p Proxmox) StorageFreeSpace(ctx context.Context, node, storage string) (int64, error) {
 	raw, err := p.rest().do(ctx, http.MethodGet,

@@ -292,7 +292,7 @@ func TestBuildVendorData_DistributionFamilies(t *testing.T) {
 
 	// The generated baseline's runcmd dispatches on /etc/os-release. The
 	// Debian branch is the only one that touches the kernel and reboots; the
-	// others fall through to `systemctl enable --now qemu-guest-agent` only.
+	//  others fall through to `systemctl enable --now qemu-guest-agent` only.
 	// Assert the case statement names the families the spec covers, so a
 	// future reader can see they were considered.
 	doc, err := cloudinit.BuildVendorData(cloudinit.BaselineInputs{})
@@ -323,7 +323,7 @@ func TestBuildVendorData_DistributionFamilies(t *testing.T) {
 	}
 }
 
-// TestGeneratedBaseline_IsStableSource — the admin view (issue 07) reads the
+// TestGeneratedBaseline_IsStableSource — the admin view reads the
 // generated baseline from the same source the create path delivers, never a
 // copy. Pin that GeneratedBaseline returns the verbatim document.
 func TestGeneratedBaseline_IsStableSource(t *testing.T) {

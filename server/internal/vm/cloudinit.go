@@ -16,7 +16,7 @@ import (
 )
 
 // snippetFilenamePrefix prefixes every cloud-init document file PVMSS writes
-// into a cluster's snippet directory (spec D4): the per-VM copy is
+// into a cluster's snippet directory: the per-VM copy is
 // "pvmss-<vmid>.yml", the same shape the writer's filename allowlist accepts
 // (cluster.snippetFilenameRE).
 const snippetFilenamePrefix = "pvmss-"
@@ -47,24 +47,23 @@ var (
 	// ErrSnippetPushFailed reports a committed snippet that was not applied upstream.
 	ErrSnippetPushFailed = errors.New("cloud-init snippet push failed")
 	// ErrCustomYAMLDisabled reports an administrator-disabled snippet editor.
-	// Policy-controlled again since ticket 05: with a configured snippet write
-	// target (ticket 01), an admin who turns AllowCustomYAML on can actually
+	// Policy-controlled again with a configured snippet write
+	// target, an admin who turns AllowCustomYAML on can actually
 	// save per-VM documents.
 	ErrCustomYAMLDisabled = errors.New("custom yaml disabled")
 	// ErrNoCloudInitUser reports a password request on a VM whose patch and
 	// live config define no ciuser. The password is refused, never applied to
 	// a guessed account: a cloud image's root is locked, so a fallback to
 	// root would silently write the password where nobody can log in
-	// (ticket 02).
 	ErrNoCloudInitUser = errors.New("no cloud-init user defined")
 	// ErrGuestAgentDisabled reports agent= absent from the VM config — the
 	// QEMU guest agent cannot answer, so the password cannot be applied
-	// (ticket 05's immediate, actionable pre-flight refusal).
+	// (immediate, actionable pre-flight refusal).
 	ErrGuestAgentDisabled = errors.New("guest agent not enabled")
 	// ErrVMNotRunning reports a password attempt on a VM that is not running.
 	ErrVMNotRunning = errors.New("vm not running")
 	// ErrGuestAgentUnreachable reports that the guest agent never answered
-	// within the bounded wait, so the password was not applied (ticket 05).
+	// within the bounded wait, so the password was not applied.
 	ErrGuestAgentUnreachable = errors.New("guest agent unreachable")
 )
 
@@ -96,12 +95,12 @@ type CloudInitConfigDeps struct {
 	Audit       AuditRecorder
 	Refresher   IndexRefresher
 	// StatusReader reads the VM's live power state for the password
-	// pre-flight (ticket 05). Optional: when nil the running check is
+	// pre-flight. Optional: when nil the running check is
 	// skipped and the bounded agent ping is the only readiness gate.
 	StatusReader cluster.VMStatusReader
 }
 
-// SetCloudInitConfig merges and writes a partial update, optionally using T05's reboot action.
+// SetCloudInitConfig merges and writes a partial update, optionally using the reboot action.
 func SetCloudInitConfig(ctx context.Context, deps CloudInitConfigDeps, update cluster.CloudInitUpdate, rebootNow bool) (bool, error) {
 	index := deps.Index
 	actor := deps.Actor
@@ -137,10 +136,10 @@ func SetCloudInitConfig(ctx context.Context, deps CloudInitConfigDeps, update cl
 
 	// Apply the password via the QEMU guest agent (writes /etc/shadow only),
 	// never through cipassword (whose crypt hash lands on the seed drive and
-	// is readable by the tenant — REPORT.md §1). The pre-flight refuses
+	// is readable by the tenant). The pre-flight refuses
 	// immediately with an actionable error when the agent is disabled or the
 	// VM is not running; the bounded wait inside applyCloudInitPassword
-	// covers the "running but still booting" case (ticket 05).
+	// covers the "running but still booting" case.
 	if update.Password != nil && *update.Password != "" {
 		if err := applyCloudInitPasswordFlow(ctx, deps, writer, entity, current, effective, *update.Password); err != nil {
 			return false, err
@@ -164,7 +163,7 @@ func SetCloudInitConfig(ctx context.Context, deps CloudInitConfigDeps, update cl
 
 // applyCloudInitPasswordFlow runs the whole password step: the pre-flight
 // refusals, the ciuser resolution (patch value first, then the live config —
-// never a fallback to a locked root, ticket 02), and the bounded agent wait.
+// never a fallback to a locked root), and the bounded agent wait.
 func applyCloudInitPasswordFlow(ctx context.Context, deps CloudInitConfigDeps, writer cluster.Writer, entity Entity, current, effective cluster.CloudInitConfig, password string) error {
 	if err := preflightGuestAgent(ctx, deps, entity, current); err != nil {
 		return err
@@ -194,7 +193,7 @@ var (
 // anything is written: the guest agent must be enabled in the VM config, and
 // the VM must be running (read live, not from the up-to-30s-stale projection —
 // ADR 0001). Both refusals are immediate and actionable where the raw agent
-// error today is opaque (ticket 05).
+// error today is opaque.
 func preflightGuestAgent(ctx context.Context, deps CloudInitConfigDeps, entity Entity, current cluster.CloudInitConfig) error {
 	if !current.Agent {
 		return ErrGuestAgentDisabled
@@ -223,7 +222,7 @@ func preflightGuestAgent(ctx context.Context, deps CloudInitConfigDeps, entity E
 // not yet created the account (cc_users_groups runs tens of seconds after
 // Proxmox reports the VM running). The password is never stored, so the whole
 // operation must succeed inside one synchronous request — hence the bounded,
-// in-request wait instead of ProxMate's persisted-retry subsystem (ticket 05).
+// in-request wait instead of ProxMate's persisted-retry subsystem.
 func applyCloudInitPassword(ctx context.Context, writer cluster.Writer, entity Entity, user, password string) error {
 	deadline := time.NewTimer(maxAgentPingWait)
 	defer deadline.Stop()
@@ -294,10 +293,10 @@ type CloudInitSnippetDeps struct {
 
 // SetCloudInitSnippet saves a per-VM cloud-init document. The content is
 // validated, written to the configured snippet storage as pvmss-<vmid>.yml
-// (overwriting the creation-time copy from ticket 02 — one file per VM,
-// always), verified visible, attached as vendor-data, then recorded in the
+// (overwriting the creation-time copy — one file per VM, always), verified visible, attached as
+// vendor-data, then recorded in the
 // store. Empty content detaches: the cicustom is cleared and the row content
-// is set to "" without pushing or deleting the file (ticket 06 owns removal).
+// is set to "" without pushing or deleting the file.
 // Requires gabarit.AllowCustomYAML and a configured snippet write target.
 func SetCloudInitSnippet(ctx context.Context, deps CloudInitSnippetDeps, content string) error {
 	service := deps.Service
@@ -335,7 +334,7 @@ func SetCloudInitSnippet(ctx context.Context, deps CloudInitSnippetDeps, content
 }
 
 // detachCloudInitSnippet clears the cicustom and sets the row content to ""
-// without pushing or deleting the file (ticket 06 owns removal).
+// without pushing or deleting the file.
 func detachCloudInitSnippet(ctx context.Context, deps CloudInitSnippetDeps, entity Entity, storage, filename string) error {
 	if err := deps.Writer.AttachCloudInitSnippet(ctx, entity.Node, storage, "", deps.VMID); err != nil {
 		return wrapJoin(ErrSnippetPushFailed, err)
@@ -401,7 +400,7 @@ type AddCloudInitSSHKeyDeps struct {
 
 // AddCloudInitSSHKey injects a single public key into the running guest's
 // authorized_keys via the QEMU guest agent, without a reboot. The key is
-// validated first (REPORT.md §2/#3), so a malformed or multi-line value is
+// validated first, so a malformed or multi-line value is
 // rejected before it reaches the agent. On success the key is also merged into
 // the cloud-init config best-effort so later duplicate/rebuild flows keep a
 // truthful key set; that sync failing does not roll back the live injection,
@@ -467,7 +466,7 @@ func validateCloudInitUpdate(update cluster.CloudInitUpdate) error {
 
 	// Reject malformed or multi-line SSH keys before they reach Proxmox: a
 	// pasted multi-line value would smuggle extra keys into authorized_keys
-	// (REPORT.md §2/#3, mirrors ProxMate's isValidPublicKey guard).
+	// (mirrors ProxMate's isValidPublicKey guard).
 	if update.SSHKeys != nil {
 		if err := cloudinit.ValidateSSHKeys(*update.SSHKeys); err != nil {
 			return wrapJoin(ErrInvalidCloudInitConfig, err)

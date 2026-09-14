@@ -3,7 +3,7 @@ package config
 import "strconv"
 
 // Field is one row of the redacted Configuration view exposed by
-// GET /api/v1/admin/appinfo (T14 data-model.md). Value is the real configured
+// GET /api/v1/admin/appinfo. Value is the real configured
 // value for non-secret fields, and empty for secret fields (Redacted == true).
 // The HTTP layer serializes an empty Value as JSON null for redacted fields,
 // never as a masked pattern that could leak length information.
@@ -16,15 +16,15 @@ type Field struct {
 // Redacted returns every Configuration field as a Field, with every
 // secret-shaped field redacted to an empty value and Redacted == true. This
 // is a hardcoded, one-line-per-field table — not a reflection-based secret
-// scanner (constitution VIII: no abstraction for a single caller). When T15
+// scanner (no abstraction for a single caller). When
 // adds per-cluster Proxmox tokens, it extends this function by adding one row
-// per new secret field, the same extension shape T11 used on catalog.go.
+// per new secret field, the same extension shape used on catalog.go.
 //
-// As of T14, the secret-shaped fields are:
-//   - AdminPasswordHash (env ADMIN_PASSWORD_HASH, T02) — a bcrypt credential
-//   - SessionSecret (env SESSION_SECRET, T02) — the shared session secret
-//   - ProxmoxAPITokenValue (env PROXMOX_API_TOKEN_VALUE, T01) — a bearer
-//     credential for the Proxmox service account
+// the secret-shaped fields are:
+// AdminPasswordHash (env ADMIN_PASSWORD_HASH) — a bcrypt credential
+// SessionSecret (env SESSION_SECRET) — the shared session secret
+// ProxmoxAPITokenValue (env PROXMOX_API_TOKEN_VALUE) — a bearer
+// credential for the Proxmox service account
 //
 // ProxmoxAPITokenName is not redacted: it identifies the token (e.g.
 // "pvmss@pve"), it is not itself a credential — the value is the secret half.

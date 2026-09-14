@@ -149,7 +149,7 @@ func assertClusterUnavailableReturns502(t *testing.T, handler http.Handler, requ
 // TestVMConsole_PostVNCTicket_OwnerGetsOpaqueToken and
 // TestVMSerialConsole_PostSerialTicket_OwnerGetsOpaqueToken. It issues a
 // ticket for VM 100 and asserts the response carries only the opaque token and
-// its TTL — no Proxmox ticket, node, or port leaks (FR-002, FR-003).
+// its TTL — no Proxmox ticket, node, or port leaks.
 func assertOwnerGetsOpaqueToken(t *testing.T, handler http.Handler, request func(method, path, body string, cookie *http.Cookie) *http.Request, ticketPath string, cookie *http.Cookie) {
 	t.Helper()
 
@@ -173,7 +173,7 @@ func assertOwnerGetsOpaqueToken(t *testing.T, handler http.Handler, request func
 		t.Fatalf("expiresInSeconds = %d, want 30", resp.ExpiresInSeconds)
 	}
 
-	// FR-002: the response body must contain ONLY token and expiresInSeconds —
+	// The response body must contain ONLY token and expiresInSeconds
 	// no Proxmox ticket, node, or port.
 	var raw map[string]any
 	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {

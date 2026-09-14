@@ -77,7 +77,7 @@ type proxmoxRESTClient struct {
 
 // rest builds a proxmoxRESTClient from the Proxmox struct's own fields,
 // reusing the cached *http.Client so the Transport's keep-alive pool is
-// shared across calls (ticket 07). Pointer receiver so the lazy init in
+// shared across calls. Pointer receiver so the lazy init in
 // ensureClient can mutate p.httpClient; every caller passes an addressable
 // copy (the value-receiver Client methods), so this is safe.
 func (p *Proxmox) rest() proxmoxRESTClient {
@@ -124,8 +124,8 @@ func newProxmoxREST(baseURL, tokenName, tokenValue string, client *http.Client) 
 	}
 }
 
-// apiBase normalizes a cluster's configured URL to
-// "scheme://host:port/api2/json", tolerating either form an operator might
+// apiBase normalizes a cluster's configured URL to "scheme://host:port/api2/json", tolerating
+// either form an operator might
 // enter — with or without the "/api2/json" suffix already present — so the
 // whole client (and the console relay in websocket_real.go) agree on one
 // convention regardless of which way the "Add Cluster" form was filled in.

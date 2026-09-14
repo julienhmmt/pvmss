@@ -8,7 +8,7 @@ import (
 	"pvmss/server/internal/catalog"
 )
 
-// --- Tag DTOs ---
+//  - Tag DTOs -
 
 type adminTagDTO struct {
 	Name      string `json:"name"`
@@ -29,7 +29,7 @@ type tagColorRequest struct {
 }
 
 // ServeTags handles GET /api/v1/admin/tags — lists all tags with live VM
-// counts computed from the inventory projection (FR-015).
+// counts computed from the inventory projection.
 func (h *AdminCatalog) ServeTags(w http.ResponseWriter, r *http.Request) {
 	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
 	if clusterErr != nil {
@@ -191,7 +191,7 @@ func (h *AdminCatalog) ServeTagDelete(w http.ResponseWriter, r *http.Request) {
 }
 
 // tagVMCount returns the live count of VMs tagged with name, computed from the
-// inventory projection (FR-015: never stored). Returns 0 when the projection
+// inventory projection (never stored). Returns 0 when the projection
 // is nil (tests that don't exercise tags).
 func (h *AdminCatalog) tagVMCount(name string) int {
 	if h.projection == nil {

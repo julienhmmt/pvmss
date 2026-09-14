@@ -2,7 +2,7 @@ package cluster
 
 import "testing"
 
-// TestStorageSnapshotCapability — ticket 07: the (plugin, format) rule that
+// TestStorageSnapshotCapability — the (plugin, format) rule that
 // replaced the hardcoded 4-entry table. Block-backed plugins snapshot
 // natively; file-backed plugins only with qcow2 disks; plain lvm, iscsi and
 // raw-on-file cannot snapshot at all.

@@ -7,10 +7,10 @@ import (
 	"fmt"
 )
 
-// DocumentationPageRow is one documentation_pages row (issue #53). The same
+// DocumentationPageRow is one documentation_pages row. The same
 // struct is returned by both the all-rows (admin) and enabled-only (public)
 // readers; each audience's handler calls the reader appropriate to its own
-// audience, mirroring T18's cloud-init template split.
+// audience, mirroring the cloud-init template split.
 type DocumentationPageRow struct {
 	ID        string
 	Lang      string

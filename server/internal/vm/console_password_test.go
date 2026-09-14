@@ -49,7 +49,7 @@ func consolePasswordStore(t *testing.T) *store.Store {
 
 // TestSetConsolePassword_GeneratesAndApplies — the action generates a
 // random password, applies it via the guest agent to the VM's ciuser, and
-// returns it once (issue 05).
+// returns it once.
 //
 //nolint:paralleltest // serial: shared fake dataset
 func TestSetConsolePassword_GeneratesAndApplies(t *testing.T) {

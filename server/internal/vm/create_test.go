@@ -22,8 +22,8 @@ import (
 )
 
 // createFixture wires the real seeded store and the fake Creator, so
-// validation runs against the same catalog rows production serves (T06: the
-// catalog is fixture data, not a mock).
+// validation runs against the same catalog rows production serves (the catalog is fixture data,
+// not a mock).
 type createFixture struct {
 	store *store.Store
 	fake  cluster.Fake
@@ -64,12 +64,12 @@ func newCreateFixture(t *testing.T) createFixture {
 		}
 	}
 
-	// FR-013: tags are admin-curated — seed the one the tests reference.
+	// Tags are admin-curated — seed the one the tests reference.
 	if err := st.InsertTag(ctx, testClusterName, "team-web", "#3b82f6", time.Now().UTC().Format(time.RFC3339)); err != nil {
 		t.Fatalf("seed tag approval: %v", err)
 	}
 
-	// US2/issue-02: template approvals are admin-curated — seed the two the
+	// Template approvals are admin-curated — seed the two the
 	// clone tests reference (the schema ships no demo rows).
 	templates := map[int]store.TemplateValues{
 		9000: {Node: cluster.FakeNode02, Name: "debian-12-cloud", CloudInitCapable: true, DiskStorage: cluster.FakeStorageLocalLVM, DiskSizeGB: 8, DiskBus: string(cluster.DiskBusSCSI)},
@@ -236,7 +236,7 @@ func TestCreate_ValidationPipeline(t *testing.T) {
 	}
 }
 
-// TestCreate_ProfileResolvesHardware — FR-009: a profile's catalog values win
+// TestCreate_ProfileResolvesHardware — a profile's catalog values win
 // over any hardware fields the request also carries; the client cannot
 // contradict the chosen profile.
 //
@@ -286,7 +286,7 @@ func TestCreate_ProfileResolvesHardware(t *testing.T) {
 	}
 }
 
-// TestCreate_SimpleModeAutoSelection — FR-010: unset node/storage/bridge are
+// TestCreate_SimpleModeAutoSelection — unset node/storage/bridge are
 // filled from the first approved catalog entries, deterministically.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -321,7 +321,7 @@ func TestCreate_SimpleModeAutoSelection(t *testing.T) {
 	}
 }
 
-// TestCreate_PoolIsAlwaysActors — FR-004/SC-003: the created VM's pool is the
+// TestCreate_PoolIsAlwaysActors — the created VM's pool is the
 // actor's own. The request type carries no pool field, so there is nothing to
 // forge; this test pins that the spec dispatched to the cluster always takes
 // the pool from the identity.
@@ -365,7 +365,7 @@ func TestCreate_AdminCannotCreate(t *testing.T) {
 	}
 }
 
-// TestCreate_PvmssTagAlwaysPresent — FR-006.
+// TestCreate_PvmssTagAlwaysPresent
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_PvmssTagAlwaysPresent(t *testing.T) {
@@ -394,7 +394,7 @@ func TestCreate_PvmssTagAlwaysPresent(t *testing.T) {
 	}
 }
 
-// TestCreate_RecordsAudit — FR-017: a successful creation lands in the audit
+// TestCreate_RecordsAudit — a successful creation lands in the audit
 // log with the real actor, the allocated VMID, and action vm_create.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -432,7 +432,7 @@ func (failingAudit) RecordAction(context.Context, string, string, int, string) e
 // TestCreate_AuditFailureDoesNotFailCreate — a step-7 audit-write failure
 // must not turn an already-dispatched creation into a client-facing error:
 // the cluster task is real by the time audit runs, so the client still needs
-// its upid to poll. Regression for the T06 audit-failure-orphaned-task gap.
+// its upid to poll. Regression for the audit-failure-orphaned-task gap.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_AuditFailureDoesNotFailCreate(t *testing.T) {
@@ -456,7 +456,7 @@ func TestCreate_AuditFailureDoesNotFailCreate(t *testing.T) {
 	}
 }
 
-// --- T18 cloud-init template application (T011) ---
+//  - cloud-init template application -
 
 const testCloudInitContent = "#cloud-config\npackages:\n  - nginx\n"
 
@@ -527,8 +527,8 @@ func assertSnippetRow(t *testing.T, st *store.Store, vmid int, wantFilename, wan
 
 // TestCreate_CloudInitTemplate_WritesPerVMCopy — a valid enabled template is
 // resolved, its content is written as the VM's own snippet file
-// (pvmss-<vmid>.yml, spec D4), verified visible, attached through the
-// vendor-data slot, and recorded in vm_cloudinit_snippets (FR-007, SC-003).
+// (pvmss-<vmid>.yml), verified visible, attached through the
+// vendor-data slot, and recorded in vm_cloudinit_snippets.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_CloudInitTemplate_WritesPerVMCopy(t *testing.T) {
@@ -574,8 +574,8 @@ func TestCreate_CloudInitTemplate_WritesPerVMCopy(t *testing.T) {
 	assertSnippetRow(t, fixture.store, result.VMID, wantFilename, testCloudInitContent, aliceIdentity().Username)
 }
 
-// TestCreate_CloudInitTemplate_TwoVMsTwoFiles — every VM owns its file (spec
-// D4): two creates from the same template produce two distinct snippet files
+// TestCreate_CloudInitTemplate_TwoVMsTwoFiles — every VM owns its file: two creates from the
+// same template produce two distinct snippet files
 // and two store rows.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -630,7 +630,7 @@ func TestCreate_CloudInitTemplate_TwoVMsTwoFiles(t *testing.T) {
 }
 
 // failingSnippetFinder refuses every resolution — the stand-in for a node
-// without any snippet-capable storage (ticket 04).
+// without any snippet-capable storage.
 type failingSnippetFinder struct{}
 
 func (failingSnippetFinder) FindSnippetStorage(context.Context, string) (string, error) {
@@ -638,7 +638,7 @@ func (failingSnippetFinder) FindSnippetStorage(context.Context, string) (string,
 }
 
 // writeUnavailableSnippetFinder reports a cluster with no snippet write
-// target — the stand-in for an unconfigured Proxmox cluster (spec D6).
+// target — the stand-in for an unconfigured Proxmox cluster.
 type writeUnavailableSnippetFinder struct{}
 
 func (writeUnavailableSnippetFinder) FindSnippetStorage(context.Context, string) (string, error) {
@@ -646,7 +646,7 @@ func (writeUnavailableSnippetFinder) FindSnippetStorage(context.Context, string)
 }
 
 // fixedSnippetFinder always resolves to one storage and counts calls, so
-// tests can assert the create path used the plan-resolved target (ticket 04).
+// tests can assert the create path used the plan-resolved target.
 type fixedSnippetFinder struct {
 	calls   int
 	storage string
@@ -658,8 +658,8 @@ func (f *fixedSnippetFinder) FindSnippetStorage(context.Context, string) (string
 	return f.storage, nil
 }
 
-// TestCreate_CloudInitTemplate_NoSnippetStorage_RejectedBeforeVMID — ticket
-// 04: a cloud-init template on a node without snippet-capable storage is
+// TestCreate_CloudInitTemplate_NoSnippetStorage_RejectedBeforeVMID — a cloud-init template on a
+// node without snippet-capable storage is
 // refused before NextVMID, instead of creating a VM whose cloud-init is
 // silently absent.
 //
@@ -689,7 +689,7 @@ func TestCreate_CloudInitTemplate_NoSnippetStorage_RejectedBeforeVMID(t *testing
 	}
 }
 
-// TestCreate_CloudInitTemplate_UsesPlanSnippetStorage — ticket 04: the
+// TestCreate_CloudInitTemplate_UsesPlanSnippetStorage — the
 // per-VM document is written to and attached from the storage resolved at
 // plan time, never the VM disk's storage (which is block-backed and cannot
 // host a snippet).
@@ -740,7 +740,7 @@ func TestCreate_CloudInitTemplate_UsesPlanSnippetStorage(t *testing.T) {
 	}
 }
 
-// TestCreate_CloudInitTemplate_WriteUnavailable409 — spec D6: a cloud-init
+// TestCreate_CloudInitTemplate_WriteUnavailable409 — a cloud-init
 // document request on a cluster with no snippet write target is refused with
 // ErrCloudInitWriteUnavailable (→ 409) before any VMID is allocated.
 //
@@ -770,8 +770,8 @@ func TestCreate_CloudInitTemplate_WriteUnavailable409(t *testing.T) {
 	}
 }
 
-// TestCreate_WithoutCloudInitTemplate_DoesNotResolveSnippetStorage — ticket
-// 04: the resolution costs a cluster read and must not run on the plain ISO
+// TestCreate_WithoutCloudInitTemplate_DoesNotResolveSnippetStorage — the resolution costs a
+// cluster read and must not run on the plain ISO
 // path.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -795,7 +795,7 @@ func TestCreate_WithoutCloudInitTemplate_DoesNotResolveSnippetStorage(t *testing
 }
 
 // TestCreate_CloudInitTemplate_Unknown_RejectedBeforeVMID — an unknown template
-// id is rejected with ErrNotApproved before NextVMID is called (FR-006, SC-004):
+// id is rejected with ErrNotApproved before NextVMID is called:
 // zero NextVMID/CreateVM calls for the rejected request.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -816,7 +816,7 @@ func TestCreate_CloudInitTemplate_Unknown_RejectedBeforeVMID(t *testing.T) {
 }
 
 // TestCreate_CloudInitTemplate_Disabled_RejectedBeforeVMID — a disabled template
-// id is rejected with ErrNotApproved before NextVMID is called (FR-006).
+// id is rejected with ErrNotApproved before NextVMID is called.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_CloudInitTemplate_Disabled_RejectedBeforeVMID(t *testing.T) {
@@ -842,7 +842,7 @@ func TestCreate_CloudInitTemplate_Disabled_RejectedBeforeVMID(t *testing.T) {
 
 // TestCreate_CloudInitTemplate_PushFails — a push failure after CreateVM
 // succeeded sets CreateResult.CloudInitPushError without failing the
-// creation (FR-008): the VM still materializes but is not started, nothing
+// creation: the VM still materializes but is not started, nothing
 // is attached, and no snippet row is recorded.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -889,7 +889,7 @@ func TestCreate_CloudInitTemplate_PushFails(t *testing.T) {
 	}
 }
 
-// TestCreate_CloudInitTemplate_NotVisible — spec D1: the write going through
+// TestCreate_CloudInitTemplate_NotVisible — the write going through
 // the mount is not proof enough; when Proxmox does not list the file the
 // create reports a CloudInitPushError naming the snippet dir expectation and
 // the VM is not started.
@@ -951,8 +951,8 @@ func TestCreate_CloudInitTemplate_InvalidContentRefused(t *testing.T) {
 
 // TestCreate_CloudInitTemplate_DeletedAfterUse — deleting a cloud-init
 // template after a VM was created from it does not error and does not touch
-// the already-created VM (FR-009, SC-006): the per-VM copy is the unit of
-// truth (spec D4), so the VM's own snippet row survives the template delete.
+// the already-created VM: the per-VM copy is the unit of
+// truth, so the VM's own snippet row survives the template delete.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_CloudInitTemplate_DeletedAfterUse(t *testing.T) {
@@ -985,11 +985,10 @@ func TestCreate_CloudInitTemplate_DeletedAfterUse(t *testing.T) {
 	}
 }
 
-// --- US2: sockets and multi-NIC (T037, T038) ---
+//  - Sockets and multi-NIC -
 
 // TestCreate_Sockets_PopulatesForm — sockets=2, cores=4 produces a VM with
 // Sockets=2, Cores=4, and CPUCores=8 (sockets*cores) in the fake dataset
-// (US2/D3b).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_Sockets_PopulatesForm(t *testing.T) {
@@ -1028,7 +1027,7 @@ func TestCreate_Sockets_PopulatesForm(t *testing.T) {
 }
 
 // TestCreate_Sockets_DefaultsToOne — a request without sockets preserves the
-// previous behaviour: the created VM has Sockets=1 (US2/D3b).
+// previous behaviour: the created VM has Sockets=1.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_Sockets_DefaultsToOne(t *testing.T) {
@@ -1057,7 +1056,7 @@ func TestCreate_Sockets_DefaultsToOne(t *testing.T) {
 
 // TestCreate_Sockets_BeyondMaxSockets — sockets exceeding the gabarit's
 // MaxSockets is rejected with GabaritExceededError{Field: "sockets"} before
-// any cluster call (US2/D3b).
+// any cluster call.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_Sockets_BeyondMaxSockets(t *testing.T) {
@@ -1116,7 +1115,7 @@ func TestCreate_Sockets_BeyondMaxSockets(t *testing.T) {
 // set to UsedVCPUs+4, the request is rejected because 8 > 4. If only cores
 // were counted (4), the request would pass. The node_limits row is written
 // directly via UpsertNodePolicyRow to bypass the physical-capacity admin
-// validation (US2/D3b).
+// validation.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_Sockets_NodeCapacityCountsSocketsTimesCores(t *testing.T) {
@@ -1170,7 +1169,7 @@ func TestCreate_Sockets_NodeCapacityCountsSocketsTimesCores(t *testing.T) {
 }
 
 // TestCreate_MultiNIC_PopulatesForm — two NICs produce a VM with two network
-// interfaces (net0 and net1), each with its own bridge and model (US2/D3a).
+// interfaces (net0 and net1), each with its own bridge and model.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_MultiNIC_PopulatesForm(t *testing.T) {
@@ -1211,7 +1210,7 @@ func TestCreate_MultiNIC_PopulatesForm(t *testing.T) {
 }
 
 // TestCreate_MultiNIC_BeyondMaxNetworkCards — three NICs with MaxNetworkCards=2
-// is rejected with GabaritExceededError before any cluster call (US2/D3a).
+// is rejected with GabaritExceededError before any cluster call.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_MultiNIC_BeyondMaxNetworkCards(t *testing.T) {
@@ -1271,7 +1270,7 @@ func TestCreate_MultiNIC_BeyondMaxNetworkCards(t *testing.T) {
 
 // TestCreate_MultiNIC_EachBridgeValidated — each NIC's bridge is validated
 // against the node's catalog: a request with two NICs where the second
-// bridge is not approved on the node is rejected with ErrNotApproved (US2/D3a).
+// bridge is not approved on the node is rejected with ErrNotApproved.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_MultiNIC_EachBridgeValidated(t *testing.T) {
@@ -1292,7 +1291,7 @@ func TestCreate_MultiNIC_EachBridgeValidated(t *testing.T) {
 	}
 }
 
-// TestCreate_InsufficientDiskSpace_RefusedBeforeVMID — US3/issue-04 D4b: when
+// TestCreate_InsufficientDiskSpace_RefusedBeforeVMID — when
 // the live free-space check on the target storage reports less than the
 // requested disk, Create returns ErrInsufficientDiskSpace before any VMID is
 // allocated or cluster call made. The fixture wires the fake as FreeSpaceChecker,
@@ -1341,7 +1340,7 @@ func TestCreate_SufficientDiskSpace_Passes(t *testing.T) {
 }
 
 // TestCreate_IsolationVLAN_StampsTagOnEveryNIC asserts the admin-imposed
-// per-cluster VLAN tag (US6/issue-06 D6b) is stamped on every created NIC.
+// per-cluster VLAN tag is stamped on every created NIC.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_IsolationVLAN_StampsTagOnEveryNIC(t *testing.T) {
@@ -1428,7 +1427,7 @@ func TestCreate_IsolationVLAN_Zero_NoTag(t *testing.T) {
 }
 
 // TestCreate_UEFI_ProvisionsEFIDisk asserts that requesting UEFI produces
-// bios=ovmf, machine=q35, and efidisk0 on the created VM (US6/issue-06).
+// bios=ovmf, machine=q35, and efidisk0 on the created VM.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_UEFI_ProvisionsEFIDisk(t *testing.T) {
@@ -1464,7 +1463,7 @@ func TestCreate_UEFI_ProvisionsEFIDisk(t *testing.T) {
 }
 
 // TestCreate_UEFI_DefaultsToTrueWhenOmitted asserts that a request that
-// never sets UEFI still provisions bios=ovmf (US6/issue-06: default-on).
+// never sets UEFI still provisions bios=ovmf (default-on).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_UEFI_DefaultsToTrueWhenOmitted(t *testing.T) {
@@ -1557,8 +1556,7 @@ func TestCreate_UEFI_WithTPM_ProvisionsTPMState(t *testing.T) {
 }
 
 // TestCreate_TPM_WithoutUEFI_Rejected asserts that TPM without UEFI is
-// rejected with ErrInvalidRequest before any VMID is allocated (US6/issue-06:
-// TPM 2.0 requires UEFI).
+// rejected with ErrInvalidRequest before any VMID is allocated (TPM 2.0 requires UEFI).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_TPM_WithoutUEFI_Rejected(t *testing.T) {
@@ -1594,7 +1592,7 @@ func TestCreate_SecureBoot_WithoutUEFI_Rejected(t *testing.T) {
 	}
 }
 
-// --- cloudinit-userdata ticket 04: user-owned file as the document source ---
+//  - user-owned file as the document source -
 
 // createTestUserFile seeds one of alice's own cloud-init documents through
 // the domain path (validates content, derives the id from the label) and
@@ -1612,7 +1610,7 @@ func createTestUserFile(t *testing.T, st *store.Store, owner, label, content str
 
 // TestCreate_CloudInitFile_WritesPerVMCopy — a user file goes through the
 // exact same write → verify → attach → record pipeline as an admin template
-// (spec D4), and the result names the file id.
+// and the result names the file id.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_CloudInitFile_WritesPerVMCopy(t *testing.T) {

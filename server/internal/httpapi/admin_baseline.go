@@ -13,7 +13,7 @@ import (
 )
 
 // AdminBaseline serves the admin-only read-only view of the generated
-// cloud-init baseline (cloud-image-console issue 07). The baseline is the
+// cloud-init baseline. The baseline is the
 // document the create path would deliver to a new image-mode VM on this
 // cluster; the page also reports whether a cluster-wide pvmss-baseline.yml
 // override is present.
@@ -76,9 +76,7 @@ func (h *AdminBaseline) ServeBaseline(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// The generated baseline is the same document the create path builds
-	// with no override and no user document (issue 07: "the document shown
-	// is the same one the create path would deliver — the page reads it
-	// from the same source, not a copy").
+	// with no override and no user document.
 	generated, err := cloudinit.BuildVendorData(cloudinit.BaselineInputs{})
 	if err != nil {
 		// The generated baseline is built from constants — a failure here

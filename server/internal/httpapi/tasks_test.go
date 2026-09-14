@@ -40,7 +40,7 @@ func getTask(t *testing.T, handler *httpapi.Tasks, upid string, cookie *http.Coo
 	return recorder
 }
 
-// T012/SC-006: the fake's poll-count state machine
+// The fake's poll-count state machine
 // surfaces as running, then ok across three GET calls.
 //
 //nolint:paralleltest // serial: shared fake task fixture
@@ -94,7 +94,7 @@ func TestTasks_PollTransitions(t *testing.T) {
 		}
 	}
 
-	// FR-018: the ok observation invalidated the index — the refreshed
+	// The ok observation invalidated the index — the refreshed
 	// projection now contains the created VM.
 	index := projection.Load()
 	if index == nil {
@@ -111,7 +111,7 @@ func TestTasks_PollTransitions(t *testing.T) {
 	}
 }
 
-// TestTasks_UnknownUPID — T012: an unknown upid is a 404.
+// TestTasks_UnknownUPID — an unknown upid is a 404.
 //
 //nolint:paralleltest // serial: shared fake task fixture
 func TestTasks_UnknownUPID(t *testing.T) {
@@ -126,7 +126,7 @@ func TestTasks_UnknownUPID(t *testing.T) {
 	assertAPIError(t, response.Body.Bytes(), "not_found")
 }
 
-// TestTasks_RequiresAuth — the endpoint is authenticated (T02), like every
+// TestTasks_RequiresAuth — the endpoint is authenticated, like every
 // /api/v1 route.
 //
 //nolint:paralleltest // serial: shared fake task fixture
@@ -280,7 +280,8 @@ func TestTasks_WithRegistry_PollsNamedCluster(t *testing.T) {
 	}
 }
 
-// TestTasks_WithRegistry_UnknownClusterReturns404 — a ?cluster= naming a
+//	TestTasks_WithRegistry_UnknownClusterReturns404 — a ?cluster= naming a
+//
 // cluster the registry does not know is a 404 cluster_not_found, not a poll
 // against the default cluster's client (which would silently mislead).
 //
@@ -299,7 +300,8 @@ func TestTasks_WithRegistry_UnknownClusterReturns404(t *testing.T) {
 	assertAPIError(t, response.Body.Bytes(), "cluster_not_found")
 }
 
-// TestTasks_WithRegistry_DefaultFallback — omitting ?cluster= against a
+//	TestTasks_WithRegistry_DefaultFallback — omitting ?cluster= against a
+//
 // single-cluster registry resolves to that one cluster (backwards compatible
 // with the existing single-cluster e2e poll that sends no query param).
 //
@@ -386,7 +388,7 @@ func (m *taskRefresherRecorder) RefresherFor(clusterName string) (vm.IndexRefres
 	return invalidator, nil
 }
 
-// TestTasks_WithRegistry_InvalidatesNamedClusterProjection — ticket 05: the
+// TestTasks_WithRegistry_InvalidatesNamedClusterProjection — the
 // post-task invalidation resolves the ?cluster= param to that cluster's own
 // invalidator instead of the startup default. Fails before the fix (the
 // default worker was refreshed for every cluster).

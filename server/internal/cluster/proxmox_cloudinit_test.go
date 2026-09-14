@@ -170,7 +170,7 @@ func TestProxmox_SetCloudInitConfig_EnsuresDriveThenWrites(t *testing.T) {
 	}
 }
 
-// TestPushCloudInitSnippet_WritesAtomically verifies the spec-D1 write path:
+// TestPushCloudInitSnippet_WritesAtomically verifies the write path:
 // the document lands in the configured snippet directory as a real file
 // (mode 0644, exact content) and no temp file is left behind — rename means
 // Proxmox can never observe a half-written snippet.
@@ -283,7 +283,8 @@ func TestPushCloudInitSnippet_WrongStorage(t *testing.T) {
 }
 
 // TestPushCloudInitSnippet_WriteErrorLeavesNoTemp verifies a failed write
-// cleans its temp file — the directory must never accumulate .pvmss-*.tmp.
+//
+//	cleans its temp file — the directory must never accumulate.pvmss-*.tmp.
 func TestPushCloudInitSnippet_WriteErrorLeavesNoTemp(t *testing.T) {
 	t.Parallel()
 
@@ -306,7 +307,7 @@ func TestPushCloudInitSnippet_WriteErrorLeavesNoTemp(t *testing.T) {
 }
 
 // TestFindSnippetStorage_ConfiguredMustBeOnNode verifies the new contract
-// (spec D1): the configured storage is returned only when the node actually
+// the configured storage is returned only when the node actually
 // lists it as an active snippets provider; unconfigured means the sentinel.
 func TestFindSnippetStorage_ConfiguredMustBeOnNode(t *testing.T) {
 	t.Parallel()
@@ -368,7 +369,7 @@ func TestProxmox_FindSnippetStorage_Unconfigured(t *testing.T) {
 	}
 }
 
-// TestProxmox_SetCloudInitConfig_SSHKeysSurviveProxmoxDecode is the ticket-01
+// TestProxmox_SetCloudInitConfig_SSHKeysSurviveProxmoxDecode is the
 // regression test. Proxmox percent-decodes sshkeys with Perl's uri_unescape,
 // which does NOT turn '+' back into a space; url.QueryEscape encodes a space
 // AS '+', so every key written that way reached the guest as
@@ -507,7 +508,7 @@ func TestProxmox_SetCloudInitConfig_SSHKeysRoundTrip(t *testing.T) {
 }
 
 // TestProxmox_FindSnippetStorage_PrefersSharedActive verifies the selection
-// rule (ticket 04) used by the cloud-init drive fallback: inactive storages
+// Used by the cloud-init drive fallback: inactive storages
 // are skipped, and a shared storage wins over a node-local one so a later
 // migration cannot orphan the snippet. The configured-target selection lives
 // in FindSnippetStorage — this exercises the heuristic directly.
@@ -559,7 +560,7 @@ func TestProxmox_FindSnippetStorage_PrefersSharedActive(t *testing.T) {
 // TestProxmox_AttachCloudInitSnippet verifies the snippet is wired to the VM
 // via cicustom=vendor= (MERGE semantics, so generated user-data is preserved)
 // when a filename is given, and that an empty filename clears the cicustom key
-// instead of setting it. Fixes the silent no-op reported in REPORT.md §4/addendum.
+// instead of setting it. Fixes the silent no-op reported /addendum.
 //
 
 func TestProxmox_AttachCloudInitSnippet(t *testing.T) {
@@ -590,7 +591,7 @@ func attachCloudInitSnippetSubtest(t *testing.T, filename, wantKey, wantVal stri
 
 	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
 		// The VM already carries a cloud-init drive, so the ensure step
-		// (ticket 03) short-circuits and only the cicustom PUT happens.
+		// short-circuits and only the cicustom PUT happens.
 		mux.HandleFunc("GET /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, _ *http.Request) {
 			writeJSONFixture(t, w, `{"data":{"ide3":"local-lvm:vm-101-cloudinit,media=cdrom"}}`)
 		})
@@ -626,7 +627,7 @@ func recordCloudInitConfigForm(t *testing.T, seen map[string]string) http.Handle
 	}
 }
 
-// TestProxmox_AttachCloudInitSnippet_EnsuresDriveFirst is the ticket-03
+// TestProxmox_AttachCloudInitSnippet_EnsuresDriveFirst is the
 // regression test: without a cloud-init drive, Proxmox silently ignores
 // cicustom, so the attach must provision the drive first — exactly like
 // SetCloudInitConfig does. A detach (empty filename) needs no drive.
@@ -717,9 +718,9 @@ func recordConfigPut(t *testing.T, putKeys *[]string) http.HandlerFunc {
 }
 
 // TestProxmox_SetCloudInitPassword_Agent verifies the password is applied via
-// the guest-agent endpoint (writes /etc/shadow), never cipassword (REPORT.md §1),
+// the guest-agent endpoint (writes /etc/shadow), never cipassword,
 // and that the username is the caller-resolved ciuser — never a hardcoded root
-// (ticket 02: a cloud image's root is locked).
+// (a cloud image's root is locked).
 func TestProxmox_SetCloudInitPassword_Agent(t *testing.T) {
 	t.Parallel()
 
@@ -756,7 +757,7 @@ func TestProxmox_SetCloudInitPassword_Agent(t *testing.T) {
 
 // TestProxmox_SetCloudInitPassword_UserUnknown verifies that the guest agent's
 // "user does not exist" rejection maps to the retryable ErrGuestUserUnknown
-// sentinel (ticket 05: cloud-init creates the account mid-boot).
+// sentinel (cloud-init creates the account mid-boot).
 func TestProxmox_SetCloudInitPassword_UserUnknown(t *testing.T) {
 	t.Parallel()
 
@@ -830,7 +831,7 @@ func TestAgentEnabled(t *testing.T) {
 
 // TestProxmox_AddSSHKey_AgentExec verifies the key is passed as a positional
 // argv to a fixed script (no shell interpolation), so a crafted key cannot
-// break out, and that the guest's exit status is honoured (REPORT.md §2/#2).
+// break out, and that the guest's exit status is honoured.
 //
 //nolint:wsl_v5 // test keeps exec/exec-status handlers adjacent
 func TestProxmox_AddSSHKey_AgentExec(t *testing.T) {

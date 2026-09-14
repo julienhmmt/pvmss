@@ -13,11 +13,11 @@ import (
 	"strings"
 )
 
-// VMBulk serves POST /api/v1/vms/bulk-action (T17). It authenticates the
+// VMBulk serves POST /api/v1/vms/bulk-action. It authenticates the
 // actor through the same Auth.Principal path every other VM endpoint uses,
 // validates the whole request (action enum, target count 1..100) before
 // touching any target, then delegates to vm.BulkAction — a pure loop over
-// T05's existing Action(). No ownership logic, no Resolve() call, no
+// the existing Action(). No ownership logic, no Resolve() call, no
 // cluster.Client call lives here; all of that stays inside Action(), called
 // once per target.
 type VMBulk struct {
@@ -45,7 +45,7 @@ func (r singleClusterResolver) IndexFor(_ string) (*inventory.Index, error) {
 	// A nil Index is reported via a nil error, not an error value — same
 	// contract as registryResolver.IndexFor (inventory.Registry.Index
 	// returns (nil, nil) for a known-but-not-yet-populated cluster). Callers
-	// that only distinguish "err != nil" (unknown cluster) from "index ==
+	//  that only distinguish "err!= nil" (unknown cluster) from "index ==
 	// nil" (not ready yet), like loadClusterIndex, depend on this.
 	return r.projection.Load(), nil
 }

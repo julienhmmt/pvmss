@@ -57,7 +57,7 @@ func TestCreate_Image_ZeroHardwareDefaultsToImageDefaults(t *testing.T) {
 	}
 }
 
-// TestCreate_Image_ProfileResolvesHardware — FR-009 applies to image mode
+// TestCreate_Image_ProfileResolvesHardware — applies to image mode
 // too: a profile's catalog values (CPU/memory/disk/bus) win over any
 // hardware fields the request also carries, same as template and ISO mode.
 //
@@ -119,8 +119,8 @@ func imageRequest() vm.CreateRequest {
 
 // TestCreate_Image_AppliesCloudInit — the image path delivers cloud-init
 // through Proxmox's native keys (SetCloudInitConfig), then pushes the
-// generated baseline as a per-VM snippet and attaches it as vendor-data
-// (issue 03). The baseline state is "applied" when no cluster-wide override
+// generated baseline as a per-VM snippet and attaches it as vendor-data.
+// The baseline state is "applied" when no cluster-wide override
 // is present.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -213,7 +213,7 @@ func snippetPushFor(vmid int) (content string, attached bool) {
 
 // TestCreate_Image_AttachesBaselineSnippetWhenPresent — when an admin has
 // placed a cluster-wide pvmss-baseline.yml, its content replaces the
-// generated baseline (issue 03): the merged document is pushed as
+// generated baseline: the merged document is pushed as
 // pvmss-<vmid>.yml and attached as vendor-data. BaselineState is "override".
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -263,7 +263,7 @@ func TestCreate_Image_AttachesBaselineSnippetWhenPresent(t *testing.T) {
 }
 
 // TestCreate_Image_UserDocumentMergesWithBaseline — a user-selected
-// cloud-init document is merged on top of the generated baseline (issue 04):
+// cloud-init document is merged on top of the generated baseline:
 // the user's packages add to the baseline's (qemu-guest-agent), and the
 // user's scalar values win. The merged document is the one pushed and
 // attached.
@@ -298,7 +298,7 @@ func TestCreate_Image_UserDocumentMergesWithBaseline(t *testing.T) {
 	}
 
 	// The merged document contains both the baseline's qemu-guest-agent
-	// and the user's nmap — packages concatenate (issue 04).
+	// and the user's nmap — packages concatenate.
 	if !strings.Contains(pushedContent, "qemu-guest-agent") {
 		t.Errorf("merged document missing baseline package qemu-guest-agent: %s", pushedContent)
 	}
@@ -314,7 +314,9 @@ func TestCreate_Image_UserDocumentMergesWithBaseline(t *testing.T) {
 }
 
 // TestCreate_Image_GrowsImportedDisk — import-from lands the disk at the
-// source image's size (Proxmox requires the :0 target syntax), so the
+//
+//	source image's size (Proxmox requires the:0 target syntax), so the
+//
 // requested size is applied afterwards via ResizeDisk. Skipped when the
 // request matches the image size — ResizeDisk only grows.
 //
@@ -478,7 +480,7 @@ func TestCreate_Image_NotApproved(t *testing.T) {
 // TestCreate_Image_NoWriteTarget_SkipsBaseline — image mode delivers
 // cloud-init through Proxmox's native keys. A cluster with no snippet write
 // target must still create image VMs: the baseline is "not_delivered" with
-// the reason, but the create succeeds and the VM starts (issue 03).
+// the reason, but the create succeeds and the VM starts.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_Image_NoWriteTarget_SkipsBaseline(t *testing.T) {

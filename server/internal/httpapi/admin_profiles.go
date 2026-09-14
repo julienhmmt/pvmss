@@ -8,7 +8,7 @@ import (
 	"pvmss/server/internal/catalog"
 )
 
-// --- Profile DTOs ---
+//  - Profile DTOs -
 
 type adminProfileDTO struct {
 	ID       string `json:"id"`
@@ -49,8 +49,7 @@ type statusResponse struct {
 const statusDeleted = "deleted"
 
 // ServeProfiles handles GET /api/v1/admin/profiles — lists all profiles
-// including disabled ones (unlike T06's catalog.Profiles which filters by
-// enabled = 1).
+// including disabled ones (unlike catalog.Profiles which filters by enabled = 1).
 func (h *AdminCatalog) ServeProfiles(w http.ResponseWriter, r *http.Request) {
 	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
 	if clusterErr != nil {

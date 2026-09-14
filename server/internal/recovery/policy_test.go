@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-// T010: vm_limits (five copied fields) and node_limits (four copied fields)
+// vm_limits (five copied fields) and node_limits (four copied fields)
 // → v0.4 equivalents, asserting max_sockets/max_cores/max_memory_mb are
-// never written by this function (SC-002's literal assertion).
+// never written by this function (literal assertion).
 func TestMapVMLimits_FiveFieldsCopied(t *testing.T) {
 	t.Parallel()
 
@@ -51,7 +51,7 @@ func TestMapVMLimits_FiveFieldsCopied(t *testing.T) {
 	}
 }
 
-// SC-002 literal assertion: VMLimitsRow has NO max_sockets/max_cores/max_memory_mb fields.
+// Literal assertion: VMLimitsRow has NO max_sockets/max_cores/max_memory_mb fields.
 // This test verifies the type itself does not carry those fields — they are
 // never written by the recovery tool because there is no on-disk source.
 func TestVMLimitsRow_HasNoSocketsCoresMemoryFields(t *testing.T) {
@@ -104,7 +104,7 @@ func TestMapNodeLimits_FourFieldsCopied(t *testing.T) {
 	}
 }
 
-// T010: pre-schemaV2 zero-value case — node_limits without max_vcpus/ram/disk columns.
+// pre-schemaV2 zero-value case — node_limits without max_vcpus/ram/disk columns.
 // The fixture uses COALESCE to read 0 when columns are NULL.
 func TestMapNodeLimits_PreSchemaV2_ZeroValues(t *testing.T) {
 	t.Parallel()
@@ -137,7 +137,7 @@ func TestMapNodeLimits_PreSchemaV2_ZeroValues(t *testing.T) {
 	}
 }
 
-// SC-002: upsertVMLimits preserves T12's shipped defaults for the three no-source fields.
+// upsertVMLimits preserves the shipped defaults for the three no-source fields.
 func TestUpsertVMLimits_PreservesShippedDefaults(t *testing.T) {
 	t.Parallel()
 
@@ -167,17 +167,17 @@ func TestUpsertVMLimits_PreservesShippedDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("query vm_limits: %v", err)
 	}
-	// The three no-source fields must retain T12's defaults
+	// The three no-source fields must retain the defaults
 	if sockets != 4 {
-		t.Errorf("max_sockets = %d, want 4 (T12 default, not copied)", sockets)
+		t.Errorf("max_sockets = %d, want 4 (default, not copied)", sockets)
 	}
 
 	if cores != 8 {
-		t.Errorf("max_cores = %d, want 8 (T12 default, not copied)", cores)
+		t.Errorf("max_cores = %d, want 8 (default, not copied)", cores)
 	}
 
 	if memoryMB != 16384 {
-		t.Errorf("max_memory_mb = %d, want 16384 (T12 default, not copied)", memoryMB)
+		t.Errorf("max_memory_mb = %d, want 16384 (default, not copied)", memoryMB)
 	}
 	// The five copied fields must match the legacy source
 	if diskPerVM != 20 {

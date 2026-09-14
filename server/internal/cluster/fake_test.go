@@ -164,11 +164,11 @@ func nodeNames(t *testing.T) map[string]bool {
 	return names
 }
 
-// TestFake_Action_RejectsStatusIncompatibleTransition — T001b: the fake's
+// TestFake_Action_RejectsStatusIncompatibleTransition — the fake's
 // Action method rejects a transition that makes no sense for the VM's current
 // status (start on already-running, stop on already-stopped). This behaviour
-// did not exist in T05 — this tranche's User Story 1 Acceptance Scenario 2 is
-// the first caller that needs it. Real Proxmox already rejects these natively.
+// did not exist before — bulk actions are the first caller that needs it.
+// Real Proxmox already rejects these natively.
 //
 //nolint:paralleltest // serial: shared fake dataset
 func TestFake_Action_RejectsStatusIncompatibleTransition(t *testing.T) {

@@ -51,7 +51,7 @@ const (
 )
 
 // Gabarit is the administrator-editable size ceiling for one VM.
-// IsolationVLANTag is the per-cluster imposed VLAN (US6/issue-06 D6b + Q18):
+// IsolationVLANTag is the per-cluster imposed VLAN:
 // 0 means no tag imposed; a positive value is stamped on every created NIC.
 type Gabarit struct {
 	MaxSockets       int
@@ -72,7 +72,7 @@ type Quota struct {
 
 // Capacity is a node's configured aggregate capacité, live usage, and physical
 // CPU/RAM/disk facts. UsedDiskGB is the provisioned disk total from the
-// inventory projection (D4c), parallel to UsedRAMGB.
+// inventory projection, parallel to UsedRAMGB.
 type Capacity struct {
 	Node          string
 	MaxVMs        int
@@ -113,7 +113,7 @@ func New(st *store.Store, projection *inventory.Projection, client cluster.Clien
 	return &Policy{store: st, projection: projection, client: client}
 }
 
-// DefaultGabarit returns the compatibility values shipped before T12.
+// DefaultGabarit returns the compatibility values shipped.
 func DefaultGabarit() Gabarit {
 	return Gabarit{
 		MaxSockets: defaultMaxSockets, MaxCores: defaultMaxCores, MaxMemoryMB: defaultMaxMemoryMB,
@@ -214,7 +214,7 @@ func (service *Policy) poolVMCount(pool string) int {
 }
 
 // PoolHasName reports whether any VM in the given pool already carries name
-// (US5/issue-05 D5b: per-pool name uniqueness). The check is case-sensitive —
+// (per-pool name uniqueness). The check is case-sensitive
 // ValidateName already enforces lowercase hostname form, so "Web" and "web"
 // cannot both pass validation. Returns false when no projection is wired
 // (unit tests that don't need the check); callers that need a hard check

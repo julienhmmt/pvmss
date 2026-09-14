@@ -14,13 +14,14 @@ import (
 )
 
 // VMSerialConsole serves the two serial-terminal endpoints, both gated by the
-// same vm.Resolve() every other write uses (FR-001), mirroring VMConsole but
+// same vm.Resolve() every other write uses, mirroring VMConsole but
 // for the text/serial console path:
-//   - POST /api/v1/vms/:cluster/:vmid/serial-ticket — issues an opaque,
-//     single-use serial terminal ticket.
-//   - GET  /api/v1/vms/:cluster/:vmid/serial/websocket?token=<opaque> —
-//     upgrades to WebSocket, consumes the ticket, and relays raw bytes between
-//     the browser (xterm.js) and the cluster's serial terminal.
+// - POST /api/v1/vms/:cluster/:vmid/serial-ticket — issues an opaque,
+// single-use serial terminal ticket.
+//   - GET /api/v1/vms/:cluster/:vmid/serial/websocket?token=<opaque> —
+//
+// upgrades to WebSocket, consumes the ticket, and relays raw bytes between
+// the browser (xterm.js) and the cluster's serial terminal.
 //
 // The VNC flow in vm_console.go is untouched; this is a parallel handler that
 // reuses the same ConsoleTicketStore (parallel terminal-ticket map), the same
@@ -71,7 +72,9 @@ type VMSerialConsoleRegistryDeps struct {
 }
 
 // NewVMSerialConsoleWithRegistry creates the handler with per-request index and
-// cluster.TerminalRelay resolution, keyed on the request's own :cluster path
+//
+//	cluster.TerminalRelay resolution, keyed on the request's own :cluster path
+//
 // value. Mirrors NewVMConsoleWithRegistry.
 func NewVMSerialConsoleWithRegistry(deps VMSerialConsoleRegistryDeps) *VMSerialConsole {
 	handler := NewVMSerialConsole(deps.Projection, deps.Auth, deps.Relay, deps.Tickets, deps.Store, deps.Log)

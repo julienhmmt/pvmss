@@ -10,7 +10,7 @@ import (
 
 // snapshotCounts returns the row count of every catalog_* table in a v0.4 DB,
 // keyed by table name. Used to assert two recovery runs produce identical
-// persisted state (T013: sftp_config has no effect).
+// persisted state (sftp_config has no effect).
 func snapshotCounts(t *testing.T, db *sql.DB) map[string]int {
 	t.Helper()
 
@@ -29,8 +29,8 @@ func snapshotCounts(t *testing.T, db *sql.DB) map[string]int {
 	return out
 }
 
-// TestRun_FullPipeline exercises the whole recovery sequence (data-model.md
-// "Sequence"): every step maps its legacy table into the v0.4 catalog and
+// TestRun_FullPipeline exercises the whole recovery sequence: every step maps its legacy table
+// into the v0.4 catalog and
 // accumulates the summary. DryRun=true maps without writing, covering stepNodes,
 // stepBridges, stepISOs, stepProfiles, stepTags, stepVMLimits and stepNodeLimits
 // (storage expansion is skipped with a nil resolver, as the CLI does when no

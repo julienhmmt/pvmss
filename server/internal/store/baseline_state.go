@@ -9,7 +9,7 @@ import (
 )
 
 // BaselineState is the persisted delivery state of the generated cloud-init
-// baseline for an image-mode VM (cloud-image-console issue 03).
+// baseline for an image-mode VM.
 type BaselineState struct {
 	Cluster   string
 	VMID      int

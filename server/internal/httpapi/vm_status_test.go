@@ -20,7 +20,6 @@ type vmLiveStatusResponse struct {
 }
 
 // statusBatchResponse mirrors the POST /vms/status 200 body — a bare array
-// per ticket 01b.
 type statusBatchResponse = []statusBatchItem
 
 type statusBatchItem struct {
@@ -32,7 +31,7 @@ type statusBatchItem struct {
 }
 
 // =============================================================================
-// GET /vms/:cluster/:vmid/status — live status read (ticket 01b)
+// GET /vms/:cluster/:vmid/status — live status read
 // =============================================================================
 
 //nolint:paralleltest // serial: shared fake authentication state
@@ -123,7 +122,7 @@ func TestVMDetail_Status_NotFoundForUnknownVM(t *testing.T) {
 }
 
 // =============================================================================
-// POST /vms/status — batch live status read (ticket 01b)
+// POST /vms/status — batch live status read
 // =============================================================================
 
 //nolint:paralleltest // serial: shared fake authentication state

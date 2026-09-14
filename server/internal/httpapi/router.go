@@ -110,7 +110,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	registerVMRoutes(mux, cfg, protect, vmWriteLimiter, vmStatusLimiter)
 	registerAuthRoutes(mux, cfg, protect, authWriteLimiter, hops)
 
-	// User-owned cloud-init documents (cloudinit-userdata D3). Any signed-in
+	// User-owned cloud-init documents. Any signed-in
 	// user manages their own files; owner = session username, resolved inside
 	// the handler. Writes get the same CSRF + per-user rate limit as VM
 	// mutations.
@@ -122,7 +122,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		mux.Handle("DELETE /api/v1/cloudinit/files/{id}", protect(cfg.Auth.Require(http.HandlerFunc(cfg.CloudInitFiles.ServeDelete)), vmWriteLimiter))
 	}
 
-	// Issue #53 public documentation — audience-filtered list and rendered
+	// Public documentation — audience-filtered list and rendered
 	// single-page view. Not wrapped in auth.Require: the handler resolves the
 	// caller itself (to hide admin-audience pages from non-admins) and issues
 	// its own 401/403 on admin-audience pages.
@@ -131,8 +131,8 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		mux.Handle("GET /api/v1/docs/{id}", http.HandlerFunc(cfg.Docs.ServeDoc))
 	}
 
-	// Admin-only route groups (T11/T12/T13/T14/T18/issue#53). Each group is
-	// wired by its own helper behind the RequireAdmin guard (FR-008). Extracted
+	// Admin-only route groups. Each group is
+	// wired by its own helper behind the RequireAdmin guard. Extracted
 	// from NewRouter to keep its Cognitive Complexity under the SonarQube
 	// go:S3776 threshold.
 	registerAdminRoutes(mux, cfg, adminProtect)
@@ -159,7 +159,7 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 	// itself (for scope enforcement) and calls h.auth.Principal(r) directly,
 	// returning 401 on its own — wrapping would just re-run the same check.
 	mux.Handle("GET /api/v1/vms", cfg.VMs)
-	// T17 bulk VM power actions — same Principal pattern as VM list/detail:
+	// Bulk VM power actions — same Principal pattern as VM list/detail:
 	// the handler calls h.auth.Principal(r) directly and returns 401 on its
 	// own, so it is not wrapped in auth.Require. Registered before the
 	// {cluster}/{vmid} pattern so the literal "bulk-action" segment wins.
@@ -216,7 +216,7 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/snapshots", protect(snapshots, vmWriteLimiter))
 		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/rollback", protect(snapshots, vmWriteLimiter))
 		mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/snapshots/{name}", protect(snapshots, vmWriteLimiter))
-		// Ticket 08: one snapshot's stored config — the pre-rollback diff.
+		// One snapshot's stored config — the pre-rollback diff.
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/config", snapshots)
 	}
 
@@ -409,6 +409,7 @@ func writeTextError(w http.ResponseWriter, status int, detail string) error {
 // registerSerialConsoleRoutes wires the serial-terminal endpoints onto mux
 // when the handler is present. Extracted from NewRouter to keep its cyclomatic
 // complexity under the gocyclo threshold (one if-block per route group adds up
+//
 // across console, metrics, admin, tasks, ...).
 func registerSerialConsoleRoutes(mux *http.ServeMux, handler *VMSerialConsole, protect func(http.Handler, *userRateLimiter) http.Handler, limiter *userRateLimiter) {
 	if handler == nil {

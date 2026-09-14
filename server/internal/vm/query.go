@@ -1,7 +1,7 @@
 // Package vm resolves VM list queries against the inventory projection.
 // List is the single read path behind GET /api/v1/vms — scope enforcement,
 // search classification, filtering, sorting, and pagination all happen here,
-// in one pure function with no I/O (T04 data-model.md).
+// in one pure function with no I/O.
 //
 //nolint:wsl_v5 // query stages remain adjacent to make scope enforcement visible
 package vm
@@ -19,13 +19,13 @@ import (
 	"strings"
 )
 
-// ErrInvalidSortBy rejects a sort column the list does not support (FR-005) —
+// ErrInvalidSortBy rejects a sort column the list does not support
 // never silently defaulted.
 var ErrInvalidSortBy = errors.New("invalid sort column")
 
 // Scope is the requested result perimeter. All is honoured only for an admin
-// caller; any other caller is silently treated as Mine (FR-003 — an override,
-// never an error that would confirm the parameter exists to a probing caller).
+// caller; any other caller is silently treated as Mine (an override, never an error that would
+// confirm the parameter exists to a probing caller).
 type Scope string
 
 // List scopes: "mine" limits to the caller's pool, "all" spans every pool (admin only).
@@ -56,7 +56,7 @@ const (
 	SortDesc SortDir = "desc"
 )
 
-// EmptyReason distinguishes why a result page is empty (FR-008): the caller
+// EmptyReason distinguishes why a result page is empty: the caller
 // owns no VMs at all, or the current search/filters match none of them.
 type EmptyReason string
 
@@ -73,7 +73,7 @@ const (
 
 // ListQuery is the resolved combination of search, filters, sort, page, and
 // scope. Scope is a requested value only — List re-derives the effective
-// scope from the caller's identity and never trusts it as-is (FR-003).
+// scope from the caller's identity and never trusts it as-is.
 type ListQuery struct {
 	Cluster  string
 	Search   string
@@ -87,7 +87,7 @@ type ListQuery struct {
 }
 
 // Quota is the caller's VM count against their allowance. Allowed == -1 means
-// unlimited (V07 convention).
+// unlimited.
 type Quota struct {
 	Used    int
 	Allowed int
@@ -108,10 +108,9 @@ type ListResult struct {
 
 // List resolves query against the index snapshot for identity. It is pure —
 // no I/O, no mutation of the index — and is the only branch point for scope
-// in the whole request path (SC-005). allowedQuota is the configured per-user
+// in the whole request path. allowedQuota is the configured per-user
 // VM allowance reported in Quota (-1 = unlimited); the quota is attached
-// whenever the caller is not an admin, or an admin listing their own pool
-// (spec Assumptions 5.3).
+// whenever the caller is not an admin, or an admin listing their own pool.
 func List(source inventory.Source, query ListQuery, identity auth.Identity, allowedQuota int, services ...*policy.Policy) (ListResult, error) {
 	return list(context.Background(), source, query, identity, allowedQuota, services...)
 }
@@ -175,7 +174,7 @@ func list(ctx context.Context, source inventory.Source, query ListQuery, identit
 	return result, nil
 }
 
-// withDefaults fills zero-valued fields with the data-model.md defaults.
+// withDefaults fills zero-valued fields with the defaults.
 func withDefaults(query ListQuery) ListQuery {
 	if query.Page < 1 {
 		query.Page = defaultPage
@@ -206,7 +205,7 @@ func validSortBy(sortBy SortBy) bool {
 }
 
 // scopedVMs is the ONLY branch point for scope in the whole request path
-// (FR-003, SC-005): scope=all is honoured for an admin and silently treated
+// scope=all is honoured for an admin and silently treated
 // as mine for anyone else.
 func scopedVMs(source inventory.Source, query ListQuery, identity auth.Identity) []cluster.VM {
 	indexes := source.All()
@@ -271,7 +270,7 @@ func appendScopedVMs(result []cluster.VM, index *inventory.Index, pool string, a
 	return append(result, index.ByPool[pool]...)
 }
 
-// searchVMs classifies the raw text server-side (research.md): numeric-only
+// searchVMs classifies the raw text server-side: numeric-only
 // also tries an exact VMID match; name substring and tag match always run.
 // The union is deduplicated because the source set already is.
 func searchVMs(vms []cluster.VM, search string) []cluster.VM {
@@ -306,7 +305,6 @@ func hasMatchingTag(tags []string, loweredSearch string) bool {
 
 // nodeFacet lists the nodes present before the node filter is applied, so
 // the filter's own dropdown never shrinks to hide its selection
-// (data-model.md step 4).
 func nodeFacet(vms []cluster.VM) []string {
 	seen := make(map[string]struct{}, len(vms))
 

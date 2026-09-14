@@ -155,7 +155,7 @@ func seedStaleStorageApprovals(t *testing.T, st *store.Store) {
 }
 
 // seedTagApprovals seeds the admin-curated tags the create tests reference
-// (FR-013: tags outside the catalog are rejected).
+// (tags outside the catalog are rejected).
 func seedTagApprovals(t *testing.T, st *store.Store) {
 	t.Helper()
 
@@ -190,7 +190,7 @@ func postVMCreate(t *testing.T, handler *httpapi.VMCreate, body string, cookie *
 	return recorder
 }
 
-// TestVMCreate_SimpleModeSuccess — T009/US1: a simple-mode request returns
+// TestVMCreate_SimpleModeSuccess — a simple-mode request returns
 // 202 and the fake receives a spec whose pool is the actor's own.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -237,7 +237,7 @@ func TestVMCreate_SimpleModeSuccess(t *testing.T) {
 	t.Fatalf("created VM %d not in snapshot", result.VMID)
 }
 
-// TestVMCreate_PoolFieldHasNoEffect — T010/SC-003: a forged pool field in the
+// TestVMCreate_PoolFieldHasNoEffect — a forged pool field in the
 // raw body either fails strict decoding or is dropped; the created VM's pool
 // is the actor's regardless.
 //
@@ -249,7 +249,7 @@ func TestVMCreate_PoolFieldHasNoEffect(t *testing.T) {
 	response := postVMCreate(t, handler,
 		`{"cluster":"default","name":"web-05","profileId":"small","pool":"pool-bob"}`, cookie)
 	if response.Code == http.StatusBadRequest {
-		return // strict decoder rejected the unknown field — equally valid (quickstart SC-003)
+		return // strict decoder rejected the unknown field — equally valid (quickstart)
 	}
 
 	if response.Code != http.StatusAccepted {
@@ -294,7 +294,7 @@ func TestVMCreate_AdminCannotCreate(t *testing.T) {
 	}
 }
 
-// TestVMCreate_CatalogViolation — SC-004: a storage outside the seeded
+// TestVMCreate_CatalogViolation — a storage outside the seeded
 // catalog is rejected with 400 and no task is created.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -323,7 +323,7 @@ func TestVMCreate_CatalogViolation(t *testing.T) {
 	}
 }
 
-// TestVMCreateCatalog_SeededShape — T013/FR-002: the catalog endpoint serves
+// TestVMCreateCatalog_SeededShape — the catalog endpoint serves
 // the seeded fixture (contract shape), sourced from the store.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -459,7 +459,7 @@ func TestVMCreateCatalog_SelectsStorageClientByCluster(t *testing.T) {
 	}
 }
 
-// TestVMCreate_DetailedModeExactSpec — T024: every field explicit; the fake
+// TestVMCreate_DetailedModeExactSpec — every field explicit; the fake
 // receives exactly those values, and no profile is involved.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -507,7 +507,7 @@ func TestVMCreate_DetailedModeExactSpec(t *testing.T) {
 	t.Fatalf("created VM %d not in snapshot", result.VMID)
 }
 
-// TestVMCreate_DetailedCatalogViolations — T025/SC-004: each resource kind
+// TestVMCreate_DetailedCatalogViolations — each resource kind
 // outside the seeded catalog is rejected individually, no task created.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -547,8 +547,8 @@ func TestVMCreate_DetailedCatalogViolations(t *testing.T) {
 	}
 }
 
-// TestVMCreate_DetailedInvalidHostname — T026: the detailed path enforces the
-// same hostname rule as simple mode (FR-007).
+// TestVMCreate_DetailedInvalidHostname — the detailed path enforces the
+// same hostname rule as simple mode.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreate_DetailedInvalidHostname(t *testing.T) {
@@ -565,7 +565,7 @@ func TestVMCreate_DetailedInvalidHostname(t *testing.T) {
 	assertAPIError(t, response.Body.Bytes(), "invalid_name")
 }
 
-// TestVMCreate_DetailedOutOfRange — T027/FR-008: hardware values past the
+// TestVMCreate_DetailedOutOfRange — hardware values past the
 // fixed technical ceiling are rejected before any cluster call.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -614,7 +614,7 @@ func TestVMCreate_DetailedOutOfRange(t *testing.T) {
 	}
 }
 
-// --- T18 cloud-init template additive cases (T012) ---
+//  - cloud-init template additive cases -
 
 // createCatalogTemplate inserts an enabled cloud-init template directly via the
 // catalog layer and returns its id, for vm-create handler tests.
@@ -631,8 +631,8 @@ func createCatalogTemplate(t *testing.T, st *store.Store) string {
 
 // TestVMCreateCatalog_CloudInitTemplatesExposedWhenWriteEnabled — GET
 // .../catalog lists the approved cloud-init templates and reports
-// cloudInitWriteEnabled=true when the cluster client can write snippets
-// (spec D1). The response must not carry the template content.
+// cloudInitWriteEnabled=true when the cluster client can write snippets.
+// The response must not carry the template content.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreateCatalog_CloudInitTemplatesExposedWhenWriteEnabled(t *testing.T) {
@@ -678,7 +678,7 @@ func TestVMCreateCatalog_CloudInitTemplatesExposedWhenWriteEnabled(t *testing.T)
 // TestVMCreateCatalog_CloudInitTemplatesHiddenWithoutWriteTarget — a cluster
 // client that cannot write snippets (no SnippetWriteAvailable capability, or
 // capability reporting false) gets an empty template list and
-// cloudInitWriteEnabled=false (spec D6: no write target, no picker).
+// cloudInitWriteEnabled=false (no write target, no picker).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreateCatalog_CloudInitTemplatesHiddenWithoutWriteTarget(t *testing.T) {
@@ -749,7 +749,7 @@ func TestVMCreate_WithCloudInitTemplate_Success(t *testing.T) {
 }
 
 // TestVMCreate_WithCloudInitTemplate_PushFailure — a simulated push failure
-// still returns 202 but the response carries cloudInitPushError (FR-008).
+// still returns 202 but the response carries cloudInitPushError.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreate_WithCloudInitTemplate_PushFailure(t *testing.T) {
@@ -779,8 +779,8 @@ func TestVMCreate_WithCloudInitTemplate_PushFailure(t *testing.T) {
 }
 
 // TestVMCreate_WithCloudInitTemplate_WriteUnavailable409 — a cloud-init
-// document request on a cluster with no snippet write target is refused with
-// 409 cloudinit_write_unavailable before any VMID is allocated (spec D6).
+// document request on a cluster with no snippet write target is refused with 409
+// cloudinit_write_unavailable before any VMID is allocated.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreate_WithCloudInitTemplate_WriteUnavailable409(t *testing.T) {
@@ -802,7 +802,7 @@ func TestVMCreate_WithCloudInitTemplate_WriteUnavailable409(t *testing.T) {
 }
 
 // TestVMCreate_UnknownCloudInitTemplate_Returns400 — an unknown template id is
-// rejected with 400 not_approved before any VMID is allocated (FR-006, SC-004).
+// rejected with 400 not_approved before any VMID is allocated.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreate_UnknownCloudInitTemplate_Returns400(t *testing.T) {
@@ -822,7 +822,7 @@ func TestVMCreate_UnknownCloudInitTemplate_Returns400(t *testing.T) {
 	}
 }
 
-// newTasksHandler builds the task-status handler with a real worker so the// ok-transition genuinely rebuilds the projection (FR-018).
+// newTasksHandler builds the task-status handler with a real worker so the// ok-transition genuinely rebuilds the projection.
 func newTasksHandler(t *testing.T) (*httpapi.Tasks, *httpapi.Auth, *inventory.Projection) {
 	t.Helper()
 	t.Cleanup(cluster.ResetFake)
@@ -842,7 +842,7 @@ func newTasksHandler(t *testing.T) (*httpapi.Tasks, *httpapi.Auth, *inventory.Pr
 	return httpapi.NewTasksWithRegistry(authHandler, provider, cluster.Fake{}, worker, nil, logger), authHandler, projection
 }
 
-// --- cloudinit-userdata ticket 04: user file id through the HTTP surface ---
+//  - User file id through the HTTP surface -
 
 // createUserCloudInitFile seeds one of alice's own files via the domain path
 // and returns its id.

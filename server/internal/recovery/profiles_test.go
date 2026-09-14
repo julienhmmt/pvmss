@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// T009: vm_profiles (valid JSON, malformed JSON skip case) → catalog_profiles.
+// vm_profiles (valid JSON, malformed JSON skip case) → catalog_profiles.
 func TestMapProfiles_ValidJSON(t *testing.T) {
 	t.Parallel()
 

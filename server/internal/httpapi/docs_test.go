@@ -400,8 +400,8 @@ func TestAdminDocs_SystemDeleteRefused(t *testing.T) {
 	// (create always sets is_system=false), so emulate a seeded system page by
 	// creating then flipping via the store is not exposed. Instead, seed by
 	// using the admin create endpoint and then mark system through a direct
-	// store update is not available from the handler. We instead assert the
-	// 403 path by creating a normal page and confirming non-system delete works,
+	// store update is not available from the handler. We instead assert the 403 path by creating a
+	// normal page and confirming non-system delete works,
 	// and rely on the catalog/store tests for the system-page guard. Here we
 	// verify the error envelope shape for a missing page delete is 404.
 	rec := docsServe(t, docs, admin, auth, docsRequest(http.MethodDelete, "/api/v1/admin/docs/nope/en", cookie, ""))

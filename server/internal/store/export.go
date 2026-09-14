@@ -12,9 +12,8 @@ import (
 // ExportDatabase produces a clean, internally consistent snapshot of the live
 // SQLite database and streams it to w. It uses VACUUM INTO — a single SQL
 // statement that produces a compacted snapshot of a WAL-mode database without
-// blocking concurrent readers or writers on the live connection (T14 FR-007,
-// constitution VIII: the database's own native mechanism, not hand-rolled
-// page-by-page copy code).
+// blocking concurrent readers or writers on the live connection (the
+// database's own native mechanism, not hand-rolled page-by-page copy code).
 //
 // The snapshot is written to a temp file in the same directory as the live
 // database (so the rename-in-place guarantee holds on the same filesystem),

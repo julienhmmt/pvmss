@@ -7,7 +7,7 @@ import (
 )
 
 // CatalogCloudInitTemplate is one catalog_cloudinit_templates row with its
-// enabled state and full content (T18).
+// enabled state and full content.
 type CatalogCloudInitTemplate struct {
 	ID        string
 	Label     string
@@ -31,7 +31,7 @@ func (s *Store) CatalogCloudInitTemplatesAll(ctx context.Context, cluster string
 }
 
 // CatalogCloudInitTemplatesEnabled returns only enabled cloud-init template
-// rows for a cluster, ordered by id — T06's catalog reader's data source.
+// rows for a cluster, ordered by id — the catalog reader's data source.
 func (s *Store) CatalogCloudInitTemplatesEnabled(ctx context.Context, cluster string) ([]CatalogCloudInitTemplate, error) {
 	return queryCatalog(ctx, s.db, "catalog cloudinit templates enabled",
 		`SELECT id, label, content, enabled, created_at, updated_at FROM catalog_cloudinit_templates WHERE cluster = ? AND enabled = 1 ORDER BY id`,
@@ -65,7 +65,7 @@ func (s *Store) UpdateCloudInitTemplate(ctx context.Context, cluster, id, label,
 }
 
 // DeleteCloudInitTemplate removes a template row. Returns sql.ErrNoRows if the
-// template did not exist. No cascade (FR-009).
+// template did not exist. No cascade.
 func (s *Store) DeleteCloudInitTemplate(ctx context.Context, cluster, id string) error {
 	return execUpdateOne(ctx, s.db,
 		`DELETE FROM catalog_cloudinit_templates WHERE cluster = ? AND id = ?`,

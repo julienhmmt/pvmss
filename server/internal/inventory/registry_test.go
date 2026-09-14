@@ -104,14 +104,14 @@ func TestRegistry_StartRefreshMutateRefreshCycle(t *testing.T) {
 	defer cancel()
 	registry.Start(ctx)
 
-	// Phase 1: initial refresh populates the projection (T015).
+	// Initial refresh populates the projection.
 	waitForProjection(t, projection, 2*time.Second)
 	initial := projection.Load()
 	if len(initial.ByVMID) != 25 {
 		t.Fatalf("expected 25 VMs after initial refresh, got %d", len(initial.ByVMID))
 	}
 
-	// Phase 2: wait for at least one ticker-driven automatic refresh.
+	// Wait for at least one ticker-driven automatic refresh.
 	time.Sleep(80 * time.Millisecond)
 	autoRefreshed := projection.Load()
 	if autoRefreshed == nil {
@@ -121,7 +121,7 @@ func TestRegistry_StartRefreshMutateRefreshCycle(t *testing.T) {
 		t.Fatalf("auto-refresh RefreshedAt %v is before initial %v", autoRefreshed.RefreshedAt, initial.RefreshedAt)
 	}
 
-	// Phase 3: mutate the fake cluster (delete a VM), then manual refresh.
+	// Mutate the fake cluster (delete a VM), then manual refresh.
 	firstVM := firstVMFromIndex(t, initial)
 	if err := writer.Delete(context.Background(), firstVM.Node, firstVM.VMID); err != nil {
 		t.Fatalf("delete VM: %v", err)
@@ -142,7 +142,7 @@ func TestRegistry_StartRefreshMutateRefreshCycle(t *testing.T) {
 		t.Fatalf("deleted VM %d still in projection", firstVM.VMID)
 	}
 
-	// Phase 4: cancel context — workers must stop without hanging.
+	// Cancel context — workers must stop without hanging.
 	cancel()
 	done := make(chan struct{})
 	go func() {

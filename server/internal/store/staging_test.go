@@ -30,7 +30,7 @@ func newStagingStore(t *testing.T) *store.Store {
 	return st
 }
 
-// TestImportStaging_DistinctTokensForTwoStages — T009: two concurrent stages
+// TestImportStaging_DistinctTokensForTwoStages — two concurrent stages
 // get distinct tokens.
 //
 //nolint:paralleltest // serial: shared staging map
@@ -50,7 +50,7 @@ func TestImportStaging_DistinctTokensForTwoStages(t *testing.T) {
 	}
 }
 
-// TestImportStaging_ExpiresAfterTTL — T009: a staged entry expires after its
+// TestImportStaging_ExpiresAfterTTL — a staged entry expires after its
 // TTL and is unreachable by ConfirmImport afterward.
 //
 //nolint:paralleltest // serial: shared staging map
@@ -73,7 +73,7 @@ func TestImportStaging_ExpiresAfterTTL(t *testing.T) {
 	}
 }
 
-// TestImportStaging_UnknownTokenReturnsNotFound — T009: a token that was
+// TestImportStaging_UnknownTokenReturnsNotFound — a token that was
 // never staged returns the not-found sentinel.
 //
 //nolint:paralleltest // serial: shared staging map

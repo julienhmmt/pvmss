@@ -143,7 +143,7 @@ func TestAdminClusters_TestUnreachableIs200(t *testing.T) {
 
 // adminClusterRequest builds and dispatches an authenticated request against
 // one AdminClusters handler method, wrapped by the real RequireAdmin guard
-// (T026's own instrument: swap cookie for a non-admin one to prove 403).
+// (own instrument: swap cookie for a non-admin one to prove 403).
 // clusterRequestSpec groups the request-specific parameters of adminClusterRequest.
 // It collapses the five positional parameters that helper used to take (SonarQube go:S107).
 type clusterRequestSpec struct {
@@ -186,7 +186,7 @@ func aliceClusterCookie(t *testing.T, authHandler *httpapi.Auth) *http.Cookie {
 	return response.Result().Cookies()[0]
 }
 
-// TestAdminClusters_NonAdminReturns403 — T026: every /admin/clusters/*
+// TestAdminClusters_NonAdminReturns403 — every /admin/clusters/*
 // endpoint rejects a non-admin identity with 403, matching the contract's
 // {"code":"forbidden","message":"admin only"} body on every one of the six.
 //
@@ -230,10 +230,10 @@ func TestAdminClusters_NonAdminReturns403(t *testing.T) {
 	}
 }
 
-// TestAdminClusters_CreateValidatesAndReactivates — T025 create path: 201 on
+// TestAdminClusters_CreateValidatesAndReactivates — create path: 201 on
 // a genuinely new name, 400 on an invalid name, 409 on an active-name
 // collision, and 201-with-reactivation (removedAt cleared, fresh token
-// required) on re-adding a previously soft-deleted name (FR-005, FR-007).
+// required) on re-adding a previously soft-deleted name.
 //
 //nolint:paralleltest,gocyclo // HTTP fixture shares fake cluster state; create path covers 4 contract branches in one sequential test
 func TestAdminClusters_CreateValidatesAndReactivates(t *testing.T) {
@@ -289,9 +289,9 @@ func TestAdminClusters_CreateValidatesAndReactivates(t *testing.T) {
 	}
 }
 
-// TestAdminClusters_UpdateRejectsNameAnd404sOnRemoved — T025 update path:
+// TestAdminClusters_UpdateRejectsNameAnd404sOnRemoved — update path:
 // 200 on a valid update, the request schema rejects any "name" field
-// outright (FR-004: immutable by construction, not merely ignored), and
+// outright (immutable by construction, not merely ignored), and
 // both an unknown and a soft-deleted cluster 404 rather than silently
 // creating or resurrecting a row.
 //
@@ -345,9 +345,9 @@ func TestAdminClusters_UpdateRejectsNameAnd404sOnRemoved(t *testing.T) {
 	}
 }
 
-// TestAdminClusters_TestReachableReportsOKAndPersists — T025 test path
+// TestAdminClusters_TestReachableReportsOKAndPersists — test path
 // (reachable branch): a healthy cluster's test returns 200 status "ok" with
-// version/counts, and — per FR-009/the contract's "a test is the refresh"
+// version/counts, and — per the contract's "a test is the refresh"
 // rule — the subsequent GET /admin/clusters list reflects the new
 // lastTestStatus/lastTestAt.
 //
@@ -436,7 +436,7 @@ func TestAdminClusters_LiveVersionOverridesStaleDB(t *testing.T) {
 	t.Fatalf("cluster %q missing from list", auditTestCluster)
 }
 
-// TestAdminClusters_OIDCToggleIsolated — T025/FR-011: toggling one cluster's
+// TestAdminClusters_OIDCToggleIsolated — toggling one cluster's
 // OIDC flag changes only that row; every other cluster's flag is untouched.
 // Also covers the 404 path for an unknown/removed cluster.
 //
@@ -475,8 +475,8 @@ func TestAdminClusters_OIDCToggleIsolated(t *testing.T) {
 }
 
 // TestAdminClusters_DeleteLastClusterConflictAndReactivateRoundTrip —
-// T025/FR-027: removing the sole remaining active cluster is refused with
-// 409, never leaving PVMSS with zero addressable clusters. Also proves the
+// Removing the sole remaining active cluster is refused with 409, never leaving PVMSS with zero
+// addressable clusters. Also proves the
 // unknown-name 404 path.
 //
 //nolint:paralleltest // HTTP fixture shares fake cluster state
@@ -507,7 +507,7 @@ func TestAdminClusters_DeleteLastClusterConflictAndReactivateRoundTrip(t *testin
 	assertClusterErrorBody(t, response, "last_cluster")
 }
 
-// TestAdminClusters_SnippetTargetValidation — spec D8: the snippet write
+// TestAdminClusters_SnippetTargetValidation — the snippet write
 // target is both-or-neither, the dir absolute, the storage id a valid Proxmox
 // identifier; a valid pair persists and flips cloudInitWriteEnabled.
 //

@@ -28,7 +28,7 @@ const schemaV3 = `CREATE TABLE sessions (
 )`
 
 // schemaV4 drops the NOT NULL constraint on api_tokens.expires_at: creation
-// tokens no longer take an expiry input (contracts/auth-tokens.md), so the
+// tokens no longer take an expiry input, so the
 // column must accept NULL. SQLite has no ALTER COLUMN, so the table is rebuilt.
 const schemaV4 = `
 ALTER TABLE api_tokens RENAME TO api_tokens_v2;
@@ -48,17 +48,17 @@ INSERT INTO api_tokens (id, token_hash, username, is_admin, scope, label, expire
 DROP TABLE api_tokens_v2;
 `
 
-// schemaV5 adds the tenancy anchor (T02 data-model: one pool per user) to
-// both identity stores, so T04's scoped reads can resolve ByPool[identity.Pool].
+// schemaV5 adds the tenancy anchor (one pool per user) to
+// both identity stores, so the scoped reads can resolve ByPool[identity.Pool].
 const schemaV5 = `
 ALTER TABLE sessions ADD COLUMN pool TEXT NOT NULL DEFAULT '';
 ALTER TABLE api_tokens ADD COLUMN pool TEXT NOT NULL DEFAULT '';
 `
 
-// schemaV6 adds the audit_log table (T05 FR-009). Every VM write flows through
+// schemaV6 adds the audit_log table. Every VM write flows through
 // Resolve() and is recorded here with the real acting user — closing the
-// traceability gap S01's document names as the reason the flaw went undetected.
-// Write-only from T05's perspective; a read endpoint belongs to T14.
+// traceability gap the document names as the reason the flaw went undetected.
+// Write-only by design; a read endpoint lives elsewhere.
 const schemaV6 = `CREATE TABLE audit_log (
 	id        INTEGER PRIMARY KEY AUTOINCREMENT,
 	actor     TEXT NOT NULL,
@@ -69,7 +69,7 @@ const schemaV6 = `CREATE TABLE audit_log (
 )`
 
 // schemaV11 adds runtime-managed cluster records and records the cluster used
-// by browser sessions. The exact version follows T14's latest migration.
+// by browser sessions. The exact version follows the latest migration.
 const schemaV11 = `
 CREATE TABLE clusters (
 	name                       TEXT PRIMARY KEY,
@@ -88,9 +88,9 @@ CREATE TABLE clusters (
 ALTER TABLE sessions ADD COLUMN cluster TEXT NOT NULL DEFAULT '';
 `
 
-// schemaV12 adds the admin-curated cloud-init template catalog (T18): a sibling
-// to T11's catalog_profiles, full CRUD with no Proxmox-side discovery source.
-// The version is provisional (plan.md Constraints) — the exact integer is fixed
+// schemaV12 adds the admin-curated cloud-init template catalog: a sibling
+// to the catalog_profiles, full CRUD with no Proxmox-side discovery source.
+// The version is provisional — the exact integer is fixed
 // by actual merge order, not spec-writing order.
 const schemaV12 = `CREATE TABLE catalog_cloudinit_templates (
 	cluster    TEXT NOT NULL,
@@ -103,7 +103,7 @@ const schemaV12 = `CREATE TABLE catalog_cloudinit_templates (
 	PRIMARY KEY (cluster, id)
 )`
 
-// schemaV13 adds admin-authored documentation pages (issue #53): Markdown
+// schemaV13 adds admin-authored documentation pages: Markdown
 // pages with a user/admin audience, an enabled toggle, and a built-in
 // is_system flag that protects seeded pages from delete or id/lang change.
 // The composite PK (id, lang) lets the same page exist in multiple languages;
@@ -138,7 +138,7 @@ CREATE TABLE catalog_bridges (
 // schemaV15 records the pools PVMSS has provisioned so deletion can be scoped
 // to managed pools only. A row is written only after pools.Create succeeds
 // end-to-end; pre-existing Proxmox pools are intentionally not adopted because
-// the legacy schema stored no reliable PVMSS-origin marker (issue #5).
+// the legacy schema stored no reliable PVMSS-origin marker.
 const schemaV15 = `CREATE TABLE managed_pools (
 	cluster    TEXT NOT NULL,
 	name       TEXT NOT NULL,
@@ -174,7 +174,7 @@ CREATE TABLE catalog_isos (
 // header against both the cookie and the persisted session state.
 const schemaV18 = `ALTER TABLE sessions ADD COLUMN csrf_token TEXT NOT NULL DEFAULT ''`
 
-// schemaV20 adds the audit retention configuration (issue #02). A single-row
+// schemaV20 adds the audit retention configuration. A single-row
 // table seeded with the default 365-day retention; the floor of 30 days is
 // enforced by SetAuditConfig, not by the schema, so a future floor change is
 // a code edit rather than a migration.
@@ -185,16 +185,16 @@ const schemaV20 = `CREATE TABLE audit_config (
 INSERT INTO audit_config (id, retention_days) VALUES (1, 365);`
 
 // schemaV21 adds a sockets column to catalog_profiles so the admin can set a
-// profile's socket count (US2/D3b). Existing rows default to 1, preserving the
+// profile's socket count. Existing rows default to 1, preserving the
 // previous hardcoded behaviour.
 const schemaV21 = `ALTER TABLE catalog_profiles ADD COLUMN sockets INTEGER NOT NULL DEFAULT 1`
 
-// schemaV22 adds the approved Proxmox template catalog (US2/issue-02): a
+// schemaV22 adds the approved Proxmox template catalog: a
 // sibling to catalog_isos, keyed by (cluster, vmid) since Proxmox VMIDs are
-// cluster-unique. The node determines where the clone lands (D2b: cross-node
-// clone is forbidden). cloud_init_capable drives the full/linked decision
-// (D2c/issue-02 §5). disk_storage and disk_size_gb drive the resize decision
-// (D2c: enlarge after clone, reject reduction before VMID).
+// cluster-unique. The node determines where the clone lands (cross-node clone is forbidden).
+// cloud_init_capable drives the full/linked decision.
+// disk_storage and disk_size_gb drive the resize decision
+// (enlarge after clone, reject reduction before VMID).
 //
 // No seed: a real deployment starts with zero approved templates — admins
 // approve whatever their cluster actually reports (the fake demo source
@@ -213,8 +213,8 @@ const schemaV22 = `CREATE TABLE catalog_templates (
 );`
 
 // schemaV23 adds an optional per-cluster isolation VLAN tag to vm_limits
-// (US6/issue-06 D6b + Q18: one VLAN per cluster, imposed — the admin sets it
-// alongside the gabarit; empty/0 = no tag imposed). Tenants never choose the
+// (one VLAN per cluster, imposed — the admin sets it alongside the gabarit; empty/0 = no tag
+// imposed). Tenants never choose the
 // segmentation; the create path stamps the tag on every NIC.
 const schemaV23 = `ALTER TABLE vm_limits ADD COLUMN isolation_vlan_tag INTEGER NOT NULL DEFAULT 0`
 
@@ -285,14 +285,14 @@ INSERT INTO catalog_images (cluster, node, storage, file, size_bytes) VALUES
 	('default', 'pve-node-01', 'local', 'ubuntu-24.04-server-cloudimg-amd64.qcow2', 644245094);`
 
 // schemaV28 adds the per-cluster cloud-init snippet write target
-// (.scratch/cloudinit-userdata, D1): snippet_dir is an absolute path inside
+// snippet_dir is an absolute path inside
 // the PVMSS process's filesystem that IS <storage path>/snippets/ of the
 // Proxmox storage named by snippet_storage. Both empty = documents disabled.
 const schemaV28 = `ALTER TABLE clusters ADD COLUMN snippet_dir TEXT NOT NULL DEFAULT '';
 ALTER TABLE clusters ADD COLUMN snippet_storage TEXT NOT NULL DEFAULT '';`
 
-// schemaV29 adds user-owned cloud-init documents (.scratch/cloudinit-userdata,
-// D3). Owner is the session username; there is no cluster column — a file is
+// schemaV29 adds user-owned cloud-init documents. Owner is the session username; there is no
+// cluster column — a file is
 // text the user reuses on any cluster. Every query filters on owner.
 const schemaV29 = `CREATE TABLE user_cloudinit_files (
 	owner      TEXT NOT NULL,
@@ -304,9 +304,9 @@ const schemaV29 = `CREATE TABLE user_cloudinit_files (
 	PRIMARY KEY (owner, id)
 )`
 
-// schemaV30 adds per-VM baseline delivery state for image-mode VMs
-// (cloud-image-console issue 03). state is "applied", "override", or
-// "not_delivered"; error carries the reason when state is "not_delivered".
+// schemaV30 adds per-VM baseline delivery state for image-mode VMs.
+// state is "applied", "override", or "not_delivered"; error carries the reason when state is
+// "not_delivered".
 const schemaV30 = `CREATE TABLE vm_baseline_state (
 	cluster     TEXT NOT NULL,
 	vmid         INTEGER NOT NULL,

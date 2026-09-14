@@ -367,7 +367,7 @@ func (h *VMCloudInit) handleSSHKey(w http.ResponseWriter, r *http.Request) {
 
 // consolePasswordResponse carries the generated password once for display.
 // The password is not persisted, not logged, and not recorded in the audit
-// trail (cloud-image-console issue 05).
+// trail.
 type consolePasswordResponse struct {
 	Password string `json:"password"`
 }
@@ -499,7 +499,7 @@ func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 	case errors.Is(err, cluster.ErrSSHKeyUserUnknown):
 		h.writeError(w, http.StatusBadRequest, "ssh_user_unknown", "the cloud-init user does not exist on the guest")
 	case h.writeGuestAgentError(w, err):
-		// Already written by the helper (ticket 02/05 password-path errors).
+		// Already written by the helper (password-path errors).
 	case errors.Is(err, cloudinit.ErrSnippetPrefix), errors.Is(err, cloudinit.ErrSnippetTooLarge), errors.Is(err, cloudinit.ErrSnippetInvalidUTF8):
 		h.writeError(w, http.StatusBadRequest, "invalid_snippet", err.Error())
 	case errors.Is(err, vm.ErrSnippetPushFailed):

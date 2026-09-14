@@ -9,7 +9,7 @@ import (
 	"pvmss/server/internal/inventory"
 )
 
-// Sentinel errors for the SeaBIOS retrofit (issue 08).
+// Sentinel errors for the SeaBIOS retrofit.
 var (
 	// ErrRetrofitRefused is returned when the VM's boot depends on UEFI
 	// (TPM state or Secure Boot present) and cannot be safely switched.
@@ -39,20 +39,20 @@ type RetrofitDependencies struct {
 }
 
 // RetrofitToSeaBIOS switches an existing UEFI VM to SeaBIOS so its graphical
-// console becomes readable (cloud-image-console issue 08). The flow:
+// console becomes readable. The flow:
 //
-//  1. Resolve the VM (ownership gate).
-//  2. Read the live firmware config; refuse TPM state or Secure Boot.
-//  3. If running, require Confirm; stop the VM.
-//  4. Delete bios/machine/efidisk0/tpmstate0.
-//  5. Start the VM again. A failed restart returns ErrRetrofitRestartFailed
-//     so the operator gets a clear, actionable error rather than a silent
-//     partial state.
-//  6. Audit + refresh.
+// 1. Resolve the VM (ownership gate).
+// 2. Read the live firmware config; refuse TPM state or Secure Boot.
+// 3. If running, require Confirm; stop the VM.
+// 4. Delete bios/machine/efidisk0/tpmstate0.
+// 5. Start the VM again. A failed restart returns ErrRetrofitRestartFailed
+// so the operator gets a clear, actionable error rather than a silent
+// partial state.
+// 6. Audit + refresh.
 //
 // cloud-init's packages and runcmd are once-per-instance, so the baseline
 // cannot be retrofitted — only the firmware. This is the only retrofittable
-// half of the cloud-image-console effort.
+// half of the effort.
 func RetrofitToSeaBIOS(ctx context.Context, deps RetrofitDependencies) error {
 	entity, err := Resolve(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
 	if err != nil {
