@@ -12,6 +12,38 @@ cluster. **Nœuds** approuve les hôtes sur lesquels les utilisateurs peuvent
 créer des VM. **Pools** crée les utilisateurs self-service (utilisateur
 Proxmox + pool + ACL en une étape).
 
+### Cible d'écriture cloud-init (stockage snippets)
+
+PVMSS écrit les vendor-data cloud-init de chaque VM comme un fichier snippet
+sur le cluster, puis l'attache via `cicustom`. L'API REST de Proxmox ne peut
+pas écrire de snippets, donc PVMSS écrit directement dans un répertoire
+bind-mounté dans son conteneur. Pour activer les documents cloud-init et la
+baseline générée (qemu-guest-agent) sur un cluster :
+
+1. Choisissez un stockage Proxmox ayant le contenu **snippets** activé. Pour
+   l'activer : **Datacenter → Stockage → <stockage> → Contenu**, cochez
+   `snippets`. Le stockage doit être visible par chaque nœud qui hébergera
+   des VM issues d'images — un stockage partagé (NFS, CephFS, `dir` sur un
+   montage partagé) est le choix usuel.
+2. Dans **Admin → Clusters → Modifier**, le champ **Stockage snippets**
+   liste chaque stockage compatible snippets que PVMSS voit sur le cluster.
+   Sélectionnez-en un. Si la liste est vide, aucun stockage du cluster
+   n'annonce le contenu snippets — activez-le dans Proxmox puis rouvrez le
+   formulaire.
+3. Montez le répertoire `snippets/` de ce stockage dans le conteneur PVMSS à
+   un chemin connu et indiquez ce chemin dans **Répertoire des snippets**.
+   Le chemin doit être le même répertoire que celui que Proxmox lit pour ce
+   stockage. Pour un stockage `dir` avec `path /var/lib/vz`, le répertoire
+   snippets est `/var/lib/vz/snippets` ; pour NFS ou CephFS, montez le
+   partage et utilisez son sous-répertoire `snippets/`.
+4. Enregistrez et lancez **Test**. La ligne du cluster doit afficher
+   `cloud-init : on`.
+
+Laissez les deux champs vides pour désactiver les documents cloud-init sur
+le cluster. Les VM créées depuis des images cloud signaleront alors
+`Baseline cloud-init non livrée` et la baseline qemu-guest-agent ne sera pas
+attachée.
+
 ## Catalogue
 
 La section **Catalogue** permet d'approuver ou masquer les stockages, ISO,

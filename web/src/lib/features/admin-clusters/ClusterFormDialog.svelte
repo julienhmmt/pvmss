@@ -6,8 +6,9 @@
 	import FormField from '$lib/shared/ui/FormField.svelte';
 	import FormSection from '$lib/shared/ui/FormSection.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
+	import Select from '$lib/shared/ui/Select.svelte';
 	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
-	import type { AdminCluster, ClusterInput } from './clusters.svelte';
+	import type { AdminCluster, ClusterInput, SnippetStorage } from './clusters.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -15,11 +16,22 @@
 		editing: AdminCluster | null;
 		saving: boolean;
 		error: string | null;
+		snippetStorages: SnippetStorage[];
+		snippetStoragesLoading: boolean;
 		onClose: () => void;
 		onSubmit: (input: ClusterInput) => void;
 	}
 
-	let { open = $bindable(false), editing, saving, error, onClose, onSubmit }: Props = $props();
+	let {
+		open = $bindable(false),
+		editing,
+		saving,
+		error,
+		snippetStorages,
+		snippetStoragesLoading,
+		onClose,
+		onSubmit
+	}: Props = $props();
 	let name = $state('');
 	let url = $state('');
 	let tokenId = $state('');
@@ -86,14 +98,28 @@
 			variant="warning"
 		/>
 		<FormSection legend={m['admin.clusters.cloudinitSection']()} description={m['admin.clusters.cloudinitHint']()}>
-			<FormField label={m['admin.clusters.snippetDir']()}>
+			<FormField label={m['admin.clusters.snippetDir']()} hint={m['admin.clusters.snippetDirHint']()}>
 				{#snippet children({ id, describedBy, invalid })}
 					<TextField {id} {describedBy} {invalid} bind:value={snippetDir} placeholder="/snippets" />
 				{/snippet}
 			</FormField>
-			<FormField label={m['admin.clusters.snippetStorage']()}>
+			<FormField
+				label={m['admin.clusters.snippetStorage']()}
+				hint={snippetStoragesLoading ? m['admin.clusters.snippetStorageLoading']() : (snippetStorages.length > 0 ? m['admin.clusters.snippetStorageHint']() : m['admin.clusters.snippetStorageEmpty']())}
+			>
 				{#snippet children({ id, describedBy, invalid })}
-					<TextField {id} {describedBy} {invalid} bind:value={snippetStorage} placeholder="shared" />
+					{#if snippetStorages.length > 0}
+						<Select
+							{id}
+							{describedBy}
+							{invalid}
+							bind:value={snippetStorage}
+							placeholder={m['admin.clusters.snippetStoragePlaceholder']()}
+							options={snippetStorages.map((s) => ({ value: s.name, label: `${s.name} (${s.node})` }))}
+						/>
+					{:else}
+						<TextField {id} {describedBy} {invalid} bind:value={snippetStorage} placeholder="shared" disabled={snippetStoragesLoading} />
+					{/if}
 				{/snippet}
 			</FormField>
 		</FormSection>

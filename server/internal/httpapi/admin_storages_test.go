@@ -129,3 +129,55 @@ func TestAdminStorages_ToggleUnknownPairReturns404(t *testing.T) {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
 	}
 }
+
+// snippetStorageDTO mirrors the ServeSnippetStorages response row.
+type snippetStorageDTO struct {
+	Name string `json:"name"`
+	Node string `json:"node"`
+	Type string `json:"type"`
+}
+
+// TestAdminSnippetStorages_ListsOnlySnippetCapable — the snippet-storages
+// endpoint returns only storages with the snippets content type, deduplicated
+// by name. The fake cluster has exactly one such storage: local@pve-node-01.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestAdminSnippetStorages_ListsOnlySnippetCapable(t *testing.T) {
+	handler, authHandler, _ := newAdminHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	rec := adminGet(t, handler, authHandler, cookie, "/api/v1/admin/snippet-storages?cluster=default")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var storages []snippetStorageDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &storages); err != nil {
+		t.Fatalf("decode snippet storages: %v", err)
+	}
+
+	if len(storages) != 1 {
+		t.Fatalf("expected 1 snippet-capable storage, got %d: %+v", len(storages), storages)
+	}
+
+	if storages[0].Name != cluster.FakeStorageLocal {
+		t.Errorf("snippet storage name = %q, want %q", storages[0].Name, cluster.FakeStorageLocal)
+	}
+
+	if storages[0].Node != cluster.FakeNode01 {
+		t.Errorf("snippet storage node = %q, want %q", storages[0].Node, cluster.FakeNode01)
+	}
+}
+
+// TestAdminSnippetStorages_NonAdminReturns403 — non-admin gets 403.
+//
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestAdminSnippetStorages_NonAdminReturns403(t *testing.T) {
+	handler, authHandler, _ := newAdminHandler(t)
+	aliceCookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+
+	rec := adminGet(t, handler, authHandler, aliceCookie, "/api/v1/admin/snippet-storages?cluster=default")
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+}

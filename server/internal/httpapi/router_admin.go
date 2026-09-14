@@ -48,6 +48,7 @@ func registerAdminCatalogRoutes(mux *http.ServeMux, adminProtect adminRouteProte
 	mux.Handle("POST /api/v1/admin/nodes/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeNodeToggle)))
 	mux.Handle("DELETE /api/v1/admin/nodes/{cluster}/{name}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeNodeDelete)))
 	mux.Handle("GET /api/v1/admin/storages", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeStorages)))
+	mux.Handle("GET /api/v1/admin/snippet-storages", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeSnippetStorages)))
 	mux.Handle("POST /api/v1/admin/storages/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeStorageToggle)))
 	mux.Handle("DELETE /api/v1/admin/storages/{cluster}/{node}/{name}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeStorageDelete)))
 	mux.Handle("GET /api/v1/admin/bridges", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeBridges)))
