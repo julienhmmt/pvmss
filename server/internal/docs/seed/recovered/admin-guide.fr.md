@@ -122,10 +122,10 @@ Le **tag VLAN d'isolation** de la politique applique un VLAN à chaque NIC cré�
 `/admin/pools` crée les utilisateurs self-service. Chaque pool provisionne :
 
 - un utilisateur Proxmox dédié,
-- un pool Proxmox dédié portant le nom de l'utilisateur,
+- un pool Proxmox dédié à cet utilisateur,
 - une ACL liant l'utilisateur au rôle partagé `PVMSSUser` sur ce pool.
 
-PVMSS impose un motif de nom (1 à 32 caractères alphanumériques minuscules avec tirets internes) et un mot de passe de 8 caractères minimum. Les utilisateurs ne voient que les VM de leur propre pool. Supprimer un pool supprime aussi l'utilisateur et l'ACL Proxmox ; les pools non créés par PVMSS sont refusés.
+Vous saisissez un nom court (1 à 32 caractères alphanumériques minuscules avec tirets internes) ; PVMSS le préfixe en `pvmss-`, donc le pool Proxmox est `pvmss-<nom>` et l'utilisateur `pvmss-<nom>@pve`. Le mot de passe de connexion est généré, affiché une seule fois dans la réponse de création, et jamais stocké — communiquez-le à l'utilisateur de façon sécurisée. Les utilisateurs ne voient que les VM de leur propre pool. Supprimer un pool supprime aussi l'utilisateur et l'ACL Proxmox ; les pools non créés par PVMSS sont refusés.
 
 ## Politique (limites)
 
@@ -135,6 +135,18 @@ PVMSS impose un motif de nom (1 à 32 caractères alphanumériques minuscules av
 - **Quota** — nombre maximal de VM par utilisateur.
 
 `/admin/policy/nodes` plafonne ce que PVMSS peut allouer au total sur un nœud (VM, vCPU, RAM, disque) et montre l'usage courant face à la capacité physique. Tout est appliqué côté serveur avant tout appel à Proxmox : une demande au-delà d'une limite est refusée tôt avec un message clair.
+
+## Limites de la plateforme
+
+Au-delà des réglages de la politique, l'application elle-même impose :
+
+- **Limitation de débit** — 10 requêtes/minute par IP sur les endpoints d'authentification ; 30 écritures/minute par utilisateur sur les routes VM ; 120 lectures de statut/minute par utilisateur ; 60 écritures/minute par utilisateur sur les routes admin ; 10 tests de cluster/minute.
+- **Actions groupées** — 100 VM maximum par requête.
+- **Fichiers cloud-init** — 20 documents maximum par utilisateur.
+- **Nom de VM** — un nom d'hôte en minuscules, 63 caractères maximum, unique dans le pool du propriétaire ; **description** — 512 caractères maximum.
+- **Nom de snapshot** — une lettre puis lettres, chiffres, tirets ou underscores, 2 à 40 caractères ; `current` est réservé.
+- **Nom de pool** — 1 à 32 caractères alphanumériques minuscules avec tirets internes (stocké en `pvmss-<nom>`).
+- **Listes** — au plus `PVMSS_MAX_LIST_PAGE_SIZE` entrées par page (défaut 100).
 
 ## Activer les documents cloud-init
 
@@ -184,3 +196,4 @@ Les pages intégrées sont insérées une seule fois, si elles manquent, et jama
 - Les administrateurs créent des VM via la même interface self-service que les utilisateurs, ou directement dans Proxmox.
 - Sauvegardes et conteneurs LXC sont gérés dans Proxmox, pas dans PVMSS.
 - Le changement de mot de passe n'est disponible que par API pour l'instant (`POST /api/v1/auth/password`).
+- Les tokens API personnels sont désactivés dans cette version : leurs routes ne sont pas enregistrées, la page des tokens ne peut ni créer ni lister de jetons.

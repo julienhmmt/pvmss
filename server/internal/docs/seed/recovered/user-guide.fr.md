@@ -10,7 +10,7 @@ hébergées sur Proxmox VE, sans passer par l'interface Proxmox.
 2. **Retrouvez vos VM** sur la page Mes VM ; recherchez par nom, VMID ou tag.
 3. **Créez une VM** avec le bouton « Créer une VM », puis renseignez les paramètres.
 4. **Ouvrez la console** une fois la VM créée et démarrée, via le client noVNC ou série intégré.
-5. **Gérez vos fichiers cloud-init** et vos **tokens API** depuis leurs pages dédiées.
+5. **Gérez vos fichiers cloud-init** depuis leur page dédiée.
 
 ## Accueil
 
@@ -98,7 +98,7 @@ pour savoir ce qui s'applique et quand.
 
 ### Snapshots
 
-- **Créer** : saisissez un nom (alphanumérique, tirets, underscores, 40 caractères max), une description optionnelle, et choisissez d'inclure ou non l'état de la RAM.
+- **Créer** : saisissez un nom (commence par une lettre, puis lettres, chiffres, tirets ou underscores — 2 à 40 caractères), une description optionnelle, et choisissez d'inclure ou non l'état de la RAM.
 - **Consulter** : nom, description, date de création et présence de la RAM ; l'état courant est marqué.
 - **Restaurer** : ramène la VM à l'état du snapshot. Opération destructive — les changements postérieurs sont perdus.
 - **Supprimer** : retire définitivement un snapshot et libère son stockage.
@@ -127,11 +127,18 @@ La page [Fichiers cloud-init](/cloud-init) contient vos propres documents
 le sélecteur de création de VM. Chaque VM reçoit sa propre copie à la
 création : modifier un fichier ensuite ne change jamais les VM existantes.
 
-## Tokens API
+## Limites
 
-La page [Tokens API](/profile/tokens) permet de créer des jetons d'accès
-personnels pour scripter l'API PVMSS. Le secret n'est affiché qu'une fois ;
-révoquez un jeton à tout moment.
+Votre administrateur contrôle la plupart des limites par cluster ; PVMSS les
+applique côté serveur avant tout appel à Proxmox.
+
+- **Quota** — nombre maximal de VM par utilisateur.
+- **Gabarit** — plafonds par VM : sockets, cœurs, mémoire, taille de disque, cartes réseau et snapshots.
+- **Nom de VM** — un nom d'hôte en minuscules, 63 caractères maximum, unique dans votre pool.
+- **Description** — 512 caractères maximum.
+- **Actions groupées** — 100 VM maximum par requête.
+- **Fichiers cloud-init** — 20 documents maximum par utilisateur.
+- **Nom de snapshot** — une lettre puis lettres, chiffres, tirets ou underscores, 2 à 40 caractères ; `current` est réservé.
 
 ## Bonnes pratiques
 
@@ -146,6 +153,7 @@ révoquez un jeton à tout moment.
 - Les sauvegardes et la migration à chaud se font dans Proxmox, pas dans PVMSS.
 - Le réseau avancé (règles de pare-feu, SDN) se configure dans Proxmox.
 - Le changement de mot de passe n'est disponible que par l'API pour l'instant.
+- Les tokens API personnels sont désactivés dans cette version ; la page des tokens n'a pas de backend.
 
 ## Sécurité et confidentialité
 

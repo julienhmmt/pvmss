@@ -120,10 +120,10 @@ The policy's **Isolation VLAN tag** applies one VLAN to every NIC created throug
 `/admin/pools` is where you create self-service users. Each pool provisions:
 
 - a dedicated Proxmox user,
-- a dedicated Proxmox pool named after the user, and
+- a dedicated Proxmox pool for that user, and
 - an ACL binding the user to the shared `PVMSSUser` role on that pool.
 
-PVMSS enforces a pool name pattern (1-32 lowercase alphanumeric characters with internal hyphens) and a minimum password length of 8 characters. Users only ever see the VMs inside their own pool. Deleting a pool cascades to the Proxmox user and ACL; pools not created by PVMSS are refused.
+You enter a short name (1-32 lowercase alphanumeric characters with internal hyphens); PVMSS prefixes it with `pvmss-`, so the Proxmox pool is `pvmss-<name>` and the user `pvmss-<name>@pve`. The login password is generated for you, shown once in the create response, and never stored — communicate it to the user securely. Users only ever see the VMs inside their own pool. Deleting a pool cascades to the Proxmox user and ACL; pools not created by PVMSS are refused.
 
 ## Policy (limits)
 
@@ -133,6 +133,18 @@ PVMSS enforces a pool name pattern (1-32 lowercase alphanumeric characters with 
 - **Quota** — max VMs per user.
 
 `/admin/policy/nodes` caps how much of a single node PVMSS may allocate in total (VMs, vCPUs, RAM, disk) and shows the current usage against the physical capacity. Everything is enforced server-side before any Proxmox call, so requests above a limit are rejected early with a clear message.
+
+## Platform limits
+
+Beyond the policy knobs, the application itself enforces:
+
+- **Rate limits** — 10 requests/minute per IP on authentication endpoints; 30 writes/minute per user on VM routes; 120 status polls/minute per user; 60 writes/minute per user on admin routes; 10 cluster tests/minute.
+- **Bulk power actions** — at most 100 VMs per request.
+- **Cloud-init files** — at most 20 stored documents per user.
+- **VM name** — a lowercase hostname, at most 63 characters, unique in the owner's pool; **description** — at most 512 characters.
+- **Snapshot name** — a leading letter, then letters, digits, hyphens or underscores, 2 to 40 characters; `current` is reserved.
+- **Pool name** — 1-32 lowercase alphanumeric characters with internal hyphens (stored as `pvmss-<name>`).
+- **List pages** — capped at `PVMSS_MAX_LIST_PAGE_SIZE` entries per page (default 100).
 
 ## Enabling cloud-init documents
 
@@ -182,3 +194,4 @@ Built-in pages are seeded once, when missing, and never overwritten on restart, 
 - Administrators create VMs through the same self-service UI as users, or directly in Proxmox.
 - Backups and LXC containers are managed in Proxmox, not in PVMSS.
 - Password change is API-only for now (`POST /api/v1/auth/password`).
+- Personal API tokens are deactivated in this version: their routes are not registered, so the API tokens page cannot create or list tokens.
