@@ -82,7 +82,6 @@
 					{ href: resolve('/cloud-init'), label: () => m['chrome.sidebar.navCloudInit'](), icon: 'catalog' as SidebarIconName }
 				]
 			: []),
-		{ href: resolve('/profile/tokens'), label: () => m['chrome.sidebar.navTokens'](), icon: 'system' as SidebarIconName },
 		{ href: resolve('/about'), label: () => m['chrome.sidebar.navAbout'](), icon: 'info' as SidebarIconName }
 	]);
 

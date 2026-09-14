@@ -18,7 +18,7 @@ exists, backend not implemented).
 | Session cookie (`SESSION_SECRET`), CSRF token, secure cookie flag | — | all writes | ✅ |
 | Sign out | header menu | `POST /api/v1/auth/logout` | ✅ |
 | Change own Proxmox password | API only (no page yet) | `POST /api/v1/auth/password` | 🧪 |
-| Personal API tokens (create — secret shown once — list, revoke) | `/profile/tokens` (sidebar → API tokens) | `GET/POST/DELETE /api/v1/auth/tokens` | ✅ |
+| Personal API tokens (create — secret shown once — list, revoke) | `/profile/tokens` (sidebar → API tokens) | `GET/POST/DELETE /api/v1/auth/tokens` | ⛔ deactivated — routes unregistered, bearer resolution disabled in `Auth.Principal`; code kept |
 | Proxmox sign-in blocked while the selected cluster is unreachable; admin sign-in stays available | `/login` | `cluster_unavailable` error | ✅ |
 | Per-IP rate limit on auth endpoints (10 req/min) | — | `router.go` | ✅ |
 | OIDC / SSO sign-in | `/login` (button appears when enabled on a cluster) | `POST /api/v1/auth/oidc` → **501** | 🚧 |

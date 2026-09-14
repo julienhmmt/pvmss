@@ -738,6 +738,7 @@ func TestAuthCoverage_ListTokens_WithSessionReturnsList(t *testing.T) {
 
 //nolint:paralleltest // serial: shared fake auth and session fixtures
 func TestAuthCoverage_Principal_BearerTokenAuthenticates(t *testing.T) {
+	t.Skip("API tokens deactivated: bearer resolution disabled in Auth.Principal")
 	handler := newAuthHandler(t)
 	login := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
 	cookie := login.Result().Cookies()[0]

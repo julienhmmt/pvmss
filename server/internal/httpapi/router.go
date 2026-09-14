@@ -245,9 +245,12 @@ func registerAuthRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFun
 	mux.Handle("GET /api/v1/auth/clusters", authLimiter.middleware(http.HandlerFunc(cfg.Auth.ServeClusters)))
 	mux.Handle("POST /api/v1/auth/oidc", authLimiter.middleware(http.HandlerFunc(cfg.Auth.OIDC)))
 	mux.Handle("POST /api/v1/auth/logout", protect(http.HandlerFunc(cfg.Auth.Logout), authWriteLimiter))
-	mux.Handle("POST /api/v1/auth/tokens", protect(http.HandlerFunc(cfg.Auth.CreateToken), authWriteLimiter))
-	mux.HandleFunc("GET /api/v1/auth/tokens", cfg.Auth.ListTokens)
-	mux.Handle("DELETE /api/v1/auth/tokens/{id}", protect(http.HandlerFunc(cfg.Auth.RevokeToken), authWriteLimiter))
+	// Personal API tokens are deactivated: the routes stay unregistered so the
+	// catch-all /api/ 404 answers them. Re-enable by restoring the three lines
+	// below and the bearer branch in Auth.Principal.
+	// mux.Handle("POST /api/v1/auth/tokens", protect(http.HandlerFunc(cfg.Auth.CreateToken), authWriteLimiter))
+	// mux.HandleFunc("GET /api/v1/auth/tokens", cfg.Auth.ListTokens)
+	// mux.Handle("DELETE /api/v1/auth/tokens/{id}", protect(http.HandlerFunc(cfg.Auth.RevokeToken), authWriteLimiter))
 	mux.Handle("POST /api/v1/auth/password", protect(http.HandlerFunc(cfg.Auth.ChangePassword), authWriteLimiter))
 }
 

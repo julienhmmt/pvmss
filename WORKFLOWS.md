@@ -60,6 +60,9 @@ Rules for the fields:
 
 ### Manage API tokens
 
+> Deactivated: sidebar entry removed, `/api/v1/auth/tokens` routes
+> unregistered, bearer resolution disabled in `Auth.Principal`. Code kept.
+
 | | |
 | --- | --- |
 | **Audience** | end user |

@@ -174,6 +174,7 @@ func TestAuth_Logout_RevokesSessionServerSide(t *testing.T) {
 
 //nolint:paralleltest // serial: shared fake auth and session fixtures
 func TestAuth_CreateToken_ResolvesBearerPrincipal(t *testing.T) {
+	t.Skip("API tokens deactivated: bearer resolution disabled in Auth.Principal")
 	handler := newAuthHandler(t)
 	login := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/tokens", strings.NewReader(`{"label":"automation","scope":"read"}`))
