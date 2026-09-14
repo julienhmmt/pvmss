@@ -25,17 +25,18 @@ import (
 // PATCH /vms/:cluster/:vmid (rename/description). 403/404 semantics are
 // byte-identical across all four (contracts behavioural rule).
 type VMDetail struct {
-	projection   *inventory.Projection
-	resolver     vm.ClusterIndexResolver
-	auth         *Auth
-	writer       cluster.Writer
-	clients      cluster.ClientProvider
-	store        *store.Store
-	refresher    vm.IndexRefresher
-	refreshers   ClusterRefresherResolver
-	statusReader cluster.VMStatusReader
-	policy       *policy.Policy
-	log          *slog.Logger
+	projection     *inventory.Projection
+	resolver       vm.ClusterIndexResolver
+	auth           *Auth
+	writer         cluster.Writer
+	clients        cluster.ClientProvider
+	store          *store.Store
+	refresher      vm.IndexRefresher
+	refreshers     ClusterRefresherResolver
+	statusReader   cluster.VMStatusReader
+	guestNetReader cluster.GuestNetworkReader
+	policy         *policy.Policy
+	log            *slog.Logger
 }
 
 // ServeHTTP dispatches to the sub-handlers.
@@ -121,6 +122,10 @@ func NewVMDetail(projection *inventory.Projection, authHandler *Auth, writer clu
 		h.statusReader = reader
 	}
 
+	if reader, ok := writer.(cluster.GuestNetworkReader); ok {
+		h.guestNetReader = reader
+	}
+
 	return h
 }
 
@@ -136,7 +141,10 @@ type VMDetailDeps struct {
 	Store        *store.Store
 	Refresher    vm.IndexRefresher
 	StatusReader cluster.VMStatusReader
-	Log          *slog.Logger
+	// GuestNetReader supplies the live per-NIC IP addresses the detail DTO
+	// merges in — the inventory projection carries config-only interfaces.
+	GuestNetReader cluster.GuestNetworkReader
+	Log            *slog.Logger
 }
 
 // NewVMDetailWithRegistry adds cluster-aware reads and writes: every index
@@ -154,6 +162,7 @@ func NewVMDetailWithRegistry(deps VMDetailDeps, services ...*policy.Policy) *VMD
 
 	handler.clients = deps.Clients
 	handler.statusReader = deps.StatusReader
+	handler.guestNetReader = deps.GuestNetReader
 
 	return handler
 }
@@ -182,6 +191,18 @@ func (h *VMDetail) writerFor(w http.ResponseWriter, clusterName string) (cluster
 // escalation fall back to the immediate-shutdown path.
 func (h *VMDetail) statusReaderFor(clusterName string) cluster.VMStatusReader {
 	reader, err := resolveCapability(h.clients, h.statusReader, clusterName, "VMStatusReader")
+	if err != nil {
+		return nil
+	}
+
+	return reader
+}
+
+// guestNetReaderFor resolves the cluster.GuestNetworkReader for clusterName.
+// Returns nil when unavailable — the IP column is best-effort, an absent
+// reader means "no live addresses", never an error.
+func (h *VMDetail) guestNetReaderFor(clusterName string) cluster.GuestNetworkReader {
+	reader, err := resolveCapability(h.clients, h.guestNetReader, clusterName, "GuestNetworkReader")
 	if err != nil {
 		return nil
 	}
@@ -234,6 +255,13 @@ type vmDetailDTO struct {
 	// shows a badge and the operator command to clear it. Empty when the VM
 	// is unlocked or the live read failed.
 	Lock string `json:"lock,omitempty"`
+	// GuestAgent explains why networkInterfaces[].ipAddresses is populated or
+	// not, for a running VM: "disabled" (agent=0 in the VM config — known
+	// without probing), "unreachable" (enabled but the agent did not answer
+	// — not installed in the guest or still starting), "ok" (answered; IPs
+	// may still be empty while DHCP is pending). Empty when the VM is not
+	// running — the status field already explains it.
+	GuestAgent string `json:"guestAgent,omitempty"`
 }
 
 type diskRequest struct {
@@ -1392,7 +1420,45 @@ func (h *VMDetail) writeEntity(w http.ResponseWriter, r *http.Request, entity vm
 		}
 	}
 
+	// The projection carries config-only interfaces — parseNetworkInterfaces
+	// deliberately skips the per-VM agent round trip — so a running VM's live
+	// IPs are asked of the guest agent here instead (best-effort, like Lock).
+	// The config's agent= flag already tells us when probing is pointless; a
+	// failed probe on an enabled channel is itself the communication test.
+	if entity.Status == cluster.VMRunning {
+		switch {
+		case !entity.Agent:
+			dto.GuestAgent = "disabled"
+		default:
+			if reader := h.guestNetReaderFor(entity.Cluster); reader != nil {
+				if guests, err := reader.GuestNetworkInterfaces(r.Context(), entity.Node, entity.VMID); err == nil {
+					dto.GuestAgent = "ok"
+					mergeGuestIPs(dto.NetworkInterfaces, guests)
+				} else {
+					dto.GuestAgent = "unreachable"
+				}
+			}
+		}
+	}
+
 	h.writeJSONStatus(w, http.StatusOK, dto)
+}
+
+// mergeGuestIPs copies each guest-reported IP list onto the configured NIC
+// with the same MAC. The agent reports lowercase addresses while the Proxmox
+// config stores them uppercase, so the correlation is case-insensitive.
+// Guest interfaces with no matching NIC (lo, hot-plugged) are dropped.
+func mergeGuestIPs(nics []cluster.NetworkInterface, guests []cluster.GuestInterface) {
+	byMAC := make(map[string][]string, len(guests))
+	for _, guest := range guests {
+		byMAC[strings.ToLower(guest.MAC)] = guest.IPAddresses
+	}
+
+	for i := range nics {
+		if ips, ok := byMAC[strings.ToLower(nics[i].MAC)]; ok {
+			nics[i].IPAddresses = ips
+		}
+	}
 }
 
 func (h *VMDetail) writeJSONStatus(w http.ResponseWriter, status int, value any) {

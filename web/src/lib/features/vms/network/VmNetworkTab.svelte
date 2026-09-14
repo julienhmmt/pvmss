@@ -23,6 +23,21 @@
 			if (copied === value) copied = '';
 		}, 1500);
 	}
+
+	const guestAgentHint = $derived.by((): string | null => {
+		switch (store.entity?.guestAgent) {
+			case 'disabled':
+				return m['vms.network.agentDisabled']();
+			case 'unreachable':
+				return m['vms.network.agentUnreachable']();
+			case 'ok':
+				return store.entity?.networkInterfaces?.some((nic) => nic.ipAddresses.length > 0)
+					? null
+					: m['vms.network.noIps']();
+			default:
+				return null;
+		}
+	});
 </script>
 
 <section class="rounded-xl border border-border bg-card p-6 shadow-card" aria-labelledby="network-heading">
@@ -109,6 +124,9 @@
 				</tbody>
 			</table>
 		</div>
+		{#if guestAgentHint}
+			<p class="mt-3 text-xs text-muted-foreground" role="note">{guestAgentHint}</p>
+		{/if}
 	{:else}
 		<EmptyState
 			title={m['vms.network.empty']()}

@@ -615,6 +615,57 @@ func (fake Fake) PingGuestAgent(_ context.Context, node string, vmid int) error 
 	return nil
 }
 
+// GuestNetworkInterfaces implements GuestNetworkReader. The fake has no real
+// guest agent, so a running VM reports each configured NIC's stored
+// IPAddresses, or — when none were seeded — a deterministic 10.10.x.y
+// address so the demo shows what a real cluster's agent would report. A
+// stopped or paused guest cannot answer an agent call: ErrUnreachable, the
+// same answer the real endpoint gives. agentPingFailures (the
+// SetFakeGuestAgentPingFailures knob) doubles as "the agent channel is down
+// for the next n calls" so tests can simulate a running VM whose agent does
+// not answer.
+func (fake Fake) GuestNetworkInterfaces(_ context.Context, node string, vmid int) ([]GuestInterface, error) {
+	state := fake.stateOrDefault()
+
+	state.vmMu.Lock()
+	idx := state.findVM(node, vmid)
+	if idx < 0 {
+		state.vmMu.Unlock()
+		return nil, ErrNotFound
+	}
+	running := state.vms[idx].Status == VMRunning
+	nics := cloneNetworkInterfaces(state.vms[idx].NetworkInterfaces)
+	state.vmMu.Unlock()
+
+	state.record(FakeCall{Node: node, VMID: vmid, Action: "guest_network_interfaces"})
+
+	if !running {
+		return nil, ErrUnreachable
+	}
+
+	state.pingMu.Lock()
+	fail := state.agentPingFailures > 0
+	if fail {
+		state.agentPingFailures--
+	}
+	state.pingMu.Unlock()
+
+	if fail {
+		return nil, ErrUnreachable
+	}
+
+	guests := make([]GuestInterface, 0, len(nics))
+	for _, nic := range nics {
+		ips := nic.IPAddresses
+		if len(ips) == 0 {
+			ips = []string{fmt.Sprintf("10.10.%d.%d", vmid%250, 10+nic.Index)}
+		}
+		guests = append(guests, GuestInterface{MAC: nic.MAC, IPAddresses: ips})
+	}
+
+	return guests, nil
+}
+
 // SetFakeGuestAgentPingFailures makes the next n PingGuestAgent calls fail
 // with ErrUnreachable before succeeding, so tests can exercise the bounded
 // ping loop without sleeps.
@@ -1301,6 +1352,11 @@ func seedFakeHardware(vms []VM) {
 	for index := range vms {
 		vms[index].Sockets = 1
 		vms[index].Cores = vms[index].CPUCores
+		// The real create path always sends agent=1 (proxmox_create.go), so
+		// seeded VMs mirror an enabled guest-agent channel — except running
+		// VM 103, which keeps agent=0 like a VM not created through PVMSS,
+		// so the detail endpoint's "agent disabled" explanation stays live.
+		vms[index].Agent = vms[index].VMID != 103
 	}
 
 	for index := range vms {
@@ -1318,6 +1374,21 @@ func seedFakeHardware(vms []VM) {
 			Bridge: FakeBridgeVMbr0,
 			Model:  string(DiskBusVirtio),
 			MAC:    "BC:24:11:00:00:65",
+		}}
+	}
+
+	// A running VM needs a NIC for the guest-agent IP read to have something
+	// to report — the stopped 101 above exercises the "agent unreachable" side.
+	for index := range vms {
+		if vms[index].VMID != 100 {
+			continue
+		}
+
+		vms[index].NetworkInterfaces = []NetworkInterface{{
+			Index:  0,
+			Bridge: FakeBridgeVMbr0,
+			Model:  string(DiskBusVirtio),
+			MAC:    "BC:24:11:00:00:64",
 		}}
 	}
 }

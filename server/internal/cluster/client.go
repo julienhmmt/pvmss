@@ -369,6 +369,11 @@ type VM struct {
 	// hydrateVM for the real client; the fake dataset sets it on creation
 	// (new VMs) and via EnableSerial (retrofit).
 	HasSerial bool
+	// Agent mirrors the VM config's agent= flag (first comma token == "1"):
+	// whether the QEMU guest agent channel is enabled. The detail endpoint
+	// reads it to explain absent live IPs without probing a channel Proxmox
+	// already knows is off.
+	Agent bool
 	// BIOS is the firmware type ("ovmf" for UEFI, empty for legacy SeaBIOS).
 	// Machine and EFIDisk are set alongside it, TPMState alongside a
 	// requested TPM (US6/issue-06 D6a). Set by the fake dataset on creation;
@@ -480,6 +485,25 @@ type VMLiveStatus struct {
 	Status VMStatus
 	Lock   string
 	Uptime time.Duration
+}
+
+// GuestNetworkReader reads a running VM's NIC→IP mapping from the QEMU
+// guest agent (agent/network-get-interfaces). It is live data the inventory
+// projection cannot carry — the config reader deliberately skips the per-VM
+// agent round trip (parseNetworkInterfaces), so the VM detail endpoint asks
+// for it on demand. Any error (VM stopped, agent absent) means "no live
+// addresses", not a failed read.
+type GuestNetworkReader interface {
+	GuestNetworkInterfaces(ctx context.Context, node string, vmid int) ([]GuestInterface, error)
+}
+
+// GuestInterface is one guest-side network interface reported by the QEMU
+// guest agent: the MAC the guest knows it by plus the IP addresses currently
+// bound to it. The caller correlates it to a configured netN by MAC
+// (case-insensitive — the agent reports lowercase, the config uppercase).
+type GuestInterface struct {
+	MAC         string
+	IPAddresses []string
 }
 
 // SnapshotReader reads live snapshots for a resolved VM.
