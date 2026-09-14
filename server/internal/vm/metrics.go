@@ -14,7 +14,7 @@ import (
 type MetricsSample = cluster.MetricsSample
 
 // MetricsDependencies contains the resolved read dependency for a metrics
-// history request. No Writer, Policy, or Audit — this is a plain read, same
+// history request. No Writer, Policy, or Audit - this is a plain read, same
 // as ListSnapshots needs no Audit for its own read path.
 type MetricsDependencies struct {
 	Index       *inventory.Index

@@ -52,7 +52,7 @@ func TestMapVMLimits_FiveFieldsCopied(t *testing.T) {
 }
 
 // Literal assertion: VMLimitsRow has NO max_sockets/max_cores/max_memory_mb fields.
-// This test verifies the type itself does not carry those fields — they are
+// This test verifies the type itself does not carry those fields - they are
 // never written by the recovery tool because there is no on-disk source.
 func TestVMLimitsRow_HasNoSocketsCoresMemoryFields(t *testing.T) {
 	t.Parallel()
@@ -68,7 +68,7 @@ func TestVMLimitsRow_HasNoSocketsCoresMemoryFields(t *testing.T) {
 		AllowCustomYAML: true,
 	}
 	// The following lines would fail to compile if the fields were added
-	// with those names — Go does not allow accessing non-existent fields.
+	// with those names - Go does not allow accessing non-existent fields.
 	// We use the fields that DO exist to ensure the struct is used:
 	if row.MaxDiskPerVMGB != 20 {
 		t.Errorf("MaxDiskPerVMGB = %d, want 20", row.MaxDiskPerVMGB)
@@ -104,7 +104,7 @@ func TestMapNodeLimits_FourFieldsCopied(t *testing.T) {
 	}
 }
 
-// pre-schemaV2 zero-value case — node_limits without max_vcpus/ram/disk columns.
+// pre-schemaV2 zero-value case - node_limits without max_vcpus/ram/disk columns.
 // The fixture uses COALESCE to read 0 when columns are NULL.
 func TestMapNodeLimits_PreSchemaV2_ZeroValues(t *testing.T) {
 	t.Parallel()

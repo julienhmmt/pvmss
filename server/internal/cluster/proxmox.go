@@ -16,7 +16,7 @@ import (
 // ClusterRow, wired in registry.go) or from PROXMOX_URL/PROXMOX_API_TOKEN_NAME/
 // PROXMOX_API_TOKEN_VALUE in single-cluster setups.
 //
-// Every write here uses the service account's API token — it never needs the
+// Every write here uses the service account's API token - it never needs the
 // CSRF prevention token tickets require, which is exactly why Proxmox
 // recommends tokens for service accounts (proxmox-permissions.md). The two
 // exceptions are Authenticate and ChangePassword: both must act with the
@@ -41,7 +41,7 @@ type Proxmox struct {
 	httpClient *http.Client
 }
 
-// proxmoxResourceRow is one row of /cluster/resources?type=... — Proxmox's
+// proxmoxResourceRow is one row of /cluster/resources?type=... - Proxmox's
 // single call for nodes, VMs, and storages together, matching what Snapshot
 // promises ("one call returns everything").
 type proxmoxResourceRow struct {
@@ -71,7 +71,7 @@ type proxmoxResourceRow struct {
 // (non-thin), iscsi and raw-on-file cannot snapshot at all.
 //
 // ponytail: the file-backed rows mirror PVE's documented per-plugin snapshot
-// support but were not validated line-by-line against the PVE sources —
+// support but were not validated line-by-line against the PVE sources - 
 // Flags exactly this; revisit if a real cluster surprises us.
 func StorageSnapshotCapability(pluginType, format string) (canSnapshot, canVMState bool) {
 	switch pluginType {
@@ -86,7 +86,7 @@ func StorageSnapshotCapability(pluginType, format string) (canSnapshot, canVMSta
 
 // pluginSupportsVMState is the plugin-level view behind Storage.SupportsVMState
 // (a storage can hold RAM state when its plugin snapshots natively). The
-// per-disk decision also depends on the disk format — see
+// per-disk decision also depends on the disk format - see
 // StorageSnapshotCapability.
 func pluginSupportsVMState(pluginType string) bool {
 	switch pluginType {
@@ -262,10 +262,10 @@ func proxmoxVersion(ctx context.Context, rest proxmoxRESTClient) (string, error)
 }
 
 // Authenticate implements Client by exchanging username/password for a PVE
-// ticket (proving the credentials are correct — ErrNotFound on a rejection,
+// ticket (proving the credentials are correct - ErrNotFound on a rejection,
 // matching the fake's contract), then using that ticket, as that user, to
 // determine admin status (Permissions.Modify at "/", granted by the
-// PVMSS_Admin role per proxmox-permissions.md) and — for non-admins — the
+// PVMSS_Admin role per proxmox-permissions.md) and - for non-admins - the
 // personal pool PVMSS provisioned for them (EnsurePoolUser's own
 // "<pool>@pve" convention, mirrored here in reverse).
 func (p Proxmox) Authenticate(ctx context.Context, username, password string) (Identity, error) {
@@ -342,12 +342,12 @@ func proxmoxTicketAuth(ctx context.Context, rest proxmoxRESTClient, username, pa
 }
 
 // proxmoxHasPermission checks one privilege at one path for the ticket's own
-// user via GET /access/permissions?path=... — any authenticated user may
+// user via GET /access/permissions?path=... - any authenticated user may
 // query their own effective permissions, no elevated privilege required.
 // PVE always nests the response as path -> {privilege: propagate-bool}, even
 // for a single requested path (pve-access-control's AccessControl.pm
 //
-//	`permissions` method: `$res = {$path => $perms}`) — never a flat
+//	`permissions` method: `$res = {$path => $perms}`) - never a flat
 //
 // privilege map.
 func proxmoxHasPermission(ctx context.Context, rest proxmoxRESTClient, path, privilege string) (bool, error) {
@@ -367,7 +367,7 @@ func proxmoxHasPermission(ctx context.Context, rest proxmoxRESTClient, path, pri
 // proxmoxOwnedPool derives the caller's personal pool from PVMSS's own
 // provisioning convention (pools/provision.go: EnsurePoolUser creates
 // "<pool>@pve"), verified against the live pool list with the service
-// account's Pool.Audit privilege — an end user's own PVMSSUser role does not
+// account's Pool.Audit privilege - an end user's own PVMSSUser role does not
 // carry that privilege (fake.go's rolePrivileges), so this always uses rest,
 // not the user's ticket.
 func proxmoxOwnedPool(ctx context.Context, rest proxmoxRESTClient, username string) (string, error) {
@@ -392,7 +392,7 @@ func proxmoxOwnedPool(ctx context.Context, rest proxmoxRESTClient, username stri
 
 // ChangePassword implements Client by re-authenticating as username with
 // oldPassword (ErrNotFound if that fails, matching Authenticate's contract)
-// and then setting the new password with that same ticket — a genuine
+// and then setting the new password with that same ticket - a genuine
 // self-service change, requiring no elevated privilege.
 func (p Proxmox) ChangePassword(ctx context.Context, username, oldPassword, newPassword string) error {
 	rest := p.rest()
@@ -423,7 +423,7 @@ func isNodeUnavailable(err error) bool {
 }
 
 // ListBridges implements Client. Bridges are per-node network configuration
-// in Proxmox — there is no cluster-wide listing — so this enumerates nodes
+// in Proxmox - there is no cluster-wide listing - so this enumerates nodes
 // first, then each node's /network, keeping every node's own view (including
 // duplicate bridge names across nodes, e.g. vmbr0 on every node).
 func (p Proxmox) ListBridges(ctx context.Context) ([]Bridge, error) {
@@ -454,7 +454,7 @@ func (p Proxmox) ListBridges(ctx context.Context) ([]Bridge, error) {
 
 // proxmoxListNodeBridges fetches and decodes one node's network interfaces,
 // returning only the bridge-typed rows. A node that is temporarily
-// unavailable (RejectionError 595) is skipped — the caller keeps the other
+// unavailable (RejectionError 595) is skipped - the caller keeps the other
 // nodes' bridges. Extracted from ListBridges to keep its cognitive
 // complexity under the go:S3776 limit.
 func proxmoxListNodeBridges(ctx context.Context, rest proxmoxRESTClient, node string) ([]Bridge, error) {
@@ -535,7 +535,7 @@ func (p Proxmox) ListISOs(ctx context.Context) ([]ISOImage, error) {
 // .raw,.vmdk, and.ova get vtype 'import' and are listed under
 // content=import. Only import-vtype files are accepted by import-from for
 //
-//	non-root API tokens — .img files are vtype 'iso' and rejected, and absolute
+//	non-root API tokens - .img files are vtype 'iso' and rejected, and absolute
 //
 // filesystem paths are root@pam-only. Node scoping matches ListISOs: one row
 // per (node, storage) pairing.
@@ -584,10 +584,10 @@ func (p Proxmox) ListCloudImages(ctx context.Context) ([]CloudImage, error) {
 // 'import' (PVE::Storage::IMPORT_EXT_RE_1): .qcow2, .raw, .vmdk, .ova. Only
 // import-vtype volumes are accepted by import-from for non-root API tokens.
 // Admins place cloud images in the storage's import/ directory with one of
-// these extensions — PVMSS never fetches images from the internet.
+// these extensions - PVMSS never fetches images from the internet.
 var cloudImageFileExtensions = []string{".qcow2", ".raw", ".vmdk", ".ova"}
 
-// IsCloudImageFile reports whether name looks like a cloud image file — one
+// IsCloudImageFile reports whether name looks like a cloud image file - one
 // with an import-vtype extension Proxmox's import-from accepts.
 func IsCloudImageFile(name string) bool {
 	lower := strings.ToLower(name)
@@ -643,7 +643,7 @@ func proxmoxListContent(ctx context.Context, rest proxmoxRESTClient, node, stora
 // its primary disk's storage, size, and bus via /nodes/{node}/qemu/{vmid}/config
 // so the clone path can decide linked vs full and target the correct resize key.
 // CloudInitCapable is detected by the presence of a cloud-init drive in the
-// fixed ide3 slot (proxmox_config.go's cloudInitDiskKey) — the same slot
+// fixed ide3 slot (proxmox_config.go's cloudInitDiskKey) - the same slot
 // EnsureCloudInitDrive writes, so a template that already has one is cloud-init
 // capable.
 func (p Proxmox) ListTemplates(ctx context.Context) ([]TemplateVM, error) {
@@ -771,7 +771,7 @@ func (p Proxmox) StorageFreeSpace(ctx context.Context, node, storage string) (in
 // single disk. Disk parsing reuses parseDiskValue (proxmox_config.go) so the format
 // "local-lvm:vm-101-disk-0,size=32G" is handled the same way as the disk tab and
 // the create wizard. CloudInitCapable is true when the fixed ide3 slot
-// (cloudInitDiskKey) holds a cloud-init drive — the same slot EnsureCloudInitDrive
+// (cloudInitDiskKey) holds a cloud-init drive - the same slot EnsureCloudInitDrive
 // writes, so a template that already has one is cloud-init capable.
 func proxmoxTemplateDisk(ctx context.Context, rest proxmoxRESTClient, node string, vmid int) (storage string, sizeGB int, bus string, cloudInitCapable bool, err error) {
 	cfg, err := fetchVMConfig(ctx, rest, node, vmid)
@@ -843,14 +843,14 @@ func proxmoxNodes(ctx context.Context, rest proxmoxRESTClient) ([]proxmoxNodeRow
 
 // proxmoxNodeOnline reports whether a /nodes status row describes a node
 // whose pveproxy is expected to answer. An empty status (older PVE releases)
-// is treated as online — the per-call 595 skip remains the safety net.
+// is treated as online - the per-call 595 skip remains the safety net.
 func proxmoxNodeOnline(status string) bool {
 	return status == "" || status == "online"
 }
 
 // proxmoxStorageAvailable reports whether a /cluster/resources storage row
 // can serve content. "unknown" means the node's pvestatd cannot report it
-// (node offline); "inactive" means Proxmox itself cannot read it — asking
+// (node offline); "inactive" means Proxmox itself cannot read it - asking
 // either for ISO content wastes seconds per storage and 595s/500s the call.
 func proxmoxStorageAvailable(status string) bool {
 	return status == "" || status == "available"

@@ -80,7 +80,7 @@ func snapshotRequest(method, path, body string, cookie *http.Cookie) *http.Reque
 	request.SetPathValue("cluster", "default")
 	request.SetPathValue("vmid", pathVmid(path))
 
-	// The snapshot name is the segment after "snapshots" — for
+	// The snapshot name is the segment after "snapshots" - for
 	// /snapshots/{name}, /snapshots/{name}/rollback and /snapshots/{name}/config.
 	segments := strings.Split(strings.Trim(path, "/"), "/")
 	for index, segment := range segments {
@@ -131,7 +131,7 @@ func TestVMSnapshots_ListAndCreate_OwnerContract(t *testing.T) {
 	}
 }
 
-// TestVMSnapshots_ConfigEndpoint — GET .../snapshots/{name}/config
+// TestVMSnapshots_ConfigEndpoint - GET .../snapshots/{name}/config
 // returns the stored config; a missing snapshot is a 404 snapshot_not_found;
 // "current" resolves to the live config without a list entry.
 //
@@ -197,7 +197,7 @@ func seedSnapshotRequest(t *testing.T, name string) string {
 	return name
 }
 
-// TestVMSnapshots_List_IncludesCapability — the list carries the
+// TestVMSnapshots_List_IncludesCapability - the list carries the
 // snapshot capability so the create dialog can grey options with a reason.
 //
 //nolint:paralleltest // serial: shared fake and SQLite fixtures
@@ -239,7 +239,7 @@ func TestVMSnapshots_List_IncludesCapability(t *testing.T) {
 
 // TestVMSnapshots_ClusterRejection_SurfacesProxmoxMessage asserts
 // a Proxmox rejection (4xx/5xx) is surfaced as a 502 with a stable machine
-// code and Proxmox's own message — never a generic 500 — and that 401/403
+// code and Proxmox's own message - never a generic 500 - and that 401/403
 // messages are suppressed (a PVE auth body can name the token).
 //
 //nolint:paralleltest // serial: shared fake and SQLite fixtures

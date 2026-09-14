@@ -202,7 +202,7 @@ func assertSSHKeyInjected(t *testing.T, handler http.Handler, path string, authH
 	}
 }
 
-// TestVMCloudInit_ConsolePassword — the console-password action
+// TestVMCloudInit_ConsolePassword - the console-password action
 // generates a password, applies it via the guest agent, and returns it once.
 // A stopped VM is refused with a clear error before the agent is probed.
 //
@@ -230,7 +230,7 @@ func TestVMCloudInit_ConsolePassword(t *testing.T) {
 	})
 }
 
-// TestVMCloudInit_SnippetSave — with AllowCustomYAML on (the
+// TestVMCloudInit_SnippetSave - with AllowCustomYAML on (the
 // default) and a write target set (the fake default), PUT saves the
 // snippet and returns 200. GET still works for existing rows.
 //
@@ -268,7 +268,7 @@ func TestVMCloudInit_SnippetSave(t *testing.T) {
 	}
 }
 
-// TestVMCloudInit_SnippetSave_PolicyOff — AllowCustomYAML=false returns 403.
+// TestVMCloudInit_SnippetSave_PolicyOff - AllowCustomYAML=false returns 403.
 //
 //nolint:paralleltest // serial: shared fake VM and SQLite fixtures
 func TestVMCloudInit_SnippetSave_PolicyOff(t *testing.T) {

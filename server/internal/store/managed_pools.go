@@ -24,7 +24,7 @@ func (s *Store) RegisterManagedPool(ctx context.Context, cluster, name string) e
 }
 
 // UnregisterManagedPool removes the managed marker. Returns sql.ErrNoRows if
-// the pool was not managed — guards against a delete between the managed check
+// the pool was not managed - guards against a delete between the managed check
 // and this DELETE.
 func (s *Store) UnregisterManagedPool(ctx context.Context, cluster, name string) error {
 	return execUpdateOne(ctx, s.db,

@@ -38,7 +38,7 @@ func TestDeriveProfileID(t *testing.T) {
 	}
 }
 
-// TestCreateProfile_SlugCollision — creating a profile whose label derives to
+// TestCreateProfile_SlugCollision - creating a profile whose label derives to
 // an existing slug returns ErrDuplicateProfile.
 func TestCreateProfile_SlugCollision(t *testing.T) {
 	t.Parallel()
@@ -53,7 +53,7 @@ func TestCreateProfile_SlugCollision(t *testing.T) {
 	}
 }
 
-// TestCreateProfile_InvalidFields — out-of-range fields return ErrInvalidProfile.
+// TestCreateProfile_InvalidFields - out-of-range fields return ErrInvalidProfile.
 func TestCreateProfile_InvalidFields(t *testing.T) {
 	t.Parallel()
 
@@ -82,7 +82,7 @@ func TestCreateProfile_InvalidFields(t *testing.T) {
 	}
 }
 
-// TestCreateProfile_Success — a new profile is created enabled by default and
+// TestCreateProfile_Success - a new profile is created enabled by default and
 // appears in the admin list.
 func TestCreateProfile_Success(t *testing.T) {
 	t.Parallel()
@@ -125,7 +125,7 @@ func TestCreateProfile_Success(t *testing.T) {
 	}
 }
 
-// TestUpdateProfile_NotFound — updating a non-existent profile returns
+// TestUpdateProfile_NotFound - updating a non-existent profile returns
 // ErrProfileNotFound.
 func TestUpdateProfile_NotFound(t *testing.T) {
 	t.Parallel()
@@ -139,7 +139,7 @@ func TestUpdateProfile_NotFound(t *testing.T) {
 	}
 }
 
-// TestUpdateProfile_Success — updating an existing profile changes its values.
+// TestUpdateProfile_Success - updating an existing profile changes its values.
 func TestUpdateProfile_Success(t *testing.T) {
 	t.Parallel()
 
@@ -160,7 +160,7 @@ func TestUpdateProfile_Success(t *testing.T) {
 	}
 }
 
-// TestDeleteProfile_NotFound — deleting a non-existent profile returns
+// TestDeleteProfile_NotFound - deleting a non-existent profile returns
 // ErrProfileNotFound.
 func TestDeleteProfile_NotFound(t *testing.T) {
 	t.Parallel()
@@ -174,7 +174,7 @@ func TestDeleteProfile_NotFound(t *testing.T) {
 	}
 }
 
-// TestDeleteProfile_Success — deleting an existing profile removes it from the
+// TestDeleteProfile_Success - deleting an existing profile removes it from the
 // list. No cascade.
 func TestDeleteProfile_Success(t *testing.T) {
 	t.Parallel()
@@ -199,7 +199,7 @@ func TestDeleteProfile_Success(t *testing.T) {
 	}
 }
 
-// TestSetProfileEnabled_Toggle — disabling a profile excludes it from
+// TestSetProfileEnabled_Toggle - disabling a profile excludes it from
 // catalog.Profiles (view) while keeping it in the admin list.
 func TestSetProfileEnabled_Toggle(t *testing.T) {
 	t.Parallel()
@@ -275,7 +275,7 @@ func findProfileByID(profiles []catalog.Profile, id string) (catalog.Profile, bo
 	return catalog.Profile{}, false
 }
 
-// TestSetProfileEnabled_NotFound — toggling a non-existent profile returns
+// TestSetProfileEnabled_NotFound - toggling a non-existent profile returns
 // ErrProfileNotFound.
 func TestSetProfileEnabled_NotFound(t *testing.T) {
 	t.Parallel()
@@ -306,7 +306,7 @@ func buildTagProjection(t *testing.T) *inventory.Projection {
 	return inventory.NewProjectionFromIndex(&idx)
 }
 
-// TestListTags_PvmssSeeded — the pvmss tag is present after migration and
+// TestListTags_PvmssSeeded - the pvmss tag is present after migration and
 // marked protected, with a live VM count > 0.
 func TestListTags_PvmssSeeded(t *testing.T) {
 	t.Parallel()
@@ -341,7 +341,7 @@ func TestListTags_PvmssSeeded(t *testing.T) {
 	}
 }
 
-// TestCreateTag_Success — creating a new tag succeeds and appears in the list.
+// TestCreateTag_Success - creating a new tag succeeds and appears in the list.
 func TestCreateTag_Success(t *testing.T) {
 	t.Parallel()
 
@@ -388,7 +388,7 @@ func TestCreateTag_Success(t *testing.T) {
 	}
 }
 
-// TestCreateTag_Duplicate — creating a tag with an existing name returns
+// TestCreateTag_Duplicate - creating a tag with an existing name returns
 // ErrDuplicateTag.
 func TestCreateTag_Duplicate(t *testing.T) {
 	t.Parallel()
@@ -402,7 +402,7 @@ func TestCreateTag_Duplicate(t *testing.T) {
 	}
 }
 
-// TestCreateTag_InvalidName — names with non-alphanumeric characters or wrong
+// TestCreateTag_InvalidName - names with non-alphanumeric characters or wrong
 // length are rejected.
 func TestCreateTag_InvalidName(t *testing.T) {
 	t.Parallel()
@@ -425,7 +425,7 @@ func TestCreateTag_InvalidName(t *testing.T) {
 	}
 }
 
-// TestCreateTag_DefaultColor — an empty color falls back to the indigo default
+// TestCreateTag_DefaultColor - an empty color falls back to the indigo default
 // (#4f46e5) rather than being rejected.
 func TestCreateTag_DefaultColor(t *testing.T) {
 	t.Parallel()
@@ -456,14 +456,14 @@ func TestCreateTag_DefaultColor(t *testing.T) {
 	}
 }
 
-// TestSetTagColor_Success — updating a tag's color works, including for pvmss.
+// TestSetTagColor_Success - updating a tag's color works, including for pvmss.
 func TestSetTagColor_Success(t *testing.T) {
 	t.Parallel()
 
 	st := openAdminStore(t)
 	ctx := context.Background()
 
-	// Change pvmss color (allowed — protection is delete-only).
+	// Change pvmss color (allowed - protection is delete-only).
 	tag, err := catalog.SetTagColor(ctx, st, "default", "pvmss", "#dc2626")
 	if err != nil {
 		t.Fatalf("SetTagColor pvmss: %v", err)
@@ -474,7 +474,7 @@ func TestSetTagColor_Success(t *testing.T) {
 	}
 }
 
-// TestSetTagColor_CustomTag — updating a non-protected tag's color works and
+// TestSetTagColor_CustomTag - updating a non-protected tag's color works and
 // the read-back reports Protected=false (complements TestSetTagColor_Success,
 // which only exercises the protected pvmss tag).
 func TestSetTagColor_CustomTag(t *testing.T) {
@@ -501,7 +501,7 @@ func TestSetTagColor_CustomTag(t *testing.T) {
 	}
 }
 
-// TestSetTagColor_NotFound — updating a non-existent tag returns
+// TestSetTagColor_NotFound - updating a non-existent tag returns
 // ErrTagNotFound.
 func TestSetTagColor_NotFound(t *testing.T) {
 	t.Parallel()
@@ -515,7 +515,7 @@ func TestSetTagColor_NotFound(t *testing.T) {
 	}
 }
 
-// TestDeleteTag_Protected — deleting pvmss returns ErrProtectedTag.
+// TestDeleteTag_Protected - deleting pvmss returns ErrProtectedTag.
 func TestDeleteTag_Protected(t *testing.T) {
 	t.Parallel()
 
@@ -528,7 +528,7 @@ func TestDeleteTag_Protected(t *testing.T) {
 	}
 }
 
-// TestDeleteTag_NotFound — deleting a non-existent tag returns ErrTagNotFound.
+// TestDeleteTag_NotFound - deleting a non-existent tag returns ErrTagNotFound.
 func TestDeleteTag_NotFound(t *testing.T) {
 	t.Parallel()
 
@@ -541,7 +541,7 @@ func TestDeleteTag_NotFound(t *testing.T) {
 	}
 }
 
-// TestDeleteTag_Success — deleting a non-pvmss tag removes it from the list.
+// TestDeleteTag_Success - deleting a non-pvmss tag removes it from the list.
 func TestDeleteTag_Success(t *testing.T) {
 	t.Parallel()
 

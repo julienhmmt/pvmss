@@ -267,7 +267,7 @@ func seedSnapshot(t *testing.T, name string) {
 }
 
 // lockRetryWriter rejects the first rejections snapshot writes with a
-// Proxmox-style "VM is locked (<lock>)" error, then delegates to the fake — a
+// Proxmox-style "VM is locked (<lock>)" error, then delegates to the fake - a
 // deterministic stand-in for a lock that clears.
 type lockRetryWriter struct {
 	cluster.SnapshotWriter
@@ -309,9 +309,9 @@ func (w *lockRetryWriter) DeleteSnapshot(ctx context.Context, node string, vmid 
 	return w.SnapshotWriter.DeleteSnapshot(ctx, node, vmid, name)
 }
 
-// TestCreateSnapshot_VMStateOnDirQcow2_Allowed — a dir storage
+// TestCreateSnapshot_VMStateOnDirQcow2_Allowed - a dir storage
 // holding a qcow2 disk supports RAM-state snapshots (the old 4-entry plugin
-// table refused it — false negative).
+// table refused it - false negative).
 //
 //nolint:paralleltest // serial: shared fake snapshot registry
 func TestCreateSnapshot_VMStateOnDirQcow2_Allowed(t *testing.T) {
@@ -340,7 +340,7 @@ func TestCreateSnapshot_VMStateOnDirQcow2_Allowed(t *testing.T) {
 	}
 }
 
-// TestCreateSnapshot_RawOnDir_RejectedBeforeClusterWrite — a raw
+// TestCreateSnapshot_RawOnDir_RejectedBeforeClusterWrite - a raw
 // disk on a file storage cannot snapshot at all (false positive the old model
 // never checked); refused before any cluster write.
 //
@@ -371,7 +371,7 @@ func TestCreateSnapshot_RawOnDir_RejectedBeforeClusterWrite(t *testing.T) {
 	}
 }
 
-// TestSnapshotCapability_Reasons — ComputeSnapshotCapability
+// TestSnapshotCapability_Reasons - ComputeSnapshotCapability
 // reports canSnapshot/canVMState with the reasons the dialog shows.
 //
 //nolint:paralleltest // serial: shared fake snapshot registry
@@ -406,7 +406,7 @@ func mustResolveVM(t *testing.T, index *inventory.Index, vmid int) vm.Entity {
 	return entity
 }
 
-// TestCreateSnapshot_RetriesOnLockUntilItClears — a snapshot
+// TestCreateSnapshot_RetriesOnLockUntilItClears - a snapshot
 // create rejected while the VM is locked is retried until the lock clears.
 //
 //nolint:paralleltest // serial: shared fake snapshot registry
@@ -427,7 +427,7 @@ func TestCreateSnapshot_RetriesOnLockUntilItClears(t *testing.T) {
 	}
 }
 
-// TestSnapshotWrite_LockRetryExpiryNamesLock — the retry budget expiring
+// TestSnapshotWrite_LockRetryExpiryNamesLock - the retry budget expiring
 // reports vm.ErrVMLocked naming the lock, not a generic failure.
 //
 //nolint:paralleltest // serial: shared fake snapshot registry
@@ -454,7 +454,7 @@ func TestSnapshotWrite_LockRetryExpiryNamesLock(t *testing.T) {
 	}
 }
 
-// TestDeleteSnapshot_LockSnapshotDeleteCarriesUnlockCommand — a VM stuck at
+// TestDeleteSnapshot_LockSnapshotDeleteCarriesUnlockCommand - a VM stuck at
 // lock=snapshot-delete (NFS ESTALE, pegaprox incident #422) cannot clear
 // itself by waiting; the expiry error carries the operator command.
 //

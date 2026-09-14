@@ -123,7 +123,7 @@ func bulkTargets(ids ...int) []bulkTargetDTO {
 }
 
 // bulkNoopRefresher satisfies vm.IndexRefresher without touching the inventory
-// worker — used in cross-cluster tests where a real per-cluster worker isn't
+// worker - used in cross-cluster tests where a real per-cluster worker isn't
 // wired.
 type bulkNoopRefresher struct{}
 
@@ -138,7 +138,7 @@ func bulkBody(action string, targets []bulkTargetDTO) string {
 // POST /vms/bulk-action
 // =============================================================================
 
-// TestVMBulk_AllOwnedStatusCompatible — valid batch, all targets owned
+// TestVMBulk_AllOwnedStatusCompatible - valid batch, all targets owned
 // and status-compatible → 200, results has one ok entry per target.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -146,7 +146,7 @@ func TestVMBulk_AllOwnedStatusCompatible(t *testing.T) {
 	handler, authHandler := newVMBulkHandler(t)
 	cookie := aliceCookie(t, authHandler)
 
-	// VM 101 and 124 are stopped, owned by alice — start succeeds on both.
+	// VM 101 and 124 are stopped, owned by alice - start succeeds on both.
 	rec, resp := serveBulk(handler, bulkRequest(bulkBody("start", bulkTargets(101, 124)), cookie))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
@@ -163,7 +163,7 @@ func TestVMBulk_AllOwnedStatusCompatible(t *testing.T) {
 	}
 }
 
-// TestVMBulk_SpansTwoClusters — batch spanning two clusters → each
+// TestVMBulk_SpansTwoClusters - batch spanning two clusters → each
 // target resolved against its own cluster's index, both succeed independently.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -199,7 +199,7 @@ func TestVMBulk_SpansTwoClusters(t *testing.T) {
 	handler := httpapi.NewVMBulkWithRegistry(httpapi.VMBulkRegistryDeps{Registry: registry, Projection: projection, Auth: authHandler, Writer: cluster.Fake{}, Store: st, Refresher: bulkNoopRefresher{}, Log: logger, Clients: nil})
 	cookie := aliceCookie(t, authHandler)
 
-	// VM 101 in default (stopped) and VM 124 in secondary (stopped) — both
+	// VM 101 in default (stopped) and VM 124 in secondary (stopped) - both
 	// owned by alice, both start succeeds.
 	body := `{"action":"start","targets":[{"cluster":"default","vmid":101},{"cluster":"secondary","vmid":124}]}`
 
@@ -221,7 +221,7 @@ func TestVMBulk_SpansTwoClusters(t *testing.T) {
 	}
 }
 
-// TestVMBulk_InvalidAction — invalid action string → 400 invalid_action,
+// TestVMBulk_InvalidAction - invalid action string → 400 invalid_action,
 // no target processed (fake client call log: 0 entries for this request).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -247,7 +247,7 @@ func TestVMBulk_InvalidAction(t *testing.T) {
 	}
 }
 
-// TestVMBulk_EmptyTargets — empty targets → 400 empty_targets.
+// TestVMBulk_EmptyTargets - empty targets → 400 empty_targets.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMBulk_EmptyTargets(t *testing.T) {
@@ -264,7 +264,7 @@ func TestVMBulk_EmptyTargets(t *testing.T) {
 	}
 }
 
-// TestVMBulk_TooManyTargets — targets with 101 entries → 400
+// TestVMBulk_TooManyTargets - targets with 101 entries → 400
 // too_many_targets, fake client call log: 0 entries.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -291,7 +291,7 @@ func TestVMBulk_TooManyTargets(t *testing.T) {
 	}
 }
 
-// TestVMBulk_Unauthenticated — no cookie → 401.
+// TestVMBulk_Unauthenticated - no cookie → 401.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMBulk_Unauthenticated(t *testing.T) {
@@ -307,7 +307,7 @@ func TestVMBulk_Unauthenticated(t *testing.T) {
 // A mixed batch never fails as a whole
 // =============================================================================
 
-// TestVMBulk_MixedOwnedAndNonOwned — batch of 3 where 2 targets belong
+// TestVMBulk_MixedOwnedAndNonOwned - batch of 3 where 2 targets belong
 // to alice and 1 to bob (forged directly) → 200, 3 result entries, bob's entry
 // status "error", alice's 2 entries reflect their real outcome.
 //
@@ -343,7 +343,7 @@ func TestVMBulk_MixedOwnedAndNonOwned(t *testing.T) {
 	}
 }
 
-// TestVMBulk_NonOwnedTargetZeroClientCalls — same batch — fake client
+// TestVMBulk_NonOwnedTargetZeroClientCalls - same batch - fake client
 // call log records zero calls for bob's (cluster, vmid) (closure guarantee, per-target inside a
 // batch).
 //
@@ -358,17 +358,17 @@ func TestVMBulk_NonOwnedTargetZeroClientCalls(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
 	}
-	// VM 103 is bob's — zero fake client calls for it.
+	// VM 103 is bob's - zero fake client calls for it.
 	if calls := cluster.FakeCallsFor(103); len(calls) != 0 {
 		t.Errorf("fake calls for 103 (non-owned) = %d, want 0", len(calls))
 	}
-	// VM 101 is alice's — one fake client call (the start).
+	// VM 101 is alice's - one fake client call (the start).
 	if calls := cluster.FakeCallsFor(101); len(calls) != 1 {
 		t.Errorf("fake calls for 101 (owned) = %d, want 1", len(calls))
 	}
 }
 
-// TestVMBulk_NonexistentVMNotFoundMessage — a target naming a
+// TestVMBulk_NonexistentVMNotFoundMessage - a target naming a
 // nonexistent VM → that entry's message is the same error the single-VM
 // endpoint uses for the same case (vm.ErrNotFound).
 //
@@ -391,7 +391,7 @@ func TestVMBulk_NonexistentVMNotFoundMessage(t *testing.T) {
 	if resp.Results[1].Status != "error" {
 		t.Errorf("result[1] (999 nonexistent) = %q, want error", resp.Results[1].Status)
 	}
-	// The message is vm.ErrNotFound.Error() — the same error Action()
+	// The message is vm.ErrNotFound.Error() - the same error Action()
 	// returns for a nonexistent VM, carried verbatim.
 	if resp.Results[1].Message != vm.ErrNotFound.Error() {
 		t.Errorf("result[1].Message = %q, want %q (vm.ErrNotFound verbatim)", resp.Results[1].Message, vm.ErrNotFound.Error())
@@ -402,7 +402,7 @@ func TestVMBulk_NonexistentVMNotFoundMessage(t *testing.T) {
 // bearer-token auth
 // =============================================================================
 
-// TestVMBulk_BearerTokenAuth — bearer-token-authenticated request →
+// TestVMBulk_BearerTokenAuth - bearer-token-authenticated request →
 // identical response shape and per-target semantics to the session-cookie
 // path.
 //

@@ -38,7 +38,7 @@ type vmStatusCountsDTO struct {
 }
 
 // countNodesHostingVMs returns the number of nodes in the index that host at
-// least one PVMSS-managed VM — the value the dashboard's NodeCount must match.
+// least one PVMSS-managed VM - the value the dashboard's NodeCount must match.
 func countNodesHostingVMs(idx inventory.Index) int {
 	count := 0
 
@@ -71,7 +71,7 @@ func assertNodeSummariesValid(t *testing.T, nodes []nodeSummaryDTO) {
 	}
 }
 
-// TestAdminDashboard_AsAdmin_ReturnsPvmssNodesAndVmCounts — GET
+// TestAdminDashboard_AsAdmin_ReturnsPvmssNodesAndVmCounts - GET
 // /admin/dashboard as admin returns only nodes hosting PVMSS-managed VMs,
 // each with CPU/RAM usage and a VM count; the total VM count and per-status
 // counts match the in-memory Index; storage is no longer surfaced.
@@ -121,7 +121,7 @@ func TestAdminDashboard_AsAdmin_ReturnsPvmssNodesAndVmCounts(t *testing.T) {
 	}
 }
 
-// TestAdminDashboard_AsNonAdmin_Returns403 — GET /admin/dashboard as
+// TestAdminDashboard_AsNonAdmin_Returns403 - GET /admin/dashboard as
 // non-admin returns 403.
 //
 //nolint:paralleltest // serial: shared fake dataset
@@ -135,8 +135,8 @@ func TestAdminDashboard_AsNonAdmin_Returns403(t *testing.T) {
 	}
 }
 
-// TestAdminDashboard_Sc003_NoClusterClientCallForVMCount — a
-// dashboard read makes zero cluster.Client calls — VM count comes from
+// TestAdminDashboard_Sc003_NoClusterClientCallForVMCount - a
+// dashboard read makes zero cluster.Client calls - VM count comes from
 // len(Index.ByVMID) and storage occupancy from Index.StoragesByNode, both
 // in-memory. Uses a call-counting fake cluster.Client.
 //
@@ -165,7 +165,7 @@ func TestAdminDashboard_Sc003_NoClusterClientCallForVMCount(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 
-	// Zero cluster.Client calls — the dashboard reads entirely from
+	// Zero cluster.Client calls - the dashboard reads entirely from
 	// the in-memory Index.
 	if countingClient.snapshotCalls != 0 {
 		t.Errorf("cluster.Client.Snapshot called %d times, want 0", countingClient.snapshotCalls)

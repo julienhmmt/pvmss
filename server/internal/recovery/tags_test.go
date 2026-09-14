@@ -24,7 +24,7 @@ func TestMapTags_DirectCopy(t *testing.T) {
 	if len(tags) != 4 {
 		t.Fatalf("len(tags) = %d, want 4", len(tags))
 	}
-	// Tags are ordered alphabetically — dev, prod, pvmss, test
+	// Tags are ordered alphabetically - dev, prod, pvmss, test
 	if tags[0].Name != "dev" {
 		t.Errorf("tags[0].Name = %q, want %q (alphabetical)", tags[0].Name, "dev")
 	}
@@ -92,12 +92,12 @@ func TestUpsertTag_PvmssNoop(t *testing.T) {
 	v04DB := openV04DB(t)
 	ctx := context.Background()
 
-	// v0.4 already has the pvmss seed row — verify it exists
+	// v0.4 already has the pvmss seed row - verify it exists
 	if count := countRows(t, v04DB, `SELECT COUNT(*) FROM catalog_tags WHERE cluster = ? AND name = ?`, "default", "pvmss"); count != 1 {
 		t.Fatalf("pvmss seed row missing: count = %d", count)
 	}
 
-	// Upsert pvmss with a different color — should update, not duplicate
+	// Upsert pvmss with a different color - should update, not duplicate
 	r := recovery.TagRow{Name: "pvmss", Color: "#ff0000", CreatedAt: "2026-08-12T12:00:00Z"}
 	if err := recovery.UpsertTagForTest(ctx, v04DB, "default", r); err != nil {
 		t.Fatalf("UpsertTag: %v", err)

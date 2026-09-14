@@ -21,7 +21,7 @@ l'administrateur le prépare pour ses utilisateurs. Cloud-init configure une VM
   formulaire (utilisateur, mot de passe, clés SSH, réseau). `packages`,
   `package_update`, `runcmd`, `bootcmd`, `write_files`, `apt`, `timezone`,
   `ntp`… s'appliquent tous. Une clé `users:` dans le document est écrasée par
-  le compte généré — demandez aux utilisateurs de mettre comptes et clés dans
+  le compte généré - demandez aux utilisateurs de mettre comptes et clés dans
   le formulaire.
 - Après création, l'onglet **Cloud-init** de la VM affiche le document.
   Quand **Autoriser le YAML cloud-init libre** est activé dans la politique,
@@ -50,7 +50,7 @@ consommé.
 4. Activez le template pour qu'il apparaisse dans le sélecteur. Désactivez-le
    pour le masquer sans le supprimer.
 
-Les templates sont statiques — pas de variables. Les valeurs propres à
+Les templates sont statiques - pas de variables. Les valeurs propres à
 l'utilisateur (utilisateur, mot de passe, clés SSH, réseau) viennent du
 formulaire.
 
@@ -87,14 +87,14 @@ runcmd:
 ## VM depuis image cloud et snippet de base
 
 Les VM créées depuis une **image cloud** reçoivent en plus un snippet de base
-fixe, `pvmss-baseline.yml`, s'il existe dans le même répertoire `snippets/` —
+fixe, `pvmss-baseline.yml`, s'il existe dans le même répertoire `snippets/` - 
 pratique pour installer `qemu-guest-agent` sur tout le cluster. Son absence
 est silencieuse, pas une erreur.
 
 ## Dépannage
 
 - **Sélecteur masqué dans l'assistant** : le cluster n'a pas de cible
-  d'écriture — vérifiez **Admin › Clusters** (badge « cloud-init : activé »).
+  d'écriture - vérifiez **Admin › Clusters** (badge « cloud-init : activé »).
 - **Création refusée avec `cloudinit_write_unavailable`** : le répertoire
   n'est pas monté, pas inscriptible par l'utilisateur du conteneur (uid
   65532), ou l'identifiant de stockage ne correspond pas au stockage Proxmox

@@ -18,7 +18,7 @@ var (
 	// and the caller did not confirm the stop/start cycle.
 	ErrRetrofitRequiresConfirmation = errors.New("retrofit requires confirmation: VM is running")
 	// ErrRetrofitRestartFailed is returned when the VM was switched to
-	// SeaBIOS but failed to come back up — the operator must intervene.
+	// SeaBIOS but failed to come back up - the operator must intervene.
 	ErrRetrofitRestartFailed = errors.New("retrofit succeeded but the VM failed to restart")
 )
 
@@ -51,7 +51,7 @@ type RetrofitDependencies struct {
 // 6. Audit + refresh.
 //
 // cloud-init's packages and runcmd are once-per-instance, so the baseline
-// cannot be retrofitted — only the firmware. This is the only retrofittable
+// cannot be retrofitted - only the firmware. This is the only retrofittable
 // half of the effort.
 func RetrofitToSeaBIOS(ctx context.Context, deps RetrofitDependencies) error {
 	entity, err := Resolve(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)

@@ -3,11 +3,11 @@ package httpapi
 
 import "time"
 
-// ClusterFreshness is one configured cluster's freshness signal — its name and
+// ClusterFreshness is one configured cluster's freshness signal - its name and
 // the time its inventory projection was last successfully refreshed. The health
 // handler compares RefreshedAt against twice the inventory refresh interval to
 // decide staleness. The Name is never disclosed in the public
-// health response — only the count of stale clusters is.
+// health response - only the count of stale clusters is.
 type ClusterFreshness struct {
 	Name        string
 	RefreshedAt time.Time
@@ -15,7 +15,7 @@ type ClusterFreshness struct {
 
 // ClusterFreshnessChecker supplies the health handler with per-cluster
 // freshness data and the demonstration-mode flag. The health handler never
-// calls cluster.Client — it reads state the inventory refresh goroutines
+// calls cluster.Client - it reads state the inventory refresh goroutines
 // already maintain.
 type ClusterFreshnessChecker interface {
 	// Clusters returns the freshness snapshot for every configured cluster.

@@ -18,7 +18,7 @@ type CatalogCloudInitTemplate struct {
 }
 
 // CatalogCloudInitTemplatesAll returns every cloud-init template row for a
-// cluster (including disabled), ordered by id — the admin list's data source.
+// cluster (including disabled), ordered by id - the admin list's data source.
 func (s *Store) CatalogCloudInitTemplatesAll(ctx context.Context, cluster string) ([]CatalogCloudInitTemplate, error) {
 	return queryCatalog(ctx, s.db, "catalog cloudinit templates all",
 		`SELECT id, label, content, enabled, created_at, updated_at FROM catalog_cloudinit_templates WHERE cluster = ? ORDER BY id`,
@@ -31,7 +31,7 @@ func (s *Store) CatalogCloudInitTemplatesAll(ctx context.Context, cluster string
 }
 
 // CatalogCloudInitTemplatesEnabled returns only enabled cloud-init template
-// rows for a cluster, ordered by id — the catalog reader's data source.
+// rows for a cluster, ordered by id - the catalog reader's data source.
 func (s *Store) CatalogCloudInitTemplatesEnabled(ctx context.Context, cluster string) ([]CatalogCloudInitTemplate, error) {
 	return queryCatalog(ctx, s.db, "catalog cloudinit templates enabled",
 		`SELECT id, label, content, enabled, created_at, updated_at FROM catalog_cloudinit_templates WHERE cluster = ? AND enabled = 1 ORDER BY id`,
@@ -74,7 +74,7 @@ func (s *Store) DeleteCloudInitTemplate(ctx context.Context, cluster, id string)
 }
 
 // SetCloudInitTemplateEnabled updates the enabled state for one template.
-// Returns sql.ErrNoRows if the template does not exist — a toggle is an upsert
+// Returns sql.ErrNoRows if the template does not exist - a toggle is an upsert
 // on the enabled column, never a delete.
 func (s *Store) SetCloudInitTemplateEnabled(ctx context.Context, cluster, id string, enabled bool, updatedAt string) error {
 	return execUpdateOne(ctx, s.db,

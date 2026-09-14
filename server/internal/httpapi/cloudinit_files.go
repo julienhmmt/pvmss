@@ -157,7 +157,7 @@ func (h *CloudInitFiles) ServeDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// fileOwner resolves the session identity — the only owner this API ever
+// fileOwner resolves the session identity - the only owner this API ever
 // operates on. 401 when unauthenticated.
 func (h *CloudInitFiles) fileOwner(w http.ResponseWriter, r *http.Request) (string, bool) {
 	identity, err := h.auth.Principal(r)

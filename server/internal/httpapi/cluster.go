@@ -10,7 +10,7 @@ import (
 )
 
 // ClusterNodes serves GET /api/v1/cluster/nodes, reading from the inventory
-// projection — never the cluster client directly. The
+// projection - never the cluster client directly. The
 // handler is the literal fix exists for: reads no longer pay a
 // per-request client call.
 type ClusterNodes struct {
@@ -41,7 +41,7 @@ type clusterNodesResponse struct {
 }
 
 // clusterErrorEnvelope is the {code, message} shape used by this endpoint.
-// message stays generic — driver detail goes
+// message stays generic - driver detail goes
 // only to the structured server log.
 type clusterErrorEnvelope struct {
 	Code    string `json:"code"`

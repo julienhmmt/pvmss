@@ -22,7 +22,7 @@ const (
 	testActionSetCloudInitConfig = "set_cloudinit_config"
 )
 
-// testIndex builds a small projection across two pools and two nodes —
+// testIndex builds a small projection across two pools and two nodes - 
 // large enough to exercise scope, search, filter, sort, and pagination
 // without depending on the fake dataset's size.
 func testIndex() *inventory.Index {

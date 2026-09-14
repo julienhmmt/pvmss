@@ -45,7 +45,7 @@ type spaHandler struct {
 
 // RouterConfig configures NewRouter. VMCloudInit, VMCreate, Tasks,
 // SnapshotHandlers, VMConsole, AdminCatalog, AdminPolicy, AdminPools, and
-// AdminOps are optional — left nil/empty, their routes are simply not
+// AdminOps are optional - left nil/empty, their routes are simply not
 // registered (router tests rely on this to omit handlers without panicking).
 type RouterConfig struct {
 	Health           http.Handler
@@ -122,7 +122,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		mux.Handle("DELETE /api/v1/cloudinit/files/{id}", protect(cfg.Auth.Require(http.HandlerFunc(cfg.CloudInitFiles.ServeDelete)), vmWriteLimiter))
 	}
 
-	// Public documentation — audience-filtered list and rendered
+	// Public documentation - audience-filtered list and rendered
 	// single-page view. Not wrapped in auth.Require: the handler resolves the
 	// caller itself (to hide admin-audience pages from non-admins) and issues
 	// its own 401/403 on admin-audience pages.
@@ -157,9 +157,9 @@ type protectFunc func(next http.Handler, limiter *userRateLimiter) http.Handler
 func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc, vmWriteLimiter, vmStatusLimiter *userRateLimiter) {
 	// Not wrapped in auth.Require: the handler needs the resolved Identity
 	// itself (for scope enforcement) and calls h.auth.Principal(r) directly,
-	// returning 401 on its own — wrapping would just re-run the same check.
+	// returning 401 on its own - wrapping would just re-run the same check.
 	mux.Handle("GET /api/v1/vms", cfg.VMs)
-	// Bulk VM power actions — same Principal pattern as VM list/detail:
+	// Bulk VM power actions - same Principal pattern as VM list/detail:
 	// the handler calls h.auth.Principal(r) directly and returns 401 on its
 	// own, so it is not wrapped in auth.Require. Registered before the
 	// {cluster}/{vmid} pattern so the literal "bulk-action" segment wins.
@@ -173,7 +173,7 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 	if cfg.VMStatusBatch != nil {
 		mux.Handle("POST /api/v1/vms/status", protect(cfg.VMStatusBatch, vmStatusLimiter))
 	}
-	// VM creation + catalog + task polling — same Principal pattern as above.
+	// VM creation + catalog + task polling - same Principal pattern as above.
 	if cfg.VMCreate != nil {
 		mux.Handle("POST /api/v1/vms", protect(cfg.VMCreate, vmWriteLimiter))
 		mux.Handle("GET /api/v1/vm-create/catalog", http.HandlerFunc(cfg.VMCreate.ServeCatalog))
@@ -182,7 +182,7 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 	if cfg.Tasks != nil {
 		mux.Handle("GET /api/v1/tasks/{upid}", cfg.Tasks)
 	}
-	// VM detail + actions + delete + patch — all gated by vm.Resolve() inside
+	// VM detail + actions + delete + patch - all gated by vm.Resolve() inside
 	// the handler. Same reason as GET /vms: not wrapped in auth.Require.
 	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}", cfg.VMDetail)
 	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/actions", protect(cfg.VMDetail, vmWriteLimiter))
@@ -216,7 +216,7 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/snapshots", protect(snapshots, vmWriteLimiter))
 		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/rollback", protect(snapshots, vmWriteLimiter))
 		mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/snapshots/{name}", protect(snapshots, vmWriteLimiter))
-		// One snapshot's stored config — the pre-rollback diff.
+		// One snapshot's stored config - the pre-rollback diff.
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/config", snapshots)
 	}
 
@@ -237,7 +237,7 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 // (per-IP rate limited) and the authenticated token/password endpoints
 // (per-user rate limited + CSRF). Extracted from NewRouter for gocyclo.
 func registerAuthRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc, authWriteLimiter *userRateLimiter, hops int) {
-	// Unauthenticated credential-check endpoints get a per-IP rate limit —
+	// Unauthenticated credential-check endpoints get a per-IP rate limit - 
 	// nothing else gates repeated guesses against them. The pre-login cluster
 	// list and OIDC trigger are also unauthenticated and disclose cluster
 	// names, so they share the same limiter to bound enumeration/abuse.

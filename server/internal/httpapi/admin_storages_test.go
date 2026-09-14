@@ -16,7 +16,7 @@ type adminStorageDTO struct {
 	Enabled bool   `json:"enabled"`
 }
 
-// TestAdminStorages_ListShowsAllWithCorrectEnabled — GET /admin/storages
+// TestAdminStorages_ListShowsAllWithCorrectEnabled - GET /admin/storages
 // shows all VM-capable fake storages with correct per-(name,node) enabled state.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -66,7 +66,7 @@ func TestAdminStorages_ListShowsAllWithCorrectEnabled(t *testing.T) {
 	}
 }
 
-// TestAdminStorages_ToggleOnePairLeavesSameNamedPairUntouched — toggling
+// TestAdminStorages_ToggleOnePairLeavesSameNamedPairUntouched - toggling
 // one storage+node pair does not affect a same-named pair on another node.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -81,7 +81,7 @@ func TestAdminStorages_ToggleOnePairLeavesSameNamedPairUntouched(t *testing.T) {
 		t.Fatalf("toggle status = %d: %s", rec.Code, rec.Body.String())
 	}
 
-	// local@pve-node-01 is unaffected (still disabled — its own state).
+	// local@pve-node-01 is unaffected (still disabled - its own state).
 	list := adminGet(t, handler, authHandler, cookie, "/api/v1/admin/storages?cluster=default")
 	if list.Code != http.StatusOK {
 		t.Fatalf("list status = %d", list.Code)
@@ -103,7 +103,7 @@ func TestAdminStorages_ToggleOnePairLeavesSameNamedPairUntouched(t *testing.T) {
 	}
 }
 
-// TestAdminStorages_NonAdminReturns403 — non-admin gets 403.
+// TestAdminStorages_NonAdminReturns403 - non-admin gets 403.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminStorages_NonAdminReturns403(t *testing.T) {
@@ -116,7 +116,7 @@ func TestAdminStorages_NonAdminReturns403(t *testing.T) {
 	}
 }
 
-// TestAdminStorages_ToggleUnknownPairReturns404 — unknown pair 404.
+// TestAdminStorages_ToggleUnknownPairReturns404 - unknown pair 404.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminStorages_ToggleUnknownPairReturns404(t *testing.T) {
@@ -137,7 +137,7 @@ type snippetStorageDTO struct {
 	Type string `json:"type"`
 }
 
-// TestAdminSnippetStorages_ListsOnlySnippetCapable — the snippet-storages
+// TestAdminSnippetStorages_ListsOnlySnippetCapable - the snippet-storages
 // endpoint returns only storages with the snippets content type, deduplicated
 // by name. The fake cluster has exactly one such storage: local@pve-node-01.
 //
@@ -169,7 +169,7 @@ func TestAdminSnippetStorages_ListsOnlySnippetCapable(t *testing.T) {
 	}
 }
 
-// TestAdminSnippetStorages_NonAdminReturns403 — non-admin gets 403.
+// TestAdminSnippetStorages_NonAdminReturns403 - non-admin gets 403.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminSnippetStorages_NonAdminReturns403(t *testing.T) {

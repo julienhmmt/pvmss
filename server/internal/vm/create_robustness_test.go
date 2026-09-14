@@ -48,7 +48,7 @@ func policyWithProjection(t *testing.T, fixture createFixture) *policy.Policy {
 
 //  - VMID collision retry -
 
-// TestCreate_VMIDCollisionRetry_SucceedsOnSecondAttempt — a CreateVM
+// TestCreate_VMIDCollisionRetry_SucceedsOnSecondAttempt - a CreateVM
 // that returns ErrVMIDTaken once then succeeds produces a single VM with a
 // different VMID than the first attempt, and no error reaches the client.
 //
@@ -93,7 +93,7 @@ func TestCreate_VMIDCollisionRetry_SucceedsOnSecondAttempt(t *testing.T) {
 	}
 }
 
-// TestCreate_VMIDCollisionRetry_ExhaustsAfterThreeAttempts — three
+// TestCreate_VMIDCollisionRetry_ExhaustsAfterThreeAttempts - three
 // consecutive collisions produce ErrClusterCreate, not an infinite loop.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -115,7 +115,7 @@ func TestCreate_VMIDCollisionRetry_ExhaustsAfterThreeAttempts(t *testing.T) {
 
 //  - (b): Rollback on failed task -
 
-// TestCreate_RollbackOnFailedTask_PurgesHalfMadeVM — when the create
+// TestCreate_RollbackOnFailedTask_PurgesHalfMadeVM - when the create
 // task fails, the half-made VM is purged (best-effort Delete) so it does not
 // consume the user's quota. The original error is what reaches the client
 // (via CloudInitPushError for the ISO path).
@@ -142,7 +142,7 @@ func TestCreate_RollbackOnFailedTask_PurgesHalfMadeVM(t *testing.T) {
 		t.Fatalf("CloudInitPushError = empty, want the task error message")
 	}
 
-	// The half-made VM should have been purged — it must not appear in the
+	// The half-made VM should have been purged - it must not appear in the
 	// snapshot.
 	snap, err := fixture.fake.Snapshot(context.Background())
 	if err != nil {
@@ -174,7 +174,7 @@ func TestCreate_RollbackOnFailedTask_PurgesHalfMadeVM(t *testing.T) {
 	}
 }
 
-// TestCreate_RollbackOnFailedCloneTask_PurgesHalfMadeVM — when the clone
+// TestCreate_RollbackOnFailedCloneTask_PurgesHalfMadeVM - when the clone
 // task fails, the half-made VM is purged. The clone path always waits for the
 // task, so a task error triggers rollback regardless of cloud-init.
 //
@@ -208,7 +208,7 @@ func TestCreate_RollbackOnFailedCloneTask_PurgesHalfMadeVM(t *testing.T) {
 
 //  - (c): Name uniqueness by pool -
 
-// TestCreate_NameUniqueness_RejectsDuplicateInSamePool — a name already
+// TestCreate_NameUniqueness_RejectsDuplicateInSamePool - a name already
 // used by a VM in the actor's pool is rejected with ErrNameTaken before any
 // VMID is consumed.
 //
@@ -240,8 +240,8 @@ func TestCreate_NameUniqueness_RejectsDuplicateInSamePool(t *testing.T) {
 	}
 }
 
-// TestCreate_NameUniqueness_AllowsSameNameInDifferentPool — the same
-// name in a different pool is accepted — the uniqueness is per-pool, not
+// TestCreate_NameUniqueness_AllowsSameNameInDifferentPool - the same
+// name in a different pool is accepted - the uniqueness is per-pool, not
 // global, so two tenants can each have a "web-prod".
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -260,7 +260,7 @@ func TestCreate_NameUniqueness_AllowsSameNameInDifferentPool(t *testing.T) {
 	// Build a projection that sees Alice's VM.
 	service := policyWithProjection(t, fixture)
 
-	// Bob tries the same name in his own pool — must succeed.
+	// Bob tries the same name in his own pool - must succeed.
 	bobReq := detailedRequest()
 	bobReq.Name = "web-prod"
 

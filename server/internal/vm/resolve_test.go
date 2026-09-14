@@ -29,7 +29,7 @@ func buildResolveIndex(t *testing.T) *inventory.Index {
 
 // TestResolve is the literal table from the five combinations
 // that prove Resolve is the single ownership gate.
-// This is the most important test — it is the structural proof is
+// This is the most important test - it is the structural proof is
 // closed (spec: "resolve_test.go + this phase's tests are the structural proof").
 //
 //nolint:paralleltest // serial: shared fake VM fixture
@@ -135,7 +135,7 @@ func assertResolveResult(
 	}
 }
 
-// TestResolve_AdminStillRequiresPvmssTag — an admin bypasses the pool check
+// TestResolve_AdminStillRequiresPvmssTag - an admin bypasses the pool check
 // but never the tag check: an untagged VM is 404 for everyone,
 // including an admin.
 //
@@ -150,7 +150,7 @@ func TestResolve_AdminStillRequiresPvmssTag(t *testing.T) {
 	}
 }
 
-// TestResolve_NodeAlwaysFromIndex — the returned node is exactly what the
+// TestResolve_NodeAlwaysFromIndex - the returned node is exactly what the
 // Index recorded, never re-derived from request input (root cause).
 // This is the one-line fix at the center of there is no node parameter
 // to forge because Resolve does not accept one.
@@ -171,7 +171,7 @@ func TestResolve_NodeAlwaysFromIndex(t *testing.T) {
 	}
 }
 
-// TestResolve_EntityCarriesDetailFields — the Entity returned to a detail
+// TestResolve_EntityCarriesDetailFields - the Entity returned to a detail
 // request carries the metrics the stat cards need (CPU, RAM, disk, uptime).
 //
 //nolint:paralleltest // serial: shared fake VM fixture
@@ -209,7 +209,7 @@ func TestResolve_EntityCarriesDetailFields(t *testing.T) {
 	}
 }
 
-// TestResolve_StoppedVmHasZeroUptime — uptime is absent (zero) when the VM is
+// TestResolve_StoppedVmHasZeroUptime - uptime is absent (zero) when the VM is
 // not running (contracts: uptimeSeconds absent when not running).
 //
 //nolint:paralleltest // serial: shared fake VM fixture

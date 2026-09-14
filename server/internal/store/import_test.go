@@ -16,7 +16,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// Table name constants — centralizing them keeps goconst below threshold
+// Table name constants - centralizing them keeps goconst below threshold
 // across the store test package.
 const (
 	tblCatalogNodes     = "catalog_nodes"
@@ -213,7 +213,7 @@ func tableRows(t *testing.T, db *sql.DB, table string) []string {
 	return out
 }
 
-// TestValidateImport_WellFormedFile_ReturnsPreview — ValidateImport on
+// TestValidateImport_WellFormedFile_ReturnsPreview - ValidateImport on
 // a well-formed file returns the correct Tables/IgnoredTables/row counts.
 //
 //nolint:paralleltest // serial: shared staging map
@@ -273,7 +273,7 @@ func TestValidateImport_WellFormedFile_ReturnsPreview(t *testing.T) {
 	}
 }
 
-// TestValidateImport_MalformedFile_ReturnsErrorAndStagesNothing — a
+// TestValidateImport_MalformedFile_ReturnsErrorAndStagesNothing - a
 // non-SQLite upload returns an explicit error and stages nothing.
 //
 //nolint:paralleltest // serial: shared staging map
@@ -286,14 +286,14 @@ func TestValidateImport_MalformedFile_ReturnsErrorAndStagesNothing(t *testing.T)
 		t.Fatal("ValidateImport on garbage returned nil error")
 	}
 
-	// Nothing is staged — a lookup with any token must fail as not-found.
+	// Nothing is staged - a lookup with any token must fail as not-found.
 	_, err = st.Staging().Lookup("any-token-after-malformed")
 	if err == nil {
-		t.Fatal("Lookup after malformed upload returned nil error — something was staged")
+		t.Fatal("Lookup after malformed upload returned nil error - something was staged")
 	}
 }
 
-// TestConfirmImport_UnknownTokenReturnsNotFound — ConfirmImport on an
+// TestConfirmImport_UnknownTokenReturnsNotFound - ConfirmImport on an
 // unknown token returns the not-found sentinel.
 //
 //nolint:paralleltest // serial: shared staging map
@@ -307,7 +307,7 @@ func TestConfirmImport_UnknownTokenReturnsNotFound(t *testing.T) {
 	}
 }
 
-// TestConfirmImport_ExpiredTokenReturnsExpired — ConfirmImport on an
+// TestConfirmImport_ExpiredTokenReturnsExpired - ConfirmImport on an
 // expired token returns the expired sentinel.
 //
 //nolint:paralleltest // serial: shared staging map
@@ -335,7 +335,7 @@ func TestConfirmImport_ExpiredTokenReturnsExpired(t *testing.T) {
 	}
 }
 
-// TestConfirmImport_ReplacesPreviewedTables — on a valid token,
+// TestConfirmImport_ReplacesPreviewedTables - on a valid token,
 // ConfirmImport replaces every previewed table in one transaction.
 //
 //nolint:paralleltest // serial: shared staging map
@@ -343,7 +343,7 @@ func TestConfirmImport_ReplacesPreviewedTables(t *testing.T) {
 	st := newImportStore(t)
 	ctx := context.Background()
 
-	// The live DB has the seed (2 catalog_nodes). Craft an upload with 3 different nodes — after
+	// The live DB has the seed (2 catalog_nodes). Craft an upload with 3 different nodes - after
 	// confirm, the live table must contain exactly
 	// the 3 crafted rows, not the original 2.
 	craftedPath := filepath.Join(t.TempDir(), "replace.db")
@@ -433,11 +433,11 @@ func TestImportAllowlist_Sc005_ExcludesAuthSystemHistoryTables(t *testing.T) {
 		t.Fatalf("ValidateImport: %v", err)
 	}
 
-	// The preview's Tables must contain ONLY catalog_tags — the four excluded
+	// The preview's Tables must contain ONLY catalog_tags - the four excluded
 	// tables must appear in IgnoredTables, not Tables.
 	for _, tp := range preview.Tables {
 		if tp.Name != tblCatalogTags {
-			t.Errorf("preview Tables contains %s — should be excluded", tp.Name)
+			t.Errorf("preview Tables contains %s - should be excluded", tp.Name)
 		}
 	}
 
@@ -468,13 +468,13 @@ func TestImportAllowlist_Sc005_ExcludesAuthSystemHistoryTables(t *testing.T) {
 		}
 	}
 
-	// catalog_tags must have changed — it now contains the crafted rows.
+	// catalog_tags must have changed - it now contains the crafted rows.
 	if equalStringSlices(beforeRows[tblCatalogTags], afterRows[tblCatalogTags]) {
-		t.Error("catalog_tags did not change — import did not apply the allowlisted table")
+		t.Error("catalog_tags did not change - import did not apply the allowlisted table")
 	}
 }
 
-// TestImportAllowlist_ListMatchesCurrentSchema — the importableTables list
+// TestImportAllowlist_ListMatchesCurrentSchema - the importableTables list
 // contains exactly the instance-configuration tables that exist in the
 // current schema, and excludes auth/system/history tables. This test does
 // NOT hardcode that the list is exhaustive of every future migration's tables
@@ -532,7 +532,7 @@ func TestImportAllowlist_ListMatchesCurrentSchema(t *testing.T) {
 	excluded := []string{tblSchemaMigrations, tblSessions, tblAPITokens, tblAuditLog, "vm_cloudinit_snippets"}
 	for _, name := range excluded {
 		if !liveTables[name] {
-			continue // table doesn't exist yet — fine, the test is tolerant
+			continue // table doesn't exist yet - fine, the test is tolerant
 		}
 
 		if allowlisted[name] {

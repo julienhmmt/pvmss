@@ -47,7 +47,7 @@ func consolePasswordStore(t *testing.T) *store.Store {
 	return st
 }
 
-// TestSetConsolePassword_GeneratesAndApplies — the action generates a
+// TestSetConsolePassword_GeneratesAndApplies - the action generates a
 // random password, applies it via the guest agent to the VM's ciuser, and
 // returns it once.
 //
@@ -88,7 +88,7 @@ func TestSetConsolePassword_GeneratesAndApplies(t *testing.T) {
 	}
 }
 
-// TestSetConsolePassword_RefusesStoppedVM — a stopped VM is refused before
+// TestSetConsolePassword_RefusesStoppedVM - a stopped VM is refused before
 // the agent is probed (the pre-flight check reads the live status).
 //
 //nolint:paralleltest // serial: shared fake dataset
@@ -96,7 +96,7 @@ func TestSetConsolePassword_RefusesStoppedVM(t *testing.T) {
 	index := consolePasswordIndex(t)
 	st := consolePasswordStore(t)
 
-	// VM 101 is stopped in the pristine dataset — do not start it.
+	// VM 101 is stopped in the pristine dataset - do not start it.
 	_, err := vm.SetConsolePassword(context.Background(), vm.ConsolePasswordDeps{
 		Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName, VMID: 101,
 		Reader: cluster.Fake{}, Writer: cluster.Fake{}, Audit: st, Refresher: testRefresher{},

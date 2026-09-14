@@ -9,7 +9,7 @@ import (
 // clientIP extracts the request's source IP. PVMSS deploys behind a Kubernetes
 // ingress, so RemoteAddr is the proxy's IP, not the user's. When
 // trustedProxyHops > 0, the X-Forwarded-For header is parsed and the IP at
-// position len(hops) - trustedProxyHops is selected — the first untrusted hop
+// position len(hops) - trustedProxyHops is selected - the first untrusted hop
 // from the right. With trustedProxyHops == 0 (no trusted proxy), XFF is
 // ignored and RemoteAddr is used directly. In both cases the port is stripped
 // from the result.

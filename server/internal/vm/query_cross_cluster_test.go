@@ -55,7 +55,7 @@ func TestList_CrossClusterPoolMerge(t *testing.T) {
 // TestList_AdminScopeAllSpansEveryCluster
 // An admin with scope=all and no cluster filter sees
 // every VM from every configured cluster, not only the pools their own
-// identity happens to match — proves the adminAll branch merges across
+// identity happens to match - proves the adminAll branch merges across
 // inventory.Registry.All() the same way the mine-scope branch already does.
 //
 //nolint:paralleltest // VM fixtures are shared with the package suite; names prove isolation
@@ -73,7 +73,7 @@ func TestList_AdminScopeAllSpansEveryCluster(t *testing.T) {
 		testClusterName: &defaultIndex, crossClusterSecondaryKey: &secondaryIndex, "third": &thirdIndex,
 	})
 
-	// The admin's own identity matches none of these pools — scope=all must
+	// The admin's own identity matches none of these pools - scope=all must
 	// still return every VM from every cluster, proving admin visibility is
 	// not accidentally routed through the same pool-membership merge mine
 	// scope uses.

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// TestBuildVendorData_Golden — table-driven golden test over the three
+// TestBuildVendorData_Golden - table-driven golden test over the three
 // inputs (baseline alone; baseline + override; baseline + user; all three),
 // asserting the externally observable document the portal would hand a guest.
 // Pins the Debian branch's install → purge → sentinel ordering, the
@@ -282,7 +282,7 @@ func checkNestedMapMerge(t *testing.T, doc string) {
 	}
 }
 
-// TestBuildVendorData_DistributionFamilies — RHEL-family and Arch paths
+// TestBuildVendorData_DistributionFamilies - RHEL-family and Arch paths
 // install and enable the agent and perform no kernel work and no reboot; a
 // test asserts this so the families stay deliberately covered rather than
 // silently falling through. NixOS falls through with no package or kernel
@@ -302,7 +302,7 @@ func TestBuildVendorData_DistributionFamilies(t *testing.T) {
 
 	// The case statement pattern covers debian and ubuntu (the only family
 	// that needs the kernel swap). RHEL-family and Arch are not named in the
-	// case because they need nothing beyond the agent line — but the spec
+	// case because they need nothing beyond the agent line - but the spec
 	// requires a test that pins that decision.
 	if !strings.Contains(doc, "*debian*|*ubuntu*") {
 		t.Errorf("Debian-family case pattern missing:\n%s", doc)
@@ -312,7 +312,7 @@ func TestBuildVendorData_DistributionFamilies(t *testing.T) {
 	// agent enable, which is correct (they already ship a standard kernel).
 	for _, pkg := range []string{"dnf install", "pacman -S", "zypper install"} {
 		if strings.Contains(doc, pkg) {
-			t.Errorf("unexpected %q branch — RHEL/Arch should fall through:\n%s", pkg, doc)
+			t.Errorf("unexpected %q branch - RHEL/Arch should fall through:\n%s", pkg, doc)
 		}
 	}
 
@@ -323,7 +323,7 @@ func TestBuildVendorData_DistributionFamilies(t *testing.T) {
 	}
 }
 
-// TestGeneratedBaseline_IsStableSource — the admin view reads the
+// TestGeneratedBaseline_IsStableSource - the admin view reads the
 // generated baseline from the same source the create path delivers, never a
 // copy. Pin that GeneratedBaseline returns the verbatim document.
 func TestGeneratedBaseline_IsStableSource(t *testing.T) {
@@ -345,7 +345,7 @@ func TestGeneratedBaseline_IsStableSource(t *testing.T) {
 	}
 
 	if built != got {
-		t.Errorf("GeneratedBaseline and BuildVendorData diverged — admin view would show a different document than the create path delivers")
+		t.Errorf("GeneratedBaseline and BuildVendorData diverged - admin view would show a different document than the create path delivers")
 	}
 }
 

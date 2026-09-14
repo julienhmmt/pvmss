@@ -142,7 +142,7 @@ func TestRegistry_StartRefreshMutateRefreshCycle(t *testing.T) {
 		t.Fatalf("deleted VM %d still in projection", firstVM.VMID)
 	}
 
-	// Cancel context — workers must stop without hanging.
+	// Cancel context - workers must stop without hanging.
 	cancel()
 	done := make(chan struct{})
 	go func() {

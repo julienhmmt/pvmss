@@ -12,7 +12,7 @@ import (
 
 // NodeApproval is one discovered node with its admin approval state.
 // Missing is true for a stored approval whose node Proxmox no longer reports
-// — the row stays listed (greyed out) so the admin can remove it. Only
+// - the row stays listed (greyed out) so the admin can remove it. Only
 // disabled orphans are surfaced; enabled orphans are auto-removed since they
 // would otherwise be offered to users on a node that no longer exists.
 type NodeApproval struct {
@@ -69,7 +69,7 @@ type ISOApproval struct {
 // TemplateApproval is one discovered Proxmox template with its admin approval
 // state. The admin sees all templates the cluster reports and
 // toggles which are offered in the create wizard. Missing is true for a
-// stored approval whose template Proxmox no longer reports — the
+// stored approval whose template Proxmox no longer reports - the
 // row stays visible so the admin can remove it.
 type TemplateApproval struct {
 	VMID             int
@@ -288,7 +288,7 @@ func AdminListISOs(ctx context.Context, st *store.Store, client cluster.Client, 
 // Discovery is the truth about a template's field values; the stored row is
 // the truth about approval only. When they disagree, the list
 // shows the discovered values and the stored row is reconciled with
-// UpdateTemplate — a drift write, not a human mutation, so it is not audited.
+// UpdateTemplate - a drift write, not a human mutation, so it is not audited.
 // Stored rows with no discovered match are appended with Missing=true so the
 // admin can see and remove an approval whose template was deleted in
 // Proxmox.
@@ -324,7 +324,7 @@ func AdminListTemplates(ctx context.Context, st *store.Store, client cluster.Cli
 	}
 
 	// Orphan approvals: the template is gone from Proxmox but the row (and
-	// its enabled flag) lives on. Surface it so the admin can remove it —
+	// its enabled flag) lives on. Surface it so the admin can remove it - 
 	// otherwise it would be invisible yet still offered to users.
 	for _, row := range storedRows {
 		if discoveredByVMID[row.VMID] {
@@ -369,7 +369,7 @@ func reconcileTemplateApproval(
 	approval.OverrideDiscovery = stored.OverrideDiscovery
 
 	// When the admin pinned the row (schemaV26), the stored values
-	// are authoritative — show them instead of the discovered ones
+	// are authoritative - show them instead of the discovered ones
 	// and skip the drift write-back so the pin survives the next
 	// list. An unreadable discovery reports empty disk fields
 	// never write them over the stored values: the
@@ -399,7 +399,7 @@ func reconcileTemplateApproval(
 }
 
 // newTemplateApproval builds the approval view of one discovered template
-// with Enabled left false — the caller sets it from the stored row.
+// with Enabled left false - the caller sets it from the stored row.
 func newTemplateApproval(tmpl cluster.TemplateVM) TemplateApproval {
 	return TemplateApproval{
 		VMID:             tmpl.VMID,
@@ -432,7 +432,7 @@ type TemplateRef struct {
 var ErrTemplateNotFound = errors.New("template not found")
 
 // DeleteTemplate removes a template approval row. Returns
-// ErrTemplateNotFound when the cluster has no approval for the vmid — the
+// ErrTemplateNotFound when the cluster has no approval for the vmid - the
 // admin UI only offers Remove on missing (orphaned) rows, but the API deletes
 // any approval row.
 func DeleteTemplate(ctx context.Context, st *store.Store, cluster string, vmid int) error {
@@ -473,7 +473,7 @@ var ErrTemplateUnreadable = errors.New("template disk unreadable")
 //
 // The discovered template's field values are used to populate the row on
 // first approval (so the row is complete, not a stub with empty fields).
-// The lookup is a single TemplateByVMID call — not a full
+// The lookup is a single TemplateByVMID call - not a full
 // ListTemplates re-hydration per toggle.
 func SetTemplateEnabled(ctx context.Context, st *store.Store, client cluster.Client, clusterName string, ref TemplateRef, enabled bool) error {
 	found, err := client.TemplateByVMID(ctx, ref.VMID)
@@ -498,7 +498,7 @@ func SetTemplateEnabled(ctx context.Context, st *store.Store, client cluster.Cli
 		}
 	}
 
-	// Not yet in the table — insert with discovered values so the row is
+	// Not yet in the table - insert with discovered values so the row is
 	// complete, not just a stub with empty fields. The enabled state is the
 	// caller's (admin toggle), not hardcoded to 1.
 	values := store.TemplateValues{
@@ -557,7 +557,7 @@ func SetBridgeEnabled(ctx context.Context, st *store.Store, client cluster.Clien
 	return st.SetBridgeEnabled(ctx, clusterName, node, name, enabled)
 }
 
-// ISORef identifies one discovered ISO by its (node, storage, file) triple —
+// ISORef identifies one discovered ISO by its (node, storage, file) triple - 
 // the same key the enabled-state store and discovery check use internally.
 type ISORef struct {
 	Node    string
@@ -594,7 +594,7 @@ var ErrBridgeNotFound = errors.New("bridge not found")
 var ErrISONotFound = errors.New("iso not found")
 
 // DeleteNode removes a node approval row. Returns ErrNodeNotFound when the
-// cluster has no approval for the node — the admin UI offers Remove only on
+// cluster has no approval for the node - the admin UI offers Remove only on
 // missing (orphaned) rows, but the API deletes any approval row.
 func DeleteNode(ctx context.Context, st *store.Store, cluster, name string) error {
 	err := st.DeleteNode(ctx, cluster, name)
@@ -671,7 +671,7 @@ func AdminListImages(ctx context.Context, st *store.Store, client cluster.Client
 }
 
 // ImageRef identifies one discovered cloud image by its (node, storage, file)
-// triple — the same key the enabled-state store and discovery check use.
+// triple - the same key the enabled-state store and discovery check use.
 type ImageRef struct {
 	Node    string
 	Storage string
@@ -735,7 +735,7 @@ func imageDiscovered(ctx context.Context, client cluster.Client, node, storage, 
 }
 
 // nameNodeKey is a composite map key for resources approved by (name, node)
-// — storages and bridges — avoiding string-concat collisions when a name
+// - storages and bridges - avoiding string-concat collisions when a name
 // contains "@".
 type nameNodeKey struct {
 	Name string
@@ -780,7 +780,7 @@ type orphanSweep[Key comparable, A any] struct {
 }
 
 // sweepOrphans applies the orphan rule shared by every AdminList* function:
-// a stored approval whose key discovery no longer reports is an orphan — an
+// a stored approval whose key discovery no longer reports is an orphan - an
 // enabled orphan is auto-removed via remove (it would otherwise be offered
 // to users on a resource that no longer exists), a disabled orphan is
 // appended to out via missing (surfaced as Missing=true) so the admin can
@@ -898,7 +898,7 @@ func missingBridgeApproval(row orphanRow[nameNodeKey]) BridgeApproval {
 }
 
 // fileEntry is one discovered file resource (ISO or cloud image) normalized
-// for the shared approval pipeline — both have the same fields.
+// for the shared approval pipeline - both have the same fields.
 type fileEntry struct {
 	Storage   string
 	Node      string

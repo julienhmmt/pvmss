@@ -12,7 +12,7 @@ import (
 
 // defaultRefreshTimeout caps how long a single cluster.Snapshot call may take.
 // A slow or hung upstream must not block the singleflight-serialized refresh
-// cycle indefinitely — every external call has a timeout (golang-design-patterns
+// cycle indefinitely - every external call has a timeout (golang-design-patterns
 // rule 9). Override with WithRefreshTimeout.
 //
 // It must be at least as long as the Proxmox HTTP client's 20s per-attempt

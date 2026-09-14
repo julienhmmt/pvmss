@@ -19,7 +19,7 @@ import (
 const auditWrapFmt = "record audit: %w"
 
 // forceStopPoll is the interval between delete retries while waiting for a
-// force-stop to take effect. maxForceStopWait bounds the total wait — a var so
+// force-stop to take effect. maxForceStopWait bounds the total wait - a var so
 // tests can shorten it. Mirrors the pool cascade's poll-then-timeout shape.
 const forceStopPoll = 100 * time.Millisecond
 
@@ -51,7 +51,7 @@ var validActions = map[string]bool{
 
 // hostnameRe validates a VM name as a hostname: alphanumeric and hyphen, no
 // leading/trailing hyphen, ≤ 63 chars (legacy validation.go rule, reused per
-// ). Lowercase only — a Proxmox VM name becomes a DNS label when
+// ). Lowercase only - a Proxmox VM name becomes a DNS label when
 // cloud-init sets the hostname.
 var hostnameRe = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
 
@@ -84,7 +84,7 @@ var ErrDescriptionTooLong = errors.New("description too long")
 
 // ValidateName checks a VM name against the hostname rule. Exported
 // so the handler can validate before calling Resolve (rejecting malformed input
-// before any authorization check — malformed input is
+// before any authorization check - malformed input is
 // rejected first).
 func ValidateName(name string) error {
 	if !hostnameRe.MatchString(name) {
@@ -121,10 +121,10 @@ type WriteDeps struct {
 
 // Action performs a power transition on a VM. It is the only path from an
 // HTTP action request to the cluster writer. The node is always
-// Resolve()'s server-resolved value — the caller cannot supply one (root cause, structurally
+// Resolve()'s server-resolved value - the caller cannot supply one (root cause, structurally
 // closed). After the write, it records the audit entry.
 //
-// Action does NOT refresh the Index — the caller owns refresh.
+// Action does NOT refresh the Index - the caller owns refresh.
 // handleAction refreshes once for a single-VM action; BulkAction refreshes
 // once per distinct affected cluster. This avoids N redundant cluster
 // snapshots during a bulk action.
@@ -145,7 +145,7 @@ func Action(ctx context.Context, deps BulkDeps, index *inventory.Index, clusterN
 
 	// Shutdown with Force skips the ACPI request and stops the VM directly.
 	// Without Force, shutdown falls through to the normal path below: a pure
-	// guest-agent/ACPI shutdown — the guest OS decides; if it ignores the
+	// guest-agent/ACPI shutdown - the guest OS decides; if it ignores the
 	// request the VM keeps running and the user must use stop explicitly.
 	if action == "shutdown" && deps.Force {
 		return forceShutdown(ctx, deps, entity, clusterName, vmid)
@@ -158,7 +158,7 @@ func Action(ctx context.Context, deps BulkDeps, index *inventory.Index, clusterN
 	if deps.StatusReader != nil && isIdempotentNoop(action) {
 		live, readErr := deps.StatusReader.VMStatus(ctx, entity.Node, entity.VMID)
 		if readErr == nil && isAlreadyInTargetState(action, live.Status) {
-			// Record the audit entry — the intention is real even though
+			// Record the audit entry - the intention is real even though
 			// no Proxmox call was made.
 			if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, clusterName, vmid, action); err != nil {
 				return fmt.Errorf(auditWrapFmt, err)
@@ -184,7 +184,7 @@ func Action(ctx context.Context, deps BulkDeps, index *inventory.Index, clusterN
 
 // isIdempotentNoop reports whether action is a target-state transition
 // (start/stop) that can be a no-op when the target state already holds.
-// reboot/reset/shutdown/pause/resume are transitions, not target states —
+// reboot/reset/shutdown/pause/resume are transitions, not target states - 
 // they must always be sent.
 func isIdempotentNoop(action string) bool {
 	return action == "start" || action == "stop"
@@ -301,7 +301,7 @@ func extractLockName(err error) (string, bool) {
 }
 
 // Delete permanently removes a VM and its disks (no soft-delete, no undo).
-// Same Resolve() gate as Action — not a parallel ownership check.
+// Same Resolve() gate as Action - not a parallel ownership check.
 //
 // A running VM is rejected by the cluster writer with cluster.ErrVMRunning
 // (real Proxmox returns HTTP 500 "VM X is running - destroy failed"; the fake
@@ -331,7 +331,7 @@ func Delete(ctx context.Context, deps WriteDeps) error {
 		}
 	}
 
-	// ponytail: hygiene only — a stale file cannot leak into a recycled
+	// ponytail: hygiene only - a stale file cannot leak into a recycled
 	// VMID because creation overwrites on rename. Never fail the delete.
 	cleanupCloudInitDocument(ctx, deps)
 
@@ -345,7 +345,7 @@ func Delete(ctx context.Context, deps WriteDeps) error {
 }
 
 // forceStop stops a running VM so Delete can proceed, and records the stop as a
-// separate audit entry. The node/vmid come from the already-resolved entity —
+// separate audit entry. The node/vmid come from the already-resolved entity - 
 // the caller cannot supply them (root cause, structurally closed).
 func forceStop(ctx context.Context, deps WriteDeps, entity Entity) error {
 	if err := deps.Writer.Action(ctx, entity.Node, entity.VMID, "stop"); err != nil {
@@ -397,7 +397,7 @@ func deleteWithRetry(ctx context.Context, deps WriteDeps, entity Entity) error {
 // non-empty; name is validated as a hostname. The audit action is
 // "rename" when name changes, "edit_description" when only description changes.
 // The handler re-resolves from the refreshed projection to return the updated
-// Entity — Patch itself does not return it, keeping the domain layer free of
+// Entity - Patch itself does not return it, keeping the domain layer free of
 // projection references.
 func Patch(ctx context.Context, deps WriteDeps, name, description string) error {
 	if name == "" && strings.TrimSpace(description) == "" {
@@ -438,7 +438,7 @@ func Patch(ctx context.Context, deps WriteDeps, name, description string) error 
 }
 
 // cleanupCloudInitDocument removes the VM's per-VM snippet file and its
-// persistence row after the cluster delete succeeded. Hygiene only — a
+// persistence row after the cluster delete succeeded. Hygiene only - a
 // stale file cannot leak into a recycled VMID because creation overwrites
 // on rename. Never returns an error: a cleanup failure must not block the
 // delete. Nil-safe on Store and Log.

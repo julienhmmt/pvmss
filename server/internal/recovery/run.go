@@ -272,7 +272,7 @@ func stepVMLimits(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions,
 	}
 
 	sum.VMLimits.Read = 1
-	sum.VMLimits.Note = "max_disk_per_vm_gb, max_network_cards, max_snapshots, max_vm_per_user, allow_custom_yaml — max_sockets/max_cores/max_memory_mb left at shipped defaults, no legacy source"
+	sum.VMLimits.Note = "max_disk_per_vm_gb, max_network_cards, max_snapshots, max_vm_per_user, allow_custom_yaml - max_sockets/max_cores/max_memory_mb left at shipped defaults, no legacy source"
 
 	if !opts.DryRun {
 		if err := upsertVMLimits(ctx, v04DB, opts.ClusterName, vmLimits); err != nil {

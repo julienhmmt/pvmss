@@ -44,7 +44,7 @@ func DeriveCloudInitTemplateID(label string) string {
 }
 
 // ListCloudInitTemplates returns every template for the cluster (including
-// disabled ones), ordered by id — the admin list endpoint's data source.
+// disabled ones), ordered by id - the admin list endpoint's data source.
 func ListCloudInitTemplates(ctx context.Context, st *store.Store, cluster string) ([]CloudInitTemplate, error) {
 	rows, err := st.CatalogCloudInitTemplatesAll(ctx, cluster)
 	if err != nil {
@@ -63,7 +63,7 @@ func ListCloudInitTemplates(ctx context.Context, st *store.Store, cluster string
 }
 
 // CloudInitTemplates returns only enabled templates for the cluster, ordered by
-// id — the catalog reader's data source. Disabled templates remain
+// id - the catalog reader's data source. Disabled templates remain
 // visible only through ListCloudInitTemplates (the admin list).
 func CloudInitTemplates(ctx context.Context, st *store.Store, cluster string) ([]CloudInitTemplate, error) {
 	rows, err := st.CatalogCloudInitTemplatesEnabled(ctx, cluster)
@@ -82,7 +82,7 @@ func CloudInitTemplates(ctx context.Context, st *store.Store, cluster string) ([
 	return out, nil
 }
 
-// FindCloudInitTemplate returns a single enabled template by id — used by
+// FindCloudInitTemplate returns a single enabled template by id - used by
 // vm.Create to resolve a template's content server-side before allocating a
 // VMID. Returns ErrCloudInitTemplateNotFound when the id is absent or
 // disabled. Named FindCloudInitTemplate to mirror catalog.FindProfile (single-lookup
@@ -178,7 +178,7 @@ func UpdateCloudInitTemplate(ctx context.Context, st *store.Store, cluster, id, 
 }
 
 // DeleteCloudInitTemplate removes a template row. Returns
-// ErrCloudInitTemplateNotFound if the id does not exist. Has no cascade —
+// ErrCloudInitTemplateNotFound if the id does not exist. Has no cascade - 
 // nothing references a template by id after creation.
 func DeleteCloudInitTemplate(ctx context.Context, st *store.Store, cluster, id string) error {
 	exists, err := st.CloudInitTemplateExists(ctx, cluster, id)

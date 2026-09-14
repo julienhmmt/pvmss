@@ -1,7 +1,7 @@
 // Package config loads and validates the server runtime configuration.
 //
 // The operator contract is environment variables only. [Load] fails fast on a
-// missing or malformed required value — there is no flag fallback and no
+// missing or malformed required value - there is no flag fallback and no
 // implicit cluster source. The authoritative struct is [Configuration];
 // [Load] is the only production entry point.
 //
@@ -13,7 +13,7 @@
 //	LOG_LEVEL debug | info | warn | error (lowercase only)
 //	LOG_FORMAT json | console
 //	LOG_OUTPUT stdout | stderr | a file path
-//	PVMSS_CLUSTER_SOURCE fake | proxmox (no default — see below)
+//	PVMSS_CLUSTER_SOURCE fake | proxmox (no default - see below)
 //
 // PVMSS_CLUSTER_SOURCE has no default because fake ships hardcoded demo
 // credentials (admin@pve / pvmss-admin). An operator who forgets the

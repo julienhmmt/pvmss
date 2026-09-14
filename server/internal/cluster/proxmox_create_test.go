@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// UEFI/TPM test fixtures — repeated Proxmox form values
+// UEFI/TPM test fixtures - repeated Proxmox form values
 // centralized for goconst and readability.
 const (
 	testBIOSOVMF               = "ovmf"
@@ -143,7 +143,7 @@ func assertCPUForm(t *testing.T, form url.Values) {
 // TestProxmox_CreateVM_ImageImportFrom asserts the cloud-image disk form:
 // import-from requires Proxmox's <storage>:0 target syntax (a non-zero size
 // is rejected by check_drive_param), and the source must be a PVE-managed
-// volume of vtype 'import' — passed as a volid, not an absolute path
+// volume of vtype 'import' - passed as a volid, not an absolute path
 // (absolute paths are root@pam-only). Cloud images live in the storage's
 // import/ directory with .qcow2/.raw/.vmdk/.ova extensions.
 func TestProxmox_CreateVM_ImageImportFrom(t *testing.T) {
@@ -183,8 +183,8 @@ func TestProxmox_CreateVM_ImageImportFrom(t *testing.T) {
 		t.Errorf("scsi0 = %q, want %q", gotForm.Get(diskKeySCSI0), wantDisk)
 	}
 
-	// The cloud-init drive is attached in this same create call — ProxMate
-	// and pegaprox both do this, never as a later follow-up — so the seed
+	// The cloud-init drive is attached in this same create call - ProxMate
+	// and pegaprox both do this, never as a later follow-up - so the seed
 	// device exists before the create task even finishes.
 	if got, want := gotForm.Get(cloudInitDiskKey), FakeStorageLocalLVM+":cloudinit"; got != want {
 		t.Errorf("%s = %q, want %q", cloudInitDiskKey, got, want)
@@ -192,7 +192,7 @@ func TestProxmox_CreateVM_ImageImportFrom(t *testing.T) {
 
 	// Network config is applied afterwards through SetCloudInitConfig, not
 	// at create time (the REST API cannot write a snippet file, so native
-	// keys are the only per-VM cloud-init delivery mechanism) — no ipconfig0
+	// keys are the only per-VM cloud-init delivery mechanism) - no ipconfig0
 	// form key at create time.
 	if gotForm.Get("ipconfig0") != "" {
 		t.Errorf("ipconfig0 = %q, want unset at create time", gotForm.Get("ipconfig0"))

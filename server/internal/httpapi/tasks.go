@@ -20,13 +20,13 @@ const taskRefreshWriteDeadline = 30 * time.Second
 
 // TaskInvalidator rebuilds the inventory projection when a creation task
 // completes. *inventory.Worker satisfies it; the unguarded
-// Refresh is used deliberately — the manual-refresh minimum interval does
+// Refresh is used deliberately - the manual-refresh minimum interval does
 // not apply to write-triggered invalidation.
 type TaskInvalidator interface {
 	Refresh(ctx context.Context) (time.Time, error)
 }
 
-// Tasks serves GET /api/v1/tasks/{upid} — a live read of an asynchronous
+// Tasks serves GET /api/v1/tasks/{upid} - a live read of an asynchronous
 // cluster task. No PVMSS-side task table exists; the state is asked
 // of the cluster client on every poll.
 //
@@ -36,7 +36,7 @@ type TaskInvalidator interface {
 // the rest of the cross-cluster-aware routes use); when clients is non-nil the
 // handler resolves that cluster's own Creator per request. Without this, a VM
 // created on a non-default cluster would return a UPID that the handler then
-// polled against the default cluster's client — silently reporting "not found"
+// polled against the default cluster's client - silently reporting "not found"
 // or foreign state for any non-default-cluster creation.
 type Tasks struct {
 	auth        *Auth
@@ -78,7 +78,7 @@ type taskStatusDTO struct {
 
 // ServeHTTP polls one task. When the task is observed in its ok state, the
 // inventory index is invalidated so the next VM-list load shows the created
-// VM without a manual refresh — not at POST /vms time, when the VM
+// VM without a manual refresh - not at POST /vms time, when the VM
 // does not exist yet.
 //
 // The endpoint authenticates the caller but does not verify task ownership:
@@ -143,7 +143,7 @@ func (h *Tasks) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if status.State == cluster.TaskOK {
 		// Invalidate the projection synchronously so the projection is
-		// fresh when the ok response reaches the client — the frontend's
+		// fresh when the ok response reaches the client - the frontend's
 		// onTaskOk listener reloads the VM list immediately on receiving
 		// this response, so an async refresh here would leave the list
 		// reading a stale projection (the VM appears in the sidebar, which
@@ -156,7 +156,7 @@ func (h *Tasks) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		invalidator := h.refresherFor(clusterName)
 		if _, err := invalidator.Refresh(r.Context()); err != nil {
 			// The task genuinely succeeded; a failed invalidation only
-			// delays list visibility until the next automatic cycle — do
+			// delays list visibility until the next automatic cycle - do
 			// not fail the poll for it.
 			h.log.Error("post-task inventory invalidation failed", "component", "httpapi", "error", err)
 		}
@@ -171,11 +171,11 @@ func (h *Tasks) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// refresherFor resolves the TaskInvalidator for clusterName — the write-side
+// refresherFor resolves the TaskInvalidator for clusterName - the write-side
 // sibling of the per-request Creator resolution above. Without
 // it, a task polled with ?cluster=b invalidates the default cluster's
 // projection instead of b's. A missing resolver or unknown cluster falls back
-// to the startup invalidator with a warning — a failed invalidation only
+// to the startup invalidator with a warning - a failed invalidation only
 // delays list visibility, never fails the poll.
 func (h *Tasks) refresherFor(clusterName string) TaskInvalidator {
 	if h.refreshers == nil {

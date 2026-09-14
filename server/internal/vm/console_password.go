@@ -28,12 +28,12 @@ type ConsolePasswordDeps struct {
 }
 
 // ErrConsolePasswordFailed is the sentinel for a console-password action that
-// could not complete — the agent was unreachable, the VM was not running, or
+// could not complete - the agent was unreachable, the VM was not running, or
 // no cloud-init user is defined.
 var ErrConsolePasswordFailed = errors.New("console password action failed")
 
 // SetConsolePassword generates a random password server-side, applies it to
-// the VM's own ciuser via the QEMU guest agent (never cipassword — the seed
+// the VM's own ciuser via the QEMU guest agent (never cipassword - the seed
 // drive hash is readable by the tenant), and returns the password once for
 // display. The password is not persisted, not logged, and not recorded in the
 // audit trail.
@@ -67,7 +67,7 @@ func SetConsolePassword(ctx context.Context, deps ConsolePasswordDeps) (string, 
 		return "", err
 	}
 
-	// Record the action without the password — the audit trail must not
+	// Record the action without the password - the audit trail must not
 	// carry the generated value.
 	if err := deps.Audit.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, "set_console_password"); err != nil {
 		return "", fmt.Errorf("record console-password audit: %w", err)
@@ -78,7 +78,7 @@ func SetConsolePassword(ctx context.Context, deps ConsolePasswordDeps) (string, 
 
 // generateConsolePassword returns a 16-byte random password, base64-encoded
 // for console-safe characters. crypto/rand is the standard library's
-// CSPRNG — math/rand is deliberately not used for a credential.
+// CSPRNG - math/rand is deliberately not used for a credential.
 func generateConsolePassword() (string, error) {
 	buf := make([]byte, 16)
 

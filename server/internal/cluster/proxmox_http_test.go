@@ -72,7 +72,7 @@ func TestProxmoxRESTClient_Do_Unreachable(t *testing.T) {
 	}
 }
 
-// TestProxmoxRESTClient_Do_TLSVerify — a self-signed server certificate with
+// TestProxmoxRESTClient_Do_TLSVerify - a self-signed server certificate with
 // verification enabled is classified as ErrTLSVerify, not ErrUnreachable:
 // the host answers, only the certificate is untrusted. Enabling skip-verify
 // reaches the server normally.
@@ -188,7 +188,7 @@ func TestProxmoxRESTClient_Do_RejectionCarriesStatusForAuthErrors(t *testing.T) 
 	}
 
 	// The cluster layer keeps the raw message (the HTTP layer decides whether
-	// to surface it — a 401 body can name the token).
+	// to surface it - a 401 body can name the token).
 	if rejection.Status != http.StatusUnauthorized {
 		t.Errorf("status = %d, want %d", rejection.Status, http.StatusUnauthorized)
 	}
@@ -416,7 +416,7 @@ func TestDo_ContextCancellationDuringBackoff_ReturnsPromptly(t *testing.T) {
 
 	// The first call returns 503 immediately, then backoff (250ms) starts.
 	// With a 50ms context deadline, the backoff select should fire ctx.Done()
-	// well before 250ms — total elapsed should be far under 1s.
+	// well before 250ms - total elapsed should be far under 1s.
 	if elapsed > time.Second {
 		t.Errorf("elapsed = %v, want < 1s (context should cancel backoff promptly)", elapsed)
 	}

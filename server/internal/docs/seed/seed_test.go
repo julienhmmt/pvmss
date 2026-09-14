@@ -56,7 +56,7 @@ func TestSeedDocumentationPages_Idempotent(t *testing.T) {
 	assertRecoveredBilingual(t, st)
 	assertBuiltInAdminBilingual(t, st)
 
-	// Edit one seeded page's title, then re-seed — the edit must survive.
+	// Edit one seeded page's title, then re-seed - the edit must survive.
 	const id, lang = "getting-started", "en"
 	edited, err := storeRow(st, id, lang)
 	if err != nil {

@@ -8,7 +8,7 @@
 //
 //	pvmss-checklist --repo-root /path/to/pvmss
 //
-// Exit code is always 0 — this is a report, not a gate.
+// Exit code is always 0 - this is a report, not a gate.
 package main
 
 import (

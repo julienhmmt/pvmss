@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// TestVMDetail_RetrofitSeaBIOS_NonAdminForbidden — the retrofit action is
+// TestVMDetail_RetrofitSeaBIOS_NonAdminForbidden - the retrofit action is
 // admin-only; a non-admin owner gets 403 and
 // the writer is not touched.
 //
@@ -31,7 +31,7 @@ func TestVMDetail_RetrofitSeaBIOS_NonAdminForbidden(t *testing.T) {
 	}
 }
 
-// TestVMDetail_RetrofitSeaBIOS_Unauthenticated — the retrofit endpoint
+// TestVMDetail_RetrofitSeaBIOS_Unauthenticated - the retrofit endpoint
 // requires auth.
 //
 //nolint:paralleltest // serial: shared fake cluster dataset
@@ -48,7 +48,7 @@ func TestVMDetail_RetrofitSeaBIOS_Unauthenticated(t *testing.T) {
 	}
 }
 
-// TestVMDetail_RetrofitSeaBIOS_MethodNotAllowed — non-POST methods are rejected.
+// TestVMDetail_RetrofitSeaBIOS_MethodNotAllowed - non-POST methods are rejected.
 //
 //nolint:paralleltest // serial: shared fake cluster dataset
 func TestVMDetail_RetrofitSeaBIOS_MethodNotAllowed(t *testing.T) {

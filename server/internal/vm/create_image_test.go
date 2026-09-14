@@ -12,10 +12,10 @@ import (
 	"testing"
 )
 
-// TestCreate_Image_ZeroHardwareDefaultsToImageDefaults — a cloud-image
+// TestCreate_Image_ZeroHardwareDefaultsToImageDefaults - a cloud-image
 // request with no profile and no explicit hardware defaults to
 // imageDefault{CPUCores,MemoryMB,DiskGB} (1 vCPU/2048 MB/12 GB), not the
-// shared technical minimum (1 vCPU/128 MB) — a cloud image needs real
+// shared technical minimum (1 vCPU/128 MB) - a cloud image needs real
 // headroom to boot.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -57,7 +57,7 @@ func TestCreate_Image_ZeroHardwareDefaultsToImageDefaults(t *testing.T) {
 	}
 }
 
-// TestCreate_Image_ProfileResolvesHardware — applies to image mode
+// TestCreate_Image_ProfileResolvesHardware - applies to image mode
 // too: a profile's catalog values (CPU/memory/disk/bus) win over any
 // hardware fields the request also carries, same as template and ISO mode.
 //
@@ -67,7 +67,7 @@ func TestCreate_Image_ProfileResolvesHardware(t *testing.T) {
 
 	req := imageRequest()
 	req.ProfileID = "medium"
-	req.CPUCores = 32 // contradictory — must be ignored
+	req.CPUCores = 32 // contradictory - must be ignored
 	req.MemoryMB = 65536
 	req.Disk = vm.DiskRequest{SizeGB: 2048}
 
@@ -117,7 +117,7 @@ func imageRequest() vm.CreateRequest {
 	return req
 }
 
-// TestCreate_Image_AppliesCloudInit — the image path delivers cloud-init
+// TestCreate_Image_AppliesCloudInit - the image path delivers cloud-init
 // through Proxmox's native keys (SetCloudInitConfig), then pushes the
 // generated baseline as a per-VM snippet and attaches it as vendor-data.
 // The baseline state is "applied" when no cluster-wide override
@@ -163,11 +163,11 @@ func TestCreate_Image_AppliesCloudInit(t *testing.T) {
 	}
 
 	if index["push_cloudinit_snippet"] == -1 {
-		t.Error("push_cloudinit_snippet not recorded — generated baseline should be pushed")
+		t.Error("push_cloudinit_snippet not recorded - generated baseline should be pushed")
 	}
 
 	if index[testActionAttachCloudInitSnippet] == -1 {
-		t.Error("attach_cloudinit_snippet not recorded — generated baseline should be attached")
+		t.Error("attach_cloudinit_snippet not recorded - generated baseline should be attached")
 	}
 
 	if index["start"] == -1 || index["start"] < index[testActionAttachCloudInitSnippet] {
@@ -211,7 +211,7 @@ func snippetPushFor(vmid int) (content string, attached bool) {
 	return content, attached
 }
 
-// TestCreate_Image_AttachesBaselineSnippetWhenPresent — when an admin has
+// TestCreate_Image_AttachesBaselineSnippetWhenPresent - when an admin has
 // placed a cluster-wide pvmss-baseline.yml, its content replaces the
 // generated baseline: the merged document is pushed as
 // pvmss-<vmid>.yml and attached as vendor-data. BaselineState is "override".
@@ -262,7 +262,7 @@ func TestCreate_Image_AttachesBaselineSnippetWhenPresent(t *testing.T) {
 	}
 }
 
-// TestCreate_Image_UserDocumentMergesWithBaseline — a user-selected
+// TestCreate_Image_UserDocumentMergesWithBaseline - a user-selected
 // cloud-init document is merged on top of the generated baseline:
 // the user's packages add to the baseline's (qemu-guest-agent), and the
 // user's scalar values win. The merged document is the one pushed and
@@ -298,7 +298,7 @@ func TestCreate_Image_UserDocumentMergesWithBaseline(t *testing.T) {
 	}
 
 	// The merged document contains both the baseline's qemu-guest-agent
-	// and the user's nmap — packages concatenate.
+	// and the user's nmap - packages concatenate.
 	if !strings.Contains(pushedContent, "qemu-guest-agent") {
 		t.Errorf("merged document missing baseline package qemu-guest-agent: %s", pushedContent)
 	}
@@ -313,12 +313,12 @@ func TestCreate_Image_UserDocumentMergesWithBaseline(t *testing.T) {
 	}
 }
 
-// TestCreate_Image_GrowsImportedDisk — import-from lands the disk at the
+// TestCreate_Image_GrowsImportedDisk - import-from lands the disk at the
 //
 //	source image's size (Proxmox requires the:0 target syntax), so the
 //
 // requested size is applied afterwards via ResizeDisk. Skipped when the
-// request matches the image size — ResizeDisk only grows.
+// request matches the image size - ResizeDisk only grows.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_Image_GrowsImportedDisk(t *testing.T) {
@@ -353,7 +353,7 @@ func TestCreate_Image_GrowsImportedDisk(t *testing.T) {
 	}
 
 	if resize == nil {
-		t.Fatal("ResizeDisk not recorded — the imported disk was never grown")
+		t.Fatal("ResizeDisk not recorded - the imported disk was never grown")
 	}
 
 	if resize.DiskKey != "scsi0" || resize.SizeGB != 12 {
@@ -361,7 +361,7 @@ func TestCreate_Image_GrowsImportedDisk(t *testing.T) {
 	}
 }
 
-// TestCreate_Image_NoResizeWhenSizeMatchesImage — a request equal to the
+// TestCreate_Image_NoResizeWhenSizeMatchesImage - a request equal to the
 // image's size skips the post-create resize (ResizeDisk only grows).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -388,7 +388,7 @@ func TestCreate_Image_NoResizeWhenSizeMatchesImage(t *testing.T) {
 	}
 }
 
-// TestCreate_Image_SourceMutualExclusion — the three sources are mutually
+// TestCreate_Image_SourceMutualExclusion - the three sources are mutually
 // exclusive: a request carrying more than one is rejected with
 // ErrInvalidSource before any VMID is spent.
 //
@@ -431,7 +431,7 @@ func TestCreate_Image_SourceMutualExclusion(t *testing.T) {
 	}
 }
 
-// TestCreate_Image_DiskBelowImage_RejectedBeforeVMID — a disk size below the
+// TestCreate_Image_DiskBelowImage_RejectedBeforeVMID - a disk size below the
 // cloud image is refused before a VMID is spent (Proxmox import-from grows
 // the disk but never shrinks it).
 //
@@ -461,7 +461,7 @@ func TestCreate_Image_DiskBelowImage_RejectedBeforeVMID(t *testing.T) {
 	}
 }
 
-// TestCreate_Image_NotApproved — a cloud image absent from the catalog is
+// TestCreate_Image_NotApproved - a cloud image absent from the catalog is
 // rejected with ErrNotApproved before any VMID is spent.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -477,7 +477,7 @@ func TestCreate_Image_NotApproved(t *testing.T) {
 	}
 }
 
-// TestCreate_Image_NoWriteTarget_SkipsBaseline — image mode delivers
+// TestCreate_Image_NoWriteTarget_SkipsBaseline - image mode delivers
 // cloud-init through Proxmox's native keys. A cluster with no snippet write
 // target must still create image VMs: the baseline is "not_delivered" with
 // the reason, but the create succeeds and the VM starts.

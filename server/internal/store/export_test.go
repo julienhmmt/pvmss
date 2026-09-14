@@ -88,11 +88,11 @@ func TestExportDatabase_ProducesValidSnapshotWithSameRowCount(t *testing.T) {
 	if err := exportedDB.QueryRowContext(ctx, `SELECT COUNT(*) FROM catalog_nodes`).Scan(&nodeCount); err != nil {
 		t.Errorf("count exported catalog_nodes: %v", err)
 	} else if nodeCount == 0 {
-		t.Error("exported catalog_nodes is empty — seed data missing from snapshot")
+		t.Error("exported catalog_nodes is empty - seed data missing from snapshot")
 	}
 }
 
-// TestExportDatabase_DoesNotBlockConcurrentWrite — a concurrent write
+// TestExportDatabase_DoesNotBlockConcurrentWrite - a concurrent write
 // during export succeeds; VACUUM INTO does not block writers on the live
 // database.
 //
@@ -121,7 +121,7 @@ func TestExportDatabase_DoesNotBlockConcurrentWrite(t *testing.T) {
 	}
 }
 
-// TestExportDatabase_SnapshotIsConsistent — the exported snapshot reflects
+// TestExportDatabase_SnapshotIsConsistent - the exported snapshot reflects
 // the state at export time, not later writes.
 //
 //nolint:paralleltest // serial: shared database fixture

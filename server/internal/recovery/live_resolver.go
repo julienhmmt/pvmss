@@ -8,7 +8,7 @@ import (
 
 // liveStorageResolver adapts a cluster.Client to StorageNodeResolver.
 // It calls Snapshot at most once per
-// resolver instance — the result (or error) is cached and reused for every
+// resolver instance - the result (or error) is cached and reused for every
 // subsequent StorageNodes lookup, so a run with N storages still performs
 // exactly one live Proxmox call.
 //

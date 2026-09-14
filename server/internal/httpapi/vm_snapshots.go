@@ -108,7 +108,7 @@ type snapshotTaskDTO struct {
 	UPID    string `json:"upid"`
 }
 
-// snapshotConfigDTO carries one snapshot's stored config — the
+// snapshotConfigDTO carries one snapshot's stored config - the
 // pre-rollback diff. name == "current" means the live config.
 type snapshotConfigDTO struct {
 	Name   string            `json:"name"`
@@ -136,7 +136,7 @@ func (h *VMSnapshots) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleConfig serves GET .../snapshots/{name}/config — one snapshot's stored
+// handleConfig serves GET .../snapshots/{name}/config - one snapshot's stored
 // config for the pre-rollback diff. name="current" returns the
 // live config.
 //

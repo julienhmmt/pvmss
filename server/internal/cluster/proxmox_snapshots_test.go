@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// Shared snapshot test fixtures — goconst keeps repeated literals in one place.
+// Shared snapshot test fixtures - goconst keeps repeated literals in one place.
 const (
 	testSnapshotName    = "before-upgrade"
 	testDiskFormatQCow2 = "qcow2"
@@ -106,7 +106,7 @@ func TestProxmox_DeleteSnapshot(t *testing.T) {
 	})
 }
 
-// TestProxmox_DeleteSnapshot_SendsForce — the DELETE carries
+// TestProxmox_DeleteSnapshot_SendsForce - the DELETE carries
 // force=1 so an NFS/qcow2 ESTALE cannot leave the VM stuck at
 // lock=snapshot-delete (pegaprox incident #422).
 func TestProxmox_DeleteSnapshot_SendsForce(t *testing.T) {
@@ -133,7 +133,7 @@ func TestProxmox_DeleteSnapshot_SendsForce(t *testing.T) {
 	}
 }
 
-// TestProxmox_SnapshotConfig — a named snapshot reads
+// TestProxmox_SnapshotConfig - a named snapshot reads
 // /snapshot/{name}/config; the pseudo-entry "current" reads /config?current=1.
 func TestProxmox_SnapshotConfig(t *testing.T) {
 	t.Parallel()

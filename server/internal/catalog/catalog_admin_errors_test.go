@@ -14,7 +14,7 @@ import (
 var errDiscovery = errors.New("discovery unavailable")
 
 // errDiscoveryClient is a cluster.Client whose Snapshot/ListBridges/ListISOs
-// always fail with errDiscovery — the path the admin toggles must distinguish
+// always fail with errDiscovery - the path the admin toggles must distinguish
 // from "not present". The remaining interface methods are out of scope for the
 // catalog toggles and return cluster.ErrNotImplemented.
 type errDiscoveryClient struct{}
@@ -87,7 +87,7 @@ func (errDiscoveryClient) DisplayName(_ context.Context) (string, error) {
 	return "", cluster.ErrNotImplemented
 }
 
-// TestSetNodeEnabled_DiscoveryErrorSurfaced — a Snapshot failure is returned
+// TestSetNodeEnabled_DiscoveryErrorSurfaced - a Snapshot failure is returned
 // verbatim so the handler maps it to 5xx, not 404 (the contract documented on
 // SetNodeEnabled).
 func TestSetNodeEnabled_DiscoveryErrorSurfaced(t *testing.T) {
@@ -101,7 +101,7 @@ func TestSetNodeEnabled_DiscoveryErrorSurfaced(t *testing.T) {
 	}
 }
 
-// TestSetStorageEnabled_DiscoveryErrorSurfaced — same contract as the node
+// TestSetStorageEnabled_DiscoveryErrorSurfaced - same contract as the node
 // toggle: a Snapshot failure surfaces verbatim, not as cluster.ErrNotFound.
 func TestSetStorageEnabled_DiscoveryErrorSurfaced(t *testing.T) {
 	t.Parallel()
@@ -114,7 +114,7 @@ func TestSetStorageEnabled_DiscoveryErrorSurfaced(t *testing.T) {
 	}
 }
 
-// TestSetBridgeEnabled_DiscoveryErrorSurfaced — a ListBridges failure surfaces
+// TestSetBridgeEnabled_DiscoveryErrorSurfaced - a ListBridges failure surfaces
 // verbatim.
 func TestSetBridgeEnabled_DiscoveryErrorSurfaced(t *testing.T) {
 	t.Parallel()
@@ -127,7 +127,7 @@ func TestSetBridgeEnabled_DiscoveryErrorSurfaced(t *testing.T) {
 	}
 }
 
-// TestSetISOEnabled_DiscoveryErrorSurfaced — a ListISOs failure surfaces
+// TestSetISOEnabled_DiscoveryErrorSurfaced - a ListISOs failure surfaces
 // verbatim.
 func TestSetISOEnabled_DiscoveryErrorSurfaced(t *testing.T) {
 	t.Parallel()

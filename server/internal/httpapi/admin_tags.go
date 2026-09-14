@@ -28,7 +28,7 @@ type tagColorRequest struct {
 	Color   string `json:"color"`
 }
 
-// ServeTags handles GET /api/v1/admin/tags — lists all tags with live VM
+// ServeTags handles GET /api/v1/admin/tags - lists all tags with live VM
 // counts computed from the inventory projection.
 func (h *AdminCatalog) ServeTags(w http.ResponseWriter, r *http.Request) {
 	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
@@ -150,7 +150,7 @@ func (h *AdminCatalog) ServeTagColor(w http.ResponseWriter, r *http.Request) {
 }
 
 // ServeTagDelete handles DELETE /api/v1/admin/tags/{name}. The cluster is
-// read from the query string (?cluster=default), not the JSON body —
+// read from the query string (?cluster=default), not the JSON body - 
 // DELETE-with-body is awkward and the frontend uses the query param form.
 func (h *AdminCatalog) ServeTagDelete(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")

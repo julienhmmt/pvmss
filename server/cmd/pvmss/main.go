@@ -132,7 +132,7 @@ func run() int {
 
 	// Discover cluster display names in the background so a down cluster
 	// cannot block startup. DisplayName calls a GET (retried 3× with a 20s
-	// client timeout) — a dead cluster would hang the server for up to 60s
+	// client timeout) - a dead cluster would hang the server for up to 60s
 	// per cluster before it ever started listening. The 5s per-cluster cap
 	// bounds the worst case; a successful discovery updates the row and the
 	// sidebar picks it up on the next /me or page load.
@@ -221,7 +221,7 @@ const displayNameDiscoveryTimeout = 5 * time.Second
 // clusters that don't already have one by calling Client.DisplayName() (the
 // real Proxmox cluster name from /cluster/status). Fake clusters are skipped:
 // their DisplayName() implementation just returns the internal logical name
-// ("default", "secondary"), which is the opposite of a human-readable label —
+// ("default", "secondary"), which is the opposite of a human-readable label - 
 // the fake seed already sets meaningful display names.
 //
 // Runs in a background goroutine launched after the HTTP server starts
@@ -394,7 +394,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	// Every *WithRegistry constructor below resolves its cluster.Client and
 	// inventory.Index per request from the request's own :cluster value via
 	// clusterRegistry/inventoryRegistry, instead of the single clusterClient
-	// resolved above — a request scoped to a non-default cluster must never
+	// resolved above - a request scoped to a non-default cluster must never
 	// be served from another cluster's client (cross-tenant data leak when
 	// node names or vmids collide between clusters).
 	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: clients.writer, Clients: clusterRegistry, Store: st, Refresher: worker, StatusReader: clients.statusReader, GuestNetReader: clients.guestNetReader, Log: logger}, policyService)
@@ -486,7 +486,7 @@ type clusterClientInterfaces struct {
 
 // resolveClusterClientInterfaces asserts that the cluster client implements
 // every capability interface the router needs. Both cluster.Client
-// implementations (Fake, Proxmox) satisfy all of them — reads and writes are
+// implementations (Fake, Proxmox) satisfy all of them - reads and writes are
 // separated by interface, not by implementation.
 func resolveClusterClientInterfaces(clusterClient cluster.Client) (clusterClientInterfaces, error) {
 	var c clusterClientInterfaces
@@ -571,7 +571,7 @@ func validateWebBuildDir(path string) error {
 
 // inventoryFreshness adapts inventory.Registry to httpapi.ClusterFreshnessChecker.
 // It reads each cluster's Index.RefreshedAt (already maintained by the refresh
-// goroutines) and the demoMode flag — zero cluster.Client calls from the health
+// goroutines) and the demoMode flag - zero cluster.Client calls from the health
 // handler.
 type inventoryFreshness struct {
 	registry *inventory.Registry
@@ -601,7 +601,7 @@ const auditPruneInterval = 24 * time.Hour
 // runAuditPrune deletes audit_log rows older than the configured retention,
 // once at startup then every auditPruneInterval. It logs the deleted count at
 // info level so retention activity is visible in aggregated logs. A prune
-// failure is logged but never stops the tick — the next tick retries.
+// failure is logged but never stops the tick - the next tick retries.
 func runAuditPrune(ctx context.Context, st *store.Store, log *slog.Logger) {
 	prune := func() {
 		cfg, err := st.GetAuditConfig(ctx)

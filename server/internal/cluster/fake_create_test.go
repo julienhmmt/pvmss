@@ -223,7 +223,7 @@ func TestFake_CreateVM_NoStartLeavesVMStopped(t *testing.T) {
 	}
 }
 
-// TestFake_TaskStatus_PollCount — the first two queries for a upid
+// TestFake_TaskStatus_PollCount - the first two queries for a upid
 // return running, the third and later return ok. No wall-clock dependency.
 //
 //nolint:paralleltest // serial: shared mutable fake dataset

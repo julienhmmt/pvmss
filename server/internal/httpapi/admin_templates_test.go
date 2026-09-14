@@ -23,7 +23,7 @@ type adminTemplateDTO struct {
 	Enabled          bool   `json:"enabled"`
 }
 
-// TestAdminTemplates_ListShowsDiscovered — GET /admin/templates returns the
+// TestAdminTemplates_ListShowsDiscovered - GET /admin/templates returns the
 // fake template discovery set, all disabled (the schema ships no approval
 // rows; the admin list is the union of discovery + stored state).
 //
@@ -53,7 +53,7 @@ func TestAdminTemplates_ListShowsDiscovered(t *testing.T) {
 	}
 }
 
-// TestAdminTemplates_Toggle — toggle a discovered template on, confirm it
+// TestAdminTemplates_Toggle - toggle a discovered template on, confirm it
 // sticks in the list.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -93,7 +93,7 @@ func TestAdminTemplates_Toggle(t *testing.T) {
 	}
 }
 
-// TestAdminTemplates_ToggleOffOnFirstApproval — toggling a discovered template
+// TestAdminTemplates_ToggleOffOnFirstApproval - toggling a discovered template
 // to disabled when it has no stored row must insert the row with enabled=false,
 // not the hardcoded enabled=1 the original InsertTemplate used.
 //
@@ -102,7 +102,7 @@ func TestAdminTemplates_ToggleOffOnFirstApproval(t *testing.T) {
 	handler, authHandler, _ := newAdminHandler(t)
 	cookie := adminCookie(t, authHandler)
 
-	// Template 9001 has no stored row yet. Toggle it to disabled — the row
+	// Template 9001 has no stored row yet. Toggle it to disabled - the row
 	// must be inserted with enabled=false.
 	rec := adminPost(t, handler, authHandler, cookie, "/api/v1/admin/templates/toggle",
 		`{"cluster":"default","vmid":9001,"enabled":false}`)
@@ -138,7 +138,7 @@ func TestAdminTemplates_ToggleOffOnFirstApproval(t *testing.T) {
 	}
 }
 
-// TestAdminTemplates_ListDiscoveryWinsOnValues — when a stored row's values
+// TestAdminTemplates_ListDiscoveryWinsOnValues - when a stored row's values
 // drift from discovery (template resized/migrated/renamed in Proxmox after
 // approval), the list shows the discovered values and the stored row is
 // reconciled. The stored enabled flag stays authoritative.
@@ -207,7 +207,7 @@ func assertDiscoveredTemplateValues(t *testing.T, tmpl adminTemplateDTO) {
 	}
 }
 
-// TestAdminTemplates_UpdateOverridesDiscovery — PUT /admin/templates/{cluster}/{vmid}
+// TestAdminTemplates_UpdateOverridesDiscovery - PUT /admin/templates/{cluster}/{vmid}
 // pins the stored field values against discovery-wins write-back (schemaV26).
 // After the PUT, the list shows the overridden values, not the discovered ones.
 //
@@ -288,7 +288,7 @@ func assertTemplateOverriddenValues(t *testing.T, templates []adminTemplateDTO, 
 	t.Fatalf("template %d not in list after override", vmid)
 }
 
-// TestAdminTemplates_UpdateUnknownReturns404 — PUT to a vmid with no stored
+// TestAdminTemplates_UpdateUnknownReturns404 - PUT to a vmid with no stored
 // approval row returns 404.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -303,7 +303,7 @@ func TestAdminTemplates_UpdateUnknownReturns404(t *testing.T) {
 	}
 }
 
-// TestAdminTemplates_UpdateInvalidBodyReturns400 — missing required fields
+// TestAdminTemplates_UpdateInvalidBodyReturns400 - missing required fields
 // are a 400.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -325,7 +325,7 @@ func TestAdminTemplates_UpdateInvalidBodyReturns400(t *testing.T) {
 	}
 }
 
-// TestAdminTemplates_NonAdminReturns403 — non-admin gets 403.
+// TestAdminTemplates_NonAdminReturns403 - non-admin gets 403.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminTemplates_NonAdminReturns403(t *testing.T) {
@@ -338,7 +338,7 @@ func TestAdminTemplates_NonAdminReturns403(t *testing.T) {
 	}
 }
 
-// TestAdminTemplates_ToggleUnknownReturns404 — toggling a VMID not in the
+// TestAdminTemplates_ToggleUnknownReturns404 - toggling a VMID not in the
 // discovery set returns 404.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -353,7 +353,7 @@ func TestAdminTemplates_ToggleUnknownReturns404(t *testing.T) {
 	}
 }
 
-// TestAdminTemplates_ToggleMissingVMIDReturns400 — a zero VMID is a 400.
+// TestAdminTemplates_ToggleMissingVMIDReturns400 - a zero VMID is a 400.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminTemplates_ToggleMissingVMIDReturns400(t *testing.T) {
@@ -377,7 +377,7 @@ func (unreachableTemplateClient) ListTemplates(_ context.Context) ([]cluster.Tem
 	return nil, cluster.ErrUnreachable
 }
 
-// TestAdminTemplates_ListClusterUnreachableReturns500 — when the cluster
+// TestAdminTemplates_ListClusterUnreachableReturns500 - when the cluster
 // client fails discovery, the list endpoint returns 500.
 //
 //nolint:paralleltest // serial: database-backed handler fixture
@@ -394,7 +394,7 @@ func TestAdminTemplates_ListClusterUnreachableReturns500(t *testing.T) {
 	}
 }
 
-// TestAdminTemplates_DeleteRemovesOrphanApproval — DELETE
+// TestAdminTemplates_DeleteRemovesOrphanApproval - DELETE
 // /admin/templates/{cluster}/{vmid} removes the approval row (204); the row
 // disappears from catalog.Templates; an unknown vmid or cluster is a 404;
 // non-admins get 403.
@@ -459,7 +459,7 @@ func (unreadableTemplateHTTPClient) TemplateByVMID(_ context.Context, vmid int) 
 	return cluster.TemplateVM{VMID: vmid, Node: cluster.FakeNode02, Name: "unreadable", DiskUnreadable: true}, nil
 }
 
-// TestAdminTemplates_ToggleUnreadable — approving an unreadable template is a 400 (the row
+// TestAdminTemplates_ToggleUnreadable - approving an unreadable template is a 400 (the row
 // would carry empty disk fields); disabling stays possible.
 //
 //nolint:paralleltest // serial: database-backed handler fixture

@@ -186,7 +186,7 @@ func aliceClusterCookie(t *testing.T, authHandler *httpapi.Auth) *http.Cookie {
 	return response.Result().Cookies()[0]
 }
 
-// TestAdminClusters_NonAdminReturns403 — every /admin/clusters/*
+// TestAdminClusters_NonAdminReturns403 - every /admin/clusters/*
 // endpoint rejects a non-admin identity with 403, matching the contract's
 // {"code":"forbidden","message":"admin only"} body on every one of the six.
 //
@@ -230,7 +230,7 @@ func TestAdminClusters_NonAdminReturns403(t *testing.T) {
 	}
 }
 
-// TestAdminClusters_CreateValidatesAndReactivates — create path: 201 on
+// TestAdminClusters_CreateValidatesAndReactivates - create path: 201 on
 // a genuinely new name, 400 on an invalid name, 409 on an active-name
 // collision, and 201-with-reactivation (removedAt cleared, fresh token
 // required) on re-adding a previously soft-deleted name.
@@ -289,7 +289,7 @@ func TestAdminClusters_CreateValidatesAndReactivates(t *testing.T) {
 	}
 }
 
-// TestAdminClusters_UpdateRejectsNameAnd404sOnRemoved — update path:
+// TestAdminClusters_UpdateRejectsNameAnd404sOnRemoved - update path:
 // 200 on a valid update, the request schema rejects any "name" field
 // outright (immutable by construction, not merely ignored), and
 // both an unknown and a soft-deleted cluster 404 rather than silently
@@ -345,10 +345,10 @@ func TestAdminClusters_UpdateRejectsNameAnd404sOnRemoved(t *testing.T) {
 	}
 }
 
-// TestAdminClusters_TestReachableReportsOKAndPersists — test path
+// TestAdminClusters_TestReachableReportsOKAndPersists - test path
 // (reachable branch): a healthy cluster's test returns 200 status "ok" with
-// version/counts, and — per the contract's "a test is the refresh"
-// rule — the subsequent GET /admin/clusters list reflects the new
+// version/counts, and - per the contract's "a test is the refresh"
+// rule - the subsequent GET /admin/clusters list reflects the new
 // lastTestStatus/lastTestAt.
 //
 //nolint:paralleltest,gocyclo // HTTP fixture shares fake cluster state; test+list assertion path is sequential by contract
@@ -397,7 +397,7 @@ func TestAdminClusters_TestReachableReportsOKAndPersists(t *testing.T) {
 	}
 }
 
-// TestAdminClusters_LiveVersionOverridesStaleDB — the admin Clusters page
+// TestAdminClusters_LiveVersionOverridesStaleDB - the admin Clusters page
 // must show the live inventory version (refreshed every cycle by the
 // background worker), not a stale value persisted by a past manual Test.
 // Regression for the bug where a Proxmox upgrade was invisible until an
@@ -436,7 +436,7 @@ func TestAdminClusters_LiveVersionOverridesStaleDB(t *testing.T) {
 	t.Fatalf("cluster %q missing from list", auditTestCluster)
 }
 
-// TestAdminClusters_OIDCToggleIsolated — toggling one cluster's
+// TestAdminClusters_OIDCToggleIsolated - toggling one cluster's
 // OIDC flag changes only that row; every other cluster's flag is untouched.
 // Also covers the 404 path for an unknown/removed cluster.
 //
@@ -474,7 +474,7 @@ func TestAdminClusters_OIDCToggleIsolated(t *testing.T) {
 	}
 }
 
-// TestAdminClusters_DeleteLastClusterConflictAndReactivateRoundTrip —
+// TestAdminClusters_DeleteLastClusterConflictAndReactivateRoundTrip - 
 // Removing the sole remaining active cluster is refused with 409, never leaving PVMSS with zero
 // addressable clusters. Also proves the
 // unknown-name 404 path.
@@ -507,7 +507,7 @@ func TestAdminClusters_DeleteLastClusterConflictAndReactivateRoundTrip(t *testin
 	assertClusterErrorBody(t, response, "last_cluster")
 }
 
-// TestAdminClusters_SnippetTargetValidation — the snippet write
+// TestAdminClusters_SnippetTargetValidation - the snippet write
 // target is both-or-neither, the dir absolute, the storage id a valid Proxmox
 // identifier; a valid pair persists and flips cloudInitWriteEnabled.
 //

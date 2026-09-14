@@ -107,7 +107,7 @@ func (h *Auth) SetClusterFreshnessChecker(freshness ClusterFreshnessChecker, sta
 }
 
 // Login authenticates a PVE cluster account. The local administrator has its
-// own endpoint (AdminLogin) — a wrong password means something different for
+// own endpoint (AdminLogin) - a wrong password means something different for
 // each, so neither is a branch inside the other.
 func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -251,7 +251,7 @@ func (h *Auth) Require(next http.Handler) http.Handler {
 // must authenticate (401 if not) and have IsAdmin == true (403 if not). It
 // duplicates the Principal resolution from Require rather than composing it,
 // so it can issue the role check without an extra handler hop. This is the
-// only admin-only route guard in v0.4 — earlier work shipped authentication only, not
+// only admin-only route guard in v0.4 - earlier work shipped authentication only, not
 // role enforcement. Every /api/v1/admin/* route is wrapped by this, so a
 // non-admin identity can never reach an admin handler regardless of the HTTP
 // method or path.
@@ -314,7 +314,7 @@ func (h *Auth) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateToken creates an API token for the browser session identity. Only a
-// browser session may mint a token — a token cannot be used to mint another
+// browser session may mint a token - a token cannot be used to mint another
 func (h *Auth) CreateToken(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.sessions.Resolve(r.Context(), r)
 	if err != nil {
@@ -338,7 +338,7 @@ func (h *Auth) CreateToken(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListTokens returns the browser session identity's own tokens. Values are
-// never included — only a creation response ever carries one.
+// never included - only a creation response ever carries one.
 func (h *Auth) ListTokens(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.sessions.Resolve(r.Context(), r)
 	if err != nil {
@@ -388,7 +388,7 @@ func (h *Auth) RevokeToken(w http.ResponseWriter, r *http.Request) {
 }
 
 // ChangePassword rotates the browser session identity's cluster password.
-// The local administrator has no password to change through this flow — its
+// The local administrator has no password to change through this flow - its
 // secret is rotated outside the application.
 func (h *Auth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.sessions.Resolve(r.Context(), r)
@@ -541,7 +541,7 @@ func decodeJSONLimit(w http.ResponseWriter, r *http.Request, dest any, maxBytes 
 	return nil
 }
 
-// authenticatePVE tries the typed username, then — on a not-found rejection —
+// authenticatePVE tries the typed username, then - on a not-found rejection - 
 // retries once under the "pvmss-" pool prefix. Self-service pool users are
 // provisioned as "pvmss-{pool}@{realm}" (pools.CreateManaged) but only ever
 // told their pool name, so a bare "jho" must resolve to "pvmss-jho@pve"

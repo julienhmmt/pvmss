@@ -28,7 +28,7 @@ type importResultDTO struct {
 	Tables []store.TablePreview `json:"tables"`
 }
 
-// TestAdminDBExport_AsAdmin_ReturnsSQLiteFile — GET /admin/db/export
+// TestAdminDBExport_AsAdmin_ReturnsSQLiteFile - GET /admin/db/export
 // as admin returns a downloadable, well-formed SQLite response with the
 // correct headers.
 //
@@ -68,7 +68,7 @@ func TestAdminDBExport_AsAdmin_ReturnsSQLiteFile(t *testing.T) {
 	// verify the header and headers.
 }
 
-// TestAdminDBImport_WellFormedUpload_ReturnsPreview — POST
+// TestAdminDBImport_WellFormedUpload_ReturnsPreview - POST
 // /admin/db/import with a well-formed upload returns 200 preview with
 // correct tables/ignoredTables.
 //
@@ -80,7 +80,7 @@ func TestAdminDBImport_WellFormedUpload_ReturnsPreview(t *testing.T) {
 	// Export the live DB to get a well-formed upload file.
 	var exportBuf bytes.Buffer
 	if err := st.ExportDatabase(context.Background(), &exportBuf); err != nil {
-		// nil ctx is fine for the store — it uses context.Background() internally
+		// nil ctx is fine for the store - it uses context.Background() internally
 		t.Fatalf("ExportDatabase: %v", err)
 	}
 
@@ -121,11 +121,11 @@ func TestAdminDBImport_WellFormedUpload_ReturnsPreview(t *testing.T) {
 	}
 
 	if len(preview.Tables) == 0 {
-		t.Error("tables is empty — export should contain catalog tables")
+		t.Error("tables is empty - export should contain catalog tables")
 	}
 }
 
-// TestAdminDBImport_MalformedUpload_Returns400 — POST /admin/db/import
+// TestAdminDBImport_MalformedUpload_Returns400 - POST /admin/db/import
 // with a malformed upload returns 400, nothing staged.
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -160,7 +160,7 @@ func TestAdminDBImport_MalformedUpload_Returns400(t *testing.T) {
 	}
 }
 
-// TestAdminDBImportConfirm_ValidToken_ReplacesTables — POST
+// TestAdminDBImportConfirm_ValidToken_ReplacesTables - POST
 // /admin/db/import/confirm with a valid token returns 200 and the live
 // database reflects the replace.
 //
@@ -252,7 +252,7 @@ func TestAdminDBImportConfirm_ExpiredToken_Returns410(t *testing.T) {
 	_ = json.Unmarshal(rec.Body.Bytes(), &preview)
 
 	// Advance the staging clock past the TTL.
-	st.Staging().AdvanceTime(6 * time.Minute) // 6 minutes — will fix below
+	st.Staging().AdvanceTime(6 * time.Minute) // 6 minutes - will fix below
 
 	confirmRec := opsPost(t, ops, auth, cookie, "/api/v1/admin/db/import/confirm",
 		`{"stagingToken":"`+preview.StagingToken+`"}`)
@@ -261,7 +261,7 @@ func TestAdminDBImportConfirm_ExpiredToken_Returns410(t *testing.T) {
 	}
 }
 
-// TestAdminDB_NonAdmin_Returns403 — all three db endpoints as non-admin
+// TestAdminDB_NonAdmin_Returns403 - all three db endpoints as non-admin
 // return 403.
 //
 //nolint:paralleltest // serial: shared database fixture

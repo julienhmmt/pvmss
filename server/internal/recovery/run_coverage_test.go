@@ -35,7 +35,7 @@ func TestRun_WriteClusterError_ReturnsWrappedError(t *testing.T) {
 	legacyDB := openLegacyDB(t)
 	ctx := context.Background()
 
-	// A v0.4 DB that has not been migrated — upsertCluster will fail.
+	// A v0.4 DB that has not been migrated - upsertCluster will fail.
 	badDB, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("open bad db: %v", err)
@@ -64,7 +64,7 @@ func TestRun_StepNodesError_BadLegacyDB(t *testing.T) {
 
 	ctx := context.Background()
 
-	// A legacy DB with no enabled_nodes table — mapNodes will fail.
+	// A legacy DB with no enabled_nodes table - mapNodes will fail.
 	badLegacy, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		t.Fatalf("open bad legacy db: %v", err)
@@ -86,7 +86,7 @@ func TestRun_StepNodesError_BadLegacyDB(t *testing.T) {
 
 // openV04DBWithoutTable opens a fully-migrated v0.4 DB and then drops the
 // named table so that upserts targeting it fail. This lets each step's write
-// error path be exercised independently — the cluster upsert (which targets
+// error path be exercised independently - the cluster upsert (which targets
 // the clusters table) still succeeds, but the specific step's upsert fails.
 func openV04DBWithoutTable(t *testing.T, tableName string) *sql.DB {
 	t.Helper()
@@ -117,7 +117,7 @@ func TestRun_StepNodesWriteError_BadV04DB(t *testing.T) {
 
 	ctx := context.Background()
 
-	// Migrated v0.4 DB with catalog_nodes dropped — upsertCluster succeeds
+	// Migrated v0.4 DB with catalog_nodes dropped - upsertCluster succeeds
 	// (clusters table intact), but upsertNode fails.
 	badV04 := openV04DBWithoutTable(t, "catalog_nodes")
 
@@ -149,7 +149,7 @@ func TestRun_LiveStorageResolverWired_WhenCredsAvailable(t *testing.T) {
 
 	// Provide Proxmox creds via flags so Run wires a liveStorageResolver.
 	// The resolver will attempt a live Snapshot, which fails (no real
-	// Proxmox), so the storage is skipped — but the run must not abort.
+	// Proxmox), so the storage is skipped - but the run must not abort.
 	sum, err := recovery.Run(ctx, legacyDB, v04DB, recovery.RunOptions{
 		ClusterName: "default",
 		DryRun:      false,

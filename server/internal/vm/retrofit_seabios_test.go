@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// TestRetrofitToSeaBIOS_HappyPath — a stopped UEFI VM with no TPM state and no
+// TestRetrofitToSeaBIOS_HappyPath - a stopped UEFI VM with no TPM state and no
 // Secure Boot is switched to SeaBIOS: bios/machine/efidisk are cleared, an
 // audit row is recorded, and the inventory refreshes.
 //
@@ -78,7 +78,7 @@ func TestRetrofitToSeaBIOS_HappyPath(t *testing.T) {
 	}
 }
 
-// TestRetrofitToSeaBIOS_RefusesTPM — a VM with TPM state is refused before
+// TestRetrofitToSeaBIOS_RefusesTPM - a VM with TPM state is refused before
 // any configuration change. The writer is not touched.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -121,7 +121,7 @@ func TestRetrofitToSeaBIOS_RefusesTPM(t *testing.T) {
 	}
 }
 
-// TestRetrofitToSeaBIOS_RefusesSecureBoot — a VM with Secure Boot is refused
+// TestRetrofitToSeaBIOS_RefusesSecureBoot - a VM with Secure Boot is refused
 // before any configuration change.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -156,7 +156,7 @@ func TestRetrofitToSeaBIOS_RefusesSecureBoot(t *testing.T) {
 	}
 }
 
-// TestRetrofitToSeaBIOS_RunningRequiresConfirmation — a running UEFI VM
+// TestRetrofitToSeaBIOS_RunningRequiresConfirmation - a running UEFI VM
 // without confirm=true returns ErrRetrofitRequiresConfirmation and changes
 // nothing.
 //
@@ -199,7 +199,7 @@ func TestRetrofitToSeaBIOS_RunningRequiresConfirmation(t *testing.T) {
 	}
 }
 
-// TestRetrofitToSeaBIOS_RunningWithConfirmStopsAndStarts — a running UEFI VM
+// TestRetrofitToSeaBIOS_RunningWithConfirmStopsAndStarts - a running UEFI VM
 // with confirm=true is stopped, retrofitted, and started again.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -242,7 +242,7 @@ func TestRetrofitToSeaBIOS_RunningWithConfirmStopsAndStarts(t *testing.T) {
 	}
 
 	// stop before retrofit_seabios, and a start after retrofit_seabios.
-	// (The create path also recorded a start at index ~4 — we want the one
+	// (The create path also recorded a start at index ~4 - we want the one
 	// the retrofit issued, which must come after the retrofit call.)
 	stopIdx := slices.Index(actions, actionStop)
 

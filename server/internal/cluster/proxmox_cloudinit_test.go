@@ -172,7 +172,7 @@ func TestProxmox_SetCloudInitConfig_EnsuresDriveThenWrites(t *testing.T) {
 
 // TestPushCloudInitSnippet_WritesAtomically verifies the write path:
 // the document lands in the configured snippet directory as a real file
-// (mode 0644, exact content) and no temp file is left behind — rename means
+// (mode 0644, exact content) and no temp file is left behind - rename means
 // Proxmox can never observe a half-written snippet.
 func TestPushCloudInitSnippet_WritesAtomically(t *testing.T) {
 	t.Parallel()
@@ -208,7 +208,7 @@ func TestPushCloudInitSnippet_WritesAtomically(t *testing.T) {
 	}
 }
 
-// TestPushCloudInitSnippet_Overwrites verifies a retry replaces the file —
+// TestPushCloudInitSnippet_Overwrites verifies a retry replaces the file - 
 // the same VMID (or an edit) must not leave stale content.
 func TestPushCloudInitSnippet_Overwrites(t *testing.T) {
 	t.Parallel()
@@ -236,7 +236,7 @@ func TestPushCloudInitSnippet_Overwrites(t *testing.T) {
 
 // TestPushCloudInitSnippet_RejectsUnsafeFilename verifies the writer cannot
 // be coerced into writing outside the pvmss-*.yml shape or outside the
-// snippet directory — a bug in a caller must not become a path escape.
+// snippet directory - a bug in a caller must not become a path escape.
 func TestPushCloudInitSnippet_RejectsUnsafeFilename(t *testing.T) {
 	t.Parallel()
 
@@ -260,7 +260,7 @@ func TestPushCloudInitSnippet_RejectsUnsafeFilename(t *testing.T) {
 }
 
 // TestPushCloudInitSnippet_Unconfigured verifies a cluster with no write
-// target reports the sentinel — never a filesystem attempt.
+// target reports the sentinel - never a filesystem attempt.
 func TestPushCloudInitSnippet_Unconfigured(t *testing.T) {
 	t.Parallel()
 
@@ -284,7 +284,7 @@ func TestPushCloudInitSnippet_WrongStorage(t *testing.T) {
 
 // TestPushCloudInitSnippet_WriteErrorLeavesNoTemp verifies a failed write
 //
-//	cleans its temp file — the directory must never accumulate.pvmss-*.tmp.
+//	cleans its temp file - the directory must never accumulate.pvmss-*.tmp.
 func TestPushCloudInitSnippet_WriteErrorLeavesNoTemp(t *testing.T) {
 	t.Parallel()
 
@@ -358,7 +358,7 @@ func TestFindSnippetStorage_ConfiguredMustBeOnNode(t *testing.T) {
 
 // TestProxmox_FindSnippetStorage_Unconfigured verifies a cluster with no
 // write target reports ErrSnippetWriteUnavailable without consulting the
-// node — there is no directory PVMSS could write to, so the storage list is
+// node - there is no directory PVMSS could write to, so the storage list is
 // irrelevant.
 func TestProxmox_FindSnippetStorage_Unconfigured(t *testing.T) {
 	t.Parallel()
@@ -418,7 +418,7 @@ func TestProxmox_SetCloudInitConfig_SSHKeysSurviveProxmoxDecode(t *testing.T) {
 // TestEncodeSSHKeys_OnlyProxmoxSafeCharacters is the live regression test:
 // Proxmox's own sshkeys format validator rejected a real key (an email-style
 // "user@host" comment, universal in ssh-keygen output) with "HTTP 400:
-// sshkeys: invalid format - invalid urlencoded string" — url.PathEscape
+// sshkeys: invalid format - invalid urlencoded string" - url.PathEscape
 // leaves '@' unescaped (RFC3986 allows it raw in a path segment), but
 // Proxmox's validator does not accept it raw. Only unreserved characters and
 // %XX sequences may appear in the output; anything else reproduces the live
@@ -447,7 +447,7 @@ func TestEncodeSSHKeys_OnlyProxmoxSafeCharacters(t *testing.T) {
 }
 
 // proxmoxSafeSSHKeyChar reports whether r may appear raw in the encoded
-// sshkeys form value — Proxmox's validator accepts only unreserved
+// sshkeys form value - Proxmox's validator accepts only unreserved
 // characters and %XX sequences.
 func proxmoxSafeSSHKeyChar(r rune) bool {
 	return (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') ||
@@ -455,8 +455,8 @@ func proxmoxSafeSSHKeyChar(r rune) bool {
 }
 
 // TestProxmox_SetCloudInitConfig_SSHKeysRoundTrip simulates Proxmox's exact
-// decode chain — form-decode on receipt, then uri_unescape (decodes %XX,
-// leaves '+') when generating the seed — and asserts the key read back is
+// decode chain - form-decode on receipt, then uri_unescape (decodes %XX,
+// leaves '+') when generating the seed - and asserts the key read back is
 // byte-identical, including a base64 blob containing a literal '+'.
 func TestProxmox_SetCloudInitConfig_SSHKeysRoundTrip(t *testing.T) {
 	t.Parallel()
@@ -491,7 +491,7 @@ func TestProxmox_SetCloudInitConfig_SSHKeysRoundTrip(t *testing.T) {
 		t.Fatalf("SetCloudInitConfig: %v", err)
 	}
 
-	// The stored config must carry %20 for spaces — a '+' would decode to a
+	// The stored config must carry %20 for spaces - a '+' would decode to a
 	// space and corrupt the key inside the guest.
 	if strings.Contains(stored, "+ ") {
 		t.Errorf("stored sshkeys = %q, want spaces percent-encoded", stored)
@@ -511,7 +511,7 @@ func TestProxmox_SetCloudInitConfig_SSHKeysRoundTrip(t *testing.T) {
 // Used by the cloud-init drive fallback: inactive storages
 // are skipped, and a shared storage wins over a node-local one so a later
 // migration cannot orphan the snippet. The configured-target selection lives
-// in FindSnippetStorage — this exercises the heuristic directly.
+// in FindSnippetStorage - this exercises the heuristic directly.
 func TestProxmox_FindSnippetStorage_PrefersSharedActive(t *testing.T) {
 	t.Parallel()
 
@@ -629,7 +629,7 @@ func recordCloudInitConfigForm(t *testing.T, seen map[string]string) http.Handle
 
 // TestProxmox_AttachCloudInitSnippet_EnsuresDriveFirst is the
 // regression test: without a cloud-init drive, Proxmox silently ignores
-// cicustom, so the attach must provision the drive first — exactly like
+// cicustom, so the attach must provision the drive first - exactly like
 // SetCloudInitConfig does. A detach (empty filename) needs no drive.
 func TestProxmox_AttachCloudInitSnippet_EnsuresDriveFirst(t *testing.T) {
 	t.Parallel()
@@ -719,7 +719,7 @@ func recordConfigPut(t *testing.T, putKeys *[]string) http.HandlerFunc {
 
 // TestProxmox_SetCloudInitPassword_Agent verifies the password is applied via
 // the guest-agent endpoint (writes /etc/shadow), never cipassword,
-// and that the username is the caller-resolved ciuser — never a hardcoded root
+// and that the username is the caller-resolved ciuser - never a hardcoded root
 // (a cloud image's root is locked).
 func TestProxmox_SetCloudInitPassword_Agent(t *testing.T) {
 	t.Parallel()

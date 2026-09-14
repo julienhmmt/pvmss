@@ -53,7 +53,7 @@ INSERT INTO audit_log (id, actor, cluster, vmid, action, timestamp, severity)
 DROP TABLE audit_log_v18;
 `
 
-// RecordAction inserts one audit_log row carrying the real acting username —
+// RecordAction inserts one audit_log row carrying the real acting username - 
 // never a service-account name (closes traceability gap). The
 // timestamp is server-side; a caller cannot supply it. The 15 existing VM
 // callers are unchanged; new columns receive empty defaults and the severity
@@ -143,7 +143,7 @@ func deriveSeverity(action string) string {
 }
 
 // QueryAudit returns every audit_log row in insertion order. Test-only for
-// now — production reads belong to the admin audit view.
+// now - production reads belong to the admin audit view.
 func (s *Store) QueryAudit(ctx context.Context) ([]AuditEntry, error) {
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT id, actor, cluster, vmid, action, timestamp, target_type, target_id, detail, ip_address, severity FROM audit_log ORDER BY id`)
@@ -208,13 +208,13 @@ type AuditPage struct {
 
 // ListAuditLog returns a filtered, paginated view of the audit_log table,
 // most recent first. No schema change, no new action
-// string — a single SELECT with optional WHERE clauses and LIMIT/OFFSET.
+// string - a single SELECT with optional WHERE clauses and LIMIT/OFFSET.
 // A nil Items slice is never returned; an empty result yields a non-nil
 // zero-length slice.
 func (s *Store) ListAuditLog(ctx context.Context, f AuditFilter) (AuditPage, error) {
 	whereClause, args := buildAuditWhere(f)
 
-	// Total count — one scalar query, independent of pagination.
+	// Total count - one scalar query, independent of pagination.
 	var total int
 
 	countSQL := "SELECT COUNT(*) FROM audit_log " + whereClause
@@ -222,7 +222,7 @@ func (s *Store) ListAuditLog(ctx context.Context, f AuditFilter) (AuditPage, err
 		return AuditPage{}, fmt.Errorf("count audit log: %w", err)
 	}
 
-	// Page defaults — guard against zero values from a malformed request.
+	// Page defaults - guard against zero values from a malformed request.
 	page := max(f.Page, 1)
 
 	pageSize := f.PageSize
@@ -375,7 +375,7 @@ func (s *Store) SetAuditConfig(ctx context.Context, retentionDays int) error {
 // PruneAuditLog deletes audit_log rows older than retentionDays and returns the
 // number of rows deleted. A retention of 30 deletes rows whose timestamp is
 // older than 30 days from now (UTC). Safe to run concurrently with reads and
-// inserts — SQLite serializes writers, and the DELETE is a single statement.
+// inserts - SQLite serializes writers, and the DELETE is a single statement.
 func (s *Store) PruneAuditLog(ctx context.Context, retentionDays int) (int64, error) {
 	cutoff := time.Now().UTC().Add(-time.Duration(retentionDays) * 24 * time.Hour).Format(time.RFC3339Nano)
 

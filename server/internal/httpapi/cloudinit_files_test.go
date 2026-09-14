@@ -85,7 +85,7 @@ func TestCloudInitFiles_CRUD(t *testing.T) {
 	}
 
 	if list.Files[0].Content != "" {
-		t.Error("list leaked file content — list rows carry id/label/updatedAt only")
+		t.Error("list leaked file content - list rows carry id/label/updatedAt only")
 	}
 
 	// Get returns the full row.

@@ -131,7 +131,7 @@ var builtInPages = []seedPage{
 }
 
 // SeedDocumentationPages inserts every built-in page that does not already
-// exist (by (id, lang)). Existing rows — including admin-edited system pages —
+// exist (by (id, lang)). Existing rows - including admin-edited system pages - 
 // are left untouched, so the seed is safe to run on every startup.
 //
 //nolint:revive // the Seed verb documents the seeding action explicitly
@@ -169,7 +169,7 @@ type seedVariant struct {
 
 // frenchVariants returns the French variant for a built-in page that ships in
 // both languages, or nil if the page is English-only. The English row is not
-// restated here — it comes from builtInPages via seedPage.enVariant.
+// restated here - it comes from builtInPages via seedPage.enVariant.
 //
 //nolint:misspell // French titles are intentional seed data
 func frenchVariants(id string) *seedVariant {

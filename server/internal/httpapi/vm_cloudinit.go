@@ -79,7 +79,7 @@ func NewVMCloudInit(deps VMCloudInitDeps, services ...*policy.Policy) *VMCloudIn
 
 // statusReaderFor resolves the cluster.VMStatusReader for clusterName, falling
 // back to the single-cluster reader when per-cluster resolution is
-// unavailable — the same fallback rule VMStatusBatch applies.
+// unavailable - the same fallback rule VMStatusBatch applies.
 func (h *VMCloudInit) statusReaderFor(clusterName string) cluster.VMStatusReader {
 	if h.clients == nil {
 		return h.statusReader
@@ -122,7 +122,7 @@ func (h *VMCloudInit) writerFor(w http.ResponseWriter, clusterName string) (clus
 }
 
 // refresherFor resolves the vm.IndexRefresher for clusterName. A missing
-// refresher must not fail a write already applied on the cluster — so it
+// refresher must not fail a write already applied on the cluster - so it
 // never writes an HTTP error. When the per-cluster resolver is unset
 // (single-cluster mode) or the cluster is unknown, it returns the fallback
 // refresher and logs a warning. The result is never nil when the fallback

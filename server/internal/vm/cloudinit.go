@@ -56,7 +56,7 @@ var (
 	// a guessed account: a cloud image's root is locked, so a fallback to
 	// root would silently write the password where nobody can log in
 	ErrNoCloudInitUser = errors.New("no cloud-init user defined")
-	// ErrGuestAgentDisabled reports agent= absent from the VM config — the
+	// ErrGuestAgentDisabled reports agent= absent from the VM config - the
 	// QEMU guest agent cannot answer, so the password cannot be applied
 	// (immediate, actionable pre-flight refusal).
 	ErrGuestAgentDisabled = errors.New("guest agent not enabled")
@@ -162,7 +162,7 @@ func SetCloudInitConfig(ctx context.Context, deps CloudInitConfigDeps, update cl
 }
 
 // applyCloudInitPasswordFlow runs the whole password step: the pre-flight
-// refusals, the ciuser resolution (patch value first, then the live config —
+// refusals, the ciuser resolution (patch value first, then the live config - 
 // never a fallback to a locked root), and the bounded agent wait.
 func applyCloudInitPasswordFlow(ctx context.Context, deps CloudInitConfigDeps, writer cluster.Writer, entity Entity, current, effective cluster.CloudInitConfig, password string) error {
 	if err := preflightGuestAgent(ctx, deps, entity, current); err != nil {
@@ -191,7 +191,7 @@ var (
 
 // preflightGuestAgent refuses a password request that cannot succeed before
 // anything is written: the guest agent must be enabled in the VM config, and
-// the VM must be running (read live, not from the up-to-30s-stale projection —
+// the VM must be running (read live, not from the up-to-30s-stale projection - 
 // ADR 0001). Both refusals are immediate and actionable where the raw agent
 // error today is opaque.
 func preflightGuestAgent(ctx context.Context, deps CloudInitConfigDeps, entity Entity, current cluster.CloudInitConfig) error {
@@ -206,7 +206,7 @@ func preflightGuestAgent(ctx context.Context, deps CloudInitConfigDeps, entity E
 	status, err := deps.StatusReader.VMStatus(ctx, entity.Node, entity.VMID)
 	if err != nil {
 		// The live read is a courtesy check; an unreachable reader must not
-		// block the operation — the bounded ping below is the real gate.
+		// block the operation - the bounded ping below is the real gate.
 		return nil //nolint:nilerr // deliberate fall-through: the ping is the authoritative gate
 	}
 
@@ -221,7 +221,7 @@ func preflightGuestAgent(ctx context.Context, deps CloudInitConfigDeps, entity E
 // window, then applies the password to user, retrying while cloud-init has
 // not yet created the account (cc_users_groups runs tens of seconds after
 // Proxmox reports the VM running). The password is never stored, so the whole
-// operation must succeed inside one synchronous request — hence the bounded,
+// operation must succeed inside one synchronous request - hence the bounded,
 // in-request wait instead of ProxMate's persisted-retry subsystem.
 func applyCloudInitPassword(ctx context.Context, writer cluster.Writer, entity Entity, user, password string) error {
 	deadline := time.NewTimer(maxAgentPingWait)
@@ -293,7 +293,7 @@ type CloudInitSnippetDeps struct {
 
 // SetCloudInitSnippet saves a per-VM cloud-init document. The content is
 // validated, written to the configured snippet storage as pvmss-<vmid>.yml
-// (overwriting the creation-time copy — one file per VM, always), verified visible, attached as
+// (overwriting the creation-time copy - one file per VM, always), verified visible, attached as
 // vendor-data, then recorded in the
 // store. Empty content detaches: the cicustom is cleared and the row content
 // is set to "" without pushing or deleting the file.
@@ -348,7 +348,7 @@ func detachCloudInitSnippet(ctx context.Context, deps CloudInitSnippetDeps, enti
 }
 
 // writeCloudInitSnippet validates, pushes, verifies, attaches, then records
-// the row — the row write is after the cluster steps so a failed push never
+// the row - the row write is after the cluster steps so a failed push never
 // records a document the VM never received.
 func writeCloudInitSnippet(ctx context.Context, deps CloudInitSnippetDeps, entity Entity, storage, filename, content string) error {
 	if err := cloudinit.Validate(content); err != nil {

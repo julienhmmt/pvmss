@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// TestCreate_Image_SeaBIOSDefault — image mode defaults to SeaBIOS
+// TestCreate_Image_SeaBIOSDefault - image mode defaults to SeaBIOS
 // a request that omits uefi creates a VM with
 // no efidisk0 and no bios=ovmf, so the graphical tab shows the guest's real
 // text console instead of an uninitialised framebuffer.
@@ -20,7 +20,7 @@ func TestCreate_Image_SeaBIOSDefault(t *testing.T) {
 	fixture := newCreateFixture(t)
 
 	req := imageRequest()
-	// Omit uefi entirely — the default must be SeaBIOS.
+	// Omit uefi entirely - the default must be SeaBIOS.
 	req.UEFI = nil
 
 	result, err := fixture.create(t, aliceIdentity(), req)
@@ -48,7 +48,7 @@ func TestCreate_Image_SeaBIOSDefault(t *testing.T) {
 	}
 }
 
-// TestCreate_Image_UEFIExplicitHonored — a request that sends uefi=true in
+// TestCreate_Image_UEFIExplicitHonored - a request that sends uefi=true in
 // image mode still creates a UEFI VM (the checkbox stays re-tickable; TPM and
 // Secure Boot keep their "requires UEFI" behaviour).
 //
@@ -85,7 +85,7 @@ func TestCreate_Image_UEFIExplicitHonored(t *testing.T) {
 	}
 }
 
-// TestCreate_Image_UEFIExplicitFalseHonored — a request that sends uefi=false
+// TestCreate_Image_UEFIExplicitFalseHonored - a request that sends uefi=false
 // explicitly is honored (same as the default, but the explicit path must not
 // be flipped by the image-mode default).
 //
@@ -122,7 +122,7 @@ func TestCreate_Image_UEFIExplicitFalseHonored(t *testing.T) {
 	}
 }
 
-// TestCreate_Image_TPMRequiresUEFIStillRejected — the image-mode SeaBIOS
+// TestCreate_Image_TPMRequiresUEFIStillRejected - the image-mode SeaBIOS
 // default does not weaken checkUEFICompat: TPM without UEFI is still rejected
 // (TPM 2.0 requires UEFI). A user who re-ticks UEFI can still get TPM.
 //
@@ -146,7 +146,7 @@ func TestCreate_Image_TPMRequiresUEFIStillRejected(t *testing.T) {
 	}
 }
 
-// TestCreate_Image_NoWriteTarget_SeaBIOSDefault — the SeaBIOS default holds
+// TestCreate_Image_NoWriteTarget_SeaBIOSDefault - the SeaBIOS default holds
 // even when the cluster has no snippet write target (the baseline is skipped,
 // but the firmware decision is independent of snippet delivery).
 //
@@ -183,7 +183,7 @@ func TestCreate_Image_NoWriteTarget_SeaBIOSDefault(t *testing.T) {
 	}
 }
 
-// TestCreate_Image_StampedWithPvmssImageTag — image-mode VMs carry the
+// TestCreate_Image_StampedWithPvmssImageTag - image-mode VMs carry the
 // pvmss-image tag alongside the mandatory pvmss tag, so the console can
 // default to the readable text tab.
 //
@@ -219,7 +219,7 @@ func TestCreate_Image_StampedWithPvmssImageTag(t *testing.T) {
 	}
 }
 
-// TestCreate_NonImage_NoPvmssImageTag — the pvmss-image tag is image-mode
+// TestCreate_NonImage_NoPvmssImageTag - the pvmss-image tag is image-mode
 // only; an ISO VM gets pvmss but not pvmss-image.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures

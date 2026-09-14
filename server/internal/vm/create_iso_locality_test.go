@@ -52,7 +52,7 @@ func isoLocalityResources() catalog.Resources {
 	}
 }
 
-// TestResolveResources_ISOLocalityAutoSelectsHoldingNode — when the request
+// TestResolveResources_ISOLocalityAutoSelectsHoldingNode - when the request
 // carries a node-local ISO and no explicit node, auto-selection must pick a
 // node that holds the ISO, not Nodes[0].
 func TestResolveResources_ISOLocalityAutoSelectsHoldingNode(t *testing.T) {
@@ -72,7 +72,7 @@ func TestResolveResources_ISOLocalityAutoSelectsHoldingNode(t *testing.T) {
 	}
 }
 
-// TestValidateCatalog_ISOLocalityRejectsMismatchedNode — when the request
+// TestValidateCatalog_ISOLocalityRejectsMismatchedNode - when the request
 // specifies a node that does not hold the ISO, validateCatalog must reject
 // with ErrNotApproved.
 func TestValidateCatalog_ISOLocalityRejectsMismatchedNode(t *testing.T) {
@@ -90,7 +90,7 @@ func TestValidateCatalog_ISOLocalityRejectsMismatchedNode(t *testing.T) {
 	}
 }
 
-// TestResolveResources_NoNodeHoldsISO — when the request carries an ISO that
+// TestResolveResources_NoNodeHoldsISO - when the request carries an ISO that
 // no approved node holds, resolveResources must return ErrNotApproved naming
 // the ISO.
 func TestResolveResources_NoNodeHoldsISO(t *testing.T) {
@@ -107,7 +107,7 @@ func TestResolveResources_NoNodeHoldsISO(t *testing.T) {
 	}
 }
 
-// TestResolveResources_SharedStorageISOAllNodesCandidates — when the ISO is on
+// TestResolveResources_SharedStorageISOAllNodesCandidates - when the ISO is on
 // shared storage (one row per node), every approved node is a candidate, so
 // auto-selection falls back to Nodes[0].
 func TestResolveResources_SharedStorageISOAllNodesCandidates(t *testing.T) {
@@ -123,11 +123,11 @@ func TestResolveResources_SharedStorageISOAllNodesCandidates(t *testing.T) {
 	}
 
 	if node != isoNode01 {
-		t.Errorf("node = %q, want %q (Nodes[0] — all nodes hold the shared ISO)", node, isoNode01)
+		t.Errorf("node = %q, want %q (Nodes[0] - all nodes hold the shared ISO)", node, isoNode01)
 	}
 }
 
-// TestResolveResources_NoISOUnchanged — a request without an ISO must behave
+// TestResolveResources_NoISOUnchanged - a request without an ISO must behave
 // exactly as before: auto-select Nodes[0], no ISO locality filtering (regression guard).
 func TestResolveResources_NoISOUnchanged(t *testing.T) {
 	t.Parallel()

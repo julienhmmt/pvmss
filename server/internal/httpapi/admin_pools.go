@@ -68,7 +68,7 @@ type AdminPoolsRegistryDeps struct {
 
 // NewAdminPoolsWithRegistry creates the handler with per-request client and
 // projection resolution, keyed on the ?cluster= query parameter every
-// endpoint here already reads — without this, an admin managing pools on a
+// endpoint here already reads - without this, an admin managing pools on a
 // non-default cluster would silently operate against the default cluster's
 // Proxmox API instead.
 func NewAdminPoolsWithRegistry(deps AdminPoolsRegistryDeps) *AdminPools {

@@ -25,7 +25,7 @@ const (
 var (
 	ErrUnreachable = errors.New("cluster unreachable")
 	// ErrTLSVerify is returned when the TLS handshake fails on certificate
-	// verification — typically a self-signed Proxmox certificate without the
+	// verification - typically a self-signed Proxmox certificate without the
 	// per-cluster "skip TLS verification" option. It is kept distinct from
 	// ErrUnreachable because the host is reachable; the fix is configuration,
 	// not connectivity.
@@ -36,7 +36,7 @@ var (
 	ErrInvalidStateTransition = errors.New("invalid state transition")
 	// ErrClusterRejected is wrapped by ClusterRejectedError for any 4xx/5xx
 	// Proxmox response (except 404, which stays ErrNotFound). The wrapped
-	// message is Proxmox's own — see ClusterRejectedError.
+	// message is Proxmox's own - see ClusterRejectedError.
 	ErrClusterRejected = errors.New("cluster rejected the request")
 	// ErrVMRunning is returned by Delete when the target VM is running. Real
 	// Proxmox rejects a destroy on a running VM with HTTP 500 ("VM X is running
@@ -48,7 +48,7 @@ var (
 	// named in the request does not exist on the guest (guest-agent exit code 3).
 	ErrSSHKeyUserUnknown = errors.New("ssh key user not found on guest")
 	// ErrGuestUserUnknown is returned by Writer.SetCloudInitPassword when the
-	// guest agent reports that the target user does not exist yet — cloud-init
+	// guest agent reports that the target user does not exist yet - cloud-init
 	// creates the account mid-boot, so an early attempt is retryable, not
 	// fatal (see vm.applyCloudInitPassword's bounded retry loop).
 	ErrGuestUserUnknown = errors.New("guest user does not exist")
@@ -144,7 +144,7 @@ type CloudInitUpdate struct {
 }
 
 // Writer is the contract for mutating a single VM. It is deliberately separate
-// from Client (reads and writes are separated) — a handler
+// from Client (reads and writes are separated) - a handler
 // that writes never reads the cluster directly, it reads the inventory
 // projection and writes through this interface. The node is always
 // server-resolved by Resolve(); callers cannot supply it.
@@ -174,10 +174,10 @@ type Writer interface {
 	SetCloudInitConfig(ctx context.Context, node string, vmid int, config CloudInitConfig) error
 	// PushCloudInitSnippet writes content as filename into the cluster's
 	// configured snippet directory (snippet_dir on the cluster row). Proxmox's
-	// REST API cannot write snippets — upload and download-url both reject
+	// REST API cannot write snippets - upload and download-url both reject
 	// content=snippets (PVE::API2::Storage::Status hardcodes the enum to
 	// iso/vztmpl/import, a deliberate restriction since a snippet can carry
-	// an arbitrary hookscript) — so PVMSS writes the file itself into the
+	// an arbitrary hookscript) - so PVMSS writes the file itself into the
 	// bind-mounted directory the administrator configured. No write target →
 	// ErrSnippetWriteUnavailable.
 	PushCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int, content string) error
@@ -212,7 +212,7 @@ type Writer interface {
 	// SetCloudInitPassword applies the VM's cloud-init password post-boot via
 	// the QEMU guest agent, writing it only to /etc/shadow on the guest. It
 	// never uses the cipassword config key, whose crypt hash Proxmox stores on
-	// the cloud-init seed drive and cloud-init caches under /var/lib/cloud —
+	// the cloud-init seed drive and cloud-init caches under /var/lib/cloud - 
 	// both readable by any tenant root for the VM's lifetime.
 	// user is the VM's own ciuser: a cloud image's account is debian/ubuntu
 	// and root is locked, so a hardcoded "root" writes the password onto an
@@ -222,7 +222,7 @@ type Writer interface {
 	SetCloudInitPassword(ctx context.Context, node string, vmid int, user, password string) error
 	// PingGuestAgent probes the QEMU guest agent on a running guest. It uses
 	// a short per-attempt timeout and no retry: an agent configured but not
-	// yet up hangs until timeout, and retrying only multiplies the wait —
+	// yet up hangs until timeout, and retrying only multiplies the wait - 
 	// the caller polls instead.
 	PingGuestAgent(ctx context.Context, node string, vmid int) error
 	// AddSSHKey injects a single public key into the running guest's
@@ -243,11 +243,11 @@ type Writer interface {
 	// deleting bios, machine, and efidisk0 from the VM config.
 	// The caller must have already refused VMs with TPM state or Secure
 	// Boot, and must stop the VM before calling this. A failed call leaves
-	// the VM in whatever state Proxmox reached — the caller reports it.
+	// the VM in whatever state Proxmox reached - the caller reports it.
 	RetrofitToSeaBIOS(ctx context.Context, node string, vmid int) error
 }
 
-// Snapshot is the complete result of one cluster read — all nodes, VMs, and
+// Snapshot is the complete result of one cluster read - all nodes, VMs, and
 // storages at that instant. It mirrors /cluster/resources' real
 // shape: one call returns everything, instead of one call per entity type.
 type Snapshot struct {
@@ -319,8 +319,8 @@ type Disk struct {
 	IsBoot   bool    `json:"isBoot"`
 	//  Format is the disk image format ("qcow2", "raw", ...) parsed from the
 	// Proxmox config volume ID or the explicit format= option. Empty on
-	// block-backed storages (lvmthin, zfspool, rbd) where the plugin — not
-	// the format — decides snapshot support.
+	// block-backed storages (lvmthin, zfspool, rbd) where the plugin - not
+	// the format - decides snapshot support.
 	Format string `json:"format,omitempty"`
 }
 
@@ -403,14 +403,14 @@ type VM struct {
 	// BIOS is the firmware type ("ovmf" for UEFI, empty for legacy SeaBIOS).
 	// Machine and EFIDisk are set alongside it, TPMState alongside a
 	// requested TPM. Set by the fake dataset on creation;
-	// not hydrated by the real client — nothing currently reads these back
+	// not hydrated by the real client - nothing currently reads these back
 	// from Proxmox.
 	BIOS     string
 	Machine  string
 	EFIDisk  bool
 	TPMState bool
 	// SecureBoot is true when efidisk0 carries pre-enrolled-keys=1 (set by
-	// the fake on creation; not hydrated by the real client — the retrofit
+	// the fake on creation; not hydrated by the real client - the retrofit
 	// reads it live via Writer.ReadFirmwareConfig).
 	SecureBoot bool
 }
@@ -457,7 +457,7 @@ func IsVMCapableStorage(storage Storage) bool {
 }
 
 // IsSnippetCapableStorage reports whether a storage advertises the snippets
-// content type — the prerequisite for PVMSS to write cloud-init vendor-data
+// content type - the prerequisite for PVMSS to write cloud-init vendor-data
 // files the VM can read back via cicustom. Unlike IsVMCapableStorage, PBS is
 // not excluded here because PBS does not advertise snippets anyway; the
 // content check alone is the correct gate.
@@ -490,7 +490,7 @@ type ISOImage struct {
 	SizeBytes int64
 }
 
-// CloudImage is one cloud image discovered on a storage backend on a node —
+// CloudImage is one cloud image discovered on a storage backend on a node - 
 //
 // a .qcow2/.raw/.vmdk/.ova file under import content (Proxmox lists them
 //
@@ -548,7 +548,7 @@ type VMLiveStatus struct {
 
 // GuestNetworkReader reads a running VM's NIC→IP mapping from the QEMU
 // guest agent (agent/network-get-interfaces). It is live data the inventory
-// projection cannot carry — the config reader deliberately skips the per-VM
+// projection cannot carry - the config reader deliberately skips the per-VM
 // agent round trip (parseNetworkInterfaces), so the VM detail endpoint asks
 // for it on demand. Any error (VM stopped, agent absent) means "no live
 // addresses", not a failed read.
@@ -559,7 +559,7 @@ type GuestNetworkReader interface {
 // GuestInterface is one guest-side network interface reported by the QEMU
 // guest agent: the MAC the guest knows it by plus the IP addresses currently
 // bound to it. The caller correlates it to a configured netN by MAC
-// (case-insensitive — the agent reports lowercase, the config uppercase).
+// (case-insensitive - the agent reports lowercase, the config uppercase).
 type GuestInterface struct {
 	MAC         string
 	IPAddresses []string
@@ -578,7 +578,7 @@ type SnapshotWriter interface {
 }
 
 // SnapshotConfigReader reads one snapshot's stored config as a flat key→value
-// map. "current" maps to the live config — the pre-rollback diff
+// map. "current" maps to the live config - the pre-rollback diff
 // needs both sides.
 type SnapshotConfigReader interface {
 	SnapshotConfig(ctx context.Context, node string, vmid int, name string) (map[string]string, error)
@@ -587,7 +587,7 @@ type SnapshotConfigReader interface {
 // VNCProxyTicket is the Proxmox-side VNC ticket, port, and node returned by
 // GetVNCTicket. The real client populates all three from Proxmox's vncproxy
 // response; the fake client returns a fixed fabricated pair. Neither value
-// ever reaches the browser — only the opaque ConsoleTicketStore token does.
+// ever reaches the browser - only the opaque ConsoleTicketStore token does.
 // The relay reads them back from the ticket at upgrade time.
 type VNCProxyTicket struct {
 	Ticket string
@@ -603,7 +603,7 @@ type VNCProxyTicket struct {
 // returns when either side closes.
 //
 // Kept separate from Client (reads and writes are separated)
-// — a console relay is neither a read nor a write in the Index sense, it is a
+// - a console relay is neither a read nor a write in the Index sense, it is a
 // long-lived byte stream, and giving it its own interface keeps the Client
 // surface focused. Both Fake and Proxmox satisfy it.
 type ConsoleRelay interface {
@@ -614,7 +614,7 @@ type ConsoleRelay interface {
 // TermProxyTicket is the Proxmox-side serial terminal ticket, port, and node
 // returned by GetTermProxy. Proxmox's termproxy endpoint mirrors vncproxy's
 // shape: data.{ticket, port, user}. As with VNCProxyTicket, none of these
-// values ever reach the browser — only the opaque ConsoleTicketStore token
+// values ever reach the browser - only the opaque ConsoleTicketStore token
 // does. The relay reads them back from the ticket at upgrade time.
 type TermProxyTicket struct {
 	Ticket string
@@ -624,7 +624,7 @@ type TermProxyTicket struct {
 
 // TerminalRelay is the contract for relaying an already-upgraded WebSocket
 // connection to a VM's serial terminal. Unlike ConsoleRelay (VNC), there is no
-// RFB handshake — Proxmox's vncwebsocket endpoint carries the serial tunnel as
+// RFB handshake - Proxmox's vncwebsocket endpoint carries the serial tunnel as
 // a raw, already-framed byte stream, so RelaySerial is a dumb bidirectional
 // io.Copy pipe. The browser-side xterm.js layer encodes/decodes the "type:payload" framing
 // itself; PVMSS never inspects or terminates it.
@@ -634,7 +634,7 @@ type TerminalRelay interface {
 	RelaySerial(ctx context.Context, clusterName string, vmid int, proxy TermProxyTicket, peer io.ReadWriteCloser) error
 }
 
-// Pool is a tenancy anchor — one pool maps to one user.
+// Pool is a tenancy anchor - one pool maps to one user.
 type Pool struct {
 	Name    string
 	Comment string

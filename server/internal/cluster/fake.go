@@ -21,7 +21,7 @@ const (
 
 // Fake is the built-in cluster substitute. It requires no
 // external service and serves a stable, hand-authored dataset. Neither this
-// type nor Proxmox reports which one it is — callers cannot tell them apart.
+// type nor Proxmox reports which one it is - callers cannot tell them apart.
 //
 // Writes (Action/Delete/Patch) mutate the instance's in-memory dataset under
 // a mutex and append to a call log so tests can assert exactly which calls
@@ -76,7 +76,7 @@ type fakeCloudInitKey struct {
 }
 
 // Snapshot implements Client. It returns the dataset (3 nodes, 25
-// VMs, 4 pools, 5 storages) reshaped into one call — the same content
+// VMs, 4 pools, 5 storages) reshaped into one call - the same content
 // ListNodes used to surface, plus the VMs and storages later work needs.
 // Writes mutate the live dataset, so a Snapshot taken after a delete reflects
 // it (write-then-invalidate).
@@ -134,7 +134,7 @@ func (fake Fake) Authenticate(_ context.Context, username, password string) (Ide
 }
 
 // ChangePassword implements Client against the same in-memory demo table
-// Authenticate reads — the fake's own storage, analogous to a real cluster's
+// Authenticate reads - the fake's own storage, analogous to a real cluster's
 // user database; the fake must demonstrate every feature.
 func (fake Fake) ChangePassword(_ context.Context, username, oldPassword, newPassword string) error {
 	state := fake.stateOrDefault()
@@ -155,7 +155,7 @@ func (fake Fake) ChangePassword(_ context.Context, username, oldPassword, newPas
 }
 
 // GetVNCTicket implements ConsoleRelay with a fixed fabricated ticket and port
-// — no network call, no state beyond what the fixture already tracks for the
+// - no network call, no state beyond what the fixture already tracks for the
 // VM. The browser never sees either value; only the opaque ConsoleTicketStore
 // token does. The fake must demonstrate the feature,
 // so the ticket is real enough for the relay to echo back, just not from
@@ -165,7 +165,7 @@ func (Fake) GetVNCTicket(_ context.Context, _ string, _ int, _ string) (VNCProxy
 }
 
 // RelayConsole implements ConsoleRelay by speaking the minimal RFB 3.8
-// handshake directly against peer — there is no second, separately-dialed
+// handshake directly against peer - there is no second, separately-dialed
 // connection in the fake path; the "relay" IS the fake server.
 // Blocks until peer closes or the context is cancelled.
 func (Fake) RelayConsole(ctx context.Context, _ string, _ int, _ VNCProxyTicket, peer io.ReadWriteCloser) error {
@@ -173,7 +173,7 @@ func (Fake) RelayConsole(ctx context.Context, _ string, _ int, _ VNCProxyTicket,
 }
 
 // GetTermProxy implements TerminalRelay with a fixed fabricated ticket and port
-// — no network call, no state beyond what the fixture already tracks for the
+// - no network call, no state beyond what the fixture already tracks for the
 // VM. The browser never sees either value; only the opaque ConsoleTicketStore
 // token does. Mirrors GetVNCTicket's fake so the serial feature is genuinely
 // functional offline.
@@ -182,7 +182,7 @@ func (Fake) GetTermProxy(_ context.Context, _ string, _ int, _ string) (TermProx
 }
 
 // RelaySerial implements TerminalRelay as a minimal echo/byte-pipe against
-// peer — there is no second, separately-dialed connection in the fake path.
+// peer - there is no second, separately-dialed connection in the fake path.
 // It reads bytes the browser writes and echoes them back prefixed with a "0:len:" data frame so
 // an xterm.js client sees its own keystrokes render,
 // which is enough to demonstrate the serial feature offline without pretending
@@ -225,7 +225,7 @@ func (fake Fake) FindSnippetStorage(_ context.Context, node string) (string, err
 	return "", ErrNotFound
 }
 
-// ListBridges implements Client. Returns the fake bridge dataset — a superset
+// ListBridges implements Client. Returns the fake bridge dataset - a superset
 // of what the catalog approves (vmbr0, vmbr1) so the admin demo has vmbr2 to discover
 // and approve (fixture table).
 func (fake Fake) ListBridges(_ context.Context) ([]Bridge, error) {
@@ -235,7 +235,7 @@ func (fake Fake) ListBridges(_ context.Context) ([]Bridge, error) {
 	return slices.Clone(fakeBridges), nil
 }
 
-// ListISOs implements Client. Returns the fake ISO dataset — a superset of
+// ListISOs implements Client. Returns the fake ISO dataset - a superset of
 // what the catalog approves (debian-12, ubuntu-24, both on local) so the admin demo
 // has rocky-9 to discover and approve (fixture table).
 func (fake Fake) ListISOs(_ context.Context) ([]ISOImage, error) {
@@ -245,7 +245,7 @@ func (fake Fake) ListISOs(_ context.Context) ([]ISOImage, error) {
 	return slices.Clone(fakeISOs), nil
 }
 
-// ListCloudImages implements Client. Returns the fake cloud-image dataset —
+// ListCloudImages implements Client. Returns the fake cloud-image dataset - 
 // a superset of what the catalog seed approved (ubuntu-24.04 cloudimg on
 // local/node-01) so the admin demo has debian-12-generic-cloudimg to
 // discover and approve, rocky-9 as the unapproved target.
@@ -256,7 +256,7 @@ func (fake Fake) ListCloudImages(_ context.Context) ([]CloudImage, error) {
 	return slices.Clone(fakeCloudImages), nil
 }
 
-// ListTemplates implements Client. Returns the fake template dataset — two
+// ListTemplates implements Client. Returns the fake template dataset - two
 // template VMs the admin demo can discover and approve.
 func (fake Fake) ListTemplates(_ context.Context) ([]TemplateVM, error) {
 	if fake.unavailable() {
@@ -484,7 +484,7 @@ func (fake Fake) SnippetWriteAvailable() bool {
 
 // PushCloudInitSnippet implements Writer and records the server-owned target
 // and content. On success it also marks the file present so HasSnippet
-// answers true for the same (node, storage, filename) triple — matching the
+// answers true for the same (node, storage, filename) triple - matching the
 // real client's write-then-verify contract.
 func (fake Fake) PushCloudInitSnippet(_ context.Context, node, storage, filename string, vmid int, content string) error {
 	state := fake.stateOrDefault()
@@ -508,8 +508,8 @@ func (fake Fake) PushCloudInitSnippet(_ context.Context, node, storage, filename
 }
 
 // AttachCloudInitSnippet implements Writer and records the cicustom attach.
-// Like the real client, attaching ensures the cloud-init drive first —
-// Proxmox silently ignores cicustom without one — so the fake's call log
+// Like the real client, attaching ensures the cloud-init drive first - 
+// Proxmox silently ignores cicustom without one - so the fake's call log
 // shows the same ensure-then-attach order the contract test asserts.
 func (fake Fake) AttachCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int) error {
 	if filename != "" {
@@ -526,8 +526,8 @@ func (fake Fake) AttachCloudInitSnippet(ctx context.Context, node, storage, file
 	return nil
 }
 
-// HasSnippet implements Writer. The default answer is false — the fake
-// cannot invent an admin-preplaced file — unless a test opts a
+// HasSnippet implements Writer. The default answer is false - the fake
+// cannot invent an admin-preplaced file - unless a test opts a
 // (node, storage, filename) triple in via SetFakeSnippetPresent.
 func (fake Fake) HasSnippet(_ context.Context, node, storage, filename string) (bool, error) {
 	state := fake.stateOrDefault()
@@ -632,7 +632,7 @@ func (fake Fake) PingGuestAgent(_ context.Context, node string, vmid int) error 
 
 // GuestNetworkInterfaces implements GuestNetworkReader. The fake has no real
 // guest agent, so a running VM reports each configured NIC's stored
-// IPAddresses, or — when none were seeded — a deterministic 10.10.x.y
+// IPAddresses, or - when none were seeded - a deterministic 10.10.x.y
 // address so the demo shows what a real cluster's agent would report. A
 // stopped or paused guest cannot answer an agent call: ErrUnreachable, the
 // same answer the real endpoint gives. agentPingFailures (the
@@ -700,7 +700,7 @@ func SetFakeCloudInitPushError(err error) {
 }
 
 // SetFakeSnippetPresent configures the default fake's HasSnippet answer for
-// one (node, storage, filename) triple — tests use it to exercise the
+// one (node, storage, filename) triple - tests use it to exercise the
 // baseline-snippet-found branch of image-mode create.
 func SetFakeSnippetPresent(node, storage, filename string, present bool) {
 	state := defaultState()
@@ -723,7 +723,7 @@ func SetFakeSnippetContent(node, storage, filename, content string) {
 
 // SetFakeSnippetVisibility controls whether a successful PushCloudInitSnippet
 // marks the file visible to HasSnippet. True (the default) is the real
-// client's write-then-verify contract; false simulates a wrong mount — the
+// client's write-then-verify contract; false simulates a wrong mount - the
 // write succeeds on the PVMSS side but Proxmox never lists the file.
 func SetFakeSnippetVisibility(marksPresent bool) {
 	state := defaultState()
@@ -784,11 +784,11 @@ func SetFakeSSHKeyError(err error) {
 	state.sshErr = err
 }
 
-// Action implements Writer — a power transition on the Index-resolved node.
+// Action implements Writer - a power transition on the Index-resolved node.
 // It mutates the VM's Status so a subsequent Snapshot reflects it (the fake
 // demonstrates the feature), and records the call.
 //
-// status-incompatible transitions are rejected — start on an
+// status-incompatible transitions are rejected - start on an
 // already-running VM, stop/shutdown on an already-stopped one, reboot/reset on
 // a stopped one. This mirrors what real Proxmox rejects natively; never
 // built it because no single-VM caller needed it, but the bulk
@@ -890,7 +890,7 @@ func validateTransition(action string, status VMStatus) error {
 	return nil
 }
 
-// Delete implements Writer — the VM and its disks are removed from the
+// Delete implements Writer - the VM and its disks are removed from the
 // dataset. Irreversible: no soft-delete, no undo. A running VM is
 // rejected with ErrVMRunning, mirroring real Proxmox (which returns HTTP 500
 // "VM X is running - destroy failed"); callers must stop it first.
@@ -915,7 +915,7 @@ func (fake Fake) Delete(_ context.Context, node string, vmid int) error {
 	return nil
 }
 
-// Patch implements Writer — name and/or description update. Empty arguments
+// Patch implements Writer - name and/or description update. Empty arguments
 // are ignored; the caller (vm.Patch) decides which fields to send.
 func (fake Fake) Patch(_ context.Context, node string, vmid int, name, description string) error {
 	state := fake.stateOrDefault()
@@ -1241,7 +1241,7 @@ const (
 
 	// actionDelete is the FakeCall.Action value recorded by the fake cluster's
 	// DeleteVM. Also reused as the Proxmox API form key for key deletion
-	// (proxmox_writer.go, proxmox_cloudinit.go, proxmox_pools.go) — same word,
+	// (proxmox_writer.go, proxmox_cloudinit.go, proxmox_pools.go) - same word,
 	// same intent: remove this key/VM.
 	actionDelete = "delete"
 
@@ -1267,7 +1267,7 @@ const (
 	// FakeSnippetStorage is the deterministic snippets-capable fake storage.
 	FakeSnippetStorage = "local"
 	// FakeClusterOffline is the cluster name that makes a Fake report
-	// ErrUnreachable — the offline demo and tests share it.
+	// ErrUnreachable - the offline demo and tests share it.
 	FakeClusterOffline = "offline-demo"
 	// FakeCloudInitUser is the demo cloud-init account.
 	FakeCloudInitUser = "debian"
@@ -1290,7 +1290,7 @@ func originalFakeIdentities() map[string]fakeIdentity {
 }
 
 // The dataset below is production code, reviewed and
-// versioned like the rest. Later work extends it as features are added —
+// versioned like the rest. Later work extends it as features are added - 
 // only Node is surfaced by an endpoint; VM, Storage, and Pool ride
 // along so later work has something real to work with.
 
@@ -1387,7 +1387,7 @@ var fakeTemplates = []TemplateVM{
 }
 
 // fakeUptimeOnStart is the uptime the fake assigns when a stopped VM is started
-// or a running one is rebooted/reset — a stable, non-zero value so the detail
+// or a running one is rebooted/reset - a stable, non-zero value so the detail
 // view's uptime card shows something meaningful after a power transition.
 const fakeUptimeOnStart = 60 * time.Second
 
@@ -1431,7 +1431,7 @@ func seedFakeHardware(vms []VM) {
 		vms[index].Sockets = 1
 		vms[index].Cores = vms[index].CPUCores
 		// The real create path always sends agent=1 (proxmox_create.go), so
-		// seeded VMs mirror an enabled guest-agent channel — except running
+		// seeded VMs mirror an enabled guest-agent channel - except running
 		// VM 103, which keeps agent=0 like a VM not created through PVMSS,
 		// so the detail endpoint's "agent disabled" explanation stays live.
 		vms[index].Agent = vms[index].VMID != 103
@@ -1456,7 +1456,7 @@ func seedFakeHardware(vms []VM) {
 	}
 
 	// A running VM needs a NIC for the guest-agent IP read to have something
-	// to report — the stopped 101 above exercises the "agent unreachable" side.
+	// to report - the stopped 101 above exercises the "agent unreachable" side.
 	for index := range vms {
 		if vms[index].VMID != 100 {
 			continue

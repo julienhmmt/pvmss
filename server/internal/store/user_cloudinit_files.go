@@ -5,7 +5,7 @@ import (
 	"database/sql"
 )
 
-// UserCloudInitFile is one user_cloudinit_files row — a cloud-init document a
+// UserCloudInitFile is one user_cloudinit_files row - a cloud-init document a
 // user owns and can reuse on any cluster.
 type UserCloudInitFile struct {
 	Owner     string
@@ -16,7 +16,7 @@ type UserCloudInitFile struct {
 	UpdatedAt string
 }
 
-// ListUserCloudInitFiles returns every file owned by owner, ordered by id —
+// ListUserCloudInitFiles returns every file owned by owner, ordered by id - 
 // the /cloud-init page's data source. Content is included (16 KiB × the
 // per-user cap is small enough to always ship).
 func (s *Store) ListUserCloudInitFiles(ctx context.Context, owner string) ([]UserCloudInitFile, error) {
@@ -30,7 +30,7 @@ func (s *Store) ListUserCloudInitFiles(ctx context.Context, owner string) ([]Use
 	)
 }
 
-// GetUserCloudInitFile returns one file by (owner, id) — the owner filter is
+// GetUserCloudInitFile returns one file by (owner, id) - the owner filter is
 // part of the lookup so a caller can never read another user's file.
 func (s *Store) GetUserCloudInitFile(ctx context.Context, owner, id string) (UserCloudInitFile, bool, error) {
 	var f UserCloudInitFile
@@ -49,7 +49,7 @@ func (s *Store) GetUserCloudInitFile(ctx context.Context, owner, id string) (Use
 	return f, true, nil
 }
 
-// CountUserCloudInitFiles returns how many files owner currently has — the
+// CountUserCloudInitFiles returns how many files owner currently has - the
 // domain layer enforces the per-user cap against it.
 func (s *Store) CountUserCloudInitFiles(ctx context.Context, owner string) (int, error) {
 	var count int
@@ -86,7 +86,7 @@ func (s *Store) UpdateUserCloudInitFile(ctx context.Context, owner, id, label, c
 }
 
 // DeleteUserCloudInitFile removes a file row. Returns sql.ErrNoRows if the
-// (owner, id) pair did not exist. No cascade — VMs created from the file keep
+// (owner, id) pair did not exist. No cascade - VMs created from the file keep
 // their own per-VM copy.
 func (s *Store) DeleteUserCloudInitFile(ctx context.Context, owner, id string) error {
 	return execUpdateOne(ctx, s.db,

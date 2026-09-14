@@ -12,7 +12,7 @@ import (
 )
 
 // legacySchemaDDL is the exact v0.3 schema transcribed from
-// backend/database/schema.go (not imported — server/ cannot import backend/). This fixture is the test-only source of
+// backend/database/schema.go (not imported - server/ cannot import backend/). This fixture is the test-only source of
 // truth for the legacy shape the recovery tool reads.
 const legacySchemaDDL = `
 CREATE TABLE IF NOT EXISTS enabled_nodes (

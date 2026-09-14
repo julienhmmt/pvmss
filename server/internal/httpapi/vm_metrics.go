@@ -42,7 +42,7 @@ func NewVMMetrics(projection *inventory.Projection, authHandler *Auth, reader cl
 
 // NewVMMetricsWithRegistry creates the metrics handler with per-request
 // index and cluster reader resolution, keyed on the request's own :cluster
-// path value — the fix for the cross-cluster leak this endpoint's
+// path value - the fix for the cross-cluster leak this endpoint's
 // single-client wiring surfaced.
 func NewVMMetricsWithRegistry(source inventory.LookupSource, projection *inventory.Projection, authHandler *Auth, reader cluster.MetricsHistoryReader, currentReader cluster.MetricsCurrentReader, clients cluster.ClientProvider, log *slog.Logger) *VMMetrics {
 	handler := NewVMMetrics(projection, authHandler, reader, currentReader, log)

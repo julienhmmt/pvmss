@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestConfigurationRedacted_RedactsAllSecrets — Redacted() returns
+// TestConfigurationRedacted_RedactsAllSecrets - Redacted() returns
 // every secret-shaped field with redacted=true and an empty value, regardless
 // of the configured value. As the secret-shaped fields are
 // AdminPasswordHash, SessionSecret, and ProxmoxAPITokenValue (every bearer
@@ -50,7 +50,7 @@ func TestConfigurationRedacted_RedactsAllSecrets(t *testing.T) {
 	}
 }
 
-// TestConfigurationRedacted_NonSecretFieldsShowRealValue — every non-secret
+// TestConfigurationRedacted_NonSecretFieldsShowRealValue - every non-secret
 // Configuration field returns its real configured value, never redacted.
 //
 //nolint:paralleltest // serial: no shared state, but kept consistent with suite
@@ -108,7 +108,7 @@ func TestConfigurationRedacted_NonSecretFieldsShowRealValue(t *testing.T) {
 	}
 }
 
-// TestConfigurationRedacted_Sc006_HashNeverInOutput — at the unit
+// TestConfigurationRedacted_Sc006_HashNeverInOutput - at the unit
 // layer: the configured admin password hash string is never a substring of
 // any field's value or name in the Redacted() output.
 //

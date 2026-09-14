@@ -7,15 +7,15 @@ attache à votre VM lors de sa création.
 
 ## Deux types de documents
 
-- **Templates admin** — rédigés et validés par votre administrateur, listés
+- **Templates admin** - rédigés et validés par votre administrateur, listés
   en premier dans le sélecteur.
-- **Mes fichiers** — vos propres documents, gérés sur la page
+- **Mes fichiers** - vos propres documents, gérés sur la page
   [Fichiers cloud-init](/cloud-init) (20 au maximum). Vous seul pouvez les
   voir et les utiliser.
 
 Les deux apparaissent dans un seul sélecteur groupé du formulaire **Créer une
 VM**. Le sélecteur est masqué quand le cluster cible n'a pas de cible
-d'écriture cloud-init — demandez à votre administrateur si vous pensiez le
+d'écriture cloud-init - demandez à votre administrateur si vous pensiez le
 voir.
 
 ## Votre VM garde sa propre copie
@@ -49,7 +49,7 @@ et prend effet au prochain démarrage. Enregistrer un document vide le détache.
 Les modules cloud-init ne se rejouent pas tous de la même manière :
 
 - **Les réglages réseau** (IP, passerelle, DNS, domaine de recherche) sont
-  réappliqués à chaque démarrage — un redémarrage suffit.
+  réappliqués à chaque démarrage - un redémarrage suffit.
 - **Le mot de passe** est transmis immédiatement à l'invité en cours
   d'exécution via l'agent QEMU ; aucun redémarrage n'est nécessaire.
 - **L'utilisateur, la liste des clés SSH et l'essentiel d'un document** sont
@@ -72,8 +72,8 @@ pour les prochains démarrages.
 
 ## Les documents ne sont pas un coffre-fort
 
-Le contenu est stocké en clair — dans la base du portail et sur le stockage
-de snippets du cluster, où cloud-init doit pouvoir le lire — et tout
+Le contenu est stocké en clair - dans la base du portail et sur le stockage
+de snippets du cluster, où cloud-init doit pouvoir le lire - et tout
 administrateur peut le consulter. N'y mettez jamais de mots de passe, de
 tokens d'API ni de clés privées ; utilisez le champ **mot de passe** de
 cloud-init (transmis via l'agent invité et jamais stocké) et des clés SSH.

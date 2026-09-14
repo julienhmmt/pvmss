@@ -79,7 +79,7 @@ func (h *AdminBaseline) ServeBaseline(w http.ResponseWriter, r *http.Request) {
 	// with no override and no user document.
 	generated, err := cloudinit.BuildVendorData(cloudinit.BaselineInputs{})
 	if err != nil {
-		// The generated baseline is built from constants — a failure here
+		// The generated baseline is built from constants - a failure here
 		// is a programmer error, not an operator condition.
 		h.writeError(w, http.StatusInternalServerError, "baseline_build_failed", "could not build the generated baseline")
 
@@ -116,7 +116,7 @@ func (h *AdminBaseline) readOverrideState(ctx context.Context, clusterName strin
 	}
 
 	// Snapshot gives the node list; FindSnippetStorage needs a node to
-	// locate the snippet-capable storage. The first node is sufficient —
+	// locate the snippet-capable storage. The first node is sufficient - 
 	// the override is cluster-wide.
 	snapshot, snapshotErr := client.Snapshot(ctx)
 	if snapshotErr != nil {

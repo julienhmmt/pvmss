@@ -35,17 +35,17 @@ func (p Proxmox) GetCloudInitConfig(ctx context.Context, node string, vmid int) 
 
 // encodeSSHKeys percent-encodes a newline-joined key list for Proxmox's
 // sshkeys form field. Proxmox's own format validator rejects the result of
-// url.PathEscape: RFC3986 leaves path-segment sub-delims — notably '@',
-// which every "user@host" SSH key comment contains — unescaped, and Proxmox
+// url.PathEscape: RFC3986 leaves path-segment sub-delims - notably '@',
+// which every "user@host" SSH key comment contains - unescaped, and Proxmox
 // requires those escaped too ("sshkeys: invalid format - invalid urlencoded
 // string", confirmed live). url.QueryEscape escapes those, matching what
 // ProxMate's encodeURIComponent produces, but it also turns space into '+'
-// — and Proxmox decodes with Perl's uri_unescape, which does NOT turn '+'
+// - and Proxmox decodes with Perl's uri_unescape, which does NOT turn '+'
 // back into a space, corrupting the key. Escaping first and then rewriting
 // only the '+' that QueryEscape used for space back to '%20' gets both
 // right: QueryEscape already turned any literal '+' in the input into
 // "%2B", so every remaining '+' in its output is unambiguously an encoded
-// space. The read side (parseCloudInitConfig) stays PathUnescape — a
+// space. The read side (parseCloudInitConfig) stays PathUnescape - a
 // general percent-decoder that handles %40, %20, %2B and everything else
 // this produces identically.
 func encodeSSHKeys(keys []string) string {
@@ -58,7 +58,7 @@ func parseCloudInitConfig(cfg proxmoxVMConfig) CloudInitConfig {
 	if keys := cfg.str("sshkeys"); keys != "" {
 		// encodeSSHKeys never emits a literal '+' (every space and literal
 		// '+' in the input is percent-encoded), so a plain %XX decoder is
-		// the exact inverse — matching Proxmox's own uri_unescape on the
+		// the exact inverse - matching Proxmox's own uri_unescape on the
 		// read side too, which likewise never turns '+' into a space.
 		decoded, err := url.PathUnescape(keys)
 		if err != nil {
@@ -83,7 +83,7 @@ func parseCloudInitConfig(cfg proxmoxVMConfig) CloudInitConfig {
 }
 
 // agentEnabled parses the VM config's agent= flag. Proxmox's grammar is
-// "[1|0][,frozen=[1|0]]" — the first comma token decides, so "0,frozen=1" is
+// "[1|0][,frozen=[1|0]]" - the first comma token decides, so "0,frozen=1" is
 // disabled and "1,frozen=1" is enabled.
 func agentEnabled(raw string) bool {
 	first, _, _ := strings.Cut(raw, ",")
@@ -116,7 +116,7 @@ func parseIPConfig(raw string, result *CloudInitConfig) {
 
 // FindSnippetStorage implements CloudInitReader. PVMSS can only write to the
 // one snippet directory the administrator configured for the cluster
-// so this returns p.SnippetStorage — but only after proving the
+// so this returns p.SnippetStorage - but only after proving the
 // node lists it as an active snippets provider: a mistyped id or a storage
 // without the snippets content flag must not produce a cicustom pointing at
 // nothing. With no write target configured it reports
@@ -162,7 +162,7 @@ func listSnippetStorages(ctx context.Context, rest proxmoxRESTClient, node strin
 }
 
 // proxmoxFindSnippetStorage picks any active snippet-capable storage on the
-// node — the fallback for the cloud-init DRIVE placement (ide3), which only
+// node - the fallback for the cloud-init DRIVE placement (ide3), which only
 // needs a storage the VM's node can see. It is unrelated to the configured
 // snippet write target, which FindSnippetStorage owns.
 func proxmoxFindSnippetStorage(ctx context.Context, rest proxmoxRESTClient, node string) (string, error) {
@@ -237,8 +237,8 @@ func cloudInitDriveStorage(ctx context.Context, rest proxmoxRESTClient, node str
 }
 
 // SetCloudInitConfig implements Writer. It ensures the cloud-init drive
-// exists first — Proxmox silently ignores ciuser/sshkeys/ipconfig0/... params
-// without one — matching the fake's own EnsureCloudInitDrive-first contract.
+// exists first - Proxmox silently ignores ciuser/sshkeys/ipconfig0/... params
+// without one - matching the fake's own EnsureCloudInitDrive-first contract.
 func (p Proxmox) SetCloudInitConfig(ctx context.Context, node string, vmid int, config CloudInitConfig) error {
 	if err := p.EnsureCloudInitDrive(ctx, node, vmid); err != nil {
 		return err
@@ -269,7 +269,7 @@ func (p Proxmox) SetCloudInitConfig(ctx context.Context, node string, vmid int, 
 }
 
 // HasSnippet implements Writer by listing storage's snippets content and
-// checking for filename — the visibility proof after PushCloudInitSnippet:
+// checking for filename - the visibility proof after PushCloudInitSnippet:
 // the write went through the mount, this confirms Proxmox sees it.
 func (p Proxmox) HasSnippet(ctx context.Context, node, storage, filename string) (bool, error) {
 	found, err := proxmoxListContent(ctx, p.rest(), node, storage, "snippets")
@@ -322,7 +322,7 @@ func (p Proxmox) ReadSnippet(_ context.Context, _, storage, filename string) (st
 // An empty filename detaches the snippet by clearing cicustom.
 //
 // Like SetCloudInitConfig, the attach path ensures the cloud-init drive first:
-// without one in the fixed ide3 slot, Proxmox silently ignores cicustom — no
+// without one in the fixed ide3 slot, Proxmox silently ignores cicustom - no
 // seed ISO is generated and the snippet never reaches the guest. Detaching
 // needs no drive, so the ensure runs only when a filename is given; the
 // ordering matches the fake's own ordering.
@@ -350,9 +350,9 @@ func (p Proxmox) AttachCloudInitSnippet(ctx context.Context, node, storage, file
 // guest agent so it lands only in /etc/shadow on the guest. It deliberately
 // does NOT use the cipassword config key: Proxmox writes that as a crypt hash
 // on the cloud-init seed drive (/dev/sr0) and cloud-init caches the same
-// user-data under /var/lib/cloud on the root disk — both readable by any
+// user-data under /var/lib/cloud on the root disk - both readable by any
 // tenant root for the VM's lifetime. The agent path avoids the seed drive
-// entirely. user is the VM's own ciuser — a cloud image's account is
+// entirely. user is the VM's own ciuser - a cloud image's account is
 // debian/ubuntu and root is locked, so a hardcoded "root" would write the
 // password onto an account nobody can log into. Requires a
 // running guest with qemu-guest-agent enabled; callers surface a clear error
@@ -377,7 +377,7 @@ func (p Proxmox) SetCloudInitPassword(ctx context.Context, node string, vmid int
 // guestUserUnknownMarkers are the substrings Proxmox's guest-agent layer
 // reports when the target account does not exist on the guest. cloud-init
 // creates the account mid-boot, so this error means "too early", not "wrong
-// user" — the caller retries within its bounded window.
+// user" - the caller retries within its bounded window.
 var guestUserUnknownMarkers = []string{"does not exist", "no such user"}
 
 // isGuestUserUnknown reports whether err is the guest agent's user-not-found
@@ -396,13 +396,13 @@ func isGuestUserUnknown(err error) bool {
 }
 
 // agentPingTimeout bounds one guest-agent ping. An agent configured but not
-// started pends until timeout — a short per-attempt bound keeps each probe
+// started pends until timeout - a short per-attempt bound keeps each probe
 // cheap; the caller polls instead of retrying.
 const agentPingTimeout = 3 * time.Second
 
 // PingGuestAgent implements Writer: one POST to the guest-agent ping endpoint
 // with a short timeout and no retry (POSTs are never retried anyway). Any
-// error — unreachable, VM stopped, agent not up — means "not ready yet"; the
+// error - unreachable, VM stopped, agent not up - means "not ready yet"; the
 // caller decides whether to keep polling.
 func (p Proxmox) PingGuestAgent(ctx context.Context, node string, vmid int) error {
 	ctx, cancel := context.WithTimeout(ctx, agentPingTimeout)
@@ -432,8 +432,8 @@ func encodeIPConfig(config CloudInitConfig) string {
 // through. The username and key are passed as positional argv (see
 // AddSSHKey), not interpolated into this string, so a crafted key cannot
 // break out of the append. The append is idempotent: a
-// missing trailing newline is repaired before appending — otherwise the new
-// key glues onto the last existing line and invalidates both — and an exact
+// missing trailing newline is repaired before appending - otherwise the new
+// key glues onto the last existing line and invalidates both - and an exact
 // whole-line duplicate is a no-op, so a retry after a network error does not
 // duplicate. The newline guard is an explicit if because its condition chain
 // legitimately returns non-zero when false, which set -e would treat as
@@ -460,7 +460,7 @@ chown "$owner" "$home/.ssh" "$auth"
 // AddSSHKey injects a single public key into the running guest's
 // authorized_keys through the QEMU guest agent. The guest agent executes the
 // fixed script (sshKeyAddScript) with the username and key as positional
-// arguments — no shell interpolation of the key — so a multi-line or
+// arguments - no shell interpolation of the key - so a multi-line or
 // malicious value cannot smuggle extra commands. The call is async on the
 // guest: Proxmox returns a pid from agent/exec that we then poll via
 // agent/exec-status until it exits.
@@ -536,7 +536,7 @@ func (p Proxmox) waitAgentExec(ctx context.Context, node string, vmid, pid int) 
 	deadline := time.NewTimer(maxAgentExecWait)
 	defer deadline.Stop()
 
-	// First poll runs immediately — the guest process may have already exited
+	// First poll runs immediately - the guest process may have already exited
 	// by the time we get here, and this keeps the common fast path tick-free.
 	if exited, err := pollAgentExecStatus(ctx, rest, path); err != nil || exited {
 		return err
@@ -671,7 +671,7 @@ func (p Proxmox) RemoveCloudInitSnippet(_ context.Context, storage, filename str
 
 // writeFileAtomic writes content to dir/filename via a temp file and rename,
 // mode 0644 (cloud-init on the Proxmox node reads it as a non-root user).
-// dir must already exist: it is the administrator-mounted snippets/ share —
+// dir must already exist: it is the administrator-mounted snippets/ share - 
 // creating it silently would mask a missing mount and drop the document into
 // the container's local filesystem where Proxmox can never see it.
 func writeFileAtomic(dir, filename, content string) (err error) {

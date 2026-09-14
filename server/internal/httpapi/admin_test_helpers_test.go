@@ -39,7 +39,7 @@ func newAdminStore(t *testing.T) *store.Store {
 // newAdminHandler builds the AdminCatalog handler with a real store, the
 // fake cluster client, and a projection populated from the fake snapshot
 // (needed for tag VM counts), and returns a mux that wires the admin routes
-// through RequireAdmin — the real guard the tests must exercise.
+// through RequireAdmin - the real guard the tests must exercise.
 func newAdminHandler(t *testing.T) (*httpapi.AdminCatalog, *httpapi.Auth, *store.Store) {
 	t.Helper()
 	t.Cleanup(cluster.ResetFake)

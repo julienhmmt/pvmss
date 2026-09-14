@@ -41,7 +41,7 @@ type VMCreate struct {
 // creation contract (allocation + async dispatch), separate from reads and
 // from existing-VM writes. The pusher is the same cluster
 // client's cloud-init push contract, reused by vm.Create's template-apply
-// step — never a second write mechanism.
+// step - never a second write mechanism.
 func NewVMCreate(
 	authHandler *Auth,
 	st *store.Store,
@@ -117,7 +117,7 @@ type catalogStorageDTO struct {
 	Node string `json:"node"`
 }
 
-// catalogBridgeDTO is one approved bridge on one node — bridge approval is
+// catalogBridgeDTO is one approved bridge on one node - bridge approval is
 // per-node (like storage), so the client needs the node to both label the
 // option and filter to the VM's chosen node.
 type catalogBridgeDTO struct {
@@ -162,7 +162,7 @@ type catalogCloudInitTemplateDTO struct {
 // is chosen). CloudInitCapable signals the UI that
 // the template supports cloud-init. DiskSizeGB lets the UI show the minimum
 // disk size (reductions are rejected). DiskStorage is the template disk's
-// source storage — the UI uses it to warn when the chosen target storage
+// source storage - the UI uses it to warn when the chosen target storage
 // forces a full copy (buildCloneSpec's rule).
 type catalogTemplateDTO struct {
 	VMID             int    `json:"vmid"`
@@ -178,7 +178,7 @@ type catalogTagDTO struct {
 	Color string `json:"color"`
 }
 
-// catalogGabaritDTO is the administrator-editable per-VM size ceiling (gabarit) — the client
+// catalogGabaritDTO is the administrator-editable per-VM size ceiling (gabarit) - the client
 // uses it to validate hardware/disk fields before
 // submit and to show the user what they're allowed, not just what failed.
 type catalogGabaritDTO struct {
@@ -245,7 +245,7 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Creation blocks on vm.WaitCreateTask (up to vm.MaxCreateTaskWait) before
-	// writing any response — the server's global WriteTimeout (10s,
+	// writing any response - the server's global WriteTimeout (10s,
 	// cmd/pvmss/main.go) is nowhere near enough for a template clone or image
 	// import. Extend just this response's write deadline so a slow clone
 	// still reaches the client instead of the connection dying underneath a
@@ -377,7 +377,7 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 
 	data.proxmoxTemplates = proxmoxTemplates
 
-	// Admin-created tags only — the mandatory pvmss
+	// Admin-created tags only - the mandatory pvmss
 	// tag is added server-side and never offered as a user choice here.
 	tags, err := catalog.ListTags(ctx, h.store, nil, clusterName)
 	if err != nil {
@@ -411,7 +411,7 @@ func buildCatalogDTO(clusterName string, data catalogData, cloudInitWriteEnabled
 	}
 }
 
-// mapCatalogSlice converts each item with viewOf — the catalog DTO mappers
+// mapCatalogSlice converts each item with viewOf - the catalog DTO mappers
 // below are all this same loop.
 func mapCatalogSlice[In, Out any](items []In, viewOf func(In) Out) []Out {
 	out := make([]Out, 0, len(items))
@@ -558,7 +558,7 @@ func catalogTemplateView(tmpl catalog.Template) catalogTemplateDTO {
 	}
 }
 
-// catalogCloudInitTemplateDTOs maps cloud-init templates — the catalog
+// catalogCloudInitTemplateDTOs maps cloud-init templates - the catalog
 // exposes only id+label per spec/contracts, never content. The list is empty
 // when the cluster has no snippet write target: offering a document the
 // create could never write would fail at submit time anyway.
@@ -576,7 +576,7 @@ func catalogCloudInitTemplateDTOs(templates []catalog.CloudInitTemplate, writeEn
 }
 
 // ServeCatalog handles GET /api/v1/vm-create/catalog. The catalog is the same
-// for every user of a cluster (contracts behavioural rules) — no
+// for every user of a cluster (contracts behavioural rules) - no
 // identity-specific filtering beyond requiring authentication.
 func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
@@ -654,7 +654,7 @@ func (h *VMCreate) attachLimits(ctx context.Context, dto *catalogDTO, clusterNam
 		}
 
 		if capacity.MaxVMs == 0 && capacity.MaxVCPUs == 0 && capacity.MaxRAMGB == 0 {
-			continue // no capacité configured for this node — nothing to show
+			continue // no capacité configured for this node - nothing to show
 		}
 
 		dto.NodeCapacities = append(dto.NodeCapacities, catalogNodeCapacityDTO{
@@ -702,7 +702,7 @@ type createTarget struct {
 // resolveCreateTarget resolves the effective cluster name from req.Cluster
 // (defaulting the same way ResolveClusterParam does for the catalog route)
 // plus that cluster's own Creator, CloudInitPusher, HardwareUpdater, and
-// SnippetStorageFinder — without this, VM creation ran through the default
+// SnippetStorageFinder - without this, VM creation ran through the default
 // cluster's client regardless of which cluster the request named. The
 // HardwareUpdater is needed for post-clone configuration; the
 // SnippetStorageFinder for the plan-time snippet storage resolution.
@@ -804,11 +804,11 @@ type isoDiscoveryKey struct {
 	File    string
 }
 
-// catalogBridgeDTOs dedupes by (name, node) — the same bridge name can be
+// catalogBridgeDTOs dedupes by (name, node) - the same bridge name can be
 // approved on more than one node, and each is a distinct, independently
 // selectable option (bridge approval is per-node, like storage). live carries
 // the cluster's current network config, which is where the description
-// (Proxmox "comments" field) actually lives — catalog_bridges only stores
+// (Proxmox "comments" field) actually lives - catalog_bridges only stores
 // the approval, not the comment. Bridges absent from live (orphan approvals
 // whose bridge Proxmox no longer reports) are dropped so users never see a
 // bridge they cannot actually use.

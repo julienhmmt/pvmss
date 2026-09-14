@@ -12,7 +12,7 @@ import (
 )
 
 // openRawDB opens a raw SQLite database in a temp dir without running any
-// migrations — the compatibility test needs to control exactly which versions
+// migrations - the compatibility test needs to control exactly which versions
 // are applied so it can capture outputs at V7 and again after V9.
 func openRawDB(t *testing.T) *sql.DB {
 	t.Helper()
@@ -114,7 +114,7 @@ type rawProfile struct {
 	Bus      string
 }
 
-// captureAtV7 reads the five row sets using direct SQL — the queries run
+// captureAtV7 reads the five row sets using direct SQL - the queries run
 // before the enabled column existed. This is the "before"
 // snapshot: what the functions returned under V7.
 func captureAtV7(t *testing.T, db *sql.DB) (
@@ -208,7 +208,7 @@ func queryRows[T any](
 // functions (which now carry AND enabled = 1). This is the "after" snapshot:
 // what the functions return under V9 with zero toggles performed. The caller
 // must have added the sockets column (V21's DDL) manually so catalog.Profiles
-// can run — the test stops at V9 because V14 drops catalog_bridges.
+// can run - the test stops at V9 because V14 drops catalog_bridges.
 func captureAtLatest(t *testing.T, st *store.Store) (
 	[]catalog.Node,
 	[]catalog.Storage,
@@ -239,7 +239,7 @@ func captureAtLatest(t *testing.T, st *store.Store) (
 // The fixture DB is built at V7, outputs captured via direct SQL (the
 // pre-enabled-column query shapes), then migrated forward to V9 with zero admin toggles
 // performed, and outputs captured again through the actual catalog functions
-// (which now carry AND enabled = 1). The two snapshots must be identical —
+// (which now carry AND enabled = 1). The two snapshots must be identical - 
 // every existing row's enabled defaults to 1.
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -261,14 +261,14 @@ func TestCatalogAdminCompat_RowSetsIdenticalBeforeAndAfterV9(t *testing.T) {
 	// can run against the V9 schema. We cannot migrate past V9 because V14
 	// drops and recreates catalog_bridges without re-seeding, which would
 	// change the bridge row set for a reason unrelated to V9's enabled
-	// column — the exact thing this test isolates.
+	// column - the exact thing this test isolates.
 	if _, err := db.ExecContext(context.Background(),
 		`ALTER TABLE catalog_profiles ADD COLUMN sockets INTEGER NOT NULL DEFAULT 1`); err != nil {
 		t.Fatalf("add sockets column: %v", err)
 	}
 
 	// Add catalog_images manually (same DDL as V27) so ApprovedResources can
-	// run against the V9 schema — same constraint as the sockets column
+	// run against the V9 schema - same constraint as the sockets column
 	// above.
 	if _, err := db.ExecContext(context.Background(), store.Migrations[26].DDL); err != nil {
 		t.Fatalf("add catalog_images table: %v", err)
@@ -348,14 +348,14 @@ func assertProfilesMatch(t *testing.T, before []rawProfile, after []catalog.Prof
 	}
 }
 
-// assertV9EnabledColumnOnAllTables proves V9's ALTER TABLE landed — the enabled
+// assertV9EnabledColumnOnAllTables proves V9's ALTER TABLE landed - the enabled
 // column must exist on all five catalog tables.
 func assertV9EnabledColumnOnAllTables(t *testing.T, db *sql.DB) {
 	t.Helper()
 
 	for _, table := range []string{"catalog_nodes", "catalog_storages", "catalog_bridges", "catalog_isos", "catalog_profiles"} {
 		if !columnExists(t, db, table, "enabled") {
-			t.Fatalf("table %s has no enabled column after migration — V9 not applied", table)
+			t.Fatalf("table %s has no enabled column after migration - V9 not applied", table)
 		}
 	}
 }

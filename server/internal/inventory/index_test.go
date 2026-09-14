@@ -10,7 +10,7 @@ import (
 
 const testPvmssTag = "pvmss"
 
-// fakeSnapshot returns the fake dataset shaped as a Snapshot — 3 nodes, 25 VMs, 4 pools, 5
+// fakeSnapshot returns the fake dataset shaped as a Snapshot - 3 nodes, 25 VMs, 4 pools, 5
 // storages. Mirrors server/internal/cluster/fake.go.
 func fakeSnapshot() cluster.Snapshot {
 	return cluster.Snapshot{
@@ -74,7 +74,7 @@ func fakeVMs() []cluster.VM {
 	return vms
 }
 
-// TestIndex_VMCountConsistency — invariant 1: every VM appears in exactly one
+// TestIndex_VMCountConsistency - invariant 1: every VM appears in exactly one
 // node bucket, and the total matches ByVMID.
 //
 //nolint:paralleltest // serial: shared inventory fixture
@@ -95,7 +95,7 @@ func TestIndex_VMCountConsistency(t *testing.T) {
 	}
 }
 
-// TestIndex_PoolMembershipConsistency — invariant 2: every VM in ByPool[p] has
+// TestIndex_PoolMembershipConsistency - invariant 2: every VM in ByPool[p] has
 // VM.Pool == p.
 //
 //nolint:paralleltest // serial: shared inventory fixture
@@ -111,7 +111,7 @@ func TestIndex_PoolMembershipConsistency(t *testing.T) {
 	}
 }
 
-// TestIndex_SnapshotImmutability — invariant 3: building an Index from a
+// TestIndex_SnapshotImmutability - invariant 3: building an Index from a
 // Snapshot never mutates the Snapshot.
 //
 //nolint:paralleltest // serial: shared inventory fixture
@@ -137,7 +137,7 @@ func TestIndex_SnapshotImmutability(t *testing.T) {
 	}
 }
 
-// TestIndex_ByPool — querying by pool name returns exactly the VMs in
+// TestIndex_ByPool - querying by pool name returns exactly the VMs in
 // that pool, matching the known fake dataset (25 VMs / 4 pools).
 //
 //nolint:paralleltest // serial: shared inventory fixture
@@ -173,7 +173,7 @@ func TestIndex_ByPool(t *testing.T) {
 	}
 }
 
-// TestIndex_ByNode — querying by node name returns the VMs on that node,
+// TestIndex_ByNode - querying by node name returns the VMs on that node,
 // matching the per-node VM count shown on screen.
 //
 //nolint:paralleltest // serial: shared inventory fixture
@@ -199,7 +199,7 @@ func TestIndex_ByNode(t *testing.T) {
 	}
 }
 
-// TestIndex_NodesSortedByName — Nodes are sorted by name, stable across reads.
+// TestIndex_NodesSortedByName - Nodes are sorted by name, stable across reads.
 //
 //nolint:paralleltest // serial: shared inventory fixture
 func TestIndex_NodesSortedByName(t *testing.T) {
@@ -211,7 +211,7 @@ func TestIndex_NodesSortedByName(t *testing.T) {
 	}
 }
 
-// TestIndex_StoragesByNode — storages indexed by node.
+// TestIndex_StoragesByNode - storages indexed by node.
 //
 //nolint:paralleltest // serial: shared inventory fixture
 func TestIndex_StoragesByNode(t *testing.T) {
@@ -230,7 +230,7 @@ func TestIndex_StoragesByNode(t *testing.T) {
 	}
 }
 
-// TestIndex_RefreshedAtZero — a freshly built Index has a zero RefreshedAt
+// TestIndex_RefreshedAtZero - a freshly built Index has a zero RefreshedAt
 // (zero means "never successfully refreshed").
 //
 //nolint:paralleltest // serial: shared inventory fixture
@@ -241,7 +241,7 @@ func TestIndex_RefreshedAtZero(t *testing.T) {
 	}
 }
 
-// TestIndex_TagsCopied — mutating a VM's Tags in the index must not affect the
+// TestIndex_TagsCopied - mutating a VM's Tags in the index must not affect the
 // snapshot (deep copy invariant).
 //
 //nolint:paralleltest // serial: shared inventory fixture

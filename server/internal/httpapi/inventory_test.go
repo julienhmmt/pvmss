@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-// TestClusterRefresh_Success — POST /cluster/refresh returns 202 Accepted
+// TestClusterRefresh_Success - POST /cluster/refresh returns 202 Accepted
 // immediately; the refresh runs in the background and populates the projection.
 //
 //nolint:paralleltest // serial: shared inventory fixture
@@ -51,7 +51,7 @@ func TestClusterRefresh_Success(t *testing.T) {
 	waitForProjection(t, projection, 2*time.Second)
 }
 
-// TestClusterRefresh_TooSoon — a second immediate call returns 429 with
+// TestClusterRefresh_TooSoon - a second immediate call returns 429 with
 // retryAfterSeconds.
 //
 //nolint:paralleltest // serial: shared inventory fixture
@@ -101,7 +101,7 @@ func TestClusterRefresh_TooSoon(t *testing.T) {
 	}
 
 	if got.RetryAfterSeconds < 1 || got.RetryAfterSeconds > 5 {
-		t.Fatalf("retryAfterSeconds = %d, want in (0, 5] — the remaining guard time, not more than the full interval", got.RetryAfterSeconds)
+		t.Fatalf("retryAfterSeconds = %d, want in (0, 5] - the remaining guard time, not more than the full interval", got.RetryAfterSeconds)
 	}
 
 	if w2.Header().Get("Retry-After") == "" {
@@ -109,7 +109,7 @@ func TestClusterRefresh_TooSoon(t *testing.T) {
 	}
 }
 
-// TestClusterRefresh_TooSoonMakesZeroClientCalls — a 429 refusal
+// TestClusterRefresh_TooSoonMakesZeroClientCalls - a 429 refusal
 // never triggers a cluster client call.
 //
 //nolint:paralleltest // serial: shared inventory fixture
@@ -123,7 +123,7 @@ func TestClusterRefresh_TooSoonMakesZeroClientCalls(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	h := httpapi.NewClusterRefresh(refresher, logger)
 
-	// First refresh (async — wait for it to complete).
+	// First refresh (async - wait for it to complete).
 	w1 := httptest.NewRecorder()
 	r1 := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/refresh", nil)
 	h.ServeHTTP(w1, r1)
@@ -131,7 +131,7 @@ func TestClusterRefresh_TooSoonMakesZeroClientCalls(t *testing.T) {
 
 	callsAfterFirst := client.calls
 
-	// Second immediate refresh — should be refused with 0 additional calls.
+	// Second immediate refresh - should be refused with 0 additional calls.
 	w2 := httptest.NewRecorder()
 	r2 := httptest.NewRequest(http.MethodPost, "/api/v1/cluster/refresh", nil)
 	h.ServeHTTP(w2, r2)
@@ -141,7 +141,7 @@ func TestClusterRefresh_TooSoonMakesZeroClientCalls(t *testing.T) {
 	}
 }
 
-// TestClusterRefresh_Unreachable — with async refresh the handler returns
+// TestClusterRefresh_Unreachable - with async refresh the handler returns
 // 202 Accepted immediately even when the cluster is unreachable; the refresh
 // fails in the background and the client learns the outcome by re-reading the
 // projection (re-loading the VM list or polling /health).
@@ -193,7 +193,7 @@ func waitForProjection(t *testing.T, projection *inventory.Projection, timeout t
 	}
 }
 
-// TestClusterRefresh_MethodNotAllowed — non-POST returns 405.
+// TestClusterRefresh_MethodNotAllowed - non-POST returns 405.
 //
 //nolint:paralleltest // serial: shared inventory fixture
 func TestClusterRefresh_MethodNotAllowed(t *testing.T) {

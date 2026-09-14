@@ -41,7 +41,7 @@ func (emptyDiscoveryListClient) ListISOs(_ context.Context) ([]cluster.ISOImage,
 }
 
 // newAdminHandlerWithEmptyDiscovery builds an AdminCatalog handler backed by a
-// client that reports no discovered resources — every stored approval is an
+// client that reports no discovered resources - every stored approval is an
 // orphan. Returns the store so tests can seed approvals directly.
 func newAdminHandlerWithEmptyDiscovery(t *testing.T) (*httpapi.AdminCatalog, *httpapi.Auth, *store.Store) {
 	t.Helper()
@@ -129,7 +129,7 @@ func TestAdminISOs_DisabledOrphanSurfacedAsMissing(t *testing.T) {
 }
 
 // TestAdminISOs_EnabledOrphanAutoRemoved: GET /admin/isos auto-removes an
-// enabled orphan — it does not appear in the list at all.
+// enabled orphan - it does not appear in the list at all.
 //
 //nolint:paralleltest // serial: shared database fixture
 func TestAdminISOs_EnabledOrphanAutoRemoved(t *testing.T) {

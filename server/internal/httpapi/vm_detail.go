@@ -143,7 +143,7 @@ type VMDetailDeps struct {
 	Refresher    vm.IndexRefresher
 	StatusReader cluster.VMStatusReader
 	// GuestNetReader supplies the live per-NIC IP addresses the detail DTO
-	// merges in — the inventory projection carries config-only interfaces.
+	// merges in - the inventory projection carries config-only interfaces.
 	GuestNetReader cluster.GuestNetworkReader
 	Log            *slog.Logger
 }
@@ -151,7 +151,7 @@ type VMDetailDeps struct {
 // NewVMDetailWithRegistry adds cluster-aware reads and writes: every index
 // load and cluster.Writer call below is resolved per-request from the
 // request's own :cluster path value, never from a client bound once at
-// startup (closes the same class of bug fixed for a single default cluster — see the
+// startup (closes the same class of bug fixed for a single default cluster - see the
 // metrics-history work that surfaced the single-client wiring pattern in main.go's
 // initCluster).
 func NewVMDetailWithRegistry(deps VMDetailDeps, services ...*policy.Policy) *VMDetail {
@@ -188,7 +188,7 @@ func (h *VMDetail) writerFor(w http.ResponseWriter, clusterName string) (cluster
 
 // statusReaderFor resolves the cluster.VMStatusReader for clusterName. Returns
 // nil when no reader is available (single-cluster mode without one, or the
-// cluster client doesn't implement VMStatusReader) — callers that need
+// cluster client doesn't implement VMStatusReader) - callers that need
 // escalation fall back to the immediate-shutdown path.
 func (h *VMDetail) statusReaderFor(clusterName string) cluster.VMStatusReader {
 	reader, err := resolveCapability(h.clients, h.statusReader, clusterName, "VMStatusReader")
@@ -200,7 +200,7 @@ func (h *VMDetail) statusReaderFor(clusterName string) cluster.VMStatusReader {
 }
 
 // guestNetReaderFor resolves the cluster.GuestNetworkReader for clusterName.
-// Returns nil when unavailable — the IP column is best-effort, an absent
+// Returns nil when unavailable - the IP column is best-effort, an absent
 // reader means "no live addresses", never an error.
 func (h *VMDetail) guestNetReaderFor(clusterName string) cluster.GuestNetworkReader {
 	reader, err := resolveCapability(h.clients, h.guestNetReader, clusterName, "GuestNetworkReader")
@@ -213,7 +213,7 @@ func (h *VMDetail) guestNetReaderFor(clusterName string) cluster.GuestNetworkRea
 
 // refresherFor resolves the vm.IndexRefresher for clusterName. Unlike
 // writerFor, a missing refresher must not fail an action already applied on
-// the cluster — so it never writes an HTTP error. When the per-cluster
+// the cluster - so it never writes an HTTP error. When the per-cluster
 // resolver is unset (single-cluster mode) or the cluster is unknown, it
 // returns the fallback refresher and logs a warning. The result is never nil
 // when the fallback is non-nil.
@@ -252,16 +252,16 @@ type vmDetailDTO struct {
 	Description       string                     `json:"description,omitempty"`
 	DescriptionHTML   string                     `json:"descriptionHtml,omitempty"`
 	// Lock carries the live Proxmox lock name ("snapshot-delete", "backup",
-	// ...) from a best-effort /status/current read — the page
+	// ...) from a best-effort /status/current read - the page
 	// shows a badge and the operator command to clear it. Empty when the VM
 	// is unlocked or the live read failed.
 	Lock string `json:"lock,omitempty"`
 	// GuestAgent explains why networkInterfaces[].ipAddresses is populated or
-	// not, for a running VM: "disabled" (agent=0 in the VM config — known
+	// not, for a running VM: "disabled" (agent=0 in the VM config - known
 	// without probing), "unreachable" (enabled but the agent did not answer
-	// — not installed in the guest or still starting), "ok" (answered; IPs
+	// - not installed in the guest or still starting), "ok" (answered; IPs
 	// may still be empty while DHCP is pending). Empty when the VM is not
-	// running — the status field already explains it.
+	// running - the status field already explains it.
 	GuestAgent string `json:"guestAgent,omitempty"`
 	// BaselineState is the delivery state of the generated cloud-init
 	// baseline for image-mode VMs: "applied", "override", "not_delivered". Empty for non-image
@@ -314,7 +314,7 @@ type hardwareOptionsDTO struct {
 }
 
 // hardwareTagDTO is one admin-curated tag offered to the VM tag picker.
-// The protected pvmss tag is excluded — users cannot toggle it.
+// The protected pvmss tag is excluded - users cannot toggle it.
 type hardwareTagDTO struct {
 	Name  string `json:"name"`
 	Color string `json:"color"`
@@ -368,7 +368,7 @@ type patchRequest struct {
 	Description string `json:"description"`
 }
 
-// handleGet serves GET /vms/:cluster/:vmid — the detail view. Calls
+// handleGet serves GET /vms/:cluster/:vmid - the detail view. Calls
 // Resolve and encodes the Entity.
 func (h *VMDetail) handleGet(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
@@ -397,7 +397,7 @@ func (h *VMDetail) handleGet(w http.ResponseWriter, r *http.Request) {
 	h.writeEntity(w, r, entity)
 }
 
-// handleStatus serves GET /vms/:cluster/:vmid/status — the live status read
+// handleStatus serves GET /vms/:cluster/:vmid/status - the live status read
 // (ADR 0001). Unlike handleGet which reads the projection, this reads the
 // cluster's live /status/current via VMStatusReader, so the front's converge
 // loop sees the real power state immediately after an action, not the
@@ -455,7 +455,7 @@ type vmLiveStatusDTO struct {
 }
 
 // handleAction serves POST /vms/:cluster/:vmid/actions.
-// The request body carries only {"action": Kind} — no node field exists in
+// The request body carries only {"action": Kind} - no node field exists in
 // the schema, so there is nothing to forge (root cause, structurally closed).
 func (h *VMDetail) handleAction(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
@@ -505,7 +505,7 @@ func (h *VMDetail) handleAction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Refresh the projection once after the action (the caller owns refresh, not Action).
-	// Best-effort — the action already succeeded.
+	// Best-effort - the action already succeeded.
 	if refresher := h.refresherFor(clusterName); refresher != nil {
 		if _, err := refresher.Refresh(r.Context()); err != nil {
 			h.log.Warn("post-action refresh failed", "component", "httpapi", "cluster", clusterName, "error", err)
@@ -517,7 +517,7 @@ func (h *VMDetail) handleAction(w http.ResponseWriter, r *http.Request) {
 
 // handleDelete serves DELETE /vms/:cluster/:vmid. Same Resolve() gate.
 // The optional ?force=true query parameter authorizes a force-stop of a running
-// VM before the destroy — the UI only sends it after the user has confirmed the
+// VM before the destroy - the UI only sends it after the user has confirmed the
 // force-stop in the delete dialog. Without it, a running VM is rejected with 409 (code
 // "vm_running") so the client can prompt for confirmation.
 func (h *VMDetail) handleDelete(w http.ResponseWriter, r *http.Request) {
@@ -730,7 +730,7 @@ func (h *VMDetail) handleDiskDelete(w http.ResponseWriter, r *http.Request, deps
 }
 
 // handleBootCDROM serves POST /vms/:cluster/:vmid/boot-cdrom: a one-time boot
-// from the mounted CD-ROM. The VM must be stopped — the UI shuts a running VM
+// from the mounted CD-ROM. The VM must be stopped - the UI shuts a running VM
 // down first (confirm dialog) and calls this once it is stopped. The server
 // sets the CD-first boot order, starts the VM, and restores the original boot
 // order once the guest is up (one-time semantics).
@@ -927,7 +927,7 @@ func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
 	h.writeEntity(w, r, entity)
 }
 
-// handleEnableSerial serves POST /vms/:cluster/:vmid/serial — the serial-
+// handleEnableSerial serves POST /vms/:cluster/:vmid/serial - the serial-
 // console retrofit for VMs created before serial0 was added at create time.
 // Reuses vm.EnableSerialConsole (Resolve ownership gate → Writer.EnableSerial
 // → audit + inventory refresh) and returns the refreshed entity so the UI can
@@ -996,7 +996,7 @@ func (h *VMDetail) handleEnableSerial(w http.ResponseWriter, r *http.Request) {
 	h.writeEntity(w, r, entity)
 }
 
-// handleRetrofitSeaBIOS serves POST /vms/:cluster/:vmid/retrofit-seabios —
+// handleRetrofitSeaBIOS serves POST /vms/:cluster/:vmid/retrofit-seabios - 
 // the admin-only action that switches an existing UEFI VM to SeaBIOS so its
 // graphical console becomes readable. Refuses
 // VMs with TPM state or Secure Boot before changing anything; a running VM
@@ -1015,7 +1015,7 @@ func (h *VMDetail) handleRetrofitSeaBIOS(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// admin-only — a tenant cannot retrofit firmware.
+	// admin-only - a tenant cannot retrofit firmware.
 	if !identity.IsAdmin {
 		h.writeDetailError(w, http.StatusForbidden, "forbidden", msgAdminOnly)
 		return
@@ -1376,7 +1376,7 @@ func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request)
 }
 
 // hardwareTagDTOs loads the cluster's admin-curated tags for the VM tag
-// picker. The protected pvmss tag is excluded — users cannot toggle it.
+// picker. The protected pvmss tag is excluded - users cannot toggle it.
 func hardwareTagDTOs(ctx context.Context, h *VMDetail, clusterName string) ([]hardwareTagDTO, error) {
 	tags, err := catalog.ListTags(ctx, h.store, h.projection, clusterName)
 	if err != nil {
@@ -1532,7 +1532,7 @@ func (h *VMDetail) writeEntity(w http.ResponseWriter, r *http.Request, entity vm
 	}
 
 	// Carry the baseline delivery state for image-mode VMs so the
-	// page can report it (best-effort — a store failure must not fail the
+	// page can report it (best-effort - a store failure must not fail the
 	// whole detail).
 	if h.store != nil {
 		if state, found, err := h.store.GetBaselineState(r.Context(), entity.Cluster, entity.VMID); err == nil && found {
@@ -1548,8 +1548,8 @@ func (h *VMDetail) writeEntity(w http.ResponseWriter, r *http.Request, entity vm
 
 // fillGuestAgent probes the guest agent for a running VM's live IPs and
 // reports the channel's state on the DTO. The projection carries config-only
-// interfaces — parseNetworkInterfaces deliberately skips the per-VM agent
-// round trip — so a running VM's live IPs are asked of the guest agent here
+// interfaces - parseNetworkInterfaces deliberately skips the per-VM agent
+// round trip - so a running VM's live IPs are asked of the guest agent here
 // instead (best-effort, like Lock). The config's agent= flag already tells
 // us when probing is pointless; a failed probe on an enabled channel is
 // itself the communication test.
@@ -1609,7 +1609,7 @@ func (h *VMDetail) writeJSONStatus(w http.ResponseWriter, status int, value any)
 	}
 }
 
-// handleAudit serves GET /vms/:cluster/:vmid/audit — paginated, VM-scoped audit trail.
+// handleAudit serves GET /vms/:cluster/:vmid/audit - paginated, VM-scoped audit trail.
 func (h *VMDetail) handleAudit(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {

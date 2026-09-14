@@ -26,7 +26,7 @@ type DocumentationPageRow struct {
 }
 
 // DocumentationPagesAll returns every documentation page row (including
-// disabled ones), ordered by sort_order then title — the admin list's data
+// disabled ones), ordered by sort_order then title - the admin list's data
 // source.
 //
 //nolint:dupl // intentionally parallel to DocumentationPagesEnabled (same shape, different filter)
@@ -44,7 +44,7 @@ func (s *Store) DocumentationPagesAll(ctx context.Context) ([]DocumentationPageR
 }
 
 // DocumentationPagesEnabled returns only enabled documentation page rows,
-// ordered by sort_order then title — the public reader's data source.
+// ordered by sort_order then title - the public reader's data source.
 //
 //nolint:dupl // intentionally parallel to DocumentationPagesAll (same shape, different filter)
 func (s *Store) DocumentationPagesEnabled(ctx context.Context) ([]DocumentationPageRow, error) {
@@ -61,7 +61,7 @@ func (s *Store) DocumentationPagesEnabled(ctx context.Context) ([]DocumentationP
 }
 
 // GetDocumentationPage returns a single row by (id, lang) or sql.ErrNoRows when
-// absent — the catalog layer's en-fallback lookup uses this directly.
+// absent - the catalog layer's en-fallback lookup uses this directly.
 func (s *Store) GetDocumentationPage(ctx context.Context, id, lang string) (DocumentationPageRow, error) {
 	var p DocumentationPageRow
 	err := s.db.QueryRowContext(ctx,
@@ -107,7 +107,7 @@ type DocumentationPageUpdate struct {
 }
 
 // UpdateDocumentationPage updates an existing page's mutable fields. The id,
-// lang, and is_system columns are never changed here — the catalog layer
+// lang, and is_system columns are never changed here - the catalog layer
 // refuses id/lang changes and is_system edits before calling this. Returns
 // sql.ErrNoRows if the row does not exist.
 func (s *Store) UpdateDocumentationPage(ctx context.Context, u DocumentationPageUpdate) error {
@@ -131,7 +131,7 @@ func (s *Store) UpdateSystemDocumentationPage(ctx context.Context, u Documentati
 }
 
 // DeleteDocumentationPage removes a non-system page row. Returns sql.ErrNoRows
-// if the row does not exist or is a system page (is_system=1) — the WHERE
+// if the row does not exist or is a system page (is_system=1) - the WHERE
 // clause guards system pages at the storage layer too, defense in depth.
 func (s *Store) DeleteDocumentationPage(ctx context.Context, id, lang string) error {
 	return execUpdateOne(ctx, s.db,
@@ -141,7 +141,7 @@ func (s *Store) DeleteDocumentationPage(ctx context.Context, id, lang string) er
 }
 
 // SetDocumentationPageEnabled updates the enabled state for one page. Returns
-// sql.ErrNoRows if the page does not exist — a toggle is an upsert on the
+// sql.ErrNoRows if the page does not exist - a toggle is an upsert on the
 // enabled column, never a delete.
 func (s *Store) SetDocumentationPageEnabled(ctx context.Context, id, lang string, enabled bool, updatedAt string) error {
 	return execUpdateOne(ctx, s.db,

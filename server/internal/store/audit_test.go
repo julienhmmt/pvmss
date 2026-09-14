@@ -43,7 +43,7 @@ func newAuditStore(t *testing.T) *store.Store {
 	return st
 }
 
-// TestRecordAction_InsertsOneRowWithRealActor — RecordAction inserts
+// TestRecordAction_InsertsOneRowWithRealActor - RecordAction inserts
 // exactly one audit_log row carrying the real acting username, never a
 // service-account name (closes traceability gap).
 //
@@ -91,7 +91,7 @@ func TestRecordAction_InsertsOneRowWithRealActor(t *testing.T) {
 	}
 }
 
-// TestRecordAction_AppendsDistinctRows — each write is its own row, in order.
+// TestRecordAction_AppendsDistinctRows - each write is its own row, in order.
 //
 //nolint:paralleltest // serial: shared database fixture
 func TestRecordAction_AppendsDistinctRows(t *testing.T) {
@@ -153,7 +153,7 @@ func seedAuditRows(t *testing.T, st *store.Store) {
 	}
 }
 
-// TestListAuditLog_NoFilter_ReturnsAllMostRecentFirst — no filter
+// TestListAuditLog_NoFilter_ReturnsAllMostRecentFirst - no filter
 // returns every row, most recent (last inserted) first, with the pagination
 // envelope populated.
 //
@@ -186,7 +186,7 @@ func TestListAuditLog_NoFilter_ReturnsAllMostRecentFirst(t *testing.T) {
 	}
 }
 
-// TestListAuditLog_Filters — every filter combination is applied
+// TestListAuditLog_Filters - every filter combination is applied
 // server-side with AND semantics.
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -268,7 +268,7 @@ func TestListAuditLog_Filters(t *testing.T) {
 	}
 }
 
-// TestListAuditLog_Pagination — page 2 returns the next slice using the
+// TestListAuditLog_Pagination - page 2 returns the next slice using the
 // same page/pageSize/total envelope established.
 //
 //nolint:paralleltest,gocyclo // serial: shared database fixture; pagination has 3 sequential pages
@@ -311,7 +311,7 @@ func TestListAuditLog_Pagination(t *testing.T) {
 	}
 }
 
-// TestListAuditLog_EmptyStore — no rows returns an empty (not nil) items
+// TestListAuditLog_EmptyStore - no rows returns an empty (not nil) items
 // slice and a zero total.
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -333,7 +333,7 @@ func TestListAuditLog_EmptyStore(t *testing.T) {
 	}
 }
 
-// TestListAuditLog_Sc002_AllActionsFromT05ToT10 — one action from
+// TestListAuditLog_Sc002_AllActionsFromT05ToT10 - one action from
 // each is recorded and retrievable by its own
 // action string via ListAuditLog (no HTTP).
 //
@@ -394,7 +394,7 @@ func equalIntSlices(a, b []int) bool {
 	return true
 }
 
-// TestRecordAdminAction_InsertsRowWithAdminFields — admin mutations write a
+// TestRecordAdminAction_InsertsRowWithAdminFields - admin mutations write a
 // row with cluster="" and vmid=nil, plus the new target/detail/IP/severity
 // columns. Verified via a direct SELECT since QueryAudit only reads the
 // original six columns.
@@ -453,7 +453,7 @@ func TestRecordAdminAction_InsertsRowWithAdminFields(t *testing.T) {
 	}
 }
 
-// TestRecordAction_StillWritesSeverity — the 15 existing VM callers are
+// TestRecordAction_StillWritesSeverity - the 15 existing VM callers are
 // unchanged in signature but the row now carries a derived severity.
 //
 //nolint:paralleltest // serial: shared database fixture

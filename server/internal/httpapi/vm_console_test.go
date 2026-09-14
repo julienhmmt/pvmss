@@ -75,7 +75,7 @@ func consoleRequest(method, path, body string, cookie *http.Cookie) *http.Reques
 // POST /vnc-ticket
 // =============================================================================
 
-// TestVMConsole_PostVNCTicket_OwnerGetsOpaqueToken — the owner of VM 100
+// TestVMConsole_PostVNCTicket_OwnerGetsOpaqueToken - the owner of VM 100
 // receives a 200 with a non-empty opaque token. No Proxmox ticket, node, or
 // port leaks into the response.
 //
@@ -85,7 +85,7 @@ func TestVMConsole_PostVNCTicket_OwnerGetsOpaqueToken(t *testing.T) {
 	assertOwnerGetsOpaqueToken(t, handler, consoleRequest, "/api/v1/vms/default/100/vnc-ticket", aliceCookie(t, authHandler))
 }
 
-// TestVMConsole_PostVNCTicket_NonOwnerForbidden — a non-owner gets 403,
+// TestVMConsole_PostVNCTicket_NonOwnerForbidden - a non-owner gets 403,
 // byte-identical with the other VM endpoints.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -103,7 +103,7 @@ func TestVMConsole_PostVNCTicket_NonOwnerForbidden(t *testing.T) {
 	assertAPIError(t, rec.Body.Bytes(), apiCodeForbidden)
 }
 
-// TestVMConsole_PostVNCTicket_NotFound — a non-existent VMID gets 404.
+// TestVMConsole_PostVNCTicket_NotFound - a non-existent VMID gets 404.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMConsole_PostVNCTicket_NotFound(t *testing.T) {
@@ -120,7 +120,7 @@ func TestVMConsole_PostVNCTicket_NotFound(t *testing.T) {
 	assertAPIError(t, rec.Body.Bytes(), apiCodeNotFound)
 }
 
-// TestVMConsole_PostVNCTicket_Unauthenticated — no cookie → 401.
+// TestVMConsole_PostVNCTicket_Unauthenticated - no cookie → 401.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMConsole_PostVNCTicket_Unauthenticated(t *testing.T) {
@@ -138,7 +138,7 @@ func TestVMConsole_PostVNCTicket_Unauthenticated(t *testing.T) {
 // GET /console/websocket
 // =============================================================================
 
-// TestVMConsole_WebSocket_MissingTokenReturns400 — a WebSocket request
+// TestVMConsole_WebSocket_MissingTokenReturns400 - a WebSocket request
 // without a token parameter is rejected with 400 before the upgrade.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -154,7 +154,7 @@ func TestVMConsole_WebSocket_MissingTokenReturns400(t *testing.T) {
 	}
 }
 
-// TestVMConsole_WebSocket_InvalidTokenReturns400 — a WebSocket request
+// TestVMConsole_WebSocket_InvalidTokenReturns400 - a WebSocket request
 // with a token that was never issued (or already consumed) is rejected with 400.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -171,7 +171,7 @@ func TestVMConsole_WebSocket_InvalidTokenReturns400(t *testing.T) {
 	}
 }
 
-// TestVMConsole_WebSocket_TicketBoundToDifferentVMRejected — a ticket
+// TestVMConsole_WebSocket_TicketBoundToDifferentVMRejected - a ticket
 // issued for VM 100 cannot be used against VM 101 (defense in depth).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -189,10 +189,10 @@ func TestVMConsole_WebSocket_TicketBoundToDifferentVMRejected(t *testing.T) {
 	})
 }
 
-// TestVMConsole_WebSocket_ValidTokenUpgradesAndRelaysRFBHandshake — with
+// TestVMConsole_WebSocket_ValidTokenUpgradesAndRelaysRFBHandshake - with
 // a valid token, the handler upgrades to WebSocket and the fake relay speaks
 // the RFB 3.8 handshake. A real WebSocket client dials the endpoint, reads the
-// ProtocolVersion bytes, and asserts they match "RFB 003.008\n" — proving the
+// ProtocolVersion bytes, and asserts they match "RFB 003.008\n" - proving the
 // relay is genuinely functional, not a stub.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -213,7 +213,7 @@ func TestVMConsole_WebSocket_ValidTokenUpgradesAndRelaysRFBHandshake(t *testing.
 	_ = json.Unmarshal(ticketRec.Body.Bytes(), &ticket)
 
 	// Start a real HTTP server with a mux that sets the path values the
-	// handler expects — the handler reads r.PathValue("cluster") and
+	// handler expects - the handler reads r.PathValue("cluster") and
 	// r.PathValue("vmid"), which only a ServeMux with {cluster}/{vmid}
 	// patterns populates.
 	mux := http.NewServeMux()
@@ -229,7 +229,7 @@ func TestVMConsole_WebSocket_ValidTokenUpgradesAndRelaysRFBHandshake(t *testing.
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Pass the session cookie and Origin in the WebSocket dial headers — the
+	// Pass the session cookie and Origin in the WebSocket dial headers - the
 	// handler requires an authenticated session and a valid same-origin check
 	// before it will upgrade.
 	header := http.Header{}
@@ -242,7 +242,7 @@ func TestVMConsole_WebSocket_ValidTokenUpgradesAndRelaysRFBHandshake(t *testing.
 	}
 	defer func() { _ = conn.CloseNow() }()
 
-	// Read the first message — the fake RFB server's ProtocolVersion string.
+	// Read the first message - the fake RFB server's ProtocolVersion string.
 	_, reader, err := conn.Reader(ctx)
 	if err != nil {
 		t.Fatalf("read first message: %v", err)
@@ -259,7 +259,7 @@ func TestVMConsole_WebSocket_ValidTokenUpgradesAndRelaysRFBHandshake(t *testing.
 	}
 }
 
-// TestVMConsole_PostVNCTicket_ClusterUnavailableReturns502 — contracts: when
+// TestVMConsole_PostVNCTicket_ClusterUnavailableReturns502 - contracts: when
 // the cluster client's GetVNCTicket fails, the response is 502
 // console_unavailable, not 500.
 //
@@ -276,7 +276,7 @@ func TestVMConsole_PostVNCTicket_ClusterUnavailableReturns502(t *testing.T) {
 	assertClusterUnavailableReturns502(t, handler, consoleRequest, "/api/v1/vms/default/100/vnc-ticket", cookie)
 }
 
-// failingConsoleRelay is a ConsoleRelay whose GetVNCTicket always fails — used
+// failingConsoleRelay is a ConsoleRelay whose GetVNCTicket always fails - used
 // to test the 502 console_unavailable path.
 type failingConsoleRelay struct{}
 

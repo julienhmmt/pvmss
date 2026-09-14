@@ -33,7 +33,7 @@ var (
 // maxDisksForBus bounds how many disks AddDisk allows per bus. IDE is 2, not
 // the hardware's 4 slots: ide2 is reserved for the CD-ROM feature and ide3
 // for the cloud-init drive (cluster/proxmox_config.go's cdromDiskKey and
-// cloudInitDiskKey) — the real client never offers either as a regular disk
+// cloudInitDiskKey) - the real client never offers either as a regular disk
 // slot, so this count must match.
 var maxDisksForBus = map[cluster.DiskBus]int{
 	cluster.DiskBusVirtio: 16,

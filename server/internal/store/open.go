@@ -63,7 +63,7 @@ func Open(cfg config.Configuration) (*Store, error) {
 	st.encryptionKey = key
 
 	// Demo cluster seeds are written only when the operator has selected the
-	// fake cluster source — i.e. a non-production deployment. A real Proxmox
+	// fake cluster source - i.e. a non-production deployment. A real Proxmox
 	// instance must never start with hardcoded demo credentials in its database.
 	if cfg.ClusterSource == "fake" {
 		if err := st.ensureSeedClusters(ctx); err != nil {

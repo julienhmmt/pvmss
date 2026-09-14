@@ -50,7 +50,7 @@ func (r *singleFakeRegistry) List() []string {
 	return []string{auditTestCluster}
 }
 
-// TestAdminBaseline_ReturnsGeneratedDocument — the response carries the
+// TestAdminBaseline_ReturnsGeneratedDocument - the response carries the
 // generated baseline document verbatim, plus the override state.
 //
 //nolint:paralleltest // serial: shared fake cluster
@@ -93,7 +93,7 @@ func TestAdminBaseline_ReturnsGeneratedDocument(t *testing.T) {
 	}
 }
 
-// TestAdminBaseline_ReportsOverrideWhenPresent — when a cluster-wide
+// TestAdminBaseline_ReportsOverrideWhenPresent - when a cluster-wide
 // pvmss-baseline.yml exists, the response reports it as present and
 // carries its content.
 //

@@ -28,7 +28,7 @@ import (
 //
 //nolint:paralleltest,funlen // integration scenario: background worker + shared temp dir
 func TestClusterDownScenario(t *testing.T) {
-	// One cluster named "offline-demo" — the fake returns ErrUnreachable for
+	// One cluster named "offline-demo" - the fake returns ErrUnreachable for
 	// that name on every call, mirroring a single-cluster instance whose
 	// Proxmox node is down.
 	clusterRegistry, err := cluster.NewRegistry(cluster.SourceFake, []store.ClusterRow{{Name: "offline-demo"}})

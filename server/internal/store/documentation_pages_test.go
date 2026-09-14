@@ -163,7 +163,7 @@ func testDocStoreSystemDeleteGuard(ctx context.Context, t *testing.T, st *store.
 	}
 }
 
-// TestDocumentationPages_UpdateMutatesFields — UpdateDocumentationPage changes
+// TestDocumentationPages_UpdateMutatesFields - UpdateDocumentationPage changes
 // the mutable columns and returns ErrNoRows for a missing (id, lang).
 //
 //nolint:paralleltest // serial: shared SQLite fixture
@@ -206,7 +206,7 @@ func TestDocumentationPages_UpdateMutatesFields(t *testing.T) {
 	}
 }
 
-// TestDocumentationPages_UpdateSystemMutatesFields — UpdateSystemDocumentationPage
+// TestDocumentationPages_UpdateSystemMutatesFields - UpdateSystemDocumentationPage
 // only touches is_system=1 rows; a non-system row is left unchanged (ErrNoRows).
 //
 //nolint:paralleltest // serial: shared SQLite fixture

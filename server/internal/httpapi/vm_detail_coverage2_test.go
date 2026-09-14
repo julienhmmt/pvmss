@@ -11,10 +11,10 @@ import (
 
 // =============================================================================
 // Unauthenticated branches for action / delete / patch handlers
-// (handleAction, handleDelete, handlePatch — the Principal() error path)
+// (handleAction, handleDelete, handlePatch - the Principal() error path)
 // =============================================================================
 
-// TestVmAction_Unauthenticated — POST /actions without a cookie returns 401.
+// TestVmAction_Unauthenticated - POST /actions without a cookie returns 401.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmAction_Unauthenticated(t *testing.T) {
@@ -28,7 +28,7 @@ func TestVmAction_Unauthenticated(t *testing.T) {
 	}
 }
 
-// TestVmDelete_Unauthenticated — DELETE without a cookie returns 401.
+// TestVmDelete_Unauthenticated - DELETE without a cookie returns 401.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmDelete_Unauthenticated(t *testing.T) {
@@ -42,7 +42,7 @@ func TestVmDelete_Unauthenticated(t *testing.T) {
 	}
 }
 
-// TestVmPatch_Unauthenticated — PATCH without a cookie returns 401.
+// TestVmPatch_Unauthenticated - PATCH without a cookie returns 401.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmPatch_Unauthenticated(t *testing.T) {
@@ -57,7 +57,7 @@ func TestVmPatch_Unauthenticated(t *testing.T) {
 }
 
 // =============================================================================
-// Invalid path (non-numeric vmid) branches — parsePath returns ok=false → 400
+// Invalid path (non-numeric vmid) branches - parsePath returns ok=false → 400
 // =============================================================================
 
 // detailInvalidPathRequest builds a request whose vmid path value is "abc"
@@ -69,7 +69,7 @@ func detailInvalidPathRequest(method, path, body string, cookie *http.Cookie) *h
 	return req
 }
 
-// TestVmAction_InvalidPath — POST /actions with a non-numeric vmid returns 400.
+// TestVmAction_InvalidPath - POST /actions with a non-numeric vmid returns 400.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmAction_InvalidPath(t *testing.T) {
@@ -86,7 +86,7 @@ func TestVmAction_InvalidPath(t *testing.T) {
 	}
 }
 
-// TestVmDelete_InvalidPath — DELETE with a non-numeric vmid returns 400.
+// TestVmDelete_InvalidPath - DELETE with a non-numeric vmid returns 400.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmDelete_InvalidPath(t *testing.T) {
@@ -103,7 +103,7 @@ func TestVmDelete_InvalidPath(t *testing.T) {
 	}
 }
 
-// TestVmPatch_InvalidPath — PATCH with a non-numeric vmid returns 400.
+// TestVmPatch_InvalidPath - PATCH with a non-numeric vmid returns 400.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVmPatch_InvalidPath(t *testing.T) {
@@ -120,7 +120,7 @@ func TestVmPatch_InvalidPath(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Disk_InvalidPath — POST /disks with a non-numeric vmid returns 400.
+// TestVMDetail_Disk_InvalidPath - POST /disks with a non-numeric vmid returns 400.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Disk_InvalidPath(t *testing.T) {
@@ -137,7 +137,7 @@ func TestVMDetail_Disk_InvalidPath(t *testing.T) {
 	}
 }
 
-// TestVMDetail_CDROM_InvalidPath — PATCH /cdrom with a non-numeric vmid returns 400.
+// TestVMDetail_CDROM_InvalidPath - PATCH /cdrom with a non-numeric vmid returns 400.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_CDROM_InvalidPath(t *testing.T) {
@@ -154,7 +154,7 @@ func TestVMDetail_CDROM_InvalidPath(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Hardware_InvalidPath — PUT /hardware with a non-numeric vmid returns 400.
+// TestVMDetail_Hardware_InvalidPath - PUT /hardware with a non-numeric vmid returns 400.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Hardware_InvalidPath(t *testing.T) {
@@ -171,7 +171,7 @@ func TestVMDetail_Hardware_InvalidPath(t *testing.T) {
 	}
 }
 
-// TestVMDetail_EnableSerial_InvalidPath — POST /serial with a non-numeric vmid returns 400.
+// TestVMDetail_EnableSerial_InvalidPath - POST /serial with a non-numeric vmid returns 400.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_EnableSerial_InvalidPath(t *testing.T) {
@@ -188,7 +188,7 @@ func TestVMDetail_EnableSerial_InvalidPath(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Network_InvalidPath — PUT /network with a non-numeric vmid returns 400.
+// TestVMDetail_Network_InvalidPath - PUT /network with a non-numeric vmid returns 400.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Network_InvalidPath(t *testing.T) {
@@ -205,7 +205,7 @@ func TestVMDetail_Network_InvalidPath(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Audit_InvalidPath — GET /audit with a non-numeric vmid returns 400.
+// TestVMDetail_Audit_InvalidPath - GET /audit with a non-numeric vmid returns 400.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Audit_InvalidPath(t *testing.T) {
@@ -222,7 +222,7 @@ func TestVMDetail_Audit_InvalidPath(t *testing.T) {
 	}
 }
 
-// TestVMDetail_HardwareOptions_InvalidPath — GET /hardware-options with a non-numeric vmid returns 400.
+// TestVMDetail_HardwareOptions_InvalidPath - GET /hardware-options with a non-numeric vmid returns 400.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_HardwareOptions_InvalidPath(t *testing.T) {
@@ -243,7 +243,7 @@ func TestVMDetail_HardwareOptions_InvalidPath(t *testing.T) {
 // Untagged-VM error paths for sub-handlers (Resolve → ErrNotFound → 404)
 // =============================================================================
 
-// TestVMDetail_Disk_UntaggedNotFound — disk operation on an untagged VM returns 404.
+// TestVMDetail_Disk_UntaggedNotFound - disk operation on an untagged VM returns 404.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Disk_UntaggedNotFound(t *testing.T) {
@@ -260,7 +260,7 @@ func TestVMDetail_Disk_UntaggedNotFound(t *testing.T) {
 	}
 }
 
-// TestVMDetail_CDROM_UntaggedNotFound — CDROM operation on an untagged VM returns 404.
+// TestVMDetail_CDROM_UntaggedNotFound - CDROM operation on an untagged VM returns 404.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_CDROM_UntaggedNotFound(t *testing.T) {
@@ -277,7 +277,7 @@ func TestVMDetail_CDROM_UntaggedNotFound(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Hardware_UntaggedNotFound — hardware operation on an untagged VM returns 404.
+// TestVMDetail_Hardware_UntaggedNotFound - hardware operation on an untagged VM returns 404.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Hardware_UntaggedNotFound(t *testing.T) {
@@ -294,7 +294,7 @@ func TestVMDetail_Hardware_UntaggedNotFound(t *testing.T) {
 	}
 }
 
-// TestVMDetail_EnableSerial_UntaggedNotFound — serial operation on an untagged VM returns 404.
+// TestVMDetail_EnableSerial_UntaggedNotFound - serial operation on an untagged VM returns 404.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_EnableSerial_UntaggedNotFound(t *testing.T) {
@@ -311,7 +311,7 @@ func TestVMDetail_EnableSerial_UntaggedNotFound(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Network_UntaggedNotFound — network operation on an untagged VM returns 404.
+// TestVMDetail_Network_UntaggedNotFound - network operation on an untagged VM returns 404.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Network_UntaggedNotFound(t *testing.T) {
@@ -328,7 +328,7 @@ func TestVMDetail_Network_UntaggedNotFound(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Audit_UntaggedNotFound — audit on an untagged VM returns 404.
+// TestVMDetail_Audit_UntaggedNotFound - audit on an untagged VM returns 404.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Audit_UntaggedNotFound(t *testing.T) {
@@ -349,7 +349,7 @@ func TestVMDetail_Audit_UntaggedNotFound(t *testing.T) {
 // Audit history: actor filter, admin cross-pool, pagination
 // =============================================================================
 
-// TestVMDetail_Audit_ActorFilter — the ?actor= query parameter filters entries.
+// TestVMDetail_Audit_ActorFilter - the ?actor= query parameter filters entries.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Audit_ActorFilter(t *testing.T) {
@@ -386,14 +386,14 @@ func TestVMDetail_Audit_ActorFilter(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Audit_AdminViewsAnyVM — admin can read audit for any tagged VM.
+// TestVMDetail_Audit_AdminViewsAnyVM - admin can read audit for any tagged VM.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Audit_AdminViewsAnyVM(t *testing.T) {
 	handler, authHandler, _, st := newVMDetailHandler(t)
 	cookie := adminCookie(t, authHandler)
 
-	// VM 103 is in pool-bob — admin sees it.
+	// VM 103 is in pool-bob - admin sees it.
 	seedAuditEntry(t, st, "bob@pve", "default", 103, "stop")
 
 	rec := httptest.NewRecorder()
@@ -415,7 +415,7 @@ func TestVMDetail_Audit_AdminViewsAnyVM(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Audit_Pagination — seeding >20 entries produces a second page.
+// TestVMDetail_Audit_Pagination - seeding >20 entries produces a second page.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Audit_Pagination(t *testing.T) {
@@ -488,7 +488,7 @@ func TestVMDetail_Audit_Pagination(t *testing.T) {
 // Disk resize and delete success paths
 // =============================================================================
 
-// TestVMDetail_DiskResize_OwnerSuccess — owner resizes a disk on a stopped VM
+// TestVMDetail_DiskResize_OwnerSuccess - owner resizes a disk on a stopped VM
 // and receives the updated disk in the response (200).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -521,7 +521,7 @@ func TestVMDetail_DiskResize_OwnerSuccess(t *testing.T) {
 	}
 }
 
-// TestVMDetail_DiskResize_InvalidBody — malformed JSON on PUT /disks/{key} returns 400.
+// TestVMDetail_DiskResize_InvalidBody - malformed JSON on PUT /disks/{key} returns 400.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_DiskResize_InvalidBody(t *testing.T) {
@@ -538,7 +538,7 @@ func TestVMDetail_DiskResize_InvalidBody(t *testing.T) {
 	}
 }
 
-// TestVMDetail_DiskDelete_OwnerSuccess_Scsi1 — owner deletes a non-boot disk
+// TestVMDetail_DiskDelete_OwnerSuccess_Scsi1 - owner deletes a non-boot disk
 // on a stopped VM and receives {"status":"deleted"} (200).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -584,7 +584,7 @@ func TestVMDetail_DiskDelete_OwnerSuccess_Scsi1(t *testing.T) {
 // Hardware exceeds limit
 // =============================================================================
 
-// TestVMDetail_Hardware_ExceedsLimit — setting cores above the gabarit max
+// TestVMDetail_Hardware_ExceedsLimit - setting cores above the gabarit max
 // returns 400 with code "hardware_exceeds_limit".
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -607,7 +607,7 @@ func TestVMDetail_Hardware_ExceedsLimit(t *testing.T) {
 // VM detail for different VM states (paused, admin viewing stopped)
 // =============================================================================
 
-// TestVMDetail_Get_PausedVm — admin can view a paused VM (VM 113, pool-shared).
+// TestVMDetail_Get_PausedVm - admin can view a paused VM (VM 113, pool-shared).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Get_PausedVm(t *testing.T) {
@@ -629,7 +629,7 @@ func TestVMDetail_Get_PausedVm(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Get_AdminViewsStoppedVM — admin views a stopped VM in another
+// TestVMDetail_Get_AdminViewsStoppedVM - admin views a stopped VM in another
 // user's pool and sees the full entity (no uptimeSeconds).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -660,7 +660,7 @@ func TestVMDetail_Get_AdminViewsStoppedVM(t *testing.T) {
 // Disk resize on a non-existent disk returns an error (not 401/403/200)
 // =============================================================================
 
-// TestVMDetail_DiskResize_NonexistentDisk — resizing a disk key that does not
+// TestVMDetail_DiskResize_NonexistentDisk - resizing a disk key that does not
 // exist on the VM returns an error (disk_not_found).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -678,7 +678,7 @@ func TestVMDetail_DiskResize_NonexistentDisk(t *testing.T) {
 	}
 }
 
-// TestVMDetail_DiskDelete_NonexistentDisk — deleting a disk key that does not
+// TestVMDetail_DiskDelete_NonexistentDisk - deleting a disk key that does not
 // exist returns disk_not_found.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -696,7 +696,7 @@ func TestVMDetail_DiskDelete_NonexistentDisk(t *testing.T) {
 	}
 }
 
-// TestVMDetail_DiskDelete_NonOwnerForbidden — non-owner disk delete returns 403.
+// TestVMDetail_DiskDelete_NonOwnerForbidden - non-owner disk delete returns 403.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_DiskDelete_NonOwnerForbidden(t *testing.T) {
@@ -713,7 +713,7 @@ func TestVMDetail_DiskDelete_NonOwnerForbidden(t *testing.T) {
 	}
 }
 
-// TestVMDetail_DiskResize_NonOwnerForbidden — non-owner disk resize returns 403.
+// TestVMDetail_DiskResize_NonOwnerForbidden - non-owner disk resize returns 403.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_DiskResize_NonOwnerForbidden(t *testing.T) {
@@ -730,7 +730,7 @@ func TestVMDetail_DiskResize_NonOwnerForbidden(t *testing.T) {
 	}
 }
 
-// TestVMDetail_DiskResize_DiskSizeNotGreater — resizing to a size ≤ current
+// TestVMDetail_DiskResize_DiskSizeNotGreater - resizing to a size ≤ current
 // returns 400 disk_size_not_greater.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -749,7 +749,7 @@ func TestVMDetail_DiskResize_DiskSizeNotGreater(t *testing.T) {
 	}
 }
 
-// TestVMDetail_DiskResize_ExceedsLimit — resizing beyond MaxDiskPerVMGB (500)
+// TestVMDetail_DiskResize_ExceedsLimit - resizing beyond MaxDiskPerVMGB (500)
 // returns 400 disk_size_exceeds_limit.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -767,7 +767,7 @@ func TestVMDetail_DiskResize_ExceedsLimit(t *testing.T) {
 	}
 }
 
-// TestVMDetail_DiskDelete_RunningVMRejected — deleting a disk on a running VM
+// TestVMDetail_DiskDelete_RunningVMRejected - deleting a disk on a running VM
 // returns 400 vm_not_stopped.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures

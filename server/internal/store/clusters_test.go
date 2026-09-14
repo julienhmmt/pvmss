@@ -180,7 +180,7 @@ func TestSetClusterSnippetTarget_RoundTrip(t *testing.T) {
 	}
 }
 
-// TestEnsureSeedClusters_SetsDisplayNames — the fake cluster seed now sets a
+// TestEnsureSeedClusters_SetsDisplayNames - the fake cluster seed now sets a
 // human-readable DisplayName for each demo cluster so the sidebar doesn't
 // show the raw internal name "default" on a fresh deployment.
 //

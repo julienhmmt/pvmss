@@ -48,7 +48,7 @@ func newDuplicateISOAdminHandler(t *testing.T) (*httpapi.AdminCatalog, *httpapi.
 	return handler, authHandler
 }
 
-// TestAdminISOs_ListShowsSuperset — GET /admin/isos shows the fake
+// TestAdminISOs_ListShowsSuperset - GET /admin/isos shows the fake
 // superset after the node-aware migration resets approvals.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -77,7 +77,7 @@ func TestAdminISOs_ListShowsSuperset(t *testing.T) {
 	}
 }
 
-// TestAdminISOs_Toggle — toggle rocky-9 on, confirm it sticks.
+// TestAdminISOs_Toggle - toggle rocky-9 on, confirm it sticks.
 //
 //nolint:paralleltest,dupl // serial: shared fake dataset; intentionally parallel to TestAdminBridges_Toggle
 func TestAdminISOs_Toggle(t *testing.T) {
@@ -107,7 +107,7 @@ func TestAdminISOs_Toggle(t *testing.T) {
 	}
 }
 
-// TestAdminISOs_NonAdminReturns403 — non-admin 403.
+// TestAdminISOs_NonAdminReturns403 - non-admin 403.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminISOs_NonAdminReturns403(t *testing.T) {
@@ -120,7 +120,7 @@ func TestAdminISOs_NonAdminReturns403(t *testing.T) {
 	}
 }
 
-// TestAdminISOs_ToggleUnknownReturns404 — unknown pair 404.
+// TestAdminISOs_ToggleUnknownReturns404 - unknown pair 404.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminISOs_ToggleUnknownReturns404(t *testing.T) {
@@ -134,7 +134,7 @@ func TestAdminISOs_ToggleUnknownReturns404(t *testing.T) {
 	}
 }
 
-// TestAdminISOs_ToggleMissingNodeReturns400 — the node field is now part of the
+// TestAdminISOs_ToggleMissingNodeReturns400 - the node field is now part of the
 // ISO identity; omitting it is a 400, not a silent toggle of an arbitrary row.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -149,7 +149,7 @@ func TestAdminISOs_ToggleMissingNodeReturns400(t *testing.T) {
 	}
 }
 
-// TestAdminISOs_SameFileOnTwoNodesTogglesIndependently — the same ISO file on
+// TestAdminISOs_SameFileOnTwoNodesTogglesIndependently - the same ISO file on
 // the same storage name across two nodes must toggle independently. Before the
 // node-aware identity fix, the (cluster, storage, file) PK collapsed these two
 // rows into one and the toggle could not be attributed to a single node.

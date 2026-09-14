@@ -76,7 +76,7 @@ func serialRequest(method, path, body string, cookie *http.Cookie) *http.Request
 	return req
 }
 
-// TestVMSerialConsole_PostSerialTicket_OwnerGetsOpaqueToken — the owner of VM
+// TestVMSerialConsole_PostSerialTicket_OwnerGetsOpaqueToken - the owner of VM
 // 100 receives a 200 with a non-empty opaque token. No Proxmox ticket, node, or
 // port leaks into the response.
 //
@@ -86,7 +86,7 @@ func TestVMSerialConsole_PostSerialTicket_OwnerGetsOpaqueToken(t *testing.T) {
 	assertOwnerGetsOpaqueToken(t, handler, serialRequest, "/api/v1/vms/default/100/serial-ticket", aliceCookie(t, authHandler))
 }
 
-// TestVMSerialConsole_PostSerialTicket_NonOwnerForbidden — a non-owner gets 403.
+// TestVMSerialConsole_PostSerialTicket_NonOwnerForbidden - a non-owner gets 403.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMSerialConsole_PostSerialTicket_NonOwnerForbidden(t *testing.T) {
@@ -103,7 +103,7 @@ func TestVMSerialConsole_PostSerialTicket_NonOwnerForbidden(t *testing.T) {
 	assertAPIError(t, rec.Body.Bytes(), apiCodeForbidden)
 }
 
-// TestVMSerialConsole_PostSerialTicket_NotFound — a non-existent VMID gets 404.
+// TestVMSerialConsole_PostSerialTicket_NotFound - a non-existent VMID gets 404.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMSerialConsole_PostSerialTicket_NotFound(t *testing.T) {
@@ -120,7 +120,7 @@ func TestVMSerialConsole_PostSerialTicket_NotFound(t *testing.T) {
 	assertAPIError(t, rec.Body.Bytes(), apiCodeNotFound)
 }
 
-// TestVMSerialConsole_PostSerialTicket_Unauthenticated — no cookie → 401.
+// TestVMSerialConsole_PostSerialTicket_Unauthenticated - no cookie → 401.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMSerialConsole_PostSerialTicket_Unauthenticated(t *testing.T) {
@@ -134,7 +134,7 @@ func TestVMSerialConsole_PostSerialTicket_Unauthenticated(t *testing.T) {
 	}
 }
 
-// TestVMSerialConsole_WebSocket_MissingTokenReturns400 — a WebSocket request
+// TestVMSerialConsole_WebSocket_MissingTokenReturns400 - a WebSocket request
 // without a token parameter is rejected with 400 before the upgrade.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -150,7 +150,7 @@ func TestVMSerialConsole_WebSocket_MissingTokenReturns400(t *testing.T) {
 	}
 }
 
-// TestVMSerialConsole_WebSocket_InvalidTokenReturns400 — a WebSocket request
+// TestVMSerialConsole_WebSocket_InvalidTokenReturns400 - a WebSocket request
 // with a token that was never issued is rejected with 400.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -167,7 +167,7 @@ func TestVMSerialConsole_WebSocket_InvalidTokenReturns400(t *testing.T) {
 	}
 }
 
-// TestVMSerialConsole_WebSocket_TicketBoundToDifferentVMRejected — a serial
+// TestVMSerialConsole_WebSocket_TicketBoundToDifferentVMRejected - a serial
 // ticket issued for VM 100 cannot be used against VM 101.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -185,10 +185,10 @@ func TestVMSerialConsole_WebSocket_TicketBoundToDifferentVMRejected(t *testing.T
 	})
 }
 
-// TestVMSerialConsole_WebSocket_ValidTokenUpgradesAndRelaysEcho — with a valid
+// TestVMSerialConsole_WebSocket_ValidTokenUpgradesAndRelaysEcho - with a valid
 // token, the handler upgrades to WebSocket and the fake serial relay echoes
 // keystrokes back as "0:len:data" frames. A real WebSocket client dials the
-// endpoint, sends a few bytes, and asserts it receives an echoed frame —
+// endpoint, sends a few bytes, and asserts it receives an echoed frame - 
 // proving the serial relay is genuinely functional, not a stub.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -254,7 +254,7 @@ func TestVMSerialConsole_WebSocket_ValidTokenUpgradesAndRelaysEcho(t *testing.T)
 	}
 }
 
-// TestVMSerialConsole_PostSerialTicket_ClusterUnavailableReturns502 — when the
+// TestVMSerialConsole_PostSerialTicket_ClusterUnavailableReturns502 - when the
 // cluster client's GetTermProxy fails, the response is 502 console_unavailable.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -270,7 +270,7 @@ func TestVMSerialConsole_PostSerialTicket_ClusterUnavailableReturns502(t *testin
 	assertClusterUnavailableReturns502(t, handler, serialRequest, "/api/v1/vms/default/100/serial-ticket", cookie)
 }
 
-// failingTerminalRelay is a TerminalRelay whose GetTermProxy always fails —
+// failingTerminalRelay is a TerminalRelay whose GetTermProxy always fails - 
 // used to test the 502 console_unavailable path.
 type failingTerminalRelay struct{}
 

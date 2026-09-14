@@ -8,7 +8,7 @@ import (
 )
 
 // ErrDuplicate is returned by an INSERT that uses ON CONFLICT DO NOTHING when
-// the conflict fired — the row already exists. The catalog layer maps this to
+// the conflict fired - the row already exists. The catalog layer maps this to
 // its own ErrDuplicateProfile / ErrDuplicateTag.
 var ErrDuplicate = errors.New("duplicate row")
 
@@ -210,7 +210,7 @@ func (s *Store) SetImageEnabled(ctx context.Context, cluster, node, storage, fil
 }
 
 // DeleteNode removes a node approval row. Returns sql.ErrNoRows if the node
-// did not exist — used to drop an orphan approval whose node Proxmox no longer
+// did not exist - used to drop an orphan approval whose node Proxmox no longer
 // reports.
 func (s *Store) DeleteNode(ctx context.Context, cluster, name string) error {
 	return execUpdateOne(ctx, s.db,
@@ -257,7 +257,7 @@ func (s *Store) DeleteImage(ctx context.Context, cluster, node, storage, file st
 
 // SetProfileEnabled updates the enabled state for one profile. Returns
 // sql.ErrNoRows if the profile does not exist (the catalog layer maps this to
-// ErrProfileNotFound) — guards against a delete between the catalog layer's
+// ErrProfileNotFound) - guards against a delete between the catalog layer's
 // existence check and this UPDATE.
 func (s *Store) SetProfileEnabled(ctx context.Context, cluster, id string, enabled bool) error {
 	return execUpdateOne(ctx, s.db,
@@ -488,7 +488,7 @@ func execInsertOne(ctx context.Context, db *sql.DB, query string, args []any) er
 }
 
 // execUpdateOne runs an UPDATE or DELETE and returns sql.ErrNoRows when zero
-// rows were affected — the row vanished between the caller's existence check
+// rows were affected - the row vanished between the caller's existence check
 // and this statement.
 func execUpdateOne(ctx context.Context, db *sql.DB, query string, args []any) error {
 	result, err := db.ExecContext(ctx, query, args...)

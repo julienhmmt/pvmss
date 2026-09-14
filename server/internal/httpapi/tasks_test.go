@@ -94,7 +94,7 @@ func TestTasks_PollTransitions(t *testing.T) {
 		}
 	}
 
-	// The ok observation invalidated the index — the refreshed
+	// The ok observation invalidated the index - the refreshed
 	// projection now contains the created VM.
 	index := projection.Load()
 	if index == nil {
@@ -111,7 +111,7 @@ func TestTasks_PollTransitions(t *testing.T) {
 	}
 }
 
-// TestTasks_UnknownUPID — an unknown upid is a 404.
+// TestTasks_UnknownUPID - an unknown upid is a 404.
 //
 //nolint:paralleltest // serial: shared fake task fixture
 func TestTasks_UnknownUPID(t *testing.T) {
@@ -126,7 +126,7 @@ func TestTasks_UnknownUPID(t *testing.T) {
 	assertAPIError(t, response.Body.Bytes(), "not_found")
 }
 
-// TestTasks_RequiresAuth — the endpoint is authenticated, like every
+// TestTasks_RequiresAuth - the endpoint is authenticated, like every
 // /api/v1 route.
 //
 //nolint:paralleltest // serial: shared fake task fixture
@@ -219,7 +219,7 @@ func getTaskWithCluster(t *testing.T, handler *httpapi.Tasks, upid, clusterName 
 	return recorder
 }
 
-// TestTasks_WithRegistry_PollsNamedCluster — the registry-backed handler
+// TestTasks_WithRegistry_PollsNamedCluster - the registry-backed handler
 // resolves the ?cluster= param to that cluster's own Creator and polls the
 // task against it. A task created on the "secondary" cluster is observed
 // running→ok only when the poll names "secondary"; polling it through the
@@ -280,7 +280,7 @@ func TestTasks_WithRegistry_PollsNamedCluster(t *testing.T) {
 	}
 }
 
-//	TestTasks_WithRegistry_UnknownClusterReturns404 — a ?cluster= naming a
+//	TestTasks_WithRegistry_UnknownClusterReturns404 - a ?cluster= naming a
 //
 // cluster the registry does not know is a 404 cluster_not_found, not a poll
 // against the default cluster's client (which would silently mislead).
@@ -300,7 +300,7 @@ func TestTasks_WithRegistry_UnknownClusterReturns404(t *testing.T) {
 	assertAPIError(t, response.Body.Bytes(), "cluster_not_found")
 }
 
-//	TestTasks_WithRegistry_DefaultFallback — omitting ?cluster= against a
+//	TestTasks_WithRegistry_DefaultFallback - omitting ?cluster= against a
 //
 // single-cluster registry resolves to that one cluster (backwards compatible
 // with the existing single-cluster e2e poll that sends no query param).
@@ -329,7 +329,7 @@ func TestTasks_WithRegistry_DefaultFallback(t *testing.T) {
 		t.Fatalf("CreateVM: %v", err)
 	}
 
-	// No ?cluster= query param — single-cluster registry resolves to "default".
+	// No ?cluster= query param - single-cluster registry resolves to "default".
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/tasks/"+upid, nil)
 	req.AddCookie(cookie)
 
@@ -388,7 +388,7 @@ func (m *taskRefresherRecorder) RefresherFor(clusterName string) (vm.IndexRefres
 	return invalidator, nil
 }
 
-// TestTasks_WithRegistry_InvalidatesNamedClusterProjection — the
+// TestTasks_WithRegistry_InvalidatesNamedClusterProjection - the
 // post-task invalidation resolves the ?cluster= param to that cluster's own
 // invalidator instead of the startup default. Fails before the fix (the
 // default worker was refreshed for every cluster).

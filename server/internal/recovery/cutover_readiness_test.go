@@ -111,7 +111,7 @@ func TestCutoverReadiness_HelmChartReferencesV04(t *testing.T) {
 }
 
 // TestCutoverReadiness_DockerfileBuildsOnlyV04 asserts that the Dockerfile
-// does not compile or copy backend/ or frontend/ — only server/ and web/
+// does not compile or copy backend/ or frontend/ - only server/ and web/
 func TestCutoverReadiness_DockerfileBuildsOnlyV04(t *testing.T) {
 	t.Parallel()
 

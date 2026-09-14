@@ -1,8 +1,8 @@
-// Package vm — console ticket store and Resolve()-gated ticket issuance.
+// Package vm - console ticket store and Resolve()-gated ticket issuance.
 //
 // the console ticket store stays in process memory: a map, a mutex, a TTL, and
 // oldest-eviction when the fixed capacity is reached. It is never persisted
-// to SQLite or any store shared between replicas — PVMSS is single-instance
+// to SQLite or any store shared between replicas - PVMSS is single-instance
 // by design (SQLite on a ReadWriteOnce volume), so externalizing the store
 // would add write contention for zero functional gain.
 package vm
@@ -27,7 +27,7 @@ import (
 const TicketTTL = 30 * time.Second
 
 // ticketStoreCapacity caps the number of outstanding tickets. When the cap is
-// reached, the oldest entry is evicted before inserting a new one — the "TTL + éviction du plus
+// reached, the oldest entry is evicted before inserting a new one - the "TTL + éviction du plus
 // ancien", unchanged.
 const ticketStoreCapacity = 256
 
@@ -38,7 +38,7 @@ const ticketStoreCapacity = 256
 var ErrInvalidTicket = errors.New("invalid console ticket")
 
 // ErrClusterConsoleUnavailable is returned by GetConsoleTicket when the
-// cluster client's proxy ticket call fails — Proxmox is unreachable, the VM
+// cluster client's proxy ticket call fails - Proxmox is unreachable, the VM
 // is not running, etc. The HTTP handler maps this to 502 console_unavailable
 var ErrClusterConsoleUnavailable = errors.New("console unavailable")
 
@@ -78,7 +78,7 @@ type ConsoleTicket struct {
 }
 
 // ConsoleTicketStore is the in-memory ticket store. Constructed once in
-// main.go and passed into httpapi alongside every other dependency — no
+// main.go and passed into httpapi alongside every other dependency - no
 // package-level singleton, no global mutable state. A single map holds both
 // VNC and serial terminal tickets, distinguished by the Kind field.
 type ConsoleTicketStore struct {
@@ -101,7 +101,7 @@ func NewConsoleTicketStore() *ConsoleTicketStore {
 func (s *ConsoleTicketStore) Issue(kind ConsoleKind, clusterName string, vmid int, node, proxmoxTicket string, port int) ConsoleTicket {
 	token, err := generateConsoleToken()
 	if err != nil {
-		// crypto/rand failure is a fatal environment condition — surface it as
+		// crypto/rand failure is a fatal environment condition - surface it as
 		// a ticket with an empty token so the caller can detect it, and let the
 		// HTTP layer turn it into a 500. This path is not reachable in practice.
 		return ConsoleTicket{Kind: kind, Cluster: clusterName, VMID: vmid, Node: node, ProxmoxTicket: proxmoxTicket, Port: port}
@@ -135,7 +135,7 @@ func (s *ConsoleTicketStore) Issue(kind ConsoleKind, clusterName string, vmid in
 
 // Consume looks up the token. Missing, expired, or a (kind, cluster, vmid)
 // mismatch against what was bound at issuance → ErrInvalidTicket. On success,
-// the entry is deleted from the map BEFORE returning it — a concurrent second
+// the entry is deleted from the map BEFORE returning it - a concurrent second
 // Consume for the same token cannot observe it as still present, closing the
 // single-use race. A mismatched Consume does NOT consume the ticket:
 // it remains valid for its real (kind, cluster, vmid).
@@ -224,7 +224,7 @@ type ConsoleTicketDeps struct {
 // gate every other write uses), then the proxy fetcher to obtain the
 // Proxmox-side ticket, then the in-memory store to issue the opaque capability,
 // then records the audit entry. The node is always Resolve()'s server-resolved
-// value — the caller never supplies one.
+// value - the caller never supplies one.
 func GetConsoleTicket(ctx context.Context, deps ConsoleTicketDeps) (ConsoleTicket, error) {
 	entity, err := Resolve(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
 	if err != nil {

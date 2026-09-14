@@ -43,33 +43,33 @@ PVMSS is configured entirely through environment variables, validated at startup
 
 Required:
 
-- `PVMSS_PORT` — TCP port the server listens on (the official image uses `50000`).
-- `PVMSS_DB_PATH` — path to the SQLite database file.
-- `SESSION_SECRET` — 32+ bytes used to encrypt user sessions.
-- `LOG_LEVEL` — `debug`, `info`, `warn`, or `error` (lowercase only).
-- `LOG_FORMAT` — `json` or `console`.
-- `LOG_OUTPUT` — `stdout`, `stderr`, or a file path.
-- `PVMSS_CLUSTER_SOURCE` — `proxmox` or `fake`. There is no default on purpose: `fake` ships with demo credentials and must never be selected by accident.
+- `PVMSS_PORT` - TCP port the server listens on (the official image uses `50000`).
+- `PVMSS_DB_PATH` - path to the SQLite database file.
+- `SESSION_SECRET` - 32+ bytes used to encrypt user sessions.
+- `LOG_LEVEL` - `debug`, `info`, `warn`, or `error` (lowercase only).
+- `LOG_FORMAT` - `json` or `console`.
+- `LOG_OUTPUT` - `stdout`, `stderr`, or a file path.
+- `PVMSS_CLUSTER_SOURCE` - `proxmox` or `fake`. There is no default on purpose: `fake` ships with demo credentials and must never be selected by accident.
 
 Required when `PVMSS_CLUSTER_SOURCE=proxmox`:
 
-- `PROXMOX_URL` — for example `https://host:8006/api2/json`.
-- `PROXMOX_API_TOKEN_NAME` — the Proxmox API token id (`user@pve!token`).
-- `PROXMOX_API_TOKEN_VALUE` — the matching token secret.
+- `PROXMOX_URL` - for example `https://host:8006/api2/json`.
+- `PROXMOX_API_TOKEN_NAME` - the Proxmox API token id (`user@pve!token`).
+- `PROXMOX_API_TOKEN_VALUE` - the matching token secret.
 
 These three describe the first cluster; additional clusters are added from `/admin/clusters`.
 
 Optional:
 
-- `PVMSS_HOST` — bind address (the image sets `0.0.0.0`).
-- `PVMSS_WEB_DIR` — location of the built SPA (defaults to a path relative to the executable).
-- `ADMIN_PASSWORD_HASH` — if set, must be a bcrypt hash (`$2…`); enables the local administrator login.
-- `PVMSS_COOKIE_SECURE` — defaults to `true`; set `false` only behind plain HTTP for local trials.
-- `PVMSS_TRUSTED_PROXY_HOPS` — number of reverse proxies in front of PVMSS, used to derive the client IP for rate limits and the audit log (default `1`).
-- `PVMSS_INVENTORY_REFRESH_INTERVAL` — background inventory refresh interval (default `30s`).
-- `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` — minimum spacing between manual refreshes (default `5s`).
-- `PVMSS_INVENTORY_REFRESH_TIMEOUT` — per-refresh timeout (default `15s`).
-- `PVMSS_MAX_LIST_PAGE_SIZE` — maximum list page size (default `100`).
+- `PVMSS_HOST` - bind address (the image sets `0.0.0.0`).
+- `PVMSS_WEB_DIR` - location of the built SPA (defaults to a path relative to the executable).
+- `ADMIN_PASSWORD_HASH` - if set, must be a bcrypt hash (`$2…`); enables the local administrator login.
+- `PVMSS_COOKIE_SECURE` - defaults to `true`; set `false` only behind plain HTTP for local trials.
+- `PVMSS_TRUSTED_PROXY_HOPS` - number of reverse proxies in front of PVMSS, used to derive the client IP for rate limits and the audit log (default `1`).
+- `PVMSS_INVENTORY_REFRESH_INTERVAL` - background inventory refresh interval (default `30s`).
+- `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` - minimum spacing between manual refreshes (default `5s`).
+- `PVMSS_INVENTORY_REFRESH_TIMEOUT` - per-refresh timeout (default `15s`).
+- `PVMSS_MAX_LIST_PAGE_SIZE` - maximum list page size (default `100`).
 
 For full deployment instructions (Docker, Kubernetes, Helm), see the project README.
 
@@ -93,14 +93,14 @@ PVMSS supports connecting to more than one Proxmox environment at the same time.
 
 The **Catalog** area of the admin nav controls what VM creation may reference. Discovered resources appear automatically; toggle the enabled switch to control what users see. Every catalog page has a cluster selector, search, filters, and sortable columns.
 
-- **Storages** (`/admin/storages`) — approve the storage backends that may host VM disks, grouped by node, with usage bars.
-- **ISOs** (`/admin/isos`) — approve the ISO images users may boot from.
-- **VM templates** (`/admin/templates`) — approve the Proxmox templates users may clone, with optional per-template overrides. A clone stays on the template's node; the wizard warns when the target storage forces a full copy.
-- **Cloud images** (`/admin/images`) — approve cloud images discovered under a storage's `import/` content directory. PVMSS never downloads images from the internet: place them on the storage yourself.
-- **Bridges** (`/admin/bridges`) — approve the network bridges (VMBR) available for VM network cards. Open vSwitch bridges are not listed.
-- **Cloud-init templates** (`/admin/cloudinit-templates`) — create, enable, disable, and edit admin-curated `#cloud-config` documents users can pick at creation time.
-- **Profiles** (`/admin/profiles`) — define pre-approved hardware profiles (sockets, cores, memory, disk, bus) with optional node/storage overrides, an icon and a color, so users can pick a known-good shape instead of free-typing values.
-- **Tags** (`/admin/tags`) — manage the labels users can attach to VMs, with a color each. A tag is immutable once created (only its color changes); the `pvmss` tag is reserved and cannot be deleted.
+- **Storages** (`/admin/storages`) - approve the storage backends that may host VM disks, grouped by node, with usage bars.
+- **ISOs** (`/admin/isos`) - approve the ISO images users may boot from.
+- **VM templates** (`/admin/templates`) - approve the Proxmox templates users may clone, with optional per-template overrides. A clone stays on the template's node; the wizard warns when the target storage forces a full copy.
+- **Cloud images** (`/admin/images`) - approve cloud images discovered under a storage's `import/` content directory. PVMSS never downloads images from the internet: place them on the storage yourself.
+- **Bridges** (`/admin/bridges`) - approve the network bridges (VMBR) available for VM network cards. Open vSwitch bridges are not listed.
+- **Cloud-init templates** (`/admin/cloudinit-templates`) - create, enable, disable, and edit admin-curated `#cloud-config` documents users can pick at creation time.
+- **Profiles** (`/admin/profiles`) - define pre-approved hardware profiles (sockets, cores, memory, disk, bus) with optional node/storage overrides, an icon and a color, so users can pick a known-good shape instead of free-typing values.
+- **Tags** (`/admin/tags`) - manage the labels users can attach to VMs, with a color each. A tag is immutable once created (only its color changes); the `pvmss` tag is reserved and cannot be deleted.
 
 ### Stale approvals
 
@@ -123,14 +123,14 @@ The policy's **Isolation VLAN tag** applies one VLAN to every NIC created throug
 - a dedicated Proxmox pool for that user, and
 - an ACL binding the user to the shared `PVMSSUser` role on that pool.
 
-You enter a short name (1-32 lowercase alphanumeric characters with internal hyphens); PVMSS prefixes it with `pvmss-`, so the Proxmox pool is `pvmss-<name>` and the user `pvmss-<name>@pve`. The login password is generated for you, shown once in the create response, and never stored — communicate it to the user securely. Users only ever see the VMs inside their own pool. Deleting a pool cascades to the Proxmox user and ACL; pools not created by PVMSS are refused.
+You enter a short name (1-32 lowercase alphanumeric characters with internal hyphens); PVMSS prefixes it with `pvmss-`, so the Proxmox pool is `pvmss-<name>` and the user `pvmss-<name>@pve`. The login password is generated for you, shown once in the create response, and never stored - communicate it to the user securely. Users only ever see the VMs inside their own pool. Deleting a pool cascades to the Proxmox user and ACL; pools not created by PVMSS are refused.
 
 ## Policy (limits)
 
 `/admin/policy` is per cluster and has two parts:
 
-- **Gabarit** — the ceiling for a single VM: max sockets, max cores, max memory, max disk per VM, max network cards, max snapshots, whether users may edit custom cloud-init YAML on their VMs, and the isolation VLAN tag.
-- **Quota** — max VMs per user.
+- **Gabarit** - the ceiling for a single VM: max sockets, max cores, max memory, max disk per VM, max network cards, max snapshots, whether users may edit custom cloud-init YAML on their VMs, and the isolation VLAN tag.
+- **Quota** - max VMs per user.
 
 `/admin/policy/nodes` caps how much of a single node PVMSS may allocate in total (VMs, vCPUs, RAM, disk) and shows the current usage against the physical capacity. Everything is enforced server-side before any Proxmox call, so requests above a limit are rejected early with a clear message.
 
@@ -138,13 +138,13 @@ You enter a short name (1-32 lowercase alphanumeric characters with internal hyp
 
 Beyond the policy knobs, the application itself enforces:
 
-- **Rate limits** — 10 requests/minute per IP on authentication endpoints; 30 writes/minute per user on VM routes; 120 status polls/minute per user; 60 writes/minute per user on admin routes; 10 cluster tests/minute.
-- **Bulk power actions** — at most 100 VMs per request.
-- **Cloud-init files** — at most 20 stored documents per user.
-- **VM name** — a lowercase hostname, at most 63 characters, unique in the owner's pool; **description** — at most 512 characters.
-- **Snapshot name** — a leading letter, then letters, digits, hyphens or underscores, 2 to 40 characters; `current` is reserved.
-- **Pool name** — 1-32 lowercase alphanumeric characters with internal hyphens (stored as `pvmss-<name>`).
-- **List pages** — capped at `PVMSS_MAX_LIST_PAGE_SIZE` entries per page (default 100).
+- **Rate limits** - 10 requests/minute per IP on authentication endpoints; 30 writes/minute per user on VM routes; 120 status polls/minute per user; 60 writes/minute per user on admin routes; 10 cluster tests/minute.
+- **Bulk power actions** - at most 100 VMs per request.
+- **Cloud-init files** - at most 20 stored documents per user.
+- **VM name** - a lowercase hostname, at most 63 characters, unique in the owner's pool; **description** - at most 512 characters.
+- **Snapshot name** - a leading letter, then letters, digits, hyphens or underscores, 2 to 40 characters; `current` is reserved.
+- **Pool name** - 1-32 lowercase alphanumeric characters with internal hyphens (stored as `pvmss-<name>`).
+- **List pages** - capped at `PVMSS_MAX_LIST_PAGE_SIZE` entries per page (default 100).
 
 ## Enabling cloud-init documents
 
@@ -154,14 +154,14 @@ Proxmox's REST API cannot write `snippets` files, so PVMSS writes them itself in
 2. Mount `<storage path>/snippets` into the PVMSS container. Compose: `- /mnt/pve/shared/snippets:/snippets`. Helm: `persistence.snippets.enabled=true` with `existingClaim` or `nfs.server` + `nfs.path`. Raw Kubernetes: the commented `snippets` volume in `pvmss-deployment.yaml`.
 3. **Admin › Clusters › Edit**: *Snippet directory* = the container path (`/snippets`), *Snippet storage* = the Proxmox storage id. The cluster badge turns "cloud-init: on".
 4. Verify: create one cloud-init template, create one VM with it, then on a node run `qm config <vmid> | grep cicustom` and check the file under the storage's `snippets/` directory.
-5. A node-local directory storage works only if every VM is placed on that node — not recommended.
+5. A node-local directory storage works only if every VM is placed on that node - not recommended.
 6. Set **Allow custom cloud-init YAML** in the policy if users may edit the document of their own VMs from the Cloud-init tab.
 
 Without a write target, the wizard hides the document picker and a create request carrying a document is refused with `cloudinit_write_unavailable`, before any VMID is spent.
 
 Cloud-image VMs additionally get a fixed baseline snippet, `pvmss-baseline.yml`, when you place one in the same `snippets/` directory (for example to install `qemu-guest-agent`); its absence is silent.
 
-Deleting a VM through PVMSS also removes its `pvmss-<vmid>.yml` (best effort — a cleanup failure is logged and never blocks the delete). VMs deleted directly in Proxmox leave their file behind; list orphans on a node with `ls /mnt/pve/<storage>/snippets/pvmss-*.yml` and compare against `qm list`.
+Deleting a VM through PVMSS also removes its `pvmss-<vmid>.yml` (best effort - a cleanup failure is logged and never blocks the delete). VMs deleted directly in Proxmox leave their file behind; list orphans on a node with `ls /mnt/pve/<storage>/snippets/pvmss-*.yml` and compare against `qm list`.
 
 ## Documentation (this CMS)
 
@@ -173,9 +173,9 @@ Built-in pages are seeded once, when missing, and never overwritten on restart, 
 
 `/admin/settings` exposes operational controls:
 
-- **Audit log** — every write (VM create, power action, edit, delete, cloud-init change, catalog and policy changes, sign-ins) is recorded with the acting user, IP, severity, and target. Filter and page through it; each VM also shows its own entries on its Activity tab.
-- **Retention** — set the number of days to keep audit rows and preview how many rows a prune would delete before applying.
-- **Database export / import** — back up the SQLite database or restore one. Import is two-phase: upload returns a table-by-table preview, and nothing is written until you confirm.
+- **Audit log** - every write (VM create, power action, edit, delete, cloud-init change, catalog and policy changes, sign-ins) is recorded with the acting user, IP, severity, and target. Filter and page through it; each VM also shows its own entries on its Activity tab.
+- **Retention** - set the number of days to keep audit rows and preview how many rows a prune would delete before applying.
+- **Database export / import** - back up the SQLite database or restore one. Import is two-phase: upload returns a table-by-table preview, and nothing is written until you confirm.
 
 ## Security recommendations
 

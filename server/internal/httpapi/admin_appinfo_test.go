@@ -29,7 +29,7 @@ type publicVersionDTO struct {
 	Version string `json:"version"`
 }
 
-// TestAdminAppInfo_AsAdmin_ReturnsVersionAndConfig — GET /admin/appinfo
+// TestAdminAppInfo_AsAdmin_ReturnsVersionAndConfig - GET /admin/appinfo
 // as admin returns version, config fields with AdminPasswordHash redacted,
 // and per-cluster health.
 //
@@ -57,7 +57,7 @@ func TestAdminAppInfo_AsAdmin_ReturnsVersionAndConfig(t *testing.T) {
 		t.Error("version is empty")
 	}
 
-	// Find the ADMIN_PASSWORD_HASH field — must be redacted with null value.
+	// Find the ADMIN_PASSWORD_HASH field - must be redacted with null value.
 	for _, f := range info.Config {
 		if f.Name == "ADMIN_PASSWORD_HASH" {
 			if !f.Redacted {
@@ -72,11 +72,11 @@ func TestAdminAppInfo_AsAdmin_ReturnsVersionAndConfig(t *testing.T) {
 
 	// Per-cluster health from the projection.
 	if len(info.Clusters) == 0 {
-		t.Error("clusters is empty — projection health not read")
+		t.Error("clusters is empty - projection health not read")
 	}
 }
 
-// TestAdminAppInfo_Sc006_HashNotInResponseBody — the full
+// TestAdminAppInfo_Sc006_HashNotInResponseBody - the full
 // response body of GET /admin/appinfo does not contain the configured admin
 // password hash as a substring.
 //
@@ -95,7 +95,7 @@ func TestAdminAppInfo_Sc006_HashNotInResponseBody(t *testing.T) {
 	}
 
 	if strings.Contains(rec.Body.String(), hash) {
-		t.Fatal("admin password hash appears in the appinfo response body — SC-006 violation")
+		t.Fatal("admin password hash appears in the appinfo response body - SC-006 violation")
 	}
 
 	// Also verify the JSON structure: ADMIN_PASSWORD_HASH reports
@@ -113,7 +113,7 @@ func TestAdminAppInfo_Sc006_HashNotInResponseBody(t *testing.T) {
 	}
 }
 
-// TestAdminAppInfo_AsNonAdmin_Returns403 — GET /admin/appinfo as
+// TestAdminAppInfo_AsNonAdmin_Returns403 - GET /admin/appinfo as
 // non-admin returns 403; GET /public/version as non-admin and as no identity
 // returns 200 both times.
 //
@@ -140,7 +140,7 @@ func TestAdminAppInfo_AsNonAdmin_Returns403(t *testing.T) {
 	}
 }
 
-// TestPublicVersion_ReturnsOnlyVersion — GET /public/version returns
+// TestPublicVersion_ReturnsOnlyVersion - GET /public/version returns
 // only {"version": "..."}, no config, no health.
 //
 //nolint:paralleltest // serial: shared env
@@ -164,10 +164,10 @@ func TestPublicVersion_ReturnsOnlyVersion(t *testing.T) {
 	// The response must not contain config or clusters fields.
 	body := rec.Body.String()
 	if strings.Contains(body, "\"config\"") {
-		t.Error("public version response contains 'config' — should not")
+		t.Error("public version response contains 'config' - should not")
 	}
 
 	if strings.Contains(body, "\"clusters\"") {
-		t.Error("public version response contains 'clusters' — should not")
+		t.Error("public version response contains 'clusters' - should not")
 	}
 }

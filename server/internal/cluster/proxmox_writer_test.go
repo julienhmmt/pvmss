@@ -386,7 +386,7 @@ func TestProxmox_UpdateNetwork_DeletesRemovedIndices(t *testing.T) {
 
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
-	// Only net0 survives in the new set — net1 must be deleted.
+	// Only net0 survives in the new set - net1 must be deleted.
 	err := p.UpdateNetwork(context.Background(), testNodeName, testVMID, []NetworkInterface{
 		{Index: 0, Model: string(DiskBusVirtio), MAC: "AA:BB", Bridge: FakeBridgeVMbr0},
 	})

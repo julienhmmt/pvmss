@@ -35,7 +35,7 @@ type statusDTO struct {
 // Profile handler tests
 // =============================================================================
 
-// TestAdminProfiles_ListAsAdmin — GET /admin/profiles returns all profiles
+// TestAdminProfiles_ListAsAdmin - GET /admin/profiles returns all profiles
 // including the 3 seeded ones, all enabled.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -72,7 +72,7 @@ func TestAdminProfiles_ListAsAdmin(t *testing.T) {
 	}
 }
 
-// TestAdminProfiles_ListAsNonAdmin_Returns403 — non-admin gets 403.
+// TestAdminProfiles_ListAsNonAdmin_Returns403 - non-admin gets 403.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminProfiles_ListAsNonAdmin_Returns403(t *testing.T) {
@@ -85,7 +85,7 @@ func TestAdminProfiles_ListAsNonAdmin_Returns403(t *testing.T) {
 	}
 }
 
-// TestAdminProfiles_Create — POST creates a new profile, returns 201.
+// TestAdminProfiles_Create - POST creates a new profile, returns 201.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminProfiles_Create(t *testing.T) {
@@ -112,7 +112,7 @@ func TestAdminProfiles_Create(t *testing.T) {
 	}
 }
 
-// TestAdminProfiles_CreateDuplicate_Returns409 — slug collision returns 409.
+// TestAdminProfiles_CreateDuplicate_Returns409 - slug collision returns 409.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminProfiles_CreateDuplicate_Returns409(t *testing.T) {
@@ -126,7 +126,7 @@ func TestAdminProfiles_CreateDuplicate_Returns409(t *testing.T) {
 	}
 }
 
-// TestAdminProfiles_CreateInvalid_Returns400 — out-of-range fields return 400.
+// TestAdminProfiles_CreateInvalid_Returns400 - out-of-range fields return 400.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminProfiles_CreateInvalid_Returns400(t *testing.T) {
@@ -140,7 +140,7 @@ func TestAdminProfiles_CreateInvalid_Returns400(t *testing.T) {
 	}
 }
 
-// TestAdminProfiles_Update — PUT updates an existing profile.
+// TestAdminProfiles_Update - PUT updates an existing profile.
 //
 //nolint:paralleltest,dupl // serial: shared fake dataset; intentionally parallel to TestAdminTags_UpdateColor
 func TestAdminProfiles_Update(t *testing.T) {
@@ -163,7 +163,7 @@ func TestAdminProfiles_Update(t *testing.T) {
 	}
 }
 
-// TestAdminProfiles_UpdateNotFound_Returns404 — updating a non-existent
+// TestAdminProfiles_UpdateNotFound_Returns404 - updating a non-existent
 // profile returns 404.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -178,7 +178,7 @@ func TestAdminProfiles_UpdateNotFound_Returns404(t *testing.T) {
 	}
 }
 
-// TestAdminProfiles_Delete — DELETE removes a profile.
+// TestAdminProfiles_Delete - DELETE removes a profile.
 //
 //nolint:paralleltest,dupl // serial: shared fake dataset; intentionally parallel to TestAdminTags_DeleteSuccess
 func TestAdminProfiles_Delete(t *testing.T) {
@@ -204,7 +204,7 @@ func TestAdminProfiles_Delete(t *testing.T) {
 	}
 }
 
-// TestAdminProfiles_Toggle — disabling a profile and re-enabling it.
+// TestAdminProfiles_Toggle - disabling a profile and re-enabling it.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminProfiles_Toggle(t *testing.T) {
@@ -240,7 +240,7 @@ func TestAdminProfiles_Toggle(t *testing.T) {
 	}
 }
 
-// TestAdminProfiles_NonAdminAll_Returns403 — every profile endpoint returns
+// TestAdminProfiles_NonAdminAll_Returns403 - every profile endpoint returns
 // 403 for non-admin.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -262,7 +262,7 @@ func TestAdminProfiles_NonAdminAll_Returns403(t *testing.T) {
 // Tag handler tests
 // =============================================================================
 
-// TestAdminTags_ListAsAdmin — GET /admin/tags returns the seeded pvmss tag
+// TestAdminTags_ListAsAdmin - GET /admin/tags returns the seeded pvmss tag
 // with a live VM count > 0 and protected = true.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -301,7 +301,7 @@ func TestAdminTags_ListAsAdmin(t *testing.T) {
 	}
 }
 
-// TestAdminTags_ListAsNonAdmin_Returns403 — non-admin gets 403.
+// TestAdminTags_ListAsNonAdmin_Returns403 - non-admin gets 403.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminTags_ListAsNonAdmin_Returns403(t *testing.T) {
@@ -314,7 +314,7 @@ func TestAdminTags_ListAsNonAdmin_Returns403(t *testing.T) {
 	}
 }
 
-// TestAdminTags_Create — POST creates a new tag.
+// TestAdminTags_Create - POST creates a new tag.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminTags_Create(t *testing.T) {
@@ -341,7 +341,7 @@ func TestAdminTags_Create(t *testing.T) {
 	}
 }
 
-// TestAdminTags_CreateDuplicate_Returns409 — duplicate name returns 409.
+// TestAdminTags_CreateDuplicate_Returns409 - duplicate name returns 409.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminTags_CreateDuplicate_Returns409(t *testing.T) {
@@ -355,7 +355,7 @@ func TestAdminTags_CreateDuplicate_Returns409(t *testing.T) {
 	}
 }
 
-// TestAdminTags_CreateInvalidName_Returns400 — non-alphanumeric name returns
+// TestAdminTags_CreateInvalidName_Returns400 - non-alphanumeric name returns
 // 400.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -370,7 +370,7 @@ func TestAdminTags_CreateInvalidName_Returns400(t *testing.T) {
 	}
 }
 
-// TestAdminTags_UpdateColor — PUT changes the color, even for pvmss.
+// TestAdminTags_UpdateColor - PUT changes the color, even for pvmss.
 //
 //nolint:paralleltest,dupl // serial: shared fake dataset; intentionally parallel to TestAdminProfiles_Update
 func TestAdminTags_UpdateColor(t *testing.T) {
@@ -393,7 +393,7 @@ func TestAdminTags_UpdateColor(t *testing.T) {
 	}
 }
 
-// TestAdminTags_DeletePvmss_Returns403 — deleting pvmss returns 403.
+// TestAdminTags_DeletePvmss_Returns403 - deleting pvmss returns 403.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminTags_DeletePvmss_Returns403(t *testing.T) {
@@ -406,7 +406,7 @@ func TestAdminTags_DeletePvmss_Returns403(t *testing.T) {
 	}
 }
 
-// TestAdminTags_DeleteSuccess — deleting a non-pvmss tag succeeds.
+// TestAdminTags_DeleteSuccess - deleting a non-pvmss tag succeeds.
 //
 //nolint:paralleltest,dupl // serial: shared fake dataset; intentionally parallel to TestAdminProfiles_Delete
 func TestAdminTags_DeleteSuccess(t *testing.T) {
@@ -432,7 +432,7 @@ func TestAdminTags_DeleteSuccess(t *testing.T) {
 	}
 }
 
-// TestAdminTags_NonAdminAll_Returns403 — every tag endpoint returns 403 for
+// TestAdminTags_NonAdminAll_Returns403 - every tag endpoint returns 403 for
 // non-admin.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture

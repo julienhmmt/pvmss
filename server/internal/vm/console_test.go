@@ -14,7 +14,7 @@ type consoleKindCase struct {
 	port   int
 }
 
-// consoleKindCases is the table shared by every store test below — each case
+// consoleKindCases is the table shared by every store test below - each case
 // runs the same assertions for both KindVNC and KindTerminal, proving the
 // single-use, TTL, and (kind, cluster, vmid)-binding invariants hold
 // identically for both console paths.
@@ -23,7 +23,7 @@ var consoleKindCases = []consoleKindCase{
 	{"terminal", KindTerminal, "proxmox-term-ticket", 5902},
 }
 
-// TestConsoleTicketStore_IssueThenConsume_Succeeds — a freshly issued
+// TestConsoleTicketStore_IssueThenConsume_Succeeds - a freshly issued
 // ticket is consumable exactly once for the (cluster, vmid) it was bound to.
 func TestConsoleTicketStore_IssueThenConsume_Succeeds(t *testing.T) {
 	t.Parallel()
@@ -69,7 +69,7 @@ func assertTicketIssuedAndConsumed(t *testing.T, tc consoleKindCase) {
 	}
 }
 
-// TestConsoleTicketStore_ConsumeTwice_FailsOnSecondCall — a ticket is
+// TestConsoleTicketStore_ConsumeTwice_FailsOnSecondCall - a ticket is
 // single-use; the second Consume for the same token is rejected.
 func TestConsoleTicketStore_ConsumeTwice_FailsOnSecondCall(t *testing.T) {
 	t.Parallel()
@@ -93,7 +93,7 @@ func TestConsoleTicketStore_ConsumeTwice_FailsOnSecondCall(t *testing.T) {
 	}
 }
 
-// TestConsoleTicketStore_ConsumeAfterExpiry_Fails — a ticket whose TTL has
+// TestConsoleTicketStore_ConsumeAfterExpiry_Fails - a ticket whose TTL has
 // elapsed is rejected the same way an already-consumed one is.
 func TestConsoleTicketStore_ConsumeAfterExpiry_Fails(t *testing.T) {
 	t.Parallel()
@@ -116,7 +116,7 @@ func TestConsoleTicketStore_ConsumeAfterExpiry_Fails(t *testing.T) {
 	}
 }
 
-// TestConsoleTicketStore_ConsumeWithWrongClusterOrVMID_Fails — defense
+// TestConsoleTicketStore_ConsumeWithWrongClusterOrVMID_Fails - defense
 // in depth: a ticket bound to (default, 101) is rejected against (default, 202)
 // or (other, 101).
 func TestConsoleTicketStore_ConsumeWithWrongClusterOrVMID_Fails(t *testing.T) {
@@ -133,7 +133,7 @@ func TestConsoleTicketStore_ConsumeWithWrongClusterOrVMID_Fails(t *testing.T) {
 			if _, err := store.Consume(tc.kind, ticket.Token, "default", 202); !errors.Is(err, ErrInvalidTicket) {
 				t.Fatalf("wrong vmid Consume err = %v, want ErrInvalidTicket", err)
 			}
-			// The ticket is NOT consumed by a mismatched attempt — it remains usable
+			// The ticket is NOT consumed by a mismatched attempt - it remains usable
 			// for its real (cluster, vmid).
 			if _, err := store.Consume(tc.kind, ticket.Token, "default", 101); err != nil {
 				t.Fatalf("after wrong-vmid attempt, correct Consume: %v", err)
@@ -147,7 +147,7 @@ func TestConsoleTicketStore_ConsumeWithWrongClusterOrVMID_Fails(t *testing.T) {
 	}
 }
 
-// TestConsoleTicketStore_ConsumeWithWrongKind_Fails — a VNC ticket cannot be
+// TestConsoleTicketStore_ConsumeWithWrongKind_Fails - a VNC ticket cannot be
 // consumed as a terminal ticket, and vice versa. The Kind field prevents
 // cross-path consumption even though both kinds share the same map.
 func TestConsoleTicketStore_ConsumeWithWrongKind_Fails(t *testing.T) {
@@ -167,7 +167,7 @@ func TestConsoleTicketStore_ConsumeWithWrongKind_Fails(t *testing.T) {
 	}
 }
 
-// TestConsoleTicketStore_EvictsOldestWhenFull — capacity is 256; the 257th
+// TestConsoleTicketStore_EvictsOldestWhenFull - capacity is 256; the 257th
 // Issue evicts the oldest entry.
 func TestConsoleTicketStore_EvictsOldestWhenFull(t *testing.T) {
 	t.Parallel()
@@ -183,14 +183,14 @@ func TestConsoleTicketStore_EvictsOldestWhenFull(t *testing.T) {
 		}
 	}
 
-	// The first ticket is still consumable — capacity is an upper bound, not
+	// The first ticket is still consumable - capacity is an upper bound, not
 	// a pre-eviction trigger.
 	if _, err := store.Consume(KindVNC, first.Token, "default", 100); err != nil {
 		t.Fatalf("first ticket before overflow: %v", err)
 	}
 
 	// Re-issue the consumed slot so the store is exactly full again, then
-	// issue one more — that overflow evicts the oldest remaining ticket.
+	// issue one more - that overflow evicts the oldest remaining ticket.
 	store.Issue(KindVNC, "default", 100, "pve-node-01", "ticket", 5901)
 
 	oldest := store.oldestTokenForTest()
@@ -205,7 +205,7 @@ func TestConsoleTicketStore_EvictsOldestWhenFull(t *testing.T) {
 	}
 }
 
-// TestConsoleTicketStore_TTLIsThirtySeconds — the TTL is a hardcoded 30s
+// TestConsoleTicketStore_TTLIsThirtySeconds - the TTL is a hardcoded 30s
 // constant, not a configuration field.
 func TestConsoleTicketStore_TTLIsThirtySeconds(t *testing.T) {
 	t.Parallel()

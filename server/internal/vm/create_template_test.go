@@ -43,7 +43,7 @@ func findCloneCall(vmid int) *cluster.FakeCall {
 	return nil
 }
 
-// TestCreate_TemplateClone_RejectsMutualExclusion — a
+// TestCreate_TemplateClone_RejectsMutualExclusion - a
 // request carrying both an ISO and a templateId is rejected with
 // ErrInvalidSource before any VMID is allocated.
 //
@@ -63,7 +63,7 @@ func TestCreate_TemplateClone_RejectsMutualExclusion(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_RejectsUnknownTemplate — an
+// TestCreate_TemplateClone_RejectsUnknownTemplate - an
 // unapproved template VMID is rejected with ErrNotApproved before any VMID
 // is allocated.
 //
@@ -82,7 +82,7 @@ func TestCreate_TemplateClone_RejectsUnknownTemplate(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_RejectsDisabledTemplate — a
+// TestCreate_TemplateClone_RejectsDisabledTemplate - a
 // disabled template is rejected with ErrNotApproved before any VMID is
 // allocated.
 //
@@ -106,7 +106,7 @@ func TestCreate_TemplateClone_RejectsDisabledTemplate(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_RejectsDiskReduction — a
+// TestCreate_TemplateClone_RejectsDiskReduction - a
 // requested disk size smaller than the template's disk is rejected with
 // ErrDiskReduction before any VMID is allocated.
 //
@@ -147,7 +147,7 @@ func TestCreate_TemplateClone_ProfileDiskBelowTemplateStillRejected(t *testing.T
 
 	req := templateRequest(9000)
 	req.ProfileID = "tiny"
-	req.Disk.SizeGB = 20 // above template — would pass the pre-plan check
+	req.Disk.SizeGB = 20 // above template - would pass the pre-plan check
 
 	_, err := fixture.create(t, aliceIdentity(), req)
 	if !errors.Is(err, vm.ErrDiskReduction) {
@@ -160,7 +160,7 @@ func TestCreate_TemplateClone_ProfileDiskBelowTemplateStillRejected(t *testing.T
 }
 
 // TestCreate_TemplateClone_OverridesNodeToTemplateNode
-// a forged request that names a different node is overridden — the clone
+// a forged request that names a different node is overridden - the clone
 // stays on the template's node.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -271,7 +271,7 @@ func TestCreate_TemplateClone_DiskEnlargementAfterTask(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_NoDiskSizeUsesTemplateSize — a
+// TestCreate_TemplateClone_NoDiskSizeUsesTemplateSize - a
 // request with no explicit disk size (SizeGB=0) defaults to the template's
 // disk size. The clone succeeds, no resize is invoked (the plan disk equals
 // the template disk), and no out-of-range error is raised.
@@ -306,7 +306,7 @@ func TestCreate_TemplateClone_NoDiskSizeUsesTemplateSize(t *testing.T) {
 		t.Fatalf("cloned VM %d not in snapshot", result.VMID)
 	}
 
-	// No resize should have been called — the plan disk equals the template
+	// No resize should have been called - the plan disk equals the template
 	// disk (8 GB), so applyPostCloneConfig skips the resize step.
 	for _, c := range cluster.FakeCalls() {
 		if c.VMID == result.VMID && c.Action == "resize" {
@@ -315,7 +315,7 @@ func TestCreate_TemplateClone_NoDiskSizeUsesTemplateSize(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_SimpleModeMinimalRequest — the simple-mode
+// TestCreate_TemplateClone_SimpleModeMinimalRequest - the simple-mode
 // wizard sends only cluster, name, templateId, and startAfterCreate (no
 // cpuCores, memoryMB, sockets, disk, or network). The clone must inherit
 // the template's hardware: checkTechnicalRange must not reject the zero
@@ -346,7 +346,7 @@ func TestCreate_TemplateClone_SimpleModeMinimalRequest(t *testing.T) {
 		t.Errorf("result.Node = %q, want %q", result.Node, cluster.FakeNode02)
 	}
 
-	// The clone must not have been hit by a hardware override — the
+	// The clone must not have been hit by a hardware override - the
 	// template's CPU/memory are inherited, not shrunk to the minimum.
 	for _, c := range cluster.FakeCalls() {
 		if c.VMID == result.VMID && c.Action == actionUpdateHW {
@@ -354,7 +354,7 @@ func TestCreate_TemplateClone_SimpleModeMinimalRequest(t *testing.T) {
 		}
 	}
 
-	// The pvmss tag must still be stamped via SetTags — without it, the
+	// The pvmss tag must still be stamped via SetTags - without it, the
 	// clone is invisible to PVMSS (Resolve returns ErrNotFound).
 	snap, _ := fixture.fake.Snapshot(context.Background())
 
@@ -368,10 +368,10 @@ func TestCreate_TemplateClone_SimpleModeMinimalRequest(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_CloudInitAppliedAfterTask — when
+// TestCreate_TemplateClone_CloudInitAppliedAfterTask - when
 // a cloud-init template is requested alongside a Proxmox template clone, the
 // document content is written as the VM's own snippet (pvmss-<vmid>.yml,
-// ), verified, and attached after the clone task completes — the same
+// ), verified, and attached after the clone task completes - the same
 // per-VM-copy contract as the ISO path.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -391,7 +391,7 @@ func TestCreate_TemplateClone_CloudInitAppliedAfterTask(t *testing.T) {
 		t.Errorf("result.CloudInitPushError = %q, want empty", result.CloudInitPushError)
 	}
 
-	// The clone must have completed before cloud-init was attached — the
+	// The clone must have completed before cloud-init was attached - the
 	// VM exists in the snapshot (materialized by the fake's onComplete
 	// callback on the third poll).
 	snap, err := fixture.fake.Snapshot(context.Background())
@@ -401,7 +401,7 @@ func TestCreate_TemplateClone_CloudInitAppliedAfterTask(t *testing.T) {
 
 	idx := slices.IndexFunc(snap.VMs, func(v cluster.VM) bool { return v.VMID == result.VMID })
 	if idx < 0 {
-		t.Fatalf("cloned VM %d not in snapshot — cloud-init may have been attached before task completion", result.VMID)
+		t.Fatalf("cloned VM %d not in snapshot - cloud-init may have been attached before task completion", result.VMID)
 	}
 
 	wantFilename := fmt.Sprintf("pvmss-%d.yml", result.VMID)
@@ -459,7 +459,7 @@ func TestCreate_TemplateClone_StartAfterCreateWithCloudInit(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_AuditRecorded — a successful clone is
+// TestCreate_TemplateClone_AuditRecorded - a successful clone is
 // recorded in the audit log.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -487,7 +487,7 @@ func TestCreate_TemplateClone_AuditRecorded(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_CatalogExposesTemplates — the
+// TestCreate_TemplateClone_CatalogExposesTemplates - the
 // catalog query returns the approved templates from the seed.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -503,7 +503,7 @@ func TestCreate_TemplateClone_CatalogExposesTemplates(t *testing.T) {
 		t.Fatalf("expected 2 seeded templates, got %d", len(templates))
 	}
 
-	// VMID 9000 — cloud-init capable, 8 GB disk, on pve-node-02.
+	// VMID 9000 - cloud-init capable, 8 GB disk, on pve-node-02.
 	tmpl9000, err := catalog.FindTemplate(templates, 9000)
 	if err != nil {
 		t.Fatalf("FindTemplate(9000): %v", err)
@@ -521,7 +521,7 @@ func TestCreate_TemplateClone_CatalogExposesTemplates(t *testing.T) {
 		t.Errorf("template 9000 disk size = %d, want 8", tmpl9000.DiskSizeGB)
 	}
 
-	// VMID 9001 — not cloud-init capable, 2 GB disk, on pve-node-02.
+	// VMID 9001 - not cloud-init capable, 2 GB disk, on pve-node-02.
 	tmpl9001, err := catalog.FindTemplate(templates, 9001)
 	if err != nil {
 		t.Fatalf("FindTemplate(9001): %v", err)
@@ -536,7 +536,7 @@ func TestCreate_TemplateClone_CatalogExposesTemplates(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_PoolPropagation — the cloned VM must
+// TestCreate_TemplateClone_PoolPropagation - the cloned VM must
 // land in the actor's personal pool, not an arbitrary or empty pool. The
 // clone call must carry the pool, and the materialized VM must have it.
 //
@@ -632,7 +632,7 @@ func createWithTemplates(t *testing.T, fixture createFixture, templates interfac
 	})
 }
 
-// TestCreate_TemplateClone_DeletedTemplateFailsFast — a template deleted in
+// TestCreate_TemplateClone_DeletedTemplateFailsFast - a template deleted in
 // Proxmox after approval fails the create fast (ErrNotApproved) before a
 // VMID is spent.
 //
@@ -652,7 +652,7 @@ func TestCreate_TemplateClone_DeletedTemplateFailsFast(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_ClonesOnDiscoveredNode — a template migrated since
+// TestCreate_TemplateClone_ClonesOnDiscoveredNode - a template migrated since
 // approval is cloned on its new node: discovery wins on values at clone time,
 // the stored row keeps only the approval role.
 //
@@ -681,7 +681,7 @@ func TestCreate_TemplateClone_ClonesOnDiscoveredNode(t *testing.T) {
 	}
 }
 
-// TestCreate_TemplateClone_UnreadableFallsBackToStoredDisk — when the config
+// TestCreate_TemplateClone_UnreadableFallsBackToStoredDisk - when the config
 // is unreadable at clone time, the discovered node is kept and the stored
 // disk fields (validated at approval) drive the resize floor.
 //

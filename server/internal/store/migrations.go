@@ -56,7 +56,7 @@ ALTER TABLE api_tokens ADD COLUMN pool TEXT NOT NULL DEFAULT '';
 `
 
 // schemaV6 adds the audit_log table. Every VM write flows through
-// Resolve() and is recorded here with the real acting user — closing the
+// Resolve() and is recorded here with the real acting user - closing the
 // traceability gap the document names as the reason the flaw went undetected.
 // Write-only by design; a read endpoint lives elsewhere.
 const schemaV6 = `CREATE TABLE audit_log (
@@ -90,7 +90,7 @@ ALTER TABLE sessions ADD COLUMN cluster TEXT NOT NULL DEFAULT '';
 
 // schemaV12 adds the admin-curated cloud-init template catalog: a sibling
 // to the catalog_profiles, full CRUD with no Proxmox-side discovery source.
-// The version is provisional — the exact integer is fixed
+// The version is provisional - the exact integer is fixed
 // by actual merge order, not spec-writing order.
 const schemaV12 = `CREATE TABLE catalog_cloudinit_templates (
 	cluster    TEXT NOT NULL,
@@ -148,12 +148,12 @@ const schemaV15 = `CREATE TABLE managed_pools (
 
 // schemaV16 adds a display_name column to clusters so the UI can show the real
 // Proxmox cluster name (from /cluster/status) alongside the immutable internal
-// key. Existing rows get NULL — callers fall back to the logical name.
+// key. Existing rows get NULL - callers fall back to the logical name.
 const schemaV16 = `ALTER TABLE clusters ADD COLUMN display_name TEXT`
 
 // schemaV17 rebuilds catalog_isos with node in the primary key. The previous
 // schema keyed on (cluster, storage, file), which collapsed duplicate ISO files
-// discovered on the same storage name across multiple nodes — the toggle could
+// discovered on the same storage name across multiple nodes - the toggle could
 // not be attributed to a single node and the UI showed duplicate Svelte keys.
 // Node is now part of the identity, mirroring catalog_bridges' (cluster, node,
 // name) key. Existing rows are dropped (they are repopulated by discovery +
@@ -196,7 +196,7 @@ const schemaV21 = `ALTER TABLE catalog_profiles ADD COLUMN sockets INTEGER NOT N
 // disk_storage and disk_size_gb drive the resize decision
 // (enlarge after clone, reject reduction before VMID).
 //
-// No seed: a real deployment starts with zero approved templates — admins
+// No seed: a real deployment starts with zero approved templates - admins
 // approve whatever their cluster actually reports (the fake demo source
 // discovers its own template set for demo mode).
 const schemaV22 = `CREATE TABLE catalog_templates (
@@ -213,7 +213,7 @@ const schemaV22 = `CREATE TABLE catalog_templates (
 );`
 
 // schemaV23 adds an optional per-cluster isolation VLAN tag to vm_limits
-// (one VLAN per cluster, imposed — the admin sets it alongside the gabarit; empty/0 = no tag
+// (one VLAN per cluster, imposed - the admin sets it alongside the gabarit; empty/0 = no tag
 // imposed). Tenants never choose the
 // segmentation; the create path stamps the tag on every NIC.
 const schemaV23 = `ALTER TABLE vm_limits ADD COLUMN isolation_vlan_tag INTEGER NOT NULL DEFAULT 0`
@@ -261,7 +261,7 @@ UPDATE clusters                SET name = display_name WHERE name = 'default' AN
 // Proxmox-discovered ones (catalog/admin.go: templateDrift write-back). This
 // lets an administrator pin a template's editable fields (name, node, disk
 // storage, disk size, disk bus, cloud-init flag) to values that differ from
-// what Proxmox reports — e.g. to correct a misnamed template or to cap a
+// what Proxmox reports - e.g. to correct a misnamed template or to cap a
 // template's disk size below what discovery claims. The flag defaults to 0
 // (discovery wins, the existing behavior).
 const schemaV26 = `ALTER TABLE catalog_templates ADD COLUMN override_discovery BOOLEAN NOT NULL DEFAULT 0`
@@ -269,7 +269,7 @@ const schemaV26 = `ALTER TABLE catalog_templates ADD COLUMN override_discovery B
 // schemaV27 adds the approved cloud-image catalog (catalog_images): a sibling
 // to catalog_isos keyed by (cluster, node, storage, file). A cloud image is a
 // bootable disk image (.qcow2/.raw/.vmdk/.ova) an admin placed on a Proxmox
-// storage's import/ directory themselves — PVMSS never fetches images from the
+// storage's import/ directory themselves - PVMSS never fetches images from the
 // internet. size_bytes carries the discovered image size so the create path
 // can reject a disk size below it before a VMID is spent.
 const schemaV27 = `CREATE TABLE catalog_images (
@@ -292,7 +292,7 @@ const schemaV28 = `ALTER TABLE clusters ADD COLUMN snippet_dir TEXT NOT NULL DEF
 ALTER TABLE clusters ADD COLUMN snippet_storage TEXT NOT NULL DEFAULT '';`
 
 // schemaV29 adds user-owned cloud-init documents. Owner is the session username; there is no
-// cluster column — a file is
+// cluster column - a file is
 // text the user reuses on any cluster. Every query filters on owner.
 const schemaV29 = `CREATE TABLE user_cloudinit_files (
 	owner      TEXT NOT NULL,
