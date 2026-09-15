@@ -246,7 +246,7 @@ func TestAdminOpsCoverage_AppInfo_Unauthenticated_Returns401(t *testing.T) {
 }
 
 // TestAdminOpsCoverage_AppInfo_NoProjection_ReturnsEmptyClusters covers the
-// ServeAppInfo branch where the projection is nil — the clusters slice is
+// ServeAppInfo branch where the projection is nil - the clusters slice is
 // empty but the endpoint still returns 200 with config fields.
 func TestAdminOpsCoverage_AppInfo_NoProjection_ReturnsEmptyClusters(t *testing.T) {
 	t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
@@ -678,7 +678,7 @@ func TestAdminPolicyCoverage_PutInvalidJSON_Returns400(t *testing.T) {
 
 // TestAdminPolicyCoverage_PutClusterRequired_Returns400 covers the
 // ServePolicyUpdate branch where multiple clusters are configured but the
-// request body omits the cluster field — ResolveClusterValue returns
+// request body omits the cluster field - ResolveClusterValue returns
 // ErrClusterRequired.
 func TestAdminPolicyCoverage_PutClusterRequired_Returns400(t *testing.T) {
 	st := newAdminStore(t)

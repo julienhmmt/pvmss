@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * TextField — the shared text input primitive. Covers text, password,
+	 * TextField - the shared text input primitive. Covers text, password,
 	 * email, url, number, search, tel. Uses the .pv-input base so it shares
 	 * one vocabulary with Button (same radius, focus ring, disabled state).
 	 * Optional leading/trailing icon snippets, a password reveal toggle,

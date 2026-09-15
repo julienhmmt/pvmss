@@ -4,7 +4,7 @@
 // client.go itself is the contract (interfaces + types); the real Proxmox HTTP
 // client lives in websocket_real.go. These tests exercise that HTTP surface
 // against an httptest.Server returning Proxmox-shaped JSON fixtures, plus the
-// pure URL builder and the constructor — all without a live Proxmox endpoint
+// pure URL builder and the constructor - all without a live Proxmox endpoint
 // and without changing any production code.
 package cluster
 

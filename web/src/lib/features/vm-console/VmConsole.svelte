@@ -6,14 +6,14 @@
 
 	// Test-only: throws during component initialization to exercise the
 	// <svelte:boundary> failed snippet in +page.svelte (SC-004). Svelte 5
-	// boundaries only catch errors thrown during rendering or effects — not
+	// boundaries only catch errors thrown during rendering or effects - not
 	// event-handler or async errors. Since noVNC's async events are handled
 	// gracefully by the store (state transitions, never throws), this is the
 	// only reliable way to test that the boundary's failed snippet actually
 	// catches a render-time throw.
 	//
 	// Deliberately NOT a URL query parameter: a flag readable from the URL is
-	// bookmarkable, shareable, and crawlable — a real visitor could stumble
+	// bookmarkable, shareable, and crawlable - a real visitor could stumble
 	// into a permanently broken console. Playwright sets this global via
 	// page.addInitScript() before navigation, which only an already-privileged
 	// test harness can do; no ordinary URL or link can trigger it. Still

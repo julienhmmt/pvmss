@@ -74,36 +74,36 @@ linters:
     - nolintlint       # enforces proper //nolint directive usage
 
   disable:
-    - lll              # line length — handled by gofmt/gofumpt
+    - lll              # line length - handled by gofmt/gofumpt
     - prealloc         # high false-positive rate; enable only after performance profiling
-    - wrapcheck        # forces wrapping all external errors — too noisy as a default
-    - err113           # forces package-level sentinel errors — too opinionated, breaks common patterns
-    - mnd              # magic number detector — extremely noisy, flags obvious constants like HTTP 200
-    - iface            # interface pollution detector — too opinionated, not mature enough
-    - nakedret         # naked returns — overlaps with funlen (short functions make naked returns fine)
-    - noinlineerr      # bans `if err := ...; err != nil {}` — this is idiomatic Go
-    - gocognit         # cognitive complexity — redundant with gocyclo + nestif
-    - cyclop           # cyclomatic complexity — redundant with gocyclo
-    - depguard         # import allow/deny lists — requires per-project configuration
-    - goheader         # file header enforcement — project-specific policy
-    - importas         # import alias enforcement — requires per-project configuration
-    - funcorder        # function ordering — too opinionated for a default
-    - godoclint        # godoc validation — overlaps with godot and revive
-    - varnamelen       # variable name length — too opinionated, Go favors short names
-    - exhaustruct      # all struct fields must be set — extremely noisy, breaks zero-value idiom
-    - gochecknoglobals # no global variables — too strict, many valid uses
-    - gochecknoinits   # no init() functions — too strict, many valid uses
-    - unparam          # unused function parameters — medium false-positive rate with interfaces
-    - makezero         # flags make([]T, n) — noisy, often wrong about intent
-    - testpackage      # forces _test package — valid but too opinionated as a default
-    - embeddedstructfieldcheck # embedded type placement — minor style, not worth enforcing
-    - iotamixing       # iota in mixed const blocks — very rare issue
-    - unqueryvet       # SELECT * detection — too niche for a default config
-    - recvcheck        # receiver type consistency — overlaps with gocritic
-    - mirror           # bytes/strings mirror patterns — very few real hits
-    - protogetter      # proto field access via getters — only for protobuf users
-    - spancheck        # OpenTelemetry span checks — only for OTel users
-    - zerologlint      # zerolog usage — only for zerolog users
+    - wrapcheck        # forces wrapping all external errors - too noisy as a default
+    - err113           # forces package-level sentinel errors - too opinionated, breaks common patterns
+    - mnd              # magic number detector - extremely noisy, flags obvious constants like HTTP 200
+    - iface            # interface pollution detector - too opinionated, not mature enough
+    - nakedret         # naked returns - overlaps with funlen (short functions make naked returns fine)
+    - noinlineerr      # bans `if err := ...; err != nil {}` - this is idiomatic Go
+    - gocognit         # cognitive complexity - redundant with gocyclo + nestif
+    - cyclop           # cyclomatic complexity - redundant with gocyclo
+    - depguard         # import allow/deny lists - requires per-project configuration
+    - goheader         # file header enforcement - project-specific policy
+    - importas         # import alias enforcement - requires per-project configuration
+    - funcorder        # function ordering - too opinionated for a default
+    - godoclint        # godoc validation - overlaps with godot and revive
+    - varnamelen       # variable name length - too opinionated, Go favors short names
+    - exhaustruct      # all struct fields must be set - extremely noisy, breaks zero-value idiom
+    - gochecknoglobals # no global variables - too strict, many valid uses
+    - gochecknoinits   # no init() functions - too strict, many valid uses
+    - unparam          # unused function parameters - medium false-positive rate with interfaces
+    - makezero         # flags make([]T, n) - noisy, often wrong about intent
+    - testpackage      # forces _test package - valid but too opinionated as a default
+    - embeddedstructfieldcheck # embedded type placement - minor style, not worth enforcing
+    - iotamixing       # iota in mixed const blocks - very rare issue
+    - unqueryvet       # SELECT * detection - too niche for a default config
+    - recvcheck        # receiver type consistency - overlaps with gocritic
+    - mirror           # bytes/strings mirror patterns - very few real hits
+    - protogetter      # proto field access via getters - only for protobuf users
+    - spancheck        # OpenTelemetry span checks - only for OTel users
+    - zerologlint      # zerolog usage - only for zerolog users
 
   exclusions:
     paths:

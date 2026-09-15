@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * ShortcutsDialog — a lightweight overlay that lists the global keyboard
+	 * ShortcutsDialog - a lightweight overlay that lists the global keyboard
 	 * shortcuts. Opened by pressing `?` outside of form fields. Closes on
 	 * Escape or backdrop click.
 	 */

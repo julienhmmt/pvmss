@@ -26,7 +26,7 @@
 <Dialog bind:open labelledBy="cloudinit-save-title" onClose={close}>
 	<h2 id="cloudinit-save-title" class="mb-4 text-lg font-semibold">{m['vms.cloudinit.dialogTitle']()}</h2>
 	<!-- Ticket 06: the old "applies on next reboot" line was false for most
-	     fields — per-instance cloud-init modules do not replay while the
+	     fields - per-instance cloud-init modules do not replay while the
 	     instance-id is unchanged. Say what applies when, per field group. -->
 	<p id="cloudinit-save-description" class="mb-2 text-sm text-muted-foreground">
 		{m['vms.cloudinit.dialogDescription']()}

@@ -1,5 +1,5 @@
 <script lang="ts">
-	/** ResetIcon — hard reset action affordance. Inherits currentColor. */
+	/** ResetIcon - hard reset action affordance. Inherits currentColor. */
 	interface Props {
 		class?: string;
 	}

@@ -1,5 +1,5 @@
 <script lang="ts">
-	/** ConsoleIcon — open VM console affordance. Inherits currentColor. */
+	/** ConsoleIcon - open VM console affordance. Inherits currentColor. */
 	interface Props {
 		class?: string;
 	}

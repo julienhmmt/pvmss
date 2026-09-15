@@ -20,8 +20,8 @@ type cloudInitTemplateDTO struct {
 }
 
 // cloudInitTemplatesMux wires the five new admin cloud-init-template routes
-// through RequireAdmin — the real guard the 403 tests must exercise. Kept local
-// so the shared adminMux does not reference handler methods before T006 lands.
+// through RequireAdmin - the real guard the 403 tests must exercise. Kept local
+// so the shared adminMux does not reference handler methods lands.
 func cloudInitTemplatesMux(handler *httpapi.AdminCatalog, auth *httpapi.Auth) *http.ServeMux {
 	mux := http.NewServeMux()
 	guard := auth.RequireAdmin
@@ -94,8 +94,8 @@ func citDelete(t *testing.T, handler *httpapi.AdminCatalog, auth *httpapi.Auth, 
 	return rec
 }
 
-// TestAdminCloudInitTemplates_ListAsAdmin — GET returns an empty list
-// initially (no seed data, spec.md Assumptions), then a created template
+// TestAdminCloudInitTemplates_ListAsAdmin - GET returns an empty list
+// initially (no seed data, Assumptions), then a created template
 // including disabled ones.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -140,8 +140,8 @@ func TestAdminCloudInitTemplates_ListAsAdmin(t *testing.T) {
 	}
 }
 
-// TestAdminCloudInitTemplates_NonAdmin_Returns403 — every endpoint returns 403
-// for a non-admin identity (FR-010, SC-005).
+// TestAdminCloudInitTemplates_NonAdmin_Returns403 - every endpoint returns 403
+// for a non-admin identity.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminCloudInitTemplates_NonAdmin_Returns403(t *testing.T) {
@@ -165,7 +165,7 @@ func TestAdminCloudInitTemplates_NonAdmin_Returns403(t *testing.T) {
 	}
 }
 
-// TestAdminCloudInitTemplates_Create — POST creates a template, returns 201
+// TestAdminCloudInitTemplates_Create - POST creates a template, returns 201
 // with the derived slug and enabled=true.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -189,7 +189,7 @@ func TestAdminCloudInitTemplates_Create(t *testing.T) {
 	}
 }
 
-// TestAdminCloudInitTemplates_CreateDuplicate_Returns409 — slug collision.
+// TestAdminCloudInitTemplates_CreateDuplicate_Returns409 - slug collision.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminCloudInitTemplates_CreateDuplicate_Returns409(t *testing.T) {
@@ -209,8 +209,8 @@ func TestAdminCloudInitTemplates_CreateDuplicate_Returns409(t *testing.T) {
 	assertAPIError(t, rec.Body.Bytes(), "duplicate_template")
 }
 
-// TestAdminCloudInitTemplates_CreateInvalidContent_Returns400 — content not
-// starting with #cloud-config is rejected (FR-003, reused T08 validation).
+// TestAdminCloudInitTemplates_CreateInvalidContent_Returns400 - content not
+// starting with #cloud-config is rejected (reused validation).
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminCloudInitTemplates_CreateInvalidContent_Returns400(t *testing.T) {
@@ -226,8 +226,8 @@ func TestAdminCloudInitTemplates_CreateInvalidContent_Returns400(t *testing.T) {
 	assertAPIError(t, rec.Body.Bytes(), "invalid_content")
 }
 
-// TestAdminCloudInitTemplates_CreateOversized_Returns400 — content over the
-// 16 KiB cap is rejected before the catalog sees it.
+// TestAdminCloudInitTemplates_CreateOversized_Returns400 - content over the 16 KiB cap is
+// rejected before the catalog sees it.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminCloudInitTemplates_CreateOversized_Returns400(t *testing.T) {
@@ -245,7 +245,7 @@ func TestAdminCloudInitTemplates_CreateOversized_Returns400(t *testing.T) {
 	assertAPIError(t, rec.Body.Bytes(), "invalid_content")
 }
 
-// TestAdminCloudInitTemplates_Update — PUT changes label and content.
+// TestAdminCloudInitTemplates_Update - PUT changes label and content.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminCloudInitTemplates_Update(t *testing.T) {
@@ -287,7 +287,7 @@ func TestAdminCloudInitTemplates_UpdateNotFound_Returns404(t *testing.T) {
 	}
 }
 
-// TestAdminCloudInitTemplates_Delete — DELETE removes the template.
+// TestAdminCloudInitTemplates_Delete - DELETE removes the template.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminCloudInitTemplates_Delete(t *testing.T) {
@@ -325,7 +325,7 @@ func TestAdminCloudInitTemplates_Delete(t *testing.T) {
 	}
 }
 
-// TestAdminCloudInitTemplates_Toggle — toggle disables then re-enables.
+// TestAdminCloudInitTemplates_Toggle - toggle disables then re-enables.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminCloudInitTemplates_Toggle(t *testing.T) {

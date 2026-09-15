@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// openCatalogStore opens a migrated store in a temp dir — the catalog fixture
+// openCatalogStore opens a migrated store in a temp dir - the catalog fixture
 // is seeded by migration version 7, so a fresh DB carries it.
 func openCatalogStore(t *testing.T) *store.Store {
 	t.Helper()
@@ -30,7 +30,7 @@ func openCatalogStore(t *testing.T) *store.Store {
 }
 
 // TestApprovedResources_SeedInvariants pins the fixture's cross-table
-// invariants (T06 data-model.md): every approved storage's node is itself
+// invariants: every approved storage's node is itself
 // approved, and every seeded row belongs to the configured cluster.
 //
 //nolint:paralleltest // serial: shared database fixture
@@ -91,9 +91,9 @@ func TestProfiles_SeedInvariants(t *testing.T) {
 	}
 }
 
-// TestApprovedResources_ISONodePopulated — the store query returns one row per
-// node (D1b), and ApprovedResources must copy iso.Node so HasISO can validate
-// node locality (US1). V17 drops seed ISOs, so this test seeds them directly.
+// TestApprovedResources_ISONodePopulated - the store query returns one row per
+// node, and ApprovedResources must copy iso.Node so HasISO can validate
+// node locality. V17 drops seed ISOs, so this test seeds them directly.
 //
 //nolint:paralleltest // serial: shared database fixture
 func TestApprovedResources_ISONodePopulated(t *testing.T) {
@@ -101,7 +101,7 @@ func TestApprovedResources_ISONodePopulated(t *testing.T) {
 	ctx := context.Background()
 
 	// Seed one ISO on pve-node-01 and the same file on pve-node-02 (shared
-	// storage pattern — one row per node, D1b).
+	// storage pattern - one row per node).
 	for _, row := range []struct{ node, storage, file string }{
 		{node01, "local", "debian-12.iso"},
 		{"pve-node-02", "local", "debian-12.iso"},
@@ -122,7 +122,7 @@ func TestApprovedResources_ISONodePopulated(t *testing.T) {
 
 	for _, iso := range resources.ISOs {
 		if iso.Node == "" {
-			t.Errorf("ISO %q on storage %q has empty Node — store query must populate it", iso.File, iso.Storage)
+			t.Errorf("ISO %q on storage %q has empty Node - store query must populate it", iso.File, iso.Storage)
 		}
 
 		if !resources.HasISO(iso.Storage, iso.File, iso.Node) {
@@ -131,7 +131,7 @@ func TestApprovedResources_ISONodePopulated(t *testing.T) {
 	}
 }
 
-// TestApprovedResources_UnknownClusterReturnsEmpty — a cluster with no seeded
+// TestApprovedResources_UnknownClusterReturnsEmpty - a cluster with no seeded
 // rows yields an empty catalog, not an error (membership checks then reject
 // everything, which is the correct failure mode for a misconfigured cluster).
 //

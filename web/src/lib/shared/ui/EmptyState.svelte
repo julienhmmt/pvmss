@@ -2,7 +2,7 @@
 	import type { Snippet } from 'svelte';
 
 	/**
-	 * EmptyState — a teaching empty-state for zero-row result sets, distinct
+	 * EmptyState - a teaching empty-state for zero-row result sets, distinct
 	 * from the loading and error states. Optional icon snippet, a title, a
 	 * description, and an optional actions snippet (e.g. the "New …" button)
 	 * so the empty state itself is the call to action.

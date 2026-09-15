@@ -37,7 +37,7 @@ type GeneratedCredentials struct {
 }
 
 // generatedPasswordLength is the number of raw bytes before base64 encoding,
-// yielding ~32 ASCII characters — well above minPasswordLength.
+// yielding ~32 ASCII characters - well above minPasswordLength.
 const generatedPasswordLength = 24
 
 // generatePassword returns a random base64-encoded password.

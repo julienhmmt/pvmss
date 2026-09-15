@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * TemplatePicker — grouped native select for approved Proxmox templates.
+	 * TemplatePicker - grouped native select for approved Proxmox templates.
 	 * Used by both the simple wizard and the detailed wizard's Base step.
 	 */
 	import { getVmCreateContext } from './create.svelte';
@@ -17,12 +17,12 @@
 
 	const templates = $derived(form.catalog?.templates ?? []);
 
-	// Issue 04: the template's disk is the clone source — Proxmox cannot
+	// Issue 04: the template's disk is the clone source - Proxmox cannot
 	// shrink it, so the disk size may never drop below the template's size.
 	let templateMinRaised = $state(false);
 
 	// Select binds to string values; templateId is a number. Derive the
-	// string representation from the form state. One-way binding only —
+	// string representation from the form state. One-way binding only - 
 	// updates flow through onTemplateChange, which writes form.templateId.
 	const templateIdStr = $derived(form.templateId === 0 ? '' : String(form.templateId));
 
@@ -51,7 +51,7 @@
 
 	// Issue 04: group templates by node and carry the facts that matter in
 	// the label. The shared Select has no optgroup support, so the template
-	// picker is a native select — keyboard type-ahead for free.
+	// picker is a native select - keyboard type-ahead for free.
 	const templateGroups = $derived(
 		[...new Set(templates.map((tmpl) => tmpl.node))].sort().map((node) => ({
 			node,

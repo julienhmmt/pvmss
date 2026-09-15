@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestRenderMarkdownToHTML_ExternalLinkGetsTargetBlank — external links get
+// TestRenderMarkdownToHTML_ExternalLinkGetsTargetBlank - external links get
 // target="_blank" + rel="noopener noreferrer"; internal anchors do not.
 func TestRenderMarkdownToHTML_ExternalLinkGetsTargetBlank(t *testing.T) {
 	t.Parallel()
@@ -53,7 +53,7 @@ func TestRenderMarkdownToHTML_ExternalLinkGetsTargetBlank(t *testing.T) {
 	}
 }
 
-// TestRenderMarkdownToHTML_RawHTMLEscaped — raw HTML in the input is escaped,
+// TestRenderMarkdownToHTML_RawHTMLEscaped - raw HTML in the input is escaped,
 // never passed through (XSS defense at the source).
 func TestRenderMarkdownToHTML_RawHTMLEscaped(t *testing.T) {
 	t.Parallel()
@@ -67,7 +67,7 @@ func TestRenderMarkdownToHTML_RawHTMLEscaped(t *testing.T) {
 	}
 }
 
-// TestRenderMarkdownToHTML_BasicElements — headings, lists, code, emphasis.
+// TestRenderMarkdownToHTML_BasicElements - headings, lists, code, emphasis.
 func TestRenderMarkdownToHTML_BasicElements(t *testing.T) {
 	t.Parallel()
 	md := "# Title\n\n- one\n- two\n\nA **bold** and *italic* and `code`.\n\n```\ncode block\n```"
@@ -81,7 +81,7 @@ func TestRenderMarkdownToHTML_BasicElements(t *testing.T) {
 	}
 }
 
-// TestRenderMarkdownToHTML_OrderedListAndKindSwitch — ordered lists render as
+// TestRenderMarkdownToHTML_OrderedListAndKindSwitch - ordered lists render as
 // <ol>, and switching from unordered to ordered reopens the list.
 func TestRenderMarkdownToHTML_OrderedListAndKindSwitch(t *testing.T) {
 	t.Parallel()
@@ -101,7 +101,7 @@ func TestRenderMarkdownToHTML_OrderedListAndKindSwitch(t *testing.T) {
 	}
 }
 
-// TestRenderMarkdownToHTML_StarBullet — the "* " prefix is also an unordered
+// TestRenderMarkdownToHTML_StarBullet - the "* " prefix is also an unordered
 // list item.
 func TestRenderMarkdownToHTML_StarBullet(t *testing.T) {
 	t.Parallel()
@@ -111,7 +111,7 @@ func TestRenderMarkdownToHTML_StarBullet(t *testing.T) {
 	}
 }
 
-// TestRenderMarkdownToHTML_UnterminatedCodeBlock — a fenced block without a
+// TestRenderMarkdownToHTML_UnterminatedCodeBlock - a fenced block without a
 // closing fence still emits its accumulated content.
 func TestRenderMarkdownToHTML_UnterminatedCodeBlock(t *testing.T) {
 	t.Parallel()
@@ -121,7 +121,7 @@ func TestRenderMarkdownToHTML_UnterminatedCodeBlock(t *testing.T) {
 	}
 }
 
-// TestRenderMarkdownToHTML_ParagraphBreaksOnSpecialLines — a paragraph stops at
+// TestRenderMarkdownToHTML_ParagraphBreaksOnSpecialLines - a paragraph stops at
 // a following heading, list item, or code fence.
 func TestRenderMarkdownToHTML_ParagraphBreaksOnSpecialLines(t *testing.T) {
 	t.Parallel()
@@ -137,7 +137,7 @@ func TestRenderMarkdownToHTML_ParagraphBreaksOnSpecialLines(t *testing.T) {
 	}
 }
 
-// TestRenderMarkdownToHTML_EmptyAndCRLF — empty input and CRLF line endings are
+// TestRenderMarkdownToHTML_EmptyAndCRLF - empty input and CRLF line endings are
 // handled without panics or stray tags.
 func TestRenderMarkdownToHTML_EmptyAndCRLF(t *testing.T) {
 	t.Parallel()
@@ -151,7 +151,7 @@ func TestRenderMarkdownToHTML_EmptyAndCRLF(t *testing.T) {
 	}
 }
 
-// TestRenderMarkdownToHTML_MultipleInlineCodeSpans — two code spans exercise the
+// TestRenderMarkdownToHTML_MultipleInlineCodeSpans - two code spans exercise the
 // multi-index placeholder restore path in renderInline.
 func TestRenderMarkdownToHTML_MultipleInlineCodeSpans(t *testing.T) {
 	t.Parallel()
@@ -161,7 +161,7 @@ func TestRenderMarkdownToHTML_MultipleInlineCodeSpans(t *testing.T) {
 	}
 }
 
-// TestHeadingTag_OutOfRange — levels outside 1-3 clamp to h3.
+// TestHeadingTag_OutOfRange - levels outside 1-3 clamp to h3.
 func TestHeadingTag_OutOfRange(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -181,7 +181,7 @@ func TestHeadingTag_OutOfRange(t *testing.T) {
 	}
 }
 
-// TestMatchOrderedItem_NoMatch — a non-list line returns no match.
+// TestMatchOrderedItem_NoMatch - a non-list line returns no match.
 func TestMatchOrderedItem_NoMatch(t *testing.T) {
 	t.Parallel()
 	if content, ok := matchOrderedItem("not a list item"); ok || content != "" {
@@ -189,7 +189,7 @@ func TestMatchOrderedItem_NoMatch(t *testing.T) {
 	}
 }
 
-// TestIndexPlaceholder_MultiDigit — indices above 0 exercise the base-36 loop.
+// TestIndexPlaceholder_MultiDigit - indices above 0 exercise the base-36 loop.
 func TestIndexPlaceholder_MultiDigit(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -207,7 +207,7 @@ func TestIndexPlaceholder_MultiDigit(t *testing.T) {
 	}
 }
 
-// TestRenderMarkdownToHTML_DangerousURLSchemesRejected — the renderer escapes
+// TestRenderMarkdownToHTML_DangerousURLSchemesRejected - the renderer escapes
 // or drops dangerous URLs while keeping http(s) links safe.
 func TestRenderMarkdownToHTML_DangerousURLSchemesRejected(t *testing.T) {
 	t.Parallel()

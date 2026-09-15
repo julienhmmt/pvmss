@@ -20,7 +20,7 @@ type legacyProfileConfig struct {
 // MapProfiles reads the legacy vm_profiles table, parses each config JSON
 // blob, and returns rows for catalog_profiles. A profile whose JSON fails
 // to parse or is missing a required field is skipped with a named reason
-// (per-row error isolation, plan.md research decisions).
+// (per-row error isolation).
 func MapProfiles(ctx context.Context, legacyDB *sql.DB) ([]ProfileRow, []SkipReason, error) {
 	rows, err := legacyDB.QueryContext(ctx,
 		`SELECT id, name, config, enabled FROM vm_profiles ORDER BY id`)

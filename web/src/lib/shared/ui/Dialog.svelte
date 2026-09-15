@@ -1,9 +1,9 @@
 <script lang="ts">
 	/**
-	 * Dialog — the shared modal shell. Callers keep rendering their own
+	 * Dialog - the shared modal shell. Callers keep rendering their own
 	 * heading (with the id they pass as `labelledBy`) and their own action
 	 * row; this owns the backdrop, the focus trap, Escape, the panel
-	 * chrome and — new — the scroll behaviour: the panel is capped at the
+	 * chrome and - new - the scroll behaviour: the panel is capped at the
 	 * viewport height and scrolls its body, so a long form (cloud-init,
 	 * network interface) no longer pushes its own buttons off-screen.
 	 *

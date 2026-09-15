@@ -27,7 +27,7 @@ interface AdminNavGroup {
 }
 
 /**
- * Admin navigation items — the single source for the admin destination list.
+ * Admin navigation items - the single source for the admin destination list.
  * Rendered as the "Administration" group inside the global Sidebar (T034:
  * the admin area no longer ships a second 52-width rail). The server-side
  * RequireAdmin middleware remains the real guard; this is IA only.
@@ -60,6 +60,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 			{ href: resolve('/admin/images'), label: () => m['chrome.adminNav.images']() },
 			{ href: resolve('/admin/bridges'), label: () => m['chrome.adminNav.bridges']() },
 			{ href: resolve('/admin/cloudinit-templates'), label: () => m['chrome.adminNav.cloudinit']() },
+			{ href: resolve('/admin/baseline'), label: () => m['chrome.adminNav.baseline']() },
 			{ href: resolve('/admin/docs'), label: () => m['chrome.adminNav.documentation']() },
 			{ href: resolve('/admin/profiles'), label: () => m['chrome.adminNav.profiles']() },
 			{ href: resolve('/admin/tags'), label: () => m['chrome.adminNav.tags']() }

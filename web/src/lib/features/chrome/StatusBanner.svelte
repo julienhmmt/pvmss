@@ -3,7 +3,7 @@
 	import { m } from '$lib/paraglide/messages.js';
 
 	/**
-	 * StatusBanner — one component, three severities (info / degraded /
+	 * StatusBanner - one component, three severities (info / degraded /
 	 * unhealthy), plus an "unknown" variant for poll failures. An aria-live
 	 * region announces severity changes (constitution XII). Renders nothing
 	 * when severity is "none" (SC-004 baseline).

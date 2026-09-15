@@ -10,7 +10,7 @@ hébergées sur Proxmox VE, sans passer par l'interface Proxmox.
 2. **Retrouvez vos VM** sur la page Mes VM ; recherchez par nom, VMID ou tag.
 3. **Créez une VM** avec le bouton « Créer une VM », puis renseignez les paramètres.
 4. **Ouvrez la console** une fois la VM créée et démarrée, via le client noVNC ou série intégré.
-5. **Gérez vos fichiers cloud-init** et vos **tokens API** depuis leurs pages dédiées.
+5. **Gérez vos fichiers cloud-init** depuis leur page dédiée.
 
 ## Accueil
 
@@ -25,14 +25,14 @@ Ouvrez l'assistant via « Créer une VM » après connexion. Le mode **Simple**
 ne demande que l'essentiel ; le mode **Détaillé** expose toutes les options.
 Configurez :
 
-- **Source** : une image **ISO**, un **template** Proxmox à cloner ou une **image cloud** à importer — tous issus des listes approuvées par l'administrateur. Un clone reste sur le nœud du template ; une image cloud exige les champs cloud-init.
+- **Source** : une image **ISO**, un **template** Proxmox à cloner ou une **image cloud** à importer - tous issus des listes approuvées par l'administrateur. Un clone reste sur le nœud du template ; une image cloud exige les champs cloud-init.
 - **Nom et description** : un nom en minuscules, avec tirets, unique dans votre pool. Un nom clair (`web-prod-01`) rend la liste cherchable et le journal d'activité lisible.
 - **Cluster et nœud** : le nœud est choisi automatiquement (nœud approuvé le moins chargé avec assez de stockage) sauf si vous en choisissez un en mode Détaillé.
 - **Profil (optionnel)** : si votre administrateur a publié des profils matériels, choisissez-en un pour remplir CPU, mémoire et disque.
 - **Ressources** : sockets, cœurs, mémoire et taille de disque. Les valeurs sont bornées par la politique du cluster et votre quota.
 - **Stockage** : un stockage approuvé ; l'assistant vérifie l'espace libre en direct.
 - **Réseau** : une ou plusieurs cartes, chacune avec un bridge et un modèle (VirtIO, E1000, E1000E, RTL8139, VMXNet3). Le pare-feu Proxmox est toujours activé ; votre administrateur peut imposer un VLAN d'isolation.
-- **Firmware** : UEFI (activé par défaut), Secure Boot (désactivé par défaut — nécessaire pour Windows, bloque la plupart des ISO Linux), TPM 2.0 pour les invités qui l'exigent.
+- **Firmware** : UEFI (activé par défaut), Secure Boot (désactivé par défaut - nécessaire pour Windows, bloque la plupart des ISO Linux), TPM 2.0 pour les invités qui l'exigent.
 - **Document cloud-init** : un template administrateur ou l'un de [vos fichiers](/cloud-init). Voir le [guide cloud-init](/docs/cloud-init-howto).
 - **Démarrage** : choisissez si la VM démarre automatiquement après création.
 - **Tags** : à choisir dans la liste curée par l'administrateur.
@@ -62,11 +62,11 @@ La page de détail d'une VM est organisée en onglets.
 ### Vue d'ensemble
 
 - **Démarrer**, **Éteindre** (arrêt propre, agent invité / ACPI), **Redémarrer**, **Arrêter** (coupure forcée), **Réinitialiser**, **Mettre en pause**, **Reprendre**.
-- **Console** — ouvre la console graphique.
-- **Démarrer sur le CD-ROM** une fois — redémarre sur l'ISO montée pour un seul démarrage.
+- **Console** - ouvre la console graphique.
+- **Démarrer sur le CD-ROM** une fois - redémarre sur l'ISO montée pour un seul démarrage.
 - **Renommer** et modifier la **description** (le Markdown est rendu).
-- **Supprimer** — supprime définitivement la VM (boîte de confirmation).
-- **Métriques** — historique CPU, mémoire, disque et réseau sur la dernière heure, le dernier jour ou la dernière semaine.
+- **Supprimer** - supprime définitivement la VM (boîte de confirmation).
+- **Métriques** - historique CPU, mémoire, disque et réseau sur la dernière heure, le dernier jour ou la dernière semaine.
 
 Préférez **Éteindre** à **Arrêter**. Si l'extinction ne fait rien, l'agent
 QEMU manque probablement dans la VM : installez-le, ou utilisez **Arrêter**.
@@ -98,9 +98,9 @@ pour savoir ce qui s'applique et quand.
 
 ### Snapshots
 
-- **Créer** : saisissez un nom (alphanumérique, tirets, underscores, 40 caractères max), une description optionnelle, et choisissez d'inclure ou non l'état de la RAM.
+- **Créer** : saisissez un nom (commence par une lettre, puis lettres, chiffres, tirets ou underscores - 2 à 40 caractères), une description optionnelle, et choisissez d'inclure ou non l'état de la RAM.
 - **Consulter** : nom, description, date de création et présence de la RAM ; l'état courant est marqué.
-- **Restaurer** : ramène la VM à l'état du snapshot. Opération destructive — les changements postérieurs sont perdus.
+- **Restaurer** : ramène la VM à l'état du snapshot. Opération destructive - les changements postérieurs sont perdus.
 - **Supprimer** : retire définitivement un snapshot et libère son stockage.
 
 Votre administrateur peut fixer un nombre maximal de snapshots par VM. Les
@@ -108,14 +108,14 @@ snapshots consomment du stockage : supprimez les anciens devenus inutiles.
 
 ### Activité
 
-Chaque action effectuée sur la VM via PVMSS — qui, quoi, quand.
+Chaque action effectuée sur la VM via PVMSS - qui, quoi, quand.
 
 ## Consoles
 
 La page console propose deux clients :
 
-- **noVNC** — l'affichage graphique, avec les mêmes actions d'alimentation que la page de détail.
-- **Série** — un terminal texte (xterm.js) pour les invités dotés d'un port série ; vous pouvez activer un port série sur une VM qui n'en a pas.
+- **noVNC** - l'affichage graphique, avec les mêmes actions d'alimentation que la page de détail.
+- **Série** - un terminal texte (xterm.js) pour les invités dotés d'un port série ; vous pouvez activer un port série sur une VM qui n'en a pas.
 
 Les deux sont relayés par PVMSS avec un ticket à usage unique ; aucun accès
 direct à Proxmox n'est nécessaire.
@@ -127,11 +127,18 @@ La page [Fichiers cloud-init](/cloud-init) contient vos propres documents
 le sélecteur de création de VM. Chaque VM reçoit sa propre copie à la
 création : modifier un fichier ensuite ne change jamais les VM existantes.
 
-## Tokens API
+## Limites
 
-La page [Tokens API](/profile/tokens) permet de créer des jetons d'accès
-personnels pour scripter l'API PVMSS. Le secret n'est affiché qu'une fois ;
-révoquez un jeton à tout moment.
+Votre administrateur contrôle la plupart des limites par cluster ; PVMSS les
+applique côté serveur avant tout appel à Proxmox.
+
+- **Quota** - nombre maximal de VM par utilisateur.
+- **Gabarit** - plafonds par VM : sockets, cœurs, mémoire, taille de disque, cartes réseau et snapshots.
+- **Nom de VM** - un nom d'hôte en minuscules, 63 caractères maximum, unique dans votre pool.
+- **Description** - 512 caractères maximum.
+- **Actions groupées** - 100 VM maximum par requête.
+- **Fichiers cloud-init** - 20 documents maximum par utilisateur.
+- **Nom de snapshot** - une lettre puis lettres, chiffres, tirets ou underscores, 2 à 40 caractères ; `current` est réservé.
 
 ## Bonnes pratiques
 
@@ -146,6 +153,7 @@ révoquez un jeton à tout moment.
 - Les sauvegardes et la migration à chaud se font dans Proxmox, pas dans PVMSS.
 - Le réseau avancé (règles de pare-feu, SDN) se configure dans Proxmox.
 - Le changement de mot de passe n'est disponible que par l'API pour l'instant.
+- Les tokens API personnels sont désactivés dans cette version ; la page des tokens n'a pas de backend.
 
 ## Sécurité et confidentialité
 

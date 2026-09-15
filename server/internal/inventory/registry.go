@@ -33,7 +33,7 @@ type Registry struct {
 	hasStarted bool
 	// ctx is the parent lifecycle context for every worker goroutine. It is
 	// captured at Start time so that Add-after-Start can derive a child context
-	// for the new worker on the same root — late-added clusters share the
+	// for the new worker on the same root - late-added clusters share the
 	// shutdown signal without callers having to thread the context back in.
 	//nolint:containedctx // one lifecycle context owns all registry workers
 	ctx context.Context

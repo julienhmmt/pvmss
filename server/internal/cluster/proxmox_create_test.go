@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// US6/issue-06: UEFI/TPM test fixtures — repeated Proxmox form values
+// UEFI/TPM test fixtures - repeated Proxmox form values
 // centralized for goconst and readability.
 const (
 	testBIOSOVMF               = "ovmf"
@@ -143,7 +143,7 @@ func assertCPUForm(t *testing.T, form url.Values) {
 // TestProxmox_CreateVM_ImageImportFrom asserts the cloud-image disk form:
 // import-from requires Proxmox's <storage>:0 target syntax (a non-zero size
 // is rejected by check_drive_param), and the source must be a PVE-managed
-// volume of vtype 'import' — passed as a volid, not an absolute path
+// volume of vtype 'import' - passed as a volid, not an absolute path
 // (absolute paths are root@pam-only). Cloud images live in the storage's
 // import/ directory with .qcow2/.raw/.vmdk/.ova extensions.
 func TestProxmox_CreateVM_ImageImportFrom(t *testing.T) {
@@ -183,8 +183,8 @@ func TestProxmox_CreateVM_ImageImportFrom(t *testing.T) {
 		t.Errorf("scsi0 = %q, want %q", gotForm.Get(diskKeySCSI0), wantDisk)
 	}
 
-	// The cloud-init drive is attached in this same create call — ProxMate
-	// and pegaprox both do this, never as a later follow-up — so the seed
+	// The cloud-init drive is attached in this same create call - ProxMate
+	// and pegaprox both do this, never as a later follow-up - so the seed
 	// device exists before the create task even finishes.
 	if got, want := gotForm.Get(cloudInitDiskKey), FakeStorageLocalLVM+":cloudinit"; got != want {
 		t.Errorf("%s = %q, want %q", cloudInitDiskKey, got, want)
@@ -192,7 +192,7 @@ func TestProxmox_CreateVM_ImageImportFrom(t *testing.T) {
 
 	// Network config is applied afterwards through SetCloudInitConfig, not
 	// at create time (the REST API cannot write a snippet file, so native
-	// keys are the only per-VM cloud-init delivery mechanism) — no ipconfig0
+	// keys are the only per-VM cloud-init delivery mechanism) - no ipconfig0
 	// form key at create time.
 	if gotForm.Get("ipconfig0") != "" {
 		t.Errorf("ipconfig0 = %q, want unset at create time", gotForm.Get("ipconfig0"))
@@ -294,7 +294,7 @@ func TestProxmoxUPIDNode(t *testing.T) {
 
 // TestProxmox_CreateVM_SocketsAndMultiNIC asserts that sockets=2 produces
 // sockets=2 in the Proxmox form, and that two NICs produce net0 and net1
-// (US2/D3a, D3b — T037/T038 form-level assertions).
+// (form-level assertions).
 func TestProxmox_CreateVM_SocketsAndMultiNIC(t *testing.T) {
 	t.Parallel()
 
@@ -345,7 +345,7 @@ func TestProxmox_CreateVM_SocketsAndMultiNIC(t *testing.T) {
 	}
 }
 
-// TestProxmox_CreateVM_DiskDefaults asserts the US6/issue-06 D6a disk
+// TestProxmox_CreateVM_DiskDefaults asserts the disk
 // defaults: discard=on always, iothread=1 only on SCSI bus.
 func TestProxmox_CreateVM_DiskDefaults(t *testing.T) {
 	t.Parallel()
@@ -423,7 +423,7 @@ func assertDiskDefaultsForm(t *testing.T, form url.Values, bus, wantDisk, wantSC
 	}
 }
 
-// TestProxmox_CreateVM_UEFI asserts the US6/issue-06 UEFI/TPM emission:
+// TestProxmox_CreateVM_UEFI asserts the UEFI/TPM emission:
 // bios=ovmf forces machine=q35, provisions efidisk0, and tpmstate0 when TPM
 // is set. EFI/TPM storage falls back to the disk's storage.
 func TestProxmox_CreateVM_UEFI(t *testing.T) {
@@ -591,7 +591,7 @@ func TestProxmox_CreateVM_NoUEFI(t *testing.T) {
 	}
 }
 
-// TestProxmox_CreateVM_AgentOSTypeBoot asserts the issue-03 form keys:
+// TestProxmox_CreateVM_AgentOSTypeBoot asserts the form keys:
 // agent=1 and ostype=l26 are always present, and boot=order= is built only
 // from the devices the spec actually created (disk bus + ISO cdrom key).
 func TestProxmox_CreateVM_AgentOSTypeBoot(t *testing.T) {
@@ -640,7 +640,7 @@ func TestProxmox_CreateVM_AgentOSTypeBoot(t *testing.T) {
 	}
 }
 
-// assertAgentOSTypeBootForm checks the issue-03 form keys (agent=1,
+// assertAgentOSTypeBootForm checks the form keys (agent=1,
 // ostype=l26, boot=order=...). Extracted from TestProxmox_CreateVM_AgentOSTypeBoot
 // to keep its cognitive complexity under go:S3776's ceiling.
 func assertAgentOSTypeBootForm(t *testing.T, form url.Values, wantBoot string) {
@@ -660,7 +660,7 @@ func assertAgentOSTypeBootForm(t *testing.T, form url.Values, wantBoot string) {
 }
 
 // captureCreateVMForm runs CreateVM with a form-capturing test server and
-// returns the submitted form. Shared by the issue-03 boot-order test cases.
+// returns the submitted form. Shared by the boot-order test cases.
 func captureCreateVMForm(t *testing.T, disk DiskSpec, iso *ISOSpec) url.Values {
 	t.Helper()
 

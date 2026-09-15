@@ -34,14 +34,14 @@ type AdminProfile struct {
 }
 
 // DeriveProfileID converts a label to a lowercase hyphenated slug matching
-// T06's own small/medium/large style (e.g. "X-Large (8 vCPU, 16 GB, 160 GB)"
+// the small/medium/large style (e.g. "X-Large (8 vCPU, 16 GB, 160 GB)"
 // → "x-large-8-vcpu-16-gb-160-gb"). The slug is the profile's permanent id.
 func DeriveProfileID(label string) string {
 	return cloudinit.Slugify(label, "profile")
 }
 
 // validateProfileFields checks that cpuCores, memoryMB, diskGB are positive and
-// bus is non-empty — the minimum the admin UI requires (FR-009).
+// bus is non-empty - the minimum the admin UI requires.
 func validateProfileFields(cpuCores, memoryMB, diskGB int, bus string) error {
 	if cpuCores < 1 {
 		return fmt.Errorf("%w: cpuCores must be >= 1", ErrInvalidProfile)
@@ -63,7 +63,7 @@ func validateProfileFields(cpuCores, memoryMB, diskGB int, bus string) error {
 }
 
 // ListAdminProfiles returns every profile for the cluster (including disabled
-// ones), ordered by id — the admin list endpoint's data source.
+// ones), ordered by id - the admin list endpoint's data source.
 func ListAdminProfiles(ctx context.Context, st *store.Store, cluster string) ([]AdminProfile, error) {
 	rows, err := st.CatalogProfilesEnabled(ctx, cluster)
 	if err != nil {
@@ -84,7 +84,7 @@ func ListAdminProfiles(ctx context.Context, st *store.Store, cluster string) ([]
 // ProfileSpec is the editable field set of a VM profile, shared by
 // CreateProfile and UpdateProfile. Grouping it collapses the positional
 // field parameters those functions used to take (SonarQube go:S107).
-// Sockets defaults to 1 when zero — the admin UI does not yet expose it.
+// Sockets defaults to 1 when zero - the admin UI does not yet expose it.
 type ProfileSpec struct {
 	Label    string
 	Sockets  int
@@ -95,8 +95,8 @@ type ProfileSpec struct {
 }
 
 // CreateProfile derives a slug from the label, validates the fields, rejects
-// slug collisions with ErrDuplicateProfile (409), and inserts the new row
-// (FR-009). The new profile is enabled by default.
+// slug collisions with ErrDuplicateProfile (409), and inserts the new row.
+// The new profile is enabled by default.
 func CreateProfile(ctx context.Context, st *store.Store, cluster string, spec ProfileSpec) (AdminProfile, error) {
 	label := strings.TrimSpace(spec.Label)
 	if label == "" {
@@ -180,8 +180,8 @@ func UpdateProfile(ctx context.Context, st *store.Store, cluster, id string, spe
 }
 
 // DeleteProfile removes a profile row. Returns ErrProfileNotFound if the id
-// does not exist. Has no cascade — T06 never stores a profile reference on
-// the VM itself (FR-011).
+// does not exist. Has no cascade - never stores a profile reference on
+// the VM itself.
 func DeleteProfile(ctx context.Context, st *store.Store, cluster, id string) error {
 	exists, err := st.ProfileExists(ctx, cluster, id)
 	if err != nil {

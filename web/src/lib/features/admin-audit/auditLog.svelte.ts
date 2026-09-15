@@ -37,7 +37,7 @@ export interface AuditFilter {
 
 /**
  * AuditLogStore manages the admin audit log view: filter state and the
- * paginated result set. API responses are $state.raw — they are API data,
+ * paginated result set. API responses are $state.raw - they are API data,
  * not form edits (constitution VII). One store instance per admin settings
  * page, via context.
  */

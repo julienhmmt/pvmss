@@ -11,11 +11,11 @@ export interface TrackedTask {
 	vmid: number;
 	name: string;
 	/** Cluster that ran the task. UPIDs don't embed cluster identity, so the
-	 *  poll must carry the cluster explicitly via ?cluster= — otherwise a
+	 *  poll must carry the cluster explicitly via ?cluster= - otherwise a
 	 *  non-default-cluster task is polled against the wrong cluster's client. */
 	cluster: string;
 	/** Epoch ms by which the task should reach a terminal state. Past this
-	 *  deadline the tray stops following it with an informational toast —
+	 *  deadline the tray stops following it with an informational toast - 
 	 *  the task may still be running (or have finished) server-side. */
 	deadline: number;
 }
@@ -26,7 +26,7 @@ export interface TaskStatusResponse {
 	log: string[];
 	exitMessage?: string;
 	/** Present when state === 'ok' and the Proxmox task finished with
-	 *  "WARNINGS: N" — an attribute of success, not a separate state
+	 *  "WARNINGS: N" - an attribute of success, not a separate state
 	 *  (invariant: non-empty ⇒ state === 'ok'). */
 	warnings?: string;
 }
@@ -63,20 +63,20 @@ export class TaskTrayStore {
 
 	#timer: ReturnType<typeof setInterval> | null = null;
 	#okListeners: (() => void)[] = [];
-	/** Fired when a tracked task ends in `error` — the VM list / shell uses
+	/** Fired when a tracked task ends in `error` - the VM list / shell uses
 	 *  it to record a `failed` outcome in the session ledger (issue 09). */
 	#errorListeners: ((task: TrackedTask) => void)[] = [];
-	/** Per-task consecutive non-404 poll error count — reset on any successful
+	/** Per-task consecutive non-404 poll error count - reset on any successful
 	 *  poll, and on finish. */
 	#consecutiveErrors = new SvelteMap<string, number>();
-	/** Guards against overlapping poll cycles — a slow task (real VM creates
+	/** Guards against overlapping poll cycles - a slow task (real VM creates
 	 *  can take longer than POLL_INTERVAL_MS) must not let two intervals
 	 *  race and finish the same task twice, which used to fire a duplicate
 	 *  toast per overlap. */
 	#polling = false;
 
 	/** Registers a listener fired when any tracked task completes
-	 *  successfully — the VM list uses it to pick up creations without a
+	 *  successfully - the VM list uses it to pick up creations without a
 	 *  manual reload (US1 scenario 3, FR-018's client half). */
 	onTaskOk(listener: () => void): () => void {
 		this.#okListeners.push(listener);
@@ -85,7 +85,7 @@ export class TaskTrayStore {
 		};
 	}
 
-	/** Registers a listener fired when a tracked task ends in `error` —
+	/** Registers a listener fired when a tracked task ends in `error` - 
 	 *  the shell uses it to record a `failed` outcome in the session ledger
 	 *  (issue 09). The task is removed from the tray immediately after. */
 	onTaskError(listener: (task: TrackedTask) => void): () => void {
@@ -112,7 +112,7 @@ export class TaskTrayStore {
 		this.toast = toast;
 	}
 
-	/** Stops polling — called by the shell when it unmounts. */
+	/** Stops polling - called by the shell when it unmounts. */
 	destroy(): void {
 		this.#stopPolling();
 	}
@@ -145,7 +145,7 @@ export class TaskTrayStore {
 	}
 
 	async #pollOne(task: TrackedTask): Promise<void> {
-		// Deadline reached with the task still running — stop following it.
+		// Deadline reached with the task still running - stop following it.
 		// Informational, not a failure: the task may still succeed server-side.
 		if (Date.now() > task.deadline) {
 			this.#finish(task, { kind: 'info', message: m['task.takingTooLong']() });
@@ -161,14 +161,14 @@ export class TaskTrayStore {
 			if (status.state === 'ok') await refreshInventory();
 			this.#finish(task, taskToast(task, status));
 		} catch (error: unknown) {
-			// A 404 means the task is unknown/expired server-side — stop
+			// A 404 means the task is unknown/expired server-side - stop
 			// tracking it rather than polling forever (edge case: the tray is
 			// tab-local anyway, V11).
 			if (error instanceof ApiRequestError && error.status === 404) {
 				this.#finish(task, { kind: 'error', message: m['task.taskNoLongerKnown']({ name: task.name }) });
 				return;
 			}
-			// A 401 means the session expired — leave the polling loop
+			// A 401 means the session expired - leave the polling loop
 			// immediately instead of waiting for MAX_CONSECUTIVE_ERRORS.
 			if (error instanceof ApiRequestError && error.status === 401) {
 				this.#stopPolling();
@@ -201,7 +201,7 @@ export class TaskTrayStore {
 	}
 }
 
-/** Forces the inventory cache to catch up before the list reloads (FR-018) —
+/** Forces the inventory cache to catch up before the list reloads (FR-018) - 
  *  otherwise the periodic background refresh (PVMSS_INVENTORY_REFRESH_INTERVAL,
  *  default 30s) can leave a just-created VM missing from /api/v1/vms for up
  *  to 30s after its task reports "ok". Best-effort: a throttled 429 just
@@ -210,7 +210,7 @@ async function refreshInventory(): Promise<void> {
 	try {
 		await post('/api/v1/cluster/refresh');
 	} catch {
-		// Best-effort — listeners still reload from whatever cache state exists.
+		// Best-effort - listeners still reload from whatever cache state exists.
 	}
 }
 
@@ -223,7 +223,7 @@ function taskToast(task: TrackedTask, status: TaskStatusResponse): TaskToast {
 	};
 	const label = labels[task.kind];
 	if (status.state === 'ok') {
-		// Proxmox ended the task with "WARNINGS: N" — still a success, but
+		// Proxmox ended the task with "WARNINGS: N" - still a success, but
 		// distinct from a clean one so the tray doesn't swallow the signal.
 		if (status.warnings) {
 			return { kind: 'success', message: m['task.finishedWithWarnings']({ name: task.name }) };

@@ -11,10 +11,10 @@
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
 
 	/**
-	 * HomeCapabilities — combined product feature + capability grid, the pitch
+	 * HomeCapabilities - combined product feature + capability grid, the pitch
 	 * for someone deciding whether to use PVMSS. Anonymous-only, matching
 	 * HomeHowItWorks: an authenticated user already uses the product and has
-	 * their own VMs, quota, and running tasks to look at instead — the same
+	 * their own VMs, quota, and running tasks to look at instead - the same
 	 * content stays reachable any time via /about. The first 3 cards are the
 	 * high-level feature highlights; the next 5 are the unique capability
 	 * cards; the 9th is the admin section preview. The duplicate

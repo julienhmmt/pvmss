@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * SidebarIcon — small 24×24 stroke icon used in the application sidebar.
+	 * SidebarIcon - small 24×24 stroke icon used in the application sidebar.
 	 * Each path is a single-color outline so the parent text color is inherited.
 	 */
 	import { type SidebarIconName } from './admin-nav-items.svelte';

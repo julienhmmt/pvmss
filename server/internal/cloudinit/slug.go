@@ -10,7 +10,7 @@ var slugRe = regexp.MustCompile(`[^a-z0-9]+`)
 
 // Slugify converts a label to a lowercase hyphenated slug (e.g. "Web server"
 // → "web-server"), falling back when nothing alphanumeric remains. Shared by
-// catalog id derivation and user cloud-init file ids — it lives here, not in
+// catalog id derivation and user cloud-init file ids - it lives here, not in
 // catalog, because catalog already imports cloudinit (cloudinit → catalog
 // would be a cycle).
 func Slugify(label, fallback string) string {

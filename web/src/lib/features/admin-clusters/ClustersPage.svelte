@@ -1,10 +1,11 @@
 <script lang="ts">
 	import ClusterFormDialog from './ClusterFormDialog.svelte';
-	import type { AdminCluster, AdminClustersStore, ClusterInput } from './clusters.svelte';
+	import type { AdminCluster, AdminClustersStore, ClusterInput, SnippetStorage } from './clusters.svelte';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
+	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -12,17 +13,31 @@
 	}
 
 	let { store }: Props = $props();
+	const toast = getToastContext();
 	let formOpen = $state(false);
 	let editing = $state<AdminCluster | null>(null);
+	let snippetStorages = $state<SnippetStorage[]>([]);
+	let snippetStoragesLoading = $state(false);
 
-	function addCluster(): void {
-		editing = null;
-		formOpen = true;
-	}
-
-	function editCluster(cluster: AdminCluster): void {
+	async function openForm(cluster: AdminCluster | null): Promise<void> {
 		editing = cluster;
 		formOpen = true;
+		snippetStorages = [];
+		snippetStoragesLoading = true;
+		try {
+			const name = cluster?.name ?? '';
+			// For a new cluster (no name yet), fall back to the first existing
+			// cluster so the picker is populated; the admin can still type a
+			// custom value if needed.
+			const target = name || store.clusters[0]?.name || '';
+			if (target) {
+				snippetStorages = await store.loadSnippetStorages(target);
+			}
+		} catch {
+			// Non-fatal: the picker falls back to free text.
+		} finally {
+			snippetStoragesLoading = false;
+		}
 	}
 
 	function statusLabel(status: AdminCluster['lastTestStatus']): string {
@@ -74,15 +89,23 @@
 						snippetStorage: input.snippetStorage
 					});
 		// Failure leaves the dialog open with store.error rendered inline
-		// (ClusterFormDialog's error prop) — closing unconditionally here hid
+		// (ClusterFormDialog's error prop) - closing unconditionally here hid
 		// create/update failures behind an easy-to-miss page-top banner.
-		if (succeeded) formOpen = false;
+		if (succeeded) {
+			formOpen = false;
+			// Remind the admin that multi-node clusters need shared snippet
+			// storage - a snippet on node-local storage is invisible to the
+			// other nodes after a migration.
+			if (input.snippetStorage) {
+				toast.info(m['admin.clusters.cloudinitSharedStorageToast'](), 8000);
+			}
+		}
 	}
 </script>
 
 <PageHeader title={m['admin.clusters.heading']()} description={m['admin.clusters.description']()}>
 	{#snippet actions()}
-		<Button onclick={addCluster}>{m['admin.clusters.addCluster']()}</Button>
+		<Button onclick={() => void openForm(null)}>{m['admin.clusters.addCluster']()}</Button>
 	{/snippet}
 </PageHeader>
 
@@ -115,7 +138,7 @@
 								<div class="font-medium">{cluster.name}</div>
 								<div class="max-w-xs truncate text-xs text-muted-foreground" title={cluster.url}>{cluster.url}</div>
 							</td>
-							<td class="text-muted-foreground">{cluster.displayName || '—'}</td>
+							<td class="text-muted-foreground">{cluster.displayName || ' - '}</td>
 							<td>
 								<span class="rounded-full px-2 py-1 text-xs {statusClass(cluster.lastTestStatus)}">{statusLabel(cluster.lastTestStatus)}</span>
 								{#if cluster.lastTestMessage}
@@ -124,14 +147,14 @@
 									<div class="mt-1 text-xs text-muted-foreground">{statusHint(cluster.lastTestStatus)}</div>
 								{/if}
 							</td>
-							<td class="text-muted-foreground">{cluster.proxmoxVersion ?? '—'}</td>
+							<td class="text-muted-foreground">{cluster.proxmoxVersion ?? ' - '}</td>
 							<td>{cluster.nodeCount} / {cluster.vmCount}</td>
 							<td>{cluster.oidcEnabled ? m['common.enabled']() : m['common.off']()}</td>
 							<td class="text-muted-foreground">{cluster.cloudInitWriteEnabled ? m['admin.clusters.cloudinitOn']() : m['admin.clusters.cloudinitOff']()}</td>
 							<td>
 								<div class="flex flex-wrap gap-2">
 									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.testLabel']({ name: cluster.name })} onclick={() => void store.test(cluster.name)}>{m['admin.clusters.test']()}</Button>
-									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.editLabel']({ name: cluster.name })} onclick={() => editCluster(cluster)}>{m['common.edit']()}</Button>
+									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.editLabel']({ name: cluster.name })} onclick={() => void openForm(cluster)}>{m['common.edit']()}</Button>
 									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={cluster.oidcEnabled ? m['admin.clusters.disableOidcLabel']({ name: cluster.name }) : m['admin.clusters.enableOidcLabel']({ name: cluster.name })} onclick={() => void store.toggleOIDC(cluster.name, !cluster.oidcEnabled)}>{cluster.oidcEnabled ? m['admin.clusters.disableOidc']() : m['admin.clusters.enableOidc']()}</Button>
 									<Button variant="destructive" size="sm" disabled={store.busy !== null} label={m['admin.clusters.removeLabel']({ name: cluster.name })} onclick={() => void store.remove(cluster.name)}>{m['admin.clusters.remove']()}</Button>
 								</div>
@@ -149,6 +172,8 @@
 	{editing}
 	saving={store.busy === 'create' || store.busy === `update:${editing?.name}`}
 	error={store.error}
+	{snippetStorages}
+	{snippetStoragesLoading}
 	onClose={() => (formOpen = false)}
 	onSubmit={saveCluster}
 />

@@ -40,14 +40,14 @@ const (
 	// Timeout strategy (defence in depth):
 	//
 	// 1. Server-level (here): readHeader, read, write, idle bound every
-	//    request. The write timeout is the outer ceiling for any handler,
-	//    including cluster calls.
+	// request. The write timeout is the outer ceiling for any handler,
+	// including cluster calls.
 	// 2. Handler-level: every handler that calls the cluster client passes
-	//    r.Context(), so cluster operations inherit the server's write
-	//    deadline and are cancelled when it fires.
+	// r.Context(), so cluster operations inherit the server's write
+	// deadline and are cancelled when it fires.
 	// 3. Worker-level: inventory refreshCycle wraps its cluster call in
-	//    context.WithTimeout(ctx, cfg.InventoryRefreshTimeout) so a hung
-	//    upstream cannot hold the singleflight lock indefinitely.
+	// context.WithTimeout(ctx, cfg.InventoryRefreshTimeout) so a hung
+	// upstream cannot hold the singleflight lock indefinitely.
 	//
 	// Note: InventoryRefreshTimeout (default 15s) can exceed writeTimeout
 	// (10s). With the fake cluster this is harmless (calls are instant).
@@ -56,7 +56,7 @@ const (
 	// asynchronous (202 Accepted + background refresh).
 
 	// appVersion is the version string surfaced in the dashboard, the admin
-	// app info page, and the public /api/v1/public/version endpoint (T14).
+	// app info page, and the public /api/v1/public/version endpoint.
 	// It is a compile-time literal; no runtime discovery is performed.
 	appVersion = "0.4.0-dev"
 
@@ -106,13 +106,13 @@ func run() int {
 		return 1
 	}
 
-	// Start every worker before the HTTP server accepts traffic (T015) so the
+	// Start every worker before the HTTP server accepts traffic so the
 	// projections are populated before the first request can arrive.
 	inventoryCtx, cancelInventory := context.WithCancel(context.Background())
 	defer cancelInventory()
 	inventoryRegistry.Start(inventoryCtx)
 
-	// Daily audit prune tick (issue #02): deletes audit_log rows older than
+	// Daily audit prune tick: deletes audit_log rows older than
 	// the configured retention. Runs in its own goroutine so it does not
 	// couple to the inventory worker's refresh cycle. A prune runs once at
 	// startup, then every 24h.
@@ -132,7 +132,7 @@ func run() int {
 
 	// Discover cluster display names in the background so a down cluster
 	// cannot block startup. DisplayName calls a GET (retried 3× with a 20s
-	// client timeout) — a dead cluster would hang the server for up to 60s
+	// client timeout) - a dead cluster would hang the server for up to 60s
 	// per cluster before it ever started listening. The 5s per-cluster cap
 	// bounds the worst case; a successful discovery updates the row and the
 	// sidebar picks it up on the next /me or page load.
@@ -162,7 +162,7 @@ func loadConfig(stderr *slog.Logger) (config.Configuration, *slog.Logger, io.Clo
 }
 
 // openStore opens the SQLite database, runs migrations, and seeds built-in
-// documentation pages (issue #53 — idempotent: only inserts missing rows).
+// documentation pages (idempotent: only inserts missing rows).
 func openStore(cfg config.Configuration, logger *slog.Logger) (*store.Store, error) {
 	st, err := store.Open(cfg)
 	if err != nil {
@@ -191,7 +191,15 @@ func initCluster(cfg config.Configuration, st *store.Store, logger *slog.Logger)
 		logger.Error("failed to list configured clusters", "component", "main", "error", err)
 		return nil, nil, err
 	}
-	clusterRegistry, err := cluster.NewRegistry(cfg.ClusterSource, rows)
+	ssh, err := cluster.NewSnippetSSH(cfg.SSHUser, cfg.SSHKeyFile, cfg.SSHPort)
+	if err != nil {
+		logger.Error("failed to load SSH snippet config", "component", "main", "error", err)
+		return nil, nil, err
+	}
+	if ssh.Enabled() {
+		logger.Info("SSH snippet delivery enabled", "component", "cluster", "user", cfg.SSHUser, "port", cfg.SSHPort)
+	}
+	clusterRegistry, err := cluster.NewRegistryWithSSH(cfg.ClusterSource, rows, ssh)
 	if err != nil {
 		logger.Error("failed to create cluster registry", "component", "main", "error", err)
 		return nil, nil, err
@@ -221,7 +229,7 @@ const displayNameDiscoveryTimeout = 5 * time.Second
 // clusters that don't already have one by calling Client.DisplayName() (the
 // real Proxmox cluster name from /cluster/status). Fake clusters are skipped:
 // their DisplayName() implementation just returns the internal logical name
-// ("default", "secondary"), which is the opposite of a human-readable label —
+// ("default", "secondary"), which is the opposite of a human-readable label -
 // the fake seed already sets meaningful display names.
 //
 // Runs in a background goroutine launched after the HTTP server starts
@@ -263,7 +271,7 @@ func discoverClusterDisplayNames(ctx context.Context, registry *cluster.Registry
 
 // initInventory builds the inventory registry and resolves the first
 // cluster's projection, worker, and refresher. Each active cluster gets an
-// independent projection and refresh worker (FR-002, AC03 §2.4).
+// independent projection and refresh worker.
 func initInventory(cfg config.Configuration, clusterRegistry *cluster.Registry, logger *slog.Logger) (*inventory.Registry, *inventory.Projection, *inventory.Worker, *inventory.Refresher, error) {
 	inventoryRegistry := inventory.NewRegistry(
 		clusterRegistry,
@@ -394,10 +402,10 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	// Every *WithRegistry constructor below resolves its cluster.Client and
 	// inventory.Index per request from the request's own :cluster value via
 	// clusterRegistry/inventoryRegistry, instead of the single clusterClient
-	// resolved above — a request scoped to a non-default cluster must never
+	// resolved above - a request scoped to a non-default cluster must never
 	// be served from another cluster's client (cross-tenant data leak when
 	// node names or vmids collide between clusters).
-	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: clients.writer, Clients: clusterRegistry, Store: st, Refresher: worker, StatusReader: clients.statusReader, Log: logger}, policyService)
+	vmDetail := httpapi.NewVMDetailWithRegistry(httpapi.VMDetailDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: clients.writer, Clients: clusterRegistry, Store: st, Refresher: worker, StatusReader: clients.statusReader, GuestNetReader: clients.guestNetReader, Log: logger}, policyService)
 	vmBulk := httpapi.NewVMBulkWithRegistry(httpapi.VMBulkRegistryDeps{Registry: inventoryRegistry, Projection: projection, Auth: authHandler, Writer: clients.writer, Store: st, Refresher: worker, Log: logger, Clients: clusterRegistry})
 	vmStatusBatch := httpapi.NewVMStatusBatch(httpapi.VMStatusBatchDeps{Source: inventoryRegistry, Auth: authHandler, StatusReader: clients.statusReader, Clients: clusterRegistry, Log: logger})
 	vmCloudInit := httpapi.NewVMCloudInit(httpapi.VMCloudInitDeps{Source: inventoryRegistry, Projection: projection, Auth: authHandler, Reader: clients.cloudInitReader, Writer: clients.writer, StatusReader: clients.statusReader, Clients: clusterRegistry, Store: st, Refresher: worker, Log: logger}, policyService)
@@ -427,6 +435,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	adminOps.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, clusterRegistry, inventoryRegistry, logger)
 	adminClusters.SetTrustedProxyHops(cfg.TrustedProxyHops)
+	adminBaseline := httpapi.NewAdminBaseline(authHandler, clusterRegistry, st, logger)
 	docsHandler := httpapi.NewDocsAPIHandler(authHandler, st, logger)
 	adminDocs := httpapi.NewAdminDocs(authHandler, st, docsHandler, logger)
 	cloudInitFiles := httpapi.NewCloudInitFiles(authHandler, st, logger)
@@ -462,6 +471,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		AdminClusters:    adminClusters,
 		Docs:             docsHandler,
 		AdminDocs:        adminDocs,
+		AdminBaseline:    adminBaseline,
 		TrustedProxyHops: cfg.TrustedProxyHops,
 	}), nil
 }
@@ -479,12 +489,13 @@ type clusterClientInterfaces struct {
 	metricsReader        cluster.MetricsHistoryReader
 	metricsCurrentReader cluster.MetricsCurrentReader
 	statusReader         cluster.VMStatusReader
+	guestNetReader       cluster.GuestNetworkReader
 }
 
 // resolveClusterClientInterfaces asserts that the cluster client implements
 // every capability interface the router needs. Both cluster.Client
-// implementations (Fake, Proxmox) satisfy all of them — reads and writes are
-// separated by interface (constitution IV), not by implementation.
+// implementations (Fake, Proxmox) satisfy all of them - reads and writes are
+// separated by interface, not by implementation.
 func resolveClusterClientInterfaces(clusterClient cluster.Client) (clusterClientInterfaces, error) {
 	var c clusterClientInterfaces
 	var ok bool
@@ -518,6 +529,9 @@ func resolveClusterClientInterfaces(clusterClient cluster.Client) (clusterClient
 	}
 	if c.statusReader, ok = clusterClient.(cluster.VMStatusReader); !ok {
 		return c, errors.New("cluster client does not implement VMStatusReader")
+	}
+	if c.guestNetReader, ok = clusterClient.(cluster.GuestNetworkReader); !ok {
+		return c, errors.New("cluster client does not implement GuestNetworkReader")
 	}
 
 	return c, nil
@@ -565,8 +579,8 @@ func validateWebBuildDir(path string) error {
 
 // inventoryFreshness adapts inventory.Registry to httpapi.ClusterFreshnessChecker.
 // It reads each cluster's Index.RefreshedAt (already maintained by the refresh
-// goroutines) and the demoMode flag — zero cluster.Client calls from the health
-// handler (constitution IV, FR-010).
+// goroutines) and the demoMode flag - zero cluster.Client calls from the health
+// handler.
 type inventoryFreshness struct {
 	registry *inventory.Registry
 	demoMode bool
@@ -595,7 +609,7 @@ const auditPruneInterval = 24 * time.Hour
 // runAuditPrune deletes audit_log rows older than the configured retention,
 // once at startup then every auditPruneInterval. It logs the deleted count at
 // info level so retention activity is visible in aggregated logs. A prune
-// failure is logged but never stops the tick — the next tick retries.
+// failure is logged but never stops the tick - the next tick retries.
 func runAuditPrune(ctx context.Context, st *store.Store, log *slog.Logger) {
 	prune := func() {
 		cfg, err := st.GetAuditConfig(ctx)

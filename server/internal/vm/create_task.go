@@ -17,17 +17,17 @@ var CreateTaskPoll = 2 * time.Second
 var MaxCreateTaskWait = 10 * time.Minute
 
 // WaitCreateTask polls upid until the cluster reports it finished. It mirrors
-// the poll-then-timeout shape of deleteWithRetry in actions.go (lifecycle-04).
+// the poll-then-timeout shape of deleteWithRetry in actions.go.
 //
 // Semantics:
-//   - TaskOK → nil
-//   - TaskError → error carrying ExitMessage and the last log lines (a bare
-//     "create task failed" without the log is inexplicable in support)
-//   - TaskRunning → retry at the next tick
-//   - a transient read error → do not abort, retry (fail-soft, matching
-//     proxmoxTaskLog's best-effort log fetch)
-//   - MaxCreateTaskWait exceeded → explicit "create task timed out" error
-//   - ctx.Done() → ctx.Err()
+// - TaskOK → nil
+// - TaskError → error carrying ExitMessage and the last log lines (a bare
+// "create task failed" without the log is inexplicable in support)
+// - TaskRunning → retry at the next tick
+// - a transient read error → do not abort, retry (fail-soft, matching
+// proxmoxTaskLog's best-effort log fetch)
+// - MaxCreateTaskWait exceeded → explicit "create task timed out" error
+// - ctx.Done() → ctx.Err()
 func WaitCreateTask(ctx context.Context, creator cluster.Creator, upid string) error {
 	deadline := time.Now().Add(MaxCreateTaskWait)
 
@@ -35,7 +35,7 @@ func WaitCreateTask(ctx context.Context, creator cluster.Creator, upid string) e
 		status, err := creator.TaskStatus(ctx, upid)
 		if err != nil {
 			// A transient read error (network blip, 5xx) must not abort the
-			// wait — the task is still running on the cluster. Only ctx
+			// wait - the task is still running on the cluster. Only ctx
 			// cancellation propagates.
 			if ctxErr := ctx.Err(); ctxErr != nil {
 				return ctxErr
@@ -52,7 +52,7 @@ func WaitCreateTask(ctx context.Context, creator cluster.Creator, upid string) e
 		case cluster.TaskError:
 			return fmt.Errorf("create task failed: %s%s", status.ExitMessage, tailLog(status.Log))
 		case cluster.TaskRunning:
-			// Still running — fall through to the deadline check below.
+			// Still running - fall through to the deadline check below.
 		}
 
 		if time.Now().After(deadline) {
@@ -67,7 +67,7 @@ func WaitCreateTask(ctx context.Context, creator cluster.Creator, upid string) e
 	}
 }
 
-// waitCreateTask is the internal alias (lifecycle-04).
+// waitCreateTask is the internal alias.
 func waitCreateTask(ctx context.Context, creator cluster.Creator, upid string) error {
 	return WaitCreateTask(ctx, creator, upid)
 }

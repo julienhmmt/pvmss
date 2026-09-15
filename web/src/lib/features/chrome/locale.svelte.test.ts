@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LOCALE_STORAGE_KEY, LocaleState } from './locale.svelte';
 
-// T006 (US1): LocaleState — init defaults to "fr" when localStorage is empty
+// T006 (US1): LocaleState - init defaults to "fr" when localStorage is empty
 // or holds an unrecognized value; set() persists and calls Paraglide setLocale;
 // apply() sets document.documentElement.lang. Tested without a DOM beyond
 // happy-dom's document/localStorage.

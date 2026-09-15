@@ -79,7 +79,7 @@ func NewVMCloudInit(deps VMCloudInitDeps, services ...*policy.Policy) *VMCloudIn
 
 // statusReaderFor resolves the cluster.VMStatusReader for clusterName, falling
 // back to the single-cluster reader when per-cluster resolution is
-// unavailable — the same fallback rule VMStatusBatch applies.
+// unavailable - the same fallback rule VMStatusBatch applies.
 func (h *VMCloudInit) statusReaderFor(clusterName string) cluster.VMStatusReader {
 	if h.clients == nil {
 		return h.statusReader
@@ -122,7 +122,7 @@ func (h *VMCloudInit) writerFor(w http.ResponseWriter, clusterName string) (clus
 }
 
 // refresherFor resolves the vm.IndexRefresher for clusterName. A missing
-// refresher must not fail a write already applied on the cluster — so it
+// refresher must not fail a write already applied on the cluster - so it
 // never writes an HTTP error. When the per-cluster resolver is unset
 // (single-cluster mode) or the cluster is unknown, it returns the fallback
 // refresher and logs a warning. The result is never nil when the fallback
@@ -191,13 +191,15 @@ type cloudInitSSHKeyResponse struct {
 	Status string `json:"status"`
 }
 
-// ServeHTTP dispatches config, snippet, and ssh-key routes by path suffix.
+// ServeHTTP dispatches config, snippet, ssh-key, and console-password routes by path suffix.
 func (h *VMCloudInit) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case strings.HasSuffix(r.URL.Path, "/cloudinit/snippet"):
 		h.handleSnippet(w, r)
 	case strings.HasSuffix(r.URL.Path, "/cloudinit/ssh-keys"):
 		h.handleSSHKey(w, r)
+	case strings.HasSuffix(r.URL.Path, "/console-password"):
+		h.handleConsolePassword(w, r)
 	default:
 		h.handleConfig(w, r)
 	}
@@ -363,6 +365,61 @@ func (h *VMCloudInit) handleSSHKey(w http.ResponseWriter, r *http.Request) {
 	h.writeJSONStatus(w, http.StatusOK, cloudInitSSHKeyResponse{Status: "injected"})
 }
 
+// consolePasswordResponse carries the generated password once for display.
+// The password is not persisted, not logged, and not recorded in the audit
+// trail.
+type consolePasswordResponse struct {
+	Password string `json:"password"`
+}
+
+func (h *VMCloudInit) handleConsolePassword(w http.ResponseWriter, r *http.Request) {
+	clusterName, vmid, ok := parseCloudInitPath(r)
+	if !ok {
+		h.writeError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
+		return
+	}
+
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", "POST")
+		h.writeError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
+
+		return
+	}
+
+	identity, err := h.auth.Principal(r)
+	if err != nil {
+		h.writeError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
+		return
+	}
+
+	index, ok := h.index(w, clusterName)
+	if !ok {
+		return
+	}
+
+	reader, ok := h.readerFor(w, clusterName)
+	if !ok {
+		return
+	}
+
+	writer, ok := h.writerFor(w, clusterName)
+	if !ok {
+		return
+	}
+
+	password, err := vm.SetConsolePassword(r.Context(), vm.ConsolePasswordDeps{
+		Index: index, Actor: identity, ClusterName: clusterName, VMID: vmid,
+		Reader: reader, Writer: writer, Audit: h.store, Refresher: h.refresherFor(clusterName),
+		StatusReader: h.statusReaderFor(clusterName),
+	})
+	if err != nil {
+		h.writeDomainError(w, err)
+		return
+	}
+
+	h.writeJSONStatus(w, http.StatusOK, consolePasswordResponse{Password: password})
+}
+
 func (h *VMCloudInit) handleSnippet(w http.ResponseWriter, r *http.Request) {
 	h.serveRoute(w, r, h.getSnippet, h.putSnippet)
 }
@@ -442,7 +499,7 @@ func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 	case errors.Is(err, cluster.ErrSSHKeyUserUnknown):
 		h.writeError(w, http.StatusBadRequest, "ssh_user_unknown", "the cloud-init user does not exist on the guest")
 	case h.writeGuestAgentError(w, err):
-		// Already written by the helper (ticket 02/05 password-path errors).
+		// Already written by the helper (password-path errors).
 	case errors.Is(err, cloudinit.ErrSnippetPrefix), errors.Is(err, cloudinit.ErrSnippetTooLarge), errors.Is(err, cloudinit.ErrSnippetInvalidUTF8):
 		h.writeError(w, http.StatusBadRequest, "invalid_snippet", err.Error())
 	case errors.Is(err, vm.ErrSnippetPushFailed):

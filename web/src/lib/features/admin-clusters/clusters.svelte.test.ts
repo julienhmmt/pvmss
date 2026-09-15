@@ -64,4 +64,15 @@ describe('AdminClustersStore', () => {
 		expect(store.clusters[0]?.oidcEnabled).toBe(true);
 		expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({ enabled: true });
 	});
+
+	it('loadSnippetStorages() queries the snippet-storages endpoint with the cluster name', async () => {
+		const fetchMock = vi.fn().mockResolvedValue(
+			jsonResponse(200, [{ name: 'shared', node: 'pve-node-01', type: 'dir' }])
+		);
+		vi.stubGlobal('fetch', fetchMock);
+		const store = new AdminClustersStore();
+		const storages = await store.loadSnippetStorages('default');
+		expect(storages).toEqual([{ name: 'shared', node: 'pve-node-01', type: 'dir' }]);
+		expect(fetchMock.mock.calls[0]?.[0]).toContain('/api/v1/admin/snippet-storages?cluster=default');
+	});
 });

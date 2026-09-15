@@ -55,7 +55,7 @@
 	}
 </script>
 
-<svelte:head><title>{m['policy.nodeTitle']()} — PVMSS</title></svelte:head>
+<svelte:head><title>{m['policy.nodeTitle']()} - PVMSS</title></svelte:head>
 
 <PageHeader title={m['policy.nodeTitle']()} description={m['policy.nodeDescription']()} titleId="node-policy-title">
 	{#snippet actions()}

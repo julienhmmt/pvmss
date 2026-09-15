@@ -28,7 +28,7 @@ test('injects an SSH key post-boot via the guest agent without a reboot', async 
 	expect(config.sshKeys ?? []).toContain('ssh-ed25519 AAAA-injected demo@laptop');
 
 	// Reject a malformed key before it reaches the agent (no injection, field kept).
-	// (A single-line obviously-invalid string — <input type=text> cannot hold a
+	// (A single-line obviously-invalid string - <input type=text> cannot hold a
 	// newline, so the multi-line smuggling case is covered by the Go/API tests.)
 	await page.getByTestId('cloudinit-inject-key').fill('not-a-valid-ssh-key');
 	await page.getByTestId('cloudinit-inject-now').click();

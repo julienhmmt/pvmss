@@ -123,7 +123,7 @@ func (r *tokenRepository) TouchToken(_ context.Context, id string, usedAt time.T
 	return errors.New("token not found")
 }
 
-// TestNewTokenService_ConstructsService — NewTokenService wires the repository
+// TestNewTokenService_ConstructsService - NewTokenService wires the repository
 // without any validation, so a non-nil repository yields a usable service.
 func TestNewTokenService_ConstructsService(t *testing.T) {
 	t.Parallel()
@@ -134,7 +134,7 @@ func TestNewTokenService_ConstructsService(t *testing.T) {
 	}
 }
 
-// TestTokenService_CreateRoundTrip — a token created with a valid scope and
+// TestTokenService_CreateRoundTrip - a token created with a valid scope and
 // label resolves back to the issuing identity, and appears in the owner's list.
 //
 //nolint:paralleltest // serial: shared token repository fixture
@@ -190,7 +190,7 @@ func TestTokenService_CreateRoundTrip(t *testing.T) {
 	}
 }
 
-// TestTokenService_Create_RejectsInvalidScopeAndLabel — scope must be read or
+// TestTokenService_Create_RejectsInvalidScopeAndLabel - scope must be read or
 // read_write, and a blank label (after trimming) is rejected.
 func TestTokenService_Create_RejectsInvalidScopeAndLabel(t *testing.T) {
 	t.Parallel()
@@ -222,7 +222,7 @@ func TestTokenService_Create_RejectsInvalidScopeAndLabel(t *testing.T) {
 	}
 }
 
-// TestTokenService_Create_RepositoryError — a CreateToken failure from the
+// TestTokenService_Create_RepositoryError - a CreateToken failure from the
 // repository is wrapped and surfaced by Create.
 func TestTokenService_Create_RepositoryError(t *testing.T) {
 	t.Parallel()
@@ -238,7 +238,7 @@ func TestTokenService_Create_RepositoryError(t *testing.T) {
 	}
 }
 
-// TestTokenService_Resolve_RejectsUnknownAndExpired — an unknown raw token and
+// TestTokenService_Resolve_RejectsUnknownAndExpired - an unknown raw token and
 // an expired-but-stored token both resolve to ErrUnauthenticated.
 //
 //nolint:paralleltest // serial: shared token repository fixture
@@ -247,13 +247,13 @@ func TestTokenService_Resolve_RejectsUnknownAndExpired(t *testing.T) {
 	service := auth.NewTokenService(repository)
 	ctx := context.Background()
 
-	// Unknown raw value — no row matches its hash.
+	// Unknown raw value - no row matches its hash.
 	if _, err := service.Resolve(ctx, "pvmss_unknown_unknown"); !errors.Is(err, auth.ErrUnauthenticated) {
 		t.Fatalf("Resolve unknown: got %v, want ErrUnauthenticated", err)
 	}
 
 	// Expired token: insert directly with an ExpiresAt in the past, then resolve
-	// the matching raw value — the service must reject it as unauthenticated.
+	// the matching raw value - the service must reject it as unauthenticated.
 	raw := "pvmss_expired_expired"
 	hash := sha256.Sum256([]byte(raw))
 	past := time.Now().Add(-time.Hour)
@@ -273,7 +273,7 @@ func TestTokenService_Resolve_RejectsUnknownAndExpired(t *testing.T) {
 	}
 }
 
-// TestTokenService_Resolve_TouchError — a TouchToken failure after a successful
+// TestTokenService_Resolve_TouchError - a TouchToken failure after a successful
 // lookup is wrapped and surfaced (the token was valid, but recording its use
 // failed).
 //
@@ -295,7 +295,7 @@ func TestTokenService_Resolve_TouchError(t *testing.T) {
 	}
 }
 
-// TestTokenService_List_EmptyAndPopulated — List returns an empty slice (not
+// TestTokenService_List_EmptyAndPopulated - List returns an empty slice (not
 // nil, not an error) for an identity with no tokens, and the full set once
 // tokens are created.
 //
@@ -333,7 +333,7 @@ func TestTokenService_List_EmptyAndPopulated(t *testing.T) {
 	}
 }
 
-// TestTokenService_List_RepositoryError — a ListTokens failure is wrapped and
+// TestTokenService_List_RepositoryError - a ListTokens failure is wrapped and
 // surfaced by List.
 func TestTokenService_List_RepositoryError(t *testing.T) {
 	t.Parallel()
@@ -348,7 +348,7 @@ func TestTokenService_List_RepositoryError(t *testing.T) {
 	}
 }
 
-// TestTokenService_Revoke_OwnedAndUnknown — revoking an owned token succeeds
+// TestTokenService_Revoke_OwnedAndUnknown - revoking an owned token succeeds
 // and removes it from the list; revoking an unknown id (or one owned by another
 // user) fails the same way, so a caller cannot probe other users' token ids.
 //
@@ -388,8 +388,8 @@ func TestTokenService_Revoke_OwnedAndUnknown(t *testing.T) {
 	}
 }
 
-// TestTokenService_Revoke_RepositoryError — a DeleteToken failure is surfaced
-// verbatim by Revoke (no wrapping, by design — see tokens.go).
+// TestTokenService_Revoke_RepositoryError - a DeleteToken failure is surfaced
+// verbatim by Revoke (no wrapping, by design - see tokens.go).
 func TestTokenService_Revoke_RepositoryError(t *testing.T) {
 	t.Parallel()
 

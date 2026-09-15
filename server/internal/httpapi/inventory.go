@@ -10,9 +10,9 @@ import (
 	"time"
 )
 
-// ClusterRefresh serves POST /api/v1/cluster/refresh — a manual refresh
-// action guarded by a minimum interval (FR-005, FR-006). The guard is
-// enforced server-side (constitution VI), not only by disabling a button.
+// ClusterRefresh serves POST /api/v1/cluster/refresh - a manual refresh
+// action guarded by a minimum interval. The guard is
+// enforced server-side, not only by disabling a button.
 type ClusterRefresh struct {
 	refresher *inventory.Refresher
 	log       *slog.Logger
@@ -49,7 +49,7 @@ func (h *ClusterRefresh) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// the server's WriteTimeout cannot cancel a slow/dead cluster's refresh
 	// before it completes. The client gets 202 immediately and learns the
 	// outcome by re-reading the projection (re-loading the VM list or
-	// polling /health) — which the frontend already does.
+	// polling /health) - which the frontend already does.
 	if err := h.refresher.RefreshAsync(r.Context()); err != nil {
 		h.writeRefreshError(w, err)
 		return
@@ -113,7 +113,7 @@ func (h *ClusterRefresh) writeRefreshError(w http.ResponseWriter, err error) {
 
 // computeRetryAfterSeconds returns how many seconds the client should wait
 // before retrying. When err carries the precise remaining guard time
-// (*inventory.TooSoonError), that value is used — not the full configured
+// (*inventory.TooSoonError), that value is used - not the full configured
 // interval, so a refusal near the end of the guard window reports a short
 // wait, not the whole interval again. Falls back to the full interval only
 // if the error doesn't carry a remaining time.

@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * StatCard — a single headline number with its label.
+	 * StatCard - a single headline number with its label.
 	 *
 	 * The dashboard was hand-rolling `<div class="rounded-lg border … p-4">`
 	 * with a muted `<p>` label above a `text-3xl` value, three times, with a
@@ -9,7 +9,7 @@
 	 * land on, so it gets the weight and the mono tabular figures), and an
 	 * optional `hint` line for the unit or denominator.
 	 *
-	 * Pass `href` to make the whole tile a link — it then lifts on hover
+	 * Pass `href` to make the whole tile a link - it then lifts on hover
 	 * rather than only underlining its text.
 	 */
 	import type { Snippet } from 'svelte';

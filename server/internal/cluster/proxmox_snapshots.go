@@ -10,7 +10,7 @@ import (
 
 // ListSnapshots implements SnapshotReader. Proxmox always includes a
 // pseudo-entry named "current" representing the live state, not a real
-// snapshot — filtered out here so callers never see it.
+// snapshot - filtered out here so callers never see it.
 func (p Proxmox) ListSnapshots(ctx context.Context, node string, vmid int) ([]VMSnapshot, error) {
 	raw, err := p.rest().do(ctx, http.MethodGet, fmt.Sprintf("/nodes/%s/qemu/%d/snapshot", url.PathEscape(node), vmid), nil)
 	if err != nil {
@@ -69,7 +69,7 @@ func (p Proxmox) RollbackSnapshot(ctx context.Context, node string, vmid int, na
 // force=1 tells Proxmox to drop the snapshot's config entry even when the
 // underlying storage delete fails. Without it, an NFS/qcow2 ESTALE leaves the
 // VM at lock=snapshot-delete, after which Proxmox refuses every subsequent
-// operation on it — including the delete that would clear it. The volume can
+// operation on it - including the delete that would clear it. The volume can
 // remain orphaned on storage; a blocked VM is worse (pegaprox incident #422).
 func (p Proxmox) DeleteSnapshot(ctx context.Context, node string, vmid int, name string) (string, error) {
 	path := fmt.Sprintf("/nodes/%s/qemu/%d/snapshot/%s", url.PathEscape(node), vmid, url.PathEscape(name))

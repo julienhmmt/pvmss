@@ -25,7 +25,7 @@ If you'd like to contribute, here's how:
 ## Simple guidelines
 
 - Clear commit messages in English
-- Test your code before submitting: `make server-test` (Go, uses the `fake` cluster — no Proxmox needed), `make web-test` and `make web-check` (SvelteKit), `make lint` for both
+- Test your code before submitting: `make server-test` (Go, uses the `fake` cluster - no Proxmox needed), `make web-test` and `make web-check` (SvelteKit), `make lint` for both
 - Touching a user-facing feature? Update `WORKFLOWS.md`, `docs/FEATURES.md`, and the in-app pages under `server/internal/docs/seed/` (EN + FR)
 - Follow existing code style
 - Be respectful and constructive

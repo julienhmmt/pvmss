@@ -21,7 +21,7 @@ export function buildLineChartPath(values: number[], width: number, height: numb
 		.map((value, index) => {
 			const x = index * stepX;
 			// A constant series (range 0) draws flat at mid-height, not pinned
-			// to the computed minimum — that would misleadingly read as "low".
+			// to the computed minimum - that would misleadingly read as "low".
 			const y = range === 0 ? height / 2 : height - ((value - min) / range) * height;
 			return `${index === 0 ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`;
 		})

@@ -20,8 +20,8 @@ import (
 // (http.ResponseController.SetWriteDeadline) past MaxCreateTaskWait, so a
 // slow creation still reaches the client with a normal 202 body instead of a
 // dead connection. This test pins a server WriteTimeout far shorter than the
-// simulated task wait to prove the handler's own deadline extension — not
-// the configured server timeout — is what lets the response through.
+// simulated task wait to prove the handler's own deadline extension - not
+// the configured server timeout - is what lets the response through.
 //
 //nolint:paralleltest,noctx // serial: shared fake dataset
 func TestVMCreate_SlowClone_StillReachesClientDespiteShortServerWriteTimeout(t *testing.T) {
@@ -39,7 +39,7 @@ func TestVMCreate_SlowClone_StillReachesClientDespiteShortServerWriteTimeout(t *
 
 	ts := httptest.NewUnstartedServer(handler)
 	// Far shorter than the ~200ms the fake task wait needs (two 100ms
-	// polls) — mirrors production's 10s WriteTimeout being far shorter
+	// polls) - mirrors production's 10s WriteTimeout being far shorter
 	// than a real template clone. Without ServeHTTP's own deadline
 	// extension, this would kill the response before it's written.
 	ts.Config.WriteTimeout = 1 * time.Millisecond

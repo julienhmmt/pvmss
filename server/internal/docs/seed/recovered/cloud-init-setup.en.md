@@ -18,7 +18,7 @@ logging in: packages, files, commands, and more.
 - Vendor data merges with the user data Proxmox generates from the VM form
   (user, password, SSH keys, network). `packages`, `package_update`,
   `runcmd`, `bootcmd`, `write_files`, `apt`, `timezone`, `ntp`… all apply. A
-  `users:` key in the document is overridden by the generated account — tell
+  `users:` key in the document is overridden by the generated account - tell
   users to put accounts and keys in the form.
 - After creation, the VM's **Cloud-init** tab shows the document. When the
   policy's **Allow custom cloud-init YAML** is on, users can edit it: the
@@ -45,7 +45,7 @@ create request carrying a document is refused before any VMID is spent.
 4. Enable the template so it appears in the users' picker. Disable it to hide
    it without deleting.
 
-Templates are static — there are no template variables. User-specific values
+Templates are static - there are no template variables. User-specific values
 (user, password, SSH keys, network) come from the VM form.
 
 ## Example templates
@@ -82,13 +82,20 @@ runcmd:
 
 VMs created from a **cloud image** additionally get a fixed baseline
 snippet, `pvmss-baseline.yml`, when one exists in the same `snippets/`
-directory — a convenient place to install `qemu-guest-agent` cluster-wide.
+directory - a convenient place to install `qemu-guest-agent` cluster-wide.
 Its absence is silent, not an error.
 
 ## Troubleshooting
 
+- **Snippet written locally but the VM cannot start** (or `cicustom` points
+  at a missing file): the configured snippet directory is not the same
+  physical directory Proxmox reads snippets from. PVMSS does not SSH to
+  Proxmox and does not upload snippets via the API; it writes to a directory
+  that must be shared with (or be) the Proxmox storage's snippets path. On
+  the Proxmox host run `pvesm path <storage>` - the snippets path is that
+  path plus `/snippets`. That exact path must be what PVMSS writes to.
 - **Picker hidden in the wizard**: the cluster has no snippet write target
-  — check **Admin › Clusters** (badge "cloud-init: on").
+ - check **Admin › Clusters** (badge "cloud-init: on").
 - **Create refused with `cloudinit_write_unavailable`**: the directory is not
   mounted, not writable by the container user (uid 65532), or the storage id
   does not match the Proxmox storage that owns it.

@@ -1,5 +1,5 @@
-// Package seed holds the built-in documentation pages embedded at build time
-// (issue #53). SeedDocumentationPages idempotently inserts any missing
+// Package seed holds the built-in documentation pages embedded at build time.
+// SeedDocumentationPages idempotently inserts any missing
 // (id, lang) rows with is_system=1 so admin edits to seeded pages are never
 // clobbered on restart.
 package seed
@@ -118,7 +118,7 @@ func (p seedPage) enVariant() seedVariant {
 // builtInPages is the fixed set of system pages. The audience maps directly:
 // user docs are public, the admin doc is admin-only. Recovered v0.3 guides
 // (admin/user/cloud-init/permissions) were reintegrated and rewritten for the
-// v0.4 app, then seeded as system pages so they survive restarts (issue #53).
+// v0.4 app, then seeded as system pages so they survive restarts.
 var builtInPages = []seedPage{
 	{id: idGettingStarted, title: "Getting started", category: categoryGettingStarted, bodyMD: gettingStartedMD, audience: audienceUser, sortOrder: 1},
 	{id: idVMCreationGuidelines, title: "VM creation guidelines", category: categoryCreatingVMs, bodyMD: vmCreationGuidelinesMD, audience: audienceUser, sortOrder: 2},
@@ -131,7 +131,7 @@ var builtInPages = []seedPage{
 }
 
 // SeedDocumentationPages inserts every built-in page that does not already
-// exist (by (id, lang)). Existing rows — including admin-edited system pages —
+// exist (by (id, lang)). Existing rows - including admin-edited system pages - 
 // are left untouched, so the seed is safe to run on every startup.
 //
 //nolint:revive // the Seed verb documents the seeding action explicitly
@@ -169,7 +169,7 @@ type seedVariant struct {
 
 // frenchVariants returns the French variant for a built-in page that ships in
 // both languages, or nil if the page is English-only. The English row is not
-// restated here — it comes from builtInPages via seedPage.enVariant.
+// restated here - it comes from builtInPages via seedPage.enVariant.
 //
 //nolint:misspell // French titles are intentional seed data
 func frenchVariants(id string) *seedVariant {

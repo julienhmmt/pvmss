@@ -16,12 +16,12 @@ export type ClipboardState = {
 };
 
 /**
- * ConsoleStore — the Svelte 5 runes state for the VNC console. One instance
+ * ConsoleStore - the Svelte 5 runes state for the VNC console. One instance
  * per console route (constitution VII: no module singletons). Owns the RFB
  * instance lifecycle: connect, disconnect, reconnect, scale, Ctrl+Alt+Del,
  * clipboard both ways.
  *
- * The store is deliberately thin — it wraps RFB's event-driven API in
+ * The store is deliberately thin - it wraps RFB's event-driven API in
  * $state fields the template can bind to, and nothing more. All the hard
  * parts (handshake, framebuffer decoding, input encoding) are noVNC's job.
  */
@@ -125,7 +125,7 @@ export class ConsoleStore {
 			const text = await navigator.clipboard.readText();
 			this.pasteToVM(text);
 		} catch {
-			this.error = 'Clipboard permission denied — cannot read from your local clipboard';
+			this.error = 'Clipboard permission denied - cannot read from your local clipboard';
 		}
 	}
 
@@ -139,7 +139,7 @@ export class ConsoleStore {
 		try {
 			await navigator.clipboard.writeText(this.clipboard.fromVM);
 		} catch {
-			this.error = 'Clipboard permission denied — cannot write to your local clipboard';
+			this.error = 'Clipboard permission denied - cannot write to your local clipboard';
 		}
 	}
 

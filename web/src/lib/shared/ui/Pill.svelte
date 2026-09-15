@@ -1,10 +1,10 @@
 <script lang="ts">
 	/**
-	 * Pill — Layer B status chip (mockup `.pill` + `.p-ok` `.p-off` `.p-w`).
+	 * Pill - Layer B status chip (mockup `.pill` + `.p-ok` `.p-off` `.p-w`).
 	 * A `currentColor` dot plus the text name of the status. Colour is never
 	 * the only signal: the visible label carries the meaning (a11y minimum
 	 * from visual-language.md). Maps onto the existing success / warning /
-	 * destructive / info / muted soft triples — no new palette.
+	 * destructive / info / muted soft triples - no new palette.
 	 *
 	 * `tone` says what the state means; `size` says how loud it is. The `sm`
 	 * size is for dense table rows, `md` for detail headers where the status
@@ -20,7 +20,7 @@
 		/** When true, the dot pulses to signal an in-flight optimistic state. */
 		pending?: boolean;
 		size?: Size;
-		/** Drop the leading dot — for chips that are labels, not states. */
+		/** Drop the leading dot - for chips that are labels, not states. */
 		dot?: boolean;
 		class?: string;
 	}

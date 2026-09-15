@@ -87,7 +87,7 @@ func TestNewLogger(t *testing.T) {
 
 // validateJSONLogger writes three structured entries through a JSON logger and
 // asserts the emitted log file contains exactly those entries with the right
-// levels and components (FR-010 logging contract).
+// levels and components (logging contract).
 func validateJSONLogger(t *testing.T, path string) {
 	t.Helper()
 

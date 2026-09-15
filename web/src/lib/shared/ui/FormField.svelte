@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * FormField — the shared label + hint + error wrapper for every form
+	 * FormField - the shared label + hint + error wrapper for every form
 	 * control. Owns the control id and the aria wiring (aria-describedby,
 	 * aria-invalid) so individual inputs don't have to. Composition API:
 	 * the control is passed as the children snippet and receives
@@ -64,7 +64,7 @@
 	const fieldId = $derived(id ?? generatedId);
 	const hintId = $derived(`${fieldId}-hint`);
 	const errorId = $derived(`${fieldId}-error`);
-	// Both are announced when both exist — a hint stays useful after a field
+	// Both are announced when both exist - a hint stays useful after a field
 	// goes invalid (it usually says what a valid value looks like).
 	const describedBy: string | undefined = $derived(
 		error && hint ? `${errorId} ${hintId}` : error ? errorId : hint ? hintId : undefined

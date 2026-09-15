@@ -1,5 +1,5 @@
 <script lang="ts">
-	/** EyeIcon — "reveal password" affordance. Inherits currentColor. */
+	/** EyeIcon - "reveal password" affordance. Inherits currentColor. */
 	interface Props {
 		class?: string;
 	}

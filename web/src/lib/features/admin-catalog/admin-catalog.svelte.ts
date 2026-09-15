@@ -15,7 +15,7 @@ export interface AdminNode {
 	storageUsed: number;
 	vmCount: number;
 	enabled: boolean;
-	/** True for a stored approval whose node Proxmox no longer reports —
+	/** True for a stored approval whose node Proxmox no longer reports - 
 	 *  the row stays listed so the admin can remove it. */
 	missing?: boolean;
 }
@@ -72,10 +72,10 @@ export interface AdminTemplate {
 	diskSizeGB: number;
 	diskBus: string;
 	enabled: boolean;
-	/** True for a stored approval whose template Proxmox no longer reports —
+	/** True for a stored approval whose template Proxmox no longer reports - 
 	 *  the row stays listed so the admin can remove it. */
 	missing: boolean;
-	/** True when the template's config read failed (issue 03) — the row is
+	/** True when the template's config read failed (issue 03) - the row is
 	 *  greyed out and enabling is refused (disabling stays possible). */
 	diskUnreadable: boolean;
 	/** True when an admin pinned the editable fields (schemaV26). The list
@@ -134,7 +134,7 @@ interface TemplateToggleResponse {
 /**
  * AdminCatalogStore manages the discover-and-approve state for nodes,
  * storages, bridges, and ISOs. One store instance per admin page, via context
- * (constitution VII: no module singletons). API responses are $state.raw —
+ * (constitution VII: no module singletons). API responses are $state.raw - 
  * they are API data, not form edits.
  */
 export class AdminCatalogStore {
@@ -487,7 +487,7 @@ export class AdminCatalogStore {
 	}
 
 	/** Loads only the template list (plus cluster options). Template discovery
-	 *  is N+1 against Proxmox, so it must never ride on loadAll() — the nodes/
+	 *  is N+1 against Proxmox, so it must never ride on loadAll() - the nodes/
 	 *  storages/bridges/ISOs pages must not pay for it. */
 	async loadTemplates(): Promise<void> {
 		await this.loadClusters();
@@ -618,7 +618,7 @@ export class AdminCatalogStore {
 		}
 	}
 
-	/** Removes an orphan node approval — offered by the UI on missing rows only. */
+	/** Removes an orphan node approval - offered by the UI on missing rows only. */
 	async removeNode(name: string): Promise<void> {
 		this.toggling = `node:${name}`;
 		this.toggleError = null;
@@ -633,7 +633,7 @@ export class AdminCatalogStore {
 		}
 	}
 
-	/** Removes an orphan storage approval — offered by the UI on missing rows only. */
+	/** Removes an orphan storage approval - offered by the UI on missing rows only. */
 	async removeStorage(name: string, node: string): Promise<void> {
 		this.toggling = `storage:${name}@${node}`;
 		this.toggleError = null;
@@ -648,7 +648,7 @@ export class AdminCatalogStore {
 		}
 	}
 
-	/** Removes an orphan bridge approval — offered by the UI on missing rows only. */
+	/** Removes an orphan bridge approval - offered by the UI on missing rows only. */
 	async removeBridge(node: string, name: string): Promise<void> {
 		this.toggling = `bridge:${node}/${name}`;
 		this.toggleError = null;
@@ -663,7 +663,7 @@ export class AdminCatalogStore {
 		}
 	}
 
-	/** Removes an orphan ISO approval — offered by the UI on missing rows only. */
+	/** Removes an orphan ISO approval - offered by the UI on missing rows only. */
 	async removeISO(node: string, storage: string, file: string): Promise<void> {
 		this.toggling = `iso:${node}:${storage}:${file}`;
 		this.toggleError = null;
@@ -678,7 +678,7 @@ export class AdminCatalogStore {
 		}
 	}
 
-	/** Removes an orphan image approval — offered by the UI on missing rows only. */
+	/** Removes an orphan image approval - offered by the UI on missing rows only. */
 	async removeImage(node: string, storage: string, file: string): Promise<void> {
 		this.toggling = `image:${node}:${storage}:${file}`;
 		this.toggleError = null;
@@ -714,7 +714,7 @@ export class AdminCatalogStore {
 		}
 	}
 
-	/** Removes an approval row (issue 02) — offered by the UI on missing
+	/** Removes an approval row (issue 02) - offered by the UI on missing
 	 *  (orphaned) rows only; the API deletes any approval. */
 	async removeTemplate(vmid: number): Promise<void> {
 		this.toggling = `template:${vmid}`;

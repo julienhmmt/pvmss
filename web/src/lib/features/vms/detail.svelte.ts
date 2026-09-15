@@ -22,7 +22,7 @@ export interface VmDetailEntity {
 	description?: string;
 	descriptionHtml?: string;
 	/** Proxmox lock name (e.g. "snapshot-delete", "backup") from the live
-	 *  status — non-empty means the VM rejects most operations. */
+	 *  status - non-empty means the VM rejects most operations. */
 	lock?: string;
 	sockets?: number;
 	cores?: number;
@@ -30,6 +30,21 @@ export interface VmDetailEntity {
 	cdrom?: VmCdrom;
 	networkInterfaces?: VmNetworkInterface[];
 	hasSerial?: boolean;
+	/** Why live per-NIC IPs are present or absent on a running VM: the
+	 *  guest-agent channel is "disabled" in the VM config, "unreachable"
+	 *  (enabled but the agent did not answer), or "ok" (answered - IPs may
+	 *  still be empty while DHCP is pending). Absent when the VM is not
+	 *  running. */
+	guestAgent?: 'ok' | 'disabled' | 'unreachable';
+	/** Cloud-init baseline delivery state for image-mode VMs (issue 03):
+	 *  "applied" (generated baseline pushed+attached), "override" (a
+	 *  cluster-wide pvmss-baseline.yml replaced the generated baseline),
+	 *  "not_delivered" (baseline could not be delivered - see baselineError).
+	 *  Absent for non-image VMs. */
+	baselineState?: 'applied' | 'override' | 'not_delivered';
+	/** Reason the baseline could not be delivered, when baselineState is
+	 *  "not_delivered". */
+	baselineError?: string;
 }
 
 export interface VmDisk {
@@ -101,7 +116,7 @@ interface AuditPage {
  * State for the single-VM detail view (V15). One store instance per consuming
  * screen (constitution VII: no module singletons). The entity is `$state.raw`
  * because it is replaced wholesale on load/reload, not mutated field-by-field
- * — except for the optimistic status flip during a power action (V12), which
+ * - except for the optimistic status flip during a power action (V12), which
  * is a deliberate local mutation reconciled by reload().
  */
 export class VmDetailStore {
@@ -147,6 +162,10 @@ export class VmDetailStore {
 	serialEnabling = $state.raw(false);
 	serialEnableError = $state.raw<string | null>(null);
 
+	/** True while the SeaBIOS firmware retrofit is in flight (admin-only). */
+	retrofitInFlight = $state.raw(false);
+	retrofitError = $state.raw<string | null>(null);
+
 	/** Per-VM audit log (activity tab). Loaded lazily when the tab opens. */
 	auditItems = $state.raw<VmAuditEntry[] | null>(null);
 	auditLoading = $state.raw(false);
@@ -173,8 +192,58 @@ export class VmDetailStore {
 		}
 	}
 
+	/** Switches an existing UEFI VM to SeaBIOS (admin-only, issue 08). Stops
+	 * the VM if running (confirm=true), removes the UEFI firmware keys, and
+	 * starts it again. A refused VM (TPM/Secure Boot) or a failed restart
+	 * surfaces a clear error; a successful call reloads the entity. */
+	async retrofitSeaBIOS(confirm: boolean): Promise<boolean> {
+		if (this.retrofitInFlight || this.entity === null) return false;
+		this.retrofitInFlight = true;
+		this.retrofitError = null;
+		try {
+			await post<VmDetailEntity>(`${this.#basePath}/retrofit-seabios`, { confirm });
+			await this.load();
+			return true;
+		} catch (err) {
+			this.retrofitError = errorMessage(err, () => m['vms.detail.errorRetrofit']());
+			return false;
+		} finally {
+			this.retrofitInFlight = false;
+		}
+	}
+
 	/** Set after a successful delete so the page can navigate away. */
 	deleted = $state.raw(false);
+
+	/** In-flight flag for the console-password action (issue 05). */
+	consolePasswordInFlight = $state(false);
+
+	/** Error from the last console-password attempt (issue 05). */
+	consolePasswordError = $state<string | null>(null);
+
+	/** The generated password, shown once after a successful call (issue 05).
+	 *  Not persisted - cleared on the next action or on navigation. */
+	generatedPassword = $state<string | null>(null);
+
+	/** Generates a random console password server-side, applies it via the
+	 *  QEMU guest agent to the VM's ciuser, and returns it once for display
+	 *  (issue 05). The password is not persisted anywhere in the portal. */
+	async setConsolePassword(): Promise<boolean> {
+		if (this.consolePasswordInFlight) return false;
+		this.consolePasswordInFlight = true;
+		this.consolePasswordError = null;
+		this.generatedPassword = null;
+		try {
+			const result = await post<{ password: string }>(`${this.#basePath}/console-password`, {});
+			this.generatedPassword = result.password;
+			return true;
+		} catch (err) {
+			this.consolePasswordError = errorMessage(err, () => m['vms.detail.errorConsolePassword']());
+			return false;
+		} finally {
+			this.consolePasswordInFlight = false;
+		}
+	}
 
 	#basePath: string;
 
@@ -277,8 +346,8 @@ export class VmDetailStore {
 	 * status converges to running. The boot order is restored by the server
 	 * once the guest is up, so the next reboot boots from disk again.
 	 *
-	 * The HTTP request only returns once the guest is up — the server waits
-	 * for the boot before restoring the boot order — so callers must give
+	 * The HTTP request only returns once the guest is up - the server waits
+	 * for the boot before restoring the boot order - so callers must give
 	 * feedback optimistically (toast on click), not on response.
 	 */
 	async bootFromCdrom(): Promise<boolean> {
@@ -351,7 +420,7 @@ export class VmDetailStore {
 	/**
 	 * Triggers a power action (V12). The status flips optimistically before the
 	 * server responds, then a convergence loop polls the live-status endpoint
-	 * (ADR 0001) until the real state matches — replacing the old `load()` call
+	 * (ADR 0001) until the real state matches - replacing the old `load()` call
 	 * that overwrote the optimistic flip with a stale projection read.
 	 * `aria-live` on the status element (constitution XII) announces the flip.
 	 */
@@ -368,13 +437,13 @@ export class VmDetailStore {
 		try {
 			await post<ActionResponse>(`${this.#basePath}/actions`, { action: kind });
 			// Converge: poll live status until it matches the optimistic target.
-			// No load() — the projection is stale until the 30s inventory tick.
+			// No load() - the projection is stale until the 30s inventory tick.
 			await convergeSingle(
 				{ cluster: this.cluster, vmid: this.entity.vmid },
 				target,
 				(status, lock) => {
 					if (this.entity !== null) {
-						// The live read also carries the Proxmox lock name —
+						// The live read also carries the Proxmox lock name - 
 						// keep the badge honest while the page stays open.
 						this.entity = lock === undefined
 							? { ...this.entity, status }
@@ -396,7 +465,7 @@ export class VmDetailStore {
 
 	/**
 	 * Permanently deletes the VM (V14: no soft-delete, no undo). When force is
-	 * true, the server force-stops a running VM before destroying it — the UI
+	 * true, the server force-stops a running VM before destroying it - the UI
 	 * only sets this after the user confirms the force-stop in the delete dialog.
 	 * A running VM without force is rejected with 409 (code "vm_running") so the
 	 * dialog can prompt for confirmation.
@@ -422,7 +491,7 @@ export class VmDetailStore {
 	/**
 	 * Renames and/or updates the description (V16/V17). Returns true on success
 	 * so the caller can exit inline-edit mode. Empty values are omitted from the
-	 * request body — the server treats an absent field as "no change".
+	 * request body - the server treats an absent field as "no change".
 	 */
 	async patch(name: string | null, description: string | null): Promise<boolean> {
 		if (this.patchInFlight || this.entity === null) return false;

@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * TableCard — shared shell for admin data tables. Renders a rounded
+	 * TableCard - shared shell for admin data tables. Renders a rounded
 	 * card with shadow, an optional bordered toolbar header, and a
 	 * horizontally scrollable table body. Use the `toolbar` snippet for
 	 * filters/search and the default children for the `<table>` element.

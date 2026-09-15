@@ -16,8 +16,8 @@ import (
 // shorten it; not configurable by env until an operator asks.
 var shutdownTimeout = 60 * time.Second
 
-// proxmoxValidActions mirrors fake.go's validActions — the exhaustive set of
-// power transitions FR-006 accepts. vm.IsValidAction already gates this
+// proxmoxValidActions mirrors fake.go's validActions - the exhaustive set of
+// power transitions accepts. vm.IsValidAction already gates this
 // upstream; checked again here defensively, before any HTTP call, matching
 // the fake's own defense-in-depth.
 var proxmoxValidActions = map[string]bool{
@@ -35,7 +35,7 @@ func vmConfigPath(node string, vmid int) string {
 // actionForm returns the parameters Proxmox accepts for a given action.
 // shutdown is the only one that needs a bound: without a timeout Proxmox
 // waits on the guest's ACPI handler forever. Other actions send no
-// parameters. skiplock is never sent — PVMSS authenticates by API token,
+// parameters. skiplock is never sent - PVMSS authenticates by API token,
 // and Proxmox rejects skiplock under token even for root@pam.
 func actionForm(action string) url.Values {
 	if action == actionShutdown {
@@ -46,7 +46,7 @@ func actionForm(action string) url.Values {
 }
 
 // Action implements Writer via POST /nodes/{node}/qemu/{vmid}/status/{action}.
-// Proxmox returns a task UPID; it is discarded — the Writer contract is
+// Proxmox returns a task UPID; it is discarded - the Writer contract is
 // synchronous (error only), matching how the fake and every caller (vm.Action)
 // already treat power transitions as immediate.
 func (p Proxmox) Action(ctx context.Context, node string, vmid int, action string) error {
@@ -62,9 +62,9 @@ func (p Proxmox) Action(ctx context.Context, node string, vmid int, action strin
 }
 
 // Delete implements Writer via DELETE /nodes/{node}/qemu/{vmid}. purge=1 also
-// removes references from backup jobs and pools — matching the product's own
+// removes references from backup jobs and pools - matching the product's own
 // "irreversible, no soft-delete, no undo" contract (client.go: VM.Description
-// doc, V14). Proxmox rejects deleting a running VM with HTTP 500 ("VM X is
+// doc). Proxmox rejects deleting a running VM with HTTP 500 ("VM X is
 // running - destroy failed"); that is mapped to ErrVMRunning so callers can
 // distinguish it from a genuine cluster fault and decide whether to force-stop
 // first (see vm.Delete's Force flag) rather than papering over it here.
@@ -79,7 +79,7 @@ func (p Proxmox) Delete(ctx context.Context, node string, vmid int) error {
 }
 
 // Patch implements Writer. Empty arguments are ignored, matching the fake's
-// contract — the caller (vm.Patch) decides which fields to send.
+// contract - the caller (vm.Patch) decides which fields to send.
 func (p Proxmox) Patch(ctx context.Context, node string, vmid int, name, description string) error {
 	form := url.Values{}
 	if name != "" {
@@ -100,7 +100,7 @@ func (p Proxmox) Patch(ctx context.Context, node string, vmid int, name, descrip
 }
 
 // AddDisk implements Writer: finds the next free slot on bus from the VM's
-// live config (not the caller's cached view — vm.AddDisk already checked slot
+// live config (not the caller's cached view - vm.AddDisk already checked slot
 // availability against its own cache before calling this, so a live re-check
 // only helps, never conflicts) and allocates a new disk there.
 func (p Proxmox) AddDisk(ctx context.Context, node string, vmid int, bus, storage string, sizeGB int) (string, error) {
@@ -247,7 +247,7 @@ func (p Proxmox) UpdateNetwork(ctx context.Context, node string, vmid int, inter
 	return err
 }
 
-// UpdateHardware implements Writer. tags is always written, even when empty —
+// UpdateHardware implements Writer. tags is always written, even when empty - 
 // matching the fake's unconditional overwrite (`Tags = append(nil, tags...)`)
 // rather than treating a nil/empty slice as "leave tags unchanged".
 func (p Proxmox) UpdateHardware(ctx context.Context, node string, vmid, sockets, cores, memoryMB int, tags []string) error {
@@ -265,7 +265,7 @@ func (p Proxmox) UpdateHardware(ctx context.Context, node string, vmid, sockets,
 
 // SetTags implements Writer: writes only the tags key, leaving hardware
 // untouched. Used by the clone path when no hardware override was requested
-// but the mandatory pvmss tag still needs to be stamped (FR-006).
+// but the mandatory pvmss tag still needs to be stamped.
 func (p Proxmox) SetTags(ctx context.Context, node string, vmid int, tags []string) error {
 	form := url.Values{
 		"tags": {strings.Join(tags, ";")},
@@ -283,6 +283,43 @@ func (p Proxmox) SetTags(ctx context.Context, node string, vmid int, tags []stri
 func (p Proxmox) EnableSerial(ctx context.Context, node string, vmid int) error {
 	_, err := p.rest().do(ctx, http.MethodPut, vmConfigPath(node, vmid), url.Values{
 		"serial0": {"socket"},
+	})
+
+	return err
+}
+
+// ReadFirmwareConfig reads the live firmware-related config of a VM via
+// GET /nodes/{node}/qemu/{vmid}/config. The projection does not
+// hydrate these fields, so the SeaBIOS retrofit reads them live to decide
+// whether a VM can be safely switched (TPM state or Secure Boot refuse).
+func (p Proxmox) ReadFirmwareConfig(ctx context.Context, node string, vmid int) (FirmwareConfig, error) {
+	cfg, err := fetchVMConfig(ctx, p.rest(), node, vmid)
+	if err != nil {
+		return FirmwareConfig{}, err
+	}
+
+	fw := FirmwareConfig{
+		BIOS:       cfg.str("bios"),
+		Machine:    cfg.str("machine"),
+		HasEFIDisk: cfg.str("efidisk0") != "",
+		HasTPM:     cfg.str("tpmstate0") != "",
+	}
+
+	// Secure Boot is encoded as pre-enrolled-keys=1 on efidisk0.
+	if fw.HasEFIDisk {
+		fw.SecureBoot = strings.Contains(cfg.str("efidisk0"), "pre-enrolled-keys=1")
+	}
+
+	return fw, nil
+}
+
+// RetrofitToSeaBIOS removes the UEFI firmware keys from a VM's config by
+// deleting bios, machine, efidisk0, and tpmstate0 in a single PUT.
+// The caller must have already refused VMs with TPM state or Secure Boot and
+// stopped the VM. Proxmox accepts a comma-joined delete list in one call.
+func (p Proxmox) RetrofitToSeaBIOS(ctx context.Context, node string, vmid int) error {
+	_, err := p.rest().do(ctx, http.MethodPut, vmConfigPath(node, vmid), url.Values{
+		actionDelete: {"bios,machine,efidisk0,tpmstate0"},
 	})
 
 	return err

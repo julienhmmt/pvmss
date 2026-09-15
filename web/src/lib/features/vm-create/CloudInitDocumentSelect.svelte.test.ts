@@ -56,7 +56,7 @@ describe('CloudInitDocumentSelect', () => {
 
 		// The select's DOM value is the encoded 'f:<id>'; the decode direction
 		// (select → store) is covered by the cloudInitDocumentValue round-trip
-		// test in create.svelte.test.ts — jsdom's :checked does not reflect
+		// test in create.svelte.test.ts - jsdom's :checked does not reflect
 		// option.selected, so a synthetic change event can't exercise it.
 		expect(document.querySelector('select')!.value).toBe('f:dev-box');
 	});
@@ -70,13 +70,13 @@ describe('CloudInitDocumentSelect', () => {
 		expect(document.body.textContent).toContain(m['vms.create.cloudinitDisabledHint']());
 	});
 
-	it('is hidden for the image source', () => {
+	it('is visible for the image source (issue 04)', () => {
 		storeInstance = new VmCreateStore();
 		storeInstance.catalog = catalogWith(true);
 		storeInstance.simpleSource = 'image';
 		mount(CloudInitDocumentSelect, { target: document.body });
 
-		expect(document.querySelector('select')).toBeNull();
+		expect(document.querySelector('select')).not.toBeNull();
 	});
 
 	it('is hidden when there is nothing to offer', () => {

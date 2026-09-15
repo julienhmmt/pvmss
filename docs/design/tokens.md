@@ -1,13 +1,13 @@
-# Tokens — Layer B (PVMSS App mockup)
+# Tokens - Layer B (PVMSS App mockup)
 
 Source of truth for the visual language imported by `002-design-import`. This
-file records **Layer B only** — the PVMSS mockups — never the Modernist kit
+file records **Layer B only** - the PVMSS mockups - never the Modernist kit
 (red `#ec3013`, 0-radius). The running app reads CSS variables from
 `web/src/app.css`; this document is the implementer's map from mockup tokens to
 those variables.
 
 Reference: the internal `002-design-import` feature spec (not vendored in
-this repo — `specs/` is gitignored). The contract and port plan live there;
+this repo - `specs/` is gitignored). The contract and port plan live there;
 this document is the implementer-facing extract that stays in the repo.
 
 ## 1. Light ramp (Layer B)
@@ -37,7 +37,7 @@ Semantic status (mockup `--ok*` / `--warn*` / `--off*`) maps onto the existing
 `destructive` and `info` triples are **kept** (the mockup omits them; the app
 needs them). No semantic palette is deleted.
 
-## 2. Dark ramp (hand-derived — R1/R3)
+## 2. Dark ramp (hand-derived - R1/R3)
 
 The mockup has no dark mode. These values are derived by hand from the light
 ramp so the warm-paper character survives at night. Goal: keep the orange
@@ -95,29 +95,29 @@ on `--card`. Checked against WCAG AA (4.5:1 for body text):
   Same usage rule as light. Acceptable; no change.
 
 If a future surface needs `--muted-foreground-subtle` for body text, lift it to
-`--muted-foreground` (`--ink-2`) instead — do not weaken the step.
+`--muted-foreground` (`--ink-2`) instead - do not weaken the step.
 
 ## 6. Unported-surface walk (T025)
 
 Surfaces the mockup forgot, confirmed to inherit Layer B tokens by extension
 (no per-surface overrides added):
 
-- `/admin/clusters` and the rest of `/admin/*` — inherit via `Card` / table
+- `/admin/clusters` and the rest of `/admin/*` - inherit via `Card` / table
   retuning and the global sidebar (T034 folds the admin rail into the global
   sidebar).
 - Snapshots tab (`VmSnapshotsTab`), cloud-init tab (`CloudInitTab`), disks /
-  hardware / network sub-features — inherit token retune; no feature cuts in
+  hardware / network sub-features - inherit token retune; no feature cuts in
   this MVP.
-- Docs routes (`/docs`, `/admin/docs`) — inherit.
-- Profile / tokens (`/profile`, `/profile/tokens`) — inherit.
-- Multi-cluster surfaces — inherit.
+- Docs routes (`/docs`, `/admin/docs`) - inherit.
+- Profile / tokens (`/profile`, `/profile/tokens`) - inherit.
+- Multi-cluster surfaces - inherit.
 
 No hard-coded hex or `oklch(...)` outside `app.css` was left in `web/src` after
 T019, with one documented exception:
 
 - `web/src/lib/features/admin-tags/TagsPage.svelte` keeps `#4f46e5` as the
   default value of a tag entity's color (`<input type="color">` default). This
-  is a **data value** persisted via the API, not a UI chrome token — moving it
+  is a **data value** persisted via the API, not a UI chrome token - moving it
   to `app.css` would be wrong (it is not a CSS variable). It is the only hex
   literal in a `.svelte` file and is intentional.
 

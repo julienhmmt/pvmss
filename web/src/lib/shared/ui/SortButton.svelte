@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * SortButton — the clickable label inside a sortable `<th>`.
+	 * SortButton - the clickable label inside a sortable `<th>`.
 	 *
 	 * Lists were signalling sort direction with a literal " ↑" / " ↓" glyph
 	 * appended to the header text, which shifts the column width when the
@@ -10,7 +10,7 @@
 	 * inactive column shows a faint arrow on hover, the active column shows
 	 * a solid one pointing the sorted way.
 	 *
-	 * `aria-sort` stays on the `<th>` — the button carries no aria state of
+	 * `aria-sort` stays on the `<th>` - the button carries no aria state of
 	 * its own beyond its label.
 	 */
 	interface Props {

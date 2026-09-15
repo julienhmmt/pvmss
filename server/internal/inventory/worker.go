@@ -12,7 +12,7 @@ import (
 
 // defaultRefreshTimeout caps how long a single cluster.Snapshot call may take.
 // A slow or hung upstream must not block the singleflight-serialized refresh
-// cycle indefinitely — every external call has a timeout (golang-design-patterns
+// cycle indefinitely - every external call has a timeout (golang-design-patterns
 // rule 9). Override with WithRefreshTimeout.
 //
 // It must be at least as long as the Proxmox HTTP client's 20s per-attempt
@@ -23,9 +23,9 @@ const defaultRefreshTimeout = 25 * time.Second
 
 // Worker owns the refresh cycle: it calls cluster.Client.Snapshot, builds an
 // Index, and atomically swaps it into the Projection on success. On failure
-// it logs and keeps the previous index (FR-004). The cycle is serialized via
+// it logs and keeps the previous index. The cycle is serialized via
 // a singleflight mechanism so concurrent refresh requests (automatic + manual)
-// result in exactly one client call (SC-001, edge case: in-flight dedup).
+// result in exactly one client call (edge case: in-flight dedup).
 type Worker struct {
 	client     cluster.Client
 	projection *Projection
@@ -150,7 +150,7 @@ func (w *Worker) Refresh(ctx context.Context) (at time.Time, err error) {
 
 // Run starts the automatic ticker loop. It performs an initial refresh
 // immediately, then ticks at the configured interval. Blocks until ctx is
-// cancelled. Should be started before the HTTP server accepts traffic (T015).
+// cancelled. Should be started before the HTTP server accepts traffic.
 // A panic in a single refresh cycle is recovered inside Refresh; the ticker
 // loop itself also has a recovery guard so the worker never silently dies.
 func (w *Worker) Run(ctx context.Context) {

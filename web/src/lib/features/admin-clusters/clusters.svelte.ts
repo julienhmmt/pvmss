@@ -40,6 +40,12 @@ export interface ClusterTestResult {
 	testedAt: string;
 }
 
+export interface SnippetStorage {
+	name: string;
+	node: string;
+	type: string;
+}
+
 export class AdminClustersStore {
 	clusters = $state.raw<AdminCluster[]>([]);
 	loading = $state.raw(false);
@@ -57,6 +63,12 @@ export class AdminClustersStore {
 		} finally {
 			this.loading = false;
 		}
+	}
+
+	/** loadSnippetStorages fetches the snippet-capable storages for one cluster,
+	 *  so the cluster form can offer a picker instead of a free-text field. */
+	async loadSnippetStorages(cluster: string): Promise<SnippetStorage[]> {
+		return get<SnippetStorage[]>(`/api/v1/admin/snippet-storages?cluster=${encodeURIComponent(cluster)}`);
 	}
 
 	async create(input: ClusterInput): Promise<boolean> {

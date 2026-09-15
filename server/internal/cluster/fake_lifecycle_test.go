@@ -9,7 +9,7 @@ import (
 
 // TestFake_PoolLifecycle exercises the pool management methods of the fake
 // cluster client (EnsurePoolRole, CreatePool, SetPoolACL, ListPools, DeletePool)
-// so every branch of the built-in substitute is covered (constitution XI: the
+// so every branch of the built-in substitute is covered (the
 // fake must demonstrate every feature).
 func TestFake_PoolLifecycle(t *testing.T) {
 	t.Parallel()
@@ -21,7 +21,7 @@ func TestFake_PoolLifecycle(t *testing.T) {
 		t.Fatalf("EnsurePoolRole: %v", err)
 	}
 
-	// Idempotent — second call is a no-op but must not error.
+	// Idempotent - second call is a no-op but must not error.
 	if err := fake.EnsurePoolRole(ctx); err != nil {
 		t.Fatalf("EnsurePoolRole (idempotent): %v", err)
 	}
@@ -89,7 +89,7 @@ func TestFake_UserLifecycle(t *testing.T) {
 }
 
 // TestFake_Authenticate exercises Authenticate and ChangePassword against the
-// fake client's in-memory identity table — uncovered branches of the fake.
+// fake client's in-memory identity table - uncovered branches of the fake.
 func TestFake_Authenticate(t *testing.T) {
 	t.Parallel()
 

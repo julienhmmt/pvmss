@@ -12,7 +12,7 @@ type stubEnviron map[string]string
 
 func (s stubEnviron) Get(key string) string { return s[key] }
 
-// T011: cluster row from env vars, token encryption, missing-credentials case.
+// Cluster row from env vars, token encryption, missing-credentials case.
 func TestMapCluster_FromEnvVars(t *testing.T) {
 	t.Parallel()
 
@@ -41,7 +41,7 @@ func TestMapCluster_FromEnvVars(t *testing.T) {
 	}
 
 	if len(row.TokenSecretCiphertext) == 0 {
-		t.Fatal("TokenSecretCiphertext is empty — token was not encrypted")
+		t.Fatal("TokenSecretCiphertext is empty - token was not encrypted")
 	}
 
 	if creds.TokenSecret != env["PROXMOX_API_TOKEN_VALUE"] {
@@ -138,11 +138,11 @@ func TestMapCluster_TokenEncryptionIsNotCleartext(t *testing.T) {
 	}
 
 	if string(row.TokenSecretCiphertext) == env["PROXMOX_API_TOKEN_VALUE"] {
-		t.Fatal("ciphertext matches plaintext — token was not encrypted")
+		t.Fatal("ciphertext matches plaintext - token was not encrypted")
 	}
 }
 
-// T011: cluster row is upserted into the v0.4 database.
+// Cluster row is upserted into the v0.4 database.
 func TestUpsertCluster_WritesRow(t *testing.T) {
 	t.Parallel()
 

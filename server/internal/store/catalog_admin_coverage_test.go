@@ -643,3 +643,295 @@ func TestCatalogProfilesEnabled_Empty(t *testing.T) {
 		t.Fatalf("profiles count = %d, want 0", len(profiles))
 	}
 }
+
+//nolint:paralleltest // migration fixtures are intentionally serial
+func TestSetImageEnabled_AndList(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	if err := st.SetImageEnabled(ctx, catalogTestCluster, catalogTestNode, catalogTestStorageHost, "ubuntu.qcow2", 2048, true); err != nil {
+		t.Fatalf("SetImageEnabled: %v", err)
+	}
+
+	images, err := st.CatalogImagesEnabled(ctx, catalogTestCluster)
+	if err != nil {
+		t.Fatalf("CatalogImagesEnabled: %v", err)
+	}
+
+	if len(images) != 1 {
+		t.Fatalf("images count = %d, want 1", len(images))
+	}
+
+	img := images[0]
+	if img.Node != catalogTestNode || img.Storage != catalogTestStorageHost || img.File != "ubuntu.qcow2" {
+		t.Errorf("image key = (%q, %q, %q)", img.Node, img.Storage, img.File)
+	}
+
+	if img.SizeBytes != 2048 {
+		t.Errorf("size_bytes = %d, want 2048", img.SizeBytes)
+	}
+
+	if !img.Enabled {
+		t.Error("enabled = false, want true")
+	}
+}
+
+//nolint:paralleltest // migration fixtures are intentionally serial
+func TestSetImageEnabled_Upsert(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	if err := st.SetImageEnabled(ctx, catalogTestCluster, catalogTestNode, catalogTestStorageHost, "ubuntu.qcow2", 2048, true); err != nil {
+		t.Fatalf("SetImageEnabled: %v", err)
+	}
+
+	// Upsert flips enabled and refreshes the discovered size.
+	if err := st.SetImageEnabled(ctx, catalogTestCluster, catalogTestNode, catalogTestStorageHost, "ubuntu.qcow2", 4096, false); err != nil {
+		t.Fatalf("SetImageEnabled upsert: %v", err)
+	}
+
+	images, err := st.CatalogImagesEnabled(ctx, catalogTestCluster)
+	if err != nil {
+		t.Fatalf("CatalogImagesEnabled after upsert: %v", err)
+	}
+
+	if len(images) != 1 || images[0].Enabled || images[0].SizeBytes != 4096 {
+		t.Errorf("after upsert: %+v, want one disabled image of 4096 bytes", images)
+	}
+}
+
+//nolint:paralleltest // migration fixtures are intentionally serial
+func TestDeleteApprovals_SuccessAndNotFound(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	seed := []struct {
+		name string
+		set  func() error
+		del  func() error
+	}{
+		{
+			"node",
+			func() error { return st.SetNodeEnabled(ctx, catalogTestCluster, catalogTestNode, true) },
+			func() error { return st.DeleteNode(ctx, catalogTestCluster, catalogTestNode) },
+		},
+		{
+			"storage",
+			func() error {
+				return st.SetStorageEnabled(ctx, catalogTestCluster, catalogTestStorageName, catalogTestNode, true)
+			},
+			func() error {
+				return st.DeleteStorage(ctx, catalogTestCluster, catalogTestStorageName, catalogTestNode)
+			},
+		},
+		{
+			"bridge",
+			func() error {
+				return st.SetBridgeEnabled(ctx, catalogTestCluster, catalogTestNode, catalogTestBridgeName, true)
+			},
+			func() error {
+				return st.DeleteBridge(ctx, catalogTestCluster, catalogTestNode, catalogTestBridgeName)
+			},
+		},
+		{
+			"iso",
+			func() error {
+				return st.SetISOEnabled(ctx, catalogTestCluster, catalogTestNode, catalogTestStorageHost, catalogTestISOFile, true)
+			},
+			func() error {
+				return st.DeleteISO(ctx, catalogTestCluster, catalogTestNode, catalogTestStorageHost, catalogTestISOFile)
+			},
+		},
+		{
+			"image",
+			func() error {
+				return st.SetImageEnabled(ctx, catalogTestCluster, catalogTestNode, catalogTestStorageHost, "ubuntu.qcow2", 1024, true)
+			},
+			func() error {
+				return st.DeleteImage(ctx, catalogTestCluster, catalogTestNode, catalogTestStorageHost, "ubuntu.qcow2")
+			},
+		},
+	}
+
+	for _, tt := range seed {
+		if err := tt.set(); err != nil {
+			t.Fatalf("%s: seed: %v", tt.name, err)
+		}
+
+		if err := tt.del(); err != nil {
+			t.Errorf("%s: delete existing: %v", tt.name, err)
+		}
+
+		if err := tt.del(); !errors.Is(err, sql.ErrNoRows) {
+			t.Errorf("%s: delete missing = %v, want sql.ErrNoRows", tt.name, err)
+		}
+	}
+}
+
+//nolint:paralleltest // migration fixtures are intentionally serial
+func TestInsertTemplate_AndList(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	values := store.TemplateValues{
+		Node:              catalogTestNode,
+		Name:              "debian-13-tmpl",
+		CloudInitCapable:  true,
+		DiskStorage:       catalogTestStorageName,
+		DiskSizeGB:        8,
+		DiskBus:           catalogTestStorageBus,
+		OverrideDiscovery: true,
+	}
+	if err := st.InsertTemplate(ctx, catalogTestCluster, 9001, values, true); err != nil {
+		t.Fatalf("InsertTemplate: %v", err)
+	}
+
+	templates, err := st.CatalogTemplatesEnabled(ctx, catalogTestCluster)
+	if err != nil {
+		t.Fatalf("CatalogTemplatesEnabled: %v", err)
+	}
+
+	if len(templates) != 1 {
+		t.Fatalf("templates count = %d, want 1", len(templates))
+	}
+
+	tmpl := templates[0]
+	if tmpl.VMID != 9001 || tmpl.Node != catalogTestNode || tmpl.Name != "debian-13-tmpl" {
+		t.Errorf("template key = (%d, %q, %q)", tmpl.VMID, tmpl.Node, tmpl.Name)
+	}
+
+	if !tmpl.CloudInitCapable || !tmpl.OverrideDiscovery || !tmpl.Enabled {
+		t.Errorf("flags = capable:%v override:%v enabled:%v, want all true", tmpl.CloudInitCapable, tmpl.OverrideDiscovery, tmpl.Enabled)
+	}
+
+	if tmpl.DiskStorage != catalogTestStorageName || tmpl.DiskSizeGB != 8 || tmpl.DiskBus != catalogTestStorageBus {
+		t.Errorf("disk = (%q, %d, %q)", tmpl.DiskStorage, tmpl.DiskSizeGB, tmpl.DiskBus)
+	}
+}
+
+//nolint:paralleltest // migration fixtures are intentionally serial
+func TestInsertTemplate_Duplicate(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	values := store.TemplateValues{Node: catalogTestNode, Name: "tmpl"}
+	if err := st.InsertTemplate(ctx, catalogTestCluster, 9002, values, true); err != nil {
+		t.Fatalf("InsertTemplate first: %v", err)
+	}
+
+	if err := st.InsertTemplate(ctx, catalogTestCluster, 9002, values, true); !errors.Is(err, store.ErrDuplicate) {
+		t.Errorf("InsertTemplate duplicate = %v, want ErrDuplicate", err)
+	}
+}
+
+//nolint:paralleltest // migration fixtures are intentionally serial
+func TestUpdateTemplate_SuccessAndNotFound(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	initial := store.TemplateValues{Node: catalogTestNode, Name: "tmpl-old"}
+	if err := st.InsertTemplate(ctx, catalogTestCluster, 9003, initial, true); err != nil {
+		t.Fatalf("InsertTemplate: %v", err)
+	}
+
+	updated := store.TemplateValues{
+		Node:              catalogTestNodeAlpha,
+		Name:              "tmpl-new",
+		CloudInitCapable:  true,
+		DiskStorage:       catalogTestStorageName,
+		DiskSizeGB:        16,
+		DiskBus:           catalogTestStorageBus,
+		OverrideDiscovery: true,
+	}
+	if err := st.UpdateTemplate(ctx, catalogTestCluster, 9003, updated); err != nil {
+		t.Fatalf("UpdateTemplate: %v", err)
+	}
+
+	templates, err := st.CatalogTemplatesEnabled(ctx, catalogTestCluster)
+	if err != nil {
+		t.Fatalf("CatalogTemplatesEnabled: %v", err)
+	}
+
+	if len(templates) != 1 {
+		t.Fatalf("templates count = %d, want 1", len(templates))
+	}
+
+	if templates[0].Name != "tmpl-new" || !templates[0].OverrideDiscovery {
+		t.Errorf("template after update = %+v", templates[0])
+	}
+
+	if err := st.UpdateTemplate(ctx, catalogTestCluster, 9999, updated); !errors.Is(err, sql.ErrNoRows) {
+		t.Errorf("UpdateTemplate missing = %v, want sql.ErrNoRows", err)
+	}
+}
+
+//nolint:paralleltest // migration fixtures are intentionally serial
+func TestDeleteTemplate_SuccessAndNotFound(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	if err := st.InsertTemplate(ctx, catalogTestCluster, 9004, store.TemplateValues{Node: catalogTestNode, Name: "tmpl"}, true); err != nil {
+		t.Fatalf("InsertTemplate: %v", err)
+	}
+
+	if err := st.DeleteTemplate(ctx, catalogTestCluster, 9004); err != nil {
+		t.Fatalf("DeleteTemplate: %v", err)
+	}
+
+	if err := st.DeleteTemplate(ctx, catalogTestCluster, 9004); !errors.Is(err, sql.ErrNoRows) {
+		t.Errorf("DeleteTemplate missing = %v, want sql.ErrNoRows", err)
+	}
+}
+
+//nolint:paralleltest // migration fixtures are intentionally serial
+func TestSetTemplateEnabled_Upsert(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	if err := st.SetTemplateEnabled(ctx, catalogTestCluster, 9005, true); err != nil {
+		t.Fatalf("SetTemplateEnabled insert: %v", err)
+	}
+
+	if err := st.SetTemplateEnabled(ctx, catalogTestCluster, 9005, false); err != nil {
+		t.Fatalf("SetTemplateEnabled update: %v", err)
+	}
+
+	templates, err := st.CatalogTemplatesEnabled(ctx, catalogTestCluster)
+	if err != nil {
+		t.Fatalf("CatalogTemplatesEnabled: %v", err)
+	}
+
+	if len(templates) != 1 || templates[0].Enabled {
+		t.Errorf("templates = %+v, want one disabled template", templates)
+	}
+}
+
+//nolint:paralleltest // migration fixtures are intentionally serial
+func TestCatalogTemplatesEnabled_Empty(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	templates, err := st.CatalogTemplatesEnabled(ctx, catalogTestCluster)
+	if err != nil {
+		t.Fatalf("CatalogTemplatesEnabled: %v", err)
+	}
+
+	if len(templates) != 0 {
+		t.Fatalf("templates count = %d, want 0", len(templates))
+	}
+}
+
+//nolint:paralleltest // migration fixtures are intentionally serial
+func TestCatalogImagesEnabled_Empty(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	images, err := st.CatalogImagesEnabled(ctx, catalogTestCluster)
+	if err != nil {
+		t.Fatalf("CatalogImagesEnabled: %v", err)
+	}
+
+	if len(images) != 0 {
+		t.Fatalf("images count = %d, want 0", len(images))
+	}
+}

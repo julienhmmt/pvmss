@@ -10,14 +10,14 @@ votre version PVE.
 
 PVMSS s'appuie sur des rôles et ACL Proxmox dédiés pour trois acteurs :
 
-- **PVMSS_Service** — le compte de service du backend, utilisé via un jeton API
+- **PVMSS_Service** - le compte de service du backend, utilisé via un jeton API
   (`PROXMOX_API_TOKEN_NAME` / `PROXMOX_API_TOKEN_VALUE`). Il effectue les
   opérations cluster, nœud, VM, stockage, réseau et utilisateur/pool pour le
   compte de l'application.
-- **PVMSS_Admin** — les administrateurs humains de PVMSS. Ils gèrent les VMs,
+- **PVMSS_Admin** - les administrateurs humains de PVMSS. Ils gèrent les VMs,
   utilisateurs et pools créés par PVMSS, et consultent les ressources cluster et
   nœuds.
-- **PVMSSUser** — le rôle par pool attribué automatiquement à chaque
+- **PVMSSUser** - le rôle par pool attribué automatiquement à chaque
   utilisateur de libre-service. PVMSS provisionne ce rôle, l'utilisateur, le
   pool et l'ACL lorsque vous créez un pool depuis `/admin/pools`. Vous ne le
   créez pas manuellement.

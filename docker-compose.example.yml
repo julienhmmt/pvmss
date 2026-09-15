@@ -1,6 +1,6 @@
 ---
 # Copy to docker-compose.yml and adjust. Every variable is read by
-# server/internal/config/load.go — the server refuses to start if a required
+# server/internal/config/load.go - the server refuses to start if a required
 # one is missing or malformed (LOG_LEVEL is lowercase only).
 services:
   pvmss:
@@ -10,7 +10,7 @@ services:
     ports:
       - "50000:50000/tcp"
     # Use either an .env file (see example.env) or the inline environment
-    # block below — not both.
+    # block below - not both.
     # env_file:
     #   - .env
     environment:

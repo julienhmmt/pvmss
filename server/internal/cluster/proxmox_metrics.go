@@ -10,10 +10,10 @@ import (
 
 // proxmoxRRDRow mirrors one entry of Proxmox's
 // /nodes/{node}/qemu/{vmid}/rrddata response. All numeric fields decode as
-// float64 — Proxmox's RRD averaging (cf=AVERAGE) always emits floats, even
+// float64 - Proxmox's RRD averaging (cf=AVERAGE) always emits floats, even
 // for integer-valued metrics like mem/maxmem. Fields are pointers because
 // Proxmox emits JSON null for samples predating the metric's collection
-// (e.g. right after a VM starts) — nilFloat below defaults those to zero
+// (e.g. right after a VM starts) - nilFloat below defaults those to zero
 // rather than letting them silently decode as Go's zero value in a way that
 // would be indistinguishable from a real zero reading.
 type proxmoxRRDRow struct {
@@ -30,7 +30,7 @@ type proxmoxRRDRow struct {
 // GetMetricsHistory implements MetricsHistoryReader against Proxmox's RRD
 // data endpoint. Proxmox already reports netin/netout/diskread/diskwrite as
 // bytes-per-second averages (not cumulative counters) and cpu as a 0..1
-// fraction — this only converts cpu to a percentage.
+// fraction - this only converts cpu to a percentage.
 func (p Proxmox) GetMetricsHistory(ctx context.Context, node string, vmid int, timeframe MetricsTimeframe) ([]MetricsSample, error) {
 	form := url.Values{"timeframe": {string(timeframe)}, "cf": {"AVERAGE"}}
 

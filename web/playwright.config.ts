@@ -27,10 +27,10 @@ export default defineConfig({
 			LOG_OUTPUT: 'stdout',
 			SESSION_SECRET: 'e2e-session-secret-with-at-least-thirty-two-bytes',
 			PVMSS_COOKIE_SECURE: 'false',
-			// Short guard so nodes.spec.ts can exercise "wait it out, click again —
+			// Short guard so nodes.spec.ts can exercise "wait it out, click again - 
 			// it works" (quickstart.md step 6) without a multi-second sleep.
 			PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL: '2s',
-			// bcrypt hash of "pvmss-e2e-admin" (bcrypt.MinCost) — admin-catalog.spec.ts
+			// bcrypt hash of "pvmss-e2e-admin" (bcrypt.MinCost) - admin-catalog.spec.ts
 			// (T11) is the only spec that needs POST /api/v1/auth/admin-login.
 			ADMIN_PASSWORD_HASH: '$2a$04$W8Da6bYNWJPztehxCYwifOoPpt0GfHtyMKGBtgy2PWkcCI7In6nee',
 		},

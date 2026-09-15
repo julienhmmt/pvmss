@@ -423,7 +423,7 @@ func TestProxmox_ListISOs(t *testing.T) {
 }
 
 // Proxmox answers HTTP 595 when the API node cannot reach a target node's
-// pveproxy — in practice, the node is offline. One offline node must not
+// pveproxy - in practice, the node is offline. One offline node must not
 // poison the whole listing: resources on the healthy nodes are still
 // returned (regression: admin ISO/bridge pages 500'd when any node was down).
 const (
@@ -544,7 +544,7 @@ func TestProxmox_ListISOs_SkipsUnavailableStorages(t *testing.T) {
 }
 
 // A node whose /nodes status is not "online" must not be asked for its
-// network interfaces at all — same wasted-call regression as the ISO listing.
+// network interfaces at all - same wasted-call regression as the ISO listing.
 func TestProxmox_ListBridges_SkipsOfflineNodes(t *testing.T) {
 	t.Parallel()
 

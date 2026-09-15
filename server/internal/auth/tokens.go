@@ -12,8 +12,7 @@ import (
 )
 
 // TokenRecord is a persisted, non-secret API token descriptor. ExpiresAt is
-// nil for a token that never expires (contracts/auth-tokens.md: creation
-// takes no expiry input this tranche; the column exists for later use).
+// nil for a token that never expires.
 type TokenRecord struct {
 	ID         string
 	Hash       []byte
@@ -93,7 +92,7 @@ func (s *TokenService) Resolve(ctx context.Context, raw string) (Identity, error
 	return token.Identity, nil
 }
 
-// List returns an identity's own tokens (label, scope, dates — never the value).
+// List returns an identity's own tokens (label, scope, dates - never the value).
 func (s *TokenService) List(ctx context.Context, username string) ([]TokenRecord, error) {
 	tokens, err := s.repository.ListTokens(ctx, username)
 	if err != nil {
@@ -105,7 +104,7 @@ func (s *TokenService) List(ctx context.Context, username string) ([]TokenRecord
 
 // Revoke deletes a token owned by username. Deleting an unknown or
 // not-owned id fails the same way, so a caller cannot probe other users'
-// token ids (contracts/auth-tokens.md).
+// token ids.
 func (s *TokenService) Revoke(ctx context.Context, id, username string) error {
 	return s.repository.DeleteToken(ctx, id, username)
 }

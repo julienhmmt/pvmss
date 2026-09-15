@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * ImagePicker — grouped native select for approved cloud images.
+	 * ImagePicker - grouped native select for approved cloud images.
 	 * Grouped by node like the TemplatePicker (the shared Select has no
 	 * optgroup support) and showing each image's size, the disk floor the
 	 * server enforces (code "disk_below_image").
@@ -20,7 +20,7 @@
 	const images = $derived(form.catalog?.images ?? []);
 
 	// Select binds to string values; an image is identified by the
-	// (storage, file) pair — the same file name can exist on several
+	// (storage, file) pair - the same file name can exist on several
 	// storages. One-way binding only: updates flow through onImageChange.
 	const selectedKey = $derived(form.imageFile === '' ? '' : `${form.imageStorage}|${form.imageFile}`);
 

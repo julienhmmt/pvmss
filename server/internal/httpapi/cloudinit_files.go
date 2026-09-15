@@ -10,7 +10,7 @@ import (
 )
 
 // CloudInitFiles serves the user-owned cloud-init document endpoints
-// (/api/v1/cloudinit/files — cloudinit-userdata spec D3). Every row is
+// (/api/v1/cloudinit/files). Every row is
 // scoped to the session identity's username; there is no cluster or admin
 // concept here.
 type CloudInitFiles struct {
@@ -157,7 +157,7 @@ func (h *CloudInitFiles) ServeDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// fileOwner resolves the session identity — the only owner this API ever
+// fileOwner resolves the session identity - the only owner this API ever
 // operates on. 401 when unauthenticated.
 func (h *CloudInitFiles) fileOwner(w http.ResponseWriter, r *http.Request) (string, bool) {
 	identity, err := h.auth.Principal(r)

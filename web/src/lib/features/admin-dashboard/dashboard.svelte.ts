@@ -30,7 +30,7 @@ export interface DashboardSummary {
 
 /**
  * DashboardStore manages the admin dashboard view. API responses are
- * $state.raw — they are API data, not form edits (constitution VII). One
+ * $state.raw - they are API data, not form edits (constitution VII). One
  * store instance per admin dashboard page, via context.
  */
 export class DashboardStore {

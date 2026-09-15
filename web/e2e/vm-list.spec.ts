@@ -42,7 +42,7 @@ test.describe('T04 VM list', () => {
 		await expect(vmRows(page)).toHaveCount(2);
 		await expect(page).toHaveURL(/[?&]search=web/);
 
-		// By tag — "db" also name-matches the sandbox VMs; the union is 3 rows.
+		// By tag - "db" also name-matches the sandbox VMs; the union is 3 rows.
 		await search.fill('db');
 		await expect(vmRows(page)).toHaveCount(3);
 		await expect(page.getByText('db-01')).toBeVisible();
@@ -150,7 +150,7 @@ test.describe('T04 VM list', () => {
 		await signIn(page.request, 'bob', 'pvmss-bob');
 		await page.goto('/vms?cluster=default');
 
-		// bob owns pool-bob (103, 104, 105, 106, 116, 117, 118) — 7 VMs, none alice's.
+		// bob owns pool-bob (103, 104, 105, 106, 116, 117, 118) - 7 VMs, none alice's.
 		await expect(vmRows(page)).toHaveCount(7);
 		expect(await rowNames(page)).not.toContain('web-01');
 		await expect(page.getByText('cache-01')).toBeVisible();

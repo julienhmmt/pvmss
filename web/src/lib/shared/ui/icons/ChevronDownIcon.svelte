@@ -1,5 +1,5 @@
 <script lang="ts">
-	/** ChevronDownIcon — dropdown affordance for Select. Inherits currentColor. */
+	/** ChevronDownIcon - dropdown affordance for Select. Inherits currentColor. */
 	interface Props {
 		class?: string;
 	}

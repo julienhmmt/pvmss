@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { THEME_STORAGE_KEY, ThemeState } from './theme.svelte';
 
-// T008 (US2): ThemeState — init reads localStorage["pvmss-theme-v1"] when
+// T008 (US2): ThemeState - init reads localStorage["pvmss-theme-v1"] when
 // present, else falls back to prefers-color-scheme; toggle() flips, persists,
 // and calls apply(), which toggles the "dark" class. Tested without a DOM
 // beyond happy-dom's document/localStorage/matchMedia.

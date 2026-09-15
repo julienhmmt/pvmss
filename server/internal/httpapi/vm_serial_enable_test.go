@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// TestVMDetail_Serial_EnablesPortOnExistingVM — POST /serial on a VM created
+// TestVMDetail_Serial_EnablesPortOnExistingVM - POST /serial on a VM created
 // without a serial port (dataset VM 101) provisions serial0, returns 200 with
 // the refreshed entity reporting hasSerial=true, and records one enable_serial
 // fake call.
@@ -38,10 +38,10 @@ func TestVMDetail_Serial_EnablesPortOnExistingVM(t *testing.T) {
 	assertSingleFakeCall(t, 101, "enable_serial")
 }
 
-// TestVMDetail_Serial_NonOwnerForbidden — an actor who does not own the VM
+// TestVMDetail_Serial_NonOwnerForbidden - an actor who does not own the VM
 // (bob, pool-bob) gets 403 and the writer is not touched.
 //
-//nolint:paralleltest // serial: shared fake cluster dataset
+//nolint:paralleltest,dupl // serial: shared fake cluster dataset; standard POST-403 pattern
 func TestVMDetail_Serial_NonOwnerForbidden(t *testing.T) {
 	cluster.ResetFake()
 

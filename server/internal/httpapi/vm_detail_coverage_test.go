@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-// TestVMDetail_Audit_HappyPath — GET /vms/:cluster/:vmid/audit returns
+// TestVMDetail_Audit_HappyPath - GET /vms/:cluster/:vmid/audit returns
 // paginated audit entries for the VM.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -42,7 +42,7 @@ func TestVMDetail_Audit_HappyPath(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Audit_PageParam — the page query parameter is parsed and
+// TestVMDetail_Audit_PageParam - the page query parameter is parsed and
 // invalid values are rejected.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -80,7 +80,7 @@ func TestVMDetail_Audit_PageParam(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Audit_Unauthenticated — audit endpoint requires auth.
+// TestVMDetail_Audit_Unauthenticated - audit endpoint requires auth.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Audit_Unauthenticated(t *testing.T) {
@@ -94,7 +94,7 @@ func TestVMDetail_Audit_Unauthenticated(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Audit_NonOwnerForbidden — non-owner cannot read another user's audit.
+// TestVMDetail_Audit_NonOwnerForbidden - non-owner cannot read another user's audit.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Audit_NonOwnerForbidden(t *testing.T) {
@@ -109,7 +109,7 @@ func TestVMDetail_Audit_NonOwnerForbidden(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Audit_ActorActionFilters — actor and action query params are
+// TestVMDetail_Audit_ActorActionFilters - actor and action query params are
 // forwarded to the store filter.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -143,7 +143,7 @@ func TestVMDetail_Audit_ActorActionFilters(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Network_MethodNotAllowed — non-PUT methods on /network are rejected.
+// TestVMDetail_Network_MethodNotAllowed - non-PUT methods on /network are rejected.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Network_MethodNotAllowed(t *testing.T) {
@@ -158,7 +158,7 @@ func TestVMDetail_Network_MethodNotAllowed(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Network_Unauthenticated — network endpoint requires auth.
+// TestVMDetail_Network_Unauthenticated - network endpoint requires auth.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Network_Unauthenticated(t *testing.T) {
@@ -172,7 +172,7 @@ func TestVMDetail_Network_Unauthenticated(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Network_NonOwnerForbidden — non-owner cannot update network.
+// TestVMDetail_Network_NonOwnerForbidden - non-owner cannot update network.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Network_NonOwnerForbidden(t *testing.T) {
@@ -187,7 +187,7 @@ func TestVMDetail_Network_NonOwnerForbidden(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Network_InvalidBody — malformed JSON is rejected.
+// TestVMDetail_Network_InvalidBody - malformed JSON is rejected.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Network_InvalidBody(t *testing.T) {
@@ -202,7 +202,7 @@ func TestVMDetail_Network_InvalidBody(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Hardware_MethodNotAllowed — non-PUT methods on /hardware are rejected.
+// TestVMDetail_Hardware_MethodNotAllowed - non-PUT methods on /hardware are rejected.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Hardware_MethodNotAllowed(t *testing.T) {
@@ -217,7 +217,7 @@ func TestVMDetail_Hardware_MethodNotAllowed(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Hardware_Unauthenticated — hardware endpoint requires auth.
+// TestVMDetail_Hardware_Unauthenticated - hardware endpoint requires auth.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Hardware_Unauthenticated(t *testing.T) {
@@ -231,7 +231,7 @@ func TestVMDetail_Hardware_Unauthenticated(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Hardware_EmptyPatch — at least one hardware field is required.
+// TestVMDetail_Hardware_EmptyPatch - at least one hardware field is required.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Hardware_EmptyPatch(t *testing.T) {
@@ -246,7 +246,7 @@ func TestVMDetail_Hardware_EmptyPatch(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Hardware_InvalidBody — malformed JSON is rejected.
+// TestVMDetail_Hardware_InvalidBody - malformed JSON is rejected.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Hardware_InvalidBody(t *testing.T) {
@@ -261,7 +261,7 @@ func TestVMDetail_Hardware_InvalidBody(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Hardware_NonOwnerForbidden — non-owner cannot update hardware.
+// TestVMDetail_Hardware_NonOwnerForbidden - non-owner cannot update hardware.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Hardware_NonOwnerForbidden(t *testing.T) {
@@ -276,7 +276,7 @@ func TestVMDetail_Hardware_NonOwnerForbidden(t *testing.T) {
 	}
 }
 
-// TestVMDetail_EnableSerial_MethodNotAllowed — non-POST methods on /serial are rejected.
+// TestVMDetail_EnableSerial_MethodNotAllowed - non-POST methods on /serial are rejected.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_EnableSerial_MethodNotAllowed(t *testing.T) {
@@ -291,7 +291,7 @@ func TestVMDetail_EnableSerial_MethodNotAllowed(t *testing.T) {
 	}
 }
 
-// TestVMDetail_EnableSerial_Unauthenticated — serial endpoint requires auth.
+// TestVMDetail_EnableSerial_Unauthenticated - serial endpoint requires auth.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_EnableSerial_Unauthenticated(t *testing.T) {
@@ -305,7 +305,7 @@ func TestVMDetail_EnableSerial_Unauthenticated(t *testing.T) {
 	}
 }
 
-// TestVMDetail_EnableSerial_NonOwnerForbidden — non-owner cannot enable serial.
+// TestVMDetail_EnableSerial_NonOwnerForbidden - non-owner cannot enable serial.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_EnableSerial_NonOwnerForbidden(t *testing.T) {
@@ -320,7 +320,7 @@ func TestVMDetail_EnableSerial_NonOwnerForbidden(t *testing.T) {
 	}
 }
 
-// TestVMDetail_EnableSerial_OwnerSuccess — owner can enable serial on their VM.
+// TestVMDetail_EnableSerial_OwnerSuccess - owner can enable serial on their VM.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_EnableSerial_OwnerSuccess(t *testing.T) {
@@ -335,7 +335,7 @@ func TestVMDetail_EnableSerial_OwnerSuccess(t *testing.T) {
 	}
 }
 
-// TestVMDetail_CDROM_MethodNotAllowed — non-PATCH methods on /cdrom are rejected.
+// TestVMDetail_CDROM_MethodNotAllowed - non-PATCH methods on /cdrom are rejected.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_CDROM_MethodNotAllowed(t *testing.T) {
@@ -350,7 +350,7 @@ func TestVMDetail_CDROM_MethodNotAllowed(t *testing.T) {
 	}
 }
 
-// TestVMDetail_CDROM_Unauthenticated — cdrom endpoint requires auth.
+// TestVMDetail_CDROM_Unauthenticated - cdrom endpoint requires auth.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_CDROM_Unauthenticated(t *testing.T) {
@@ -364,7 +364,7 @@ func TestVMDetail_CDROM_Unauthenticated(t *testing.T) {
 	}
 }
 
-// TestVMDetail_CDROM_NonOwnerForbidden — non-owner cannot use cdrom endpoint.
+// TestVMDetail_CDROM_NonOwnerForbidden - non-owner cannot use cdrom endpoint.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_CDROM_NonOwnerForbidden(t *testing.T) {
@@ -379,7 +379,7 @@ func TestVMDetail_CDROM_NonOwnerForbidden(t *testing.T) {
 	}
 }
 
-// TestVMDetail_CDROM_InvalidBody — malformed JSON is rejected.
+// TestVMDetail_CDROM_InvalidBody - malformed JSON is rejected.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_CDROM_InvalidBody(t *testing.T) {
@@ -394,7 +394,7 @@ func TestVMDetail_CDROM_InvalidBody(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Disk_MethodNotAllowed — unsupported method on /disks is rejected.
+// TestVMDetail_Disk_MethodNotAllowed - unsupported method on /disks is rejected.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Disk_MethodNotAllowed(t *testing.T) {
@@ -409,7 +409,7 @@ func TestVMDetail_Disk_MethodNotAllowed(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Disk_Unauthenticated — disk endpoint requires auth.
+// TestVMDetail_Disk_Unauthenticated - disk endpoint requires auth.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Disk_Unauthenticated(t *testing.T) {
@@ -423,7 +423,7 @@ func TestVMDetail_Disk_Unauthenticated(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Disk_NonOwnerForbidden — non-owner cannot create disks.
+// TestVMDetail_Disk_NonOwnerForbidden - non-owner cannot create disks.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Disk_NonOwnerForbidden(t *testing.T) {
@@ -438,7 +438,7 @@ func TestVMDetail_Disk_NonOwnerForbidden(t *testing.T) {
 	}
 }
 
-// TestVMDetail_Disk_InvalidBody — malformed JSON is rejected.
+// TestVMDetail_Disk_InvalidBody - malformed JSON is rejected.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_Disk_InvalidBody(t *testing.T) {
@@ -453,7 +453,7 @@ func TestVMDetail_Disk_InvalidBody(t *testing.T) {
 	}
 }
 
-// TestVMDetail_DiskCreate_OwnerSuccess — owner can add a disk.
+// TestVMDetail_DiskCreate_OwnerSuccess - owner can add a disk.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_DiskCreate_OwnerSuccess(t *testing.T) {
@@ -468,7 +468,7 @@ func TestVMDetail_DiskCreate_OwnerSuccess(t *testing.T) {
 	}
 }
 
-// TestVMDetail_DiskDelete_OwnerSuccess — owner can delete a disk.
+// TestVMDetail_DiskDelete_OwnerSuccess - owner can delete a disk.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_DiskDelete_OwnerSuccess(t *testing.T) {
@@ -483,7 +483,7 @@ func TestVMDetail_DiskDelete_OwnerSuccess(t *testing.T) {
 	}
 }
 
-// TestVMDetail_HardwareOptions_MethodNotAllowed — non-GET on hardware-options.
+// TestVMDetail_HardwareOptions_MethodNotAllowed - non-GET on hardware-options.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_HardwareOptions_MethodNotAllowed(t *testing.T) {
@@ -498,7 +498,7 @@ func TestVMDetail_HardwareOptions_MethodNotAllowed(t *testing.T) {
 	}
 }
 
-// TestVMDetail_HardwareOptions_Unauthenticated — hardware-options requires auth.
+// TestVMDetail_HardwareOptions_Unauthenticated - hardware-options requires auth.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_HardwareOptions_Unauthenticated(t *testing.T) {
@@ -512,7 +512,7 @@ func TestVMDetail_HardwareOptions_Unauthenticated(t *testing.T) {
 	}
 }
 
-// TestVMDetail_HardwareOptions_NonOwnerForbidden — non-owner cannot see options.
+// TestVMDetail_HardwareOptions_NonOwnerForbidden - non-owner cannot see options.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_HardwareOptions_NonOwnerForbidden(t *testing.T) {

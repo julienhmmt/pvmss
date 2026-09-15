@@ -60,7 +60,7 @@
 	const NUMERIC_COLUMNS: ReadonlySet<VmSortBy> = new Set<VmSortBy>(['vmid', 'cpu', 'memory']);
 
 	// Columns that drop out in the 640–899px tablet band (sidebar still a
-	// drawer, content still narrow) — Node is the only one from the sortable
+	// drawer, content still narrow) - Node is the only one from the sortable
 	// set; Cluster and Pool are handled where they're each rendered, since
 	// neither comes from this loop.
 	const TABLET_HIDDEN_COLUMNS: ReadonlySet<VmSortBy> = new Set<VmSortBy>(['node']);
@@ -109,7 +109,7 @@
 		try {
 			await post('/api/v1/cluster/refresh');
 		} catch {
-			// The refresh itself may fail (cluster still down) — reload picks
+			// The refresh itself may fail (cluster still down) - reload picks
 			// up the current error state either way.
 		}
 		await store.load();

@@ -9,7 +9,7 @@
 	import { m } from '$lib/paraglide/messages.js';
 	import Button from '$lib/shared/ui/Button.svelte';
 
-	// Review step (V09): shows the exact request the server will receive —
+	// Review step (V09): shows the exact request the server will receive - 
 	// there is no second, expert-only endpoint (FR-001) and no hidden fields.
 	const form = getVmCreateContext();
 	const tray = getTaskTrayContext();
@@ -19,7 +19,7 @@
 
 	const outgoing = $derived(form.buildRequest());
 
-	// The review shows the chosen document's label — the raw request JSON
+	// The review shows the chosen document's label - the raw request JSON
 	// only carries the id.
 	const cloudInitDocumentLabel = $derived(
 		form.cloudInitTemplateId !== ''

@@ -13,8 +13,8 @@ type Store struct {
 }
 
 // NewFromDB wraps an already-open *sql.DB in a Store. Used by tests that need
-// to control migration application themselves (e.g. the T11 compatibility
-// test that captures outputs at V7 then migrates forward to V9). Production
+// to control migration application themselves (e.g. the compatibility test that captures
+// outputs at V7 then migrates forward to V9). Production
 // code should use Open, which runs all migrations.
 func NewFromDB(db *sql.DB) *Store {
 	return &Store{db: db, staging: NewImportStaging()}

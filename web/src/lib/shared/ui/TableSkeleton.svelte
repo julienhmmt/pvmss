@@ -2,7 +2,7 @@
 	import Skeleton from './Skeleton.svelte';
 
 	/**
-	 * TableSkeleton — renders N skeleton rows × a configurable column count
+	 * TableSkeleton - renders N skeleton rows × a configurable column count
 	 * inside a full table shell (the same `overflow-x-auto rounded-lg border`
 	 * wrapper the real admin tables use), so the table shape doesn't jump
 	 * when data arrives. Replaces the bare "Loading…" paragraph on

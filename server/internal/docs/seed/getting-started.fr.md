@@ -8,7 +8,7 @@ créer une nouvelle.
 
 Choisissez votre cluster et utilisez vos identifiants Proxmox sur la
 [page de connexion](/login). Si le cluster sélectionné est injoignable, le
-formulaire l'indique — réessayez plus tard ou choisissez un autre cluster.
+formulaire l'indique - réessayez plus tard ou choisissez un autre cluster.
 
 ## Retrouver ses VM
 
@@ -27,7 +27,7 @@ une vue filtrée peut être mise en favori.
    nœud est choisi pour vous sauf en mode Détaillé.
 4. Attachez éventuellement un document cloud-init (template admin ou l'un de
    [vos fichiers](/cloud-init)).
-5. Validez — le portail provisionne la VM et affiche la progression dans le
+5. Validez - le portail provisionne la VM et affiche la progression dans le
    tiroir des tâches.
 
 Pour aller plus loin, consultez les [règles de création de VM](/docs/vm-creation-guidelines)

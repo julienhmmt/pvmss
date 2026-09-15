@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Textarea — the shared multiline input. Uses .pv-input so it matches the
+	 * Textarea - the shared multiline input. Uses .pv-input so it matches the
 	 * rest of the form vocabulary. Supports a monospace variant for technical
 	 * content (SSH keys, cloud-init), an optional character count, and
 	 * auto-grow to fit content. All transitions are guarded by the global

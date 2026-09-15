@@ -220,7 +220,7 @@ func repeatRune(r rune, n int) []rune {
 	return out
 }
 
-// TestDocumentationPages_ListIncludesDisabled — the admin list reader returns
+// TestDocumentationPages_ListIncludesDisabled - the admin list reader returns
 // every page (enabled and disabled), ordered by sort_order then title.
 //
 //nolint:paralleltest // serial: shared SQLite fixture
@@ -260,7 +260,7 @@ func TestDocumentationPages_ListIncludesDisabled(t *testing.T) {
 	}
 }
 
-// TestDocumentationPages_SetEnabledNotFound — toggling a missing page returns
+// TestDocumentationPages_SetEnabledNotFound - toggling a missing page returns
 // ErrDocumentationPageNotFound.
 //
 //nolint:paralleltest // serial: shared SQLite fixture
@@ -273,7 +273,7 @@ func TestDocumentationPages_SetEnabledNotFound(t *testing.T) {
 	}
 }
 
-// TestDocumentationPages_StoreErrors — once the underlying store is closed,
+// TestDocumentationPages_StoreErrors - once the underlying store is closed,
 // every catalog operation surfaces a non-sentinel error (not NotFound, not
 // Duplicate, not Invalid). This covers the store-error branches that the
 // happy-path and not-found tests cannot reach.
@@ -311,7 +311,7 @@ func TestDocumentationPages_StoreErrors(t *testing.T) {
 }
 
 // assertDocStoreError fails when err is nil or one of the catalog sentinel
-// errors — a closed store must surface a non-sentinel transport error.
+// errors - a closed store must surface a non-sentinel transport error.
 func assertDocStoreError(t *testing.T, err error) {
 	t.Helper()
 	if err == nil {
@@ -326,7 +326,7 @@ func assertDocStoreError(t *testing.T, err error) {
 	}
 }
 
-// TestDeriveDocumentationPageID_EmptySlug — a title that is all special
+// TestDeriveDocumentationPageID_EmptySlug - a title that is all special
 // characters produces the fallback slug "page".
 func TestDeriveDocumentationPageID_EmptySlug(t *testing.T) {
 	t.Parallel()
@@ -339,7 +339,7 @@ func TestDeriveDocumentationPageID_EmptySlug(t *testing.T) {
 	}
 }
 
-// TestDocumentationPages_GetFallbackStoreError — when the en fallback lookup
+// TestDocumentationPages_GetFallbackStoreError - when the en fallback lookup
 // itself fails with a non-ErrNoRows error (closed store), the catalog surfaces
 // that raw error rather than a not-found sentinel.
 //
@@ -357,7 +357,7 @@ func TestDocumentationPages_GetFallbackStoreError(t *testing.T) {
 	assertDocStoreError(t, err)
 }
 
-// TestDocumentationPages_GetFallbackNotFound — when neither the requested lang
+// TestDocumentationPages_GetFallbackNotFound - when neither the requested lang
 // nor the en fallback row exists, the catalog returns ErrDocumentationPageNotFound.
 //
 //nolint:paralleltest // serial: shared SQLite fixture
@@ -371,7 +371,7 @@ func TestDocumentationPages_GetFallbackNotFound(t *testing.T) {
 	}
 }
 
-// TestDocumentationPages_WriteErrors — with the database in query_only mode,
+// TestDocumentationPages_WriteErrors - with the database in query_only mode,
 // reads succeed but writes fail. This covers the store-write error branches
 // in Create, Update, Delete, and SetDocumentationPageEnabled that the
 // closed-store test cannot reach (because the first read fails first).

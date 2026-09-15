@@ -105,7 +105,7 @@ func (p Proxmox) EnsurePoolUser(ctx context.Context, pool, password string) (str
 	return username, nil
 }
 
-// CreatePool implements Client, idempotently — a pool that already exists is
+// CreatePool implements Client, idempotently - a pool that already exists is
 // left untouched (matching the fake's own contract).
 func (p Proxmox) CreatePool(ctx context.Context, poolID, comment string) error {
 	rest := p.rest()
@@ -145,7 +145,7 @@ func (p Proxmox) SetPoolACL(ctx context.Context, username, poolID, role string) 
 }
 
 // DeletePool implements Client. ErrNotFound on an unknown pool, matching the
-// fake's contract — Proxmox's own DELETE does not 404 cleanly on a missing
+// fake's contract - Proxmox's own DELETE does not 404 cleanly on a missing
 // pool, so existence is checked first. The pool's ACL entry is cleared too:
 // harmless to leave (Proxmox tolerates an ACL pointing at a removed path) but
 // worth clearing so entries do not accumulate indefinitely.

@@ -8,7 +8,7 @@ async function signInAlice(request: APIRequestContext): Promise<void> {
 }
 
 // The Playwright server process holds the fake dataset in memory across test
-// files, so VMs created here must be deleted again — T04's list specs assert
+// files, so VMs created here must be deleted again - T04's list specs assert
 // exact row counts.
 async function deleteCreatedVms(request: APIRequestContext): Promise<void> {
 	const list = await request.get('/api/v1/vms?scope=all&pageSize=100');
@@ -51,7 +51,7 @@ test.describe('T06 VM creation', () => {
 	test('simple mode: submitting with an empty name shows an inline error instead of doing nothing', async ({ page }) => {
 		await signInAlice(page.request);
 		// Locale defaults to fr (locale.svelte.ts DEFAULT_LOCALE) unless a
-		// preference is stored — force en so the assertions below are
+		// preference is stored - force en so the assertions below are
 		// deterministic regardless of the host's default.
 		await page.addInitScript(() => localStorage.setItem('pvmss-locale', 'en'));
 		await page.goto('/vms/create');
@@ -102,14 +102,14 @@ test.describe('T06 VM creation', () => {
 
 		await expect(page.getByText(/Draft restored/)).toBeVisible();
 		await expect(page.getByLabel('Name')).toHaveValue('web-e2e-draft');
-		// The mode was part of the draft — we land back on the detailed wizard.
+		// The mode was part of the draft - we land back on the detailed wizard.
 		await expect(page.getByRole('tab', { name: 'Detailed' })).toHaveAttribute('aria-selected', 'true');
 	});
 
 	test('catalog enforcement: a direct API call outside the catalog is rejected', async ({ page }) => {
 		await signInAlice(page.request);
 
-		// SC-004: no UI dropdown involved — a raw request with an unapproved storage.
+		// SC-004: no UI dropdown involved - a raw request with an unapproved storage.
 		const response = await page.request.post('/api/v1/vms', {
 			data: {
 				cluster: 'default',
@@ -146,7 +146,7 @@ test.describe('T06 VM creation', () => {
 			const vms = (await list.json()) as { items: { vmid: number; pool: string }[] };
 			const createdVm = vms.items.find((item) => item.vmid === created.vmid);
 			// The Index may not reflect it yet (task still running); the pool
-			// check happens in the Go suite — here it suffices that creation did
+			// check happens in the Go suite - here it suffices that creation did
 			// not adopt the forged value when observable.
 			if (createdVm !== undefined) {
 				expect(createdVm.pool).toBe('pool-alice');
@@ -186,7 +186,7 @@ test.describe('T06 VM creation', () => {
 		await expect(page).toHaveURL(/\/vms$/);
 		await expect(page.getByText('VM "web-e2e-ci" created')).toBeVisible({ timeout: 20000 });
 
-		// The VM's cloud-init tab shows the file's content — the per-VM copy.
+		// The VM's cloud-init tab shows the file's content - the per-VM copy.
 		await page.goto('/vms');
 		await page.getByRole('searchbox', { name: 'Search VMs by name, tag, or ID' }).fill('web-e2e-ci');
 		await page.getByRole('link', { name: /web-e2e-ci/ }).first().click();
@@ -194,7 +194,7 @@ test.describe('T06 VM creation', () => {
 		await page.getByRole('button', { name: 'YAML editor' }).click();
 		await expect(page.locator('[data-testid="cloudinit-snippet-content"]')).toHaveValue(/htop/);
 
-		// Restore alice's empty file list — the files spec asserts an empty
+		// Restore alice's empty file list - the files spec asserts an empty
 		// state and the fake dataset is shared across spec files.
 		await page.goto('/cloud-init');
 		await page.locator('tr', { hasText: 'E2E boot script' }).getByRole('button', { name: 'Delete E2E boot script' }).click();

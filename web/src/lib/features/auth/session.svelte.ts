@@ -4,7 +4,7 @@ import type { Principal } from './login.svelte';
 
 /** SessionStore fetches the current principal from /api/v1/auth/me and exposes
  * the admin flag for the (admin) route group's layout guard. This is a frontend
- * convenience (constitution VI) — the server-side RequireAdmin middleware is
+ * convenience (constitution VI) - the server-side RequireAdmin middleware is
  * the real gate.
  */
 export class SessionStore {

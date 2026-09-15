@@ -19,7 +19,7 @@ var (
 )
 
 // sshKeyTypeRE matches the type prefixes Proxmox/cloud-init accept as public
-// keys. It mirrors ProxMate's isValidPublicKey allowlist (REPORT.md §2/#3).
+// keys. It mirrors ProxMate's isValidPublicKey allowlist.
 var sshKeyTypeRE = regexp.MustCompile(`^(ssh-rsa|ssh-ed25519|ssh-dss|ecdsa-sha2-nistp(256|384|521)|sk-ssh-ed25519@openssh\.com|sk-ecdsa-sha2-nistp256@openssh\.com)$`)
 
 // sshKeyBlobRE matches the base64 key body of an OpenSSH public key. It is

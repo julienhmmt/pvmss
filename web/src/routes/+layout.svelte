@@ -31,11 +31,11 @@
 	onDestroy(() => tray.destroy());
 
 	// Session-scoped record of vm_create terminal outcomes (failed / partial)
-	// the tray no longer tracks — feeds `displayStatus` (issue 09). The tray
+	// the tray no longer tracks - feeds `displayStatus` (issue 09). The tray
 	// writes `failed` here when a tracked vm_create task ends in error; the
 	// create flow writes `partial` when cloud-init push fails.
 	const outcomeLedger = setTaskOutcomeLedgerContext();
-	// Register the listener immediately (not at destroy time) — onDestroy
+	// Register the listener immediately (not at destroy time) - onDestroy
 	// receives the unsubscribe function returned by onTaskError, so the
 	// listener is active for the shell's lifetime and torn down on unmount.
 	onDestroy(
@@ -84,7 +84,7 @@
 			const result = await get<{ version: string }>('/api/v1/public/version');
 			version = result.version;
 		} catch {
-			// Version is informational — a failure leaves the footer silent.
+			// Version is informational - a failure leaves the footer silent.
 		}
 	});
 
@@ -171,7 +171,7 @@
 	<div class="min-h-screen bg-background text-foreground">
 		<a
 			href="#main-content"
-			class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
+			class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary-solid focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
 			data-testid="skip-to-content"
 		>
 			{m['chrome.skipToContent']()}
@@ -223,7 +223,7 @@
 	<div class="flex min-h-screen flex-col bg-background text-foreground">
 		<a
 			href="#main-content"
-			class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
+			class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-primary-solid focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-primary-foreground"
 			data-testid="skip-to-content"
 		>
 			{m['chrome.skipToContent']()}

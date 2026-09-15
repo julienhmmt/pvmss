@@ -42,7 +42,7 @@ test.describe('T18 admin cloud-init templates', () => {
 		await expect(picker.locator('option', { hasText: 'Web server' })).toHaveCount(1);
 
 		// SC-003: select it during simple-mode VM creation and confirm the
-		// resulting VM's cloud-init tab shows the template content — the
+		// resulting VM's cloud-init tab shows the template content - the
 		// per-VM copy (pvmss-<vmid>.yml) written at creation.
 		await page.getByLabel('Name').fill('cit-e2e-01');
 		await page.getByRole('radio', { name: /small/i }).check();
@@ -68,7 +68,7 @@ test.describe('T18 admin cloud-init templates', () => {
 		await expect(snippet).toHaveValue(/nginx/);
 
 		// SC-004b: editing the source template must not alter the existing
-		// VM — the per-VM copy is the unit of truth (spec D4).
+		// VM - the per-VM copy is the unit of truth (spec D4).
 		await signInAdmin(page.request);
 		await page.goto('/admin/cloudinit-templates');
 		await templateRow.getByRole('button', { name: 'Edit Web server' }).click();

@@ -1,15 +1,15 @@
 import { test, expect } from '@playwright/test';
 
-// T19 — Chrome UI e2e. Four user stories: language switching (US1), theme
+// T19 - Chrome UI e2e. Four user stories: language switching (US1), theme
 // toggle (US2), status banner (US3), homepage CTA by identity (US4). Runs
-// against the fake cluster client (constitution XI — no Proxmox needed).
+// against the fake cluster client (constitution XI - no Proxmox needed).
 //
 // The default locale is French (Paraglide base locale). SSR renders in French;
 // the language switcher is a two-button group and the theme toggle is an icon
 // button. Selectors use locale-agnostic patterns where possible.
 
 test.describe('T19 chrome UI', () => {
-	test.describe('US1 — language switcher', () => {
+	test.describe('US1 - language switcher', () => {
 		test('Layer B font swap: Archivo is applied and no Google Fonts request is made', async ({ page }) => {
 			const googleFontRequests: string[] = [];
 			page.on('request', (req) => {
@@ -53,7 +53,7 @@ test.describe('T19 chrome UI', () => {
 		});
 	});
 
-	test.describe('US2 — theme toggle', () => {
+	test.describe('US2 - theme toggle', () => {
 		test('toggling theme applies dark tokens and persists across reload', async ({ page }) => {
 			await page.goto('/');
 			const html = page.locator('html');
@@ -83,7 +83,7 @@ test.describe('T19 chrome UI', () => {
 		});
 	});
 
-	test.describe('US3 — status banner', () => {
+	test.describe('US3 - status banner', () => {
 		test('status banner is visible (demo mode or cluster degradation)', async ({ page }) => {
 			await page.goto('/');
 			// The fake cluster client has demoMode=true, but one cluster is
@@ -93,7 +93,7 @@ test.describe('T19 chrome UI', () => {
 		});
 	});
 
-	test.describe('US4 — homepage CTA', () => {
+	test.describe('US4 - homepage CTA', () => {
 		// HomeCta renders <section class="flex flex-col items-center gap-4">.
 		// The navbar's "My VMs" link is outside this section.
 		const ctaSection = (page: import('@playwright/test').Page) =>

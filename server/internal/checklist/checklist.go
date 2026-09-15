@@ -1,11 +1,13 @@
-// Package checklist mechanically generates the T16 parity checklist by
-// walking the fiche directories under .claude/v0.4/{auth,vm,admin,plateforme}/
-// and cross-referencing each fiche ID against spec.md's FR-006 table.
+// Package checklist mechanically generates the parity checklist by
 //
-// The tool reads no database and has no dependency on tranche completion —
-// it only reads fiche filenames and the hardcoded FR-006 mapping. Its
+//	walking the fiche directories under.claude/v0.4/{auth,vm,admin,plateforme}/
+//
+// and cross-referencing each fiche ID against the table.
+//
+// The tool reads no database and has no dependency on tranche completion - 
+// it only reads fiche filenames and the hardcoded mapping. Its
 // conclusions about legacy removal readiness are only valid once every
-// tranche it names is actually merged (spec Edge Cases).
+// tranche it names is actually merged.
 //
 //nolint:goconst // tranche labels and gap/deliberate strings are data, not constants
 package checklist
@@ -44,19 +46,19 @@ type FicheEntry struct {
 	Label    string
 	Tranche  string
 	IsNone   bool
-	NoneType string // "gap" or "deliberate" — only set when IsNone
+	NoneType string // "gap" or "deliberate" - only set when IsNone
 }
 
-// fr006Table is spec.md's FR-006 fiche→tranche mapping, hardcoded as the
-// lookup this tool joins against (T026). 55 mapped + 6 "none"
-// (3 real gaps: X13/P01/P02; 2 deliberate: X12/X18).
+// fr006Table is the fiche→tranche mapping, hardcoded as the
+// lookup this tool joins. 55 mapped + 6 "none"
+// (3 real gaps:; 2 deliberate).
 // Update this table, not the tool's logic, when a gap's disposition changes.
 var fr006Table = map[string]struct {
 	tranche  string
 	label    string
 	noneType string // "" = not none, "gap" = real gap, "deliberate" = design decision
 }{
-	// Auth (A01-A06) — all T02
+	// Auth
 	"A01": {"T02", "Se connecter avec un compte Proxmox", ""},
 	"A02": {"T02", "Se connecter en admin local", ""},
 	"A03": {"T02", "Se connecter en admin Proxmox", ""},
@@ -64,16 +66,16 @@ var fr006Table = map[string]struct {
 	"A05": {"T02", "Rafraîchir la session", ""},
 	"A06": {"T02", "Changer le mot de passe", ""},
 
-	// VM (V01-V27) — V13 is a real gap
-	"V01": {"T04", "Tableau de bord — mes VMs", ""},
+	// VM - V13 is a real gap
+	"V01": {"T04", "Tableau de bord - mes VMs", ""},
 	"V02": {"T04", "Rechercher une VM par nom", ""},
 	"V03": {"T04", "Rechercher une VM par tag", ""},
 	"V04": {"T04", "Rechercher une VM par VMID", ""},
 	"V05": {"T04", "Filtrer les VMs", ""},
 	"V06": {"T04", "Trier et paginer les VMs", ""},
 	"V07": {"T04", "Consulter le quota", ""},
-	"V08": {"T06", "Créer une VM — mode simple", ""},
-	"V09": {"T06", "Créer une VM — formulaire détaillé", ""},
+	"V08": {"T06", "Créer une VM - mode simple", ""},
+	"V09": {"T06", "Créer une VM - formulaire détaillé", ""},
 	"V10": {"T06", "Brouillon de création de VM", ""},
 	"V11": {"T06", "Suivi des tâches", ""},
 	"V12": {"T05", "Démarrer / arrêter / redémarrer", ""},
@@ -93,7 +95,7 @@ var fr006Table = map[string]struct {
 	"V26": {"T09", "Snapshots", ""},
 	"V27": {"T10", "Console VNC", ""},
 
-	// Admin (X01-X19) — X11, X12, X13, X18 are none
+	// Admin - are none
 	"X01": {"T11", "Tableau de bord admin", ""},
 	"X02": {"T11", "Gérer les nœuds", ""},
 	"X03": {"T11", "Gérer les stockages", ""},
@@ -114,7 +116,7 @@ var fr006Table = map[string]struct {
 	"X18": {"", "Panneau de paramètres unifié", "deliberate"},
 	"X19": {"T15", "Gérer les clusters", ""},
 
-	// Plateforme (P01-P06) — all none (real gaps)
+	// Plateforme - all none (real gaps)
 	"P01": {"", "Assistant d'installation", "gap"},
 	"P02": {"", "Consulter la documentation", "gap"},
 	"P03": {"T19", "Changer la langue", ""},
@@ -173,11 +175,11 @@ func Generate(w io.Writer, repoRoot string) error {
 		if e.IsNone {
 			switch e.NoneType {
 			case "gap":
-				fmt.Fprintf(&b, "%s  %-45s → NONE (real gap — see spec.md FR-006)\n", e.ID, e.Label)
+				fmt.Fprintf(&b, "%s  %-45s → NONE (real gap - see spec.md FR-006)\n", e.ID, e.Label)
 
 				openGaps++
 			case "deliberate":
-				fmt.Fprintf(&b, "%s  %-45s → NONE (deliberate — superseded by design, not a gap)\n", e.ID, e.Label)
+				fmt.Fprintf(&b, "%s  %-45s → NONE (deliberate - superseded by design, not a gap)\n", e.ID, e.Label)
 
 				openDeliberate++
 			default:
@@ -203,7 +205,7 @@ func Generate(w io.Writer, repoRoot string) error {
 }
 
 // walkFiches walks the four fiche subdirectories and returns entries
-// cross-referenced against the FR-006 table.
+// cross-referenced against the table.
 func walkFiches(repoRoot string) ([]FicheEntry, error) {
 	baseDir := filepath.Join(repoRoot, ".claude", "v0.4")
 
@@ -223,7 +225,7 @@ func walkFiches(repoRoot string) ([]FicheEntry, error) {
 
 // collectFicheEntries reads one fiche directory, filters .md files whose name
 // starts with a fiche ID, and builds FicheEntry rows cross-referenced against
-// the FR-006 table. A missing directory (os.IsNotExist) yields nil, nil.
+// the table. A missing directory (os.IsNotExist) yields nil, nil.
 func collectFicheEntries(dirPath string, _ ficheDir) ([]FicheEntry, error) {
 	files, err := os.ReadDir(dirPath)
 	if err != nil {
@@ -250,7 +252,7 @@ func collectFicheEntries(dirPath string, _ ficheDir) ([]FicheEntry, error) {
 
 		info, ok := fr006Table[id]
 		if !ok {
-			// Fiche file exists but not in FR-006 table — report as unknown
+			// File exists but not table - report as unknown
 			entries = append(entries, FicheEntry{
 				ID:    id,
 				Label: labelFromFilename(f.Name()),

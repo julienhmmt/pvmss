@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { StatusState, type HealthResponse } from './status.svelte';
 
-// T022 (US3): StatusState — severity derivation table from data-model.md
+// T022 (US3): StatusState - severity derivation table from data-model.md
 // (unknown > unhealthy > degraded > info > none, first match wins), raw
 // reassigned wholesale ($state.raw) on each successful poll, unchanged on a
 // failed poll. Tested without a DOM.
@@ -106,7 +106,7 @@ describe('StatusState.poll', () => {
 		const state = new StatusState(fetcher);
 		await state.pollOnce();
 		expect(state.severity).toBe('info');
-		// Now a failed poll — severity becomes unknown, not info
+		// Now a failed poll - severity becomes unknown, not info
 		await state.pollOnce();
 		expect(state.severity).toBe('unknown');
 	});

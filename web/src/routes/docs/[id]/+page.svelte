@@ -59,7 +59,7 @@
 </script>
 
 <svelte:head>
-	<title>{doc ? `${doc.title} — PVMSS` : `${m['docs.title']()} — PVMSS`}</title>
+	<title>{doc ? `${doc.title} - PVMSS` : `${m['docs.title']()} - PVMSS`}</title>
 </svelte:head>
 
 <section class="mx-auto w-full max-w-3xl px-4 py-8 md:px-6">

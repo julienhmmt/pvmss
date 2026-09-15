@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * AppHeader — minimal mobile-only bar. Holds the menu button and brand.
+	 * AppHeader - minimal mobile-only bar. Holds the menu button and brand.
 	 * Docs, language and theme controls have moved into the sidebar. The
 	 * task-tray toast mirroring effect remains here because AppHeader is
 	 * mounted on every viewport (hidden on desktop via CSS).

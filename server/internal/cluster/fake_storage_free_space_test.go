@@ -8,7 +8,6 @@ import (
 
 // TestFakeStorageFreeSpace_ReturnsAvailFromDataset verifies the fake's
 // StorageFreeSpace returns Total - Used from the static storage dataset
-// (US3/issue-04 T047).
 func TestFakeStorageFreeSpace_ReturnsAvailFromDataset(t *testing.T) {
 	t.Parallel()
 

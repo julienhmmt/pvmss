@@ -38,7 +38,7 @@ test.describe('user cloud-init files', () => {
 		await expect(row).toBeVisible();
 		await expect(row.locator('td.font-mono')).toHaveText('dev-box');
 
-		// Edit the label — dialog opens with the stored content.
+		// Edit the label - dialog opens with the stored content.
 		await row.getByRole('button', { name: 'Edit Dev box' }).click();
 		await expect(page.getByLabel('Content')).toHaveValue(fileContent);
 		await page.getByLabel('Label').fill('Dev box v2');

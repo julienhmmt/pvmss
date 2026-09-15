@@ -10,7 +10,7 @@ function runningResponse(upid: string): Response {
 	return jsonResponse(200, { upid, state: 'running', log: [] });
 }
 
-/** Returns a fresh Response per call — a Response body can only be read once. */
+/** Returns a fresh Response per call - a Response body can only be read once. */
 function always(response: () => Response): () => Promise<Response> {
 	return () => Promise.resolve(response());
 }

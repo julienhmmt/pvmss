@@ -4,7 +4,7 @@ package inventory
 import "pvmss/server/internal/cluster"
 
 // All returns this index under an empty compatibility key. Registry.All uses
-// real cluster names; this method keeps the pre-T15 single-index API usable.
+// real cluster names; this method keeps the pre- single-index API usable.
 func (index *Index) All() map[string]*Index {
 	return map[string]*Index{"": index}
 }
