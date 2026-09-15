@@ -26,7 +26,7 @@ type Configuration struct {
 	InventoryRefreshInterval          time.Duration
 	InventoryManualRefreshMinInterval time.Duration
 	InventoryRefreshTimeout           time.Duration
-	// MaxListPageSize is the upper bound on a VM list request's pageSize - 
+	// MaxListPageSize is the upper bound on a VM list request's pageSize -
 	// anything larger is rejected, never silently truncated.
 	MaxListPageSize int
 	// TrustedProxyHops is the number of trusted reverse-proxy hops in front
@@ -35,4 +35,11 @@ type Configuration struct {
 	// (the first untrusted hop from the right). 0 means no proxy is trusted
 	// and RemoteAddr is used directly. Defaults to 1 (a single ingress).
 	TrustedProxyHops int
+	// SSHUser enables SSH snippet delivery when non-empty. Snippet files are
+	// written over SSH to the host derived from each cluster's API URL, so
+	// PVMSS and Proxmox need no shared filesystem. SSHKeyFile is the path to
+	// the private key; SSHPort defaults to 22.
+	SSHUser    string
+	SSHKeyFile string
+	SSHPort    int
 }

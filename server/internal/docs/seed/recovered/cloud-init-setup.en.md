@@ -87,6 +87,13 @@ Its absence is silent, not an error.
 
 ## Troubleshooting
 
+- **Snippet written locally but the VM cannot start** (or `cicustom` points
+  at a missing file): the configured snippet directory is not the same
+  physical directory Proxmox reads snippets from. PVMSS does not SSH to
+  Proxmox and does not upload snippets via the API; it writes to a directory
+  that must be shared with (or be) the Proxmox storage's snippets path. On
+  the Proxmox host run `pvesm path <storage>` - the snippets path is that
+  path plus `/snippets`. That exact path must be what PVMSS writes to.
 - **Picker hidden in the wizard**: the cluster has no snippet write target
  - check **Admin › Clusters** (badge "cloud-init: on").
 - **Create refused with `cloudinit_write_unavailable`**: the directory is not

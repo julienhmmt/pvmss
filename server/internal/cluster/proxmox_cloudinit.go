@@ -290,7 +290,7 @@ func (p Proxmox) HasSnippet(ctx context.Context, node, storage, filename string)
 // configured snippet directory. Used to load an
 // admin-preplaced cluster-wide baseline so it can replace the generated
 // baseline in the delivered vendor-data.
-func (p Proxmox) ReadSnippet(_ context.Context, _, storage, filename string) (string, error) {
+func (p Proxmox) ReadSnippet(ctx context.Context, node, storage, filename string) (string, error) {
 	if !p.SnippetWriteAvailable() {
 		return "", ErrSnippetWriteUnavailable
 	}
@@ -301,6 +301,10 @@ func (p Proxmox) ReadSnippet(_ context.Context, _, storage, filename string) (st
 
 	if !snippetFilenameRE.MatchString(filename) || filepath.Base(filename) != filename {
 		return "", fmt.Errorf("refusing to read snippet with unsafe filename %q", filename)
+	}
+
+	if p.SSH.Enabled() {
+		return p.sshReadSnippet(ctx, node, filename)
 	}
 
 	data, err := os.ReadFile(filepath.Join(p.SnippetDir, filename)) //nolint:gosec // filename validated above
@@ -623,9 +627,11 @@ func (p Proxmox) checkSnippetStorage(storage string) error {
 // (the upload endpoint's content enum is iso/vztmpl/import); the directory
 // is the storage's own snippets/ dir, bind-mounted into the PVMSS process.
 // temp-file + rename is atomic, so Proxmox never reads a
-// half-written file, and a retry simply overwrites. node and vmid are
-// unused: the filename already carries the VM.
-func (p Proxmox) PushCloudInitSnippet(_ context.Context, _, storage, filename string, _ int, content string) error {
+// half-written file, and a retry simply overwrites. vmid is unused: the
+// filename already carries the VM. When SSH delivery is enabled, the file
+// is written over SSH to the specific node where the VM is created (the
+// node IP is resolved via /cluster/status), and SnippetDir is the remote path.
+func (p Proxmox) PushCloudInitSnippet(ctx context.Context, node, storage, filename string, _ int, content string) error {
 	if !p.SnippetWriteAvailable() {
 		return ErrSnippetWriteUnavailable
 	}
@@ -638,6 +644,10 @@ func (p Proxmox) PushCloudInitSnippet(_ context.Context, _, storage, filename st
 		return fmt.Errorf("refusing to write snippet with unsafe filename %q", filename)
 	}
 
+	if p.SSH.Enabled() {
+		return p.sshWriteSnippet(ctx, node, filename, content)
+	}
+
 	return writeFileAtomic(p.SnippetDir, filename, content)
 }
 
@@ -645,7 +655,10 @@ func (p Proxmox) PushCloudInitSnippet(_ context.Context, _, storage, filename st
 // cluster's configured snippet directory. A missing file is not an error
 // (the VM may have been created before a write target was configured, or
 // the file was already removed). Same guards as PushCloudInitSnippet.
-func (p Proxmox) RemoveCloudInitSnippet(_ context.Context, storage, filename string) error {
+// For SSH delivery, remove targets the cluster API host (node unknown at
+// remove time): a leftover file on a different node is a cleanup miss, not
+// a VM-start blocker, and shared storage makes it visible from any node.
+func (p Proxmox) RemoveCloudInitSnippet(ctx context.Context, storage, filename string) error {
 	if !p.SnippetWriteAvailable() {
 		return ErrSnippetWriteUnavailable
 	}
@@ -656,6 +669,10 @@ func (p Proxmox) RemoveCloudInitSnippet(_ context.Context, storage, filename str
 
 	if !snippetFilenameRE.MatchString(filename) || filepath.Base(filename) != filename {
 		return fmt.Errorf("refusing to remove snippet with unsafe filename %q", filename)
+	}
+
+	if p.SSH.Enabled() {
+		return p.sshRemoveSnippet(ctx, "", filename)
 	}
 
 	if err := os.Remove(filepath.Join(p.SnippetDir, filename)); err != nil {
@@ -671,7 +688,7 @@ func (p Proxmox) RemoveCloudInitSnippet(_ context.Context, storage, filename str
 
 // writeFileAtomic writes content to dir/filename via a temp file and rename,
 // mode 0644 (cloud-init on the Proxmox node reads it as a non-root user).
-// dir must already exist: it is the administrator-mounted snippets/ share - 
+// dir must already exist: it is the administrator-mounted snippets/ share -
 // creating it silently would mask a missing mount and drop the document into
 // the container's local filesystem where Proxmox can never see it.
 func writeFileAtomic(dir, filename, content string) (err error) {

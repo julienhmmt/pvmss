@@ -984,6 +984,7 @@
   "admin.clusters.snippetStoragePlaceholder": "Sélectionner un stockage snippets",
   "admin.clusters.snippetStorageLoading": "Chargement des stockages compatibles…",
   "admin.clusters.cloudinitHint": "Choisissez un stockage Proxmox ayant le contenu snippets activé, montez son répertoire snippets/ dans le conteneur PVMSS et indiquez ce chemin ci-dessus. Laissez les deux vides pour désactiver les documents cloud-init sur ce cluster.",
+  "admin.clusters.cloudinitSharedStorageToast": "Pour les clusters multi-nœuds, utilisez un stockage de snippets partagé (NFS, CephFS) afin que les snippets soient visibles par tous les nœuds - sinon une VM migrée ne pourra pas lire son snippet cloud-init.",
   "admin.clusters.cloudinitPairError": "Renseignez le répertoire des snippets et l'identifiant du stockage, ou aucun des deux.",
   "admin.clusters.cloudinitOn": "cloud-init : activé",
   "admin.clusters.cloudinitOff": "cloud-init : désactivé",

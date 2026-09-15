@@ -191,7 +191,15 @@ func initCluster(cfg config.Configuration, st *store.Store, logger *slog.Logger)
 		logger.Error("failed to list configured clusters", "component", "main", "error", err)
 		return nil, nil, err
 	}
-	clusterRegistry, err := cluster.NewRegistry(cfg.ClusterSource, rows)
+	ssh, err := cluster.NewSnippetSSH(cfg.SSHUser, cfg.SSHKeyFile, cfg.SSHPort)
+	if err != nil {
+		logger.Error("failed to load SSH snippet config", "component", "main", "error", err)
+		return nil, nil, err
+	}
+	if ssh.Enabled() {
+		logger.Info("SSH snippet delivery enabled", "component", "cluster", "user", cfg.SSHUser, "port", cfg.SSHPort)
+	}
+	clusterRegistry, err := cluster.NewRegistryWithSSH(cfg.ClusterSource, rows, ssh)
 	if err != nil {
 		logger.Error("failed to create cluster registry", "component", "main", "error", err)
 		return nil, nil, err
@@ -221,7 +229,7 @@ const displayNameDiscoveryTimeout = 5 * time.Second
 // clusters that don't already have one by calling Client.DisplayName() (the
 // real Proxmox cluster name from /cluster/status). Fake clusters are skipped:
 // their DisplayName() implementation just returns the internal logical name
-// ("default", "secondary"), which is the opposite of a human-readable label - 
+// ("default", "secondary"), which is the opposite of a human-readable label -
 // the fake seed already sets meaningful display names.
 //
 // Runs in a background goroutine launched after the HTTP server starts

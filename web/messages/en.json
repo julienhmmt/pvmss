@@ -984,6 +984,7 @@
   "admin.clusters.snippetStoragePlaceholder": "Select a snippet storage",
   "admin.clusters.snippetStorageLoading": "Loading compatible storages…",
   "admin.clusters.cloudinitHint": "Pick a Proxmox storage that has the snippets content type enabled, then mount its snippets/ directory into the PVMSS container and enter that path above. Leave both empty to disable cloud-init documents on this cluster.",
+  "admin.clusters.cloudinitSharedStorageToast": "For multi-node clusters, use a shared snippet storage (NFS, CephFS) so snippets are visible to all nodes - otherwise a migrated VM cannot read its cloud-init snippet.",
   "admin.clusters.cloudinitPairError": "Set both the snippet directory and the storage id, or neither.",
   "admin.clusters.cloudinitOn": "cloud-init: on",
   "admin.clusters.cloudinitOff": "cloud-init: off",

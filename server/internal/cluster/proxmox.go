@@ -34,6 +34,10 @@ type Proxmox struct {
 	// means the feature is off for this cluster.
 	SnippetDir     string
 	SnippetStorage string
+	// SSH is the optional SSH snippet-delivery transport. When Enabled,
+	// snippet files are written over SSH to the host derived from BaseURL
+	// instead of the local SnippetDir. SnippetDir is then the remote path.
+	SSH SnippetSSH
 	// httpClient is the cached *http.Client reused across every REST call so
 	// the underlying Transport's keep-alive connection pool is shared. Set at construction in
 	// registry.go; rest() lazily initializes it
@@ -71,7 +75,7 @@ type proxmoxResourceRow struct {
 // (non-thin), iscsi and raw-on-file cannot snapshot at all.
 //
 // ponytail: the file-backed rows mirror PVE's documented per-plugin snapshot
-// support but were not validated line-by-line against the PVE sources - 
+// support but were not validated line-by-line against the PVE sources -
 // Flags exactly this; revisit if a real cluster surprises us.
 func StorageSnapshotCapability(pluginType, format string) (canSnapshot, canVMState bool) {
 	switch pluginType {
@@ -185,6 +189,7 @@ func (p Proxmox) DisplayName(ctx context.Context) (string, error) {
 type proxmoxClusterStatusRow struct {
 	Type string `json:"type"`
 	Name string `json:"name"`
+	IP   string `json:"ip"`
 }
 
 func proxmoxNodeFromRow(row proxmoxResourceRow) Node {
