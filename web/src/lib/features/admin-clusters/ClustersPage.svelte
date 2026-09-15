@@ -5,6 +5,7 @@
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
+	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -12,6 +13,7 @@
 	}
 
 	let { store }: Props = $props();
+	const toast = getToastContext();
 	let formOpen = $state(false);
 	let editing = $state<AdminCluster | null>(null);
 	let snippetStorages = $state<SnippetStorage[]>([]);
@@ -89,7 +91,15 @@
 		// Failure leaves the dialog open with store.error rendered inline
 		// (ClusterFormDialog's error prop) - closing unconditionally here hid
 		// create/update failures behind an easy-to-miss page-top banner.
-		if (succeeded) formOpen = false;
+		if (succeeded) {
+			formOpen = false;
+			// Remind the admin that multi-node clusters need shared snippet
+			// storage - a snippet on node-local storage is invisible to the
+			// other nodes after a migration.
+			if (input.snippetStorage) {
+				toast.info(m['admin.clusters.cloudinitSharedStorageToast'](), 8000);
+			}
+		}
 	}
 </script>
 

@@ -45,6 +45,10 @@ func Load() (Configuration, error) {
 		return cfg, err
 	}
 
+	if err := loadSSHSettings(&cfg); err != nil {
+		return cfg, err
+	}
+
 	return cfg, nil
 }
 
@@ -218,6 +222,32 @@ func loadProxySettings(cfg *Configuration) error {
 	}
 
 	cfg.TrustedProxyHops = hops
+
+	return nil
+}
+
+// loadSSHSettings reads the optional SSH snippet-delivery config. When
+// PVMSS_SSH_USER is set, snippet files are written over SSH to the host
+// derived from each cluster's API URL instead of a shared filesystem. The
+// key file is required when the user is set; the port defaults to 22.
+func loadSSHSettings(cfg *Configuration) error {
+	cfg.SSHUser = strings.TrimSpace(os.Getenv("PVMSS_SSH_USER"))
+	cfg.SSHKeyFile = strings.TrimSpace(os.Getenv("PVMSS_SSH_KEY_FILE"))
+
+	port, err := loadInt("PVMSS_SSH_PORT", 22)
+	if err != nil {
+		return err
+	}
+
+	cfg.SSHPort = port
+
+	if cfg.SSHUser == "" {
+		return nil
+	}
+
+	if cfg.SSHKeyFile == "" {
+		return errors.New("PVMSS_SSH_KEY_FILE is required when PVMSS_SSH_USER is set")
+	}
 
 	return nil
 }

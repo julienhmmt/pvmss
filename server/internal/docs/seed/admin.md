@@ -18,6 +18,15 @@ snippets, so PVMSS writes directly to a directory that is bind-mounted into
 its container. To enable cloud-init documents and the generated baseline
 (qemu-guest-agent) on a cluster:
 
+> **No SSH, no API upload.** PVMSS does not SSH to Proxmox and the Proxmox
+> REST API cannot write snippet files. PVMSS writes the file to a directory
+> inside its own process, and that directory must be the *same physical
+> directory* Proxmox reads snippets from - made visible by a bind mount, NFS,
+> or running PVMSS on the Proxmox host. If the file appears under your
+> configured snippet directory but the VM cannot start, the directory is not
+> the one Proxmox serves snippets from. Verify on the Proxmox host with
+> `pvesm path <storage>` - the snippets path is that path plus `/snippets`.
+
 1. Pick a Proxmox storage that has the **snippets** content type enabled. To
    enable it: **Datacenter → Storage → <storage> → Content**, tick
    `snippets`. The storage must be visible to every node that will host
@@ -38,6 +47,38 @@ its container. To enable cloud-init documents and the generated baseline
 Leave both fields empty to disable cloud-init documents on the cluster. VMs
 created from cloud images will then report `Baseline cloud-init not
 delivered` and the qemu-guest-agent baseline will not be attached.
+
+### Alternative: SSH snippet delivery
+
+When PVMSS cannot share a filesystem with Proxmox (different hosts, no NFS,
+no bind mount), it can deliver snippet files over SSH instead. PVMSS
+resolves each Proxmox node's IP via `/cluster/status` and SSHes to the
+specific node where the VM is created, so no per-cluster SSH config is
+needed - just one global key.
+
+Set these environment variables on the PVMSS server:
+
+| Variable             | Notes                                                       |
+| -------------------- | ----------------------------------------------------------- |
+| `PVMSS_SSH_USER`     | SSH user on the Proxmox hosts (e.g. `root`)                 |
+| `PVMSS_SSH_KEY_FILE` | Path to the private key file (required when user is set)    |
+| `PVMSS_SSH_PORT`     | SSH port (default 22)                                       |
+
+The key must be authorized on every Proxmox node that will host cloud-init
+VMs (add it to `~/.ssh/authorized_keys` for the SSH user). The **Snippet
+directory** configured per cluster is then the path on the Proxmox host, not
+a local mount. Host-key verification is not enforced; use this on a trusted
+management network.
+
+**Multi-node clusters:** SSH writes the snippet to the specific node where
+the VM is created. For a cluster, you should still use a shared snippet
+storage (NFS, CephFS) so the snippet is visible to all nodes - otherwise a
+migrated VM would point at a file the new node cannot see. SSH delivery is
+primarily for single-node Proxmox or clusters that already have shared
+storage but no shared filesystem mount into the PVMSS container.
+
+When `PVMSS_SSH_USER` is empty (the default), SSH delivery is off and the
+shared-filesystem approach above is used.
 
 ## Catalog
 

@@ -20,6 +20,16 @@ pas écrire de snippets, donc PVMSS écrit directement dans un répertoire
 bind-mounté dans son conteneur. Pour activer les documents cloud-init et la
 baseline générée (qemu-guest-agent) sur un cluster :
 
+> **Pas de SSH, pas d'upload API.** PVMSS ne se connecte pas en SSH à Proxmox
+> et l'API REST de Proxmox ne peut pas écrire de fichiers snippets. PVMSS
+> écrit le fichier dans un répertoire de son propre processus, et ce
+> répertoire doit être le *même répertoire physique* que celui dont Proxmox
+> lit les snippets - rendu visible par un bind mount, NFS, ou en exécutant
+> PVMSS sur l'hôte Proxmox. Si le fichier apparaît dans votre répertoire de
+> snippets configuré mais que la VM ne peut pas démarrer, le répertoire n'est
+> pas celui dont Proxmox sert les snippets. Vérifiez sur l'hôte Proxmox avec
+> `pvesm path <stockage>` - le chemin snippets est ce chemin plus `/snippets`.
+
 1. Choisissez un stockage Proxmox ayant le contenu **snippets** activé. Pour
    l'activer : **Datacenter → Stockage → <stockage> → Contenu**, cochez
    `snippets`. Le stockage doit être visible par chaque nœud qui hébergera
@@ -43,6 +53,41 @@ Laissez les deux champs vides pour désactiver les documents cloud-init sur
 le cluster. Les VM créées depuis des images cloud signaleront alors
 `Baseline cloud-init non livrée` et la baseline qemu-guest-agent ne sera pas
 attachée.
+
+### Alternative : livraison des snippets par SSH
+
+Quand PVMSS ne peut pas partager un système de fichiers avec Proxmox (hôtes
+distincts, pas de NFS, pas de bind mount), il peut livrer les snippets par
+SSH. PVMSS résout l'IP de chaque nœud Proxmox via `/cluster/status` et se
+connecte en SSH au nœud spécifique où la VM est créée, donc aucune
+configuration SSH par cluster n'est nécessaire - une seule clé globale
+suffit.
+
+Définissez ces variables d'environnement sur le serveur PVMSS :
+
+| Variable             | Notes                                                       |
+| -------------------- | ----------------------------------------------------------- |
+| `PVMSS_SSH_USER`     | Utilisateur SSH sur les hôtes Proxmox (ex. `root`)          |
+| `PVMSS_SSH_KEY_FILE` | Chemin de la clé privée (requis quand l'utilisateur est défini) |
+| `PVMSS_SSH_PORT`     | Port SSH (22 par défaut)                                    |
+
+La clé doit être autorisée sur chaque nœud Proxmox qui hébergera des VM
+cloud-init (ajoutez-la à `~/.ssh/authorized_keys` pour l'utilisateur SSH). Le
+**répertoire de snippets** configuré par cluster est alors le chemin sur
+l'hôte Proxmox, pas un montage local. La vérification de la clé hôte n'est
+pas appliquée ; à utiliser sur un réseau de gestion de confiance.
+
+**Clusters multi-nœuds :** SSH écrit le snippet sur le nœud spécifique où la
+VM est créée. Pour un cluster, vous devriez toujours utiliser un stockage de
+snippets partagé (NFS, CephFS) afin que le snippet soit visible par tous les
+nœuds - sinon une VM migrée pointerait vers un fichier que le nouveau nœud
+ne peut pas voir. La livraison par SSH est principalement destinée au
+Proxmox à nœud unique ou aux clusters qui ont déjà un stockage partagé mais
+pas de montage de système de fichiers partagé dans le conteneur PVMSS.
+
+Quand `PVMSS_SSH_USER` est vide (valeur par défaut), la livraison par SSH est
+désactivée et l'approche par système de fichiers partagé ci-dessus est
+utilisée.
 
 ## Catalogue
 
