@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Toolbar — the filter row that sits above every list in the app.
+	 * Toolbar - the filter row that sits above every list in the app.
 	 *
 	 * Each list page was building its own: a `<div class="flex flex-wrap
 	 * items-center gap-3 border-b border-border p-4">` holding a raw
@@ -9,13 +9,13 @@
 	 * on the left at a capped width, filters next to it, a `meta` slot pushed
 	 * to the right for counts and quotas, and `actions` at the far end.
 	 *
-	 * It renders no controls itself — pass TextField/Select/Button through
+	 * It renders no controls itself - pass TextField/Select/Button through
 	 * the snippets so the controls stay the shared primitives.
 	 */
 	import type { Snippet } from 'svelte';
 
 	interface Props {
-		/** Leading slot — normally the search field. Capped at ~22rem. */
+		/** Leading slot - normally the search field. Capped at ~22rem. */
 		search?: Snippet;
 		/** Filter controls (selects, toggles). */
 		filters?: Snippet;
@@ -23,7 +23,7 @@
 		meta?: Snippet;
 		/** Right-aligned buttons. */
 		actions?: Snippet;
-		/** Drop the bottom hairline — for a toolbar that is not on a card. */
+		/** Drop the bottom hairline - for a toolbar that is not on a card. */
 		divider?: boolean;
 		class?: string;
 	}

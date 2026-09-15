@@ -1,14 +1,14 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	/**
-	 * RadioCard — full-width `<label>` wrapper around a visually-hidden
+	 * RadioCard - full-width `<label>` wrapper around a visually-hidden
 	 * radio. Used by the create form for offering and size selection
 	 * (DESIGN.md §8 "Radio cards"). Selecting is done by clicking anywhere
 	 * on the card; the radio stays accessible to the keyboard.
 	 *
 	 * The caller owns `group` (the current selection) and passes `selected`
 	 * (`group === value`) for the visual state. Selection is one-directional
-	 * back to the parent via `onSelect` — Svelte 5 does not two-way-bind
+	 * back to the parent via `onSelect` - Svelte 5 does not two-way-bind
 	 * radios across components cleanly, so the parent's `group` setter is
 	 * the single source of truth. `name` is a stable group identifier
 	 * (e.g. "offering", "size") so all radios in a group share a form
@@ -21,7 +21,7 @@
 		value: string;
 		/** Stable form-control name shared by every radio in the group. */
 		name: string;
-		/** True when `group === value` — drives the selected styling. */
+		/** True when `group === value` - drives the selected styling. */
 		selected: boolean;
 		/** Fired when the user picks this card; the parent updates `group`. */
 		onSelect: (value: string) => void;

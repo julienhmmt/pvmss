@@ -24,7 +24,7 @@ describe('PoolVmBar', () => {
 
 		if (runningPercent === null) {
 			expect(meter).toBeNull();
-			expect(document.body.textContent).toContain('—');
+			expect(document.body.textContent).toContain('-');
 		} else {
 			expect(meter).not.toBeNull();
 			expect(meter?.getAttribute('aria-valuenow')).toBe(String(runningPercent));

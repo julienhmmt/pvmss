@@ -12,7 +12,7 @@ export interface AdminTag {
 
 /**
  * AdminTagsStore manages the CRUD state for catalog tags. API responses are
- * $state.raw — they are API data, not form edits.
+ * $state.raw - they are API data, not form edits.
  */
 export class AdminTagsStore {
 	tags = $state.raw<AdminTag[]>([]);

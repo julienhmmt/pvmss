@@ -7,12 +7,12 @@
 	import ProfilePicker from '../ProfilePicker.svelte';
 
 	// Hardware step: vCPU and memory. Client-side bounds are a convenience
-	// only — the server re-checks against the same ceiling (constitution VI).
+	// only - the server re-checks against the same ceiling (constitution VI).
 	const form = getVmCreateContext();
 
 	// Image source with profiles configured: a profile replaces manual
 	// sockets/CPU/memory entirely (the server ignores those fields once a
-	// profileId is set — FR-009), so pick one instead of typing values.
+	// profileId is set - FR-009), so pick one instead of typing values.
 	const showProfilePicker = $derived(form.sourceType === 'image' && form.hasProfiles());
 
 	function profileDescription(profile: { cpuCores: number; memoryMB: number; diskGB: number; bus: string }): string {
@@ -125,7 +125,7 @@
 			<p class="text-sm font-medium text-foreground">{m['vms.create.firmwareGroup']()}</p>
 			<Checkbox
 				label={m['vms.create.uefi']()}
-				hint={m['vms.create.uefiHint']()}
+				hint={form.sourceType === 'image' ? m['vms.create.uefiImageHint']() : m['vms.create.uefiHint']()}
 				checked={form.uefi}
 				onToggle={(checked) => {
 					form.uefi = checked;

@@ -11,7 +11,7 @@ node_modules
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-# Paraglide — generated message functions, regenerated from messages/*.json
+# Paraglide - generated message functions, regenerated from messages/*.json
 /src/lib/paraglide/
 
 # Playwright

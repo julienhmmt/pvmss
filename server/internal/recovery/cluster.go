@@ -17,7 +17,7 @@ import (
 var clusterNameRe = regexp.MustCompile(`^[a-z0-9-]+$`)
 
 // ValidateClusterName checks that the operator-supplied cluster name matches
-// the [a-z0-9-]+ grammar T15 requires. Returns exit-code 2's error condition.
+// the [a-z0-9-]+ grammar requires. Returns exit-code 2's error condition.
 func ValidateClusterName(name string) error {
 	if !clusterNameRe.MatchString(name) {
 		return fmt.Errorf("invalid cluster name %q: must match [a-z0-9-]+", name)
@@ -27,10 +27,10 @@ func ValidateClusterName(name string) error {
 }
 
 // MapCluster derives the single clusters row from environment variables (or
-// flag overrides) and encrypts the token secret using T15's AES-256-GCM
+// flag overrides) and encrypts the token secret using AES-256-GCM
 // scheme (SHA-256-derived key, random nonce prepended to ciphertext).
 // If no Proxmox credentials are available, the cluster row is still written
-// with empty URL/token fields — only storage-node expansion is skipped.
+// with empty URL/token fields - only storage-node expansion is skipped.
 func MapCluster(env Environ, clusterName string, flags ProxmoxCreds, sessionSecret string) (ClusterRow, ProxmoxCreds, error) {
 	if err := ValidateClusterName(clusterName); err != nil {
 		return ClusterRow{}, ProxmoxCreds{}, err
@@ -72,7 +72,7 @@ func MapCluster(env Environ, clusterName string, flags ProxmoxCreds, sessionSecr
 }
 
 // upsertCluster writes the clusters row using INSERT ... ON CONFLICT
-// DO UPDATE (FR-007 idempotence). This mirrors store.CreateCluster's
+// DO UPDATE (idempotence). This mirrors store.CreateCluster's
 // transaction logic but uses an upsert instead of insert-or-reactivate,
 // so re-running the tool is safe.
 func upsertCluster(ctx context.Context, v04DB *sql.DB, row ClusterRow) error {
@@ -96,7 +96,7 @@ func upsertCluster(ctx context.Context, v04DB *sql.DB, row ClusterRow) error {
 	return nil
 }
 
-// --- Token encryption (T15's scheme, reimplemented — same algorithm) ---
+//  - Token encryption (scheme, reimplemented - same algorithm) -
 
 // deriveEncryptionKey derives a 32-byte AES key from the session secret
 // via SHA-256. The session secret must be at least 32 bytes.
@@ -112,11 +112,11 @@ func deriveEncryptionKey(secret string) ([]byte, error) {
 
 // encryptToken encrypts a token secret using AES-256-GCM with a random
 // nonce prepended to the ciphertext. This is the exact same scheme as
-// store.encryptToken — the two produce compatible ciphertexts decryptable
+// store.encryptToken - the two produce compatible ciphertexts decryptable
 // by either code path.
 func encryptToken(secret, sessionSecret string) ([]byte, error) {
 	if secret == "" {
-		return nil, nil // no token to encrypt — empty ciphertext is valid
+		return nil, nil // no token to encrypt - empty ciphertext is valid
 	}
 
 	key, err := deriveEncryptionKey(sessionSecret)

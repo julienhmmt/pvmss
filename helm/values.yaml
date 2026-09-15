@@ -9,7 +9,7 @@ serviceAccount:
   automountToken: true
   annotations: {}
 
-# SECRETS (plain values; the chart base64-encodes them — or inject via --set-file)
+# SECRETS (plain values; the chart base64-encodes them - or inject via --set-file)
 secrets:
   # Optional bcrypt hash for the local admin login. Leave empty to disable.
   # Generate with: htpasswd -bnBC 10 "" "StrongPassword" | tr -d ':\n'

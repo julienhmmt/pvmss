@@ -1,18 +1,18 @@
-// Package cluster — T10 fake RFB 3.8 server.
+// Package cluster - fake RFB 3.8 server.
 //
-// This is the single most scrutinized piece of tranche T10: it is what makes
-// constitution XI's "le fake path must be genuinely functional, not a stub"
-// gate TRUE rather than merely asserted. A real noVNC client connects to this
+// This is the most scrutinized piece of the fake: it is what makes the
+// "genuinely functional, not a stub" gate true rather than merely asserted.
+// A real noVNC client connects to this
 // server, completes a real RFB 3.8 handshake, and decodes a real
-// FramebufferUpdate — not a canned HTTP response, not a stub that closes after
+// FramebufferUpdate - not a canned HTTP response, not a stub that closes after
 // the upgrade.
 //
-// The scope is deliberately minimal (plan.md research decisions): exactly the
+// The scope is deliberately minimal: exactly the
 // message set a noVNC client needs to handshake, render one static checkerboard
 // framebuffer, and exercise the clipboard + input round-trips. No multiple
-// encodings, no resizing, no animating framebuffer — there is no OS underneath
+// encodings, no resizing, no animating framebuffer - there is no OS underneath
 // to animate, and each of those would be a stub pretending to be a feature,
-// which is worse than not having it (constitution VIII).
+// which is worse than not having it.
 package cluster
 
 import (
@@ -25,10 +25,10 @@ import (
 const (
 	rfbProtocolVersion = "RFB 003.008\n"
 	rfbSecurityNone    = 1
-	// Message types — server-to-client.
+	// Message types - server-to-client.
 	rfbMsgFramebufferUpdate = 0
 	rfbMsgServerCutText     = 3
-	// Message types — client-to-server.
+	// Message types - client-to-server.
 	rfbMsgSetPixelFormat           = 0
 	rfbMsgSetEncodings             = 2
 	rfbMsgFramebufferUpdateRequest = 3
@@ -39,7 +39,7 @@ const (
 	rfbEncodingRaw = 0
 )
 
-// Fake framebuffer geometry and content (plan.md research decisions). Small
+// Fake framebuffer geometry and content. Small
 // and fixed so the checkerboard is visually distinct from a blank canvas
 // without any dirty-region tracking.
 const (
@@ -47,13 +47,13 @@ const (
 	rfbFakeHeight = 480
 	rfbFakeName   = "PVMSS fake console"
 	// rfbFakeClipboardText is the single ServerCutText payload sent right
-	// after ServerInit — User Story 3's "copy from VM" content.
+	// after ServerInit - the "copy from VM" content.
 	rfbFakeClipboardText = "hello from the fake console"
 )
 
-// rfbPixelFormat is the 16-byte PIXEL_FORMAT structure (RFC 6143 §7.7). The
+// rfbPixelFormat is the 16-byte PIXEL_FORMAT structure (RFC 6143). The
 // fake server always speaks 32bpp true-color, which is what noVNC defaults to
-// requesting — the client's SetPixelFormat is read and discarded.
+// requesting - the client's SetPixelFormat is read and discarded.
 type rfbPixelFormat struct {
 	BitsPerPixel uint8
 	Depth        uint8
@@ -70,7 +70,7 @@ type rfbPixelFormat struct {
 	Padding3     uint8
 }
 
-// rfbServerInit is the ServerInit message body (RFC 6143 §7.3.2). Fixed
+// rfbServerInit is the ServerInit message body (RFC 6143). Fixed
 // resolution, 32bpp true-color, and the fake console name.
 type rfbServerInit struct {
 	Width       uint16
@@ -82,9 +82,9 @@ type rfbServerInit struct {
 // rfbFakeServe speaks the minimal RFB 3.8 handshake and serves one static
 // checkerboard framebuffer against peer. It blocks until peer closes or a
 // malformed initial handshake byte is seen (in which case it closes rather
-// than guessing). This is the fake ConsoleRelay.RelayConsole implementation —
-// there is no second, separately-dialed connection in the fake path; the
-// "relay" IS the fake server (data-model.md).
+// than guessing). This is the fake ConsoleRelay.RelayConsole implementation - 
+// there is no second, separately-dialed connection in the fake path; the "relay" IS the fake
+// server.
 func rfbFakeServe(ctx context.Context, peer io.ReadWriteCloser) error {
 	defer func() { _ = peer.Close() }()
 
@@ -100,7 +100,7 @@ func rfbFakeServe(ctx context.Context, peer io.ReadWriteCloser) error {
 }
 
 // rfbHandshake performs the version exchange, security negotiation, and
-// ServerInit — exactly the sequence a real noVNC client needs to complete
+// ServerInit - exactly the sequence a real noVNC client needs to complete
 // before it will process any further messages.
 func rfbHandshake(peer io.ReadWriteCloser) error {
 	// Step 1: server sends ProtocolVersion.
@@ -114,7 +114,7 @@ func rfbHandshake(peer io.ReadWriteCloser) error {
 		return err
 	}
 
-	// Step 3: server sends SecurityTypes — one type: None.
+	// Step 3: server sends SecurityTypes - one type: None.
 	if _, err := peer.Write([]byte{1, rfbSecurityNone}); err != nil {
 		return err
 	}
@@ -166,7 +166,7 @@ func rfbHandshake(peer io.ReadWriteCloser) error {
 }
 
 // rfbSendServerCutText sends one ServerCutText message. Called once right
-// after ServerInit so User Story 3's "copy from VM" has real content.
+// after ServerInit so the "copy from VM" has real content.
 func rfbSendServerCutText(peer io.Writer, text string) error {
 	header := make([]byte, 8)
 	header[0] = rfbMsgServerCutText
@@ -186,8 +186,8 @@ func rfbSendServerCutText(peer io.Writer, text string) error {
 // client-to-server message at a time, dispatches on the message-type byte, and
 // answers FramebufferUpdateRequest with the checkerboard. SetPixelFormat,
 // SetEncodings, PointerEvent, KeyEvent, and ClientCutText are read and
-// discarded without validation — there is no OS underneath for input to
-// affect (plan.md research decisions, constitution VIII).
+// discarded without validation - there is no OS underneath for input to
+// affect.
 func rfbServeMessages(ctx context.Context, peer io.ReadWriteCloser) error {
 	for {
 		if ctx.Err() != nil {
@@ -207,8 +207,8 @@ func rfbServeMessages(ctx context.Context, peer io.ReadWriteCloser) error {
 
 // handleRFBMessage dispatches a single client-to-server message by type.
 // SetPixelFormat, SetEncodings, PointerEvent, KeyEvent, and ClientCutText are
-// read and discarded without validation — there is no OS underneath for input
-// to affect (plan.md research decisions, constitution VIII).
+// read and discarded without validation - there is no OS underneath for input
+// to affect.
 func handleRFBMessage(peer io.ReadWriteCloser, msgType byte) error {
 	switch msgType {
 	case rfbMsgSetPixelFormat:
@@ -240,7 +240,7 @@ func handleRFBMessage(peer io.ReadWriteCloser, msgType byte) error {
 		// 3 padding + 4 length + length bytes.
 		return discardClientCutText(peer)
 	default:
-		// Unknown message type — the spec says close rather than guess.
+		// Unknown message type - the spec says close rather than guess.
 		return errUnknownRFBMessage(msgType)
 	}
 }
@@ -309,8 +309,8 @@ func discardClientCutText(peer io.Reader) error {
 // checkerboardPixels returns the Raw pixel bytes for a width×height 32bpp
 // framebuffer filled with a 32×32 checkerboard of two distinct colors. The
 // pattern is visually distinct from a blank canvas so a demo can tell
-// "connected and rendering" from "nothing happened" (plan.md research
-// decisions). Generated deterministically — the same fixture the byte-level
+// "connected and rendering" from "nothing happened". Generated deterministically - the same
+// fixture the byte-level
 // test asserts against.
 func checkerboardPixels(width, height int) []byte {
 	// Two colors in 32bpp BGRA (little-endian) / RGBX layout matching the
@@ -339,7 +339,7 @@ func checkerboardPixels(width, height int) []byte {
 }
 
 // errUnknownRFBMessage is returned when the fake server receives a message
-// type it does not implement — the spec says close rather than guess.
+// type it does not implement - the spec says close rather than guess.
 type rfbMessageError byte
 
 func (e rfbMessageError) Error() string { return "rfb: unknown message type" }

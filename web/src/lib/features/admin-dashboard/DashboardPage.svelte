@@ -18,7 +18,7 @@
 		try {
 			await post('/api/v1/cluster/refresh');
 		} catch {
-			// The refresh may fail (cluster still down) — reload picks up the
+			// The refresh may fail (cluster still down) - reload picks up the
 			// current state either way.
 		}
 		await store.load();
@@ -52,7 +52,7 @@
 	}
 
 	// The four status rows in the VM popover differed only by dot colour,
-	// label and counter key — one list, not four near-identical blocks.
+	// label and counter key - one list, not four near-identical blocks.
 	const VM_STATUS_BREAKDOWN = [
 		{ key: 'running', dot: 'bg-success', label: () => m['admin.dashboard.vmRunning']() },
 		{ key: 'paused', dot: 'bg-warning', label: () => m['admin.dashboard.vmPaused']() },

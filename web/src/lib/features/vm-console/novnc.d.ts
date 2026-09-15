@@ -1,4 +1,4 @@
-// Ambient module declaration for @novnc/novnc — the package ships JS only, no
+// Ambient module declaration for @novnc/novnc - the package ships JS only, no
 // bundled .d.ts. This declares the subset of the RFB class the console feature
 // uses: constructor, runtime properties, methods, and the events dispatched.
 // See noVNC docs/API.md for the full surface; only what PVMSS touches is here.
@@ -29,7 +29,7 @@ declare module '@novnc/novnc' {
 	}
 
 	/**
-	 * RFB — a VNC client. Constructed with a target HTMLElement and a WebSocket
+	 * RFB - a VNC client. Constructed with a target HTMLElement and a WebSocket
 	 * URL; attaches the remote framebuffer to the target as a canvas.
 	 */
 	export default class RFB extends EventTarget {
@@ -48,7 +48,7 @@ declare module '@novnc/novnc' {
 		focus(options?: { focusOnClick?: boolean }): void;
 		blur(): void;
 
-		// Clipboard — paste from the local clipboard into the remote VM.
+		// Clipboard - paste from the local clipboard into the remote VM.
 		clipboardPasteFrom(text: string): void;
 
 		// Runtime properties.

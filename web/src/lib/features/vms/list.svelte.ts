@@ -43,7 +43,7 @@ export interface VmListResult {
 
 export interface VmListStoreOptions {
 	scope: VmScope;
-	/** Raw query string (page.url.search) — the URL is the source of truth on load (FR-007). */
+	/** Raw query string (page.url.search) - the URL is the source of truth on load (FR-007). */
 	initialQuery: string;
 	/** Pushes query-string changes into the URL without a navigation (goto replaceState). */
 	navigate: (queryString: string) => void;
@@ -145,7 +145,7 @@ export class VmListStore {
 		}
 	}
 
-	/** Debounced search input — one field matches name, tag, or ID (FR-002). */
+	/** Debounced search input - one field matches name, tag, or ID (FR-002). */
 	applySearch(value: string): void {
 		this.search = value;
 		if (this.#searchTimer !== null) clearTimeout(this.#searchTimer);
@@ -204,7 +204,7 @@ export class VmListStore {
 
 	/**
 	 * Triggers a power action on a single VM from the list view, then converges
-	 * via the batch live-status endpoint (ADR 0001) — replacing the old `load()`
+	 * via the batch live-status endpoint (ADR 0001) - replacing the old `load()`
 	 * that overwrote the optimistic flip with a stale projection read.
 	 * Returns a result object so the caller can fire the appropriate toast
 	 * without coupling the store to the toast queue.
@@ -212,12 +212,12 @@ export class VmListStore {
 	async rowAction(cluster: string, vmid: number, action: VmAction): Promise<RowActionResult> {
 		const target = optimisticStatus(action);
 
-		// Capture the previous status BEFORE the optimistic flip — the row in
+		// Capture the previous status BEFORE the optimistic flip - the row in
 		// `this.result` will be patched to `target` next, so reading it back in
 		// the catch block would just return `target` (a no-op revert).
 		const row = this.#findRow(cluster, vmid);
 		if (row === null) {
-			// Row is gone (e.g. deleted concurrently) — nothing to flip or revert.
+			// Row is gone (e.g. deleted concurrently) - nothing to flip or revert.
 			return { ok: false, error: m['vms.detail.errorAction']() };
 		}
 		const previousStatus = row.status;

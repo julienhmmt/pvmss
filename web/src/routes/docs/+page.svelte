@@ -67,7 +67,7 @@
 </script>
 
 <svelte:head>
-	<title>{m['docs.index']()} — PVMSS</title>
+	<title>{m['docs.index']()} - PVMSS</title>
 </svelte:head>
 
 <section class="mx-auto w-full max-w-4xl px-4 py-8 md:px-6">

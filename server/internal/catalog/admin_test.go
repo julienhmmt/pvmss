@@ -13,7 +13,7 @@ import (
 
 const storageLocalLVM = "local-lvm"
 
-// openAdminStore opens a fully-migrated store (V9) with the T06 seed and the
+// openAdminStore opens a fully-migrated store (V9) with the seed and the
 // pvmss tag, ready for admin catalog operations.
 func openAdminStore(t *testing.T) *store.Store {
 	t.Helper()
@@ -79,7 +79,7 @@ func findApprovalBridge(t *testing.T, bridges []catalog.BridgeApproval, name, no
 
 // TestAdminListNodes_IncludesAllDiscoveredNodes verifies that AdminListNodes
 // returns every node from the cluster snapshot (3 fake nodes), not just the
-// approved ones — the unapproved node reports enabled=false.
+// approved ones - the unapproved node reports enabled=false.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminListNodes_IncludesAllDiscoveredNodes(t *testing.T) {
@@ -97,12 +97,12 @@ func TestAdminListNodes_IncludesAllDiscoveredNodes(t *testing.T) {
 
 	approved := findApprovalNode(t, nodes, "pve-node-01")
 	if !approved.Enabled {
-		t.Error("pve-node-01 should be enabled (T06 seed)")
+		t.Error("pve-node-01 should be enabled")
 	}
 
 	approved2 := findApprovalNode(t, nodes, "pve-node-02")
 	if !approved2.Enabled {
-		t.Error("pve-node-02 should be enabled (T06 seed)")
+		t.Error("pve-node-02 should be enabled")
 	}
 
 	unapproved := findApprovalNode(t, nodes, "pve-node-03")
@@ -112,7 +112,7 @@ func TestAdminListNodes_IncludesAllDiscoveredNodes(t *testing.T) {
 }
 
 // TestSetNodeEnabled_UpsertNeverDeletes verifies toggling is an idempotent
-// upsert — a resource discovered but never toggled reports enabled=false;
+// upsert - a resource discovered but never toggled reports enabled=false;
 // toggling on then off persists the row.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -146,7 +146,7 @@ func TestSetNodeEnabled_UpsertNeverDeletes(t *testing.T) {
 		t.Fatal("pve-node-03 should be enabled after toggle on")
 	}
 
-	// Toggle off — row persists, enabled=false.
+	// Toggle off - row persists, enabled=false.
 	if err := catalog.SetNodeEnabled(ctx, st, cluster.Fake{}, "default", "pve-node-03", false); err != nil {
 		t.Fatalf("SetNodeEnabled false: %v", err)
 	}
@@ -161,7 +161,7 @@ func TestSetNodeEnabled_UpsertNeverDeletes(t *testing.T) {
 		t.Fatal("pve-node-03 should be disabled after toggle off")
 	}
 
-	// Cross-tranche proof: ApprovedResources (T06) excludes disabled nodes.
+	// ApprovedResources excludes disabled nodes.
 	resources, err := catalog.ApprovedResources(ctx, st, "default")
 	if err != nil {
 		t.Fatalf("ApprovedResources: %v", err)
@@ -205,7 +205,7 @@ func TestSetStorageEnabled_PerPairIsolation(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
 
-	// local@pve-node-02 is approved (T06 seed); local@pve-node-01 is not.
+	// local@pve-node-02 is approved (seed); local@pve-node-01 is not.
 	storages, err := catalog.AdminListStorages(ctx, st, cluster.Fake{}, "default")
 	if err != nil {
 		t.Fatalf("AdminListStorages: %v", err)
@@ -213,7 +213,7 @@ func TestSetStorageEnabled_PerPairIsolation(t *testing.T) {
 
 	node02Local := findApprovalStorage(t, storages, "local", "pve-node-02")
 	if !node02Local.Enabled {
-		t.Error("local@pve-node-02 should be enabled (T06 seed)")
+		t.Error("local@pve-node-02 should be enabled")
 	}
 
 	node01Local := findApprovalStorage(t, storages, "local", "pve-node-01")
@@ -226,7 +226,7 @@ func TestSetStorageEnabled_PerPairIsolation(t *testing.T) {
 		t.Fatalf("SetStorageEnabled: %v", err)
 	}
 
-	// local@pve-node-01 is unaffected — still disabled (its own state).
+	// local@pve-node-01 is unaffected - still disabled (its own state).
 	if err := catalog.SetStorageEnabled(ctx, st, cluster.Fake{}, "default", "local", "pve-node-01", true); err != nil {
 		t.Fatalf("SetStorageEnabled pve-node-01: %v", err)
 	}
@@ -372,7 +372,7 @@ func TestSetNodeEnabled_UnknownNodeReturnsError(t *testing.T) {
 	}
 }
 
-// TestSetStorageEnabled_UnknownReturnsError — toggling a (name, node) pair not
+// TestSetStorageEnabled_UnknownReturnsError - toggling a (name, node) pair not
 // in the current discovery set returns cluster.ErrNotFound (404 at the handler
 // level), mirroring SetNodeEnabled's contract.
 //
@@ -385,13 +385,13 @@ func TestSetStorageEnabled_UnknownReturnsError(t *testing.T) {
 		t.Fatalf("SetStorageEnabled unknown: got %v, want cluster.ErrNotFound", err)
 	}
 
-	// Right name, wrong node — still not discovered.
+	// Right name, wrong node - still not discovered.
 	if err := catalog.SetStorageEnabled(ctx, st, cluster.Fake{}, "default", "local", "pve-node-99", true); !errors.Is(err, cluster.ErrNotFound) {
 		t.Fatalf("SetStorageEnabled wrong node: got %v, want cluster.ErrNotFound", err)
 	}
 }
 
-// TestSetBridgeEnabled_UnknownReturnsError — toggling a bridge not in the
+// TestSetBridgeEnabled_UnknownReturnsError - toggling a bridge not in the
 // current discovery set returns cluster.ErrNotFound.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -408,7 +408,7 @@ func TestSetBridgeEnabled_UnknownReturnsError(t *testing.T) {
 	}
 }
 
-// TestSetISOEnabled_UnknownReturnsError — toggling an ISO (node, storage, file)
+// TestSetISOEnabled_UnknownReturnsError - toggling an ISO (node, storage, file)
 // triple not in the current discovery set returns cluster.ErrNotFound.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -420,18 +420,18 @@ func TestSetISOEnabled_UnknownReturnsError(t *testing.T) {
 		t.Fatalf("SetISOEnabled unknown file: got %v, want cluster.ErrNotFound", err)
 	}
 
-	// Right file, wrong storage — still not discovered.
+	// Right file, wrong storage - still not discovered.
 	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", catalog.ISORef{Node: node01, Storage: "missing", File: debianGenericISO}, true); !errors.Is(err, cluster.ErrNotFound) {
 		t.Fatalf("SetISOEnabled wrong storage: got %v, want cluster.ErrNotFound", err)
 	}
 
-	// Right file and storage, wrong node — still not discovered.
+	// Right file and storage, wrong node - still not discovered.
 	if err := catalog.SetISOEnabled(ctx, st, cluster.Fake{}, "default", catalog.ISORef{Node: "pve-node-99", Storage: storageLocal, File: debianGenericISO}, true); !errors.Is(err, cluster.ErrNotFound) {
 		t.Fatalf("SetISOEnabled wrong node: got %v, want cluster.ErrNotFound", err)
 	}
 }
 
-// TestSetStorageEnabled_TogglePersists — toggling a discovered storage off then
+// TestSetStorageEnabled_TogglePersists - toggling a discovered storage off then
 // on persists the enabled state across reads (the upsert-never-deletes
 // contract), mirroring TestSetNodeEnabled_UpsertNeverDeletes.
 //
@@ -440,8 +440,8 @@ func TestSetStorageEnabled_TogglePersists(t *testing.T) {
 	st := openAdminStore(t)
 	ctx := context.Background()
 
-	// local@pve-node-01 is discovered but not approved (T06 seed approves only
-	// local@pve-node-02). Toggle it on, then off, asserting each step.
+	// local@pve-node-01 is discovered but not approved (seed approves only local@pve-node-02).
+	// Toggle it on, then off, asserting each step.
 	if err := catalog.SetStorageEnabled(ctx, st, cluster.Fake{}, "default", "local", "pve-node-01", true); err != nil {
 		t.Fatalf("SetStorageEnabled on: %v", err)
 	}
@@ -469,7 +469,7 @@ func TestSetStorageEnabled_TogglePersists(t *testing.T) {
 	}
 }
 
-// TestSetBridgeEnabled_ToggleOffPersists — toggling an approved bridge off keeps
+// TestSetBridgeEnabled_ToggleOffPersists - toggling an approved bridge off keeps
 // the row (enabled=false), then re-enabling restores it.
 //
 //nolint:paralleltest // serial: shared fixture
@@ -508,7 +508,7 @@ func TestSetBridgeEnabled_ToggleOffPersists(t *testing.T) {
 	}
 }
 
-// TestSetISOEnabled_ToggleOffPersists — toggling an approved ISO off keeps the
+// TestSetISOEnabled_ToggleOffPersists - toggling an approved ISO off keeps the
 // row (enabled=false), then re-enabling restores it.
 //
 //nolint:paralleltest // serial: shared fixture
@@ -548,13 +548,13 @@ func TestSetISOEnabled_ToggleOffPersists(t *testing.T) {
 }
 
 // pvmssDefaultColor is the indigo hex ensurePvmssTag seeds for the mandatory
-// pvmss tag (FR-014). Centralized as a test const so repeated literals do not
+// pvmss tag. Centralized as a test const so repeated literals do not
 // trip goconst.
 const pvmssDefaultColor = "#4f46e5"
 
-// TestEnsurePvmssTag_InsertsForNonDefaultCluster — the V9 migration seeds the
+// TestEnsurePvmssTag_InsertsForNonDefaultCluster - the V9 migration seeds the
 // mandatory pvmss tag only for the "default" cluster. ListTags lazily inserts
-// it for any other cluster via ensurePvmssTag (FR-014), so the admin surface
+// it for any other cluster via ensurePvmssTag, so the admin surface
 // never lists a cluster without it. Idempotent on repeat calls.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -572,7 +572,7 @@ func TestEnsurePvmssTag_InsertsForNonDefaultCluster(t *testing.T) {
 
 	assertPvmssTagLazilySeeded(t, tags)
 
-	// Second call: ensurePvmssTag's exists-early-return path — the tag is
+	// Second call: ensurePvmssTag's exists-early-return path - the tag is
 	// already present, so no re-insert. The list must still contain exactly one
 	// pvmss row.
 	tags, err = catalog.ListTags(ctx, st, nil, otherCluster)
@@ -586,7 +586,7 @@ func TestEnsurePvmssTag_InsertsForNonDefaultCluster(t *testing.T) {
 }
 
 // assertPvmssTagLazilySeeded fails the test unless tags contains one pvmss row that
-// is protected and carries the default indigo color — the shape ensurePvmssTag
+// is protected and carries the default indigo color - the shape ensurePvmssTag
 // inserts for a cluster the V9 seed did not cover. Extracted from
 // TestEnsurePvmssTag_InsertsForNonDefaultCluster to keep its cognitive
 // complexity under the SonarQube threshold (go:S3776).
@@ -652,7 +652,7 @@ func findApprovalTemplate(t *testing.T, templates []catalog.TemplateApproval, vm
 	return catalog.TemplateApproval{}
 }
 
-// TestAdminListTemplates_DiscoveryWinsOnValues — a stored row's field values
+// TestAdminListTemplates_DiscoveryWinsOnValues - a stored row's field values
 // are a snapshot taken at approval time; when discovery reports different
 // values, the list shows the discovered ones and the stored row is reconciled
 // (write-back). The stored enabled flag stays authoritative.
@@ -726,7 +726,7 @@ func assertTemplateMatchesDiscovery(t *testing.T, got catalog.TemplateApproval, 
 	}
 }
 
-// TestAdminListTemplates_SurfacesOrphanApprovals — a stored approval whose
+// TestAdminListTemplates_SurfacesOrphanApprovals - a stored approval whose
 // template Proxmox no longer reports must stay visible to the admin (with
 // Missing=true), not silently disappear from the list.
 //
@@ -743,7 +743,7 @@ func TestAdminListTemplates_SurfacesOrphanApprovals(t *testing.T) {
 		t.Fatalf("InsertTemplate: %v", err)
 	}
 
-	// Discovery only reports 9000 — 9999 is gone from Proxmox.
+	// Discovery only reports 9000 - 9999 is gone from Proxmox.
 	client := templateSetClient{Fake: cluster.Fake{}, templates: []cluster.TemplateVM{
 		{VMID: 9000, Node: node02, Name: "debian-12-cloud", CloudInitCapable: true, DiskStorage: storageLocalLVM, DiskSizeGB: 8, DiskBus: testProfileBus},
 	}}
@@ -769,7 +769,7 @@ func TestAdminListTemplates_SurfacesOrphanApprovals(t *testing.T) {
 }
 
 // unreadableTemplateClient simulates a template whose disk config cannot be
-// read (issue 03): TemplateByVMID returns a DiskUnreadable row.
+// read: TemplateByVMID returns a DiskUnreadable row.
 type unreadableTemplateClient struct {
 	cluster.Fake
 	vmid int
@@ -783,9 +783,9 @@ func (c unreadableTemplateClient) TemplateByVMID(_ context.Context, vmid int) (c
 	return cluster.TemplateVM{}, cluster.ErrNotFound
 }
 
-// TestSetTemplateEnabled_RejectsUnreadableOnApprove — approving a template
+// TestSetTemplateEnabled_RejectsUnreadableOnApprove - approving a template
 // whose disk could not be read would store empty disk_bus/disk_storage and
-// break the post-clone resize (issue 03): refuse with ErrTemplateUnreadable
+// break the post-clone resize: refuse with ErrTemplateUnreadable
 // and write no row.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -812,7 +812,7 @@ func TestSetTemplateEnabled_RejectsUnreadableOnApprove(t *testing.T) {
 	}
 }
 
-// TestSetTemplateEnabled_AllowsDisablingUnreadable — an approved template
+// TestSetTemplateEnabled_AllowsDisablingUnreadable - an approved template
 // whose disk later becomes unreadable must stay disable-able (users still see
 // it; only the enable direction is blocked).
 //
@@ -847,10 +847,10 @@ func TestSetTemplateEnabled_AllowsDisablingUnreadable(t *testing.T) {
 	}
 }
 
-// TestAdminListTemplates_UnreadableDoesNotClobberStoredRow — an unreadable
-// discovery (issue 03) reports empty disk fields; reconciliation must not
-// write them over the stored, approval-time values (T17's clone-time
-// fallback relies on those fields being non-empty).
+// TestAdminListTemplates_UnreadableDoesNotClobberStoredRow - an unreadable
+// discovery reports empty disk fields; reconciliation must not
+// write them over the stored, approval-time values (clone-time fallback relies on those fields
+// being non-empty).
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
 func TestAdminListTemplates_UnreadableDoesNotClobberStoredRow(t *testing.T) {

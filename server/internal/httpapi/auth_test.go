@@ -150,7 +150,7 @@ func TestAuth_MeAndLogout_RequireAndClearSession(t *testing.T) {
 	}
 }
 
-// Regresses T02's original stateless signed-cookie session, which stayed
+// Regresses the original stateless signed-cookie session, which stayed
 // valid after logout until its embedded expiry. The session must now be
 // revoked server-side, so replaying the exact same cookie after logout fails.
 //

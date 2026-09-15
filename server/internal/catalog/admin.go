@@ -12,7 +12,7 @@ import (
 
 // NodeApproval is one discovered node with its admin approval state.
 // Missing is true for a stored approval whose node Proxmox no longer reports
-// — the row stays listed (greyed out) so the admin can remove it. Only
+// - the row stays listed (greyed out) so the admin can remove it. Only
 // disabled orphans are surfaced; enabled orphans are auto-removed since they
 // would otherwise be offered to users on a node that no longer exists.
 type NodeApproval struct {
@@ -67,9 +67,9 @@ type ISOApproval struct {
 }
 
 // TemplateApproval is one discovered Proxmox template with its admin approval
-// state (US2/issue-02). The admin sees all templates the cluster reports and
+// state. The admin sees all templates the cluster reports and
 // toggles which are offered in the create wizard. Missing is true for a
-// stored approval whose template Proxmox no longer reports (issue 02) — the
+// stored approval whose template Proxmox no longer reports - the
 // row stays visible so the admin can remove it.
 type TemplateApproval struct {
 	VMID             int
@@ -81,8 +81,8 @@ type TemplateApproval struct {
 	DiskBus          string
 	Enabled          bool
 	Missing          bool
-	// DiskUnreadable is true when the template's config read failed (issue
-	// 03): the row is shown greyed out and enabling is refused.
+	// DiskUnreadable is true when the template's config read failed: the row is shown greyed out
+	// and enabling is refused.
 	DiskUnreadable bool
 	// OverrideDiscovery is true when an admin pinned the editable fields
 	// (schemaV26). The list then shows the stored (overridden) values
@@ -92,7 +92,7 @@ type TemplateApproval struct {
 
 // AdminListNodes returns every node the cluster reports, unioned with its
 // stored approval state. A node with no catalog row reports enabled=false
-// (FR-001: every resource, not only approved ones).
+// (every resource, not only approved ones).
 //
 // Stored approvals whose node Proxmox no longer reports are orphans: an
 // enabled orphan is auto-removed (it would otherwise be offered to users on a
@@ -142,9 +142,13 @@ func AdminListNodes(ctx context.Context, st *store.Store, client cluster.Client,
 		})
 	}
 
-	if err := sweepOrphans(ctx, st, clusterName,
-		toOrphanRows(enabledRows, nodeOrphanRow), discoveredByName,
-		removeNodeOrphan, missingNodeApproval, &out); err != nil {
+	if err := sweepOrphans(ctx, st, clusterName, orphanSweep[string, NodeApproval]{
+		rows:       toOrphanRows(enabledRows, nodeOrphanRow),
+		discovered: discoveredByName,
+		remove:     removeNodeOrphan,
+		missing:    missingNodeApproval,
+		out:        &out,
+	}); err != nil {
 		return nil, err
 	}
 
@@ -196,9 +200,13 @@ func AdminListStorages(ctx context.Context, st *store.Store, client cluster.Clie
 		})
 	}
 
-	if err := sweepOrphans(ctx, st, clusterName,
-		toOrphanRows(enabledRows, storageOrphanRow), discoveredByKey,
-		removeStorageOrphan, missingStorageApproval, &out); err != nil {
+	if err := sweepOrphans(ctx, st, clusterName, orphanSweep[nameNodeKey, StorageApproval]{
+		rows:       toOrphanRows(enabledRows, storageOrphanRow),
+		discovered: discoveredByKey,
+		remove:     removeStorageOrphan,
+		missing:    missingStorageApproval,
+		out:        &out,
+	}); err != nil {
 		return nil, err
 	}
 
@@ -241,9 +249,13 @@ func AdminListBridges(ctx context.Context, st *store.Store, client cluster.Clien
 		})
 	}
 
-	if err := sweepOrphans(ctx, st, clusterName,
-		toOrphanRows(enabledRows, bridgeOrphanRow), discoveredByKey,
-		removeBridgeOrphan, missingBridgeApproval, &out); err != nil {
+	if err := sweepOrphans(ctx, st, clusterName, orphanSweep[nameNodeKey, BridgeApproval]{
+		rows:       toOrphanRows(enabledRows, bridgeOrphanRow),
+		discovered: discoveredByKey,
+		remove:     removeBridgeOrphan,
+		missing:    missingBridgeApproval,
+		out:        &out,
+	}); err != nil {
 		return nil, err
 	}
 
@@ -261,16 +273,22 @@ func AdminListISOs(ctx context.Context, st *store.Store, client cluster.Client, 
 		return nil, err
 	}
 
-	return adminListFiles(ctx, st, clusterName, isoFileEntries(discovered),
-		st.CatalogISOsEnabled, isoOrphanRow, removeISOOrphan, isoApprovalView, missingISOApproval)
+	return adminListFiles(ctx, st, clusterName, fileListing[store.CatalogISOEnabled, ISOApproval]{
+		discovered:   isoFileEntries(discovered),
+		listRows:     st.CatalogISOsEnabled,
+		toOrphanRow:  isoOrphanRow,
+		removeOrphan: removeISOOrphan,
+		viewOf:       isoApprovalView,
+		missing:      missingISOApproval,
+	})
 }
 
 // AdminListTemplates returns every Proxmox template the cluster reports,
-// unioned with its stored approval state keyed by VMID (US2/issue-02).
+// unioned with its stored approval state keyed by VMID.
 // Discovery is the truth about a template's field values; the stored row is
-// the truth about approval only (issue 02). When they disagree, the list
+// the truth about approval only. When they disagree, the list
 // shows the discovered values and the stored row is reconciled with
-// UpdateTemplate — a drift write, not a human mutation, so it is not audited.
+// UpdateTemplate - a drift write, not a human mutation, so it is not audited.
 // Stored rows with no discovered match are appended with Missing=true so the
 // admin can see and remove an approval whose template was deleted in
 // Proxmox.
@@ -306,7 +324,7 @@ func AdminListTemplates(ctx context.Context, st *store.Store, client cluster.Cli
 	}
 
 	// Orphan approvals: the template is gone from Proxmox but the row (and
-	// its enabled flag) lives on. Surface it so the admin can remove it —
+	// its enabled flag) lives on. Surface it so the admin can remove it - 
 	// otherwise it would be invisible yet still offered to users.
 	for _, row := range storedRows {
 		if discoveredByVMID[row.VMID] {
@@ -351,11 +369,11 @@ func reconcileTemplateApproval(
 	approval.OverrideDiscovery = stored.OverrideDiscovery
 
 	// When the admin pinned the row (schemaV26), the stored values
-	// are authoritative — show them instead of the discovered ones
+	// are authoritative - show them instead of the discovered ones
 	// and skip the drift write-back so the pin survives the next
 	// list. An unreadable discovery reports empty disk fields
-	// (issue 03) — never write them over the stored values: the
-	// clone-time fallback (T17) relies on them being non-empty.
+	// never write them over the stored values: the
+	// clone-time fallback relies on them being non-empty.
 	if stored.OverrideDiscovery {
 		approval.Node = stored.Node
 		approval.Name = stored.Name
@@ -381,7 +399,7 @@ func reconcileTemplateApproval(
 }
 
 // newTemplateApproval builds the approval view of one discovered template
-// with Enabled left false — the caller sets it from the stored row.
+// with Enabled left false - the caller sets it from the stored row.
 func newTemplateApproval(tmpl cluster.TemplateVM) TemplateApproval {
 	return TemplateApproval{
 		VMID:             tmpl.VMID,
@@ -395,8 +413,8 @@ func newTemplateApproval(tmpl cluster.TemplateVM) TemplateApproval {
 }
 
 // templateDrift reports whether a stored approval row's field values differ
-// from what discovery currently reports (issue 02: the stored row is an
-// approval-time snapshot and can go stale).
+// from what discovery currently reports (the stored row is an approval-time snapshot and can go
+// stale).
 func templateDrift(stored store.CatalogTemplateEnabled, tmpl cluster.TemplateVM) bool {
 	return stored.Node != tmpl.Node || stored.Name != tmpl.Name ||
 		stored.CloudInitCapable != tmpl.CloudInitCapable ||
@@ -410,11 +428,11 @@ type TemplateRef struct {
 }
 
 // ErrTemplateNotFound is returned when a template approval row does not exist
-// for the cluster (issue 02: removing an orphan approval).
+// for the cluster (removing an orphan approval).
 var ErrTemplateNotFound = errors.New("template not found")
 
 // DeleteTemplate removes a template approval row. Returns
-// ErrTemplateNotFound when the cluster has no approval for the vmid — the
+// ErrTemplateNotFound when the cluster has no approval for the vmid - the
 // admin UI only offers Remove on missing (orphaned) rows, but the API deletes
 // any approval row.
 func DeleteTemplate(ctx context.Context, st *store.Store, cluster string, vmid int) error {
@@ -444,7 +462,7 @@ func UpdateTemplate(ctx context.Context, st *store.Store, cluster string, vmid i
 }
 
 // ErrTemplateUnreadable is returned when approving a template whose disk
-// config could not be read (issue 03): the approval row would carry empty
+// config could not be read: the approval row would carry empty
 // disk_bus/disk_storage and break the post-clone resize. Disabling stays
 // possible.
 var ErrTemplateUnreadable = errors.New("template disk unreadable")
@@ -455,7 +473,7 @@ var ErrTemplateUnreadable = errors.New("template disk unreadable")
 //
 // The discovered template's field values are used to populate the row on
 // first approval (so the row is complete, not a stub with empty fields).
-// The lookup is a single TemplateByVMID call (issue 03) — not a full
+// The lookup is a single TemplateByVMID call - not a full
 // ListTemplates re-hydration per toggle.
 func SetTemplateEnabled(ctx context.Context, st *store.Store, client cluster.Client, clusterName string, ref TemplateRef, enabled bool) error {
 	found, err := client.TemplateByVMID(ctx, ref.VMID)
@@ -480,7 +498,7 @@ func SetTemplateEnabled(ctx context.Context, st *store.Store, client cluster.Cli
 		}
 	}
 
-	// Not yet in the table — insert with discovered values so the row is
+	// Not yet in the table - insert with discovered values so the row is
 	// complete, not just a stub with empty fields. The enabled state is the
 	// caller's (admin toggle), not hardcoded to 1.
 	values := store.TemplateValues{
@@ -493,8 +511,8 @@ func SetTemplateEnabled(ctx context.Context, st *store.Store, client cluster.Cli
 
 // SetNodeEnabled toggles the enabled flag on a catalog node approval.
 // It returns cluster.ErrNotFound if the node is not in the current discovery
-// set (FR-006: never a delete, but toggling an undiscovered resource is a
-// 404). A cluster discovery error is surfaced verbatim so the caller can map
+// set (never a delete, but toggling an undiscovered resource is a 404). A cluster discovery
+// error is surfaced verbatim so the caller can map
 // it to 5xx instead of mistaking it for a 404.
 func SetNodeEnabled(ctx context.Context, st *store.Store, client cluster.Client, clusterName, name string, enabled bool) error {
 	discovered, err := nodeDiscovered(ctx, client, name)
@@ -539,7 +557,7 @@ func SetBridgeEnabled(ctx context.Context, st *store.Store, client cluster.Clien
 	return st.SetBridgeEnabled(ctx, clusterName, node, name, enabled)
 }
 
-// ISORef identifies one discovered ISO by its (node, storage, file) triple —
+// ISORef identifies one discovered ISO by its (node, storage, file) triple - 
 // the same key the enabled-state store and discovery check use internally.
 type ISORef struct {
 	Node    string
@@ -576,7 +594,7 @@ var ErrBridgeNotFound = errors.New("bridge not found")
 var ErrISONotFound = errors.New("iso not found")
 
 // DeleteNode removes a node approval row. Returns ErrNodeNotFound when the
-// cluster has no approval for the node — the admin UI offers Remove only on
+// cluster has no approval for the node - the admin UI offers Remove only on
 // missing (orphaned) rows, but the API deletes any approval row.
 func DeleteNode(ctx context.Context, st *store.Store, cluster, name string) error {
 	err := st.DeleteNode(ctx, cluster, name)
@@ -642,12 +660,18 @@ func AdminListImages(ctx context.Context, st *store.Store, client cluster.Client
 		return nil, err
 	}
 
-	return adminListFiles(ctx, st, clusterName, imageFileEntries(discovered),
-		st.CatalogImagesEnabled, imageOrphanRow, removeImageOrphan, imageApprovalView, missingImageApproval)
+	return adminListFiles(ctx, st, clusterName, fileListing[store.CatalogImageEnabled, ImageApproval]{
+		discovered:   imageFileEntries(discovered),
+		listRows:     st.CatalogImagesEnabled,
+		toOrphanRow:  imageOrphanRow,
+		removeOrphan: removeImageOrphan,
+		viewOf:       imageApprovalView,
+		missing:      missingImageApproval,
+	})
 }
 
 // ImageRef identifies one discovered cloud image by its (node, storage, file)
-// triple — the same key the enabled-state store and discovery check use.
+// triple - the same key the enabled-state store and discovery check use.
 type ImageRef struct {
 	Node    string
 	Storage string
@@ -711,7 +735,7 @@ func imageDiscovered(ctx context.Context, client cluster.Client, node, storage, 
 }
 
 // nameNodeKey is a composite map key for resources approved by (name, node)
-// — storages and bridges — avoiding string-concat collisions when a name
+// - storages and bridges - avoiding string-concat collisions when a name
 // contains "@".
 type nameNodeKey struct {
 	Name string
@@ -744,8 +768,19 @@ func toOrphanRows[Row any, Key comparable](rows []Row, toRow func(Row) orphanRow
 	return out
 }
 
+// orphanSweep carries the inputs of sweepOrphans: the flattened stored rows,
+// the keys discovery still reports, the remove/missing functions, and the
+// output disabled orphans append to.
+type orphanSweep[Key comparable, A any] struct {
+	rows       []orphanRow[Key]
+	discovered map[Key]bool
+	remove     func(context.Context, *store.Store, string, orphanRow[Key]) error
+	missing    func(orphanRow[Key]) A
+	out        *[]A
+}
+
 // sweepOrphans applies the orphan rule shared by every AdminList* function:
-// a stored approval whose key discovery no longer reports is an orphan — an
+// a stored approval whose key discovery no longer reports is an orphan - an
 // enabled orphan is auto-removed via remove (it would otherwise be offered
 // to users on a resource that no longer exists), a disabled orphan is
 // appended to out via missing (surfaced as Missing=true) so the admin can
@@ -754,26 +789,22 @@ func sweepOrphans[Key comparable, A any](
 	ctx context.Context,
 	st *store.Store,
 	clusterName string,
-	rows []orphanRow[Key],
-	discovered map[Key]bool,
-	remove func(context.Context, *store.Store, string, orphanRow[Key]) error,
-	missing func(orphanRow[Key]) A,
-	out *[]A,
+	s orphanSweep[Key, A],
 ) error {
-	for _, row := range rows {
-		if discovered[row.key] {
+	for _, row := range s.rows {
+		if s.discovered[row.key] {
 			continue
 		}
 
 		if row.enabled {
-			if err := remove(ctx, st, clusterName, row); err != nil {
+			if err := s.remove(ctx, st, clusterName, row); err != nil {
 				return err
 			}
 
 			continue
 		}
 
-		*out = append(*out, missing(row))
+		*s.out = append(*s.out, s.missing(row))
 	}
 
 	return nil
@@ -867,7 +898,7 @@ func missingBridgeApproval(row orphanRow[nameNodeKey]) BridgeApproval {
 }
 
 // fileEntry is one discovered file resource (ISO or cloud image) normalized
-// for the shared approval pipeline — both have the same fields.
+// for the shared approval pipeline - both have the same fields.
 type fileEntry struct {
 	Storage   string
 	Node      string
@@ -927,6 +958,18 @@ func missingImageApproval(row orphanRow[fileKey]) ImageApproval {
 	return ImageApproval{Storage: row.key.Storage, Node: row.key.Node, File: row.key.File, Missing: true}
 }
 
+// fileListing carries the inputs of adminListFiles: the discovered files and
+// the per-resource functions that adapt stored rows, orphan removal, and
+// approval views.
+type fileListing[Row, A any] struct {
+	discovered   []fileEntry
+	listRows     func(context.Context, string) ([]Row, error)
+	toOrphanRow  func(Row) orphanRow[fileKey]
+	removeOrphan func(context.Context, *store.Store, string, orphanRow[fileKey]) error
+	viewOf       func(fileEntry, bool) A
+	missing      func(orphanRow[fileKey]) A
+}
+
 // adminListFiles is the shared list-and-sweep pipeline for the two file
 // resources: ISOs and cloud images have identical shapes end to end (same
 // discovery fields, same (node, storage, file) approval key, same approval
@@ -936,37 +979,38 @@ func adminListFiles[Row, A any](
 	ctx context.Context,
 	st *store.Store,
 	clusterName string,
-	discovered []fileEntry,
-	listRows func(context.Context, string) ([]Row, error),
-	toOrphanRow func(Row) orphanRow[fileKey],
-	removeOrphan func(context.Context, *store.Store, string, orphanRow[fileKey]) error,
-	viewOf func(fileEntry, bool) A,
-	missing func(orphanRow[fileKey]) A,
+	l fileListing[Row, A],
 ) ([]A, error) {
-	rows, err := listRows(ctx, clusterName)
+	rows, err := l.listRows(ctx, clusterName)
 	if err != nil {
 		return nil, err
 	}
 
-	orphans := toOrphanRows(rows, toOrphanRow)
+	orphans := toOrphanRows(rows, l.toOrphanRow)
 
 	enabledByKey := make(map[fileKey]bool, len(orphans))
-	discoveredByKey := make(map[fileKey]bool, len(discovered))
+	discoveredByKey := make(map[fileKey]bool, len(l.discovered))
 
 	for _, row := range orphans {
 		enabledByKey[row.key] = row.enabled
 	}
 
-	for _, file := range discovered {
+	for _, file := range l.discovered {
 		discoveredByKey[file.key()] = true
 	}
 
-	out := make([]A, 0, len(discovered)+len(orphans))
-	for _, file := range discovered {
-		out = append(out, viewOf(file, enabledByKey[file.key()]))
+	out := make([]A, 0, len(l.discovered)+len(orphans))
+	for _, file := range l.discovered {
+		out = append(out, l.viewOf(file, enabledByKey[file.key()]))
 	}
 
-	if err := sweepOrphans(ctx, st, clusterName, orphans, discoveredByKey, removeOrphan, missing, &out); err != nil {
+	if err := sweepOrphans(ctx, st, clusterName, orphanSweep[fileKey, A]{
+		rows:       orphans,
+		discovered: discoveredByKey,
+		remove:     l.removeOrphan,
+		missing:    l.missing,
+		out:        &out,
+	}); err != nil {
 		return nil, err
 	}
 

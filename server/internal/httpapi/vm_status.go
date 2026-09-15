@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-// VMStatusBatch serves POST /api/v1/vms/status — the batch live-status read
+// VMStatusBatch serves POST /api/v1/vms/status - the batch live-status read
 // (ADR 0001). The front's list converge loop polls this once per tick for all
 // flipping rows instead of N per-VM calls. Each target is resolved through
 // vm.Resolve (same ownership gate as every other VM endpoint), then read live
@@ -131,7 +131,7 @@ func (h *VMStatusBatch) decodeTargets(w http.ResponseWriter, r *http.Request) ([
 
 // readTargets resolves and reads the live status for each target. A target
 // that fails resolution or the live read is omitted from the response (not a
-// whole-request failure), matching the spec in ticket 01b.
+// whole-request failure), matching the spec.
 func (h *VMStatusBatch) readTargets(ctx context.Context, identity auth.Identity, targets []statusTargetRequest) []statusTargetResponse {
 	results := make([]statusTargetResponse, 0, len(targets))
 

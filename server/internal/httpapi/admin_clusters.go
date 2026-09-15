@@ -78,11 +78,11 @@ type updateClusterRequest struct {
 	SnippetStorage        string `json:"snippetStorage"`
 }
 
-// snippetStorageIDRE is spec D8's storage-id grammar — the same shape
+// snippetStorageIDRE is the storage-id grammar - the same shape
 // Proxmox itself accepts for a storage identifier.
 var snippetStorageIDRE = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_.-]*$`)
 
-// validateSnippetTarget enforces spec D8: set together, absolute dir, sane
+// validateSnippetTarget enforces set together, absolute dir, sane
 // storage id. Returns the message for a 400 invalid_request, or "".
 func validateSnippetTarget(dir, storage string) string {
 	switch {
@@ -154,6 +154,7 @@ func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request
 		handler.writeFailure(w, err)
 		return
 	}
+	handler.awaitFirstRefresh(r.Context(), row.Name)
 	created, err := handler.store.GetCluster(r.Context(), row.Name)
 	if err != nil {
 		handler.writeFailure(w, err)
@@ -190,11 +191,21 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 		handler.writeStoreFailure(w, err)
 		return
 	}
-	row.SnippetDir, row.SnippetStorage = request.SnippetDir, request.SnippetStorage
-	if err := handler.replace(r.Context(), row); err != nil {
+	// Re-fetch the stored row so the registry factory receives the decrypted
+	// token secret. The HTTP request omits TokenSecret on edit (the field is
+	// only required on create), so the in-memory row above has it empty - 
+	// passing that to replace() would fail with "cluster credentials are
+	// required" on the Proxmox factory.
+	stored, err := handler.store.GetCluster(r.Context(), name)
+	if err != nil {
 		handler.writeFailure(w, err)
 		return
 	}
+	if err := handler.replace(r.Context(), stored); err != nil {
+		handler.writeFailure(w, err)
+		return
+	}
+	handler.awaitFirstRefresh(r.Context(), name)
 	updated, err := handler.store.GetCluster(r.Context(), name)
 	if err != nil {
 		handler.writeFailure(w, err)
@@ -301,7 +312,7 @@ func (handler *AdminClusters) register(ctx context.Context, row store.ClusterRow
 			// Compensate: the store row is persisted and the client is active,
 			// but inventory setup failed. Roll back the client registration so
 			// the cluster is not half-wired (no projection/worker). The store
-			// row remains — the operator can retry or remove it via the API.
+			// row remains - the operator can retry or remove it via the API.
 			handler.clients.Remove(row.Name)
 			return fmt.Errorf("register inventory for %q: %w", row.Name, err)
 		}
@@ -317,13 +328,27 @@ func (handler *AdminClusters) replace(ctx context.Context, row store.ClusterRow)
 		handler.inventories.Remove(row.Name)
 		if err := handler.inventories.Add(row.Name); err != nil {
 			// Compensate: the client was already updated in place, so there is
-			// no client to roll back. The inventory entry is simply absent —
+			// no client to roll back. The inventory entry is simply absent - 
 			// the next manual refresh or worker restart will not repopulate it
 			// automatically. Surface the error so the operator knows to retry.
 			return fmt.Errorf("rebuild inventory for %q: %w", row.Name, err)
 		}
 	}
 	return nil
+}
+
+// awaitFirstRefresh waits for the freshly (re)built inventory entry's first
+// refresh so the create/update response carries the cluster's real
+// reachability, version, and node/VM counts instead of a transient
+// "unreachable" derived from the just-wiped index. The call joins the
+// worker's already-running initial refresh via singleflight - it does not
+// issue a second Proxmox call. Errors are intentionally ignored: a failed
+// refresh leaves the index empty and clusterDTO reports that accurately.
+func (handler *AdminClusters) awaitFirstRefresh(ctx context.Context, name string) {
+	if handler.inventories == nil {
+		return
+	}
+	_, _ = handler.inventories.Refresh(ctx, name)
 }
 
 func (handler *AdminClusters) clusterDTO(row store.ClusterRow) adminClusterDTO {
@@ -338,7 +363,11 @@ func (handler *AdminClusters) clusterDTO(row store.ClusterRow) adminClusterDTO {
 	nodeCount, vmCount := 0, 0
 	if index != nil {
 		nodeCount, vmCount = len(index.Nodes), len(index.ByVMID)
-		if version == "" {
+		// Prefer the live inventory version - the background worker refreshes
+		// it every interval, so it tracks cluster upgrades without a manual
+		// Test. Fall back to the persisted DB value only when the index is
+		// cold or has no version (cluster unreachable at last refresh).
+		if index.ProxmoxVersion != "" {
 			version = index.ProxmoxVersion
 		}
 	}
@@ -351,7 +380,7 @@ func (handler *AdminClusters) clusterDTO(row store.ClusterRow) adminClusterDTO {
 	// reported "ok" but the inventory index is now stale or missing, the
 	// cluster is no longer reachable. Override the stale "ok" status so the
 	// admin page does not claim the cluster is healthy (issue: cluster down
-	// but admin page still shows "ok"). The message is left empty — the
+	// but admin page still shows "ok"). The message is left empty - the
 	// frontend localizes a hint based on the "unreachable" status.
 	if !fresh && lastTestStatus != nil && *lastTestStatus == "ok" {
 		status := "unreachable"
@@ -393,10 +422,14 @@ func (handler *AdminClusters) writeFailure(w http.ResponseWriter, err error) {
 }
 
 func shortClusterError(err error) string {
-	if errors.Is(err, cluster.ErrUnreachable) {
+	switch {
+	case errors.Is(err, cluster.ErrTLSVerify):
+		return "TLS certificate verification failed - enable \"Skip TLS certificate verification\" if the cluster uses a self-signed certificate"
+	case errors.Is(err, cluster.ErrUnreachable):
 		return "connection refused"
+	default:
+		return "cluster unreachable"
 	}
-	return "cluster unreachable"
 }
 
 // SetTrustedProxyHops configures how many X-Forwarded-For hops to trust for

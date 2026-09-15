@@ -32,7 +32,7 @@
 
 	// Saving is permanently disabled: Proxmox's REST API cannot write a
 	// snippets-content file on any PVE version (upload/download-url both
-	// reject content=snippets), so the server always refuses this write —
+	// reject content=snippets), so the server always refuses this write - 
 	// there is nothing a retry or a policy toggle can change. The editor
 	// stays read-only rather than offering a save that can never succeed.
 </script>

@@ -9,13 +9,13 @@ privilege list against the Proxmox documentation for your PVE version.
 
 PVMSS relies on dedicated Proxmox roles and ACLs for three actors:
 
-- **PVMSS_Service** — the backend service account, used through an API token
+- **PVMSS_Service** - the backend service account, used through an API token
   (`PROXMOX_API_TOKEN_NAME` / `PROXMOX_API_TOKEN_VALUE`). It performs cluster,
   node, VM, storage, network, and user/pool operations on behalf of the
   application.
-- **PVMSS_Admin** — human administrators of PVMSS. They manage the VMs, users,
+- **PVMSS_Admin** - human administrators of PVMSS. They manage the VMs, users,
   and pools PVMSS created, and view cluster and node resources.
-- **PVMSSUser** — the per-pool role automatically assigned to every
+- **PVMSSUser** - the per-pool role automatically assigned to every
   self-service user. PVMSS provisions this role, the user, the pool, and the
   ACL when you create a pool from `/admin/pools`. You do not create it manually.
 

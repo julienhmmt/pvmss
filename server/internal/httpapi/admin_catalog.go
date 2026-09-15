@@ -18,7 +18,6 @@ import (
 // AdminCatalog serves the admin catalog endpoints: the four discover-and-approve
 // resources (nodes/storages/bridges/isos), VM profiles (full CRUD), and tags
 // (CRUD with protected pvmss). Every route is wrapped by Auth.RequireAdmin
-// (FR-008).
 type AdminCatalog struct {
 	auth             *Auth
 	store            *store.Store
@@ -31,7 +30,7 @@ type AdminCatalog struct {
 }
 
 // NewAdminCatalog creates the handler for all admin catalog endpoints. The
-// projection is needed for tag VM counts (FR-015); it may be nil when tags
+// projection is needed for tag VM counts; it may be nil when tags
 // are not used (tests that only exercise nodes/storages/bridges/isos).
 func NewAdminCatalog(authHandler *Auth, st *store.Store, client cluster.Client, projection *inventory.Projection, log *slog.Logger) *AdminCatalog {
 	return &AdminCatalog{auth: authHandler, store: st, client: client, projection: projection, log: log}
@@ -42,7 +41,7 @@ func NewAdminCatalogWithRegistry(authHandler *Auth, st *store.Store, registry cl
 	return &AdminCatalog{auth: authHandler, store: st, projection: projection, clusters: registry, clients: registry, log: log}
 }
 
-// --- Nodes ---
+//  - Nodes -
 
 type adminNodeDTO struct {
 	Name         string  `json:"name"`
@@ -145,7 +144,7 @@ func (h *AdminCatalog) ServeNodeToggle(w http.ResponseWriter, r *http.Request) {
 	writeAdminJSON(w, http.StatusOK, toggleResponse{Name: req.Name, Enabled: req.Enabled})
 }
 
-// --- Storages ---
+//  - Storages -
 
 type adminStorageDTO struct {
 	Name    string `json:"name"`
@@ -185,6 +184,61 @@ func (h *AdminCatalog) ServeStorages(w http.ResponseWriter, r *http.Request) {
 			Name: s.Name, Node: s.Node, Type: s.Type,
 			Total: s.Total, Used: s.Used, Enabled: s.Enabled, Missing: s.Missing,
 		}
+	}
+
+	writeAdminJSON(w, http.StatusOK, dto)
+}
+
+// snippetStorageDTO is one snippet-capable storage row returned by
+// ServeSnippetStorages. The admin cluster form uses this list to populate the
+// snippet storage picker so administrators select a compatible storage instead
+// of typing a name that may not have the snippets content type enabled.
+type snippetStorageDTO struct {
+	Name string `json:"name"`
+	Node string `json:"node"`
+	Type string `json:"type"`
+}
+
+// ServeSnippetStorages handles GET /api/v1/admin/snippet-storages?cluster=<name>.
+// It returns every storage the cluster reports with the snippets content type
+// enabled, deduplicated by name (a shared storage visible on two nodes appears
+// once). The admin cluster form uses this list to populate the snippet storage
+// picker.
+func (h *AdminCatalog) ServeSnippetStorages(w http.ResponseWriter, r *http.Request) {
+	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
+	if clusterErr != nil {
+		code, message := clusterParamError(clusterErr)
+		writeAdminError(w, http.StatusBadRequest, code, message)
+		return
+	}
+
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "not_found", msgClusterNotFound)
+		return
+	}
+
+	snap, err := client.Snapshot(r.Context())
+	if err != nil {
+		h.log.Error("admin list snippet storages failed", "component", "httpapi", "error", err)
+		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+
+		return
+	}
+
+	seen := make(map[string]bool, len(snap.Storages))
+	dto := make([]snippetStorageDTO, 0, len(snap.Storages))
+	for _, s := range snap.Storages {
+		if !cluster.IsSnippetCapableStorage(s) {
+			continue
+		}
+
+		if seen[s.Name] {
+			continue
+		}
+
+		seen[s.Name] = true
+		dto = append(dto, snippetStorageDTO{Name: s.Name, Node: s.Node, Type: s.Type})
 	}
 
 	writeAdminJSON(w, http.StatusOK, dto)
@@ -242,7 +296,7 @@ func (h *AdminCatalog) ServeStorageToggle(w http.ResponseWriter, r *http.Request
 	writeAdminJSON(w, http.StatusOK, storageToggleResponse{Name: req.Name, Node: req.Node, Enabled: req.Enabled})
 }
 
-// --- Bridges ---
+//  - Bridges -
 
 type adminBridgeDTO struct {
 	Name    string `json:"name"`
@@ -344,7 +398,7 @@ func (h *AdminCatalog) ServeBridgeToggle(w http.ResponseWriter, r *http.Request)
 	writeAdminJSON(w, http.StatusOK, bridgeToggleResponse{Node: req.Node, Name: req.Name, Enabled: req.Enabled})
 }
 
-// --- ISOs ---
+//  - ISOs -
 
 type adminISODTO struct {
 	Storage   string `json:"storage"`
@@ -541,7 +595,7 @@ func (h *AdminCatalog) ServeBridgeDelete(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// --- Images (cloud images) ---
+//  - Images (cloud images) -
 
 type adminImageDTO struct {
 	Storage   string `json:"storage"`
@@ -713,7 +767,7 @@ func (h *AdminCatalog) ServeISODelete(w http.ResponseWriter, r *http.Request) {
 
 // adminTemplateDTO is the admin response shape for one discovered template.
 // missing is true for a stored approval whose template Proxmox no longer
-// reports (issue 02) — the UI offers Remove on those rows only.
+// reports - the UI offers Remove on those rows only.
 type adminTemplateDTO struct {
 	VMID              int    `json:"vmid"`
 	Node              string `json:"node"`
@@ -805,7 +859,7 @@ func (h *AdminCatalog) ServeTemplateToggle(w http.ResponseWriter, r *http.Reques
 
 	// catalog.SetTemplateEnabled fetches the discovery set once, finds the
 	// template, extracts its values for the first-approval insert, and
-	// upserts the enabled state. No pre-fetch here — that would duplicate
+	// upserts the enabled state. No pre-fetch here - that would duplicate
 	// the cluster round-trip.
 	err = catalog.SetTemplateEnabled(r.Context(), h.store, client, clusterName, catalog.TemplateRef{VMID: req.VMID}, req.Enabled)
 	if errors.Is(err, cluster.ErrNotFound) {
@@ -832,7 +886,7 @@ func (h *AdminCatalog) ServeTemplateToggle(w http.ResponseWriter, r *http.Reques
 }
 
 // ServeTemplateDelete handles DELETE /api/v1/admin/templates/{cluster}/{vmid}
-// (issue 02): removes an approval row — the UI offers Remove only on missing
+// removes an approval row - the UI offers Remove only on missing
 // (orphaned) rows, but the API deletes any approval.
 func (h *AdminCatalog) ServeTemplateDelete(w http.ResponseWriter, r *http.Request) {
 	clusterName := r.PathValue("cluster")
@@ -880,7 +934,7 @@ type templateUpdateRequest struct {
 // Overrides the discovered template field values and pins the row against
 // discovery-wins write-back (schemaV26). The create path still enforces the
 // gabarit on clones, so an override above the gabarit simply means clones
-// from this template are rejected at create time — the admin owns that.
+// from this template are rejected at create time - the admin owns that.
 func (h *AdminCatalog) ServeTemplateUpdate(w http.ResponseWriter, r *http.Request) {
 	clusterName := r.PathValue("cluster")
 
@@ -942,7 +996,7 @@ func (h *AdminCatalog) ServeTemplateUpdate(w http.ResponseWriter, r *http.Reques
 	})
 }
 
-// --- helpers ---
+//  - helpers -
 
 func (h *AdminCatalog) clientFor(name string) (cluster.Client, error) {
 	if h.clients == nil {
@@ -961,7 +1015,7 @@ func (h *AdminCatalog) SetTrustedProxyHops(n int) {
 }
 
 // recordAdminAction writes one admin audit row for a catalog mutation. It
-// never fails the request — a failed audit write is logged and ignored.
+// never fails the request - a failed audit write is logged and ignored.
 func (h *AdminCatalog) recordAdminAction(r *http.Request, action, targetType, targetID, summary string, changes []any) {
 	actor, err := h.auth.Principal(r)
 	if err != nil {

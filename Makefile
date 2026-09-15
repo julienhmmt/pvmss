@@ -16,7 +16,7 @@ WEB_DIR      := web
 # Docker Compose dev (raccourci pour éviter de répéter -f ...)
 COMPOSE_DEV  := docker compose -f docker-compose.dev.yml
 
-# Variables Go test — surchargeables en ligne de commande:
+# Variables Go test - surchargeables en ligne de commande:
 #   make test-offline GO_TEST_FLAGS=-v                 # verbose (remplace test-offline-verbose)
 #   make test-offline GO_TEST_FLAGS=-short             # quick (remplace quick-test)
 #   make test-offline 'GO_TEST_FLAGS=-p 4 -parallel 4' # parallèle (remplace test-offline-parallel)
@@ -146,7 +146,7 @@ buildkit-status: ## Vérifie le statut de buildkit
 # =============================================================================
 # Commandes Next-gen (server/ Go + web/ SvelteKit)
 # Module Go séparé `pvmss/server` et app SvelteKit `pvmss-web`.
-# Non connectés au Makefile principal — outillage indépendant.
+# Non connectés au Makefile principal - outillage indépendant.
 
 # --- server/ (Go backend, module pvmss/server) ---
 

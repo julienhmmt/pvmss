@@ -11,7 +11,7 @@ import (
 )
 
 // MaxUserCloudInitFiles is the per-user cap on stored cloud-init documents
-// (.scratch/cloudinit-userdata D3): generous for real use, small enough that
+// generous for real use, small enough that
 // listing always ships full content.
 const MaxUserCloudInitFiles = 20
 
@@ -26,7 +26,12 @@ var (
 	ErrUserFileLimit = errors.New("cloud-init file limit reached")
 )
 
-// UserFileStore is the narrow store surface the domain functions need — tests
+// userFileNotFoundError wraps ErrUserFileNotFound with the missing id.
+func userFileNotFoundError(id string) error {
+	return fmt.Errorf("%w: %q", ErrUserFileNotFound, id)
+}
+
+// UserFileStore is the narrow store surface the domain functions need - tests
 // stub it, production passes *store.Store.
 type UserFileStore interface {
 	ListUserCloudInitFiles(ctx context.Context, owner string) ([]store.UserCloudInitFile, error)
@@ -42,7 +47,7 @@ func ListUserFiles(ctx context.Context, st UserFileStore, owner string) ([]store
 	return st.ListUserCloudInitFiles(ctx, owner)
 }
 
-// GetUserFile returns one file by (owner, id) — ErrUserFileNotFound when the
+// GetUserFile returns one file by (owner, id) - ErrUserFileNotFound when the
 // pair does not exist (which also covers "exists but belongs to someone
 // else": the store never sees another owner's row).
 func GetUserFile(ctx context.Context, st UserFileStore, owner, id string) (store.UserCloudInitFile, error) {
@@ -52,7 +57,7 @@ func GetUserFile(ctx context.Context, st UserFileStore, owner, id string) (store
 	}
 
 	if !found {
-		return store.UserCloudInitFile{}, fmt.Errorf("%w: %q", ErrUserFileNotFound, id)
+		return store.UserCloudInitFile{}, userFileNotFoundError(id)
 	}
 
 	return f, nil
@@ -60,7 +65,7 @@ func GetUserFile(ctx context.Context, st UserFileStore, owner, id string) (store
 
 // CreateUserFile validates label and content, derives the id from the label,
 // enforces the per-user cap, and inserts. Content must be non-empty AND pass
-// Validate — unlike a per-VM snippet (where empty means "none"), a stored
+// Validate - unlike a per-VM snippet (where empty means "none"), a stored
 // file exists only to be applied.
 func CreateUserFile(ctx context.Context, st UserFileStore, owner, label, content string) (store.UserCloudInitFile, error) {
 	label = strings.TrimSpace(label)
@@ -121,7 +126,7 @@ func UpdateUserFile(ctx context.Context, st UserFileStore, owner, id, label, con
 	stamp := time.Now().UTC().Format(time.RFC3339Nano)
 	if err := st.UpdateUserCloudInitFile(ctx, owner, id, label, content, stamp); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return store.UserCloudInitFile{}, fmt.Errorf("%w: %q", ErrUserFileNotFound, id)
+			return store.UserCloudInitFile{}, userFileNotFoundError(id)
 		}
 
 		return store.UserCloudInitFile{}, err
@@ -135,7 +140,7 @@ func UpdateUserFile(ctx context.Context, st UserFileStore, owner, id, label, con
 func DeleteUserFile(ctx context.Context, st UserFileStore, owner, id string) error {
 	if err := st.DeleteUserCloudInitFile(ctx, owner, id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("%w: %q", ErrUserFileNotFound, id)
+			return userFileNotFoundError(id)
 		}
 
 		return err

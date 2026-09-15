@@ -1,5 +1,5 @@
 <script lang="ts">
-	/** PowerOffIcon — shutdown / stop action affordance. Inherits currentColor. */
+	/** PowerOffIcon - shutdown / stop action affordance. Inherits currentColor. */
 	interface Props {
 		class?: string;
 	}

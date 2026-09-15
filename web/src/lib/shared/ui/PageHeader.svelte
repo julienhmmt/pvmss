@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * PageHeader — the canonical page title row for admin pages.
+	 * PageHeader - the canonical page title row for admin pages.
 	 *
 	 * Before this, every admin page hand-rolled the same
 	 * `<h1 class="text-2xl font-semibold tracking-tight">` block, sometimes

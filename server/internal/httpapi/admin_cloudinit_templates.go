@@ -13,7 +13,7 @@ import (
 // templates and VM snippets share the same boundary.
 const maxCloudInitTemplateBody = 16 * 1024
 
-// --- Cloud-init template DTOs (T18) ---
+//  - Cloud-init template DTOs -
 
 type adminCloudInitTemplateDTO struct {
 	ID      string `json:"id"`
@@ -34,9 +34,9 @@ type cloudInitTemplateUpdateRequest struct {
 	Content string `json:"content"`
 }
 
-// ServeCloudInitTemplates handles GET /api/v1/admin/cloudinit-templates — lists
-// every template including disabled ones (unlike T06's catalog reader which
-// filters by enabled = 1). Admin-only via the RequireAdmin route guard (T007).
+// ServeCloudInitTemplates handles GET /api/v1/admin/cloudinit-templates - lists
+// every template including disabled ones (unlike catalog reader which filters by enabled = 1).
+// Admin-only via the RequireAdmin route guard.
 func (h *AdminCatalog) ServeCloudInitTemplates(w http.ResponseWriter, r *http.Request) {
 	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
 	if clusterErr != nil {

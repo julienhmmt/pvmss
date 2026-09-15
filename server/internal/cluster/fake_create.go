@@ -5,8 +5,8 @@ import (
 	"fmt"
 )
 
-// Fake implementation of Creator (T06). Task completion is poll-count-based,
-// not wall-clock (plan.md research decisions): a task reports running for its
+// Fake implementation of Creator. Task completion is poll-count-based,
+// not wall-clock: a task reports running for its
 // first two TaskStatus queries and ok from the third, so go test -race stays
 // instant and deterministic while the browser demo still shows a visible
 // in-progress state (the frontend's poll interval paces observation).
@@ -44,13 +44,13 @@ func (fake Fake) NextVMID(_ context.Context) (int, error) {
 }
 
 // CreateVM implements Creator: the VM enters the fake's mutable dataset
-// immediately (running when StartAfterCreate is set — FR-022 folds the start
-// into this same task) and a poll-counted task is registered under the
+// immediately (running when StartAfterCreate is set - folds the start into this same task) and
+// a poll-counted task is registered under the
 // returned UPID.
 func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 	state := fake.stateOrDefault()
 
-	// US5/issue-05: inject a CreateVM error when configured by the test.
+	// Inject a CreateVM error when configured by the test.
 	state.createMu.Lock()
 	if state.createErr != nil {
 		err := state.createErr
@@ -79,7 +79,7 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 	}
 
 	// The real create path always materializes the primary disk (import-from
-	// or plain allocation), so the fake mirrors it — otherwise post-create
+	// or plain allocation), so the fake mirrors it - otherwise post-create
 	// steps like ResizeDisk find no disk to grow.
 	var disks []Disk
 	if spec.Disk.Storage != "" {
@@ -98,7 +98,7 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 	}
 
 	// Mirrors setUEFIFormKeys (proxmox_create.go) so fake-created VMs are
-	// observable the same way a real create would be (US6/issue-06).
+	// observable the same way a real create would be.
 	isUEFI := spec.BIOS == biosOVMF
 
 	var machine string
@@ -126,12 +126,14 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 		Machine:           machine,
 		EFIDisk:           isUEFI,
 		TPMState:          isUEFI && spec.TPM,
+		SecureBoot:        isUEFI && spec.SecureBoot,
+		Agent:             true,
 	})
 
 	// The real create path always sends agent=1 (proxmox_create.go), so a
 	// fake-created VM carries an enabled guest agent even before any
-	// cloud-init config is written — the password pre-flight reads it from
-	// the config (ticket 05).
+	// cloud-init config is written - the password pre-flight reads it from
+	// the config.
 	if state.cloudInitConfigs == nil {
 		state.cloudInitConfigs = make(map[fakeCloudInitKey]CloudInitConfig)
 	}
@@ -156,8 +158,8 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 }
 
 // TaskStatus implements Creator. Poll-count-based: running for a UPID's first
-// two queries, ok from the third onward (SC-006 — deterministic, no sleeps).
-// US5/issue-05: when SetFakeTaskError was called, the next registered task
+// two queries, ok from the third onward (deterministic, no sleeps).
+// When SetFakeTaskError was called, the next registered task
 // reports TaskError on its first poll instead of running.
 func (fake Fake) TaskStatus(_ context.Context, upid string) (TaskStatus, error) {
 	state := fake.stateOrDefault()
@@ -169,7 +171,7 @@ func (fake Fake) TaskStatus(_ context.Context, upid string) (TaskStatus, error) 
 		return TaskStatus{}, ErrNotFound
 	}
 
-	// US5/issue-05: inject a task error on the first poll when configured.
+	// Inject a task error on the first poll when configured.
 	if state.taskErr != "" && task.polls == 0 {
 		task.polls++
 
@@ -206,8 +208,8 @@ func (fake Fake) TaskStatus(_ context.Context, upid string) (TaskStatus, error) 
 }
 
 // CloneVM implements Creator: registers a poll-counted clone task under the
-// returned UPID (US2/issue-02). The cloned VM enters the fake's mutable dataset
-// on the third poll (TaskOK), via the task's onComplete callback — mirroring
+// returned UPID. The cloned VM enters the fake's mutable dataset
+// on the third poll (TaskOK), via the task's onComplete callback - mirroring
 // how a real Proxmox clone materializes the VM only after the task finishes.
 // The fake VM inherits a template-sized disk so post-clone ResizeDisk can find
 // it; the caller applies the actual resize via Writer.ResizeDisk after
@@ -219,8 +221,8 @@ func (fake Fake) CloneVM(_ context.Context, spec CloneSpec) (string, error) {
 
 	// The cloned VM's disk: a primary disk on the clone's storage (or the
 	// source node's local-lvm if no target storage was specified). The bus
-	// family comes from the template (spec.DiskBus) — the clone inherits it.
-	// The size is a small default (8 GB) — the caller resizes via
+	// family comes from the template (spec.DiskBus) - the clone inherits it.
+	// The size is a small default (8 GB) - the caller resizes via
 	// Writer.ResizeDisk after the task completes.
 	diskStorage := spec.Storage
 	if diskStorage == "" {

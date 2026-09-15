@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * ProfilePicker — card-style radio group for picking a VM profile.
+	 * ProfilePicker - card-style radio group for picking a VM profile.
 	 * Always renders two columns of native radio cards.
 	 */
 	interface Profile {

@@ -34,16 +34,21 @@ func registerAdminRoutes(mux *http.ServeMux, cfg RouterConfig, adminProtect admi
 	if cfg.AdminDocs != nil {
 		registerAdminDocsRoutes(mux, adminProtect, cfg.AdminDocs)
 	}
+
+	if cfg.AdminBaseline != nil {
+		registerAdminBaselineRoutes(mux, adminProtect, cfg.AdminBaseline)
+	}
 }
 
-// registerAdminCatalogRoutes wires the T11 admin catalog endpoints (nodes,
-// storages, bridges, isos, profiles, tags) and the T18 admin cloud-init
-// template CRUD. Every route is admin-only (FR-008, FR-010).
+// registerAdminCatalogRoutes wires the admin catalog endpoints (nodes,
+// storages, bridges, isos, profiles, tags) and the admin cloud-init
+// template CRUD. Every route is admin-only.
 func registerAdminCatalogRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminCatalog) {
 	mux.Handle("GET /api/v1/admin/nodes", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeNodes)))
 	mux.Handle("POST /api/v1/admin/nodes/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeNodeToggle)))
 	mux.Handle("DELETE /api/v1/admin/nodes/{cluster}/{name}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeNodeDelete)))
 	mux.Handle("GET /api/v1/admin/storages", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeStorages)))
+	mux.Handle("GET /api/v1/admin/snippet-storages", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeSnippetStorages)))
 	mux.Handle("POST /api/v1/admin/storages/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeStorageToggle)))
 	mux.Handle("DELETE /api/v1/admin/storages/{cluster}/{node}/{name}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeStorageDelete)))
 	mux.Handle("GET /api/v1/admin/bridges", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeBridges)))
@@ -75,8 +80,8 @@ func registerAdminCatalogRoutes(mux *http.ServeMux, adminProtect adminRouteProte
 	mux.Handle("POST /api/v1/admin/cloudinit-templates/{id}/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeCloudInitTemplateToggle)))
 }
 
-// registerAdminPolicyRoutes wires the T12 admin policy endpoints (gabarits,
-// quotas, node capacity). Admin-only (FR-008).
+// registerAdminPolicyRoutes wires the admin policy endpoints (gabarits,
+// quotas, node capacity). Admin-only.
 func registerAdminPolicyRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminPolicy) {
 	mux.Handle("GET /api/v1/admin/policy", adminProtect(http.MethodGet, http.HandlerFunc(h.ServePolicy)))
 	mux.Handle("PUT /api/v1/admin/policy", adminProtect(http.MethodPut, http.HandlerFunc(h.ServePolicyUpdate)))
@@ -84,17 +89,17 @@ func registerAdminPolicyRoutes(mux *http.ServeMux, adminProtect adminRouteProtec
 	mux.Handle("PUT /api/v1/admin/policy/nodes/{node}", adminProtect(http.MethodPut, http.HandlerFunc(h.ServePolicyNodeUpdate)))
 }
 
-// registerAdminPoolRoutes wires the T13 admin pool endpoints (create, list,
-// cascade delete). Admin-only (FR-008).
+// registerAdminPoolRoutes wires the admin pool endpoints (create, list,
+// cascade delete). Admin-only.
 func registerAdminPoolRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminPools) {
 	mux.Handle("GET /api/v1/admin/pools", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeList)))
 	mux.Handle("POST /api/v1/admin/pools", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeCreate)))
 	mux.Handle("DELETE /api/v1/admin/pools/{name}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeDelete)))
 }
 
-// registerAdminOpsRoutes wires the T14 admin exploitation endpoints (audit
+// registerAdminOpsRoutes wires the admin exploitation endpoints (audit
 // log, dashboard, db export/import, app info). The public version endpoint is
-// registered outside the admin guard group (FR-015). Admin-only (FR-008).
+// registered outside the admin guard group. Admin-only.
 func registerAdminOpsRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminOps) {
 	mux.Handle("GET /api/v1/admin/audit", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeAudit)))
 	mux.Handle("GET /api/v1/admin/audit/config", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeAuditConfig)))
@@ -109,7 +114,7 @@ func registerAdminOpsRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, 
 }
 
 // registerAdminClusterRoutes wires the admin cluster management endpoints
-// (list, create, update, test, oidc, delete). Admin-only (FR-008).
+// (list, create, update, test, oidc, delete). Admin-only.
 func registerAdminClusterRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminClusters) {
 	mux.Handle("GET /api/v1/admin/clusters", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeList)))
 	mux.Handle("POST /api/v1/admin/clusters", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeCreate)))
@@ -119,12 +124,19 @@ func registerAdminClusterRoutes(mux *http.ServeMux, adminProtect adminRouteProte
 	mux.Handle("DELETE /api/v1/admin/clusters/{name}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeDelete)))
 }
 
-// registerAdminDocsRoutes wires the issue #53 admin documentation CRUD
-// (list, create, update, delete, toggle). Admin-only (FR-008).
+// registerAdminDocsRoutes wires the admin documentation CRUD
+// (list, create, update, delete, toggle). Admin-only.
 func registerAdminDocsRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminDocs) {
 	mux.Handle("GET /api/v1/admin/docs", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeDocsList)))
 	mux.Handle("POST /api/v1/admin/docs", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeDocCreate)))
 	mux.Handle("PUT /api/v1/admin/docs/{id}/{lang}", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeDocUpdate)))
 	mux.Handle("DELETE /api/v1/admin/docs/{id}/{lang}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeDocDelete)))
 	mux.Handle("POST /api/v1/admin/docs/{id}/{lang}/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeDocToggle)))
+}
+
+// registerAdminBaselineRoutes wires the admin baseline view
+// (read-only: the generated baseline + the cluster override state).
+// Admin-only.
+func registerAdminBaselineRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminBaseline) {
+	mux.Handle("GET /api/v1/admin/baseline", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeBaseline)))
 }

@@ -55,6 +55,7 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
 				TrustedProxyHops:                  1,
+				SSHPort:                           22,
 			},
 		},
 		{
@@ -81,6 +82,7 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
 				TrustedProxyHops:                  1,
+				SSHPort:                           22,
 			},
 		},
 		{
@@ -217,6 +219,7 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
 				TrustedProxyHops:                  1,
+				SSHPort:                           22,
 			},
 		},
 		{
@@ -267,6 +270,7 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
 				TrustedProxyHops:                  1,
+				SSHPort:                           22,
 			},
 		},
 		{
@@ -332,6 +336,7 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshTimeout:           45 * time.Second,
 				MaxListPageSize:                   100,
 				TrustedProxyHops:                  1,
+				SSHPort:                           22,
 			},
 		},
 		{
@@ -384,6 +389,7 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
 				TrustedProxyHops:                  2,
+				SSHPort:                           22,
 			},
 		},
 		{
@@ -410,6 +416,7 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
 				TrustedProxyHops:                  0,
+				SSHPort:                           22,
 			},
 		},
 		{
@@ -470,6 +477,9 @@ func runLoadCase(t *testing.T, env map[string]string, want config.Configuration,
 	t.Setenv("PROXMOX_URL", env["PROXMOX_URL"])
 	t.Setenv("PROXMOX_API_TOKEN_NAME", env["PROXMOX_API_TOKEN_NAME"])
 	t.Setenv("PROXMOX_API_TOKEN_VALUE", env["PROXMOX_API_TOKEN_VALUE"])
+	t.Setenv("PVMSS_SSH_USER", env["PVMSS_SSH_USER"])
+	t.Setenv("PVMSS_SSH_KEY_FILE", env["PVMSS_SSH_KEY_FILE"])
+	t.Setenv("PVMSS_SSH_PORT", env["PVMSS_SSH_PORT"])
 	t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
 
 	want.SessionSecret = strings.Repeat("s", 32)

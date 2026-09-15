@@ -58,7 +58,7 @@
 		type="file"
 		accept=".db,application/octet-stream"
 		onchange={onFileChange}
-		class="block w-full text-sm text-muted-foreground file:mr-4 file:rounded-md file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary-foreground"
+		class="block w-full text-sm text-muted-foreground file:mr-4 file:rounded-md file:border-0 file:bg-primary-solid file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary-foreground"
 	/>
 
 	{#if store.importing}

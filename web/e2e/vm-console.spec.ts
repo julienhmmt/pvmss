@@ -22,7 +22,7 @@ test.describe('T10 VM console VNC', () => {
 		await expect(page).toHaveURL(/\/vms\/default\/100\/console$/);
 		await expect(page.getByTestId('vm-console-title')).toContainText('VM 100 Console');
 
-		// The status badge transitions from connecting to connected — the fake
+		// The status badge transitions from connecting to connected - the fake
 		// RFB server completes the handshake immediately, so this should happen
 		// within a few seconds.
 		await expect(page.getByTestId('vm-console-status')).toContainText(/connected|connecting/, { timeout: 10000 });
@@ -66,11 +66,11 @@ test.describe('T10 VM console VNC', () => {
 
 		await expect(popup).toHaveURL(/\/vms\/default\/100\/console$/);
 		// Locale-agnostic: only asserts the vmid is present, not English word
-		// order — see the pre-existing locale-negotiation note above.
+		// order - see the pre-existing locale-negotiation note above.
 		await expect(popup.getByTestId('vm-console-title')).toContainText('100');
 		await expect(popup.getByTestId('vm-console-status')).toContainText('connected', { timeout: 15000 });
 
-		// Both windows are independently connected — closing the popup does not
+		// Both windows are independently connected - closing the popup does not
 		// disturb the original window's session.
 		await popup.close();
 		await expect(page.getByTestId('vm-console-status')).toContainText('connected');
@@ -136,7 +136,7 @@ test.describe('T10 VM console VNC', () => {
 		await signInAlice(page.request);
 		await page.goto('/vms/default/100/console');
 
-		// 1. Open — the fake screen connects.
+		// 1. Open - the fake screen connects.
 		await expect(page.getByTestId('vm-console-status')).toContainText('connected', { timeout: 15000 });
 
 		// 2. Scale toggle.
@@ -146,23 +146,23 @@ test.describe('T10 VM console VNC', () => {
 		await page.getByTestId('vm-console-scale').click();
 		await expect(page.getByTestId('vm-console-scale')).toContainText('Scale: On');
 
-		// 3. Ctrl+Alt+Del — the fake server accepts it without closing.
+		// 3. Ctrl+Alt+Del - the fake server accepts it without closing.
 		await page.getByTestId('vm-console-ctrlaltdel').click();
 		await expect(page.getByTestId('vm-console-status')).toContainText('connected');
 
-		// 4. Clipboard — the fake server's ServerCutText surfaces.
+		// 4. Clipboard - the fake server's ServerCutText surfaces.
 		await expect(page.getByTestId('vm-console-clipboard-preview')).toContainText('hello from the fake console', { timeout: 10000 });
 
 		// 5. Disconnect.
 		await page.getByTestId('vm-console-disconnect').click();
 		await expect(page.getByTestId('vm-console-status')).toContainText('disconnected');
 
-		// 6. Reconnect — a fresh ticket is requested.
+		// 6. Reconnect - a fresh ticket is requested.
 		await page.getByTestId('vm-console-reconnect').click();
 		await expect(page.getByTestId('vm-console-status')).toContainText('connected', { timeout: 15000 });
 	});
 
-	test('T030: clean disconnect keeps the route mounted — the boundary fallback is NOT shown', async ({ page }) => {
+	test('T030: clean disconnect keeps the route mounted - the boundary fallback is NOT shown', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms/default/100/console');
 
@@ -172,36 +172,36 @@ test.describe('T10 VM console VNC', () => {
 		await page.getByTestId('vm-console-disconnect').click();
 		await expect(page.getByTestId('vm-console-status')).toContainText('disconnected');
 
-		// The route heading is still in the DOM — the route did not unmount.
+		// The route heading is still in the DOM - the route did not unmount.
 		await expect(page.getByTestId('vm-console-title')).toContainText('VM 100 Console');
 
 		// The disconnected fallback UI is visible, not an error page.
 		await expect(page.getByTestId('vm-console-disconnected')).toBeVisible();
 
-		// The boundary fallback is NOT shown — this was a clean disconnect,
+		// The boundary fallback is NOT shown - this was a clean disconnect,
 		// not a render-time crash.
 		await expect(page.getByTestId('vm-console-boundary-fallback')).toBeHidden();
 	});
 
-	test('SC-004: boundary catches a render-time error — the fallback is shown and the route stays mounted', async ({ page }) => {
+	test('SC-004: boundary catches a render-time error - the fallback is shown and the route stays mounted', async ({ page }) => {
 		await signInAlice(page.request);
 
 		// Set the test-only global before navigation so VmConsole.svelte throws
-		// during component initialization — a render-time error that the
+		// during component initialization - a render-time error that the
 		// <svelte:boundary> in +page.svelte must catch (SC-004, AC04 §4).
 		// Svelte 5 boundaries only catch render/effect errors, not event-
 		// handler or async errors, so this is the only reliable way to
-		// exercise the failed snippet. Deliberately not a URL query parameter —
+		// exercise the failed snippet. Deliberately not a URL query parameter - 
 		// see VmConsole.svelte's comment on why.
 		await page.addInitScript(() => {
 			window.__pvmssForceConsoleBoundaryError = true;
 		});
 		await page.goto('/vms/default/100/console');
 
-		// The boundary fallback IS shown — the render-time throw was caught.
+		// The boundary fallback IS shown - the render-time throw was caught.
 		await expect(page.getByTestId('vm-console-boundary-fallback')).toBeVisible({ timeout: 10000 });
 
-		// The route heading is still in the DOM — the surrounding route did
+		// The route heading is still in the DOM - the surrounding route did
 		// not unmount. This is the core SC-004 guarantee: the boundary walls
 		// off the failure, the rest of the page stays intact.
 		await expect(page.getByTestId('vm-console-title')).toContainText('VM 100 Console');

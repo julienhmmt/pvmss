@@ -22,9 +22,9 @@ func (w *fakeSerialWriter) EnableSerial(_ context.Context, node string, vmid int
 	return w.Fake.EnableSerial(context.Background(), node, vmid)
 }
 
-// TestEnableSerialConsole_ResolveThenWriterThenAudit — the happy path calls
-// Resolve (ownership gate), then Writer.EnableSerial, then records the
-// "serial_enable" audit action and refreshes the inventory so HasSerial flips.
+// TestEnableSerialConsole_ResolveThenWriterThenAudit - the happy path calls
+// Resolve (ownership gate), then Writer.EnableSerial, then records the "serial_enable" audit
+// action and refreshes the inventory so HasSerial flips.
 //
 //nolint:paralleltest // serial: shared fake VM fixture
 func TestEnableSerialConsole_ResolveThenWriterThenAudit(t *testing.T) {
@@ -63,7 +63,7 @@ func TestEnableSerialConsole_ResolveThenWriterThenAudit(t *testing.T) {
 	}
 }
 
-// TestEnableSerialConsole_NonOwnerForbidden — Resolve() gates the write; a
+// TestEnableSerialConsole_NonOwnerForbidden - Resolve() gates the write; a
 // non-owner gets ErrForbidden before the writer is touched.
 //
 //nolint:paralleltest // serial: shared fake VM fixture

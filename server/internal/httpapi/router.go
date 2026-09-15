@@ -45,7 +45,7 @@ type spaHandler struct {
 
 // RouterConfig configures NewRouter. VMCloudInit, VMCreate, Tasks,
 // SnapshotHandlers, VMConsole, AdminCatalog, AdminPolicy, AdminPools, and
-// AdminOps are optional — left nil/empty, their routes are simply not
+// AdminOps are optional - left nil/empty, their routes are simply not
 // registered (router tests rely on this to omit handlers without panicking).
 type RouterConfig struct {
 	Health           http.Handler
@@ -71,6 +71,7 @@ type RouterConfig struct {
 	AdminPools       *AdminPools
 	AdminOps         *AdminOps
 	AdminClusters    *AdminClusters
+	AdminBaseline    *AdminBaseline
 	Docs             *DocsAPIHandler
 	AdminDocs        *AdminDocs
 	Store            *store.Store
@@ -109,7 +110,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	registerVMRoutes(mux, cfg, protect, vmWriteLimiter, vmStatusLimiter)
 	registerAuthRoutes(mux, cfg, protect, authWriteLimiter, hops)
 
-	// User-owned cloud-init documents (cloudinit-userdata D3). Any signed-in
+	// User-owned cloud-init documents. Any signed-in
 	// user manages their own files; owner = session username, resolved inside
 	// the handler. Writes get the same CSRF + per-user rate limit as VM
 	// mutations.
@@ -121,7 +122,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		mux.Handle("DELETE /api/v1/cloudinit/files/{id}", protect(cfg.Auth.Require(http.HandlerFunc(cfg.CloudInitFiles.ServeDelete)), vmWriteLimiter))
 	}
 
-	// Issue #53 public documentation — audience-filtered list and rendered
+	// Public documentation - audience-filtered list and rendered
 	// single-page view. Not wrapped in auth.Require: the handler resolves the
 	// caller itself (to hide admin-audience pages from non-admins) and issues
 	// its own 401/403 on admin-audience pages.
@@ -130,8 +131,8 @@ func NewRouter(cfg RouterConfig) http.Handler {
 		mux.Handle("GET /api/v1/docs/{id}", http.HandlerFunc(cfg.Docs.ServeDoc))
 	}
 
-	// Admin-only route groups (T11/T12/T13/T14/T18/issue#53). Each group is
-	// wired by its own helper behind the RequireAdmin guard (FR-008). Extracted
+	// Admin-only route groups. Each group is
+	// wired by its own helper behind the RequireAdmin guard. Extracted
 	// from NewRouter to keep its Cognitive Complexity under the SonarQube
 	// go:S3776 threshold.
 	registerAdminRoutes(mux, cfg, adminProtect)
@@ -156,9 +157,9 @@ type protectFunc func(next http.Handler, limiter *userRateLimiter) http.Handler
 func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc, vmWriteLimiter, vmStatusLimiter *userRateLimiter) {
 	// Not wrapped in auth.Require: the handler needs the resolved Identity
 	// itself (for scope enforcement) and calls h.auth.Principal(r) directly,
-	// returning 401 on its own — wrapping would just re-run the same check.
+	// returning 401 on its own - wrapping would just re-run the same check.
 	mux.Handle("GET /api/v1/vms", cfg.VMs)
-	// T17 bulk VM power actions — same Principal pattern as VM list/detail:
+	// Bulk VM power actions - same Principal pattern as VM list/detail:
 	// the handler calls h.auth.Principal(r) directly and returns 401 on its
 	// own, so it is not wrapped in auth.Require. Registered before the
 	// {cluster}/{vmid} pattern so the literal "bulk-action" segment wins.
@@ -172,7 +173,7 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 	if cfg.VMStatusBatch != nil {
 		mux.Handle("POST /api/v1/vms/status", protect(cfg.VMStatusBatch, vmStatusLimiter))
 	}
-	// VM creation + catalog + task polling — same Principal pattern as above.
+	// VM creation + catalog + task polling - same Principal pattern as above.
 	if cfg.VMCreate != nil {
 		mux.Handle("POST /api/v1/vms", protect(cfg.VMCreate, vmWriteLimiter))
 		mux.Handle("GET /api/v1/vm-create/catalog", http.HandlerFunc(cfg.VMCreate.ServeCatalog))
@@ -181,7 +182,7 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 	if cfg.Tasks != nil {
 		mux.Handle("GET /api/v1/tasks/{upid}", cfg.Tasks)
 	}
-	// VM detail + actions + delete + patch — all gated by vm.Resolve() inside
+	// VM detail + actions + delete + patch - all gated by vm.Resolve() inside
 	// the handler. Same reason as GET /vms: not wrapped in auth.Require.
 	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}", cfg.VMDetail)
 	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/actions", protect(cfg.VMDetail, vmWriteLimiter))
@@ -197,6 +198,7 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/network", protect(cfg.VMDetail, vmWriteLimiter))
 	mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/hardware", protect(cfg.VMDetail, vmWriteLimiter))
 	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/serial", protect(cfg.VMDetail, vmWriteLimiter))
+	mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/retrofit-seabios", protect(cfg.VMDetail, vmWriteLimiter))
 	mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/audit", cfg.VMDetail)
 
 	if cfg.VMCloudInit != nil {
@@ -205,6 +207,7 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", cfg.VMCloudInit)
 		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", protect(cfg.VMCloudInit, vmWriteLimiter))
 		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/cloudinit/ssh-keys", protect(cfg.VMCloudInit, vmWriteLimiter))
+		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/console-password", protect(cfg.VMCloudInit, vmWriteLimiter))
 	}
 
 	if len(cfg.SnapshotHandlers) > 0 && cfg.SnapshotHandlers[0] != nil {
@@ -213,7 +216,7 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/snapshots", protect(snapshots, vmWriteLimiter))
 		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/rollback", protect(snapshots, vmWriteLimiter))
 		mux.Handle("DELETE /api/v1/vms/{cluster}/{vmid}/snapshots/{name}", protect(snapshots, vmWriteLimiter))
-		// Ticket 08: one snapshot's stored config — the pre-rollback diff.
+		// One snapshot's stored config - the pre-rollback diff.
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/snapshots/{name}/config", snapshots)
 	}
 
@@ -234,7 +237,7 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 // (per-IP rate limited) and the authenticated token/password endpoints
 // (per-user rate limited + CSRF). Extracted from NewRouter for gocyclo.
 func registerAuthRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc, authWriteLimiter *userRateLimiter, hops int) {
-	// Unauthenticated credential-check endpoints get a per-IP rate limit —
+	// Unauthenticated credential-check endpoints get a per-IP rate limit - 
 	// nothing else gates repeated guesses against them. The pre-login cluster
 	// list and OIDC trigger are also unauthenticated and disclose cluster
 	// names, so they share the same limiter to bound enumeration/abuse.
@@ -406,6 +409,7 @@ func writeTextError(w http.ResponseWriter, status int, detail string) error {
 // registerSerialConsoleRoutes wires the serial-terminal endpoints onto mux
 // when the handler is present. Extracted from NewRouter to keep its cyclomatic
 // complexity under the gocyclo threshold (one if-block per route group adds up
+//
 // across console, metrics, admin, tasks, ...).
 func registerSerialConsoleRoutes(mux *http.ServeMux, handler *VMSerialConsole, protect func(http.Handler, *userRateLimiter) http.Handler, limiter *userRateLimiter) {
 	if handler == nil {

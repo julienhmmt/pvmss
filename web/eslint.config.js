@@ -44,7 +44,7 @@ export default [
     }
   },
   {
-    // Generated (SvelteKit output, build artifacts, ambient .d.ts, i18n) — not our source.
+    // Generated (SvelteKit output, build artifacts, ambient .d.ts, i18n) - not our source.
     ignores: [
       '.svelte-kit/',
       'build/',

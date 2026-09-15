@@ -2,6 +2,7 @@
 	import { getVmDetailContext, type VmDisk } from '../detail.svelte';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
+	import Button from '$lib/shared/ui/Button.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const store = getVmDetailContext();
@@ -38,22 +39,16 @@
 		<Alert class="mb-4">{store.diskError}</Alert>
 	{/if}
 	<div class="flex justify-end gap-2">
-		<button
-			type="button"
-			class="rounded-md border border-border px-4 py-2 text-sm hover:bg-muted"
-			onclick={close}
-			data-testid="delete-disk-cancel"
-		>
+		<Button variant="ghost" onclick={close} data-testid="delete-disk-cancel">
 			{m['common.cancel']()}
-		</button>
-		<button
-			type="button"
-			class="rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground disabled:cursor-not-allowed disabled:opacity-50"
-			disabled={store.diskInFlight || disk?.isBoot}
+		</Button>
+		<Button
+			variant="destructive"
+			disabled={store.diskInFlight || disk?.isBoot === true}
 			onclick={confirm}
 			data-testid="delete-disk-confirm"
 		>
 			{store.diskInFlight ? m['common.deleting']() : m['common.deletePermanently']()}
-		</button>
+		</Button>
 	</div>
 </Dialog>

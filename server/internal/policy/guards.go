@@ -87,8 +87,7 @@ func (service *Policy) CheckGabarit(ctx context.Context, clusterName string, soc
 // CheckNodeCapacity validates aggregate VM count, vCPU, RAM, and disk headroom.
 // delta.ExcludeVMID removes a resizing VM's current contribution before adding
 // the requested replacement values. delta.DiskGB is the provisioned disk the
-// new or resized VM would add (D4c: enforced against MaxDiskGB, parallel to
-// RAM).
+// new or resized VM would add (enforced against MaxDiskGB, parallel to RAM).
 func (service *Policy) CheckNodeCapacity(ctx context.Context, clusterName, node string, delta CapacityDelta) error {
 	capacity, err := service.NodeCapacity(ctx, clusterName, node)
 	if err != nil {

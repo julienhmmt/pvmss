@@ -141,7 +141,7 @@ func TestSessionManager_ResolveRejectsUnknownAndExpiredCookies(t *testing.T) {
 	}
 }
 
-// Regresses the fix for T02's original stateless signed-cookie session: a
+// Regresses the fix for the original stateless signed-cookie session: a
 // signature-only cookie stays valid after logout until its embedded expiry.
 // A DB-backed session must reject the same raw cookie value immediately once
 // its row is deleted.

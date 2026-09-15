@@ -114,7 +114,7 @@ func (f fakeHealthPinger) Ping(_ context.Context) error {
 	return nil
 }
 
-// --- T021 (US3): checks.clusters aggregate + demoMode ---
+//  - Checks.clusters aggregate + demoMode -
 
 // fakeFreshnessChecker implements httpapi.ClusterFreshnessChecker for tests.
 type fakeFreshnessChecker struct {
@@ -262,7 +262,7 @@ func runClustersCase(t *testing.T, tc clustersCase) {
 		t.Fatalf("clusters.detail = %q, want %q", gotClusters.Detail, tc.wantClustersDtl)
 	}
 
-	// The detail must never leak a cluster name (FR-012).
+	// The detail must never leak a cluster name.
 	if gotClusters.Detail != "" {
 		for _, cl := range tc.freshness.clusters {
 			if strings.Contains(gotClusters.Detail, cl.Name) {

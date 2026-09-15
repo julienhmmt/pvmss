@@ -40,7 +40,7 @@ L'inventaire complet, route par route, est dans [docs/FEATURES.md](docs/FEATURES
 
 ### Utilisateurs finaux
 
-- Connexion avec ses identifiants Proxmox sur le cluster de son choix ; tokens API personnels pour scripter.
+- Connexion avec ses identifiants Proxmox sur le cluster de son choix.
 - **Mes VM** : liste multi-cluster, recherche/filtre/tri reflétés dans l'URL, statut en direct, actions d'alimentation groupées avec résultat par VM, bouton console sur chaque ligne.
 - **Assistant de création** (mode Simple / Détaillé) depuis trois sources : une **ISO** approuvée, un **template** Proxmox (clone lié ou complet) ou une **image cloud** (`import-from` + cloud-init). Profils matériels ou valeurs libres, placement automatique avec score de capacité, multi-NIC (bridge + modèle), UEFI / Secure Boot / TPM 2.0, tags curés, démarrage sur CD-ROM.
 - **Exploitation d'une VM** : 7 actions d'alimentation, renommage, description Markdown, suppression ; disques (ajout / agrandissement / détachement) ; cartes réseau (bridge, modèle, VLAN, débit) ; CPU/RAM/tags/CD-ROM ; snapshots (création / restauration / suppression, RAM optionnelle) ; historique de métriques (heure/jour/semaine) et flux temps réel ; journal d'activité par VM.
@@ -142,10 +142,10 @@ nouvelle VM :
 1. Dans Proxmox, choisissez un stockage **partagé par tous les nœuds**
    (NFS/CIFS) et ajoutez **Snippets** à ses types de contenu (Datacenter ›
    Storage › Edit).
-2. Montez le répertoire `snippets/` de ce stockage dans le conteneur PVMSS —
+2. Montez le répertoire `snippets/` de ce stockage dans le conteneur PVMSS - 
    voir le volume commenté dans les exemples Docker / Compose / Helm ci-dessous.
-3. Dans **Admin › Clusters › Modifier**, renseignez *Répertoire de snippets*
-   (chemin dans le conteneur, ex. `/snippets`) et *Stockage de snippets*
+3. Dans **Admin › Clusters › Modifier**, renseignez _Répertoire de snippets_
+   (chemin dans le conteneur, ex. `/snippets`) et _Stockage de snippets_
    (identifiant du stockage Proxmox). Le badge du cluster passe à
    « cloud-init : activé ».
 
@@ -153,7 +153,7 @@ Chaque VM reçoit sa propre copie (`pvmss-<vmid>.yml`, attachée en `vendor=`) :
 modifier un template plus tard ne change jamais les VM existantes. Sans cible
 d'écriture, le sélecteur est masqué et la création avec un document est
 refusée avec une erreur explicite. Procédure complète : page intégrée
-`/docs/admin-guide`, section *Activer les documents cloud-init*.
+`/docs/admin-guide`, section _Activer les documents cloud-init_.
 
 ### Variables d'environnement
 
@@ -161,17 +161,17 @@ Utilisez **soit** un `.env` (via `env_file`) **soit** des variables inline, pas 
 
 | Variable                                      | Description                                                                | Requis                | Valeur par défaut  |
 | --------------------------------------------- | -------------------------------------------------------------------------- | --------------------- | ------------------ |
-| `PVMSS_PORT`                                  | Port TCP d'écoute du serveur HTTP (1–65535)                                | ✅                    | —                  |
-| `PVMSS_DB_PATH`                               | Chemin vers le fichier SQLite (volume persistant requis)                   | ✅                    | —                  |
-| `SESSION_SECRET`                              | Secret de 32+ octets pour sessions/cookies                                 | ✅                    | —                  |
-| `PVMSS_CLUSTER_SOURCE`                        | `proxmox` pour un vrai cluster, `fake` pour la démo (aucun défaut, exprès) | ✅                    | —                  |
-| `LOG_LEVEL`                                   | `debug`, `info`, `warn`, `error` — minuscules uniquement                   | ✅                    | —                  |
-| `LOG_FORMAT`                                  | `console` (lisible humainement) ou `json` (pour SIEM/collecte)             | ✅                    | —                  |
-| `LOG_OUTPUT`                                  | `stdout`, `stderr`, ou un chemin de fichier accessible en écriture         | ✅                    | —                  |
-| `PROXMOX_URL`                                 | URL complète de l'API (`https://host:8006/api2/json`)                      | si source = `proxmox` | —                  |
-| `PROXMOX_API_TOKEN_NAME`                      | Nom du token Proxmox (`user@pve!token`)                                    | si source = `proxmox` | —                  |
-| `PROXMOX_API_TOKEN_VALUE`                     | Valeur du token ci-dessus                                                  | si source = `proxmox` | —                  |
-| `ADMIN_PASSWORD_HASH`                         | Hash bcrypt de l'admin local ; désactivé si vide                           | ❌                    | —                  |
+| `PVMSS_PORT`                                  | Port TCP d'écoute du serveur HTTP (1–65535)                                | ✅                    | - |
+| `PVMSS_DB_PATH`                               | Chemin vers le fichier SQLite (volume persistant requis)                   | ✅                    | - |
+| `SESSION_SECRET`                              | Secret de 32+ octets pour sessions/cookies                                 | ✅                    | - |
+| `PVMSS_CLUSTER_SOURCE`                        | `proxmox` pour un vrai cluster, `fake` pour la démo (aucun défaut, exprès) | ✅                    | - |
+| `LOG_LEVEL`                                   | `debug`, `info`, `warn`, `error` - minuscules uniquement                   | ✅                    | - |
+| `LOG_FORMAT`                                  | `console` (lisible humainement) ou `json` (pour SIEM/collecte)             | ✅                    | - |
+| `LOG_OUTPUT`                                  | `stdout`, `stderr`, ou un chemin de fichier accessible en écriture         | ✅                    | - |
+| `PROXMOX_URL`                                 | URL complète de l'API (`https://host:8006/api2/json`)                      | si source = `proxmox` | - |
+| `PROXMOX_API_TOKEN_NAME`                      | Nom du token Proxmox (`user@pve!token`)                                    | si source = `proxmox` | - |
+| `PROXMOX_API_TOKEN_VALUE`                     | Valeur du token ci-dessus                                                  | si source = `proxmox` | - |
+| `ADMIN_PASSWORD_HASH`                         | Hash bcrypt de l'admin local ; désactivé si vide                           | ❌                    | - |
 | `PVMSS_HOST`                                  | Adresse d'écoute (`0.0.0.0` pour toutes les interfaces)                    | ❌                    | `127.0.0.1`        |
 | `PVMSS_WEB_DIR`                               | Répertoire contenant le SPA compilé                                        | ❌                    | relatif au binaire |
 | `PVMSS_COOKIE_SECURE`                         | Drapeau `Secure` sur les cookies d'auth (garder `true` en production)      | ❌                    | `true`             |
@@ -192,7 +192,7 @@ L'image Docker prérègle `PVMSS_DB_PATH=/data/pvmss.db`, `PVMSS_HOST=0.0.0.0` e
 PVMSS utilise des logs structurés basés sur `log/slog` de la bibliothèque
 standard. Les trois variables sont obligatoires ; `LOG_LEVEL` est comparé en
 tenant compte de la casse et n'accepte que des minuscules. `LOG_OUTPUT` accepte
-`stdout`, `stderr` ou un chemin de fichier — il n'y a pas de mode « both ».
+`stdout`, `stderr` ou un chemin de fichier - il n'y a pas de mode « both ».
 
 - Logs lisibles en développement :
 
@@ -224,7 +224,7 @@ Le format JSON est une ligne par événement, avec un champ `component` (main, c
 
 | Plateforme          | Détails                                                                                                                                                                                                                                                    |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Docker / Podman** | Idéal pour tester ou déployer sur un seul hôte. Montez le volume de base de données et exposez `50000`.                                                                                                                                                 |
+| **Docker / Podman** | Idéal pour tester ou déployer sur un seul hôte. Montez le volume de base de données et exposez `50000`.                                                                                                                                                    |
 | **Docker Compose**  | Expérience recommandée : service unique, variables centralisées, environnement reproductible.                                                                                                                                                              |
 | **Kubernetes**      | Utilisez [`pvmss-deployment.yaml`](pvmss-deployment.yaml) (namespace + secret + configmap + PVC + Deployment + Service). Appliquez via `kubectl apply -f pvmss-deployment.yaml`. L'ingress/HTTPRoute reste à votre charge (exemple `pvmss-httproute.yml`). |
 
@@ -316,14 +316,14 @@ LOG_OUTPUT: "/app/pvmss.log"
 - ./pvmss.log:/app/pvmss.log
 ```
 
-2. **Démarrer la stack :**
+1. **Démarrer la stack :**
 
    ```bash
    docker compose up -d
    ```
 
-3. Ouvrez un navigateur et accédez à **<http://localhost:50000>**.
-4. Se connecter avec le compte admin, sur la page "Login", cliquez sur "Connexion administrateur".
+2. Ouvrez un navigateur et accédez à **<http://localhost:50000>**.
+3. Se connecter avec le compte admin, sur la page "Login", cliquez sur "Connexion administrateur".
 
 ## Démarrer avec Kubernetes
 

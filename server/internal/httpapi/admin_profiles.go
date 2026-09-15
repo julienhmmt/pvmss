@@ -8,7 +8,7 @@ import (
 	"pvmss/server/internal/catalog"
 )
 
-// --- Profile DTOs ---
+//  - Profile DTOs -
 
 type adminProfileDTO struct {
 	ID       string `json:"id"`
@@ -48,9 +48,8 @@ type statusResponse struct {
 // statusDeleted is the status string returned by delete endpoints.
 const statusDeleted = "deleted"
 
-// ServeProfiles handles GET /api/v1/admin/profiles — lists all profiles
-// including disabled ones (unlike T06's catalog.Profiles which filters by
-// enabled = 1).
+// ServeProfiles handles GET /api/v1/admin/profiles - lists all profiles
+// including disabled ones (unlike catalog.Profiles which filters by enabled = 1).
 func (h *AdminCatalog) ServeProfiles(w http.ResponseWriter, r *http.Request) {
 	clusterName, clusterErr := ResolveClusterParam(r, h.clusters)
 	if clusterErr != nil {
@@ -169,7 +168,7 @@ func (h *AdminCatalog) ServeProfileUpdate(w http.ResponseWriter, r *http.Request
 }
 
 // ServeProfileDelete handles DELETE /api/v1/admin/profiles/{id}. The cluster
-// is read from the query string (?cluster=default), not the JSON body —
+// is read from the query string (?cluster=default), not the JSON body - 
 // DELETE-with-body is awkward and the frontend uses the query param form.
 func (h *AdminCatalog) ServeProfileDelete(w http.ResponseWriter, r *http.Request) {
 	h.serveCatalogDelete(w, r, "profile", "profile", catalog.DeleteProfile, catalog.ErrProfileNotFound)

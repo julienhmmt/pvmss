@@ -18,7 +18,7 @@
 	import { m } from '$lib/paraglide/messages.js';
 
 	// Wiring only: the list state, URL sync, and rendering all live in
-	// $lib/features/vms (FR-010) — this page just picks the scope.
+	// $lib/features/vms (FR-010) - this page just picks the scope.
 	let clusterOptions = $state<ClusterOption[]>([]);
 	const session = getSessionContext();
 
@@ -27,7 +27,7 @@
 		initialQuery: page.url.search,
 		navigate: (queryString: string) => {
 			// resolve() only accepts route literals, so the query string is
-			// appended after the typed route resolution — no `as '/vms'` cast.
+			// appended after the typed route resolution - no `as '/vms'` cast.
 			const base = resolve('/vms');
 			const target = queryString === '' ? base : `${base}?${queryString}`;
 			void goto(target, {

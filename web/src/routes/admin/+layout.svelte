@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Admin layout — the admin destinations live in the global Sidebar (T034:
+	 * Admin layout - the admin destinations live in the global Sidebar (T034:
 	 * no second 52-width rail). This layout is now just the admin guard plus a
 	 * plain content wrapper. The server-side RequireAdmin middleware remains
 	 * the real gate; this is UX only.

@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * StatusDot — a labelled status indicator using the design tokens.
+	 * StatusDot - a labelled status indicator using the design tokens.
 	 *
 	 * Replaces ad-hoc `bg-green-500` / `bg-red-500` raw Tailwind palette dots
 	 * that bypassed the semantic token system and were not tuned for dark mode.

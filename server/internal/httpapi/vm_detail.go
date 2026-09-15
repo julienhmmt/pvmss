@@ -20,22 +20,23 @@ import (
 )
 
 // VMDetail serves the four VM-detail endpoints, all gated by the same
-// vm.Resolve() (FR-001, SC-005): GET /vms/:cluster/:vmid (detail),
+// vm.Resolve(): GET /vms/:cluster/:vmid (detail),
 // POST /vms/:cluster/:vmid/actions (power), DELETE /vms/:cluster/:vmid (delete),
 // PATCH /vms/:cluster/:vmid (rename/description). 403/404 semantics are
 // byte-identical across all four (contracts behavioural rule).
 type VMDetail struct {
-	projection   *inventory.Projection
-	resolver     vm.ClusterIndexResolver
-	auth         *Auth
-	writer       cluster.Writer
-	clients      cluster.ClientProvider
-	store        *store.Store
-	refresher    vm.IndexRefresher
-	refreshers   ClusterRefresherResolver
-	statusReader cluster.VMStatusReader
-	policy       *policy.Policy
-	log          *slog.Logger
+	projection     *inventory.Projection
+	resolver       vm.ClusterIndexResolver
+	auth           *Auth
+	writer         cluster.Writer
+	clients        cluster.ClientProvider
+	store          *store.Store
+	refresher      vm.IndexRefresher
+	refreshers     ClusterRefresherResolver
+	statusReader   cluster.VMStatusReader
+	guestNetReader cluster.GuestNetworkReader
+	policy         *policy.Policy
+	log            *slog.Logger
 }
 
 // ServeHTTP dispatches to the sub-handlers.
@@ -61,6 +62,7 @@ func (h *VMDetail) dispatchBySuffix(w http.ResponseWriter, r *http.Request) bool
 		{"/network", h.handleNetwork},
 		{"/hardware", h.handleHardware},
 		{"/serial", h.handleEnableSerial},
+		{"/retrofit-seabios", h.handleRetrofitSeaBIOS},
 		{"/audit", h.handleAudit},
 		{"/status", h.handleStatus},
 	}
@@ -100,8 +102,8 @@ func (h *VMDetail) dispatchByMethod(w http.ResponseWriter, r *http.Request) {
 }
 
 // NewVMDetail creates the handler. The writer is the cluster.Writer (separate
-// from the read Client — constitution IV); the refresher rebuilds the Index
-// after a write (FR-010). Bound to a single cluster; use
+// from the read Client); the refresher rebuilds the Index
+// after a write. Bound to a single cluster; use
 // NewVMDetailWithRegistry for multi-cluster deployments.
 func NewVMDetail(projection *inventory.Projection, authHandler *Auth, writer cluster.Writer, st *store.Store, refresher vm.IndexRefresher, log *slog.Logger, services ...*policy.Policy) *VMDetail {
 	var policyService *policy.Policy
@@ -121,6 +123,10 @@ func NewVMDetail(projection *inventory.Projection, authHandler *Auth, writer clu
 		h.statusReader = reader
 	}
 
+	if reader, ok := writer.(cluster.GuestNetworkReader); ok {
+		h.guestNetReader = reader
+	}
+
 	return h
 }
 
@@ -136,15 +142,18 @@ type VMDetailDeps struct {
 	Store        *store.Store
 	Refresher    vm.IndexRefresher
 	StatusReader cluster.VMStatusReader
-	Log          *slog.Logger
+	// GuestNetReader supplies the live per-NIC IP addresses the detail DTO
+	// merges in - the inventory projection carries config-only interfaces.
+	GuestNetReader cluster.GuestNetworkReader
+	Log            *slog.Logger
 }
 
 // NewVMDetailWithRegistry adds cluster-aware reads and writes: every index
 // load and cluster.Writer call below is resolved per-request from the
 // request's own :cluster path value, never from a client bound once at
-// startup (closes the same class of bug S01 fixed for a single default
-// cluster — see the metrics-history ticket that surfaced the single-client
-// wiring pattern in main.go's initCluster).
+// startup (closes the same class of bug fixed for a single default cluster - see the
+// metrics-history work that surfaced the single-client wiring pattern in main.go's
+// initCluster).
 func NewVMDetailWithRegistry(deps VMDetailDeps, services ...*policy.Policy) *VMDetail {
 	handler := NewVMDetail(deps.Projection, deps.Auth, deps.Writer, deps.Store, deps.Refresher, deps.Log, services...)
 	if registry, ok := deps.Source.(*inventory.Registry); ok {
@@ -154,6 +163,7 @@ func NewVMDetailWithRegistry(deps VMDetailDeps, services ...*policy.Policy) *VMD
 
 	handler.clients = deps.Clients
 	handler.statusReader = deps.StatusReader
+	handler.guestNetReader = deps.GuestNetReader
 
 	return handler
 }
@@ -178,7 +188,7 @@ func (h *VMDetail) writerFor(w http.ResponseWriter, clusterName string) (cluster
 
 // statusReaderFor resolves the cluster.VMStatusReader for clusterName. Returns
 // nil when no reader is available (single-cluster mode without one, or the
-// cluster client doesn't implement VMStatusReader) — callers that need
+// cluster client doesn't implement VMStatusReader) - callers that need
 // escalation fall back to the immediate-shutdown path.
 func (h *VMDetail) statusReaderFor(clusterName string) cluster.VMStatusReader {
 	reader, err := resolveCapability(h.clients, h.statusReader, clusterName, "VMStatusReader")
@@ -189,9 +199,21 @@ func (h *VMDetail) statusReaderFor(clusterName string) cluster.VMStatusReader {
 	return reader
 }
 
+// guestNetReaderFor resolves the cluster.GuestNetworkReader for clusterName.
+// Returns nil when unavailable - the IP column is best-effort, an absent
+// reader means "no live addresses", never an error.
+func (h *VMDetail) guestNetReaderFor(clusterName string) cluster.GuestNetworkReader {
+	reader, err := resolveCapability(h.clients, h.guestNetReader, clusterName, "GuestNetworkReader")
+	if err != nil {
+		return nil
+	}
+
+	return reader
+}
+
 // refresherFor resolves the vm.IndexRefresher for clusterName. Unlike
 // writerFor, a missing refresher must not fail an action already applied on
-// the cluster — so it never writes an HTTP error. When the per-cluster
+// the cluster - so it never writes an HTTP error. When the per-cluster
 // resolver is unset (single-cluster mode) or the cluster is unknown, it
 // returns the fallback refresher and logs a warning. The result is never nil
 // when the fallback is non-nil.
@@ -230,10 +252,23 @@ type vmDetailDTO struct {
 	Description       string                     `json:"description,omitempty"`
 	DescriptionHTML   string                     `json:"descriptionHtml,omitempty"`
 	// Lock carries the live Proxmox lock name ("snapshot-delete", "backup",
-	// ...) from a best-effort /status/current read (ticket 06) — the page
+	// ...) from a best-effort /status/current read - the page
 	// shows a badge and the operator command to clear it. Empty when the VM
 	// is unlocked or the live read failed.
 	Lock string `json:"lock,omitempty"`
+	// GuestAgent explains why networkInterfaces[].ipAddresses is populated or
+	// not, for a running VM: "disabled" (agent=0 in the VM config - known
+	// without probing), "unreachable" (enabled but the agent did not answer
+	// - not installed in the guest or still starting), "ok" (answered; IPs
+	// may still be empty while DHCP is pending). Empty when the VM is not
+	// running - the status field already explains it.
+	GuestAgent string `json:"guestAgent,omitempty"`
+	// BaselineState is the delivery state of the generated cloud-init
+	// baseline for image-mode VMs: "applied", "override", "not_delivered". Empty for non-image
+	// VMs.
+	BaselineState string `json:"baselineState,omitempty"`
+	// BaselineError is the reason when BaselineState is "not_delivered".
+	BaselineError string `json:"baselineError,omitempty"`
 }
 
 type diskRequest struct {
@@ -279,7 +314,7 @@ type hardwareOptionsDTO struct {
 }
 
 // hardwareTagDTO is one admin-curated tag offered to the VM tag picker.
-// The protected pvmss tag is excluded — users cannot toggle it.
+// The protected pvmss tag is excluded - users cannot toggle it.
 type hardwareTagDTO struct {
 	Name  string `json:"name"`
 	Color string `json:"color"`
@@ -333,8 +368,8 @@ type patchRequest struct {
 	Description string `json:"description"`
 }
 
-// handleGet serves GET /vms/:cluster/:vmid — the detail view (US1). Calls
-// Resolve and encodes the Entity (FR-005).
+// handleGet serves GET /vms/:cluster/:vmid - the detail view. Calls
+// Resolve and encodes the Entity.
 func (h *VMDetail) handleGet(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
@@ -362,7 +397,7 @@ func (h *VMDetail) handleGet(w http.ResponseWriter, r *http.Request) {
 	h.writeEntity(w, r, entity)
 }
 
-// handleStatus serves GET /vms/:cluster/:vmid/status — the live status read
+// handleStatus serves GET /vms/:cluster/:vmid/status - the live status read
 // (ADR 0001). Unlike handleGet which reads the projection, this reads the
 // cluster's live /status/current via VMStatusReader, so the front's converge
 // loop sees the real power state immediately after an action, not the
@@ -419,9 +454,9 @@ type vmLiveStatusDTO struct {
 	Uptime int64  `json:"uptime"`
 }
 
-// handleAction serves POST /vms/:cluster/:vmid/actions (US2, closes S01).
-// The request body carries only {"action": Kind} — no node field exists in
-// the schema, so there is nothing to forge (S01 root cause, structurally closed).
+// handleAction serves POST /vms/:cluster/:vmid/actions.
+// The request body carries only {"action": Kind} - no node field exists in
+// the schema, so there is nothing to forge (root cause, structurally closed).
 func (h *VMDetail) handleAction(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
@@ -469,8 +504,8 @@ func (h *VMDetail) handleAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Refresh the projection once after the action (ticket 09: the caller
-	// owns refresh, not Action). Best-effort — the action already succeeded.
+	// Refresh the projection once after the action (the caller owns refresh, not Action).
+	// Best-effort - the action already succeeded.
 	if refresher := h.refresherFor(clusterName); refresher != nil {
 		if _, err := refresher.Refresh(r.Context()); err != nil {
 			h.log.Warn("post-action refresh failed", "component", "httpapi", "cluster", clusterName, "error", err)
@@ -480,11 +515,11 @@ func (h *VMDetail) handleAction(w http.ResponseWriter, r *http.Request) {
 	h.writeJSONStatus(w, http.StatusOK, actionResponse{Status: "accepted"})
 }
 
-// handleDelete serves DELETE /vms/:cluster/:vmid (US3). Same Resolve() gate.
+// handleDelete serves DELETE /vms/:cluster/:vmid. Same Resolve() gate.
 // The optional ?force=true query parameter authorizes a force-stop of a running
-// VM before the destroy — the UI only sends it after the user has confirmed the
-// force-stop in the delete dialog. Without it, a running VM is rejected with
-// 409 (code "vm_running") so the client can prompt for confirmation.
+// VM before the destroy - the UI only sends it after the user has confirmed the
+// force-stop in the delete dialog. Without it, a running VM is rejected with 409 (code
+// "vm_running") so the client can prompt for confirmation.
 func (h *VMDetail) handleDelete(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
@@ -516,9 +551,9 @@ func (h *VMDetail) handleDelete(w http.ResponseWriter, r *http.Request) {
 	h.writeJSONStatus(w, http.StatusOK, deleteResponse{Status: "deleted"})
 }
 
-// handlePatch serves PATCH /vms/:cluster/:vmid (US4). Accepts name and/or
+// handlePatch serves PATCH /vms/:cluster/:vmid. Accepts name and/or
 // description; at least one must be present. Name is validated as a hostname
-// before Resolve is called (constitution XIII: malformed input rejected first).
+// before Resolve is called (malformed input rejected first).
 func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
@@ -695,7 +730,7 @@ func (h *VMDetail) handleDiskDelete(w http.ResponseWriter, r *http.Request, deps
 }
 
 // handleBootCDROM serves POST /vms/:cluster/:vmid/boot-cdrom: a one-time boot
-// from the mounted CD-ROM. The VM must be stopped — the UI shuts a running VM
+// from the mounted CD-ROM. The VM must be stopped - the UI shuts a running VM
 // down first (confirm dialog) and calls this once it is stopped. The server
 // sets the CD-first boot order, starts the VM, and restores the original boot
 // order once the guest is up (one-time semantics).
@@ -892,7 +927,7 @@ func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
 	h.writeEntity(w, r, entity)
 }
 
-// handleEnableSerial serves POST /vms/:cluster/:vmid/serial — the serial-
+// handleEnableSerial serves POST /vms/:cluster/:vmid/serial - the serial-
 // console retrofit for VMs created before serial0 was added at create time.
 // Reuses vm.EnableSerialConsole (Resolve ownership gate → Writer.EnableSerial
 // → audit + inventory refresh) and returns the refreshed entity so the UI can
@@ -959,6 +994,109 @@ func (h *VMDetail) handleEnableSerial(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.writeEntity(w, r, entity)
+}
+
+// handleRetrofitSeaBIOS serves POST /vms/:cluster/:vmid/retrofit-seabios - 
+// the admin-only action that switches an existing UEFI VM to SeaBIOS so its
+// graphical console becomes readable. Refuses
+// VMs with TPM state or Secure Boot before changing anything; a running VM
+// requires confirm=true in the request body. Reports each step's outcome.
+func (h *VMDetail) handleRetrofitSeaBIOS(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", "POST")
+		h.writeDetailError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed)
+
+		return
+	}
+
+	identity, err := h.auth.Principal(r)
+	if err != nil {
+		h.writeDetailError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
+		return
+	}
+
+	// admin-only - a tenant cannot retrofit firmware.
+	if !identity.IsAdmin {
+		h.writeDetailError(w, http.StatusForbidden, "forbidden", msgAdminOnly)
+		return
+	}
+
+	clusterName, vmid, ok := h.parsePath(r)
+	if !ok {
+		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", msgInvalidVMPath)
+		return
+	}
+
+	index, ok := h.index(w, clusterName)
+	if !ok {
+		return
+	}
+
+	writer, ok := h.writerFor(w, clusterName)
+	if !ok {
+		return
+	}
+
+	var request struct {
+		Confirm bool `json:"confirm"`
+	}
+
+	if r.ContentLength > 0 {
+		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+			h.writeDetailError(w, http.StatusBadRequest, "invalid_request", "invalid request body")
+			return
+		}
+	}
+
+	err = vm.RetrofitToSeaBIOS(r.Context(), vm.RetrofitDependencies{
+		Index:        index,
+		Actor:        identity,
+		ClusterName:  clusterName,
+		VMID:         vmid,
+		Writer:       writer,
+		StatusReader: h.statusReaderFor(clusterName),
+		Audit:        h.store,
+		Refresher:    h.refresherFor(clusterName),
+		Confirm:      request.Confirm,
+	})
+	if err != nil {
+		h.writeRetrofitError(w, clusterName, vmid, err)
+		return
+	}
+
+	refreshed, ok := h.index(w, clusterName)
+	if !ok {
+		return
+	}
+
+	entity, err := vm.Resolve(refreshed, identity, clusterName, vmid)
+	if err != nil {
+		h.writeResolveError(w, err)
+		return
+	}
+
+	h.writeEntity(w, r, entity)
+}
+
+// writeRetrofitError maps a RetrofitToSeaBIOS failure to its HTTP response:
+// refusals and the confirmation gate are 409s, a restart failure is a 500,
+// anything unmapped is logged and reported as internal_error.
+func (h *VMDetail) writeRetrofitError(w http.ResponseWriter, clusterName string, vmid int, err error) {
+	if h.writeCommonVMError(w, err) {
+		return
+	}
+
+	switch {
+	case errors.Is(err, vm.ErrRetrofitRefused):
+		h.writeDetailError(w, http.StatusConflict, "retrofit_refused", err.Error())
+	case errors.Is(err, vm.ErrRetrofitRequiresConfirmation):
+		h.writeDetailError(w, http.StatusConflict, "retrofit_confirm_required", err.Error())
+	case errors.Is(err, vm.ErrRetrofitRestartFailed):
+		h.writeDetailError(w, http.StatusInternalServerError, "retrofit_restart_failed", err.Error())
+	default:
+		h.log.Error("retrofit seabios failed", "component", "httpapi", "cluster", clusterName, "vmid", vmid, "error", err)
+		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
+	}
 }
 
 func (h *VMDetail) writeHardwareError(w http.ResponseWriter, err error) {
@@ -1125,8 +1263,8 @@ func (h *VMDetail) writeBootCDROMError(w http.ResponseWriter, err error) {
 	}
 }
 
-// allowedTagNames loads the admin-curated tag allowlist for a cluster
-// (FR-013). ListTags lazily seeds the mandatory pvmss tag, so the allowlist
+// allowedTagNames loads the admin-curated tag allowlist for a cluster.
+// ListTags lazily seeds the mandatory pvmss tag, so the allowlist
 // is never empty on a healthy store.
 func (h *VMDetail) allowedTagNames(ctx context.Context, clusterName string) ([]string, error) {
 	tags, err := catalog.ListTags(ctx, h.store, h.projection, clusterName)
@@ -1238,7 +1376,7 @@ func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request)
 }
 
 // hardwareTagDTOs loads the cluster's admin-curated tags for the VM tag
-// picker. The protected pvmss tag is excluded — users cannot toggle it.
+// picker. The protected pvmss tag is excluded - users cannot toggle it.
 func hardwareTagDTOs(ctx context.Context, h *VMDetail, clusterName string) ([]hardwareTagDTO, error) {
 	tags, err := catalog.ListTags(ctx, h.store, h.projection, clusterName)
 	if err != nil {
@@ -1328,6 +1466,7 @@ func (h *VMDetail) writeDiskError(w http.ResponseWriter, err error) {
 }
 
 // parsePath extracts :cluster and :vmid from the route pattern
+//
 // /api/v1/vms/{cluster}/{vmid}[...]. Returns ok=false if vmid is not a valid int.
 func (h *VMDetail) parsePath(r *http.Request) (string, int, bool) {
 	clusterName := r.PathValue("cluster")
@@ -1383,7 +1522,7 @@ func (h *VMDetail) writeEntity(w http.ResponseWriter, r *http.Request, entity vm
 		dto.UptimeSeconds = int64(entity.Uptime.Seconds())
 	}
 
-	// Ticket 06: the detail DTO carries the live Proxmox lock (best-effort —
+	// The detail DTO carries the live Proxmox lock (best-effort
 	// a failed live read must not fail the whole detail) so the page can show
 	// the lock badge; the convergence loop keeps it fresh after actions.
 	if reader := h.statusReaderFor(entity.Cluster); reader != nil {
@@ -1392,7 +1531,68 @@ func (h *VMDetail) writeEntity(w http.ResponseWriter, r *http.Request, entity vm
 		}
 	}
 
+	// Carry the baseline delivery state for image-mode VMs so the
+	// page can report it (best-effort - a store failure must not fail the
+	// whole detail).
+	if h.store != nil {
+		if state, found, err := h.store.GetBaselineState(r.Context(), entity.Cluster, entity.VMID); err == nil && found {
+			dto.BaselineState = state.State
+			dto.BaselineError = state.Error
+		}
+	}
+
+	h.fillGuestAgent(r.Context(), entity, &dto)
+
 	h.writeJSONStatus(w, http.StatusOK, dto)
+}
+
+// fillGuestAgent probes the guest agent for a running VM's live IPs and
+// reports the channel's state on the DTO. The projection carries config-only
+// interfaces - parseNetworkInterfaces deliberately skips the per-VM agent
+// round trip - so a running VM's live IPs are asked of the guest agent here
+// instead (best-effort, like Lock). The config's agent= flag already tells
+// us when probing is pointless; a failed probe on an enabled channel is
+// itself the communication test.
+func (h *VMDetail) fillGuestAgent(ctx context.Context, entity vm.Entity, dto *vmDetailDTO) {
+	if entity.Status != cluster.VMRunning {
+		return
+	}
+
+	if !entity.Agent {
+		dto.GuestAgent = "disabled"
+		return
+	}
+
+	reader := h.guestNetReaderFor(entity.Cluster)
+	if reader == nil {
+		return
+	}
+
+	guests, err := reader.GuestNetworkInterfaces(ctx, entity.Node, entity.VMID)
+	if err != nil {
+		dto.GuestAgent = "unreachable"
+		return
+	}
+
+	dto.GuestAgent = "ok"
+	mergeGuestIPs(dto.NetworkInterfaces, guests)
+}
+
+// mergeGuestIPs copies each guest-reported IP list onto the configured NIC
+// with the same MAC. The agent reports lowercase addresses while the Proxmox
+// config stores them uppercase, so the correlation is case-insensitive.
+// Guest interfaces with no matching NIC (lo, hot-plugged) are dropped.
+func mergeGuestIPs(nics []cluster.NetworkInterface, guests []cluster.GuestInterface) {
+	byMAC := make(map[string][]string, len(guests))
+	for _, guest := range guests {
+		byMAC[strings.ToLower(guest.MAC)] = guest.IPAddresses
+	}
+
+	for i := range nics {
+		if ips, ok := byMAC[strings.ToLower(nics[i].MAC)]; ok {
+			nics[i].IPAddresses = ips
+		}
+	}
 }
 
 func (h *VMDetail) writeJSONStatus(w http.ResponseWriter, status int, value any) {
@@ -1409,7 +1609,7 @@ func (h *VMDetail) writeJSONStatus(w http.ResponseWriter, status int, value any)
 	}
 }
 
-// handleAudit serves GET /vms/:cluster/:vmid/audit — paginated, VM-scoped audit trail.
+// handleAudit serves GET /vms/:cluster/:vmid/audit - paginated, VM-scoped audit trail.
 func (h *VMDetail) handleAudit(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.auth.Principal(r)
 	if err != nil {
@@ -1496,7 +1696,7 @@ func (h *VMDetail) parseAuditPage(r *http.Request) (int, bool) {
 }
 
 // writeResolveError maps vm.Resolve errors to HTTP statuses. 403 and 404 are
-// byte-identical in shape across all four endpoints (contracts).
+// byte-identical in shape across all four endpoints.
 func (h *VMDetail) writeResolveError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrForbidden):

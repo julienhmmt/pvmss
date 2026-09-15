@@ -12,7 +12,7 @@
 	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
 
 	/**
-	 * /about — public product overview page. No auth required.
+	 * /about - public product overview page. No auth required.
 	 * Long-form article: what PVMSS is, what it does, how it works,
 	 * who it is for, limits, and a call to action. Avoids duplicating
 	 * the home page's 3x3 card grid.
@@ -53,7 +53,7 @@
 </script>
 
 <svelte:head>
-	<title>{m['capabilities.aboutTitle']()} — PVMSS</title>
+	<title>{m['capabilities.aboutTitle']()} - PVMSS</title>
 </svelte:head>
 
 <article class="mx-auto w-full max-w-3xl px-4 py-8 md:px-6" data-testid="about-page">

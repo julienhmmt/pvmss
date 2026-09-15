@@ -1,5 +1,5 @@
 <script lang="ts">
-	/** TrashIcon — destructive-action affordance for deletions. Inherits currentColor. */
+	/** TrashIcon - destructive-action affordance for deletions. Inherits currentColor. */
 	interface Props {
 		class?: string;
 	}

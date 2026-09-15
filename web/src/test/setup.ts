@@ -37,7 +37,7 @@ if (globalThis.localStorage === undefined) {
 			configurable: true
 		});
 	} catch {
-		// Some environments expose a non-configurable accessor — fall back to
+		// Some environments expose a non-configurable accessor - fall back to
 		// plain assignment where the property is absent.
 		globalThis.localStorage = createMemoryStorage();
 	}

@@ -67,9 +67,9 @@ func (h *Health) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // clustersCheck derives the aggregate clusters check from each configured
-// cluster's RefreshedAt, without calling cluster.Client (FR-010). A cluster is
+// cluster's RefreshedAt, without calling cluster.Client. A cluster is
 // stale when time.Since(RefreshedAt) exceeds the stale threshold. The detail
-// is a count, never a cluster name (FR-012).
+// is a count, never a cluster name.
 func (h *Health) clustersCheck() CheckResult {
 	if h.freshness == nil {
 		return CheckResult{Status: healthStatusHealthy}

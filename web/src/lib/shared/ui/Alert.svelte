@@ -1,19 +1,19 @@
 <script lang="ts">
 	/**
-	 * Alert — the shared inline banner for a store/action-level failure or
+	 * Alert - the shared inline banner for a store/action-level failure or
 	 * caution, standing on its own in a card, dialog, or form (not a full-page
-	 * state — that's ErrorState — and not a single field's error — that's
+	 * state - that's ErrorState - and not a single field's error - that's
 	 * FormField's own inline hint).
 	 *
 	 * Before this, the same message rendered as a bare `<p class="text-sm
-	 * text-destructive">`, with no surface, no border, no icon — 94 near-copies
+	 * text-destructive">`, with no surface, no border, no icon - 94 near-copies
 	 * of it, some plain, some with an ad-hoc `bg-destructive/10` background
 	 * that didn't match the `destructive-soft` triple used everywhere else
 	 * (Pill, EmptyState, FormField). One component, one look, matching the
 	 * soft-surface vocabulary the rest of the system already uses.
 	 *
 	 * `tone` picks the palette and the default icon; pass an `icon` snippet to
-	 * override it. `role="alert"` by default — pass `role="status"` for a
+	 * override it. `role="alert"` by default - pass `role="status"` for a
 	 * caution that isn't itself the error (e.g. "this VM is running" before a
 	 * destructive confirm).
 	 */

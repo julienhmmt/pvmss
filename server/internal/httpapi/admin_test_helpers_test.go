@@ -16,7 +16,7 @@ import (
 	"testing"
 )
 
-// newAdminStore opens a fully-migrated store (V9) with the T06 seed and pvmss
+// newAdminStore opens a fully-migrated store (V9) with the seed and pvmss
 // tag, ready for admin catalog handler tests.
 func newAdminStore(t *testing.T) *store.Store {
 	t.Helper()
@@ -39,7 +39,7 @@ func newAdminStore(t *testing.T) *store.Store {
 // newAdminHandler builds the AdminCatalog handler with a real store, the
 // fake cluster client, and a projection populated from the fake snapshot
 // (needed for tag VM counts), and returns a mux that wires the admin routes
-// through RequireAdmin — the real guard the tests must exercise.
+// through RequireAdmin - the real guard the tests must exercise.
 func newAdminHandler(t *testing.T) (*httpapi.AdminCatalog, *httpapi.Auth, *store.Store) {
 	t.Helper()
 	t.Cleanup(cluster.ResetFake)
@@ -66,6 +66,7 @@ func adminMux(handler *httpapi.AdminCatalog, auth *httpapi.Auth) *http.ServeMux 
 	mux.Handle("POST /api/v1/admin/nodes/toggle", guard(http.HandlerFunc(handler.ServeNodeToggle)))
 	mux.Handle("DELETE /api/v1/admin/nodes/{cluster}/{name}", guard(http.HandlerFunc(handler.ServeNodeDelete)))
 	mux.Handle("GET /api/v1/admin/storages", guard(http.HandlerFunc(handler.ServeStorages)))
+	mux.Handle("GET /api/v1/admin/snippet-storages", guard(http.HandlerFunc(handler.ServeSnippetStorages)))
 	mux.Handle("POST /api/v1/admin/storages/toggle", guard(http.HandlerFunc(handler.ServeStorageToggle)))
 	mux.Handle("DELETE /api/v1/admin/storages/{cluster}/{node}/{name}", guard(http.HandlerFunc(handler.ServeStorageDelete)))
 	mux.Handle("GET /api/v1/admin/bridges", guard(http.HandlerFunc(handler.ServeBridges)))

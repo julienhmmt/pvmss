@@ -41,10 +41,10 @@ func TestProxmox_GetMetricsHistory(t *testing.T) {
 
 	checkMetricsSample(t, "samples[0]", samples[0], MetricsSample{CPUPercent: 25, MemoryUsed: 536870912, MemoryMax: 1073741824, DiskReadBps: 2000, DiskWriteBps: 1000, NetInBps: 1000, NetOutBps: 500})
 	// A null-valued row (common right after a VM starts) decodes to zero, not
-	// an error — the caller sees a real sample, not a gap.
+	// an error - the caller sees a real sample, not a gap.
 	checkMetricsSample(t, "samples[1] (nulls)", samples[1], MetricsSample{MemoryMax: 1073741824})
 	// Proxmox's RRD averaging (cf=AVERAGE) emits mem/maxmem as non-integer
-	// floats, not whole bytes — decoding must not require an integer JSON
+	// floats, not whole bytes - decoding must not require an integer JSON
 	// value (regression: this used to 500 with "cannot unmarshal number ...
 	// into Go struct field proxmoxRRDRow.mem of type int64").
 	checkMetricsSample(t, "samples[2] (fractional mem)", samples[2], MetricsSample{CPUPercent: 10, MemoryUsed: 32111957, MemoryMax: 1073741824, DiskReadBps: 2000, DiskWriteBps: 1000, NetInBps: 1000, NetOutBps: 500})

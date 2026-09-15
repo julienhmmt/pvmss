@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * VmMetricsRow — CPU/memory/disk/network sparklines for the Overview tab,
+	 * VmMetricsRow - CPU/memory/disk/network sparklines for the Overview tab,
 	 * below the existing static stat cards. History is fetched once on mount;
 	 * live ticks stream over SSE while the VM is running and merge onto the
 	 * same series without disturbing the selected range.
@@ -74,7 +74,7 @@
 				<button
 					type="button"
 					class="px-2.5 py-1.5 text-xs font-semibold first:rounded-l-lg last:rounded-r-lg {store.range === r.value
-						? 'bg-primary text-primary-foreground'
+						? 'bg-primary-solid text-primary-foreground'
 						: 'hover:bg-muted'}"
 					aria-pressed={store.range === r.value}
 					onclick={() => void store.setRange(r.value)}

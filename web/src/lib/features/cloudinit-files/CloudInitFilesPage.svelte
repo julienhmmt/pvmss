@@ -49,7 +49,7 @@
 		showForm = true;
 	}
 
-	// The list endpoint withholds content — pull the full document so the
+	// The list endpoint withholds content - pull the full document so the
 	// dialog opens with what is actually stored.
 	async function openEdit(file: CloudInitFileSummary): Promise<void> {
 		const full = await getFile(file.id);

@@ -25,7 +25,7 @@ const (
 
 // testIndexResolver is a simple ClusterIndexResolver backed by a static map of
 // cluster name → Index. It stands in for the inventory Registry in unit tests
-// — no goroutines, no refresh, just the per-cluster lookup BulkAction needs.
+// - no goroutines, no refresh, just the per-cluster lookup BulkAction needs.
 type testIndexResolver struct {
 	indexes map[string]*inventory.Index
 }
@@ -62,9 +62,9 @@ func bulkTestStore(t *testing.T) *store.Store {
 
 	st, err := store.Open(config.Configuration{
 		DBPath:    filepath.Join(t.TempDir(), "bulk-test.db"),
-		LogLevel:  "info",
-		LogFormat: "json",
-		LogOutput: "stdout",
+		LogLevel:  testLogLevel,
+		LogFormat: testLogFormat,
+		LogOutput: testLogOutput,
 	})
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
@@ -75,13 +75,13 @@ func bulkTestStore(t *testing.T) *store.Store {
 	return st
 }
 
-// TestBulkAction_AllSuccessBatch — T003: a batch where every target is owned
+// TestBulkAction_AllSuccessBatch - a batch where every target is owned
 // and status-compatible produces one "ok" entry per target, in order.
 //
 //nolint:paralleltest // serial: shared fake dataset
 func TestBulkAction_AllSuccessBatch(t *testing.T) {
 	resolver := bulkTestResolver(t)
-	// VM 101 and 124 are stopped, owned by alice — start succeeds on both.
+	// VM 101 and 124 are stopped, owned by alice - start succeeds on both.
 	targets := []vm.BulkTarget{
 		{Cluster: testClusterName, VMID: 101},
 		{Cluster: testClusterName, VMID: 124},
@@ -113,9 +113,9 @@ func TestBulkAction_AllSuccessBatch(t *testing.T) {
 	}
 }
 
-// TestBulkAction_MixedBatch — T003: a batch mixing owned/status-compatible,
+// TestBulkAction_MixedBatch - a batch mixing owned/status-compatible,
 // owned/already-in-target-state, and non-owned targets. Each result entry is
-// asserted independently per data-model.md's sequence.
+// asserted independently per the sequence.
 //
 //nolint:paralleltest // serial: shared fake dataset
 func TestBulkAction_MixedBatch(t *testing.T) {
@@ -158,7 +158,7 @@ func TestBulkAction_MixedBatch(t *testing.T) {
 	}
 }
 
-// TestBulkAction_DuplicateTargetProcessedTwice — T003: a duplicate (cluster,
+// TestBulkAction_DuplicateTargetProcessedTwice - a duplicate (cluster,
 // vmid) pair is processed twice independently. The first start on a stopped
 // VM succeeds; the second start on the now-running VM fails.
 //
@@ -190,7 +190,7 @@ func TestBulkAction_DuplicateTargetProcessedTwice(t *testing.T) {
 	}
 }
 
-// TestBulkAction_SingleTargetBatch — T003: a single-target batch produces one
+// TestBulkAction_SingleTargetBatch - a single-target batch produces one
 // entry.
 //
 //nolint:paralleltest // serial: shared fake dataset
@@ -214,7 +214,7 @@ func TestBulkAction_SingleTargetBatch(t *testing.T) {
 	}
 }
 
-// TestBulkAction_FullCeilingUnder2s — T003/SC-005: a 100-target batch against
+// TestBulkAction_FullCeilingUnder2s - a 100-target batch against
 // the fake cluster.Client returns in under 2 seconds.
 //
 //nolint:paralleltest // serial: shared fake dataset
@@ -247,16 +247,16 @@ func TestBulkAction_FullCeilingUnder2s(t *testing.T) {
 	t.Logf("100-target batch completed in %v", elapsed)
 }
 
-// TestBulkAction_AuditRowsMatchSuccesses — SC-004: a batch of N targets, M of
+// TestBulkAction_AuditRowsMatchSuccesses - a batch of N targets, M of
 // which succeed, produces exactly M new audit_log rows (via store.RecordAction,
-// called inside T05's own Action()).
+// called inside the Action()).
 //
 //nolint:paralleltest // serial: shared fake dataset
 func TestBulkAction_AuditRowsMatchSuccesses(t *testing.T) {
 	resolver := bulkTestResolver(t)
 	st := bulkTestStore(t)
 	// 101: stopped → start → ok (1 audit row).
-	// 100: running → start → error (0 audit rows — Action returns before RecordAction).
+	// 100: running → start → error (0 audit rows - Action returns before RecordAction).
 	// 124: stopped → start → ok (1 audit row).
 	targets := []vm.BulkTarget{
 		{Cluster: testClusterName, VMID: 101},
@@ -293,7 +293,7 @@ func TestBulkAction_AuditRowsMatchSuccesses(t *testing.T) {
 	}
 }
 
-// TestBulkAction_NonExistentClusterError — a target naming a cluster the
+// TestBulkAction_NonExistentClusterError - a target naming a cluster the
 // resolver doesn't know produces an "error" entry; the batch never fails as a
 // whole.
 //
@@ -326,7 +326,7 @@ func TestBulkAction_NonExistentClusterError(t *testing.T) {
 }
 
 // =============================================================================
-// Bulk refresh behavior (ticket 09)
+// Bulk refresh behavior
 // =============================================================================
 
 // countingRefresher is an IndexRefresher that counts Refresh calls.
@@ -505,6 +505,6 @@ func TestBulkAction_FailedTarget_StillRefreshes(t *testing.T) {
 }
 
 // Ensure the unused import is referenced (auth is used via aliceIdentity which
-// returns auth.Identity, but the import is in create_test.go — this file needs
+// returns auth.Identity, but the import is in create_test.go - this file needs
 // its own reference if it constructs identities directly).
 var _ auth.Identity

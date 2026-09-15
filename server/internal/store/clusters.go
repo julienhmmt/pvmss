@@ -117,7 +117,7 @@ func (s *Store) ListClusters(ctx context.Context) ([]ClusterRow, error) {
 }
 
 // UpdateCluster updates mutable connection settings without accepting a name change.
-// When TokenSecret is empty the existing ciphertext is preserved untouched — no
+// When TokenSecret is empty the existing ciphertext is preserved untouched - no
 // re-encryption churn on every call that leaves the secret unchanged.
 func (s *Store) UpdateCluster(ctx context.Context, row ClusterRow) error {
 	if err := validateClusterSettings(row, false); err != nil {
@@ -402,7 +402,7 @@ func (s *Store) ensureSeedClusters(ctx context.Context) error {
 		// Existing rows also get the seeded display name so a fake deployment
 		// started before this fix still shows "Demo Cluster Alpha" instead of
 		// the raw internal name "default". This is fake-only, so overwriting
-		// a previous value is harmless — for real clusters display names come
+		// a previous value is harmless - for real clusters display names come
 		// from Proxmox /cluster/status and ensureSeedClusters does not run.
 		if err := s.SetClusterDisplayName(ctx, row.Name, row.DisplayName); err != nil {
 			return err

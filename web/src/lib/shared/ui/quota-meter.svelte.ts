@@ -1,7 +1,7 @@
 import type { VmQuota } from '$lib/features/vms/list.svelte';
 
 /**
- * quotaMeterView — pure presentation projection for a quota / usage meter.
+ * quotaMeterView - pure presentation projection for a quota / usage meter.
  *
  * Contract (specs/002-design-import/data-model.md):
  *   - `allowed === -1`  → unlimited: no fake 0–100 bar, no numeric denominator.
@@ -9,7 +9,7 @@ import type { VmQuota } from '$lib/features/vms/list.svelte';
  *   - fetch failure (null / undefined) → unavailable, never a misleading "0 / 0".
  *
  * `bounded` is true only when a `role="meter"` bar is meaningful (bounded or
- * exhausted). Unlimited and unavailable render text only — no fake bar.
+ * exhausted). Unlimited and unavailable render text only - no fake bar.
  */
 export type QuotaMeterState = 'bounded' | 'unlimited' | 'exhausted' | 'unavailable';
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// T009: vm_profiles (valid JSON, malformed JSON skip case) → catalog_profiles.
+// vm_profiles (valid JSON, malformed JSON skip case) → catalog_profiles.
 func TestMapProfiles_ValidJSON(t *testing.T) {
 	t.Parallel()
 
@@ -43,7 +43,7 @@ func TestMapProfiles_ValidJSON(t *testing.T) {
 	}
 
 	// Verify JSON field mapping: ram_gb → memory_mb (×1024)
-	// Profiles are ordered by id — "large" comes before "small" alphabetically
+	// Profiles are ordered by id - "large" comes before "small" alphabetically
 	var smallProfile *recovery.ProfileRow
 
 	for i := range profiles {

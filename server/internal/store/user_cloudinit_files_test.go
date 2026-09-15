@@ -132,7 +132,7 @@ func TestUserCloudInitFiles_CRUD(t *testing.T) {
 	t.Run("delete", func(t *testing.T) { ucfDelete(ctx, t, st) })
 }
 
-// TestUserCloudInitFiles_OwnerIsolation — every statement filters on owner:
+// TestUserCloudInitFiles_OwnerIsolation - every statement filters on owner:
 // bob cannot see, update, or delete alice's file, and alice's rows never leak
 // into bob's list (acceptance: "bob never sees them").
 //
@@ -159,7 +159,7 @@ func TestUserCloudInitFiles_OwnerIsolation(t *testing.T) {
 		t.Errorf("bob delete alice's file: err=%v, want sql.ErrNoRows", err)
 	}
 
-	// Same id under a different owner is a distinct row — the PK is
+	// Same id under a different owner is a distinct row - the PK is
 	// (owner, id), so no cross-owner collision.
 	insertUserCloudInitFileRow(ctx, t, st, ucfOwnerB, ucfID, "Bob's box")
 
@@ -168,7 +168,7 @@ func TestUserCloudInitFiles_OwnerIsolation(t *testing.T) {
 	}
 }
 
-// TestUserCloudInitFiles_DuplicateAndMissing — insert conflict maps to
+// TestUserCloudInitFiles_DuplicateAndMissing - insert conflict maps to
 // ErrDuplicate; update/delete on a missing row return sql.ErrNoRows.
 func TestUserCloudInitFiles_DuplicateAndMissing(t *testing.T) {
 	t.Parallel()

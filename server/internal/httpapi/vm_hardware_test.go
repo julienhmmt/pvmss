@@ -46,7 +46,7 @@ func TestVMDetail_Hardware_UnknownTagRejected(t *testing.T) {
 }
 
 // seedHardwareTestTag seeds the "updated" tag the hardware tests reference
-// (FR-013: tags outside the admin catalog are rejected).
+// (tags outside the admin catalog are rejected).
 func seedHardwareTestTag(t *testing.T, st *store.Store) {
 	t.Helper()
 

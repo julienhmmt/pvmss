@@ -42,7 +42,18 @@ type Registry struct {
 // NewRegistry constructs a registry from active persisted rows. A row that
 // cannot construct a client is skipped so one bad cluster cannot block others.
 func NewRegistry(source string, rows []store.ClusterRow) (*Registry, error) {
-	factory, err := factoryForSource(source)
+	factory, err := factoryForSource(source, SnippetSSH{})
+	if err != nil {
+		return nil, err
+	}
+	return NewRegistryWithFactory(factory, rows)
+}
+
+// NewRegistryWithSSH constructs a registry with an SSH snippet-delivery
+// transport injected into every Proxmox client. When ssh.Enabled() is false
+// this is equivalent to NewRegistry (local filesystem delivery).
+func NewRegistryWithSSH(source string, rows []store.ClusterRow, ssh SnippetSSH) (*Registry, error) {
+	factory, err := factoryForSource(source, ssh)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +142,7 @@ func (registry *Registry) List() []string {
 	return result
 }
 
-func factoryForSource(source string) (ClientFactory, error) {
+func factoryForSource(source string, ssh SnippetSSH) (ClientFactory, error) {
 	switch source {
 	case SourceFake:
 		return func(row store.ClusterRow) (Client, error) {
@@ -156,6 +167,7 @@ func factoryForSource(source string) (ClientFactory, error) {
 				TLSInsecureSkipVerify: row.TLSInsecureSkipVerify,
 				SnippetDir:            row.SnippetDir,
 				SnippetStorage:        row.SnippetStorage,
+				SSH:                   ssh,
 				httpClient:            newProxmoxHTTPClient(row.TLSInsecureSkipVerify),
 			}, nil
 		}, nil

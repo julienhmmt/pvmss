@@ -15,8 +15,8 @@ import (
 // writeGetentStub installs a fake getent in binDir that resolves a user only
 // when a directory named after them exists under homes. getent is invoked as
 // `getent passwd <user>`, so the user is $2. It prints a passwd line whose
-// owner fields are the test process's own uid/gid — chown to self is
-// permitted without root, so the script's real chown line is exercised — and
+// owner fields are the test process's own uid/gid - chown to self is
+// permitted without root, so the script's real chown line is exercised - and
 // whose home field points at the per-user directory.
 func writeGetentStub(t *testing.T, binDir, homes string) {
 	t.Helper()
@@ -82,7 +82,7 @@ func runSSHKeyAddScript(t *testing.T, binDir, user, key string) (int, string) {
 }
 
 // TestSSHKeyAddScript_Behaviour exercises the guest-side script as a real
-// /bin/sh program (ticket 07): the append must be newline-safe and
+// /bin/sh program: the append must be newline-safe and
 // idempotent, and a missing user must exit 3.
 func TestSSHKeyAddScript_Behaviour(t *testing.T) {
 	t.Parallel()

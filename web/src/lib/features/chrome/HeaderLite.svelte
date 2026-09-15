@@ -1,9 +1,9 @@
 <script lang="ts">
 	/**
-	 * HeaderLite — the signed-out chrome (T039). Shown on the anonymous
+	 * HeaderLite - the signed-out chrome (T039). Shown on the anonymous
 	 * home, about, and docs pages instead of the signed-in sidebar + AppHeader. Keeps
 	 * language, theme, and the docs link reachable without a sidebar. No
-	 * "New machine", no quota, no admin nav — those are signed-in only.
+	 * "New machine", no quota, no admin nav - those are signed-in only.
 	 */
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';

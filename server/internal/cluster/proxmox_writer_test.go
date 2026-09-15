@@ -50,7 +50,7 @@ func TestProxmox_Action_Valid(t *testing.T) {
 }
 
 // TestProxmox_Action_ShutdownSendsTimeout verifies that shutdown sends the
-// timeout parameter (ticket 05) and other actions do not.
+// timeout parameter and other actions do not.
 func TestProxmox_Action_ShutdownSendsTimeout(t *testing.T) {
 	t.Parallel()
 
@@ -81,7 +81,7 @@ func TestProxmox_Action_ShutdownSendsTimeout(t *testing.T) {
 }
 
 // captureActionForm runs Action with a form-capturing test server and returns
-// the submitted form. Shared by the ticket-05 shutdown-timeout test cases.
+// the submitted form. Shared by the shutdown-timeout test cases.
 func captureActionForm(t *testing.T, action string) url.Values {
 	t.Helper()
 
@@ -386,7 +386,7 @@ func TestProxmox_UpdateNetwork_DeletesRemovedIndices(t *testing.T) {
 
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
-	// Only net0 survives in the new set — net1 must be deleted.
+	// Only net0 survives in the new set - net1 must be deleted.
 	err := p.UpdateNetwork(context.Background(), testNodeName, testVMID, []NetworkInterface{
 		{Index: 0, Model: string(DiskBusVirtio), MAC: "AA:BB", Bridge: FakeBridgeVMbr0},
 	})

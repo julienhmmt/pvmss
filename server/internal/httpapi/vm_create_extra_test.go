@@ -73,7 +73,7 @@ func newVMCreateHandlerWithCreator(t *testing.T, creator cluster.Creator) (*http
 	), authHandler
 }
 
-// TestVMCreate_Unauthenticated — no cookie → 401, never reaches vm.Create.
+// TestVMCreate_Unauthenticated - no cookie → 401, never reaches vm.Create.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreate_Unauthenticated(t *testing.T) {
@@ -92,7 +92,7 @@ func TestVMCreate_Unauthenticated(t *testing.T) {
 	}
 }
 
-// TestVMCreate_InvalidBody — malformed JSON → 400 invalid_request.
+// TestVMCreate_InvalidBody - malformed JSON → 400 invalid_request.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreate_InvalidBody(t *testing.T) {
@@ -107,7 +107,7 @@ func TestVMCreate_InvalidBody(t *testing.T) {
 	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidRequest)
 }
 
-// TestVMCreate_ClusterCreateErrorMapped — a NextVMID failure wraps to
+// TestVMCreate_ClusterCreateErrorMapped - a NextVMID failure wraps to
 // ErrClusterCreate, which writeCreateFailure maps to 502 cluster_error.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -126,7 +126,7 @@ func TestVMCreate_ClusterCreateErrorMapped(t *testing.T) {
 	assertAPIError(t, rec.Body.Bytes(), apiCodeClusterError)
 }
 
-// TestVMCreateCatalog_Unauthenticated — GET catalog without a cookie → 401.
+// TestVMCreateCatalog_Unauthenticated - GET catalog without a cookie → 401.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMCreateCatalog_Unauthenticated(t *testing.T) {
@@ -143,7 +143,7 @@ func TestVMCreateCatalog_Unauthenticated(t *testing.T) {
 	assertAPIError(t, rec.Body.Bytes(), apiCodeUnauthenticated)
 }
 
-// TestVMCreateCatalog_DefaultClusterWhenOmitted — a request without a cluster
+// TestVMCreateCatalog_DefaultClusterWhenOmitted - a request without a cluster
 // query parameter falls back to the default cluster name and still serves the
 // seeded catalog (the ServeCatalog default-cluster branch).
 //

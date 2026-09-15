@@ -114,9 +114,7 @@ func fillPath(path string) string {
 	return result
 }
 
-// -----------------------------------------------------------------------------
-// T045: admin black-box contract
-// -----------------------------------------------------------------------------
+// --- Admin black-box contract ---
 
 //nolint:paralleltest // serial: shared router and database fixtures
 func TestAdminAuthorization_BlackBox(t *testing.T) {
@@ -158,9 +156,7 @@ func filterAdminRoutes(routes []extractedRoute) []extractedRoute {
 	return out
 }
 
-// -----------------------------------------------------------------------------
-// T046: adminProtect fail-closed boundary test
-// -----------------------------------------------------------------------------
+// --- adminProtect fail-closed boundary test ---
 
 //nolint:paralleltest // serial: shared auth and session fixtures
 func TestAdminProtect_FailClosed(t *testing.T) {
@@ -244,9 +240,7 @@ func runAdminProtectCase(t *testing.T, authHandler *httpapi.Auth, cookie *http.C
 	}
 }
 
-// -----------------------------------------------------------------------------
-// T047: CSRF contract
-// -----------------------------------------------------------------------------
+// --- CSRF contract ---
 
 // csrfExemptRoutes lists non-GET routes that are deliberately not wrapped in
 // the browser-session CSRF middleware because they are public, unauthenticated
@@ -304,9 +298,7 @@ func TestCSRFContract_NonGETRoutesRejected(t *testing.T) {
 	}
 }
 
-// -----------------------------------------------------------------------------
-// T048: Resolve() syntaxic contract
-// -----------------------------------------------------------------------------
+// --- Resolve() syntaxic contract ---
 
 var handlerSourceMap = map[string]string{
 	"cfg.VMDetail":        vmDetailGo,
@@ -330,6 +322,8 @@ var resolveExemptRoutes = map[string]string{
 	"GET /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet":   "delegates to vm.GetCloudInitSnippet which resolves",
 	"PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet":   "delegates to vm.SetCloudInitSnippet which resolves",
 	"POST /api/v1/vms/{cluster}/{vmid}/cloudinit/ssh-keys": "delegates to vm.AddCloudInitSSHKey which resolves",
+	// console-password: handler delegates to vm.SetConsolePassword, which resolves the VM and enforces ownership.
+	"POST /api/v1/vms/{cluster}/{vmid}/console-password": "delegates to vm.SetConsolePassword which resolves",
 	// console: ticket endpoints call vm.GetConsoleTicket (Resolve -> GetVNCTicket -> Issue -> audit).
 	"POST /api/v1/vms/{cluster}/{vmid}/vnc-ticket":    "delegates to vm.GetConsoleTicket which resolves",
 	"POST /api/v1/vms/{cluster}/{vmid}/serial-ticket": "delegates to vm.GetConsoleTicket which resolves",
@@ -403,9 +397,7 @@ func runResolveContractCase(t *testing.T, r extractedRoute) {
 	}
 }
 
-// -----------------------------------------------------------------------------
-// T049: IDOR black-box
-// -----------------------------------------------------------------------------
+// --- IDOR black-box ---
 
 var vmRequestBodies = map[string]string{
 	"POST /api/v1/vms/{cluster}/{vmid}/actions":               `{"action":"stop"}`,
@@ -494,9 +486,7 @@ func runIDORContractCase(t *testing.T, mux http.Handler, r extractedRoute, bobSe
 	}
 }
 
-// -----------------------------------------------------------------------------
-// Shared test router
-// -----------------------------------------------------------------------------
+// --- Shared test router ---
 
 type consoleRelayStub struct{}
 
@@ -562,6 +552,7 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 	})
 	adminOps := httpapi.NewAdminOps(authHandler, st, cluster.Fake{}, projection, "0.4.0-test", logger)
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, nil, nil, logger)
+	adminBaseline := httpapi.NewAdminBaseline(authHandler, nil, st, logger)
 	docs := httpapi.NewDocsAPIHandler(authHandler, st, logger)
 	adminDocs := httpapi.NewAdminDocs(authHandler, st, docs, logger)
 	cloudInitFiles := httpapi.NewCloudInitFiles(authHandler, st, logger)
@@ -588,6 +579,7 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 		AdminOps:         adminOps,
 		AdminClusters:    adminClusters,
 		AdminDocs:        adminDocs,
+		AdminBaseline:    adminBaseline,
 		Log:              logger,
 		Store:            st,
 		TrustedProxyHops: 0,

@@ -66,7 +66,7 @@ func TestSetImageEnabled_ToggleIsolatesByFile(t *testing.T) {
 	}
 }
 
-// TestSetImageEnabled_UnknownReturnsError — toggling an image (node, storage,
+// TestSetImageEnabled_UnknownReturnsError - toggling an image (node, storage,
 // file) triple not in the current discovery set returns cluster.ErrNotFound.
 //
 //nolint:paralleltest // serial: shared fake dataset and database fixture
@@ -79,7 +79,7 @@ func TestSetImageEnabled_UnknownReturnsError(t *testing.T) {
 	}
 }
 
-// TestDeleteImage_RemovesOrphan — deleting a stored approval row works and a
+// TestDeleteImage_RemovesOrphan - deleting a stored approval row works and a
 // missing row reports ErrImageNotFound.
 //
 //nolint:paralleltest // serial: shared database fixture

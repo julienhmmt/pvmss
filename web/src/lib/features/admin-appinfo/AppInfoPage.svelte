@@ -165,7 +165,7 @@
 											<Pill tone="off" label={m['admin.appinfo.redacted']()} />
 										{:else if field.name === 'ClusterSource'}
 											{#if field.value == null}
-												<span class="text-muted-foreground">—</span>
+												<span class="text-muted-foreground"> - </span>
 											{:else}
 												{@const pill = sourcePill(field.value)}
 												<Pill tone={pill.tone} label={pill.label} />
@@ -175,7 +175,7 @@
 											<Pill tone={pill.tone} label={pill.label} />
 										{:else}
 											<span class="break-all font-mono text-foreground">
-												{field.value ?? '—'}
+												{field.value ?? ' - '}
 											</span>
 											{/if}
 									</dd>

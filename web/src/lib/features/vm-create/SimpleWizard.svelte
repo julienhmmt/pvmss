@@ -48,7 +48,7 @@
 
 	// Template clones and cloud images ignore the placement toggles; reset
 	// them when switching to those sources so stale profile placement values
-	// do not block submit. ISO is also cleared — template/image + ISO is
+	// do not block submit. ISO is also cleared - template/image + ISO is
 	// mutually exclusive (ErrInvalidSource).
 	$effect(() => {
 		if (form.simpleSource === 'template' || form.simpleSource === 'image') {
@@ -61,7 +61,7 @@
 	// ISO install and cloud-init are incompatible use cases: ISO is for a
 	// manual OS install, cloud-init is for pre-built cloud images. When a
 	// cloud-init document is selected, the server suppresses start=1 and
-	// starts the VM only after attaching the snippet (lifecycle-04) — so an
+	// starts the VM only after attaching the snippet (lifecycle-04) - so an
 	// ISO install with a stale cloud-init selection leaves the VM stopped.
 	// Clear the cloud-init document when an ISO is picked.
 	$effect(() => {
@@ -77,7 +77,7 @@
 	]);
 
 	// ISOs are node-local. When the node is adjusted, only show ISOs on that
-	// node (the server rejects a mismatch). When auto, show all — the server
+	// node (the server rejects a mismatch). When auto, show all - the server
 	// restricts candidate nodes to those holding the selected ISO.
 	const isoOptions = $derived(
 		(form.catalog?.isos ?? [])
@@ -326,7 +326,7 @@
 							aria-pressed={isSelected}
 							onclick={() => form.toggleTag(tag.name)}
 							class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors pv-focus {isSelected
-								? 'border-transparent bg-primary text-primary-foreground'
+								? 'border-transparent bg-primary-solid text-primary-foreground'
 								: 'border-border bg-muted text-muted-foreground hover:bg-muted/80'}"
 						>
 							<span class="h-2 w-2 rounded-full" style="background-color: {tag.color}" aria-hidden="true"></span>
@@ -389,7 +389,7 @@
 		{#if form.simpleSource !== 'template'}
 			<Checkbox
 				label={m['vms.create.uefi']()}
-				hint={m['vms.create.uefiHint']()}
+				hint={form.simpleSource === 'image' ? m['vms.create.uefiImageHint']() : m['vms.create.uefiHint']()}
 				checked={form.uefi}
 				onToggle={(checked) => {
 					form.uefi = checked;

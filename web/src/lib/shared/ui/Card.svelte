@@ -1,12 +1,12 @@
 <script lang="ts">
 	/**
-	 * Card — Layer B repeating primitive (mockup `.crd`): white surface, 1 px
+	 * Card - Layer B repeating primitive (mockup `.crd`): white surface, 1 px
 	 * `--border`, `--radius`, soft two-layer shadow. No extra role; headings
 	 * stay headings. Padding is opt-in via the `pad` prop so list/table cards
 	 * can sit flush while content cards get breathing room.
 	 *
 	 * `title`/`description`/`actions` render a header band separated by a
-	 * hairline — the pattern ~20 pages were hand-rolling as a `<div class="flex
+	 * hairline - the pattern ~20 pages were hand-rolling as a `<div class="flex
 	 * items-center justify-between border-b …">`. `interactive` is for cards
 	 * that are themselves a link or button target: they lift on hover instead
 	 * of only changing their background.
@@ -20,7 +20,7 @@
 		as?: 'section' | 'article' | 'aside' | 'div';
 		/** Header title. Renders the header band when set. */
 		title?: string;
-		/** Heading level for `title`. Default 2 — pick the one the page needs. */
+		/** Heading level for `title`. Default 2 - pick the one the page needs. */
 		titleAs?: 'h2' | 'h3' | 'h4';
 		/** Optional id on the heading so a section can aria-labelledby it. */
 		titleId?: string;
@@ -32,7 +32,7 @@
 		header?: Snippet;
 		/** Bordered footer band (dialog-style action rows). */
 		footer?: Snippet;
-		/** Lift on hover — for cards that are a link or button target. */
+		/** Lift on hover - for cards that are a link or button target. */
 		interactive?: boolean;
 		class?: string;
 		children: Snippet;
