@@ -158,11 +158,13 @@ func setDiskFormKeys(form url.Values, spec VMSpec) {
 
 	// Iothread is gated on SCSI - it is not supported
 	// on virtio/IDE/SATA and Proxmox silently ignores the option there,
-	// but emitting it only where it works keeps the form clean.
+	// but emitting it only where it works keeps the form clean. The
+	// controller must be virtio-scsi-single for iothread to be honored;
+	// virtio-scsi-pci makes Proxmox drop it with a warning.
 	if spec.Disk.Bus == string(DiskBusSCSI) {
 		diskValue += ",iothread=1"
 
-		form.Set("scsihw", "virtio-scsi-pci")
+		form.Set("scsihw", scsiController)
 	}
 
 	form.Set(spec.Disk.Bus+"0", diskValue)
