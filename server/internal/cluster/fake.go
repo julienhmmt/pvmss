@@ -245,7 +245,7 @@ func (fake Fake) ListISOs(_ context.Context) ([]ISOImage, error) {
 	return slices.Clone(fakeISOs), nil
 }
 
-// ListCloudImages implements Client. Returns the fake cloud-image dataset - 
+// ListCloudImages implements Client. Returns the fake cloud-image dataset -
 // a superset of what the catalog seed approved (ubuntu-24.04 cloudimg on
 // local/node-01) so the admin demo has debian-12-generic-cloudimg to
 // discover and approve, rocky-9 as the unapproved target.
@@ -508,7 +508,7 @@ func (fake Fake) PushCloudInitSnippet(_ context.Context, node, storage, filename
 }
 
 // AttachCloudInitSnippet implements Writer and records the cicustom attach.
-// Like the real client, attaching ensures the cloud-init drive first - 
+// Like the real client, attaching ensures the cloud-init drive first -
 // Proxmox silently ignores cicustom without one - so the fake's call log
 // shows the same ensure-then-attach order the contract test asserts.
 func (fake Fake) AttachCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int) error {
@@ -1153,6 +1153,24 @@ func (fake Fake) ReadFirmwareConfig(_ context.Context, node string, vmid int) (F
 	}, nil
 }
 
+// SetFakeSecureBoot marks one fake VM as carrying Secure Boot (efidisk0 with
+// pre-enrolled-keys=1). PVMSS never creates such a VM any more, but ones made
+// before Secure Boot was dropped - or by hand in Proxmox - still exist, so
+// the SeaBIOS retrofit's refusal path keeps its coverage.
+func SetFakeSecureBoot(vmid int) {
+	state := defaultState()
+	state.vmMu.Lock()
+	defer state.vmMu.Unlock()
+
+	for i := range state.vms {
+		if state.vms[i].VMID == vmid {
+			state.vms[i].SecureBoot = true
+
+			return
+		}
+	}
+}
+
 // RetrofitToSeaBIOS removes the UEFI firmware keys from a fake VM: clears
 // BIOS, Machine, EFIDisk, TPMState, and SecureBoot. The caller
 // must have already refused VMs with TPM state or Secure Boot and stopped
@@ -1290,7 +1308,7 @@ func originalFakeIdentities() map[string]fakeIdentity {
 }
 
 // The dataset below is production code, reviewed and
-// versioned like the rest. Later work extends it as features are added - 
+// versioned like the rest. Later work extends it as features are added -
 // only Node is surfaced by an endpoint; VM, Storage, and Pool ride
 // along so later work has something real to work with.
 

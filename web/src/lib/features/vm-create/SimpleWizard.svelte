@@ -324,17 +324,7 @@
 				label={m['vms.create.uefi']()}
 				hint={form.simpleSource === 'image' ? m['vms.create.uefiImageHint']() : m['vms.create.uefiHint']()}
 				checked={form.uefi}
-				onToggle={(checked) => {
-					form.uefi = checked;
-					if (!checked) form.secureBoot = false;
-				}}
-			/>
-			<Checkbox
-				label={m['vms.create.secureBoot']()}
-				hint={m['vms.create.secureBootHint']()}
-				checked={form.secureBoot}
-				onToggle={(checked) => (form.secureBoot = checked)}
-				disabled={!form.uefi}
+				onToggle={(checked) => (form.uefi = checked)}
 			/>
 		{/if}
 

@@ -32,7 +32,7 @@ Configurez :
 - **Ressources** : sockets, cœurs, mémoire et taille de disque. Les valeurs sont bornées par la politique du cluster et votre quota.
 - **Stockage** : un stockage approuvé ; l'assistant vérifie l'espace libre en direct.
 - **Réseau** : une ou plusieurs cartes, chacune avec un bridge et un modèle (VirtIO, E1000, E1000E, RTL8139, VMXNet3). Le pare-feu Proxmox est toujours activé ; votre administrateur peut imposer un VLAN d'isolation.
-- **Firmware** : UEFI (activé par défaut), Secure Boot (désactivé par défaut - nécessaire pour Windows, bloque la plupart des ISO Linux), TPM 2.0 pour les invités qui l'exigent.
+- **Firmware** : UEFI (activé par défaut) avec un magasin de clés EFI vide - Secure Boot n'est jamais activé, car la plupart des ISO Linux ne sont pas signés et ne démarreraient pas avec. TPM 2.0 pour les invités qui l'exigent.
 - **Document cloud-init** : un template administrateur ou l'un de [vos fichiers](/cloud-init). Voir le [guide cloud-init](/docs/cloud-init-howto).
 - **Démarrage** : choisissez si la VM démarre automatiquement après création.
 - **Tags** : à choisir dans la liste curée par l'administrateur.

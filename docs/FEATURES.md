@@ -50,7 +50,7 @@ Wizard at `/vms/create` - **Simple** and **Detailed** modes, five steps
 | Node auto-placement with capacity scoring + live storage free-space check; node fixed to the template's node for clones | ✅ |
 | Disk: storage + size; minimum raised to the template/image size | ✅ |
 | Network: one or more NICs, bridge + model (VirtIO, E1000, E1000E, RTL8139, VMXNet3); Proxmox firewall always on; optional admin-wide isolation VLAN tag | ✅ |
-| Firmware: UEFI (default on), Secure Boot toggle (default off), TPM 2.0 | ✅ |
+| Firmware: UEFI (default on, empty EFI key store - no Secure Boot), TPM 2.0 | ✅ |
 | Cloud-init document picker: admin templates **or** my own files, one grouped select (hidden when the cluster has no snippet write target) | ✅ |
 | Boot from CD-ROM first when an ISO is selected | ✅ |
 | Tags from the admin-curated list (`pvmss` tag always added) | ✅ |

@@ -41,7 +41,7 @@ func (p Proxmox) NextVMID(ctx context.Context) (int, error) {
 }
 
 // CreateVM implements Creator via POST /nodes/{node}/qemu. spec's Sockets
-// and CPUCores values become the Proxmox form's sockets and cores keys - 
+// and CPUCores values become the Proxmox form's sockets and cores keys -
 // matching how VM.CPUCores is itself derived elsewhere (fake.go's
 // UpdateHardware: CPUCores = sockets * cores). Proxmox's own start=1 param
 // folds the initial boot into the same task rather than a separate Action
@@ -133,7 +133,7 @@ func setDiskFormKeys(form url.Values, spec VMSpec) {
 		return
 	}
 
-	// import-from requires Proxmox's special <storage>:0 target syntax - 
+	// import-from requires Proxmox's special <storage>:0 target syntax -
 	// a non-zero size is rejected outright by check_drive_param
 	// ("'import-from' requires special syntax"). The import lands at the
 	// source image's size; the vm layer grows the disk to the requested
@@ -172,7 +172,7 @@ func setDiskFormKeys(form url.Values, spec VMSpec) {
 	// create call as the imported disk ("<storage>:cloudinit" on a fixed
 	// IDE slot), never as a later follow-up. PVMSS previously only
 	// attached it lazily, on the first SetCloudInitConfig/
-	// AttachCloudInitSnippet call after the create task finished - 
+	// AttachCloudInitSnippet call after the create task finished -
 	// functionally idempotent (EnsureCloudInitDrive no-ops once this is
 	// set) but one more round trip that can fail on its own. Attaching
 	// it here removes that gap for the one path that always needs
@@ -216,15 +216,26 @@ func resolveUEFIMachine(machine string) string {
 	return machine
 }
 
-// setUEFIFormKeys emits the UEFI/TPM form keys when BIOS is ovmf. When BIOS is ovmf, machine is
-// forced (UEFI requires q35
-// pegaprox rule), efidisk0 is provisioned on the disk's storage with Secure
-// Boot's key enrollment following spec.SecureBoot (off by default - most
-// Linux ISOs ship an unsigned bootloader Secure Boot would refuse to run),
-// and tpmstate0 is added when TPM is set - never omitted silently (the
-// pegaprox preset bug where tpm_version was set without tpm_storage).
+// setUEFIFormKeys emits the UEFI/TPM form keys when BIOS is ovmf: machine is
+// forced to q35 (pegaprox rule), efidisk0 is provisioned on the disk's
+// storage, and tpmstate0 is added when TPM is set - never omitted silently
+// (the pegaprox preset bug where tpm_version was set without tpm_storage).
 // Extracted from CreateVM to keep its cyclomatic complexity under gocyclo's
 // ceiling.
+//
+// Secure Boot is never enabled, hence the hardcoded pre-enrolled-keys=0.
+// That option is what copies Microsoft's keys into the EFI vars, which turns
+// signature verification on. PVMSS creates VMs from an arbitrary
+// administrator-approved ISO, and most Linux install media is unsigned -
+// Arch's official image states outright that it does not support Secure Boot.
+// An unsigned ISO then never reaches its installer: OVMF refuses the
+// bootloader and drops to the UEFI shell, with no way to recover from inside
+// the guest. Only media signed with Microsoft's CA (Windows, and the big
+// enterprise distros) boots, and PVMSS cannot know which of its approved ISOs
+// those are. With an empty key store the firmware stays in Setup Mode, so
+// UEFI still works (GPT, EFI vars, q35) and any EFI bootloader runs. An
+// operator who genuinely needs Secure Boot for a Windows guest sets it in
+// Proxmox itself, where the ISO's signing can be verified by hand.
 func setUEFIFormKeys(form url.Values, spec VMSpec) {
 	if spec.BIOS != biosOVMF {
 		return
@@ -238,12 +249,7 @@ func setUEFIFormKeys(form url.Values, spec VMSpec) {
 		efiStorage = "local-lvm"
 	}
 
-	preEnrolledKeys := "0"
-	if spec.SecureBoot {
-		preEnrolledKeys = "1"
-	}
-
-	form.Set("efidisk0", efiStorage+":1,efitype=4m,pre-enrolled-keys="+preEnrolledKeys)
+	form.Set("efidisk0", efiStorage+":1,efitype=4m,pre-enrolled-keys=0")
 
 	if spec.TPM {
 		form.Set("tpmstate0", efiStorage+":1,version=v2.0")
