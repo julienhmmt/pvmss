@@ -473,6 +473,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		AdminDocs:        adminDocs,
 		AdminBaseline:    adminBaseline,
 		TrustedProxyHops: cfg.TrustedProxyHops,
+		RateLimitMax:     cfg.RateLimitMax,
 	}), nil
 }
 

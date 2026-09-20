@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { getVmCreateContext } from '../create.svelte';
-	import { getDraftContext } from '../draft.svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import { getTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
 	import { handleAccepted } from '../post-submit';
@@ -14,7 +13,6 @@
 	const form = getVmCreateContext();
 	const tray = getTaskTrayContext();
 	const toast = getToastContext();
-	const draft = getDraftContext();
 	const outcomeLedger = getTaskOutcomeLedgerContext();
 
 	const outgoing = $derived(form.buildRequest());
@@ -39,7 +37,7 @@
 			if (form.submitError) toast.error(m['toast.vmCreateFailed']({ error: form.submitError }));
 			return;
 		}
-		await handleAccepted(accepted, { tray, toast, draft, outcomeLedger });
+		await handleAccepted(accepted, { tray, toast, outcomeLedger });
 	}
 </script>
 

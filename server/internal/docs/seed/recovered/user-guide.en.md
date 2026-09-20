@@ -36,8 +36,7 @@ what is needed; **Detailed** mode exposes every option. Configure:
 - **Startup**: choose whether the VM starts automatically after creation.
 - **Tags**: pick from the administrator-curated list.
 
-The **Review** step summarizes everything before you submit. Your draft is
-saved in the browser, so an interrupted creation can be resumed. When you
+The **Review** step summarizes everything before you submit. When you
 reach your quota (max VMs) or a gabarit limit, the request is rejected before
 any Proxmox call is made.
 

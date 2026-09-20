@@ -27,6 +27,9 @@ export default defineConfig({
 			LOG_OUTPUT: 'stdout',
 			SESSION_SECRET: 'e2e-session-secret-with-at-least-thirty-two-bytes',
 			PVMSS_COOKIE_SECURE: 'false',
+			// The suite performs far more logins per minute than the per-IP
+			// default of 10, so raise every limiter ceiling for the test server.
+			PVMSS_RATE_LIMIT_MAX: '100000',
 			// Short guard so nodes.spec.ts can exercise "wait it out, click again - 
 			// it works" (quickstart.md step 6) without a multi-second sleep.
 			PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL: '2s',

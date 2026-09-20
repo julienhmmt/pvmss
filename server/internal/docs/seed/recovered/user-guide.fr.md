@@ -37,10 +37,9 @@ Configurez :
 - **Démarrage** : choisissez si la VM démarre automatiquement après création.
 - **Tags** : à choisir dans la liste curée par l'administrateur.
 
-L'étape **Récapitulatif** résume tout avant validation. Votre brouillon est
-conservé dans le navigateur : une création interrompue peut être reprise.
-Quand vous atteignez votre quota (VM max) ou une limite de gabarit, la
-demande est refusée avant tout appel à Proxmox.
+L'étape **Récapitulatif** résume tout avant validation. Quand vous atteignez
+votre quota (VM max) ou une limite de gabarit, la demande est refusée avant
+tout appel à Proxmox.
 
 ## Retrouver une machine virtuelle
 

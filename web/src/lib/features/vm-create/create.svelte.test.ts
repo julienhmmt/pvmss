@@ -715,17 +715,6 @@ describe('VmCreateStore cloud-init document (ticket 04)', () => {
 		expect(request.cloudInitTemplateId).toBeUndefined();
 	});
 
-	it('carries cloudInitFileId through a draft snapshot and restore', () => {
-		const store = new VmCreateStore();
-		store.cloudInitFileId = 'dev-box';
-
-		const restored = new VmCreateStore();
-		restored.applyDraft(store.snapshotValues());
-
-		expect(restored.cloudInitFileId).toBe('dev-box');
-		expect(restored.cloudInitDocumentValue).toBe('f:dev-box');
-	});
-
 	it('keeps myCloudInitFiles empty (non-fatal) when the list request fails', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
 		const store = new VmCreateStore();
