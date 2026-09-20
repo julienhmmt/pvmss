@@ -11,7 +11,11 @@
 	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Meter from '$lib/shared/ui/Meter.svelte';
+	import Pill from '$lib/shared/ui/Pill.svelte';
+	import StatCard from '$lib/shared/ui/StatCard.svelte';
+	import SidebarIcon from '$lib/features/chrome/SidebarIcon.svelte';
 	import SpinnerIcon from '$lib/shared/ui/icons/SpinnerIcon.svelte';
+	import ChevronDownIcon from '$lib/shared/ui/icons/ChevronDownIcon.svelte';
 
 	type DashboardVm = VmListItem;
 
@@ -45,11 +49,20 @@
 		}
 	}
 
-	function statusClass(status: VmStatus): string {
-		if (status === 'running') return 'bg-success-soft text-success-soft-foreground';
-		if (status === 'stopped') return 'bg-muted text-muted-foreground';
-		return 'bg-destructive-soft text-destructive-soft-foreground';
-	}
+	// Pill tone per state (same mapping as the main VM list) and a matching
+	// tint for the identity tile, so state reads at a glance without a second
+	// colour vocabulary.
+	const statusTone: Record<VmStatus, 'ok' | 'off' | 'warn'> = {
+		running: 'ok',
+		stopped: 'off',
+		paused: 'warn'
+	};
+
+	const markTone: Record<VmStatus, string> = {
+		running: 'bg-success-soft text-success-soft-foreground border-success-soft-border',
+		stopped: 'bg-muted text-muted-foreground border-border',
+		paused: 'bg-warning-soft text-warning-soft-foreground border-warning-soft-border'
+	};
 
 	const statusLabels: Record<VmStatus, () => string> = {
 		running: () => m['common.statusRunning'](),
@@ -114,50 +127,78 @@
 			{/if}
 		</div>
 	{:else}
-		<!-- Stat cards -->
-		<dl class="grid gap-3 sm:grid-cols-4" aria-label="VM summary">
-			<div class="rounded-lg border border-border bg-background p-3">
-				<dt class="text-xs text-muted-foreground">{m['common.total']()}</dt>
-				<dd class="mt-1 text-xl font-semibold">{total}</dd>
-			</div>
-			<div class="rounded-lg border border-border bg-background p-3">
-				<dt class="text-xs text-muted-foreground">{m['home.dashboard.statusRunning']()}</dt>
-				<dd class="mt-1 text-xl font-semibold text-success-soft-foreground">{running}</dd>
-			</div>
-			<div class="rounded-lg border border-border bg-background p-3">
-				<dt class="text-xs text-muted-foreground">{m['home.dashboard.statusStopped']()}</dt>
-				<dd class="mt-1 text-xl font-semibold">{stopped}</dd>
-			</div>
-			<div class="rounded-lg border border-border bg-background p-3">
-				<dt class="text-xs text-muted-foreground">{m['home.dashboard.statusPaused']()}</dt>
-				<dd class="mt-1 text-xl font-semibold text-destructive-soft-foreground">{paused}</dd>
-			</div>
-		</dl>
+		<!-- Stat cards - the shared StatCard tile, same as the admin dashboard. -->
+		<div class="grid grid-cols-2 gap-3 sm:grid-cols-4" role="group" aria-label="VM summary">
+			<StatCard label={m['common.total']()} value={total} data-testid="dashboard-stat-total" />
+			<StatCard
+				label={m['home.dashboard.statusRunning']()}
+				value={running}
+				data-testid="dashboard-stat-running"
+			/>
+			<StatCard
+				label={m['home.dashboard.statusStopped']()}
+				value={stopped}
+				data-testid="dashboard-stat-stopped"
+			/>
+			<StatCard
+				label={m['home.dashboard.statusPaused']()}
+				value={paused}
+				data-testid="dashboard-stat-paused"
+			/>
+		</div>
 
-		<!-- Compact VM list -->
-		<div class="mt-4 space-y-1">
-			<p class="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+		<!-- VM list - one row per machine, identity-first: a status-tinted
+		     machine mark, the name as the row's headline, then the facts
+		     (node, vCPU, RAM) as a quiet subtitle. The whole row is the link,
+		     so the target is the size of the tile, not just the name. -->
+		<div class="mt-5">
+			<p class="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
 				{m['home.dashboard.title']()} ({total})
 			</p>
-			<ul class="divide-y divide-border" role="list">
+			<ul class="grid gap-1.5" role="list">
 				{#each vms as vm (vm.cluster + ':' + vm.vmid)}
-					<li class="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md px-3 py-2 text-sm hover:bg-muted/50">
+					<li>
 						<a
 							href={resolve(`/vms/${encodeURIComponent(vm.cluster)}/${vm.vmid}`)}
-							class="font-medium hover:underline"
+							class="group flex items-center gap-3 rounded-xl border border-transparent px-2.5 py-2.5 transition-colors hover:border-border hover:bg-muted/50 pv-focus"
 							data-testid="dashboard-vm-link"
 						>
-							{vm.name}
+							<span
+								class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border {markTone[vm.status]}"
+								aria-hidden="true"
+							>
+								<SidebarIcon name="vm" class="h-5 w-5" />
+							</span>
+
+							<span class="min-w-0 flex-1">
+								<span
+									class="block truncate text-[0.9375rem] font-semibold text-foreground transition-colors group-hover:text-primary"
+								>
+									{vm.name}
+								</span>
+								<!-- Each fact is its own nowrap group with a trailing
+								     separator, so a wrapped line starts with the fact
+								     rather than a leading dot. -->
+								<span class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+									<span class="whitespace-nowrap font-mono tabular-nums">#{vm.vmid}</span>
+									<span class="whitespace-nowrap font-mono">{vm.node} ·</span>
+									<span class="whitespace-nowrap">
+										{vm.cpuCores} {m['common.coreCount']({ count: vm.cpuCores })} ·
+									</span>
+									<span class="whitespace-nowrap font-mono tabular-nums">
+										{vm.memoryTotal > 0 ? formatBytes(vm.memoryTotal) : ' - '}
+									</span>
+								</span>
+							</span>
+
+							<span data-testid="dashboard-vm-status">
+								<Pill tone={statusTone[vm.status]} label={statusLabels[vm.status]()} />
+							</span>
+
+							<ChevronDownIcon
+								class="h-4 w-4 shrink-0 -rotate-90 text-muted-foreground-subtle transition-colors group-hover:text-primary"
+							/>
 						</a>
-						<span
-							class="inline-flex items-center rounded-full px-2 py-0.5 text-xs {statusClass(vm.status)}"
-							data-testid="dashboard-vm-status"
-						>
-							{statusLabels[vm.status]()}
-						</span>
-						<span class="font-mono text-muted-foreground">{vm.node}</span>
-						<span class="font-mono text-muted-foreground">{vm.cpuCores} {m['common.coreCount']({ count: vm.cpuCores })}</span>
-						<span class="font-mono text-muted-foreground">{vm.memoryTotal > 0 ? formatBytes(vm.memoryTotal) : ' - '}</span>
 					</li>
 				{/each}
 			</ul>
