@@ -58,7 +58,7 @@ The complete, route-by-route inventory lives in [docs/FEATURES.md](docs/FEATURES
 
 ## Architecture at a glance
 
-- **Server** (`server/`): Go 1.26, stdlib `net/http` routing, SQLite via `modernc.org/sqlite` (CGO-free). Serves `/api/v1/*` and the SPA.
+- **Server** (`server/`): Go 1.27, stdlib `net/http` routing, SQLite via `modernc.org/sqlite` (CGO-free). Serves `/api/v1/*` and the SPA.
 - **Web** (`web/`): SvelteKit SPA (Svelte 5 runes, TypeScript, Tailwind CSS v4, `adapter-static`).
 - **Authentication**: Proxmox API token for cluster actions, user sessions for the UI.
 

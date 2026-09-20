@@ -70,8 +70,6 @@ reality.
 
 `AGENTS.md` had drifted from the code it describes:
 
-- Said "Go 1.26" twice (architecture section, Dockerfile build note); code
-  has been on Go 1.27 (`go.mod`, `Dockerfile`) for a while. Corrected.
 - Listed three direct server dependencies; a fourth, `gopkg.in/yaml.v3`
   (used by `cloudinit/validate.go` to reject malformed cloud-init YAML), was
   missing. Added.
