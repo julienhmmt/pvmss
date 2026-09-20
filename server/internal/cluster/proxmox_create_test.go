@@ -108,7 +108,7 @@ func assertCreateVMForm(t *testing.T, form url.Values) {
 		t.Errorf("pool/tags = %q/%q", form.Get("pool"), form.Get("tags"))
 	}
 
-	if form.Get(diskKeySCSI0) != "local-lvm:32,discard=on,iothread=1" || form.Get("scsihw") != "virtio-scsi-pci" {
+	if form.Get(diskKeySCSI0) != "local-lvm:32,discard=on,iothread=1" || form.Get("scsihw") != scsiController {
 		t.Errorf("scsi0/scsihw = %q/%q", form.Get(diskKeySCSI0), form.Get("scsihw"))
 	}
 
@@ -355,7 +355,7 @@ func TestProxmox_CreateVM_DiskDefaults(t *testing.T) {
 		wantDisk   string
 		wantSCSIHW string
 	}{
-		{"scsi bus gets discard and iothread", string(DiskBusSCSI), "local-lvm:20,discard=on,iothread=1", "virtio-scsi-pci"},
+		{"scsi bus gets discard and iothread", string(DiskBusSCSI), "local-lvm:20,discard=on,iothread=1", scsiController},
 		{"virtio bus gets discard only", string(DiskBusVirtio), "local-lvm:20,discard=on", ""},
 	}
 

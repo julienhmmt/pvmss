@@ -80,6 +80,14 @@ const cdromDiskKey = "ide2"
 // diskKeySCSI0 is the first SCSI disk slot, used in fixtures and assertions.
 const diskKeySCSI0 = "scsi0"
 
+// scsiController is the SCSI controller PVMSS sets when the primary disk uses
+// the scsi bus. Deliberately virtio-scsi-single, not virtio-scsi-pci: only
+// single gives each disk its own controller with a dedicated iothread, so the
+// iothread=1 PVMSS emits on SCSI disks is honored. With virtio-scsi-pci
+// Proxmox logs "iothread is only valid with virtio disk or virtio-scsi-single
+// controller, ignoring" and silently drops the option.
+const scsiController = "virtio-scsi-single"
+
 // cdromMountedValue is the Proxmox netN/ideN value form for a mounted ISO,
 // used in fixtures and assertions across config and writer tests.
 const cdromMountedValue = "local:iso/debian-12.iso,media=cdrom"
