@@ -1,4 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
+import { csrfHeaders } from './support/csrf';
 
 async function signIn(request: APIRequestContext, username: string, password: string): Promise<void> {
 	const response = await request.post('/api/v1/auth/login', {
@@ -101,6 +102,7 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 		// This is S01's exact PoC request, now expected to fail.
 		await signIn(request, 'bob', 'pvmss-bob');
 		const response = await request.post('/api/v1/vms/default/100/actions', {
+			headers: await csrfHeaders(request),
 			data: { action: 'stop' }
 		});
 		expect(response.status()).toBe(403);
@@ -111,6 +113,7 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 	test('S01 closure: a forged node field is rejected at decode time', async ({ request }) => {
 		await signInAlice(request);
 		const response = await request.post('/api/v1/vms/default/100/actions', {
+			headers: await csrfHeaders(request),
 			data: { action: 'start', node: 'pve-node-evil' }
 		});
 		expect(response.status()).toBe(400);

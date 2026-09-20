@@ -37,6 +37,7 @@ test.describe('T18 admin cloud-init templates', () => {
 		// so alice performs the creation steps.
 		await signInAlice(page.request);
 		await page.goto('/vms/create');
+		await page.getByRole('button', { name: /Simple/ }).click();
 		const picker = page.getByLabel('Cloud-init document');
 		await expect(picker).toBeVisible();
 		await expect(picker.locator('option', { hasText: 'Web server' })).toHaveCount(1);
@@ -94,6 +95,7 @@ test.describe('T18 admin cloud-init templates', () => {
 
 		await signInAlice(page.request);
 		await page.goto('/vms/create');
+		await page.getByRole('button', { name: /Simple/ }).click();
 		// The picker is only rendered when at least one enabled template exists;
 		// with the sole template disabled, the field should be absent.
 		await expect(page.getByLabel('Cloud-init document')).toHaveCount(0);

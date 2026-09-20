@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { getVmCreateContext, type SimpleSource } from './create.svelte';
-	import { getDraftContext } from './draft.svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import { getTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
 	import { handleAccepted } from './post-submit';
@@ -27,7 +26,6 @@
 	const tray = getTaskTrayContext();
 	const toast = getToastContext();
 	const outcomeLedger = getTaskOutcomeLedgerContext();
-	const draft = getDraftContext();
 
 	const hasTemplates = $derived((form.catalog?.templates ?? []).length > 0);
 	const hasImages = $derived((form.catalog?.images ?? []).length > 0);
@@ -46,11 +44,10 @@
 	});
 
 	// Simple mode has no placement controls - node and storage are always
-	// automatic (the server picks them, FR-010). Reset any placement a
-	// restored draft carries in so it cannot silently pin a node. Template
-	// clones and cloud images also ignore ISO; clear it when switching to
-	// those sources (template/image + ISO is mutually exclusive,
-	// ErrInvalidSource).
+	// automatic (the server picks them, FR-010). Reset any placement so it
+	// cannot silently pin a node. Template clones and cloud images also
+	// ignore ISO; clear it when switching to those sources (template/image
+	// + ISO is mutually exclusive, ErrInvalidSource).
 	$effect(() => {
 		form.nodeAdjusted = false;
 		form.storageAdjusted = false;
@@ -174,7 +171,7 @@
 			if (form.submitError) toast.error(m['toast.vmCreateFailed']({ error: form.submitError }));
 			return;
 		}
-		await handleAccepted(accepted, { tray, toast, draft, outcomeLedger });
+		await handleAccepted(accepted, { tray, toast, outcomeLedger });
 	}
 </script>
 

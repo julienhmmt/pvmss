@@ -57,7 +57,6 @@ Wizard at `/vms/create` - **Simple** and **Detailed** modes, five steps
 | Start after create (image source: starts only after cloud-init is applied) | ✅ |
 | VM name validated as a hostname and unique in the pool; VMID collision retry; rollback on failure | ✅ |
 | Quotas and gabarit limits checked server-side before any Proxmox call | ✅ |
-| Draft auto-saved in the browser | ✅ |
 
 ## 4. Operate a VM - `/vms/[cluster]/[vmid]`
 

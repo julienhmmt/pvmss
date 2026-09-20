@@ -1,4 +1,5 @@
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { csrfHeaders } from './support/csrf';
 
 async function signInAdmin(request: APIRequestContext): Promise<void> {
 	const response = await request.post('/api/v1/auth/admin-login', { data: { password: 'pvmss-e2e-admin' } });
@@ -15,8 +16,13 @@ async function signInAlice(request: APIRequestContext): Promise<void> {
 // Finds the row whose first (name) cell matches `name` exactly, further
 // scoped to rows containing `context` - e.g. distinguishing "local" from
 // "local-lvm", or "local"@pve-node-01 from "local"@pve-node-02.
+//
+// The regex is matched against the cell's raw textContent, which carries the
+// markup's surrounding whitespace (a cell renders as "local "), so the anchors
+// have to tolerate it - otherwise nothing matches.
 function exactRow(page: Page, name: string, context?: string) {
-	const row = page.locator('tr').filter({ has: page.locator('td', { hasText: new RegExp(`^${name}$`) }) });
+	const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	const row = page.locator('tr').filter({ has: page.locator('td', { hasText: new RegExp(`^\\s*${escaped}\\s*$`) }) });
 	return context ? row.filter({ hasText: context }) : row;
 }
 
@@ -78,7 +84,7 @@ test.describe('T11 admin catalog', () => {
 		// the create page is blocked for admins.
 		await signInAlice(page.request);
 		await page.goto('/vms/create');
-		await page.getByRole('tab', { name: 'Detailed' }).click();
+		await page.getByRole('button', { name: /Detailed/ }).click();
 		await expect(page.getByLabel('Node').locator('option[value="pve-node-03"]')).toHaveCount(1);
 		await expect(page.getByLabel('ISO').locator('option', { hasText: 'rocky-9-generic-x86_64.iso' })).toHaveCount(1);
 
@@ -128,6 +134,7 @@ test.describe('T11 admin catalog', () => {
 
 		// Appears in T06's simple-mode picker while enabled.
 		await page.goto('/vms/create');
+		await page.getByRole('button', { name: /Simple/ }).click();
 		await expect(page.getByRole('radio', { name: /XLarge/ })).toBeVisible();
 
 		// Disabling removes it from the picker but keeps it listed (disabled) here.
@@ -136,6 +143,7 @@ test.describe('T11 admin catalog', () => {
 		await expect(profileRow.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
 
 		await page.goto('/vms/create');
+		await page.getByRole('button', { name: /Simple/ }).click();
 		await expect(page.getByRole('radio', { name: /XLarge/ })).toHaveCount(0);
 
 		// Re-enabling restores it (FR-011: no cascade, nothing else to verify).
@@ -156,7 +164,9 @@ test.describe('T11 admin catalog', () => {
 		const pvmssRow = page.locator('tr', { hasText: 'pvmss' });
 		await expect(pvmssRow.getByText('protected')).toBeVisible();
 		await expect(pvmssRow.getByRole('button', { name: 'Delete' })).toHaveCount(0);
-		const deletePvmss = await page.request.delete('/api/v1/admin/tags/pvmss?cluster=default');
+		const deletePvmss = await page.request.delete('/api/v1/admin/tags/pvmss?cluster=default', {
+			headers: await csrfHeaders(page.request)
+		});
 		expect(deletePvmss.status()).toBe(403);
 
 		// Create a tag: VM count starts at 0.
@@ -199,7 +209,7 @@ test.describe('T11 admin catalog', () => {
 		// SC: the approval surfaces in the user's create wizard.
 		await signInAlice(page.request);
 		await page.goto('/vms/create');
-		await page.getByRole('tab', { name: 'Detailed' }).click();
+		await page.getByRole('button', { name: /Detailed/ }).click();
 		await page.getByLabel('Source').selectOption('template');
 		await expect(page.getByLabel('Template').locator('option', { hasText: 'debian-12-cloud' })).toHaveCount(1);
 	});

@@ -1,7 +1,7 @@
 // Node 22+ exposes an experimental global `localStorage` that is undefined
 // unless `--localstorage-file` is passed on the CLI, and recent happy-dom
 // versions no longer populate a working `localStorage` in the vitest
-// environment either. The unit tests for locale/theme/draft rely on a real
+// environment either. The unit tests for locale/theme rely on a real
 // Storage; install a minimal in-memory implementation when the global is
 // missing so those tests behave as they did in the browser.
 function createMemoryStorage(): Storage {

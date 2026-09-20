@@ -5,14 +5,12 @@ import type { TaskTrayStore } from '$lib/features/tasks/tasks.svelte';
 import type { TaskOutcomeLedger } from '$lib/features/tasks/task-outcome-ledger.svelte';
 import type { ToastRegion } from '$lib/shared/ui/toast.svelte';
 import type { VmCreateAccepted } from './create.svelte';
-import type { DraftStore } from './draft.svelte';
 
 /** Dependencies the post-submit helper needs from its caller. Grouped so
  *  the signature stays stable as new side-effects are added. */
 export interface PostSubmitDeps {
 	tray: TaskTrayStore;
 	toast: ToastRegion;
-	draft: DraftStore;
 	outcomeLedger: TaskOutcomeLedger;
 }
 
@@ -21,7 +19,6 @@ export interface PostSubmitDeps {
  * DetailedWizard → StepReview). Called after `form.submit()` returns a
  * non-null `VmCreateAccepted`.
  *
- * - Clears the draft (the request is in flight).
  * - Registers the task with the tray (polling → terminal toast).
  * - Records a `partial` outcome in the session ledger when cloud-init push
  *   failed, so the list / detail can show the "do not create a duplicate"
@@ -34,7 +31,6 @@ export interface PostSubmitDeps {
  * breaking the no-duplicate safety for the detailed path.
  */
 export async function handleAccepted(accepted: VmCreateAccepted, deps: PostSubmitDeps): Promise<void> {
-	deps.draft.clear();
 	deps.tray.track({
 		upid: accepted.upid,
 		kind: 'vm_create',

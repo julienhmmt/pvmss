@@ -2,7 +2,6 @@ import { getContext, setContext } from 'svelte';
 import { get, post, ApiRequestError } from '$lib/shared/api/client';
 import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 import { m } from '$lib/paraglide/messages.js';
-import type { DraftValues } from './draft.svelte';
 
 export interface CatalogStorage {
 	name: string;
@@ -873,83 +872,6 @@ export class VmCreateStore {
 		} finally {
 			this.submitting = false;
 		}
-	}
-
-	/** Snapshots every persistable field for the draft (FR-019). */
-	snapshotValues(): DraftValues {
-		return {
-			mode: this.mode,
-			name: this.name,
-			profileId: this.profileId,
-			cloudInitTemplateId: this.cloudInitTemplateId,
-			cloudInitFileId: this.cloudInitFileId,
-			node: this.node,
-			nodeAdjusted: this.nodeAdjusted,
-			storage: this.storage,
-			storageAdjusted: this.storageAdjusted,
-			tagsInput: this.tagsInput,
-			sockets: this.sockets,
-			cpuCores: this.cpuCores,
-			memoryMB: this.memoryMB,
-			diskSizeGB: this.diskSizeGB,
-			diskStorage: this.diskStorage,
-			nics: this.nics.map((nic) => ({ ...nic })),
-			isoFile: this.isoFile,
-			sourceType: this.sourceType,
-			simpleSource: this.simpleSource,
-			templateId: this.templateId,
-			templateMinDiskGB: this.templateMinDiskGB,
-			imageStorage: this.imageStorage,
-			imageFile: this.imageFile,
-			imageMinDiskGB: this.imageMinDiskGB,
-			ciUser: this.ciUser,
-			ciSshKeysInput: this.ciSshKeysInput,
-			ciIpMode: this.ciIpMode,
-			ciIpAddress: this.ciIpAddress,
-			ciGateway: this.ciGateway,
-			startAfterCreate: this.startAfterCreate,
-			uefi: this.uefi,
-			tpm: this.tpm,
-			secureBoot: this.secureBoot
-		};
-	}
-
-	/** Restores a version-matched draft into the form (FR-020) - all fields
-	 *  at once, never partially. */
-	applyDraft(values: DraftValues): void {
-		this.mode = values.mode;
-		this.name = values.name;
-		this.profileId = values.profileId;
-		this.cloudInitTemplateId = values.cloudInitTemplateId ?? '';
-		this.cloudInitFileId = values.cloudInitFileId ?? '';
-		this.node = values.node;
-		this.nodeAdjusted = values.nodeAdjusted;
-		this.storage = values.storage;
-		this.storageAdjusted = values.storageAdjusted;
-		this.tagsInput = values.tagsInput;
-		this.sockets = values.sockets ?? 1;
-		this.cpuCores = values.cpuCores;
-		this.memoryMB = values.memoryMB;
-		this.diskSizeGB = values.diskSizeGB;
-		this.diskStorage = values.diskStorage;
-		this.nics = (values.nics ?? [{ bridge: '', model: 'virtio' }]).map((nic) => ({ ...nic }));
-		this.isoFile = values.isoFile;
-		this.sourceType = values.sourceType ?? 'iso';
-		this.simpleSource = values.simpleSource ?? 'profile';
-		this.templateId = values.templateId ?? 0;
-		this.templateMinDiskGB = values.templateMinDiskGB ?? 0;
-		this.imageStorage = values.imageStorage ?? '';
-		this.imageFile = values.imageFile ?? '';
-		this.imageMinDiskGB = values.imageMinDiskGB ?? 0;
-		this.ciUser = values.ciUser ?? '';
-		this.ciSshKeysInput = values.ciSshKeysInput ?? '';
-		this.ciIpMode = values.ciIpMode ?? 'dhcp';
-		this.ciIpAddress = values.ciIpAddress ?? '';
-		this.ciGateway = values.ciGateway ?? '';
-		this.startAfterCreate = values.startAfterCreate;
-		this.uefi = values.uefi ?? true;
-		this.tpm = values.tpm ?? false;
-		this.secureBoot = values.secureBoot ?? false;
 	}
 }
 

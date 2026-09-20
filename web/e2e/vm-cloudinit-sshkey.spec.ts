@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { csrfHeaders } from './support/csrf';
 
 async function signIn(request: import('@playwright/test').APIRequestContext, username: string, password: string): Promise<void> {
 	const response = await request.post('/api/v1/auth/login', { data: { username, password, cluster: 'default' } });
@@ -20,6 +21,7 @@ test('injects an SSH key post-boot via the guest agent without a reboot', async 
 
 	// Diagnose backend directly (same request context that holds the session cookie).
 	const postResp = await page.request.post('/api/v1/vms/default/102/cloudinit/ssh-keys', {
+		headers: await csrfHeaders(page.request),
 		data: { key: 'ssh-ed25519 AAAA-injected demo@laptop', user: 'debian' }
 	});
 	expect(postResp.status()).toBe(200);
@@ -39,6 +41,7 @@ test('injects an SSH key post-boot via the guest agent without a reboot', async 
 test('rejects a malformed SSH key via the API with 400 invalid_key', async ({ page }) => {
 	await signIn(page.request, 'alice', 'pvmss-alice');
 	const postResp = await page.request.post('/api/v1/vms/default/102/cloudinit/ssh-keys', {
+		headers: await csrfHeaders(page.request),
 		data: { key: 'ssh-rsa AAAA\ninjected', user: 'debian' }
 	});
 	expect(postResp.status()).toBe(400);
