@@ -18,7 +18,6 @@
 	import CloudInitDocumentSelect from './CloudInitDocumentSelect.svelte';
 	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
-	import Switch from '$lib/shared/ui/Switch.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 
 	// Simple-mode wizard (V08): pick a profile or an approved Proxmox
@@ -46,14 +45,16 @@
 		}
 	});
 
-	// Template clones and cloud images ignore the placement toggles; reset
-	// them when switching to those sources so stale profile placement values
-	// do not block submit. ISO is also cleared - template/image + ISO is
-	// mutually exclusive (ErrInvalidSource).
+	// Simple mode has no placement controls - node and storage are always
+	// automatic (the server picks them, FR-010). Reset any placement a
+	// restored draft carries in so it cannot silently pin a node. Template
+	// clones and cloud images also ignore ISO; clear it when switching to
+	// those sources (template/image + ISO is mutually exclusive,
+	// ErrInvalidSource).
 	$effect(() => {
+		form.nodeAdjusted = false;
+		form.storageAdjusted = false;
 		if (form.simpleSource === 'template' || form.simpleSource === 'image') {
-			form.nodeAdjusted = false;
-			form.storageAdjusted = false;
 			form.isoFile = '';
 		}
 	});
@@ -76,13 +77,11 @@
 		...(hasImages ? [{ value: 'image', label: m['vms.create.sourceImage']() }] : [])
 	]);
 
-	// ISOs are node-local. When the node is adjusted, only show ISOs on that
-	// node (the server rejects a mismatch). When auto, show all - the server
-	// restricts candidate nodes to those holding the selected ISO.
+	// ISOs are node-local, but simple mode never pins a node - show every
+	// ISO and let the server restrict candidate nodes to those holding the
+	// selected one.
 	const isoOptions = $derived(
-		(form.catalog?.isos ?? [])
-			.filter((iso) => !form.nodeAdjusted || iso.node === form.node)
-			.map((iso) => ({ value: iso.file, label: iso.file }))
+		(form.catalog?.isos ?? []).map((iso) => ({ value: iso.file, label: iso.file }))
 	);
 
 	function profileDescription(profile: { cpuCores: number; memoryMB: number; diskGB: number; bus: string }): string {
@@ -155,23 +154,6 @@
 			: null
 	);
 
-	const nodeError = $derived(
-		form.nodeAdjusted && form.catalog
-			? form.node !== '' && form.catalog.nodes.includes(form.node)
-				? null
-				: m['vms.create.errorNodeRequired']()
-			: null
-	);
-
-	const storageError = $derived(
-		form.storageAdjusted && form.catalog
-			? form.storage !== '' &&
-			  form.catalog.storages.some((storage) => storage.node === form.node && storage.name === form.storage)
-				? null
-				: m['vms.create.errorStorageRequired']()
-			: null
-	);
-
 	const canSubmit = $derived(
 		form.catalog !== null &&
 			!form.submitting &&
@@ -182,7 +164,7 @@
 				? !imageError && !diskSizeError && !imageProfileError
 				: form.simpleSource === 'template'
 					? !templateError
-					: !profileError && !nodeError && !storageError)
+					: !profileError)
 	);
 
 	async function submit(): Promise<void> {
@@ -339,53 +321,7 @@
 
 		</FormSection>
 
-		<FormSection step={3} legend={m['vms.create.sectionPlacement']()}>
-		{#if form.simpleSource === 'profile'}
-			<FormSection variant="panel" legend={m['vms.create.placement']()}>
-				{#snippet actions()}
-					<Switch
-						label={form.nodeAdjusted ? m['vms.create.resetAutomatic']() : m['vms.create.adjust']()}
-						checked={form.nodeAdjusted}
-						onToggle={() => {
-							form.nodeAdjusted = !form.nodeAdjusted;
-							form.storageAdjusted = form.nodeAdjusted;
-						}}
-					/>
-				{/snippet}
-				{#if form.nodeAdjusted}
-					<div class="grid gap-3 sm:grid-cols-2">
-						<FormField label={m['vms.create.node']()} error={nodeError}>
-							{#snippet children({ id, describedBy, invalid })}
-								<Select
-									{id}
-									{describedBy}
-									{invalid}
-									bind:value={form.node}
-									options={cat.nodes}
-								/>
-							{/snippet}
-						</FormField>
-						<FormField label={m['vms.create.storage']()} required error={storageError}>
-							{#snippet children({ id, describedBy, invalid })}
-								<Select
-									{id}
-									{describedBy}
-									{invalid}
-									bind:value={form.storage}
-									placeholder={m['vms.create.chooseStorage']()}
-									options={cat.storages.filter((s) => s.node === form.node).map((s) => s.name)}
-								/>
-							{/snippet}
-						</FormField>
-					</div>
-				{:else}
-					<p class="text-sm text-muted-foreground">
-						{m['vms.create.placementAutomatic']({ node: form.effectiveNode(), storage: form.effectiveStorage() })}
-					</p>
-				{/if}
-			</FormSection>
-		{/if}
-
+		<FormSection step={3} legend={m['vms.create.sectionStart']()}>
 		{#if form.simpleSource !== 'template'}
 			<Checkbox
 				label={m['vms.create.uefi']()}
