@@ -141,12 +141,14 @@
   --muted-foreground-subtle: oklch(62% 0.012 56deg);
   --accent: oklch(25% 0.006 56deg);
   --accent-foreground: oklch(90% 0.004 95deg);
-  --destructive: oklch(70.4% 0.191 22.216deg);
-  /* Was oklch(98.5% 0.001 106.423deg) - near-white on this dark mode fill is
-     2.77:1, well under AA, because dark mode deliberately lifts --destructive
-     to a light red. Dark ink on it reads at 6.29:1. --destructive-foreground
-     is only ever text on a solid bg-destructive, so this is safe. */
-  --destructive-foreground: oklch(17% 0.006 49deg);
+  /* Kept at the Layer B spec red (DESIGN.md §Semantic) rather than the lifted
+     oklch(70.4% ...) red used before: white foreground on that light red was
+     2.75:1, under AA, which is why it had been paired with dark ink. The spec
+     red carries white at 4.71:1 - matching light mode and DESIGN.md's
+     "destructive background, white foreground" - so the delete buttons read
+     as white text in dark mode without dropping below AA. */
+  --destructive: oklch(57.7% 0.245 27.325deg);
+  --destructive-foreground: oklch(98.5% 0.001 106.423deg);
   --destructive-soft: oklch(28% 0.07 27.325deg);
   --destructive-soft-foreground: oklch(85% 0.12 22deg);
   --destructive-soft-border: oklch(40% 0.13 27.325deg);
