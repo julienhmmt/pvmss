@@ -136,7 +136,7 @@ var allowedNetworkModels = map[string]bool{
 // cannot tell and does not care which
 // wizard produced it).
 //
-// The VM source is exactly one of: an ISO (for OS without cloud images - 
+// The VM source is exactly one of: an ISO (for OS without cloud images -
 // Windows, appliances), a Proxmox template (for cloud-init-capable images),
 // or a cloud image (imported as the primary disk, configured by cloud-init).
 // The three are mutually exclusive: a request carrying
@@ -167,13 +167,12 @@ type CreateRequest struct {
 	// distinguishable from an explicit false (legacy SeaBIOS). TPM requests
 	// tpmstate0 alongside the EFI disk; ignored when UEFI is false - TPM 2.0
 	// requires UEFI. TPM stays off by default even though UEFI doesn't.
-	// SecureBoot pre-enrolls Microsoft's Secure Boot keys on the EFI disk;
-	// ignored when UEFI is false. Off by default - most Linux ISOs ship an
-	// unsigned bootloader that Secure Boot would refuse to run, and Windows
-	// (which does need it) is the exception, not the rule.
+	// There is deliberately no Secure Boot field: the EFI disk is always
+	// provisioned with an empty key store, because an approved ISO's signing
+	// is unknown and an unsigned one would never boot (see
+	// cluster.setUEFIFormKeys).
 	UEFI             *bool `json:"uefi,omitempty"`
 	TPM              bool  `json:"tpm,omitempty"`
-	SecureBoot       bool  `json:"secureBoot,omitempty"`
 	StartAfterCreate bool  `json:"startAfterCreate,omitempty"`
 }
 
@@ -656,7 +655,7 @@ func applyImageCloudInitConfig(ctx context.Context, cfg imageCloudInitApply, res
 
 	present, err := cfg.Deps.Pusher.HasSnippet(ctx, cfg.Spec.Node, cfg.SnippetStorage, imageBaselineSnippetFilename)
 	if err != nil {
-		// Best-effort: a lookup failure just means the baseline is skipped - 
+		// Best-effort: a lookup failure just means the baseline is skipped -
 		// the VM still got its identity and network from the native keys
 		// above, so this does not block start.
 		cfg.Deps.Log.Error("baseline snippet lookup failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
@@ -1261,7 +1260,6 @@ func buildCreateSpec(actor auth.Identity, req CreateRequest, plan createPlan, vm
 		Network:          cluster.NetworkSpec(nics),
 		BIOS:             bios,
 		TPM:              plan.tpm,
-		SecureBoot:       plan.secureBoot,
 		StartAfterCreate: req.StartAfterCreate,
 	}
 	if req.ISO != nil {
@@ -1284,7 +1282,7 @@ type cloudInitApplyRequest struct {
 	ClusterName string
 	Spec        cluster.VMSpec
 	VMID        int
-	// TemplateID/FileID identify the resolved source for CreateResult - 
+	// TemplateID/FileID identify the resolved source for CreateResult -
 	// exactly one is set (admin template or user file).
 	TemplateID string
 	FileID     string
@@ -1497,7 +1495,6 @@ type createPlan struct {
 	isolationVLANTag int
 	uefi             bool
 	tpm              bool
-	secureBoot       bool
 }
 
 // nicPlan is one resolved and validated NIC.
@@ -1549,19 +1546,12 @@ func resolveUEFI(req CreateRequest) bool {
 	return true
 }
 
-// checkUEFICompat rejects the impossible TPM/SecureBoot-without-UEFI
-// combinations early (TPM 2.0 requires UEFI; Secure Boot is a UEFI-only firmware feature).
-// Extracted from planCreate to keep its
-// cyclomatic complexity under gocyclo's ceiling.
+// checkUEFICompat rejects the impossible TPM-without-UEFI combination early
+// (TPM 2.0 requires UEFI). Extracted from planCreate to keep its cyclomatic
+// complexity under gocyclo's ceiling.
 func checkUEFICompat(req CreateRequest) error {
-	if !resolveUEFI(req) {
-		if req.TPM {
-			return fmt.Errorf("%w: tpm requires uefi", ErrInvalidRequest)
-		}
-
-		if req.SecureBoot {
-			return fmt.Errorf("%w: secureBoot requires uefi", ErrInvalidRequest)
-		}
+	if !resolveUEFI(req) && req.TPM {
+		return fmt.Errorf("%w: tpm requires uefi", ErrInvalidRequest)
 	}
 
 	return nil
@@ -1646,7 +1636,7 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 		sockets: sockets, cpuCores: cpuCores,
 		memoryMB: memoryMB, diskGB: diskGB, bus: bus, nics: nics,
 		isolationVLANTag: vlanTag, uefi: resolveUEFI(req), tpm: req.TPM,
-		secureBoot: req.SecureBoot, imageSizeGB: imageSizeGB,
+		imageSizeGB: imageSizeGB,
 	}, nil
 }
 
@@ -1903,7 +1893,7 @@ func resolveResources(req CreateRequest, resources catalog.Resources, capacities
 	return node, storage, nics, nil
 }
 
-// resolveNode returns the requested node, or - when the request omits it - 
+// resolveNode returns the requested node, or - when the request omits it -
 // the best-scoring approved node. Candidates are restricted to nodes holding
 // the requested ISO or image, then hard-filtered to nodes with at least one
 // approved storage.

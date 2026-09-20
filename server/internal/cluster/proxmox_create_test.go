@@ -10,11 +10,10 @@ import (
 // UEFI/TPM test fixtures - repeated Proxmox form values
 // centralized for goconst and readability.
 const (
-	testBIOSOVMF               = "ovmf"
-	testMachineQ35             = "q35"
-	testEFIDiskValue           = "local-lvm:1,efitype=4m,pre-enrolled-keys=0"
-	testEFIDiskValueSecureBoot = "local-lvm:1,efitype=4m,pre-enrolled-keys=1"
-	testTPMDiskValue           = "local-lvm:1,version=v2.0"
+	testBIOSOVMF     = "ovmf"
+	testMachineQ35   = "q35"
+	testEFIDiskValue = "local-lvm:1,efitype=4m,pre-enrolled-keys=0"
+	testTPMDiskValue = "local-lvm:1,version=v2.0"
 )
 
 func TestProxmox_NextVMID(t *testing.T) {
@@ -434,7 +433,6 @@ func TestProxmox_CreateVM_UEFI(t *testing.T) {
 		bios        string
 		machine     string
 		tpm         bool
-		secureBoot  bool
 		wantMachine string
 		wantEFI     string
 		wantTPM     string
@@ -472,30 +470,21 @@ func TestProxmox_CreateVM_UEFI(t *testing.T) {
 			wantEFI:     testEFIDiskValue,
 			wantTPM:     testTPMDiskValue,
 		},
-		{
-			name:        "ovmf with secure boot pre-enrolls keys",
-			bios:        testBIOSOVMF,
-			machine:     "",
-			secureBoot:  true,
-			wantMachine: testMachineQ35,
-			wantEFI:     testEFIDiskValueSecureBoot,
-			wantTPM:     "",
-		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			gotForm := captureUEFIForm(t, tc.bios, tc.machine, tc.tpm, tc.secureBoot)
+			gotForm := captureUEFIForm(t, tc.bios, tc.machine, tc.tpm)
 			assertUEFIForm(t, gotForm, tc.wantMachine, tc.wantEFI, tc.wantTPM)
 		})
 	}
 }
 
 // captureUEFIForm runs CreateVM with a form-capturing test server for the
-// UEFI/TPM/SecureBoot test cases. Returns the submitted form.
-func captureUEFIForm(t *testing.T, bios, machine string, tpm, secureBoot bool) url.Values {
+// UEFI/TPM test cases. Returns the submitted form.
+func captureUEFIForm(t *testing.T, bios, machine string, tpm bool) url.Values {
 	t.Helper()
 
 	var gotForm url.Values
@@ -519,7 +508,7 @@ func captureUEFIForm(t *testing.T, bios, machine string, tpm, secureBoot bool) u
 		Sockets: 1, CPUCores: 2, MemoryMB: 4096,
 		Disk:    DiskSpec{Storage: FakeStorageLocalLVM, SizeGB: 32, Bus: string(DiskBusSCSI)},
 		Network: NetworkSpec{{Bridge: FakeBridgeVMbr0, Model: string(DiskBusVirtio)}},
-		BIOS:    bios, Machine: machine, TPM: tpm, SecureBoot: secureBoot,
+		BIOS:    bios, Machine: machine, TPM: tpm,
 	}
 
 	if _, err := p.CreateVM(context.Background(), spec); err != nil {

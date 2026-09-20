@@ -129,10 +129,7 @@
 				checked={form.uefi}
 				onToggle={(checked) => {
 					form.uefi = checked;
-					if (!checked) {
-						form.tpm = false;
-						form.secureBoot = false;
-					}
+					if (!checked) form.tpm = false;
 				}}
 			/>
 			<Checkbox
@@ -140,13 +137,6 @@
 				hint={m['vms.create.tpmHint']()}
 				checked={form.tpm}
 				onToggle={(checked) => { form.tpm = checked; }}
-				disabled={!form.uefi}
-			/>
-			<Checkbox
-				label={m['vms.create.secureBoot']()}
-				hint={m['vms.create.secureBootHint']()}
-				checked={form.secureBoot}
-				onToggle={(checked) => { form.secureBoot = checked; }}
 				disabled={!form.uefi}
 			/>
 		</div>

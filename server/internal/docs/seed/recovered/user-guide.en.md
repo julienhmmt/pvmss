@@ -31,7 +31,7 @@ what is needed; **Detailed** mode exposes every option. Configure:
 - **Resources**: sockets, cores, memory, and disk size. Values are clamped by the cluster policy and your per-user quota.
 - **Storage**: a storage approved by your administrator; the wizard checks free space live.
 - **Network**: one or more network cards, each with a bridge and a card model (VirtIO, E1000, E1000E, RTL8139, VMXNet3). The Proxmox firewall is always enabled; your administrator may impose an isolation VLAN.
-- **Firmware**: UEFI (default on), Secure Boot (default off - needed for Windows, breaks most Linux ISOs), TPM 2.0 for guests that require it.
+- **Firmware**: UEFI (default on) with an empty EFI key store - Secure Boot is never enabled, because most Linux ISOs are unsigned and would not boot with it. TPM 2.0 for guests that require it.
 - **Cloud-init document**: an administrator template or one of [your own files](/cloud-init). See the [cloud-init how-to](/docs/cloud-init-howto).
 - **Startup**: choose whether the VM starts automatically after creation.
 - **Tags**: pick from the administrator-curated list.
