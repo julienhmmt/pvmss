@@ -58,7 +58,7 @@ L'inventaire complet, route par route, est dans [docs/FEATURES.md](docs/FEATURES
 
 ## Architecture en un coup d'œil
 
-- **Serveur** (`server/`) : Go 1.26, routage `net/http` de la stdlib, SQLite via `modernc.org/sqlite` (sans CGO). Sert `/api/v1/*` et le SPA.
+- **Serveur** (`server/`) : Go 1.27, routage `net/http` de la stdlib, SQLite via `modernc.org/sqlite` (sans CGO). Sert `/api/v1/*` et le SPA.
 - **Web** (`web/`) : SPA SvelteKit (Svelte 5 runes, TypeScript, Tailwind CSS v4, `adapter-static`).
 - **Authentification** : token API Proxmox pour les actions cluster, sessions utilisateur pour l'UI.
 
