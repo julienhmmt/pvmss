@@ -33,15 +33,17 @@ script, or CI job still pointing at `backend/` or `frontend/` is stale - see
 `server/` and `web/` are separate build units with separate tooling. The root
 `Makefile` exposes them via the `server-*` / `web-*` targets.
 
-Three root documents carry the product context. Read the relevant one before
+Root documents carry the product context. Read the relevant one before
 building a user-facing feature:
 
 | File           | Answers                                                       |
 | -------------- | ------------------------------------------------------------- |
 | `PRODUCT.md`   | Who the users are, why the product exists, design principles  |
 | `docs/FEATURES.md` | Route-by-route inventory of every shipped feature and its status |
-| `DESIGN.md`    | Design tokens - colors, typography, spacing                   |
-| `WORKFLOWS.md` | What a user does, end to end, per workflow                    |
+| `WORKFLOWS.md` | What a user does, end to end, per workflow |
+| `DESIGN.md`    | Design tokens - colors, typography, spacing |
+| `ROADMAP.md`   | History from v0.1 to the current rewrite, and what's next |
+| `TECH_DEBT.md` | What's lingering or half-finished, and what deciding it takes |
 
 `WORKFLOWS.md` opens with a seven-field template (audience, entry, route, API,
 steps, states, safety nets). Adding a user-facing workflow means adding its
@@ -144,9 +146,10 @@ index. Do not reintroduce a code index without measuring against `pq` first.
 ### Server (`server/`)
 
 Go REST API over the Proxmox API + SQLite for persistence. Module
-`pvmss/server`, Go 1.26. Deliberately dependency-light: routing is stdlib
+`pvmss/server`, Go 1.27. Deliberately dependency-light: routing is stdlib
 `net/http`, and the only direct deps are `coder/websocket` (VNC console proxy),
-`golang.org/x/crypto` (bcrypt), and `modernc.org/sqlite` (pure-Go, CGO-free).
+`golang.org/x/crypto` (bcrypt), `gopkg.in/yaml.v3` (cloud-init YAML
+validation), and `modernc.org/sqlite` (pure-Go, CGO-free).
 
 Entry points under `server/cmd/`:
 
@@ -208,7 +211,7 @@ Built with bun; the Go binary serves the build output (catch-all to
 - **Entrypoint**: `/app/pvmss` - no flags; the web dir comes from
   `PVMSS_WEB_DIR` (default `/app/web/build` in the image) or a path relative
   to the executable
-- **Build**: multi-stage - `golang:1.26-alpine` builds a static CGO-free
+- **Build**: multi-stage - `golang:1.27-alpine` builds a static CGO-free
   binary, `oven/bun:1-alpine` builds the SPA
 - Kubernetes manifests: `pvmss-deployment.yaml`, `pvmss-httproute.yml`
 - Helm chart: `helm/`
@@ -253,6 +256,9 @@ operator who simply forgot to set the variable.
 | `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | `15s`                              |
 | `PVMSS_MAX_LIST_PAGE_SIZE`                    | `100`                              |
 | `PVMSS_TRUSTED_PROXY_HOPS`                    | `1`                                |
+| `PVMSS_SSH_USER`                              | empty; setting it enables SSH snippet delivery |
+| `PVMSS_SSH_KEY_FILE`                          | empty; required when `PVMSS_SSH_USER` is set |
+| `PVMSS_SSH_PORT`                              | `22`                                |
 
 `PVMSS_OFFLINE`, `PVMSS_ENV`, `JWT_SECRET`, `PROXMOX_VERIFY_SSL` and
 `LOG_FILE_PATH` belonged to the v0.3 backend and are **no longer read**. Demo
@@ -301,6 +307,21 @@ Convention:
   session. If two sessions happen on the same day, suffix `-2`, `-3`, etc.
 - Read recent entries before starting work in an area to avoid redoing
   investigation.
+
+## Reference Vault (Obsidian, outside this repo)
+
+A synced, cross-device knowledge base of this project lives at
+`/Users/jh/Library/Mobile Documents/iCloud~md~obsidian/Documents/JhoBoxes/Projets/PVMSS`
+(start at `PVMSS Home.md`). It mirrors this repo's architecture, API surface,
+data model, and workflows in Obsidian notes, re-synced after milestones (not
+every commit - see `Reference/Vault Maintenance.md` there for the recipe).
+
+Read it when starting work in an unfamiliar area: it is cheaper than reading
+a whole package or re-deriving the architecture from scratch, and it stays
+accurate because every drift-prone fact in it is grep/wc-verifiable against
+this repo. It does not replace `.agents/memory/` above - keep writing
+per-session entries there as usual. See `Reference/Cross-Agent Memory.md` in
+the vault for how the two relate.
 
 ## Project Conventions
 
