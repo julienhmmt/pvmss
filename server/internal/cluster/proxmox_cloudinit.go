@@ -117,7 +117,9 @@ func parseIPConfig(raw string, result *CloudInitConfig) {
 // FindSnippetStorage implements CloudInitReader. PVMSS can only write to the
 // one snippet directory the administrator configured for the cluster
 // so this returns p.SnippetStorage - but only after proving the
-// node lists it as an active snippets provider: a mistyped id or a storage
+// node lists it as an active snippets provider AND that a file written to
+// the configured directory is listed by that storage (verifySnippetTarget,
+// ErrSnippetTargetMismatch otherwise): a mistyped id, a wrong mount or a storage
 // without the snippets content flag must not produce a cicustom pointing at
 // nothing. With no write target configured it reports
 // ErrSnippetWriteUnavailable.
@@ -133,6 +135,13 @@ func (p Proxmox) FindSnippetStorage(ctx context.Context, node string) (string, e
 
 	for _, row := range rows {
 		if row.Storage == p.SnippetStorage && row.Active == 1 {
+			// Active is not enough: prove the configured directory IS
+			// that storage's snippets/ dir before any caller attaches a
+			// cicustom to a file written there.
+			if err := p.verifySnippetTarget(ctx, node); err != nil {
+				return "", err
+			}
+
 			return p.SnippetStorage, nil
 		}
 	}
