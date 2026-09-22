@@ -61,8 +61,8 @@
 
 	// Columns that drop out in the 640–899px tablet band (sidebar still a
 	// drawer, content still narrow) - Node is the only one from the sortable
-	// set; Cluster and Pool are handled where they're each rendered, since
-	// neither comes from this loop.
+	// set; Pool is handled where it is rendered, since it does not come from
+	// this loop.
 	const TABLET_HIDDEN_COLUMNS: ReadonlySet<VmSortBy> = new Set<VmSortBy>(['node']);
 
 	function thClass(column: VmSortBy): string {
@@ -300,9 +300,6 @@
 								aria-label={m['vms.list.selectAll']()}
 							/>
 						</th>
-						{#if store.cluster === ''}
-							<th scope="col" class="pv-table-tablet-hide">{m['vms.list.columnCluster']()}</th>
-						{/if}
 						{#each SORTABLE_COLUMNS as column (column)}
 							<th scope="col" class={thClass(column)} aria-sort={ariaSort(column)}>
 								<SortButton
@@ -322,29 +319,21 @@
 				</thead>
 				<tbody>
 					{#each store.result?.items ?? [] as machine (`${machine.cluster}:${machine.vmid}`)}
-						<tr data-testid="vm-row">
+						<tr class="relative cursor-pointer" data-testid="vm-row">
 							<td data-nolabel="true">
 								<input
 									type="checkbox"
-									class="h-4 w-4 rounded border-border accent-primary"
+									class="relative z-10 h-4 w-4 rounded border-border accent-primary"
 									checked={bulk.isSelected(machine.cluster, machine.vmid)}
 									onchange={() => handleRowToggle(machine.cluster, machine.vmid)}
 									data-testid="vm-bulk-select-row"
 									aria-label={m['vms.list.selectRow']({ name: machine.name })}
 								/>
 							</td>
-							{#if store.cluster === ''}
-								<td
-									class="pv-table-tablet-hide text-muted-foreground"
-									data-label={m['vms.list.columnCluster']()}
-								>
-									{machine.clusterDisplayName}
-								</td>
-							{/if}
 							<td data-label={m['vms.list.columnName']()}>
 								<a
 									href={resolve(`/vms/${encodeURIComponent(machine.cluster)}/${machine.vmid}`)}
-									class="font-medium text-foreground underline-offset-2 hover:text-primary hover:underline"
+									class="pv-focus font-medium text-foreground underline-offset-2 after:absolute after:inset-0 after:content-[''] hover:text-primary hover:underline"
 									data-testid="vm-row-link"
 								>
 									{machine.name}
@@ -354,6 +343,11 @@
 										{#each machine.tags as tag (tag)}
 											<Pill tone="off" dot={false} label={tag} />
 										{/each}
+									</div>
+								{/if}
+								{#if store.cluster === ''}
+									<div class="mt-1 text-xs text-muted-foreground" data-testid="vm-row-cluster">
+										{machine.clusterDisplayName}
 									</div>
 								{/if}
 							</td>
@@ -385,7 +379,7 @@
 								</td>
 							{/if}
 							<td data-label={m['vms.list.columnActions']()} data-nolabel="true">
-								<div class="flex items-center justify-end gap-1">
+								<div class="relative z-10 flex items-center justify-end gap-1">
 									{#if isRowActionInFlight(machine.cluster, machine.vmid)}
 										<span class="flex h-8 w-8 items-center justify-center text-muted-foreground" aria-live="polite">
 											<SpinnerIcon class="h-4 w-4" />

@@ -2,7 +2,6 @@ import { getContext, setContext } from 'svelte';
 import { get, post, ApiRequestError } from '$lib/shared/api/client';
 import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 import { m } from '$lib/paraglide/messages.js';
-import type { DraftValues } from './draft.svelte';
 
 export interface CatalogStorage {
 	name: string;
@@ -183,7 +182,6 @@ export interface VMCreateRequest {
 	image?: ImageRequest;
 	uefi?: boolean;
 	tpm?: boolean;
-	secureBoot?: boolean;
 	startAfterCreate?: boolean;
 }
 
@@ -472,15 +470,15 @@ export class VmCreateStore {
 	ciIpAddress = $state('');
 	ciGateway = $state('');
 	startAfterCreate = $state(true);
-	/** US6/issue-06: UEFI (bios=ovmf + q35 + efidisk0), TPM 2.0, and Secure
-	 *  Boot - available in both modes. UEFI defaults on (modern OSes expect
-	 *  UEFI boot); TPM and Secure Boot stay opt-in. Both require UEFI; the
-	 *  server rejects either without UEFI with ErrInvalidRequest. Secure Boot
-	 *  pre-enrolls Microsoft's keys - needed for Windows, not most Linux
-	 *  ISOs (many ship an unsigned bootloader Secure Boot would refuse). */
+	/** US6/issue-06: UEFI (bios=ovmf + q35 + efidisk0) and TPM 2.0 -
+	 *  available in both modes. UEFI defaults on (modern OSes expect UEFI
+	 *  boot); TPM stays opt-in and requires UEFI (the server rejects
+	 *  TPM-without-UEFI with ErrInvalidRequest). There is no Secure Boot
+	 *  option: the EFI disk is always created with an empty key store, since
+	 *  most Linux ISOs ship an unsigned bootloader that Secure Boot refuses
+	 *  to run, leaving the guest stuck in the UEFI shell. */
 	uefi = $state(true);
 	tpm = $state(false);
-	secureBoot = $state(false);
 
 	/** Fetches the multi-cluster options and defaults to the first one, matching
 	 *  the login page's cluster picker (must run before loadCatalog when the
@@ -673,7 +671,6 @@ export class VmCreateStore {
 			this.node = image.node;
 			this.uefi = false;
 			this.tpm = false;
-			this.secureBoot = false;
 		}
 	}
 
@@ -763,18 +760,16 @@ export class VmCreateStore {
 					request.disk = { sizeGB: this.diskSizeGB };
 				}
 				request.uefi = this.uefi;
-				if (this.uefi && this.secureBoot) request.secureBoot = true;
 				this.applyCloudInitDocument(request);
 				return request;
 			}
 			if (this.simpleSource === 'template' && this.templateId !== 0) {
 				request.templateId = this.templateId;
 				this.applyCloudInitDocument(request);
-				// No uefi/secureBoot field: a clone inherits the template's own firmware.
+				// No uefi field: a clone inherits the template's own firmware.
 				return request;
 			}
 			request.uefi = this.uefi;
-			if (this.uefi && this.secureBoot) request.secureBoot = true;
 			if (this.profileId !== '') request.profileId = this.profileId;
 			this.applyCloudInitDocument(request);
 			if (this.nodeAdjusted && this.node !== '') request.node = this.node;
@@ -837,11 +832,9 @@ export class VmCreateStore {
 		// US6/issue-06: UEFI is sent explicitly (true or false) so an
 		// unchecked box is honored - the server defaults to UEFI=true when
 		// the field is absent entirely (simple mode's template branch never
-		// sends it). TPM/SecureBoot only sent when true; the server default
-		// for both is already false.
+		// sends it). TPM is only sent when true; the server default is false.
 		request.uefi = this.uefi;
 		if (this.uefi && this.tpm) request.tpm = true;
-		if (this.uefi && this.secureBoot) request.secureBoot = true;
 
 		return request;
 	}
@@ -873,83 +866,6 @@ export class VmCreateStore {
 		} finally {
 			this.submitting = false;
 		}
-	}
-
-	/** Snapshots every persistable field for the draft (FR-019). */
-	snapshotValues(): DraftValues {
-		return {
-			mode: this.mode,
-			name: this.name,
-			profileId: this.profileId,
-			cloudInitTemplateId: this.cloudInitTemplateId,
-			cloudInitFileId: this.cloudInitFileId,
-			node: this.node,
-			nodeAdjusted: this.nodeAdjusted,
-			storage: this.storage,
-			storageAdjusted: this.storageAdjusted,
-			tagsInput: this.tagsInput,
-			sockets: this.sockets,
-			cpuCores: this.cpuCores,
-			memoryMB: this.memoryMB,
-			diskSizeGB: this.diskSizeGB,
-			diskStorage: this.diskStorage,
-			nics: this.nics.map((nic) => ({ ...nic })),
-			isoFile: this.isoFile,
-			sourceType: this.sourceType,
-			simpleSource: this.simpleSource,
-			templateId: this.templateId,
-			templateMinDiskGB: this.templateMinDiskGB,
-			imageStorage: this.imageStorage,
-			imageFile: this.imageFile,
-			imageMinDiskGB: this.imageMinDiskGB,
-			ciUser: this.ciUser,
-			ciSshKeysInput: this.ciSshKeysInput,
-			ciIpMode: this.ciIpMode,
-			ciIpAddress: this.ciIpAddress,
-			ciGateway: this.ciGateway,
-			startAfterCreate: this.startAfterCreate,
-			uefi: this.uefi,
-			tpm: this.tpm,
-			secureBoot: this.secureBoot
-		};
-	}
-
-	/** Restores a version-matched draft into the form (FR-020) - all fields
-	 *  at once, never partially. */
-	applyDraft(values: DraftValues): void {
-		this.mode = values.mode;
-		this.name = values.name;
-		this.profileId = values.profileId;
-		this.cloudInitTemplateId = values.cloudInitTemplateId ?? '';
-		this.cloudInitFileId = values.cloudInitFileId ?? '';
-		this.node = values.node;
-		this.nodeAdjusted = values.nodeAdjusted;
-		this.storage = values.storage;
-		this.storageAdjusted = values.storageAdjusted;
-		this.tagsInput = values.tagsInput;
-		this.sockets = values.sockets ?? 1;
-		this.cpuCores = values.cpuCores;
-		this.memoryMB = values.memoryMB;
-		this.diskSizeGB = values.diskSizeGB;
-		this.diskStorage = values.diskStorage;
-		this.nics = (values.nics ?? [{ bridge: '', model: 'virtio' }]).map((nic) => ({ ...nic }));
-		this.isoFile = values.isoFile;
-		this.sourceType = values.sourceType ?? 'iso';
-		this.simpleSource = values.simpleSource ?? 'profile';
-		this.templateId = values.templateId ?? 0;
-		this.templateMinDiskGB = values.templateMinDiskGB ?? 0;
-		this.imageStorage = values.imageStorage ?? '';
-		this.imageFile = values.imageFile ?? '';
-		this.imageMinDiskGB = values.imageMinDiskGB ?? 0;
-		this.ciUser = values.ciUser ?? '';
-		this.ciSshKeysInput = values.ciSshKeysInput ?? '';
-		this.ciIpMode = values.ciIpMode ?? 'dhcp';
-		this.ciIpAddress = values.ciIpAddress ?? '';
-		this.ciGateway = values.ciGateway ?? '';
-		this.startAfterCreate = values.startAfterCreate;
-		this.uefi = values.uefi ?? true;
-		this.tpm = values.tpm ?? false;
-		this.secureBoot = values.secureBoot ?? false;
 	}
 }
 

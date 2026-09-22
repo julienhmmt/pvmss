@@ -35,6 +35,11 @@ type Configuration struct {
 	// (the first untrusted hop from the right). 0 means no proxy is trusted
 	// and RemoteAddr is used directly. Defaults to 1 (a single ingress).
 	TrustedProxyHops int
+	// RateLimitMax overrides every rate limiter's request ceiling when > 0
+	// (PVMSS_RATE_LIMIT_MAX). 0 keeps the built-in per-endpoint defaults.
+	// Intended for the e2e suite and load tests: raising it weakens the
+	// per-IP login brute-force protection, so it is opt-in and never defaulted.
+	RateLimitMax int
 	// SSHUser enables SSH snippet delivery when non-empty. Snippet files are
 	// written over SSH to the host derived from each cluster's API URL, so
 	// PVMSS and Proxmox need no shared filesystem. SSHKeyFile is the path to

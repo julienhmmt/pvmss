@@ -1,4 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
+import { csrfHeaders } from './support/csrf';
 
 async function signInAlice(request: APIRequestContext): Promise<void> {
 	const response = await request.post('/api/v1/auth/login', {
@@ -16,7 +17,7 @@ async function deleteCreatedVms(request: APIRequestContext): Promise<void> {
 	const vms = (await list.json()) as { items: { vmid: number; name: string }[] };
 	for (const vm of vms.items) {
 		if (vm.name.startsWith('web-e2e-')) {
-			await request.delete(`/api/v1/vms/default/${vm.vmid}`);
+			await request.delete(`/api/v1/vms/default/${vm.vmid}`, { headers: await csrfHeaders(request) });
 		}
 	}
 }
@@ -25,6 +26,58 @@ test.describe('T06 VM creation', () => {
 	test.afterEach(async ({ page }) => {
 		await deleteCreatedVms(page.request);
 	});
+	test('a fresh visit opens on the mode chooser, and Simple enters the guided form', async ({
+		page
+	}) => {
+		await page.addInitScript(() => localStorage.setItem('pvmss-locale', 'en'));
+		await signInAlice(page.request);
+		await page.goto('/vms/create');
+
+		// The chooser asks the question; neither wizard is rendered yet.
+		await expect(page.getByRole('heading', { name: 'Create a VM' })).toBeVisible();
+		await expect(page.getByText('Creation mode')).toBeVisible();
+		await expect(page.getByRole('button', { name: /Simple/ })).toBeVisible();
+		await expect(page.getByRole('button', { name: /Detailed/ })).toBeVisible();
+		await expect(page.getByLabel('Name')).toHaveCount(0);
+
+		await page.getByRole('button', { name: /Simple/ }).click();
+		await expect(page.getByLabel('Name')).toBeVisible();
+		// The old mode tab row is gone - Detailed is only reachable via the chooser.
+		await expect(page.getByRole('tab', { name: 'Detailed' })).toHaveCount(0);
+	});
+
+	test('change mode returns to the chooser with the entered values kept', async ({ page }) => {
+		await page.addInitScript(() => localStorage.setItem('pvmss-locale', 'en'));
+		await signInAlice(page.request);
+		await page.goto('/vms/create');
+
+		await page.getByRole('button', { name: /Simple/ }).click();
+		await page.getByLabel('Name').fill('web-e2e-change');
+
+		await page.getByTestId('vm-create-change-mode').click();
+		// Back on the chooser: the cards are there and the form is gone.
+		await expect(page.getByRole('button', { name: /Detailed/ })).toBeVisible();
+		await expect(page.getByLabel('Name')).toHaveCount(0);
+
+		// Re-entering the same mode keeps what was typed.
+		await page.getByRole('button', { name: /Simple/ }).click();
+		await expect(page.getByLabel('Name')).toHaveValue('web-e2e-change');
+	});
+
+	test('detailed mode: the step row reads as a stepper and moves', async ({ page }) => {
+		await page.addInitScript(() => localStorage.setItem('pvmss-locale', 'en'));
+		await signInAlice(page.request);
+		await page.goto('/vms/create');
+		await page.getByRole('button', { name: /Detailed/ }).click();
+
+		const base = page.getByRole('tab', { name: 'Base' });
+		await expect(base).toHaveAttribute('aria-current', 'step');
+
+		await page.getByRole('tab', { name: 'Disk' }).click();
+		await expect(page.getByRole('tab', { name: 'Disk' })).toHaveAttribute('aria-current', 'step');
+		await expect(base).not.toHaveAttribute('aria-current', 'step');
+	});
+
 	test('simple mode: create a VM and watch the task complete in the tray', async ({ page }) => {
 		await page.addInitScript(() => localStorage.setItem('pvmss-locale', 'en'));
 		await signInAlice(page.request);
@@ -33,6 +86,7 @@ test.describe('T06 VM creation', () => {
 		await page.getByRole('link', { name: 'Create a VM' }).click();
 		await expect(page).toHaveURL(/\/vms\/create/);
 
+		await page.getByRole('button', { name: /Simple/ }).click();
 		await page.getByRole('radio', { name: /Medium/ }).check();
 		await page.getByLabel('Name').fill('web-e2e-01');
 		await page.getByRole('button', { name: 'Create VM' }).click();
@@ -56,6 +110,7 @@ test.describe('T06 VM creation', () => {
 		await page.addInitScript(() => localStorage.setItem('pvmss-locale', 'en'));
 		await page.goto('/vms/create');
 
+		await page.getByRole('button', { name: /Simple/ }).click();
 		await page.getByRole('radio', { name: /Medium/ }).check();
 		await page.getByRole('button', { name: 'Create VM' }).click();
 
@@ -68,7 +123,7 @@ test.describe('T06 VM creation', () => {
 		await signInAlice(page.request);
 		await page.goto('/vms/create');
 
-		await page.getByRole('tab', { name: 'Detailed' }).click();
+		await page.getByRole('button', { name: /Detailed/ }).click();
 		await page.getByLabel('Name').fill('web-e2e-02');
 		await page.getByLabel('Node').selectOption('pve-node-02');
 		await page.getByRole('tab', { name: 'Disk' }).click();
@@ -88,22 +143,20 @@ test.describe('T06 VM creation', () => {
 		await expect(page.getByText('VM "web-e2e-02" created')).toBeVisible({ timeout: 20000 });
 	});
 
-	test('draft: reloading mid-fill restores the values with a toast', async ({ page }) => {
+	test('no draft: reloading mid-fill starts fresh', async ({ page }) => {
 		await page.addInitScript(() => localStorage.setItem('pvmss-locale', 'en'));
 		await signInAlice(page.request);
 		await page.goto('/vms/create');
 
-		await page.getByRole('tab', { name: 'Detailed' }).click();
-		await page.getByLabel('Name').fill('web-e2e-draft');
-		await page.getByLabel('Tags').fill('team-web');
+		await page.getByRole('button', { name: /Detailed/ }).click();
+		await page.getByLabel('Name').fill('web-e2e-nodraft');
 
-		await page.waitForTimeout(700);
 		await page.reload();
 
-		await expect(page.getByText(/Draft restored/)).toBeVisible();
-		await expect(page.getByLabel('Name')).toHaveValue('web-e2e-draft');
-		// The mode was part of the draft - we land back on the detailed wizard.
-		await expect(page.getByRole('tab', { name: 'Detailed' })).toHaveAttribute('aria-selected', 'true');
+		// Nothing is persisted, so the reload comes back empty.
+		await expect(page.getByText(/Draft saved|will be restored/)).toHaveCount(0);
+		await page.getByRole('button', { name: /Detailed/ }).click();
+		await expect(page.getByLabel('Name')).toHaveValue('');
 	});
 
 	test('catalog enforcement: a direct API call outside the catalog is rejected', async ({ page }) => {
@@ -111,6 +164,7 @@ test.describe('T06 VM creation', () => {
 
 		// SC-004: no UI dropdown involved - a raw request with an unapproved storage.
 		const response = await page.request.post('/api/v1/vms', {
+			headers: await csrfHeaders(page.request),
 			data: {
 				cluster: 'default',
 				name: 'web-e2e-03',
@@ -132,6 +186,7 @@ test.describe('T06 VM creation', () => {
 		// SC-003: strict decoding rejects the unknown field outright; either
 		// way no VM is created with a pool other than alice's.
 		const response = await page.request.post('/api/v1/vms', {
+			headers: await csrfHeaders(page.request),
 			data: {
 				cluster: 'default',
 				name: 'web-e2e-04',
@@ -170,7 +225,7 @@ test.describe('T06 VM creation', () => {
 
 		// Detailed wizard: pick it under the "My files" optgroup.
 		await page.goto('/vms/create');
-		await page.getByRole('tab', { name: 'Detailed' }).click();
+		await page.getByRole('button', { name: /Detailed/ }).click();
 		await page.getByLabel('Name').fill('web-e2e-ci');
 		const picker = page.getByLabel('Cloud-init document');
 		await expect(picker.locator('option', { hasText: 'E2E boot script' })).toHaveCount(1);
@@ -209,6 +264,7 @@ test.describe('T06 VM creation', () => {
 		expect(login.status()).toBe(200);
 
 		const response = await page.request.post('/api/v1/vms', {
+			headers: await csrfHeaders(page.request),
 			data: {
 				cluster: 'default',
 				name: 'web-e2e-admin-01',

@@ -113,24 +113,16 @@ describe('VmCreateStore.buildRequest in simple mode', () => {
 		});
 	});
 
-	it('sends secureBoot only when both uefi and secureBoot are on', () => {
+	it('never sends a secureBoot field - the EFI disk always gets an empty key store', () => {
 		const store = new VmCreateStore();
 		store.catalog = catalog();
 		store.name = 'web-04';
 		store.profileId = 'small';
-		store.secureBoot = true;
 
-		expect(store.buildRequest()).toEqual({
-			cluster: 'default',
-			name: 'web-04',
-			profileId: 'small',
-			startAfterCreate: true,
-			uefi: true,
-			secureBoot: true
-		});
+		const request = store.buildRequest();
 
-		store.uefi = false;
-		expect(store.buildRequest().secureBoot).toBeUndefined();
+		expect(request).not.toHaveProperty('secureBoot');
+		expect(request.uefi).toBe(true);
 	});
 
 	it('builds a profile request with an ISO (auto node - server places on an ISO-holding node)', () => {
@@ -524,18 +516,16 @@ describe('VmCreateStore cloud-image source (image mode)', () => {
 		expect(request.templateId).toBeUndefined();
 	});
 
-	it('selecting a cloud image unticks UEFI and clears TPM/Secure Boot (issue 02)', () => {
+	it('selecting a cloud image unticks UEFI and clears TPM (issue 02)', () => {
 		const store = new VmCreateStore();
 		store.catalog = catalog();
 		store.uefi = true;
 		store.tpm = true;
-		store.secureBoot = true;
 
 		store.selectImage('ceph-images', 'debian-12-generic.img');
 
 		expect(store.uefi).toBe(false);
 		expect(store.tpm).toBe(false);
-		expect(store.secureBoot).toBe(false);
 	});
 
 	it('re-ticking UEFI after selecting an image is honored (issue 02)', () => {
@@ -713,17 +703,6 @@ describe('VmCreateStore cloud-init document (ticket 04)', () => {
 
 		expect(request.cloudInitFileId).toBe('dev-box');
 		expect(request.cloudInitTemplateId).toBeUndefined();
-	});
-
-	it('carries cloudInitFileId through a draft snapshot and restore', () => {
-		const store = new VmCreateStore();
-		store.cloudInitFileId = 'dev-box';
-
-		const restored = new VmCreateStore();
-		restored.applyDraft(store.snapshotValues());
-
-		expect(restored.cloudInitFileId).toBe('dev-box');
-		expect(restored.cloudInitDocumentValue).toBe('f:dev-box');
 	});
 
 	it('keeps myCloudInitFiles empty (non-fatal) when the list request fails', async () => {

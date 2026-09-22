@@ -136,7 +136,7 @@ var allowedNetworkModels = map[string]bool{
 // cannot tell and does not care which
 // wizard produced it).
 //
-// The VM source is exactly one of: an ISO (for OS without cloud images - 
+// The VM source is exactly one of: an ISO (for OS without cloud images -
 // Windows, appliances), a Proxmox template (for cloud-init-capable images),
 // or a cloud image (imported as the primary disk, configured by cloud-init).
 // The three are mutually exclusive: a request carrying
@@ -167,13 +167,12 @@ type CreateRequest struct {
 	// distinguishable from an explicit false (legacy SeaBIOS). TPM requests
 	// tpmstate0 alongside the EFI disk; ignored when UEFI is false - TPM 2.0
 	// requires UEFI. TPM stays off by default even though UEFI doesn't.
-	// SecureBoot pre-enrolls Microsoft's Secure Boot keys on the EFI disk;
-	// ignored when UEFI is false. Off by default - most Linux ISOs ship an
-	// unsigned bootloader that Secure Boot would refuse to run, and Windows
-	// (which does need it) is the exception, not the rule.
+	// There is deliberately no Secure Boot field: the EFI disk is always
+	// provisioned with an empty key store, because an approved ISO's signing
+	// is unknown and an unsigned one would never boot (see
+	// cluster.setUEFIFormKeys).
 	UEFI             *bool `json:"uefi,omitempty"`
 	TPM              bool  `json:"tpm,omitempty"`
-	SecureBoot       bool  `json:"secureBoot,omitempty"`
 	StartAfterCreate bool  `json:"startAfterCreate,omitempty"`
 }
 
@@ -473,8 +472,8 @@ func createFromImage(ctx context.Context, policyService *policy.Policy, deps Cre
 
 	applyImageCloudInitConfig(ctx, imageCloudInitApply{
 		Deps: deps, ClusterName: clusterName,
-		Spec: spec, VMID: finalVMID, SnippetStorage: plan.snippetStorage, CloudInit: req.Image.CloudInit,
-		UserDocument: userDoc.Content,
+		Spec: spec, VMID: finalVMID, SnippetStorage: plan.snippetStorage, SnippetSkipReason: plan.snippetSkipReason,
+		CloudInit: req.Image.CloudInit, UserDocument: userDoc.Content,
 	}, &result)
 
 	// Persist the baseline delivery state so the VM detail page can report
@@ -604,7 +603,10 @@ type imageCloudInitApply struct {
 	Spec           cluster.VMSpec
 	VMID           int
 	SnippetStorage string
-	CloudInit      ImageCloudInitRequest
+	// SnippetSkipReason is why SnippetStorage is empty, recorded as the
+	// baseline error.
+	SnippetSkipReason string
+	CloudInit         ImageCloudInitRequest
 	// UserDocument is the actor's selected cloud-init document content,
 	// merged on top of the baseline. Empty when none selected.
 	UserDocument string
@@ -644,7 +646,11 @@ func applyImageCloudInitConfig(ctx context.Context, cfg imageCloudInitApply, res
 	// could live, so record "not_delivered" and let the VM start.
 	if cfg.SnippetStorage == "" {
 		result.BaselineState = BaselineStateNotDelivered
-		result.BaselineError = "no snippet write target configured for this cluster"
+		result.BaselineError = cfg.SnippetSkipReason
+
+		if result.BaselineError == "" {
+			result.BaselineError = "no snippet write target configured for this cluster"
+		}
 
 		return
 	}
@@ -656,7 +662,7 @@ func applyImageCloudInitConfig(ctx context.Context, cfg imageCloudInitApply, res
 
 	present, err := cfg.Deps.Pusher.HasSnippet(ctx, cfg.Spec.Node, cfg.SnippetStorage, imageBaselineSnippetFilename)
 	if err != nil {
-		// Best-effort: a lookup failure just means the baseline is skipped - 
+		// Best-effort: a lookup failure just means the baseline is skipped -
 		// the VM still got its identity and network from the native keys
 		// above, so this does not block start.
 		cfg.Deps.Log.Error("baseline snippet lookup failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
@@ -695,20 +701,18 @@ func applyImageCloudInitConfig(ctx context.Context, cfg imageCloudInitApply, res
 	// it as vendor-data.
 	snippetFilename := fmt.Sprintf("pvmss-%d.yml", cfg.VMID)
 
-	if err := cfg.Deps.Pusher.PushCloudInitSnippet(ctx, cfg.Spec.Node, cfg.SnippetStorage, snippetFilename, cfg.VMID, doc); err != nil {
-		cfg.Deps.Log.Error("baseline snippet push failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
+	if err := deliverVendorSnippet(ctx, cfg.Deps.Pusher, cfg.Spec.Node, cfg.SnippetStorage, snippetFilename, cfg.VMID, doc); err != nil {
+		cfg.Deps.Log.Error("baseline snippet delivery failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
 
 		result.BaselineState = BaselineStateNotDelivered
 		result.BaselineError = err.Error()
 
-		return
-	}
-
-	if err := cfg.Deps.Pusher.AttachCloudInitSnippet(ctx, cfg.Spec.Node, cfg.SnippetStorage, snippetFilename, cfg.VMID); err != nil {
-		cfg.Deps.Log.Error("baseline snippet attach failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
-
-		result.BaselineState = BaselineStateNotDelivered
-		result.BaselineError = err.Error()
+		// The user explicitly chose a document: booting without it would
+		// silently give them a VM they did not ask for. Report it like the
+		// ISO/template paths do - the VM stays stopped, the UI warns.
+		if cfg.UserDocument != "" {
+			result.CloudInitPushError = err.Error()
+		}
 
 		return
 	}
@@ -1261,7 +1265,6 @@ func buildCreateSpec(actor auth.Identity, req CreateRequest, plan createPlan, vm
 		Network:          cluster.NetworkSpec(nics),
 		BIOS:             bios,
 		TPM:              plan.tpm,
-		SecureBoot:       plan.secureBoot,
 		StartAfterCreate: req.StartAfterCreate,
 	}
 	if req.ISO != nil {
@@ -1284,7 +1287,7 @@ type cloudInitApplyRequest struct {
 	ClusterName string
 	Spec        cluster.VMSpec
 	VMID        int
-	// TemplateID/FileID identify the resolved source for CreateResult - 
+	// TemplateID/FileID identify the resolved source for CreateResult -
 	// exactly one is set (admin template or user file).
 	TemplateID string
 	FileID     string
@@ -1317,31 +1320,8 @@ func applyCloudInitDocument(ctx context.Context, req cloudInitApplyRequest, resu
 	storage := req.SnippetStorage
 	log := req.Deps.Log.With("component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "source", req.SourceLabel, "filename", filename)
 
-	if err := req.Deps.Pusher.PushCloudInitSnippet(ctx, req.Spec.Node, storage, filename, req.VMID, req.Content); err != nil {
-		log.Error("cloud-init document write failed", "error", err)
-		result.CloudInitPushError = err.Error()
-
-		return
-	}
-
-	present, err := req.Deps.Pusher.HasSnippet(ctx, req.Spec.Node, storage, filename)
-	if err != nil {
-		log.Error("cloud-init document visibility check failed", "error", err)
-		result.CloudInitPushError = err.Error()
-
-		return
-	}
-
-	if !present {
-		log.Error("cloud-init document written but not visible to Proxmox")
-
-		result.CloudInitPushError = fmt.Sprintf("cloud-init document was written but Proxmox does not list %s:snippets/%s - check that the cluster's snippet directory is that storage's snippets/ directory", storage, filename)
-
-		return
-	}
-
-	if err := req.Deps.Pusher.AttachCloudInitSnippet(ctx, req.Spec.Node, storage, filename, req.VMID); err != nil {
-		log.Error("cloud-init document attach failed", "error", err)
+	if err := deliverVendorSnippet(ctx, req.Deps.Pusher, req.Spec.Node, storage, filename, req.VMID, req.Content); err != nil {
+		log.Error("cloud-init document delivery failed", "error", err)
 		result.CloudInitPushError = err.Error()
 
 		return
@@ -1356,6 +1336,44 @@ func applyCloudInitDocument(ctx context.Context, req cloudInitApplyRequest, resu
 			result.CloudInitPushError = err.Error()
 		}
 	}
+}
+
+// snippetRemover is the optional cleanup half of the snippet writer: the
+// real client and the fake both implement it; the delivery path uses it to
+// drop a file Proxmox cannot see instead of leaving it behind.
+type snippetRemover interface {
+	RemoveCloudInitSnippet(ctx context.Context, storage, filename string) error
+}
+
+// deliverVendorSnippet is the ONLY way a per-VM snippet reaches a VM: write
+// it, prove Proxmox lists <storage>:snippets/<filename>, and only then set
+// cicustom. Attaching an unverified file is what made the VM unbootable
+// ("volume 'local:snippets/pvmss-N.yml' does not exist" on every start), so
+// an invisible file is removed and never attached - the VM keeps booting on
+// its native cloud-init keys.
+func deliverVendorSnippet(ctx context.Context, pusher CloudInitPusher, node, storage, filename string, vmid int, content string) error {
+	if err := pusher.PushCloudInitSnippet(ctx, node, storage, filename, vmid, content); err != nil {
+		return fmt.Errorf("write cloud-init document: %w", err)
+	}
+
+	present, err := pusher.HasSnippet(ctx, node, storage, filename)
+	if err != nil {
+		return fmt.Errorf("check cloud-init document visibility: %w", err)
+	}
+
+	if !present {
+		if remover, ok := pusher.(snippetRemover); ok {
+			_ = remover.RemoveCloudInitSnippet(ctx, storage, filename)
+		}
+
+		return fmt.Errorf("cloud-init document was written but Proxmox does not list %s:snippets/%s - the cluster's snippet directory is not that storage's snippets/ directory", storage, filename)
+	}
+
+	if err := pusher.AttachCloudInitSnippet(ctx, node, storage, filename, vmid); err != nil {
+		return fmt.Errorf("attach cloud-init document: %w", err)
+	}
+
+	return nil
 }
 
 // postCloneConfig bundles the inputs to applyPostCloneConfig.
@@ -1484,11 +1502,15 @@ type createPlan struct {
 	// template was requested - resolution costs a cluster read and must not
 	// run on the plain ISO path.
 	snippetStorage string
-	sockets        int
-	cpuCores       int
-	memoryMB       int
-	diskGB         int
-	bus            string
+	// snippetSkipReason explains an empty snippetStorage on the image path
+	// (no write target, or a target Proxmox does not see) so the baseline
+	// state reports the real cause instead of a generic message.
+	snippetSkipReason string
+	sockets           int
+	cpuCores          int
+	memoryMB          int
+	diskGB            int
+	bus               string
 	// imageSizeGB is the cloud image's size in whole GB (rounded up), set
 	// only in image mode. import-from lands the disk at this size; the
 	// caller grows it to diskGB after the create task completes.
@@ -1497,7 +1519,6 @@ type createPlan struct {
 	isolationVLANTag int
 	uefi             bool
 	tpm              bool
-	secureBoot       bool
 }
 
 // nicPlan is one resolved and validated NIC.
@@ -1549,19 +1570,12 @@ func resolveUEFI(req CreateRequest) bool {
 	return true
 }
 
-// checkUEFICompat rejects the impossible TPM/SecureBoot-without-UEFI
-// combinations early (TPM 2.0 requires UEFI; Secure Boot is a UEFI-only firmware feature).
-// Extracted from planCreate to keep its
-// cyclomatic complexity under gocyclo's ceiling.
+// checkUEFICompat rejects the impossible TPM-without-UEFI combination early
+// (TPM 2.0 requires UEFI). Extracted from planCreate to keep its cyclomatic
+// complexity under gocyclo's ceiling.
 func checkUEFICompat(req CreateRequest) error {
-	if !resolveUEFI(req) {
-		if req.TPM {
-			return fmt.Errorf("%w: tpm requires uefi", ErrInvalidRequest)
-		}
-
-		if req.SecureBoot {
-			return fmt.Errorf("%w: secureBoot requires uefi", ErrInvalidRequest)
-		}
+	if !resolveUEFI(req) && req.TPM {
+		return fmt.Errorf("%w: tpm requires uefi", ErrInvalidRequest)
 	}
 
 	return nil
@@ -1636,17 +1650,17 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 		return createPlan{}, err
 	}
 
-	snippetStorage, err := resolvePlanSnippetStorage(ctx, deps, req, node)
+	snippetStorage, skipReason, err := resolvePlanSnippetStorage(ctx, deps, req, node)
 	if err != nil {
 		return createPlan{}, err
 	}
 
 	return createPlan{
-		node: node, storage: storage, snippetStorage: snippetStorage,
+		node: node, storage: storage, snippetStorage: snippetStorage, snippetSkipReason: skipReason,
 		sockets: sockets, cpuCores: cpuCores,
 		memoryMB: memoryMB, diskGB: diskGB, bus: bus, nics: nics,
 		isolationVLANTag: vlanTag, uefi: resolveUEFI(req), tpm: req.TPM,
-		secureBoot: req.SecureBoot, imageSizeGB: imageSizeGB,
+		imageSizeGB: imageSizeGB,
 	}, nil
 }
 
@@ -1689,31 +1703,40 @@ func resolvePlacement(ctx context.Context, req CreateRequest, policyService *pol
 // optional hand-placed baseline: with no write target the
 // baseline is skipped ("" storage) and the create proceeds on the native
 // ciuser/sshkeys/ipconfig0 keys alone.
-func resolvePlanSnippetStorage(ctx context.Context, deps CreateDeps, req CreateRequest, node string) (string, error) {
+func resolvePlanSnippetStorage(ctx context.Context, deps CreateDeps, req CreateRequest, node string) (storage, skipReason string, err error) {
 	wantsDocument := req.CloudInitTemplateID != "" || req.CloudInitFileID != ""
 
 	if !wantsDocument && req.Image == nil {
-		return "", nil
+		return "", "", nil
 	}
 
 	if deps.Snippets == nil {
-		return "", fmt.Errorf("%w: no snippet storage resolver wired", ErrClusterCreate)
+		return "", "", fmt.Errorf("%w: no snippet storage resolver wired", ErrClusterCreate)
 	}
 
-	storage, err := deps.Snippets.FindSnippetStorage(ctx, node)
+	storage, err = deps.Snippets.FindSnippetStorage(ctx, node)
 	if err != nil {
+		// ErrSnippetWriteUnavailable also covers a configured directory
+		// Proxmox does not see (cluster.ErrSnippetTargetMismatch): a
+		// document request is refused BEFORE any VM exists, an image
+		// without document boots on the native keys and records why the
+		// baseline was skipped.
 		if errors.Is(err, cluster.ErrSnippetWriteUnavailable) {
 			if !wantsDocument {
-				return "", nil
+				if errors.Is(err, cluster.ErrSnippetTargetMismatch) && deps.Log != nil {
+					deps.Log.Warn("snippet write target not usable, cloud-init baseline skipped", "component", "vm", "node", node, "error", err)
+				}
+
+				return "", err.Error(), nil
 			}
 
-			return "", fmt.Errorf("%w: %w", ErrCloudInitWriteUnavailable, err)
+			return "", "", fmt.Errorf("%w: %w", ErrCloudInitWriteUnavailable, err)
 		}
 
-		return "", fmt.Errorf("%w: %s: enable the snippets content type on a storage of this node (%w)", ErrNoSnippetStorage, node, err)
+		return "", "", fmt.Errorf("%w: %s: enable the snippets content type on a storage of this node (%w)", ErrNoSnippetStorage, node, err)
 	}
 
-	return storage, nil
+	return storage, "", nil
 }
 
 // gabaritRequest groups the resolved hardware dimensions a gabarit + capacity
@@ -1903,7 +1926,7 @@ func resolveResources(req CreateRequest, resources catalog.Resources, capacities
 	return node, storage, nics, nil
 }
 
-// resolveNode returns the requested node, or - when the request omits it - 
+// resolveNode returns the requested node, or - when the request omits it -
 // the best-scoring approved node. Candidates are restricted to nodes holding
 // the requested ISO or image, then hard-filtered to nodes with at least one
 // approved storage.

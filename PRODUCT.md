@@ -40,7 +40,7 @@ The warm paper background and orange accent are intentional - they signal that t
 
 3. **Consistency is the feature.** The same button shape, the same form vocabulary, the same loading skeleton, the same empty state pattern across every page. Users navigate faster when structure is predictable. Inconsistency is a bug.
 
-4. **Safety nets for destructive actions.** Delete confirmations, undo toasts, draft auto-save. The interface should never let a user lose data through a misclick. High-stakes moments (delete, reset, revoke) get design interventions.
+4. **Safety nets for destructive actions.** Delete confirmations, undo toasts. The interface should never let a user lose data through a misclick. High-stakes moments (delete, reset, revoke) get design interventions.
 
 5. **Keyboard-first for power users.** Global shortcuts, focus-visible rings, tab navigation, `Cmd+Enter` to submit. The app should be fully usable without a mouse, and shortcuts should be discoverable.
 

@@ -46,6 +46,18 @@ describe('CloudInitDocumentSelect', () => {
 		expect([...document.querySelectorAll('option')].map((o) => o.value)).toContain('f:dev-box');
 	});
 
+	it('offers a selectable "none" option to clear a chosen document', () => {
+		storeInstance = new VmCreateStore();
+		storeInstance.catalog = catalogWith(true);
+		storeInstance.myCloudInitFiles = [{ id: 'dev-box', label: 'Dev box' }];
+		mount(CloudInitDocumentSelect, { target: document.body });
+
+		const none = [...document.querySelectorAll('option')].find((o) => o.value === '');
+		expect(none).toBeDefined();
+		expect(none!.disabled).toBe(false);
+		expect(none!.textContent).toBe(m['vms.create.cloudinitNone']());
+	});
+
 	it('displays the encoded value of the store selection', () => {
 		storeInstance = new VmCreateStore();
 		storeInstance.catalog = catalogWith(true);

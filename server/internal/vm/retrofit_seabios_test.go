@@ -122,7 +122,9 @@ func TestRetrofitToSeaBIOS_RefusesTPM(t *testing.T) {
 }
 
 // TestRetrofitToSeaBIOS_RefusesSecureBoot - a VM with Secure Boot is refused
-// before any configuration change.
+// before any configuration change. PVMSS no longer creates such a VM (the
+// EFI disk always gets an empty key store), but one made before that change
+// or by hand in Proxmox still exists, so the guard keeps its coverage.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestRetrofitToSeaBIOS_RefusesSecureBoot(t *testing.T) {
@@ -131,13 +133,14 @@ func TestRetrofitToSeaBIOS_RefusesSecureBoot(t *testing.T) {
 	uefi := true
 	req := imageRequest()
 	req.UEFI = &uefi
-	req.SecureBoot = true
 	req.StartAfterCreate = false
 
 	result, err := fixture.create(t, aliceIdentity(), req)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
+
+	cluster.SetFakeSecureBoot(result.VMID)
 
 	snap, _ := fixture.fake.Snapshot(context.Background())
 	index := inventory.BuildIndexForCluster(testClusterName, snap)

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { csrfHeaders } from './support/csrf';
 
 test.describe('T02 authentication', () => {
 	test('signs in with the fake PVE account and ends the browser session', async ({ page }) => {
@@ -17,7 +18,9 @@ test.describe('T02 authentication', () => {
 		expect(me.status()).toBe(200);
 		expect(await me.json()).toEqual({ username: 'alice@pve', pool: 'pool-alice', isAdmin: false, cluster: 'default' });
 
-		const logout = await page.request.post('/api/v1/auth/logout');
+		const logout = await page.request.post('/api/v1/auth/logout', {
+			headers: await csrfHeaders(page.request)
+		});
 		expect(logout.status()).toBe(204);
 		const signedOut = await page.request.get('/api/v1/auth/me');
 		expect(signedOut.status()).toBe(401);

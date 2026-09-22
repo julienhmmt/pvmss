@@ -79,6 +79,19 @@ type RouterConfig struct {
 	// the real user IP behind a Kubernetes ingress via X-Forwarded-For.
 	// Defaults to 0 (use RemoteAddr directly) when not set by the caller.
 	TrustedProxyHops int
+	// RateLimitMax overrides every limiter's ceiling when > 0 (0 keeps the
+	// built-in defaults). Opt-in escape hatch for the e2e suite and load
+	// tests; raising it weakens the login brute-force protection.
+	RateLimitMax int
+}
+
+// limitMax resolves a limiter ceiling, honouring the RateLimitMax override.
+func (cfg RouterConfig) limitMax(defaultMax int) int {
+	if cfg.RateLimitMax > 0 {
+		return cfg.RateLimitMax
+	}
+
+	return defaultMax
 }
 
 // NewRouter wires the public API and the static SPA handler from cfg.
@@ -87,11 +100,11 @@ func NewRouter(cfg RouterConfig) http.Handler {
 
 	hops := cfg.TrustedProxyHops
 	csrf := newCSRFMiddleware(cfg.Auth, cfg.Store, hops)
-	vmWriteLimiter := newUserRateLimiter(vmWriteRateLimitMaxRequests, vmWriteRateLimitWindow, hops, cfg.Store)
-	vmStatusLimiter := newUserRateLimiter(vmStatusRateLimitMaxRequests, vmStatusRateLimitWindow, hops, cfg.Store)
-	clusterTestLimiter := newUserRateLimiter(clusterTestRateLimitMaxRequests, clusterTestRateLimitWindow, hops, cfg.Store)
-	adminWriteLimiter := newUserRateLimiter(adminWriteRateLimitMaxRequests, adminWriteRateLimitWindow, hops, cfg.Store)
-	authWriteLimiter := newUserRateLimiter(authWriteRateLimitMaxRequests, authWriteRateLimitWindow, hops, cfg.Store)
+	vmWriteLimiter := newUserRateLimiter(cfg.limitMax(vmWriteRateLimitMaxRequests), vmWriteRateLimitWindow, hops, cfg.Store)
+	vmStatusLimiter := newUserRateLimiter(cfg.limitMax(vmStatusRateLimitMaxRequests), vmStatusRateLimitWindow, hops, cfg.Store)
+	clusterTestLimiter := newUserRateLimiter(cfg.limitMax(clusterTestRateLimitMaxRequests), clusterTestRateLimitWindow, hops, cfg.Store)
+	adminWriteLimiter := newUserRateLimiter(cfg.limitMax(adminWriteRateLimitMaxRequests), adminWriteRateLimitWindow, hops, cfg.Store)
+	authWriteLimiter := newUserRateLimiter(cfg.limitMax(authWriteRateLimitMaxRequests), authWriteRateLimitWindow, hops, cfg.Store)
 
 	// protect combines per-user rate limiting (outer) and CSRF validation (inner)
 	// for state-changing browser requests.
@@ -237,11 +250,11 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 // (per-IP rate limited) and the authenticated token/password endpoints
 // (per-user rate limited + CSRF). Extracted from NewRouter for gocyclo.
 func registerAuthRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc, authWriteLimiter *userRateLimiter, hops int) {
-	// Unauthenticated credential-check endpoints get a per-IP rate limit - 
+	// Unauthenticated credential-check endpoints get a per-IP rate limit -
 	// nothing else gates repeated guesses against them. The pre-login cluster
 	// list and OIDC trigger are also unauthenticated and disclose cluster
 	// names, so they share the same limiter to bound enumeration/abuse.
-	authLimiter := newIPRateLimiter(authRateLimitMaxRequests, authRateLimitWindow, hops, cfg.Store)
+	authLimiter := newIPRateLimiter(cfg.limitMax(authRateLimitMaxRequests), authRateLimitWindow, hops, cfg.Store)
 	mux.Handle("POST /api/v1/auth/login", authLimiter.middleware(http.HandlerFunc(cfg.Auth.Login)))
 	mux.Handle("POST /api/v1/auth/admin-login", authLimiter.middleware(http.HandlerFunc(cfg.Auth.AdminLogin)))
 	mux.HandleFunc("GET /api/v1/auth/me", cfg.Auth.Me)

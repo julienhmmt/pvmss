@@ -26,6 +26,10 @@
 	const writeEnabled = $derived(form.catalog?.cloudInitWriteEnabled ?? false);
 
 	const options = $derived([
+		// A real (selectable) empty option, not Select's disabled placeholder:
+		// the document is optional, so the user must be able to clear a
+		// previously chosen one back to "none".
+		{ value: '', label: m['vms.create.cloudinitNone']() },
 		...templates.map((template) => ({
 			value: `t:${template.id}`,
 			label: template.label,
@@ -38,7 +42,7 @@
 		}))
 	]);
 
-	const visible = $derived(writeEnabled && options.length > 0);
+	const visible = $derived(writeEnabled && templates.length + files.length > 0);
 </script>
 
 {#if !writeEnabled}
@@ -51,7 +55,6 @@
 				{describedBy}
 				{invalid}
 				bind:value={form.cloudInitDocumentValue}
-				placeholder={m['vms.create.cloudinitNone']()}
 				{options}
 			/>
 		{/snippet}

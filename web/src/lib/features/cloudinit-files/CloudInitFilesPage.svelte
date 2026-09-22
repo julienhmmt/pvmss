@@ -109,7 +109,7 @@
 						<td class="text-xs text-muted-foreground" data-label={m['cloudinit.files.updated']()}>{file.updatedAt}</td>
 						<td data-label={m['common.actions']()}>
 							<div class="flex gap-2">
-								<Button variant="ghost" size="sm" label={m['admin.cloudinit.editLabel']({ label: file.label })} onclick={() => void openEdit(file)}>{m['cloudinit.files.edit']()}</Button>
+								<Button variant="secondary" size="sm" label={m['admin.cloudinit.editLabel']({ label: file.label })} onclick={() => void openEdit(file)}>{m['cloudinit.files.edit']()}</Button>
 								<Button variant="destructive" size="sm" label={m['admin.cloudinit.deleteLabel']({ label: file.label })} onclick={() => (pendingDelete = file)}>{m['cloudinit.files.delete']()}</Button>
 							</div>
 						</td>

@@ -393,6 +393,47 @@ func TestLoad(t *testing.T) {
 			},
 		},
 		{
+			name: "explicit rate limit max",
+			env: map[string]string{
+				envPort:                "50001",
+				envDBPath:              testDBPath,
+				envLogLevel:            testLogLevel,
+				envLogFormat:           testLogFormat,
+				envLogOutput:           testLogOutput,
+				envClusterSource:       testCluster,
+				"PVMSS_RATE_LIMIT_MAX": "500",
+			},
+			want: config.Configuration{
+				Host:                              testHost,
+				Port:                              50001,
+				DBPath:                            testDBPath,
+				LogLevel:                          testLogLevel,
+				LogFormat:                         testLogFormat,
+				LogOutput:                         testLogOutput,
+				ClusterSource:                     testCluster,
+				InventoryRefreshInterval:          30 * time.Second,
+				InventoryManualRefreshMinInterval: 5 * time.Second,
+				InventoryRefreshTimeout:           15 * time.Second,
+				MaxListPageSize:                   100,
+				TrustedProxyHops:                  1,
+				RateLimitMax:                      500,
+				SSHPort:                           22,
+			},
+		},
+		{
+			name: "negative rate limit max rejected",
+			env: map[string]string{
+				envPort:                "50001",
+				envDBPath:              testDBPath,
+				envLogLevel:            testLogLevel,
+				envLogFormat:           testLogFormat,
+				envLogOutput:           testLogOutput,
+				envClusterSource:       testCluster,
+				"PVMSS_RATE_LIMIT_MAX": "-1",
+			},
+			wantErr: "PVMSS_RATE_LIMIT_MAX must be >= 0",
+		},
+		{
 			name: "trusted proxy hops zero disables xff",
 			env: map[string]string{
 				envPort:                    "50001",
@@ -474,6 +515,7 @@ func runLoadCase(t *testing.T, env map[string]string, want config.Configuration,
 	t.Setenv("PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL", env["PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL"])
 	t.Setenv("PVMSS_INVENTORY_REFRESH_TIMEOUT", env["PVMSS_INVENTORY_REFRESH_TIMEOUT"])
 	t.Setenv("PVMSS_TRUSTED_PROXY_HOPS", env["PVMSS_TRUSTED_PROXY_HOPS"])
+	t.Setenv("PVMSS_RATE_LIMIT_MAX", env["PVMSS_RATE_LIMIT_MAX"])
 	t.Setenv("PROXMOX_URL", env["PROXMOX_URL"])
 	t.Setenv("PROXMOX_API_TOKEN_NAME", env["PROXMOX_API_TOKEN_NAME"])
 	t.Setenv("PROXMOX_API_TOKEN_VALUE", env["PROXMOX_API_TOKEN_VALUE"])

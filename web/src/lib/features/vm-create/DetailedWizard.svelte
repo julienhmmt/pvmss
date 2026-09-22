@@ -52,22 +52,34 @@
 		<Skeleton class="h-10 w-full" />
 	</div>
 {:else}
-	<ol role="tablist" aria-label={m['vms.create.stepsAriaLabel']()} class="mb-6 flex flex-wrap gap-2">
+	<!-- Progress stepper, not a second tab row: numbered circles joined by a
+	     connector, the current step accented, completed steps checked. The
+	     role stays `tab` so the step controls keep their existing accessible
+	     name and keyboard behaviour. -->
+	<ol role="tablist" aria-label={m['vms.create.stepsAriaLabel']()} class="mb-6 flex flex-wrap items-center gap-1">
 		{#each STEPS as step, i (step.id)}
-			<li>
+			{@const state = current === step.id ? 'current' : stepIndex(current) > i ? 'done' : 'todo'}
+			<li class="flex items-center gap-1">
 				<button
 					role="tab"
 					aria-selected={current === step.id}
-					class="inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors pv-focus {current === step.id
-						? 'bg-primary-solid text-primary-foreground'
-						: stepIndex(current) > i
-							? 'bg-success-soft text-success-soft-foreground'
-							: 'bg-muted text-muted-foreground hover:bg-muted/80'}"
+					aria-current={current === step.id ? 'step' : undefined}
+					class="pv-focus inline-flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium transition-colors {state === 'current'
+						? 'text-foreground'
+						: state === 'done'
+							? 'text-success-soft-foreground'
+							: 'text-muted-foreground hover:text-foreground'}"
 					onclick={() => (current = step.id)}
 				>
-					<span class="flex h-5 w-5 items-center justify-center rounded-full text-xs {current === step.id ? 'bg-primary-foreground/20' : stepIndex(current) > i ? 'bg-success-soft-foreground/15' : 'bg-foreground/10'}">
-						{#if stepIndex(current) > i}
-							<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="h-3 w-3" aria-hidden="true">
+					<span
+						class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors {state === 'current'
+							? 'border-primary bg-primary-solid text-primary-foreground'
+							: state === 'done'
+								? 'border-success-soft-foreground/30 bg-success-soft text-success-soft-foreground'
+								: 'border-border bg-muted text-muted-foreground'}"
+					>
+						{#if state === 'done'}
+							<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5" aria-hidden="true">
 								<path d="M4 10l4 4 8-8" />
 							</svg>
 						{:else}
@@ -76,6 +88,9 @@
 					</span>
 					{step.label()}
 				</button>
+				{#if i < STEPS.length - 1}
+					<span class="h-px w-5 shrink-0 bg-border" aria-hidden="true"></span>
+				{/if}
 			</li>
 		{/each}
 	</ol>

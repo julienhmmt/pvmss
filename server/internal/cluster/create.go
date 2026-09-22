@@ -60,6 +60,8 @@ const biosOVMF = "ovmf"
 // BIOS defaults to "seabios"; Machine defaults to "i440fx". When BIOS is
 // "ovmf", the create path forces Machine to "q35" (pegaprox rule: UEFI
 // requires q35) and emits efidisk0 (+ tpmstate0 when TPM is set).
+// Secure Boot is deliberately not a field: see setUEFIFormKeys for why the
+// EFI disk is always provisioned with an empty key store.
 type VMSpec struct {
 	VMID     int
 	Node     string
@@ -78,7 +80,6 @@ type VMSpec struct {
 	BIOS             string
 	Machine          string
 	TPM              bool
-	SecureBoot       bool
 	StartAfterCreate bool
 }
 

@@ -45,6 +45,10 @@ func Load() (Configuration, error) {
 		return cfg, err
 	}
 
+	if err := loadRateLimitSettings(&cfg); err != nil {
+		return cfg, err
+	}
+
 	if err := loadSSHSettings(&cfg); err != nil {
 		return cfg, err
 	}
@@ -222,6 +226,24 @@ func loadProxySettings(cfg *Configuration) error {
 	}
 
 	cfg.TrustedProxyHops = hops
+
+	return nil
+}
+
+// loadRateLimitSettings reads the optional rate-limit ceiling override. 0 (the
+// default) keeps each limiter's built-in ceiling; a positive value raises them
+// all, which is what the e2e suite needs to drive many logins in one run.
+func loadRateLimitSettings(cfg *Configuration) error {
+	max, err := loadInt("PVMSS_RATE_LIMIT_MAX", 0)
+	if err != nil {
+		return err
+	}
+
+	if max < 0 {
+		return fmt.Errorf("PVMSS_RATE_LIMIT_MAX must be >= 0, got %d", max)
+	}
+
+	cfg.RateLimitMax = max
 
 	return nil
 }

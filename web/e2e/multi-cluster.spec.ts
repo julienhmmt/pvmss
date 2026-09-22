@@ -20,8 +20,8 @@ test.describe('T15 multi-cluster', () => {
 		await page.goto('/vms?pageSize=100');
 		await expect(vmRows(page).first()).toBeVisible();
 		expect(await vmRows(page).count()).toBeGreaterThanOrEqual(12);
-		await expect(vmRows(page).locator('td:first-child').filter({ hasText: 'default' })).toHaveCount(7);
-		await expect(vmRows(page).locator('td:first-child').filter({ hasText: 'secondary' })).toHaveCount(5);
+		await expect(vmRows(page).locator('[data-testid="vm-row-cluster"]').filter({ hasText: 'default' })).toHaveCount(7);
+		await expect(vmRows(page).locator('[data-testid="vm-row-cluster"]').filter({ hasText: 'secondary' })).toHaveCount(5);
 
 		const secondaryVM = page.locator('tr', { hasText: 'secondary-web-02' });
 		await expect(secondaryVM).toBeVisible();
