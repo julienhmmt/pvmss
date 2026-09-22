@@ -3,6 +3,7 @@ package cluster
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -328,13 +329,15 @@ func TestFindSnippetStorage_ConfiguredMustBeOnNode(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
+			dir := t.TempDir()
 			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
 				mux.HandleFunc("GET /api2/json/nodes/node01/storage", func(w http.ResponseWriter, _ *http.Request) {
 					writeJSONFixture(t, w, `{"data":`+tc.rows+`}`)
 				})
+				mux.HandleFunc("GET /api2/json/nodes/node01/storage/{storage}/content", snippetDirContentHandler(t, dir))
 			})
 
-			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal, SnippetDir: "/snippets", SnippetStorage: tc.storage}
+			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal, SnippetDir: dir, SnippetStorage: tc.storage}
 
 			got, err := p.FindSnippetStorage(context.Background(), testNodeName)
 			if tc.wantErr != nil {
@@ -353,6 +356,58 @@ func TestFindSnippetStorage_ConfiguredMustBeOnNode(t *testing.T) {
 				t.Errorf("storage = %q, want %q", got, tc.want)
 			}
 		})
+	}
+}
+
+// snippetDirContentHandler serves /storage/{storage}/content?content=snippets
+// from the files actually present in dir - the stand-in for a snippet
+// directory that IS the storage's snippets/ directory.
+func snippetDirContentHandler(t *testing.T, dir string) http.HandlerFunc {
+	t.Helper()
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			t.Errorf("read snippet dir: %v", err)
+		}
+
+		rows := make([]string, 0, len(entries))
+		for _, entry := range entries {
+			rows = append(rows, fmt.Sprintf(`{"volid":"%s:snippets/%s","size":1}`, r.PathValue("storage"), entry.Name()))
+		}
+
+		writeJSONFixture(t, w, `{"data":[`+strings.Join(rows, ",")+`]}`)
+	}
+}
+
+// TestFindSnippetStorage_RejectsDirectoryProxmoxDoesNotSee is the
+// regression for "volume 'local:snippets/pvmss-N.yml' does not exist": the
+// storage is active, the directory is writable, but it is NOT the storage's
+// snippets/ dir (Proxmox lists nothing). FindSnippetStorage must refuse -
+// ErrSnippetTargetMismatch, which is also ErrSnippetWriteUnavailable - and
+// leave no probe behind.
+func TestFindSnippetStorage_RejectsDirectoryProxmoxDoesNotSee(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/nodes/node01/storage", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"storage":"shared","active":1,"shared":1}]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/node01/storage/{storage}/content", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[]}`)
+		})
+	})
+
+	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal, SnippetDir: dir, SnippetStorage: testSnippetStorage}
+
+	_, err := p.FindSnippetStorage(context.Background(), testNodeName)
+	if !errors.Is(err, ErrSnippetTargetMismatch) || !errors.Is(err, ErrSnippetWriteUnavailable) {
+		t.Fatalf("error = %v, want ErrSnippetTargetMismatch wrapping ErrSnippetWriteUnavailable", err)
+	}
+
+	if entries, _ := os.ReadDir(dir); len(entries) != 0 {
+		t.Errorf("probe left behind: %v", entries)
 	}
 }
 
