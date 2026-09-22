@@ -48,14 +48,16 @@
 				<p class="text-sm text-muted-foreground">{m['vms.create.modePrompt']()}</p>
 			</div>
 
-			<div class="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-card">
-				<ClusterSelector
-					options={form.clusterOptions}
-					value={form.cluster}
-					onChange={(value) => form.setCluster(value)}
-					id="vm-create-cluster"
-				/>
-			</div>
+			{#if form.clusterOptions.length > 1}
+				<div class="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-card">
+					<ClusterSelector
+						options={form.clusterOptions}
+						value={form.cluster}
+						onChange={(value) => form.setCluster(value)}
+						id="vm-create-cluster"
+					/>
+				</div>
+			{/if}
 
 			<ModeChooser onSelect={chooseMode} />
 		</div>
