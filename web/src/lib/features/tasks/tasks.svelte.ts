@@ -107,7 +107,7 @@ export class TaskTrayStore {
 		this.toast = null;
 	}
 
-	/** Shows a toast unrelated to a task (e.g. the draft-restored notice, V10). */
+	/** Shows a toast unrelated to a task. */
 	notify(toast: TaskToast): void {
 		this.toast = toast;
 	}

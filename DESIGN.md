@@ -468,8 +468,9 @@ and the controls):
      SSH public key (select). Each has its own hint.
    - **Access note** - a top-bordered note: "Use the computer that holds your
      SSH private key."
-4. **Draft note** - below the last section: "Your choices stay while you
-   browse." In production, this is the draft-auto-save affordance.
+4. **Retention note** - below the last section: "Your choices stay while you
+   browse." In production the entered values live in the create store for the
+   session.
 
 **Summary rail** (sticky, `creation-summary`):
 
@@ -499,7 +500,7 @@ and the controls):
 - Duplicate-name check against existing non-failed machines.
 - Errors appear only after a submit attempt; the offending field receives
   focus.
-- Entered values are preserved across recoverable errors (draft retention).
+- Entered values are preserved across recoverable errors.
 
 ### 6.3 Machine detail (`detail`)
 
@@ -641,9 +642,8 @@ address` is truthy.
 - **Graceful shutdown, not force-off.** The shutdown action opens an inline
   confirmation that names the behavior ("graceful shutdown, not a forced
   power-off").
-- **Draft retention.** Entered form values survive recoverable errors and
-  variant switches; reloading clears the draft (production uses real
-  draft-auto-save).
+- **Value retention.** Entered form values survive recoverable errors and
+  variant switches; a reload starts over.
 
 ### Feedback surfaces
 
@@ -918,8 +918,8 @@ migrating into `web/`:
   `Select`, `FormField`, `FormSection`, `Toolbar`, `Pill`, `Dialog`,
   `EmptyState`, `TableSkeleton`, `Sidebar`, `ThemeToggle`, `LanguageSwitcher`.
   Do not re-implement them from the prototype's hand-rolled classes.
-- **Reuse production state** - the existing `vm-create/draft.svelte.ts`
-  (draft auto-save), `vms/list.svelte.ts`, `vms/detail.svelte.ts`, and
+- **Reuse production state** - the existing `vm-create/create.svelte.ts`,
+  `vms/list.svelte.ts`, `vms/detail.svelte.ts`, and
   `tasks/` stores. The prototype's `PrototypeState` is a mock; the real state
   model already exists.
 - **Use Paraglide** (`web/messages/` + `web/project.inlang/`, output in

@@ -524,3 +524,78 @@ func TestCreate_Image_NoWriteTarget_SkipsBaseline(t *testing.T) {
 		t.Error("start not recorded: image VM must still start without a write target")
 	}
 }
+
+// TestCreate_Image_InvisibleSnippet_NeverAttached is the regression for
+// "TASK ERROR: volume 'local:snippets/pvmss-N.yml' does not exist": the
+// baseline write succeeds on the PVMSS side but Proxmox does not list the
+// file (wrong mount). The snippet must NOT be attached - a cicustom to a
+// missing volume makes every start fail - and the VM must still start on
+// its native cloud-init keys.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_Image_InvisibleSnippet_NeverAttached(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	cluster.SetFakeSnippetVisibility(false)
+	t.Cleanup(func() { cluster.SetFakeSnippetVisibility(true) })
+
+	req := imageRequest()
+	req.StartAfterCreate = true
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if result.CloudInitPushError != "" {
+		t.Errorf("result.CloudInitPushError = %q, want empty (no user document)", result.CloudInitPushError)
+	}
+
+	if result.BaselineState != vm.BaselineStateNotDelivered || result.BaselineError == "" {
+		t.Errorf("baseline = %q/%q, want not_delivered with a reason", result.BaselineState, result.BaselineError)
+	}
+
+	if _, attached := snippetPushFor(result.VMID); attached {
+		t.Error("invisible snippet was attached - the VM would fail to start")
+	}
+
+	if index := fakeCallIndexes(result.VMID, "start"); index["start"] == -1 {
+		t.Error("start not recorded: the VM must boot on its native keys")
+	}
+}
+
+// TestCreate_Image_InvisibleSnippet_WithUserDocument_ReportsFailure - when
+// the user explicitly picked a document that cannot be delivered, the VM
+// stays stopped and the failure reaches the UI (CloudInitPushError), like
+// the ISO and template paths.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestCreate_Image_InvisibleSnippet_WithUserDocument_ReportsFailure(t *testing.T) {
+	fixture := newCreateFixture(t)
+
+	cluster.SetFakeSnippetVisibility(false)
+	t.Cleanup(func() { cluster.SetFakeSnippetVisibility(true) })
+
+	fileID := createTestUserFile(t, fixture.store, cluster.FakeUserAlice, "dev-box", "#cloud-config\nruncmd:\n  - echo hello\n")
+
+	req := imageRequest()
+	req.CloudInitFileID = fileID
+	req.StartAfterCreate = true
+
+	result, err := fixture.create(t, aliceIdentity(), req)
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	if result.CloudInitPushError == "" {
+		t.Error("CloudInitPushError empty: the user's document was silently dropped")
+	}
+
+	if _, attached := snippetPushFor(result.VMID); attached {
+		t.Error("invisible snippet was attached")
+	}
+
+	if index := fakeCallIndexes(result.VMID, "start"); index["start"] != -1 {
+		t.Error("VM started without the document the user asked for")
+	}
+}

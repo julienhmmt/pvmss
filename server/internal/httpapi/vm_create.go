@@ -35,6 +35,34 @@ type VMCreate struct {
 	policy           *policy.Policy
 	log              *slog.Logger
 	trustedProxyHops int
+	// refreshers, when set, rebuilds the target cluster's inventory right
+	// after a successful create so the VM is in /api/v1/vms by the time
+	// the wizard navigates to the list - instead of depending on the task
+	// tray's poll landing after the list load.
+	refreshers ClusterRefresherResolver
+}
+
+// SetInventoryRefreshers wires the post-create inventory refresh.
+func (h *VMCreate) SetInventoryRefreshers(refreshers ClusterRefresherResolver) {
+	h.refreshers = refreshers
+}
+
+// refreshAfterCreate rebuilds clusterName's projection. Every create path
+// has already waited for its Proxmox task, so the VM exists now.
+// Best-effort: a failure only delays visibility to the next cycle.
+func (h *VMCreate) refreshAfterCreate(ctx context.Context, clusterName string) {
+	if h.refreshers == nil {
+		return
+	}
+
+	refresher, err := h.refreshers.RefresherFor(clusterName)
+	if err != nil {
+		return
+	}
+
+	if _, err := refresher.Refresh(ctx); err != nil {
+		h.log.Warn("post-create inventory refresh failed", "component", "httpapi", "cluster", clusterName, "error", err)
+	}
 }
 
 // NewVMCreate creates the handler. The creator is the cluster client's
@@ -284,6 +312,8 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.writeCreateFailure(w, err)
 		return
 	}
+
+	h.refreshAfterCreate(r.Context(), target.clusterName)
 
 	h.writeCreateJSON(w, http.StatusAccepted, createResultDTO{
 		Cluster:             result.Cluster,

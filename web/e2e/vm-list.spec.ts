@@ -16,7 +16,7 @@ function vmRows(page: Page) {
 }
 
 async function rowNames(page: Page): Promise<string[]> {
-	const names = await vmRows(page).locator('td:nth-child(3)').allTextContents();
+	const names = await vmRows(page).locator('[data-testid="vm-row-link"]').allTextContents();
 	return names.map((name) => name.trim());
 }
 
@@ -91,7 +91,7 @@ test.describe('T04 VM list', () => {
 		const idHeader = page.locator('[data-testid="sort-vmid"]');
 		// Auto-retrying text assertions: the row order updates only after the
 		// sorted fetch resolves, so never assert immediately after the click.
-		const firstRowName = vmRows(page).first().locator('td:nth-child(3)');
+		const firstRowName = vmRows(page).first().locator('[data-testid="vm-row-link"]');
 		await expect(vmRows(page)).toHaveCount(7);
 
 		// Default sort is name ascending: db-01 first.
@@ -163,6 +163,21 @@ test.describe('T04 VM list', () => {
 		await page.goto('/vms?cluster=default&search=no-such-vm');
 		await expect(page.locator('[data-testid="vm-empty-match"]')).toBeVisible();
 		await expect(page.locator('[data-testid="vm-empty-owned"]')).toBeHidden();
+	});
+
+	test('the whole row opens the VM detail, not just the name link', async ({ page }) => {
+		await signInAlice(page.request);
+		await page.goto('/vms?cluster=default');
+
+		// The name cell is the row's identity, but the stretched link covers the
+		// whole row: a click on the Memory cell must still navigate. The overlay
+		// sits on top of the cell, so use a real pointer click at its centre.
+		const memory = vmRows(page).first().locator('td').nth(6);
+		const box = await memory.boundingBox();
+		if (box === null) throw new Error('memory cell has no box');
+		await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+
+		await expect(page).toHaveURL(/\/vms\/default\/\d+$/);
 	});
 
 	test('console icon opens the noVNC console in a new tab', async ({ page, context }) => {
