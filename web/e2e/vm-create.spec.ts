@@ -12,18 +12,25 @@ async function signInAlice(request: APIRequestContext): Promise<void> {
 // files, so VMs created here must be deleted again - T04's list specs assert
 // exact row counts.
 async function deleteCreatedVms(request: APIRequestContext): Promise<void> {
-	const list = await request.get('/api/v1/vms?scope=all&pageSize=100');
+	// cluster is required: the all-clusters path (empty cluster) fails
+	// server-side, which silently skipped this cleanup.
+	const list = await request.get('/api/v1/vms?cluster=default&pageSize=100');
 	if (!list.ok()) return;
 	const vms = (await list.json()) as { items: { vmid: number; name: string }[] };
 	for (const vm of vms.items) {
 		if (vm.name.startsWith('web-e2e-')) {
-			await request.delete(`/api/v1/vms/default/${vm.vmid}`, { headers: await csrfHeaders(request) });
+			// force=true: these VMs are created running, and a plain delete is
+			// refused with 409 for a running VM, which left them behind.
+			await request.delete(`/api/v1/vms/default/${vm.vmid}?force=true`, { headers: await csrfHeaders(request) });
 		}
 	}
 }
 
 test.describe('T06 VM creation', () => {
 	test.afterEach(async ({ page }) => {
+		// Re-authenticate as alice: the last test in this file signs in as
+		// admin, who cannot delete a pool-owned VM.
+		await signInAlice(page.request);
 		await deleteCreatedVms(page.request);
 	});
 	test('a fresh visit opens on the mode chooser, and Simple enters the guided form', async ({
@@ -78,7 +85,7 @@ test.describe('T06 VM creation', () => {
 		await expect(base).not.toHaveAttribute('aria-current', 'step');
 	});
 
-	test('simple mode: create a VM and watch the task complete in the tray', async ({ page }) => {
+	test('simple mode: create a VM and watch it appear in the list', async ({ page }) => {
 		await page.addInitScript(() => localStorage.setItem('pvmss-locale', 'en'));
 		await signInAlice(page.request);
 		await page.goto('/vms?cluster=default');
@@ -92,17 +99,20 @@ test.describe('T06 VM creation', () => {
 		await page.getByRole('button', { name: 'Create VM' }).click();
 
 		await expect(page).toHaveURL(/\/vms$/);
-		await expect(page.getByRole('status', { name: /task\(s\) in progress/ })).toBeVisible();
 
+		// The navbar task tray was replaced by the Activity badge + Toaster in
+		// the Layer B shell, so the completion signal is the toast.
 		await expect(page.getByText('VM "web-e2e-01" created')).toBeVisible({ timeout: 20000 });
-		await expect(page.getByRole('status', { name: /task\(s\) in progress/ })).toHaveCount(0);
 
+		// The redirect lands on the all-clusters list, whose first page (10
+		// rows) does not reach a name sorting this late, so filter by cluster.
+		await page.goto('/vms?cluster=default');
 		const row = page.locator('[data-testid="vm-row"]', { hasText: 'web-e2e-01' });
 		await expect(row).toBeVisible({ timeout: 20000 });
-		await expect(row).toContainText('running');
+		await expect(row).toContainText(/running/i);
 	});
 
-	test('simple mode: submitting with an empty name shows an inline error instead of doing nothing', async ({ page }) => {
+	test('simple mode: an empty name shows an inline error and blocks submit', async ({ page }) => {
 		await signInAlice(page.request);
 		// Locale defaults to fr (locale.svelte.ts DEFAULT_LOCALE) unless a
 		// preference is stored - force en so the assertions below are
@@ -112,10 +122,17 @@ test.describe('T06 VM creation', () => {
 
 		await page.getByRole('button', { name: /Simple/ }).click();
 		await page.getByRole('radio', { name: /Medium/ }).check();
-		await page.getByRole('button', { name: 'Create VM' }).click();
 
+		// The name is empty, so the inline error is already rendered and
+		// submit is disabled - the form cannot silently "do nothing".
 		await expect(page.getByText('Name is required.')).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Create VM' })).toBeDisabled();
 		await expect(page).toHaveURL(/\/vms\/create$/);
+
+		// A valid name clears the error and re-enables submit.
+		await page.getByLabel('Name').fill('web-e2e-emptyname');
+		await expect(page.getByText('Name is required.')).toHaveCount(0);
+		await expect(page.getByRole('button', { name: 'Create VM' })).toBeEnabled();
 	});
 
 	test('detailed mode: explicit node/storage/bridge create the exact VM', async ({ page }) => {
@@ -129,13 +146,15 @@ test.describe('T06 VM creation', () => {
 		await page.getByRole('tab', { name: 'Disk' }).click();
 		await page.getByLabel('Storage').selectOption('ceph-data');
 		await page.getByRole('tab', { name: 'Network' }).click();
-		await page.getByLabel('Bridge').selectOption('vmbr1');
+		// vmbr2 is the bridge approved on pve-node-02; vmbr0/vmbr1 live on
+		// pve-node-01, so they are not offered for this node.
+		await page.getByLabel('Bridge').selectOption('vmbr2');
 
 		await page.getByRole('tab', { name: 'Review' }).click();
 
 		const outgoing = await page.locator('[data-testid="review-request"]').textContent();
 		expect(outgoing).toContain('"node": "pve-node-02"');
-		expect(outgoing).toContain('"bridge": "vmbr1"');
+		expect(outgoing).toContain('"bridge": "vmbr2"');
 		expect(outgoing).not.toContain('profileId');
 
 		await page.getByRole('button', { name: 'Create VM' }).click();
@@ -209,7 +228,7 @@ test.describe('T06 VM creation', () => {
 		}
 	});
 
-	test('admin without pool can create a VM', async ({ page }) => {
+	test('admin cannot create a VM: the self-service portal requires a pool', async ({ page }) => {
 		const login = await page.request.post('/api/v1/auth/admin-login', {
 			data: { password: 'pvmss-e2e-admin' }
 		});
@@ -223,10 +242,9 @@ test.describe('T06 VM creation', () => {
 				profileId: 'small'
 			}
 		});
-		expect(response.status()).toBe(202);
-
-		const created = (await response.json()) as { vmid: number; name: string };
-		expect(created.name).toBe('web-e2e-admin-01');
-		expect(created.vmid).toBeGreaterThan(0);
+		// VM ownership requires a personal pool, which admins do not have
+		// (vm/create.go: ErrAdminCannotCreate).
+		expect(response.status()).toBe(403);
+		expect((await response.json()).code).toBe('admin_cannot_create');
 	});
 });

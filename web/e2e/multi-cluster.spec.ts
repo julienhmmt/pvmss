@@ -20,8 +20,10 @@ test.describe('T15 multi-cluster', () => {
 		await page.goto('/vms?pageSize=100');
 		await expect(vmRows(page).first()).toBeVisible();
 		expect(await vmRows(page).count()).toBeGreaterThanOrEqual(12);
-		await expect(vmRows(page).locator('[data-testid="vm-row-cluster"]').filter({ hasText: 'default' })).toHaveCount(7);
-		await expect(vmRows(page).locator('[data-testid="vm-row-cluster"]').filter({ hasText: 'secondary' })).toHaveCount(5);
+		// The per-row cluster badge shows the cluster's Proxmox display name,
+		// not the internal key ("default" -> "Demo Cluster Alpha").
+		await expect(vmRows(page).locator('[data-testid="vm-row-cluster"]').filter({ hasText: 'Demo Cluster Alpha' })).toHaveCount(7);
+		await expect(vmRows(page).locator('[data-testid="vm-row-cluster"]').filter({ hasText: 'Demo Cluster Beta' })).toHaveCount(5);
 
 		const secondaryVM = page.locator('tr', { hasText: 'secondary-web-02' });
 		await expect(secondaryVM).toBeVisible();

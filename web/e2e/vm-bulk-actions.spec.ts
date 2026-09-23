@@ -1,4 +1,5 @@
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { csrfHeaders } from './support/csrf';
 
 async function signIn(request: APIRequestContext, username: string, password: string): Promise<void> {
 	const response = await request.post('/api/v1/auth/login', {
@@ -20,6 +21,20 @@ function selectAllCheckbox(page: Page) {
 }
 
 test.describe('T17 VM bulk actions', () => {
+	// This file starts fixture VMs (web-02, sandbox-01, dev-02). Stop them again
+	// afterwards: vm-list asserts on the stopped/running counts, and the fake
+	// dataset is shared by the whole run.
+	test.afterAll(async ({ request }) => {
+		await signInAlice(request);
+		for (const vmid of [101, 114, 124]) {
+			const response = await request.post(`/api/v1/vms/default/${vmid}/actions`, {
+				headers: await csrfHeaders(request),
+				data: { action: 'stop' }
+			});
+			expect([200, 202, 409]).toContain(response.status());
+		}
+	});
+
 	// The fake cluster is shared, mutable, in-memory state across all tests in
 	// this file. Running them in parallel would race power transitions (one
 	// test starting a VM another test expects stopped). Serial execution keeps
