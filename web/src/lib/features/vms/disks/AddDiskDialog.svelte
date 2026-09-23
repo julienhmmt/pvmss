@@ -28,6 +28,16 @@
 		if (!storage || !Number.isInteger(size) || size < 1) return;
 		if (await store.addDisk(bus, storage, size)) close();
 	}
+
+	// Only the VM's own node's storages: the request carries the storage name
+	// and the server resolves it against that node, and offering every node's
+	// storages repeats names (a storage can exist on several nodes), which
+	// Select keys by value - a duplicate key throws and the dialog never renders.
+	const storageOptions = $derived(
+		(store.hardwareOptions?.storages ?? [])
+			.filter((option) => option.node === store.entity?.node)
+			.map((option) => ({ value: option.storage, label: option.storage }))
+	);
 </script>
 
 <Dialog bind:open labelledBy="add-disk-title" onClose={close}>
@@ -65,10 +75,7 @@
 					{invalid}
 					bind:value={storage}
 					placeholder={m['vms.disks.addSelectStorage']()}
-					options={(store.hardwareOptions?.storages ?? []).map((option) => ({
-						value: option.storage,
-						label: `${option.storage} · ${option.node}`
-					}))}
+					options={storageOptions}
 					required
 					data-testid="add-disk-storage"
 				/>
