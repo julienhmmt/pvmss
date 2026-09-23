@@ -107,7 +107,7 @@ func TestAdminBaseline_ReturnsGeneratedDocument(t *testing.T) {
 func TestAdminBaseline_ReportsPublication(t *testing.T) {
 	handler, authHandler, st := newAdminBaselineHandler(t)
 
-	publication, err := catalog.PublishCloudInitDocument(context.Background(), st, cluster.Fake{}, auditTestCluster, store.BaselineTemplateID, "")
+	publication, err := catalog.PublishCloudInitDocument(context.Background(), st, cluster.Fake{}, catalog.PublishRequest{Cluster: auditTestCluster, TemplateID: store.BaselineTemplateID})
 	if err != nil {
 		t.Fatalf("publish baseline: %v", err)
 	}

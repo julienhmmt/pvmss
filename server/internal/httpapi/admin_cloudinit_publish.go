@@ -26,12 +26,18 @@ type adminPublicationDTO struct {
 }
 
 func publicationDTO(p store.CloudInitPublication) adminPublicationDTO {
-	nodes := make([]adminNodePublicationDTO, len(p.Nodes))
-	for i, n := range p.Nodes {
-		nodes[i] = adminNodePublicationDTO{Node: n.Node, OK: n.OK, Error: n.Error}
+	return adminPublicationDTO{Filename: p.Filename, PublishedAt: p.PublishedAt.Format(time.RFC3339Nano), Nodes: nodePublicationDTOs(p.Nodes)}
+}
+
+// nodePublicationDTOs converts the stored per-node outcomes into their API
+// form (the only place that mapping happens).
+func nodePublicationDTOs(nodes []store.NodePublication) []adminNodePublicationDTO {
+	out := make([]adminNodePublicationDTO, len(nodes))
+	for i, n := range nodes {
+		out[i] = adminNodePublicationDTO{Node: n.Node, OK: n.OK, Error: n.Error}
 	}
 
-	return adminPublicationDTO{Filename: p.Filename, PublishedAt: p.PublishedAt.Format(time.RFC3339Nano), Nodes: nodes}
+	return out
 }
 
 // adminPublishAllDTO is the response of the resync endpoint.
@@ -67,7 +73,7 @@ func (h *AdminCatalog) publishTemplate(ctx context.Context, clusterName string, 
 		return nil, cluster.ErrSnippetWriteUnavailable.Error()
 	}
 
-	publication, err := catalog.PublishCloudInitDocument(ctx, h.store, publisher, clusterName, tmpl.ID, tmpl.Content)
+	publication, err := catalog.PublishCloudInitDocument(ctx, h.store, publisher, catalog.PublishRequest{Cluster: clusterName, TemplateID: tmpl.ID, Content: tmpl.Content})
 	if err != nil {
 		h.log.Error("publish cloud-init template failed", "component", "httpapi", "cluster", clusterName, "template", tmpl.ID, "error", err)
 

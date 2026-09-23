@@ -7,7 +7,6 @@ import (
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
-	"pvmss/server/internal/store"
 )
 
 // ErrCloudInitNotPublished - the requested cloud-init template has no
@@ -27,6 +26,15 @@ type publishedDocument struct {
 
 func (d publishedDocument) present() bool { return d.Filename != "" }
 
+// documentTarget identifies the VM a cloud-init document belongs to: the
+// (cluster, node, vmid) triple that travels together through the create
+// paths. VMID is 0 at plan time and set once the VMID is allocated.
+type documentTarget struct {
+	Cluster string
+	Node    string
+	VMID    int
+}
+
 // resolvePlanDocument resolves, before any VMID is spent, the published
 // file a new VM will use:
 //   - a requested template must be enabled, published, and listed on the
@@ -35,69 +43,77 @@ func (d publishedDocument) present() bool { return d.Filename != "" }
 //     is on the node, otherwise it boots on the native keys and skipReason
 //     says why;
 //   - the plain ISO/template path without a template needs nothing.
-func resolvePlanDocument(ctx context.Context, deps CreateDeps, clusterName string, req CreateRequest, node string) (publishedDocument, string, error) {
+func resolvePlanDocument(ctx context.Context, deps CreateDeps, target documentTarget, req CreateRequest) (publishedDocument, string, error) {
 	templateID := req.CloudInitTemplateID
-	wantsTemplate := templateID != ""
 
-	if !wantsTemplate && req.Image == nil {
+	if templateID == "" && req.Image == nil {
 		return publishedDocument{}, "", nil
 	}
 
-	// soft turns a failure into a skip for the baseline, a refusal for a
-	// template the user explicitly chose.
-	soft := func(sentinel, detail error) (publishedDocument, string, error) {
-		if wantsTemplate {
-			return publishedDocument{}, "", fmt.Errorf("%w: %w", sentinel, detail)
-		}
-
-		return publishedDocument{}, detail.Error(), nil
-	}
-
-	if wantsTemplate {
-		if _, err := catalog.FindCloudInitTemplate(ctx, deps.Store, clusterName, templateID); err != nil {
+	if templateID != "" {
+		if _, err := catalog.FindCloudInitTemplate(ctx, deps.Store, target.Cluster, templateID); err != nil {
 			return publishedDocument{}, "", fmt.Errorf("%w: cloud-init template %q is not approved for this cluster", ErrNotApproved, templateID)
 		}
 	}
 
-	if deps.Snippets == nil || deps.Pusher == nil {
-		return soft(ErrClusterCreate, errors.New("no cloud-init resolver wired"))
+	doc, err := locatePublishedDocument(ctx, deps, target, templateID)
+	if err != nil {
+		// A chosen template is refused; the baseline (image VM, no template)
+		// degrades to a skip reason and the VM boots on its native keys.
+		if templateID != "" {
+			return publishedDocument{}, "", err
+		}
+
+		return publishedDocument{}, err.Error(), nil
 	}
 
-	storage, err := deps.Snippets.FindSnippetStorage(ctx, node)
+	return doc, "", nil
+}
+
+// locatePublishedDocument resolves the published file a VM will use and
+// proves it is on the VM's node. A non-nil error is the reason nothing can
+// be attached: a refusal for a chosen template, a skip reason for the
+// baseline.
+func locatePublishedDocument(ctx context.Context, deps CreateDeps, target documentTarget, templateID string) (publishedDocument, error) {
+	if deps.Snippets == nil || deps.Pusher == nil {
+		return publishedDocument{}, fmt.Errorf("%w: no cloud-init resolver wired", ErrClusterCreate)
+	}
+
+	storage, err := deps.Snippets.FindSnippetStorage(ctx, target.Node)
 	if err != nil {
 		if errors.Is(err, cluster.ErrSnippetWriteUnavailable) {
-			return soft(ErrCloudInitWriteUnavailable, err)
+			return publishedDocument{}, fmt.Errorf("%w: %w", ErrCloudInitWriteUnavailable, err)
 		}
 
-		return soft(ErrNoSnippetStorage, fmt.Errorf("%s: enable the snippets content type of the cluster's snippet storage on this node (%w)", node, err))
+		return publishedDocument{}, fmt.Errorf("%w: %s: enable the snippets content type of the cluster's snippet storage on this node (%w)", ErrNoSnippetStorage, target.Node, err)
 	}
 
-	filename, err := catalog.PublishedFile(ctx, deps.Store, clusterName, templateID)
+	filename, err := catalog.PublishedFile(ctx, deps.Store, target.Cluster, templateID)
 	if err != nil {
 		if errors.Is(err, catalog.ErrCloudInitTemplateNotPublished) {
-			return soft(ErrCloudInitNotPublished, errors.New("the document has never been published - publish it in Admin > Cloud-init templates"))
+			return publishedDocument{}, fmt.Errorf("%w: the document has never been published - publish it in Admin > Cloud-init templates", ErrCloudInitNotPublished)
 		}
 
-		return publishedDocument{}, "", err
+		return publishedDocument{}, err
 	}
 
-	present, err := deps.Pusher.HasSnippet(ctx, node, storage, filename)
+	present, err := deps.Pusher.HasSnippet(ctx, target.Node, storage, filename)
 	if err != nil {
-		return soft(ErrClusterCreate, fmt.Errorf("list %s snippets on %s: %w", storage, node, err))
+		return publishedDocument{}, fmt.Errorf("%w: list %s snippets on %s: %w", ErrClusterCreate, storage, target.Node, err)
 	}
 
 	if !present {
-		return soft(ErrCloudInitNotPublished, fmt.Errorf("%s:snippets/%s is not on node %s - republish in Admin > Cloud-init templates", storage, filename, node))
+		return publishedDocument{}, fmt.Errorf("%w: %s:snippets/%s is not on node %s - republish in Admin > Cloud-init templates", ErrCloudInitNotPublished, storage, filename, target.Node)
 	}
 
-	return publishedDocument{TemplateID: templateID, Storage: storage, Filename: filename}, "", nil
+	return publishedDocument{TemplateID: templateID, Storage: storage, Filename: filename}, nil
 }
 
 // attachPublishedDocument points the VM's cicustom (vendor-data) at the
 // published file and records which file the VM uses. The file is shared:
 // nothing is written here.
-func attachPublishedDocument(ctx context.Context, deps CreateDeps, actor auth.Identity, clusterName, node string, vmid int, doc publishedDocument) error {
-	if err := deps.Pusher.AttachCloudInitSnippet(ctx, node, doc.Storage, doc.Filename, vmid); err != nil {
+func attachPublishedDocument(ctx context.Context, deps CreateDeps, actor auth.Identity, target documentTarget, doc publishedDocument) error {
+	if err := deps.Pusher.AttachCloudInitSnippet(ctx, target.Node, doc.Storage, doc.Filename, target.VMID); err != nil {
 		return fmt.Errorf("attach cloud-init document: %w", err)
 	}
 
@@ -105,12 +121,7 @@ func attachPublishedDocument(ctx context.Context, deps CreateDeps, actor auth.Id
 		return nil
 	}
 
-	templateID := doc.TemplateID
-	if templateID == "" {
-		templateID = store.BaselineTemplateID
-	}
-
-	if err := deps.Store.PutVMCloudInitDocument(ctx, clusterName, vmid, templateID, doc.Filename, actor.Username); err != nil {
+	if err := deps.Store.PutVMCloudInitDocument(ctx, target.Cluster, target.VMID, catalog.DocumentKey(doc.TemplateID), doc.Filename, actor.Username); err != nil {
 		return fmt.Errorf("record cloud-init document: %w", err)
 	}
 
@@ -122,15 +133,15 @@ func attachPublishedDocument(ctx context.Context, deps CreateDeps, actor auth.Id
 // VM stopped: the create task already ran and cannot be undone, and booting
 // without the document would silently give the user a VM they did not ask
 // for.
-func applyCloudInitDocument(ctx context.Context, deps CreateDeps, actor auth.Identity, clusterName, node string, vmid int, doc publishedDocument, result *CreateResult) {
+func applyCloudInitDocument(ctx context.Context, deps CreateDeps, actor auth.Identity, target documentTarget, doc publishedDocument, result *CreateResult) {
 	if !doc.present() {
 		return
 	}
 
 	result.CloudInitTemplateID = doc.TemplateID
 
-	if err := attachPublishedDocument(ctx, deps, actor, clusterName, node, vmid, doc); err != nil {
-		deps.Log.Error("cloud-init document attach failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "filename", doc.Filename, "error", err)
+	if err := attachPublishedDocument(ctx, deps, actor, target, doc); err != nil {
+		deps.Log.Error("cloud-init document attach failed", "component", "vm", "cluster", target.Cluster, "vmid", target.VMID, "filename", doc.Filename, "error", err)
 		result.CloudInitPushError = err.Error()
 	}
 }

@@ -75,8 +75,13 @@ func AuthorizedKey(signer ssh.Signer) string {
 	return strings.TrimSpace(string(ssh.MarshalAuthorizedKey(signer.PublicKey())))
 }
 
-// Enabled reports whether this cluster can publish over SSH.
-func (s SnippetSSH) Enabled() bool { return s.User != "" && s.Signer != nil }
+// Enabled reports whether this cluster can publish over SSH: a user, the
+// global signer, and pinned host keys (host keys are always verified, so an
+// empty list can never connect). ScanHostKeys deliberately does not use this
+// - the admin scans before any key is pinned.
+func (s SnippetSSH) Enabled() bool {
+	return s.User != "" && s.Signer != nil && strings.TrimSpace(s.KnownHosts) != ""
+}
 
 func (s SnippetSSH) port() int {
 	if s.Port <= 0 {
@@ -114,45 +119,62 @@ func ValidateKnownHosts(text string) error {
 // honored and make the entry ignored.
 func (s SnippetSSH) hostKeyCallback() ssh.HostKeyCallback {
 	return func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-		wanted := map[string]bool{knownhosts.Normalize(hostname): true}
-		if remote != nil {
-			wanted[knownhosts.Normalize(remote.String())] = true
+		known, matched := s.matchPinnedHostKey(wantedHosts(hostname, remote), key)
+
+		switch {
+		case matched:
+			return nil
+		case known:
+			return fmt.Errorf("host key mismatch for %s (%s %s): update the cluster's pinned host keys only if the node was reinstalled", hostname, key.Type(), ssh.FingerprintSHA256(key))
+		default:
+			return fmt.Errorf("host %s is not in the cluster's pinned host keys (%s %s): scan and confirm it in Admin > Clusters", hostname, key.Type(), ssh.FingerprintSHA256(key))
+		}
+	}
+}
+
+// wantedHosts is the set of normalized addresses a node's key may match: the
+// requested hostname and, when available, the remote address.
+func wantedHosts(hostname string, remote net.Addr) map[string]bool {
+	wanted := map[string]bool{knownhosts.Normalize(hostname): true}
+	if remote != nil {
+		wanted[knownhosts.Normalize(remote.String())] = true
+	}
+
+	return wanted
+}
+
+// matchPinnedHostKey reports whether key belongs to a wanted host (known)
+// and whether it equals that host's pinned key (matched). Marker entries
+// (@revoked, @cert-authority) are ignored.
+func (s SnippetSSH) matchPinnedHostKey(wanted map[string]bool, key ssh.PublicKey) (known, matched bool) {
+	rest := []byte(s.KnownHosts)
+
+	for len(rest) > 0 {
+		marker, hosts, pub, _, next, err := ssh.ParseKnownHosts(rest)
+		if err != nil {
+			break
 		}
 
-		rest := []byte(s.KnownHosts)
-		known := false
+		rest = next
 
-		for len(rest) > 0 {
-			marker, hosts, pub, _, next, err := ssh.ParseKnownHosts(rest)
-			if err != nil {
-				break
-			}
+		if marker != "" {
+			continue
+		}
 
-			rest = next
-
-			if marker != "" {
+		for _, h := range hosts {
+			if !wanted[knownhosts.Normalize(h)] {
 				continue
 			}
 
-			for _, h := range hosts {
-				if !wanted[knownhosts.Normalize(h)] {
-					continue
-				}
+			known = true
 
-				known = true
-
-				if bytes.Equal(pub.Marshal(), key.Marshal()) {
-					return nil
-				}
+			if bytes.Equal(pub.Marshal(), key.Marshal()) {
+				return true, true
 			}
 		}
-
-		if known {
-			return fmt.Errorf("host key mismatch for %s (%s %s): update the cluster's pinned host keys only if the node was reinstalled", hostname, key.Type(), ssh.FingerprintSHA256(key))
-		}
-
-		return fmt.Errorf("host %s is not in the cluster's pinned host keys (%s %s): scan and confirm it in Admin > Clusters", hostname, key.Type(), ssh.FingerprintSHA256(key))
 	}
+
+	return known, false
 }
 
 // snippetNode is one cluster node PVMSS publishes to.
@@ -242,6 +264,8 @@ func (p Proxmox) sshDial(ctx context.Context, host string) (*ssh.Client, error) 
 
 // runHelper runs one helper verb on host. stdin may be nil.
 func (p Proxmox) runHelper(ctx context.Context, host, verb, filename string, stdin []byte) error {
+	// The node helper enforces the same rule; this check (with the one in
+	// PublishSnippet) keeps a caller bug from even sending a bad name.
 	if !snippetFilenameRE.MatchString(filename) {
 		return fmt.Errorf("refusing unsafe snippet filename %q", filename)
 	}
@@ -253,6 +277,13 @@ func (p Proxmox) runHelper(ctx context.Context, host, verb, filename string, std
 
 	defer func() { _ = client.Close() }()
 
+	return runHelperSession(ctx, client, host, verb, filename, stdin)
+}
+
+// runHelperSession drives one helper invocation on an open client and maps
+// the helper's stderr into the returned error. ctx cancellation closes the
+// client so a hung run cannot block shutdown.
+func runHelperSession(ctx context.Context, client *ssh.Client, host, verb, filename string, stdin []byte) error {
 	session, err := client.NewSession()
 	if err != nil {
 		return fmt.Errorf("ssh session: %w", err)

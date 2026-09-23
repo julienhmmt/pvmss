@@ -35,6 +35,11 @@ const (
 	// testSnippetStorage is the configured snippet write target's storage id
 	// in the cloud-init writer tests (goconst).
 	testSnippetStorage = "shared"
+	// testPinnedHost is a non-blank pinned host-keys line: SnippetSSH.Enabled
+	// requires one (host keys are always verified).
+	testPinnedHost = "node01 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITESTKEY"
+	// testSSHUser is the dedicated SSH publishing user the helper installs.
+	testSSHUser = "pvmss"
 )
 
 // nopReadWriteCloser wraps a bytes.Buffer so it satisfies io.ReadWriteCloser

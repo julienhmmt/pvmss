@@ -3,11 +3,14 @@ package catalog_test
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/store"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 const publishTestCluster = "default"
@@ -99,7 +102,98 @@ func TestPublishCloudInitDocument_NotConfigured(t *testing.T) {
 
 	st := openCatalogStore(t)
 
-	if _, err := catalog.PublishCloudInitDocument(context.Background(), st, nil, publishTestCluster, store.BaselineTemplateID, ""); !errors.Is(err, cluster.ErrSnippetWriteUnavailable) {
+	if _, err := catalog.PublishCloudInitDocument(context.Background(), st, nil, catalog.PublishRequest{Cluster: publishTestCluster, TemplateID: store.BaselineTemplateID}); !errors.Is(err, cluster.ErrSnippetWriteUnavailable) {
 		t.Fatalf("err = %v, want ErrSnippetWriteUnavailable", err)
+	}
+}
+
+// singleClientProvider serves one cluster name, for the Republisher test.
+type singleClientProvider struct {
+	name   string
+	client cluster.Client
+}
+
+func (p singleClientProvider) Client(name string) (cluster.Client, error) {
+	if name != p.name {
+		return nil, cluster.ErrClusterNotFound
+	}
+
+	return p.client, nil
+}
+
+func (p singleClientProvider) List() []string { return []string{p.name} }
+
+// concurrencyProbe records the peak number of simultaneous PublishSnippet
+// calls, so a test can prove republication is serialized per cluster.
+type concurrencyProbe struct {
+	cluster.Fake
+	inFlight  *atomic.Int32
+	peak      *atomic.Int32
+	publishWD time.Duration
+}
+
+func (p concurrencyProbe) PublishSnippet(ctx context.Context, filename, content string) ([]cluster.NodePublishResult, error) {
+	cur := p.inFlight.Add(1)
+	defer p.inFlight.Add(-1)
+
+	for {
+		peak := p.peak.Load()
+		if cur <= peak || p.peak.CompareAndSwap(peak, cur) {
+			break
+		}
+	}
+
+	time.Sleep(p.publishWD)
+
+	return p.Fake.PublishSnippet(ctx, filename, content)
+}
+
+//nolint:paralleltest // serial: shared fake snippet state
+func TestRepublisher_SerializesPerCluster(t *testing.T) {
+	cluster.ResetFake()
+	t.Cleanup(cluster.ResetFake)
+
+	st := openCatalogStore(t)
+	ctx := context.Background()
+
+	if _, err := catalog.CreateCloudInitTemplate(ctx, st, publishTestCluster, "Web server", "#cloud-config\npackages:\n  - nginx\n"); err != nil {
+		t.Fatalf("CreateCloudInitTemplate: %v", err)
+	}
+
+	var inFlight, peak atomic.Int32
+
+	probe := concurrencyProbe{Fake: cluster.Fake{}, inFlight: &inFlight, peak: &peak, publishWD: 20 * time.Millisecond}
+	provider := singleClientProvider{name: publishTestCluster, client: probe}
+	republisher := catalog.NewRepublisher(st, provider, slog.New(slog.DiscardHandler))
+
+	// Two overlapping resyncs for the same cluster must not interleave.
+	republisher.Republish(ctx, []string{publishTestCluster})
+	republisher.Republish(ctx, []string{publishTestCluster})
+	republisher.Wait()
+
+	if got := peak.Load(); got > 1 {
+		t.Fatalf("peak concurrent PublishSnippet = %d, want 1 (runs not serialized)", got)
+	}
+
+	publications, err := st.ListCloudInitPublications(ctx, publishTestCluster)
+	if err != nil {
+		t.Fatalf("ListCloudInitPublications: %v", err)
+	}
+
+	if len(publications) != 2 {
+		t.Fatalf("publications = %d, want baseline + template", len(publications))
+	}
+
+	for _, key := range []string{store.BaselineTemplateID, "web-server"} {
+		if _, found := publications[key]; !found {
+			t.Errorf("missing publication %q", key)
+		}
+	}
+
+	// After Wait, further calls are refused (no new runs start).
+	republisher.Republish(ctx, []string{publishTestCluster})
+
+	if got := peak.Load(); got > 1 {
+		t.Fatalf("peak after Wait = %d, want 1", got)
 	}
 }

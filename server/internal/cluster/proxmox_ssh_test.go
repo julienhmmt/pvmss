@@ -243,7 +243,7 @@ func TestProxmox_PublishSnippet_WritesAndVerifiesEveryNode(t *testing.T) {
 	p := Proxmox{
 		BaseURL: publishTestAPI(t, node.dir, true), APITokenName: testTokenName, APITokenValue: testTokenVal,
 		SnippetStorage: "shared",
-		SSH:            SnippetSSH{User: "pvmss", Port: node.port, KnownHosts: node.knownHostsLine(), Signer: signer},
+		SSH:            SnippetSSH{User: testSSHUser, Port: node.port, KnownHosts: node.knownHostsLine(), Signer: signer},
 	}
 
 	results, err := p.PublishSnippet(context.Background(), "pvmss-tpl-web-abc.yml", "#cloud-config\n")
@@ -282,7 +282,7 @@ func TestProxmox_PublishSnippet_ReportsFileProxmoxDoesNotList(t *testing.T) {
 	p := Proxmox{
 		BaseURL: publishTestAPI(t, node.dir, false), APITokenName: testTokenName, APITokenValue: testTokenVal,
 		SnippetStorage: "shared",
-		SSH:            SnippetSSH{User: "pvmss", Port: node.port, KnownHosts: node.knownHostsLine(), Signer: signer},
+		SSH:            SnippetSSH{User: testSSHUser, Port: node.port, KnownHosts: node.knownHostsLine(), Signer: signer},
 	}
 
 	results, err := p.PublishSnippet(context.Background(), "pvmss-baseline-abc.yml", "#cloud-config\n")
@@ -320,7 +320,7 @@ func TestProxmox_PublishSnippet_RefusesUnpinnedOrChangedHostKey(t *testing.T) {
 			p := Proxmox{
 				BaseURL: publishTestAPI(t, node.dir, true), APITokenName: testTokenName, APITokenValue: testTokenVal,
 				SnippetStorage: "shared",
-				SSH:            SnippetSSH{User: "pvmss", Port: node.port, KnownHosts: tc.knownHosts, Signer: signer},
+				SSH:            SnippetSSH{User: testSSHUser, Port: node.port, KnownHosts: tc.knownHosts, Signer: signer},
 			}
 
 			results, err := p.PublishSnippet(context.Background(), "pvmss-baseline-abc.yml", "#cloud-config\n")
@@ -343,9 +343,10 @@ func TestProxmox_PublishSnippet_NotConfigured(t *testing.T) {
 	t.Parallel()
 
 	for name, p := range map[string]Proxmox{
-		"no storage": {SSH: SnippetSSH{User: "pvmss", Signer: newTestSigner(t)}},
-		"no user":    {SnippetStorage: "shared", SSH: SnippetSSH{Signer: newTestSigner(t)}},
-		"no key":     {SnippetStorage: "shared", SSH: SnippetSSH{User: "pvmss"}},
+		"no storage":   {SSH: SnippetSSH{User: testSSHUser, KnownHosts: testPinnedHost, Signer: newTestSigner(t)}},
+		"no user":      {SnippetStorage: "shared", SSH: SnippetSSH{KnownHosts: testPinnedHost, Signer: newTestSigner(t)}},
+		"no key":       {SnippetStorage: "shared", SSH: SnippetSSH{User: testSSHUser, KnownHosts: testPinnedHost}},
+		"no host keys": {SnippetStorage: "shared", SSH: SnippetSSH{User: testSSHUser, Signer: newTestSigner(t)}},
 	} {
 		if _, err := p.PublishSnippet(context.Background(), "pvmss-x.yml", ""); !errors.Is(err, ErrSSHNotConfigured) {
 			t.Errorf("%s: err = %v, want ErrSSHNotConfigured", name, err)
@@ -356,7 +357,7 @@ func TestProxmox_PublishSnippet_NotConfigured(t *testing.T) {
 func TestProxmox_PublishSnippet_RejectsUnsafeFilename(t *testing.T) {
 	t.Parallel()
 
-	p := Proxmox{SnippetStorage: "shared", SSH: SnippetSSH{User: "pvmss", Signer: newTestSigner(t)}}
+	p := Proxmox{SnippetStorage: "shared", SSH: SnippetSSH{User: testSSHUser, KnownHosts: testPinnedHost, Signer: newTestSigner(t)}}
 
 	for _, name := range []string{"../etc/passwd", "pvmss-a.yml;rm -rf /", "evil.yml", "pvmss-a b.yml"} {
 		if _, err := p.PublishSnippet(context.Background(), name, ""); err == nil || errors.Is(err, ErrSSHNotConfigured) {

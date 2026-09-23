@@ -562,9 +562,10 @@ func TestAdminClusters_SnippetSettingsValidation(t *testing.T) {
 		t.Fatalf("updated cluster = %+v, want the settings echoed", updated)
 	}
 
-	// No PVMSS_SSH_KEY_FILE in the fixture: publishing stays off.
-	if updated.CloudInitWriteEnabled || updated.SSHPublicKey != "" {
-		t.Errorf("cloudInitWriteEnabled=%v key=%q without a key file, want off", updated.CloudInitWriteEnabled, updated.SSHPublicKey)
+	// No PVMSS_SSH_KEY_FILE in the fixture: publishing stays off, and the
+	// status names the missing key.
+	if updated.CloudInitWriteEnabled || updated.SSHPublicKey != "" || updated.PublishingStatus != "no_ssh_key" {
+		t.Errorf("without a key: enabled=%v key=%q status=%q, want off/no_ssh_key", updated.CloudInitWriteEnabled, updated.SSHPublicKey, updated.PublishingStatus)
 	}
 
 	fixture.handler.SetSSHPublicKey("ssh-ed25519 AAAA pvmss")
@@ -574,8 +575,8 @@ func TestAdminClusters_SnippetSettingsValidation(t *testing.T) {
 		t.Fatalf("decode updated: %v", err)
 	}
 
-	if !updated.CloudInitWriteEnabled || updated.SSHPublicKey == "" {
-		t.Errorf("with a key: cloudInitWriteEnabled=%v key=%q, want on", updated.CloudInitWriteEnabled, updated.SSHPublicKey)
+	if !updated.CloudInitWriteEnabled || updated.SSHPublicKey == "" || updated.PublishingStatus != "" {
+		t.Errorf("with a key: enabled=%v key=%q status=%q, want on/empty", updated.CloudInitWriteEnabled, updated.SSHPublicKey, updated.PublishingStatus)
 	}
 
 	row, err := fixture.store.GetCluster(context.Background(), crossSecondaryCluster)
@@ -631,6 +632,7 @@ type adminClusterDTOForTest struct {
 	SSHKnownHosts         string  `json:"sshKnownHosts"`
 	SSHPublicKey          string  `json:"sshPublicKey"`
 	CloudInitWriteEnabled bool    `json:"cloudInitWriteEnabled"`
+	PublishingStatus      string  `json:"publishingStatus"`
 }
 
 func assertClusterErrorBody(t *testing.T, response *httptest.ResponseRecorder, wantCode string) {

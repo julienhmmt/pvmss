@@ -198,7 +198,7 @@ func TestFindSnippetStorage_ConfiguredMustBeOnNode(t *testing.T) {
 
 			p := Proxmox{
 				BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal, SnippetStorage: tc.storage,
-				SSH: SnippetSSH{User: "pvmss", Signer: newTestSigner(t)},
+				SSH: SnippetSSH{User: testSSHUser, KnownHosts: testPinnedHost, Signer: newTestSigner(t)},
 			}
 
 			got, err := p.FindSnippetStorage(context.Background(), testNodeName)

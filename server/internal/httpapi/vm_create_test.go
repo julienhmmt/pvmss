@@ -625,7 +625,7 @@ func createCatalogTemplate(t *testing.T, st *store.Store) string {
 		t.Fatalf("CreateCloudInitTemplate: %v", err)
 	}
 
-	if _, err := catalog.PublishCloudInitDocument(context.Background(), st, cluster.Fake{}, auditTestCluster, tmpl.ID, tmpl.Content); err != nil {
+	if _, err := catalog.PublishCloudInitDocument(context.Background(), st, cluster.Fake{}, catalog.PublishRequest{Cluster: auditTestCluster, TemplateID: tmpl.ID, Content: tmpl.Content}); err != nil {
 		t.Fatalf("PublishCloudInitDocument: %v", err)
 	}
 
@@ -656,7 +656,8 @@ func TestVMCreateCatalog_CloudInitTemplatesExposedWhenWriteEnabled(t *testing.T)
 	}
 
 	var body struct {
-		CloudInitWriteEnabled bool `json:"cloudInitWriteEnabled"`
+		CloudInitWriteEnabled bool   `json:"cloudInitWriteEnabled"`
+		CloudInitBaselineID   string `json:"cloudInitBaselineId"`
 		CloudInitTemplates    []struct {
 			ID      string `json:"id"`
 			Label   string `json:"label"`
@@ -669,6 +670,10 @@ func TestVMCreateCatalog_CloudInitTemplatesExposedWhenWriteEnabled(t *testing.T)
 
 	if !body.CloudInitWriteEnabled {
 		t.Error("cloudInitWriteEnabled = false, want true (fake always writes)")
+	}
+
+	if body.CloudInitBaselineID != store.BaselineTemplateID {
+		t.Errorf("cloudInitBaselineId = %q, want %q", body.CloudInitBaselineID, store.BaselineTemplateID)
 	}
 
 	if len(body.CloudInitTemplates) != 1 || body.CloudInitTemplates[0].ID != tmplID {

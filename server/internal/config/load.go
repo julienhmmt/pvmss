@@ -252,9 +252,16 @@ func loadRateLimitSettings(cfg *Configuration) error {
 // admin cloud-init documents to the Proxmox nodes over SSH. The user, port
 // and pinned host keys are per cluster (Admin > Clusters); without a key,
 // cloud-init documents are off on every cluster. PVMSS_SSH_USER and
-// PVMSS_SSH_PORT are no longer read.
+// PVMSS_SSH_PORT are no longer read - when set, they are recorded so startup
+// can warn the operator (see Configuration.DeprecatedSSHEnv).
 func loadSSHSettings(cfg *Configuration) error {
 	cfg.SSHKeyFile = strings.TrimSpace(os.Getenv("PVMSS_SSH_KEY_FILE"))
+
+	for _, key := range []string{"PVMSS_SSH_USER", "PVMSS_SSH_PORT"} {
+		if strings.TrimSpace(os.Getenv(key)) != "" {
+			cfg.DeprecatedSSHEnv = append(cfg.DeprecatedSSHEnv, key)
+		}
+	}
 
 	return nil
 }

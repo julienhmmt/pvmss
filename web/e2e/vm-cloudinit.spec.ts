@@ -21,7 +21,7 @@ test.describe('T08 VM cloud-init', () => {
 		await page.getByTestId('cloudinit-ip-mode').selectOption('dhcp');
 		await page.getByTestId('cloudinit-save').click();
 		await expect(page.getByRole('dialog')).toBeVisible();
-		await expect(page.getByText('next VM reboot')).toBeVisible();
+		await expect(page.getByTestId('cloudinit-save-scopes')).toBeVisible();
 		await expect(page.getByTestId('cloudinit-reboot-checkbox')).not.toBeChecked();
 		await page.getByTestId('cloudinit-save-confirm').click();
 		await expect(page.getByTestId('cloudinit-user')).toHaveValue('ubuntu');

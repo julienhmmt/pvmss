@@ -1,5 +1,6 @@
 <script lang="ts">
-	import type { CloudInitConfigUpdate, CloudInitIPMode, CloudInitStore } from './cloudinit.svelte';
+	import type { CloudInitConfigUpdate, CloudInitIPMode } from './cloudinit.types';
+	import type { CloudInitStore } from './cloudinit.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import FormField from '$lib/shared/ui/FormField.svelte';

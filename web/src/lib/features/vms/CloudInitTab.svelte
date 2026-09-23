@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { getVmDetailContext } from './detail.svelte';
-	import type { CloudInitConfigUpdate } from './cloudinit.svelte';
+	import type { CloudInitConfigUpdate } from './cloudinit.types';
 	import { CloudInitStore } from './cloudinit.svelte';
 	import CloudInitForm from './CloudInitForm.svelte';
 	import CloudInitDocumentPicker from './CloudInitDocumentPicker.svelte';
