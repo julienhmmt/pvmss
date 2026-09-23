@@ -36,6 +36,8 @@ const (
 	testActionCreate = "create"
 	// testActionAttachCloudInitSnippet is the fake's snippet-attach action name.
 	testActionAttachCloudInitSnippet = "attach_cloudinit_snippet"
+	// testActionRemoveCloudInitSnippet is the fake's snippet-removal action name.
+	testActionRemoveCloudInitSnippet = "remove_cloudinit_snippet"
 	// testActionStart is the fake's VM-start action name.
 	testActionStart = "start"
 	// testBIOSOVMF is the Proxmox bios value selecting UEFI firmware.
@@ -208,7 +210,7 @@ func TestSetCloudInitDocument_EmptyDetaches(t *testing.T) {
 	}
 
 	for _, c := range cluster.FakeCalls() {
-		if c.Action == "remove_cloudinit_snippet" {
+		if c.Action == testActionRemoveCloudInitSnippet {
 			t.Fatalf("detach removed a shared file: %+v", c)
 		}
 	}
@@ -237,7 +239,7 @@ func TestSetCloudInitDocument_ReplacesLegacyPerVMFile(t *testing.T) {
 	}
 
 	removed := slices.ContainsFunc(cluster.FakeCalls(), func(c cluster.FakeCall) bool {
-		return c.Action == "remove_cloudinit_snippet" && c.Filename == "pvmss-101.yml"
+		return c.Action == testActionRemoveCloudInitSnippet && c.Filename == "pvmss-101.yml"
 	})
 	if !removed {
 		t.Error("legacy per-VM file not removed")

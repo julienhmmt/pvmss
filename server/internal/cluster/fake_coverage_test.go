@@ -1341,7 +1341,7 @@ func TestFake_StorageFreeSpace(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // serial: shared default fake state
+//nolint:gocyclo,paralleltest // serial: shared default fake state
 func TestFake_SnippetRoundTrip(t *testing.T) {
 	cluster.ResetFake()
 	defer cluster.ResetFake()

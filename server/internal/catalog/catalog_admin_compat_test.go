@@ -239,7 +239,7 @@ func captureAtLatest(t *testing.T, st *store.Store) (
 // The fixture DB is built at V7, outputs captured via direct SQL (the
 // pre-enabled-column query shapes), then migrated forward to V9 with zero admin toggles
 // performed, and outputs captured again through the actual catalog functions
-// (which now carry AND enabled = 1). The two snapshots must be identical - 
+// (which now carry AND enabled = 1). The two snapshots must be identical -
 // every existing row's enabled defaults to 1.
 //
 //nolint:paralleltest // serial: shared database fixture

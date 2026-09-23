@@ -218,7 +218,7 @@ func TestVMs_SearchByTag(t *testing.T) {
 	handler, authHandler := newVMsHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 
-	// "db" matches db-01 by tag AND sandbox-01/sandbox-02 by name substring - 
+	// "db" matches db-01 by tag AND sandbox-01/sandbox-02 by name substring -
 	// one input, both match kinds, union.
 	_, list := getVMList(t, handler, cookie, "search=db")
 	if got, want := sortedVMIDs(list), []int{102, 114, 115}; !slices.Equal(got, want) {

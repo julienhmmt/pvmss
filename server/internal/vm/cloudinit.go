@@ -44,7 +44,7 @@ var (
 	// ErrNoCloudInitUser reports a password request on a VM whose patch and
 	// live config define no ciuser. The password is refused, never applied to
 	// a guessed account: a cloud image's root is locked, so a fallback to
-	// root would silently write the password where nobody can log in
+	// root would silently write the password where nobody can log in.
 	ErrNoCloudInitUser = errors.New("no cloud-init user defined")
 	// ErrGuestAgentDisabled reports agent= absent from the VM config - the
 	// QEMU guest agent cannot answer, so the password cannot be applied

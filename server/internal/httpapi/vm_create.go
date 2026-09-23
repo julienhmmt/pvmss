@@ -357,34 +357,8 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 
 	data.resources = resources
 
-	snap, err := client.Snapshot(ctx)
-	if err != nil {
-		return catalogData{}, fmt.Errorf("storage discovery: %w", err)
-	}
-
-	data.snap = snap
-
-	bridges, err := client.ListBridges(ctx)
-	if err != nil {
-		return catalogData{}, fmt.Errorf("bridge discovery: %w", err)
-	}
-
-	data.bridges = bridges
-
-	isos, err := client.ListISOs(ctx)
-	if err != nil {
-		return catalogData{}, fmt.Errorf("iso discovery: %w", err)
-	}
-
-	data.isos = isos
-
-	images, err := client.ListCloudImages(ctx)
-	if err != nil {
-		return catalogData{}, fmt.Errorf("image discovery: %w", err)
-	}
-
-	for _, image := range images {
-		data.images = append(data.images, catalog.Image{Storage: image.Storage, Node: image.Node, File: image.File, SizeBytes: image.SizeBytes})
+	if err := loadClusterDiscovery(ctx, client, &data); err != nil {
+		return catalogData{}, err
 	}
 
 	profiles, err := catalog.Profiles(ctx, h.store, clusterName)
@@ -430,6 +404,42 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 	data.tags = tags
 
 	return data, nil
+}
+
+// loadClusterDiscovery fills the live-discovery half of the catalog: the
+// storage snapshot, bridges, ISOs, and cloud images the cluster reports.
+func loadClusterDiscovery(ctx context.Context, client cluster.Client, data *catalogData) error {
+	snap, err := client.Snapshot(ctx)
+	if err != nil {
+		return fmt.Errorf("storage discovery: %w", err)
+	}
+
+	data.snap = snap
+
+	bridges, err := client.ListBridges(ctx)
+	if err != nil {
+		return fmt.Errorf("bridge discovery: %w", err)
+	}
+
+	data.bridges = bridges
+
+	isos, err := client.ListISOs(ctx)
+	if err != nil {
+		return fmt.Errorf("iso discovery: %w", err)
+	}
+
+	data.isos = isos
+
+	images, err := client.ListCloudImages(ctx)
+	if err != nil {
+		return fmt.Errorf("image discovery: %w", err)
+	}
+
+	for _, image := range images {
+		data.images = append(data.images, catalog.Image{Storage: image.Storage, Node: image.Node, File: image.File, SizeBytes: image.SizeBytes})
+	}
+
+	return nil
 }
 
 // buildCatalogDTO maps the raw catalog data into the response contract.

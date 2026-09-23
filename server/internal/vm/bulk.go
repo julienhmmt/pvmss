@@ -69,7 +69,7 @@ type ClusterIndexResolver interface {
 	IndexFor(cluster string) (*inventory.Index, error)
 }
 
-// ClusterWriterResolver resolves the cluster.Writer for a named cluster - 
+// ClusterWriterResolver resolves the cluster.Writer for a named cluster -
 // the write-side sibling of ClusterIndexResolver. BulkAction's targets may
 // span clusters, so a single BulkDeps.Writer cannot vary per target the way
 // Resolver already does for the index; WriterResolver closes that gap.
@@ -77,7 +77,7 @@ type ClusterWriterResolver interface {
 	WriterFor(cluster string) (cluster.Writer, error)
 }
 
-// ClusterRefresherResolver resolves the IndexRefresher for a named cluster - 
+// ClusterRefresherResolver resolves the IndexRefresher for a named cluster -
 // the refresh-side sibling of ClusterWriterResolver. BulkAction
 // refreshes once per distinct affected cluster after the loop, not once per
 // target.

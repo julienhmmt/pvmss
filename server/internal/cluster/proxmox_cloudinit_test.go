@@ -35,11 +35,11 @@ func TestParseCloudInitConfig(t *testing.T) {
 		t.Fatalf("sshkeys = %v", got.SSHKeys)
 	}
 
-	if got.IPMode != CloudInitIPModeStatic || got.IPAddress != "10.0.0.42/24" || got.Gateway != "10.0.0.1" {
+	if got.IPMode != CloudInitIPModeStatic || got.IPAddress != "10.0.0.42/24" || got.Gateway != FakeCloudInitDNS {
 		t.Errorf("ip = %+v", got)
 	}
 
-	if got.DNSServer != "10.0.0.1" || got.SearchDomain != "example.internal" {
+	if got.DNSServer != FakeCloudInitDNS || got.SearchDomain != "example.internal" {
 		t.Errorf("dns/search = %q/%q", got.DNSServer, got.SearchDomain)
 	}
 }
@@ -154,7 +154,7 @@ func TestProxmox_SetCloudInitConfig_EnsuresDriveThenWrites(t *testing.T) {
 
 	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
 
-	config := CloudInitConfig{User: FakeCloudInitUser, IPMode: CloudInitIPModeStatic, IPAddress: "10.0.0.42/24", Gateway: "10.0.0.1"}
+	config := CloudInitConfig{User: FakeCloudInitUser, IPMode: CloudInitIPModeStatic, IPAddress: "10.0.0.42/24", Gateway: FakeCloudInitDNS}
 	if err := p.SetCloudInitConfig(context.Background(), testNodeName, testVMID, config); err != nil {
 		t.Fatalf("SetCloudInitConfig: %v", err)
 	}

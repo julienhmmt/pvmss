@@ -324,7 +324,7 @@ func AdminListTemplates(ctx context.Context, st *store.Store, client cluster.Cli
 	}
 
 	// Orphan approvals: the template is gone from Proxmox but the row (and
-	// its enabled flag) lives on. Surface it so the admin can remove it - 
+	// its enabled flag) lives on. Surface it so the admin can remove it -
 	// otherwise it would be invisible yet still offered to users.
 	for _, row := range storedRows {
 		if discoveredByVMID[row.VMID] {
@@ -557,7 +557,7 @@ func SetBridgeEnabled(ctx context.Context, st *store.Store, client cluster.Clien
 	return st.SetBridgeEnabled(ctx, clusterName, node, name, enabled)
 }
 
-// ISORef identifies one discovered ISO by its (node, storage, file) triple - 
+// ISORef identifies one discovered ISO by its (node, storage, file) triple -
 // the same key the enabled-state store and discovery check use internally.
 type ISORef struct {
 	Node    string

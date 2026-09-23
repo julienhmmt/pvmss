@@ -20,7 +20,7 @@ import (
 // vm.Resolve() every other write uses:
 // - POST /api/v1/vms/:cluster/:vmid/vnc-ticket - issues an opaque,
 // single-use console ticket.
-//   - GET /api/v1/vms/:cluster/:vmid/console/websocket?token=<opaque> - 
+//   - GET /api/v1/vms/:cluster/:vmid/console/websocket?token=<opaque> -
 //
 // upgrades to WebSocket, consumes the ticket, and relays RFB
 // frames between the browser and the cluster's VNC server.

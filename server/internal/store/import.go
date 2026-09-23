@@ -224,7 +224,7 @@ func classifyUploadTables(ctx context.Context, uploadDB *sql.DB) ([]TablePreview
 
 // ConfirmImport looks up the staging token (404 if unknown, 410 if expired)
 // and, in one SQLite transaction against the live database, replaces every
-// table named in the preview - DELETE then reload from the staged file - 
+// table named in the preview - DELETE then reload from the staged file -
 // all-or-nothing. On success, the temp file and staging entry
 // are removed. On failure, the transaction rolls back and the staging entry
 // is kept so the admin may retry confirm without re-uploading.

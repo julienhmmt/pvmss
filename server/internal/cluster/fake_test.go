@@ -116,7 +116,7 @@ func TestFakeDataset_MixedPvmssTagging(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // serial: shared fake cloud-init state
+//nolint:gocyclo,paralleltest // serial: shared fake cloud-init state
 func TestFakeCloudInit_CallOrderAndFailureReset(t *testing.T) {
 	ResetFake()
 	defer ResetFake()

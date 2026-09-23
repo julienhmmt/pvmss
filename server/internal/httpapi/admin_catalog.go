@@ -17,7 +17,7 @@ import (
 
 // AdminCatalog serves the admin catalog endpoints: the four discover-and-approve
 // resources (nodes/storages/bridges/isos), VM profiles (full CRUD), and tags
-// (CRUD with protected pvmss). Every route is wrapped by Auth.RequireAdmin
+// (CRUD with protected pvmss). Every route is wrapped by Auth.RequireAdmin.
 type AdminCatalog struct {
 	auth             *Auth
 	store            *store.Store

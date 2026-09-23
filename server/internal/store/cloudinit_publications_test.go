@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+//nolint:gocyclo // linear put/get/list/delete round trip; splitting it would duplicate the store fixture
 func TestCloudInitPublications_RoundTrip(t *testing.T) {
 	t.Parallel()
 

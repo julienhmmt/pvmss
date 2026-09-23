@@ -63,7 +63,7 @@ type proxmoxRESTClient struct {
 	tokenValue string
 	http       *http.Client
 	// noRetry short-circuits the GET retry loop. Set by withNoRetry for short
-	// probes (guest-agent exec-status) that legitimately hang until timeout - 
+	// probes (guest-agent exec-status) that legitimately hang until timeout -
 	// retrying them only multiplies the wait and slows every list load.
 	noRetry bool
 	// ticket/csrf, when set, authenticate as a specific end user via a PVE

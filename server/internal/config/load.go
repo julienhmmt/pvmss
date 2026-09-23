@@ -234,16 +234,16 @@ func loadProxySettings(cfg *Configuration) error {
 // default) keeps each limiter's built-in ceiling; a positive value raises them
 // all, which is what the e2e suite needs to drive many logins in one run.
 func loadRateLimitSettings(cfg *Configuration) error {
-	max, err := loadInt("PVMSS_RATE_LIMIT_MAX", 0)
+	limit, err := loadInt("PVMSS_RATE_LIMIT_MAX", 0)
 	if err != nil {
 		return err
 	}
 
-	if max < 0 {
-		return fmt.Errorf("PVMSS_RATE_LIMIT_MAX must be >= 0, got %d", max)
+	if limit < 0 {
+		return fmt.Errorf("PVMSS_RATE_LIMIT_MAX must be >= 0, got %d", limit)
 	}
 
-	cfg.RateLimitMax = max
+	cfg.RateLimitMax = limit
 
 	return nil
 }

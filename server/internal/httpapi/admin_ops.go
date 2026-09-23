@@ -458,7 +458,7 @@ func (h *AdminOps) ServeDBImport(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ServeDBImportConfirm handles POST /api/v1/admin/db/import/confirm
+// ServeDBImportConfirm handles POST /api/v1/admin/db/import/confirm.
 func (h *AdminOps) ServeDBImportConfirm(w http.ResponseWriter, r *http.Request) {
 	var req importConfirmRequest
 	if err := decodeJSON(w, r, &req); err != nil {
@@ -548,7 +548,7 @@ func (h *AdminOps) ServeAppInfo(w http.ResponseWriter, _ *http.Request) {
 }
 
 // buildConfigFieldDTOs maps the redacted config fields to their DTO form.
-// Redacted fields leave Value nil so they serialize as JSON null
+// Redacted fields leave Value nil so they serialize as JSON null.
 func buildConfigFieldDTOs(fields []config.Field) []configFieldDTO {
 	dtos := make([]configFieldDTO, 0, len(fields))
 	for _, f := range fields {
