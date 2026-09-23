@@ -126,20 +126,26 @@ func TestFakeCloudInit_CallOrderAndFailureReset(t *testing.T) {
 		t.Fatalf("SetCloudInitConfig: %v", err)
 	}
 
-	if err := (Fake{}).PushCloudInitSnippet(context.Background(), FakeNode01, FakeSnippetStorage, "pvmss-101.yml", 101, "#cloud-config\n"); err != nil {
-		t.Fatalf("PushCloudInitSnippet: %v", err)
+	results, err := (Fake{}).PublishSnippet(context.Background(), "pvmss-tpl-web-abc.yml", "#cloud-config\n")
+	if err != nil || len(results) == 0 || !results[0].OK {
+		t.Fatalf("PublishSnippet = %+v/%v", results, err)
 	}
 
 	calls := FakeCallsFor(101)
-	if len(calls) != 3 || calls[0].Action != "ensure_cloudinit_drive" || calls[1].Action != "set_cloudinit_config" || calls[2].Action != "push_cloudinit_snippet" {
+	if len(calls) != 2 || calls[0].Action != "ensure_cloudinit_drive" || calls[1].Action != "set_cloudinit_config" {
 		t.Fatalf("calls = %+v", calls)
+	}
+
+	if present, _ := (Fake{}).HasSnippet(context.Background(), FakeNode01, FakeSnippetStorage, "pvmss-tpl-web-abc.yml"); !present {
+		t.Fatal("published file not visible on the node")
 	}
 
 	pushErr := errors.New("push failed")
 	SetFakeCloudInitPushError(pushErr)
 
-	if err := (Fake{}).PushCloudInitSnippet(context.Background(), FakeNode01, FakeSnippetStorage, "pvmss-101.yml", 101, ""); !errors.Is(err, pushErr) {
-		t.Fatalf("push err = %v, want %v", err, pushErr)
+	results, err = (Fake{}).PublishSnippet(context.Background(), "pvmss-tpl-web-def.yml", "")
+	if err != nil || results[0].OK || results[0].Error != pushErr.Error() {
+		t.Fatalf("publish with error = %+v/%v, want per-node %v", results, err, pushErr)
 	}
 
 	ResetFake()

@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/catalog"
-	"pvmss/server/internal/cloudinit"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
@@ -143,14 +142,12 @@ var allowedNetworkModels = map[string]bool{
 // more than one is rejected with ErrInvalidSource before any VMID is
 // allocated.
 type CreateRequest struct {
-	Cluster             string `json:"cluster"`
-	Name                string `json:"name"`
-	ProfileID           string `json:"profileId,omitempty"`
+	Cluster   string `json:"cluster"`
+	Name      string `json:"name"`
+	ProfileID string `json:"profileId,omitempty"`
+	// CloudInitTemplateID names an admin cloud-init template published on
+	// the cluster. Users never author cloud-init YAML themselves.
 	CloudInitTemplateID string `json:"cloudInitTemplateId,omitempty"`
-	// CloudInitFileID names one of the actor's own cloud-init documents.
-	// Mutually exclusive with
-	// CloudInitTemplateID.
-	CloudInitFileID string `json:"cloudInitFileId,omitempty"`
 
 	Node       string         `json:"node,omitempty"`
 	Tags       []string       `json:"tags,omitempty"`
@@ -227,21 +224,16 @@ type ImageCloudInitRequest struct {
 	Gateway   string   `json:"gateway,omitempty"`
 }
 
-// CloudInitPusher applies cloud-init configuration to a VM - the
-// cluster.Writer.PushCloudInitSnippet, reused verbatim by the creation-time
-// document apply step, plus the native-key and baseline-snippet
-// methods image mode uses. The push is a filesystem write into the cluster's
-// configured snippet directory - Proxmox's REST API cannot write a
-// snippet file - followed by HasSnippet as the visibility proof. Defined here
-// as a narrow consumer contract so vm.Create depends only on the methods it
-// actually calls, not the full Writer surface; cluster.Fake and the real
-// Proxmox client both satisfy it.
+// CloudInitPusher applies cloud-init configuration to a VM: the native keys
+// (ciuser/sshkeys/ipconfig0) and the vendor-data cicustom pointing at an
+// admin-published document. It never writes a file - publishing is an admin
+// action (catalog.PublishCloudInitDocument) - and HasSnippet proves the
+// file is on the VM's node before any cicustom is set. Narrow consumer
+// contract: cluster.Fake and the real Proxmox client both satisfy it.
 type CloudInitPusher interface {
-	PushCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int, content string) error
 	AttachCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int) error
 	SetCloudInitConfig(ctx context.Context, node string, vmid int, config cluster.CloudInitConfig) error
 	HasSnippet(ctx context.Context, node, storage, filename string) (bool, error)
-	ReadSnippet(ctx context.Context, node, storage, filename string) (string, error)
 }
 
 // HardwareUpdater is the post-clone mutation contract. After the clone task completes, the
@@ -288,13 +280,12 @@ type CreateResult struct {
 	Node                string
 	UPID                string
 	CloudInitTemplateID string
-	CloudInitFileID     string
 	CloudInitPushError  string
 	// BaselineState is the delivery state of the generated cloud-init
 	// baseline for image-mode VMs:
-	// - "applied" - the generated baseline was pushed and attached
-	// - "override" - a cluster-wide pvmss-baseline.yml replaced the generated baseline
-	// - "not_delivered" - the baseline could not be delivered (see BaselineError)
+	// - "applied" - a published document (the baseline, or a template that
+	//   embeds it) was attached
+	// - "not_delivered" - nothing could be attached (see BaselineError)
 	// - "" - not an image-mode VM (no baseline)
 	BaselineState string
 	// BaselineError is the reason the baseline could not be delivered, when
@@ -388,12 +379,6 @@ func Create(ctx context.Context, actor auth.Identity, clusterName string, req Cr
 		return CreateResult{}, fmt.Errorf("%w: request carries more than one of iso, templateId, image", ErrInvalidSource)
 	}
 
-	// The cloud-init document is also a single choice: an admin template OR
-	// one of the actor's own files, never both.
-	if req.CloudInitTemplateID != "" && req.CloudInitFileID != "" {
-		return CreateResult{}, fmt.Errorf("%w: request carries both cloudInitTemplateId and cloudInitFileId", ErrInvalidSource)
-	}
-
 	if req.Image != nil {
 		return createFromImage(ctx, policyService, deps, clusterName, actor, req)
 	}
@@ -459,21 +444,10 @@ func createFromImage(ctx context.Context, policyService *policy.Policy, deps Cre
 
 	resizeImageDisk(ctx, deps, clusterName, plan, spec, finalVMID, &result)
 
-	// Resolve the user's selected cloud-init document: merged on
-	// top of the baseline by BuildVendorData. A rejected document fails the
-	// create with the existing validation error - returned, not swallowed,
-	// so the handler maps it to 400.
-	userDoc, err := resolveCloudInitDocument(ctx, deps.Store, clusterName, actor, req)
-	if err != nil {
-		rollbackFailedCreate(ctx, deps, actor, clusterName, finalVMID, spec.Node, "cloud-init document rejected")
-
-		return result, err
-	}
-
 	applyImageCloudInitConfig(ctx, imageCloudInitApply{
-		Deps: deps, ClusterName: clusterName,
-		Spec: spec, VMID: finalVMID, SnippetStorage: plan.snippetStorage, SnippetSkipReason: plan.snippetSkipReason,
-		CloudInit: req.Image.CloudInit, UserDocument: userDoc.Content,
+		Deps: deps, Actor: actor, ClusterName: clusterName,
+		Spec: spec, VMID: finalVMID, Document: plan.document, SkipReason: plan.documentSkipReason,
+		CloudInit: req.Image.CloudInit,
 	}, &result)
 
 	// Persist the baseline delivery state so the VM detail page can report
@@ -579,17 +553,9 @@ func startImageVM(ctx context.Context, deps CreateDeps, clusterName string, spec
 	}
 }
 
-// imageBaselineSnippetFilename is the fixed, admin-preplaced vendor-data
-// snippet image mode attaches when present. Proxmox's REST API cannot write
-// a snippets file (Writer.HasSnippet), so PVMSS never generates or uploads
-// one - an admin creates this ONE file once (e.g. to install
-// qemu-guest-agent) via direct filesystem access to the node, and every
-// image-mode VM picks it up automatically. Absent is a normal, silent state,
-// not an error: most clusters simply have not set one up yet.
-const imageBaselineSnippetFilename = "pvmss-baseline.yml"
-
 // Baseline delivery states recorded on CreateResult.BaselineState and
-// persisted in vm_baseline_state.
+// persisted in vm_baseline_state. "override" is historical (the removed
+// hand-placed pvmss-baseline.yml); it is still displayed for old rows.
 const (
 	BaselineStateApplied      = "applied"
 	BaselineStateOverride     = "override"
@@ -598,30 +564,25 @@ const (
 
 // imageCloudInitApply bundles the inputs to applyImageCloudInitConfig.
 type imageCloudInitApply struct {
-	Deps           CreateDeps
-	ClusterName    string
-	Spec           cluster.VMSpec
-	VMID           int
-	SnippetStorage string
-	// SnippetSkipReason is why SnippetStorage is empty, recorded as the
-	// baseline error.
-	SnippetSkipReason string
-	CloudInit         ImageCloudInitRequest
-	// UserDocument is the actor's selected cloud-init document content,
-	// merged on top of the baseline. Empty when none selected.
-	UserDocument string
+	Deps        CreateDeps
+	Actor       auth.Identity
+	ClusterName string
+	Spec        cluster.VMSpec
+	VMID        int
+	// Document is the plan-time resolved, node-verified published file:
+	// the chosen template (which embeds the baseline) or the standalone
+	// baseline. Empty when none could be resolved (SkipReason says why).
+	Document   publishedDocument
+	SkipReason string
+	CloudInit  ImageCloudInitRequest
 }
 
-// applyImageCloudInitConfig delivers image-mode cloud-init through Proxmox's
-// native keys (ciuser/sshkeys/ipconfig0 - the only per-VM mechanism the REST
-// API actually supports; see cluster.Writer.HasSnippet), then pushes the
-// generated baseline (BuildVendorData) as a per-VM snippet and
-// attaches it as vendor-data. When an admin has placed a cluster-wide
-// pvmss-baseline.yml, its content replaces the generated baseline. A
-// baseline delivery failure does NOT abort the creation or block the start
-// (the native keys were already set): it records the reason on
-// result.BaselineError and sets BaselineState to "not_delivered".
-// Only a SetCloudInitConfig failure blocks the start (CloudInitPushError).
+// applyImageCloudInitConfig delivers image-mode cloud-init: the native keys
+// (ciuser/sshkeys/ipconfig0) first - they always work - then the published
+// vendor-data document. A missing baseline does not block the start (the
+// VM boots on the native keys, BaselineState "not_delivered"); a template
+// the user chose that cannot be attached does (CloudInitPushError), like
+// the ISO and template paths.
 func applyImageCloudInitConfig(ctx context.Context, cfg imageCloudInitApply, result *CreateResult) {
 	config := cluster.CloudInitConfig{
 		User:    cfg.CloudInit.User,
@@ -642,86 +603,33 @@ func applyImageCloudInitConfig(ctx context.Context, cfg imageCloudInitApply, res
 		return
 	}
 
-	// No snippet write target on this cluster: there is nowhere a baseline
-	// could live, so record "not_delivered" and let the VM start.
-	if cfg.SnippetStorage == "" {
+	result.CloudInitTemplateID = cfg.Document.TemplateID
+
+	if !cfg.Document.present() {
 		result.BaselineState = BaselineStateNotDelivered
-		result.BaselineError = cfg.SnippetSkipReason
+		result.BaselineError = cfg.SkipReason
 
 		if result.BaselineError == "" {
-			result.BaselineError = "no snippet write target configured for this cluster"
+			result.BaselineError = "no published cloud-init document on this cluster"
 		}
 
 		return
 	}
 
-	// Build the vendor-data: the generated baseline, optionally replaced by
-	// a cluster-wide pvmss-baseline.yml the admin placed, with
-	// the user's selected document merged on top.
-	inputs := cloudinit.BaselineInputs{UserDocument: cfg.UserDocument}
-
-	present, err := cfg.Deps.Pusher.HasSnippet(ctx, cfg.Spec.Node, cfg.SnippetStorage, imageBaselineSnippetFilename)
-	if err != nil {
-		// Best-effort: a lookup failure just means the baseline is skipped -
-		// the VM still got its identity and network from the native keys
-		// above, so this does not block start.
-		cfg.Deps.Log.Error("baseline snippet lookup failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
+	if err := attachPublishedDocument(ctx, cfg.Deps, cfg.Actor, cfg.ClusterName, cfg.Spec.Node, cfg.VMID, cfg.Document); err != nil {
+		cfg.Deps.Log.Error("cloud-init document attach failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
 
 		result.BaselineState = BaselineStateNotDelivered
 		result.BaselineError = err.Error()
 
-		return
-	}
-
-	if present {
-		override, err := cfg.Deps.Pusher.ReadSnippet(ctx, cfg.Spec.Node, cfg.SnippetStorage, imageBaselineSnippetFilename)
-		if err != nil {
-			cfg.Deps.Log.Error("baseline snippet read failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
-
-			result.BaselineState = BaselineStateNotDelivered
-			result.BaselineError = err.Error()
-
-			return
-		}
-
-		inputs.Override = override
-	}
-
-	doc, err := cloudinit.BuildVendorData(inputs)
-	if err != nil {
-		cfg.Deps.Log.Error("baseline build failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
-
-		result.BaselineState = BaselineStateNotDelivered
-		result.BaselineError = err.Error()
-
-		return
-	}
-
-	// Push the generated/merged document as a per-VM snippet, then attach
-	// it as vendor-data.
-	snippetFilename := fmt.Sprintf("pvmss-%d.yml", cfg.VMID)
-
-	if err := deliverVendorSnippet(ctx, cfg.Deps.Pusher, cfg.Spec.Node, cfg.SnippetStorage, snippetFilename, cfg.VMID, doc); err != nil {
-		cfg.Deps.Log.Error("baseline snippet delivery failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
-
-		result.BaselineState = BaselineStateNotDelivered
-		result.BaselineError = err.Error()
-
-		// The user explicitly chose a document: booting without it would
-		// silently give them a VM they did not ask for. Report it like the
-		// ISO/template paths do - the VM stays stopped, the UI warns.
-		if cfg.UserDocument != "" {
+		if cfg.Document.TemplateID != "" {
 			result.CloudInitPushError = err.Error()
 		}
 
 		return
 	}
 
-	if present {
-		result.BaselineState = BaselineStateOverride
-	} else {
-		result.BaselineState = BaselineStateApplied
-	}
+	result.BaselineState = BaselineStateApplied
 }
 
 // createFromISO is the original creation path: CreateVM with an optional
@@ -736,14 +644,9 @@ func createFromISO(ctx context.Context, policyService *policy.Policy, deps Creat
 		return CreateResult{}, err
 	}
 
-	// Resolve a cloud-init template BEFORE NextVMID so an
-	// unknown or disabled id is rejected without burning a VMID - the same
-	// "never spend a VMID on a request that will be rejected" discipline
-	// applies to node/storage/bridge/ISO catalog membership.
-	cloudDoc, err := resolveCloudInitDocument(ctx, deps.Store, clusterName, actor, req)
-	if err != nil {
-		return CreateResult{}, err
-	}
+	// planCreate already resolved the cloud-init document and proved it is
+	// on the VM's node, before any VMID is spent.
+	cloudDoc := plan.document
 
 	// When a cloud-init document is requested, do not let
 	// Proxmox start the VM in the same create task - the snippet is not
@@ -781,7 +684,6 @@ func createFromISO(ctx context.Context, policyService *policy.Policy, deps Creat
 			Deps: deps, Actor: actor, ClusterName: clusterName,
 			Spec: spec, VMID: finalVMID, Document: cloudDoc, UPID: upid,
 			StartAfterCreate: startAfterCreate,
-			SnippetStorage:   plan.snippetStorage,
 		}, &result)
 	}
 
@@ -801,11 +703,9 @@ type cloudInitWaitRequest struct {
 	ClusterName      string
 	Spec             cluster.VMSpec
 	VMID             int
-	Document         cloudInitDocument
+	Document         publishedDocument
 	UPID             string
 	StartAfterCreate bool
-	// SnippetStorage is the plan-time-resolved snippet-capable storage
-	SnippetStorage string
 }
 
 // applyCloudInitAfterWait waits for the create task, then attaches the
@@ -826,13 +726,7 @@ func applyCloudInitAfterWait(ctx context.Context, req cloudInitWaitRequest, resu
 		return
 	}
 
-	applyCloudInitDocument(ctx, cloudInitApplyRequest{
-		Deps: req.Deps, Actor: req.Actor, ClusterName: req.ClusterName,
-		Spec: req.Spec, VMID: req.VMID,
-		TemplateID: req.Document.TemplateID, FileID: req.Document.FileID,
-		Content: req.Document.Content, SourceLabel: req.Document.SourceLabel,
-		SnippetStorage: req.SnippetStorage,
-	}, result)
+	applyCloudInitDocument(ctx, req.Deps, req.Actor, req.ClusterName, req.Spec.Node, req.VMID, req.Document, result)
 
 	// Start the VM explicitly after the snippet is attached,
 	// so the first boot sees cloud-init.
@@ -894,10 +788,7 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 		return CreateResult{}, err
 	}
 
-	cloudDoc, err := resolveCloudInitDocument(ctx, deps.Store, clusterName, actor, req)
-	if err != nil {
-		return CreateResult{}, err
-	}
+	cloudDoc := plan.document
 
 	// Do not start in the clone task when cloud-init is
 	// requested. The VM is started after snippet attachment. Capture the
@@ -1169,52 +1060,6 @@ func buildCloneSpec(tmpl catalog.Template, plan createPlan, req CreateRequest, v
 	return spec
 }
 
-// cloudInitDocument is the resolved content of whichever document the
-// request named, with a label for logs/audit. Zero value = none requested.
-type cloudInitDocument struct {
-	TemplateID, FileID, Content, SourceLabel string
-}
-
-// present reports whether a document was requested and resolved.
-func (d cloudInitDocument) present() bool {
-	return d.TemplateID != "" || d.FileID != ""
-}
-
-// resolveCloudInitDocument resolves the admin template (cluster-scoped,
-// enabled-only) or the actor's own file (owner-scoped) before any VMID is
-// allocated. A foreign or missing file id is "not approved" - the same 400
-// as an unknown template, so the response never reveals whether another
-// user owns that id. The stored content is re-validated - a row edited by
-// hand in the database must not reach Proxmox.
-func resolveCloudInitDocument(ctx context.Context, st *store.Store, clusterName string, actor auth.Identity, req CreateRequest) (cloudInitDocument, error) {
-	var doc cloudInitDocument
-
-	switch {
-	case req.CloudInitTemplateID != "":
-		tmpl, err := catalog.FindCloudInitTemplate(ctx, st, clusterName, req.CloudInitTemplateID)
-		if err != nil {
-			return cloudInitDocument{}, fmt.Errorf("%w: cloud-init template %q is not approved for this cluster", ErrNotApproved, req.CloudInitTemplateID)
-		}
-
-		doc = cloudInitDocument{TemplateID: tmpl.ID, Content: tmpl.Content, SourceLabel: "template:" + tmpl.ID}
-	case req.CloudInitFileID != "":
-		file, err := cloudinit.GetUserFile(ctx, st, actor.Username, req.CloudInitFileID)
-		if err != nil {
-			return cloudInitDocument{}, fmt.Errorf("%w: cloud-init file %q not found", ErrNotApproved, req.CloudInitFileID)
-		}
-
-		doc = cloudInitDocument{FileID: file.ID, Content: file.Content, SourceLabel: "file:" + file.ID}
-	default:
-		return cloudInitDocument{}, nil
-	}
-
-	if err := cloudinit.Validate(doc.Content); err != nil {
-		return cloudInitDocument{}, fmt.Errorf("%w: %w", ErrInvalidRequest, err)
-	}
-
-	return doc, nil
-}
-
 // buildCreateSpec assembles the cluster.VMSpec from the validated plan,
 // request, actor identity, and allocated VMID. The "pvmss" tag is always
 // present. Image-mode VMs also carry "pvmss-image" so the console
@@ -1278,104 +1123,6 @@ func buildCreateSpec(actor auth.Identity, req CreateRequest, plan createPlan, vm
 	return spec
 }
 
-// cloudInitApplyRequest bundles the per-creation inputs to
-// applyCloudInitDocument. Keeping them in a struct holds the helper under
-// go:S107's ceiling and makes the single call site self-documenting.
-type cloudInitApplyRequest struct {
-	Deps        CreateDeps
-	Actor       auth.Identity
-	ClusterName string
-	Spec        cluster.VMSpec
-	VMID        int
-	// TemplateID/FileID identify the resolved source for CreateResult -
-	// exactly one is set (admin template or user file).
-	TemplateID string
-	FileID     string
-	// Content is the document body to write - the resolved source's content.
-	Content string
-	// SourceLabel identifies the document's origin in logs
-	// ("template:<id>" / "file:<id>").
-	SourceLabel string
-	// SnippetStorage is the plan-time-resolved snippet-capable storage
-	// never the VM disk's storage, which is block-backed.
-	SnippetStorage string
-}
-
-// applyCloudInitDocument writes the VM's own copy of the chosen document
-// into the cluster's snippet directory, proves Proxmox can see it, attaches
-// it through the vendor-data slot, and records the copy. Every VM gets its
-// own file: editing the source template later never changes an
-// existing VM. A failure at any step lands on result.CloudInitPushError and
-// leaves the VM stopped - the create task is already dispatched and cannot
-// be undone, and starting without the document would silently boot a VM
-// the user did not ask for.
-func applyCloudInitDocument(ctx context.Context, req cloudInitApplyRequest, result *CreateResult) {
-	if req.Content == "" {
-		return
-	}
-
-	result.CloudInitTemplateID = req.TemplateID
-	result.CloudInitFileID = req.FileID
-	filename := fmt.Sprintf("%s%d.yml", snippetFilenamePrefix, req.VMID)
-	storage := req.SnippetStorage
-	log := req.Deps.Log.With("component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "source", req.SourceLabel, "filename", filename)
-
-	if err := deliverVendorSnippet(ctx, req.Deps.Pusher, req.Spec.Node, storage, filename, req.VMID, req.Content); err != nil {
-		log.Error("cloud-init document delivery failed", "error", err)
-		result.CloudInitPushError = err.Error()
-
-		return
-	}
-
-	if req.Deps.Store != nil {
-		if err := req.Deps.Store.PutCloudInitSnippet(ctx, req.ClusterName, req.VMID, storage, filename, req.Content, req.Actor.Username); err != nil {
-			// The row is the unit of truth for the cloud-init tab and for
-			// delete-time cleanup - a VM whose copy is not recorded is a
-			// cloud-init failure like any other: report it, stay stopped.
-			log.Error("cloud-init document row not recorded", "error", err)
-			result.CloudInitPushError = err.Error()
-		}
-	}
-}
-
-// snippetRemover is the optional cleanup half of the snippet writer: the
-// real client and the fake both implement it; the delivery path uses it to
-// drop a file Proxmox cannot see instead of leaving it behind.
-type snippetRemover interface {
-	RemoveCloudInitSnippet(ctx context.Context, storage, filename string) error
-}
-
-// deliverVendorSnippet is the ONLY way a per-VM snippet reaches a VM: write
-// it, prove Proxmox lists <storage>:snippets/<filename>, and only then set
-// cicustom. Attaching an unverified file is what made the VM unbootable
-// ("volume 'local:snippets/pvmss-N.yml' does not exist" on every start), so
-// an invisible file is removed and never attached - the VM keeps booting on
-// its native cloud-init keys.
-func deliverVendorSnippet(ctx context.Context, pusher CloudInitPusher, node, storage, filename string, vmid int, content string) error {
-	if err := pusher.PushCloudInitSnippet(ctx, node, storage, filename, vmid, content); err != nil {
-		return fmt.Errorf("write cloud-init document: %w", err)
-	}
-
-	present, err := pusher.HasSnippet(ctx, node, storage, filename)
-	if err != nil {
-		return fmt.Errorf("check cloud-init document visibility: %w", err)
-	}
-
-	if !present {
-		if remover, ok := pusher.(snippetRemover); ok {
-			_ = remover.RemoveCloudInitSnippet(ctx, storage, filename)
-		}
-
-		return fmt.Errorf("cloud-init document was written but Proxmox does not list %s:snippets/%s - the cluster's snippet directory is not that storage's snippets/ directory", storage, filename)
-	}
-
-	if err := pusher.AttachCloudInitSnippet(ctx, node, storage, filename, vmid); err != nil {
-		return fmt.Errorf("attach cloud-init document: %w", err)
-	}
-
-	return nil
-}
-
 // postCloneConfig bundles the inputs to applyPostCloneConfig.
 type postCloneConfig struct {
 	Deps             CreateDeps
@@ -1385,7 +1132,7 @@ type postCloneConfig struct {
 	Node             string
 	Plan             createPlan
 	Template         catalog.Template
-	CloudDocument    cloudInitDocument
+	CloudDocument    publishedDocument
 	StartAfterCreate bool
 	Tags             []string
 	DiskKey          string
@@ -1404,16 +1151,9 @@ func applyPostCloneConfig(ctx context.Context, cfg postCloneConfig, result *Crea
 	applyCloneHardware(ctx, cfg, result)
 	applyCloneDiskResize(ctx, cfg, result)
 
-	// 3. Cloud-init document write + attach (same mechanism as the ISO path).
+	// 3. Cloud-init document attach (same mechanism as the ISO path).
 	if cfg.CloudDocument.present() {
-		applyCloudInitDocument(ctx, cloudInitApplyRequest{
-			Deps: cfg.Deps, Actor: cfg.Actor, ClusterName: cfg.ClusterName,
-			Spec:       cluster.VMSpec{Node: cfg.Node, Disk: cluster.DiskSpec{Storage: cfg.Plan.storage}},
-			VMID:       cfg.VMID,
-			TemplateID: cfg.CloudDocument.TemplateID, FileID: cfg.CloudDocument.FileID,
-			Content: cfg.CloudDocument.Content, SourceLabel: cfg.CloudDocument.SourceLabel,
-			SnippetStorage: cfg.Plan.snippetStorage,
-		}, result)
+		applyCloudInitDocument(ctx, cfg.Deps, cfg.Actor, cfg.ClusterName, cfg.Node, cfg.VMID, cfg.CloudDocument, result)
 	}
 
 	// 4. Start the VM if requested (after cloud-init attachment so the first boot sees the
@@ -1497,20 +1237,18 @@ func primaryDiskKey(bus string) string {
 type createPlan struct {
 	node    string
 	storage string
-	// snippetStorage is the snippet-capable storage resolved at plan time
-	// when a cloud-init template was requested. Empty when no
-	// template was requested - resolution costs a cluster read and must not
-	// run on the plain ISO path.
-	snippetStorage string
-	// snippetSkipReason explains an empty snippetStorage on the image path
-	// (no write target, or a target Proxmox does not see) so the baseline
-	// state reports the real cause instead of a generic message.
-	snippetSkipReason string
-	sockets           int
-	cpuCores          int
-	memoryMB          int
-	diskGB            int
-	bus               string
+	// document is the published cloud-init file resolved at plan time and
+	// proven present on the node: the requested template, or the baseline
+	// for an image VM without one. Empty on the plain ISO path.
+	document publishedDocument
+	// documentSkipReason explains an empty document on the image path so
+	// the baseline state reports the real cause.
+	documentSkipReason string
+	sockets            int
+	cpuCores           int
+	memoryMB           int
+	diskGB             int
+	bus                string
 	// imageSizeGB is the cloud image's size in whole GB (rounded up), set
 	// only in image mode. import-from lands the disk at this size; the
 	// caller grows it to diskGB after the create task completes.
@@ -1650,13 +1388,13 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 		return createPlan{}, err
 	}
 
-	snippetStorage, skipReason, err := resolvePlanSnippetStorage(ctx, deps, req, node)
+	document, skipReason, err := resolvePlanDocument(ctx, deps, clusterName, req, node)
 	if err != nil {
 		return createPlan{}, err
 	}
 
 	return createPlan{
-		node: node, storage: storage, snippetStorage: snippetStorage, snippetSkipReason: skipReason,
+		node: node, storage: storage, document: document, documentSkipReason: skipReason,
 		sockets: sockets, cpuCores: cpuCores,
 		memoryMB: memoryMB, diskGB: diskGB, bus: bus, nics: nics,
 		isolationVLANTag: vlanTag, uefi: resolveUEFI(req), tpm: req.TPM,
@@ -1687,56 +1425,6 @@ func resolvePlacement(ctx context.Context, req CreateRequest, policyService *pol
 	}
 
 	return node, storage, nics, nil
-}
-
-// resolvePlanSnippetStorage resolves the snippet target at plan time when a
-// cloud-init template or a cloud image was requested - before NextVMID, so a
-// node without any snippet-capable storage is refused without burning a VMID
-// (the same discipline as the template resolution). The VM disk's storage is
-// block-backed (ZFS/LVM-thin/Ceph) and cannot host a snippet, so the editor's
-// FindSnippetStorage rule is the only correct source. Returns ""
-// when neither was requested: the resolution costs a cluster read and must
-// not run on the plain ISO path.
-//
-// A document needs the write target, so an unconfigured cluster is refused
-// (ErrCloudInitWriteUnavailable → 409). Image mode only uses it for the
-// optional hand-placed baseline: with no write target the
-// baseline is skipped ("" storage) and the create proceeds on the native
-// ciuser/sshkeys/ipconfig0 keys alone.
-func resolvePlanSnippetStorage(ctx context.Context, deps CreateDeps, req CreateRequest, node string) (storage, skipReason string, err error) {
-	wantsDocument := req.CloudInitTemplateID != "" || req.CloudInitFileID != ""
-
-	if !wantsDocument && req.Image == nil {
-		return "", "", nil
-	}
-
-	if deps.Snippets == nil {
-		return "", "", fmt.Errorf("%w: no snippet storage resolver wired", ErrClusterCreate)
-	}
-
-	storage, err = deps.Snippets.FindSnippetStorage(ctx, node)
-	if err != nil {
-		// ErrSnippetWriteUnavailable also covers a configured directory
-		// Proxmox does not see (cluster.ErrSnippetTargetMismatch): a
-		// document request is refused BEFORE any VM exists, an image
-		// without document boots on the native keys and records why the
-		// baseline was skipped.
-		if errors.Is(err, cluster.ErrSnippetWriteUnavailable) {
-			if !wantsDocument {
-				if errors.Is(err, cluster.ErrSnippetTargetMismatch) && deps.Log != nil {
-					deps.Log.Warn("snippet write target not usable, cloud-init baseline skipped", "component", "vm", "node", node, "error", err)
-				}
-
-				return "", err.Error(), nil
-			}
-
-			return "", "", fmt.Errorf("%w: %w", ErrCloudInitWriteUnavailable, err)
-		}
-
-		return "", "", fmt.Errorf("%w: %s: enable the snippets content type on a storage of this node (%w)", ErrNoSnippetStorage, node, err)
-	}
-
-	return storage, "", nil
 }
 
 // gabaritRequest groups the resolved hardware dimensions a gabarit + capacity

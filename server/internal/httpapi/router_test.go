@@ -107,7 +107,7 @@ func TestRouter_CloudInitRoutesAreSpecific(t *testing.T) {
 
 	for _, path := range []string{
 		cloudInitRoutePath,
-		"/api/v1/vms/default/101/cloudinit/snippet",
+		"/api/v1/vms/default/101/cloudinit/document",
 	} {
 		recorder := httptest.NewRecorder()
 		request := httptest.NewRequestWithContext(context.Background(), http.MethodGet, path, nil)

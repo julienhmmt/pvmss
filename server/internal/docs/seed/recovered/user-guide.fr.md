@@ -10,7 +10,6 @@ hébergées sur Proxmox VE, sans passer par l'interface Proxmox.
 2. **Retrouvez vos VM** sur la page Mes VM ; recherchez par nom, VMID ou tag.
 3. **Créez une VM** avec le bouton « Créer une VM », puis renseignez les paramètres.
 4. **Ouvrez la console** une fois la VM créée et démarrée, via le client noVNC ou série intégré.
-5. **Gérez vos fichiers cloud-init** depuis leur page dédiée.
 
 ## Accueil
 
@@ -33,7 +32,7 @@ Configurez :
 - **Stockage** : un stockage approuvé ; l'assistant vérifie l'espace libre en direct.
 - **Réseau** : une ou plusieurs cartes, chacune avec un bridge et un modèle (VirtIO, E1000, E1000E, RTL8139, VMXNet3). Le pare-feu Proxmox est toujours activé ; votre administrateur peut imposer un VLAN d'isolation.
 - **Firmware** : UEFI (activé par défaut) avec un magasin de clés EFI vide - Secure Boot n'est jamais activé, car la plupart des ISO Linux ne sont pas signés et ne démarreraient pas avec. TPM 2.0 pour les invités qui l'exigent.
-- **Document cloud-init** : un template administrateur ou l'un de [vos fichiers](/cloud-init). Voir le [guide cloud-init](/docs/cloud-init-howto).
+- **Document cloud-init** : l'un des templates fournis par votre administrateur. Voir le [guide cloud-init](/docs/cloud-init-howto).
 - **Démarrage** : choisissez si la VM démarre automatiquement après création.
 - **Tags** : à choisir dans la liste curée par l'administrateur.
 
@@ -91,8 +90,8 @@ CD-ROM.
 Définissez l'utilisateur, le mot de passe (transmis via l'agent invité, jamais
 stocké), les clés SSH, l'adresse IP, la passerelle et le DNS. **Ajouter une
 clé maintenant** injecte immédiatement une clé dans une VM en marche. Le
-document cloud-init de la VM est affiché ici et modifiable si votre
-administrateur l'autorise. Voir le [guide cloud-init](/docs/cloud-init-howto)
+document cloud-init de la VM est affiché ici ; vous pouvez choisir un autre
+template administrateur ou le détacher. Voir le [guide cloud-init](/docs/cloud-init-howto)
 pour savoir ce qui s'applique et quand.
 
 ### Snapshots
@@ -119,13 +118,6 @@ La page console propose deux clients :
 Les deux sont relayés par PVMSS avec un ticket à usage unique ; aucun accès
 direct à Proxmox n'est nécessaire.
 
-## Fichiers cloud-init
-
-La page [Fichiers cloud-init](/cloud-init) contient vos propres documents
-`#cloud-config` (20 au maximum). Ils apparaissent sous « Mes fichiers » dans
-le sélecteur de création de VM. Chaque VM reçoit sa propre copie à la
-création : modifier un fichier ensuite ne change jamais les VM existantes.
-
 ## Limites
 
 Votre administrateur contrôle la plupart des limites par cluster ; PVMSS les
@@ -136,7 +128,6 @@ applique côté serveur avant tout appel à Proxmox.
 - **Nom de VM** - un nom d'hôte en minuscules, 63 caractères maximum, unique dans votre pool.
 - **Description** - 512 caractères maximum.
 - **Actions groupées** - 100 VM maximum par requête.
-- **Fichiers cloud-init** - 20 documents maximum par utilisateur.
 - **Nom de snapshot** - une lettre puis lettres, chiffres, tirets ou underscores, 2 à 40 caractères ; `current` est réservé.
 
 ## Bonnes pratiques

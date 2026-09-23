@@ -67,7 +67,7 @@ Wizard at `/vms/create` - **Simple** and **Detailed** modes, five steps
 | Disks | add, resize (grow), detach | `POST …/disks`, `PUT …/disks/{key}/resize`, `DELETE …/disks/{key}` | ✅ |
 | Network | edit each NIC: bridge, model, VLAN tag, rate limit (Mbps) | `PUT …/network` | ✅ |
 | Hardware | sockets/cores, memory, tags (curated picker), CD-ROM load/eject | `GET …/hardware-options`, `PUT …/hardware`, `PATCH …/cdrom` | ✅ |
-| Cloud-init | native form (user, password via guest agent, SSH keys, IP/gateway/DNS); "Add key now" injection; per-VM document editor (when the admin allows custom YAML **and** the cluster has a snippet write target) | `GET/PUT …/cloudinit`, `POST …/cloudinit/ssh-keys`, `GET/PUT …/cloudinit/snippet` | ✅ |
+| Cloud-init | native form (user, password via guest agent, SSH keys, IP/gateway/DNS); "Add key now" injection; switch the VM to another published admin template (users never write YAML) | `GET/PUT …/cloudinit`, `POST …/cloudinit/ssh-keys`, `GET/PUT …/cloudinit/document` | ✅ |
 | Snapshots | create (with/without RAM), rollback, delete, view a snapshot's config; per-VM max enforced by policy | `GET/POST …/snapshots`, `POST …/snapshots/{name}/rollback`, `DELETE …/snapshots/{name}`, `GET …/snapshots/{name}/config` | ✅ |
 | Activity | per-VM audit trail (who did what, when) | `GET …/audit` | ✅ |
 | Status | polled status/lock/uptime | `GET …/status` | ✅ |
@@ -84,12 +84,13 @@ Wizard at `/vms/create` - **Simple** and **Detailed** modes, five steps
 
 | Feature | Route | API | Status |
 | --- | --- | --- | --- |
-| Personal cloud-init files (max 20 per user, private to the owner) | `/cloud-init` | `GET/POST/PUT/DELETE /api/v1/cloudinit/files` | ✅ |
-| Admin cloud-init templates, per cluster, enable/disable | `/admin/cloudinit-templates` | `/api/v1/admin/cloudinit-templates` | ✅ |
-| Per-VM copy written by PVMSS as `pvmss-<vmid>.yml` into the cluster's mounted `snippets/` dir, attached as `vendor=`; later edits to the source never touch the VM | at creation | `POST /api/v1/vms` | ✅ |
-| Feature off = loud: cluster without snippet dir → picker hidden, create with a document → 409 `cloudinit_write_unavailable` | - | - | ✅ |
-| Baseline snippet `pvmss-baseline.yml` auto-attached for cloud-image VMs when present | - | - | ✅ |
-| Snippet file and its row removed when the VM is deleted (best effort, never blocks the delete) | - | `DELETE /api/v1/vms/{cluster}/{vmid}` | ✅ |
+| Admin cloud-init templates, per cluster, enable/disable; users only pick among them | `/admin/cloudinit-templates` | `/api/v1/admin/cloudinit-templates` | ✅ |
+| Publication over SSH to every node through the `pvmss-snippet` helper (`tools/pvmss-node-setup.sh`), verified per node through the API; per-node status; "Publish to all nodes" resync | `/admin/cloudinit-templates` | `POST /api/v1/admin/cloudinit-templates/publish` | ✅ |
+| Immutable content-addressed files (`pvmss-tpl-<id>-<hash>.yml`, PVMSS baseline merged in): an edit publishes a new file, VMs keep theirs | - | - | ✅ |
+| VM creation never writes: the template must be on the VM's node (live `HasSnippet`), else 409 `cloudinit_not_published` before any VMID | at creation | `POST /api/v1/vms` | ✅ |
+| Standalone baseline `pvmss-baseline-<hash>.yml` for image VMs without a template; missing on the node → VM boots on the native keys, baseline "not delivered" | - | - | ✅ |
+| Feature off = loud: cluster without SSH publishing → picker hidden, create with a template → 409 `cloudinit_write_unavailable` | - | - | ✅ |
+| Legacy per-VM files (`pvmss-<vmid>.yml`) removed on every node when their VM is deleted or switched to a template | - | `DELETE /api/v1/vms/{cluster}/{vmid}` | ✅ |
 
 ## 7. Cluster visibility
 
@@ -115,18 +116,18 @@ All routes behind `RequireAdmin`.
 | Area | Route | What it does | Status |
 | --- | --- | --- | --- |
 | Dashboard | `/admin` | node summary, VM status counts, version, last refresh | ✅ |
-| Clusters | `/admin/clusters` | add / edit / remove connections (URL, token, TLS skip-verify), **Test** connectivity (version, node & VM count), OIDC toggle, **snippet directory + storage id** for cloud-init documents (badge "cloud-init: on") | ✅ |
+| Clusters | `/admin/clusters` | add / edit / remove connections (URL, token, TLS skip-verify), **Test** connectivity (version, node & VM count), OIDC toggle, **cloud-init SSH publishing** (snippet storage, SSH user/port, pinned host keys with a scan, PVMSS public key + node setup command; badge "cloud-init: on") | ✅ |
 | Nodes | `/admin/nodes` | approve/disable per cluster; confirm when disabling a node with running VMs; search/filter/sort; orphan cleanup | ✅ |
 | Storages | `/admin/storages` | approve per node/cluster; usage bars; orphan cleanup | ✅ |
 | ISOs | `/admin/isos` | approve discovered ISOs; orphan cleanup | ✅ |
 | Cloud images | `/admin/images` | approve images discovered under a storage's `import/` content; orphan cleanup | ✅ |
 | VM templates | `/admin/templates` | approve Proxmox templates for cloning, per-template overrides; orphan cleanup | ✅ |
 | Bridges | `/admin/bridges` | approve VMBRs (OVS not listed); orphan cleanup | ✅ |
-| Cloud-init templates | `/admin/cloudinit-templates` | CRUD + enable/disable `#cloud-config` documents (header + YAML validated) | ✅ |
+| Cloud-init templates | `/admin/cloudinit-templates` | CRUD + enable/disable `#cloud-config` documents (header + YAML validated), published to every node with per-node status | ✅ |
 | Profiles | `/admin/profiles` | CRUD + enable/disable hardware profiles, optional node/storage override, icon/color | ✅ |
 | Tags | `/admin/tags` | create / delete / recolor; `pvmss` reserved | ✅ |
 | Pools | `/admin/pools` | create a self-service user = Proxmox user + pool + ACL; cascade delete | ✅ |
-| Policy | `/admin/policy` | per-cluster gabarit (max sockets, cores, memory, disk/VM, NICs, snapshots, allow custom cloud-init YAML, isolation VLAN) + quota (max VMs per user) | ✅ |
+| Policy | `/admin/policy` | per-cluster gabarit (max sockets, cores, memory, disk/VM, NICs, snapshots, isolation VLAN) + quota (max VMs per user) | ✅ |
 | Node capacity | `/admin/policy/nodes` | per-node caps (VMs, vCPUs, RAM, disk) with live usage vs physical | ✅ |
 | Documentation | `/admin/docs` | CMS for the in-app docs (EN/FR, audience, toggle, system pages protected) | ✅ |
 | App info | `/admin/appinfo` | build, runtime, safe env subset, cluster status | ✅ |

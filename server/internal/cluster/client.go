@@ -57,10 +57,12 @@ var (
 	// returns the smallest free ID at call time without reserving it, so two
 	// concurrent creations can collide; the caller retries with a fresh VMID.
 	ErrVMIDTaken = errors.New("vmid already taken")
-	// ErrSnippetWriteUnavailable reports a cluster with no snippet write target
-	// (snippet_dir/snippet_storage unset): PVMSS cannot create a cloud-init
-	// document file for it. Proxmox's REST API cannot write snippets at all.
-	ErrSnippetWriteUnavailable = errors.New("cloud-init documents are not enabled on this cluster (set the snippet directory in Admin › Clusters)")
+	// ErrSnippetWriteUnavailable reports a cluster where cloud-init
+	// documents are off: no snippet storage, no SSH settings or no global
+	// key. Proxmox's REST API cannot write snippets at all (upload and
+	// download-url reject content=snippets), so PVMSS publishes them over
+	// SSH to every node.
+	ErrSnippetWriteUnavailable = errors.New("cloud-init documents are not enabled on this cluster (configure the snippet storage and SSH publishing in Admin > Clusters)")
 )
 
 // Client is the single contract for reading cluster data. Every implementation
@@ -172,47 +174,28 @@ type Writer interface {
 	EnableSerial(ctx context.Context, node string, vmid int) error
 	EnsureCloudInitDrive(ctx context.Context, node string, vmid int) error
 	SetCloudInitConfig(ctx context.Context, node string, vmid int, config CloudInitConfig) error
-	// PushCloudInitSnippet writes content as filename into the cluster's
-	// configured snippet directory (snippet_dir on the cluster row). Proxmox's
-	// REST API cannot write snippets - upload and download-url both reject
-	// content=snippets (PVE::API2::Storage::Status hardcodes the enum to
-	// iso/vztmpl/import, a deliberate restriction since a snippet can carry
-	// an arbitrary hookscript) - so PVMSS writes the file itself into the
-	// bind-mounted directory the administrator configured. No write target →
-	// ErrSnippetWriteUnavailable.
-	PushCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int, content string) error
-	// AttachCloudInitSnippet points the VM's config at an already-pushed
-	// snippet file via the vendor-data slot. vendor= MERGES the snippet with
-	// the generated cloud-init user-data (ciuser/sshkeys/ipconfig0 still
-	// apply); the user= slot would REPLACE the generated user-data entirely
-	// and silently drop the structured config. An empty filename detaches
-	// the snippet (Proxmox stores none)..
+	// AttachCloudInitSnippet points the VM's config at an already
+	// published snippet file via the vendor-data slot. vendor= MERGES the
+	// snippet with the generated cloud-init user-data (ciuser/sshkeys/
+	// ipconfig0 still apply); the user= slot would REPLACE the generated
+	// user-data entirely and silently drop the structured config. An empty
+	// filename detaches the snippet (Proxmox stores none).
 	AttachCloudInitSnippet(ctx context.Context, node, storage, filename string, vmid int) error
-	// HasSnippet reports whether filename already exists under storage's
-	// snippets/ content on node. It is the visibility proof after
-	// PushCloudInitSnippet: PVMSS wrote the file into the mounted snippet
-	// directory, and this confirms Proxmox actually lists it before a VM's
-	// cicustom is pointed at it (a wrong mount must never leave a VM
-	// referencing nothing).
+	// HasSnippet reports whether filename exists under storage's snippets/
+	// content on node, as listed by the Proxmox API. Every cicustom PVMSS
+	// sets is preceded by this check on the VM's node: a VM must never
+	// reference a file its node does not have (every start would fail).
 	HasSnippet(ctx context.Context, node, storage, filename string) (bool, error)
-	// ReadSnippet reads the content of a snippet file from the cluster's
-	// configured snippet directory. Used by the image-mode create path to
-	// load an admin-preplaced cluster-wide baseline (pvmss-baseline.yml) so
-	// it can replace the generated baseline in the delivered vendor-data.
-	// Returns ErrSnippetWriteUnavailable
-	// when no snippet write target is configured.
-	ReadSnippet(ctx context.Context, node, storage, filename string) (string, error)
-	// RemoveCloudInitSnippet deletes a file PVMSS wrote into the cluster's
-	// snippet directory. Missing file is not an error. Unconfigured target
-	// → ErrSnippetWriteUnavailable.
+	// RemoveCloudInitSnippet deletes a PVMSS file on every node through the
+	// SSH helper. Used only for the legacy per-VM files (pvmss-<vmid>.yml)
+	// when their VM is deleted; published documents are shared and never
+	// removed with a VM. Missing file is not an error. Publishing not
+	// configured → ErrSnippetWriteUnavailable.
 	RemoveCloudInitSnippet(ctx context.Context, storage, filename string) error
-	// SnippetWriteAvailable reports whether this cluster has a snippet write
-	// target, i.e. whether PushCloudInitSnippet can succeed at all.
-	SnippetWriteAvailable() bool
 	// SetCloudInitPassword applies the VM's cloud-init password post-boot via
 	// the QEMU guest agent, writing it only to /etc/shadow on the guest. It
 	// never uses the cipassword config key, whose crypt hash Proxmox stores on
-	// the cloud-init seed drive and cloud-init caches under /var/lib/cloud - 
+	// the cloud-init seed drive and cloud-init caches under /var/lib/cloud -
 	// both readable by any tenant root for the VM's lifetime.
 	// user is the VM's own ciuser: a cloud image's account is debian/ubuntu
 	// and root is locked, so a hardcoded "root" writes the password onto an
@@ -222,7 +205,7 @@ type Writer interface {
 	SetCloudInitPassword(ctx context.Context, node string, vmid int, user, password string) error
 	// PingGuestAgent probes the QEMU guest agent on a running guest. It uses
 	// a short per-attempt timeout and no retry: an agent configured but not
-	// yet up hangs until timeout, and retrying only multiplies the wait - 
+	// yet up hangs until timeout, and retrying only multiplies the wait -
 	// the caller polls instead.
 	PingGuestAgent(ctx context.Context, node string, vmid int) error
 	// AddSSHKey injects a single public key into the running guest's
@@ -490,7 +473,7 @@ type ISOImage struct {
 	SizeBytes int64
 }
 
-// CloudImage is one cloud image discovered on a storage backend on a node - 
+// CloudImage is one cloud image discovered on a storage backend on a node -
 //
 // a .qcow2/.raw/.vmdk/.ova file under import content (Proxmox lists them
 //

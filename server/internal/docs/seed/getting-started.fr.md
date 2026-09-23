@@ -25,8 +25,8 @@ une vue filtrée peut être mise en favori.
 2. Choisissez une source : une ISO, un template Proxmox ou une image cloud.
 3. Choisissez un profil matériel ou saisissez des valeurs personnalisées ; le
    nœud est choisi pour vous sauf en mode Détaillé.
-4. Attachez éventuellement un document cloud-init (template admin ou l'un de
-   [vos fichiers](/cloud-init)).
+4. Choisissez éventuellement un document cloud-init (un template fourni par
+   votre administrateur).
 5. Validez - le portail provisionne la VM et affiche la progression dans le
    tiroir des tâches.
 

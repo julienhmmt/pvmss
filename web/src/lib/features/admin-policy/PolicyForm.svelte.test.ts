@@ -44,10 +44,6 @@ function getQuotaInput(): HTMLInputElement {
 	return inputs[inputs.length - 1] as HTMLInputElement;
 }
 
-function getCheckbox(): HTMLInputElement {
-	return document.querySelector('input[type="checkbox"]') as HTMLInputElement;
-}
-
 function getSubmitButton(): HTMLButtonElement {
 	return Array.from(document.querySelectorAll('button[type="submit"]'))[0] as HTMLButtonElement;
 }
@@ -103,19 +99,6 @@ describe('PolicyForm', () => {
 		await tick();
 
 		expect(getFirstInput().value).toBe('4');
-		document.body.innerHTML = '';
-	});
-
-	it('detects dirty state when the checkbox is toggled', async () => {
-		mount(PolicyForm, buildProps(buildPolicy()));
-		expect(getSubmitButton().disabled).toBe(true);
-
-		const checkbox = getCheckbox();
-		checkbox.checked = true;
-		checkbox.dispatchEvent(new Event('change', { bubbles: true }));
-		await tick();
-
-		expect(getSubmitButton().disabled).toBe(false);
 		document.body.innerHTML = '';
 	});
 

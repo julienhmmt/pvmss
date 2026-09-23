@@ -9,23 +9,31 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
 
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/knownhosts"
 )
 
-// startTestSSHServer starts a minimal SSH server that accepts public-key
-// auth and runs exec commands locally. Returns the address and a cleanup
-// function. The server runs on localhost so tests never touch the network.
-// The cleanup waits for all connection goroutines to exit so no lingering
-// goroutines stress the race detector in other parallel tests.
-func startTestSSHServer(t *testing.T, authorizedKey ssh.PublicKey) (string, func()) {
+// testSnippetNode is an in-process SSH server that behaves like a node with
+// the pvmss-snippet helper installed as a forced command: it accepts only
+// "pvmss-snippet write|remove <name>" and stores files in dir.
+type testSnippetNode struct {
+	addr    string
+	port    int
+	dir     string
+	hostKey ssh.PublicKey
+}
+
+func startTestSnippetNode(t *testing.T, authorizedKey ssh.PublicKey) testSnippetNode {
 	t.Helper()
 
 	listener, err := new(net.ListenConfig).Listen(context.Background(), "tcp", "127.0.0.1:0")
@@ -33,12 +41,12 @@ func startTestSSHServer(t *testing.T, authorizedKey ssh.PublicKey) (string, func
 		t.Fatalf("listen: %v", err)
 	}
 
-	_, hostKey, err := ed25519.GenerateKey(rand.Reader)
+	_, hostPriv, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		t.Fatalf("generate host key: %v", err)
 	}
 
-	signer, err := ssh.NewSignerFromKey(hostKey)
+	hostSigner, err := ssh.NewSignerFromKey(hostPriv)
 	if err != nil {
 		t.Fatalf("host key signer: %v", err)
 	}
@@ -49,14 +57,18 @@ func startTestSSHServer(t *testing.T, authorizedKey ssh.PublicKey) (string, func
 				return nil, errors.New("unknown key")
 			}
 
-			return nil, nil
+			return nil, nil //nolint:nilnil // ssh.ServerConfig contract: nil permissions accept
 		},
 	}
-	config.AddHostKey(signer)
+	config.AddHostKey(hostSigner)
+
+	node := testSnippetNode{addr: listener.Addr().String(), dir: t.TempDir(), hostKey: hostSigner.PublicKey()}
+	_, portText, _ := net.SplitHostPort(node.addr)
+	node.port, _ = strconv.Atoi(portText)
 
 	var wg sync.WaitGroup
 
-	var conns sync.Map // track active connections for cleanup
+	var conns sync.Map
 
 	done := make(chan struct{})
 
@@ -65,6 +77,7 @@ func startTestSSHServer(t *testing.T, authorizedKey ssh.PublicKey) (string, func
 			conn, err := listener.Accept()
 			if err != nil {
 				close(done)
+
 				return
 			}
 
@@ -74,17 +87,17 @@ func startTestSSHServer(t *testing.T, authorizedKey ssh.PublicKey) (string, func
 			go func(c net.Conn) {
 				defer wg.Done()
 
-				handleSSHConn(c, config)
+				node.serve(c, config)
 				conns.Delete(c)
 			}(conn)
 		}
 	}()
 
-	cleanup := func() {
+	t.Cleanup(func() {
 		_ = listener.Close()
 
 		<-done
-		// Close any lingering connections so handleSSHConn goroutines exit.
+
 		conns.Range(func(_, v any) bool {
 			conn, _ := v.(net.Conn)
 			_ = conn.Close()
@@ -92,89 +105,92 @@ func startTestSSHServer(t *testing.T, authorizedKey ssh.PublicKey) (string, func
 			return true
 		})
 		wg.Wait()
-	}
+	})
 
-	return listener.Addr().String(), cleanup
+	return node
 }
 
-// handleSSHConn handles one SSH connection, accepting session channels and
-// executing exec requests via the local shell. This is a test-only server:
-// it trusts the commands PVMSS constructs (all regex-validated filenames).
-func handleSSHConn(conn net.Conn, config *ssh.ServerConfig) {
+func (n testSnippetNode) serve(conn net.Conn, config *ssh.ServerConfig) {
 	defer func() { _ = conn.Close() }()
 
-	sshConn, chans, _, err := ssh.NewServerConn(conn, config)
+	sshConn, chans, reqs, err := ssh.NewServerConn(conn, config)
 	if err != nil {
 		return
 	}
 
 	defer func() { _ = sshConn.Close() }()
 
+	go ssh.DiscardRequests(reqs)
+
 	for newChan := range chans {
 		if newChan.ChannelType() != "session" {
 			_ = newChan.Reject(ssh.UnknownChannelType, "only session")
+
 			continue
 		}
 
-		channel, reqs, err := newChan.Accept()
+		channel, chReqs, err := newChan.Accept()
 		if err != nil {
 			continue
 		}
 
-		go func(ch ssh.Channel, reqs <-chan *ssh.Request) {
-			defer func() { _ = ch.Close() }()
-
-			for req := range reqs {
-				if req.Type != "exec" {
-					_ = req.Reply(false, nil)
-					continue
-				}
-
-				_ = req.Reply(true, nil)
-				// exec payload: 4-byte big-endian length + command string.
-				if len(req.Payload) < 4 {
-					continue
-				}
-
-				cmdLen := binary.BigEndian.Uint32(req.Payload[:4])
-				if int(cmdLen) > len(req.Payload)-4 {
-					continue
-				}
-
-				cmdStr := string(req.Payload[4 : 4+cmdLen])
-				//nolint:gosec // test-only server: cmdStr comes from PVMSS's regex-validated filenames
-				cmd := exec.CommandContext(context.Background(), "/bin/sh", "-c", cmdStr)
-				cmd.Stdout = ch
-				cmd.Stderr = ch.Stderr()
-				// Only pipe stdin for commands that read it (cat >). For
-				// commands like rm/cat/echo, setting cmd.Stdin = ch would
-				// start an internal copy goroutine that blocks on ch.Read()
-				// forever (the client sends no stdin), deadlocking cmd.Run().
-				if strings.Contains(cmdStr, "cat >") {
-					cmd.Stdin = ch
-				}
-
-				exitCode := uint32(0)
-
-				if err := cmd.Run(); err != nil {
-					if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
-						exitCode = uint32(exitErr.ExitCode()) //nolint:gosec // G115: exit codes are 0-255
-					} else {
-						exitCode = 1
-					}
-				}
-
-				_, _ = ch.SendRequest("exit-status", false, ssh.Marshal(struct{ Status uint32 }{exitCode}))
-
-				break // one exec per session; closing the channel unblocks the client's Wait
-			}
-		}(channel, reqs)
+		go n.session(channel, chReqs)
 	}
 }
 
-// writeTestKey generates an ed25519 key, writes it to a temp file in PKCS8
-// PEM format, and returns the path and the ssh.Signer.
-func writeTestKey(t *testing.T) (string, ssh.Signer) {
+func (n testSnippetNode) session(ch ssh.Channel, reqs <-chan *ssh.Request) {
+	defer func() { _ = ch.Close() }()
+
+	for req := range reqs {
+		if req.Type != "exec" || len(req.Payload) < 4 {
+			_ = req.Reply(false, nil)
+
+			continue
+		}
+
+		_ = req.Reply(true, nil)
+
+		cmdLen := binary.BigEndian.Uint32(req.Payload[:4])
+		fields := strings.Fields(string(req.Payload[4 : 4+cmdLen]))
+		status := n.run(ch, fields)
+		_, _ = ch.SendRequest("exit-status", false, ssh.Marshal(struct{ Status uint32 }{status}))
+
+		return
+	}
+}
+
+// run is the helper: forced-command semantics, name validated, dir owned.
+func (n testSnippetNode) run(ch ssh.Channel, fields []string) uint32 {
+	if len(fields) != 3 || fields[0] != SnippetHelperCommand || !snippetFilenameRE.MatchString(fields[2]) {
+		_, _ = fmt.Fprint(ch.Stderr(), "invalid snippet name")
+
+		return 2
+	}
+
+	path := filepath.Join(n.dir, fields[2])
+
+	switch fields[1] {
+	case "write":
+		data, err := io.ReadAll(ch)
+		if err != nil || os.WriteFile(path, data, 0o600) != nil {
+			return 1
+		}
+	case "remove":
+		_ = os.Remove(path)
+	default:
+		return 2
+	}
+
+	return 0
+}
+
+// knownHostsLine is the pinned host key line for this node.
+func (n testSnippetNode) knownHostsLine() string {
+	return knownhosts.Line([]string{knownhosts.Normalize(n.addr)}, n.hostKey)
+}
+
+// newTestSigner generates PVMSS's key.
+func newTestSigner(t *testing.T) ssh.Signer {
 	t.Helper()
 
 	_, priv, err := ed25519.GenerateKey(rand.Reader)
@@ -187,205 +203,247 @@ func writeTestKey(t *testing.T) (string, ssh.Signer) {
 		t.Fatalf("signer from key: %v", err)
 	}
 
-	keyBytes, err := x509.MarshalPKCS8PrivateKey(priv)
-	if err != nil {
-		t.Fatalf("marshal PKCS8: %v", err)
-	}
-
-	pemData := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyBytes})
-
-	keyFile := filepath.Join(t.TempDir(), "test_key")
-	if err := os.WriteFile(keyFile, pemData, 0o600); err != nil {
-		t.Fatalf("write key file: %v", err)
-	}
-
-	return keyFile, signer
+	return signer
 }
 
-//nolint:paralleltest // lightweight; no parallel to reduce race-scheduler pressure
-func TestNewSnippetSSH_DisabledWhenUserEmpty(t *testing.T) {
-	sshCfg, err := NewSnippetSSH("", "", 0)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+// publishTestAPI serves /cluster/status (one online node on 127.0.0.1, one
+// offline) and the snippets content of storage "shared" on node01 from
+// dir. listFiles=false simulates a helper writing into a directory that is
+// not the storage's snippets/ dir.
+func publishTestAPI(t *testing.T, dir string, listFiles bool) string {
+	t.Helper()
 
-	if sshCfg.Enabled() {
-		t.Fatal("SSH should be disabled when user is empty")
-	}
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/cluster/status", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"type":"cluster","name":"c"},{"type":"node","name":"node01","ip":"127.0.0.1","online":1},{"type":"node","name":"node02","ip":"127.0.0.2","online":0}]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/node01/storage/shared/content", func(w http.ResponseWriter, _ *http.Request) {
+			rows := []string{}
+
+			if listFiles {
+				entries, _ := os.ReadDir(dir)
+				for _, e := range entries {
+					rows = append(rows, fmt.Sprintf(`{"volid":"shared:snippets/%s","size":1}`, e.Name()))
+				}
+			}
+
+			writeJSONFixture(t, w, `{"data":[`+strings.Join(rows, ",")+`]}`)
+		})
+	})
+
+	return srv.URL
 }
 
-//nolint:paralleltest // lightweight; no parallel to reduce race-scheduler pressure
-func TestNewSnippetSSH_RequiresKeyFile(t *testing.T) {
-	_, err := NewSnippetSSH("root", "", 22)
-	if err == nil || !strings.Contains(err.Error(), "PVMSS_SSH_KEY_FILE is required") {
-		t.Fatalf("expected key file error, got %v", err)
-	}
-}
+func TestProxmox_PublishSnippet_WritesAndVerifiesEveryNode(t *testing.T) {
+	t.Parallel()
 
-//nolint:paralleltest // lightweight; no parallel to reduce race-scheduler pressure
-func TestNewSnippetSSH_ParsesKeyFile(t *testing.T) {
-	keyFile, _ := writeTestKey(t)
-
-	sshCfg, err := NewSnippetSSH("root", keyFile, 2222)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if !sshCfg.Enabled() {
-		t.Fatal("SSH should be enabled")
-	}
-
-	if sshCfg.User != "root" {
-		t.Fatalf("user = %q, want root", sshCfg.User)
-	}
-
-	if sshCfg.Port != 2222 {
-		t.Fatalf("port = %d, want 2222", sshCfg.Port)
-	}
-}
-
-//nolint:paralleltest // lightweight; no parallel to reduce race-scheduler pressure
-func TestNewSnippetSSH_DefaultPort(t *testing.T) {
-	keyFile, _ := writeTestKey(t)
-
-	sshCfg, err := NewSnippetSSH("root", keyFile, 0)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if sshCfg.Port != 22 {
-		t.Fatalf("default port = %d, want 22", sshCfg.Port)
-	}
-}
-
-//nolint:paralleltest // starts a TCP SSH server; parallel goroutines stress the race scheduler
-func TestProxmoxSSH_WriteReadRemoveSnippet(t *testing.T) {
-	_, clientSigner := writeTestKey(t)
-
-	addr, cleanup := startTestSSHServer(t, clientSigner.PublicKey())
-	defer cleanup()
-
-	snippetDir := t.TempDir()
-	_, portStr, _ := net.SplitHostPort(addr)
+	signer := newTestSigner(t)
+	node := startTestSnippetNode(t, signer.PublicKey())
 
 	p := Proxmox{
-		BaseURL:        "https://" + addr + "/api2/json",
-		SnippetDir:     snippetDir,
-		SnippetStorage: "test-storage",
-		SSH: SnippetSSH{
-			User:   "root",
-			Signer: clientSigner,
-			Port:   atoiOrFatal(t, portStr),
-		},
+		BaseURL: publishTestAPI(t, node.dir, true), APITokenName: testTokenName, APITokenValue: testTokenVal,
+		SnippetStorage: "shared",
+		SSH:            SnippetSSH{User: "pvmss", Port: node.port, KnownHosts: node.knownHostsLine(), Signer: signer},
 	}
 
-	content := "#cloud-config\nruncmd: [echo hello]\n"
-	filename := "pvmss-100.yml"
-
-	// Write via SSH
-	if err := p.PushCloudInitSnippet(context.Background(), "", "test-storage", filename, 100, content); err != nil {
-		t.Fatalf("PushCloudInitSnippet: %v", err)
-	}
-
-	// Verify file exists on disk (test SSH server runs locally).
-	//nolint:gosec // G304: test-controlled path
-	written, err := os.ReadFile(filepath.Join(snippetDir, filename))
+	results, err := p.PublishSnippet(context.Background(), "pvmss-tpl-web-abc.yml", "#cloud-config\n")
 	if err != nil {
-		t.Fatalf("read written file: %v", err)
+		t.Fatalf("PublishSnippet: %v", err)
 	}
 
-	if string(written) != content {
-		t.Fatalf("content = %q, want %q", string(written), content)
+	if len(results) != 2 || !results[0].OK || results[0].Node != "node01" {
+		t.Fatalf("results = %+v, want node01 OK", results)
 	}
 
-	// Read back via SSH
-	got, err := p.ReadSnippet(context.Background(), "", "test-storage", filename)
-	if err != nil {
-		t.Fatalf("ReadSnippet: %v", err)
+	if results[1].OK || !strings.Contains(results[1].Error, "offline") {
+		t.Errorf("node02 = %+v, want offline failure", results[1])
 	}
 
-	if got != content {
-		t.Fatalf("ReadSnippet content = %q, want %q", got, content)
+	data, err := os.ReadFile(filepath.Join(node.dir, "pvmss-tpl-web-abc.yml"))
+	if err != nil || string(data) != "#cloud-config\n" {
+		t.Fatalf("published file = %q (%v)", data, err)
 	}
 
-	// Remove via SSH
-	if err := p.RemoveCloudInitSnippet(context.Background(), "test-storage", filename); err != nil {
+	if err := p.RemoveCloudInitSnippet(context.Background(), "shared", "pvmss-tpl-web-abc.yml"); err != nil {
 		t.Fatalf("RemoveCloudInitSnippet: %v", err)
 	}
 
-	// Verify file is gone.
-	if _, err := os.Stat(filepath.Join(snippetDir, filename)); !os.IsNotExist(err) {
-		t.Fatalf("file should be removed, stat err = %v", err)
-	}
-
-	// Remove again - missing file is not an error.
-	if err := p.RemoveCloudInitSnippet(context.Background(), "test-storage", filename); err != nil {
-		t.Fatalf("RemoveCloudInitSnippet (missing): %v", err)
+	if _, err := os.Stat(filepath.Join(node.dir, "pvmss-tpl-web-abc.yml")); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("file still present after remove: %v", err)
 	}
 }
 
-//nolint:paralleltest // starts a TCP SSH server; parallel goroutines stress the race scheduler
-func TestProxmoxSSH_ReadSnippetNotFound(t *testing.T) {
-	_, clientSigner := writeTestKey(t)
+func TestProxmox_PublishSnippet_ReportsFileProxmoxDoesNotList(t *testing.T) {
+	t.Parallel()
 
-	addr, cleanup := startTestSSHServer(t, clientSigner.PublicKey())
-	defer cleanup()
-
-	snippetDir := t.TempDir()
-	_, portStr, _ := net.SplitHostPort(addr)
+	signer := newTestSigner(t)
+	node := startTestSnippetNode(t, signer.PublicKey())
 
 	p := Proxmox{
-		BaseURL:        "https://" + addr + "/api2/json",
-		SnippetDir:     snippetDir,
-		SnippetStorage: "test-storage",
-		SSH: SnippetSSH{
-			User:   "root",
-			Signer: clientSigner,
-			Port:   atoiOrFatal(t, portStr),
+		BaseURL: publishTestAPI(t, node.dir, false), APITokenName: testTokenName, APITokenValue: testTokenVal,
+		SnippetStorage: "shared",
+		SSH:            SnippetSSH{User: "pvmss", Port: node.port, KnownHosts: node.knownHostsLine(), Signer: signer},
+	}
+
+	results, err := p.PublishSnippet(context.Background(), "pvmss-baseline-abc.yml", "#cloud-config\n")
+	if err != nil {
+		t.Fatalf("PublishSnippet: %v", err)
+	}
+
+	if results[0].OK || !strings.Contains(results[0].Error, "does not list") {
+		t.Fatalf("node01 = %+v, want a visibility failure", results[0])
+	}
+}
+
+func TestProxmox_PublishSnippet_RefusesUnpinnedOrChangedHostKey(t *testing.T) {
+	t.Parallel()
+
+	signer := newTestSigner(t)
+	node := startTestSnippetNode(t, signer.PublicKey())
+	other := startTestSnippetNode(t, signer.PublicKey())
+
+	cases := map[string]struct {
+		knownHosts string
+		want       string
+	}{
+		"unpinned": {knownHosts: other.knownHostsLine(), want: "not in the cluster's pinned host keys"},
+		"changed": {
+			knownHosts: knownhosts.Line([]string{knownhosts.Normalize(node.addr)}, other.hostKey),
+			want:       "host key mismatch",
 		},
 	}
 
-	_, err := p.ReadSnippet(context.Background(), "", "test-storage", "pvmss-999.yml")
-	if !errors.Is(err, ErrNotFound) {
-		t.Fatalf("ReadSnippet missing file: err = %v, want ErrNotFound", err)
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			p := Proxmox{
+				BaseURL: publishTestAPI(t, node.dir, true), APITokenName: testTokenName, APITokenValue: testTokenVal,
+				SnippetStorage: "shared",
+				SSH:            SnippetSSH{User: "pvmss", Port: node.port, KnownHosts: tc.knownHosts, Signer: signer},
+			}
+
+			results, err := p.PublishSnippet(context.Background(), "pvmss-baseline-abc.yml", "#cloud-config\n")
+			if err != nil {
+				t.Fatalf("PublishSnippet: %v", err)
+			}
+
+			if results[0].OK || !strings.Contains(results[0].Error, tc.want) {
+				t.Fatalf("node01 = %+v, want %q", results[0], tc.want)
+			}
+
+			if entries, _ := os.ReadDir(node.dir); len(entries) != 0 {
+				t.Errorf("file written to an unverified host: %v", entries)
+			}
+		})
 	}
 }
 
-//nolint:paralleltest // no parallel to reduce race-scheduler pressure
-func TestProxmoxSSH_LocalFallbackWhenDisabled(t *testing.T) {
-	// When SSH is not enabled, the existing local filesystem path is used.
-	// This verifies the branching: SSH disabled = local write.
-	snippetDir := t.TempDir()
+func TestProxmox_PublishSnippet_NotConfigured(t *testing.T) {
+	t.Parallel()
+
+	for name, p := range map[string]Proxmox{
+		"no storage": {SSH: SnippetSSH{User: "pvmss", Signer: newTestSigner(t)}},
+		"no user":    {SnippetStorage: "shared", SSH: SnippetSSH{Signer: newTestSigner(t)}},
+		"no key":     {SnippetStorage: "shared", SSH: SnippetSSH{User: "pvmss"}},
+	} {
+		if _, err := p.PublishSnippet(context.Background(), "pvmss-x.yml", ""); !errors.Is(err, ErrSSHNotConfigured) {
+			t.Errorf("%s: err = %v, want ErrSSHNotConfigured", name, err)
+		}
+	}
+}
+
+func TestProxmox_PublishSnippet_RejectsUnsafeFilename(t *testing.T) {
+	t.Parallel()
+
+	p := Proxmox{SnippetStorage: "shared", SSH: SnippetSSH{User: "pvmss", Signer: newTestSigner(t)}}
+
+	for _, name := range []string{"../etc/passwd", "pvmss-a.yml;rm -rf /", "evil.yml", "pvmss-a b.yml"} {
+		if _, err := p.PublishSnippet(context.Background(), name, ""); err == nil || errors.Is(err, ErrSSHNotConfigured) {
+			t.Errorf("%q: err = %v, want refusal", name, err)
+		}
+	}
+}
+
+func TestProxmox_ScanHostKeys_ReturnsPinnableLines(t *testing.T) {
+	t.Parallel()
+
+	signer := newTestSigner(t)
+	node := startTestSnippetNode(t, signer.PublicKey())
+
 	p := Proxmox{
-		BaseURL:        "https://pve.example.com:8006/api2/json",
-		SnippetDir:     snippetDir,
-		SnippetStorage: "local",
-		SSH:            SnippetSSH{}, // disabled
+		BaseURL: publishTestAPI(t, node.dir, true), APITokenName: testTokenName, APITokenValue: testTokenVal,
+		SSH: SnippetSSH{Port: node.port},
 	}
 
-	content := "#cloud-config\npackages: [vim]\n"
-	if err := p.PushCloudInitSnippet(context.Background(), "", "local", "pvmss-200.yml", 200, content); err != nil {
-		t.Fatalf("PushCloudInitSnippet (local): %v", err)
-	}
-
-	//nolint:gosec // G304: test-controlled path
-	got, err := os.ReadFile(filepath.Join(snippetDir, "pvmss-200.yml"))
+	scans, err := p.ScanHostKeys(context.Background())
 	if err != nil {
-		t.Fatalf("read local file: %v", err)
+		t.Fatalf("ScanHostKeys: %v", err)
 	}
 
-	if string(got) != content {
-		t.Fatalf("local content = %q, want %q", string(got), content)
+	if len(scans) != 2 || scans[0].Line != node.knownHostsLine() {
+		t.Fatalf("scans = %+v, want node01 line %q", scans, node.knownHostsLine())
+	}
+
+	if scans[1].Error == "" {
+		t.Errorf("node02 (unreachable) = %+v, want an error", scans[1])
+	}
+
+	if err := ValidateKnownHosts(scans[0].Line); err != nil {
+		t.Errorf("scanned line does not validate: %v", err)
 	}
 }
 
-func atoiOrFatal(t *testing.T, s string) int {
-	t.Helper()
+func TestValidateKnownHosts(t *testing.T) {
+	t.Parallel()
 
-	var n int
-	if _, err := fmt.Sscanf(s, "%d", &n); err != nil {
-		t.Fatalf("parse port %q: %v", s, err)
+	good := knownhosts.Line([]string{"10.0.0.1"}, newTestSigner(t).PublicKey())
+
+	for text, wantErr := range map[string]bool{
+		"":                                 false,
+		"# comment\n\n" + good:             false,
+		good + "\n" + good:                 false,
+		"not a key line":                   true,
+		"|1|abc=|def= ssh-ed25519 AAAAC3N": true,
+	} {
+		if err := ValidateKnownHosts(text); (err != nil) != wantErr {
+			t.Errorf("ValidateKnownHosts(%q) = %v, wantErr %v", text, err, wantErr)
+		}
+	}
+}
+
+func TestLoadSSHSigner(t *testing.T) {
+	t.Parallel()
+
+	if signer, err := LoadSSHSigner(""); err != nil || signer != nil {
+		t.Fatalf("empty path = %v/%v, want nil/nil", signer, err)
 	}
 
-	return n
+	_, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatalf("generate key: %v", err)
+	}
+
+	der, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	keyFile := filepath.Join(t.TempDir(), "key")
+	if err := os.WriteFile(keyFile, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}), 0o600); err != nil {
+		t.Fatalf("write key: %v", err)
+	}
+
+	signer, err := LoadSSHSigner(keyFile)
+	if err != nil || signer == nil {
+		t.Fatalf("LoadSSHSigner = %v/%v", signer, err)
+	}
+
+	if !strings.HasPrefix(AuthorizedKey(signer), "ssh-ed25519 ") || AuthorizedKey(nil) != "" {
+		t.Errorf("AuthorizedKey = %q", AuthorizedKey(signer))
+	}
+
+	if _, err := LoadSSHSigner(filepath.Join(t.TempDir(), "missing")); err == nil {
+		t.Error("missing key file: want an error")
+	}
 }

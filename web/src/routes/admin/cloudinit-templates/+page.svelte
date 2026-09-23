@@ -16,6 +16,9 @@
 	error={store.error}
 	saving={store.saving}
 	saveError={store.saveError}
+	publishing={store.publishing}
+	publishWarning={store.publishWarning}
+	onPublishAll={() => void store.publishAll()}
 	clusterOptions={store.clusterOptions}
 	cluster={store.cluster}
 	onClusterChange={(v) => store.setCluster(v)}

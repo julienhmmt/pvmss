@@ -177,18 +177,22 @@ Packages under `server/internal/`:
 | `cloudinit/` | Cloud-init document validation + slug helpers                 |
 | `config/`    | Env-based configuration, validation, slog logger, redaction   |
 
-Cloud-init documents are written by PVMSS itself into a bind-mounted storage
-`snippets/` directory configured per cluster (`clusters.snippet_dir` /
-`clusters.snippet_storage`, admin form in `/admin/clusters`); the Proxmox
-REST API cannot write snippets. Sources: `catalog_cloudinit_templates`
-(admin, per cluster) and `user_cloudinit_files` (owner-scoped, max 20);
-each VM gets its own `pvmss-<vmid>.yml` copy recorded in
-`vm_cloudinit_snippets`.
-
-Cloud-init documents are written by PVMSS itself into a bind-mounted storage
-`snippets/` directory configured per cluster
-(`clusters.snippet_dir/snippet_storage`); the Proxmox API cannot write
-snippets. User-owned cloud-init files live in `store/user_cloudinit_files.go`.
+Cloud-init documents are authored by PVMSS administrators only
+(`catalog_cloudinit_templates`, per cluster) and **published over SSH** to
+every node of the cluster: PVMSS runs the node-side helper `pvmss-snippet`
+(`tools/pvmss-node-setup.sh`, forced command) with `write <name>` and proves
+through the API that each node lists `<storage>:snippets/<name>`
+(`cluster/proxmox_publish.go`, `catalog/cloudinit_publish.go`,
+`cloudinit_publications`). Published files are content-addressed and
+immutable (`pvmss-tpl-<id>-<hash>.yml`, baseline merged in;
+`pvmss-baseline-<hash>.yml` alone for image VMs without a template). VM
+creation and the VM cloud-init tab never write a file: they check
+`HasSnippet` on the VM's node and set `cicustom` (`vm/create_cloudinit.go`,
+`vm_cloudinit_documents`). Per-cluster SSH settings (`clusters.ssh_user`,
+`ssh_port`, `ssh_known_hosts` - host keys always verified) + the global key
+`PVMSS_SSH_KEY_FILE`. The Proxmox API cannot write snippets. Users cannot
+write cloud-init YAML (user files and the per-VM editor were removed);
+legacy per-VM files (`vm_cloudinit_snippets`) are only cleaned up.
 
 ### Web (`web/`)
 
@@ -256,12 +260,12 @@ operator who simply forgot to set the variable.
 | `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | `15s`                              |
 | `PVMSS_MAX_LIST_PAGE_SIZE`                    | `100`                              |
 | `PVMSS_TRUSTED_PROXY_HOPS`                    | `1`                                |
-| `PVMSS_SSH_USER`                              | empty; setting it enables SSH snippet delivery |
-| `PVMSS_SSH_KEY_FILE`                          | empty; required when `PVMSS_SSH_USER` is set |
-| `PVMSS_SSH_PORT`                              | `22`                                |
+| `PVMSS_SSH_KEY_FILE`                          | empty; the key that publishes cloud-init templates over SSH (user/port/host keys are per cluster) |
 
 `PVMSS_OFFLINE`, `PVMSS_ENV`, `JWT_SECRET`, `PROXMOX_VERIFY_SSL` and
-`LOG_FILE_PATH` belonged to the v0.3 backend and are **no longer read**. Demo
+`LOG_FILE_PATH` belonged to the v0.3 backend and are **no longer read**.
+`PVMSS_SSH_USER` / `PVMSS_SSH_PORT` are no longer read either (per cluster
+in Admin > Clusters since cloud-init publishing moved to SSH-only). Demo
 mode is now `PVMSS_CLUSTER_SOURCE=fake`.
 
 ## Testing Notes

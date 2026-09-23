@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 	"pvmss/server/internal/auth"
-	"pvmss/server/internal/cloudinit"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/policy"
@@ -16,8 +15,6 @@ import (
 	"strings"
 	"time"
 )
-
-const maxCloudInitSnippetBody = 128 * 1024
 
 // VMCloudInit serves the four per-VM cloud-init endpoints.
 type VMCloudInit struct {
@@ -168,17 +165,22 @@ type cloudInitUpdateResponse struct {
 	Rebooted bool   `json:"rebooted"`
 }
 
-type cloudInitSnippetDTO struct {
-	Content   *string `json:"content"`
-	UpdatedAt *string `json:"updatedAt"`
-	UpdatedBy *string `json:"updatedBy"`
+// cloudInitDocumentDTO is the document a VM uses. TemplateID is "" when
+// none, "__baseline__" for the standalone baseline; Legacy marks a per-VM
+// document written before documents became admin-published.
+type cloudInitDocumentDTO struct {
+	TemplateID *string `json:"templateId"`
+	Filename   *string `json:"filename"`
+	Legacy     bool    `json:"legacy"`
+	UpdatedAt  *string `json:"updatedAt"`
+	UpdatedBy  *string `json:"updatedBy"`
 }
 
-type cloudInitSnippetRequest struct {
-	Content *string `json:"content"`
+type cloudInitDocumentRequest struct {
+	TemplateID *string `json:"templateId"`
 }
 
-type cloudInitSnippetResponse struct {
+type cloudInitDocumentResponse struct {
 	Status string `json:"status"`
 }
 
@@ -194,8 +196,8 @@ type cloudInitSSHKeyResponse struct {
 // ServeHTTP dispatches config, snippet, ssh-key, and console-password routes by path suffix.
 func (h *VMCloudInit) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
-	case strings.HasSuffix(r.URL.Path, "/cloudinit/snippet"):
-		h.handleSnippet(w, r)
+	case strings.HasSuffix(r.URL.Path, "/cloudinit/document"):
+		h.handleDocument(w, r)
 	case strings.HasSuffix(r.URL.Path, "/cloudinit/ssh-keys"):
 		h.handleSSHKey(w, r)
 	case strings.HasSuffix(r.URL.Path, "/console-password"):
@@ -420,37 +422,40 @@ func (h *VMCloudInit) handleConsolePassword(w http.ResponseWriter, r *http.Reque
 	h.writeJSONStatus(w, http.StatusOK, consolePasswordResponse{Password: password})
 }
 
-func (h *VMCloudInit) handleSnippet(w http.ResponseWriter, r *http.Request) {
-	h.serveRoute(w, r, h.getSnippet, h.putSnippet)
+func (h *VMCloudInit) handleDocument(w http.ResponseWriter, r *http.Request) {
+	h.serveRoute(w, r, h.getDocument, h.putDocument)
 }
 
-func (h *VMCloudInit) getSnippet(w http.ResponseWriter, r *http.Request, actor auth.Identity, clusterName string, vmid int) {
+func (h *VMCloudInit) getDocument(w http.ResponseWriter, r *http.Request, actor auth.Identity, clusterName string, vmid int) {
 	index, ok := h.index(w, clusterName)
 	if !ok {
 		return
 	}
 
-	snippet, found, err := vm.GetCloudInitSnippet(r.Context(), index, actor, clusterName, vmid, h.store)
+	doc, found, err := vm.GetCloudInitDocument(r.Context(), index, actor, clusterName, vmid, h.store)
 	if err != nil {
 		h.writeDomainError(w, err)
 		return
 	}
 
 	if !found {
-		h.writeJSONStatus(w, http.StatusOK, cloudInitSnippetDTO{})
+		h.writeJSONStatus(w, http.StatusOK, cloudInitDocumentDTO{})
 		return
 	}
 
-	content := snippet.Content
-	updatedAt := snippet.UpdatedAt.Format(time.RFC3339Nano)
-	updatedBy := snippet.UpdatedBy
-	h.writeJSONStatus(w, http.StatusOK, cloudInitSnippetDTO{Content: &content, UpdatedAt: &updatedAt, UpdatedBy: &updatedBy})
+	templateID := doc.TemplateID
+	filename := doc.Filename
+	updatedAt := doc.UpdatedAt.Format(time.RFC3339Nano)
+	updatedBy := doc.UpdatedBy
+	h.writeJSONStatus(w, http.StatusOK, cloudInitDocumentDTO{
+		TemplateID: &templateID, Filename: &filename, Legacy: doc.Legacy, UpdatedAt: &updatedAt, UpdatedBy: &updatedBy,
+	})
 }
 
-func (h *VMCloudInit) putSnippet(w http.ResponseWriter, r *http.Request, actor auth.Identity, clusterName string, vmid int) {
-	var request cloudInitSnippetRequest
-	if err := decodeJSONLimit(w, r, &request, maxCloudInitSnippetBody); err != nil || request.Content == nil {
-		h.writeError(w, http.StatusBadRequest, "invalid_snippet", "content is required")
+func (h *VMCloudInit) putDocument(w http.ResponseWriter, r *http.Request, actor auth.Identity, clusterName string, vmid int) {
+	var request cloudInitDocumentRequest
+	if err := decodeJSON(w, r, &request); err != nil || request.TemplateID == nil {
+		h.writeError(w, http.StatusBadRequest, "invalid_request", "templateId is required (empty string detaches)")
 		return
 	}
 
@@ -469,23 +474,25 @@ func (h *VMCloudInit) putSnippet(w http.ResponseWriter, r *http.Request, actor a
 		return
 	}
 
-	if err := vm.SetCloudInitSnippet(r.Context(), vm.CloudInitSnippetDeps{
+	if err := vm.SetCloudInitDocument(r.Context(), vm.CloudInitDocumentDeps{
 		Index: index, Actor: actor, ClusterName: clusterName, VMID: vmid,
-		Reader: reader, Writer: writer, Store: h.store, Service: h.policy,
-	}, *request.Content); err != nil {
+		Reader: reader, Writer: writer, Store: h.store,
+	}, *request.TemplateID); err != nil {
 		h.writeDomainError(w, err)
 		return
 	}
 
-	h.writeJSONStatus(w, http.StatusOK, cloudInitSnippetResponse{Status: "saved"})
+	h.writeJSONStatus(w, http.StatusOK, cloudInitDocumentResponse{Status: "saved"})
 }
 
 func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrCloudInitWriteUnavailable):
-		h.writeError(w, http.StatusConflict, "cloudinit_write_unavailable", "cloud-init documents are not enabled on this cluster (set the snippet directory in Admin › Clusters)")
-	case errors.Is(err, vm.ErrCustomYAMLDisabled):
-		h.writeError(w, http.StatusForbidden, "custom_yaml_disabled", "the administrator has disabled custom cloud-init snippets")
+		h.writeError(w, http.StatusConflict, "cloudinit_write_unavailable", "cloud-init documents are not enabled on this cluster (Admin > Clusters: snippet storage and SSH publishing)")
+	case errors.Is(err, vm.ErrCloudInitNotPublished):
+		h.writeError(w, http.StatusConflict, "cloudinit_not_published", err.Error())
+	case errors.Is(err, vm.ErrNotApproved):
+		h.writeError(w, http.StatusBadRequest, "not_approved", err.Error())
 	case errors.Is(err, policy.ErrUnavailable):
 		h.writeError(w, http.StatusServiceUnavailable, "policy_unavailable", msgPolicyUnavailable)
 	case errors.Is(err, vm.ErrForbidden):
@@ -500,10 +507,8 @@ func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 		h.writeError(w, http.StatusBadRequest, "ssh_user_unknown", "the cloud-init user does not exist on the guest")
 	case h.writeGuestAgentError(w, err):
 		// Already written by the helper (password-path errors).
-	case errors.Is(err, cloudinit.ErrSnippetPrefix), errors.Is(err, cloudinit.ErrSnippetTooLarge), errors.Is(err, cloudinit.ErrSnippetInvalidUTF8):
-		h.writeError(w, http.StatusBadRequest, "invalid_snippet", err.Error())
 	case errors.Is(err, vm.ErrSnippetPushFailed):
-		h.writeError(w, http.StatusBadGateway, "push_failed", "snippet saved, not yet applied to the VM")
+		h.writeError(w, http.StatusBadGateway, "push_failed", "the cloud-init document could not be applied to the VM")
 	case errors.Is(err, cluster.ErrNotImplemented), errors.Is(err, cluster.ErrUnreachable), errors.Is(err, cluster.ErrNotFound):
 		h.writeError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
 	default:

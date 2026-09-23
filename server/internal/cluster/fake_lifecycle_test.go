@@ -158,8 +158,8 @@ func TestFake_CloudInitIO(t *testing.T) {
 		t.Fatalf("EnsureCloudInitDrive: %v", err)
 	}
 
-	if err := fake.PushCloudInitSnippet(ctx, cluster.FakeNode01, "local", "snippet.yaml", 100, "#cloud-config\n"); err != nil {
-		t.Fatalf("PushCloudInitSnippet: %v", err)
+	if _, err := fake.PublishSnippet(ctx, "pvmss-snippet.yaml", "#cloud-config\n"); err != nil {
+		t.Fatalf("PublishSnippet: %v", err)
 	}
 
 	ticket, err := fake.GetVNCTicket(ctx, cluster.FakeNode01, 100, "ticket")

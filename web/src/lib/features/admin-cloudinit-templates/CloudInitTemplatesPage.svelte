@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { AdminCloudInitTemplate } from './cloudInitTemplates.svelte';
+	import { fullyPublished, type AdminCloudInitTemplate } from './cloudInitTemplates.svelte';
 	import type { ClusterOption } from '$lib/shared/clusters';
 	import CloudInitTemplateFormDialog from './CloudInitTemplateFormDialog.svelte';
 	import Alert from '$lib/shared/ui/Alert.svelte';
@@ -18,6 +18,9 @@
 		error: string | null;
 		saving: boolean;
 		saveError: string | null;
+		publishing: boolean;
+		publishWarning: string | null;
+		onPublishAll: () => void;
 		clusterOptions: ClusterOption[];
 		cluster: string;
 		onClusterChange: (value: string) => void;
@@ -33,6 +36,9 @@
 		error,
 		saving,
 		saveError,
+		publishing,
+		publishWarning,
+		onPublishAll,
 		clusterOptions,
 		cluster,
 		onClusterChange,
@@ -78,18 +84,23 @@
 <PageHeader title={m['admin.cloudinit.header']()}>
 	{#snippet actions()}
 		<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="cloudinit-cluster" />
+		<Button variant="secondary" loading={publishing} onclick={onPublishAll} data-testid="cloudinit-publish-all">{m['admin.cloudinit.publishAll']()}</Button>
 		<Button onclick={openCreate}>{m['admin.cloudinit.newTemplate']()}</Button>
 	{/snippet}
 </PageHeader>
 
 {#if loading}
 	<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
-	<TableSkeleton columns={4} />
+	<TableSkeleton columns={5} />
 {:else if error}
 	<Alert>{error}</Alert>
 {:else}
+	<p class="mb-4 text-sm text-muted-foreground">{m['admin.cloudinit.publishHelp']()}</p>
 	{#if saveError}
 		<Alert class="mb-4">{saveError}</Alert>
+	{/if}
+	{#if publishWarning}
+		<Alert tone="warning" class="mb-4" data-testid="cloudinit-publish-warning">{publishWarning}</Alert>
 	{/if}
 
 	<TableCard>
@@ -100,6 +111,7 @@
 					<th class="font-medium">{m['admin.cloudinit.id']()}</th>
 					<th class="font-medium">{m['admin.cloudinit.labelField']()}</th>
 					<th class="font-medium">{m['admin.cloudinit.enabledStatus']()}</th>
+					<th class="font-medium">{m['admin.cloudinit.publication']()}</th>
 					<th class="font-medium">{m['common.actions']()}</th>
 				</tr>
 			</thead>
@@ -120,6 +132,22 @@
 								</span>
 							</span>
 						</td>
+						<td data-label={m['admin.cloudinit.publication']()} data-testid="cloudinit-publication">
+							{#if template.publication === null}
+								<span class="text-xs text-muted-foreground">{m['admin.cloudinit.notPublished']()}</span>
+							{:else}
+								<span class="text-xs {fullyPublished(template.publication) ? 'text-success' : 'text-warning'}">
+									{m['admin.cloudinit.publishedNodes']({
+										ok: template.publication.nodes.filter((n) => n.ok).length,
+										total: template.publication.nodes.length
+									})}
+								</span>
+								<span class="block font-mono text-[11px] text-muted-foreground">{template.publication.filename}</span>
+								{#each template.publication.nodes.filter((n) => !n.ok) as failed (failed.node)}
+									<span class="block text-[11px] text-warning" title={failed.error}>{failed.node}: {failed.error}</span>
+								{/each}
+							{/if}
+						</td>
 						<td data-label={m['common.actions']()}>
 							<div class="flex gap-2">
 								<Button variant="secondary" size="sm" label={m['admin.cloudinit.editLabel']({ label: template.label })} onclick={() => openEdit(template)}>{m['admin.cloudinit.edit']()}</Button>
@@ -128,7 +156,7 @@
 						</td>
 					</tr>
 				{:else}
-					<tr><td colspan={4} class="p-0">
+					<tr><td colspan={5} class="p-0">
 						<EmptyState title={m['admin.cloudinit.noTemplates']()}>
 							{#snippet actions()}
 								<Button onclick={openCreate}>{m['admin.cloudinit.newTemplate']()}</Button>

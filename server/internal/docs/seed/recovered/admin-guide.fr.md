@@ -72,6 +72,7 @@ Optionnelles :
 - `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` - délai minimal entre deux rafraîchissements manuels (défaut `5s`).
 - `PVMSS_INVENTORY_REFRESH_TIMEOUT` - délai maximal d'un rafraîchissement (défaut `15s`).
 - `PVMSS_MAX_LIST_PAGE_SIZE` - taille de page maximale des listes (défaut `100`).
+- `PVMSS_SSH_KEY_FILE` - clé privée utilisée par PVMSS pour publier les documents cloud-init sur les nœuds par SSH (voir plus bas).
 
 Pour les instructions de déploiement complètes (Docker, Kubernetes, Helm), voir le README du projet.
 
@@ -84,7 +85,7 @@ PVMSS peut se connecter à plusieurs environnements Proxmox simultanément. Chaq
 - Le **Test** vérifie la connectivité et les identifiants avant d'exposer le cluster ; il rapporte la version de Proxmox et le nombre de nœuds et de VM.
 - La **vérification TLS** peut être désactivée par cluster pour un labo auto-signé ; gardez-la active en production.
 - L'interrupteur **OIDC** est réservé à une future intégration SSO : l'activer affiche un bouton sur l'écran de connexion mais la connexion n'est pas encore implémentée.
-- **Répertoire de snippets** et **Stockage de snippets** activent les documents cloud-init pour ce cluster (voir la section dédiée). Le badge du cluster affiche « cloud-init : activé » une fois les deux renseignés.
+- **Stockage de snippets**, **utilisateur/port SSH** et **clés d'hôte épinglées** activent la publication cloud-init pour ce cluster (voir la section dédiée). Le badge du cluster affiche « cloud-init : activé » une fois ces champs renseignés et `PVMSS_SSH_KEY_FILE` configuré.
 - Nœuds, stockages, ISO, images, templates, bridges, templates cloud-init et politique sont gérés par cluster.
 
 ## Nœuds
@@ -131,7 +132,7 @@ Vous saisissez un nom court (1 à 32 caractères alphanumériques minuscules ave
 
 `/admin/policy` est par cluster et comporte deux parties :
 
-- **Gabarit** - le plafond d'une VM : sockets, cœurs, mémoire, disque par VM, cartes réseau, snapshots, autorisation du YAML cloud-init libre sur les VM, et tag VLAN d'isolation.
+- **Gabarit** - le plafond d'une VM : sockets, cœurs, mémoire, disque par VM, cartes réseau, snapshots, et tag VLAN d'isolation.
 - **Quota** - nombre maximal de VM par utilisateur.
 
 `/admin/policy/nodes` plafonne ce que PVMSS peut allouer au total sur un nœud (VM, vCPU, RAM, disque) et montre l'usage courant face à la capacité physique. Tout est appliqué côté serveur avant tout appel à Proxmox : une demande au-delà d'une limite est refusée tôt avec un message clair.
@@ -142,7 +143,6 @@ Au-delà des réglages de la politique, l'application elle-même impose :
 
 - **Limitation de débit** - 10 requêtes/minute par IP sur les endpoints d'authentification ; 30 écritures/minute par utilisateur sur les routes VM ; 120 lectures de statut/minute par utilisateur ; 60 écritures/minute par utilisateur sur les routes admin ; 10 tests de cluster/minute.
 - **Actions groupées** - 100 VM maximum par requête.
-- **Fichiers cloud-init** - 20 documents maximum par utilisateur.
 - **Nom de VM** - un nom d'hôte en minuscules, 63 caractères maximum, unique dans le pool du propriétaire ; **description** - 512 caractères maximum.
 - **Nom de snapshot** - une lettre puis lettres, chiffres, tirets ou underscores, 2 à 40 caractères ; `current` est réservé.
 - **Nom de pool** - 1 à 32 caractères alphanumériques minuscules avec tirets internes (stocké en `pvmss-<nom>`).
@@ -150,20 +150,22 @@ Au-delà des réglages de la politique, l'application elle-même impose :
 
 ## Activer les documents cloud-init
 
-L'API REST de Proxmox ne sait pas écrire de fichiers `snippets` ; PVMSS les écrit donc lui-même dans un répertoire que vous montez dans son conteneur. Une fois activé, les utilisateurs peuvent attacher un template admin ou l'un de leurs fichiers (page `/cloud-init`, 20 par utilisateur) à une nouvelle VM ; PVMSS écrit une copie propre à la VM `pvmss-<vmid>.yml`, l'attache en vendor data et l'enregistre. Modifier la source ensuite ne touche jamais les VM existantes.
+Seuls les administrateurs écrivent les documents cloud-init (**Admin › Modèles cloud-init**) ; les utilisateurs en choisissent un à la création d'une VM ou en changent depuis l'onglet Cloud-init de la VM. L'API REST de Proxmox ne sait pas écrire de fichiers `snippets` ; PVMSS publie donc chaque template, fusionné avec la base qemu-guest-agent, sous forme d'un fichier immuable `pvmss-tpl-<id>-<hash>.yml` dans le stockage de snippets de **chaque nœud**, par SSH, et vérifie via l'API que chaque nœud le liste. La création d'une VM n'écrit jamais de fichier : la VM pointe vers le fichier publié. Modifier un template publie un nouveau fichier, les VM existantes gardent leur version.
 
-1. Dans Proxmox, choisissez un stockage **partagé par tous les nœuds** (NFS/CIFS). Datacenter › Storage › Edit → Content : ajoutez **Snippets**.
-2. Montez `<chemin du stockage>/snippets` dans le conteneur PVMSS. Compose : `- /mnt/pve/shared/snippets:/snippets`. Helm : `persistence.snippets.enabled=true` avec `existingClaim` ou `nfs.server` + `nfs.path`. Kubernetes brut : le volume `snippets` commenté dans `pvmss-deployment.yaml`.
-3. **Admin › Clusters › Modifier** : *Répertoire de snippets* = le chemin dans le conteneur (`/snippets`), *Stockage de snippets* = l'identifiant du stockage Proxmox. Le badge passe à « cloud-init : activé ».
-4. Vérifiez : créez un template cloud-init, créez une VM avec, puis sur un nœud lancez `qm config <vmid> | grep cicustom` et contrôlez le fichier dans `snippets/`.
-5. Un stockage de type répertoire local à un nœud ne fonctionne que si toutes les VM sont placées sur ce nœud - déconseillé.
-6. Activez **Autoriser le YAML cloud-init libre** dans la politique si les utilisateurs peuvent modifier le document de leurs VM depuis l'onglet Cloud-init.
+1. Dans Proxmox, activez le type de contenu **Snippets** sur un stockage disponible sur chaque nœud (Datacenter › Storage › Edit ; `local` convient).
+2. Générez une paire de clés (`ssh-keygen -t ed25519 -N '' -f pvmss_ed25519`) et fournissez la clé privée à PVMSS avec `PVMSS_SSH_KEY_FILE`. Compose : montage en lecture seule. Helm : un Secret nommé dans `cloudInit.sshKeySecret`.
+3. Sur chaque nœud, en root : `sh tools/pvmss-node-setup.sh --storage <stockage> --key '<clé publique PVMSS>'`. Il installe l'utilitaire `pvmss-snippet`, un utilisateur dédié `pvmss` qui ne peut écrire que dans le répertoire `snippets/` du stockage, et la clé avec une commande forcée (pas de shell). Il affiche la clé d'hôte du nœud.
+4. **Admin › Clusters › Modifier** : stockage de snippets, utilisateur SSH (`pvmss`), port, puis **Scanner les clés d'hôte**, comparez les empreintes, enregistrez. Les clés d'hôte sont toujours vérifiées. Le badge passe à « cloud-init : activé » et PVMSS republie tout en arrière-plan.
+5. Vérifiez : créez un template cloud-init (la colonne « Publié » doit indiquer n/n nœuds), créez une VM avec, puis sur le nœud lancez `qm config <vmid> | grep cicustom`.
+6. Après l'ajout ou la réinstallation d'un nœud, cliquez sur **Publier sur tous les nœuds** dans la page des templates.
 
-Sans cible d'écriture, l'assistant masque le sélecteur et une création portant un document est refusée avec `cloudinit_write_unavailable`, avant qu'un VMID ne soit consommé.
+Sans publication SSH, l'assistant masque le sélecteur et une création portant un template est refusée avant qu'un VMID soit consommé. Un template absent du nœud de la VM est refusé avec `cloudinit_not_published`.
 
-Les VM créées depuis une image cloud reçoivent en plus un snippet de base fixe, `pvmss-baseline.yml`, si vous en déposez un dans le même répertoire `snippets/` (par exemple pour installer `qemu-guest-agent`) ; son absence est silencieuse.
+Les VM cloud-image créées sans template reçoivent la base seule (`pvmss-baseline-<hash>.yml`) ; si elle n'est pas sur le nœud, la VM démarre quand même avec ses clés natives.
 
-Supprimer une VM via PVMSS retire aussi son `pvmss-<vmid>.yml` (au mieux - un échec de nettoyage est journalisé et ne bloque jamais la suppression). Les VM supprimées directement dans Proxmox laissent leur fichier ; listez les orphelins sur un nœud avec `ls /mnt/pve/<stockage>/snippets/pvmss-*.yml` à comparer avec `qm list`.
+Les anciennes versions publiées restent sur les nœuds (quelques Ko chacune). Les fichiers par VM des versions précédentes (`pvmss-<vmid>.yml`) sont supprimés quand leur VM est supprimée via PVMSS.
+
+Voir le [guide de configuration cloud-init](/docs/cloud-init-setup) pour le dépannage.
 
 ## Documentation (ce CMS)
 

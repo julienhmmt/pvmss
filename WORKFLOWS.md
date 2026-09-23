@@ -115,31 +115,31 @@ This is the core of the product. Everything else exists to support it.
 | **API** | `GET /api/v1/vm-create/catalog` → `POST /api/v1/vms` → `GET /api/v1/tasks/{upid}` (polled) |
 | **Steps** | 1. Base (name, profile, cluster, node). 2. Disk. 3. Hardware. 4. Network. 5. Review - the only place raw JSON is shown, and only on request. 6. Submit; the response is a Proxmox UPID. 7. The task tray polls until done, then refreshes the VM list. Detailed mode may pick a Proxmox template as the source instead of an ISO: the node is derived from the template (the selector hides), the disk minimum rises to the template's disk, and the wizard says when the target storage forces a full copy instead of a linked clone. A third source, a cloud image, imports the image as the primary disk (Proxmox `import-from`) and requires cloud-init fields (user, SSH keys, network); the disk minimum rises to the image's size, and the VM starts only after the create task finishes and its cloud-init config is applied - never inside the create task itself. |
 | **States** | Wizard step validation; task tray shows in-flight work so the user can navigate away. Template source: the template option only appears when at least one template is approved; an empty catalog legitimately hides it. Image source: same - hidden until at least one cloud image is approved. If applying the cloud-init config fails after a successful image import, the VM exists but stays stopped and unconfigured; the create response's `cloudInitPushError` field carries the reason. |
-| **Safety nets** | Every choice comes from the admin-approved catalog - nodes, storages, bridges, ISOs, profiles, cloud-init templates, VM templates, cloud images, tags. Quotas and gabarit limits are checked server-side (`policy/`), not in the wizard. A template clone stays on the template's node (the wizard hides the node selector), the disk size can never drop below the template's disk, and a stale or deleted template fails fast before a VMID is spent. A cloud image is admin-approved cluster-side (`/admin/images`) from files discovered under a storage's `import/` content - never fetched from the internet - and the disk size can never drop below the image's size. Cloud-init documents (an admin template or one of the user's own files, `cloudInitTemplateId` xor `cloudInitFileId`) are written by PVMSS itself as a per-VM copy - see *Create a VM with a cloud-init document* below; a cluster without a snippet write target hides the picker (`cloudInitWriteEnabled: false` in the catalog) and refuses a create carrying a document with 409 `cloudinit_write_unavailable` before any VMID is spent. Image-mode native keys (ciuser/sshkeys/ipconfig0) are applied after the import task; a fixed, admin-preplaced baseline snippet (`pvmss-baseline.yml` in the cluster's `snippets/` directory, e.g. to install `qemu-guest-agent`) is attached automatically when present; its absence is silent, not an error. |
+| **Safety nets** | Every choice comes from the admin-approved catalog - nodes, storages, bridges, ISOs, profiles, cloud-init templates, VM templates, cloud images, tags. Quotas and gabarit limits are checked server-side (`policy/`), not in the wizard. A template clone stays on the template's node (the wizard hides the node selector), the disk size can never drop below the template's disk, and a stale or deleted template fails fast before a VMID is spent. A cloud image is admin-approved cluster-side (`/admin/images`) from files discovered under a storage's `import/` content - never fetched from the internet - and the disk size can never drop below the image's size. Cloud-init documents are admin templates only (`cloudInitTemplateId`), already published on the nodes - see *Create a VM with a cloud-init template* below; a cluster without SSH publishing hides the picker (`cloudInitWriteEnabled: false` in the catalog) and refuses a create carrying a template with 409 `cloudinit_write_unavailable` before any VMID is spent. Image-mode native keys (ciuser/sshkeys/ipconfig0) are applied after the import task; the published PVMSS baseline (`pvmss-baseline-<hash>.yml`, installs `qemu-guest-agent`) is attached when the user picks no template; when it is not on the node the VM boots on the native keys and the baseline is reported "not delivered". |
 
-### Create a VM with a cloud-init document
+### Create a VM with a cloud-init template
 
 | | |
 | --- | --- |
 | **Audience** | end user |
 | **Entry** | The cloud-init select in `/vms/create` (Base step) |
 | **Route** | `/vms/create` |
-| **API** | `GET /api/v1/vm-create/catalog` (admin templates + `cloudInitWriteEnabled`), `GET /api/v1/cloudinit/files` (my files) → `POST /api/v1/vms` with `cloudInitTemplateId` **or** `cloudInitFileId` |
-| **Steps** | 1. Pick a document from one grouped select - "Admin templates" then "My files". 2. The Review step names the chosen document. 3. On submit the server resolves the content, writes `pvmss-<vmid>.yml` into the cluster's mounted `snippets/` directory (atomic temp + rename, `pvmss-*.yml` allowlist), verifies Proxmox sees it, attaches it as `cicustom=vendor=…`, then records the `vm_cloudinit_snippets` row. Same path for ISO and clone sources. |
-| **States** | Select hidden (with a one-line hint) when the cluster has no write target or the source is a cloud image; a foreign `cloudInitFileId` resolves to `ErrNotApproved`, never to another user's content |
-| **Safety nets** | Template id and file id are mutually exclusive (400). No write target → 409 `cloudinit_write_unavailable` before a VMID is spent. The VM keeps its own copy: later edits to the template or file never touch it. `users:` in the document is overridden by the generated account (documented in the editor hint). |
+| **API** | `GET /api/v1/vm-create/catalog` (published admin templates + `cloudInitWriteEnabled`) → `POST /api/v1/vms` with `cloudInitTemplateId` |
+| **Steps** | 1. Pick an administrator template (or none). 2. The Review step names it. 3. Before any VMID, the server resolves the template's published file and checks the VM's node lists it (`HasSnippet`). 4. After the create task it sets `cicustom=vendor=<storage>:snippets/<file>` and records `vm_cloudinit_documents`. Nothing is written for the VM. Same path for ISO, clone and image sources. |
+| **States** | Select hidden (with a one-line hint) when the cluster does not publish; only templates with a publication are offered |
+| **Safety nets** | Users never send YAML (`cloudInitFileId` is rejected as an unknown field). No publishing → 409 `cloudinit_write_unavailable`; template not on the VM's node → 409 `cloudinit_not_published`, both before a VMID is spent. The published file is immutable: later template edits publish a new file and never touch the VM. |
 
-### Manage my cloud-init files
+### Publish cloud-init templates
 
 | | |
 | --- | --- |
-| **Audience** | end user |
-| **Entry** | Sidebar → Cloud-init |
-| **Route** | `/cloud-init` |
-| **API** | `GET /api/v1/cloudinit/files`, `POST /api/v1/cloudinit/files`, `GET/PUT/DELETE /api/v1/cloudinit/files/{id}` |
-| **Steps** | 1. List my documents. 2. Create or edit one - `#cloud-config` header and YAML validated server-side. 3. Delete by id. |
-| **States** | Empty state on first visit; 409 `cloudinit_file_limit` at 20 documents |
-| **Safety nets** | Rows are owner-scoped at the store boundary - another owner's id is a 404, not a 403. Deleting a file never affects VMs created from it (they hold their own copy). |
+| **Audience** | administrator |
+| **Entry** | Admin › Clusters (SSH settings), Admin › Cloud-init templates |
+| **Route** | `/admin/clusters`, `/admin/cloudinit-templates` |
+| **API** | `PUT /api/v1/admin/clusters/{name}` (`snippetStorage`, `sshUser`, `sshPort`, `sshKnownHosts`), `POST /api/v1/admin/clusters/{name}/ssh-scan`, `POST/PUT /api/v1/admin/cloudinit-templates[/{id}]`, `POST /api/v1/admin/cloudinit-templates/publish` |
+| **Steps** | 1. Run `tools/pvmss-node-setup.sh` on every node (helper, dedicated user, forced command). 2. Set the snippet storage and SSH user on the cluster, scan and confirm the host keys, save: PVMSS republishes in the background. 3. Create or edit templates: each save publishes the merged document to every node and shows the per-node result. 4. "Publish to all nodes" after adding or reinstalling a node. |
+| **States** | Per-template "n/m nodes" with the failing nodes' errors; "not published"; warning when the cluster is not configured |
+| **Safety nets** | Host keys are always verified against the pinned list (no insecure mode). PVMSS only sends `write <name>` / `remove <name>` to the helper, which validates the name and owns the directory. A node that did not get the file is never used for a VM with that template. |
 
 ### Operate a single VM
 
@@ -159,7 +159,7 @@ This is the core of the product. Everything else exists to support it.
 | Disks | add, resize, detach | `POST .../disks`, `PUT .../disks/{diskKey}/resize`, `DELETE .../disks/{diskKey}` |
 | Network | edit interface | `PUT .../network` |
 | Hardware | CPU/RAM, tags (admin-curated picker), CDROM | `GET .../hardware-options`, `PUT .../hardware`, `PATCH .../cdrom` |
-| Cloud-init | native-key form (writable); per-VM document editor (writable when `AllowCustomYAML` is on and the cluster has a snippet write target; read-only otherwise) | `GET`/`PUT .../cloudinit`, `GET`/`PUT .../cloudinit/snippet` |
+| Cloud-init | native-key form (writable); switch to another published admin template, applied at next boot | `GET`/`PUT .../cloudinit`, `GET`/`PUT .../cloudinit/document` |
 | Snapshots | create, rollback, delete | `GET`/`POST .../snapshots`, `POST .../snapshots/{name}/rollback`, `DELETE .../snapshots/{name}` |
 
 Dialogs: `DeleteVmDialog`, `CreateSnapshotDialog`, `RollbackSnapshotDialog`,

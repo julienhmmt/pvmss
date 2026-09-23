@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
@@ -16,7 +17,7 @@ import (
 
 // newAdminBaselineHandler builds an AdminBaseline handler backed by the
 // fake cluster and a temp store, mirroring the other admin handler fixtures.
-func newAdminBaselineHandler(t *testing.T) (*httpapi.AdminBaseline, *httpapi.Auth) {
+func newAdminBaselineHandler(t *testing.T) (*httpapi.AdminBaseline, *httpapi.Auth, *store.Store) {
 	t.Helper()
 	cluster.ResetFake()
 	t.Cleanup(cluster.ResetFake)
@@ -26,13 +27,13 @@ func newAdminBaselineHandler(t *testing.T) (*httpapi.AdminBaseline, *httpapi.Aut
 
 	t.Cleanup(func() { _ = st.Close() })
 
-	// Use the zero-value Fake{} directly so SetFakeSnippetContent (which
-	// writes to the default shared state) is visible to the handler.
+	// Use the zero-value Fake{} directly so publications (which write to
+	// the default shared state) are visible to the handler.
 	registry := &singleFakeRegistry{fake: cluster.Fake{}}
 
 	handler := httpapi.NewAdminBaseline(authHandler, registry, st, testLogger(t))
 
-	return handler, authHandler
+	return handler, authHandler, st
 }
 
 // singleFakeRegistry is a minimal ClientProvider that returns the same
@@ -50,13 +51,19 @@ func (r *singleFakeRegistry) List() []string {
 	return []string{auditTestCluster}
 }
 
-// TestAdminBaseline_ReturnsGeneratedDocument - the response carries the
-// generated baseline document verbatim, plus the override state.
-//
-//nolint:paralleltest // serial: shared fake cluster
-func TestAdminBaseline_ReturnsGeneratedDocument(t *testing.T) {
-	handler, authHandler := newAdminBaselineHandler(t)
-	cookie := adminCookie(t, authHandler)
+type baselineDTOForTest struct {
+	Generated   string `json:"generated"`
+	Publication *struct {
+		Filename string `json:"filename"`
+		Nodes    []struct {
+			Node string `json:"node"`
+			OK   bool   `json:"ok"`
+		} `json:"nodes"`
+	} `json:"publication"`
+}
+
+func getBaseline(t *testing.T, handler *httpapi.AdminBaseline, cookie *http.Cookie) baselineDTOForTest {
+	t.Helper()
 
 	recorder := httptest.NewRecorder()
 	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/admin/baseline?cluster="+auditTestCluster, nil)
@@ -67,74 +74,48 @@ func TestAdminBaseline_ReturnsGeneratedDocument(t *testing.T) {
 		t.Fatalf("status = %d, want 200", recorder.Code)
 	}
 
-	var dto struct {
-		Generated        string `json:"generated"`
-		OverridePresent  bool   `json:"overridePresent"`
-		OverrideFilename string `json:"overrideFilename"`
-	}
+	var dto baselineDTOForTest
 	if err := json.NewDecoder(recorder.Body).Decode(&dto); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
 
-	if dto.Generated == "" {
-		t.Error("generated baseline is empty")
-	}
+	return dto
+}
+
+// TestAdminBaseline_ReturnsGeneratedDocument - the response carries the
+// generated baseline verbatim, and no publication before the first publish.
+//
+//nolint:paralleltest // serial: shared fake cluster
+func TestAdminBaseline_ReturnsGeneratedDocument(t *testing.T) {
+	handler, authHandler, _ := newAdminBaselineHandler(t)
+
+	dto := getBaseline(t, handler, adminCookie(t, authHandler))
 
 	if !strings.Contains(dto.Generated, "qemu-guest-agent") {
 		t.Errorf("generated baseline missing qemu-guest-agent: %s", dto.Generated)
 	}
 
-	if dto.OverrideFilename != "pvmss-baseline.yml" {
-		t.Errorf("override filename = %q, want pvmss-baseline.yml", dto.OverrideFilename)
-	}
-
-	if dto.OverridePresent {
-		t.Error("override should be absent in the pristine fake cluster")
+	if dto.Publication != nil {
+		t.Errorf("publication = %+v before any publish, want nil", dto.Publication)
 	}
 }
 
-// TestAdminBaseline_ReportsOverrideWhenPresent - when a cluster-wide
-// pvmss-baseline.yml exists, the response reports it as present and
-// carries its content.
+// TestAdminBaseline_ReportsPublication - after a publish the response
+// carries the published filename and the per-node outcome.
 //
 //nolint:paralleltest // serial: shared fake cluster
-func TestAdminBaseline_ReportsOverrideWhenPresent(t *testing.T) {
-	handler, authHandler := newAdminBaselineHandler(t)
-	cookie := adminCookie(t, authHandler)
+func TestAdminBaseline_ReportsPublication(t *testing.T) {
+	handler, authHandler, st := newAdminBaselineHandler(t)
 
-	// Seed the fake cluster with an override snippet on the first node's
-	// snippet storage.
-	cluster.SetFakeSnippetContent(cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-baseline.yml", "#cloud-config\npackages:\n  - htop\n")
-
-	recorder := httptest.NewRecorder()
-	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/admin/baseline?cluster="+auditTestCluster, nil)
-	req.AddCookie(cookie)
-	handler.ServeBaseline(recorder, req)
-
-	if recorder.Code != http.StatusOK {
-		t.Fatalf("status = %d, want 200", recorder.Code)
+	publication, err := catalog.PublishCloudInitDocument(context.Background(), st, cluster.Fake{}, auditTestCluster, store.BaselineTemplateID, "")
+	if err != nil {
+		t.Fatalf("publish baseline: %v", err)
 	}
 
-	var dto struct {
-		Generated        string `json:"generated"`
-		OverridePresent  bool   `json:"overridePresent"`
-		OverrideContent  string `json:"overrideContent"`
-		OverrideFilename string `json:"overrideFilename"`
-	}
-	if err := json.NewDecoder(recorder.Body).Decode(&dto); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
+	dto := getBaseline(t, handler, adminCookie(t, authHandler))
 
-	if !dto.OverridePresent {
-		t.Error("override should be reported as present")
-	}
-
-	if dto.OverrideContent == "" {
-		t.Error("override content is empty")
-	}
-
-	if !strings.Contains(dto.OverrideContent, "htop") {
-		t.Errorf("override content missing htop: %s", dto.OverrideContent)
+	if dto.Publication == nil || dto.Publication.Filename != publication.Filename || len(dto.Publication.Nodes) == 0 || !dto.Publication.Nodes[0].OK {
+		t.Fatalf("publication = %+v, want %s published on every node", dto.Publication, publication.Filename)
 	}
 }
 

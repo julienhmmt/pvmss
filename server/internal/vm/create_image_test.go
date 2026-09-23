@@ -3,7 +3,6 @@ package vm_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/vm"
@@ -156,18 +155,14 @@ func TestCreate_Image_AppliesCloudInit(t *testing.T) {
 		t.Errorf("config.SSHKeys = %v, want [ssh-ed25519 AAAA]", config.SSHKeys)
 	}
 
-	index := fakeCallIndexes(result.VMID, "set_cloudinit_config", "push_cloudinit_snippet", testActionAttachCloudInitSnippet, "start")
+	index := fakeCallIndexes(result.VMID, "set_cloudinit_config", testActionAttachCloudInitSnippet, "start")
 
 	if index["set_cloudinit_config"] == -1 {
 		t.Fatal("SetCloudInitConfig not recorded")
 	}
 
-	if index["push_cloudinit_snippet"] == -1 {
-		t.Error("push_cloudinit_snippet not recorded - generated baseline should be pushed")
-	}
-
-	if index[testActionAttachCloudInitSnippet] == -1 {
-		t.Error("attach_cloudinit_snippet not recorded - generated baseline should be attached")
+	if got, want := attachedFilename(t, result.VMID), publishedFilename(t, fixture.store, ""); got != want {
+		t.Errorf("attached %q, want the published baseline %q", got, want)
 	}
 
 	if index["start"] == -1 || index["start"] < index[testActionAttachCloudInitSnippet] {
@@ -192,124 +187,29 @@ func fakeCallIndexes(vmid int, actions ...string) map[string]int {
 	return index
 }
 
-// snippetPushFor returns the content of the per-VM pvmss-<vmid>.yml snippet
-// push recorded by the fake writer (empty when no push was recorded) and
-// whether the attach call for the same filename was recorded.
-func snippetPushFor(vmid int) (content string, attached bool) {
-	snippetName := fmt.Sprintf("pvmss-%d.yml", vmid)
-
-	for _, c := range cluster.FakeCallsFor(vmid) {
-		if c.Action == "push_cloudinit_snippet" && c.Filename == snippetName {
-			content = c.Content
-		}
-
-		if c.Action == testActionAttachCloudInitSnippet && c.Filename == snippetName {
-			attached = true
-		}
-	}
-
-	return content, attached
-}
-
-// TestCreate_Image_AttachesBaselineSnippetWhenPresent - when an admin has
-// placed a cluster-wide pvmss-baseline.yml, its content replaces the
-// generated baseline: the merged document is pushed as
-// pvmss-<vmid>.yml and attached as vendor-data. BaselineState is "override".
+// TestCreate_Image_WithTemplate_AttachesTemplateFile - an image VM with a
+// template gets the template's published file (which embeds the baseline),
+// not the standalone baseline.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_Image_AttachesBaselineSnippetWhenPresent(t *testing.T) {
+func TestCreate_Image_WithTemplate_AttachesTemplateFile(t *testing.T) {
 	fixture := newCreateFixture(t)
-
-	cluster.SetFakeSnippetContent(cluster.FakeNode01, testStorageLocal, "pvmss-baseline.yml", "#cloud-config\npackages:\n  - nmap\n")
-	t.Cleanup(func() {
-		cluster.SetFakeSnippetPresent(cluster.FakeNode01, testStorageLocal, "pvmss-baseline.yml", false)
-	})
+	tmplID := createTestTemplate(t, fixture.store)
 
 	req := imageRequest()
+	req.CloudInitTemplateID = tmplID
 
 	result, err := fixture.create(t, aliceIdentity(), req)
 	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
 
-	if result.CloudInitPushError != "" {
-		t.Errorf("result.CloudInitPushError = %q, want empty", result.CloudInitPushError)
+	if result.CloudInitPushError != "" || result.BaselineState != vm.BaselineStateApplied || result.CloudInitTemplateID != tmplID {
+		t.Errorf("result = %+v, want template %q applied", result, tmplID)
 	}
 
-	if result.BaselineState != "override" {
-		t.Errorf("result.BaselineState = %q, want 'override'", result.BaselineState)
-	}
-
-	// The per-VM snippet is pushed and attached (not the cluster-wide file).
-	pushedContent, attached := snippetPushFor(result.VMID)
-
-	if pushedContent == "" {
-		t.Error("per-VM snippet push not recorded")
-	}
-
-	if !attached {
-		t.Error("per-VM snippet attach not recorded")
-	}
-
-	// The override content (nmap) should be in the pushed document,
-	// not the generated baseline (qemu-guest-agent).
-	if !strings.Contains(pushedContent, "nmap") {
-		t.Errorf("pushed snippet does not contain override content: %s", pushedContent)
-	}
-
-	if strings.Contains(pushedContent, "qemu-guest-agent") {
-		t.Errorf("pushed snippet should not contain generated baseline when override present: %s", pushedContent)
-	}
-}
-
-// TestCreate_Image_UserDocumentMergesWithBaseline - a user-selected
-// cloud-init document is merged on top of the generated baseline:
-// the user's packages add to the baseline's (qemu-guest-agent), and the
-// user's scalar values win. The merged document is the one pushed and
-// attached.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_Image_UserDocumentMergesWithBaseline(t *testing.T) {
-	fixture := newCreateFixture(t)
-
-	userDoc := "#cloud-config\npackages:\n  - nmap\nruncmd:\n  - echo hello\n"
-	fileID := createTestUserFile(t, fixture.store, cluster.FakeUserAlice, "dev-box", userDoc)
-
-	req := imageRequest()
-	req.CloudInitFileID = fileID
-
-	result, err := fixture.create(t, aliceIdentity(), req)
-	if err != nil {
-		t.Fatalf("Create: %v", err)
-	}
-
-	if result.CloudInitPushError != "" {
-		t.Errorf("result.CloudInitPushError = %q, want empty", result.CloudInitPushError)
-	}
-
-	if result.BaselineState != "applied" {
-		t.Errorf("result.BaselineState = %q, want 'applied'", result.BaselineState)
-	}
-
-	pushedContent, _ := snippetPushFor(result.VMID)
-
-	if pushedContent == "" {
-		t.Fatal("per-VM snippet push not recorded")
-	}
-
-	// The merged document contains both the baseline's qemu-guest-agent
-	// and the user's nmap - packages concatenate.
-	if !strings.Contains(pushedContent, "qemu-guest-agent") {
-		t.Errorf("merged document missing baseline package qemu-guest-agent: %s", pushedContent)
-	}
-
-	if !strings.Contains(pushedContent, "nmap") {
-		t.Errorf("merged document missing user package nmap: %s", pushedContent)
-	}
-
-	// The user's runcmd entry is present.
-	if !strings.Contains(pushedContent, "echo hello") {
-		t.Errorf("merged document missing user runcmd: %s", pushedContent)
+	if got, want := attachedFilename(t, result.VMID), publishedFilename(t, fixture.store, tmplID); got != want {
+		t.Errorf("attached %q, want the template file %q", got, want)
 	}
 }
 
@@ -525,19 +425,16 @@ func TestCreate_Image_NoWriteTarget_SkipsBaseline(t *testing.T) {
 	}
 }
 
-// TestCreate_Image_InvisibleSnippet_NeverAttached is the regression for
-// "TASK ERROR: volume 'local:snippets/pvmss-N.yml' does not exist": the
-// baseline write succeeds on the PVMSS side but Proxmox does not list the
-// file (wrong mount). The snippet must NOT be attached - a cicustom to a
-// missing volume makes every start fail - and the VM must still start on
-// its native cloud-init keys.
+// TestCreate_Image_BaselineNotOnNode_BootsOnNativeKeys is the regression
+// for "TASK ERROR: volume 'local:snippets/pvmss-N.yml' does not exist": the
+// baseline is not on the VM's node (published while the helper wrote into
+// the wrong directory). Nothing is attached - a cicustom to a missing volume
+// makes every start fail - and the VM still starts on its native keys.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_Image_InvisibleSnippet_NeverAttached(t *testing.T) {
+func TestCreate_Image_BaselineNotOnNode_BootsOnNativeKeys(t *testing.T) {
 	fixture := newCreateFixture(t)
-
-	cluster.SetFakeSnippetVisibility(false)
-	t.Cleanup(func() { cluster.SetFakeSnippetVisibility(true) })
+	cluster.ResetFake() // drop the fixture's published baseline from the nodes
 
 	req := imageRequest()
 	req.StartAfterCreate = true
@@ -548,15 +445,15 @@ func TestCreate_Image_InvisibleSnippet_NeverAttached(t *testing.T) {
 	}
 
 	if result.CloudInitPushError != "" {
-		t.Errorf("result.CloudInitPushError = %q, want empty (no user document)", result.CloudInitPushError)
+		t.Errorf("result.CloudInitPushError = %q, want empty (no template chosen)", result.CloudInitPushError)
 	}
 
-	if result.BaselineState != vm.BaselineStateNotDelivered || result.BaselineError == "" {
-		t.Errorf("baseline = %q/%q, want not_delivered with a reason", result.BaselineState, result.BaselineError)
+	if result.BaselineState != vm.BaselineStateNotDelivered || !strings.Contains(result.BaselineError, "is not on node") {
+		t.Errorf("baseline = %q/%q, want not_delivered naming the node", result.BaselineState, result.BaselineError)
 	}
 
-	if _, attached := snippetPushFor(result.VMID); attached {
-		t.Error("invisible snippet was attached - the VM would fail to start")
+	if got := attachedFilename(t, result.VMID); got != "" {
+		t.Errorf("attached %q although the file is not on the node", got)
 	}
 
 	if index := fakeCallIndexes(result.VMID, "start"); index["start"] == -1 {
@@ -564,38 +461,24 @@ func TestCreate_Image_InvisibleSnippet_NeverAttached(t *testing.T) {
 	}
 }
 
-// TestCreate_Image_InvisibleSnippet_WithUserDocument_ReportsFailure - when
-// the user explicitly picked a document that cannot be delivered, the VM
-// stays stopped and the failure reaches the UI (CloudInitPushError), like
-// the ISO and template paths.
+// TestCreate_Image_TemplateNotOnNode_RejectedBeforeVMID - a template the
+// user chose that is not on the node refuses the create before any VMID.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_Image_InvisibleSnippet_WithUserDocument_ReportsFailure(t *testing.T) {
+func TestCreate_Image_TemplateNotOnNode_RejectedBeforeVMID(t *testing.T) {
 	fixture := newCreateFixture(t)
 
 	cluster.SetFakeSnippetVisibility(false)
 	t.Cleanup(func() { cluster.SetFakeSnippetVisibility(true) })
 
-	fileID := createTestUserFile(t, fixture.store, cluster.FakeUserAlice, "dev-box", "#cloud-config\nruncmd:\n  - echo hello\n")
+	tmplID := createTestTemplate(t, fixture.store)
 
 	req := imageRequest()
-	req.CloudInitFileID = fileID
-	req.StartAfterCreate = true
+	req.CloudInitTemplateID = tmplID
 
-	result, err := fixture.create(t, aliceIdentity(), req)
-	if err != nil {
-		t.Fatalf("Create: %v", err)
+	if _, err := fixture.create(t, aliceIdentity(), req); !errors.Is(err, vm.ErrCloudInitNotPublished) {
+		t.Fatalf("error = %v, want ErrCloudInitNotPublished", err)
 	}
 
-	if result.CloudInitPushError == "" {
-		t.Error("CloudInitPushError empty: the user's document was silently dropped")
-	}
-
-	if _, attached := snippetPushFor(result.VMID); attached {
-		t.Error("invisible snippet was attached")
-	}
-
-	if index := fakeCallIndexes(result.VMID, "start"); index["start"] != -1 {
-		t.Error("VM started without the document the user asked for")
-	}
+	assertNoVMCreated(t)
 }

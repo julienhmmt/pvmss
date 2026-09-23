@@ -184,7 +184,7 @@ func Action(ctx context.Context, deps BulkDeps, index *inventory.Index, clusterN
 
 // isIdempotentNoop reports whether action is a target-state transition
 // (start/stop) that can be a no-op when the target state already holds.
-// reboot/reset/shutdown/pause/resume are transitions, not target states - 
+// reboot/reset/shutdown/pause/resume are transitions, not target states -
 // they must always be sent.
 func isIdempotentNoop(action string) bool {
 	return action == "start" || action == "stop"
@@ -345,7 +345,7 @@ func Delete(ctx context.Context, deps WriteDeps) error {
 }
 
 // forceStop stops a running VM so Delete can proceed, and records the stop as a
-// separate audit entry. The node/vmid come from the already-resolved entity - 
+// separate audit entry. The node/vmid come from the already-resolved entity -
 // the caller cannot supply them (root cause, structurally closed).
 func forceStop(ctx context.Context, deps WriteDeps, entity Entity) error {
 	if err := deps.Writer.Action(ctx, entity.Node, entity.VMID, "stop"); err != nil {
@@ -437,14 +437,19 @@ func Patch(ctx context.Context, deps WriteDeps, name, description string) error 
 	return nil
 }
 
-// cleanupCloudInitDocument removes the VM's per-VM snippet file and its
-// persistence row after the cluster delete succeeded. Hygiene only - a
-// stale file cannot leak into a recycled VMID because creation overwrites
-// on rename. Never returns an error: a cleanup failure must not block the
-// delete. Nil-safe on Store and Log.
+// cleanupCloudInitDocument forgets the VM's cloud-init rows after the
+// cluster delete succeeded. The published document the VM used is shared
+// and stays on the nodes; only a legacy per-VM file (pvmss-<vmid>.yml,
+// written before documents became admin-published) is removed. Never
+// returns an error: a cleanup failure must not block the delete. Nil-safe
+// on Store and Log.
 func cleanupCloudInitDocument(ctx context.Context, deps WriteDeps) {
 	if deps.Store == nil {
 		return
+	}
+
+	if err := deps.Store.DeleteVMCloudInitDocument(ctx, deps.ClusterName, deps.VMID); err != nil && deps.Log != nil {
+		deps.Log.Warn("cloud-init document row not removed", "component", "vm", "cluster", deps.ClusterName, "vmid", deps.VMID, "error", err)
 	}
 
 	row, found, err := deps.Store.GetCloudInitSnippet(ctx, deps.ClusterName, deps.VMID)

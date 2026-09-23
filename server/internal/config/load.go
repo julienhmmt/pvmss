@@ -248,28 +248,13 @@ func loadRateLimitSettings(cfg *Configuration) error {
 	return nil
 }
 
-// loadSSHSettings reads the optional SSH snippet-delivery config. When
-// PVMSS_SSH_USER is set, snippet files are written over SSH to the host
-// derived from each cluster's API URL instead of a shared filesystem. The
-// key file is required when the user is set; the port defaults to 22.
+// loadSSHSettings reads the optional private key PVMSS uses to publish
+// admin cloud-init documents to the Proxmox nodes over SSH. The user, port
+// and pinned host keys are per cluster (Admin > Clusters); without a key,
+// cloud-init documents are off on every cluster. PVMSS_SSH_USER and
+// PVMSS_SSH_PORT are no longer read.
 func loadSSHSettings(cfg *Configuration) error {
-	cfg.SSHUser = strings.TrimSpace(os.Getenv("PVMSS_SSH_USER"))
 	cfg.SSHKeyFile = strings.TrimSpace(os.Getenv("PVMSS_SSH_KEY_FILE"))
-
-	port, err := loadInt("PVMSS_SSH_PORT", 22)
-	if err != nil {
-		return err
-	}
-
-	cfg.SSHPort = port
-
-	if cfg.SSHUser == "" {
-		return nil
-	}
-
-	if cfg.SSHKeyFile == "" {
-		return errors.New("PVMSS_SSH_KEY_FILE is required when PVMSS_SSH_USER is set")
-	}
 
 	return nil
 }

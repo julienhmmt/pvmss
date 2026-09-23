@@ -77,6 +77,25 @@ reality.
   snippet-delivery path, the newest feature at HEAD) were read by
   `config/load.go` but absent from the configuration table. Added.
 
+## Left behind by the SSH-only cloud-init publishing (2026-09-23)
+
+Spec: `.scratch/cloudinit-admin-ssh/spec.md` (not committed).
+
+- **No garbage collection of published files.** Every template edit and
+  every baseline change publishes a new immutable `pvmss-*-<hash>.yml` on
+  each node; old versions stay (a few KB each). A GC needs the list of files
+  still referenced by live VM configs (`cicustom`), not only
+  `vm_cloudinit_documents`, before removing anything.
+- **Dead schema kept on purpose:** `clusters.snippet_dir` (the helper owns
+  the directory now), `policy.allow_custom_yaml` / `Gabarit.AllowCustomYAML`
+  (still accepted by the admin policy API, no longer enforced or shown),
+  `cloudinit.BaselineInputs.Override` (the hand-placed `pvmss-baseline.yml`
+  override is gone). Dropping them touches recovery fixtures and the import
+  allowlist.
+- `vm_cloudinit_snippets` only serves the cleanup of legacy per-VM files
+  (`pvmss-<vmid>.yml`) of VMs created before the change.
+- `vm_baseline_state` rows with state `override` are historical.
+
 ## How to re-check any of this
 
 ```bash

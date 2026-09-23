@@ -40,11 +40,8 @@ type Configuration struct {
 	// Intended for the e2e suite and load tests: raising it weakens the
 	// per-IP login brute-force protection, so it is opt-in and never defaulted.
 	RateLimitMax int
-	// SSHUser enables SSH snippet delivery when non-empty. Snippet files are
-	// written over SSH to the host derived from each cluster's API URL, so
-	// PVMSS and Proxmox need no shared filesystem. SSHKeyFile is the path to
-	// the private key; SSHPort defaults to 22.
-	SSHUser    string
+	// SSHKeyFile is the private key PVMSS uses to publish admin cloud-init
+	// documents to every node (PVMSS_SSH_KEY_FILE). The SSH user, port and
+	// pinned host keys are per cluster. Empty: cloud-init documents off.
 	SSHKeyFile string
-	SSHPort    int
 }

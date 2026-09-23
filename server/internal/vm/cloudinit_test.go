@@ -6,11 +6,10 @@ import (
 	"errors"
 	"path/filepath"
 	"pvmss/server/internal/auth"
-	"pvmss/server/internal/cloudinit"
+	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
-	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"slices"
@@ -37,8 +36,6 @@ const (
 	testActionCreate = "create"
 	// testActionAttachCloudInitSnippet is the fake's snippet-attach action name.
 	testActionAttachCloudInitSnippet = "attach_cloudinit_snippet"
-	// testActionPushCloudInitSnippet is the fake's snippet-write action name.
-	testActionPushCloudInitSnippet = "push_cloudinit_snippet"
 	// testActionStart is the fake's VM-start action name.
 	testActionStart = "start"
 	// testBIOSOVMF is the Proxmox bios value selecting UEFI firmware.
@@ -148,141 +145,158 @@ func TestSetCloudInitConfig_RebootNowCallsT05Once(t *testing.T) {
 	}
 }
 
-// TestSetCloudInitSnippet_PersistsTargetPushesAndAttaches - with
-// AllowCustomYAML on and a write target set, saving a per-VM document
-// writes pvmss-<vmid>.yml, verifies it is visible, attaches it, then records
-// the row (after the cluster steps, not before).
-//
-//nolint:paralleltest // serial: shared fake dataset
-func TestSetCloudInitSnippet_PersistsTargetPushesAndAttaches(t *testing.T) {
-	index := cloudInitIndex(t)
-	st := cloudInitStore(t)
-	service := policy.New(st, inventory.NewProjectionFromIndex(index), cluster.Fake{})
-	content := "#cloud-config\nusers: {}\n"
-
-	deps := vm.CloudInitSnippetDeps{
+// documentDeps builds SetCloudInitDocument deps for VM 101 (alice).
+func documentDeps(index *inventory.Index, st *store.Store) vm.CloudInitDocumentDeps {
+	return vm.CloudInitDocumentDeps{
 		Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName,
-		VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Service: service,
-	}
-	if err := vm.SetCloudInitSnippet(context.Background(), deps, content); err != nil {
-		t.Fatalf("SetCloudInitSnippet: %v", err)
-	}
-
-	pushIdx, attachIdx := snippetCallIndices(t, 101, "pvmss-101.yml", content)
-	if pushIdx > attachIdx {
-		t.Error("attach recorded before push")
-	}
-
-	snippet, found, err := st.GetCloudInitSnippet(context.Background(), testClusterName, 101)
-	if err != nil || !found || snippet.Content != content {
-		t.Fatalf("snippet = %+v, found %v, err %v", snippet, found, err)
-	}
-	if snippet.UpdatedBy != cluster.FakeUserAlice {
-		t.Errorf("UpdatedBy = %q, want %q", snippet.UpdatedBy, cluster.FakeUserAlice)
+		VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st,
 	}
 }
 
-// TestSetCloudInitSnippet_EmptyContentDetaches - empty content clears
-// cicustom and sets the row to "" without pushing.
+// TestSetCloudInitDocument_SwitchesToPublishedTemplate - switching attaches
+// the template's published file, records it, audits, and writes nothing.
 //
 //nolint:paralleltest // serial: shared fake dataset
-func TestSetCloudInitSnippet_EmptyContentDetaches(t *testing.T) {
+func TestSetCloudInitDocument_SwitchesToPublishedTemplate(t *testing.T) {
 	index := cloudInitIndex(t)
 	st := cloudInitStore(t)
-	service := policy.New(st, inventory.NewProjectionFromIndex(index), cluster.Fake{})
+	tmplID := createTestTemplate(t, st)
+	filename := publishedFilename(t, st, tmplID)
 
-	deps := vm.CloudInitSnippetDeps{
-		Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName,
-		VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Service: service,
-	}
-	if err := vm.SetCloudInitSnippet(context.Background(), deps, ""); err != nil {
-		t.Fatalf("clear snippet: %v", err)
+	if err := vm.SetCloudInitDocument(context.Background(), documentDeps(index, st), tmplID); err != nil {
+		t.Fatalf("SetCloudInitDocument: %v", err)
 	}
 
-	for _, c := range cluster.FakeCallsFor(101) {
-		if c.Action == testActionPushCloudInitSnippet {
-			t.Fatalf("empty content pushed a file: %+v", c)
-		}
+	if got := attachedFilename(t, 101); got != filename {
+		t.Errorf("attached %q, want %q", got, filename)
 	}
 
-	snippet, found, err := st.GetCloudInitSnippet(context.Background(), testClusterName, 101)
-	if err != nil || !found || snippet.Content != "" {
-		t.Fatalf("cleared snippet = %+v, found %v, err %v", snippet, found, err)
+	doc, found, err := vm.GetCloudInitDocument(context.Background(), index, cloudAliceIdentity(), testClusterName, 101, st)
+	if err != nil || !found || doc.TemplateID != tmplID || doc.Filename != filename || doc.Legacy {
+		t.Fatalf("document = %+v/%v/%v", doc, found, err)
+	}
+
+	entries, err := st.QueryAudit(context.Background())
+	if err != nil || len(entries) != 1 || entries[0].Action != "edit_cloudinit_document" {
+		t.Fatalf("audit = %+v, err %v", entries, err)
 	}
 }
 
-// TestSetCloudInitSnippet_PolicyOffReturnsDisabled - AllowCustomYAML=false
-// returns ErrCustomYAMLDisabled and nothing reaches the cluster.
+// TestSetCloudInitDocument_EmptyDetaches - "" clears cicustom and forgets
+// the row; the shared file is never removed.
 //
 //nolint:paralleltest // serial: shared fake dataset
-func TestSetCloudInitSnippet_PolicyOffReturnsDisabled(t *testing.T) {
+func TestSetCloudInitDocument_EmptyDetaches(t *testing.T) {
 	index := cloudInitIndex(t)
 	st := cloudInitStore(t)
-	service := policy.New(st, inventory.NewProjectionFromIndex(index), cluster.Fake{})
+	tmplID := createTestTemplate(t, st)
 
-	// Disable custom YAML in the policy.
-	if err := service.SetGabarit(context.Background(), testClusterName, policy.Gabarit{AllowCustomYAML: false}); err != nil {
-		t.Fatalf("SetGabarit: %v", err)
+	if err := vm.SetCloudInitDocument(context.Background(), documentDeps(index, st), tmplID); err != nil {
+		t.Fatalf("attach: %v", err)
 	}
 
-	deps := vm.CloudInitSnippetDeps{
-		Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName,
-		VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Service: service,
-	}
-	if err := vm.SetCloudInitSnippet(context.Background(), deps, "#cloud-config\n"); !errors.Is(err, vm.ErrCustomYAMLDisabled) {
-		t.Fatalf("error = %v, want ErrCustomYAMLDisabled", err)
+	if err := vm.SetCloudInitDocument(context.Background(), documentDeps(index, st), ""); err != nil {
+		t.Fatalf("detach: %v", err)
 	}
 
-	if len(cluster.FakeCallsFor(101)) != 0 {
-		t.Fatalf("policy-off save reached the cluster: %+v", cluster.FakeCallsFor(101))
-	}
-}
-
-// TestSetCloudInitSnippet_InvalidContentRejected - content not starting with
-// #cloud-config is rejected before any push.
-//
-//nolint:paralleltest // serial: shared fake dataset
-func TestSetCloudInitSnippet_InvalidContentRejected(t *testing.T) {
-	index := cloudInitIndex(t)
-	st := cloudInitStore(t)
-	service := policy.New(st, inventory.NewProjectionFromIndex(index), cluster.Fake{})
-
-	deps := vm.CloudInitSnippetDeps{
-		Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName,
-		VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Service: service,
-	}
-	if err := vm.SetCloudInitSnippet(context.Background(), deps, "not yaml"); !errors.Is(err, cloudinit.ErrSnippetPrefix) {
-		t.Fatalf("invalid error = %v, want ErrSnippetPrefix", err)
+	if got := attachedFilename(t, 101); got != "" {
+		t.Errorf("last attach = %q, want a detach", got)
 	}
 
-	for _, c := range cluster.FakeCallsFor(101) {
-		if c.Action == testActionPushCloudInitSnippet {
-			t.Fatalf("invalid content pushed: %+v", c)
+	if _, found, _ := vm.GetCloudInitDocument(context.Background(), index, cloudAliceIdentity(), testClusterName, 101, st); found {
+		t.Error("document row survived the detach")
+	}
+
+	for _, c := range cluster.FakeCalls() {
+		if c.Action == "remove_cloudinit_snippet" {
+			t.Fatalf("detach removed a shared file: %+v", c)
 		}
 	}
 }
 
-// TestSetCloudInitSnippet_InvisibleAfterPushFails - a push that doesn't
-// become visible (wrong mount) returns ErrSnippetPushFailed and no row.
+// TestSetCloudInitDocument_ReplacesLegacyPerVMFile - a VM that used a legacy
+// per-VM document gets the published template; the legacy file and row go.
 //
 //nolint:paralleltest // serial: shared fake dataset
-func TestSetCloudInitSnippet_InvisibleAfterPushFails(t *testing.T) {
+func TestSetCloudInitDocument_ReplacesLegacyPerVMFile(t *testing.T) {
 	index := cloudInitIndex(t)
 	st := cloudInitStore(t)
-	service := policy.New(st, inventory.NewProjectionFromIndex(index), cluster.Fake{})
-	cluster.SetFakeSnippetVisibility(false)
+	tmplID := createTestTemplate(t, st)
 
-	deps := vm.CloudInitSnippetDeps{
-		Index: index, Actor: cloudAliceIdentity(), ClusterName: testClusterName,
-		VMID: 101, Reader: cluster.Fake{}, Writer: cluster.Fake{}, Store: st, Service: service,
-	}
-	err := vm.SetCloudInitSnippet(context.Background(), deps, "#cloud-config\n")
-	if !errors.Is(err, vm.ErrSnippetPushFailed) {
-		t.Fatalf("error = %v, want ErrSnippetPushFailed", err)
+	if err := st.PutCloudInitSnippet(context.Background(), testClusterName, 101, testStorageLocal, "pvmss-101.yml", "#cloud-config\n", "alice"); err != nil {
+		t.Fatalf("seed legacy row: %v", err)
 	}
 
-	if _, found, readErr := st.GetCloudInitSnippet(context.Background(), testClusterName, 101); readErr != nil || found {
-		t.Fatalf("snippet after invisible push found %v, err %v; want no row", found, readErr)
+	legacy, found, err := vm.GetCloudInitDocument(context.Background(), index, cloudAliceIdentity(), testClusterName, 101, st)
+	if err != nil || !found || !legacy.Legacy {
+		t.Fatalf("legacy document = %+v/%v/%v", legacy, found, err)
+	}
+
+	if err := vm.SetCloudInitDocument(context.Background(), documentDeps(index, st), tmplID); err != nil {
+		t.Fatalf("SetCloudInitDocument: %v", err)
+	}
+
+	removed := slices.ContainsFunc(cluster.FakeCalls(), func(c cluster.FakeCall) bool {
+		return c.Action == "remove_cloudinit_snippet" && c.Filename == "pvmss-101.yml"
+	})
+	if !removed {
+		t.Error("legacy per-VM file not removed")
+	}
+
+	if _, found, _ := st.GetCloudInitSnippet(context.Background(), testClusterName, 101); found {
+		t.Error("legacy row survived")
+	}
+}
+
+// TestSetCloudInitDocument_Refusals - unknown template, never published, not
+// on the VM's node, and a foreign VM are refused before any attach.
+//
+//nolint:paralleltest // serial: shared fake dataset
+func TestSetCloudInitDocument_Refusals(t *testing.T) {
+	cases := []struct {
+		name    string
+		setup   func(t *testing.T, st *store.Store) string
+		actor   auth.Identity
+		wantErr error
+	}{
+		{name: "unknown", setup: func(*testing.T, *store.Store) string { return "nope" }, actor: cloudAliceIdentity(), wantErr: vm.ErrNotApproved},
+		{name: "never published", setup: func(t *testing.T, st *store.Store) string {
+			t.Helper()
+
+			tmpl, err := catalog.CreateCloudInitTemplate(context.Background(), st, testClusterName, "Draft", testCloudInitContent)
+			if err != nil {
+				t.Fatalf("create: %v", err)
+			}
+
+			return tmpl.ID
+		}, actor: cloudAliceIdentity(), wantErr: vm.ErrCloudInitNotPublished},
+		{name: "not on node", setup: func(t *testing.T, st *store.Store) string {
+			t.Helper()
+			cluster.SetFakeSnippetVisibility(false)
+			t.Cleanup(func() { cluster.SetFakeSnippetVisibility(true) })
+
+			return createTestTemplate(t, st)
+		}, actor: cloudAliceIdentity(), wantErr: vm.ErrCloudInitNotPublished},
+		{name: "foreign VM", setup: createTestTemplate, actor: auth.Identity{Username: cluster.FakeUserBob, Pool: cluster.FakePoolBob}, wantErr: vm.ErrForbidden},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			index := cloudInitIndex(t)
+			st := cloudInitStore(t)
+			id := tc.setup(t, st)
+
+			deps := documentDeps(index, st)
+			deps.Actor = tc.actor
+
+			if err := vm.SetCloudInitDocument(context.Background(), deps, id); !errors.Is(err, tc.wantErr) {
+				t.Fatalf("error = %v, want %v", err, tc.wantErr)
+			}
+
+			if got := attachedFilename(t, 101); got != "" {
+				t.Fatalf("refused switch attached %q", got)
+			}
+		})
 	}
 }
 

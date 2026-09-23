@@ -6,20 +6,14 @@ import (
 	"fmt"
 	"net/netip"
 	"pvmss/server/internal/auth"
+	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cloudinit"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
-	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"slices"
 	"time"
 )
-
-// snippetFilenamePrefix prefixes every cloud-init document file PVMSS writes
-// into a cluster's snippet directory: the per-VM copy is
-// "pvmss-<vmid>.yml", the same shape the writer's filename allowlist accepts
-// (cluster.snippetFilenameRE).
-const snippetFilenamePrefix = "pvmss-"
 
 // wrapJoin wraps two errors using the "%w: %w" verb so both are matchable via
 // errors.Is. Centralized to avoid duplicating the format literal.
@@ -44,13 +38,9 @@ var (
 	ErrInvalidCloudInitConfig = errors.New("invalid cloud-init config")
 	// ErrSSHKeyInvalid reports a public key that failed cloudinit validation.
 	ErrSSHKeyInvalid = errors.New("invalid ssh public key")
-	// ErrSnippetPushFailed reports a committed snippet that was not applied upstream.
-	ErrSnippetPushFailed = errors.New("cloud-init snippet push failed")
-	// ErrCustomYAMLDisabled reports an administrator-disabled snippet editor.
-	// Policy-controlled again with a configured snippet write
-	// target, an admin who turns AllowCustomYAML on can actually
-	// save per-VM documents.
-	ErrCustomYAMLDisabled = errors.New("custom yaml disabled")
+	// ErrSnippetPushFailed reports a cloud-init document change Proxmox did
+	// not apply (attach refused, snippet listing failed).
+	ErrSnippetPushFailed = errors.New("cloud-init document change failed")
 	// ErrNoCloudInitUser reports a password request on a VM whose patch and
 	// live config define no ciuser. The password is refused, never applied to
 	// a guessed account: a cloud image's root is locked, so a fallback to
@@ -162,7 +152,7 @@ func SetCloudInitConfig(ctx context.Context, deps CloudInitConfigDeps, update cl
 }
 
 // applyCloudInitPasswordFlow runs the whole password step: the pre-flight
-// refusals, the ciuser resolution (patch value first, then the live config - 
+// refusals, the ciuser resolution (patch value first, then the live config -
 // never a fallback to a locked root), and the bounded agent wait.
 func applyCloudInitPasswordFlow(ctx context.Context, deps CloudInitConfigDeps, writer cluster.Writer, entity Entity, current, effective cluster.CloudInitConfig, password string) error {
 	if err := preflightGuestAgent(ctx, deps, entity, current); err != nil {
@@ -191,7 +181,7 @@ var (
 
 // preflightGuestAgent refuses a password request that cannot succeed before
 // anything is written: the guest agent must be enabled in the VM config, and
-// the VM must be running (read live, not from the up-to-30s-stale projection - 
+// the VM must be running (read live, not from the up-to-30s-stale projection -
 // ADR 0001). Both refusals are immediate and actionable where the raw agent
 // error today is opaque.
 func preflightGuestAgent(ctx context.Context, deps CloudInitConfigDeps, entity Entity, current cluster.CloudInitConfig) error {
@@ -268,19 +258,45 @@ func waitNextProbe(ctx context.Context, deadline, tick <-chan time.Time) (ok boo
 	}
 }
 
-// GetCloudInitSnippet reads one snippet after the shared ownership gate.
-func GetCloudInitSnippet(ctx context.Context, index *inventory.Index, actor auth.Identity, clusterName string, vmid int, st *store.Store) (store.CloudInitSnippet, bool, error) {
-	if _, err := resolveCloudInitTarget(index, actor, clusterName, vmid); err != nil {
-		return store.CloudInitSnippet{}, false, err
-	}
-
-	return st.GetCloudInitSnippet(ctx, clusterName, vmid)
+// CloudInitDocumentState is the cloud-init document a VM uses: a published
+// admin template (TemplateID, or store.BaselineTemplateID for the baseline),
+// or a legacy per-VM document written before documents became
+// admin-published (Legacy, read-only: switching to a template replaces it).
+type CloudInitDocumentState struct {
+	TemplateID string
+	Filename   string
+	Legacy     bool
+	UpdatedAt  time.Time
+	UpdatedBy  string
 }
 
-// CloudInitSnippetDeps groups the shared dependencies and resolution context
-// for SetCloudInitSnippet. It collapses the ten positional parameters the
-// function used to take (SonarQube go:S107).
-type CloudInitSnippetDeps struct {
+// GetCloudInitDocument reads which document the VM uses after the shared
+// ownership gate. found=false means none.
+func GetCloudInitDocument(ctx context.Context, index *inventory.Index, actor auth.Identity, clusterName string, vmid int, st *store.Store) (CloudInitDocumentState, bool, error) {
+	if _, err := resolveCloudInitTarget(index, actor, clusterName, vmid); err != nil {
+		return CloudInitDocumentState{}, false, err
+	}
+
+	doc, found, err := st.GetVMCloudInitDocument(ctx, clusterName, vmid)
+	if err != nil {
+		return CloudInitDocumentState{}, false, err
+	}
+
+	if found {
+		return CloudInitDocumentState{TemplateID: doc.TemplateID, Filename: doc.Filename, UpdatedAt: doc.UpdatedAt, UpdatedBy: doc.UpdatedBy}, true, nil
+	}
+
+	legacy, found, err := st.GetCloudInitSnippet(ctx, clusterName, vmid)
+	if err != nil || !found || legacy.Content == "" {
+		return CloudInitDocumentState{}, false, err
+	}
+
+	return CloudInitDocumentState{Filename: legacy.Filename, Legacy: true, UpdatedAt: legacy.UpdatedAt, UpdatedBy: legacy.UpdatedBy}, true, nil
+}
+
+// CloudInitDocumentDeps groups the dependencies and resolution context of
+// SetCloudInitDocument.
+type CloudInitDocumentDeps struct {
 	Index       *inventory.Index
 	Actor       auth.Identity
 	ClusterName string
@@ -288,35 +304,43 @@ type CloudInitSnippetDeps struct {
 	Reader      cluster.CloudInitReader
 	Writer      cluster.Writer
 	Store       *store.Store
-	Service     *policy.Policy
 }
 
-// SetCloudInitSnippet saves a per-VM cloud-init document. The content is
-// validated, written to the configured snippet storage as pvmss-<vmid>.yml
-// (overwriting the creation-time copy - one file per VM, always), verified visible, attached as
-// vendor-data, then recorded in the
-// store. Empty content detaches: the cicustom is cleared and the row content
-// is set to "" without pushing or deleting the file.
-// Requires gabarit.AllowCustomYAML and a configured snippet write target.
-func SetCloudInitSnippet(ctx context.Context, deps CloudInitSnippetDeps, content string) error {
-	service := deps.Service
-
-	if service == nil {
-		return policy.ErrUnavailable
-	}
-
-	gabarit, err := service.Gabarit(ctx, deps.ClusterName)
-	if err != nil {
-		return fmt.Errorf("read gabarit: %w", err)
-	}
-
-	if !gabarit.AllowCustomYAML {
-		return ErrCustomYAMLDisabled
-	}
-
+// SetCloudInitDocument switches the VM to another published admin template,
+// or detaches the document when templateID is empty. Nothing is written to
+// the nodes: the template must already be published on the VM's node (live
+// HasSnippet check), otherwise ErrCloudInitNotPublished. A legacy per-VM
+// file the VM used before is removed best-effort. The change applies at the
+// next boot (Proxmox regenerates the seed drive and cloud-init sees a new
+// instance-id).
+func SetCloudInitDocument(ctx context.Context, deps CloudInitDocumentDeps, templateID string) error {
 	entity, err := resolveCloudInitTarget(deps.Index, deps.Actor, deps.ClusterName, deps.VMID)
 	if err != nil {
 		return err
+	}
+
+	if templateID == "" {
+		if err := deps.Writer.AttachCloudInitSnippet(ctx, entity.Node, "", "", deps.VMID); err != nil {
+			return wrapJoin(ErrSnippetPushFailed, err)
+		}
+
+		if err := deps.Store.DeleteVMCloudInitDocument(ctx, deps.ClusterName, deps.VMID); err != nil {
+			return err
+		}
+	} else {
+		if err := attachTemplateToVM(ctx, deps, entity, templateID); err != nil {
+			return err
+		}
+	}
+
+	dropLegacySnippet(ctx, deps)
+
+	return deps.Store.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, "edit_cloudinit_document")
+}
+
+func attachTemplateToVM(ctx context.Context, deps CloudInitDocumentDeps, entity Entity, templateID string) error {
+	if _, err := catalog.FindCloudInitTemplate(ctx, deps.Store, deps.ClusterName, templateID); err != nil {
+		return fmt.Errorf("%w: cloud-init template %q is not approved for this cluster", ErrNotApproved, templateID)
 	}
 
 	storage, err := deps.Reader.FindSnippetStorage(ctx, entity.Node)
@@ -324,59 +348,44 @@ func SetCloudInitSnippet(ctx context.Context, deps CloudInitSnippetDeps, content
 		return wrapJoin(ErrCloudInitWriteUnavailable, err)
 	}
 
-	filename := fmt.Sprintf("%s%d.yml", snippetFilenamePrefix, deps.VMID)
+	filename, err := catalog.PublishedFile(ctx, deps.Store, deps.ClusterName, templateID)
+	if err != nil {
+		if errors.Is(err, catalog.ErrCloudInitTemplateNotPublished) {
+			return wrapJoin(ErrCloudInitNotPublished, err)
+		}
 
-	if content == "" {
-		return detachCloudInitSnippet(ctx, deps, entity, storage, filename)
-	}
-
-	return writeCloudInitSnippet(ctx, deps, entity, storage, filename, content)
-}
-
-// detachCloudInitSnippet clears the cicustom and sets the row content to ""
-// without pushing or deleting the file.
-func detachCloudInitSnippet(ctx context.Context, deps CloudInitSnippetDeps, entity Entity, storage, filename string) error {
-	if err := deps.Writer.AttachCloudInitSnippet(ctx, entity.Node, storage, "", deps.VMID); err != nil {
-		return wrapJoin(ErrSnippetPushFailed, err)
-	}
-
-	if err := deps.Store.PutCloudInitSnippet(ctx, deps.ClusterName, deps.VMID, storage, filename, "", deps.Actor.Username); err != nil {
 		return err
 	}
 
-	return deps.Store.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, "edit_cloudinit_snippet")
-}
-
-// writeCloudInitSnippet validates, pushes, verifies, attaches, then records
-// the row - the row write is after the cluster steps so a failed push never
-// records a document the VM never received.
-func writeCloudInitSnippet(ctx context.Context, deps CloudInitSnippetDeps, entity Entity, storage, filename, content string) error {
-	if err := cloudinit.Validate(content); err != nil {
-		return err
-	}
-
-	if err := deps.Writer.PushCloudInitSnippet(ctx, entity.Node, storage, filename, deps.VMID, content); err != nil {
-		return wrapJoin(ErrCloudInitWriteUnavailable, err)
-	}
-
-	visible, err := deps.Writer.HasSnippet(ctx, entity.Node, storage, filename)
+	present, err := deps.Writer.HasSnippet(ctx, entity.Node, storage, filename)
 	if err != nil {
 		return wrapJoin(ErrSnippetPushFailed, err)
 	}
 
-	if !visible {
-		return fmt.Errorf("%w: %s not visible after push", ErrSnippetPushFailed, filename)
+	if !present {
+		return fmt.Errorf("%w: %s:snippets/%s is not on node %s", ErrCloudInitNotPublished, storage, filename, entity.Node)
 	}
 
 	if err := deps.Writer.AttachCloudInitSnippet(ctx, entity.Node, storage, filename, deps.VMID); err != nil {
 		return wrapJoin(ErrSnippetPushFailed, err)
 	}
 
-	if err := deps.Store.PutCloudInitSnippet(ctx, deps.ClusterName, deps.VMID, storage, filename, content, deps.Actor.Username); err != nil {
-		return err
+	return deps.Store.PutVMCloudInitDocument(ctx, deps.ClusterName, deps.VMID, templateID, filename, deps.Actor.Username)
+}
+
+// dropLegacySnippet removes the VM's legacy per-VM file and row once the VM
+// no longer uses it. Best-effort: a leftover file is harmless.
+func dropLegacySnippet(ctx context.Context, deps CloudInitDocumentDeps) {
+	legacy, found, err := deps.Store.GetCloudInitSnippet(ctx, deps.ClusterName, deps.VMID)
+	if err != nil || !found {
+		return
 	}
 
-	return deps.Store.RecordAction(ctx, deps.Actor.Username, deps.ClusterName, deps.VMID, "edit_cloudinit_snippet")
+	if legacy.Content != "" {
+		_ = deps.Writer.RemoveCloudInitSnippet(ctx, legacy.Storage, legacy.Filename)
+	}
+
+	_ = deps.Store.DeleteCloudInitSnippet(ctx, deps.ClusterName, deps.VMID)
 }
 
 func resolveCloudInitTarget(index *inventory.Index, actor auth.Identity, clusterName string, vmid int) (Entity, error) {

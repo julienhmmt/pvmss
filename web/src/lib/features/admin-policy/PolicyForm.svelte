@@ -4,7 +4,6 @@
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
-	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
 	import FormField from '$lib/shared/ui/FormField.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
 
@@ -233,19 +232,6 @@
 				<TextField {id} {describedBy} {invalid} type="number" min={-1} max={MAX_VM_PER_USER} bind:value={form.maxVmPerUser} required />
 			{/snippet}
 		</FormField>
-	</Card>
-
-	<Card pad="md">
-		<div class="mb-3 grid gap-1">
-			<h2 class="text-lg font-medium text-foreground">{m['policy.customYamlTitle']()}</h2>
-			<p class="text-sm text-warning-soft-foreground">{m['policy.customYamlWarning']()}</p>
-		</div>
-		<Checkbox
-			label={m['policy.allowCustomYaml']()}
-			checked={form.gabarit.allowCustomYaml}
-			onToggle={(checked) => (form.gabarit.allowCustomYaml = checked)}
-			variant="warning"
-		/>
 	</Card>
 
 	{#if saveError && !serverErrorField}<Alert>{saveError}</Alert>{/if}
