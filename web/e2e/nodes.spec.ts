@@ -21,6 +21,11 @@ test.describe('T01 fake cluster', () => {
 
 		const firstLoadNames = await rows.allTextContents();
 		await page.reload();
+
+		// The table renders skeleton rows before its data arrives, so wait for
+		// the real rows instead of reading straight after the reload.
+		await expect(rows).toHaveCount(3);
+		await expect(page.locator('tbody tr', { hasText: 'pve-node-03' }).getByText('offline')).toBeVisible();
 		expect(await rows.allTextContents()).toEqual(firstLoadNames);
 	});
 

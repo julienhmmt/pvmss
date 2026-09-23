@@ -16,7 +16,9 @@ test.describe('T02 authentication', () => {
 
 		const me = await page.request.get('/api/v1/auth/me');
 		expect(me.status()).toBe(200);
-		expect(await me.json()).toEqual({ username: 'alice@pve', pool: 'pool-alice', isAdmin: false, cluster: 'default' });
+		// toMatchObject, not toEqual: /auth/me also carries the display name and
+		// cluster display name, which this test does not assert on.
+		expect(await me.json()).toMatchObject({ username: 'alice@pve', pool: 'pool-alice', isAdmin: false, cluster: 'default' });
 
 		const logout = await page.request.post('/api/v1/auth/logout', {
 			headers: await csrfHeaders(page.request)
