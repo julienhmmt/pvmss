@@ -117,6 +117,9 @@ export interface VmCreateCatalog {
 	 *  already empties cloudInitTemplates when false, so the picker never
 	 *  renders - the flag exists for consumers that want the reason. */
 	cloudInitWriteEnabled: boolean;
+	/** Document id of the standalone baseline (server-provided; the web never
+	 *  hardcodes it). */
+	cloudInitBaselineId?: string;
 	tags: CatalogTag[];
 	gabarit?: CatalogGabarit;
 	quota?: CatalogQuota;

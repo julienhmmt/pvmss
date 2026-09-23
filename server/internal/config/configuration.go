@@ -44,4 +44,8 @@ type Configuration struct {
 	// documents to every node (PVMSS_SSH_KEY_FILE). The SSH user, port and
 	// pinned host keys are per cluster. Empty: cloud-init documents off.
 	SSHKeyFile string
+	// DeprecatedSSHEnv lists deprecated environment variables that were set
+	// and ignored (PVMSS_SSH_USER, PVMSS_SSH_PORT). Startup logs a warning
+	// for each so an upgrade cannot silently lose publishing.
+	DeprecatedSSHEnv []string
 }

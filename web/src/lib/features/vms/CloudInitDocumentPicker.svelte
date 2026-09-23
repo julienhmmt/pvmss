@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
-	import { BASELINE_TEMPLATE_ID, type CloudInitStore } from './cloudinit.svelte';
+	import type { CloudInitStore } from './cloudinit.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
@@ -40,7 +40,7 @@
 		const doc = store.document;
 		if (!doc || !doc.filename) return m['vms.cloudinit.documentNone']();
 		if (doc.legacy) return m['vms.cloudinit.documentLegacy']();
-		if (doc.templateId === BASELINE_TEMPLATE_ID) return m['vms.cloudinit.documentBaseline']();
+		if (doc.templateId === store.baselineTemplateId) return m['vms.cloudinit.documentBaseline']();
 		return store.templates.find((t) => t.id === doc.templateId)?.label ?? doc.templateId ?? '';
 	});
 

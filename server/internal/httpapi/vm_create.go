@@ -255,11 +255,15 @@ type catalogDTO struct {
 	// CloudInitWriteEnabled reports whether this cluster has a snippet write
 	// target configured (Admin › Clusters): cloud-init documents can be
 	// written, so the wizard may offer the document picker.
-	CloudInitWriteEnabled bool                     `json:"cloudInitWriteEnabled"`
-	Tags                  []catalogTagDTO          `json:"tags"`
-	Gabarit               *catalogGabaritDTO       `json:"gabarit,omitempty"`
-	Quota                 *catalogQuotaDTO         `json:"quota,omitempty"`
-	NodeCapacities        []catalogNodeCapacityDTO `json:"nodeCapacities,omitempty"`
+	CloudInitWriteEnabled bool `json:"cloudInitWriteEnabled"`
+	// CloudInitBaselineID is the document id of the standalone baseline
+	// (published for image VMs with no template). The web client compares a
+	// VM's document id against it instead of hardcoding the value.
+	CloudInitBaselineID string                   `json:"cloudInitBaselineId"`
+	Tags                []catalogTagDTO          `json:"tags"`
+	Gabarit             *catalogGabaritDTO       `json:"gabarit,omitempty"`
+	Quota               *catalogQuotaDTO         `json:"quota,omitempty"`
+	NodeCapacities      []catalogNodeCapacityDTO `json:"nodeCapacities,omitempty"`
 }
 
 // ServeHTTP handles POST /api/v1/vms. Creation is asynchronous:
@@ -446,6 +450,7 @@ func buildCatalogDTO(clusterName string, data catalogData, cloudInitWriteEnabled
 		Templates:             mapCatalogSlice(data.proxmoxTemplates, catalogTemplateView),
 		CloudInitTemplates:    catalogCloudInitTemplateDTOs(data.templates, cloudInitWriteEnabled),
 		CloudInitWriteEnabled: cloudInitWriteEnabled,
+		CloudInitBaselineID:   store.BaselineTemplateID,
 		Tags:                  catalogTagDTOs(data.tags),
 	}
 }

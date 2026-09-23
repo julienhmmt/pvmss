@@ -24,6 +24,10 @@ export interface AdminCluster {
 	 *  empty when no key is configured. */
 	sshPublicKey: string;
 	cloudInitWriteEnabled: boolean;
+	/** First missing prerequisite for cloud-init publishing, or undefined
+	 *  when it is on: no_ssh_key | no_ssh_user | no_host_keys |
+	 *  no_snippet_storage. Localized by the page. */
+	publishingStatus?: string;
 }
 
 export interface ClusterInput {

@@ -74,6 +74,24 @@
 		}
 	}
 
+	// publishingOffHint localizes why cloud-init publishing is off for a
+	// cluster (the server's publishingStatus code), so the admin knows which
+	// prerequisite to fix.
+	function publishingOffHint(status: string | undefined): string {
+		switch (status) {
+			case 'no_ssh_key':
+				return m['admin.clusters.publishingOff.noSshKey']();
+			case 'no_ssh_user':
+				return m['admin.clusters.publishingOff.noSshUser']();
+			case 'no_host_keys':
+				return m['admin.clusters.publishingOff.noHostKeys']();
+			case 'no_snippet_storage':
+				return m['admin.clusters.publishingOff.noSnippetStorage']();
+			default:
+				return m['admin.clusters.cloudinitOff']();
+		}
+	}
+
 	async function saveCluster(input: ClusterInput): Promise<void> {
 		const succeeded =
 			editing === null
@@ -144,7 +162,14 @@
 							<td class="text-muted-foreground">{cluster.proxmoxVersion ?? ' - '}</td>
 							<td>{cluster.nodeCount} / {cluster.vmCount}</td>
 							<td>{cluster.oidcEnabled ? m['common.enabled']() : m['common.off']()}</td>
-							<td class="text-muted-foreground">{cluster.cloudInitWriteEnabled ? m['admin.clusters.cloudinitOn']() : m['admin.clusters.cloudinitOff']()}</td>
+							<td class="text-muted-foreground">
+								{#if cluster.cloudInitWriteEnabled}
+									{m['admin.clusters.cloudinitOn']()}
+								{:else}
+									<div>{m['admin.clusters.cloudinitOff']()}</div>
+									<div class="mt-1 text-xs">{publishingOffHint(cluster.publishingStatus)}</div>
+								{/if}
+							</td>
 							<td>
 								<div class="flex flex-wrap gap-2">
 									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.testLabel']({ name: cluster.name })} onclick={() => void store.test(cluster.name)}>{m['admin.clusters.test']()}</Button>

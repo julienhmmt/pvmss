@@ -85,7 +85,7 @@
 	{#snippet actions()}
 		<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="cloudinit-cluster" />
 		<Button variant="secondary" loading={publishing} onclick={onPublishAll} data-testid="cloudinit-publish-all">{m['admin.cloudinit.publishAll']()}</Button>
-		<Button onclick={openCreate}>{m['admin.cloudinit.newTemplate']()}</Button>
+		<Button onclick={openCreate} data-testid="cloudinit-new-template">{m['admin.cloudinit.newTemplate']()}</Button>
 	{/snippet}
 </PageHeader>
 

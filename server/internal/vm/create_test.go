@@ -80,7 +80,7 @@ func newCreateFixture(t *testing.T) createFixture {
 	}
 
 	// The admin-published baseline every image VM without a template uses.
-	if _, err := catalog.PublishCloudInitDocument(ctx, st, cluster.Fake{}, testClusterName, store.BaselineTemplateID, ""); err != nil {
+	if _, err := catalog.PublishCloudInitDocument(ctx, st, cluster.Fake{}, catalog.PublishRequest{Cluster: testClusterName, TemplateID: store.BaselineTemplateID}); err != nil {
 		t.Fatalf("publish baseline: %v", err)
 	}
 
@@ -476,7 +476,7 @@ func createTestTemplate(t *testing.T, st *store.Store) string {
 		t.Fatalf("CreateCloudInitTemplate: %v", err)
 	}
 
-	if _, err := catalog.PublishCloudInitDocument(context.Background(), st, cluster.Fake{}, testClusterName, tmpl.ID, tmpl.Content); err != nil {
+	if _, err := catalog.PublishCloudInitDocument(context.Background(), st, cluster.Fake{}, catalog.PublishRequest{Cluster: testClusterName, TemplateID: tmpl.ID, Content: tmpl.Content}); err != nil {
 		t.Fatalf("PublishCloudInitDocument: %v", err)
 	}
 

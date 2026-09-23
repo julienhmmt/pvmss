@@ -1,48 +1,12 @@
 import { get, post, put, ApiRequestError } from '$lib/shared/api/client';
 import { m } from '$lib/paraglide/messages.js';
-
-export type CloudInitIPMode = 'dhcp' | 'static';
-
-export interface CloudInitConfig {
-	user: string;
-	sshKeys: string[];
-	ipMode: CloudInitIPMode;
-	ipAddress?: string;
-	gateway?: string;
-	dnsServer?: string;
-	searchDomain?: string;
-}
-
-export interface CloudInitConfigUpdate {
-	user?: string;
-	password?: string;
-	sshKeys?: string[];
-	ipMode?: CloudInitIPMode;
-	ipAddress?: string;
-	gateway?: string;
-	dnsServer?: string;
-	searchDomain?: string;
-}
-
-/** The cloud-init document a VM uses: an admin template (templateId, or
- *  BASELINE_TEMPLATE_ID for the standalone baseline) or a legacy per-VM
- *  document written before documents became admin-published. */
-export interface CloudInitDocument {
-	templateId: string | null;
-	filename: string | null;
-	legacy: boolean;
-	updatedAt: string | null;
-	updatedBy: string | null;
-}
-
-/** Template id of the standalone baseline published for image VMs. */
-export const BASELINE_TEMPLATE_ID = '__baseline__';
-
-/** One admin template the user may switch the VM to. */
-export interface CloudInitTemplateOption {
-	id: string;
-	label: string;
-}
+import type {
+	CloudInitConfig,
+	CloudInitConfigUpdate,
+	CloudInitDocument,
+	CloudInitSSHKeyResponse,
+	CloudInitTemplateOption
+} from './cloudinit.types';
 
 interface CloudInitUpdateResponse {
 	status: string;
@@ -56,10 +20,7 @@ interface CloudInitDocumentResponse {
 interface TemplateCatalog {
 	cloudInitTemplates: CloudInitTemplateOption[];
 	cloudInitWriteEnabled: boolean;
-}
-
-export interface CloudInitSSHKeyResponse {
-	status: string;
+	cloudInitBaselineId: string;
 }
 
 export class CloudInitStore {
@@ -72,6 +33,8 @@ export class CloudInitStore {
 	templates = $state.raw<CloudInitTemplateOption[]>([]);
 	/** False when the cluster does not publish cloud-init documents. */
 	publishingEnabled = $state.raw(false);
+	/** Document id of the standalone baseline, from the cluster catalog. */
+	baselineTemplateId = $state.raw('');
 	configLoading = $state.raw(false);
 	documentLoading = $state.raw(false);
 	configInFlight = $state.raw(false);
@@ -135,6 +98,7 @@ export class CloudInitStore {
 			this.document = document;
 			this.templates = catalog.cloudInitTemplates ?? [];
 			this.publishingEnabled = catalog.cloudInitWriteEnabled;
+			this.baselineTemplateId = catalog.cloudInitBaselineId ?? '';
 		} catch (err) {
 			this.documentError = errorMessage(err, () => m['vms.cloudinit.errorLoadDocument']());
 		} finally {
@@ -183,6 +147,10 @@ export class CloudInitStore {
 	}
 }
 
+// sanitizeConfig whitelists the fields the UI may hold. The GET never returns
+// write-only fields (password), but the store must not surface one if the API
+// ever does - a test asserts `password` never reaches store state. It also
+// copies sshKeys so the reactive config never aliases the response array.
 function sanitizeConfig(config: CloudInitConfig): CloudInitConfig {
 	return {
 		user: config.user,

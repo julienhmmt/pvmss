@@ -118,6 +118,10 @@ type adminClusterDTO struct {
 	// install on every node; empty when no key is configured.
 	SSHPublicKey          string `json:"sshPublicKey"`
 	CloudInitWriteEnabled bool   `json:"cloudInitWriteEnabled"`
+	// PublishingStatus names the first missing prerequisite for cloud-init
+	// publishing ("" when enabled), so Admin > Clusters can tell the admin
+	// what to fix. The web client localizes the code.
+	PublishingStatus string `json:"publishingStatus"`
 }
 
 type createClusterRequest struct {
@@ -473,6 +477,8 @@ func (handler *AdminClusters) clusterDTO(row store.ClusterRow) adminClusterDTO {
 		nodeCount, vmCount = 0, 0
 	}
 
+	status := publishingStatus(row, handler.sshPublicKey)
+
 	return adminClusterDTO{
 		Name: row.Name, DisplayName: row.DisplayName, URL: row.URL, TLSInsecureSkipVerify: row.TLSInsecureSkipVerify, TokenID: row.TokenID,
 		TokenSet: row.TokenSecret != "", OIDCEnabled: row.OIDCEnabled, RemovedAt: formatTime(row.RemovedAt),
@@ -480,7 +486,27 @@ func (handler *AdminClusters) clusterDTO(row store.ClusterRow) adminClusterDTO {
 		ProxmoxVersion: optionalValue(version), NodeCount: nodeCount, VMCount: vmCount,
 		SnippetStorage: row.SnippetStorage, SSHUser: row.SSHUser, SSHPort: row.SSHPort, SSHKnownHosts: row.SSHKnownHosts,
 		SSHPublicKey:          handler.sshPublicKey,
-		CloudInitWriteEnabled: row.PublishingConfigured() && handler.sshPublicKey != "",
+		CloudInitWriteEnabled: status == "",
+		PublishingStatus:      status,
+	}
+}
+
+// publishingStatus reports why cloud-init publishing is off for a cluster, or
+// "" when every prerequisite is present: the global key (PVMSS_SSH_KEY_FILE),
+// the per-cluster SSH user, pinned host keys, and the snippet storage. The
+// first missing item wins; the web client localizes each code.
+func publishingStatus(row store.ClusterRow, sshPublicKey string) string {
+	switch {
+	case sshPublicKey == "":
+		return "no_ssh_key"
+	case row.SSHUser == "":
+		return "no_ssh_user"
+	case strings.TrimSpace(row.SSHKnownHosts) == "":
+		return "no_host_keys"
+	case row.SnippetStorage == "":
+		return "no_snippet_storage"
+	default:
+		return ""
 	}
 }
 

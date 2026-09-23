@@ -616,7 +616,7 @@ func applyImageCloudInitConfig(ctx context.Context, cfg imageCloudInitApply, res
 		return
 	}
 
-	if err := attachPublishedDocument(ctx, cfg.Deps, cfg.Actor, cfg.ClusterName, cfg.Spec.Node, cfg.VMID, cfg.Document); err != nil {
+	if err := attachPublishedDocument(ctx, cfg.Deps, cfg.Actor, documentTarget{Cluster: cfg.ClusterName, Node: cfg.Spec.Node, VMID: cfg.VMID}, cfg.Document); err != nil {
 		cfg.Deps.Log.Error("cloud-init document attach failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
 
 		result.BaselineState = BaselineStateNotDelivered
@@ -726,7 +726,7 @@ func applyCloudInitAfterWait(ctx context.Context, req cloudInitWaitRequest, resu
 		return
 	}
 
-	applyCloudInitDocument(ctx, req.Deps, req.Actor, req.ClusterName, req.Spec.Node, req.VMID, req.Document, result)
+	applyCloudInitDocument(ctx, req.Deps, req.Actor, documentTarget{Cluster: req.ClusterName, Node: req.Spec.Node, VMID: req.VMID}, req.Document, result)
 
 	// Start the VM explicitly after the snippet is attached,
 	// so the first boot sees cloud-init.
@@ -1153,7 +1153,7 @@ func applyPostCloneConfig(ctx context.Context, cfg postCloneConfig, result *Crea
 
 	// 3. Cloud-init document attach (same mechanism as the ISO path).
 	if cfg.CloudDocument.present() {
-		applyCloudInitDocument(ctx, cfg.Deps, cfg.Actor, cfg.ClusterName, cfg.Node, cfg.VMID, cfg.CloudDocument, result)
+		applyCloudInitDocument(ctx, cfg.Deps, cfg.Actor, documentTarget{Cluster: cfg.ClusterName, Node: cfg.Node, VMID: cfg.VMID}, cfg.CloudDocument, result)
 	}
 
 	// 4. Start the VM if requested (after cloud-init attachment so the first boot sees the
@@ -1388,7 +1388,7 @@ func planCreate(ctx context.Context, policyService *policy.Policy, deps CreateDe
 		return createPlan{}, err
 	}
 
-	document, skipReason, err := resolvePlanDocument(ctx, deps, clusterName, req, node)
+	document, skipReason, err := resolvePlanDocument(ctx, deps, documentTarget{Cluster: clusterName, Node: node}, req)
 	if err != nil {
 		return createPlan{}, err
 	}

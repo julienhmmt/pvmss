@@ -23,7 +23,7 @@ test.describe('T18 admin cloud-init templates', () => {
 		// SC-001: create a template as admin (only admins manage templates).
 		await signInAdmin(page.request);
 		await page.goto('/admin/cloudinit-templates');
-		await page.getByRole('button', { name: 'New template' }).click();
+		await page.getByTestId('cloudinit-new-template').click();
 		await page.getByLabel('Label').fill('Web server');
 		await page.getByLabel('Content (must start with #cloud-config)').fill(templateContent);
 		await page.getByRole('button', { name: 'Create' }).click();

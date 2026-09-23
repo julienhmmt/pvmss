@@ -57,6 +57,8 @@ func (p Proxmox) PublishSnippet(ctx context.Context, filename, content string) (
 		return nil, ErrSSHNotConfigured
 	}
 
+	// Defence in depth: runHelper re-checks the name before every send, so a
+	// bug here still cannot reach the node helper.
 	if !snippetFilenameRE.MatchString(filename) {
 		return nil, fmt.Errorf("refusing unsafe snippet filename %q", filename)
 	}
