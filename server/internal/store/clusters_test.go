@@ -147,7 +147,7 @@ func TestClusters_LastActiveGuard(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // migration fixtures are intentionally serial
+//nolint:gocyclo,paralleltest // migration fixtures are intentionally serial
 func TestSetClusterSnippetConfig_RoundTrip(t *testing.T) {
 	st := openClusterStore(t)
 	ctx := context.Background()

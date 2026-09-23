@@ -374,7 +374,7 @@ type publishedTemplateDTO struct {
 // template publishes it; the response and the list carry the per-node
 // outcome; an edit publishes a new file; "publish all" republishes.
 //
-//nolint:paralleltest // serial: shared fake snippet state
+//nolint:gocyclo,paralleltest // serial: shared fake snippet state
 func TestAdminCloudInitTemplates_CreatePublishesToEveryNode(t *testing.T) {
 	handler, authHandler, _ := newAdminHandler(t)
 	cookie := adminCookie(t, authHandler)

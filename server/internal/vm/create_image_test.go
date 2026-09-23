@@ -434,6 +434,7 @@ func TestCreate_Image_NoWriteTarget_SkipsBaseline(t *testing.T) {
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_Image_BaselineNotOnNode_BootsOnNativeKeys(t *testing.T) {
 	fixture := newCreateFixture(t)
+
 	cluster.ResetFake() // drop the fixture's published baseline from the nodes
 
 	req := imageRequest()

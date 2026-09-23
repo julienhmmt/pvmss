@@ -635,27 +635,34 @@ func assertNoVMCreated(t *testing.T) {
 	}
 }
 
+// assertTemplateRefusedBeforeVMID asserts Create refuses the cloud-init
+// template with wantErr before any VMID is allocated: the snippet finder
+// decides which refusal the request hits.
+func assertTemplateRefusedBeforeVMID(t *testing.T, snippets vm.SnippetStorageFinder, wantErr error) {
+	t.Helper()
+
+	fixture := newCreateFixture(t)
+	req := detailedRequest()
+	req.CloudInitTemplateID = createTestTemplate(t, fixture.store)
+
+	_, err := vm.Create(context.Background(), aliceIdentity(), testClusterName, req, vm.CreateDeps{
+		Store: fixture.store, Creator: fixture.fake, Pusher: fixture.fake,
+		Writer: fixture.fake, FreeSpace: fixture.fake, Snippets: snippets,
+		Audit: fixture.store, Log: slog.New(slog.DiscardHandler),
+	})
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("error = %v, want %v", err, wantErr)
+	}
+
+	assertNoVMCreated(t)
+}
+
 // TestCreate_CloudInitTemplate_NoSnippetStorage_RejectedBeforeVMID - a
 // template on a node without the snippet storage is refused before NextVMID.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_CloudInitTemplate_NoSnippetStorage_RejectedBeforeVMID(t *testing.T) {
-	fixture := newCreateFixture(t)
-	tmplID := createTestTemplate(t, fixture.store)
-
-	req := detailedRequest()
-	req.CloudInitTemplateID = tmplID
-
-	_, err := vm.Create(context.Background(), aliceIdentity(), testClusterName, req, vm.CreateDeps{
-		Store: fixture.store, Creator: fixture.fake, Pusher: fixture.fake,
-		Writer: fixture.fake, FreeSpace: fixture.fake, Snippets: failingSnippetFinder{},
-		Audit: fixture.store, Log: slog.New(slog.DiscardHandler),
-	})
-	if !errors.Is(err, vm.ErrNoSnippetStorage) {
-		t.Fatalf("error = %v, want ErrNoSnippetStorage", err)
-	}
-
-	assertNoVMCreated(t)
+	assertTemplateRefusedBeforeVMID(t, failingSnippetFinder{}, vm.ErrNoSnippetStorage)
 }
 
 // TestCreate_CloudInitTemplate_UsesPlanSnippetStorage - the visibility check
@@ -705,22 +712,7 @@ func TestCreate_CloudInitTemplate_UsesPlanSnippetStorage(t *testing.T) {
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_CloudInitTemplate_WriteUnavailable409(t *testing.T) {
-	fixture := newCreateFixture(t)
-	tmplID := createTestTemplate(t, fixture.store)
-
-	req := detailedRequest()
-	req.CloudInitTemplateID = tmplID
-
-	_, err := vm.Create(context.Background(), aliceIdentity(), testClusterName, req, vm.CreateDeps{
-		Store: fixture.store, Creator: fixture.fake, Pusher: fixture.fake,
-		Writer: fixture.fake, FreeSpace: fixture.fake, Snippets: writeUnavailableSnippetFinder{},
-		Audit: fixture.store, Log: slog.New(slog.DiscardHandler),
-	})
-	if !errors.Is(err, vm.ErrCloudInitWriteUnavailable) {
-		t.Fatalf("error = %v, want ErrCloudInitWriteUnavailable", err)
-	}
-
-	assertNoVMCreated(t)
+	assertTemplateRefusedBeforeVMID(t, writeUnavailableSnippetFinder{}, vm.ErrCloudInitWriteUnavailable)
 }
 
 // TestCreate_WithoutCloudInitTemplate_DoesNotResolveSnippetStorage - the
@@ -750,6 +742,7 @@ func TestCreate_WithoutCloudInitTemplate_DoesNotResolveSnippetStorage(t *testing
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_CloudInitTemplate_Unknown_RejectedBeforeVMID(t *testing.T) {
 	fixture := newCreateFixture(t)
+
 	cluster.ResetFake()
 
 	req := detailedRequest()

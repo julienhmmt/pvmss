@@ -53,7 +53,7 @@ INSERT INTO audit_log (id, actor, cluster, vmid, action, timestamp, severity)
 DROP TABLE audit_log_v18;
 `
 
-// RecordAction inserts one audit_log row carrying the real acting username - 
+// RecordAction inserts one audit_log row carrying the real acting username -
 // never a service-account name (closes traceability gap). The
 // timestamp is server-side; a caller cannot supply it. The 15 existing VM
 // callers are unchanged; new columns receive empty defaults and the severity

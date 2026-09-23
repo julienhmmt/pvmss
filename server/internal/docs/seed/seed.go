@@ -131,7 +131,7 @@ var builtInPages = []seedPage{
 }
 
 // SeedDocumentationPages inserts every built-in page that does not already
-// exist (by (id, lang)). Existing rows - including admin-edited system pages - 
+// exist (by (id, lang)). Existing rows - including admin-edited system pages -
 // are left untouched, so the seed is safe to run on every startup.
 //
 //nolint:revive // the Seed verb documents the seeding action explicitly

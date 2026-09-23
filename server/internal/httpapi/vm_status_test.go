@@ -19,7 +19,7 @@ type vmLiveStatusResponse struct {
 	Uptime int64  `json:"uptime"`
 }
 
-// statusBatchResponse mirrors the POST /vms/status 200 body - a bare array
+// statusBatchResponse mirrors the POST /vms/status 200 body - a bare array.
 type statusBatchResponse = []statusBatchItem
 
 type statusBatchItem struct {

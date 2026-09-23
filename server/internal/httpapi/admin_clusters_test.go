@@ -511,7 +511,7 @@ func TestAdminClusters_DeleteLastClusterConflictAndReactivateRoundTrip(t *testin
 // a valid storage id, a non-root user, parsable plain known_hosts (required
 // with a user); a valid set persists and is echoed.
 //
-//nolint:paralleltest // HTTP fixture shares fake cluster state
+//nolint:gocyclo,paralleltest // HTTP fixture shares fake cluster state
 func TestAdminClusters_SnippetSettingsValidation(t *testing.T) {
 	fixture := newAdminClusterFixture(t)
 	cookie := adminClusterCookie(t, fixture.auth)

@@ -50,7 +50,7 @@ func (r singleClusterResolver) IndexFor(_ string) (*inventory.Index, error) {
 	return r.projection.Load(), nil
 }
 
-// registryResolver adapts the inventory Registry to ClusterIndexResolver - 
+// registryResolver adapts the inventory Registry to ClusterIndexResolver -
 // each target's cluster name resolves to that cluster's own projection.
 type registryResolver struct {
 	registry *inventory.Registry

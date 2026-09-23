@@ -247,7 +247,7 @@ func (p Proxmox) UpdateNetwork(ctx context.Context, node string, vmid int, inter
 	return err
 }
 
-// UpdateHardware implements Writer. tags is always written, even when empty - 
+// UpdateHardware implements Writer. tags is always written, even when empty -
 // matching the fake's unconditional overwrite (`Tags = append(nil, tags...)`)
 // rather than treating a nil/empty slice as "leave tags unchanged".
 func (p Proxmox) UpdateHardware(ctx context.Context, node string, vmid, sockets, cores, memoryMB int, tags []string) error {

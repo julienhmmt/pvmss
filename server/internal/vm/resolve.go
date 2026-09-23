@@ -19,7 +19,7 @@ var ErrNotFound = errors.New("vm not found")
 
 // ErrForbidden is returned by Resolve when the VM is tagged pvmss but the
 // caller's pool does not own it and the caller is not an admin. This
-// is the only branch that distinguishes "wrong owner" from "doesn't exist" - 
+// is the only branch that distinguishes "wrong owner" from "doesn't exist" -
 // and only to tell a legitimate owner-in-training their action was understood
 // but denied, not to leak existence to a probing caller.
 var ErrForbidden = errors.New("forbidden")
@@ -120,7 +120,7 @@ type Entity struct {
 //
 // Source widened from a concrete *inventory.Index to the one-method
 // inventory.LookupSource interface so Resolve can dispatch through whichever
-// cluster's projection clusterName names (single decode point preserved - 
+// cluster's projection clusterName names (single decode point preserved -
 // rather than pushing per-cluster lookup out to every
 // caller). *inventory.Index still implements LookupSource, so this is a
 // backward-compatible widening: every existing call site keeps compiling and

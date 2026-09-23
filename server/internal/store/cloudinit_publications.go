@@ -88,7 +88,7 @@ func (s *Store) ListCloudInitPublications(ctx context.Context, cluster string) (
 	if err != nil {
 		return nil, fmt.Errorf("query cloud-init publications: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	out := make(map[string]CloudInitPublication)
 
