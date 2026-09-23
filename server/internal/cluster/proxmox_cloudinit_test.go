@@ -3,13 +3,10 @@ package cluster
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -171,142 +168,6 @@ func TestProxmox_SetCloudInitConfig_EnsuresDriveThenWrites(t *testing.T) {
 	}
 }
 
-// TestPushCloudInitSnippet_WritesAtomically verifies the write path:
-// the document lands in the configured snippet directory as a real file
-// (mode 0644, exact content) and no temp file is left behind - rename means
-// Proxmox can never observe a half-written snippet.
-func TestPushCloudInitSnippet_WritesAtomically(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	p := Proxmox{SnippetDir: dir, SnippetStorage: testSnippetStorage}
-
-	if err := p.PushCloudInitSnippet(context.Background(), testNodeName, testSnippetStorage, testSnippetFilename, testVMID, "#cloud-config\npackages:\n  - nginx\n"); err != nil {
-		t.Fatalf("PushCloudInitSnippet: %v", err)
-	}
-
-	data, err := os.ReadFile(filepath.Join(dir, testSnippetFilename)) //nolint:gosec // test reads back the file the test just wrote
-	if err != nil {
-		t.Fatalf("read snippet: %v", err)
-	}
-
-	if string(data) != "#cloud-config\npackages:\n  - nginx\n" {
-		t.Errorf("snippet content = %q", data)
-	}
-
-	info, err := os.Stat(filepath.Join(dir, testSnippetFilename))
-	if err != nil {
-		t.Fatalf("stat snippet: %v", err)
-	}
-
-	if info.Mode().Perm() != 0o644 {
-		t.Errorf("snippet mode = %o, want 644", info.Mode().Perm())
-	}
-
-	leftovers, err := filepath.Glob(filepath.Join(dir, ".pvmss-*.tmp"))
-	if err != nil || len(leftovers) != 0 {
-		t.Errorf("temp leftovers = %v (err %v), want none", leftovers, err)
-	}
-}
-
-// TestPushCloudInitSnippet_Overwrites verifies a retry replaces the file - 
-// the same VMID (or an edit) must not leave stale content.
-func TestPushCloudInitSnippet_Overwrites(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	p := Proxmox{SnippetDir: dir, SnippetStorage: testSnippetStorage}
-
-	if err := p.PushCloudInitSnippet(context.Background(), testNodeName, testSnippetStorage, testSnippetFilename, testVMID, "#cloud-config\npackages: [nginx]\n"); err != nil {
-		t.Fatalf("first push: %v", err)
-	}
-
-	if err := p.PushCloudInitSnippet(context.Background(), testNodeName, testSnippetStorage, testSnippetFilename, testVMID, "#cloud-config\npackages: [curl]\n"); err != nil {
-		t.Fatalf("second push: %v", err)
-	}
-
-	data, err := os.ReadFile(filepath.Join(dir, testSnippetFilename)) //nolint:gosec // test reads back the file the test just wrote
-	if err != nil {
-		t.Fatalf("read snippet: %v", err)
-	}
-
-	if string(data) != "#cloud-config\npackages: [curl]\n" {
-		t.Errorf("snippet content = %q, want the second write", data)
-	}
-}
-
-// TestPushCloudInitSnippet_RejectsUnsafeFilename verifies the writer cannot
-// be coerced into writing outside the pvmss-*.yml shape or outside the
-// snippet directory - a bug in a caller must not become a path escape.
-func TestPushCloudInitSnippet_RejectsUnsafeFilename(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	p := Proxmox{SnippetDir: dir, SnippetStorage: testSnippetStorage}
-
-	for _, filename := range []string{"../pvmss-1.yml", "pvmss-1.txt", "vm-1.yml", "pvmss-1/x.yml"} {
-		if err := p.PushCloudInitSnippet(context.Background(), testNodeName, testSnippetStorage, filename, testVMID, "x"); err == nil {
-			t.Errorf("filename %q: expected an error", filename)
-		}
-	}
-
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatalf("read dir: %v", err)
-	}
-
-	if len(entries) != 0 {
-		t.Errorf("snippet dir = %d entries, want none written", len(entries))
-	}
-}
-
-// TestPushCloudInitSnippet_Unconfigured verifies a cluster with no write
-// target reports the sentinel - never a filesystem attempt.
-func TestPushCloudInitSnippet_Unconfigured(t *testing.T) {
-	t.Parallel()
-
-	p := Proxmox{}
-	if err := p.PushCloudInitSnippet(context.Background(), testNodeName, testSnippetStorage, testSnippetFilename, testVMID, "x"); !errors.Is(err, ErrSnippetWriteUnavailable) {
-		t.Fatalf("error = %v, want ErrSnippetWriteUnavailable", err)
-	}
-}
-
-// TestPushCloudInitSnippet_WrongStorage verifies the writer refuses a storage
-// id that is not the configured one: the mounted directory belongs to exactly
-// one Proxmox storage.
-func TestPushCloudInitSnippet_WrongStorage(t *testing.T) {
-	t.Parallel()
-
-	p := Proxmox{SnippetDir: t.TempDir(), SnippetStorage: testSnippetStorage}
-	if err := p.PushCloudInitSnippet(context.Background(), testNodeName, "local", testSnippetFilename, testVMID, "x"); err == nil {
-		t.Fatal("expected an error for a non-configured storage")
-	}
-}
-
-// TestPushCloudInitSnippet_WriteErrorLeavesNoTemp verifies a failed write
-//
-//	cleans its temp file - the directory must never accumulate.pvmss-*.tmp.
-func TestPushCloudInitSnippet_WriteErrorLeavesNoTemp(t *testing.T) {
-	t.Parallel()
-
-	// A file where the directory should be forces CreateTemp to fail.
-	blocker := filepath.Join(t.TempDir(), "not-a-dir")
-	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
-		t.Fatalf("write blocker: %v", err)
-	}
-
-	p := Proxmox{SnippetDir: blocker, SnippetStorage: testSnippetStorage}
-
-	if err := p.PushCloudInitSnippet(context.Background(), testNodeName, testSnippetStorage, testSnippetFilename, testVMID, "x"); err == nil {
-		t.Fatal("expected a write error")
-	}
-
-	leftovers, err := filepath.Glob(filepath.Join(filepath.Dir(blocker), ".pvmss-*.tmp"))
-	if err != nil || len(leftovers) != 0 {
-		t.Errorf("temp leftovers = %v (err %v), want none", leftovers, err)
-	}
-}
-
 // TestFindSnippetStorage_ConfiguredMustBeOnNode verifies the new contract
 // the configured storage is returned only when the node actually
 // lists it as an active snippets provider; unconfigured means the sentinel.
@@ -329,15 +190,16 @@ func TestFindSnippetStorage_ConfiguredMustBeOnNode(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			dir := t.TempDir()
 			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
 				mux.HandleFunc("GET /api2/json/nodes/node01/storage", func(w http.ResponseWriter, _ *http.Request) {
 					writeJSONFixture(t, w, `{"data":`+tc.rows+`}`)
 				})
-				mux.HandleFunc("GET /api2/json/nodes/node01/storage/{storage}/content", snippetDirContentHandler(t, dir))
 			})
 
-			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal, SnippetDir: dir, SnippetStorage: tc.storage}
+			p := Proxmox{
+				BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal, SnippetStorage: tc.storage,
+				SSH: SnippetSSH{User: "pvmss", Signer: newTestSigner(t)},
+			}
 
 			got, err := p.FindSnippetStorage(context.Background(), testNodeName)
 			if tc.wantErr != nil {
@@ -356,58 +218,6 @@ func TestFindSnippetStorage_ConfiguredMustBeOnNode(t *testing.T) {
 				t.Errorf("storage = %q, want %q", got, tc.want)
 			}
 		})
-	}
-}
-
-// snippetDirContentHandler serves /storage/{storage}/content?content=snippets
-// from the files actually present in dir - the stand-in for a snippet
-// directory that IS the storage's snippets/ directory.
-func snippetDirContentHandler(t *testing.T, dir string) http.HandlerFunc {
-	t.Helper()
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			t.Errorf("read snippet dir: %v", err)
-		}
-
-		rows := make([]string, 0, len(entries))
-		for _, entry := range entries {
-			rows = append(rows, fmt.Sprintf(`{"volid":"%s:snippets/%s","size":1}`, r.PathValue("storage"), entry.Name()))
-		}
-
-		writeJSONFixture(t, w, `{"data":[`+strings.Join(rows, ",")+`]}`)
-	}
-}
-
-// TestFindSnippetStorage_RejectsDirectoryProxmoxDoesNotSee is the
-// regression for "volume 'local:snippets/pvmss-N.yml' does not exist": the
-// storage is active, the directory is writable, but it is NOT the storage's
-// snippets/ dir (Proxmox lists nothing). FindSnippetStorage must refuse -
-// ErrSnippetTargetMismatch, which is also ErrSnippetWriteUnavailable - and
-// leave no probe behind.
-func TestFindSnippetStorage_RejectsDirectoryProxmoxDoesNotSee(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
-		mux.HandleFunc("GET /api2/json/nodes/node01/storage", func(w http.ResponseWriter, _ *http.Request) {
-			writeJSONFixture(t, w, `{"data":[{"storage":"shared","active":1,"shared":1}]}`)
-		})
-		mux.HandleFunc("GET /api2/json/nodes/node01/storage/{storage}/content", func(w http.ResponseWriter, _ *http.Request) {
-			writeJSONFixture(t, w, `{"data":[]}`)
-		})
-	})
-
-	p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal, SnippetDir: dir, SnippetStorage: testSnippetStorage}
-
-	_, err := p.FindSnippetStorage(context.Background(), testNodeName)
-	if !errors.Is(err, ErrSnippetTargetMismatch) || !errors.Is(err, ErrSnippetWriteUnavailable) {
-		t.Fatalf("error = %v, want ErrSnippetTargetMismatch wrapping ErrSnippetWriteUnavailable", err)
-	}
-
-	if entries, _ := os.ReadDir(dir); len(entries) != 0 {
-		t.Errorf("probe left behind: %v", entries)
 	}
 }
 

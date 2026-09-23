@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getAdminBaselineContext } from './baseline.svelte';
+	import { fullyPublished } from '$lib/features/admin-cloudinit-templates/cloudInitTemplates.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
@@ -52,26 +53,27 @@
 			</Card>
 		</div>
 
-		<!-- Override state -->
+		<!-- Publication state -->
 		<div class="space-y-4">
-			<h2 class="text-lg font-semibold" id="baseline-override-heading">
-				{m['admin.baseline.override']({ filename: store.state.overrideFilename })}
+			<h2 class="text-lg font-semibold" id="baseline-publication-heading">
+				{m['admin.baseline.publication']()}
 			</h2>
 			<Card as="div" pad="md">
-				{#if store.state.overrideError && !store.state.overridePresent}
-					<Pill tone="warn" label={m['admin.baseline.overrideError']({ error: store.state.overrideError })} />
-				{:else if store.state.overridePresent}
-					<Pill tone="ok" label={m['admin.baseline.overridePresent']()} />
-					{#if store.state.overrideError}
-						<p class="mt-2 text-sm text-muted-foreground">
-							{m['admin.baseline.overrideError']({ error: store.state.overrideError })}
-						</p>
-					{/if}
-					{#if store.state.overrideContent}
-						<pre class="mt-4 max-h-[480px] overflow-auto whitespace-pre-wrap break-words font-mono text-sm">{store.state.overrideContent}</pre>
-					{/if}
+				{#if store.state.publication === null}
+					<Pill tone="warn" label={m['admin.cloudinit.notPublished']()} />
+					<p class="mt-2 text-sm text-muted-foreground">{m['admin.baseline.publishHint']()}</p>
 				{:else}
-					<Pill tone="off" label={m['admin.baseline.overrideAbsent']()} />
+					<Pill
+						tone={fullyPublished(store.state.publication) ? 'ok' : 'warn'}
+						label={m['admin.cloudinit.publishedNodes']({
+							ok: store.state.publication.nodes.filter((n) => n.ok).length,
+							total: store.state.publication.nodes.length
+						})}
+					/>
+					<p class="mt-2 font-mono text-xs text-muted-foreground" data-testid="baseline-filename">{store.state.publication.filename}</p>
+					{#each store.state.publication.nodes.filter((n) => !n.ok) as failed (failed.node)}
+						<p class="mt-1 text-sm text-warning">{failed.node}: {failed.error}</p>
+					{/each}
 				{/if}
 			</Card>
 		</div>

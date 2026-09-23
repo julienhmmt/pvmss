@@ -1,58 +1,85 @@
 # Configuration cloud-init (administrateur)
 
-Ce guide explique le fonctionnement de cloud-init dans PVMSS et comment
-l'administrateur le prépare pour ses utilisateurs. Cloud-init configure une VM
-à son premier démarrage sans s'y connecter : paquets, fichiers, commandes, etc.
+Ce guide explique le fonctionnement de cloud-init dans PVMSS et comment les
+administrateurs le préparent pour leurs utilisateurs. Cloud-init configure une
+VM au premier démarrage sans connexion : paquets, fichiers, commandes, etc.
 
 ## Fonctionnement
 
-- Deux sources de **documents cloud-init** : les **templates**
-  administrateur (`/admin/cloudinit-templates`, par cluster) et les
-  **fichiers personnels** des utilisateurs (`/cloud-init`, 20 par
-  utilisateur). Les deux sont des documents `#cloud-config` stockés dans la
-  base PVMSS.
-- À la création d'une VM, l'utilisateur choisit un document dans un
-  sélecteur groupé. PVMSS écrit une **copie propre à la VM** nommée
-  `pvmss-<vmid>.yml` dans le stockage de snippets du cluster, vérifie qu'elle
-  est visible et l'attache à la VM en vendor data (`cicustom=vendor=…`). La
-  copie fait foi : modifier le template ou le fichier ensuite ne change jamais
-  les VM existantes.
-- Le vendor data fusionne avec le user data que Proxmox génère depuis le
-  formulaire (utilisateur, mot de passe, clés SSH, réseau). `packages`,
-  `package_update`, `runcmd`, `bootcmd`, `write_files`, `apt`, `timezone`,
-  `ntp`… s'appliquent tous. Une clé `users:` dans le document est écrasée par
-  le compte généré - demandez aux utilisateurs de mettre comptes et clés dans
+- **Seuls les administrateurs écrivent les documents cloud-init** : les
+  **templates** de **Admin > Modèles cloud-init** (par cluster,
+  `#cloud-config`). Les utilisateurs en choisissent un à la création d'une
+  VM, ou en changent plus tard depuis l'onglet **Cloud-init** de la VM. Les
+  utilisateurs n'écrivent jamais de YAML.
+- Enregistrer un template le **publie** : PVMSS le fusionne par-dessus la
+  base PVMSS (qemu-guest-agent) et écrit le résultat, par SSH, sous forme
+  d'un fichier immuable `pvmss-tpl-<id>-<hash>.yml` dans le stockage de
+  snippets de **chaque nœud**, puis vérifie via l'API Proxmox que chaque
+  nœud le liste. La page affiche le résultat par nœud (« 3/3 nœuds »).
+- La création d'une VM n'écrit jamais de fichier : PVMSS vérifie que le
+  fichier du template est présent sur le nœud de la VM, puis y fait pointer
+  la VM (`cicustom=vendor=…`). Un template absent du nœud est refusé avant
+  la création de la VM.
+- Modifier un template publie un **nouveau** fichier : les VM gardent la
+  version avec laquelle elles ont été créées.
+- Les vendor data fusionnent avec les user data générées par Proxmox à partir
+  du formulaire de la VM (utilisateur, mot de passe, clés SSH, réseau).
+  `packages`, `package_update`, `runcmd`, `bootcmd`, `write_files`, `apt`,
+  `timezone`, `ntp`… s'appliquent. Une clé `users:` dans le document est
+  écrasée par le compte généré : les comptes et les clés se renseignent dans
   le formulaire.
-- Après création, l'onglet **Cloud-init** de la VM affiche le document.
-  Quand **Autoriser le YAML cloud-init libre** est activé dans la politique,
-  les utilisateurs peuvent le modifier : l'enregistrement écrase le fichier
-  propre à la VM et s'applique au prochain démarrage.
 
-## Prérequis : une cible d'écriture de snippets
+## Prérequis : publication SSH
 
 L'API REST de Proxmox ne sait pas écrire de fichiers `snippets` ; PVMSS les
-écrit via un répertoire monté dans son conteneur. Suivez **Activer les
-documents cloud-init** dans le [guide administrateur](/docs/admin-guide) :
-stockage partagé avec le type de contenu Snippets, montage de son répertoire
-`snippets/` dans le conteneur, puis *Répertoire de snippets* et *Stockage de
-snippets* sur le cluster dans **Admin › Clusters**.
+publie donc par SSH, via un petit utilitaire installé sur chaque nœud.
 
-Sans cible d'écriture, le sélecteur de document est masqué dans l'assistant et
-une création portant un document est refusée avant qu'un VMID ne soit
-consommé.
+1. **Stockage** : dans Proxmox, ajoutez **Snippets** aux types de contenu
+   d'un stockage disponible sur chaque nœud (Datacenter > Storage > Edit).
+   `local` convient : le fichier est écrit sur chaque nœud.
+2. **Clé PVMSS** : générez une paire de clés (`ssh-keygen -t ed25519 -N ''
+   -f pvmss_ed25519`) et fournissez la clé privée à PVMSS avec
+   `PVMSS_SSH_KEY_FILE` (fichier en lecture seule ; avec Helm, un Secret
+   nommé dans `cloudInit.sshKeySecret`). La clé publique est affichée dans
+   **Admin > Clusters > Modifier**.
+3. **Chaque nœud**, en root : `sh pvmss-node-setup.sh --storage <stockage>
+   --key '<clé publique PVMSS>'` (la commande exacte est affichée dans le
+   formulaire du cluster). Le script installe `/usr/local/bin/pvmss-snippet`,
+   crée l'utilisateur dédié `pvmss` avec un accès en écriture au seul
+   répertoire `snippets/` du stockage, installe la clé avec une commande
+   forcée (pas de shell, pas de redirection) et affiche la clé d'hôte du
+   nœud.
+4. **Admin > Clusters > Modifier** : renseignez le stockage de snippets,
+   l'utilisateur SSH (`pvmss`) et le port, cliquez sur **Scanner les clés
+   d'hôte**, comparez les empreintes avec celles affichées par le script,
+   puis enregistrez. Les clés d'hôte sont toujours vérifiées. PVMSS republie
+   la base et les templates en arrière-plan ; le badge du cluster passe à
+   « cloud-init : activé ».
+
+PVMSS n'envoie jamais que `pvmss-snippet write <nom>` (contenu sur l'entrée
+standard) et `pvmss-snippet remove <nom>` ; l'utilitaire vérifie le nom
+(`pvmss-*.yml`) et maîtrise le répertoire. PVMSS n'envoie jamais de chemin
+ni de commande shell, et la clé ne peut pas ouvrir de shell.
+
+Sans publication SSH, le choix du template est masqué dans l'assistant et
+une demande de création portant un template est refusée avant qu'un VMID
+soit consommé.
 
 ## Tâches de l'administrateur
 
-1. Ouvrez **Admin > Templates cloud-init**.
+1. Ouvrez **Admin > Modèles cloud-init**.
 2. Créez un template avec un libellé et le contenu `#cloud-config`.
-3. Le portail valide l'en-tête `#cloud-config` et la syntaxe YAML ; il ne
-   valide pas la sémantique cloud-init.
-4. Activez le template pour qu'il apparaisse dans le sélecteur. Désactivez-le
-   pour le masquer sans le supprimer.
+   L'enregistrement le publie ; vérifiez la colonne « Publié ».
+3. Désactivez un template pour le masquer aux utilisateurs sans le
+   supprimer. Supprimer un template ne casse jamais les VM qui l'utilisent :
+   leur fichier reste sur les nœuds.
+4. Après l'ajout ou la réinstallation d'un nœud (ou si un nœud était hors
+   ligne lors d'un enregistrement), cliquez sur **Publier sur tous les
+   nœuds**.
 
-Les templates sont statiques - pas de variables. Les valeurs propres à
-l'utilisateur (utilisateur, mot de passe, clés SSH, réseau) viennent du
-formulaire.
+Les templates sont statiques : il n'y a pas de variables de template. Les
+valeurs propres à l'utilisateur (utilisateur, mot de passe, clés SSH, réseau)
+viennent du formulaire de la VM.
 
 ## Exemples de templates
 
@@ -61,14 +88,10 @@ Installation de paquets :
 ```yaml
 #cloud-config
 package_update: true
-package_upgrade: true
 packages:
-  - qemu-guest-agent
   - vim
   - htop
   - curl
-runcmd:
-  - systemctl enable --now qemu-guest-agent
 ```
 
 Fichiers et commandes personnalisés :
@@ -79,49 +102,50 @@ timezone: Europe/Paris
 write_files:
   - path: /etc/motd
     content: |
-      Provisionné par PVMSS.
+      Provisionnée par PVMSS.
 runcmd:
   - systemctl enable --now docker
 ```
 
-## VM depuis image cloud et snippet de base
+## La base
 
-Les VM créées depuis une **image cloud** reçoivent en plus un snippet de base
-fixe, `pvmss-baseline.yml`, s'il existe dans le même répertoire `snippets/` - 
-pratique pour installer `qemu-guest-agent` sur tout le cluster. Son absence
-est silencieuse, pas une erreur.
+La base générée (voir **Admin > Baseline cloud-init**) installe et active
+`qemu-guest-agent`. Elle est fusionnée sous chaque template, et publiée seule
+(`pvmss-baseline-<hash>.yml`) pour les VM cloud-image créées sans template.
+Si elle n'est pas présente sur le nœud de la VM, la VM démarre quand même
+avec ses clés natives et sa page de détail indique que la base n'a pas été
+livrée.
 
 ## Dépannage
 
-- **Snippet écrit localement mais la VM ne peut pas démarrer** (ou
-  `cicustom` pointe vers un fichier manquant) : le répertoire de snippets
-  configuré n'est pas le même répertoire physique que celui dont Proxmox lit
-  les snippets. PVMSS ne se connecte pas en SSH à Proxmox et n'upload pas les
-  snippets via l'API ; il écrit dans un répertoire qui doit être partagé avec
-  (ou être) le chemin snippets du stockage Proxmox. Sur l'hôte Proxmox,
-  exécutez `pvesm path <stockage>` - le chemin snippets est ce chemin plus
-  `/snippets`. Ce chemin exact doit être celui où PVMSS écrit.
-- **Sélecteur masqué dans l'assistant** : le cluster n'a pas de cible
-  d'écriture - vérifiez **Admin › Clusters** (badge « cloud-init : activé »).
-- **Création refusée avec `cloudinit_write_unavailable`** : le répertoire
-  n'est pas monté, pas inscriptible par l'utilisateur du conteneur (uid
-  65532), ou l'identifiant de stockage ne correspond pas au stockage Proxmox
-  qui le possède.
-- **Document non appliqué** : sur un nœud, `qm config <vmid> | grep cicustom`
-  doit afficher `vendor=<stockage>:snippets/pvmss-<vmid>.yml` ; consultez
-  `/var/log/cloud-init.log` dans l'invité.
-- **Changements sans effet** : la plupart des modules ne s'exécutent qu'au
+- **« n/m nœuds » dans la colonne Publié** : l'erreur du nœud en échec est
+  affichée en dessous.
+  - `host ... is not in the cluster's pinned host keys` / `host key
+    mismatch` : scannez à nouveau les clés d'hôte et comparez les empreintes
+    (une différence sans réinstallation est un signal d'alerte).
+  - `ssh handshake ... unable to authenticate` : la clé PVMSS n'est pas dans
+    `~pvmss/.ssh/authorized_keys` sur ce nœud ; relancez le script
+    d'installation.
+  - `written, but Proxmox does not list ...` : le répertoire de l'utilitaire
+    (`/etc/pvmss-snippet.conf`) n'est pas le répertoire `snippets/` du
+    stockage, ou le stockage n'a pas le type de contenu Snippets sur ce nœud.
+  - `node is offline` : publiez à nouveau quand il est revenu.
+- **Création refusée avec `cloudinit_not_published`** : le template n'est
+  pas sur le nœud de la VM ; publiez à nouveau.
+- **Document non appliqué** : sur un nœud, `qm config <vmid> | grep
+  cicustom` doit afficher `vendor=<stockage>:snippets/pvmss-...yml` ;
+  consultez `/var/log/cloud-init.log` dans l'invité.
+- **Modifications sans effet** : la plupart des modules ne s'exécutent qu'au
   premier démarrage. Voir le [guide cloud-init](/docs/cloud-init-howto) pour
   la procédure `cloud-init clean`.
-- **YAML invalide** : le portail rejette les documents dont le YAML est
-  invalide ou sans en-tête `#cloud-config`.
+- **YAML invalide** : le portail rejette les documents qui ne sont pas du
+  YAML valide ou sans l'en-tête `#cloud-config`.
 
-## Limitations
+## Limites
 
-- Templates statiques ; pas de variables.
+- Templates statiques ; pas de variables de template.
 - Seuls la syntaxe YAML et l'en-tête `#cloud-config` sont validés.
-- Supprimer une VM dans PVMSS retire son fichier ; les VM supprimées
-  directement dans Proxmox laissent des orphelins (comparer
-  `snippets/pvmss-*.yml` avec `qm list`).
-- Les documents sont stockés en clair ; ce n'est pas un endroit pour des
-  secrets.
+- Les anciennes versions publiées ne sont pas supprimées des nœuds (quelques
+  Ko chacune).
+- Les documents sont stockés en clair sur les nœuds ; ils ne doivent pas
+  contenir de secrets.

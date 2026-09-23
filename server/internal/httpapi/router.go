@@ -57,7 +57,6 @@ type RouterConfig struct {
 	VMStatusBatch    *VMStatusBatch
 	VMCloudInit      *VMCloudInit
 	VMCreate         *VMCreate
-	CloudInitFiles   *CloudInitFiles
 	Tasks            *Tasks
 	Auth             *Auth
 	WebBuildDir      string
@@ -122,18 +121,6 @@ func NewRouter(cfg RouterConfig) http.Handler {
 
 	registerVMRoutes(mux, cfg, protect, vmWriteLimiter, vmStatusLimiter)
 	registerAuthRoutes(mux, cfg, protect, authWriteLimiter, hops)
-
-	// User-owned cloud-init documents. Any signed-in
-	// user manages their own files; owner = session username, resolved inside
-	// the handler. Writes get the same CSRF + per-user rate limit as VM
-	// mutations.
-	if cfg.CloudInitFiles != nil {
-		mux.Handle("GET /api/v1/cloudinit/files", cfg.Auth.Require(http.HandlerFunc(cfg.CloudInitFiles.ServeList)))
-		mux.Handle("GET /api/v1/cloudinit/files/{id}", cfg.Auth.Require(http.HandlerFunc(cfg.CloudInitFiles.ServeGet)))
-		mux.Handle("POST /api/v1/cloudinit/files", protect(cfg.Auth.Require(http.HandlerFunc(cfg.CloudInitFiles.ServeCreate)), vmWriteLimiter))
-		mux.Handle("PUT /api/v1/cloudinit/files/{id}", protect(cfg.Auth.Require(http.HandlerFunc(cfg.CloudInitFiles.ServeUpdate)), vmWriteLimiter))
-		mux.Handle("DELETE /api/v1/cloudinit/files/{id}", protect(cfg.Auth.Require(http.HandlerFunc(cfg.CloudInitFiles.ServeDelete)), vmWriteLimiter))
-	}
 
 	// Public documentation - audience-filtered list and rendered
 	// single-page view. Not wrapped in auth.Require: the handler resolves the
@@ -217,8 +204,8 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 	if cfg.VMCloudInit != nil {
 		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit", cfg.VMCloudInit)
 		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit", protect(cfg.VMCloudInit, vmWriteLimiter))
-		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", cfg.VMCloudInit)
-		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet", protect(cfg.VMCloudInit, vmWriteLimiter))
+		mux.Handle("GET /api/v1/vms/{cluster}/{vmid}/cloudinit/document", cfg.VMCloudInit)
+		mux.Handle("PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/document", protect(cfg.VMCloudInit, vmWriteLimiter))
 		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/cloudinit/ssh-keys", protect(cfg.VMCloudInit, vmWriteLimiter))
 		mux.Handle("POST /api/v1/vms/{cluster}/{vmid}/console-password", protect(cfg.VMCloudInit, vmWriteLimiter))
 	}

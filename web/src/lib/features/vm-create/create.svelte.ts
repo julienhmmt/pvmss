@@ -169,7 +169,6 @@ export interface VMCreateRequest {
 	name: string;
 	profileId?: string;
 	cloudInitTemplateId?: string;
-	cloudInitFileId?: string;
 	node?: string;
 	tags?: string[];
 	sockets?: number;
@@ -192,7 +191,6 @@ export interface VmCreateAccepted {
 	node: string;
 	upid: string;
 	cloudInitTemplateId?: string;
-	cloudInitFileId?: string;
 	cloudInitPushError?: string;
 	/** True when the VM was created from a cloud image (issue 05): the
 	 *  create summary warns that SSH is the only access until a console
@@ -412,15 +410,9 @@ export class VmCreateStore {
 	mode = $state<CreateMode>('simple');
 	name = $state('');
 	profileId = $state('');
+	/** The admin cloud-init template the VM boots with ('' = none). Users
+	 *  only pick among the templates the administrator published. */
 	cloudInitTemplateId = $state('');
-	/** The actor's own cloud-init document id (cloudinit-userdata 03/04) - 
-	 *  mutually exclusive with cloudInitTemplateId. The select binds the
-	 *  encoded cloudInitDocumentValue, never this field directly. */
-	cloudInitFileId = $state('');
-	/** The signed-in user's own files - owner-scoped, cluster-agnostic, so
-	 *  fetched once alongside the catalog rather than per cluster. Load
-	 *  failure is non-fatal: the "My files" group simply stays empty. */
-	myCloudInitFiles = $state.raw<{ id: string; label: string }[]>([]);
 	node = $state('');
 	nodeAdjusted = $state(false);
 	storage = $state('');
@@ -521,46 +513,19 @@ export class VmCreateStore {
 		}
 	}
 
-	/** Loads the actor's own cloud-init files for the picker's "My files"
-	 *  group. Non-fatal by design: a failure leaves the group empty. */
-	async loadMyCloudInitFiles(): Promise<void> {
-		try {
-			const result = await get<{ files: { id: string; label: string }[] }>('/api/v1/cloudinit/files');
-			this.myCloudInitFiles = result.files;
-		} catch {
-			this.myCloudInitFiles = [];
-		}
-	}
-
-	/** The select's single encoded value: 't:<id>' for an admin template,
-	 *  'f:<id>' for one of the user's files, '' for none. The encoding never
-	 *  leaves the component layer. */
+	/** The select's value: the admin template id, '' for none. */
 	get cloudInitDocumentValue(): string {
-		if (this.cloudInitTemplateId !== '') return `t:${this.cloudInitTemplateId}`;
-		if (this.cloudInitFileId !== '') return `f:${this.cloudInitFileId}`;
-		return '';
+		return this.cloudInitTemplateId;
 	}
 
 	set cloudInitDocumentValue(value: string) {
-		if (value.startsWith('t:')) {
-			this.cloudInitTemplateId = value.slice(2);
-			this.cloudInitFileId = '';
-		} else if (value.startsWith('f:')) {
-			this.cloudInitTemplateId = '';
-			this.cloudInitFileId = value.slice(2);
-		} else {
-			this.cloudInitTemplateId = '';
-			this.cloudInitFileId = '';
-		}
+		this.cloudInitTemplateId = value;
 	}
 
-	/** Emits exactly one of cloudInitTemplateId / cloudInitFileId on the
-	 *  request when a document is selected (never both - ErrInvalidSource). */
+	/** Emits cloudInitTemplateId on the request when a template is chosen. */
 	applyCloudInitDocument(request: VMCreateRequest): void {
 		if (this.cloudInitTemplateId !== '') {
 			request.cloudInitTemplateId = this.cloudInitTemplateId;
-		} else if (this.cloudInitFileId !== '') {
-			request.cloudInitFileId = this.cloudInitFileId;
 		}
 	}
 

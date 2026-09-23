@@ -316,6 +316,37 @@ const schemaV30 = `CREATE TABLE vm_baseline_state (
 	PRIMARY KEY (cluster, vmid)
 )`
 
+// schemaV31 moves cloud-init documents to admin-published, SSH-delivered
+// files. clusters gains the per-cluster SSH settings (snippet_dir is no
+// longer read: the node-side helper owns the directory).
+// cloudinit_publications records the latest published file per template
+// ('__baseline__' for the standalone baseline) and the per-node outcome.
+// vm_cloudinit_documents records which published (shared) file a VM uses;
+// unlike the legacy vm_cloudinit_snippets rows, its file is never deleted
+// with the VM. User-authored files are dropped.
+const schemaV31 = `ALTER TABLE clusters ADD COLUMN ssh_user TEXT NOT NULL DEFAULT '';
+ALTER TABLE clusters ADD COLUMN ssh_port INTEGER NOT NULL DEFAULT 22;
+ALTER TABLE clusters ADD COLUMN ssh_known_hosts TEXT NOT NULL DEFAULT '';
+CREATE TABLE cloudinit_publications (
+	cluster      TEXT NOT NULL,
+	template_id  TEXT NOT NULL,
+	filename     TEXT NOT NULL,
+	content_hash TEXT NOT NULL,
+	published_at TEXT NOT NULL,
+	nodes_json   TEXT NOT NULL DEFAULT '[]',
+	PRIMARY KEY (cluster, template_id)
+);
+CREATE TABLE vm_cloudinit_documents (
+	cluster     TEXT NOT NULL,
+	vmid        INTEGER NOT NULL,
+	template_id TEXT NOT NULL,
+	filename    TEXT NOT NULL,
+	updated_at  TEXT NOT NULL,
+	updated_by  TEXT NOT NULL,
+	PRIMARY KEY (cluster, vmid)
+);
+DROP TABLE user_cloudinit_files;`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -355,4 +386,5 @@ var Migrations = []Migration{
 	{Version: 28, DDL: schemaV28},
 	{Version: 29, DDL: schemaV29},
 	{Version: 30, DDL: schemaV30},
+	{Version: 31, DDL: schemaV31},
 }

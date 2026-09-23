@@ -11,7 +11,6 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"pvmss/server/internal/catalog"
-	"pvmss/server/internal/cloudinit"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
@@ -626,6 +625,12 @@ func createCatalogTemplate(t *testing.T, st *store.Store) string {
 		t.Fatalf("CreateCloudInitTemplate: %v", err)
 	}
 
+	if _, err := catalog.PublishCloudInitDocument(context.Background(), st, cluster.Fake{}, auditTestCluster, tmpl.ID, tmpl.Content); err != nil {
+		t.Fatalf("PublishCloudInitDocument: %v", err)
+	}
+
+	cluster.ClearFakeCalls()
+
 	return tmpl.ID
 }
 
@@ -748,33 +753,32 @@ func TestVMCreate_WithCloudInitTemplate_Success(t *testing.T) {
 	}
 }
 
-// TestVMCreate_WithCloudInitTemplate_PushFailure - a simulated push failure
-// still returns 202 but the response carries cloudInitPushError.
+// TestVMCreate_WithCloudInitTemplate_NotPublishedOnNode409 - a template
+// whose publication failed on the nodes is refused with 409
+// cloudinit_not_published before any VMID is allocated.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestVMCreate_WithCloudInitTemplate_PushFailure(t *testing.T) {
+func TestVMCreate_WithCloudInitTemplate_NotPublishedOnNode409(t *testing.T) {
 	handler, authHandler, st := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
-	tmplID := createCatalogTemplate(t, st)
 
 	cluster.SetFakeCloudInitPushError(errors.New("cluster client: push failed"))
 	t.Cleanup(func() { cluster.SetFakeCloudInitPushError(nil) })
 
+	tmplID := createCatalogTemplate(t, st)
+
 	rec := postVMCreate(t, handler,
 		`{"cluster":"default","name":"web-21","profileId":"medium","cloudInitTemplateId":"`+tmplID+`"}`, cookie)
-	if rec.Code != http.StatusAccepted {
-		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusAccepted, rec.Body.String())
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusConflict, rec.Body.String())
 	}
 
-	var result struct {
-		CloudInitPushError string `json:"cloudInitPushError"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
-		t.Fatalf("decode 202: %v", err)
-	}
+	assertAPIError(t, rec.Body.Bytes(), "cloudinit_not_published")
 
-	if result.CloudInitPushError == "" {
-		t.Error("cloudInitPushError should be non-empty on push failure")
+	for _, c := range cluster.FakeCalls() {
+		if c.Action == "create" {
+			t.Fatalf("a VM was created: %+v", c)
+		}
 	}
 }
 
@@ -842,87 +846,18 @@ func newTasksHandler(t *testing.T) (*httpapi.Tasks, *httpapi.Auth, *inventory.Pr
 	return httpapi.NewTasksWithRegistry(authHandler, provider, cluster.Fake{}, worker, nil, logger), authHandler, projection
 }
 
-//  - User file id through the HTTP surface -
+//  - cloudInitFileId is gone -
 
-// createUserCloudInitFile seeds one of alice's own files via the domain path
-// and returns its id.
-func createUserCloudInitFile(t *testing.T, st *store.Store, owner, label string) string {
-	t.Helper()
-
-	f, err := cloudinit.CreateUserFile(context.Background(), st, owner, label, "#cloud-config\npackages:\n  - htop\n")
-	if err != nil {
-		t.Fatalf("CreateUserFile: %v", err)
-	}
-
-	return f.ID
-}
-
-// TestVMCreate_WithCloudInitFile_Success - POST /api/v1/vms with one of the
-// actor's own file ids returns 202 and the response includes cloudInitFileId.
+// TestVMCreate_CloudInitFileID_Rejected - users no longer author cloud-init
+// files: a request still carrying cloudInitFileId is a 400 (unknown field).
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestVMCreate_WithCloudInitFile_Success(t *testing.T) {
-	handler, authHandler, st := newVMCreateHandler(t)
+func TestVMCreate_CloudInitFileID_Rejected(t *testing.T) {
+	handler, authHandler, _ := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
-	fileID := createUserCloudInitFile(t, st, cluster.FakeUserAlice, "Dev box")
 
-	rec := postVMCreate(t, handler,
-		`{"cluster":"default","name":"web-30","profileId":"medium","cloudInitFileId":"`+fileID+`"}`, cookie)
-	if rec.Code != http.StatusAccepted {
-		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusAccepted, rec.Body.String())
-	}
-
-	var result struct {
-		VMID               int    `json:"vmid"`
-		CloudInitFileID    string `json:"cloudInitFileId"`
-		CloudInitPushError string `json:"cloudInitPushError"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
-		t.Fatalf("decode 202: %v", err)
-	}
-
-	if result.CloudInitFileID != fileID {
-		t.Errorf("cloudInitFileId = %q, want %q", result.CloudInitFileID, fileID)
-	}
-
-	if result.CloudInitPushError != "" {
-		t.Errorf("cloudInitPushError = %q, want empty", result.CloudInitPushError)
-	}
-}
-
-// TestVMCreate_BothCloudInitIds_Rejected - a request carrying both
-// cloudInitTemplateId and cloudInitFileId is a 400 invalid_source.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestVMCreate_BothCloudInitIds_Rejected(t *testing.T) {
-	handler, authHandler, st := newVMCreateHandler(t)
-	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
-	tmplID := createCatalogTemplate(t, st)
-	fileID := createUserCloudInitFile(t, st, cluster.FakeUserAlice, "Dev box")
-
-	rec := postVMCreate(t, handler,
-		`{"cluster":"default","name":"web-31","profileId":"medium","cloudInitTemplateId":"`+tmplID+`","cloudInitFileId":"`+fileID+`"}`, cookie)
+	rec := postVMCreate(t, handler, `{"cluster":"default","name":"web-30","profileId":"medium","cloudInitFileId":"dev-box"}`, cookie)
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
 	}
-
-	assertAPIError(t, rec.Body.Bytes(), "invalid_source")
-}
-
-// TestVMCreate_ForeignCloudInitFile_NotApproved - bob's file id in alice's
-// request is 400 not_approved, indistinguishable from an unknown id.
-//
-//nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestVMCreate_ForeignCloudInitFile_NotApproved(t *testing.T) {
-	handler, authHandler, st := newVMCreateHandler(t)
-	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
-	bobFileID := createUserCloudInitFile(t, st, cluster.FakeUserBob, "Bob box")
-
-	rec := postVMCreate(t, handler,
-		`{"cluster":"default","name":"web-32","profileId":"medium","cloudInitFileId":"`+bobFileID+`"}`, cookie)
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
-	}
-
-	assertAPIError(t, rec.Body.Bytes(), "not_approved")
 }

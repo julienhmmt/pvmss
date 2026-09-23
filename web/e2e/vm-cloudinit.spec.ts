@@ -31,22 +31,19 @@ test.describe('T08 VM cloud-init', () => {
 		await expect(page.getByTestId('cloudinit-ip-mode')).toHaveValue('dhcp');
 	});
 
-	test('saves, reloads, and explicitly clears custom YAML', async ({ page }) => {
+	test('offers admin templates only - no YAML editor for users', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms/default/102');
 		await page.getByTestId('vm-tab-cloudinit').click();
-		await page.getByTestId('cloudinit-mode-yaml').click();
-		await expect(page.getByTestId('cloudinit-snippet-content')).toHaveValue('');
-		await page.getByTestId('cloudinit-snippet-content').fill('#cloud-config\nusers: {}\n');
-		await page.getByTestId('cloudinit-snippet-save').click();
-		await expect(page.getByTestId('cloudinit-snippet-content')).toHaveValue('#cloud-config\nusers: {}\n');
-		await page.reload();
-		await page.getByTestId('vm-tab-cloudinit').click();
-		await page.getByTestId('cloudinit-mode-yaml').click();
-		await expect(page.getByTestId('cloudinit-snippet-content')).toHaveValue('#cloud-config\nusers: {}\n');
-		await page.getByTestId('cloudinit-snippet-content').fill('');
-		await page.getByTestId('cloudinit-snippet-save').click();
-		await expect(page.getByTestId('cloudinit-snippet-content')).toHaveValue('');
+		await page.getByTestId('cloudinit-mode-document').click();
+		await expect(page.getByTestId('cloudinit-document')).toBeVisible();
+		await expect(page.locator('textarea')).toHaveCount(0);
+
+		// The API refuses user-authored YAML outright.
+		const response = await page.request.put('/api/v1/vms/default/102/cloudinit/document', {
+			data: { content: '#cloud-config\nusers: {}\n' }
+		});
+		expect(response.status()).toBeGreaterThanOrEqual(400);
 	});
 
 	test('reboot checkbox uses server-side T05 reboot and denies non-owner access', async ({ page, request }) => {

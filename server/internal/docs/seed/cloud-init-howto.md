@@ -2,26 +2,17 @@
 
 Cloud-init configures a VM on first boot without logging in: packages, files,
 commands, time zone, and more. In PVMSS a **cloud-init document** is a
-`#cloud-config` file that PVMSS copies onto the cluster and attaches to your
-VM when it is created.
+`#cloud-config` template written by your administrator and published on the
+cluster. You pick one when you create a VM; you never write YAML yourself.
 
-## Two kinds of documents
+## Choosing a document
 
-- **Admin templates** - written and curated by your administrator, listed
-  first in the picker.
-- **My files** - your own documents, managed on the [Cloud-init files](/cloud-init)
-  page (up to 20). Only you can see and use them.
+The **Create a VM** form lists the templates your administrator made
+available for the cluster. The picker is hidden when the cluster has no
+cloud-init publishing - ask your administrator if you expected to see it.
 
-Both appear in one grouped select on the **Create a VM** form. The picker is
-hidden when the target cluster has no cloud-init write target - ask your
-administrator if you expected to see it.
-
-## Your VM keeps its own copy
-
-At creation, PVMSS writes the chosen document to the cluster as
-`pvmss-<vmid>.yml` and attaches it to the VM. That copy belongs to the VM:
-editing the template or your file afterwards does **not** change VMs that
-already exist.
+A template is versioned: when your administrator edits it, VMs that already
+exist keep the version they were created with. New VMs get the new version.
 
 ## What a document can do
 
@@ -35,12 +26,12 @@ One known limit: a `users:` key in the document is overridden by the account
 generated from the VM form. Put accounts and SSH keys in the form's Cloud-init
 fields, not in the document.
 
-## Editing a VM's document
+## Changing a VM's document
 
-After creation, the VM's **Cloud-init** tab shows the document. If your
-administrator allows custom YAML in the policy, you can edit and save it: the
-save overwrites the VM's own file and takes effect on the next boot. Saving an
-empty document detaches it.
+After creation, the VM's **Cloud-init** tab shows the document the VM uses.
+You can switch it to another template, or detach it. The change is picked up
+at the next boot, but most of a document only runs on a new VM's first boot
+(see below).
 
 ## What applies when
 
@@ -68,8 +59,8 @@ the guest agent and also saves it to the config for future boots.
 
 ## Documents are not a vault
 
-Document content is stored in plain text - in the portal's database and on
-the cluster's snippet storage, where cloud-init must be able to read it - and
-any administrator can view it. Never put passwords, API tokens, or private
-keys in a document; use the cloud-init **password** field (delivered through
-the guest agent and never stored) and SSH keys instead.
+Templates are stored in plain text - in the portal's database and on the
+cluster's snippet storage, where cloud-init must be able to read it. They
+never carry your passwords or keys: use the cloud-init **password** field
+(delivered through the guest agent and never stored) and SSH keys of the VM
+form instead.

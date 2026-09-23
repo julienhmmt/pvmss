@@ -52,11 +52,12 @@ services:
       # Logs to a file instead of stdout: set LOG_OUTPUT=/app/pvmss.log and
       # uncomment the line below.
       # - ./pvmss.log:/app/pvmss.log
-      # Cloud-init documents: mount the snippets/ dir of a SHARED Proxmox
-      # storage (NFS/CIFS) here, then set "Snippet directory" = /snippets and
-      # the storage id in Admin › Clusters. Leave commented to keep the
-      # feature off. See the in-app page /docs/admin-guide.
-      # - /mnt/pve/shared/snippets:/snippets
+      # Cloud-init templates (optional): PVMSS publishes them to every
+      # Proxmox node over SSH. Mount the private key read-only and set
+      # PVMSS_SSH_KEY_FILE=/etc/pvmss/ssh/id_ed25519; the SSH user, port and
+      # pinned host keys are set per cluster in Admin > Clusters. Prepare the
+      # nodes with tools/pvmss-node-setup.sh.
+      # - ./pvmss_ed25519:/etc/pvmss/ssh/id_ed25519:ro
     deploy:
       resources:
         limits:

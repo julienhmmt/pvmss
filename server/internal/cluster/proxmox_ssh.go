@@ -1,142 +1,252 @@
 package cluster
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
-	"path"
 	"strconv"
 	"strings"
 	"time"
 
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/knownhosts"
 )
 
-// SnippetSSH is the global SSH snippet-delivery config. A zero-value
-// (empty User) means local filesystem delivery (the default). When User is
-// non-empty, snippet files are written over SSH to the specific Proxmox
-// node where the VM is created, so PVMSS and Proxmox need no shared
-// filesystem. The node's IP is resolved at runtime via /cluster/status.
-//
-// ponytail: one key for all clusters, node IP from the API, no host-key
-// verification. Ceiling: multi-cluster deployments needing different SSH keys
-// per cluster, or strict host-key checking. Upgrade path: per-cluster SSH
-// columns in the clusters table + PVMSS_SSH_HOST_KEY for known_hosts pinning.
+// SnippetHelperCommand is the node-side helper PVMSS drives over SSH
+// (installed by tools/pvmss-node-setup.sh, normally as the forced command
+// of PVMSS's key). PVMSS only ever sends "write <name>" (content on stdin)
+// and "remove <name>": no path, no shell. The helper validates the name and
+// owns the target directory (the storage's snippets/ dir).
+const SnippetHelperCommand = "pvmss-snippet"
+
+// hostKeyAlgorithms is the order both the scan and the real connection
+// negotiate, so the key type scanned is the key type later verified.
+var hostKeyAlgorithms = []string{ssh.KeyAlgoED25519, ssh.KeyAlgoECDSA256, ssh.KeyAlgoRSASHA512}
+
+// sshDialTimeout bounds one TCP connect + handshake to a node.
+const sshDialTimeout = 10 * time.Second
+
+// ErrSSHNotConfigured reports a publishing attempt on a cluster without SSH
+// settings or without the global private key.
+var ErrSSHNotConfigured = errors.New("SSH publishing is not configured for this cluster (Admin > Clusters: SSH user, host keys; PVMSS_SSH_KEY_FILE)")
+
+// SnippetSSH is one cluster's SSH publishing configuration. User, Port and
+// KnownHosts come from the cluster row (Admin > Clusters); Signer is the
+// global private key (PVMSS_SSH_KEY_FILE). Host keys are always verified
+// against KnownHosts - there is no insecure mode.
 type SnippetSSH struct {
-	User   string
-	Signer ssh.Signer
-	Port   int
+	User       string
+	Port       int
+	KnownHosts string
+	Signer     ssh.Signer
 }
 
-// NewSnippetSSH parses keyFile and returns a SnippetSSH. A zero-value
-// (local delivery) is returned when user is empty. keyFile is required when
-// user is non-empty; port defaults to 22 when zero.
-func NewSnippetSSH(user, keyFile string, port int) (SnippetSSH, error) {
-	if user == "" {
-		return SnippetSSH{}, nil
-	}
-
+// LoadSSHSigner reads and parses the global private key. An empty path
+// returns (nil, nil): publishing is then unavailable on every cluster.
+func LoadSSHSigner(keyFile string) (ssh.Signer, error) {
 	if keyFile == "" {
-		return SnippetSSH{}, errors.New("PVMSS_SSH_KEY_FILE is required when PVMSS_SSH_USER is set")
+		return nil, nil //nolint:nilnil // no key configured is a valid state, not an error
 	}
 
 	keyBytes, err := os.ReadFile(keyFile) //nolint:gosec // admin-configured key path
 	if err != nil {
-		return SnippetSSH{}, fmt.Errorf("read SSH key file %q: %w", keyFile, err)
+		return nil, fmt.Errorf("read SSH key file %q: %w", keyFile, err)
 	}
 
 	signer, err := ssh.ParsePrivateKey(keyBytes)
 	if err != nil {
-		return SnippetSSH{}, fmt.Errorf("parse SSH key %q: %w", keyFile, err)
+		return nil, fmt.Errorf("parse SSH key %q: %w", keyFile, err)
 	}
 
-	if port == 0 {
-		port = 22
-	}
-
-	return SnippetSSH{User: user, Signer: signer, Port: port}, nil
+	return signer, nil
 }
 
-// Enabled reports whether SSH snippet delivery is configured.
-func (s SnippetSSH) Enabled() bool { return s.User != "" }
+// AuthorizedKey renders signer's public key as an authorized_keys line
+// (without options), for display in Admin > Clusters. Empty when nil.
+func AuthorizedKey(signer ssh.Signer) string {
+	if signer == nil {
+		return ""
+	}
 
-// sshNodeHost resolves a Proxmox node name to an SSH-reachable address. It
-// queries /cluster/status for the node's IP (the API resolves the node name
-// via getaddrinfo). When node is empty or the API does not return an IP, it
-// falls back to the cluster API URL's hostname - this covers single-node
-// setups where /cluster/status may not include a node IP.
-func (p Proxmox) sshNodeHost(ctx context.Context, node string) (string, error) {
-	if node != "" {
-		ip, err := p.lookupNodeIP(ctx, node)
-		if err == nil && ip != "" {
-			return ip, nil
+	return strings.TrimSpace(string(ssh.MarshalAuthorizedKey(signer.PublicKey())))
+}
+
+// Enabled reports whether this cluster can publish over SSH.
+func (s SnippetSSH) Enabled() bool { return s.User != "" && s.Signer != nil }
+
+func (s SnippetSSH) port() int {
+	if s.Port <= 0 {
+		return 22
+	}
+
+	return s.Port
+}
+
+// ValidateKnownHosts checks every non-empty, non-comment line parses as a
+// known_hosts entry. Hashed hostnames are rejected: PVMSS matches node
+// addresses literally and the admin must be able to read what they trust.
+func ValidateKnownHosts(text string) error {
+	for i, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
 		}
-		// Fall through to BaseURL fallback; the error is logged by the caller.
+
+		if strings.HasPrefix(line, "|1|") {
+			return fmt.Errorf("line %d: hashed host names are not supported, use plain entries (ssh-keyscan without -H)", i+1)
+		}
+
+		if _, _, _, _, _, err := ssh.ParseKnownHosts([]byte(line)); err != nil {
+			return fmt.Errorf("line %d: %w", i+1, err)
+		}
 	}
 
-	parsed, err := url.Parse(p.BaseURL)
-	if err != nil || parsed.Hostname() == "" {
-		return "", fmt.Errorf("cannot derive SSH host from cluster URL %q: %w", p.BaseURL, err)
-	}
-
-	return parsed.Hostname(), nil
+	return nil
 }
 
-// lookupNodeIP queries /cluster/status for one node's IP address.
-func (p Proxmox) lookupNodeIP(ctx context.Context, node string) (string, error) {
-	rest := p.rest()
+// hostKeyCallback verifies a node's host key against KnownHosts. Matching
+// is on the normalized address (knownhosts.Normalize: "ip" for port 22,
+// "[ip]:port" otherwise); "@revoked" and "@cert-authority" markers are not
+// honored and make the entry ignored.
+func (s SnippetSSH) hostKeyCallback() ssh.HostKeyCallback {
+	return func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+		wanted := map[string]bool{knownhosts.Normalize(hostname): true}
+		if remote != nil {
+			wanted[knownhosts.Normalize(remote.String())] = true
+		}
 
-	raw, err := rest.do(ctx, "GET", "/cluster/status", nil)
+		rest := []byte(s.KnownHosts)
+		known := false
+
+		for len(rest) > 0 {
+			marker, hosts, pub, _, next, err := ssh.ParseKnownHosts(rest)
+			if err != nil {
+				break
+			}
+
+			rest = next
+
+			if marker != "" {
+				continue
+			}
+
+			for _, h := range hosts {
+				if !wanted[knownhosts.Normalize(h)] {
+					continue
+				}
+
+				known = true
+
+				if bytes.Equal(pub.Marshal(), key.Marshal()) {
+					return nil
+				}
+			}
+		}
+
+		if known {
+			return fmt.Errorf("host key mismatch for %s (%s %s): update the cluster's pinned host keys only if the node was reinstalled", hostname, key.Type(), ssh.FingerprintSHA256(key))
+		}
+
+		return fmt.Errorf("host %s is not in the cluster's pinned host keys (%s %s): scan and confirm it in Admin > Clusters", hostname, key.Type(), ssh.FingerprintSHA256(key))
+	}
+}
+
+// snippetNode is one cluster node PVMSS publishes to.
+type snippetNode struct {
+	Name   string
+	Host   string
+	Online bool
+}
+
+// snippetNodes lists every node of the cluster with its SSH address from
+// /cluster/status. A standalone node without an IP in the status falls back
+// to the API URL's host.
+func (p Proxmox) snippetNodes(ctx context.Context) ([]snippetNode, error) {
+	raw, err := p.rest().do(ctx, "GET", "/cluster/status", nil)
 	if err != nil {
-		return "", fmt.Errorf("query cluster status for node %s: %w", node, err)
+		return nil, fmt.Errorf("query cluster status: %w", err)
 	}
 
 	var rows []proxmoxClusterStatusRow
 	if err := decodeData(raw, &rows); err != nil {
-		return "", fmt.Errorf("decode cluster status: %w", err)
+		return nil, fmt.Errorf("decode cluster status: %w", err)
 	}
+
+	var nodes []snippetNode
 
 	for _, row := range rows {
-		if row.Type == "node" && row.Name == node && row.IP != "" {
-			return row.IP, nil
+		if row.Type != "node" {
+			continue
 		}
+
+		host := row.IP
+		if host == "" {
+			host = p.apiHost()
+		}
+
+		nodes = append(nodes, snippetNode{Name: row.Name, Host: host, Online: row.Online == 1})
 	}
 
-	return "", fmt.Errorf("node %q not found in cluster status or has no IP", node)
+	if len(nodes) == 0 {
+		return nil, errors.New("cluster status lists no node")
+	}
+
+	return nodes, nil
 }
 
-// sshClient dials the Proxmox node where the VM is created. The client is
-// short-lived: snippet operations are infrequent (one per VM creation), so a
-// fresh connection per operation is simpler than pooling.
-func (p Proxmox) sshClient(ctx context.Context, node string) (*ssh.Client, error) {
-	host, err := p.sshNodeHost(ctx, node)
+func (p Proxmox) apiHost() string {
+	parsed, err := url.Parse(p.BaseURL)
 	if err != nil {
-		return nil, err
+		return ""
 	}
 
-	addr := host + ":" + strconv.Itoa(p.SSH.Port)
+	return parsed.Hostname()
+}
+
+// sshDial opens a short-lived connection to one node, verifying its host
+// key. Publishing is rare (admin action), so no pooling.
+func (p Proxmox) sshDial(ctx context.Context, host string) (*ssh.Client, error) {
+	if !p.SSH.Enabled() {
+		return nil, ErrSSHNotConfigured
+	}
+
+	addr := net.JoinHostPort(host, strconv.Itoa(p.SSH.port()))
 	config := &ssh.ClientConfig{
-		User:            p.SSH.User,
-		Auth:            []ssh.AuthMethod{ssh.PublicKeys(p.SSH.Signer)},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), //nolint:gosec // ponytail: no known_hosts; management network is trusted
-		Timeout:         10 * time.Second,
+		User:              p.SSH.User,
+		Auth:              []ssh.AuthMethod{ssh.PublicKeys(p.SSH.Signer)},
+		HostKeyCallback:   p.SSH.hostKeyCallback(),
+		HostKeyAlgorithms: hostKeyAlgorithms,
+		Timeout:           sshDialTimeout,
 	}
 
-	client, err := ssh.Dial("tcp", addr, config)
+	dialer := net.Dialer{Timeout: sshDialTimeout}
+
+	conn, err := dialer.DialContext(ctx, "tcp", addr)
 	if err != nil {
-		return nil, fmt.Errorf("ssh dial %s: %w", addr, err)
+		return nil, fmt.Errorf("ssh connect %s: %w", addr, err)
 	}
 
-	return client, nil
+	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
+	if err != nil {
+		_ = conn.Close()
+
+		return nil, fmt.Errorf("ssh handshake %s: %w", addr, err)
+	}
+
+	return ssh.NewClient(c, chans, reqs), nil
 }
 
-// sshWriteSnippet writes content to dir/filename over SSH using a temp file
-// and rename, mirroring the atomicity of the local writeFileAtomic: Proxmox
-// never reads a half-written file, and a retry overwrites.
-func (p Proxmox) sshWriteSnippet(ctx context.Context, node, filename, content string) error {
-	client, err := p.sshClient(ctx, node)
+// runHelper runs one helper verb on host. stdin may be nil.
+func (p Proxmox) runHelper(ctx context.Context, host, verb, filename string, stdin []byte) error {
+	if !snippetFilenameRE.MatchString(filename) {
+		return fmt.Errorf("refusing unsafe snippet filename %q", filename)
+	}
+
+	client, err := p.sshDial(ctx, host)
 	if err != nil {
 		return err
 	}
@@ -150,91 +260,68 @@ func (p Proxmox) sshWriteSnippet(ctx context.Context, node, filename, content st
 
 	defer func() { _ = session.Close() }()
 
-	tmp := path.Join(p.SnippetDir, ".pvmss-"+filename+".tmp")
-	dst := path.Join(p.SnippetDir, filename)
-	// Single-quote paths: filename is regex-validated (no quotes), SnippetDir
-	// is admin-controlled. cat > tmp, chmod, mv - same atomicity as local.
-	cmd := fmt.Sprintf("cat > '%s' && chmod 644 '%s' && mv '%s' '%s'", tmp, tmp, tmp, dst)
+	var stderr bytes.Buffer
 
-	session.Stdin = strings.NewReader(content)
-	if err := session.Run(cmd); err != nil {
-		return fmt.Errorf("ssh write snippet %q: %w", filename, err)
+	session.Stderr = &stderr
+
+	if stdin != nil {
+		session.Stdin = bytes.NewReader(stdin)
 	}
 
-	return nil
-}
+	done := make(chan error, 1)
 
-// sshRemoveSnippet deletes a file over SSH. A missing file is not an error,
-// matching the local RemoveCloudInitSnippet contract.
-func (p Proxmox) sshRemoveSnippet(ctx context.Context, node, filename string) error {
-	client, err := p.sshClient(ctx, node)
-	if err != nil {
-		return err
-	}
+	go func() { done <- session.Run(SnippetHelperCommand + " " + verb + " " + filename) }()
 
-	defer func() { _ = client.Close() }()
+	select {
+	case <-ctx.Done():
+		_ = client.Close()
 
-	session, err := client.NewSession()
-	if err != nil {
-		return fmt.Errorf("ssh session: %w", err)
-	}
+		return ctx.Err()
+	case err := <-done:
+		if err != nil {
+			msg := strings.TrimSpace(stderr.String())
+			if msg != "" {
+				return fmt.Errorf("%s %s on %s: %s", SnippetHelperCommand, verb, host, msg)
+			}
 
-	defer func() { _ = session.Close() }()
-
-	dst := path.Join(p.SnippetDir, filename)
-	// rm -f never fails on a missing file, so no need to distinguish.
-	cmd := fmt.Sprintf("rm -f '%s'", dst)
-	if err := session.Run(cmd); err != nil {
-		return fmt.Errorf("ssh remove snippet %q: %w", filename, err)
-	}
-
-	return nil
-}
-
-// sshReadSnippet reads a file over SSH. Returns ErrNotFound when the file
-// does not exist, matching the local ReadSnippet contract.
-func (p Proxmox) sshReadSnippet(ctx context.Context, node, filename string) (string, error) {
-	client, err := p.sshClient(ctx, node)
-	if err != nil {
-		return "", err
-	}
-
-	defer func() { _ = client.Close() }()
-
-	session, err := client.NewSession()
-	if err != nil {
-		return "", fmt.Errorf("ssh session: %w", err)
-	}
-
-	defer func() { _ = session.Close() }()
-
-	var buf strings.Builder
-
-	session.Stdout = &buf
-
-	dst := path.Join(p.SnippetDir, filename)
-	// "cat file || echo -n ''" would mask errors; instead let cat fail and
-	// detect "No such file" in the error text (OpenSSH exit 1 + stderr).
-	cmd := fmt.Sprintf("cat '%s'", dst)
-	if err := session.Run(cmd); err != nil {
-		if isSSHFileNotFound(err) {
-			return "", ErrNotFound
+			return fmt.Errorf("%s %s on %s: %w", SnippetHelperCommand, verb, host, err)
 		}
 
-		return "", fmt.Errorf("ssh read snippet %q: %w", filename, err)
+		return nil
 	}
-
-	return buf.String(), nil
 }
 
-// isSSHFileNotFound reports whether the SSH error is a missing-file error
-// from the remote cat. OpenSSH returns a *ssh.ExitError with exit code 1 and
-// "No such file or directory" in the stderr.
-func isSSHFileNotFound(err error) bool {
-	var exitErr *ssh.ExitError
-	if !errors.As(err, &exitErr) {
-		return false
+// scanHostKey connects to host only far enough to capture its host key.
+func (p Proxmox) scanHostKey(ctx context.Context, host string) (string, error) {
+	addr := net.JoinHostPort(host, strconv.Itoa(p.SSH.port()))
+
+	var captured ssh.PublicKey
+
+	errCaptured := errors.New("host key captured")
+	config := &ssh.ClientConfig{
+		User: "pvmss-scan",
+		HostKeyCallback: func(_ string, _ net.Addr, key ssh.PublicKey) error {
+			captured = key
+
+			return errCaptured
+		},
+		HostKeyAlgorithms: hostKeyAlgorithms,
+		Timeout:           sshDialTimeout,
 	}
 
-	return exitErr.ExitStatus() == 1
+	dialer := net.Dialer{Timeout: sshDialTimeout}
+
+	conn, err := dialer.DialContext(ctx, "tcp", addr)
+	if err != nil {
+		return "", fmt.Errorf("connect %s: %w", addr, err)
+	}
+
+	defer func() { _ = conn.Close() }()
+
+	_, _, _, err = ssh.NewClientConn(conn, addr, config)
+	if captured == nil {
+		return "", fmt.Errorf("read host key of %s: %w", addr, err)
+	}
+
+	return knownhosts.Line([]string{knownhosts.Normalize(addr)}, captured), nil
 }

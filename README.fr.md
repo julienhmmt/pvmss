@@ -45,15 +45,15 @@ L'inventaire complet, route par route, est dans [docs/FEATURES.md](docs/FEATURES
 - **Assistant de création** (mode Simple / Détaillé) depuis trois sources : une **ISO** approuvée, un **template** Proxmox (clone lié ou complet) ou une **image cloud** (`import-from` + cloud-init). Profils matériels ou valeurs libres, placement automatique avec score de capacité, multi-NIC (bridge + modèle), UEFI (sans Secure Boot) / TPM 2.0, tags curés, démarrage sur CD-ROM.
 - **Exploitation d'une VM** : 7 actions d'alimentation, renommage, description Markdown, suppression ; disques (ajout / agrandissement / détachement) ; cartes réseau (bridge, modèle, VLAN, débit) ; CPU/RAM/tags/CD-ROM ; snapshots (création / restauration / suppression, RAM optionnelle) ; historique de métriques (heure/jour/semaine) et flux temps réel ; journal d'activité par VM.
 - **Consoles** : noVNC et série (xterm.js), toutes deux relayées par PVMSS avec ticket à usage unique ; actions d'alimentation depuis la console.
-- **Cloud-init** : formulaire natif (utilisateur, mot de passe via agent invité, clés SSH, IP/DNS), injection « ajouter une clé maintenant », templates admin ou vos propres **fichiers cloud-init** (`/cloud-init`, 20 max) appliqués comme document propre à la VM à la création, éditeur par VM si l'admin l'autorise.
+- **Cloud-init** : formulaire natif (utilisateur, mot de passe via agent invité, clés SSH, IP/DNS), injection « ajouter une clé maintenant », **modèles cloud-init** de l'administrateur choisis à la création ou changés ensuite sur la VM (les utilisateurs n'écrivent jamais de YAML).
 - Page Nœuds avec capacité en direct, documentation intégrée, FR + EN, navigation clavier, cible WCAG 2.1 AA.
 
 ### Administrateurs
 
-- **Clusters** : connexion à plusieurs environnements Proxmox, test de connectivité, cible d'écriture cloud-init par cluster (répertoire de snippets + stockage).
-- **Catalogue** : approbation des nœuds, stockages, ISO, images cloud, templates de VM, bridges ; CRUD des profils matériels, tags, templates cloud-init ; approbations obsolètes réconciliées avec la découverte en direct.
+- **Clusters** : connexion à plusieurs environnements Proxmox, test de connectivité, publication cloud-init par cluster en SSH (stockage de snippets, utilisateur SSH, clés d'hôte épinglées, scan des clés d'hôte).
+- **Catalogue** : approbation des nœuds, stockages, ISO, images cloud, templates de VM, bridges ; CRUD des profils matériels, tags, modèles cloud-init (publiés sur chaque nœud, état par nœud, « publier partout ») ; approbations obsolètes réconciliées avec la découverte en direct.
 - **Pools** : création d'un utilisateur self-service = utilisateur Proxmox + pool + ACL en une étape ; suppression en cascade.
-- **Politique** : gabarit par cluster (sockets, cœurs, mémoire, disque par VM, NIC, snapshots, YAML cloud-init libre, VLAN d'isolation) et quota (VM par utilisateur) ; plafonds de capacité par nœud avec usage en direct.
+- **Politique** : gabarit par cluster (sockets, cœurs, mémoire, disque par VM, NIC, snapshots, VLAN d'isolation) et quota (VM par utilisateur) ; plafonds de capacité par nœud avec usage en direct.
 - **Système** : tableau de bord, informations applicatives, journal d'audit avec rétention + aperçu de purge, export SQLite et import en deux temps, CMS de documentation intégrée (FR/EN, par audience).
 
 ## Architecture en un coup d'œil
@@ -117,7 +117,7 @@ PVMSS utilise une base de données SQLite intégrée pour stocker toute la confi
 - Les nœuds, stockages, VMBR et dépôts ISO approuvés
 - Les limites de ressources VM (globales et par nœud)
 - Les tags et pools utilisateurs
-- Les templates cloud-init, les fichiers cloud-init des utilisateurs et les copies par VM
+- Les modèles cloud-init et leurs publications sur les nœuds
 - Les profils VM, les connexions aux clusters, le journal d'audit
 
 Toute la configuration est gérée via la section **Admin** de l'interface web, qui fournit :
@@ -132,28 +132,36 @@ Le fichier de base de données doit être persisté sur un volume pour survivre 
 
 Le tag `pvmss` est utilisé par défaut pour les VMs créées via PVMSS, il ne peut pas et ne doit pas être supprimé. Seul les tags créés par l'admin via PVMSS peuvent être utilisés.
 
-### Documents cloud-init (optionnel)
+### Modèles cloud-init (optionnel)
 
-L'API REST de Proxmox ne sait pas écrire de fichiers `snippets`, PVMSS les
-écrit donc lui-même. Pour permettre aux utilisateurs d'attacher un document
-cloud-init (template admin ou fichier personnel sous `/cloud-init`) à une
-nouvelle VM :
+Les administrateurs écrivent les modèles cloud-init dans **Admin › Modèles
+cloud-init** ; les utilisateurs en choisissent un à la création d'une VM (ou
+le changent ensuite dans l'onglet cloud-init de la VM). Les utilisateurs
+n'écrivent jamais de YAML. L'API REST de Proxmox ne sait pas écrire de
+fichiers `snippets` : PVMSS **publie** chaque modèle en SSH sur chaque nœud.
 
-1. Dans Proxmox, choisissez un stockage **partagé par tous les nœuds**
-   (NFS/CIFS) et ajoutez **Snippets** à ses types de contenu (Datacenter ›
-   Storage › Edit).
-2. Montez le répertoire `snippets/` de ce stockage dans le conteneur PVMSS - 
-   voir le volume commenté dans les exemples Docker / Compose / Helm ci-dessous.
-3. Dans **Admin › Clusters › Modifier**, renseignez _Répertoire de snippets_
-   (chemin dans le conteneur, ex. `/snippets`) et _Stockage de snippets_
-   (identifiant du stockage Proxmox). Le badge du cluster passe à
+1. Dans Proxmox, ajoutez **Snippets** aux types de contenu d'un stockage
+   disponible sur chaque nœud (`local` convient : le fichier est écrit sur
+   chaque nœud).
+2. Sur **chaque nœud**, en root, lancez `tools/pvmss-node-setup.sh --storage
+   <stockage> --key '<clé publique PVMSS>'`. Le script installe l'assistant
+   `pvmss-snippet`, crée un utilisateur dédié `pvmss` limité à cet assistant
+   (commande forcée, pas de shell, pas de redirection) et affiche la clé
+   d'hôte du nœud.
+3. Fournissez à PVMSS sa clé privée via `PVMSS_SSH_KEY_FILE` (fichier en
+   lecture seule ; Secret Kubernetes avec Helm : `cloudInit.sshKeySecret`).
+4. Dans **Admin › Clusters › Modifier**, renseignez le stockage de snippets,
+   l'utilisateur SSH (`pvmss`), puis **Scanner les clés d'hôte**, comparez
+   les empreintes avec celles affichées par le script, et enregistrez. PVMSS
+   publie le socle et les modèles ; le badge du cluster passe à
    « cloud-init : activé ».
 
-Chaque VM reçoit sa propre copie (`pvmss-<vmid>.yml`, attachée en `vendor=`) :
-modifier un template plus tard ne change jamais les VM existantes. Sans cible
-d'écriture, le sélecteur est masqué et la création avec un document est
-refusée avec une erreur explicite. Procédure complète : page intégrée
-`/docs/admin-guide`, section _Activer les documents cloud-init_.
+Chaque fichier publié est immuable (`pvmss-tpl-<id>-<hash>.yml`, socle PVMSS
+fusionné) : modifier un modèle publie un nouveau fichier et les VM existantes
+gardent le leur. Un modèle absent du nœud d'une VM est refusé avant la
+création, jamais attaché. Utilisez **Publier sur tous les nœuds** après
+l'ajout ou la réinstallation d'un nœud. Procédure complète : page intégrée
+`/docs/admin-guide`.
 
 ### Variables d'environnement
 
@@ -172,6 +180,7 @@ Utilisez **soit** un `.env` (via `env_file`) **soit** des variables inline, pas 
 | `PROXMOX_API_TOKEN_NAME`                      | Nom du token Proxmox (`user@pve!token`)                                    | si source = `proxmox` | - |
 | `PROXMOX_API_TOKEN_VALUE`                     | Valeur du token ci-dessus                                                  | si source = `proxmox` | - |
 | `ADMIN_PASSWORD_HASH`                         | Hash bcrypt de l'admin local ; désactivé si vide                           | ❌                    | - |
+| `PVMSS_SSH_KEY_FILE`                          | Clé privée SSH qui publie les modèles cloud-init sur les nœuds (utilisateur, port, clés d'hôte : Admin › Clusters) | ❌                    | - |
 | `PVMSS_HOST`                                  | Adresse d'écoute (`0.0.0.0` pour toutes les interfaces)                    | ❌                    | `127.0.0.1`        |
 | `PVMSS_WEB_DIR`                               | Répertoire contenant le SPA compilé                                        | ❌                    | relatif au binaire |
 | `PVMSS_COOKIE_SECURE`                         | Drapeau `Secure` sur les cookies d'auth (garder `true` en production)      | ❌                    | `true`             |
@@ -251,11 +260,11 @@ docker run -d \
   jhmmt/pvmss:latest
 ```
 
-Pour activer les documents cloud-init, montez aussi le répertoire de snippets
-partagé (voir [Documents cloud-init](#documents-cloud-init-optionnel)) :
+Pour activer les modèles cloud-init, montez aussi la clé SSH de PVMSS
+(voir [Modèles cloud-init](#modèles-cloud-init-optionnel)) :
 
 ```bash
--v /mnt/pve/shared/snippets:/snippets \
+-v ./pvmss_ed25519:/etc/pvmss/ssh/id_ed25519:ro -e PVMSS_SSH_KEY_FILE=/etc/pvmss/ssh/id_ed25519 \
 ```
 
 Pour écrire les logs JSON dans un fichier à l'intérieur du conteneur au lieu de stdout, surchargez :
@@ -296,10 +305,9 @@ services:
     volumes:
       - ./pvmss.db:/data/pvmss.db
       # - ./pvmss.log:/app/pvmss.log # Décommentez pour persister les logs dans un fichier à l'intérieur du conteneur
-      # Documents cloud-init : montez le répertoire snippets/ d'un stockage
-      # Proxmox PARTAGÉ, puis renseignez « Répertoire de snippets » = /snippets
-      # et l'identifiant du stockage dans Admin › Clusters.
-      # - /mnt/pve/shared/snippets:/snippets
+      # Modèles cloud-init : clé SSH de PVMSS (voir la section plus haut),
+      # plus PVMSS_SSH_KEY_FILE: "/etc/pvmss/ssh/id_ed25519" dans environment.
+      # - ./pvmss_ed25519:/etc/pvmss/ssh/id_ed25519:ro
     deploy:
       resources:
         limits:
@@ -332,9 +340,8 @@ Utilisez le fichier [`pvmss-deployment.yaml`](pvmss-deployment.yaml) pour créer
 Appliquez avec `kubectl apply -f pvmss-deployment.yaml`. Vous devez fournir votre propre ingress/HTTPRoute, un exemple est fourni dans le fichier `pvmss-httproute.yml` (Gateway API).
 
 Un chart Helm est fourni dans [`helm/`](helm/) : `helm install pvmss ./helm -f mes-values.yaml`.
-`values.yaml` documente chaque variable ; `persistence.snippets` monte le
-répertoire `snippets/` d'un stockage Proxmox partagé (PVC existant ou NFS) pour
-les documents cloud-init.
+`values.yaml` documente chaque variable ; `cloudInit.sshKeySecret` monte la clé
+SSH de PVMSS depuis un Secret existant pour publier les modèles cloud-init.
 
 ## Exploitation
 

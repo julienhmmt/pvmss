@@ -55,8 +55,8 @@ Activez le **TPM 2.0** pour les invités qui l'exigent (Windows 11).
 ## Cloud-init
 
 Préférez un **document cloud-init** à une configuration manuelle après
-installation. Choisissez un template admin ou l'un de vos fichiers ; la VM en
-reçoit sa propre copie à la création. Voir le [guide cloud-init](/docs/cloud-init-howto).
+installation. Choisissez l'un des templates fournis par votre administrateur ; la VM
+garde la version avec laquelle elle a été créée. Voir le [guide cloud-init](/docs/cloud-init-howto).
 
 ## Après la création
 

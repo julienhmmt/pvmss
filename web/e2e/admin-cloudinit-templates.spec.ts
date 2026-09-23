@@ -43,8 +43,7 @@ test.describe('T18 admin cloud-init templates', () => {
 		await expect(picker.locator('option', { hasText: 'Web server' })).toHaveCount(1);
 
 		// SC-003: select it during simple-mode VM creation and confirm the
-		// resulting VM's cloud-init tab shows the template content - the
-		// per-VM copy (pvmss-<vmid>.yml) written at creation.
+		// resulting VM uses the template's published file.
 		await page.getByLabel('Name').fill('cit-e2e-01');
 		await page.getByRole('radio', { name: /small/i }).check();
 		await picker.selectOption({ label: 'Web server' });
@@ -62,14 +61,14 @@ test.describe('T18 admin cloud-init templates', () => {
 		await expect(vmLink).toBeVisible();
 		await vmLink.click();
 		await page.getByRole('tab', { name: 'Cloud-init' }).click();
-		// The cloud-init tab defaults to Structured mode; switch to the YAML
-		// editor so the applied snippet is visible as a textarea.
-		await page.getByRole('button', { name: 'YAML editor' }).click();
-		const snippet = page.locator('[data-testid="cloudinit-snippet-content"]');
-		await expect(snippet).toHaveValue(/nginx/);
+		// The document mode names the published admin template the VM uses.
+		await page.getByTestId('cloudinit-mode-document').click();
+		await expect(page.getByTestId('cloudinit-document-current')).toContainText('Web server');
+		const vmPath = new URL(page.url()).pathname.replace(/^\/vms\//, '');
+		const before = await (await page.request.get(`/api/v1/vms/${vmPath}/cloudinit/document`)).json();
 
-		// SC-004b: editing the source template must not alter the existing
-		// VM - the per-VM copy is the unit of truth (spec D4).
+		// SC-004b: editing the source template publishes a NEW file; the
+		// existing VM keeps the file it was created with.
 		await signInAdmin(page.request);
 		await page.goto('/admin/cloudinit-templates');
 		await templateRow.getByRole('button', { name: 'Edit Web server' }).click();
@@ -78,13 +77,8 @@ test.describe('T18 admin cloud-init templates', () => {
 		await expect(page.getByRole('dialog')).toHaveCount(0);
 
 		await signInAlice(page.request);
-		await page.goto('/vms');
-		await page.getByRole('searchbox', { name: 'Search VMs by name, tag, or ID' }).fill('cit-e2e-01');
-		await page.getByRole('link', { name: /cit-e2e-01/ }).first().click();
-		await page.getByRole('tab', { name: 'Cloud-init' }).click();
-		await page.getByRole('button', { name: 'YAML editor' }).click();
-		await expect(snippet).toHaveValue(/nginx/);
-		await expect(snippet).not.toHaveValue(/postgresql/);
+		const after = await (await page.request.get(`/api/v1/vms/${vmPath}/cloudinit/document`)).json();
+		expect(after.filename).toBe(before.filename);
 
 		// SC-005/SC-006: disable the template and confirm it disappears from the
 		// picker on a fresh create visit.

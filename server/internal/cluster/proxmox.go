@@ -27,16 +27,11 @@ type Proxmox struct {
 	APITokenName          string
 	APITokenValue         string
 	TLSInsecureSkipVerify bool
-	// SnippetDir and SnippetStorage are the per-cluster cloud-init document
-	// write target: SnippetDir is the absolute path, inside this
-	// process's filesystem, of the snippets/ directory of the Proxmox storage
-	// named SnippetStorage (bind-mounted there by the deployment). Both empty
-	// means the feature is off for this cluster.
-	SnippetDir     string
+	// SnippetStorage is the Proxmox storage whose snippets/ content holds
+	// the published cloud-init documents. Empty means the feature is off.
 	SnippetStorage string
-	// SSH is the optional SSH snippet-delivery transport. When Enabled,
-	// snippet files are written over SSH to the host derived from BaseURL
-	// instead of the local SnippetDir. SnippetDir is then the remote path.
+	// SSH is the cluster's publishing transport: admin cloud-init documents
+	// are written to every node through the pvmss-snippet helper.
 	SSH SnippetSSH
 	// httpClient is the cached *http.Client reused across every REST call so
 	// the underlying Transport's keep-alive connection pool is shared. Set at construction in
@@ -187,9 +182,10 @@ func (p Proxmox) DisplayName(ctx context.Context) (string, error) {
 
 // proxmoxClusterStatusRow is one row of /cluster/status.
 type proxmoxClusterStatusRow struct {
-	Type string `json:"type"`
-	Name string `json:"name"`
-	IP   string `json:"ip"`
+	Type   string `json:"type"`
+	Name   string `json:"name"`
+	IP     string `json:"ip"`
+	Online int    `json:"online"`
 }
 
 func proxmoxNodeFromRow(row proxmoxResourceRow) Node {

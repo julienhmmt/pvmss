@@ -30,6 +30,7 @@ func cloudInitTemplatesMux(handler *httpapi.AdminCatalog, auth *httpapi.Auth) *h
 	mux.Handle("PUT /api/v1/admin/cloudinit-templates/{id}", guard(http.HandlerFunc(handler.ServeCloudInitTemplateUpdate)))
 	mux.Handle("DELETE /api/v1/admin/cloudinit-templates/{id}", guard(http.HandlerFunc(handler.ServeCloudInitTemplateDelete)))
 	mux.Handle("POST /api/v1/admin/cloudinit-templates/{id}/toggle", guard(http.HandlerFunc(handler.ServeCloudInitTemplateToggle)))
+	mux.Handle("POST /api/v1/admin/cloudinit-templates/publish", guard(http.HandlerFunc(handler.ServeCloudInitPublishAll)))
 
 	return mux
 }
@@ -353,5 +354,75 @@ func TestAdminCloudInitTemplates_Toggle(t *testing.T) {
 
 	if body.ID != "web-server" || body.Enabled {
 		t.Errorf("unexpected toggle response: %+v", body)
+	}
+}
+
+// publishedTemplateDTO is the admin response with its publication.
+type publishedTemplateDTO struct {
+	ID          string `json:"id"`
+	Publication *struct {
+		Filename string `json:"filename"`
+		Nodes    []struct {
+			Node string `json:"node"`
+			OK   bool   `json:"ok"`
+		} `json:"nodes"`
+	} `json:"publication"`
+	PublishError string `json:"publishError"`
+}
+
+// TestAdminCloudInitTemplates_CreatePublishesToEveryNode - saving a
+// template publishes it; the response and the list carry the per-node
+// outcome; an edit publishes a new file; "publish all" republishes.
+//
+//nolint:paralleltest // serial: shared fake snippet state
+func TestAdminCloudInitTemplates_CreatePublishesToEveryNode(t *testing.T) {
+	handler, authHandler, _ := newAdminHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	create := citPost(t, handler, authHandler, cookie, "/api/v1/admin/cloudinit-templates",
+		`{"cluster":"default","label":"Web server","content":"#cloud-config\npackages:\n  - nginx\n"}`)
+	if create.Code != http.StatusCreated {
+		t.Fatalf("create status = %d: %s", create.Code, create.Body.String())
+	}
+
+	var created publishedTemplateDTO
+	if err := json.Unmarshal(create.Body.Bytes(), &created); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	if created.Publication == nil || created.PublishError != "" || len(created.Publication.Nodes) == 0 {
+		t.Fatalf("created = %+v, want a publication on every node", created)
+	}
+
+	for _, n := range created.Publication.Nodes {
+		if !n.OK {
+			t.Errorf("node %s not published", n.Node)
+		}
+	}
+
+	update := citPut(t, handler, authHandler, cookie, "/api/v1/admin/cloudinit-templates/web-server",
+		`{"cluster":"default","label":"Web server","content":"#cloud-config\npackages:\n  - apache2\n"}`)
+
+	var updated publishedTemplateDTO
+	if err := json.Unmarshal(update.Body.Bytes(), &updated); err != nil || updated.Publication == nil {
+		t.Fatalf("update = %s", update.Body.String())
+	}
+
+	if updated.Publication.Filename == created.Publication.Filename {
+		t.Error("an edit must publish a new immutable file")
+	}
+
+	var list []publishedTemplateDTO
+	if err := json.Unmarshal(citGet(t, handler, authHandler, cookie, "/api/v1/admin/cloudinit-templates?cluster=default").Body.Bytes(), &list); err != nil {
+		t.Fatalf("decode list: %v", err)
+	}
+
+	if len(list) != 1 || list[0].Publication == nil || list[0].Publication.Filename != updated.Publication.Filename {
+		t.Fatalf("list = %+v, want the latest publication", list)
+	}
+
+	all := citPost(t, handler, authHandler, cookie, "/api/v1/admin/cloudinit-templates/publish?cluster=default", ``)
+	if all.Code != http.StatusOK || !strings.Contains(all.Body.String(), "__baseline__") || !strings.Contains(all.Body.String(), "web-server") {
+		t.Fatalf("publish all = %d %s", all.Code, all.Body.String())
 	}
 }

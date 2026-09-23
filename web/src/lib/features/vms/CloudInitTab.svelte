@@ -4,19 +4,18 @@
 	import type { CloudInitConfigUpdate } from './cloudinit.svelte';
 	import { CloudInitStore } from './cloudinit.svelte';
 	import CloudInitForm from './CloudInitForm.svelte';
-	import CloudInitSnippetEditor from './CloudInitSnippetEditor.svelte';
+	import CloudInitDocumentPicker from './CloudInitDocumentPicker.svelte';
 	import SaveCloudInitDialog from './SaveCloudInitDialog.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const vmStore = getVmDetailContext();
 	const cloudInit = new CloudInitStore(vmStore.cluster, vmStore.vmid, () => vmStore.load());
-	let mode = $state<'structured' | 'yaml'>('structured');
+	let mode = $state<'structured' | 'document'>('structured');
 	let saveDialogOpen = $state(false);
 	let pendingUpdate = $state<CloudInitConfigUpdate | null>(null);
 
 	onMount(() => {
 		void cloudInit.loadConfig();
-		void cloudInit.loadSnippet();
 	});
 
 	function requestSave(update: CloudInitConfigUpdate): void {
@@ -58,14 +57,14 @@
 			</button>
 			<button
 				type="button"
-				class="rounded-md px-3 py-1.5 text-sm font-medium {mode === 'yaml'
+				class="rounded-md px-3 py-1.5 text-sm font-medium {mode === 'document'
 					? 'bg-card text-foreground shadow-card'
 					: 'text-muted-foreground hover:text-foreground'}"
-				aria-pressed={mode === 'yaml'}
-				onclick={() => (mode = 'yaml')}
-				data-testid="cloudinit-mode-yaml"
+				aria-pressed={mode === 'document'}
+				onclick={() => (mode = 'document')}
+				data-testid="cloudinit-mode-document"
 			>
-				{m['vms.cloudinit.modeYaml']()}
+				{m['vms.cloudinit.modeDocument']()}
 			</button>
 		</div>
 	</div>
@@ -74,7 +73,7 @@
 		{#if mode === 'structured'}
 			<CloudInitForm store={cloudInit} onRequestSave={requestSave} />
 		{:else}
-			<CloudInitSnippetEditor store={cloudInit} />
+			<CloudInitDocumentPicker store={cloudInit} />
 		{/if}
 	</div>
 

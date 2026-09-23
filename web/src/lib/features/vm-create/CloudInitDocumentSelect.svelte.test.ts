@@ -34,22 +34,18 @@ describe('CloudInitDocumentSelect', () => {
 		document.body.innerHTML = '';
 	});
 
-	it('renders admin templates and user files as two optgroups', () => {
+	it('renders only the admin templates (users never author cloud-init)', () => {
 		storeInstance = new VmCreateStore();
 		storeInstance.catalog = catalogWith(true);
-		storeInstance.myCloudInitFiles = [{ id: 'dev-box', label: 'Dev box' }];
 		mount(CloudInitDocumentSelect, { target: document.body });
 
-		const groups = [...document.querySelectorAll('optgroup')].map((g) => g.label);
-		expect(groups).toHaveLength(2);
-		expect([...document.querySelectorAll('option')].map((o) => o.value)).toContain('t:web-server');
-		expect([...document.querySelectorAll('option')].map((o) => o.value)).toContain('f:dev-box');
+		expect(document.querySelectorAll('optgroup')).toHaveLength(0);
+		expect([...document.querySelectorAll('option')].map((o) => o.value)).toEqual(['', 'web-server']);
 	});
 
 	it('offers a selectable "none" option to clear a chosen document', () => {
 		storeInstance = new VmCreateStore();
 		storeInstance.catalog = catalogWith(true);
-		storeInstance.myCloudInitFiles = [{ id: 'dev-box', label: 'Dev box' }];
 		mount(CloudInitDocumentSelect, { target: document.body });
 
 		const none = [...document.querySelectorAll('option')].find((o) => o.value === '');
@@ -58,19 +54,14 @@ describe('CloudInitDocumentSelect', () => {
 		expect(none!.textContent).toBe(m['vms.create.cloudinitNone']());
 	});
 
-	it('displays the encoded value of the store selection', () => {
+	it('displays the store selection', () => {
 		storeInstance = new VmCreateStore();
 		storeInstance.catalog = catalogWith(true);
-		storeInstance.myCloudInitFiles = [{ id: 'dev-box', label: 'Dev box' }];
-		storeInstance.cloudInitFileId = 'dev-box';
+		storeInstance.cloudInitTemplateId = 'web-server';
 		mount(CloudInitDocumentSelect, { target: document.body });
 		flushSync(); // the select binding's effect runs after the options render
 
-		// The select's DOM value is the encoded 'f:<id>'; the decode direction
-		// (select → store) is covered by the cloudInitDocumentValue round-trip
-		// test in create.svelte.test.ts - jsdom's :checked does not reflect
-		// option.selected, so a synthetic change event can't exercise it.
-		expect(document.querySelector('select')!.value).toBe('f:dev-box');
+		expect(document.querySelector('select')!.value).toBe('web-server');
 	});
 
 	it('renders the disabled hint instead of a select when the cluster has no snippet write target', () => {
@@ -94,7 +85,6 @@ describe('CloudInitDocumentSelect', () => {
 	it('is hidden when there is nothing to offer', () => {
 		storeInstance = new VmCreateStore();
 		storeInstance.catalog = { ...catalogWith(true), cloudInitTemplates: [] };
-		storeInstance.myCloudInitFiles = [];
 		mount(CloudInitDocumentSelect, { target: document.body });
 
 		expect(document.querySelector('select')).toBeNull();

@@ -39,24 +39,44 @@ describe('CloudInitStore', () => {
 		expect(store.config?.user).toBe('ubuntu');
 	});
 
-	it('maps null snippet content to empty editor state while preserving API state', async () => {
-		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, { content: null, updatedAt: null, updatedBy: null })));
+	it('loads the VM document and the published templates of its cluster', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse(200, { templateId: 'web', filename: 'pvmss-tpl-web-abc.yml', legacy: false, updatedAt: null, updatedBy: 'alice' }))
+			.mockResolvedValueOnce(jsonResponse(200, { cloudInitTemplates: [{ id: 'web', label: 'Web' }], cloudInitWriteEnabled: true }));
+		vi.stubGlobal('fetch', fetchMock);
 		const store = new CloudInitStore('default', 101);
 
-		await store.loadSnippet();
+		await store.loadDocument();
 
-		expect(store.snippet?.content).toBeNull();
+		expect(store.document?.templateId).toBe('web');
+		expect(store.templates).toEqual([{ id: 'web', label: 'Web' }]);
+		expect(store.publishingEnabled).toBe(true);
+		expect(String(fetchMock.mock.calls[1]?.[0])).toContain('/api/v1/vm-create/catalog?cluster=default');
 	});
 
-	it('keeps push_failed code for distinct stored-not-applied feedback', async () => {
-		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(502, { code: 'push_failed', message: 'snippet saved, not yet applied to the VM' })));
+	it('switches the document with a template id, never YAML', async () => {
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse(200, { status: 'saved' }))
+			.mockResolvedValueOnce(jsonResponse(200, { templateId: 'web', filename: 'f.yml', legacy: false, updatedAt: null, updatedBy: null }));
+		vi.stubGlobal('fetch', fetchMock);
 		const store = new CloudInitStore('default', 101);
 
-		const saved = await store.saveSnippet('#cloud-config\n');
+		const saved = await store.saveDocument('web');
 
-		expect(saved).toBe(false);
-		expect(store.snippetErrorCode).toBe('push_failed');
-		expect(store.snippetError).toContain('not yet applied');
+		expect(saved).toBe(true);
+		expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({ templateId: 'web' });
+		expect(store.document?.templateId).toBe('web');
+	});
+
+	it('maps cloudinit_not_published to a localized error', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(409, { code: 'cloudinit_not_published', message: 'x' })));
+		const store = new CloudInitStore('default', 101);
+
+		expect(await store.saveDocument('web')).toBe(false);
+		expect(store.documentErrorCode).toBe('cloudinit_not_published');
+		expect(store.documentError).not.toBe('x');
 	});
 
 	it('injects an ssh key via POST and reloads config', async () => {
