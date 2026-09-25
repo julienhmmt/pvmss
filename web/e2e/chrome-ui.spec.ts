@@ -123,17 +123,17 @@ test.describe('T19 chrome UI', () => {
 			await expect(page.getByText(/Bon retour|Welcome back/)).toBeVisible();
 		});
 
-		test('authenticated admin sees Documentation but no My VMs or Create a VM', async ({ page }) => {
+		test('authenticated admin is sent from the home page to the admin dashboard', async ({ page }) => {
 			await page.goto('/login');
 			await page.getByRole('button', { name: /administrat/i }).click();
 			await page.locator('input[type="password"]').fill('pvmss-e2e-admin');
 			await page.locator('button[type="submit"]').click();
 			await page.waitForURL(/\/admin/);
+			// The home page is the pool-user landing; an admin never sees its
+			// My VMs / Create a VM calls to action and is redirected instead.
 			await page.goto('/');
-			const cta = ctaSection(page);
-			await expect(cta.getByRole('link', { name: /Documentation/ })).toBeVisible();
-			await expect(cta.getByRole('link', { name: /Mes VM|My VMs/ })).toHaveCount(0);
-			await expect(cta.getByRole('link', { name: /Créer une VM|Create a VM/ })).toHaveCount(0);
+			await page.waitForURL(/\/admin$/);
+			await expect(ctaSection(page)).toHaveCount(0);
 		});
 	});
 });
