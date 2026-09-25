@@ -10,6 +10,8 @@
 	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
 	import Textarea from '$lib/shared/ui/Textarea.svelte';
 	import CopyButton from '$lib/shared/ui/CopyButton.svelte';
+	import Pill from '$lib/shared/ui/Pill.svelte';
+	import { publishingOffHint } from './publishing-status';
 	import type { AdminCluster, ClusterInput, HostKeyScan, SnippetStorage } from './clusters.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -53,6 +55,7 @@
 	let scanErrors = $state<string[]>([]);
 	let pairError = $state<string | null>(null);
 	const TITLE_ID = 'cluster-form-title';
+	const FORM_ID = 'cluster-form';
 
 	$effect(() => {
 		if (!open) return;
@@ -120,36 +123,63 @@
 	}
 </script>
 
-<Dialog bind:open labelledBy={TITLE_ID} onClose={onClose}>
+<Dialog bind:open size="xl" labelledBy={TITLE_ID} onClose={onClose}>
 	<h2 id={TITLE_ID} class="text-lg font-semibold">{editing ? m['admin.clusters.editCluster']() : m['admin.clusters.addClusterForm']()}</h2>
-	<form class="mt-4 grid gap-4" onsubmit={(event) => { event.preventDefault(); submit(); }}>
-		<FormField label={m['common.name']()} required>
-			{#snippet children({ id, describedBy, invalid })}
-				<TextField {id} {describedBy} {invalid} bind:value={name} disabled={editing !== null} pattern="[a-z0-9-]+" required />
+	<form id={FORM_ID} class="mt-5 grid gap-6" onsubmit={(event) => { event.preventDefault(); submit(); }}>
+		<FormSection legend={m['admin.clusters.connectionSection']()} description={m['admin.clusters.connectionHint']()}>
+			<div class="grid gap-4 sm:grid-cols-2">
+				<FormField label={m['common.name']()} required>
+					{#snippet children({ id, describedBy, invalid })}
+						<TextField {id} {describedBy} {invalid} bind:value={name} disabled={editing !== null} pattern="[a-z0-9-]+" required />
+					{/snippet}
+				</FormField>
+				<FormField label={m['admin.clusters.url']()} required>
+					{#snippet children({ id, describedBy, invalid })}
+						<TextField {id} {describedBy} {invalid} type="url" bind:value={url} placeholder="https://pve.example:8006/api2/json" required />
+					{/snippet}
+				</FormField>
+				<FormField label={m['admin.clusters.tokenId']()} required>
+					{#snippet children({ id, describedBy, invalid })}
+						<TextField {id} {describedBy} {invalid} bind:value={tokenId} placeholder="pvmss@pve!service" required />
+					{/snippet}
+				</FormField>
+				<FormField label={m['admin.clusters.tokenSecret']()} required={editing === null}>
+					{#snippet children({ id, describedBy, invalid })}
+						<TextField
+							{id}
+							{describedBy}
+							{invalid}
+							type="password"
+							bind:value={tokenSecret}
+							reveal
+							required={editing === null}
+							autocomplete="new-password"
+							placeholder={editing ? m['admin.clusters.tokenSecretHint']() : ''}
+						/>
+					{/snippet}
+				</FormField>
+			</div>
+			<Checkbox
+				label={m['admin.clusters.skipTls']()}
+				checked={tlsInsecureSkipVerify}
+				onToggle={(checked) => (tlsInsecureSkipVerify = checked)}
+				variant="warning"
+			/>
+		</FormSection>
+
+		<FormSection legend={m['admin.clusters.cloudinitSection']()} description={m['admin.clusters.cloudinitHint']()} variant="panel">
+			{#snippet actions()}
+				{#if editing}
+					<Pill
+						tone={editing.cloudInitWriteEnabled ? 'ok' : 'off'}
+						label={editing.cloudInitWriteEnabled ? m['admin.clusters.cloudinitOn']() : m['admin.clusters.cloudinitOff']()}
+					/>
+				{/if}
 			{/snippet}
-		</FormField>
-		<FormField label={m['admin.clusters.url']()} required>
-			{#snippet children({ id, describedBy, invalid })}
-				<TextField {id} {describedBy} {invalid} type="url" bind:value={url} required />
-			{/snippet}
-		</FormField>
-		<FormField label={m['admin.clusters.tokenId']()} required>
-			{#snippet children({ id, describedBy, invalid })}
-				<TextField {id} {describedBy} {invalid} bind:value={tokenId} required />
-			{/snippet}
-		</FormField>
-		<FormField label={m['admin.clusters.tokenSecret']()} hint={editing ? m['admin.clusters.tokenSecretHint']() : undefined} required={editing === null}>
-			{#snippet children({ id, describedBy, invalid })}
-				<TextField {id} {describedBy} {invalid} type="password" bind:value={tokenSecret} reveal required={editing === null} autocomplete="new-password" />
-			{/snippet}
-		</FormField>
-		<Checkbox
-			label={m['admin.clusters.skipTls']()}
-			checked={tlsInsecureSkipVerify}
-			onToggle={(checked) => (tlsInsecureSkipVerify = checked)}
-			variant="warning"
-		/>
-		<FormSection legend={m['admin.clusters.cloudinitSection']()} description={m['admin.clusters.cloudinitHint']()}>
+			{#if editing && !editing.cloudInitWriteEnabled}
+				<Alert tone="info" role="status">{publishingOffHint(editing.publishingStatus)}</Alert>
+			{/if}
+
 			<FormField
 				label={m['admin.clusters.snippetStorage']()}
 				hint={snippetStoragesLoading ? m['admin.clusters.snippetStorageLoading']() : (snippetStorages.length > 0 ? m['admin.clusters.snippetStorageHint']() : m['admin.clusters.snippetStorageEmpty']())}
@@ -169,52 +199,70 @@
 					{/if}
 				{/snippet}
 			</FormField>
-			<div class="grid gap-4 sm:grid-cols-[1fr_8rem]">
-				<FormField label={m['admin.clusters.sshUser']()} hint={m['admin.clusters.sshUserHint']()}>
-					{#snippet children({ id, describedBy, invalid })}
-						<TextField {id} {describedBy} {invalid} bind:value={sshUser} placeholder="pvmss" autocomplete="off" />
-					{/snippet}
-				</FormField>
-				<FormField label={m['admin.clusters.sshPort']()}>
-					{#snippet children({ id, describedBy, invalid })}
-						<TextField {id} {describedBy} {invalid} type="number" bind:value={sshPort} />
-					{/snippet}
-				</FormField>
+
+			<div class="grid gap-1.5">
+				<div class="grid gap-4 sm:grid-cols-[minmax(0,1fr)_7rem]">
+					<FormField label={m['admin.clusters.sshUser']()}>
+						{#snippet children({ id, describedBy, invalid })}
+							<TextField {id} {describedBy} {invalid} bind:value={sshUser} placeholder="pvmss" autocomplete="off" />
+						{/snippet}
+					</FormField>
+					<FormField label={m['admin.clusters.sshPort']()}>
+						{#snippet children({ id, describedBy, invalid })}
+							<TextField {id} {describedBy} {invalid} type="number" bind:value={sshPort} />
+						{/snippet}
+					</FormField>
+				</div>
+				<p class="text-xs text-muted-foreground">{m['admin.clusters.sshUserHint']()}</p>
 			</div>
-			<FormField label={m['admin.clusters.sshKnownHosts']()} hint={m['admin.clusters.sshKnownHostsHint']()}>
-				{#snippet children({ id, describedBy, invalid })}
-					<Textarea {id} {describedBy} {invalid} bind:value={sshKnownHosts} rows={3} mono placeholder="10.0.0.11 ssh-ed25519 AAAA..." />
-				{/snippet}
-			</FormField>
-			<div class="flex flex-wrap items-center gap-2">
-				<Button variant="secondary" size="sm" loading={scanning} disabled={editing === null} onclick={() => void scan()} data-testid="cluster-ssh-scan">
-					{m['admin.clusters.sshScan']()}
-				</Button>
-				{#if editing === null}
-					<span class="text-xs text-muted-foreground">{m['admin.clusters.sshScanAfterSave']()}</span>
+
+			<div class="grid gap-2">
+				<FormField label={m['admin.clusters.sshKnownHosts']()} hint={m['admin.clusters.sshKnownHostsHint']()}>
+					{#snippet children({ id, describedBy, invalid })}
+						<Textarea {id} {describedBy} {invalid} bind:value={sshKnownHosts} rows={4} mono placeholder="10.0.0.11 ssh-ed25519 AAAA..." />
+					{/snippet}
+				</FormField>
+				<div class="flex flex-wrap items-center justify-between gap-2">
+					<span class="text-xs text-muted-foreground">
+						{#if editing === null}{m['admin.clusters.sshScanAfterSave']()}{/if}
+					</span>
+					<Button variant="secondary" size="sm" loading={scanning} disabled={editing === null} onclick={() => void scan()} data-testid="cluster-ssh-scan">
+						{m['admin.clusters.sshScan']()}
+					</Button>
+				</div>
+				{#if scanErrors.length > 0}
+					<Alert tone="warning" role="status">
+						<ul class="grid gap-1">
+							{#each scanErrors as scanError (scanError)}
+								<li class="break-words">{scanError}</li>
+							{/each}
+						</ul>
+					</Alert>
 				{/if}
 			</div>
-			{#each scanErrors as scanError (scanError)}
-				<p class="text-xs text-warning">{scanError}</p>
-			{/each}
-			{#if sshPublicKey}
-				<div class="grid gap-1.5 text-sm">
-					<span class="font-medium">{m['admin.clusters.sshNodeSetup']()}</span>
-					<div class="flex items-start gap-2">
-						<code class="block flex-1 overflow-x-auto rounded-md bg-muted px-2 py-1.5 font-mono text-xs" data-testid="cluster-ssh-setup">{setupCommand}</code>
+
+			<div class="grid min-w-0 gap-2 border-t border-border pt-4">
+				{#if sshPublicKey}
+					<div>
+						<p class="text-sm font-medium">{m['admin.clusters.sshNodeSetup']()}</p>
+						<p class="mt-0.5 text-xs text-muted-foreground">{m['admin.clusters.sshNodeSetupHint']()}</p>
+					</div>
+					<div class="flex min-w-0 items-start gap-2">
+						<pre class="min-w-0 flex-1 whitespace-pre-wrap break-all rounded-md border border-border bg-background px-3 py-2 font-mono text-xs leading-relaxed" data-testid="cluster-ssh-setup">{setupCommand}</pre>
 						<CopyButton value={setupCommand} />
 					</div>
-				</div>
-			{:else}
-				<p class="text-xs text-warning" data-testid="cluster-ssh-no-key">{m['admin.clusters.sshNoKey']()}</p>
-			{/if}
+				{:else}
+					<Alert tone="warning" role="status" data-testid="cluster-ssh-no-key">{m['admin.clusters.sshNoKey']()}</Alert>
+				{/if}
+			</div>
 		</FormSection>
+
 		{#if pairError ?? error}
 			<Alert>{pairError ?? error}</Alert>
 		{/if}
-		<div class="mt-2 flex justify-end gap-2">
-			<Button variant="secondary" onclick={onClose} disabled={saving}>{m['common.cancel']()}</Button>
-			<Button type="submit" disabled={saving}>{m['common.save']()}</Button>
-		</div>
 	</form>
+	{#snippet footer()}
+		<Button variant="ghost" onclick={onClose} disabled={saving}>{m['common.cancel']()}</Button>
+		<Button type="submit" form={FORM_ID} loading={saving} disabled={saving}>{m['common.save']()}</Button>
+	{/snippet}
 </Dialog>
