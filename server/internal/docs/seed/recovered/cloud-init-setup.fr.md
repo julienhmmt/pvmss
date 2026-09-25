@@ -36,7 +36,7 @@ publie donc par SSH, via un petit utilitaire (`pvmss-snippet`) installé sur
 chaque nœud pour un utilisateur dédié `pvmss`. PVMSS a besoin :
 
 - de la clé privée globale, `PVMSS_SSH_KEY_FILE` (paramètre du serveur) ;
-- par cluster, dans **Admin > Clusters > Modifier** : du stockage de
+- par cluster, dans **Infrastructure > Clusters > Modifier** : du stockage de
   snippets, de l'utilisateur SSH, du port SSH et des clés d'hôte épinglées ;
 - d'un accès réseau de PVMSS vers **l'IP de chaque nœud telle que listée
   dans `/cluster/status`**, sur le port SSH (elle peut différer de l'URL de
@@ -52,6 +52,10 @@ clé, désinstallation) est `docs/cloud-init-ssh.md` dans le dépôt PVMSS.
 ssh-keygen -t ed25519 -N '' -C pvmss -f pvmss_ed25519
 ```
 
+ed25519 est recommandé ; ECDSA et RSA fonctionnent aussi (RSA : 2048 bits
+minimum, 3072+ recommandé, par exemple `ssh-keygen -t rsa -b 4096 …`). Sans
+passphrase.
+
 Fournissez la clé privée à PVMSS : montée en lecture seule, lisible par
 l'uid 65532 (utilisateur du conteneur), avec
 `PVMSS_SSH_KEY_FILE=/etc/pvmss/ssh/id_ed25519`.
@@ -62,7 +66,7 @@ l'uid 65532 (utilisateur du conteneur), avec
   --from-file=id_ed25519=./pvmss_ed25519` et
   `--set cloudInit.sshKeySecret=pvmss-ssh`.
 
-Après redémarrage, la clé publique apparaît dans **Admin > Clusters >
+Après redémarrage, la clé publique apparaît dans **Infrastructure > Clusters >
 Modifier**.
 
 **2. Type de contenu Snippets** (un seul nœud, en root, une fois - la
@@ -82,20 +86,43 @@ pvesh get /cluster/status --output-format json \
   | perl -MJSON -0ne 'print "$_->{name} $_->{ip}\n" for grep { $_->{type} eq "node" } @{decode_json($_)}'
 ```
 
-**3. Chaque nœud** (`tools/pvmss-node-setup.sh` du dépôt PVMSS ;
-idempotent). La commande exacte avec la clé de PVMSS est affichée, avec un
-bouton de copie, dans **Admin > Clusters > Modifier**. Depuis un poste ayant
-l'accès SSH root aux nœuds :
+**3. Chaque nœud.** PVMSS sert son script de préparation sur
+`/api/v1/pvmss-node-setup.sh` (embarqué dans le binaire ; c'est le même
+fichier que `tools/pvmss-node-setup.sh` dans le dépôt). La commande exacte,
+avec l'URL de ce PVMSS, le stockage, l'utilisateur et la clé, est affichée
+avec un bouton de copie dans **Infrastructure > Clusters > Modifier**, à côté
+d'un lien **Voir le script**. En root sur chaque nœud :
+
+```sh
+PVMSS=https://pvmss.example.com       # URL de PVMSS vue depuis le nœud
+curl -fsSL "$PVMSS/api/v1/pvmss-node-setup.sh" \
+  | sh -s -- --storage local --user pvmss --key 'ssh-ed25519 AAAA... pvmss'
+```
+
+Certificat PVMSS auto-signé : `curl -kfsSL`. Pour tous les nœuds d'un coup,
+depuis un poste ayant l'accès SSH root :
 
 ```sh
 NODES="192.168.1.11 192.168.1.12 192.168.1.13"
 STORAGE=local
 PUBKEY=$(cat pvmss_ed25519.pub)
 for n in $NODES; do
-  scp tools/pvmss-node-setup.sh root@"$n":/root/
-  ssh root@"$n" "sh /root/pvmss-node-setup.sh --storage $STORAGE --user pvmss --key '$PUBKEY'"
+  ssh root@"$n" "curl -fsSL '$PVMSS/api/v1/pvmss-node-setup.sh' | sh -s -- --storage $STORAGE --user pvmss --key '$PUBKEY'"
 done
 ```
+
+Nœuds sans accès à PVMSS : copiez-y `tools/pvmss-node-setup.sh` (`scp`) et
+lancez `sh pvmss-node-setup.sh` avec les mêmes options. Le script est
+idempotent ; un téléchargement tronqué n'exécute rien.
+
+L'URL de la commande est l'adresse de la page (HTTP ou HTTPS, IP ou FQDN,
+n'importe quel port) : les nœuds doivent pouvoir la joindre. Le formulaire
+prévient quand c'est `localhost` ou le port 5173 de Vite ; derrière un
+reverse proxy avec sous-chemin, ajoutez le sous-chemin à la main. Le script
+refuse une clé qui n'est pas une seule ligne valide (RSA de moins de 2048 bits
+compris), `root` comme utilisateur et un stockage sans Snippets ; sur NFS/CIFS
+sans ACL, il se rabat sur le groupe du répertoire, et s'arrête avec un
+message explicite si l'utilisateur ne peut toujours pas y écrire.
 
 Le script installe `/usr/local/bin/pvmss-snippet`, écrit
 `/etc/pvmss-snippet.conf`, crée l'utilisateur `pvmss` avec un accès en
@@ -115,7 +142,7 @@ $SSH remove pvmss-selftest.yml
 $SSH id                                                  # doit être refusé (usage: ...)
 ```
 
-**5. Admin > Clusters > Modifier.** L'utilisateur SSH exige des clés d'hôte
+**5. Infrastructure > Clusters > Modifier.** L'utilisateur SSH exige des clés d'hôte
 épinglées, et **Scanner les clés d'hôte** exige un cluster enregistré. Au
 choix :
 

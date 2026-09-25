@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { page } from '$app/state';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Dialog from '$lib/shared/ui/Dialog.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
@@ -12,6 +13,7 @@
 	import CopyButton from '$lib/shared/ui/CopyButton.svelte';
 	import Pill from '$lib/shared/ui/Pill.svelte';
 	import { publishingOffHint } from './publishing-status';
+	import { nodeSetupCommand } from './node-setup-command';
 	import type { AdminCluster, ClusterInput, HostKeyScan, SnippetStorage } from './clusters.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -74,10 +76,17 @@
 		});
 	});
 
-	// The command an admin runs on every node, prefilled with the storage
-	// and PVMSS's key (tools/pvmss-node-setup.sh).
-	const setupCommand = $derived(
-		`sh pvmss-node-setup.sh --storage ${snippetStorage.trim() || 'local'} --user ${sshUser.trim() || 'pvmss'} --key '${sshPublicKey}'`
+	// The command an admin runs as root on every node: it downloads the setup
+	// script PVMSS embeds and serves, prefilled with the storage, the user and
+	// PVMSS's key.
+	const nodeSetup = $derived(
+		nodeSetupCommand({
+			origin: page.url.origin,
+			storage: snippetStorage,
+			user: sshUser,
+			port: Number.parseInt(sshPort, 10),
+			publicKey: sshPublicKey
+		})
 	);
 
 	async function scan(): Promise<void> {
@@ -248,9 +257,16 @@
 						<p class="mt-0.5 text-xs text-muted-foreground">{m['admin.clusters.sshNodeSetupHint']()}</p>
 					</div>
 					<div class="flex min-w-0 items-start gap-2">
-						<pre class="min-w-0 flex-1 whitespace-pre-wrap break-all rounded-md border border-border bg-background px-3 py-2 font-mono text-xs leading-relaxed" data-testid="cluster-ssh-setup">{setupCommand}</pre>
-						<CopyButton value={setupCommand} />
+						<pre class="min-w-0 flex-1 whitespace-pre-wrap break-all rounded-md border border-border bg-background px-3 py-2 font-mono text-xs leading-relaxed" data-testid="cluster-ssh-setup">{nodeSetup.command}</pre>
+						<CopyButton value={nodeSetup.command} />
 					</div>
+					{#if nodeSetup.originLooksLocal}
+						<Alert tone="warning" role="status" data-testid="cluster-ssh-origin-local">{m['admin.clusters.sshOriginLocal']({ origin: page.url.origin })}</Alert>
+					{/if}
+					<p class="text-xs text-muted-foreground">
+						{m['admin.clusters.sshNodeSetupOffline']()}
+						<a class="font-medium text-foreground underline underline-offset-2 hover:text-primary" href={nodeSetup.scriptUrl} target="_blank" rel="noopener noreferrer" data-testid="cluster-ssh-script-link">{m['admin.clusters.sshViewScript']()}</a>
+					</p>
 				{:else}
 					<Alert tone="warning" role="status" data-testid="cluster-ssh-no-key">{m['admin.clusters.sshNoKey']()}</Alert>
 				{/if}

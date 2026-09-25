@@ -85,7 +85,7 @@ Wizard at `/vms/create` - **Simple** and **Detailed** modes, five steps
 | Feature | Route | API | Status |
 | --- | --- | --- | --- |
 | Admin cloud-init templates, per cluster, enable/disable; users only pick among them | `/admin/cloudinit-templates` | `/api/v1/admin/cloudinit-templates` | ✅ |
-| Publication over SSH to every node through the `pvmss-snippet` helper (`tools/pvmss-node-setup.sh`, guide: [cloud-init-ssh.md](cloud-init-ssh.md)), verified per node through the API; per-node status; "Publish to all nodes" resync | `/admin/cloudinit-templates` | `POST /api/v1/admin/cloudinit-templates/publish` | ✅ |
+| Publication over SSH to every node through the `pvmss-snippet` helper (`tools/pvmss-node-setup.sh`, embedded in the binary and served at `GET /api/v1/pvmss-node-setup.sh` for `curl … | sh`; guide: [cloud-init-ssh.md](cloud-init-ssh.md)), verified per node through the API; per-node status; "Publish to all nodes" resync | `/admin/cloudinit-templates` | `POST /api/v1/admin/cloudinit-templates/publish` | ✅ |
 | Immutable content-addressed files (`pvmss-tpl-<id>-<hash>.yml`, PVMSS baseline merged in): an edit publishes a new file, VMs keep theirs | - | - | ✅ |
 | VM creation never writes: the template must be on the VM's node (live `HasSnippet`), else 409 `cloudinit_not_published` before any VMID | at creation | `POST /api/v1/vms` | ✅ |
 | Standalone baseline `pvmss-baseline-<hash>.yml` for image VMs without a template; missing on the node → VM boots on the native keys, baseline "not delivered" | - | - | ✅ |

@@ -250,7 +250,7 @@ func loadRateLimitSettings(cfg *Configuration) error {
 
 // loadSSHSettings reads the optional private key PVMSS uses to publish
 // admin cloud-init documents to the Proxmox nodes over SSH. The user, port
-// and pinned host keys are per cluster (Admin > Clusters); without a key,
+// and pinned host keys are per cluster (Infrastructure > Clusters); without a key,
 // cloud-init documents are off on every cluster. PVMSS_SSH_USER and
 // PVMSS_SSH_PORT are no longer read - when set, they are recorded so startup
 // can warn the operator (see Configuration.DeprecatedSSHEnv).

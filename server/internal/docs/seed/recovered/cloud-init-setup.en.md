@@ -33,7 +33,7 @@ over SSH, through a small helper (`pvmss-snippet`) installed on every node
 for a dedicated `pvmss` user. PVMSS needs:
 
 - the global private key, `PVMSS_SSH_KEY_FILE` (server setting);
-- per cluster, in **Admin > Clusters > Edit**: the snippet storage, the SSH
+- per cluster, in **Infrastructure > Clusters > Edit**: the snippet storage, the SSH
   user, the SSH port and the pinned host keys;
 - network access from PVMSS to **every node's IP as listed in
   `/cluster/status`** on the SSH port (it can differ from the API URL).
@@ -48,6 +48,9 @@ reference (Compose, Helm, Kubernetes, key rotation, uninstall) is
 ssh-keygen -t ed25519 -N '' -C pvmss -f pvmss_ed25519
 ```
 
+ed25519 is recommended; ECDSA and RSA work too (RSA: 2048 bits minimum,
+3072+ recommended, e.g. `ssh-keygen -t rsa -b 4096 …`). No passphrase.
+
 Give PVMSS the private key: mount it read-only, readable by uid 65532 (the
 container user), and set `PVMSS_SSH_KEY_FILE=/etc/pvmss/ssh/id_ed25519`.
 
@@ -57,7 +60,7 @@ container user), and set `PVMSS_SSH_KEY_FILE=/etc/pvmss/ssh/id_ed25519`.
   --from-file=id_ed25519=./pvmss_ed25519` and
   `--set cloudInit.sshKeySecret=pvmss-ssh`.
 
-After a restart, the public key appears in **Admin > Clusters > Edit**.
+After a restart, the public key appears in **Infrastructure > Clusters > Edit**.
 
 **2. Snippets content type** (any one node, as root, once - storage
 configuration is cluster-wide; or Datacenter > Storage > Edit > Content):
@@ -75,19 +78,42 @@ pvesh get /cluster/status --output-format json \
   | perl -MJSON -0ne 'print "$_->{name} $_->{ip}\n" for grep { $_->{type} eq "node" } @{decode_json($_)}'
 ```
 
-**3. Every node** (`tools/pvmss-node-setup.sh` from the PVMSS repository;
-idempotent). The exact command with PVMSS's key is shown, with a copy button,
-in **Admin > Clusters > Edit**. From a workstation with root SSH to the nodes:
+**3. Every node.** PVMSS serves its setup script at
+`/api/v1/pvmss-node-setup.sh` (embedded in the binary; the same file is
+`tools/pvmss-node-setup.sh` in the repository). The exact command, with this
+PVMSS's URL, the storage, the user and the key, is shown with a copy button in
+**Infrastructure > Clusters > Edit**, next to a **View the script** link. As
+root on each node:
+
+```sh
+PVMSS=https://pvmss.example.com       # PVMSS's URL as seen from the node
+curl -fsSL "$PVMSS/api/v1/pvmss-node-setup.sh" \
+  | sh -s -- --storage local --user pvmss --key 'ssh-ed25519 AAAA... pvmss'
+```
+
+Self-signed certificate on PVMSS: `curl -kfsSL`. For all nodes at once, from
+a workstation with root SSH to them:
 
 ```sh
 NODES="192.168.1.11 192.168.1.12 192.168.1.13"
 STORAGE=local
 PUBKEY=$(cat pvmss_ed25519.pub)
 for n in $NODES; do
-  scp tools/pvmss-node-setup.sh root@"$n":/root/
-  ssh root@"$n" "sh /root/pvmss-node-setup.sh --storage $STORAGE --user pvmss --key '$PUBKEY'"
+  ssh root@"$n" "curl -fsSL '$PVMSS/api/v1/pvmss-node-setup.sh' | sh -s -- --storage $STORAGE --user pvmss --key '$PUBKEY'"
 done
 ```
+
+Nodes that cannot reach PVMSS: copy `tools/pvmss-node-setup.sh` to them
+(`scp`) and run `sh pvmss-node-setup.sh` with the same options. The script is
+idempotent; a truncated download runs nothing.
+
+The URL in the command is the page's address (HTTP or HTTPS, IP or FQDN, any
+port): the nodes must be able to reach it. The form warns when it is
+`localhost` or Vite's port 5173; behind a reverse proxy sub-path, add the
+sub-path by hand. The script refuses a key that is not one valid line (RSA
+under 2048 bits included), `root` as user, and a storage without Snippets; on
+NFS/CIFS without ACL support it falls back to the directory's group, and it
+stops with an explicit message when the user still cannot write there.
 
 The script installs `/usr/local/bin/pvmss-snippet`, writes
 `/etc/pvmss-snippet.conf`, creates the `pvmss` user with write access to the
@@ -106,7 +132,7 @@ $SSH remove pvmss-selftest.yml
 $SSH id                                                  # must be refused (usage: ...)
 ```
 
-**5. Admin > Clusters > Edit.** The SSH user needs pinned host keys, and
+**5. Infrastructure > Clusters > Edit.** The SSH user needs pinned host keys, and
 **Scan host keys** needs a saved cluster. Either:
 
 - paste the host keys and save once:

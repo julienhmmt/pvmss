@@ -11,7 +11,7 @@ services:
     environment:
       # Cloud-init templates: PVMSS publishes them to every Proxmox node over
       # SSH with this key. The SSH user, port and pinned host keys are set per
-      # cluster in Admin > Clusters. Full procedure: docs/cloud-init-ssh.md.
+      # cluster in Infrastructure > Clusters. Full procedure: docs/cloud-init-ssh.md.
       PVMSS_SSH_KEY_FILE: /etc/pvmss/ssh/id_ed25519
     ports:
       - "50000:50000/tcp"

@@ -1514,7 +1514,7 @@
   "vms.cloudinit.errorSaveDocument": "failed to change the cloud-init document",
   "vms.cloudinit.errorNotPublished": "This template is not available on the VM's node yet - ask an administrator to publish it.",
   "admin.cloudinit.publishAll": "Publish to all nodes",
-  "admin.cloudinit.publishHelp": "Templates are published as files in the cluster's snippet storage on every node (Admin > Clusters: SSH publishing). Publish again after adding or reinstalling a node.",
+  "admin.cloudinit.publishHelp": "Templates are published as files in the cluster's snippet storage on every node (Infrastructure > Clusters: SSH publishing). Publish again after adding or reinstalling a node.",
   "admin.cloudinit.publication": "Published",
   "admin.cloudinit.notPublished": "Not published",
   "admin.cloudinit.publishedNodes": "{ok}/{total} nodes",
@@ -1533,6 +1533,9 @@
   "admin.clusters.sshScan": "Scan host keys",
   "admin.clusters.sshScanAfterSave": "Save the cluster first, then scan its nodes.",
   "admin.clusters.sshNodeSetup": "Run on every node, as root:",
-  "admin.clusters.sshNodeSetupHint": "Installs the pvmss-snippet helper and the dedicated user. Safe to rerun: do it again after adding or reinstalling a node.",
+  "admin.clusters.sshNodeSetupHint": "Downloads the setup script from PVMSS and runs it: installs the pvmss-snippet helper and the dedicated user. Safe to rerun, e.g. after adding or reinstalling a node. Self-signed PVMSS certificate: use curl -k.",
+  "admin.clusters.sshNodeSetupOffline": "Nodes cannot reach PVMSS? Copy the script (tools/pvmss-node-setup.sh in the repository) to each node and run sh pvmss-node-setup.sh with the same options.",
+  "admin.clusters.sshViewScript": "View the script",
+  "admin.clusters.sshOriginLocal": "This page is open at {origin}, which the nodes probably cannot reach: replace it in the command with PVMSS's address as seen from the nodes (dev stack: the backend, port 50000).",
   "admin.clusters.sshNoKey": "No SSH key configured: set PVMSS_SSH_KEY_FILE on the PVMSS server to publish cloud-init templates."
 }

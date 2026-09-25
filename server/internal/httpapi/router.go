@@ -116,6 +116,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	}
 
 	mux.Handle("GET /health", cfg.Health)
+	mux.HandleFunc("GET "+nodeSetupScriptPath, serveNodeSetupScript)
 	mux.Handle("GET /api/v1/cluster/nodes", cfg.Auth.Require(cfg.ClusterNodes))
 	mux.Handle("POST /api/v1/cluster/refresh", protect(cfg.Auth.Require(cfg.ClusterRefresh), clusterTestLimiter))
 

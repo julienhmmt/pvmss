@@ -60,7 +60,7 @@ var (
 	// silently absent.
 	ErrNoSnippetStorage = errors.New("no snippet-capable storage on the selected node")
 	// ErrCloudInitWriteUnavailable - a cloud-init document was requested but
-	// the cluster has no snippet write target (Admin › Clusters). Refused at
+	// the cluster has no snippet write target (Infrastructure › Clusters). Refused at
 	// plan time, before a VMID is spent. Mapped to 409.
 	ErrCloudInitWriteUnavailable = errors.New("cloud-init documents are not enabled on this cluster")
 	// ErrDiskBelowImage - the requested disk size is smaller than the cloud

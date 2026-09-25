@@ -55,7 +55,7 @@ services:
       # Cloud-init templates (optional): PVMSS publishes them to every
       # Proxmox node over SSH. Mount the private key read-only and set
       # PVMSS_SSH_KEY_FILE=/etc/pvmss/ssh/id_ed25519; the SSH user, port and
-      # pinned host keys are set per cluster in Admin > Clusters. Prepare the
+      # pinned host keys are set per cluster in Infrastructure > Clusters. Prepare the
       # nodes with tools/pvmss-node-setup.sh.
       # - ./pvmss_ed25519:/etc/pvmss/ssh/id_ed25519:ro
     deploy:

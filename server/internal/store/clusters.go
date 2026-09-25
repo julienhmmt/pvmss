@@ -56,7 +56,7 @@ type ClusterRow struct {
 }
 
 // SnippetConfig is the per-cluster cloud-init publishing configuration
-// written by Admin > Clusters.
+// written by Infrastructure > Clusters.
 type SnippetConfig struct {
 	Storage    string
 	SSHUser    string

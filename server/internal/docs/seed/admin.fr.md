@@ -29,11 +29,14 @@ d'une VM n'écrit jamais de fichier : la VM pointe vers le fichier publié.
    | -------------------- | ------------------------------------------------------------ |
    | `PVMSS_SSH_KEY_FILE` | Chemin de la clé privée (montage en lecture seule ou Secret) |
 
-3. Sur chaque nœud, en root, lancez `tools/pvmss-node-setup.sh --storage
-   <stockage> --key '<clé publique PVMSS>'`. Il installe l'utilitaire
+3. Sur chaque nœud, en root, lancez la commande affichée dans
+   **Infrastructure > Clusters > Modifier** : `curl -fsSL <URL de
+   PVMSS>/api/v1/pvmss-node-setup.sh | sh -s -- --storage <stockage> --user
+   pvmss --key '<clé publique PVMSS>'` (PVMSS sert le script ; c'est aussi
+   `tools/pvmss-node-setup.sh` dans le dépôt). Il installe l'utilitaire
    `pvmss-snippet`, un utilisateur dédié `pvmss` limité au répertoire
    `snippets/` du stockage, et la clé avec une commande forcée (pas de shell).
-4. Dans **Admin > Clusters > Modifier**, renseignez le stockage de snippets,
+4. Dans **Infrastructure > Clusters > Modifier**, renseignez le stockage de snippets,
    l'utilisateur SSH, le port et les clés d'hôte épinglées : collez les
    lignes de `ssh-keyscan -t ed25519 <ip du nœud>`, ou enregistrez d'abord
    sans utilisateur SSH, rouvrez et cliquez sur **Scanner les clés d'hôte**.

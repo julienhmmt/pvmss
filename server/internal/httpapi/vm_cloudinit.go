@@ -488,7 +488,7 @@ func (h *VMCloudInit) putDocument(w http.ResponseWriter, r *http.Request, actor 
 func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, vm.ErrCloudInitWriteUnavailable):
-		h.writeError(w, http.StatusConflict, "cloudinit_write_unavailable", "cloud-init documents are not enabled on this cluster (Admin > Clusters: snippet storage and SSH publishing)")
+		h.writeError(w, http.StatusConflict, "cloudinit_write_unavailable", "cloud-init documents are not enabled on this cluster (Infrastructure > Clusters: snippet storage and SSH publishing)")
 	case errors.Is(err, vm.ErrCloudInitNotPublished):
 		h.writeError(w, http.StatusConflict, "cloudinit_not_published", err.Error())
 	case errors.Is(err, vm.ErrNotApproved):
