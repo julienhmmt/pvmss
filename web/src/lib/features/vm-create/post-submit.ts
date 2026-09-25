@@ -45,7 +45,7 @@ export async function handleAccepted(accepted: VmCreateAccepted, deps: PostSubmi
 		// reconfigured or deleted (issue 09). The tray will still poll
 		// the vm_create task to completion; the ledger is the persistent
 		// signal the tray cannot hold once the task ends.
-		deps.outcomeLedger.record(accepted.cluster, accepted.vmid, 'partial');
+		deps.outcomeLedger.record(accepted.cluster, accepted.vmid, 'partial', accepted.cloudInitPushError);
 		// Sticky (duration 0) error toast: cloudInitPushError used to be
 		// dead data on this type, silently hiding the failure from the user.
 		deps.toast.error(m['toast.vmCreateCloudInitWarning']({ error: accepted.cloudInitPushError }), 0);

@@ -1,9 +1,12 @@
 <script lang="ts">
 	/**
-	 * Sidebar - Layer B app-shell sidebar (236px sticky column). Brand + cluster,
-	 * "New machine" CTA and Machines link (hidden for admins), Home / Nodes,
-	 * admin groups shown as collapsible sections only when session.isAdmin, user
-	 * chip. Active nav uses aria-current="page" + tint fill.
+	 * Sidebar - the Calm workspace rail (DESIGN.md §5). Pool users get the
+	 * three-item workspace nav (My machines, Activity, Help & guides) under a
+	 * "Personal workspace" label, and a bottom block with a reassurance note,
+	 * preferences and an account link. Admins keep their Dashboard / Search /
+	 * About items and the collapsible admin groups; they have no personal
+	 * pool, so no machines, activity or account link. Active nav uses
+	 * aria-current="page" + tint fill.
 	 *
 	 * Below 900px the same markup becomes a drawer (T035): the parent layout
 	 * mounts it inside a Dialog-style overlay driven by ChromeState.sidebarOpen.
@@ -16,6 +19,7 @@
 	import { SidebarNavigationState } from './sidebar-navigation.svelte';
 	import { getChromeContext } from './chrome.svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
+	import { getPowerActionsContext } from '$lib/features/tasks/power-actions.svelte';
 	import { get } from '$lib/shared/api/client';
 	import type { VmListItem, VmListResult } from '$lib/features/vms/list.svelte';
 	import { goto } from '$app/navigation';
@@ -24,10 +28,41 @@
 	import Logo from '$lib/shared/ui/Logo.svelte';
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
-	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
 
 	const session = getSessionContext();
 	const chrome = getChromeContext();
+	const tray = getTaskTrayContext();
+	const powerActions = getPowerActionsContext();
+
+	// "My machines" count chip: every machine the user owns (the list API's
+	// total). Failed creations never exist server-side, so they are not in it.
+	let machineCount = $state.raw<number | null>(null);
+	async function loadMachineCount(): Promise<void> {
+		if (session.principal === null || session.isAdmin) return;
+		try {
+			const result = await get<VmListResult>('/api/v1/vms?pageSize=1');
+			machineCount = result.total;
+		} catch {
+			machineCount = null;
+		}
+	}
+	onMount(() => {
+		void loadMachineCount();
+	});
+
+	// "Activity" count chip: operations in flight right now - creations and
+	// snapshot work the tray polls, plus power actions converging.
+	const activityCount = $derived(tray.tasks.length + powerActions.size);
+
+	const initials = $derived(accountInitials(session.principal?.displayName || session.principal?.username || ''));
+
+	function accountInitials(name: string): string {
+		const parts = name.trim().split(/[\s._-]+/).filter(Boolean);
+		if (parts.length === 0) return '?';
+		const first = parts[0]?.[0] ?? '';
+		const second = parts.length > 1 ? (parts[1]?.[0] ?? '') : (parts[0]?.[1] ?? '');
+		return `${first}${second}`.toUpperCase();
+	}
 
 	// Machines drawer (below the "Machines" nav link): a small owned-VMs list
 	// a pool user can pop open without leaving whatever page they're on.
@@ -56,7 +91,8 @@
 	}
 
 	onMount(() =>
-		getTaskTrayContext().onTaskOk(() => {
+		tray.onTaskOk(() => {
+			void loadMachineCount();
 			if (machinesOpen) void loadMachines();
 			else machinesLoaded = false;
 		})
@@ -66,21 +102,45 @@
 		href: string;
 		label: () => string;
 		icon: SidebarIconName;
+		/** Prefix match: /vms also lights up for /vms/create and a detail page. */
+		prefix?: boolean;
+		/** Count chip, hidden when null or zero. */
+		count?: () => number | null;
+		/** Accent the count chip (in-flight operations). */
+		countAccent?: boolean;
+		countLabel?: (count: number) => string;
 	}
 
-	// Main nav: Home (or Dashboard for admins) and Search for everyone;
-	// Machines only for pool users. Admins are redirected from / to /admin,
-	// so their sidebar Home is relabeled Dashboard and points to /admin.
-	const mainNav = $derived<MainNavItem[]>([
-		...(session.isAdmin
-			? [{ href: resolve('/admin'), label: () => m['chrome.sidebar.navDashboard'](), icon: 'home' as SidebarIconName }]
-			: [{ href: resolve('/'), label: () => m['chrome.sidebar.navHome'](), icon: 'home' as SidebarIconName }]),
-		{ href: resolve('/search'), label: () => m['chrome.sidebar.navSearch'](), icon: 'search' as SidebarIconName },
-		...(!session.isAdmin
-			? [{ href: resolve('/vms'), label: () => m['chrome.sidebar.navMachines'](), icon: 'vm' as SidebarIconName }]
-			: []),
-		{ href: resolve('/about'), label: () => m['chrome.sidebar.navAbout'](), icon: 'info' as SidebarIconName }
-	]);
+	// Pool users: the three workspace destinations (DESIGN.md §5). Create and
+	// detail are states of "My machines", not items of their own. Admins keep
+	// Dashboard (they are redirected from / to /admin), Search and About.
+	const mainNav = $derived<MainNavItem[]>(
+		session.isAdmin
+			? [
+					{ href: resolve('/admin'), label: () => m['chrome.sidebar.navDashboard'](), icon: 'home' },
+					{ href: resolve('/search'), label: () => m['chrome.sidebar.navSearch'](), icon: 'search' },
+					{ href: resolve('/about'), label: () => m['chrome.sidebar.navAbout'](), icon: 'info' }
+				]
+			: [
+					{
+						href: resolve('/vms'),
+						label: () => m['chrome.sidebar.navMyMachines'](),
+						icon: 'vm',
+						prefix: true,
+						count: () => machineCount,
+						countLabel: (count) => m['chrome.sidebar.machinesCount']({ count })
+					},
+					{
+						href: resolve('/activity'),
+						label: () => m['chrome.sidebar.navActivity'](),
+						icon: 'clock',
+						count: () => activityCount,
+						countAccent: true,
+						countLabel: (count) => m['chrome.sidebar.activityCount']({ count })
+					},
+					{ href: resolve('/docs'), label: () => m['chrome.sidebar.navHelp'](), icon: 'help', prefix: true }
+				]
+	);
 
 	const navigation: SidebarNavigationState = new SidebarNavigationState(ADMIN_NAV_GROUPS.length);
 
@@ -121,25 +181,28 @@
 	aria-label={m['chrome.sidebar.ariaLabel']()}
 	data-testid="app-sidebar"
 >
-	<div class="flex flex-col gap-4 px-3 pt-5">
+	<div class="flex flex-col gap-1 px-3 pt-5">
 		<div class="flex items-center gap-2 px-2">
 			<Logo />
 			{#if session.principal}
 				<span class="font-mono text-xs text-muted-foreground">{session.principal.clusterDisplayName || session.principal.cluster}</span>
 			{/if}
 		</div>
-
-		{#if session.principal && !session.isAdmin}
-			<ButtonLink href={resolve('/vms/create')} block>
-				{m['chrome.sidebar.newMachine']()}
-			</ButtonLink>
+		{#if !session.isAdmin}
+			<p class="px-2 text-xs text-muted-foreground" data-testid="sidebar-tagline">{m['chrome.sidebar.tagline']()}</p>
 		{/if}
 	</div>
 
 	<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 py-4">
 		<nav class="flex flex-col gap-0.5" aria-label={m['chrome.navbar.ariaLabel']()}>
+			{#if !session.isAdmin}
+				<p class="px-3 pb-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground-subtle" data-testid="sidebar-workspace-label">
+					{m['chrome.sidebar.workspaceLabel']()}
+				</p>
+			{/if}
 			{#each mainNav as item (item.href)}
-				{@const active = isActive(item.href, item.href === resolve('/'))}
+				{@const active = isActive(item.href, !item.prefix)}
+				{@const count = item.count?.() ?? null}
 				{@const isMachines = item.href === resolve('/vms')}
 				<div class="flex flex-col">
 					<div
@@ -154,7 +217,18 @@
 							onclick={closeDrawer}
 						>
 							<SidebarIcon name={item.icon} />
-							{item.label()}
+							<span class="flex-1">{item.label()}</span>
+							{#if count !== null && count > 0}
+								<span
+									class="min-w-5 rounded-full px-1.5 text-center font-mono text-[0.6875rem] tabular-nums max-[369px]:hidden {item.countAccent
+										? 'bg-primary-solid text-primary-foreground'
+										: 'bg-muted text-muted-foreground'}"
+									aria-label={item.countLabel?.(count)}
+									data-testid="sidebar-count"
+								>
+									{count}
+								</span>
+							{/if}
 						</a>
 						{#if isMachines}
 							<button
@@ -274,25 +348,57 @@
 	</div>
 
 	<div class="mt-auto flex flex-col gap-3 border-t border-sidebar-border px-3 pb-5 pt-4">
-		<a
-			href={docsHref}
-			aria-current={isActive(docsHref) ? 'page' : undefined}
-			class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {isActive(docsHref)
-				? 'bg-sidebar-accent text-sidebar-accent-foreground'
-				: 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}"
-		>
-			<SidebarIcon name="info" />
-			{m['chrome.header.docs']()}
-		</a>
-		<div class="flex flex-wrap items-center justify-between gap-2">
+		{#if session.isAdmin}
+			<a
+				href={docsHref}
+				aria-current={isActive(docsHref) ? 'page' : undefined}
+				class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {isActive(docsHref)
+					? 'bg-sidebar-accent text-sidebar-accent-foreground'
+					: 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'}"
+			>
+				<SidebarIcon name="info" />
+				{m['chrome.header.docs']()}
+			</a>
+		{:else}
+			<p class="flex items-start gap-2 px-2 text-xs text-muted-foreground" data-testid="sidebar-reassurance">
+				<SidebarIcon name="shield" class="mt-px h-3.5 w-3.5 shrink-0 text-success" />
+				{m['chrome.sidebar.reassurance']()}
+			</p>
+		{/if}
+		<div class="flex flex-wrap items-center justify-between gap-2" role="group" aria-label={m['chrome.sidebar.preferences']()}>
 			<LanguageSwitcher />
 			<ThemeToggle />
 		</div>
 
 		{#if session.principal}
-			<p class="px-2 text-xs text-muted-foreground-subtle">
-				{m['chrome.sidebar.userChip']({ username: session.principal.displayName || session.principal.username })}
-			</p>
+			{#if session.isAdmin}
+				<p class="px-2 text-xs text-muted-foreground-subtle">
+					{m['chrome.sidebar.userChip']({ username: session.principal.displayName || session.principal.username })}
+				</p>
+			{:else}
+				{@const accountHref = resolve('/profile')}
+				<a
+					href={accountHref}
+					aria-current={isActive(accountHref, true) ? 'page' : undefined}
+					aria-label={m['chrome.sidebar.accountLink']({ name: session.principal.displayName || session.principal.username })}
+					class="flex items-center gap-2.5 rounded-lg px-2 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring {isActive(accountHref, true)
+						? 'bg-sidebar-accent'
+						: 'hover:bg-sidebar-accent/50'}"
+					onclick={closeDrawer}
+					data-testid="sidebar-account-link"
+				>
+					<span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-xs font-semibold text-sidebar-accent-foreground" aria-hidden="true">
+						{initials}
+					</span>
+					<span class="flex min-w-0 flex-1 flex-col">
+						<span class="truncate text-sm font-medium text-foreground">{session.principal.displayName || session.principal.username}</span>
+						<span class="truncate text-xs text-muted-foreground">{m['chrome.sidebar.accountLabel']()}</span>
+					</span>
+					<svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0 text-muted-foreground" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<polyline points="9 18 15 12 9 6" />
+					</svg>
+				</a>
+			{/if}
 			<button
 				type="button"
 				class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

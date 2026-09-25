@@ -27,13 +27,23 @@ const key = (cluster: string, vmid: number): string => `${cluster}:${vmid}`;
 
 export class TaskOutcomeLedger {
 	#entries = new SvelteMap<string, TaskOutcome>();
+	/** Optional technical detail per outcome (e.g. the cloud-init push
+	 *  error), shown to the user as "details for your administrator". */
+	#details = new SvelteMap<string, string>();
 
 	get(cluster: string, vmid: number): TaskOutcome | undefined {
 		return this.#entries.get(key(cluster, vmid));
 	}
 
-	record(cluster: string, vmid: number, outcome: TaskOutcome): void {
+	/** The technical detail recorded with the outcome, if any. */
+	detail(cluster: string, vmid: number): string | undefined {
+		return this.#details.get(key(cluster, vmid));
+	}
+
+	record(cluster: string, vmid: number, outcome: TaskOutcome, detail?: string): void {
 		this.#entries.set(key(cluster, vmid), outcome);
+		if (detail) this.#details.set(key(cluster, vmid), detail);
+		else this.#details.delete(key(cluster, vmid));
 	}
 
 	/** Clears a recorded outcome once the VM has moved past it (e.g. a
@@ -41,6 +51,7 @@ export class TaskOutcomeLedger {
 	 *  deleted). Idempotent. */
 	clear(cluster: string, vmid: number): void {
 		this.#entries.delete(key(cluster, vmid));
+		this.#details.delete(key(cluster, vmid));
 	}
 }
 
