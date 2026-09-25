@@ -62,6 +62,12 @@ container user), and set `PVMSS_SSH_KEY_FILE=/etc/pvmss/ssh/id_ed25519`.
 
 After a restart, the public key appears in **Infrastructure > Clusters > Edit**.
 
+**Which storage?** Any directory-backed storage with the Snippets content
+type: `local` (recommended: a few KB per template, no network dependency at
+VM start), NFS, CIFS, CephFS. **S3/object storage is not supported**: Proxmox
+VE has no native S3 storage, and FUSE mounts or third-party S3 plugins do not
+guarantee the file is written and listed.
+
 **2. Snippets content type** (any one node, as root, once - storage
 configuration is cluster-wide; or Datacenter > Storage > Edit > Content):
 

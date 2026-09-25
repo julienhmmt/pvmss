@@ -69,6 +69,13 @@ l'uid 65532 (utilisateur du conteneur), avec
 Après redémarrage, la clé publique apparaît dans **Infrastructure > Clusters >
 Modifier**.
 
+**Quel stockage ?** Tout stockage de type répertoire avec le contenu
+Snippets : `local` (recommandé : quelques Ko par modèle, aucune dépendance
+réseau au démarrage d'une VM), NFS, CIFS, CephFS. **Le stockage S3/objet
+n'est pas pris en charge** : Proxmox VE n'a pas de stockage S3 natif, et les
+montages FUSE ou les plugins S3 tiers ne garantissent pas que le fichier soit
+écrit et listé.
+
 **2. Type de contenu Snippets** (un seul nœud, en root, une fois - la
 configuration des stockages est commune au cluster ; ou Datacenter >
 Storage > Edit > Content) :

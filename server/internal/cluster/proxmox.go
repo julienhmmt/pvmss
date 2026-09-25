@@ -29,6 +29,10 @@ type Proxmox struct {
 	TLSInsecureSkipVerify bool
 	// SnippetStorage is the Proxmox storage whose snippets/ content holds
 	// the published cloud-init documents. Empty means the feature is off.
+	// It must be directory-backed (dir/local, nfs, cifs, cephfs): Proxmox VE
+	// has no native S3 storage, and S3 through FUSE or third-party plugins
+	// cannot guarantee the helper's write is stored and listed, so S3 is not
+	// supported (docs/cloud-init-ssh.md, "Which storage?").
 	SnippetStorage string
 	// SSH is the cluster's publishing transport: admin cloud-init documents
 	// are written to every node through the pvmss-snippet helper.
