@@ -75,7 +75,7 @@ before any VMID is spent.
 
 - Proxmox VE 8 or later, root SSH access to every node **for the setup only**.
 - A storage available on every node that can hold snippets (`local` is fine:
-  each node gets its own copy).
+  each node gets its own copy). See [Which storage?](#which-storage).
 - Network: the PVMSS container must reach **every node's IP as listed in
   `/cluster/status`** (the corosync address) on the SSH port. That may differ
   from the API URL's host. List them on any node:
@@ -86,6 +86,32 @@ before any VMID is spent.
   ```
 
   A standalone node without a cluster uses the API URL's host.
+
+### Which storage?
+
+PVMSS writes each file on **every node** and then asks Proxmox, node by node,
+to list it. Any storage that Proxmox exposes as a directory with the
+**Snippets** content type works: `dir` (`local` included - the simplest and
+most robust choice: a few KB per template, no network dependency when a VM
+boots), `nfs`, `cifs`, `cephfs`. On a shared storage every node writes the
+same content-addressed file, which is harmless.
+
+**S3 / object storage: not supported.** Proxmox VE (9.2) has no native S3
+storage type, and snippets must be a file Proxmox reads when it starts the VM.
+Workarounds exist but are not supported by PVMSS:
+
+- *S3 mounted with FUSE (s3fs, rclone mount) and declared as a `dir`
+  storage*: technically writable, but ACLs are usually missing, and a slow or
+  unreachable bucket blocks `pvestatd` and makes VM starts fail. Not
+  recommended.
+- *Third-party S3 storage plugins* (e.g. proxs3): they serve files from a
+  local cache and sync with the bucket through their own daemon. Files the
+  helper writes into that cache are not guaranteed to reach the bucket or be
+  listed, so publishing fails with `written, but Proxmox does not list ...`
+  (safe, but useless).
+
+Nothing is gained anyway: snippets are tiny, PVMSS already copies them to
+every node, and they are republished at startup and on demand. Use `local`.
 
 ## Setup, step by step
 
@@ -430,6 +456,7 @@ templates.
 | --- | --- | --- |
 | Server exits: `read SSH key file` / `parse SSH key` | path wrong, a directory (key missing before `docker compose up`), unreadable by uid 65532, or passphrase-protected key | generate the key, fix ownership/mode, restart |
 | `ssh -i …`: `Load key …: error in libcrypto` | key file lost its final newline (copy/paste, editor) | `printf '\n' >> <key>` |
+| `written, but Proxmox does not list ...` on an S3-backed storage | S3/object storage is not supported for snippets | use `local` (see [Which storage?](#which-storage)) |
 | Node: `curl: (60) SSL certificate problem` | PVMSS uses a self-signed certificate | `curl -kfsSL …` |
 | Node: `curl: (22) … 404` on `/api/v1/pvmss-node-setup.sh` | PVMSS older than the embedded script, or a proxy path prefix | upgrade PVMSS, or copy `tools/pvmss-node-setup.sh` (step 3 B) |
 | Setup: `RSA key too short` | RSA key under 2048 bits | new key: `ssh-keygen -t ed25519` or `-t rsa -b 4096` |

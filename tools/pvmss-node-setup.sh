@@ -20,6 +20,11 @@
 #
 #   --storage ID   Proxmox storage whose snippets/ content receives the files
 #                  (must have the "snippets" content type enabled). Default: local
+#                  A directory-backed storage (dir/local, nfs, cifs, cephfs).
+#                  S3/object storage is not supported: Proxmox VE has no native
+#                  S3 storage, and FUSE mounts or third-party S3 plugins do not
+#                  guarantee the file is written and listed (docs/cloud-init-ssh.md,
+#                  "Which storage?"). Use local.
 #   --key KEY      PVMSS's public key, as shown in Infrastructure > Clusters:
 #                  one line, ssh-ed25519, ecdsa-sha2-nistp256/384/521 or
 #                  ssh-rsa (2048 bits minimum, 3072+ recommended)
