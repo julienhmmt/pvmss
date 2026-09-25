@@ -153,7 +153,7 @@ Only administrators write cloud-init documents (**Admin › Cloud-init templates
 1. In Proxmox, enable the **Snippets** content type on a storage available on every node (Datacenter › Storage › Edit; `local` works).
 2. Generate a key pair (`ssh-keygen -t ed25519 -N '' -f pvmss_ed25519`) and give PVMSS the private key with `PVMSS_SSH_KEY_FILE`. Compose: mount it read-only. Helm: a Secret named in `cloudInit.sshKeySecret`.
 3. On every node, as root: `sh tools/pvmss-node-setup.sh --storage <storage> --key '<PVMSS public key>'`. It installs the `pvmss-snippet` helper, a dedicated `pvmss` user that can only write the storage's `snippets/` directory, and the key with a forced command (no shell). It prints the node's host key.
-4. **Admin › Clusters › Edit**: snippet storage, SSH user (`pvmss`), port, then **Scan host keys**, compare the fingerprints, save. Host keys are always verified. The badge turns "cloud-init: on" and PVMSS republishes everything in the background.
+4. **Admin › Clusters › Edit**: snippet storage, SSH user (`pvmss`), port and pinned host keys (paste `ssh-keyscan -t ed25519 <node ip>` lines, or save without the SSH user first, reopen and **Scan host keys**), compare the fingerprints, save. Host keys are always verified. The badge turns "cloud-init: on" and PVMSS republishes everything in the background.
 5. Verify: create a cloud-init template (the "Published" column must read n/n nodes), create a VM with it, then on the node run `qm config <vmid> | grep cicustom`.
 6. After adding or reinstalling a node, click **Publish to all nodes** on the templates page.
 

@@ -32,29 +32,110 @@ VM au premier démarrage sans connexion : paquets, fichiers, commandes, etc.
 ## Prérequis : publication SSH
 
 L'API REST de Proxmox ne sait pas écrire de fichiers `snippets` ; PVMSS les
-publie donc par SSH, via un petit utilitaire installé sur chaque nœud.
+publie donc par SSH, via un petit utilitaire (`pvmss-snippet`) installé sur
+chaque nœud pour un utilisateur dédié `pvmss`. PVMSS a besoin :
 
-1. **Stockage** : dans Proxmox, ajoutez **Snippets** aux types de contenu
-   d'un stockage disponible sur chaque nœud (Datacenter > Storage > Edit).
-   `local` convient : le fichier est écrit sur chaque nœud.
-2. **Clé PVMSS** : générez une paire de clés (`ssh-keygen -t ed25519 -N ''
-   -f pvmss_ed25519`) et fournissez la clé privée à PVMSS avec
-   `PVMSS_SSH_KEY_FILE` (fichier en lecture seule ; avec Helm, un Secret
-   nommé dans `cloudInit.sshKeySecret`). La clé publique est affichée dans
-   **Admin > Clusters > Modifier**.
-3. **Chaque nœud**, en root : `sh pvmss-node-setup.sh --storage <stockage>
-   --key '<clé publique PVMSS>'` (la commande exacte est affichée dans le
-   formulaire du cluster). Le script installe `/usr/local/bin/pvmss-snippet`,
-   crée l'utilisateur dédié `pvmss` avec un accès en écriture au seul
-   répertoire `snippets/` du stockage, installe la clé avec une commande
-   forcée (pas de shell, pas de redirection) et affiche la clé d'hôte du
-   nœud.
-4. **Admin > Clusters > Modifier** : renseignez le stockage de snippets,
-   l'utilisateur SSH (`pvmss`) et le port, cliquez sur **Scanner les clés
-   d'hôte**, comparez les empreintes avec celles affichées par le script,
-   puis enregistrez. Les clés d'hôte sont toujours vérifiées. PVMSS republie
-   la base et les templates en arrière-plan ; le badge du cluster passe à
-   « cloud-init : activé ».
+- de la clé privée globale, `PVMSS_SSH_KEY_FILE` (paramètre du serveur) ;
+- par cluster, dans **Admin > Clusters > Modifier** : du stockage de
+  snippets, de l'utilisateur SSH, du port SSH et des clés d'hôte épinglées ;
+- d'un accès réseau de PVMSS vers **l'IP de chaque nœud telle que listée
+  dans `/cluster/status`**, sur le port SSH (elle peut différer de l'URL de
+  l'API).
+
+Les commandes ci-dessous sont prêtes à l'emploi : renseignez d'abord les
+variables. La référence complète (Compose, Helm, Kubernetes, rotation de
+clé, désinstallation) est `docs/cloud-init-ssh.md` dans le dépôt PVMSS.
+
+**1. Clé de PVMSS** (poste de travail) :
+
+```sh
+ssh-keygen -t ed25519 -N '' -C pvmss -f pvmss_ed25519
+```
+
+Fournissez la clé privée à PVMSS : montée en lecture seule, lisible par
+l'uid 65532 (utilisateur du conteneur), avec
+`PVMSS_SSH_KEY_FILE=/etc/pvmss/ssh/id_ed25519`.
+
+- Compose : `- ./pvmss_ed25519:/etc/pvmss/ssh/id_ed25519:ro`, puis
+  `sudo chown 65532:65532 pvmss_ed25519 && sudo chmod 0400 pvmss_ed25519`.
+- Helm : `kubectl -n pvmss create secret generic pvmss-ssh
+  --from-file=id_ed25519=./pvmss_ed25519` et
+  `--set cloudInit.sshKeySecret=pvmss-ssh`.
+
+Après redémarrage, la clé publique apparaît dans **Admin > Clusters >
+Modifier**.
+
+**2. Type de contenu Snippets** (un seul nœud, en root, une fois - la
+configuration des stockages est commune au cluster ; ou Datacenter >
+Storage > Edit > Content) :
+
+```sh
+STORAGE=local
+CUR=$(pvesh get /storage/$STORAGE --output-format json | perl -MJSON -0ne 'print decode_json($_)->{content}')
+case ",$CUR," in *,snippets,*) echo deja ;; *) pvesm set "$STORAGE" --content "$CUR,snippets" ;; esac
+```
+
+IP des nœuds auxquelles PVMSS se connectera :
+
+```sh
+pvesh get /cluster/status --output-format json \
+  | perl -MJSON -0ne 'print "$_->{name} $_->{ip}\n" for grep { $_->{type} eq "node" } @{decode_json($_)}'
+```
+
+**3. Chaque nœud** (`tools/pvmss-node-setup.sh` du dépôt PVMSS ;
+idempotent). La commande exacte avec la clé de PVMSS est affichée, avec un
+bouton de copie, dans **Admin > Clusters > Modifier**. Depuis un poste ayant
+l'accès SSH root aux nœuds :
+
+```sh
+NODES="192.168.1.11 192.168.1.12 192.168.1.13"
+STORAGE=local
+PUBKEY=$(cat pvmss_ed25519.pub)
+for n in $NODES; do
+  scp tools/pvmss-node-setup.sh root@"$n":/root/
+  ssh root@"$n" "sh /root/pvmss-node-setup.sh --storage $STORAGE --user pvmss --key '$PUBKEY'"
+done
+```
+
+Le script installe `/usr/local/bin/pvmss-snippet`, écrit
+`/etc/pvmss-snippet.conf`, crée l'utilisateur `pvmss` avec un accès en
+écriture au seul répertoire `snippets/` du stockage, installe la clé avec une
+commande forcée (pas de shell, pas de redirection) et affiche la clé d'hôte
+du nœud.
+
+**4. Vérifier un nœud** (poste de travail) :
+
+```sh
+NODE=192.168.1.11
+SSH="ssh -i pvmss_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new pvmss@$NODE"
+$SSH check                                               # pvmss-snippet ok <répertoire snippets>
+printf '#cloud-config\n' | $SSH write pvmss-selftest.yml
+ssh root@$NODE "pvesm list $STORAGE --content snippets | grep pvmss-selftest"
+$SSH remove pvmss-selftest.yml
+$SSH id                                                  # doit être refusé (usage: ...)
+```
+
+**5. Admin > Clusters > Modifier.** L'utilisateur SSH exige des clés d'hôte
+épinglées, et **Scanner les clés d'hôte** exige un cluster enregistré. Au
+choix :
+
+- coller les clés d'hôte et enregistrer une seule fois :
+
+  ```sh
+  for n in $NODES; do ssh-keyscan -t ed25519 "$n" 2>/dev/null; done
+  ```
+
+  puis renseigner le stockage de snippets, l'utilisateur SSH `pvmss`, le
+  port, coller les lignes dans **Clés d'hôte épinglées**, **Enregistrer** ;
+- ou renseigner le stockage de snippets et le port, **Enregistrer** ;
+  rouvrir, **Scanner les clés d'hôte**, comparer avec les lignes affichées
+  par le script, renseigner l'utilisateur SSH `pvmss`, **Enregistrer**.
+
+Les clés d'hôte sont toujours vérifiées. Le badge passe à « cloud-init :
+activé » et PVMSS republie la base et les templates en arrière-plan. S'il
+reste désactivé, le badge indique l'élément manquant : pas de clé SSH
+(`PVMSS_SSH_KEY_FILE`), pas d'utilisateur SSH, pas de clé d'hôte épinglée ou
+pas de stockage de snippets.
 
 PVMSS n'envoie jamais que `pvmss-snippet write <nom>` (contenu sur l'entrée
 standard) et `pvmss-snippet remove <nom>` ; l'utilitaire vérifie le nom

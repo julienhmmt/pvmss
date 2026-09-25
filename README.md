@@ -168,24 +168,43 @@ users pick one when they create a VM (or switch later on the VM's cloud-init
 tab). Users never write YAML. The Proxmox REST API cannot write `snippets`
 files, so PVMSS **publishes** each template over SSH to every node:
 
-1. In Proxmox, add **Snippets** to the content types of a storage available
-   on every node (`local` works: the file is written on each node).
-2. On **every node**, as root, run `tools/pvmss-node-setup.sh --storage
-   <storage> --key '<PVMSS public key>'`. It installs the `pvmss-snippet`
-   helper, creates a dedicated `pvmss` user limited to that helper (forced
-   command, no shell, no forwarding) and prints the node's host key.
-3. Give PVMSS its private key with `PVMSS_SSH_KEY_FILE` (a read-only file,
-   a Kubernetes Secret in Helm: `cloudInit.sshKeySecret`).
-4. In **Admin › Clusters › Edit**, set the snippet storage, the SSH user
-   (`pvmss`), then **Scan host keys**, compare the fingerprints with the
-   ones the setup script printed, and save. PVMSS publishes the baseline and
-   the templates; the cluster badge turns "cloud-init: on".
+Quick setup (details, all deployment variants and troubleshooting:
+[docs/cloud-init-ssh.md](docs/cloud-init-ssh.md)):
 
+```sh
+# 1. PVMSS's key (workstation, repository root)
+ssh-keygen -t ed25519 -N '' -C pvmss -f pvmss_ed25519
+
+# 2. Snippets content type on the storage (one node, once; or GUI: Datacenter > Storage)
+STORAGE=local
+CUR=$(pvesh get /storage/$STORAGE --output-format json | perl -MJSON -0ne 'print decode_json($_)->{content}')
+case ",$CUR," in *,snippets,*) ;; *) pvesm set "$STORAGE" --content "$CUR,snippets" ;; esac
+
+# 3. Every node: helper + dedicated "pvmss" user (forced command, no shell)
+NODES="192.168.1.11 192.168.1.12 192.168.1.13"; PUBKEY=$(cat pvmss_ed25519.pub)
+for n in $NODES; do
+  scp tools/pvmss-node-setup.sh root@"$n":/root/
+  ssh root@"$n" "sh /root/pvmss-node-setup.sh --storage $STORAGE --user pvmss --key '$PUBKEY'"
+done
+
+# 4. Check one node
+ssh -i pvmss_ed25519 -o IdentitiesOnly=yes pvmss@192.168.1.11 check
+```
+
+5. Give PVMSS the private key: mount it read-only (readable by uid 65532) and
+   set `PVMSS_SSH_KEY_FILE` (Helm: `cloudInit.sshKeySecret`).
+6. **Admin › Clusters › Edit**: snippet storage, SSH user `pvmss`, port, and
+   the pinned host keys (paste `for n in $NODES; do ssh-keyscan -t ed25519 $n;
+   done`, or save without the SSH user first, reopen and **Scan host keys**),
+   save. The badge turns "cloud-init: on" and PVMSS publishes the baseline and
+   every template.
+
+PVMSS must reach every node's IP from `/cluster/status` on the SSH port.
 Each published file is immutable (`pvmss-tpl-<id>-<hash>.yml`, the PVMSS
 baseline merged in): editing a template publishes a new file and existing VMs
 keep theirs. A template not present on a VM's node is refused before the VM
 is created, never attached. Use **Publish to all nodes** after adding or
-reinstalling a node. Full walkthrough: in-app page `/docs/admin-guide`.
+reinstalling a node.
 
 ### Environment variables
 

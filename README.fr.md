@@ -140,28 +140,43 @@ le changent ensuite dans l'onglet cloud-init de la VM). Les utilisateurs
 n'écrivent jamais de YAML. L'API REST de Proxmox ne sait pas écrire de
 fichiers `snippets` : PVMSS **publie** chaque modèle en SSH sur chaque nœud.
 
-1. Dans Proxmox, ajoutez **Snippets** aux types de contenu d'un stockage
-   disponible sur chaque nœud (`local` convient : le fichier est écrit sur
-   chaque nœud).
-2. Sur **chaque nœud**, en root, lancez `tools/pvmss-node-setup.sh --storage
-   <stockage> --key '<clé publique PVMSS>'`. Le script installe l'assistant
-   `pvmss-snippet`, crée un utilisateur dédié `pvmss` limité à cet assistant
-   (commande forcée, pas de shell, pas de redirection) et affiche la clé
-   d'hôte du nœud.
-3. Fournissez à PVMSS sa clé privée via `PVMSS_SSH_KEY_FILE` (fichier en
-   lecture seule ; Secret Kubernetes avec Helm : `cloudInit.sshKeySecret`).
-4. Dans **Admin › Clusters › Modifier**, renseignez le stockage de snippets,
-   l'utilisateur SSH (`pvmss`), puis **Scanner les clés d'hôte**, comparez
-   les empreintes avec celles affichées par le script, et enregistrez. PVMSS
-   publie le socle et les modèles ; le badge du cluster passe à
-   « cloud-init : activé ».
+Mise en place rapide (détails, toutes les variantes de déploiement et
+dépannage : [docs/cloud-init-ssh.md](docs/cloud-init-ssh.md)) :
 
-Chaque fichier publié est immuable (`pvmss-tpl-<id>-<hash>.yml`, socle PVMSS
-fusionné) : modifier un modèle publie un nouveau fichier et les VM existantes
-gardent le leur. Un modèle absent du nœud d'une VM est refusé avant la
-création, jamais attaché. Utilisez **Publier sur tous les nœuds** après
-l'ajout ou la réinstallation d'un nœud. Procédure complète : page intégrée
-`/docs/admin-guide`.
+```sh
+# 1. Clé de PVMSS (poste de travail, racine du dépôt)
+ssh-keygen -t ed25519 -N '' -C pvmss -f pvmss_ed25519
+
+# 2. Type de contenu Snippets sur le stockage (un seul nœud, une fois ; ou GUI : Datacenter > Storage)
+STORAGE=local
+CUR=$(pvesh get /storage/$STORAGE --output-format json | perl -MJSON -0ne 'print decode_json($_)->{content}')
+case ",$CUR," in *,snippets,*) ;; *) pvesm set "$STORAGE" --content "$CUR,snippets" ;; esac
+
+# 3. Chaque nœud : assistant + utilisateur dédié « pvmss » (commande forcée, pas de shell)
+NODES="192.168.1.11 192.168.1.12 192.168.1.13"; PUBKEY=$(cat pvmss_ed25519.pub)
+for n in $NODES; do
+  scp tools/pvmss-node-setup.sh root@"$n":/root/
+  ssh root@"$n" "sh /root/pvmss-node-setup.sh --storage $STORAGE --user pvmss --key '$PUBKEY'"
+done
+
+# 4. Vérifier un nœud
+ssh -i pvmss_ed25519 -o IdentitiesOnly=yes pvmss@192.168.1.11 check
+```
+
+5. Fournissez la clé privée à PVMSS : montée en lecture seule (lisible par
+   l'uid 65532) et `PVMSS_SSH_KEY_FILE` (Helm : `cloudInit.sshKeySecret`).
+6. **Admin › Clusters › Modifier** : stockage de snippets, utilisateur SSH
+   `pvmss`, port et clés d'hôte épinglées (coller `for n in $NODES; do
+   ssh-keyscan -t ed25519 $n; done`, ou enregistrer d'abord sans utilisateur
+   SSH, rouvrir et **Scanner les clés d'hôte**), enregistrer. Le badge passe à
+   « cloud-init : activé » et PVMSS publie le socle et tous les modèles.
+
+PVMSS doit joindre l'IP de chaque nœud listée dans `/cluster/status` sur le
+port SSH. Chaque fichier publié est immuable (`pvmss-tpl-<id>-<hash>.yml`,
+socle PVMSS fusionné) : modifier un modèle publie un nouveau fichier et les VM
+existantes gardent le leur. Un modèle absent du nœud d'une VM est refusé avant
+la création, jamais attaché. Utilisez **Publier sur tous les nœuds** après
+l'ajout ou la réinstallation d'un nœud.
 
 ### Variables d'environnement
 
