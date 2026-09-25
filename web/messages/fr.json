@@ -1520,7 +1520,7 @@
   "admin.cloudinit.publishError": "Échec de la publication.",
   "admin.cloudinit.publishNotConfigured": "Enregistré, mais non publié : {error}",
   "admin.baseline.publication": "Publication sur les nœuds",
-  "admin.baseline.publishHint": "Configurez la publication SSH dans Admin > Clusters, puis utilisez « Publier sur tous les nœuds » dans Admin > Modèles cloud-init.",
+  "admin.baseline.publishHint": "Configurez la publication SSH dans Infrastructure > Clusters, puis utilisez « Publier sur tous les nœuds » dans Admin > Modèles cloud-init.",
   "admin.clusters.sshUser": "Utilisateur SSH",
   "admin.clusters.sshUserHint": "L'utilisateur dédié créé par le script de préparation des nœuds. Jamais root.",
   "admin.clusters.sshPort": "Port SSH",

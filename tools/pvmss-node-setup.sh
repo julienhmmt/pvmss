@@ -116,8 +116,8 @@ printf 'restrict,command="/usr/local/bin/pvmss-snippet" %s\n' "$KEY" > "$HOME_DI
 chown "$USER_NAME:$USER_NAME" "$HOME_DIR/.ssh/authorized_keys"
 chmod 0600 "$HOME_DIR/.ssh/authorized_keys"
 
-# 5. host key for Admin > Clusters
+# 5. host key for Infrastructure > Clusters
 IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 echo "pvmss-snippet installed: $SNIPPET_DIR (storage $STORAGE), user $USER_NAME"
-echo "Pinned host key line for this node (paste in Admin > Clusters, or use Scan host keys and compare):"
+echo "Pinned host key line for this node (paste in Infrastructure > Clusters, or use Scan host keys and compare):"
 printf '%s %s\n' "${IP:-$(hostname)}" "$(cut -d' ' -f1,2 /etc/ssh/ssh_host_ed25519_key.pub)"

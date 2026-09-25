@@ -1520,7 +1520,7 @@
   "admin.cloudinit.publishError": "Publishing failed.",
   "admin.cloudinit.publishNotConfigured": "Saved, but not published: {error}",
   "admin.baseline.publication": "Publication on the nodes",
-  "admin.baseline.publishHint": "Configure SSH publishing in Admin > Clusters, then use \"Publish to all nodes\" in Admin > Cloud-init templates.",
+  "admin.baseline.publishHint": "Configure SSH publishing in Infrastructure > Clusters, then use \"Publish to all nodes\" in Admin > Cloud-init templates.",
   "admin.clusters.sshUser": "SSH user",
   "admin.clusters.sshUserHint": "The dedicated user created by the node setup script. Never root.",
   "admin.clusters.sshPort": "SSH port",
