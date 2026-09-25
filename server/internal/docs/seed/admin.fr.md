@@ -34,9 +34,12 @@ d'une VM n'écrit jamais de fichier : la VM pointe vers le fichier publié.
    `pvmss-snippet`, un utilisateur dédié `pvmss` limité au répertoire
    `snippets/` du stockage, et la clé avec une commande forcée (pas de shell).
 4. Dans **Admin > Clusters > Modifier**, renseignez le stockage de snippets,
-   l'utilisateur SSH et le port, cliquez sur **Scanner les clés d'hôte**,
-   vérifiez les empreintes et enregistrez. Les clés d'hôte sont toujours
-   vérifiées. La ligne du cluster affiche `cloud-init : on`.
+   l'utilisateur SSH, le port et les clés d'hôte épinglées : collez les
+   lignes de `ssh-keyscan -t ed25519 <ip du nœud>`, ou enregistrez d'abord
+   sans utilisateur SSH, rouvrez et cliquez sur **Scanner les clés d'hôte**.
+   Vérifiez les empreintes et enregistrez. Les clés d'hôte sont toujours
+   vérifiées. La ligne du cluster affiche `cloud-init : activé`, ou
+   l'élément manquant.
 
 Laissez l'utilisateur SSH vide pour désactiver les documents cloud-init sur
 le cluster. Voir le [guide de configuration cloud-init](/docs/cloud-init-setup)

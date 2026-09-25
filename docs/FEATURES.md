@@ -51,7 +51,7 @@ Wizard at `/vms/create` - **Simple** and **Detailed** modes, five steps
 | Disk: storage + size; minimum raised to the template/image size | ✅ |
 | Network: one or more NICs, bridge + model (VirtIO, E1000, E1000E, RTL8139, VMXNet3); Proxmox firewall always on; optional admin-wide isolation VLAN tag | ✅ |
 | Firmware: UEFI (default on, empty EFI key store - no Secure Boot), TPM 2.0 | ✅ |
-| Cloud-init document picker: admin templates **or** my own files, one grouped select (hidden when the cluster has no snippet write target) | ✅ |
+| Cloud-init template picker: published admin templates only (hidden when SSH publishing is off on the cluster) | ✅ |
 | Boot from CD-ROM first when an ISO is selected | ✅ |
 | Tags from the admin-curated list (`pvmss` tag always added) | ✅ |
 | Start after create (image source: starts only after cloud-init is applied) | ✅ |
@@ -85,7 +85,7 @@ Wizard at `/vms/create` - **Simple** and **Detailed** modes, five steps
 | Feature | Route | API | Status |
 | --- | --- | --- | --- |
 | Admin cloud-init templates, per cluster, enable/disable; users only pick among them | `/admin/cloudinit-templates` | `/api/v1/admin/cloudinit-templates` | ✅ |
-| Publication over SSH to every node through the `pvmss-snippet` helper (`tools/pvmss-node-setup.sh`), verified per node through the API; per-node status; "Publish to all nodes" resync | `/admin/cloudinit-templates` | `POST /api/v1/admin/cloudinit-templates/publish` | ✅ |
+| Publication over SSH to every node through the `pvmss-snippet` helper (`tools/pvmss-node-setup.sh`, guide: [cloud-init-ssh.md](cloud-init-ssh.md)), verified per node through the API; per-node status; "Publish to all nodes" resync | `/admin/cloudinit-templates` | `POST /api/v1/admin/cloudinit-templates/publish` | ✅ |
 | Immutable content-addressed files (`pvmss-tpl-<id>-<hash>.yml`, PVMSS baseline merged in): an edit publishes a new file, VMs keep theirs | - | - | ✅ |
 | VM creation never writes: the template must be on the VM's node (live `HasSnippet`), else 409 `cloudinit_not_published` before any VMID | at creation | `POST /api/v1/vms` | ✅ |
 | Standalone baseline `pvmss-baseline-<hash>.yml` for image VMs without a template; missing on the node → VM boots on the native keys, baseline "not delivered" | - | - | ✅ |

@@ -29,26 +29,102 @@ logging in: packages, files, commands, and more.
 ## Prerequisites: SSH publishing
 
 Proxmox's REST API cannot write `snippets` files, so PVMSS publishes them
-over SSH, through a small helper installed on every node.
+over SSH, through a small helper (`pvmss-snippet`) installed on every node
+for a dedicated `pvmss` user. PVMSS needs:
 
-1. **Storage**: in Proxmox, add **Snippets** to the content types of a
-   storage available on every node (Datacenter > Storage > Edit). `local`
-   works: the file is written on each node.
-2. **PVMSS key**: generate a key pair (`ssh-keygen -t ed25519 -N '' -f
-   pvmss_ed25519`) and give PVMSS the private key with `PVMSS_SSH_KEY_FILE`
-   (read-only file; with Helm, a Secret named in `cloudInit.sshKeySecret`).
-   The public key is shown in **Admin > Clusters > Edit**.
-3. **Every node**, as root: `sh pvmss-node-setup.sh --storage <storage>
-   --key '<PVMSS public key>'` (the exact command is shown in the cluster
-   form). The script installs `/usr/local/bin/pvmss-snippet`, creates the
-   dedicated user `pvmss` with write access to the storage's `snippets/`
-   directory only, installs the key with a forced command (no shell, no
-   forwarding), and prints the node's host key.
-4. **Admin > Clusters > Edit**: set the snippet storage, the SSH user
-   (`pvmss`) and the port, click **Scan host keys**, compare the
-   fingerprints with the ones the script printed, and save. Host keys are
-   always verified. PVMSS republishes the baseline and the templates in the
-   background; the cluster badge turns "cloud-init: on".
+- the global private key, `PVMSS_SSH_KEY_FILE` (server setting);
+- per cluster, in **Admin > Clusters > Edit**: the snippet storage, the SSH
+  user, the SSH port and the pinned host keys;
+- network access from PVMSS to **every node's IP as listed in
+  `/cluster/status`** on the SSH port (it can differ from the API URL).
+
+The commands below are ready to use: set the variables first. The full
+reference (Compose, Helm, Kubernetes, key rotation, uninstall) is
+`docs/cloud-init-ssh.md` in the PVMSS repository.
+
+**1. PVMSS's key** (workstation):
+
+```sh
+ssh-keygen -t ed25519 -N '' -C pvmss -f pvmss_ed25519
+```
+
+Give PVMSS the private key: mount it read-only, readable by uid 65532 (the
+container user), and set `PVMSS_SSH_KEY_FILE=/etc/pvmss/ssh/id_ed25519`.
+
+- Compose: `- ./pvmss_ed25519:/etc/pvmss/ssh/id_ed25519:ro`, then
+  `sudo chown 65532:65532 pvmss_ed25519 && sudo chmod 0400 pvmss_ed25519`.
+- Helm: `kubectl -n pvmss create secret generic pvmss-ssh
+  --from-file=id_ed25519=./pvmss_ed25519` and
+  `--set cloudInit.sshKeySecret=pvmss-ssh`.
+
+After a restart, the public key appears in **Admin > Clusters > Edit**.
+
+**2. Snippets content type** (any one node, as root, once - storage
+configuration is cluster-wide; or Datacenter > Storage > Edit > Content):
+
+```sh
+STORAGE=local
+CUR=$(pvesh get /storage/$STORAGE --output-format json | perl -MJSON -0ne 'print decode_json($_)->{content}')
+case ",$CUR," in *,snippets,*) echo already ;; *) pvesm set "$STORAGE" --content "$CUR,snippets" ;; esac
+```
+
+Node IPs PVMSS will connect to:
+
+```sh
+pvesh get /cluster/status --output-format json \
+  | perl -MJSON -0ne 'print "$_->{name} $_->{ip}\n" for grep { $_->{type} eq "node" } @{decode_json($_)}'
+```
+
+**3. Every node** (`tools/pvmss-node-setup.sh` from the PVMSS repository;
+idempotent). The exact command with PVMSS's key is shown, with a copy button,
+in **Admin > Clusters > Edit**. From a workstation with root SSH to the nodes:
+
+```sh
+NODES="192.168.1.11 192.168.1.12 192.168.1.13"
+STORAGE=local
+PUBKEY=$(cat pvmss_ed25519.pub)
+for n in $NODES; do
+  scp tools/pvmss-node-setup.sh root@"$n":/root/
+  ssh root@"$n" "sh /root/pvmss-node-setup.sh --storage $STORAGE --user pvmss --key '$PUBKEY'"
+done
+```
+
+The script installs `/usr/local/bin/pvmss-snippet`, writes
+`/etc/pvmss-snippet.conf`, creates the `pvmss` user with write access to the
+storage's `snippets/` directory only, installs the key with a forced command
+(no shell, no forwarding), and prints the node's host key.
+
+**4. Check a node** (workstation):
+
+```sh
+NODE=192.168.1.11
+SSH="ssh -i pvmss_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new pvmss@$NODE"
+$SSH check                                               # pvmss-snippet ok <snippets dir>
+printf '#cloud-config\n' | $SSH write pvmss-selftest.yml
+ssh root@$NODE "pvesm list $STORAGE --content snippets | grep pvmss-selftest"
+$SSH remove pvmss-selftest.yml
+$SSH id                                                  # must be refused (usage: ...)
+```
+
+**5. Admin > Clusters > Edit.** The SSH user needs pinned host keys, and
+**Scan host keys** needs a saved cluster. Either:
+
+- paste the host keys and save once:
+
+  ```sh
+  for n in $NODES; do ssh-keyscan -t ed25519 "$n" 2>/dev/null; done
+  ```
+
+  then set the snippet storage, SSH user `pvmss`, port, paste the lines in
+  **Pinned host keys**, **Save**; or
+- set the snippet storage and port, **Save**; reopen, **Scan host keys**,
+  compare with the lines printed by the setup script, set SSH user `pvmss`,
+  **Save**.
+
+Host keys are always verified. The badge turns "cloud-init: on" and PVMSS
+republishes the baseline and the templates in the background. When it stays
+off, the badge names the missing piece: no SSH key (`PVMSS_SSH_KEY_FILE`), no
+SSH user, no pinned host keys, or no snippet storage.
 
 PVMSS only ever sends `pvmss-snippet write <name>` (content on stdin) and
 `pvmss-snippet remove <name>`; the helper checks the name

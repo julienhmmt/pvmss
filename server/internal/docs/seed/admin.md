@@ -31,8 +31,10 @@ Creating a VM never writes a file: the VM points at the published file.
    dedicated `pvmss` user limited to the storage's `snippets/` directory, and
    the key with a forced command (no shell).
 4. In **Admin > Clusters > Edit**, set the snippet storage, the SSH user and
-   port, click **Scan host keys**, check the fingerprints, and save. Host
-   keys are always verified. The cluster row shows `cloud-init: on`.
+   port, and the pinned host keys: paste `ssh-keyscan -t ed25519 <node ip>`
+   lines, or save without the SSH user first, reopen and click **Scan host
+   keys**. Check the fingerprints and save. Host keys are always verified.
+   The cluster row shows `cloud-init: on`, or the missing piece.
 
 Leave the SSH user empty to disable cloud-init documents on the cluster. See
 the [cloud-init setup guide](/docs/cloud-init-setup) for details and

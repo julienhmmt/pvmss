@@ -190,7 +190,8 @@ creation and the VM cloud-init tab never write a file: they check
 `HasSnippet` on the VM's node and set `cicustom` (`vm/create_cloudinit.go`,
 `vm_cloudinit_documents`). Per-cluster SSH settings (`clusters.ssh_user`,
 `ssh_port`, `ssh_known_hosts` - host keys always verified) + the global key
-`PVMSS_SSH_KEY_FILE`. The Proxmox API cannot write snippets. Users cannot
+`PVMSS_SSH_KEY_FILE`. The Proxmox API cannot write snippets. Operator guide
+(setup commands, Compose/Helm, troubleshooting): `docs/cloud-init-ssh.md`. Users cannot
 write cloud-init YAML (user files and the per-VM editor were removed);
 legacy per-VM files (`vm_cloudinit_snippets`) are only cleaned up.
 
