@@ -82,7 +82,7 @@ type rfbServerInit struct {
 // rfbFakeServe speaks the minimal RFB 3.8 handshake and serves one static
 // checkerboard framebuffer against peer. It blocks until peer closes or a
 // malformed initial handshake byte is seen (in which case it closes rather
-// than guessing). This is the fake ConsoleRelay.RelayConsole implementation - 
+// than guessing). This is the fake ConsoleRelay.RelayConsole implementation -
 // there is no second, separately-dialed connection in the fake path; the "relay" IS the fake
 // server.
 func rfbFakeServe(ctx context.Context, peer io.ReadWriteCloser) error {

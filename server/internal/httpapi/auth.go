@@ -314,7 +314,7 @@ func (h *Auth) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateToken creates an API token for the browser session identity. Only a
-// browser session may mint a token - a token cannot be used to mint another
+// browser session may mint a token - a token cannot be used to mint another.
 func (h *Auth) CreateToken(w http.ResponseWriter, r *http.Request) {
 	identity, err := h.sessions.Resolve(r.Context(), r)
 	if err != nil {
@@ -541,7 +541,7 @@ func decodeJSONLimit(w http.ResponseWriter, r *http.Request, dest any, maxBytes 
 	return nil
 }
 
-// authenticatePVE tries the typed username, then - on a not-found rejection - 
+// authenticatePVE tries the typed username, then - on a not-found rejection -
 // retries once under the "pvmss-" pool prefix. Self-service pool users are
 // provisioned as "pvmss-{pool}@{realm}" (pools.CreateManaged) but only ever
 // told their pool name, so a bare "jho" must resolve to "pvmss-jho@pve"

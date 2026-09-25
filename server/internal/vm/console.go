@@ -23,7 +23,7 @@ import (
 // TicketTTL is the hardcoded validity window for a console ticket. Long enough to cover the
 // WebSocket upgrade round-trip, short
 // enough that a stale, unconsumed ticket is not a standing capability.
-// Exported so the HTTP handler can include expiresInSeconds in the response
+// Exported so the HTTP handler can include expiresInSeconds in the response.
 const TicketTTL = 30 * time.Second
 
 // ticketStoreCapacity caps the number of outstanding tickets. When the cap is
@@ -39,7 +39,7 @@ var ErrInvalidTicket = errors.New("invalid console ticket")
 
 // ErrClusterConsoleUnavailable is returned by GetConsoleTicket when the
 // cluster client's proxy ticket call fails - Proxmox is unreachable, the VM
-// is not running, etc. The HTTP handler maps this to 502 console_unavailable
+// is not running, etc. The HTTP handler maps this to 502 console_unavailable.
 var ErrClusterConsoleUnavailable = errors.New("console unavailable")
 
 // AuditActionConsoleOpen is the audit record action for opening a console

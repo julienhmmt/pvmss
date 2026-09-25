@@ -234,41 +234,33 @@ func loadProxySettings(cfg *Configuration) error {
 // default) keeps each limiter's built-in ceiling; a positive value raises them
 // all, which is what the e2e suite needs to drive many logins in one run.
 func loadRateLimitSettings(cfg *Configuration) error {
-	max, err := loadInt("PVMSS_RATE_LIMIT_MAX", 0)
+	limit, err := loadInt("PVMSS_RATE_LIMIT_MAX", 0)
 	if err != nil {
 		return err
 	}
 
-	if max < 0 {
-		return fmt.Errorf("PVMSS_RATE_LIMIT_MAX must be >= 0, got %d", max)
+	if limit < 0 {
+		return fmt.Errorf("PVMSS_RATE_LIMIT_MAX must be >= 0, got %d", limit)
 	}
 
-	cfg.RateLimitMax = max
+	cfg.RateLimitMax = limit
 
 	return nil
 }
 
-// loadSSHSettings reads the optional SSH snippet-delivery config. When
-// PVMSS_SSH_USER is set, snippet files are written over SSH to the host
-// derived from each cluster's API URL instead of a shared filesystem. The
-// key file is required when the user is set; the port defaults to 22.
+// loadSSHSettings reads the optional private key PVMSS uses to publish
+// admin cloud-init documents to the Proxmox nodes over SSH. The user, port
+// and pinned host keys are per cluster (Infrastructure > Clusters); without a key,
+// cloud-init documents are off on every cluster. PVMSS_SSH_USER and
+// PVMSS_SSH_PORT are no longer read - when set, they are recorded so startup
+// can warn the operator (see Configuration.DeprecatedSSHEnv).
 func loadSSHSettings(cfg *Configuration) error {
-	cfg.SSHUser = strings.TrimSpace(os.Getenv("PVMSS_SSH_USER"))
 	cfg.SSHKeyFile = strings.TrimSpace(os.Getenv("PVMSS_SSH_KEY_FILE"))
 
-	port, err := loadInt("PVMSS_SSH_PORT", 22)
-	if err != nil {
-		return err
-	}
-
-	cfg.SSHPort = port
-
-	if cfg.SSHUser == "" {
-		return nil
-	}
-
-	if cfg.SSHKeyFile == "" {
-		return errors.New("PVMSS_SSH_KEY_FILE is required when PVMSS_SSH_USER is set")
+	for _, key := range []string{"PVMSS_SSH_USER", "PVMSS_SSH_PORT"} {
+		if strings.TrimSpace(os.Getenv(key)) != "" {
+			cfg.DeprecatedSSHEnv = append(cfg.DeprecatedSSHEnv, key)
+		}
 	}
 
 	return nil

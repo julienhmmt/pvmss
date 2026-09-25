@@ -28,7 +28,7 @@ type Index struct {
 	RefreshedAt    time.Time
 }
 
-// BuildIndex constructs an Index from a Snapshot. It is a pure function - 
+// BuildIndex constructs an Index from a Snapshot. It is a pure function -
 // it never mutates the input Snapshot, and the returned Index owns its own
 // copies of all slice and map data.
 func BuildIndex(snap cluster.Snapshot) Index {

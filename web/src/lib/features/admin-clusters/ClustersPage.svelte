@@ -1,11 +1,11 @@
 <script lang="ts">
 	import ClusterFormDialog from './ClusterFormDialog.svelte';
+	import { publishingOffHint } from './publishing-status';
 	import type { AdminCluster, AdminClustersStore, ClusterInput, SnippetStorage } from './clusters.svelte';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
-	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
@@ -13,7 +13,6 @@
 	}
 
 	let { store }: Props = $props();
-	const toast = getToastContext();
 	let formOpen = $state(false);
 	let editing = $state<AdminCluster | null>(null);
 	let snippetStorages = $state<SnippetStorage[]>([]);
@@ -85,20 +84,16 @@
 						tlsInsecureSkipVerify: input.tlsInsecureSkipVerify,
 						tokenId: input.tokenId,
 						tokenSecret: input.tokenSecret,
-						snippetDir: input.snippetDir,
-						snippetStorage: input.snippetStorage
+						snippetStorage: input.snippetStorage,
+						sshUser: input.sshUser,
+						sshPort: input.sshPort,
+						sshKnownHosts: input.sshKnownHosts
 					});
 		// Failure leaves the dialog open with store.error rendered inline
 		// (ClusterFormDialog's error prop) - closing unconditionally here hid
 		// create/update failures behind an easy-to-miss page-top banner.
 		if (succeeded) {
 			formOpen = false;
-			// Remind the admin that multi-node clusters need shared snippet
-			// storage - a snippet on node-local storage is invisible to the
-			// other nodes after a migration.
-			if (input.snippetStorage) {
-				toast.info(m['admin.clusters.cloudinitSharedStorageToast'](), 8000);
-			}
 		}
 	}
 </script>
@@ -126,7 +121,7 @@
 						<th scope="col" class="font-medium">{m['common.status']()}</th>
 						<th scope="col" class="font-medium">{m['admin.clusters.version']()}</th>
 						<th scope="col" class="font-medium">{m['admin.clusters.nodesVms']()}</th>
-						<th scope="col" class="font-medium">{m['admin.clusters.oidc']()}</th>
+						<!-- ponytail: OIDC sign-in is a server stub (501), hidden until implemented: <th scope="col" class="font-medium">{m['admin.clusters.oidc']()}</th> -->
 						<th scope="col" class="font-medium">{m['admin.clusters.cloudinitSection']()}</th>
 						<th scope="col" class="font-medium">{m['common.actions']()}</th>
 					</tr>
@@ -149,13 +144,20 @@
 							</td>
 							<td class="text-muted-foreground">{cluster.proxmoxVersion ?? ' - '}</td>
 							<td>{cluster.nodeCount} / {cluster.vmCount}</td>
-							<td>{cluster.oidcEnabled ? m['common.enabled']() : m['common.off']()}</td>
-							<td class="text-muted-foreground">{cluster.cloudInitWriteEnabled ? m['admin.clusters.cloudinitOn']() : m['admin.clusters.cloudinitOff']()}</td>
+							<!-- <td>{cluster.oidcEnabled ? m['common.enabled']() : m['common.off']()}</td> -->
+							<td class="text-muted-foreground">
+								{#if cluster.cloudInitWriteEnabled}
+									{m['admin.clusters.cloudinitOn']()}
+								{:else}
+									<div>{m['admin.clusters.cloudinitOff']()}</div>
+									<div class="mt-1 text-xs">{publishingOffHint(cluster.publishingStatus)}</div>
+								{/if}
+							</td>
 							<td>
 								<div class="flex flex-wrap gap-2">
 									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.testLabel']({ name: cluster.name })} onclick={() => void store.test(cluster.name)}>{m['admin.clusters.test']()}</Button>
 									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.editLabel']({ name: cluster.name })} onclick={() => void openForm(cluster)}>{m['common.edit']()}</Button>
-									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={cluster.oidcEnabled ? m['admin.clusters.disableOidcLabel']({ name: cluster.name }) : m['admin.clusters.enableOidcLabel']({ name: cluster.name })} onclick={() => void store.toggleOIDC(cluster.name, !cluster.oidcEnabled)}>{cluster.oidcEnabled ? m['admin.clusters.disableOidc']() : m['admin.clusters.enableOidc']()}</Button>
+									<!-- <Button variant="secondary" size="sm" disabled={store.busy !== null} label={cluster.oidcEnabled ? m['admin.clusters.disableOidcLabel']({ name: cluster.name }) : m['admin.clusters.enableOidcLabel']({ name: cluster.name })} onclick={() => void store.toggleOIDC(cluster.name, !cluster.oidcEnabled)}>{cluster.oidcEnabled ? m['admin.clusters.disableOidc']() : m['admin.clusters.enableOidc']()}</Button> -->
 									<Button variant="destructive" size="sm" disabled={store.busy !== null} label={m['admin.clusters.removeLabel']({ name: cluster.name })} onclick={() => void store.remove(cluster.name)}>{m['admin.clusters.remove']()}</Button>
 								</div>
 							</td>
@@ -174,6 +176,8 @@
 	error={store.error}
 	{snippetStorages}
 	{snippetStoragesLoading}
+	sshPublicKey={editing?.sshPublicKey ?? store.clusters[0]?.sshPublicKey ?? ''}
+	onScan={(cluster) => store.scanHostKeys(cluster)}
 	onClose={() => (formOpen = false)}
 	onSubmit={saveCluster}
 />

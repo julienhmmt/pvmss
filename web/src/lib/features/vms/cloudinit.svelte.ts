@@ -1,46 +1,26 @@
 import { get, post, put, ApiRequestError } from '$lib/shared/api/client';
 import { m } from '$lib/paraglide/messages.js';
-
-export type CloudInitIPMode = 'dhcp' | 'static';
-
-export interface CloudInitConfig {
-	user: string;
-	sshKeys: string[];
-	ipMode: CloudInitIPMode;
-	ipAddress?: string;
-	gateway?: string;
-	dnsServer?: string;
-	searchDomain?: string;
-}
-
-export interface CloudInitConfigUpdate {
-	user?: string;
-	password?: string;
-	sshKeys?: string[];
-	ipMode?: CloudInitIPMode;
-	ipAddress?: string;
-	gateway?: string;
-	dnsServer?: string;
-	searchDomain?: string;
-}
-
-export interface CloudInitSnippet {
-	content: string | null;
-	updatedAt: string | null;
-	updatedBy: string | null;
-}
+import type {
+	CloudInitConfig,
+	CloudInitConfigUpdate,
+	CloudInitDocument,
+	CloudInitSSHKeyResponse,
+	CloudInitTemplateOption
+} from './cloudinit.types';
 
 interface CloudInitUpdateResponse {
 	status: string;
 	rebooted: boolean;
 }
 
-interface CloudInitSnippetResponse {
+interface CloudInitDocumentResponse {
 	status: string;
 }
 
-export interface CloudInitSSHKeyResponse {
-	status: string;
+interface TemplateCatalog {
+	cloudInitTemplates: CloudInitTemplateOption[];
+	cloudInitWriteEnabled: boolean;
+	cloudInitBaselineId: string;
 }
 
 export class CloudInitStore {
@@ -48,15 +28,21 @@ export class CloudInitStore {
 	readonly vmid: number;
 
 	config = $state.raw<CloudInitConfig | null>(null);
-	snippet = $state.raw<CloudInitSnippet | null>(null);
+	document = $state.raw<CloudInitDocument | null>(null);
+	/** Published admin templates of the VM's cluster. */
+	templates = $state.raw<CloudInitTemplateOption[]>([]);
+	/** False when the cluster does not publish cloud-init documents. */
+	publishingEnabled = $state.raw(false);
+	/** Document id of the standalone baseline, from the cluster catalog. */
+	baselineTemplateId = $state.raw('');
 	configLoading = $state.raw(false);
-	snippetLoading = $state.raw(false);
+	documentLoading = $state.raw(false);
 	configInFlight = $state.raw(false);
-	snippetInFlight = $state.raw(false);
+	documentInFlight = $state.raw(false);
 	sshKeyInFlight = $state.raw(false);
 	configError = $state.raw<string | null>(null);
-	snippetError = $state.raw<string | null>(null);
-	snippetErrorCode = $state.raw<string | null>(null);
+	documentError = $state.raw<string | null>(null);
+	documentErrorCode = $state.raw<string | null>(null);
 	sshKeyError = $state.raw<string | null>(null);
 	sshKeyErrorCode = $state.raw<string | null>(null);
 
@@ -99,37 +85,44 @@ export class CloudInitStore {
 		}
 	}
 
-	async loadSnippet(): Promise<void> {
-		this.snippetLoading = true;
-		this.snippetError = null;
-		this.snippetErrorCode = null;
+	/** Loads the VM's document and the cluster's published templates. */
+	async loadDocument(): Promise<void> {
+		this.documentLoading = true;
+		this.documentError = null;
+		this.documentErrorCode = null;
 		try {
-			this.snippet = await get<CloudInitSnippet>(`${this.#basePath}/snippet`);
+			const [document, catalog] = await Promise.all([
+				get<CloudInitDocument>(`${this.#basePath}/document`),
+				get<TemplateCatalog>(`/api/v1/vm-create/catalog?cluster=${encodeURIComponent(this.cluster)}`)
+			]);
+			this.document = document;
+			this.templates = catalog.cloudInitTemplates ?? [];
+			this.publishingEnabled = catalog.cloudInitWriteEnabled;
+			this.baselineTemplateId = catalog.cloudInitBaselineId ?? '';
 		} catch (err) {
-			this.snippetError = errorMessage(err, () => m['vms.cloudinit.errorLoadSnippet']());
+			this.documentError = errorMessage(err, () => m['vms.cloudinit.errorLoadDocument']());
 		} finally {
-			this.snippetLoading = false;
+			this.documentLoading = false;
 		}
 	}
 
-	async saveSnippet(content: string): Promise<boolean> {
-		if (this.snippetInFlight) return false;
-		this.snippetInFlight = true;
-		this.snippetError = null;
-		this.snippetErrorCode = null;
+	/** Switches the VM to a published template ('' detaches). Nothing is
+	 *  written by the user: the file was published by an administrator. */
+	async saveDocument(templateId: string): Promise<boolean> {
+		if (this.documentInFlight) return false;
+		this.documentInFlight = true;
+		this.documentError = null;
+		this.documentErrorCode = null;
 		try {
-			await put<CloudInitSnippetResponse>(`${this.#basePath}/snippet`, { content });
-			await this.loadSnippet();
-			return this.snippetError === null;
+			await put<CloudInitDocumentResponse>(`${this.#basePath}/document`, { templateId });
+			this.document = await get<CloudInitDocument>(`${this.#basePath}/document`);
+			return true;
 		} catch (err) {
-			this.snippetErrorCode = err instanceof ApiRequestError ? err.code : null;
-			this.snippetError =
-				err instanceof ApiRequestError && err.code === 'cloudinit_write_unavailable'
-					? m['vms.cloudinit.errorWriteUnavailable']()
-					: errorMessage(err, () => m['vms.cloudinit.errorSaveSnippet']());
+			this.documentErrorCode = err instanceof ApiRequestError ? err.code : null;
+			this.documentError = documentErrorMessage(err);
 			return false;
 		} finally {
-			this.snippetInFlight = false;
+			this.documentInFlight = false;
 		}
 	}
 
@@ -154,6 +147,10 @@ export class CloudInitStore {
 	}
 }
 
+// sanitizeConfig whitelists the fields the UI may hold. The GET never returns
+// write-only fields (password), but the store must not surface one if the API
+// ever does - a test asserts `password` never reaches store state. It also
+// copies sshKeys so the reactive config never aliases the response array.
 function sanitizeConfig(config: CloudInitConfig): CloudInitConfig {
 	return {
 		user: config.user,
@@ -168,4 +165,13 @@ function sanitizeConfig(config: CloudInitConfig): CloudInitConfig {
 
 function errorMessage(err: unknown, fallback: () => string): string {
 	return err instanceof ApiRequestError ? err.message : fallback();
+}
+
+function documentErrorMessage(err: unknown): string {
+	if (err instanceof ApiRequestError) {
+		if (err.code === 'cloudinit_write_unavailable') return m['vms.cloudinit.errorWriteUnavailable']();
+		if (err.code === 'cloudinit_not_published') return m['vms.cloudinit.errorNotPublished']();
+		return err.message;
+	}
+	return m['vms.cloudinit.errorSaveDocument']();
 }

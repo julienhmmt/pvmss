@@ -86,11 +86,15 @@ test.describe('T11 admin catalog', () => {
 		await page.goto('/vms/create');
 		await page.getByRole('button', { name: /Detailed/ }).click();
 		await expect(page.getByLabel('Node').locator('option[value="pve-node-03"]')).toHaveCount(1);
-		await expect(page.getByLabel('ISO').locator('option', { hasText: 'rocky-9-generic-x86_64.iso' })).toHaveCount(1);
 
 		// Select the node that hosts the approved bridge; pve-node-01 is used
 		// for the storage assertion and may differ from the bridge node.
 		await page.getByLabel('Node').selectOption(bridgeNode ?? 'pve-node-01');
+
+		// ISOs are node-local (US1), so the dropdown stays empty until a node
+		// is picked - this assertion has to come after the selection above.
+		await expect(page.getByLabel('ISO').locator('option', { hasText: 'rocky-9-generic-x86_64.iso' })).toHaveCount(1);
+
 		await page.getByRole('tab', { name: 'Disk' }).click();
 		await expect(page.getByLabel('Storage').locator('option[value="local"]')).toHaveCount(1);
 
@@ -114,13 +118,22 @@ test.describe('T11 admin catalog', () => {
 
 		await expect(nodeSwitch).toHaveAttribute('aria-checked', 'false');
 		await expect(dialog).toBeHidden();
+
+		// Restore: every VM-creating and VM-editing spec relies on pve-node-01's
+		// approved resources, so leaving the node disabled breaks them.
+		const restore = await page.request.post('/api/v1/admin/nodes/toggle', {
+			headers: await csrfHeaders(page.request),
+			data: { cluster: 'default', name: 'pve-node-01', enabled: true }
+		});
+		expect(restore.status()).toBe(200);
 	});
 
 	test('creates, uses, disables, and re-enables a VM profile (US2, SC-005)', async ({ page }) => {
 		await signInAdmin(page.request);
 
 		await page.goto('/admin/profiles');
-		await page.getByRole('button', { name: 'New profile' }).click();
+		// Two "New profile" buttons exist (toolbar + empty state).
+		await page.getByRole('button', { name: 'New profile' }).first().click();
 		await page.getByLabel('Label').fill('XLarge');
 		await page.getByLabel('vCPU cores').fill('8');
 		await page.getByLabel('Memory (MB)').fill('16384');
@@ -132,21 +145,27 @@ test.describe('T11 admin catalog', () => {
 		const profileSwitch = profileRow.getByRole('switch');
 		await expect(profileSwitch).toHaveAttribute('aria-checked', 'true');
 
-		// Appears in T06's simple-mode picker while enabled.
+		// Appears in T06's simple-mode picker while enabled. The create page is
+		// blocked for admins (vm/create.go: ErrAdminCannotCreate), so the picker
+		// has to be checked as a pool-owning user.
+		await signInAlice(page.request);
 		await page.goto('/vms/create');
 		await page.getByRole('button', { name: /Simple/ }).click();
 		await expect(page.getByRole('radio', { name: /XLarge/ })).toBeVisible();
 
 		// Disabling removes it from the picker but keeps it listed (disabled) here.
+		await signInAdmin(page.request);
 		await page.goto('/admin/profiles');
 		await profileRow.getByRole('switch').click();
 		await expect(profileRow.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
 
+		await signInAlice(page.request);
 		await page.goto('/vms/create');
 		await page.getByRole('button', { name: /Simple/ }).click();
 		await expect(page.getByRole('radio', { name: /XLarge/ })).toHaveCount(0);
 
 		// Re-enabling restores it (FR-011: no cascade, nothing else to verify).
+		await signInAdmin(page.request);
 		await page.goto('/admin/profiles');
 		await page.locator('tr', { hasText: 'XLarge' }).getByRole('switch').click();
 		await expect(page.locator('tr', { hasText: 'XLarge' }).getByRole('switch')).toHaveAttribute(
@@ -184,8 +203,9 @@ test.describe('T11 admin catalog', () => {
 		await tagRow.getByRole('button', { name: 'Save' }).click();
 		await expect(tagRow.getByText('#00ff00')).toBeVisible();
 
-		// Delete it - succeeds, unlike pvmss.
+		// Delete it - succeeds, unlike pvmss. The delete asks for confirmation.
 		await tagRow.getByRole('button', { name: 'Delete' }).click();
+		await page.getByTestId('tag-delete-confirm').click();
 		await expect(page.locator('tr', { hasText: 'e2eteam' })).toHaveCount(0);
 	});
 

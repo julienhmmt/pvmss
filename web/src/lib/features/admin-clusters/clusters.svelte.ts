@@ -16,9 +16,18 @@ export interface AdminCluster {
 	proxmoxVersion: string | null;
 	nodeCount: number;
 	vmCount: number;
-	snippetDir: string;
 	snippetStorage: string;
+	sshUser: string;
+	sshPort: number;
+	sshKnownHosts: string;
+	/** PVMSS's public key (PVMSS_SSH_KEY_FILE) to install on every node;
+	 *  empty when no key is configured. */
+	sshPublicKey: string;
 	cloudInitWriteEnabled: boolean;
+	/** First missing prerequisite for cloud-init publishing, or undefined
+	 *  when it is on: no_ssh_key | no_ssh_user | no_host_keys |
+	 *  no_snippet_storage. Localized by the page. */
+	publishingStatus?: string;
 }
 
 export interface ClusterInput {
@@ -27,8 +36,17 @@ export interface ClusterInput {
 	tlsInsecureSkipVerify: boolean;
 	tokenId: string;
 	tokenSecret: string;
-	snippetDir: string;
 	snippetStorage: string;
+	sshUser: string;
+	sshPort: number;
+	sshKnownHosts: string;
+}
+
+/** One node's scanned SSH host key (a known_hosts line) or the error. */
+export interface HostKeyScan {
+	node: string;
+	line?: string;
+	error?: string;
 }
 
 export interface ClusterTestResult {
@@ -69,6 +87,12 @@ export class AdminClustersStore {
 	 *  so the cluster form can offer a picker instead of a free-text field. */
 	async loadSnippetStorages(cluster: string): Promise<SnippetStorage[]> {
 		return get<SnippetStorage[]>(`/api/v1/admin/snippet-storages?cluster=${encodeURIComponent(cluster)}`);
+	}
+
+	/** scanHostKeys reads every node's SSH host key (trust on first use).
+	 *  Nothing is saved: the admin reviews the lines before saving them. */
+	async scanHostKeys(cluster: string): Promise<HostKeyScan[]> {
+		return post<HostKeyScan[]>(`/api/v1/admin/clusters/${encodeURIComponent(cluster)}/ssh-scan`);
 	}
 
 	async create(input: ClusterInput): Promise<boolean> {

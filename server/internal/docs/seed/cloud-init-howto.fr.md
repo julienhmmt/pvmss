@@ -2,28 +2,20 @@
 
 Cloud-init configure une VM à son premier démarrage sans s'y connecter :
 paquets, fichiers, commandes, fuseau horaire, etc. Dans PVMSS, un **document
-cloud-init** est un fichier `#cloud-config` que PVMSS copie sur le cluster et
-attache à votre VM lors de sa création.
+cloud-init** est un template `#cloud-config` rédigé par votre administrateur
+et publié sur le cluster. Vous en choisissez un à la création d'une VM ; vous
+n'écrivez jamais de YAML vous-même.
 
-## Deux types de documents
+## Choisir un document
 
-- **Templates admin** - rédigés et validés par votre administrateur, listés
-  en premier dans le sélecteur.
-- **Mes fichiers** - vos propres documents, gérés sur la page
-  [Fichiers cloud-init](/cloud-init) (20 au maximum). Vous seul pouvez les
-  voir et les utiliser.
+Le formulaire **Créer une VM** liste les templates que votre administrateur a
+rendus disponibles pour le cluster. Le sélecteur est masqué quand le cluster
+n'a pas de publication cloud-init - demandez à votre administrateur si vous
+pensiez le voir.
 
-Les deux apparaissent dans un seul sélecteur groupé du formulaire **Créer une
-VM**. Le sélecteur est masqué quand le cluster cible n'a pas de cible
-d'écriture cloud-init - demandez à votre administrateur si vous pensiez le
-voir.
-
-## Votre VM garde sa propre copie
-
-À la création, PVMSS écrit le document choisi sur le cluster sous le nom
-`pvmss-<vmid>.yml` et l'attache à la VM. Cette copie appartient à la VM :
-modifier le template ou votre fichier ensuite ne change **pas** les VM déjà
-créées.
+Un template est versionné : quand votre administrateur le modifie, les VM
+existantes gardent la version avec laquelle elles ont été créées. Les
+nouvelles VM reçoivent la nouvelle version.
 
 ## Ce qu'un document peut faire
 
@@ -37,12 +29,12 @@ Une limite connue : une clé `users:` dans le document est écrasée par le
 compte généré depuis le formulaire. Mettez les comptes et les clés SSH dans
 les champs Cloud-init du formulaire, pas dans le document.
 
-## Modifier le document d'une VM
+## Changer le document d'une VM
 
-Après la création, l'onglet **Cloud-init** de la VM affiche le document. Si
-votre administrateur autorise le YAML libre dans la politique, vous pouvez le
-modifier et l'enregistrer : l'enregistrement écrase le fichier propre à la VM
-et prend effet au prochain démarrage. Enregistrer un document vide le détache.
+Après la création, l'onglet **Cloud-init** de la VM affiche le document
+utilisé. Vous pouvez choisir un autre template ou le détacher. Le changement
+est pris en compte au prochain démarrage, mais l'essentiel d'un document ne
+s'exécute qu'au premier démarrage d'une nouvelle VM (voir ci-dessous).
 
 ## Ce qui s'applique et quand
 
@@ -72,8 +64,8 @@ pour les prochains démarrages.
 
 ## Les documents ne sont pas un coffre-fort
 
-Le contenu est stocké en clair - dans la base du portail et sur le stockage
-de snippets du cluster, où cloud-init doit pouvoir le lire - et tout
-administrateur peut le consulter. N'y mettez jamais de mots de passe, de
-tokens d'API ni de clés privées ; utilisez le champ **mot de passe** de
-cloud-init (transmis via l'agent invité et jamais stocké) et des clés SSH.
+Les templates sont stockés en clair - dans la base du portail et sur le
+stockage de snippets du cluster, où cloud-init doit pouvoir les lire. Ils ne
+contiennent jamais vos mots de passe ni vos clés : utilisez le champ **mot de
+passe** de cloud-init (transmis via l'agent invité et jamais stocké) et les
+clés SSH du formulaire de la VM.

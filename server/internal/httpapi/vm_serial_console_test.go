@@ -188,7 +188,7 @@ func TestVMSerialConsole_WebSocket_TicketBoundToDifferentVMRejected(t *testing.T
 // TestVMSerialConsole_WebSocket_ValidTokenUpgradesAndRelaysEcho - with a valid
 // token, the handler upgrades to WebSocket and the fake serial relay echoes
 // keystrokes back as "0:len:data" frames. A real WebSocket client dials the
-// endpoint, sends a few bytes, and asserts it receives an echoed frame - 
+// endpoint, sends a few bytes, and asserts it receives an echoed frame -
 // proving the serial relay is genuinely functional, not a stub.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -270,7 +270,7 @@ func TestVMSerialConsole_PostSerialTicket_ClusterUnavailableReturns502(t *testin
 	assertClusterUnavailableReturns502(t, handler, serialRequest, "/api/v1/vms/default/100/serial-ticket", cookie)
 }
 
-// failingTerminalRelay is a TerminalRelay whose GetTermProxy always fails - 
+// failingTerminalRelay is a TerminalRelay whose GetTermProxy always fails -
 // used to test the 502 console_unavailable path.
 type failingTerminalRelay struct{}
 

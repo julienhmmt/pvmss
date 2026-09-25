@@ -390,7 +390,7 @@ func TestDelete_RemovesCloudInitDocument(t *testing.T) {
 	var sawRemove bool
 
 	for _, c := range cluster.FakeCalls() {
-		if c.Action == "remove_cloudinit_snippet" && c.Filename == "pvmss-101.yml" {
+		if c.Action == testActionRemoveCloudInitSnippet && c.Filename == "pvmss-101.yml" {
 			sawRemove = true
 		}
 	}
@@ -453,7 +453,7 @@ func TestDelete_NoSnippetNoRemoveCall(t *testing.T) {
 	}
 
 	for _, c := range cluster.FakeCalls() {
-		if c.Action == "remove_cloudinit_snippet" {
+		if c.Action == testActionRemoveCloudInitSnippet {
 			t.Errorf("unexpected remove call when no snippet row existed: %+v", c)
 		}
 	}

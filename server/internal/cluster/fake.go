@@ -3,10 +3,14 @@ package cluster
 
 import (
 	"context"
+	"crypto/ed25519"
 	"fmt"
 	"io"
 	"slices"
 	"time"
+
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/knownhosts"
 )
 
 const (
@@ -476,35 +480,79 @@ func (fake Fake) SetCloudInitConfig(ctx context.Context, node string, vmid int, 
 	return nil
 }
 
-// SnippetWriteAvailable implements Writer. The fake always has a write
-// target so the dev stack and tests see cloud-init documents enabled.
-func (fake Fake) SnippetWriteAvailable() bool {
-	return true
-}
+// PublishingEnabled implements SnippetPublisher. The fake always publishes
+// so the dev stack and tests see cloud-init documents enabled.
+func (fake Fake) PublishingEnabled() bool { return true }
 
-// PushCloudInitSnippet implements Writer and records the server-owned target
-// and content. On success it also marks the file present so HasSnippet
-// answers true for the same (node, storage, filename) triple - matching the
-// real client's write-then-verify contract.
-func (fake Fake) PushCloudInitSnippet(_ context.Context, node, storage, filename string, vmid int, content string) error {
+// SnippetStorageID implements SnippetPublisher.
+func (fake Fake) SnippetStorageID() string { return FakeSnippetStorage }
+
+// PublishSnippet implements SnippetPublisher: records the publication and,
+// unless a test turned visibility off (SetFakeSnippetVisibility(false), the
+// "helper wrote into the wrong directory" case), marks the file present on
+// every fake node. A configured push error (SetFakePushError) fails every
+// node.
+func (fake Fake) PublishSnippet(_ context.Context, filename, content string) ([]NodePublishResult, error) {
 	state := fake.stateOrDefault()
 	state.pushMu.RLock()
-	err := state.pushErr
+	pushErr := state.pushErr
 	state.pushMu.RUnlock()
 
-	state.record(FakeCall{Node: node, VMID: vmid, Action: "push_cloudinit_snippet", Storage: storage, Filename: filename, Content: content})
+	state.record(FakeCall{Action: "publish_snippet", Storage: FakeSnippetStorage, Filename: filename, Content: content})
 
-	if err != nil {
-		return err
+	state.vmMu.RLock()
+	nodes := make([]string, 0, len(state.nodes))
+	for _, n := range state.nodes {
+		nodes = append(nodes, n.Name)
 	}
+	state.vmMu.RUnlock()
 
 	state.snippetMu.Lock()
-	if state.snippetPushMarksPresent {
-		state.snippetPresence[fakeSnippetKey{node: node, storage: storage, filename: filename}] = true
-	}
-	state.snippetMu.Unlock()
+	defer state.snippetMu.Unlock()
 
-	return nil
+	results := make([]NodePublishResult, 0, len(nodes))
+
+	for _, node := range nodes {
+		result := NodePublishResult{Node: node}
+
+		switch {
+		case pushErr != nil:
+			result.Error = pushErr.Error()
+		case !state.snippetPushMarksPresent:
+			result.Error = "written, but Proxmox does not list the file"
+		default:
+			state.snippetPresence[fakeSnippetKey{node: node, storage: FakeSnippetStorage, filename: filename}] = true
+			result.OK = true
+		}
+
+		results = append(results, result)
+	}
+
+	return results, nil
+}
+
+// ScanHostKeys implements SnippetPublisher with one deterministic line per
+// fake node.
+func (fake Fake) ScanHostKeys(_ context.Context) ([]HostKeyScan, error) {
+	state := fake.stateOrDefault()
+	state.vmMu.RLock()
+	defer state.vmMu.RUnlock()
+
+	scans := make([]HostKeyScan, 0, len(state.nodes))
+	for i, n := range state.nodes {
+		// Deterministic, valid ed25519 host key per fake node.
+		seed := make([]byte, ed25519.SeedSize)
+		copy(seed, n.Name)
+
+		pub, err := ssh.NewPublicKey(ed25519.NewKeyFromSeed(seed).Public())
+		if err != nil {
+			return nil, err
+		}
+
+		scans = append(scans, HostKeyScan{Node: n.Name, Line: knownhosts.Line([]string{fmt.Sprintf("10.0.0.%d", i+1)}, pub)})
+	}
+
+	return scans, nil
 }
 
 // AttachCloudInitSnippet implements Writer and records the cicustom attach.
@@ -526,31 +574,15 @@ func (fake Fake) AttachCloudInitSnippet(ctx context.Context, node, storage, file
 	return nil
 }
 
-// HasSnippet implements Writer. The default answer is false - the fake
-// cannot invent an admin-preplaced file - unless a test opts a
-// (node, storage, filename) triple in via SetFakeSnippetPresent.
+// HasSnippet implements Writer. A file is present once PublishSnippet put it
+// on the node, or when a test opts a (node, storage, filename) triple in via
+// SetFakeSnippetPresent.
 func (fake Fake) HasSnippet(_ context.Context, node, storage, filename string) (bool, error) {
 	state := fake.stateOrDefault()
 	state.snippetMu.RLock()
 	defer state.snippetMu.RUnlock()
 
 	return state.snippetPresence[fakeSnippetKey{node: node, storage: storage, filename: filename}], nil
-}
-
-// ReadSnippet implements Writer. Returns the content a test placed via
-// SetFakeSnippetContent, or an empty string when the file is not present.
-func (fake Fake) ReadSnippet(_ context.Context, node, storage, filename string) (string, error) {
-	state := fake.stateOrDefault()
-	state.snippetMu.RLock()
-	defer state.snippetMu.RUnlock()
-
-	key := fakeSnippetKey{node: node, storage: storage, filename: filename}
-
-	if !state.snippetPresence[key] {
-		return "", ErrNotFound
-	}
-
-	return state.snippetContent[key], nil
 }
 
 // RemoveCloudInitSnippet implements Writer and records the removal, clearing
@@ -709,19 +741,7 @@ func SetFakeSnippetPresent(node, storage, filename string, present bool) {
 	state.snippetPresence[fakeSnippetKey{node: node, storage: storage, filename: filename}] = present
 }
 
-// SetFakeSnippetContent sets the content a test wants ReadSnippet to return
-// for one (node, storage, filename) triple, and marks it present so HasSnippet
-// also returns true. Used to exercise the cluster-wide baseline override path
-func SetFakeSnippetContent(node, storage, filename, content string) {
-	state := defaultState()
-	state.snippetMu.Lock()
-	defer state.snippetMu.Unlock()
-	key := fakeSnippetKey{node: node, storage: storage, filename: filename}
-	state.snippetPresence[key] = true
-	state.snippetContent[key] = content
-}
-
-// SetFakeSnippetVisibility controls whether a successful PushCloudInitSnippet
+// SetFakeSnippetVisibility controls whether a successful PublishSnippet
 // marks the file visible to HasSnippet. True (the default) is the real
 // client's write-then-verify contract; false simulates a wrong mount - the
 // write succeeds on the PVMSS side but Proxmox never lists the file.
@@ -1222,6 +1242,16 @@ func cloneNetworkInterfaces(interfaces []NetworkInterface) []NetworkInterface {
 // times.
 func FakeCalls() []FakeCall {
 	return defaultState().calls()
+}
+
+// ClearFakeCalls empties the default fake's call log without touching its
+// dataset: fixtures that set state up (a published document) start the test
+// with a clean log.
+func ClearFakeCalls() {
+	state := defaultState()
+	state.callMu.Lock()
+	state.callLog = nil
+	state.callMu.Unlock()
 }
 
 // FakeCallsFor returns the calls recorded for one VMID.

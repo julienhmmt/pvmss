@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
 import { csrfHeaders } from './support/csrf';
+import { deleteVmsByPrefix } from './support/vms';
 
 async function signInAdmin(request: APIRequestContext): Promise<void> {
 	const response = await request.post('/api/v1/auth/admin-login', { data: { password: 'pvmss-e2e-admin' } });
@@ -22,12 +23,28 @@ async function savePolicy(request: APIRequestContext, body: object): Promise<voi
 test.describe('T12 admin policy', () => {
 	test.describe.configure({ mode: 'serial' });
 
+	// Policy is global server state. Restore the defaults after the file so a
+	// failure part-way through a test cannot leave a lowered gabarit or quota
+	// behind and block every later spec's VM creation. The capacity test also
+	// creates VMs through the API; remove them so they do not inflate the
+	// counts vm-list asserts on.
+	test.afterAll(async ({ request }) => {
+		await signInAdmin(request);
+		await savePolicy(request, { gabarit: { maxDiskPerVmGb: 500, allowCustomYaml: true } });
+		await savePolicy(request, { quota: { maxVmPerUser: -1 } });
+		await signInAlice(request);
+		await deleteVmsByPrefix(request, 'capacity-demo');
+	});
+
 	test('admin lowers a gabarit and creation is refused before a task is accepted', async ({ page }) => {
 		await signInAdmin(page.request);
 		await page.goto('/admin/policy');
 		await page.getByLabel('Maximum disk per VM (GB)').fill('10');
 		await page.getByRole('button', { name: 'Save policy' }).click();
-		await expect(page.getByRole('status')).toContainText('saved');
+		// Target the toast: the page also renders the cluster-status banner with
+		// role="status", so a bare getByRole('status') is ambiguous.
+		await expect(page.getByTestId('toast').filter({ hasText: 'Policy saved' }).first()).toBeVisible();
+
 		await signInAlice(page.request);
 		const response = await page.request.post('/api/v1/vms', {
 			headers: await csrfHeaders(page.request),
@@ -35,17 +52,10 @@ test.describe('T12 admin policy', () => {
 		});
 		expect(response.status()).toBe(400);
 		expect((await response.json()).code).toBe('gabarit_exceeded');
+
+		// Restore straight away - the lowered gabarit blocks every later create.
 		await signInAdmin(page.request);
-		await savePolicy(page.request, { gabarit: { maxDiskPerVmGb: 500, allowCustomYaml: false } });
-		await signInAlice(page.request);
-		const snippet = await page.request.put('/api/v1/vms/default/101/cloudinit/snippet', {
-			headers: await csrfHeaders(page.request),
-			data: { content: 'not yaml' }
-		});
-		expect(snippet.status()).toBe(403);
-		expect((await snippet.json()).code).toBe('custom_yaml_disabled');
-		await signInAdmin(page.request);
-		await savePolicy(page.request, { gabarit: { maxDiskPerVmGb: 500, allowCustomYaml: true } });
+		await savePolicy(page.request, { gabarit: { maxDiskPerVmGb: 500 } });
 	});
 
 	test('admin quota is reflected by list and rejects the next creation', async ({ page }) => {
@@ -64,9 +74,14 @@ test.describe('T12 admin policy', () => {
 
 	test('node capacity is enforced for creation and hardware growth', async ({ page }) => {
 		await signInAdmin(page.request);
+		// Load the storages page first: it runs discovery, and a storage that has
+		// not been discovered yet cannot be toggled (404).
+		await page.goto('/admin/storages');
+		// pbs-backup is the node's disk-capable storage; backup-nfs only has
+		// "backup" content, so it is not part of the VM-storage catalog.
 		for (const body of [
 			{ cluster: 'default', name: 'pve-node-03', enabled: true },
-			{ cluster: 'default', name: 'backup-nfs', node: 'pve-node-03', enabled: true }
+			{ cluster: 'default', name: 'pbs-backup', node: 'pve-node-03', enabled: true }
 		]) {
 			const path = 'node' in body ? '/api/v1/admin/storages/toggle' : '/api/v1/admin/nodes/toggle';
 			const response = await page.request.post(path, {
@@ -92,7 +107,7 @@ test.describe('T12 admin policy', () => {
 			headers: await csrfHeaders(page.request),
 			data: {
 				cluster: 'default', name: 'capacity-demo-one', node: 'pve-node-03', cpuCores: 1, memoryMB: 1024,
-				disk: { storage: 'backup-nfs', sizeGB: 10 }, network: [{ bridge: 'vmbr0', model: 'virtio' }]
+				disk: { storage: 'pbs-backup', sizeGB: 10 }, network: [{ bridge: 'vmbr0', model: 'virtio' }]
 			}
 		});
 		expect(first.status()).toBe(202);
@@ -106,7 +121,7 @@ test.describe('T12 admin policy', () => {
 			headers: await csrfHeaders(page.request),
 			data: {
 				cluster: 'default', name: 'capacity-demo-two', node: 'pve-node-03', cpuCores: 1, memoryMB: 1024,
-				disk: { storage: 'backup-nfs', sizeGB: 10 }, network: [{ bridge: 'vmbr0', model: 'virtio' }]
+				disk: { storage: 'pbs-backup', sizeGB: 10 }, network: [{ bridge: 'vmbr0', model: 'virtio' }]
 			}
 		});
 		expect(second.status()).toBe(400);

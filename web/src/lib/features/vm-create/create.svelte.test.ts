@@ -637,55 +637,31 @@ describe('VmCreateStore cloud-init document (ticket 04)', () => {
 		};
 	}
 
-	it('round-trips the encoded select value into exactly one id', () => {
+	it('binds the select value to the template id', () => {
 		const store = new VmCreateStore();
 
-		store.cloudInitDocumentValue = 't:web-server';
+		store.cloudInitDocumentValue = 'web-server';
 		expect(store.cloudInitTemplateId).toBe('web-server');
-		expect(store.cloudInitFileId).toBe('');
-		expect(store.cloudInitDocumentValue).toBe('t:web-server');
-
-		store.cloudInitDocumentValue = 'f:dev-box';
-		expect(store.cloudInitTemplateId).toBe('');
-		expect(store.cloudInitFileId).toBe('dev-box');
-		expect(store.cloudInitDocumentValue).toBe('f:dev-box');
+		expect(store.cloudInitDocumentValue).toBe('web-server');
 
 		store.cloudInitDocumentValue = '';
 		expect(store.cloudInitTemplateId).toBe('');
-		expect(store.cloudInitFileId).toBe('');
-		expect(store.cloudInitDocumentValue).toBe('');
 	});
 
-	it('emits cloudInitFileId - and never both ids - on the request', () => {
+	it('emits cloudInitTemplateId, never a user file id, on the request', () => {
 		const store = new VmCreateStore();
 		store.catalog = catalog();
 		store.name = 'web-04';
 		store.profileId = 'small';
-		store.myCloudInitFiles = [{ id: 'dev-box', label: 'Dev box' }];
-		store.cloudInitDocumentValue = 'f:dev-box';
+		store.cloudInitDocumentValue = 'web-server';
 
-		const request = store.buildRequest();
+		const request = store.buildRequest() as unknown as Record<string, unknown>;
 
-		expect(request.cloudInitFileId).toBe('dev-box');
-		expect(request.cloudInitTemplateId).toBeUndefined();
+		expect(request.cloudInitTemplateId).toBe('web-server');
+		expect(request.cloudInitFileId).toBeUndefined();
 	});
 
-	it('emits the file id on a detailed-mode template-clone request too', () => {
-		const store = new VmCreateStore();
-		store.mode = 'detailed';
-		store.catalog = catalog();
-		store.name = 'web-04';
-		store.sourceType = 'template';
-		store.templateId = 9000;
-		store.cloudInitDocumentValue = 'f:dev-box';
-
-		const request = store.buildRequest();
-
-		expect(request.cloudInitFileId).toBe('dev-box');
-		expect(request.cloudInitTemplateId).toBeUndefined();
-	});
-
-	it('emits cloudInitFileId in image mode (issue 04)', () => {
+	it('emits the template id in image mode', () => {
 		const store = new VmCreateStore();
 		store.mode = 'detailed';
 		store.catalog = catalog();
@@ -695,23 +671,8 @@ describe('VmCreateStore cloud-init document (ticket 04)', () => {
 		store.imageFile = 'debian-12-generic.img';
 		store.ciUser = 'admin';
 		store.ciSshKeysInput = 'ssh-ed25519 AAAA...';
-		// The picker is available in image mode (issue 04): the selected
-		// document is merged on top of the generated baseline.
-		store.cloudInitFileId = 'dev-box';
+		store.cloudInitTemplateId = 'web-server';
 
-		const request = store.buildRequest();
-
-		expect(request.cloudInitFileId).toBe('dev-box');
-		expect(request.cloudInitTemplateId).toBeUndefined();
-	});
-
-	it('keeps myCloudInitFiles empty (non-fatal) when the list request fails', async () => {
-		vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
-		const store = new VmCreateStore();
-
-		await store.loadMyCloudInitFiles();
-
-		expect(store.myCloudInitFiles).toEqual([]);
-		vi.unstubAllGlobals();
+		expect(store.buildRequest().cloudInitTemplateId).toBe('web-server');
 	});
 });

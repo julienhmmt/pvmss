@@ -2,7 +2,6 @@
 package httpapi
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -13,10 +12,9 @@ import (
 )
 
 // AdminBaseline serves the admin-only read-only view of the generated
-// cloud-init baseline. The baseline is the
-// document the create path would deliver to a new image-mode VM on this
-// cluster; the page also reports whether a cluster-wide pvmss-baseline.yml
-// override is present.
+// cloud-init baseline: the document merged into every published template
+// and published on its own for image VMs created without a template, with
+// its per-node publication state.
 type AdminBaseline struct {
 	auth    *Auth
 	clients cluster.ClientProvider
@@ -31,25 +29,13 @@ func NewAdminBaseline(authHandler *Auth, clients cluster.ClientProvider, st *sto
 
 // adminBaselineDTO is the API response for the admin baseline view.
 type adminBaselineDTO struct {
-	// Generated is the baseline document the create path would deliver,
-	// verbatim. Read from the same source (cloudinit.BuildVendorData with
-	// no override and no user document), not a copy.
+	// Generated is the baseline document PVMSS publishes, verbatim (the
+	// same cloudinit.BuildVendorData output merged into every template).
 	Generated string `json:"generated"`
-	// OverridePresent is true when a cluster-wide pvmss-baseline.yml
-	// exists in the cluster's snippet storage.
-	OverridePresent bool `json:"overridePresent"`
-	// OverrideFilename is the filename the create path looks for.
-	OverrideFilename string `json:"overrideFilename"`
-	// OverrideContent is the override document's content when present,
-	// empty otherwise. Read live so the admin sees the current file.
-	OverrideContent string `json:"overrideContent,omitempty"`
-	// OverrideError carries a read failure reason when the override
-	// exists but could not be read (best-effort: the page still shows
-	// the generated baseline).
-	OverrideError string `json:"overrideError,omitempty"`
+	// Publication is the latest publication of the standalone baseline on
+	// the cluster (image VMs without a template), nil when never published.
+	Publication *adminPublicationDTO `json:"publication"`
 }
-
-const baselineOverrideFilename = "pvmss-baseline.yml"
 
 // ServeBaseline handles GET /api/v1/admin/baseline?cluster=<name>: returns
 // the generated baseline document and the cluster's override state.
@@ -86,81 +72,22 @@ func (h *AdminBaseline) ServeBaseline(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dto := adminBaselineDTO{
-		Generated:        generated,
-		OverrideFilename: baselineOverrideFilename,
-	}
+	dto := adminBaselineDTO{Generated: generated}
 
-	// Read the override state live from the cluster's snippet storage.
-	// Best-effort: a read failure does not hide the generated baseline.
-	dto.OverridePresent, dto.OverrideContent, dto.OverrideError = h.readOverrideState(r.Context(), clusterName)
+	if h.store != nil {
+		publication, found, err := h.store.GetCloudInitPublication(r.Context(), clusterName, store.BaselineTemplateID)
+		if err != nil {
+			h.log.Error("read baseline publication failed", "component", "httpapi", "cluster", clusterName, "error", err)
+		} else if found {
+			pub := publicationDTO(publication)
+			dto.Publication = &pub
+		}
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(dto); err != nil {
 		h.log.Error("encode baseline response failed", "component", "httpapi", "error", err)
 	}
-}
-
-// readOverrideState reads the cluster-wide pvmss-baseline.yml override
-// from the cluster's snippet storage. Returns (present, content, error).
-// Best-effort: any failure returns the error with present=false and an
-// empty content, so the page still shows the generated baseline.
-func (h *AdminBaseline) readOverrideState(ctx context.Context, clusterName string) (bool, string, string) {
-	if h.clients == nil {
-		return false, "", ""
-	}
-
-	client, err := h.clients.Client(clusterName)
-	if err != nil {
-		return false, "", err.Error()
-	}
-
-	// Snapshot gives the node list; FindSnippetStorage needs a node to
-	// locate the snippet-capable storage. The first node is sufficient - 
-	// the override is cluster-wide.
-	snapshot, snapshotErr := client.Snapshot(ctx)
-	if snapshotErr != nil {
-		return false, "", snapshotErr.Error()
-	}
-
-	if len(snapshot.Nodes) == 0 {
-		return false, "", ""
-	}
-
-	node := snapshot.Nodes[0].Name
-
-	// FindSnippetStorage is on CloudInitReader; HasSnippet and ReadSnippet
-	// are on Writer. The cluster client implements both.
-	reader, readerOk := client.(cluster.CloudInitReader)
-	writer, writerOk := client.(cluster.Writer)
-	if !readerOk || !writerOk {
-		return false, "", "cluster client does not support snippet reads"
-	}
-
-	storage, storageErr := reader.FindSnippetStorage(ctx, node)
-	if storageErr != nil {
-		return false, "", storageErr.Error()
-	}
-
-	if storage == "" {
-		return false, "", ""
-	}
-
-	present, presentErr := writer.HasSnippet(ctx, node, storage, baselineOverrideFilename)
-	if presentErr != nil {
-		return false, "", presentErr.Error()
-	}
-
-	if !present {
-		return false, "", ""
-	}
-
-	content, readErr := writer.ReadSnippet(ctx, node, storage, baselineOverrideFilename)
-	if readErr != nil {
-		return true, "", readErr.Error()
-	}
-
-	return true, content, ""
 }
 
 func (h *AdminBaseline) writeError(w http.ResponseWriter, status int, code, message string) {

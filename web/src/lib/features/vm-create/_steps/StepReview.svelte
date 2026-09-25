@@ -22,9 +22,7 @@
 	const cloudInitDocumentLabel = $derived(
 		form.cloudInitTemplateId !== ''
 			? (form.catalog?.cloudInitTemplates.find((t) => t.id === form.cloudInitTemplateId)?.label ?? form.cloudInitTemplateId)
-			: form.cloudInitFileId !== ''
-				? (form.myCloudInitFiles.find((f) => f.id === form.cloudInitFileId)?.label ?? form.cloudInitFileId)
-				: null
+			: null
 	);
 
 	// Image mode: block the submit until the image's disk floor and the
