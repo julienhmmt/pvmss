@@ -119,7 +119,7 @@ type adminClusterDTO struct {
 	SSHPublicKey          string `json:"sshPublicKey"`
 	CloudInitWriteEnabled bool   `json:"cloudInitWriteEnabled"`
 	// PublishingStatus names the first missing prerequisite for cloud-init
-	// publishing ("" when enabled), so Admin > Clusters can tell the admin
+	// publishing ("" when enabled), so Infrastructure > Clusters can tell the admin
 	// what to fix. The web client localizes the code.
 	PublishingStatus string `json:"publishingStatus"`
 }

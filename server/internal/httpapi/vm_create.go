@@ -253,7 +253,7 @@ type catalogDTO struct {
 	Templates          []catalogTemplateDTO          `json:"templates"`
 	CloudInitTemplates []catalogCloudInitTemplateDTO `json:"cloudInitTemplates"`
 	// CloudInitWriteEnabled reports whether this cluster has a snippet write
-	// target configured (Admin › Clusters): cloud-init documents can be
+	// target configured (Infrastructure › Clusters): cloud-init documents can be
 	// written, so the wizard may offer the document picker.
 	CloudInitWriteEnabled bool `json:"cloudInitWriteEnabled"`
 	// CloudInitBaselineID is the document id of the standalone baseline
@@ -940,7 +940,7 @@ var createErrorMappings = []createErrorMapping{
 	{vm.ErrDiskReduction, http.StatusBadRequest, "disk_reduction", ""},
 	{vm.ErrDiskBelowImage, http.StatusBadRequest, "disk_below_image", ""},
 	{vm.ErrInsufficientDiskSpace, http.StatusBadRequest, "insufficient_disk_space", ""},
-	{vm.ErrCloudInitWriteUnavailable, http.StatusConflict, "cloudinit_write_unavailable", "cloud-init documents are not enabled on this cluster (Admin > Clusters: snippet storage and SSH publishing)"},
+	{vm.ErrCloudInitWriteUnavailable, http.StatusConflict, "cloudinit_write_unavailable", "cloud-init documents are not enabled on this cluster (Infrastructure > Clusters: snippet storage and SSH publishing)"},
 	{vm.ErrCloudInitNotPublished, http.StatusConflict, "cloudinit_not_published", ""},
 	{vm.ErrNoSnippetStorage, http.StatusBadRequest, "no_snippet_storage", ""},
 	// cluster_error passes the full error chain (empty message → err.Error()):

@@ -148,8 +148,11 @@ func TestRouter_BootCDROMRouteRegistered(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // serial: shared router and filesystem fixtures
-func TestRouter_MissingBuildDir_HealthStillWorks(t *testing.T) {
+// newMinimalRouter builds a router with only the handlers NewRouter
+// requires and no web build directory.
+func newMinimalRouter(t *testing.T) http.Handler {
+	t.Helper()
+
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	health := httpapi.NewHealth(fakeHealthPinger{}, logger, nil, 60*time.Second)
 	clusterNodes := httpapi.NewClusterNodes(inventory.NewProjection(), logger)
@@ -162,10 +165,16 @@ func TestRouter_MissingBuildDir_HealthStillWorks(t *testing.T) {
 	)
 	vms := httpapi.NewVMs(inventory.NewProjection(), newAuthHandler(t), 100, -1, logger)
 	vmDetail := httpapi.NewVMDetail(inventory.NewProjection(), newAuthHandler(t), cluster.Fake{}, nil, nil, logger)
-	mux := httpapi.NewRouter(httpapi.RouterConfig{
+
+	return httpapi.NewRouter(httpapi.RouterConfig{
 		Health: health, ClusterNodes: clusterNodes, ClusterRefresh: clusterRefresh,
 		VMs: vms, VMDetail: vmDetail, Auth: newAuthHandler(t), Log: logger,
 	})
+}
+
+//nolint:paralleltest // serial: shared router and filesystem fixtures
+func TestRouter_MissingBuildDir_HealthStillWorks(t *testing.T) {
+	mux := newMinimalRouter(t)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/health", nil)

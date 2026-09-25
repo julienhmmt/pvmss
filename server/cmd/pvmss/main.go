@@ -172,7 +172,7 @@ func loadConfig(stderr *slog.Logger) (config.Configuration, *slog.Logger, io.Clo
 	logger.Info("configuration loaded", "component", "main", "host", cfg.Host, "port", cfg.Port, "dbPath", cfg.DBPath)
 
 	for _, key := range cfg.DeprecatedSSHEnv {
-		logger.Warn("deprecated environment variable ignored", "component", "main", "env", key, "hint", "set the SSH user and port per cluster in Admin > Clusters")
+		logger.Warn("deprecated environment variable ignored", "component", "main", "env", key, "hint", "set the SSH user and port per cluster in Infrastructure > Clusters")
 	}
 	return cfg, logger, logCloser, nil
 }

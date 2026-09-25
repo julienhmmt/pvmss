@@ -62,7 +62,7 @@ var (
 	// key. Proxmox's REST API cannot write snippets at all (upload and
 	// download-url reject content=snippets), so PVMSS publishes them over
 	// SSH to every node.
-	ErrSnippetWriteUnavailable = errors.New("cloud-init documents are not enabled on this cluster (configure the snippet storage and SSH publishing in Admin > Clusters)")
+	ErrSnippetWriteUnavailable = errors.New("cloud-init documents are not enabled on this cluster (configure the snippet storage and SSH publishing in Infrastructure > Clusters)")
 )
 
 // Client is the single contract for reading cluster data. Every implementation

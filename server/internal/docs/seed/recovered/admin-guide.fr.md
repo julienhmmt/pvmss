@@ -80,7 +80,7 @@ Pour les instructions de déploiement complètes (Docker, Kubernetes, Helm), voi
 
 PVMSS peut se connecter à plusieurs environnements Proxmox simultanément. Chaque connexion est un **cluster** avec son URL, son token d'API et ses options.
 
-- Ouvrez **Admin > Clusters** (`/admin/clusters`) pour ajouter, modifier, tester et retirer des connexions.
+- Ouvrez **Infrastructure > Clusters** (`/admin/clusters`) pour ajouter, modifier, tester et retirer des connexions.
 - Un cluster est identifié par un nom ; les VM sont toujours adressées par `cluster` + `VMID`, deux clusters peuvent donc réutiliser les mêmes VMID sans conflit.
 - Le **Test** vérifie la connectivité et les identifiants avant d'exposer le cluster ; il rapporte la version de Proxmox et le nombre de nœuds et de VM.
 - La **vérification TLS** peut être désactivée par cluster pour un labo auto-signé ; gardez-la active en production.
@@ -154,8 +154,8 @@ Seuls les administrateurs écrivent les documents cloud-init (**Admin › Modèl
 
 1. Dans Proxmox, activez le type de contenu **Snippets** sur un stockage disponible sur chaque nœud (Datacenter › Storage › Edit ; `local` convient).
 2. Générez une paire de clés (`ssh-keygen -t ed25519 -N '' -f pvmss_ed25519`) et fournissez la clé privée à PVMSS avec `PVMSS_SSH_KEY_FILE`. Compose : montage en lecture seule. Helm : un Secret nommé dans `cloudInit.sshKeySecret`.
-3. Sur chaque nœud, en root : `sh tools/pvmss-node-setup.sh --storage <stockage> --key '<clé publique PVMSS>'`. Il installe l'utilitaire `pvmss-snippet`, un utilisateur dédié `pvmss` qui ne peut écrire que dans le répertoire `snippets/` du stockage, et la clé avec une commande forcée (pas de shell). Il affiche la clé d'hôte du nœud.
-4. **Admin › Clusters › Modifier** : stockage de snippets, utilisateur SSH (`pvmss`), port et clés d'hôte épinglées (collez les lignes de `ssh-keyscan -t ed25519 <ip du nœud>`, ou enregistrez d'abord sans utilisateur SSH, rouvrez et **Scanner les clés d'hôte**), comparez les empreintes, enregistrez. Les clés d'hôte sont toujours vérifiées. Le badge passe à « cloud-init : activé » et PVMSS republie tout en arrière-plan.
+3. Sur chaque nœud, en root, lancez la commande affichée dans **Infrastructure › Clusters › Modifier** : `curl -fsSL <URL de PVMSS>/api/v1/pvmss-node-setup.sh | sh -s -- --storage <stockage> --user pvmss --key '<clé publique PVMSS>'` (PVMSS sert le script, embarqué dans son binaire ; c'est le même fichier que `tools/pvmss-node-setup.sh` dans le dépôt). Il installe l'utilitaire `pvmss-snippet`, un utilisateur dédié `pvmss` qui ne peut écrire que dans le répertoire `snippets/` du stockage, et la clé avec une commande forcée (pas de shell). Il affiche la clé d'hôte du nœud.
+4. **Infrastructure › Clusters › Modifier** : stockage de snippets, utilisateur SSH (`pvmss`), port et clés d'hôte épinglées (collez les lignes de `ssh-keyscan -t ed25519 <ip du nœud>`, ou enregistrez d'abord sans utilisateur SSH, rouvrez et **Scanner les clés d'hôte**), comparez les empreintes, enregistrez. Les clés d'hôte sont toujours vérifiées. Le badge passe à « cloud-init : activé » et PVMSS republie tout en arrière-plan.
 5. Vérifiez : créez un template cloud-init (la colonne « Publié » doit indiquer n/n nœuds), créez une VM avec, puis sur le nœud lancez `qm config <vmid> | grep cicustom`.
 6. Après l'ajout ou la réinstallation d'un nœud, cliquez sur **Publier sur tous les nœuds** dans la page des templates.
 

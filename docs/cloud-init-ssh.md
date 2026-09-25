@@ -9,7 +9,7 @@ set the variables at the top of the block and run it.
 
 - [How it works](#how-it-works)
 - [Requirements](#requirements)
-- [Setup, step by step](#setup-step-by-step)
+- [Setup, step by step](#setup-step-by-step) and [the setup script](#the-setup-script)
 - [Deployment variants](#deployment-variants) (Compose dev, Compose, docker run, Helm, plain manifest)
 - [Day-2 operations](#day-2-operations) (new node, reinstall, key rotation, uninstall)
 - [Troubleshooting](#troubleshooting)
@@ -52,7 +52,7 @@ Configuration is split in two:
 | Where | What |
 | --- | --- |
 | `PVMSS_SSH_KEY_FILE` (env, global) | path of PVMSS's private key inside the container |
-| Admin > Clusters > Edit (per cluster) | snippet storage, SSH user, SSH port, pinned host keys |
+| Infrastructure > Clusters > Edit (per cluster) | snippet storage, SSH user, SSH port, pinned host keys |
 
 `PVMSS_SSH_USER` and `PVMSS_SSH_PORT` are **no longer read**; PVMSS logs a
 warning at startup when they are still set.
@@ -63,7 +63,7 @@ cluster badge shows the first missing one:
 | Status | Missing |
 | --- | --- |
 | `no_ssh_key` | `PVMSS_SSH_KEY_FILE` not set (no public key shown in the cluster form) |
-| `no_ssh_user` | SSH user empty in Admin > Clusters |
+| `no_ssh_user` | SSH user empty in Infrastructure > Clusters |
 | `no_host_keys` | no pinned host key saved |
 | `no_snippet_storage` | snippet storage not selected |
 
@@ -101,6 +101,15 @@ cat "$KEY.pub"
 The key has no passphrase (PVMSS runs unattended). It can only run the
 helper (forced command, no shell), see [Security model](#security-model).
 
+Supported key types: **ed25519** (recommended), **ECDSA** (nistp256/384/521)
+and **RSA** (2048 bits minimum, 3072+ recommended; PVMSS signs with
+`rsa-sha2-256/512`, never SHA-1). PVMSS reads OpenSSH, PKCS#1 and PKCS#8
+private keys. For RSA:
+
+```sh
+ssh-keygen -t rsa -b 4096 -N '' -C pvmss -f pvmss_snippets_rsa
+```
+
 ### 2. Enable the Snippets content type on the storage (any one node, once)
 
 Storage configuration is cluster-wide. Run on one node as root:
@@ -116,36 +125,63 @@ esac
 
 (Or in the GUI: Datacenter > Storage > `local` > Edit > Content: add Snippets.)
 
-### 3. Prepare every node (workstation, repository root)
+### 3. Prepare every node
 
-`tools/pvmss-node-setup.sh` is idempotent: rerun it any time. It installs
+The setup script is idempotent: rerun it any time. It installs
 `/usr/local/bin/pvmss-snippet`, writes `/etc/pvmss-snippet.conf` (the
-storage's `snippets/` directory), creates the `pvmss` system user with write
-access to that directory only (ACL), installs PVMSS's public key with a forced
-command, and prints the node's host key line.
+storage's `snippets/` directory), creates the dedicated system user with
+write access to that directory only (ACL), installs PVMSS's public key with a
+forced command, and prints the node's host key line. See
+[The setup script](#the-setup-script) for where it lives.
+
+**A. Download it from PVMSS** (the node reaches PVMSS over HTTP(S)). The exact
+command, with PVMSS's URL, storage, user and key filled in, is shown in
+**Infrastructure > Clusters > Edit** (copy button). As root on each node:
 
 ```sh
-NODES="192.168.1.11 192.168.1.12 192.168.1.13"   # node IPs (root SSH)
+PVMSS=https://pvmss.example.com      # PVMSS's URL as seen from the node
+curl -fsSL "$PVMSS/api/v1/pvmss-node-setup.sh" \
+  | sh -s -- --storage local --user pvmss --key 'ssh-ed25519 AAAA... pvmss'
+```
+
+The URL in the command is the address of the page you are on. It works with
+HTTP or HTTPS, an IP or an FQDN, any port - as long as **the nodes can reach
+it**:
+
+- Self-signed certificate on PVMSS: `curl -kfsSL …`.
+- Page opened on `localhost`/`127.0.0.1` or on Vite's port 5173 (dev stack):
+  the form warns you; use PVMSS's address as seen from the nodes (dev stack:
+  the backend, `http://<workstation IP>:50000`).
+- PVMSS published under a sub-path by a reverse proxy
+  (`https://example.com/pvmss/`): the command drops the sub-path; add it by
+  hand (`https://example.com/pvmss/api/v1/pvmss-node-setup.sh`).
+- Non-default SSH port set on the cluster: the command adds `--port N` so the
+  printed host key line reads `[ip]:N ...`, the form PVMSS pins.
+
+From a workstation with root SSH to the nodes, for all of them at once:
+
+```sh
+PVMSS=https://pvmss.example.com
+NODES="192.168.1.11 192.168.1.12 192.168.1.13"
 STORAGE=local
 SSH_USER=pvmss
 PUBKEY=$(cat pvmss_snippets_ed25519.pub)
 
 for n in $NODES; do
   echo "=== $n"
+  ssh root@"$n" "curl -fsSL '$PVMSS/api/v1/pvmss-node-setup.sh' | sh -s -- --storage $STORAGE --user $SSH_USER --key '$PUBKEY'"
+done
+```
+
+**B. Copy it from the repository** (the nodes cannot reach PVMSS):
+
+```sh
+for n in $NODES; do
+  echo "=== $n"
   scp tools/pvmss-node-setup.sh root@"$n":/root/pvmss-node-setup.sh
   ssh root@"$n" "sh /root/pvmss-node-setup.sh --storage $STORAGE --user $SSH_USER --key '$PUBKEY'"
 done
 ```
-
-Without the repository on the workstation, copy the script to the node by any
-means (it is self-contained POSIX `sh`) and run, as root on each node:
-
-```sh
-sh pvmss-node-setup.sh --storage local --user pvmss --key 'ssh-ed25519 AAAA... pvmss'
-```
-
-The exact command, with PVMSS's key already filled in, is also shown in
-**Admin > Clusters > Edit** (copy button).
 
 ### 4. Check a node by hand (workstation)
 
@@ -191,12 +227,12 @@ for n in $NODES; do ssh-keyscan -t ed25519 "$n" 2>/dev/null; done
 # non-default port: ssh-keyscan -t ed25519 -p 2222 "$n"  ->  [ip]:2222 ssh-ed25519 ...
 ```
 
-Admin > Clusters > Edit: select the **snippet storage**, set **SSH user**
+Infrastructure > Clusters > Edit: select the **snippet storage**, set **SSH user**
 `pvmss`, **SSH port**, paste the lines in **Pinned host keys**, **Save**.
 
 **B. Scan from PVMSS (two saves).**
 
-1. Admin > Clusters > Edit: select the **snippet storage**, set the **SSH
+1. Infrastructure > Clusters > Edit: select the **snippet storage**, set the **SSH
    port**, leave the SSH user empty, **Save**.
 2. Reopen **Edit**, click **Scan host keys**, compare each line with the one
    printed by the setup script or `ssh-keyscan`, set **SSH user** `pvmss`,
@@ -234,6 +270,46 @@ scan does this automatically).
    ```
 
    In the guest: `cloud-init status --long`, `/var/log/cloud-init.log`.
+
+### The setup script
+
+One script, three places, always the same bytes:
+
+| Where | What for |
+| --- | --- |
+| `tools/pvmss-node-setup.sh` | the copy to read, review and edit in the repository |
+| `server/internal/nodesetup/pvmss-node-setup.sh` | the copy embedded in the PVMSS binary (`go:embed`) |
+| `GET /api/v1/pvmss-node-setup.sh` | served by every PVMSS instance, public, `text/plain` (open it in a browser to read it; **Infrastructure > Clusters > Edit > View the script**) |
+
+The route needs no session: a node has none, and the script holds no secret
+(the key passed to it is PVMSS's *public* key).
+
+What the script guarantees:
+
+- **Arguments checked before anything changes**: `--key` must be one line of
+  a supported type (`ssh-ed25519`, `ecdsa-sha2-nistp256/384/521`, `ssh-rsa`)
+  that `ssh-keygen -l` accepts, RSA at least 2048 bits - a multi-line value
+  would otherwise add unrestricted lines to `authorized_keys`; `--user` is a
+  valid user name and never `root`; `--port` is 1-65535; `--storage` is a
+  storage id with the Snippets content type on this node.
+- **Write access**: an ACL on the storage's `snippets/` directory; on
+  filesystems without ACL support (many NFS/CIFS mounts) the directory's
+  group instead; then it checks the user can really write there, and stops
+  with an explicit message otherwise (NFS `root_squash`: grant the access on
+  the storage server, or use a local storage).
+- **Host key line**: printed under the node's IP from `/cluster/status` (the
+  address PVMSS connects to), ed25519 first (PVMSS's preferred algorithm),
+  else ECDSA, else RSA.
+- **Atomic run**: everything runs inside a `main` function called on the last
+  line, so a truncated download is a syntax error and runs nothing.
+- **Idempotent**: rerunning it updates the helper, the ACL and the key.
+
+Options: `--storage ID` (default `local`), `--user NAME` (default `pvmss`),
+`--port N` (default 22, only for the printed line), `--key 'KEY'` (required).
+
+To change the script: edit `tools/pvmss-node-setup.sh`, then
+`cp tools/pvmss-node-setup.sh server/internal/nodesetup/`. `go test
+./internal/nodesetup/` fails while the two copies differ.
 
 ## Deployment variants
 
@@ -305,7 +381,7 @@ Pods must reach the node IPs on the SSH port (NetworkPolicy / egress rules).
 ## Day-2 operations
 
 **Node added to the cluster** - run step 3 on it, then in PVMSS:
-Admin > Clusters > Edit > Scan host keys > Save (PVMSS republishes
+Infrastructure > Clusters > Edit > Scan host keys > Save (PVMSS republishes
 everything). Until then, creating a VM with a template on that node is
 refused with `cloudinit_not_published`.
 
@@ -322,7 +398,7 @@ Publish to all nodes.
 ssh-keygen -t ed25519 -N '' -C pvmss -f pvmss_ed25519.new
 PUBKEY=$(ssh-keygen -y -f pvmss_ed25519.new)
 for n in $NODES; do
-  ssh root@"$n" "sh /root/pvmss-node-setup.sh --storage $STORAGE --user pvmss --key '$PUBKEY'"
+  ssh root@"$n" "curl -fsSL '$PVMSS/api/v1/pvmss-node-setup.sh' | sh -s -- --storage $STORAGE --user pvmss --key '$PUBKEY'"
 done
 mv pvmss_ed25519.new pvmss_ed25519      # then restart PVMSS (Helm: update the Secret, restart the pod)
 ```
@@ -330,7 +406,7 @@ mv pvmss_ed25519.new pvmss_ed25519      # then restart PVMSS (Helm: update the S
 The setup script replaces `authorized_keys`, so the old key stops working on
 each node as soon as it runs; publishing fails in between.
 
-**Disable publishing on one cluster** - empty the SSH user in Admin > Clusters.
+**Disable publishing on one cluster** - empty the SSH user in Infrastructure > Clusters.
 Already created VMs keep working (their files stay on the nodes).
 
 **Uninstall from a node** (as root; VMs pointing at `pvmss-*.yml` files will
@@ -354,12 +430,17 @@ templates.
 | --- | --- | --- |
 | Server exits: `read SSH key file` / `parse SSH key` | path wrong, a directory (key missing before `docker compose up`), unreadable by uid 65532, or passphrase-protected key | generate the key, fix ownership/mode, restart |
 | `ssh -i …`: `Load key …: error in libcrypto` | key file lost its final newline (copy/paste, editor) | `printf '\n' >> <key>` |
+| Node: `curl: (60) SSL certificate problem` | PVMSS uses a self-signed certificate | `curl -kfsSL …` |
+| Node: `curl: (22) … 404` on `/api/v1/pvmss-node-setup.sh` | PVMSS older than the embedded script, or a proxy path prefix | upgrade PVMSS, or copy `tools/pvmss-node-setup.sh` (step 3 B) |
+| Setup: `RSA key too short` | RSA key under 2048 bits | new key: `ssh-keygen -t ed25519` or `-t rsa -b 4096` |
+| Setup: `--key must be a single line` / `not a valid SSH public key` / `unsupported key type` | key pasted with a line break, truncated, or with options in front | copy the key again from Infrastructure > Clusters |
+| Setup: `cannot give '<user>' write access` | no ACL support and `chgrp` refused (NFS `root_squash`) | grant write access on the storage server, or use a local storage |
 | Badge `no_ssh_key` | `PVMSS_SSH_KEY_FILE` unset | set it, restart |
 | Badge `no_ssh_user` / `no_host_keys` / `no_snippet_storage` | cluster not fully configured | step 6 |
 | Scan: `connect <ip>:22: i/o timeout` | PVMSS cannot reach the node IP from `/cluster/status` | firewall / routing / NetworkPolicy |
 | `host ... is not in the cluster's pinned host keys` | node added, or pinned under another address | rescan, save |
 | `host key mismatch` | node reinstalled - or an attack | step 3 + rescan, only after checking |
-| `ssh handshake ... unable to authenticate` | PVMSS's key not in `~pvmss/.ssh/authorized_keys` | rerun step 3 with the key shown in Admin > Clusters |
+| `ssh handshake ... unable to authenticate` | PVMSS's key not in `~pvmss/.ssh/authorized_keys` | rerun step 3 with the key shown in Infrastructure > Clusters |
 | `invalid snippet name` / `usage:` | helper out of date | rerun step 3 |
 | `written, but Proxmox does not list ...` | `/etc/pvmss-snippet.conf` not the storage's `snippets/` dir, or Snippets content not enabled | step 2, rerun step 3 with the right `--storage` |
 | `node is offline` | node down during publish | Publish to all nodes when it is back |

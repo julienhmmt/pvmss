@@ -134,7 +134,7 @@ This is the core of the product. Everything else exists to support it.
 | | |
 | --- | --- |
 | **Audience** | administrator |
-| **Entry** | Admin › Clusters (SSH settings), Admin › Cloud-init templates |
+| **Entry** | Infrastructure › Clusters (SSH settings), Admin › Cloud-init templates |
 | **Route** | `/admin/clusters`, `/admin/cloudinit-templates` |
 | **API** | `PUT /api/v1/admin/clusters/{name}` (`snippetStorage`, `sshUser`, `sshPort`, `sshKnownHosts`), `POST /api/v1/admin/clusters/{name}/ssh-scan`, `POST/PUT /api/v1/admin/cloudinit-templates[/{id}]`, `POST /api/v1/admin/cloudinit-templates/publish` |
 | **Steps** | 1. Run `tools/pvmss-node-setup.sh` on every node (helper, dedicated user, forced command). 2. Set the snippet storage and SSH user on the cluster, scan and confirm the host keys, save: PVMSS republishes in the background. 3. Create or edit templates: each save publishes the merged document to every node and shows the per-node result. 4. "Publish to all nodes" after adding or reinstalling a node. |

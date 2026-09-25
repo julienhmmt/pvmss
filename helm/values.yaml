@@ -36,7 +36,7 @@ persistence:
 # key comes from an existing Secret you create, e.g.:
 #   kubectl create secret generic pvmss-ssh --from-file=id_ed25519=./pvmss_ed25519
 # The SSH user, port and pinned host keys are set per cluster in
-# Admin > Clusters. Empty sshKeySecret = cloud-init templates off.
+# Infrastructure > Clusters. Empty sshKeySecret = cloud-init templates off.
 # Guide: docs/cloud-init-ssh.md
 cloudInit:
   sshKeySecret: ""

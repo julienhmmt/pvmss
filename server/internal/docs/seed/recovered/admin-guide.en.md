@@ -78,7 +78,7 @@ For full deployment instructions (Docker, Kubernetes, Helm), see the project REA
 
 PVMSS supports connecting to more than one Proxmox environment at the same time. Each connection is a **cluster** with its own URL, API token, and options.
 
-- Open **Admin > Clusters** (`/admin/clusters`) to add, edit, test, and remove cluster connections.
+- Open **Infrastructure > Clusters** (`/admin/clusters`) to add, edit, test, and remove cluster connections.
 - A cluster is identified by a name; VMs are always addressed by their `cluster` and `VMID`, so two clusters may reuse the same VMIDs without conflict.
 - Use the **Test** action to verify connectivity and credentials before exposing the cluster to users; it reports the Proxmox version and the node and VM counts.
 - **TLS verification** can be skipped per cluster for self-signed labs; keep it on in production.
@@ -152,8 +152,8 @@ Only administrators write cloud-init documents (**Admin › Cloud-init templates
 
 1. In Proxmox, enable the **Snippets** content type on a storage available on every node (Datacenter › Storage › Edit; `local` works).
 2. Generate a key pair (`ssh-keygen -t ed25519 -N '' -f pvmss_ed25519`) and give PVMSS the private key with `PVMSS_SSH_KEY_FILE`. Compose: mount it read-only. Helm: a Secret named in `cloudInit.sshKeySecret`.
-3. On every node, as root: `sh tools/pvmss-node-setup.sh --storage <storage> --key '<PVMSS public key>'`. It installs the `pvmss-snippet` helper, a dedicated `pvmss` user that can only write the storage's `snippets/` directory, and the key with a forced command (no shell). It prints the node's host key.
-4. **Admin › Clusters › Edit**: snippet storage, SSH user (`pvmss`), port and pinned host keys (paste `ssh-keyscan -t ed25519 <node ip>` lines, or save without the SSH user first, reopen and **Scan host keys**), compare the fingerprints, save. Host keys are always verified. The badge turns "cloud-init: on" and PVMSS republishes everything in the background.
+3. On every node, as root, run the command shown in **Infrastructure › Clusters › Edit**: `curl -fsSL <PVMSS URL>/api/v1/pvmss-node-setup.sh | sh -s -- --storage <storage> --user pvmss --key '<PVMSS public key>'` (PVMSS serves the script, embedded in its binary; the same file is `tools/pvmss-node-setup.sh` in the repository). It installs the `pvmss-snippet` helper, a dedicated `pvmss` user that can only write the storage's `snippets/` directory, and the key with a forced command (no shell). It prints the node's host key.
+4. **Infrastructure › Clusters › Edit**: snippet storage, SSH user (`pvmss`), port and pinned host keys (paste `ssh-keyscan -t ed25519 <node ip>` lines, or save without the SSH user first, reopen and **Scan host keys**), compare the fingerprints, save. Host keys are always verified. The badge turns "cloud-init: on" and PVMSS republishes everything in the background.
 5. Verify: create a cloud-init template (the "Published" column must read n/n nodes), create a VM with it, then on the node run `qm config <vmid> | grep cicustom`.
 6. After adding or reinstalling a node, click **Publish to all nodes** on the templates page.
 

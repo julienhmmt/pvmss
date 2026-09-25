@@ -152,12 +152,15 @@ STORAGE=local
 CUR=$(pvesh get /storage/$STORAGE --output-format json | perl -MJSON -0ne 'print decode_json($_)->{content}')
 case ",$CUR," in *,snippets,*) ;; *) pvesm set "$STORAGE" --content "$CUR,snippets" ;; esac
 
-# 3. Chaque nœud : assistant + utilisateur dédié « pvmss » (commande forcée, pas de shell)
+# 3. Chaque nœud : assistant + utilisateur dédié « pvmss » (commande forcée, pas de shell).
+#    PVMSS sert le script de préparation (embarqué dans son binaire ; source :
+#    tools/pvmss-node-setup.sh). La commande exacte est dans Infrastructure > Clusters > Modifier.
+PVMSS=https://pvmss.example.com
 NODES="192.168.1.11 192.168.1.12 192.168.1.13"; PUBKEY=$(cat pvmss_ed25519.pub)
 for n in $NODES; do
-  scp tools/pvmss-node-setup.sh root@"$n":/root/
-  ssh root@"$n" "sh /root/pvmss-node-setup.sh --storage $STORAGE --user pvmss --key '$PUBKEY'"
+  ssh root@"$n" "curl -fsSL '$PVMSS/api/v1/pvmss-node-setup.sh' | sh -s -- --storage $STORAGE --user pvmss --key '$PUBKEY'"
 done
+#    Nœuds sans accès à PVMSS : scp tools/pvmss-node-setup.sh, puis sh avec les mêmes options.
 
 # 4. Vérifier un nœud
 ssh -i pvmss_ed25519 -o IdentitiesOnly=yes pvmss@192.168.1.11 check
@@ -165,7 +168,7 @@ ssh -i pvmss_ed25519 -o IdentitiesOnly=yes pvmss@192.168.1.11 check
 
 5. Fournissez la clé privée à PVMSS : montée en lecture seule (lisible par
    l'uid 65532) et `PVMSS_SSH_KEY_FILE` (Helm : `cloudInit.sshKeySecret`).
-6. **Admin › Clusters › Modifier** : stockage de snippets, utilisateur SSH
+6. **Infrastructure › Clusters › Modifier** : stockage de snippets, utilisateur SSH
    `pvmss`, port et clés d'hôte épinglées (coller `for n in $NODES; do
    ssh-keyscan -t ed25519 $n; done`, ou enregistrer d'abord sans utilisateur
    SSH, rouvrir et **Scanner les clés d'hôte**), enregistrer. Le badge passe à
@@ -195,7 +198,7 @@ Utilisez **soit** un `.env` (via `env_file`) **soit** des variables inline, pas 
 | `PROXMOX_API_TOKEN_NAME`                      | Nom du token Proxmox (`user@pve!token`)                                    | si source = `proxmox` | - |
 | `PROXMOX_API_TOKEN_VALUE`                     | Valeur du token ci-dessus                                                  | si source = `proxmox` | - |
 | `ADMIN_PASSWORD_HASH`                         | Hash bcrypt de l'admin local ; désactivé si vide                           | ❌                    | - |
-| `PVMSS_SSH_KEY_FILE`                          | Clé privée SSH qui publie les modèles cloud-init sur les nœuds (utilisateur, port, clés d'hôte : Admin › Clusters) | ❌                    | - |
+| `PVMSS_SSH_KEY_FILE`                          | Clé privée SSH qui publie les modèles cloud-init sur les nœuds (utilisateur, port, clés d'hôte : Infrastructure › Clusters) | ❌                    | - |
 | `PVMSS_HOST`                                  | Adresse d'écoute (`0.0.0.0` pour toutes les interfaces)                    | ❌                    | `127.0.0.1`        |
 | `PVMSS_WEB_DIR`                               | Répertoire contenant le SPA compilé                                        | ❌                    | relatif au binaire |
 | `PVMSS_COOKIE_SECURE`                         | Drapeau `Secure` sur les cookies d'auth (garder `true` en production)      | ❌                    | `true`             |

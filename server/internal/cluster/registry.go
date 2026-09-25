@@ -71,7 +71,7 @@ func NewRegistryWithSSH(source string, rows []store.ClusterRow, signer ssh.Signe
 }
 
 // SSHPublicKey is PVMSS's publishing public key in authorized_keys form
-// ("" without PVMSS_SSH_KEY_FILE), shown in Admin > Clusters.
+// ("" without PVMSS_SSH_KEY_FILE), shown in Infrastructure > Clusters.
 func (registry *Registry) SSHPublicKey() string {
 	return registry.sshPublicKey
 }

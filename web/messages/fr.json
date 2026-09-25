@@ -1514,7 +1514,7 @@
   "vms.cloudinit.errorSaveDocument": "échec du changement de document cloud-init",
   "vms.cloudinit.errorNotPublished": "Ce modèle n'est pas encore disponible sur le nœud de la VM - demandez à un administrateur de le publier.",
   "admin.cloudinit.publishAll": "Publier sur tous les nœuds",
-  "admin.cloudinit.publishHelp": "Les modèles sont publiés comme fichiers dans le stockage de snippets du cluster, sur chaque nœud (Admin > Clusters : publication SSH). Publiez à nouveau après l'ajout ou la réinstallation d'un nœud.",
+  "admin.cloudinit.publishHelp": "Les modèles sont publiés comme fichiers dans le stockage de snippets du cluster, sur chaque nœud (Infrastructure > Clusters : publication SSH). Publiez à nouveau après l'ajout ou la réinstallation d'un nœud.",
   "admin.cloudinit.publication": "Publié",
   "admin.cloudinit.notPublished": "Non publié",
   "admin.cloudinit.publishedNodes": "{ok}/{total} nœuds",
@@ -1533,6 +1533,9 @@
   "admin.clusters.sshScan": "Scanner les clés d'hôte",
   "admin.clusters.sshScanAfterSave": "Enregistrez d'abord le cluster, puis scannez ses nœuds.",
   "admin.clusters.sshNodeSetup": "À exécuter sur chaque nœud, en root :",
-  "admin.clusters.sshNodeSetupHint": "Installe l'assistant pvmss-snippet et l'utilisateur dédié. Relançable sans risque : à refaire après l'ajout ou la réinstallation d'un nœud.",
+  "admin.clusters.sshNodeSetupHint": "Télécharge le script de préparation depuis PVMSS et l'exécute : installe l'assistant pvmss-snippet et l'utilisateur dédié. Relançable sans risque, par exemple après l'ajout ou la réinstallation d'un nœud. Certificat PVMSS auto-signé : utilisez curl -k.",
+  "admin.clusters.sshNodeSetupOffline": "Les nœuds n'accèdent pas à PVMSS ? Copiez le script (tools/pvmss-node-setup.sh dans le dépôt) sur chaque nœud et lancez sh pvmss-node-setup.sh avec les mêmes options.",
+  "admin.clusters.sshViewScript": "Voir le script",
+  "admin.clusters.sshOriginLocal": "Cette page est ouverte sur {origin}, que les nœuds ne peuvent probablement pas joindre : remplacez-la dans la commande par l'adresse de PVMSS vue depuis les nœuds (pile de dev : le backend, port 50000).",
   "admin.clusters.sshNoKey": "Aucune clé SSH configurée : définissez PVMSS_SSH_KEY_FILE sur le serveur PVMSS pour publier les modèles cloud-init."
 }

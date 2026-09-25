@@ -32,10 +32,10 @@ const sshDialTimeout = 10 * time.Second
 
 // ErrSSHNotConfigured reports a publishing attempt on a cluster without SSH
 // settings or without the global private key.
-var ErrSSHNotConfigured = errors.New("SSH publishing is not configured for this cluster (Admin > Clusters: SSH user, host keys; PVMSS_SSH_KEY_FILE)")
+var ErrSSHNotConfigured = errors.New("SSH publishing is not configured for this cluster (Infrastructure > Clusters: SSH user, host keys; PVMSS_SSH_KEY_FILE)")
 
 // SnippetSSH is one cluster's SSH publishing configuration. User, Port and
-// KnownHosts come from the cluster row (Admin > Clusters); Signer is the
+// KnownHosts come from the cluster row (Infrastructure > Clusters); Signer is the
 // global private key (PVMSS_SSH_KEY_FILE). Host keys are always verified
 // against KnownHosts - there is no insecure mode.
 type SnippetSSH struct {
@@ -66,7 +66,7 @@ func LoadSSHSigner(keyFile string) (ssh.Signer, error) {
 }
 
 // AuthorizedKey renders signer's public key as an authorized_keys line
-// (without options), for display in Admin > Clusters. Empty when nil.
+// (without options), for display in Infrastructure > Clusters. Empty when nil.
 func AuthorizedKey(signer ssh.Signer) string {
 	if signer == nil {
 		return ""
@@ -127,7 +127,7 @@ func (s SnippetSSH) hostKeyCallback() ssh.HostKeyCallback {
 		case known:
 			return fmt.Errorf("host key mismatch for %s (%s %s): update the cluster's pinned host keys only if the node was reinstalled", hostname, key.Type(), ssh.FingerprintSHA256(key))
 		default:
-			return fmt.Errorf("host %s is not in the cluster's pinned host keys (%s %s): scan and confirm it in Admin > Clusters", hostname, key.Type(), ssh.FingerprintSHA256(key))
+			return fmt.Errorf("host %s is not in the cluster's pinned host keys (%s %s): scan and confirm it in Infrastructure > Clusters", hostname, key.Type(), ssh.FingerprintSHA256(key))
 		}
 	}
 }
