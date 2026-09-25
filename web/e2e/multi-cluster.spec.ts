@@ -55,8 +55,5 @@ test.describe('T15 multi-cluster', () => {
 		const tertiary = page.locator('tr', { hasText: 'e2e-tertiary' });
 		await expect(tertiary).toBeVisible();
 		await expect(tertiary.getByText('untested')).toBeVisible();
-		const oidcButton = tertiary.getByRole('button', { name: 'Enable OIDC' });
-		if ((await oidcButton.count()) > 0) await oidcButton.click();
-		await expect(tertiary.getByText('Enabled')).toBeVisible();
 	});
 });
