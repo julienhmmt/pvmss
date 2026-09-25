@@ -1,111 +1,89 @@
 <script lang="ts">
-	import { SvelteMap } from 'svelte/reactivity';
-	import {
-		getVmListContext,
-		SORTABLE_COLUMNS,
-		type VmSortBy,
-		type VmStatus
-	} from './list.svelte';
-	import type { VmAction } from './detail.svelte';
+	/**
+	 * MachineList - the Calm workspace machine collection (DESIGN.md §6.1).
+	 * A readable card-row list, not a table: each row is identity (OS mark,
+	 * name, subtitle), resources, a 7-state status pill and one labelled
+	 * action, with a muted hint line when the state needs explaining. The
+	 * collection ends on the allowance meter.
+	 *
+	 * Bulk actions stay available behind a "Select" toggle: calm by default,
+	 * the power path one click away.
+	 */
+	import { getVmListContext, type VmListItem, type VmStatus } from './list.svelte';
 	import { getVmBulkContext } from './bulk.svelte';
+	import { displayStatus, type MachineDisplayStatus } from './display-status';
+	import { compactBytes, machineInitials, machineTone, rowAction, rowHint } from './machine-row';
+	import MachineStatusPill from './MachineStatusPill.svelte';
+	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
+	import { getTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
+	import { getPowerActionsContext } from '$lib/features/tasks/power-actions.svelte';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { resolve } from '$app/paths';
-	import { getSessionContext } from '$lib/features/auth/session.svelte';
 	import { m } from '$lib/paraglide/messages.js';
-	import { formatBytes } from '$lib/shared/format-bytes';
 	import { post } from '$lib/shared/api/client';
 	import EmptyState from '$lib/shared/ui/EmptyState.svelte';
-	import Pill from '$lib/shared/ui/Pill.svelte';
-	import Card from '$lib/shared/ui/Card.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
 	import Toolbar from '$lib/shared/ui/Toolbar.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
-	import SortButton from '$lib/shared/ui/SortButton.svelte';
+	import OsMark from '$lib/shared/ui/OsMark.svelte';
+	import AllowanceMeter from '$lib/shared/ui/AllowanceMeter.svelte';
+	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 	import SearchIcon from '$lib/shared/ui/icons/SearchIcon.svelte';
 	import ChevronDownIcon from '$lib/shared/ui/icons/ChevronDownIcon.svelte';
-	import PlayIcon from '$lib/shared/ui/icons/PlayIcon.svelte';
-	import PowerOffIcon from '$lib/shared/ui/icons/PowerOffIcon.svelte';
-	import RestartIcon from '$lib/shared/ui/icons/RestartIcon.svelte';
-	import ConsoleIcon from '$lib/shared/ui/icons/ConsoleIcon.svelte';
-	import SpinnerIcon from '$lib/shared/ui/icons/SpinnerIcon.svelte';
 
 	const store = getVmListContext();
 	const bulk = getVmBulkContext();
-	const session = getSessionContext();
 	const toast = getToastContext();
+	const tray = getTaskTrayContext();
+	const ledger = getTaskOutcomeLedgerContext();
+	const powerActions = getPowerActionsContext();
 
-	const COLUMN_LABELS: Record<VmSortBy, () => string> = {
-		vmid: () => m['vms.list.columnId'](),
-		name: () => m['vms.list.columnName'](),
-		node: () => m['vms.list.columnNode'](),
-		status: () => m['vms.list.columnStatus'](),
-		cpu: () => m['vms.list.columnCpu'](),
-		memory: () => m['vms.list.columnMemory']()
-	};
+	/** Allowances above this many slots render as a continuous bar. */
+	const MAX_SEGMENTS = 12;
 
 	const STATUS_OPTIONS: readonly { value: VmStatus | ''; label: () => string }[] = [
-		{ value: '', label: () => m['common.allStatuses']() },
-		{ value: 'running', label: () => m['common.statusRunning']() },
-		{ value: 'stopped', label: () => m['common.statusStopped']() },
-		{ value: 'paused', label: () => m['common.statusPaused']() }
-	] as const;
+		{ value: '', label: () => m['vms.list.filterAll']() },
+		{ value: 'running', label: () => m['vms.list.filterRunning']() },
+		{ value: 'stopped', label: () => m['vms.list.filterStopped']() }
+	];
 
-	const PAGE_SIZE_OPTIONS: readonly number[] = [10, 25, 50] as const;
+	let selectMode = $state(false);
 
-	// Columns whose cells are figures, not prose: they get the `.num` class
-	// (tabular mono, right-aligned) so digits line up down the column.
-	const NUMERIC_COLUMNS: ReadonlySet<VmSortBy> = new Set<VmSortBy>(['vmid', 'cpu', 'memory']);
-
-	// Columns that drop out in the 640–899px tablet band (sidebar still a
-	// drawer, content still narrow) - Node is the only one from the sortable
-	// set; Pool is handled where it is rendered, since it does not come from
-	// this loop.
-	const TABLET_HIDDEN_COLUMNS: ReadonlySet<VmSortBy> = new Set<VmSortBy>(['node']);
-
-	function thClass(column: VmSortBy): string {
-		const classes: string[] = [];
-		if (NUMERIC_COLUMNS.has(column)) classes.push('num');
-		if (TABLET_HIDDEN_COLUMNS.has(column)) classes.push('pv-table-tablet-hide');
-		return classes.join(' ');
+	function statusOf(machine: VmListItem): MachineDisplayStatus {
+		return displayStatus(
+			{ cluster: machine.cluster, vmid: machine.vmid, status: machine.status },
+			{ tray: { tasks: tray.tasks }, ledger, inFlightAction: powerActions.get(machine.cluster, machine.vmid) }
+		);
 	}
 
-	const statusTone: Record<VmStatus, 'ok' | 'off' | 'warn'> = {
-		running: 'ok',
-		stopped: 'off',
-		paused: 'warn'
-	};
-
-	const statusLabels: Record<VmStatus, () => string> = {
-		running: () => m['common.statusRunning'](),
-		stopped: () => m['common.statusStopped'](),
-		paused: () => m['common.statusPaused']()
-	};
-
-	function ariaSort(column: VmSortBy): 'ascending' | 'descending' | 'none' {
-		if (store.sortBy !== column) return 'none';
-		return store.sortDir === 'asc' ? 'ascending' : 'descending';
+	function detailHref(machine: VmListItem): string {
+		return resolve('/vms/[cluster]/[vmid]', { cluster: machine.cluster, vmid: String(machine.vmid) });
 	}
 
-	function handleSort(column: VmSortBy): void {
-		store.setSort(column);
+	function subtitle(machine: VmListItem): string {
+		const tags = machine.tags.filter((tag) => tag !== 'pvmss');
+		return tags.length > 0 ? tags.join(' · ') : machine.clusterDisplayName;
 	}
 
-	function handleStatusChange(event: Event): void {
-		store.setStatus((event.currentTarget as HTMLSelectElement).value as VmStatus | '');
+	async function start(machine: VmListItem): Promise<void> {
+		if (powerActions.get(machine.cluster, machine.vmid) !== null) return;
+		powerActions.begin({ cluster: machine.cluster, vmid: machine.vmid, name: machine.name, action: 'start' });
+		try {
+			const result = await store.rowAction(machine.cluster, machine.vmid, 'start');
+			if (result.ok) {
+				toast.success(m['toast.vmStarted']({ name: machine.name }));
+			} else {
+				toast.error(m['toast.vmActionFailed']({ error: result.error ?? m['error.generic']() }));
+			}
+		} finally {
+			powerActions.end(machine.cluster, machine.vmid);
+		}
 	}
 
-	function handleNodeChange(event: Event): void {
-		store.setNode((event.currentTarget as HTMLSelectElement).value);
-	}
-
-	function handlePageSizeChange(event: Event): void {
-		store.setPageSize(Number((event.currentTarget as HTMLSelectElement).value));
-	}
-
-	async function handleClusterRetry(): Promise<void> {
+	async function retry(): Promise<void> {
 		try {
 			await post('/api/v1/cluster/refresh');
 		} catch {
@@ -115,348 +93,261 @@
 		await store.load();
 	}
 
-	function handleRowToggle(cluster: string, vmid: number): void {
-		bulk.toggle({ cluster, vmid });
+	function toggleSelectMode(): void {
+		selectMode = !selectMode;
+		if (!selectMode) bulk.clear();
 	}
 
-	function handleSelectAllOnPage(event: Event): void {
+	function handleSelectAll(event: Event): void {
 		const checked = (event.currentTarget as HTMLInputElement).checked;
 		const items = store.result?.items ?? [];
-		if (checked) {
-			bulk.selectPage(items);
-		} else {
-			bulk.clearPage(items);
-		}
+		if (checked) bulk.selectPage(items);
+		else bulk.clearPage(items);
 	}
 
-	type QuickAction = {
-		kind: VmAction;
-		label: () => string;
-		applicable: VmStatus[];
-		successToast: (name: string) => string;
-	};
-
-	const QUICK_ACTIONS: readonly QuickAction[] = [
-		{
-			kind: 'start',
-			label: () => m['vms.action.start'](),
-			applicable: ['stopped'],
-			successToast: (name) => m['toast.vmStarted']({ name })
-		},
-		{
-			kind: 'shutdown',
-			label: () => m['vms.action.shutdown'](),
-			applicable: ['running'],
-			successToast: (name) => m['toast.vmShutdown']({ name })
-		},
-		{
-			kind: 'reboot',
-			label: () => m['vms.action.reboot'](),
-			applicable: ['running'],
-			successToast: (name) => m['toast.vmRebooted']({ name })
-		}
-	] as const;
-
-	const rowActionInFlight = new SvelteMap<string, VmAction>();
-
-	function rowActionKey(cluster: string, vmid: number): string {
-		return `${cluster}:${vmid}`;
-	}
-
-	function isRowActionInFlight(cluster: string, vmid: number): boolean {
-		return rowActionInFlight.has(rowActionKey(cluster, vmid));
-	}
-
-	function isQuickActionApplicable(action: QuickAction, status: VmStatus): boolean {
-		return action.applicable.includes(status);
-	}
-
-	async function handleQuickAction(
-		cluster: string,
-		vmid: number,
-		name: string,
-		status: VmStatus,
-		action: QuickAction
-	): Promise<void> {
-		if (isRowActionInFlight(cluster, vmid) || !isQuickActionApplicable(action, status)) return;
-		const key = rowActionKey(cluster, vmid);
-		rowActionInFlight.set(key, action.kind);
-		try {
-			const result = await store.rowAction(cluster, vmid, action.kind);
-			if (result.ok) {
-				toast.success(action.successToast(name));
-			} else {
-				toast.error(m['toast.vmActionFailed']({ error: result.error ?? m['error.generic']() }));
-			}
-		} finally {
-			rowActionInFlight.delete(key);
-		}
-	}
-
-	let pageCount = $derived(
+	const items = $derived(store.result?.items ?? []);
+	const quota = $derived(store.result?.quota ?? null);
+	const quotaFull = $derived(quota !== null && quota.allowed >= 0 && quota.used >= quota.allowed);
+	const pageCount = $derived(
 		store.result === null ? 1 : Math.max(1, Math.ceil(store.result.total / store.result.pageSize))
 	);
-
-	let pageItems = $derived(store.result?.items ?? []);
-	let allOnPageSelected = $derived(bulk.pageAllSelected(pageItems));
+	const filtered = $derived(store.search !== '' || store.status !== '' || store.node !== '');
+	const firstVisit = $derived(store.result?.emptyReason === 'no_vms_owned' && !filtered);
+	const unreachable = $derived(store.errorCode === 'inventory_not_ready');
 </script>
 
-<Card pad="none">
-	<Toolbar>
-		{#snippet search()}
-			<label for="vm-search" class="sr-only">{m['common.search']()}</label>
-			<TextField
-				id="vm-search"
-				type="search"
-				placeholder={m['vms.list.searchPlaceholder']()}
-				value={store.search}
-				oninput={(event: Event) => store.applySearch((event.currentTarget as HTMLInputElement).value)}
-				data-testid="vm-search"
-			>
-				{#snippet leading()}<SearchIcon class="h-4 w-4" />{/snippet}
-			</TextField>
-		{/snippet}
+{#if quotaFull}
+	<Alert tone="warning" role="status" class="mb-5" data-testid="vm-quota-full">
+		<p class="font-medium">{m['vms.list.quotaFullTitle']()}</p>
+		<p class="mt-0.5">{m['vms.list.quotaFullBody']()}</p>
+	</Alert>
+{/if}
 
-		{#snippet filters()}
-			<label class="sr-only" for="vm-status-filter">{m['vms.list.filterStatusLabel']()}</label>
-			<Select
-				id="vm-status-filter"
-				class="w-auto min-w-[9rem]"
-				value={store.status}
-				onchange={handleStatusChange}
-				options={STATUS_OPTIONS.map((option) => ({ value: option.value, label: option.label() }))}
-				data-testid="vm-status-filter"
-			/>
-
-			<label class="sr-only" for="vm-node-filter">{m['vms.list.filterNodeLabel']()}</label>
-			<Select
-				id="vm-node-filter"
-				class="w-auto min-w-[9rem]"
-				value={store.node}
-				onchange={handleNodeChange}
-				options={[
-					{ value: '', label: m['common.allNodes']() },
-					...(store.result?.availableNodes ?? []).map((node) => ({ value: node, label: node }))
-				]}
-				data-testid="vm-node-filter"
-			/>
-		{/snippet}
-
-		{#snippet meta()}
-			{#if store.result?.quota}
-				<span data-testid="vm-quota">
-					{#if store.result.quota.allowed === -1}
-						{m['vms.list.quotaUnlimited']({ used: store.result.quota.used })}
-					{:else}
-						{m['vms.list.quotaLimited']({ used: store.result.quota.used, allowed: store.result.quota.allowed })}
-					{/if}
-				</span>
-			{/if}
-		{/snippet}
-	</Toolbar>
-
-	{#if store.errorCode === 'inventory_not_ready'}
+{#if unreachable}
+	<div class="rounded-xl border border-border bg-card shadow-card">
 		<EmptyState
-			title={m['vms.list.clusterUnreachableTitle']()}
-			description={m['vms.list.clusterUnreachableDescription']()}
+			title={m['vms.list.unreachableTitle']()}
+			description={m['vms.list.unreachableBody']()}
 			tone="error"
 			dataTestid="vm-list-cluster-unreachable"
 		>
 			{#snippet actions()}
-				<Button onclick={() => void handleClusterRetry()} data-testid="vm-list-cluster-retry">
-					{m['vms.list.clusterUnreachableRetry']()}
-				</Button>
+				<Button onclick={() => void retry()} data-testid="vm-list-cluster-retry">{m['vms.list.unreachableRetry']()}</Button>
 			{/snippet}
 		</EmptyState>
-	{:else if store.error}
-		<Alert data-testid="vm-list-error" class="m-4">{store.error}</Alert>
-	{/if}
+	</div>
+{:else if firstVisit}
+	<div class="flex flex-col items-center gap-4 rounded-xl border border-border bg-card px-6 py-14 text-center shadow-card" data-testid="vm-empty-owned">
+		<div class="relative" aria-hidden="true">
+			<span class="flex h-16 w-16 items-center justify-center rounded-2xl border border-border bg-muted text-muted-foreground">
+				<svg viewBox="0 0 24 24" class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+					<rect x="2" y="3" width="20" height="14" rx="2" />
+					<line x1="8" y1="21" x2="16" y2="21" />
+					<line x1="12" y1="17" x2="12" y2="21" />
+				</svg>
+			</span>
+			<span class="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-primary-solid text-sm font-semibold text-primary-foreground">+</span>
+		</div>
+		<p class="text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground-subtle">{m['vms.list.emptyFirstEyebrow']()}</p>
+		<div class="max-w-md">
+			<p class="text-lg font-semibold text-foreground">{m['vms.list.emptyFirstTitle']()}</p>
+			<p class="mt-1.5 text-sm text-muted-foreground">{m['vms.list.emptyFirstBody']()}</p>
+		</div>
+		<ButtonLink href={resolve('/vms/create')} data-testid="vm-empty-create">{m['vms.list.emptyFirstAction']()}</ButtonLink>
+		<p class="text-xs text-muted-foreground-subtle">{m['vms.list.emptyFirstReassurance']()}</p>
+	</div>
+{:else}
+	<section class="machine-collection overflow-hidden rounded-xl border border-border bg-card shadow-card" aria-label={m['vms.list.caption']()}>
+		<Toolbar>
+			{#snippet search()}
+				<label for="vm-search" class="sr-only">{m['common.search']()}</label>
+				<TextField
+					id="vm-search"
+					type="search"
+					placeholder={m['vms.list.searchPlaceholder']()}
+					value={store.search}
+					oninput={(event: Event) => store.applySearch((event.currentTarget as HTMLInputElement).value)}
+					data-testid="vm-search"
+				>
+					{#snippet leading()}<SearchIcon class="h-4 w-4" />{/snippet}
+				</TextField>
+			{/snippet}
 
-	{#if store.errorCode !== 'inventory_not_ready' && store.result && store.result.items.length === 0}
-		{#if store.result.emptyReason === 'no_vms_owned'}
-			<EmptyState title={m['vms.list.emptyOwned']()} dataTestid="vm-empty-owned">
+			{#snippet filters()}
+				<label class="sr-only" for="vm-status-filter">{m['vms.list.filterStatusLabel']()}</label>
+				<Select
+					id="vm-status-filter"
+					class="w-auto min-w-[9rem]"
+					value={store.status}
+					onchange={(event: Event) => store.setStatus((event.currentTarget as HTMLSelectElement).value as VmStatus | '')}
+					options={STATUS_OPTIONS.map((option) => ({ value: option.value, label: option.label() }))}
+					data-testid="vm-status-filter"
+				/>
+			{/snippet}
+
+			{#snippet meta()}
+				{#if store.result}
+					<span class="tabular-nums" data-testid="vm-count">{m['vms.list.machineCount']({ count: store.result.total })}</span>
+				{/if}
+			{/snippet}
+
+			{#snippet actions()}
+				{#if items.length > 0}
+					<Button
+						variant="ghost"
+						size="sm"
+						aria-pressed={selectMode}
+						title={m['vms.list.selectModeHint']()}
+						onclick={toggleSelectMode}
+						data-testid="vm-select-mode"
+					>
+						{selectMode ? m['vms.list.selectModeDone']() : m['vms.list.selectMode']()}
+					</Button>
+				{/if}
+			{/snippet}
+		</Toolbar>
+
+		{#if store.error && !unreachable}
+			<Alert data-testid="vm-list-error" class="m-4">{store.error}</Alert>
+		{/if}
+
+		{#if store.result === null && store.loading}
+			<div class="flex flex-col" role="status" aria-live="polite" aria-label={m['common.loading']()} data-testid="vm-list-loading">
+				{#each [0, 1, 2] as row (row)}
+					<div class="flex items-center gap-4 border-b border-border-subtle px-4 py-4 last:border-b-0">
+						<Skeleton class="h-[42px] w-[38px] rounded-lg" />
+						<div class="flex flex-1 flex-col gap-2">
+							<Skeleton class="h-4 w-40" />
+							<Skeleton class="h-3 w-24" />
+						</div>
+						<Skeleton class="h-8 w-24" />
+					</div>
+				{/each}
+			</div>
+		{:else if store.result && items.length === 0}
+			<EmptyState title={m['vms.list.noResultsTitle']()} description={m['vms.list.noResultsBody']()} dataTestid="vm-empty-match">
 				{#snippet actions()}
-					{#if !session.isAdmin}
-						<ButtonLink href={resolve('/vms/create')}>{m['vms.list.create']()}</ButtonLink>
-					{/if}
+					<Button variant="link" onclick={() => store.clearFilters()} data-testid="vm-clear-filters">{m['vms.list.clearFilters']()}</Button>
 				{/snippet}
 			</EmptyState>
-		{:else}
-			<EmptyState title={m['vms.list.emptyMatch']()} dataTestid="vm-empty-match" />
-		{/if}
-	{:else if store.result}
-		<div class="max-h-[calc(100svh-20rem)] overflow-auto">
-			<table class="pv-table pv-responsive-table">
-				<caption class="sr-only">{m['vms.list.caption']()}</caption>
-				<thead>
-					<tr>
-						<th scope="col" class="w-10">
-							<input
-								type="checkbox"
-								class="h-4 w-4 rounded border-border accent-primary"
-								checked={allOnPageSelected}
-								onchange={handleSelectAllOnPage}
-								data-testid="vm-bulk-select-all"
-								aria-label={m['vms.list.selectAll']()}
-							/>
-						</th>
-						{#each SORTABLE_COLUMNS as column (column)}
-							<th scope="col" class={thClass(column)} aria-sort={ariaSort(column)}>
-								<SortButton
-									label={COLUMN_LABELS[column]()}
-									active={store.sortBy === column}
-									direction={store.sortDir}
-									onclick={() => handleSort(column)}
-									data-testid="sort-{column}"
-								/>
-							</th>
-						{/each}
-						{#if store.scope === 'all'}
-							<th scope="col" class="pv-table-tablet-hide">{m['vms.list.columnPool']()}</th>
-						{/if}
-						<th scope="col" class="text-right">{m['vms.list.columnActions']()}</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each store.result?.items ?? [] as machine (`${machine.cluster}:${machine.vmid}`)}
-						<tr class="relative cursor-pointer" data-testid="vm-row">
-							<td data-nolabel="true">
+		{:else if store.result}
+			<div
+				class="grid grid-cols-[minmax(0,1fr)_11rem_8.5rem_9rem] items-center gap-4 border-b border-border bg-muted/60 px-4 py-2 text-[0.6875rem] font-semibold uppercase tracking-[0.04em] text-muted-foreground max-[699px]:hidden {selectMode
+					? 'pl-12'
+					: ''}"
+				aria-hidden="true"
+			>
+				<span>{m['vms.list.columnMachine']()}</span>
+				<span>{m['vms.list.columnResources']()}</span>
+				<span>{m['vms.list.columnStatus']()}</span>
+				<span class="sr-only">{m['vms.list.columnActions']()}</span>
+			</div>
+			{#if selectMode}
+				<label class="flex items-center gap-3 border-b border-border px-4 py-2 text-xs text-muted-foreground">
+					<input
+						type="checkbox"
+						class="h-4 w-4 rounded border-border accent-primary"
+						checked={bulk.pageAllSelected(items)}
+						onchange={handleSelectAll}
+						data-testid="vm-bulk-select-all"
+					/>
+					{m['vms.list.selectAll']()}
+				</label>
+			{/if}
+			<ul class="flex flex-col" aria-label={m['vms.list.caption']()}>
+				{#each items as machine (`${machine.cluster}:${machine.vmid}`)}
+					{@const status = statusOf(machine)}
+					{@const hint = rowHint(status)}
+					{@const action = rowAction(status)}
+					{@const busy = powerActions.get(machine.cluster, machine.vmid) !== null}
+					<li class="border-b border-border-subtle px-4 py-3.5 last:border-b-0 hover:bg-muted/40" data-testid="vm-row" data-status={status}>
+						<div class="flex items-center gap-3">
+							{#if selectMode}
 								<input
 									type="checkbox"
-									class="relative z-10 h-4 w-4 rounded border-border accent-primary"
+									class="h-4 w-4 shrink-0 rounded border-border accent-primary"
 									checked={bulk.isSelected(machine.cluster, machine.vmid)}
-									onchange={() => handleRowToggle(machine.cluster, machine.vmid)}
+									onchange={() => bulk.toggle({ cluster: machine.cluster, vmid: machine.vmid })}
 									data-testid="vm-bulk-select-row"
 									aria-label={m['vms.list.selectRow']({ name: machine.name })}
 								/>
-							</td>
-							<td data-label={m['vms.list.columnName']()}>
-								<a
-									href={resolve(`/vms/${encodeURIComponent(machine.cluster)}/${machine.vmid}`)}
-									class="pv-focus font-medium text-foreground underline-offset-2 after:absolute after:inset-0 after:content-[''] hover:text-primary hover:underline"
-									data-testid="vm-row-link"
-								>
-									{machine.name}
-								</a>
-								{#if machine.tags.length > 0}
-									<div class="mt-1 flex flex-wrap gap-1">
-										{#each machine.tags as tag (tag)}
-											<Pill tone="off" dot={false} label={tag} />
-										{/each}
-									</div>
-								{/if}
-								{#if store.cluster === ''}
-									<div class="mt-1 text-xs text-muted-foreground" data-testid="vm-row-cluster">
-										{machine.clusterDisplayName}
-									</div>
-								{/if}
-							</td>
-							<td class="num text-muted-foreground" data-label={m['vms.list.columnId']()}>
-								{machine.vmid}
-							</td>
-							<td
-								class="pv-table-tablet-hide whitespace-nowrap font-mono text-muted-foreground"
-								data-label={m['vms.list.columnNode']()}
-							>
-								{machine.node}
-							</td>
-							<td data-label={m['vms.list.columnStatus']()}>
-								<Pill
-									tone={statusTone[machine.status]}
-									label={statusLabels[machine.status]()}
-									pending={isRowActionInFlight(machine.cluster, machine.vmid)}
-								/>
-							</td>
-							<td class="num text-muted-foreground" data-label={m['vms.list.columnCpu']()}>
-								{machine.cpuCores}<span class="ml-1 font-sans text-xs">{m['common.coreCount']({ count: machine.cpuCores })}</span>
-							</td>
-							<td class="num text-muted-foreground" data-label={m['vms.list.columnMemory']()}>
-								{formatBytes(machine.memoryTotal)}
-							</td>
-							{#if store.scope === 'all'}
-								<td class="pv-table-tablet-hide text-muted-foreground" data-label={m['vms.list.columnPool']()}>
-									{machine.pool}
-								</td>
 							{/if}
-							<td data-label={m['vms.list.columnActions']()} data-nolabel="true">
-								<div class="relative z-10 flex items-center justify-end gap-1">
-									{#if isRowActionInFlight(machine.cluster, machine.vmid)}
-										<span class="flex h-8 w-8 items-center justify-center text-muted-foreground" aria-live="polite">
-											<SpinnerIcon class="h-4 w-4" />
-										</span>
+							<div class="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 min-[700px]:grid-cols-[minmax(0,1fr)_11rem_8.5rem_9rem]">
+								<div class="flex min-w-0 items-center gap-3">
+									<span class="max-[369px]:hidden"><OsMark initials={machineInitials(machine.name)} tone={machineTone(machine.name)} /></span>
+									<div class="min-w-0">
+										<a
+											href={detailHref(machine)}
+											class="pv-focus block truncate font-medium text-foreground underline-offset-2 hover:text-primary hover:underline"
+											data-testid="vm-row-link"
+										>
+											{machine.name}
+										</a>
+										<p class="truncate text-xs text-muted-foreground">
+											{#if store.cluster === '' && machine.tags.some((tag) => tag !== 'pvmss')}
+												<span data-testid="vm-row-cluster">{machine.clusterDisplayName}</span> ·
+											{:else if store.cluster === ''}
+												<span class="sr-only" data-testid="vm-row-cluster">{machine.clusterDisplayName}</span>
+											{/if}
+											{subtitle(machine)}
+										</p>
+									</div>
+								</div>
+								<p class="text-xs leading-5 text-muted-foreground max-[699px]:hidden">
+									<span class="whitespace-nowrap font-mono tabular-nums">{m['vms.list.resourcesCompute']({ cpu: machine.cpuCores, memory: compactBytes(machine.memoryTotal) })}</span>
+									<span class="block font-mono tabular-nums text-muted-foreground-subtle">VM {machine.vmid}</span>
+								</p>
+								<div class="max-[699px]:order-3">
+									<MachineStatusPill {status} pending={busy || status === 'provisioning'} />
+								</div>
+								<div class="flex justify-end max-[699px]:order-4 max-[699px]:col-span-2 max-[699px]:justify-start max-[699px]:pl-[50px] max-[369px]:pl-0">
+									{#if action === 'start'}
+										<Button
+											variant="secondary"
+											size="sm"
+											loading={busy}
+											aria-label={m['vms.list.actionStartFor']({ name: machine.name })}
+											onclick={() => void start(machine)}
+											data-testid="vm-row-start"
+										>
+											{m['vms.list.actionStart']()}
+										</Button>
 									{:else}
-										{#each QUICK_ACTIONS as action (action.kind)}
-											{@const applicable = isQuickActionApplicable(action, machine.status)}
-											<Button
-												variant="ghost"
-												size="icon-sm"
-												disabled={!applicable}
-												onclick={() => void handleQuickAction(machine.cluster, machine.vmid, machine.name, machine.status, action)}
-												data-testid="vm-quick-action-{action.kind}"
-												title={action.label()}
-												label={action.label()}
-												aria-disabled={!applicable}
-											>
-												{#if action.kind === 'start'}
-													<PlayIcon class="h-4 w-4" />
-												{:else if action.kind === 'shutdown'}
-													<PowerOffIcon class="h-4 w-4" />
-												{:else if action.kind === 'reboot'}
-													<RestartIcon class="h-4 w-4" />
-												{/if}
-											</Button>
-										{/each}
-										{#if machine.status === 'running'}
-											<ButtonLink
-												variant="ghost"
-												size="icon-sm"
-												href={resolve('/vms/[cluster]/[vmid]/console', {
-													cluster: machine.cluster,
-													vmid: String(machine.vmid)
-												})}
-												target="_blank"
-												rel="noopener noreferrer"
-												title={m['vms.console.open']()}
-												label={m['vms.console.open']()}
-												data-testid="vm-row-console"
-											>
-												<ConsoleIcon class="h-4 w-4" />
-											</ButtonLink>
-										{/if}
+										<ButtonLink
+											variant="secondary"
+											size="sm"
+											href={detailHref(machine)}
+											aria-label={m['vms.list.actionDetailsFor']({ name: machine.name })}
+											data-testid="vm-row-details"
+										>
+											{m['vms.list.actionDetails']()}
+										</ButtonLink>
 									{/if}
 								</div>
-							</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
+							</div>
+						</div>
+						{#if hint}
+							<p
+								class="mt-1.5 text-xs {hint.tone === 'error' ? 'text-destructive' : 'text-muted-foreground'} {selectMode ? 'pl-7' : ''} min-[370px]:pl-[50px]"
+								data-testid="vm-row-hint"
+							>
+								{hint.text}
+							</p>
+						{/if}
+					</li>
+				{/each}
+			</ul>
 
-		<nav
-			class="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3"
-			aria-label={m['vms.list.paginationLabel']()}
-		>
-			<label class="flex items-center gap-2 text-xs text-muted-foreground">
-				{m['common.rowsPerPage']()}
-				<Select
-					class="w-auto"
-					value={String(store.pageSize)}
-					onchange={handlePageSizeChange}
-					options={PAGE_SIZE_OPTIONS.map((size) => ({ value: String(size), label: String(size) }))}
-					data-testid="vm-page-size"
-				/>
-			</label>
-
-			<div class="flex items-center gap-2">
-				<span class="font-mono text-xs tabular-nums text-muted-foreground" data-testid="vm-page-indicator">
-					{m['common.pageIndicator']({ current: store.result?.page ?? store.page, total: pageCount })}
-				</span>
-				<div class="flex items-center gap-1">
+			{#if pageCount > 1}
+				<nav class="flex items-center justify-end gap-2 border-t border-border px-4 py-2.5" aria-label={m['vms.list.paginationLabel']()}>
+					<span class="font-mono text-xs tabular-nums text-muted-foreground" data-testid="vm-page-indicator">
+						{m['common.pageIndicator']({ current: store.result.page, total: pageCount })}
+					</span>
 					<Button
 						variant="secondary"
 						size="icon-sm"
 						label={m['common.previous']()}
-						disabled={store.result === null || store.result.page <= 1}
+						disabled={store.result.page <= 1}
 						onclick={() => store.setPage(store.page - 1)}
 						data-testid="vm-page-prev"
 					>
@@ -466,14 +357,53 @@
 						variant="secondary"
 						size="icon-sm"
 						label={m['common.next']()}
-						disabled={store.result === null || store.result.page >= pageCount}
+						disabled={store.result.page >= pageCount}
 						onclick={() => store.setPage(store.page + 1)}
 						data-testid="vm-page-next"
 					>
 						<ChevronDownIcon class="h-4 w-4 -rotate-90" />
 					</Button>
-				</div>
+				</nav>
+			{/if}
+		{/if}
+
+		{#if quota}
+			<div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border bg-muted/40 px-4 py-3 text-xs text-muted-foreground" data-testid="vm-quota">
+				{#if quota.allowed >= 0}
+					<span class="font-medium text-foreground tabular-nums">{m['vms.list.allowanceUsed']({ used: quota.used, allowed: quota.allowed })}</span>
+					<div class="w-40">
+						{#if quota.allowed > 0 && quota.allowed <= MAX_SEGMENTS}
+							<AllowanceMeter used={quota.used} limit={quota.allowed} label={m['vms.list.allowanceMeterLabel']({ used: quota.used, allowed: quota.allowed })} />
+						{:else}
+							<div
+								class="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+								role="meter"
+								aria-valuenow={Math.min(quota.used, quota.allowed)}
+								aria-valuemin={0}
+								aria-valuemax={quota.allowed}
+								aria-label={m['vms.list.allowanceMeterLabel']({ used: quota.used, allowed: quota.allowed })}
+							>
+								<div class="h-full rounded-full bg-primary" style="width: {quota.allowed === 0 ? 100 : Math.min(100, (quota.used / quota.allowed) * 100)}%"></div>
+							</div>
+						{/if}
+					</div>
+				{:else}
+					<span class="font-medium text-foreground tabular-nums">{m['vms.list.allowanceUnlimited']({ used: quota.used })}</span>
+				{/if}
+				<span class="ml-auto">{m['vms.list.allowanceSource']()}</span>
 			</div>
-		</nav>
-	{/if}
-</Card>
+		{/if}
+	</section>
+{/if}
+
+{#if !unreachable}
+	<aside class="mt-6 flex flex-wrap items-center gap-3 px-1 text-sm text-muted-foreground" data-testid="vm-quiet-help">
+		<svg viewBox="0 0 24 24" class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+			<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+			<path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+		</svg>
+		<span class="font-medium text-foreground">{m['vms.list.quietHelpTitle']()}</span>
+		<span class="max-[699px]:hidden">{m['vms.list.quietHelpBody']()}</span>
+		<a href={resolve('/docs')} class="pv-focus rounded font-medium text-primary underline-offset-2 hover:underline">{m['vms.list.openGuide']()}</a>
+	</aside>
+{/if}

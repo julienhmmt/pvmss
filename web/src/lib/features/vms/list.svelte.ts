@@ -166,6 +166,17 @@ export class VmListStore {
 		this.#searchTimer = null;
 	}
 
+	/** Clears the search and the status filter in one step (the list's
+	 *  "Clear filters" action), keeping the cluster scope. */
+	clearFilters(): void {
+		this.dispose();
+		this.search = '';
+		this.status = '';
+		this.node = '';
+		this.page = 1;
+		this.#syncAndLoad();
+	}
+
 	setCluster(value: string): void {
 		this.cluster = value;
 		this.page = 1;
