@@ -24,8 +24,8 @@ Filters are kept in the URL, so a filtered view can be bookmarked.
 2. Pick a source: an ISO, a Proxmox template, or a cloud image.
 3. Pick a hardware profile or enter custom values; the node is chosen for
    you unless you switch to Detailed mode.
-4. Optionally attach a cloud-init document (an admin template or one of
-   [your files](/cloud-init)).
+4. Optionally pick a cloud-init document (a template provided by your
+   administrator).
 5. Submit - the portal provisions the VM and shows progress in the task tray.
 
 For more, see the [VM creation guidelines](/docs/vm-creation-guidelines) and

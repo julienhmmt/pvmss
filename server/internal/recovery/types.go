@@ -57,7 +57,7 @@ func (osEnviron) Get(key string) string { return getEnv(key) }
 // StorageNodeResolver returns the list of nodes that report a given storage
 // name in live cluster discovery. If no Proxmox connection is available the
 // caller passes nil and every storage is skipped with a named reason.
-// This is the one interface here that touches live Proxmox
+// This is the one interface here that touches live Proxmox.
 type StorageNodeResolver interface {
 	StorageNodes(ctx context.Context, storageName string) ([]string, error)
 }

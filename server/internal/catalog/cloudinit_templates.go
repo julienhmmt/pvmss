@@ -178,8 +178,9 @@ func UpdateCloudInitTemplate(ctx context.Context, st *store.Store, cluster, id, 
 }
 
 // DeleteCloudInitTemplate removes a template row. Returns
-// ErrCloudInitTemplateNotFound if the id does not exist. Has no cascade - 
-// nothing references a template by id after creation.
+// ErrCloudInitTemplateNotFound if the id does not exist. Its publication
+// record goes too; the published file is left on the nodes for the VMs that
+// use it.
 func DeleteCloudInitTemplate(ctx context.Context, st *store.Store, cluster, id string) error {
 	exists, err := st.CloudInitTemplateExists(ctx, cluster, id)
 	if err != nil {
@@ -198,7 +199,9 @@ func DeleteCloudInitTemplate(ctx context.Context, st *store.Store, cluster, id s
 		return err
 	}
 
-	return nil
+	// The published file stays on the nodes (VMs may still boot from it);
+	// only the record that offers it to new VMs goes.
+	return st.DeleteCloudInitPublication(ctx, cluster, id)
 }
 
 // SetCloudInitTemplateEnabled toggles the enabled state for one template. A

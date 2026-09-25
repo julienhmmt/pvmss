@@ -400,7 +400,7 @@ func rfbClientVersionHandshake(conn io.ReadWriter) error {
 
 // rfbServerVersionHandshake plays the RFB *server* role: PVMSS speaks first
 // to the browser, so this writes the version banner before reading the
-// browser's reply. Getting this order backwards deadlocks both sides - 
+// browser's reply. Getting this order backwards deadlocks both sides -
 // each waiting to read a banner the other is also waiting to read first.
 func rfbServerVersionHandshake(conn io.ReadWriter) error {
 	if _, err := conn.Write([]byte(rfbClientVersion)); err != nil {

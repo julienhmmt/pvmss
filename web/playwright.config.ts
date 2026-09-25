@@ -1,3 +1,7 @@
+/// <reference types="node" />
+// The reference is file-scoped on purpose: the app tsconfig's `types` allowlist
+// deliberately omits "node" so Node globals cannot leak into browser code, but
+// this config is a Node script and uses process.env.CI.
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
@@ -10,6 +14,19 @@ export default defineConfig({
 	use: {
 		baseURL: 'http://127.0.0.1:50001',
 		trace: 'on-first-retry',
+		// The app defaults to French (locale.svelte.ts DEFAULT_LOCALE), while
+		// most specs assert English strings. Seed the persisted preference once
+		// here rather than repeating addInitScript in every spec.
+		// chrome-ui.spec.ts opts out - it tests the French default itself.
+		storageState: {
+			cookies: [],
+			origins: [
+				{
+					origin: 'http://127.0.0.1:50001',
+					localStorage: [{ name: 'pvmss-locale', value: 'en' }]
+				}
+			]
+		}
 	},
 	projects: [
 		{ name: 'chromium', use: { ...devices['Desktop Chrome'] } },

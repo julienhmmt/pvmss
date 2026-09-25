@@ -27,7 +27,7 @@ var MaxCreateTaskWait = 10 * time.Minute
 // - a transient read error → do not abort, retry (fail-soft, matching
 // proxmoxTaskLog's best-effort log fetch)
 // - MaxCreateTaskWait exceeded → explicit "create task timed out" error
-// - ctx.Done() → ctx.Err()
+// - ctx.Done() → ctx.Err().
 func WaitCreateTask(ctx context.Context, creator cluster.Creator, upid string) error {
 	deadline := time.Now().Add(MaxCreateTaskWait)
 

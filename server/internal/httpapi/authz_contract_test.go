@@ -316,11 +316,11 @@ var handlerSourceMap = map[string]string{
 // package helper they call. Each entry carries its written justification.
 var resolveExemptRoutes = map[string]string{
 	// cloud-init: handler delegates to vm.Get/SetCloudInitConfig, vm.AddCloudInitSSHKey,
-	// and vm.Get/SetCloudInitSnippet, all of which resolve the VM and enforce ownership.
+	// and vm.Get/SetCloudInitDocument, all of which resolve the VM and enforce ownership.
 	"GET /api/v1/vms/{cluster}/{vmid}/cloudinit":           "delegates to vm.GetCloudInitConfig which resolves",
 	"PUT /api/v1/vms/{cluster}/{vmid}/cloudinit":           "delegates to vm.SetCloudInitConfig which resolves",
-	"GET /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet":   "delegates to vm.GetCloudInitSnippet which resolves",
-	"PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet":   "delegates to vm.SetCloudInitSnippet which resolves",
+	"GET /api/v1/vms/{cluster}/{vmid}/cloudinit/document":  "delegates to vm.GetCloudInitDocument which resolves",
+	"PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/document":  "delegates to vm.SetCloudInitDocument which resolves",
 	"POST /api/v1/vms/{cluster}/{vmid}/cloudinit/ssh-keys": "delegates to vm.AddCloudInitSSHKey which resolves",
 	// console-password: handler delegates to vm.SetConsolePassword, which resolves the VM and enforces ownership.
 	"POST /api/v1/vms/{cluster}/{vmid}/console-password": "delegates to vm.SetConsolePassword which resolves",
@@ -409,7 +409,7 @@ var vmRequestBodies = map[string]string{
 	"PUT /api/v1/vms/{cluster}/{vmid}/hardware":               `{"sockets":2}`,
 	"POST /api/v1/vms/{cluster}/{vmid}/serial":                `{"enabled":true}`,
 	"PUT /api/v1/vms/{cluster}/{vmid}/cloudinit":              `{"user":"root"}`,
-	"PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/snippet":      `{"content":"#cloud-config"}`,
+	"PUT /api/v1/vms/{cluster}/{vmid}/cloudinit/document":     `{"templateId":""}`,
 	"POST /api/v1/vms/{cluster}/{vmid}/cloudinit/ssh-keys":    `{"user":"root","key":"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDIhz2GK/XCuN1lGHKPmXGP"}`,
 	"POST /api/v1/vms/{cluster}/{vmid}/snapshots":             `{"name":"x"}`,
 }
@@ -555,7 +555,6 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 	adminBaseline := httpapi.NewAdminBaseline(authHandler, nil, st, logger)
 	docs := httpapi.NewDocsAPIHandler(authHandler, st, logger)
 	adminDocs := httpapi.NewAdminDocs(authHandler, st, docs, logger)
-	cloudInitFiles := httpapi.NewCloudInitFiles(authHandler, st, logger)
 
 	mux := httpapi.NewRouter(httpapi.RouterConfig{
 		Health:           health,
@@ -567,7 +566,6 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 		VMStatusBatch:    vmStatusBatch,
 		VMCloudInit:      vmCloudInit,
 		VMCreate:         vmCreate,
-		CloudInitFiles:   cloudInitFiles,
 		VMConsole:        vmConsole,
 		VMSerialConsole:  vmSerial,
 		SnapshotHandlers: []*httpapi.VMSnapshots{vmSnapshots},

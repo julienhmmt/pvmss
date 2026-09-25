@@ -17,8 +17,8 @@ var (
 	ErrBaselineInvalid = errors.New("baseline document invalid")
 )
 
-// generatedBaseline is the vendor-data document PVMSS writes for every
-// cloud-image VM when no admin override is present. It is a decision, not an
+// generatedBaseline is the vendor-data document PVMSS publishes on its own
+// (image VMs without a template) and merges under every admin template. It is a decision, not an
 // implementation detail. The Debian-family branch installs the standard kernel
 //
 // (the cloud kernel cannot drive the emulated VGA under UEFI), purges the
@@ -29,8 +29,7 @@ var (
 // VM with no kernel; the power_state.condition means a VM with no egress is
 // not rebooted for nothing.
 const generatedBaseline = `#cloud-config
-# PVMSS baseline - generated at create for cloud-image VMs.
-# Replace it cluster-wide by placing <snippet_dir>/pvmss-baseline.yml.
+# PVMSS baseline - published by PVMSS and merged into every admin template.
 package_update: true
 packages:
   - qemu-guest-agent

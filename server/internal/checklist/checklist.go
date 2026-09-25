@@ -4,7 +4,7 @@
 //
 // and cross-referencing each fiche ID against the table.
 //
-// The tool reads no database and has no dependency on tranche completion - 
+// The tool reads no database and has no dependency on tranche completion -
 // it only reads fiche filenames and the hardcoded mapping. Its
 // conclusions about legacy removal readiness are only valid once every
 // tranche it names is actually merged.

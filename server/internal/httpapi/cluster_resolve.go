@@ -12,7 +12,7 @@ import (
 // SnapshotReader, ConsoleRelay, ...) from a registry-backed ClientProvider,
 // keyed on the request's own :cluster path/query value. When clients is nil
 // (legacy single-cluster constructors and unit tests that construct a
-// handler directly with a bound capability), it returns fallback unchanged - 
+// handler directly with a bound capability), it returns fallback unchanged -
 // every WithRegistry constructor sets clients so the per-request path is the
 // one main.go actually exercises.
 //
@@ -51,7 +51,7 @@ func resolveCapability[T any](clients cluster.ClientProvider, fallback T, cluste
 	return value, nil
 }
 
-// ClusterRefresherResolver resolves the IndexRefresher for a named cluster - 
+// ClusterRefresherResolver resolves the IndexRefresher for a named cluster -
 // the write-side sibling of registryResolver. Without it, a handler bound once
 // at startup to the default cluster's *inventory.Worker would refresh the
 // default cluster's projection after every write, even writes targeting a

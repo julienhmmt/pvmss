@@ -1,17 +1,15 @@
 <script lang="ts">
 	import { getVmCreateContext } from './create.svelte';
-	import { resolve } from '$app/paths';
 	import { m } from '$lib/paraglide/messages.js';
 	import FormField from '$lib/shared/ui/FormField.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
 
-	// Cloud-init document picker (cloudinit-userdata ticket 04): one select
-	// offering the cluster's admin templates and the user's own files as two
-	// optgroups. Bound to the store's encoded cloudInitDocumentValue
-	// ('t:<id>' | 'f:<id>' | ''). Hidden when the cluster has no snippet
-	// write target, or when there is nothing to offer. Available in image
-	// mode (issue 04): the selected document is merged on top of the
-	// generated baseline, so adding a package never removes the guest agent.
+	// Cloud-init document picker: the cluster's admin templates, published by
+	// the administrator. Users never write cloud-init YAML themselves. Bound
+	// to the store's cloudInitDocumentValue (the template id, '' = none).
+	// Hidden when the cluster does not publish cloud-init documents, or when
+	// there is nothing to offer. In image mode the template already embeds
+	// the baseline, so choosing one never removes the guest agent.
 	const form = getVmCreateContext();
 
 	interface Props {
@@ -22,7 +20,6 @@
 	let { error = null }: Props = $props();
 
 	const templates = $derived(form.catalog?.cloudInitTemplates ?? []);
-	const files = $derived(form.myCloudInitFiles);
 	const writeEnabled = $derived(form.catalog?.cloudInitWriteEnabled ?? false);
 
 	const options = $derived([
@@ -30,19 +27,10 @@
 		// the document is optional, so the user must be able to clear a
 		// previously chosen one back to "none".
 		{ value: '', label: m['vms.create.cloudinitNone']() },
-		...templates.map((template) => ({
-			value: `t:${template.id}`,
-			label: template.label,
-			group: m['vms.create.cloudinitGroupAdmin']()
-		})),
-		...files.map((file) => ({
-			value: `f:${file.id}`,
-			label: file.label,
-			group: m['vms.create.cloudinitGroupMine']()
-		}))
+		...templates.map((template) => ({ value: template.id, label: template.label }))
 	]);
 
-	const visible = $derived(writeEnabled && templates.length + files.length > 0);
+	const visible = $derived(writeEnabled && templates.length > 0);
 </script>
 
 {#if !writeEnabled}
@@ -50,20 +38,7 @@
 {:else if visible}
 	<FormField label={m['vms.create.cloudinitDocument']()} hint={m['common.optional']()} {error}>
 		{#snippet children({ id, describedBy, invalid })}
-			<Select
-				{id}
-				{describedBy}
-				{invalid}
-				bind:value={form.cloudInitDocumentValue}
-				{options}
-			/>
+			<Select {id} {describedBy} {invalid} bind:value={form.cloudInitDocumentValue} {options} />
 		{/snippet}
 	</FormField>
-	{#if form.cloudInitFileId !== ''}
-		<p class="-mt-2 text-xs">
-			<a href={resolve('/cloud-init')} class="text-muted-foreground underline underline-offset-2 hover:text-foreground">
-				{m['vms.create.cloudinitManageFiles']()}
-			</a>
-		</p>
-	{/if}
 {/if}

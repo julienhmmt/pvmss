@@ -43,7 +43,7 @@ type consoleKindCase struct {
 	port   int
 }
 
-// consoleKindCases is the table shared by every GetConsoleTicket domain test - 
+// consoleKindCases is the table shared by every GetConsoleTicket domain test -
 // each case runs the same assertions for both KindVNC and KindTerminal, proving
 // the Resolve → fetch → issue → audit pipeline is identical for both paths.
 var consoleKindCases = []consoleKindCase{

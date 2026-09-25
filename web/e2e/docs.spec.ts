@@ -39,7 +39,8 @@ test.describe('T53 documentation browser', () => {
 		await page.getByRole('link', { name: 'User guide' }).click();
 
 		await expect(page).toHaveURL(/\/docs\/user-guide\?lang=en$/);
-		await expect(page.getByRole('heading', { name: 'User guide' })).toBeVisible();
+		// Two headings carry the doc title (page heading + article heading).
+		await expect(page.getByRole('heading', { name: 'User guide' }).first()).toBeVisible();
 	});
 
 	test('language selector filters the list by language', async ({ page }) => {

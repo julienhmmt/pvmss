@@ -3,7 +3,6 @@ package vm_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
@@ -404,14 +403,12 @@ func TestCreate_TemplateClone_CloudInitAppliedAfterTask(t *testing.T) {
 		t.Fatalf("cloned VM %d not in snapshot - cloud-init may have been attached before task completion", result.VMID)
 	}
 
-	wantFilename := fmt.Sprintf("pvmss-%d.yml", result.VMID)
-	pushIdx, attachIdx := snippetCallIndices(t, result.VMID, wantFilename, testCloudInitContent)
-
-	if pushIdx < 0 || attachIdx < 0 {
-		t.Fatalf("push=%d attach=%d, want both recorded for VMID %d", pushIdx, attachIdx, result.VMID)
+	wantFilename := publishedFilename(t, fixture.store, tmplID)
+	if got := attachedFilename(t, result.VMID); got != wantFilename {
+		t.Fatalf("attached %q, want the published %q", got, wantFilename)
 	}
 
-	assertSnippetRow(t, fixture.store, result.VMID, wantFilename, testCloudInitContent, aliceIdentity().Username)
+	assertDocumentRow(t, fixture.store, result.VMID, tmplID, wantFilename, aliceIdentity().Username)
 
 	if result.CloudInitTemplateID != tmplID {
 		t.Errorf("result.CloudInitTemplateID = %q, want %q", result.CloudInitTemplateID, tmplID)

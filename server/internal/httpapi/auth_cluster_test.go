@@ -96,7 +96,7 @@ func oidcRequestFor(t *testing.T, handler *httpapi.Auth, body string) *httptest.
 
 // TestAuth_OIDC - OIDC sign-in on a cluster with oidcEnabled
 // false or missing 404s (nothing to attempt), a missing cluster is a plain
-// 400, and - the case this OIDC surface exists to prove - 
+// 400, and - the case this OIDC surface exists to prove -
 // attempting sign-in on a cluster the admin HAS enabled OIDC for returns a
 // clean 501, never a redirect or any other partial success.
 //

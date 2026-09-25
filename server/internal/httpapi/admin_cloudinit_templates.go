@@ -2,10 +2,12 @@
 package httpapi
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"pvmss/server/internal/catalog"
+	"pvmss/server/internal/store"
 )
 
 // maxCloudInitTemplateBody is the explicit server-side content cap for an
@@ -20,6 +22,16 @@ type adminCloudInitTemplateDTO struct {
 	Label   string `json:"label"`
 	Content string `json:"content"`
 	Enabled bool   `json:"enabled"`
+	// Publication is the template's latest publication (nil: never
+	// published). PublishError is set when this request tried to publish
+	// and could not even start (not configured, nodes unreadable); per-node
+	// failures are in Publication.Nodes.
+	Publication  *adminPublicationDTO `json:"publication"`
+	PublishError string               `json:"publishError,omitempty"`
+}
+
+func templateDTO(t catalog.CloudInitTemplate) adminCloudInitTemplateDTO {
+	return adminCloudInitTemplateDTO{ID: t.ID, Label: t.Label, Content: t.Content, Enabled: t.Enabled}
 }
 
 type cloudInitTemplateCreateRequest struct {
@@ -53,10 +65,15 @@ func (h *AdminCatalog) ServeCloudInitTemplates(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	publications := h.publicationsFor(r.Context(), clusterName)
+
 	dto := make([]adminCloudInitTemplateDTO, len(templates))
 	for i, t := range templates {
-		dto[i] = adminCloudInitTemplateDTO{
-			ID: t.ID, Label: t.Label, Content: t.Content, Enabled: t.Enabled,
+		dto[i] = templateDTO(t)
+
+		if p, ok := publications[t.ID]; ok {
+			pub := publicationDTO(p)
+			dto[i].Publication = &pub
 		}
 	}
 
@@ -104,9 +121,9 @@ func (h *AdminCatalog) ServeCloudInitTemplateCreate(w http.ResponseWriter, r *ht
 	h.recordAdminAction(r, "admin.cloudinit_templates.create", "cloudinit_template", tmpl.ID,
 		fmt.Sprintf("created cloud-init template %s (%s) on cluster %s", tmpl.Label, tmpl.ID, clusterName),
 		[]any{map[string]any{auditKeyCluster: clusterName, "id": tmpl.ID, auditKeyLabel: tmpl.Label, auditKeyEnabled: tmpl.Enabled}})
-	writeAdminJSON(w, http.StatusCreated, adminCloudInitTemplateDTO{
-		ID: tmpl.ID, Label: tmpl.Label, Content: tmpl.Content, Enabled: tmpl.Enabled,
-	})
+	dto := templateDTO(tmpl)
+	dto.Publication, dto.PublishError = h.publishTemplate(r.Context(), clusterName, tmpl)
+	writeAdminJSON(w, http.StatusCreated, dto)
 }
 
 // ServeCloudInitTemplateUpdate handles PUT /api/v1/admin/cloudinit-templates/{id}.
@@ -156,9 +173,9 @@ func (h *AdminCatalog) ServeCloudInitTemplateUpdate(w http.ResponseWriter, r *ht
 	h.recordAdminAction(r, "admin.cloudinit_templates.update", "cloudinit_template", id,
 		fmt.Sprintf("updated cloud-init template %s (%s) on cluster %s", tmpl.Label, id, clusterName),
 		[]any{map[string]any{auditKeyCluster: clusterName, "id": id, auditKeyLabel: tmpl.Label, auditKeyEnabled: tmpl.Enabled}})
-	writeAdminJSON(w, http.StatusOK, adminCloudInitTemplateDTO{
-		ID: tmpl.ID, Label: tmpl.Label, Content: tmpl.Content, Enabled: tmpl.Enabled,
-	})
+	dto := templateDTO(tmpl)
+	dto.Publication, dto.PublishError = h.publishTemplate(r.Context(), clusterName, tmpl)
+	writeAdminJSON(w, http.StatusOK, dto)
 }
 
 // ServeCloudInitTemplateDelete handles DELETE /api/v1/admin/cloudinit-templates/{id}.
@@ -169,6 +186,29 @@ func (h *AdminCatalog) ServeCloudInitTemplateDelete(w http.ResponseWriter, r *ht
 }
 
 // ServeCloudInitTemplateToggle handles POST /api/v1/admin/cloudinit-templates/{id}/toggle.
+// Enabling a template also publishes it (a template disabled before the
+// first publish would otherwise be offered to users with no file behind it).
 func (h *AdminCatalog) ServeCloudInitTemplateToggle(w http.ResponseWriter, r *http.Request) {
-	h.serveCatalogToggle(w, r, "cloud-init template", "template", catalog.SetCloudInitTemplateEnabled, catalog.ErrCloudInitTemplateNotFound)
+	publishOnEnable := func(ctx context.Context, st *store.Store, clusterName, id string, enabled bool) error {
+		if err := catalog.SetCloudInitTemplateEnabled(ctx, st, clusterName, id, enabled); err != nil {
+			return err
+		}
+
+		if !enabled {
+			return nil
+		}
+
+		tmpl, err := catalog.FindCloudInitTemplate(ctx, st, clusterName, id)
+		if err != nil {
+			return err
+		}
+
+		if _, msg := h.publishTemplate(ctx, clusterName, tmpl); msg != "" {
+			h.log.Warn("cloud-init template enabled but not published", "component", "httpapi", "cluster", clusterName, "template", id, "error", msg)
+		}
+
+		return nil
+	}
+
+	h.serveCatalogToggle(w, r, "cloud-init template", "template", publishOnEnable, catalog.ErrCloudInitTemplateNotFound)
 }

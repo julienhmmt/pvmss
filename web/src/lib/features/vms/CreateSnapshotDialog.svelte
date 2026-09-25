@@ -28,10 +28,10 @@
 	const canVMState = $derived(capability === null ? running : capability.canVMState);
 	const canSnapshot = $derived(capability === null ? true : capability.canSnapshot);
 	const vmStateReason = $derived(
-		!running ? m['vms.snapshots.createRamHint']() : (capability?.warnings[0] ?? '')
+		!running ? m['vms.snapshots.createRamHint']() : (capability?.warnings?.[0] ?? '')
 	);
 	const snapshotBlockedReason = $derived(
-		capability !== null && !capability.canSnapshot ? (capability.warnings[0] ?? '') : ''
+		capability !== null && !capability.canSnapshot ? (capability.warnings?.[0] ?? '') : ''
 	);
 
 	async function submit(): Promise<void> {

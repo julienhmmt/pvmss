@@ -996,7 +996,7 @@ func (h *VMDetail) handleEnableSerial(w http.ResponseWriter, r *http.Request) {
 	h.writeEntity(w, r, entity)
 }
 
-// handleRetrofitSeaBIOS serves POST /vms/:cluster/:vmid/retrofit-seabios - 
+// handleRetrofitSeaBIOS serves POST /vms/:cluster/:vmid/retrofit-seabios -
 // the admin-only action that switches an existing UEFI VM to SeaBIOS so its
 // graphical console becomes readable. Refuses
 // VMs with TPM state or Secure Boot before changing anything; a running VM

@@ -81,7 +81,7 @@ func (w detailFailingWriter) Patch(ctx context.Context, node string, vmid int, n
 }
 
 // newVMDetailHandlerWithWriter builds the detail handler over the fake dataset
-// with a custom cluster.Writer, a real audit store, and a no-op refresher - 
+// with a custom cluster.Writer, a real audit store, and a no-op refresher -
 // used by the cluster-write error-mapping tests where the write must fail after
 // Resolve succeeds.
 func newVMDetailHandlerWithWriter(t *testing.T, writer cluster.Writer) (*httpapi.VMDetail, *httpapi.Auth) {

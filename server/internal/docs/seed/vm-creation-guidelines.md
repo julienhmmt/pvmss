@@ -52,9 +52,9 @@ Enable **TPM 2.0** for guests that require it (Windows 11).
 
 ## Cloud-init
 
-Prefer a **cloud-init document** over a manual post-install setup. Pick an
-admin template or one of your own files; the VM gets its own copy at
-creation. See the [cloud-init how-to](/docs/cloud-init-howto).
+Prefer a **cloud-init document** over a manual post-install setup. Pick one of
+the templates your administrator provides; the VM keeps the version it was
+created with. See the [cloud-init how-to](/docs/cloud-init-howto).
 
 ## After creation
 

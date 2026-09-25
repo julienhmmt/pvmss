@@ -44,8 +44,6 @@ func (c Configuration) Redacted() []Field {
 		{Name: "ProxmoxURL", Value: c.ProxmoxURL},
 		{Name: "ProxmoxAPITokenName", Value: c.ProxmoxAPITokenName},
 		{Name: "PROXMOX_API_TOKEN_VALUE", Value: "", Redacted: true},
-		{Name: "SSHUser", Value: c.SSHUser},
 		{Name: "SSHKeyFile", Value: c.SSHKeyFile},
-		{Name: "SSHPort", Value: strconv.Itoa(c.SSHPort)},
 	}
 }

@@ -142,7 +142,12 @@ func (service *Policy) Gabarit(ctx context.Context, clusterName string) (Gabarit
 // and therefore always receive the unlimited allowance.
 func (service *Policy) Quota(ctx context.Context, clusterName string, actor auth.Identity) (Quota, error) {
 	row, err := service.store.PolicyRow(ctx, clusterName)
-	if err != nil {
+	if errors.Is(err, sql.ErrNoRows) {
+		// A cluster with no stored limits - one added but never configured, or
+		// the all-clusters list, which has no single cluster - uses the
+		// defaults. Returning the error failed the whole list with a 500.
+		row = store.PolicyRow{Cluster: clusterName, MaxVMPerUser: defaultMaxVMPerUser}
+	} else if err != nil {
 		return Quota{}, err
 	}
 

@@ -106,7 +106,7 @@ type ListResult struct {
 	Quota          *Quota
 }
 
-// List resolves query against the index snapshot for identity. It is pure - 
+// List resolves query against the index snapshot for identity. It is pure -
 // no I/O, no mutation of the index - and is the only branch point for scope
 // in the whole request path. allowedQuota is the configured per-user
 // VM allowance reported in Quota (-1 = unlimited); the quota is attached
@@ -304,7 +304,7 @@ func hasMatchingTag(tags []string, loweredSearch string) bool {
 }
 
 // nodeFacet lists the nodes present before the node filter is applied, so
-// the filter's own dropdown never shrinks to hide its selection
+// the filter's own dropdown never shrinks to hide its selection.
 func nodeFacet(vms []cluster.VM) []string {
 	seen := make(map[string]struct{}, len(vms))
 

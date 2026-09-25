@@ -18,7 +18,7 @@ import (
 
 // VMs serves GET /api/v1/vms - the ONLY VM-listing endpoint in the system.
 // It reads the inventory projection, never the cluster
-// client, and enforces scope server-side via vm.List
+// client, and enforces scope server-side via vm.List.
 type VMs struct {
 	projection   *inventory.Projection
 	source       inventory.Source

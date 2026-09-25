@@ -1,5 +1,6 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
 import { csrfHeaders } from './support/csrf';
+import { cleanupCreatedVms, createVm } from './support/vms';
 
 async function signIn(request: APIRequestContext, username: string, password: string): Promise<void> {
 	const response = await request.post('/api/v1/auth/login', {
@@ -13,6 +14,13 @@ async function signInAlice(request: APIRequestContext): Promise<void> {
 }
 
 test.describe('T05 VM detail & actions (closes S01)', () => {
+	// The specs below mutate VMs (start, rename, delete), so they act on VMs
+	// they create. The fake dataset is shared by the whole run, so touching a
+	// fixture would break every later spec that asserts the pristine set.
+	test.afterEach(async ({ request }) => {
+		await signInAlice(request);
+		await cleanupCreatedVms(request);
+	});
 	test('opens a VM from the list and sees identity, status, and metrics', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms?cluster=default');
@@ -54,8 +62,10 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 
 	test('start action on a stopped VM flips status optimistically then reconciles', async ({ page }) => {
 		await signInAlice(page.request);
-		// web-02 (VMID 101) is stopped.
-		await page.goto('/vms/default/101');
+		// A VM of this test's own, created stopped - starting a fixture would
+		// change the stopped counts that vm-list asserts on.
+		const vm = await createVm(page.request, 'detail-e2e-start');
+		await page.goto(`/vms/default/${vm.vmid}`);
 
 		await expect(page.getByTestId('vm-status')).toContainText('stopped');
 		await page.getByTestId('vm-action-start').click();
@@ -66,8 +76,8 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 
 	test('delete opens a confirmation dialog, confirms, and the VM disappears', async ({ page }) => {
 		await signInAlice(page.request);
-		// sandbox-01 (VMID 114) - stopped, owned by alice.
-		await page.goto('/vms/default/114');
+		const vm = await createVm(page.request, 'detail-e2e-del');
+		await page.goto(`/vms/default/${vm.vmid}`);
 
 		await page.getByTestId('vm-action-delete').click();
 		await expect(page.getByRole('dialog')).toBeVisible();
@@ -79,8 +89,8 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 
 	test('delete a running VM prompts for force-stop, then confirms and deletes', async ({ page }) => {
 		await signInAlice(page.request);
-		// web-01 (VMID 100) - running, owned by alice.
-		await page.goto('/vms/default/100');
+		const vm = await createVm(page.request, 'detail-e2e-run', { start: true });
+		await page.goto(`/vms/default/${vm.vmid}`);
 
 		await page.getByTestId('vm-action-delete').click();
 		await expect(page.getByRole('dialog')).toBeVisible();
@@ -99,9 +109,12 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 	});
 
 	test('S01 closure: a non-owner cannot stop a VM they do not own (SC-001)', async ({ request }) => {
+		await signIn(request, 'alice', 'pvmss-alice');
+		const vm = await createVm(request, 'detail-e2e-owner', { start: true });
+
 		// This is S01's exact PoC request, now expected to fail.
 		await signIn(request, 'bob', 'pvmss-bob');
-		const response = await request.post('/api/v1/vms/default/100/actions', {
+		const response = await request.post(`/api/v1/vms/default/${vm.vmid}/actions`, {
 			headers: await csrfHeaders(request),
 			data: { action: 'stop' }
 		});
@@ -121,13 +134,14 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 
 	test('rename inline: type a new name, press Enter, it persists', async ({ page }) => {
 		await signInAlice(page.request);
-		await page.goto('/vms/default/101');
+		const vm = await createVm(page.request, 'detail-e2e-ren');
+		await page.goto(`/vms/default/${vm.vmid}`);
 
 		await page.getByTestId('vm-name').click();
-		await page.getByTestId('vm-name-edit').fill('web-renamed');
+		await page.getByTestId('vm-name-edit').fill('detail-e2e-renamed');
 		await page.keyboard.press('Enter');
 
-		await expect(page.getByTestId('vm-name')).toHaveText('web-renamed');
+		await expect(page.getByTestId('vm-name')).toHaveText('detail-e2e-renamed');
 	});
 
 	test('T03: live metrics tick updates the running VM chart', async ({ page }) => {

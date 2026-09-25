@@ -4,7 +4,7 @@ import "sync/atomic"
 
 // Projection holds the current Index via an atomic pointer. Readers never
 // block on a mutex held during a slow client call - they always see either
-// the previous complete index or the new complete one, never a partial one
+// the previous complete index or the new complete one, never a partial one.
 type Projection struct {
 	current atomic.Pointer[Index]
 }

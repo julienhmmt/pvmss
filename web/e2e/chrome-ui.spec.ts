@@ -7,6 +7,10 @@ import { test, expect } from '@playwright/test';
 // The default locale is French (Paraglide base locale). SSR renders in French;
 // the language switcher is a two-button group and the theme toggle is an icon
 // button. Selectors use locale-agnostic patterns where possible.
+//
+// This file asserts the real French default, so it opts out of the suite-wide
+// English seed that playwright.config.ts applies.
+test.use({ storageState: { cookies: [], origins: [] } });
 
 test.describe('T19 chrome UI', () => {
 	test.describe('US1 - language switcher', () => {

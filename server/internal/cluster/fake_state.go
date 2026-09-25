@@ -67,20 +67,12 @@ type fakeState struct {
 	// or absent means unlocked. Tests inject a lock to exercise retry-on-lock
 	// and the lock field in VMLiveStatus.
 	vmLocks map[int]string
-	// snippetPresence models a fixed, admin-preplaced snippet file the fake
-	// reports as existing - HasSnippet cannot invent one, so this defaults
-	// empty (nothing present) and tests opt a (node, storage, filename) triple
-	// in via SetFakeSnippetPresent.
+	// snippetPresence records which snippet files each node lists: filled by
+	// PublishSnippet, or by tests via SetFakeSnippetPresent.
 	snippetPresence map[fakeSnippetKey]bool
-	// snippetContent stores the content of admin-preplaced snippet files so
-	// ReadSnippet can return them. Tests opt content in via
-	// SetFakeSnippetContent.
-	snippetContent map[fakeSnippetKey]string
-	// snippetPushMarksPresent, when false, keeps a successful
-	// PushCloudInitSnippet from recording the file as visible - the "write
-	// went through the mount but Proxmox does not list it" failure (wrong
-	// mount) the create path must catch via HasSnippet. Defaults true,
-	// matching the real client's write-then-verify contract.
+	// snippetPushMarksPresent, when false, keeps PublishSnippet from
+	// recording the file as visible - the "helper wrote into a directory
+	// Proxmox does not list" failure publication must report per node.
 	snippetPushMarksPresent bool
 }
 
@@ -127,7 +119,6 @@ func newFakeState(clusterName string) *fakeState {
 		roleState:               make(map[string][]string),
 		vmLocks:                 make(map[int]string),
 		snippetPresence:         make(map[fakeSnippetKey]bool),
-		snippetContent:          make(map[fakeSnippetKey]string),
 		snippetPushMarksPresent: true,
 	}
 	if clusterName == "secondary" {
@@ -175,7 +166,6 @@ func (s *fakeState) reset(clusterName string) {
 
 	s.snippetMu.Lock()
 	s.snippetPresence = fresh.snippetPresence
-	s.snippetContent = fresh.snippetContent
 	s.snippetPushMarksPresent = fresh.snippetPushMarksPresent
 	s.snippetMu.Unlock()
 

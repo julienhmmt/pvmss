@@ -40,17 +40,17 @@ test.describe('T10 VM console VNC', () => {
 
 		// The toolbar is visible with all controls.
 		await expect(page.getByTestId('vm-console-toolbar')).toBeVisible();
-		await expect(page.getByTestId('vm-console-scale')).toContainText('Scale: On');
+		await expect(page.getByTestId('vm-console-scale')).toContainText('Scale On');
 		await expect(page.getByTestId('vm-console-ctrlaltdel')).toBeVisible();
 		await expect(page.getByTestId('vm-console-disconnect')).toBeVisible();
 
 		// Toggle scale off.
 		await page.getByTestId('vm-console-scale').click();
-		await expect(page.getByTestId('vm-console-scale')).toContainText('Scale: Off');
+		await expect(page.getByTestId('vm-console-scale')).toContainText('Scale Off');
 
 		// Toggle back on.
 		await page.getByTestId('vm-console-scale').click();
-		await expect(page.getByTestId('vm-console-scale')).toContainText('Scale: On');
+		await expect(page.getByTestId('vm-console-scale')).toContainText('Scale On');
 	});
 
 	test('T01: pop-out control opens the console in a second, independent window', async ({ page, context }) => {
@@ -143,11 +143,11 @@ test.describe('T10 VM console VNC', () => {
 		await expect(page.getByTestId('vm-console-status')).toContainText('connected', { timeout: 15000 });
 
 		// 2. Scale toggle.
-		await expect(page.getByTestId('vm-console-scale')).toContainText('Scale: On');
+		await expect(page.getByTestId('vm-console-scale')).toContainText('Scale On');
 		await page.getByTestId('vm-console-scale').click();
-		await expect(page.getByTestId('vm-console-scale')).toContainText('Scale: Off');
+		await expect(page.getByTestId('vm-console-scale')).toContainText('Scale Off');
 		await page.getByTestId('vm-console-scale').click();
-		await expect(page.getByTestId('vm-console-scale')).toContainText('Scale: On');
+		await expect(page.getByTestId('vm-console-scale')).toContainText('Scale On');
 
 		// 3. Ctrl+Alt+Del - the fake server accepts it without closing.
 		await page.getByTestId('vm-console-ctrlaltdel').click();

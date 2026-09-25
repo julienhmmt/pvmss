@@ -1,4 +1,5 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
+import { csrfHeaders } from "./support/csrf";
 
 async function signInAlice(request: APIRequestContext): Promise<void> {
   const response = await request.post("/api/v1/auth/login", {
@@ -17,7 +18,8 @@ test.describe("T07 VM hardware (disks, CD-ROM, network, sockets/cores/RAM/tags)"
     await page.goto("/vms/default/101");
     await page.getByTestId("vm-tab-disks").click();
 
-    await expect(page.getByText("scsi0 · boot")).toBeVisible();
+    // The boot disk cell renders the key and a separate "boot" pill.
+    await expect(page.locator("tr", { hasText: "scsi0" }).first()).toContainText("boot");
 
     await page.getByTestId("vm-disk-add-open").click();
     await expect(page.getByRole("dialog")).toBeVisible();
@@ -58,6 +60,19 @@ test.describe("T07 VM hardware (disks, CD-ROM, network, sockets/cores/RAM/tags)"
   test("change a network interface bridge to a different approved one, persists on reload", async ({
     page,
   }) => {
+    // vmbr1 (pve-node-01) is discovered but approved by no other spec, and a
+    // bridge only becomes selectable once approved. Approve it here so this
+    // test owns its precondition instead of depending on another spec.
+    const admin = await page.request.post("/api/v1/auth/admin-login", {
+      data: { password: "pvmss-e2e-admin" },
+    });
+    expect(admin.status()).toBe(200);
+    const approve = await page.request.post("/api/v1/admin/bridges/toggle", {
+      headers: await csrfHeaders(page.request),
+      data: { cluster: "default", node: "pve-node-01", name: "vmbr1", enabled: true },
+    });
+    expect(approve.status()).toBe(200);
+
     await signInAlice(page.request);
     await page.goto("/vms/default/101");
     await page.getByTestId("vm-tab-network").click();

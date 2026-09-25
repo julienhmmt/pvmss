@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
@@ -230,70 +231,86 @@ func TestVMCloudInit_ConsolePassword(t *testing.T) {
 	})
 }
 
-// TestVMCloudInit_SnippetSave - with AllowCustomYAML on (the
-// default) and a write target set (the fake default), PUT saves the
-// snippet and returns 200. GET still works for existing rows.
+// TestVMCloudInit_DocumentSwitch - a user switches the VM to a published
+// admin template (200), GET reports it, and "" detaches.
 //
 //nolint:paralleltest // serial: shared fake VM and SQLite fixtures
-func TestVMCloudInit_SnippetSave(t *testing.T) {
+func TestVMCloudInit_DocumentSwitch(t *testing.T) {
 	handler, authHandler, st := newVMCloudInitHandler(t)
 	cookie := aliceCookie(t, authHandler)
+	path := "/api/v1/vms/default/101/cloudinit/document"
+
+	get := func() map[string]any {
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, cloudInitRequest(http.MethodGet, path, "", cookie))
+
+		if recorder.Code != http.StatusOK {
+			t.Fatalf("GET status = %d, body = %s", recorder.Code, recorder.Body.String())
+		}
+
+		var body map[string]any
+		if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+
+		return body
+	}
+
+	if body := get(); body["templateId"] != nil {
+		t.Fatalf("fresh templateId = %v, want null", body["templateId"])
+	}
+
+	tmplID := createCatalogTemplate(t, st)
 
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodGet, "/api/v1/vms/default/101/cloudinit/snippet", "", cookie))
+	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPut, path, `{"templateId":"`+tmplID+`"}`, cookie))
 
 	if recorder.Code != http.StatusOK {
-		t.Fatalf("GET status = %d, body = %s", recorder.Code, recorder.Body.String())
+		t.Fatalf("switch status = %d, want 200, body = %s", recorder.Code, recorder.Body.String())
 	}
 
-	var body map[string]any
-	if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
-		t.Fatal(err)
-	}
-
-	if body["content"] != nil {
-		t.Fatalf("fresh content = %v, want null", body["content"])
+	if body := get(); body["templateId"] != tmplID {
+		t.Fatalf("templateId = %v, want %q", body["templateId"], tmplID)
 	}
 
 	recorder = httptest.NewRecorder()
-	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPut, "/api/v1/vms/default/101/cloudinit/snippet", `{"content":"#cloud-config\nusers: {}\n"}`, cookie))
+	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPut, path, `{"templateId":""}`, cookie))
 
 	if recorder.Code != http.StatusOK {
-		t.Fatalf("save status = %d, want 200, body = %s", recorder.Code, recorder.Body.String())
+		t.Fatalf("detach status = %d, body = %s", recorder.Code, recorder.Body.String())
 	}
 
-	snippet, found, err := st.GetCloudInitSnippet(context.Background(), "default", 101)
-	if err != nil || !found || snippet.Content != "#cloud-config\nusers: {}\n" {
-		t.Fatalf("snippet = %+v, found %v, err %v", snippet, found, err)
+	if body := get(); body["templateId"] != nil {
+		t.Fatalf("templateId after detach = %v, want null", body["templateId"])
 	}
 }
 
-// TestVMCloudInit_SnippetSave_PolicyOff - AllowCustomYAML=false returns 403.
+// TestVMCloudInit_DocumentSwitch_Refusals - users cannot send YAML, and an
+// unpublished template is a 409.
 //
 //nolint:paralleltest // serial: shared fake VM and SQLite fixtures
-func TestVMCloudInit_SnippetSave_PolicyOff(t *testing.T) {
+func TestVMCloudInit_DocumentSwitch_Refusals(t *testing.T) {
 	handler, authHandler, st := newVMCloudInitHandler(t)
 	cookie := aliceCookie(t, authHandler)
-
-	// Disable custom YAML via the store directly (the handler auto-creates
-	// a policy service from the same store).
-	current, err := st.PolicyRow(context.Background(), "default")
-	if err != nil {
-		t.Fatalf("PolicyRow: %v", err)
-	}
-
-	current.AllowCustomYAML = false
-
-	if err := st.UpsertPolicyRow(context.Background(), current); err != nil {
-		t.Fatalf("UpsertPolicyRow: %v", err)
-	}
+	path := "/api/v1/vms/default/101/cloudinit/document"
 
 	recorder := httptest.NewRecorder()
-	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPut, "/api/v1/vms/default/101/cloudinit/snippet", `{"content":"#cloud-config\n"}`, cookie))
+	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPut, path, `{"content":"#cloud-config\n"}`, cookie))
 
-	if recorder.Code != http.StatusForbidden {
-		t.Fatalf("save status = %d, want 403, body = %s", recorder.Code, recorder.Body.String())
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("YAML body status = %d, want 400, body = %s", recorder.Code, recorder.Body.String())
 	}
 
-	assertAPIError(t, recorder.Body.Bytes(), "custom_yaml_disabled")
+	if _, err := catalog.CreateCloudInitTemplate(context.Background(), st, auditTestCluster, "Draft", "#cloud-config\n"); err != nil {
+		t.Fatalf("CreateCloudInitTemplate: %v", err)
+	}
+
+	recorder = httptest.NewRecorder()
+	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPut, path, `{"templateId":"draft"}`, cookie))
+
+	if recorder.Code != http.StatusConflict {
+		t.Fatalf("unpublished status = %d, want 409, body = %s", recorder.Code, recorder.Body.String())
+	}
+
+	assertAPIError(t, recorder.Body.Bytes(), "cloudinit_not_published")
 }

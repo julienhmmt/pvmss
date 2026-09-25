@@ -5,11 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -114,17 +111,12 @@ func parseIPConfig(raw string, result *CloudInitConfig) {
 	}
 }
 
-// FindSnippetStorage implements CloudInitReader. PVMSS can only write to the
-// one snippet directory the administrator configured for the cluster
-// so this returns p.SnippetStorage - but only after proving the
-// node lists it as an active snippets provider AND that a file written to
-// the configured directory is listed by that storage (verifySnippetTarget,
-// ErrSnippetTargetMismatch otherwise): a mistyped id, a wrong mount or a storage
-// without the snippets content flag must not produce a cicustom pointing at
-// nothing. With no write target configured it reports
-// ErrSnippetWriteUnavailable.
+// FindSnippetStorage implements CloudInitReader: the cluster's configured
+// snippet storage, provided publishing is configured and the node lists that
+// storage as an active snippets provider. Whether a given file is actually
+// there is proven per file with HasSnippet before any cicustom is set.
 func (p Proxmox) FindSnippetStorage(ctx context.Context, node string) (string, error) {
-	if !p.SnippetWriteAvailable() {
+	if !p.PublishingEnabled() {
 		return "", ErrSnippetWriteUnavailable
 	}
 
@@ -135,13 +127,6 @@ func (p Proxmox) FindSnippetStorage(ctx context.Context, node string) (string, e
 
 	for _, row := range rows {
 		if row.Storage == p.SnippetStorage && row.Active == 1 {
-			// Active is not enough: prove the configured directory IS
-			// that storage's snippets/ dir before any caller attaches a
-			// cicustom to a file written there.
-			if err := p.verifySnippetTarget(ctx, node); err != nil {
-				return "", err
-			}
-
 			return p.SnippetStorage, nil
 		}
 	}
@@ -293,39 +278,6 @@ func (p Proxmox) HasSnippet(ctx context.Context, node, storage, filename string)
 	}
 
 	return false, nil
-}
-
-// ReadSnippet implements Writer by reading a snippet file from the cluster's
-// configured snippet directory. Used to load an
-// admin-preplaced cluster-wide baseline so it can replace the generated
-// baseline in the delivered vendor-data.
-func (p Proxmox) ReadSnippet(ctx context.Context, node, storage, filename string) (string, error) {
-	if !p.SnippetWriteAvailable() {
-		return "", ErrSnippetWriteUnavailable
-	}
-
-	if err := p.checkSnippetStorage(storage); err != nil {
-		return "", err
-	}
-
-	if !snippetFilenameRE.MatchString(filename) || filepath.Base(filename) != filename {
-		return "", fmt.Errorf("refusing to read snippet with unsafe filename %q", filename)
-	}
-
-	if p.SSH.Enabled() {
-		return p.sshReadSnippet(ctx, node, filename)
-	}
-
-	data, err := os.ReadFile(filepath.Join(p.SnippetDir, filename)) //nolint:gosec // filename validated above
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", ErrNotFound
-		}
-
-		return "", err
-	}
-
-	return string(data), nil
 }
 
 // AttachCloudInitSnippet points the VM at an already-uploaded snippet file
@@ -611,126 +563,8 @@ func pollAgentExecStatus(ctx context.Context, rest proxmoxRESTClient, path strin
 	}
 }
 
-// snippetFilenameRE is the only shape PVMSS ever writes: a pvmss- prefix,
-// a safe body, a yaml extension. Callers build names from VMIDs, but the
-// writer re-checks so a bug elsewhere cannot escape the snippet directory.
+// snippetFilenameRE is the only shape PVMSS ever publishes or removes: a
+// pvmss- prefix, a safe body, a yaml extension. The node-side helper
+// enforces the same rule; the check here keeps a bug elsewhere from even
+// sending a bad name.
 var snippetFilenameRE = regexp.MustCompile(`^pvmss-[A-Za-z0-9._-]+\.ya?ml$`)
-
-// SnippetWriteAvailable implements Writer.
-func (p Proxmox) SnippetWriteAvailable() bool {
-	return p.SnippetDir != "" && p.SnippetStorage != ""
-}
-
-// checkSnippetStorage rejects a snippet operation aimed at a storage other
-// than the cluster's configured snippet storage.
-func (p Proxmox) checkSnippetStorage(storage string) error {
-	if storage != p.SnippetStorage {
-		return fmt.Errorf("snippet storage %q is not this cluster's configured snippet storage %q", storage, p.SnippetStorage)
-	}
-
-	return nil
-}
-
-// PushCloudInitSnippet implements Writer by writing content into the
-// cluster's configured snippet directory. There is no Proxmox API for this
-// (the upload endpoint's content enum is iso/vztmpl/import); the directory
-// is the storage's own snippets/ dir, bind-mounted into the PVMSS process.
-// temp-file + rename is atomic, so Proxmox never reads a
-// half-written file, and a retry simply overwrites. vmid is unused: the
-// filename already carries the VM. When SSH delivery is enabled, the file
-// is written over SSH to the specific node where the VM is created (the
-// node IP is resolved via /cluster/status), and SnippetDir is the remote path.
-func (p Proxmox) PushCloudInitSnippet(ctx context.Context, node, storage, filename string, _ int, content string) error {
-	if !p.SnippetWriteAvailable() {
-		return ErrSnippetWriteUnavailable
-	}
-
-	if err := p.checkSnippetStorage(storage); err != nil {
-		return err
-	}
-
-	if !snippetFilenameRE.MatchString(filename) || filepath.Base(filename) != filename {
-		return fmt.Errorf("refusing to write snippet with unsafe filename %q", filename)
-	}
-
-	if p.SSH.Enabled() {
-		return p.sshWriteSnippet(ctx, node, filename, content)
-	}
-
-	return writeFileAtomic(p.SnippetDir, filename, content)
-}
-
-// RemoveCloudInitSnippet implements Writer by deleting a file from the
-// cluster's configured snippet directory. A missing file is not an error
-// (the VM may have been created before a write target was configured, or
-// the file was already removed). Same guards as PushCloudInitSnippet.
-// For SSH delivery, remove targets the cluster API host (node unknown at
-// remove time): a leftover file on a different node is a cleanup miss, not
-// a VM-start blocker, and shared storage makes it visible from any node.
-func (p Proxmox) RemoveCloudInitSnippet(ctx context.Context, storage, filename string) error {
-	if !p.SnippetWriteAvailable() {
-		return ErrSnippetWriteUnavailable
-	}
-
-	if err := p.checkSnippetStorage(storage); err != nil {
-		return err
-	}
-
-	if !snippetFilenameRE.MatchString(filename) || filepath.Base(filename) != filename {
-		return fmt.Errorf("refusing to remove snippet with unsafe filename %q", filename)
-	}
-
-	if p.SSH.Enabled() {
-		return p.sshRemoveSnippet(ctx, "", filename)
-	}
-
-	if err := os.Remove(filepath.Join(p.SnippetDir, filename)); err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return nil
-		}
-
-		return fmt.Errorf("remove snippet %q: %w", filename, err)
-	}
-
-	return nil
-}
-
-// writeFileAtomic writes content to dir/filename via a temp file and rename,
-// mode 0644 (cloud-init on the Proxmox node reads it as a non-root user).
-// dir must already exist: it is the administrator-mounted snippets/ share -
-// creating it silently would mask a missing mount and drop the document into
-// the container's local filesystem where Proxmox can never see it.
-func writeFileAtomic(dir, filename, content string) (err error) {
-	tmp, err := os.CreateTemp(dir, ".pvmss-*.tmp")
-	if err != nil {
-		return fmt.Errorf("create snippet temp file: %w", err)
-	}
-
-	defer func() {
-		if err != nil {
-			_ = os.Remove(tmp.Name())
-		}
-	}()
-
-	if _, err = tmp.WriteString(content); err != nil {
-		_ = tmp.Close()
-
-		return fmt.Errorf("write snippet: %w", err)
-	}
-
-	if err = tmp.Chmod(0o644); err != nil {
-		_ = tmp.Close()
-
-		return fmt.Errorf("chmod snippet: %w", err)
-	}
-
-	if err = tmp.Close(); err != nil {
-		return fmt.Errorf("close snippet: %w", err)
-	}
-
-	if err = os.Rename(tmp.Name(), filepath.Join(dir, filename)); err != nil {
-		return fmt.Errorf("publish snippet: %w", err)
-	}
-
-	return nil
-}

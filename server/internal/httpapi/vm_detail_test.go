@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-// vmDetailEntity mirrors the GET /vms/:cluster/:vmid 200 contract
+// vmDetailEntity mirrors the GET /vms/:cluster/:vmid 200 contract.
 type vmDetailEntity struct {
 	VMID          int      `json:"vmid"`
 	Name          string   `json:"name"`
@@ -1049,7 +1049,7 @@ func TestVMDetail_CDROM(t *testing.T) {
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestVMDetail_ResolveIsTheOnlyOwnershipCheck(t *testing.T) {
-	// The handler returns vm.ErrForbidden / vm.ErrNotFound from Resolve - 
+	// The handler returns vm.ErrForbidden / vm.ErrNotFound from Resolve -
 	// verified by checking the error types match (not a separate check).
 	handler, authHandler, _, _ := newVMDetailHandler(t)
 	bobCookieVal := bobCookie(t, authHandler)

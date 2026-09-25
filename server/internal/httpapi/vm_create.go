@@ -132,7 +132,6 @@ type createResultDTO struct {
 	Node                string `json:"node"`
 	UPID                string `json:"upid"`
 	CloudInitTemplateID string `json:"cloudInitTemplateId,omitempty"`
-	CloudInitFileID     string `json:"cloudInitFileId,omitempty"`
 	CloudInitPushError  string `json:"cloudInitPushError,omitempty"`
 	// FromImage is true when the VM was created from a cloud image
 	// the create summary warns that SSH
@@ -254,13 +253,17 @@ type catalogDTO struct {
 	Templates          []catalogTemplateDTO          `json:"templates"`
 	CloudInitTemplates []catalogCloudInitTemplateDTO `json:"cloudInitTemplates"`
 	// CloudInitWriteEnabled reports whether this cluster has a snippet write
-	// target configured (Admin › Clusters): cloud-init documents can be
+	// target configured (Infrastructure › Clusters): cloud-init documents can be
 	// written, so the wizard may offer the document picker.
-	CloudInitWriteEnabled bool                     `json:"cloudInitWriteEnabled"`
-	Tags                  []catalogTagDTO          `json:"tags"`
-	Gabarit               *catalogGabaritDTO       `json:"gabarit,omitempty"`
-	Quota                 *catalogQuotaDTO         `json:"quota,omitempty"`
-	NodeCapacities        []catalogNodeCapacityDTO `json:"nodeCapacities,omitempty"`
+	CloudInitWriteEnabled bool `json:"cloudInitWriteEnabled"`
+	// CloudInitBaselineID is the document id of the standalone baseline
+	// (published for image VMs with no template). The web client compares a
+	// VM's document id against it instead of hardcoding the value.
+	CloudInitBaselineID string                   `json:"cloudInitBaselineId"`
+	Tags                []catalogTagDTO          `json:"tags"`
+	Gabarit             *catalogGabaritDTO       `json:"gabarit,omitempty"`
+	Quota               *catalogQuotaDTO         `json:"quota,omitempty"`
+	NodeCapacities      []catalogNodeCapacityDTO `json:"nodeCapacities,omitempty"`
 }
 
 // ServeHTTP handles POST /api/v1/vms. Creation is asynchronous:
@@ -322,7 +325,6 @@ func (h *VMCreate) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Node:                result.Node,
 		UPID:                result.UPID,
 		CloudInitTemplateID: result.CloudInitTemplateID,
-		CloudInitFileID:     result.CloudInitFileID,
 		CloudInitPushError:  result.CloudInitPushError,
 		FromImage:           result.FromImage,
 	})
@@ -355,34 +357,8 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 
 	data.resources = resources
 
-	snap, err := client.Snapshot(ctx)
-	if err != nil {
-		return catalogData{}, fmt.Errorf("storage discovery: %w", err)
-	}
-
-	data.snap = snap
-
-	bridges, err := client.ListBridges(ctx)
-	if err != nil {
-		return catalogData{}, fmt.Errorf("bridge discovery: %w", err)
-	}
-
-	data.bridges = bridges
-
-	isos, err := client.ListISOs(ctx)
-	if err != nil {
-		return catalogData{}, fmt.Errorf("iso discovery: %w", err)
-	}
-
-	data.isos = isos
-
-	images, err := client.ListCloudImages(ctx)
-	if err != nil {
-		return catalogData{}, fmt.Errorf("image discovery: %w", err)
-	}
-
-	for _, image := range images {
-		data.images = append(data.images, catalog.Image{Storage: image.Storage, Node: image.Node, File: image.File, SizeBytes: image.SizeBytes})
+	if err := loadClusterDiscovery(ctx, client, &data); err != nil {
+		return catalogData{}, err
 	}
 
 	profiles, err := catalog.Profiles(ctx, h.store, clusterName)
@@ -397,7 +373,18 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 		return catalogData{}, fmt.Errorf("cloudinit templates: %w", err)
 	}
 
-	data.templates = templates
+	// Offer only templates published on the cluster: an enabled template
+	// with no file behind it would be refused at create time anyway.
+	publications, err := h.store.ListCloudInitPublications(ctx, clusterName)
+	if err != nil {
+		return catalogData{}, fmt.Errorf("cloudinit publications: %w", err)
+	}
+
+	for _, t := range templates {
+		if _, ok := publications[t.ID]; ok {
+			data.templates = append(data.templates, t)
+		}
+	}
 
 	// Approved Proxmox templates (clone source).
 	proxmoxTemplates, err := catalog.Templates(ctx, h.store, clusterName)
@@ -419,6 +406,42 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 	return data, nil
 }
 
+// loadClusterDiscovery fills the live-discovery half of the catalog: the
+// storage snapshot, bridges, ISOs, and cloud images the cluster reports.
+func loadClusterDiscovery(ctx context.Context, client cluster.Client, data *catalogData) error {
+	snap, err := client.Snapshot(ctx)
+	if err != nil {
+		return fmt.Errorf("storage discovery: %w", err)
+	}
+
+	data.snap = snap
+
+	bridges, err := client.ListBridges(ctx)
+	if err != nil {
+		return fmt.Errorf("bridge discovery: %w", err)
+	}
+
+	data.bridges = bridges
+
+	isos, err := client.ListISOs(ctx)
+	if err != nil {
+		return fmt.Errorf("iso discovery: %w", err)
+	}
+
+	data.isos = isos
+
+	images, err := client.ListCloudImages(ctx)
+	if err != nil {
+		return fmt.Errorf("image discovery: %w", err)
+	}
+
+	for _, image := range images {
+		data.images = append(data.images, catalog.Image{Storage: image.Storage, Node: image.Node, File: image.File, SizeBytes: image.SizeBytes})
+	}
+
+	return nil
+}
+
 // buildCatalogDTO maps the raw catalog data into the response contract.
 // Approved resources are filtered against live discovery: a node, storage,
 // bridge, or ISO that Proxmox no longer reports is dropped from the user-facing
@@ -437,6 +460,7 @@ func buildCatalogDTO(clusterName string, data catalogData, cloudInitWriteEnabled
 		Templates:             mapCatalogSlice(data.proxmoxTemplates, catalogTemplateView),
 		CloudInitTemplates:    catalogCloudInitTemplateDTOs(data.templates, cloudInitWriteEnabled),
 		CloudInitWriteEnabled: cloudInitWriteEnabled,
+		CloudInitBaselineID:   store.BaselineTemplateID,
 		Tags:                  catalogTagDTOs(data.tags),
 	}
 }
@@ -628,12 +652,11 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The document picker is offered only when this cluster's client can
-	// actually write a snippet. Clients without the capability
-	// (a client that predates the write target) report disabled.
+	// The document picker is offered only when this cluster publishes
+	// cloud-init documents.
 	writeEnabled := false
-	if writer, ok := client.(interface{ SnippetWriteAvailable() bool }); ok {
-		writeEnabled = writer.SnippetWriteAvailable()
+	if publisher, ok := client.(cluster.SnippetPublisher); ok {
+		writeEnabled = publisher.PublishingEnabled()
 	}
 
 	dto := buildCatalogDTO(clusterName, data, writeEnabled)
@@ -917,7 +940,8 @@ var createErrorMappings = []createErrorMapping{
 	{vm.ErrDiskReduction, http.StatusBadRequest, "disk_reduction", ""},
 	{vm.ErrDiskBelowImage, http.StatusBadRequest, "disk_below_image", ""},
 	{vm.ErrInsufficientDiskSpace, http.StatusBadRequest, "insufficient_disk_space", ""},
-	{vm.ErrCloudInitWriteUnavailable, http.StatusConflict, "cloudinit_write_unavailable", "cloud-init documents are not enabled on this cluster (set the snippet directory in Admin › Clusters)"},
+	{vm.ErrCloudInitWriteUnavailable, http.StatusConflict, "cloudinit_write_unavailable", "cloud-init documents are not enabled on this cluster (Infrastructure > Clusters: snippet storage and SSH publishing)"},
+	{vm.ErrCloudInitNotPublished, http.StatusConflict, "cloudinit_not_published", ""},
 	{vm.ErrNoSnippetStorage, http.StatusBadRequest, "no_snippet_storage", ""},
 	// cluster_error passes the full error chain (empty message → err.Error()):
 	// the Proxmox rejection text ("'import-from' requires special syntax", "has wrong type 'iso'",

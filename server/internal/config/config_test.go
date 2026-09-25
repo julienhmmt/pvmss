@@ -3,6 +3,7 @@ package config_test
 
 import (
 	"pvmss/server/internal/config"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -55,7 +56,6 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
 				TrustedProxyHops:                  1,
-				SSHPort:                           22,
 			},
 		},
 		{
@@ -82,7 +82,6 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
 				TrustedProxyHops:                  1,
-				SSHPort:                           22,
 			},
 		},
 		{
@@ -219,7 +218,6 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
 				TrustedProxyHops:                  1,
-				SSHPort:                           22,
 			},
 		},
 		{
@@ -270,7 +268,6 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
 				TrustedProxyHops:                  1,
-				SSHPort:                           22,
 			},
 		},
 		{
@@ -336,7 +333,6 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshTimeout:           45 * time.Second,
 				MaxListPageSize:                   100,
 				TrustedProxyHops:                  1,
-				SSHPort:                           22,
 			},
 		},
 		{
@@ -389,7 +385,6 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
 				TrustedProxyHops:                  2,
-				SSHPort:                           22,
 			},
 		},
 		{
@@ -417,7 +412,6 @@ func TestLoad(t *testing.T) {
 				MaxListPageSize:                   100,
 				TrustedProxyHops:                  1,
 				RateLimitMax:                      500,
-				SSHPort:                           22,
 			},
 		},
 		{
@@ -457,7 +451,6 @@ func TestLoad(t *testing.T) {
 				InventoryRefreshTimeout:           15 * time.Second,
 				MaxListPageSize:                   100,
 				TrustedProxyHops:                  0,
-				SSHPort:                           22,
 			},
 		},
 		{
@@ -519,8 +512,8 @@ func runLoadCase(t *testing.T, env map[string]string, want config.Configuration,
 	t.Setenv("PROXMOX_URL", env["PROXMOX_URL"])
 	t.Setenv("PROXMOX_API_TOKEN_NAME", env["PROXMOX_API_TOKEN_NAME"])
 	t.Setenv("PROXMOX_API_TOKEN_VALUE", env["PROXMOX_API_TOKEN_VALUE"])
-	t.Setenv("PVMSS_SSH_USER", env["PVMSS_SSH_USER"])
 	t.Setenv("PVMSS_SSH_KEY_FILE", env["PVMSS_SSH_KEY_FILE"])
+	t.Setenv("PVMSS_SSH_USER", env["PVMSS_SSH_USER"])
 	t.Setenv("PVMSS_SSH_PORT", env["PVMSS_SSH_PORT"])
 	t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
 
@@ -544,7 +537,46 @@ func runLoadCase(t *testing.T, env map[string]string, want config.Configuration,
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if got != want {
+	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("config mismatch: got %+v, want %+v", got, want)
+	}
+}
+
+// TestLoad_DeprecatedSSHEnv checks that the retired PVMSS_SSH_USER /
+// PVMSS_SSH_PORT variables are recorded (so startup can warn) without
+// affecting the rest of the configuration.
+func TestLoad_DeprecatedSSHEnv(t *testing.T) {
+	tests := []struct {
+		name string
+		user string
+		port string
+		want []string
+	}{
+		{name: "neither set", want: nil},
+		{name: "user only", user: "pvmss", want: []string{"PVMSS_SSH_USER"}},
+		{name: "both set", user: "pvmss", port: "2222", want: []string{"PVMSS_SSH_USER", "PVMSS_SSH_PORT"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv(envPort, "50001")
+			t.Setenv(envDBPath, testDBPath)
+			t.Setenv(envLogLevel, testLogLevel)
+			t.Setenv(envLogFormat, testLogFormat)
+			t.Setenv(envLogOutput, testLogOutput)
+			t.Setenv(envClusterSource, testCluster)
+			t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
+			t.Setenv("PVMSS_SSH_USER", tt.user)
+			t.Setenv("PVMSS_SSH_PORT", tt.port)
+
+			cfg, err := config.Load()
+			if err != nil {
+				t.Fatalf("config.Load: %v", err)
+			}
+
+			if !reflect.DeepEqual(cfg.DeprecatedSSHEnv, tt.want) {
+				t.Fatalf("DeprecatedSSHEnv = %v, want %v", cfg.DeprecatedSSHEnv, tt.want)
+			}
+		})
 	}
 }

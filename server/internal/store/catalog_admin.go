@@ -304,7 +304,7 @@ type TemplateValues struct {
 }
 
 // InsertTemplate inserts a new template row with the given enabled state.
-// Returns ErrDuplicate if the vmid already exists for the cluster
+// Returns ErrDuplicate if the vmid already exists for the cluster.
 func (s *Store) InsertTemplate(ctx context.Context, cluster string, vmid int, values TemplateValues, enabled bool) error {
 	return execInsertOne(ctx, s.db,
 		`INSERT INTO catalog_templates (cluster, node, vmid, name, cloud_init_capable, disk_storage, disk_size_gb, disk_bus, enabled, override_discovery)

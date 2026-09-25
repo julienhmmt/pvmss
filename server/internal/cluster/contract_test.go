@@ -187,12 +187,8 @@ func TestContract_CloudInitReaderAndWriter(t *testing.T) {
 		t.Fatalf("FindSnippetStorage: %v", err)
 	}
 
-	if err := (cluster.Fake{}).PushCloudInitSnippet(context.Background(), cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-101.yml", 101, "#cloud-config\n"); err != nil {
-		t.Fatalf("PushCloudInitSnippet: %v", err)
-	}
-
-	if calls := cluster.FakeCallsFor(101); len(calls) != 3 || calls[0].Action != "ensure_cloudinit_drive" || calls[1].Action != "set_cloudinit_config" || calls[2].Action != "push_cloudinit_snippet" {
-		t.Fatalf("calls = %+v, want ensure, set, push", calls)
+	if calls := cluster.FakeCallsFor(101); len(calls) != 2 || calls[0].Action != "ensure_cloudinit_drive" || calls[1].Action != "set_cloudinit_config" {
+		t.Fatalf("calls = %+v, want ensure, set", calls)
 	}
 }
 

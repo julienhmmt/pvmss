@@ -17,7 +17,6 @@
 
 	onMount(() => {
 		void form.loadClusters().then(() => form.loadCatalog());
-		void form.loadMyCloudInitFiles();
 	});
 
 	/** Enters a mode's wizard. */

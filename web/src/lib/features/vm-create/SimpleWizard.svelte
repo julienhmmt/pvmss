@@ -116,9 +116,7 @@
 	const cloudInitDocumentError = $derived(
 		form.cloudInitTemplateId !== '' && form.catalog && !form.catalog.cloudInitTemplates.some((template) => template.id === form.cloudInitTemplateId)
 			? m['vms.create.errorCloudinitTemplateInvalid']()
-			: form.cloudInitFileId !== '' && !form.myCloudInitFiles.some((file) => file.id === form.cloudInitFileId)
-				? m['vms.create.errorCloudinitFileInvalid']()
-				: null
+			: null
 	);
 
 	const imageError = $derived(
