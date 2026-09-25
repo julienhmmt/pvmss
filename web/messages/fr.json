@@ -921,7 +921,7 @@
   "admin.clusters.url": "URL",
   "admin.clusters.tokenId": "ID de jeton",
   "admin.clusters.tokenSecret": "Secret du jeton",
-  "admin.clusters.tokenSecretHint": "(laisser vide pour le conserver)",
+  "admin.clusters.tokenSecretHint": "Laisser vide pour le conserver",
   "admin.clusters.skipTls": "Ignorer la vérification du certificat TLS",
   "admin.clusters.loadError": "échec du chargement des clusters",
   "admin.clusters.added": "Cluster {name} ajouté",
@@ -938,6 +938,8 @@
   "admin.clusters.removeLabel": "Supprimer {name}",
   "admin.clusters.unreachableHint": "Le cluster est actuellement injoignable. Vérifiez l'URL, le jeton et le réseau, puis exécutez Tester.",
   "admin.clusters.errorHint": "Le dernier test a échoué.",
+  "admin.clusters.connectionSection": "Connexion Proxmox",
+  "admin.clusters.connectionHint": "Point d'accès API et jeton qu'utilise PVMSS pour dialoguer avec ce cluster.",
   "admin.clusters.cloudinitSection": "Publication cloud-init (SSH)",
   "admin.clusters.snippetStorage": "Identifiant du stockage Proxmox",
   "admin.clusters.snippetStorageHint": "Stockage avec le type de contenu snippets activé sur chaque nœud (local fonctionne : le fichier est écrit sur chaque nœud).",
@@ -1531,5 +1533,6 @@
   "admin.clusters.sshScan": "Scanner les clés d'hôte",
   "admin.clusters.sshScanAfterSave": "Enregistrez d'abord le cluster, puis scannez ses nœuds.",
   "admin.clusters.sshNodeSetup": "À exécuter sur chaque nœud, en root :",
+  "admin.clusters.sshNodeSetupHint": "Installe l'assistant pvmss-snippet et l'utilisateur dédié. Relançable sans risque : à refaire après l'ajout ou la réinstallation d'un nœud.",
   "admin.clusters.sshNoKey": "Aucune clé SSH configurée : définissez PVMSS_SSH_KEY_FILE sur le serveur PVMSS pour publier les modèles cloud-init."
 }

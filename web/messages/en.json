@@ -921,7 +921,7 @@
   "admin.clusters.url": "URL",
   "admin.clusters.tokenId": "Token ID",
   "admin.clusters.tokenSecret": "Token secret",
-  "admin.clusters.tokenSecretHint": "(leave blank to keep it)",
+  "admin.clusters.tokenSecretHint": "Leave blank to keep it",
   "admin.clusters.skipTls": "Skip TLS certificate verification",
   "admin.clusters.loadError": "failed to load clusters",
   "admin.clusters.added": "Cluster {name} added",
@@ -938,6 +938,8 @@
   "admin.clusters.removeLabel": "Remove {name}",
   "admin.clusters.unreachableHint": "The cluster is currently not reachable. Check the URL, token, and network, then run Test.",
   "admin.clusters.errorHint": "The last test failed.",
+  "admin.clusters.connectionSection": "Proxmox connection",
+  "admin.clusters.connectionHint": "API endpoint and API token PVMSS uses to talk to this cluster.",
   "admin.clusters.cloudinitSection": "Cloud-init publishing (SSH)",
   "admin.clusters.snippetStorage": "Proxmox storage id",
   "admin.clusters.snippetStorageHint": "Storage with the snippets content type enabled on every node (local works: the file is written to each node).",
@@ -1531,5 +1533,6 @@
   "admin.clusters.sshScan": "Scan host keys",
   "admin.clusters.sshScanAfterSave": "Save the cluster first, then scan its nodes.",
   "admin.clusters.sshNodeSetup": "Run on every node, as root:",
+  "admin.clusters.sshNodeSetupHint": "Installs the pvmss-snippet helper and the dedicated user. Safe to rerun: do it again after adding or reinstalling a node.",
   "admin.clusters.sshNoKey": "No SSH key configured: set PVMSS_SSH_KEY_FILE on the PVMSS server to publish cloud-init templates."
 }

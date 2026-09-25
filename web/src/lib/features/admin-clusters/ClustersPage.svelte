@@ -1,5 +1,6 @@
 <script lang="ts">
 	import ClusterFormDialog from './ClusterFormDialog.svelte';
+	import { publishingOffHint } from './publishing-status';
 	import type { AdminCluster, AdminClustersStore, ClusterInput, SnippetStorage } from './clusters.svelte';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
@@ -71,24 +72,6 @@
 				return m['admin.clusters.errorHint']();
 			default:
 				return null;
-		}
-	}
-
-	// publishingOffHint localizes why cloud-init publishing is off for a
-	// cluster (the server's publishingStatus code), so the admin knows which
-	// prerequisite to fix.
-	function publishingOffHint(status: string | undefined): string {
-		switch (status) {
-			case 'no_ssh_key':
-				return m['admin.clusters.publishingOff.noSshKey']();
-			case 'no_ssh_user':
-				return m['admin.clusters.publishingOff.noSshUser']();
-			case 'no_host_keys':
-				return m['admin.clusters.publishingOff.noHostKeys']();
-			case 'no_snippet_storage':
-				return m['admin.clusters.publishingOff.noSnippetStorage']();
-			default:
-				return m['admin.clusters.cloudinitOff']();
 		}
 	}
 
