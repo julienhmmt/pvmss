@@ -156,6 +156,16 @@ export class VmListStore {
 		}, SEARCH_DEBOUNCE_MS);
 	}
 
+	/**
+	 * Cancels a pending debounced search. Call when the page unmounts: a timer
+	 * that fires after the user opened a VM would replaceState the URL back to
+	 * the list and hijack that navigation.
+	 */
+	dispose(): void {
+		if (this.#searchTimer !== null) clearTimeout(this.#searchTimer);
+		this.#searchTimer = null;
+	}
+
 	setCluster(value: string): void {
 		this.cluster = value;
 		this.page = 1;
