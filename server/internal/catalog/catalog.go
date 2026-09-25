@@ -38,7 +38,7 @@ type ISO struct {
 }
 
 // Image is one approved cloud image on an approved storage on a node - a
-// bootable disk image (.qcow2/.raw/.vmdk/.ova) an admin placed on the
+// bootable disk image (.qcow2/.raw/.vmdk) an admin placed on the
 // storage's import/ directory themselves (PVMSS never fetches images from
 // the internet). Approval is keyed by (node, storage, file) like ISO.
 // SizeBytes is the discovered image size; the create path rejects a disk

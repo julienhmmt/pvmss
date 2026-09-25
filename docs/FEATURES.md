@@ -120,7 +120,7 @@ All routes behind `RequireAdmin`.
 | Nodes | `/admin/nodes` | approve/disable per cluster; confirm when disabling a node with running VMs; search/filter/sort; orphan cleanup | ✅ |
 | Storages | `/admin/storages` | approve per node/cluster; usage bars; orphan cleanup | ✅ |
 | ISOs | `/admin/isos` | approve discovered ISOs; orphan cleanup | ✅ |
-| Cloud images | `/admin/images` | approve images discovered under a storage's `import/` content; orphan cleanup | ✅ |
+| Cloud images | `/admin/images` | approve `.qcow2`/`.raw`/`.vmdk` images discovered under a storage's `import/` content (`.ova` skipped); orphan cleanup. Building a golden template from an image is done in the Proxmox UI (`qm template`), not in PVMSS | ✅ |
 | VM templates | `/admin/templates` | approve Proxmox templates for cloning, per-template overrides; orphan cleanup | ✅ |
 | Bridges | `/admin/bridges` | approve VMBRs (OVS not listed); orphan cleanup | ✅ |
 | Cloud-init templates | `/admin/cloudinit-templates` | CRUD + enable/disable `#cloud-config` documents (header + YAML validated), published to every node with per-node status | ✅ |

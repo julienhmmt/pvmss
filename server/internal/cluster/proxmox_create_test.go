@@ -144,7 +144,7 @@ func assertCPUForm(t *testing.T, form url.Values) {
 // is rejected by check_drive_param), and the source must be a PVE-managed
 // volume of vtype 'import' - passed as a volid, not an absolute path
 // (absolute paths are root@pam-only). Cloud images live in the storage's
-// import/ directory with .qcow2/.raw/.vmdk/.ova extensions.
+// import/ directory with .qcow2/.raw/.vmdk extensions.
 func TestProxmox_CreateVM_ImageImportFrom(t *testing.T) {
 	t.Parallel()
 
