@@ -534,16 +534,12 @@ func (p Proxmox) ListISOs(ctx context.Context) ([]ISOImage, error) {
 }
 
 // ListCloudImages implements Client, enumerating cloud images on every
-//
-//	import-capable storage. Proxmox classifies files by extension: .qcow2,
-//
-// .raw,.vmdk, and.ova get vtype 'import' and are listed under
-// content=import. Only import-vtype files are accepted by import-from for
-//
-//	non-root API tokens - .img files are vtype 'iso' and rejected, and absolute
-//
-// filesystem paths are root@pam-only. Node scoping matches ListISOs: one row
-// per (node, storage) pairing.
+// import-capable storage. Proxmox lists .qcow2, .raw, .vmdk and .ova files
+// under content=import; PVMSS keeps only the disk formats import-from takes
+// as a plain volid (.ova/.ovf need the nested <file>.ova/<disk> form and are
+// skipped). .img files are vtype 'iso' and rejected, and absolute filesystem
+// paths are root@pam-only. Node scoping matches ListISOs: one row per
+// (node, storage) pairing.
 func (p Proxmox) ListCloudImages(ctx context.Context) ([]CloudImage, error) {
 	rest := p.rest()
 
@@ -585,12 +581,13 @@ func (p Proxmox) ListCloudImages(ctx context.Context) ([]CloudImage, error) {
 	return images, nil
 }
 
-// cloudImageFileExtensions are the file extensions Proxmox classifies as vtype
-// 'import' (PVE::Storage::IMPORT_EXT_RE_1): .qcow2, .raw, .vmdk, .ova. Only
-// import-vtype volumes are accepted by import-from for non-root API tokens.
+// cloudImageFileExtensions are the import-vtype extensions
+// (PVE::Storage::IMPORT_EXT_RE_1) that import-from accepts as a plain
+// <storage>:import/<file> volid: .qcow2, .raw, .vmdk. .ova is import-vtype
+// too, but import-from needs its nested disk path, so it is excluded.
 // Admins place cloud images in the storage's import/ directory with one of
 // these extensions - PVMSS never fetches images from the internet.
-var cloudImageFileExtensions = []string{".qcow2", ".raw", ".vmdk", ".ova"}
+var cloudImageFileExtensions = []string{".qcow2", ".raw", ".vmdk"}
 
 // IsCloudImageFile reports whether name looks like a cloud image file - one
 // with an import-vtype extension Proxmox's import-from accepts.

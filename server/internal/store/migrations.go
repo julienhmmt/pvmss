@@ -268,7 +268,7 @@ const schemaV26 = `ALTER TABLE catalog_templates ADD COLUMN override_discovery B
 
 // schemaV27 adds the approved cloud-image catalog (catalog_images): a sibling
 // to catalog_isos keyed by (cluster, node, storage, file). A cloud image is a
-// bootable disk image (.qcow2/.raw/.vmdk/.ova) an admin placed on a Proxmox
+// bootable disk image (.qcow2/.raw/.vmdk) an admin placed on a Proxmox
 // storage's import/ directory themselves - PVMSS never fetches images from the
 // internet. size_bytes carries the discovered image size so the create path
 // can reject a disk size below it before a VMID is spent.
