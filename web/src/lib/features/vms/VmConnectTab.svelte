@@ -98,7 +98,7 @@
 			<h2 id="connect-console-title" class="text-sm font-semibold">{m['vms.detail.connect.consoleTitle']()}</h2>
 			<p class="text-sm text-muted-foreground">{m['vms.detail.connect.consoleBody']()}</p>
 			{#if running}
-				<ButtonLink href={consoleHref} variant="secondary" block data-testid="vm-console-open">
+				<ButtonLink href={consoleHref} variant="secondary" block target="_blank" rel="noopener noreferrer" data-testid="vm-console-open">
 					{m['vms.detail.connect.consoleOpen']()}
 				</ButtonLink>
 			{:else}

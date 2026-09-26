@@ -25,6 +25,7 @@
 	import { goto } from '$app/navigation';
 	import { m } from '$lib/paraglide/messages.js';
 	import SidebarIcon from './SidebarIcon.svelte';
+	import { accountInitials } from '$lib/shared/initials';
 	import Logo from '$lib/shared/ui/Logo.svelte';
 	import LanguageSwitcher from './LanguageSwitcher.svelte';
 	import ThemeToggle from './ThemeToggle.svelte';
@@ -55,14 +56,6 @@
 	const activityCount = $derived(tray.tasks.length + powerActions.size);
 
 	const initials = $derived(accountInitials(session.principal?.displayName || session.principal?.username || ''));
-
-	function accountInitials(name: string): string {
-		const parts = name.trim().split(/[\s._-]+/).filter(Boolean);
-		if (parts.length === 0) return '?';
-		const first = parts[0]?.[0] ?? '';
-		const second = parts.length > 1 ? (parts[1]?.[0] ?? '') : (parts[0]?.[1] ?? '');
-		return `${first}${second}`.toUpperCase();
-	}
 
 	// Machines drawer (below the "Machines" nav link): a small owned-VMs list
 	// a pool user can pop open without leaving whatever page they're on.

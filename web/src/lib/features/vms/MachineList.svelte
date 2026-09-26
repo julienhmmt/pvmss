@@ -260,12 +260,15 @@
 					{@const hint = rowHint(status)}
 					{@const action = rowAction(status)}
 					{@const busy = powerActions.get(machine.cluster, machine.vmid) !== null}
-					<li class="border-b border-border-subtle px-4 py-3.5 last:border-b-0 hover:bg-muted/40" data-testid="vm-row" data-status={status}>
+					<!-- The name link is stretched over the whole row (after:inset-0),
+					     so a click anywhere on it opens the machine; the checkbox and
+					     the action sit above the overlay (relative z-10). -->
+					<li class="relative border-b border-border-subtle px-4 py-3.5 last:border-b-0 hover:bg-muted/40" data-testid="vm-row" data-status={status}>
 						<div class="flex items-center gap-3">
 							{#if selectMode}
 								<input
 									type="checkbox"
-									class="h-4 w-4 shrink-0 rounded border-border accent-primary"
+									class="relative z-10 h-4 w-4 shrink-0 rounded border-border accent-primary"
 									checked={bulk.isSelected(machine.cluster, machine.vmid)}
 									onchange={() => bulk.toggle({ cluster: machine.cluster, vmid: machine.vmid })}
 									data-testid="vm-bulk-select-row"
@@ -278,7 +281,7 @@
 									<div class="min-w-0">
 										<a
 											href={detailHref(machine)}
-											class="pv-focus block truncate font-medium text-foreground underline-offset-2 hover:text-primary hover:underline"
+											class="pv-focus block truncate font-medium text-foreground underline-offset-2 after:absolute after:inset-0 after:content-[''] hover:text-primary hover:underline"
 											data-testid="vm-row-link"
 										>
 											{machine.name}
@@ -300,7 +303,7 @@
 								<div class="max-[699px]:order-3">
 									<MachineStatusPill {status} pending={busy || status === 'provisioning'} />
 								</div>
-								<div class="flex justify-end max-[699px]:order-4 max-[699px]:col-span-2 max-[699px]:justify-start max-[699px]:pl-[50px] max-[369px]:pl-0">
+								<div class="relative z-10 flex justify-end max-[699px]:order-4 max-[699px]:col-span-2 max-[699px]:justify-start max-[699px]:pl-[50px] max-[369px]:pl-0">
 									{#if action === 'start'}
 										<Button
 											variant="secondary"
