@@ -140,6 +140,17 @@ describe('VmListStore', () => {
 		expect(navigated).toEqual(['search=web']);
 	});
 
+	it('dispose cancels a pending search so it cannot navigate after unmount', async () => {
+		vi.useFakeTimers();
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
+		const { store, navigated } = makeStore('');
+
+		store.applySearch('web');
+		store.dispose();
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(navigated).toHaveLength(0);
+	});
+
 	it('toggling the active sort column reverses direction', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
 		const { store, navigated } = makeStore('');

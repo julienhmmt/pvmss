@@ -66,6 +66,7 @@ test.describe('T18 admin cloud-init templates', () => {
 		// surfaces regardless of pagination, then open its detail.
 		await page.goto('/vms');
 		await page.getByTestId('vm-search').fill('cit-e2e-01');
+		await expect(page).toHaveURL(/search=cit-e2e-01/);
 		const vmLink = page.getByRole('link', { name: /cit-e2e-01/ }).first();
 		await expect(vmLink).toBeVisible();
 		await vmLink.click();

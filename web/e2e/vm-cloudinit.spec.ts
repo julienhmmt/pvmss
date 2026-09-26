@@ -23,7 +23,14 @@ test.describe('T08 VM cloud-init', () => {
 		await expect(page.getByRole('dialog')).toBeVisible();
 		await expect(page.getByTestId('cloudinit-save-scopes')).toBeVisible();
 		await expect(page.getByTestId('cloudinit-reboot-checkbox')).not.toBeChecked();
+		// The form already shows the typed value, so wait for the PUT itself:
+		// reloading while it is in flight aborts the save.
+		const saved = page.waitForResponse(
+			(response) => response.request().method() === 'PUT' && response.url().endsWith('/vms/default/102/cloudinit')
+		);
 		await page.getByTestId('cloudinit-save-confirm').click();
+		expect((await saved).status()).toBe(200);
+		await expect(page.getByRole('dialog')).toBeHidden();
 		await expect(page.getByTestId('cloudinit-user')).toHaveValue('ubuntu');
 		await page.reload();
 		await page.getByTestId('vm-tab-cloudinit').click();

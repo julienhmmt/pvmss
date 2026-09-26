@@ -85,8 +85,11 @@ function getCookie(name: string): string {
 	return match?.[1] ? decodeURIComponent(match[1]) : '';
 }
 
-/** Adds the X-CSRF-Token header to mutating requests. */
-function withCSRF(options: RequestInit): RequestInit {
+/**
+ * Adds the X-CSRF-Token header to mutating requests. Exported for the few
+ * callers that must use fetch directly (multipart uploads, blob downloads).
+ */
+export function withCSRF(options: RequestInit): RequestInit {
 	const token = getCookie(CSRF_COOKIE_NAME);
 	if (!token) {
 		return options;

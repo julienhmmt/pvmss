@@ -32,6 +32,12 @@ test.describe('T12 admin policy', () => {
 		await signInAdmin(request);
 		await savePolicy(request, { gabarit: { maxDiskPerVmGb: 500, allowCustomYaml: true } });
 		await savePolicy(request, { quota: { maxVmPerUser: -1 } });
+		// The capacity test lowers pve-node-02's vCPU ceiling; lift it even if
+		// the test failed before its own reset.
+		await request.put('/api/v1/admin/policy/nodes/pve-node-02', {
+			headers: await csrfHeaders(request),
+			data: { cluster: 'default', maxVcpus: 0 }
+		});
 		await signInAlice(request);
 		await deleteVmsByPrefix(request, 'capacity-demo');
 	});
@@ -74,30 +80,31 @@ test.describe('T12 admin policy', () => {
 
 	test('node capacity is enforced for creation and hardware growth', async ({ page }) => {
 		await signInAdmin(page.request);
-		// Load the storages page first: it runs discovery, and a storage that has
-		// not been discovered yet cannot be toggled (404).
+		// Load the storages and bridges pages first: they run discovery, and a
+		// resource that has not been discovered yet cannot be toggled (404).
 		await page.goto('/admin/storages');
-		// pbs-backup is the node's disk-capable storage; backup-nfs only has
-		// "backup" content, so it is not part of the VM-storage catalog.
-		for (const body of [
-			{ cluster: 'default', name: 'pve-node-03', enabled: true },
-			{ cluster: 'default', name: 'pbs-backup', node: 'pve-node-03', enabled: true }
-		]) {
-			const path = 'node' in body ? '/api/v1/admin/storages/toggle' : '/api/v1/admin/nodes/toggle';
+		await page.goto('/admin/bridges');
+		// pve-node-02 is online and carries ceph-data (images) and vmbr2 in the
+		// fake dataset; pve-node-03 is offline and has no VM-capable storage.
+		for (const [path, body] of [
+			['/api/v1/admin/nodes/toggle', { cluster: 'default', name: 'pve-node-02', enabled: true }],
+			['/api/v1/admin/storages/toggle', { cluster: 'default', name: 'ceph-data', node: 'pve-node-02', enabled: true }],
+			['/api/v1/admin/bridges/toggle', { cluster: 'default', name: 'vmbr2', node: 'pve-node-02', enabled: true }]
+		] as const) {
 			const response = await page.request.post(path, {
 				headers: await csrfHeaders(page.request),
 				data: body
 			});
-			expect(response.status()).toBe(200);
+			expect(response.status(), path).toBe(200);
 		}
 		await page.goto('/admin/policy/nodes');
 		await expect(page.getByRole('heading', { name: 'Node capacity' })).toBeVisible();
 		const nodesResponse = await page.request.get('/api/v1/admin/policy/nodes?cluster=default');
 		expect(nodesResponse.status()).toBe(200);
 		const nodes = (await nodesResponse.json()) as Array<{ node: string; usedVcpus: number }>;
-		const node = nodes.find((item) => item.node === 'pve-node-03');
+		const node = nodes.find((item) => item.node === 'pve-node-02');
 		expect(node).toBeDefined();
-		const capacityResponse = await page.request.put('/api/v1/admin/policy/nodes/pve-node-03', {
+		const capacityResponse = await page.request.put('/api/v1/admin/policy/nodes/pve-node-02', {
 			headers: await csrfHeaders(page.request),
 			data: { cluster: 'default', maxVcpus: (node?.usedVcpus ?? 0) + 1 }
 		});
@@ -106,22 +113,22 @@ test.describe('T12 admin policy', () => {
 		const first = await page.request.post('/api/v1/vms', {
 			headers: await csrfHeaders(page.request),
 			data: {
-				cluster: 'default', name: 'capacity-demo-one', node: 'pve-node-03', cpuCores: 1, memoryMB: 1024,
-				disk: { storage: 'pbs-backup', sizeGB: 10 }, network: [{ bridge: 'vmbr0', model: 'virtio' }]
+				cluster: 'default', name: 'capacity-demo-one', node: 'pve-node-02', cpuCores: 1, memoryMB: 1024,
+				disk: { storage: 'ceph-data', sizeGB: 10 }, network: [{ bridge: 'vmbr2', model: 'virtio' }]
 			}
 		});
 		expect(first.status()).toBe(202);
 		const accepted = (await first.json()) as { vmid: number; upid: string };
 		for (let attempt = 0; attempt < 3; attempt += 1) {
-			const task = await page.request.get(`/api/v1/tasks/${encodeURIComponent(accepted.upid)}`);
+			const task = await page.request.get(`/api/v1/tasks/${encodeURIComponent(accepted.upid)}?cluster=default`);
 			expect(task.status()).toBe(200);
 			if ((await task.json()).state === 'ok') break;
 		}
 		const second = await page.request.post('/api/v1/vms', {
 			headers: await csrfHeaders(page.request),
 			data: {
-				cluster: 'default', name: 'capacity-demo-two', node: 'pve-node-03', cpuCores: 1, memoryMB: 1024,
-				disk: { storage: 'pbs-backup', sizeGB: 10 }, network: [{ bridge: 'vmbr0', model: 'virtio' }]
+				cluster: 'default', name: 'capacity-demo-two', node: 'pve-node-02', cpuCores: 1, memoryMB: 1024,
+				disk: { storage: 'ceph-data', sizeGB: 10 }, network: [{ bridge: 'vmbr2', model: 'virtio' }]
 			}
 		});
 		expect(second.status()).toBe(400);
@@ -133,7 +140,7 @@ test.describe('T12 admin policy', () => {
 		expect(hardware.status()).toBe(400);
 		expect((await hardware.json()).code).toBe('capacity_exceeded');
 		await signInAdmin(page.request);
-		const reset = await page.request.put('/api/v1/admin/policy/nodes/pve-node-03', {
+		const reset = await page.request.put('/api/v1/admin/policy/nodes/pve-node-02', {
 			headers: await csrfHeaders(page.request),
 			data: { cluster: 'default', maxVcpus: 0 }
 		});

@@ -3,7 +3,9 @@ package cluster
 // Demo cloud-init fixture constants, defined once to avoid repeating the
 // literals across the fake's seeded configs (go:S1192).
 const (
-	fakeSSHKey       = "ssh-ed25519 AAAA-demo-alice@laptop"
+	// A syntactically valid key: the form sends existing keys back on save, and
+	// the server rejects anything ssh.ParseAuthorizedKey cannot read.
+	fakeSSHKey       = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8g alice@laptop"
 	fakeSearchDomain = "example.internal"
 )
 
