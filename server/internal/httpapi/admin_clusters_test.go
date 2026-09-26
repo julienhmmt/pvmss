@@ -507,11 +507,10 @@ func TestAdminClusters_DeleteLastClusterConflictAndReactivateRoundTrip(t *testin
 	assertClusterErrorBody(t, response, "last_cluster")
 }
 
-// TestAdminClusters_SnippetSettingsValidation - the publishing settings:
-// a valid storage id, a non-root user, parsable plain known_hosts (required
-// with a user); a valid set persists and is echoed.
+// TestAdminClusters_SnippetSettingsValidation - snippet settings reject invalid
+// storage ids, users, host keys, and ports while allowing all-empty settings.
 //
-//nolint:gocyclo,paralleltest // HTTP fixture shares fake cluster state
+//nolint:paralleltest // HTTP fixture shares fake cluster state
 func TestAdminClusters_SnippetSettingsValidation(t *testing.T) {
 	fixture := newAdminClusterFixture(t)
 	cookie := adminClusterCookie(t, fixture.auth)
@@ -547,7 +546,23 @@ func TestAdminClusters_SnippetSettingsValidation(t *testing.T) {
 			}
 		})
 	}
+}
 
+// TestAdminClusters_SnippetSettingsPersisted - valid snippet settings are
+// echoed, control publishing state according to key availability, and persist.
+//
+//nolint:paralleltest // HTTP fixture shares fake cluster state
+func TestAdminClusters_SnippetSettingsPersisted(t *testing.T) {
+	fixture := newAdminClusterFixture(t)
+	cookie := adminClusterCookie(t, fixture.auth)
+
+	update := func(settings string) *httptest.ResponseRecorder {
+		body := `{"url":"https://pve-b.example.com:8006/api2/json","tokenId":"pvmss@pve!service"` + settings + `}`
+
+		return adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeUpdate, HTTPMethod: http.MethodPut, Path: adminClustersSecondaryPath, Name: crossSecondaryCluster, Body: body})
+	}
+
+	knownHosts := adminClusterKnownHosts
 	response := update(`,"snippetStorage":"` + adminClusterSnippetTarget + `","sshUser":"pvmss","sshPort":2222,"sshKnownHosts":` + fmt.Sprintf("%q", knownHosts))
 	if response.Code != http.StatusOK {
 		t.Fatalf("status = %d: %s", response.Code, response.Body.String())
@@ -562,31 +577,38 @@ func TestAdminClusters_SnippetSettingsValidation(t *testing.T) {
 		t.Fatalf("updated cluster = %+v, want the settings echoed", updated)
 	}
 
-	// No PVMSS_SSH_KEY_FILE in the fixture: publishing stays off, and the
-	// status names the missing key.
-	if updated.CloudInitWriteEnabled || updated.SSHPublicKey != "" || updated.PublishingStatus != "no_ssh_key" {
-		t.Errorf("without a key: enabled=%v key=%q status=%q, want off/no_ssh_key", updated.CloudInitWriteEnabled, updated.SSHPublicKey, updated.PublishingStatus)
-	}
+	testSnippetSettingsPublishingState(t, fixture, update, updated)
+}
 
-	fixture.handler.SetSSHPublicKey("ssh-ed25519 AAAA pvmss")
+func testSnippetSettingsPublishingState(t *testing.T, fixture adminClusterFixture, update func(string) *httptest.ResponseRecorder, updated adminClusterDTOForTest) {
+	t.Helper()
+	t.Run("publishing state", func(t *testing.T) {
+		// No PVMSS_SSH_KEY_FILE in the fixture: publishing stays off, and the
+		// status names the missing key.
+		if updated.CloudInitWriteEnabled || updated.SSHPublicKey != "" || updated.PublishingStatus != "no_ssh_key" {
+			t.Errorf("without a key: enabled=%v key=%q status=%q, want off/no_ssh_key", updated.CloudInitWriteEnabled, updated.SSHPublicKey, updated.PublishingStatus)
+		}
 
-	response = update(`,"snippetStorage":"` + adminClusterSnippetTarget + `","sshUser":"pvmss","sshKnownHosts":` + fmt.Sprintf("%q", knownHosts))
-	if err := json.Unmarshal(response.Body.Bytes(), &updated); err != nil {
-		t.Fatalf("decode updated: %v", err)
-	}
+		fixture.handler.SetSSHPublicKey("ssh-ed25519 AAAA pvmss")
 
-	if !updated.CloudInitWriteEnabled || updated.SSHPublicKey == "" || updated.PublishingStatus != "" {
-		t.Errorf("with a key: enabled=%v key=%q status=%q, want on/empty", updated.CloudInitWriteEnabled, updated.SSHPublicKey, updated.PublishingStatus)
-	}
+		response := update(`,"snippetStorage":"` + adminClusterSnippetTarget + `","sshUser":"pvmss","sshKnownHosts":` + fmt.Sprintf("%q", adminClusterKnownHosts))
+		if err := json.Unmarshal(response.Body.Bytes(), &updated); err != nil {
+			t.Fatalf("decode updated: %v", err)
+		}
 
-	row, err := fixture.store.GetCluster(context.Background(), crossSecondaryCluster)
-	if err != nil {
-		t.Fatalf("GetCluster: %v", err)
-	}
+		if !updated.CloudInitWriteEnabled || updated.SSHPublicKey == "" || updated.PublishingStatus != "" {
+			t.Errorf("with a key: enabled=%v key=%q status=%q, want on/empty", updated.CloudInitWriteEnabled, updated.SSHPublicKey, updated.PublishingStatus)
+		}
 
-	if row.SnippetStorage != adminClusterSnippetTarget || row.SSHUser != "pvmss" || row.SSHKnownHosts != knownHosts {
-		t.Fatalf("stored settings = %+v", row)
-	}
+		row, err := fixture.store.GetCluster(context.Background(), crossSecondaryCluster)
+		if err != nil {
+			t.Fatalf("GetCluster: %v", err)
+		}
+
+		if row.SnippetStorage != adminClusterSnippetTarget || row.SSHUser != "pvmss" || row.SSHKnownHosts != adminClusterKnownHosts {
+			t.Fatalf("stored settings = %+v", row)
+		}
+	})
 }
 
 // TestAdminClusters_SSHScan - the scan returns one known_hosts line per
