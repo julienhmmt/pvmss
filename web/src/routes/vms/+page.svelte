@@ -7,10 +7,9 @@
 	import { setVmBulkContext } from '$lib/features/vms/bulk.svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import { getSessionContext } from '$lib/features/auth/session.svelte';
-	import VmList from '$lib/features/vms/VmList.svelte';
+	import MachineList from '$lib/features/vms/MachineList.svelte';
 	import VmBulkActionBar from '$lib/features/vms/VmBulkActionBar.svelte';
 	import ClusterSelector from '$lib/shared/ui/ClusterSelector.svelte';
-	import TableSkeleton from '$lib/shared/ui/TableSkeleton.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
@@ -67,11 +66,19 @@
 	<title>{m['vms.list.title']()}</title>
 </svelte:head>
 
-<section class="mx-auto w-full max-w-5xl py-2">
-		<PageHeader title={m['vms.list.heading']()} description={m['vms.list.description']()}>
+<section class="mx-auto w-full max-w-5xl">
+	<PageHeader
+		eyebrow={m['vms.list.eyebrow']()}
+		title={m['vms.list.calmHeading']()}
+		description={m['vms.list.calmDescription']()}
+		focusTarget
+		divider={false}
+	>
 		{#snippet actions()}
 			<div class="flex flex-wrap items-center gap-2">
-				<ClusterSelector options={clusterOptions} value={vmListStore.cluster} onChange={(value) => vmListStore.setCluster(value)} includeAll id="vm-cluster-filter" />
+				{#if clusterOptions.length > 1}
+					<ClusterSelector options={clusterOptions} value={vmListStore.cluster} onChange={(value) => vmListStore.setCluster(value)} includeAll id="vm-cluster-filter" />
+				{/if}
 				<Button
 					variant="secondary"
 					size="md"
@@ -81,19 +88,18 @@
 					{vmListStore.loading ? m['common.refreshing']() : m['common.refresh']()}
 				</Button>
 				{#if !session.isAdmin}
-					<ButtonLink href={resolve('/vms/create')}>{m['vms.list.create']()}</ButtonLink>
+					<ButtonLink href={resolve('/vms/create')} data-testid="vm-create-link">
+						<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+							<line x1="12" y1="5" x2="12" y2="19" />
+							<line x1="5" y1="12" x2="19" y2="12" />
+						</svg>
+						{m['vms.list.createAction']()}
+					</ButtonLink>
 				{/if}
 			</div>
 		{/snippet}
 	</PageHeader>
 
-	{#if vmListStore.loading}
-		<div role="status" aria-live="polite" class="sr-only">{m['common.loading']()}</div>
-		<TableSkeleton columns={9} />
-	{:else}
-		<div class="fade-in">
-			<VmBulkActionBar />
-			<VmList />
-		</div>
-	{/if}
+	<VmBulkActionBar />
+	<MachineList />
 </section>

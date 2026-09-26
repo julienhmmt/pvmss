@@ -110,17 +110,17 @@ test.describe('T19 chrome UI', () => {
 			await expect(cta.getByRole('link', { name: /Documentation/ })).toBeVisible();
 		});
 
-		test('authenticated user sees My VMs, Create a VM, Documentation, and a welcome', async ({ page }) => {
+		test('an authenticated pool user lands on their machines, not the pitch', async ({ page }) => {
 			await page.goto('/login');
 			await page.locator('input[autocomplete="username"]').fill('alice');
 			await page.locator('input[type="password"]').fill('pvmss-alice');
 			await page.locator('#login-cluster').selectOption('default');
 			await page.locator('button[type="submit"]').click();
-			await page.waitForURL(/\/$/);
-			const cta = ctaSection(page);
-			await expect(cta.getByRole('link', { name: /Mes VM|My VMs/ })).toBeVisible();
-			await expect(cta.getByRole('link', { name: /Créer une VM|Create a VM/ })).toBeVisible();
-			await expect(page.getByText(/Bon retour|Welcome back/)).toBeVisible();
+			// The machine list is the signed-in landing page (DESIGN.md §5).
+			await page.waitForURL(/\/vms$/);
+			await expect(page.getByRole('heading', { name: /Mes machines|My machines/ })).toBeVisible();
+			await page.goto('/');
+			await page.waitForURL(/\/vms$/);
 		});
 
 		test('authenticated admin is sent from the home page to the admin dashboard', async ({ page }) => {

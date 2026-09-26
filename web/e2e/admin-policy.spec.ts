@@ -82,8 +82,10 @@ test.describe('T12 admin policy', () => {
 		await signInAdmin(page.request);
 		// Load the storages and bridges pages first: they run discovery, and a
 		// resource that has not been discovered yet cannot be toggled (404).
-		await page.goto('/admin/storages');
-		await page.goto('/admin/bridges');
+		// Wait for each page to settle: they sync the URL after loading, and a
+		// navigation started meanwhile is aborted.
+		await page.goto('/admin/storages', { waitUntil: 'networkidle' });
+		await page.goto('/admin/bridges', { waitUntil: 'networkidle' });
 		// pve-node-02 is online and carries ceph-data (images) and vmbr2 in the
 		// fake dataset; pve-node-03 is offline and has no VM-capable storage.
 		for (const [path, body] of [

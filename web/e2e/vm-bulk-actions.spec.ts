@@ -13,7 +13,7 @@ async function signInAlice(request: APIRequestContext): Promise<void> {
 }
 
 function vmRowCheckbox(page: Page, name: string) {
-	return page.locator('tr', { hasText: name }).locator('[data-testid="vm-bulk-select-row"]');
+	return page.locator('[data-testid="vm-row"]', { hasText: name }).locator('[data-testid="vm-bulk-select-row"]');
 }
 
 function selectAllCheckbox(page: Page) {
@@ -43,6 +43,8 @@ test.describe('T17 VM bulk actions', () => {
 	test('select several VMs and bulk-start them, showing a per-VM result', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms?cluster=default');
+		// Bulk selection lives behind the toolbar's Select toggle.
+		await page.getByTestId('vm-select-mode').click();
 
 		// Wait for the list to load - alice owns 7 VMs.
 		await expect(page.locator('[data-testid="vm-row"]')).toHaveCount(7);
@@ -71,6 +73,7 @@ test.describe('T17 VM bulk actions', () => {
 	test('select-all checkbox selects every VM on the current page', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms?cluster=default&pageSize=10');
+		await page.getByTestId('vm-select-mode').click();
 
 		await expect(page.locator('[data-testid="vm-row"]')).toHaveCount(7);
 
@@ -85,6 +88,8 @@ test.describe('T17 VM bulk actions', () => {
 	test('mixed success and failure shows per-target outcomes, not one aggregate banner', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms?cluster=default');
+		// Bulk selection lives behind the toolbar's Select toggle.
+		await page.getByTestId('vm-select-mode').click();
 
 		await expect(page.locator('[data-testid="vm-row"]')).toHaveCount(7);
 
@@ -111,6 +116,8 @@ test.describe('T17 VM bulk actions', () => {
 	test('clear selection button empties the selection and hides the bar', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms?cluster=default');
+		// Bulk selection lives behind the toolbar's Select toggle.
+		await page.getByTestId('vm-select-mode').click();
 
 		await expect(page.locator('[data-testid="vm-row"]')).toHaveCount(7);
 
@@ -124,6 +131,8 @@ test.describe('T17 VM bulk actions', () => {
 	test('dismiss result button hides the result panel', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms?cluster=default');
+		// Bulk selection lives behind the toolbar's Select toggle.
+		await page.getByTestId('vm-select-mode').click();
 
 		await expect(page.locator('[data-testid="vm-row"]')).toHaveCount(7);
 

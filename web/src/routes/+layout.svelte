@@ -2,10 +2,13 @@
 	import type { Snippet } from 'svelte';
 	import { onDestroy, onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { onNavigate } from '$app/navigation';
+	import { afterNavigate, onNavigate } from '$app/navigation';
+	import { resolve as resolvePath } from '$app/paths';
 	import '../app.css';
+	import '$lib/styles/prose.css';
 	import { setTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import { setTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
+	import { setPowerActionsContext } from '$lib/features/tasks/power-actions.svelte';
 	import { setSessionContext } from '$lib/features/auth/session.svelte';
 	import { isPublicPath } from '$lib/features/auth/public-routes';
 	import AuthRequired from '$lib/features/auth/AuthRequired.svelte';
@@ -46,6 +49,11 @@
 		})
 	);
 
+	// Power actions in flight (start, shutdown, ...) - not pollable tasks,
+	// so the list and detail register them here for the starting / stopping
+	// states, the Activity screen and the sidebar count.
+	setPowerActionsContext();
+
 	const session = setSessionContext();
 	let routeChecked = $state(false);
 	onMount(async () => {
@@ -76,6 +84,20 @@
 		);
 	}
 
+	// DESIGN.md §5/§9: on a screen change the page heading takes focus (so a
+	// screen reader announces where the user landed) and the scroll resets.
+	// Query-string-only navigations (list search, filters) keep focus where
+	// the user is typing.
+	let lastPathname: string | null = null;
+	afterNavigate((navigation) => {
+		const pathname = navigation.to?.url.pathname ?? null;
+		const changed = lastPathname !== null && pathname !== lastPathname;
+		lastPathname = pathname;
+		if (!changed || navigation.type === 'enter') return;
+		const heading = document.getElementById('page-heading');
+		heading?.focus({ preventScroll: true });
+	});
+
 	let version = $state<string | null>(null);
 	const githubUrl = 'https://github.com/julienhmmt/pvmss';
 	const websiteUrl = 'https://j.hommet.net/pvmss';
@@ -94,6 +116,7 @@
 		'/',
 		'/about',
 		'/docs',
+		'/profile',
 		'/login',
 		'/profile/tokens',
 		'/admin/clusters',
@@ -194,8 +217,8 @@
 			<div class="flex min-w-0 flex-1 flex-col">
 				<StatusBanner />
 				<AppHeader />
-				<main id="main-content" class="flex-1 p-7">
-					<div class="mx-auto max-w-[1180px]">
+				<main id="main-content" class="flex-1 px-5 pb-5 pt-7 min-[700px]:px-11 min-[700px]:pt-11">
+					<div class="mx-auto max-w-[1290px]">
 						{#if status.allClustersDown && !isClusterIndependent(page.url.pathname)}
 							<ClusterDownOverlay>
 								{@render children()}
@@ -205,9 +228,15 @@
 						{/if}
 					</div>
 				</main>
-				<footer class="flex items-center justify-between gap-4 border-t border-border px-7 py-3 text-xs text-muted-foreground-subtle">
-					{#if version}PVMSS {version}{/if}
+				<footer class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-border px-5 py-3 text-xs text-muted-foreground-subtle min-[700px]:px-11">
+					<p>
+						<span class="font-medium text-muted-foreground">PVMSS</span>
+						<span> - {m['chrome.footer.tagline']()}</span>
+						{#if version}<span class="font-mono"> · {version}</span>{/if}
+					</p>
 					<div class="flex items-center gap-4">
+						<span class="max-[699px]:hidden">{m['chrome.footer.context']()}</span>
+						<a href={resolvePath('/about')} class="hover:text-foreground hover:underline">{m['chrome.footer.about']()}</a>
 						<a href={githubUrl} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
 							{m['chrome.footer.github']()}
 						</a>
