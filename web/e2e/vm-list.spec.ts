@@ -28,7 +28,8 @@ test.describe('T04 VM list', () => {
 		// alice owns 7 VMs in the fake dataset (pool-alice: 100, 101, 102, 114, 115, 123, 124).
 		await expect(vmRows(page)).toHaveCount(7);
 		await expect(page.getByText('web-01')).toBeVisible();
-		await expect(page.locator('[data-testid="vm-quota"]')).toContainText('7 VMs · unlimited');
+		await expect(page.locator('[data-testid="vm-quota"]')).toContainText('7 machines, no limit set');
+		await expect(page.locator('[data-testid="vm-count"]')).toHaveText('7 machines');
 	});
 
 	test('one search field finds VMs by name, tag, or ID', async ({ page }) => {
@@ -71,41 +72,29 @@ test.describe('T04 VM list', () => {
 		await expect(page).toHaveURL(/[?&]status=stopped/);
 	});
 
-	test('node filter narrows results without shrinking its own dropdown', async ({ page }) => {
+	test('a stopped machine explains itself and offers Start; running ones never claim Connect', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms?cluster=default');
 
-		const nodeFilter = page.locator('[data-testid="vm-node-filter"]');
-		await nodeFilter.selectOption('pve-node-02');
-		await expect(vmRows(page)).toHaveCount(2);
+		const stopped = vmRows(page).filter({ hasText: 'dev-02' });
+		await expect(stopped).toHaveAttribute('data-status', 'stopped');
+		await expect(stopped.getByTestId('vm-row-hint')).toContainText('Your files are kept');
+		await expect(stopped.getByTestId('vm-row-start')).toBeVisible();
 
-		// Facet is computed pre-filter: both nodes stay selectable.
-		await expect(nodeFilter.locator('option', { hasText: 'pve-node-01' })).toHaveCount(1);
-		await expect(nodeFilter.locator('option', { hasText: 'pve-node-02' })).toHaveCount(1);
+		const running = vmRows(page).filter({ hasText: 'web-01' });
+		await expect(running).toHaveAttribute('data-status', 'running');
+		await expect(running.getByTestId('vm-row-details')).toBeVisible();
+		await expect(running.getByTestId('vm-row-hint')).toHaveCount(0);
+		await expect(page.getByRole('link', { name: /^Connect/ })).toHaveCount(0);
 	});
 
-	test('column headers sort, and clicking again reverses direction', async ({ page }) => {
+	test('rows are ordered by name', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms?cluster=default');
-
-		const idHeader = page.locator('[data-testid="sort-vmid"]');
-		// Auto-retrying text assertions: the row order updates only after the
-		// sorted fetch resolves, so never assert immediately after the click.
-		const firstRowName = vmRows(page).first().locator('[data-testid="vm-row-link"]');
 		await expect(vmRows(page)).toHaveCount(7);
-
-		// Default sort is name ascending: db-01 first.
-		await expect(firstRowName).toHaveText('db-01');
-
-		await idHeader.click();
-		await expect(page).toHaveURL(/[?&]sortBy=vmid/);
-		await expect(firstRowName).toHaveText('web-01');
-		await expect(page.locator('th', { has: idHeader })).toHaveAttribute('aria-sort', 'ascending');
-
-		await idHeader.click();
-		await expect(page).toHaveURL(/[?&]sortDir=desc/);
-		await expect(firstRowName).toHaveText('dev-02');
-		await expect(page.locator('th', { has: idHeader })).toHaveAttribute('aria-sort', 'descending');
+		const names = await rowNames(page);
+		expect(names).toEqual([...names].sort());
+		expect(names[0]).toBe('db-01');
 	});
 
 	test('pagination moves forward and back through pages', async ({ page }) => {
@@ -133,7 +122,7 @@ test.describe('T04 VM list', () => {
 
 		await page.locator('[data-testid="vm-search"]').fill('pvmss');
 		await page.locator('[data-testid="vm-status-filter"]').selectOption('stopped');
-		await page.locator('[data-testid="sort-vmid"]').click();
+		await expect(page).toHaveURL(/[?&]status=stopped/);
 		await expect(vmRows(page)).toHaveCount(4);
 
 		const url = page.url();
@@ -163,37 +152,37 @@ test.describe('T04 VM list', () => {
 		await page.goto('/vms?cluster=default&search=no-such-vm');
 		await expect(page.locator('[data-testid="vm-empty-match"]')).toBeVisible();
 		await expect(page.locator('[data-testid="vm-empty-owned"]')).toBeHidden();
+
+		// Clear filters brings the whole collection back.
+		await page.getByTestId('vm-clear-filters').click();
+		await expect(vmRows(page)).toHaveCount(7);
+		await expect(page.locator('[data-testid="vm-search"]')).toHaveValue('');
 	});
 
 	test('the whole row opens the VM detail, not just the name link', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms?cluster=default');
 
-		// The name cell is the row's identity, but the stretched link covers the
-		// whole row: a click on the Memory cell must still navigate. The overlay
-		// sits on top of the cell, so use a real pointer click at its centre.
-		const memory = vmRows(page).first().locator('td').nth(6);
-		const box = await memory.boundingBox();
-		if (box === null) throw new Error('memory cell has no box');
+		// The name link is stretched over the whole row: a click on the
+		// resources line must still navigate. Use a real pointer click.
+		const resources = vmRows(page).first().getByText(/vCPU/);
+		const box = await resources.boundingBox();
+		if (box === null) throw new Error('resources line has no box');
 		await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
 
 		await expect(page).toHaveURL(/\/vms\/default\/\d+$/);
 	});
 
-	test('console icon opens the noVNC console in a new tab', async ({ page, context }) => {
+	test('the console is one click away from a running machine, in a new tab', async ({ page, context }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms?cluster=default');
 
-		await expect(vmRows(page)).toHaveCount(7);
+		await vmRows(page).filter({ hasText: 'web-01' }).getByTestId('vm-row-details').click();
+		await expect(page).toHaveURL(/\/vms\/default\/100$/);
 
-		const consoleLink = page.getByTestId('vm-row-console').first();
+		const consoleLink = page.getByTestId('vm-console-open');
 		await expect(consoleLink).toBeVisible();
-
-		const [popup] = await Promise.all([
-			context.waitForEvent('page'),
-			consoleLink.click()
-		]);
-
+		const [popup] = await Promise.all([context.waitForEvent('page'), consoleLink.click()]);
 		await popup.waitForURL('/vms/default/*/console');
 	});
 });

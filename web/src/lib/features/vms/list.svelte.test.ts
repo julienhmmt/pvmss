@@ -151,6 +151,18 @@ describe('VmListStore', () => {
 		expect(navigated).toHaveLength(0);
 	});
 
+	it('clearFilters drops search, status and node and returns to page 1', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
+		const { store, navigated } = makeStore('?search=web&status=stopped&node=n1&page=2');
+
+		store.clearFilters();
+		expect(store.search).toBe('');
+		expect(store.status).toBe('');
+		expect(store.node).toBe('');
+		expect(store.page).toBe(1);
+		expect(navigated.at(-1)).toBe('');
+	});
+
 	it('toggling the active sort column reverses direction', async () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
 		const { store, navigated } = makeStore('');

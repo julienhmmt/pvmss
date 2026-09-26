@@ -25,9 +25,9 @@ test.describe('T15 multi-cluster', () => {
 		await expect(vmRows(page).locator('[data-testid="vm-row-cluster"]').filter({ hasText: 'Demo Cluster Alpha' })).toHaveCount(7);
 		await expect(vmRows(page).locator('[data-testid="vm-row-cluster"]').filter({ hasText: 'Demo Cluster Beta' })).toHaveCount(5);
 
-		const secondaryVM = page.locator('tr', { hasText: 'secondary-web-02' });
+		const secondaryVM = vmRows(page).filter({ hasText: 'secondary-web-02' });
 		await expect(secondaryVM).toBeVisible();
-		await expect(secondaryVM.getByRole('link')).toHaveAttribute('href', /\/vms\/secondary\/101$/);
+		await expect(secondaryVM.getByTestId('vm-row-link')).toHaveAttribute('href', /\/vms\/secondary\/101$/);
 
 		await page.locator('#vm-cluster-filter').selectOption('secondary');
 		await expect(vmRows(page)).toHaveCount(5);

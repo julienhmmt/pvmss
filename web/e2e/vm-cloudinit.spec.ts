@@ -15,6 +15,7 @@ test.describe('T08 VM cloud-init', () => {
 	test('edits structured config with explicit confirmation and reloads', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms/default/102');
+		await page.getByTestId('vm-tab-configuration').click();
 		await page.getByTestId('vm-tab-cloudinit').click();
 		await expect(page.getByTestId('cloudinit-user')).toHaveValue('debian');
 		await page.getByTestId('cloudinit-user').fill('ubuntu');
@@ -33,6 +34,7 @@ test.describe('T08 VM cloud-init', () => {
 		await expect(page.getByRole('dialog')).toBeHidden();
 		await expect(page.getByTestId('cloudinit-user')).toHaveValue('ubuntu');
 		await page.reload();
+		await page.getByTestId('vm-tab-configuration').click();
 		await page.getByTestId('vm-tab-cloudinit').click();
 		await expect(page.getByTestId('cloudinit-user')).toHaveValue('ubuntu');
 		await expect(page.getByTestId('cloudinit-ip-mode')).toHaveValue('dhcp');
@@ -41,6 +43,7 @@ test.describe('T08 VM cloud-init', () => {
 	test('offers admin templates only - no YAML editor for users', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms/default/102');
+		await page.getByTestId('vm-tab-configuration').click();
 		await page.getByTestId('vm-tab-cloudinit').click();
 		await page.getByTestId('cloudinit-mode-document').click();
 		await expect(page.getByTestId('cloudinit-document')).toBeVisible();
@@ -56,12 +59,13 @@ test.describe('T08 VM cloud-init', () => {
 	test('reboot checkbox uses server-side T05 reboot and denies non-owner access', async ({ page, request }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms/default/102');
+		await page.getByTestId('vm-tab-configuration').click();
 		await page.getByTestId('vm-tab-cloudinit').click();
 		await page.getByTestId('cloudinit-user').fill('debian');
 		await page.getByTestId('cloudinit-save').click();
 		await page.getByTestId('cloudinit-reboot-checkbox').check();
 		await page.getByTestId('cloudinit-save-confirm').click();
-		await expect(page.getByTestId('vm-status')).toContainText('running');
+		await expect(page.getByTestId('vm-status')).toContainText(/running/i);
 
 		await signIn(request, 'bob', 'pvmss-bob');
 		const response = await request.get('/api/v1/vms/default/102/cloudinit');

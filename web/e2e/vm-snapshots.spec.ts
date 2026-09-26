@@ -12,6 +12,7 @@ test.describe('T09 VM snapshots', () => {
 		await signInAlice(page.request);
 		const name = `snapshot-e2e-${Date.now()}`;
 		await page.goto('/vms/default/102');
+		await page.getByTestId('vm-tab-configuration').click();
 		await page.getByTestId('vm-tab-snapshots').click();
 		await expect(page.getByTestId('snapshot-counter')).toHaveText('0/5');
 
@@ -26,7 +27,7 @@ test.describe('T09 VM snapshots', () => {
 		await expect(page.getByText(/everything captured after this snapshot is lost/i)).toBeVisible();
 		await page.getByTestId('snapshot-rollback-confirm').click();
 		await expect(page.getByText(`VM "${name}" rolled back`)).toBeVisible({ timeout: 20000 });
-		await expect(page.getByTestId('vm-status')).toContainText('stopped');
+		await expect(page.getByTestId('vm-status')).toContainText(/stopped/i);
 
 		await page.getByTestId('snapshot-delete-open').click();
 		await page.getByTestId('snapshot-delete-confirm').click();
