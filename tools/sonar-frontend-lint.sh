@@ -33,8 +33,10 @@ convert_eslint_to_sonar ".sonar/web-eslint.json" /tmp/eslint-web.json "$REPO_ROO
 
 rm -f /tmp/eslint-web.json
 
-echo "Running vitest coverage on web/..."
 cd web || exit 1
+echo "Compiling Paraglide messages..."
+bunx @inlang/paraglide-js compile --project project.inlang --outdir src/lib/paraglide || exit 1
+echo "Running vitest coverage on web/..."
 bun run test:coverage >/dev/null 2>&1 || echo "Warning: vitest coverage reported failures (report still generated)." >&2
 cd "$REPO_ROOT" || exit 1
 if [ -f web/coverage/lcov.info ]; then
