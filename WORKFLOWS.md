@@ -1,7 +1,7 @@
 # Workflows
 
 What a user actually does in PVMSS, end to end. Companion to `PRODUCT.md`
-(who and why) and `DESIGN.md` (how it looks). This file is the *what*.
+(who and why) and `DESIGN.md` (how it looks). This file is the _what_.
 
 Every workflow below follows the same template. **Use it as the model when
 adding a new one** - a workflow that cannot fill in all seven fields is not
@@ -10,15 +10,15 @@ specified yet.
 ```markdown
 ### <Name>
 
-| | |
-| --- | --- |
-| **Audience** | end user \| admin |
-| **Entry** | where the user comes from (nav item, CTA, deep link) |
-| **Route** | SPA route(s) |
-| **API** | endpoints hit, in call order |
-| **Steps** | the happy path, numbered |
-| **States** | loading / empty / error / partial |
-| **Safety nets** | confirmations, rate limits, policy gates, undo |
+|                 |                                                      |
+| --------------- | ---------------------------------------------------- |
+| **Audience**    | end user \| admin                                    |
+| **Entry**       | where the user comes from (nav item, CTA, deep link) |
+| **Route**       | SPA route(s)                                         |
+| **API**         | endpoints hit, in call order                         |
+| **Steps**       | the happy path, numbered                             |
+| **States**      | loading / empty / error / partial                    |
+| **Safety nets** | confirmations, rate limits, policy gates, undo       |
 ```
 
 Rules for the fields:
@@ -36,26 +36,26 @@ Rules for the fields:
 
 ### Sign in
 
-| | |
-| --- | --- |
-| **Audience** | end user |
-| **Entry** | `/login`, or any guarded page via `AuthRequired` |
-| **Route** | `/login` |
-| **API** | `GET /api/v1/auth/clusters` → `POST /api/v1/auth/login` or `POST /api/v1/auth/oidc` → `GET /api/v1/auth/me` |
-| **Steps** | 1. Pick a cluster from the pre-login list. 2. Submit Proxmox credentials (the OIDC button, shown when a cluster has the toggle on, currently returns 501 `not_implemented`). 3. Session cookie is set; redirect to the requested page. |
-| **States** | Empty cluster list when no cluster is configured; inline credential error; Proxmox sign-in is disabled when every configured cluster is unreachable, while local admin sign-in remains available |
+|                 |                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Audience**    | end user                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **Entry**       | `/login`, or any guarded page via `AuthRequired`                                                                                                                                                                                                                                                                                                                                                                  |
+| **Route**       | `/login`                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **API**         | `GET /api/v1/auth/clusters` → `POST /api/v1/auth/login` or `POST /api/v1/auth/oidc` → `GET /api/v1/auth/me`                                                                                                                                                                                                                                                                                                       |
+| **Steps**       | 1. Pick a cluster from the pre-login list. 2. Submit Proxmox credentials (the OIDC button, shown when a cluster has the toggle on, currently returns 501 `not_implemented`). 3. Session cookie is set; redirect to the requested page.                                                                                                                                                                            |
+| **States**      | Empty cluster list when no cluster is configured; inline credential error; Proxmox sign-in is disabled when every configured cluster is unreachable, while local admin sign-in remains available                                                                                                                                                                                                                  |
 | **Safety nets** | Per-IP rate limit, 10 requests / minute, shared by login, admin-login, cluster list, and OIDC (`authRateLimitMaxRequests`, `router.go:16`) - the cluster list is unauthenticated and discloses cluster names, so it is bounded too; the backend rejects `POST /api/v1/auth/login` with `cluster_unavailable` when the selected cluster is down, so the restriction cannot be bypassed by calling the API directly |
 
 ### Sign in as admin
 
-| | |
-| --- | --- |
-| **Audience** | admin |
-| **Entry** | `/login`, separate path from the Proxmox credential form |
-| **Route** | `/login` |
-| **API** | `POST /api/v1/auth/admin-login` |
-| **Steps** | 1. Submit the admin password. 2. Session cookie is set with admin identity. |
-| **States** | Disabled when `ADMIN_PASSWORD_HASH` is unset |
+|                 |                                                                                              |
+| --------------- | -------------------------------------------------------------------------------------------- |
+| **Audience**    | admin                                                                                        |
+| **Entry**       | `/login`, separate path from the Proxmox credential form                                     |
+| **Route**       | `/login`                                                                                     |
+| **API**         | `POST /api/v1/auth/admin-login`                                                              |
+| **Steps**       | 1. Submit the admin password. 2. Session cookie is set with admin identity.                  |
+| **States**      | Disabled when `ADMIN_PASSWORD_HASH` is unset                                                 |
 | **Safety nets** | bcrypt hash only (validated at startup, `config/load.go`); same per-IP rate limit as sign-in |
 
 ### Manage API tokens
@@ -63,15 +63,15 @@ Rules for the fields:
 > Deactivated: sidebar entry removed, `/api/v1/auth/tokens` routes
 > unregistered, bearer resolution disabled in `Auth.Principal`. Code kept.
 
-| | |
-| --- | --- |
-| **Audience** | end user |
-| **Entry** | Sidebar → API tokens |
-| **Route** | `/profile/tokens` |
-| **API** | `GET /api/v1/auth/tokens`, `POST /api/v1/auth/tokens`, `DELETE /api/v1/auth/tokens/{id}` |
-| **Steps** | 1. List existing tokens. 2. Create one - the secret is shown once. 3. Revoke by id. |
-| **States** | Empty state on first visit |
-| **Safety nets** | Secret displayed once, copy button; revoke is immediate |
+|                 |                                                                                          |
+| --------------- | ---------------------------------------------------------------------------------------- |
+| **Audience**    | end user                                                                                 |
+| **Entry**       | Sidebar → API tokens                                                                     |
+| **Route**       | `/profile/tokens`                                                                        |
+| **API**         | `GET /api/v1/auth/tokens`, `POST /api/v1/auth/tokens`, `DELETE /api/v1/auth/tokens/{id}` |
+| **Steps**       | 1. List existing tokens. 2. Create one - the secret is shown once. 3. Revoke by id.      |
+| **States**      | Empty state on first visit                                                               |
+| **Safety nets** | Secret displayed once, copy button; revoke is immediate                                  |
 
 Password change goes through `POST /api/v1/auth/password`.
 
@@ -83,85 +83,85 @@ This is the core of the product. Everything else exists to support it.
 
 ### Browse my VMs
 
-| | |
-| --- | --- |
-| **Audience** | end user |
-| **Entry** | The signed-in landing page (a pool user opening `/` is sent here), Sidebar → My machines |
-| **Route** | `/vms` |
-| **API** | `GET /api/v1/vms` (scope `mine`) → `POST /api/v1/vms/{cluster}/{vmid}/actions` (Start) → `POST /api/v1/vms/status` (convergence) |
-| **Steps** | 1. Pick a cluster scope (`ClusterSelector`, shown only with several clusters) or stay cross-cluster. 2. Search, or filter All / Running / Stopped - state is mirrored into the URL query, so a filtered list is linkable. 3. Read each card row (`MachineList.svelte`): OS mark, name, resources, the 7-state status pill and a hint line when the state needs one. 4. Start a stopped machine from its row, or open a machine with View details. |
-| **States** | Three skeleton rows on first load; teaching first-visit empty state ("Your first machine starts here", Create your first machine); "No matching machines" with Clear filters; error-toned "We can't reach your workspace" with Try again on `inventory_not_ready`; a warning notice when the allowance is full; the allowance meter footer. Display states come from `displayStatus()`: running, stopped, provisioning (vm_create in the task tray), starting / stopping (power action in `PowerActionRegistry`), failed / partial (session outcome ledger). |
-| **Safety nets** | Ownership is enforced server-side by `vm.Resolve()`, not by the list filter. The list DTO carries no address, so a row never offers Connect (no readiness claim without connection data). A partial row says "Do not create a duplicate". |
+|                 |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Audience**    | end user                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **Entry**       | The signed-in landing page (a pool user opening `/` is sent here), Sidebar → My machines                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **Route**       | `/vms`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| **API**         | `GET /api/v1/vms` (scope `mine`) → `POST /api/v1/vms/{cluster}/{vmid}/actions` (Start) → `POST /api/v1/vms/status` (convergence)                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **Steps**       | 1. Pick a cluster scope (`ClusterSelector`, shown only with several clusters) or stay cross-cluster. 2. Search, or filter All / Running / Stopped - state is mirrored into the URL query, so a filtered list is linkable. 3. Read each card row (`MachineList.svelte`): OS mark, name, resources, the 7-state status pill and a hint line when the state needs one. 4. Start a stopped machine from its row, or open a machine with View details.                                                                                                            |
+| **States**      | Three skeleton rows on first load; teaching first-visit empty state ("Your first machine starts here", Create your first machine); "No matching machines" with Clear filters; error-toned "We can't reach your workspace" with Try again on `inventory_not_ready`; a warning notice when the allowance is full; the allowance meter footer. Display states come from `displayStatus()`: running, stopped, provisioning (vm_create in the task tray), starting / stopping (power action in `PowerActionRegistry`), failed / partial (session outcome ledger). |
+| **Safety nets** | Ownership is enforced server-side by `vm.Resolve()`, not by the list filter. The list DTO carries no address, so a row never offers Connect (no readiness claim without connection data). A partial row says "Do not create a duplicate".                                                                                                                                                                                                                                                                                                                    |
 
 ### Bulk power actions
 
-| | |
-| --- | --- |
-| **Audience** | end user |
-| **Entry** | The Select toggle in the `/vms` toolbar (rows show checkboxes only in select mode) |
-| **Route** | `/vms` |
-| **API** | `POST /api/v1/vms/bulk-action` |
-| **Steps** | 1. Turn on Select, then pick machines across one or more clusters (or select the whole page). 2. Pick an action in the bar that appears. 3. Read the per-VM result - each entry is `ok` or `error` with its own message. Done leaves select mode and clears the selection. |
-| **States** | Per-row result, not a single global success/failure |
-| **Safety nets** | Only the valid power actions are accepted (`validActions`, `server/internal/vm/actions.go`): `start`, `stop`, `shutdown`, `reboot`, `reset`, `pause`, `resume`. A partial failure never rolls back the successes - it reports them. |
+|                 |                                                                                                                                                                                                                                                                            |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Audience**    | end user                                                                                                                                                                                                                                                                   |
+| **Entry**       | The Select toggle in the `/vms` toolbar (rows show checkboxes only in select mode)                                                                                                                                                                                         |
+| **Route**       | `/vms`                                                                                                                                                                                                                                                                     |
+| **API**         | `POST /api/v1/vms/bulk-action`                                                                                                                                                                                                                                             |
+| **Steps**       | 1. Turn on Select, then pick machines across one or more clusters (or select the whole page). 2. Pick an action in the bar that appears. 3. Read the per-VM result - each entry is `ok` or `error` with its own message. Done leaves select mode and clears the selection. |
+| **States**      | Per-row result, not a single global success/failure                                                                                                                                                                                                                        |
+| **Safety nets** | Only the valid power actions are accepted (`validActions`, `server/internal/vm/actions.go`): `start`, `stop`, `shutdown`, `reboot`, `reset`, `pause`, `resume`. A partial failure never rolls back the successes - it reports them.                                        |
 
 ### Create a VM
 
-| | |
-| --- | --- |
-| **Audience** | end user |
-| **Entry** | "Create a machine" on `/vms`, the `/vms` first-visit empty state, or "Review the request" on a failed machine |
-| **Route** | `/vms/create` |
-| **API** | `GET /api/v1/vm-create/catalog` + `GET /api/v1/vms?pageSize=100` (names, for the duplicate check) → `POST /api/v1/vms` → `GET /api/v1/tasks/{upid}` (polled) |
-| **Steps** | The mode chooser opens first. **Simple** is a single page with a sticky summary rail (`SimpleWizard.svelte`): 01 choose the starting point (radio cards: install from scratch, ready-made system = approved template, cloud image), 02 give it room (profile radio cards, or a disk size for an image without profiles), 03 make it yours (name, image access fields, cloud-init template, tags), startup options; the rail repeats every choice live, shows the allowance after creation and holds "Create this machine". **Detailed** keeps the stepper: 1. Base (name, profile, cluster, node). 2. Disk. 3. Hardware. 4. Network. 5. Review - the only place raw JSON is shown, and only on request. 6. Submit; the response is a Proxmox UPID. 7. The task tray polls until done, then refreshes the VM list. Detailed mode may pick a Proxmox template as the source instead of an ISO: the node is derived from the template (the selector hides), the disk minimum rises to the template's disk, and the wizard says when the target storage forces a full copy instead of a linked clone. A third source, a cloud image, imports the image as the primary disk (Proxmox `import-from`) and requires cloud-init fields (user, SSH keys, network); the disk minimum rises to the image's size, and the VM starts only after the create task finishes and its cloud-init config is applied - never inside the create task itself. |
-| **States** | Blocked states replace the form: "We can't load the available choices" (catalog error, Try again), "You've reached your machine allowance" (quota used up), "Your catalog isn't ready yet" (no profile, template or image approved); the wizard shows skeletons while the catalog loads. Inline field errors and a disabled submit while the form is invalid; entered values survive a mode switch and recoverable errors (a reload starts over). Task tray shows in-flight work so the user can navigate away. Template source: the template option only appears when at least one template is approved; an empty catalog legitimately hides it. Image source: same - hidden until at least one cloud image is approved. If applying the cloud-init config fails after a successful image import, the VM exists but stays stopped and unconfigured; the create response's `cloudInitPushError` field carries the reason. |
-| **Safety nets** | A name already used by one of the user's machines is refused before submit; when that machine is `partial` the message says "Do not create a duplicate: open it instead" (the server's `name_taken` stays the real guard). Every choice comes from the admin-approved catalog - nodes, storages, bridges, ISOs, profiles, cloud-init templates, VM templates, cloud images, tags. Quotas and gabarit limits are checked server-side (`policy/`), not in the wizard. A template clone stays on the template's node (the wizard hides the node selector), the disk size can never drop below the template's disk, and a stale or deleted template fails fast before a VMID is spent. A cloud image is admin-approved cluster-side (`/admin/images`) from files discovered under a storage's `import/` content - never fetched from the internet - and the disk size can never drop below the image's size. Cloud-init documents are admin templates only (`cloudInitTemplateId`), already published on the nodes - see *Create a VM with a cloud-init template* below; a cluster without SSH publishing hides the picker (`cloudInitWriteEnabled: false` in the catalog) and refuses a create carrying a template with 409 `cloudinit_write_unavailable` before any VMID is spent. Image-mode native keys (ciuser/sshkeys/ipconfig0) are applied after the import task; the published PVMSS baseline (`pvmss-baseline-<hash>.yml`, installs `qemu-guest-agent`) is attached when the user picks no template; when it is not on the node the VM boots on the native keys and the baseline is reported "not delivered". |
+|                 |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Audience**    | end user                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Entry**       | "Create a machine" on `/vms`, the `/vms` first-visit empty state, or "Review the request" on a failed machine                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| **Route**       | `/vms/create`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| **API**         | `GET /api/v1/vm-create/catalog` + `GET /api/v1/vms?pageSize=100` (names, for the duplicate check) → `POST /api/v1/vms` → `GET /api/v1/tasks/{upid}` (polled)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| **Steps**       | The mode chooser opens first. **Simple** is a single page with a sticky summary rail (`SimpleWizard.svelte`): 01 choose the starting point (radio cards: install from scratch, ready-made system = approved template, cloud image), 02 give it room (profile radio cards, or a disk size for an image without profiles), 03 make it yours (name, image access fields, cloud-init template, tags), startup options; the rail repeats every choice live, shows the allowance after creation and holds "Create this machine". **Detailed** keeps the stepper: 1. Base (name, profile, cluster, node). 2. Disk. 3. Hardware. 4. Network. 5. Review - the only place raw JSON is shown, and only on request. 6. Submit; the response is a Proxmox UPID. 7. The task tray polls until done, then refreshes the VM list. Detailed mode may pick a Proxmox template as the source instead of an ISO: the node is derived from the template (the selector hides), the disk minimum rises to the template's disk, and the wizard says when the target storage forces a full copy instead of a linked clone. A third source, a cloud image, imports the image as the primary disk (Proxmox `import-from`) and requires cloud-init fields (user, SSH keys, network); the disk minimum rises to the image's size, and the VM starts only after the create task finishes and its cloud-init config is applied - never inside the create task itself.                                                                                                                                                                              |
+| **States**      | Blocked states replace the form: "We can't load the available choices" (catalog error, Try again), "You've reached your machine allowance" (quota used up), "Your catalog isn't ready yet" (no profile, template or image approved); the wizard shows skeletons while the catalog loads. Inline field errors and a disabled submit while the form is invalid; entered values survive a mode switch and recoverable errors (a reload starts over). Task tray shows in-flight work so the user can navigate away. Template source: the template option only appears when at least one template is approved; an empty catalog legitimately hides it. Image source: same - hidden until at least one cloud image is approved. If applying the cloud-init config fails after a successful image import, the VM exists but stays stopped and unconfigured; the create response's `cloudInitPushError` field carries the reason.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **Safety nets** | A name already used by one of the user's machines is refused before submit; when that machine is `partial` the message says "Do not create a duplicate: open it instead" (the server's `name_taken` stays the real guard). Every choice comes from the admin-approved catalog - nodes, storages, bridges, ISOs, profiles, cloud-init templates, VM templates, cloud images, tags. Quotas and gabarit limits are checked server-side (`policy/`), not in the wizard. A template clone stays on the template's node (the wizard hides the node selector), the disk size can never drop below the template's disk, and a stale or deleted template fails fast before a VMID is spent. A cloud image is admin-approved cluster-side (`/admin/images`) from files discovered under a storage's `import/` content - never fetched from the internet - and the disk size can never drop below the image's size. Cloud-init documents are admin templates only (`cloudInitTemplateId`), already published on the nodes - see _Create a VM with a cloud-init template_ below; a cluster without SSH publishing hides the picker (`cloudInitWriteEnabled: false` in the catalog) and refuses a create carrying a template with 409 `cloudinit_write_unavailable` before any VMID is spent. Image-mode native keys (ciuser/sshkeys/ipconfig0) are applied after the import task; the published PVMSS baseline (`pvmss-baseline-<hash>.yml`, installs `qemu-guest-agent`) is attached when the user picks no template; when it is not on the node the VM boots on the native keys and the baseline is reported "not delivered". |
 
 ### Create a VM with a cloud-init template
 
-| | |
-| --- | --- |
-| **Audience** | end user |
-| **Entry** | The cloud-init select in `/vms/create` (Base step) |
-| **Route** | `/vms/create` |
-| **API** | `GET /api/v1/vm-create/catalog` (published admin templates + `cloudInitWriteEnabled`) → `POST /api/v1/vms` with `cloudInitTemplateId` |
-| **Steps** | 1. Pick an administrator template (or none). 2. The Review step names it. 3. Before any VMID, the server resolves the template's published file and checks the VM's node lists it (`HasSnippet`). 4. After the create task it sets `cicustom=vendor=<storage>:snippets/<file>` and records `vm_cloudinit_documents`. Nothing is written for the VM. Same path for ISO, clone and image sources. |
-| **States** | Select hidden (with a one-line hint) when the cluster does not publish; only templates with a publication are offered |
-| **Safety nets** | Users never send YAML (`cloudInitFileId` is rejected as an unknown field). No publishing → 409 `cloudinit_write_unavailable`; template not on the VM's node → 409 `cloudinit_not_published`, both before a VMID is spent. The published file is immutable: later template edits publish a new file and never touch the VM. |
+|                 |                                                                                                                                                                                                                                                                                                                                                                                                 |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Audience**    | end user                                                                                                                                                                                                                                                                                                                                                                                        |
+| **Entry**       | The cloud-init select in `/vms/create` (Base step)                                                                                                                                                                                                                                                                                                                                              |
+| **Route**       | `/vms/create`                                                                                                                                                                                                                                                                                                                                                                                   |
+| **API**         | `GET /api/v1/vm-create/catalog` (published admin templates + `cloudInitWriteEnabled`) → `POST /api/v1/vms` with `cloudInitTemplateId`                                                                                                                                                                                                                                                           |
+| **Steps**       | 1. Pick an administrator template (or none). 2. The Review step names it. 3. Before any VMID, the server resolves the template's published file and checks the VM's node lists it (`HasSnippet`). 4. After the create task it sets `cicustom=vendor=<storage>:snippets/<file>` and records `vm_cloudinit_documents`. Nothing is written for the VM. Same path for ISO, clone and image sources. |
+| **States**      | Select hidden (with a one-line hint) when the cluster does not publish; only templates with a publication are offered                                                                                                                                                                                                                                                                           |
+| **Safety nets** | Users never send YAML (`cloudInitFileId` is rejected as an unknown field). No publishing → 409 `cloudinit_write_unavailable`; template not on the VM's node → 409 `cloudinit_not_published`, both before a VMID is spent. The published file is immutable: later template edits publish a new file and never touch the VM.                                                                      |
 
 ### Publish cloud-init templates
 
-| | |
-| --- | --- |
-| **Audience** | administrator |
-| **Entry** | Infrastructure › Clusters (SSH settings), Admin › Cloud-init templates |
-| **Route** | `/admin/clusters`, `/admin/cloudinit-templates` |
-| **API** | `PUT /api/v1/admin/clusters/{name}` (`snippetStorage`, `sshUser`, `sshPort`, `sshKnownHosts`), `POST /api/v1/admin/clusters/{name}/ssh-scan`, `POST/PUT /api/v1/admin/cloudinit-templates[/{id}]`, `POST /api/v1/admin/cloudinit-templates/publish` |
-| **Steps** | 1. Run `tools/pvmss-node-setup.sh` on every node (helper, dedicated user, forced command). 2. Set the snippet storage and SSH user on the cluster, scan and confirm the host keys, save: PVMSS republishes in the background. 3. Create or edit templates: each save publishes the merged document to every node and shows the per-node result. 4. "Publish to all nodes" after adding or reinstalling a node. |
-| **States** | Per-template "n/m nodes" with the failing nodes' errors; "not published"; warning when the cluster is not configured |
-| **Safety nets** | Host keys are always verified against the pinned list (no insecure mode). PVMSS only sends `write <name>` / `remove <name>` to the helper, which validates the name and owns the directory. A node that did not get the file is never used for a VM with that template. |
+|                 |                                                                                                                                                                                                                                                                                                                                                                                                                |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Audience**    | administrator                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **Entry**       | Infrastructure › Clusters (SSH settings), Admin › Cloud-init templates                                                                                                                                                                                                                                                                                                                                         |
+| **Route**       | `/admin/clusters`, `/admin/cloudinit-templates`                                                                                                                                                                                                                                                                                                                                                                |
+| **API**         | `PUT /api/v1/admin/clusters/{name}` (`snippetStorage`, `sshUser`, `sshPort`, `sshKnownHosts`), `POST /api/v1/admin/clusters/{name}/ssh-scan`, `POST/PUT /api/v1/admin/cloudinit-templates[/{id}]`, `POST /api/v1/admin/cloudinit-templates/publish`                                                                                                                                                            |
+| **Steps**       | 1. Run `tools/pvmss-node-setup.sh` on every node (helper, dedicated user, forced command). 2. Set the snippet storage and SSH user on the cluster, scan and confirm the host keys, save: PVMSS republishes in the background. 3. Create or edit templates: each save publishes the merged document to every node and shows the per-node result. 4. "Publish to all nodes" after adding or reinstalling a node. |
+| **States**      | Per-template "n/m nodes" with the failing nodes' errors; "not published"; warning when the cluster is not configured                                                                                                                                                                                                                                                                                           |
+| **Safety nets** | Host keys are always verified against the pinned list (no insecure mode). PVMSS only sends `write <name>` / `remove <name>` to the helper, which validates the name and owns the directory. A node that did not get the file is never used for a VM with that template.                                                                                                                                        |
 
 ### Operate a single VM
 
-| | |
-| --- | --- |
-| **Audience** | end user |
-| **Entry** | View details / the name link on a `/vms` row, an Activity row, the sidebar machines drawer |
-| **Route** | `/vms/[cluster]/[vmid]` |
-| **API** | `GET /api/v1/vms/{cluster}/{vmid}` → `GET /api/v1/vms/{cluster}/{vmid}/cloudinit` (SSH user, when connectable) → `POST .../actions` + `GET .../status` (header power action) plus the per-tab endpoints below |
-| **Steps** | Connection-first (`VmDetail.svelte`, DESIGN.md §6.3). 1. The header shows the OS mark, name (click to rename), size line, status pill and one power action: Start machine, or Shut down with an inline confirmation. 2. Connect (default tab): the SSH command built from the address the guest agent reports, with Copy; the browser console; the allocated resources. 3. Configuration: Summary (size, disk, placement, identifier, description, the full power bar with delete, usage charts) and sub-tabs Disks, Network, Hardware, Cloud-init, Snapshots. 4. Activity: the per-machine audit trail. |
-| **States** | Detail skeleton on first load. Banners above the tabs, in priority order: shutdown confirmation; provisioning (4-step panel, "Back to my workspace"); failed ("Review the request") / partial ("Do not create a duplicate", "Get help from your administrator", technical details); starting / stopping. Connect tab: "Connect with SSH" only when running with a reported address, "The address isn't available yet" when running without one, "SSH isn't available right now" when not running; the console button is disabled unless running. Cloud-init and Snapshots panels mount lazily. |
-| **Safety nets** | Every write is gated by `vm.Resolve()` inside the handler; destructive actions each get their own dialog. The address is never guessed and the user is a visible `USER` placeholder when PVMSS does not know it. Shut down is a graceful shutdown (named as such in the confirmation), never a forced power-off. |
+|                 |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Audience**    | end user                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **Entry**       | View details / the name link on a `/vms` row, an Activity row, the sidebar machines drawer                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **Route**       | `/vms/[cluster]/[vmid]`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **API**         | `GET /api/v1/vms/{cluster}/{vmid}` → `GET /api/v1/vms/{cluster}/{vmid}/cloudinit` (SSH user, when connectable) → `POST .../actions` + `GET .../status` (header power action) plus the per-tab endpoints below                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Steps**       | Connection-first (`VmDetail.svelte`, DESIGN.md §6.3). 1. The header shows the OS mark, name (click to rename), size line, status pill and one power action: Start machine, or Shut down with an inline confirmation. 2. Connect (default tab): the SSH command built from the address the guest agent reports, with Copy; the browser console; the allocated resources. 3. Configuration: Summary (size, disk, placement, identifier, description, the full power bar with delete, usage charts) and sub-tabs Disks, Network, Hardware, Cloud-init, Snapshots. 4. Activity: the per-machine audit trail. |
+| **States**      | Detail skeleton on first load. Banners above the tabs, in priority order: shutdown confirmation; provisioning (4-step panel, "Back to my workspace"); failed ("Review the request") / partial ("Do not create a duplicate", "Get help from your administrator", technical details); starting / stopping. Connect tab: "Connect with SSH" only when running with a reported address, "The address isn't available yet" when running without one, "SSH isn't available right now" when not running; the console button is disabled unless running. Cloud-init and Snapshots panels mount lazily.           |
+| **Safety nets** | Every write is gated by `vm.Resolve()` inside the handler; destructive actions each get their own dialog. The address is never guessed and the user is a visible `USER` placeholder when PVMSS does not know it. Shut down is a graceful shutdown (named as such in the confirmation), never a forced power-off.                                                                                                                                                                                                                                                                                         |
 
-| Tab | Actions | API |
-| --- | --- | --- |
-| Connect | copy the SSH command, open the console in a new tab | `GET .../cloudinit` |
-| Configuration › Summary | 7 power actions (shutdown = guest-agent/ACPI only, no auto force-stop; stop = hard stop), rename, description, delete | `POST .../actions`, `PATCH .../{vmid}`, `DELETE .../{vmid}` |
-| Disks | add, resize, detach | `POST .../disks`, `PUT .../disks/{diskKey}/resize`, `DELETE .../disks/{diskKey}` |
-| Network | edit interface | `PUT .../network` |
-| Hardware | CPU/RAM, tags (admin-curated picker), CDROM | `GET .../hardware-options`, `PUT .../hardware`, `PATCH .../cdrom` |
-| Cloud-init | native-key form (writable); switch to another published admin template, applied at next boot | `GET`/`PUT .../cloudinit`, `GET`/`PUT .../cloudinit/document` |
-| Snapshots | create, rollback, delete | `GET`/`POST .../snapshots`, `POST .../snapshots/{name}/rollback`, `DELETE .../snapshots/{name}` |
+| Tab                     | Actions                                                                                                               | API                                                                                             |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Connect                 | copy the SSH command, open the console in a new tab                                                                   | `GET .../cloudinit`                                                                             |
+| Configuration › Summary | 7 power actions (shutdown = guest-agent/ACPI only, no auto force-stop; stop = hard stop), rename, description, delete | `POST .../actions`, `PATCH .../{vmid}`, `DELETE .../{vmid}`                                     |
+| Disks                   | add, resize, detach                                                                                                   | `POST .../disks`, `PUT .../disks/{diskKey}/resize`, `DELETE .../disks/{diskKey}`                |
+| Network                 | edit interface                                                                                                        | `PUT .../network`                                                                               |
+| Hardware                | CPU/RAM, tags (admin-curated picker), CDROM                                                                           | `GET .../hardware-options`, `PUT .../hardware`, `PATCH .../cdrom`                               |
+| Cloud-init              | native-key form (writable); switch to another published admin template, applied at next boot                          | `GET`/`PUT .../cloudinit`, `GET`/`PUT .../cloudinit/document`                                   |
+| Snapshots               | create, rollback, delete                                                                                              | `GET`/`POST .../snapshots`, `POST .../snapshots/{name}/rollback`, `DELETE .../snapshots/{name}` |
 
 Dialogs: `DeleteVmDialog`, `CreateSnapshotDialog`, `RollbackSnapshotDialog`,
 `DeleteSnapshotDialog`, `SaveCloudInitDialog`. A destructive action without a
@@ -172,51 +172,51 @@ Rename validates as a hostname (lowercase, ≤63 chars, `hostnameRe` in
 
 ### Open the console
 
-| | |
-| --- | --- |
-| **Audience** | end user |
-| **Entry** | "Open browser console" in the detail Connect tab (enabled only while running) |
-| **Route** | `/vms/[cluster]/[vmid]/console` |
-| **API** | `POST /api/v1/vms/{cluster}/{vmid}/vnc-ticket` → `GET /api/v1/vms/{cluster}/{vmid}/console/websocket` |
-| **Steps** | 1. Request a short-lived VNC ticket. 2. Upgrade to a WebSocket proxied to Proxmox. 3. The same `VmActionBar` power actions are available on the console page (delete stays details-only). A **serial** client (xterm.js) runs the parallel path `POST …/serial-ticket` → `GET …/serial/websocket`; `POST …/serial` adds a serial port to a VM that has none. |
-| **States** | Connection failure surfaces as a console error, not a blank frame |
-| **Safety nets** | Tickets are per-VM, single-use, and issued only after the ownership check; CSWSH origin check on the upgrade; dev note - the Vite dev server must run under Node, not bun, or the WebSocket breaks with a 1006 |
+|                 |                                                                                                                                                                                                                                                                                                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Audience**    | end user                                                                                                                                                                                                                                                                                                                                                     |
+| **Entry**       | "Open browser console" in the detail Connect tab (enabled only while running)                                                                                                                                                                                                                                                                                |
+| **Route**       | `/vms/[cluster]/[vmid]/console`                                                                                                                                                                                                                                                                                                                              |
+| **API**         | `POST /api/v1/vms/{cluster}/{vmid}/vnc-ticket` → `GET /api/v1/vms/{cluster}/{vmid}/console/websocket`                                                                                                                                                                                                                                                        |
+| **Steps**       | 1. Request a short-lived VNC ticket. 2. Upgrade to a WebSocket proxied to Proxmox. 3. The same `VmActionBar` power actions are available on the console page (delete stays details-only). A **serial** client (xterm.js) runs the parallel path `POST …/serial-ticket` → `GET …/serial/websocket`; `POST …/serial` adds a serial port to a VM that has none. |
+| **States**      | Connection failure surfaces as a console error, not a blank frame                                                                                                                                                                                                                                                                                            |
+| **Safety nets** | Tickets are per-VM, single-use, and issued only after the ownership check; CSWSH origin check on the upgrade; dev note - the Vite dev server must run under Node, not bun, or the WebSocket breaks with a 1006                                                                                                                                               |
 
 ### View VM metrics history
 
-| | |
-| --- | --- |
-| **Audience** | end user |
-| **Entry** | `VmMetricsRow` in the detail page's Configuration › Summary panel |
-| **Route** | `/vms/[cluster]/[vmid]` |
-| **API** | `GET /api/v1/vms/{cluster}/{vmid}/metrics/history?range=hour\|day\|week` |
-| **Steps** | 1. Row loads history for the default "hour" range on mount. 2. User toggles hour/day/week; each toggle re-fetches and re-renders only the four charts. |
-| **States** | Skeleton cards while loading; an inline error banner on fetch failure; charts render via hand-rolled SVG (`LineChart.svelte`), no charting library |
+|                 |                                                                                                                                                                                          |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Audience**    | end user                                                                                                                                                                                 |
+| **Entry**       | `VmMetricsRow` in the detail page's Configuration › Summary panel                                                                                                                        |
+| **Route**       | `/vms/[cluster]/[vmid]`                                                                                                                                                                  |
+| **API**         | `GET /api/v1/vms/{cluster}/{vmid}/metrics/history?range=hour\|day\|week`                                                                                                                 |
+| **Steps**       | 1. Row loads history for the default "hour" range on mount. 2. User toggles hour/day/week; each toggle re-fetches and re-renders only the four charts.                                   |
+| **States**      | Skeleton cards while loading; an inline error banner on fetch failure; charts render via hand-rolled SVG (`LineChart.svelte`), no charting library                                       |
 | **Safety nets** | Resolved and ownership-checked the same way as every other VM read (`vm.Resolve()`); a stale in-flight response from a prior range switch is discarded, never overwrites the current one |
 
 ### Follow activity
 
-| | |
-| --- | --- |
-| **Audience** | end user |
-| **Entry** | Sidebar → Activity (its count chip shows operations in flight) |
-| **Route** | `/activity` |
-| **API** | `GET /api/v1/vms?pageSize=20` → `GET /api/v1/vms/{cluster}/{vmid}/audit` per machine (merged client-side, newest first, 25 rows); in-progress rows come from the task tray and the power-action registry, no extra call |
-| **Steps** | 1. In progress: creations, snapshot work and power actions running now, each linking to its machine. 2. Recent updates: the merged audit trail of the user's machines (plain-language action, actor, time), each row linking to the machine. 3. The timeline reloads when a tracked task finishes. |
-| **States** | "In progress" only renders while something runs; skeleton lines while the timeline loads; "All quiet for now" with Go to my machines when there is no history; an error state with Try again. One machine whose audit read fails is skipped, the rest still render. |
-| **Safety nets** | Read-only. Every row is a recorded audit entry or a tracked operation, nothing is inferred; audit reads go through the per-VM endpoint, so ownership is checked by `vm.Resolve()` for each machine. |
+|                 |                                                                                                                                                                                                                                                                                                    |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Audience**    | end user                                                                                                                                                                                                                                                                                           |
+| **Entry**       | Sidebar → Activity (its count chip shows operations in flight)                                                                                                                                                                                                                                     |
+| **Route**       | `/activity`                                                                                                                                                                                                                                                                                        |
+| **API**         | `GET /api/v1/vms?pageSize=20` → `GET /api/v1/vms/{cluster}/{vmid}/audit` per machine (merged client-side, newest first, 25 rows); in-progress rows come from the task tray and the power-action registry, no extra call                                                                            |
+| **Steps**       | 1. In progress: creations, snapshot work and power actions running now, each linking to its machine. 2. Recent updates: the merged audit trail of the user's machines (plain-language action, actor, time), each row linking to the machine. 3. The timeline reloads when a tracked task finishes. |
+| **States**      | "In progress" only renders while something runs; skeleton lines while the timeline loads; "All quiet for now" with Go to my machines when there is no history; an error state with Try again. One machine whose audit read fails is skipped, the rest still render.                                |
+| **Safety nets** | Read-only. Every row is a recorded audit entry or a tracked operation, nothing is inferred; audit reads go through the per-VM endpoint, so ownership is checked by `vm.Resolve()` for each machine.                                                                                                |
 
 ### Account and preferences
 
-| | |
-| --- | --- |
-| **Audience** | end user |
-| **Entry** | The account link at the bottom of the sidebar |
-| **Route** | `/profile` |
-| **API** | none - identity comes from the session (`GET /api/v1/auth/me`, already loaded by the shell); preferences persist in `localStorage` (`pvmss-theme-v1`, `pvmss-locale`) |
-| **Steps** | 1. See who is signed in and on which cluster. 2. Switch between light and dark. 3. Pick the interface language. |
-| **States** | None beyond the shell's own loading; both preferences apply immediately and survive a reload |
-| **Safety nets** | Nothing destructive. Sign-in is the user's Proxmox account; the page says so instead of linking to the deactivated API-token screen. |
+|                 |                                                                                                                                                                       |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Audience**    | end user                                                                                                                                                              |
+| **Entry**       | The account link at the bottom of the sidebar                                                                                                                         |
+| **Route**       | `/profile`                                                                                                                                                            |
+| **API**         | none - identity comes from the session (`GET /api/v1/auth/me`, already loaded by the shell); preferences persist in `localStorage` (`pvmss-theme-v1`, `pvmss-locale`) |
+| **Steps**       | 1. See who is signed in and on which cluster. 2. Switch between light and dark. 3. Pick the interface language.                                                       |
+| **States**      | None beyond the shell's own loading; both preferences apply immediately and survive a reload                                                                          |
+| **Safety nets** | Nothing destructive. Sign-in is the user's Proxmox account; the page says so instead of linking to the deactivated API-token screen.                                  |
 
 ---
 
@@ -224,29 +224,29 @@ Rename validates as a hostname (lowercase, ≤63 chars, `hostnameRe` in
 
 ### Browse nodes
 
-| | |
-| --- | --- |
-| **Audience** | end user |
-| **Entry** | Sidebar → Nodes |
-| **Route** | `/nodes` |
-| **API** | `GET /api/v1/cluster/nodes`, `POST /api/v1/cluster/refresh` |
-| **Steps** | 1. Read node capacity and status from the cached inventory. 2. Optionally force a refresh. |
-| **States** | Data is served from the inventory cache, refreshed in the background every `PVMSS_INVENTORY_REFRESH_INTERVAL` (default 30s) |
+|                 |                                                                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Audience**    | end user                                                                                                                        |
+| **Entry**       | Sidebar → Nodes                                                                                                                 |
+| **Route**       | `/nodes`                                                                                                                        |
+| **API**         | `GET /api/v1/cluster/nodes`, `POST /api/v1/cluster/refresh`                                                                     |
+| **Steps**       | 1. Read node capacity and status from the cached inventory. 2. Optionally force a refresh.                                      |
+| **States**      | Data is served from the inventory cache, refreshed in the background every `PVMSS_INVENTORY_REFRESH_INTERVAL` (default 30s)     |
 | **Safety nets** | Manual refresh is throttled by `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` (default 5s) so a click loop cannot hammer Proxmox |
 
 ---
 
 ## 4. Documentation
 
-| | |
-| --- | --- |
-| **Audience** | end user and admin - same pages, different visibility |
-| **Entry** | Sidebar → Help & guides (pool users), Documentation (admins), the list's "Open the guide", the home page (signed out) |
-| **Route** | `/docs` ("Help & guides"), `/docs/[id]` |
-| **API** | `GET /api/v1/docs` → `GET /api/v1/docs/{id}?lang=` (per article, on first open) |
-| **Steps** | 1. The index lists pages filtered by audience and language as numbered accordions ("01 - …"), the first one open. 2. Opening an article fetches its server-rendered markdown into the accordion. 3. "Open as a page" deep-links to `/docs/[id]?lang=`. An aside explains the few concepts a beginner needs (size, SSH, console, allowance). |
-| **States** | Loading line; "No documentation pages yet"; per-article loading and error lines; bilingual (EN + FR) per page with a language selector |
-| **Safety nets** | Admin-audience pages are hidden from the list *and* return 401/403 on direct access - the handler resolves the caller itself rather than relying on the list filter |
+|                 |                                                                                                                                                                                                                                                                                                                                             |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Audience**    | end user and admin - same pages, different visibility                                                                                                                                                                                                                                                                                       |
+| **Entry**       | Sidebar → Help & guides (pool users), Documentation (admins), the list's "Open the guide", the home page (signed out)                                                                                                                                                                                                                       |
+| **Route**       | `/docs` ("Help & guides"), `/docs/[id]`                                                                                                                                                                                                                                                                                                     |
+| **API**         | `GET /api/v1/docs` → `GET /api/v1/docs/{id}?lang=` (per article, on first open)                                                                                                                                                                                                                                                             |
+| **Steps**       | 1. The index lists pages filtered by audience and language as numbered accordions ("01 - …"), the first one open. 2. Opening an article fetches its server-rendered markdown into the accordion. 3. "Open as a page" deep-links to `/docs/[id]?lang=`. An aside explains the few concepts a beginner needs (size, SSH, console, allowance). |
+| **States**      | Loading line; "No documentation pages yet"; per-article loading and error lines; bilingual (EN + FR) per page with a language selector                                                                                                                                                                                                      |
+| **Safety nets** | Admin-audience pages are hidden from the list _and_ return 401/403 on direct access - the handler resolves the caller itself rather than relying on the list filter                                                                                                                                                                         |
 
 ---
 
@@ -256,13 +256,13 @@ All admin routes sit behind `Auth.RequireAdmin` (401 unauthenticated, 403
 non-admin), wired in `router_admin.go`. Nav grouping comes from
 `web/src/lib/features/chrome/admin-nav-items.svelte.ts`.
 
-| Group | Routes | What it does |
-| --- | --- | --- |
-| Dashboard | `/admin` | Overview (`GET /api/v1/admin/dashboard`) |
-| Infrastructure | `/admin/nodes`, `/admin/clusters`, `/admin/pools` | Approve nodes; cluster CRUD with connection test, OIDC toggle (sign-in itself returns 501 - not implemented), and the cloud-init snippet write target (`snippetDir` + `snippetStorage`, `cloudInitWriteEnabled` badge); pool create and cascade delete |
-| Catalog | `/admin/storages`, `/admin/isos`, `/admin/images`, `/admin/templates`, `/admin/bridges`, `/admin/cloudinit-templates`, `/admin/docs`, `/admin/profiles`, `/admin/tags` | Toggle what users may pick; CRUD for profiles, tags, cloud-init templates, docs; remove orphaned approvals for every discovered kind |
-| Policy | `/admin/policy`, `/admin/policy/nodes` | Quotas and gabarit limits; per-node capacity |
-| System | `/admin/appinfo`, `/admin/settings` | App info; audit log with retention (`GET/PUT /api/v1/admin/audit/config`, `GET …/audit/prune-preview`); DB export/import |
+| Group          | Routes                                                                                                                                                                 | What it does                                                                                                                                                                                                                                           |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Dashboard      | `/admin`                                                                                                                                                               | Overview (`GET /api/v1/admin/dashboard`)                                                                                                                                                                                                               |
+| Infrastructure | `/admin/nodes`, `/admin/clusters`, `/admin/pools`                                                                                                                      | Approve nodes; cluster CRUD with connection test, OIDC toggle (sign-in itself returns 501 - not implemented), and the cloud-init snippet write target (`snippetDir` + `snippetStorage`, `cloudInitWriteEnabled` badge); pool create and cascade delete |
+| Catalog        | `/admin/storages`, `/admin/isos`, `/admin/images`, `/admin/templates`, `/admin/bridges`, `/admin/cloudinit-templates`, `/admin/docs`, `/admin/profiles`, `/admin/tags` | Toggle what users may pick; CRUD for profiles, tags, cloud-init templates, docs; remove orphaned approvals for every discovered kind                                                                                                                   |
+| Policy         | `/admin/policy`, `/admin/policy/nodes`                                                                                                                                 | Quotas and gabarit limits; per-node capacity                                                                                                                                                                                                           |
+| System         | `/admin/appinfo`, `/admin/settings`                                                                                                                                    | App info; audit log with retention (`GET/PUT /api/v1/admin/audit/config`, `GET …/audit/prune-preview`); DB export/import                                                                                                                               |
 
 Three admin workflows deserve the full template because they are the risky ones.
 
@@ -280,27 +280,27 @@ Three admin workflows deserve the full template because they are the risky ones.
 
 ### Approve a catalog item
 
-| | |
-| --- | --- |
-| **Audience** | admin |
-| **Entry** | Any catalog page under `/admin` |
-| **Route** | `/admin/nodes`, `/admin/storages`, `/admin/isos`, `/admin/templates`, `/admin/bridges` |
-| **API** | `GET /api/v1/admin/{kind}` → `POST /api/v1/admin/{kind}/toggle` |
-| **Steps** | 1. Pick a cluster from the selector. 2. Search, filter by node/state/type, and sort by the available columns. 3. Toggle an item on or off. 4. A toast confirms the change. 5. It appears in, or disappears from, the create-VM catalog. |
-| **States** | `TableSkeleton` while loading; `EmptyState` with a link to `/admin/clusters` when no items are discovered; a second `EmptyState` with a reset-filters action when filters exclude every row; sortable columns, usage bars for storages, and active-state dots for bridges. |
-| **Safety nets** | Toggling off does not touch existing VMs - it only removes the item from future choices; success and error toasts give feedback after the API call. |
+|                 |                                                                                                                                                                                                                                                                            |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Audience**    | admin                                                                                                                                                                                                                                                                      |
+| **Entry**       | Any catalog page under `/admin`                                                                                                                                                                                                                                            |
+| **Route**       | `/admin/nodes`, `/admin/storages`, `/admin/isos`, `/admin/templates`, `/admin/bridges`                                                                                                                                                                                     |
+| **API**         | `GET /api/v1/admin/{kind}` → `POST /api/v1/admin/{kind}/toggle`                                                                                                                                                                                                            |
+| **Steps**       | 1. Pick a cluster from the selector. 2. Search, filter by node/state/type, and sort by the available columns. 3. Toggle an item on or off. 4. A toast confirms the change. 5. It appears in, or disappears from, the create-VM catalog.                                    |
+| **States**      | `TableSkeleton` while loading; `EmptyState` with a link to `/admin/clusters` when no items are discovered; a second `EmptyState` with a reset-filters action when filters exclude every row; sortable columns, usage bars for storages, and active-state dots for bridges. |
+| **Safety nets** | Toggling off does not touch existing VMs - it only removes the item from future choices; success and error toasts give feedback after the API call.                                                                                                                        |
 
 ### Export / import the database
 
-| | |
-| --- | --- |
-| **Audience** | admin |
-| **Entry** | `/admin/settings` |
-| **Route** | `/admin/settings` |
-| **API** | `GET /api/v1/admin/db/export`; `POST /api/v1/admin/db/import` → `POST /api/v1/admin/db/import/confirm` |
-| **Steps** | 1. Export downloads the current SQLite state. 2. Import uploads a candidate and returns a preview. 3. A second, explicit confirm call applies it. |
-| **States** | Preview between upload and apply |
-| **Safety nets** | Two-phase import - nothing is written until the confirm call. This is the most destructive action in the app. |
+|                 |                                                                                                                                                   |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Audience**    | admin                                                                                                                                             |
+| **Entry**       | `/admin/settings`                                                                                                                                 |
+| **Route**       | `/admin/settings`                                                                                                                                 |
+| **API**         | `GET /api/v1/admin/db/export`; `POST /api/v1/admin/db/import` → `POST /api/v1/admin/db/import/confirm`                                            |
+| **Steps**       | 1. Export downloads the current SQLite state. 2. Import uploads a candidate and returns a preview. 3. A second, explicit confirm call applies it. |
+| **States**      | Preview between upload and apply                                                                                                                  |
+| **Safety nets** | Two-phase import - nothing is written until the confirm call. This is the most destructive action in the app.                                     |
 
 `GET /api/v1/public/version` is deliberately outside the admin guard so the
 version is readable without an account.
@@ -311,12 +311,12 @@ version is readable without an account.
 
 These apply to every workflow above; a new workflow inherits them.
 
-| Concern | Where |
-| --- | --- |
-| i18n | Paraglide, EN + FR, `m['...']()` message keys - no bare user-facing strings |
-| Background work | Task tray polls `GET /api/v1/tasks/{upid}` and refreshes the affected list on completion |
-| Loading | `TableSkeleton` and per-feature skeletons, never a blank page |
-| Quotas | `Meter` / `quota-meter` components fed by `policy/` |
-| Accessibility | `role="tabpanel"` panels, focus trap in dialogs, skip-to-content link, visible focus rings |
-| Security headers | `withSecurityHeaders` wraps the whole mux - CSP, HSTS, frame and content-type options, cache-control on `/api` |
-| Unknown API paths | Return a JSON `{"detail": "unknown API path"}` 404, never the SPA shell |
+| Concern           | Where                                                                                                          |
+| ----------------- | -------------------------------------------------------------------------------------------------------------- |
+| i18n              | Paraglide, EN + FR, `m['...']()` message keys - no bare user-facing strings                                    |
+| Background work   | Task tray polls `GET /api/v1/tasks/{upid}` and refreshes the affected list on completion                       |
+| Loading           | `TableSkeleton` and per-feature skeletons, never a blank page                                                  |
+| Quotas            | `Meter` / `quota-meter` components fed by `policy/`                                                            |
+| Accessibility     | `role="tabpanel"` panels, focus trap in dialogs, skip-to-content link, visible focus rings                     |
+| Security headers  | `withSecurityHeaders` wraps the whole mux - CSP, HSTS, frame and content-type options, cache-control on `/api` |
+| Unknown API paths | Return a JSON `{"detail": "unknown API path"}` 404, never the SPA shell                                        |

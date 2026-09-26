@@ -5,6 +5,7 @@
 	import { afterNavigate, onNavigate } from '$app/navigation';
 	import { resolve as resolvePath } from '$app/paths';
 	import '../app.css';
+	import '$lib/styles/prose.css';
 	import { setTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import { setTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
 	import { setPowerActionsContext } from '$lib/features/tasks/power-actions.svelte';
