@@ -10,7 +10,6 @@
 	import FormSection from '$lib/shared/ui/FormSection.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
-	import ProfilePicker from './ProfilePicker.svelte';
 	import TemplatePicker from './TemplatePicker.svelte';
 	import ImagePicker from './ImagePicker.svelte';
 	import ImageCloudInitFields from './ImageCloudInitFields.svelte';
@@ -18,10 +17,13 @@
 	import Checkbox from '$lib/shared/ui/Checkbox.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
+	import RadioCard from '$lib/shared/ui/RadioCard.svelte';
 
-	// Simple-mode wizard (V08): pick a profile or an approved Proxmox
-	// template, name the VM, and submit. Profile mode lets the user adjust
-	// node and storage; template mode keeps the clone on the template's node.
+	// Simple mode, Calm workspace layout (DESIGN.md §6.2): a single-page form
+	// with every section visible and a live, sticky summary rail that holds
+	// the submit button. The state model is the create store, unchanged:
+	// pick a starting point (profile, approved template or cloud image), a
+	// size, a name and access, then submit. Placement is always automatic.
 	const form = getVmCreateContext();
 	const tray = getTaskTrayContext();
 	const toast = getToastContext();
@@ -68,10 +70,14 @@
 		}
 	});
 
-	const simpleSourceOptions = $derived([
-		{ value: 'profile', label: m['vms.create.profile']() },
-		...(hasTemplates ? [{ value: 'template', label: m['vms.create.template']() }] : []),
-		...(hasImages ? [{ value: 'image', label: m['vms.create.sourceImage']() }] : [])
+	const sourceCards = $derived([
+		{ value: 'profile' as SimpleSource, title: m['vms.create.source.profileTitle'](), body: m['vms.create.source.profileBody']() },
+		...(hasTemplates
+			? [{ value: 'template' as SimpleSource, title: m['vms.create.source.templateTitle'](), body: m['vms.create.source.templateBody']() }]
+			: []),
+		...(hasImages
+			? [{ value: 'image' as SimpleSource, title: m['vms.create.source.imageTitle'](), body: m['vms.create.source.imageBody']() }]
+			: [])
 	]);
 
 	// ISOs are node-local, but simple mode never pins a node - show every
@@ -81,18 +87,26 @@
 		(form.catalog?.isos ?? []).map((iso) => ({ value: iso.file, label: iso.file }))
 	);
 
-	function profileDescription(profile: { cpuCores: number; memoryMB: number; diskGB: number; bus: string }): string {
-		return `${profile.cpuCores} vCPU · ${profile.memoryMB} MB · ${profile.diskGB} GB · ${profile.bus}`;
+	function memoryLabel(memoryMB: number): string {
+		return memoryMB >= 1024 && memoryMB % 1024 === 0 ? `${memoryMB / 1024} GB` : `${memoryMB} MB`;
 	}
 
 	const HOSTNAME_PATTERN = /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
 
+	// No duplicate names: a name already used by one of the user's machines
+	// is refused before submit, with a stronger message when that machine's
+	// creation only partly succeeded (DESIGN.md §7).
+	const sameName = $derived(form.machineNamed(form.name));
 	const nameError = $derived(
 		form.name.trim() === ''
 			? m['vms.create.errorNameRequired']()
-			: HOSTNAME_PATTERN.test(form.name.trim())
-				? null
-				: m['vms.create.errorInvalidName']()
+			: !HOSTNAME_PATTERN.test(form.name.trim())
+				? m['vms.create.errorInvalidName']()
+				: sameName !== null
+					? outcomeLedger.get(form.cluster || (form.catalog?.cluster ?? ''), sameName.vmid) === 'partial'
+						? m['vms.create.errorNamePartial']()
+						: m['vms.create.errorNameTaken']()
+					: null
 	);
 
 	const profileError = $derived(
@@ -162,6 +176,34 @@
 					: !profileError)
 	);
 
+	// Summary rail: everything derived live from the form state.
+	const selectedProfile = $derived(form.catalog?.profiles.find((profile) => profile.id === form.profileId) ?? null);
+	const selectedTemplate = $derived(form.catalog?.templates.find((tmpl) => tmpl.vmid === form.templateId) ?? null);
+	const sourceSummary = $derived(
+		form.simpleSource === 'template'
+			? selectedTemplate
+				? selectedTemplate.name || `VMID ${selectedTemplate.vmid}`
+				: null
+			: form.simpleSource === 'image'
+				? form.imageFile || null
+				: form.isoFile
+					? `${m['vms.create.source.profileTitle']()} · ${form.isoFile}`
+					: m['vms.create.source.profileTitle']()
+	);
+	const usesProfile = $derived(form.simpleSource === 'profile' || (form.simpleSource === 'image' && hasProfiles));
+	const summaryStorage = $derived(
+		form.simpleSource === 'template'
+			? selectedTemplate
+				? `${selectedTemplate.diskSizeGB} GB`
+				: null
+			: usesProfile
+				? selectedProfile
+					? `${selectedProfile.diskGB} GB`
+					: null
+				: `${form.diskSizeGB} GB`
+	);
+	const quota = $derived(form.catalog?.quota ?? null);
+
 	async function submit(): Promise<void> {
 		if (!canSubmit) return;
 		const accepted = await form.submit();
@@ -185,7 +227,7 @@
 {:else}
 	{@const cat = form.catalog}
 	<form
-		class="grid gap-8"
+		class="grid items-start gap-6 min-[700px]:grid-cols-[minmax(0,1fr)_272px]"
 		novalidate
 		aria-label={m['vms.create.heading']()}
 		aria-describedby="simple-wizard-help"
@@ -196,153 +238,195 @@
 	>
 		<p id="simple-wizard-help" class="sr-only">{m['vms.create.reviewRequest']()}</p>
 
-		<FormSection step={1} legend={m['vms.create.sectionIdentity']()}>
-			<FormField label={m['vms.create.name']()} required error={nameError}>
-				{#snippet children({ id, describedBy, invalid })}
-					<TextField {id} {describedBy} {invalid} bind:value={form.name} required placeholder="web-04" />
-				{/snippet}
-			</FormField>
-		</FormSection>
-
-		<FormSection step={2} legend={m['vms.create.sectionSource']()}>
-		<FormField label={m['vms.create.source']()} required>
-			{#snippet children({ id, describedBy, invalid })}
-				<Select
-					{id}
-					{describedBy}
-					{invalid}
-					value={form.simpleSource}
-					onchange={(event: Event) => form.setSimpleSource((event.currentTarget as HTMLSelectElement).value as SimpleSource)}
-					options={simpleSourceOptions}
-				/>
-			{/snippet}
-		</FormField>
-
-		{#if form.simpleSource === 'image'}
-			<ImagePicker error={imageError} />
-			<ImageCloudInitFields />
-			{#if hasProfiles}
-				{@const selectedProfile = cat.profiles.find((profile) => profile.id === form.profileId)}
-				<ProfilePicker
-					legend={m['vms.create.profile']()}
-					bind:value={form.profileId}
-					profiles={cat.profiles.map((profile) => ({
-						id: profile.id,
-						label: profile.label,
-						description: profileDescription(profile)
-					}))}
-				/>
-				{#if imageProfileError}
-					<p role="alert" class="text-xs font-medium text-destructive">{imageProfileError}</p>
-				{:else if selectedProfile}
-					<p class="text-sm text-muted-foreground">{m['vms.create.profileDiskNote']({ size: selectedProfile.diskGB })}</p>
+		<div class="creation-form grid gap-8">
+			<FormSection step={1} legend={m['vms.create.section.start']()} description={m['vms.create.section.startHelp']()}>
+				{#if sourceCards.length > 1}
+					<div class="grid gap-2" role="radiogroup" aria-label={m['vms.create.section.start']()}>
+						{#each sourceCards as card (card.value)}
+							<RadioCard
+								name="simple-source"
+								value={card.value}
+								selected={form.simpleSource === card.value}
+								onSelect={(value) => form.setSimpleSource(value as SimpleSource)}
+							>
+								{#snippet header()}
+									<span class="inline-flex flex-wrap items-center gap-2" data-testid="source-card-{card.value}">
+										{card.title}
+										{#if card.value === 'template'}
+											<span class="rounded-full bg-sidebar-accent px-2 py-px text-[0.6875rem] font-medium text-sidebar-accent-foreground">{m['vms.create.goodFirstChoice']()}</span>
+										{/if}
+									</span>
+								{/snippet}
+								{card.body}
+							</RadioCard>
+						{/each}
+					</div>
 				{/if}
-			{:else}
-				<FormField
-					label={m['vms.create.size']()}
-					required
-					hint={m['vms.create.diskLimitHint']({ min: Math.max(1, form.imageMinDiskGB), max: maxDiskGB })}
-					error={diskSizeError}
-				>
-					{#snippet children({ id, describedBy, invalid })}
-						<TextField
-							{id}
-							{describedBy}
-							{invalid}
-							type="number"
-							min={Math.max(1, form.imageMinDiskGB)}
-							max={maxDiskGB}
-							bind:value={form.diskSizeGB}
+
+				{#if form.simpleSource === 'image'}
+					<ImagePicker error={imageError} />
+				{:else if form.simpleSource === 'template'}
+					<TemplatePicker error={templateError} />
+				{:else if isoOptions.length > 0}
+					<FormField label={m['vms.create.iso']()} hint={m['common.optional']()}>
+						{#snippet children({ id, describedBy, invalid })}
+							<Select {id} {describedBy} {invalid} bind:value={form.isoFile} placeholder={m['common.none']()} options={isoOptions} />
+						{/snippet}
+					</FormField>
+				{/if}
+				<p class="text-xs text-muted-foreground">{m['vms.create.fieldNote.start']()}</p>
+			</FormSection>
+
+			{#if form.simpleSource !== 'template'}
+				<FormSection step={2} legend={m['vms.create.section.size']()} description={m['vms.create.section.sizeHelp']()}>
+					{#if usesProfile}
+						<div class="grid gap-2 sm:grid-cols-2 min-[1100px]:grid-cols-3" role="radiogroup" aria-label={m['vms.create.section.size']()}>
+							{#each cat.profiles as profile (profile.id)}
+								<RadioCard name="simple-size" value={profile.id} selected={form.profileId === profile.id} onSelect={(value) => (form.profileId = value)}>
+									{#snippet header()}<span aria-label={profile.label}>{profile.label}</span>{/snippet}
+									<span class="block font-mono text-xs tabular-nums text-foreground">{m['vms.create.sizeSpec']({ cpu: profile.cpuCores, memory: memoryLabel(profile.memoryMB) })}</span>
+									<span class="block text-xs">{m['vms.create.sizeStorage']({ disk: profile.diskGB })}</span>
+								</RadioCard>
+							{/each}
+						</div>
+						{#if form.simpleSource === 'image' ? imageProfileError : profileError}
+							<p role="alert" class="text-xs font-medium text-destructive">{form.simpleSource === 'image' ? imageProfileError : profileError}</p>
+						{/if}
+						<p class="text-xs text-muted-foreground">{m['vms.create.fieldNote.size']()}</p>
+					{:else}
+						<FormField
+							label={m['vms.create.size']()}
 							required
-						/>
-					{/snippet}
-				</FormField>
-			{/if}
-		{:else if form.simpleSource === 'template'}
-			<TemplatePicker error={templateError} />
-		{:else}
-			<ProfilePicker
-				legend={m['vms.create.profile']()}
-				bind:value={form.profileId}
-				profiles={cat.profiles.map((profile) => ({
-					id: profile.id,
-					label: profile.label,
-					description: profileDescription(profile)
-				}))}
-			/>
-			{#if profileError}
-				<p role="alert" class="text-xs font-medium text-destructive">{profileError}</p>
-			{/if}
-			{#if isoOptions.length > 0}
-				<FormField label={m['vms.create.iso']()} hint={m['common.optional']()}>
-					{#snippet children({ id, describedBy, invalid })}
-						<Select
-							{id}
-							{describedBy}
-							{invalid}
-							bind:value={form.isoFile}
-							placeholder={m['common.none']()}
-							options={isoOptions}
-						/>
-					{/snippet}
-				</FormField>
-			{/if}
-		{/if}
-
-		<CloudInitDocumentSelect error={cloudInitDocumentError} />
-
-		<FormField label={m['vms.create.tags']()} hint={m['vms.create.tagsHelp']()}>
-			{#if catalogTags.length === 0}
-				<p class="text-sm text-muted-foreground">{m['vms.create.tagsNoneAvailable']()}</p>
-			{:else}
-				<div class="flex flex-wrap gap-2" role="group" aria-label={m['vms.create.tags']()}>
-					{#each catalogTags as tag (tag.name)}
-						{@const isSelected = selectedTags.has(tag.name)}
-						<button
-							type="button"
-							aria-pressed={isSelected}
-							onclick={() => form.toggleTag(tag.name)}
-							class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors pv-focus {isSelected
-								? 'border-transparent bg-primary-solid text-primary-foreground'
-								: 'border-border bg-muted text-muted-foreground hover:bg-muted/80'}"
+							hint={m['vms.create.diskLimitHint']({ min: Math.max(1, form.imageMinDiskGB), max: maxDiskGB })}
+							error={diskSizeError}
 						>
-							<span class="h-2 w-2 rounded-full" style="background-color: {tag.color}" aria-hidden="true"></span>
-							{tag.name}
-						</button>
-					{/each}
-				</div>
+							{#snippet children({ id, describedBy, invalid })}
+								<TextField {id} {describedBy} {invalid} type="number" min={Math.max(1, form.imageMinDiskGB)} max={maxDiskGB} bind:value={form.diskSizeGB} required />
+							{/snippet}
+						</FormField>
+					{/if}
+				</FormSection>
 			{/if}
-		</FormField>
 
-		</FormSection>
+			<FormSection step={form.simpleSource === 'template' ? 2 : 3} legend={m['vms.create.section.yours']()} description={m['vms.create.section.yoursHelp']()}>
+				<FormField label={m['vms.create.name']()} required hint={m['vms.create.nameHint']()} error={nameError}>
+					{#snippet children({ id, describedBy, invalid })}
+						<TextField {id} {describedBy} {invalid} bind:value={form.name} required maxlength={63} placeholder="web-04" autocomplete="off" />
+					{/snippet}
+				</FormField>
 
-		<FormSection step={3} legend={m['vms.create.sectionStart']()}>
-		{#if form.simpleSource !== 'template'}
-			<Checkbox
-				label={m['vms.create.uefi']()}
-				hint={form.simpleSource === 'image' ? m['vms.create.uefiImageHint']() : m['vms.create.uefiHint']()}
-				checked={form.uefi}
-				onToggle={(checked) => (form.uefi = checked)}
-			/>
-		{/if}
+				{#if form.simpleSource === 'image'}
+					<ImageCloudInitFields />
+					<p class="border-t border-border pt-3 text-xs text-muted-foreground">{m['vms.create.fieldNote.access']()}</p>
+				{/if}
 
-		<Checkbox
-			label={m['vms.create.startAfterCreate']()}
-			checked={form.startAfterCreate}
-			onToggle={(checked) => (form.startAfterCreate = checked)}
-		/>
-		</FormSection>
+				<CloudInitDocumentSelect error={cloudInitDocumentError} />
 
-		<!-- Action row, separated by a rule: the form has three chapters above
-		     it, so submit needs to read as the end of the page rather than as
-		     one more field in the stack. -->
-		<div class="mt-2 flex flex-col gap-3 border-t border-border pt-5 sm:items-end">
+				<FormField label={m['vms.create.tags']()} hint={m['vms.create.tagsHelp']()}>
+					{#if catalogTags.length === 0}
+						<p class="text-sm text-muted-foreground">{m['vms.create.tagsNoneAvailable']()}</p>
+					{:else}
+						<div class="flex flex-wrap gap-2" role="group" aria-label={m['vms.create.tags']()}>
+							{#each catalogTags as tag (tag.name)}
+								{@const isSelected = selectedTags.has(tag.name)}
+								<button
+									type="button"
+									aria-pressed={isSelected}
+									onclick={() => form.toggleTag(tag.name)}
+									class="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors pv-focus {isSelected
+										? 'border-transparent bg-primary-solid text-primary-foreground'
+										: 'border-border bg-muted text-muted-foreground hover:bg-muted/80'}"
+								>
+									<span class="h-2 w-2 rounded-full" style="background-color: {tag.color}" aria-hidden="true"></span>
+									{tag.name}
+								</button>
+							{/each}
+						</div>
+					{/if}
+				</FormField>
+			</FormSection>
+
+			<FormSection legend={m['vms.create.section.options']()} variant="panel">
+				{#if form.simpleSource !== 'template'}
+					<Checkbox
+						label={m['vms.create.uefi']()}
+						hint={form.simpleSource === 'image' ? m['vms.create.uefiImageHint']() : m['vms.create.uefiHint']()}
+						checked={form.uefi}
+						onToggle={(checked) => (form.uefi = checked)}
+					/>
+				{/if}
+				<Checkbox label={m['vms.create.startAfterCreate']()} checked={form.startAfterCreate} onToggle={(checked) => (form.startAfterCreate = checked)} />
+			</FormSection>
+
+			<p class="text-xs text-muted-foreground" data-testid="vm-create-retention">{m['vms.create.retentionNote']()}</p>
+		</div>
+
+		<aside class="creation-summary flex flex-col gap-4 rounded-xl border border-border bg-card p-5 shadow-card min-[700px]:sticky min-[700px]:top-24" aria-labelledby="creation-summary-title" data-testid="vm-create-summary">
+			<p id="creation-summary-title" class="flex items-center gap-2 text-sm font-semibold">
+				<svg viewBox="0 0 24 24" class="h-4 w-4 text-muted-foreground" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+					<rect x="2" y="3" width="20" height="14" rx="2" />
+					<line x1="8" y1="21" x2="16" y2="21" />
+					<line x1="12" y1="17" x2="12" y2="21" />
+				</svg>
+				{m['vms.create.summary.title']()}
+			</p>
+			<div>
+				{#if form.name.trim() !== ''}
+					<p class="break-all font-mono text-base font-semibold" data-testid="summary-name">{form.name.trim()}</p>
+				{:else}
+					<p class="text-sm text-muted-foreground" data-testid="summary-name">{m['vms.create.summary.waitingForName']()}</p>
+				{/if}
+				<p class="mt-0.5 text-xs text-muted-foreground [overflow-wrap:anywhere]">{sourceSummary ?? m['vms.create.summary.notChosen']()}</p>
+			</div>
+			<dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 border-t border-border pt-3 text-xs">
+				{#if form.simpleSource !== 'template'}
+					<dt class="text-muted-foreground">{m['vms.create.summary.size']()}</dt>
+					<dd class="text-right [overflow-wrap:anywhere]">{usesProfile ? (selectedProfile?.label ?? m['vms.create.summary.notChosen']()) : m['common.dash']()}</dd>
+					<dt class="text-muted-foreground">{m['vms.create.summary.processor']()}</dt>
+					<dd class="text-right font-mono tabular-nums">{usesProfile && selectedProfile ? `${selectedProfile.cpuCores} vCPU` : m['common.dash']()}</dd>
+					<dt class="text-muted-foreground">{m['vms.create.summary.memory']()}</dt>
+					<dd class="text-right font-mono tabular-nums">{usesProfile && selectedProfile ? memoryLabel(selectedProfile.memoryMB) : m['common.dash']()}</dd>
+				{/if}
+				<dt class="text-muted-foreground">{m['vms.create.summary.storage']()}</dt>
+				<dd class="text-right font-mono tabular-nums">{summaryStorage ?? m['common.dash']()}</dd>
+				{#if form.simpleSource === 'image'}
+					<dt class="text-muted-foreground">{m['vms.create.summary.login']()}</dt>
+					<dd class="text-right font-mono [overflow-wrap:anywhere]">{form.ciUser.trim() || m['common.dash']()}</dd>
+					<dt class="text-muted-foreground">{m['vms.create.summary.sshKey']()}</dt>
+					<dd class="text-right">{form.sshKeys().length > 0 ? m['vms.create.summary.sshKeyCount']({ count: form.sshKeys().length }) : m['vms.create.summary.none']()}</dd>
+				{/if}
+			</dl>
+			<div class="border-t border-border pt-3">
+				<p class="text-xs font-medium text-muted-foreground">{m['vms.create.summary.included']()}</p>
+				<ul class="mt-1.5 grid gap-1 text-xs">
+					{#each [m['vms.create.summary.includedNetwork'](), form.startAfterCreate ? m['vms.create.summary.includedStart']() : m['vms.create.summary.includedStopped']()] as line (line)}
+						<li class="flex items-center gap-1.5">
+							<svg viewBox="0 0 24 24" class="h-3.5 w-3.5 text-success" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+							{line}
+						</li>
+					{/each}
+				</ul>
+			</div>
+			{#if quota}
+				<p class="border-t border-border pt-3 text-xs text-muted-foreground tabular-nums" data-testid="summary-quota">
+					{quota.allowed >= 0
+						? m['vms.create.summary.quota']({ used: quota.used + 1, allowed: quota.allowed })
+						: m['vms.create.summary.quotaUnlimited']({ used: quota.used + 1 })}
+				</p>
+			{/if}
 			{#if form.submitError}
 				<Alert>{form.submitError}</Alert>
 			{/if}
-			<Button type="submit" size="lg" loading={form.submitting} disabled={!canSubmit}>
-				{form.submitting ? m['common.creating']() : m['vms.create.submit']()}
+			<Button type="submit" size="lg" block loading={form.submitting} disabled={!canSubmit} data-testid="vm-create-submit">
+				{#if !form.submitting}
+					<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+						<line x1="12" y1="5" x2="12" y2="19" />
+						<line x1="5" y1="12" x2="19" y2="12" />
+					</svg>
+				{/if}
+				{form.submitting ? m['common.creating']() : m['vms.create.summary.submit']()}
 			</Button>
-		</div>
+			<p class="text-[0.6875rem] text-muted-foreground-subtle">{m['vms.create.summary.provisioningNote']()}</p>
+		</aside>
 	</form>
 {/if}

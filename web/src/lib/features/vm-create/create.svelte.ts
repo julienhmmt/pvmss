@@ -474,6 +474,11 @@ export class VmCreateStore {
 	 *  to run, leaving the guest stuck in the UEFI shell. */
 	uefi = $state(true);
 	tpm = $state(false);
+	/** The user's machines on the selected cluster (vmid + name), loaded
+	 *  with the catalog so the form can refuse a duplicate name before
+	 *  submitting (DESIGN.md §7, no duplicate on an uncertain outcome). The
+	 *  server's name_taken check stays the real guard. */
+	existingMachines = $state.raw<readonly { vmid: number; name: string }[]>([]);
 
 	/** Fetches the multi-cluster options and defaults to the first one, matching
 	 *  the login page's cluster picker (must run before loadCatalog when the
@@ -491,6 +496,7 @@ export class VmCreateStore {
 	setCluster(name: string): void {
 		this.cluster = name;
 		void this.loadCatalog();
+		void this.loadExistingMachines();
 	}
 
 	/** The cluster's human-readable name for display - never the raw internal
@@ -514,6 +520,29 @@ export class VmCreateStore {
 		} catch (error: unknown) {
 			this.catalogError = error instanceof ApiRequestError ? error.message : m['vms.create.errorCatalog']();
 		}
+	}
+
+	/** Loads the names of the user's machines on the selected cluster.
+	 *  Best-effort: a failure leaves the list empty and the server check
+	 *  answers instead. */
+	async loadExistingMachines(): Promise<void> {
+		try {
+			const query = this.cluster === '' ? '' : `&cluster=${encodeURIComponent(this.cluster)}`;
+			const result = await get<{ items: { vmid: number; name: string; cluster: string }[] }>(`/api/v1/vms?pageSize=100${query}`);
+			this.existingMachines = result.items
+				.filter((item) => this.cluster === '' || item.cluster === this.cluster)
+				.map((item) => ({ vmid: item.vmid, name: item.name }));
+		} catch {
+			this.existingMachines = [];
+		}
+	}
+
+	/** The existing machine with this name, if any (case-insensitive, like
+	 *  a hostname). */
+	machineNamed(name: string): { vmid: number; name: string } | null {
+		const wanted = name.trim().toLowerCase();
+		if (wanted === '') return null;
+		return this.existingMachines.find((machine) => machine.name.toLowerCase() === wanted) ?? null;
 	}
 
 	/** The select's value: the admin template id, '' for none. */
