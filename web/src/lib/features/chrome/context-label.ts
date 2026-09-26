@@ -12,7 +12,7 @@ export interface ContextLabel {
  * paths fall back to the section name alone, never to a raw URL segment.
  */
 export function contextLabel(pathname: string): ContextLabel {
-	const path = pathname.replace(/\/+$/, '') || '/';
+	const path: string = trimTrailingSlashes(pathname) || '/';
 	if (path === '/admin' || path.startsWith('/admin/')) {
 		return { section: m['chrome.context.administration'](), screen: path === '/admin' ? m['chrome.context.dashboard']() : adminScreen(path) };
 	}
@@ -29,6 +29,12 @@ export function contextLabel(pathname: string): ContextLabel {
 	if (path === '/about') return { section: workspace, screen: m['chrome.context.about']() };
 	if (path === '/nodes') return { section: workspace, screen: m['chrome.context.nodes']() };
 	return { section: workspace, screen: '' };
+}
+
+function trimTrailingSlashes(value: string): string {
+	let end: number = value.length;
+	while (end > 0 && value[end - 1] === '/') end--;
+	return value.slice(0, end);
 }
 
 function adminScreen(path: string): string {
