@@ -75,7 +75,7 @@ type Client interface {
 	ListBridges(ctx context.Context) ([]Bridge, error)
 	ListISOs(ctx context.Context) ([]ISOImage, error)
 	// ListCloudImages enumerates the cloud images the cluster reports:
-	// .qcow2/.raw/.vmdk/.ova files on import-capable storages (Proxmox
+	// .qcow2/.raw/.vmdk files on import-capable storages (Proxmox
 	// lists them under content=import with vtype 'import'). Only import-
 	// vtype volumes are accepted by import-from for non-root API tokens.
 	// Approval (catalog_images) is keyed by (Node, Storage, File) like ISOs.
@@ -475,7 +475,7 @@ type ISOImage struct {
 
 // CloudImage is one cloud image discovered on a storage backend on a node -
 //
-// a .qcow2/.raw/.vmdk/.ova file under import content (Proxmox lists them
+// a .qcow2/.raw/.vmdk file under import content (Proxmox lists them
 //
 // there with vtype 'import'). Approval (catalog_images) is keyed by
 // (Node, Storage, File) like ISOs.
