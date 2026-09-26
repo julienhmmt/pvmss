@@ -27,19 +27,24 @@ exists, backend not implemented).
 
 | Feature | Route | API | Status |
 | --- | --- | --- | --- |
-| Home dashboard: my VM counts, quota meter, in-flight tasks | `/` | `GET /api/v1/vms`, `GET /api/v1/tasks/{upid}` | ✅ |
+| Signed-in landing is the machine list (`/` redirects pool users to `/vms`, admins to `/admin`) | `/` | - | ✅ |
+| Calm workspace shell: My machines / Activity / Help & guides with count chips, context header, account link | all signed-in pages | `GET /api/v1/vms?pageSize=1` (count) | ✅ |
+| Card-row machine list: 7 display states (running, stopped, provisioning, starting, stopping, failed, partial), hint lines, allowance meter, teaching first-visit state | `/vms` | `GET /api/v1/vms` | ✅ |
 | VM list across all clusters or scoped to one (`ClusterSelector`) | `/vms` | `GET /api/v1/vms` | ✅ |
-| Search / filter / sort mirrored into the URL (linkable views) | `/vms`, `/search` | `GET /api/v1/vms` | ✅ |
+| Search and status filter mirrored into the URL (linkable views) | `/vms`, `/search` | `GET /api/v1/vms` | ✅ |
 | Live status refresh for the visible rows | `/vms` | `POST /api/v1/vms/status` | ✅ |
-| Bulk power actions with per-VM result (`start`, `stop`, `shutdown`, `reboot`, `reset`, `pause`, `resume`) | `/vms` | `POST /api/v1/vms/bulk-action` | ✅ |
-| Console button straight from the list | `/vms` | - | ✅ |
+| Bulk power actions with per-VM result (`start`, `stop`, `shutdown`, `reboot`, `reset`, `pause`, `resume`), behind the Select toggle | `/vms` | `POST /api/v1/vms/bulk-action` | ✅ |
+| Activity: operations in progress + merged recent audit of my machines | `/activity` | `GET /api/v1/vms`, `GET /api/v1/vms/{cluster}/{vmid}/audit` | ✅ |
+| Account: identity, appearance, language | `/profile` | - (session, localStorage) | ✅ |
 | Just-deleted VM hidden until inventory catches up | `/vms` | client side | ✅ |
 | Ownership enforced server-side (`vm.Resolve()`), not by the list filter | - | every VM route | ✅ |
 
 ## 3. Create a VM
 
-Wizard at `/vms/create` - **Simple** and **Detailed** modes, five steps
-(Base, Disk, Hardware, Network, Review). Catalog from
+Page at `/vms/create` - **Simple** mode is a single page with a live summary
+rail (starting point, size, name and access); **Detailed** mode keeps five
+steps (Base, Disk, Hardware, Network, Review). A name already used by one of
+the user's machines is refused before submit. Catalog from
 `GET /api/v1/vm-create/catalog`, submit with `POST /api/v1/vms`, progress via
 `GET /api/v1/tasks/{upid}` in the task tray.
 
@@ -60,10 +65,17 @@ Wizard at `/vms/create` - **Simple** and **Detailed** modes, five steps
 
 ## 4. Operate a VM - `/vms/[cluster]/[vmid]`
 
+Connection-first: the header carries the status pill and one power action
+(Start machine, or Shut down with an inline graceful-shutdown confirmation);
+state banners cover provisioning, failed / partial and starting / stopping.
+Tabs: Connect (default), Configuration (Summary + the sub-tabs below),
+Activity.
+
 | Tab | Actions | API | Status |
 | --- | --- | --- | --- |
-| Overview | 7 power actions (shutdown = guest/ACPI only, stop = hard), rename, Markdown description, delete (dialog), one-time boot from CD-ROM | `POST …/actions`, `PATCH …/{vmid}`, `DELETE …/{vmid}`, `POST …/boot-cdrom` | ✅ |
-| Overview | Metrics history (hour / day / week, CPU/RAM/disk/net SVG charts) and live stream | `GET …/metrics/history`, `GET …/metrics/stream` | ✅ |
+| Connect | SSH command from the address the guest agent reports (never guessed), browser console, allocated resources | `GET …/{vmid}`, `GET …/cloudinit` | ✅ |
+| Summary | 7 power actions (shutdown = guest/ACPI only, stop = hard), rename, Markdown description, delete (dialog), one-time boot from CD-ROM | `POST …/actions`, `PATCH …/{vmid}`, `DELETE …/{vmid}`, `POST …/boot-cdrom` | ✅ |
+| Summary | Metrics history (hour / day / week, CPU/RAM/disk/net SVG charts) and live stream | `GET …/metrics/history`, `GET …/metrics/stream` | ✅ |
 | Disks | add, resize (grow), detach | `POST …/disks`, `PUT …/disks/{key}/resize`, `DELETE …/disks/{key}` | ✅ |
 | Network | edit each NIC: bridge, model, VLAN tag, rate limit (Mbps) | `PUT …/network` | ✅ |
 | Hardware | sockets/cores, memory, tags (curated picker), CD-ROM load/eject | `GET …/hardware-options`, `PUT …/hardware`, `PATCH …/cdrom` | ✅ |
