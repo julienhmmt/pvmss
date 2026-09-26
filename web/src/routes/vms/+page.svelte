@@ -58,6 +58,7 @@
 		});
 	});
 	onDestroy(() => {
+		vmListStore.dispose();
 		offTaskOk?.();
 	});
 </script>
