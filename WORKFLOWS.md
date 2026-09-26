@@ -86,22 +86,22 @@ This is the core of the product. Everything else exists to support it.
 | | |
 | --- | --- |
 | **Audience** | end user |
-| **Entry** | Sidebar → Machines, or the home dashboard |
+| **Entry** | The signed-in landing page (a pool user opening `/` is sent here), Sidebar → My machines |
 | **Route** | `/vms` |
-| **API** | `GET /api/v1/vms` (scope `mine`) |
-| **Steps** | 1. Pick a cluster scope (`ClusterSelector`) or stay cross-cluster. 2. Filter and search - state is mirrored into the URL query, so a filtered list is linkable. 3. Open a VM, or select several for a bulk action. |
-| **States** | `TableSkeleton` while loading; empty state with a create CTA; cluster list falls back to empty on fetch failure rather than blocking the page |
-| **Safety nets** | Ownership is enforced server-side by `vm.Resolve()`, not by the list filter |
+| **API** | `GET /api/v1/vms` (scope `mine`) → `POST /api/v1/vms/{cluster}/{vmid}/actions` (Start) → `POST /api/v1/vms/status` (convergence) |
+| **Steps** | 1. Pick a cluster scope (`ClusterSelector`, shown only with several clusters) or stay cross-cluster. 2. Search, or filter All / Running / Stopped - state is mirrored into the URL query, so a filtered list is linkable. 3. Read each card row (`MachineList.svelte`): OS mark, name, resources, the 7-state status pill and a hint line when the state needs one. 4. Start a stopped machine from its row, or open a machine with View details. |
+| **States** | Three skeleton rows on first load; teaching first-visit empty state ("Your first machine starts here", Create your first machine); "No matching machines" with Clear filters; error-toned "We can't reach your workspace" with Try again on `inventory_not_ready`; a warning notice when the allowance is full; the allowance meter footer. Display states come from `displayStatus()`: running, stopped, provisioning (vm_create in the task tray), starting / stopping (power action in `PowerActionRegistry`), failed / partial (session outcome ledger). |
+| **Safety nets** | Ownership is enforced server-side by `vm.Resolve()`, not by the list filter. The list DTO carries no address, so a row never offers Connect (no readiness claim without connection data). A partial row says "Do not create a duplicate". |
 
 ### Bulk power actions
 
 | | |
 | --- | --- |
 | **Audience** | end user |
-| **Entry** | Selecting rows in `/vms` |
+| **Entry** | The Select toggle in the `/vms` toolbar (rows show checkboxes only in select mode) |
 | **Route** | `/vms` |
 | **API** | `POST /api/v1/vms/bulk-action` |
-| **Steps** | 1. Select VMs across one or more clusters. 2. Pick an action. 3. Read the per-VM result - each entry is `ok` or `error` with its own message. |
+| **Steps** | 1. Turn on Select, then pick machines across one or more clusters (or select the whole page). 2. Pick an action in the bar that appears. 3. Read the per-VM result - each entry is `ok` or `error` with its own message. Done leaves select mode and clears the selection. |
 | **States** | Per-row result, not a single global success/failure |
 | **Safety nets** | Only the valid power actions are accepted (`validActions`, `server/internal/vm/actions.go`): `start`, `stop`, `shutdown`, `reboot`, `reset`, `pause`, `resume`. A partial failure never rolls back the successes - it reports them. |
 
@@ -110,12 +110,12 @@ This is the core of the product. Everything else exists to support it.
 | | |
 | --- | --- |
 | **Audience** | end user |
-| **Entry** | Sidebar CTA, home dashboard, or the `/vms` empty state |
+| **Entry** | "Create a machine" on `/vms`, the `/vms` first-visit empty state, or "Review the request" on a failed machine |
 | **Route** | `/vms/create` |
-| **API** | `GET /api/v1/vm-create/catalog` → `POST /api/v1/vms` → `GET /api/v1/tasks/{upid}` (polled) |
-| **Steps** | 1. Base (name, profile, cluster, node). 2. Disk. 3. Hardware. 4. Network. 5. Review - the only place raw JSON is shown, and only on request. 6. Submit; the response is a Proxmox UPID. 7. The task tray polls until done, then refreshes the VM list. Detailed mode may pick a Proxmox template as the source instead of an ISO: the node is derived from the template (the selector hides), the disk minimum rises to the template's disk, and the wizard says when the target storage forces a full copy instead of a linked clone. A third source, a cloud image, imports the image as the primary disk (Proxmox `import-from`) and requires cloud-init fields (user, SSH keys, network); the disk minimum rises to the image's size, and the VM starts only after the create task finishes and its cloud-init config is applied - never inside the create task itself. |
-| **States** | Wizard step validation; task tray shows in-flight work so the user can navigate away. Template source: the template option only appears when at least one template is approved; an empty catalog legitimately hides it. Image source: same - hidden until at least one cloud image is approved. If applying the cloud-init config fails after a successful image import, the VM exists but stays stopped and unconfigured; the create response's `cloudInitPushError` field carries the reason. |
-| **Safety nets** | Every choice comes from the admin-approved catalog - nodes, storages, bridges, ISOs, profiles, cloud-init templates, VM templates, cloud images, tags. Quotas and gabarit limits are checked server-side (`policy/`), not in the wizard. A template clone stays on the template's node (the wizard hides the node selector), the disk size can never drop below the template's disk, and a stale or deleted template fails fast before a VMID is spent. A cloud image is admin-approved cluster-side (`/admin/images`) from files discovered under a storage's `import/` content - never fetched from the internet - and the disk size can never drop below the image's size. Cloud-init documents are admin templates only (`cloudInitTemplateId`), already published on the nodes - see *Create a VM with a cloud-init template* below; a cluster without SSH publishing hides the picker (`cloudInitWriteEnabled: false` in the catalog) and refuses a create carrying a template with 409 `cloudinit_write_unavailable` before any VMID is spent. Image-mode native keys (ciuser/sshkeys/ipconfig0) are applied after the import task; the published PVMSS baseline (`pvmss-baseline-<hash>.yml`, installs `qemu-guest-agent`) is attached when the user picks no template; when it is not on the node the VM boots on the native keys and the baseline is reported "not delivered". |
+| **API** | `GET /api/v1/vm-create/catalog` + `GET /api/v1/vms?pageSize=100` (names, for the duplicate check) → `POST /api/v1/vms` → `GET /api/v1/tasks/{upid}` (polled) |
+| **Steps** | The mode chooser opens first. **Simple** is a single page with a sticky summary rail (`SimpleWizard.svelte`): 01 choose the starting point (radio cards: install from scratch, ready-made system = approved template, cloud image), 02 give it room (profile radio cards, or a disk size for an image without profiles), 03 make it yours (name, image access fields, cloud-init template, tags), startup options; the rail repeats every choice live, shows the allowance after creation and holds "Create this machine". **Detailed** keeps the stepper: 1. Base (name, profile, cluster, node). 2. Disk. 3. Hardware. 4. Network. 5. Review - the only place raw JSON is shown, and only on request. 6. Submit; the response is a Proxmox UPID. 7. The task tray polls until done, then refreshes the VM list. Detailed mode may pick a Proxmox template as the source instead of an ISO: the node is derived from the template (the selector hides), the disk minimum rises to the template's disk, and the wizard says when the target storage forces a full copy instead of a linked clone. A third source, a cloud image, imports the image as the primary disk (Proxmox `import-from`) and requires cloud-init fields (user, SSH keys, network); the disk minimum rises to the image's size, and the VM starts only after the create task finishes and its cloud-init config is applied - never inside the create task itself. |
+| **States** | Blocked states replace the form: "We can't load the available choices" (catalog error, Try again), "You've reached your machine allowance" (quota used up), "Your catalog isn't ready yet" (no profile, template or image approved); the wizard shows skeletons while the catalog loads. Inline field errors and a disabled submit while the form is invalid; entered values survive a mode switch and recoverable errors (a reload starts over). Task tray shows in-flight work so the user can navigate away. Template source: the template option only appears when at least one template is approved; an empty catalog legitimately hides it. Image source: same - hidden until at least one cloud image is approved. If applying the cloud-init config fails after a successful image import, the VM exists but stays stopped and unconfigured; the create response's `cloudInitPushError` field carries the reason. |
+| **Safety nets** | A name already used by one of the user's machines is refused before submit; when that machine is `partial` the message says "Do not create a duplicate: open it instead" (the server's `name_taken` stays the real guard). Every choice comes from the admin-approved catalog - nodes, storages, bridges, ISOs, profiles, cloud-init templates, VM templates, cloud images, tags. Quotas and gabarit limits are checked server-side (`policy/`), not in the wizard. A template clone stays on the template's node (the wizard hides the node selector), the disk size can never drop below the template's disk, and a stale or deleted template fails fast before a VMID is spent. A cloud image is admin-approved cluster-side (`/admin/images`) from files discovered under a storage's `import/` content - never fetched from the internet - and the disk size can never drop below the image's size. Cloud-init documents are admin templates only (`cloudInitTemplateId`), already published on the nodes - see *Create a VM with a cloud-init template* below; a cluster without SSH publishing hides the picker (`cloudInitWriteEnabled: false` in the catalog) and refuses a create carrying a template with 409 `cloudinit_write_unavailable` before any VMID is spent. Image-mode native keys (ciuser/sshkeys/ipconfig0) are applied after the import task; the published PVMSS baseline (`pvmss-baseline-<hash>.yml`, installs `qemu-guest-agent`) is attached when the user picks no template; when it is not on the node the VM boots on the native keys and the baseline is reported "not delivered". |
 
 ### Create a VM with a cloud-init template
 
@@ -146,16 +146,17 @@ This is the core of the product. Everything else exists to support it.
 | | |
 | --- | --- |
 | **Audience** | end user |
-| **Entry** | A row in `/vms` |
+| **Entry** | View details / the name link on a `/vms` row, an Activity row, the sidebar machines drawer |
 | **Route** | `/vms/[cluster]/[vmid]` |
-| **API** | `GET /api/v1/vms/{cluster}/{vmid}` plus the per-tab endpoints below |
-| **Steps** | Seven tabs, each self-contained (`VmDetail.svelte`) |
-| **States** | Cloud-init and Snapshots tabs mount lazily - their panels only render when active |
-| **Safety nets** | Every write is gated by `vm.Resolve()` inside the handler; destructive actions each get their own dialog |
+| **API** | `GET /api/v1/vms/{cluster}/{vmid}` → `GET /api/v1/vms/{cluster}/{vmid}/cloudinit` (SSH user, when connectable) → `POST .../actions` + `GET .../status` (header power action) plus the per-tab endpoints below |
+| **Steps** | Connection-first (`VmDetail.svelte`, DESIGN.md §6.3). 1. The header shows the OS mark, name (click to rename), size line, status pill and one power action: Start machine, or Shut down with an inline confirmation. 2. Connect (default tab): the SSH command built from the address the guest agent reports, with Copy; the browser console; the allocated resources. 3. Configuration: Summary (size, disk, placement, identifier, description, the full power bar with delete, usage charts) and sub-tabs Disks, Network, Hardware, Cloud-init, Snapshots. 4. Activity: the per-machine audit trail. |
+| **States** | Detail skeleton on first load. Banners above the tabs, in priority order: shutdown confirmation; provisioning (4-step panel, "Back to my workspace"); failed ("Review the request") / partial ("Do not create a duplicate", "Get help from your administrator", technical details); starting / stopping. Connect tab: "Connect with SSH" only when running with a reported address, "The address isn't available yet" when running without one, "SSH isn't available right now" when not running; the console button is disabled unless running. Cloud-init and Snapshots panels mount lazily. |
+| **Safety nets** | Every write is gated by `vm.Resolve()` inside the handler; destructive actions each get their own dialog. The address is never guessed and the user is a visible `USER` placeholder when PVMSS does not know it. Shut down is a graceful shutdown (named as such in the confirmation), never a forced power-off. |
 
 | Tab | Actions | API |
 | --- | --- | --- |
-| Overview | 7 power actions (shutdown = guest-agent/ACPI only, no auto force-stop; stop = hard stop), rename, description, delete | `POST .../actions`, `PATCH .../{vmid}`, `DELETE .../{vmid}` |
+| Connect | copy the SSH command, open the console in a new tab | `GET .../cloudinit` |
+| Configuration › Summary | 7 power actions (shutdown = guest-agent/ACPI only, no auto force-stop; stop = hard stop), rename, description, delete | `POST .../actions`, `PATCH .../{vmid}`, `DELETE .../{vmid}` |
 | Disks | add, resize, detach | `POST .../disks`, `PUT .../disks/{diskKey}/resize`, `DELETE .../disks/{diskKey}` |
 | Network | edit interface | `PUT .../network` |
 | Hardware | CPU/RAM, tags (admin-curated picker), CDROM | `GET .../hardware-options`, `PUT .../hardware`, `PATCH .../cdrom` |
@@ -174,7 +175,7 @@ Rename validates as a hostname (lowercase, ≤63 chars, `hostnameRe` in
 | | |
 | --- | --- |
 | **Audience** | end user |
-| **Entry** | `ConsoleBanner` on the VM detail page |
+| **Entry** | "Open browser console" in the detail Connect tab (enabled only while running) |
 | **Route** | `/vms/[cluster]/[vmid]/console` |
 | **API** | `POST /api/v1/vms/{cluster}/{vmid}/vnc-ticket` → `GET /api/v1/vms/{cluster}/{vmid}/console/websocket` |
 | **Steps** | 1. Request a short-lived VNC ticket. 2. Upgrade to a WebSocket proxied to Proxmox. 3. The same `VmActionBar` power actions are available on the console page (delete stays details-only). A **serial** client (xterm.js) runs the parallel path `POST …/serial-ticket` → `GET …/serial/websocket`; `POST …/serial` adds a serial port to a VM that has none. |
@@ -186,12 +187,36 @@ Rename validates as a hostname (lowercase, ≤63 chars, `hostnameRe` in
 | | |
 | --- | --- |
 | **Audience** | end user |
-| **Entry** | `VmMetricsRow` on the VM detail page, below the Overview stat cards |
+| **Entry** | `VmMetricsRow` in the detail page's Configuration › Summary panel |
 | **Route** | `/vms/[cluster]/[vmid]` |
 | **API** | `GET /api/v1/vms/{cluster}/{vmid}/metrics/history?range=hour\|day\|week` |
 | **Steps** | 1. Row loads history for the default "hour" range on mount. 2. User toggles hour/day/week; each toggle re-fetches and re-renders only the four charts. |
 | **States** | Skeleton cards while loading; an inline error banner on fetch failure; charts render via hand-rolled SVG (`LineChart.svelte`), no charting library |
 | **Safety nets** | Resolved and ownership-checked the same way as every other VM read (`vm.Resolve()`); a stale in-flight response from a prior range switch is discarded, never overwrites the current one |
+
+### Follow activity
+
+| | |
+| --- | --- |
+| **Audience** | end user |
+| **Entry** | Sidebar → Activity (its count chip shows operations in flight) |
+| **Route** | `/activity` |
+| **API** | `GET /api/v1/vms?pageSize=20` → `GET /api/v1/vms/{cluster}/{vmid}/audit` per machine (merged client-side, newest first, 25 rows); in-progress rows come from the task tray and the power-action registry, no extra call |
+| **Steps** | 1. In progress: creations, snapshot work and power actions running now, each linking to its machine. 2. Recent updates: the merged audit trail of the user's machines (plain-language action, actor, time), each row linking to the machine. 3. The timeline reloads when a tracked task finishes. |
+| **States** | "In progress" only renders while something runs; skeleton lines while the timeline loads; "All quiet for now" with Go to my machines when there is no history; an error state with Try again. One machine whose audit read fails is skipped, the rest still render. |
+| **Safety nets** | Read-only. Every row is a recorded audit entry or a tracked operation, nothing is inferred; audit reads go through the per-VM endpoint, so ownership is checked by `vm.Resolve()` for each machine. |
+
+### Account and preferences
+
+| | |
+| --- | --- |
+| **Audience** | end user |
+| **Entry** | The account link at the bottom of the sidebar |
+| **Route** | `/profile` |
+| **API** | none - identity comes from the session (`GET /api/v1/auth/me`, already loaded by the shell); preferences persist in `localStorage` (`pvmss-theme-v1`, `pvmss-locale`) |
+| **Steps** | 1. See who is signed in and on which cluster. 2. Switch between light and dark. 3. Pick the interface language. |
+| **States** | None beyond the shell's own loading; both preferences apply immediately and survive a reload |
+| **Safety nets** | Nothing destructive. Sign-in is the user's Proxmox account; the page says so instead of linking to the deactivated API-token screen. |
 
 ---
 
@@ -216,11 +241,11 @@ Rename validates as a hostname (lowercase, ≤63 chars, `hostnameRe` in
 | | |
 | --- | --- |
 | **Audience** | end user and admin - same pages, different visibility |
-| **Entry** | Header link, available signed out |
-| **Route** | `/docs`, `/docs/[id]` |
-| **API** | `GET /api/v1/docs`, `GET /api/v1/docs/{id}` |
-| **Steps** | 1. List pages filtered by audience. 2. Open one; markdown is rendered server-side. |
-| **States** | Bilingual (EN + FR) per page |
+| **Entry** | Sidebar → Help & guides (pool users), Documentation (admins), the list's "Open the guide", the home page (signed out) |
+| **Route** | `/docs` ("Help & guides"), `/docs/[id]` |
+| **API** | `GET /api/v1/docs` → `GET /api/v1/docs/{id}?lang=` (per article, on first open) |
+| **Steps** | 1. The index lists pages filtered by audience and language as numbered accordions ("01 - …"), the first one open. 2. Opening an article fetches its server-rendered markdown into the accordion. 3. "Open as a page" deep-links to `/docs/[id]?lang=`. An aside explains the few concepts a beginner needs (size, SSH, console, allowance). |
+| **States** | Loading line; "No documentation pages yet"; per-article loading and error lines; bilingual (EN + FR) per page with a language selector |
 | **Safety nets** | Admin-audience pages are hidden from the list *and* return 401/403 on direct access - the handler resolves the caller itself rather than relying on the list filter |
 
 ---

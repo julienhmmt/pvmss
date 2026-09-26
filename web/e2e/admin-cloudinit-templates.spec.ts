@@ -55,7 +55,7 @@ test.describe('T18 admin cloud-init templates', () => {
 		await page.getByLabel('Name').fill('cit-e2e-01');
 		await page.getByRole('radio', { name: /small/i }).check();
 		await picker.selectOption({ label: 'Web server' });
-		await page.getByRole('button', { name: 'Create VM' }).click();
+		await page.getByRole('button', { name: 'Create this machine' }).click();
 		// The creation is accepted asynchronously; wait for the success toast
 		// so the VM is guaranteed to exist before we look for it. The task can
 		// take longer than the default 5s assertion timeout.
@@ -70,6 +70,7 @@ test.describe('T18 admin cloud-init templates', () => {
 		const vmLink = page.getByRole('link', { name: /cit-e2e-01/ }).first();
 		await expect(vmLink).toBeVisible();
 		await vmLink.click();
+		await page.getByTestId('vm-tab-configuration').click();
 		await page.getByTestId('vm-tab-cloudinit').click();
 		// The document mode names the published admin template the VM uses.
 		await page.getByTestId('cloudinit-mode-document').click();
