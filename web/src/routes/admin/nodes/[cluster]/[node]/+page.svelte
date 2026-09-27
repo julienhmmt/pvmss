@@ -8,6 +8,7 @@
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
+	import Pill from '$lib/shared/ui/Pill.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 	import { usageTone } from '$lib/features/admin-dashboard/dashboard-alerts';
 	import { m } from '$lib/paraglide/messages.js';
@@ -203,7 +204,24 @@
 	back={{ href: resolve('/admin'), label: m['admin.dashboard.title']() }}
 	focusTarget
 >
+	{#snippet titleMeta()}
+		{#if detail}
+			<Pill
+				size="md"
+				tone={detail.health.status === 'online' ? 'ok' : detail.health.status === 'offline' ? 'error' : 'off'}
+				label={nodeStatusLabel(detail.health.status)}
+			/>
+		{/if}
+	{/snippet}
 	{#snippet actions()}
+		{#if detail}
+			<span class="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+				{m['admin.nodeDetails.inventoryRefreshed']()}
+				<time class="font-mono" datetime={detail.inventory.refreshedAt}>
+					{detail.inventory.refreshedAt ? new Date(detail.inventory.refreshedAt).toLocaleString() : m['admin.nodeDetails.notReported']()}
+				</time>
+			</span>
+		{/if}
 		<Button variant="secondary" size="sm" loading={loading} onclick={refreshNode} data-testid="node-detail-refresh">
 			{loading ? m['common.refreshing']() : m['common.refresh']()}
 		</Button>
@@ -224,17 +242,6 @@
 {:else}
 	{@const health = detail.health}
 	<div class="space-y-6" data-testid="admin-node-details">
-		<div class="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
-			<span class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 font-medium">
-				<span class="h-2 w-2 rounded-full {health.status === 'online' ? 'bg-success' : 'bg-destructive'}" aria-hidden="true"></span>
-				{nodeStatusLabel(health.status)}
-			</span>
-			<span class="text-muted-foreground">{m['admin.nodeDetails.inventoryRefreshed']()}</span>
-			<time class="font-mono text-xs text-muted-foreground" datetime={detail.inventory.refreshedAt}>
-				{detail.inventory.refreshedAt ? new Date(detail.inventory.refreshedAt).toLocaleString() : m['admin.nodeDetails.notReported']()}
-			</time>
-		</div>
-
 		{#if health.stale}
 			<Alert tone="warning" role="status" data-testid="node-health-stale">{m['admin.nodeDetails.healthStale']()}</Alert>
 		{/if}
