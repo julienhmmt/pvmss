@@ -8,6 +8,7 @@ describe('contextLabel', () => {
 	it.each([
 		['/vms', 'Workspace', 'My machines'],
 		['/vms/', 'Workspace', 'My machines'],
+		['/vms////', 'Workspace', 'My machines'],
 		['/vms/create', 'Workspace', 'Create a machine'],
 		['/vms/default/102', 'Workspace', 'Machine'],
 		['/vms/default/102/console', 'Workspace', 'Console'],
