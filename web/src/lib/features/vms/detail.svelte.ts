@@ -1,5 +1,6 @@
 import { getContext, setContext } from 'svelte';
 import { get, post, del, patch, put, ApiRequestError } from '$lib/shared/api/client';
+import { STALE_REFRESH_MS } from '$lib/shared/visibility-refresh';
 import { m } from '$lib/paraglide/messages.js';
 import type { VmStatus } from './list.svelte';
 import { convergeSingle } from './converge';
@@ -126,6 +127,9 @@ export class VmDetailStore {
 	entity = $state.raw<VmDetailEntity | null>(null);
 	loading = $state.raw(false);
 	error = $state.raw<string | null>(null);
+	/** `Date.now()` of the last completed `load()` - `refreshIfStale()` uses
+	 *  it to skip refreshes younger than one server inventory tick. */
+	lastLoadedAt = 0;
 
 	/** True while a power action is in flight; the UI shows an optimistic status. */
 	actionInFlight = $state.raw(false);
@@ -263,7 +267,22 @@ export class VmDetailStore {
 			this.error = errorMessage(err, () => m['vms.detail.errorLoading']());
 		} finally {
 			this.loading = false;
+			this.lastLoadedAt = Date.now();
 		}
+	}
+
+	/**
+	 * Reloads the entity when the last load is older than `minIntervalMs`
+	 * (default: one server inventory tick). Called when the tab regains
+	 * visibility via `onVisibleRefresh`. Skips while a load, a power action,
+	 * or a CD-ROM boot is in flight - those paths converge through live-status
+	 * polling, which a mid-flight reload would overwrite - and while a delete
+	 * is in flight, since the page is about to navigate away anyway.
+	 */
+	async refreshIfStale(minIntervalMs: number = STALE_REFRESH_MS): Promise<void> {
+		if (this.loading || this.actionInFlight || this.bootCdromInFlight || this.deleteInFlight) return;
+		if (Date.now() - this.lastLoadedAt <= minIntervalMs) return;
+		await this.load();
 	}
 
 	async loadHardwareOptions(): Promise<void> {
