@@ -1516,6 +1516,7 @@
   "admin.nodeDetails.sockets": "Sockets",
   "admin.nodeDetails.loadAverage": "Charge moyenne",
   "admin.nodeDetails.uptime": "{days} j {hours} h {minutes} min",
+  "admin.nodeDetails.uptimeLabel": "Temps de fonctionnement",
   "admin.nodeDetails.proxmoxVersion": "Version de Proxmox VE",
   "admin.nodeDetails.kernel": "Noyau Linux",
   "admin.nodeDetails.networkTitle": "Interfaces réseau",

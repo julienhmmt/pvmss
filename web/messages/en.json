@@ -1516,6 +1516,7 @@
   "admin.nodeDetails.sockets": "Sockets",
   "admin.nodeDetails.loadAverage": "Load average",
   "admin.nodeDetails.uptime": "{days}d {hours}h {minutes}m",
+  "admin.nodeDetails.uptimeLabel": "Uptime",
   "admin.nodeDetails.proxmoxVersion": "Proxmox VE version",
   "admin.nodeDetails.kernel": "Linux kernel",
   "admin.nodeDetails.networkTitle": "Network interfaces",
