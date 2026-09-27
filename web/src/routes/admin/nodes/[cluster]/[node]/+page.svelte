@@ -16,8 +16,8 @@
 	const SECONDS_PER_MINUTE = 60;
 	const MINUTES_PER_HOUR = 60;
 	const HOURS_PER_DAY = 24;
-	const clusterKey: string = $derived(page.params.cluster);
-	const nodeName: string = $derived(page.params.node);
+	const clusterKey: string = $derived(page.params.cluster ?? '');
+	const nodeName: string = $derived(page.params.node ?? '');
 	let detail = $state<NodeDetails | null>(null);
 	let loading = $state<boolean>(true);
 	let error = $state<string | null>(null);
@@ -117,7 +117,7 @@
 	}
 
 	afterNavigate(() => {
-		void loadNode(page.params.cluster, page.params.node);
+		void loadNode(clusterKey, nodeName);
 	});
 
 	async function loadNode(cluster: string, node: string): Promise<void> {
@@ -253,7 +253,7 @@
 					<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.threads']()}</dt><dd class="mt-1 font-mono tabular-nums">{health.cpuTotalThreads}</dd></div>
 					<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.sockets']()}</dt><dd class="mt-1 font-mono tabular-nums">{health.cpuSockets}</dd></div>
 					<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.loadAverage']()}</dt><dd class="mt-1 font-mono tabular-nums">{health.loadAverage.join(' / ') || m['admin.nodeDetails.notReported']()}</dd></div>
-					<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.uptime']()}</dt><dd class="mt-1 font-mono tabular-nums">{uptimeLabel(health.uptimeSeconds)}</dd></div>
+					<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.uptimeLabel']()}</dt><dd class="mt-1 font-mono tabular-nums">{uptimeLabel(health.uptimeSeconds)}</dd></div>
 					<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.proxmoxVersion']()}</dt><dd class="mt-1 font-mono">{health.proxmoxVersion || m['admin.nodeDetails.notReported']()}</dd></div>
 					<div><dt class="text-xs text-muted-foreground">{m['admin.nodeDetails.kernel']()}</dt><dd class="mt-1 break-words font-mono">{health.kernelVersion || m['admin.nodeDetails.notReported']()}</dd></div>
 				</dl>
