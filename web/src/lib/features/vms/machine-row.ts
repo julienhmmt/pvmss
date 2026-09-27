@@ -23,7 +23,7 @@ export function machineInitials(name: string): string {
 /** Deterministic tone per name, so a machine keeps its colour across reloads. */
 export function machineTone(name: string): MachineTone {
 	let hash = 0;
-	for (const char of name) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+	for (const char of name) hash = (hash * 31 + (char.codePointAt(0) ?? 0)) >>> 0;
 	return TONES[hash % TONES.length] ?? 'subtle';
 }
 
