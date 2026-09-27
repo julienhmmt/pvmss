@@ -112,7 +112,6 @@
 				{sortDir}
 				onSort={handleSort}
 			/>
-			<td><span class="sr-only">{m['admin.catalog.remove']()}</span></td>
 		</tr>
 	</thead>
 	<tbody>
@@ -162,7 +161,17 @@
 				</td>
 				<td data-label={m['admin.catalog.statusColumn']()}>
 					{#if node.missing}
-						<span class="text-xs text-muted-foreground">{m['admin.catalog.missingBadge']()}</span>
+						<div class="flex items-center gap-2">
+							<span class="text-xs text-muted-foreground">{m['admin.catalog.missingBadge']()}</span>
+							<Button
+								variant="ghost"
+								size="sm"
+								onclick={() => onRemove(node.name)}
+								data-testid="node-remove"
+							>
+								{m['admin.catalog.remove']()}
+							</Button>
+						</div>
 					{:else}
 						<span class="inline-flex items-center gap-2" aria-busy={toggling === `node:${node.name}`}>
 							<Switch
@@ -182,22 +191,10 @@
 						</span>
 					{/if}
 				</td>
-				<td data-label={m['admin.catalog.remove']()}>
-					{#if node.missing}
-						<Button
-							variant="ghost"
-							size="sm"
-							onclick={() => onRemove(node.name)}
-							data-testid="node-remove"
-						>
-							{m['admin.catalog.remove']()}
-						</Button>
-					{/if}
-				</td>
 			</tr>
 		{:else}
 			<tr>
-				<td colspan={7} class="p-0">
+				<td colspan={6} class="p-0">
 					<EmptyState title={m['admin.catalog.noNodes']()} />
 				</td>
 			</tr>
