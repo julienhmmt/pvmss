@@ -14,6 +14,7 @@
 	import Button from '$lib/shared/ui/Button.svelte';
 	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
 	import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
+	import { onVisibleRefresh } from '$lib/shared/visibility-refresh';
 	import { m } from '$lib/paraglide/messages.js';
 
 	// Wiring only: the list state, URL sync, and rendering all live in
@@ -39,6 +40,7 @@
 	const vmBulk = setVmBulkContext();
 
 	let offTaskOk: (() => void) | null = null;
+	let offVisible: (() => void) | null = null;
 
 	async function loadPage(): Promise<void> {
 		try {
@@ -55,10 +57,12 @@
 			void vmListStore.load();
 			vmBulk.clearResult();
 		});
+		offVisible = onVisibleRefresh(() => void vmListStore.refreshIfStale());
 	});
 	onDestroy(() => {
 		vmListStore.dispose();
 		offTaskOk?.();
+		offVisible?.();
 	});
 </script>
 

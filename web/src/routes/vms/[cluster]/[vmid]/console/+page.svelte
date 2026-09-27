@@ -73,7 +73,7 @@
 	<title>{m['vms.console.title']({ vmid: String(vmid) })}</title>
 </svelte:head>
 
-<section class="mx-auto flex h-screen w-full max-w-6xl flex-col px-4 py-4">
+<section class="mx-auto flex h-screen w-full max-w-reading flex-col px-4 py-4">
 	<div class="mb-3 flex items-center gap-3">
 		<Button
 			variant="secondary"

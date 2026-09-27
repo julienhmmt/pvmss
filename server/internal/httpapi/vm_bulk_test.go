@@ -274,7 +274,7 @@ func TestVMBulk_TooManyTargets(t *testing.T) {
 
 	targets := make([]bulkTargetDTO, vm.MaxBulkTargets+1)
 	for i := range targets {
-		targets[i] = bulkTargetDTO{Cluster: "default", VMID: 101}
+		targets[i] = bulkTargetDTO{Cluster: auditTestCluster, VMID: 101}
 	}
 
 	rec, env := serveBulkError(handler, bulkRequest(bulkBody("start", targets), cookie))

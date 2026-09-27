@@ -5,10 +5,16 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"path/filepath"
+	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/store"
+	"slices"
 	"testing"
+	"time"
 )
 
 type dashboardDTO struct {
@@ -20,7 +26,13 @@ type dashboardDTO struct {
 	RefreshedAt    string            `json:"refreshedAt"`
 }
 
+const (
+	nodeSummaryTestCluster = "node-summary"
+	dashClusterLabel       = "East Campus"
+)
+
 type nodeSummaryDTO struct {
+	ClusterKey       string  `json:"clusterKey"`
 	Name             string  `json:"name"`
 	Status           string  `json:"status"`
 	VMCount          int     `json:"vmCount"`
@@ -118,6 +130,129 @@ func TestAdminDashboard_AsAdmin_ReturnsPvmssNodesAndVmCounts(t *testing.T) {
 
 	if dash.Version == "" {
 		t.Error("version is empty")
+	}
+}
+
+//nolint:wsl_v5 // focused response assertions stay together
+func TestAdminDashboard_NodeSummariesIncludeClusterKey(t *testing.T) {
+	t.Parallel()
+	authHandler := newAuthHandler(t)
+	st := auditAdminStore(t)
+	fake := cluster.NewFake(nodeSummaryTestCluster)
+	snapshot, _ := fake.Snapshot(context.Background())
+	index := inventory.BuildIndexForCluster(nodeSummaryTestCluster, snapshot)
+	projection := inventory.NewProjectionFromIndex(&index)
+	ops := httpapi.NewAdminOps(authHandler, st, fake, projection, "0.4.0-test", slog.New(slog.DiscardHandler))
+	ops.SetInventorySource(inventory.NewRegistryFromIndexes(map[string]*inventory.Index{nodeSummaryTestCluster: &index}), 0)
+	cookie := adminCookie(t, authHandler)
+	rec := opsGet(t, ops, authHandler, cookie, "/api/v1/admin/dashboard")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var dash dashboardDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &dash); err != nil {
+		t.Fatalf("decode dashboard: %v", err)
+	}
+	if len(dash.Nodes) == 0 {
+		t.Fatal("dashboard has no node summaries")
+	}
+	for _, node := range dash.Nodes {
+		if node.ClusterKey != nodeSummaryTestCluster {
+			t.Errorf("node %q clusterKey = %q, want %s", node.Name, node.ClusterKey, nodeSummaryTestCluster)
+		}
+	}
+}
+
+// TestAdminDashboard_AlertsCarryClusterKey - every alert exposes the cluster
+// registry key in clusterKey so the UI can deep-link into
+// /admin/nodes/{clusterKey}/{node}; cluster keeps the administrator-facing
+// display label, which differs from the key here on purpose.
+//
+//nolint:paralleltest // serial: shared fake dataset
+func TestAdminDashboard_AlertsCarryClusterKey(t *testing.T) {
+	authHandler := newAuthHandler(t)
+	ctx := context.Background()
+
+	st, err := store.Open(config.Configuration{
+		DBPath:        filepath.Join(t.TempDir(), "dashboard-alerts.db"),
+		SessionSecret: "a-session-secret-with-at-least-thirty-two-bytes",
+	})
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+
+	t.Cleanup(func() { _ = st.Close() })
+
+	//nolint:gosec // deterministic test secret
+	if err := st.CreateCluster(ctx, store.ClusterRow{
+		Name: dashCluster, DisplayName: dashClusterLabel,
+		URL: "https://pve-east.example.com:8006/api2/json", TokenID: "pvmss@pve!test", TokenSecret: "dashboard-test-token",
+	}); err != nil {
+		t.Fatalf("CreateCluster: %v", err)
+	}
+
+	if err := st.UpsertPolicyRow(ctx, store.PolicyRow{Cluster: dashCluster, MaxVMPerUser: 2}); err != nil {
+		t.Fatalf("UpsertPolicyRow: %v", err)
+	}
+
+	ops := httpapi.NewAdminOps(authHandler, st, cluster.Fake{}, inventory.NewProjection(), "0.4.0-test", slog.New(slog.DiscardHandler))
+	ops.SetInventorySource(inventory.NewRegistryFromIndexes(map[string]*inventory.Index{dashCluster: attentionIndex(), dashWestCluster: nil}), time.Minute)
+
+	rec := opsGet(t, ops, authHandler, adminCookie(t, authHandler), "/api/v1/admin/dashboard")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var dash attentionDashboardDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &dash); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	// Critical first, then by kind, cluster and subject - same order as
+	// TestAdminDashboard_AlertsCoverEveryRule, with cluster now the label.
+	want := wantAttentionAlerts(dashClusterLabel)
+	if !slices.Equal(dash.Alerts, want) {
+		t.Errorf("alerts =\n%+v\nwant\n%+v", dash.Alerts, want)
+	}
+}
+
+func TestAdminDashboardVMCounts_SplitsPvmssAndOtherVMs(t *testing.T) {
+	t.Parallel()
+	auth := newAuthHandler(t)
+	st := auditAdminStore(t)
+	snap := cluster.Snapshot{VMs: []cluster.VM{
+		{VMID: 100, Status: cluster.VMRunning, Tags: []string{catalog.ProtectedTagName}},
+		{VMID: 101, Status: cluster.VMStopped, Tags: []string{catalog.ProtectedTagName}},
+		{VMID: 102, Status: cluster.VMPaused, Tags: []string{"legacy"}},
+		{VMID: 103, Status: cluster.VMStopped},
+	}}
+	idx := inventory.BuildIndex(snap)
+	projection := inventory.NewProjectionFromIndex(&idx)
+	ops := httpapi.NewAdminOps(auth, st, cluster.Fake{}, projection, "0.4.0-test", slog.New(slog.DiscardHandler))
+	cookie := adminCookie(t, auth)
+
+	rec := opsGet(t, ops, auth, cookie, "/api/v1/admin/dashboard")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var dash struct {
+		VMCount             int               `json:"vmCount"`
+		PVMSSVMCount        int               `json:"pvmssVMCount"`
+		PVMSSVMStatusCounts vmStatusCountsDTO `json:"pvmssVMStatusCounts"`
+		OtherVMCount        int               `json:"otherVMCount"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &dash); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	if dash.VMCount != 4 || dash.PVMSSVMCount != 2 || dash.OtherVMCount != 2 {
+		t.Errorf("VM counts = all:%d PVMSS:%d other:%d, want all:4 PVMSS:2 other:2", dash.VMCount, dash.PVMSSVMCount, dash.OtherVMCount)
+	}
+
+	wantStatuses := vmStatusCountsDTO{Running: 1, Stopped: 1}
+	if dash.PVMSSVMStatusCounts != wantStatuses {
+		t.Errorf("PVMSS status counts = %+v, want %+v", dash.PVMSSVMStatusCounts, wantStatuses)
 	}
 }
 

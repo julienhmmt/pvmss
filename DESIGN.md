@@ -110,7 +110,8 @@ PVMSS from every cold, gray infrastructure dashboard.
 The system is restrained: one accent color (orange), warm neutral surfaces, and
 semantic colors used only for state (success, warning, destructive, info).
 Density is welcome when it serves the task - tables, admin forms, policy fields
- - but decoration is not. Every surface earns its visual weight.
+
+- but decoration is not. Every surface earns its visual weight.
 
 This system explicitly rejects generic SaaS aesthetics: no indigo gradients, no
 glassmorphism, no hero-metric templates, no identical card grids. It also rejects
@@ -215,7 +216,7 @@ Never use pure gray, cool gray, or #000/#fff for surfaces or text.
 **Mono Font:** ui-monospace, SF Mono, JetBrains Mono, Menlo
 
 **Character:** One family for everything. Archivo Variable is a workhorse sans
-with enough personality to avoid feeling generic. No display/body pairing - 
+with enough personality to avoid feeling generic. No display/body pairing -
 product UI doesn't need it. The mono font is reserved for technical values
 (VMIDs, node names, sizes, UPIDs) and uses tabular numbers.
 
@@ -243,7 +244,8 @@ product UI doesn't need it. The mono font is reserved for technical values
   previews.
 
 `Card.svelte`'s own `title` prop renders smaller still (`text-sm font-semibold`)
- - a banded header sitting flush against the card's border, not a peer of the
+
+- a banded header sitting flush against the card's border, not a peer of the
 tiers above. No panel in the app has adopted it yet; don't reach for it as a
 substitute for **Panel Title** on a component that isn't already a `Card`.
 
@@ -776,7 +778,7 @@ is what let admin tables drift away from the VM list.
   escape to close, focus restoration.
 - **Max width:** `max-w-lg` default, `max-w-2xl` for wide forms.
 - **Animation:** 160ms ease-out fade-in.
-- **Vertical rhythm:** `Dialog.svelte` owns no spacing below its own title - 
+- **Vertical rhythm:** `Dialog.svelte` owns no spacing below its own title -
   each caller hand-rolls the gap after its `<h2>`, and three different values
   (`mb-2`, `mb-3`, `mb-4`) had accumulated for the same "title → body" gap
   across ~20 dialogs with no reason to differ. **Title → body is `mb-4`/`mt-4`

@@ -2,16 +2,20 @@
 package httpapi
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/policy"
 	"pvmss/server/internal/pools"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
+	"slices"
 )
 
 // AdminPools serves the admin pool list, provisioning, and cascade endpoints.
@@ -172,6 +176,101 @@ func (h *AdminPools) ServeList(w http.ResponseWriter, r *http.Request) {
 	writeAdminJSON(w, http.StatusOK, poolSummaries(rows))
 }
 
+// ServeDetail handles GET /api/v1/admin/pools/{name}.
+func (h *AdminPools) ServeDetail(w http.ResponseWriter, r *http.Request) {
+	if _, ok := h.adminActor(w, r); !ok {
+		return
+	}
+	name := r.PathValue("name")
+	if name == "" {
+		writeAdminError(w, http.StatusBadRequest, "invalid_pool_name", "invalid pool name")
+		return
+	}
+	clusterName, err := h.resolveClusterName(r)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return
+	}
+	client, err := h.clientFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return
+	}
+	projection, err := h.projectionFor(clusterName)
+	if err != nil {
+		writeAdminError(w, http.StatusNotFound, "cluster_not_found", msgClusterNotFound)
+		return
+	}
+	detail, err := pools.Detail(r.Context(), client, projection, h.store, clusterName, name)
+	if errors.Is(err, pools.ErrNotFound) {
+		writeAdminError(w, http.StatusNotFound, "not_found", "pool \""+name+"\" not found")
+		return
+	}
+	if err != nil {
+		h.log.Error("admin pool detail failed", "component", "httpapi", "pool", name, "error", err)
+		writeAdminError(w, http.StatusBadGateway, "cluster_unreachable", "failed to load pool")
+		return
+	}
+	quota, err := policy.New(h.store, projection, nil).Quota(r.Context(), clusterName, auth.Identity{Pool: name})
+	if err != nil {
+		h.log.Error("admin pool quota failed", "component", "httpapi", "pool", name, "error", err)
+		quota = policy.Quota{Used: len(detail.Members)}
+	}
+	writeAdminJSON(w, http.StatusOK, poolDetailDTO{
+		Name:      detail.Name,
+		Username:  detail.Username,
+		Comment:   detail.Comment,
+		Cluster:   clusterName,
+		Managed:   detail.Managed,
+		CreatedAt: detail.CreatedAt,
+		Quota:     poolQuotaDTO{Used: quota.Used, Allowed: quota.Allowed},
+		VMs:       poolMembers(detail.Members),
+		Activity:  h.poolActivity(r, clusterName, name),
+	})
+}
+
+// poolActivityLimit caps the merged recent-activity feed on the pool detail
+// page; the full audit view lives on /admin/settings.
+const poolActivityLimit = 10
+
+// poolActivity merges the pool user's own actions (actor "<pool>@pve") with
+// admin actions targeting the pool into one most-recent-first feed. Query
+// failures degrade to whatever the other query returned - activity is
+// informational and must not fail the detail page.
+func (h *AdminPools) poolActivity(r *http.Request, clusterName, name string) []auditEntryDTO {
+	entries := map[int64]store.AuditEntry{}
+	if h.store == nil {
+		return []auditEntryDTO{}
+	}
+	for _, filter := range []store.AuditFilter{
+		{Cluster: clusterName, Actor: name + "@pve", Page: 1, PageSize: poolActivityLimit},
+		{TargetType: "pool", TargetID: name, Page: 1, PageSize: poolActivityLimit},
+	} {
+		page, err := h.store.ListAuditLog(r.Context(), filter)
+		if err != nil {
+			h.log.Error("pool activity query failed", "component", "httpapi", "pool", name, "error", err)
+			continue
+		}
+		for _, entry := range page.Items {
+			entries[entry.ID] = entry
+		}
+	}
+	sorted := slices.SortedFunc(maps.Values(entries), func(a, b store.AuditEntry) int {
+		if order := b.Timestamp.Compare(a.Timestamp); order != 0 {
+			return order
+		}
+		return cmp.Compare(b.ID, a.ID)
+	})
+	if len(sorted) > poolActivityLimit {
+		sorted = sorted[:poolActivityLimit]
+	}
+	out := make([]auditEntryDTO, len(sorted))
+	for i, entry := range sorted {
+		out[i] = toAuditEntryDTO(entry)
+	}
+	return out
+}
+
 // ServeCreate handles POST /api/v1/admin/pools.
 func (h *AdminPools) ServeCreate(w http.ResponseWriter, r *http.Request) {
 	actor, ok := h.adminActor(w, r)
@@ -283,6 +382,61 @@ type createPoolResponse struct {
 	Password string `json:"password"`
 	Comment  string `json:"comment"`
 	Managed  bool   `json:"managed"`
+}
+
+// poolDetailDTO is the stable JSON contract for GET /api/v1/admin/pools/{name}.
+type poolDetailDTO struct {
+	Name      string          `json:"name"`
+	Username  string          `json:"username"`
+	Comment   string          `json:"comment"`
+	Cluster   string          `json:"cluster"`
+	Managed   bool            `json:"managed"`
+	CreatedAt string          `json:"createdAt,omitempty"`
+	Quota     poolQuotaDTO    `json:"quota"`
+	VMs       []poolMemberDTO `json:"vms"`
+	Activity  []auditEntryDTO `json:"activity"`
+}
+
+// poolQuotaDTO is the pool's VM count against the per-user allowance.
+type poolQuotaDTO struct {
+	Used    int `json:"used"`
+	Allowed int `json:"allowed"`
+}
+
+// poolMemberDTO is one member VM of the pool, with the fields the detail
+// page's table shows.
+type poolMemberDTO struct {
+	VMID          int      `json:"vmid"`
+	Name          string   `json:"name"`
+	Node          string   `json:"node"`
+	Status        string   `json:"status"`
+	UptimeSeconds int64    `json:"uptimeSeconds"`
+	CPUCores      int      `json:"cpuCores"`
+	MemoryBytes   int64    `json:"memoryBytes"`
+	DiskBytes     int64    `json:"diskBytes"`
+	IPAddresses   []string `json:"ipAddresses"`
+}
+
+func poolMembers(members []cluster.VM) []poolMemberDTO {
+	out := make([]poolMemberDTO, len(members))
+	for i, machine := range members {
+		ips := []string{}
+		for _, iface := range machine.NetworkInterfaces {
+			ips = append(ips, iface.IPAddresses...)
+		}
+		out[i] = poolMemberDTO{
+			VMID:          machine.VMID,
+			Name:          machine.Name,
+			Node:          machine.Node,
+			Status:        string(machine.Status),
+			UptimeSeconds: int64(machine.Uptime.Seconds()),
+			CPUCores:      machine.CPUCores,
+			MemoryBytes:   machine.MemoryTotal,
+			DiskBytes:     machine.DiskTotal,
+			IPAddresses:   ips,
+		}
+	}
+	return out
 }
 
 type poolSummary struct {

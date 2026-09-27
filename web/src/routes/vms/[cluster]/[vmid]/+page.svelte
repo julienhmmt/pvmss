@@ -4,6 +4,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { setVmDetailContext } from '$lib/features/vms/detail.svelte';
+	import { onVisibleRefresh } from '$lib/shared/visibility-refresh';
 	import VmDetail from '$lib/features/vms/VmDetail.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -20,6 +21,7 @@
 
 	onMount(() => {
 		void store.load();
+		return onVisibleRefresh(() => void store.refreshIfStale());
 	});
 </script>
 
@@ -27,6 +29,6 @@
 	<title>{m['vms.detail.title']({ vmid: String(vmid) })}</title>
 </svelte:head>
 
-<section class="mx-auto w-full max-w-5xl">
+<section class="mx-auto w-full max-w-reading">
 	<VmDetail />
 </section>

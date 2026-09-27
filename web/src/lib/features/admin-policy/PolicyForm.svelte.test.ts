@@ -51,7 +51,7 @@ function getSubmitButton(): HTMLButtonElement {
 function getDiscardButton(): HTMLButtonElement | undefined {
 	return Array.from(document.querySelectorAll('button')).find((b) =>
 		b.textContent?.includes('Annuler les modifications')
-	) as HTMLButtonElement | undefined;
+	);
 }
 
 function setInputValue(input: HTMLInputElement, value: string): void {
@@ -123,7 +123,7 @@ describe('PolicyForm', () => {
 
 		expect(onSave).toHaveBeenCalledTimes(1);
 		expect(onSave).toHaveBeenCalledWith({
-			gabarit: expect.objectContaining({ maxSockets: 6 }),
+			gabarit: expect.objectContaining({ maxSockets: 6 }) as { maxSockets: number },
 			quota: { maxVmPerUser: -1 }
 		});
 		document.body.innerHTML = '';

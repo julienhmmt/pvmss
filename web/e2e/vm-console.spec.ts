@@ -131,7 +131,7 @@ test.describe('T10 VM console VNC', () => {
 			headers: await csrfHeaders(request)
 		});
 		expect(response.status()).toBe(403);
-		const body = await response.json();
+		const body = (await response.json()) as { code: string };
 		expect(body.code).toBe('forbidden');
 	});
 

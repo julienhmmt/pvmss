@@ -186,14 +186,16 @@ func (s *Store) QueryAudit(ctx context.Context) ([]AuditEntry, error) {
 // nil pointer) means "no filter on this field." Page is 1-based; PageSize
 // is capped by the caller (the HTTP handler enforces the configured maximum).
 type AuditFilter struct {
-	Cluster  string
-	VMID     *int
-	Actor    string
-	Action   string
-	From, To *time.Time
-	Severity *string
-	Page     int
-	PageSize int
+	Cluster    string
+	VMID       *int
+	Actor      string
+	Action     string
+	TargetType string
+	TargetID   string
+	From, To   *time.Time
+	Severity   *string
+	Page       int
+	PageSize   int
 }
 
 // AuditPage is the paginated envelope returned by ListAuditLog, matching
@@ -305,6 +307,16 @@ func buildAuditWhere(f AuditFilter) (string, []any) {
 	if f.Action != "" {
 		clauses = append(clauses, "action = ?")
 		args = append(args, f.Action)
+	}
+
+	if f.TargetType != "" {
+		clauses = append(clauses, "target_type = ?")
+		args = append(args, f.TargetType)
+	}
+
+	if f.TargetID != "" {
+		clauses = append(clauses, "target_id = ?")
+		args = append(args, f.TargetID)
 	}
 
 	if f.From != nil {

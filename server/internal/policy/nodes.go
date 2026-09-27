@@ -5,7 +5,18 @@ import (
 	"fmt"
 	"pvmss/server/internal/cluster"
 	"slices"
+	"time"
 )
+
+// RefreshedAt reports when the inventory projection last populated; the zero
+// Time means it never has.
+func (service *Policy) RefreshedAt() time.Time {
+	if service.projection == nil || service.projection.Load() == nil {
+		return time.Time{}
+	}
+
+	return service.projection.Load().RefreshedAt
+}
 
 // NodeCapacities returns the live discovery set joined with configured capacité
 // and current pvmss-tagged usage.
@@ -24,6 +35,11 @@ func (service *Policy) NodeCapacities(ctx context.Context, clusterName string) (
 
 		capacity.PhysicalVCPUs = node.CPUCores
 		capacity.PhysicalRAMGB = int(node.MemoryTotal / bytesPerGB)
+		capacity.Status = node.Status
+		capacity.CPUUsage = node.CPUUsage
+		capacity.MemoryUsedGB = int(node.MemoryUsed / bytesPerGB)
+		capacity.StorageUsedGB = int(node.StorageUsed / bytesPerGB)
+		capacity.StorageTotalGB = int(node.StorageTotal / bytesPerGB)
 		result = append(result, capacity)
 	}
 

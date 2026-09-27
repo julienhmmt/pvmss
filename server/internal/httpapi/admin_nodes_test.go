@@ -11,6 +11,7 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
+	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
 	"testing"
 
@@ -75,6 +76,107 @@ func TestAdminNodes_ListAsAdmin_ReturnsAllNodes(t *testing.T) {
 	}
 }
 
+//nolint:gocyclo,paralleltest // explicit field assertions document the HTTP contract; the fake fixture is shared
+func TestAdminNodeDetails_AsAdmin_ReturnsSelectedNode(t *testing.T) {
+	handler, authHandler, _ := newAdminHandler(t)
+	cookie := adminCookie(t, authHandler)
+	rec := adminGet(t, handler, authHandler, cookie, "/api/v1/admin/nodes/"+auditTestCluster+"/pve-node-01")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var detail struct {
+		ClusterKey string `json:"clusterKey"`
+		Name       string `json:"name"`
+		Health     struct {
+			Status   string `json:"status"`
+			Stale    bool   `json:"stale"`
+			CPUModel string `json:"cpuModel"`
+		} `json:"health"`
+		Network struct {
+			Available  bool `json:"available"`
+			Interfaces []struct {
+				CIDR string `json:"cidr"`
+			} `json:"interfaces"`
+		} `json:"network"`
+		PCI struct {
+			Available bool `json:"available"`
+			Devices   []struct {
+				DeviceName string `json:"deviceName"`
+			} `json:"devices"`
+		} `json:"pci"`
+		Containers struct {
+			Available  bool `json:"available"`
+			Containers []struct {
+				Name string `json:"name"`
+			} `json:"containers"`
+		} `json:"containers"`
+		Inventory struct {
+			VMs      []json.RawMessage `json:"vms"`
+			Storages []json.RawMessage `json:"storages"`
+		} `json:"inventory"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &detail); err != nil {
+		t.Fatalf("decode node details: %v", err)
+	}
+	if detail.ClusterKey != auditTestCluster || detail.Name != "pve-node-01" {
+		t.Fatalf("node identity = cluster:%q name:%q", detail.ClusterKey, detail.Name)
+	}
+	if detail.Health.Status != "online" || detail.Health.Stale || detail.Health.CPUModel == "" {
+		t.Fatalf("health = %+v", detail.Health)
+	}
+	if !detail.Network.Available || len(detail.Network.Interfaces) == 0 || detail.Network.Interfaces[0].CIDR == "" {
+		t.Fatalf("network = %+v", detail.Network)
+	}
+	if !detail.PCI.Available || len(detail.PCI.Devices) == 0 || detail.PCI.Devices[0].DeviceName == "" {
+		t.Fatalf("PCI = %+v", detail.PCI)
+	}
+	if !detail.Containers.Available || len(detail.Containers.Containers) == 0 {
+		t.Fatalf("containers = %+v", detail.Containers)
+	}
+	if len(detail.Inventory.VMs) == 0 || len(detail.Inventory.Storages) == 0 {
+		t.Fatalf("inventory = %+v", detail.Inventory)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestAdminNodeDetails_PartialFailureKeepsCachedSections(t *testing.T) {
+	t.Cleanup(cluster.ResetFake)
+	authHandler := newAuthHandler(t)
+	st := newAdminStore(t)
+	fake := cluster.Fake{}
+	snapshot, _ := fake.Snapshot(context.Background())
+	index := inventory.BuildIndex(snapshot)
+	projection := inventory.NewProjectionFromIndex(&index)
+	client := nodeDetailFailureClient{Fake: fake, failHealth: true, failNetwork: true}
+	handler := httpapi.NewAdminCatalog(authHandler, st, client, projection, slog.New(slog.DiscardHandler))
+	cookie := adminCookie(t, authHandler)
+	rec := adminGet(t, handler, authHandler, cookie, "/api/v1/admin/nodes/"+auditTestCluster+"/pve-node-01")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var detail struct {
+		Health struct {
+			Stale       bool  `json:"stale"`
+			MemoryTotal int64 `json:"memoryTotalBytes"`
+		} `json:"health"`
+		Network struct {
+			Available bool `json:"available"`
+		} `json:"network"`
+		PCI struct {
+			Available bool `json:"available"`
+		} `json:"pci"`
+		Inventory struct {
+			VMs []json.RawMessage `json:"vms"`
+		} `json:"inventory"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &detail); err != nil {
+		t.Fatalf("decode node details: %v", err)
+	}
+	if !detail.Health.Stale || detail.Health.MemoryTotal == 0 || detail.Network.Available || !detail.PCI.Available || len(detail.Inventory.VMs) == 0 {
+		t.Fatalf("partial detail = %+v", detail)
+	}
+}
+
 // TestAdminNodes_ListAsNonAdmin_Returns403 - GET /admin/nodes as a
 // non-admin identity returns 403.
 //
@@ -82,11 +184,40 @@ func TestAdminNodes_ListAsAdmin_ReturnsAllNodes(t *testing.T) {
 func TestAdminNodes_ListAsNonAdmin_Returns403(t *testing.T) {
 	handler, authHandler, _ := newAdminHandler(t)
 	aliceCookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
-
-	rec := adminGet(t, handler, authHandler, aliceCookie, "/api/v1/admin/nodes?cluster=default")
+	rec := adminGet(t, handler, authHandler, aliceCookie, "/api/v1/admin/nodes?cluster="+auditTestCluster)
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
 	}
+}
+
+//nolint:paralleltest // serial: shared fake dataset and database fixture
+func TestAdminNodeDetails_AsNonAdmin_Returns403(t *testing.T) {
+	handler, authHandler, _ := newAdminHandler(t)
+	aliceCookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
+	rec := adminGet(t, handler, authHandler, aliceCookie, "/api/v1/admin/nodes/"+auditTestCluster+"/pve-node-01")
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+	}
+}
+
+type nodeDetailFailureClient struct {
+	cluster.Fake
+	failHealth  bool
+	failNetwork bool
+}
+
+func (client nodeDetailFailureClient) ReadNodeHealth(ctx context.Context, node string) (cluster.NodeHealth, error) {
+	if client.failHealth {
+		return cluster.NodeHealth{}, cluster.ErrUnreachable
+	}
+	return client.Fake.ReadNodeHealth(ctx, node)
+}
+
+func (client nodeDetailFailureClient) ReadNodeNetwork(ctx context.Context, node string) ([]cluster.NodeNetworkInterface, error) {
+	if client.failNetwork {
+		return nil, cluster.ErrUnreachable
+	}
+	return client.Fake.ReadNodeNetwork(ctx, node)
 }
 
 // TestAdminNodes_ToggleUnapprovedNode - POST /admin/nodes/toggle on the

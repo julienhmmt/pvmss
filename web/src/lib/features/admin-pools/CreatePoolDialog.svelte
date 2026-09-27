@@ -32,11 +32,11 @@
 	}
 </script>
 
-<Dialog bind:open labelledBy="create-pool-title" {onClose}>
-	<h2 id="create-pool-title" class="mb-4 text-lg font-semibold">{m['admin.pools.createTitle']()}</h2>
+<Dialog bind:open labelledBy="create-user-title" {onClose}>
+	<h2 id="create-user-title" class="mb-4 text-lg font-semibold">{m['admin.pools.createTitle']()}</h2>
 	<form class="space-y-4" onsubmit={(event) => { event.preventDefault(); void submit(); }}>
 		<FormField
-			label={m['common.name']()}
+			label={m['admin.pools.userName']()}
 			required
 			hint={m['admin.pools.nameHint']()}
 			error={error}

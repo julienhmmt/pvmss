@@ -10,10 +10,15 @@ const alert = (kind: DashboardAlert['kind'], extra: Partial<DashboardAlert> = {}
 
 describe('dashboard alerts', () => {
 	it('sends each alert to the page where it is fixed', () => {
+		const nodeTarget = {
+			route: '/admin/nodes/[cluster]/[node]',
+			params: { cluster: 'east', node: 'n1' }
+		};
 		expect(alertHref(alert('cluster_unreachable'))).toBe('/admin/clusters');
-		expect(alertHref(alert('node_offline', { subject: 'n1' }))).toBe('/nodes');
-		expect(alertHref(alert('node_cpu', { subject: 'n1' }))).toBe('/nodes');
-		expect(alertHref(alert('node_memory', { subject: 'n1' }))).toBe('/nodes');
+		// clusterKey wins over the display label when the server sends both.
+		expect(alertHref(alert('node_offline', { subject: 'n1', cluster: 'East Campus', clusterKey: 'east' }))).toEqual(nodeTarget);
+		expect(alertHref(alert('node_cpu', { subject: 'n1' }))).toEqual(nodeTarget);
+		expect(alertHref(alert('node_memory', { subject: 'n1' }))).toEqual(nodeTarget);
 		expect(alertHref(alert('storage_full', { subject: 'ceph' }))).toBe('/admin/storages');
 		expect(alertHref(alert('pool_at_quota', { subject: 'p1' }))).toBe('/admin/policy');
 	});

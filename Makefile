@@ -35,7 +35,7 @@ PVMSS_TAG ?= latest
         buildkit-start buildkit-stop buildkit-status \
         server-lint server-fmt server-vet server-test server-go-update \
         server-deps-update server-update \
-        web-install web-lint web-lint-fix web-check web-test \
+        web-install web-deps-update web-lint web-lint-fix web-check web-test \
         lint \
         sonar sonar-up sonar-down sonar-logs sonar-status sonar-bootstrap sonar-coverage sonar-lint sonar-scan sonar-scan-server sonar-scan-web sonar-query sonar-clean
 
@@ -191,6 +191,11 @@ web-install: ## Installe les dépendances bun du next-gen web/ (SvelteKit)
 	@echo "$(BLUE)Installation des dépendances $(WEB_DIR)/...$(NC)"
 	cd $(WEB_DIR) && bun install --frozen-lockfile
 	@echo "$(GREEN)✓ Dépendances web installées$(NC)"
+
+web-deps-update: ## Update all Bun dependencies in web/ to latest versions
+	@echo "$(BLUE)Updating Bun dependencies in $(WEB_DIR)/...$(NC)"
+	cd $(WEB_DIR) && bun update --latest
+	@echo "$(GREEN)Web dependencies updated$(NC)"
 
 web-lint: ## Lance eslint sur le next-gen web/ (SvelteKit + TypeScript)
 	@echo "$(BLUE)Lancement d'eslint sur $(WEB_DIR)/...$(NC)"

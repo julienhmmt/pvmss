@@ -466,7 +466,9 @@ func rfbAnswerVNCAuthChallenge(conn io.ReadWriter, password string) error {
 	}
 
 	response := make([]byte, 16)
+	// codeql[go/weak-cryptographic-algorithm] DES is mandated by RFC 6143 for the VNC-auth challenge-response.
 	block.Encrypt(response[0:8], challenge[0:8])
+	// codeql[go/weak-cryptographic-algorithm] DES is mandated by RFC 6143 for the VNC-auth challenge-response.
 	block.Encrypt(response[8:16], challenge[8:16])
 
 	if _, err := conn.Write(response); err != nil {

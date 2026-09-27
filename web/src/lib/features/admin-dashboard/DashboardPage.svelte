@@ -37,11 +37,11 @@
 		return Math.min(100, Math.round(node.cpuUsage * 100));
 	}
 
-	function goToNodeVms(nodeName: string): void {
-		void goto(`${resolve('/vms')}?node=${encodeURIComponent(nodeName)}`);
+	function goToNodeDetails(node: NodeSummary): void {
+		void goto(resolve('/admin/nodes/[cluster]/[node]', { cluster: node.clusterKey, node: node.name }));
 	}
 
-	function goToCreatePool(): void {
+	function goToCreateUser(): void {
 		void goto(resolve('/admin/pools'));
 	}
 
@@ -64,8 +64,8 @@
 	{#snippet actions()}
 		<div class="flex flex-col items-end gap-1">
 			<div class="flex items-center gap-2">
-				<Button variant="secondary" size="sm" onclick={goToCreatePool} data-testid="dashboard-create-pool">
-					{m['admin.dashboard.createPool']()}
+				<Button variant="secondary" size="sm" onclick={goToCreateUser} data-testid="dashboard-create-user">
+					{m['admin.dashboard.createUser']()}
 				</Button>
 				<Button variant="secondary" size="sm" loading={store.loading} onclick={() => void store.load()}>
 					{m['common.refresh']()}
@@ -113,29 +113,36 @@
 		<DashboardAttention alerts={summary.alerts} />
 
 		<Card pad="none">
-			<div class="flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4 text-sm" data-testid="dashboard-vm-status">
-				<p class="font-semibold text-foreground">
-					{m['admin.dashboard.vmStatusTitle']()}
-					<span class="ml-1 font-normal text-muted-foreground" data-testid="dashboard-vm-total">
-						{m['admin.dashboard.vmTotal']({ count: summary.vmCount })}
-					</span>
-				</p>
-				<ul class="flex flex-wrap items-center gap-x-5 gap-y-1">
-					{#each VM_STATUS_BREAKDOWN as row (row.key)}
-						<li class="flex items-center gap-2" data-testid="dashboard-vm-status-{row.key}">
-							<span class="h-2 w-2 shrink-0 rounded-full {row.dot}" aria-hidden="true"></span>
-							<span class="text-muted-foreground">{row.label()}</span>
-							<span class="font-mono font-semibold tabular-nums">{summary.vmStatusCounts[row.key]}</span>
-						</li>
-					{/each}
-				</ul>
+			<div class="px-5 py-4 text-sm" data-testid="dashboard-vm-status">
+				<div class="flex flex-wrap items-center gap-x-6 gap-y-2">
+					<p class="font-semibold text-foreground">
+						{m['admin.dashboard.vmStatusTitle']()}
+						<span class="ml-1 font-normal text-muted-foreground" data-testid="dashboard-vm-total">
+							{m['admin.dashboard.vmTotal']({ count: summary.pvmssVMCount })}
+						</span>
+					</p>
+					<ul class="flex flex-wrap items-center gap-x-5 gap-y-1">
+						{#each VM_STATUS_BREAKDOWN as row (row.key)}
+							<li class="flex items-center gap-2" data-testid="dashboard-vm-status-{row.key}">
+								<span class="h-2 w-2 shrink-0 rounded-full {row.dot}" aria-hidden="true"></span>
+								<span class="text-muted-foreground">{row.label()}</span>
+								<span class="font-mono font-semibold tabular-nums">{summary.pvmssVMStatusCounts[row.key]}</span>
+							</li>
+						{/each}
+					</ul>
+				</div>
+				<div class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border pt-3" data-testid="dashboard-vm-other-count">
+					<p class="font-semibold text-foreground">{m['admin.dashboard.vmOtherTitle']()}</p>
+					<span class="font-mono font-semibold tabular-nums">{summary.otherVMCount}</span>
+					<span class="text-muted-foreground">{m['admin.dashboard.vmOtherDescription']()}</span>
+				</div>
 			</div>
 		</Card>
 
 		{#if summary.nodes.length === 0}
 			<EmptyState title={m['admin.dashboard.emptyTitle']()} description={m['admin.dashboard.emptyBody']()} dataTestid="dashboard-empty">
 				{#snippet actions()}
-					<Button variant="primary" size="md" onclick={goToCreatePool}>{m['admin.dashboard.createPool']()}</Button>
+					<Button variant="primary" size="md" onclick={goToCreateUser}>{m['admin.dashboard.createUser']()}</Button>
 				{/snippet}
 			</EmptyState>
 		{:else}
@@ -148,7 +155,7 @@
 						<button
 							type="button"
 							class="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 text-left shadow-card transition-[box-shadow,border-color] duration-150 hover:border-muted-foreground-subtle hover:shadow-raised pv-focus"
-							onclick={() => goToNodeVms(node.name)}
+							onclick={() => goToNodeDetails(node)}
 							data-testid="dashboard-node-card"
 							data-node={node.name}
 						>

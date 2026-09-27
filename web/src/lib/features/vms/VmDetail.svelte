@@ -23,6 +23,7 @@
 	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import { resolve } from '$app/paths';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
 	import Pill from '$lib/shared/ui/Pill.svelte';
 	import OsMark from '$lib/shared/ui/OsMark.svelte';
 	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
@@ -166,16 +167,14 @@
 {:else if store.entity}
 	{@const entity = store.entity}
 	<header class="mb-6" data-testid="vm-detail-header">
-		<a
-			href={resolve('/vms')}
-			class="pv-focus mb-4 inline-flex items-center gap-1 rounded text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-			data-testid="page-back-link"
-		>
-			<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" aria-hidden="true">
-				<path d="M12 5l-5 5 5 5" />
-			</svg>
+		<ButtonLink href={resolve('/vms')} variant="secondary" size="sm" class="mb-4" data-testid="page-back-link">
+			{#snippet icon()}
+				<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3.5 w-3.5" aria-hidden="true">
+					<path d="M12 5l-5 5 5 5" />
+				</svg>
+			{/snippet}
 			{m['vms.detail.back']()}
-		</a>
+		</ButtonLink>
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 			<div class="flex min-w-0 items-center gap-4">
 				<span class="max-[369px]:hidden"><OsMark initials={machineInitials(entity.name)} tone={machineTone(entity.name)} size="lg" /></span>

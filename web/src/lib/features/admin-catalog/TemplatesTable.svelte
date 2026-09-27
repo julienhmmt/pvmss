@@ -43,7 +43,7 @@
 				{sortDir}
 				onSort={handleSort}
 			/>
-			<td><span class="sr-only">{m['admin.templates.remove']()}</span></td>
+			<TableHeader text={m['common.actions']()} />
 		</tr>
 	</thead>
 	<tbody>
@@ -108,11 +108,11 @@
 						</span>
 					{/if}
 				</td>
-				<td data-label={m['admin.templates.remove']()}>
+				<td data-label={m['common.actions']()}>
 					<div class="flex items-center gap-1">
 						{#if !tmpl.missing}
 							<Button
-								variant="ghost"
+								variant="secondary"
 								size="sm"
 								onclick={() => onEdit(tmpl)}
 								data-testid="template-edit"

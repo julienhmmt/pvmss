@@ -17,12 +17,18 @@
 	errorCode={store.errorCode}
 	saving={store.saving}
 	saveError={store.saveError}
+	saveErrorCode={store.saveErrorCode}
 	clusterOptions={store.clusterOptions}
 	cluster={store.cluster}
 	onClusterChange={(v) => store.setCluster(v)}
 	onLoad={() => void store.load()}
 	onRetry={() => void store.retryConnection()}
-	onSave={(node, patch) => void store.save(node, patch)}
+	onSave={(node, patch) => store.save(node, patch)}
+	refreshedAt={store.refreshedAt}
+	refreshing={store.refreshing}
+	refreshDisabled={store.refreshDisabled}
+	refreshError={store.refreshError}
+	onRefresh={() => void store.refresh()}
 	sortBy={store.sortBy}
 	sortDir={store.sortDir}
 	onSort={(column) => store.setSort(column)}

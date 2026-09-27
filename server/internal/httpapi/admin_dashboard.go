@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
@@ -51,6 +52,7 @@ func (h *AdminOps) SetInventorySource(src dashboardInventory, staleAfter time.Du
 }
 
 type nodeSummaryDTO struct {
+	ClusterKey       string  `json:"clusterKey"`
 	Cluster          string  `json:"cluster"`
 	Name             string  `json:"name"`
 	Status           string  `json:"status"`
@@ -72,12 +74,14 @@ type vmStatusCountsDTO struct {
 // dashboardAlertDTO is one thing an administrator should act on. Kind is
 // one of cluster_unreachable, node_offline, node_cpu, node_memory,
 // storage_full, pool_at_quota; Subject names the node, storage or pool.
+// Cluster is the display label; ClusterKey is the registry key routes use.
 type dashboardAlertDTO struct {
-	Kind     string `json:"kind"`
-	Severity string `json:"severity"`
-	Cluster  string `json:"cluster"`
-	Subject  string `json:"subject,omitempty"`
-	Percent  int    `json:"percent,omitempty"`
+	Kind       string `json:"kind"`
+	Severity   string `json:"severity"`
+	Cluster    string `json:"cluster"`
+	ClusterKey string `json:"clusterKey,omitempty"`
+	Subject    string `json:"subject,omitempty"`
+	Percent    int    `json:"percent,omitempty"`
 }
 
 // dashboardStorageDTO is one datastore. Node is empty for shared storage.
@@ -93,15 +97,18 @@ type dashboardStorageDTO struct {
 }
 
 type dashboardDTO struct {
-	Alerts         []dashboardAlertDTO   `json:"alerts"`
-	Nodes          []nodeSummaryDTO      `json:"nodes"`
-	NodeCount      int                   `json:"nodeCount"`
-	VMCount        int                   `json:"vmCount"`
-	VMStatusCounts vmStatusCountsDTO     `json:"vmStatusCounts"`
-	Storages       []dashboardStorageDTO `json:"storages"`
-	RecentChanges  []auditEntryDTO       `json:"recentChanges"`
-	Version        string                `json:"version"`
-	RefreshedAt    string                `json:"refreshedAt"`
+	Alerts              []dashboardAlertDTO   `json:"alerts"`
+	Nodes               []nodeSummaryDTO      `json:"nodes"`
+	NodeCount           int                   `json:"nodeCount"`
+	VMCount             int                   `json:"vmCount"`
+	VMStatusCounts      vmStatusCountsDTO     `json:"vmStatusCounts"`
+	PVMSSVMCount        int                   `json:"pvmssVMCount"`
+	PVMSSVMStatusCounts vmStatusCountsDTO     `json:"pvmssVMStatusCounts"`
+	OtherVMCount        int                   `json:"otherVMCount"`
+	Storages            []dashboardStorageDTO `json:"storages"`
+	RecentChanges       []auditEntryDTO       `json:"recentChanges"`
+	Version             string                `json:"version"`
+	RefreshedAt         string                `json:"refreshedAt"`
 }
 
 // ServeDashboard handles GET /api/v1/admin/dashboard.
@@ -136,7 +143,7 @@ func (h *AdminOps) ServeDashboard(w http.ResponseWriter, r *http.Request) {
 		label := cmp.Or(labels[name], name)
 
 		if idx == nil || (h.staleAfter > 0 && time.Since(idx.RefreshedAt) > h.staleAfter) {
-			dash.Alerts = append(dash.Alerts, dashboardAlertDTO{Kind: "cluster_unreachable", Severity: alertCritical, Cluster: label})
+			dash.Alerts = append(dash.Alerts, dashboardAlertDTO{Kind: "cluster_unreachable", Severity: alertCritical, Cluster: label, ClusterKey: name})
 		}
 
 		if idx == nil {
@@ -192,7 +199,7 @@ func anyIndex(indexes map[string]*inventory.Index) bool {
 // (policy); label is what the administrator reads.
 func (h *AdminOps) addClusterToDashboard(ctx context.Context, dash *dashboardDTO, name, label string, idx *inventory.Index) {
 	for _, node := range idx.Nodes {
-		dash.Alerts = append(dash.Alerts, nodeAlerts(label, node)...)
+		dash.Alerts = append(dash.Alerts, nodeAlerts(name, label, node)...)
 
 		vms := idx.ByNode[node.Name]
 		if len(vms) == 0 {
@@ -200,6 +207,7 @@ func (h *AdminOps) addClusterToDashboard(ctx context.Context, dash *dashboardDTO
 		}
 
 		dash.Nodes = append(dash.Nodes, nodeSummaryDTO{
+			ClusterKey:       name,
 			Cluster:          label,
 			Name:             node.Name,
 			Status:           string(node.Status),
@@ -215,29 +223,36 @@ func (h *AdminOps) addClusterToDashboard(ctx context.Context, dash *dashboardDTO
 	for _, vm := range idx.ByVMID {
 		dash.VMCount++
 		countVMStatus(&dash.VMStatusCounts, vm.Status)
+
+		if slices.Contains(vm.Tags, catalog.ProtectedTagName) {
+			dash.PVMSSVMCount++
+			countVMStatus(&dash.PVMSSVMStatusCounts, vm.Status)
+		} else {
+			dash.OtherVMCount++
+		}
 	}
 
 	for _, s := range clusterStorages(label, idx) {
 		dash.Storages = append(dash.Storages, s)
-		dash.Alerts = appendStorageAlert(dash.Alerts, s)
+		dash.Alerts = appendStorageAlert(dash.Alerts, name, s)
 	}
 
 	dash.Alerts = append(dash.Alerts, h.poolQuotaAlerts(ctx, name, label, idx)...)
 }
 
-func nodeAlerts(clusterName string, node cluster.Node) []dashboardAlertDTO {
+func nodeAlerts(clusterKey, label string, node cluster.Node) []dashboardAlertDTO {
 	if node.Status == cluster.NodeOffline {
-		return []dashboardAlertDTO{{Kind: "node_offline", Severity: alertCritical, Cluster: clusterName, Subject: node.Name}}
+		return []dashboardAlertDTO{{Kind: "node_offline", Severity: alertCritical, Cluster: label, ClusterKey: clusterKey, Subject: node.Name}}
 	}
 
 	var alerts []dashboardAlertDTO
 
 	if cpu := int(node.CPUUsage*100 + 0.5); cpu >= nodeUsageAlertPercent {
-		alerts = append(alerts, dashboardAlertDTO{Kind: "node_cpu", Severity: alertWarning, Cluster: clusterName, Subject: node.Name, Percent: cpu})
+		alerts = append(alerts, dashboardAlertDTO{Kind: "node_cpu", Severity: alertWarning, Cluster: label, ClusterKey: clusterKey, Subject: node.Name, Percent: cpu})
 	}
 
 	if mem := percentOf(node.MemoryUsed, node.MemoryTotal); mem >= nodeUsageAlertPercent {
-		alerts = append(alerts, dashboardAlertDTO{Kind: "node_memory", Severity: alertWarning, Cluster: clusterName, Subject: node.Name, Percent: mem})
+		alerts = append(alerts, dashboardAlertDTO{Kind: "node_memory", Severity: alertWarning, Cluster: label, ClusterKey: clusterKey, Subject: node.Name, Percent: mem})
 	}
 
 	return alerts
@@ -281,7 +296,7 @@ func clusterStorages(clusterName string, idx *inventory.Index) []dashboardStorag
 	return out
 }
 
-func appendStorageAlert(alerts []dashboardAlertDTO, s dashboardStorageDTO) []dashboardAlertDTO {
+func appendStorageAlert(alerts []dashboardAlertDTO, clusterKey string, s dashboardStorageDTO) []dashboardAlertDTO {
 	var severity string
 
 	switch {
@@ -293,7 +308,7 @@ func appendStorageAlert(alerts []dashboardAlertDTO, s dashboardStorageDTO) []das
 		return alerts
 	}
 
-	return append(alerts, dashboardAlertDTO{Kind: "storage_full", Severity: severity, Cluster: s.Cluster, Subject: s.Name, Percent: s.Percent})
+	return append(alerts, dashboardAlertDTO{Kind: "storage_full", Severity: severity, Cluster: s.Cluster, ClusterKey: clusterKey, Subject: s.Name, Percent: s.Percent})
 }
 
 // poolQuotaAlerts reports pools holding as many VMs as the cluster's
@@ -317,7 +332,7 @@ func (h *AdminOps) poolQuotaAlerts(ctx context.Context, clusterName, label strin
 	for pool, vms := range idx.ByPool {
 		if pool != "" && len(vms) >= row.MaxVMPerUser {
 			alerts = append(alerts, dashboardAlertDTO{
-				Kind: "pool_at_quota", Severity: alertWarning, Cluster: label, Subject: pool,
+				Kind: "pool_at_quota", Severity: alertWarning, Cluster: label, ClusterKey: clusterName, Subject: pool,
 				Percent: percentOf(int64(len(vms)), int64(row.MaxVMPerUser)),
 			})
 		}

@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/policy"
+	"time"
 )
 
 type nodePolicyResponse struct {
 	Node          string `json:"node"`
+	Status        string `json:"status"`
 	MaxVMs        int    `json:"maxVms"`
 	MaxVCPUs      int    `json:"maxVcpus"`
 	MaxRAMGB      int    `json:"maxRamGb"`
@@ -18,8 +20,22 @@ type nodePolicyResponse struct {
 	UsedVMs       int    `json:"usedVms"`
 	UsedVCPUs     int    `json:"usedVcpus"`
 	UsedRAMGB     int    `json:"usedRamGb"`
+	UsedDiskGB    int    `json:"usedDiskGb"`
 	PhysicalVCPUs int    `json:"physicalVcpus"`
 	PhysicalRAMGB int    `json:"physicalRamGb"`
+	// Live, all-VMs node load (versus the pvmss-tagged Used* aggregate).
+	NodeCPUUsage       float64 `json:"nodeCpuUsage"`
+	NodeMemoryUsedGB   int     `json:"nodeMemoryUsedGb"`
+	NodeStorageUsedGB  int     `json:"nodeStorageUsedGb"`
+	NodeStorageTotalGB int     `json:"nodeStorageTotalGb"`
+	TotalVMs           int     `json:"totalVms"`
+}
+
+// nodePolicyListResponse wraps the list with the inventory refresh timestamp
+// so the page can say how old the live figures are.
+type nodePolicyListResponse struct {
+	Nodes       []nodePolicyResponse `json:"nodes"`
+	RefreshedAt string               `json:"refreshedAt"`
 }
 
 type nodePolicyUpdateRequest struct {
@@ -49,9 +65,13 @@ func (handler *AdminPolicy) ServePolicyNodes(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	response := make([]nodePolicyResponse, 0, len(capacities))
+	response := nodePolicyListResponse{Nodes: make([]nodePolicyResponse, 0, len(capacities))}
 	for _, capacity := range capacities {
-		response = append(response, nodePolicyResponseFromModel(capacity))
+		response.Nodes = append(response.Nodes, nodePolicyResponseFromModel(capacity))
+	}
+
+	if refreshedAt := handler.service.RefreshedAt(); !refreshedAt.IsZero() {
+		response.RefreshedAt = refreshedAt.UTC().Format(time.RFC3339Nano)
 	}
 
 	writeAdminJSON(w, http.StatusOK, response)
@@ -160,7 +180,15 @@ func applyNodePolicyPatch(capacity *policy.Capacity, request nodePolicyUpdateReq
 }
 
 func nodePolicyResponseFromModel(capacity policy.Capacity) nodePolicyResponse {
-	return nodePolicyResponse{Node: capacity.Node, MaxVMs: capacity.MaxVMs, MaxVCPUs: capacity.MaxVCPUs, MaxRAMGB: capacity.MaxRAMGB, MaxDiskGB: capacity.MaxDiskGB, UsedVMs: capacity.UsedVMs, UsedVCPUs: capacity.UsedVCPUs, UsedRAMGB: capacity.UsedRAMGB, PhysicalVCPUs: capacity.PhysicalVCPUs, PhysicalRAMGB: capacity.PhysicalRAMGB}
+	return nodePolicyResponse{
+		Node: capacity.Node, Status: string(capacity.Status),
+		MaxVMs: capacity.MaxVMs, MaxVCPUs: capacity.MaxVCPUs, MaxRAMGB: capacity.MaxRAMGB, MaxDiskGB: capacity.MaxDiskGB,
+		UsedVMs: capacity.UsedVMs, UsedVCPUs: capacity.UsedVCPUs, UsedRAMGB: capacity.UsedRAMGB, UsedDiskGB: capacity.UsedDiskGB,
+		PhysicalVCPUs: capacity.PhysicalVCPUs, PhysicalRAMGB: capacity.PhysicalRAMGB,
+		NodeCPUUsage: capacity.CPUUsage, NodeMemoryUsedGB: capacity.MemoryUsedGB,
+		NodeStorageUsedGB: capacity.StorageUsedGB, NodeStorageTotalGB: capacity.StorageTotalGB,
+		TotalVMs: capacity.TotalVMs,
+	}
 }
 
 func (handler *AdminPolicy) writeNodeFailure(w http.ResponseWriter, node string, err error) {

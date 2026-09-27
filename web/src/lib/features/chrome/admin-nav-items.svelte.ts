@@ -21,6 +21,7 @@ export type SidebarIconName =
 interface AdminNavItem {
 	href: string;
 	label: () => string;
+	exact?: boolean;
 }
 
 interface AdminNavGroup {
@@ -35,8 +36,7 @@ interface AdminNavGroup {
  * the admin area no longer ships a second 52-width rail). The server-side
  * RequireAdmin middleware remains the real guard; this is IA only.
  *
- * Active state is exact-match on pathname (the only nested route,
- * /admin/policy/nodes, must not also light up /admin/policy).
+ * Admin links match exactly by default; a parent link can opt into matching its detail routes.
  */
 export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 	{
@@ -48,7 +48,7 @@ export const ADMIN_NAV_GROUPS: readonly AdminNavGroup[] = [
 		heading: () => m['chrome.adminNav.infrastructure'](),
 		icon: 'infrastructure',
 		items: [
-			{ href: resolve('/admin/nodes'), label: () => m['chrome.adminNav.nodes']() },
+			{ href: resolve('/admin/nodes'), label: () => m['chrome.adminNav.nodes'](), exact: false },
 			{ href: resolve('/admin/clusters'), label: () => m['chrome.adminNav.clusters']() },
 			{ href: resolve('/admin/pools'), label: () => m['chrome.adminNav.pools']() }
 		]

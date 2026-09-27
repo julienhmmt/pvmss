@@ -34,7 +34,8 @@ describe('AdminPolicyStore', () => {
 		store.cluster = 'default';
 		await store.save({ gabarit: { maxDiskPerVmGb: 10 }, quota: { maxVmPerUser: 1 } });
 		expect(store.policy).toEqual(response);
-		expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({
+		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+		expect(JSON.parse(init?.body as string)).toEqual({
 			cluster: 'default',
 			gabarit: { maxDiskPerVmGb: 10 },
 			quota: { maxVmPerUser: 1 }

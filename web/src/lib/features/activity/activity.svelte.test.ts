@@ -32,17 +32,21 @@ describe('activityMessage', () => {
 
 describe('ActivityStore', () => {
 	it('keeps the timeline when one machine audit fails', async () => {
-		const fetchMock = vi.fn(async (url: string) => {
+		const fetchMock = vi.fn((url: string): Promise<Response> => {
 			if (url.startsWith('/api/v1/vms?')) {
-				return new Response(
-					JSON.stringify({ items: [{ cluster: 'default', vmid: 100, name: 'web-01' }, { cluster: 'default', vmid: 101, name: 'db-01' }], total: 2, page: 1, pageSize: 20, availableNodes: [] }),
-					{ status: 200 }
+				return Promise.resolve(
+					new Response(
+						JSON.stringify({ items: [{ cluster: 'default', vmid: 100, name: 'web-01' }, { cluster: 'default', vmid: 101, name: 'db-01' }], total: 2, page: 1, pageSize: 20, availableNodes: [] }),
+						{ status: 200 }
+					)
 				);
 			}
 			if (url.includes('/100/audit')) {
-				return new Response(JSON.stringify({ items: [entry(1, 'start', '2026-09-01T10:00:00Z')] }), { status: 200 });
+				return Promise.resolve(
+					new Response(JSON.stringify({ items: [entry(1, 'start', '2026-09-01T10:00:00Z')] }), { status: 200 })
+				);
 			}
-			return new Response(JSON.stringify({ code: 'forbidden', message: 'no' }), { status: 403 });
+			return Promise.resolve(new Response(JSON.stringify({ code: 'forbidden', message: 'no' }), { status: 403 }));
 		});
 		vi.stubGlobal('fetch', fetchMock);
 		const store = new ActivityStore();

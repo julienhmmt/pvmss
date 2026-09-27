@@ -27,7 +27,9 @@ test('injects an SSH key post-boot via the guest agent without a reboot', async 
 	});
 	expect(postResp.status()).toBe(200);
 
-	const config = await (await page.request.get('/api/v1/vms/default/102/cloudinit')).json();
+	const config = (await (await page.request.get('/api/v1/vms/default/102/cloudinit')).json()) as {
+		sshKeys?: string[];
+	};
 	expect(config.sshKeys ?? []).toContain('ssh-ed25519 AAAA-injected demo@laptop');
 
 	// Reject a malformed key before it reaches the agent (no injection, field kept).

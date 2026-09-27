@@ -245,6 +245,6 @@ test.describe('T06 VM creation', () => {
 		// VM ownership requires a personal pool, which admins do not have
 		// (vm/create.go: ErrAdminCannotCreate).
 		expect(response.status()).toBe(403);
-		expect((await response.json()).code).toBe('admin_cannot_create');
+		expect(((await response.json()) as { code: string }).code).toBe('admin_cannot_create');
 	});
 });
