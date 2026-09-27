@@ -51,6 +51,9 @@ export interface DashboardSummary {
 	nodeCount: number;
 	vmCount: number;
 	vmStatusCounts: VMStatusCounts;
+	pvmssVMCount: number;
+	pvmssVMStatusCounts: VMStatusCounts;
+	otherVMCount: number;
 	storages: DashboardStorage[];
 	recentChanges: DashboardChange[];
 	version: string;

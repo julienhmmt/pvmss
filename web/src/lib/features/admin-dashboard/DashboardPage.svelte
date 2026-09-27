@@ -113,22 +113,29 @@
 		<DashboardAttention alerts={summary.alerts} />
 
 		<Card pad="none">
-			<div class="flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-4 text-sm" data-testid="dashboard-vm-status">
-				<p class="font-semibold text-foreground">
-					{m['admin.dashboard.vmStatusTitle']()}
-					<span class="ml-1 font-normal text-muted-foreground" data-testid="dashboard-vm-total">
-						{m['admin.dashboard.vmTotal']({ count: summary.vmCount })}
-					</span>
-				</p>
-				<ul class="flex flex-wrap items-center gap-x-5 gap-y-1">
-					{#each VM_STATUS_BREAKDOWN as row (row.key)}
-						<li class="flex items-center gap-2" data-testid="dashboard-vm-status-{row.key}">
-							<span class="h-2 w-2 shrink-0 rounded-full {row.dot}" aria-hidden="true"></span>
-							<span class="text-muted-foreground">{row.label()}</span>
-							<span class="font-mono font-semibold tabular-nums">{summary.vmStatusCounts[row.key]}</span>
-						</li>
-					{/each}
-				</ul>
+			<div class="px-5 py-4 text-sm" data-testid="dashboard-vm-status">
+				<div class="flex flex-wrap items-center gap-x-6 gap-y-2">
+					<p class="font-semibold text-foreground">
+						{m['admin.dashboard.vmStatusTitle']()}
+						<span class="ml-1 font-normal text-muted-foreground" data-testid="dashboard-vm-total">
+							{m['admin.dashboard.vmTotal']({ count: summary.pvmssVMCount })}
+						</span>
+					</p>
+					<ul class="flex flex-wrap items-center gap-x-5 gap-y-1">
+						{#each VM_STATUS_BREAKDOWN as row (row.key)}
+							<li class="flex items-center gap-2" data-testid="dashboard-vm-status-{row.key}">
+								<span class="h-2 w-2 shrink-0 rounded-full {row.dot}" aria-hidden="true"></span>
+								<span class="text-muted-foreground">{row.label()}</span>
+								<span class="font-mono font-semibold tabular-nums">{summary.pvmssVMStatusCounts[row.key]}</span>
+							</li>
+						{/each}
+					</ul>
+				</div>
+				<div class="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-border pt-3" data-testid="dashboard-vm-other-count">
+					<p class="font-semibold text-foreground">{m['admin.dashboard.vmOtherTitle']()}</p>
+					<span class="font-mono font-semibold tabular-nums">{summary.otherVMCount}</span>
+					<span class="text-muted-foreground">{m['admin.dashboard.vmOtherDescription']()}</span>
+				</div>
 			</div>
 		</Card>
 

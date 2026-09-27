@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
@@ -118,6 +119,46 @@ func TestAdminDashboard_AsAdmin_ReturnsPvmssNodesAndVmCounts(t *testing.T) {
 
 	if dash.Version == "" {
 		t.Error("version is empty")
+	}
+}
+
+func TestAdminDashboardVMCounts_SplitsPvmssAndOtherVMs(t *testing.T) {
+	t.Parallel()
+	auth := newAuthHandler(t)
+	st := auditAdminStore(t)
+	snap := cluster.Snapshot{VMs: []cluster.VM{
+		{VMID: 100, Status: cluster.VMRunning, Tags: []string{catalog.ProtectedTagName}},
+		{VMID: 101, Status: cluster.VMStopped, Tags: []string{catalog.ProtectedTagName}},
+		{VMID: 102, Status: cluster.VMPaused, Tags: []string{"legacy"}},
+		{VMID: 103, Status: cluster.VMStopped},
+	}}
+	idx := inventory.BuildIndex(snap)
+	projection := inventory.NewProjectionFromIndex(&idx)
+	ops := httpapi.NewAdminOps(auth, st, cluster.Fake{}, projection, "0.4.0-test", slog.New(slog.DiscardHandler))
+	cookie := adminCookie(t, auth)
+
+	rec := opsGet(t, ops, auth, cookie, "/api/v1/admin/dashboard")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var dash struct {
+		VMCount             int               `json:"vmCount"`
+		PVMSSVMCount        int               `json:"pvmssVMCount"`
+		PVMSSVMStatusCounts vmStatusCountsDTO `json:"pvmssVMStatusCounts"`
+		OtherVMCount        int               `json:"otherVMCount"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &dash); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	if dash.VMCount != 4 || dash.PVMSSVMCount != 2 || dash.OtherVMCount != 2 {
+		t.Errorf("VM counts = all:%d PVMSS:%d other:%d, want all:4 PVMSS:2 other:2", dash.VMCount, dash.PVMSSVMCount, dash.OtherVMCount)
+	}
+
+	wantStatuses := vmStatusCountsDTO{Running: 1, Stopped: 1}
+	if dash.PVMSSVMStatusCounts != wantStatuses {
+		t.Errorf("PVMSS status counts = %+v, want %+v", dash.PVMSSVMStatusCounts, wantStatuses)
 	}
 }
 
