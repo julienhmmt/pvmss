@@ -268,6 +268,56 @@ func TestListAuditLog_Filters(t *testing.T) {
 	}
 }
 
+// TestListAuditLog_FiltersByTarget verifies target_type / target_id narrow
+// the query to admin actions recorded against one object (e.g. a pool's
+// detail page activity feed).
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestListAuditLog_FiltersByTarget(t *testing.T) {
+	st := newAuditStore(t)
+	ctx := context.Background()
+
+	if err := st.RecordAdminAction(ctx, "admin", "admin.pools.create", "pool", "pvmss-a", `{"summary":"created"}`, "127.0.0.1"); err != nil {
+		t.Fatalf("RecordAdminAction: %v", err)
+	}
+	if err := st.RecordAdminAction(ctx, "admin", "admin.pools.delete", "pool", "pvmss-b", `{"summary":"deleted"}`, "127.0.0.1"); err != nil {
+		t.Fatalf("RecordAdminAction: %v", err)
+	}
+	if err := st.RecordAdminAction(ctx, "admin", "admin.policy.update", "policy", "default", `{"summary":"updated"}`, "127.0.0.1"); err != nil {
+		t.Fatalf("RecordAdminAction: %v", err)
+	}
+	if err := st.RecordAction(ctx, testAuditActor, "default", 101, testAuditAction); err != nil {
+		t.Fatalf("RecordAction: %v", err)
+	}
+
+	tests := []struct {
+		name         string
+		filter       store.AuditFilter
+		wantTargetID string
+		wantCount    int
+	}{
+		{name: "by target type pool", filter: store.AuditFilter{TargetType: "pool", Page: 1, PageSize: 100}, wantCount: 2},
+		{name: "by target type and id", filter: store.AuditFilter{TargetType: "pool", TargetID: "pvmss-a", Page: 1, PageSize: 100}, wantTargetID: "pvmss-a", wantCount: 1},
+		{name: "by target id alone", filter: store.AuditFilter{TargetID: "pvmss-b", Page: 1, PageSize: 100}, wantTargetID: "pvmss-b", wantCount: 1},
+		{name: "no match", filter: store.AuditFilter{TargetType: "pool", TargetID: "pvmss-nope", Page: 1, PageSize: 100}, wantCount: 0},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			page, err := st.ListAuditLog(ctx, tc.filter)
+			if err != nil {
+				t.Fatalf("ListAuditLog: %v", err)
+			}
+			if len(page.Items) != tc.wantCount {
+				t.Fatalf("items = %d, want %d", len(page.Items), tc.wantCount)
+			}
+			if tc.wantTargetID != "" && page.Items[0].TargetID.String != tc.wantTargetID {
+				t.Fatalf("target_id = %q, want %q", page.Items[0].TargetID.String, tc.wantTargetID)
+			}
+		})
+	}
+}
+
 // TestListAuditLog_Pagination - page 2 returns the next slice using the
 // same page/pageSize/total envelope established.
 //
