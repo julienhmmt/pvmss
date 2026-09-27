@@ -12,9 +12,8 @@ import (
 	"testing"
 )
 
+//nolint:paralleltest // Uses the process-wide cluster.FakeCalls log.
 func TestCreate_PolicyGuardsRejectBeforeAllocation(t *testing.T) {
-	t.Parallel()
-
 	cases := []struct {
 		name    string
 		prepare func(*policy.Policy, context.Context) error
@@ -58,7 +57,6 @@ func TestCreate_PolicyGuardsRejectBeforeAllocation(t *testing.T) {
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
-			t.Parallel()
 			runPolicyCase(t, testCase.name, testCase.prepare, testCase.wantErr)
 		})
 	}
