@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
@@ -93,15 +94,18 @@ type dashboardStorageDTO struct {
 }
 
 type dashboardDTO struct {
-	Alerts         []dashboardAlertDTO   `json:"alerts"`
-	Nodes          []nodeSummaryDTO      `json:"nodes"`
-	NodeCount      int                   `json:"nodeCount"`
-	VMCount        int                   `json:"vmCount"`
-	VMStatusCounts vmStatusCountsDTO     `json:"vmStatusCounts"`
-	Storages       []dashboardStorageDTO `json:"storages"`
-	RecentChanges  []auditEntryDTO       `json:"recentChanges"`
-	Version        string                `json:"version"`
-	RefreshedAt    string                `json:"refreshedAt"`
+	Alerts              []dashboardAlertDTO   `json:"alerts"`
+	Nodes               []nodeSummaryDTO      `json:"nodes"`
+	NodeCount           int                   `json:"nodeCount"`
+	VMCount             int                   `json:"vmCount"`
+	VMStatusCounts      vmStatusCountsDTO     `json:"vmStatusCounts"`
+	PVMSSVMCount        int                   `json:"pvmssVMCount"`
+	PVMSSVMStatusCounts vmStatusCountsDTO     `json:"pvmssVMStatusCounts"`
+	OtherVMCount        int                   `json:"otherVMCount"`
+	Storages            []dashboardStorageDTO `json:"storages"`
+	RecentChanges       []auditEntryDTO       `json:"recentChanges"`
+	Version             string                `json:"version"`
+	RefreshedAt         string                `json:"refreshedAt"`
 }
 
 // ServeDashboard handles GET /api/v1/admin/dashboard.
@@ -215,6 +219,13 @@ func (h *AdminOps) addClusterToDashboard(ctx context.Context, dash *dashboardDTO
 	for _, vm := range idx.ByVMID {
 		dash.VMCount++
 		countVMStatus(&dash.VMStatusCounts, vm.Status)
+
+		if slices.Contains(vm.Tags, catalog.ProtectedTagName) {
+			dash.PVMSSVMCount++
+			countVMStatus(&dash.PVMSSVMStatusCounts, vm.Status)
+		} else {
+			dash.OtherVMCount++
+		}
 	}
 
 	for _, s := range clusterStorages(label, idx) {
