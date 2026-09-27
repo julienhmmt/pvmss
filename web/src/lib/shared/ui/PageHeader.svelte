@@ -54,7 +54,7 @@
 				</a>
 			{/if}
 			{#if eyebrow}
-				<p class="mb-1 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground-subtle">
+				<p class="mb-1 text-2xs font-semibold uppercase tracking-[0.08em] text-muted-foreground-subtle">
 					{eyebrow}
 				</p>
 			{/if}

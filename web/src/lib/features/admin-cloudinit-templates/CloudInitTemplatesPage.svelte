@@ -142,9 +142,9 @@
 										total: template.publication.nodes.length
 									})}
 								</span>
-								<span class="block font-mono text-[11px] text-muted-foreground">{template.publication.filename}</span>
+								<span class="block font-mono text-2xs text-muted-foreground">{template.publication.filename}</span>
 								{#each template.publication.nodes.filter((n) => !n.ok) as failed (failed.node)}
-									<span class="block text-[11px] text-warning" title={failed.error}>{failed.node}: {failed.error}</span>
+									<span class="block text-2xs text-warning" title={failed.error}>{failed.node}: {failed.error}</span>
 								{/each}
 							{/if}
 						</td>

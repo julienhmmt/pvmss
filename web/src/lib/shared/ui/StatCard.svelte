@@ -41,7 +41,7 @@
 {#snippet body()}
 	<div class="flex items-start justify-between gap-3">
 		<div class="min-w-0">
-			<p class="text-[0.6875rem] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+			<p class="text-2xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">
 				{label}
 			</p>
 			<p class="mt-1.5 font-mono text-3xl font-semibold leading-none tracking-tight tabular-nums">

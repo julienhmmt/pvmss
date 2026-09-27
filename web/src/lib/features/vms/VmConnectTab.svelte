@@ -53,7 +53,7 @@
 	{@const entity = store.entity}
 	<div class="grid gap-5 min-[900px]:grid-cols-[minmax(0,1fr)_260px]">
 		<section class="rounded-xl border border-border bg-card p-6 shadow-card" aria-labelledby="connect-ssh-title" data-testid="vm-connect-ssh">
-			<p class="text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground-subtle">{m['vms.detail.connect.eyebrow']()}</p>
+			<p class="text-2xs font-semibold uppercase tracking-[0.08em] text-muted-foreground-subtle">{m['vms.detail.connect.eyebrow']()}</p>
 			{#if connectable && address}
 				<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold">{m['vms.detail.connect.title']()}</h2>
 				<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.body']()}</p>
@@ -123,7 +123,7 @@
 			<li class="flex flex-col gap-0.5 rounded-xl border border-border bg-card px-4 py-3" data-testid="vm-stat-{resource.key}">
 				<span class="text-xs text-muted-foreground">{resource.label}</span>
 				<span class="font-mono text-lg font-semibold tabular-nums">{resource.value}</span>
-				<span class="text-[0.6875rem] text-muted-foreground-subtle">{m['vms.detail.resource.caption']()}</span>
+				<span class="text-2xs text-muted-foreground-subtle">{m['vms.detail.resource.caption']()}</span>
 			</li>
 		{/each}
 	</ul>
