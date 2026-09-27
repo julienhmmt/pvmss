@@ -1,15 +1,34 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from 'svelte';
+import { goto } from '$app/navigation';
 import DashboardPage from './DashboardPage.svelte';
 import { getDashboardContext } from './dashboard.svelte';
 
+vi.mock('$app/navigation', () => ({ goto: vi.fn() }));
+vi.mock('$app/paths', () => ({
+	resolve: (path: string, params?: Record<string, string>) =>
+		Object.entries(params ?? {}).reduce((resolved, [key, value]) => resolved.replace(`[${key}]`, encodeURIComponent(value)), path)
+}));
 vi.mock('./dashboard.svelte', () => ({ getDashboardContext: vi.fn() }));
 
 const store = {
 	summary: {
 		alerts: [],
-		nodes: [],
-		nodeCount: 0,
+		nodes: [
+			{
+				clusterKey: 'default',
+				cluster: 'Default cluster',
+				name: 'miniquarium',
+				status: 'online',
+				vmCount: 2,
+				vmRunningCount: 1,
+				cpuCores: 8,
+				cpuUsage: 0.25,
+				memoryTotalBytes: 8_000_000_000,
+				memoryUsedBytes: 2_000_000_000
+			}
+		],
+		nodeCount: 1,
 		vmCount: 10,
 		vmStatusCounts: { running: 4, paused: 1, stopped: 5, other: 0 },
 		pvmssVMCount: 3,
@@ -44,5 +63,13 @@ describe('DashboardPage VM summary', () => {
 		expect(document.querySelector('[data-testid="dashboard-vm-status-stopped"]')?.textContent).toContain('2');
 		expect(otherVMs?.textContent).toContain('7');
 		expect(otherVMs?.textContent).toMatch(/pvmss/i);
+	});
+
+	it('opens the selected node in its cluster-scoped admin detail page', () => {
+		mount(DashboardPage, { target: document.body });
+
+		document.querySelector<HTMLButtonElement>('[data-testid="dashboard-node-card"]')?.click();
+
+		expect(goto).toHaveBeenCalledWith('/admin/nodes/default/miniquarium');
 	});
 });

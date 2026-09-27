@@ -31,6 +31,45 @@ func writeJSONFixture(t *testing.T, w http.ResponseWriter, body string) {
 	}
 }
 
+//nolint:dupl,gocyclo,wsl_v5 // one fake server covers the live node-read contract
+//nolint:dupl,gocyclo,wsl_v5 // covers all four live node API response shapes
+func TestProxmox_NodeDetailReads(t *testing.T) {
+	t.Parallel()
+	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/nodes/pve1/status", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":{"cpu":0.18,"cpuinfo":{"cores":8,"cpus":16,"model":"Xeon Gold","sockets":2},"loadavg":["1.00","0.50","0.25"],"memory":{"total":8589934592,"used":4294967296,"free":4294967296},"swap":{"total":1073741824,"used":268435456,"free":805306368},"rootfs":{"total":20000000000,"used":10000000000,"free":10000000000,"avail":9000000000},"uptime":86400,"pveversion":"8.4.0","kversion":"Linux 6.8.12"}}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve1/network", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"iface":"vmbr0","type":"bridge","active":1,"address":"10.1.0.2","cidr":"10.1.0.2/24","gateway":"10.1.0.1","bridge_ports":"eno1","bridge_vlan_aware":true,"mtu":1500}]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve1/hardware/pci", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"id":"0000:03:00.0","class":"0x020000","vendor":"0x8086","vendor_name":"Intel Corporation","device":"0x1572","device_name":"X550","iommugroup":14,"mdev":false}]}`)
+		})
+		mux.HandleFunc("GET /api2/json/nodes/pve1/lxc", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":[{"vmid":210,"name":"dns","status":"running","maxcpu":2,"cpu":0.01,"maxmem":2147483648,"mem":536870912,"maxdisk":8589934592,"disk":2147483648}]}`)
+		})
+	})
+	client := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+	health, err := client.ReadNodeHealth(context.Background(), "pve1")
+	if err != nil || health.CPUModel != "Xeon Gold" || health.UptimeSeconds != 86400 || health.ProxmoxVersion != "8.4.0" {
+		t.Fatalf("ReadNodeHealth = %+v, %v", health, err)
+	}
+	network, err := client.ReadNodeNetwork(context.Background(), "pve1")
+	if err != nil || len(network) != 1 || network[0].BridgePorts != "eno1" || network[0].CIDR != "10.1.0.2/24" {
+		t.Fatalf("ReadNodeNetwork = %+v, %v", network, err)
+	}
+	devices, err := client.ReadNodePCI(context.Background(), "pve1")
+	if err != nil || len(devices) != 1 || devices[0].DeviceName != "X550" || devices[0].IOMMUGroup != 14 {
+		t.Fatalf("ReadNodePCI = %+v, %v", devices, err)
+	}
+	containers, err := client.ListNodeContainers(context.Background(), "pve1")
+	if err != nil || len(containers) != 1 || containers[0].Name != "dns" || containers[0].MemoryUsed != 536870912 {
+		t.Fatalf("ListNodeContainers = %+v, %v", containers, err)
+	}
+}
+
+//nolint:dupl // snapshot retains its separate aggregate-discovery contract
 func TestProxmox_Snapshot(t *testing.T) {
 	t.Parallel()
 

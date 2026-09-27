@@ -21,7 +21,10 @@ type dashboardDTO struct {
 	RefreshedAt    string            `json:"refreshedAt"`
 }
 
+const nodeSummaryTestCluster = "node-summary"
+
 type nodeSummaryDTO struct {
+	ClusterKey       string  `json:"clusterKey"`
 	Name             string  `json:"name"`
 	Status           string  `json:"status"`
 	VMCount          int     `json:"vmCount"`
@@ -119,6 +122,36 @@ func TestAdminDashboard_AsAdmin_ReturnsPvmssNodesAndVmCounts(t *testing.T) {
 
 	if dash.Version == "" {
 		t.Error("version is empty")
+	}
+}
+
+//nolint:wsl_v5 // focused response assertions stay together
+func TestAdminDashboard_NodeSummariesIncludeClusterKey(t *testing.T) {
+	t.Parallel()
+	authHandler := newAuthHandler(t)
+	st := auditAdminStore(t)
+	fake := cluster.NewFake(nodeSummaryTestCluster)
+	snapshot, _ := fake.Snapshot(context.Background())
+	index := inventory.BuildIndexForCluster(nodeSummaryTestCluster, snapshot)
+	projection := inventory.NewProjectionFromIndex(&index)
+	ops := httpapi.NewAdminOps(authHandler, st, fake, projection, "0.4.0-test", slog.New(slog.DiscardHandler))
+	ops.SetInventorySource(inventory.NewRegistryFromIndexes(map[string]*inventory.Index{nodeSummaryTestCluster: &index}), 0)
+	cookie := adminCookie(t, authHandler)
+	rec := opsGet(t, ops, authHandler, cookie, "/api/v1/admin/dashboard")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var dash dashboardDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &dash); err != nil {
+		t.Fatalf("decode dashboard: %v", err)
+	}
+	if len(dash.Nodes) == 0 {
+		t.Fatal("dashboard has no node summaries")
+	}
+	for _, node := range dash.Nodes {
+		if node.ClusterKey != nodeSummaryTestCluster {
+			t.Errorf("node %q clusterKey = %q, want %s", node.Name, node.ClusterKey, nodeSummaryTestCluster)
+		}
 	}
 }
 

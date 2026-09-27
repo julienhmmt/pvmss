@@ -4,6 +4,7 @@ import { m } from '$lib/paraglide/messages.js';
 import type { DashboardAlert } from './dashboard-alerts';
 
 export interface NodeSummary {
+	clusterKey: string;
 	cluster: string;
 	name: string;
 	status: string;
