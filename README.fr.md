@@ -166,9 +166,9 @@ done
 ssh -i pvmss_ed25519 -o IdentitiesOnly=yes pvmss@192.168.1.11 check
 ```
 
-5. Fournissez la clé privée à PVMSS : montée en lecture seule (lisible par
+1. Fournissez la clé privée à PVMSS : montée en lecture seule (lisible par
    l'uid 65532) et `PVMSS_SSH_KEY_FILE` (Helm : `cloudInit.sshKeySecret`).
-6. **Infrastructure › Clusters › Modifier** : stockage de snippets, utilisateur SSH
+2. **Infrastructure › Clusters › Modifier** : stockage de snippets, utilisateur SSH
    `pvmss`, port et clés d'hôte épinglées (coller `for n in $NODES; do
    ssh-keyscan -t ed25519 $n; done`, ou enregistrer d'abord sans utilisateur
    SSH, rouvrir et **Scanner les clés d'hôte**), enregistrer. Le badge passe à
@@ -187,18 +187,18 @@ Utilisez **soit** un `.env` (via `env_file`) **soit** des variables inline, pas 
 
 | Variable                                      | Description                                                                | Requis                | Valeur par défaut  |
 | --------------------------------------------- | -------------------------------------------------------------------------- | --------------------- | ------------------ |
-| `PVMSS_PORT`                                  | Port TCP d'écoute du serveur HTTP (1–65535)                                | ✅                    | - |
-| `PVMSS_DB_PATH`                               | Chemin vers le fichier SQLite (volume persistant requis)                   | ✅                    | - |
-| `SESSION_SECRET`                              | Secret de 32+ octets pour sessions/cookies                                 | ✅                    | - |
-| `PVMSS_CLUSTER_SOURCE`                        | `proxmox` pour un vrai cluster, `fake` pour la démo (aucun défaut, exprès) | ✅                    | - |
-| `LOG_LEVEL`                                   | `debug`, `info`, `warn`, `error` - minuscules uniquement                   | ✅                    | - |
-| `LOG_FORMAT`                                  | `console` (lisible humainement) ou `json` (pour SIEM/collecte)             | ✅                    | - |
-| `LOG_OUTPUT`                                  | `stdout`, `stderr`, ou un chemin de fichier accessible en écriture         | ✅                    | - |
-| `PROXMOX_URL`                                 | URL complète de l'API (`https://host:8006/api2/json`)                      | si source = `proxmox` | - |
-| `PROXMOX_API_TOKEN_NAME`                      | Nom du token Proxmox (`user@pve!token`)                                    | si source = `proxmox` | - |
-| `PROXMOX_API_TOKEN_VALUE`                     | Valeur du token ci-dessus                                                  | si source = `proxmox` | - |
-| `ADMIN_PASSWORD_HASH`                         | Hash bcrypt de l'admin local ; désactivé si vide                           | ❌                    | - |
-| `PVMSS_SSH_KEY_FILE`                          | Clé privée SSH qui publie les modèles cloud-init sur les nœuds (utilisateur, port, clés d'hôte : Infrastructure › Clusters) | ❌                    | - |
+| `PVMSS_PORT`                                  | Port TCP d'écoute du serveur HTTP (1–65535)                                | ✅                    | -                  |
+| `PVMSS_DB_PATH`                               | Chemin vers le fichier SQLite (volume persistant requis)                   | ✅                    | -                  |
+| `SESSION_SECRET`                              | Secret de 32+ octets pour sessions/cookies                                 | ✅                    | -                  |
+| `PVMSS_CLUSTER_SOURCE`                        | `proxmox` pour un vrai cluster, `fake` pour la démo (aucun défaut, exprès) | ✅                    | -                  |
+| `LOG_LEVEL`                                   | `debug`, `info`, `warn`, `error` - minuscules uniquement                   | ✅                    | -                  |
+| `LOG_FORMAT`                                  | `console` (lisible humainment) ou `json` (pour SIEM/collecte)              | ✅                    | -                  |
+| `LOG_OUTPUT`                                  | `stdout`, `stderr`, ou un chemin de fichier accessible en écriture         | ✅                    | -                  |
+| `PROXMOX_URL`                                 | URL complète de l'API (`https://host:8006/api2/json`)                      | si source = `proxmox` | -                  |
+| `PROXMOX_API_TOKEN_NAME`                      | Nom du token Proxmox (`user@pve!token`)                                    | si source = `proxmox` | -                  |
+| `PROXMOX_API_TOKEN_VALUE`                     | Valeur du token ci-dessus                                                  | si source = `proxmox` | -                  |
+| `ADMIN_PASSWORD_HASH`                         | Hash bcrypt de l'admin local ; désactivé si vide                           | ❌                    | -                  |
+| `PVMSS_SSH_KEY_FILE`                          | Clé privée SSH qui publie les modèles cloud-init sur les nœuds (utilisateur, port, clés d'hôte : Infrastructure › Clusters) | ❌                    | -                  |
 | `PVMSS_HOST`                                  | Adresse d'écoute (`0.0.0.0` pour toutes les interfaces)                    | ❌                    | `127.0.0.1`        |
 | `PVMSS_WEB_DIR`                               | Répertoire contenant le SPA compilé                                        | ❌                    | relatif au binaire |
 | `PVMSS_COOKIE_SECURE`                         | Drapeau `Secure` sur les cookies d'auth (garder `true` en production)      | ❌                    | `true`             |

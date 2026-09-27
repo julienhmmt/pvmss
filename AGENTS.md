@@ -18,17 +18,17 @@ script, or CI job still pointing at `backend/` or `frontend/` is stale - see
 
 ## Repository Layout
 
-| Path              | Role                                                            |
-| ----------------- | --------------------------------------------------------------- |
-| `server/`         | Go REST API - module `pvmss/server`, own `go.mod`               |
-| `web/`            | SvelteKit SPA - app `pvmss-web`, own `package.json` (bun)       |
-| `helm/`           | Helm chart                                                      |
-| `docs/`           | Documentation (`docs/plans/` holds task plans)                  |
-| `specs/`          | Feature specifications (speckit); gitignored but real work      |
-| `sonar-projects/` | Per-project SonarScanner `.properties` files                    |
+| Path              | Role                                                                  |
+| ----------------- | --------------------------------------------------------------------- |
+| `server/`         | Go REST API - module `pvmss/server`, own `go.mod`                     |
+| `web/`            | SvelteKit SPA - app `pvmss-web`, own `package.json` (bun)             |
+| `helm/`           | Helm chart                                                            |
+| `docs/`           | Documentation (`docs/plans/` holds task plans)                        |
+| `specs/`          | Feature specifications (speckit); gitignored but real work            |
+| `sonar-projects/` | Per-project SonarScanner `.properties` files                          |
 | `tools/`          | Helper scripts (`pq`, sonar bootstrap/coverage/scan/query, superlint) |
-| `.devin/`         | Project rules + skills (see "Project Conventions")              |
-| `.agents/`        | Agent-local working files - `skills/`, `memory/` (gitignored)   |
+| `.devin/`         | Project rules + skills (see "Project Conventions")                    |
+| `.agents/`        | Agent-local working files - `skills/`, `memory/` (gitignored)         |
 
 `server/` and `web/` are separate build units with separate tooling. The root
 `Makefile` exposes them via the `server-*` / `web-*` targets.
@@ -36,14 +36,14 @@ script, or CI job still pointing at `backend/` or `frontend/` is stale - see
 Root documents carry the product context. Read the relevant one before
 building a user-facing feature:
 
-| File           | Answers                                                       |
-| -------------- | ------------------------------------------------------------- |
-| `PRODUCT.md`   | Who the users are, why the product exists, design principles  |
-| `docs/FEATURES.md` | Route-by-route inventory of every shipped feature and its status |
-| `WORKFLOWS.md` | What a user does, end to end, per workflow |
-| `DESIGN.md`    | Design tokens - colors, typography, spacing |
-| `ROADMAP.md`   | History from v0.1 to the current rewrite, and what's next |
-| `TECH_DEBT.md` | What's lingering or half-finished, and what deciding it takes |
+| File               | Answers                                                           |
+| ------------------ | ----------------------------------------------------------------- |
+| `PRODUCT.md`       | Who the users are, why the product exists, design principles      |
+| `docs/FEATURES.md` | Route-by-route inventory of every shipped feature and its status  |
+| `WORKFLOWS.md`     | What a user does, end to end, per workflow                        |
+| `DESIGN.md`        | Design tokens - colors, typography, spacing                       |
+| `ROADMAP.md`       | History from v0.1 to the current rewrite, and what's next         |
+| `TECH_DEBT.md`     | What's lingering or half-finished, and what deciding it takes     |
 
 `WORKFLOWS.md` opens with a seven-field template (audience, entry, route, API,
 steps, states, safety nets). Adding a user-facing workflow means adding its
@@ -108,7 +108,7 @@ declarations you actually wanted cost ~131. Same 0.2 s, 230x the price. Reading
 a whole package to find one function costs ~138 000 tokens.
 
 Use `tools/pq`. It wraps ripgrep with declaration-aware patterns and
-excludes `node_modules`, build output and vendor trees. It indexes nothing - 
+excludes `node_modules`, build output and vendor trees. It indexes nothing -
 every answer is computed fresh in ~200 ms, so it is never stale.
 
 | Question | Command | Typical cost |
@@ -168,7 +168,7 @@ Packages under `server/internal/`:
 | `cluster/`   | Cluster clients (`proxmox` and `fake` sources), multi-cluster |
 | `store/`     | SQLite persistence (modernc.org/sqlite)                       |
 | `inventory/` | Background inventory refresh + cache                          |
-| `catalog/`   | Approved nodes/ISOs/storages/bridges, cloud-init templates     |
+| `catalog/`   | Approved nodes/ISOs/storages/bridges, cloud-init templates    |
 | `policy/`    | Limits, quotas, authorization policy                          |
 | `pools/`     | Proxmox pool handling                                         |
 | `recovery/`  | Recovery runs and fixtures                                    |
@@ -276,7 +276,7 @@ mode is now `PVMSS_CLUSTER_SOURCE=fake`.
 
 ## Testing Notes
 
-- `make server-test` runs the whole Go suite with `-race`, no Proxmox needed - 
+- `make server-test` runs the whole Go suite with `-race`, no Proxmox needed -
   tests use the `fake` cluster source.
 - `make web-test` runs vitest; `cd web && bun run test:coverage` for coverage.
 - Playwright e2e lives in `web/e2e/`; run `bun run test:e2e:install` once, then
