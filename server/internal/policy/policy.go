@@ -72,7 +72,9 @@ type Quota struct {
 
 // Capacity is a node's configured aggregate capacité, live usage, and physical
 // CPU/RAM/disk facts. UsedDiskGB is the provisioned disk total from the
-// inventory projection, parallel to UsedRAMGB.
+// inventory projection, parallel to UsedRAMGB. The Node* fields carry the
+// live, all-VMs load of the node itself: Used* counts only pvmss-tagged VMs,
+// so an uncapped but heavily loaded node must not read as empty.
 type Capacity struct {
 	Node          string
 	MaxVMs        int
@@ -85,6 +87,13 @@ type Capacity struct {
 	UsedDiskGB    int
 	PhysicalVCPUs int
 	PhysicalRAMGB int
+
+	Status         cluster.NodeStatus
+	CPUUsage       float64
+	MemoryUsedGB   int
+	StorageUsedGB  int
+	StorageTotalGB int
+	TotalVMs       int
 }
 
 // CapacityDelta is the incremental VM footprint a capacity check is asked to
@@ -180,6 +189,8 @@ func (service *Policy) NodeCapacity(ctx context.Context, clusterName, node strin
 		usedDiskBytes int64
 	)
 
+	capacity.TotalVMs = len(index.ByNode[node])
+
 	for _, machine := range index.ByNode[node] {
 		if !slices.Contains(machine.Tags, "pvmss") {
 			continue
@@ -201,6 +212,11 @@ func (service *Policy) NodeCapacity(ctx context.Context, clusterName, node strin
 
 		capacity.PhysicalVCPUs = machine.CPUCores
 		capacity.PhysicalRAMGB = int(machine.MemoryTotal / bytesPerGB)
+		capacity.Status = machine.Status
+		capacity.CPUUsage = machine.CPUUsage
+		capacity.MemoryUsedGB = int(machine.MemoryUsed / bytesPerGB)
+		capacity.StorageUsedGB = int(machine.StorageUsed / bytesPerGB)
+		capacity.StorageTotalGB = int(machine.StorageTotal / bytesPerGB)
 
 		break
 	}
