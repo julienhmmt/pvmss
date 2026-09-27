@@ -37,6 +37,17 @@ test.describe('T11 admin catalog', () => {
 		await forceEnglish(page);
 	});
 
+	test('opens node details from the node list', async ({ page }) => {
+		await signInAdmin(page.request);
+		await page.goto('/admin/nodes');
+		const nodeLink = exactRow(page, 'pve-node-01').getByRole('link', { name: 'pve-node-01' });
+		await expect(nodeLink).toHaveAttribute('href', '/admin/nodes/default/pve-node-01');
+		await nodeLink.click();
+		await expect(page).toHaveURL(/\/admin\/nodes\/default\/pve-node-01$/);
+		await expect(page.getByTestId('admin-node-details')).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'PCI hardware' })).toBeVisible();
+	});
+
 	test('discovers and approves a node, storage, bridge, and ISO (US1, SC-001/002/007)', async ({ page }) => {
 		await signInAdmin(page.request);
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
 	import type { AdminNode, NodeSortColumn } from './admin-catalog.svelte';
 	import { formatBytes } from './format';
 	import Switch from '$lib/shared/ui/Switch.svelte';
@@ -10,6 +11,7 @@
 	import { m } from '$lib/paraglide/messages.js';
 
 	interface Props {
+		clusterKey: string;
 		nodes: AdminNode[];
 		toggling: string | null;
 		sortBy: NodeSortColumn;
@@ -19,7 +21,7 @@
 		onSort: (column: NodeSortColumn) => void;
 	}
 
-	let { nodes, toggling, sortBy, sortDir, onToggle, onRemove, onSort }: Props = $props();
+	let { clusterKey, nodes, toggling, sortBy, sortDir, onToggle, onRemove, onSort }: Props = $props();
 
 	type Tone = 'success' | 'destructive' | 'warning' | 'info' | 'muted';
 
@@ -120,7 +122,18 @@
 			{@const memPct = memoryUsagePercent(node.memoryUsed, node.memoryTotal)}
 			<tr class="group transition-colors {node.missing ? 'opacity-60' : 'hover:bg-muted/40'}" data-testid="node-row" data-node-name={node.name}>
 				<td class="font-mono font-medium" data-label={m['common.name']()}>
-					{node.name}{#if node.missing}
+					{#if node.missing}
+						{node.name}
+					{:else}
+						<a
+							href={resolve('/admin/nodes/[cluster]/[node]', { cluster: clusterKey, node: node.name })}
+							class="pv-focus rounded-sm text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary"
+							data-testid="node-details-link"
+						>
+							{node.name}
+						</a>
+					{/if}
+					{#if node.missing}
 						<span
 							class="ml-2 inline-flex items-center rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive"
 							data-testid="node-missing-badge"

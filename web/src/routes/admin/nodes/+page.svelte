@@ -151,6 +151,7 @@
 				<NodeTableToolbar {store} />
 			{/snippet}
 			<NodesTable
+				clusterKey={store.cluster}
 				nodes={store.filteredNodes}
 				toggling={store.toggling}
 				sortBy={store.nodeSortBy}
