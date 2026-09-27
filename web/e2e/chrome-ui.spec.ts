@@ -17,7 +17,12 @@ test.describe('T19 chrome UI', () => {
 		test('Layer B font swap: Archivo is applied and no Google Fonts request is made', async ({ page }) => {
 			const googleFontRequests: string[] = [];
 			page.on('request', (req) => {
-				if (req.url().includes('fonts.googleapis.com')) googleFontRequests.push(req.url());
+				try {
+					const requestUrl = new URL(req.url());
+					if (requestUrl.hostname === 'fonts.googleapis.com') googleFontRequests.push(req.url());
+				} catch {
+					// Ignore malformed URLs.
+				}
 			});
 			await page.goto('/');
 			// The body font family must resolve to the self-hosted Archivo variable.
