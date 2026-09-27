@@ -41,7 +41,7 @@
 		void goto(`${resolve('/vms')}?node=${encodeURIComponent(nodeName)}`);
 	}
 
-	function goToCreatePool(): void {
+	function goToCreateUser(): void {
 		void goto(resolve('/admin/pools'));
 	}
 
@@ -64,8 +64,8 @@
 	{#snippet actions()}
 		<div class="flex flex-col items-end gap-1">
 			<div class="flex items-center gap-2">
-				<Button variant="secondary" size="sm" onclick={goToCreatePool} data-testid="dashboard-create-pool">
-					{m['admin.dashboard.createPool']()}
+				<Button variant="secondary" size="sm" onclick={goToCreateUser} data-testid="dashboard-create-user">
+					{m['admin.dashboard.createUser']()}
 				</Button>
 				<Button variant="secondary" size="sm" loading={store.loading} onclick={() => void store.load()}>
 					{m['common.refresh']()}
@@ -142,7 +142,7 @@
 		{#if summary.nodes.length === 0}
 			<EmptyState title={m['admin.dashboard.emptyTitle']()} description={m['admin.dashboard.emptyBody']()} dataTestid="dashboard-empty">
 				{#snippet actions()}
-					<Button variant="primary" size="md" onclick={goToCreatePool}>{m['admin.dashboard.createPool']()}</Button>
+					<Button variant="primary" size="md" onclick={goToCreateUser}>{m['admin.dashboard.createUser']()}</Button>
 				{/snippet}
 			</EmptyState>
 		{:else}
