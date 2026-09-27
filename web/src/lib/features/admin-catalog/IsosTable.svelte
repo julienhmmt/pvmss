@@ -42,7 +42,6 @@
 					{sortDir}
 					onSort={handleSort}
 				/>
-				<td><span class="sr-only">{m['admin.catalog.remove']()}</span></td>
 			</tr>
 		</thead>
 		<tbody>
@@ -63,7 +62,17 @@
 					<td data-label={m['admin.catalog.size']()}>{formatBytes(iso.sizeBytes)}</td>
 					<td data-label={m['admin.catalog.statusColumn']()}>
 						{#if iso.missing}
-							<span class="text-xs text-muted-foreground">{m['admin.catalog.missingBadge']()}</span>
+							<div class="flex items-center gap-2">
+								<span class="text-xs text-muted-foreground">{m['admin.catalog.missingBadge']()}</span>
+								<Button
+									variant="ghost"
+									size="sm"
+									onclick={() => onRemove(iso.node, iso.storage, iso.file)}
+									data-testid="iso-remove"
+								>
+									{m['admin.catalog.remove']()}
+								</Button>
+							</div>
 						{:else}
 							<span
 								class="inline-flex items-center gap-2"
@@ -86,22 +95,10 @@
 							</span>
 						{/if}
 					</td>
-					<td data-label={m['admin.catalog.remove']()}>
-						{#if iso.missing}
-							<Button
-								variant="ghost"
-								size="sm"
-								onclick={() => onRemove(iso.node, iso.storage, iso.file)}
-								data-testid="iso-remove"
-							>
-								{m['admin.catalog.remove']()}
-							</Button>
-						{/if}
-					</td>
 				</tr>
 			{:else}
 				<tr>
-					<td colspan={6} class="p-0">
+					<td colspan={5} class="p-0">
 						<EmptyState title={m['admin.catalog.noIsos']()} />
 					</td>
 				</tr>
