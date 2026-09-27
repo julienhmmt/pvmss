@@ -105,7 +105,7 @@
   --elev-overlay:
     0 8px 24px oklch(28% 0.01 56deg / 0.12),
     0 2px 6px oklch(28% 0.01 56deg / 0.08);
-  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
 }
 
 .dark {
@@ -166,9 +166,9 @@
   --info-soft: oklch(28% 0.06 245deg);
   --info-soft-foreground: oklch(85% 0.12 245deg);
   --info-soft-border: oklch(40% 0.1 245deg);
-  --border: oklch(100% 0 0deg / 8%);
-  --border-subtle: oklch(100% 0 0deg / 6%);
-  --input: oklch(100% 0 0deg / 12%);
+  --border: oklch(100% 0 0deg / 0.08);
+  --border-subtle: oklch(100% 0 0deg / 0.06);
+  --input: oklch(100% 0 0deg / 0.12);
   --ring: oklch(72% 0.17 44deg);
   --chart-1: oklch(87.9% 0.169 91.605deg);
   --chart-2: oklch(76.9% 0.188 70.08deg);
@@ -181,7 +181,7 @@
   --sidebar-primary-foreground: oklch(98.5% 0.012 80deg);
   --sidebar-accent: oklch(26% 0.03 44deg);
   --sidebar-accent-foreground: oklch(82% 0.13 44deg);
-  --sidebar-border: oklch(100% 0 0deg / 10%);
+  --sidebar-border: oklch(100% 0 0deg / 0.1);
   --sidebar-ring: oklch(72% 0.17 44deg);
   --elev-rest:
     0 1px 2px oklch(0% 0 0deg / 0.2), 0 1px 3px oklch(0% 0 0deg / 0.28);
@@ -199,7 +199,7 @@
   /* Smallest step of the type scale: eyebrows, count chips, captions. */
   --text-2xs: 0.6875rem;
   --font-sans: "Archivo Variable", sans-serif;
-  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -358,7 +358,7 @@
 
   /* Inputs answer the pointer before it is clicked: the border darkens on
      hover so a form reads as a set of controls, not a set of outlines. */
-  .pv-input:hover:not(:disabled):not(:focus-visible) {
+  .pv-input:hover:not(:disabled, :focus-visible) {
     border-color: var(--muted-foreground-subtle);
   }
 
@@ -455,7 +455,7 @@
   text-align: left;
 }
 
-@media (max-width: 639px) {
+@media (width <= 639px) {
   .pv-responsive-table thead {
     display: none;
   }
@@ -652,7 +652,7 @@
 
 /* Below 640px `.pv-responsive-table` turns rows into stacked cards; hand the
    layout back to it so the desktop cell metrics do not leak into the cards. */
-@media (max-width: 639px) {
+@media (width <= 639px) {
   .pv-responsive-table.pv-table thead th {
     position: static;
   }
@@ -683,7 +683,7 @@
    band - below 640px .pv-responsive-table has already turned every field
    into a label/value row, where this does not apply, and at >=900px the
    desktop column set is restored. */
-@media (min-width: 640px) and (max-width: 899px) {
+@media (640px <= width <= 899px) {
   .pv-table-tablet-hide {
     display: none;
   }

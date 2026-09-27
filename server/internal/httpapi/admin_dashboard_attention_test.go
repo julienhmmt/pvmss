@@ -15,9 +15,10 @@ import (
 )
 
 const (
-	gib            = int64(1) << 30
-	dashCluster    = "east"
-	dashSharedName = "ceph"
+	gib             = int64(1) << 30
+	dashCluster     = "east"
+	dashWestCluster = "west"
+	dashSharedName  = "ceph"
 )
 
 type dashboardAlertDTO struct {
@@ -91,7 +92,7 @@ func getAttentionDashboard(t *testing.T) attentionDashboardDTO {
 
 	ops := httpapi.NewAdminOps(authHandler, st, cluster.Fake{}, inventory.NewProjection(), "test", slog.New(slog.DiscardHandler))
 	// west never completed a refresh: it must surface as unreachable.
-	ops.SetInventorySource(inventory.NewRegistryFromIndexes(map[string]*inventory.Index{dashCluster: attentionIndex(), "west": nil}), time.Minute)
+	ops.SetInventorySource(inventory.NewRegistryFromIndexes(map[string]*inventory.Index{dashCluster: attentionIndex(), dashWestCluster: nil}), time.Minute)
 
 	rec := opsGet(t, ops, authHandler, adminCookie(t, authHandler), "/api/v1/admin/dashboard")
 	if rec.Code != http.StatusOK {
@@ -106,19 +107,26 @@ func getAttentionDashboard(t *testing.T) attentionDashboardDTO {
 	return dash
 }
 
+// wantAttentionAlerts is the alert list the attentionIndex fixture produces,
+// in dashboard order: critical first, then by kind, cluster and subject.
+// clusterLabel is the admin-facing cluster label - the registry key when the
+// cluster has no store row, its DisplayName when it has one.
+func wantAttentionAlerts(clusterLabel string) []dashboardAlertDTO {
+	return []dashboardAlertDTO{
+		{Kind: "cluster_unreachable", Severity: "critical", Cluster: dashWestCluster, ClusterKey: dashWestCluster},
+		{Kind: "node_offline", Severity: "critical", Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "n2"},
+		{Kind: "storage_full", Severity: "critical", Cluster: clusterLabel, ClusterKey: dashCluster, Subject: dashSharedName, Percent: 96},
+		{Kind: "node_cpu", Severity: "warning", Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "n1", Percent: 95},
+		{Kind: "pool_at_quota", Severity: "warning", Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "p1", Percent: 100},
+		{Kind: "storage_full", Severity: "warning", Cluster: clusterLabel, ClusterKey: dashCluster, Subject: testStorageLocalLVM, Percent: 86},
+	}
+}
+
 //nolint:paralleltest // serial: shared fake dataset
 func TestAdminDashboard_AlertsCoverEveryRule(t *testing.T) {
 	dash := getAttentionDashboard(t)
 
-	// Critical first, then by kind, cluster and subject.
-	want := []dashboardAlertDTO{
-		{Kind: "cluster_unreachable", Severity: "critical", Cluster: "west", ClusterKey: "west"},
-		{Kind: "node_offline", Severity: "critical", Cluster: dashCluster, ClusterKey: dashCluster, Subject: "n2"},
-		{Kind: "storage_full", Severity: "critical", Cluster: dashCluster, ClusterKey: dashCluster, Subject: dashSharedName, Percent: 96},
-		{Kind: "node_cpu", Severity: "warning", Cluster: dashCluster, ClusterKey: dashCluster, Subject: "n1", Percent: 95},
-		{Kind: "pool_at_quota", Severity: "warning", Cluster: dashCluster, ClusterKey: dashCluster, Subject: "p1", Percent: 100},
-		{Kind: "storage_full", Severity: "warning", Cluster: dashCluster, ClusterKey: dashCluster, Subject: testStorageLocalLVM, Percent: 86},
-	}
+	want := wantAttentionAlerts(dashCluster)
 	if !slices.Equal(dash.Alerts, want) {
 		t.Errorf("alerts =\n%+v\nwant\n%+v", dash.Alerts, want)
 	}
