@@ -1375,7 +1375,7 @@
   "chrome.header.docs": "Documentation",
   "chrome.header.menu": "Menu",
   "chrome.footer.github": "GitHub",
-  "chrome.footer.website": "Site web",
+  "chrome.footer.externalLink": "(ouvre GitHub dans un nouvel onglet)",
   "home.empty.title": "Aucune machine pour l'instant",
   "home.empty.description": "Créez votre première machine pour commencer.",
   "home.empty.create": "Nouvelle machine",
