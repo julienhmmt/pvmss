@@ -447,7 +447,7 @@
 
 /* Layer B - responsive table pattern. On viewports < 640px each row
    collapses into a stacked card of label/value pairs driven by the
-   `data-label` attribute on each <td>. On >= 640px the element is a
+   `data-label` attribute on each data cell. On >= 640px the element is a
    normal table. The <thead> is hidden on mobile (labels move inline). */
 .pv-responsive-table {
   width: 100%;
@@ -463,7 +463,8 @@
   .pv-responsive-table,
   .pv-responsive-table tbody,
   .pv-responsive-table tr,
-  .pv-responsive-table td {
+  .pv-responsive-table td,
+  .pv-responsive-table th {
     display: block;
     width: 100%;
   }
@@ -481,7 +482,8 @@
     margin-bottom: 0;
   }
 
-  .pv-responsive-table td {
+  .pv-responsive-table td,
+  .pv-responsive-table th {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -491,7 +493,8 @@
     text-align: right;
   }
 
-  .pv-responsive-table td::before {
+  .pv-responsive-table td::before,
+  .pv-responsive-table th::before {
     content: attr(data-label);
     font-weight: 500;
     color: var(--muted-foreground);
@@ -599,13 +602,15 @@
   white-space: nowrap;
 }
 
-.pv-table tbody td {
+.pv-table tbody td,
+.pv-table tbody th {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--border-subtle);
   vertical-align: middle;
 }
 
-.pv-table tbody tr:last-child td {
+.pv-table tbody tr:last-child td,
+.pv-table tbody tr:last-child th {
   border-bottom: 0;
 }
 
@@ -619,12 +624,14 @@
   background: var(--muted);
 }
 
-.pv-table tbody tr td:first-child {
+.pv-table tbody tr td:first-child,
+.pv-table tbody tr th:first-child {
   box-shadow: inset 2px 0 0 transparent;
   transition: box-shadow 120ms ease;
 }
 
-.pv-table tbody tr:hover td:first-child {
+.pv-table tbody tr:hover td:first-child,
+.pv-table tbody tr:hover th:first-child {
   box-shadow: inset 2px 0 0 var(--primary);
 }
 
@@ -650,7 +657,8 @@
     position: static;
   }
 
-  .pv-responsive-table.pv-table tbody td {
+  .pv-responsive-table.pv-table tbody td,
+  .pv-responsive-table.pv-table tbody th {
     padding: 0.375rem 0;
     border-bottom: 0;
   }
@@ -660,7 +668,9 @@
   }
 
   .pv-responsive-table.pv-table tbody tr td:first-child,
-  .pv-responsive-table.pv-table tbody tr:hover td:first-child {
+  .pv-responsive-table.pv-table tbody tr th:first-child,
+  .pv-responsive-table.pv-table tbody tr:hover td:first-child,
+  .pv-responsive-table.pv-table tbody tr:hover th:first-child {
     box-shadow: none;
   }
 }
