@@ -21,11 +21,12 @@ const (
 )
 
 type dashboardAlertDTO struct {
-	Kind     string `json:"kind"`
-	Severity string `json:"severity"`
-	Cluster  string `json:"cluster"`
-	Subject  string `json:"subject"`
-	Percent  int    `json:"percent"`
+	Kind       string `json:"kind"`
+	Severity   string `json:"severity"`
+	Cluster    string `json:"cluster"`
+	ClusterKey string `json:"clusterKey"`
+	Subject    string `json:"subject"`
+	Percent    int    `json:"percent"`
 }
 
 type dashboardStorageDTO struct {
@@ -111,12 +112,12 @@ func TestAdminDashboard_AlertsCoverEveryRule(t *testing.T) {
 
 	// Critical first, then by kind, cluster and subject.
 	want := []dashboardAlertDTO{
-		{Kind: "cluster_unreachable", Severity: "critical", Cluster: "west"},
-		{Kind: "node_offline", Severity: "critical", Cluster: dashCluster, Subject: "n2"},
-		{Kind: "storage_full", Severity: "critical", Cluster: dashCluster, Subject: dashSharedName, Percent: 96},
-		{Kind: "node_cpu", Severity: "warning", Cluster: dashCluster, Subject: "n1", Percent: 95},
-		{Kind: "pool_at_quota", Severity: "warning", Cluster: dashCluster, Subject: "p1", Percent: 100},
-		{Kind: "storage_full", Severity: "warning", Cluster: dashCluster, Subject: testStorageLocalLVM, Percent: 86},
+		{Kind: "cluster_unreachable", Severity: "critical", Cluster: "west", ClusterKey: "west"},
+		{Kind: "node_offline", Severity: "critical", Cluster: dashCluster, ClusterKey: dashCluster, Subject: "n2"},
+		{Kind: "storage_full", Severity: "critical", Cluster: dashCluster, ClusterKey: dashCluster, Subject: dashSharedName, Percent: 96},
+		{Kind: "node_cpu", Severity: "warning", Cluster: dashCluster, ClusterKey: dashCluster, Subject: "n1", Percent: 95},
+		{Kind: "pool_at_quota", Severity: "warning", Cluster: dashCluster, ClusterKey: dashCluster, Subject: "p1", Percent: 100},
+		{Kind: "storage_full", Severity: "warning", Cluster: dashCluster, ClusterKey: dashCluster, Subject: testStorageLocalLVM, Percent: 86},
 	}
 	if !slices.Equal(dash.Alerts, want) {
 		t.Errorf("alerts =\n%+v\nwant\n%+v", dash.Alerts, want)

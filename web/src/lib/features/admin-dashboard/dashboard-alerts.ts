@@ -5,24 +5,40 @@ export interface DashboardAlert {
 	kind: 'cluster_unreachable' | 'node_offline' | 'node_cpu' | 'node_memory' | 'storage_full' | 'pool_at_quota';
 	severity: 'critical' | 'warning';
 	cluster: string;
+	clusterKey?: string;
 	subject?: string;
 	percent?: number;
 }
 
-type AdminPath = '/admin/clusters' | '/nodes' | '/admin/storages' | '/admin/policy';
+type AdminPath = '/admin/clusters' | '/admin/storages' | '/admin/policy';
 
-const HREF: Record<DashboardAlert['kind'], AdminPath> = {
-	cluster_unreachable: '/admin/clusters',
-	node_offline: '/nodes',
-	node_cpu: '/nodes',
-	node_memory: '/nodes',
-	storage_full: '/admin/storages',
-	pool_at_quota: '/admin/policy'
-};
+/** A parameterized route plus its params, for alerts that deep-link. */
+interface NodeDetailRoute {
+	route: '/admin/nodes/[cluster]/[node]';
+	params: { cluster: string; node: string };
+}
 
-/** The page where the alert's cause is fixed. */
-export function alertHref(alert: DashboardAlert): AdminPath {
-	return HREF[alert.kind];
+/** Where an alert links: a plain path, or a route + params to resolve. */
+export type AlertTarget = AdminPath | NodeDetailRoute;
+
+/** The page where the alert's cause is fixed. Node alerts deep-link to the
+ * node detail page; the rest land on the matching admin list. */
+export function alertHref(alert: DashboardAlert): AlertTarget {
+	switch (alert.kind) {
+		case 'node_offline':
+		case 'node_cpu':
+		case 'node_memory':
+			return {
+				route: '/admin/nodes/[cluster]/[node]',
+				params: { cluster: alert.clusterKey ?? alert.cluster, node: alert.subject ?? '' }
+			};
+		case 'cluster_unreachable':
+			return '/admin/clusters';
+		case 'storage_full':
+			return '/admin/storages';
+		case 'pool_at_quota':
+			return '/admin/policy';
+	}
 }
 
 export function alertMessage(alert: DashboardAlert): string {
