@@ -9,7 +9,7 @@ test.describe('T00 smoke', () => {
 	test('health endpoint returns healthy', async ({ request }) => {
 		const response = await request.get('/health');
 		expect(response.status()).toBe(200);
-		const body = await response.json();
+		const body = (await response.json()) as { timestamp: string };
 		expect(body).toMatchObject({
 			status: 'healthy',
 			checks: { database: { status: 'healthy' } },

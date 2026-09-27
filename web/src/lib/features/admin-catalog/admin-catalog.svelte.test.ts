@@ -85,7 +85,8 @@ describe('AdminCatalogStore', () => {
 			{ ...bridges[0], enabled: true },
 			bridges[1]
 		]);
-		expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({
+		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+		expect(JSON.parse(init?.body as string)).toEqual({
 			cluster: 'default',
 			node: 'node-a',
 			name: 'vmbr0',
@@ -261,7 +262,8 @@ describe('AdminCatalogStore', () => {
 				images[1],
 				images[2]
 			]);
-			expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({
+			const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+			expect(JSON.parse(init?.body as string)).toEqual({
 				cluster: 'default',
 				node: 'node-a',
 				storage: 'local',
@@ -747,7 +749,8 @@ describe('AdminCatalogStore', () => {
 			await pending;
 
 			expect(store.templates[1]?.enabled).toBe(true);
-			expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({
+			const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+			expect(JSON.parse(init?.body as string)).toEqual({
 				cluster: 'default',
 				vmid: 9001,
 				enabled: true

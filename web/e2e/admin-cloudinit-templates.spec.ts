@@ -76,7 +76,9 @@ test.describe('T18 admin cloud-init templates', () => {
 		await page.getByTestId('cloudinit-mode-document').click();
 		await expect(page.getByTestId('cloudinit-document-current')).toContainText('Web server');
 		const vmPath = new URL(page.url()).pathname.replace(/^\/vms\//, '');
-		const before = await (await page.request.get(`/api/v1/vms/${vmPath}/cloudinit/document`)).json();
+		const before = (await (await page.request.get(`/api/v1/vms/${vmPath}/cloudinit/document`)).json()) as {
+			filename: string;
+		};
 
 		// SC-004b: editing the source template publishes a NEW file; the
 		// existing VM keeps the file it was created with.
@@ -88,7 +90,9 @@ test.describe('T18 admin cloud-init templates', () => {
 		await expect(page.getByRole('dialog')).toHaveCount(0);
 
 		await signInAlice(page.request);
-		const after = await (await page.request.get(`/api/v1/vms/${vmPath}/cloudinit/document`)).json();
+		const after = (await (await page.request.get(`/api/v1/vms/${vmPath}/cloudinit/document`)).json()) as {
+			filename: string;
+		};
 		expect(after.filename).toBe(before.filename);
 
 		// SC-005/SC-006: disable the template and confirm it disappears from the

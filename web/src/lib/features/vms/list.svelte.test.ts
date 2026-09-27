@@ -151,7 +151,7 @@ describe('VmListStore', () => {
 		expect(navigated).toHaveLength(0);
 	});
 
-	it('clearFilters drops search, status and node and returns to page 1', async () => {
+	it('clearFilters drops search, status and node and returns to page 1', () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
 		const { store, navigated } = makeStore('?search=web&status=stopped&node=n1&page=2');
 
@@ -163,7 +163,7 @@ describe('VmListStore', () => {
 		expect(navigated.at(-1)).toBe('');
 	});
 
-	it('toggling the active sort column reverses direction', async () => {
+	it('toggling the active sort column reverses direction', () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
 		const { store, navigated } = makeStore('');
 
@@ -176,7 +176,7 @@ describe('VmListStore', () => {
 		expect(store.sortDir).toBe('asc');
 	});
 
-	it('changing a filter resets to page one', async () => {
+	it('changing a filter resets to page one', () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
 		const { store, navigated } = makeStore('?page=4');
 
@@ -185,7 +185,7 @@ describe('VmListStore', () => {
 		expect(navigated.at(-1)).toBe('status=running');
 	});
 
-	it('page navigation syncs the URL', async () => {
+	it('page navigation syncs the URL', () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
 		const { store, navigated } = makeStore('');
 

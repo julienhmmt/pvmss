@@ -72,9 +72,9 @@ export class DbOpsStore {
 			formData.append('file', file);
 			const response = await fetch('/api/v1/admin/db/import', withCSRF({ method: 'POST', body: formData }));
 			if (!response.ok) {
-				let message = m['admin.db.importError']();
+				let message: string = m['admin.db.importError']();
 				try {
-					const body = await response.json();
+					const body = (await response.json()) as { message?: string };
 					message = body.message ?? message;
 				} catch { /* keep default */ }
 				throw new ApiRequestError(response.status, 'import_error', message);
@@ -101,9 +101,9 @@ export class DbOpsStore {
 				})
 			);
 			if (!response.ok) {
-				let message = m['admin.db.confirmError']();
+				let message: string = m['admin.db.confirmError']();
 				try {
-					const body = await response.json();
+					const body = (await response.json()) as { message?: string };
 					message = body.message ?? message;
 				} catch { /* keep default */ }
 				throw new ApiRequestError(response.status, 'confirm_error', message);

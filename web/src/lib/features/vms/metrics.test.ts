@@ -27,7 +27,7 @@ describe('fetchMetricsHistory', () => {
 		const history = await fetchMetricsHistory('default', 100, 'hour');
 
 		expect(history).toEqual(body);
-		const [path] = fetchMock.mock.calls[0] ?? [];
+		const [path] = (fetchMock.mock.calls[0] ?? []) as [string];
 		expect(path).toBe('/api/v1/vms/default/100/metrics/history?range=hour');
 	});
 
