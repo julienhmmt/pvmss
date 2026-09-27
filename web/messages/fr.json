@@ -1467,7 +1467,7 @@
   "search.instructions": "Saisissez un nom, une étiquette ou un ID de VM pour rechercher.",
   "admin.dashboard.emptyTitle": "Aucune activité PVMSS pour le moment",
   "admin.dashboard.emptyBody": "Créez votre premier pool pour commencer à gérer des VMs via PVMSS.",
-  "admin.dashboard.createPool": "Créer un pool",
+  "admin.dashboard.createUser": "Créer un nouvel utilisateur PVMSS",
   "admin.dashboard.vmRunning": "En cours",
   "admin.dashboard.vmPaused": "En pause",
   "admin.dashboard.vmStopped": "Arrêtées",
