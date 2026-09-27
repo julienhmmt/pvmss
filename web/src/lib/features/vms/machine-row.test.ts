@@ -20,6 +20,7 @@ describe('machineInitials', () => {
 describe('machineTone', () => {
 	it('is stable per name and always a known tone', () => {
 		expect(machineTone('web-01')).toBe(machineTone('web-01'));
+		expect(machineTone('👩')).toBe('success');
 		for (const name of ['a', 'web-01', 'db-01', 'sandbox-01']) {
 			expect(['accent', 'subtle', 'success']).toContain(machineTone(name));
 		}
