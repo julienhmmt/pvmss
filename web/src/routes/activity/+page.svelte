@@ -82,7 +82,7 @@
 	<title>{m['activity.title']()}</title>
 </svelte:head>
 
-<section class="mx-auto w-full max-w-4xl">
+<section class="w-full">
 	<PageHeader
 		eyebrow={m['activity.eyebrow']()}
 		title={m['activity.heading']()}

@@ -133,7 +133,7 @@
 				onfocus={() => (showVmPopover = true)}
 				onblur={() => (showVmPopover = false)}
 			>
-				<p class="text-[0.6875rem] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+				<p class="text-2xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">
 					{m['admin.dashboard.vms']()}
 				</p>
 				<p class="mt-1.5 font-mono text-3xl font-semibold leading-none tracking-tight tabular-nums">
@@ -145,7 +145,7 @@
 						role="tooltip"
 						data-testid="dashboard-vm-popover"
 					>
-						<p class="mb-2 text-[0.6875rem] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+						<p class="mb-2 text-2xs font-semibold uppercase tracking-[0.06em] text-muted-foreground">
 							{m['admin.dashboard.vmCountHover']()}
 						</p>
 						<ul class="grid gap-1">

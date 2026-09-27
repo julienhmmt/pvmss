@@ -32,7 +32,7 @@
 	<title>{m['account.title']()}</title>
 </svelte:head>
 
-<section class="mx-auto w-full max-w-[780px]">
+<section class="mx-auto w-full max-w-reading">
 	<PageHeader
 		eyebrow={m['account.eyebrow']()}
 		title={m['account.heading']()}

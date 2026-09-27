@@ -148,7 +148,7 @@
 			</span>
 			<span class="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-primary-solid text-sm font-semibold text-primary-foreground">+</span>
 		</div>
-		<p class="text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground-subtle">{m['vms.list.emptyFirstEyebrow']()}</p>
+		<p class="text-2xs font-semibold uppercase tracking-[0.08em] text-muted-foreground-subtle">{m['vms.list.emptyFirstEyebrow']()}</p>
 		<div class="max-w-md">
 			<p class="text-lg font-semibold text-foreground">{m['vms.list.emptyFirstTitle']()}</p>
 			<p class="mt-1.5 text-sm text-muted-foreground">{m['vms.list.emptyFirstBody']()}</p>
@@ -232,7 +232,7 @@
 			</EmptyState>
 		{:else if store.result}
 			<div
-				class="grid grid-cols-[minmax(0,1fr)_11rem_8.5rem_9rem] items-center gap-4 border-b border-border bg-muted/60 px-4 py-2 text-[0.6875rem] font-semibold uppercase tracking-[0.04em] text-muted-foreground max-[699px]:hidden {selectMode
+				class="grid grid-cols-[minmax(0,1fr)_11rem_8.5rem_9rem] items-center gap-4 border-b border-border bg-muted/60 px-4 py-2 text-2xs font-semibold uppercase tracking-[0.04em] text-muted-foreground max-[699px]:hidden {selectMode
 					? 'pl-12'
 					: ''}"
 				aria-hidden="true"
