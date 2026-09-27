@@ -217,7 +217,7 @@
 				<StatusBanner />
 				<AppHeader />
 				<main id="main-content" class="flex-1 px-5 pb-5 pt-7 min-[700px]:px-11 min-[700px]:pt-11">
-					<div class="mx-auto max-w-[1290px]">
+					<div class="mx-auto max-w-collection">
 						{#if status.allClustersDown && !isClusterIndependent(page.url.pathname)}
 							<ClusterDownOverlay>
 								{@render children()}

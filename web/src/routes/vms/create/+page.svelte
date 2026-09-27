@@ -54,7 +54,7 @@
 	<title>{m['vms.create.title']()}</title>
 </svelte:head>
 
-<section class="mx-auto w-full max-w-5xl">
+<section class="mx-auto w-full max-w-reading">
 	<PageHeader
 		back={{ href: resolve('/vms'), label: m['vms.create.back']() }}
 		eyebrow={m['vms.create.eyebrow']()}

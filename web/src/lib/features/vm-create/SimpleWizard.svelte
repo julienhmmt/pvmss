@@ -253,7 +253,7 @@
 									<span class="inline-flex flex-wrap items-center gap-2" data-testid="source-card-{card.value}">
 										{card.title}
 										{#if card.value === 'template'}
-											<span class="rounded-full bg-sidebar-accent px-2 py-px text-[0.6875rem] font-medium text-sidebar-accent-foreground">{m['vms.create.goodFirstChoice']()}</span>
+											<span class="rounded-full bg-sidebar-accent px-2 py-px text-2xs font-medium text-sidebar-accent-foreground">{m['vms.create.goodFirstChoice']()}</span>
 										{/if}
 									</span>
 								{/snippet}
@@ -426,7 +426,7 @@
 				{/if}
 				{form.submitting ? m['common.creating']() : m['vms.create.summary.submit']()}
 			</Button>
-			<p class="text-[0.6875rem] text-muted-foreground-subtle">{m['vms.create.summary.provisioningNote']()}</p>
+			<p class="text-2xs text-muted-foreground-subtle">{m['vms.create.summary.provisioningNote']()}</p>
 		</aside>
 	</form>
 {/if}

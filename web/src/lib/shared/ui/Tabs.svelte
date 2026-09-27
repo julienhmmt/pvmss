@@ -89,7 +89,7 @@
 			{tab.label()}
 			{#if tab.count !== undefined}
 				<span
-					class="ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-full px-1.5 py-px font-mono text-[0.6875rem] tabular-nums {selected
+					class="ml-1.5 inline-flex min-w-[1.25rem] justify-center rounded-full px-1.5 py-px font-mono text-2xs tabular-nums {selected
 						? 'bg-muted text-foreground'
 						: 'bg-muted/70 text-muted-foreground'}"
 				>

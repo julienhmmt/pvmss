@@ -189,7 +189,7 @@
 	<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 py-4">
 		<nav class="flex flex-col gap-0.5" aria-label={m['chrome.navbar.ariaLabel']()}>
 			{#if !session.isAdmin}
-				<p class="px-3 pb-1.5 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-muted-foreground-subtle" data-testid="sidebar-workspace-label">
+				<p class="px-3 pb-1.5 text-2xs font-semibold uppercase tracking-[0.08em] text-muted-foreground-subtle" data-testid="sidebar-workspace-label">
 					{m['chrome.sidebar.workspaceLabel']()}
 				</p>
 			{/if}
@@ -213,7 +213,7 @@
 							<span class="flex-1">{item.label()}</span>
 							{#if count !== null && count > 0}
 								<span
-									class="min-w-5 rounded-full px-1.5 text-center font-mono text-[0.6875rem] tabular-nums max-[369px]:hidden {item.countAccent
+									class="min-w-5 rounded-full px-1.5 text-center font-mono text-2xs tabular-nums max-[369px]:hidden {item.countAccent
 										? 'bg-primary-solid text-primary-foreground'
 										: 'bg-muted text-muted-foreground'}"
 									aria-label={item.countLabel?.(count)}

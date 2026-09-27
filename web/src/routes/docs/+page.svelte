@@ -85,7 +85,7 @@
 	<title>{m['docs.index']()} - PVMSS</title>
 </svelte:head>
 
-<section class="mx-auto w-full max-w-5xl">
+<section class="w-full">
 	<PageHeader
 		eyebrow={m['help.eyebrow']()}
 		title={m['help.heading']()}

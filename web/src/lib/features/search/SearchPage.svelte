@@ -33,7 +33,7 @@
 	}
 </script>
 
-<section class="mx-auto w-full max-w-5xl px-4 py-8">
+<section class="w-full px-4 py-8">
 	<h1 class="mb-6 text-2xl font-semibold tracking-tight">{m['search.heading']()}</h1>
 
 	<div class="relative mb-6">

@@ -66,7 +66,7 @@
 	<title>{m['vms.list.title']()}</title>
 </svelte:head>
 
-<section class="mx-auto w-full max-w-5xl">
+<section class="w-full">
 	<PageHeader
 		eyebrow={m['vms.list.eyebrow']()}
 		title={m['vms.list.calmHeading']()}

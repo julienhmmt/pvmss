@@ -104,7 +104,7 @@
 	{/snippet}
 </PageHeader>
 
-<section class="mx-auto w-full max-w-6xl">
+<section class="w-full">
 	{#if store.announce}<p class="sr-only" role="status" aria-live="polite">{store.announce}</p>{/if}
 	{#if store.error}<Alert class="mb-4">{store.error}</Alert>{/if}
 	{#if store.loading}

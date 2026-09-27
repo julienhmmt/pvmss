@@ -53,7 +53,7 @@
 
 {#if status === 'provisioning'}
 	<section class="rounded-xl border border-border bg-card p-6 shadow-card" aria-live="polite" data-testid="vm-banner-provisioning">
-		<p class="text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-primary">{m['vms.detail.banner.provisioningEyebrow']()}</p>
+		<p class="text-2xs font-semibold uppercase tracking-[0.08em] text-primary">{m['vms.detail.banner.provisioningEyebrow']()}</p>
 		<p class="mt-1 text-lg font-semibold">{m['vms.detail.banner.provisioningTitle']()}</p>
 		<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.banner.provisioningBody']()}</p>
 		<ol class="mt-4 grid gap-2 text-sm">
