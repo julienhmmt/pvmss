@@ -1668,47 +1668,60 @@ func pickBestNode(candidates []catalog.Node, capacities map[string]policy.Capaci
 // The formula matches ProxMate's fixed weights:
 // memFrac*0.5 + cpuFrac*0.35 + diskFrac*0.15, +1 if the VM fits. A node with
 // no capacity data (zero value) scores 0 - still selectable as a fallback,
-// but preferred less than any node with known headroom.
+// but preferred less than any node with known headroom. A configured cap
+// narrower than physical capacity becomes the effective ceiling, so capping
+// a node steers placement away before the hard capacity check ever fires.
 func scoreNode(capacity policy.Capacity, req CreateRequest) float64 {
-	var memFrac, cpuFrac, diskFrac float64
+	ramCeiling := effectiveCeiling(capacity.MaxRAMGB, capacity.PhysicalRAMGB)
+	cpuCeiling := effectiveCeiling(capacity.MaxVCPUs, capacity.PhysicalVCPUs)
 
-	if capacity.PhysicalRAMGB > 0 {
-		freeMem := capacity.PhysicalRAMGB - capacity.UsedRAMGB
-		if freeMem > 0 {
-			memFrac = float64(freeMem) / float64(capacity.PhysicalRAMGB)
-		}
-	}
-
-	if capacity.PhysicalVCPUs > 0 {
-		freeCPU := capacity.PhysicalVCPUs - capacity.UsedVCPUs
-		if freeCPU > 0 {
-			cpuFrac = float64(freeCPU) / float64(capacity.PhysicalVCPUs)
-		}
-	}
-
-	if capacity.MaxDiskGB > 0 {
-		freeDisk := capacity.MaxDiskGB - capacity.UsedDiskGB
-		if freeDisk > 0 {
-			diskFrac = float64(freeDisk) / float64(capacity.MaxDiskGB)
-		}
-	}
-
-	score := memFrac*placementWeightMem + cpuFrac*placementWeightCPU + diskFrac*placementWeightDisk
+	score := freeFraction(capacity.UsedRAMGB, ramCeiling)*placementWeightMem +
+		freeFraction(capacity.UsedVCPUs, cpuCeiling)*placementWeightCPU +
+		freeFraction(capacity.UsedDiskGB, capacity.MaxDiskGB)*placementWeightDisk
 
 	// Bonus if the VM actually fits (bonus, not barrier - under overcommit
 	// a node is still returned rather than failing the create).
 	requestedRAM := (req.MemoryMB + 1023) / 1024
 	requestedCPU := defaultSockets(req.Sockets) * req.CPUCores
 
-	fitsMem := capacity.PhysicalRAMGB == 0 || capacity.PhysicalRAMGB-capacity.UsedRAMGB >= requestedRAM
-	fitsCPU := capacity.PhysicalVCPUs == 0 || capacity.PhysicalVCPUs-capacity.UsedVCPUs >= requestedCPU
+	fitsMem := ramCeiling == 0 || ramCeiling-capacity.UsedRAMGB >= requestedRAM
+	fitsCPU := cpuCeiling == 0 || cpuCeiling-capacity.UsedVCPUs >= requestedCPU
 	fitsDisk := capacity.MaxDiskGB == 0 || capacity.MaxDiskGB-capacity.UsedDiskGB >= req.Disk.SizeGB
+	fitsVMs := capacity.MaxVMs == 0 || capacity.UsedVMs < capacity.MaxVMs
 
-	if fitsMem && fitsCPU && fitsDisk {
+	if fitsMem && fitsCPU && fitsDisk && fitsVMs {
 		score += placementFitBonus
 	}
 
 	return score
+}
+
+// freeFraction is the free share of a ceiling (0 when the ceiling is unknown
+// or already exhausted).
+func freeFraction(used, ceiling int) float64 {
+	if ceiling <= 0 {
+		return 0
+	}
+
+	free := ceiling - used
+	if free <= 0 {
+		return 0
+	}
+
+	return float64(free) / float64(ceiling)
+}
+
+// effectiveCeiling returns the tighter of a configured cap and the physical
+// capacity; either bound may be absent (0 = unbounded).
+func effectiveCeiling(configured, physical int) int {
+	switch {
+	case configured <= 0:
+		return physical
+	case physical <= 0 || configured < physical:
+		return configured
+	default:
+		return physical
+	}
 }
 
 // nodesWithStorage filters candidates to those that have at least one approved

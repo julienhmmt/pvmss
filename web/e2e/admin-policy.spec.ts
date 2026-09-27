@@ -103,8 +103,8 @@ test.describe('T12 admin policy', () => {
 		await expect(page.getByRole('heading', { name: 'Node capacity' })).toBeVisible();
 		const nodesResponse = await page.request.get('/api/v1/admin/policy/nodes?cluster=default');
 		expect(nodesResponse.status()).toBe(200);
-		const nodes = (await nodesResponse.json()) as Array<{ node: string; usedVcpus: number }>;
-		const node = nodes.find((item) => item.node === 'pve-node-02');
+		const list = (await nodesResponse.json()) as { nodes: Array<{ node: string; usedVcpus: number }> };
+		const node = list.nodes.find((item) => item.node === 'pve-node-02');
 		expect(node).toBeDefined();
 		const capacityResponse = await page.request.put('/api/v1/admin/policy/nodes/pve-node-02', {
 			headers: await csrfHeaders(page.request),
