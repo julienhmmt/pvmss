@@ -25,9 +25,10 @@
 	{:else}
 		<ul class="divide-y divide-border" aria-labelledby="dashboard-attention-heading">
 			{#each alerts as alert (`${alert.kind}/${alert.cluster}/${alert.subject ?? ''}`)}
+				{@const target = alertHref(alert)}
 				<li>
 					<a
-						href={resolve(alertHref(alert))}
+						href={typeof target === 'string' ? resolve(target) : resolve(target.route, target.params)}
 						class="flex items-center gap-3 px-5 py-3 text-sm hover:bg-muted/60 pv-focus"
 						data-testid="dashboard-alert"
 						data-kind={alert.kind}
