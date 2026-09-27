@@ -266,3 +266,101 @@ describe('VmDetailStore.bootFromCdrom', () => {
 		expect(store.bootCdromInFlight).toBe(false);
 	});
 });
+
+describe('VmDetailStore.refreshIfStale', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.useRealTimers();
+	});
+
+	it('records lastLoadedAt when load() completes', async () => {
+		stubFetchSequence([
+			{ status: 200, body: baseEntity },
+			{ status: 200, body: {} }
+		]);
+		const store = new VmDetailStore('default', 100);
+
+		expect(store.lastLoadedAt).toBe(0);
+		await store.load();
+		expect(store.lastLoadedAt).toBeGreaterThan(0);
+	});
+
+	it('reloads when the entity data is stale', async () => {
+		vi.useFakeTimers();
+		const { fetchMock, calls } = stubFetchSequence([
+			{ status: 200, body: baseEntity },
+			{ status: 200, body: {} }
+		]);
+		const store = new VmDetailStore('default', 100);
+
+		// First load fetches the entity plus hardware-options.
+		await store.load();
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+
+		vi.setSystemTime(Date.now() + 31_000);
+		await store.refreshIfStale();
+
+		// hardwareOptions is cached, so the stale reload re-reads the entity only.
+		expect(fetchMock).toHaveBeenCalledTimes(3);
+		expect(calls.filter((call) => call === '/api/v1/vms/default/100')).toHaveLength(2);
+	});
+
+	it('does not reload while the entity data is still fresh', async () => {
+		vi.useFakeTimers();
+		const { fetchMock } = stubFetchSequence([
+			{ status: 200, body: baseEntity },
+			{ status: 200, body: {} }
+		]);
+		const store = new VmDetailStore('default', 100);
+
+		await store.load();
+		vi.setSystemTime(Date.now() + 29_000);
+		await store.refreshIfStale();
+
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not reload while a load is in flight', async () => {
+		const fetchMock = vi.fn();
+		vi.stubGlobal('fetch', fetchMock);
+		const store = new VmDetailStore('default', 100);
+
+		store.loading = true;
+		await store.refreshIfStale(0);
+
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it('does not reload while a power action is in flight', async () => {
+		const fetchMock = vi.fn();
+		vi.stubGlobal('fetch', fetchMock);
+		const store = makeStore();
+
+		store.actionInFlight = true;
+		await store.refreshIfStale(0);
+
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it('does not reload while a CD-ROM boot converge is in flight', async () => {
+		const fetchMock = vi.fn();
+		vi.stubGlobal('fetch', fetchMock);
+		const store = makeStore();
+
+		store.bootCdromInFlight = true;
+		await store.refreshIfStale(0);
+
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+
+	it('does not reload while a delete is in flight', async () => {
+		const fetchMock = vi.fn();
+		vi.stubGlobal('fetch', fetchMock);
+		const store = makeStore();
+
+		store.deleteInFlight = true;
+		await store.refreshIfStale(0);
+
+		expect(fetchMock).not.toHaveBeenCalled();
+	});
+});

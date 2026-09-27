@@ -35,7 +35,8 @@ describe('VmSnapshotsStore', () => {
 		expect(tray.tasks).toHaveLength(1);
 		expect(tray.tasks[0]).toMatchObject({ upid: 'UPID:test', kind: 'vm_snapshot_create', vmid: 101, name: 'before-upgrade', cluster: 'default' });
 		expect(typeof tray.tasks[0]?.deadline).toBe('number');
-		expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({ name: 'before-upgrade', description: 'pre-migration', vmstate: false });
+		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+		expect(JSON.parse(init?.body as string)).toEqual({ name: 'before-upgrade', description: 'pre-migration', vmstate: false });
 		tray.destroy();
 	});
 

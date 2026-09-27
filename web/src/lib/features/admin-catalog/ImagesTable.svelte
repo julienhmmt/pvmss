@@ -42,7 +42,6 @@
 					{sortDir}
 					onSort={handleSort}
 				/>
-				<td><span class="sr-only">{m['admin.catalog.remove']()}</span></td>
 			</tr>
 		</thead>
 		<tbody>
@@ -63,7 +62,17 @@
 					<td data-label={m['admin.catalog.size']()}>{formatBytes(image.sizeBytes)}</td>
 					<td data-label={m['admin.catalog.statusColumn']()}>
 						{#if image.missing}
-							<span class="text-xs text-muted-foreground">{m['admin.catalog.missingBadge']()}</span>
+							<div class="flex items-center gap-2">
+								<span class="text-xs text-muted-foreground">{m['admin.catalog.missingBadge']()}</span>
+								<Button
+									variant="ghost"
+									size="sm"
+									onclick={() => onRemove(image.node, image.storage, image.file)}
+									data-testid="image-remove"
+								>
+									{m['admin.catalog.remove']()}
+								</Button>
+							</div>
 						{:else}
 							<span
 								class="inline-flex items-center gap-2"
@@ -86,22 +95,10 @@
 							</span>
 						{/if}
 					</td>
-					<td data-label={m['admin.catalog.remove']()}>
-						{#if image.missing}
-							<Button
-								variant="ghost"
-								size="sm"
-								onclick={() => onRemove(image.node, image.storage, image.file)}
-								data-testid="image-remove"
-							>
-								{m['admin.catalog.remove']()}
-							</Button>
-						{/if}
-					</td>
 				</tr>
 			{:else}
 				<tr>
-					<td colspan={6} class="p-0">
+					<td colspan={5} class="p-0">
 						<EmptyState title={m['admin.images.noImages']()} />
 					</td>
 				</tr>

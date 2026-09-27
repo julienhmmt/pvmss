@@ -142,7 +142,7 @@
 	}
 
 	function isActiveGroup(group: (typeof ADMIN_NAV_GROUPS)[number]): boolean {
-		return group.items.some((item) => isActive(item.href, true));
+		return group.items.some((item) => isActive(item.href, item.exact ?? true));
 	}
 
 	function isGroupOpen(index: number): boolean {
@@ -318,7 +318,7 @@
 						{#if isGroupOpen(index)}
 							<ul id="admin-nav-group-{index}" class="flex flex-col gap-0.5 py-1">
 								{#each group.items as item (item.href)}
-									{@const active = isActive(item.href, true)}
+									{@const active = isActive(item.href, item.exact ?? true)}
 									<li>
 										<a
 											href={item.href}

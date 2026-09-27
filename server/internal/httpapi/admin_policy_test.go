@@ -142,14 +142,18 @@ func TestAdminPolicyNodes_ListsUsageAndValidatesWrites(t *testing.T) { //nolint:
 		t.Fatalf("nodes response = %d %s", recorder.Code, recorder.Body.String())
 	}
 
-	var nodes []struct {
-		Node          string `json:"node"`
-		UsedVCPUs     int    `json:"usedVcpus"`
-		PhysicalVCPUs int    `json:"physicalVcpus"`
+	var list struct {
+		Nodes []struct {
+			Node          string `json:"node"`
+			UsedVCPUs     int    `json:"usedVcpus"`
+			PhysicalVCPUs int    `json:"physicalVcpus"`
+		} `json:"nodes"`
 	}
-	if err := json.Unmarshal(recorder.Body.Bytes(), &nodes); err != nil || len(nodes) == 0 {
+	if err := json.Unmarshal(recorder.Body.Bytes(), &list); err != nil || len(list.Nodes) == 0 {
 		t.Fatalf("decode nodes = %v, body = %s", err, recorder.Body.String())
 	}
+
+	nodes := list.Nodes
 
 	var (
 		targetNode string

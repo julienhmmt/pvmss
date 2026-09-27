@@ -34,7 +34,7 @@ test.describe('T01 fake cluster', () => {
 		await signIn(request);
 		const response = await request.get('/api/v1/cluster/nodes');
 		expect(response.status()).toBe(200);
-		const body = await response.json();
+		const body = (await response.json()) as { nodes: Array<{ name: string; status: string }> };
 		expect(body.nodes).toHaveLength(3);
 		expect(body.nodes[0]).toMatchObject({ name: 'pve-node-01', status: 'online' });
 	});

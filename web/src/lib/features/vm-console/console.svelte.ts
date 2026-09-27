@@ -149,7 +149,7 @@ export class ConsoleStore {
 	}
 
 	#onDisconnect(e: Event): void {
-		const detail = (e as CustomEvent).detail;
+		const detail = (e as CustomEvent<{ clean?: boolean }>).detail;
 		this.state = 'disconnected';
 		if (detail && typeof detail === 'object' && 'clean' in detail && !detail.clean) {
 			this.error = 'Connection lost unexpectedly';
@@ -158,7 +158,7 @@ export class ConsoleStore {
 	}
 
 	#onSecurityFailure(e: Event): void {
-		const detail = (e as CustomEvent).detail;
+		const detail = (e as CustomEvent<{ reason?: string }>).detail;
 		this.state = 'error';
 		this.error = detail && typeof detail === 'object' && 'reason' in detail
 			? `Security failure: ${detail.reason}`
@@ -166,16 +166,16 @@ export class ConsoleStore {
 	}
 
 	#onClipboard(e: Event): void {
-		const detail = (e as CustomEvent).detail;
+		const detail = (e as CustomEvent<{ text?: string }>).detail;
 		if (detail && typeof detail === 'object' && 'text' in detail && typeof detail.text === 'string') {
 			this.clipboard = { ...this.clipboard, fromVM: detail.text };
 		}
 	}
 
 	#onCapabilities(e: Event): void {
-		const detail = (e as CustomEvent).detail;
+		const detail = (e as CustomEvent<{ capabilities?: Record<string, boolean> }>).detail;
 		if (detail && typeof detail === 'object' && 'capabilities' in detail) {
-			const caps = detail.capabilities as Record<string, boolean> | undefined;
+			const caps = detail.capabilities;
 			this.clipboard = { ...this.clipboard, serverHasClipboard: caps?.clipboard ?? false };
 		}
 	}

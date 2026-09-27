@@ -151,7 +151,7 @@ describe('VmListStore', () => {
 		expect(navigated).toHaveLength(0);
 	});
 
-	it('clearFilters drops search, status and node and returns to page 1', async () => {
+	it('clearFilters drops search, status and node and returns to page 1', () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
 		const { store, navigated } = makeStore('?search=web&status=stopped&node=n1&page=2');
 
@@ -163,7 +163,7 @@ describe('VmListStore', () => {
 		expect(navigated.at(-1)).toBe('');
 	});
 
-	it('toggling the active sort column reverses direction', async () => {
+	it('toggling the active sort column reverses direction', () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
 		const { store, navigated } = makeStore('');
 
@@ -176,7 +176,7 @@ describe('VmListStore', () => {
 		expect(store.sortDir).toBe('asc');
 	});
 
-	it('changing a filter resets to page one', async () => {
+	it('changing a filter resets to page one', () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
 		const { store, navigated } = makeStore('?page=4');
 
@@ -185,11 +185,105 @@ describe('VmListStore', () => {
 		expect(navigated.at(-1)).toBe('status=running');
 	});
 
-	it('page navigation syncs the URL', async () => {
+	it('page navigation syncs the URL', () => {
 		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
 		const { store, navigated } = makeStore('');
 
 		store.setPage(2);
 		expect(navigated.at(-1)).toBe('page=2');
+	});
+
+	describe('refreshIfStale', () => {
+		it('records lastLoadedAt when load() completes', async () => {
+			vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
+			const { store } = makeStore('');
+
+			expect(store.lastLoadedAt).toBe(0);
+			await store.load();
+			expect(store.lastLoadedAt).toBeGreaterThan(0);
+		});
+
+		it('reloads when the last load is older than the stale window', async () => {
+			vi.useFakeTimers();
+			const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult));
+			vi.stubGlobal('fetch', fetchMock);
+			const { store } = makeStore('');
+
+			await store.load();
+			vi.setSystemTime(Date.now() + 31_000);
+			await store.refreshIfStale();
+
+			expect(fetchMock).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not reload while the data is still fresh', async () => {
+			vi.useFakeTimers();
+			const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult));
+			vi.stubGlobal('fetch', fetchMock);
+			const { store } = makeStore('');
+
+			await store.load();
+			vi.setSystemTime(Date.now() + 29_000);
+			await store.refreshIfStale();
+
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not reload while a load is in flight', async () => {
+			const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult));
+			vi.stubGlobal('fetch', fetchMock);
+			const { store } = makeStore('');
+
+			store.loading = true;
+			await store.refreshIfStale(0);
+
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
+
+		it('does not reload while a search debounce is pending', async () => {
+			vi.useFakeTimers();
+			const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult));
+			vi.stubGlobal('fetch', fetchMock);
+			const { store } = makeStore('');
+
+			store.applySearch('web');
+			await store.refreshIfStale(0);
+			expect(fetchMock).not.toHaveBeenCalled();
+
+			// The debounced load still fires on its own schedule.
+			await vi.advanceTimersByTimeAsync(300);
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not reload while a row action is converging', async () => {
+			const pending: { release?: (response: Response) => void } = {};
+			const fetchMock = vi.fn().mockImplementation((url: string) => {
+				if (url.endsWith('/actions')) {
+					return new Promise<Response>((resolve) => {
+						pending.release = resolve;
+					});
+				}
+				if (url === '/api/v1/vms/status') {
+					return Promise.resolve(
+						jsonResponse(200, [{ cluster: 'default', vmid: 100, status: 'running', uptime: 0 }])
+					);
+				}
+				return Promise.resolve(jsonResponse(200, oneVmResult));
+			});
+			vi.stubGlobal('fetch', fetchMock);
+
+			const { store } = makeStore('');
+			store.result = oneVmResult;
+
+			const actionPromise = store.rowAction('default', 100, 'start');
+			await store.refreshIfStale(0);
+
+			// Only the action POST was issued - no list GET.
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+			expect(fetchMock).not.toHaveBeenCalledWith('/api/v1/vms', expect.anything());
+
+			pending.release?.(jsonResponse(200, { status: 'ok' }));
+			await actionPromise;
+		});
 	});
 });

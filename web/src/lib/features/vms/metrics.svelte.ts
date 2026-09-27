@@ -95,7 +95,7 @@ export class MetricsStore {
 			this.streamError = null;
 		};
 
-		source.onmessage = (event) => {
+		source.onmessage = (event: MessageEvent<string>) => {
 			try {
 				const sample = parseMetricsStreamMessage(event.data);
 				this.#mergeLiveTick(sample);

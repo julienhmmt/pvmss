@@ -1,0 +1,16 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"types": ["node"],
+		"allowJs": false,
+		"checkJs": false,
+		"noEmit": true
+	},
+	"include": [
+		"e2e/**/*.ts",
+		"playwright.config.ts",
+		"vite.config.ts",
+		"vitest.config.ts",
+		"src/lib/features/vm-console/test-hooks.d.ts"
+	]
+}

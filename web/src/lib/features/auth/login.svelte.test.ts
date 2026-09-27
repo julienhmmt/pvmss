@@ -22,7 +22,8 @@ describe('LoginForm', () => {
 		form.password = 'pvmss-alice';
 		const principal = await form.submit();
 		expect(principal?.cluster).toBe('secondary');
-		expect(JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string).cluster).toBe('secondary');
+		const init = fetchMock.mock.calls[1]?.[1] as RequestInit | undefined;
+		expect((JSON.parse(init?.body as string) as { cluster: string }).cluster).toBe('secondary');
 	});
 
 	it('appends the @pve realm to a bare username', async () => {
@@ -32,7 +33,8 @@ describe('LoginForm', () => {
 		form.username = 'alice';
 		form.password = 'pvmss-alice';
 		await form.submit();
-		expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string).username).toBe('alice@pve');
+		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+		expect((JSON.parse(init?.body as string) as { username: string }).username).toBe('alice@pve');
 	});
 
 	it('does not double the realm when the user already typed one', async () => {
@@ -42,7 +44,8 @@ describe('LoginForm', () => {
 		form.username = 'alice@pam';
 		form.password = 'pvmss-alice';
 		await form.submit();
-		expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string).username).toBe('alice@pam');
+		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+		expect((JSON.parse(init?.body as string) as { username: string }).username).toBe('alice@pam');
 	});
 
 	it('translates a server invalid_credentials error instead of showing the raw English message', async () => {

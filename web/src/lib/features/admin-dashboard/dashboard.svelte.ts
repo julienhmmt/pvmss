@@ -4,6 +4,7 @@ import { m } from '$lib/paraglide/messages.js';
 import type { DashboardAlert } from './dashboard-alerts';
 
 export interface NodeSummary {
+	clusterKey: string;
 	cluster: string;
 	name: string;
 	status: string;
@@ -51,6 +52,9 @@ export interface DashboardSummary {
 	nodeCount: number;
 	vmCount: number;
 	vmStatusCounts: VMStatusCounts;
+	pvmssVMCount: number;
+	pvmssVMStatusCounts: VMStatusCounts;
+	otherVMCount: number;
 	storages: DashboardStorage[];
 	recentChanges: DashboardChange[];
 	version: string;

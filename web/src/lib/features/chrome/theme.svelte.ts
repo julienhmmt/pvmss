@@ -14,6 +14,14 @@ const DEFAULT_THEME: Theme = 'light';
 export const THEME_STORAGE_KEY = 'pvmss-theme-v1';
 
 /**
+ * Surface tokens (DESIGN.md) mirrored into <meta name="theme-color"> so the
+ * browser chrome matches the page background instead of the static #FF8A33
+ * baked into app.html.
+ */
+export const THEME_COLOR_LIGHT = '#f7f6f4';
+export const THEME_COLOR_DARK = '#2a2826';
+
+/**
  * ThemeState owns the light/dark preference: a $state-backed current theme,
  * persisted under a versioned localStorage key, applied by toggling the
  * `dark` class on <html> (constitution X: the OKLCH tokens themselves are
@@ -27,10 +35,15 @@ export class ThemeState {
 		return this.#current;
 	}
 
-	/** Reads localStorage["pvmss-theme-v1"]; absent/invalid → prefers-color-scheme. Calls apply(). */
+	/**
+	 * Reads localStorage["pvmss-theme-v1"]; absent/invalid → prefers-color-scheme. Calls apply().
+	 * With no stored preference, also watches prefers-color-scheme so live OS
+	 * theme flips re-resolve and re-apply.
+	 */
 	init(): void {
 		this.#current = this.#resolveInitial();
 		this.apply();
+		if (this.#readStored() === null) this.#watchSystemTheme();
 	}
 
 	/** Flips $state, persists, and applies (FR-007/FR-008). */
@@ -40,9 +53,15 @@ export class ThemeState {
 		this.apply();
 	}
 
-	/** Toggles the `dark` class on <html> - same DOM contract as legacy theme.svelte.ts. */
+	/**
+	 * Toggles the `dark` class on <html> - same DOM contract as legacy
+	 * theme.svelte.ts - and syncs <meta name="theme-color"> to the surface token.
+	 */
 	apply(): void {
-		document.documentElement.classList.toggle('dark', this.#current === 'dark');
+		const dark = this.#current === 'dark';
+		document.documentElement.classList.toggle('dark', dark);
+		const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+		if (meta !== null) meta.setAttribute('content', dark ? THEME_COLOR_DARK : THEME_COLOR_LIGHT);
 	}
 
 	#resolveInitial(): Theme {
@@ -70,6 +89,20 @@ export class ThemeState {
 
 	#prefersDark(): boolean {
 		return typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches === true;
+	}
+
+	/**
+	 * Registered by init() only when nothing is stored. The callback re-runs
+	 * #resolveInitial(), which reads localStorage again - so once toggle()
+	 * persists a choice the listener resolves to the stored value and applying
+	 * it is a no-op rather than an override.
+	 */
+	#watchSystemTheme(): void {
+		if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+		window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+			this.#current = this.#resolveInitial();
+			this.apply();
+		});
 	}
 }
 

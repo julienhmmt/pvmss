@@ -157,7 +157,7 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 			data: { action: 'stop' }
 		});
 		expect(response.status()).toBe(403);
-		const body = await response.json();
+		const body = (await response.json()) as { code: string };
 		expect(body.code).toBe('forbidden');
 	});
 

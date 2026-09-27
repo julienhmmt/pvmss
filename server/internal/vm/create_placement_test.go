@@ -231,6 +231,38 @@ func TestScoreNode_FitBonus(t *testing.T) {
 	}
 }
 
+// TestScoreNode_CapNarrowsEffectiveCeiling - a configured vCPU/RAM cap below
+// physical capacity shrinks the free fractions, so a capped node scores below
+// an identical uncapped one even though physical headroom is the same.
+func TestScoreNode_CapNarrowsEffectiveCeiling(t *testing.T) {
+	t.Parallel()
+
+	req := CreateRequest{Sockets: 1, CPUCores: 2, MemoryMB: 2048, Disk: DiskRequest{SizeGB: 20}}
+
+	// Identical hardware and usage; capped restricts vCPU to 4 and RAM to 8.
+	uncapped := policy.Capacity{PhysicalVCPUs: 16, PhysicalRAMGB: 64, UsedVCPUs: 2, UsedRAMGB: 8}
+	capped := policy.Capacity{PhysicalVCPUs: 16, PhysicalRAMGB: 64, MaxVCPUs: 4, MaxRAMGB: 8, UsedVCPUs: 2, UsedRAMGB: 8}
+
+	if scoreUncapped, scoreCapped := scoreNode(uncapped, req), scoreNode(capped, req); scoreCapped >= scoreUncapped {
+		t.Errorf("capped node score (%.3f) should be below uncapped (%.3f)", scoreCapped, scoreUncapped)
+	}
+}
+
+// TestScoreNode_CapBelowRequestLosesFitBonus - a cap smaller than the request
+// drops the fit bonus even when physical capacity would absorb the VM.
+func TestScoreNode_CapBelowRequestLosesFitBonus(t *testing.T) {
+	t.Parallel()
+
+	req := CreateRequest{Sockets: 1, CPUCores: 8, MemoryMB: 4096, Disk: DiskRequest{SizeGB: 20}}
+
+	fits := policy.Capacity{PhysicalVCPUs: 16, PhysicalRAMGB: 64, MaxVCPUs: 12, UsedVCPUs: 2, UsedRAMGB: 8}
+	capped := policy.Capacity{PhysicalVCPUs: 16, PhysicalRAMGB: 64, MaxVCPUs: 6, UsedVCPUs: 2, UsedRAMGB: 8}
+
+	if scoreFits, scoreCapped := scoreNode(fits, req), scoreNode(capped, req); scoreCapped >= scoreFits {
+		t.Errorf("cap below the request should lose the fit bonus: capped %.3f, fits %.3f", scoreCapped, scoreFits)
+	}
+}
+
 // fakeFreeSpaceChecker is a minimal FreeSpaceChecker for unit-testing
 // checkLiveDiskSpace without pulling in the cluster.Fake dataset.
 type fakeFreeSpaceChecker struct {

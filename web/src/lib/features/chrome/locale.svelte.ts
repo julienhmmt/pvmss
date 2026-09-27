@@ -16,7 +16,11 @@ export interface LocaleRuntime {
 	setLocale: (locale: Locale) => void;
 }
 
-const defaultRuntime: LocaleRuntime = { setLocale: paraglideSetLocale };
+const defaultRuntime: LocaleRuntime = {
+	setLocale: (locale: Locale): void => {
+		void paraglideSetLocale(locale);
+	}
+};
 
 /**
  * LocaleState owns the active interface language: a $state-backed current
