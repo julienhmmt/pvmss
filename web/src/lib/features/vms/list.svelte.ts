@@ -1,6 +1,7 @@
 import { getContext, setContext } from 'svelte';
 import { SvelteURLSearchParams } from 'svelte/reactivity';
 import { get, post, ApiRequestError } from '$lib/shared/api/client';
+import { STALE_REFRESH_MS } from '$lib/shared/visibility-refresh';
 import { m } from '$lib/paraglide/messages.js';
 import type { VmAction } from './detail.svelte';
 import { optimisticStatus } from './detail.svelte';
@@ -74,6 +75,9 @@ export class VmListStore {
 	loading = $state.raw(false);
 	error = $state.raw<string | null>(null);
 	errorCode = $state.raw<string | null>(null);
+	/** `Date.now()` of the last completed `load()` - `refreshIfStale()` uses
+	 *  it to skip refreshes younger than one server inventory tick. */
+	lastLoadedAt = 0;
 
 	cluster = $state('');
 	search = $state('');
@@ -86,6 +90,9 @@ export class VmListStore {
 
 	#navigate: (queryString: string) => void;
 	#searchTimer: ReturnType<typeof setTimeout> | null = null;
+	/** Row power actions still converging via batch live-status - a
+	 *  visibility refresh must not stomp their optimistic state. */
+	#rowActionsInFlight = 0;
 
 	constructor(options: VmListStoreOptions) {
 		this.scope = options.scope;
@@ -142,7 +149,21 @@ export class VmListStore {
 			}
 		} finally {
 			this.loading = false;
+			this.lastLoadedAt = Date.now();
 		}
+	}
+
+	/**
+	 * Reloads the list when the last load is older than `minIntervalMs`
+	 * (default: one server inventory tick). Called when the tab regains
+	 * visibility via `onVisibleRefresh`. Skips while a load, a row action's
+	 * convergence, or a search debounce is in flight so the refresh never
+	 * stomps user-initiated work.
+	 */
+	async refreshIfStale(minIntervalMs: number = STALE_REFRESH_MS): Promise<void> {
+		if (this.loading || this.#rowActionsInFlight > 0 || this.#searchTimer !== null) return;
+		if (Date.now() - this.lastLoadedAt <= minIntervalMs) return;
+		await this.load();
 	}
 
 	/** Debounced search input - one field matches name, tag, or ID (FR-002). */
@@ -245,6 +266,7 @@ export class VmListStore {
 
 		// Optimistic flip: patch the row's status immediately.
 		this.#patchRowStatus(cluster, vmid, target);
+		this.#rowActionsInFlight += 1;
 
 		try {
 			await post<{ status: string }>(
@@ -263,6 +285,8 @@ export class VmListStore {
 				ok: false,
 				error: err instanceof ApiRequestError ? err.message : m['vms.detail.errorAction']()
 			};
+		} finally {
+			this.#rowActionsInFlight -= 1;
 		}
 	}
 
