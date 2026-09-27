@@ -29,6 +29,6 @@
 	<title>{m['vms.detail.title']({ vmid: String(vmid) })}</title>
 </svelte:head>
 
-<section class="mx-auto w-full max-w-5xl">
+<section class="mx-auto w-full max-w-reading">
 	<VmDetail />
 </section>

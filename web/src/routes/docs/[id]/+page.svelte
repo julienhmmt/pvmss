@@ -62,7 +62,7 @@
 	<title>{doc ? `${doc.title} - PVMSS` : `${m['docs.title']()} - PVMSS`}</title>
 </svelte:head>
 
-<section class="mx-auto w-full max-w-3xl px-4 py-8 md:px-6">
+<section class="mx-auto w-full max-w-reading px-4 py-8 md:px-6">
 	<div class="mb-4">
 		<Button variant="secondary" size="sm" onclick={() => void goto(resolve('/docs'))}>
 			← {m['docs.back']()}
