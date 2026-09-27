@@ -2,6 +2,7 @@
 	import CapacityCell from './CapacityCell.svelte';
 	import NodeCapacityForm from './NodeCapacityForm.svelte';
 	import NodeLoadCell from './NodeLoadCell.svelte';
+	import { resolve } from '$app/paths';
 	import type { NodeCapacity, NodeCapacityPatch, NodeCapacitySortColumn } from './policyNodes.svelte';
 	import type { ClusterOption } from '$lib/shared/clusters';
 	import type { NodeStatus } from '../cluster/nodes.svelte';
@@ -158,7 +159,13 @@
 						<tr class="group transition-colors hover:bg-muted/40" class:opacity-60={node.status === 'offline'}>
 							<th scope="row" class="text-left" data-label={m['policy.node']()}>
 								<span class="inline-flex items-center gap-2">
-									<span class="font-mono">{node.node}</span>
+									<a
+										href={resolve('/admin/nodes/[cluster]/[node]', { cluster, node: node.node })}
+										class="pv-focus rounded-sm font-mono text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary"
+										data-testid="node-details-link"
+									>
+										{node.node}
+									</a>
 									<Pill tone={statusTone[node.status] ?? 'off'} label={statusLabel(node.status)} />
 								</span>
 							</th>
