@@ -31,16 +31,52 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 		await expect(page).toHaveURL(/\/vms\/default\/100$/);
 
 		await expect(page.getByTestId('vm-name')).toHaveText('web-01');
-		await expect(page.getByTestId('vm-status')).toContainText('running');
+		await expect(page.getByTestId('vm-status')).toContainText(/running/i);
 		await expect(page.getByTestId('vm-meta')).toContainText('pve-node-01');
-		// Locale-agnostic: default locale is French ("2 cœurs"), not English.
 		await expect(page.getByTestId('vm-stat-cpu')).toContainText('2');
-		await expect(page.getByTestId('vm-stat-uptime')).toBeVisible();
+		// Connection-first: the Connect tab is the default and shows the SSH
+		// command built from the address the guest agent reports.
+		await expect(page.getByTestId('vm-tab-connect')).toHaveAttribute('aria-selected', 'true');
+		await expect(page.getByTestId('vm-ssh-command')).toContainText('@10.10.100.10');
+	});
+
+	test('a running VM without a reported address never shows an SSH command', async ({ page }) => {
+		await signInAlice(page.request);
+		// db-01 (VMID 102) runs with no NIC, so the agent reports no address.
+		await page.goto('/vms/default/102');
+		await expect(page.getByTestId('vm-status')).toContainText(/running/i);
+		await expect(page.getByTestId('vm-address-unavailable')).toBeVisible();
+		await expect(page.getByTestId('vm-ssh-command')).toHaveCount(0);
+		await expect(page.getByTestId('vm-console-open')).toBeVisible();
+	});
+
+	test('shut down asks for an inline graceful-shutdown confirmation', async ({ page }) => {
+		await signInAlice(page.request);
+		const vm = await createVm(page.request, 'detail-e2e-shut', { start: true });
+		await page.goto(`/vms/default/${vm.vmid}`);
+		await expect(page.getByTestId('vm-status')).toContainText(/running/i);
+
+		await page.getByTestId('vm-power-shutdown').click();
+		const confirmation = page.getByTestId('vm-shutdown-confirmation');
+		await expect(confirmation).toBeVisible();
+		await expect(page.getByRole('dialog')).toHaveCount(0);
+
+		// Keep running dismisses it without touching the machine.
+		await page.getByTestId('vm-shutdown-cancel').click();
+		await expect(confirmation).toHaveCount(0);
+		await expect(page.getByTestId('vm-status')).toContainText(/running/i);
+
+		await page.getByTestId('vm-power-shutdown').click();
+		await page.getByTestId('vm-shutdown-confirm').click();
+		await expect(page.getByTestId('vm-status')).toContainText(/stopped/i);
+		await expect(page.getByTestId('vm-ssh-unavailable')).toBeVisible();
+		await expect(page.getByTestId('vm-console-open')).toHaveCount(0);
 	});
 
 	test('T02: metrics history row renders and the range toggle switches without error', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms/default/100');
+		await page.getByTestId('vm-tab-configuration').click();
 
 		await expect(page.getByTestId('vm-metrics-row')).toBeVisible();
 		await expect(page.getByTestId('vm-metrics-charts')).toBeVisible({ timeout: 10000 });
@@ -67,11 +103,11 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 		const vm = await createVm(page.request, 'detail-e2e-start');
 		await page.goto(`/vms/default/${vm.vmid}`);
 
-		await expect(page.getByTestId('vm-status')).toContainText('stopped');
-		await page.getByTestId('vm-action-start').click();
+		await expect(page.getByTestId('vm-status')).toContainText(/stopped/i);
+		await page.getByTestId('vm-power-start').click();
 
 		// After the action, the status reconciles to running.
-		await expect(page.getByTestId('vm-status')).toContainText('running');
+		await expect(page.getByTestId('vm-status')).toContainText(/running/i);
 	});
 
 	test('delete opens a confirmation dialog, confirms, and the VM disappears', async ({ page }) => {
@@ -79,6 +115,7 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 		const vm = await createVm(page.request, 'detail-e2e-del');
 		await page.goto(`/vms/default/${vm.vmid}`);
 
+		await page.getByTestId('vm-tab-configuration').click();
 		await page.getByTestId('vm-action-delete').click();
 		await expect(page.getByRole('dialog')).toBeVisible();
 		await page.getByTestId('vm-delete-confirm').click();
@@ -92,6 +129,7 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 		const vm = await createVm(page.request, 'detail-e2e-run', { start: true });
 		await page.goto(`/vms/default/${vm.vmid}`);
 
+		await page.getByTestId('vm-tab-configuration').click();
 		await page.getByTestId('vm-action-delete').click();
 		await expect(page.getByRole('dialog')).toBeVisible();
 
@@ -147,6 +185,7 @@ test.describe('T05 VM detail & actions (closes S01)', () => {
 	test('T03: live metrics tick updates the running VM chart', async ({ page }) => {
 		await signInAlice(page.request);
 		await page.goto('/vms/default/100');
+		await page.getByTestId('vm-tab-configuration').click();
 
 		await expect(page.getByTestId('vm-metrics-charts')).toBeVisible({ timeout: 10000 });
 		await expect(page.getByTestId('line-chart')).toHaveCount(4);

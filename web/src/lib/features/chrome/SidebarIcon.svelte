@@ -57,6 +57,15 @@
 		<line x1="1" y1="14" x2="7" y2="14" />
 		<line x1="9" y1="8" x2="15" y2="8" />
 		<line x1="17" y1="16" x2="23" y2="16" />
+	{:else if name === 'clock'}
+		<circle cx="12" cy="12" r="10" />
+		<polyline points="12 6 12 12 16 14" />
+	{:else if name === 'help'}
+		<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+		<path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+	{:else if name === 'shield'}
+		<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+		<polyline points="9 12 11 14 15 10" />
 	{:else if name === 'info'}
 		<circle cx="12" cy="12" r="10" />
 		<line x1="12" y1="16" x2="12" y2="12" />

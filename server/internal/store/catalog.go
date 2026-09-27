@@ -35,7 +35,7 @@ type CatalogISO struct {
 }
 
 // CatalogImage is one approved cloud image (catalog_images row). A cloud
-// image is a bootable disk image (.qcow2/.raw/.vmdk/.ova) an admin placed
+// image is a bootable disk image (.qcow2/.raw/.vmdk) an admin placed
 // on a Proxmox storage's import/ directory themselves; SizeBytes carries
 // the discovered image size so the create path can reject a disk size
 // below it.

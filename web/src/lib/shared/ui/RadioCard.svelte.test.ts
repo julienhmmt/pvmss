@@ -29,7 +29,7 @@ describe('RadioCard', () => {
 		expect(label).not.toBeNull();
 		const radio = document.body.querySelector('input[type="radio"]') as HTMLInputElement;
 		expect(radio).not.toBeNull();
-		expect(radio.className).toContain('sr-only');
+		expect(radio.className).toContain('opacity-0');
 		expect(radio.getAttribute('value')).toBe('small');
 		expect(radio.getAttribute('name')).toBe('size');
 	});
