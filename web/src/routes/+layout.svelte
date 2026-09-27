@@ -100,7 +100,6 @@
 
 	let version = $state<string | null>(null);
 	const githubUrl = 'https://github.com/julienhmmt/pvmss';
-	const websiteUrl = 'https://j.hommet.net/pvmss';
 	onMount(async () => {
 		try {
 			const result = await get<{ version: string }>('/api/v1/public/version');
@@ -238,10 +237,7 @@
 						<span class="max-[699px]:hidden">{m['chrome.footer.context']()}</span>
 						<a href={resolvePath('/about')} class="hover:text-foreground hover:underline">{m['chrome.footer.about']()}</a>
 						<a href={githubUrl} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
-							{m['chrome.footer.github']()}
-						</a>
-						<a href={websiteUrl} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
-							{m['chrome.footer.website']()}
+							{m['chrome.footer.github']()}<span aria-hidden="true"> ↗</span><span class="sr-only"> {m['chrome.footer.externalLink']()}</span>
 						</a>
 					</div>
 				</footer>
@@ -279,11 +275,9 @@
 			<footer class="border-t border-border py-3 text-center text-xs text-muted-foreground-subtle">
 				{#if version}PVMSS {version}{/if}
 				<div class="mt-1 flex items-center justify-center gap-4">
+					<a href={resolvePath('/about')} class="hover:text-foreground hover:underline">{m['chrome.footer.about']()}</a>
 					<a href={githubUrl} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
-						{m['chrome.footer.github']()}
-					</a>
-					<a href={websiteUrl} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
-						{m['chrome.footer.website']()}
+						{m['chrome.footer.github']()}<span aria-hidden="true"> ↗</span><span class="sr-only"> {m['chrome.footer.externalLink']()}</span>
 					</a>
 				</div>
 			</footer>
