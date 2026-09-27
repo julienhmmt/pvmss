@@ -15,14 +15,13 @@ import (
 	"strings"
 )
 
-// AdminCatalog serves the admin catalog endpoints: the four discover-and-approve
-// resources (nodes/storages/bridges/isos), VM profiles (full CRUD), and tags
-// (CRUD with protected pvmss). Every route is wrapped by Auth.RequireAdmin.
+// AdminCatalog serves admin catalog and node-detail endpoints. Every route is wrapped by Auth.RequireAdmin.
 type AdminCatalog struct {
 	auth             *Auth
 	store            *store.Store
 	client           cluster.Client
 	projection       *inventory.Projection
+	inventory        dashboardInventory
 	clusters         ClusterLister
 	clients          cluster.ClientProvider
 	log              *slog.Logger
@@ -30,15 +29,14 @@ type AdminCatalog struct {
 }
 
 // NewAdminCatalog creates the handler for all admin catalog endpoints. The
-// projection is needed for tag VM counts; it may be nil when tags
-// are not used (tests that only exercise nodes/storages/bridges/isos).
+// projection feeds tag counts and the single-cluster node detail fallback.
 func NewAdminCatalog(authHandler *Auth, st *store.Store, client cluster.Client, projection *inventory.Projection, log *slog.Logger) *AdminCatalog {
-	return &AdminCatalog{auth: authHandler, store: st, client: client, projection: projection, log: log}
+	return &AdminCatalog{auth: authHandler, store: st, client: client, projection: projection, inventory: projection, log: log}
 }
 
 // NewAdminCatalogWithRegistry creates catalog handlers with mandatory cluster selection.
 func NewAdminCatalogWithRegistry(authHandler *Auth, st *store.Store, registry cluster.ClientProvider, projection *inventory.Projection, log *slog.Logger) *AdminCatalog {
-	return &AdminCatalog{auth: authHandler, store: st, projection: projection, clusters: registry, clients: registry, log: log}
+	return &AdminCatalog{auth: authHandler, store: st, projection: projection, inventory: projection, clusters: registry, clients: registry, log: log}
 }
 
 //  - Nodes -

@@ -264,7 +264,7 @@ non-admin), wired in `router_admin.go`. Nav grouping comes from
 | Policy         | `/admin/policy`, `/admin/policy/nodes`                                                                                                                                 | Quotas and gabarit limits; per-node capacity                                                                                                                                                                                                           |
 | System         | `/admin/appinfo`, `/admin/settings`                                                                                                                                    | App info; audit log with retention (`GET/PUT /api/v1/admin/audit/config`, `GET …/audit/prune-preview`); DB export/import                                                                                                                               |
 
-Four admin workflows deserve the full template because they are the risky ones.
+Five admin workflows deserve the full template because they are the risky ones.
 
 ### Manage PVMSS users
 
@@ -289,6 +289,18 @@ Four admin workflows deserve the full template because they are the risky ones.
 | **Steps** | 1. Pick a cluster from the selector. 2. Search, filter by status or enabled state, and sort by name, status, usage, or VM count. 3. Toggle a node on or off. 4. If disabling a node that has running VMs, confirm the action. 5. A toast confirms the change. |
 | **States** | `TableSkeleton` while loading; `EmptyState` with a link to `/admin/clusters` when no nodes are discovered; a second `EmptyState` with a reset-filters action when filters exclude every row; `ConfirmDialog` when disabling a node with running VMs; usage bars and sortable columns in the table. |
 | **Safety nets** | Disabling a node with running VMs requires confirmation and explains that existing VMs are unaffected; success and error toasts give feedback after the API call; toggling a node off only removes it from the create-VM catalog, never from existing VMs. |
+
+### Inspect a Proxmox node
+
+|                 |                                                                                                                                                                                                                                  |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Audience**    | admin                                                                                                                                                                                                                            |
+| **Entry**       | Admin dashboard -> select a node card                                                                                                                                                                                           |
+| **Route**       | `/admin/nodes/[cluster]/[node]`                                                                                                                                                                                                  |
+| **API**         | `GET /api/v1/admin/nodes/{cluster}/{name}`                                                                                                                                                                                       |
+| **Steps**       | 1. Open a node from the dashboard. 2. Review live host health, network configuration and PCI inventory. 3. Review cached QEMU/storage inventory and live LXC inventory. 4. Refresh live sections when needed.                    |
+| **States**      | Skeleton on first load; stale-health warning when live status fails; independent unavailable states for network, PCI and LXC; empty states when no devices, workloads or datastores are reported; API error alert on load failure. |
+| **Safety nets** | Both route and API require admin. The page is read-only: no VM creation, node changes, PCI scan, or power actions. Failed live sections do not hide cached inventory or other successful sections.                                      |
 
 ### Approve a catalog item
 

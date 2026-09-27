@@ -37,8 +37,8 @@
 		return Math.min(100, Math.round(node.cpuUsage * 100));
 	}
 
-	function goToNodeVms(nodeName: string): void {
-		void goto(`${resolve('/vms')}?node=${encodeURIComponent(nodeName)}`);
+	function goToNodeDetails(node: NodeSummary): void {
+		void goto(resolve('/admin/nodes/[cluster]/[node]', { cluster: node.clusterKey, node: node.name }));
 	}
 
 	function goToCreateUser(): void {
@@ -155,7 +155,7 @@
 						<button
 							type="button"
 							class="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 text-left shadow-card transition-[box-shadow,border-color] duration-150 hover:border-muted-foreground-subtle hover:shadow-raised pv-focus"
-							onclick={() => goToNodeVms(node.name)}
+							onclick={() => goToNodeDetails(node)}
 							data-testid="dashboard-node-card"
 							data-node={node.name}
 						>

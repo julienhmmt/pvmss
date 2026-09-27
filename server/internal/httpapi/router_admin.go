@@ -1,3 +1,4 @@
+//nolint:wsl_v5 // optional admin dependencies stay adjacent to route registration
 package httpapi
 
 import "net/http"
@@ -12,6 +13,9 @@ type adminRouteProtect func(method string, next http.Handler) http.Handler
 // stays a flat sequence of registrations (SonarQube go:S3776 on NewRouter).
 func registerAdminRoutes(mux *http.ServeMux, cfg RouterConfig, adminProtect adminRouteProtect) {
 	if cfg.AdminCatalog != nil {
+		if cfg.AdminOps != nil && cfg.AdminOps.inventory != nil {
+			cfg.AdminCatalog.inventory = cfg.AdminOps.inventory
+		}
 		registerAdminCatalogRoutes(mux, adminProtect, cfg.AdminCatalog)
 	}
 
@@ -45,6 +49,7 @@ func registerAdminRoutes(mux *http.ServeMux, cfg RouterConfig, adminProtect admi
 // template CRUD. Every route is admin-only.
 func registerAdminCatalogRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, h *AdminCatalog) {
 	mux.Handle("GET /api/v1/admin/nodes", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeNodes)))
+	mux.Handle("GET /api/v1/admin/nodes/{cluster}/{name}", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeNodeDetails)))
 	mux.Handle("POST /api/v1/admin/nodes/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeNodeToggle)))
 	mux.Handle("DELETE /api/v1/admin/nodes/{cluster}/{name}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeNodeDelete)))
 	mux.Handle("GET /api/v1/admin/storages", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeStorages)))

@@ -52,6 +52,7 @@ func (h *AdminOps) SetInventorySource(src dashboardInventory, staleAfter time.Du
 }
 
 type nodeSummaryDTO struct {
+	ClusterKey       string  `json:"clusterKey"`
 	Cluster          string  `json:"cluster"`
 	Name             string  `json:"name"`
 	Status           string  `json:"status"`
@@ -204,6 +205,7 @@ func (h *AdminOps) addClusterToDashboard(ctx context.Context, dash *dashboardDTO
 		}
 
 		dash.Nodes = append(dash.Nodes, nodeSummaryDTO{
+			ClusterKey:       name,
 			Cluster:          label,
 			Name:             node.Name,
 			Status:           string(node.Status),
