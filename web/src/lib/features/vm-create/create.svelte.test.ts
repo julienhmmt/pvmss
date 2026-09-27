@@ -479,8 +479,8 @@ describe('VmCreateStore cloud-image source (image mode)', () => {
 
 		await store.submit();
 
-		const init = vi.mocked(fetch).mock.calls[0]?.[1] ?? {};
-		const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+		const init = vi.mocked(fetch).mock.calls[0]?.[1];
+		const body = JSON.parse(init?.body as string) as Record<string, unknown>;
 		expect(body.image).toBeDefined();
 		expect(body.iso).toBeUndefined();
 		expect(body.templateId).toBeUndefined();

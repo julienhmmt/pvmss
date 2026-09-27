@@ -11,19 +11,19 @@ vi.mock('$lib/shared/api/client', () => ({
 const { get, post } = await import('$lib/shared/api/client');
 
 function mockGet(status: string): void {
-	vi.mocked(get).mockResolvedValueOnce({ status, uptime: 0 } as never);
+	vi.mocked(get).mockResolvedValueOnce({ status, uptime: 0 });
 }
 
 function mockPost(results: Array<{ cluster: string; vmid: number; status: string }>): void {
-	vi.mocked(post).mockResolvedValueOnce(results as never);
+	vi.mocked(post).mockResolvedValueOnce(results);
 }
 
 function mockGetError(): void {
-	vi.mocked(get).mockRejectedValueOnce(new Error('network error') as never);
+	vi.mocked(get).mockRejectedValueOnce(new Error('network error'));
 }
 
 function mockPostError(): void {
-	vi.mocked(post).mockRejectedValueOnce(new Error('network error') as never);
+	vi.mocked(post).mockRejectedValueOnce(new Error('network error'));
 }
 
 describe('convergeSingle', () => {
@@ -78,7 +78,7 @@ describe('convergeSingle', () => {
 
 	it('expires gracefully after the timeout, accepting the last reading', async () => {
 		// Always returns 'stopped' - never converges to 'running'.
-		vi.mocked(get).mockResolvedValue({ status: 'stopped', uptime: 0 } as never);
+		vi.mocked(get).mockResolvedValue({ status: 'stopped', uptime: 0 });
 		const onTick = vi.fn();
 
 		const promise = convergeSingle(
@@ -122,7 +122,7 @@ describe('convergeSingle', () => {
 		// Abort during the pending GET so that by the time delay() runs the
 		// signal is already aborted - exercises delay()'s early-return path.
 		let resolveGet!: (v: unknown) => void;
-		vi.mocked(get).mockReturnValueOnce(new Promise((r) => { resolveGet = r; }) as never);
+		vi.mocked(get).mockReturnValueOnce(new Promise((r) => { resolveGet = r; }));
 		const controller = new AbortController();
 		const onTick = vi.fn();
 
@@ -142,7 +142,7 @@ describe('convergeSingle', () => {
 	it('aborts the delay wait when the signal fires during the poll interval', async () => {
 		// GET never converges so the loop enters delay(); aborting mid-wait
 		// exercises the abort event listener (clearTimeout + resolve).
-		vi.mocked(get).mockResolvedValue({ status: 'stopped', uptime: 0 } as never);
+		vi.mocked(get).mockResolvedValue({ status: 'stopped', uptime: 0 });
 		const controller = new AbortController();
 		const onTick = vi.fn();
 

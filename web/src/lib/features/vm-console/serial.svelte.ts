@@ -140,7 +140,7 @@ export class SerialConsoleStore {
 	}
 
 	#onMessage(event: MessageEvent): void {
-		const data = event.data;
+		const data: unknown = event.data;
 		if (typeof data === 'string') {
 			this.#handleFrame(data);
 		} else if (data instanceof ArrayBuffer) {

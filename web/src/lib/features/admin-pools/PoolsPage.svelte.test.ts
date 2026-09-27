@@ -109,7 +109,7 @@ describe('PoolsPage', () => {
 
 		const resetButton = Array.from(document.querySelectorAll('button')).find((button) =>
 			button.textContent?.includes('Réinitialiser')
-		) as HTMLButtonElement | undefined;
+		);
 		expect(resetButton).toBeDefined();
 		resetButton?.click();
 		await tick();

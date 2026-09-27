@@ -57,7 +57,7 @@ test.describe('T12 admin policy', () => {
 			data: { cluster: 'default', name: 'policy-gabarit-demo', profileId: 'small' }
 		});
 		expect(response.status()).toBe(400);
-		expect((await response.json()).code).toBe('gabarit_exceeded');
+		expect(((await response.json()) as { code: string }).code).toBe('gabarit_exceeded');
 
 		// Restore straight away - the lowered gabarit blocks every later create.
 		await signInAdmin(page.request);
@@ -73,7 +73,7 @@ test.describe('T12 admin policy', () => {
 			data: { cluster: 'default', name: 'policy-quota-demo', profileId: 'small' }
 		});
 		expect(response.status()).toBe(400);
-		expect((await response.json()).code).toBe('quota_exceeded');
+		expect(((await response.json()) as { code: string }).code).toBe('quota_exceeded');
 		await signInAdmin(page.request);
 		await savePolicy(page.request, { quota: { maxVmPerUser: -1 } });
 	});
@@ -124,7 +124,7 @@ test.describe('T12 admin policy', () => {
 		for (let attempt = 0; attempt < 3; attempt += 1) {
 			const task = await page.request.get(`/api/v1/tasks/${encodeURIComponent(accepted.upid)}?cluster=default`);
 			expect(task.status()).toBe(200);
-			if ((await task.json()).state === 'ok') break;
+			if (((await task.json()) as { state: string }).state === 'ok') break;
 		}
 		const second = await page.request.post('/api/v1/vms', {
 			headers: await csrfHeaders(page.request),
@@ -134,13 +134,13 @@ test.describe('T12 admin policy', () => {
 			}
 		});
 		expect(second.status()).toBe(400);
-		expect((await second.json()).code).toBe('capacity_exceeded');
+		expect(((await second.json()) as { code: string }).code).toBe('capacity_exceeded');
 		const hardware = await page.request.put(`/api/v1/vms/default/${accepted.vmid}/hardware`, {
 			headers: await csrfHeaders(page.request),
 			data: { sockets: 1, cores: 4, memoryMB: 1024 }
 		});
 		expect(hardware.status()).toBe(400);
-		expect((await hardware.json()).code).toBe('capacity_exceeded');
+		expect(((await hardware.json()) as { code: string }).code).toBe('capacity_exceeded');
 		await signInAdmin(page.request);
 		const reset = await page.request.put('/api/v1/admin/policy/nodes/pve-node-02', {
 			headers: await csrfHeaders(page.request),

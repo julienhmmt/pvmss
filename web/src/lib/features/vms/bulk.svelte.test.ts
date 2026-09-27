@@ -145,7 +145,7 @@ describe('VmBulkSelection', () => {
 		const [url, init] = call as [string, RequestInit];
 		expect(url).toBe('/api/v1/vms/bulk-action');
 		expect(init?.method).toBe('POST');
-		const body = JSON.parse(init?.body as string);
+		const body = JSON.parse(init?.body as string) as { action: string; targets: Array<{ cluster: string; vmid: number }> };
 		expect(body.action).toBe('start');
 		expect(body.targets).toEqual([{ cluster: 'default', vmid: 101 }, { cluster: 'default', vmid: 103 }]);
 

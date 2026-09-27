@@ -54,7 +54,8 @@ describe('AdminClustersStore', () => {
 			sshPort: 22,
 			sshKnownHosts: '10.0.0.1 ssh-ed25519 AAAA'
 		});
-		expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toMatchObject({
+		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+		expect(JSON.parse(init?.body as string)).toMatchObject({
 			snippetStorage: 'shared',
 			sshUser: 'pvmss',
 			sshPort: 22,
@@ -69,7 +70,8 @@ describe('AdminClustersStore', () => {
 		store.clusters = [cluster];
 		await store.toggleOIDC('secondary', true);
 		expect(store.clusters[0]?.oidcEnabled).toBe(true);
-		expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({ enabled: true });
+		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+		expect(JSON.parse(init?.body as string)).toEqual({ enabled: true });
 	});
 
 	it('loadSnippetStorages() queries the snippet-storages endpoint with the cluster name', async () => {

@@ -16,9 +16,9 @@ describe('fetchConsoleTicket', () => {
 		const token = await fetchConsoleTicket('default', 100);
 
 		expect(token).toBe('opaque-token-abc');
-		const [path, init] = fetchMock.mock.calls[0] ?? [];
+		const [path, init] = (fetchMock.mock.calls[0] ?? []) as [string, RequestInit | undefined];
 		expect(path).toBe('/api/v1/vms/default/100/vnc-ticket');
-		expect((init as RequestInit).method).toBe('POST');
+		expect(init?.method).toBe('POST');
 	});
 
 	it('encodes the cluster and vmid into the path', async () => {
@@ -100,9 +100,9 @@ describe('fetchSerialTicket', () => {
 		const token = await fetchSerialTicket('default', 100);
 
 		expect(token).toBe('serial-token-abc');
-		const [path, init] = fetchMock.mock.calls[0] ?? [];
+		const [path, init] = (fetchMock.mock.calls[0] ?? []) as [string, RequestInit | undefined];
 		expect(path).toBe('/api/v1/vms/default/100/serial-ticket');
-		expect((init as RequestInit).method).toBe('POST');
+		expect(init?.method).toBe('POST');
 	});
 
 	it('encodes the cluster and vmid into the path', async () => {

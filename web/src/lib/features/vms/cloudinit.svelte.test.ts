@@ -35,7 +35,8 @@ describe('CloudInitStore', () => {
 
 		expect(saved).toBe(true);
 		expect(reloadVm).toHaveBeenCalledOnce();
-		expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({ user: 'ubuntu', ipMode: 'dhcp', rebootNow: true });
+		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+		expect(JSON.parse(init?.body as string)).toEqual({ user: 'ubuntu', ipMode: 'dhcp', rebootNow: true });
 		expect(store.config?.user).toBe('ubuntu');
 	});
 
@@ -67,7 +68,8 @@ describe('CloudInitStore', () => {
 		const saved = await store.saveDocument('web');
 
 		expect(saved).toBe(true);
-		expect(JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string)).toEqual({ templateId: 'web' });
+		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+		expect(JSON.parse(init?.body as string)).toEqual({ templateId: 'web' });
 		expect(store.document?.templateId).toBe('web');
 	});
 
@@ -91,7 +93,7 @@ describe('CloudInitStore', () => {
 		const ok = await store.addSSHKey('ssh-ed25519 AAAA x', 'debian');
 
 		expect(ok).toBe(true);
-		const req = fetchMock.mock.calls[0];
+		const req = fetchMock.mock.calls[0] as [string, RequestInit | undefined] | undefined;
 		expect(req?.[0]).toBe('/api/v1/vms/default/101/cloudinit/ssh-keys');
 		expect(req?.[1]?.method).toBe('POST');
 		expect(JSON.parse(req?.[1]?.body as string)).toEqual({ key: 'ssh-ed25519 AAAA x', user: 'debian' });

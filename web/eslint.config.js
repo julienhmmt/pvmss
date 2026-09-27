@@ -6,13 +6,17 @@ import tseslint from 'typescript-eslint';
 /** @type {import('eslint').Linter.Config[]} */
 export default [
   js.configs.recommended,
-  ...tseslint.configs.recommended,
+  ...tseslint.configs.recommendedTypeChecked,
   ...svelte.configs['flat/recommended'],
   {
     languageOptions: {
       globals: {
         ...globals.browser,
         ...globals.node
+      },
+      parserOptions: {
+        project: ['./tsconfig.json', './tsconfig.e2e.json'],
+        tsconfigRootDir: import.meta.dirname
       }
     }
   },
@@ -25,6 +29,12 @@ export default [
     }
   },
   {
+    // .svelte templates and root .js configs sit outside every tsconfig, so
+    // type-aware rules have no program to query there.
+    files: ['**/*.svelte', '**/*.js'],
+    ...tseslint.configs.disableTypeChecked
+  },
+  {
     rules: {
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
@@ -33,6 +43,14 @@ export default [
       // Reactivity is driven by $state reassignment; the rule fires on non-reactive
       // local/infra collections (timers, URL builders, throwaway copies).
       'svelte/prefer-svelte-reactivity': 'warn'
+    }
+  },
+  {
+    // Core rule crashes on generic call expressions (`f<T>(x)`) parsed with
+    // type information; TS already rejects the ASI footguns it guards.
+    files: ['**/*.ts'],
+    rules: {
+      'no-unexpected-multiline': 'off'
     }
   },
   {
