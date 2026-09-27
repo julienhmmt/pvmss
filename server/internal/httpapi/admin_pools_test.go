@@ -209,6 +209,113 @@ func TestAdminPools_ListExposesManagedFlag(t *testing.T) {
 	}
 }
 
+type adminPoolDetail struct {
+	Name      string `json:"name"`
+	Username  string `json:"username"`
+	Comment   string `json:"comment"`
+	Cluster   string `json:"cluster"`
+	Managed   bool   `json:"managed"`
+	CreatedAt string `json:"createdAt"`
+	Quota     struct {
+		Used    int `json:"used"`
+		Allowed int `json:"allowed"`
+	} `json:"quota"`
+	VMs []struct {
+		VMID   int    `json:"vmid"`
+		Name   string `json:"name"`
+		Status string `json:"status"`
+	} `json:"vms"`
+	Activity []struct {
+		Actor  string `json:"actor"`
+		Action string `json:"action"`
+	} `json:"activity"`
+}
+
+// TestAdminPools_DetailManagedPool verifies the detail endpoint aggregates
+// identity, managed marker, quota, members, and the admin-action audit trail
+// for a PVMSS-provisioned pool.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestAdminPools_DetailManagedPool(t *testing.T) {
+	handler, authHandler := newAdminPoolsHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	create := adminPoolsRequest(t, handler.ServeCreate, http.MethodPost, "/api/v1/admin/pools", cookie, `{"name":"team-d","comment":"detail test"}`)
+	if create.Code != http.StatusCreated {
+		t.Fatalf("create status = %d: %s", create.Code, create.Body.String())
+	}
+
+	rec := adminPoolsRequest(t, handler.ServeDetail, http.MethodGet, "/api/v1/admin/pools/pvmss-team-d?cluster=default", cookie, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("detail status = %d: %s", rec.Code, rec.Body.String())
+	}
+	var detail adminPoolDetail
+	if err := json.Unmarshal(rec.Body.Bytes(), &detail); err != nil {
+		t.Fatalf("decode detail: %v", err)
+	}
+	if detail.Name != "pvmss-team-d" || detail.Username != "pvmss-team-d@pve" || detail.Comment != "detail test" {
+		t.Fatalf("identity = %+v", detail)
+	}
+	if !detail.Managed || detail.CreatedAt == "" {
+		t.Fatalf("managed marker = %+v", detail)
+	}
+	if detail.Cluster != "default" {
+		t.Fatalf("cluster = %q", detail.Cluster)
+	}
+	if len(detail.VMs) != 0 || detail.Quota.Used != 0 {
+		t.Fatalf("new pool should be empty: %+v", detail)
+	}
+	foundCreate := false
+	for _, entry := range detail.Activity {
+		if entry.Action == "admin.pools.create" {
+			foundCreate = true
+		}
+	}
+	if !foundCreate {
+		t.Fatalf("activity should include the pool creation: %+v", detail.Activity)
+	}
+}
+
+// TestAdminPools_DetailUnmanagedPool verifies a Proxmox pool PVMSS did not
+// provision is still served, flagged unmanaged, with its members listed.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestAdminPools_DetailUnmanagedPool(t *testing.T) {
+	handler, authHandler := newAdminPoolsHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	rec := adminPoolsRequest(t, handler.ServeDetail, http.MethodGet, "/api/v1/admin/pools/"+cluster.FakePoolAlice+"?cluster=default", cookie, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("detail status = %d: %s", rec.Code, rec.Body.String())
+	}
+	var detail adminPoolDetail
+	if err := json.Unmarshal(rec.Body.Bytes(), &detail); err != nil {
+		t.Fatalf("decode detail: %v", err)
+	}
+	if detail.Managed {
+		t.Fatalf("alice pool should be unmanaged: %+v", detail)
+	}
+	if len(detail.VMs) != 7 {
+		t.Fatalf("members = %d, want 7", len(detail.VMs))
+	}
+	if detail.Quota.Used != 7 {
+		t.Fatalf("quota used = %d, want 7", detail.Quota.Used)
+	}
+}
+
+// TestAdminPools_DetailNotFound verifies unknown pools return 404.
+//
+//nolint:paralleltest // serial: shared fake fixtures
+func TestAdminPools_DetailNotFound(t *testing.T) {
+	handler, authHandler := newAdminPoolsHandler(t)
+	cookie := adminCookie(t, authHandler)
+
+	rec := adminPoolsRequest(t, handler.ServeDetail, http.MethodGet, "/api/v1/admin/pools/pool-nope?cluster=default", cookie, "")
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want 404: %s", rec.Code, rec.Body.String())
+	}
+}
+
 // listAdminPools issues a GET to the admin pools list endpoint and decodes the
 // response. Extracted from TestAdminPools_ListExposesManagedFlag to keep its
 // cyclomatic complexity under the gocyclo threshold.
@@ -253,9 +360,13 @@ func adminPoolsRequest(t *testing.T, handler http.HandlerFunc, method, path stri
 	if body != "" {
 		request.Header.Set("Content-Type", "application/json")
 	}
-	if method == http.MethodDelete {
-		parts := strings.Split(strings.Trim(path, "/"), "/")
-		request.SetPathValue("name", parts[len(parts)-1])
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	if len(parts) >= 2 && parts[len(parts)-2] == "pools" {
+		last := parts[len(parts)-1]
+		if idx := strings.IndexByte(last, '?'); idx >= 0 {
+			last = last[:idx]
+		}
+		request.SetPathValue("name", last)
 	}
 	if cookie != nil {
 		request.AddCookie(cookie)

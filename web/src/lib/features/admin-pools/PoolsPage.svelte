@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { AdminPool, CreatedPoolCredentials } from './pools.svelte';
+	import { resolve } from '$app/paths';
 	import type { ClusterOption } from '$lib/shared/clusters';
 	import CreatePoolDialog from './CreatePoolDialog.svelte';
 	import DeletePoolConfirm from './DeletePoolConfirm.svelte';
@@ -225,7 +226,10 @@
 					<tr class="group transition-colors hover:bg-muted/40">
 						<td data-label={m['admin.pools.accountColumn']()}>
 							<div class="min-w-0">
-								<code class="block break-words font-mono">{pool.name}@pve</code>
+								<a
+									href="{resolve('/admin/pools/[name]', { name: pool.name })}?cluster={encodeURIComponent(cluster)}"
+									class="block break-words font-mono font-medium text-primary hover:underline"
+								>{pool.name}@pve</a>
 								<span class="mt-1 block text-xs text-muted-foreground">
 									{m['admin.pools.vmPoolName']({ name: pool.name })}
 								</span>
