@@ -112,6 +112,17 @@
 		store.result === null ? 1 : Math.max(1, Math.ceil(store.result.total / store.result.pageSize))
 	);
 	const filtered = $derived(store.search !== '' || store.status !== '' || store.node !== '');
+	// Filtered lists show "N of M machines" - M is the owned-VM total from
+	// quota.used, only present on the 'mine' scope; without it the plain
+	// filtered count stands alone.
+	const machineCountLabel = $derived.by(() => {
+		const result = store.result;
+		if (result === null) return '';
+		if (filtered && result.quota !== undefined) {
+			return m['vms.list.machineCountFiltered']({ filtered: result.total, total: result.quota.used });
+		}
+		return m['vms.list.machineCount']({ count: result.total });
+	});
 	const firstVisit = $derived(store.result?.emptyReason === 'no_vms_owned' && !filtered);
 	const unreachable = $derived(store.errorCode === 'inventory_not_ready');
 </script>
@@ -187,7 +198,7 @@
 
 			{#snippet meta()}
 				{#if store.result}
-					<span class="tabular-nums" data-testid="vm-count">{m['vms.list.machineCount']({ count: store.result.total })}</span>
+					<span class="tabular-nums" data-testid="vm-count">{machineCountLabel}</span>
 				{/if}
 			{/snippet}
 

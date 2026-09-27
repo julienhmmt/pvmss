@@ -1739,6 +1739,7 @@
       }
     }
   ],
+  "vms.list.machineCountFiltered": "{filtered} of {total} machines",
   "vms.list.columnMachine": "Machine",
   "vms.list.columnResources": "Resources",
   "vms.list.resourcesCompute": "{cpu} vCPU · {memory} RAM",
