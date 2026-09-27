@@ -175,30 +175,34 @@ func TestAdminDashboard_AlertsCarryClusterKey(t *testing.T) {
 
 	st, err := store.Open(config.Configuration{
 		DBPath:        filepath.Join(t.TempDir(), "dashboard-alerts.db"),
-		SessionSecret: "a-session-secret-with-at-least-thirty-two-bytes", //nolint:gosec // deterministic test secret
+		SessionSecret: "a-session-secret-with-at-least-thirty-two-bytes",
 	})
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
 	}
+
 	t.Cleanup(func() { _ = st.Close() })
 
+	//nolint:gosec // deterministic test secret
 	if err := st.CreateCluster(ctx, store.ClusterRow{
 		Name: dashCluster, DisplayName: dashClusterLabel,
-		URL: "https://pve-east.example.com:8006/api2/json", TokenID: "pvmss@pve!test", TokenSecret: "dashboard-test-token", //nolint:gosec // deterministic test secret
+		URL: "https://pve-east.example.com:8006/api2/json", TokenID: "pvmss@pve!test", TokenSecret: "dashboard-test-token",
 	}); err != nil {
 		t.Fatalf("CreateCluster: %v", err)
 	}
+
 	if err := st.UpsertPolicyRow(ctx, store.PolicyRow{Cluster: dashCluster, MaxVMPerUser: 2}); err != nil {
 		t.Fatalf("UpsertPolicyRow: %v", err)
 	}
 
 	ops := httpapi.NewAdminOps(authHandler, st, cluster.Fake{}, inventory.NewProjection(), "0.4.0-test", slog.New(slog.DiscardHandler))
-	ops.SetInventorySource(inventory.NewRegistryFromIndexes(map[string]*inventory.Index{dashCluster: attentionIndex(), "west": nil}), time.Minute)
+	ops.SetInventorySource(inventory.NewRegistryFromIndexes(map[string]*inventory.Index{dashCluster: attentionIndex(), dashWestCluster: nil}), time.Minute)
 
 	rec := opsGet(t, ops, authHandler, adminCookie(t, authHandler), "/api/v1/admin/dashboard")
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
 	}
+
 	var dash attentionDashboardDTO
 	if err := json.Unmarshal(rec.Body.Bytes(), &dash); err != nil {
 		t.Fatalf("decode: %v", err)
@@ -206,14 +210,7 @@ func TestAdminDashboard_AlertsCarryClusterKey(t *testing.T) {
 
 	// Critical first, then by kind, cluster and subject - same order as
 	// TestAdminDashboard_AlertsCoverEveryRule, with cluster now the label.
-	want := []dashboardAlertDTO{
-		{Kind: "cluster_unreachable", Severity: "critical", Cluster: "west", ClusterKey: "west"},
-		{Kind: "node_offline", Severity: "critical", Cluster: dashClusterLabel, ClusterKey: dashCluster, Subject: "n2"},
-		{Kind: "storage_full", Severity: "critical", Cluster: dashClusterLabel, ClusterKey: dashCluster, Subject: dashSharedName, Percent: 96},
-		{Kind: "node_cpu", Severity: "warning", Cluster: dashClusterLabel, ClusterKey: dashCluster, Subject: "n1", Percent: 95},
-		{Kind: "pool_at_quota", Severity: "warning", Cluster: dashClusterLabel, ClusterKey: dashCluster, Subject: "p1", Percent: 100},
-		{Kind: "storage_full", Severity: "warning", Cluster: dashClusterLabel, ClusterKey: dashCluster, Subject: testStorageLocalLVM, Percent: 86},
-	}
+	want := wantAttentionAlerts(dashClusterLabel)
 	if !slices.Equal(dash.Alerts, want) {
 		t.Errorf("alerts =\n%+v\nwant\n%+v", dash.Alerts, want)
 	}

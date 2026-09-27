@@ -280,12 +280,15 @@ func TestListAuditLog_FiltersByTarget(t *testing.T) {
 	if err := st.RecordAdminAction(ctx, "admin", "admin.pools.create", "pool", "pvmss-a", `{"summary":"created"}`, "127.0.0.1"); err != nil {
 		t.Fatalf("RecordAdminAction: %v", err)
 	}
+
 	if err := st.RecordAdminAction(ctx, "admin", "admin.pools.delete", "pool", "pvmss-b", `{"summary":"deleted"}`, "127.0.0.1"); err != nil {
 		t.Fatalf("RecordAdminAction: %v", err)
 	}
+
 	if err := st.RecordAdminAction(ctx, "admin", "admin.policy.update", "policy", "default", `{"summary":"updated"}`, "127.0.0.1"); err != nil {
 		t.Fatalf("RecordAdminAction: %v", err)
 	}
+
 	if err := st.RecordAction(ctx, testAuditActor, "default", 101, testAuditAction); err != nil {
 		t.Fatalf("RecordAction: %v", err)
 	}
@@ -308,9 +311,11 @@ func TestListAuditLog_FiltersByTarget(t *testing.T) {
 			if err != nil {
 				t.Fatalf("ListAuditLog: %v", err)
 			}
+
 			if len(page.Items) != tc.wantCount {
 				t.Fatalf("items = %d, want %d", len(page.Items), tc.wantCount)
 			}
+
 			if tc.wantTargetID != "" && page.Items[0].TargetID.String != tc.wantTargetID {
 				t.Fatalf("target_id = %q, want %q", page.Items[0].TargetID.String, tc.wantTargetID)
 			}

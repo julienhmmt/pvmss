@@ -10,6 +10,7 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -225,10 +226,12 @@ type adminPoolDetail struct {
 		Name   string `json:"name"`
 		Status string `json:"status"`
 	} `json:"vms"`
-	Activity []struct {
-		Actor  string `json:"actor"`
-		Action string `json:"action"`
-	} `json:"activity"`
+	Activity []adminPoolActivityEntry `json:"activity"`
+}
+
+type adminPoolActivityEntry struct {
+	Actor  string `json:"actor"`
+	Action string `json:"action"`
 }
 
 // TestAdminPools_DetailManagedPool verifies the detail endpoint aggregates
@@ -259,19 +262,16 @@ func TestAdminPools_DetailManagedPool(t *testing.T) {
 	if !detail.Managed || detail.CreatedAt == "" {
 		t.Fatalf("managed marker = %+v", detail)
 	}
-	if detail.Cluster != "default" {
+	if detail.Cluster != auditTestCluster {
 		t.Fatalf("cluster = %q", detail.Cluster)
 	}
 	if len(detail.VMs) != 0 || detail.Quota.Used != 0 {
 		t.Fatalf("new pool should be empty: %+v", detail)
 	}
-	foundCreate := false
-	for _, entry := range detail.Activity {
-		if entry.Action == "admin.pools.create" {
-			foundCreate = true
-		}
-	}
-	if !foundCreate {
+	created := slices.ContainsFunc(detail.Activity, func(entry adminPoolActivityEntry) bool {
+		return entry.Action == "admin.pools.create"
+	})
+	if !created {
 		t.Fatalf("activity should include the pool creation: %+v", detail.Activity)
 	}
 }
