@@ -211,7 +211,7 @@
 			<caption class="sr-only">{m['admin.pools.heading']()}</caption>
 			<thead>
 				<tr>
-					<TableHeader text={m['common.name']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
+					<TableHeader text={m['admin.pools.accountColumn']()} column="name" activeColumn={sortBy} {sortDir} onSort={handleSort} />
 					<th class="font-medium">{m['admin.pools.comment']()}</th>
 					<TableHeader text={m['admin.pools.vmsColumn']()} tooltip={m['admin.pools.vmsTooltip']()} class="text-center" />
 					<TableHeader text={m['common.total']()} column="total" activeColumn={sortBy} {sortDir} onSort={handleSort} class="text-center" />
@@ -223,7 +223,14 @@
 			<tbody>
 				{#each filteredPools as pool (pool.name)}
 					<tr class="group transition-colors hover:bg-muted/40">
-						<td class="font-mono" data-label={m['common.name']()}>{pool.name}</td>
+						<td data-label={m['admin.pools.accountColumn']()}>
+							<div class="min-w-0">
+								<code class="block break-words font-mono">{pool.name}@pve</code>
+								<span class="mt-1 block text-xs text-muted-foreground">
+									{m['admin.pools.vmPoolName']({ name: pool.name })}
+								</span>
+							</div>
+						</td>
 						<td class="text-muted-foreground" data-label={m['admin.pools.comment']()}>
 							{#if pool.comment}
 								<span class="block max-w-xs truncate" title={pool.comment}>{pool.comment}</span>
