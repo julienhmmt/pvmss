@@ -12,7 +12,8 @@ test.describe('T02 authentication', () => {
 		await page.locator('input[autocomplete="current-password"]').fill('pvmss-alice');
 		await page.locator('#login-cluster').selectOption('default');
 		await page.locator('button[type="submit"]').click();
-		await expect(page).toHaveURL(/\/$/);
+		// A signed-in pool user lands on the machine list (calm workspace).
+		await expect(page).toHaveURL(/\/vms$/);
 
 		const me = await page.request.get('/api/v1/auth/me');
 		expect(me.status()).toBe(200);

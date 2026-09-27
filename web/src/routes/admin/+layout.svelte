@@ -30,7 +30,7 @@
 </script>
 
 {#if checked && session.isAdmin}
-	<div class="w-full max-w-[1180px] py-2">
+	<div class="w-full py-2">
 		{@render children()}
 	</div>
 {:else if !checked}

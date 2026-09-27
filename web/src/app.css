@@ -91,7 +91,6 @@
   --blaze-orange-800: 20 100% 37%;
   --blaze-orange-900: 17 100% 28%;
   --blaze-orange-950: 12 100% 21%;
-  --content-max-width: 87.5rem;
   --navbar-height: 3.5rem;
   /* Single control radius. Every interactive control (button, input, select,
      icon button, tab) uses this; cards use --radius. Two values, no drift. */
@@ -193,6 +192,12 @@
 }
 
 @theme inline {
+  /* Page widths: collections (lists, admin) use the wide cap, forms and
+     reading pages the narrow one. The shell caps at --container-collection. */
+  --container-collection: 100rem;
+  --container-reading: 60rem;
+  /* Smallest step of the type scale: eyebrows, count chips, captions. */
+  --text-2xs: 0.6875rem;
   --font-sans: "Archivo Variable", sans-serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
   --color-background: var(--background);
@@ -279,12 +284,6 @@
     display: flex;
     flex-direction: column;
   }
-}
-
-.pv-content-width {
-  max-width: var(--content-max-width);
-  margin-left: auto;
-  margin-right: auto;
 }
 
 /* Layer B - mono run for technical values (vmid, node, sizes, UPID).

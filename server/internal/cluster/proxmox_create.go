@@ -151,7 +151,7 @@ func setDiskFormKeys(form url.Values, spec VMSpec) {
 	//  'iso' - .img files are rejected) and must be passed as a volid,
 	// not an absolute path (absolute paths are root@pam-only).
 	// Cloud images live in the storage's import/ directory with
-	// .qcow2/.raw/.vmdk/.ova extensions → volid <storage>:import/<file>.
+	// .qcow2/.raw/.vmdk extensions → volid <storage>:import/<file>.
 	if spec.Image != nil {
 		diskValue += ",import-from=" + spec.Image.Storage + ":import/" + spec.Image.File
 	}

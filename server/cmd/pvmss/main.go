@@ -451,6 +451,7 @@ func buildRouter(ctx context.Context, deps routerDeps) (http.Handler, error) {
 	adminPools.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminOps := httpapi.NewAdminOps(authHandler, st, clusterClient, projection, appVersion, logger)
 	adminOps.SetTrustedProxyHops(cfg.TrustedProxyHops)
+	adminOps.SetInventorySource(inventoryRegistry, 2*cfg.InventoryRefreshInterval)
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, clusterRegistry, inventoryRegistry, logger)
 	adminClusters.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminClusters.SetSSHPublicKey(clusterRegistry.SSHPublicKey())

@@ -11,13 +11,13 @@ async function signInAlice(request: APIRequestContext): Promise<void> {
 test.describe('T10 VM console VNC', () => {
 	test.describe.configure({ mode: 'serial' });
 
-	test('P1: open a console and see the fake screen', async ({ page }) => {
-		await signInAlice(page.request);
-		await page.goto('/vms/default/100');
+	test('P1: open a console and see the fake screen', async ({ page: detail, context }) => {
+		await signInAlice(detail.request);
+		await detail.goto('/vms/default/100');
 
-		// The console banner is visible on the VM detail page.
-		await expect(page.getByTestId('vm-console-open')).toBeVisible();
-		await page.getByTestId('vm-console-open').click();
+		// The Connect tab offers the console; it opens in a new tab.
+		await expect(detail.getByTestId('vm-console-open')).toBeVisible();
+		const [page] = await Promise.all([context.waitForEvent('page'), detail.getByTestId('vm-console-open').click()]);
 
 		// The console route loads.
 		await expect(page).toHaveURL(/\/vms\/default\/100\/console$/);

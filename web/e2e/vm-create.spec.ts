@@ -41,7 +41,7 @@ test.describe('T06 VM creation', () => {
 		await page.goto('/vms/create');
 
 		// The chooser asks the question; neither wizard is rendered yet.
-		await expect(page.getByRole('heading', { name: 'Create a VM' })).toBeVisible();
+		await expect(page.getByRole('heading', { name: 'Create a machine' })).toBeVisible();
 		await expect(page.getByText('Creation mode')).toBeVisible();
 		await expect(page.getByRole('button', { name: /Simple/ })).toBeVisible();
 		await expect(page.getByRole('button', { name: /Detailed/ })).toBeVisible();
@@ -90,13 +90,13 @@ test.describe('T06 VM creation', () => {
 		await signInAlice(page.request);
 		await page.goto('/vms?cluster=default');
 
-		await page.getByRole('link', { name: 'Create a VM' }).click();
+		await page.getByRole('link', { name: 'Create a machine' }).click();
 		await expect(page).toHaveURL(/\/vms\/create/);
 
 		await page.getByRole('button', { name: /Simple/ }).click();
 		await page.getByRole('radio', { name: /Medium/ }).check();
 		await page.getByLabel('Name').fill('web-e2e-01');
-		await page.getByRole('button', { name: 'Create VM' }).click();
+		await page.getByRole('button', { name: 'Create this machine' }).click();
 
 		await expect(page).toHaveURL(/\/vms$/);
 
@@ -126,13 +126,13 @@ test.describe('T06 VM creation', () => {
 		// The name is empty, so the inline error is already rendered and
 		// submit is disabled - the form cannot silently "do nothing".
 		await expect(page.getByText('Name is required.')).toBeVisible();
-		await expect(page.getByRole('button', { name: 'Create VM' })).toBeDisabled();
+		await expect(page.getByRole('button', { name: 'Create this machine' })).toBeDisabled();
 		await expect(page).toHaveURL(/\/vms\/create$/);
 
 		// A valid name clears the error and re-enables submit.
 		await page.getByLabel('Name').fill('web-e2e-emptyname');
 		await expect(page.getByText('Name is required.')).toHaveCount(0);
-		await expect(page.getByRole('button', { name: 'Create VM' })).toBeEnabled();
+		await expect(page.getByRole('button', { name: 'Create this machine' })).toBeEnabled();
 	});
 
 	test('detailed mode: explicit node/storage/bridge create the exact VM', async ({ page }) => {

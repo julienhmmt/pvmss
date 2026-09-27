@@ -13,6 +13,7 @@ test('injects an SSH key post-boot via the guest agent without a reboot', async 
 	// direct API calls below authenticate with the same alice session.
 	await signIn(page.request, 'alice', 'pvmss-alice');
 	await page.goto('/vms/default/102');
+	await page.getByTestId('vm-tab-configuration').click();
 	await page.getByTestId('vm-tab-cloudinit').click();
 	await page.getByTestId('cloudinit-inject-key').fill('ssh-ed25519 AAAA-injected demo@laptop');
 	await page.getByTestId('cloudinit-inject-user').fill('debian');

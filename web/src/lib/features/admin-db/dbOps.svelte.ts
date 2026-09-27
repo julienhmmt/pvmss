@@ -1,4 +1,4 @@
-import { ApiRequestError } from '$lib/shared/api/client';
+import { ApiRequestError, withCSRF } from '$lib/shared/api/client';
 import { setContext, getContext } from 'svelte';
 import { m } from '$lib/paraglide/messages.js';
 
@@ -70,10 +70,7 @@ export class DbOpsStore {
 		try {
 			const formData = new FormData();
 			formData.append('file', file);
-			const response = await fetch('/api/v1/admin/db/import', {
-				method: 'POST',
-				body: formData
-			});
+			const response = await fetch('/api/v1/admin/db/import', withCSRF({ method: 'POST', body: formData }));
 			if (!response.ok) {
 				let message = m['admin.db.importError']();
 				try {
@@ -95,11 +92,14 @@ export class DbOpsStore {
 		this.confirming = true;
 		this.confirmError = null;
 		try {
-			const response = await fetch('/api/v1/admin/db/import/confirm', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ stagingToken: this.preview.stagingToken })
-			});
+			const response = await fetch(
+				'/api/v1/admin/db/import/confirm',
+				withCSRF({
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ stagingToken: this.preview.stagingToken })
+				})
+			);
 			if (!response.ok) {
 				let message = m['admin.db.confirmError']();
 				try {

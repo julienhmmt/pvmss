@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getVmCreateContext, type VmSource } from '../create.svelte';
 	import { m } from '$lib/paraglide/messages.js';
+	import { getTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
 	import FormField from '$lib/shared/ui/FormField.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
@@ -14,6 +15,17 @@
 	// (pvmss is added server-side, FR-006), and the source - all choices
 	// from the approved catalog.
 	const form = getVmCreateContext();
+	const outcomeLedger = getTaskOutcomeLedgerContext();
+
+	// Same no-duplicate rule as the simple form (DESIGN.md §7).
+	const sameName = $derived(form.machineNamed(form.name));
+	const duplicateNameError = $derived(
+		sameName === null
+			? null
+			: outcomeLedger?.get(form.cluster || (form.catalog?.cluster ?? ''), sameName.vmid) === 'partial'
+				? m['vms.create.errorNamePartial']()
+				: m['vms.create.errorNameTaken']()
+	);
 
 	const catalogTags = $derived(form.catalog?.tags ?? []);
 	const selected = $derived(new Set(form.selectedTags()));
@@ -71,7 +83,7 @@
 </script>
 
 <div class="grid gap-4">
-	<FormField label={m['vms.create.name']()} required>
+	<FormField label={m['vms.create.name']()} required error={duplicateNameError}>
 		{#snippet children({ id, describedBy, invalid })}
 			<TextField {id} {describedBy} {invalid} bind:value={form.name} required placeholder="web-03" />
 		{/snippet}

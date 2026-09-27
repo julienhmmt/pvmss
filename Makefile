@@ -263,7 +263,7 @@ sonar-scan: sonar-coverage sonar-lint ## Run SonarScanner for both projects (req
 	@tools/sonar-scan.sh
 	@echo "$(GREEN)✓ All scans complete. See http://localhost:9000/projects$(NC)"
 
-sonar-scan-server: ## Scan only the server/ Go project
+sonar-scan-server: sonar-coverage ## Scan only the server/ Go project
 	@chmod +x tools/sonar-scan.sh
 	@tools/sonar-scan.sh server
 

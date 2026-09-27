@@ -34,6 +34,7 @@ func TestScript_IsShellScript(t *testing.T) {
 	}
 
 	got[0] = 'X'
+
 	if nodesetup.Script()[0] != '#' {
 		t.Fatal("Script returned the embedded bytes instead of a copy")
 	}

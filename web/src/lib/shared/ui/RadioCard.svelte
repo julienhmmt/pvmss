@@ -62,9 +62,11 @@
 			: 'border-border bg-card hover:border-foreground/30'}
 		focus-within:outline-none focus-within:ring-[3px] focus-within:ring-ring focus-within:ring-offset-3 focus-within:ring-offset-background"
 >
+	<!-- Invisible but full-size: the whole card is the radio's hit area, so
+	     pointer and keyboard both land on the real input. -->
 	<input
 		type="radio"
-		class="sr-only"
+		class="absolute inset-0 h-full w-full cursor-pointer appearance-none opacity-0 disabled:cursor-not-allowed"
 		{name}
 		{value}
 		checked={selected}

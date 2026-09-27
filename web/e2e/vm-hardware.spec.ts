@@ -16,6 +16,7 @@ test.describe("T07 VM hardware (disks, CD-ROM, network, sockets/cores/RAM/tags)"
     // web-02 (VMID 101, node pve-node-01) - stopped, owned by alice, has a
     // pre-seeded boot disk scsi0 and a second disk scsi1.
     await page.goto("/vms/default/101");
+    await page.getByTestId("vm-tab-configuration").click();
     await page.getByTestId("vm-tab-disks").click();
 
     // The boot disk cell renders the key and a separate "boot" pill.
@@ -30,8 +31,8 @@ test.describe("T07 VM hardware (disks, CD-ROM, network, sockets/cores/RAM/tags)"
     await expect(page.getByTestId("vm-disk-resize-open-scsi2")).toBeVisible();
 
     // V20: resize is allowed on a running VM (no stopped-VM guard).
-    await page.getByTestId("vm-action-start").click();
-    await expect(page.getByTestId("vm-status")).toContainText("running");
+    await page.getByTestId("vm-power-start").click();
+    await expect(page.getByTestId("vm-status")).toContainText(/running/i);
 
     await page.getByTestId("vm-disk-resize-open-scsi2").click();
     await expect(page.getByRole("dialog")).toBeVisible();
@@ -40,9 +41,9 @@ test.describe("T07 VM hardware (disks, CD-ROM, network, sockets/cores/RAM/tags)"
     await expect(page.getByRole("dialog")).toBeHidden();
     await expect(page.getByText("8 GB")).toBeVisible();
 
-    await page.getByTestId("vm-action-stop").click();
-    await page.getByTestId("vm-action-confirm").click();
-    await expect(page.getByTestId("vm-status")).toContainText("stopped");
+    await page.getByTestId("vm-power-shutdown").click();
+    await page.getByTestId("vm-shutdown-confirm").click();
+    await expect(page.getByTestId("vm-status")).toContainText(/stopped/i);
 
     // The boot disk's delete control is disabled - no destructive call possible.
     await expect(page.getByTestId("vm-disk-delete-open-scsi0")).toBeDisabled();
@@ -75,6 +76,7 @@ test.describe("T07 VM hardware (disks, CD-ROM, network, sockets/cores/RAM/tags)"
 
     await signInAlice(page.request);
     await page.goto("/vms/default/101");
+    await page.getByTestId("vm-tab-configuration").click();
     await page.getByTestId("vm-tab-network").click();
 
     await expect(page.getByTestId("vm-nic-0")).toContainText("vmbr0");
@@ -87,6 +89,7 @@ test.describe("T07 VM hardware (disks, CD-ROM, network, sockets/cores/RAM/tags)"
     await expect(page.getByTestId("vm-nic-0")).toContainText("vmbr1");
 
     await page.reload();
+    await page.getByTestId("vm-tab-configuration").click();
     await page.getByTestId("vm-tab-network").click();
     await expect(page.getByTestId("vm-nic-0")).toContainText("vmbr1");
   });

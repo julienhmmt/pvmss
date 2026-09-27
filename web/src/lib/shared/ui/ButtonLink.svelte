@@ -11,7 +11,7 @@
 	import type { Snippet } from 'svelte';
 	import { focusOnMount } from './focus-on-mount';
 
-	type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'subtle' | 'destructive';
+	type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'subtle' | 'destructive' | 'link';
 	type Size = 'sm' | 'md' | 'lg' | 'icon' | 'icon-sm';
 
 	interface Props {
@@ -69,7 +69,10 @@
 		outline: 'border border-border bg-transparent text-foreground hover:border-muted-foreground-subtle hover:bg-muted/60',
 		ghost: 'text-muted-foreground hover:bg-accent hover:text-accent-foreground',
 		subtle: 'bg-muted text-foreground hover:bg-border',
-		destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+		destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+		// DESIGN.md §8 "Text button": accent text, underline on hover, for
+		// low-emphasis in-content actions ("Clear filters", "Open the guide").
+		link: 'text-sm text-primary underline-offset-2 hover:underline'
 	};
 </script>
 
@@ -79,7 +82,7 @@
 	{target}
 	{rel}
 	aria-label={label}
-	class="{base} {sizes[size]} {variants[variant]} {block ? 'w-full' : ''} {extra}"
+	class="{base} {variant === 'link' ? '' : sizes[size]} {variants[variant]} {block ? 'w-full' : ''} {extra}"
 	use:focusOnMount={shouldFocusOnMount}
 	{...rest}
 >

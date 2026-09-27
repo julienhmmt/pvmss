@@ -42,6 +42,10 @@ fontFamily: "'Archivo Variable', sans-serif"
 fontSize: "0.875rem"
 fontWeight: 500
 lineHeight: "1.25rem"
+caption:
+fontFamily: "'Archivo Variable', sans-serif"
+fontSize: "0.6875rem"
+note: "Tailwind text-2xs - eyebrows, count chips, captions"
 mono:
 fontFamily: "ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace"
 fontSize: "0.875rem"
@@ -54,7 +58,8 @@ lg: "0.75rem"
 input: "0.625rem"
 xl: "1.125rem"
 spacing:
-content-max: "87.5rem"
+content-max: "100rem"
+content-reading: "60rem"
 navbar-height: "3.5rem"
 sidebar-width: "236px"
 components:
@@ -303,7 +308,7 @@ chosen concept ("Calm workspace") fixes three structural decisions:
 │         │ context header  (slim, breadcrumb-style) │
 │ sidebar ├──────────────────────────────────────────┤
 │  236px  │                                          │
-│ fixed   │ main content  (max 1290px, centered)      │
+│ fixed   │ main content  (max 100rem, centered)      │
 │         │                                          │
 │         ├──────────────────────────────────────────┤
 │         │ page footer  (tagline + context)          │
@@ -316,8 +321,12 @@ chosen concept ("Calm workspace") fixes three structural decisions:
 - **Context header:** 66px tall, translucent over the page. Shows
   `Workspace / <current screen>` on the left and a private-workspace marker on
   the right. Hidden below 700px.
-- **Main content:** `max-width: 1290px`, centered, `padding: 44px 44px 20px`.
-  Each screen owns its own internal layout; the shell does not impose a grid.
+- **Main content:** capped at `content-max` (100rem, `max-w-collection`),
+  centered, `padding: 44px 44px 20px`. Collection screens (machine list,
+  nodes, activity, admin) fill that width. Form and reading screens (create a
+  machine, profile) cap themselves at `content-reading` (60rem,
+  `max-w-reading`). Each screen owns its own internal layout; the shell does
+  not impose a grid.
 - **Page footer:** thin, two-line - tagline left, context label right.
 
 ### Sidebar anatomy (top to bottom)
