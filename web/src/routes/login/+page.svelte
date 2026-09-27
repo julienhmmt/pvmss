@@ -119,21 +119,21 @@
 						{form.loading ? m['login.signingIn']() : m['login.signIn']()}
 					</Button>
 				</form>
-				<button
+				<div class="flex items-center gap-3 text-xs text-muted-foreground-subtle">
+					<span class="h-px flex-1 bg-border" aria-hidden="true"></span>
+					{m['login.or']()}
+					<span class="h-px flex-1 bg-border" aria-hidden="true"></span>
+				</div>
+				<Button
+					variant="secondary"
 					type="button"
-					class="self-start text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
 					onclick={() => {
 						form.provider = form.provider === 'pve' ? 'local' : 'pve';
 						form.error = null;
 					}}
 				>
 					{form.provider === 'pve' ? m['login.useLocalAdmin']() : m['login.backToProxmoxLogin']()}
-				</button>
-				<div class="self-start">
-					<Button variant="ghost" onclick={() => void goto(resolve('/'))}>
-						{m['login.backToMainPage']()}
-					</Button>
-				</div>
+				</Button>
 			</Card>
 		</div>
 	</div>
