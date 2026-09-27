@@ -96,6 +96,41 @@ Spec: `.scratch/cloudinit-admin-ssh/spec.md` (not committed).
   (`pvmss-<vmid>.yml`) of VMs created before the change.
 - `vm_baseline_state` rows with state `override` are historical.
 
+## Left behind by the calm-workspace UI pass (2026-09-27)
+
+Plan: `PLAN-ui-v0.4.md` (not committed), branches `fix/web-offline-links`,
+`feat/web-wide-screens`, `feat/admin-dashboard-attention`,
+`feat/vms-list-counts`.
+
+- **Reading pages keep their own widths.** `max-w-reading` (60rem) covers
+  Create a machine and the profile. The about page and a doc article stay
+  at `max-w-3xl` (prose), the VM detail at `max-w-5xl`, the console at
+  `max-w-6xl`. Moving them to the token is a per-page call, not a sed.
+- **Two-column admin grids only on the dashboard.** The other admin pages
+  are single tables or forms; none clearly gains from `xl:grid-cols-2` yet.
+- **Dashboard alert links land on the page, not the row.** `/nodes`,
+  `/admin/storages` and `/admin/policy` open unfiltered; none of them reads
+  a cluster or node from the query string.
+- **Shared-storage detection is a type list.** `sharedStoragePlugins` in
+  `httpapi/admin_dashboard.go` (rbd, cephfs, nfs, cifs, glusterfs, iscsi,
+  iscsidirect, pbs). Proxmox exposes a `shared` flag per storage; the
+  cluster client does not read it. A `dir` storage marked shared is listed
+  once per node.
+- **"Pool at quota" means the per-user VM quota.** One pool per user, so a
+  pool at `MaxVMPerUser` is a user who cannot create. There is no pool-level
+  CPU/RAM quota to alert on.
+- **The list toolbar count is the filtered count.** "N machines" next to the
+  search is the result total; with a status filter it shows the matches, not
+  "N of M". The quota line and the sidebar chip stay on the full count
+  (locked by `TestList_Quota`).
+- **Pre-existing e2e failure.** `admin-exploitation.spec.ts` "audit log
+  shows VM actions with real username" fails on `v0.4` itself (the cleared
+  filter returns fewer rows than the filtered one). It runs before the
+  dashboard test in that serial file, so it hides later failures.
+- **`make web-test` prints `ECONNREFUSED 127.0.0.1:3000`** on a clean
+  `v0.4`: some test reaches a real fetch. Tests pass; the noise hides real
+  errors.
+
 ## How to re-check any of this
 
 ```bash
