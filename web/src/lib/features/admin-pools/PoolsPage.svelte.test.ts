@@ -118,9 +118,17 @@ describe('PoolsPage', () => {
 		document.body.innerHTML = '';
 	});
 
+	it('shows the PVMSS sign-in account and its VM pool', () => {
+		mount(PoolsPage, buildProps([pool('pvmss-alice', true)]));
+		const text = document.body.textContent ?? '';
+		expect(text).toContain('pvmss-alice@pve');
+		expect(text).toContain('Pool de VMs');
+		document.body.innerHTML = '';
+	});
+
 	it('shows an empty state when no managed pools exist', () => {
 		mount(PoolsPage, buildProps([pool('proxmox-only', false)]));
-		expect(document.body.textContent).toContain('Aucun pool');
+		expect(document.body.textContent).toContain('Aucun utilisateur PVMSS');
 		document.body.innerHTML = '';
 	});
 });
