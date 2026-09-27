@@ -52,6 +52,7 @@ export default [
       'test-results/',
       'playwright-report/',
       '**/*.d.ts',
+      'src/paraglide/',
       'src/lib/paraglide/'
     ]
   }
