@@ -56,7 +56,7 @@
 	<title>{m['capabilities.aboutTitle']()} - PVMSS</title>
 </svelte:head>
 
-<article class="mx-auto w-full max-w-3xl px-4 py-8 md:px-6" data-testid="about-page">
+<article class="mx-auto w-full max-w-reading px-4 py-8 md:px-6" data-testid="about-page">
 	<header>
 		<h1 class="text-2xl font-semibold tracking-tight">{m['capabilities.aboutTitle']()}</h1>
 		<p class="mt-3 max-w-prose text-base leading-relaxed text-muted-foreground">
