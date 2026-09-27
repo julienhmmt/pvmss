@@ -305,6 +305,14 @@ func TestList_Quota(t *testing.T) {
 		result := listQuotaResult(t, vm.ListQuery{}, alice, 10)
 		assertQuota(t, result.Quota, &vm.Quota{Used: 3, Allowed: 10})
 	})
+	t.Run("status filter narrows the page but not the machine count", func(t *testing.T) {
+		result := listQuotaResult(t, vm.ListQuery{Status: cluster.VMRunning}, alice, 10)
+		if result.Total != 2 {
+			t.Errorf("Total = %d, want 2 running", result.Total)
+		}
+
+		assertQuota(t, result.Quota, &vm.Quota{Used: 3, Allowed: 10})
+	})
 	t.Run("unlimited quota represented as -1", func(t *testing.T) {
 		result := listQuotaResult(t, vm.ListQuery{}, alice, -1)
 		if result.Quota == nil || result.Quota.Allowed != -1 {
