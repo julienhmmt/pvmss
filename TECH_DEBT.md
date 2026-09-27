@@ -130,8 +130,8 @@ Plan: `PLAN-ui-v0.4.md` (not committed), branches `fix/web-offline-links`,
 - **Super-Linter's CSS check fails on any PR touching `web/src/app.css`.**
   `VALIDATE_ALL_CODEBASE: false` lints changed files whole, and stylelint's
   standard config rejects Tailwind v4 (`@custom-variant`, bare `@import`)
-  plus old style nits (`#ffffff`, alpha decimals). #141 and #148 merged red
-  on it. A `.github/linters/.stylelintrc.json` tuned for Tailwind, or
+  plus old style nits (`#ffffff`, alpha decimals). #141 merged red on it and
+  #148 fails the same way. A `.github/linters/.stylelintrc.json` tuned for Tailwind, or
   `VALIDATE_CSS: false`, would make the check mean something again.
 - **`make web-test` prints `ECONNREFUSED 127.0.0.1:3000`** on a clean
   `v0.4`: some test reaches a real fetch. Tests pass; the noise hides real
