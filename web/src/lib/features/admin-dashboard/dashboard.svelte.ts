@@ -1,11 +1,14 @@
 import { get, ApiRequestError } from '$lib/shared/api/client';
 import { setContext, getContext } from 'svelte';
 import { m } from '$lib/paraglide/messages.js';
+import type { DashboardAlert } from './dashboard-alerts';
 
 export interface NodeSummary {
+	cluster: string;
 	name: string;
 	status: string;
 	vmCount: number;
+	vmRunningCount: number;
 	cpuCores: number;
 	cpuUsage: number;
 	memoryTotalBytes: number;
@@ -19,11 +22,37 @@ export interface VMStatusCounts {
 	other: number;
 }
 
+export interface DashboardStorage {
+	cluster: string;
+	name: string;
+	/** Empty for shared storage (Ceph, NFS, ...), listed once per cluster. */
+	node?: string;
+	type: string;
+	shared: boolean;
+	usedBytes: number;
+	totalBytes: number;
+	percent: number;
+}
+
+export interface DashboardChange {
+	id: number;
+	actor: string;
+	cluster: string;
+	vmid: number | null;
+	action: string;
+	timestamp: string;
+	targetType: string;
+	targetId: string;
+}
+
 export interface DashboardSummary {
+	alerts: DashboardAlert[];
 	nodes: NodeSummary[];
 	nodeCount: number;
 	vmCount: number;
 	vmStatusCounts: VMStatusCounts;
+	storages: DashboardStorage[];
+	recentChanges: DashboardChange[];
 	version: string;
 	refreshedAt: string;
 }

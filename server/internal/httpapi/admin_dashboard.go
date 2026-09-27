@@ -129,10 +129,14 @@ func (h *AdminOps) ServeDashboard(w http.ResponseWriter, r *http.Request) {
 
 	var newest time.Time
 
+	labels := h.clusterLabels(r.Context())
+
 	for _, name := range names {
 		idx := indexes[name]
+		label := cmp.Or(labels[name], name)
+
 		if idx == nil || (h.staleAfter > 0 && time.Since(idx.RefreshedAt) > h.staleAfter) {
-			dash.Alerts = append(dash.Alerts, dashboardAlertDTO{Kind: "cluster_unreachable", Severity: alertCritical, Cluster: name})
+			dash.Alerts = append(dash.Alerts, dashboardAlertDTO{Kind: "cluster_unreachable", Severity: alertCritical, Cluster: label})
 		}
 
 		if idx == nil {
@@ -143,7 +147,7 @@ func (h *AdminOps) ServeDashboard(w http.ResponseWriter, r *http.Request) {
 			newest = idx.RefreshedAt
 		}
 
-		h.addClusterToDashboard(r.Context(), &dash, name, idx)
+		h.addClusterToDashboard(r.Context(), &dash, name, label, idx)
 	}
 
 	if !anyIndex(indexes) {
@@ -157,6 +161,23 @@ func (h *AdminOps) ServeDashboard(w http.ResponseWriter, r *http.Request) {
 	writeAdminJSON(w, http.StatusOK, dash)
 }
 
+// clusterLabels maps cluster names to the display names administrators set.
+// A read failure is logged and the raw names are shown instead.
+func (h *AdminOps) clusterLabels(ctx context.Context) map[string]string {
+	rows, err := h.store.ListClusters(ctx)
+	if err != nil {
+		h.log.Error("dashboard cluster read failed", "component", "httpapi", "error", err)
+		return nil
+	}
+
+	labels := make(map[string]string, len(rows))
+	for _, row := range rows {
+		labels[row.Name] = row.DisplayName
+	}
+
+	return labels
+}
+
 func anyIndex(indexes map[string]*inventory.Index) bool {
 	for _, idx := range indexes {
 		if idx != nil {
@@ -167,9 +188,11 @@ func anyIndex(indexes map[string]*inventory.Index) bool {
 	return false
 }
 
-func (h *AdminOps) addClusterToDashboard(ctx context.Context, dash *dashboardDTO, name string, idx *inventory.Index) {
+// addClusterToDashboard folds one cluster into dash. name keys the store
+// (policy); label is what the administrator reads.
+func (h *AdminOps) addClusterToDashboard(ctx context.Context, dash *dashboardDTO, name, label string, idx *inventory.Index) {
 	for _, node := range idx.Nodes {
-		dash.Alerts = append(dash.Alerts, nodeAlerts(name, node)...)
+		dash.Alerts = append(dash.Alerts, nodeAlerts(label, node)...)
 
 		vms := idx.ByNode[node.Name]
 		if len(vms) == 0 {
@@ -177,7 +200,7 @@ func (h *AdminOps) addClusterToDashboard(ctx context.Context, dash *dashboardDTO
 		}
 
 		dash.Nodes = append(dash.Nodes, nodeSummaryDTO{
-			Cluster:          name,
+			Cluster:          label,
 			Name:             node.Name,
 			Status:           string(node.Status),
 			VMCount:          len(vms),
@@ -194,12 +217,12 @@ func (h *AdminOps) addClusterToDashboard(ctx context.Context, dash *dashboardDTO
 		countVMStatus(&dash.VMStatusCounts, vm.Status)
 	}
 
-	for _, s := range clusterStorages(name, idx) {
+	for _, s := range clusterStorages(label, idx) {
 		dash.Storages = append(dash.Storages, s)
 		dash.Alerts = appendStorageAlert(dash.Alerts, s)
 	}
 
-	dash.Alerts = append(dash.Alerts, h.poolQuotaAlerts(ctx, name, idx)...)
+	dash.Alerts = append(dash.Alerts, h.poolQuotaAlerts(ctx, name, label, idx)...)
 }
 
 func nodeAlerts(clusterName string, node cluster.Node) []dashboardAlertDTO {
@@ -275,7 +298,7 @@ func appendStorageAlert(alerts []dashboardAlertDTO, s dashboardStorageDTO) []das
 
 // poolQuotaAlerts reports pools holding as many VMs as the cluster's
 // per-user quota allows. A cluster with no stored policy is unlimited.
-func (h *AdminOps) poolQuotaAlerts(ctx context.Context, clusterName string, idx *inventory.Index) []dashboardAlertDTO {
+func (h *AdminOps) poolQuotaAlerts(ctx context.Context, clusterName, label string, idx *inventory.Index) []dashboardAlertDTO {
 	row, err := h.store.PolicyRow(ctx, clusterName)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
@@ -294,7 +317,7 @@ func (h *AdminOps) poolQuotaAlerts(ctx context.Context, clusterName string, idx 
 	for pool, vms := range idx.ByPool {
 		if pool != "" && len(vms) >= row.MaxVMPerUser {
 			alerts = append(alerts, dashboardAlertDTO{
-				Kind: "pool_at_quota", Severity: alertWarning, Cluster: clusterName, Subject: pool,
+				Kind: "pool_at_quota", Severity: alertWarning, Cluster: label, Subject: pool,
 				Percent: percentOf(int64(len(vms)), int64(row.MaxVMPerUser)),
 			})
 		}
