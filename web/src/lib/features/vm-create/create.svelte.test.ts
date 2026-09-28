@@ -631,11 +631,29 @@ describe('VmCreateStore cloud-init document (ticket 04)', () => {
 			images: [],
 			profiles: [{ id: 'small', label: 'Small', sockets: 1, cpuCores: 1, memoryMB: 2048, diskGB: 20, bus: 'scsi' }],
 			templates: [],
-			cloudInitTemplates: [{ id: 'web-server', label: 'Web server' }],
+			cloudInitTemplates: [{ id: 'web-server', label: 'Web server', nodes: ['pve-node-01'] }],
 			cloudInitWriteEnabled: true,
 			tags: []
 		};
 	}
+
+	it('offers only the templates whose file is on the VM node', () => {
+		const store = new VmCreateStore();
+		store.catalog = {
+			...catalog(),
+			nodes: ['pve-node-01', 'pve-node-02'],
+			cloudInitTemplates: [
+				{ id: 'web-server', label: 'Web server', nodes: ['pve-node-01'] },
+				{ id: 'db', label: 'Database', nodes: ['pve-node-02'] }
+			]
+		};
+
+		expect(store.cloudInitTemplatesOnNode().map((t) => t.id)).toEqual(['web-server']);
+
+		store.node = 'pve-node-02';
+		store.nodeAdjusted = true;
+		expect(store.cloudInitTemplatesOnNode().map((t) => t.id)).toEqual(['db']);
+	});
 
 	it('binds the select value to the template id', () => {
 		const store = new VmCreateStore();

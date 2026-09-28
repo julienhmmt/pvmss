@@ -350,10 +350,6 @@ func attachTemplateToVM(ctx context.Context, deps CloudInitDocumentDeps, entity 
 
 	filename, err := catalog.PublishedFile(ctx, deps.Store, deps.ClusterName, templateID)
 	if err != nil {
-		if errors.Is(err, catalog.ErrCloudInitTemplateNotPublished) {
-			return wrapJoin(ErrCloudInitNotPublished, err)
-		}
-
 		return err
 	}
 
@@ -363,7 +359,7 @@ func attachTemplateToVM(ctx context.Context, deps CloudInitDocumentDeps, entity 
 	}
 
 	if !present {
-		return fmt.Errorf("%w: %s:snippets/%s is not on node %s", ErrCloudInitNotPublished, storage, filename, entity.Node)
+		return fmt.Errorf("%w: %s:snippets/%s is not on node %s - paste its command from Admin > Cloud-init on that node", ErrCloudInitNotPublished, storage, filename, entity.Node)
 	}
 
 	if err := deps.Writer.AttachCloudInitSnippet(ctx, entity.Node, storage, filename, deps.VMID); err != nil {
@@ -373,16 +369,12 @@ func attachTemplateToVM(ctx context.Context, deps CloudInitDocumentDeps, entity 
 	return deps.Store.PutVMCloudInitDocument(ctx, deps.ClusterName, deps.VMID, templateID, filename, deps.Actor.Username)
 }
 
-// dropLegacySnippet removes the VM's legacy per-VM file and row once the VM
-// no longer uses it. Best-effort: a leftover file is harmless.
+// dropLegacySnippet forgets the VM's legacy per-VM file row once the VM no
+// longer uses it. The file stays on the node (PVMSS cannot delete snippets);
+// a leftover file is harmless.
 func dropLegacySnippet(ctx context.Context, deps CloudInitDocumentDeps) {
-	legacy, found, err := deps.Store.GetCloudInitSnippet(ctx, deps.ClusterName, deps.VMID)
-	if err != nil || !found {
+	if _, found, err := deps.Store.GetCloudInitSnippet(ctx, deps.ClusterName, deps.VMID); err != nil || !found {
 		return
-	}
-
-	if legacy.Content != "" {
-		_ = deps.Writer.RemoveCloudInitSnippet(ctx, legacy.Storage, legacy.Filename)
 	}
 
 	_ = deps.Store.DeleteCloudInitSnippet(ctx, deps.ClusterName, deps.VMID)

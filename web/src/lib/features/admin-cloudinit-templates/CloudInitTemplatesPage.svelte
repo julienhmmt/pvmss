@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { fullyPublished, type AdminCloudInitTemplate } from './cloudInitTemplates.svelte';
+	import type { AdminCloudInitTemplate } from './cloudInitTemplates.svelte';
+	import CloudInitDocumentStatus from './CloudInitDocumentStatus.svelte';
 	import type { ClusterOption } from '$lib/shared/clusters';
 	import CloudInitTemplateFormDialog from './CloudInitTemplateFormDialog.svelte';
 	import Alert from '$lib/shared/ui/Alert.svelte';
@@ -18,9 +19,7 @@
 		error: string | null;
 		saving: boolean;
 		saveError: string | null;
-		publishing: boolean;
-		publishWarning: string | null;
-		onPublishAll: () => void;
+		onVerify: () => void;
 		clusterOptions: ClusterOption[];
 		cluster: string;
 		onClusterChange: (value: string) => void;
@@ -36,9 +35,7 @@
 		error,
 		saving,
 		saveError,
-		publishing,
-		publishWarning,
-		onPublishAll,
+		onVerify,
 		clusterOptions,
 		cluster,
 		onClusterChange,
@@ -84,7 +81,7 @@
 <PageHeader title={m['admin.cloudinit.header']()}>
 	{#snippet actions()}
 		<ClusterSelector options={clusterOptions} value={cluster} onChange={onClusterChange} id="cloudinit-cluster" />
-		<Button variant="secondary" loading={publishing} onclick={onPublishAll} data-testid="cloudinit-publish-all">{m['admin.cloudinit.publishAll']()}</Button>
+		<Button variant="secondary" loading={loading} onclick={onVerify} data-testid="cloudinit-verify">{m['admin.cloudinit.verify']()}</Button>
 		<Button onclick={openCreate} data-testid="cloudinit-new-template">{m['admin.cloudinit.newTemplate']()}</Button>
 	{/snippet}
 </PageHeader>
@@ -98,9 +95,6 @@
 	<p class="mb-4 text-sm text-muted-foreground">{m['admin.cloudinit.publishHelp']()}</p>
 	{#if saveError}
 		<Alert class="mb-4">{saveError}</Alert>
-	{/if}
-	{#if publishWarning}
-		<Alert tone="warning" class="mb-4" data-testid="cloudinit-publish-warning">{publishWarning}</Alert>
 	{/if}
 
 	<TableCard>
@@ -133,19 +127,10 @@
 							</span>
 						</td>
 						<td data-label={m['admin.cloudinit.publication']()} data-testid="cloudinit-publication">
-							{#if template.publication === null}
-								<span class="text-xs text-muted-foreground">{m['admin.cloudinit.notPublished']()}</span>
+							{#if template.enabled}
+								<CloudInitDocumentStatus document={template.document} error={template.documentError} />
 							{:else}
-								<span class="text-xs {fullyPublished(template.publication) ? 'text-success' : 'text-warning'}">
-									{m['admin.cloudinit.publishedNodes']({
-										ok: template.publication.nodes.filter((n) => n.ok).length,
-										total: template.publication.nodes.length
-									})}
-								</span>
-								<span class="block font-mono text-2xs text-muted-foreground">{template.publication.filename}</span>
-								{#each template.publication.nodes.filter((n) => !n.ok) as failed (failed.node)}
-									<span class="block text-2xs text-warning" title={failed.error}>{failed.node}: {failed.error}</span>
-								{/each}
+								<span class="text-xs text-muted-foreground">-</span>
 							{/if}
 						</td>
 						<td data-label={m['common.actions']()}>

@@ -7,15 +7,17 @@
 	import FormField from '$lib/shared/ui/FormField.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
 
-	// The VM's cloud-init document: users switch between the templates the
-	// administrator published (or none). They never write YAML: the files
-	// are published by PVMSS to every node, so a switch cannot leave the VM
-	// pointing at a file its node does not have.
+	// The VM's cloud-init document: users switch between the templates whose
+	// file the administrator placed on the VM's node (or none). They never
+	// write YAML, and the server re-checks the file is on the node.
 	interface Props {
 		store: CloudInitStore;
+		/** The VM's node: only templates present there are offered. */
+		node: string;
 	}
 
-	let { store }: Props = $props();
+	let { store, node }: Props = $props();
+	const onNode = $derived(store.templates.filter((t) => t.nodes.includes(node)));
 	let selected = $state('');
 
 	// Mirror the stored document into the select (a legacy or baseline
@@ -23,7 +25,7 @@
 	$effect(() => {
 		const current = store.document?.templateId ?? '';
 		untrack(() => {
-			selected = store.templates.some((t) => t.id === current) ? current : '';
+			selected = onNode.some((t) => t.id === current) ? current : '';
 		});
 	});
 
@@ -33,7 +35,7 @@
 
 	const options = $derived([
 		{ value: '', label: m['vms.create.cloudinitNone']() },
-		...store.templates.map((t) => ({ value: t.id, label: t.label }))
+		...onNode.map((t) => ({ value: t.id, label: t.label }))
 	]);
 
 	const currentLabel = $derived.by(() => {

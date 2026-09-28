@@ -1,6 +1,5 @@
 <script lang="ts">
 	import ClusterFormDialog from './ClusterFormDialog.svelte';
-	import { publishingOffHint } from './publishing-status';
 	import type { AdminCluster, AdminClustersStore, ClusterInput, SnippetStorage } from './clusters.svelte';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
@@ -84,10 +83,7 @@
 						tlsInsecureSkipVerify: input.tlsInsecureSkipVerify,
 						tokenId: input.tokenId,
 						tokenSecret: input.tokenSecret,
-						snippetStorage: input.snippetStorage,
-						sshUser: input.sshUser,
-						sshPort: input.sshPort,
-						sshKnownHosts: input.sshKnownHosts
+						snippetStorage: input.snippetStorage
 					});
 		// Failure leaves the dialog open with store.error rendered inline
 		// (ClusterFormDialog's error prop) - closing unconditionally here hid
@@ -149,8 +145,7 @@
 								{#if cluster.cloudInitWriteEnabled}
 									{m['admin.clusters.cloudinitOn']()}
 								{:else}
-									<div>{m['admin.clusters.cloudinitOff']()}</div>
-									<div class="mt-1 text-xs">{publishingOffHint(cluster.publishingStatus)}</div>
+									{m['admin.clusters.cloudinitOff']()}
 								{/if}
 							</td>
 							<td>
@@ -176,8 +171,6 @@
 	error={store.error}
 	{snippetStorages}
 	{snippetStoragesLoading}
-	sshPublicKey={editing?.sshPublicKey ?? store.clusters[0]?.sshPublicKey ?? ''}
-	onScan={(cluster) => store.scanHostKeys(cluster)}
 	onClose={() => (formOpen = false)}
 	onSubmit={saveCluster}
 />

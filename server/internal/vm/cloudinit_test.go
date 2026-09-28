@@ -6,7 +6,6 @@ import (
 	"errors"
 	"path/filepath"
 	"pvmss/server/internal/auth"
-	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
@@ -36,8 +35,6 @@ const (
 	testActionCreate = "create"
 	// testActionAttachCloudInitSnippet is the fake's snippet-attach action name.
 	testActionAttachCloudInitSnippet = "attach_cloudinit_snippet"
-	// testActionRemoveCloudInitSnippet is the fake's snippet-removal action name.
-	testActionRemoveCloudInitSnippet = "remove_cloudinit_snippet"
 	// testActionStart is the fake's VM-start action name.
 	testActionStart = "start"
 	// testBIOSOVMF is the Proxmox bios value selecting UEFI firmware.
@@ -208,16 +205,11 @@ func TestSetCloudInitDocument_EmptyDetaches(t *testing.T) {
 	if _, found, _ := vm.GetCloudInitDocument(context.Background(), index, cloudAliceIdentity(), testClusterName, 101, st); found {
 		t.Error("document row survived the detach")
 	}
-
-	for _, c := range cluster.FakeCalls() {
-		if c.Action == testActionRemoveCloudInitSnippet {
-			t.Fatalf("detach removed a shared file: %+v", c)
-		}
-	}
 }
 
 // TestSetCloudInitDocument_ReplacesLegacyPerVMFile - a VM that used a legacy
-// per-VM document gets the published template; the legacy file and row go.
+// per-VM document gets the published template; the legacy row goes (the
+// file stays on the node: PVMSS cannot delete snippets).
 //
 //nolint:paralleltest // serial: shared fake dataset
 func TestSetCloudInitDocument_ReplacesLegacyPerVMFile(t *testing.T) {
@@ -238,20 +230,13 @@ func TestSetCloudInitDocument_ReplacesLegacyPerVMFile(t *testing.T) {
 		t.Fatalf("SetCloudInitDocument: %v", err)
 	}
 
-	removed := slices.ContainsFunc(cluster.FakeCalls(), func(c cluster.FakeCall) bool {
-		return c.Action == testActionRemoveCloudInitSnippet && c.Filename == "pvmss-101.yml"
-	})
-	if !removed {
-		t.Error("legacy per-VM file not removed")
-	}
-
 	if _, found, _ := st.GetCloudInitSnippet(context.Background(), testClusterName, 101); found {
 		t.Error("legacy row survived")
 	}
 }
 
-// TestSetCloudInitDocument_Refusals - unknown template, never published, not
-// on the VM's node, and a foreign VM are refused before any attach.
+// TestSetCloudInitDocument_Refusals - unknown template, file not on the VM's
+// node, and a foreign VM are refused before any attach.
 //
 //nolint:paralleltest // serial: shared fake dataset
 func TestSetCloudInitDocument_Refusals(t *testing.T) {
@@ -262,16 +247,6 @@ func TestSetCloudInitDocument_Refusals(t *testing.T) {
 		wantErr error
 	}{
 		{name: "unknown", setup: func(*testing.T, *store.Store) string { return "nope" }, actor: cloudAliceIdentity(), wantErr: vm.ErrNotApproved},
-		{name: "never published", setup: func(t *testing.T, st *store.Store) string {
-			t.Helper()
-
-			tmpl, err := catalog.CreateCloudInitTemplate(context.Background(), st, testClusterName, "Draft", testCloudInitContent)
-			if err != nil {
-				t.Fatalf("create: %v", err)
-			}
-
-			return tmpl.ID
-		}, actor: cloudAliceIdentity(), wantErr: vm.ErrCloudInitNotPublished},
 		{name: "not on node", setup: func(t *testing.T, st *store.Store) string {
 			t.Helper()
 			cluster.SetFakeSnippetVisibility(false)

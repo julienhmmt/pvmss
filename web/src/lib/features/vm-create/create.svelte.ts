@@ -45,6 +45,9 @@ export interface CatalogProfile {
 export interface CatalogCloudInitTemplate {
 	id: string;
 	label: string;
+	/** Nodes whose snippet storage has the template's file (pasted by the
+	 *  admin): the template is offered only on those nodes. */
+	nodes: string[];
 }
 
 /** One approved Proxmox template (US2/issue-02). The VMID is the Proxmox
@@ -574,6 +577,12 @@ export class VmCreateStore {
 
 	effectiveNode(): string {
 		return this.nodeAdjusted && this.node !== '' ? this.node : this.autoNode();
+	}
+
+	/** The cloud-init templates whose file is on the VM's node. */
+	cloudInitTemplatesOnNode(): CatalogCloudInitTemplate[] {
+		const node = this.effectiveNode();
+		return (this.catalog?.cloudInitTemplates ?? []).filter((template) => template.nodes.includes(node));
 	}
 
 	effectiveStorage(): string {

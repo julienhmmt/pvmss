@@ -40,12 +40,9 @@ type Configuration struct {
 	// Intended for the e2e suite and load tests: raising it weakens the
 	// per-IP login brute-force protection, so it is opt-in and never defaulted.
 	RateLimitMax int
-	// SSHKeyFile is the private key PVMSS uses to publish admin cloud-init
-	// documents to every node (PVMSS_SSH_KEY_FILE). The SSH user, port and
-	// pinned host keys are per cluster. Empty: cloud-init documents off.
-	SSHKeyFile string
-	// DeprecatedSSHEnv lists deprecated environment variables that were set
-	// and ignored (PVMSS_SSH_USER, PVMSS_SSH_PORT). Startup logs a warning
-	// for each so an upgrade cannot silently lose publishing.
+	// DeprecatedSSHEnv lists retired SSH publishing variables that were set
+	// and are ignored (PVMSS_SSH_KEY_FILE, PVMSS_SSH_USER, PVMSS_SSH_PORT).
+	// Startup logs a warning for each: cloud-init files are now pasted by
+	// hand on the nodes.
 	DeprecatedSSHEnv []string
 }

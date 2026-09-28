@@ -227,7 +227,7 @@ type ImageCloudInitRequest struct {
 // CloudInitPusher applies cloud-init configuration to a VM: the native keys
 // (ciuser/sshkeys/ipconfig0) and the vendor-data cicustom pointing at an
 // admin-published document. It never writes a file - publishing is an admin
-// action (catalog.PublishCloudInitDocument) - and HasSnippet proves the
+// action (the pasted command, catalog.WriteCommand) - and HasSnippet proves the
 // file is on the VM's node before any cicustom is set. Narrow consumer
 // contract: cluster.Fake and the real Proxmox client both satisfy it.
 type CloudInitPusher interface {

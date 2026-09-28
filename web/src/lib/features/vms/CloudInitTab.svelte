@@ -73,7 +73,7 @@
 		{#if mode === 'structured'}
 			<CloudInitForm store={cloudInit} onRequestSave={requestSave} />
 		{:else}
-			<CloudInitDocumentPicker store={cloudInit} />
+			<CloudInitDocumentPicker store={cloudInit} node={vmStore.entity?.node ?? ''} />
 		{/if}
 	</div>
 

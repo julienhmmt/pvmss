@@ -70,7 +70,6 @@ Optional:
 - `PVMSS_INVENTORY_MANUAL_REFRESH_MIN_INTERVAL` - minimum spacing between manual refreshes (default `5s`).
 - `PVMSS_INVENTORY_REFRESH_TIMEOUT` - per-refresh timeout (default `15s`).
 - `PVMSS_MAX_LIST_PAGE_SIZE` - maximum list page size (default `100`).
-- `PVMSS_SSH_KEY_FILE` - private key PVMSS uses to publish cloud-init documents to the nodes over SSH (see below).
 
 For full deployment instructions (Docker, Kubernetes, Helm), see the project README.
 
@@ -83,7 +82,7 @@ PVMSS supports connecting to more than one Proxmox environment at the same time.
 - Use the **Test** action to verify connectivity and credentials before exposing the cluster to users; it reports the Proxmox version and the node and VM counts.
 - **TLS verification** can be skipped per cluster for self-signed labs; keep it on in production.
 - The **OIDC** toggle is reserved for a future single sign-on integration; enabling it shows a button on the login screen but sign-in is not implemented yet.
-- **Snippet storage**, **SSH user/port** and the **pinned host keys** enable cloud-init publishing for this cluster (see the dedicated section below). The cluster badge reads "cloud-init: on" once they are set and `PVMSS_SSH_KEY_FILE` is configured.
+- **Snippet storage** enables cloud-init templates for this cluster (see the dedicated section below). The cluster badge reads "cloud-init: on" once it is set.
 - Approved nodes, storages, ISOs, images, templates, bridges, cloud-init templates, and the policy are all managed per cluster.
 
 ## Nodes
@@ -148,22 +147,18 @@ Beyond the policy knobs, the application itself enforces:
 
 ## Enabling cloud-init documents
 
-Only administrators write cloud-init documents (**Admin › Cloud-init templates**); users pick one when they create a VM or switch a VM to another one from its Cloud-init tab. Proxmox's REST API cannot write `snippets` files, so PVMSS publishes each template, merged with the qemu-guest-agent baseline, as an immutable `pvmss-tpl-<id>-<hash>.yml` file into the snippet storage of **every node**, over SSH, and checks through the API that each node lists it. Creating a VM never writes a file: the VM points at the published file. Editing a template publishes a new file, so existing VMs keep their version.
+Only administrators write cloud-init documents (**Admin › Cloud-init**); users pick one when they create a VM or switch a VM to another one from its Cloud-init tab. Proxmox's REST API cannot write `snippets` files, so PVMSS never writes on the nodes: for each template, merged with the qemu-guest-agent baseline into an immutable `pvmss-tpl-<id>-<hash>.yml` file, it shows a command that the administrator pastes, as root, on the nodes that must offer it. PVMSS reads through the API which nodes list the file and offers the template only on those nodes. Editing a template yields a new file and a new command; existing VMs keep their version.
 
-1. In Proxmox, enable the **Snippets** content type on a storage available on every node (Datacenter › Storage › Edit; `local` works).
-2. Generate a key pair (`ssh-keygen -t ed25519 -N '' -f pvmss_ed25519`) and give PVMSS the private key with `PVMSS_SSH_KEY_FILE`. Compose: mount it read-only. Helm: a Secret named in `cloudInit.sshKeySecret`.
-3. On every node, as root, run the command shown in **Infrastructure › Clusters › Edit**: `curl -fsSL <PVMSS URL>/api/v1/pvmss-node-setup.sh | sh -s -- --storage <storage> --user pvmss --key '<PVMSS public key>'` (PVMSS serves the script, embedded in its binary; the same file is `tools/pvmss-node-setup.sh` in the repository). It installs the `pvmss-snippet` helper, a dedicated `pvmss` user that can only write the storage's `snippets/` directory, and the key with a forced command (no shell). It prints the node's host key.
-4. **Infrastructure › Clusters › Edit**: snippet storage, SSH user (`pvmss`), port and pinned host keys (paste `ssh-keyscan -t ed25519 <node ip>` lines, or save without the SSH user first, reopen and **Scan host keys**), compare the fingerprints, save. Host keys are always verified. The badge turns "cloud-init: on" and PVMSS republishes everything in the background.
-5. Verify: create a cloud-init template (the "Published" column must read n/n nodes), create a VM with it, then on the node run `qm config <vmid> | grep cicustom`.
-6. After adding or reinstalling a node, click **Publish to all nodes** on the templates page.
+1. In Proxmox, enable the **Snippets** content type on a storage (Datacenter › Storage › Edit; `local` works).
+2. **Infrastructure › Clusters › Edit**: select that snippet storage. The badge turns "cloud-init: on".
+3. **Admin › Cloud-init**: write the template, open **Command to paste**, copy it and paste it in a root shell on each node that must offer the template, then click **Verify** ("On n/m nodes").
+4. Verify a VM: create one with the template, then on the node run `qm config <vmid> | grep cicustom`.
 
-Without SSH publishing, the wizard hides the document picker and a create request carrying a template is refused before any VMID is spent. A template missing from the VM's node is refused with `cloudinit_not_published`.
+A create request carrying a template whose file is not on the VM's node is refused with `cloudinit_not_published` before any VMID is spent. Cloud-image VMs created without a template get the baseline alone (`pvmss-baseline-<hash>.yml`, **Admin › Cloud-init baseline**); when it is not on the node, the VM still boots on its native keys.
 
-Cloud-image VMs created without a template get the baseline alone (`pvmss-baseline-<hash>.yml`); when it is not on the node, the VM still boots on its native keys.
+Old versions stay on the nodes until you remove them. Per-VM files from earlier versions (`pvmss-<vmid>.yml`) are left on the node when their VM is deleted: remove them by hand.
 
-Old published versions stay on the nodes (a few KB each). Per-VM files from earlier versions (`pvmss-<vmid>.yml`) are removed when their VM is deleted through PVMSS.
-
-See the [cloud-init setup guide](/docs/cloud-init-setup) for troubleshooting.
+See the [cloud-init setup guide](/docs/cloud-init-setup) for the full procedure and troubleshooting.
 
 ## Documentation (this CMS)
 
