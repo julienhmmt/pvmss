@@ -39,13 +39,13 @@ cloud-init). Avoid generic names like `vm1` - a descriptive name
 
 New VMs boot in **UEFI** by default, with an EFI disk holding an **empty key
 store**. That means UEFI itself (GPT, EFI variables, the q35 machine type) but
-no **Secure Boot** — PVMSS deliberately never enables it. Secure Boot only
+no **Secure Boot** - PVMSS deliberately never enables it. Secure Boot only
 runs bootloaders signed by the keys enrolled in the EFI variables, and PVMSS
 creates VMs from whatever ISO an administrator approved: most Linux install
 media is unsigned (Arch's official image states outright that it does not
 support Secure Boot), so with Secure Boot on the installer never starts and
-the VM stops at the UEFI shell with no way back. If you need Secure Boot — for
-a Windows 11 guest, say — enable it in Proxmox itself, where you can verify
+the VM stops at the UEFI shell with no way back. If you need Secure Boot - for
+a Windows 11 guest, say - enable it in Proxmox itself, where you can verify
 that the specific ISO is signed.
 
 Enable **TPM 2.0** for guests that require it (Windows 11).

@@ -126,7 +126,7 @@ Toute la configuration est gérée via la section **Admin** de l'interface web, 
 - Historique d'audit de tous les changements
 - Fonctionnalités d'import/export pour sauvegarde/restauration
 
-Le fichier de base de données doit être persisté sur un volume pour survivre aux redémarrages du conteneur.
+Persistez tout le répertoire `/data` (un volume), pas le seul fichier `pvmss.db` : SQLite fonctionne en mode WAL et garde des fichiers `-wal`/`-shm` à côté. Pour une sauvegarde, utilisez **Admin > Paramètres > Exporter la base de données**.
 
 #### Tags
 
@@ -207,12 +207,13 @@ Utilisez **soit** un `.env` (via `env_file`) **soit** des variables inline, pas 
 | `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | Timeout d'un rafraîchissement d'inventaire                                 | ❌                    | `15s`              |
 | `PVMSS_MAX_LIST_PAGE_SIZE`                    | Taille de page maximale des endpoints de liste                             | ❌                    | `100`              |
 | `PVMSS_TRUSTED_PROXY_HOPS`                    | Nombre de reverse proxies devant PVMSS (IP client / limitation de débit)   | ❌                    | `1`                |
+| `PVMSS_RATE_LIMIT_MAX`                        | Relève tous les plafonds de limitation de débit intégrés (auth par IP, écritures par utilisateur) ; `0` garde les valeurs par défaut | ❌                    | `0`          |
 | `TZ`                                          | Fuseau horaire du conteneur                                                | ❌                    | `UTC`              |
 
 L'image Docker prérègle `PVMSS_DB_PATH=/data/pvmss.db`, `PVMSS_HOST=0.0.0.0` et
 `PVMSS_WEB_DIR=/app/web/build` : ces trois-là peuvent rester vides en conteneur.
 
-> Astuce : `htpasswd -bnBC 10 "admin" "MotDePasseFort" | cut -d: -f2` permet de générer `ADMIN_PASSWORD_HASH`.
+> Astuce : générez `ADMIN_PASSWORD_HASH` avec `htpasswd -bnBC 10 "" "MotDePasseFort" | tr -d ':\n'`. Dans un fichier Compose (ou un `.env` lu par Compose), doublez chaque `$` en `$$`.
 
 #### Configuration des logs
 
@@ -262,7 +263,7 @@ docker run -d \
   --name pvmss \
   --restart unless-stopped \
   -p 50000:50000 \
-  -v $(pwd)/pvmss.db:/data/pvmss.db \
+  -v pvmss_data:/data \
   -e ADMIN_PASSWORD_HASH='$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e' \
   -e LOG_LEVEL=info \
   -e LOG_OUTPUT=stdout \
@@ -293,7 +294,7 @@ Pour écrire les logs JSON dans un fichier à l'intérieur du conteneur au lieu 
 -v $(pwd)/pvmss.log:/app/pvmss.log \
 ```
 
-L'application sera accessible sur <http://localhost:50000>.
+L'application sera accessible sur <http://localhost:50000>. En HTTP en clair sur autre chose que `localhost`, ajoutez `-e PVMSS_COOKIE_SECURE=false` (gardez la valeur par défaut derrière HTTPS).
 
 ## Démarrer avec Docker compose
 
@@ -312,7 +313,10 @@ services:
       PROXMOX_API_TOKEN_VALUE: "aaaaaaaa-0000-44aa-1111-aaaaaaaaaaa"
       PROXMOX_URL: "https://ip-or-name:8006/api2/json"
       PVMSS_CLUSTER_SOURCE: "proxmox"
-      ADMIN_PASSWORD_HASH: "$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
+      # Chaque « $ » du hash bcrypt est doublé pour Compose
+      ADMIN_PASSWORD_HASH: "$$2y$$10$$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
+      # HTTP en clair sans TLS devant : retirer le drapeau Secure (à garder derrière HTTPS)
+      PVMSS_COOKIE_SECURE: "false"
       LOG_LEVEL: "info" # "debug", "info", "warn", "error"
       LOG_OUTPUT: "stdout" # "stdout", "stderr", ou un chemin de fichier
       LOG_FORMAT: "console" # "console", "json"
@@ -321,7 +325,7 @@ services:
       PVMSS_DB_PATH: "/data/pvmss.db"
       TZ: "Europe/Paris"
     volumes:
-      - ./pvmss.db:/data/pvmss.db
+      - pvmss_data:/data
       # - ./pvmss.log:/app/pvmss.log # Décommentez pour persister les logs dans un fichier à l'intérieur du conteneur
       # Modèles cloud-init : clé SSH de PVMSS (voir la section plus haut),
       # plus PVMSS_SSH_KEY_FILE: "/etc/pvmss/ssh/id_ed25519" dans environment.
@@ -330,7 +334,10 @@ services:
       resources:
         limits:
           cpus: "1"
-          memory: 64M
+          memory: 128M
+
+volumes:
+  pvmss_data: {}
 ```
 
 Pour persister les logs dans un fichier à l'intérieur du conteneur, vous pouvez ajuster la section `environment` :

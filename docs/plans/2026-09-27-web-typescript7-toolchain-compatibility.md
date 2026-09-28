@@ -1,5 +1,10 @@
 # Plan: Restore web checks with TypeScript 7
 
+> **Status: superseded (2026-09-28).** Commit `1292f8fa` pinned `typescript` to
+> `~6.0` in `web/package.json`, which restored `make web-check` and
+> `make web-lint`. Kept as history; revisit when `svelte-check` and
+> `typescript-eslint` support TypeScript 7.
+
 ## Goal
 
 Make `make web-check` and `make web-lint` pass without changing the TypeScript version the application intentionally uses or suppressing compatibility errors.
