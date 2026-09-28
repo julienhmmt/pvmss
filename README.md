@@ -50,7 +50,7 @@ The complete, route-by-route inventory lives in [docs/FEATURES.md](docs/FEATURES
 
 ### Administrators
 
-- **Clusters**: connect several Proxmox environments, test connectivity, per-cluster cloud-init publishing over SSH (snippet storage, SSH user, pinned host keys, host key scan).
+- **Clusters**: connect several Proxmox environments, test connectivity, per-cluster snippet storage for cloud-init templates.
 - **Catalog**: approve nodes, storages, ISOs, cloud images, VM templates, bridges; CRUD for hardware profiles, tags, cloud-init templates (published to every node, per-node status, "publish all"); stale approvals reconciled against live discovery.
 - **Pools**: create a self-service user = Proxmox user + pool + ACL in one step; cascade delete.
 - **Policy**: per-cluster gabarit (sockets, cores, memory, disk per VM, NICs, snapshots, isolation VLAN) and quota (VMs per user); per-node capacity caps with live usage.
@@ -141,51 +141,29 @@ Per-cluster limits (gabarit) in **Admin > Policy** still cap every value.
 
 ### Cloud-init templates (optional)
 
-Administrators write cloud-init templates in **Admin › Cloud-init templates**;
-users pick one when they create a VM (or switch later on the VM's cloud-init
-tab). Users never write YAML. The Proxmox REST API cannot write `snippets`
-files, so PVMSS **publishes** each template over SSH to every node:
+Administrators write cloud-init templates in **Admin › Cloud-init**; users
+pick one when they create a VM (or switch later on the VM's cloud-init tab).
+Users never write YAML. The Proxmox REST API cannot write `snippets` files,
+so **PVMSS never writes on the nodes**: for each template it shows a command
+that you paste, as root, on the nodes that must offer it. No key, no SSH.
 
-Quick setup (details, all deployment variants and troubleshooting:
-[docs/cloud-init-ssh.md](docs/cloud-init-ssh.md)):
+1. Enable the Snippets content type on a storage (one node, once; or GUI:
+   Datacenter > Storage):
 
-```sh
-# 1. PVMSS's key (workstation, repository root)
-ssh-keygen -t ed25519 -N '' -C pvmss -f pvmss_ed25519
+   ```sh
+   STORAGE=local
+   CUR=$(pvesh get /storage/$STORAGE --output-format json | perl -MJSON -0ne 'print decode_json($_)->{content}')
+   case ",$CUR," in *,snippets,*) ;; *) pvesm set "$STORAGE" --content "$CUR,snippets" ;; esac
+   ```
 
-# 2. Snippets content type on the storage (one node, once; or GUI: Datacenter > Storage)
-STORAGE=local
-CUR=$(pvesh get /storage/$STORAGE --output-format json | perl -MJSON -0ne 'print decode_json($_)->{content}')
-case ",$CUR," in *,snippets,*) ;; *) pvesm set "$STORAGE" --content "$CUR,snippets" ;; esac
+2. **Infrastructure › Clusters › Edit**: select that snippet storage.
+3. **Admin › Cloud-init**: write the template, copy its **Command to paste**,
+   run it on the chosen nodes, click **Verify**.
 
-# 3. Every node: helper + dedicated "pvmss" user (forced command, no shell).
-#    PVMSS serves the setup script (embedded in its binary; source:
-#    tools/pvmss-node-setup.sh). The exact command is in Infrastructure > Clusters > Edit.
-PVMSS=https://pvmss.example.com
-NODES="192.168.1.11 192.168.1.12 192.168.1.13"; PUBKEY=$(cat pvmss_ed25519.pub)
-for n in $NODES; do
-  ssh root@"$n" "curl -fsSL '$PVMSS/api/v1/pvmss-node-setup.sh' | sh -s -- --storage $STORAGE --user pvmss --key '$PUBKEY'"
-done
-#    Nodes without access to PVMSS: scp tools/pvmss-node-setup.sh, then sh it with the same options.
-
-# 4. Check one node
-ssh -i pvmss_ed25519 -o IdentitiesOnly=yes pvmss@192.168.1.11 check
-```
-
-5. Give PVMSS the private key: mount it read-only (readable by uid 65532) and
-   set `PVMSS_SSH_KEY_FILE` (Helm: `cloudInit.sshKeySecret`).
-6. **Infrastructure › Clusters › Edit**: snippet storage, SSH user `pvmss`, port, and
-   the pinned host keys (paste `for n in $NODES; do ssh-keyscan -t ed25519 $n;
-   done`, or save without the SSH user first, reopen and **Scan host keys**),
-   save. The badge turns "cloud-init: on" and PVMSS publishes the baseline and
-   every template.
-
-PVMSS must reach every node's IP from `/cluster/status` on the SSH port.
-Each published file is immutable (`pvmss-tpl-<id>-<hash>.yml`, the PVMSS
-baseline merged in): editing a template publishes a new file and existing VMs
-keep theirs. A template not present on a VM's node is refused before the VM
-is created, never attached. Use **Publish to all nodes** after adding or
-reinstalling a node.
+A template is offered only on the nodes that have its file. Each file is
+immutable (`pvmss-tpl-<id>-<hash>.yml`, the PVMSS baseline merged in):
+editing a template yields a new file and a new command, existing VMs keep
+theirs. Full procedure and troubleshooting: [docs/cloud-init.md](docs/cloud-init.md).
 
 ### Environment variables
 
@@ -204,7 +182,6 @@ You can rely on `.env` + `env_file` or inline `environment:` entries, but **not 
 | `PROXMOX_API_TOKEN_NAME`                      | Proxmox token name (`user@pve!token`)                                      | when source is `proxmox` | - |
 | `PROXMOX_API_TOKEN_VALUE`                     | Token secret that matches the name above                                   | when source is `proxmox` | - |
 | `ADMIN_PASSWORD_HASH`                         | Bcrypt hash for the local admin login; disabled when empty                 | ❌                       | - |
-| `PVMSS_SSH_KEY_FILE`                          | SSH private key that publishes cloud-init templates to the nodes (user, port, host keys: Infrastructure › Clusters) | ❌                       | - |
 | `PVMSS_HOST`                                  | Address to bind (`0.0.0.0` for all interfaces)                             | ❌                       | `127.0.0.1`            |
 | `PVMSS_WEB_DIR`                               | Directory holding the built SPA                                            | ❌                       | relative to the binary |
 | `PVMSS_COOKIE_SECURE`                         | `Secure` flag on auth cookies (keep `true` in production)                  | ❌                       | `true`                 |
@@ -288,13 +265,6 @@ docker run -d \
   jhmmt/pvmss:latest
 ```
 
-To enable cloud-init templates, also mount PVMSS's SSH key
-(see [Cloud-init templates](#cloud-init-templates-optional)):
-
-```bash
--v ./pvmss_ed25519:/etc/pvmss/ssh/id_ed25519:ro -e PVMSS_SSH_KEY_FILE=/etc/pvmss/ssh/id_ed25519 \
-```
-
 To write JSON logs to a file inside the container instead of stdout, override:
 
 ```bash
@@ -336,9 +306,6 @@ services:
     volumes:
       - pvmss_data:/data
       # - ./pvmss.log:/app/pvmss.log # Uncomment to persist logs to a file inside the container
-      # Cloud-init templates: PVMSS's SSH key (see the section above), plus
-      # PVMSS_SSH_KEY_FILE: "/etc/pvmss/ssh/id_ed25519" in environment.
-      # - ./pvmss_ed25519:/etc/pvmss/ssh/id_ed25519:ro
     deploy:
       resources:
         limits:

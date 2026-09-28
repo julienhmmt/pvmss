@@ -305,6 +305,9 @@ func TestVMCloudInit_DocumentSwitch_Refusals(t *testing.T) {
 		t.Fatalf("CreateCloudInitTemplate: %v", err)
 	}
 
+	cluster.SetFakeSnippetVisibility(false) // file not pasted on the node
+	t.Cleanup(func() { cluster.SetFakeSnippetVisibility(true) })
+
 	recorder = httptest.NewRecorder()
 	handler.ServeHTTP(recorder, cloudInitRequest(http.MethodPut, path, `{"templateId":"draft"}`, cookie))
 

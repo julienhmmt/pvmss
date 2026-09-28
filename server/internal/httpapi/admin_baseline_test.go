@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
-	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
@@ -52,14 +51,15 @@ func (r *singleFakeRegistry) List() []string {
 }
 
 type baselineDTOForTest struct {
-	Generated   string `json:"generated"`
-	Publication *struct {
+	Generated string `json:"generated"`
+	Document  *struct {
 		Filename string `json:"filename"`
+		Command  string `json:"command"`
 		Nodes    []struct {
-			Node string `json:"node"`
-			OK   bool   `json:"ok"`
+			Node    string `json:"node"`
+			Present bool   `json:"present"`
 		} `json:"nodes"`
-	} `json:"publication"`
+	} `json:"document"`
 }
 
 func getBaseline(t *testing.T, handler *httpapi.AdminBaseline, cookie *http.Cookie) baselineDTOForTest {
@@ -83,7 +83,7 @@ func getBaseline(t *testing.T, handler *httpapi.AdminBaseline, cookie *http.Cook
 }
 
 // TestAdminBaseline_ReturnsGeneratedDocument - the response carries the
-// generated baseline verbatim, and no publication before the first publish.
+// generated baseline verbatim.
 //
 //nolint:paralleltest // serial: shared fake cluster
 func TestAdminBaseline_ReturnsGeneratedDocument(t *testing.T) {
@@ -94,28 +94,23 @@ func TestAdminBaseline_ReturnsGeneratedDocument(t *testing.T) {
 	if !strings.Contains(dto.Generated, "qemu-guest-agent") {
 		t.Errorf("generated baseline missing qemu-guest-agent: %s", dto.Generated)
 	}
-
-	if dto.Publication != nil {
-		t.Errorf("publication = %+v before any publish, want nil", dto.Publication)
-	}
 }
 
-// TestAdminBaseline_ReportsPublication - after a publish the response
-// carries the published filename and the per-node outcome.
+// TestAdminBaseline_ReportsDocument - the response carries the baseline
+// file, the command to paste and the per-node presence, read live.
 //
 //nolint:paralleltest // serial: shared fake cluster
-func TestAdminBaseline_ReportsPublication(t *testing.T) {
-	handler, authHandler, st := newAdminBaselineHandler(t)
-
-	publication, err := catalog.PublishCloudInitDocument(context.Background(), st, cluster.Fake{}, catalog.PublishRequest{Cluster: auditTestCluster, TemplateID: store.BaselineTemplateID})
-	if err != nil {
-		t.Fatalf("publish baseline: %v", err)
-	}
+func TestAdminBaseline_ReportsDocument(t *testing.T) {
+	handler, authHandler, _ := newAdminBaselineHandler(t)
 
 	dto := getBaseline(t, handler, adminCookie(t, authHandler))
 
-	if dto.Publication == nil || dto.Publication.Filename != publication.Filename || len(dto.Publication.Nodes) == 0 || !dto.Publication.Nodes[0].OK {
-		t.Fatalf("publication = %+v, want %s published on every node", dto.Publication, publication.Filename)
+	if dto.Document == nil || !strings.HasPrefix(dto.Document.Filename, "pvmss-baseline-") || len(dto.Document.Nodes) == 0 || !dto.Document.Nodes[0].Present {
+		t.Fatalf("document = %+v, want the baseline present on the demo fake", dto.Document)
+	}
+
+	if !strings.Contains(dto.Document.Command, dto.Document.Filename) {
+		t.Errorf("command %q does not write %s", dto.Document.Command, dto.Document.Filename)
 	}
 }
 

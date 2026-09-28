@@ -4,7 +4,6 @@ package httpapi_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -625,10 +624,6 @@ func createCatalogTemplate(t *testing.T, st *store.Store) string {
 		t.Fatalf("CreateCloudInitTemplate: %v", err)
 	}
 
-	if _, err := catalog.PublishCloudInitDocument(context.Background(), st, cluster.Fake{}, catalog.PublishRequest{Cluster: auditTestCluster, TemplateID: tmpl.ID, Content: tmpl.Content}); err != nil {
-		t.Fatalf("PublishCloudInitDocument: %v", err)
-	}
-
 	cluster.ClearFakeCalls()
 
 	return tmpl.ID
@@ -759,7 +754,7 @@ func TestVMCreate_WithCloudInitTemplate_Success(t *testing.T) {
 }
 
 // TestVMCreate_WithCloudInitTemplate_NotPublishedOnNode409 - a template
-// whose publication failed on the nodes is refused with 409
+// whose file the admin has not pasted on the node is refused with 409
 // cloudinit_not_published before any VMID is allocated.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
@@ -767,8 +762,8 @@ func TestVMCreate_WithCloudInitTemplate_NotPublishedOnNode409(t *testing.T) {
 	handler, authHandler, st := newVMCreateHandler(t)
 	cookie := loginCookie(t, authHandler, `{"username":"alice","password":"pvmss-alice"}`)
 
-	cluster.SetFakeCloudInitPushError(errors.New("cluster client: push failed"))
-	t.Cleanup(func() { cluster.SetFakeCloudInitPushError(nil) })
+	cluster.SetFakeSnippetVisibility(false)
+	t.Cleanup(func() { cluster.SetFakeSnippetVisibility(true) })
 
 	tmplID := createCatalogTemplate(t, st)
 

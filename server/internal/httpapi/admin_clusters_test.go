@@ -4,7 +4,6 @@ package httpapi_test
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -27,7 +26,6 @@ const (
 	adminClustersPath         = "/api/v1/admin/clusters"
 	oidcEnabledBody           = `{"enabled":true}`
 	adminClusterSnippetTarget = "shared"
-	adminClusterKnownHosts    = "10.0.0.1 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl"
 )
 
 type adminClusterFixture struct {
@@ -507,8 +505,8 @@ func TestAdminClusters_DeleteLastClusterConflictAndReactivateRoundTrip(t *testin
 	assertClusterErrorBody(t, response, "last_cluster")
 }
 
-// TestAdminClusters_SnippetSettingsValidation - snippet settings reject invalid
-// storage ids, users, host keys, and ports while allowing all-empty settings.
+// TestAdminClusters_SnippetSettingsValidation - an invalid storage id and
+// the retired SSH fields are rejected; all-empty settings stay valid.
 //
 //nolint:paralleltest // HTTP fixture shares fake cluster state
 func TestAdminClusters_SnippetSettingsValidation(t *testing.T) {
@@ -521,18 +519,13 @@ func TestAdminClusters_SnippetSettingsValidation(t *testing.T) {
 		return adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeUpdate, HTTPMethod: http.MethodPut, Path: adminClustersSecondaryPath, Name: crossSecondaryCluster, Body: body})
 	}
 
-	knownHosts := adminClusterKnownHosts
 	cases := []struct {
 		name     string
 		settings string
 		wantCode int
 	}{
 		{name: "invalid storage id", settings: `,"snippetStorage":"-bad"`, wantCode: http.StatusBadRequest},
-		{name: "root user", settings: `,"snippetStorage":"shared","sshUser":"root","sshKnownHosts":` + fmt.Sprintf("%q", knownHosts), wantCode: http.StatusBadRequest},
-		{name: "user without host keys", settings: `,"snippetStorage":"shared","sshUser":"pvmss"`, wantCode: http.StatusBadRequest},
-		{name: "garbage host keys", settings: `,"snippetStorage":"shared","sshUser":"pvmss","sshKnownHosts":"not a key"`, wantCode: http.StatusBadRequest},
-		{name: "hashed host keys", settings: `,"snippetStorage":"shared","sshUser":"pvmss","sshKnownHosts":"|1|a=|b= ssh-ed25519 AAAA"`, wantCode: http.StatusBadRequest},
-		{name: "bad port", settings: `,"sshPort":70000`, wantCode: http.StatusBadRequest},
+		{name: "retired ssh field", settings: `,"snippetStorage":"shared","sshUser":"pvmss"`, wantCode: http.StatusBadRequest},
 		{name: "all empty stays valid", settings: ``, wantCode: http.StatusOK},
 	}
 	for _, testCase := range cases {
@@ -548,92 +541,41 @@ func TestAdminClusters_SnippetSettingsValidation(t *testing.T) {
 	}
 }
 
-// TestAdminClusters_SnippetSettingsPersisted - valid snippet settings are
-// echoed, control publishing state according to key availability, and persist.
+// TestAdminClusters_SnippetStoragePersisted - the snippet storage is echoed,
+// turns cloud-init documents on, persists, and clearing it turns them off.
 //
 //nolint:paralleltest // HTTP fixture shares fake cluster state
-func TestAdminClusters_SnippetSettingsPersisted(t *testing.T) {
+func TestAdminClusters_SnippetStoragePersisted(t *testing.T) {
 	fixture := newAdminClusterFixture(t)
 	cookie := adminClusterCookie(t, fixture.auth)
 
-	update := func(settings string) *httptest.ResponseRecorder {
+	update := func(settings string) adminClusterDTOForTest {
 		body := `{"url":"https://pve-b.example.com:8006/api2/json","tokenId":"pvmss@pve!service"` + settings + `}`
-
-		return adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeUpdate, HTTPMethod: http.MethodPut, Path: adminClustersSecondaryPath, Name: crossSecondaryCluster, Body: body})
-	}
-
-	knownHosts := adminClusterKnownHosts
-	response := update(`,"snippetStorage":"` + adminClusterSnippetTarget + `","sshUser":"pvmss","sshPort":2222,"sshKnownHosts":` + fmt.Sprintf("%q", knownHosts))
-	if response.Code != http.StatusOK {
-		t.Fatalf("status = %d: %s", response.Code, response.Body.String())
-	}
-
-	var updated adminClusterDTOForTest
-	if err := json.Unmarshal(response.Body.Bytes(), &updated); err != nil {
-		t.Fatalf("decode updated: %v", err)
-	}
-
-	if updated.SnippetStorage != adminClusterSnippetTarget || updated.SSHUser != "pvmss" || updated.SSHPort != 2222 || updated.SSHKnownHosts != knownHosts {
-		t.Fatalf("updated cluster = %+v, want the settings echoed", updated)
-	}
-
-	testSnippetSettingsPublishingState(t, fixture, update, updated)
-}
-
-func testSnippetSettingsPublishingState(t *testing.T, fixture adminClusterFixture, update func(string) *httptest.ResponseRecorder, updated adminClusterDTOForTest) {
-	t.Helper()
-	t.Run("publishing state", func(t *testing.T) {
-		// No PVMSS_SSH_KEY_FILE in the fixture: publishing stays off, and the
-		// status names the missing key.
-		if updated.CloudInitWriteEnabled || updated.SSHPublicKey != "" || updated.PublishingStatus != "no_ssh_key" {
-			t.Errorf("without a key: enabled=%v key=%q status=%q, want off/no_ssh_key", updated.CloudInitWriteEnabled, updated.SSHPublicKey, updated.PublishingStatus)
+		response := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeUpdate, HTTPMethod: http.MethodPut, Path: adminClustersSecondaryPath, Name: crossSecondaryCluster, Body: body})
+		if response.Code != http.StatusOK {
+			t.Fatalf("status = %d: %s", response.Code, response.Body.String())
 		}
 
-		fixture.handler.SetSSHPublicKey("ssh-ed25519 AAAA pvmss")
-
-		response := update(`,"snippetStorage":"` + adminClusterSnippetTarget + `","sshUser":"pvmss","sshKnownHosts":` + fmt.Sprintf("%q", adminClusterKnownHosts))
+		var updated adminClusterDTOForTest
 		if err := json.Unmarshal(response.Body.Bytes(), &updated); err != nil {
 			t.Fatalf("decode updated: %v", err)
 		}
 
-		if !updated.CloudInitWriteEnabled || updated.SSHPublicKey == "" || updated.PublishingStatus != "" {
-			t.Errorf("with a key: enabled=%v key=%q status=%q, want on/empty", updated.CloudInitWriteEnabled, updated.SSHPublicKey, updated.PublishingStatus)
-		}
-
-		row, err := fixture.store.GetCluster(context.Background(), crossSecondaryCluster)
-		if err != nil {
-			t.Fatalf("GetCluster: %v", err)
-		}
-
-		if row.SnippetStorage != adminClusterSnippetTarget || row.SSHUser != "pvmss" || row.SSHKnownHosts != adminClusterKnownHosts {
-			t.Fatalf("stored settings = %+v", row)
-		}
-	})
-}
-
-// TestAdminClusters_SSHScan - the scan returns one known_hosts line per
-// node and saves nothing.
-//
-//nolint:paralleltest // HTTP fixture shares fake cluster state
-func TestAdminClusters_SSHScan(t *testing.T) {
-	fixture := newAdminClusterFixture(t)
-	cookie := adminClusterCookie(t, fixture.auth)
-
-	response := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeSSHScan, HTTPMethod: http.MethodPost, Path: adminClustersSecondaryPath + "/ssh-scan", Name: crossSecondaryCluster})
-	if response.Code != http.StatusOK {
-		t.Fatalf("status = %d: %s", response.Code, response.Body.String())
+		return updated
 	}
 
-	var scans []struct {
-		Node string `json:"node"`
-		Line string `json:"line"`
-	}
-	if err := json.Unmarshal(response.Body.Bytes(), &scans); err != nil {
-		t.Fatalf("decode: %v", err)
+	updated := update(`,"snippetStorage":"` + adminClusterSnippetTarget + `"`)
+	if updated.SnippetStorage != adminClusterSnippetTarget || !updated.CloudInitWriteEnabled {
+		t.Fatalf("updated cluster = %+v, want the storage echoed and documents on", updated)
 	}
 
-	if len(scans) == 0 || cluster.ValidateKnownHosts(scans[0].Line) != nil {
-		t.Fatalf("scans = %+v, want valid known_hosts lines", scans)
+	row, err := fixture.store.GetCluster(context.Background(), crossSecondaryCluster)
+	if err != nil || row.SnippetStorage != adminClusterSnippetTarget {
+		t.Fatalf("stored = %+v/%v", row, err)
+	}
+
+	if cleared := update(``); cleared.SnippetStorage != "" || cleared.CloudInitWriteEnabled {
+		t.Fatalf("cleared cluster = %+v, want documents off", cleared)
 	}
 }
 
@@ -649,12 +591,7 @@ type adminClusterDTOForTest struct {
 	LastTestAt            *string `json:"lastTestAt"`
 	ProxmoxVersion        *string `json:"proxmoxVersion"`
 	SnippetStorage        string  `json:"snippetStorage"`
-	SSHUser               string  `json:"sshUser"`
-	SSHPort               int     `json:"sshPort"`
-	SSHKnownHosts         string  `json:"sshKnownHosts"`
-	SSHPublicKey          string  `json:"sshPublicKey"`
 	CloudInitWriteEnabled bool    `json:"cloudInitWriteEnabled"`
-	PublishingStatus      string  `json:"publishingStatus"`
 }
 
 func assertClusterErrorBody(t *testing.T, response *httptest.ResponseRecorder, wantCode string) {

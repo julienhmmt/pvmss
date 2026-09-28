@@ -12,40 +12,24 @@ cluster. **Nœuds** approuve les hôtes sur lesquels les utilisateurs peuvent
 créer des VM. **Pools** crée les utilisateurs self-service (utilisateur
 Proxmox + pool + ACL en une étape).
 
-### Publication cloud-init (SSH)
+### Modèles cloud-init
 
-Les documents cloud-init sont écrits uniquement par les administrateurs
-(**Admin > Modèles cloud-init**). PVMSS publie chacun d'eux, fusionné avec
-la base qemu-guest-agent, sous forme d'un fichier immuable
-`pvmss-tpl-<id>-<hash>.yml` dans le stockage de snippets de chaque nœud, par
-SSH (l'API REST de Proxmox ne sait pas écrire de snippets). La création
-d'une VM n'écrit jamais de fichier : la VM pointe vers le fichier publié.
+Seuls les administrateurs écrivent les documents cloud-init (**Admin >
+Cloud-init**). L'API REST de Proxmox ne peut pas écrire de snippets, donc
+PVMSS n'écrit jamais sur les nœuds : pour chaque modèle, il affiche une
+commande que l'administrateur colle, en root, sur les nœuds qui doivent le
+proposer. PVMSS lit via l'API quels nœuds ont le fichier et ne propose le
+modèle que sur ces nœuds.
 
 1. Dans Proxmox, activez le type de contenu **Snippets** sur un stockage
-   disponible sur chaque nœud (`local` convient).
-2. Générez une paire de clés et fournissez la clé privée à PVMSS :
+   (`local` convient).
+2. Dans **Infrastructure > Clusters > Modifier**, choisissez ce stockage de
+   snippets.
+3. Écrivez le modèle, copiez sa commande, collez-la sur les nœuds choisis,
+   cliquez sur **Vérifier**.
 
-   | Variable             | Notes                                                        |
-   | -------------------- | ------------------------------------------------------------ |
-   | `PVMSS_SSH_KEY_FILE` | Chemin de la clé privée (montage en lecture seule ou Secret) |
-
-3. Sur chaque nœud, en root, lancez la commande affichée dans
-   **Infrastructure > Clusters > Modifier** : `curl -fsSL <URL de
-   PVMSS>/api/v1/pvmss-node-setup.sh | sh -s -- --storage <stockage> --user
-   pvmss --key '<clé publique PVMSS>'` (PVMSS sert le script ; c'est aussi
-   `tools/pvmss-node-setup.sh` dans le dépôt). Il installe l'utilitaire
-   `pvmss-snippet`, un utilisateur dédié `pvmss` limité au répertoire
-   `snippets/` du stockage, et la clé avec une commande forcée (pas de shell).
-4. Dans **Infrastructure > Clusters > Modifier**, renseignez le stockage de snippets,
-   l'utilisateur SSH, le port et les clés d'hôte épinglées : collez les
-   lignes de `ssh-keyscan -t ed25519 <ip du nœud>`, ou enregistrez d'abord
-   sans utilisateur SSH, rouvrez et cliquez sur **Scanner les clés d'hôte**.
-   Vérifiez les empreintes et enregistrez. Les clés d'hôte sont toujours
-   vérifiées. La ligne du cluster affiche `cloud-init : activé`, ou
-   l'élément manquant.
-
-Laissez l'utilisateur SSH vide pour désactiver les documents cloud-init sur
-le cluster. Voir le [guide de configuration cloud-init](/docs/cloud-init-setup)
+Laissez le stockage vide pour désactiver les modèles cloud-init sur le
+cluster. Voir le [guide de configuration cloud-init](/docs/cloud-init-setup)
 pour le détail et le dépannage.
 
 ## Catalogue

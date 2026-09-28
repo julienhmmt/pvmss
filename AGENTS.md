@@ -23,7 +23,7 @@ script, or CI job still pointing at `backend/` or `frontend/` is stale - see
 | `server/`         | Go REST API - module `pvmss/server`, own `go.mod`                     |
 | `web/`            | SvelteKit SPA - app `pvmss-web`, own `package.json` (bun)             |
 | `helm/`           | Helm chart                                                            |
-| `docs/`           | Documentation: `FEATURES.md`, `cloud-init-ssh.md`, `constitution.md`, `design/`, `agents/`, `plans/` (task plans) |
+| `docs/`           | Documentation: `FEATURES.md`, `cloud-init.md`, `constitution.md`, `design/`, `agents/`, `plans/` (task plans) |
 | `specs/`          | Feature specifications (speckit); gitignored but real work            |
 | `sonar-projects/` | Per-project SonarScanner `.properties` files                          |
 | `tools/`          | Helper scripts (`pq`, sonar bootstrap/coverage/scan/query, superlint) |
@@ -180,27 +180,23 @@ Packages under `server/internal/`:
 | `config/`    | Env-based configuration, validation, slog logger, redaction   |
 
 Cloud-init documents are authored by PVMSS administrators only
-(`catalog_cloudinit_templates`, per cluster) and **published over SSH** to
-every node of the cluster: PVMSS runs the node-side helper `pvmss-snippet`
-(`tools/pvmss-node-setup.sh`, forced command) with `write <name>` and proves
-through the API that each node lists `<storage>:snippets/<name>`
-(`cluster/proxmox_publish.go`, `catalog/cloudinit_publish.go`,
-`cloudinit_publications`). Published files are content-addressed and
-immutable (`pvmss-tpl-<id>-<hash>.yml`, baseline merged in;
-`pvmss-baseline-<hash>.yml` alone for image VMs without a template). VM
-creation and the VM cloud-init tab never write a file: they check
-`HasSnippet` on the VM's node and set `cicustom` (`vm/create_cloudinit.go`,
-`vm_cloudinit_documents`). Per-cluster SSH settings (`clusters.ssh_user`,
-`ssh_port`, `ssh_known_hosts` - host keys always verified) + the global key
-`PVMSS_SSH_KEY_FILE`. The Proxmox API cannot write snippets. Operator guide
-(setup commands, Compose/Helm, troubleshooting): `docs/cloud-init-ssh.md`.
-The node setup script lives in `tools/pvmss-node-setup.sh` and is embedded,
-byte for byte, from `server/internal/nodesetup/pvmss-node-setup.sh`, served
-publicly at `GET /api/v1/pvmss-node-setup.sh` (text/plain). Edit the tools/
-copy, then `cp` it to nodesetup/: `go test ./internal/nodesetup/` fails on
-drift. Users cannot
-write cloud-init YAML (user files and the per-VM editor were removed);
-legacy per-VM files (`vm_cloudinit_snippets`) are only cleaned up.
+(`catalog_cloudinit_templates`, per cluster). **PVMSS never writes on the
+nodes**: the Proxmox API cannot write snippets (`upload`/`download-url`
+accept `iso`, `vztmpl`, `import` only), and SSH publishing was removed on
+2026-09-28 (`.scratch/cloudinit-manual/`). For each enabled template the
+admin page shows the content-addressed file (`pvmss-tpl-<id>-<hash>.yml`,
+baseline merged in; `pvmss-baseline-<hash>.yml` alone for image VMs without a
+template) and a copy-paste command (`catalog.WriteCommand`, `pvesm path` +
+quoted here-document) the admin runs as root on the nodes they choose.
+Presence is read live, per node, through the API (`cluster.SnippetChecker`,
+`cluster/proxmox_snippets.go`, `catalog/cloudinit_document.go`); nothing is
+stored. The create catalog lists each template with the nodes that have its
+file, and VM creation / the VM cloud-init tab re-check `HasSnippet` on the
+VM's node before setting `cicustom` (`vm/create_cloudinit.go`,
+`vm_cloudinit_documents`). Per cluster, only `clusters.snippet_storage`
+remains. Operator procedure: `docs/cloud-init.md`. Users cannot write
+cloud-init YAML; legacy per-VM files (`vm_cloudinit_snippets`) are forgotten,
+never deleted (PVMSS cannot delete snippets).
 
 ### Web (`web/`)
 
@@ -270,12 +266,11 @@ operator who simply forgot to set the variable.
 | `PVMSS_MAX_LIST_PAGE_SIZE`                    | `100`                              |
 | `PVMSS_TRUSTED_PROXY_HOPS`                    | `1`                                |
 | `PVMSS_RATE_LIMIT_MAX`                        | `0` (keep each limiter's built-in ceiling; a positive value raises them all, used by e2e) |
-| `PVMSS_SSH_KEY_FILE`                          | empty; the key that publishes cloud-init templates over SSH (user/port/host keys are per cluster) |
 
 `PVMSS_OFFLINE`, `PVMSS_ENV`, `JWT_SECRET`, `PROXMOX_VERIFY_SSL` and
 `LOG_FILE_PATH` belonged to the v0.3 backend and are **no longer read**.
-`PVMSS_SSH_USER` / `PVMSS_SSH_PORT` are no longer read either (per cluster
-in Infrastructure > Clusters since cloud-init publishing moved to SSH-only). Demo
+`PVMSS_SSH_KEY_FILE`, `PVMSS_SSH_USER` and `PVMSS_SSH_PORT` are no longer
+read either (SSH publishing removed; startup warns when they are set). Demo
 mode is now `PVMSS_CLUSTER_SOURCE=fake`.
 
 ## CI

@@ -427,15 +427,15 @@ func TestCreate_Image_NoWriteTarget_SkipsBaseline(t *testing.T) {
 
 // TestCreate_Image_BaselineNotOnNode_BootsOnNativeKeys is the regression
 // for "TASK ERROR: volume 'local:snippets/pvmss-N.yml' does not exist": the
-// baseline is not on the VM's node (published while the helper wrote into
-// the wrong directory). Nothing is attached - a cicustom to a missing volume
+// baseline is not on the VM's node (the admin has not pasted it there). Nothing is attached - a cicustom to a missing volume
 // makes every start fail - and the VM still starts on its native keys.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
 func TestCreate_Image_BaselineNotOnNode_BootsOnNativeKeys(t *testing.T) {
 	fixture := newCreateFixture(t)
 
-	cluster.ResetFake() // drop the fixture's published baseline from the nodes
+	cluster.SetFakeSnippetVisibility(false) // baseline not pasted on the nodes
+	t.Cleanup(func() { cluster.SetFakeSnippetVisibility(true) })
 
 	req := imageRequest()
 	req.StartAfterCreate = true

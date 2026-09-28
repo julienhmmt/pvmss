@@ -9,8 +9,6 @@ import (
 	"pvmss/server/internal/store"
 	"slices"
 	"sync"
-
-	"golang.org/x/crypto/ssh"
 )
 
 // ErrClusterNotFound is returned when a cluster is unknown or removed.
@@ -39,41 +37,16 @@ type Registry struct {
 	mu      sync.RWMutex
 	clients map[string]Client
 	factory ClientFactory
-	// sshPublicKey is the publishing key's public half, for display.
-	sshPublicKey string
 }
 
 // NewRegistry constructs a registry from active persisted rows. A row that
 // cannot construct a client is skipped so one bad cluster cannot block others.
 func NewRegistry(source string, rows []store.ClusterRow) (*Registry, error) {
-	factory, err := factoryForSource(source, nil)
+	factory, err := factoryForSource(source)
 	if err != nil {
 		return nil, err
 	}
 	return NewRegistryWithFactory(factory, rows)
-}
-
-// NewRegistryWithSSH constructs a registry whose Proxmox clients publish
-// cloud-init documents over SSH with signer (the global PVMSS_SSH_KEY_FILE)
-// and each cluster row's own SSH user, port and pinned host keys. A nil
-// signer disables publishing on every cluster.
-func NewRegistryWithSSH(source string, rows []store.ClusterRow, signer ssh.Signer) (*Registry, error) {
-	factory, err := factoryForSource(source, signer)
-	if err != nil {
-		return nil, err
-	}
-	registry, err := NewRegistryWithFactory(factory, rows)
-	if err != nil {
-		return nil, err
-	}
-	registry.sshPublicKey = AuthorizedKey(signer)
-	return registry, nil
-}
-
-// SSHPublicKey is PVMSS's publishing public key in authorized_keys form
-// ("" without PVMSS_SSH_KEY_FILE), shown in Infrastructure > Clusters.
-func (registry *Registry) SSHPublicKey() string {
-	return registry.sshPublicKey
 }
 
 // NewRegistryWithFactory constructs a registry with an injectable client factory.
@@ -158,7 +131,7 @@ func (registry *Registry) List() []string {
 	return result
 }
 
-func factoryForSource(source string, signer ssh.Signer) (ClientFactory, error) {
+func factoryForSource(source string) (ClientFactory, error) {
 	switch source {
 	case SourceFake:
 		return func(row store.ClusterRow) (Client, error) {
@@ -182,10 +155,7 @@ func factoryForSource(source string, signer ssh.Signer) (ClientFactory, error) {
 				APITokenValue:         row.TokenSecret,
 				TLSInsecureSkipVerify: row.TLSInsecureSkipVerify,
 				SnippetStorage:        row.SnippetStorage,
-				SSH: SnippetSSH{
-					User: row.SSHUser, Port: row.SSHPort, KnownHosts: row.SSHKnownHosts, Signer: signer,
-				},
-				httpClient: newProxmoxHTTPClient(row.TLSInsecureSkipVerify),
+				httpClient:            newProxmoxHTTPClient(row.TLSInsecureSkipVerify),
 			}, nil
 		}, nil
 	default:

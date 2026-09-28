@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"regexp"
 	"slices"
 	"strings"
 	"time"
@@ -112,11 +111,11 @@ func parseIPConfig(raw string, result *CloudInitConfig) {
 }
 
 // FindSnippetStorage implements CloudInitReader: the cluster's configured
-// snippet storage, provided publishing is configured and the node lists that
+// snippet storage, provided one is configured and the node lists that
 // storage as an active snippets provider. Whether a given file is actually
 // there is proven per file with HasSnippet before any cicustom is set.
 func (p Proxmox) FindSnippetStorage(ctx context.Context, node string) (string, error) {
-	if !p.PublishingEnabled() {
+	if p.SnippetStorage == "" {
 		return "", ErrSnippetWriteUnavailable
 	}
 
@@ -263,8 +262,7 @@ func (p Proxmox) SetCloudInitConfig(ctx context.Context, node string, vmid int, 
 }
 
 // HasSnippet implements Writer by listing storage's snippets content and
-// checking for filename - the visibility proof after PushCloudInitSnippet:
-// the write went through the mount, this confirms Proxmox sees it.
+// checking for filename: the proof an admin-placed file is on the node.
 func (p Proxmox) HasSnippet(ctx context.Context, node, storage, filename string) (bool, error) {
 	found, err := proxmoxListContent(ctx, p.rest(), node, storage, "snippets")
 	if err != nil {
@@ -562,9 +560,3 @@ func pollAgentExecStatus(ctx context.Context, rest proxmoxRESTClient, path strin
 		return true, fmt.Errorf("guest agent ssh-key add failed (exit %d): %s", status.ExitCode, msg)
 	}
 }
-
-// snippetFilenameRE is the only shape PVMSS ever publishes or removes: a
-// pvmss- prefix, a safe body, a yaml extension. The node-side helper
-// enforces the same rule; the check here keeps a bug elsewhere from even
-// sending a bad name.
-var snippetFilenameRE = regexp.MustCompile(`^pvmss-[A-Za-z0-9._-]+\.ya?ml$`)

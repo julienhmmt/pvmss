@@ -58,11 +58,10 @@ var (
 	// concurrent creations can collide; the caller retries with a fresh VMID.
 	ErrVMIDTaken = errors.New("vmid already taken")
 	// ErrSnippetWriteUnavailable reports a cluster where cloud-init
-	// documents are off: no snippet storage, no SSH settings or no global
-	// key. Proxmox's REST API cannot write snippets at all (upload and
-	// download-url reject content=snippets), so PVMSS publishes them over
-	// SSH to every node.
-	ErrSnippetWriteUnavailable = errors.New("cloud-init documents are not enabled on this cluster (configure the snippet storage and SSH publishing in Infrastructure > Clusters)")
+	// documents are off: no snippet storage selected. Proxmox's REST API
+	// cannot write snippets at all (upload and download-url reject
+	// content=snippets), so the admin writes them by hand on the nodes.
+	ErrSnippetWriteUnavailable = errors.New("cloud-init documents are not enabled on this cluster (select the snippet storage in Infrastructure > Clusters)")
 )
 
 // Client is the single contract for reading cluster data. Every implementation
@@ -186,12 +185,6 @@ type Writer interface {
 	// sets is preceded by this check on the VM's node: a VM must never
 	// reference a file its node does not have (every start would fail).
 	HasSnippet(ctx context.Context, node, storage, filename string) (bool, error)
-	// RemoveCloudInitSnippet deletes a PVMSS file on every node through the
-	// SSH helper. Used only for the legacy per-VM files (pvmss-<vmid>.yml)
-	// when their VM is deleted; published documents are shared and never
-	// removed with a VM. Missing file is not an error. Publishing not
-	// configured → ErrSnippetWriteUnavailable.
-	RemoveCloudInitSnippet(ctx context.Context, storage, filename string) error
 	// SetCloudInitPassword applies the VM's cloud-init password post-boot via
 	// the QEMU guest agent, writing it only to /etc/shadow on the guest. It
 	// never uses the cipassword config key, whose crypt hash Proxmox stores on

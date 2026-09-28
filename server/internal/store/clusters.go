@@ -43,31 +43,9 @@ type ClusterRow struct {
 	LastTestMessage       *string
 	ProxmoxVersion        string
 	// SnippetStorage is the Proxmox storage id whose snippets/ content
-	// receives the published cloud-init documents. Empty = feature off.
+	// holds the admin cloud-init documents (written by hand on the nodes).
+	// Empty = feature off.
 	SnippetStorage string
-	// SSHUser / SSHPort / SSHKnownHosts are the per-cluster SSH settings
-	// PVMSS uses to publish cloud-init documents to every node through
-	// the node-side pvmss-snippet helper. The private key is global
-	// (PVMSS_SSH_KEY_FILE). SSHKnownHosts holds known_hosts lines; host
-	// keys are always verified.
-	SSHUser       string
-	SSHPort       int
-	SSHKnownHosts string
-}
-
-// SnippetConfig is the per-cluster cloud-init publishing configuration
-// written by Infrastructure > Clusters.
-type SnippetConfig struct {
-	Storage    string
-	SSHUser    string
-	SSHPort    int
-	KnownHosts string
-}
-
-// PublishingConfigured reports whether the row has everything publishing
-// needs except the global private key.
-func (row ClusterRow) PublishingConfigured() bool {
-	return row.SnippetStorage != "" && row.SSHUser != ""
 }
 
 // serviceTokenID is the deterministic Proxmox service token used to seed the
@@ -115,13 +93,13 @@ func (s *Store) CreateCluster(ctx context.Context, row ClusterRow) error {
 
 // GetCluster returns an active cluster and decrypts its service-account secret.
 func (s *Store) GetCluster(ctx context.Context, name string) (ClusterRow, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT name, display_name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, oidc_enabled, created_at, removed_at, last_test_status, last_test_at, last_test_message, proxmox_version, snippet_storage, ssh_user, ssh_port, ssh_known_hosts FROM clusters WHERE name = ? AND removed_at IS NULL`, name)
+	row := s.db.QueryRowContext(ctx, `SELECT name, display_name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, oidc_enabled, created_at, removed_at, last_test_status, last_test_at, last_test_message, proxmox_version, snippet_storage FROM clusters WHERE name = ? AND removed_at IS NULL`, name)
 	return s.scanCluster(row)
 }
 
 // ListClusters returns every active cluster ordered by immutable logical name.
 func (s *Store) ListClusters(ctx context.Context) ([]ClusterRow, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT name, display_name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, oidc_enabled, created_at, removed_at, last_test_status, last_test_at, last_test_message, proxmox_version, snippet_storage, ssh_user, ssh_port, ssh_known_hosts FROM clusters WHERE removed_at IS NULL ORDER BY name`)
+	rows, err := s.db.QueryContext(ctx, `SELECT name, display_name, url, tls_insecure_skip_verify, token_id, token_secret_ciphertext, oidc_enabled, created_at, removed_at, last_test_status, last_test_at, last_test_message, proxmox_version, snippet_storage FROM clusters WHERE removed_at IS NULL ORDER BY name`)
 	if err != nil {
 		return nil, fmt.Errorf("list clusters: %w", err)
 	}
@@ -260,17 +238,11 @@ func (s *Store) SetClusterDisplayName(ctx context.Context, name, displayName str
 	return nil
 }
 
-// SetClusterSnippetConfig records the cloud-init publishing settings of
-// this cluster. An empty storage disables the feature. Validation (storage
-// id grammar, user/port, known_hosts syntax) is the handler's job; the store
-// only persists. A zero port is stored as 22.
-func (s *Store) SetClusterSnippetConfig(ctx context.Context, name string, cfg SnippetConfig) error {
-	if cfg.SSHPort == 0 {
-		cfg.SSHPort = 22
-	}
-
-	res, err := s.db.ExecContext(ctx, `UPDATE clusters SET snippet_storage = ?, ssh_user = ?, ssh_port = ?, ssh_known_hosts = ? WHERE name = ? AND removed_at IS NULL`,
-		cfg.Storage, cfg.SSHUser, cfg.SSHPort, cfg.KnownHosts, name)
+// SetClusterSnippetStorage records the cluster's snippet storage. An empty
+// storage disables cloud-init documents. The storage id grammar is the
+// handler's job; the store only persists.
+func (s *Store) SetClusterSnippetStorage(ctx context.Context, name, storage string) error {
+	res, err := s.db.ExecContext(ctx, `UPDATE clusters SET snippet_storage = ? WHERE name = ? AND removed_at IS NULL`, storage, name)
 	if err != nil {
 		return fmt.Errorf("set cluster snippet config: %w", err)
 	}
@@ -301,7 +273,7 @@ func (s *Store) scanCluster(scanner clusterScanner) (ClusterRow, error) {
 		lastStatus, lastAt, lastMessage sql.NullString
 		proxmoxVersion                  sql.NullString
 	)
-	if err := scanner.Scan(&row.Name, &displayName, &row.URL, &tlsInsecure, &row.TokenID, &ciphertext, &oidcEnabled, &createdAt, &removedAt, &lastStatus, &lastAt, &lastMessage, &proxmoxVersion, &row.SnippetStorage, &row.SSHUser, &row.SSHPort, &row.SSHKnownHosts); err != nil {
+	if err := scanner.Scan(&row.Name, &displayName, &row.URL, &tlsInsecure, &row.TokenID, &ciphertext, &oidcEnabled, &createdAt, &removedAt, &lastStatus, &lastAt, &lastMessage, &proxmoxVersion, &row.SnippetStorage); err != nil {
 		return ClusterRow{}, err
 	}
 	row.DisplayName = displayName.String

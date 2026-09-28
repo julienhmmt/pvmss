@@ -128,7 +128,7 @@
 	);
 
 	const cloudInitDocumentError = $derived(
-		form.cloudInitTemplateId !== '' && form.catalog && !form.catalog.cloudInitTemplates.some((template) => template.id === form.cloudInitTemplateId)
+		form.cloudInitTemplateId !== '' && form.catalog && !form.cloudInitTemplatesOnNode().some((template) => template.id === form.cloudInitTemplateId)
 			? m['vms.create.errorCloudinitTemplateInvalid']()
 			: null
 	);
