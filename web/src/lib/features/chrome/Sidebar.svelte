@@ -352,11 +352,6 @@
 				<SidebarIcon name="info" />
 				{m['chrome.header.docs']()}
 			</a>
-		{:else}
-			<p class="flex items-start gap-2 px-2 text-xs text-muted-foreground" data-testid="sidebar-reassurance">
-				<SidebarIcon name="shield" class="mt-px h-3.5 w-3.5 shrink-0 text-success" />
-				{m['chrome.sidebar.reassurance']()}
-			</p>
 		{/if}
 		<div class="flex flex-wrap items-center justify-between gap-2" role="group" aria-label={m['chrome.sidebar.preferences']()}>
 			<LanguageSwitcher />
