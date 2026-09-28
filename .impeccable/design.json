@@ -1,0 +1,509 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-28T20:35:56Z",
+  "title": "Design System: PVMSS",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Blaze Orange",
+        "canonical": "oklch(56% 0.16 51deg)",
+        "tonalRamp": [
+          "oklch(15% 0.1141 51deg)",
+          "oklch(28% 0.1286 51deg)",
+          "oklch(40% 0.1421 51deg)",
+          "oklch(52% 0.1555 51deg)",
+          "oklch(64% 0.151 51deg)",
+          "oklch(76% 0.1376 51deg)",
+          "oklch(86% 0.1264 51deg)",
+          "oklch(94% 0.1174 51deg)"
+        ]
+      },
+      "primary-solid": {
+        "role": "primary",
+        "displayName": "Blaze Orange Solid",
+        "canonical": "oklch(56% 0.16 51deg)",
+        "tonalRamp": [
+          "oklch(15% 0.1141 51deg)",
+          "oklch(28% 0.1286 51deg)",
+          "oklch(40% 0.1421 51deg)",
+          "oklch(52% 0.1555 51deg)",
+          "oklch(64% 0.151 51deg)",
+          "oklch(76% 0.1376 51deg)",
+          "oklch(86% 0.1264 51deg)",
+          "oklch(94% 0.1174 51deg)"
+        ]
+      },
+      "primary-dark": {
+        "role": "primary",
+        "displayName": "Blaze Orange Dark",
+        "canonical": "oklch(72% 0.17 44deg)",
+        "tonalRamp": [
+          "oklch(15% 0.1022 44deg)",
+          "oklch(28% 0.1176 44deg)",
+          "oklch(40% 0.1319 44deg)",
+          "oklch(52% 0.1462 44deg)",
+          "oklch(64% 0.1605 44deg)",
+          "oklch(76% 0.1652 44deg)",
+          "oklch(86% 0.1533 44deg)",
+          "oklch(94% 0.1438 44deg)"
+        ]
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "Warm Paper",
+        "canonical": "#f7f6f4",
+        "tonalRamp": [
+          "oklch(15% 0.0017 50deg)",
+          "oklch(28% 0.0021 50deg)",
+          "oklch(40% 0.0024 50deg)",
+          "oklch(52% 0.0027 50deg)",
+          "oklch(64% 0.0031 50deg)",
+          "oklch(76% 0.0034 50deg)",
+          "oklch(86% 0.0037 50deg)",
+          "oklch(94% 0.0039 50deg)"
+        ]
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "Card White",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "oklch(15% 0.0 50deg)",
+          "oklch(28% 0.0 50deg)",
+          "oklch(40% 0.0 50deg)",
+          "oklch(52% 0.0 50deg)",
+          "oklch(64% 0.0 50deg)",
+          "oklch(76% 0.0 50deg)",
+          "oklch(86% 0.0 50deg)",
+          "oklch(94% 0.0 50deg)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Warm Muted",
+        "canonical": "#f1eeeb",
+        "tonalRamp": [
+          "oklch(15% 0.0022 50deg)",
+          "oklch(28% 0.0027 50deg)",
+          "oklch(40% 0.0031 50deg)",
+          "oklch(52% 0.0035 50deg)",
+          "oklch(64% 0.004 50deg)",
+          "oklch(76% 0.0044 50deg)",
+          "oklch(86% 0.0047 50deg)",
+          "oklch(94% 0.005 50deg)"
+        ]
+      },
+      "foreground": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1c1a19",
+        "tonalRamp": [
+          "oklch(15% 0.004 50deg)",
+          "oklch(28% 0.0036 50deg)",
+          "oklch(40% 0.0033 50deg)",
+          "oklch(52% 0.0029 50deg)",
+          "oklch(64% 0.0026 50deg)",
+          "oklch(76% 0.0023 50deg)",
+          "oklch(86% 0.002 50deg)",
+          "oklch(94% 0.0018 50deg)"
+        ]
+      },
+      "muted-foreground": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "#5f5854",
+        "tonalRamp": [
+          "oklch(15% 0.0064 50deg)",
+          "oklch(28% 0.0072 50deg)",
+          "oklch(40% 0.0078 50deg)",
+          "oklch(52% 0.0075 50deg)",
+          "oklch(64% 0.0068 50deg)",
+          "oklch(76% 0.0062 50deg)",
+          "oklch(86% 0.0056 50deg)",
+          "oklch(94% 0.0051 50deg)"
+        ]
+      },
+      "muted-foreground-subtle": {
+        "role": "neutral",
+        "displayName": "Subtle Ink",
+        "canonical": "#766f6a",
+        "tonalRamp": [
+          "oklch(15% 0.0059 50deg)",
+          "oklch(28% 0.0066 50deg)",
+          "oklch(40% 0.0073 50deg)",
+          "oklch(52% 0.0079 50deg)",
+          "oklch(64% 0.0074 50deg)",
+          "oklch(76% 0.0067 50deg)",
+          "oklch(86% 0.0062 50deg)",
+          "oklch(94% 0.0057 50deg)"
+        ]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Warm Border",
+        "canonical": "#e8e4e0",
+        "tonalRamp": [
+          "oklch(15% 0.0028 50deg)",
+          "oklch(28% 0.0034 50deg)",
+          "oklch(40% 0.0039 50deg)",
+          "oklch(52% 0.0044 50deg)",
+          "oklch(64% 0.0049 50deg)",
+          "oklch(76% 0.0054 50deg)",
+          "oklch(86% 0.0058 50deg)",
+          "oklch(94% 0.0059 50deg)"
+        ]
+      },
+      "destructive": {
+        "role": "tertiary",
+        "displayName": "Destructive",
+        "canonical": "oklch(57.7% 0.245 27.325deg)",
+        "tonalRamp": [
+          "oklch(15% 0.1718 27.325deg)",
+          "oklch(28% 0.1941 27.325deg)",
+          "oklch(40% 0.2146 27.325deg)",
+          "oklch(52% 0.2352 27.325deg)",
+          "oklch(64% 0.2342 27.325deg)",
+          "oklch(76% 0.2136 27.325deg)",
+          "oklch(86% 0.1965 27.325deg)",
+          "oklch(94% 0.1827 27.325deg)"
+        ]
+      },
+      "success": {
+        "role": "secondary",
+        "displayName": "Success",
+        "canonical": "oklch(64% 0.17 145deg)",
+        "tonalRamp": [
+          "oklch(15% 0.1117 145deg)",
+          "oklch(28% 0.1272 145deg)",
+          "oklch(40% 0.1414 145deg)",
+          "oklch(52% 0.1557 145deg)",
+          "oklch(64% 0.17 145deg)",
+          "oklch(76% 0.1557 145deg)",
+          "oklch(86% 0.1438 145deg)",
+          "oklch(94% 0.1343 145deg)"
+        ]
+      },
+      "warning": {
+        "role": "secondary",
+        "displayName": "Warning",
+        "canonical": "oklch(75% 0.16 75deg)",
+        "tonalRamp": [
+          "oklch(15% 0.0928 75deg)",
+          "oklch(28% 0.1074 75deg)",
+          "oklch(40% 0.1208 75deg)",
+          "oklch(52% 0.1342 75deg)",
+          "oklch(64% 0.1477 75deg)",
+          "oklch(76% 0.1589 75deg)",
+          "oklch(86% 0.1477 75deg)",
+          "oklch(94% 0.1387 75deg)"
+        ]
+      },
+      "info": {
+        "role": "secondary",
+        "displayName": "Info",
+        "canonical": "oklch(62% 0.17 245deg)",
+        "tonalRamp": [
+          "oklch(15% 0.1141 245deg)",
+          "oklch(28% 0.1295 245deg)",
+          "oklch(40% 0.1438 245deg)",
+          "oklch(52% 0.1581 245deg)",
+          "oklch(64% 0.1676 245deg)",
+          "oklch(76% 0.1533 245deg)",
+          "oklch(86% 0.1414 245deg)",
+          "oklch(94% 0.1319 245deg)"
+        ]
+      },
+      "sidebar": {
+        "role": "neutral",
+        "displayName": "Sidebar Surface",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "oklch(15% 0.0 50deg)",
+          "oklch(28% 0.0 50deg)",
+          "oklch(40% 0.0 50deg)",
+          "oklch(52% 0.0 50deg)",
+          "oklch(64% 0.0 50deg)",
+          "oklch(76% 0.0 50deg)",
+          "oklch(86% 0.0 50deg)",
+          "oklch(94% 0.0 50deg)"
+        ]
+      },
+      "background-dark": {
+        "role": "neutral",
+        "displayName": "Warm Near-Black",
+        "canonical": "oklch(17% 0.006 49deg)",
+        "tonalRamp": [
+          "oklch(15% 0.0059 49deg)",
+          "oklch(28% 0.0055 49deg)",
+          "oklch(40% 0.005 49deg)",
+          "oklch(52% 0.0045 49deg)",
+          "oklch(64% 0.004 49deg)",
+          "oklch(76% 0.0035 49deg)",
+          "oklch(86% 0.0031 49deg)",
+          "oklch(94% 0.0028 49deg)"
+        ]
+      },
+      "card-dark": {
+        "role": "neutral",
+        "displayName": "Dark Card",
+        "canonical": "oklch(21% 0.006 56deg)",
+        "tonalRamp": [
+          "oklch(15% 0.0057 56deg)",
+          "oklch(28% 0.0057 56deg)",
+          "oklch(40% 0.0052 56deg)",
+          "oklch(52% 0.0047 56deg)",
+          "oklch(64% 0.0042 56deg)",
+          "oklch(76% 0.0037 56deg)",
+          "oklch(86% 0.0033 56deg)",
+          "oklch(94% 0.0029 56deg)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "heading": {
+        "displayName": "Heading",
+        "purpose": "Page titles, admin section headers."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Card titles, dialog titles, section headers."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default text, table cells, form values."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Form labels, nav items, button text."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Eyebrows, count chips, table column headers. Uppercase, 0.04em tracking."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Technical values (VMIDs, node names, sizes, UPIDs) with tabular numbers."
+      }
+    },
+    "shadows": [
+      {
+        "name": "elev-rest",
+        "value": "0 1px 2px oklch(28% 0.01 56deg / 0.04), 0 1px 3px oklch(28% 0.01 56deg / 0.06)",
+        "purpose": "Light mode resting step: cards, tiles, panels (.shadow-card)."
+      },
+      {
+        "name": "elev-raised",
+        "value": "0 2px 4px oklch(28% 0.01 56deg / 0.05), 0 6px 16px oklch(28% 0.01 56deg / 0.08)",
+        "purpose": "Light mode: hover on an interactive card, and the bulk-action bar (.shadow-raised)."
+      },
+      {
+        "name": "elev-overlay",
+        "value": "0 8px 24px oklch(28% 0.01 56deg / 0.12), 0 2px 6px oklch(28% 0.01 56deg / 0.08)",
+        "purpose": "Light mode: dialogs, popovers, toasts (.shadow-overlay)."
+      },
+      {
+        "name": "elev-rest-dark",
+        "value": "0 1px 2px oklch(0% 0 0deg / 0.2), 0 1px 3px oklch(0% 0 0deg / 0.28)",
+        "purpose": "Dark mode resting step; higher opacity to hold against the near-black ground."
+      },
+      {
+        "name": "elev-raised-dark",
+        "value": "0 2px 4px oklch(0% 0 0deg / 0.28), 0 6px 16px oklch(0% 0 0deg / 0.36)",
+        "purpose": "Dark mode raised step."
+      },
+      {
+        "name": "elev-overlay-dark",
+        "value": "0 8px 24px oklch(0% 0 0deg / 0.5), 0 2px 6px oklch(0% 0 0deg / 0.3)",
+        "purpose": "Dark mode overlay step."
+      }
+    ],
+    "motion": [
+      {
+        "name": "control-transition",
+        "value": "150ms ease",
+        "purpose": "Button, input, and nav state transitions (colour, border, transform)."
+      },
+      {
+        "name": "dialog-enter",
+        "value": "160ms ease-out",
+        "purpose": "Dialog fade-in and backdrop fade-in."
+      },
+      {
+        "name": "drawer-enter",
+        "value": "180ms ease-out",
+        "purpose": "Mobile drawer slide-in from the left."
+      },
+      {
+        "name": "fade-in",
+        "value": "180ms ease-out",
+        "purpose": "Generic content fade-in."
+      },
+      {
+        "name": "table-row-hover",
+        "value": "120ms ease",
+        "purpose": "Table row background and accent-rail reveal."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "xs",
+        "value": "370px"
+      },
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "700px"
+      },
+      {
+        "name": "lg",
+        "value": "900px"
+      },
+      {
+        "name": "xl",
+        "value": "940px"
+      },
+      {
+        "name": "2xl",
+        "value": "1180px"
+      },
+      {
+        "name": "3xl",
+        "value": "1500px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one action a screen is about. Orange fill in both themes; flat at rest, depth from a 1px press.",
+      "html": "<button class=\"ds-btn-primary\">Create a machine</button>",
+      "css": ".ds-btn-primary { display:inline-flex; align-items:center; justify-content:center; gap:0.5rem; height:2.5rem; padding:0 1rem; border:0; border-radius:var(--radius-control); background:var(--primary-solid); color:var(--primary-foreground); font-family:'Archivo Variable',sans-serif; font-size:0.875rem; font-weight:600; line-height:1.25rem; cursor:pointer; transition:background-color 150ms ease, transform 150ms ease; } .ds-btn-primary:hover { background:oklch(56% 0.16 51deg / 0.9); } .ds-btn-primary:focus-visible { outline:none; box-shadow:0 0 0 2px var(--background), 0 0 0 4px var(--ring); } .ds-btn-primary:active { transform:translateY(1px); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "The bordered default. Card surface, warm border; border darkens and fill mutes on hover.",
+      "html": "<button class=\"ds-btn-secondary\">View details</button>",
+      "css": ".ds-btn-secondary { display:inline-flex; align-items:center; justify-content:center; gap:0.5rem; height:2.5rem; padding:0 1rem; border:1px solid var(--border); border-radius:var(--radius-control); background:var(--card); color:var(--foreground); font-family:'Archivo Variable',sans-serif; font-size:0.875rem; font-weight:600; line-height:1.25rem; cursor:pointer; transition:background-color 150ms ease, border-color 150ms ease, transform 150ms ease; } .ds-btn-secondary:hover { border-color:var(--muted-foreground-subtle); background:var(--muted); } .ds-btn-secondary:focus-visible { outline:none; box-shadow:0 0 0 2px var(--background), 0 0 0 4px var(--ring); } .ds-btn-secondary:active { transform:translateY(1px); }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "The shared .pv-input control: warm border on the paper ground, control radius, ring focus matching Button.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Machine name\" />",
+      "css": ".ds-input { display:block; width:100%; box-sizing:border-box; border:1px solid var(--input); border-radius:var(--radius-control); background:var(--background); color:var(--foreground); padding:0.5rem 0.75rem; font-family:'Archivo Variable',sans-serif; font-size:0.875rem; line-height:1.25rem; transition:border-color 150ms ease, box-shadow 150ms ease, background-color 150ms ease; } .ds-input::placeholder { color:var(--muted-foreground); } .ds-input:hover:not(:disabled):not(:focus-visible) { border-color:var(--muted-foreground-subtle); } .ds-input:focus-visible { outline:none; border-color:var(--ring); box-shadow:0 0 0 2px var(--background), 0 0 0 4px var(--ring); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "White surface, 1px warm border, base radius, two-layer soft shadow. Body padding defaults to 1.25rem.",
+      "html": "<section class=\"ds-card\"><h2 class=\"ds-card-title\">My machines</h2><p class=\"ds-card-body\">A place for your projects. Everything you need, nothing you don’t.</p></section>",
+      "css": ".ds-card { border:1px solid var(--border); border-radius:var(--radius); background:var(--card); color:var(--foreground); padding:1.25rem; box-shadow:var(--elev-rest); font-family:'Archivo Variable',sans-serif; } .ds-card-title { margin:0 0 0.5rem; font-size:1.5rem; font-weight:600; line-height:2rem; } .ds-card-body { margin:0; font-size:0.875rem; line-height:1.25rem; color:var(--muted-foreground); }"
+    },
+    {
+      "name": "Status Pill",
+      "kind": "chip",
+      "refersTo": "card",
+      "description": "Dot + label pill for machine state. Tones map to the semantic soft triples; the 5px dot is currentColor so the pill reads as one unit.",
+      "html": "<span class=\"ds-pill ds-pill-success\"><span class=\"ds-pill-dot\"></span>Running</span>",
+      "css": ".ds-pill { display:inline-flex; align-items:center; gap:0.375rem; padding:0.125rem 0.5rem; border-radius:9999px; font-family:'Archivo Variable',sans-serif; font-size:0.6875rem; font-weight:500; line-height:1rem; white-space:nowrap; } .ds-pill-dot { width:5px; height:5px; border-radius:9999px; background:currentColor; } .ds-pill-success { background:var(--success-soft); color:var(--success-soft-foreground); }"
+    },
+    {
+      "name": "Sidebar Nav Item",
+      "kind": "nav",
+      "refersTo": "button-ghost",
+      "description": "A rounded sidebar link. Muted at rest, muted fill on hover, accent-soft fill plus accent text when active.",
+      "html": "<a class=\"ds-nav-item ds-nav-item-active\" href=\"#\" aria-current=\"page\">My machines</a>",
+      "css": ".ds-nav-item { display:flex; align-items:center; gap:0.5rem; padding:0.375rem 0.75rem; border-radius:0.75rem; font-family:'Archivo Variable',sans-serif; font-size:0.875rem; font-weight:500; line-height:1.25rem; color:var(--muted-foreground); text-decoration:none; transition:background-color 120ms ease, color 120ms ease; } .ds-nav-item:hover { background:var(--muted); color:var(--foreground); } .ds-nav-item-active { background:var(--sidebar-accent); color:var(--sidebar-accent-foreground); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Competent Colleague",
+    "overview": "PVMSS is infrastructure management made human. The interface should feel like a competent colleague's desk: organized, warm, slightly informal, never clinical. The warm paper background and orange accent are the signature - they distinguish PVMSS from every cold, gray infrastructure dashboard. A colleague is not just friendly, though; they are dependable. The warmth earns the trust, the consistency keeps it.\n\nThe system is restrained: one accent color (orange), warm neutral surfaces, and semantic colors used only for state (success, warning, destructive, info). Density is welcome when it serves the task - tables, admin forms, policy fields - but decoration is not. Every surface earns its visual weight.\n\nThis system explicitly rejects generic SaaS aesthetics: no indigo gradients, no glassmorphism, no hero-metric templates, no identical card grids. It also rejects cluttered enterprise dashboards with excessive panels and gauges. The warmth comes from the palette and microcopy, not from illustrations or animation.",
+    "keyCharacteristics": [
+      "Warm paper background (#f7f6f4) with white card surfaces",
+      "Single orange accent (oklch 56% 0.16 51deg) used sparingly",
+      "OKLCH color space for all semantic colors with soft background variants",
+      "Archivo Variable as the sole typeface (headings, body, labels, data)",
+      "12px base radius (0.75rem) with 10px control radius (0.625rem)",
+      "Two-layer soft card shadows, not hard drop shadows",
+      "Responsive tables that collapse to stacked cards on mobile",
+      "Reduced-motion support on all animations",
+      "Dark mode with warm near-black ground (not pure black)"
+    ],
+    "rules": [
+      {
+        "name": "The One Accent Rule",
+        "section": "colors",
+        "body": "Blaze Orange is used on <=10% of any screen. It appears on primary buttons, active nav, focus rings, and links - never as decoration, background fill, or large area color."
+      },
+      {
+        "name": "The Warm Neutral Rule",
+        "section": "colors",
+        "body": "All neutrals are warm-tinted (hue 49-56deg in OKLCH). Never use pure gray, cool gray, or #000/#fff for surfaces or text."
+      },
+      {
+        "name": "The One Family Rule",
+        "section": "typography",
+        "body": "Archivo Variable carries headings, body, labels, and data. No display fonts in UI labels, buttons, or data. The only exception is the mono font for technical values."
+      },
+      {
+        "name": "The Tabular Numbers Rule",
+        "section": "typography",
+        "body": "Use the .mono class (or font-mono token) for VMIDs, node names, disk sizes, memory values, and UPIDs. It enables font-feature-settings: \"tnum\" 1 for aligned numeric columns."
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "section": "elevation",
+        "body": "Surfaces are flat at rest. Shadows appear only on cards, dialogs, and elevated elements. Never add shadows to buttons, inputs, or nav items."
+      },
+      {
+        "name": "The Two-Radius Rule",
+        "section": "shapes",
+        "body": "Cards get 0.75rem, controls get 0.625rem. Introducing a third radius for a one-off is drift."
+      }
+    ],
+    "dos": [
+      "Do use the warm paper background (#f7f6f4) for the app background and white (#ffffff) for card surfaces.",
+      "Do use Blaze Orange sparingly - primary buttons, active nav, focus rings, links only.",
+      "Do use OKLCH for all semantic colors with soft variants for backgrounds.",
+      "Do use Archivo Variable for all text. Use the mono font only for technical values.",
+      "Do use .pv-input and .pv-select classes on all form controls for consistent styling.",
+      "Do use .shadow-card / .shadow-raised / .shadow-overlay for elevation, and .pv-table .pv-responsive-table for data tables.",
+      "Do use Button / ButtonLink, TextField, Select, FormField, FormSection, Toolbar, Pill, StatCard and EmptyState instead of re-styling their markup by hand.",
+      "Do use Dialog.svelte for all modal dialogs - it has focus trap, escape handling, and focus restoration.",
+      "Do use skeleton loading states, not spinners in the middle of content.",
+      "Do use teaching empty states with actionable next steps.",
+      "Do respect prefers-reduced-motion on all animations.",
+      "Do make the machine list the signed-in landing page, not a dashboard.",
+      "Do put connection instructions (SSH + console) first on the detail page.",
+      "Do distinguish running, provisioning, failed, partial, and no-address states explicitly.",
+      "Do preserve entered form values across recoverable errors."
+    ],
+    "donts": [
+      "Don't use pure black (#000) or pure white (#fff) for surfaces or text. Use warm-tinted neutrals.",
+      "Don't use indigo, violet, or blue gradients. This is not a generic SaaS template.",
+      "Don't use glassmorphism, backdrop-blur on cards, or decorative shadows.",
+      "Don't use border-left or border-right greater than 1px as a colored accent stripe.",
+      "Don't use gradient text (background-clip: text with a gradient).",
+      "Don't use display fonts in UI labels, buttons, or data.",
+      "Don't use spinners inside content areas. Use skeleton states instead.",
+      "Don't use hand-rolled modal divs (fixed inset-0 z-50) instead of Dialog.svelte.",
+      "Don't use identical card grids with icon + heading + text repeated endlessly.",
+      "Don't add decorative motion that doesn't convey state. Motion is for feedback, not choreography.",
+      "Don't expose raw Proxmox terminology (node, storage, bridge, ISO) in the beginner path unless necessary. Use \"starting point\", \"size\", \"access\".",
+      "Don't claim a machine is \"ready\" unless connection data actually exists.",
+      "Don't guess an address. Show \"address not available yet\" and point to the console.",
+      "Don't let a user create a duplicate of a partial machine. Surface the existing one and route to help."
+    ]
+  }
+}
