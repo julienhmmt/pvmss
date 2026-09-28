@@ -1684,7 +1684,6 @@
       }
     }
   ],
-  "chrome.sidebar.reassurance": "Approuvé par votre équipe. Prêt pour votre prochaine idée.",
   "chrome.sidebar.preferences": "Préférences",
   "chrome.sidebar.accountLabel": "Compte personnel",
   "chrome.sidebar.accountLink": "Votre compte : {name}",
