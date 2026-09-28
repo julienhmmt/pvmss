@@ -100,7 +100,7 @@ The **Catalog** area of the admin nav controls what VM creation may reference. D
 - **Cloud images** (`/admin/images`) - approve cloud images discovered under a storage's `import/` content directory. PVMSS never downloads images from the internet: place them on the storage yourself.
 - **Bridges** (`/admin/bridges`) - approve the network bridges (VMBR) available for VM network cards. Open vSwitch bridges are not listed.
 - **Cloud-init templates** (`/admin/cloudinit-templates`) - create, enable, disable, and edit admin-curated `#cloud-config` documents users can pick at creation time.
-- **Profiles** (`/admin/profiles`) - define pre-approved hardware profiles (sockets, cores, memory, disk, bus) with optional node/storage overrides, an icon and a color, so users can pick a known-good shape instead of free-typing values.
+- **Profiles** (`/admin/profiles`) - define pre-approved hardware profiles (sockets, cores, memory, disk, bus), so users can pick a known-good shape instead of free-typing values.
 - **Tags** (`/admin/tags`) - manage the labels users can attach to VMs, with a color each. A tag is immutable once created (only its color changes); the `pvmss` tag is reserved and cannot be deleted.
 
 ### Stale approvals

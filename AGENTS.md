@@ -23,11 +23,11 @@ script, or CI job still pointing at `backend/` or `frontend/` is stale - see
 | `server/`         | Go REST API - module `pvmss/server`, own `go.mod`                     |
 | `web/`            | SvelteKit SPA - app `pvmss-web`, own `package.json` (bun)             |
 | `helm/`           | Helm chart                                                            |
-| `docs/`           | Documentation (`docs/plans/` holds task plans)                        |
+| `docs/`           | Documentation: `FEATURES.md`, `cloud-init-ssh.md`, `constitution.md`, `design/`, `agents/`, `plans/` (task plans) |
 | `specs/`          | Feature specifications (speckit); gitignored but real work            |
 | `sonar-projects/` | Per-project SonarScanner `.properties` files                          |
 | `tools/`          | Helper scripts (`pq`, sonar bootstrap/coverage/scan/query, superlint) |
-| `.devin/`         | Project rules + skills (see "Project Conventions")                    |
+| `.devin/`         | Project rules + skills (local, gitignored - not in a fresh clone)     |
 | `.agents/`        | Agent-local working files - `skills/`, `memory/` (gitignored)         |
 
 `server/` and `web/` are separate build units with separate tooling. The root
@@ -44,6 +44,8 @@ building a user-facing feature:
 | `DESIGN.md`        | Design tokens - colors, typography, spacing                       |
 | `ROADMAP.md`       | History from v0.1 to the current rewrite, and what's next         |
 | `TECH_DEBT.md`     | What's lingering or half-finished, and what deciding it takes     |
+| `CONTEXT.md`       | Domain glossary (projection, live status, UPID, lock...)          |
+| `CONTRIBUTING.md`  | How to contribute; docs to update with a user-facing change       |
 
 `WORKFLOWS.md` opens with a seven-field template (audience, entry, route, API,
 steps, states, safety nets). Adding a user-facing workflow means adding its
@@ -206,11 +208,12 @@ SvelteKit SPA: Svelte 5 runes, TypeScript, Tailwind CSS v4, `adapter-static`.
 Built with bun; the Go binary serves the build output (catch-all to
 `index.html` for client routing). Key dirs:
 
-- `src/routes/` - pages: `vms/`, `nodes/`, `admin/`, `profile/`, `login/`
+- `src/routes/` - pages: `vms/`, `nodes/`, `activity/`, `search/`, `docs/`, `about/`, `admin/`, `profile/`, `login/`
 - `src/lib/features/` - feature modules (stores + components per domain)
 - `src/lib/shared/` - shared API client and utilities
-- `src/lib/i18n/` + `messages/` + `project.inlang/` - i18n via Paraglide (EN + FR)
-- `src/lib/paraglide/` - generated Paraglide output
+- `messages/` (`en.json`, `fr.json`) + `project.inlang/` - i18n via Paraglide (EN + FR)
+- `src/lib/paraglide/` - generated Paraglide output (gitignored, produced by the Vite plugin and by `bun run check`)
+- `src/lib/shared/ui/` - in-house UI components (Button, Dialog, Select, Tabs...); no shadcn/bits-ui dependency
 - `src/test/` - vitest setup and helpers
 - `e2e/` - Playwright specs (auth, vms, nodes, admin, console, multi-cluster)
 
@@ -266,6 +269,7 @@ operator who simply forgot to set the variable.
 | `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | `15s`                              |
 | `PVMSS_MAX_LIST_PAGE_SIZE`                    | `100`                              |
 | `PVMSS_TRUSTED_PROXY_HOPS`                    | `1`                                |
+| `PVMSS_RATE_LIMIT_MAX`                        | `0` (keep each limiter's built-in ceiling; a positive value raises them all, used by e2e) |
 | `PVMSS_SSH_KEY_FILE`                          | empty; the key that publishes cloud-init templates over SSH (user/port/host keys are per cluster) |
 
 `PVMSS_OFFLINE`, `PVMSS_ENV`, `JWT_SECRET`, `PROXMOX_VERIFY_SSL` and
@@ -273,6 +277,14 @@ operator who simply forgot to set the variable.
 `PVMSS_SSH_USER` / `PVMSS_SSH_PORT` are no longer read either (per cluster
 in Infrastructure > Clusters since cloud-init publishing moved to SSH-only). Demo
 mode is now `PVMSS_CLUSTER_SOURCE=fake`.
+
+## CI
+
+`.github/workflows/`: `go.yml` (server build + `make server-test`, web
+svelte-check/eslint/vitest), `v0.4.yml` (same plus `bun run build` and the
+Playwright e2e job), `lint.yml` (Super-Linter for CSS/Markdown/YAML,
+golangci-lint). All trigger on `main` (`lint.yml`: every push). Go version comes from
+`server/go.mod`, bun is pinned to `1.3.13` in `v0.4.yml`. Dependabot: `.github/dependabot.yml`.
 
 ## Testing Notes
 
@@ -293,6 +305,13 @@ you touch the surrounding area; do not treat them as documentation of reality:
 - `server/internal/recovery/` - comments reference `backend/` for context only
 
 Stale references already cleaned up:
+
+- `.github/code-review-graph.instruction.md` - deleted with the rest of the
+  graph tooling.
+- `pvmss-deployment.yaml` - Secret now carries `namespace: pvmss`; the Service
+  selector matches the pod labels (it selected nothing before).
+- README compose/`docker run` examples mounted the single file `pvmss.db`; SQLite
+  runs in WAL mode, so they now mount the `/data` directory as a volume.
 
 - `README.md` / `README.fr.md` - already link the in-app page `/docs/proxmox-permissions`
   (seeded from `server/internal/docs/seed/recovered/`), not the deleted

@@ -40,14 +40,14 @@ lisible.
 
 Les nouvelles VM démarrent en **UEFI** par défaut, avec un disque EFI dont le
 magasin de clés est **vide**. Autrement dit : UEFI (GPT, variables EFI, type
-de machine q35) mais **pas de Secure Boot** — PVMSS ne l'active jamais, par
+de machine q35) mais **pas de Secure Boot** - PVMSS ne l'active jamais, par
 choix. Secure Boot n'exécute que les chargeurs signés par les clés inscrites
 dans les variables EFI, et PVMSS crée ses VM à partir de l'ISO approuvée par
 l'administrateur : la plupart des médias d'installation Linux ne sont pas
 signés (l'image officielle d'Arch indique elle-même ne pas prendre en charge
 Secure Boot), donc avec Secure Boot activé l'installeur ne démarre jamais et
 la VM s'arrête sur le shell UEFI, sans retour possible. Si vous avez besoin de
-Secure Boot — pour un invité Windows 11 par exemple — activez-le dans Proxmox,
+Secure Boot - pour un invité Windows 11 par exemple - activez-le dans Proxmox,
 où vous pouvez vérifier que l'ISO concernée est bien signée.
 
 Activez le **TPM 2.0** pour les invités qui l'exigent (Windows 11).

@@ -124,42 +124,20 @@ All configuration is managed through the **Admin** section of the web UI, which 
 - Audit trail of all changes
 - Import/export functionality for backup/restore
 
-The database file must be persisted on a volume to survive container restarts.
+Persist the whole `/data` directory (a volume), not the single `pvmss.db` file: SQLite runs in WAL mode and keeps `-wal`/`-shm` files next to it. For a backup, use **Admin > Settings > Export Database**.
 
 #### Tags
 
 The tag `pvmss` is used by default for VMs created via PVMSS, it cannot and should not be removed. Only PVMSS tags created by the admin from this app can be used.
 
-#### VM Profiles
+#### VM profiles
 
-VM profiles are pre-configured templates that simplify VM creation by providing common resource configurations. Users can select a profile when creating a VM, which automatically sets CPU, RAM, disk, and other parameters.
-
-PVMSS provides built-in default profiles:
-
-- **Web Server**: 1 vCPU, 2 GB RAM, 24 GB disk
-- **Lightweight API**: 2 vCPU, 2 GB RAM, 24 GB disk
-- **Light App Server**: 4 vCPU, 4 GB RAM, 32 GB disk
-- **Medium App Server**: 4 vCPU, 6 GB RAM, 32 GB disk
-- **Test Environment**: 2 vCPU, 4 GB RAM, 24 GB disk
-
-Admins can manage custom profiles via the **Admin > Profiles** page, where they can:
-
-- Create new profiles with custom resource specifications
-- Edit existing profiles
-- Enable or disable profiles
-- Delete profiles
-- Set optional node and storage overrides per profile
-
-Each profile includes:
-
-- `id`: Unique identifier
-- `name`: Display name
-- `description`: User-friendly description
-- `sockets`, `cores`, `ram_gb`, `disk_gb`: Resource specifications
-- `disk_bus`: Disk bus type (virtio, scsi, sata, ide)
-- `node`, `storage`: Optional node/storage overrides (empty = auto-select)
-- `icon`, `color`: Visual customization
-- `enabled`: Whether the profile is visible to users
+VM profiles are hardware shapes (sockets, cores, memory, disk, disk bus) that
+administrators curate in **Admin > Profiles**. Users pick a profile in the
+create wizard instead of typing CPU/RAM/disk values. PVMSS ships no default
+profile: create the ones your users need. Each profile has a label, the
+resource values above, and an enabled flag (only enabled profiles are offered).
+Per-cluster limits (gabarit) in **Admin > Policy** still cap every value.
 
 ### Cloud-init templates (optional)
 
@@ -235,13 +213,14 @@ You can rely on `.env` + `env_file` or inline `environment:` entries, but **not 
 | `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | Timeout for a single inventory refresh                                     | ❌                       | `15s`                  |
 | `PVMSS_MAX_LIST_PAGE_SIZE`                    | Upper bound on list endpoint page size                                     | ❌                       | `100`                  |
 | `PVMSS_TRUSTED_PROXY_HOPS`                    | Number of reverse proxies in front of PVMSS (for client IP / rate limits)  | ❌                       | `1`                    |
+| `PVMSS_RATE_LIMIT_MAX`                        | Raises every built-in rate-limit ceiling (per-IP auth, per-user writes); `0` keeps the defaults | ❌                       | `0`                    |
 | `TZ`                                          | Container timezone                                                         | ❌                       | `UTC`                  |
 
 The Docker image presets `PVMSS_DB_PATH=/data/pvmss.db`, `PVMSS_HOST=0.0.0.0`
 and `PVMSS_WEB_DIR=/app/web/build`, so those three can be left unset in a
 container deployment.
 
-> Tip: `ADMIN_PASSWORD_HASH` can be generated locally with `htpasswd -bnBC 10 "admin" "StrongPassword" | cut -d: -f2`.
+> Tip: generate `ADMIN_PASSWORD_HASH` with `htpasswd -bnBC 10 "" "StrongPassword" | tr -d ':\n'`. In a Compose file or a `.env` used by Compose, escape every `$` as `$$`.
 
 #### Logging configuration
 
@@ -293,7 +272,7 @@ docker run -d \
   --name pvmss \
   --restart unless-stopped \
   -p 50000:50000 \
-  -v $(pwd)/pvmss.db:/data/pvmss.db \
+  -v pvmss_data:/data \
   -e ADMIN_PASSWORD_HASH='$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e' \
   -e LOG_LEVEL=info \
   -e LOG_OUTPUT=stdout \
@@ -324,7 +303,7 @@ To write JSON logs to a file inside the container instead of stdout, override:
 -v $(pwd)/pvmss.log:/app/pvmss.log \
 ```
 
-The application will be available at <http://localhost:50000>.
+The application will be available at <http://localhost:50000>. Over plain HTTP on anything other than `localhost`, add `-e PVMSS_COOKIE_SECURE=false` (keep the default behind HTTPS).
 
 ## Start with Docker compose
 
@@ -343,7 +322,10 @@ services:
       PROXMOX_API_TOKEN_VALUE: "aaaaaaaa-0000-44aa-1111-aaaaaaaaaaa"
       PROXMOX_URL: "https://ip-or-name:8006/api2/json"
       PVMSS_CLUSTER_SOURCE: "proxmox"
-      ADMIN_PASSWORD_HASH: "$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
+      # Every "$" of the bcrypt hash is doubled for Compose
+      ADMIN_PASSWORD_HASH: "$$2y$$10$$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
+      # Plain HTTP with no TLS in front: drop the Secure cookie flag (keep it on behind HTTPS)
+      PVMSS_COOKIE_SECURE: "false"
       LOG_LEVEL: "info"
       LOG_OUTPUT: "stdout"
       LOG_FORMAT: "console"
@@ -352,7 +334,7 @@ services:
       PVMSS_DB_PATH: "/data/pvmss.db"
       TZ: "Europe/Paris"
     volumes:
-      - ./pvmss.db:/data/pvmss.db
+      - pvmss_data:/data
       # - ./pvmss.log:/app/pvmss.log # Uncomment to persist logs to a file inside the container
       # Cloud-init templates: PVMSS's SSH key (see the section above), plus
       # PVMSS_SSH_KEY_FILE: "/etc/pvmss/ssh/id_ed25519" in environment.
@@ -361,7 +343,10 @@ services:
       resources:
         limits:
           cpus: "1"
-          memory: 64M
+          memory: 128M
+
+volumes:
+  pvmss_data: {}
 ```
 
 To persist logs to a file inside the container, you can change the environment section to use JSON + file output, for example:

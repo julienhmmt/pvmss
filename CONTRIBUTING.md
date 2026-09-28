@@ -27,7 +27,8 @@ If you'd like to contribute, here's how:
 - Clear commit messages in English
 - Test your code before submitting: `make server-test` (Go, uses the `fake` cluster - no Proxmox needed), `make web-test` and `make web-check` (SvelteKit), `make lint` for both
 - Touching a user-facing feature? Update `WORKFLOWS.md`, `docs/FEATURES.md`, and the in-app pages under `server/internal/docs/seed/` (EN + FR)
-- Follow existing code style
+- Follow existing code style; conventions, commands and architecture are in [AGENTS.md](AGENTS.md) (read it before a non-trivial change)
+- Avoid the em-dash character (U+2014) in code and docs: use a spaced hyphen ` - `
 - Be respectful and constructive
 - AI-generated code are welcome, but must be reviewed by a human before merging
 

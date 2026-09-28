@@ -102,7 +102,7 @@ La zone **Catalogue** contrôle ce que la création de VM peut référencer. Les
 - **Images cloud** (`/admin/images`) - approuver les images cloud découvertes dans le contenu `import/` d'un stockage. PVMSS ne télécharge jamais d'image depuis Internet : déposez-les vous-même sur le stockage.
 - **Bridges** (`/admin/bridges`) - approuver les bridges réseau (VMBR) pour les cartes réseau. Les bridges Open vSwitch ne sont pas listés.
 - **Templates cloud-init** (`/admin/cloudinit-templates`) - créer, activer, désactiver et modifier des documents `#cloud-config` que les utilisateurs peuvent choisir à la création.
-- **Profils** (`/admin/profiles`) - définir des profils matériels pré-approuvés (sockets, cœurs, mémoire, disque, bus) avec surcharges nœud/stockage optionnelles, une icône et une couleur.
+- **Profils** (`/admin/profiles`) - définir des profils matériels pré-approuvés (sockets, cœurs, mémoire, disque, bus).
 - **Tags** (`/admin/tags`) - gérer les étiquettes attachables aux VM, chacune avec une couleur. Un tag est immuable une fois créé (seule sa couleur change) ; le tag `pvmss` est réservé et ne peut pas être supprimé.
 
 ### Approbations obsolètes

@@ -66,16 +66,25 @@ Repo convention: fix these when the surrounding area is touched anyway, do
 not do a dedicated pass, and do not read them as documentation of current
 reality.
 
-## Fixed in this pass (2026-09-20)
+## Fixed in the docs review (2026-09-28)
 
-`AGENTS.md` had drifted from the code it describes:
+Docs had drifted from the code they describe:
 
-- Listed three direct server dependencies; a fourth, `gopkg.in/yaml.v3`
-  (used by `cloudinit/validate.go` to reject malformed cloud-init YAML), was
-  missing. Added.
-- `PVMSS_SSH_USER` / `PVMSS_SSH_KEY_FILE` / `PVMSS_SSH_PORT` (the SSH
-  snippet-delivery path, the newest feature at HEAD) were read by
-  `config/load.go` but absent from the configuration table. Added.
+- `PVMSS_RATE_LIMIT_MAX` was read by `config/load.go` but absent from the
+  AGENTS/README variable tables. Added.
+- README described v0.3 default profiles and per-profile icon, color and
+  node/storage overrides; the v0.4 profile has label, sockets, cores, memory,
+  disk and bus only, and no profile is seeded outside the `fake` source.
+  README, `docs/FEATURES.md` and the in-app admin guide (EN + FR) corrected.
+- `docs/FEATURES.md` lacked `/admin/baseline`. Added.
+- `pvmss-deployment.yaml`: the Secret had no namespace and the Service
+  selector required labels the pods do not carry (no endpoints). Fixed.
+- README compose and `docker run` examples mounted the single file
+  `pvmss.db`, which breaks with SQLite WAL; they now mount `/data`. The
+  compose hash was not `$$`-escaped. Fixed.
+- `helm/Chart.yaml` chart `version` was `0.3.0` for `appVersion 0.4.0`; bumped.
+- Fixed earlier (2026-09-20): `gopkg.in/yaml.v3` and the SSH variables were
+  missing from AGENTS.md. Added.
 
 ## Left behind by the SSH-only cloud-init publishing (2026-09-23)
 
@@ -102,15 +111,12 @@ Plan: `PLAN-ui-v0.4.md` (not committed), branches `fix/web-offline-links`,
 `feat/web-wide-screens`, `feat/admin-dashboard-attention`,
 `feat/vms-list-counts`.
 
-- **Reading pages keep their own widths.** `max-w-reading` (60rem) covers
-  Create a machine and the profile. The about page and a doc article stay
-  at `max-w-3xl` (prose), the VM detail at `max-w-5xl`, the console at
-  `max-w-6xl`. Moving them to the token is a per-page call, not a sed.
 - **Two-column admin grids only on the dashboard.** The other admin pages
   are single tables or forms; none clearly gains from `xl:grid-cols-2` yet.
-- **Dashboard alert links land on the page, not the row.** `/nodes`,
-  `/admin/storages` and `/admin/policy` open unfiltered; none of them reads
-  a cluster or node from the query string.
+- **Only node alerts deep-link.** Dashboard node alerts open the node detail
+  page; storage and policy alerts still open `/admin/storages` and
+  `/admin/policy` unfiltered (neither reads a cluster or node from the query
+  string).
 - **Shared-storage detection is a type list.** `sharedStoragePlugins` in
   `httpapi/admin_dashboard.go` (rbd, cephfs, nfs, cifs, glusterfs, iscsi,
   iscsidirect, pbs). Proxmox exposes a `shared` flag per storage; the
@@ -119,23 +125,26 @@ Plan: `PLAN-ui-v0.4.md` (not committed), branches `fix/web-offline-links`,
 - **"Pool at quota" means the per-user VM quota.** One pool per user, so a
   pool at `MaxVMPerUser` is a user who cannot create. There is no pool-level
   CPU/RAM quota to alert on.
-- **The list toolbar count is the filtered count.** "N machines" next to the
-  search is the result total; with a status filter it shows the matches, not
-  "N of M". The quota line and the sidebar chip stay on the full count
-  (locked by `TestList_Quota`).
 - **Pre-existing e2e failure.** `admin-exploitation.spec.ts` "audit log
   shows VM actions with real username" fails on `v0.4` itself (the cleared
   filter returns fewer rows than the filtered one). It runs before the
   dashboard test in that serial file, so it hides later failures.
-- **Super-Linter's CSS check fails on any PR touching `web/src/app.css`.**
-  `VALIDATE_ALL_CODEBASE: false` lints changed files whole, and stylelint's
-  standard config rejects Tailwind v4 (`@custom-variant`, bare `@import`)
-  plus old style nits (`#ffffff`, alpha decimals). #141 merged red on it and
-  #148 fails the same way. A `.github/linters/.stylelintrc.json` tuned for Tailwind, or
-  `VALIDATE_CSS: false`, would make the check mean something again.
 - **`make web-test` prints `ECONNREFUSED 127.0.0.1:3000`** on a clean
   `v0.4`: some test reaches a real fetch. Tests pass; the noise hides real
   errors.
+
+## Found in the docs review (2026-09-28), not fixed
+
+- **`docs/constitution.md` principle X names shadcn / bits-ui**; `web/` ships
+  in-house components under `src/lib/shared/ui/` and neither dependency.
+  Amending a constitution needs the project lead's decision (version bump).
+- **`docker-compose.dev.yml` bind-mounts the file `./pvmss.db:/app/pvmss.db`**
+  while `PVMSS_DB_PATH` resolves to `/data/pvmss.db`: dev data lives in the
+  container layer and is lost on recreate. Mount a volume on `/data`.
+- **`.github/workflows/go.yml` and `v0.4.yml` overlap** (both build and test
+  server and web on `main`). Keep one.
+- **CI only triggers on `main` and PRs to `main`**; pushes to the `v0.4`
+  branch are not built.
 
 ## How to re-check any of this
 
