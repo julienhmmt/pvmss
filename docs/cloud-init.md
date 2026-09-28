@@ -1,4 +1,4 @@
-# Cloud-init setup (administrator)
+# Cloud-init templates - setup and operations
 
 PVMSS administrators write cloud-init templates; users pick one when they
 create a VM. The Proxmox REST API cannot write `snippets` files (its

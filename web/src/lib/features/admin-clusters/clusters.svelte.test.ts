@@ -21,10 +21,6 @@ const cluster = {
 	nodeCount: 2,
 	vmCount: 18,
 	snippetStorage: 'shared',
-	sshUser: 'pvmss',
-	sshPort: 22,
-	sshKnownHosts: '10.0.0.1 ssh-ed25519 AAAA',
-	sshPublicKey: 'ssh-ed25519 AAAA pvmss',
 	cloudInitWriteEnabled: true
 };
 
@@ -39,7 +35,7 @@ describe('AdminClustersStore', () => {
 		expect(store.error).toBeNull();
 	});
 
-	it('create() forwards the SSH publishing settings', async () => {
+	it('create() forwards the snippet storage', async () => {
 		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, cluster));
 		vi.stubGlobal('fetch', fetchMock);
 		const store = new AdminClustersStore();
@@ -49,18 +45,10 @@ describe('AdminClustersStore', () => {
 			tlsInsecureSkipVerify: false,
 			tokenId: 'pvmss@pve!service',
 			tokenSecret: 'secret',
-			snippetStorage: 'shared',
-			sshUser: 'pvmss',
-			sshPort: 22,
-			sshKnownHosts: '10.0.0.1 ssh-ed25519 AAAA'
+			snippetStorage: 'shared'
 		});
 		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
-		expect(JSON.parse(init?.body as string)).toMatchObject({
-			snippetStorage: 'shared',
-			sshUser: 'pvmss',
-			sshPort: 22,
-			sshKnownHosts: '10.0.0.1 ssh-ed25519 AAAA'
-		});
+		expect(JSON.parse(init?.body as string)).toMatchObject({ snippetStorage: 'shared' });
 	});
 
 	it('toggles OIDC locally from the server acknowledgement', async () => {
@@ -83,15 +71,5 @@ describe('AdminClustersStore', () => {
 		const storages = await store.loadSnippetStorages('default');
 		expect(storages).toEqual([{ name: 'shared', node: 'pve-node-01', type: 'dir' }]);
 		expect(fetchMock.mock.calls[0]?.[0]).toContain('/api/v1/admin/snippet-storages?cluster=default');
-	});
-
-	it('scanHostKeys() posts to the ssh-scan endpoint and saves nothing', async () => {
-		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, [{ node: 'pve-node-01', line: '10.0.0.1 ssh-ed25519 AAAA' }]));
-		vi.stubGlobal('fetch', fetchMock);
-		const store = new AdminClustersStore();
-		const scans = await store.scanHostKeys('default');
-		expect(scans[0]?.line).toBe('10.0.0.1 ssh-ed25519 AAAA');
-		expect(fetchMock.mock.calls[0]?.[0]).toContain('/api/v1/admin/clusters/default/ssh-scan');
-		expect(fetchMock.mock.calls).toHaveLength(1);
 	});
 });

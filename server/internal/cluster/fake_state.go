@@ -15,7 +15,6 @@ type fakeState struct {
 	callMu    sync.Mutex
 	createMu  sync.Mutex
 	identMu   sync.RWMutex
-	pushMu    sync.RWMutex
 	sshMu     sync.RWMutex
 	pingMu    sync.Mutex
 	snippetMu sync.RWMutex
@@ -29,7 +28,6 @@ type fakeState struct {
 	roleCallLog   []RoleCall
 	acls          []ACLEntry
 	errDeleteUser error
-	pushErr       error
 	sshErr        error
 	// agentPingFailures, when positive, makes the next n PingGuestAgent calls
 	// return ErrUnreachable before succeeding (exercises the caller's bounded ping loop without a
@@ -67,13 +65,12 @@ type fakeState struct {
 	// or absent means unlocked. Tests inject a lock to exercise retry-on-lock
 	// and the lock field in VMLiveStatus.
 	vmLocks map[int]string
-	// snippetPresence records which snippet files each node lists: filled by
-	// PublishSnippet, or by tests via SetFakeSnippetPresent.
+	// snippetPresence records explicit per-file answers set by tests via
+	// SetFakeSnippetPresent; they override snippetsPresentByDefault.
 	snippetPresence map[fakeSnippetKey]bool
-	// snippetPushMarksPresent, when false, keeps PublishSnippet from
-	// recording the file as visible - the "helper wrote into a directory
-	// Proxmox does not list" failure publication must report per node.
-	snippetPushMarksPresent bool
+	// snippetsPresentByDefault lists every pvmss-* file on every node (demo
+	// stack). Tests turn it off to simulate files not pasted yet.
+	snippetsPresentByDefault bool
 }
 
 // fakeSnippetKey identifies one (node, storage, filename) snippet-presence
@@ -112,14 +109,14 @@ func (fake Fake) stateOrDefault() *fakeState {
 
 func newFakeState(clusterName string) *fakeState {
 	state := &fakeState{
-		cloudInitConfigs:        originalFakeCloudInitConfigs(),
-		cloudInitDrives:         make(map[fakeCloudInitKey]bool),
-		snapshots:               make(map[fakeSnapshotKey][]VMSnapshot),
-		identities:              originalFakeIdentities(),
-		roleState:               make(map[string][]string),
-		vmLocks:                 make(map[int]string),
-		snippetPresence:         make(map[fakeSnippetKey]bool),
-		snippetPushMarksPresent: true,
+		cloudInitConfigs:         originalFakeCloudInitConfigs(),
+		cloudInitDrives:          make(map[fakeCloudInitKey]bool),
+		snapshots:                make(map[fakeSnapshotKey][]VMSnapshot),
+		identities:               originalFakeIdentities(),
+		roleState:                make(map[string][]string),
+		vmLocks:                  make(map[int]string),
+		snippetPresence:          make(map[fakeSnippetKey]bool),
+		snippetsPresentByDefault: true,
 	}
 	if clusterName == "secondary" {
 		state.nodes = slices.Clone(secondaryNodes)
@@ -166,16 +163,12 @@ func (s *fakeState) reset(clusterName string) {
 
 	s.snippetMu.Lock()
 	s.snippetPresence = fresh.snippetPresence
-	s.snippetPushMarksPresent = fresh.snippetPushMarksPresent
+	s.snippetsPresentByDefault = fresh.snippetsPresentByDefault
 	s.snippetMu.Unlock()
 
 	s.identMu.Lock()
 	s.identities = fresh.identities
 	s.identMu.Unlock()
-
-	s.pushMu.Lock()
-	s.pushErr = nil
-	s.pushMu.Unlock()
 }
 
 func (s *fakeState) record(call FakeCall) {

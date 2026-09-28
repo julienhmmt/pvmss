@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"context"
-	"errors"
 	"slices"
 	"testing"
 )
@@ -116,7 +115,7 @@ func TestFakeDataset_MixedPvmssTagging(t *testing.T) {
 	}
 }
 
-//nolint:gocyclo,paralleltest // serial: shared fake cloud-init state
+//nolint:paralleltest // serial: shared fake cloud-init state
 func TestFakeCloudInit_CallOrderAndFailureReset(t *testing.T) {
 	ResetFake()
 	defer ResetFake()
@@ -126,9 +125,9 @@ func TestFakeCloudInit_CallOrderAndFailureReset(t *testing.T) {
 		t.Fatalf("SetCloudInitConfig: %v", err)
 	}
 
-	results, err := (Fake{}).PublishSnippet(context.Background(), "pvmss-tpl-web-abc.yml", "#cloud-config\n")
-	if err != nil || len(results) == 0 || !results[0].OK {
-		t.Fatalf("PublishSnippet = %+v/%v", results, err)
+	results, err := (Fake{}).CheckSnippet(context.Background(), "pvmss-tpl-web-abc.yml")
+	if err != nil || len(results) == 0 || !results[0].Present {
+		t.Fatalf("CheckSnippet = %+v/%v", results, err)
 	}
 
 	calls := FakeCallsFor(101)
@@ -136,16 +135,11 @@ func TestFakeCloudInit_CallOrderAndFailureReset(t *testing.T) {
 		t.Fatalf("calls = %+v", calls)
 	}
 
-	if present, _ := (Fake{}).HasSnippet(context.Background(), FakeNode01, FakeSnippetStorage, "pvmss-tpl-web-abc.yml"); !present {
-		t.Fatal("published file not visible on the node")
-	}
+	SetFakeSnippetVisibility(false)
 
-	pushErr := errors.New("push failed")
-	SetFakeCloudInitPushError(pushErr)
-
-	results, err = (Fake{}).PublishSnippet(context.Background(), "pvmss-tpl-web-def.yml", "")
-	if err != nil || results[0].OK || results[0].Error != pushErr.Error() {
-		t.Fatalf("publish with error = %+v/%v, want per-node %v", results, err, pushErr)
+	results, err = (Fake{}).CheckSnippet(context.Background(), "pvmss-tpl-web-def.yml")
+	if err != nil || results[0].Present {
+		t.Fatalf("check with files not pasted = %+v/%v, want absent", results, err)
 	}
 
 	ResetFake()

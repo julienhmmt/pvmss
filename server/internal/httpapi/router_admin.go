@@ -83,7 +83,6 @@ func registerAdminCatalogRoutes(mux *http.ServeMux, adminProtect adminRouteProte
 	mux.Handle("PUT /api/v1/admin/cloudinit-templates/{id}", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeCloudInitTemplateUpdate)))
 	mux.Handle("DELETE /api/v1/admin/cloudinit-templates/{id}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeCloudInitTemplateDelete)))
 	mux.Handle("POST /api/v1/admin/cloudinit-templates/{id}/toggle", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeCloudInitTemplateToggle)))
-	mux.Handle("POST /api/v1/admin/cloudinit-templates/publish", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeCloudInitPublishAll)))
 }
 
 // registerAdminPolicyRoutes wires the admin policy endpoints (gabarits,
@@ -128,7 +127,6 @@ func registerAdminClusterRoutes(mux *http.ServeMux, adminProtect adminRouteProte
 	mux.Handle("PUT /api/v1/admin/clusters/{name}", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeUpdate)))
 	mux.Handle("POST /api/v1/admin/clusters/{name}/test", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeTest)))
 	mux.Handle("POST /api/v1/admin/clusters/{name}/oidc", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeOIDC)))
-	mux.Handle("POST /api/v1/admin/clusters/{name}/ssh-scan", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeSSHScan)))
 	mux.Handle("DELETE /api/v1/admin/clusters/{name}", adminProtect(http.MethodDelete, http.HandlerFunc(h.ServeDelete)))
 }
 

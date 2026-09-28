@@ -56,10 +56,6 @@ spec:
                 secretKeyRef:
                   name: {{ include "pvmss.fullname" . }}-secrets
                   key: {{ .Values.deployment.secretEnv.SESSION_SECRET }}
-            {{- if .Values.cloudInit.sshKeySecret }}
-            - name: PVMSS_SSH_KEY_FILE
-              value: /etc/pvmss/ssh/{{ .Values.cloudInit.sshKeyItem }}
-            {{- end }}
             # Plain variables
             {{- range $k, $v := .Values.deployment.env }}
             - name: {{ $k }}
@@ -70,11 +66,6 @@ spec:
               mountPath: /data
             - name: pvmss-logs
               mountPath: /data/logs
-            {{- if .Values.cloudInit.sshKeySecret }}
-            - name: ssh-key
-              mountPath: /etc/pvmss/ssh
-              readOnly: true
-            {{- end }}
           resources:
             requests:
               cpu: {{ .Values.deployment.resources.requests.cpu }}
@@ -97,12 +88,3 @@ spec:
         - name: pvmss-logs
           persistentVolumeClaim:
             claimName: {{ include "pvmss.fullname" . }}-logs-pvc
-        {{- if .Values.cloudInit.sshKeySecret }}
-        - name: ssh-key
-          secret:
-            secretName: {{ .Values.cloudInit.sshKeySecret }}
-            defaultMode: 0440
-            items:
-              - key: {{ .Values.cloudInit.sshKeyItem }}
-                path: {{ .Values.cloudInit.sshKeyItem }}
-        {{- end }}

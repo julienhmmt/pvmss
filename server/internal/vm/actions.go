@@ -438,11 +438,11 @@ func Patch(ctx context.Context, deps WriteDeps, name, description string) error 
 }
 
 // cleanupCloudInitDocument forgets the VM's cloud-init rows after the
-// cluster delete succeeded. The published document the VM used is shared
-// and stays on the nodes; only a legacy per-VM file (pvmss-<vmid>.yml,
-// written before documents became admin-published) is removed. Never
-// returns an error: a cleanup failure must not block the delete. Nil-safe
-// on Store and Log.
+// cluster delete succeeded. Files stay on the nodes: the shared document
+// other VMs may use, and a legacy per-VM file (pvmss-<vmid>.yml), which
+// PVMSS cannot delete (the Proxmox API cannot remove snippets) - it is
+// logged for the admin to rm by hand. Never returns an error: a cleanup
+// failure must not block the delete. Nil-safe on Store and Log.
 func cleanupCloudInitDocument(ctx context.Context, deps WriteDeps) {
 	if deps.Store == nil {
 		return
@@ -457,10 +457,8 @@ func cleanupCloudInitDocument(ctx context.Context, deps WriteDeps) {
 		return
 	}
 
-	if err := deps.Writer.RemoveCloudInitSnippet(ctx, row.Storage, row.Filename); err != nil && !errors.Is(err, cluster.ErrSnippetWriteUnavailable) {
-		if deps.Log != nil {
-			deps.Log.Warn("cloud-init document file not removed", "component", "vm", "cluster", deps.ClusterName, "vmid", deps.VMID, "filename", row.Filename, "error", err)
-		}
+	if deps.Log != nil {
+		deps.Log.Info("legacy cloud-init file left on the nodes, remove it by hand", "component", "vm", "cluster", deps.ClusterName, "vmid", deps.VMID, "volume", row.Storage+":snippets/"+row.Filename)
 	}
 
 	if err := deps.Store.DeleteCloudInitSnippet(ctx, deps.ClusterName, deps.VMID); err != nil {

@@ -10,36 +10,22 @@ connection test) and sets the per-cluster cloud-init write target. **Nodes**
 approves the hosts users may create VMs on. **Pools** creates self-service
 users (Proxmox user + pool + ACL in one step).
 
-### Cloud-init publishing (SSH)
+### Cloud-init templates
 
-Cloud-init documents are written only by administrators (**Admin > Cloud-init
-templates**). PVMSS publishes each one, merged with the qemu-guest-agent
-baseline, as an immutable `pvmss-tpl-<id>-<hash>.yml` file into the snippet
-storage of every node, over SSH (the Proxmox REST API cannot write snippets).
-Creating a VM never writes a file: the VM points at the published file.
+Cloud-init documents are written only by administrators (**Admin >
+Cloud-init**). The Proxmox REST API cannot write snippets, so PVMSS never
+writes on the nodes: for each template it shows a command that the
+administrator pastes, as root, on the nodes that must offer it. PVMSS reads
+through the API which nodes have the file, and offers the template only on
+those nodes.
 
-1. In Proxmox, enable the **Snippets** content type on a storage available
-   on every node (`local` works).
-2. Generate a key pair and give PVMSS the private key:
+1. In Proxmox, enable the **Snippets** content type on a storage (`local`
+   works).
+2. In **Infrastructure > Clusters > Edit**, select that snippet storage.
+3. Write the template, copy its command, paste it on the chosen nodes, click
+   **Verify**.
 
-   | Variable             | Notes                                                    |
-   | -------------------- | -------------------------------------------------------- |
-   | `PVMSS_SSH_KEY_FILE` | Path to the private key (read-only mount or Secret)      |
-
-3. On every node, as root, run the command shown in **Infrastructure >
-   Clusters > Edit**: `curl -fsSL <PVMSS URL>/api/v1/pvmss-node-setup.sh | sh
-   -s -- --storage <storage> --user pvmss --key '<PVMSS public key>'` (PVMSS
-   serves the script; it is also `tools/pvmss-node-setup.sh` in the
-   repository). It installs the `pvmss-snippet` helper, a dedicated `pvmss`
-   user limited to the storage's `snippets/` directory, and the key with a
-   forced command (no shell).
-4. In **Infrastructure > Clusters > Edit**, set the snippet storage, the SSH user and
-   port, and the pinned host keys: paste `ssh-keyscan -t ed25519 <node ip>`
-   lines, or save without the SSH user first, reopen and click **Scan host
-   keys**. Check the fingerprints and save. Host keys are always verified.
-   The cluster row shows `cloud-init: on`, or the missing piece.
-
-Leave the SSH user empty to disable cloud-init documents on the cluster. See
+Leave the storage empty to disable cloud-init templates on the cluster. See
 the [cloud-init setup guide](/docs/cloud-init-setup) for details and
 troubleshooting.
 

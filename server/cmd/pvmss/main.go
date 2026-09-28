@@ -17,7 +17,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"pvmss/server/internal/auth"
-	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/docs/seed"
@@ -111,16 +110,7 @@ func run() int {
 	// projections are populated before the first request can arrive.
 	inventoryCtx, cancelInventory := context.WithCancel(context.Background())
 
-	// Background cloud-init republication: the startup resync, plus a run
-	// after each cluster's publishing settings change. Republisher.Wait is
-	// registered before cancelInventory so it runs after it on shutdown:
-	// cancelInventory stops in-flight runs, Wait drains them, then the
-	// deferred store Close (registered earlier) runs last.
-	republisher := catalog.NewRepublisher(st, clusterRegistry, logger)
-	defer republisher.Wait()
 	defer cancelInventory()
-
-	republisher.Republish(inventoryCtx, clusterRegistry.List())
 
 	inventoryRegistry.Start(inventoryCtx)
 
@@ -136,7 +126,7 @@ func run() int {
 		return 1
 	}
 
-	router, err := buildRouter(inventoryCtx, routerDeps{cfg: cfg, clusterRegistry: clusterRegistry, inventoryRegistry: inventoryRegistry, clusterClient: clusterClient, projection: defaultProjection, refresher: defaultRefresher, worker: defaultWorker, sessions: sessions, st: st, webDir: webDir, logger: logger, republisher: republisher})
+	router, err := buildRouter(routerDeps{cfg: cfg, clusterRegistry: clusterRegistry, inventoryRegistry: inventoryRegistry, clusterClient: clusterClient, projection: defaultProjection, refresher: defaultRefresher, worker: defaultWorker, sessions: sessions, st: st, webDir: webDir, logger: logger})
 	if err != nil {
 		logger.Error("failed to build router", "component", "main", "error", err)
 		return 1
@@ -172,7 +162,7 @@ func loadConfig(stderr *slog.Logger) (config.Configuration, *slog.Logger, io.Clo
 	logger.Info("configuration loaded", "component", "main", "host", cfg.Host, "port", cfg.Port, "dbPath", cfg.DBPath)
 
 	for _, key := range cfg.DeprecatedSSHEnv {
-		logger.Warn("deprecated environment variable ignored", "component", "main", "env", key, "hint", "set the SSH user and port per cluster in Infrastructure > Clusters")
+		logger.Warn("deprecated environment variable ignored", "component", "main", "env", key, "hint", "PVMSS no longer publishes cloud-init files over SSH: paste them on the nodes from Admin > Cloud-init (docs/cloud-init.md)")
 	}
 	return cfg, logger, logCloser, nil
 }
@@ -207,15 +197,7 @@ func initCluster(cfg config.Configuration, st *store.Store, logger *slog.Logger)
 		logger.Error("failed to list configured clusters", "component", "main", "error", err)
 		return nil, nil, err
 	}
-	signer, err := cluster.LoadSSHSigner(cfg.SSHKeyFile)
-	if err != nil {
-		logger.Error("failed to load SSH key", "component", "main", "error", err)
-		return nil, nil, err
-	}
-	if signer != nil {
-		logger.Info("SSH cloud-init publishing enabled", "component", "cluster", "publicKey", cluster.AuthorizedKey(signer))
-	}
-	clusterRegistry, err := cluster.NewRegistryWithSSH(cfg.ClusterSource, rows, signer)
+	clusterRegistry, err := cluster.NewRegistry(cfg.ClusterSource, rows)
 	if err != nil {
 		logger.Error("failed to create cluster registry", "component", "main", "error", err)
 		return nil, nil, err
@@ -382,13 +364,12 @@ type routerDeps struct {
 	st                *store.Store
 	webDir            string
 	logger            *slog.Logger
-	republisher       *catalog.Republisher
 }
 
 // buildRouter wires all HTTP handlers into the final router. It performs the
 // cluster.Writer/Creator type assertions (both Fake and Proxmox satisfy them)
 // and constructs the handler graph from the shared dependencies.
-func buildRouter(ctx context.Context, deps routerDeps) (http.Handler, error) {
+func buildRouter(deps routerDeps) (http.Handler, error) {
 	cfg := deps.cfg
 	clusterRegistry := deps.clusterRegistry
 	inventoryRegistry := deps.inventoryRegistry
@@ -454,8 +435,6 @@ func buildRouter(ctx context.Context, deps routerDeps) (http.Handler, error) {
 	adminOps.SetInventorySource(inventoryRegistry, 2*cfg.InventoryRefreshInterval)
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, clusterRegistry, inventoryRegistry, logger)
 	adminClusters.SetTrustedProxyHops(cfg.TrustedProxyHops)
-	adminClusters.SetSSHPublicKey(clusterRegistry.SSHPublicKey())
-	adminClusters.SetRepublisher(func(name string) { deps.republisher.Republish(ctx, []string{name}) })
 	adminBaseline := httpapi.NewAdminBaseline(authHandler, clusterRegistry, st, logger)
 	docsHandler := httpapi.NewDocsAPIHandler(authHandler, st, logger)
 	adminDocs := httpapi.NewAdminDocs(authHandler, st, docsHandler, logger)

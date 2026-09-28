@@ -199,9 +199,8 @@ func DeleteCloudInitTemplate(ctx context.Context, st *store.Store, cluster, id s
 		return err
 	}
 
-	// The published file stays on the nodes (VMs may still boot from it);
-	// only the record that offers it to new VMs goes.
-	return st.DeleteCloudInitPublication(ctx, cluster, id)
+	// The file stays on the nodes: VMs may still boot from it.
+	return nil
 }
 
 // SetCloudInitTemplateEnabled toggles the enabled state for one template. A
