@@ -1830,7 +1830,6 @@
   "vms.detail.config.usage": "Utilisation",
   "vms.create.eyebrow": "Un nouvel endroit pour construire",
   "vms.create.calmDescription": "Quelques choix. Votre propre environnement.",
-  "vms.create.teamApproved": "Choix approuvés par votre équipe",
   "vms.create.section.start": "Choisissez votre point de départ",
   "vms.create.section.startHelp": "Ce à partir de quoi la machine est construite.",
   "vms.create.section.size": "Donnez-lui de la place pour travailler",
