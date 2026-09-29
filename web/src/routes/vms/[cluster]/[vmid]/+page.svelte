@@ -20,7 +20,9 @@
 	});
 
 	onMount(() => {
-		void store.load();
+		// The projection can be ~30s stale (VM just stopped from the console):
+		// overlay the live status once loaded.
+		void store.load().then(() => store.refreshLiveStatus());
 		return onVisibleRefresh(() => void store.refreshIfStale());
 	});
 </script>
