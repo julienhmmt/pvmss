@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/inventory"
@@ -19,6 +20,17 @@ const (
 	dashCluster     = "east"
 	dashWestCluster = "west"
 	dashSharedName  = "ceph"
+)
+
+const (
+	sevCritical = "critical"
+	sevWarning  = "warning"
+	sevInfo     = "info"
+)
+
+const (
+	kindNodeOffline         = "node_offline"
+	kindNodeOfflineDisabled = "node_offline_disabled"
 )
 
 type dashboardAlertDTO struct {
@@ -90,6 +102,12 @@ func getAttentionDashboard(t *testing.T) attentionDashboardDTO {
 		t.Fatalf("UpsertPolicyRow: %v", err)
 	}
 
+	// n2 is offline; it must be catalog-enabled to keep the critical
+	// node_offline alert (a disabled or unapproved node is informational).
+	if err := st.SetNodeEnabled(context.Background(), dashCluster, "n2", true); err != nil {
+		t.Fatalf("SetNodeEnabled: %v", err)
+	}
+
 	ops := httpapi.NewAdminOps(authHandler, st, cluster.Fake{}, inventory.NewProjection(), "test", slog.New(slog.DiscardHandler))
 	// west never completed a refresh: it must surface as unreachable.
 	ops.SetInventorySource(inventory.NewRegistryFromIndexes(map[string]*inventory.Index{dashCluster: attentionIndex(), dashWestCluster: nil}), time.Minute)
@@ -113,12 +131,12 @@ func getAttentionDashboard(t *testing.T) attentionDashboardDTO {
 // cluster has no store row, its DisplayName when it has one.
 func wantAttentionAlerts(clusterLabel string) []dashboardAlertDTO {
 	return []dashboardAlertDTO{
-		{Kind: "cluster_unreachable", Severity: "critical", Cluster: dashWestCluster, ClusterKey: dashWestCluster},
-		{Kind: "node_offline", Severity: "critical", Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "n2"},
-		{Kind: "storage_full", Severity: "critical", Cluster: clusterLabel, ClusterKey: dashCluster, Subject: dashSharedName, Percent: 96},
-		{Kind: "node_cpu", Severity: "warning", Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "n1", Percent: 95},
-		{Kind: "pool_at_quota", Severity: "warning", Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "pvmss-p1", Percent: 100},
-		{Kind: "storage_full", Severity: "warning", Cluster: clusterLabel, ClusterKey: dashCluster, Subject: testStorageLocalLVM, Percent: 86},
+		{Kind: "cluster_unreachable", Severity: sevCritical, Cluster: dashWestCluster, ClusterKey: dashWestCluster},
+		{Kind: kindNodeOffline, Severity: sevCritical, Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "n2"},
+		{Kind: "storage_full", Severity: sevCritical, Cluster: clusterLabel, ClusterKey: dashCluster, Subject: dashSharedName, Percent: 96},
+		{Kind: "node_cpu", Severity: sevWarning, Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "n1", Percent: 95},
+		{Kind: "pool_at_quota", Severity: sevWarning, Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "pvmss-p1", Percent: 100},
+		{Kind: "storage_full", Severity: sevWarning, Cluster: clusterLabel, ClusterKey: dashCluster, Subject: testStorageLocalLVM, Percent: 86},
 	}
 }
 
@@ -210,5 +228,104 @@ func TestAdminDashboard_NodesCarryRunningCountAndRecentChanges(t *testing.T) {
 
 	if len(dash.RecentChanges) == 0 || len(dash.RecentChanges) > 8 {
 		t.Errorf("recentChanges = %d entries, want 1..8", len(dash.RecentChanges))
+	}
+}
+
+type offlineSeverityCase struct {
+	name         string
+	setCatalog   bool     // upsert a catalog_nodes row for n2
+	enabled      bool     // enabled value written when setCatalog
+	vmTags       []string // non-empty: a VM with these tags lives on n2
+	closeStore   bool     // close the store before the request (catalog read fails)
+	wantKind     string
+	wantSeverity string
+}
+
+// offlineSeverityOps builds the dashboard handler for one severity case: n1
+// online at 95% CPU (always a warning alert) plus n2 offline, optionally
+// hosting a VM with the given tags.
+func offlineSeverityOps(t *testing.T, tt offlineSeverityCase) (*httpapi.AdminOps, *httpapi.Auth) {
+	t.Helper()
+
+	authHandler := newAuthHandler(t)
+	st := auditAdminStore(t)
+
+	if tt.setCatalog {
+		if err := st.SetNodeEnabled(context.Background(), dashCluster, "n2", tt.enabled); err != nil {
+			t.Fatalf("SetNodeEnabled: %v", err)
+		}
+	}
+
+	var vms []cluster.VM
+	if len(tt.vmTags) > 0 {
+		vms = append(vms, cluster.VM{VMID: 100, Name: "vm-on-n2", Node: "n2", Status: cluster.VMRunning, Tags: tt.vmTags})
+	}
+
+	idx := inventory.BuildIndexForCluster(dashCluster, cluster.Snapshot{
+		Nodes: []cluster.Node{
+			{Name: "n1", Status: cluster.NodeOnline, CPUCores: 8, CPUUsage: 0.95, MemoryTotal: 64 * gib, MemoryUsed: 32 * gib},
+			{Name: "n2", Status: cluster.NodeOffline, CPUCores: 8, MemoryTotal: 64 * gib},
+		},
+		VMs: vms,
+	})
+	idx.RefreshedAt = time.Now()
+
+	if tt.closeStore {
+		if err := st.Close(); err != nil {
+			t.Fatalf("close store: %v", err)
+		}
+	}
+
+	ops := httpapi.NewAdminOps(authHandler, st, cluster.Fake{}, inventory.NewProjection(), "test", slog.New(slog.DiscardHandler))
+	ops.SetInventorySource(inventory.NewRegistryFromIndexes(map[string]*inventory.Index{dashCluster: &idx}), time.Minute)
+
+	return ops, authHandler
+}
+
+// TestAdminDashboard_OfflineNodeSeverity pins the downgrade rule: an offline
+// node is informational only when it is disabled in the catalog (or never
+// approved) and hosts no PVMSS-managed VM. n1 runs at 95% CPU so a warning
+// alert is always present - info alerts must sort after it.
+//
+//nolint:paralleltest // serial: shared fake dataset
+func TestAdminDashboard_OfflineNodeSeverity(t *testing.T) {
+	tests := []offlineSeverityCase{
+		{name: "disabled row, no PVMSS VM", setCatalog: true, wantKind: kindNodeOfflineDisabled, wantSeverity: sevInfo},
+		{name: "no catalog row, no PVMSS VM", wantKind: kindNodeOfflineDisabled, wantSeverity: sevInfo},
+		{name: "disabled with a PVMSS VM", setCatalog: true, vmTags: []string{catalog.ProtectedTagName}, wantKind: kindNodeOffline, wantSeverity: sevCritical},
+		{name: "disabled with an untagged VM only", setCatalog: true, vmTags: []string{"legacy"}, wantKind: kindNodeOfflineDisabled, wantSeverity: sevInfo},
+		{name: "enabled", setCatalog: true, enabled: true, wantKind: kindNodeOffline, wantSeverity: sevCritical},
+		{name: "catalog read failure stays critical", closeStore: true, wantKind: kindNodeOffline, wantSeverity: sevCritical},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ops, authHandler := offlineSeverityOps(t, tt)
+
+			rec := opsGet(t, ops, authHandler, adminCookie(t, authHandler), "/api/v1/admin/dashboard")
+			if rec.Code != http.StatusOK {
+				t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+			}
+
+			var dash attentionDashboardDTO
+			if err := json.Unmarshal(rec.Body.Bytes(), &dash); err != nil {
+				t.Fatalf("decode: %v", err)
+			}
+
+			// The fixture only trips node_cpu (warning, n1) and the offline
+			// alert (n2): critical first, info last.
+			if len(dash.Alerts) != 2 {
+				t.Fatalf("alerts = %+v, want exactly 2", dash.Alerts)
+			}
+
+			offline := dash.Alerts[0]
+			if tt.wantSeverity == sevInfo {
+				offline = dash.Alerts[1]
+			}
+
+			if offline.Subject != "n2" || offline.Kind != tt.wantKind || offline.Severity != tt.wantSeverity {
+				t.Errorf("offline alert = %+v, want n2 kind %s severity %s", offline, tt.wantKind, tt.wantSeverity)
+			}
+		})
 	}
 }
