@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -73,6 +74,10 @@ type proxmoxRESTClient struct {
 	// introspection scoped to that user) rather than the service account's.
 	ticket string
 	csrf   string
+	// log is the registry-injected fallback logger and cluster the registry
+	// key, both for the per-call Debug line. Zero values are safe (slog default).
+	log     *slog.Logger
+	cluster string
 }
 
 // rest builds a proxmoxRESTClient from the Proxmox struct's own fields,
@@ -83,7 +88,10 @@ type proxmoxRESTClient struct {
 func (p *Proxmox) rest() proxmoxRESTClient {
 	p.ensureClient()
 
-	return newProxmoxREST(p.BaseURL, p.APITokenName, p.APITokenValue, p.httpClient)
+	c := newProxmoxREST(p.BaseURL, p.APITokenName, p.APITokenValue, p.httpClient)
+	c.log, c.cluster = p.log, p.name
+
+	return c
 }
 
 // ensureClient lazily initializes p.httpClient when nil (zero-value or
@@ -177,15 +185,17 @@ const (
 // The noRetry flag short-circuits the loop for short probes.
 func (c proxmoxRESTClient) do(ctx context.Context, method, path string, form url.Values) (json.RawMessage, error) {
 	if c.noRetry || method != http.MethodGet {
-		raw, _, err := c.doOnce(ctx, method, path, form)
+		raw, _, err := c.attempt(ctx, method, path, form, 1)
 		return raw, err
 	}
 
 	for attempt := 1; ; attempt++ {
-		raw, status, err := c.doOnce(ctx, method, path, form)
+		raw, status, err := c.attempt(ctx, method, path, form, attempt)
 		if !isRetryableStatus(status, err) || attempt >= retryMaxAttempts {
 			return raw, err
 		}
+
+		c.warnRetry(ctx, method, path, attempt, err)
 
 		backoff := retryBackoff(attempt)
 		select {
