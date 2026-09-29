@@ -92,6 +92,28 @@ describe('VmDetailStore.action', () => {
 		expect(calls).not.toContain('/api/v1/vms/default/100');
 	});
 
+	it('refreshLiveStatus patches status and lock from the live endpoint without load()', async () => {
+		const { calls } = stubFetchSequence([
+			{ status: 200, body: { status: 'running', uptime: 5 } }
+		]);
+
+		const store = makeStore({ ...baseEntity, status: 'stopped' });
+		await store.refreshLiveStatus();
+
+		expect(store.entity?.status).toBe('running');
+		expect(calls).not.toContain('/api/v1/vms/default/100');
+	});
+
+	it('refreshLiveStatus skips while a power action is in flight', async () => {
+		const { calls } = stubFetchSequence([]);
+		const store = makeStore({ ...baseEntity, status: 'stopped' });
+		store.actionInFlight = true;
+
+		await store.refreshLiveStatus();
+
+		expect(calls).toHaveLength(0);
+	});
+
 	it('reverts to the exact previous status when the POST fails', async () => {
 		stubFetchError();
 
