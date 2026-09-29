@@ -117,6 +117,11 @@ func registerAdminOpsRoutes(mux *http.ServeMux, adminProtect adminRouteProtect, 
 	mux.Handle("POST /api/v1/admin/db/import/confirm", adminProtect(http.MethodPost, http.HandlerFunc(h.ServeDBImportConfirm)))
 	mux.Handle("GET /api/v1/admin/appinfo", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeAppInfo)))
 	mux.HandleFunc("GET /api/v1/public/version", h.ServePublicVersion)
+
+	if h.logLevel != nil {
+		mux.Handle("GET /api/v1/admin/ops/log-level", adminProtect(http.MethodGet, http.HandlerFunc(h.ServeLogLevel)))
+		mux.Handle("PUT /api/v1/admin/ops/log-level", adminProtect(http.MethodPut, http.HandlerFunc(h.ServeLogLevelUpdate)))
+	}
 }
 
 // registerAdminClusterRoutes wires the admin cluster management endpoints

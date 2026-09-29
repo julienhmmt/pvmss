@@ -77,7 +77,7 @@ func main() {
 func run() int {
 	stderr := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 
-	cfg, logger, logCloser, err := loadConfig(stderr)
+	cfg, logger, logLevel, logCloser, err := loadConfig(stderr)
 	if err != nil {
 		return 1
 	}
@@ -129,7 +129,7 @@ func run() int {
 		return 1
 	}
 
-	router, err := buildRouter(routerDeps{cfg: cfg, clusterRegistry: clusterRegistry, inventoryRegistry: inventoryRegistry, clusterClient: clusterClient, projection: defaultProjection, refresher: defaultRefresher, worker: defaultWorker, sessions: sessions, st: st, webDir: webDir, logger: logger})
+	router, err := buildRouter(routerDeps{cfg: cfg, clusterRegistry: clusterRegistry, inventoryRegistry: inventoryRegistry, clusterClient: clusterClient, projection: defaultProjection, refresher: defaultRefresher, worker: defaultWorker, sessions: sessions, st: st, webDir: webDir, logger: logger, logLevel: logLevel})
 	if err != nil {
 		logger.Error("failed to build router", "component", "main", "error", err)
 		return 1
@@ -149,17 +149,17 @@ func run() int {
 // loadConfig reads and validates environment configuration, then builds the
 // structured logger. Returns a fallback stderr logger on config failure so the
 // caller can log the error before exiting.
-func loadConfig(stderr *slog.Logger) (config.Configuration, *slog.Logger, io.Closer, error) {
+func loadConfig(stderr *slog.Logger) (config.Configuration, *slog.Logger, *slog.LevelVar, io.Closer, error) {
 	cfg, err := config.Load()
 	if err != nil {
 		stderr.Error("failed to load configuration", "component", "main", "error", err)
-		return config.Configuration{}, nil, nil, err
+		return config.Configuration{}, nil, nil, nil, err
 	}
 
-	logger, _, logCloser, err := config.NewLogger(cfg)
+	logger, logLevel, logCloser, err := config.NewLogger(cfg)
 	if err != nil {
 		stderr.Error("failed to create logger", "component", "main", "error", err)
-		return config.Configuration{}, nil, nil, err
+		return config.Configuration{}, nil, nil, nil, err
 	}
 
 	slog.SetDefault(logger)
@@ -168,7 +168,7 @@ func loadConfig(stderr *slog.Logger) (config.Configuration, *slog.Logger, io.Clo
 	for _, key := range cfg.DeprecatedSSHEnv {
 		logger.Warn("deprecated environment variable ignored", "component", "main", "env", key, "hint", "PVMSS no longer publishes cloud-init files over SSH: paste them on the nodes from Admin > Cloud-init (docs/cloud-init.md)")
 	}
-	return cfg, logger, logCloser, nil
+	return cfg, logger, logLevel, logCloser, nil
 }
 
 // openStore opens the SQLite database, runs migrations, and seeds built-in
@@ -381,6 +381,7 @@ type routerDeps struct {
 	st                *store.Store
 	webDir            string
 	logger            *slog.Logger
+	logLevel          *slog.LevelVar
 }
 
 // buildRouter wires all HTTP handlers into the final router. It performs the
@@ -448,6 +449,9 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	adminPools := httpapi.NewAdminPoolsWithRegistry(httpapi.AdminPoolsRegistryDeps{Auth: authHandler, Clients: clusterRegistry, Source: inventoryRegistry, Projection: projection, Writer: clients.writer, Audit: st, Refresher: worker, Store: st, Log: logger})
 	adminPools.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminOps := httpapi.NewAdminOps(authHandler, st, clusterClient, projection, appVersion, logger)
+	// The level at build time is the startup default (LOG_LEVEL); nothing has
+	// changed it yet. The runtime endpoint can move it and reset back to it.
+	adminOps.SetLogLevel(deps.logLevel, deps.logLevel.Level())
 	adminOps.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminOps.SetInventorySource(inventoryRegistry, 2*cfg.InventoryRefreshInterval)
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, clusterRegistry, inventoryRegistry, logger)
