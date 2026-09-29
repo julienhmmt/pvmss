@@ -98,7 +98,7 @@ func toAdminDocDTO(p catalog.DocumentationPage) adminDocDTO {
 func (h *AdminDocs) ServeDocsList(w http.ResponseWriter, r *http.Request) {
 	pages, err := catalog.ListDocumentationPages(r.Context(), h.store)
 	if err != nil {
-		h.log.Error("admin list docs failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin list docs failed", err)
 		writeAdminError(w, http.StatusInternalServerError, codeInternalError, msgInternalServerError)
 		return
 	}
@@ -136,7 +136,7 @@ func (h *AdminDocs) ServeDocCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		h.log.Error("admin create doc failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin create doc failed", err)
 		writeAdminError(w, http.StatusInternalServerError, codeInternalError, msgInternalServerError)
 		return
 	}
@@ -180,7 +180,7 @@ func (h *AdminDocs) ServeDocUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		h.log.Error("admin update doc failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin update doc failed", err)
 		writeAdminError(w, http.StatusInternalServerError, codeInternalError, msgInternalServerError)
 		return
 	}
@@ -211,7 +211,7 @@ func (h *AdminDocs) ServeDocDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		h.log.Error("admin delete doc failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin delete doc failed", err)
 		writeAdminError(w, http.StatusInternalServerError, codeInternalError, msgInternalServerError)
 		return
 	}
@@ -242,7 +242,7 @@ func (h *AdminDocs) ServeDocToggle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		h.log.Error("admin toggle doc failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin toggle doc failed", err)
 		writeAdminError(w, http.StatusInternalServerError, codeInternalError, msgInternalServerError)
 		return
 	}

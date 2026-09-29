@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import { setAuditLogContext } from '$lib/features/admin-audit/auditLog.svelte';
 	import { setAuditRetentionContext } from '$lib/features/admin-audit/auditRetention.svelte';
+	import { setLogLevelContext } from '$lib/features/admin-logging/logLevel.svelte';
+	import LogLevelPanel from '$lib/features/admin-logging/LogLevelPanel.svelte';
 	import { setDbOpsContext } from '$lib/features/admin-db/dbOps.svelte';
 	import AuditLogPanel from '$lib/features/admin-audit/AuditLogPanel.svelte';
 	import AuditRetentionPanel from '$lib/features/admin-audit/AuditRetentionPanel.svelte';
@@ -12,11 +14,13 @@
 
 	const auditStore = setAuditLogContext();
 	const retentionStore = setAuditRetentionContext();
+	const logLevelStore = setLogLevelContext();
 	setDbOpsContext();
 
 	onMount(() => {
 		void auditStore.load();
 		void retentionStore.load();
+		void logLevelStore.load();
 	});
 </script>
 
@@ -29,6 +33,7 @@
 <section class="space-y-8">
 	<AuditLogPanel />
 	<AuditRetentionPanel />
+	<LogLevelPanel />
 	<ExportPanel />
 	<ImportPanel />
 </section>

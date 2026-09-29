@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/logctx"
 	"time"
 )
 
@@ -129,7 +130,7 @@ func (h *Tasks) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		h.log.Error("task status read failed", "component", "httpapi", "cluster", clusterName, "error", err)
+		SetErrorMsg(w, "task status read failed", err)
 		// Surface Proxmox's own rejection message when there is one (ADR
 		// 0002); transport errors stay generic.
 		if code, message, ok := clusterRejectionResponse(err); ok {
@@ -158,7 +159,7 @@ func (h *Tasks) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			// The task genuinely succeeded; a failed invalidation only
 			// delays list visibility until the next automatic cycle - do
 			// not fail the poll for it.
-			h.log.Error("post-task inventory invalidation failed", "component", "httpapi", "error", err)
+			logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "post-task inventory invalidation failed", "component", "httpapi", "error", err)
 		}
 	}
 
@@ -195,19 +196,19 @@ func (h *Tasks) refresherFor(clusterName string) TaskInvalidator {
 func (h *Tasks) writeTaskJSON(w http.ResponseWriter, status int, value any) {
 	body, err := json.Marshal(value)
 	if err != nil {
-		h.log.Error("failed to marshal response", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "failed to marshal response", err)
 		h.writeTaskError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 
 		return
 	}
 
 	if err := writeJSON(w, status, body); err != nil {
-		h.log.Error("failed to write response", "component", "httpapi", "error", err)
+		h.log.Warn("failed to write response", "component", "httpapi", "error", err)
 	}
 }
 
 func (h *Tasks) writeTaskError(w http.ResponseWriter, status int, code, message string) {
 	if err := writeClusterError(w, status, code, message); err != nil {
-		h.log.Error("failed to write error response", "component", "httpapi", "code", code, "error", err)
+		h.log.Warn("failed to write error response", "component", "httpapi", "code", code, "error", err)
 	}
 }

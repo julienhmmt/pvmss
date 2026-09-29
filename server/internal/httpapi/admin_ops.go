@@ -12,6 +12,7 @@ import (
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/store"
 	"strconv"
 	"time"
@@ -35,6 +36,10 @@ type AdminOps struct {
 	version          string
 	log              *slog.Logger
 	trustedProxyHops int
+	// logLevel/logLevelDefault back the runtime log-level endpoint; nil means
+	// the endpoint is not wired (see SetLogLevel).
+	logLevel        *slog.LevelVar
+	logLevelDefault slog.Level
 }
 
 // NewAdminOps creates the handler for all admin exploitation endpoints.
@@ -117,7 +122,7 @@ func (h *AdminOps) ServeAudit(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.store.ListAuditLog(r.Context(), filter)
 	if err != nil {
-		h.log.Error("admin audit list failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin audit list failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
@@ -145,7 +150,7 @@ type auditConfigDTO struct {
 func (h *AdminOps) ServeAuditConfig(w http.ResponseWriter, r *http.Request) {
 	cfg, err := h.store.GetAuditConfig(r.Context())
 	if err != nil {
-		h.log.Error("admin audit config get failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin audit config get failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
@@ -174,7 +179,7 @@ func (h *AdminOps) ServeAuditConfigUpdate(w http.ResponseWriter, r *http.Request
 	}
 
 	if err := h.store.SetAuditConfig(r.Context(), req.RetentionDays); err != nil {
-		h.log.Error("admin audit config set failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin audit config set failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
@@ -210,7 +215,7 @@ func (h *AdminOps) ServeAuditPrunePreview(w http.ResponseWriter, r *http.Request
 
 	count, err := h.store.CountAuditPrunePreview(r.Context(), days)
 	if err != nil {
-		h.log.Error("admin audit prune preview failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin audit prune preview failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
@@ -291,7 +296,7 @@ func (h *AdminOps) ServeDBExport(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", `attachment; filename="`+filename+`"`)
 
 	if err := h.store.ExportDatabase(r.Context(), w); err != nil {
-		h.log.Error("admin db export failed", "component", "httpapi", "error", err)
+		logctx.FromOr(r.Context(), h.log).ErrorContext(r.Context(), "admin db export failed", "component", "httpapi", "error", err)
 		// Headers already sent - the best we can do is log; the client will
 		// see a truncated stream.
 		return
@@ -354,7 +359,7 @@ func (h *AdminOps) ServeDBImport(w http.ResponseWriter, r *http.Request) {
 			writeAdminError(w, http.StatusBadRequest, "invalid_database", "uploaded file is not a valid SQLite database")
 			return
 		}
-		h.log.Error("admin db import validate failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin db import validate failed", err)
 		h.recordImportRejected(r.Context(), actor, ip, "validation failed: "+err.Error())
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
@@ -401,7 +406,7 @@ func (h *AdminOps) ServeDBImportConfirm(w http.ResponseWriter, r *http.Request) 
 			writeAdminError(w, http.StatusGone, "expired", "import preview expired - upload again")
 			return
 		}
-		h.log.Error("admin db import confirm failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin db import confirm failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "import_failed", "import failed, no changes were applied")
 		return
 	}

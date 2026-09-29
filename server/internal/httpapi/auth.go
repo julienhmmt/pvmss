@@ -12,8 +12,10 @@ import (
 	"net/http"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/pools"
 	"pvmss/server/internal/store"
+	"pvmss/server/internal/telemetry"
 	"strings"
 	"time"
 
@@ -137,20 +139,20 @@ func (h *Auth) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		h.log.Error("select cluster for login failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "select cluster for login failed", err)
 		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
 
 	if !h.isClusterAvailable(clusterName) {
-		h.log.Info("cluster unavailable, rejecting user login", "component", "httpapi", "cluster", clusterName)
+		logctx.FromOr(r.Context(), h.log).InfoContext(r.Context(), "cluster unavailable, rejecting user login", "component", "httpapi", "cluster", clusterName)
 		writeAuthError(w, http.StatusServiceUnavailable, "cluster_unavailable", msgClusterUnavailable)
 		return
 	}
 
 	result, err := authenticatePVE(r.Context(), client, request.Username, request.Password)
 	if err != nil {
-		h.log.Info("pve authentication failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "pve authentication failed", err)
 		h.recordLoginFailed(r.Context(), request.Username, clientIP(r, h.trustedProxyHops))
 		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
 		return
@@ -179,6 +181,10 @@ func (h *Auth) AdminLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if request.Password == "" || h.adminHash == "" || bcrypt.CompareHashAndPassword([]byte(h.adminHash), []byte(request.Password)) != nil {
+		// Admin login failures write no audit row (keeps /activity unchanged),
+		// so the log stream is the only record. Never log the password.
+		telemetry.RecordLogin(r.Context(), "failure")
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "login failed", "component", "httpapi", "event", "auth", "result", "failure", "user", "admin")
 		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
 		return
 	}
@@ -188,12 +194,14 @@ func (h *Auth) AdminLogin(w http.ResponseWriter, r *http.Request) {
 
 func (h *Auth) startSession(w http.ResponseWriter, r *http.Request, identity auth.Identity) {
 	if err := h.sessions.SetCookie(r.Context(), w, identity); err != nil {
-		h.log.Error("failed to create session", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "failed to create session", err)
 		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
 
+	telemetry.RecordLogin(r.Context(), "success")
+	logctx.FromOr(r.Context(), h.log).InfoContext(r.Context(), "login succeeded", "component", "httpapi", "event", "auth", "result", "success", "user", identity.Username)
 	writeAuthJSON(w, http.StatusOK, identity)
 }
 
@@ -283,6 +291,10 @@ func (h *Auth) CSRFToken(r *http.Request) (string, error) {
 func (h *Auth) Principal(r *http.Request) (auth.Identity, error) {
 	identity, err := h.sessions.Resolve(r.Context(), r)
 	if err == nil {
+		// Principal is the single resolution point (Require, RequireAdmin and
+		// handlers that call it directly), so tagging here covers them all.
+		logctx.AddAttrs(r.Context(), slog.String("user", identity.Username))
+
 		return identity, nil
 	}
 
@@ -303,12 +315,17 @@ func (h *Auth) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Resolve first so the request logger carries the user being logged out.
+	_, _ = h.Principal(r)
+
 	if err := h.sessions.Logout(r.Context(), w, r); err != nil {
-		h.log.Error("failed to revoke session", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "failed to revoke session", err)
 		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
+
+	logctx.FromOr(r.Context(), h.log).InfoContext(r.Context(), "logout", "component", "httpapi", "event", "auth", "result", "success")
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -348,7 +365,7 @@ func (h *Auth) ListTokens(w http.ResponseWriter, r *http.Request) {
 
 	tokens, err := h.tokens.List(r.Context(), identity.Username)
 	if err != nil {
-		h.log.Error("failed to list tokens", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "failed to list tokens", err)
 		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -378,7 +395,7 @@ func (h *Auth) RevokeToken(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		h.log.Error("failed to revoke token", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "failed to revoke token", err)
 		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -418,7 +435,7 @@ func (h *Auth) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		client = selected
 	}
 	if err := client.ChangePassword(r.Context(), identity.Username, request.OldPassword, request.NewPassword); err != nil {
-		h.log.Info("password change failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "password change failed", err)
 		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
 
 		return
@@ -488,7 +505,7 @@ func (h *Auth) ServeClusters(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := h.clusterStore.ListClusters(r.Context())
 	if err != nil {
-		h.log.Error("list login clusters failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "list login clusters failed", err)
 		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
@@ -601,6 +618,8 @@ func userDisplayName(username string) string {
 }
 
 func (h *Auth) recordLoginFailed(ctx context.Context, username, ip string) {
+	telemetry.RecordLogin(ctx, "failure")
+
 	if h.clusterStore == nil {
 		return
 	}

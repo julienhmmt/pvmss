@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"pvmss/server/internal/logctx"
 	"time"
 )
 
@@ -24,7 +25,7 @@ func (h *Health) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Allow", "GET, HEAD")
 
 		if err := writeError(w, http.StatusMethodNotAllowed, "method not allowed"); err != nil {
-			h.log.Error("failed to write method not allowed", "component", "httpapi", "error", err)
+			logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "failed to write method not allowed", "component", "httpapi", "error", err)
 		}
 
 		return
@@ -43,7 +44,9 @@ func (h *Health) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	status := http.StatusOK
 
 	if err := h.store.Ping(r.Context()); err != nil {
-		h.log.Error("database health check failed", "component", "httpapi", "error", err)
+		// Not SetError: /health is capped at Debug in the access log, so a failing
+		// dependency must be logged here to stay visible.
+		logctx.FromOr(r.Context(), h.log).ErrorContext(r.Context(), "database health check failed", "component", "httpapi", "error", err)
 
 		resp.Status = "unhealthy"
 		resp.Checks["database"] = CheckResult{Status: "unhealthy", Detail: "database unreachable"}
@@ -52,17 +55,17 @@ func (h *Health) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	body, err := json.Marshal(resp)
 	if err != nil {
-		h.log.Error("failed to marshal health response", "component", "httpapi", "error", err)
+		logctx.FromOr(r.Context(), h.log).ErrorContext(r.Context(), "failed to marshal health response", "component", "httpapi", "error", err)
 
 		if writeErr := writeError(w, http.StatusInternalServerError, "internal server error"); writeErr != nil {
-			h.log.Error("failed to write health error response", "component", "httpapi", "error", writeErr)
+			logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "failed to write health error response", "component", "httpapi", "error", writeErr)
 		}
 
 		return
 	}
 
 	if err := writeJSON(w, status, body); err != nil {
-		h.log.Error("failed to write health response", "component", "httpapi", "error", err)
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "failed to write health response", "component", "httpapi", "error", err)
 	}
 }
 

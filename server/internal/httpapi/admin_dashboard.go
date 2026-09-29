@@ -176,7 +176,7 @@ func (h *AdminOps) ServeDashboard(w http.ResponseWriter, r *http.Request) {
 func (h *AdminOps) clusterLabels(ctx context.Context) map[string]string {
 	rows, err := h.store.ListClusters(ctx)
 	if err != nil {
-		h.log.Error("dashboard cluster read failed", "component", "httpapi", "error", err)
+		h.log.Warn("dashboard cluster read failed", "component", "httpapi", "error", err)
 		return nil
 	}
 
@@ -256,7 +256,7 @@ func (h *AdminOps) addClusterToDashboard(ctx context.Context, dash *dashboardDTO
 func (h *AdminOps) enabledCatalogNodes(ctx context.Context, clusterName string) (map[string]bool, bool) {
 	rows, err := h.store.CatalogNodesEnabled(ctx, clusterName)
 	if err != nil {
-		h.log.Error("dashboard catalog read failed", "component", "httpapi", "cluster", clusterName, "error", err)
+		h.log.Warn("dashboard catalog read failed", "component", "httpapi", "cluster", clusterName, "error", err)
 		return nil, false
 	}
 
@@ -364,7 +364,7 @@ func (h *AdminOps) poolQuotaAlerts(ctx context.Context, clusterName, label strin
 	row, err := h.store.PolicyRow(ctx, clusterName)
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
-			h.log.Error("dashboard policy read failed", "component", "httpapi", "cluster", clusterName, "error", err)
+			h.log.Warn("dashboard policy read failed", "component", "httpapi", "cluster", clusterName, "error", err)
 		}
 
 		return nil
@@ -393,7 +393,7 @@ func (h *AdminOps) poolQuotaAlerts(ctx context.Context, clusterName, label strin
 func (h *AdminOps) recentChanges(ctx context.Context) []auditEntryDTO {
 	page, err := h.store.ListAuditLog(ctx, store.AuditFilter{Page: 1, PageSize: dashboardRecentChangesLimit})
 	if err != nil {
-		h.log.Error("dashboard audit read failed", "component", "httpapi", "error", err)
+		h.log.Warn("dashboard audit read failed", "component", "httpapi", "error", err)
 		return []auditEntryDTO{}
 	}
 

@@ -76,6 +76,13 @@ func loadCore(cfg *Configuration) error {
 
 	cfg.Port = port
 
+	metricsPort, err := parseMetricsPort(port)
+	if err != nil {
+		return err
+	}
+
+	cfg.MetricsPort = metricsPort
+
 	cfg.DBPath = strings.TrimSpace(os.Getenv("PVMSS_DB_PATH"))
 	if cfg.DBPath == "" {
 		return errors.New("PVMSS_DB_PATH is required")
@@ -90,6 +97,31 @@ func loadCore(cfg *Configuration) error {
 	cfg.WebDir = strings.TrimSpace(os.Getenv("PVMSS_WEB_DIR"))
 
 	return nil
+}
+
+// parseMetricsPort reads the optional PVMSS_METRICS_PORT. Empty disables the
+// metrics listener (0). A set value must be a valid port distinct from the
+// main one, since both servers bind the same host.
+func parseMetricsPort(mainPort int) (int, error) {
+	raw := strings.TrimSpace(os.Getenv("PVMSS_METRICS_PORT"))
+	if raw == "" {
+		return 0, nil
+	}
+
+	port, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, fmt.Errorf("PVMSS_METRICS_PORT must be an integer, got %q", raw)
+	}
+
+	if port < 1 || port > 65535 {
+		return 0, fmt.Errorf("PVMSS_METRICS_PORT must be between 1 and 65535, got %d", port)
+	}
+
+	if port == mainPort {
+		return 0, errors.New("PVMSS_METRICS_PORT must differ from PVMSS_PORT")
+	}
+
+	return port, nil
 }
 
 // loadLogSettings reads and validates the log level, format, and output.

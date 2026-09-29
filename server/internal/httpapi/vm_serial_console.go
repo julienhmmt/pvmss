@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"strings"
@@ -152,7 +153,7 @@ func (h *VMSerialConsole) handleSerialWebSocket(w http.ResponseWriter, r *http.R
 
 	relay, err := resolveCapability(h.clients, h.relay, ticket.Cluster, "TerminalRelay")
 	if err != nil {
-		h.log.Error("serial relay resolution failed", "component", "httpapi", "cluster", ticket.Cluster, "error", err)
+		logctx.FromOr(r.Context(), h.log).ErrorContext(r.Context(), "serial relay resolution failed", "component", "httpapi", "cluster", ticket.Cluster, "error", err)
 		return
 	}
 
@@ -160,9 +161,9 @@ func (h *VMSerialConsole) handleSerialWebSocket(w http.ResponseWriter, r *http.R
 	err = relay.RelaySerial(r.Context(), ticket.Cluster, ticket.VMID, proxy, peer)
 
 	if err == nil || isNormalClose(err) {
-		h.log.Info("serial relay ended normally", "component", "httpapi", "vmid", ticket.VMID, "error", err)
+		logctx.FromOr(r.Context(), h.log).InfoContext(r.Context(), "serial relay ended normally", "component", "httpapi", "vmid", ticket.VMID, "error", err)
 	} else {
-		h.log.Warn("serial relay ended with error", "component", "httpapi", "vmid", ticket.VMID, "error", err)
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "serial relay ended with error", "component", "httpapi", "vmid", ticket.VMID, "error", err)
 	}
 }
 
@@ -184,7 +185,7 @@ func (h *VMSerialConsole) parseSerialPath(r *http.Request) (string, int, bool) {
 
 func (h *VMSerialConsole) writeSerialError(w http.ResponseWriter, status int, code, message string) {
 	if err := writeClusterError(w, status, code, message); err != nil {
-		h.log.Error("failed to write serial error", "component", "httpapi", "code", code, "error", err)
+		h.log.Warn("failed to write serial error", "component", "httpapi", "code", code, "error", err)
 	}
 }
 

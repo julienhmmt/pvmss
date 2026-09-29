@@ -57,7 +57,7 @@ func (h *AdminCatalog) serveCatalogDelete(w http.ResponseWriter, r *http.Request
 	}
 
 	if err != nil {
-		h.log.Error("admin delete "+kind+" failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin delete "+kind+" failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 
 		return
@@ -105,7 +105,7 @@ func (h *AdminCatalog) serveCatalogToggle(w http.ResponseWriter, r *http.Request
 	}
 
 	if err != nil {
-		h.log.Error("admin toggle "+kind+" failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin toggle "+kind+" failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 
 		return

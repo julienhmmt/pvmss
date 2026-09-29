@@ -60,7 +60,7 @@ func (h *AdminCatalog) ServeProfiles(w http.ResponseWriter, r *http.Request) {
 
 	profiles, err := catalog.ListAdminProfiles(r.Context(), h.store, clusterName)
 	if err != nil {
-		h.log.Error("admin list profiles failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin list profiles failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -104,7 +104,7 @@ func (h *AdminCatalog) ServeProfileCreate(w http.ResponseWriter, r *http.Request
 	}
 
 	if err != nil {
-		h.log.Error("admin create profile failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin create profile failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -152,7 +152,7 @@ func (h *AdminCatalog) ServeProfileUpdate(w http.ResponseWriter, r *http.Request
 	}
 
 	if err != nil {
-		h.log.Error("admin update profile failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin update profile failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return

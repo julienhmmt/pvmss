@@ -8,9 +8,12 @@ import (
 	"log/slog"
 	"net/http"
 	"path"
+	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/store"
 	"strings"
 	"time"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -83,6 +86,9 @@ type RouterConfig struct {
 	// built-in defaults). Opt-in escape hatch for the e2e suite and load
 	// tests; raising it weakens the login brute-force protection.
 	RateLimitMax int
+	// TracerProvider overrides the global OpenTelemetry provider for request
+	// spans. nil uses the global one (no-op unless telemetry.Setup enabled it).
+	TracerProvider trace.TracerProvider
 }
 
 // limitMax resolves a limiter ceiling, honouring the RateLimitMax override.
@@ -138,13 +144,20 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	// go:S3776 threshold.
 	registerAdminRoutes(mux, cfg, adminProtect)
 
+	// Metrics live on their own port; the SPA fallback must not answer
+	// /metrics on this one with index.html and a 200.
+	mux.Handle("GET /metrics", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = writeError(w, http.StatusNotFound, "not found")
+	}))
+
 	registerAPINotFound(mux, cfg)
 	registerSPA(mux, cfg)
 
 	// Wrap the entire mux with security headers so every response (API and
 	// SPA) gets CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy,
-	// Permissions-Policy, HSTS, and cache-control for API paths.
-	return withSecurityHeaders(mux)
+	// Permissions-Policy, HSTS, and cache-control for API paths. The request-ID
+	// middleware is outermost so every response, including errors, carries it.
+	return withRequestID(cfg.Log, withTracing(cfg.TracerProvider, withAccessLog(hops, withSecurityHeaders(mux))))
 }
 
 // protectFunc is the signature of NewRouter's `protect` closure, factored out
@@ -274,7 +287,7 @@ func registerAPINotFound(mux *http.ServeMux, cfg RouterConfig) {
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
 		mux.Handle(method+" /api/", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			if err := writeError(w, http.StatusNotFound, "unknown API path"); err != nil {
-				cfg.Log.Error("failed to write API 404", "component", "httpapi", "error", err)
+				cfg.Log.Warn("failed to write API 404", "component", "httpapi", "error", err)
 			}
 		}))
 	}
@@ -339,7 +352,7 @@ func (s *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(p, "/_app/") || path.Ext(p) != "" {
 		if err := s.serveFile(w, r, p); err != nil {
 			if writeErr := writeTextError(w, http.StatusNotFound, "asset not found"); writeErr != nil {
-				s.log.Error("failed to write asset 404", "component", "httpapi", "path", p, "error", writeErr)
+				logctx.FromOr(r.Context(), s.log).WarnContext(r.Context(), "failed to write asset 404", "component", "httpapi", "path", p, "error", writeErr)
 			}
 		}
 
@@ -353,7 +366,7 @@ func (s *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.serveFile(w, r, s.index); err != nil {
 		if writeErr := writeTextError(w, http.StatusNotFound, "shell not found"); writeErr != nil {
-			s.log.Error("failed to write shell 404", "component", "httpapi", "path", p, "error", writeErr)
+			logctx.FromOr(r.Context(), s.log).WarnContext(r.Context(), "failed to write shell 404", "component", "httpapi", "path", p, "error", writeErr)
 		}
 	}
 }
@@ -362,7 +375,7 @@ func (s *spaHandler) serveFile(w http.ResponseWriter, r *http.Request, name stri
 	f, err := s.root.Open(name)
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
-			s.log.Error("failed to open static file", "component", "httpapi", "path", name, "error", err)
+			logctx.FromOr(r.Context(), s.log).ErrorContext(r.Context(), "failed to open static file", "component", "httpapi", "path", name, "error", err)
 		}
 
 		return err
