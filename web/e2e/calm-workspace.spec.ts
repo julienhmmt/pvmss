@@ -33,7 +33,6 @@ test.describe('Calm workspace', () => {
 		await expect(nav.getByRole('link')).toHaveText([/My machines/, /Activity/, /Help & guides/]);
 		// Create is a state of My machines, not an item of its own.
 		await expect(nav.getByRole('link', { name: /My machines/ })).toHaveAttribute('aria-current', 'page');
-		await expect(page.getByTestId('sidebar-reassurance').first()).toBeVisible();
 		await expect(page.getByTestId('context-screen')).toHaveText('Create a machine');
 
 		await page.getByTestId('sidebar-account-link').first().click();

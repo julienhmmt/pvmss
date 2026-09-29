@@ -29,7 +29,8 @@ test.describe('PVMSS user administration', () => {
 		await userRow.getByRole('button', { name: /Delete PVMSS user/ }).click();
 		const deleteDialog = page.getByRole('dialog', { name: 'Delete PVMSS user?' });
 		await expect(deleteDialog).toBeVisible();
-		await deleteDialog.getByRole('button', { name: 'Delete user' }).click();
+		// The confirm names the account it will delete, not a bare "Delete user".
+		await deleteDialog.getByRole('button', { name: /Delete PVMSS user/ }).click();
 		await expect(page.getByRole('row', { name: /pvmss-e2eteam@pve/ })).toHaveCount(0);
 	});
 });
