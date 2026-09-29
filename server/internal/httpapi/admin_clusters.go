@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/store"
 	"regexp"
 	"time"
@@ -243,7 +244,7 @@ func (handler *AdminClusters) ServeTest(w http.ResponseWriter, r *http.Request) 
 	}
 	if handler.inventories != nil {
 		if err := handler.inventories.StoreSnapshot(name, snapshot); err != nil {
-			handler.log.Warn("publish cluster test snapshot failed", "component", "httpapi", "cluster", name, "error", err)
+			logctx.FromOr(r.Context(), handler.log).WarnContext(r.Context(), "publish cluster test snapshot failed", "component", "httpapi", "cluster", name, "error", err)
 		}
 	}
 	if err := handler.store.SetClusterTestResult(r.Context(), name, "ok", snapshot.ProxmoxVersion, "", testedAt); err != nil {
@@ -251,10 +252,10 @@ func (handler *AdminClusters) ServeTest(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if displayName, err := client.DisplayName(r.Context()); err != nil {
-		handler.log.Warn("cluster display name discovery failed", "component", "httpapi", "cluster", name, "error", err)
+		logctx.FromOr(r.Context(), handler.log).WarnContext(r.Context(), "cluster display name discovery failed", "component", "httpapi", "cluster", name, "error", err)
 	} else if displayName != "" {
 		if err := handler.store.SetClusterDisplayName(r.Context(), name, displayName); err != nil {
-			handler.log.Warn("cluster display name persist failed", "component", "httpapi", "cluster", name, "error", err)
+			logctx.FromOr(r.Context(), handler.log).WarnContext(r.Context(), "cluster display name persist failed", "component", "httpapi", "cluster", name, "error", err)
 		}
 	}
 	writeAdminJSON(w, http.StatusOK, testClusterResponse{Status: "ok", ProxmoxVersion: snapshot.ProxmoxVersion, NodeCount: len(snapshot.Nodes), VMCount: len(snapshot.VMs), TestedAt: testedAt.Format(time.RFC3339Nano)})
@@ -413,7 +414,7 @@ func (handler *AdminClusters) writeStoreFailure(w http.ResponseWriter, err error
 }
 
 func (handler *AdminClusters) writeFailure(w http.ResponseWriter, err error) {
-	handler.log.Error("admin cluster operation failed", "component", "httpapi", "error", err)
+	SetErrorMsg(w, "admin cluster operation failed", err)
 	writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 }
 
@@ -437,7 +438,7 @@ func (handler *AdminClusters) SetTrustedProxyHops(n int) {
 func (handler *AdminClusters) recordAdminAction(r *http.Request, action, targetType, targetID, summary string, changes []any) {
 	actor, _ := handler.auth.Principal(r)
 	if err := handler.store.RecordAdminAction(r.Context(), actor.Username, action, targetType, targetID, detailJSON(summary, changes), clientIP(r, handler.trustedProxyHops)); err != nil {
-		handler.log.Error("failed to record admin action", "component", "httpapi", "action", action, "error", err)
+		logctx.FromOr(r.Context(), handler.log).WarnContext(r.Context(), "failed to record admin action", "component", "httpapi", "action", action, "error", err)
 	}
 }
 

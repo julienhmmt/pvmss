@@ -65,7 +65,7 @@ type docRenderedDTO struct {
 func (h *DocsAPIHandler) ServeDocsList(w http.ResponseWriter, r *http.Request) {
 	pages, err := catalog.EnabledDocumentationPages(r.Context(), h.store)
 	if err != nil {
-		h.log.Error("docs list failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "docs list failed", err)
 		_ = writeError(w, http.StatusInternalServerError, msgInternalServerError)
 		return
 	}
@@ -109,7 +109,7 @@ func (h *DocsAPIHandler) ServeDoc(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		h.log.Error("docs get failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "docs get failed", err)
 		_ = writeError(w, http.StatusInternalServerError, msgInternalServerError)
 		return
 	}

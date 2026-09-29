@@ -138,7 +138,7 @@ func findInventoryNode(nodes []cluster.Node, name string) (cluster.Node, bool) {
 func (h *AdminCatalog) clusterDisplayName(ctx context.Context, clusterKey string) string {
 	rows, err := h.store.ListClusters(ctx)
 	if err != nil {
-		h.log.Error("admin node detail cluster lookup failed", "component", "httpapi", "error", err)
+		h.log.Warn("admin node detail cluster lookup failed", "component", "httpapi", "error", err)
 		return clusterKey
 	}
 	for _, row := range rows {

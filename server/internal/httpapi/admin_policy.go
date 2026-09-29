@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"pvmss/server/internal/auth"
+	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 )
@@ -267,7 +268,7 @@ func (handler *AdminPolicy) writePolicyValidation(w http.ResponseWriter, err err
 }
 
 func (handler *AdminPolicy) writeFailure(w http.ResponseWriter, operation string, err error) {
-	handler.log.Error(operation+" failed", "component", "httpapi", "error", err)
+	SetErrorMsg(w, operation+" failed", err)
 	writeAdminError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 }
 
@@ -278,6 +279,6 @@ func (handler *AdminPolicy) recordAdminAction(r *http.Request, action, targetTyp
 
 	actor, _ := handler.auth.Principal(r)
 	if err := handler.store.RecordAdminAction(r.Context(), actor.Username, action, targetType, targetID, detailJSON(summary, changes), clientIP(r, handler.trustedProxyHops)); err != nil {
-		handler.log.Error("failed to record admin action", "component", "httpapi", "action", action, "error", err)
+		logctx.FromOr(r.Context(), handler.log).WarnContext(r.Context(), "failed to record admin action", "component", "httpapi", "action", action, "error", err)
 	}
 }

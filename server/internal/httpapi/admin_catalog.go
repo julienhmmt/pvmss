@@ -73,7 +73,7 @@ func (h *AdminCatalog) ServeNodes(w http.ResponseWriter, r *http.Request) {
 	}
 	nodes, err := catalog.AdminListNodes(r.Context(), h.store, client, clusterName)
 	if err != nil {
-		h.log.Error("admin list nodes failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin list nodes failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -130,7 +130,7 @@ func (h *AdminCatalog) ServeNodeToggle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		h.log.Error("admin toggle node failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin toggle node failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -170,7 +170,7 @@ func (h *AdminCatalog) ServeStorages(w http.ResponseWriter, r *http.Request) {
 	}
 	storages, err := catalog.AdminListStorages(r.Context(), h.store, client, clusterName)
 	if err != nil {
-		h.log.Error("admin list storages failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin list storages failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -218,7 +218,7 @@ func (h *AdminCatalog) ServeSnippetStorages(w http.ResponseWriter, r *http.Reque
 
 	snap, err := client.Snapshot(r.Context())
 	if err != nil {
-		h.log.Error("admin list snippet storages failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin list snippet storages failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -282,7 +282,7 @@ func (h *AdminCatalog) ServeStorageToggle(w http.ResponseWriter, r *http.Request
 	}
 
 	if err != nil {
-		h.log.Error("admin toggle storage failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin toggle storage failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -323,7 +323,7 @@ func (h *AdminCatalog) ServeBridges(w http.ResponseWriter, r *http.Request) {
 	}
 	bridges, err := catalog.AdminListBridges(r.Context(), h.store, client, clusterName)
 	if err != nil {
-		h.log.Error("admin list bridges failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin list bridges failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -384,7 +384,7 @@ func (h *AdminCatalog) ServeBridgeToggle(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err != nil {
-		h.log.Error("admin toggle bridge failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin toggle bridge failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -425,7 +425,7 @@ func (h *AdminCatalog) ServeISOs(w http.ResponseWriter, r *http.Request) {
 	}
 	isos, err := catalog.AdminListISOs(r.Context(), h.store, client, clusterName)
 	if err != nil {
-		h.log.Error("admin list isos failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin list isos failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -490,7 +490,7 @@ func (h *AdminCatalog) ServeISOToggle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		h.log.Error("admin toggle iso failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin toggle iso failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -520,7 +520,7 @@ func (h *AdminCatalog) ServeNodeDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		h.log.Error("admin delete node failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin delete node failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
@@ -551,7 +551,7 @@ func (h *AdminCatalog) ServeStorageDelete(w http.ResponseWriter, r *http.Request
 	}
 
 	if err != nil {
-		h.log.Error("admin delete storage failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin delete storage failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
@@ -582,7 +582,7 @@ func (h *AdminCatalog) ServeBridgeDelete(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err != nil {
-		h.log.Error("admin delete bridge failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin delete bridge failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
@@ -622,7 +622,7 @@ func (h *AdminCatalog) ServeImages(w http.ResponseWriter, r *http.Request) {
 	}
 	images, err := catalog.AdminListImages(r.Context(), h.store, client, clusterName)
 	if err != nil {
-		h.log.Error("admin list images failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin list images failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -687,7 +687,7 @@ func (h *AdminCatalog) ServeImageToggle(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err != nil {
-		h.log.Error("admin toggle image failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin toggle image failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -720,7 +720,7 @@ func (h *AdminCatalog) ServeImageDelete(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err != nil {
-		h.log.Error("admin delete image failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin delete image failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
@@ -752,7 +752,7 @@ func (h *AdminCatalog) ServeISODelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		h.log.Error("admin delete iso failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin delete iso failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 		return
 	}
@@ -799,7 +799,7 @@ func (h *AdminCatalog) ServeTemplates(w http.ResponseWriter, r *http.Request) {
 
 	templates, err := catalog.AdminListTemplates(r.Context(), h.store, client, clusterName)
 	if err != nil {
-		h.log.Error("admin list templates failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin list templates failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -871,7 +871,7 @@ func (h *AdminCatalog) ServeTemplateToggle(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err != nil {
-		h.log.Error("admin toggle template failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin toggle template failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -904,7 +904,7 @@ func (h *AdminCatalog) ServeTemplateDelete(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err != nil {
-		h.log.Error("admin delete template failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin delete template failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -973,7 +973,7 @@ func (h *AdminCatalog) ServeTemplateUpdate(w http.ResponseWriter, r *http.Reques
 			return
 		}
 
-		h.log.Error("admin update template failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin update template failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return

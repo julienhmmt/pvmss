@@ -124,6 +124,10 @@ func TestAccessLog_RouteIsPatternAndNoSecrets(t *testing.T) {
 		t.Errorf("fields = %v", l)
 	}
 
+	if l["cluster"] != "c1" || l["vmid"] != float64(101) {
+		t.Errorf("path values missing: %v", l)
+	}
+
 	if l["clientIp"] != "10.0.0.1" || l["requestId"] == nil || l["durationMs"] == nil {
 		t.Errorf("fields = %v", l)
 	}

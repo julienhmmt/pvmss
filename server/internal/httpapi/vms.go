@@ -116,7 +116,7 @@ func (h *VMs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		h.log.Error("vm list failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "vm list failed", err)
 		h.writeError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 
 		return
@@ -261,14 +261,14 @@ func (h *VMs) writeList(ctx context.Context, w http.ResponseWriter, result vm.Li
 
 	body, err := json.Marshal(response)
 	if err != nil {
-		h.log.Error("failed to marshal vm list response", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "failed to marshal vm list response", err)
 		h.writeError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 
 		return
 	}
 
 	if err := writeJSON(w, http.StatusOK, body); err != nil {
-		h.log.Error("failed to write vm list response", "component", "httpapi", "error", err)
+		h.log.Warn("failed to write vm list response", "component", "httpapi", "error", err)
 	}
 }
 
@@ -294,6 +294,6 @@ func (h *VMs) clusterDisplayNames(ctx context.Context) map[string]string {
 
 func (h *VMs) writeError(w http.ResponseWriter, status int, code, message string) {
 	if err := writeClusterError(w, status, code, message); err != nil {
-		h.log.Error("failed to write error response", "component", "httpapi", "code", code, "error", err)
+		h.log.Warn("failed to write error response", "component", "httpapi", "code", code, "error", err)
 	}
 }

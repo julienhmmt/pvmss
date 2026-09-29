@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"path"
+	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/store"
 	"strings"
 	"time"
@@ -275,7 +276,7 @@ func registerAPINotFound(mux *http.ServeMux, cfg RouterConfig) {
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
 		mux.Handle(method+" /api/", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			if err := writeError(w, http.StatusNotFound, "unknown API path"); err != nil {
-				cfg.Log.Error("failed to write API 404", "component", "httpapi", "error", err)
+				cfg.Log.Warn("failed to write API 404", "component", "httpapi", "error", err)
 			}
 		}))
 	}
@@ -340,7 +341,7 @@ func (s *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(p, "/_app/") || path.Ext(p) != "" {
 		if err := s.serveFile(w, r, p); err != nil {
 			if writeErr := writeTextError(w, http.StatusNotFound, "asset not found"); writeErr != nil {
-				s.log.Error("failed to write asset 404", "component", "httpapi", "path", p, "error", writeErr)
+				logctx.FromOr(r.Context(), s.log).WarnContext(r.Context(), "failed to write asset 404", "component", "httpapi", "path", p, "error", writeErr)
 			}
 		}
 
@@ -354,7 +355,7 @@ func (s *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.serveFile(w, r, s.index); err != nil {
 		if writeErr := writeTextError(w, http.StatusNotFound, "shell not found"); writeErr != nil {
-			s.log.Error("failed to write shell 404", "component", "httpapi", "path", p, "error", writeErr)
+			logctx.FromOr(r.Context(), s.log).WarnContext(r.Context(), "failed to write shell 404", "component", "httpapi", "path", p, "error", writeErr)
 		}
 	}
 }
@@ -363,7 +364,7 @@ func (s *spaHandler) serveFile(w http.ResponseWriter, r *http.Request, name stri
 	f, err := s.root.Open(name)
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
-			s.log.Error("failed to open static file", "component", "httpapi", "path", name, "error", err)
+			logctx.FromOr(r.Context(), s.log).ErrorContext(r.Context(), "failed to open static file", "component", "httpapi", "path", name, "error", err)
 		}
 
 		return err

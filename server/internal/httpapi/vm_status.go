@@ -158,7 +158,7 @@ func (h *VMStatusBatch) readTargets(ctx context.Context, identity auth.Identity,
 
 		live, err := reader.VMStatus(ctx, entity.Node, target.VMID)
 		if err != nil {
-			h.log.Error("batch live status read failed", "component", "httpapi",
+			h.log.Warn("batch live status read failed", "component", "httpapi",
 				"cluster", target.Cluster, "vmid", target.VMID, "error", err)
 			continue
 		}
@@ -190,19 +190,19 @@ func (h *VMStatusBatch) readerFor(clusterName string) cluster.VMStatusReader {
 
 func (h *VMStatusBatch) writeError(w http.ResponseWriter, status int, code, message string) {
 	if err := writeClusterError(w, status, code, message); err != nil {
-		h.log.Error("failed to write error response", "component", "httpapi", "code", code, "error", err)
+		h.log.Warn("failed to write error response", "component", "httpapi", "code", code, "error", err)
 	}
 }
 
 func (h *VMStatusBatch) writeJSONStatus(w http.ResponseWriter, status int, value any) {
 	body, err := json.Marshal(value)
 	if err != nil {
-		h.log.Error("failed to marshal response", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "failed to marshal response", err)
 		h.writeError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 		return
 	}
 	if err := writeJSON(w, status, body); err != nil {
-		h.log.Error("failed to write response", "component", "httpapi", "error", err)
+		h.log.Warn("failed to write response", "component", "httpapi", "error", err)
 	}
 }
 

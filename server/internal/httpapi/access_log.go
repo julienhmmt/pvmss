@@ -2,9 +2,11 @@ package httpapi
 
 import (
 	"bufio"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -142,6 +144,16 @@ func withAccessLog(trustedProxyHops int, next http.Handler) http.Handler {
 				slog.Int("bytes", lw.bytes),
 				slog.Int64("durationMs", time.Since(start).Milliseconds()),
 			}
+			// Route path values stand in for the cluster/vmid attrs handlers no
+			// longer repeat on their own error logs.
+			if c := r.PathValue("cluster"); c != "" {
+				attrs = append(attrs, slog.String("cluster", c))
+			}
+
+			if v, err := strconv.Atoi(r.PathValue("vmid")); err == nil {
+				attrs = append(attrs, slog.Int("vmid", v))
+			}
+
 			if lw.err != nil {
 				attrs = append(attrs, slog.Any("error", lw.err))
 			}
@@ -165,4 +177,10 @@ func withAccessLog(trustedProxyHops int, next http.Handler) http.Handler {
 
 		emit("http request", lw)
 	})
+}
+
+// SetErrorMsg is SetError with the handler's failure message kept as context:
+// the access-log "error" reads "msg: cause".
+func SetErrorMsg(w http.ResponseWriter, msg string, err error) {
+	SetError(w, fmt.Errorf("%s: %w", msg, err))
 }

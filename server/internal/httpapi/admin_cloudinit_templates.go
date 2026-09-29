@@ -56,7 +56,7 @@ func (h *AdminCatalog) ServeCloudInitTemplates(w http.ResponseWriter, r *http.Re
 
 	templates, err := catalog.ListCloudInitTemplates(r.Context(), h.store, clusterName)
 	if err != nil {
-		h.log.Error("admin list cloudinit templates failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin list cloudinit templates failed", err)
 		writeAdminError(w, http.StatusInternalServerError, codeInternalError, msgInternalServerError)
 
 		return
@@ -102,7 +102,7 @@ func (h *AdminCatalog) ServeCloudInitTemplateCreate(w http.ResponseWriter, r *ht
 	}
 
 	if err != nil {
-		h.log.Error("admin create cloudinit template failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin create cloudinit template failed", err)
 		writeAdminError(w, http.StatusInternalServerError, codeInternalError, msgInternalServerError)
 
 		return
@@ -152,7 +152,7 @@ func (h *AdminCatalog) ServeCloudInitTemplateUpdate(w http.ResponseWriter, r *ht
 	}
 
 	if err != nil {
-		h.log.Error("admin update cloudinit template failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin update cloudinit template failed", err)
 		writeAdminError(w, http.StatusInternalServerError, codeInternalError, msgInternalServerError)
 
 		return
