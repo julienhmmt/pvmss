@@ -1228,6 +1228,9 @@ const (
 	FakeUserBob    = "bob@pve"
 	FakeUserAdmin  = "admin@pve"
 	FakeTagPvmss   = "pvmss"
+	// fakeOSType is the kernel family the fake reports for a guest, mirroring
+	// the hardcoded ostype the real create path sends (proxmox_create.go).
+	fakeOSType = "l26"
 	// FakeStorageLocalLVM is the approved local LVM fixture.
 	FakeStorageLocalLVM = "local-lvm"
 	// FakeStorageLocal is the deterministic default fake storage ("local").
@@ -1407,6 +1410,19 @@ func seedFakeHardware(vms []VM) {
 		// VM 103, which keeps agent=0 like a VM not created through PVMSS,
 		// so the detail endpoint's "agent disabled" explanation stays live.
 		vms[index].Agent = vms[index].VMID != 103
+		// The real create path always sends ostype=l26 (proxmox_create.go),
+		// so seeded VMs mirror it.
+		vms[index].OSType = "l26"
+	}
+
+	// A few guests are Windows so the list's OS mark has more than one family
+	// to show. 114 is in Alice's pool, so the signed-in demo user actually
+	// sees both families; 109/110 are the "legacy" pair.
+	for index := range vms {
+		switch vms[index].VMID {
+		case 109, 110, 114:
+			vms[index].OSType = "win11"
+		}
 	}
 
 	for index := range vms {

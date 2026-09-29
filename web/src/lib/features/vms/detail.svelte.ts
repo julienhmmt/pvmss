@@ -16,6 +16,8 @@ export interface VmDetailEntity {
 	pool: string;
 	status: VmStatus;
 	tags: string[];
+	/** Proxmox kernel family ("l26", "win11"), not a distribution. */
+	ostype: string;
 	cpuCores: number;
 	memoryTotal: number;
 	diskTotal: number;

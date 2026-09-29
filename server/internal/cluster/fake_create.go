@@ -113,6 +113,7 @@ func (fake Fake) CreateVM(_ context.Context, spec VMSpec) (string, error) {
 		Status:            status,
 		Pool:              spec.Pool,
 		Tags:              append([]string(nil), spec.Tags...),
+		OSType:            fakeOSType,
 		Sockets:           spec.Sockets,
 		Cores:             spec.CPUCores,
 		CPUCores:          spec.Sockets * spec.CPUCores,
@@ -252,6 +253,7 @@ func (fake Fake) CloneVM(_ context.Context, spec CloneSpec) (string, error) {
 				Pool:    spec.Pool,
 				Status:  VMStopped,
 				Tags:    []string{"pvmss"},
+				OSType:  fakeOSType,
 				Sockets: 1,
 				Disks: []Disk{{
 					Key:      diskKey,

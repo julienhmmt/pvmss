@@ -347,13 +347,17 @@ func (n NetworkInterface) MarshalJSON() ([]byte, error) {
 // later work has data to work with, but not surfaced by any endpoint
 // until.
 type VM struct {
-	Cluster           string
-	VMID              int
-	Name              string
-	Node              string
-	Status            VMStatus
-	Pool              string
-	Tags              []string
+	Cluster string
+	VMID    int
+	Name    string
+	Node    string
+	Status  VMStatus
+	Pool    string
+	Tags    []string
+	// OSType is Proxmox's kernel family for the guest ("l26", "win11", ...),
+	// read from the VM config. It is not a distribution: l26 covers every
+	// Linux 2.6+ guest. Empty when the config did not report one.
+	OSType            string
 	CPUCores          int
 	Sockets           int
 	Cores             int

@@ -400,6 +400,7 @@ func hydrateVM(ctx context.Context, rest proxmoxRESTClient, vm *VM) error {
 	vm.Description = cfg.str("description")
 	vm.HasSerial = cfgHasSerial(cfg)
 	vm.Agent = agentEnabled(cfg.str("agent"))
+	vm.OSType = cfg.str("ostype")
 
 	if len(vm.Tags) == 0 {
 		vm.Tags = splitProxmoxTags(cfg.str("tags"))

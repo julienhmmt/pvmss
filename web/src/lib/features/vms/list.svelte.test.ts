@@ -29,6 +29,7 @@ const oneVmResult: VmListResult = {
 			status: 'running',
 			pool: 'pool-alice',
 			tags: ['pvmss', 'web'],
+			ostype: 'l26',
 			cpuCores: 2,
 			memoryTotal: 4294967296
 		}

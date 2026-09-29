@@ -232,13 +232,15 @@ func (h *VMDetail) refresherFor(clusterName string) vm.IndexRefresher {
 }
 
 type vmDetailDTO struct {
-	Cluster           string                     `json:"cluster"`
-	VMID              int                        `json:"vmid"`
-	Name              string                     `json:"name"`
-	Node              string                     `json:"node"`
-	Pool              string                     `json:"pool"`
-	Status            string                     `json:"status"`
-	Tags              []string                   `json:"tags"`
+	Cluster string   `json:"cluster"`
+	VMID    int      `json:"vmid"`
+	Name    string   `json:"name"`
+	Node    string   `json:"node"`
+	Pool    string   `json:"pool"`
+	Status  string   `json:"status"`
+	Tags    []string `json:"tags"`
+	// OSType is Proxmox's kernel family ("l26", "win11"), not a distribution.
+	OSType            string                     `json:"ostype"`
 	CPUCores          int                        `json:"cpuCores"`
 	MemoryTotal       int64                      `json:"memoryTotal"`
 	DiskTotal         int64                      `json:"diskTotal"`
@@ -1506,6 +1508,7 @@ func (h *VMDetail) writeEntity(w http.ResponseWriter, r *http.Request, entity vm
 		Pool:              entity.Pool,
 		Status:            string(entity.Status),
 		Tags:              entity.Tags,
+		OSType:            entity.OSType,
 		CPUCores:          entity.CPUCores,
 		MemoryTotal:       entity.MemoryTotal,
 		DiskTotal:         entity.DiskTotal,

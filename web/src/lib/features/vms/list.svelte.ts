@@ -23,6 +23,8 @@ export interface VmListItem {
 	status: VmStatus;
 	pool: string;
 	tags: string[];
+	/** Proxmox kernel family ("l26", "win11"), not a distribution. */
+	ostype: string;
 	cpuCores: number;
 	memoryTotal: number;
 }
