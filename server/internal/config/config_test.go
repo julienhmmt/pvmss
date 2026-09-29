@@ -542,19 +542,20 @@ func runLoadCase(t *testing.T, env map[string]string, want config.Configuration,
 	}
 }
 
-// TestLoad_DeprecatedSSHEnv checks that the retired PVMSS_SSH_USER /
-// PVMSS_SSH_PORT variables are recorded (so startup can warn) without
+// TestLoad_DeprecatedSSHEnv checks that the retired PVMSS_SSH_KEY_FILE /
+// PVMSS_SSH_USER / PVMSS_SSH_PORT variables are recorded (so startup can warn) without
 // affecting the rest of the configuration.
 func TestLoad_DeprecatedSSHEnv(t *testing.T) {
 	tests := []struct {
 		name string
+		key  string
 		user string
 		port string
 		want []string
 	}{
-		{name: "neither set", want: nil},
+		{name: "none set", want: nil},
 		{name: "user only", user: "pvmss", want: []string{"PVMSS_SSH_USER"}},
-		{name: "both set", user: "pvmss", port: "2222", want: []string{"PVMSS_SSH_USER", "PVMSS_SSH_PORT"}},
+		{name: "all set", key: "/k", user: "pvmss", port: "2222", want: []string{"PVMSS_SSH_KEY_FILE", "PVMSS_SSH_USER", "PVMSS_SSH_PORT"}},
 	}
 
 	for _, tt := range tests {
@@ -566,6 +567,7 @@ func TestLoad_DeprecatedSSHEnv(t *testing.T) {
 			t.Setenv(envLogOutput, testLogOutput)
 			t.Setenv(envClusterSource, testCluster)
 			t.Setenv("SESSION_SECRET", strings.Repeat("s", 32))
+			t.Setenv("PVMSS_SSH_KEY_FILE", tt.key)
 			t.Setenv("PVMSS_SSH_USER", tt.user)
 			t.Setenv("PVMSS_SSH_PORT", tt.port)
 

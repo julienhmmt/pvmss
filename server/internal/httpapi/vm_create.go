@@ -181,6 +181,9 @@ type catalogProfileDTO struct {
 type catalogCloudInitTemplateDTO struct {
 	ID    string `json:"id"`
 	Label string `json:"label"`
+	// Nodes lists the nodes whose snippet storage has the template's file:
+	// the wizard offers the template only on those nodes.
+	Nodes []string `json:"nodes"`
 }
 
 // catalogTemplateDTO is one approved Proxmox template. The
@@ -340,6 +343,7 @@ type catalogData struct {
 	images           []catalog.Image
 	profiles         []catalog.Profile
 	templates        []catalog.CloudInitTemplate
+	templateNodes    map[string][]string
 	proxmoxTemplates []catalog.Template
 	tags             []catalog.TagWithCount
 }
@@ -373,18 +377,7 @@ func (h *VMCreate) loadCatalogData(ctx context.Context, client cluster.Client, c
 		return catalogData{}, fmt.Errorf("cloudinit templates: %w", err)
 	}
 
-	// Offer only templates published on the cluster: an enabled template
-	// with no file behind it would be refused at create time anyway.
-	publications, err := h.store.ListCloudInitPublications(ctx, clusterName)
-	if err != nil {
-		return catalogData{}, fmt.Errorf("cloudinit publications: %w", err)
-	}
-
-	for _, t := range templates {
-		if _, ok := publications[t.ID]; ok {
-			data.templates = append(data.templates, t)
-		}
-	}
+	data.templates, data.templateNodes = templatesOnNodes(ctx, client, templates)
 
 	// Approved Proxmox templates (clone source).
 	proxmoxTemplates, err := catalog.Templates(ctx, h.store, clusterName)
@@ -458,7 +451,7 @@ func buildCatalogDTO(clusterName string, data catalogData, cloudInitWriteEnabled
 		Images:                catalogImageDTOs(data),
 		Profiles:              mapCatalogSlice(data.profiles, catalogProfileView),
 		Templates:             mapCatalogSlice(data.proxmoxTemplates, catalogTemplateView),
-		CloudInitTemplates:    catalogCloudInitTemplateDTOs(data.templates, cloudInitWriteEnabled),
+		CloudInitTemplates:    catalogCloudInitTemplateDTOs(data.templates, data.templateNodes, cloudInitWriteEnabled),
 		CloudInitWriteEnabled: cloudInitWriteEnabled,
 		CloudInitBaselineID:   store.BaselineTemplateID,
 		Tags:                  catalogTagDTOs(data.tags),
@@ -612,18 +605,50 @@ func catalogTemplateView(tmpl catalog.Template) catalogTemplateDTO {
 	}
 }
 
+// templatesOnNodes keeps the templates whose file is on at least one node,
+// with those nodes, read live through the API. A template on no node would
+// be refused at create time anyway. A cluster that cannot check offers none.
+func templatesOnNodes(ctx context.Context, client cluster.Client, templates []catalog.CloudInitTemplate) ([]catalog.CloudInitTemplate, map[string][]string) {
+	checker, ok := client.(cluster.SnippetChecker)
+	if !ok || checker.SnippetStorageID() == "" {
+		return nil, nil
+	}
+
+	var offered []catalog.CloudInitTemplate
+
+	nodes := make(map[string][]string, len(templates))
+
+	for _, t := range templates {
+		status, err := catalog.CheckCloudInitDocument(ctx, checker, t.ID, t.Content)
+		if err != nil {
+			continue
+		}
+
+		for _, n := range status.Nodes {
+			if n.Present {
+				nodes[t.ID] = append(nodes[t.ID], n.Node)
+			}
+		}
+
+		if len(nodes[t.ID]) > 0 {
+			offered = append(offered, t)
+		}
+	}
+
+	return offered, nodes
+}
+
 // catalogCloudInitTemplateDTOs maps cloud-init templates - the catalog
-// exposes only id+label per spec/contracts, never content. The list is empty
-// when the cluster has no snippet write target: offering a document the
-// create could never write would fail at submit time anyway.
-func catalogCloudInitTemplateDTOs(templates []catalog.CloudInitTemplate, writeEnabled bool) []catalogCloudInitTemplateDTO {
+// exposes id, label and the nodes that have the file, never content. The
+// list is empty when the cluster has no snippet storage.
+func catalogCloudInitTemplateDTOs(templates []catalog.CloudInitTemplate, nodes map[string][]string, writeEnabled bool) []catalogCloudInitTemplateDTO {
 	out := make([]catalogCloudInitTemplateDTO, 0, len(templates))
 	if !writeEnabled {
 		return out
 	}
 
 	for _, tmpl := range templates {
-		out = append(out, catalogCloudInitTemplateDTO{ID: tmpl.ID, Label: tmpl.Label})
+		out = append(out, catalogCloudInitTemplateDTO{ID: tmpl.ID, Label: tmpl.Label, Nodes: nodes[tmpl.ID]})
 	}
 
 	return out
@@ -652,11 +677,11 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The document picker is offered only when this cluster publishes
-	// cloud-init documents.
+	// The document picker is offered only when this cluster has a snippet
+	// storage for cloud-init documents.
 	writeEnabled := false
-	if publisher, ok := client.(cluster.SnippetPublisher); ok {
-		writeEnabled = publisher.PublishingEnabled()
+	if checker, ok := client.(cluster.SnippetChecker); ok {
+		writeEnabled = checker.SnippetStorageID() != ""
 	}
 
 	dto := buildCatalogDTO(clusterName, data, writeEnabled)

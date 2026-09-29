@@ -248,16 +248,11 @@ func loadRateLimitSettings(cfg *Configuration) error {
 	return nil
 }
 
-// loadSSHSettings reads the optional private key PVMSS uses to publish
-// admin cloud-init documents to the Proxmox nodes over SSH. The user, port
-// and pinned host keys are per cluster (Infrastructure > Clusters); without a key,
-// cloud-init documents are off on every cluster. PVMSS_SSH_USER and
-// PVMSS_SSH_PORT are no longer read - when set, they are recorded so startup
-// can warn the operator (see Configuration.DeprecatedSSHEnv).
+// loadSSHSettings records the retired SSH publishing variables that are
+// still set, so startup can warn the operator: PVMSS no longer writes on the
+// nodes (see Configuration.DeprecatedSSHEnv).
 func loadSSHSettings(cfg *Configuration) error {
-	cfg.SSHKeyFile = strings.TrimSpace(os.Getenv("PVMSS_SSH_KEY_FILE"))
-
-	for _, key := range []string{"PVMSS_SSH_USER", "PVMSS_SSH_PORT"} {
+	for _, key := range []string{"PVMSS_SSH_KEY_FILE", "PVMSS_SSH_USER", "PVMSS_SSH_PORT"} {
 		if strings.TrimSpace(os.Getenv(key)) != "" {
 			cfg.DeprecatedSSHEnv = append(cfg.DeprecatedSSHEnv, key)
 		}

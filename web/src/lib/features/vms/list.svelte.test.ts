@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { VmListStore, type VmListResult } from './list.svelte';
+import { markVmDeleted } from './recently-deleted';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), {
@@ -28,6 +29,7 @@ const oneVmResult: VmListResult = {
 			status: 'running',
 			pool: 'pool-alice',
 			tags: ['pvmss', 'web'],
+			ostype: 'l26',
 			cpuCores: 2,
 			memoryTotal: 4294967296
 		}
@@ -285,5 +287,86 @@ describe('VmListStore', () => {
 			pending.release?.(jsonResponse(200, { status: 'ok' }));
 			await actionPromise;
 		});
+	});
+	describe('recently deleted suppression', () => {
+		afterEach(() => sessionStorage.clear());
+
+		it('reports the true empty state when the stale cache only holds a just-deleted VM', async () => {
+			markVmDeleted('default', 100);
+			vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
+			const { store } = makeStore();
+
+			await store.load();
+
+			expect(store.result?.items).toEqual([]);
+			expect(store.result?.total).toBe(0);
+			expect(store.result?.quota?.used).toBe(0);
+			expect(store.result?.emptyReason).toBe('no_vms_owned');
+		});
+
+		it('leaves counts untouched when nothing was deleted', async () => {
+			vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
+			const { store } = makeStore();
+
+			await store.load();
+
+			expect(store.result?.total).toBe(1);
+			expect(store.result?.quota?.used).toBe(1);
+			expect(store.result?.emptyReason).toBeUndefined();
+		});
+	});
+});
+
+describe('VmListStore attention filter', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('is mutually exclusive with the server status filter', () => {
+		const { store, navigated } = makeStore('?status=running');
+
+		store.setAttention(true);
+		expect(store.attention).toBe(true);
+		expect(store.status).toBe('');
+		expect(navigated.at(-1)).toContain('attention=1');
+
+		store.setStatus('stopped');
+		expect(store.attention).toBe(false);
+		expect(navigated.at(-1)).not.toContain('attention=1');
+	});
+
+	it('loads every page, so a match on page 2 is not hidden', async () => {
+		const [baseVm] = oneVmResult.items;
+		if (baseVm === undefined) throw new Error('fixture is missing its VM');
+		const pageResult = (page: number, count: number, total: number): VmListResult => ({
+			items: Array.from({ length: count }, (_, i) => ({
+				...baseVm,
+				vmid: page * 100 + i,
+				name: `vm-${page}-${i}`
+			})),
+			total,
+			page,
+			pageSize: 10,
+			availableNodes: []
+		});
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse(200, pageResult(1, 10, 25)))
+			.mockResolvedValueOnce(jsonResponse(200, pageResult(2, 10, 25)))
+			.mockResolvedValueOnce(jsonResponse(200, pageResult(3, 5, 25)));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const { store } = makeStore('?attention=1');
+		await store.load();
+
+		expect(fetchMock).toHaveBeenCalledTimes(3);
+		expect(store.result?.items).toHaveLength(25);
+		expect(store.result?.page).toBe(1);
+		expect(store.result?.pageSize).toBe(25);
+	});
+
+	it('reads the filter back out of the URL', () => {
+		const { store } = makeStore('?attention=1');
+		expect(store.attention).toBe(true);
 	});
 });

@@ -232,13 +232,15 @@ func (h *VMDetail) refresherFor(clusterName string) vm.IndexRefresher {
 }
 
 type vmDetailDTO struct {
-	Cluster           string                     `json:"cluster"`
-	VMID              int                        `json:"vmid"`
-	Name              string                     `json:"name"`
-	Node              string                     `json:"node"`
-	Pool              string                     `json:"pool"`
-	Status            string                     `json:"status"`
-	Tags              []string                   `json:"tags"`
+	Cluster string   `json:"cluster"`
+	VMID    int      `json:"vmid"`
+	Name    string   `json:"name"`
+	Node    string   `json:"node"`
+	Pool    string   `json:"pool"`
+	Status  string   `json:"status"`
+	Tags    []string `json:"tags"`
+	// OSType is Proxmox's kernel family ("l26", "win11"), not a distribution.
+	OSType            string                     `json:"ostype"`
 	CPUCores          int                        `json:"cpuCores"`
 	MemoryTotal       int64                      `json:"memoryTotal"`
 	DiskTotal         int64                      `json:"diskTotal"`
@@ -1506,6 +1508,7 @@ func (h *VMDetail) writeEntity(w http.ResponseWriter, r *http.Request, entity vm
 		Pool:              entity.Pool,
 		Status:            string(entity.Status),
 		Tags:              entity.Tags,
+		OSType:            entity.OSType,
 		CPUCores:          entity.CPUCores,
 		MemoryTotal:       entity.MemoryTotal,
 		DiskTotal:         entity.DiskTotal,
@@ -1531,19 +1534,35 @@ func (h *VMDetail) writeEntity(w http.ResponseWriter, r *http.Request, entity vm
 		}
 	}
 
-	// Carry the baseline delivery state for image-mode VMs so the
-	// page can report it (best-effort - a store failure must not fail the
-	// whole detail).
-	if h.store != nil {
-		if state, found, err := h.store.GetBaselineState(r.Context(), entity.Cluster, entity.VMID); err == nil && found {
-			dto.BaselineState = state.State
-			dto.BaselineError = state.Error
-		}
-	}
+	h.fillBaselineState(r.Context(), entity, &dto)
 
 	h.fillGuestAgent(r.Context(), entity, &dto)
 
 	h.writeJSONStatus(w, http.StatusOK, dto)
+}
+
+// fillBaselineState carries the baseline delivery state for image-mode VMs so
+// the page can report it (best-effort - a store failure must not fail the
+// whole detail). A "not_delivered" value is a creation-time snapshot: a
+// document attached since (snippets enabled later) supersedes it.
+func (h *VMDetail) fillBaselineState(ctx context.Context, entity vm.Entity, dto *vmDetailDTO) {
+	if h.store == nil {
+		return
+	}
+
+	state, found, err := h.store.GetBaselineState(ctx, entity.Cluster, entity.VMID)
+	if err != nil || !found {
+		return
+	}
+
+	dto.BaselineState = state.State
+	dto.BaselineError = state.Error
+
+	if state.State == vm.BaselineStateNotDelivered {
+		if _, attached, err := h.store.GetVMCloudInitDocument(ctx, entity.Cluster, entity.VMID); err == nil && attached {
+			dto.BaselineState, dto.BaselineError = "", ""
+		}
+	}
 }
 
 // fillGuestAgent probes the guest agent for a running VM's live IPs and

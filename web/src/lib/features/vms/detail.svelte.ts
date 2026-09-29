@@ -16,6 +16,8 @@ export interface VmDetailEntity {
 	pool: string;
 	status: VmStatus;
 	tags: string[];
+	/** Proxmox kernel family ("l26", "win11"), not a distribution. */
+	ostype: string;
 	cpuCores: number;
 	memoryTotal: number;
 	diskTotal: number;
@@ -58,7 +60,7 @@ export interface VmDisk {
 }
 
 export interface VmCdrom {
-	state: 'absent' | 'empty' | 'mounted';
+	state: 'absent' | 'empty' | 'mounted' | 'occupied';
 	isoVolId?: string;
 }
 
@@ -283,6 +285,25 @@ export class VmDetailStore {
 		if (this.loading || this.actionInFlight || this.bootCdromInFlight || this.deleteInFlight) return;
 		if (Date.now() - this.lastLoadedAt <= minIntervalMs) return;
 		await this.load();
+	}
+
+	/**
+	 * Reads the live status (bypassing the up-to-30s-old projection) and patches
+	 * the entity. For pages that must show the true power state right away, e.g.
+	 * the console opened right after a start. Skips while a power action is in
+	 * flight (its convergence loop owns the status); read errors are ignored.
+	 */
+	async refreshLiveStatus(): Promise<void> {
+		if (this.entity === null || this.actionInFlight) return;
+		try {
+			const live = await get<{ status: VmStatus; lock?: string }>(`${this.#basePath}/status`);
+			if (this.entity === null || this.actionInFlight) return;
+			this.entity = live.lock === undefined
+				? { ...this.entity, status: live.status }
+				: { ...this.entity, status: live.status, lock: live.lock };
+		} catch {
+			// Keep the last known status; the next tick retries.
+		}
 	}
 
 	async loadHardwareOptions(): Promise<void> {

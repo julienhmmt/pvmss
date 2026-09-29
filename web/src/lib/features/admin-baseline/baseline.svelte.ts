@@ -2,14 +2,16 @@ import { get, ApiRequestError } from '$lib/shared/api/client';
 import { setContext, getContext } from 'svelte';
 import { m } from '$lib/paraglide/messages.js';
 
-import type { Publication } from '$lib/features/admin-cloudinit-templates/cloudInitTemplates.svelte';
+import type { CloudInitDocument } from '$lib/features/admin-cloudinit-templates/cloudInitTemplates.svelte';
 
 export interface BaselineState {
-	/** The generated baseline: published on its own for image VMs without a
+	/** The generated baseline: placed on its own for image VMs without a
 	 *  template, and merged under every admin template. */
 	generated: string;
-	/** Latest publication of the standalone baseline (null: never). */
-	publication: Publication | null;
+	/** The standalone baseline file, command and per-node presence (null
+	 *  with documentError when it could not be checked). */
+	document: CloudInitDocument | null;
+	documentError?: string;
 }
 
 /**

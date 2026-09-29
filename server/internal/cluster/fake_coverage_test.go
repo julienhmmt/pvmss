@@ -323,32 +323,6 @@ func TestFake_AddSSHKey_ForcedError(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // serial: shared default fake state
-func TestFake_PublishSnippet_ForcedError(t *testing.T) {
-	cluster.ResetFake()
-	defer cluster.ResetFake()
-
-	forcedErr := errors.New("push failed")
-
-	cluster.SetFakeCloudInitPushError(forcedErr)
-	defer cluster.SetFakeCloudInitPushError(nil)
-
-	results, err := (cluster.Fake{}).PublishSnippet(context.Background(), "pvmss-x.yml", "#cloud-config")
-	if err != nil || len(results) == 0 {
-		t.Fatalf("PublishSnippet = %+v/%v", results, err)
-	}
-
-	for _, r := range results {
-		if r.OK || r.Error != forcedErr.Error() {
-			t.Errorf("node %s = %+v, want the forced error", r.Node, r)
-		}
-	}
-
-	if present, _ := (cluster.Fake{}).HasSnippet(context.Background(), cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-x.yml"); present {
-		t.Error("failed publication marked the file present")
-	}
-}
-
 func TestFake_Action_NotFound(t *testing.T) {
 	t.Parallel()
 
@@ -1341,7 +1315,7 @@ func TestFake_StorageFreeSpace(t *testing.T) {
 	}
 }
 
-//nolint:gocyclo,paralleltest // serial: shared default fake state
+//nolint:paralleltest // serial: shared default fake state
 func TestFake_SnippetRoundTrip(t *testing.T) {
 	cluster.ResetFake()
 	defer cluster.ResetFake()
@@ -1349,8 +1323,8 @@ func TestFake_SnippetRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	fake := cluster.Fake{}
 
-	if !fake.PublishingEnabled() || fake.SnippetStorageID() != cluster.FakeSnippetStorage {
-		t.Error("fake publishing not enabled on its snippet storage")
+	if fake.SnippetStorageID() != cluster.FakeSnippetStorage {
+		t.Errorf("SnippetStorageID = %q, want %q", fake.SnippetStorageID(), cluster.FakeSnippetStorage)
 	}
 
 	if err := fake.AttachCloudInitSnippet(ctx, cluster.FakeNode01, cluster.FakeStorageLocal, "pvmss-100.yml", 100); err != nil {
@@ -1361,57 +1335,32 @@ func TestFake_SnippetRoundTrip(t *testing.T) {
 		t.Errorf("AttachCloudInitSnippet(99999) = %v, want ErrNotFound", err)
 	}
 
-	if _, err := fake.PublishSnippet(ctx, "pvmss-baseline-abc.yml", "#cloud-config\n"); err != nil {
-		t.Fatalf("PublishSnippet: %v", err)
+	results, err := fake.CheckSnippet(ctx, "pvmss-baseline-abc.yml")
+	if err != nil || len(results) < 2 {
+		t.Fatalf("CheckSnippet = %+v/%v", results, err)
 	}
 
-	for _, node := range []string{cluster.FakeNode01, cluster.FakeNode02} {
-		present, err := fake.HasSnippet(ctx, node, cluster.FakeSnippetStorage, "pvmss-baseline-abc.yml")
-		if err != nil || !present {
-			t.Errorf("HasSnippet(%s) = %v/%v after publish, want true", node, present, err)
+	for _, r := range results {
+		if !r.Present {
+			t.Errorf("node %s: pvmss file absent by default, want present (demo stack)", r.Node)
 		}
+	}
+
+	cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-baseline-abc.yml", false)
+
+	if present, _ := fake.HasSnippet(ctx, cluster.FakeNode01, cluster.FakeSnippetStorage, "pvmss-baseline-abc.yml"); present {
+		t.Error("explicit absence ignored")
+	}
+
+	if present, _ := fake.HasSnippet(ctx, cluster.FakeNode01, cluster.FakeSnippetStorage, "other.yml"); present {
+		t.Error("non-pvmss file present by default")
 	}
 
 	cluster.SetFakeSnippetVisibility(false)
 	defer cluster.SetFakeSnippetVisibility(true)
 
-	results, _ := fake.PublishSnippet(ctx, "pvmss-baseline-def.yml", "#cloud-config\n")
-	if len(results) == 0 || results[0].OK {
-		t.Errorf("publish with visibility off = %+v, want per-node failures", results)
-	}
-
-	scans, err := fake.ScanHostKeys(ctx)
-	if err != nil || len(scans) == 0 || cluster.ValidateKnownHosts(scans[0].Line) != nil {
-		t.Errorf("ScanHostKeys = %+v/%v, want valid known_hosts lines", scans, err)
-	}
-}
-
-//nolint:paralleltest // serial: shared default fake state
-func TestFake_RemoveCloudInitSnippet(t *testing.T) {
-	cluster.ResetFake()
-	defer cluster.ResetFake()
-
-	ctx := context.Background()
-	fake := cluster.Fake{}
-
-	cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeStorageLocal, "pvmss-baseline.yml", true)
-	cluster.SetFakeSnippetPresent(cluster.FakeNode01, cluster.FakeStorageLocal, "flag-only.yml", true)
-
-	if present, err := fake.HasSnippet(ctx, cluster.FakeNode01, cluster.FakeStorageLocal, "flag-only.yml"); err != nil || !present {
-		t.Errorf("HasSnippet(flag-only) = %v, %v, want true, nil", present, err)
-	}
-
-	if err := fake.RemoveCloudInitSnippet(ctx, cluster.FakeStorageLocal, "pvmss-baseline.yml"); err != nil {
-		t.Fatalf("RemoveCloudInitSnippet: %v", err)
-	}
-
-	present, err := fake.HasSnippet(ctx, cluster.FakeNode01, cluster.FakeStorageLocal, "pvmss-baseline.yml")
-	if err != nil {
-		t.Fatalf("HasSnippet after remove: %v", err)
-	}
-
-	if present {
-		t.Error("HasSnippet = true after RemoveCloudInitSnippet")
+	if present, _ := fake.HasSnippet(ctx, cluster.FakeNode02, cluster.FakeSnippetStorage, "pvmss-baseline-abc.yml"); present {
+		t.Error("visibility off: file still present")
 	}
 }
 
@@ -1499,13 +1448,11 @@ func TestFake_KnobSetters(t *testing.T) {
 	cluster.ResetFake()
 	defer cluster.ResetFake()
 
-	cluster.SetFakeCloudInitPushError(errors.New("push failed"))
 	cluster.SetFakeSnippetVisibility(false)
 	cluster.SetFakeTaskError("task failed")
 	cluster.SetFakeCreateError(cluster.ErrVMIDTaken, 1)
 
 	defer func() {
-		cluster.SetFakeCloudInitPushError(nil)
 		cluster.SetFakeSnippetVisibility(true)
 		cluster.SetFakeTaskError("")
 		cluster.SetFakeCreateError(nil, 0)

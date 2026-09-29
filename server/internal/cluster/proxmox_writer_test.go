@@ -312,6 +312,9 @@ func TestProxmox_SetCDROM(t *testing.T) {
 			var gotValue string
 
 			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+				mux.HandleFunc("GET /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, _ *http.Request) {
+					writeJSONFixture(t, w, `{"data":{"ide2":"none,media=cdrom"}}`)
+				})
 				mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, r *http.Request) {
 					if err := r.ParseForm(); err != nil {
 						t.Fatalf("parse form: %v", err)
@@ -342,6 +345,9 @@ func TestProxmox_SetCDROM_Absent(t *testing.T) {
 	var gotDelete string
 
 	srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+		mux.HandleFunc("GET /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, _ *http.Request) {
+			writeJSONFixture(t, w, `{"data":{"ide2":"none,media=cdrom"}}`)
+		})
 		mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, r *http.Request) {
 			if err := r.ParseForm(); err != nil {
 				t.Fatalf("parse form: %v", err)
@@ -361,6 +367,40 @@ func TestProxmox_SetCDROM_Absent(t *testing.T) {
 
 	if gotDelete != "ide2" {
 		t.Errorf("delete = %q, want ide2", gotDelete)
+	}
+}
+
+func TestProxmox_SetCDROM_RefusesToOverwriteCloudInitDrive(t *testing.T) {
+	t.Parallel()
+
+	for _, state := range []string{CDROMMounted, CDROMEmpty, CDROMAbsent} {
+		t.Run(state, func(t *testing.T) {
+			t.Parallel()
+
+			wrote := false
+
+			srv := newProxmoxTestServer(t, func(mux *http.ServeMux) {
+				mux.HandleFunc("GET /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, _ *http.Request) {
+					writeJSONFixture(t, w, `{"data":{"ide2":"local-lvm:vm-101-cloudinit,media=cdrom,size=4M"}}`)
+				})
+				mux.HandleFunc("PUT /api2/json/nodes/node01/qemu/101/config", func(w http.ResponseWriter, _ *http.Request) {
+					wrote = true
+
+					writeJSONFixture(t, w, `{"data":null}`)
+				})
+			})
+
+			p := Proxmox{BaseURL: srv.URL, APITokenName: testTokenName, APITokenValue: testTokenVal}
+
+			err := p.SetCDROM(context.Background(), testNodeName, testVMID, CDROMState{State: state, ISOVolID: "local:iso/x.iso"})
+			if !errors.Is(err, ErrInvalidAction) {
+				t.Fatalf("SetCDROM err = %v, want ErrInvalidAction", err)
+			}
+
+			if wrote {
+				t.Error("ide2 cloud-init drive was written")
+			}
+		})
 	}
 }
 

@@ -101,6 +101,10 @@ const cdromMountedValue = "local:iso/debian-12.iso,media=cdrom"
 // slot to a caller.
 const cloudInitDiskKey = "ide3"
 
+// proxmoxEmptyVolume is the sentinel Proxmox writes in a drive slot that
+// holds no volume (an ejected CD-ROM, a detached disk).
+const proxmoxEmptyVolume = "none"
+
 // cfgHasSerial reports whether the VM config carries a serial port (serial0,
 // serial1, …). The PVMSS Text/serial console needs at least one.
 func cfgHasSerial(cfg proxmoxVMConfig) bool {
@@ -129,7 +133,7 @@ func parseDisks(cfg proxmoxVMConfig) ([]Disk, int64) {
 			}
 
 			value, ok := cfg[key].(string)
-			if !ok || value == "" || value == "none" {
+			if !ok || value == "" || value == proxmoxEmptyVolume {
 				continue
 			}
 
@@ -235,6 +239,15 @@ func parseProxmoxSizeGB(raw string) int {
 	return int(n * multiplier)
 }
 
+// occupiedByNonISO reports whether the CD-ROM slot holds a real volume that is
+// not an ISO (Proxmox's default cloud-init drive lands there).
+func occupiedByNonISO(cfg proxmoxVMConfig) bool {
+	value, _ := cfg[cdromDiskKey].(string)
+	volume, _, _ := strings.Cut(value, ",")
+
+	return volume != "" && volume != proxmoxEmptyVolume && !strings.Contains(volume, ":iso/")
+}
+
 // parseCDROM reads the fixed ide2 slot's state.
 func parseCDROM(cfg proxmoxVMConfig) CDROMState {
 	value, ok := cfg[cdromDiskKey].(string)
@@ -243,8 +256,14 @@ func parseCDROM(cfg proxmoxVMConfig) CDROMState {
 	}
 
 	volume, _, _ := strings.Cut(value, ",")
-	if volume == "" || volume == "none" {
+	if volume == "" || volume == proxmoxEmptyVolume {
 		return CDROMState{State: CDROMEmpty}
+	}
+
+	// Proxmox parks the cloud-init drive on ide2 by default (a template clone
+	// keeps it). Only "storage:iso/file" volumes are ISOs.
+	if !strings.Contains(volume, ":iso/") {
+		return CDROMState{State: CDROMOccupied}
 	}
 
 	return CDROMState{State: CDROMMounted, ISOVolID: volume}
@@ -385,6 +404,7 @@ func hydrateVM(ctx context.Context, rest proxmoxRESTClient, vm *VM) error {
 	vm.Description = cfg.str("description")
 	vm.HasSerial = cfgHasSerial(cfg)
 	vm.Agent = agentEnabled(cfg.str("agent"))
+	vm.OSType = cfg.str("ostype")
 
 	if len(vm.Tags) == 0 {
 		vm.Tags = splitProxmoxTags(cfg.str("tags"))

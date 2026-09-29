@@ -9,21 +9,14 @@ services:
     env_file:
       - .env
     environment:
-      # Cloud-init templates: PVMSS publishes them to every Proxmox node over
-      # SSH with this key. The SSH user, port and pinned host keys are set per
-      # cluster in Infrastructure > Clusters. Full procedure: docs/cloud-init-ssh.md.
-      PVMSS_SSH_KEY_FILE: /etc/pvmss/ssh/id_ed25519
+      # Verbose logs (override .env). Lowercase only.
+      LOG_LEVEL: debug
+      LOG_FORMAT: console
+      LOG_OUTPUT: stdout
     ports:
       - "50000:50000/tcp"
     volumes:
       - ./pvmss.db:/app/pvmss.db
-      # Generate the key BEFORE the first `up` (otherwise Docker creates an
-      # empty directory here and the server refuses to start):
-      #   ssh-keygen -t ed25519 -N '' -C pvmss -f pvmss_snippets_ed25519
-      #   chmod 0644 pvmss_snippets_ed25519   # dev only: readable by uid 65532
-      # To run without cloud-init templates, comment out this line and
-      # PVMSS_SSH_KEY_FILE above.
-      - ./pvmss_snippets_ed25519:/etc/pvmss/ssh/id_ed25519:ro
     deploy:
       resources:
         limits:

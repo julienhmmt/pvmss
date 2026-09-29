@@ -147,39 +147,27 @@ func TestClusters_LastActiveGuard(t *testing.T) {
 	}
 }
 
-//nolint:gocyclo,paralleltest // migration fixtures are intentionally serial
-func TestSetClusterSnippetConfig_RoundTrip(t *testing.T) {
+//nolint:paralleltest // migration fixtures are intentionally serial
+func TestSetClusterSnippetStorage_RoundTrip(t *testing.T) {
 	st := openClusterStore(t)
 	ctx := context.Background()
 	row := store.ClusterRow{Name: "snippet-cluster", URL: testUpdateClusterURL, TokenID: testClusterTokenID, TokenSecret: testClusterTokenSecret}
 	if err := st.CreateCluster(ctx, row); err != nil {
 		t.Fatalf("CreateCluster: %v", err)
 	}
-	want := store.SnippetConfig{Storage: "shared", SSHUser: "pvmss", SSHPort: 2222, KnownHosts: "10.0.0.1 ssh-ed25519 AAAA"}
-	if err := st.SetClusterSnippetConfig(ctx, row.Name, want); err != nil {
-		t.Fatalf("SetClusterSnippetConfig: %v", err)
+	for _, want := range []string{"shared", ""} {
+		if err := st.SetClusterSnippetStorage(ctx, row.Name, want); err != nil {
+			t.Fatalf("SetClusterSnippetStorage(%q): %v", want, err)
+		}
+		stored, err := st.GetCluster(ctx, row.Name)
+		if err != nil {
+			t.Fatalf("GetCluster: %v", err)
+		}
+		if stored.SnippetStorage != want {
+			t.Fatalf("snippet storage = %q, want %q", stored.SnippetStorage, want)
+		}
 	}
-	stored, err := st.GetCluster(ctx, row.Name)
-	if err != nil {
-		t.Fatalf("GetCluster: %v", err)
-	}
-	if stored.SnippetStorage != want.Storage || stored.SSHUser != want.SSHUser || stored.SSHPort != want.SSHPort || stored.SSHKnownHosts != want.KnownHosts {
-		t.Fatalf("snippet config = %+v, want %+v", stored, want)
-	}
-	if !stored.PublishingConfigured() {
-		t.Fatal("PublishingConfigured = false, want true")
-	}
-	if err := st.SetClusterSnippetConfig(ctx, row.Name, store.SnippetConfig{}); err != nil {
-		t.Fatalf("clear snippet config: %v", err)
-	}
-	stored, err = st.GetCluster(ctx, row.Name)
-	if err != nil {
-		t.Fatalf("GetCluster after clear: %v", err)
-	}
-	if stored.SnippetStorage != "" || stored.SSHUser != "" || stored.SSHPort != 22 || stored.PublishingConfigured() {
-		t.Fatalf("snippet config after clear = %+v, want empty with port 22", stored)
-	}
-	if err := st.SetClusterSnippetConfig(ctx, "no-such-cluster", want); !errors.Is(err, store.ErrInvalidClusterName) {
+	if err := st.SetClusterSnippetStorage(ctx, "no-such-cluster", "local"); !errors.Is(err, store.ErrInvalidClusterName) {
 		t.Fatalf("unknown name error = %v, want ErrInvalidClusterName", err)
 	}
 }

@@ -23,11 +23,11 @@ script, or CI job still pointing at `backend/` or `frontend/` is stale - see
 | `server/`         | Go REST API - module `pvmss/server`, own `go.mod`                     |
 | `web/`            | SvelteKit SPA - app `pvmss-web`, own `package.json` (bun)             |
 | `helm/`           | Helm chart                                                            |
-| `docs/`           | Documentation (`docs/plans/` holds task plans)                        |
+| `docs/`           | Documentation: `FEATURES.md`, `cloud-init.md`, `constitution.md`, `design/`, `agents/`, `plans/` (task plans) |
 | `specs/`          | Feature specifications (speckit); gitignored but real work            |
 | `sonar-projects/` | Per-project SonarScanner `.properties` files                          |
 | `tools/`          | Helper scripts (`pq`, sonar bootstrap/coverage/scan/query, superlint) |
-| `.devin/`         | Project rules + skills (see "Project Conventions")                    |
+| `.devin/`         | Project rules + skills (local, gitignored - not in a fresh clone)     |
 | `.agents/`        | Agent-local working files - `skills/`, `memory/` (gitignored)         |
 
 `server/` and `web/` are separate build units with separate tooling. The root
@@ -44,6 +44,8 @@ building a user-facing feature:
 | `DESIGN.md`        | Design tokens - colors, typography, spacing                       |
 | `ROADMAP.md`       | History from v0.1 to the current rewrite, and what's next         |
 | `TECH_DEBT.md`     | What's lingering or half-finished, and what deciding it takes     |
+| `CONTEXT.md`       | Domain glossary (projection, live status, UPID, lock...)          |
+| `CONTRIBUTING.md`  | How to contribute; docs to update with a user-facing change       |
 
 `WORKFLOWS.md` opens with a seven-field template (audience, entry, route, API,
 steps, states, safety nets). Adding a user-facing workflow means adding its
@@ -178,27 +180,23 @@ Packages under `server/internal/`:
 | `config/`    | Env-based configuration, validation, slog logger, redaction   |
 
 Cloud-init documents are authored by PVMSS administrators only
-(`catalog_cloudinit_templates`, per cluster) and **published over SSH** to
-every node of the cluster: PVMSS runs the node-side helper `pvmss-snippet`
-(`tools/pvmss-node-setup.sh`, forced command) with `write <name>` and proves
-through the API that each node lists `<storage>:snippets/<name>`
-(`cluster/proxmox_publish.go`, `catalog/cloudinit_publish.go`,
-`cloudinit_publications`). Published files are content-addressed and
-immutable (`pvmss-tpl-<id>-<hash>.yml`, baseline merged in;
-`pvmss-baseline-<hash>.yml` alone for image VMs without a template). VM
-creation and the VM cloud-init tab never write a file: they check
-`HasSnippet` on the VM's node and set `cicustom` (`vm/create_cloudinit.go`,
-`vm_cloudinit_documents`). Per-cluster SSH settings (`clusters.ssh_user`,
-`ssh_port`, `ssh_known_hosts` - host keys always verified) + the global key
-`PVMSS_SSH_KEY_FILE`. The Proxmox API cannot write snippets. Operator guide
-(setup commands, Compose/Helm, troubleshooting): `docs/cloud-init-ssh.md`.
-The node setup script lives in `tools/pvmss-node-setup.sh` and is embedded,
-byte for byte, from `server/internal/nodesetup/pvmss-node-setup.sh`, served
-publicly at `GET /api/v1/pvmss-node-setup.sh` (text/plain). Edit the tools/
-copy, then `cp` it to nodesetup/: `go test ./internal/nodesetup/` fails on
-drift. Users cannot
-write cloud-init YAML (user files and the per-VM editor were removed);
-legacy per-VM files (`vm_cloudinit_snippets`) are only cleaned up.
+(`catalog_cloudinit_templates`, per cluster). **PVMSS never writes on the
+nodes**: the Proxmox API cannot write snippets (`upload`/`download-url`
+accept `iso`, `vztmpl`, `import` only), and SSH publishing was removed on
+2026-09-28 (`.scratch/cloudinit-manual/`). For each enabled template the
+admin page shows the content-addressed file (`pvmss-tpl-<id>-<hash>.yml`,
+baseline merged in; `pvmss-baseline-<hash>.yml` alone for image VMs without a
+template) and a copy-paste command (`catalog.WriteCommand`, `pvesm path` +
+quoted here-document) the admin runs as root on the nodes they choose.
+Presence is read live, per node, through the API (`cluster.SnippetChecker`,
+`cluster/proxmox_snippets.go`, `catalog/cloudinit_document.go`); nothing is
+stored. The create catalog lists each template with the nodes that have its
+file, and VM creation / the VM cloud-init tab re-check `HasSnippet` on the
+VM's node before setting `cicustom` (`vm/create_cloudinit.go`,
+`vm_cloudinit_documents`). Per cluster, only `clusters.snippet_storage`
+remains. Operator procedure: `docs/cloud-init.md`. Users cannot write
+cloud-init YAML; legacy per-VM files (`vm_cloudinit_snippets`) are forgotten,
+never deleted (PVMSS cannot delete snippets).
 
 ### Web (`web/`)
 
@@ -206,11 +204,12 @@ SvelteKit SPA: Svelte 5 runes, TypeScript, Tailwind CSS v4, `adapter-static`.
 Built with bun; the Go binary serves the build output (catch-all to
 `index.html` for client routing). Key dirs:
 
-- `src/routes/` - pages: `vms/`, `nodes/`, `admin/`, `profile/`, `login/`
+- `src/routes/` - pages: `vms/`, `nodes/`, `activity/`, `search/`, `docs/`, `about/`, `admin/`, `profile/`, `login/`
 - `src/lib/features/` - feature modules (stores + components per domain)
 - `src/lib/shared/` - shared API client and utilities
-- `src/lib/i18n/` + `messages/` + `project.inlang/` - i18n via Paraglide (EN + FR)
-- `src/lib/paraglide/` - generated Paraglide output
+- `messages/` (`en.json`, `fr.json`) + `project.inlang/` - i18n via Paraglide (EN + FR)
+- `src/lib/paraglide/` - generated Paraglide output (gitignored, produced by the Vite plugin and by `bun run check`)
+- `src/lib/shared/ui/` - in-house UI components (Button, Dialog, Select, Tabs...); no shadcn/bits-ui dependency
 - `src/test/` - vitest setup and helpers
 - `e2e/` - Playwright specs (auth, vms, nodes, admin, console, multi-cluster)
 
@@ -266,13 +265,21 @@ operator who simply forgot to set the variable.
 | `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | `15s`                              |
 | `PVMSS_MAX_LIST_PAGE_SIZE`                    | `100`                              |
 | `PVMSS_TRUSTED_PROXY_HOPS`                    | `1`                                |
-| `PVMSS_SSH_KEY_FILE`                          | empty; the key that publishes cloud-init templates over SSH (user/port/host keys are per cluster) |
+| `PVMSS_RATE_LIMIT_MAX`                        | `0` (keep each limiter's built-in ceiling; a positive value raises them all, used by e2e) |
 
 `PVMSS_OFFLINE`, `PVMSS_ENV`, `JWT_SECRET`, `PROXMOX_VERIFY_SSL` and
 `LOG_FILE_PATH` belonged to the v0.3 backend and are **no longer read**.
-`PVMSS_SSH_USER` / `PVMSS_SSH_PORT` are no longer read either (per cluster
-in Infrastructure > Clusters since cloud-init publishing moved to SSH-only). Demo
+`PVMSS_SSH_KEY_FILE`, `PVMSS_SSH_USER` and `PVMSS_SSH_PORT` are no longer
+read either (SSH publishing removed; startup warns when they are set). Demo
 mode is now `PVMSS_CLUSTER_SOURCE=fake`.
+
+## CI
+
+`.github/workflows/`: `go.yml` (server build + `make server-test`, web
+svelte-check/eslint/vitest), `v0.4.yml` (same plus `bun run build` and the
+Playwright e2e job), `lint.yml` (Super-Linter for CSS/Markdown/YAML,
+golangci-lint). All trigger on `main` (`lint.yml`: every push). Go version comes from
+`server/go.mod`, bun is pinned to `1.3.13` in `v0.4.yml`. Dependabot: `.github/dependabot.yml`.
 
 ## Testing Notes
 
@@ -293,6 +300,13 @@ you touch the surrounding area; do not treat them as documentation of reality:
 - `server/internal/recovery/` - comments reference `backend/` for context only
 
 Stale references already cleaned up:
+
+- `.github/code-review-graph.instruction.md` - deleted with the rest of the
+  graph tooling.
+- `pvmss-deployment.yaml` - Secret now carries `namespace: pvmss`; the Service
+  selector matches the pod labels (it selected nothing before).
+- README compose/`docker run` examples mounted the single file `pvmss.db`; SQLite
+  runs in WAL mode, so they now mount the `/data` directory as a volume.
 
 - `README.md` / `README.fr.md` - already link the in-app page `/docs/proxmox-permissions`
   (seeded from `server/internal/docs/seed/recovered/`), not the deleted

@@ -555,6 +555,7 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 	adminBaseline := httpapi.NewAdminBaseline(authHandler, nil, st, logger)
 	docs := httpapi.NewDocsAPIHandler(authHandler, st, logger)
 	adminDocs := httpapi.NewAdminDocs(authHandler, st, docs, logger)
+	profileSSHKeys := httpapi.NewProfileSSHKeys(authHandler, st, logger)
 
 	mux := httpapi.NewRouter(httpapi.RouterConfig{
 		Health:           health,
@@ -578,6 +579,7 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 		AdminClusters:    adminClusters,
 		AdminDocs:        adminDocs,
 		AdminBaseline:    adminBaseline,
+		ProfileSSHKeys:   profileSSHKeys,
 		Log:              logger,
 		Store:            st,
 		TrustedProxyHops: 0,

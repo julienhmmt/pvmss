@@ -1,4 +1,5 @@
-import type { VmNetworkInterface } from './detail.svelte';
+import type { VmCdrom, VmNetworkInterface } from './detail.svelte';
+import type { MachineDisplayStatus } from './display-status';
 
 /** An address PVMSS can offer for SSH, with the NIC it came from. */
 export interface MachineAddress {
@@ -39,4 +40,27 @@ export function primaryAddress(interfaces: readonly VmNetworkInterface[] | undef
 export function sshCommand(user: string | null, address: string): string {
 	const host = address.includes(':') ? `[${address}]` : address;
 	return `ssh ${user && user.trim() !== '' ? user.trim() : 'USER'}@${host}`;
+}
+
+/**
+ * What the Connect tab's SSH card can honestly say. "installing" wins over an
+ * address: a live installer reports one, but there is no installed OS to SSH
+ * into yet. PVMSS never probes port 22 (the address is guest-reported, so a
+ * probe would be an SSRF vector) - readiness is the ISO, agent and address.
+ */
+export type ConnectState = 'stopped' | 'installing' | 'agentDisabled' | 'agentUnreachable' | 'noAddress' | 'ready';
+
+interface ConnectInput {
+	networkInterfaces?: readonly VmNetworkInterface[];
+	guestAgent?: 'ok' | 'disabled' | 'unreachable';
+	cdrom?: VmCdrom;
+}
+
+export function connectState(status: MachineDisplayStatus, entity: ConnectInput): ConnectState {
+	if (status !== 'running') return 'stopped';
+	if (entity.cdrom?.state === 'mounted') return 'installing';
+	if (primaryAddress(entity.networkInterfaces)) return 'ready';
+	if (entity.guestAgent === 'disabled') return 'agentDisabled';
+	if (entity.guestAgent === 'unreachable') return 'agentUnreachable';
+	return 'noAddress';
 }

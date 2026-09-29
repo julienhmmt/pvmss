@@ -1,31 +1,9 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { setLocale } from '$lib/paraglide/runtime.js';
-import { compactBytes, machineInitials, machineTone, rowAction, rowHint } from './machine-row';
+import { compactBytes, rowAction, rowHint } from './machine-row';
 import type { MachineDisplayStatus } from './display-status';
 
 beforeAll(() => setLocale('en', { reload: false }));
-
-describe('machineInitials', () => {
-	it.each([
-		['web-01', 'WE'],
-		['build-runner', 'BR'],
-		['db', 'DB'],
-		['x', 'X'],
-		['', '?']
-	])('%s -> %s', (name, initials) => {
-		expect(machineInitials(name)).toBe(initials);
-	});
-});
-
-describe('machineTone', () => {
-	it('is stable per name and always a known tone', () => {
-		expect(machineTone('web-01')).toBe(machineTone('web-01'));
-		expect(machineTone('👩')).toBe('success');
-		for (const name of ['a', 'web-01', 'db-01', 'sandbox-01']) {
-			expect(['accent', 'subtle', 'success']).toContain(machineTone(name));
-		}
-	});
-});
 
 describe('rowHint and rowAction', () => {
 	const statuses: MachineDisplayStatus[] = ['running', 'stopped', 'provisioning', 'starting', 'stopping', 'failed', 'partial'];

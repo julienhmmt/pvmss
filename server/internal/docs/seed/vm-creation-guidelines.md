@@ -21,7 +21,14 @@ cloud-init). Avoid generic names like `vm1` - a descriptive name
   linked clone.
 - **Cloud image** - imports an approved cloud image as the primary disk and
   requires the cloud-init fields (user, SSH keys, network). The VM starts
-  only after the import finishes and cloud-init is applied.
+  only after the import finishes and cloud-init is applied. SSH keys go
+  through a shared picker: the keys saved on your profile are listed as
+  checkboxes - all ticked when you have three or fewer, unticked beyond
+  that - and one-off keys can be pasted below. Paste exactly one key your
+  profile does not know and the wizard offers to save it once the VM is
+  created; that save is best-effort and never makes the creation fail.
+  Whatever the source, keys are copied into the VM at creation time:
+  editing your profile later never changes existing machines.
 
 ## Resources
 
@@ -39,13 +46,13 @@ cloud-init). Avoid generic names like `vm1` - a descriptive name
 
 New VMs boot in **UEFI** by default, with an EFI disk holding an **empty key
 store**. That means UEFI itself (GPT, EFI variables, the q35 machine type) but
-no **Secure Boot** — PVMSS deliberately never enables it. Secure Boot only
+no **Secure Boot** - PVMSS deliberately never enables it. Secure Boot only
 runs bootloaders signed by the keys enrolled in the EFI variables, and PVMSS
 creates VMs from whatever ISO an administrator approved: most Linux install
 media is unsigned (Arch's official image states outright that it does not
 support Secure Boot), so with Secure Boot on the installer never starts and
-the VM stops at the UEFI shell with no way back. If you need Secure Boot — for
-a Windows 11 guest, say — enable it in Proxmox itself, where you can verify
+the VM stops at the UEFI shell with no way back. If you need Secure Boot - for
+a Windows 11 guest, say - enable it in Proxmox itself, where you can verify
 that the specific ISO is signed.
 
 Enable **TPM 2.0** for guests that require it (Windows 11).

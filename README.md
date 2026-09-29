@@ -50,7 +50,7 @@ The complete, route-by-route inventory lives in [docs/FEATURES.md](docs/FEATURES
 
 ### Administrators
 
-- **Clusters**: connect several Proxmox environments, test connectivity, per-cluster cloud-init publishing over SSH (snippet storage, SSH user, pinned host keys, host key scan).
+- **Clusters**: connect several Proxmox environments, test connectivity, per-cluster snippet storage for cloud-init templates.
 - **Catalog**: approve nodes, storages, ISOs, cloud images, VM templates, bridges; CRUD for hardware profiles, tags, cloud-init templates (published to every node, per-node status, "publish all"); stale approvals reconciled against live discovery.
 - **Pools**: create a self-service user = Proxmox user + pool + ACL in one step; cascade delete.
 - **Policy**: per-cluster gabarit (sockets, cores, memory, disk per VM, NICs, snapshots, isolation VLAN) and quota (VMs per user); per-node capacity caps with live usage.
@@ -124,90 +124,46 @@ All configuration is managed through the **Admin** section of the web UI, which 
 - Audit trail of all changes
 - Import/export functionality for backup/restore
 
-The database file must be persisted on a volume to survive container restarts.
+Persist the whole `/data` directory (a volume), not the single `pvmss.db` file: SQLite runs in WAL mode and keeps `-wal`/`-shm` files next to it. For a backup, use **Admin > Settings > Export Database**.
 
 #### Tags
 
 The tag `pvmss` is used by default for VMs created via PVMSS, it cannot and should not be removed. Only PVMSS tags created by the admin from this app can be used.
 
-#### VM Profiles
+#### VM profiles
 
-VM profiles are pre-configured templates that simplify VM creation by providing common resource configurations. Users can select a profile when creating a VM, which automatically sets CPU, RAM, disk, and other parameters.
-
-PVMSS provides built-in default profiles:
-
-- **Web Server**: 1 vCPU, 2 GB RAM, 24 GB disk
-- **Lightweight API**: 2 vCPU, 2 GB RAM, 24 GB disk
-- **Light App Server**: 4 vCPU, 4 GB RAM, 32 GB disk
-- **Medium App Server**: 4 vCPU, 6 GB RAM, 32 GB disk
-- **Test Environment**: 2 vCPU, 4 GB RAM, 24 GB disk
-
-Admins can manage custom profiles via the **Admin > Profiles** page, where they can:
-
-- Create new profiles with custom resource specifications
-- Edit existing profiles
-- Enable or disable profiles
-- Delete profiles
-- Set optional node and storage overrides per profile
-
-Each profile includes:
-
-- `id`: Unique identifier
-- `name`: Display name
-- `description`: User-friendly description
-- `sockets`, `cores`, `ram_gb`, `disk_gb`: Resource specifications
-- `disk_bus`: Disk bus type (virtio, scsi, sata, ide)
-- `node`, `storage`: Optional node/storage overrides (empty = auto-select)
-- `icon`, `color`: Visual customization
-- `enabled`: Whether the profile is visible to users
+VM profiles are hardware shapes (sockets, cores, memory, disk, disk bus) that
+administrators curate in **Admin > Profiles**. Users pick a profile in the
+create wizard instead of typing CPU/RAM/disk values. PVMSS ships no default
+profile: create the ones your users need. Each profile has a label, the
+resource values above, and an enabled flag (only enabled profiles are offered).
+Per-cluster limits (gabarit) in **Admin > Policy** still cap every value.
 
 ### Cloud-init templates (optional)
 
-Administrators write cloud-init templates in **Admin › Cloud-init templates**;
-users pick one when they create a VM (or switch later on the VM's cloud-init
-tab). Users never write YAML. The Proxmox REST API cannot write `snippets`
-files, so PVMSS **publishes** each template over SSH to every node:
+Administrators write cloud-init templates in **Admin › Cloud-init**; users
+pick one when they create a VM (or switch later on the VM's cloud-init tab).
+Users never write YAML. The Proxmox REST API cannot write `snippets` files,
+so **PVMSS never writes on the nodes**: for each template it shows a command
+that you paste, as root, on the nodes that must offer it. No key, no SSH.
 
-Quick setup (details, all deployment variants and troubleshooting:
-[docs/cloud-init-ssh.md](docs/cloud-init-ssh.md)):
+1. Enable the Snippets content type on a storage (one node, once; or GUI:
+   Datacenter > Storage):
 
-```sh
-# 1. PVMSS's key (workstation, repository root)
-ssh-keygen -t ed25519 -N '' -C pvmss -f pvmss_ed25519
+   ```sh
+   STORAGE=local
+   CUR=$(pvesh get /storage/$STORAGE --output-format json | perl -MJSON -0ne 'print decode_json($_)->{content}')
+   case ",$CUR," in *,snippets,*) ;; *) pvesm set "$STORAGE" --content "$CUR,snippets" ;; esac
+   ```
 
-# 2. Snippets content type on the storage (one node, once; or GUI: Datacenter > Storage)
-STORAGE=local
-CUR=$(pvesh get /storage/$STORAGE --output-format json | perl -MJSON -0ne 'print decode_json($_)->{content}')
-case ",$CUR," in *,snippets,*) ;; *) pvesm set "$STORAGE" --content "$CUR,snippets" ;; esac
+2. **Infrastructure › Clusters › Edit**: select that snippet storage.
+3. **Admin › Cloud-init**: write the template, copy its **Command to paste**,
+   run it on the chosen nodes, click **Verify**.
 
-# 3. Every node: helper + dedicated "pvmss" user (forced command, no shell).
-#    PVMSS serves the setup script (embedded in its binary; source:
-#    tools/pvmss-node-setup.sh). The exact command is in Infrastructure > Clusters > Edit.
-PVMSS=https://pvmss.example.com
-NODES="192.0.2.11 192.0.2.12 192.0.2.13"; PUBKEY=$(cat pvmss_ed25519.pub)
-for n in $NODES; do
-  ssh root@"$n" "curl -fsSL '$PVMSS/api/v1/pvmss-node-setup.sh' | sh -s -- --storage $STORAGE --user pvmss --key '$PUBKEY'"
-done
-#    Nodes without access to PVMSS: scp tools/pvmss-node-setup.sh, then sh it with the same options.
-
-# 4. Check one node
-ssh -i pvmss_ed25519 -o IdentitiesOnly=yes pvmss@192.0.2.11 check
-```
-
-5. Give PVMSS the private key: mount it read-only (readable by uid 65532) and
-   set `PVMSS_SSH_KEY_FILE` (Helm: `cloudInit.sshKeySecret`).
-6. **Infrastructure › Clusters › Edit**: snippet storage, SSH user `pvmss`, port, and
-   the pinned host keys (paste `for n in $NODES; do ssh-keyscan -t ed25519 $n;
-   done`, or save without the SSH user first, reopen and **Scan host keys**),
-   save. The badge turns "cloud-init: on" and PVMSS publishes the baseline and
-   every template.
-
-PVMSS must reach every node's IP from `/cluster/status` on the SSH port.
-Each published file is immutable (`pvmss-tpl-<id>-<hash>.yml`, the PVMSS
-baseline merged in): editing a template publishes a new file and existing VMs
-keep theirs. A template not present on a VM's node is refused before the VM
-is created, never attached. Use **Publish to all nodes** after adding or
-reinstalling a node.
+A template is offered only on the nodes that have its file. Each file is
+immutable (`pvmss-tpl-<id>-<hash>.yml`, the PVMSS baseline merged in):
+editing a template yields a new file and a new command, existing VMs keep
+theirs. Full procedure and troubleshooting: [docs/cloud-init.md](docs/cloud-init.md).
 
 ### Environment variables
 
@@ -226,7 +182,6 @@ You can rely on `.env` + `env_file` or inline `environment:` entries, but **not 
 | `PROXMOX_API_TOKEN_NAME`                      | Proxmox token name (`user@pve!token`)                                      | when source is `proxmox` | - |
 | `PROXMOX_API_TOKEN_VALUE`                     | Token secret that matches the name above                                   | when source is `proxmox` | - |
 | `ADMIN_PASSWORD_HASH`                         | Bcrypt hash for the local admin login; disabled when empty                 | ❌                       | - |
-| `PVMSS_SSH_KEY_FILE`                          | SSH private key that publishes cloud-init templates to the nodes (user, port, host keys: Infrastructure › Clusters) | ❌                       | - |
 | `PVMSS_HOST`                                  | Address to bind (`0.0.0.0` for all interfaces)                             | ❌                       | `127.0.0.1`            |
 | `PVMSS_WEB_DIR`                               | Directory holding the built SPA                                            | ❌                       | relative to the binary |
 | `PVMSS_COOKIE_SECURE`                         | `Secure` flag on auth cookies (keep `true` in production)                  | ❌                       | `true`                 |
@@ -235,13 +190,14 @@ You can rely on `.env` + `env_file` or inline `environment:` entries, but **not 
 | `PVMSS_INVENTORY_REFRESH_TIMEOUT`             | Timeout for a single inventory refresh                                     | ❌                       | `15s`                  |
 | `PVMSS_MAX_LIST_PAGE_SIZE`                    | Upper bound on list endpoint page size                                     | ❌                       | `100`                  |
 | `PVMSS_TRUSTED_PROXY_HOPS`                    | Number of reverse proxies in front of PVMSS (for client IP / rate limits)  | ❌                       | `1`                    |
+| `PVMSS_RATE_LIMIT_MAX`                        | Raises every built-in rate-limit ceiling (per-IP auth, per-user writes); `0` keeps the defaults | ❌                       | `0`                    |
 | `TZ`                                          | Container timezone                                                         | ❌                       | `UTC`                  |
 
 The Docker image presets `PVMSS_DB_PATH=/data/pvmss.db`, `PVMSS_HOST=0.0.0.0`
 and `PVMSS_WEB_DIR=/app/web/build`, so those three can be left unset in a
 container deployment.
 
-> Tip: `ADMIN_PASSWORD_HASH` can be generated locally with `htpasswd -bnBC 10 "admin" "StrongPassword" | cut -d: -f2`.
+> Tip: generate `ADMIN_PASSWORD_HASH` with `htpasswd -bnBC 10 "" "StrongPassword" | tr -d ':\n'`. In a Compose file or a `.env` used by Compose, escape every `$` as `$$`.
 
 #### Logging configuration
 
@@ -293,7 +249,7 @@ docker run -d \
   --name pvmss \
   --restart unless-stopped \
   -p 50000:50000 \
-  -v $(pwd)/pvmss.db:/data/pvmss.db \
+  -v pvmss_data:/data \
   -e ADMIN_PASSWORD_HASH='$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e' \
   -e LOG_LEVEL=info \
   -e LOG_OUTPUT=stdout \
@@ -309,13 +265,6 @@ docker run -d \
   jhmmt/pvmss:latest
 ```
 
-To enable cloud-init templates, also mount PVMSS's SSH key
-(see [Cloud-init templates](#cloud-init-templates-optional)):
-
-```bash
--v ./pvmss_ed25519:/etc/pvmss/ssh/id_ed25519:ro -e PVMSS_SSH_KEY_FILE=/etc/pvmss/ssh/id_ed25519 \
-```
-
 To write JSON logs to a file inside the container instead of stdout, override:
 
 ```bash
@@ -324,7 +273,7 @@ To write JSON logs to a file inside the container instead of stdout, override:
 -v $(pwd)/pvmss.log:/app/pvmss.log \
 ```
 
-The application will be available at <http://localhost:50000>.
+The application will be available at <http://localhost:50000>. Over plain HTTP on anything other than `localhost`, add `-e PVMSS_COOKIE_SECURE=false` (keep the default behind HTTPS).
 
 ## Start with Docker compose
 
@@ -343,7 +292,10 @@ services:
       PROXMOX_API_TOKEN_VALUE: "aaaaaaaa-0000-44aa-1111-aaaaaaaaaaa"
       PROXMOX_URL: "https://ip-or-name:8006/api2/json"
       PVMSS_CLUSTER_SOURCE: "proxmox"
-      ADMIN_PASSWORD_HASH: "$2y$10$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
+      # Every "$" of the bcrypt hash is doubled for Compose
+      ADMIN_PASSWORD_HASH: "$$2y$$10$$Ppg7Wl3sNYrmxZmWgcq4reOyznt7AeqMrQucaH4HY.dBrzavhPP1e"
+      # Plain HTTP with no TLS in front: drop the Secure cookie flag (keep it on behind HTTPS)
+      PVMSS_COOKIE_SECURE: "false"
       LOG_LEVEL: "info"
       LOG_OUTPUT: "stdout"
       LOG_FORMAT: "console"
@@ -352,16 +304,16 @@ services:
       PVMSS_DB_PATH: "/data/pvmss.db"
       TZ: "Europe/Paris"
     volumes:
-      - ./pvmss.db:/data/pvmss.db
+      - pvmss_data:/data
       # - ./pvmss.log:/app/pvmss.log # Uncomment to persist logs to a file inside the container
-      # Cloud-init templates: PVMSS's SSH key (see the section above), plus
-      # PVMSS_SSH_KEY_FILE: "/etc/pvmss/ssh/id_ed25519" in environment.
-      # - ./pvmss_ed25519:/etc/pvmss/ssh/id_ed25519:ro
     deploy:
       resources:
         limits:
           cpus: "1"
-          memory: 64M
+          memory: 128M
+
+volumes:
+  pvmss_data: {}
 ```
 
 To persist logs to a file inside the container, you can change the environment section to use JSON + file output, for example:

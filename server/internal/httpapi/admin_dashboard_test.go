@@ -195,6 +195,12 @@ func TestAdminDashboard_AlertsCarryClusterKey(t *testing.T) {
 		t.Fatalf("UpsertPolicyRow: %v", err)
 	}
 
+	// n2 is offline; it must be catalog-enabled to keep the critical
+	// node_offline alert (a disabled or unapproved node is informational).
+	if err := st.SetNodeEnabled(ctx, dashCluster, "n2", true); err != nil {
+		t.Fatalf("SetNodeEnabled: %v", err)
+	}
+
 	ops := httpapi.NewAdminOps(authHandler, st, cluster.Fake{}, inventory.NewProjection(), "0.4.0-test", slog.New(slog.DiscardHandler))
 	ops.SetInventorySource(inventory.NewRegistryFromIndexes(map[string]*inventory.Index{dashCluster: attentionIndex(), dashWestCluster: nil}), time.Minute)
 
