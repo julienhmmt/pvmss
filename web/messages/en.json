@@ -1666,7 +1666,6 @@
   "chrome.context.ariaLabel": "Current location",
   "chrome.context.workspace": "Workspace",
   "chrome.context.administration": "Administration",
-  "chrome.context.privateWorkspace": "Private workspace",
   "chrome.context.machines": "My machines",
   "chrome.context.create": "Create a machine",
   "chrome.context.machine": "Machine",
