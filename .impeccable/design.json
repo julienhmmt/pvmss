@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-28T20:35:56Z",
+  "generatedAt": "2026-09-29T07:13:55Z",
   "title": "Design System: PVMSS",
   "extensions": {
     "colorMeta": {
@@ -473,37 +473,40 @@
       }
     ],
     "dos": [
-      "Do use the warm paper background (#f7f6f4) for the app background and white (#ffffff) for card surfaces.",
-      "Do use Blaze Orange sparingly - primary buttons, active nav, focus rings, links only.",
-      "Do use OKLCH for all semantic colors with soft variants for backgrounds.",
-      "Do use Archivo Variable for all text. Use the mono font only for technical values.",
-      "Do use .pv-input and .pv-select classes on all form controls for consistent styling.",
-      "Do use .shadow-card / .shadow-raised / .shadow-overlay for elevation, and .pv-table .pv-responsive-table for data tables.",
-      "Do use Button / ButtonLink, TextField, Select, FormField, FormSection, Toolbar, Pill, StatCard and EmptyState instead of re-styling their markup by hand.",
-      "Do use Dialog.svelte for all modal dialogs - it has focus trap, escape handling, and focus restoration.",
-      "Do use skeleton loading states, not spinners in the middle of content.",
-      "Do use teaching empty states with actionable next steps.",
-      "Do respect prefers-reduced-motion on all animations.",
-      "Do make the machine list the signed-in landing page, not a dashboard.",
-      "Do put connection instructions (SSH + console) first on the detail page.",
-      "Do distinguish running, provisioning, failed, partial, and no-address states explicitly.",
-      "Do preserve entered form values across recoverable errors."
+      "**Do** use the warm paper background (#f7f6f4) for the app background and white (#ffffff) for card surfaces.",
+      "**Do** use Blaze Orange sparingly - primary buttons, active nav, focus rings, links only.",
+      "**Do** use OKLCH for all semantic colors with soft variants for backgrounds.",
+      "**Do** use Archivo Variable for all text. Use the mono font only for technical values.",
+      "**Do** use `.pv-input` and `.pv-select` classes on all form controls for consistent styling.",
+      "**Do** use `.shadow-card` / `.shadow-raised` / `.shadow-overlay` for elevation, and `.pv-table .pv-responsive-table` for data tables.",
+      "**Do** use `Button` / `ButtonLink`, `TextField`, `Select`, `FormField`, `FormSection`, `Toolbar`, `Pill`, `StatCard` and `EmptyState` instead of re-styling their markup by hand.",
+      "**Do** use `Dialog.svelte` for all modal dialogs - it has focus trap, escape handling, and focus restoration.",
+      "**Do** use skeleton loading states, not spinners in the middle of content.",
+      "**Do** use teaching empty states with actionable next steps.",
+      "**Do** respect `prefers-reduced-motion` on all animations.",
+      "**Do** make the machine list the signed-in landing page, not a dashboard.",
+      "**Do** put connection instructions (SSH + console) first on the detail page.",
+      "**Do** distinguish running, provisioning, failed, partial, and no-address states explicitly.",
+      "**Do** make every collection sortable and filterable to what needs attention. A list whose job is \"find the machine that needs you\" and has no sort is a list you scan by hand.",
+      "**Do** preserve entered form values across recoverable errors."
     ],
     "donts": [
-      "Don't use pure black (#000) or pure white (#fff) for surfaces or text. Use warm-tinted neutrals.",
-      "Don't use indigo, violet, or blue gradients. This is not a generic SaaS template.",
-      "Don't use glassmorphism, backdrop-blur on cards, or decorative shadows.",
-      "Don't use border-left or border-right greater than 1px as a colored accent stripe.",
-      "Don't use gradient text (background-clip: text with a gradient).",
-      "Don't use display fonts in UI labels, buttons, or data.",
-      "Don't use spinners inside content areas. Use skeleton states instead.",
-      "Don't use hand-rolled modal divs (fixed inset-0 z-50) instead of Dialog.svelte.",
-      "Don't use identical card grids with icon + heading + text repeated endlessly.",
-      "Don't add decorative motion that doesn't convey state. Motion is for feedback, not choreography.",
-      "Don't expose raw Proxmox terminology (node, storage, bridge, ISO) in the beginner path unless necessary. Use \"starting point\", \"size\", \"access\".",
-      "Don't claim a machine is \"ready\" unless connection data actually exists.",
-      "Don't guess an address. Show \"address not available yet\" and point to the console.",
-      "Don't let a user create a duplicate of a partial machine. Surface the existing one and route to help."
+      "**Don't** use pure black (#000) or pure white (#fff) for surfaces or text. Use warm-tinted neutrals.",
+      "**Don't** use indigo, violet, or blue gradients. This is not a generic SaaS template.",
+      "**Don't** use glassmorphism, backdrop-blur on cards, or decorative shadows.",
+      "**Don't** use border-left or border-right greater than 1px as a colored accent stripe.",
+      "**Don't** use gradient text (background-clip: text with a gradient).",
+      "**Don't** use display fonts in UI labels, buttons, or data.",
+      "**Don't** use spinners inside content areas. Use skeleton states instead.",
+      "**Don't** use hand-rolled modal divs (`fixed inset-0 z-50`) instead of `Dialog.svelte`.",
+      "**Don't** use identical card grids with icon + heading + text repeated endlessly.",
+      "**Don't** add decorative motion that doesn't convey state. Motion is for feedback, not choreography.",
+      "**Don't** expose raw Proxmox terminology (node, storage, bridge, ISO) in the beginner path unless necessary. Use \"starting point\", \"size\", \"access\".",
+      "**Don't** claim a machine is \"ready\" unless connection data actually exists.",
+      "**Don't** guess an address. Show \"address not available yet\" and point to the console.",
+      "**Don't** derive a row's identity from the machine's name. A name-hashed mark or tone looks like a recognition anchor and encodes nothing; anchor on real data (OS family, cluster) or say \"unknown\".",
+      "**Don't** let a bulk destructive action be looser than its single-item equivalent. If one machine confirms, N machines confirm.",
+      "**Don't** let a user create a duplicate of a `partial` machine. Surface the existing one and route to help."
     ]
   }
 }
