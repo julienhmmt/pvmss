@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import type { CloudInitConfigUpdate, CloudInitIPMode } from './cloudinit.types';
 	import type { CloudInitStore } from './cloudinit.svelte';
+	import type { SshKeySelection } from '$lib/features/profile-ssh-keys/ssh-key-selection.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import FormField from '$lib/shared/ui/FormField.svelte';
@@ -9,13 +11,15 @@
 	import Select from '$lib/shared/ui/Select.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
+	import SshKeyPicker from '$lib/features/profile-ssh-keys/SshKeyPicker.svelte';
 
 	interface Props {
 		store: CloudInitStore;
+		sshSelection: SshKeySelection;
 		onRequestSave: (update: CloudInitConfigUpdate) => void;
 	}
 
-	let { store, onRequestSave }: Props = $props();
+	let { store, sshSelection, onRequestSave }: Props = $props();
 	let user = $state('');
 	let password = $state('');
 	let sshKeys = $state('');
@@ -38,6 +42,21 @@
 		gateway = config.gateway ?? '';
 		dnsServer = config.dnsServer ?? '';
 		searchDomain = config.searchDomain ?? '';
+	});
+
+	function sshKeyLines(): string[] {
+		return sshKeys.split('\n').map((key) => key.trim()).filter(Boolean);
+	}
+
+	// The textarea stays the editable list of keys on the VM; the picker is
+	// add-only on top of it, so its "existing" view tracks the text live.
+	// The write is untracked: the setter internally reads its own state
+	// (the save-offer sync), which must not re-trigger this effect.
+	$effect(() => {
+		const lines = sshKeyLines();
+		untrack(() => {
+			sshSelection.existing = lines;
+		});
 	});
 
 	const IPV4_OCTET = '(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)';
@@ -83,7 +102,7 @@
 		onRequestSave({
 			user,
 			...(password === '' ? {} : { password }),
-			sshKeys: sshKeys.split('\n').map((key) => key.trim()).filter(Boolean),
+			sshKeys: sshSelection.finalKeys(),
 			ipMode,
 			...(ipMode === 'static' ? { ipAddress, gateway } : {}),
 			dnsServer,
@@ -138,6 +157,11 @@
 		<FormField label={m['vms.cloudinit.sshKeys']()}>
 			{#snippet children({ id, describedBy, invalid })}
 				<Textarea {id} {describedBy} {invalid} mono rows={6} bind:value={sshKeys} onCmdEnter={submit} data-testid="cloudinit-ssh-keys" />
+			{/snippet}
+		</FormField>
+		<FormField label={m['profileSshKeys.pickerHeading']()}>
+			{#snippet children({ id, describedBy, invalid })}
+				<SshKeyPicker {id} {describedBy} {invalid} selection={sshSelection} />
 			{/snippet}
 		</FormField>
 		<div class="mt-2 rounded-lg border border-border bg-muted/30 p-3">

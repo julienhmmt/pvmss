@@ -7,7 +7,7 @@
 	 * prefers-reduced-motion rule in app.css.
 	 */
 	interface Props {
-		id?: string;
+		id?: string | undefined;
 		value: string;
 		rows?: number;
 		minRows?: number;
