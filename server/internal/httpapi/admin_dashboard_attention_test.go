@@ -57,7 +57,7 @@ type attentionDashboardDTO struct {
 
 // attentionIndex is a small cluster built to trip every alert rule once:
 // n1 CPU at 95%, n2 offline, a shared Ceph pool at 96% seen from both nodes,
-// a local store at 86% on n1, and pool p1 holding two VMs.
+// a local store at 86% on n1, and pool pvmss-p1 holding two VMs.
 func attentionIndex() *inventory.Index {
 	idx := inventory.BuildIndexForCluster(dashCluster, cluster.Snapshot{
 		Nodes: []cluster.Node{
@@ -65,8 +65,8 @@ func attentionIndex() *inventory.Index {
 			{Name: "n2", Status: cluster.NodeOffline, CPUCores: 8, MemoryTotal: 64 * gib},
 		},
 		VMs: []cluster.VM{
-			{VMID: 100, Name: "a", Node: "n1", Pool: "p1", Status: cluster.VMRunning},
-			{VMID: 101, Name: "b", Node: "n1", Pool: "p1", Status: cluster.VMStopped},
+			{VMID: 100, Name: "a", Node: "n1", Pool: "pvmss-p1", Status: cluster.VMRunning},
+			{VMID: 101, Name: "b", Node: "n1", Pool: "pvmss-p1", Status: cluster.VMStopped},
 		},
 		Storages: []cluster.Storage{
 			{Name: dashSharedName, Node: "n1", PluginType: "rbd", Total: 100 * gib, Used: 96 * gib},
@@ -117,7 +117,7 @@ func wantAttentionAlerts(clusterLabel string) []dashboardAlertDTO {
 		{Kind: "node_offline", Severity: "critical", Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "n2"},
 		{Kind: "storage_full", Severity: "critical", Cluster: clusterLabel, ClusterKey: dashCluster, Subject: dashSharedName, Percent: 96},
 		{Kind: "node_cpu", Severity: "warning", Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "n1", Percent: 95},
-		{Kind: "pool_at_quota", Severity: "warning", Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "p1", Percent: 100},
+		{Kind: "pool_at_quota", Severity: "warning", Cluster: clusterLabel, ClusterKey: dashCluster, Subject: "pvmss-p1", Percent: 100},
 		{Kind: "storage_full", Severity: "warning", Cluster: clusterLabel, ClusterKey: dashCluster, Subject: testStorageLocalLVM, Percent: 86},
 	}
 }
@@ -129,6 +129,46 @@ func TestAdminDashboard_AlertsCoverEveryRule(t *testing.T) {
 	want := wantAttentionAlerts(dashCluster)
 	if !slices.Equal(dash.Alerts, want) {
 		t.Errorf("alerts =\n%+v\nwant\n%+v", dash.Alerts, want)
+	}
+}
+
+//nolint:paralleltest // serial: shared fake dataset
+func TestAdminDashboard_PoolQuotaIgnoresNonPVMSSPools(t *testing.T) {
+	authHandler := newAuthHandler(t)
+	st := auditAdminStore(t)
+
+	if err := st.UpsertPolicyRow(context.Background(), store.PolicyRow{Cluster: dashCluster, MaxVMPerUser: 2}); err != nil {
+		t.Fatalf("UpsertPolicyRow: %v", err)
+	}
+
+	idx := inventory.BuildIndexForCluster(dashCluster, cluster.Snapshot{
+		Nodes: []cluster.Node{
+			{Name: "n1", Status: cluster.NodeOnline, CPUCores: 8, MemoryTotal: 64 * gib},
+		},
+		VMs: []cluster.VM{
+			{VMID: 100, Name: "a", Node: "n1", Pool: "prod", Status: cluster.VMRunning},
+			{VMID: 101, Name: "b", Node: "n1", Pool: "prod", Status: cluster.VMRunning},
+		},
+	})
+	idx.RefreshedAt = time.Now()
+
+	ops := httpapi.NewAdminOps(authHandler, st, cluster.Fake{}, inventory.NewProjection(), "test", slog.New(slog.DiscardHandler))
+	ops.SetInventorySource(inventory.NewRegistryFromIndexes(map[string]*inventory.Index{dashCluster: &idx}), time.Minute)
+
+	rec := opsGet(t, ops, authHandler, adminCookie(t, authHandler), "/api/v1/admin/dashboard")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var dash attentionDashboardDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &dash); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	for _, a := range dash.Alerts {
+		if a.Kind == "pool_at_quota" {
+			t.Errorf("pool_at_quota alert for non-PVMSS pool: %+v", a)
+		}
 	}
 }
 
