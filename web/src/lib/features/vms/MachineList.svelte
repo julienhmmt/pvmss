@@ -200,7 +200,7 @@
 {:else if firstVisit}
 	<div class="flex flex-col items-center gap-4 rounded-xl border border-border bg-card px-6 py-14 text-center shadow-card" data-testid="vm-empty-owned">
 		<div class="relative" aria-hidden="true">
-			<span class="flex h-16 w-16 items-center justify-center rounded-2xl border border-border bg-muted text-muted-foreground">
+			<span class="flex h-16 w-16 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground">
 				<svg viewBox="0 0 24 24" class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
 					<rect x="2" y="3" width="20" height="14" rx="2" />
 					<line x1="8" y1="21" x2="16" y2="21" />
@@ -330,7 +330,9 @@
 					{m['vms.list.selectAll']()}
 				</label>
 			{/if}
-			<ul class="flex flex-col" aria-label={m['vms.list.caption']()}>
+			<!-- The enclosing <section> already carries this label; repeating it
+			     here makes assistive tech announce the same region twice. -->
+			<ul class="flex flex-col">
 				{#each items as machine (`${machine.cluster}:${machine.vmid}`)}
 					{@const status = statusOf(machine)}
 					{@const hint = rowHint(status)}
