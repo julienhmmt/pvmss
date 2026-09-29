@@ -235,6 +235,15 @@ func parseProxmoxSizeGB(raw string) int {
 	return int(n * multiplier)
 }
 
+// occupiedByNonISO reports whether the CD-ROM slot holds a real volume that is
+// not an ISO (Proxmox's default cloud-init drive lands there).
+func occupiedByNonISO(cfg proxmoxVMConfig) bool {
+	value, _ := cfg[cdromDiskKey].(string)
+	volume, _, _ := strings.Cut(value, ",")
+
+	return volume != "" && volume != "none" && !strings.Contains(volume, ":iso/")
+}
+
 // parseCDROM reads the fixed ide2 slot's state.
 func parseCDROM(cfg proxmoxVMConfig) CDROMState {
 	value, ok := cfg[cdromDiskKey].(string)
