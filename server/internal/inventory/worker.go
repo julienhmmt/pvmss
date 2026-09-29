@@ -33,9 +33,25 @@ type Worker struct {
 	interval   time.Duration
 	timeout    time.Duration
 	log        *slog.Logger
+	now        func() time.Time
+
+	// Health transition state. Only touched inside refreshCycle, which the
+	// singleflight in Refresh serialises, so it needs no lock of its own.
+	down         bool
+	downSince    time.Time
+	lastReminder time.Time
 
 	mu       sync.Mutex
 	inFlight *inFlightRefresh
+}
+
+// DownReminderInterval is how often a cluster that stays down is re-announced
+// at Warn. The first failure is Error, recovery is Info; nothing in between.
+const DownReminderInterval = 5 * time.Minute
+
+// WithClock replaces time.Now, so tests can drive the down/reminder timeline.
+func WithClock(now func() time.Time) Option {
+	return func(w *Worker) { w.now = now }
 }
 
 type inFlightRefresh struct {
@@ -68,6 +84,7 @@ func NewWorker(client cluster.Client, projection *Projection, interval time.Dura
 		interval:   interval,
 		timeout:    defaultRefreshTimeout,
 		log:        log,
+		now:        time.Now,
 	}
 	for _, opt := range opts {
 		opt(w)
@@ -84,6 +101,8 @@ func (w *Worker) refreshCycle(ctx context.Context) (time.Time, error) {
 	ctx, cancel := context.WithTimeout(ctx, w.timeout)
 	defer cancel()
 
+	started := w.now()
+
 	snap, err := w.client.Snapshot(ctx)
 	if err != nil {
 		// A deadline exceeded from the worker's own timeout is still a cluster
@@ -93,7 +112,7 @@ func (w *Worker) refreshCycle(ctx context.Context) (time.Time, error) {
 			err = fmt.Errorf("%w: %w", cluster.ErrUnreachable, err)
 		}
 
-		w.log.Error("inventory refresh failed", "component", "inventory", "error", err)
+		w.noteFailure(ctx, err)
 
 		return time.Time{}, err
 	}
@@ -101,8 +120,42 @@ func (w *Worker) refreshCycle(ctx context.Context) (time.Time, error) {
 	idx := BuildIndexForCluster(w.cluster, snap)
 	idx.RefreshedAt = time.Now()
 	w.projection.store(&idx)
+	w.noteSuccess(ctx, started, snap)
 
 	return idx.RefreshedAt, nil
+}
+
+// noteFailure logs health transitions, not repetitions: Error on the first
+// failure, then a Warn reminder every DownReminderInterval while it stays down.
+func (w *Worker) noteFailure(ctx context.Context, err error) {
+	now := w.now()
+
+	if !w.down {
+		w.down, w.downSince, w.lastReminder = true, now, now
+		w.log.ErrorContext(ctx, "cluster unreachable", "component", "inventory", "cluster", w.cluster, "error", err)
+
+		return
+	}
+
+	if now.Sub(w.lastReminder) >= DownReminderInterval {
+		w.lastReminder = now
+		w.log.WarnContext(ctx, "cluster still unreachable", "component", "inventory", "cluster", w.cluster,
+			"downForMs", now.Sub(w.downSince).Milliseconds(), "error", err)
+	}
+}
+
+// noteSuccess announces recovery once, then keeps per-refresh detail at Debug.
+func (w *Worker) noteSuccess(ctx context.Context, started time.Time, snap cluster.Snapshot) {
+	now := w.now()
+
+	if w.down {
+		w.log.InfoContext(ctx, "cluster recovered", "component", "inventory", "cluster", w.cluster,
+			"downForMs", now.Sub(w.downSince).Milliseconds())
+		w.down = false
+	}
+
+	w.log.DebugContext(ctx, "inventory refreshed", "component", "inventory", "cluster", w.cluster,
+		"durationMs", now.Sub(started).Milliseconds(), "vms", len(snap.VMs), "nodes", len(snap.Nodes))
 }
 
 // Refresh performs one refresh cycle. If a cycle is already in progress,
@@ -130,7 +183,7 @@ func (w *Worker) Refresh(ctx context.Context) (at time.Time, err error) {
 
 	defer func() {
 		if rec := recover(); rec != nil {
-			w.log.Error("inventory refresh panic recovered", "component", "inventory", "panic", rec)
+			w.log.ErrorContext(ctx, "inventory refresh panic recovered", "component", "inventory", "cluster", w.cluster, "panic", rec)
 			err = fmt.Errorf("inventory refresh panic: %v", rec)
 		}
 		// Always clear inFlight and close the done channel, even on panic,
@@ -156,7 +209,7 @@ func (w *Worker) Refresh(ctx context.Context) (at time.Time, err error) {
 func (w *Worker) Run(ctx context.Context) {
 	defer func() {
 		if rec := recover(); rec != nil {
-			w.log.Error("inventory worker loop panic recovered", "component", "inventory", "panic", rec)
+			w.log.ErrorContext(ctx, "inventory worker loop panic recovered", "component", "inventory", "cluster", w.cluster, "panic", rec)
 		}
 	}()
 

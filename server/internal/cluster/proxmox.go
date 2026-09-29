@@ -36,6 +36,10 @@ type Proxmox struct {
 	// registry.go; rest() lazily initializes it
 	// when nil so a zero-value Proxmox (tests) never panics.
 	httpClient *http.Client
+	// log and name feed the REST client's per-call Debug line; set by the
+	// registry factory, zero in tests.
+	log  *slog.Logger
+	name string
 }
 
 // LogValue keeps the API token out of logs when a Proxmox value is logged.
