@@ -11,6 +11,7 @@ import (
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/pools"
 	"pvmss/server/internal/store"
@@ -169,7 +170,7 @@ func (h *AdminPools) ServeList(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := pools.ListWithManaged(r.Context(), client, projection, h.store, clusterName, r.URL.Query().Get("search"))
 	if err != nil {
-		h.log.Error("admin pool list failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin pool list failed", err)
 		writeAdminError(w, http.StatusBadGateway, "cluster_unreachable", "failed to list pools")
 		return
 	}
@@ -207,13 +208,13 @@ func (h *AdminPools) ServeDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		h.log.Error("admin pool detail failed", "component", "httpapi", "pool", name, "error", err)
+		SetErrorMsg(w, "admin pool detail failed for "+name, err)
 		writeAdminError(w, http.StatusBadGateway, "cluster_unreachable", "failed to load pool")
 		return
 	}
 	quota, err := policy.New(h.store, projection, nil).Quota(r.Context(), clusterName, auth.Identity{Pool: name})
 	if err != nil {
-		h.log.Error("admin pool quota failed", "component", "httpapi", "pool", name, "error", err)
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "admin pool quota failed", "component", "httpapi", "pool", name, "error", err)
 		quota = policy.Quota{Used: len(detail.Members)}
 	}
 	writeAdminJSON(w, http.StatusOK, poolDetailDTO{
@@ -248,7 +249,7 @@ func (h *AdminPools) poolActivity(r *http.Request, clusterName, name string) []a
 	} {
 		page, err := h.store.ListAuditLog(r.Context(), filter)
 		if err != nil {
-			h.log.Error("pool activity query failed", "component", "httpapi", "pool", name, "error", err)
+			logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "pool activity query failed", "component", "httpapi", "pool", name, "error", err)
 			continue
 		}
 		for _, entry := range page.Items {
@@ -355,7 +356,7 @@ func (h *AdminPools) ServeDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		h.log.Error("admin pool deletion failed", "component", "httpapi", "pool", name, "error", err)
+		SetErrorMsg(w, "admin pool deletion failed for "+name, err)
 		writeAdminError(w, http.StatusBadGateway, "deletion_failed", "pool deletion failed")
 		return
 	}
@@ -480,7 +481,7 @@ func (h *AdminPools) SetTrustedProxyHops(n int) {
 func (h *AdminPools) recordAdminAction(r *http.Request, action, targetType, targetID, summary string, changes []any) {
 	actor, _ := h.auth.Principal(r)
 	if err := h.store.RecordAdminAction(r.Context(), actor.Username, action, targetType, targetID, detailJSON(summary, changes), clientIP(r, h.trustedProxyHops)); err != nil {
-		h.log.Error("failed to record admin action", "component", "httpapi", "action", action, "error", err)
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "failed to record admin action", "component", "httpapi", "action", action, "error", err)
 	}
 }
 
@@ -494,9 +495,9 @@ func (h *AdminPools) writeCreateError(w http.ResponseWriter, err error) {
 		writeAdminError(w, http.StatusForbidden, "forbidden", msgAdminOnly)
 	default:
 		if provisioningErr, ok := errors.AsType[*pools.ProvisionError](err); ok {
-			h.log.Error("admin pool provisioning step failed", "component", "httpapi", "step", provisioningErr.Step, "error", provisioningErr.Err)
+			SetErrorMsg(w, "admin pool provisioning step "+provisioningErr.Step+" failed", provisioningErr.Err)
 		} else {
-			h.log.Error("admin pool provisioning failed", "component", "httpapi", "error", err)
+			SetErrorMsg(w, "admin pool provisioning failed", err)
 		}
 		writeAdminError(w, http.StatusBadGateway, "provisioning_failed", "pool provisioning failed")
 	}

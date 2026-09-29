@@ -512,7 +512,7 @@ func (h *VMCloudInit) writeDomainError(w http.ResponseWriter, err error) {
 	case errors.Is(err, cluster.ErrNotImplemented), errors.Is(err, cluster.ErrUnreachable), errors.Is(err, cluster.ErrNotFound):
 		h.writeError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
 	default:
-		h.log.Error("cloud-init request failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "cloud-init request failed", err)
 		h.writeError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
 }
@@ -539,14 +539,14 @@ func (h *VMCloudInit) writeGuestAgentError(w http.ResponseWriter, err error) boo
 func (h *VMCloudInit) writeJSONStatus(w http.ResponseWriter, status int, value any) {
 	body, err := json.Marshal(value)
 	if err != nil {
-		h.log.Error("failed to marshal cloud-init response", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "failed to marshal cloud-init response", err)
 		h.writeError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
 
 	if err := writeJSON(w, status, body); err != nil {
-		h.log.Error("failed to write cloud-init response", "component", "httpapi", "error", err)
+		h.log.Warn("failed to write cloud-init response", "component", "httpapi", "error", err)
 	}
 }
 
@@ -561,7 +561,7 @@ func (h *VMCloudInit) writeError(w http.ResponseWriter, status int, code, messag
 	}
 
 	if err := writeJSON(w, status, body); err != nil {
-		h.log.Error("failed to write cloud-init error", "component", "httpapi", "error", err)
+		h.log.Warn("failed to write cloud-init error", "component", "httpapi", "error", err)
 	}
 }
 
