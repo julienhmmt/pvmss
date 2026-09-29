@@ -1680,7 +1680,6 @@
   "chrome.context.nodes": "Nodes",
   "chrome.context.dashboard": "Dashboard",
   "chrome.footer.tagline": "Proxmox VM Self-Service",
-  "chrome.footer.context": "Your machines, approved by your team",
   "chrome.footer.about": "About",
   "vms.list.eyebrow": "Your workspace",
   "vms.list.calmHeading": "My machines",
