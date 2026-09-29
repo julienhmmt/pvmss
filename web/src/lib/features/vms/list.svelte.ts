@@ -133,11 +133,17 @@ export class VmListStore {
 			// Proxmox destroy runs asynchronously (server/internal/cluster/proxmox_writer.go),
 			// so the inventory cache can still report a just-deleted VM for a short
 			// window. Hide anything this tab deleted itself until that window passes.
-			// ponytail: total/pagination counts are not adjusted for the suppressed
-			// row; acceptable since the count self-corrects once the cache catches up.
+			const items = result.items.filter((item) => !isRecentlyDeletedVm(item.cluster, item.vmid));
+			const hidden = result.items.length - items.length;
+			// Keep total/quota consistent with the hidden rows, otherwise the last
+			// deletion shows a "no match" state with a stale "1 machine" count.
+			const total = Math.max(0, result.total - hidden);
 			this.result = {
 				...result,
-				items: result.items.filter((item) => !isRecentlyDeletedVm(item.cluster, item.vmid))
+				items,
+				total,
+				...(result.quota && { quota: { ...result.quota, used: Math.max(0, result.quota.used - hidden) } }),
+				...(hidden > 0 && total === 0 && { emptyReason: 'no_vms_owned' as const })
 			};
 		} catch (err) {
 			if (err instanceof ApiRequestError) {
