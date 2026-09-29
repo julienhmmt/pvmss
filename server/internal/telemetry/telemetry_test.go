@@ -63,12 +63,12 @@ func TestEndpointHost_NeverLeaksCredentials(t *testing.T) {
 func TestSetup_DisabledIsNoop(t *testing.T) {
 	t.Parallel()
 
-	shutdown, err := telemetry.Setup(context.Background(), telemetry.Config{Version: "v", Commit: "c"}, env(nil))
+	res, err := telemetry.Setup(context.Background(), telemetry.Config{Version: "v", Commit: "c"}, env(nil))
 	if err != nil {
 		t.Fatalf("Setup: %v", err)
 	}
 
-	if err := shutdown(context.Background()); err != nil {
+	if err := res.Shutdown(context.Background()); err != nil {
 		t.Fatalf("shutdown: %v", err)
 	}
 }
@@ -110,14 +110,19 @@ func TestSetup_ExportsToOTLPEndpoint(t *testing.T) {
 		mu      sync.Mutex
 		hit     bool
 		gotBody []byte
+		metrics bool
 	)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 
 		mu.Lock()
-		hit = r.URL.Path == "/v1/traces"
-		gotBody = body
+		switch r.URL.Path {
+		case "/v1/traces":
+			hit, gotBody = true, body
+		case "/v1/metrics":
+			metrics = true
+		}
 		mu.Unlock()
 
 		w.WriteHeader(http.StatusOK)
@@ -127,10 +132,10 @@ func TestSetup_ExportsToOTLPEndpoint(t *testing.T) {
 	t.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", srv.URL)
 	t.Setenv("OTEL_SERVICE_NAME", "pvmss-test")
 
-	prev := otel.GetTracerProvider()
-	t.Cleanup(func() { otel.SetTracerProvider(prev) })
+	prevTP, prevMP := otel.GetTracerProvider(), otel.GetMeterProvider()
+	t.Cleanup(func() { otel.SetTracerProvider(prevTP); otel.SetMeterProvider(prevMP) })
 
-	shutdown, err := telemetry.Setup(context.Background(), telemetry.Config{Version: "9.9.9", Commit: "abc"}, os.Getenv)
+	res, err := telemetry.Setup(context.Background(), telemetry.Config{Version: "9.9.9", Commit: "abc"}, os.Getenv)
 	if err != nil {
 		t.Fatalf("Setup: %v", err)
 	}
@@ -138,7 +143,7 @@ func TestSetup_ExportsToOTLPEndpoint(t *testing.T) {
 	_, span := otel.Tracer("t").Start(context.Background(), "probe")
 	span.End()
 
-	if err := shutdown(context.Background()); err != nil {
+	if err := res.Shutdown(context.Background()); err != nil {
 		t.Fatalf("shutdown: %v", err)
 	}
 
@@ -147,5 +152,9 @@ func TestSetup_ExportsToOTLPEndpoint(t *testing.T) {
 
 	if !hit || !bytes.Contains(gotBody, []byte("pvmss-test")) || !bytes.Contains(gotBody, []byte("probe")) {
 		t.Fatalf("collector did not receive the span (hit=%v, %d bytes)", hit, len(gotBody))
+	}
+
+	if !metrics {
+		t.Fatal("collector did not receive the OTLP metrics push on flush")
 	}
 }

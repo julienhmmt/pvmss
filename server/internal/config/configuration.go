@@ -13,8 +13,11 @@ func (Configuration) LogValue() slog.Value { return slog.StringValue("[redacted]
 // All required values are loaded from the environment; WebDir is optional
 // and will be resolved at startup if omitted. Host defaults to 127.0.0.1.
 type Configuration struct {
-	Host              string
-	Port              int
+	Host string
+	Port int
+	// MetricsPort is the separate Prometheus listener port (PVMSS_METRICS_PORT);
+	// 0 disables it.
+	MetricsPort       int
 	DBPath            string
 	LogLevel          string
 	LogFormat         string

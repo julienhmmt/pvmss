@@ -16,6 +16,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 
 	"pvmss/server/internal/logctx"
+	"pvmss/server/internal/telemetry"
 )
 
 const tracerName = "pvmss/cluster"
@@ -93,6 +94,8 @@ func (c proxmoxRESTClient) attempt(ctx context.Context, method, path string, for
 	start := time.Now()
 	raw, status, err := c.doOnce(ctx, method, path, form)
 
+	elapsed := time.Since(start)
+	telemetry.RecordProxmoxRequest(ctx, c.cluster, method, status, elapsed)
 	span.SetAttributes(attribute.Int("http.response.status_code", status))
 
 	if err != nil {
@@ -105,7 +108,7 @@ func (c proxmoxRESTClient) attempt(ctx context.Context, method, path string, for
 		slog.String("method", method),
 		slog.String("path", templated),
 		slog.Int("status", status),
-		slog.Int64("durationMs", time.Since(start).Milliseconds()),
+		slog.Int64("durationMs", elapsed.Milliseconds()),
 		slog.Int("attempt", n),
 	)
 

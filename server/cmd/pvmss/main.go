@@ -25,6 +25,8 @@ import (
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/telemetry"
+
+	"go.opentelemetry.io/otel"
 	"pvmss/server/internal/vm"
 	"runtime/debug"
 	"syscall"
@@ -86,16 +88,18 @@ func run() int {
 
 	bi, _ := debug.ReadBuildInfo()
 
-	otelShutdown, err := telemetry.Setup(context.Background(), telemetry.Config{Version: appVersion, Commit: vcsSetting(bi, "vcs.revision")}, os.Getenv)
+	tel, err := telemetry.Setup(context.Background(), telemetry.Config{
+		Version: appVersion, Commit: vcsSetting(bi, "vcs.revision"), Metrics: cfg.MetricsPort != 0,
+	}, os.Getenv)
 	if err != nil {
-		logger.Warn("tracing disabled: telemetry setup failed", "component", "main", "error", err)
+		logger.Warn("telemetry disabled: setup failed", "component", "main", "error", err)
 	}
 
 	defer func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		if err := otelShutdown(ctx); err != nil {
+		if err := tel.Shutdown(ctx); err != nil {
 			logger.Warn("telemetry flush failed", "component", "main", "error", err)
 		}
 	}()
@@ -124,6 +128,23 @@ func run() int {
 	}
 
 	logBanner(logger, cfg, clusterRegistry.List(), bi, telemetry.EndpointHost(os.Getenv))
+
+	if _, err := telemetry.RegisterInventoryGauges(otel.Meter("pvmss"), inventoryStats(inventoryRegistry)); err != nil {
+		logger.Warn("inventory gauges not registered", "component", "main", "error", err)
+	}
+
+	stopMetrics, err := startMetricsServer(cfg, tel.MetricsHandler, logger)
+	if err != nil {
+		logger.Error("metrics server failed to start", "component", "main", "error", err)
+		return 1
+	}
+
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		_ = stopMetrics(ctx)
+	}()
 
 	// Start every worker before the HTTP server accepts traffic so the
 	// projections are populated before the first request can arrive.

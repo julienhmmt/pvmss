@@ -15,6 +15,7 @@ import (
 	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/pools"
 	"pvmss/server/internal/store"
+	"pvmss/server/internal/telemetry"
 	"strings"
 	"time"
 
@@ -182,6 +183,7 @@ func (h *Auth) AdminLogin(w http.ResponseWriter, r *http.Request) {
 	if request.Password == "" || h.adminHash == "" || bcrypt.CompareHashAndPassword([]byte(h.adminHash), []byte(request.Password)) != nil {
 		// Admin login failures write no audit row (keeps /activity unchanged),
 		// so the log stream is the only record. Never log the password.
+		telemetry.RecordLogin(r.Context(), "failure")
 		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "login failed", "component", "httpapi", "event", "auth", "result", "failure", "user", "admin")
 		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
 		return
@@ -198,6 +200,7 @@ func (h *Auth) startSession(w http.ResponseWriter, r *http.Request, identity aut
 		return
 	}
 
+	telemetry.RecordLogin(r.Context(), "success")
 	logctx.FromOr(r.Context(), h.log).InfoContext(r.Context(), "login succeeded", "component", "httpapi", "event", "auth", "result", "success", "user", identity.Username)
 	writeAuthJSON(w, http.StatusOK, identity)
 }
@@ -615,6 +618,8 @@ func userDisplayName(username string) string {
 }
 
 func (h *Auth) recordLoginFailed(ctx context.Context, username, ip string) {
+	telemetry.RecordLogin(ctx, "failure")
+
 	if h.clusterStore == nil {
 		return
 	}

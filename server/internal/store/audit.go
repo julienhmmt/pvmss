@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"pvmss/server/internal/logctx"
+	"pvmss/server/internal/telemetry"
 )
 
 // AuditEntry is one recorded row in the audit_log table. It now supports both
@@ -156,6 +157,17 @@ func (s *Store) mirrorAudit(ctx context.Context, row auditRow) {
 	}
 
 	logctx.FromOr(ctx, s.log()).LogAttrs(ctx, level, "audit event", attrs...)
+
+	// VM-scoped rows feed the pvmss.vm.actions counter; "critical" severity
+	// (fail/denied/rejected verbs) counts as a failed action.
+	if row.VMID != nil {
+		result := "success"
+		if row.Severity == "critical" {
+			result = "failure"
+		}
+
+		telemetry.RecordVMAction(ctx, row.Action, result)
+	}
 }
 
 func truncate(v string, limit int) string {
