@@ -31,6 +31,7 @@
 	import OsMark from '$lib/shared/ui/OsMark.svelte';
 	import AllowanceMeter from '$lib/shared/ui/AllowanceMeter.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
+	import SortButton from '$lib/shared/ui/SortButton.svelte';
 	import SearchIcon from '$lib/shared/ui/icons/SearchIcon.svelte';
 	import ChevronDownIcon from '$lib/shared/ui/icons/ChevronDownIcon.svelte';
 
@@ -44,10 +45,27 @@
 	/** Allowances above this many slots render as a continuous bar. */
 	const MAX_SEGMENTS = 12;
 
-	const STATUS_OPTIONS: readonly { value: VmStatus | ''; label: () => string }[] = [
+	/** A server status, or the client-derived "needs attention" pseudo-status. */
+	type StatusFilter = VmStatus | '' | 'attention';
+
+	const ATTENTION_VALUE = 'attention';
+
+	/**
+	 * The states "needs attention" keeps. All three are derived client-side
+	 * (display-status.ts) - the server only knows running / stopped / paused -
+	 * which is why the store loads every page when this filter is on.
+	 */
+	const ATTENTION_STATES: ReadonlySet<MachineDisplayStatus> = new Set([
+		'failed',
+		'partial',
+		'provisioning'
+	]);
+
+	const STATUS_OPTIONS: readonly { value: StatusFilter; label: () => string }[] = [
 		{ value: '', label: () => m['vms.list.filterAll']() },
 		{ value: 'running', label: () => m['vms.list.filterRunning']() },
-		{ value: 'stopped', label: () => m['vms.list.filterStopped']() }
+		{ value: 'stopped', label: () => m['vms.list.filterStopped']() },
+		{ value: ATTENTION_VALUE, label: () => m['vms.list.filterAttention']() }
 	];
 
 	let selectMode = $state(false);
@@ -98,26 +116,48 @@
 		if (!selectMode) bulk.clear();
 	}
 
+	const allItems = $derived(store.result?.items ?? []);
+	// "Needs attention" is a view-level filter over the full set the store
+	// fetched; every other filter is already applied server-side.
+	const items = $derived(
+		store.attention ? allItems.filter((machine) => ATTENTION_STATES.has(statusOf(machine))) : allItems
+	);
+
 	function handleSelectAll(event: Event): void {
 		const checked = (event.currentTarget as HTMLInputElement).checked;
-		const items = store.result?.items ?? [];
 		if (checked) bulk.selectPage(items);
 		else bulk.clearPage(items);
 	}
 
-	const items = $derived(store.result?.items ?? []);
+	const statusFilter = $derived<StatusFilter>(store.attention ? ATTENTION_VALUE : store.status);
+
+	function setStatusFilter(value: string): void {
+		if (value === ATTENTION_VALUE) store.setAttention(true);
+		else store.setStatus(value as VmStatus | '');
+	}
+
 	const quota = $derived(store.result?.quota ?? null);
 	const quotaFull = $derived(quota !== null && quota.allowed >= 0 && quota.used >= quota.allowed);
+	// The attention filter has already fetched every page, so paginating the
+	// result would page over a set that is complete.
 	const pageCount = $derived(
-		store.result === null ? 1 : Math.max(1, Math.ceil(store.result.total / store.result.pageSize))
+		store.attention || store.result === null
+			? 1
+			: Math.max(1, Math.ceil(store.result.total / store.result.pageSize))
 	);
-	const filtered = $derived(store.search !== '' || store.status !== '' || store.node !== '');
+	const filtered = $derived(
+		store.search !== '' || store.status !== '' || store.node !== '' || store.attention
+	);
 	// Filtered lists show "N of M machines" - M is the owned-VM total from
 	// quota.used, only present on the 'mine' scope; without it the plain
-	// filtered count stands alone.
+	// filtered count stands alone. The attention filter is client-side, so it
+	// counts its own matches against the full total it fetched.
 	const machineCountLabel = $derived.by(() => {
 		const result = store.result;
 		if (result === null) return '';
+		if (store.attention) {
+			return m['vms.list.machineCountFiltered']({ filtered: items.length, total: result.total });
+		}
 		if (filtered && result.quota !== undefined) {
 			return m['vms.list.machineCountFiltered']({ filtered: result.total, total: result.quota.used });
 		}
@@ -189,8 +229,8 @@
 				<Select
 					id="vm-status-filter"
 					class="w-auto min-w-[9rem]"
-					value={store.status}
-					onchange={(event: Event) => store.setStatus((event.currentTarget as HTMLSelectElement).value as VmStatus | '')}
+					value={statusFilter}
+					onchange={(event: Event) => setStatusFilter((event.currentTarget as HTMLSelectElement).value)}
 					options={STATUS_OPTIONS.map((option) => ({ value: option.value, label: option.label() }))}
 					data-testid="vm-status-filter"
 				/>
@@ -246,11 +286,26 @@
 				class="grid grid-cols-[minmax(0,1fr)_11rem_8.5rem_9rem] items-center gap-4 border-b border-border bg-muted/60 px-4 py-2 text-2xs font-semibold uppercase tracking-[0.04em] text-muted-foreground max-[699px]:hidden {selectMode
 					? 'pl-12'
 					: ''}"
-				aria-hidden="true"
+				role="group"
+				aria-label={m['vms.list.sortGroupLabel']()}
 			>
-				<span>{m['vms.list.columnMachine']()}</span>
+				<SortButton
+					label={m['vms.list.columnMachine']()}
+					active={store.sortBy === 'name'}
+					direction={store.sortDir}
+					aria-label={m['vms.list.sortByName']()}
+					onclick={() => store.setSort('name')}
+					data-testid="vm-sort-name"
+				/>
 				<span>{m['vms.list.columnResources']()}</span>
-				<span>{m['vms.list.columnStatus']()}</span>
+				<SortButton
+					label={m['vms.list.columnStatus']()}
+					active={store.sortBy === 'status'}
+					direction={store.sortDir}
+					aria-label={m['vms.list.sortByStatus']()}
+					onclick={() => store.setSort('status')}
+					data-testid="vm-sort-status"
+				/>
 				<span class="sr-only">{m['vms.list.columnActions']()}</span>
 			</div>
 			{#if selectMode}

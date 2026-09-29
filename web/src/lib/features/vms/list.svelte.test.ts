@@ -315,3 +315,57 @@ describe('VmListStore', () => {
 		});
 	});
 });
+
+describe('VmListStore attention filter', () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('is mutually exclusive with the server status filter', () => {
+		const { store, navigated } = makeStore('?status=running');
+
+		store.setAttention(true);
+		expect(store.attention).toBe(true);
+		expect(store.status).toBe('');
+		expect(navigated.at(-1)).toContain('attention=1');
+
+		store.setStatus('stopped');
+		expect(store.attention).toBe(false);
+		expect(navigated.at(-1)).not.toContain('attention=1');
+	});
+
+	it('loads every page, so a match on page 2 is not hidden', async () => {
+		const [baseVm] = oneVmResult.items;
+		if (baseVm === undefined) throw new Error('fixture is missing its VM');
+		const pageResult = (page: number, count: number, total: number): VmListResult => ({
+			items: Array.from({ length: count }, (_, i) => ({
+				...baseVm,
+				vmid: page * 100 + i,
+				name: `vm-${page}-${i}`
+			})),
+			total,
+			page,
+			pageSize: 10,
+			availableNodes: []
+		});
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(jsonResponse(200, pageResult(1, 10, 25)))
+			.mockResolvedValueOnce(jsonResponse(200, pageResult(2, 10, 25)))
+			.mockResolvedValueOnce(jsonResponse(200, pageResult(3, 5, 25)));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const { store } = makeStore('?attention=1');
+		await store.load();
+
+		expect(fetchMock).toHaveBeenCalledTimes(3);
+		expect(store.result?.items).toHaveLength(25);
+		expect(store.result?.page).toBe(1);
+		expect(store.result?.pageSize).toBe(25);
+	});
+
+	it('reads the filter back out of the URL', () => {
+		const { store } = makeStore('?attention=1');
+		expect(store.attention).toBe(true);
+	});
+});
