@@ -8,6 +8,11 @@ import (
 	"pvmss/server/internal/cluster"
 	"sync"
 	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // defaultRefreshTimeout caps how long a single cluster.Snapshot call may take.
@@ -101,10 +106,18 @@ func (w *Worker) refreshCycle(ctx context.Context) (time.Time, error) {
 	ctx, cancel := context.WithTimeout(ctx, w.timeout)
 	defer cancel()
 
+	// Parent span for the whole cycle: the Proxmox calls made by Snapshot
+	// become its children. The status carries no error text (it can embed
+	// hostnames and Proxmox messages); the logs hold the detail.
+	ctx, span := otel.Tracer("pvmss/inventory").Start(ctx, "inventory.refresh", trace.WithAttributes(attribute.String("cluster", w.cluster)))
+	defer span.End()
+
 	started := w.now()
 
 	snap, err := w.client.Snapshot(ctx)
 	if err != nil {
+		span.SetStatus(codes.Error, "refresh failed")
+
 		// A deadline exceeded from the worker's own timeout is still a cluster
 		// unreachability signal: the cluster did not respond before we gave up.
 		// Wrap it so downstream code and logs see cluster.ErrUnreachable.

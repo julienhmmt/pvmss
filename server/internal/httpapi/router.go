@@ -12,6 +12,8 @@ import (
 	"pvmss/server/internal/store"
 	"strings"
 	"time"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 const (
@@ -84,6 +86,9 @@ type RouterConfig struct {
 	// built-in defaults). Opt-in escape hatch for the e2e suite and load
 	// tests; raising it weakens the login brute-force protection.
 	RateLimitMax int
+	// TracerProvider overrides the global OpenTelemetry provider for request
+	// spans. nil uses the global one (no-op unless telemetry.Setup enabled it).
+	TracerProvider trace.TracerProvider
 }
 
 // limitMax resolves a limiter ceiling, honouring the RateLimitMax override.
@@ -146,7 +151,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	// SPA) gets CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy,
 	// Permissions-Policy, HSTS, and cache-control for API paths. The request-ID
 	// middleware is outermost so every response, including errors, carries it.
-	return withRequestID(cfg.Log, withAccessLog(hops, withSecurityHeaders(mux)))
+	return withRequestID(cfg.Log, withTracing(cfg.TracerProvider, withAccessLog(hops, withSecurityHeaders(mux))))
 }
 
 // protectFunc is the signature of NewRouter's `protect` closure, factored out
