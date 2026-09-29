@@ -311,6 +311,9 @@ const (
 	CDROMAbsent  = "absent"  // CDROMAbsent means no CD-ROM drive exists.
 	CDROMEmpty   = "empty"   // CDROMEmpty means the drive has no media.
 	CDROMMounted = "mounted" // CDROMMounted means approved media is attached.
+	// CDROMOccupied means ide2 holds a non-ISO volume (a template clone's
+	// cloud-init drive); PVMSS must not touch it.
+	CDROMOccupied = "occupied"
 )
 
 // NetworkInterface describes one VM network interface and guest-agent data.

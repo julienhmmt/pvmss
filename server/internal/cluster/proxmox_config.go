@@ -259,7 +259,7 @@ func parseCDROM(cfg proxmoxVMConfig) CDROMState {
 	// Proxmox parks the cloud-init drive on ide2 by default (a template clone
 	// keeps it). Only "storage:iso/file" volumes are ISOs.
 	if !strings.Contains(volume, ":iso/") {
-		return CDROMState{State: CDROMAbsent}
+		return CDROMState{State: CDROMOccupied}
 	}
 
 	return CDROMState{State: CDROMMounted, ISOVolID: volume}

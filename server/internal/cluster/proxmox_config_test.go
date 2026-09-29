@@ -79,7 +79,7 @@ func TestParseCDROM(t *testing.T) {
 		{"absent, no ide2 key", proxmoxVMConfig{}, CDROMState{State: CDROMAbsent}},
 		{"empty, none media", proxmoxVMConfig{cdromDiskKey: "none,media=cdrom"}, CDROMState{State: CDROMEmpty}},
 		{"mounted", proxmoxVMConfig{cdromDiskKey: cdromMountedValue}, CDROMState{State: CDROMMounted, ISOVolID: "local:iso/debian-12.iso"}},
-		{"cloud-init drive on ide2 is not a mounted ISO", proxmoxVMConfig{cdromDiskKey: "local-lvm:vm-999100-cloudinit,media=cdrom,size=4M"}, CDROMState{State: CDROMAbsent}},
+		{"cloud-init drive on ide2 is occupied, not a mounted ISO", proxmoxVMConfig{cdromDiskKey: "local-lvm:vm-999100-cloudinit,media=cdrom,size=4M"}, CDROMState{State: CDROMOccupied}},
 	}
 
 	for _, tc := range cases {
