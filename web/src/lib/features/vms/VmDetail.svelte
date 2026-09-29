@@ -263,7 +263,7 @@
 			onCancelShutdown={() => (confirmingShutdown = false)}
 			detail={ledger.detail(store.cluster, store.vmid)}
 		/>
-		{#if entity.baselineState === 'not_delivered'}
+		{#if entity.baselineState === 'not_delivered' && entity.tags?.includes('pvmss-image')}
 			<div class="rounded-xl border border-warning-soft-border bg-warning-soft p-4 text-warning-soft-foreground" data-testid="vm-baseline-not-delivered">
 				<p class="text-sm font-medium">{m['vms.detail.baselineNotDelivered']()}</p>
 				<p class="text-xs">{m['vms.detail.baselineNotDeliveredHint']()}</p>
