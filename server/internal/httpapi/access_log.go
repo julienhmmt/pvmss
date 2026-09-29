@@ -129,7 +129,9 @@ func routeOf(r *http.Request) string {
 func withAccessLog(trustedProxyHops int, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		ip := clientIP(r, trustedProxyHops)
+		// Put clientIp on the request logger so every later line (handler,
+		// audit mirror, access log) carries it without repeating the lookup.
+		logctx.AddAttrs(r.Context(), slog.String("clientIp", clientIP(r, trustedProxyHops)))
 
 		emit := func(msg string, lw *logWriter) {
 			route := routeOf(r)
@@ -139,7 +141,6 @@ func withAccessLog(trustedProxyHops int, next http.Handler) http.Handler {
 				slog.Int("status", lw.status),
 				slog.Int("bytes", lw.bytes),
 				slog.Int64("durationMs", time.Since(start).Milliseconds()),
-				slog.String("clientIp", ip),
 			}
 			if lw.err != nil {
 				attrs = append(attrs, slog.Any("error", lw.err))

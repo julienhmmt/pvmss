@@ -28,9 +28,16 @@ func With(ctx context.Context, l *slog.Logger) context.Context {
 // From returns the request logger with every added attr, or slog.Default()
 // when ctx carries none. It never returns nil.
 func From(ctx context.Context) *slog.Logger {
+	return FromOr(ctx, slog.Default())
+}
+
+// FromOr is From with a caller-supplied fallback, for components that own an
+// injected logger (e.g. the store) but should still use the request logger
+// when one is present.
+func FromOr(ctx context.Context, fallback *slog.Logger) *slog.Logger {
 	h, ok := ctx.Value(ctxKey{}).(*holder)
 	if !ok {
-		return slog.Default()
+		return fallback
 	}
 
 	h.mu.Lock()

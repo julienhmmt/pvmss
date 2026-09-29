@@ -180,6 +180,9 @@ func (h *Auth) AdminLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if request.Password == "" || h.adminHash == "" || bcrypt.CompareHashAndPassword([]byte(h.adminHash), []byte(request.Password)) != nil {
+		// Admin login failures write no audit row (keeps /activity unchanged),
+		// so the log stream is the only record. Never log the password.
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "login failed", "component", "httpapi", "event", "auth", "result", "failure", "user", "admin")
 		writeAuthError(w, http.StatusUnauthorized, "invalid_credentials", msgInvalidCredentials)
 		return
 	}
@@ -195,6 +198,7 @@ func (h *Auth) startSession(w http.ResponseWriter, r *http.Request, identity aut
 		return
 	}
 
+	logctx.FromOr(r.Context(), h.log).InfoContext(r.Context(), "login succeeded", "component", "httpapi", "event", "auth", "result", "success", "user", identity.Username)
 	writeAuthJSON(w, http.StatusOK, identity)
 }
 
@@ -308,12 +312,17 @@ func (h *Auth) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Resolve first so the request logger carries the user being logged out.
+	_, _ = h.Principal(r)
+
 	if err := h.sessions.Logout(r.Context(), w, r); err != nil {
 		h.log.Error("failed to revoke session", "component", "httpapi", "error", err)
 		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
+
+	logctx.FromOr(r.Context(), h.log).InfoContext(r.Context(), "logout", "component", "httpapi", "event", "auth", "result", "success")
 
 	w.WriteHeader(http.StatusNoContent)
 }
