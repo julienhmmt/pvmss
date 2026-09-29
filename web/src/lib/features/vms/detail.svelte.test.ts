@@ -17,6 +17,7 @@ const baseEntity: VmDetailEntity = {
 	pool: 'pool-alice',
 	status: 'stopped',
 	tags: ['pvmss'],
+	ostype: 'l26',
 	cpuCores: 2,
 	memoryTotal: 4294967296,
 	diskTotal: 32212254720

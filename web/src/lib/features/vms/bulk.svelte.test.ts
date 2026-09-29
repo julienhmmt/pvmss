@@ -21,6 +21,7 @@ function vmItem(cluster: string, vmid: number, name: string, status: VmListItem[
 		status,
 		pool: 'pool-alice',
 		tags: ['pvmss'],
+		ostype: 'l26',
 		cpuCores: 2,
 		memoryTotal: 4096
 	};

@@ -16,7 +16,7 @@
 	import VmStateBanners from './VmStateBanners.svelte';
 	import MachineStatusPill from './MachineStatusPill.svelte';
 	import { displayStatus } from './display-status';
-	import { compactBytes, machineInitials, machineTone } from './machine-row';
+	import { compactBytes } from './machine-row';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import { getTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
 	import { getPowerActionsContext } from '$lib/features/tasks/power-actions.svelte';
@@ -177,7 +177,7 @@
 		</ButtonLink>
 		<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 			<div class="flex min-w-0 items-center gap-4">
-				<span class="max-[369px]:hidden"><OsMark initials={machineInitials(entity.name)} tone={machineTone(entity.name)} size="lg" /></span>
+				<span class="max-[369px]:hidden"><OsMark ostype={entity.ostype} size="lg" /></span>
 				<div class="min-w-0">
 					<h1 id="page-heading" tabindex="-1" class="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight focus:outline-none">
 						{#if editingName}

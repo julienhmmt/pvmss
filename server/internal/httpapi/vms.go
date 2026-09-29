@@ -62,8 +62,11 @@ type vmDTO struct {
 	Status             string   `json:"status"`
 	Pool               string   `json:"pool"`
 	Tags               []string `json:"tags"`
-	CPUCores           int      `json:"cpuCores"`
-	MemoryTotal        int64    `json:"memoryTotal"`
+	// OSType is Proxmox's kernel family ("l26", "win11"), not a distribution.
+	// Empty when the guest's config did not report one.
+	OSType      string `json:"ostype"`
+	CPUCores    int    `json:"cpuCores"`
+	MemoryTotal int64  `json:"memoryTotal"`
 }
 
 type quotaDTO struct {
@@ -246,6 +249,7 @@ func (h *VMs) writeList(ctx context.Context, w http.ResponseWriter, result vm.Li
 			Status:             string(machine.Status),
 			Pool:               machine.Pool,
 			Tags:               machine.Tags,
+			OSType:             machine.OSType,
 			CPUCores:           machine.CPUCores,
 			MemoryTotal:        machine.MemoryTotal,
 		}

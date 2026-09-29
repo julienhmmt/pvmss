@@ -12,7 +12,7 @@
 	import { getVmListContext, type VmListItem, type VmStatus } from './list.svelte';
 	import { getVmBulkContext } from './bulk.svelte';
 	import { displayStatus, type MachineDisplayStatus } from './display-status';
-	import { compactBytes, machineInitials, machineTone, rowAction, rowHint } from './machine-row';
+	import { compactBytes, rowAction, rowHint } from './machine-row';
 	import MachineStatusPill from './MachineStatusPill.svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import { getTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
@@ -353,7 +353,7 @@
 							{/if}
 							<div class="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 min-[700px]:grid-cols-[minmax(0,1fr)_11rem_8.5rem_9rem]">
 								<div class="flex min-w-0 items-center gap-3">
-									<span class="max-[369px]:hidden"><OsMark initials={machineInitials(machine.name)} tone={machineTone(machine.name)} /></span>
+									<span class="max-[369px]:hidden"><OsMark ostype={machine.ostype} /></span>
 									<div class="min-w-0">
 										<div class="flex min-w-0 items-center gap-2">
 											<a

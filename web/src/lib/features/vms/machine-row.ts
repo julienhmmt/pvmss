@@ -1,32 +1,6 @@
 import { m } from '$lib/paraglide/messages.js';
 import type { MachineDisplayStatus } from './display-status';
 
-/** OsMark tones - the recognition anchor on each row (DESIGN.md §8). */
-export type MachineTone = 'accent' | 'subtle' | 'success';
-
-const TONES: readonly MachineTone[] = ['accent', 'subtle', 'success'];
-
-/**
- * Two-letter mark for a machine. The list DTO carries no OS, so the mark is
- * derived from the machine's own name: a stable recognition anchor, not a
- * logo (DESIGN.md §8 "OS marks").
- */
-export function machineInitials(name: string): string {
-	const parts = name.trim().split(/[\s._-]+/).filter(Boolean);
-	if (parts.length === 0) return '?';
-	const first = parts[0] ?? '';
-	const second = parts[1] ?? '';
-	const letters = second !== '' && !/^\d+$/.test(second) ? `${first[0] ?? ''}${second[0] ?? ''}` : first.slice(0, 2);
-	return letters.toUpperCase();
-}
-
-/** Deterministic tone per name, so a machine keeps its colour across reloads. */
-export function machineTone(name: string): MachineTone {
-	let hash = 0;
-	for (const char of name) hash = (hash * 31 + (char.codePointAt(0) ?? 0)) >>> 0;
-	return TONES[hash % TONES.length] ?? 'subtle';
-}
-
 /** The explanation line under a row, when its state needs one. */
 export interface RowHint {
 	text: string;
