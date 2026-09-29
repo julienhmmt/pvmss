@@ -10,6 +10,7 @@ target_fingerprint: "sha256:b1100bdb93e28a6a8096f87b2a41b0abcefe1a2f0ac3520710ba
 target_path: /Users/jh/git/gh/pvmss/web/src/routes/vms/+page.svelte
 timestamp: 2026-09-29T05-49-21Z
 slug: web-src-routes-vms-page-svelte
+closed: true
 ---
 
 Method: dual-agent (A: 02f3b1ad · B: eb51ea72)
