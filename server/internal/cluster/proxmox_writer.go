@@ -174,7 +174,16 @@ func (p Proxmox) SetCDROM(ctx context.Context, node string, vmid int, cdrom CDRO
 	path := vmConfigPath(node, vmid)
 	rest := p.rest()
 
-	var err error
+	// A template clone keeps Proxmox's cloud-init drive on ide2. That slot is
+	// not ours to mount over, empty or delete.
+	cfg, err := fetchVMConfig(ctx, rest, node, vmid)
+	if err != nil {
+		return err
+	}
+
+	if occupiedByNonISO(cfg) {
+		return fmt.Errorf("%w: %s holds a non-ISO drive (cloud-init)", ErrInvalidAction, cdromDiskKey)
+	}
 
 	switch cdrom.State {
 	case CDROMAbsent:
