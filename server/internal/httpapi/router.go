@@ -73,6 +73,7 @@ type RouterConfig struct {
 	AdminBaseline    *AdminBaseline
 	Docs             *DocsAPIHandler
 	AdminDocs        *AdminDocs
+	ProfileSSHKeys   *ProfileSSHKeys
 	Store            *store.Store
 	// TrustedProxyHops is forwarded to the rate limiters so clientIP resolves
 	// the real user IP behind a Kubernetes ingress via X-Forwarded-For.
@@ -255,6 +256,16 @@ func registerAuthRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFun
 	// mux.HandleFunc("GET /api/v1/auth/tokens", cfg.Auth.ListTokens)
 	// mux.Handle("DELETE /api/v1/auth/tokens/{id}", protect(http.HandlerFunc(cfg.Auth.RevokeToken), authWriteLimiter))
 	mux.Handle("POST /api/v1/auth/password", protect(http.HandlerFunc(cfg.Auth.ChangePassword), authWriteLimiter))
+
+	// Profile-scoped user routes. The handler resolves the session itself
+	// (401 on its own); writes still go through CSRF + the per-user limiter
+	// like the other authenticated writes above. Nothing static lives under
+	// /profile/ssh-keys/ - only the {id} pattern.
+	if cfg.ProfileSSHKeys != nil {
+		mux.Handle("GET /api/v1/profile/ssh-keys", cfg.ProfileSSHKeys)
+		mux.Handle("POST /api/v1/profile/ssh-keys", protect(cfg.ProfileSSHKeys, authWriteLimiter))
+		mux.Handle("DELETE /api/v1/profile/ssh-keys/{id}", protect(cfg.ProfileSSHKeys, authWriteLimiter))
+	}
 }
 
 // registerAPINotFound installs the catch-all 404 for unknown /api/ paths across

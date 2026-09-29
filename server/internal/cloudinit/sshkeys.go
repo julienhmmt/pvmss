@@ -4,7 +4,14 @@ import (
 	"errors"
 	"regexp"
 	"strings"
+
+	"golang.org/x/crypto/ssh"
 )
+
+// MaxSSHKeyBytes is the maximum size accepted for a profile SSH public key.
+// A 4096-bit RSA public key line is under 800 bytes; 1024 leaves headroom for
+// a comment without letting a profile row carry arbitrary blobs.
+const MaxSSHKeyBytes = 1024
 
 var (
 	// ErrSSHKeyEmpty reports a blank key in a key list.
@@ -16,6 +23,11 @@ var (
 	ErrSSHKeyType = errors.New("cloud-init ssh key has an unsupported type")
 	// ErrSSHKeyFormat reports a key that is not a well-formed OpenSSH public key.
 	ErrSSHKeyFormat = errors.New("cloud-init ssh key is not a valid openssh public key")
+	// ErrSSHKeyPrivate reports a pasted private key block, which must never
+	// be stored where a public key is expected.
+	ErrSSHKeyPrivate = errors.New("ssh key is a private key, not a public key")
+	// ErrSSHKeyTooLong reports a key over MaxSSHKeyBytes.
+	ErrSSHKeyTooLong = errors.New("ssh key exceeds the maximum size")
 )
 
 // sshKeyTypeRE matches the type prefixes Proxmox/cloud-init accept as public
@@ -69,4 +81,42 @@ func ValidateSSHKeys(keys []string) error {
 	}
 
 	return nil
+}
+
+// ValidateProfileSSHKey validates one SSH public key for the per-user profile
+// store and returns its SHA256 fingerprint. On top of ValidateSSHKey it
+// rejects pasted private keys (checked first so a multi-line PEM block reports
+// private rather than multiline), keys over MaxSSHKeyBytes, and key blobs that
+// look structurally fine but cannot be parsed as a real OpenSSH public key.
+func ValidateProfileSSHKey(key string) (string, error) {
+	if strings.Contains(key, "PRIVATE KEY") && strings.Contains(key, "-----BEGIN") {
+		return "", ErrSSHKeyPrivate
+	}
+
+	if len(key) > MaxSSHKeyBytes {
+		return "", ErrSSHKeyTooLong
+	}
+
+	if err := ValidateSSHKey(key); err != nil {
+		return "", err
+	}
+
+	pub, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
+	if err != nil {
+		return "", ErrSSHKeyFormat
+	}
+
+	return ssh.FingerprintSHA256(pub), nil
+}
+
+// SSHKeyFingerprint returns the SHA256 fingerprint of an OpenSSH public key
+// line ("<type> <base64> [comment]"). The comment does not participate, so the
+// same key blob always yields the same fingerprint.
+func SSHKeyFingerprint(key string) (string, error) {
+	pub, _, _, _, err := ssh.ParseAuthorizedKey([]byte(key))
+	if err != nil {
+		return "", ErrSSHKeyFormat
+	}
+
+	return ssh.FingerprintSHA256(pub), nil
 }

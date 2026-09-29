@@ -438,6 +438,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	adminBaseline := httpapi.NewAdminBaseline(authHandler, clusterRegistry, st, logger)
 	docsHandler := httpapi.NewDocsAPIHandler(authHandler, st, logger)
 	adminDocs := httpapi.NewAdminDocs(authHandler, st, docsHandler, logger)
+	profileSSHKeys := httpapi.NewProfileSSHKeys(authHandler, st, logger)
 
 	authHandler.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	vm.SetResolveAuditor(st)
@@ -469,6 +470,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 		AdminClusters:    adminClusters,
 		Docs:             docsHandler,
 		AdminDocs:        adminDocs,
+		ProfileSSHKeys:   profileSSHKeys,
 		AdminBaseline:    adminBaseline,
 		TrustedProxyHops: cfg.TrustedProxyHops,
 		RateLimitMax:     cfg.RateLimitMax,
