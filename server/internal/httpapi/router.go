@@ -144,6 +144,12 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	// go:S3776 threshold.
 	registerAdminRoutes(mux, cfg, adminProtect)
 
+	// Metrics live on their own port; the SPA fallback must not answer
+	// /metrics on this one with index.html and a 200.
+	mux.Handle("GET /metrics", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_ = writeError(w, http.StatusNotFound, "not found")
+	}))
+
 	registerAPINotFound(mux, cfg)
 	registerSPA(mux, cfg)
 

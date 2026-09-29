@@ -88,6 +88,12 @@ spec:
             - name: backend
               containerPort: 50000
               protocol: TCP
+            # Opt-in Prometheus endpoint: nothing listens here unless
+            # PVMSS_METRICS_PORT is set below. Unauthenticated: keep the
+            # Service cluster-internal and do not route it in the HTTPRoute.
+            - name: metrics
+              containerPort: 9464
+              protocol: TCP
           # Every variable is validated at boot by server/internal/config/load.go;
           # the pod crash-loops if a required one is missing or malformed.
           env:
@@ -106,6 +112,8 @@ spec:
                   key: pve-api-token
             - name: PVMSS_PORT
               value: "50000"
+            # - name: PVMSS_METRICS_PORT
+            #   value: "9464"
             - name: PVMSS_DB_PATH
               value: "/data/pvmss.db"
             # Bind all interfaces inside the container; the Service controls exposure.
@@ -182,3 +190,8 @@ spec:
       protocol: TCP
       port: 50000
       targetPort: 50000
+    # Only answers when PVMSS_METRICS_PORT is set on the container.
+    - name: metrics
+      protocol: TCP
+      port: 9464
+      targetPort: metrics

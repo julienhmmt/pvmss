@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/telemetry"
 	"sync"
 	"time"
 
@@ -125,6 +126,7 @@ func (w *Worker) refreshCycle(ctx context.Context) (time.Time, error) {
 			err = fmt.Errorf("%w: %w", cluster.ErrUnreachable, err)
 		}
 
+		telemetry.RecordInventoryRefresh(ctx, w.cluster, w.now().Sub(started), true)
 		w.noteFailure(ctx, err)
 
 		return time.Time{}, err
@@ -133,6 +135,7 @@ func (w *Worker) refreshCycle(ctx context.Context) (time.Time, error) {
 	idx := BuildIndexForCluster(w.cluster, snap)
 	idx.RefreshedAt = time.Now()
 	w.projection.store(&idx)
+	telemetry.RecordInventoryRefresh(ctx, w.cluster, w.now().Sub(started), false)
 	w.noteSuccess(ctx, started, snap)
 
 	return idx.RefreshedAt, nil
