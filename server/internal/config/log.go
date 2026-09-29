@@ -9,12 +9,16 @@ import (
 )
 
 // NewLogger creates a structured logger from the configuration.
-// It returns the logger and a WriteCloser that should be closed before shutdown.
-func NewLogger(cfg Configuration) (*slog.Logger, io.WriteCloser, error) {
+// It returns the logger, the LevelVar that controls it at runtime, and a
+// WriteCloser that should be closed before shutdown.
+func NewLogger(cfg Configuration) (*slog.Logger, *slog.LevelVar, io.WriteCloser, error) {
 	level, err := parseLogLevel(cfg.LogLevel)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
+
+	levelVar := new(slog.LevelVar)
+	levelVar.Set(level)
 
 	var w io.WriteCloser
 
@@ -26,15 +30,18 @@ func NewLogger(cfg Configuration) (*slog.Logger, io.WriteCloser, error) {
 	default:
 		f, err := os.OpenFile(cfg.LogOutput, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 		if err != nil {
-			return nil, nil, fmt.Errorf("open log output %q: %w", cfg.LogOutput, err)
+			return nil, nil, nil, fmt.Errorf("open log output %q: %w", cfg.LogOutput, err)
 		}
 
 		w = f
 	}
 
 	opts := &slog.HandlerOptions{
-		Level:       level,
-		ReplaceAttr: renameKeys,
+		Level:     levelVar,
+		AddSource: true, // gated by sourceGate: only emitted while level is debug
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			return renameKeys(groups, redactSecrets(groups, a))
+		},
 	}
 
 	var handler slog.Handler
@@ -45,10 +52,10 @@ func NewLogger(cfg Configuration) (*slog.Logger, io.WriteCloser, error) {
 	case "console":
 		handler = slog.NewTextHandler(w, opts)
 	default:
-		return nil, nil, fmt.Errorf("unknown log format %q", cfg.LogFormat)
+		return nil, nil, nil, fmt.Errorf("unknown log format %q", cfg.LogFormat)
 	}
 
-	return slog.New(handler), w, nil
+	return slog.New(sourceGate{Handler: handler, level: levelVar}), levelVar, w, nil
 }
 
 func parseLogLevel(level string) (slog.Level, error) {

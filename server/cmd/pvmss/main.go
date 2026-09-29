@@ -153,12 +153,13 @@ func loadConfig(stderr *slog.Logger) (config.Configuration, *slog.Logger, io.Clo
 		return config.Configuration{}, nil, nil, err
 	}
 
-	logger, logCloser, err := config.NewLogger(cfg)
+	logger, _, logCloser, err := config.NewLogger(cfg)
 	if err != nil {
 		stderr.Error("failed to create logger", "component", "main", "error", err)
 		return config.Configuration{}, nil, nil, err
 	}
 
+	slog.SetDefault(logger)
 	logger.Info("configuration loaded", "component", "main", "host", cfg.Host, "port", cfg.Port, "dbPath", cfg.DBPath)
 
 	for _, key := range cfg.DeprecatedSSHEnv {
@@ -175,6 +176,7 @@ func openStore(cfg config.Configuration, logger *slog.Logger) (*store.Store, err
 		logger.Error("failed to open database", "component", "main", "error", err)
 		return nil, err
 	}
+	st.SetLogger(logger)
 	logger.Info("database opened", "component", "main", "migrationsDefined", len(store.Migrations))
 
 	if err := seed.SeedDocumentationPages(context.Background(), st); err != nil {
