@@ -3,19 +3,33 @@
 	import { getVmDetailContext } from './detail.svelte';
 	import type { CloudInitConfigUpdate } from './cloudinit.types';
 	import { CloudInitStore } from './cloudinit.svelte';
+	import { SshKeySelection } from '$lib/features/profile-ssh-keys/ssh-key-selection.svelte';
+	import { loadProfileSshKeys } from '$lib/features/profile-ssh-keys/profile-ssh-keys.svelte';
+	import { saveProfileKeyAfterSuccess } from '$lib/features/profile-ssh-keys/profile-save';
+	import { getToastContext } from '$lib/shared/ui/toast.svelte';
 	import CloudInitForm from './CloudInitForm.svelte';
 	import CloudInitDocumentPicker from './CloudInitDocumentPicker.svelte';
 	import SaveCloudInitDialog from './SaveCloudInitDialog.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
+	interface Props {
+		/** Optional override for tests - production callers use the default,
+		 *  an add-only selection owned by this tab. */
+		sshSelection?: SshKeySelection;
+	}
+
+	let { sshSelection = new SshKeySelection({ addOnly: true }) }: Props = $props();
+
 	const vmStore = getVmDetailContext();
 	const cloudInit = new CloudInitStore(vmStore.cluster, vmStore.vmid, () => vmStore.load());
+	const toast = getToastContext();
 	let mode = $state<'structured' | 'document'>('structured');
 	let saveDialogOpen = $state(false);
 	let pendingUpdate = $state<CloudInitConfigUpdate | null>(null);
 
 	onMount(() => {
 		void cloudInit.loadConfig();
+		void loadProfileSshKeys(sshSelection);
 	});
 
 	function requestSave(update: CloudInitConfigUpdate): void {
@@ -27,6 +41,11 @@
 		if (pendingUpdate === null) return;
 		const saved = await cloudInit.saveConfig(pendingUpdate, rebootNow);
 		if (!saved) return;
+		// "Save to my profile" offer: only after the update succeeded; a
+		// failure warns by toast but never fails the cloud-init save (D9).
+		const keyToSave = sshSelection.keyToSave();
+		sshSelection.reset();
+		void saveProfileKeyAfterSuccess(toast, keyToSave);
 		pendingUpdate = null;
 		saveDialogOpen = false;
 	}
@@ -71,7 +90,7 @@
 
 	<div class="mt-6">
 		{#if mode === 'structured'}
-			<CloudInitForm store={cloudInit} onRequestSave={requestSave} />
+			<CloudInitForm store={cloudInit} {sshSelection} onRequestSave={requestSave} />
 		{:else}
 			<CloudInitDocumentPicker store={cloudInit} node={vmStore.entity?.node ?? ''} />
 		{/if}

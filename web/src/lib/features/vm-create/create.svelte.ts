@@ -2,6 +2,8 @@ import { getContext, setContext } from 'svelte';
 import { get, post, ApiRequestError } from '$lib/shared/api/client';
 import { fetchClusterOptions, type ClusterOption } from '$lib/shared/clusters';
 import { m } from '$lib/paraglide/messages.js';
+import { SshKeySelection } from '$lib/features/profile-ssh-keys/ssh-key-selection.svelte';
+import { loadProfileSshKeys } from '$lib/features/profile-ssh-keys/profile-ssh-keys.svelte';
 
 export interface CatalogStorage {
 	name: string;
@@ -463,7 +465,10 @@ export class VmCreateStore {
 	 *  admin-preplaced baseline snippet covers cluster-wide needs instead).
 	 *  No password field - access is granted through SSH keys. */
 	ciUser = $state('');
-	ciSshKeysInput = $state('');
+	/** The shared SSH-key picker state (profile picks + one-off pasted
+	 *  keys). The pasted text is reachable through ciSshKeysInput for
+	 *  callers written before the picker existed. */
+	readonly sshSelection = new SshKeySelection();
 	ciIpMode = $state<'dhcp' | 'static'>('dhcp');
 	ciIpAddress = $state('');
 	ciGateway = $state('');
@@ -538,6 +543,19 @@ export class VmCreateStore {
 		} catch {
 			this.existingMachines = [];
 		}
+	}
+
+	/** Guard so the profile keys are fetched once per wizard session even
+	 *  when the image cloud-init fields remount (source toggling). */
+	#profileKeysRequested = $state.raw(false);
+
+	/** Loads the profile SSH keys into the picker once. Best-effort: any
+	 *  failure behaves as an empty profile, which degrades the picker to
+	 *  the historical textarea-only experience. */
+	async loadProfileKeysOnce(): Promise<void> {
+		if (this.#profileKeysRequested) return;
+		this.#profileKeysRequested = true;
+		await loadProfileSshKeys(this.sshSelection);
 	}
 
 	/** The existing machine with this name, if any (case-insensitive, like
@@ -687,13 +705,20 @@ export class VmCreateStore {
 		this.imageMinDiskGB = 0;
 	}
 
-	/** Parses ciSshKeysInput's newline-separated textarea into the SSH key
-	 *  list sent in the request. */
+	/** The one-off pasted SSH keys, exposed for callers written before the
+	 *  shared picker existed. Proxies onto the picker's pasted text. */
+	get ciSshKeysInput(): string {
+		return this.sshSelection.pasted;
+	}
+
+	set ciSshKeysInput(value: string) {
+		this.sshSelection.pasted = value;
+	}
+
+	/** The SSH key list sent in the request: picked profile keys union the
+	 *  pasted lines, deduped by key identity. */
 	sshKeys(): string[] {
-		return this.ciSshKeysInput
-			.split('\n')
-			.map((key) => key.trim())
-			.filter((key) => key !== '');
+		return this.sshSelection.finalKeys();
 	}
 
 	/** True when the active mode's source is a cloud image. */

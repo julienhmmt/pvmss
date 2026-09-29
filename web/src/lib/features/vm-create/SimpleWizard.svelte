@@ -211,7 +211,7 @@
 			if (form.submitError) toast.error(m['toast.vmCreateFailed']({ error: form.submitError }));
 			return;
 		}
-		await handleAccepted(accepted, { tray, toast, outcomeLedger });
+		await handleAccepted(accepted, { tray, toast, outcomeLedger, keyToSave: form.sshSelection.keyToSave() });
 	}
 </script>
 

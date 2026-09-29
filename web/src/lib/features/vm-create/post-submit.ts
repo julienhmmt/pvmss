@@ -4,6 +4,8 @@ import { m } from '$lib/paraglide/messages.js';
 import type { TaskTrayStore } from '$lib/features/tasks/tasks.svelte';
 import type { TaskOutcomeLedger } from '$lib/features/tasks/task-outcome-ledger.svelte';
 import type { ToastRegion } from '$lib/shared/ui/toast.svelte';
+import { saveProfileKeyAfterSuccess } from '$lib/features/profile-ssh-keys/profile-save';
+import type { ProfileKeyToSave } from '$lib/features/profile-ssh-keys/types';
 import type { VmCreateAccepted } from './create.svelte';
 
 /** Dependencies the post-submit helper needs from its caller. Grouped so
@@ -12,6 +14,9 @@ export interface PostSubmitDeps {
 	tray: TaskTrayStore;
 	toast: ToastRegion;
 	outcomeLedger: TaskOutcomeLedger;
+	/** The "Save to my profile" offer taken at submit time, saved only
+	 *  after the create was accepted - best-effort, never blocks. */
+	keyToSave?: ProfileKeyToSave | null;
 }
 
 /**
@@ -59,5 +64,8 @@ export async function handleAccepted(accepted: VmCreateAccepted, deps: PostSubmi
 	if (accepted.fromImage) {
 		deps.toast.info(m['toast.vmCreateImageSshOnlyHint']());
 	}
+	// "Save to my profile" offer: only fires now that the create was
+	// accepted; it warns on failure but never delays navigation.
+	void saveProfileKeyAfterSuccess(deps.toast, deps.keyToSave ?? null);
 	await goto(resolve('/vms'));
 }
