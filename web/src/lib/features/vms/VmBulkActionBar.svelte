@@ -1,11 +1,18 @@
 <script lang="ts">
-	import { getVmBulkContext } from './bulk.svelte';
+	import {
+		bulkConfirmationKind,
+		getVmBulkContext,
+		type BulkConfirmationKind
+	} from './bulk.svelte';
+	import { getVmListContext } from './list.svelte';
 	import Alert from '$lib/shared/ui/Alert.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
+	import ConfirmDialog from '$lib/shared/ui/ConfirmDialog.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
 	const bulk = getVmBulkContext();
+	const list = getVmListContext();
 
 	const ACTIONS: readonly { value: string; label: () => string }[] = [
 		{ value: 'start', label: () => m['vms.action.start']() },
@@ -15,20 +22,76 @@
 		{ value: 'reset', label: () => m['vms.action.reset']() }
 	] as const;
 
+	/** Copy for each confirmation kind `bulkConfirmationKind` can return. */
+	interface Confirmation {
+		title: (count: number) => string;
+		message: (count: number) => string;
+		confirmLabel: () => string;
+	}
+
+	const CONFIRMATIONS: Record<BulkConfirmationKind, Confirmation> = {
+		forceStop: {
+			title: (count) => m['vms.bulk.confirm.forceStop.title']({ count }),
+			message: (count) => m['vms.bulk.confirm.forceStop.message']({ count }),
+			confirmLabel: () => m['vms.confirm.forceStop.confirm']()
+		},
+		reset: {
+			title: (count) => m['vms.bulk.confirm.reset.title']({ count }),
+			message: (count) => m['vms.bulk.confirm.reset.message']({ count }),
+			confirmLabel: () => m['vms.confirm.reset.confirm']()
+		}
+	};
+
+	/** How many machine names the confirmation lists before summarising. */
+	const AFFECTED_LIMIT = 6;
+
 	let selectedAction = $state<string>('start');
 	let submitError = $state<string | null>(null);
+	/** The forceful action awaiting confirmation, if any. */
+	let pending = $state<BulkConfirmationKind | null>(null);
 
 	const summary = $derived(bulk.resultSummary);
+	const confirmation = $derived(pending === null ? null : CONFIRMATIONS[pending]);
+
+	// Selection is per-page, so a target that has since scrolled onto another
+	// page falls back to its cluster:vmid identity.
+	const affectedLabel = $derived.by(() => {
+		const items = list.result?.items ?? [];
+		const names = bulk.selectedTargets.map(
+			(target) =>
+				items.find((item) => item.cluster === target.cluster && item.vmid === target.vmid)?.name ??
+				`${target.cluster}:${target.vmid}`
+		);
+		const shown = names.slice(0, AFFECTED_LIMIT);
+		const label = m['vms.bulk.confirm.affected']({ names: shown.join(', ') });
+		const extra = names.length - shown.length;
+		return extra > 0 ? `${label} ${m['vms.bulk.confirm.more']({ count: extra })}` : label;
+	});
+
+	async function runAction(action: string): Promise<void> {
+		submitError = null;
+		try {
+			await bulk.submitBulkAction(action);
+		} catch (err) {
+			submitError = err instanceof Error ? err.message : m['vms.bulk.errorDefault']();
+		}
+	}
 
 	async function handleSubmit(event: Event): Promise<void> {
 		event.preventDefault();
 		if (!bulk.hasSelection || bulk.submitting) return;
-		submitError = null;
-		try {
-			await bulk.submitBulkAction(selectedAction);
-		} catch (err) {
-			submitError = err instanceof Error ? err.message : m['vms.bulk.errorDefault']();
+		const kind = bulkConfirmationKind(selectedAction);
+		if (kind !== null) {
+			pending = kind;
+			return;
 		}
+		await runAction(selectedAction);
+	}
+
+	async function confirmPending(): Promise<void> {
+		if (pending === null) return;
+		await runAction(selectedAction);
+		pending = null;
 	}
 
 	function handleClearSelection(): void {
@@ -131,4 +194,18 @@
 			{/each}
 		</ul>
 	</div>
+{/if}
+
+{#if confirmation}
+	<ConfirmDialog
+		open={true}
+		title={confirmation.title(bulk.selectedCount)}
+		message="{confirmation.message(bulk.selectedCount)} {affectedLabel}"
+		confirmLabel={confirmation.confirmLabel()}
+		cancelLabel={m['common.cancel']()}
+		confirming={bulk.submitting}
+		testId="vm-bulk-confirm"
+		onConfirm={confirmPending}
+		onClose={() => (pending = null)}
+	/>
 {/if}
