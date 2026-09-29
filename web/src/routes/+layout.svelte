@@ -234,7 +234,6 @@
 						{#if version}<span class="font-mono"> · {version}</span>{/if}
 					</p>
 					<div class="flex items-center gap-4">
-						<span class="max-[699px]:hidden">{m['chrome.footer.context']()}</span>
 						<a href={resolvePath('/about')} class="hover:text-foreground hover:underline">{m['chrome.footer.about']()}</a>
 						<a href={githubUrl} target="_blank" rel="noopener noreferrer" class="hover:text-foreground hover:underline">
 							{m['chrome.footer.github']()}<span aria-hidden="true"> ↗</span><span class="sr-only"> {m['chrome.footer.externalLink']()}</span>

@@ -1680,7 +1680,6 @@
   "chrome.context.nodes": "Nœuds",
   "chrome.context.dashboard": "Tableau de bord",
   "chrome.footer.tagline": "Libre-service de VM Proxmox",
-  "chrome.footer.context": "Vos machines, approuvées par votre équipe",
   "chrome.footer.about": "À propos",
   "vms.list.eyebrow": "Votre espace de travail",
   "vms.list.calmHeading": "Mes machines",
