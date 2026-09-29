@@ -21,7 +21,14 @@ cloud-init). Avoid generic names like `vm1` - a descriptive name
   linked clone.
 - **Cloud image** - imports an approved cloud image as the primary disk and
   requires the cloud-init fields (user, SSH keys, network). The VM starts
-  only after the import finishes and cloud-init is applied.
+  only after the import finishes and cloud-init is applied. SSH keys go
+  through a shared picker: the keys saved on your profile are listed as
+  checkboxes - all ticked when you have three or fewer, unticked beyond
+  that - and one-off keys can be pasted below. Paste exactly one key your
+  profile does not know and the wizard offers to save it once the VM is
+  created; that save is best-effort and never makes the creation fail.
+  Whatever the source, keys are copied into the VM at creation time:
+  editing your profile later never changes existing machines.
 
 ## Resources
 

@@ -37,7 +37,10 @@ qm set <vmid> --cicustom vendor=<storage>:snippets/pvmss-tpl-…yml
 
 - The template is **vendor data**: it merges with the user data Proxmox
   generates from the VM form (user, password, SSH keys, network). Accounts and
-  keys belong in the form; a `users:` key in a template is overridden.
+  keys belong in the form; a `users:` key in a template is overridden. The
+  form's SSH-key list can be filled from the user's saved profile keys
+  (`/profile`): they are copied into the VM at create/update time and are
+  never linked back to the profile.
 - **You choose the nodes.** A template is offered only on the nodes that have
   its file. Paste it on one node today, on the others later.
 - Editing a template yields a **new** file name, so a new command to paste.
