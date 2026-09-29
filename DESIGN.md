@@ -339,9 +339,8 @@ chosen concept ("Calm workspace") fixes three structural decisions:
 
 ### Responsive collapse
 
-- **Below 940px:** the sidebar becomes a horizontal top bar - brand left,
-  navigation centered, preferences + account right. The workspace label and
-  reassurance note hide.
+- **Below 900px:** the sidebar becomes a drawer, opened from the header's menu
+  button. The workspace label and reassurance note hide.
 - **Below 700px:** the bar wraps to two rows - brand + preferences on row one,
   full-width navigation on row two. The context header hides. Content padding
   shrinks to `28px 20px`.
@@ -504,6 +503,12 @@ Two classes, applied together: `.pv-table` owns the look, `.pv-responsive-table`
 owns the mobile collapse. Cells carry no spacing utilities of their own - that
 is what let admin tables drift away from the VM list.
 
+The machine list is the exception: it is a custom grid of `<ul>` rows, not a
+table, because a row is an identity block rather than a set of cells. It
+borrows the vocabulary (uppercase tracked header, tabular `.num` figures) but
+not the markup, so "one table pattern" describes every table in the app except
+the landing page.
+
 - **Header:** sticky band on `--muted`, 11px uppercase with 0.04em tracking, a
   hairline under it.
 - **Rows:** 0.75rem/1rem cells, a `--border-subtle` rule between them, a muted
@@ -577,10 +582,21 @@ partial → warning-soft, failed → error-soft, stopped → muted). The dot is
 
 ### OS marks
 
-A rounded tile (38×42px on the list, 53×58px on detail) showing the offering's
-initial. Tone-tinted: Ubuntu → accent-soft, Debian → subtle, Rocky →
-success-soft. The tile is an identity anchor, not a logo - it lets a user
-recognize their machine at a glance without a real OS logo.
+A rounded tile (38×42px on the list, 53×58px on detail) naming the guest's OS
+family, drawn as a glyph rather than a logo: a shell prompt for Linux, a window
+frame for Windows, a dash for unknown.
+
+The family comes from Proxmox's `ostype`, which reports a **kernel family, not
+a distribution** - `l26` is any Linux 2.6+ guest, `win11` any modern Windows.
+That is the finest distinction the data carries, so the mark claims nothing
+finer: there is no Ubuntu-vs-Debian anchor to be had, and the tile says
+"unknown" rather than guessing. Tones: Linux → accent, Windows → success,
+unknown → muted. The glyph differs per family, so the family is never carried
+by colour alone.
+
+An earlier version showed two letters of the machine's *name* on a hash-derived
+tone. It looked like a recognition anchor and encoded nothing; do not
+reintroduce a name-derived mark.
 
 ### Allowance meter
 
@@ -615,6 +631,9 @@ The label always names the source ("Set by your administrator").
 - **Do** put connection instructions (SSH + console) first on the detail page.
 - **Do** distinguish running, provisioning, failed, partial, and
   no-address states explicitly.
+- **Do** make every collection sortable and filterable to what needs
+  attention. A list whose job is "find the machine that needs you" and has no
+  sort is a list you scan by hand.
 - **Do** preserve entered form values across recoverable errors.
 
 ### Don't
@@ -640,6 +659,11 @@ The label always names the source ("Set by your administrator").
 - **Don't** claim a machine is "ready" unless connection data actually exists.
 - **Don't** guess an address. Show "address not available yet" and point to the
   console.
+- **Don't** derive a row's identity from the machine's name. A name-hashed
+  mark or tone looks like a recognition anchor and encodes nothing; anchor on
+  real data (OS family, cluster) or say "unknown".
+- **Don't** let a bulk destructive action be looser than its single-item
+  equivalent. If one machine confirms, N machines confirm.
 - **Don't** let a user create a duplicate of a `partial` machine. Surface the
   existing one and route to help.
 
@@ -681,15 +705,30 @@ for your projects. Everything you need, nothing you don't." Primary action:
 3. **Machine collection** - a single bordered container (`machine-collection`)
    with three parts:
    - **Toolbar** - search field (icon + input, capped ~300px), status filter
-     select (All / Running / Stopped), and a right-aligned count
-     ("`n` machines").
+     select (All / Running / Stopped / Needs attention), and a right-aligned
+     count ("`n` machines").
+   - **Needs attention** - the one filter value that is not a server status.
+     It matches states derived client-side (failed, partial, provisioning), so
+     the store fetches every page and the view filters the full set; a
+     page-local filter would silently miss a failed machine on page 2.
+     Pagination is suppressed while it is on, and the count reads
+     "`n` of `m` machines" against the whole list. The server status filter and
+     this one clear each other - the row is a single select.
    - **Column labels** - a grid header row (MACHINE / RESOURCES / STATUS / ·),
-     hidden below 700px.
+     hidden below 700px. MACHINE and STATUS are sort buttons
+     (`SortButton.svelte`); RESOURCES is plain text, because it carries three
+     values and choosing one as "the" sort would be a guess. The row is
+     `role="group"` labelled "Sort machines", not a table header.
    - **Rows** - each row is a 4-column grid:
-     - **Identity** - OS mark (rounded tile with the offering's initial, tone
-       -tinted), machine name (link to detail), and OS + size subtitle.
+     - **Identity** - OS mark (rounded tile naming the OS family), machine
+       name (link to detail), and a tag subtitle. When the list spans clusters
+       (no cluster filter active) a cluster chip sits beside the name and the
+       link's accessible name carries the cluster too - the same name and VMID
+       can exist in two clusters, and the row must say which one it opens.
      - **Resources** - vCPU · GB RAM on one line, GB storage on the next.
-       Figures are tabular-num.
+       Figures are tabular-num. Desktop only: hidden below 700px, where the
+       list is a glance-and-monitor surface (name, cluster, status, action)
+       rather than a place to read specs.
      - **Status** - a status pill (dot + label). Tones: running → success-soft,
        provisioning/starting/stopping/partial → warning-soft, failed →
        error-soft, stopped → muted.
@@ -909,6 +948,12 @@ data actually exists.
   fabricates an address.
 - **No duplicate creation on uncertain outcomes.** A `partial` machine
   explicitly says "Do not create a duplicate" and routes to help.
+- **Bulk is never looser than single.** The forceful actions (`stop`, `reset`)
+  confirm before they fire on both paths. The bulk bar confirms too, naming the
+  count and the affected machines, because it carries the larger blast radius -
+  a single click must not cut power to N guests. There is no undo: a force stop
+  cannot be un-stopped, and a fake "undo" that merely starts the guest again
+  would be a lie.
 - **No readiness claim without connection data.** The "Connect" action on the
   list and the SSH section on detail only render when `status === 'running' &&
 address` is truthy.
