@@ -551,6 +551,7 @@ func newAuthzContractRouter(t *testing.T) (http.Handler, *httpapi.Auth) {
 		Audit: st, Refresher: worker, Store: st, Log: logger,
 	})
 	adminOps := httpapi.NewAdminOps(authHandler, st, cluster.Fake{}, projection, "0.4.0-test", logger)
+	adminOps.SetLogLevel(new(slog.LevelVar), slog.LevelInfo)
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, nil, nil, logger)
 	adminBaseline := httpapi.NewAdminBaseline(authHandler, nil, st, logger)
 	docs := httpapi.NewDocsAPIHandler(authHandler, st, logger)

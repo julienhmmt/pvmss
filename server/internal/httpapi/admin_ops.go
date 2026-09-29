@@ -36,6 +36,10 @@ type AdminOps struct {
 	version          string
 	log              *slog.Logger
 	trustedProxyHops int
+	// logLevel/logLevelDefault back the runtime log-level endpoint; nil means
+	// the endpoint is not wired (see SetLogLevel).
+	logLevel        *slog.LevelVar
+	logLevelDefault slog.Level
 }
 
 // NewAdminOps creates the handler for all admin exploitation endpoints.

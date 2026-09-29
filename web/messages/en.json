@@ -2049,5 +2049,18 @@
   "admin.cloudinit.commandHint": "As root, on each node that must offer it. Editing the template gives a new file and a new command.",
   "admin.cloudinit.nodePresent": "present",
   "admin.cloudinit.nodeAbsent": "absent",
-  "admin.cloudinit.notChecked": "Not checked: {error}"
+  "admin.cloudinit.notChecked": "Not checked: {error}",
+  "admin.logLevel.title": "Log level",
+  "admin.logLevel.description": "Change how much the server logs, without a restart. Use Debug to investigate, then go back.",
+  "admin.logLevel.label": "Log level",
+  "admin.logLevel.level.debug": "Debug",
+  "admin.logLevel.level.info": "Info",
+  "admin.logLevel.level.warn": "Warn",
+  "admin.logLevel.level.error": "Error",
+  "admin.logLevel.reset": "Reset to default",
+  "admin.logLevel.default": "Startup default: {level}.",
+  "admin.logLevel.restartNote": "The change is lost when the server restarts.",
+  "admin.logLevel.saved": "Log level updated.",
+  "admin.logLevel.loadError": "failed to load the log level",
+  "admin.logLevel.saveError": "failed to update the log level"
 }
