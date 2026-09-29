@@ -143,8 +143,9 @@ func NewRouter(cfg RouterConfig) http.Handler {
 
 	// Wrap the entire mux with security headers so every response (API and
 	// SPA) gets CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy,
-	// Permissions-Policy, HSTS, and cache-control for API paths.
-	return withSecurityHeaders(mux)
+	// Permissions-Policy, HSTS, and cache-control for API paths. The request-ID
+	// middleware is outermost so every response, including errors, carries it.
+	return withRequestID(cfg.Log, withSecurityHeaders(mux))
 }
 
 // protectFunc is the signature of NewRouter's `protect` closure, factored out
