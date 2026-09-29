@@ -23,7 +23,7 @@ script, or CI job still pointing at `backend/` or `frontend/` is stale - see
 | `server/`         | Go REST API - module `pvmss/server`, own `go.mod`                     |
 | `web/`            | SvelteKit SPA - app `pvmss-web`, own `package.json` (bun)             |
 | `helm/`           | Helm chart                                                            |
-| `docs/`           | Documentation: `FEATURES.md`, `cloud-init.md`, `constitution.md`, `design/`, `agents/`, `plans/` (task plans) |
+| `docs/`           | Documentation: `FEATURES.md`, `cloud-init.md`, `observability.md`, `constitution.md`, `design/`, `agents/`, `plans/` (task plans) |
 | `specs/`          | Feature specifications (speckit); gitignored but real work            |
 | `sonar-projects/` | Per-project SonarScanner `.properties` files                          |
 | `tools/`          | Helper scripts (`pq`, sonar bootstrap/coverage/scan/query, superlint) |
@@ -148,10 +148,14 @@ index. Do not reintroduce a code index without measuring against `pq` first.
 ### Server (`server/`)
 
 Go REST API over the Proxmox API + SQLite for persistence. Module
-`pvmss/server`, Go 1.27. Deliberately dependency-light: routing is stdlib
-`net/http`, and the only direct deps are `coder/websocket` (VNC console proxy),
-`golang.org/x/crypto` (bcrypt), `gopkg.in/yaml.v3` (cloud-init YAML
-validation), and `modernc.org/sqlite` (pure-Go, CGO-free).
+`pvmss/server`, Go 1.27. Kept small: routing is stdlib `net/http` and logging
+is stdlib `log/slog`. The direct deps are `coder/websocket` (VNC console
+proxy), `golang.org/x/crypto` (bcrypt), `gopkg.in/yaml.v3` (cloud-init YAML
+validation), `modernc.org/sqlite` (pure-Go, CGO-free), and the observability
+stack: OpenTelemetry (`otel`, `sdk`, `sdk/metric`, the OTLP/HTTP trace and
+metric exporters, contrib `otelhttp` and `runtime`) plus the OpenTelemetry
+Prometheus exporter with `prometheus/client_golang` (for `promhttp`). Do not
+add another logging or metrics library.
 
 Entry points under `server/cmd/`:
 
@@ -266,12 +270,71 @@ operator who simply forgot to set the variable.
 | `PVMSS_MAX_LIST_PAGE_SIZE`                    | `100`                              |
 | `PVMSS_TRUSTED_PROXY_HOPS`                    | `1`                                |
 | `PVMSS_RATE_LIMIT_MAX`                        | `0` (keep each limiter's built-in ceiling; a positive value raises them all, used by e2e) |
+| `PVMSS_METRICS_PORT`                          | empty (no metrics listener); 1-65535 and different from `PVMSS_PORT` enables `GET /metrics` on `PVMSS_HOST:<port>` |
+
+Tracing and OTLP metric push use the standard `OTEL_*` variables, read by the
+OpenTelemetry SDK itself, not by `config/load.go`: `OTEL_EXPORTER_OTLP_ENDPOINT`
+(or the `_TRACES_` variant) turns export on, `OTEL_SERVICE_NAME` renames the
+service, `OTEL_SDK_DISABLED=true` forces it off. See `docs/observability.md`.
+`LOG_LEVEL` is only the startup level: an admin can change it at runtime
+(Admin > Settings, `PUT /api/v1/admin/ops/log-level`), and a restart returns to
+`LOG_LEVEL`.
 
 `PVMSS_OFFLINE`, `PVMSS_ENV`, `JWT_SECRET`, `PROXMOX_VERIFY_SSL` and
 `LOG_FILE_PATH` belonged to the v0.3 backend and are **no longer read**.
 `PVMSS_SSH_KEY_FILE`, `PVMSS_SSH_USER` and `PVMSS_SSH_PORT` are no longer
 read either (SSH publishing removed; startup warns when they are set). Demo
 mode is now `PVMSS_CLUSTER_SOURCE=fake`.
+
+## Logging and observability
+
+Binding for every agent writing server code. Operator-facing detail
+(queries, alerts, OTel setup) lives in `docs/observability.md`.
+
+**Level contract.**
+
+| Level   | Meaning                                                          | Examples |
+| ------- | ---------------------------------------------------------------- | -------- |
+| `Error` | Broken, needs a human                                            | a 5xx, a DB failure, a cluster that becomes unreachable |
+| `Warn`  | Degraded, or an expected refusal worth noticing                  | failed login, 403, CSRF reject, 429, a cluster still down, a deprecated env var |
+| `Info`  | App lifecycle, user actions (audit mirror), state transitions    | startup banner, login, VM action, cluster recovered |
+| `Debug` | Diagnostics                                                      | each Proxmox call, each successful refresh, GET requests |
+
+**Rules.**
+
+- **Log once, where the error is handled**, never where it is returned. A
+  handler that turns an error into a 4xx/5xx does not log it: it calls
+  `httpapi.SetError(w, err)` or `SetErrorMsg(w, msg, err)` and the access log
+  line carries `error`. `TestHandlersDoNotLogErrorThenFailTheRequest` enforces
+  this (the health handler is the one exception: `/health` is capped at
+  `Debug` in the access log). A handler that swallows an error and still
+  answers 2xx logs it at `Warn`.
+- **In request code use `logctx.From(ctx)`** (or `logctx.FromOr(ctx, fallback)`
+  for a component with its own logger). It carries `requestId`, `clientIp`, and
+  `user` once auth resolves, and `traceId`/`spanId` inside a span. Always use
+  the `*Context` log methods so those attrs (and the span) are picked up.
+- **Never log request bodies, headers, raw URLs or query strings.** The access
+  log uses the route pattern. Secret-looking keys (`password`, `token`,
+  `secret`, `cookie`, `authorization`, `ticket`, `csrf`) are masked centrally,
+  and secret-bearing types implement `slog.LogValuer`; that is a safety net,
+  not a licence to log them.
+- **Messages** are lowercase, have no trailing period, and read as object +
+  verb ("inventory refresh failed"). Keep them static: variable data goes in
+  attrs.
+- **Field vocabulary (camelCase, fixed):** `component`, `event`, `cluster`,
+  `node`, `vmid`, `user`, `clientIp`, `requestId`, `traceId`, `spanId`,
+  `method`, `route`, `status`, `bytes`, `durationMs`, `error`, `action`,
+  `result`. Domain extras (`pool`, `code`, `path`, ...) are fine when the
+  vocabulary has no equivalent.
+- **Audit rows are mirrored automatically.** `store.insertAuditRow` logs
+  `event=audit` for every `audit_log` row; do not add a second log line for an
+  audited action.
+- **Metrics labels** are limited to `route`, `method`, `status_class`,
+  `cluster`, `action`, `result`, `status` (a view drops the rest). Never
+  `vmid`, `user` or `node`.
+- **Enforced by `sloglint`** in `server/.golangci.yml`: no package-level slog
+  calls outside `cmd/`, camelCase keys, static messages, context-aware calls
+  where a context is in scope.
 
 ## CI
 
