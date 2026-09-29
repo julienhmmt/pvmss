@@ -9,6 +9,7 @@ import (
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/pools"
 	"pvmss/server/internal/store"
 	"slices"
 	"strings"
@@ -311,8 +312,9 @@ func appendStorageAlert(alerts []dashboardAlertDTO, clusterKey string, s dashboa
 	return append(alerts, dashboardAlertDTO{Kind: "storage_full", Severity: severity, Cluster: s.Cluster, ClusterKey: clusterKey, Subject: s.Name, Percent: s.Percent})
 }
 
-// poolQuotaAlerts reports pools holding as many VMs as the cluster's
-// per-user quota allows. A cluster with no stored policy is unlimited.
+// poolQuotaAlerts reports PVMSS-managed ("pvmss-") pools holding as many
+// VMs as the cluster's per-user quota allows. Other Proxmox pools are
+// ignored. A cluster with no stored policy is unlimited.
 func (h *AdminOps) poolQuotaAlerts(ctx context.Context, clusterName, label string, idx *inventory.Index) []dashboardAlertDTO {
 	row, err := h.store.PolicyRow(ctx, clusterName)
 	if err != nil {
@@ -330,7 +332,7 @@ func (h *AdminOps) poolQuotaAlerts(ctx context.Context, clusterName, label strin
 	var alerts []dashboardAlertDTO
 
 	for pool, vms := range idx.ByPool {
-		if pool != "" && len(vms) >= row.MaxVMPerUser {
+		if strings.HasPrefix(pool, pools.PoolPrefix) && len(vms) >= row.MaxVMPerUser {
 			alerts = append(alerts, dashboardAlertDTO{
 				Kind: "pool_at_quota", Severity: alertWarning, Cluster: label, ClusterKey: clusterName, Subject: pool,
 				Percent: percentOf(int64(len(vms)), int64(row.MaxVMPerUser)),
