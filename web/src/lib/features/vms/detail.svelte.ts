@@ -58,7 +58,7 @@ export interface VmDisk {
 }
 
 export interface VmCdrom {
-	state: 'absent' | 'empty' | 'mounted';
+	state: 'absent' | 'empty' | 'mounted' | 'occupied';
 	isoVolId?: string;
 }
 

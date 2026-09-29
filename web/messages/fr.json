@@ -587,6 +587,7 @@
   "vms.disks.mountDialogTitle": "Monter ISO",
   "vms.disks.mountApprovedIso": "ISO approuvée",
   "vms.disks.mountSelectIso": "Sélectionner une ISO approuvée",
+  "vms.disks.cdromOccupied": "L'emplacement CD-ROM (ide2) contient le lecteur cloud-init de cette machine. Il ne peut pas servir à monter un ISO d'ici.",
   "vms.disks.mount": "Monter",
   "vms.disks.bootFromCdrom": "Démarrer sur le CD-ROM",
   "vms.disks.bootCdromBooting": "Démarrage sur le CD-ROM…",

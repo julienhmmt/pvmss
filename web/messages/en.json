@@ -587,6 +587,7 @@
   "vms.disks.mountDialogTitle": "Mount ISO",
   "vms.disks.mountApprovedIso": "Approved ISO",
   "vms.disks.mountSelectIso": "Select approved ISO",
+  "vms.disks.cdromOccupied": "The CD-ROM slot (ide2) holds this machine's cloud-init drive. It cannot be used for an ISO from here.",
   "vms.disks.mount": "Mount",
   "vms.disks.bootFromCdrom": "Boot from CD-ROM",
   "vms.disks.bootCdromBooting": "Booting from CD-ROM…",
