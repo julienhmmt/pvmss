@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/pools"
 	"pvmss/server/internal/store"
 	"strings"
@@ -283,6 +284,10 @@ func (h *Auth) CSRFToken(r *http.Request) (string, error) {
 func (h *Auth) Principal(r *http.Request) (auth.Identity, error) {
 	identity, err := h.sessions.Resolve(r.Context(), r)
 	if err == nil {
+		// Principal is the single resolution point (Require, RequireAdmin and
+		// handlers that call it directly), so tagging here covers them all.
+		logctx.AddAttrs(r.Context(), slog.String("user", identity.Username))
+
 		return identity, nil
 	}
 
