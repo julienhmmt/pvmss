@@ -2,8 +2,15 @@ import { m } from '$lib/paraglide/messages.js';
 
 /** One thing an administrator should act on, computed by the server. */
 export interface DashboardAlert {
-	kind: 'cluster_unreachable' | 'node_offline' | 'node_cpu' | 'node_memory' | 'storage_full' | 'pool_at_quota';
-	severity: 'critical' | 'warning';
+	kind:
+		| 'cluster_unreachable'
+		| 'node_offline'
+		| 'node_offline_disabled'
+		| 'node_cpu'
+		| 'node_memory'
+		| 'storage_full'
+		| 'pool_at_quota';
+	severity: 'critical' | 'warning' | 'info';
 	cluster: string;
 	clusterKey?: string;
 	subject?: string;
@@ -26,6 +33,7 @@ export type AlertTarget = AdminPath | NodeDetailRoute;
 export function alertHref(alert: DashboardAlert): AlertTarget {
 	switch (alert.kind) {
 		case 'node_offline':
+		case 'node_offline_disabled':
 		case 'node_cpu':
 		case 'node_memory':
 			return {
@@ -49,6 +57,8 @@ export function alertMessage(alert: DashboardAlert): string {
 			return m['admin.dashboard.alert.clusterUnreachable']({ cluster: alert.cluster });
 		case 'node_offline':
 			return m['admin.dashboard.alert.nodeOffline']({ subject });
+		case 'node_offline_disabled':
+			return m['admin.dashboard.alert.nodeOfflineDisabled']({ subject });
 		case 'node_cpu':
 			return m['admin.dashboard.alert.nodeCpu']({ subject, percent });
 		case 'node_memory':
