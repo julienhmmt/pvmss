@@ -68,13 +68,4 @@
 			<span class="truncate font-medium text-foreground" data-testid="context-screen">{context.screen}</span>
 		{/if}
 	</p>
-	{#if !session.isAdmin}
-		<span class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-0.5 text-xs text-muted-foreground">
-			<svg viewBox="0 0 24 24" class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-				<rect x="3" y="11" width="18" height="11" rx="2" />
-				<path d="M7 11V7a5 5 0 0 1 10 0v4" />
-			</svg>
-			{m['chrome.context.privateWorkspace']()}
-		</span>
-	{/if}
 </header>
