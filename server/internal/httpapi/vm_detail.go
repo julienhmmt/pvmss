@@ -1538,6 +1538,14 @@ func (h *VMDetail) writeEntity(w http.ResponseWriter, r *http.Request, entity vm
 		if state, found, err := h.store.GetBaselineState(r.Context(), entity.Cluster, entity.VMID); err == nil && found {
 			dto.BaselineState = state.State
 			dto.BaselineError = state.Error
+
+			// "not_delivered" is a creation-time snapshot. A document
+			// attached since (snippets enabled later) supersedes it.
+			if state.State == vm.BaselineStateNotDelivered {
+				if _, attached, err := h.store.GetVMCloudInitDocument(r.Context(), entity.Cluster, entity.VMID); err == nil && attached {
+					dto.BaselineState, dto.BaselineError = "", ""
+				}
+			}
 		}
 	}
 

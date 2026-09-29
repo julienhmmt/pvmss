@@ -281,6 +281,35 @@ func TestVMDetail_Get_BaselineStateCarried(t *testing.T) {
 	}
 }
 
+// TestVMDetail_Get_StaleNotDeliveredCleared - a "not_delivered" state written
+// at creation is a snapshot: once a document is attached to the VM (the
+// admin enabled snippets and the user picked one later) it must not linger.
+//
+//nolint:paralleltest // serial: shared fake VM and database fixtures
+func TestVMDetail_Get_StaleNotDeliveredCleared(t *testing.T) {
+	handler, authHandler, _, st := newVMDetailHandler(t)
+	cookie := aliceCookie(t, authHandler)
+	ctx := context.Background()
+
+	if err := st.PutBaselineState(ctx, "default", 100, "not_delivered", "snippets off"); err != nil {
+		t.Fatalf("PutBaselineState: %v", err)
+	}
+
+	_, before := serveDetail(handler, detailRequest(http.MethodGet, "/api/v1/vms/default/100", "", cookie))
+	if before.BaselineState != "not_delivered" {
+		t.Fatalf("no document attached: baselineState = %q, want 'not_delivered'", before.BaselineState)
+	}
+
+	if err := st.PutVMCloudInitDocument(ctx, "default", 100, store.BaselineTemplateID, "pvmss-baseline-x.yml", "alice"); err != nil {
+		t.Fatalf("PutVMCloudInitDocument: %v", err)
+	}
+
+	_, after := serveDetail(handler, detailRequest(http.MethodGet, "/api/v1/vms/default/100", "", cookie))
+	if after.BaselineState != "" || after.BaselineError != "" {
+		t.Errorf("document attached: baselineState=%q error=%q, want both empty", after.BaselineState, after.BaselineError)
+	}
+}
+
 // TestVMDetail_Get_NonOwnerTaggedForbidden - a non-owner requesting a
 // tagged VM they don't own gets 403.
 //
