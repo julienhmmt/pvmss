@@ -61,6 +61,17 @@ const DEFAULT_SORT_DIR: VmSortDir = 'asc';
 const DEFAULT_PAGE_SIZE = 10;
 const SEARCH_DEBOUNCE_MS = 300;
 
+/**
+ * Ceiling on the requests the "needs attention" filter may make. That filter
+ * matches states derived client-side (display-status.ts), so it is only
+ * correct over the whole list and every page has to be fetched.
+ *
+ * ponytail: a self-service user's own machines sit far inside this bound at
+ * pageSize 10. Upgrade path: persist `partial` / `failed` server-side so the
+ * filter can be a real query parameter and the loop can go.
+ */
+const MAX_ATTENTION_PAGES = 50;
+
 export const SORTABLE_COLUMNS: readonly VmSortBy[] = ['name', 'vmid', 'node', 'status', 'cpu', 'memory'] as const;
 
 /**
@@ -82,6 +93,12 @@ export class VmListStore {
 	cluster = $state('');
 	search = $state('');
 	status = $state<VmStatus | ''>('');
+	/**
+	 * "Needs attention" filter. Not a server status: the states it matches are
+	 * derived client-side, so this loads every page and lets the view filter.
+	 * Mutually exclusive with `status` - the filter row is one select.
+	 */
+	attention = $state(false);
 	node = $state('');
 	sortBy = $state<VmSortBy>(DEFAULT_SORT_BY);
 	sortDir = $state<VmSortDir>(DEFAULT_SORT_DIR);
@@ -101,6 +118,7 @@ export class VmListStore {
 		this.cluster = params.get('cluster') ?? '';
 		this.search = params.get('search') ?? '';
 		this.status = (params.get('status') ?? '') as VmStatus | '';
+		this.attention = params.get('attention') === '1';
 		this.node = params.get('node') ?? '';
 		this.sortBy = (params.get('sortBy') ?? DEFAULT_SORT_BY) as VmSortBy;
 		this.sortDir = (params.get('sortDir') ?? DEFAULT_SORT_DIR) as VmSortDir;
@@ -114,6 +132,7 @@ export class VmListStore {
 		if (this.cluster !== '') params.set('cluster', this.cluster);
 		if (this.search !== '') params.set('search', this.search);
 		if (this.status !== '') params.set('status', this.status);
+		if (this.attention) params.set('attention', '1');
 		if (this.node !== '') params.set('node', this.node);
 		if (this.sortBy !== DEFAULT_SORT_BY) params.set('sortBy', this.sortBy);
 		if (this.sortDir !== DEFAULT_SORT_DIR) params.set('sortDir', this.sortDir);
@@ -128,8 +147,7 @@ export class VmListStore {
 		this.error = null;
 		this.errorCode = null;
 		try {
-			const query = this.queryString();
-			const result = await get<VmListResult>(`/api/v1/vms${query === '' ? '' : `?${query}`}`);
+			const result = this.attention ? await this.#fetchEveryPage() : await this.#fetchPage(this.page);
 			// Proxmox destroy runs asynchronously (server/internal/cluster/proxmox_writer.go),
 			// so the inventory cache can still report a just-deleted VM for a short
 			// window. Hide anything this tab deleted itself until that window passes.
@@ -172,6 +190,35 @@ export class VmListStore {
 		await this.load();
 	}
 
+	/** One page of the list, with the current query applied. */
+	async #fetchPage(page: number): Promise<VmListResult> {
+		const params = new SvelteURLSearchParams(this.queryString());
+		if (page !== 1) params.set('page', String(page));
+		const query = params.toString();
+		return get<VmListResult>(`/api/v1/vms${query === '' ? '' : `?${query}`}`);
+	}
+
+	/**
+	 * Every page, concatenated. Only the "needs attention" filter needs this:
+	 * the states it matches are derived client-side, so a single page would
+	 * silently hide a failed machine sitting on page 2. Returns one page of
+	 * results whose `pageSize` covers everything fetched, so the view renders
+	 * no pagination over a set that is already complete.
+	 */
+	async #fetchEveryPage(): Promise<VmListResult> {
+		const first = await this.#fetchPage(1);
+		const pageCount = Math.min(
+			Math.max(1, Math.ceil(first.total / first.pageSize)),
+			MAX_ATTENTION_PAGES
+		);
+		const items = [...first.items];
+		for (let page = 2; page <= pageCount; page += 1) {
+			const next = await this.#fetchPage(page);
+			items.push(...next.items);
+		}
+		return { ...first, items, page: 1, pageSize: Math.max(items.length, 1) };
+	}
+
 	/** Debounced search input - one field matches name, tag, or ID (FR-002). */
 	applySearch(value: string): void {
 		this.search = value;
@@ -199,6 +246,7 @@ export class VmListStore {
 		this.dispose();
 		this.search = '';
 		this.status = '';
+		this.attention = false;
 		this.node = '';
 		this.page = 1;
 		this.#syncAndLoad();
@@ -212,6 +260,15 @@ export class VmListStore {
 
 	setStatus(value: VmStatus | ''): void {
 		this.status = value;
+		this.attention = false;
+		this.page = 1;
+		this.#syncAndLoad();
+	}
+
+	/** The filter row is one select, so the two filters clear each other. */
+	setAttention(value: boolean): void {
+		this.attention = value;
+		this.status = '';
 		this.page = 1;
 		this.#syncAndLoad();
 	}
