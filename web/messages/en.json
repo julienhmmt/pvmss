@@ -677,6 +677,68 @@
   "vms.deleteDialogForceConfirm": "It will be force-stopped before being destroyed. Any unsaved work will be lost. There is no undo.",
   "vms.deleteDialogForceStopAndDelete": "Force stop and delete",
   "vms.bulk.errorDefault": "bulk action failed",
+  "vms.bulk.confirm.affected": "Affected: {names}.",
+  "vms.bulk.confirm.forceStop.title": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Force stop this machine?",
+        "countPlural=other": "Force stop {count} machines?"
+      }
+    }
+  ],
+  "vms.bulk.confirm.forceStop.message": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Force stop cuts power to the selected machine immediately, the same as pulling the plug. Anything not saved inside the guest is lost. Shut down instead if the machine still responds.",
+        "countPlural=other": "Force stop cuts power to all {count} selected machines immediately, the same as pulling the plug. Anything not saved inside the guests is lost. Shut down instead if the machines still respond."
+      }
+    }
+  ],
+  "vms.bulk.confirm.more": "+{count} more",
+  "vms.bulk.confirm.reset.title": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Reset this machine?",
+        "countPlural=other": "Reset {count} machines?"
+      }
+    }
+  ],
+  "vms.bulk.confirm.reset.message": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Reset restarts the selected machine without letting the guest shut down first. Anything not saved inside the guest is lost. Reboot instead if the machine still responds.",
+        "countPlural=other": "Reset restarts all {count} selected machines without letting the guests shut down first. Anything not saved inside the guests is lost. Reboot instead if the machines still respond."
+      }
+    }
+  ],
   "vms.create.title": "Create a machine - PVMSS",
   "vms.create.heading": "Create a machine",
   "vms.create.modeLabel": "Creation mode",

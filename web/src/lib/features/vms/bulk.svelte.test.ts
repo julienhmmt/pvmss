@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { VmBulkSelection, type BulkTarget, type BulkActionResult } from './bulk.svelte';
+import {
+	VmBulkSelection,
+	bulkConfirmationKind,
+	type BulkTarget,
+	type BulkActionResult
+} from './bulk.svelte';
 import type { VmListItem } from './list.svelte';
 
 function target(cluster: string, vmid: number): BulkTarget {
@@ -254,5 +259,15 @@ describe('VmBulkSelection type exports', () => {
 			]
 		};
 		expect(r.results).toHaveLength(2);
+	});
+});
+
+describe('bulkConfirmationKind', () => {
+	it('gates the forceful actions and lets the recoverable ones through', () => {
+		expect(bulkConfirmationKind('stop')).toBe('forceStop');
+		expect(bulkConfirmationKind('reset')).toBe('reset');
+		for (const action of ['start', 'shutdown', 'reboot', 'pause', 'resume', 'nonsense']) {
+			expect(bulkConfirmationKind(action)).toBeNull();
+		}
 	});
 });

@@ -677,6 +677,68 @@
   "vms.deleteDialogForceConfirm": "Elle sera arrêtée de force avant d'être détruite. Tout travail non enregistré sera perdu. Il n'y a pas d'annulation.",
   "vms.deleteDialogForceStopAndDelete": "Arrêter de force et supprimer",
   "vms.bulk.errorDefault": "Échec de l'action groupée",
+  "vms.bulk.confirm.affected": "Concernées : {names}.",
+  "vms.bulk.confirm.forceStop.title": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Forcer l'arrêt de cette machine ?",
+        "countPlural=other": "Forcer l'arrêt de {count} machines ?"
+      }
+    }
+  ],
+  "vms.bulk.confirm.forceStop.message": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Forcer l'arrêt coupe immédiatement l'alimentation de la machine sélectionnée, comme si vous débranchiez la prise. Tout ce qui n'est pas enregistré dans le système invité est perdu. Utilisez Arrêter si la machine répond encore.",
+        "countPlural=other": "Forcer l'arrêt coupe immédiatement l'alimentation des {count} machines sélectionnées, comme si vous débranchiez la prise. Tout ce qui n'est pas enregistré dans les systèmes invités est perdu. Utilisez Arrêter si les machines répondent encore."
+      }
+    }
+  ],
+  "vms.bulk.confirm.more": "+{count} autres",
+  "vms.bulk.confirm.reset.title": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "Réinitialiser cette machine ?",
+        "countPlural=other": "Réinitialiser {count} machines ?"
+      }
+    }
+  ],
+  "vms.bulk.confirm.reset.message": [
+    {
+      "declarations": [
+        "input count",
+        "local countPlural = count: plural"
+      ],
+      "selectors": [
+        "countPlural"
+      ],
+      "match": {
+        "countPlural=one": "La réinitialisation redémarre la machine sélectionnée sans laisser le système invité s'arrêter proprement. Tout ce qui n'est pas enregistré dans le système invité est perdu. Utilisez Redémarrer si la machine répond encore.",
+        "countPlural=other": "La réinitialisation redémarre les {count} machines sélectionnées sans laisser les systèmes invités s'arrêter proprement. Tout ce qui n'est pas enregistré dans les systèmes invités est perdu. Utilisez Redémarrer si les machines répondent encore."
+      }
+    }
+  ],
   "vms.create.title": "Créer une machine - PVMSS",
   "vms.create.heading": "Créer une machine",
   "vms.create.modeLabel": "Mode de création",
