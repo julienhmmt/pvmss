@@ -63,7 +63,7 @@ func TestNewLogger(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			_, closer, err := config.NewLogger(c.cfg)
+			_, _, closer, err := config.NewLogger(c.cfg)
 			if c.wantErr {
 				if err == nil {
 					t.Fatalf("expected error, got nil")
@@ -91,7 +91,7 @@ func TestNewLogger(t *testing.T) {
 func validateJSONLogger(t *testing.T, path string) {
 	t.Helper()
 
-	logger, closer, err := config.NewLogger(config.Configuration{
+	logger, _, closer, err := config.NewLogger(config.Configuration{
 		Port:      50001,
 		DBPath:    testMemoryDB,
 		LogLevel:  testLogLevel,
@@ -158,7 +158,7 @@ func validateJSONLogger(t *testing.T, path string) {
 func validateConsoleLogger(t *testing.T, path string) {
 	t.Helper()
 
-	logger, closer, err := config.NewLogger(config.Configuration{
+	logger, _, closer, err := config.NewLogger(config.Configuration{
 		Port:      50001,
 		DBPath:    testMemoryDB,
 		LogLevel:  testLogLevel,

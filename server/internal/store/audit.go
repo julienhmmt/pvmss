@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
 )
@@ -101,7 +100,7 @@ type auditRow struct {
 
 // insertAuditRow writes one audit_log row with all columns. It never returns
 // an error that breaks the caller: on insert failure it logs the error via
-// the package-level slog default and returns nil. The rule lives here, not in
+// the store logger and returns nil. The rule lives here, not in
 // each caller, so no audit site can accidentally let a DB error propagate into
 // the request path.
 func (s *Store) insertAuditRow(ctx context.Context, row auditRow) error {
@@ -110,7 +109,7 @@ func (s *Store) insertAuditRow(ctx context.Context, row auditRow) error {
 		row.Actor, row.Cluster, row.VMID, row.Action, time.Now().UTC().Format(time.RFC3339Nano),
 		row.TargetType, row.TargetID, row.Detail, row.IPAddress, row.Severity)
 	if err != nil {
-		slog.Error("audit log insert failed", "component", "store", "actor", row.Actor, "action", row.Action, "error", err)
+		s.log().ErrorContext(ctx, "audit log insert failed", "component", "store", "actor", row.Actor, "action", row.Action, "error", err)
 		return nil
 	}
 

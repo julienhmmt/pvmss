@@ -1,6 +1,13 @@
 package config
 
-import "time"
+import (
+	"log/slog"
+	"time"
+)
+
+// LogValue keeps SessionSecret, the Proxmox token and the admin hash out of
+// logs when a whole Configuration is logged.
+func (Configuration) LogValue() slog.Value { return slog.StringValue("[redacted]") }
 
 // Configuration holds the values required for the server to start.
 // All required values are loaded from the environment; WebDir is optional

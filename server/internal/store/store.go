@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 )
 
 // Store is a SQLite-backed persistence handle.
@@ -10,6 +11,19 @@ type Store struct {
 	db            *sql.DB
 	staging       *ImportStaging
 	encryptionKey []byte
+	logger        *slog.Logger
+}
+
+// SetLogger injects the logger used for store-level diagnostics. Call it once
+// during wiring, before the store is shared; unset, the slog default is used.
+func (s *Store) SetLogger(l *slog.Logger) { s.logger = l }
+
+func (s *Store) log() *slog.Logger {
+	if s.logger == nil {
+		return slog.Default()
+	}
+
+	return s.logger
 }
 
 // NewFromDB wraps an already-open *sql.DB in a Store. Used by tests that need
