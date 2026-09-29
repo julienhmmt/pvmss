@@ -20,7 +20,7 @@ func TestLogBanner_ContainsEveryField(t *testing.T) {
 		{Key: "vcs.revision", Value: "abc123"}, {Key: "vcs.time", Value: "2026-09-29T10:00:00Z"},
 	}}
 
-	logBanner(logger, cfg, []string{"default", "lab"}, bi)
+	logBanner(logger, cfg, []string{"default", "lab"}, bi, "")
 
 	var got map[string]any
 	if err := json.Unmarshal(buf.Bytes(), &got); err != nil {
@@ -48,9 +48,26 @@ func TestLogBanner_NilBuildInfo(t *testing.T) {
 
 	var buf bytes.Buffer
 
-	logBanner(slog.New(slog.NewJSONHandler(&buf, nil)), config.Configuration{}, nil, nil)
+	logBanner(slog.New(slog.NewJSONHandler(&buf, nil)), config.Configuration{}, nil, nil, "")
 
 	if buf.Len() == 0 {
 		t.Fatal("banner not logged without build info")
+	}
+}
+
+func TestLogBanner_OTelEnabledShowsHostOnly(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+
+	logBanner(slog.New(slog.NewJSONHandler(&buf, nil)), config.Configuration{}, nil, nil, "otel.example:4318")
+
+	var got map[string]any
+	if err := json.Unmarshal(buf.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+
+	if got["otel"] != true || got["otelEndpoint"] != "otel.example:4318" {
+		t.Errorf("otel fields = %v / %v", got["otel"], got["otelEndpoint"])
 	}
 }

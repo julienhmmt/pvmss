@@ -24,6 +24,7 @@ import (
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
+	"pvmss/server/internal/telemetry"
 	"pvmss/server/internal/vm"
 	"runtime/debug"
 	"syscall"
@@ -83,6 +84,22 @@ func run() int {
 	}
 	defer func() { _ = logCloser.Close() }()
 
+	bi, _ := debug.ReadBuildInfo()
+
+	otelShutdown, err := telemetry.Setup(context.Background(), telemetry.Config{Version: appVersion, Commit: vcsSetting(bi, "vcs.revision")}, os.Getenv)
+	if err != nil {
+		logger.Warn("tracing disabled: telemetry setup failed", "component", "main", "error", err)
+	}
+
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := otelShutdown(ctx); err != nil {
+			logger.Warn("telemetry flush failed", "component", "main", "error", err)
+		}
+	}()
+
 	st, err := openStore(cfg, logger)
 	if err != nil {
 		return 1
@@ -106,8 +123,7 @@ func run() int {
 		return 1
 	}
 
-	bi, _ := debug.ReadBuildInfo()
-	logBanner(logger, cfg, clusterRegistry.List(), bi)
+	logBanner(logger, cfg, clusterRegistry.List(), bi, telemetry.EndpointHost(os.Getenv))
 
 	// Start every worker before the HTTP server accepts traffic so the
 	// projections are populated before the first request can arrive.
@@ -162,6 +178,9 @@ func loadConfig(stderr *slog.Logger) (config.Configuration, *slog.Logger, *slog.
 		return config.Configuration{}, nil, nil, nil, err
 	}
 
+	// Outermost wrapper: records logged with a span in their context gain
+	// traceId/spanId. It sits above the level gate and redaction handlers.
+	logger = slog.New(telemetry.LogHandler(logger.Handler()))
 	slog.SetDefault(logger)
 	logger.Debug("configuration loaded", "component", "main", "host", cfg.Host, "port", cfg.Port, "dbPath", cfg.DBPath)
 

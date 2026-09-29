@@ -10,8 +10,15 @@ import (
 	"strings"
 	"time"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
+
 	"pvmss/server/internal/logctx"
 )
+
+const tracerName = "pvmss/cluster"
 
 // templatedSegments maps the path segment that precedes an identifier to the
 // placeholder logged in its place, so the log never carries node names, user
@@ -72,14 +79,31 @@ func (c proxmoxRESTClient) logger(ctx context.Context) *slog.Logger {
 // announced separately by the loop. Bodies, headers and tokens are never read
 // here.
 func (c proxmoxRESTClient) attempt(ctx context.Context, method, path string, form url.Values, n int) (json.RawMessage, int, error) {
+	templated := templateProxmoxPath(path)
+
+	// A client span per attempt, named by the templated path. Set by hand
+	// rather than an otelhttp transport so it can carry the cluster and never
+	// records the raw path or Proxmox's response message.
+	ctx, span := otel.Tracer(tracerName).Start(ctx, method+" "+templated,
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(attribute.String("cluster", c.cluster), attribute.String("http.request.method", method),
+			attribute.String("url.template", templated), attribute.Int("http.request.resend_count", n-1)))
+	defer span.End()
+
 	start := time.Now()
 	raw, status, err := c.doOnce(ctx, method, path, form)
+
+	span.SetAttributes(attribute.Int("http.response.status_code", status))
+
+	if err != nil {
+		span.SetStatus(codes.Error, retryReason(err))
+	}
 
 	c.logger(ctx).LogAttrs(ctx, slog.LevelDebug, "proxmox request",
 		slog.String("component", "cluster"),
 		slog.String("cluster", c.cluster),
 		slog.String("method", method),
-		slog.String("path", templateProxmoxPath(path)),
+		slog.String("path", templated),
 		slog.Int("status", status),
 		slog.Int64("durationMs", time.Since(start).Milliseconds()),
 		slog.Int("attempt", n),

@@ -11,6 +11,11 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+
+	"go.opentelemetry.io/otel"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func TestTemplateProxmoxPath(t *testing.T) {
@@ -162,5 +167,58 @@ func TestProxmoxREST_PrefersRequestLogger(t *testing.T) {
 
 	if fallback.Len() != 0 || !strings.Contains(reqBuf.String(), `"requestId":"r1"`) {
 		t.Fatalf("fallback=%q request=%q", fallback.String(), reqBuf.String())
+	}
+}
+
+// One client span per Proxmox attempt, child of the caller's span, carrying
+// cluster, templated path and status, but never the raw path or the token.
+//
+//nolint:paralleltest // serial: swaps the global tracer provider
+func TestProxmoxREST_SpanPerCall(t *testing.T) {
+	exp := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(sdktrace.NewSimpleSpanProcessor(exp)))
+	prev := otel.GetTracerProvider()
+
+	otel.SetTracerProvider(tp)
+	t.Cleanup(func() { otel.SetTracerProvider(prev); _ = tp.Shutdown(context.Background()) })
+
+	c, _ := logRESTFixture(t, func(int32) int { return http.StatusOK })
+
+	ctx, parent := tp.Tracer("test").Start(context.Background(), "request")
+	if _, err := c.do(ctx, http.MethodGet, "/nodes/pve1/qemu/101/status/current", nil); err != nil {
+		t.Fatal(err)
+	}
+
+	parent.End()
+
+	var client tracetest.SpanStub
+
+	for _, s := range exp.GetSpans() {
+		if s.SpanKind == trace.SpanKindClient {
+			client = s
+		}
+	}
+
+	if client.Name != "GET /nodes/{node}/qemu/{vmid}/status/current" {
+		t.Fatalf("span name = %q", client.Name)
+	}
+
+	if client.Parent.SpanID() != parent.SpanContext().SpanID() {
+		t.Errorf("client span is not a child of the request span")
+	}
+
+	attrs := map[string]string{}
+	for _, a := range client.Attributes {
+		attrs[string(a.Key)] = a.Value.Emit()
+	}
+
+	if attrs["cluster"] != "lab" || attrs["http.response.status_code"] != "200" {
+		t.Errorf("attrs = %v", attrs)
+	}
+
+	for k, v := range attrs {
+		if strings.Contains(v, "pve1") || strings.Contains(v, testTokenVal) {
+			t.Errorf("attr %s leaks %q", k, v)
+		}
 	}
 }

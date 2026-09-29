@@ -34,8 +34,9 @@ func vcsSetting(bi *debug.BuildInfo, key string) string {
 
 // logBanner emits the single "pvmss starting" line: what is running and how it
 // is configured, so a log excerpt alone answers "which build, against what".
-// otel and metricsAddr stay off/empty until tracing and /metrics land.
-func logBanner(logger *slog.Logger, cfg config.Configuration, clusters []string, bi *debug.BuildInfo) {
+// otelHost is the OTLP endpoint host only (never headers or credentials);
+// empty means tracing is off. metricsAddr stays empty until /metrics lands.
+func logBanner(logger *slog.Logger, cfg config.Configuration, clusters []string, bi *debug.BuildInfo, otelHost string) {
 	goVersion := runtime.Version()
 	if bi != nil && bi.GoVersion != "" {
 		goVersion = bi.GoVersion
@@ -51,7 +52,8 @@ func logBanner(logger *slog.Logger, cfg config.Configuration, clusters []string,
 		"logLevel", cfg.LogLevel,
 		"logFormat", cfg.LogFormat,
 		"addr", listenAddr(cfg),
-		"otel", false,
+		"otel", otelHost != "",
+		"otelEndpoint", otelHost,
 		"metricsAddr", "",
 	)
 }

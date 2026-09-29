@@ -11,6 +11,11 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
 type syncBuf struct {
@@ -129,5 +134,50 @@ func TestWorker_SuccessWhileUpOnlyLogsDebugSummary(t *testing.T) {
 	lines := buf.lines(t)
 	if len(lines) != 1 || lines[0]["level"] != "DEBUG" || lines[0]["vms"] != float64(2) || lines[0]["nodes"] != float64(1) || lines[0]["durationMs"] == nil {
 		t.Fatalf("lines = %v", lines)
+	}
+}
+
+// One parent span per refresh cycle, named inventory.refresh with the cluster;
+// failed cycles are marked as errors without the raw error text.
+//
+//nolint:paralleltest // serial: swaps the global tracer provider
+func TestWorker_RefreshSpan(t *testing.T) {
+	exp := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(sdktrace.NewSimpleSpanProcessor(exp)))
+	prev := otel.GetTracerProvider()
+
+	otel.SetTracerProvider(tp)
+	t.Cleanup(func() { otel.SetTracerProvider(prev); _ = tp.Shutdown(context.Background()) })
+
+	clock := time.Now()
+	client := &callCountClient{err: errors.New("dial tcp 10.0.0.9: refused")}
+	w, _ := newTransitionWorker(t, client, &clock)
+
+	_, _ = w.Refresh(context.Background())
+
+	client.err = nil
+	_, _ = w.Refresh(context.Background())
+
+	spans := exp.GetSpans()
+	if len(spans) != 2 || spans[0].Name != "inventory.refresh" {
+		t.Fatalf("want 2 inventory.refresh spans, got %v", spans)
+	}
+
+	if spans[0].Status.Code != codes.Error || strings.Contains(spans[0].Status.Description, "10.0.0.9") {
+		t.Errorf("failed cycle status = %+v", spans[0].Status)
+	}
+
+	if spans[1].Status.Code == codes.Error {
+		t.Errorf("successful cycle marked as error")
+	}
+
+	found := false
+
+	for _, a := range spans[0].Attributes {
+		found = found || (a.Key == "cluster" && a.Value.AsString() == "lab")
+	}
+
+	if !found {
+		t.Errorf("cluster attribute missing: %v", spans[0].Attributes)
 	}
 }
