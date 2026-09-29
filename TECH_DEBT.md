@@ -146,6 +146,21 @@ Plan: `PLAN-ui-v0.4.md` (not committed), branches `fix/web-offline-links`,
 - **CI only triggers on `main` and PRs to `main`**; pushes to the `v0.4`
   branch are not built.
 
+## Left behind by the Connect-tab readiness pass (2026-09-29)
+
+- **Windows and non-Linux guests.** `ostype` is hardcoded to `l26` at
+  create (`cluster/proxmox_create.go`) and is not exposed in the detail DTO,
+  so the Connect tab is SSH-only. A Windows OS installed by hand on such a
+  VM still gets an SSH card once the agent reports an address. Deciding it
+  takes: exposing `ostype`, then choosing console-only or an RDP card.
+- **"Installing" is "an ISO is mounted".** A user who finishes the install
+  but leaves the ISO mounted sees "Installation in progress" until they
+  press "Eject the ISO". Deliberate (one explicit gesture, no stored flag);
+  a boot-order or first-boot signal would remove the click.
+- **No sshd check.** PVMSS does not probe port 22 (guest-reported address =
+  SSRF vector; the server may not share the VM's network). The only honest
+  alternative is a guest-agent `guest-exec` check, Linux-only and intrusive.
+
 ## How to re-check any of this
 
 ```bash
