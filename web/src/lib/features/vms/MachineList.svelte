@@ -32,6 +32,7 @@
 	import AllowanceMeter from '$lib/shared/ui/AllowanceMeter.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 	import SortButton from '$lib/shared/ui/SortButton.svelte';
+	import Pill from '$lib/shared/ui/Pill.svelte';
 	import SearchIcon from '$lib/shared/ui/icons/SearchIcon.svelte';
 	import ChevronDownIcon from '$lib/shared/ui/icons/ChevronDownIcon.svelte';
 
@@ -81,10 +82,19 @@
 		return resolve('/vms/[cluster]/[vmid]', { cluster: machine.cluster, vmid: String(machine.vmid) });
 	}
 
-	function subtitle(machine: VmListItem): string {
-		const tags = machine.tags.filter((tag) => tag !== 'pvmss');
-		return tags.length > 0 ? tags.join(' · ') : machine.clusterDisplayName;
+	/** Tags minus the internal marker; the cluster no longer rides here - it
+	 *  is either the chip beside the name or implied by the active filter. */
+	function visibleTags(machine: VmListItem): string[] {
+		return machine.tags.filter((tag) => tag !== 'pvmss');
 	}
+
+	/**
+	 * The list spans clusters whenever no cluster filter is active. Only then
+	 * is a machine's name ambiguous: the same name and VMID can exist in two
+	 * clusters, so the row carries the cluster as a chip and the link says
+	 * which one it opens.
+	 */
+	const spansClusters = $derived(store.cluster === '');
 
 	async function start(machine: VmListItem): Promise<void> {
 		if (powerActions.get(machine.cluster, machine.vmid) !== null) return;
@@ -345,21 +355,31 @@
 								<div class="flex min-w-0 items-center gap-3">
 									<span class="max-[369px]:hidden"><OsMark initials={machineInitials(machine.name)} tone={machineTone(machine.name)} /></span>
 									<div class="min-w-0">
-										<a
-											href={detailHref(machine)}
-											class="pv-focus block truncate font-medium text-foreground underline-offset-2 after:absolute after:inset-0 after:content-[''] hover:text-primary hover:underline"
-											data-testid="vm-row-link"
-										>
-											{machine.name}
-										</a>
-										<p class="truncate text-xs text-muted-foreground">
-											{#if store.cluster === '' && machine.tags.some((tag) => tag !== 'pvmss')}
-												<span data-testid="vm-row-cluster">{machine.clusterDisplayName}</span> ·
-											{:else if store.cluster === ''}
-												<span class="sr-only" data-testid="vm-row-cluster">{machine.clusterDisplayName}</span>
+										<div class="flex min-w-0 items-center gap-2">
+											<a
+												href={detailHref(machine)}
+												class="pv-focus block min-w-0 truncate font-medium text-foreground underline-offset-2 after:absolute after:inset-0 after:content-[''] hover:text-primary hover:underline"
+												aria-label={spansClusters
+													? m['vms.list.rowLinkLabel']({
+															name: machine.name,
+															cluster: machine.clusterDisplayName
+														})
+													: undefined}
+												data-testid="vm-row-link"
+											>
+												{machine.name}
+											</a>
+											{#if spansClusters}
+												<span class="shrink-0" data-testid="vm-row-cluster">
+													<Pill tone="off" dot={false} label={machine.clusterDisplayName} />
+												</span>
 											{/if}
-											{subtitle(machine)}
-										</p>
+										</div>
+										{#if visibleTags(machine).length > 0}
+											<p class="truncate text-xs text-muted-foreground">
+												{visibleTags(machine).join(' · ')}
+											</p>
+										{/if}
 									</div>
 								</div>
 								<p class="text-xs leading-5 text-muted-foreground max-[699px]:hidden">

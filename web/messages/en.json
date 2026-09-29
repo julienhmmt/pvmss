@@ -1802,6 +1802,7 @@
   "vms.list.filterAll": "All machines",
   "vms.list.filterRunning": "Running",
   "vms.list.filterStopped": "Stopped",
+  "vms.list.rowLinkLabel": "Open {name} on {cluster}",
   "vms.list.filterAttention": "Needs attention",
   "vms.list.sortByName": "Sort by name",
   "vms.list.sortByStatus": "Sort by status",
