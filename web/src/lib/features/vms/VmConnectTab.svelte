@@ -10,9 +10,10 @@
 	import { resolve } from '$app/paths';
 	import { getVmDetailContext } from './detail.svelte';
 	import { canConnect, type MachineDisplayStatus } from './display-status';
-	import { primaryAddress, sshCommand } from './connection';
+	import { connectState, primaryAddress, sshCommand } from './connection';
 	import { compactBytes } from './machine-row';
 	import { get } from '$lib/shared/api/client';
+	import Button from '$lib/shared/ui/Button.svelte';
 	import ButtonLink from '$lib/shared/ui/ButtonLink.svelte';
 	import CopyButton from '$lib/shared/ui/CopyButton.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -26,7 +27,8 @@
 	const store = getVmDetailContext();
 
 	const address = $derived(primaryAddress(store.entity?.networkInterfaces));
-	const connectable = $derived(canConnect(status, address?.address));
+	const connect = $derived(connectState(status, store.entity ?? {}));
+	const connectable = $derived(canConnect(status, address?.address) && connect === 'ready');
 
 	// The cloud-init user is the account SSH lands on. Fetched once the
 	// machine is connectable; unknown (template/ISO machines) stays unknown.
@@ -51,10 +53,22 @@
 
 {#if store.entity}
 	{@const entity = store.entity}
-	<div class="grid gap-5 min-[900px]:grid-cols-[minmax(0,1fr)_260px]">
+	<div class="grid gap-5 {connect === 'installing' ? '' : 'min-[900px]:grid-cols-[minmax(0,1fr)_260px]'}">
 		<section class="rounded-xl border border-border bg-card p-6 shadow-card" aria-labelledby="connect-ssh-title" data-testid="vm-connect-ssh">
 			<p class="text-2xs font-semibold uppercase tracking-[0.08em] text-muted-foreground-subtle">{m['vms.detail.connect.eyebrow']()}</p>
-			{#if connectable && address}
+			{#if connect === 'installing'}
+				<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold" data-testid="vm-installing">{m['vms.detail.connect.installingTitle']()}</h2>
+				<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.installingBody']()}</p>
+				<div class="mt-4 flex flex-wrap items-center gap-3">
+					<ButtonLink href={consoleHref} variant="primary" target="_blank" rel="noopener noreferrer" data-testid="vm-console-open">
+						{m['vms.detail.connect.consoleOpen']()}
+					</ButtonLink>
+					<Button variant="secondary" loading={store.cdromInFlight} onclick={() => void store.setCdrom('disconnect')} data-testid="vm-eject-iso">
+						{m['vms.detail.connect.ejectIso']()}
+					</Button>
+				</div>
+				{#if store.writeError}<p class="mt-2 text-xs text-destructive" role="alert">{store.writeError}</p>{/if}
+			{:else if connectable && address}
 				<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold">{m['vms.detail.connect.title']()}</h2>
 				<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.body']()}</p>
 				<div class="mt-4 flex items-center gap-2 rounded-lg border border-border bg-muted/50 py-1.5 pl-3 pr-1.5">
@@ -85,8 +99,12 @@
 			{:else if running}
 				<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold" data-testid="vm-address-unavailable">{m['vms.detail.connect.addressUnavailableTitle']()}</h2>
 				<p class="mt-1 text-sm text-muted-foreground">{m['vms.detail.connect.addressUnavailableBody']()}</p>
-				{#if entity.guestAgent === 'disabled'}
+				{#if connect === 'agentDisabled'}
 					<p class="mt-2 text-xs text-muted-foreground">{m['vms.detail.connect.agentDisabled']()}</p>
+				{:else if connect === 'agentUnreachable'}
+					<p class="mt-2 text-xs text-muted-foreground" data-testid="vm-agent-unreachable">{m['vms.detail.connect.agentUnreachable']()}</p>
+				{:else}
+					<p class="mt-2 text-xs text-muted-foreground">{m['vms.detail.connect.networkPending']()}</p>
 				{/if}
 			{:else}
 				<h2 id="connect-ssh-title" class="mt-1 text-lg font-semibold" data-testid="vm-ssh-unavailable">{m['vms.detail.connect.notRunningTitle']()}</h2>
@@ -94,6 +112,7 @@
 			{/if}
 		</section>
 
+		{#if connect !== 'installing'}
 		<aside class="flex flex-col gap-3 rounded-xl border border-border bg-muted/40 p-5" aria-labelledby="connect-console-title">
 			<h2 id="connect-console-title" class="text-sm font-semibold">{m['vms.detail.connect.consoleTitle']()}</h2>
 			<p class="text-sm text-muted-foreground">{m['vms.detail.connect.consoleBody']()}</p>
@@ -112,6 +131,7 @@
 			{/if}
 			<p class="text-xs text-muted-foreground">{m['vms.detail.connect.consoleHint']()}</p>
 		</aside>
+		{/if}
 	</div>
 
 	<ul class="mt-5 grid gap-3 sm:grid-cols-3" aria-label={m['vms.detail.resource.caption']()} data-testid="vm-resource-strip">
