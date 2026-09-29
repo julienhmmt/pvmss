@@ -24,8 +24,11 @@ import (
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
+	"pvmss/server/internal/telemetry"
+
+	"go.opentelemetry.io/otel"
 	"pvmss/server/internal/vm"
-	"strconv"
+	"runtime/debug"
 	"syscall"
 	"time"
 )
@@ -77,11 +80,29 @@ func main() {
 func run() int {
 	stderr := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 
-	cfg, logger, logCloser, err := loadConfig(stderr)
+	cfg, logger, logLevel, logCloser, err := loadConfig(stderr)
 	if err != nil {
 		return 1
 	}
 	defer func() { _ = logCloser.Close() }()
+
+	bi, _ := debug.ReadBuildInfo()
+
+	tel, err := telemetry.Setup(context.Background(), telemetry.Config{
+		Version: appVersion, Commit: vcsSetting(bi, "vcs.revision"), Metrics: cfg.MetricsPort != 0,
+	}, os.Getenv)
+	if err != nil {
+		logger.Warn("telemetry disabled: setup failed", "component", "main", "error", err)
+	}
+
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := tel.Shutdown(ctx); err != nil {
+			logger.Warn("telemetry flush failed", "component", "main", "error", err)
+		}
+	}()
 
 	st, err := openStore(cfg, logger)
 	if err != nil {
@@ -94,7 +115,7 @@ func run() int {
 		logger.Error("web build directory not found", "component", "main", "error", err)
 		return 1
 	}
-	logger.Info("web build directory resolved", "component", "main", "webDir", webDir)
+	logger.Debug("web build directory resolved", "component", "main", "webDir", webDir)
 
 	clusterRegistry, clusterClient, err := initCluster(cfg, st, logger)
 	if err != nil {
@@ -105,6 +126,25 @@ func run() int {
 	if err != nil {
 		return 1
 	}
+
+	logBanner(logger, cfg, clusterRegistry.List(), bi, telemetry.EndpointHost(os.Getenv))
+
+	if _, err := telemetry.RegisterInventoryGauges(otel.Meter("pvmss"), inventoryStats(inventoryRegistry)); err != nil {
+		logger.Warn("inventory gauges not registered", "component", "main", "error", err)
+	}
+
+	stopMetrics, err := startMetricsServer(cfg, tel.MetricsHandler, logger)
+	if err != nil {
+		logger.Error("metrics server failed to start", "component", "main", "error", err)
+		return 1
+	}
+
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		_ = stopMetrics(ctx)
+	}()
 
 	// Start every worker before the HTTP server accepts traffic so the
 	// projections are populated before the first request can arrive.
@@ -126,7 +166,7 @@ func run() int {
 		return 1
 	}
 
-	router, err := buildRouter(routerDeps{cfg: cfg, clusterRegistry: clusterRegistry, inventoryRegistry: inventoryRegistry, clusterClient: clusterClient, projection: defaultProjection, refresher: defaultRefresher, worker: defaultWorker, sessions: sessions, st: st, webDir: webDir, logger: logger})
+	router, err := buildRouter(routerDeps{cfg: cfg, clusterRegistry: clusterRegistry, inventoryRegistry: inventoryRegistry, clusterClient: clusterClient, projection: defaultProjection, refresher: defaultRefresher, worker: defaultWorker, sessions: sessions, st: st, webDir: webDir, logger: logger, logLevel: logLevel})
 	if err != nil {
 		logger.Error("failed to build router", "component", "main", "error", err)
 		return 1
@@ -146,25 +186,29 @@ func run() int {
 // loadConfig reads and validates environment configuration, then builds the
 // structured logger. Returns a fallback stderr logger on config failure so the
 // caller can log the error before exiting.
-func loadConfig(stderr *slog.Logger) (config.Configuration, *slog.Logger, io.Closer, error) {
+func loadConfig(stderr *slog.Logger) (config.Configuration, *slog.Logger, *slog.LevelVar, io.Closer, error) {
 	cfg, err := config.Load()
 	if err != nil {
 		stderr.Error("failed to load configuration", "component", "main", "error", err)
-		return config.Configuration{}, nil, nil, err
+		return config.Configuration{}, nil, nil, nil, err
 	}
 
-	logger, logCloser, err := config.NewLogger(cfg)
+	logger, logLevel, logCloser, err := config.NewLogger(cfg)
 	if err != nil {
 		stderr.Error("failed to create logger", "component", "main", "error", err)
-		return config.Configuration{}, nil, nil, err
+		return config.Configuration{}, nil, nil, nil, err
 	}
 
-	logger.Info("configuration loaded", "component", "main", "host", cfg.Host, "port", cfg.Port, "dbPath", cfg.DBPath)
+	// Outermost wrapper: records logged with a span in their context gain
+	// traceId/spanId. It sits above the level gate and redaction handlers.
+	logger = slog.New(telemetry.LogHandler(logger.Handler()))
+	slog.SetDefault(logger)
+	logger.Debug("configuration loaded", "component", "main", "host", cfg.Host, "port", cfg.Port, "dbPath", cfg.DBPath)
 
 	for _, key := range cfg.DeprecatedSSHEnv {
 		logger.Warn("deprecated environment variable ignored", "component", "main", "env", key, "hint", "PVMSS no longer publishes cloud-init files over SSH: paste them on the nodes from Admin > Cloud-init (docs/cloud-init.md)")
 	}
-	return cfg, logger, logCloser, nil
+	return cfg, logger, logLevel, logCloser, nil
 }
 
 // openStore opens the SQLite database, runs migrations, and seeds built-in
@@ -175,7 +219,8 @@ func openStore(cfg config.Configuration, logger *slog.Logger) (*store.Store, err
 		logger.Error("failed to open database", "component", "main", "error", err)
 		return nil, err
 	}
-	logger.Info("database opened", "component", "main", "migrationsDefined", len(store.Migrations))
+	st.SetLogger(logger)
+	logger.Debug("database opened", "component", "main", "migrationsDefined", len(store.Migrations))
 
 	if err := seed.SeedDocumentationPages(context.Background(), st); err != nil {
 		logger.Error("failed to seed documentation pages", "component", "main", "error", err)
@@ -197,7 +242,7 @@ func initCluster(cfg config.Configuration, st *store.Store, logger *slog.Logger)
 		logger.Error("failed to list configured clusters", "component", "main", "error", err)
 		return nil, nil, err
 	}
-	clusterRegistry, err := cluster.NewRegistry(cfg.ClusterSource, rows)
+	clusterRegistry, err := cluster.NewRegistryWithLogger(cfg.ClusterSource, rows, logger)
 	if err != nil {
 		logger.Error("failed to create cluster registry", "component", "main", "error", err)
 		return nil, nil, err
@@ -212,7 +257,7 @@ func initCluster(cfg config.Configuration, st *store.Store, logger *slog.Logger)
 		logger.Error("primary cluster is unavailable", "component", "main", "cluster", names[0], "error", err)
 		return nil, nil, err
 	}
-	logger.Info("cluster registry initialized", "component", "cluster", "source", cfg.ClusterSource, "clusters", clusterRegistry.List())
+	logger.Debug("cluster registry initialized", "component", "cluster", "source", cfg.ClusterSource, "clusters", clusterRegistry.List())
 	return clusterRegistry, clusterClient, nil
 }
 
@@ -234,6 +279,9 @@ const displayNameDiscoveryTimeout = 5 * time.Second
 // listening, so a down cluster cannot delay boot. Each cluster's call is
 // bounded by displayNameDiscoveryTimeout.
 func discoverClusterDisplayNames(ctx context.Context, registry *cluster.Registry, st *store.Store, logger *slog.Logger) {
+	logger.Debug("display name discovery started", "component", "cluster")
+	defer logger.Debug("display name discovery finished", "component", "cluster")
+
 	rows, err := st.ListClusters(ctx)
 	if err != nil {
 		logger.Warn("display name discovery: list clusters failed", "component", "cluster", "error", err)
@@ -308,7 +356,7 @@ func initInventory(cfg config.Configuration, clusterRegistry *cluster.Registry, 
 // On SIGINT/SIGTERM it gives the server 5 s to drain in-flight requests.
 func serve(router http.Handler, cfg config.Configuration, logger *slog.Logger) int {
 	srv := &http.Server{
-		Addr:              net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)),
+		Addr:              listenAddr(cfg),
 		Handler:           router,
 		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       readTimeout,
@@ -317,17 +365,22 @@ func serve(router http.Handler, cfg config.Configuration, logger *slog.Logger) i
 		MaxHeaderBytes:    maxHeaderBytes,
 	}
 
-	logger.Info("server listening", "component", "main", "addr", srv.Addr)
+	ln, err := net.Listen("tcp", srv.Addr)
+	if err != nil {
+		logger.Error("server listen failed", "component", "main", "addr", srv.Addr, "error", err)
+		return 1
+	}
+
+	logger.Info("server ready", "component", "main", "addr", srv.Addr)
 
 	errCh := make(chan error, 1)
-	go func() { errCh <- srv.ListenAndServe() }()
+	go func() { errCh <- srv.Serve(ln) }()
 
-	sigCtx, stop := signal.NotifyContext(
-		context.Background(),
-		os.Interrupt,
-		syscall.SIGTERM,
-	)
-	defer stop()
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(sigCh)
+
+	var drainStart time.Time
 
 	select {
 	case err := <-errCh:
@@ -335,7 +388,10 @@ func serve(router http.Handler, cfg config.Configuration, logger *slog.Logger) i
 			logger.Error("server error", "component", "main", "error", err)
 			return 1
 		}
-	case <-sigCtx.Done():
+	case sig := <-sigCh:
+		logger.Info("shutdown signal received", "component", "main", "signal", sig.String())
+
+		drainStart = time.Now()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
@@ -345,7 +401,8 @@ func serve(router http.Handler, cfg config.Configuration, logger *slog.Logger) i
 		}
 	}
 
-	logger.Info("server stopped", "component", "main")
+	logger.Info("server stopped", "component", "main", "durationMs", time.Since(drainStart).Milliseconds())
+
 	return 0
 }
 
@@ -364,6 +421,7 @@ type routerDeps struct {
 	st                *store.Store
 	webDir            string
 	logger            *slog.Logger
+	logLevel          *slog.LevelVar
 }
 
 // buildRouter wires all HTTP handlers into the final router. It performs the
@@ -431,6 +489,9 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	adminPools := httpapi.NewAdminPoolsWithRegistry(httpapi.AdminPoolsRegistryDeps{Auth: authHandler, Clients: clusterRegistry, Source: inventoryRegistry, Projection: projection, Writer: clients.writer, Audit: st, Refresher: worker, Store: st, Log: logger})
 	adminPools.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminOps := httpapi.NewAdminOps(authHandler, st, clusterClient, projection, appVersion, logger)
+	// The level at build time is the startup default (LOG_LEVEL); nothing has
+	// changed it yet. The runtime endpoint can move it and reset back to it.
+	adminOps.SetLogLevel(deps.logLevel, deps.logLevel.Level())
 	adminOps.SetTrustedProxyHops(cfg.TrustedProxyHops)
 	adminOps.SetInventorySource(inventoryRegistry, 2*cfg.InventoryRefreshInterval)
 	adminClusters := httpapi.NewAdminClusters(authHandler, st, clusterRegistry, inventoryRegistry, logger)
@@ -629,6 +690,9 @@ func runAuditPrune(ctx context.Context, st *store.Store, log *slog.Logger) {
 			log.Info("audit prune completed", "component", "audit", "deleted", n, "retentionDays", cfg.RetentionDays)
 		}
 	}
+
+	log.Debug("audit prune loop started", "component", "audit", "intervalMs", auditPruneInterval.Milliseconds())
+	defer log.Debug("audit prune loop stopped", "component", "audit")
 
 	prune()
 

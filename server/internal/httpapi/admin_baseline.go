@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"pvmss/server/internal/cloudinit"
 	"pvmss/server/internal/cluster"
+	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/store"
 )
 
@@ -86,7 +87,7 @@ func (h *AdminBaseline) ServeBaseline(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(dto); err != nil {
-		h.log.Error("encode baseline response failed", "component", "httpapi", "error", err)
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "encode baseline response failed", "component", "httpapi", "error", err)
 	}
 }
 
@@ -94,6 +95,6 @@ func (h *AdminBaseline) writeError(w http.ResponseWriter, status int, code, mess
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(map[string]string{"error": code, "message": message}); err != nil {
-		h.log.Error("encode error response failed", "component", "httpapi", "error", errors.New(code))
+		h.log.Warn("encode error response failed", "component", "httpapi", "error", errors.New(code))
 	}
 }

@@ -179,19 +179,19 @@ func (h *VMBulk) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (h *VMBulk) writeError(w http.ResponseWriter, status int, code, message string) {
 	if err := writeClusterError(w, status, code, message); err != nil {
-		h.log.Error("failed to write error response", "component", "httpapi", "code", code, "error", err)
+		h.log.Warn("failed to write error response", "component", "httpapi", "code", code, "error", err)
 	}
 }
 
 func (h *VMBulk) writeJSONStatus(w http.ResponseWriter, status int, value any) {
 	body, err := json.Marshal(value)
 	if err != nil {
-		h.log.Error("failed to marshal response", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "failed to marshal response", err)
 		h.writeError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 		return
 	}
 	if err := writeJSON(w, status, body); err != nil {
-		h.log.Error("failed to write response", "component", "httpapi", "error", err)
+		h.log.Warn("failed to write response", "component", "httpapi", "error", err)
 	}
 }
 

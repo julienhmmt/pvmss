@@ -161,6 +161,25 @@ Plan: `PLAN-ui-v0.4.md` (not committed), branches `fix/web-offline-links`,
   SSRF vector; the server may not share the VM's network). The only honest
   alternative is a guest-agent `guest-exec` check, Linux-only and intrusive.
 
+## Left behind by the observability pass (2026-09-29)
+
+- **No OTLP log export.** Logs stay on stdout as JSON and are correlated with
+  traces by `traceId`/`spanId`. Shipping them over OTLP would need a log
+  bridge (`otelslog`) and a decision on whether the collector or the platform
+  owns log routing. Deciding it takes: an operator who wants logs and traces
+  in one backend without a log shipper.
+- **No web-client telemetry.** The SPA sends no traces, errors or web-vitals;
+  the server only sees the requests it receives. Deciding it takes: a browser
+  OTel SDK (bundle size, CORS to the collector, consent) or a small error-report
+  endpoint.
+- **Unverified lint.** `sloglint` (`context: scope`, `static-msg`) was enabled
+  in `server/.golangci.yml` while the installed `golangci-lint` was built with
+  an older Go than the module targets, so its first full run on `main` may
+  surface call sites to fix.
+- **Domain log keys outside the vocabulary.** `pool`, `code`, `path`,
+  `fingerprint`, `label`, `section`, `step`, `port` are used as extra attrs;
+  the fixed vocabulary in `AGENTS.md` has no equivalent for them.
+
 ## How to re-check any of this
 
 ```bash

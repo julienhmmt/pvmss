@@ -76,6 +76,20 @@ deployment:
     PROXMOX_API_TOKEN_VALUE: pve-api-token
     SESSION_SECRET: session-secret
 
+# METRICS
+# Prometheus pull endpoint. Off by default. When enabled the pod serves
+# GET /metrics on its own port (PVMSS_METRICS_PORT), separate from the app port,
+# with no authentication: keep it cluster-internal (the HTTPRoute never routes
+# it) and restrict it with a NetworkPolicy if the cluster is shared.
+metrics:
+  enabled: false
+  port: 9464
+  # Requires the Prometheus Operator CRDs. Only rendered when metrics.enabled.
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    labels: {}
+
 # SERVICE
 service:
   type: ClusterIP

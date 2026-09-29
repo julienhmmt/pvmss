@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cloudinit"
+	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/store"
 	"strings"
 	"time"
@@ -132,7 +133,7 @@ func (h *ProfileSSHKeys) createKey(w http.ResponseWriter, r *http.Request, ident
 		return
 	}
 
-	h.log.Info("profile ssh key added", "component", "httpapi", "user", identity.Username, "cluster", identity.Cluster, "fingerprint", fingerprint, "label", label)
+	logctx.FromOr(r.Context(), h.log).InfoContext(r.Context(), "profile ssh key added", "component", "httpapi", "user", identity.Username, "cluster", identity.Cluster, "fingerprint", fingerprint, "label", label)
 
 	dto, err := profileSSHKeyToDTO(key)
 	if err != nil {
@@ -182,7 +183,7 @@ func (h *ProfileSSHKeys) deleteKey(w http.ResponseWriter, r *http.Request, ident
 		fingerprint = "unknown"
 	}
 
-	h.log.Info("profile ssh key deleted", "component", "httpapi", "user", identity.Username, "cluster", identity.Cluster, "fingerprint", fingerprint, "label", target.Label)
+	logctx.FromOr(r.Context(), h.log).InfoContext(r.Context(), "profile ssh key deleted", "component", "httpapi", "user", identity.Username, "cluster", identity.Cluster, "fingerprint", fingerprint, "label", target.Label)
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -202,21 +203,21 @@ func (h *ProfileSSHKeys) writeStoreError(w http.ResponseWriter, err error) {
 }
 
 func (h *ProfileSSHKeys) writeInternal(w http.ResponseWriter, err error) {
-	h.log.Error("profile ssh key request failed", "component", "httpapi", "error", err)
+	SetErrorMsg(w, "profile ssh key request failed", err)
 	writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 }
 
 func (h *ProfileSSHKeys) writeJSON(w http.ResponseWriter, status int, value any) {
 	body, err := json.Marshal(value)
 	if err != nil {
-		h.log.Error("failed to marshal profile ssh key response", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "failed to marshal profile ssh key response", err)
 		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
 
 	if err := writeJSON(w, status, body); err != nil {
-		h.log.Error("failed to write profile ssh key response", "component", "httpapi", "error", err)
+		h.log.Warn("failed to write profile ssh key response", "component", "httpapi", "error", err)
 	}
 }
 

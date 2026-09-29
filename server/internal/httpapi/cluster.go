@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/logctx"
 	"time"
 )
 
@@ -53,7 +54,7 @@ func (h *ClusterNodes) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Allow", "GET")
 
 		if err := writeClusterError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed"); err != nil {
-			h.log.Error("failed to write method not allowed", "component", "httpapi", "error", err)
+			logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "failed to write method not allowed", "component", "httpapi", "error", err)
 		}
 
 		return
@@ -63,7 +64,7 @@ func (h *ClusterNodes) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if idx == nil {
 		// never-refreshed is distinct from an empty list.
 		if err := writeClusterError(w, http.StatusServiceUnavailable, "inventory_not_ready", "inventory has not been populated yet"); err != nil {
-			h.log.Error("failed to write inventory_not_ready response", "component", "httpapi", "error", err)
+			logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "failed to write inventory_not_ready response", "component", "httpapi", "error", err)
 		}
 
 		return
@@ -89,17 +90,17 @@ func (h *ClusterNodes) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	body, err := json.Marshal(resp)
 	if err != nil {
-		h.log.Error("failed to marshal cluster nodes response", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "failed to marshal cluster nodes response", err)
 
 		if writeErr := writeClusterError(w, http.StatusInternalServerError, "internal_error", "internal server error"); writeErr != nil {
-			h.log.Error("failed to write internal_error response", "component", "httpapi", "error", writeErr)
+			logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "failed to write internal_error response", "component", "httpapi", "error", writeErr)
 		}
 
 		return
 	}
 
 	if err := writeJSON(w, http.StatusOK, body); err != nil {
-		h.log.Error("failed to write cluster nodes response", "component", "httpapi", "error", err)
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "failed to write cluster nodes response", "component", "httpapi", "error", err)
 	}
 }
 

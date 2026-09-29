@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"pvmss/server/internal/store"
 	"slices"
@@ -42,7 +43,13 @@ type Registry struct {
 // NewRegistry constructs a registry from active persisted rows. A row that
 // cannot construct a client is skipped so one bad cluster cannot block others.
 func NewRegistry(source string, rows []store.ClusterRow) (*Registry, error) {
-	factory, err := factoryForSource(source)
+	return NewRegistryWithLogger(source, rows, nil)
+}
+
+// NewRegistryWithLogger is NewRegistry with a logger handed to every real
+// Proxmox client as the fallback for calls made outside a request.
+func NewRegistryWithLogger(source string, rows []store.ClusterRow, log *slog.Logger) (*Registry, error) {
+	factory, err := factoryForSource(source, log)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +138,7 @@ func (registry *Registry) List() []string {
 	return result
 }
 
-func factoryForSource(source string) (ClientFactory, error) {
+func factoryForSource(source string, log *slog.Logger) (ClientFactory, error) {
 	switch source {
 	case SourceFake:
 		return func(row store.ClusterRow) (Client, error) {
@@ -156,6 +163,8 @@ func factoryForSource(source string) (ClientFactory, error) {
 				TLSInsecureSkipVerify: row.TLSInsecureSkipVerify,
 				SnippetStorage:        row.SnippetStorage,
 				httpClient:            newProxmoxHTTPClient(row.TLSInsecureSkipVerify),
+				log:                   log,
+				name:                  row.Name,
 			}, nil
 		}, nil
 	default:

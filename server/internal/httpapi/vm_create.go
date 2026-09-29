@@ -671,7 +671,7 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 
 	data, err := h.loadCatalogData(r.Context(), client, clusterName)
 	if err != nil {
-		h.log.Error("catalog data load failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "catalog data load failed", err)
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -687,7 +687,7 @@ func (h *VMCreate) ServeCatalog(w http.ResponseWriter, r *http.Request) {
 	dto := buildCatalogDTO(clusterName, data, writeEnabled)
 
 	if err := h.attachLimits(r.Context(), &dto, clusterName, identity); err != nil {
-		h.log.Error("policy read failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "policy read failed", err)
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -810,7 +810,7 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 
 	creator, ok := client.(cluster.Creator)
 	if !ok {
-		h.log.Error("cluster client does not implement Creator", "component", "httpapi", "cluster", clusterName)
+		SetError(w, errors.New("cluster client does not implement Creator"))
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return createTarget{}, false
@@ -818,7 +818,7 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 
 	pusher, ok := client.(vm.CloudInitPusher)
 	if !ok {
-		h.log.Error("cluster client does not implement CloudInitPusher", "component", "httpapi", "cluster", clusterName)
+		SetError(w, errors.New("cluster client does not implement CloudInitPusher"))
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return createTarget{}, false
@@ -826,7 +826,7 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 
 	writer, ok := client.(vm.HardwareUpdater)
 	if !ok {
-		h.log.Error("cluster client does not implement HardwareUpdater", "component", "httpapi", "cluster", clusterName)
+		SetError(w, errors.New("cluster client does not implement HardwareUpdater"))
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return createTarget{}, false
@@ -834,7 +834,7 @@ func (h *VMCreate) resolveCreateTarget(w http.ResponseWriter, requestedCluster s
 
 	freeSpace, ok := client.(vm.FreeSpaceChecker)
 	if !ok {
-		h.log.Error("cluster client does not implement FreeSpaceChecker", "component", "httpapi", "cluster", clusterName)
+		SetError(w, errors.New("cluster client does not implement FreeSpaceChecker"))
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return createTarget{}, false
@@ -926,7 +926,7 @@ func catalogBridgeDTOs(bridges []catalog.Bridge, live []cluster.Bridge) []catalo
 func (h *VMCreate) writeCreateFailure(w http.ResponseWriter, err error) {
 	if status, code, message, ok := mapCreateError(err); ok {
 		if code == "cluster_error" {
-			h.log.Error("cluster create failed", "component", "httpapi", "error", err)
+			SetErrorMsg(w, "cluster create failed", err)
 		}
 
 		h.writeCreateError(w, status, code, message)
@@ -934,7 +934,7 @@ func (h *VMCreate) writeCreateFailure(w http.ResponseWriter, err error) {
 		return
 	}
 
-	h.log.Error("vm create failed", "component", "httpapi", "error", err)
+	SetErrorMsg(w, "vm create failed", err)
 	h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 }
 
@@ -995,19 +995,19 @@ func mapCreateError(err error) (int, string, string, bool) {
 func (h *VMCreate) writeCreateJSON(w http.ResponseWriter, status int, value any) {
 	body, err := json.Marshal(value)
 	if err != nil {
-		h.log.Error("failed to marshal response", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "failed to marshal response", err)
 		h.writeCreateError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
 
 	if err := writeJSON(w, status, body); err != nil {
-		h.log.Error("failed to write response", "component", "httpapi", "error", err)
+		h.log.Warn("failed to write response", "component", "httpapi", "error", err)
 	}
 }
 
 func (h *VMCreate) writeCreateError(w http.ResponseWriter, status int, code, message string) {
 	if err := writeClusterError(w, status, code, message); err != nil {
-		h.log.Error("failed to write error response", "component", "httpapi", "code", code, "error", err)
+		h.log.Warn("failed to write error response", "component", "httpapi", "code", code, "error", err)
 	}
 }

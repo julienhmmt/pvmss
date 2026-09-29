@@ -40,7 +40,7 @@ func (h *AdminCatalog) ServeTags(w http.ResponseWriter, r *http.Request) {
 
 	tags, err := catalog.ListTags(r.Context(), h.store, h.projection, clusterName)
 	if err != nil {
-		h.log.Error("admin list tags failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin list tags failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -83,7 +83,7 @@ func (h *AdminCatalog) ServeTagCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		h.log.Error("admin create tag failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin create tag failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -135,7 +135,7 @@ func (h *AdminCatalog) ServeTagColor(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		h.log.Error("admin update tag color failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin update tag color failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -178,7 +178,7 @@ func (h *AdminCatalog) ServeTagDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err != nil {
-		h.log.Error("admin delete tag failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "admin delete tag failed", err)
 		writeAdminError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return

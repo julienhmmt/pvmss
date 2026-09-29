@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
 	"strings"
@@ -152,7 +153,7 @@ func (h *VMConsole) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	relay, err := resolveCapability(h.clients, h.relay, ticket.Cluster, "ConsoleRelay")
 	if err != nil {
-		h.log.Error("console relay resolution failed", "component", "httpapi", "cluster", ticket.Cluster, "error", err)
+		logctx.FromOr(r.Context(), h.log).ErrorContext(r.Context(), "console relay resolution failed", "component", "httpapi", "cluster", ticket.Cluster, "error", err)
 		return
 	}
 
@@ -160,9 +161,9 @@ func (h *VMConsole) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	err = relay.RelayConsole(r.Context(), ticket.Cluster, ticket.VMID, proxy, peer)
 
 	if err == nil || isNormalClose(err) {
-		h.log.Info("console relay ended normally", "component", "httpapi", "vmid", ticket.VMID, "error", err)
+		logctx.FromOr(r.Context(), h.log).InfoContext(r.Context(), "console relay ended normally", "component", "httpapi", "vmid", ticket.VMID, "error", err)
 	} else {
-		h.log.Warn("console relay ended with error", "component", "httpapi", "vmid", ticket.VMID, "error", err)
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "console relay ended with error", "component", "httpapi", "vmid", ticket.VMID, "error", err)
 	}
 }
 
@@ -184,7 +185,7 @@ func (h *VMConsole) parseConsolePath(r *http.Request) (string, int, bool) {
 
 func (h *VMConsole) writeConsoleError(w http.ResponseWriter, status int, code, message string) {
 	if err := writeClusterError(w, status, code, message); err != nil {
-		h.log.Error("failed to write console error", "component", "httpapi", "code", code, "error", err)
+		h.log.Warn("failed to write console error", "component", "httpapi", "code", code, "error", err)
 	}
 }
 
@@ -246,7 +247,7 @@ func writeConsoleTicketError(w http.ResponseWriter, log *slog.Logger, err error,
 	case errors.Is(err, vm.ErrClusterConsoleUnavailable):
 		writeError(w, http.StatusBadGateway, "console_unavailable", unavailableMsg)
 	default:
-		log.Error("console ticket issuance failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "console ticket issuance failed", err)
 		writeError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 	}
 }

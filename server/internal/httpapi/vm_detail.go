@@ -11,6 +11,7 @@ import (
 	"pvmss/server/internal/catalog"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/vm"
@@ -436,7 +437,7 @@ func (h *VMDetail) handleStatus(w http.ResponseWriter, r *http.Request) {
 
 	live, err := statusReader.VMStatus(r.Context(), entity.Node, vmid)
 	if err != nil {
-		h.log.Error("live status read failed", "component", "httpapi", "cluster", clusterName, "vmid", vmid, "error", err)
+		SetErrorMsg(w, "live status read failed", err)
 		h.writeDetailError(w, http.StatusBadGateway, "cluster_error", "failed to read live status")
 
 		return
@@ -510,7 +511,7 @@ func (h *VMDetail) handleAction(w http.ResponseWriter, r *http.Request) {
 	// Best-effort - the action already succeeded.
 	if refresher := h.refresherFor(clusterName); refresher != nil {
 		if _, err := refresher.Refresh(r.Context()); err != nil {
-			h.log.Warn("post-action refresh failed", "component", "httpapi", "cluster", clusterName, "error", err)
+			logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "post-action refresh failed", "component", "httpapi", "cluster", clusterName, "error", err)
 		}
 	}
 
@@ -604,7 +605,7 @@ func (h *VMDetail) handlePatch(w http.ResponseWriter, r *http.Request) {
 		// The write succeeded but the re-resolve failed (e.g. a race deleted
 		// the VM between the patch and the re-read). Return a generic success
 		// rather than a confusing 404 after a 200-worthy write.
-		h.log.Error("post-patch re-resolve failed", "component", "httpapi", "vmid", vmid, "error", err)
+		SetErrorMsg(w, "post-patch re-resolve failed", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -638,7 +639,7 @@ func (h *VMDetail) handleDisk(w http.ResponseWriter, r *http.Request) {
 
 	resources, err := catalog.ApprovedResources(r.Context(), h.store, clusterName)
 	if err != nil {
-		h.log.Error(msgHardwareCatalogFailed, "component", "httpapi", "error", err)
+		SetErrorMsg(w, msgHardwareCatalogFailed, err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -815,7 +816,7 @@ func (h *VMDetail) handleCDROM(w http.ResponseWriter, r *http.Request) {
 
 	resources, err := catalog.ApprovedResources(r.Context(), h.store, clusterName)
 	if err != nil {
-		h.log.Error(msgHardwareCatalogFailed, "component", "httpapi", "error", err)
+		SetErrorMsg(w, msgHardwareCatalogFailed, err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -900,7 +901,7 @@ func (h *VMDetail) handleHardware(w http.ResponseWriter, r *http.Request) {
 
 	allowedTags, err := h.allowedTagNames(r.Context(), clusterName)
 	if err != nil {
-		h.log.Error(msgHardwareCatalogFailed, "component", "httpapi", "error", err)
+		SetErrorMsg(w, msgHardwareCatalogFailed, err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -978,7 +979,7 @@ func (h *VMDetail) handleEnableSerial(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		h.log.Error("enable serial console failed", "component", "httpapi", "cluster", clusterName, "vmid", vmid, "error", err)
+		SetErrorMsg(w, "enable serial console failed", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -1096,7 +1097,7 @@ func (h *VMDetail) writeRetrofitError(w http.ResponseWriter, clusterName string,
 	case errors.Is(err, vm.ErrRetrofitRestartFailed):
 		h.writeDetailError(w, http.StatusInternalServerError, "retrofit_restart_failed", err.Error())
 	default:
-		h.log.Error("retrofit seabios failed", "component", "httpapi", "cluster", clusterName, "vmid", vmid, "error", err)
+		SetErrorMsg(w, "retrofit seabios failed", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
 }
@@ -1144,7 +1145,7 @@ func (h *VMDetail) writeUnhandledVMError(w http.ResponseWriter, message string, 
 		return
 	}
 
-	h.log.Error(message, "component", "httpapi", "error", err)
+	SetErrorMsg(w, message, err)
 	h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 }
 
@@ -1180,7 +1181,7 @@ func (h *VMDetail) handleNetwork(w http.ResponseWriter, r *http.Request) {
 
 	resources, err := catalog.ApprovedResources(r.Context(), h.store, clusterName)
 	if err != nil {
-		h.log.Error(msgHardwareCatalogFailed, "component", "httpapi", "error", err)
+		SetErrorMsg(w, msgHardwareCatalogFailed, err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -1229,7 +1230,7 @@ func (h *VMDetail) writeNetworkError(w http.ResponseWriter, err error) {
 		code, message, _ := clusterRejectionResponse(err)
 		h.writeDetailError(w, http.StatusBadGateway, code, message)
 	default:
-		h.log.Error("vm network operation failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "vm network operation failed", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
 }
@@ -1315,7 +1316,7 @@ func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request)
 
 	resources, err := catalog.ApprovedResources(r.Context(), h.store, clusterName)
 	if err != nil {
-		h.log.Error(msgHardwareCatalogFailed, "component", "httpapi", "error", err)
+		SetErrorMsg(w, msgHardwareCatalogFailed, err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -1328,7 +1329,7 @@ func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request)
 
 	gabarit, err := h.policy.Gabarit(r.Context(), clusterName)
 	if err != nil {
-		h.log.Error("read gabarit failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "read gabarit failed", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -1355,7 +1356,7 @@ func (h *VMDetail) handleHardwareOptions(w http.ResponseWriter, r *http.Request)
 
 	tagDTOs, err := hardwareTagDTOs(r.Context(), h, clusterName)
 	if err != nil {
-		h.log.Error(msgHardwareCatalogFailed, "component", "httpapi", "error", err)
+		SetErrorMsg(w, msgHardwareCatalogFailed, err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -1462,7 +1463,7 @@ func (h *VMDetail) writeDiskError(w http.ResponseWriter, err error) {
 		code, message, _ := clusterRejectionResponse(err)
 		h.writeDetailError(w, http.StatusBadGateway, code, message)
 	default:
-		h.log.Error("vm disk operation failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "vm disk operation failed", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
 }
@@ -1617,14 +1618,14 @@ func mergeGuestIPs(nics []cluster.NetworkInterface, guests []cluster.GuestInterf
 func (h *VMDetail) writeJSONStatus(w http.ResponseWriter, status int, value any) {
 	body, err := json.Marshal(value)
 	if err != nil {
-		h.log.Error("failed to marshal response", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "failed to marshal response", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
 	}
 
 	if err := writeJSON(w, status, body); err != nil {
-		h.log.Error("failed to write response", "component", "httpapi", "error", err)
+		h.log.Warn("failed to write response", "component", "httpapi", "error", err)
 	}
 }
 
@@ -1674,7 +1675,7 @@ func (h *VMDetail) handleAudit(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.store.ListAuditLog(r.Context(), filter)
 	if err != nil {
-		h.log.Error("vm audit list failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "vm audit list failed", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 
 		return
@@ -1723,7 +1724,7 @@ func (h *VMDetail) writeResolveError(w http.ResponseWriter, err error) {
 	case errors.Is(err, vm.ErrNotFound):
 		h.writeDetailError(w, http.StatusNotFound, "not_found", msgVMNotFound)
 	default:
-		h.log.Error("unexpected resolve error", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "unexpected resolve error", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
 }
@@ -1738,7 +1739,7 @@ func (h *VMDetail) writeActionError(w http.ResponseWriter, err error) {
 	case errors.Is(err, vm.ErrActionRejected):
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_action", err.Error())
 	case errors.Is(err, cluster.ErrNotFound):
-		h.log.Error("cluster writer: VM not found after Resolve", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "cluster writer: VM not found after Resolve", err)
 		h.writeDetailError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
 	case errors.Is(err, cluster.ErrUnreachable):
 		h.writeDetailError(w, http.StatusBadGateway, "cluster_unreachable", "cluster is not reachable")
@@ -1750,7 +1751,7 @@ func (h *VMDetail) writeActionError(w http.ResponseWriter, err error) {
 		code, message, _ := clusterRejectionResponse(err)
 		h.writeDetailError(w, http.StatusBadGateway, code, message)
 	default:
-		h.log.Error("vm action failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "vm action failed", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
 }
@@ -1769,19 +1770,19 @@ func (h *VMDetail) writePatchError(w http.ResponseWriter, err error) {
 	case errors.Is(err, vm.ErrDescriptionTooLong):
 		h.writeDetailError(w, http.StatusBadRequest, "invalid_request", fmt.Sprintf("description exceeds %d characters", vm.MaxDescriptionLength))
 	case errors.Is(err, cluster.ErrNotFound):
-		h.log.Error("cluster writer: VM not found after Resolve", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "cluster writer: VM not found after Resolve", err)
 		h.writeDetailError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
 	case errors.Is(err, cluster.ErrClusterRejected):
 		code, message, _ := clusterRejectionResponse(err)
 		h.writeDetailError(w, http.StatusBadGateway, code, message)
 	default:
-		h.log.Error("vm patch failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "vm patch failed", err)
 		h.writeDetailError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
 }
 
 func (h *VMDetail) writeDetailError(w http.ResponseWriter, status int, code, message string) {
 	if err := writeClusterError(w, status, code, message); err != nil {
-		h.log.Error("failed to write error response", "component", "httpapi", "code", code, "error", err)
+		h.log.Warn("failed to write error response", "component", "httpapi", "code", code, "error", err)
 	}
 }

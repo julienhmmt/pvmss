@@ -36,7 +36,14 @@ type Proxmox struct {
 	// registry.go; rest() lazily initializes it
 	// when nil so a zero-value Proxmox (tests) never panics.
 	httpClient *http.Client
+	// log and name feed the REST client's per-call Debug line; set by the
+	// registry factory, zero in tests.
+	log  *slog.Logger
+	name string
 }
+
+// LogValue keeps the API token out of logs when a Proxmox value is logged.
+func (Proxmox) LogValue() slog.Value { return slog.StringValue("[redacted]") }
 
 // proxmoxResourceRow is one row of /cluster/resources?type=... - Proxmox's
 // single call for nodes, VMs, and storages together, matching what Snapshot
@@ -667,7 +674,8 @@ func (p Proxmox) ListTemplates(ctx context.Context) ([]TemplateVM, error) {
 		// toggle.
 		diskStorage, diskSizeGB, diskBus, cloudInitCapable, err := proxmoxTemplateDisk(ctx, rest, row.Node, row.VMID)
 		if err != nil {
-			slog.Warn("template config unreadable, keeping row without disk fields",
+			//nolint:sloglint // Proxmox has no injected logger yet; ticket 06 (observability) adds one
+			slog.WarnContext(ctx, "template config unreadable, keeping row without disk fields",
 				"component", "cluster", "vmid", row.VMID, "node", row.Node, "error", err)
 
 			templates = append(templates, TemplateVM{
@@ -723,7 +731,8 @@ func (p Proxmox) TemplateByVMID(ctx context.Context, vmid int) (TemplateVM, erro
 
 	diskStorage, diskSizeGB, diskBus, cloudInitCapable, err := proxmoxTemplateDisk(ctx, rest, found.Node, found.VMID)
 	if err != nil {
-		slog.Warn("template config unreadable, returning row without disk fields",
+		//nolint:sloglint // Proxmox has no injected logger yet; ticket 06 (observability) adds one
+		slog.WarnContext(ctx, "template config unreadable, returning row without disk fields",
 			"component", "cluster", "vmid", found.VMID, "node", found.Node, "error", err)
 
 		return TemplateVM{VMID: found.VMID, Node: found.Node, Name: found.Name, DiskUnreadable: true}, nil

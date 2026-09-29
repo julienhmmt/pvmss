@@ -1,13 +1,23 @@
 package config
 
-import "time"
+import (
+	"log/slog"
+	"time"
+)
+
+// LogValue keeps SessionSecret, the Proxmox token and the admin hash out of
+// logs when a whole Configuration is logged.
+func (Configuration) LogValue() slog.Value { return slog.StringValue("[redacted]") }
 
 // Configuration holds the values required for the server to start.
 // All required values are loaded from the environment; WebDir is optional
 // and will be resolved at startup if omitted. Host defaults to 127.0.0.1.
 type Configuration struct {
-	Host              string
-	Port              int
+	Host string
+	Port int
+	// MetricsPort is the separate Prometheus listener port (PVMSS_METRICS_PORT);
+	// 0 disables it.
+	MetricsPort       int
 	DBPath            string
 	LogLevel          string
 	LogFormat         string

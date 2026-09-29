@@ -323,7 +323,7 @@ func (h *VMSnapshots) writeSnapshotError(w http.ResponseWriter, err error) {
 		code, message, _ := snapshotRejectionResponse(err)
 		h.writeError(w, http.StatusBadGateway, code, message)
 	default:
-		h.log.Error("vm snapshot operation failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "vm snapshot operation failed", err)
 		h.writeError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
 }
@@ -352,13 +352,13 @@ func (h *VMSnapshots) writePayload(w http.ResponseWriter, status int, value any)
 	}
 
 	if err := writeJSON(w, status, body); err != nil {
-		h.log.Error("failed to write snapshot response", "component", "httpapi", "error", err)
+		h.log.Warn("failed to write snapshot response", "component", "httpapi", "error", err)
 	}
 }
 
 //nolint:wsl_v5 // snapshot request boundaries keep validation and dispatch adjacent
 func (h *VMSnapshots) writeError(w http.ResponseWriter, status int, code, message string) {
 	if err := writeClusterError(w, status, code, message); err != nil {
-		h.log.Error("failed to write snapshot error", "component", "httpapi", "code", code, "error", err)
+		h.log.Warn("failed to write snapshot error", "component", "httpapi", "code", code, "error", err)
 	}
 }

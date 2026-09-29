@@ -2049,5 +2049,18 @@
   "admin.cloudinit.commandHint": "En root, sur chaque nœud qui doit le proposer. Modifier le modèle donne un nouveau fichier et une nouvelle commande.",
   "admin.cloudinit.nodePresent": "présent",
   "admin.cloudinit.nodeAbsent": "absent",
-  "admin.cloudinit.notChecked": "Non vérifié : {error}"
+  "admin.cloudinit.notChecked": "Non vérifié : {error}",
+  "admin.logLevel.title": "Niveau de log",
+  "admin.logLevel.description": "Modifie la verbosité des logs du serveur, sans redémarrage. Passez en Debug pour investiguer, puis revenez au niveau normal.",
+  "admin.logLevel.label": "Niveau de log",
+  "admin.logLevel.level.debug": "Debug",
+  "admin.logLevel.level.info": "Info",
+  "admin.logLevel.level.warn": "Avertissement",
+  "admin.logLevel.level.error": "Erreur",
+  "admin.logLevel.reset": "Revenir au défaut",
+  "admin.logLevel.default": "Défaut au démarrage : {level}.",
+  "admin.logLevel.restartNote": "Le changement est perdu au redémarrage du serveur.",
+  "admin.logLevel.saved": "Niveau de log mis à jour.",
+  "admin.logLevel.loadError": "échec du chargement du niveau de log",
+  "admin.logLevel.saveError": "échec de la mise à jour du niveau de log"
 }

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/logctx"
 	"strconv"
 	"time"
 )
@@ -38,7 +39,7 @@ func (h *ClusterRefresh) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Allow", "POST")
 
 		if err := writeClusterError(w, http.StatusMethodNotAllowed, "method_not_allowed", msgMethodNotAllowed); err != nil {
-			h.log.Error("failed to write method not allowed", "component", "httpapi", "error", err)
+			logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "failed to write method not allowed", "component", "httpapi", "error", err)
 		}
 
 		return
@@ -59,17 +60,17 @@ func (h *ClusterRefresh) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	body, err := json.Marshal(resp)
 	if err != nil {
-		h.log.Error("failed to marshal refresh response", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "failed to marshal refresh response", err)
 
 		if writeErr := writeClusterError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError); writeErr != nil {
-			h.log.Error("failed to write internal_error", "component", "httpapi", "error", writeErr)
+			logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "failed to write internal_error", "component", "httpapi", "error", writeErr)
 		}
 
 		return
 	}
 
 	if err := writeJSON(w, http.StatusAccepted, body); err != nil {
-		h.log.Error("failed to write refresh response", "component", "httpapi", "error", err)
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "failed to write refresh response", "component", "httpapi", "error", err)
 	}
 }
 
@@ -94,19 +95,19 @@ func (h *ClusterRefresh) writeRefreshError(w http.ResponseWriter, err error) {
 		w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
 
 		if writeErr := writeJSON(w, http.StatusTooManyRequests, body); writeErr != nil {
-			h.log.Error("failed to write refresh_too_soon", "component", "httpapi", "error", writeErr)
+			h.log.Warn("failed to write refresh_too_soon", "component", "httpapi", "error", writeErr)
 		}
 	case errors.Is(err, inventory.ErrClusterUnreachable):
-		h.log.Error("manual refresh failed: cluster unreachable", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "manual refresh failed: cluster unreachable", err)
 
 		if writeErr := writeClusterError(w, http.StatusBadGateway, "cluster_unreachable", "refresh failed: cluster is not reachable"); writeErr != nil {
-			h.log.Error("failed to write cluster_unreachable", "component", "httpapi", "error", writeErr)
+			h.log.Warn("failed to write cluster_unreachable", "component", "httpapi", "error", writeErr)
 		}
 	default:
-		h.log.Error("manual refresh failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "manual refresh failed", err)
 
 		if writeErr := writeClusterError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError); writeErr != nil {
-			h.log.Error("failed to write internal_error", "component", "httpapi", "error", writeErr)
+			h.log.Warn("failed to write internal_error", "component", "httpapi", "error", writeErr)
 		}
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"pvmss/server/internal/auth"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/inventory"
+	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/vm"
 	"strconv"
 	"strings"
@@ -162,12 +163,12 @@ func (h *VMMetrics) handleStream(w http.ResponseWriter, r *http.Request) {
 
 	// Configure the client's automatic reconnection interval.
 	if _, err := fmt.Fprintf(w, "retry: %d\n\n", metricsStreamRetryMs); err != nil {
-		h.log.Error("metrics stream: failed to write retry header", "component", "httpapi", "error", err)
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "metrics stream: failed to write retry header", "component", "httpapi", "error", err)
 		return
 	}
 
 	if err := rc.Flush(); err != nil {
-		h.log.Error("metrics stream: failed to flush retry header", "component", "httpapi", "error", err)
+		logctx.FromOr(r.Context(), h.log).WarnContext(r.Context(), "metrics stream: failed to flush retry header", "component", "httpapi", "error", err)
 		return
 	}
 
@@ -182,7 +183,7 @@ func (h *VMMetrics) handleStream(w http.ResponseWriter, r *http.Request) {
 			return
 		case <-ticker.C:
 			if err := h.writeStreamTick(r.Context(), w, rc, deps); err != nil {
-				h.log.Debug("metrics stream closed", "component", "httpapi", "error", err)
+				logctx.FromOr(r.Context(), h.log).DebugContext(r.Context(), "metrics stream closed", "component", "httpapi", "error", err)
 				return
 			}
 		}
@@ -242,7 +243,7 @@ func (h *VMMetrics) writeMetricsError(w http.ResponseWriter, err error) {
 	case errors.Is(err, cluster.ErrNotFound):
 		h.writeError(w, http.StatusBadGateway, "cluster_error", msgClusterRejected)
 	default:
-		h.log.Error("vm metrics failed", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "vm metrics failed", err)
 		h.writeError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
 	}
 }
@@ -255,12 +256,12 @@ func (h *VMMetrics) writePayload(w http.ResponseWriter, status int, value any) {
 	}
 
 	if err := writeJSON(w, status, body); err != nil {
-		h.log.Error("failed to write metrics response", "component", "httpapi", "error", err)
+		h.log.Warn("failed to write metrics response", "component", "httpapi", "error", err)
 	}
 }
 
 func (h *VMMetrics) writeError(w http.ResponseWriter, status int, code, message string) {
 	if err := writeClusterError(w, status, code, message); err != nil {
-		h.log.Error("failed to write metrics error", "component", "httpapi", "code", code, "error", err)
+		h.log.Warn("failed to write metrics error", "component", "httpapi", "code", code, "error", err)
 	}
 }

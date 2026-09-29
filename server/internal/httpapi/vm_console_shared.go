@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"pvmss/server/internal/cluster"
@@ -101,7 +102,7 @@ func serveConsoleTicket(
 	}
 
 	if ticket.Token == "" {
-		env.log.Error(params.noTokenMsg, "component", "httpapi", "cluster", clusterName, "vmid", vmid)
+		SetError(w, errors.New(params.noTokenMsg))
 		writeError(w, http.StatusInternalServerError, "internal_error", "failed to issue console ticket")
 
 		return
@@ -116,14 +117,14 @@ func serveConsoleTicket(
 func writeConsoleJSON(w http.ResponseWriter, log *slog.Logger, writeError consoleErrorFn, status int, value any) {
 	body, err := json.Marshal(value)
 	if err != nil {
-		log.Error("failed to marshal response", "component", "httpapi", "error", err)
+		SetErrorMsg(w, "failed to marshal response", err)
 		writeError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 
 		return
 	}
 
 	if err := writeJSON(w, status, body); err != nil {
-		log.Error("failed to write response", "component", "httpapi", "error", err)
+		log.Warn("failed to write response", "component", "httpapi", "error", err)
 	}
 }
 
@@ -184,7 +185,7 @@ func acceptConsoleWebSocket(
 
 	wsConn, err := websocket.Accept(w, r, nil)
 	if err != nil {
-		env.log.Error(params.wsUpgradeMsg, "component", "httpapi", "error", err)
+		env.log.Warn(params.wsUpgradeMsg, "component", "httpapi", "error", err)
 		return vm.ConsoleTicket{}, nil, false
 	}
 
