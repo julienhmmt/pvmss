@@ -101,6 +101,10 @@ const cdromMountedValue = "local:iso/debian-12.iso,media=cdrom"
 // slot to a caller.
 const cloudInitDiskKey = "ide3"
 
+// proxmoxEmptyVolume is the sentinel Proxmox writes in a drive slot that
+// holds no volume (an ejected CD-ROM, a detached disk).
+const proxmoxEmptyVolume = "none"
+
 // cfgHasSerial reports whether the VM config carries a serial port (serial0,
 // serial1, …). The PVMSS Text/serial console needs at least one.
 func cfgHasSerial(cfg proxmoxVMConfig) bool {
@@ -129,7 +133,7 @@ func parseDisks(cfg proxmoxVMConfig) ([]Disk, int64) {
 			}
 
 			value, ok := cfg[key].(string)
-			if !ok || value == "" || value == "none" {
+			if !ok || value == "" || value == proxmoxEmptyVolume {
 				continue
 			}
 
@@ -241,7 +245,7 @@ func occupiedByNonISO(cfg proxmoxVMConfig) bool {
 	value, _ := cfg[cdromDiskKey].(string)
 	volume, _, _ := strings.Cut(value, ",")
 
-	return volume != "" && volume != "none" && !strings.Contains(volume, ":iso/")
+	return volume != "" && volume != proxmoxEmptyVolume && !strings.Contains(volume, ":iso/")
 }
 
 // parseCDROM reads the fixed ide2 slot's state.
@@ -252,7 +256,7 @@ func parseCDROM(cfg proxmoxVMConfig) CDROMState {
 	}
 
 	volume, _, _ := strings.Cut(value, ",")
-	if volume == "" || volume == "none" {
+	if volume == "" || volume == proxmoxEmptyVolume {
 		return CDROMState{State: CDROMEmpty}
 	}
 

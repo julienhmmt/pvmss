@@ -783,7 +783,7 @@ func proxmoxTemplateDisk(ctx context.Context, rest proxmoxRESTClient, node strin
 			}
 
 			val, ok := cfg[key].(string)
-			if !ok || val == "" || val == "none" {
+			if !ok || val == "" || val == proxmoxEmptyVolume {
 				continue
 			}
 
