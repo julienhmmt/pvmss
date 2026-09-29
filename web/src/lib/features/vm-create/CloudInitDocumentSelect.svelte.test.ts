@@ -23,7 +23,7 @@ function catalogWith(writeEnabled: boolean): VmCreateCatalog {
 		images: [],
 		profiles: [],
 		templates: [],
-		cloudInitTemplates: [{ id: 'web-server', label: 'Web server' }],
+		cloudInitTemplates: [{ id: 'web-server', label: 'Web server', nodes: ['pve-node-01'] }],
 		cloudInitWriteEnabled: writeEnabled,
 		tags: []
 	};

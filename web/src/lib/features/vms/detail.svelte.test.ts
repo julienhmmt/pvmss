@@ -17,6 +17,7 @@ const baseEntity: VmDetailEntity = {
 	pool: 'pool-alice',
 	status: 'stopped',
 	tags: ['pvmss'],
+	ostype: 'l26',
 	cpuCores: 2,
 	memoryTotal: 4294967296,
 	diskTotal: 32212254720
@@ -90,6 +91,28 @@ describe('VmDetailStore.action', () => {
 
 		// No load() call - only the action POST and status GET.
 		expect(calls).not.toContain('/api/v1/vms/default/100');
+	});
+
+	it('refreshLiveStatus patches status and lock from the live endpoint without load()', async () => {
+		const { calls } = stubFetchSequence([
+			{ status: 200, body: { status: 'running', uptime: 5 } }
+		]);
+
+		const store = makeStore({ ...baseEntity, status: 'stopped' });
+		await store.refreshLiveStatus();
+
+		expect(store.entity?.status).toBe('running');
+		expect(calls).not.toContain('/api/v1/vms/default/100');
+	});
+
+	it('refreshLiveStatus skips while a power action is in flight', async () => {
+		const { calls } = stubFetchSequence([]);
+		const store = makeStore({ ...baseEntity, status: 'stopped' });
+		store.actionInFlight = true;
+
+		await store.refreshLiveStatus();
+
+		expect(calls).toHaveLength(0);
 	});
 
 	it('reverts to the exact previous status when the POST fails', async () => {

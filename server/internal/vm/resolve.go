@@ -64,13 +64,15 @@ func recordResolveFailed(actor auth.Identity, clusterName string, vmid int, reas
 // detail-view metrics so GET /vms/:id can
 // return it directly.
 type Entity struct {
-	Cluster           string
-	VMID              int
-	Name              string
-	Node              string
-	Pool              string
-	Status            cluster.VMStatus
-	Tags              []string
+	Cluster string
+	VMID    int
+	Name    string
+	Node    string
+	Pool    string
+	Status  cluster.VMStatus
+	Tags    []string
+	// OSType mirrors cluster.VM.OSType - Proxmox's kernel family, not a distro.
+	OSType            string
 	CPUCores          int
 	Sockets           int
 	Cores             int
@@ -153,6 +155,7 @@ func Resolve(source inventory.LookupSource, actor auth.Identity, clusterName str
 		Pool:              machine.Pool,
 		Status:            machine.Status,
 		Tags:              append([]string(nil), machine.Tags...),
+		OSType:            machine.OSType,
 		CPUCores:          machine.CPUCores,
 		Sockets:           machine.Sockets,
 		Cores:             machine.Cores,

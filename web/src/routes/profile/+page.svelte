@@ -12,6 +12,7 @@
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
+	import ProfileSshKeysSection from '$lib/features/profile-ssh-keys/ProfileSshKeysSection.svelte';
 	import { accountInitials } from '$lib/shared/initials';
 	import { m } from '$lib/paraglide/messages.js';
 
@@ -86,4 +87,6 @@
 
 		<p class="border-t border-border px-6 py-4 text-xs text-muted-foreground">{m['account.authNote']()}</p>
 	</div>
+
+	<ProfileSshKeysSection />
 </section>

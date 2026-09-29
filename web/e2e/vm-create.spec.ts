@@ -10,19 +10,24 @@ async function signInAlice(request: APIRequestContext): Promise<void> {
 
 // The Playwright server process holds the fake dataset in memory across test
 // files, so VMs created here must be deleted again - T04's list specs assert
-// exact row counts.
+// exact row counts. The registry is per worker and per test: a blanket
+// prefix sweep raced under fullyParallel, where a finished test's afterEach
+// deleted a sibling's in-flight VM before its list assertion.
+const submittedNames: string[] = [];
+
 async function deleteCreatedVms(request: APIRequestContext): Promise<void> {
+	if (submittedNames.length === 0) return;
 	// cluster is required: the all-clusters path (empty cluster) fails
 	// server-side, which silently skipped this cleanup.
 	const list = await request.get('/api/v1/vms?cluster=default&pageSize=100');
 	if (!list.ok()) return;
 	const vms = (await list.json()) as { items: { vmid: number; name: string }[] };
-	for (const vm of vms.items) {
-		if (vm.name.startsWith('web-e2e-')) {
-			// force=true: these VMs are created running, and a plain delete is
-			// refused with 409 for a running VM, which left them behind.
-			await request.delete(`/api/v1/vms/default/${vm.vmid}?force=true`, { headers: await csrfHeaders(request) });
-		}
+	for (const name of submittedNames.splice(0)) {
+		const vm = vms.items.find((item) => item.name === name);
+		if (vm === undefined) continue;
+		// force=true: these VMs are created running, and a plain delete is
+		// refused with 409 for a running VM, which left them behind.
+		await request.delete(`/api/v1/vms/default/${vm.vmid}?force=true`, { headers: await csrfHeaders(request) });
 	}
 }
 
@@ -96,6 +101,7 @@ test.describe('T06 VM creation', () => {
 		await page.getByRole('button', { name: /Simple/ }).click();
 		await page.getByRole('radio', { name: /Medium/ }).check();
 		await page.getByLabel('Name').fill('web-e2e-01');
+		submittedNames.push('web-e2e-01');
 		await page.getByRole('button', { name: 'Create this machine' }).click();
 
 		await expect(page).toHaveURL(/\/vms$/);
@@ -157,6 +163,7 @@ test.describe('T06 VM creation', () => {
 		expect(outgoing).toContain('"bridge": "vmbr2"');
 		expect(outgoing).not.toContain('profileId');
 
+		submittedNames.push('web-e2e-02');
 		await page.getByRole('button', { name: 'Create VM' }).click();
 		await expect(page).toHaveURL(/\/vms$/);
 		await expect(page.getByText('VM "web-e2e-02" created')).toBeVisible({ timeout: 20000 });
@@ -182,6 +189,7 @@ test.describe('T06 VM creation', () => {
 		await signInAlice(page.request);
 
 		// SC-004: no UI dropdown involved - a raw request with an unapproved storage.
+		submittedNames.push('web-e2e-03');
 		const response = await page.request.post('/api/v1/vms', {
 			headers: await csrfHeaders(page.request),
 			data: {
@@ -204,6 +212,7 @@ test.describe('T06 VM creation', () => {
 
 		// SC-003: strict decoding rejects the unknown field outright; either
 		// way no VM is created with a pool other than alice's.
+		submittedNames.push('web-e2e-04');
 		const response = await page.request.post('/api/v1/vms', {
 			headers: await csrfHeaders(page.request),
 			data: {

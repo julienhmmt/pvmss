@@ -32,6 +32,7 @@ what is needed; **Detailed** mode exposes every option. Configure:
 - **Network**: one or more network cards, each with a bridge and a card model (VirtIO, E1000, E1000E, RTL8139, VMXNet3). The Proxmox firewall is always enabled; your administrator may impose an isolation VLAN.
 - **Firmware**: UEFI (default on) with an empty EFI key store - Secure Boot is never enabled, because most Linux ISOs are unsigned and would not boot with it. TPM 2.0 for guests that require it.
 - **Cloud-init document**: one of the templates your administrator provides. See the [cloud-init how-to](/docs/cloud-init-howto).
+- **SSH keys** (cloud image source): tick the keys saved on your profile or paste one-off keys in the same field. Pasting exactly one key your profile does not know yet offers to save it once the VM is created.
 - **Startup**: choose whether the VM starts automatically after creation.
 - **Tags**: pick from the administrator-curated list.
 
@@ -85,7 +86,9 @@ curated picker, and load or eject an ISO in the CD-ROM drive.
 
 Set the user, password (delivered through the guest agent, never stored), SSH
 keys, IP address, gateway, and DNS. **Add key now** injects a key into a
-running VM immediately. The VM's cloud-init document is shown here; you can
+running VM immediately. The picker below the key list appends keys saved on
+your profile - keys already on the VM stay editable in the list and are not
+offered again. The VM's cloud-init document is shown here; you can
 switch it to another administrator template or detach it. See the
 [cloud-init how-to](/docs/cloud-init-howto) for what applies when.
 
@@ -131,6 +134,9 @@ server-side before any Proxmox call is made.
 - Prefer a cloud-init document over manual post-install setup.
 - Start from a profile when one fits your workload.
 - Keep snapshots for meaningful checkpoints only.
+- Save your SSH public keys on your [profile](/profile): the create wizard
+  and the VM cloud-init tab offer them as checkboxes, and a key copied into
+  a VM keeps working even if you later edit or remove it from the profile.
 
 ## Known limitations
 

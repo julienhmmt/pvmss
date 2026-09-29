@@ -79,11 +79,6 @@ func newCreateFixture(t *testing.T) createFixture {
 		}
 	}
 
-	// The admin-published baseline every image VM without a template uses.
-	if _, err := catalog.PublishCloudInitDocument(ctx, st, cluster.Fake{}, catalog.PublishRequest{Cluster: testClusterName, TemplateID: store.BaselineTemplateID}); err != nil {
-		t.Fatalf("publish baseline: %v", err)
-	}
-
 	cluster.ClearFakeCalls()
 
 	return createFixture{store: st, fake: cluster.Fake{}}
@@ -476,10 +471,6 @@ func createTestTemplate(t *testing.T, st *store.Store) string {
 		t.Fatalf("CreateCloudInitTemplate: %v", err)
 	}
 
-	if _, err := catalog.PublishCloudInitDocument(context.Background(), st, cluster.Fake{}, catalog.PublishRequest{Cluster: testClusterName, TemplateID: tmpl.ID, Content: tmpl.Content}); err != nil {
-		t.Fatalf("PublishCloudInitDocument: %v", err)
-	}
-
 	cluster.ClearFakeCalls()
 
 	return tmpl.ID
@@ -781,12 +772,15 @@ func TestCreate_CloudInitTemplate_Disabled_RejectedBeforeVMID(t *testing.T) {
 	assertNoVMCreated(t)
 }
 
-// TestCreate_CloudInitTemplate_NeverPublished_RejectedBeforeVMID - an
-// enabled template with no publication is refused (409) before any VMID.
+// TestCreate_CloudInitTemplate_NotPasted_RejectedBeforeVMID - an enabled
+// template whose file is on no node is refused (409) before any VMID.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestCreate_CloudInitTemplate_NeverPublished_RejectedBeforeVMID(t *testing.T) {
+func TestCreate_CloudInitTemplate_NotPasted_RejectedBeforeVMID(t *testing.T) {
 	fixture := newCreateFixture(t)
+
+	cluster.SetFakeSnippetVisibility(false)
+	t.Cleanup(func() { cluster.SetFakeSnippetVisibility(true) })
 
 	if _, err := catalog.CreateCloudInitTemplate(context.Background(), fixture.store, testClusterName, "Unpublished", testCloudInitContent); err != nil {
 		t.Fatalf("CreateCloudInitTemplate: %v", err)

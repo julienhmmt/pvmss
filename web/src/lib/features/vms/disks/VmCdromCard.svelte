@@ -15,6 +15,8 @@
 	let bootConfirmOpen = $state(false);
 
 	const isoMounted = $derived(store.entity?.cdrom?.state === 'mounted');
+	// ide2 holds a cloud-init drive: mounting, ejecting or removing would destroy it.
+	const occupied = $derived(store.entity?.cdrom?.state === 'occupied');
 
 	async function bootFromCdrom(): Promise<void> {
 		const vmName = store.entity?.name ?? '';
@@ -52,9 +54,12 @@
 			{/if}
 		</div>
 	</div>
+	{#if occupied}
+		<p class="mt-3 text-sm text-muted-foreground" data-testid="vm-cdrom-occupied">{m['vms.disks.cdromOccupied']()}</p>
+	{/if}
 	<div class="mt-5 flex flex-wrap gap-2">
 		<Button
-			disabled={store.cdromInFlight}
+			disabled={store.cdromInFlight || occupied}
 			onclick={() => (mountOpen = true)}
 			data-testid="vm-cdrom-mount-open"
 		>
@@ -77,7 +82,7 @@
 		</Button>
 		<Button
 			variant="secondary"
-			disabled={store.cdromInFlight}
+			disabled={store.cdromInFlight || occupied}
 			onclick={() => store.setCdrom('disconnect')}
 			data-testid="vm-cdrom-disconnect"
 		>
@@ -86,7 +91,7 @@
 		<Button
 			variant="outline"
 			class="border-destructive/30 text-destructive hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive"
-			disabled={store.cdromInFlight}
+			disabled={store.cdromInFlight || occupied}
 			onclick={() => store.setCdrom('remove')}
 			data-testid="vm-cdrom-remove"
 		>

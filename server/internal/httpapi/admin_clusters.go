@@ -12,7 +12,6 @@ import (
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/store"
 	"regexp"
-	"strings"
 	"time"
 )
 
@@ -32,62 +31,6 @@ type AdminClusters struct {
 	inventories      *inventory.Registry
 	log              *slog.Logger
 	trustedProxyHops int
-	// sshPublicKey is PVMSS's public key (authorized_keys form), shown so
-	// the admin can install it on the nodes. Empty: no PVMSS_SSH_KEY_FILE.
-	sshPublicKey string
-	republisher  func(name string)
-}
-
-// SetRepublisher wires the background republication run after a cluster's
-// settings are saved (nil in tests: nothing runs behind their back).
-func (handler *AdminClusters) SetRepublisher(fn func(name string)) {
-	handler.republisher = fn
-}
-
-func (handler *AdminClusters) republish(name string) {
-	if handler.republisher != nil {
-		handler.republisher(name)
-	}
-}
-
-// SetSSHPublicKey sets the public key shown in the cluster form.
-func (handler *AdminClusters) SetSSHPublicKey(key string) {
-	handler.sshPublicKey = key
-}
-
-// hostKeyScanDTO is one node's scanned host key.
-type hostKeyScanDTO struct {
-	Node  string `json:"node"`
-	Line  string `json:"line,omitempty"`
-	Error string `json:"error,omitempty"`
-}
-
-// ServeSSHScan handles POST /api/v1/admin/clusters/{name}/ssh-scan: reads
-// every node's SSH host key (trust on first use) so the admin can review
-// the fingerprints and save them as the cluster's pinned host keys. Nothing
-// is saved here.
-func (handler *AdminClusters) ServeSSHScan(w http.ResponseWriter, r *http.Request) {
-	name := r.PathValue("name")
-	client, err := handler.clients.Client(name)
-	if err != nil {
-		handler.writeStoreFailure(w, err)
-		return
-	}
-	publisher, ok := client.(cluster.SnippetPublisher)
-	if !ok {
-		writeAdminError(w, http.StatusConflict, "unsupported", "this cluster client cannot publish cloud-init documents")
-		return
-	}
-	scans, err := publisher.ScanHostKeys(r.Context())
-	if err != nil {
-		writeAdminError(w, http.StatusBadGateway, "scan_failed", err.Error())
-		return
-	}
-	out := make([]hostKeyScanDTO, len(scans))
-	for i, sc := range scans {
-		out[i] = hostKeyScanDTO{Node: sc.Node, Line: sc.Line, Error: sc.Error}
-	}
-	writeAdminJSON(w, http.StatusOK, out)
 }
 
 // NewAdminClusters creates the admin cluster handler.
@@ -111,17 +54,9 @@ type adminClusterDTO struct {
 	NodeCount             int     `json:"nodeCount"`
 	VMCount               int     `json:"vmCount"`
 	SnippetStorage        string  `json:"snippetStorage"`
-	SSHUser               string  `json:"sshUser"`
-	SSHPort               int     `json:"sshPort"`
-	SSHKnownHosts         string  `json:"sshKnownHosts"`
-	// SSHPublicKey is PVMSS's own public key (PVMSS_SSH_KEY_FILE), to
-	// install on every node; empty when no key is configured.
-	SSHPublicKey          string `json:"sshPublicKey"`
-	CloudInitWriteEnabled bool   `json:"cloudInitWriteEnabled"`
-	// PublishingStatus names the first missing prerequisite for cloud-init
-	// publishing ("" when enabled), so Infrastructure > Clusters can tell the admin
-	// what to fix. The web client localizes the code.
-	PublishingStatus string `json:"publishingStatus"`
+	// CloudInitWriteEnabled is true when a snippet storage is selected:
+	// admin cloud-init documents are then offered (files pasted by hand).
+	CloudInitWriteEnabled bool `json:"cloudInitWriteEnabled"`
 }
 
 type createClusterRequest struct {
@@ -141,43 +76,21 @@ type updateClusterRequest struct {
 	snippetSettings
 }
 
-// snippetSettings are the cloud-init publishing fields shared by the
-// create and update requests.
+// snippetSettings are the cloud-init fields shared by the create and
+// update requests.
 type snippetSettings struct {
 	SnippetStorage string `json:"snippetStorage"`
-	SSHUser        string `json:"sshUser"`
-	SSHPort        int    `json:"sshPort"`
-	SSHKnownHosts  string `json:"sshKnownHosts"`
-}
-
-func (s snippetSettings) config() store.SnippetConfig {
-	return store.SnippetConfig{Storage: s.SnippetStorage, SSHUser: s.SSHUser, SSHPort: s.SSHPort, KnownHosts: s.SSHKnownHosts}
 }
 
 // snippetStorageIDRE is the storage-id grammar - the same shape
 // Proxmox itself accepts for a storage identifier.
 var snippetStorageIDRE = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_.-]*$`)
 
-// sshUserRE is a conservative POSIX user name.
-var sshUserRE = regexp.MustCompile(`^[a-z_][a-z0-9_-]{0,31}$`)
-
-// validateSnippetSettings checks the publishing settings. Returns the
+// validateSnippetSettings checks the cloud-init settings. Returns the
 // message for a 400 invalid_request, or "".
 func validateSnippetSettings(s snippetSettings) string {
-	switch {
-	case s.SnippetStorage != "" && !snippetStorageIDRE.MatchString(s.SnippetStorage):
+	if s.SnippetStorage != "" && !snippetStorageIDRE.MatchString(s.SnippetStorage) {
 		return "snippetStorage is not a valid storage id"
-	case s.SSHUser != "" && !sshUserRE.MatchString(s.SSHUser):
-		return "sshUser is not a valid user name"
-	case s.SSHUser == "root":
-		return "sshUser must not be root: create the dedicated user with tools/pvmss-node-setup.sh"
-	case s.SSHPort < 0 || s.SSHPort > 65535:
-		return "sshPort must be between 1 and 65535"
-	case s.SSHUser != "" && strings.TrimSpace(s.SSHKnownHosts) == "":
-		return "sshKnownHosts is required: host keys are always verified (use Scan host keys)"
-	}
-	if err := cluster.ValidateKnownHosts(s.SSHKnownHosts); err != nil {
-		return "sshKnownHosts: " + err.Error()
 	}
 	return ""
 }
@@ -229,17 +142,16 @@ func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request
 		handler.writeStoreFailure(w, err)
 		return
 	}
-	if err := handler.store.SetClusterSnippetConfig(r.Context(), row.Name, request.config()); err != nil {
+	if err := handler.store.SetClusterSnippetStorage(r.Context(), row.Name, request.SnippetStorage); err != nil {
 		handler.writeStoreFailure(w, err)
 		return
 	}
-	row.SnippetStorage, row.SSHUser, row.SSHPort, row.SSHKnownHosts = request.SnippetStorage, request.SSHUser, request.SSHPort, request.SSHKnownHosts
+	row.SnippetStorage = request.SnippetStorage
 	if err := handler.register(r.Context(), row); err != nil {
 		handler.writeFailure(w, err)
 		return
 	}
 	handler.awaitFirstRefresh(r.Context(), row.Name)
-	handler.republish(row.Name)
 	created, err := handler.store.GetCluster(r.Context(), row.Name)
 	if err != nil {
 		handler.writeFailure(w, err)
@@ -247,7 +159,7 @@ func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request
 	}
 	handler.recordAdminAction(r, "admin.clusters.create", "cluster", created.Name,
 		"created cluster "+created.Name,
-		[]any{map[string]any{auditKeyName: created.Name, "url": created.URL, "tlsInsecureSkipVerify": created.TLSInsecureSkipVerify, "tokenId": created.TokenID, "oidcEnabled": created.OIDCEnabled, "snippetStorage": created.SnippetStorage, "sshUser": created.SSHUser, "sshPort": created.SSHPort}})
+		[]any{map[string]any{auditKeyName: created.Name, "url": created.URL, "tlsInsecureSkipVerify": created.TLSInsecureSkipVerify, "tokenId": created.TokenID, "oidcEnabled": created.OIDCEnabled, "snippetStorage": created.SnippetStorage}})
 	writeAdminJSON(w, http.StatusCreated, handler.clusterDTO(created))
 }
 
@@ -272,7 +184,7 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 		handler.writeStoreFailure(w, err)
 		return
 	}
-	if err := handler.store.SetClusterSnippetConfig(r.Context(), name, request.config()); err != nil {
+	if err := handler.store.SetClusterSnippetStorage(r.Context(), name, request.SnippetStorage); err != nil {
 		handler.writeStoreFailure(w, err)
 		return
 	}
@@ -291,7 +203,6 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 		return
 	}
 	handler.awaitFirstRefresh(r.Context(), name)
-	handler.republish(name)
 	updated, err := handler.store.GetCluster(r.Context(), name)
 	if err != nil {
 		handler.writeFailure(w, err)
@@ -299,7 +210,7 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 	}
 	handler.recordAdminAction(r, "admin.clusters.update", "cluster", name,
 		"updated cluster "+name,
-		[]any{map[string]any{auditKeyName: name, "url": updated.URL, "tlsInsecureSkipVerify": updated.TLSInsecureSkipVerify, "tokenId": updated.TokenID, "oidcEnabled": updated.OIDCEnabled, "snippetStorage": updated.SnippetStorage, "sshUser": updated.SSHUser, "sshPort": updated.SSHPort}})
+		[]any{map[string]any{auditKeyName: name, "url": updated.URL, "tlsInsecureSkipVerify": updated.TLSInsecureSkipVerify, "tokenId": updated.TokenID, "oidcEnabled": updated.OIDCEnabled, "snippetStorage": updated.SnippetStorage}})
 	writeAdminJSON(w, http.StatusOK, handler.clusterDTO(updated))
 }
 
@@ -477,36 +388,12 @@ func (handler *AdminClusters) clusterDTO(row store.ClusterRow) adminClusterDTO {
 		nodeCount, vmCount = 0, 0
 	}
 
-	status := publishingStatus(row, handler.sshPublicKey)
-
 	return adminClusterDTO{
 		Name: row.Name, DisplayName: row.DisplayName, URL: row.URL, TLSInsecureSkipVerify: row.TLSInsecureSkipVerify, TokenID: row.TokenID,
 		TokenSet: row.TokenSecret != "", OIDCEnabled: row.OIDCEnabled, RemovedAt: formatTime(row.RemovedAt),
 		LastTestStatus: lastTestStatus, LastTestAt: lastTestAt, LastTestMessage: lastTestMessage,
 		ProxmoxVersion: optionalValue(version), NodeCount: nodeCount, VMCount: vmCount,
-		SnippetStorage: row.SnippetStorage, SSHUser: row.SSHUser, SSHPort: row.SSHPort, SSHKnownHosts: row.SSHKnownHosts,
-		SSHPublicKey:          handler.sshPublicKey,
-		CloudInitWriteEnabled: status == "",
-		PublishingStatus:      status,
-	}
-}
-
-// publishingStatus reports why cloud-init publishing is off for a cluster, or
-// "" when every prerequisite is present: the global key (PVMSS_SSH_KEY_FILE),
-// the per-cluster SSH user, pinned host keys, and the snippet storage. The
-// first missing item wins; the web client localizes each code.
-func publishingStatus(row store.ClusterRow, sshPublicKey string) string {
-	switch {
-	case sshPublicKey == "":
-		return "no_ssh_key"
-	case row.SSHUser == "":
-		return "no_ssh_user"
-	case strings.TrimSpace(row.SSHKnownHosts) == "":
-		return "no_host_keys"
-	case row.SnippetStorage == "":
-		return "no_snippet_storage"
-	default:
-		return ""
+		SnippetStorage: row.SnippetStorage, CloudInitWriteEnabled: row.SnippetStorage != "",
 	}
 }
 

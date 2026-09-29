@@ -9,10 +9,9 @@ import (
 	"pvmss/server/internal/cluster"
 )
 
-// ErrCloudInitNotPublished - the requested cloud-init template has no
-// published file on the VM's node (never published, or published while the
-// node was offline). The admin republishes from Admin > Cloud-init
-// templates; nothing was created.
+// ErrCloudInitNotPublished - the requested cloud-init template's file is not
+// on the VM's node: the admin has not pasted its command there (Admin >
+// Cloud-init). Nothing was created.
 var ErrCloudInitNotPublished = errors.New("cloud-init template is not published on the selected node")
 
 // publishedDocument is an admin-published cloud-init file resolved at plan
@@ -90,10 +89,6 @@ func locatePublishedDocument(ctx context.Context, deps CreateDeps, target docume
 
 	filename, err := catalog.PublishedFile(ctx, deps.Store, target.Cluster, templateID)
 	if err != nil {
-		if errors.Is(err, catalog.ErrCloudInitTemplateNotPublished) {
-			return publishedDocument{}, fmt.Errorf("%w: the document has never been published - publish it in Admin > Cloud-init templates", ErrCloudInitNotPublished)
-		}
-
 		return publishedDocument{}, err
 	}
 
@@ -103,7 +98,7 @@ func locatePublishedDocument(ctx context.Context, deps CreateDeps, target docume
 	}
 
 	if !present {
-		return publishedDocument{}, fmt.Errorf("%w: %s:snippets/%s is not on node %s - republish in Admin > Cloud-init templates", ErrCloudInitNotPublished, storage, filename, target.Node)
+		return publishedDocument{}, fmt.Errorf("%w: %s:snippets/%s is not on node %s - paste its command from Admin > Cloud-init on that node", ErrCloudInitNotPublished, storage, filename, target.Node)
 	}
 
 	return publishedDocument{TemplateID: templateID, Storage: storage, Filename: filename}, nil

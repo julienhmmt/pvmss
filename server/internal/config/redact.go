@@ -44,6 +44,5 @@ func (c Configuration) Redacted() []Field {
 		{Name: "ProxmoxURL", Value: c.ProxmoxURL},
 		{Name: "ProxmoxAPITokenName", Value: c.ProxmoxAPITokenName},
 		{Name: "PROXMOX_API_TOKEN_VALUE", Value: "", Redacted: true},
-		{Name: "SSHKeyFile", Value: c.SSHKeyFile},
 	}
 }

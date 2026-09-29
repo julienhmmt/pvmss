@@ -9,14 +9,19 @@
 	 * No password field: access is granted through SSH keys, and a password
 	 * is set post-boot via the guest agent.
 	 */
+	import { onMount } from 'svelte';
 	import { getVmCreateContext } from './create.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import FormField from '$lib/shared/ui/FormField.svelte';
 	import TextField from '$lib/shared/ui/TextField.svelte';
-	import Textarea from '$lib/shared/ui/Textarea.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
+	import SshKeyPicker from '$lib/features/profile-ssh-keys/SshKeyPicker.svelte';
 
 	const form = getVmCreateContext();
+
+	// The picker needs the profile keys; a failure degrades to the
+	// textarea-only experience (loaded once per wizard session).
+	onMount(() => void form.loadProfileKeysOnce());
 
 	const ipModeOptions = [
 		{ value: 'dhcp', label: m['vms.create.ciIpModeDhcp']() },
@@ -50,7 +55,7 @@
 		error={sshKeysError}
 	>
 		{#snippet children({ id, describedBy, invalid })}
-			<Textarea {id} {describedBy} {invalid} mono bind:value={form.ciSshKeysInput} rows={4} required placeholder="ssh-ed25519 AAAA..." />
+			<SshKeyPicker {id} {describedBy} {invalid} selection={form.sshSelection} />
 		{/snippet}
 	</FormField>
 

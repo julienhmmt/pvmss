@@ -13,6 +13,9 @@
 	import VmActionBar from '$lib/features/vms/VmActionBar.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 
+	/** Live-status poll cadence while the console is open. */
+	const LIVE_STATUS_POLL_MS = 5000;
+
 	type ConsoleMode = 'graphical' | 'text';
 
 	const cluster = page.params.cluster ?? '';
@@ -51,7 +54,11 @@
 	}
 
 	onMount(() => {
+		// The projection can be ~30s stale (VM just started): read the live
+		// status once loaded, then keep it fresh while the console is open.
+		const liveTimer = setInterval(() => void vmStore.refreshLiveStatus(), LIVE_STATUS_POLL_MS);
 		void vmStore.load().then(() => {
+			void vmStore.refreshLiveStatus();
 			// Issue 06: an image-born VM (pvmss-image tag) opens on the text
 			// tab. Only seeds when the user has not yet switched - a manual
 			// switch before load() lands keeps the user's choice.
@@ -61,6 +68,7 @@
 		});
 		// The connect happens inside VmConsole.svelte's onMount, which runs
 		// after the container element is bound.
+		return () => clearInterval(liveTimer);
 	});
 
 	onDestroy(() => {

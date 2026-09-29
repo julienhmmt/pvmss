@@ -44,14 +44,14 @@ describe('CloudInitStore', () => {
 		const fetchMock = vi
 			.fn()
 			.mockResolvedValueOnce(jsonResponse(200, { templateId: 'web', filename: 'pvmss-tpl-web-abc.yml', legacy: false, updatedAt: null, updatedBy: 'alice' }))
-			.mockResolvedValueOnce(jsonResponse(200, { cloudInitTemplates: [{ id: 'web', label: 'Web' }], cloudInitWriteEnabled: true, cloudInitBaselineId: '__baseline__' }));
+			.mockResolvedValueOnce(jsonResponse(200, { cloudInitTemplates: [{ id: 'web', label: 'Web', nodes: ['pve-node-01'] }], cloudInitWriteEnabled: true, cloudInitBaselineId: '__baseline__' }));
 		vi.stubGlobal('fetch', fetchMock);
 		const store = new CloudInitStore('default', 101);
 
 		await store.loadDocument();
 
 		expect(store.document?.templateId).toBe('web');
-		expect(store.templates).toEqual([{ id: 'web', label: 'Web' }]);
+		expect(store.templates).toEqual([{ id: 'web', label: 'Web', nodes: ['pve-node-01'] }]);
 		expect(store.publishingEnabled).toBe(true);
 		expect(store.baselineTemplateId).toBe('__baseline__');
 		expect(String(fetchMock.mock.calls[1]?.[0])).toContain('/api/v1/vm-create/catalog?cluster=default');

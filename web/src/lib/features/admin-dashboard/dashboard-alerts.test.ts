@@ -17,6 +17,7 @@ describe('dashboard alerts', () => {
 		expect(alertHref(alert('cluster_unreachable'))).toBe('/admin/clusters');
 		// clusterKey wins over the display label when the server sends both.
 		expect(alertHref(alert('node_offline', { subject: 'n1', cluster: 'East Campus', clusterKey: 'east' }))).toEqual(nodeTarget);
+		expect(alertHref(alert('node_offline_disabled', { subject: 'n1' }))).toEqual(nodeTarget);
 		expect(alertHref(alert('node_cpu', { subject: 'n1' }))).toEqual(nodeTarget);
 		expect(alertHref(alert('node_memory', { subject: 'n1' }))).toEqual(nodeTarget);
 		expect(alertHref(alert('storage_full', { subject: 'ceph' }))).toBe('/admin/storages');
@@ -27,6 +28,12 @@ describe('dashboard alerts', () => {
 		expect(alertMessage(alert('storage_full', { subject: 'ceph', percent: 96 }))).toContain('ceph');
 		expect(alertMessage(alert('storage_full', { subject: 'ceph', percent: 96 }))).toContain('96');
 		expect(alertMessage(alert('cluster_unreachable'))).toContain('east');
+	});
+
+	it('describes an offline node that is disabled in PVMSS', () => {
+		const message = alertMessage(alert('node_offline_disabled', { severity: 'info', subject: 'n2' }));
+		expect(message).toContain('n2');
+		expect(message).not.toBe(alertMessage(alert('node_offline', { subject: 'n2' })));
 	});
 
 	it('tones usage like the alert thresholds', () => {

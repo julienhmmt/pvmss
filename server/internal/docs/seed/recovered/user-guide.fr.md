@@ -33,6 +33,7 @@ Configurez :
 - **Réseau** : une ou plusieurs cartes, chacune avec un bridge et un modèle (VirtIO, E1000, E1000E, RTL8139, VMXNet3). Le pare-feu Proxmox est toujours activé ; votre administrateur peut imposer un VLAN d'isolation.
 - **Firmware** : UEFI (activé par défaut) avec un magasin de clés EFI vide - Secure Boot n'est jamais activé, car la plupart des ISO Linux ne sont pas signés et ne démarreraient pas avec. TPM 2.0 pour les invités qui l'exigent.
 - **Document cloud-init** : l'un des templates fournis par votre administrateur. Voir le [guide cloud-init](/docs/cloud-init-howto).
+- **Clés SSH** (source image cloud) : cochez les clés enregistrées dans votre profil ou collez des clés ponctuelles dans le même champ. Coller exactement une clé absente de votre profil propose de l'enregistrer une fois la VM créée.
 - **Démarrage** : choisissez si la VM démarre automatiquement après création.
 - **Tags** : à choisir dans la liste curée par l'administrateur.
 
@@ -90,6 +91,9 @@ CD-ROM.
 Définissez l'utilisateur, le mot de passe (transmis via l'agent invité, jamais
 stocké), les clés SSH, l'adresse IP, la passerelle et le DNS. **Ajouter une
 clé maintenant** injecte immédiatement une clé dans une VM en marche. Le
+sélecteur sous la liste de clés ajoute les clés enregistrées dans votre
+profil en plus de la liste actuelle - les clés déjà présentes sur la VM
+restent modifiables dans la liste et ne sont pas reproposées. Le
 document cloud-init de la VM est affiché ici ; vous pouvez choisir un autre
 template administrateur ou le détacher. Voir le [guide cloud-init](/docs/cloud-init-howto)
 pour savoir ce qui s'applique et quand.
@@ -136,6 +140,10 @@ applique côté serveur avant tout appel à Proxmox.
 - Préférez un document cloud-init à une configuration manuelle après installation.
 - Partez d'un profil quand l'un d'eux correspond à votre besoin.
 - Ne conservez que les snapshots qui marquent une étape significative.
+- Enregistrez vos clés publiques SSH dans votre [profil](/profile) : l'assistant
+  de création et l'onglet cloud-init de la VM les proposent à cocher, et une
+  clé copiée dans une VM continue de fonctionner même si vous la modifiez ou
+  la supprimez ensuite du profil.
 
 ## Limitations connues
 

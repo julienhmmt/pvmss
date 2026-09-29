@@ -12,7 +12,7 @@
 	import { getVmListContext, type VmListItem, type VmStatus } from './list.svelte';
 	import { getVmBulkContext } from './bulk.svelte';
 	import { displayStatus, type MachineDisplayStatus } from './display-status';
-	import { compactBytes, machineInitials, machineTone, rowAction, rowHint } from './machine-row';
+	import { compactBytes, rowAction, rowHint } from './machine-row';
 	import MachineStatusPill from './MachineStatusPill.svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import { getTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
@@ -31,6 +31,8 @@
 	import OsMark from '$lib/shared/ui/OsMark.svelte';
 	import AllowanceMeter from '$lib/shared/ui/AllowanceMeter.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
+	import SortButton from '$lib/shared/ui/SortButton.svelte';
+	import Pill from '$lib/shared/ui/Pill.svelte';
 	import SearchIcon from '$lib/shared/ui/icons/SearchIcon.svelte';
 	import ChevronDownIcon from '$lib/shared/ui/icons/ChevronDownIcon.svelte';
 
@@ -44,10 +46,27 @@
 	/** Allowances above this many slots render as a continuous bar. */
 	const MAX_SEGMENTS = 12;
 
-	const STATUS_OPTIONS: readonly { value: VmStatus | ''; label: () => string }[] = [
+	/** A server status, or the client-derived "needs attention" pseudo-status. */
+	type StatusFilter = VmStatus | '' | 'attention';
+
+	const ATTENTION_VALUE = 'attention';
+
+	/**
+	 * The states "needs attention" keeps. All three are derived client-side
+	 * (display-status.ts) - the server only knows running / stopped / paused -
+	 * which is why the store loads every page when this filter is on.
+	 */
+	const ATTENTION_STATES: ReadonlySet<MachineDisplayStatus> = new Set([
+		'failed',
+		'partial',
+		'provisioning'
+	]);
+
+	const STATUS_OPTIONS: readonly { value: StatusFilter; label: () => string }[] = [
 		{ value: '', label: () => m['vms.list.filterAll']() },
 		{ value: 'running', label: () => m['vms.list.filterRunning']() },
-		{ value: 'stopped', label: () => m['vms.list.filterStopped']() }
+		{ value: 'stopped', label: () => m['vms.list.filterStopped']() },
+		{ value: ATTENTION_VALUE, label: () => m['vms.list.filterAttention']() }
 	];
 
 	let selectMode = $state(false);
@@ -63,10 +82,19 @@
 		return resolve('/vms/[cluster]/[vmid]', { cluster: machine.cluster, vmid: String(machine.vmid) });
 	}
 
-	function subtitle(machine: VmListItem): string {
-		const tags = machine.tags.filter((tag) => tag !== 'pvmss');
-		return tags.length > 0 ? tags.join(' · ') : machine.clusterDisplayName;
+	/** Tags minus the internal marker; the cluster no longer rides here - it
+	 *  is either the chip beside the name or implied by the active filter. */
+	function visibleTags(machine: VmListItem): string[] {
+		return machine.tags.filter((tag) => tag !== 'pvmss');
 	}
+
+	/**
+	 * The list spans clusters whenever no cluster filter is active. Only then
+	 * is a machine's name ambiguous: the same name and VMID can exist in two
+	 * clusters, so the row carries the cluster as a chip and the link says
+	 * which one it opens.
+	 */
+	const spansClusters = $derived(store.cluster === '');
 
 	async function start(machine: VmListItem): Promise<void> {
 		if (powerActions.get(machine.cluster, machine.vmid) !== null) return;
@@ -98,26 +126,48 @@
 		if (!selectMode) bulk.clear();
 	}
 
+	const allItems = $derived(store.result?.items ?? []);
+	// "Needs attention" is a view-level filter over the full set the store
+	// fetched; every other filter is already applied server-side.
+	const items = $derived(
+		store.attention ? allItems.filter((machine) => ATTENTION_STATES.has(statusOf(machine))) : allItems
+	);
+
 	function handleSelectAll(event: Event): void {
 		const checked = (event.currentTarget as HTMLInputElement).checked;
-		const items = store.result?.items ?? [];
 		if (checked) bulk.selectPage(items);
 		else bulk.clearPage(items);
 	}
 
-	const items = $derived(store.result?.items ?? []);
+	const statusFilter = $derived<StatusFilter>(store.attention ? ATTENTION_VALUE : store.status);
+
+	function setStatusFilter(value: string): void {
+		if (value === ATTENTION_VALUE) store.setAttention(true);
+		else store.setStatus(value as VmStatus | '');
+	}
+
 	const quota = $derived(store.result?.quota ?? null);
 	const quotaFull = $derived(quota !== null && quota.allowed >= 0 && quota.used >= quota.allowed);
+	// The attention filter has already fetched every page, so paginating the
+	// result would page over a set that is complete.
 	const pageCount = $derived(
-		store.result === null ? 1 : Math.max(1, Math.ceil(store.result.total / store.result.pageSize))
+		store.attention || store.result === null
+			? 1
+			: Math.max(1, Math.ceil(store.result.total / store.result.pageSize))
 	);
-	const filtered = $derived(store.search !== '' || store.status !== '' || store.node !== '');
+	const filtered = $derived(
+		store.search !== '' || store.status !== '' || store.node !== '' || store.attention
+	);
 	// Filtered lists show "N of M machines" - M is the owned-VM total from
 	// quota.used, only present on the 'mine' scope; without it the plain
-	// filtered count stands alone.
+	// filtered count stands alone. The attention filter is client-side, so it
+	// counts its own matches against the full total it fetched.
 	const machineCountLabel = $derived.by(() => {
 		const result = store.result;
 		if (result === null) return '';
+		if (store.attention) {
+			return m['vms.list.machineCountFiltered']({ filtered: items.length, total: result.total });
+		}
 		if (filtered && result.quota !== undefined) {
 			return m['vms.list.machineCountFiltered']({ filtered: result.total, total: result.quota.used });
 		}
@@ -150,7 +200,7 @@
 {:else if firstVisit}
 	<div class="flex flex-col items-center gap-4 rounded-xl border border-border bg-card px-6 py-14 text-center shadow-card" data-testid="vm-empty-owned">
 		<div class="relative" aria-hidden="true">
-			<span class="flex h-16 w-16 items-center justify-center rounded-2xl border border-border bg-muted text-muted-foreground">
+			<span class="flex h-16 w-16 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground">
 				<svg viewBox="0 0 24 24" class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
 					<rect x="2" y="3" width="20" height="14" rx="2" />
 					<line x1="8" y1="21" x2="16" y2="21" />
@@ -189,8 +239,8 @@
 				<Select
 					id="vm-status-filter"
 					class="w-auto min-w-[9rem]"
-					value={store.status}
-					onchange={(event: Event) => store.setStatus((event.currentTarget as HTMLSelectElement).value as VmStatus | '')}
+					value={statusFilter}
+					onchange={(event: Event) => setStatusFilter((event.currentTarget as HTMLSelectElement).value)}
 					options={STATUS_OPTIONS.map((option) => ({ value: option.value, label: option.label() }))}
 					data-testid="vm-status-filter"
 				/>
@@ -246,11 +296,26 @@
 				class="grid grid-cols-[minmax(0,1fr)_11rem_8.5rem_9rem] items-center gap-4 border-b border-border bg-muted/60 px-4 py-2 text-2xs font-semibold uppercase tracking-[0.04em] text-muted-foreground max-[699px]:hidden {selectMode
 					? 'pl-12'
 					: ''}"
-				aria-hidden="true"
+				role="group"
+				aria-label={m['vms.list.sortGroupLabel']()}
 			>
-				<span>{m['vms.list.columnMachine']()}</span>
+				<SortButton
+					label={m['vms.list.columnMachine']()}
+					active={store.sortBy === 'name'}
+					direction={store.sortDir}
+					aria-label={m['vms.list.sortByName']()}
+					onclick={() => store.setSort('name')}
+					data-testid="vm-sort-name"
+				/>
 				<span>{m['vms.list.columnResources']()}</span>
-				<span>{m['vms.list.columnStatus']()}</span>
+				<SortButton
+					label={m['vms.list.columnStatus']()}
+					active={store.sortBy === 'status'}
+					direction={store.sortDir}
+					aria-label={m['vms.list.sortByStatus']()}
+					onclick={() => store.setSort('status')}
+					data-testid="vm-sort-status"
+				/>
 				<span class="sr-only">{m['vms.list.columnActions']()}</span>
 			</div>
 			{#if selectMode}
@@ -265,7 +330,9 @@
 					{m['vms.list.selectAll']()}
 				</label>
 			{/if}
-			<ul class="flex flex-col" aria-label={m['vms.list.caption']()}>
+			<!-- The enclosing <section> already carries this label; repeating it
+			     here makes assistive tech announce the same region twice. -->
+			<ul class="flex flex-col">
 				{#each items as machine (`${machine.cluster}:${machine.vmid}`)}
 					{@const status = statusOf(machine)}
 					{@const hint = rowHint(status)}
@@ -288,23 +355,33 @@
 							{/if}
 							<div class="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 min-[700px]:grid-cols-[minmax(0,1fr)_11rem_8.5rem_9rem]">
 								<div class="flex min-w-0 items-center gap-3">
-									<span class="max-[369px]:hidden"><OsMark initials={machineInitials(machine.name)} tone={machineTone(machine.name)} /></span>
+									<span class="max-[369px]:hidden"><OsMark ostype={machine.ostype} /></span>
 									<div class="min-w-0">
-										<a
-											href={detailHref(machine)}
-											class="pv-focus block truncate font-medium text-foreground underline-offset-2 after:absolute after:inset-0 after:content-[''] hover:text-primary hover:underline"
-											data-testid="vm-row-link"
-										>
-											{machine.name}
-										</a>
-										<p class="truncate text-xs text-muted-foreground">
-											{#if store.cluster === '' && machine.tags.some((tag) => tag !== 'pvmss')}
-												<span data-testid="vm-row-cluster">{machine.clusterDisplayName}</span> ·
-											{:else if store.cluster === ''}
-												<span class="sr-only" data-testid="vm-row-cluster">{machine.clusterDisplayName}</span>
+										<div class="flex min-w-0 items-center gap-2">
+											<a
+												href={detailHref(machine)}
+												class="pv-focus block min-w-0 truncate font-medium text-foreground underline-offset-2 after:absolute after:inset-0 after:content-[''] hover:text-primary hover:underline"
+												aria-label={spansClusters
+													? m['vms.list.rowLinkLabel']({
+															name: machine.name,
+															cluster: machine.clusterDisplayName
+														})
+													: undefined}
+												data-testid="vm-row-link"
+											>
+												{machine.name}
+											</a>
+											{#if spansClusters}
+												<span class="shrink-0" data-testid="vm-row-cluster">
+													<Pill tone="off" dot={false} label={machine.clusterDisplayName} />
+												</span>
 											{/if}
-											{subtitle(machine)}
-										</p>
+										</div>
+										{#if visibleTags(machine).length > 0}
+											<p class="truncate text-xs text-muted-foreground">
+												{visibleTags(machine).join(' · ')}
+											</p>
+										{/if}
 									</div>
 								</div>
 								<p class="text-xs leading-5 text-muted-foreground max-[699px]:hidden">

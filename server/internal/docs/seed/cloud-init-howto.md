@@ -57,6 +57,11 @@ To add an SSH key to a running VM without any of this, use the **Add key
 now** section of the Cloud-init tab: it injects the key immediately through
 the guest agent and also saves it to the config for future boots.
 
+The picker below the key list appends keys saved on your profile to that
+list - keys already on the VM are marked and not offered again. Paste
+exactly one key your profile does not know and the tab offers to save it to
+your profile after the update succeeds.
+
 ## Documents are not a vault
 
 Templates are stored in plain text - in the portal's database and on the

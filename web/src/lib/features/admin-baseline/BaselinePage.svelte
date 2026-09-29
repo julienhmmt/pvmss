@@ -1,10 +1,9 @@
 <script lang="ts">
 	import { getAdminBaselineContext } from './baseline.svelte';
-	import { fullyPublished } from '$lib/features/admin-cloudinit-templates/cloudInitTemplates.svelte';
+	import CloudInitDocumentStatus from '$lib/features/admin-cloudinit-templates/CloudInitDocumentStatus.svelte';
 	import PageHeader from '$lib/shared/ui/PageHeader.svelte';
 	import Button from '$lib/shared/ui/Button.svelte';
 	import Card from '$lib/shared/ui/Card.svelte';
-	import Pill from '$lib/shared/ui/Pill.svelte';
 	import Skeleton from '$lib/shared/ui/Skeleton.svelte';
 	import ErrorState from '$lib/shared/ui/ErrorState.svelte';
 	import { m } from '$lib/paraglide/messages.js';
@@ -53,28 +52,13 @@
 			</Card>
 		</div>
 
-		<!-- Publication state -->
+		<!-- Presence on the nodes -->
 		<div class="space-y-4">
 			<h2 class="text-lg font-semibold" id="baseline-publication-heading">
 				{m['admin.baseline.publication']()}
 			</h2>
 			<Card as="div" pad="md">
-				{#if store.state.publication === null}
-					<Pill tone="warn" label={m['admin.cloudinit.notPublished']()} />
-					<p class="mt-2 text-sm text-muted-foreground">{m['admin.baseline.publishHint']()}</p>
-				{:else}
-					<Pill
-						tone={fullyPublished(store.state.publication) ? 'ok' : 'warn'}
-						label={m['admin.cloudinit.publishedNodes']({
-							ok: store.state.publication.nodes.filter((n) => n.ok).length,
-							total: store.state.publication.nodes.length
-						})}
-					/>
-					<p class="mt-2 font-mono text-xs text-muted-foreground" data-testid="baseline-filename">{store.state.publication.filename}</p>
-					{#each store.state.publication.nodes.filter((n) => !n.ok) as failed (failed.node)}
-						<p class="mt-1 text-sm text-warning">{failed.node}: {failed.error}</p>
-					{/each}
-				{/if}
+				<CloudInitDocumentStatus document={store.state.document} error={store.state.documentError} />
 			</Card>
 		</div>
 	{:else}

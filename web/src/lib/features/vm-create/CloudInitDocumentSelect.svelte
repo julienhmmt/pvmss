@@ -4,8 +4,8 @@
 	import FormField from '$lib/shared/ui/FormField.svelte';
 	import Select from '$lib/shared/ui/Select.svelte';
 
-	// Cloud-init document picker: the cluster's admin templates, published by
-	// the administrator. Users never write cloud-init YAML themselves. Bound
+	// Cloud-init document picker: the cluster's admin templates whose file the
+	// administrator placed on the VM's node. Users never write cloud-init YAML themselves. Bound
 	// to the store's cloudInitDocumentValue (the template id, '' = none).
 	// Hidden when the cluster does not publish cloud-init documents, or when
 	// there is nothing to offer. In image mode the template already embeds
@@ -19,7 +19,7 @@
 
 	let { error = null }: Props = $props();
 
-	const templates = $derived(form.catalog?.cloudInitTemplates ?? []);
+	const templates = $derived(form.cloudInitTemplatesOnNode());
 	const writeEnabled = $derived(form.catalog?.cloudInitWriteEnabled ?? false);
 
 	const options = $derived([

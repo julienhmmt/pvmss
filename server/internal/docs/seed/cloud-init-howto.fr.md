@@ -62,6 +62,12 @@ section **Ajouter une clé maintenant** de l'onglet Cloud-init : la clé est
 injectée immédiatement via l'agent invité et enregistrée dans la configuration
 pour les prochains démarrages.
 
+Le sélecteur sous la liste de clés ajoute à cette liste les clés enregistrées
+dans votre profil - les clés déjà présentes sur la VM sont signalées et ne
+sont pas reproposées. Si vous collez exactement une clé inconnue de votre
+profil, l'onglet propose de l'enregistrer dans votre profil une fois la mise
+à jour réussie.
+
 ## Les documents ne sont pas un coffre-fort
 
 Les templates sont stockés en clair - dans la base du portail et sur le

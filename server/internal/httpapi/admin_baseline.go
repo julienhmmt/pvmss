@@ -13,8 +13,8 @@ import (
 
 // AdminBaseline serves the admin-only read-only view of the generated
 // cloud-init baseline: the document merged into every published template
-// and published on its own for image VMs created without a template, with
-// its per-node publication state.
+// and placed on its own for image VMs created without a template, with the
+// command to paste and the nodes that list it.
 type AdminBaseline struct {
 	auth    *Auth
 	clients cluster.ClientProvider
@@ -32,9 +32,10 @@ type adminBaselineDTO struct {
 	// Generated is the baseline document PVMSS publishes, verbatim (the
 	// same cloudinit.BuildVendorData output merged into every template).
 	Generated string `json:"generated"`
-	// Publication is the latest publication of the standalone baseline on
-	// the cluster (image VMs without a template), nil when never published.
-	Publication *adminPublicationDTO `json:"publication"`
+	// Document is the standalone baseline file (image VMs without a
+	// template), read live; nil with DocumentError when it cannot be checked.
+	Document      *adminDocumentDTO `json:"document"`
+	DocumentError string            `json:"documentError,omitempty"`
 }
 
 // ServeBaseline handles GET /api/v1/admin/baseline?cluster=<name>: returns
@@ -74,13 +75,12 @@ func (h *AdminBaseline) ServeBaseline(w http.ResponseWriter, r *http.Request) {
 
 	dto := adminBaselineDTO{Generated: generated}
 
-	if h.store != nil {
-		publication, found, err := h.store.GetCloudInitPublication(r.Context(), clusterName, store.BaselineTemplateID)
+	if h.clients != nil {
+		client, err := h.clients.Client(clusterName)
 		if err != nil {
-			h.log.Error("read baseline publication failed", "component", "httpapi", "cluster", clusterName, "error", err)
-		} else if found {
-			pub := publicationDTO(publication)
-			dto.Publication = &pub
+			dto.DocumentError = err.Error()
+		} else {
+			dto.Document, dto.DocumentError = documentFor(r.Context(), client, store.BaselineTemplateID, "")
 		}
 	}
 

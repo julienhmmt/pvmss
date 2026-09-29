@@ -529,7 +529,7 @@ func TestImportAllowlist_ListMatchesCurrentSchema(t *testing.T) {
 	}
 
 	// Every table in the excluded categories must NOT be allowlisted.
-	excluded := []string{tblSchemaMigrations, tblSessions, tblAPITokens, tblAuditLog, "vm_cloudinit_snippets"}
+	excluded := []string{tblSchemaMigrations, tblSessions, tblAPITokens, tblAuditLog, "vm_cloudinit_snippets", "profile_ssh_keys"}
 	for _, name := range excluded {
 		if !liveTables[name] {
 			continue // table doesn't exist yet - fine, the test is tolerant

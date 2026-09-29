@@ -7,7 +7,7 @@ section to check it against a later HEAD.
 
 Current state at time of writing: `v0.3.0` was the last tagged release
 (shipped on the original stack); `v0.4` is an in-progress rewrite, not yet
-tagged, currently at `HEAD 60467b7f`.
+tagged, currently at `HEAD fd20662f` (2026-09-27, 472 commits after the cutover).
 
 ## History
 
@@ -52,7 +52,7 @@ backend/frontend"), 2026-08-12, merged the `v0.4` branch into `main` and
 removed `backend/` and `frontend/`. From this point on, `server/` + `web/`
 is the only codebase.
 
-### Post-cutover hardening (2026-08-12 to present): 402 commits
+### Post-cutover hardening (2026-08-12 to 2026-09-27): 472 commits
 
 Since the cutover: the em-dash ban enforced across the whole tree, the
 SonarQube quality gate cleared for both `server` and `web` projects, the
@@ -60,7 +60,10 @@ SonarQube quality gate cleared for both `server` and `web` projects, the
 stateless ripgrep-based locator, no index to go stale), personal API tokens
 deactivated (code kept, routes unregistered), and a run of cloud-init work
 culminating in the current `HEAD`: SSH snippet delivery, so cloud-init works
-without a shared filesystem between PVMSS and the Proxmox node.
+without a shared filesystem between PVMSS and the Proxmox node. Then the
+"calm workspace" UI pass: admin dashboard with node alerts, node capacity
+page, node and pool detail pages, page widths normalized, and lint/CodeQL
+findings cleaned up.
 
 ## Current state
 

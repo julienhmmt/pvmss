@@ -24,6 +24,7 @@ const vmItem: VmListItem = {
 	status: 'running',
 	pool: 'pool-alice',
 	tags: ['pvmss'],
+	ostype: 'l26',
 	cpuCores: 2,
 	memoryTotal: 4294967296
 };

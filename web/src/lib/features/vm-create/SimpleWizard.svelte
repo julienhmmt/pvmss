@@ -128,7 +128,7 @@
 	);
 
 	const cloudInitDocumentError = $derived(
-		form.cloudInitTemplateId !== '' && form.catalog && !form.catalog.cloudInitTemplates.some((template) => template.id === form.cloudInitTemplateId)
+		form.cloudInitTemplateId !== '' && form.catalog && !form.cloudInitTemplatesOnNode().some((template) => template.id === form.cloudInitTemplateId)
 			? m['vms.create.errorCloudinitTemplateInvalid']()
 			: null
 	);
@@ -211,7 +211,7 @@
 			if (form.submitError) toast.error(m['toast.vmCreateFailed']({ error: form.submitError }));
 			return;
 		}
-		await handleAccepted(accepted, { tray, toast, outcomeLedger });
+		await handleAccepted(accepted, { tray, toast, outcomeLedger, keyToSave: form.sshSelection.keyToSave() });
 	}
 </script>
 

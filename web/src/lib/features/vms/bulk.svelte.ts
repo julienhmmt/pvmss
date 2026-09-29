@@ -35,6 +35,21 @@ export interface BulkResultSummary {
 
 const BULK_ACTION_PATH = '/api/v1/vms/bulk-action';
 
+/** The bulk actions that need a confirmation step before they fire. */
+export type BulkConfirmationKind = 'forceStop' | 'reset';
+
+/**
+ * Bulk actions that cut power to a running guest get a confirmation, mirroring
+ * the single-VM path (VmActionBar's CONFIRMATIONS). `shutdown` and `reboot` ask
+ * the guest to stop itself and are recoverable; `start` is not destructive.
+ * Bulk has the larger blast radius, so it must not be the looser of the two.
+ */
+export function bulkConfirmationKind(action: string): BulkConfirmationKind | null {
+	if (action === 'stop') return 'forceStop';
+	if (action === 'reset') return 'reset';
+	return null;
+}
+
 function targetKey(cluster: string, vmid: number): string {
 	return `${cluster}:${vmid}`;
 }

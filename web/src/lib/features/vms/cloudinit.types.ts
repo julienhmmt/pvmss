@@ -39,6 +39,8 @@ export interface CloudInitDocument {
 export interface CloudInitTemplateOption {
 	id: string;
 	label: string;
+	/** Nodes whose snippet storage has the template's file. */
+	nodes: string[];
 }
 
 export interface CloudInitSSHKeyResponse {
