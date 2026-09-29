@@ -359,6 +359,21 @@ ALTER TABLE clusters DROP COLUMN ssh_port;
 ALTER TABLE clusters DROP COLUMN ssh_known_hosts;
 DELETE FROM documentation_pages WHERE is_system = 1 AND id IN ('admin', 'admin-guide', 'cloud-init-setup');`
 
+// schemaV33 adds per-user SSH public keys for the profile page. Scope is
+// (cluster, username): the label is unique inside a profile and the public
+// key cannot be stored twice. Fingerprint-based dedupe happens in the store
+// layer (the fingerprint is computed, never persisted).
+const schemaV33 = `CREATE TABLE profile_ssh_keys (
+	id         TEXT PRIMARY KEY,
+	cluster    TEXT NOT NULL,
+	username   TEXT NOT NULL,
+	label      TEXT NOT NULL,
+	public_key TEXT NOT NULL,
+	created_at TEXT NOT NULL,
+	UNIQUE (cluster, username, label),
+	UNIQUE (cluster, username, public_key)
+)`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -400,4 +415,5 @@ var Migrations = []Migration{
 	{Version: 30, DDL: schemaV30},
 	{Version: 31, DDL: schemaV31},
 	{Version: 32, DDL: schemaV32},
+	{Version: 33, DDL: schemaV33},
 }
