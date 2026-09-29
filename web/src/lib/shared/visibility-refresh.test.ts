@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { onVisibleRefresh } from './visibility-refresh';
+import { onVisibleRefresh, POLL_REFRESH_MS } from './visibility-refresh';
 
 /**
  * Overrides the read-only `document.visibilityState` with an own property
@@ -48,5 +48,34 @@ describe('onVisibleRefresh', () => {
 		fireVisibilityChange('visible');
 
 		expect(callback).toHaveBeenCalledTimes(1);
+	});
+
+	it('calls the callback on every poll tick while visible', () => {
+		vi.useFakeTimers();
+		const callback = vi.fn();
+		const unsubscribe = onVisibleRefresh(callback);
+
+		vi.advanceTimersByTime(POLL_REFRESH_MS * 2);
+
+		expect(callback).toHaveBeenCalledTimes(2);
+		unsubscribe();
+		vi.useRealTimers();
+	});
+
+	it('skips poll ticks while hidden and stops after unsubscribe', () => {
+		vi.useFakeTimers();
+		const callback = vi.fn();
+		const unsubscribe = onVisibleRefresh(callback);
+
+		fireVisibilityChange('hidden');
+		vi.advanceTimersByTime(POLL_REFRESH_MS);
+		expect(callback).not.toHaveBeenCalled();
+
+		fireVisibilityChange('visible');
+		callback.mockClear();
+		unsubscribe();
+		vi.advanceTimersByTime(POLL_REFRESH_MS * 2);
+		expect(callback).not.toHaveBeenCalled();
+		vi.useRealTimers();
 	});
 });
