@@ -4,8 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
+
+	"pvmss/server/internal/logctx"
 )
 
 // AuditEntry is one recorded row in the audit_log table. It now supports both
@@ -110,10 +113,57 @@ func (s *Store) insertAuditRow(ctx context.Context, row auditRow) error {
 		row.TargetType, row.TargetID, row.Detail, row.IPAddress, row.Severity)
 	if err != nil {
 		s.log().ErrorContext(ctx, "audit log insert failed", "component", "store", "actor", row.Actor, "action", row.Action, "error", err)
-		return nil
 	}
 
+	s.mirrorAudit(ctx, row)
+
 	return nil
+}
+
+// maxLoggedActor bounds an actor that may be attacker-supplied (a submitted
+// login name) before it reaches the log stream.
+const maxLoggedActor = 64
+
+// actionRateLimited is logged at Warn although deriveSeverity ranks it info;
+// changing the severity would alter /activity.
+const actionRateLimited = "auth.rate_limited"
+
+// mirrorAudit emits the audit row on the log stream (single emission point, no
+// handler code). The detail JSON is deliberately not logged: it can carry
+// values from admin forms. clientIp and requestId come from the request logger.
+func (s *Store) mirrorAudit(ctx context.Context, row auditRow) {
+	attrs := []slog.Attr{
+		slog.String("component", "store"),
+		slog.String("event", "audit"),
+		slog.String("actor", truncate(row.Actor, maxLoggedActor)),
+		slog.String("action", row.Action),
+	}
+	if row.Cluster != "" {
+		attrs = append(attrs, slog.String("cluster", row.Cluster))
+	}
+
+	if row.VMID != nil {
+		attrs = append(attrs, slog.Int("vmid", *row.VMID))
+	}
+
+	if row.TargetType != "" {
+		attrs = append(attrs, slog.String("targetType", row.TargetType), slog.String("targetId", truncate(row.TargetID, maxLoggedActor)))
+	}
+
+	level := slog.LevelInfo
+	if row.Severity != "info" || row.Action == actionRateLimited {
+		level = slog.LevelWarn
+	}
+
+	logctx.FromOr(ctx, s.log()).LogAttrs(ctx, level, "audit event", attrs...)
+}
+
+func truncate(v string, limit int) string {
+	if len(v) <= limit {
+		return v
+	}
+
+	return v[:limit]
 }
 
 // deriveSeverity maps an action string to one of three severity levels based
