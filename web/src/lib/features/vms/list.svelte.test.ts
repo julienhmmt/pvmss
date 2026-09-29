@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { VmListStore, type VmListResult } from './list.svelte';
+import { markVmDeleted } from './recently-deleted';
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), {
@@ -284,6 +285,33 @@ describe('VmListStore', () => {
 
 			pending.release?.(jsonResponse(200, { status: 'ok' }));
 			await actionPromise;
+		});
+	});
+	describe('recently deleted suppression', () => {
+		afterEach(() => sessionStorage.clear());
+
+		it('reports the true empty state when the stale cache only holds a just-deleted VM', async () => {
+			markVmDeleted('default', 100);
+			vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
+			const { store } = makeStore();
+
+			await store.load();
+
+			expect(store.result?.items).toEqual([]);
+			expect(store.result?.total).toBe(0);
+			expect(store.result?.quota?.used).toBe(0);
+			expect(store.result?.emptyReason).toBe('no_vms_owned');
+		});
+
+		it('leaves counts untouched when nothing was deleted', async () => {
+			vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
+			const { store } = makeStore();
+
+			await store.load();
+
+			expect(store.result?.total).toBe(1);
+			expect(store.result?.quota?.used).toBe(1);
+			expect(store.result?.emptyReason).toBeUndefined();
 		});
 	});
 });
