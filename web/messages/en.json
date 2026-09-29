@@ -486,7 +486,7 @@
   "vms.detail.baselineApplied": "Cloud-init baseline delivered (qemu-guest-agent installed and enabled).",
   "vms.detail.baselineOverride": "Cloud-init baseline delivered (replaced by a cluster-wide pvmss-baseline.yml).",
   "vms.detail.baselineNotDelivered": "Cloud-init baseline not delivered.",
-  "vms.detail.baselineNotDeliveredHint": "Ask an admin to configure a snippet write target on this cluster so the generated baseline (qemu-guest-agent) can be attached.",
+  "vms.detail.baselineNotDeliveredHint": "This machine boots with its native keys (user, SSH key, network) but without the document that installs the QEMU guest agent. Pick a document under Configuration > Cloud-init once it is published on the node, or ask an admin to publish it.",
   "vms.action.start": "Start",
   "vms.action.shutdown": "Shut down",
   "vms.action.stop": "Force stop",
