@@ -1,6 +1,14 @@
 package httpapi
 
 import (
+	"context"
+	"encoding/json"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"pvmss/server/internal/auth"
+	"pvmss/server/internal/cluster"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -114,5 +122,78 @@ func TestRateLimiters_EvictIdleKeys(t *testing.T) {
 
 	if got := len(user.hits); got != 1 {
 		t.Errorf("user limiter keys = %d, want 1 (idle keys evicted)", got)
+	}
+}
+
+func okHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusNoContent) })
+}
+
+func serveFrom(handler http.Handler, remote string) *httptest.ResponseRecorder {
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/", nil)
+	req.RemoteAddr = remote
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	return rec
+}
+
+func TestIPRateLimiter_MiddlewareRejectsOverLimit(t *testing.T) {
+	t.Parallel()
+
+	handler := newIPRateLimiter(2, time.Minute, 0, nil).middleware(okHandler())
+
+	for i := range 2 {
+		if rec := serveFrom(handler, "192.0.2.1:1000"); rec.Code != http.StatusNoContent {
+			t.Fatalf("request %d status = %d, want 204", i+1, rec.Code)
+		}
+	}
+
+	rec := serveFrom(handler, "192.0.2.1:1001")
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("3rd request status = %d, want 429", rec.Code)
+	}
+
+	if rec := serveFrom(handler, "192.0.2.2:1000"); rec.Code != http.StatusNoContent {
+		t.Fatalf("other IP status = %d, want 204", rec.Code)
+	}
+}
+
+func TestUserRateLimiter_MiddlewareSetsRetryAfter(t *testing.T) {
+	t.Parallel()
+
+	sessions, err := auth.NewSessionManager(nil, "a-session-secret-with-at-least-thirty-two-bytes", false)
+	if err != nil {
+		t.Fatalf("NewSessionManager: %v", err)
+	}
+
+	authHandler := NewAuth(cluster.Fake{}, sessions, "", nil, slog.New(slog.DiscardHandler))
+	handler := newUserRateLimiter(1, time.Minute, 0, nil).middleware(authHandler, okHandler())
+
+	if rec := serveFrom(handler, "192.0.2.1:1000"); rec.Code != http.StatusNoContent {
+		t.Fatalf("1st request status = %d, want 204", rec.Code)
+	}
+
+	rec := serveFrom(handler, "192.0.2.1:1001")
+	if rec.Code != http.StatusTooManyRequests {
+		t.Fatalf("2nd request status = %d, want 429", rec.Code)
+	}
+
+	seconds, err := strconv.Atoi(rec.Header().Get("Retry-After"))
+	if err != nil || seconds < 1 || seconds > 60 {
+		t.Fatalf("Retry-After = %q, want 1..60 seconds", rec.Header().Get("Retry-After"))
+	}
+
+	var body struct {
+		Code              string `json:"code"`
+		RetryAfterSeconds int    `json:"retryAfterSeconds"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+
+	if body.Code != "rate_limited" || body.RetryAfterSeconds != seconds {
+		t.Fatalf("body = %+v, want rate_limited with retryAfterSeconds=%d", body, seconds)
 	}
 }
