@@ -1,3 +1,4 @@
+//nolint:wsl_v5 // fake state methods keep mutation and call recording adjacent
 package cluster
 
 import (
