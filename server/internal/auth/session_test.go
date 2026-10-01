@@ -76,6 +76,16 @@ func (r *sessionRepository) expireAll() {
 	}
 }
 
+func (r *sessionRepository) ageAll(d time.Duration) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	for hash, session := range r.sessions {
+		session.CreatedAt = session.CreatedAt.Add(-d)
+		r.sessions[hash] = session
+	}
+}
+
 //nolint:paralleltest // serial: shared session repository fixture
 func TestSessionManager_RoundTrip(t *testing.T) {
 	manager, err := auth.NewSessionManager(newSessionRepository(), "a-session-secret-with-at-least-thirty-two-bytes", false)
@@ -172,5 +182,43 @@ func TestSessionManager_LogoutRevokesSessionImmediately(t *testing.T) {
 
 	if _, err := manager.Resolve(context.Background(), replay); err == nil {
 		t.Fatal("expected revoked session to be rejected on replay")
+	}
+}
+
+// Sliding expiry alone would let an actively used session live forever, and
+// keep the admin flag it was issued with. An absolute lifetime bounds both.
+//
+//nolint:paralleltest // serial: shared session repository fixture
+func TestSessionManager_RejectsSessionPastAbsoluteLifetime(t *testing.T) {
+	repository := newSessionRepository()
+
+	manager, err := auth.NewSessionManager(repository, "a-session-secret-with-at-least-thirty-two-bytes", false)
+	if err != nil {
+		t.Fatalf("NewSessionManager: %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	if err := manager.SetCookie(context.Background(), recorder, auth.Identity{Username: "alice@pve"}); err != nil {
+		t.Fatalf("SetCookie: %v", err)
+	}
+
+	cookie := recorder.Result().Cookies()[0]
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	request.AddCookie(cookie)
+
+	repository.ageAll(auth.MaxSessionAge - time.Minute)
+
+	if _, err := manager.Resolve(context.Background(), request); err != nil {
+		t.Fatalf("session just under the absolute lifetime must resolve: %v", err)
+	}
+
+	repository.ageAll(2 * time.Minute)
+
+	if _, err := manager.Resolve(context.Background(), request); err == nil {
+		t.Fatal("Resolve accepted a session past the absolute lifetime")
+	}
+
+	if _, err := manager.CSRFToken(context.Background(), request); err == nil {
+		t.Fatal("CSRFToken accepted a session past the absolute lifetime")
 	}
 }
