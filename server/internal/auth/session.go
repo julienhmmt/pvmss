@@ -15,12 +15,12 @@ const (
 	// SessionCookieName is the HttpOnly browser session cookie.
 	SessionCookieName = "pvmss_session"
 	// CSRFCookieName is the non-HttpOnly CSRF token cookie sent with every session.
-	CSRFCookieName    = "pvmss_csrf"
-	sessionTTL        = 8 * time.Hour
+	CSRFCookieName = "pvmss_csrf"
+	sessionTTL     = 8 * time.Hour
 	// MaxSessionAge is the absolute lifetime of a session, whatever its sliding
 	// expiry says. It bounds how long a stale identity (for example a revoked
 	// admin flag) can outlive the login that produced it.
-	MaxSessionAge = 24 * time.Hour
+	MaxSessionAge     = 24 * time.Hour
 	minimumSecretSize = 32
 	sessionTokenBytes = 32
 	csrfTokenBytes    = 32
