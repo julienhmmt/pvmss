@@ -5,7 +5,7 @@ permissions:
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "v0.4"]
   pull_request:
     branches: ["main"]
 
@@ -49,6 +49,10 @@ jobs:
 
       - name: Type check
         run: bun run check
+        working-directory: web
+
+      - name: Lint
+        run: bun run lint
         working-directory: web
 
       - name: Build web shell

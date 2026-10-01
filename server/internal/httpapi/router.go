@@ -285,9 +285,9 @@ func registerAuthRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFun
 // every method the SPA might use. Extracted from NewRouter for gocyclo.
 func registerAPINotFound(mux *http.ServeMux, cfg RouterConfig) {
 	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete} {
-		mux.Handle(method+" /api/", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		mux.Handle(method+" /api/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if err := writeError(w, http.StatusNotFound, "unknown API path"); err != nil {
-				cfg.Log.Warn("failed to write API 404", "component", "httpapi", "error", err)
+				cfg.Log.WarnContext(r.Context(), "failed to write API 404", "component", "httpapi", "error", err)
 			}
 		}))
 	}

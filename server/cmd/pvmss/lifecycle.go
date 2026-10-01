@@ -7,13 +7,12 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"runtime"
-	"runtime/debug"
-	"strconv"
-
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/telemetry"
+	"runtime"
+	"runtime/debug"
+	"strconv"
 )
 
 // listenAddr is the address the HTTP server binds, shared by the banner and
@@ -85,7 +84,7 @@ func startMetricsServer(cfg config.Configuration, handler http.Handler, logger *
 	addr := net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.MetricsPort))
 	srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: readHeaderTimeout, WriteTimeout: writeTimeout}
 
-	ln, err := net.Listen("tcp", addr)
+	ln, err := new(net.ListenConfig).Listen(context.Background(), "tcp", addr)
 	if err != nil {
 		return noop, fmt.Errorf("listen for metrics on %s: %w", addr, err)
 	}

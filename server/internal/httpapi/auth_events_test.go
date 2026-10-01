@@ -32,7 +32,7 @@ func postWithLog(h func(http.ResponseWriter, *http.Request), path, body string, 
 func findLine(t *testing.T, out, msg string) map[string]any {
 	t.Helper()
 
-	for _, l := range strings.Split(out, "\n") {
+	for l := range strings.SplitSeq(out, "\n") {
 		m := map[string]any{}
 		if json.Unmarshal([]byte(l), &m) == nil && m["msg"] == msg {
 			return m
@@ -74,7 +74,7 @@ func TestAuthEvents_LoginSuccessLogout(t *testing.T) {
 func TestAuthEvents_AdminLoginFailureWarnsWithoutPassword(t *testing.T) {
 	handler := newAuthHandler(t)
 
-	const secret = "wrong-Adm1n-pw"
+	const secret = "wrong-Adm1n-pw" //nolint:gosec // fake credential for redaction test
 
 	rec, out := postWithLog(handler.AdminLogin, "/api/v1/auth/admin-login", `{"password":"`+secret+`"}`, nil)
 	if rec.Code != http.StatusUnauthorized {

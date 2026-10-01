@@ -449,7 +449,7 @@ func cleanupCloudInitDocument(ctx context.Context, deps WriteDeps) {
 	}
 
 	if err := deps.Store.DeleteVMCloudInitDocument(ctx, deps.ClusterName, deps.VMID); err != nil && deps.Log != nil {
-		deps.Log.Warn("cloud-init document row not removed", "component", "vm", "cluster", deps.ClusterName, "vmid", deps.VMID, "error", err)
+		deps.Log.WarnContext(ctx, "cloud-init document row not removed", "component", "vm", "cluster", deps.ClusterName, "vmid", deps.VMID, "error", err)
 	}
 
 	row, found, err := deps.Store.GetCloudInitSnippet(ctx, deps.ClusterName, deps.VMID)
@@ -458,12 +458,12 @@ func cleanupCloudInitDocument(ctx context.Context, deps WriteDeps) {
 	}
 
 	if deps.Log != nil {
-		deps.Log.Info("legacy cloud-init file left on the nodes, remove it by hand", "component", "vm", "cluster", deps.ClusterName, "vmid", deps.VMID, "volume", row.Storage+":snippets/"+row.Filename)
+		deps.Log.InfoContext(ctx, "legacy cloud-init file left on the nodes, remove it by hand", "component", "vm", "cluster", deps.ClusterName, "vmid", deps.VMID, "volume", row.Storage+":snippets/"+row.Filename)
 	}
 
 	if err := deps.Store.DeleteCloudInitSnippet(ctx, deps.ClusterName, deps.VMID); err != nil {
 		if deps.Log != nil {
-			deps.Log.Warn("cloud-init document row not removed", "component", "vm", "cluster", deps.ClusterName, "vmid", deps.VMID, "error", err)
+			deps.Log.WarnContext(ctx, "cloud-init document row not removed", "component", "vm", "cluster", deps.ClusterName, "vmid", deps.VMID, "error", err)
 		}
 	}
 }

@@ -23,6 +23,7 @@ func tracedRouter(t *testing.T) (http.Handler, *tracetest.InMemoryExporter, *byt
 
 	exp := tracetest.NewInMemoryExporter()
 	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(sdktrace.NewSimpleSpanProcessor(exp)))
+
 	t.Cleanup(func() { _ = tp.Shutdown(context.Background()) })
 
 	var buf bytes.Buffer

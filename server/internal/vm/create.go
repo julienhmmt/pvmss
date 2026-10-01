@@ -454,14 +454,14 @@ func createFromImage(ctx context.Context, policyService *policy.Policy, deps Cre
 	// it. Best-effort: a store failure logs but does not abort.
 	if result.BaselineState != "" {
 		if err := deps.Store.PutBaselineState(ctx, clusterName, finalVMID, result.BaselineState, result.BaselineError); err != nil {
-			deps.Log.Error("persist baseline state failed", "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
+			deps.Log.ErrorContext(ctx, "persist baseline state failed", "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
 		}
 	}
 
 	startImageVM(ctx, deps, clusterName, spec, finalVMID, startAfterCreate, &result)
 
 	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, finalVMID, "vm_create"); err != nil {
-		deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
+		deps.Log.ErrorContext(ctx, auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
 	}
 
 	return result, nil
@@ -508,13 +508,13 @@ type imageCreateFailure struct {
 // half-made VM is purged best-effort, the wait error is
 // recorded on the result, and the create is audited.
 func failImageCreate(ctx context.Context, deps CreateDeps, f imageCreateFailure) (CreateResult, error) {
-	deps.Log.Error("create task wait failed", "component", "vm", "cluster", f.clusterName, "vmid", f.vmid, "error", f.waitErr)
+	deps.Log.ErrorContext(ctx, "create task wait failed", "component", "vm", "cluster", f.clusterName, "vmid", f.vmid, "error", f.waitErr)
 	f.result.CloudInitPushError = f.waitErr.Error()
 
 	rollbackFailedCreate(ctx, deps, f.actor, f.clusterName, f.vmid, f.node, "create task failed")
 
 	if err := deps.Audit.RecordAction(ctx, f.actor.Username, f.clusterName, f.vmid, "vm_create"); err != nil {
-		deps.Log.Error(auditLogMsg, "component", "vm", "cluster", f.clusterName, "vmid", f.vmid, "error", err)
+		deps.Log.ErrorContext(ctx, auditLogMsg, "component", "vm", "cluster", f.clusterName, "vmid", f.vmid, "error", err)
 	}
 
 	return f.result, nil
@@ -534,7 +534,7 @@ func resizeImageDisk(ctx context.Context, deps CreateDeps, clusterName string, p
 	}
 
 	if err := deps.Writer.ResizeDisk(ctx, spec.Node, vmid, spec.Disk.Bus+"0", plan.diskGB); err != nil {
-		deps.Log.Error("image disk resize failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+		deps.Log.ErrorContext(ctx, "image disk resize failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
 		result.CloudInitPushError = err.Error()
 	}
 }
@@ -549,7 +549,7 @@ func startImageVM(ctx context.Context, deps CreateDeps, clusterName string, spec
 	}
 
 	if err := deps.Writer.Action(ctx, spec.Node, vmid, "start"); err != nil {
-		deps.Log.Error("post-cloudinit start failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+		deps.Log.ErrorContext(ctx, "post-cloudinit start failed", "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
 	}
 }
 
@@ -597,7 +597,7 @@ func applyImageCloudInitConfig(ctx context.Context, cfg imageCloudInitApply, res
 	}
 
 	if err := cfg.Deps.Pusher.SetCloudInitConfig(ctx, cfg.Spec.Node, cfg.VMID, config); err != nil {
-		cfg.Deps.Log.Error("cloud-init config set failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
+		cfg.Deps.Log.ErrorContext(ctx, "cloud-init config set failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
 		result.CloudInitPushError = err.Error()
 
 		return
@@ -617,7 +617,7 @@ func applyImageCloudInitConfig(ctx context.Context, cfg imageCloudInitApply, res
 	}
 
 	if err := attachPublishedDocument(ctx, cfg.Deps, cfg.Actor, documentTarget{Cluster: cfg.ClusterName, Node: cfg.Spec.Node, VMID: cfg.VMID}, cfg.Document); err != nil {
-		cfg.Deps.Log.Error("cloud-init document attach failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
+		cfg.Deps.Log.ErrorContext(ctx, "cloud-init document attach failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
 
 		result.BaselineState = BaselineStateNotDelivered
 		result.BaselineError = err.Error()
@@ -688,7 +688,7 @@ func createFromISO(ctx context.Context, policyService *policy.Policy, deps Creat
 	}
 
 	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, finalVMID, "vm_create"); err != nil {
-		deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
+		deps.Log.ErrorContext(ctx, auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
 	}
 
 	return result, nil
@@ -716,7 +716,7 @@ type cloudInitWaitRequest struct {
 // task succeeded and the VM exists.
 func applyCloudInitAfterWait(ctx context.Context, req cloudInitWaitRequest, result *CreateResult) {
 	if waitErr := waitCreateTask(ctx, req.Deps.Creator, req.UPID); waitErr != nil {
-		req.Deps.Log.Error("create task wait failed", "component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "error", waitErr)
+		req.Deps.Log.ErrorContext(ctx, "create task wait failed", "component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "error", waitErr)
 		result.CloudInitPushError = waitErr.Error()
 
 		// The create task failed, so the VM is half-made.
@@ -732,7 +732,7 @@ func applyCloudInitAfterWait(ctx context.Context, req cloudInitWaitRequest, resu
 	// so the first boot sees cloud-init.
 	if req.StartAfterCreate && result.CloudInitPushError == "" && req.Deps.Writer != nil {
 		if startErr := req.Deps.Writer.Action(ctx, req.Spec.Node, req.VMID, "start"); startErr != nil {
-			req.Deps.Log.Error("post-cloudinit start failed", "component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "error", startErr)
+			req.Deps.Log.ErrorContext(ctx, "post-cloudinit start failed", "component", "vm", "cluster", req.ClusterName, "vmid", req.VMID, "error", startErr)
 		}
 	}
 }
@@ -819,13 +819,13 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 	// If the task fails, the half-made VM is purged
 	// (best-effort) so it does not consume the user's quota.
 	if waitErr := waitCreateTask(ctx, deps.Creator, upid); waitErr != nil {
-		deps.Log.Error("clone task wait failed", "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", waitErr)
+		deps.Log.ErrorContext(ctx, "clone task wait failed", "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", waitErr)
 		result.CloudInitPushError = waitErr.Error()
 
 		rollbackFailedCreate(ctx, deps, actor, clusterName, finalVMID, tmpl.Node, "clone task failed")
 
 		if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, finalVMID, "vm_create"); err != nil {
-			deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
+			deps.Log.ErrorContext(ctx, auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
 		}
 
 		return result, nil
@@ -840,7 +840,7 @@ func createFromTemplate(ctx context.Context, policyService *policy.Policy, deps 
 	}, &result)
 
 	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, finalVMID, "vm_create"); err != nil {
-		deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
+		deps.Log.ErrorContext(ctx, auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", finalVMID, "error", err)
 	}
 
 	return result, nil
@@ -863,13 +863,13 @@ func refreshTemplateFromDiscovery(ctx context.Context, deps CreateDeps, clusterN
 	case err != nil:
 		// Discovery is unavailable - the approval still stands; the clone
 		// itself will fail if the cluster is truly unreachable.
-		deps.Log.Warn("template freshness check failed, proceeding with stored values", "component", "vm", "cluster", clusterName, "vmid", tmpl.VMID, "error", err)
+		deps.Log.WarnContext(ctx, "template freshness check failed, proceeding with stored values", "component", "vm", "cluster", clusterName, "vmid", tmpl.VMID, "error", err)
 
 		return tmpl, nil
 	case live.DiskUnreadable:
 		// Keep the discovered node; the stored disk fields were validated at
 		// approval and are never empty.
-		deps.Log.Warn("template disk unreadable at clone time, using stored disk fields", "component", "vm", "cluster", clusterName, "vmid", tmpl.VMID)
+		deps.Log.WarnContext(ctx, "template disk unreadable at clone time, using stored disk fields", "component", "vm", "cluster", clusterName, "vmid", tmpl.VMID)
 
 		tmpl.Node = live.Node
 
@@ -927,7 +927,7 @@ func retryWithFreshVMID(ctx context.Context, deps CreateDeps, initialVMID int, l
 			return 0, "", fmt.Errorf("%w: %s: %w", ErrClusterCreate, label, err)
 		}
 
-		deps.Log.Info("vmid collision, retrying", "component", "vm", "vmid", vmid, "attempt", attempt+1)
+		deps.Log.InfoContext(ctx, "vmid collision, retrying", "component", "vm", "vmid", vmid, "attempt", attempt+1)
 
 		newVMID, err := deps.Creator.NextVMID(ctx)
 		if err != nil {
@@ -954,15 +954,15 @@ func rollbackFailedCreate(ctx context.Context, deps CreateDeps, actor auth.Ident
 	if err := deps.Writer.Delete(ctx, node, vmid); err != nil {
 		// Best-effort: log and move on. The original error is what the
 		// caller reports; a failed cleanup must not mask it.
-		deps.Log.Error("rollback: failed to purge half-made vm", "component", "vm", "cluster", clusterName, "vmid", vmid, "node", node, "reason", reason, "error", err)
+		deps.Log.ErrorContext(ctx, "rollback: failed to purge half-made vm", "component", "vm", "cluster", clusterName, "vmid", vmid, "node", node, "reason", reason, "error", err)
 
 		return
 	}
 
-	deps.Log.Info("rollback: purged half-made vm", "component", "vm", "cluster", clusterName, "vmid", vmid, "node", node, "reason", reason)
+	deps.Log.InfoContext(ctx, "rollback: purged half-made vm", "component", "vm", "cluster", clusterName, "vmid", vmid, "node", node, "reason", reason)
 
 	if err := deps.Audit.RecordAction(ctx, actor.Username, clusterName, vmid, "vm_create_rollback"); err != nil {
-		deps.Log.Error(auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
+		deps.Log.ErrorContext(ctx, auditLogMsg, "component", "vm", "cluster", clusterName, "vmid", vmid, "error", err)
 	}
 }
 
@@ -1160,7 +1160,7 @@ func applyPostCloneConfig(ctx context.Context, cfg postCloneConfig, result *Crea
 	// snippet).
 	if cfg.StartAfterCreate && result.CloudInitPushError == "" && cfg.Deps.Writer != nil {
 		if err := cfg.Deps.Writer.Action(ctx, cfg.Node, cfg.VMID, "start"); err != nil {
-			cfg.Deps.Log.Error("post-clone start failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
+			cfg.Deps.Log.ErrorContext(ctx, "post-clone start failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
 		}
 	}
 }
@@ -1177,7 +1177,7 @@ func applyCloneHardware(ctx context.Context, cfg postCloneConfig, result *Create
 
 	if cfg.HardwareOverride {
 		if err := cfg.Deps.Writer.UpdateHardware(ctx, cfg.Node, cfg.VMID, cfg.Plan.sockets, cfg.Plan.cpuCores, cfg.Plan.memoryMB, cfg.Tags); err != nil {
-			cfg.Deps.Log.Error("post-clone hardware update failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
+			cfg.Deps.Log.ErrorContext(ctx, "post-clone hardware update failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
 			result.CloudInitPushError = err.Error()
 
 			return
@@ -1190,7 +1190,7 @@ func applyCloneHardware(ctx context.Context, cfg postCloneConfig, result *Create
 	// visible to PVMSS. Without this, a simple-mode clone exists in
 	// Proxmox but Resolve() returns ErrNotFound.
 	if err := cfg.Deps.Writer.SetTags(ctx, cfg.Node, cfg.VMID, cfg.Tags); err != nil {
-		cfg.Deps.Log.Error("post-clone set tags failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
+		cfg.Deps.Log.ErrorContext(ctx, "post-clone set tags failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
 		result.CloudInitPushError = err.Error()
 	}
 }
@@ -1203,7 +1203,7 @@ func applyCloneDiskResize(ctx context.Context, cfg postCloneConfig, result *Crea
 	}
 
 	if err := cfg.Deps.Writer.ResizeDisk(ctx, cfg.Node, cfg.VMID, cfg.DiskKey, cfg.Plan.diskGB); err != nil {
-		cfg.Deps.Log.Error("post-clone disk resize failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
+		cfg.Deps.Log.ErrorContext(ctx, "post-clone disk resize failed", "component", "vm", "cluster", cfg.ClusterName, "vmid", cfg.VMID, "error", err)
 
 		if result.CloudInitPushError == "" {
 			result.CloudInitPushError = err.Error()

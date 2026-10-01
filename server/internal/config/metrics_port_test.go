@@ -1,10 +1,9 @@
 package config_test
 
 import (
+	"pvmss/server/internal/config"
 	"strings"
 	"testing"
-
-	"pvmss/server/internal/config"
 )
 
 func setMetricsBaseEnv(t *testing.T) {
@@ -19,7 +18,6 @@ func setMetricsBaseEnv(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // uses t.Setenv, incompatible with t.Parallel
 func TestLoad_MetricsPort(t *testing.T) {
 	cases := []struct {
 		name    string

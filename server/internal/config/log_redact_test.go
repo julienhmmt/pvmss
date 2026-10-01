@@ -29,7 +29,7 @@ func newTestLogger(t *testing.T, format, level string) (*slog.Logger, *slog.Leve
 func readAll(t *testing.T, path string) string {
 	t.Helper()
 
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(path) //nolint:gosec // test fixture path
 	if err != nil {
 		t.Fatalf("read log: %v", err)
 	}
@@ -45,8 +45,8 @@ func TestNewLogger_RedactsSecretKeys(t *testing.T) {
 			t.Parallel()
 
 			logger, _, path := newTestLogger(t, format, "info")
-			logger.Info("probe", "token", "tok-abc", "password", "pw-x", "Cookie", "ck-y",
-				slog.Group("req", slog.String("Authorization", "az-z"), slog.String("csrfToken", "cs-w")),
+			logger.Info("probe", "token", "tok-abc", "password", "pw-x", "cookie", "ck-y",
+				slog.Group("req", slog.String("authorization", "az-z"), slog.String("csrfToken", "cs-w")),
 				"ticket", "tk-v", "secret", "sc-u", "keep", "visible")
 
 			out := readAll(t, path)
@@ -97,7 +97,7 @@ func TestConfiguration_LogValueHidesSecrets(t *testing.T) {
 	t.Parallel()
 
 	logger, _, path := newTestLogger(t, "json", "info")
-	logger.Info("cfg", "config", config.Configuration{
+	logger.Info("cfg", "config", config.Configuration{ //nolint:gosec // fake credentials for the redaction test
 		SessionSecret: "sess-secret-value", ProxmoxAPITokenValue: "px-token-value", AdminPasswordHash: "$2a$hash",
 	})
 

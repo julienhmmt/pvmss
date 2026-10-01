@@ -6,6 +6,8 @@ import (
 	"errors"
 	"log/slog"
 	"net/url"
+	"pvmss/server/internal/logctx"
+	"pvmss/server/internal/telemetry"
 	"strconv"
 	"strings"
 	"time"
@@ -14,9 +16,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
-
-	"pvmss/server/internal/logctx"
-	"pvmss/server/internal/telemetry"
 )
 
 const tracerName = "pvmss/cluster"
@@ -25,14 +24,14 @@ const tracerName = "pvmss/cluster"
 // placeholder logged in its place, so the log never carries node names, user
 // ids or task ids and stays low-cardinality.
 var templatedSegments = map[string]string{
-	"nodes":   "{node}",
-	"storage": "{storage}",
-	"pools":   "{pool}",
-	"tasks":   "{upid}",
-	"users":   "{user}",
-	"tokens":  "{token}",
-	"groups":  "{group}",
-	"roles":   "{role}",
+	"nodes":            "{node}",
+	proxmoxStorageType: "{storage}",
+	"pools":            "{pool}",
+	"tasks":            "{upid}",
+	"users":            "{user}",
+	"tokens":           "{token}",
+	"groups":           "{group}",
+	"roles":            "{role}",
 }
 
 // templateProxmoxPath replaces identifiers in a Proxmox API path with

@@ -238,7 +238,7 @@ func isNormalClose(err error) bool {
 // and VMSerialConsole. The unavailableMsg differs between VNC ("console is
 // not available for this VM") and serial ("serial terminal is not available
 // for this VM"); every other status/code is byte-identical.
-func writeConsoleTicketError(w http.ResponseWriter, log *slog.Logger, err error, writeError func(http.ResponseWriter, int, string, string), unavailableMsg string) {
+func writeConsoleTicketError(w http.ResponseWriter, _ *slog.Logger, err error, writeError func(http.ResponseWriter, int, string, string), unavailableMsg string) {
 	switch {
 	case errors.Is(err, vm.ErrForbidden):
 		writeError(w, http.StatusForbidden, "forbidden", "not your VM")

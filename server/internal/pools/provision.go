@@ -81,7 +81,7 @@ func CreateManaged(ctx context.Context, actor auth.Identity, client cluster.Clie
 	}
 	if recorder != nil && clusterName != "" {
 		if err := recorder.RegisterManagedPool(ctx, clusterName, prefixedName); err != nil {
-			slog.Default().Error("managed pool registration failed", "cluster", clusterName, "pool", prefixedName, "error", err)
+			slog.Default().ErrorContext(ctx, "managed pool registration failed", "cluster", clusterName, "pool", prefixedName, "error", err)
 		}
 	}
 	return GeneratedCredentials{

@@ -130,6 +130,45 @@ func TestDeleteSession(t *testing.T) {
 	})
 }
 
+// Sessions are only deleted on logout, so abandoned ones would pile up
+// forever. Issuing a new session sweeps the dead ones.
+//
+//nolint:paralleltest // serial: shared database fixture
+func TestCreateSession_PurgesExpiredSessions(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	expired := sampleSessionRecord([]byte("session-hash-expired"), "judy")
+	expired.ExpiresAt = time.Now().Add(-time.Minute).UTC().Truncate(time.Second)
+
+	tooOld := sampleSessionRecord([]byte("session-hash-too-old"), "mallory")
+	tooOld.CreatedAt = time.Now().Add(-auth.MaxSessionAge - time.Minute).UTC().Truncate(time.Second)
+
+	live := sampleSessionRecord([]byte("session-hash-live"), "niaj")
+
+	for _, session := range []auth.SessionRecord{expired, tooOld, live} {
+		if err := st.CreateSession(ctx, session); err != nil {
+			t.Fatalf("CreateSession %s: %v", session.Identity.Username, err)
+		}
+	}
+
+	if err := st.CreateSession(ctx, sampleSessionRecord([]byte("session-hash-new"), "olivia")); err != nil {
+		t.Fatalf("CreateSession new: %v", err)
+	}
+
+	for _, hash := range [][]byte{expired.Hash, tooOld.Hash} {
+		if _, err := st.FindSession(ctx, hash); !errors.Is(err, sql.ErrNoRows) {
+			t.Errorf("FindSession(%s) err = %v, want sql.ErrNoRows (purged)", hash, err)
+		}
+	}
+
+	for _, hash := range [][]byte{live.Hash, []byte("session-hash-new")} {
+		if _, err := st.FindSession(ctx, hash); err != nil {
+			t.Errorf("FindSession(%s) = %v, want the live session kept", hash, err)
+		}
+	}
+}
+
 func bytesEqual(a, b []byte) bool {
 	if len(a) != len(b) {
 		return false

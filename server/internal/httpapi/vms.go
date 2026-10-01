@@ -268,7 +268,7 @@ func (h *VMs) writeList(ctx context.Context, w http.ResponseWriter, result vm.Li
 	}
 
 	if err := writeJSON(w, http.StatusOK, body); err != nil {
-		h.log.Warn("failed to write vm list response", "component", "httpapi", "error", err)
+		h.log.WarnContext(ctx, "failed to write vm list response", "component", "httpapi", "error", err)
 	}
 }
 
@@ -282,7 +282,7 @@ func (h *VMs) clusterDisplayNames(ctx context.Context) map[string]string {
 	}
 	rows, err := h.clusterStore.ListClusters(ctx)
 	if err != nil {
-		h.log.Warn("list clusters for display names failed", "component", "httpapi", "error", err)
+		h.log.WarnContext(ctx, "list clusters for display names failed", "component", "httpapi", "error", err)
 		return nil
 	}
 	names := make(map[string]string, len(rows))

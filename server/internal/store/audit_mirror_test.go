@@ -1,3 +1,4 @@
+//nolint:goconst // level and cluster literals reused across mirror cases
 package store_test
 
 import (
@@ -5,10 +6,9 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"pvmss/server/internal/logctx"
 	"strings"
 	"testing"
-
-	"pvmss/server/internal/logctx"
 )
 
 func mirrorFixture(t *testing.T) (context.Context, func() []map[string]any, func(string, string)) {
@@ -23,7 +23,7 @@ func mirrorFixture(t *testing.T) (context.Context, func() []map[string]any, func
 	lines := func() []map[string]any {
 		var out []map[string]any
 
-		for _, l := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
+		for l := range strings.SplitSeq(strings.TrimSpace(buf.String()), "\n") {
 			if l == "" {
 				continue
 			}
@@ -63,6 +63,7 @@ func TestAuditMirror_VMActionFields(t *testing.T) {
 	}
 
 	var got map[string]any
+
 	if n := strings.Count(buf.String(), "\n"); n != 1 {
 		t.Fatalf("want exactly 1 line, got %d: %s", n, buf.String())
 	}
@@ -118,7 +119,8 @@ func TestAuditMirror_ActorCapped(t *testing.T) {
 	_, lines, record := mirrorFixture(t)
 	record(strings.Repeat("x", 500), "auth.login_failed")
 
-	if got := lines()[0]["actor"].(string); len(got) > 64 {
-		t.Fatalf("actor len = %d, want <= 64", len(got))
+	got, ok := lines()[0]["actor"].(string)
+	if !ok || len(got) > 64 {
+		t.Fatalf("actor = %q (string=%v), want a string of len <= 64", got, ok)
 	}
 }

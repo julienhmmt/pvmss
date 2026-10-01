@@ -1,3 +1,4 @@
+//nolint:goconst,gosec // env var names repeat across cases; the URL password is a redaction fixture
 package telemetry_test
 
 import (
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"pvmss/server/internal/telemetry"
 	"strings"
 	"sync"
 	"testing"
@@ -15,8 +17,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
-
-	"pvmss/server/internal/telemetry"
 )
 
 func env(kv map[string]string) func(string) string {
@@ -103,8 +103,6 @@ func TestLogHandler_AddsTraceAndSpanIDInsideSpan(t *testing.T) {
 // With an endpoint configured, spans reach the OTLP/HTTP collector on flush,
 // carrying the configured service name. Serial: it sets env and the global
 // provider.
-//
-//nolint:paralleltest // serial: sets process env and the global tracer provider
 func TestSetup_ExportsToOTLPEndpoint(t *testing.T) {
 	var (
 		mu      sync.Mutex
@@ -133,6 +131,7 @@ func TestSetup_ExportsToOTLPEndpoint(t *testing.T) {
 	t.Setenv("OTEL_SERVICE_NAME", "pvmss-test")
 
 	prevTP, prevMP := otel.GetTracerProvider(), otel.GetMeterProvider()
+
 	t.Cleanup(func() { otel.SetTracerProvider(prevTP); otel.SetMeterProvider(prevMP) })
 
 	res, err := telemetry.Setup(context.Background(), telemetry.Config{Version: "9.9.9", Commit: "abc"}, os.Getenv)

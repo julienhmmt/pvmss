@@ -338,11 +338,13 @@ Binding for every agent writing server code. Operator-facing detail
 
 ## CI
 
-`.github/workflows/`: `go.yml` (server build + `make server-test`, web
-svelte-check/eslint/vitest), `v0.4.yml` (same plus `bun run build` and the
-Playwright e2e job), `lint.yml` (Super-Linter for CSS/Markdown/YAML,
-golangci-lint). All trigger on `main` (`lint.yml`: every push). Go version comes from
-`server/go.mod`, bun is pinned to `1.3.13` in `v0.4.yml`. Dependabot: `.github/dependabot.yml`.
+`.github/workflows/`: `v0.4.yml` (server build + race tests, web
+svelte-check/eslint/build/vitest, Playwright e2e), `lint.yml` (Super-Linter for
+CSS/Markdown/YAML, golangci-lint pinned to the `go tool` version in
+`server/go.mod`). `v0.4.yml` runs on pushes to `main` and `v0.4` and on PRs to
+`main`; `lint.yml` on every push. Go version comes from `server/go.mod`, bun is
+pinned to `1.3.13`. Dependabot: `.github/dependabot.yml`. Run the same linter
+locally with `make server-lint` (`go tool golangci-lint`).
 
 ## Testing Notes
 

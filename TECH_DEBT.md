@@ -172,10 +172,10 @@ Plan: `PLAN-ui-v0.4.md` (not committed), branches `fix/web-offline-links`,
   the server only sees the requests it receives. Deciding it takes: a browser
   OTel SDK (bundle size, CORS to the collector, consent) or a small error-report
   endpoint.
-- **Unverified lint.** `sloglint` (`context: scope`, `static-msg`) was enabled
-  in `server/.golangci.yml` while the installed `golangci-lint` was built with
-  an older Go than the module targets, so its first full run on `main` may
-  surface call sites to fix.
+- **Local `golangci-lint` is too old.** The nix-installed binary is built with
+  go1.26 and refuses the module (go 1.27). Build one with the module's Go:
+  `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest`.
+  `sloglint` was verified on 2026-10-01 (`make server-lint` is at 0 issues).
 - **Domain log keys outside the vocabulary.** `pool`, `code`, `path`,
   `fingerprint`, `label`, `section`, `step`, `port` are used as extra attrs;
   the fixed vocabulary in `AGENTS.md` has no equivalent for them.

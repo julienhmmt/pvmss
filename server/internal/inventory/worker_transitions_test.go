@@ -38,7 +38,7 @@ func (s *syncBuf) lines(t *testing.T) []map[string]any {
 
 	var out []map[string]any
 
-	for _, l := range strings.Split(strings.TrimSpace(s.b.String()), "\n") {
+	for l := range strings.SplitSeq(strings.TrimSpace(s.b.String()), "\n") {
 		if l == "" {
 			continue
 		}

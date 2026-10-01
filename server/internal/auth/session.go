@@ -15,8 +15,15 @@ const (
 	// SessionCookieName is the HttpOnly browser session cookie.
 	SessionCookieName = "pvmss_session"
 	// CSRFCookieName is the non-HttpOnly CSRF token cookie sent with every session.
-	CSRFCookieName    = "pvmss_csrf"
-	sessionTTL        = 8 * time.Hour
+	CSRFCookieName = "pvmss_csrf"
+	sessionTTL     = 8 * time.Hour
+	// touchInterval is the minimum age of a session's expiry before Resolve
+	// slides it again, so reads do not become writes.
+	touchInterval = 5 * time.Minute
+	// MaxSessionAge is the absolute lifetime of a session, whatever its sliding
+	// expiry says. It bounds how long a stale identity (for example a revoked
+	// admin flag) can outlive the login that produced it.
+	MaxSessionAge     = 24 * time.Hour
 	minimumSecretSize = 32
 	sessionTokenBytes = 32
 	csrfTokenBytes    = 32
@@ -119,12 +126,14 @@ func (m *SessionManager) Resolve(ctx context.Context, r *http.Request) (Identity
 	hash := m.hash(cookie.Value)
 
 	session, err := m.repository.FindSession(ctx, hash)
-	if err != nil || !session.ExpiresAt.After(time.Now()) {
+	if err != nil || !usable(session, time.Now()) {
 		return Identity{}, ErrUnauthenticated
 	}
 
-	if err := m.repository.TouchSession(ctx, hash, time.Now().Add(sessionTTL)); err != nil {
-		return Identity{}, fmt.Errorf("slide session expiry: %w", err)
+	if now := time.Now(); session.ExpiresAt.Before(now.Add(sessionTTL - touchInterval)) {
+		if err := m.repository.TouchSession(ctx, hash, now.Add(sessionTTL)); err != nil {
+			return Identity{}, fmt.Errorf("slide session expiry: %w", err)
+		}
 	}
 
 	return session.Identity, nil
@@ -165,11 +174,17 @@ func (m *SessionManager) CSRFToken(ctx context.Context, r *http.Request) (string
 	hash := m.hash(cookie.Value)
 
 	session, err := m.repository.FindSession(ctx, hash)
-	if err != nil || !session.ExpiresAt.After(time.Now()) {
+	if err != nil || !usable(session, time.Now()) {
 		return "", ErrUnauthenticated
 	}
 
 	return session.CSRFToken, nil
+}
+
+// usable reports whether a stored session is inside both its sliding expiry
+// and its absolute lifetime.
+func usable(session SessionRecord, now time.Time) bool {
+	return session.ExpiresAt.After(now) && now.Before(session.CreatedAt.Add(MaxSessionAge))
 }
 
 // hash keys the at-rest session lookup with the application secret so a
