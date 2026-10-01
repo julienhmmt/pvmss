@@ -23,12 +23,16 @@ live session, which the user's ticket no longer allows (no password): it needs
 the API token to read `/access/permissions?userid=` (extra role on the token)
 on a timer or on admin routes only. Decide whether the 8h cap is enough.
 
-### OIDC: a stub with a working front door
+### OIDC: hidden in the UI, stubbed in the API
 
-The per-cluster toggle exists, the login button appears when a cluster has
-it enabled, but `POST /api/v1/auth/oidc` returns `501`. A user who enables
-the toggle gets a button that does nothing useful. Either implement it or
-pull the toggle until it is real.
+The admin toggle column and the "Sign in with OIDC" button are commented out in
+`ClustersPage.svelte` and `login/+page.svelte` ("hidden until implemented"), so
+nobody can reach the feature from the UI. What remains: `POST /api/v1/auth/oidc`
+answers `501`, the admin endpoint `.../clusters/{name}/oidc` still flips the
+`oidc_enabled` column, and `toggleOIDC` / `signInOIDC` exist unused in the web
+stores with a unit test. Either implement OIDC (provider config, callback,
+session mapping to a Proxmox identity) or delete the stubs, the column and the
+commented markup.
 
 ### ADR practice: started
 
