@@ -9,15 +9,30 @@ import (
 	"time"
 )
 
-// CreateSession persists an already-hashed browser session.
+// CreateSession persists an already-hashed browser session. Timestamps are
+// stored in UTC so the purge below can compare them as strings. Issuing a
+// session also sweeps expired ones (sessions are otherwise only deleted on
+// logout); a failed sweep is logged, never fatal to the login.
 func (s *Store) CreateSession(ctx context.Context, session auth.SessionRecord) error {
+	s.purgeDeadSessions(ctx)
+
 	_, err := s.db.ExecContext(ctx, `INSERT INTO sessions (token_hash, username, pool, cluster, is_admin, expires_at, created_at, csrf_token) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		session.Hash, session.Identity.Username, session.Identity.Pool, session.Identity.Cluster, session.Identity.IsAdmin, session.ExpiresAt.Format(time.RFC3339), session.CreatedAt.Format(time.RFC3339), session.CSRFToken)
+		session.Hash, session.Identity.Username, session.Identity.Pool, session.Identity.Cluster, session.Identity.IsAdmin, session.ExpiresAt.UTC().Format(time.RFC3339), session.CreatedAt.UTC().Format(time.RFC3339), session.CSRFToken)
 	if err != nil {
 		return fmt.Errorf("insert session: %w", err)
 	}
 
 	return nil
+}
+
+func (s *Store) purgeDeadSessions(ctx context.Context) {
+	now := time.Now().UTC()
+
+	_, err := s.db.ExecContext(ctx, `DELETE FROM sessions WHERE expires_at < ? OR created_at < ?`,
+		now.Format(time.RFC3339), now.Add(-auth.MaxSessionAge).Format(time.RFC3339))
+	if err != nil {
+		s.log().WarnContext(ctx, "expired session purge failed", "component", "store", "error", err)
+	}
 }
 
 // FindSession resolves a session hash without ever querying by its plaintext value.
@@ -58,7 +73,7 @@ func (s *Store) FindSession(ctx context.Context, hash []byte) (auth.SessionRecor
 
 // TouchSession slides a session's expiry forward.
 func (s *Store) TouchSession(ctx context.Context, hash []byte, expiresAt time.Time) error {
-	_, err := s.db.ExecContext(ctx, `UPDATE sessions SET expires_at = ? WHERE token_hash = ?`, expiresAt.Format(time.RFC3339), hash)
+	_, err := s.db.ExecContext(ctx, `UPDATE sessions SET expires_at = ? WHERE token_hash = ?`, expiresAt.UTC().Format(time.RFC3339), hash)
 	if err != nil {
 		return fmt.Errorf("slide session expiry: %w", err)
 	}
