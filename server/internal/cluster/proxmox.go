@@ -110,6 +110,9 @@ const proxmoxClusterResourcesPath = "/cluster/resources"
 //	/cluster/resources results ("vm", "storage", ...).
 const proxmoxResourceTypeParam = "type"
 
+// proxmoxStorageType is the /cluster/resources type of a storage row.
+const proxmoxStorageType = "storage"
+
 // Snapshot implements Client: one /cluster/resources call for the node,
 // VM, and storage summary, then one /qemu/{vmid}/config (plus, for running
 // VMs, one /status/current) call per VM to hydrate what the summary omits
@@ -140,7 +143,7 @@ func (p Proxmox) Snapshot(ctx context.Context) (Snapshot, error) {
 			snap.Nodes = append(snap.Nodes, proxmoxNodeFromRow(row))
 		case "qemu":
 			snap.VMs = append(snap.VMs, proxmoxVMFromRow(row))
-		case "storage":
+		case proxmoxStorageType:
 			snap.Storages = append(snap.Storages, proxmoxStorageFromRow(row))
 		}
 	}
@@ -502,7 +505,7 @@ func proxmoxListNodeBridges(ctx context.Context, rest proxmoxRESTClient, node st
 func (p Proxmox) ListISOs(ctx context.Context) ([]ISOImage, error) {
 	rest := p.rest()
 
-	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{proxmoxResourceTypeParam: {"storage"}})
+	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{proxmoxResourceTypeParam: {proxmoxStorageType}})
 	if err != nil {
 		return nil, err
 	}
@@ -544,7 +547,7 @@ func (p Proxmox) ListISOs(ctx context.Context) ([]ISOImage, error) {
 func (p Proxmox) ListCloudImages(ctx context.Context) ([]CloudImage, error) {
 	rest := p.rest()
 
-	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{proxmoxResourceTypeParam: {"storage"}})
+	raw, err := rest.do(ctx, http.MethodGet, proxmoxClusterResourcesPath, url.Values{proxmoxResourceTypeParam: {proxmoxStorageType}})
 	if err != nil {
 		return nil, err
 	}

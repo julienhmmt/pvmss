@@ -84,7 +84,7 @@ func startMetricsServer(cfg config.Configuration, handler http.Handler, logger *
 	addr := net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.MetricsPort))
 	srv := &http.Server{Addr: addr, Handler: mux, ReadHeaderTimeout: readHeaderTimeout, WriteTimeout: writeTimeout}
 
-	ln, err := net.Listen("tcp", addr)
+	ln, err := new(net.ListenConfig).Listen(context.Background(), "tcp", addr)
 	if err != nil {
 		return noop, fmt.Errorf("listen for metrics on %s: %w", addr, err)
 	}

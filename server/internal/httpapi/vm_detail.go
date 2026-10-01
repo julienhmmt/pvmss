@@ -1063,7 +1063,7 @@ func (h *VMDetail) handleRetrofitSeaBIOS(w http.ResponseWriter, r *http.Request)
 		Confirm:      request.Confirm,
 	})
 	if err != nil {
-		h.writeRetrofitError(w, clusterName, vmid, err)
+		h.writeRetrofitError(w, err)
 		return
 	}
 
@@ -1084,7 +1084,7 @@ func (h *VMDetail) handleRetrofitSeaBIOS(w http.ResponseWriter, r *http.Request)
 // writeRetrofitError maps a RetrofitToSeaBIOS failure to its HTTP response:
 // refusals and the confirmation gate are 409s, a restart failure is a 500,
 // anything unmapped is logged and reported as internal_error.
-func (h *VMDetail) writeRetrofitError(w http.ResponseWriter, clusterName string, vmid int, err error) {
+func (h *VMDetail) writeRetrofitError(w http.ResponseWriter, err error) {
 	if h.writeCommonVMError(w, err) {
 		return
 	}
