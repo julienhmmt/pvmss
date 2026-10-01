@@ -5,55 +5,41 @@ look and what deciding it would take. Not a backlog of new features.
 
 ## Needs a decision
 
-### Personal API tokens: half-present
+### Leftover: the `api_tokens` table
 
-| Artifact | State |
-| --- | --- |
-| `auth/tokens.go`, `TokenService` | present |
-| `api_tokens` table, migrations | present |
-| `/profile/tokens` page | present |
-| Sidebar entry | removed |
-| `POST/GET/DELETE /api/v1/auth/tokens` | unregistered - the catch-all 404 answers |
-| Bearer resolution in `Auth.Principal` | disabled |
-| `web/e2e/tokens.spec.ts` | present |
+Personal API tokens were removed on 2026-10-01 (service, routes, page, e2e
+spec). The `api_tokens` table and its migrations stay, because dropping a table
+is not reversible; the table is empty on any instance that never used the
+feature. A later migration can drop it once nobody needs the rollback.
 
-The feature was deliberately switched off, but the code, the table, and a
-test file all remain. Re-enabling means restoring three lines in
-`registerAuthRoutes` and the bearer branch in `Auth.Principal`. Worth
-checking what `tokens.spec.ts` actually asserts now before trusting it as
-coverage for anything. Either finish re-enabling it or remove the dead
-surface - the current half-state is the worst of both.
+### Admin flag is a login-time snapshot
 
-### OIDC: a stub with a working front door
+`Identity.IsAdmin` is read from Proxmox once, at login (`Permissions.Modify`
+on `/`, checked with the user's own ticket), and stored in the session. A user
+whose admin rights are revoked keeps them until the session ends; since
+2026-10-01 that is at most `auth.MaxSessionAge` (8h) even if the session is
+used continuously. Closing the gap fully means asking Proxmox again for a
+live session, which the user's ticket no longer allows (no password): it needs
+the API token to read `/access/permissions?userid=` (extra role on the token)
+on a timer or on admin routes only. Decide whether the 8h cap is enough.
 
-The per-cluster toggle exists, the login button appears when a cluster has
-it enabled, but `POST /api/v1/auth/oidc` returns `501`. A user who enables
-the toggle gets a button that does nothing useful. Either implement it or
-pull the toggle until it is real.
+### OIDC: hidden in the UI, stubbed in the API
 
-### ADR practice: described, not followed
+The admin toggle column and the "Sign in with OIDC" button are commented out in
+`ClustersPage.svelte` and `login/+page.svelte` ("hidden until implemented"), so
+nobody can reach the feature from the UI. What remains: `POST /api/v1/auth/oidc`
+answers `501`, the admin endpoint `.../clusters/{name}/oidc` still flips the
+`oidc_enabled` column, and `toggleOIDC` / `signInOIDC` exist unused in the web
+stores with a unit test. Either implement OIDC (provider config, callback,
+session mapping to a Proxmox identity) or delete the stubs, the column and the
+commented markup.
 
-`AGENTS.md` and `CONTEXT.md` describe a single-context domain model of
-`CONTEXT.md` + `docs/adr/`, "created lazily". `docs/adr/` currently has no
-files. There is a reference to "ADR 0001" in `httpapi/router.go` (the batch
-live-status read design) that points at an ADR which does not exist in the
-repo. Either start writing them or stop describing a practice that is not
-happening - and if it stays informal, at least promote the two decisions
-below out of comments.
+### ADR practice: started
 
-## Design decisions that live only in code comments
-
-Worth promoting to `CONTEXT.md` or an ADR, because they are good reasoning
-that is currently invisible unless you happen to read the right file:
-
-1. **Why the batch status endpoint has a 120/min limit**, not the 30/min the
-   write path uses. The reason (the convergence loop polls every 1.5s for up
-   to 30s, 20 polls per action, plus headroom for concurrent actions) is a
-   comment in `router.go`.
-2. **Why `Resolve` returns 404, not 403, for a VM without the `pvmss` tag.**
-   The security rationale (a VM outside PVMSS scope must be indistinguishable
-   from a nonexistent one) is a doc comment on `ErrNotFound` in
-   `server/internal/vm/resolve.go`.
+`docs/adr/` now holds the three decisions the code already referenced or
+explained only in comments: 0001 (live status reads and the 120/min batch
+limit), 0002 (Proxmox rejections with a machine code), 0003 (404 not 403 for a
+VM outside scope). New decisions with real alternatives get the next number.
 
 ## Stale references (known, deliberate, low priority)
 
@@ -125,10 +111,13 @@ Plan: `PLAN-ui-v0.4.md` (not committed), branches `fix/web-offline-links`,
 - **"Pool at quota" means the per-user VM quota.** One pool per user, so a
   pool at `MaxVMPerUser` is a user who cannot create. There is no pool-level
   CPU/RAM quota to alert on.
-- **Pre-existing e2e failure.** `admin-exploitation.spec.ts` "audit log
-  shows VM actions with real username" fails on `v0.4` itself (the cleared
-  filter returns fewer rows than the filtered one). It runs before the
-  dashboard test in that serial file, so it hides later failures.
+- **e2e shares one server and one fake cluster across specs.** The Playwright
+  config now starts from an empty database, and `profile-ssh-keys.spec.ts`
+  approves its own bridge, so a full run is green (111 passed, 1 skipped) and
+  repeatable. Locally `fullyParallel` still runs specs against the same fake
+  state, so VM-creating specs change the row counts `vm-list.spec.ts` expects;
+  run with `CI=1 bunx playwright test` (one worker, as CI does) for a clean
+  result.
 - **`make web-test` prints `ECONNREFUSED 127.0.0.1:3000`** on a clean
   `v0.4`: some test reaches a real fetch. Tests pass; the noise hides real
   errors.
@@ -138,13 +127,6 @@ Plan: `PLAN-ui-v0.4.md` (not committed), branches `fix/web-offline-links`,
 - **`docs/constitution.md` principle X names shadcn / bits-ui**; `web/` ships
   in-house components under `src/lib/shared/ui/` and neither dependency.
   Amending a constitution needs the project lead's decision (version bump).
-- **`docker-compose.dev.yml` bind-mounts the file `./pvmss.db:/app/pvmss.db`**
-  while `PVMSS_DB_PATH` resolves to `/data/pvmss.db`: dev data lives in the
-  container layer and is lost on recreate. Mount a volume on `/data`.
-- **`.github/workflows/go.yml` and `v0.4.yml` overlap** (both build and test
-  server and web on `main`). Keep one.
-- **CI only triggers on `main` and PRs to `main`**; pushes to the `v0.4`
-  branch are not built.
 
 ## Left behind by the Connect-tab readiness pass (2026-09-29)
 
@@ -172,10 +154,9 @@ Plan: `PLAN-ui-v0.4.md` (not committed), branches `fix/web-offline-links`,
   the server only sees the requests it receives. Deciding it takes: a browser
   OTel SDK (bundle size, CORS to the collector, consent) or a small error-report
   endpoint.
-- **Local `golangci-lint` is too old.** The nix-installed binary is built with
-  go1.26 and refuses the module (go 1.27). Build one with the module's Go:
-  `go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest`.
-  `sloglint` was verified on 2026-10-01 (`make server-lint` is at 0 issues).
+- **Lint verified.** `sloglint` was checked on 2026-10-01 with the pinned
+  `go tool golangci-lint` (`make server-lint`: 0 issues). A globally installed
+  `golangci-lint` built with an older Go refuses the module; use `make server-lint`.
 - **Domain log keys outside the vocabulary.** `pool`, `code`, `path`,
   `fingerprint`, `label`, `section`, `step`, `port` are used as extra attrs;
   the fixed vocabulary in `AGENTS.md` has no equivalent for them.
