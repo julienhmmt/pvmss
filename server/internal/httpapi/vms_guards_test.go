@@ -3,8 +3,11 @@ package httpapi_test
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"pvmss/server/internal/httpapi"
+	"pvmss/server/internal/inventory"
 	"testing"
 )
 
@@ -62,4 +65,27 @@ func errorCode(t *testing.T, body []byte) string {
 	}
 
 	return envelope.Code
+}
+
+// Before the first inventory refresh lands there is nothing to list; the API
+// says so instead of answering with an empty, misleading page.
+//
+//nolint:paralleltest // serial: shared fake authentication state
+func TestVMs_ListBeforeFirstRefreshIsUnavailable(t *testing.T) {
+	authHandler := newAuthHandler(t)
+	handler := httpapi.NewVMs(inventory.NewProjection(), authHandler, testMaxListPageSize, testDefaultQuota, slog.New(slog.DiscardHandler))
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/vms", nil)
+	req.AddCookie(aliceCookie(t, authHandler))
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status = %d, want 503: %s", rec.Code, rec.Body.String())
+	}
+
+	if got := errorCode(t, rec.Body.Bytes()); got != "inventory_not_ready" {
+		t.Fatalf("code = %q, want inventory_not_ready", got)
+	}
 }
