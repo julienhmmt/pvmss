@@ -79,6 +79,7 @@ func parseLines(t *testing.T, buf *bytes.Buffer) []map[string]any {
 	return out
 }
 
+//nolint:gocyclo // one linear scenario asserting log, trace and metric output
 func TestProxmoxREST_RetryWarnsAndDebugLogsTemplatedPath(t *testing.T) {
 	t.Parallel()
 
@@ -209,7 +210,7 @@ func TestProxmoxREST_SpanPerCall(t *testing.T) {
 
 	attrs := map[string]string{}
 	for _, a := range client.Attributes {
-		attrs[string(a.Key)] = a.Value.Emit()
+		attrs[string(a.Key)] = a.Value.Emit() //nolint:staticcheck // Emit renders every attribute type; String() only handles strings
 	}
 
 	if attrs["cluster"] != "lab" || attrs["http.response.status_code"] != "200" {

@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"bytes"
+	"context"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -21,7 +22,7 @@ func serveWithRequestID(t *testing.T, inbound string) (*httptest.ResponseRecorde
 		logctx.From(r.Context()).InfoContext(r.Context(), "in handler")
 	}))
 
-	req := httptest.NewRequest(http.MethodGet, "/x", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/x", nil)
 	if inbound != "" {
 		req.Header["X-Request-Id"] = []string{inbound} // bypass canonicalisation checks
 	}

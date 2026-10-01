@@ -1,3 +1,4 @@
+//nolint:goconst // level and cluster literals reused across mirror cases
 package store_test
 
 import (
@@ -118,7 +119,8 @@ func TestAuditMirror_ActorCapped(t *testing.T) {
 	_, lines, record := mirrorFixture(t)
 	record(strings.Repeat("x", 500), "auth.login_failed")
 
-	if got := lines()[0]["actor"].(string); len(got) > 64 {
-		t.Fatalf("actor len = %d, want <= 64", len(got))
+	got, ok := lines()[0]["actor"].(string)
+	if !ok || len(got) > 64 {
+		t.Fatalf("actor = %q (string=%v), want a string of len <= 64", got, ok)
 	}
 }

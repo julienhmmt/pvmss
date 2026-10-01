@@ -79,7 +79,7 @@ func TestLogBanner_OTelEnabledShowsHostOnly(t *testing.T) {
 func freePort(t *testing.T) int {
 	t.Helper()
 
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	ln, err := new(net.ListenConfig).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -111,7 +111,7 @@ func TestStartMetricsServer_ServesOnlyGetMetrics(t *testing.T) {
 	base := "http://127.0.0.1:" + strconv.Itoa(port)
 
 	for path, want := range map[string]int{"/metrics": http.StatusOK, "/": http.StatusNotFound, "/health": http.StatusNotFound} {
-		resp, err := http.Get(base + path) //nolint:noctx,gosec // local test server
+		resp, err := http.Get(base + path) //nolint:noctx // local test server
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -123,7 +123,7 @@ func TestStartMetricsServer_ServesOnlyGetMetrics(t *testing.T) {
 		}
 	}
 
-	resp, err := http.Post(base+"/metrics", "text/plain", nil) //nolint:noctx,gosec // local test server
+	resp, err := http.Post(base+"/metrics", "text/plain", nil) //nolint:noctx // local test server
 	if err != nil {
 		t.Fatal(err)
 	}

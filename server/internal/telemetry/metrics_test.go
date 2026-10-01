@@ -19,7 +19,7 @@ func scrape(t *testing.T, res telemetry.Result) string {
 	t.Helper()
 
 	rec := httptest.NewRecorder()
-	res.MetricsHandler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	res.MetricsHandler.ServeHTTP(rec, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/metrics", nil))
 
 	body, err := io.ReadAll(rec.Result().Body)
 	if err != nil {

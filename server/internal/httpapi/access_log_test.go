@@ -1,7 +1,9 @@
+//nolint:goconst // route literal reused across access-log cases
 package httpapi
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
@@ -107,7 +109,7 @@ func TestAccessLog_RouteIsPatternAndNoSecrets(t *testing.T) {
 	})
 
 	h, buf := newAccessFixture(mux)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/vms/c1/101?token=SEKRET-Q&x=1", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/vms/c1/101?token=SEKRET-Q&x=1", nil)
 	req.Header.Set("Authorization", "Bearer SEKRET-H")
 	req.Header.Set("Cookie", "session=SEKRET-C")
 	req.Header.Set("X-Forwarded-For", "203.0.113.9, 10.0.0.1")
@@ -147,7 +149,7 @@ func TestAccessLog_SetErrorYieldsOneErrorLine(t *testing.T) {
 	})
 
 	h, buf := newAccessFixture(mux)
-	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, "/api/v1/boom", nil))
+	h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/boom", nil))
 
 	lines := accessLines(t, buf)
 	if len(lines) != 1 || lines[0]["level"] != "ERROR" || lines[0]["error"] != "db exploded" {
@@ -174,7 +176,7 @@ func TestAccessLog_HijackLogsUpgradeAndClose(t *testing.T) {
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
-	c, err := net.Dial("tcp", srv.Listener.Addr().String())
+	c, err := new(net.Dialer).DialContext(context.Background(), "tcp", srv.Listener.Addr().String())
 	if err != nil {
 		t.Fatal(err)
 	}

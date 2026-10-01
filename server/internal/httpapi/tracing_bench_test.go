@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -14,7 +15,7 @@ func benchHandler() http.Handler {
 
 func BenchmarkHandler_Bare(b *testing.B) {
 	h := benchHandler()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/x", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/x", nil)
 
 	b.ReportAllocs()
 
@@ -25,7 +26,7 @@ func BenchmarkHandler_Bare(b *testing.B) {
 
 func BenchmarkHandler_WithTracingNoop(b *testing.B) {
 	h := withTracing(nil, benchHandler())
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/x", nil)
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/v1/x", nil)
 
 	b.ReportAllocs()
 

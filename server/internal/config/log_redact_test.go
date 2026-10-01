@@ -29,7 +29,7 @@ func newTestLogger(t *testing.T, format, level string) (*slog.Logger, *slog.Leve
 func readAll(t *testing.T, path string) string {
 	t.Helper()
 
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(path) //nolint:gosec // test fixture path
 	if err != nil {
 		t.Fatalf("read log: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestConfiguration_LogValueHidesSecrets(t *testing.T) {
 	t.Parallel()
 
 	logger, _, path := newTestLogger(t, "json", "info")
-	logger.Info("cfg", "config", config.Configuration{
+	logger.Info("cfg", "config", config.Configuration{ //nolint:gosec // fake credentials for the redaction test
 		SessionSecret: "sess-secret-value", ProxmoxAPITokenValue: "px-token-value", AdminPasswordHash: "$2a$hash",
 	})
 

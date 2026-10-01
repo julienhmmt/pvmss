@@ -1,3 +1,4 @@
+//nolint:goconst,gosec // env var names repeat across cases; the URL password is a redaction fixture
 package telemetry_test
 
 import (
