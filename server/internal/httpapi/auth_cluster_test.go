@@ -41,7 +41,7 @@ func newClusterAuthFixture(t *testing.T) (*httpapi.Auth, *store.Store) {
 	if err != nil {
 		t.Fatalf("NewSessionManager: %v", err)
 	}
-	authHandler := httpapi.NewAuthWithRegistry(registry, st, sessions, "", auth.NewTokenService(st), slog.Default())
+	authHandler := httpapi.NewAuthWithRegistry(registry, st, sessions, "", slog.Default())
 	return authHandler, st
 }
 

@@ -310,7 +310,7 @@ func newMultiClusterAdminCatalogHandler(t *testing.T) (*httpapi.AdminCatalog, *h
 		t.Fatalf("GenerateFromPassword: %v", err)
 	}
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
-	authHandler := httpapi.NewAuthWithRegistry(registry, st, sessions, string(hash), auth.NewTokenService(st), logger)
+	authHandler := httpapi.NewAuthWithRegistry(registry, st, sessions, string(hash), logger)
 	catalog := httpapi.NewAdminCatalogWithRegistry(authHandler, st, registry, nil, logger)
 
 	return catalog, authHandler

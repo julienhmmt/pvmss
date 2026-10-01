@@ -77,7 +77,7 @@ func TestClusterDownScenario(t *testing.T) {
 		t.Fatalf("hash password: %v", err)
 	}
 
-	authHandler := httpapi.NewAuthWithRegistry(clusterRegistry, st, sessions, string(hashBytes), auth.NewTokenService(st), logger)
+	authHandler := httpapi.NewAuthWithRegistry(clusterRegistry, st, sessions, string(hashBytes), logger)
 
 	freshness := testInventoryFreshness{registry: inventoryRegistry, demoMode: false}
 	authHandler.SetClusterFreshnessChecker(freshness, 60*time.Second)

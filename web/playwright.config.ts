@@ -32,7 +32,9 @@ export default defineConfig({
 		{ name: 'chromium', use: { ...devices['Desktop Chrome'] } },
 	],
 	webServer: {
-		command: 'cd ../server && go run ./cmd/pvmss',
+		// The suite assumes a fresh database (admin-catalog expects an unapproved
+		// bridge, the others rely on what it approves), so start from none.
+		command: 'rm -f ../tmp/e2e-pvmss.db ../tmp/e2e-pvmss.db-wal ../tmp/e2e-pvmss.db-shm && cd ../server && go run ./cmd/pvmss',
 		cwd: '.',
 		env: {
 			PVMSS_PORT: '50001',

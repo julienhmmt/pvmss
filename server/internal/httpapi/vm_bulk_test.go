@@ -399,62 +399,24 @@ func TestVMBulk_NonexistentVMNotFoundMessage(t *testing.T) {
 }
 
 // =============================================================================
-// bearer-token auth
+// bearer credentials are not accepted
 // =============================================================================
 
-// TestVMBulk_BearerTokenAuth - bearer-token-authenticated request →
-// identical response shape and per-target semantics to the session-cookie
-// path.
+// TestVMBulk_BearerHeaderDoesNotAuthenticate - PVMSS has no API tokens, so an
+// Authorization bearer header must never stand in for a session cookie.
 //
 //nolint:paralleltest // serial: shared fake VM and database fixtures
-func TestVMBulk_BearerTokenAuth(t *testing.T) {
-	t.Skip("API tokens deactivated: bearer resolution disabled in Auth.Principal")
-	handler, authHandler := newVMBulkHandler(t)
-
-	// Create a bearer token for alice.
-	token := createBearerToken(t, authHandler, "alice", "pvmss-alice")
+func TestVMBulk_BearerHeaderDoesNotAuthenticate(t *testing.T) {
+	handler, _ := newVMBulkHandler(t)
 
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/vms/bulk-action", strings.NewReader(bulkBody("start", bulkTargets(101))))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	rec, resp := serveBulk(handler, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
-	}
-
-	if len(resp.Results) != 1 {
-		t.Fatalf("results = %d, want 1", len(resp.Results))
-	}
-
-	if resp.Results[0].Status != "ok" {
-		t.Errorf("result[0] = %q, want ok; message=%q", resp.Results[0].Status, resp.Results[0].Message)
-	}
-}
-
-// createBearerToken logs in as the given user and creates a bearer token via
-// the auth tokens endpoint.
-func createBearerToken(t *testing.T, authHandler *httpapi.Auth, username, password string) string {
-	t.Helper()
-	cookie := loginCookie(t, authHandler, `{"username":"`+username+`","password":"`+password+`"}`)
-
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/tokens", strings.NewReader(`{"label":"bulk-test","scope":"read_write"}`))
-	req.Header.Set("Content-Type", "application/json")
-	req.AddCookie(cookie)
+	req.Header.Set("Authorization", "Bearer pvmss_not-a-real-token")
 
 	rec := httptest.NewRecorder()
-	authHandler.CreateToken(rec, req)
+	handler.ServeHTTP(rec, req)
 
-	if rec.Code != http.StatusCreated {
-		t.Fatalf("CreateToken status = %d, want %d; body=%s", rec.Code, http.StatusCreated, rec.Body.String())
+	if rec.Code != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusUnauthorized, rec.Body.String())
 	}
-
-	var tokenResp struct {
-		Value string `json:"value"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &tokenResp); err != nil {
-		t.Fatalf("decode token response: %v", err)
-	}
-
-	return tokenResp.Value
 }

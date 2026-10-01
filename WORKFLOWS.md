@@ -58,21 +58,6 @@ Rules for the fields:
 | **States**      | Disabled when `ADMIN_PASSWORD_HASH` is unset                                                 |
 | **Safety nets** | bcrypt hash only (validated at startup, `config/load.go`); same per-IP rate limit as sign-in |
 
-### Manage API tokens
-
-> Deactivated: sidebar entry removed, `/api/v1/auth/tokens` routes
-> unregistered, bearer resolution disabled in `Auth.Principal`. Code kept.
-
-|                 |                                                                                          |
-| --------------- | ---------------------------------------------------------------------------------------- |
-| **Audience**    | end user                                                                                 |
-| **Entry**       | Sidebar → API tokens                                                                     |
-| **Route**       | `/profile/tokens`                                                                        |
-| **API**         | `GET /api/v1/auth/tokens`, `POST /api/v1/auth/tokens`, `DELETE /api/v1/auth/tokens/{id}` |
-| **Steps**       | 1. List existing tokens. 2. Create one - the secret is shown once. 3. Revoke by id.      |
-| **States**      | Empty state on first visit                                                               |
-| **Safety nets** | Secret displayed once, copy button; revoke is immediate                                  |
-
 Password change goes through `POST /api/v1/auth/password`.
 
 ---
@@ -216,7 +201,7 @@ Rename validates as a hostname (lowercase, ≤63 chars, `hostnameRe` in
 | **API**         | none - identity comes from the session (`GET /api/v1/auth/me`, already loaded by the shell); preferences persist in `localStorage` (`pvmss-theme-v1`, `pvmss-locale`) |
 | **Steps**       | 1. See who is signed in and on which cluster. 2. Switch between light and dark. 3. Pick the interface language.                                                       |
 | **States**      | None beyond the shell's own loading; both preferences apply immediately and survive a reload                                                                          |
-| **Safety nets** | Nothing destructive. Sign-in is the user's Proxmox account; the page says so instead of linking to the deactivated API-token screen.                                  |
+| **Safety nets** | Nothing destructive. Sign-in is the user's Proxmox account; the page says so and there is no API-token screen: PVMSS has no personal API tokens.                                  |
 
 ### Manage my SSH keys
 

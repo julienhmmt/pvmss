@@ -53,9 +53,17 @@ async function deleteAllProfileKeys(request: APIRequestContext): Promise<void> {
 
 // The ubuntu cloud image ships enabled (schemaV27 seed) but a prior run or
 // an admin spec can toggle or delete the row; the toggle endpoint upserts,
-// so this restores image mode deterministically.
+// so this restores image mode deterministically. Bridge approvals are empty on
+// a fresh database (schemaV14 recreates the table), and image mode creates on
+// the image's node, so a bridge there is approved the same way - without it
+// the spec only passes against a database another run already populated.
 async function ensureCloudImage(request: APIRequestContext): Promise<void> {
 	await signInAdmin(request);
+	const bridge = await request.post('/api/v1/admin/bridges/toggle', {
+		headers: await csrfHeaders(request),
+		data: { cluster: 'default', node: 'pve-node-01', name: 'vmbr0', enabled: true }
+	});
+	expect(bridge.status()).toBe(200);
 	const response = await request.post('/api/v1/admin/images/toggle', {
 		headers: await csrfHeaders(request),
 		data: {
