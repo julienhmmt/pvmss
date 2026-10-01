@@ -125,10 +125,13 @@ Plan: `PLAN-ui-v0.4.md` (not committed), branches `fix/web-offline-links`,
 - **"Pool at quota" means the per-user VM quota.** One pool per user, so a
   pool at `MaxVMPerUser` is a user who cannot create. There is no pool-level
   CPU/RAM quota to alert on.
-- **Pre-existing e2e failure.** `admin-exploitation.spec.ts` "audit log
-  shows VM actions with real username" fails on `v0.4` itself (the cleared
-  filter returns fewer rows than the filtered one). It runs before the
-  dashboard test in that serial file, so it hides later failures.
+- **e2e shares one server and one fake cluster across specs.** The Playwright
+  config now starts from an empty database, and `profile-ssh-keys.spec.ts`
+  approves its own bridge, so a full run is green (111 passed, 1 skipped) and
+  repeatable. Locally `fullyParallel` still runs specs against the same fake
+  state, so VM-creating specs change the row counts `vm-list.spec.ts` expects;
+  run with `CI=1 bunx playwright test` (one worker, as CI does) for a clean
+  result.
 - **`make web-test` prints `ECONNREFUSED 127.0.0.1:3000`** on a clean
   `v0.4`: some test reaches a real fetch. Tests pass; the noise hides real
   errors.
