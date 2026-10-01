@@ -26,8 +26,7 @@ type csrfMiddleware struct {
 // stored in the server-side session row.
 //
 // Public unauthenticated routes (login, admin-login, clusters, OIDC) and
-// requests authenticated by an Authorization bearer token are not subject to
-// the cookie-based check.
+// requests with no session cookie are not subject to the cookie-based check.
 func newCSRFMiddleware(authHandler *Auth, st *store.Store, trustedProxyHops int) func(http.Handler) http.Handler {
 	m := &csrfMiddleware{auth: authHandler, store: st, trustedProxyHops: trustedProxyHops}
 
@@ -72,19 +71,17 @@ func (m *csrfMiddleware) enforce(next http.Handler, w http.ResponseWriter, r *ht
 }
 
 // skipCSRF reports whether the cookie-based CSRF check does not apply to this
-// request: non-state-changing methods, bearer-token clients (automation), or
+// request: non-state-changing methods or
 // requests with no session cookie (the downstream handler returns 401).
 func (m *csrfMiddleware) skipCSRF(r *http.Request) bool {
 	if !csrfRequired(r) {
 		return true
 	}
 
-	// Bearer-token clients (automation scripts) are not browser sessions, so
-	// the cookie-based CSRF check does not apply.
-	if strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
-		return true
-	}
-
+	// A bearer header is deliberately not an exemption: personal API tokens
+	// are disabled, so any request that carries a session cookie is a browser
+	// session. Re-introduce the exemption together with token resolution in
+	// Auth.Principal.
 	// No session cookie means the request cannot be a forged browser session;
 	// the downstream handler is responsible for 401.
 	if _, err := r.Cookie(auth.SessionCookieName); err != nil {
