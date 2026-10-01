@@ -7,13 +7,12 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"runtime"
-	"runtime/debug"
-	"strconv"
-
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/inventory"
 	"pvmss/server/internal/telemetry"
+	"runtime"
+	"runtime/debug"
+	"strconv"
 )
 
 // listenAddr is the address the HTTP server binds, shared by the banner and

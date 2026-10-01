@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"pvmss/server/internal/telemetry"
 	"strings"
 	"sync"
 	"testing"
@@ -15,8 +16,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
-
-	"pvmss/server/internal/telemetry"
 )
 
 func env(kv map[string]string) func(string) string {

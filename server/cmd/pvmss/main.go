@@ -25,12 +25,12 @@ import (
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
 	"pvmss/server/internal/telemetry"
-
-	"go.opentelemetry.io/otel"
 	"pvmss/server/internal/vm"
 	"runtime/debug"
 	"syscall"
 	"time"
+
+	"go.opentelemetry.io/otel"
 )
 
 const (
