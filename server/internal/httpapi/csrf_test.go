@@ -60,6 +60,29 @@ func TestCSRF_WrongTokenReturns403(t *testing.T) {
 	}
 }
 
+// Bearer tokens are disabled, so an Authorization header must not buy a
+// session-cookie request out of the CSRF check.
+//
+//nolint:paralleltest // serial: shared fake auth and session fixtures
+func TestCSRF_BearerHeaderDoesNotBypassSessionCheck(t *testing.T) {
+	handler := newAuthHandler(t)
+	mux := newCSRFRouter(t, handler)
+
+	session, _ := loginCSRF(t, handler, `{"username":"alice","password":"pvmss-alice"}`)
+
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/cluster/refresh", nil)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer anything")
+	req.AddCookie(session)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusForbidden, rec.Body.String())
+	}
+}
+
 //nolint:paralleltest // serial: shared fake auth and session fixtures
 func TestCSRF_ValidTokenPasses(t *testing.T) {
 	handler := newAuthHandler(t)

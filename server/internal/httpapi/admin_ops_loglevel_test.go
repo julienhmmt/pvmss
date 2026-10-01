@@ -93,6 +93,7 @@ func TestLogLevel_PutDebugTakesEffectAuditedAndMirrored(t *testing.T) {
 	}
 
 	var got logLevelBody
+
 	_ = json.Unmarshal(rec.Body.Bytes(), &got)
 
 	if got.Level != "debug" || got.Default != "info" {
