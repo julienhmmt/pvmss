@@ -365,7 +365,7 @@ func serve(router http.Handler, cfg config.Configuration, logger *slog.Logger) i
 		MaxHeaderBytes:    maxHeaderBytes,
 	}
 
-	ln, err := net.Listen("tcp", srv.Addr)
+	ln, err := new(net.ListenConfig).Listen(context.Background(), "tcp", srv.Addr)
 	if err != nil {
 		logger.Error("server listen failed", "component", "main", "addr", srv.Addr, "error", err)
 		return 1

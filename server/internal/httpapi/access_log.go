@@ -157,7 +157,7 @@ func withAccessLog(trustedProxyHops int, next http.Handler) http.Handler {
 				attrs = append(attrs, slog.Any("error", lw.err))
 			}
 
-			logctx.From(r.Context()).LogAttrs(r.Context(), accessLevel(r.Method, route, lw.status), msg, attrs...)
+			logctx.From(r.Context()).LogAttrs(r.Context(), accessLevel(r.Method, route, lw.status), msg, attrs...) //nolint:sloglint // msg is one of two fixed access-log messages
 		}
 
 		lw := &logWriter{ResponseWriter: w}
