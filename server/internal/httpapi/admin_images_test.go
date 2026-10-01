@@ -1,3 +1,4 @@
+//nolint:goconst // table rows repeat mapper names, codes and a malformed-body literal
 package httpapi_test
 
 import (
