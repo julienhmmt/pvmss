@@ -31,29 +31,12 @@ it enabled, but `POST /api/v1/auth/oidc` returns `501`. A user who enables
 the toggle gets a button that does nothing useful. Either implement it or
 pull the toggle until it is real.
 
-### ADR practice: described, not followed
+### ADR practice: started
 
-`AGENTS.md` and `CONTEXT.md` describe a single-context domain model of
-`CONTEXT.md` + `docs/adr/`, "created lazily". `docs/adr/` currently has no
-files. There is a reference to "ADR 0001" in `httpapi/router.go` (the batch
-live-status read design) that points at an ADR which does not exist in the
-repo. Either start writing them or stop describing a practice that is not
-happening - and if it stays informal, at least promote the two decisions
-below out of comments.
-
-## Design decisions that live only in code comments
-
-Worth promoting to `CONTEXT.md` or an ADR, because they are good reasoning
-that is currently invisible unless you happen to read the right file:
-
-1. **Why the batch status endpoint has a 120/min limit**, not the 30/min the
-   write path uses. The reason (the convergence loop polls every 1.5s for up
-   to 30s, 20 polls per action, plus headroom for concurrent actions) is a
-   comment in `router.go`.
-2. **Why `Resolve` returns 404, not 403, for a VM without the `pvmss` tag.**
-   The security rationale (a VM outside PVMSS scope must be indistinguishable
-   from a nonexistent one) is a doc comment on `ErrNotFound` in
-   `server/internal/vm/resolve.go`.
+`docs/adr/` now holds the three decisions the code already referenced or
+explained only in comments: 0001 (live status reads and the 120/min batch
+limit), 0002 (Proxmox rejections with a machine code), 0003 (404 not 403 for a
+VM outside scope). New decisions with real alternatives get the next number.
 
 ## Stale references (known, deliberate, low priority)
 
