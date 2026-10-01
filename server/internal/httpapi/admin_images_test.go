@@ -1,4 +1,3 @@
-//nolint:goconst // table rows repeat mapper names, codes and a malformed-body literal
 package httpapi_test
 
 import (
@@ -114,7 +113,7 @@ func TestAdminImages_ToggleRejectsBadInput(t *testing.T) {
 		want   int
 	}{
 		{"unauthenticated", nil, `{"cluster":"default","node":"n","storage":"s","file":"f","enabled":true}`, http.StatusUnauthorized},
-		{"bad json", cookie, "{bad json", http.StatusBadRequest},
+		{"bad json", cookie, badJSONBody, http.StatusBadRequest},
 		{"missing node", cookie, `{"cluster":"default","storage":"local","file":"f","enabled":true}`, http.StatusBadRequest},
 		{"unknown cluster", cookie, `{"cluster":"nonexistent","node":"pve-node-01","storage":"local","file":"f","enabled":true}`, http.StatusNotFound},
 		{"image not on node", cookie, `{"cluster":"default","node":"pve-node-01","storage":"local","file":"` + imageGhost + `","enabled":true}`, http.StatusNotFound},

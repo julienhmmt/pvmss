@@ -25,7 +25,7 @@ func TestVMDetail_RetrofitSeaBIOS_Guards(t *testing.T) {
 		{"anonymous", http.MethodPost, "/api/v1/vms/default/101/retrofit-seabios", "", nil, http.StatusUnauthorized},
 		{"tenant is refused", http.MethodPost, "/api/v1/vms/default/101/retrofit-seabios", "", alice, http.StatusForbidden},
 		{"bad vmid", http.MethodPost, "/api/v1/vms/default/abc/retrofit-seabios", "", admin, http.StatusBadRequest},
-		{"malformed body", http.MethodPost, "/api/v1/vms/default/101/retrofit-seabios", "{bad", admin, http.StatusBadRequest},
+		{"malformed body", http.MethodPost, "/api/v1/vms/default/101/retrofit-seabios", badJSONBody, admin, http.StatusBadRequest},
 		{"unknown vm", http.MethodPost, "/api/v1/vms/default/999999/retrofit-seabios", "", admin, http.StatusNotFound},
 	}
 	for _, tc := range cases {

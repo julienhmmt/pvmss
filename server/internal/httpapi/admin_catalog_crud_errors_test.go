@@ -1,10 +1,15 @@
-//nolint:goconst // table rows repeat request paths and machine codes
 package httpapi_test
 
 import (
 	"encoding/json"
 	"net/http"
 	"testing"
+)
+
+const (
+	badJSONBody       = "{bad"
+	adminProfilesPath = "/api/v1/admin/profiles"
+	adminTagsPath     = "/api/v1/admin/tags"
 )
 
 // Profiles, cloud-init templates and tags share the admin CRUD error shape:
@@ -24,22 +29,22 @@ func TestAdminCatalogCRUD_ErrorCodes(t *testing.T) {
 		status int
 		code   string
 	}{
-		{"profile create bad body", http.MethodPost, "/api/v1/admin/profiles", "{bad", http.StatusBadRequest, "invalid_request"},
-		{"profile create blank label", http.MethodPost, "/api/v1/admin/profiles", `{"cluster":"default","label":""}`, http.StatusBadRequest, "invalid_profile"},
-		{"profile update bad body", http.MethodPut, "/api/v1/admin/profiles/nope", "{bad", http.StatusBadRequest, "invalid_request"},
-		{"profile delete unknown", http.MethodDelete, "/api/v1/admin/profiles/nope?cluster=default", "", http.StatusNotFound, "not_found"},
-		{"profile toggle unknown", http.MethodPost, "/api/v1/admin/profiles/nope/toggle", `{"cluster":"default","enabled":true}`, http.StatusNotFound, "not_found"},
-		{"template create bad body", http.MethodPost, "/api/v1/admin/cloudinit-templates", "{bad", http.StatusBadRequest, "invalid_request"},
+		{"profile create bad body", http.MethodPost, adminProfilesPath, badJSONBody, http.StatusBadRequest, apiCodeInvalidRequest},
+		{"profile create blank label", http.MethodPost, adminProfilesPath, `{"cluster":"default","label":""}`, http.StatusBadRequest, "invalid_profile"},
+		{"profile update bad body", http.MethodPut, adminProfilesPath + "/nope", badJSONBody, http.StatusBadRequest, apiCodeInvalidRequest},
+		{"profile delete unknown", http.MethodDelete, adminProfilesPath + "/nope?cluster=default", "", http.StatusNotFound, apiCodeNotFound},
+		{"profile toggle unknown", http.MethodPost, adminProfilesPath + "/nope/toggle", `{"cluster":"default","enabled":true}`, http.StatusNotFound, apiCodeNotFound},
+		{"template create bad body", http.MethodPost, "/api/v1/admin/cloudinit-templates", badJSONBody, http.StatusBadRequest, apiCodeInvalidRequest},
 		{"template create bad content", http.MethodPost, "/api/v1/admin/cloudinit-templates", `{"cluster":"default","label":"x","content":"x"}`, http.StatusBadRequest, "invalid_content"},
-		{"template update bad body", http.MethodPut, "/api/v1/admin/cloudinit-templates/nope", "{bad", http.StatusBadRequest, "invalid_request"},
-		{"template update unknown", http.MethodPut, "/api/v1/admin/cloudinit-templates/nope", `{"cluster":"default","label":"x","content":"#cloud-config"}`, http.StatusNotFound, "not_found"},
-		{"template delete unknown", http.MethodDelete, "/api/v1/admin/cloudinit-templates/nope?cluster=default", "", http.StatusNotFound, "not_found"},
-		{"template toggle unknown", http.MethodPost, "/api/v1/admin/cloudinit-templates/nope/toggle", `{"cluster":"default","enabled":true}`, http.StatusNotFound, "not_found"},
-		{"tag create bad body", http.MethodPost, "/api/v1/admin/tags", "{bad", http.StatusBadRequest, "invalid_request"},
-		{"tag create bad name", http.MethodPost, "/api/v1/admin/tags", `{"cluster":"default","name":"BAD NAME!"}`, http.StatusBadRequest, "invalid_tag_name"},
-		{"tag color unknown", http.MethodPut, "/api/v1/admin/tags/nope/color", `{"cluster":"default","color":"#ffffff"}`, http.StatusNotFound, "not_found"},
-		{"tag color bad body", http.MethodPut, "/api/v1/admin/tags/nope/color", "{bad", http.StatusBadRequest, "invalid_request"},
-		{"tag delete unknown", http.MethodDelete, "/api/v1/admin/tags/nope?cluster=default", "", http.StatusNotFound, "not_found"},
+		{"template update bad body", http.MethodPut, "/api/v1/admin/cloudinit-templates/nope", badJSONBody, http.StatusBadRequest, apiCodeInvalidRequest},
+		{"template update unknown", http.MethodPut, "/api/v1/admin/cloudinit-templates/nope", `{"cluster":"default","label":"x","content":"#cloud-config"}`, http.StatusNotFound, apiCodeNotFound},
+		{"template delete unknown", http.MethodDelete, "/api/v1/admin/cloudinit-templates/nope?cluster=default", "", http.StatusNotFound, apiCodeNotFound},
+		{"template toggle unknown", http.MethodPost, "/api/v1/admin/cloudinit-templates/nope/toggle", `{"cluster":"default","enabled":true}`, http.StatusNotFound, apiCodeNotFound},
+		{"tag create bad body", http.MethodPost, adminTagsPath, badJSONBody, http.StatusBadRequest, apiCodeInvalidRequest},
+		{"tag create bad name", http.MethodPost, adminTagsPath, `{"cluster":"default","name":"BAD NAME!"}`, http.StatusBadRequest, "invalid_tag_name"},
+		{"tag color unknown", http.MethodPut, adminTagsPath + "/nope/color", `{"cluster":"default","color":"#ffffff"}`, http.StatusNotFound, apiCodeNotFound},
+		{"tag color bad body", http.MethodPut, adminTagsPath + "/nope/color", badJSONBody, http.StatusBadRequest, apiCodeInvalidRequest},
+		{"tag delete unknown", http.MethodDelete, adminTagsPath + "/nope?cluster=default", "", http.StatusNotFound, apiCodeNotFound},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

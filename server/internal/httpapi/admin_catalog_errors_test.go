@@ -73,7 +73,7 @@ func TestAdminCatalogToggles_RejectBadBody(t *testing.T) {
 				t.Fatalf("anonymous status = %d, want 401", rec.Code)
 			}
 
-			if rec := adminPost(t, handler, authHandler, cookie, path, "{bad json"); rec.Code != http.StatusBadRequest {
+			if rec := adminPost(t, handler, authHandler, cookie, path, badJSONBody); rec.Code != http.StatusBadRequest {
 				t.Fatalf("bad json status = %d, want 400", rec.Code)
 			}
 
