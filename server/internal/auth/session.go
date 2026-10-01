@@ -4,7 +4,9 @@ package auth
 import (
 	"context"
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -194,4 +196,13 @@ func (m *SessionManager) hash(raw string) []byte {
 	_, _ = mac.Write([]byte(raw))
 
 	return mac.Sum(nil)
+}
+
+func randomHex(size int) (string, error) {
+	bytes := make([]byte, size)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", fmt.Errorf("read random bytes: %w", err)
+	}
+
+	return hex.EncodeToString(bytes), nil
 }
