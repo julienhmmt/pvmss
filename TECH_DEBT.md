@@ -24,6 +24,18 @@ checking what `tokens.spec.ts` actually asserts now before trusting it as
 coverage for anything. Either finish re-enabling it or remove the dead
 surface - the current half-state is the worst of both.
 
+### Admin flag is a login-time snapshot
+
+`Identity.IsAdmin` is read from Proxmox once, at login (`Permissions.Modify`
+on `/`, checked with the user's own ticket), and stored in the session. A user
+whose admin rights are revoked keeps them until the session ends; since
+2026-10-01 that is at most `auth.MaxSessionAge` (24h) even if the session is
+used continuously. Closing the gap fully means asking Proxmox again for a
+live session, which the user's ticket no longer allows (no password): it needs
+the API token to read `/access/permissions?userid=` (extra role on the token)
+on a timer or on admin routes only. Decide between that and a shorter
+`MaxSessionAge`.
+
 ### OIDC: a stub with a working front door
 
 The per-cluster toggle exists, the login button appears when a cluster has
