@@ -168,7 +168,7 @@ func TestUserRateLimiter_MiddlewareSetsRetryAfter(t *testing.T) {
 		t.Fatalf("NewSessionManager: %v", err)
 	}
 
-	authHandler := NewAuth(cluster.Fake{}, sessions, "", nil, slog.New(slog.DiscardHandler))
+	authHandler := NewAuth(cluster.Fake{}, sessions, "", slog.New(slog.DiscardHandler))
 	handler := newUserRateLimiter(1, time.Minute, 0, nil).middleware(authHandler, okHandler())
 
 	if rec := serveFrom(handler, "192.0.2.1:1000"); rec.Code != http.StatusNoContent {

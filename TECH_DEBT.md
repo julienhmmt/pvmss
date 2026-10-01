@@ -5,36 +5,23 @@ look and what deciding it would take. Not a backlog of new features.
 
 ## Needs a decision
 
-### Personal API tokens: half-present
+### Leftover: the `api_tokens` table
 
-| Artifact | State |
-| --- | --- |
-| `auth/tokens.go`, `TokenService` | present |
-| `api_tokens` table, migrations | present |
-| `/profile/tokens` page | present |
-| Sidebar entry | removed |
-| `POST/GET/DELETE /api/v1/auth/tokens` | unregistered - the catch-all 404 answers |
-| Bearer resolution in `Auth.Principal` | disabled |
-| `web/e2e/tokens.spec.ts` | present |
-
-The feature was deliberately switched off, but the code, the table, and a
-test file all remain. Re-enabling means restoring three lines in
-`registerAuthRoutes` and the bearer branch in `Auth.Principal`. Worth
-checking what `tokens.spec.ts` actually asserts now before trusting it as
-coverage for anything. Either finish re-enabling it or remove the dead
-surface - the current half-state is the worst of both.
+Personal API tokens were removed on 2026-10-01 (service, routes, page, e2e
+spec). The `api_tokens` table and its migrations stay, because dropping a table
+is not reversible; the table is empty on any instance that never used the
+feature. A later migration can drop it once nobody needs the rollback.
 
 ### Admin flag is a login-time snapshot
 
 `Identity.IsAdmin` is read from Proxmox once, at login (`Permissions.Modify`
 on `/`, checked with the user's own ticket), and stored in the session. A user
 whose admin rights are revoked keeps them until the session ends; since
-2026-10-01 that is at most `auth.MaxSessionAge` (24h) even if the session is
+2026-10-01 that is at most `auth.MaxSessionAge` (8h) even if the session is
 used continuously. Closing the gap fully means asking Proxmox again for a
 live session, which the user's ticket no longer allows (no password): it needs
 the API token to read `/access/permissions?userid=` (extra role on the token)
-on a timer or on admin routes only. Decide between that and a shorter
-`MaxSessionAge`.
+on a timer or on admin routes only. Decide whether the 8h cap is enough.
 
 ### OIDC: a stub with a working front door
 

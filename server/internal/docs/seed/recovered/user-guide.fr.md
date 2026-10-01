@@ -151,7 +151,6 @@ applique côté serveur avant tout appel à Proxmox.
 - Les sauvegardes et la migration à chaud se font dans Proxmox, pas dans PVMSS.
 - Le réseau avancé (règles de pare-feu, SDN) se configure dans Proxmox.
 - Le changement de mot de passe n'est disponible que par l'API pour l'instant.
-- Les tokens API personnels sont désactivés dans cette version ; la page des tokens n'a pas de backend.
 
 ## Sécurité et confidentialité
 

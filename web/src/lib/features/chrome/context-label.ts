@@ -24,7 +24,6 @@ export function contextLabel(pathname: string): ContextLabel {
 	if (path === '/activity') return { section: workspace, screen: m['chrome.context.activity']() };
 	if (path === '/docs' || path.startsWith('/docs/')) return { section: workspace, screen: m['chrome.context.help']() };
 	if (path === '/profile') return { section: workspace, screen: m['chrome.context.account']() };
-	if (path === '/profile/tokens') return { section: workspace, screen: m['chrome.context.tokens']() };
 	if (path === '/search') return { section: workspace, screen: m['chrome.context.search']() };
 	if (path === '/about') return { section: workspace, screen: m['chrome.context.about']() };
 	if (path === '/nodes') return { section: workspace, screen: m['chrome.context.nodes']() };

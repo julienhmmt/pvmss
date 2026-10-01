@@ -144,7 +144,6 @@ server-side before any Proxmox call is made.
 - Backups and live migration are handled in Proxmox, not in PVMSS.
 - Advanced networking (firewall rules, SDN) is configured in Proxmox.
 - Password change is available through the API only for now.
-- Personal API tokens are deactivated in this version; the API tokens page has no backend.
 
 ## Security and privacy
 

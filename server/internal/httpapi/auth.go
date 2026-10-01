@@ -3,7 +3,6 @@ package httpapi
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -45,31 +44,6 @@ type authError struct {
 	RetryAfterSeconds int    `json:"retryAfterSeconds,omitempty"`
 }
 
-type tokenRequest struct {
-	Label string `json:"label"`
-	Scope string `json:"scope"`
-}
-
-type tokenResponse struct {
-	ID        string    `json:"id"`
-	Label     string    `json:"label"`
-	Scope     string    `json:"scope"`
-	Value     string    `json:"value"`
-	CreatedAt time.Time `json:"createdAt"`
-}
-
-type tokenListItem struct {
-	ID         string     `json:"id"`
-	Label      string     `json:"label"`
-	Scope      string     `json:"scope"`
-	CreatedAt  time.Time  `json:"createdAt"`
-	LastUsedAt *time.Time `json:"lastUsedAt,omitempty"`
-}
-
-type tokenListResponse struct {
-	Tokens []tokenListItem `json:"tokens"`
-}
-
 // Auth exposes browser login, session inspection, and logout endpoints.
 type Auth struct {
 	cluster          cluster.Client
@@ -77,7 +51,6 @@ type Auth struct {
 	clusterStore     *store.Store
 	sessions         *auth.SessionManager
 	adminHash        string
-	tokens           *auth.TokenService
 	log              *slog.Logger
 	trustedProxyHops int
 	freshness        ClusterFreshnessChecker
@@ -85,13 +58,13 @@ type Auth struct {
 }
 
 // NewAuth creates the legacy single-cluster authentication endpoint handlers.
-func NewAuth(clusterClient cluster.Client, sessions *auth.SessionManager, adminHash string, tokens *auth.TokenService, log *slog.Logger) *Auth {
-	return &Auth{cluster: clusterClient, sessions: sessions, adminHash: adminHash, tokens: tokens, log: log}
+func NewAuth(clusterClient cluster.Client, sessions *auth.SessionManager, adminHash string, log *slog.Logger) *Auth {
+	return &Auth{cluster: clusterClient, sessions: sessions, adminHash: adminHash, log: log}
 }
 
 // NewAuthWithRegistry creates authentication handlers with runtime cluster choice.
-func NewAuthWithRegistry(registry cluster.ClientProvider, st *store.Store, sessions *auth.SessionManager, adminHash string, tokens *auth.TokenService, log *slog.Logger) *Auth {
-	return &Auth{clusters: registry, clusterStore: st, sessions: sessions, adminHash: adminHash, tokens: tokens, log: log}
+func NewAuthWithRegistry(registry cluster.ClientProvider, st *store.Store, sessions *auth.SessionManager, adminHash string, log *slog.Logger) *Auth {
+	return &Auth{clusters: registry, clusterStore: st, sessions: sessions, adminHash: adminHash, log: log}
 }
 
 // SetTrustedProxyHops configures how many X-Forwarded-For hops are trusted
@@ -205,7 +178,7 @@ func (h *Auth) startSession(w http.ResponseWriter, r *http.Request, identity aut
 	writeAuthJSON(w, http.StatusOK, identity)
 }
 
-// Me returns the resolved browser or bearer-token identity. The cluster
+// Me returns the resolved browser session identity. The cluster
 // display name is refreshed from the current database row so the sidebar
 // reflects an updated display name without forcing a re-login.
 func (h *Auth) Me(w http.ResponseWriter, r *http.Request) {
@@ -286,8 +259,8 @@ func (h *Auth) CSRFToken(r *http.Request) (string, error) {
 	return h.sessions.CSRFToken(r.Context(), r)
 }
 
-// Principal resolves browser cookies. The Authorization bearer-token branch is
-// deactivated (personal API tokens are disabled).
+// Principal resolves the browser session cookie. Bearer credentials are not
+// accepted: PVMSS has no API tokens.
 func (h *Auth) Principal(r *http.Request) (auth.Identity, error) {
 	identity, err := h.sessions.Resolve(r.Context(), r)
 	if err == nil {
@@ -298,13 +271,6 @@ func (h *Auth) Principal(r *http.Request) (auth.Identity, error) {
 		return identity, nil
 	}
 
-	// API tokens are deactivated: bearer credentials are not resolved. Kept
-	// commented for re-enablement together with the routes in router.go.
-	// const bearerPrefix = "Bearer "
-	//  authorization:= r.Header.Get("Authorization")
-	// if strings.HasPrefix(authorization, bearerPrefix) {
-	// return h.tokens.Resolve(r.Context(), strings.TrimSpace(strings.TrimPrefix(authorization, bearerPrefix)))
-	// }
 	return auth.Identity{}, auth.ErrUnauthenticated
 }
 
@@ -326,80 +292,6 @@ func (h *Auth) Logout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logctx.FromOr(r.Context(), h.log).InfoContext(r.Context(), "logout", "component", "httpapi", "event", "auth", "result", "success")
-
-	w.WriteHeader(http.StatusNoContent)
-}
-
-// CreateToken creates an API token for the browser session identity. Only a
-// browser session may mint a token - a token cannot be used to mint another.
-func (h *Auth) CreateToken(w http.ResponseWriter, r *http.Request) {
-	identity, err := h.sessions.Resolve(r.Context(), r)
-	if err != nil {
-		writeAuthError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
-		return
-	}
-
-	var request tokenRequest
-	if err := decodeJSON(w, r, &request); err != nil {
-		writeAuthError(w, http.StatusBadRequest, "invalid_request", "invalid token request")
-		return
-	}
-
-	token, raw, err := h.tokens.Create(r.Context(), identity, request.Label, request.Scope)
-	if err != nil {
-		writeAuthError(w, http.StatusBadRequest, "invalid_request", err.Error())
-		return
-	}
-
-	writeAuthJSON(w, http.StatusCreated, tokenResponse{ID: token.ID, Label: token.Label, Scope: token.Scope, Value: raw, CreatedAt: token.CreatedAt})
-}
-
-// ListTokens returns the browser session identity's own tokens. Values are
-// never included - only a creation response ever carries one.
-func (h *Auth) ListTokens(w http.ResponseWriter, r *http.Request) {
-	identity, err := h.sessions.Resolve(r.Context(), r)
-	if err != nil {
-		writeAuthError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
-		return
-	}
-
-	tokens, err := h.tokens.List(r.Context(), identity.Username)
-	if err != nil {
-		SetErrorMsg(w, "failed to list tokens", err)
-		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
-
-		return
-	}
-
-	items := make([]tokenListItem, len(tokens))
-	for i, token := range tokens {
-		items[i] = tokenListItem{ID: token.ID, Label: token.Label, Scope: token.Scope, CreatedAt: token.CreatedAt, LastUsedAt: token.LastUsedAt}
-	}
-
-	writeAuthJSON(w, http.StatusOK, tokenListResponse{Tokens: items})
-}
-
-// RevokeToken deletes a token owned by the browser session identity. An
-// unknown id and a not-owned id both 404, so a caller cannot probe other
-// users' token ids.
-func (h *Auth) RevokeToken(w http.ResponseWriter, r *http.Request) {
-	identity, err := h.sessions.Resolve(r.Context(), r)
-	if err != nil {
-		writeAuthError(w, http.StatusUnauthorized, "unauthenticated", msgAuthRequired)
-		return
-	}
-
-	if err := h.tokens.Revoke(r.Context(), r.PathValue("id"), identity.Username); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			writeAuthError(w, http.StatusNotFound, "not_found", "token not found")
-			return
-		}
-
-		SetErrorMsg(w, "failed to revoke token", err)
-		writeAuthError(w, http.StatusInternalServerError, "internal_error", msgInternalServerError)
-
-		return
-	}
 
 	w.WriteHeader(http.StatusNoContent)
 }

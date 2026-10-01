@@ -201,59 +201,6 @@ func TestAuthCoverage_Logout_NoSessionStill204(t *testing.T) {
 }
 
 //nolint:paralleltest // serial: shared fake auth and session fixtures
-func TestAuthCoverage_CreateToken_Unauthenticated(t *testing.T) {
-	handler := newAuthHandler(t)
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/tokens", strings.NewReader(`{"label":"x","scope":"read"}`))
-	req.Header.Set("Content-Type", "application/json")
-
-	rec := httptest.NewRecorder()
-	handler.CreateToken(rec, req)
-
-	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
-	}
-}
-
-//nolint:paralleltest // serial: shared fake auth and session fixtures
-func TestAuthCoverage_CreateToken_InvalidJSON(t *testing.T) {
-	rec := authAuthenticatedRequest(t, "/api/v1/auth/tokens", "{bad", func(h *httpapi.Auth, rec http.ResponseWriter, req *http.Request) {
-		h.CreateToken(rec, req)
-	})
-
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
-	}
-
-	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidRequest)
-}
-
-//nolint:paralleltest // serial: shared fake auth and session fixtures
-func TestAuthCoverage_ListTokens_Unauthenticated(t *testing.T) {
-	handler := newAuthHandler(t)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/tokens", nil)
-	rec := httptest.NewRecorder()
-	handler.ListTokens(rec, req)
-
-	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
-	}
-}
-
-//nolint:paralleltest // serial: shared fake auth and session fixtures
-func TestAuthCoverage_RevokeToken_Unauthenticated(t *testing.T) {
-	handler := newAuthHandler(t)
-	req := httptest.NewRequest(http.MethodDelete, "/api/v1/auth/tokens/abc", nil)
-	req.SetPathValue("id", "abc")
-
-	rec := httptest.NewRecorder()
-	handler.RevokeToken(rec, req)
-
-	if rec.Code != http.StatusUnauthorized {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
-	}
-}
-
-//nolint:paralleltest // serial: shared fake auth and session fixtures
 func TestAuthCoverage_ChangePassword_Unauthenticated(t *testing.T) {
 	handler := newAuthHandler(t)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/password", strings.NewReader(`{"oldPassword":"x","newPassword":"newpass12"}`))
@@ -418,18 +365,6 @@ func TestAuthCoverage_Principal_NoCookieNoBearer(t *testing.T) {
 
 	if !errors.Is(err, auth.ErrUnauthenticated) {
 		t.Errorf("err = %v, want auth.ErrUnauthenticated", err)
-	}
-}
-
-//nolint:paralleltest // serial: shared fake auth and session fixtures
-func TestAuthCoverage_Principal_BearerWithInvalidToken(t *testing.T) {
-	handler := newAuthHandler(t)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/vms/default/100", nil)
-	req.Header.Set("Authorization", "Bearer invalid-token-value")
-
-	_, err := handler.Principal(req)
-	if err == nil {
-		t.Fatal("expected error for invalid bearer token")
 	}
 }
 
@@ -621,35 +556,6 @@ func TestAuthCoverage_ChangePassword_WithRegistrySucceeds(t *testing.T) {
 }
 
 //nolint:paralleltest // serial: shared fake auth and session fixtures
-func TestAuthCoverage_CreateToken_EmptyLabelReturns400(t *testing.T) {
-	rec := authAuthenticatedRequest(t, "/api/v1/auth/tokens", `{"label":"","scope":"read"}`, func(h *httpapi.Auth, rec http.ResponseWriter, req *http.Request) {
-		h.CreateToken(rec, req)
-	})
-
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusBadRequest)
-	}
-}
-
-//nolint:paralleltest // serial: shared fake auth and session fixtures
-func TestAuthCoverage_RevokeToken_NotFound(t *testing.T) {
-	handler := newAuthHandler(t)
-	login := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
-	cookie := login.Result().Cookies()[0]
-
-	req := httptest.NewRequest(http.MethodDelete, "/api/v1/auth/tokens/nonexistent-id", nil)
-	req.SetPathValue("id", "nonexistent-id")
-	req.AddCookie(cookie)
-
-	rec := httptest.NewRecorder()
-	handler.RevokeToken(rec, req)
-
-	if rec.Code != http.StatusNotFound {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
-	}
-}
-
-//nolint:paralleltest // serial: shared fake auth and session fixtures
 func TestAuthCoverage_Login_UnknownFieldRejected(t *testing.T) {
 	handler := newAuthHandler(t)
 
@@ -716,56 +622,5 @@ func TestAuthCoverage_Logout_WithSessionSucceeds(t *testing.T) {
 
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNoContent)
-	}
-}
-
-//nolint:paralleltest // serial: shared fake auth and session fixtures
-func TestAuthCoverage_ListTokens_WithSessionReturnsList(t *testing.T) {
-	handler := newAuthHandler(t)
-	login := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
-	cookie := login.Result().Cookies()[0]
-
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/tokens", nil)
-	req.AddCookie(cookie)
-
-	rec := httptest.NewRecorder()
-	handler.ListTokens(rec, req)
-
-	if rec.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
-	}
-}
-
-//nolint:paralleltest // serial: shared fake auth and session fixtures
-func TestAuthCoverage_Principal_BearerTokenAuthenticates(t *testing.T) {
-	t.Skip("API tokens deactivated: bearer resolution disabled in Auth.Principal")
-	handler := newAuthHandler(t)
-	login := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
-	cookie := login.Result().Cookies()[0]
-
-	createReq := httptest.NewRequest(http.MethodPost, "/api/v1/auth/tokens", strings.NewReader(`{"label":"test","scope":"read"}`))
-	createReq.Header.Set("Content-Type", "application/json")
-	createReq.AddCookie(cookie)
-
-	createRec := httptest.NewRecorder()
-	handler.CreateToken(createRec, createReq)
-
-	var created struct {
-		Value string `json:"value"`
-	}
-	if err := json.Unmarshal(createRec.Body.Bytes(), &created); err != nil {
-		t.Fatalf("decode token: %v", err)
-	}
-
-	bearerReq := httptest.NewRequest(http.MethodGet, "/api/v1/vms/default/100", nil)
-	bearerReq.Header.Set("Authorization", "Bearer "+created.Value)
-
-	identity, err := handler.Principal(bearerReq)
-	if err != nil {
-		t.Fatalf("Principal: %v", err)
-	}
-
-	if identity.Username != cluster.FakeUserAlice {
-		t.Errorf("username = %q, want %q", identity.Username, cluster.FakeUserAlice)
 	}
 }

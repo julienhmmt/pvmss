@@ -444,7 +444,7 @@ func buildRouter(deps routerDeps) (http.Handler, error) {
 	health := httpapi.NewHealth(st, logger, freshness, 2*cfg.InventoryRefreshInterval)
 	clusterNodes := httpapi.NewClusterNodes(projection, logger)
 	clusterRefresh := httpapi.NewClusterRefresh(refresher, logger)
-	authHandler := httpapi.NewAuthWithRegistry(clusterRegistry, st, sessions, cfg.AdminPasswordHash, auth.NewTokenService(st), logger)
+	authHandler := httpapi.NewAuthWithRegistry(clusterRegistry, st, sessions, cfg.AdminPasswordHash, logger)
 	authHandler.SetClusterFreshnessChecker(freshness, 2*cfg.InventoryRefreshInterval)
 	vms := httpapi.NewVMsWithRegistry(inventoryRegistry, authHandler, cfg.MaxListPageSize, 0, logger, st, policyService)
 

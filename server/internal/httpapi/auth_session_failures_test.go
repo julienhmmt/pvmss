@@ -48,7 +48,7 @@ func newAuthWithBrokenSessions(t *testing.T) *httpapi.Auth {
 		t.Fatalf("NewSessionManager: %v", err)
 	}
 
-	return httpapi.NewAuth(cluster.Fake{}, sessions, string(hash), auth.NewTokenService(newTokenRepository()), testLogger(t))
+	return httpapi.NewAuth(cluster.Fake{}, sessions, string(hash), testLogger(t))
 }
 
 // A session store outage must surface as a 500, never as a login that looks
