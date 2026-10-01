@@ -28,7 +28,7 @@ func TestHandlersDoNotLogErrorThenFailTheRequest(t *testing.T) {
 			continue
 		}
 
-		src, err := os.ReadFile(f)
+		src, err := os.ReadFile(f) //nolint:gosec // reads repo source files
 		if err != nil {
 			t.Fatal(err)
 		}

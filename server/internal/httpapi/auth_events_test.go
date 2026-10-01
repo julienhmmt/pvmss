@@ -74,7 +74,7 @@ func TestAuthEvents_LoginSuccessLogout(t *testing.T) {
 func TestAuthEvents_AdminLoginFailureWarnsWithoutPassword(t *testing.T) {
 	handler := newAuthHandler(t)
 
-	const secret = "wrong-Adm1n-pw"
+	const secret = "wrong-Adm1n-pw" //nolint:gosec // fake credential for redaction test
 
 	rec, out := postWithLog(handler.AdminLogin, "/api/v1/auth/admin-login", `{"password":"`+secret+`"}`, nil)
 	if rec.Code != http.StatusUnauthorized {

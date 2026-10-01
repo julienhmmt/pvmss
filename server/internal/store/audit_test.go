@@ -79,7 +79,7 @@ func TestRecordAction_InsertsOneRowWithRealActor(t *testing.T) {
 	}
 
 	if *row.VMID != 101 {
-		t.Errorf("vmid = %d, want 101", row.VMID)
+		t.Errorf("vmid = %d, want 101", *row.VMID)
 	}
 
 	if row.Action != "stop" {

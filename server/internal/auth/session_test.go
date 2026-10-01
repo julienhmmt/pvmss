@@ -1,4 +1,4 @@
-//nolint:noctx // test scaffolding does not need real context
+//nolint:noctx,goconst // test scaffolding does not need real context; identity literal reused across cases
 package auth_test
 
 import (
