@@ -13,10 +13,13 @@ services:
       LOG_LEVEL: debug
       LOG_FORMAT: console
       LOG_OUTPUT: stdout
+      # SQLite runs in WAL mode (-wal/-shm next to the file), so persist the
+      # whole /data directory, never a single file. Overrides .env.
+      PVMSS_DB_PATH: /data/pvmss.db
     ports:
       - "50000:50000/tcp"
     volumes:
-      - ./pvmss.db:/app/pvmss.db
+      - pvmss_dev_data:/data
     deploy:
       resources:
         limits:
@@ -53,3 +56,6 @@ services:
     command: sh -c "bun install && node node_modules/vite/bin/vite.js dev --host 0.0.0.0 --port 5173"
     depends_on:
       - pvmss-dev
+
+volumes:
+  pvmss_dev_data: {}
