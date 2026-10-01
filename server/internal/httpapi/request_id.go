@@ -5,9 +5,8 @@ import (
 	"encoding/hex"
 	"log/slog"
 	"net/http"
-	"regexp"
-
 	"pvmss/server/internal/logctx"
+	"regexp"
 )
 
 const requestIDHeader = "X-Request-Id"

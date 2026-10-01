@@ -6,6 +6,8 @@ import (
 	"errors"
 	"log/slog"
 	"net/url"
+	"pvmss/server/internal/logctx"
+	"pvmss/server/internal/telemetry"
 	"strconv"
 	"strings"
 	"time"
@@ -14,9 +16,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
-
-	"pvmss/server/internal/logctx"
-	"pvmss/server/internal/telemetry"
 )
 
 const tracerName = "pvmss/cluster"

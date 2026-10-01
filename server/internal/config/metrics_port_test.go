@@ -1,10 +1,9 @@
 package config_test
 
 import (
+	"pvmss/server/internal/config"
 	"strings"
 	"testing"
-
-	"pvmss/server/internal/config"
 )
 
 func setMetricsBaseEnv(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http/httptest"
+	"pvmss/server/internal/telemetry"
 	"strings"
 	"testing"
 	"time"
@@ -11,8 +12,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-
-	"pvmss/server/internal/telemetry"
 )
 
 func scrape(t *testing.T, res telemetry.Result) string {
