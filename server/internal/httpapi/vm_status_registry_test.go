@@ -84,7 +84,7 @@ func TestVMStatusBatch_RegistryGuards(t *testing.T) {
 		want   int
 	}{
 		{"wrong method", http.MethodGet, "", cookie, http.StatusMethodNotAllowed},
-		{"anonymous", http.MethodPost, `[]`, nil, http.StatusUnauthorized},
+		{caseAnonymous, http.MethodPost, `[]`, nil, http.StatusUnauthorized},
 		{"malformed body", http.MethodPost, badJSONBody, cookie, http.StatusBadRequest},
 		{"empty targets", http.MethodPost, `[]`, cookie, http.StatusBadRequest},
 		{"too many targets", http.MethodPost, tooMany, cookie, http.StatusBadRequest},
