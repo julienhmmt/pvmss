@@ -35,7 +35,7 @@ func TestAdminPools_GuardsAndUnknowns(t *testing.T) {
 		{"detail unknown pool", handler.ServeDetail, http.MethodGet, detailPath + "?cluster=default", "", admin, http.StatusNotFound},
 		{"create anonymous", handler.ServeCreate, http.MethodPost, listPath, `{"name":"x"}`, nil, http.StatusUnauthorized},
 		{"create tenant", handler.ServeCreate, http.MethodPost, listPath, `{"name":"x"}`, alice, http.StatusForbidden},
-		{"create malformed body", handler.ServeCreate, http.MethodPost, listPath, "{bad", admin, http.StatusBadRequest},
+		{"create malformed body", handler.ServeCreate, http.MethodPost, listPath, badJSONBody, admin, http.StatusBadRequest},
 		{"delete anonymous", handler.ServeDelete, http.MethodDelete, detailPath, "", nil, http.StatusUnauthorized},
 		{"delete tenant", handler.ServeDelete, http.MethodDelete, detailPath, "", alice, http.StatusForbidden},
 		{"delete unknown cluster", handler.ServeDelete, http.MethodDelete, detailPath + "?cluster=nonexistent", "", admin, http.StatusNotFound},
