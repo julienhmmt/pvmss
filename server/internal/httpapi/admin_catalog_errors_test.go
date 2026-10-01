@@ -21,7 +21,7 @@ func TestAdminCatalogLists_RejectBadClusterAndAnonymous(t *testing.T) {
 			query  string
 			want   int
 		}{
-			{"anonymous", nil, "?cluster=default", http.StatusUnauthorized},
+			{caseAnonymous, nil, "?cluster=default", http.StatusUnauthorized},
 			{"cluster required", cookie, "", http.StatusBadRequest},
 			{"unknown cluster", cookie, "?cluster=nonexistent", http.StatusNotFound},
 		}
