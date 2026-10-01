@@ -279,12 +279,12 @@ const displayNameDiscoveryTimeout = 5 * time.Second
 // listening, so a down cluster cannot delay boot. Each cluster's call is
 // bounded by displayNameDiscoveryTimeout.
 func discoverClusterDisplayNames(ctx context.Context, registry *cluster.Registry, st *store.Store, logger *slog.Logger) {
-	logger.Debug("display name discovery started", "component", "cluster")
-	defer logger.Debug("display name discovery finished", "component", "cluster")
+	logger.DebugContext(ctx, "display name discovery started", "component", "cluster")
+	defer logger.DebugContext(ctx, "display name discovery finished", "component", "cluster")
 
 	rows, err := st.ListClusters(ctx)
 	if err != nil {
-		logger.Warn("display name discovery: list clusters failed", "component", "cluster", "error", err)
+		logger.WarnContext(ctx, "display name discovery: list clusters failed", "component", "cluster", "error", err)
 		return
 	}
 	for _, row := range rows {
@@ -293,7 +293,7 @@ func discoverClusterDisplayNames(ctx context.Context, registry *cluster.Registry
 		}
 		client, err := registry.Client(row.Name)
 		if err != nil {
-			logger.Warn("display name discovery skipped: cluster not in registry", "component", "cluster", "cluster", row.Name, "error", err)
+			logger.WarnContext(ctx, "display name discovery skipped: cluster not in registry", "component", "cluster", "cluster", row.Name, "error", err)
 			continue
 		}
 		if _, ok := client.(cluster.Fake); ok {
@@ -303,14 +303,14 @@ func discoverClusterDisplayNames(ctx context.Context, registry *cluster.Registry
 		displayName, err := client.DisplayName(callCtx)
 		cancel()
 		if err != nil {
-			logger.Warn("cluster display name discovery failed", "component", "cluster", "cluster", row.Name, "error", err)
+			logger.WarnContext(ctx, "cluster display name discovery failed", "component", "cluster", "cluster", row.Name, "error", err)
 			continue
 		}
 		if displayName == "" {
 			continue
 		}
 		if err := st.SetClusterDisplayName(ctx, row.Name, displayName); err != nil {
-			logger.Warn("cluster display name persist failed", "component", "cluster", "cluster", row.Name, "error", err)
+			logger.WarnContext(ctx, "cluster display name persist failed", "component", "cluster", "cluster", row.Name, "error", err)
 		}
 	}
 }
@@ -676,23 +676,23 @@ func runAuditPrune(ctx context.Context, st *store.Store, log *slog.Logger) {
 	prune := func() {
 		cfg, err := st.GetAuditConfig(ctx)
 		if err != nil {
-			log.Error("audit prune: get config failed", "component", "audit", "error", err)
+			log.ErrorContext(ctx, "audit prune: get config failed", "component", "audit", "error", err)
 			return
 		}
 
 		n, err := st.PruneAuditLog(ctx, cfg.RetentionDays)
 		if err != nil {
-			log.Error("audit prune failed", "component", "audit", "error", err)
+			log.ErrorContext(ctx, "audit prune failed", "component", "audit", "error", err)
 			return
 		}
 
 		if n > 0 {
-			log.Info("audit prune completed", "component", "audit", "deleted", n, "retentionDays", cfg.RetentionDays)
+			log.InfoContext(ctx, "audit prune completed", "component", "audit", "deleted", n, "retentionDays", cfg.RetentionDays)
 		}
 	}
 
-	log.Debug("audit prune loop started", "component", "audit", "intervalMs", auditPruneInterval.Milliseconds())
-	defer log.Debug("audit prune loop stopped", "component", "audit")
+	log.DebugContext(ctx, "audit prune loop started", "component", "audit", "intervalMs", auditPruneInterval.Milliseconds())
+	defer log.DebugContext(ctx, "audit prune loop stopped", "component", "audit")
 
 	prune()
 

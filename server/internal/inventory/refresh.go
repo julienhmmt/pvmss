@@ -95,7 +95,7 @@ func (r *Refresher) RefreshAsync(ctx context.Context) error {
 		// (InventoryRefreshTimeout) bounds the call.
 		detached := context.WithoutCancel(ctx)
 		if _, err := r.worker.Refresh(detached); err != nil {
-			r.worker.log.Error("async refresh failed", "component", "inventory", "error", err)
+			r.worker.log.ErrorContext(ctx, "async refresh failed", "component", "inventory", "error", err)
 		}
 	}()
 

@@ -158,7 +158,7 @@ func (h *VMStatusBatch) readTargets(ctx context.Context, identity auth.Identity,
 
 		live, err := reader.VMStatus(ctx, entity.Node, target.VMID)
 		if err != nil {
-			h.log.Warn("batch live status read failed", "component", "httpapi",
+			h.log.WarnContext(ctx, "batch live status read failed", "component", "httpapi",
 				"cluster", target.Cluster, "vmid", target.VMID, "error", err)
 			continue
 		}

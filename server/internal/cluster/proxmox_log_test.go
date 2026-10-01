@@ -63,7 +63,7 @@ func parseLines(t *testing.T, buf *bytes.Buffer) []map[string]any {
 
 	var out []map[string]any
 
-	for _, l := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
+	for l := range strings.SplitSeq(strings.TrimSpace(buf.String()), "\n") {
 		if l == "" {
 			continue
 		}

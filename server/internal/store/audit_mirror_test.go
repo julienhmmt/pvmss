@@ -22,7 +22,7 @@ func mirrorFixture(t *testing.T) (context.Context, func() []map[string]any, func
 	lines := func() []map[string]any {
 		var out []map[string]any
 
-		for _, l := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
+		for l := range strings.SplitSeq(strings.TrimSpace(buf.String()), "\n") {
 			if l == "" {
 				continue
 			}
@@ -62,6 +62,7 @@ func TestAuditMirror_VMActionFields(t *testing.T) {
 	}
 
 	var got map[string]any
+
 	if n := strings.Count(buf.String(), "\n"); n != 1 {
 		t.Fatalf("want exactly 1 line, got %d: %s", n, buf.String())
 	}
