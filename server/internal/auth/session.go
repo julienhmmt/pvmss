@@ -17,6 +17,9 @@ const (
 	// CSRFCookieName is the non-HttpOnly CSRF token cookie sent with every session.
 	CSRFCookieName = "pvmss_csrf"
 	sessionTTL     = 8 * time.Hour
+	// touchInterval is the minimum age of a session's expiry before Resolve
+	// slides it again, so reads do not become writes.
+	touchInterval = 5 * time.Minute
 	// MaxSessionAge is the absolute lifetime of a session, whatever its sliding
 	// expiry says. It bounds how long a stale identity (for example a revoked
 	// admin flag) can outlive the login that produced it.
@@ -127,8 +130,10 @@ func (m *SessionManager) Resolve(ctx context.Context, r *http.Request) (Identity
 		return Identity{}, ErrUnauthenticated
 	}
 
-	if err := m.repository.TouchSession(ctx, hash, time.Now().Add(sessionTTL)); err != nil {
-		return Identity{}, fmt.Errorf("slide session expiry: %w", err)
+	if now := time.Now(); session.ExpiresAt.Before(now.Add(sessionTTL - touchInterval)) {
+		if err := m.repository.TouchSession(ctx, hash, now.Add(sessionTTL)); err != nil {
+			return Identity{}, fmt.Errorf("slide session expiry: %w", err)
+		}
 	}
 
 	return session.Identity, nil

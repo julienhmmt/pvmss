@@ -15,6 +15,7 @@ import (
 type sessionRepository struct {
 	mutex    sync.Mutex
 	sessions map[string]auth.SessionRecord
+	touches  int
 }
 
 func newSessionRepository() *sessionRepository {
@@ -53,6 +54,7 @@ func (r *sessionRepository) TouchSession(_ context.Context, hash []byte, expires
 
 	session.ExpiresAt = expiresAt
 	r.sessions[string(hash)] = session
+	r.touches++
 
 	return nil
 }
@@ -220,5 +222,63 @@ func TestSessionManager_RejectsSessionPastAbsoluteLifetime(t *testing.T) {
 
 	if _, err := manager.CSRFToken(context.Background(), request); err == nil {
 		t.Fatal("CSRFToken accepted a session past the absolute lifetime")
+	}
+}
+
+func (r *sessionRepository) setExpiresIn(d time.Duration) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	for hash, session := range r.sessions {
+		session.ExpiresAt = time.Now().Add(d)
+		r.sessions[hash] = session
+	}
+}
+
+func (r *sessionRepository) touchCount() int {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	return r.touches
+}
+
+// Every API call resolves the session; sliding the expiry on each one turned
+// every request (console and status polling included) into a database write.
+//
+//nolint:paralleltest // serial: shared session repository fixture
+func TestSessionManager_ResolveSlidesExpiryOnlyOnceStale(t *testing.T) {
+	repository := newSessionRepository()
+
+	manager, err := auth.NewSessionManager(repository, "a-session-secret-with-at-least-thirty-two-bytes", false)
+	if err != nil {
+		t.Fatalf("NewSessionManager: %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	if err := manager.SetCookie(context.Background(), recorder, auth.Identity{Username: "alice@pve"}); err != nil {
+		t.Fatalf("SetCookie: %v", err)
+	}
+
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	request.AddCookie(recorder.Result().Cookies()[0])
+
+	for range 3 {
+		if _, err := manager.Resolve(context.Background(), request); err != nil {
+			t.Fatalf("Resolve: %v", err)
+		}
+	}
+
+	if got := repository.touchCount(); got != 0 {
+		t.Fatalf("touches after resolving a fresh session = %d, want 0", got)
+	}
+
+	repository.setExpiresIn(7 * time.Hour)
+
+	if _, err := manager.Resolve(context.Background(), request); err != nil {
+		t.Fatalf("Resolve: %v", err)
+	}
+
+	if got := repository.touchCount(); got != 1 {
+		t.Fatalf("touches after the expiry aged an hour = %d, want 1", got)
 	}
 }
