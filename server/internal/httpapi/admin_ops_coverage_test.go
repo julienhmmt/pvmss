@@ -557,7 +557,7 @@ func newAdminPoolsRegistryHandler(t *testing.T) (*httpapi.AdminPools, *httpapi.A
 	}
 
 	logger := slog.New(slog.DiscardHandler)
-	authHandler := httpapi.NewAuthWithRegistry(registry, st, sessions, string(hash), auth.NewTokenService(st), logger)
+	authHandler := httpapi.NewAuthWithRegistry(registry, st, sessions, string(hash), logger)
 
 	fake := cluster.Fake{}
 

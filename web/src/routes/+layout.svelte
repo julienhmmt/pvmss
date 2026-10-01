@@ -117,7 +117,6 @@
 		'/docs',
 		'/profile',
 		'/login',
-		'/profile/tokens',
 		'/admin/clusters',
 		'/admin/settings',
 		'/admin/appinfo',

@@ -173,136 +173,6 @@ func TestAuth_Logout_RevokesSessionServerSide(t *testing.T) {
 }
 
 //nolint:paralleltest // serial: shared fake auth and session fixtures
-func TestAuth_CreateToken_ResolvesBearerPrincipal(t *testing.T) {
-	t.Skip("API tokens deactivated: bearer resolution disabled in Auth.Principal")
-	handler := newAuthHandler(t)
-	login := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
-	request := httptest.NewRequest(http.MethodPost, "/api/v1/auth/tokens", strings.NewReader(`{"label":"automation","scope":"read"}`))
-	request.AddCookie(login.Result().Cookies()[0])
-
-	response := httptest.NewRecorder()
-	handler.CreateToken(response, request)
-
-	if response.Code != http.StatusCreated {
-		t.Fatalf("status = %d, want %d", response.Code, http.StatusCreated)
-	}
-
-	var created struct {
-		Value string `json:"value"`
-	}
-	if err := json.Unmarshal(response.Body.Bytes(), &created); err != nil {
-		t.Fatalf("decode token response: %v", err)
-	}
-
-	bearer := httptest.NewRequest(http.MethodGet, "/api/v1/cluster/nodes", nil)
-	bearer.Header.Set("Authorization", "Bearer "+created.Value)
-
-	identity, err := handler.Principal(bearer)
-	if err != nil {
-		t.Fatalf("Principal: %v", err)
-	}
-
-	if identity != (auth.Identity{Username: auditTestActor, DisplayName: "alice", Pool: "pool-alice"}) {
-		t.Fatalf("identity = %+v", identity)
-	}
-}
-
-//nolint:paralleltest // serial: shared fake auth and session fixtures
-func TestAuth_ListTokens_OmitsValue(t *testing.T) {
-	handler := newAuthHandler(t)
-	login := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
-	cookie := login.Result().Cookies()[0]
-
-	create := httptest.NewRequest(http.MethodPost, "/api/v1/auth/tokens", strings.NewReader(`{"label":"automation","scope":"read"}`))
-	create.AddCookie(cookie)
-
-	createResponse := httptest.NewRecorder()
-	handler.CreateToken(createResponse, create)
-
-	if createResponse.Code != http.StatusCreated {
-		t.Fatalf("create status = %d, want %d", createResponse.Code, http.StatusCreated)
-	}
-
-	list := httptest.NewRequest(http.MethodGet, "/api/v1/auth/tokens", nil)
-	list.AddCookie(cookie)
-
-	listResponse := httptest.NewRecorder()
-	handler.ListTokens(listResponse, list)
-
-	if listResponse.Code != http.StatusOK {
-		t.Fatalf("list status = %d, want %d", listResponse.Code, http.StatusOK)
-	}
-
-	if strings.Contains(listResponse.Body.String(), "value") {
-		t.Fatalf("token list leaks a value field: %s", listResponse.Body.String())
-	}
-
-	var got struct {
-		Tokens []struct {
-			ID    string `json:"id"`
-			Label string `json:"label"`
-		} `json:"tokens"`
-	}
-	if err := json.Unmarshal(listResponse.Body.Bytes(), &got); err != nil {
-		t.Fatalf("decode token list: %v", err)
-	}
-
-	if len(got.Tokens) != 1 || got.Tokens[0].Label != "automation" {
-		t.Fatalf("tokens = %+v", got.Tokens)
-	}
-}
-
-//nolint:paralleltest // serial: shared fake auth and session fixtures
-func TestAuth_RevokeToken_StopsBearerAuthAndIsIdempotent(t *testing.T) {
-	handler := newAuthHandler(t)
-	login := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
-	cookie := login.Result().Cookies()[0]
-
-	create := httptest.NewRequest(http.MethodPost, "/api/v1/auth/tokens", strings.NewReader(`{"label":"automation","scope":"read"}`))
-	create.AddCookie(cookie)
-
-	createResponse := httptest.NewRecorder()
-	handler.CreateToken(createResponse, create)
-
-	var created struct {
-		ID    string `json:"id"`
-		Value string `json:"value"`
-	}
-	if err := json.Unmarshal(createResponse.Body.Bytes(), &created); err != nil {
-		t.Fatalf("decode token response: %v", err)
-	}
-
-	revoke := httptest.NewRequest(http.MethodDelete, "/api/v1/auth/tokens/"+created.ID, nil)
-	revoke.SetPathValue("id", created.ID)
-	revoke.AddCookie(cookie)
-
-	revokeResponse := httptest.NewRecorder()
-	handler.RevokeToken(revokeResponse, revoke)
-
-	if revokeResponse.Code != http.StatusNoContent {
-		t.Fatalf("revoke status = %d, want %d", revokeResponse.Code, http.StatusNoContent)
-	}
-
-	bearer := httptest.NewRequest(http.MethodGet, "/api/v1/cluster/nodes", nil)
-	bearer.Header.Set("Authorization", "Bearer "+created.Value)
-
-	if _, err := handler.Principal(bearer); err == nil {
-		t.Fatal("expected revoked token to be rejected")
-	}
-
-	again := httptest.NewRequest(http.MethodDelete, "/api/v1/auth/tokens/"+created.ID, nil)
-	again.SetPathValue("id", created.ID)
-	again.AddCookie(cookie)
-
-	againResponse := httptest.NewRecorder()
-	handler.RevokeToken(againResponse, again)
-
-	if againResponse.Code != http.StatusNotFound {
-		t.Fatalf("re-revoke status = %d, want %d", againResponse.Code, http.StatusNotFound)
-	}
-}
-
-//nolint:paralleltest // serial: shared fake auth and session fixtures
 func TestAuth_ChangePassword_AllowsLoginWithNewPasswordOnly(t *testing.T) {
 	handler := newAuthHandler(t)
 	login := serveJSON(handler.Login, "/api/v1/auth/login", `{"username":"alice","password":"pvmss-alice"}`)
@@ -381,7 +251,7 @@ func newAuthHandler(t *testing.T) *httpapi.Auth {
 
 	logger := slog.New(slog.NewTextHandler(testWriter{t}, nil))
 
-	return httpapi.NewAuth(cluster.Fake{}, sessions, string(hash), auth.NewTokenService(newTokenRepository()), logger)
+	return httpapi.NewAuth(cluster.Fake{}, sessions, string(hash), logger)
 }
 
 func newAuthHandlerWithStore(t *testing.T) (*httpapi.Auth, *store.Store) {
@@ -414,7 +284,7 @@ func newAuthHandlerWithStore(t *testing.T) (*httpapi.Auth, *store.Store) {
 		t.Fatalf("NewRegistry: %v", err)
 	}
 
-	return httpapi.NewAuthWithRegistry(registry, st, sessions, string(hash), auth.NewTokenService(newTokenRepository()), logger), st
+	return httpapi.NewAuthWithRegistry(registry, st, sessions, string(hash), logger), st
 }
 
 func serveJSON(handler http.HandlerFunc, path, body string) *httptest.ResponseRecorder {

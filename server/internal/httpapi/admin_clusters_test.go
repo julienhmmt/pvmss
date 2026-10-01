@@ -65,7 +65,7 @@ func newAdminClusterFixture(t *testing.T) adminClusterFixture {
 	if err != nil {
 		t.Fatalf("GenerateFromPassword: %v", err)
 	}
-	authHandler := httpapi.NewAuthWithRegistry(registry, st, sessions, string(hash), auth.NewTokenService(st), slog.Default())
+	authHandler := httpapi.NewAuthWithRegistry(registry, st, sessions, string(hash), slog.Default())
 	handler := httpapi.NewAdminClusters(authHandler, st, registry, indexes, slog.Default())
 	return adminClusterFixture{handler: handler, auth: authHandler, registry: registry, inventory: indexes, store: st}
 }
