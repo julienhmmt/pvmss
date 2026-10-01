@@ -108,7 +108,7 @@ func serveConsoleTicket(
 		return
 	}
 
-	env.log.Info(params.issuedMsg, "component", "httpapi", "cluster", clusterName, "vmid", vmid, "node", ticket.Node)
+	env.log.InfoContext(r.Context(), params.issuedMsg, "component", "httpapi", "cluster", clusterName, "vmid", vmid, "node", ticket.Node)
 	writeConsoleJSON(w, env.log, writeError, http.StatusOK, ticketResponse{Token: ticket.Token, ExpiresInSeconds: int(vm.TicketTTL.Seconds())})
 }
 
@@ -185,11 +185,11 @@ func acceptConsoleWebSocket(
 
 	wsConn, err := websocket.Accept(w, r, nil)
 	if err != nil {
-		env.log.Warn(params.wsUpgradeMsg, "component", "httpapi", "error", err)
+		env.log.WarnContext(r.Context(), params.wsUpgradeMsg, "component", "httpapi", "error", err)
 		return vm.ConsoleTicket{}, nil, false
 	}
 
-	env.log.Info(params.acceptedMsg, "component", "httpapi", "cluster", consumed.Cluster, "vmid", consumed.VMID, "node", consumed.Node, "port", consumed.Port)
+	env.log.InfoContext(r.Context(), params.acceptedMsg, "component", "httpapi", "cluster", consumed.Cluster, "vmid", consumed.VMID, "node", consumed.Node, "port", consumed.Port)
 
 	return consumed, wsConn, true
 }

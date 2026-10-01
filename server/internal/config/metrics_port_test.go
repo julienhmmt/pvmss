@@ -18,7 +18,6 @@ func setMetricsBaseEnv(t *testing.T) {
 	}
 }
 
-//nolint:paralleltest // uses t.Setenv, incompatible with t.Parallel
 func TestLoad_MetricsPort(t *testing.T) {
 	cases := []struct {
 		name    string

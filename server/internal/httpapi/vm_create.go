@@ -61,7 +61,7 @@ func (h *VMCreate) refreshAfterCreate(ctx context.Context, clusterName string) {
 	}
 
 	if _, err := refresher.Refresh(ctx); err != nil {
-		h.log.Warn("post-create inventory refresh failed", "component", "httpapi", "cluster", clusterName, "error", err)
+		h.log.WarnContext(ctx, "post-create inventory refresh failed", "component", "httpapi", "cluster", clusterName, "error", err)
 	}
 }
 

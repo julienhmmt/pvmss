@@ -45,8 +45,8 @@ func TestNewLogger_RedactsSecretKeys(t *testing.T) {
 			t.Parallel()
 
 			logger, _, path := newTestLogger(t, format, "info")
-			logger.Info("probe", "token", "tok-abc", "password", "pw-x", "Cookie", "ck-y",
-				slog.Group("req", slog.String("Authorization", "az-z"), slog.String("csrfToken", "cs-w")),
+			logger.Info("probe", "token", "tok-abc", "password", "pw-x", "cookie", "ck-y",
+				slog.Group("req", slog.String("authorization", "az-z"), slog.String("csrfToken", "cs-w")),
 				"ticket", "tk-v", "secret", "sc-u", "keep", "visible")
 
 			out := readAll(t, path)

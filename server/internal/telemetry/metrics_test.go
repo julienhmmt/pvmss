@@ -3,6 +3,7 @@ package telemetry_test
 import (
 	"context"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"pvmss/server/internal/telemetry"
 	"strings"
@@ -18,7 +19,7 @@ func scrape(t *testing.T, res telemetry.Result) string {
 	t.Helper()
 
 	rec := httptest.NewRecorder()
-	res.MetricsHandler.ServeHTTP(rec, httptest.NewRequest("GET", "/metrics", nil))
+	res.MetricsHandler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
 
 	body, err := io.ReadAll(rec.Result().Body)
 	if err != nil {
@@ -102,7 +103,7 @@ func TestMetrics_PrometheusListsEveryV1InstrumentWithAllowedLabelsOnly(t *testin
 func grepLines(body, sub string) string {
 	var out []string
 
-	for _, l := range strings.Split(body, "\n") {
+	for l := range strings.SplitSeq(body, "\n") {
 		if strings.Contains(l, sub) {
 			out = append(out, l)
 		}

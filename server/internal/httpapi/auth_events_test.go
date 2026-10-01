@@ -32,7 +32,7 @@ func postWithLog(h func(http.ResponseWriter, *http.Request), path, body string, 
 func findLine(t *testing.T, out, msg string) map[string]any {
 	t.Helper()
 
-	for _, l := range strings.Split(out, "\n") {
+	for l := range strings.SplitSeq(out, "\n") {
 		m := map[string]any{}
 		if json.Unmarshal([]byte(l), &m) == nil && m["msg"] == msg {
 			return m

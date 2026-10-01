@@ -76,7 +76,7 @@ func Delete(ctx context.Context, deps CascadeDeps, name string) (DeleteResult, e
 	}
 	if deps.Managed != nil && deps.ClusterName != "" {
 		if err := deps.Managed.UnregisterManagedPool(ctx, deps.ClusterName, name); err != nil {
-			slog.Default().Warn("managed pool marker removal failed", "cluster", deps.ClusterName, "pool", name, "error", err)
+			slog.Default().WarnContext(ctx, "managed pool marker removal failed", "cluster", deps.ClusterName, "pool", name, "error", err)
 		}
 	}
 	userDeleted := deletePoolUser(ctx, client, name)
@@ -169,10 +169,10 @@ func waitForEmpty(ctx context.Context, projection *inventory.Projection, name st
 				return
 			}
 		case <-deadline.C:
-			slog.Default().Warn("pool cascade wait expired; deleting pool anyway", "pool", name)
+			slog.Default().WarnContext(ctx, "pool cascade wait expired; deleting pool anyway", "pool", name)
 			return
 		case <-ctx.Done():
-			slog.Default().Warn("pool cascade context ended; deleting pool anyway", "pool", name, "error", ctx.Err())
+			slog.Default().WarnContext(ctx, "pool cascade context ended; deleting pool anyway", "pool", name, "error", ctx.Err())
 			return
 		}
 	}
@@ -186,7 +186,7 @@ func poolEmpty(projection *inventory.Projection, name string) bool {
 func deletePoolUser(ctx context.Context, client cluster.Client, name string) bool {
 	username := name + "@pve"
 	if err := client.DeleteUser(ctx, username); err != nil {
-		slog.Default().Error("pool user deletion failed", "pool", name, "username", username, "error", err)
+		slog.Default().ErrorContext(ctx, "pool user deletion failed", "pool", name, "username", username, "error", err)
 		return false
 	}
 	return true

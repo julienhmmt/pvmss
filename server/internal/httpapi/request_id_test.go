@@ -18,7 +18,7 @@ func serveWithRequestID(t *testing.T, inbound string) (*httptest.ResponseRecorde
 	log := slog.New(slog.NewJSONHandler(&buf, nil))
 	h := withRequestID(log, http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		logctx.AddAttrs(r.Context(), slog.String("user", "alice@pve"))
-		logctx.From(r.Context()).Info("in handler")
+		logctx.From(r.Context()).InfoContext(r.Context(), "in handler")
 	}))
 
 	req := httptest.NewRequest(http.MethodGet, "/x", nil)

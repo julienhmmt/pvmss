@@ -45,9 +45,10 @@ func waitFor(t *testing.T, what string, ok func() bool) {
 // one request and the startup refresh, with no vmid/user/node label, while the
 // main port answers /metrics with 404 (not the SPA shell).
 //
-//nolint:paralleltest // serial: run() owns process signals and global providers
+
 func TestRun_MetricsEndpoint(t *testing.T) {
 	prevMP, prevTP := otel.GetMeterProvider(), otel.GetTracerProvider()
+
 	t.Cleanup(func() { otel.SetMeterProvider(prevMP); otel.SetTracerProvider(prevTP) })
 
 	mainPort, metricsPort := freePort(t), freePort(t)

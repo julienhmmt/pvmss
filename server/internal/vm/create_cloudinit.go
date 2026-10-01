@@ -136,7 +136,7 @@ func applyCloudInitDocument(ctx context.Context, deps CreateDeps, actor auth.Ide
 	result.CloudInitTemplateID = doc.TemplateID
 
 	if err := attachPublishedDocument(ctx, deps, actor, target, doc); err != nil {
-		deps.Log.Error("cloud-init document attach failed", "component", "vm", "cluster", target.Cluster, "vmid", target.VMID, "filename", doc.Filename, "error", err)
+		deps.Log.ErrorContext(ctx, "cloud-init document attach failed", "component", "vm", "cluster", target.Cluster, "vmid", target.VMID, "filename", doc.Filename, "error", err)
 		result.CloudInitPushError = err.Error()
 	}
 }

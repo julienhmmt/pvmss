@@ -74,7 +74,7 @@ func accessLines(t *testing.T, buf *syncBuffer) []map[string]any {
 
 	var out []map[string]any
 
-	for _, line := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(buf.String()), "\n") {
 		if line == "" {
 			continue
 		}
