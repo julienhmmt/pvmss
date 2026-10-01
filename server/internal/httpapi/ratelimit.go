@@ -17,6 +17,7 @@ import (
 type ipRateLimiter struct {
 	mu               sync.Mutex
 	hits             map[string][]time.Time
+	lastSweep        time.Time
 	max              int
 	window           time.Duration
 	trustedProxyHops int
@@ -29,6 +30,7 @@ type ipRateLimiter struct {
 type userRateLimiter struct {
 	mu               sync.Mutex
 	hits             map[string][]time.Time
+	lastSweep        time.Time
 	max              int
 	window           time.Duration
 	trustedProxyHops int
@@ -47,6 +49,7 @@ func (l *ipRateLimiter) allow(ip string, now time.Time) bool {
 	defer l.mu.Unlock()
 
 	cutoff := now.Add(-l.window)
+	l.lastSweep = sweepIdle(l.hits, l.lastSweep, now, l.window)
 
 	hits := l.hits[ip]
 	kept := hits[:0]
@@ -65,6 +68,26 @@ func (l *ipRateLimiter) allow(ip string, now time.Time) bool {
 	l.hits[ip] = append(kept, now)
 
 	return true
+}
+
+// sweepIdle drops keys whose hits have all left the window, at most once per
+// window, and returns the time of the last sweep. Without it a key that never
+// returns would stay in the map for the life of the process. The caller holds
+// the limiter's lock.
+func sweepIdle(hits map[string][]time.Time, lastSweep, now time.Time, window time.Duration) time.Time {
+	if now.Sub(lastSweep) < window {
+		return lastSweep
+	}
+
+	cutoff := now.Add(-window)
+
+	for key, times := range hits {
+		if len(times) == 0 || !times[len(times)-1].After(cutoff) {
+			delete(hits, key)
+		}
+	}
+
+	return now
 }
 
 // middleware wraps next, rejecting requests over the limit with 429.
@@ -93,6 +116,7 @@ func (l *userRateLimiter) allow(key string, now time.Time) (bool, time.Duration)
 	defer l.mu.Unlock()
 
 	cutoff := now.Add(-l.window)
+	l.lastSweep = sweepIdle(l.hits, l.lastSweep, now, l.window)
 
 	hits := l.hits[key]
 	kept := hits[:0]

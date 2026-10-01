@@ -83,3 +83,31 @@ func TestUserRateLimiter_RetryAfter(t *testing.T) {
 		t.Fatalf("retryAfter = %v, want ~40s", retry)
 	}
 }
+
+// Keys were only pruned when they came back, so every distinct IP or user left
+// an entry behind for the life of the process.
+func TestRateLimiters_EvictIdleKeys(t *testing.T) {
+	t.Parallel()
+
+	base := time.Now()
+	later := base.Add(3 * time.Minute)
+
+	ip := newIPRateLimiter(5, time.Minute, 0, nil)
+	user := newUserRateLimiter(5, time.Minute, 0, nil)
+
+	for _, key := range []string{"a", "b", "c", "d"} {
+		ip.allow(key, base)
+		user.allow(key, base)
+	}
+
+	ip.allow("fresh", later)
+	user.allow("fresh", later)
+
+	if got := len(ip.hits); got != 1 {
+		t.Errorf("ip limiter keys = %d, want 1 (idle keys evicted)", got)
+	}
+
+	if got := len(user.hits); got != 1 {
+		t.Errorf("user limiter keys = %d, want 1 (idle keys evicted)", got)
+	}
+}
