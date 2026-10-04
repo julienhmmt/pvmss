@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import {
 		setAdminCatalogContext,
 		type StorageSortColumn
@@ -22,6 +23,12 @@
 	const toast = getToastContext();
 
 	onMount(() => {
+		// Deep links from dashboard alerts carry ?cluster= and ?search= hints;
+		// assigning them before loadAll keeps the first (and only) fetch.
+		const clusterHint = page.url.searchParams.get('cluster');
+		const searchHint = page.url.searchParams.get('search');
+		if (clusterHint) store.cluster = clusterHint;
+		if (searchHint) store.storageSearch = searchHint;
 		void store.loadAll();
 	});
 

@@ -89,7 +89,7 @@ describe('PoolDetailPage', () => {
 
 	it('links member VMs to their VM page', () => {
 		mount(PoolDetailPage, buildProps(detail()));
-		const link = document.querySelector('a[href="/vms/[cluster]/[vmid]"]');
+		const link = document.querySelector('a[href="/vms/default/100"]');
 		expect(link).not.toBeNull();
 		expect(link?.textContent).toContain('web-01');
 		document.body.innerHTML = '';
