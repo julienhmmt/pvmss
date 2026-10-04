@@ -62,13 +62,23 @@ func Open(cfg config.Configuration) (*Store, error) {
 	}
 	st.encryptionKey = key
 
-	// Demo cluster seeds are written only when the operator has selected the
-	// fake cluster source - i.e. a non-production deployment. A real Proxmox
-	// instance must never start with hardcoded demo credentials in its database.
-	if cfg.ClusterSource == "fake" {
+	// Cluster seeding depends on the selected source. "fake" writes the demo
+	// rows - a real Proxmox instance must never start with hardcoded demo
+	// credentials in its database. "proxmox" seeds one row from the required
+	// PROXMOX_* env vars only when no cluster exists yet: the registry builds
+	// clients exclusively from cluster rows, and the admin endpoint that
+	// creates them is unreachable while the server refuses to boot - without
+	// this seed a fresh deployment crash-loops forever.
+	switch cfg.ClusterSource {
+	case "fake":
 		if err := st.ensureSeedClusters(ctx); err != nil {
 			_ = db.Close()
 			return nil, fmt.Errorf("seed clusters: %w", err)
+		}
+	case "proxmox":
+		if err := st.ensureEnvCluster(ctx, cfg.ProxmoxURL, cfg.ProxmoxAPITokenName, cfg.ProxmoxAPITokenValue); err != nil {
+			_ = db.Close()
+			return nil, fmt.Errorf("seed cluster from environment: %w", err)
 		}
 	}
 

@@ -177,6 +177,87 @@ func TestSetClusterSnippetStorage_RoundTrip(t *testing.T) {
 // show the raw internal name "default" on a fresh deployment.
 //
 //nolint:paralleltest // migration fixtures are intentionally serial
+func openProxmoxStore(t *testing.T, dbPath, url, tokenID, tokenSecret string) *store.Store {
+	t.Helper()
+
+	st, err := store.Open(config.Configuration{
+		DBPath:               dbPath,
+		ClusterSource:        "proxmox",
+		SessionSecret:        clusterTestSecret,
+		ProxmoxURL:           url,
+		ProxmoxAPITokenName:  tokenID,
+		ProxmoxAPITokenValue: tokenSecret,
+	})
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	return st
+}
+
+//nolint:paralleltest // SQLite fixtures are intentionally serial
+func TestEnsureEnvCluster_SeedsDefaultWhenEmpty(t *testing.T) {
+	st := openProxmoxStore(t, filepath.Join(t.TempDir(), "envseed.db"),
+		"https://env-seed.invalid/api2/json", "pvmss@pve!env", "env-token-secret")
+	ctx := context.Background()
+
+	rows, err := st.ListClusters(ctx)
+	if err != nil {
+		t.Fatalf("ListClusters: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Name != "default" {
+		t.Fatalf("ListClusters = %+v, want a single row named %q", rows, "default")
+	}
+
+	row, err := st.GetCluster(ctx, "default")
+	if err != nil {
+		t.Fatalf("GetCluster: %v", err)
+	}
+	if row.URL != "https://env-seed.invalid/api2/json" {
+		t.Errorf("URL = %q, want %q", row.URL, "https://env-seed.invalid/api2/json")
+	}
+	if row.TokenSecret != "env-token-secret" {
+		t.Errorf("TokenSecret = %q, want the decrypted env value", row.TokenSecret)
+	}
+}
+
+//nolint:paralleltest // SQLite fixtures are intentionally serial
+func TestEnsureEnvCluster_SkipsWhenClusterExists(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "keep.db")
+	ctx := context.Background()
+
+	st := openProxmoxStore(t, dbPath,
+		"https://first.invalid/api2/json", "pvmss@pve!first", "first-secret")
+	if err := st.Close(); err != nil {
+		t.Fatalf("close: %v", err)
+	}
+
+	st = openProxmoxStore(t, dbPath,
+		"https://second.invalid/api2/json", "pvmss@pve!second", "second-secret")
+
+	row, err := st.GetCluster(ctx, "default")
+	if err != nil {
+		t.Fatalf("GetCluster: %v", err)
+	}
+	if row.URL != "https://first.invalid/api2/json" || row.TokenSecret != "first-secret" {
+		t.Errorf("env re-seed overwrote the existing row: URL=%q TokenSecret=%q", row.URL, row.TokenSecret)
+	}
+}
+
+//nolint:paralleltest // SQLite fixtures are intentionally serial
+func TestEnsureEnvCluster_SkipsWhenCredentialsMissing(t *testing.T) {
+	st := openProxmoxStore(t, filepath.Join(t.TempDir(), "nocreds.db"), "", "", "")
+
+	rows, err := st.ListClusters(context.Background())
+	if err != nil {
+		t.Fatalf("ListClusters: %v", err)
+	}
+	if len(rows) != 0 {
+		t.Errorf("ListClusters = %+v, want no seeded rows without credentials", rows)
+	}
+}
+
 func TestEnsureSeedClusters_SetsDisplayNames(t *testing.T) {
 	st := openClusterStore(t)
 	ctx := context.Background()

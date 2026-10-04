@@ -388,6 +388,28 @@ func optionalString(value sql.NullString) *string {
 	return &result
 }
 
+// ensureEnvCluster seeds the "default" cluster row from the PROXMOX_URL /
+// PROXMOX_API_TOKEN_NAME / PROXMOX_API_TOKEN_VALUE environment variables when
+// the operator selected the proxmox source and no active cluster exists yet.
+// Once any row is present the env values are ignored - the admin UI owns
+// cluster management from then on. Empty credentials seed nothing (config.Load
+// already rejects that combination for the proxmox source).
+func (s *Store) ensureEnvCluster(ctx context.Context, url, tokenID, tokenSecret string) error {
+	rows, err := s.ListClusters(ctx)
+	if err != nil {
+		return err
+	}
+	if len(rows) > 0 || url == "" || tokenID == "" || tokenSecret == "" {
+		return nil
+	}
+	return s.CreateCluster(ctx, ClusterRow{
+		Name:        "default",
+		URL:         url,
+		TokenID:     tokenID,
+		TokenSecret: tokenSecret,
+	})
+}
+
 func (s *Store) ensureSeedClusters(ctx context.Context) error {
 	seeds := []ClusterRow{
 		{Name: "default", DisplayName: "Demo Cluster Alpha", URL: "https://pve-a.example.com:8006/api2/json", TokenID: serviceTokenID, TokenSecret: "demo-default-service-secret"},
