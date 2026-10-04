@@ -1,11 +1,16 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import PolicyPage from '$lib/features/admin-policy/PolicyPage.svelte';
 	import { setAdminPolicyContext } from '$lib/features/admin-policy/policy.svelte';
 
 	const store = setAdminPolicyContext();
 
 	onMount(() => {
+		// Deep links from dashboard alerts carry a ?cluster= hint; assigning it
+		// before load keeps the first (and only) fetch.
+		const clusterHint = page.url.searchParams.get('cluster');
+		if (clusterHint) store.cluster = clusterHint;
 		void store.load();
 	});
 </script>

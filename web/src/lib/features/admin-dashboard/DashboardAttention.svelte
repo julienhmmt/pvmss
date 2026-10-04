@@ -5,7 +5,6 @@
 	 * With nothing critical or warning to act on it leads with one reassuring
 	 * line, then still lists any informational rows below it.
 	 */
-	import { resolve } from '$app/paths';
 	import Card from '$lib/shared/ui/Card.svelte';
 	import { m } from '$lib/paraglide/messages.js';
 	import { alertHref, alertMessage, type DashboardAlert } from './dashboard-alerts';
@@ -48,10 +47,9 @@
 	{#if alerts.length > 0}
 		<ul class="divide-y divide-border" aria-labelledby="dashboard-attention-heading">
 			{#each alerts as alert (`${alert.kind}/${alert.cluster}/${alert.subject ?? ''}`)}
-				{@const target = alertHref(alert)}
 				<li>
 					<a
-						href={typeof target === 'string' ? resolve(target) : resolve(target.route, target.params)}
+						href={alertHref(alert)}
 						class="flex items-center gap-3 px-5 py-3 text-sm hover:bg-muted/60 pv-focus"
 						data-testid="dashboard-alert"
 						data-kind={alert.kind}

@@ -1,3 +1,4 @@
+import { resolve } from '$app/paths';
 import { m } from '$lib/paraglide/messages.js';
 
 /** One thing an administrator should act on, computed by the server. */
@@ -17,35 +18,33 @@ export interface DashboardAlert {
 	percent?: number;
 }
 
-type AdminPath = '/admin/clusters' | '/admin/storages' | '/admin/policy';
-
-/** A parameterized route plus its params, for alerts that deep-link. */
-interface NodeDetailRoute {
-	route: '/admin/nodes/[cluster]/[node]';
-	params: { cluster: string; node: string };
+/** Appends non-empty params as a query string, or returns the path alone. */
+function withQuery(path: string, query: Record<string, string>): string {
+	const params = new URLSearchParams();
+	for (const [key, value] of Object.entries(query)) {
+		if (value !== '') params.set(key, value);
+	}
+	const qs = params.toString();
+	return qs === '' ? path : `${path}?${qs}`;
 }
 
-/** Where an alert links: a plain path, or a route + params to resolve. */
-export type AlertTarget = AdminPath | NodeDetailRoute;
-
-/** The page where the alert's cause is fixed. Node alerts deep-link to the
- * node detail page; the rest land on the matching admin list. */
-export function alertHref(alert: DashboardAlert): AlertTarget {
+/** The URL where the alert's cause is fixed. Node alerts deep-link to the
+ * node detail page; storage and pool alerts land on the matching admin list
+ * with a ?cluster (and ?search) hint so it opens already filtered. */
+export function alertHref(alert: DashboardAlert): string {
+	const clusterKey = alert.clusterKey ?? alert.cluster;
 	switch (alert.kind) {
 		case 'node_offline':
 		case 'node_offline_disabled':
 		case 'node_cpu':
 		case 'node_memory':
-			return {
-				route: '/admin/nodes/[cluster]/[node]',
-				params: { cluster: alert.clusterKey ?? alert.cluster, node: alert.subject ?? '' }
-			};
+			return resolve('/admin/nodes/[cluster]/[node]', { cluster: clusterKey, node: alert.subject ?? '' });
 		case 'cluster_unreachable':
-			return '/admin/clusters';
+			return resolve('/admin/clusters');
 		case 'storage_full':
-			return '/admin/storages';
+			return withQuery(resolve('/admin/storages'), { cluster: clusterKey, search: alert.subject ?? '' });
 		case 'pool_at_quota':
-			return '/admin/policy';
+			return withQuery(resolve('/admin/policy'), { cluster: clusterKey });
 	}
 }
 
