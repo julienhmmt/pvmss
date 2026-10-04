@@ -12,8 +12,8 @@ import (
 
 // Sentinel errors for the baseline document builder.
 var (
-	// ErrBaselineInvalid reports that an admin override or a user document
-	// failed Validate. The cause is the underlying validation error.
+	// ErrBaselineInvalid reports that a user document failed Validate. The
+	// cause is the underlying validation error.
 	ErrBaselineInvalid = errors.New("baseline document invalid")
 )
 
@@ -57,63 +57,35 @@ power_state:
 // from the same source the create path delivers, never a copy.
 func GeneratedBaseline() string { return generatedBaseline }
 
-// BaselineInputs are the three inputs to the vendor-data document builder.
-// Each is optional; the precedence is generated baseline → admin override
-// replaces it → user document merges on top.
-type BaselineInputs struct {
-	// Override is the cluster-wide admin override
-	// (<snippet_dir>/pvmss-baseline.yml). When non-empty it replaces the
-	// generated baseline entirely.
-	Override string
-	// UserDocument is the actor's own cloud-init document. When non-empty it
-	// merges on top: scalar keys win over the baseline's, and packages/runcmd
-	// concatenate.
-	UserDocument string
-}
-
-// BuildVendorData builds the cloud-init vendor-data document for a cloud-image
-// VM from the three inputs. It is pure: no I/O, no Proxmox, no logging. The
-// precedence is generated baseline → admin override replaces it → user
-// document merges on top (user scalars win, packages and runcmd concatenate).
+// BuildVendorData builds the cloud-init vendor-data document for a
+// cloud-image VM from the generated baseline and an optional user document.
+// It is pure: no I/O, no Proxmox, no logging. The user document merges on
+// top: scalar keys win over the baseline's, and packages/runcmd concatenate.
 //
-// An empty Override selects the generated baseline; an empty UserDocument
-// selects no merge. A malformed Override or UserDocument that fails Validate
-// is rejected with ErrBaselineInvalid wrapping the cause - the create path
-// surfaces the existing validation errors rather than silently dropping the
-// document.
+// An empty userDocument selects the generated baseline verbatim. A malformed
+// userDocument that fails Validate is rejected with ErrBaselineInvalid
+// wrapping the cause - the create path surfaces the existing validation
+// errors rather than silently dropping the document.
 //
-// Because every input is already validated as a #cloud-config YAML mapping,
-// the merge is always YAML-into-YAML - no MIME multipart and no raw-script
-// edge case.
-func BuildVendorData(inputs BaselineInputs) (string, error) {
-	base := generatedBaseline
-	source := "generated"
-
-	if inputs.Override != "" {
-		if err := Validate(inputs.Override); err != nil {
-			return "", fmt.Errorf("%w: admin override: %w", ErrBaselineInvalid, err)
-		}
-
-		base = inputs.Override
-		source = "override"
+// Because the user document is already validated as a #cloud-config YAML
+// mapping, the merge is always YAML-into-YAML - no MIME multipart and no
+// raw-script edge case.
+func BuildVendorData(userDocument string) (string, error) {
+	if userDocument == "" {
+		return generatedBaseline, nil
 	}
 
-	if inputs.UserDocument == "" {
-		return base, nil
-	}
-
-	if err := Validate(inputs.UserDocument); err != nil {
+	if err := Validate(userDocument); err != nil {
 		return "", fmt.Errorf("%w: user document: %w", ErrBaselineInvalid, err)
 	}
 
-	return mergeVendorData(base, inputs.UserDocument, source)
+	return mergeVendorData(generatedBaseline, userDocument)
 }
 
 // mergeVendorData merges userDoc on top of baseDoc. Scalar keys in userDoc win
 // over baseDoc; packages and runcmd concatenate (baseDoc first, userDoc
-// after). The result is re-serialized as a #cloud-config document. source
-// labels the merge in the comment header.
-func mergeVendorData(baseDoc, userDoc, source string) (string, error) {
+// after). The result is re-serialized as a #cloud-config document.
+func mergeVendorData(baseDoc, userDoc string) (string, error) {
 	base, err := parseCloudConfigMap(baseDoc)
 	if err != nil {
 		return "", err
@@ -131,7 +103,7 @@ func mergeVendorData(baseDoc, userDoc, source string) (string, error) {
 		return "", fmt.Errorf("%w: marshal merged document: %w", ErrBaselineInvalid, err)
 	}
 
-	return "#cloud-config\n# PVMSS vendor-data - " + source + " baseline + user document merged.\n" + string(out), nil
+	return "#cloud-config\n# PVMSS vendor-data - generated baseline + user document merged.\n" + string(out), nil
 }
 
 // parseCloudConfigMap parses a #cloud-config document into a generic map. The
