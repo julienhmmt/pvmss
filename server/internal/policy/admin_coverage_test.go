@@ -41,7 +41,6 @@ func TestSetPolicy_ValidGabaritAndQuota_PersistsAllFields(t *testing.T) {
 	gabarit := policy.Gabarit{
 		MaxSockets: 2, MaxCores: 6, MaxMemoryMB: 8192,
 		MaxDiskPerVMGB: 80, MaxNetworkCards: 2, MaxSnapshots: 3,
-		AllowCustomYAML: false,
 	}
 	if err := service.SetPolicy(ctx, "default", gabarit, 7); err != nil {
 		t.Fatalf("SetPolicy: %v", err)

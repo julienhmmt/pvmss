@@ -279,14 +279,23 @@ func (s *Store) ConfirmImport(ctx context.Context, token string) (ImportResult, 
 // replaceTable deletes every row of `table` from the live DB (within tx) and
 // re-inserts every row copied from the staged upload DB. Table and column
 // names come from sqlite_master introspection, never user input.
+//
+// The insert column list is the intersection of the upload's columns with the
+// live table's: a backup exported before a column was dropped still imports
+// (the dropped column is ignored), and a live column absent from an older
+// upload falls back to its schema default.
 func replaceTable(ctx context.Context, tx *sql.Tx, uploadDB *sql.DB, table string) error {
-	// Introspect the upload table's columns - the live schema is the same
-	// (the upload came from an export of this schema), but reading from the
-	// upload avoids assuming the live schema's column order matches.
 	cols, err := tableColumns(ctx, uploadDB, table)
 	if err != nil {
 		return fmt.Errorf("introspect %s: %w", table, err)
 	}
+
+	liveCols, err := tableColumns(ctx, tx, table)
+	if err != nil {
+		return fmt.Errorf("introspect live %s: %w", table, err)
+	}
+
+	cols = intersectCols(cols, liveCols)
 
 	if len(cols) == 0 {
 		return fmt.Errorf("table %s has no columns", table)
@@ -386,10 +395,34 @@ func dereferenceScanArgs(table string, scanArgs []any) ([]any, error) {
 	return insertArgs, nil
 }
 
+// intersectCols returns the upload columns that also exist in the live table,
+// preserving upload order.
+func intersectCols(upload, live []string) []string {
+	inLive := make(map[string]bool, len(live))
+	for _, c := range live {
+		inLive[c] = true
+	}
+
+	out := make([]string, 0, len(upload))
+
+	for _, c := range upload {
+		if inLive[c] {
+			out = append(out, c)
+		}
+	}
+
+	return out
+}
+
+// queryer is satisfied by both *sql.DB and *sql.Tx.
+type queryer interface {
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+}
+
 // tableColumns returns the column names of `table` from db, in definition
 // order. `table` must be a real table in db (validated by the caller via
 // sqlite_master).
-func tableColumns(ctx context.Context, db *sql.DB, table string) ([]string, error) {
+func tableColumns(ctx context.Context, db queryer, table string) ([]string, error) {
 	rows, err := db.QueryContext(ctx, fmt.Sprintf(`PRAGMA table_info(%s)`, table))
 	if err != nil {
 		return nil, err

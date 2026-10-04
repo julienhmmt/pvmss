@@ -307,7 +307,7 @@ func TestCreateCluster_SeedsPolicyRow(t *testing.T) {
 	want := store.PolicyRow{
 		Cluster: "seeded-policy", MaxSockets: 4, MaxCores: 8, MaxMemoryMB: 16384,
 		MaxDiskPerVMGB: 500, MaxNetworkCards: 4, MaxSnapshots: 5,
-		MaxVMPerUser: -1, AllowCustomYAML: true,
+		MaxVMPerUser: -1,
 	}
 	if got != want {
 		t.Errorf("PolicyRow = %+v, want %+v", got, want)

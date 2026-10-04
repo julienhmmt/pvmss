@@ -13,7 +13,6 @@ function buildPolicy(overrides: Partial<AdminPolicy['gabarit']> = {}): AdminPoli
 			maxDiskPerVmGb: 500,
 			maxNetworkCards: 4,
 			maxSnapshots: 5,
-			allowCustomYaml: false,
 			isolationVlanTag: 0,
 			...overrides
 		},

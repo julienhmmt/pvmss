@@ -33,7 +33,6 @@ func TestPolicyReads_SeededDefaults(t *testing.T) {
 		MaxDiskPerVMGB:  500,
 		MaxNetworkCards: 4,
 		MaxSnapshots:    5,
-		AllowCustomYAML: true,
 	}
 	if gabarit != want {
 		t.Fatalf("gabarit = %+v, want %+v", gabarit, want)

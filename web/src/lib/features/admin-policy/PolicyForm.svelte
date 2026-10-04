@@ -39,7 +39,6 @@
 			form.gabarit.maxDiskPerVmGb !== original.gabarit.maxDiskPerVmGb ||
 			form.gabarit.maxNetworkCards !== original.gabarit.maxNetworkCards ||
 			form.gabarit.maxSnapshots !== original.gabarit.maxSnapshots ||
-			form.gabarit.allowCustomYaml !== original.gabarit.allowCustomYaml ||
 			form.gabarit.isolationVlanTag !== original.gabarit.isolationVlanTag
 	);
 

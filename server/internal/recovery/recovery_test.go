@@ -219,14 +219,13 @@ func assertRecoveredDB(ctx context.Context, t *testing.T, v04Path string) {
 
 	var (
 		sockets, cores, memMB, diskGB, netCards, snapshots, vmPerUser int
-		allowYAML                                                     bool
 	)
 
 	err = db.QueryRowContext(ctx, `
 		SELECT max_sockets, max_cores, max_memory_mb, max_disk_per_vm_gb,
-		       max_network_cards, max_snapshots, max_vm_per_user, allow_custom_yaml
+		       max_network_cards, max_snapshots, max_vm_per_user
 		FROM vm_limits WHERE cluster = ?`, "test-cluster").Scan(
-		&sockets, &cores, &memMB, &diskGB, &netCards, &snapshots, &vmPerUser, &allowYAML,
+		&sockets, &cores, &memMB, &diskGB, &netCards, &snapshots, &vmPerUser,
 	)
 	if err != nil {
 		t.Fatalf("query vm_limits: %v", err)
@@ -236,9 +235,9 @@ func assertRecoveredDB(ctx context.Context, t *testing.T, v04Path string) {
 		t.Errorf("vm_limits no-source fields = (%d,%d,%d), want T12 defaults (4,8,16384)", sockets, cores, memMB)
 	}
 
-	if diskGB != 20 || netCards != 3 || snapshots != 8 || vmPerUser != 5 || !allowYAML {
-		t.Errorf("vm_limits copied fields = (%d,%d,%d,%d,%v), want (20,3,8,5,true)",
-			diskGB, netCards, snapshots, vmPerUser, allowYAML)
+	if diskGB != 20 || netCards != 3 || snapshots != 8 || vmPerUser != 5 {
+		t.Errorf("vm_limits copied fields = (%d,%d,%d,%d), want (20,3,8,5)",
+			diskGB, netCards, snapshots, vmPerUser)
 	}
 }
 

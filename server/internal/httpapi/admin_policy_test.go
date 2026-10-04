@@ -50,8 +50,7 @@ func TestAdminPolicy_RequiresAdminAndReturnsSeparatedShape(t *testing.T) {
 			var response struct {
 				Cluster string `json:"cluster"`
 				Gabarit struct {
-					MaxDiskPerVMGB  int  `json:"maxDiskPerVmGb"`
-					AllowCustomYAML bool `json:"allowCustomYaml"`
+					MaxDiskPerVMGB int `json:"maxDiskPerVmGb"`
 				} `json:"gabarit"`
 				Quota struct {
 					MaxVMPerUser int `json:"maxVmPerUser"`
@@ -61,7 +60,7 @@ func TestAdminPolicy_RequiresAdminAndReturnsSeparatedShape(t *testing.T) {
 				t.Fatalf("decode policy: %v", err)
 			}
 
-			if response.Cluster != auditTestCluster || response.Gabarit.MaxDiskPerVMGB != 500 || !response.Gabarit.AllowCustomYAML || response.Quota.MaxVMPerUser != -1 {
+			if response.Cluster != auditTestCluster || response.Gabarit.MaxDiskPerVMGB != 500 || response.Quota.MaxVMPerUser != -1 {
 				t.Fatalf("response = %+v", response)
 			}
 		})

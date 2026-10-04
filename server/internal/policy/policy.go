@@ -61,7 +61,6 @@ type Gabarit struct {
 	MaxDiskPerVMGB   int
 	MaxNetworkCards  int
 	MaxSnapshots     int
-	AllowCustomYAML  bool
 	IsolationVLANTag int
 }
 
@@ -132,7 +131,7 @@ func DefaultGabarit() Gabarit {
 	return Gabarit{
 		MaxSockets: defaultMaxSockets, MaxCores: defaultMaxCores, MaxMemoryMB: defaultMaxMemoryMB,
 		MaxDiskPerVMGB: defaultMaxDiskPerVMGB, MaxNetworkCards: defaultMaxNetworkCards,
-		MaxSnapshots: defaultMaxSnapshots, AllowCustomYAML: true,
+		MaxSnapshots: defaultMaxSnapshots,
 	}
 }
 
@@ -171,7 +170,7 @@ func gabaritFromRow(row store.PolicyRow) Gabarit {
 	return Gabarit{
 		MaxSockets: row.MaxSockets, MaxCores: row.MaxCores, MaxMemoryMB: row.MaxMemoryMB,
 		MaxDiskPerVMGB: row.MaxDiskPerVMGB, MaxNetworkCards: row.MaxNetworkCards,
-		MaxSnapshots: row.MaxSnapshots, AllowCustomYAML: row.AllowCustomYAML,
+		MaxSnapshots:     row.MaxSnapshots,
 		IsolationVLANTag: row.IsolationVLANTag,
 	}
 }
@@ -194,7 +193,6 @@ func (service *Policy) policyRowOrDefault(ctx context.Context, clusterName strin
 			MaxNetworkCards:  defaults.MaxNetworkCards,
 			MaxSnapshots:     defaults.MaxSnapshots,
 			MaxVMPerUser:     defaultMaxVMPerUser,
-			AllowCustomYAML:  defaults.AllowCustomYAML,
 			IsolationVLANTag: defaults.IsolationVLANTag,
 		}, nil
 	}
