@@ -284,3 +284,56 @@ func TestEnsureSeedClusters_SetsDisplayNames(t *testing.T) {
 		}
 	}
 }
+
+//nolint:paralleltest // serial: shared database fixture
+func TestCreateCluster_SeedsPolicyRow(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	row := store.ClusterRow{
+		Name:        "seeded-policy",
+		URL:         "https://seeded-policy.invalid/api2/json",
+		TokenID:     "tok",
+		TokenSecret: "secret",
+	}
+	if err := st.CreateCluster(ctx, row); err != nil {
+		t.Fatalf("CreateCluster: %v", err)
+	}
+
+	got, err := st.PolicyRow(ctx, "seeded-policy")
+	if err != nil {
+		t.Fatalf("PolicyRow: %v", err)
+	}
+	want := store.PolicyRow{
+		Cluster: "seeded-policy", MaxSockets: 4, MaxCores: 8, MaxMemoryMB: 16384,
+		MaxDiskPerVMGB: 500, MaxNetworkCards: 4, MaxSnapshots: 5,
+		MaxVMPerUser: -1, AllowCustomYAML: true,
+	}
+	if got != want {
+		t.Errorf("PolicyRow = %+v, want %+v", got, want)
+	}
+
+	// The fake-mode secondary cluster previously had no policy row at all.
+	if _, err := st.PolicyRow(ctx, "secondary"); err != nil {
+		t.Errorf("secondary cluster policy row: %v", err)
+	}
+
+	// Reactivating a soft-deleted cluster must not reset an edited policy row.
+	got.MaxCores = 99
+	if err := st.UpsertPolicyRow(ctx, got); err != nil {
+		t.Fatalf("UpsertPolicyRow: %v", err)
+	}
+	if err := st.SoftDeleteCluster(ctx, "seeded-policy"); err != nil {
+		t.Fatalf("SoftDeleteCluster: %v", err)
+	}
+	if err := st.CreateCluster(ctx, row); err != nil {
+		t.Fatalf("CreateCluster reactivation: %v", err)
+	}
+	preserved, err := st.PolicyRow(ctx, "seeded-policy")
+	if err != nil {
+		t.Fatalf("PolicyRow after reactivation: %v", err)
+	}
+	if preserved.MaxCores != 99 {
+		t.Errorf("reactivation reset MaxCores to %d, want preserved 99", preserved.MaxCores)
+	}
+}

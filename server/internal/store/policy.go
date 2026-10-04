@@ -82,6 +82,16 @@ func (s *Store) UpsertPolicyRow(ctx context.Context, row PolicyRow) error {
 	return nil
 }
 
+// defaultPolicySeed inserts the shipped gabarit/quota values - the same
+// values as the schemaV10 'default' row - for a cluster that has no policy
+// row yet. ON CONFLICT DO NOTHING preserves an existing row when a
+// soft-deleted cluster is reactivated.
+const defaultPolicySeed = `INSERT INTO vm_limits (
+	cluster, max_sockets, max_cores, max_memory_mb, max_disk_per_vm_gb,
+	max_network_cards, max_snapshots, max_vm_per_user, allow_custom_yaml, isolation_vlan_tag
+) VALUES (?, 4, 8, 16384, 500, 4, 5, -1, 1, 0)
+ON CONFLICT(cluster) DO NOTHING`
+
 // NodePolicyRow reads one node's configured capacité. Missing rows are reported
 // as sql.ErrNoRows so callers can apply the all-zero no-cap default.
 func (s *Store) NodePolicyRow(ctx context.Context, cluster, node string) (NodePolicyRow, error) {

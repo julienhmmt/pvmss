@@ -129,6 +129,14 @@ describe('PolicyForm', () => {
 		document.body.innerHTML = '';
 	});
 
+	it('disables the save button when a field is cleared', async () => {
+		mount(PolicyForm, buildProps(buildPolicy()));
+		setInputValue(getFirstInput(), '');
+		await tick();
+		expect(getSubmitButton().disabled).toBe(true);
+		document.body.innerHTML = '';
+	});
+
 	it('does not show the discard button when the form is clean', () => {
 		mount(PolicyForm, buildProps(buildPolicy()));
 		expect(getDiscardButton()).toBeUndefined();
