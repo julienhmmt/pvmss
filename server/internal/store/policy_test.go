@@ -90,6 +90,88 @@ func TestUpsertPolicyRow_InsertThenUpdate(t *testing.T) {
 	}
 }
 
+//nolint:paralleltest // serial: shared database fixture
+func TestReplacePolicyRow_CompareAndSwap(t *testing.T) {
+	st := openClusterStore(t)
+	ctx := context.Background()
+
+	t.Run("inserts when no row exists and none was expected", func(t *testing.T) {
+		next := samplePolicyRow("cas-cluster")
+		if err := st.ReplacePolicyRow(ctx, nil, next); err != nil {
+			t.Fatalf("ReplacePolicyRow insert: %v", err)
+		}
+
+		got, err := st.PolicyRow(ctx, "cas-cluster")
+		if err != nil {
+			t.Fatalf("PolicyRow: %v", err)
+		}
+
+		if got != next {
+			t.Errorf("PolicyRow = %+v, want %+v", got, next)
+		}
+	})
+
+	t.Run("rejects insert when a row appeared meanwhile", func(t *testing.T) {
+		err := st.ReplacePolicyRow(ctx, nil, samplePolicyRow("cas-cluster"))
+		if !errors.Is(err, store.ErrPolicyConflict) {
+			t.Fatalf("error = %v, want ErrPolicyConflict", err)
+		}
+	})
+
+	t.Run("updates when the stored row still equals expected", func(t *testing.T) {
+		expected, err := st.PolicyRow(ctx, "cas-cluster")
+		if err != nil {
+			t.Fatalf("PolicyRow: %v", err)
+		}
+
+		next := expected
+		next.MaxVMPerUser = 42
+
+		if err := st.ReplacePolicyRow(ctx, &expected, next); err != nil {
+			t.Fatalf("ReplacePolicyRow swap: %v", err)
+		}
+
+		got, err := st.PolicyRow(ctx, "cas-cluster")
+		if err != nil {
+			t.Fatalf("PolicyRow: %v", err)
+		}
+
+		if got.MaxVMPerUser != 42 {
+			t.Errorf("MaxVMPerUser = %d, want 42", got.MaxVMPerUser)
+		}
+	})
+
+	t.Run("rejects when the stored row changed since the read", func(t *testing.T) {
+		stale, err := st.PolicyRow(ctx, "cas-cluster")
+		if err != nil {
+			t.Fatalf("PolicyRow: %v", err)
+		}
+
+		current := stale
+		current.MaxSnapshots = 9
+		if err := st.UpsertPolicyRow(ctx, current); err != nil {
+			t.Fatalf("seed concurrent change: %v", err)
+		}
+
+		next := stale
+		next.MaxVMPerUser = 7
+
+		err = st.ReplacePolicyRow(ctx, &stale, next)
+		if !errors.Is(err, store.ErrPolicyConflict) {
+			t.Fatalf("error = %v, want ErrPolicyConflict", err)
+		}
+
+		got, err := st.PolicyRow(ctx, "cas-cluster")
+		if err != nil {
+			t.Fatalf("PolicyRow: %v", err)
+		}
+
+		if got.MaxSnapshots != 9 || got.MaxVMPerUser != stale.MaxVMPerUser {
+			t.Errorf("concurrent write was clobbered: %+v", got)
+		}
+	})
+}
+
 func sampleNodePolicyRow(cluster, node string) store.NodePolicyRow {
 	return store.NodePolicyRow{
 		Cluster:   cluster,

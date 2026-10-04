@@ -126,62 +126,58 @@ func (handler *AdminPolicy) ServePolicyUpdate(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	current, err := handler.readPolicy(r.Context(), clusterName)
+	update, err := handler.service.UpdatePolicy(r.Context(), clusterName, func(current policy.Settings) policy.Settings {
+		next := current
+		applyGabaritPatch(&next.Gabarit, request.Gabarit)
+		applyQuotaPatch(&next.Allowed, request.Quota)
+
+		return next
+	})
 	if err != nil {
-		handler.writeFailure(w, "read policy before update", err)
-		return
-	}
-
-	gabarit := gabaritFromDTO(current.Gabarit)
-	quota := current.Quota.MaxVMPerUser
-
-	applyGabaritPatch(&gabarit, request.Gabarit)
-	applyQuotaPatch(&quota, request.Quota)
-
-	if err := handler.service.SetPolicy(r.Context(), clusterName, gabarit, quota); err != nil {
 		handler.writePolicyValidation(w, err)
 		return
 	}
 
-	updated, err := handler.readPolicy(r.Context(), clusterName)
-	if err != nil {
-		handler.writeFailure(w, "read policy after update", err)
-		return
+	if update.Changed {
+		changes := policyChangeDiff(update.Before, update.After)
+		handler.recordAdminAction(r, "admin.policy.update", "policy", clusterName,
+			"updated policy for cluster "+clusterName, changes)
 	}
 
-	changes := policyChangeDiff(current, updated)
-	handler.recordAdminAction(r, "admin.policy.update", "policy", clusterName,
-		"updated policy for cluster "+clusterName, changes)
-	writeAdminJSON(w, http.StatusOK, updated)
+	writeAdminJSON(w, http.StatusOK, policyResponse{
+		Cluster: clusterName,
+		Gabarit: policyGabaritDTOFromModel(update.After.Gabarit),
+		Quota:   policyQuotaDTO{MaxVMPerUser: update.After.Allowed},
+	})
 }
 
-// policyChangeDiff compares the before/after policy snapshots and returns a
+// policyChangeDiff compares the before/after policy settings and returns a
 // list of change entries for the audit detail payload.
-func policyChangeDiff(current, updated policyResponse) []any {
+func policyChangeDiff(before, after policy.Settings) []any {
 	changes := []any{}
-	if current.Quota.MaxVMPerUser != updated.Quota.MaxVMPerUser {
-		changes = append(changes, map[string]any{auditKeyField: "quota.maxVmPerUser", auditKeyOld: current.Quota.MaxVMPerUser, auditKeyNew: updated.Quota.MaxVMPerUser})
+	if before.Allowed != after.Allowed {
+		changes = append(changes, map[string]any{auditKeyField: "quota.maxVmPerUser", auditKeyOld: before.Allowed, auditKeyNew: after.Allowed})
 	}
-	if current.Gabarit.MaxSockets != updated.Gabarit.MaxSockets {
-		changes = append(changes, map[string]any{auditKeyField: "gabarit.maxSockets", auditKeyOld: current.Gabarit.MaxSockets, auditKeyNew: updated.Gabarit.MaxSockets})
+	if before.Gabarit.MaxSockets != after.Gabarit.MaxSockets {
+		changes = append(changes, map[string]any{auditKeyField: "gabarit.maxSockets", auditKeyOld: before.Gabarit.MaxSockets, auditKeyNew: after.Gabarit.MaxSockets})
 	}
-	if current.Gabarit.MaxCores != updated.Gabarit.MaxCores {
-		changes = append(changes, map[string]any{auditKeyField: "gabarit.maxCores", auditKeyOld: current.Gabarit.MaxCores, auditKeyNew: updated.Gabarit.MaxCores})
+	if before.Gabarit.MaxCores != after.Gabarit.MaxCores {
+		changes = append(changes, map[string]any{auditKeyField: "gabarit.maxCores", auditKeyOld: before.Gabarit.MaxCores, auditKeyNew: after.Gabarit.MaxCores})
 	}
-	if current.Gabarit.MaxMemoryMB != updated.Gabarit.MaxMemoryMB {
-		changes = append(changes, map[string]any{auditKeyField: "gabarit.maxMemoryMB", auditKeyOld: current.Gabarit.MaxMemoryMB, auditKeyNew: updated.Gabarit.MaxMemoryMB})
+	if before.Gabarit.MaxMemoryMB != after.Gabarit.MaxMemoryMB {
+		changes = append(changes, map[string]any{auditKeyField: "gabarit.maxMemoryMB", auditKeyOld: before.Gabarit.MaxMemoryMB, auditKeyNew: after.Gabarit.MaxMemoryMB})
 	}
-	if current.Gabarit.MaxDiskPerVMGB != updated.Gabarit.MaxDiskPerVMGB {
-		changes = append(changes, map[string]any{auditKeyField: "gabarit.maxDiskPerVmGb", auditKeyOld: current.Gabarit.MaxDiskPerVMGB, auditKeyNew: updated.Gabarit.MaxDiskPerVMGB})
+	if before.Gabarit.MaxDiskPerVMGB != after.Gabarit.MaxDiskPerVMGB {
+		changes = append(changes, map[string]any{auditKeyField: "gabarit.maxDiskPerVmGb", auditKeyOld: before.Gabarit.MaxDiskPerVMGB, auditKeyNew: after.Gabarit.MaxDiskPerVMGB})
 	}
-	if current.Gabarit.MaxNetworkCards != updated.Gabarit.MaxNetworkCards {
-		changes = append(changes, map[string]any{auditKeyField: "gabarit.maxNetworkCards", auditKeyOld: current.Gabarit.MaxNetworkCards, auditKeyNew: updated.Gabarit.MaxNetworkCards})
+	if before.Gabarit.MaxNetworkCards != after.Gabarit.MaxNetworkCards {
+		changes = append(changes, map[string]any{auditKeyField: "gabarit.maxNetworkCards", auditKeyOld: before.Gabarit.MaxNetworkCards, auditKeyNew: after.Gabarit.MaxNetworkCards})
 	}
-	if current.Gabarit.MaxSnapshots != updated.Gabarit.MaxSnapshots {
-		changes = append(changes, map[string]any{auditKeyField: "gabarit.maxSnapshots", auditKeyOld: current.Gabarit.MaxSnapshots, auditKeyNew: updated.Gabarit.MaxSnapshots})
+	if before.Gabarit.MaxSnapshots != after.Gabarit.MaxSnapshots {
+		changes = append(changes, map[string]any{auditKeyField: "gabarit.maxSnapshots", auditKeyOld: before.Gabarit.MaxSnapshots, auditKeyNew: after.Gabarit.MaxSnapshots})
 	}
-	if current.Gabarit.IsolationVLANTag != updated.Gabarit.IsolationVLANTag {
-		changes = append(changes, map[string]any{auditKeyField: "gabarit.isolationVlanTag", auditKeyOld: current.Gabarit.IsolationVLANTag, auditKeyNew: updated.Gabarit.IsolationVLANTag})
+	if before.Gabarit.IsolationVLANTag != after.Gabarit.IsolationVLANTag {
+		changes = append(changes, map[string]any{auditKeyField: "gabarit.isolationVlanTag", auditKeyOld: before.Gabarit.IsolationVLANTag, auditKeyNew: after.Gabarit.IsolationVLANTag})
 	}
 	return changes
 }
@@ -193,10 +189,6 @@ func (handler *AdminPolicy) readPolicy(ctx context.Context, clusterName string) 
 	}
 
 	return policyResponse{Cluster: clusterName, Gabarit: policyGabaritDTOFromModel(settings.Gabarit), Quota: policyQuotaDTO{MaxVMPerUser: settings.Allowed}}, nil
-}
-
-func gabaritFromDTO(dto policyGabaritDTO) policy.Gabarit {
-	return policy.Gabarit{MaxSockets: dto.MaxSockets, MaxCores: dto.MaxCores, MaxMemoryMB: dto.MaxMemoryMB, MaxDiskPerVMGB: dto.MaxDiskPerVMGB, MaxNetworkCards: dto.MaxNetworkCards, MaxSnapshots: dto.MaxSnapshots, IsolationVLANTag: dto.IsolationVLANTag}
 }
 
 func policyGabaritDTOFromModel(gabarit policy.Gabarit) policyGabaritDTO {
@@ -246,6 +238,11 @@ func applyQuotaPatch(quota *int, patch *policyQuotaPatch) {
 func (handler *AdminPolicy) writePolicyValidation(w http.ResponseWriter, err error) {
 	if errors.Is(err, policy.ErrInvalidPolicy) {
 		writeAdminError(w, http.StatusBadRequest, "invalid_policy", err.Error())
+		return
+	}
+
+	if errors.Is(err, policy.ErrConcurrentUpdate) {
+		writeAdminError(w, http.StatusConflict, "policy_conflict", "the policy was modified concurrently; reload and retry")
 		return
 	}
 
