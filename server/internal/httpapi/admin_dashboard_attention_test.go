@@ -300,32 +300,40 @@ func TestAdminDashboard_OfflineNodeSeverity(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ops, authHandler := offlineSeverityOps(t, tt)
-
-			rec := opsGet(t, ops, authHandler, adminCookie(t, authHandler), "/api/v1/admin/dashboard")
-			if rec.Code != http.StatusOK {
-				t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
-			}
-
-			var dash attentionDashboardDTO
-			if err := json.Unmarshal(rec.Body.Bytes(), &dash); err != nil {
-				t.Fatalf("decode: %v", err)
-			}
-
-			// The fixture only trips node_cpu (warning, n1) and the offline
-			// alert (n2): critical first, info last.
-			if len(dash.Alerts) != 2 {
-				t.Fatalf("alerts = %+v, want exactly 2", dash.Alerts)
-			}
-
-			offline := dash.Alerts[0]
-			if tt.wantSeverity == sevInfo {
-				offline = dash.Alerts[1]
-			}
-
-			if offline.Subject != "n2" || offline.Kind != tt.wantKind || offline.Severity != tt.wantSeverity {
-				t.Errorf("offline alert = %+v, want n2 kind %s severity %s", offline, tt.wantKind, tt.wantSeverity)
-			}
+			assertOfflineSeverity(t, tt)
 		})
+	}
+}
+
+// assertOfflineSeverity GETs the dashboard for the case's cluster and checks
+// the n2 offline alert kind and severity.
+func assertOfflineSeverity(t *testing.T, tt offlineSeverityCase) {
+	t.Helper()
+
+	ops, authHandler := offlineSeverityOps(t, tt)
+
+	rec := opsGet(t, ops, authHandler, adminCookie(t, authHandler), "/api/v1/admin/dashboard")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
+	}
+
+	var dash attentionDashboardDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &dash); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	// The fixture only trips node_cpu (warning, n1) and the offline
+	// alert (n2): critical first, info last.
+	if len(dash.Alerts) != 2 {
+		t.Fatalf("alerts = %+v, want exactly 2", dash.Alerts)
+	}
+
+	offline := dash.Alerts[0]
+	if tt.wantSeverity == sevInfo {
+		offline = dash.Alerts[1]
+	}
+
+	if offline.Subject != "n2" || offline.Kind != tt.wantKind || offline.Severity != tt.wantSeverity {
+		t.Errorf("offline alert = %+v, want n2 kind %s severity %s", offline, tt.wantKind, tt.wantSeverity)
 	}
 }

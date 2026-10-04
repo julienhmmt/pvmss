@@ -279,14 +279,7 @@ func TestProfileSSHKeys_CreateValidation(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			rec := serveProfileSSHKeys(t, mux, http.MethodPost, profileSSHKeysPath, tc.body, session, csrf)
-			if rec.Code != tc.wantStatus {
-				t.Fatalf("status = %d, want %d: %s", rec.Code, tc.wantStatus, rec.Body.String())
-			}
-
-			if body := decodeProfileSSHKeyError(t, rec); body.Code != tc.wantCode {
-				t.Fatalf("code = %q, want %q", body.Code, tc.wantCode)
-			}
+			assertCreateKeyRejected(t, mux, session, csrf, tc.body, tc.wantStatus, tc.wantCode)
 		})
 	}
 
@@ -296,26 +289,43 @@ func TestProfileSSHKeys_CreateValidation(t *testing.T) {
 	}
 
 	t.Run("duplicate label", func(t *testing.T) {
-		rec := createProfileSSHKey(t, mux, session, csrf, "laptop", otherKey)
-		if rec.Code != http.StatusConflict {
-			t.Fatalf("status = %d, want 409", rec.Code)
-		}
-
-		if body := decodeProfileSSHKeyError(t, rec); body.Code != "duplicate_label" {
-			t.Fatalf("code = %q, want duplicate_label", body.Code)
-		}
+		assertCreateKeyConflict(t, mux, session, csrf, "laptop", otherKey, "duplicate_label")
 	})
 
 	t.Run("duplicate key with different comment", func(t *testing.T) {
-		rec := createProfileSSHKey(t, mux, session, csrf, "copy", strings.Fields(validKey)[0]+" "+strings.Fields(validKey)[1]+" pasted-again")
-		if rec.Code != http.StatusConflict {
-			t.Fatalf("status = %d, want 409", rec.Code)
-		}
-
-		if body := decodeProfileSSHKeyError(t, rec); body.Code != "duplicate_key" {
-			t.Fatalf("code = %q, want duplicate_key", body.Code)
-		}
+		repasted := strings.Fields(validKey)[0] + " " + strings.Fields(validKey)[1] + " pasted-again"
+		assertCreateKeyConflict(t, mux, session, csrf, "copy", repasted, "duplicate_key")
 	})
+}
+
+// assertCreateKeyRejected POSTs body to the create endpoint and wants
+// wantStatus with error code wantCode.
+func assertCreateKeyRejected(t *testing.T, mux http.Handler, session, csrf *http.Cookie, body string, wantStatus int, wantCode string) {
+	t.Helper()
+
+	rec := serveProfileSSHKeys(t, mux, http.MethodPost, profileSSHKeysPath, body, session, csrf)
+	if rec.Code != wantStatus {
+		t.Fatalf("status = %d, want %d: %s", rec.Code, wantStatus, rec.Body.String())
+	}
+
+	if errBody := decodeProfileSSHKeyError(t, rec); errBody.Code != wantCode {
+		t.Fatalf("code = %q, want %q", errBody.Code, wantCode)
+	}
+}
+
+// assertCreateKeyConflict creates a key and wants a 409 with error code
+// wantCode.
+func assertCreateKeyConflict(t *testing.T, mux http.Handler, session, csrf *http.Cookie, label, publicKey, wantCode string) {
+	t.Helper()
+
+	rec := createProfileSSHKey(t, mux, session, csrf, label, publicKey)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409", rec.Code)
+	}
+
+	if errBody := decodeProfileSSHKeyError(t, rec); errBody.Code != wantCode {
+		t.Fatalf("code = %q, want %q", errBody.Code, wantCode)
+	}
 }
 
 //nolint:paralleltest // serial: shared database fixture
