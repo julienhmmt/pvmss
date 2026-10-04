@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"pvmss/server/internal/auth"
 	"pvmss/server/internal/logctx"
 	"pvmss/server/internal/policy"
 	"pvmss/server/internal/store"
@@ -193,17 +192,12 @@ func policyChangeDiff(current, updated policyResponse) []any {
 }
 
 func (handler *AdminPolicy) readPolicy(ctx context.Context, clusterName string) (policyResponse, error) {
-	gabarit, err := handler.service.Gabarit(ctx, clusterName)
+	settings, err := handler.service.Settings(ctx, clusterName)
 	if err != nil {
 		return policyResponse{}, err
 	}
 
-	quota, err := handler.service.Quota(ctx, clusterName, auth.Identity{})
-	if err != nil {
-		return policyResponse{}, err
-	}
-
-	return policyResponse{Cluster: clusterName, Gabarit: policyGabaritDTOFromModel(gabarit), Quota: policyQuotaDTO{MaxVMPerUser: quota.Allowed}}, nil
+	return policyResponse{Cluster: clusterName, Gabarit: policyGabaritDTOFromModel(settings.Gabarit), Quota: policyQuotaDTO{MaxVMPerUser: settings.Allowed}}, nil
 }
 
 func gabaritFromDTO(dto policyGabaritDTO) policy.Gabarit {
