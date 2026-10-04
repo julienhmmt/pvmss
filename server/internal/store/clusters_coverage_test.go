@@ -329,42 +329,6 @@ func TestSetClusterTestResult_NotFound(t *testing.T) {
 }
 
 //nolint:paralleltest // migration fixtures are intentionally serial
-func TestSetClusterOIDC_SuccessAndNotFound(t *testing.T) {
-	st := openClusterStore(t)
-	ctx := context.Background()
-
-	if err := st.SetClusterOIDC(ctx, testStoreCluster, true); err != nil {
-		t.Fatalf("SetClusterOIDC(true): %v", err)
-	}
-
-	stored, err := st.GetCluster(ctx, testStoreCluster)
-	if err != nil {
-		t.Fatalf("GetCluster: %v", err)
-	}
-
-	if !stored.OIDCEnabled {
-		t.Error("OIDCEnabled = false, want true")
-	}
-
-	if err := st.SetClusterOIDC(ctx, testStoreCluster, false); err != nil {
-		t.Fatalf("SetClusterOIDC(false): %v", err)
-	}
-
-	stored, err = st.GetCluster(ctx, testStoreCluster)
-	if err != nil {
-		t.Fatalf("GetCluster after disable: %v", err)
-	}
-
-	if stored.OIDCEnabled {
-		t.Error("OIDCEnabled = true, want false")
-	}
-
-	if err := st.SetClusterOIDC(ctx, "nonexistent", true); !errors.Is(err, sql.ErrNoRows) {
-		t.Fatalf("SetClusterOIDC(nonexistent) error = %v, want sql.ErrNoRows", err)
-	}
-}
-
-//nolint:paralleltest // migration fixtures are intentionally serial
 func TestSetClusterDisplayName_SuccessAndClearAndNotFound(t *testing.T) {
 	st := openClusterStore(t)
 	ctx := context.Background()

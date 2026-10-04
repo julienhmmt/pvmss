@@ -19,7 +19,7 @@ import (
 
 // newClusterAuthFixture builds a registry-backed Auth handler against a
 // freshly-migrated, 3-cluster-seeded store (default/secondary/offline-demo),
-// shared by every test in this file that needs multi-cluster login/OIDC
+// shared by every test in this file that needs multi-cluster login
 // behavior.
 func newClusterAuthFixture(t *testing.T) (*httpapi.Auth, *store.Store) {
 	t.Helper()
@@ -83,85 +83,4 @@ func loginRequest(t *testing.T, handler *httpapi.Auth, body string) *httptest.Re
 	response := httptest.NewRecorder()
 	handler.Login(response, request)
 	return response
-}
-
-func oidcRequestFor(t *testing.T, handler *httpapi.Auth, body string) *httptest.ResponseRecorder {
-	t.Helper()
-	request := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/v1/auth/oidc", strings.NewReader(body))
-	request.Header.Set("Content-Type", "application/json")
-	response := httptest.NewRecorder()
-	handler.OIDC(response, request)
-	return response
-}
-
-// TestAuth_OIDC - OIDC sign-in on a cluster with oidcEnabled
-// false or missing 404s (nothing to attempt), a missing cluster is a plain
-// 400, and - the case this OIDC surface exists to prove -
-// attempting sign-in on a cluster the admin HAS enabled OIDC for returns a
-// clean 501, never a redirect or any other partial success.
-//
-//nolint:paralleltest // authentication fixture shares fake identities
-func TestAuth_OIDC(t *testing.T) {
-	authHandler, st := newClusterAuthFixture(t)
-
-	t.Run("missing cluster is 400", func(t *testing.T) {
-		response := oidcRequestFor(t, authHandler, `{}`)
-		if response.Code != http.StatusBadRequest {
-			t.Fatalf("status = %d, want 400: %s", response.Code, response.Body.String())
-		}
-	})
-
-	t.Run("oidc disabled is 404, never a redirect", func(t *testing.T) {
-		response := oidcRequestFor(t, authHandler, `{"cluster":"default"}`)
-		if response.Code != http.StatusNotFound {
-			t.Fatalf("status = %d, want 404: %s", response.Code, response.Body.String())
-		}
-		if location := response.Header().Get("Location"); location != "" {
-			t.Fatalf("unexpected Location header on a disabled-OIDC response: %q", location)
-		}
-	})
-
-	t.Run("oidc enabled returns 501, not a broken redirect", func(t *testing.T) {
-		runOIDCEnabledCase(t, authHandler, st)
-	})
-}
-
-// runOIDCEnabledCase enables OIDC on the secondary cluster, requests it
-// (expecting 501 with no redirect), and verifies the default cluster is
-// unaffected (still 404). Extracted from TestAuth_OIDC to keep its Cognitive
-// Complexity under the SonarQube go:S3776 threshold.
-func runOIDCEnabledCase(t *testing.T, authHandler *httpapi.Auth, st *store.Store) {
-	t.Helper()
-
-	if err := st.SetClusterOIDC(context.Background(), crossSecondaryCluster, true); err != nil {
-		t.Fatalf("SetClusterOIDC: %v", err)
-	}
-
-	response := oidcRequestFor(t, authHandler, `{"cluster":"secondary"}`)
-	if response.Code != http.StatusNotImplemented {
-		t.Fatalf("status = %d, want 501: %s", response.Code, response.Body.String())
-	}
-
-	if location := response.Header().Get("Location"); location != "" {
-		t.Fatalf("unexpected Location header on the 501 response: %q", location)
-	}
-
-	var body struct {
-		Code string `json:"code"`
-	}
-	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-
-	if body.Code != "not_implemented" {
-		t.Fatalf("error code = %q, want not_implemented", body.Code)
-	}
-
-	// The 501 must be scoped to the enabled cluster only - default,
-	// never toggled, must still 404 (isolation, checked from the login-affordance side rather than
-	// the admin-toggle side).
-	untouched := oidcRequestFor(t, authHandler, `{"cluster":"default"}`)
-	if untouched.Code != http.StatusNotFound {
-		t.Fatalf("default status after secondary's toggle = %d, want still 404: %s", untouched.Code, untouched.Body.String())
-	}
 }

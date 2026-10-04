@@ -297,12 +297,13 @@ func TestRunMigrations_V14RebuildsBridgeIdentity(t *testing.T) {
 // that ALTER or DROP tables created by earlier migrations, so a focused test
 // that marks versions 1-13 as applied (without replaying V7's full seed) can
 // still run the full migration list. V16 alters clusters; V17 drops
-// catalog_isos; V19 rebuilds audit_log; V21 alters catalog_profiles.
+// catalog_isos; V19 rebuilds audit_log; V21 alters catalog_profiles; V36
+// drops clusters.oidc_enabled (created by V11).
 func createMigrationStandInTables(ctx context.Context, t *testing.T, db *sql.DB) {
 	t.Helper()
 
 	standins := []string{
-		`CREATE TABLE IF NOT EXISTS clusters (name TEXT PRIMARY KEY)`,
+		`CREATE TABLE IF NOT EXISTS clusters (name TEXT PRIMARY KEY, oidc_enabled INTEGER NOT NULL DEFAULT 0)`,
 		`CREATE TABLE IF NOT EXISTS catalog_nodes (cluster TEXT NOT NULL, name TEXT NOT NULL, PRIMARY KEY (cluster, name))`,
 		`CREATE TABLE IF NOT EXISTS catalog_storages (cluster TEXT NOT NULL, name TEXT NOT NULL, node TEXT NOT NULL, PRIMARY KEY (cluster, name, node))`,
 		`CREATE TABLE IF NOT EXISTS catalog_isos (cluster TEXT NOT NULL, storage TEXT NOT NULL, file TEXT NOT NULL, enabled BOOLEAN NOT NULL DEFAULT 1, PRIMARY KEY (cluster, storage, file))`,

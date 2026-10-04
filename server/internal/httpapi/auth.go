@@ -382,7 +382,6 @@ func (h *Auth) loginClient(name string) (cluster.Client, string, error) {
 type authClusterDTO struct {
 	Name        string `json:"name"`
 	DisplayName string `json:"displayName"`
-	OIDCEnabled bool   `json:"oidcEnabled"`
 }
 
 // ServeClusters exposes the non-secret cluster choices needed before login.
@@ -403,30 +402,9 @@ func (h *Auth) ServeClusters(w http.ResponseWriter, r *http.Request) {
 	}
 	result := make([]authClusterDTO, 0, len(rows))
 	for _, row := range rows {
-		result = append(result, authClusterDTO{Name: row.Name, DisplayName: row.DisplayName, OIDCEnabled: row.OIDCEnabled})
+		result = append(result, authClusterDTO{Name: row.Name, DisplayName: row.DisplayName})
 	}
 	writeAuthJSON(w, http.StatusOK, result)
-}
-
-type oidcRequest struct {
-	Cluster string `json:"cluster"`
-}
-
-// OIDC returns the deliberate not-implemented response for enabled realms.
-func (h *Auth) OIDC(w http.ResponseWriter, r *http.Request) {
-	var request oidcRequest
-	if err := decodeJSON(w, r, &request); err != nil || request.Cluster == "" {
-		writeAuthError(w, http.StatusBadRequest, "invalid_request", "cluster is required")
-		return
-	}
-	if h.clusterStore != nil {
-		row, err := h.clusterStore.GetCluster(r.Context(), request.Cluster)
-		if err != nil || !row.OIDCEnabled {
-			writeAuthError(w, http.StatusNotFound, "not_found", "OIDC is not enabled for this cluster")
-			return
-		}
-	}
-	writeAuthError(w, http.StatusNotImplemented, "not_implemented", "OIDC sign-in is not implemented")
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, dest any) error {

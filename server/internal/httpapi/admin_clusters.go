@@ -46,7 +46,6 @@ type adminClusterDTO struct {
 	TLSInsecureSkipVerify bool    `json:"tlsInsecureSkipVerify"`
 	TokenID               string  `json:"tokenId"`
 	TokenSet              bool    `json:"tokenSet"`
-	OIDCEnabled           bool    `json:"oidcEnabled"`
 	RemovedAt             *string `json:"removedAt"`
 	LastTestStatus        *string `json:"lastTestStatus"`
 	LastTestAt            *string `json:"lastTestAt"`
@@ -105,10 +104,6 @@ type testClusterResponse struct {
 	TestedAt       string `json:"testedAt"`
 }
 
-type oidcClusterRequest struct {
-	Enabled bool `json:"enabled"`
-}
-
 // ServeList handles GET /api/v1/admin/clusters.
 func (handler *AdminClusters) ServeList(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -160,7 +155,7 @@ func (handler *AdminClusters) ServeCreate(w http.ResponseWriter, r *http.Request
 	}
 	handler.recordAdminAction(r, "admin.clusters.create", "cluster", created.Name,
 		"created cluster "+created.Name,
-		[]any{map[string]any{auditKeyName: created.Name, "url": created.URL, "tlsInsecureSkipVerify": created.TLSInsecureSkipVerify, "tokenId": created.TokenID, "oidcEnabled": created.OIDCEnabled, "snippetStorage": created.SnippetStorage}})
+		[]any{map[string]any{auditKeyName: created.Name, "url": created.URL, "tlsInsecureSkipVerify": created.TLSInsecureSkipVerify, "tokenId": created.TokenID, "snippetStorage": created.SnippetStorage}})
 	writeAdminJSON(w, http.StatusCreated, handler.clusterDTO(created))
 }
 
@@ -211,7 +206,7 @@ func (handler *AdminClusters) ServeUpdate(w http.ResponseWriter, r *http.Request
 	}
 	handler.recordAdminAction(r, "admin.clusters.update", "cluster", name,
 		"updated cluster "+name,
-		[]any{map[string]any{auditKeyName: name, "url": updated.URL, "tlsInsecureSkipVerify": updated.TLSInsecureSkipVerify, "tokenId": updated.TokenID, "oidcEnabled": updated.OIDCEnabled, "snippetStorage": updated.SnippetStorage}})
+		[]any{map[string]any{auditKeyName: name, "url": updated.URL, "tlsInsecureSkipVerify": updated.TLSInsecureSkipVerify, "tokenId": updated.TokenID, "snippetStorage": updated.SnippetStorage}})
 	writeAdminJSON(w, http.StatusOK, handler.clusterDTO(updated))
 }
 
@@ -259,27 +254,6 @@ func (handler *AdminClusters) ServeTest(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	writeAdminJSON(w, http.StatusOK, testClusterResponse{Status: "ok", ProxmoxVersion: snapshot.ProxmoxVersion, NodeCount: len(snapshot.Nodes), VMCount: len(snapshot.VMs), TestedAt: testedAt.Format(time.RFC3339Nano)})
-}
-
-// ServeOIDC handles POST /api/v1/admin/clusters/:name/oidc.
-func (handler *AdminClusters) ServeOIDC(w http.ResponseWriter, r *http.Request) {
-	var request oidcClusterRequest
-	if err := decodeJSON(w, r, &request); err != nil {
-		writeAdminError(w, http.StatusBadRequest, "invalid_request", "invalid OIDC request")
-		return
-	}
-	name := r.PathValue("name")
-	if err := handler.store.SetClusterOIDC(r.Context(), name, request.Enabled); err != nil {
-		handler.writeStoreFailure(w, err)
-		return
-	}
-	handler.recordAdminAction(r, "admin.clusters.oidc", "cluster", name,
-		fmt.Sprintf("set cluster %s OIDC enabled=%v", name, request.Enabled),
-		[]any{map[string]any{auditKeyName: name, "oidcEnabled": request.Enabled}})
-	writeAdminJSON(w, http.StatusOK, struct {
-		Name        string `json:"name"`
-		OIDCEnabled bool   `json:"oidcEnabled"`
-	}{Name: name, OIDCEnabled: request.Enabled})
 }
 
 // ServeDelete handles DELETE /api/v1/admin/clusters/:name as a soft delete.
@@ -391,7 +365,7 @@ func (handler *AdminClusters) clusterDTO(row store.ClusterRow) adminClusterDTO {
 
 	return adminClusterDTO{
 		Name: row.Name, DisplayName: row.DisplayName, URL: row.URL, TLSInsecureSkipVerify: row.TLSInsecureSkipVerify, TokenID: row.TokenID,
-		TokenSet: row.TokenSecret != "", OIDCEnabled: row.OIDCEnabled, RemovedAt: formatTime(row.RemovedAt),
+		TokenSet: row.TokenSecret != "", RemovedAt: formatTime(row.RemovedAt),
 		LastTestStatus: lastTestStatus, LastTestAt: lastTestAt, LastTestMessage: lastTestMessage,
 		ProxmoxVersion: optionalValue(version), NodeCount: nodeCount, VMCount: vmCount,
 		SnippetStorage: row.SnippetStorage, CloudInitWriteEnabled: row.SnippetStorage != "",

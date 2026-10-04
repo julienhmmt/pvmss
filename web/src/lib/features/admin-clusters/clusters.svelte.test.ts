@@ -12,7 +12,6 @@ const cluster = {
 	tlsInsecureSkipVerify: false,
 	tokenId: 'pvmss@pve!service',
 	tokenSet: true,
-	oidcEnabled: false,
 	removedAt: null,
 	lastTestStatus: 'ok' as const,
 	lastTestAt: null,
@@ -49,17 +48,6 @@ describe('AdminClustersStore', () => {
 		});
 		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
 		expect(JSON.parse(init?.body as string)).toMatchObject({ snippetStorage: 'shared' });
-	});
-
-	it('toggles OIDC locally from the server acknowledgement', async () => {
-		const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { name: 'secondary', oidcEnabled: true }));
-		vi.stubGlobal('fetch', fetchMock);
-		const store = new AdminClustersStore();
-		store.clusters = [cluster];
-		await store.toggleOIDC('secondary', true);
-		expect(store.clusters[0]?.oidcEnabled).toBe(true);
-		const init = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
-		expect(JSON.parse(init?.body as string)).toEqual({ enabled: true });
 	});
 
 	it('loadSnippetStorages() queries the snippet-storages endpoint with the cluster name', async () => {

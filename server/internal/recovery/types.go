@@ -72,7 +72,6 @@ type ClusterRow struct {
 	TLSInsecureSkipVerify bool
 	TokenID               string
 	TokenSecretCiphertext []byte
-	OIDCEnabled           bool
 	CreatedAt             string
 }
 

@@ -392,6 +392,10 @@ WHERE NOT EXISTS (SELECT 1 FROM vm_limits WHERE vm_limits.cluster = clusters.nam
 // import path intersects upload columns with the live table.
 const schemaV35 = `ALTER TABLE vm_limits DROP COLUMN allow_custom_yaml`
 
+// schemaV36 drops the oidc_enabled column. OIDC sign-in was stubbed (501)
+// and never implemented; the toggle was the column's only writer.
+const schemaV36 = `ALTER TABLE clusters DROP COLUMN oidc_enabled`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -436,4 +440,5 @@ var Migrations = []Migration{
 	{Version: 33, DDL: schemaV33},
 	{Version: 34, DDL: schemaV34},
 	{Version: 35, DDL: schemaV35},
+	{Version: 36, DDL: schemaV36},
 }

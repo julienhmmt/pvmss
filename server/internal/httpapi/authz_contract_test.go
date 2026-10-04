@@ -244,13 +244,12 @@ func runAdminProtectCase(t *testing.T, authHandler *httpapi.Auth, cookie *http.C
 
 // csrfExemptRoutes lists non-GET routes that are deliberately not wrapped in
 // the browser-session CSRF middleware because they are public, unauthenticated
-// endpoints (login, admin-login, OIDC trigger). Exemption justifications are
+// endpoints (login, admin-login). Exemption justifications are
 // embedded in the test logic.
 func csrfExemptRoutes() map[string]string {
 	return map[string]string{
 		"POST /api/v1/auth/login":       "public unauthenticated login endpoint",
 		"POST /api/v1/auth/admin-login": "public unauthenticated admin-login endpoint",
-		"POST /api/v1/auth/oidc":        "public OIDC trigger endpoint",
 	}
 }
 

@@ -24,7 +24,6 @@ import (
 const (
 	adminClusterTestSecret    = "admin-cluster-test-secret-with-32-bytes"
 	adminClustersPath         = "/api/v1/admin/clusters"
-	oidcEnabledBody           = `{"enabled":true}`
 	adminClusterSnippetTarget = "shared"
 )
 
@@ -205,7 +204,6 @@ func TestAdminClusters_NonAdminReturns403(t *testing.T) {
 		{testOpCreate, fixture.handler.ServeCreate, http.MethodPost, adminClustersPath, "", `{"name":"tertiary","url":"https://pve-d.example.com:8006/api2/json","tokenId":"pvmss@pve!service","tokenSecret":"s"}`},
 		{testOpUpdate, fixture.handler.ServeUpdate, http.MethodPut, adminClustersSecondaryPath, crossSecondaryCluster, `{"url":"https://pve-b.example.com:8006/api2/json","tokenId":"pvmss@pve!service"}`},
 		{testOpTest, fixture.handler.ServeTest, http.MethodPost, adminClustersSecondaryPath + "/test", crossSecondaryCluster, ""},
-		{testOpOIDC, fixture.handler.ServeOIDC, http.MethodPost, adminClustersOIDCPath, crossSecondaryCluster, oidcEnabledBody},
 		{testActionDelete, fixture.handler.ServeDelete, http.MethodDelete, "/api/v1/admin/clusters/secondary", crossSecondaryCluster, ""},
 	}
 	for _, testCase := range cases {
@@ -434,44 +432,6 @@ func TestAdminClusters_LiveVersionOverridesStaleDB(t *testing.T) {
 	t.Fatalf("cluster %q missing from list", auditTestCluster)
 }
 
-// TestAdminClusters_OIDCToggleIsolated - toggling one cluster's
-// OIDC flag changes only that row; every other cluster's flag is untouched.
-// Also covers the 404 path for an unknown/removed cluster.
-//
-//nolint:paralleltest // HTTP fixture shares fake cluster state
-func TestAdminClusters_OIDCToggleIsolated(t *testing.T) {
-	fixture := newAdminClusterFixture(t)
-	cookie := adminClusterCookie(t, fixture.auth)
-
-	response := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeOIDC, HTTPMethod: http.MethodPost, Path: "/api/v1/admin/clusters/secondary/oidc", Name: crossSecondaryCluster, Body: oidcEnabledBody})
-	if response.Code != http.StatusOK {
-		t.Fatalf("oidc toggle status = %d, want 200: %s", response.Code, response.Body.String())
-	}
-
-	list := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeList, HTTPMethod: http.MethodGet, Path: adminClustersPath, Name: "", Body: ""})
-	var rows []adminClusterDTOForTest
-	if err := json.Unmarshal(list.Body.Bytes(), &rows); err != nil {
-		t.Fatalf("decode list: %v", err)
-	}
-	for _, row := range rows {
-		switch row.Name {
-		case crossSecondaryCluster:
-			if !row.OIDCEnabled {
-				t.Errorf("secondary oidcEnabled = false, want true after toggle")
-			}
-		default:
-			if row.OIDCEnabled {
-				t.Errorf("cluster %q oidcEnabled = true, want untouched by secondary's toggle", row.Name)
-			}
-		}
-	}
-
-	response = adminClusterRequest(t, fixture, cookie, clusterRequestSpec{Method: fixture.handler.ServeOIDC, HTTPMethod: http.MethodPost, Path: "/api/v1/admin/clusters/nonexistent/oidc", Name: "nonexistent", Body: oidcEnabledBody})
-	if response.Code != http.StatusNotFound {
-		t.Fatalf("oidc toggle on unknown cluster status = %d, want 404: %s", response.Code, response.Body.String())
-	}
-}
-
 // TestAdminClusters_DeleteLastClusterConflictAndReactivateRoundTrip -
 // Removing the sole remaining active cluster is refused with 409, never leaving PVMSS with zero
 // addressable clusters. Also proves the
@@ -585,7 +545,6 @@ type adminClusterDTOForTest struct {
 	URL                   string  `json:"url"`
 	TLSInsecureSkipVerify bool    `json:"tlsInsecureSkipVerify"`
 	TokenSet              bool    `json:"tokenSet"`
-	OIDCEnabled           bool    `json:"oidcEnabled"`
 	RemovedAt             *string `json:"removedAt"`
 	LastTestStatus        *string `json:"lastTestStatus"`
 	LastTestAt            *string `json:"lastTestAt"`

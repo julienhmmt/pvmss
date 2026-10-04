@@ -297,7 +297,6 @@ func TestAdminClustersCoverage_Unauthenticated_Returns401(t *testing.T) {
 		{testOpCreate, fixture.handler.ServeCreate, http.MethodPost, adminClustersPath, "", `{"name":"x","url":"u","tokenId":"t","tokenSecret":"s"}`},
 		{testOpUpdate, fixture.handler.ServeUpdate, http.MethodPut, adminClustersSecondaryPath, crossSecondaryCluster, `{"url":"u","tokenId":"t"}`},
 		{testOpTest, fixture.handler.ServeTest, http.MethodPost, adminClustersSecondaryPath + "/test", crossSecondaryCluster, ""},
-		{testOpOIDC, fixture.handler.ServeOIDC, http.MethodPost, adminClustersOIDCPath, crossSecondaryCluster, oidcEnabledBody},
 		{testActionDelete, fixture.handler.ServeDelete, http.MethodDelete, adminClustersSecondaryPath, crossSecondaryCluster, ""},
 	}
 
@@ -354,23 +353,6 @@ func TestAdminClustersCoverage_UpdateInvalidJSON_Returns400(t *testing.T) {
 	rec := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{
 		Method: fixture.handler.ServeUpdate, HTTPMethod: http.MethodPut,
 		Path: adminClustersSecondaryPath, Name: crossSecondaryCluster, Body: "{bad json",
-	})
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())
-	}
-
-	assertAPIError(t, rec.Body.Bytes(), apiCodeInvalidRequest)
-}
-
-// TestAdminClustersCoverage_OIDCInvalidJSON_Returns400 covers the ServeOIDC
-// branch where the request body is not valid JSON.
-func TestAdminClustersCoverage_OIDCInvalidJSON_Returns400(t *testing.T) {
-	fixture := newAdminClusterFixture(t)
-	cookie := adminClusterCookie(t, fixture.auth)
-
-	rec := adminClusterRequest(t, fixture, cookie, clusterRequestSpec{
-		Method: fixture.handler.ServeOIDC, HTTPMethod: http.MethodPost,
-		Path: adminClustersOIDCPath, Name: crossSecondaryCluster, Body: "{bad json",
 	})
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("status = %d, want %d: %s", rec.Code, http.StatusBadRequest, rec.Body.String())

@@ -10,8 +10,7 @@ const KNOWN_ERROR_CODES: Partial<Record<string, () => string>> = {
 	invalid_request: m['login.error.invalidRequest'],
 	cluster_required: m['login.error.clusterRequired'],
 	invalid_cluster: m['login.error.invalidCluster'],
-	cluster_unavailable: m['login.error.clusterUnavailable'],
-	not_found: m['login.error.oidcNotEnabled']
+	cluster_unavailable: m['login.error.clusterUnavailable']
 };
 
 function translateError(error: unknown, fallback: () => string): string {
@@ -84,20 +83,6 @@ export class LoginForm {
 			return null;
 		} finally {
 			this.loading = false;
-		}
-	}
-
-	async signInOIDC(): Promise<boolean> {
-		if (this.cluster === '') {
-			this.error = m['login.error.clusterRequired']();
-			return false;
-		}
-		try {
-			await post<void>('/api/v1/auth/oidc', { cluster: this.cluster });
-			return true;
-		} catch (error: unknown) {
-			this.error = translateError(error, m['login.error.oidcUnavailable']);
-			return false;
 		}
 	}
 }

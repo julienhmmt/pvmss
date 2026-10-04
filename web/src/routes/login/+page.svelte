@@ -105,13 +105,6 @@
 							</TextField>
 						{/snippet}
 					</FormField>
-					<!-- ponytail: OIDC sign-in is a server stub (501), hidden until implemented
-					{#if form.provider === 'pve' && form.selectedCluster?.oidcEnabled}
-						<Button variant="secondary" onclick={() => void form.signInOIDC()} disabled={form.pveDisabled}>
-							{m['login.signInOidc']()}
-						</Button>
-					{/if}
-					-->
 					{#if form.error}
 						<Alert>{form.error}</Alert>
 					{/if}
