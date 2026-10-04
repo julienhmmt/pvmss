@@ -364,7 +364,7 @@ func TestRenderSummary_FullOutputWithSkipsAndNote(t *testing.T) {
 		CatalogTags:     recovery.TableResult{Read: 3, Written: 3},
 		VMLimits: recovery.TableResult{
 			Read: 1, Written: 1,
-			Note: "max_disk_per_vm_gb, max_network_cards, max_snapshots, max_vm_per_user, allow_custom_yaml",
+			Note: "max_disk_per_vm_gb, max_network_cards, max_snapshots, max_vm_per_user",
 		},
 		NodeLimits: recovery.TableResult{Read: 2, Written: 2},
 	}

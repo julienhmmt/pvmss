@@ -28,7 +28,7 @@ type RunOptions struct {
 // 5. Map enabled_isos → split volids → upsert catalog_isos
 // 6. Map vm_profiles → parse JSON → upsert catalog_profiles
 // 7. Map tags → assign colors → upsert catalog_tags
-// 8. Map vm_limits → upsert vm_limits (5 fields only)
+// 8. Map vm_limits → upsert vm_limits (4 fields only)
 // 9. Map node_limits → upsert node_limits
 //
 // Every step is per-row error tolerant: a single malformed row is skipped
@@ -264,7 +264,7 @@ func stepTags(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum
 	return nil
 }
 
-// stepVMLimits maps vm_limits → vm_limits (5 fields only).
+// stepVMLimits maps vm_limits → vm_limits (4 fields only).
 func stepVMLimits(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions, sum *Summary) error {
 	vmLimits, err := mapVMLimits(ctx, legacyDB)
 	if err != nil {
@@ -272,7 +272,7 @@ func stepVMLimits(ctx context.Context, legacyDB, v04DB *sql.DB, opts RunOptions,
 	}
 
 	sum.VMLimits.Read = 1
-	sum.VMLimits.Note = "max_disk_per_vm_gb, max_network_cards, max_snapshots, max_vm_per_user, allow_custom_yaml - max_sockets/max_cores/max_memory_mb left at shipped defaults, no legacy source"
+	sum.VMLimits.Note = "max_disk_per_vm_gb, max_network_cards, max_snapshots, max_vm_per_user - max_sockets/max_cores/max_memory_mb left at shipped defaults, no legacy source"
 
 	if !opts.DryRun {
 		if err := upsertVMLimits(ctx, v04DB, opts.ClusterName, vmLimits); err != nil {

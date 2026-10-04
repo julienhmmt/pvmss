@@ -18,7 +18,6 @@ func samplePolicyRow(cluster string) store.PolicyRow {
 		MaxNetworkCards: 2,
 		MaxSnapshots:    3,
 		MaxVMPerUser:    10,
-		AllowCustomYAML: true,
 	}
 }
 
@@ -72,7 +71,7 @@ func TestUpsertPolicyRow_InsertThenUpdate(t *testing.T) {
 
 	row.MaxVMPerUser = 20
 
-	row.AllowCustomYAML = false
+	row.IsolationVLANTag = 100
 	if err := st.UpsertPolicyRow(ctx, row); err != nil {
 		t.Fatalf("UpsertPolicyRow update: %v", err)
 	}
@@ -86,8 +85,8 @@ func TestUpsertPolicyRow_InsertThenUpdate(t *testing.T) {
 		t.Errorf("MaxVMPerUser = %d, want 20", got.MaxVMPerUser)
 	}
 
-	if got.AllowCustomYAML {
-		t.Errorf("AllowCustomYAML = true, want false")
+	if got.IsolationVLANTag != 100 {
+		t.Errorf("IsolationVLANTag = %d, want 100", got.IsolationVLANTag)
 	}
 }
 

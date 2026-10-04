@@ -36,7 +36,7 @@ func (service *Policy) SetPolicy(ctx context.Context, clusterName string, gabari
 
 	row.MaxSockets, row.MaxCores, row.MaxMemoryMB = gabarit.MaxSockets, gabarit.MaxCores, gabarit.MaxMemoryMB
 	row.MaxDiskPerVMGB, row.MaxNetworkCards, row.MaxSnapshots = gabarit.MaxDiskPerVMGB, gabarit.MaxNetworkCards, gabarit.MaxSnapshots
-	row.AllowCustomYAML, row.MaxVMPerUser = gabarit.AllowCustomYAML, allowed
+	row.MaxVMPerUser = allowed
 	row.IsolationVLANTag = gabarit.IsolationVLANTag
 
 	return service.store.UpsertPolicyRow(ctx, row)

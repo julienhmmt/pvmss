@@ -7,10 +7,10 @@ import (
 	"testing"
 )
 
-// vm_limits (five copied fields) and node_limits (four copied fields)
+// vm_limits (four copied fields) and node_limits (four copied fields)
 // → v0.4 equivalents, asserting max_sockets/max_cores/max_memory_mb are
 // never written by this function (literal assertion).
-func TestMapVMLimits_FiveFieldsCopied(t *testing.T) {
+func TestMapVMLimits_FourFieldsCopied(t *testing.T) {
 	t.Parallel()
 
 	legacyDB := openLegacyDB(t)
@@ -20,7 +20,6 @@ func TestMapVMLimits_FiveFieldsCopied(t *testing.T) {
 			maxVMPerUser:    5,
 			maxNetworkCards: 3,
 			maxDiskPerVM:    20,
-			allowCustomYAML: true,
 			maxSnapshots:    8,
 		},
 	})
@@ -42,10 +41,6 @@ func TestMapVMLimits_FiveFieldsCopied(t *testing.T) {
 		t.Errorf("MaxDiskPerVMGB = %d, want 20", row.MaxDiskPerVMGB)
 	}
 
-	if !row.AllowCustomYAML {
-		t.Error("AllowCustomYAML = false, want true")
-	}
-
 	if row.MaxSnapshots != 8 {
 		t.Errorf("MaxSnapshots = %d, want 8", row.MaxSnapshots)
 	}
@@ -65,7 +60,6 @@ func TestVMLimitsRow_HasNoSocketsCoresMemoryFields(t *testing.T) {
 		MaxNetworkCards: 3,
 		MaxSnapshots:    8,
 		MaxVMPerUser:    5,
-		AllowCustomYAML: true,
 	}
 	// The following lines would fail to compile if the fields were added
 	// with those names - Go does not allow accessing non-existent fields.
@@ -150,7 +144,6 @@ func TestUpsertVMLimits_PreservesShippedDefaults(t *testing.T) {
 		MaxNetworkCards: 3,
 		MaxSnapshots:    8,
 		MaxVMPerUser:    5,
-		AllowCustomYAML: true,
 	}
 	if err := recovery.UpsertVMLimitsForTest(ctx, v04DB, "default", row); err != nil {
 		t.Fatalf("UpsertVMLimits: %v", err)
@@ -158,12 +151,11 @@ func TestUpsertVMLimits_PreservesShippedDefaults(t *testing.T) {
 
 	var (
 		sockets, cores, memoryMB, diskPerVM, netCards, snapshots, vmPerUser int
-		allowCustom                                                         int
 	)
 
 	err := v04DB.QueryRowContext(ctx,
-		`SELECT max_sockets, max_cores, max_memory_mb, max_disk_per_vm_gb, max_network_cards, max_snapshots, max_vm_per_user, allow_custom_yaml FROM vm_limits WHERE cluster = ?`,
-		"default").Scan(&sockets, &cores, &memoryMB, &diskPerVM, &netCards, &snapshots, &vmPerUser, &allowCustom)
+		`SELECT max_sockets, max_cores, max_memory_mb, max_disk_per_vm_gb, max_network_cards, max_snapshots, max_vm_per_user FROM vm_limits WHERE cluster = ?`,
+		"default").Scan(&sockets, &cores, &memoryMB, &diskPerVM, &netCards, &snapshots, &vmPerUser)
 	if err != nil {
 		t.Fatalf("query vm_limits: %v", err)
 	}
@@ -179,7 +171,7 @@ func TestUpsertVMLimits_PreservesShippedDefaults(t *testing.T) {
 	if memoryMB != 16384 {
 		t.Errorf("max_memory_mb = %d, want 16384 (default, not copied)", memoryMB)
 	}
-	// The five copied fields must match the legacy source
+	// The four copied fields must match the legacy source
 	if diskPerVM != 20 {
 		t.Errorf("max_disk_per_vm_gb = %d, want 20", diskPerVM)
 	}
@@ -196,9 +188,6 @@ func TestUpsertVMLimits_PreservesShippedDefaults(t *testing.T) {
 		t.Errorf("max_vm_per_user = %d, want 5", vmPerUser)
 	}
 
-	if allowCustom != 1 {
-		t.Errorf("allow_custom_yaml = %d, want 1", allowCustom)
-	}
 }
 
 func TestUpsertNodeLimits_WritesAndIsIdempotent(t *testing.T) {

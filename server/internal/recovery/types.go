@@ -124,7 +124,7 @@ type TagRow struct {
 	CreatedAt string
 }
 
-// VMLimitsRow carries the five vm_limits fields legacy actually persisted.
+// VMLimitsRow carries the four vm_limits fields v0.4 still uses.
 // max_sockets/max_cores/max_memory_mb are intentionally absent - there is
 // no on-disk source for them.
 type VMLimitsRow struct {
@@ -132,7 +132,6 @@ type VMLimitsRow struct {
 	MaxNetworkCards int
 	MaxSnapshots    int
 	MaxVMPerUser    int
-	AllowCustomYAML bool
 }
 
 // NodeLimitsRow is one node_limits → node_limits mapping.

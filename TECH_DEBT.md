@@ -82,11 +82,9 @@ Spec: `.scratch/cloudinit-admin-ssh/spec.md` (not committed).
   still referenced by live VM configs (`cicustom`), not only
   `vm_cloudinit_documents`, before removing anything.
 - **Dead schema kept on purpose:** `clusters.snippet_dir` (the helper owns
-  the directory now), `policy.allow_custom_yaml` / `Gabarit.AllowCustomYAML`
-  (still accepted by the admin policy API, no longer enforced or shown),
-  `cloudinit.BaselineInputs.Override` (the hand-placed `pvmss-baseline.yml`
-  override is gone). Dropping them touches recovery fixtures and the import
-  allowlist.
+  the directory now) and `cloudinit.BaselineInputs.Override` (the hand-placed
+  `pvmss-baseline.yml` override is gone). Dropping them touches recovery
+  fixtures and the import allowlist.
 - `vm_cloudinit_snippets` only serves the cleanup of legacy per-VM files
   (`pvmss-<vmid>.yml`) of VMs created before the change.
 - `vm_baseline_state` rows with state `override` are historical.

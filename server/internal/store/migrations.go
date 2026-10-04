@@ -386,6 +386,12 @@ SELECT name, 4, 8, 16384, 500, 4, 5, -1, 1, 0
 FROM clusters
 WHERE NOT EXISTS (SELECT 1 FROM vm_limits WHERE vm_limits.cluster = clusters.name)`
 
+// schemaV35 drops the dead allow_custom_yaml column. Custom cloud-init YAML
+// is no longer a policy gate - the flag round-tripped through the API but was
+// enforced nowhere. Backups exported before this version still import: the
+// import path intersects upload columns with the live table.
+const schemaV35 = `ALTER TABLE vm_limits DROP COLUMN allow_custom_yaml`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -429,4 +435,5 @@ var Migrations = []Migration{
 	{Version: 32, DDL: schemaV32},
 	{Version: 33, DDL: schemaV33},
 	{Version: 34, DDL: schemaV34},
+	{Version: 35, DDL: schemaV35},
 }

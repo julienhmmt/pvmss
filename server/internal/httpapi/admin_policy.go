@@ -50,14 +50,13 @@ type policyResponse struct {
 }
 
 type policyGabaritDTO struct {
-	MaxSockets       int  `json:"maxSockets"`
-	MaxCores         int  `json:"maxCores"`
-	MaxMemoryMB      int  `json:"maxMemoryMB"`
-	MaxDiskPerVMGB   int  `json:"maxDiskPerVmGb"`
-	MaxNetworkCards  int  `json:"maxNetworkCards"`
-	MaxSnapshots     int  `json:"maxSnapshots"`
-	AllowCustomYAML  bool `json:"allowCustomYaml"`
-	IsolationVLANTag int  `json:"isolationVlanTag"`
+	MaxSockets       int `json:"maxSockets"`
+	MaxCores         int `json:"maxCores"`
+	MaxMemoryMB      int `json:"maxMemoryMB"`
+	MaxDiskPerVMGB   int `json:"maxDiskPerVmGb"`
+	MaxNetworkCards  int `json:"maxNetworkCards"`
+	MaxSnapshots     int `json:"maxSnapshots"`
+	IsolationVLANTag int `json:"isolationVlanTag"`
 }
 
 type policyQuotaDTO struct {
@@ -71,14 +70,13 @@ type policyUpdateRequest struct {
 }
 
 type policyGabaritPatch struct {
-	MaxSockets       *int  `json:"maxSockets"`
-	MaxCores         *int  `json:"maxCores"`
-	MaxMemoryMB      *int  `json:"maxMemoryMB"`
-	MaxDiskPerVMGB   *int  `json:"maxDiskPerVmGb"`
-	MaxNetworkCards  *int  `json:"maxNetworkCards"`
-	MaxSnapshots     *int  `json:"maxSnapshots"`
-	AllowCustomYAML  *bool `json:"allowCustomYaml"`
-	IsolationVLANTag *int  `json:"isolationVlanTag"`
+	MaxSockets       *int `json:"maxSockets"`
+	MaxCores         *int `json:"maxCores"`
+	MaxMemoryMB      *int `json:"maxMemoryMB"`
+	MaxDiskPerVMGB   *int `json:"maxDiskPerVmGb"`
+	MaxNetworkCards  *int `json:"maxNetworkCards"`
+	MaxSnapshots     *int `json:"maxSnapshots"`
+	IsolationVLANTag *int `json:"isolationVlanTag"`
 }
 
 type policyQuotaPatch struct {
@@ -182,9 +180,6 @@ func policyChangeDiff(current, updated policyResponse) []any {
 	if current.Gabarit.MaxSnapshots != updated.Gabarit.MaxSnapshots {
 		changes = append(changes, map[string]any{auditKeyField: "gabarit.maxSnapshots", auditKeyOld: current.Gabarit.MaxSnapshots, auditKeyNew: updated.Gabarit.MaxSnapshots})
 	}
-	if current.Gabarit.AllowCustomYAML != updated.Gabarit.AllowCustomYAML {
-		changes = append(changes, map[string]any{auditKeyField: "gabarit.allowCustomYaml", auditKeyOld: current.Gabarit.AllowCustomYAML, auditKeyNew: updated.Gabarit.AllowCustomYAML})
-	}
 	if current.Gabarit.IsolationVLANTag != updated.Gabarit.IsolationVLANTag {
 		changes = append(changes, map[string]any{auditKeyField: "gabarit.isolationVlanTag", auditKeyOld: current.Gabarit.IsolationVLANTag, auditKeyNew: updated.Gabarit.IsolationVLANTag})
 	}
@@ -201,11 +196,11 @@ func (handler *AdminPolicy) readPolicy(ctx context.Context, clusterName string) 
 }
 
 func gabaritFromDTO(dto policyGabaritDTO) policy.Gabarit {
-	return policy.Gabarit{MaxSockets: dto.MaxSockets, MaxCores: dto.MaxCores, MaxMemoryMB: dto.MaxMemoryMB, MaxDiskPerVMGB: dto.MaxDiskPerVMGB, MaxNetworkCards: dto.MaxNetworkCards, MaxSnapshots: dto.MaxSnapshots, AllowCustomYAML: dto.AllowCustomYAML, IsolationVLANTag: dto.IsolationVLANTag}
+	return policy.Gabarit{MaxSockets: dto.MaxSockets, MaxCores: dto.MaxCores, MaxMemoryMB: dto.MaxMemoryMB, MaxDiskPerVMGB: dto.MaxDiskPerVMGB, MaxNetworkCards: dto.MaxNetworkCards, MaxSnapshots: dto.MaxSnapshots, IsolationVLANTag: dto.IsolationVLANTag}
 }
 
 func policyGabaritDTOFromModel(gabarit policy.Gabarit) policyGabaritDTO {
-	return policyGabaritDTO{MaxSockets: gabarit.MaxSockets, MaxCores: gabarit.MaxCores, MaxMemoryMB: gabarit.MaxMemoryMB, MaxDiskPerVMGB: gabarit.MaxDiskPerVMGB, MaxNetworkCards: gabarit.MaxNetworkCards, MaxSnapshots: gabarit.MaxSnapshots, AllowCustomYAML: gabarit.AllowCustomYAML, IsolationVLANTag: gabarit.IsolationVLANTag}
+	return policyGabaritDTO{MaxSockets: gabarit.MaxSockets, MaxCores: gabarit.MaxCores, MaxMemoryMB: gabarit.MaxMemoryMB, MaxDiskPerVMGB: gabarit.MaxDiskPerVMGB, MaxNetworkCards: gabarit.MaxNetworkCards, MaxSnapshots: gabarit.MaxSnapshots, IsolationVLANTag: gabarit.IsolationVLANTag}
 }
 
 func applyGabaritPatch(gabarit *policy.Gabarit, patch *policyGabaritPatch) {
@@ -235,10 +230,6 @@ func applyGabaritPatch(gabarit *policy.Gabarit, patch *policyGabaritPatch) {
 
 	if patch.MaxSnapshots != nil {
 		gabarit.MaxSnapshots = *patch.MaxSnapshots
-	}
-
-	if patch.AllowCustomYAML != nil {
-		gabarit.AllowCustomYAML = *patch.AllowCustomYAML
 	}
 
 	if patch.IsolationVLANTag != nil {
