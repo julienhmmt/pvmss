@@ -129,60 +129,6 @@ func TestSetPolicy_InvalidQuota_ReturnsErrInvalidPolicy(t *testing.T) {
 	}
 }
 
-// --- SetQuota ---
-
-func TestSetQuota_ValidValue_Persists(t *testing.T) {
-	t.Parallel()
-
-	service, _ := newPolicyService(t)
-	ctx := context.Background()
-
-	if err := service.SetQuota(ctx, "default", 10); err != nil {
-		t.Fatalf("SetQuota: %v", err)
-	}
-
-	quota, err := service.Quota(ctx, "default", auth.Identity{Username: testUserAlice, Pool: cluster.FakePoolAlice})
-	if err != nil {
-		t.Fatalf("Quota: %v", err)
-	}
-
-	if quota.Allowed != 10 {
-		t.Fatalf("quota.Allowed = %d, want 10", quota.Allowed)
-	}
-}
-
-func TestSetQuota_Unlimited_Persists(t *testing.T) {
-	t.Parallel()
-
-	service, _ := newPolicyService(t)
-	ctx := context.Background()
-
-	if err := service.SetQuota(ctx, "default", -1); err != nil {
-		t.Fatalf("SetQuota: %v", err)
-	}
-
-	quota, err := service.Quota(ctx, "default", auth.Identity{Username: testUserAlice, Pool: cluster.FakePoolAlice})
-	if err != nil {
-		t.Fatalf("Quota: %v", err)
-	}
-
-	if quota.Allowed != -1 {
-		t.Fatalf("quota.Allowed = %d, want -1", quota.Allowed)
-	}
-}
-
-func TestSetQuota_NegativeValue_ReturnsErrInvalidPolicy(t *testing.T) {
-	t.Parallel()
-
-	service, _ := newPolicyService(t)
-	ctx := context.Background()
-
-	err := service.SetQuota(ctx, "default", -2)
-	if !errors.Is(err, policy.ErrInvalidPolicy) {
-		t.Fatalf("error = %v, want ErrInvalidPolicy", err)
-	}
-}
-
 // --- SetNodeCapacity ---
 
 func TestSetNodeCapacity_InvalidCapacity_ReturnsErrInvalidPolicy(t *testing.T) {

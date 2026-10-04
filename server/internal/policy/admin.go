@@ -19,29 +19,6 @@ const (
 	maxVMPerUserLimit    = 100000
 )
 
-// SetGabarit replaces the cluster gabarit while preserving its quota.
-func (service *Policy) SetGabarit(ctx context.Context, clusterName string, gabarit Gabarit) error {
-	if err := validateGabarit(gabarit); err != nil {
-		return err
-	}
-
-	row, err := service.policyRowOrDefault(ctx, clusterName)
-	if err != nil {
-		return err
-	}
-
-	row.MaxSockets = gabarit.MaxSockets
-	row.MaxCores = gabarit.MaxCores
-	row.MaxMemoryMB = gabarit.MaxMemoryMB
-	row.MaxDiskPerVMGB = gabarit.MaxDiskPerVMGB
-	row.MaxNetworkCards = gabarit.MaxNetworkCards
-	row.MaxSnapshots = gabarit.MaxSnapshots
-	row.AllowCustomYAML = gabarit.AllowCustomYAML
-	row.IsolationVLANTag = gabarit.IsolationVLANTag
-
-	return service.store.UpsertPolicyRow(ctx, row)
-}
-
 // SetPolicy replaces the global gabarit and quota in one persistence operation.
 func (service *Policy) SetPolicy(ctx context.Context, clusterName string, gabarit Gabarit, allowed int) error {
 	if err := validateGabarit(gabarit); err != nil {
@@ -61,22 +38,6 @@ func (service *Policy) SetPolicy(ctx context.Context, clusterName string, gabari
 	row.MaxDiskPerVMGB, row.MaxNetworkCards, row.MaxSnapshots = gabarit.MaxDiskPerVMGB, gabarit.MaxNetworkCards, gabarit.MaxSnapshots
 	row.AllowCustomYAML, row.MaxVMPerUser = gabarit.AllowCustomYAML, allowed
 	row.IsolationVLANTag = gabarit.IsolationVLANTag
-
-	return service.store.UpsertPolicyRow(ctx, row)
-}
-
-// SetQuota replaces the per-user cluster quota. -1 means unlimited.
-func (service *Policy) SetQuota(ctx context.Context, clusterName string, allowed int) error {
-	if allowed < -1 || allowed > maxVMPerUserLimit {
-		return fmt.Errorf("%w: maxVmPerUser must be between -1 and %d", ErrInvalidPolicy, maxVMPerUserLimit)
-	}
-
-	row, err := service.policyRowOrDefault(ctx, clusterName)
-	if err != nil {
-		return err
-	}
-
-	row.MaxVMPerUser = allowed
 
 	return service.store.UpsertPolicyRow(ctx, row)
 }

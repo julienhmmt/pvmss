@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestSetGabarit_RejectsOutOfRangeValues(t *testing.T) {
+func TestSetPolicy_RejectsOutOfRangeGabaritValues(t *testing.T) {
 	t.Parallel()
 	service, _ := newPolicyService(t)
 	ctx := context.Background()
@@ -51,8 +51,8 @@ func TestSetGabarit_RejectsOutOfRangeValues(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			if err := service.SetGabarit(ctx, "default", tc.gabarit); !errors.Is(err, policy.ErrInvalidPolicy) {
-				t.Fatalf("SetGabarit error = %v, want ErrInvalidPolicy", err)
+			if err := service.SetPolicy(ctx, "default", tc.gabarit, -1); !errors.Is(err, policy.ErrInvalidPolicy) {
+				t.Fatalf("SetPolicy error = %v, want ErrInvalidPolicy", err)
 			}
 		})
 	}
@@ -75,26 +75,6 @@ func TestSetPolicy_RejectsOutOfRangeMaxVmPerUser(t *testing.T) {
 
 	if err := service.SetPolicy(ctx, "default", valid, 100000); err != nil {
 		t.Fatalf("SetPolicy with maxVmPerUser at upper limit should pass: %v", err)
-	}
-}
-
-func TestSetGabarit_UpsertsAllFields(t *testing.T) {
-	t.Parallel()
-	service, _ := newPolicyService(t)
-	ctx := context.Background()
-
-	want := policy.Gabarit{MaxSockets: 2, MaxCores: 6, MaxMemoryMB: 8192, MaxDiskPerVMGB: 80, MaxNetworkCards: 2, MaxSnapshots: 3, AllowCustomYAML: false}
-	if err := service.SetGabarit(ctx, "default", want); err != nil {
-		t.Fatalf("SetGabarit: %v", err)
-	}
-
-	got, err := service.Gabarit(ctx, "default")
-	if err != nil {
-		t.Fatalf("Gabarit: %v", err)
-	}
-
-	if got != want {
-		t.Fatalf("gabarit = %+v, want %+v", got, want)
 	}
 }
 
