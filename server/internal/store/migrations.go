@@ -396,6 +396,13 @@ const schemaV35 = `ALTER TABLE vm_limits DROP COLUMN allow_custom_yaml`
 // and never implemented; the toggle was the column's only writer.
 const schemaV36 = `ALTER TABLE clusters DROP COLUMN oidc_enabled`
 
+// schemaV37 drops two leftovers: api_tokens (personal API tokens were removed
+// with the v0.4 rewrite; the table survived only as an import exclusion) and
+// clusters.snippet_dir (dead since V31 moved snippet delivery off the PVMSS
+// filesystem - snippet_storage is the only path that remains).
+const schemaV37 = `DROP TABLE api_tokens;
+ALTER TABLE clusters DROP COLUMN snippet_dir`
+
 // Migration is a single schema version and its forward-only DDL.
 type Migration struct {
 	Version int
@@ -441,4 +448,5 @@ var Migrations = []Migration{
 	{Version: 34, DDL: schemaV34},
 	{Version: 35, DDL: schemaV35},
 	{Version: 36, DDL: schemaV36},
+	{Version: 37, DDL: schemaV37},
 }

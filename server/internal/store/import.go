@@ -15,9 +15,9 @@ import (
 
 // importableTables is the literal allowlist of PVMSS instance-configuration
 // tables that an import may replace. Auth/system
-// bookkeeping (schema_migrations, sessions, api_tokens), historical/per-VM
-// runtime data (audit_log, vm_cloudinit_snippets), and any table not on this
-// list are excluded.
+// bookkeeping (schema_migrations, sessions), historical/per-VM runtime
+// data (audit_log, vm_cloudinit_snippets), tables that only exist in older
+// backups (api_tokens), and any table not on this list are excluded.
 //
 // Each new table is appended here once its migration lands - the list
 // shape is fixed, not invented ad hoc. The list is
