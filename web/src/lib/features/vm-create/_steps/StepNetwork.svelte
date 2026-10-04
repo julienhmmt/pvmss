@@ -12,7 +12,9 @@
 
 	const bridgesOnNode = $derived((form.catalog?.bridges ?? []).filter((bridge) => bridge.node === form.node));
 	const maxNetworkCards = $derived(form.catalog?.gabarit?.maxNetworkCards ?? 4);
-	const canAddNIC = $derived(form.mode === 'detailed' && form.nics.length < maxNetworkCards);
+	const canAddNIC = $derived(
+		form.mode === 'detailed' && (maxNetworkCards === 0 || form.nics.length < maxNetworkCards)
+	);
 	const canRemoveNIC = $derived(form.nics.length > 1);
 
 	const bridgeError = $derived(

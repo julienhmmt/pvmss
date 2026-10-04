@@ -117,7 +117,6 @@
 						<th scope="col" class="font-medium">{m['common.status']()}</th>
 						<th scope="col" class="font-medium">{m['admin.clusters.version']()}</th>
 						<th scope="col" class="font-medium">{m['admin.clusters.nodesVms']()}</th>
-						<!-- ponytail: OIDC sign-in is a server stub (501), hidden until implemented: <th scope="col" class="font-medium">{m['admin.clusters.oidc']()}</th> -->
 						<th scope="col" class="font-medium">{m['admin.clusters.cloudinitSection']()}</th>
 						<th scope="col" class="font-medium">{m['common.actions']()}</th>
 					</tr>
@@ -140,7 +139,6 @@
 							</td>
 							<td class="text-muted-foreground">{cluster.proxmoxVersion ?? ' - '}</td>
 							<td>{cluster.nodeCount} / {cluster.vmCount}</td>
-							<!-- <td>{cluster.oidcEnabled ? m['common.enabled']() : m['common.off']()}</td> -->
 							<td class="text-muted-foreground">
 								{#if cluster.cloudInitWriteEnabled}
 									{m['admin.clusters.cloudinitOn']()}
@@ -152,7 +150,6 @@
 								<div class="flex flex-wrap gap-2">
 									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.testLabel']({ name: cluster.name })} onclick={() => void store.test(cluster.name)}>{m['admin.clusters.test']()}</Button>
 									<Button variant="secondary" size="sm" disabled={store.busy !== null} label={m['admin.clusters.editLabel']({ name: cluster.name })} onclick={() => void openForm(cluster)}>{m['common.edit']()}</Button>
-									<!-- <Button variant="secondary" size="sm" disabled={store.busy !== null} label={cluster.oidcEnabled ? m['admin.clusters.disableOidcLabel']({ name: cluster.name }) : m['admin.clusters.enableOidcLabel']({ name: cluster.name })} onclick={() => void store.toggleOIDC(cluster.name, !cluster.oidcEnabled)}>{cluster.oidcEnabled ? m['admin.clusters.disableOidc']() : m['admin.clusters.enableOidc']()}</Button> -->
 									<Button variant="destructive" size="sm" disabled={store.busy !== null} label={m['admin.clusters.removeLabel']({ name: cluster.name })} onclick={() => void store.remove(cluster.name)}>{m['admin.clusters.remove']()}</Button>
 								</div>
 							</td>

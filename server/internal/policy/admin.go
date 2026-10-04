@@ -2,6 +2,8 @@ package policy
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"pvmss/server/internal/cluster"
 	"pvmss/server/internal/store"
@@ -19,66 +21,88 @@ const (
 	maxVMPerUserLimit    = 100000
 )
 
-// SetGabarit replaces the cluster gabarit while preserving its quota.
-func (service *Policy) SetGabarit(ctx context.Context, clusterName string, gabarit Gabarit) error {
-	if err := validateGabarit(gabarit); err != nil {
-		return err
-	}
-
-	row, err := service.store.PolicyRow(ctx, clusterName)
-	if err != nil {
-		return err
-	}
-
-	row.MaxSockets = gabarit.MaxSockets
-	row.MaxCores = gabarit.MaxCores
-	row.MaxMemoryMB = gabarit.MaxMemoryMB
-	row.MaxDiskPerVMGB = gabarit.MaxDiskPerVMGB
-	row.MaxNetworkCards = gabarit.MaxNetworkCards
-	row.MaxSnapshots = gabarit.MaxSnapshots
-	row.AllowCustomYAML = gabarit.AllowCustomYAML
-	row.IsolationVLANTag = gabarit.IsolationVLANTag
-
-	return service.store.UpsertPolicyRow(ctx, row)
+// PolicyUpdate is the outcome of UpdatePolicy: the policy state before and
+// after the mutation. Changed is false when the mutation produced no
+// difference - nothing was written and nothing is worth auditing.
+type PolicyUpdate struct {
+	Before  Settings
+	After   Settings
+	Changed bool
 }
 
-// SetPolicy replaces the global gabarit and quota in one persistence operation.
+// maxPolicyUpdateAttempts bounds the optimistic-concurrency retries of
+// UpdatePolicy. Concurrent admin writes are rare; a few retries absorb a
+// losing race instead of surfacing a spurious conflict.
+const maxPolicyUpdateAttempts = 3
+
+// UpdatePolicy applies mutate to the cluster's stored policy and writes the
+// result atomically: the write only lands when the stored row still equals
+// what mutate saw (compare-and-swap), so a concurrent update between the read
+// and the write is retried rather than silently overwritten. A mutation that
+// changes nothing skips the write and reports Changed=false.
+func (service *Policy) UpdatePolicy(ctx context.Context, clusterName string, mutate func(current Settings) Settings) (PolicyUpdate, error) {
+	for attempt := 0; attempt < maxPolicyUpdateAttempts; attempt++ {
+		row, err := service.store.PolicyRow(ctx, clusterName)
+
+		missing := errors.Is(err, sql.ErrNoRows)
+		if err != nil && !missing {
+			return PolicyUpdate{}, err
+		}
+
+		if missing {
+			row = defaultPolicyRow(clusterName)
+		}
+
+		before := Settings{Gabarit: gabaritFromRow(row), Allowed: row.MaxVMPerUser}
+		after := mutate(before)
+
+		if err := validateSettings(after); err != nil {
+			return PolicyUpdate{}, err
+		}
+
+		if after == before {
+			return PolicyUpdate{Before: before, After: after}, nil
+		}
+
+		var expected *store.PolicyRow
+		if !missing {
+			expected = &row
+		}
+
+		err = service.store.ReplacePolicyRow(ctx, expected, policyRowFrom(clusterName, after))
+		if errors.Is(err, store.ErrPolicyConflict) {
+			continue
+		}
+
+		if err != nil {
+			return PolicyUpdate{}, err
+		}
+
+		return PolicyUpdate{Before: before, After: after, Changed: true}, nil
+	}
+
+	return PolicyUpdate{}, ErrConcurrentUpdate
+}
+
+// SetPolicy replaces the global gabarit and quota in one atomic update.
 func (service *Policy) SetPolicy(ctx context.Context, clusterName string, gabarit Gabarit, allowed int) error {
-	if err := validateGabarit(gabarit); err != nil {
-		return err
-	}
+	_, err := service.UpdatePolicy(ctx, clusterName, func(Settings) Settings {
+		return Settings{Gabarit: gabarit, Allowed: allowed}
+	})
 
-	if allowed < -1 || allowed > maxVMPerUserLimit {
-		return fmt.Errorf("%w: maxVmPerUser must be between -1 and %d", ErrInvalidPolicy, maxVMPerUserLimit)
-	}
-
-	row, err := service.store.PolicyRow(ctx, clusterName)
-	if err != nil {
-		return err
-	}
-
-	row.MaxSockets, row.MaxCores, row.MaxMemoryMB = gabarit.MaxSockets, gabarit.MaxCores, gabarit.MaxMemoryMB
-	row.MaxDiskPerVMGB, row.MaxNetworkCards, row.MaxSnapshots = gabarit.MaxDiskPerVMGB, gabarit.MaxNetworkCards, gabarit.MaxSnapshots
-	row.AllowCustomYAML, row.MaxVMPerUser = gabarit.AllowCustomYAML, allowed
-	row.IsolationVLANTag = gabarit.IsolationVLANTag
-
-	return service.store.UpsertPolicyRow(ctx, row)
+	return err
 }
 
-// SetQuota replaces the per-user cluster quota. -1 means unlimited.
-func (service *Policy) SetQuota(ctx context.Context, clusterName string, allowed int) error {
-	if allowed < -1 || allowed > maxVMPerUserLimit {
-		return fmt.Errorf("%w: maxVmPerUser must be between -1 and %d", ErrInvalidPolicy, maxVMPerUserLimit)
-	}
-
-	row, err := service.store.PolicyRow(ctx, clusterName)
-	if err != nil {
+func validateSettings(settings Settings) error {
+	if err := validateGabarit(settings.Gabarit); err != nil {
 		return err
 	}
 
-	row.MaxVMPerUser = allowed
+	if settings.Allowed < -1 || settings.Allowed > maxVMPerUserLimit {
+		return fmt.Errorf("%w: maxVmPerUser must be between -1 and %d", ErrInvalidPolicy, maxVMPerUserLimit)
+	}
 
-	return service.store.UpsertPolicyRow(ctx, row)
+	return nil
 }
 
 // SetNodeCapacity validates current usage and physical CPU/RAM before replacing

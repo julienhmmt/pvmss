@@ -4,7 +4,7 @@ import { m } from '$lib/paraglide/messages.js';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
-const clusterOptions = [{ name: 'musclegrid', displayName: 'musclegrid', oidcEnabled: false }];
+const clusterOptions = [{ name: 'musclegrid', displayName: 'musclegrid' }];
 
 function jsonResponse(status: number, body: unknown): Response {
 	return new Response(JSON.stringify(body), {

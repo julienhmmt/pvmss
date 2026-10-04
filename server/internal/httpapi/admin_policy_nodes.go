@@ -29,6 +29,9 @@ type nodePolicyResponse struct {
 	NodeStorageUsedGB  int     `json:"nodeStorageUsedGb"`
 	NodeStorageTotalGB int     `json:"nodeStorageTotalGb"`
 	TotalVMs           int     `json:"totalVms"`
+	// Approved is the catalog_nodes.enabled state - false means the node is
+	// excluded from PVMSS placement regardless of its caps.
+	Approved bool `json:"approved"`
 }
 
 // nodePolicyListResponse wraps the list with the inventory refresh timestamp
@@ -133,6 +136,7 @@ func (handler *AdminPolicy) ServePolicyNodeUpdate(w http.ResponseWriter, r *http
 		if capacity.Node == node {
 			updated.PhysicalVCPUs = capacity.PhysicalVCPUs
 			updated.PhysicalRAMGB = capacity.PhysicalRAMGB
+			updated.Approved = capacity.Approved
 		}
 	}
 
@@ -187,7 +191,7 @@ func nodePolicyResponseFromModel(capacity policy.Capacity) nodePolicyResponse {
 		PhysicalVCPUs: capacity.PhysicalVCPUs, PhysicalRAMGB: capacity.PhysicalRAMGB,
 		NodeCPUUsage: capacity.CPUUsage, NodeMemoryUsedGB: capacity.MemoryUsedGB,
 		NodeStorageUsedGB: capacity.StorageUsedGB, NodeStorageTotalGB: capacity.StorageTotalGB,
-		TotalVMs: capacity.TotalVMs,
+		TotalVMs: capacity.TotalVMs, Approved: capacity.Approved,
 	}
 }
 

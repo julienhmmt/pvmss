@@ -41,7 +41,6 @@ func TestSetPolicy_ValidGabaritAndQuota_PersistsAllFields(t *testing.T) {
 	gabarit := policy.Gabarit{
 		MaxSockets: 2, MaxCores: 6, MaxMemoryMB: 8192,
 		MaxDiskPerVMGB: 80, MaxNetworkCards: 2, MaxSnapshots: 3,
-		AllowCustomYAML: false,
 	}
 	if err := service.SetPolicy(ctx, "default", gabarit, 7); err != nil {
 		t.Fatalf("SetPolicy: %v", err)
@@ -124,60 +123,6 @@ func TestSetPolicy_InvalidQuota_ReturnsErrInvalidPolicy(t *testing.T) {
 	ctx := context.Background()
 
 	err := service.SetPolicy(ctx, "default", policy.Gabarit{}, -2)
-	if !errors.Is(err, policy.ErrInvalidPolicy) {
-		t.Fatalf("error = %v, want ErrInvalidPolicy", err)
-	}
-}
-
-// --- SetQuota ---
-
-func TestSetQuota_ValidValue_Persists(t *testing.T) {
-	t.Parallel()
-
-	service, _ := newPolicyService(t)
-	ctx := context.Background()
-
-	if err := service.SetQuota(ctx, "default", 10); err != nil {
-		t.Fatalf("SetQuota: %v", err)
-	}
-
-	quota, err := service.Quota(ctx, "default", auth.Identity{Username: testUserAlice, Pool: cluster.FakePoolAlice})
-	if err != nil {
-		t.Fatalf("Quota: %v", err)
-	}
-
-	if quota.Allowed != 10 {
-		t.Fatalf("quota.Allowed = %d, want 10", quota.Allowed)
-	}
-}
-
-func TestSetQuota_Unlimited_Persists(t *testing.T) {
-	t.Parallel()
-
-	service, _ := newPolicyService(t)
-	ctx := context.Background()
-
-	if err := service.SetQuota(ctx, "default", -1); err != nil {
-		t.Fatalf("SetQuota: %v", err)
-	}
-
-	quota, err := service.Quota(ctx, "default", auth.Identity{Username: testUserAlice, Pool: cluster.FakePoolAlice})
-	if err != nil {
-		t.Fatalf("Quota: %v", err)
-	}
-
-	if quota.Allowed != -1 {
-		t.Fatalf("quota.Allowed = %d, want -1", quota.Allowed)
-	}
-}
-
-func TestSetQuota_NegativeValue_ReturnsErrInvalidPolicy(t *testing.T) {
-	t.Parallel()
-
-	service, _ := newPolicyService(t)
-	ctx := context.Background()
-
-	err := service.SetQuota(ctx, "default", -2)
 	if !errors.Is(err, policy.ErrInvalidPolicy) {
 		t.Fatalf("error = %v, want ErrInvalidPolicy", err)
 	}
@@ -468,5 +413,30 @@ func TestAboveNodeCapacityError_Unwrap(t *testing.T) {
 	err := &policy.AboveNodeCapacityError{Node: "n", Dimension: "ram"}
 	if !errors.Is(err, policy.ErrAboveNodeCapacity) {
 		t.Fatalf("errors.Is(ErrAboveNodeCapacity) = false, want true")
+	}
+}
+
+func TestSetPolicy_MissingPolicyRow_SeedsFromDefaults(t *testing.T) {
+	t.Parallel()
+
+	service, _ := newPolicyService(t)
+	ctx := context.Background()
+
+	// "ghost" has no vm_limits row (a cluster added before rows were seeded):
+	// the write must upsert instead of failing with a 500.
+	want := policy.Gabarit{
+		MaxSockets: 2, MaxCores: 6, MaxMemoryMB: 8192,
+		MaxDiskPerVMGB: 80, MaxNetworkCards: 2, MaxSnapshots: 3,
+	}
+	if err := service.SetPolicy(ctx, "ghost", want, 3); err != nil {
+		t.Fatalf("SetPolicy: %v", err)
+	}
+
+	got, err := service.Gabarit(ctx, "ghost")
+	if err != nil {
+		t.Fatalf("Gabarit: %v", err)
+	}
+	if got != want {
+		t.Fatalf("gabarit = %+v, want %+v", got, want)
 	}
 }

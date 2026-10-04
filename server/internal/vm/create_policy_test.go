@@ -22,7 +22,7 @@ func TestCreate_PolicyGuardsRejectBeforeAllocation(t *testing.T) {
 		{
 			name: "quota",
 			prepare: func(service *policy.Policy, ctx context.Context) error {
-				return service.SetQuota(ctx, testClusterName, 0)
+				return service.SetPolicy(ctx, testClusterName, policy.DefaultGabarit(), 0)
 			},
 			wantErr: policy.ErrQuotaExceeded,
 		},
@@ -36,7 +36,7 @@ func TestCreate_PolicyGuardsRejectBeforeAllocation(t *testing.T) {
 
 				gabarit.MaxDiskPerVMGB = 10
 
-				return service.SetGabarit(ctx, testClusterName, gabarit)
+				return service.SetPolicy(ctx, testClusterName, gabarit, -1)
 			},
 			wantErr: policy.ErrGabaritExceeded,
 		},

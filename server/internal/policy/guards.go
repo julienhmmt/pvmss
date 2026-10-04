@@ -46,7 +46,7 @@ func (service *Policy) CheckQuota(ctx context.Context, clusterName string, actor
 
 	recordQuotaExceeded(ctx, actor, quota.Used, quota.Allowed)
 
-	return &QuotaExceededError{Username: actor.Username, Used: quota.Used, Allowed: quota.Allowed}
+	return &QuotaExceededError{Pool: actor.Pool, Username: actor.Username, Used: quota.Used, Allowed: quota.Allowed}
 }
 
 func recordQuotaExceeded(ctx context.Context, actor auth.Identity, used, allowed int) {
@@ -54,11 +54,13 @@ func recordQuotaExceeded(ctx context.Context, actor auth.Identity, used, allowed
 		return
 	}
 
-	detail := fmt.Sprintf(`{"summary":"quota exceeded for %s (used %d of %d)","changes":[{"used":%d,"allowed":%d}]}`, actor.Username, used, allowed, used, allowed)
+	detail := fmt.Sprintf(`{"summary":"quota exceeded for %s in pool %s (used %d of %d)","changes":[{"used":%d,"allowed":%d}]}`, actor.Username, actor.Pool, used, allowed, used, allowed)
 	_ = quotaAuditor.RecordAdminAction(ctx, actor.Username, "quota.exceeded", "quota", actor.Username, detail, auditIPFromContext(ctx))
 }
 
-// CheckGabarit validates the resolved initial VM hardware in field order.
+// CheckGabarit validates the resolved initial VM hardware in field order. A
+// zero gabarit field imposes no cap (the admin UI's "0 means no cap" hint),
+// matching the node capacité convention.
 func (service *Policy) CheckGabarit(ctx context.Context, clusterName string, sockets, cores, memoryMB, diskGB, networkCards int) error {
 	gabarit, err := service.Gabarit(ctx, clusterName)
 	if err != nil {
@@ -76,7 +78,7 @@ func (service *Policy) CheckGabarit(ctx context.Context, clusterName string, soc
 		{"networkCards", networkCards, gabarit.MaxNetworkCards},
 	}
 	for _, value := range values {
-		if value.requested != 0 && value.requested > value.maximum {
+		if value.maximum != 0 && value.requested > value.maximum {
 			return &GabaritExceededError{Field: value.field, Requested: value.requested, Maximum: value.maximum}
 		}
 	}
@@ -156,12 +158,13 @@ func (service *Policy) excludeVM(capacity *Capacity, vmid int) {
 
 // QuotaExceededError carries the values needed for a safe user-facing message.
 type QuotaExceededError struct {
+	Pool          string
 	Username      string
 	Used, Allowed int
 }
 
 func (failure *QuotaExceededError) Error() string {
-	return fmt.Sprintf("%s already owns %d of %d allowed VMs", failure.Username, failure.Used, failure.Allowed)
+	return fmt.Sprintf("pool %q already holds %d of %d allowed VMs", failure.Pool, failure.Used, failure.Allowed)
 }
 func (failure *QuotaExceededError) Unwrap() error { return ErrQuotaExceeded }
 

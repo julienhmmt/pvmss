@@ -12,6 +12,7 @@ import (
 	"pvmss/server/internal/config"
 	"pvmss/server/internal/httpapi"
 	"pvmss/server/internal/store"
+	"pvmss/server/internal/testfixture"
 	"strings"
 	"testing"
 )
@@ -54,6 +55,8 @@ func newVMCreateHandlerWithCreator(t *testing.T, creator cluster.Creator) (*http
 	}
 
 	t.Cleanup(func() { _ = st.Close() })
+
+	testfixture.SeedDemoFixtures(t, st)
 	seedBridgeApprovals(t, st)
 
 	client, ok := creator.(cluster.Client)

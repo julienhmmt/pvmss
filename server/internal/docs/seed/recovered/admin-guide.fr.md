@@ -83,7 +83,6 @@ PVMSS peut se connecter à plusieurs environnements Proxmox simultanément. Chaq
 - Un cluster est identifié par un nom ; les VM sont toujours adressées par `cluster` + `VMID`, deux clusters peuvent donc réutiliser les mêmes VMID sans conflit.
 - Le **Test** vérifie la connectivité et les identifiants avant d'exposer le cluster ; il rapporte la version de Proxmox et le nombre de nœuds et de VM.
 - La **vérification TLS** peut être désactivée par cluster pour un labo auto-signé ; gardez-la active en production.
-- L'interrupteur **OIDC** est réservé à une future intégration SSO : l'activer affiche un bouton sur l'écran de connexion mais la connexion n'est pas encore implémentée.
 - **Stockage de snippets** active les modèles cloud-init pour ce cluster (voir la section dédiée). Le badge du cluster affiche « cloud-init : activé » une fois ce champ renseigné.
 - Nœuds, stockages, ISO, images, templates, bridges, templates cloud-init et politique sont gérés par cluster.
 
@@ -188,7 +187,7 @@ Les pages intégrées sont insérées une seule fois, si elles manquent, et jama
 ## Limitations connues
 
 - PVMSS cible les clusters Proxmox VE 8.x/9.x (et les nœuds autonomes).
-- La connexion OIDC/SSO n'est pas encore implémentée ; les comptes sont provisionnés via `/admin/pools` côté Proxmox.
+- Les comptes sont provisionnés via `/admin/pools` côté Proxmox.
 - Les opérations avancées de cluster (migration à chaud, HA, orchestration des sauvegardes) se font directement dans Proxmox.
 - Les administrateurs créent des VM via la même interface self-service que les utilisateurs, ou directement dans Proxmox.
 - Sauvegardes et conteneurs LXC sont gérés dans Proxmox, pas dans PVMSS.

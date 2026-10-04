@@ -318,6 +318,7 @@
 	{slug}
 	{lang}
 	{category}
+	{categoryOptions}
 	{audience}
 	{enabled}
 	{bodyMd}

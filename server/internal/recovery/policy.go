@@ -10,7 +10,9 @@ import (
 // MapPolicy reads the legacy vm_limits singleton and the node_limits table
 // and returns rows for the v0.4 equivalents.
 //
-// vm_limits: only the five fields legacy actually persisted are copied.
+// vm_limits: only the four fields still used by v0.4 are copied.
+// The legacy allow_custom_yaml flag is intentionally dropped - custom YAML
+// is no longer a policy gate and the v0.4 column was removed.
 // max_sockets/max_cores/max_memory_mb are intentionally NOT
 // read or returned - there is no on-disk source for them. The
 // caller must leave them at the shipped defaults.
@@ -33,22 +35,17 @@ func MapPolicy(ctx context.Context, legacyDB *sql.DB) (VMLimitsRow, []NodeLimits
 }
 
 func mapVMLimits(ctx context.Context, legacyDB *sql.DB) (VMLimitsRow, error) {
-	var (
-		row             VMLimitsRow
-		allowCustomYAML int
-	)
+	var row VMLimitsRow
 
 	err := legacyDB.QueryRowContext(ctx, `
-		SELECT max_vm_per_user, max_network_cards, max_disk_per_vm, allow_custom_yaml, max_snapshots
+		SELECT max_vm_per_user, max_network_cards, max_disk_per_vm, max_snapshots
 		FROM vm_limits WHERE id = 1`).Scan(
 		&row.MaxVMPerUser, &row.MaxNetworkCards, &row.MaxDiskPerVMGB,
-		&allowCustomYAML, &row.MaxSnapshots,
+		&row.MaxSnapshots,
 	)
 	if err != nil {
 		return VMLimitsRow{}, fmt.Errorf("query vm_limits: %w", err)
 	}
-
-	row.AllowCustomYAML = allowCustomYAML != 0
 
 	return row, nil
 }
@@ -76,7 +73,7 @@ func mapNodeLimits(ctx context.Context, legacyDB *sql.DB) ([]NodeLimitsRow, erro
 	return out, rows.Err()
 }
 
-// upsertVMLimits writes the five copied fields into the v0.4 vm_limits row,
+// upsertVMLimits writes the four copied fields into the v0.4 vm_limits row,
 // preserving the existing max_sockets/max_cores/max_memory_mb values
 // (shipped defaults) by reading them first and re-inserting.
 // This is the literal implementation of the three no-source fields
@@ -90,17 +87,16 @@ func upsertVMLimits(ctx context.Context, v04DB *sql.DB, cluster string, row VMLi
 
 	switch {
 	case err == nil:
-		// Row exists - update only the five copied fields, preserve the rest.
+		// Row exists - update only the four copied fields, preserve the rest.
 		_, err = v04DB.ExecContext(ctx, `
 			UPDATE vm_limits SET
 				max_disk_per_vm_gb = ?,
 				max_network_cards = ?,
 				max_snapshots = ?,
-				max_vm_per_user = ?,
-				allow_custom_yaml = ?
+				max_vm_per_user = ?
 			WHERE cluster = ?`,
 			row.MaxDiskPerVMGB, row.MaxNetworkCards, row.MaxSnapshots,
-			row.MaxVMPerUser, row.AllowCustomYAML, cluster)
+			row.MaxVMPerUser, cluster)
 		if err != nil {
 			return fmt.Errorf("update vm_limits: %w", err)
 		}
@@ -113,11 +109,11 @@ func upsertVMLimits(ctx context.Context, v04DB *sql.DB, cluster string, row VMLi
 			INSERT INTO vm_limits (
 				cluster, max_sockets, max_cores, max_memory_mb,
 				max_disk_per_vm_gb, max_network_cards, max_snapshots,
-				max_vm_per_user, allow_custom_yaml
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				max_vm_per_user
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 			cluster, defaultMaxSockets, defaultMaxCores, defaultMaxMemoryMB,
 			row.MaxDiskPerVMGB, row.MaxNetworkCards, row.MaxSnapshots,
-			row.MaxVMPerUser, row.AllowCustomYAML)
+			row.MaxVMPerUser)
 		if err != nil {
 			return fmt.Errorf("insert vm_limits: %w", err)
 		}

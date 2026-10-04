@@ -22,7 +22,7 @@ const (
 )
 
 // newAuditStore opens a fully-migrated Store for audit tests. The audit_log
-// table arrives in schemaV6, so a fresh Open already has it.
+// table is created by the baseline migration, so a fresh Open already has it.
 func newAuditStore(t *testing.T) *store.Store {
 	t.Helper()
 	cfg := config.Configuration{
@@ -562,7 +562,7 @@ func TestGetAuditConfig_DefaultIs365(t *testing.T) {
 	}
 
 	if cfg.RetentionDays != 365 {
-		t.Errorf("retention = %d, want 365 (schemaV20 seed)", cfg.RetentionDays)
+		t.Errorf("retention = %d, want 365 (baseline seed)", cfg.RetentionDays)
 	}
 }
 

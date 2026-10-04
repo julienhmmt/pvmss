@@ -49,11 +49,11 @@
 			<p class="mt-1 text-sm text-muted-foreground">{m['vms.snapshots.description']()}</p>
 		</div>
 		<div class="flex items-center gap-3">
-			<span class="rounded-full bg-muted px-3 py-1 text-sm font-medium" data-testid="snapshot-counter">{snapshots.snapshots.length}/{snapshots.maxSnapshots ?? m['common.dash']()}</span>
+			<span class="rounded-full bg-muted px-3 py-1 text-sm font-medium" data-testid="snapshot-counter">{snapshots.snapshots.length}/{snapshots.maxSnapshots ? snapshots.maxSnapshots : m['common.dash']()}</span>
 			<Button onclick={() => (createOpen = true)} data-testid="snapshot-create-open">{m['vms.snapshots.createButton']()}</Button>
 		</div>
 	</div>
-	{#if snapshots.maxSnapshots !== null && snapshots.snapshots.length >= snapshots.maxSnapshots}
+	{#if snapshots.maxSnapshots !== null && snapshots.maxSnapshots > 0 && snapshots.snapshots.length >= snapshots.maxSnapshots}
 		<p role="status" class="mt-3 text-sm text-muted-foreground" data-testid="snapshot-limit-message">{m['vms.snapshots.limitMessage']()}</p>
 	{/if}
 

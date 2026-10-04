@@ -73,6 +73,7 @@ describe('VmListStore', () => {
 	});
 
 	it('includes non-default values and the scope in the query string', () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
 		const { store } = makeStore('', 'all');
 		store.setSort('cpu');
 		expect(store.queryString()).toBe('sortBy=cpu&scope=all');
@@ -323,6 +324,7 @@ describe('VmListStore attention filter', () => {
 	});
 
 	it('is mutually exclusive with the server status filter', () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, oneVmResult)));
 		const { store, navigated } = makeStore('?status=running');
 
 		store.setAttention(true);

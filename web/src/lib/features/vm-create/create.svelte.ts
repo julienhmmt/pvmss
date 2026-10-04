@@ -85,7 +85,14 @@ export interface CatalogGabarit {
 	isolationVlanTag: number;
 }
 
-/** The caller's own VM count against the cluster's per-user allowance.
+/** The effective UI ceiling for a gabarit field: 0 means no cap (the server
+ *  enforces the same rule), so the fallback rail applies for the input's
+ *  max attribute. */
+export function gabaritCeiling(value: number | undefined, fallback: number): number {
+	return value != null && value > 0 ? value : fallback;
+}
+
+/** The caller's pool VM count against the cluster's pool allowance.
  *  allowed is -1 for unlimited. */
 export interface CatalogQuota {
 	used: number;
@@ -275,10 +282,10 @@ function translateCapacityExceeded(message: string): string {
 	return m['vms.create.errorCapacityExceeded']({ node, dimension: dimensionLabel, max: Number(max) });
 }
 
-/** Parses the server's "%s already owns %d of %d allowed VMs" message into a
- *  localized string. */
+/** Parses the server's `pool "p" already holds %d of %d allowed VMs` message
+ *  into a localized string. */
 function translateQuotaExceeded(message: string): string {
-	const match = message.match(/already owns (\d+) of (\d+) allowed VMs$/);
+	const match = message.match(/already holds (\d+) of (\d+) allowed VMs$/);
 	if (!match) return m['vms.create.errorCreation']();
 	const used = match[1] ?? '0';
 	const allowed = match[2] ?? '0';
@@ -627,7 +634,7 @@ export class VmCreateStore {
 	/** Adds a NIC row in detailed mode, up to gabarit.maxNetworkCards (US2/D3a). */
 	addNIC(): void {
 		const max = this.catalog?.gabarit?.maxNetworkCards ?? 4;
-		if (this.nics.length >= max) return;
+		if (max !== 0 && this.nics.length >= max) return;
 		this.nics.push({ bridge: '', model: 'virtio' });
 	}
 

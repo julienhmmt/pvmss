@@ -12,7 +12,7 @@ describe('LoginForm', () => {
 	it('loads clusters and submits the selected cluster', async () => {
 		const fetchMock = vi
 			.fn()
-			.mockResolvedValueOnce(jsonResponse(200, [{ name: 'default', displayName: 'prod-pve', oidcEnabled: false }, { name: 'secondary', displayName: 'dr-pve', oidcEnabled: true }]))
+			.mockResolvedValueOnce(jsonResponse(200, [{ name: 'default', displayName: 'prod-pve' }, { name: 'secondary', displayName: 'dr-pve' }]))
 			.mockResolvedValueOnce(jsonResponse(200, { username: 'alice@pve', pool: 'pool-alice', isAdmin: false, cluster: 'secondary', clusterDisplayName: 'dr-pve' }));
 		vi.stubGlobal('fetch', fetchMock);
 		const form = new LoginForm();

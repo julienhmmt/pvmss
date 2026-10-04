@@ -30,7 +30,7 @@ test.describe('T12 admin policy', () => {
 	// counts vm-list asserts on.
 	test.afterAll(async ({ request }) => {
 		await signInAdmin(request);
-		await savePolicy(request, { gabarit: { maxDiskPerVmGb: 500, allowCustomYaml: true } });
+		await savePolicy(request, { gabarit: { maxDiskPerVmGb: 500 } });
 		await savePolicy(request, { quota: { maxVmPerUser: -1 } });
 		// The capacity test lowers pve-node-02's vCPU ceiling; lift it even if
 		// the test failed before its own reset.
