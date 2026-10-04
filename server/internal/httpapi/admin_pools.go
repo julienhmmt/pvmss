@@ -184,7 +184,7 @@ func (h *AdminPools) ServeDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	name := r.PathValue("name")
 	if name == "" {
-		writeAdminError(w, http.StatusBadRequest, "invalid_pool_name", "invalid pool name")
+		writeAdminError(w, http.StatusBadRequest, "invalid_pool_name", msgInvalidPoolName)
 		return
 	}
 	clusterName, err := h.resolveClusterName(r)
@@ -204,7 +204,7 @@ func (h *AdminPools) ServeDetail(w http.ResponseWriter, r *http.Request) {
 	}
 	detail, err := pools.Detail(r.Context(), client, projection, h.store, clusterName, name)
 	if errors.Is(err, pools.ErrNotFound) {
-		writeAdminError(w, http.StatusNotFound, "not_found", "pool \""+name+"\" not found")
+		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf("pool %q not found", name))
 		return
 	}
 	if err != nil {
@@ -319,7 +319,7 @@ func (h *AdminPools) ServeDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	name := r.PathValue("name")
 	if name == "" {
-		writeAdminError(w, http.StatusBadRequest, "invalid_pool_name", "invalid pool name")
+		writeAdminError(w, http.StatusBadRequest, "invalid_pool_name", msgInvalidPoolName)
 		return
 	}
 	clusterName, err := h.resolveClusterName(r)
@@ -344,7 +344,7 @@ func (h *AdminPools) ServeDelete(w http.ResponseWriter, r *http.Request) {
 	}
 	result, err := pools.Delete(r.Context(), pools.CascadeDeps{Actor: actor, Client: client, Projection: projection, ClusterName: clusterName, Writer: writer, Audit: h.audit, Refresher: h.refresher, Managed: h.store}, name)
 	if errors.Is(err, pools.ErrNotFound) {
-		writeAdminError(w, http.StatusNotFound, "not_found", "pool \""+name+"\" not found")
+		writeAdminError(w, http.StatusNotFound, "not_found", fmt.Sprintf("pool %q not found", name))
 		return
 	}
 	if errors.Is(err, pools.ErrForbidden) {
@@ -352,7 +352,7 @@ func (h *AdminPools) ServeDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if errors.Is(err, pools.ErrNotManaged) {
-		writeAdminError(w, http.StatusConflict, "not_managed", "pool \""+name+"\" is not managed by PVMSS")
+		writeAdminError(w, http.StatusConflict, "not_managed", fmt.Sprintf("pool %q is not managed by PVMSS", name))
 		return
 	}
 	if err != nil {
@@ -488,7 +488,7 @@ func (h *AdminPools) recordAdminAction(r *http.Request, action, targetType, targ
 func (h *AdminPools) writeCreateError(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, pools.ErrInvalidName):
-		writeAdminError(w, http.StatusBadRequest, "invalid_pool_name", "invalid pool name")
+		writeAdminError(w, http.StatusBadRequest, "invalid_pool_name", msgInvalidPoolName)
 	case errors.Is(err, pools.ErrAlreadyExists):
 		writeAdminError(w, http.StatusConflict, "duplicate_pool", err.Error())
 	case errors.Is(err, pools.ErrForbidden):
