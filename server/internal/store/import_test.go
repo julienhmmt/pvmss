@@ -386,8 +386,9 @@ func TestConfirmImport_ReplacesPreviewedTables(t *testing.T) {
 
 // TestImportAllowlist_Sc005_ExcludesAuthSystemHistoryTables
 // a crafted upload with rows for catalog_tags (allowlisted) alongside
-// sessions, api_tokens, schema_migrations, and audit_log (all excluded);
-// after confirm, only catalog_tags changed, the four excluded tables are
+// sessions, api_tokens, schema_migrations, and audit_log (all excluded -
+// api_tokens only exists in old backups since V37 dropped it live);
+// after confirm, only catalog_tags changed, the live excluded tables are
 // byte-identical before/after.
 //
 //nolint:paralleltest // serial: shared staging map
@@ -401,7 +402,7 @@ func TestImportAllowlist_Sc005_ExcludesAuthSystemHistoryTables(t *testing.T) {
 
 	livePath := liveDBPath(ctx, t, st)
 	beforeRows := snapshotAllTables(t, livePath, []string{
-		tblSessions, tblAPITokens, tblSchemaMigrations, tblAuditLog, tblCatalogTags,
+		tblSessions, tblSchemaMigrations, tblAuditLog, tblCatalogTags,
 	})
 
 	// Craft an upload with catalog_tags rows (allowlisted) plus rows for each
@@ -457,12 +458,12 @@ func TestImportAllowlist_Sc005_ExcludesAuthSystemHistoryTables(t *testing.T) {
 	}
 
 	// After confirm: catalog_tags changed (replaced with the crafted rows),
-	// the four excluded tables are byte-identical to before.
+	// the live excluded tables are byte-identical to before.
 	afterRows := snapshotAllTables(t, livePath, []string{
-		tblSessions, tblAPITokens, tblSchemaMigrations, tblAuditLog, tblCatalogTags,
+		tblSessions, tblSchemaMigrations, tblAuditLog, tblCatalogTags,
 	})
 
-	for _, table := range []string{tblSessions, tblAPITokens, tblSchemaMigrations, tblAuditLog} {
+	for _, table := range []string{tblSessions, tblSchemaMigrations, tblAuditLog} {
 		if !equalStringSlices(beforeRows[table], afterRows[table]) {
 			t.Errorf("excluded table %s changed: before=%v after=%v", table, beforeRows[table], afterRows[table])
 		}
@@ -549,11 +550,10 @@ func seedExcludedTables(ctx context.Context, t *testing.T, st *store.Store) {
 	if err := st.RecordAction(ctx, "alice@pve", "default", 101, "start"); err != nil {
 		t.Fatalf("seed audit: %v", err)
 	}
-	// Seed sessions, api_tokens, schema_migrations directly via the Store's
-	// underlying connection through ExecContext on the exported helper.
-	// schema_migrations is already populated by migrations; we just verify it.
-	// sessions and api_tokens are seeded with a known row so the before/after
-	// comparison is meaningful.
+	// Seed sessions directly via the Store's underlying connection through
+	// ExecContext on the exported helper. schema_migrations is already
+	// populated by migrations; sessions is seeded with a known row so the
+	// before/after comparison is meaningful.
 	livePath := liveDBPath(ctx, t, st)
 
 	db, err := sql.Open("sqlite", "file:"+livePath)
@@ -566,11 +566,6 @@ func seedExcludedTables(ctx context.Context, t *testing.T, st *store.Store) {
 	_, err = db.ExecContext(ctx, `INSERT INTO sessions (token_hash, username, is_admin, expires_at, created_at, pool) VALUES (X'aaaa', 'admin', 1, '2099-01-01T00:00:00Z', '2026-01-01T00:00:00Z', '')`)
 	if err != nil {
 		t.Fatalf("seed sessions: %v", err)
-	}
-
-	_, err = db.ExecContext(ctx, `INSERT INTO api_tokens (id, token_hash, username, is_admin, scope, label, expires_at, created_at, last_used_at, pool) VALUES ('seed-id', X'bbbb', 'admin', 1, 'admin', 'seed', NULL, '2026-01-01T00:00:00Z', NULL, '')`)
-	if err != nil {
-		t.Fatalf("seed api_tokens: %v", err)
 	}
 }
 
