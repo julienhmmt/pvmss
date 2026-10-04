@@ -148,7 +148,7 @@ index. Do not reintroduce a code index without measuring against `pq` first.
 ### Server (`server/`)
 
 Go REST API over the Proxmox API + SQLite for persistence. Module
-`pvmss/server`, Go 1.27. Kept small: routing is stdlib `net/http` and logging
+`pvmss/server`, Go 1.26. Kept small: routing is stdlib `net/http` and logging
 is stdlib `log/slog`. The direct deps are `coder/websocket` (VNC console
 proxy), `golang.org/x/crypto` (bcrypt), `gopkg.in/yaml.v3` (cloud-init YAML
 validation), `modernc.org/sqlite` (pure-Go, CGO-free), and the observability
@@ -224,7 +224,7 @@ Built with bun; the Go binary serves the build output (catch-all to
 - **Entrypoint**: `/app/pvmss` - no flags; the web dir comes from
   `PVMSS_WEB_DIR` (default `/app/web/build` in the image) or a path relative
   to the executable
-- **Build**: multi-stage - `golang:1.27-alpine` builds a static CGO-free
+- **Build**: multi-stage - `golang:1.26-alpine` builds a static CGO-free
   binary, `oven/bun:1-alpine` builds the SPA
 - Kubernetes manifests: `pvmss-deployment.yaml`, `pvmss-httproute.yml`
 - Helm chart: `helm/`
