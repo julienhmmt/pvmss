@@ -16,6 +16,7 @@
 		slug: string;
 		lang: string;
 		category: string;
+		categoryOptions: string[];
 		audience: 'user' | 'admin';
 		enabled: boolean;
 		bodyMd: string;
@@ -39,6 +40,7 @@
 		slug,
 		lang,
 		category,
+		categoryOptions,
 		audience,
 		enabled,
 		bodyMd,
@@ -128,8 +130,14 @@
 						{invalid}
 						value={category}
 						oninput={(e: Event & { currentTarget: HTMLInputElement | HTMLTextAreaElement }) => onCategoryChange(e.currentTarget.value)}
+						list="docs-category-options"
 						required
 					/>
+					<datalist id="docs-category-options">
+						{#each categoryOptions as option (option)}
+							<option value={option}></option>
+						{/each}
+					</datalist>
 				{/snippet}
 			</FormField>
 			<FormField label={m['docs.audience']()}>
