@@ -32,6 +32,11 @@ const (
 	adminWriteRateLimitWindow       = time.Minute
 	authWriteRateLimitMaxRequests   = 30
 	authWriteRateLimitWindow        = time.Minute
+	// clientErrorRateLimitMaxRequests stays generous - an error burst is
+	// exactly what the endpoint exists to see - but unbounded logging is a
+	// spam vector.
+	clientErrorRateLimitMaxRequests = 60
+	clientErrorRateLimitWindow      = time.Minute
 )
 
 // errorResponse is the public error shape for unknown API paths.
@@ -127,7 +132,7 @@ func NewRouter(cfg RouterConfig) http.Handler {
 	mux.Handle("POST /api/v1/cluster/refresh", protect(cfg.Auth.Require(cfg.ClusterRefresh), clusterTestLimiter))
 
 	registerVMRoutes(mux, cfg, protect, vmWriteLimiter, vmStatusLimiter)
-	registerAuthRoutes(mux, cfg, protect, authWriteLimiter, hops)
+	registerAuthRoutes(mux, cfg, protect, csrf, authWriteLimiter, hops)
 
 	// Public documentation - audience-filtered list and rendered
 	// single-page view. Not wrapped in auth.Require: the handler resolves the
@@ -250,7 +255,7 @@ func registerVMRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc,
 // registerAuthRoutes wires the unauthenticated credential-check endpoints
 // (per-IP rate limited) and the authenticated password endpoint
 // (per-user rate limited + CSRF). Extracted from NewRouter for gocyclo.
-func registerAuthRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc, authWriteLimiter *userRateLimiter, hops int) {
+func registerAuthRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFunc, csrf func(http.Handler) http.Handler, authWriteLimiter *userRateLimiter, hops int) {
 	// Unauthenticated credential-check endpoints get a per-IP rate limit -
 	// nothing else gates repeated guesses against them. The pre-login cluster
 	// list is also unauthenticated and discloses cluster
@@ -272,6 +277,12 @@ func registerAuthRoutes(mux *http.ServeMux, cfg RouterConfig, protect protectFun
 		mux.Handle("POST /api/v1/profile/ssh-keys", protect(cfg.ProfileSSHKeys, authWriteLimiter))
 		mux.Handle("DELETE /api/v1/profile/ssh-keys/{id}", protect(cfg.ProfileSSHKeys, authWriteLimiter))
 	}
+
+	// Unauthenticated SPA telemetry: errors must report even before login, so
+	// it shares the per-IP limiter style of the auth endpoints (its own
+	// bucket - an error burst must not lock out logins).
+	clientErrorLimiter := newIPRateLimiter(cfg.limitMax(clientErrorRateLimitMaxRequests), clientErrorRateLimitWindow, hops, cfg.Store)
+	mux.Handle("POST /api/v1/client-errors", clientErrorLimiter.middleware(csrf(http.HandlerFunc(ServeClientError))))
 }
 
 // registerAPINotFound installs the catch-all 404 for unknown /api/ paths across
