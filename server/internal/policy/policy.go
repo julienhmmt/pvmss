@@ -50,7 +50,8 @@ const (
 	dimensionDisk  = "disk"
 )
 
-// Gabarit is the administrator-editable size ceiling for one VM.
+// Gabarit is the administrator-editable size ceiling for one VM. A zero
+// field imposes no cap - the same convention as the node capacités.
 // IsolationVLANTag is the per-cluster imposed VLAN:
 // 0 means no tag imposed; a positive value is stamped on every created NIC.
 type Gabarit struct {

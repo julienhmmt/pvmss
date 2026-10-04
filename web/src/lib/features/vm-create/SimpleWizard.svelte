@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getVmCreateContext, type SimpleSource } from './create.svelte';
+	import { getVmCreateContext, gabaritCeiling, type SimpleSource } from './create.svelte';
 	import { getTaskTrayContext } from '$lib/features/tasks/tasks.svelte';
 	import { getTaskOutcomeLedgerContext } from '$lib/features/tasks/task-outcome-ledger.svelte';
 	import { handleAccepted } from './post-submit';
@@ -141,7 +141,7 @@
 	// covering the image is required (the server rejects a smaller disk
 	// with "disk_below_image"). When profiles exist, the profile's disk
 	// size is authoritative and this field is not shown at all.
-	const maxDiskGB = $derived(form.catalog?.gabarit?.maxDiskPerVMGB ?? 2048);
+	const maxDiskGB = $derived(gabaritCeiling(form.catalog?.gabarit?.maxDiskPerVMGB, 2048));
 	const diskSizeError = $derived(
 		form.simpleSource !== 'image' || hasProfiles
 			? null

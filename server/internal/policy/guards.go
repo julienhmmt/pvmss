@@ -58,7 +58,9 @@ func recordQuotaExceeded(ctx context.Context, actor auth.Identity, used, allowed
 	_ = quotaAuditor.RecordAdminAction(ctx, actor.Username, "quota.exceeded", "quota", actor.Username, detail, auditIPFromContext(ctx))
 }
 
-// CheckGabarit validates the resolved initial VM hardware in field order.
+// CheckGabarit validates the resolved initial VM hardware in field order. A
+// zero gabarit field imposes no cap (the admin UI's "0 means no cap" hint),
+// matching the node capacité convention.
 func (service *Policy) CheckGabarit(ctx context.Context, clusterName string, sockets, cores, memoryMB, diskGB, networkCards int) error {
 	gabarit, err := service.Gabarit(ctx, clusterName)
 	if err != nil {
@@ -76,7 +78,7 @@ func (service *Policy) CheckGabarit(ctx context.Context, clusterName string, soc
 		{"networkCards", networkCards, gabarit.MaxNetworkCards},
 	}
 	for _, value := range values {
-		if value.requested != 0 && value.requested > value.maximum {
+		if value.maximum != 0 && value.requested > value.maximum {
 			return &GabaritExceededError{Field: value.field, Requested: value.requested, Maximum: value.maximum}
 		}
 	}
