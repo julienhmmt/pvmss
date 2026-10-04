@@ -26,6 +26,16 @@ func (service *Policy) NodeCapacities(ctx context.Context, clusterName string) (
 		return nil, err
 	}
 
+	approvals, err := service.store.CatalogNodesEnabled(ctx, clusterName)
+	if err != nil {
+		return nil, err
+	}
+
+	approved := make(map[string]bool, len(approvals))
+	for _, row := range approvals {
+		approved[row.Name] = row.Enabled
+	}
+
 	result := make([]Capacity, 0, len(nodes))
 	for _, node := range nodes {
 		capacity, err := service.NodeCapacity(ctx, clusterName, node.Name)
@@ -33,6 +43,7 @@ func (service *Policy) NodeCapacities(ctx context.Context, clusterName string) (
 			return nil, err
 		}
 
+		capacity.Approved = approved[node.Name]
 		capacity.PhysicalVCPUs = node.CPUCores
 		capacity.PhysicalRAMGB = int(node.MemoryTotal / bytesPerGB)
 		capacity.Status = node.Status

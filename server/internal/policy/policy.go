@@ -94,6 +94,10 @@ type Capacity struct {
 	StorageUsedGB  int
 	StorageTotalGB int
 	TotalVMs       int
+
+	// Approved reports the node's catalog_nodes.enabled state: an unapproved
+	// node is excluded from placement entirely, so its caps never apply.
+	Approved bool
 }
 
 // CapacityDelta is the incremental VM footprint a capacity check is asked to

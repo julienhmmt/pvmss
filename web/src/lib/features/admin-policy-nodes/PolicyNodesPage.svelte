@@ -167,6 +167,11 @@
 										{node.node}
 									</a>
 									<Pill tone={statusTone[node.status] ?? 'off'} label={statusLabel(node.status)} />
+									{#if !node.approved}
+										<span title={m['policy.nodeNotApprovedHint']()}>
+											<Pill tone="warn" label={m['policy.nodeNotApproved']()} />
+										</span>
+									{/if}
 								</span>
 							</th>
 							<td data-label={m['policy.colVms']()}><CapacityCell used={node.usedVms} cap={node.maxVms} /></td>
