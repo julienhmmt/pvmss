@@ -256,6 +256,10 @@ operator who simply forgot to set the variable.
 - `PROXMOX_URL` - e.g. `https://host:8006/api2/json`
 - `PROXMOX_API_TOKEN_NAME` / `PROXMOX_API_TOKEN_VALUE`
 
+These three also seed the `default` cluster row on first boot when the
+`clusters` table is empty (`store.ensureEnvCluster`); once any cluster exists
+the values are ignored and the admin UI owns cluster management.
+
 **Optional:**
 
 | Variable                                      | Default                            |
