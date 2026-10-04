@@ -23,6 +23,9 @@ export interface NodeCapacity {
 	nodeStorageUsedGb: number;
 	nodeStorageTotalGb: number;
 	totalVms: number;
+	/** Catalog approval state - false means the node is excluded from PVMSS
+	 *  placement entirely, whatever its caps say. */
+	approved: boolean;
 }
 
 export interface NodeCapacityPatch {
@@ -178,6 +181,57 @@ export class AdminPolicyNodesStore {
 		this.refreshDisabled = false;
 		this.refreshError = null;
 	}
+}
+
+/** Label lookup for server message words: request fields ("maxVcpus" from
+ *  invalid_policy) and dimension words ("vcpu" from the cap errors). */
+const ERROR_WORD_LABELS: Record<string, () => string> = {
+	maxvms: () => m['policy.maxVms'](),
+	maxvcpus: () => m['policy.maxVcpus'](),
+	maxramgb: () => m['policy.maxRam'](),
+	maxdiskgb: () => m['policy.maxNodeDisk'](),
+	vms: () => m['policy.colVms'](),
+	vcpu: () => m['policy.colVcpus'](),
+	vcpus: () => m['policy.colVcpus'](),
+	ram: () => m['policy.colRam'](),
+	disk: () => m['policy.colDisk']()
+};
+
+function errorWordLabel(word: string): string {
+	return ERROR_WORD_LABELS[word.toLowerCase()]?.() ?? word;
+}
+
+/** RAM and disk caps are expressed in GB - the unit joins the message so the
+ *  translated sentence keeps the server's precision. */
+function dimensionUnit(dimension: string): string {
+	return dimension === 'ram' || dimension === 'disk' ? ` ${m['policy.unitGB']()}` : '';
+}
+
+/** Parses the server's free-text node-capacity errors into localized strings
+ *  (server/internal/policy/admin.go - the server sends English text, not
+ *  structured fields). Unknown shapes pass through unchanged. */
+export function translateNodeCapacityError(code: string | null, message: string): string {
+	const below = /^(\w+) cap \((\d+)\) is below (.+)'s current usage \((\d+)\)$/.exec(message);
+	if (code === 'node_limit_below_usage' && below !== null) {
+		const dimension = below[1] ?? '';
+		return m['policy.errorCapBelowUsage']({
+			dimension: errorWordLabel(dimension), requested: below[2] ?? '', node: below[3] ?? '',
+			used: below[4] ?? '', unit: dimensionUnit(dimension)
+		});
+	}
+	const above = /^(\w+) cap \((\d+)(?: GB)?\) exceeds (.+)'s physical capacity \((\d+)(?: GB)?\)$/.exec(message);
+	if (code === 'node_limit_above_capacity' && above !== null) {
+		const dimension = above[1] ?? '';
+		return m['policy.errorCapAboveCapacity']({
+			dimension: errorWordLabel(dimension), requested: above[2] ?? '', node: above[3] ?? '',
+			physical: above[4] ?? '', unit: dimensionUnit(dimension)
+		});
+	}
+	const negative = /^(\w+) must not be negative$/.exec(message);
+	if (code === 'invalid_policy' && negative !== null) {
+		return m['policy.errorNotNegative']({ field: errorWordLabel(negative[1] ?? '') });
+	}
+	return message;
 }
 
 const POLICY_NODES_CONTEXT_KEY = Symbol('admin-policy-nodes');
