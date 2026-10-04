@@ -209,9 +209,10 @@ Une tranche qui ne produit rien d'essayable est mal découpée.
 
 - Le jeu de jetons de couleur **OKLCH** de la v0.3 est conservé tel quel, thème clair et
   sombre. Aucune couleur n'est ajoutée ni modifiée sans décision explicite.
-- Les composants accessibles vendorés (shadcn / bits-ui) sont utilisés tels quels ; aucune
-  feuille de style globale maison.
-- Icônes via **Iconify en CSS** - jamais une bibliothèque à un fichier par icône.
+- Le kit UI est **maison** (`src/lib/shared/ui/`) : aucune bibliothèque de composants
+  vendorée (ni shadcn ni bits-ui). Tout composant partagé y vit, avec son
+  accessibilité, plutôt qu'une dépendance de plus.
+- Icônes : composants SVG maison (`src/lib/shared/ui/icons/`), un fichier par icône.
 - Internationalisation via **Paraglide** : clés typées, absence détectée à la compilation.
 
 ### XI. Aucun Proxmox requis (NON NÉGOCIABLE)
@@ -341,4 +342,4 @@ plus simple écartée. Une violation non consignée bloque la fusion.
 *ce qu'il ne faut pas refaire*. Elle n'est pas publiée tant que la fiche `securite/S01`
 contient une preuve de concept exploitable.
 
-**Version**: 1.1.0 | **Ratified**: 2026-08-01 | **Last Amended**: 2026-08-01
+**Version**: 1.2.0 | **Ratified**: 2026-08-01 | **Last Amended**: 2026-10-04
