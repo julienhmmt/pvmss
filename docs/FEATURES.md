@@ -73,7 +73,7 @@ Activity.
 
 | Tab        | Actions                                                                                                                                                                     | API                                                                                                                      | Status |
 | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------ |
-| Connect    | SSH command from the address the guest agent reports (never guessed, never port-probed), only once no ISO is mounted; while an ISO is mounted the card reads "Installation in progress" with console and "Eject the ISO"; agent-specific hints; browser console; allocated resources                                                                  | `GET …/{vmid}`, `GET …/cloudinit`                                                                                        | ✅     |
+| Connect    | SSH command from the address the guest agent reports (never guessed, never port-probed) - an RDP card (address + port 3389) on Windows ostypes; "Installation in progress" only while the boot order still leads with the mounted ISO, with console and "Eject the ISO"; agent-specific hints; browser console; allocated resources                                                                  | `GET …/{vmid}`, `GET …/cloudinit`                                                                                        | ✅     |
 | Summary    | 7 power actions (shutdown = guest/ACPI only, stop = hard), rename, Markdown description, delete (dialog), one-time boot from CD-ROM                                         | `POST …/actions`, `PATCH …/{vmid}`, `DELETE …/{vmid}`, `POST …/boot-cdrom`                                               | ✅     |
 | Summary    | Metrics history (hour / day / week, CPU/RAM/disk/net SVG charts) and live stream                                                                                            | `GET …/metrics/history`, `GET …/metrics/stream`                                                                          | ✅     |
 | Disks      | add, resize (grow), detach                                                                                                                                                  | `POST …/disks`, `PUT …/disks/{key}/resize`, `DELETE …/disks/{key}`                                                       | ✅     |
@@ -159,6 +159,7 @@ All routes behind `RequireAdmin`.
 | Structured `slog` logging, console or JSON, stdout/stderr/file                                                  | `LOG_*`                                                                      | ✅     |
 | Health endpoint                                                                                                 | `GET /health`                                                                | ✅     |
 | Public version endpoint                                                                                         | `GET /api/v1/public/version`                                                 | ✅     |
+| SPA error reporting (uncaught errors, unhandled rejections, SvelteKit `handleError`)                              | `POST /api/v1/client-errors`                                                 | ✅     |
 | Background inventory refresh with configurable interval/timeout                                                 | `PVMSS_INVENTORY_*`                                                          | ✅     |
 | Security headers (CSP, HSTS, frame/content-type options), CSRF, rate limiting, trusted proxy hops for client IP | `security_headers.go`, `csrf.go`, `ratelimit.go`, `PVMSS_TRUSTED_PROXY_HOPS` | ✅     |
 | `fake` cluster source for demos/tests (no Proxmox needed)                                                       | `PVMSS_CLUSTER_SOURCE=fake`                                                  | ✅     |
@@ -169,4 +170,4 @@ All routes behind `RequireAdmin`.
 ## Not in scope (done in Proxmox)
 
 LXC containers · backups · live migration / HA · SDN and firewall rules ·
-Proxmox user management beyond `/admin/pools` · OpenID Connect (planned).
+Proxmox user management beyond `/admin/pools`.
