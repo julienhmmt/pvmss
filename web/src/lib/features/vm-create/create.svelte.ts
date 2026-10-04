@@ -92,7 +92,7 @@ export function gabaritCeiling(value: number | undefined, fallback: number): num
 	return value != null && value > 0 ? value : fallback;
 }
 
-/** The caller's own VM count against the cluster's per-user allowance.
+/** The caller's pool VM count against the cluster's pool allowance.
  *  allowed is -1 for unlimited. */
 export interface CatalogQuota {
 	used: number;
@@ -282,10 +282,10 @@ function translateCapacityExceeded(message: string): string {
 	return m['vms.create.errorCapacityExceeded']({ node, dimension: dimensionLabel, max: Number(max) });
 }
 
-/** Parses the server's "%s already owns %d of %d allowed VMs" message into a
- *  localized string. */
+/** Parses the server's `pool "p" already holds %d of %d allowed VMs` message
+ *  into a localized string. */
 function translateQuotaExceeded(message: string): string {
-	const match = message.match(/already owns (\d+) of (\d+) allowed VMs$/);
+	const match = message.match(/already holds (\d+) of (\d+) allowed VMs$/);
 	if (!match) return m['vms.create.errorCreation']();
 	const used = match[1] ?? '0';
 	const allowed = match[2] ?? '0';

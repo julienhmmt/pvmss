@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	// ErrQuotaExceeded reports a user at or above the configured quota.
+	// ErrQuotaExceeded reports a pool at or above the configured quota.
 	ErrQuotaExceeded = errors.New("quota exceeded")
 	// ErrGabaritExceeded reports a VM value above the configured gabarit.
 	ErrGabaritExceeded = errors.New("gabarit exceeded")
@@ -65,7 +65,7 @@ type Gabarit struct {
 	IsolationVLANTag int
 }
 
-// Quota is the current VM count and per-user allowance.
+// Quota is the actor's pool VM count and the pool allowance.
 type Quota struct {
 	Used    int
 	Allowed int
@@ -178,9 +178,10 @@ func (service *Policy) policyRowOrDefault(ctx context.Context, clusterName strin
 	return row, err
 }
 
-// Quota reads the cluster allowance and calculates the actor's current pool
-// usage from the immutable inventory projection. Administrators have no pool
-// and therefore always receive the unlimited allowance.
+// Quota reads the cluster allowance and calculates the actor's pool usage
+// from the immutable inventory projection. The allowance applies to the
+// whole pool: accounts sharing one share its budget. Administrators have no
+// pool and therefore always receive the unlimited allowance.
 func (service *Policy) Quota(ctx context.Context, clusterName string, actor auth.Identity) (Quota, error) {
 	row, err := service.policyRowOrDefault(ctx, clusterName)
 	if err != nil {
